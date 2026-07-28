@@ -1,0 +1,952 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>快速入门优化预览 v3 · Vibe 专属页</title>
+  <style>
+    :root{
+      --surface:#f4f9fc;--card:#fff;--ink:#152238;--muted:#5a7086;
+      --line:rgba(26,45,74,.12);--cyan:#0e7490;--cyan-mid:#2a9cc4;--cyan-soft:#e6f7fc;
+      --ok:#2f9e6b;--ok-soft:#e8f7ef;--warn:#9a6700;--warn-soft:#fff8e8;--dim:rgba(12,24,40,.48);
+      --egg:#c45c26;--egg-soft:#fff1e8;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;color:var(--ink);background:linear-gradient(165deg,#d8e3ef,#e8eef5)}
+    .app{display:grid;grid-template-columns:300px 1fr;min-height:100vh}
+    @media(max-width:1000px){.app{grid-template-columns:1fr}}
+    .rail{padding:20px 16px;border-right:1px solid var(--line);background:rgba(247,251,254,.95)}
+    .rail h1{margin:0 0 4px;font-size:15px}
+    .rail .lead{margin:0 0 14px;font-size:12px;line-height:1.55;color:var(--muted)}
+    .note{font-size:11px;line-height:1.5;padding:10px;border-radius:10px;background:var(--cyan-soft);border:1px solid rgba(42,156,196,.2);margin-bottom:14px;color:#0f5f73}
+    .note b{display:block;margin-bottom:4px}
+    .map h2,.diff h2{margin:0 0 8px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+    .map-list{display:grid;gap:5px;margin-bottom:14px}
+    .mi{display:flex;gap:8px;padding:7px 9px;border-radius:9px;background:#fff;border:1px solid transparent;font-size:11px;line-height:1.35}
+    .mi.is-on{border-color:rgba(42,156,196,.45);background:var(--cyan-soft)}
+    .mi.is-done{opacity:.8}
+    .mi .d{width:7px;height:7px;border-radius:50%;margin-top:4px;background:#9bb0c4;flex:0 0 auto}
+    .mi.is-on .d{background:var(--cyan-mid)}
+    .mi.is-done .d{background:var(--ok)}
+    .mi span{color:var(--muted)}
+    .diff{font-size:11px;line-height:1.5;color:var(--muted)}
+    .diff li{margin-bottom:4px}
+    .stage{padding:20px;display:grid;gap:12px;align-content:start}
+    .chips{display:flex;flex-wrap:wrap;gap:6px}
+    .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:650;color:var(--muted);cursor:pointer}
+    .chip.is-on{background:var(--cyan-soft);border-color:rgba(42,156,196,.4);color:var(--cyan)}
+    .hint{font-size:12px;color:var(--muted)}
+    .phone{position:relative;width:min(900px,100%);margin:0 auto;min-height:600px;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:var(--surface);box-shadow:0 18px 50px rgba(26,45,74,.15)}
+    .home{display:grid;grid-template-columns:68px 1fr;min-height:600px;background:linear-gradient(180deg,#f3f8fc,#eaf2f8)}
+    .nav{background:#0b1c33;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:10px}
+    .brand{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(145deg,#2a9cc4,#0e7490);color:#fff;font-weight:800;font-size:12px}
+    .nd{width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.08)}
+    .main{padding:16px 18px}
+    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .top h3{margin:0;font-size:14px}
+    .qs{border:0;border-radius:10px;padding:8px 13px;font:inherit;font-size:12px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(180deg,#35b4d8,#1a8fb5)}
+    .hero{display:grid;place-items:center;gap:8px;padding:40px 12px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.7)}
+    .orb{width:78px;height:78px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#9fe4f7,#2a9cc4 55%,#0e7490);box-shadow:0 0 0 8px rgba(42,156,196,.12)}
+    .scrim{position:absolute;inset:0;background:var(--dim);display:none;align-items:center;justify-content:center;padding:14px;z-index:5}
+    .scrim.is-on{display:flex}
+    .hs{width:min(540px,100%);max-height:min(94vh,640px);background:var(--card);border-radius:16px;border:1px solid var(--line);box-shadow:0 24px 60px rgba(0,0,0,.3);display:flex;flex-direction:column;overflow:hidden}
+    .hs-head{padding:10px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+    .hs-nav{display:flex;flex:1;gap:4px;flex-wrap:wrap}
+    .hs-tab{border:0;background:#eef3f8;color:var(--muted);border-radius:8px;padding:5px 7px;font:inherit;font-size:10px;font-weight:700}
+    .hs-tab.on{background:var(--cyan-soft);color:var(--cyan)}
+    .hs-tab.done{background:var(--ok-soft);color:#1f7a4d}
+    .hs-x{border:0;background:transparent;font-size:18px;color:var(--muted);cursor:pointer}
+    .hs-body{padding:14px 16px 8px;overflow:auto;flex:1}
+    .badge{display:inline-block;font-size:11px;font-weight:700;color:var(--cyan);background:var(--cyan-soft);border-radius:999px;padding:3px 9px;margin-bottom:8px}
+    .hs-title{margin:0 0 4px;font-size:17px}
+    .hs-desc{margin:0 0 12px;font-size:12px;color:var(--muted);line-height:1.5}
+    .simplify{margin:0 0 12px;padding:8px 10px;border-radius:10px;background:var(--warn-soft);border:1px dashed rgba(154,103,0,.35);font-size:11px;line-height:1.45;color:#7a5200}
+    .hs-foot{padding:10px 14px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;background:#fafcfe}
+    .btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+    .btn.primary{border:0;background:linear-gradient(180deg,#35b4d8,#1a8fb5);color:#fff}
+    .btn:disabled{opacity:.4;cursor:not-allowed}
+    .btn.ghost{background:transparent}
+    .btn.egg{
+      border:0;width:100%;padding:14px 16px;border-radius:14px;cursor:pointer;text-align:left;
+      background:linear-gradient(135deg,#ff8f5c,#c45c26);color:#fff;
+      box-shadow:0 10px 28px rgba(196,92,38,.35);
+      font:inherit;font-weight:800;font-size:14px;
+    }
+    .btn.egg small{display:block;font-weight:600;font-size:11px;opacity:.92;margin-top:4px}
+    .ime-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+    .tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+    .ime-grid.dense{grid-template-columns:1fr 1fr;gap:6px}
+    .ime small{display:block;font-size:10px;color:var(--muted);margin-top:2px;font-weight:600}
+    .ime .def{font-size:10px;color:var(--cyan);margin-top:2px}
+    .ime,.tool,.mode,.intent{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;cursor:pointer;font-size:12px;text-align:left}
+    .ime.on,.tool.on,.mode.on{border-color:rgba(42,156,196,.5);background:var(--cyan-soft)}
+    .intent{border-radius:12px;padding:12px}
+    .intent:hover{border-color:rgba(42,156,196,.4);background:var(--cyan-soft)}
+    .intent strong,.tool strong,.mode strong{display:block;font-size:12px;margin-bottom:2px}
+    .intent span,.tool span{font-size:11px;color:var(--muted);line-height:1.45}
+    .intent-grid{display:grid;gap:8px}
+    .pick-section{
+      margin-top:4px;padding:12px;border-radius:12px;border:1px solid var(--line);
+      background:linear-gradient(180deg,#fafcfe,#f4f9fc);
+    }
+    .pick-section h4{margin:0 0 10px;font-size:13px;font-weight:700;color:var(--ink)}
+    .pick-list{display:grid;gap:6px}
+    .pick-row{
+      display:flex;align-items:flex-start;gap:10px;width:100%;text-align:left;
+      border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;cursor:pointer;
+      transition:border-color .15s,background .15s;
+    }
+    .pick-row:hover{border-color:rgba(42,156,196,.45);background:var(--cyan-soft)}
+    .pick-row .ico{
+      width:32px;height:32px;border-radius:9px;background:var(--cyan-soft);color:var(--cyan);
+      display:grid;place-items:center;font-size:14px;flex:0 0 auto;font-weight:800;
+    }
+    .pick-row .copy{flex:1;min-width:0}
+    .pick-row .copy strong{display:block;font-size:12px;margin-bottom:2px}
+    .pick-row .copy span{font-size:11px;color:var(--muted);line-height:1.45}
+    .pick-row .go{font-size:11px;font-weight:700;color:var(--cyan);align-self:center;flex:0 0 auto}
+    .feat-hub{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .feat-card{border:1px solid var(--line);border-radius:12px;padding:14px 12px;background:#fff;cursor:pointer;text-align:left}
+    .feat-card:hover{border-color:rgba(42,156,196,.45);background:var(--cyan-soft)}
+    .feat-card strong{display:block;font-size:13px;margin-bottom:4px}
+    .feat-card span{font-size:11px;color:var(--muted);line-height:1.45}
+    .warn{margin-top:10px;padding:10px;border-radius:10px;background:#fff7ed;border:1px solid rgba(180,83,9,.25);font-size:11px;line-height:1.45;color:#7a5200}
+    .warn b{color:#5c3d00}
+    .kb{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 10px}
+    .key{min-width:40px;height:34px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:linear-gradient(180deg,#fff,#f1f5f8);display:grid;place-items:center;font-size:12px;font-weight:800;box-shadow:0 2px 0 #d5dee8}
+    .key.hot{border-color:rgba(42,156,196,.55);background:var(--cyan-soft);color:var(--cyan)}
+    .panel{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fbfdff;margin-bottom:8px}
+    .panel h6{margin:0 0 4px;font-size:12px}
+    .panel p{margin:0;font-size:11px;color:var(--muted);line-height:1.45}
+    .mode-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    .mode{text-align:center}
+    .toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;margin:8px 0}
+    .toggle span{font-size:12px;line-height:1.4}
+    .sw{width:42px;height:24px;border-radius:999px;background:#c5d0db;position:relative;flex:0 0 auto;cursor:pointer;border:0}
+    .sw.on{background:var(--cyan-mid)}
+    .sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s}
+    .sw.on::after{left:21px}
+    .soft-face{
+      width:min(260px,100%);aspect-ratio:1/1.05;padding:10px;border-radius:18px;
+      display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);gap:6px;
+      box-sizing:border-box;
+    }
+    .soft-face--shortcut{
+      background:linear-gradient(160deg,#eef2f6,#e4e9ef);
+      border:1px solid rgba(15,23,42,.08);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.8);
+    }
+    .soft-face--numpad{
+      background:#121a24;border:1px solid rgba(255,255,255,.1);
+    }
+    .sk{
+      border:0;border-radius:12px;display:grid;place-items:center;font-size:11px;font-weight:800;
+      color:#334155;background:#f8fafc;box-shadow:0 1px 0 rgba(255,255,255,.9),0 4px 10px rgba(15,23,42,.08);
+      position:relative;
+    }
+    .soft-face--numpad .sk{
+      color:#d7e6f3;background:rgba(255,255,255,.08);box-shadow:none;border-radius:8px;font-size:12px;
+    }
+    .sk.nav{opacity:.55;background:transparent;box-shadow:none;color:#64748b}
+    .soft-face--numpad .sk.nav{color:#8aa0b5;opacity:.7}
+    .sk.glow-g{box-shadow:0 0 0 2px rgba(52,211,153,.35),0 6px 14px rgba(52,211,153,.2)}
+    .sk.glow-y{box-shadow:0 0 0 2px rgba(251,191,36,.35),0 6px 14px rgba(251,191,36,.18)}
+    .sk.glow-b{box-shadow:0 0 0 2px rgba(56,189,248,.4),0 6px 14px rgba(56,189,248,.2)}
+    .sk.glow-p{box-shadow:0 0 0 2px rgba(244,114,182,.35),0 6px 14px rgba(244,114,182,.18)}
+    .sk.power{color:#ea580c;cursor:pointer}
+    .sk.mic{border-radius:14px}
+    .sk.dim{opacity:.35}
+    /* face-switch removed: Soft Pad is NumLock borrow/restore, not a gallery */
+    .cam-scene{
+      position:relative;width:100%;height:100%;padding:10px 12px;box-sizing:border-box;
+      display:grid;grid-template-columns:1fr 56px;gap:8px;align-items:end;
+    }
+    .cam-desk{
+      height:70%;border-radius:8px;border:1px solid rgba(255,255,255,.18);
+      background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03));
+      position:relative;overflow:hidden;
+    }
+    .cam-monitor{
+      position:absolute;left:12%;right:12%;top:10%;height:58%;border-radius:4px;
+      border:2px solid rgba(180,200,220,.45);background:#0b1522;
+    }
+    .cam-monitor::after{content:"";position:absolute;left:40%;right:40%;bottom:-8px;height:6px;background:rgba(180,200,220,.35);border-radius:2px}
+    .cam-webcam{
+      position:absolute;left:50%;top:4px;transform:translateX(-50%);width:10px;height:10px;border-radius:50%;
+      background:#94a3b8;box-shadow:0 0 0 2px rgba(148,163,184,.35);z-index:2;
+    }
+    .cam-webcam.on{background:#34d399;box-shadow:0 0 8px rgba(52,211,153,.8)}
+    .cam-person{
+      position:absolute;width:22px;height:22px;border-radius:50%;
+      background:radial-gradient(circle at 35% 30%,#9fe4f7,#2a9cc4);
+      left:50%;bottom:8%;transform:translateX(-50%);z-index:1;
+    }
+    .cam-mic-pill{
+      align-self:center;justify-self:center;padding:8px 6px;border-radius:10px;text-align:center;
+      font-size:9px;font-weight:800;letter-spacing:.04em;background:rgba(255,255,255,.08);color:#7dcea0;
+      border:1px solid rgba(125,206,160,.35);
+    }
+    .cam-mic-pill.off{color:#e57373;border-color:rgba(229,115,115,.4)}
+    .cam-card[data-demo="autoMute"] .cam-person{animation:camLeave 2.8s ease-in-out infinite}
+    .cam-card[data-demo="autoMute"] .cam-mic-pill{animation:camMic 2.8s ease-in-out infinite}
+    .cam-card[data-demo="gesture"] .cam-person{animation:camNod 1.5s ease-in-out infinite}
+    .cam-card[data-demo="health"] .cam-monitor::before{
+      content:"45m";position:absolute;right:4px;top:4px;font-size:8px;color:#fbbf24;font-weight:700;
+      animation:pulseSoft 1.8s ease-in-out infinite;
+    }
+    .cam-card[data-demo="privacy"] .cam-desk::after{
+      content:"";position:absolute;inset:0;background:rgba(8,14,24,.82);opacity:0;
+      animation:privacyCover 2.6s ease-in-out infinite;
+    }
+    .cam-card[data-demo="track"] .cam-person{animation:camTrack 2.2s ease-in-out infinite}
+    .cam-card[data-demo="track"] .cam-pointer{
+      position:absolute;width:8px;height:8px;border:2px solid #35b4d8;border-radius:1px;
+      left:48%;top:40%;animation:camTrack 2.2s ease-in-out infinite;
+    }
+    @keyframes camLeave{0%,35%{left:50%;opacity:1}60%,100%{left:108%;opacity:.1}}
+    @keyframes camMic{0%,40%{color:#7dcea0;border-color:rgba(125,206,160,.35)}55%,100%{color:#e57373;border-color:rgba(229,115,115,.4)}}
+    @keyframes camNod{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-5px)}}
+    @keyframes camTrack{0%,100%{transform:translateX(-50%) translate(0,0)}50%{transform:translateX(-50%) translate(14px,-10px)}}
+    .pad-wrap{display:grid;grid-template-columns:minmax(220px,260px) 1fr;gap:12px;margin-top:8px;align-items:start}
+    .pad-mini-bar{
+      display:inline-flex;align-items:center;gap:6px;height:28px;padding:4px 12px 4px 8px;
+      border-radius:999px;border:1px solid rgba(15,23,42,.12);
+      background:linear-gradient(145deg,rgba(235,255,245,.96),rgba(200,250,220,.9));
+      box-shadow:0 6px 14px rgba(15,23,42,.16);
+    }
+    .pad-mini-bar em{width:7px;height:7px;border-radius:50%;display:block;box-shadow:0 0 6px currentColor}
+    .pad-mini-bar em:nth-child(1){background:#fbbf24;color:#fbbf24}
+    .pad-mini-bar em:nth-child(2){background:#38bdf8;color:#38bdf8}
+    .pad-mini-bar em:nth-child(3){background:#34d399;color:#34d399}
+    .pad-mini-bar span{font-size:10px;font-weight:700;color:#0f5f73;margin-left:4px}
+    .numpad-demo{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:10px;border-radius:12px;
+      background:#1a2332;border:1px solid rgba(255,255,255,.08);max-width:200px;
+    }
+    .numpad-demo i{font-style:normal;display:grid;place-items:center;min-height:28px;border-radius:6px;
+      background:rgba(255,255,255,.08);color:#c8d6e5;font-size:10px;font-weight:700}
+    .numpad-demo i.on{background:rgba(42,156,196,.4);color:#e8f9ff}
+    .numpad-demo i.wide{grid-column:span 2}
+    .numpad-demo i.tall{grid-row:span 2;min-height:60px}
+    .cam-cards{display:grid;gap:10px;margin-top:4px}
+    .cam-card{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
+    .cam-card.is-off{opacity:.55}
+    .cam-card__demo{
+      position:relative;height:112px;background:linear-gradient(160deg,#0f1e30,#1a3348);
+      display:grid;place-items:stretch;overflow:hidden;
+    }
+    .cam-card__body{padding:10px 12px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+    .cam-card__body strong{display:block;font-size:12px;margin-bottom:2px}
+    .cam-card__body span{font-size:11px;color:var(--muted);line-height:1.4}
+    .demo-screen{width:72%;height:54px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);position:relative}
+    .demo-person{
+      position:absolute;width:18px;height:18px;border-radius:50%;
+      background:radial-gradient(circle at 35% 30%,#9fe4f7,#2a9cc4);left:50%;top:40%;transform:translate(-50%,-50%);
+    }
+    .cam-card[data-demo="autoMute"] .demo-person{animation:leaveSeat 2.8s ease-in-out infinite}
+    .cam-card[data-demo="autoMute"] .demo-mic{
+      position:absolute;right:8px;bottom:6px;font-size:10px;font-weight:800;color:#7dcea0;
+      animation:micFlip 2.8s ease-in-out infinite;
+    }
+    .cam-card[data-demo="gesture"] .demo-hand{
+      position:absolute;left:18%;bottom:10px;font-size:16px;animation:nod 1.6s ease-in-out infinite;
+    }
+    .cam-card[data-demo="health"] .demo-clock{
+      position:absolute;right:10px;top:8px;font-size:10px;color:#fbbf24;font-weight:700;
+      animation:pulseSoft 1.8s ease-in-out infinite;
+    }
+    .cam-card[data-demo="privacy"] .demo-veil{
+      position:absolute;inset:0;background:rgba(15,30,48,.78);opacity:0;
+      animation:privacyCover 2.4s ease-in-out infinite;
+    }
+    .cam-card[data-demo="track"] .demo-person{animation:trackMove 2.2s ease-in-out infinite}
+    .cam-card[data-demo="track"] .demo-cursor{
+      position:absolute;width:10px;height:10px;border:2px solid #35b4d8;border-radius:2px;
+      left:42%;top:48%;animation:trackMove 2.2s ease-in-out infinite;
+    }
+    @keyframes leaveSeat{0%,30%{left:50%;opacity:1}55%,100%{left:92%;opacity:.15}}
+    @keyframes micFlip{0%,35%{color:#7dcea0}50%,100%{color:#e57373}}
+    @keyframes nod{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+    @keyframes pulseSoft{0%,100%{opacity:.55}50%{opacity:1}}
+    @keyframes privacyCover{0%,40%{opacity:0}55%,100%{opacity:1}}
+    @keyframes trackMove{0%,100%{transform:translate(-50%,-50%)}50%{transform:translate(28%,-40%)}}
+    .sw[disabled]{opacity:.35;cursor:not-allowed}
+    @media(max-width:560px){.pad-wrap{grid-template-columns:1fr}}
+    .pad{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding:10px;border-radius:12px;
+      background:#0f1e30;border:1px solid rgba(255,255,255,.08);
+    }
+    .pad i{font-style:normal;display:grid;place-items:center;min-height:34px;border-radius:7px;background:rgba(255,255,255,.08);color:#d7e6f3;font-size:10px;font-weight:700;text-align:center;padding:4px 2px;line-height:1.2}
+    .pad i.fn{background:rgba(42,156,196,.35);color:#e8f9ff}
+    .pad i.nav{background:rgba(255,255,255,.14)}
+    .feat-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+    .feat-list li{display:flex;gap:8px;font-size:11px;line-height:1.4;color:var(--muted)}
+    .feat-list b{color:var(--ink);min-width:52px;font-size:11px}
+    .apps{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+    .apps em{font-style:normal;font-size:11px;font-weight:700;padding:4px 8px;border-radius:999px;background:var(--cyan-soft);color:var(--cyan);border:1px solid rgba(42,156,196,.25)}
+    .test-stage{text-align:center;padding:16px 10px;border-radius:14px;border:1px dashed rgba(42,156,196,.35);background:var(--cyan-soft);margin-bottom:10px}
+    .test-stage .wave{font-size:28px;margin-bottom:6px}
+    .mic-banner{padding:8px 10px;border-radius:10px;background:#f1f5f9;border:1px solid var(--line);font-size:11px;color:var(--muted);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+    .egg-panel{margin-top:8px;padding:12px;border-radius:14px;background:var(--egg-soft);border:1px solid rgba(196,92,38,.25)}
+    .egg-panel h6{margin:0 0 6px;font-size:12px;color:var(--egg)}
+    .egg-panel ul{margin:0;padding-left:16px;font-size:11px;color:#7a3d1a;line-height:1.5}
+    .cam-cfg{display:grid;gap:8px;margin-top:8px}
+    .cam-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff}
+    .cam-row .copy strong{display:block;font-size:12px;margin-bottom:2px}
+    .cam-row .copy span{font-size:11px;color:var(--muted);line-height:1.45}
+    .seg2{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+    .seg2 button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font:inherit;font-size:11px;font-weight:700;cursor:pointer}
+    .seg2 button.on{border-color:rgba(42,156,196,.5);background:var(--cyan-soft);color:var(--cyan)}
+    .cmd-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+    .cmd{border:1px solid var(--line);border-radius:8px;padding:8px;background:#fbfdff;font-size:11px}
+    .cmd b{display:block;font-size:12px;margin-bottom:2px;color:var(--cyan)}
+    .tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#eef3f8;color:var(--muted);margin-left:4px}
+    .tag.new{background:var(--ok-soft);color:#1f7a4d}
+    .tag.vibe{background:#efe7ff;color:#5b21b6}
+    [hidden]{display:none!important}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <h1>快速入门预览 v3</h1>
+      <p class="lead">小白：配键 + 测试。程序员：Cursor/Codex/Claude + Soft Pad + 摄像头核心配置。</p>
+      <div class="note">
+        <b>本版调整</b>
+        · 程序员文案按<strong>语音 / 按键 / 虚拟键盘 / 摄像头</strong>收益重写<br>
+        · 去掉 QQ、小艺/华为；去掉双击长按说明与装饰键帽<br>
+        · AI 工具仅 Cursor / Codex / Claude<br>
+        · Soft Pad：⏻ 总开关切换<strong>数字面 / 快捷键面</strong>（布局对齐实机）；迷你=横栏；方向键可自配<br>
+        · 摄像头卡片交代人·显示器·摄像头·麦克风关系与收益
+      </div>
+      <div class="map"><h2>当前步骤</h2><div class="map-list" id="mapList"></div></div>
+      <div class="diff">
+        <h2>预览开关</h2>
+        <div class="mic-banner" style="margin:0 0 8px">
+          <span>模拟麦克风</span>
+          <button type="button" class="sw on" id="micSw" title="切换有无麦克风" aria-label="麦克风"></button>
+        </div>
+        <div class="mic-banner" style="margin:0">
+          <span>模拟已配置摄像头</span>
+          <button type="button" class="sw on" id="camSw" title="小白是否显示摄像头彩蛋" aria-label="摄像头"></button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="stage">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between">
+        <div class="chips">
+          <button type="button" class="chip is-on" data-j="home">首页</button>
+          <button type="button" class="chip" data-j="intent">意图</button>
+          <button type="button" class="chip" data-j="beg">小白全路径</button>
+          <button type="button" class="chip" data-j="begKey">小白·按键测试</button>
+          <button type="button" class="chip" data-j="begVoice">小白·语音激活</button>
+          <button type="button" class="chip" data-j="features">功能跳转</button>
+          <button type="button" class="chip" data-j="vibe">Vibe 全路径</button>
+          <button type="button" class="chip" data-j="pad">跳到虚拟键盘</button>
+          <button type="button" class="chip" data-j="egg">程序员·摄像头</button>
+        </div>
+        <div class="hint" id="hint">点快速入门开始</div>
+      </div>
+
+      <div class="phone">
+        <div class="home">
+          <div class="nav"><div class="brand">一声</div><div class="nd"></div><div class="nd"></div><div class="nd"></div></div>
+          <div class="main">
+            <div class="top"><h3>工作台</h3><button type="button" class="qs" id="btnQs">快速入门</button></div>
+            <div class="hero"><div class="orb"></div><p style="margin:0;font-size:12px;color:var(--muted)">Vibe 路径含专属虚拟键盘页与词测试页。</p></div>
+          </div>
+        </div>
+        <div class="scrim" id="scrim" hidden>
+          <div class="hs">
+            <div class="hs-head"><div class="hs-nav" id="hsNav"></div><button type="button" class="hs-x" id="btnX">×</button></div>
+            <div class="hs-body" id="hsBody"></div>
+            <div class="hs-foot" id="hsFoot"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+(function(){
+  /* 仅含语音输入能力；verified=产品内已核实默认键 */
+  var IME_LIST=[
+    {id:'xunfei', name:'讯飞输入法', key:'F2', verified:true},
+    {id:'wechat', name:'微信输入法', key:'Ctrl+Shift+Win', verified:true},
+    {id:'typeless', name:'Typeless', key:'RAlt', verified:true},
+    {id:'zhipu', name:'智谱输入法', key:'RAlt', verified:true},
+    {id:'qianwen', name:'千问输入法', key:'RAlt', verified:true},
+    {id:'shandianshuo', name:'闪电说', key:'RAlt', verified:true},
+    {id:'sogou', name:'搜狗输入法', key:'Ctrl+Shift+Z', verified:false, note:'语音键因版本而异'},
+    {id:'microsoft', name:'Windows 语音输入', key:'Win+H', verified:true},
+    {id:'baidu', name:'百度输入法', key:'Alt+`', verified:false, note:'请在输入法设置核对语音键'},
+    {id:'shouxin', name:'手心输入法', key:'F11', verified:false, note:'语音键因版本而异'},
+    {id:'custom', name:'自定义录制', key:'自己按一次', verified:true}
+  ];
+  /* 已排除：谷歌拼音（无语音）、QQ 输入法、小艺/华为输入法 */
+
+  var BEG=[
+    {id:'intent', tab:null, label:'意图'},
+    {id:'activation', tab:'输入法', label:'页1 输入法（详表）', page:'#habitSetupActivationView'},
+    {id:'trigger', tab:'启动键', label:'页2 录启动键', page:'#habitSetupTriggerView'},
+    {id:'keyTest', tab:'按键测', label:'按键测试专属页', page:'专属'},
+    {id:'voiceActivate', tab:'语音激活', label:'语音激活测试页', page:'专属 · 有麦可测'},
+    {id:'voice', tab:'结束词', label:'结束词说明', page:'#habitSetupVoiceLessonView'},
+    {id:'cameraEgg', tab:'彩蛋', label:'摄像头提示（有配置才出现）', page:'专属'},
+    {id:'done', tab:null, label:'完成'}
+  ];
+  var VIBE=[
+    {id:'intent', tab:null, label:'意图'},
+    {id:'tool', tab:null, label:'选 AI 工具'},
+    {id:'activation', tab:'输入法', label:'输入法详表（加速）', page:'#habitSetupActivationView'},
+    {id:'trigger', tab:'启动键', label:'启动键（加速）', page:'#habitSetupTriggerView'},
+    {id:'wakeTest', tab:'唤醒测', label:'唤醒词测试页', page:'专属'},
+    {id:'endTest', tab:'结束测', label:'结束词测试页', page:'专属'},
+    {id:'softPad', tab:'虚拟键盘', label:'虚拟键盘专属页', page:'专属 Soft Pad'},
+    {id:'cameraSetup', tab:'摄像头', label:'摄像头核心配置', page:'专属 · 可配置'},
+    {id:'done', tab:null, label:'完成'}
+  ];
+
+  var S={
+    open:false, persona:null, i:0, hasMic:true, hasCamera:true,
+    ime:false, trigger:false, keyOk:false, voiceActOk:false,
+    wakeOk:false, endOk:false,
+    mapDigits:true, mapArrows:false, padMode:'full',
+    tool:'codex', eggOpened:false, imeId:'',
+    cam:{gesture:true, health:false, privacy:true, track:false, autoMute:true}
+  };
+
+  var PAD_CMDS={
+    codex:[
+      {k:'Num 1', t:'发送 / 确认'},
+      {k:'Num 2', t:'换行'},
+      {k:'Num 3', t:'打断生成'},
+      {k:'Num 4', t:'/compact'},
+      {k:'Num 5', t:'/status'},
+      {k:'Num Enter', t:'发送'},
+      {k:'Num 7–9', t:'常用指令槽'}
+    ],
+    claude:[
+      {k:'Num 1', t:'发送 / 确认'},
+      {k:'Num 2', t:'换行'},
+      {k:'Num 3', t:'打断'},
+      {k:'Num 4', t:'/compact'},
+      {k:'Num 5', t:'/clear'},
+      {k:'Num Enter', t:'发送'},
+      {k:'Num 7–9', t:'常用指令槽'}
+    ],
+    cursor:[
+      {k:'Num 1', t:'打开 Chat（Ctrl+L）'},
+      {k:'Num 2', t:'Inline Edit（Ctrl+K）'},
+      {k:'Num 3', t:'Agent / Composer（Ctrl+I）'},
+      {k:'Num 4', t:'Accept 全部改动（Ctrl+Enter）'},
+      {k:'Num 5', t:'Reject 全部（Ctrl+Backspace）'},
+      {k:'Num 6', t:'Tab 接受补全'},
+      {k:'Num 7', t:'选区加入 Chat（Ctrl+Shift+L）'},
+      {k:'Num 8', t:'新建对话'},
+      {k:'Num Enter', t:'强制发送 / 确认'}
+    ]
+  };
+
+  var $=function(id){return document.getElementById(id)};
+
+  var FEATURE_PICKS=[
+    {id:'keys', icon:'⌨', title:'按键', desc:'录启动键、选语音输入法快捷键，验证按一下能否唤起听写。'},
+    {id:'camera', icon:'📷', title:'摄像头', desc:'手势、健康提醒、隐私遮挡、自动追踪、离席自动静音。'},
+    {id:'voice', icon:'🎙', title:'语音', desc:'唤醒词与结束词、麦克风检测；结束只停听写，发送你自己来。'},
+    {id:'softpad', icon:'▦', title:'虚拟键盘', desc:'Soft Pad 完整键盘或迷你横栏；可占用数字小键盘整区（NumLock 总开关）。'}
+  ];
+
+  function featurePickHtml(){
+    var html='<div class="pick-section"><h4>我只想配某一项</h4><div class="pick-list">';
+    FEATURE_PICKS.forEach(function(f){
+      html+='<button type="button" class="pick-row" data-f="'+f.id+'">'+
+        '<span class="ico">'+f.icon+'</span>'+
+        '<span class="copy"><strong>'+f.title+'</strong><span>'+f.desc+'</span></span>'+
+        '<span class="go">去配置</span></button>';
+    });
+    return html+'</div></div>';
+  }
+
+  function bindFeaturePicks(root){
+    if(!root) return;
+    root.querySelectorAll('[data-f]').forEach(function(el){
+      el.onclick=function(e){
+        e.stopPropagation();
+        var f=el.getAttribute('data-f');
+        close();
+        var labels={
+          keys:'预览：跳转 → 按键设置页',
+          camera:'预览：跳转 → 摄像头页',
+          voice:'预览：跳转 → 语音设置页',
+          softpad:'预览：跳转 → 虚拟键盘 / Soft Pad 页'
+        };
+        $('hint').textContent=labels[f]||'已跳转';
+      };
+    });
+  }
+
+  function graph(){
+    var g;
+    if(S.persona==='vibe') g=VIBE.slice();
+    else if(S.persona==='beginner') g=BEG.slice();
+    else return [{id:'intent',label:'意图'}];
+    if(S.persona==='beginner' && !S.hasCamera){
+      g=g.filter(function(s){ return s.id!=='cameraEgg'; });
+    }
+    return g;
+  }
+  function cur(){ return graph()[S.i]||graph()[0]; }
+
+  function imeById(id){
+    for(var i=0;i<IME_LIST.length;i++){ if(IME_LIST[i].id===id) return IME_LIST[i]; }
+    return null;
+  }
+
+  function imeGridHtml(opts){
+    opts=opts||{};
+    var html='<div class="ime-grid dense">';
+    IME_LIST.forEach(function(p){
+      var on=S.imeId===p.id?' on':'';
+      var tag=p.verified?'':'<span class="tag">键位待核</span>';
+      html+='<button type="button" class="ime'+on+'" data-ime="'+p.id+'"><strong>'+p.name+'</strong>'+tag+
+        '<span class="def">语音快捷键 · '+p.key+'</span></button>';
+    });
+    html+='</div>';
+    html+='<p style="margin:0 0 8px;font-size:10px;color:var(--muted)">未列入：谷歌拼音、QQ 输入法、小艺/华为（无稳定统一语音键或不适用）。</p>';
+    if(S.imeId){
+      var sel=imeById(S.imeId);
+      if(sel && !sel.verified && sel.id!=='custom'){
+        html+='<div class="warn"><b>请核对快捷键</b> '+sel.name+' 默认键为 '+sel.key+'。'+(sel.note||'')+' 若按启动键后未唤起语音输入，请点「自定义录制」自己录一次。</div>';
+      } else if(sel && sel.id!=='custom'){
+        html+='<div class="panel"><h6>已选 · '+sel.name+'</h6><p>将填入语音快捷键 '+sel.key+'。若实际未唤起，请改用自定义录制。</p></div>';
+      }
+    }
+    if(opts.vibeReuse){
+      html='<div class="panel"><h6>沿用全局（若已有）</h6><p>大多数人同一套语音输入法即可。</p><button type="button" class="btn primary" id="reuse" style="margin-top:8px">沿用</button></div>'+html;
+    }
+    return html;
+  }
+
+  function renderMap(){
+    var g=graph(), c=cur();
+    $('mapList').innerHTML=g.map(function(step,idx){
+      var cls='mi'+(S.open&&step.id===c.id?' is-on':'')+(S.open&&idx<S.i?' is-done':'');
+      return '<div class="'+cls+'"><span class="d"></span><div><b>'+step.label+'</b>'+(step.page?' <span>'+step.page+'</span>':'')+'</div></div>';
+    }).join('');
+  }
+
+  function renderNav(){
+    var g=graph().filter(function(s){return s.tab});
+    var c=cur();
+    $('hsNav').innerHTML=g.map(function(s){
+      var idx=graph().findIndex(function(x){return x.id===s.id});
+      var cls='hs-tab';
+      if(s.id===c.id) cls+=' on';
+      else if(idx<S.i) cls+=' done';
+      return '<span class="'+cls+'">'+s.tab+'</span>';
+    }).join('');
+  }
+
+  function foot(back, label, ok, onNext){
+    var f=$('hsFoot'); f.innerHTML='';
+    if(back){
+      var b=document.createElement('button'); b.type='button'; b.className='btn ghost'; b.textContent='上一步';
+      b.onclick=function(){ go(-1); }; f.appendChild(b);
+    }
+    var sp=document.createElement('div'); sp.style.flex='1'; f.appendChild(sp);
+    if(label){
+      var n=document.createElement('button'); n.type='button'; n.className='btn primary'; n.textContent=label;
+      n.disabled=!ok; n.onclick=onNext||function(){ go(1); }; f.appendChild(n);
+    }
+  }
+
+  function toolName(){
+    return ({cursor:'Cursor',codex:'Codex',claude:'Claude Code'})[S.tool]||'AI 工具';
+  }
+
+  function render(){
+    renderMap();
+    if(!S.open) return;
+    renderNav();
+    var id=cur().id, vibe=S.persona==='vibe', body=$('hsBody');
+    $('hint').textContent=(vibe?'Vibe':'小白')+' · '+cur().label;
+
+    if(id==='intent'){
+      $('hsNav').innerHTML='';
+      body.innerHTML='<div class="badge">快速入门</div><h3 class="hs-title">你想先做什么？</h3>'+
+        '<div class="intent-grid">'+
+        '<button type="button" class="intent" data-p="beginner">'+
+          '<strong>刚到新手村</strong>'+
+          '<span>按一颗键就能说话，不用来回切输入法。跟着做，3 分钟把「我按什么、软件帮按什么、说完怎么停」弄明白。</span>'+
+        '</button>'+
+        '<button type="button" class="intent" data-p="vibe">'+
+          '<strong>我是程序员</strong>'+
+          '<span><b>语音</b>少打字说需求 · <b>按键</b>一键唤起 Cursor / Codex / Claude · <b>虚拟键盘</b>常用命令到手边 · <b>摄像头</b>离席静音与手势辅助。</span>'+
+        '</button></div>'+
+        featurePickHtml();
+      body.querySelectorAll('[data-p]').forEach(function(el){
+        el.onclick=function(){
+          S.persona=el.getAttribute('data-p'); S.i=1; resetFlags(); render();
+        };
+      });
+      bindFeaturePicks(body);
+      foot(false); return;
+    }
+
+    if(id==='tool'){
+      $('hsNav').innerHTML='';
+      body.innerHTML='<div class="badge">程序员</div><h3 class="hs-title">配置哪个 AI 工具？</h3>'+
+        '<p class="hs-desc">当前支持 Cursor、Codex、Claude Code。选完后配启动键、词测与虚拟键盘。</p>'+
+        '<div class="tool-grid" style="grid-template-columns:1fr 1fr 1fr">'+
+        '<button type="button" class="tool" data-t="cursor"><strong>Cursor</strong><span>Chat / Agent</span></button>'+
+        '<button type="button" class="tool on" data-t="codex"><strong>Codex</strong><span>Soft Pad</span></button>'+
+        '<button type="button" class="tool" data-t="claude"><strong>Claude Code</strong><span>Soft Pad</span></button></div>';
+      S.tool=S.tool||'codex';
+      body.querySelectorAll('[data-t]').forEach(function(el){
+        if(el.getAttribute('data-t')===S.tool) el.classList.add('on'); else el.classList.remove('on');
+        el.onclick=function(){
+          body.querySelectorAll('[data-t]').forEach(function(x){x.classList.remove('on')});
+          el.classList.add('on'); S.tool=el.getAttribute('data-t');
+        };
+      });
+      foot(true,'进入按键设置',true); return;
+    }
+
+    if(id==='activation'){
+      body.innerHTML='<div class="badge">⌨ 选择语音输入法</div>'+
+        '<h3 class="hs-title">你平时用哪个<strong>语音输入</strong>？</h3>'+
+        '<p class="hs-desc">只列有语音输入能力的工具。点选填入默认语音快捷键；若不准，请用「自定义录制」。</p>'+
+        imeGridHtml({vibeReuse:vibe});
+      var pick=function(id){ S.ime=true; S.imeId=id||S.imeId||'xunfei'; render(); };
+      var r=$('reuse'); if(r) r.onclick=function(){ pick(S.imeId||'xunfei'); };
+      body.querySelectorAll('[data-ime]').forEach(function(el){
+        el.onclick=function(){ pick(el.getAttribute('data-ime')); };
+      });
+      foot(true,'下一步',S.ime); return;
+    }
+
+    if(id==='trigger'){
+      body.innerHTML='<div class="badge">🧪 启动键</div><h3 class="hs-title">录制启动键</h3>'+
+        '<p class="hs-desc">按下你想用来开始听写的那一颗键。默认：单击开始，再单击结束。</p>'+
+        '<div class="panel" style="text-align:center;padding:20px 12px">'+
+          '<p style="margin:0 0 10px;font-size:28px;font-weight:800;letter-spacing:.04em">'+(S.trigger?'已录到启动键':'等待按键…')+'</p>'+
+          '<p style="margin:0 0 14px;font-size:12px;color:var(--muted)">'+(S.trigger?'可换一个键重录':'点下方后按下实体键')+'</p>'+
+          '<button type="button" class="btn primary" id="rec">'+(S.trigger?'换一个键':'开始录制')+'</button>'+
+        '</div>'+
+        (vibe
+          ? '<div class="panel"><h6>下一步</h6><p>测唤醒词 / 结束词，再配虚拟键盘。</p></div>'
+          : '<div class="panel"><h6>下一步</h6><p>进入按键测试，确认能唤起语音输入。</p></div>');
+      $('rec').onclick=function(){ S.trigger=true; render(); };
+      foot(true, vibe?'下一步':'下一步，去按键测试', S.trigger); return;
+    }
+
+    /* —— 小白：按键测试专属页 —— */
+    if(id==='keyTest'){
+      body.innerHTML='<div class="badge">按键测试 <span class="tag new">专属页</span></div>'+
+        '<h3 class="hs-title">按一次启动键，确认能用</h3>'+
+        '<p class="hs-desc">第一波收益：按启动键后，OneTone 应帮你按下语音快捷键。</p>'+
+        '<div class="test-stage"><div class="wave">⌨</div>'+
+          '<p style="margin:0 0 8px;font-size:13px;font-weight:700">请按你的启动键</p>'+
+          '<p style="margin:0;font-size:11px;color:var(--muted)">'+(S.keyOk?'绑定成功：已触发输入法快捷键 ✓':'等待按键…')+'</p>'+
+          '<button type="button" class="btn primary" id="simKey" style="margin-top:12px">'+(S.keyOk?'再测一次':'模拟按键成功')+'</button>'+
+        '</div>'+
+        '<div class="panel"><h6>失败时</h6><p>返回重录启动键；或回到输入法页检查语音快捷键是否准确，不准请自定义录制。</p></div>';
+      $('simKey').onclick=function(){ S.keyOk=true; render(); };
+      foot(true,'下一步',S.keyOk); return;
+    }
+
+    /* —— 小白：语音激活测试（有麦） —— */
+    if(id==='voiceActivate'){
+      body.innerHTML='<div class="badge">语音激活测试 <span class="tag new">专属页</span></div>'+
+        '<h3 class="hs-title">有麦克风时，试一次语音激活</h3>'+
+        '<p class="hs-desc">确认麦与识别正常：说出唤醒词，应能开始听写（与按键殊途同归）。</p>'+
+        micBlock()+
+        (S.hasMic
+          ? '<div class="test-stage"><div class="wave">🎙</div>'+
+            '<p style="margin:0 0 8px;font-size:13px;font-weight:700">请说：开始输入</p>'+
+            '<p style="margin:0;font-size:11px;color:var(--muted)">'+(S.voiceActOk?'语音激活成功 ✓':'等待识别…')+'</p>'+
+            '<button type="button" class="btn primary" id="simVA" style="margin-top:12px">'+(S.voiceActOk?'再测一次':'模拟识别成功')+'</button></div>'
+          : '<div class="panel"><h6>已跳过语音激活测试</h6><p>未检测到麦克风。按键路径已验证即可用；有麦后可在语音页补测。</p></div>');
+      var va=$('simVA'); if(va) va.onclick=function(){ S.voiceActOk=true; render(); };
+      var sk=$('skipMic'); if(sk) sk.onclick=function(){ S.voiceActOk=true; go(1); };
+      foot(true, S.hasMic?'下一步':'跳过，继续', S.hasMic?S.voiceActOk:true); return;
+    }
+
+    if(id==='voice'){
+      body.innerHTML='<div class="badge">🎙 结束词</div><h3 class="hs-title">说完怎么停</h3>'+
+        '<p class="hs-desc">激活已在上一页测过。这里只记结束听写的方式。</p>'+
+        '<div class="panel"><h6>结束 · 结束输入</h6><p>说出「结束输入」会<strong>结束听写</strong>。发送、提交仍由你自己按键或点界面按钮完成，不会自动发送。</p></div>';
+      foot(true,'下一步',true); return;
+    }
+
+    /* —— Vibe dedicated: wake test —— */
+    if(id==='wakeTest'){
+      body.innerHTML='<div class="badge">唤醒词测试 <span class="tag new">专属页</span></div>'+
+        '<h3 class="hs-title">试说唤醒词，马上有反馈</h3>'+
+        '<p class="hs-desc">第一波收益：确认麦克风 + 唤醒能开听写。默认词「开始输入」。</p>'+
+        micBlock()+
+        (S.hasMic
+          ? '<div class="test-stage"><div class="wave">🎙</div><p style="margin:0 0 8px;font-size:13px;font-weight:700">请说：开始输入</p><p style="margin:0;font-size:11px;color:var(--muted)">'+(S.wakeOk?'识别成功 · 已进入听写态 ✓':'等待识别…')+'</p><button type="button" class="btn primary" id="simWake" style="margin-top:12px">'+(S.wakeOk?'再测一次':'模拟识别成功')+'</button></div>'
+          : '<div class="panel"><h6>已跳过唤醒测试</h6><p>未检测到麦克风。键位仍可用；有麦后可在语音页补测。</p></div>');
+      var sw=$('simWake'); if(sw) sw.onclick=function(){ S.wakeOk=true; render(); };
+      var sk=$('skipMic'); if(sk) sk.onclick=function(){ S.wakeOk=true; go(1); };
+      foot(true, S.hasMic?'下一步': '跳过，继续', S.hasMic?S.wakeOk:true); return;
+    }
+
+    if(id==='endTest'){
+      body.innerHTML='<div class="badge">结束词测试 <span class="tag new">专属页</span></div>'+
+        '<h3 class="hs-title">试说结束词，完成一轮</h3>'+
+        '<p class="hs-desc">试说结束词，结束听写。发送需你自己操作。</p>'+
+        micBlock()+
+        (S.hasMic
+          ? '<div class="test-stage"><div class="wave">✓</div><p style="margin:0 0 8px;font-size:13px;font-weight:700">请说：结束输入</p><p style="margin:0;font-size:11px;color:var(--muted)">'+(S.endOk?'已结束听写 ✓（发送请自行操作）':'等待识别…')+'</p><button type="button" class="btn primary" id="simEnd" style="margin-top:12px">'+(S.endOk?'再测一次':'模拟识别成功')+'</button></div>'
+          : '<div class="panel"><h6>已跳过结束测试</h6><p>无麦克风时略过；按键结束仍可用。</p></div>');
+      var se=$('simEnd'); if(se) se.onclick=function(){ S.endOk=true; render(); };
+      var sk=$('skipMic'); if(sk) sk.onclick=function(){ S.endOk=true; go(1); };
+      foot(true, S.hasMic?'下一步':'跳过，继续', S.hasMic?S.endOk:true); return;
+    }
+
+    /* —— 程序员：Soft Pad —— */
+    if(id==='softPad'){
+      var cmds=PAD_CMDS[S.tool]||PAD_CMDS.codex;
+      var softOn=!!S.mapDigits; /* true=占用：快捷 Soft Pad；false=还原日常数字键盘 */
+      var arrOn=!!S.mapArrows;
+      var visual;
+      if(S.padMode==='mini'){
+        visual='<div class="warn" style="margin-bottom:10px"><b>重点</b> 迷你只是显示形态；实体侧仍是<strong>借用数字小键盘键位</strong>，靠 <strong>Number / NumLock</strong> '+(softOn?'还原数字':'激活快捷 Soft Pad')+'。</div>'+
+          '<div class="panel" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">'+
+          '<div><h6>迷你状态 · 状态灯横栏</h6><p>当前：'+(softOn?'快捷 Soft Pad':'日常数字')+'</p></div>'+
+          '<div class="pad-mini-bar" aria-hidden="true"><em></em><em></em><em></em><span>'+(softOn?'Soft':'Num')+'</span></div>'+
+          '<button type="button" class="btn primary" id="btnNumToggle" style="width:100%">'+
+            (softOn?'模拟按下 Number · 还原数字键盘':'模拟按下 Number · 激活快捷 Soft Pad')+
+          '</button></div>';
+      } else {
+        visual=
+          '<div class="warn" style="margin-bottom:10px">'+
+            '<b>重点</b> Soft Pad <strong>借用</strong>电脑右侧数字小键盘的<strong>同一键位</strong>，不是另装一套键。'+
+            '请点键盘上的 <strong>NumLock / Number</strong>（或 Soft Pad 左上角 ⏻）'+
+            (softOn?'：当前为快捷 Soft Pad，再点一次可<strong>还原日常数字键盘</strong>。':'：当前为日常数字键盘，再点一次可<strong>激活快捷 Soft Pad</strong>。')+
+          '</div>'+
+          '<div class="pad-wrap">'+
+            softPadFaceHtml(softOn?'shortcut':'numpad', arrOn, softOn)+
+            '<div>'+
+              '<div class="panel" style="margin:0 0 8px">'+
+                '<h6>当前状态 · '+(softOn?'临时 Soft Pad（快捷）':'日常数字键盘')+'</h6>'+
+                '<p>'+(softOn
+                  ? '实体小键盘上的 7/8/9… 暂时触发 Soft Pad 能力（与屏上键位一一对应）。'
+                  : '实体小键盘恢复输入数字；屏上仍可点 Soft Pad，但不再占用实体键。')+'</p>'+
+                '<button type="button" class="btn primary" id="btnNumToggle" style="margin-top:10px;width:100%">'+
+                  (softOn?'模拟按下 Number · 还原数字键盘':'模拟按下 Number · 激活快捷 Soft Pad')+
+                '</button>'+
+              '</div>'+
+              '<h6 style="margin:0 0 6px;font-size:12px">'+toolName()+' 常用能力（激活后可用）</h6>'+
+              '<ul class="feat-list">'+cmds.map(function(c){ return '<li><b>'+c.k+'</b>'+c.t+'</li>'; }).join('')+'</ul>'+
+            '</div></div>';
+      }
+      body.innerHTML='<div class="badge">虚拟键盘 <span class="tag vibe">专属页</span></div>'+
+        '<h3 class="hs-title">Soft Pad · 借用数字小键盘</h3>'+
+        '<p class="hs-desc">理解一件事即可：虚拟键盘映射在数字小键盘同一位置。用 <b>Number / NumLock（⏻）</b> 在「快捷 Soft Pad」与「还原数字」之间切换。</p>'+
+        '<div class="apps"><em>Cursor</em><em>Codex</em><em>Claude Code</em></div>'+
+        '<div class="panel" style="margin-bottom:10px"><h6>悬浮显示</h6>'+
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'+
+            '<button type="button" class="btn '+(S.padMode==='full'?'primary':'')+'" data-pm="full">完整虚拟键盘</button>'+
+            '<button type="button" class="btn '+(S.padMode==='mini'?'primary':'')+'" data-pm="mini">迷你横栏</button>'+
+          '</div></div>'+
+        visual+
+        '<div class="toggle"><span><b>启用数字键占用</b><br><span style="color:var(--muted);font-size:11px">关闭后数字键只输入数字；仍可点屏上 Soft Pad。打开后需用 Number/⏻ 切入快捷模式</span></span><button type="button" class="sw '+(softOn?'on':'')+'" id="swD"></button></div>'+
+        '<div class="toggle"><span><b>借用方向键（补充）</b><br><span style="color:var(--muted);font-size:11px">可自行配置；与小键盘占用无关，关掉占用后方向键仍是原来的倒 T</span></span><button type="button" class="sw '+(arrOn?'on':'')+'" id="swA"></button></div>';
+      body.querySelectorAll('[data-pm]').forEach(function(el){
+        el.onclick=function(){ S.padMode=el.getAttribute('data-pm'); render(); };
+      });
+      function flipNum(){ S.mapDigits=!S.mapDigits; render(); }
+      var btnN=$('btnNumToggle'); if(btnN) btnN.onclick=flipNum;
+      body.querySelectorAll('[data-face-toggle]').forEach(function(el){ el.onclick=flipNum; });
+      $('swD').onclick=flipNum;
+      $('swA').onclick=function(){ S.mapArrows=!S.mapArrows; render(); };
+      foot(true,'下一步',true); return;
+    }
+
+    /* —— 程序员：摄像头演示卡片；小白：轻提示 —— */
+    if(id==='cameraSetup' || id==='cameraEgg'){
+      $('hsNav').innerHTML='';
+      if(vibe){
+        body.innerHTML='<div class="badge">摄像头 <span class="tag new">演示 + 配置</span></div>'+
+          '<h3 class="hs-title">摄像头如何帮你写代码</h3>'+
+          '<p class="hs-desc">卡片里能看到：你（人）、显示器、摄像头、麦克风的关系。摄像头负责「看见你在不在 / 做什么」，再决定是否帮你关麦、提醒休息等。</p>'+
+          '<div class="cam-cards">'+
+            camDemoCard('autoMute','离席自动静音','摄像头发现你离开屏幕后，自动关掉语音麦克风，避免空录；回来再开麦。','人离屏 → 关麦')+
+            camDemoCard('gesture','手势少动手','摄像头识别简单抬头/点头等手势，减少去摸键鼠的次数（以已实现能力为准）。','人 → 手势 → 动作')+
+            camDemoCard('health','健康提醒','摄像头配合计时，久坐或用眼过久时提醒你休息，保护连续编程状态。','人盯屏过久 → 提醒')+
+            camDemoCard('privacy','隐私遮挡','你离开或遮挡时，降低画面暴露相关风险，安心起身倒水。','人离开 → 画面保护')+
+            camDemoCard('track','自动追踪','摄像头跟随你的大致位置，辅助窗口/指针相关追踪（以设置页为准）。','人移动 → 跟随')+
+          '</div>';
+        body.querySelectorAll('[data-cam]').forEach(function(el){
+          el.onclick=function(){ S.cam[el.getAttribute('data-cam')]=!S.cam[el.getAttribute('data-cam')]; render(); };
+        });
+        foot(true,'完成配置',true); return;
+      }
+      body.innerHTML='<div class="badge">检测到摄像头</div>'+
+        '<h3 class="hs-title">基础已经能用了</h3>'+
+        '<p class="hs-desc">需要时再到设置打开离席静音等能力，这里不强制。</p>'+
+        '<button type="button" class="btn egg" id="eggBtn">了解摄像头能做什么<small>静音 · 手势 · 健康 · 隐私 · 追踪</small></button>'+
+        (S.eggOpened?'<div class="egg-panel"><h6>可选能力</h6><ul><li>自动静音 — 离开画面时关麦</li><li>健康 / 隐私 / 手势 — 在摄像头页开启</li></ul></div>':'');
+      var eb=$('eggBtn'); if(eb) eb.onclick=function(){ S.eggOpened=true; render(); };
+      foot(true,'完成配置',true); return;
+    }
+
+    if(id==='done'){
+      $('hsNav').innerHTML='';
+      body.innerHTML='<div class="badge">完成</div><h3 class="hs-title">'+(vibe?'可以开始用了':'通用习惯就绪')+'</h3>'+
+        '<p class="hs-desc">'+(vibe
+          ? toolName()+' 已配：启动键、词测'+(S.hasMic?'':'（无麦已跳过）')+'、Soft Pad（'+(S.mapDigits?'快捷 Soft Pad · Number 可还原数字':'日常数字 · Number 可激活 Soft Pad')+' · 方向键 '+(S.mapArrows?'开':'关')+'）· 摄像头已选。'
+          : '按键与语音路径已就绪。')+'</p>';
+      if(vibe){
+        foot(true,'回到首页',true,function(){ close(); });
+      } else {
+        foot(false,'回到首页',true,function(){ close(); });
+      }
+      return;
+    }
+  }
+
+  function softPadFaceHtml(face, arrOn, softOn){
+    var encTitle=softOn?'点 Number / ⏻：还原日常数字键盘':'点 Number / ⏻：激活快捷 Soft Pad';
+    if(face==='numpad'){
+      return '<div class="soft-face soft-face--numpad">'+
+        '<div class="sk dim"></div>'+
+        '<div class="sk power" data-face-toggle title="'+encTitle+'">⏻</div>'+
+        '<div class="sk">/</div><div class="sk">*</div><div class="sk">−</div>'+
+        '<div class="sk '+(arrOn?'nav':'dim')+'">'+(arrOn?'↑':'')+'</div>'+
+        '<div class="sk">7</div><div class="sk">8</div><div class="sk">9</div>'+
+        '<div class="sk" style="grid-row:span 2">+</div>'+
+        '<div class="sk '+(arrOn?'nav':'dim')+'">'+(arrOn?'←':'')+'</div>'+
+        '<div class="sk">4</div><div class="sk">5</div><div class="sk">6</div>'+
+        '<div class="sk '+(arrOn?'nav':'dim')+'">'+(arrOn?'↓':'')+'</div>'+
+        '<div class="sk">1</div><div class="sk">2</div><div class="sk">3</div>'+
+        '<div class="sk" style="grid-row:span 2">↵</div>'+
+        '<div class="sk '+(arrOn?'nav':'dim')+'">'+(arrOn?'→':'')+'</div>'+
+        '<div class="sk" style="grid-column:span 2">0</div><div class="sk">.</div>'+
+        '</div>';
+    }
+    return '<div class="soft-face soft-face--shortcut">'+
+      '<div class="sk dim"></div>'+
+      '<div class="sk power" data-face-toggle title="'+encTitle+'">⏻</div>'+
+      '<div class="sk">⚡</div><div class="sk">☰</div><div class="sk">✕</div>'+
+      '<div class="sk '+(arrOn?'nav':'dim')+'">'+(arrOn?'↑':'')+'</div>'+
+      '<div class="sk glow-g">⌘</div><div class="sk glow-y">＋</div><div class="sk glow-b">⚡</div>'+
+      '<div class="sk" style="grid-row:span 2">＋</div>'+
+      '<div class="sk '+(arrOn?'nav':'dim')+'">'+(arrOn?'←':'')+'</div>'+
+      '<div class="sk">⌕</div><div class="sk glow-p">↩</div><div class="sk glow-b">✕</div>'+
+      '<div class="sk '+(arrOn?'nav':'dim')+'">'+(arrOn?'↓':'')+'</div>'+
+      '<div class="sk">＋</div><div class="sk">↶</div><div class="sk">⌕</div>'+
+      '<div class="sk" style="grid-row:span 2">⇥</div>'+
+      '<div class="sk '+(arrOn?'nav':'dim')+'">'+(arrOn?'→':'')+'</div>'+
+      '<div class="sk mic" style="grid-column:span 2">🎙</div><div class="sk">·</div>'+
+      '</div>';
+  }
+
+  function camDemoCard(key, title, desc, badge){
+    var on=!!S.cam[key];
+    var micClass=key==='autoMute'?'cam-mic-pill':'cam-mic-pill';
+    var extra=key==='track'?'<div class="cam-pointer"></div>':'';
+    var demo=
+      '<div class="cam-scene">'+
+        '<div class="cam-desk">'+
+          '<div class="cam-webcam on" title="摄像头"></div>'+
+          '<div class="cam-monitor" title="显示器"></div>'+
+          '<div class="cam-person" title="你"></div>'+extra+
+        '</div>'+
+        '<div class="'+micClass+'" title="语音麦克风">MIC</div>'+
+      '</div>';
+    return '<div class="cam-card '+(on?'':'is-off')+'" data-demo="'+key+'">'+
+      '<div class="cam-card__demo">'+demo+'</div>'+
+      '<div class="cam-card__body"><div><strong>'+title+' <span class="tag">'+badge+'</span></strong><span>'+desc+'</span></div>'+
+      '<button type="button" class="sw '+(on?'on':'')+'" data-cam="'+key+'"></button></div></div>';
+  }
+
+  function micBlock(){
+    return '<div class="mic-banner"><span>'+(S.hasMic?'麦克风：可用':'麦克风：未检测到')+'</span>'+
+      (S.hasMic?'':'<button type="button" class="btn ghost" id="skipMic" style="padding:4px 8px">跳过测试</button>')+'</div>';
+  }
+
+  function resetFlags(){
+    S.ime=S.trigger=S.keyOk=S.voiceActOk=S.wakeOk=S.endOk=S.eggOpened=false;
+    S.imeId=''; S.mapDigits=true; S.mapArrows=false; S.padMode='full';
+    S.cam={gesture:true, health:false, privacy:true, track:false, autoMute:true};
+    if(S.persona==='vibe') S.tool=S.tool||'codex';
+  }
+
+  function go(d){
+    var g=graph(), n=S.i+d;
+    if(n<0){ S.persona=null; S.i=0; render(); return; }
+    if(n>=g.length){ close(); return; }
+    // auto-skip wake/end when no mic if user advances? keep pages but allow continue
+    S.i=n; render();
+  }
+
+  function openFlow(persona, idx){
+    S.open=true; S.persona=persona; S.i=idx||0; resetFlags();
+    if(persona==='vibe') S.tool='codex';
+    $('scrim').hidden=false; $('scrim').classList.add('is-on'); render();
+  }
+  function close(){
+    S.open=false; S.persona=null; S.i=0;
+    $('scrim').hidden=true; $('scrim').classList.remove('is-on');
+    renderMap(); $('hint').textContent='点快速入门开始';
+  }
+
+  $('btnQs').onclick=function(){ openFlow(null,0); S.persona=null; S.i=0; render(); };
+  $('btnX').onclick=close;
+  $('micSw').onclick=function(){
+    S.hasMic=!S.hasMic;
+    $('micSw').classList.toggle('on', S.hasMic);
+    if(S.open) render();
+  };
+  $('camSw').onclick=function(){
+    S.hasCamera=!S.hasCamera;
+    $('camSw').classList.toggle('on', S.hasCamera);
+    if(S.open && S.persona==='beginner'){
+      // 重建步骤索引：尽量停在同名步骤
+      var id=cur().id;
+      var g=graph();
+      var ni=g.findIndex(function(x){return x.id===id});
+      S.i=ni>=0?ni:Math.min(S.i, g.length-1);
+      render();
+    }
+  };
+
+  document.querySelectorAll('[data-j]').forEach(function(btn){
+    btn.onclick=function(){
+      document.querySelectorAll('[data-j]').forEach(function(b){b.classList.remove('is-on')});
+      btn.classList.add('is-on');
+      var j=btn.getAttribute('data-j');
+      if(j==='home'){ close(); return; }
+      if(j==='intent'){ openFlow(null,0); S.persona=null; S.i=0; render(); return; }
+      if(j==='features'){ openFlow(null,0); S.persona=null; S.i=0; render(); return; }
+      if(j==='beg'){ openFlow('beginner',1); return; }
+      if(j==='begKey'){
+        openFlow('beginner', BEG.findIndex(function(x){return x.id==='keyTest'}));
+        S.ime=S.trigger=true; return;
+      }
+      if(j==='begVoice'){
+        openFlow('beginner', BEG.findIndex(function(x){return x.id==='voiceActivate'}));
+        S.ime=S.trigger=S.keyOk=true; return;
+      }
+      if(j==='begCam'){
+        S.hasCamera=true; $('camSw').classList.add('on');
+        openFlow('beginner', BEG.findIndex(function(x){return x.id==='cameraEgg'}));
+        S.ime=S.trigger=S.keyOk=S.voiceActOk=true; return;
+      }
+      if(j==='vibe'){ openFlow('vibe',1); return; }
+      if(j==='pad'){ openFlow('vibe', VIBE.findIndex(function(x){return x.id==='softPad'})); S.ime=S.trigger=S.wakeOk=S.endOk=true; return; }
+      if(j==='egg'){ openFlow('vibe', VIBE.findIndex(function(x){return x.id==='cameraSetup'})); S.ime=S.trigger=S.wakeOk=S.endOk=true; return; }
+    };
+  });
+
+  renderMap();
+})();
+  </script>
+</body>
+</html>
