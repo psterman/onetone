@@ -14,7 +14,11 @@
     persona:null,
     stepId:'intent',
     tool:'codex',
-    softHighlight:''
+    softHighlight:'number',
+    softEnabledPreview:null,
+    softShortcut:false,
+    padFlip:false,
+    softPadOpenedSettings:false
   };
   var openFlag=false;
 
@@ -148,6 +152,49 @@
     return 'Codex';
   }
 
+  function softPadPreviewEnabled(){
+    if(typeof route.softEnabledPreview==='boolean') return route.softEnabledPreview;
+    route.softEnabledPreview=readSoftPadEnabled();
+    return route.softEnabledPreview;
+  }
+
+  function softPadCapabilities(){
+    if(route.tool==='cursor'){
+      return [
+        { key:'Num 1', text:t('qsSoftCapCursor1','打开 Chat（Ctrl+L）') },
+        { key:'Num 2', text:t('qsSoftCapCursor2','Inline Edit（Ctrl+K）') },
+        { key:'Num 3', text:t('qsSoftCapCursor3','Agent（Ctrl+I）') },
+        { key:'Num 4', text:t('qsSoftCapCursor4','Accept（Tab / Enter）') },
+        { key:'Num 5', text:t('qsSoftCapCursor5','Reject（Esc / Backspace）') },
+        { key:'Num Enter', text:t('qsSoftCapCursorEnter','强制发送 / 确认') }
+      ];
+    }
+    if(route.tool==='claude'){
+      return [
+        { key:'Num 1', text:t('qsSoftCapClaude1','打开对话区 / 输入区') },
+        { key:'Num 2', text:t('qsSoftCapClaude2','常用编辑动作') },
+        { key:'Num 3', text:t('qsSoftCapClaude3','切回 Agent 工作流') },
+        { key:'Num 4', text:t('qsSoftCapClaude4','Accept / Continue') },
+        { key:'Num 5', text:t('qsSoftCapClaude5','Reject / Cancel') },
+        { key:'Num Enter', text:t('qsSoftCapClaudeEnter','发送 / 确认') }
+      ];
+    }
+    return [
+      { key:'Num 1', text:t('qsSoftCapCodex1','打开 Chat / Prompt') },
+      { key:'Num 2', text:t('qsSoftCapCodex2','常用编辑动作') },
+      { key:'Num 3', text:t('qsSoftCapCodex3','切回 Agent / Workflow') },
+      { key:'Num 4', text:t('qsSoftCapCodex4','Accept / Continue') },
+      { key:'Num 5', text:t('qsSoftCapCodex5','Reject / Cancel') },
+      { key:'Num Enter', text:t('qsSoftCapCodexEnter','发送 / 确认') }
+    ];
+  }
+
+  function softPadCapabilitiesHtml(){
+    return '<ul class="habit-setup-softpad-features">'+softPadCapabilities().map(function(item){
+      return '<li><b>'+esc(item.key)+'</b><span>'+esc(item.text)+'</span></li>';
+    }).join('')+'</ul>';
+  }
+
   function openSettingsPanel(panel, opts){
     opts=opts||{};
     close();
@@ -268,18 +315,51 @@
     $('qsToolNext').onclick=function(){ startCore('vibe'); };
   }
 
-  function softPadDiagramHtml(hi){
-    function cell(label, key){
-      var on=hi===key?' is-hi':'';
-      return '<button type="button" class="habit-setup-softpad-key'+on+'" data-qs-soft-key="'+key+'">'+esc(label)+'</button>';
+  var SOFT_PAD_POWER_ICON='<svg viewBox="0 0 24 24"><path d="M12 2v9"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/></svg>';
+
+  function softPadEncKeyHtml(modeOn, flip, tip){
+    var cls='sk sk-enc micro-hw__key micro-hw__key--control'+
+      (modeOn?' is-mode-on':' is-mode-off')+
+      (flip?' is-pulse':'');
+    return '<button type="button" class="'+cls+'" data-face-toggle role="switch" aria-checked="'+
+      (modeOn?'true':'false')+'" title="'+esc(tip)+'" aria-label="'+esc(tip)+'">'+
+      '<span class="micro-hw__icon" aria-hidden="true">'+SOFT_PAD_POWER_ICON+'</span>'+
+      '</button>';
+  }
+
+  function softPadFaceHtml(face, flip){
+    var tip=face==='shortcut'
+      ?t('qsSoftFaceToggleBack','单击 Number：还原数字')
+      :t('qsSoftFaceToggleGo','单击 Number：切换到快捷 Soft Pad');
+    var cls='soft-face soft-face--'+face+(flip?' is-flip':'');
+    var encKey=softPadEncKeyHtml(face==='shortcut', flip, tip);
+    if(face==='numpad'){
+      return '<div class="'+cls+' soft-face--numpad-grid">'+
+        encKey+
+        '<div class="sk">/</div><div class="sk">*</div><div class="sk">−</div>'+
+        '<div class="sk">7</div><div class="sk">8</div><div class="sk">9</div>'+
+        '<div class="sk" style="grid-row:span 2">+</div>'+
+        '<div class="sk">4</div><div class="sk">5</div><div class="sk">6</div>'+
+        '<div class="sk">1</div><div class="sk">2</div><div class="sk">3</div>'+
+        '<div class="sk" style="grid-row:span 2">↵</div>'+
+        '<div class="sk" style="grid-column:span 2">0</div>'+
+        '<div class="sk">.</div>'+
+        '</div>';
     }
-    return '<div class="habit-setup-softpad-diagram" aria-hidden="false">'+
-      cell('Num','numlock')+cell('/','')+cell('*','')+cell('−','')+
-      cell('7','')+cell('8','')+cell('9','')+cell('+','')+
-      cell('4','')+cell('5','')+cell('6','')+cell('⏻','power')+
-      cell('1','')+cell('2','')+cell('3','')+cell('↵','')+
-      '<button type="button" class="habit-setup-softpad-key span2" data-qs-soft-key="">0</button>'+
-      cell('.','')+cell('N','number')+
+    return '<div class="'+cls+'">'+
+      '<div class="sk dim"></div>'+
+      encKey+
+      '<div class="sk">⚡</div><div class="sk">☰</div><div class="sk">✕</div>'+
+      '<div class="sk dim"></div>'+
+      '<div class="sk glow-g">⌘</div><div class="sk glow-y">＋</div><div class="sk glow-b">⚡</div>'+
+      '<div class="sk" style="grid-row:span 2">＋</div>'+
+      '<div class="sk dim"></div>'+
+      '<div class="sk">⌕</div><div class="sk glow-p">↩</div><div class="sk glow-b">✕</div>'+
+      '<div class="sk dim"></div>'+
+      '<div class="sk">＋</div><div class="sk">↶</div><div class="sk">⌕</div>'+
+      '<div class="sk" style="grid-row:span 2">⇥</div>'+
+      '<div class="sk dim"></div>'+
+      '<div class="sk mic" style="grid-column:span 2">🎙</div><div class="sk">·</div>'+
       '</div>';
   }
 
@@ -291,44 +371,76 @@
     openOverlayShell();
     setNav(vibeNavSteps(),'softPad');
     showView('softPad');
-    var enabled=readSoftPadEnabled();
-    var hi=route.softHighlight||'';
+    var actualEnabled=readSoftPadEnabled();
+    var masterOn=softPadPreviewEnabled();
+    var face=route.softShortcut?'shortcut':'numpad';
+    var cmds=softPadCapabilities();
     var body=$('habitSetupSoftPadBody');
     if(!body) return;
     body.innerHTML=
       '<div class="habit-setup-badge">'+esc(t('qsSoftBadge','Soft Pad · 规则卡'))+'</div>'+
       '<h3 class="habit-setup-title habit-setup-title--left">'+esc(t('qsSoftTitle','为什么数字小键盘会变快捷键？'))+'</h3>'+
-      '<p class="habit-setup-desc habit-setup-desc--left">'+esc(t('qsSoftDesc','虚拟键盘借用数字小键盘同一键位。点右侧规则可高亮对应键位。'))+'</p>'+
-      '<div class="habit-setup-softpad-status '+(enabled?'is-on':'')+'">'+
-        (enabled?esc(t('qsSoftStatusOn','Soft Pad 已开启')):esc(t('qsSoftStatusOff','Soft Pad 未开启')))+
+      '<p class="habit-setup-desc habit-setup-desc--left">'+esc(t('qsSoftDesc','虚拟键盘借用数字小键盘同一键位。总开关默认关闭，避免数字键突然变成快捷键。'))+'</p>'+
+      '<div class="habit-setup-softpad-status '+(actualEnabled?'is-on':'')+'">'+
+        (actualEnabled?esc(t('qsSoftStatusOn','Soft Pad 已开启')):esc(t('qsSoftStatusOff','Soft Pad 未开启')))+
       '</div>'+
-      '<div class="habit-setup-softpad-card">'+
-        softPadDiagramHtml(hi)+
-        '<ul class="habit-setup-softpad-rules">'+
-          '<li class="'+(hi==='number'?'is-active':'')+'" data-qs-soft-rule="number"><b>Number</b>'+esc(t('qsSoftRuleNumber','单击切换快捷 / 数字'))+'</li>'+
-          '<li class="'+(hi==='numlock'?'is-active':'')+'" data-qs-soft-rule="numlock"><b>NumLock</b>'+esc(t('qsSoftRuleNumLock','切换数字输入 / 快捷输入'))+'</li>'+
-          '<li class="'+(hi==='power'?'is-active':'')+'" data-qs-soft-rule="power"><b>⏻</b>'+esc(t('qsSoftRulePower','关闭 Soft Pad 或还原数字输入'))+'</li>'+
-        '</ul>'+
+      '<div class="habit-setup-toggle">'+
+        '<span><b>'+esc(t('qsSoftToggleTitle','启用 Soft Pad（数字键占用）'))+'</b><span class="sub">'+esc(t('qsSoftToggleDesc','默认关闭。打开后，单击 Number 才在快捷 / 数字间切换。'))+'</span></span>'+
+        '<button type="button" class="sw'+(masterOn?' on':'')+'" id="qsSoftToggle" aria-pressed="'+(masterOn?'true':'false')+'"></button>'+
       '</div>'+
-      '<p class="habit-setup-desc habit-setup-desc--left">'+esc(t('qsSoftToolLine','目标工具：{tool} · 本页不写入配置').replace('{tool}',toolLabel()))+'</p>'+
+      '<div class="habit-setup-softpad-warn">'+
+        (masterOn
+          ?'<b>'+esc(t('qsSoftWarnOnTitle','总开关已开'))+'</b> '+esc(t('qsSoftWarnOn','实体数字小键盘可被 Soft Pad 占用。下面演示：单击 Number 切换状态（不是按住）。'))
+          :'<b>'+esc(t('qsSoftWarnOffTitle','总开关关闭'))+'</b> '+esc(t('qsSoftWarnOff','实体数字键只输入数字。下面仍可演示切换动画，便于理解能力；打开总开关后实体键才会占用。')))+
+      '</div>'+
+      '<div class="habit-setup-softpad-wrap">'+
+        softPadFaceHtml(face, route.padFlip)+
+        '<div>'+
+          '<div class="habit-setup-softpad-panel">'+
+            '<h6>'+esc(t('qsSoftCurrentDemo','当前演示 · {mode}')
+              .replace('{mode}',route.softShortcut?t('qsSoftModeShortcutShort','快捷 Soft Pad'):t('qsSoftModeNumpadShort','日常数字键盘')))+
+            '</h6>'+
+            '<p>'+esc(route.softShortcut
+              ?t('qsSoftModeShortcutDesc','屏上键位对应 Soft Pad 能力（与实体小键盘位置一一对应）。')
+              :t('qsSoftModeNumpadDesc','数字面：7/8/9… 为日常数字输入。'))+'</p>'+
+            '<button type="button" class="btn primary" id="qsSoftNumberToggle" style="width:100%">'+esc(route.softShortcut
+              ?t('qsSoftNumberBack','模拟单击 Number · 还原数字键盘')
+              :t('qsSoftNumberGo','模拟单击 Number · 切换到快捷 Soft Pad'))+'</button>'+
+          '</div>'+
+          '<ul class="habit-setup-softpad-rules">'+
+            '<li><b>Number</b>'+esc(t('qsSoftRuleNumber','单击切换快捷 / 数字（开关按钮，非按住）'))+'</li>'+
+            '<li><b>NumLock</b>'+esc(t('qsSoftRuleNumLock','切换数字输入 / 快捷输入'))+'</li>'+
+            '<li><b>⏻</b>'+esc(t('qsSoftRulePower','关闭 Soft Pad 或还原数字输入'))+'</li>'+
+          '</ul>'+
+          '<h6 class="habit-setup-softpad-benefits-title">'+esc(t('qsSoftBenefitsToolTitle','{tool} 常用能力（快捷面可用）').replace('{tool}',toolLabel()))+'</h6>'+
+          '<ul class="feat-list">'+cmds.map(function(c){ return '<li><b>'+esc(c.key)+'</b>'+esc(c.text)+'</li>'; }).join('')+'</ul>'+
+        '</div>'+
+      '</div>'+
+      '<p class="habit-setup-desc habit-setup-desc--left">'+esc(t('qsSoftToolLine','目标工具：{tool}。教学演示 ≠「已配置完成」').replace('{tool}',toolLabel()))+(masterOn?esc(t('qsSoftToolLineOn',' · 你已主动打开总开关（预览态）')):'')+'</p>'+
       '<div class="habit-setup-actions habit-setup-actions--footer">'+
+        '<button type="button" class="btn secondary" id="qsSoftBack">'+esc(t('habitSetupPrev','上一步'))+'</button>'+
         '<button type="button" class="btn secondary" id="qsSoftSettings">'+esc(t('qsSoftOpenSettings','打开 Soft Pad 设置'))+'</button>'+
         '<button type="button" class="btn primary" id="qsSoftContinue">'+esc(t('qsSoftContinue','我明白了，继续'))+'</button>'+
       '</div>';
-    function highlight(key){
-      route.softHighlight=key;
+    function flipNum(){
+      route.softShortcut=!route.softShortcut;
+      route.padFlip=true;
       goSoftPad();
+      setTimeout(function(){
+        route.padFlip=false;
+      },400);
     }
-    body.querySelectorAll('[data-qs-soft-rule]').forEach(function(el){
-      el.onclick=function(){ highlight(el.getAttribute('data-qs-soft-rule')); };
-    });
-    body.querySelectorAll('[data-qs-soft-key]').forEach(function(el){
-      el.onclick=function(){
-        var k=el.getAttribute('data-qs-soft-key');
-        if(k) highlight(k);
-      };
-    });
-    $('qsSoftSettings').onclick=function(){ openSettingsPanel('softPad'); };
+    $('qsSoftToggle').onclick=function(){
+      route.softEnabledPreview=!masterOn;
+      goSoftPad();
+    };
+    $('qsSoftNumberToggle').onclick=flipNum;
+    body.querySelectorAll('[data-face-toggle]').forEach(function(el){ el.onclick=flipNum; });
+    $('qsSoftBack').onclick=function(){ startCore('vibe'); };
+    $('qsSoftSettings').onclick=function(){
+      route.softPadOpenedSettings=true;
+      openSettingsPanel('softPad');
+    };
     $('qsSoftContinue').onclick=function(){ goDone(); };
   }
 

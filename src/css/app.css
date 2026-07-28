@@ -5011,37 +5011,183 @@
       background:var(--surface-high);color:var(--on-surface-muted)
     }
     .habit-setup-softpad-status.is-on{background:var(--primary-soft);color:var(--primary-strong);border-color:color-mix(in srgb,var(--primary) 35%,transparent)}
-    .habit-setup-softpad-card{
-      display:grid;grid-template-columns:minmax(180px,220px) 1fr;gap:14px;align-items:start;
-      width:100%;margin-bottom:12px;padding:12px;border:1px solid var(--outline-variant);
+    .habit-setup-softpad-warn{
+      margin:0 0 12px;padding:10px 12px;border-radius:12px;font-size:11px;line-height:1.5;
+      background:color-mix(in srgb,var(--warn,#FBBF24) 16%,transparent);color:var(--on-surface)
+    }
+    .habit-setup-softpad-warn b{color:var(--on-surface)}
+    .habit-setup-toggle{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      width:100%;margin:0 0 10px;padding:12px 14px;border:1px solid var(--outline-variant);
       border-radius:14px;background:var(--surface-high)
     }
+    .habit-setup-toggle span{font-size:12px;line-height:1.45}
+    .habit-setup-toggle .sub{display:block;font-size:11px;color:var(--on-surface-muted);margin-top:2px}
+    .sw{
+      width:42px;height:24px;border-radius:999px;background:#c5d0db;
+      position:relative;flex:0 0 auto;cursor:pointer;border:0;padding:0;outline:none;
+      box-shadow:inset 0 0 0 1px rgba(15,23,42,.12)
+    }
+    .sw.on{background:var(--primary)}
+    .sw::after{
+      content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
+      background:#fff;transition:left .15s, box-shadow .15s;
+      box-shadow:0 1px 4px rgba(16,24,40,.22)
+    }
+    .sw.on::after{left:21px}
+    .habit-setup-softpad-wrap{
+      display:grid;grid-template-columns:minmax(200px,240px) 1fr;gap:12px;align-items:start;margin-bottom:12px
+    }
+
+    /* Quick Start SoftPad footer: 3 buttons must fit without truncation */
+    #habitSetupSoftPadView .habit-setup-actions--footer{
+      position:sticky;bottom:0;z-index:20;
+      background:var(--surface);
+      padding:10px 0 14px;
+      margin:0;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    #habitSetupSoftPadView .habit-setup-actions--footer .btn{
+      flex:1 1 0;
+      min-width:0!important;
+      max-width:calc(33.333% - 7px);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    #habitSetupSoftPadView .habit-setup-actions--footer .btn.primary{
+      max-width:none;
+    }
+    #habitSetupSoftPadView .habit-setup-actions--footer .btn:hover:not(:disabled){
+      transform:none!important;
+      filter:none!important;
+    }
+    #habitSetupSoftPadView .habit-setup-actions--footer .btn.secondary:hover:not(:disabled){
+      color:var(--btn-label)!important;
+    }
+    #habitSetupSoftPadView .habit-setup-actions--footer .btn.primary:hover:not(:disabled){
+      background:linear-gradient(180deg,var(--primary-glow) 0%,var(--primary) 100%)!important;
+      box-shadow:0 8px 22px rgba(42,156,196,.28);
+      color:#fff!important;
+    }
     @media(max-width:560px){
-      .habit-setup-softpad-card,.habit-setup-tool-grid{grid-template-columns:1fr}
+      .habit-setup-softpad-wrap,.habit-setup-tool-grid{grid-template-columns:1fr}
       .habit-setup-intent-card{grid-template-columns:36px 1fr;grid-template-rows:auto auto}
       .habit-setup-intent-cta{grid-column:1/-1}
     }
-    .habit-setup-softpad-diagram{
-      display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:8px;border-radius:12px;background:#0b1522
+    .soft-face{
+      width:100%;aspect-ratio:1/1.05;padding:10px;border-radius:16px;
+      display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);gap:5px;
+      transition:transform .18s ease,box-shadow .18s ease
     }
-    .habit-setup-softpad-key{
-      height:28px;border:0;border-radius:7px;background:rgba(255,255,255,.08);color:#d7e6f3;
-      font:inherit;font-size:11px;font-weight:800;cursor:pointer
+    .soft-face.is-flip{animation:padFlip .35s ease}
+    @keyframes padFlip{
+      0%{transform:scale(.96);opacity:.7}
+      55%{transform:scale(1.02)}
+      100%{transform:scale(1);opacity:1}
     }
-    .habit-setup-softpad-key.span2{grid-column:span 2}
-    .habit-setup-softpad-key.is-hi{
-      background:color-mix(in srgb,var(--primary) 55%,transparent);color:#fff;
-      box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 70%,transparent)
+    .soft-face--shortcut{
+      background:linear-gradient(160deg,#eef2f6,#e4e9ef);border:1px solid rgba(15,23,42,.08)
     }
-    .habit-setup-softpad-rules{margin:0;padding:0;list-style:none;display:grid;gap:8px}
-    .habit-setup-softpad-rules li{
-      font-size:12px;line-height:1.45;color:var(--on-surface-muted);padding:8px 10px;border-radius:10px;
-      border:1px solid transparent;cursor:pointer
+    .soft-face--numpad{background:#121a24;border:1px solid rgba(255,255,255,.1)}
+    .soft-face--numpad-grid{grid-template-columns:repeat(4,1fr)}
+    .sk{
+      border:0;border-radius:10px;display:grid;place-items:center;font-size:11px;font-weight:800;
+      color:#334155;background:#f8fafc;box-shadow:0 1px 0 rgba(255,255,255,.9),0 3px 8px rgba(15,23,42,.08);
+      position:relative
     }
-    .habit-setup-softpad-rules li.is-active{
-      border-color:color-mix(in srgb,var(--primary) 35%,transparent);background:var(--primary-soft);color:var(--indigo)
+    .soft-face--numpad .sk{color:#d7e6f3;background:rgba(255,255,255,.08);box-shadow:none;border-radius:8px}
+    .sk.glow-g{box-shadow:0 0 0 2px rgba(52,211,153,.35)}
+    .sk.glow-y{box-shadow:0 0 0 2px rgba(251,191,36,.35)}
+    .sk.glow-b{box-shadow:0 0 0 2px rgba(56,189,248,.4)}
+    .sk.glow-p{box-shadow:0 0 0 2px rgba(244,114,182,.35)}
+    .soft-face .sk.sk-enc{
+      cursor:pointer;padding:0;outline:2px solid transparent;
+      background:linear-gradient(180deg,#fff 0%,#f2f5f8 52%,#dce4eb 100%);
+      border:1px solid rgba(92,105,122,.16);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.95),
+        inset 0 -6px 11px rgba(139,152,169,.16),
+        0 5px 0 #cfd8e0,
+        0 7px 12px rgba(35,45,58,.18);
     }
-    .habit-setup-softpad-rules b{display:inline-block;min-width:4.8em;color:var(--indigo)}
+    .soft-face--numpad .sk.sk-enc{
+      color:#d7e6f3;
+      background:linear-gradient(180deg,#f8fafc,#dbe3ef);
+      border:1px solid rgba(255,255,255,.14);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.55),
+        inset 0 -4px 8px rgba(15,23,42,.12),
+        0 3px 0 rgba(15,23,42,.28);
+    }
+    .soft-face .sk.sk-enc .micro-hw__icon{
+      width:56%;height:56%;max-width:22px;max-height:22px;display:block;color:var(--micro-hw-muted,#8a95a5);
+    }
+    .soft-face .sk.sk-enc.is-mode-on .micro-hw__icon{color:#b45309}
+    .soft-face .sk.sk-enc.is-mode-off .micro-hw__icon{color:var(--micro-hw-muted,#8a95a5)}
+    .soft-face .sk.sk-enc .micro-hw__icon svg{
+      width:100%;height:100%;display:block;stroke:currentColor;fill:none;
+      stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round;
+    }
+    .soft-face .sk.sk-enc:hover,
+    .soft-face .sk.sk-enc:focus-visible{
+      filter:brightness(1.04);
+      color:inherit;
+      background:linear-gradient(180deg,#fff 0%,#f2f5f8 52%,#dce4eb 100%);
+    }
+    .soft-face--numpad .sk.sk-enc:hover,
+    .soft-face--numpad .sk.sk-enc:focus-visible{
+      background:linear-gradient(180deg,#f8fafc,#dbe3ef);
+      color:#d7e6f3;
+    }
+    .soft-face .sk.sk-enc.is-pulse{animation:numPulse .45s ease;outline-color:color-mix(in srgb,var(--primary) 70%,transparent)}
+    @keyframes numPulse{0%{transform:scale(1)}40%{transform:scale(1.12)}100%{transform:scale(1)}}
+    .sk.dim{opacity:.35}
+    .sk.mic{border-radius:12px}
+    .habit-setup-softpad-panel{
+      border:1px solid var(--outline-variant);border-radius:12px;padding:10px 12px;background:var(--surface)
+    }
+    .habit-setup-softpad-panel h6{margin:0 0 4px;font-size:12px}
+    .habit-setup-softpad-panel p{margin:0 0 8px;font-size:11px;line-height:1.45;color:var(--on-surface-muted)}
+    #qsSoftNumberToggle{
+      width:100%!important;
+      min-width:0!important;
+      min-height:52px;
+      border:none!important;
+      border-radius:999px;
+      padding:12px 16px;
+      background:linear-gradient(180deg,var(--primary-glow) 0%,var(--primary) 100%)!important;
+      color:var(--on-primary)!important;
+      box-shadow:0 8px 18px rgba(42,156,196,.22);
+      font-size:14px;
+      font-weight:800;
+      line-height:1.35;
+      white-space:normal;
+      text-shadow:0 1px 1px rgba(0,0,0,.08);
+    }
+    #qsSoftNumberToggle:hover:not(:disabled),
+    #qsSoftNumberToggle:focus-visible{
+      background:linear-gradient(180deg,var(--primary-glow) 0%,var(--primary) 100%)!important;
+      color:var(--on-primary)!important;
+      border:none!important;
+      filter:none!important;
+      transform:none!important;
+      box-shadow:0 8px 18px rgba(42,156,196,.22),0 0 0 3px rgba(42,156,196,.12);
+    }
+    #qsSoftNumberToggle:disabled{
+      background:linear-gradient(180deg,rgba(42,156,196,.18) 0%, rgba(42,156,196,.12) 100%)!important;
+      color:rgba(18,38,63,.58)!important;
+      box-shadow:none;
+    }
+    .habit-setup-softpad-rules{margin:0 0 10px;padding:0;list-style:none;display:grid;gap:6px}
+    .habit-setup-softpad-rules li{font-size:12px;line-height:1.45;color:var(--on-surface-muted)}
+    .habit-setup-softpad-rules b{display:inline-block;min-width:4.8em;color:var(--on-surface)}
+    .habit-setup-softpad-benefits-title{margin:0 0 6px;font-size:12px}
+    .feat-list{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+    .feat-list li{display:flex;gap:8px;font-size:11px;line-height:1.4;color:var(--on-surface-muted)}
+    .feat-list b{color:var(--on-surface);min-width:64px;font-size:11px}
     .habit-setup-done-list{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:8px;width:100%}
     .habit-setup-done-list li{
       display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;
