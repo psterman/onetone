@@ -6,12 +6,50 @@ use crate::config::{self, CameraPrefs};
 use crate::ipc::core::{push_runtime, sync_config_ui};
 use crate::AppState;
 
+fn save_source_label(value: &serde_json::Value) -> &'static str {
+    if let Some(source) = value.get("saveSource").and_then(|v| v.as_str()) {
+        match source.trim() {
+            "quickStart" => return "quickStart",
+            "camera" => return "camera",
+            "layout" => return "layout",
+            "mapping" => return "mapping",
+            "unknown" => return "unknown",
+            _ => {}
+        }
+    }
+    if value.get("quickStart").and_then(|v| v.as_bool()).unwrap_or(false) {
+        return "quickStart";
+    }
+    if value.get("cameraPrefs").is_some() || value.get("camera_prefs").is_some() {
+        return "camera";
+    }
+    if value.get("windowLayout").is_some()
+        || value.get("window_layout").is_some()
+        || value.get("cameraWindow").is_some()
+        || value.get("camera_window").is_some()
+    {
+        return "layout";
+    }
+    if value.get("mappings").is_some()
+        || value.get("trash").is_some()
+        || value.get("activeSceneId").is_some()
+        || value.get("active_scene_id").is_some()
+    {
+        return "mapping";
+    }
+    "unknown"
+}
+
 #[tauri::command]
 pub fn cmd_save(
     state: tauri::State<Arc<AppState>>,
     window: tauri::WebviewWindow,
     json: String,
 ) -> Result<(), String> {
+    let source = serde_json::from_str::<serde_json::Value>(&json)
+        .ok()
+        .map(|value| save_source_label(&value))
+        .unwrap_or("unknown");
     let existing = state.cfg.lock().clone();
     let mut cfg = crate::config::merge_save_payload(&existing, &json).ok_or_else(|| {
         eprintln!(
@@ -43,7 +81,7 @@ pub fn cmd_save(
         crate::app_log::log_line(
             &state,
             "config",
-            "cmd_save layout/camera only, skip mvp_init/voice",
+            &format!("cmd_save source={source} layout/camera only, skip mvp_init/voice"),
         );
         let ack = serde_json::json!({"type":"mvp_saved","ok":true,"quiet":true});
         window.emit("to_js", &ack).ok();
@@ -66,7 +104,7 @@ pub fn cmd_save(
         crate::app_log::log_line(
             &state,
             "config",
-            "cmd_save codex_micro_pad only, skip mvp_init/voice",
+            &format!("cmd_save source={source} codex_micro_pad only, skip mvp_init/voice"),
         );
         let ack = serde_json::json!({"type":"mvp_saved","ok":true,"quiet":true});
         window.emit("to_js", &ack).ok();
@@ -81,7 +119,7 @@ pub fn cmd_save(
         crate::app_log::log_line(
             &state,
             "config",
-            "cmd_save gesture/timing only, skip mvp_init/voice",
+            &format!("cmd_save source={source} gesture/timing only, skip mvp_init/voice"),
         );
         let ack = serde_json::json!({"type":"mvp_saved","ok":true,"quiet":true});
         window.emit("to_js", &ack).ok();
@@ -108,6 +146,7 @@ pub fn cmd_save(
     sync_config_ui(&state, &window, "unchanged");
     state.machine_pool.lock().reset_all();
     push_runtime(&state, &window, "saved", "");
+    crate::app_log::log_line(&state, "config", &format!("cmd_save source={source} full"));
     let ack = serde_json::json!({"type":"mvp_saved","ok":true});
     window.emit("to_js", &ack).ok();
     Ok(())
@@ -153,7 +192,7 @@ pub fn cmd_save_camera_prefs(
     crate::app_log::log_line(
         &state,
         "config",
-        "cmd_save_camera_prefs quiet (skip mvp_init/voice)",
+        "cmd_save_camera_prefs source=camera quiet (skip mvp_init/voice)",
     );
     let ack = serde_json::json!({"type":"mvp_saved","ok":true,"quiet":true});
     window.emit("to_js", &ack).ok();

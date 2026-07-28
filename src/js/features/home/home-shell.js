@@ -155,6 +155,9 @@
       global.OneToneHabitTriggerSetup.bindOnce();
       global.OneToneHabitTriggerSetup.applyLang();
     }
+    if(global.OneToneQuickStart&&global.OneToneQuickStart.bindOnce){
+      global.OneToneQuickStart.bindOnce();
+    }
   }
 
   global.OneToneHomeShell={

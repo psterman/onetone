@@ -68,7 +68,8 @@
     }catch(_){}
   }
 
-  function setMappingEnabled(id,enabled){
+  function setMappingEnabled(id,enabled,opts){
+    opts=opts||{};
     var m=global.OneToneMappingCore.byId(id);
     if(!m) return;
     var target=!!enabled;
@@ -76,8 +77,9 @@
     if(!hasPendingEnable(id)&&!!m.enabled===target) return;
     setPendingEnable(id,target);
     m.enabled=target;
-    postMappingToggle(id,target);
-    global.OneToneRender.render();
+    // QS/habit overlay: in-memory only — backend toggle runs persist_and_rebind → mvp_init freeze.
+    if(!opts.skipBackend) postMappingToggle(id,target);
+    if(!opts.skipRender) global.OneToneRender.render();
   }
 
   function removeMappingSwitchKey(mappingId,idx){

@@ -4488,14 +4488,39 @@
     .habit-setup-screen{
       position:absolute;inset:0;top:72px;overflow-y:auto;
       display:flex;flex-direction:column;align-items:stretch;
-      padding:20px 20px 32px;
+      padding:12px 20px 16px;
       background:var(--surface);
       -webkit-overflow-scrolling:touch
     }
     .habit-setup-screen[hidden]{display:none!important}
     .habit-setup-screen .habit-setup-screen-inner{
-      width:min(760px,100%);flex:1;display:flex;flex-direction:column;align-items:center
+      width:min(760px,100%);flex:1;display:flex;flex-direction:column;align-items:center;min-height:0
     }
+    /* Activation: fill below header; pin dock+Next; only IME body scrolls */
+    #habitSetupActivationView.habit-setup-screen,
+    #habitSetupActivationView.habit-setup-view,
+    #habitSetupTriggerView.habit-setup-screen,
+    #habitSetupTriggerView.habit-setup-view{
+      position:absolute;inset:0;top:72px;bottom:0;height:auto;width:100%;max-width:none;
+      margin:0;padding:12px 20px 0;overflow:hidden;
+      display:flex;flex-direction:column;align-items:center;min-height:0
+    }
+    #habitSetupTriggerView .habit-setup-badge,
+    #habitSetupTriggerView .habit-setup-title,
+    #habitSetupTriggerView .habit-setup-desc{flex:0 0 auto}
+    #habitSetupTriggerView .habit-setup-title{margin-bottom:4px;font-size:22px}
+    #habitSetupTriggerView .habit-setup-desc{margin-bottom:8px;font-size:13px;line-height:1.5}
+    .habit-setup-trigger-body{
+      width:100%;max-width:min(760px,100%);flex:1 1 auto;
+      display:flex;flex-direction:column;align-items:center;min-height:0;overflow-y:auto;padding-bottom:4px
+    }
+    #habitSetupTriggerDock.habit-setup-activation-dock{
+      flex-direction:row;justify-content:center;gap:10px;align-items:stretch
+    }
+    #habitSetupTriggerDock .btn{
+      width:auto!important;height:auto!important;min-height:48px;flex:1 1 0;min-width:0
+    }
+    #habitSetupTriggerDock .btn.primary{flex:1.4 1 0}
     .habit-setup-wizard-footer{
       width:min(760px,100%);margin-top:auto;padding-top:20px;display:flex;justify-content:center
     }
@@ -4679,13 +4704,24 @@
     }
     .habit-setup-actions{display:flex;gap:10px;justify-content:flex-end}
     .habit-setup-actions--footer{
-      width:100%;max-width:min(760px,100%);margin-top:16px;padding:0 0 8px;
-      flex-shrink:0;position:static;z-index:auto;background:none
+      width:100%;max-width:min(760px,100%);margin:0 auto;padding:12px 0 8px;
+      flex-shrink:0;display:flex;justify-content:center
     }
     .habit-setup-sub-host{margin:0 0 12px}
-    .habit-setup-activation-body.is-recording .habit-setup-ime-selected{display:none!important}
+    .habit-setup-activation-dock{
+      width:100%;max-width:min(760px,100%);flex:0 0 auto;margin-top:auto;
+      display:flex;flex-direction:column;align-items:stretch;gap:8px;
+      padding:8px 0 14px;background:var(--surface);z-index:5
+    }
+    .habit-setup-activation-dock .habit-setup-ime-selected{margin:0}
+    .habit-setup-activation-dock .habit-setup-actions--footer{
+      margin:0;padding:0;width:100%;max-width:none
+    }
+    .habit-setup-activation-dock .habit-setup-actions--footer .btn.primary{
+      width:100%!important;min-width:0;height:auto!important;min-height:48px
+    }
     .habit-setup-actions--footer .btn.primary{
-      min-height:52px;font-size:15px;font-weight:800
+      min-height:48px;min-width:min(320px,100%);font-size:15px;font-weight:800
     }
     .habit-setup-actions--footer .btn.primary.is-ready,
     .habit-setup-actions--footer .btn.primary:not(:disabled){
@@ -4718,49 +4754,82 @@
       position:relative;padding-top:4px;display:flex;flex-direction:column;align-items:center;
       width:min(760px,100%);min-height:auto;margin:0 auto;flex:0 0 auto
     }
+    #habitSetupActivationView .habit-setup-badge{margin-bottom:8px;flex:0 0 auto}
+    #habitSetupActivationView .habit-setup-title{margin-bottom:4px;font-size:22px;flex:0 0 auto}
+    #habitSetupActivationView .habit-setup-desc{margin-bottom:8px;font-size:13px;line-height:1.5;flex:0 0 auto}
+    #habitSetupActivationView .habit-setup-mode-summary{margin:0 0 8px;font-size:12px;flex:0 0 auto;max-width:min(760px,100%)}
     .habit-setup-activation-body{
-      width:100%;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;min-height:0
+      width:100%;max-width:min(760px,100%);flex:1 1 auto;
+      display:flex;flex-direction:column;align-items:center;min-height:0;overflow-y:auto;padding-bottom:4px
     }
     .habit-setup-activation-grid,.habit-setup-sub-host,.habit-setup-stage,.habit-setup-actions,.habit-setup-mode-grid,.habit-setup-test-grid,.habit-setup-voice-lessons,.habit-setup-ime-grid,.habit-setup-ime-selected{width:100%}
     .habit-setup-ime-grid{
-      display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:10px;margin:0 0 16px
+      display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 10px
+    }
+    @media (max-width:720px){
+      .habit-setup-ime-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+    }
+    @media (max-width:520px){
+      .habit-setup-ime-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
     }
     .habit-setup-ime-card{
-      position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;
-      border:1px solid var(--outline-variant);border-radius:18px;padding:12px 8px 10px;background:var(--surface-high);
+      position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;
+      border:1px solid var(--outline-variant);border-radius:12px;padding:8px 6px 8px;background:var(--surface-high);
       text-align:center;cursor:pointer;transition:border-color var(--dur-fast),box-shadow var(--dur-fast),transform var(--dur-fast)
     }
     .habit-setup-ime-card:hover{transform:translateY(-1px);border-color:rgba(42,156,196,.4)}
     .habit-setup-ime-card.is-selected{
-      border-color:var(--primary);box-shadow:0 0 0 3px rgba(42,156,196,.14);background:var(--primary-soft)
+      border-color:var(--primary);box-shadow:0 0 0 2px rgba(42,156,196,.14);background:var(--primary-soft)
     }
     .habit-setup-ime-card-icon{
-      width:40px;height:40px;border-radius:12px;object-fit:cover;display:block;background:var(--surface)
+      width:28px;height:28px;border-radius:8px;object-fit:cover;display:block;background:var(--surface)
     }
     .habit-setup-ime-card-icon--custom{
-      display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;
-      background:var(--primary-soft);font-size:20px
+      display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;
+      background:var(--primary-soft);font-size:14px
     }
-    .habit-setup-ime-card b{display:block;font-size:12px;line-height:1.35;color:var(--indigo)}
-    .habit-setup-ime-card span{display:block;font-size:10px;line-height:1.35;color:var(--on-surface-muted)}
+    .habit-setup-ime-card b{display:block;font-size:11px;line-height:1.3;color:var(--indigo);font-weight:800}
+    .habit-setup-ime-card span{display:block;font-size:10px;line-height:1.3;color:var(--on-surface-muted)}
+    .habit-setup-ime-card-key{display:block;font-size:11px;font-weight:800;color:var(--primary-strong)!important;margin-top:0}
+    .habit-setup-ime-pending{
+      display:inline-block;margin-top:2px;font-size:9px;font-weight:650;padding:0 5px;border-radius:999px;
+      border:1px solid var(--outline-variant);background:var(--surface);color:var(--on-surface-muted);opacity:.85
+    }
+    .habit-setup-ime-card.is-pending{opacity:.92}
     .habit-setup-ime-selected{
-      margin:0 0 16px;padding:16px;border-radius:20px;border:1px solid var(--outline-variant);background:var(--surface-high);
-      display:flex;flex-direction:column;align-items:center;text-align:center
+      margin:0 0 8px;padding:8px 10px;border-radius:12px;border:1px solid var(--outline-variant);background:var(--surface-high);
+      display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;justify-content:space-between;gap:10px;text-align:left;
+      min-height:0;box-sizing:border-box
     }
     .habit-setup-ime-selected-head{
-      display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:12px;width:100%
+      display:flex;flex-direction:row;align-items:center;gap:10px;margin:0;min-width:0;flex:1 1 auto
     }
     .habit-setup-ime-selected-icon{
-      width:48px;height:48px;border-radius:14px;object-fit:cover;flex:0 0 auto;background:var(--surface)
+      width:36px;height:36px;border-radius:10px;object-fit:cover;flex:0 0 auto;background:var(--surface)
     }
+    .habit-setup-ime-selected-icon[hidden],
+    .habit-setup-ime-selected-icon--custom[hidden]{display:none!important}
     .habit-setup-ime-selected-icon--custom{
-      display:flex;align-items:center;justify-content:center;background:var(--primary-soft);font-size:24px;color:var(--primary-strong)
+      display:block;object-fit:cover;background:var(--surface);padding:0
     }
-    .habit-setup-ime-selected-copy{min-width:0;width:100%}
-    .habit-setup-ime-selected-name{margin:0 0 4px;font-size:15px;font-weight:800;color:var(--indigo)}
-    .habit-setup-ime-selected-key{margin:0;justify-content:center}
-    .habit-setup-ime-selected .btn{align-self:center}
+    .habit-setup-ime-selected-copy{min-width:0;flex:1 1 auto}
+    .habit-setup-ime-selected-name{
+      margin:0 0 2px;font-size:13px;font-weight:800;color:var(--indigo);
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+    }
+    .habit-setup-ime-selected-key{
+      margin:0;justify-content:flex-start;width:fit-content;max-width:100%;
+      padding:4px 10px;font-size:12px;border-radius:999px;white-space:nowrap
+    }
+    .habit-setup-ime-selected .btn{
+      width:auto!important;height:auto!important;min-height:34px;flex:0 0 auto;align-self:center;
+      padding:6px 12px;font-size:12px;white-space:nowrap
+    }
+    .habit-setup-actions--footer .btn{
+      width:auto;min-width:min(320px,100%);height:auto;min-height:48px
+    }
     .habit-setup-record-actions{display:flex;gap:10px;justify-content:center;margin-top:12px}
+    .habit-setup-record-actions .btn{width:auto;min-width:120px;height:auto;min-height:40px}
     .habit-setup-sub-host .habit-setup-status{justify-content:center}
     .habit-setup-test-grid{
       display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0 0 16px
@@ -4868,11 +4937,124 @@
       .habit-setup-step-tab{padding:6px 10px}
       .habit-setup-step-label{display:none}
       .habit-setup-screen{top:62px;padding:16px 14px 24px}
-      .habit-setup-title{font-size:24px}
+      #habitSetupActivationView.habit-setup-screen,
+      #habitSetupActivationView.habit-setup-view,
+      #habitSetupTriggerView.habit-setup-screen,
+      #habitSetupTriggerView.habit-setup-view{top:62px;padding:12px 14px 0}
+      #habitSetupActivationView .habit-setup-title{font-size:20px}
       .habit-setup-source-grid,.habit-setup-activation-grid{grid-template-columns:1fr}
       .habit-setup-actions{flex-direction:column-reverse}
       .habit-setup-actions .btn{width:100%}
+      #habitSetupActivationView .habit-setup-activation-dock .habit-setup-actions--footer{flex-direction:row}
+      #habitSetupActivationView .habit-setup-activation-dock .btn.secondary{width:auto}
+      #habitSetupActivationView .habit-setup-activation-dock .btn.primary{width:100%!important}
     }
+    /* —— Quick Start: intent / tool / softpad / done (product tokens) —— */
+    .habit-setup-screen-inner--left{
+      width:min(640px,100%);align-items:stretch;text-align:left
+    }
+    .habit-setup-title--left{text-align:left;font-size:22px;font-weight:800}
+    .habit-setup-desc--left{margin:0 0 14px;max-width:none;text-align:left;font-size:13px}
+    .habit-setup-intent-ask{margin:0 0 12px;font-size:16px;font-weight:800;color:var(--indigo)}
+    .habit-setup-intent-list{display:grid;gap:8px;width:100%}
+    .habit-setup-intent-card{
+      display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;
+      border:1px solid var(--outline-variant);border-radius:12px;padding:10px 12px;
+      background:var(--surface-high);color:inherit
+    }
+    .habit-setup-intent-card.is-bright{
+      border-color:color-mix(in srgb,var(--primary) 40%,var(--outline-variant));
+      background:color-mix(in srgb,var(--primary-soft) 70%,var(--surface))
+    }
+    .habit-setup-intent-card.is-mid{background:var(--surface)}
+    .habit-setup-intent-card.is-quiet{background:transparent}
+    .habit-setup-intent-ico{
+      width:36px;height:36px;border-radius:10px;display:grid;place-items:center;
+      background:var(--primary-soft);color:var(--primary-strong);font-size:13px;font-weight:800
+    }
+    .habit-setup-intent-card.is-quiet .habit-setup-intent-ico{background:var(--surface-high);color:var(--on-surface-muted)}
+    .habit-setup-intent-copy strong{display:block;font-size:13px;margin-bottom:2px;color:var(--indigo)}
+    .habit-setup-intent-copy span{display:block;font-size:11px;line-height:1.45;color:var(--on-surface-muted)}
+    .habit-setup-intent-tools{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+    .habit-setup-intent-tools em{
+      font-style:normal;font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;
+      border:1px solid var(--outline-variant);background:var(--surface);color:var(--on-surface-muted)
+    }
+    .habit-setup-intent-cta{white-space:nowrap;padding:8px 10px;font-size:12px}
+    .habit-setup-intent-meta{margin:10px 0 0;font-size:11px;color:var(--on-surface-muted)}
+    .habit-setup-pick-list{display:grid;gap:6px;margin-top:8px}
+    .habit-setup-pick-row{
+      display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;
+      border:1px solid var(--outline-variant);border-radius:10px;padding:8px 10px;
+      background:var(--surface);cursor:pointer;font:inherit;color:inherit;text-align:left
+    }
+    .habit-setup-pick-row:hover{border-color:color-mix(in srgb,var(--primary) 40%,var(--outline-variant));background:var(--primary-soft)}
+    .habit-setup-pick-row b{display:block;font-size:12px}
+    .habit-setup-pick-row i{font-style:normal;font-size:11px;color:var(--on-surface-muted)}
+    .habit-setup-pick-row em{font-style:normal;font-size:11px;font-weight:700;color:var(--primary-strong)}
+    .habit-setup-tool-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;width:100%;margin-bottom:8px}
+    .habit-setup-tool{
+      border:1px solid var(--outline-variant);border-radius:12px;padding:12px 10px;
+      background:var(--surface-high);cursor:pointer;text-align:center;font:inherit;color:inherit
+    }
+    .habit-setup-tool.is-on{border-color:var(--primary);background:var(--primary-soft)}
+    .habit-setup-tool strong{display:block;font-size:13px;margin-bottom:4px}
+    .habit-setup-tool span{font-size:10px;color:var(--on-surface-muted);line-height:1.4}
+    .habit-setup-tool-more{margin:0 0 8px;font-size:11px;color:var(--on-surface-muted)}
+    .habit-setup-bound{
+      margin:0 0 12px;padding:8px 10px;border-radius:10px;font-size:11px;line-height:1.45;
+      background:color-mix(in srgb,var(--warn,#FBBF24) 14%,transparent);color:var(--on-surface)
+    }
+    .habit-setup-softpad-status{
+      display:inline-flex;align-items:center;margin:0 0 12px;padding:5px 10px;border-radius:999px;
+      font-size:12px;font-weight:700;border:1px solid var(--outline-variant);
+      background:var(--surface-high);color:var(--on-surface-muted)
+    }
+    .habit-setup-softpad-status.is-on{background:var(--primary-soft);color:var(--primary-strong);border-color:color-mix(in srgb,var(--primary) 35%,transparent)}
+    .habit-setup-softpad-card{
+      display:grid;grid-template-columns:minmax(180px,220px) 1fr;gap:14px;align-items:start;
+      width:100%;margin-bottom:12px;padding:12px;border:1px solid var(--outline-variant);
+      border-radius:14px;background:var(--surface-high)
+    }
+    @media(max-width:560px){
+      .habit-setup-softpad-card,.habit-setup-tool-grid{grid-template-columns:1fr}
+      .habit-setup-intent-card{grid-template-columns:36px 1fr;grid-template-rows:auto auto}
+      .habit-setup-intent-cta{grid-column:1/-1}
+    }
+    .habit-setup-softpad-diagram{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:8px;border-radius:12px;background:#0b1522
+    }
+    .habit-setup-softpad-key{
+      height:28px;border:0;border-radius:7px;background:rgba(255,255,255,.08);color:#d7e6f3;
+      font:inherit;font-size:11px;font-weight:800;cursor:pointer
+    }
+    .habit-setup-softpad-key.span2{grid-column:span 2}
+    .habit-setup-softpad-key.is-hi{
+      background:color-mix(in srgb,var(--primary) 55%,transparent);color:#fff;
+      box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 70%,transparent)
+    }
+    .habit-setup-softpad-rules{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+    .habit-setup-softpad-rules li{
+      font-size:12px;line-height:1.45;color:var(--on-surface-muted);padding:8px 10px;border-radius:10px;
+      border:1px solid transparent;cursor:pointer
+    }
+    .habit-setup-softpad-rules li.is-active{
+      border-color:color-mix(in srgb,var(--primary) 35%,transparent);background:var(--primary-soft);color:var(--indigo)
+    }
+    .habit-setup-softpad-rules b{display:inline-block;min-width:4.8em;color:var(--indigo)}
+    .habit-setup-done-list{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:8px;width:100%}
+    .habit-setup-done-list li{
+      display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;
+      border:1px solid var(--outline-variant);background:var(--surface-high);font-size:12px;line-height:1.45
+    }
+    .habit-setup-done-list .tag{
+      flex:0 0 auto;font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;
+      background:color-mix(in srgb,#34D399 18%,transparent);color:#059669
+    }
+    .habit-setup-done-list .tag.learn{background:var(--primary-soft);color:var(--primary-strong)}
+    .habit-setup-done-list .tag.next{background:color-mix(in srgb,#FBBF24 18%,transparent);color:#a16207}
+    .habit-setup-ime-card-lab{display:none}
+    .habit-setup-ime-more-toggle,.habit-setup-ime-more{display:none!important}
     .template-pick-overlay{
       position:fixed;inset:0;z-index:810;
       background:rgba(237,245,250,.88);backdrop-filter:blur(14px);

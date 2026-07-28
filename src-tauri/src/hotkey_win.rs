@@ -52,6 +52,7 @@ static RECORDING_SENDER: OnceLock<Mutex<Option<mpsc::Sender<String>>>> = OnceLoc
 static RECORDING_HOOK: OnceLock<Mutex<isize>> = OnceLock::new();
 static RECORDING_MOUSE_HOOK: OnceLock<Mutex<isize>> = OnceLock::new();
 static ACTIVE_BINDINGS: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+static VERIFY_OVERLAY_BINDINGS: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
 static ACTIVE_SENDER: OnceLock<Mutex<Option<mpsc::Sender<String>>>> = OnceLock::new();
 static FORWARD_HWND: OnceLock<Mutex<isize>> = OnceLock::new();
 static FORWARD_PREV_WNDPROC: OnceLock<Mutex<isize>> = OnceLock::new();
@@ -129,6 +130,7 @@ enum Cmd {
     BindModifierWatches(Vec<String>),
     BindSchemeSwitch(Option<String>),
     BindSchemeSelect(Vec<(String, String)>),
+    SetVerifyOverlay(Vec<String>),
     StartRecording,
     StopRecording,
     AttachAppHwnd(isize),
@@ -153,6 +155,28 @@ fn is_recording() -> bool {
 
 fn active_bindings() -> &'static Mutex<Vec<String>> {
     ACTIVE_BINDINGS.get_or_init(|| Mutex::new(Vec::new()))
+}
+
+fn verify_overlay_bindings() -> &'static Mutex<Vec<String>> {
+    VERIFY_OVERLAY_BINDINGS.get_or_init(|| Mutex::new(Vec::new()))
+}
+
+fn input_capture_needed() -> bool {
+    !active_bindings().lock().unwrap().is_empty()
+        || !verify_overlay_bindings().lock().unwrap().is_empty()
+        || !modifier_watches().lock().unwrap().is_empty()
+        || is_recording()
+}
+
+fn sync_input_capture_hooks(hwnd: winapi::shared::windef::HWND) {
+    unsafe {
+        if !input_capture_needed() {
+            remove_keyboard_hook();
+            return;
+        }
+        install_raw_input(hwnd);
+        install_keyboard_hook();
+    }
 }
 
 fn modifier_watches() -> &'static Mutex<Vec<String>> {
@@ -246,6 +270,12 @@ fn key_to_vk(name: &str) -> Option<UINT> {
 }
 
 fn resolve_active_binding(name: &str, device: Option<&str>) -> Option<String> {
+    {
+        let verify = verify_overlay_bindings().lock().unwrap();
+        if let Some(hit) = resolve_binding_in_list(&verify, name, device) {
+            return Some(hit);
+        }
+    }
     let bindings = active_bindings().lock().unwrap();
     resolve_binding_in_list(&bindings, name, device)
 }
@@ -319,6 +349,11 @@ impl HotkeyManager {
         self.cmd_tx
             .send(Cmd::BindModifierWatches(watches.to_vec()))
             .ok();
+    }
+
+    /// QS/habit binding verify: listen for trigger keys without BindAll (avoids re-verify freeze).
+    pub fn set_verify_overlay_bindings(&self, bindings: Vec<String>) {
+        self.cmd_tx.send(Cmd::SetVerifyOverlay(bindings)).ok();
     }
 
     pub fn bind_scheme_switch(&self, combo: Option<String>) {
@@ -506,15 +541,7 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
                     unsafe {
                         install_raw_input(hwnd);
                     }
-                    if bindings.is_empty() {
-                        unsafe {
-                            remove_keyboard_hook();
-                        }
-                    } else {
-                        unsafe {
-                            install_keyboard_hook();
-                        }
-                    }
+                    sync_input_capture_hooks(hwnd);
                     if !recording_mode {
                         unsafe {
                             register_list(ctx_ptr, hwnd, &bindings);
@@ -523,6 +550,10 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
                     unsafe {
                         sync_runtime_mouse_hook(&bindings, recording_mode);
                     }
+                }
+                Cmd::SetVerifyOverlay(bindings) => {
+                    *verify_overlay_bindings().lock().unwrap() = bindings;
+                    sync_input_capture_hooks(hwnd);
                 }
                 Cmd::BindModifierWatches(watches) => {
                     *modifier_watches().lock().unwrap() = watches.clone();

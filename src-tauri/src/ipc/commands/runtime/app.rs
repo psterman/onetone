@@ -1,4 +1,9 @@
+use std::sync::Arc;
+
+use tauri::Manager;
+
 use crate::app_identity::{self, AppIdentity};
+use crate::AppState;
 
 #[tauri::command]
 pub fn cmd_foreground_app() -> serde_json::Value {
@@ -25,6 +30,31 @@ pub fn cmd_app_icon(full_path: String) -> serde_json::Value {
 pub fn cmd_running_apps() -> serde_json::Value {
     let apps = app_identity::list_running_apps();
     serde_json::json!({ "apps": apps })
+}
+
+#[tauri::command]
+pub fn cmd_set_setup_interaction_active(
+    state: tauri::State<Arc<AppState>>,
+    window: tauri::WebviewWindow,
+    active: bool,
+) {
+    let changed = {
+        let mut gate = state.setup_interaction_active.lock();
+        if *gate == active {
+            false
+        } else {
+            *gate = active;
+            true
+        }
+    };
+    if changed {
+        crate::app_log::log_line(
+            &state,
+            "workflow",
+            &format!("setup interaction active={active}"),
+        );
+        crate::codex_micro_overlay::push_state(&window.app_handle(), state.inner());
+    }
 }
 
 fn identity_to_json(identity: &AppIdentity) -> serde_json::Value {

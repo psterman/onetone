@@ -1,0 +1,1 @@
+{"accepted":true,"normalized":{"agent":"codex","confidence":"high","lastEvent":"Stop","message":"本回合完成","phase":null,"sessionId":"019fa791-a7db-71f3-882e-541e4ff4556b","source":"hook","state":"done","stickyUntil":1785224404253,"taskId":"019fa7a6-0a4d-7e50-8bfa-1c8a3efaabe4","updatedAt":1785224403608},"raw":"hook:Stop","rejectReason":null,"ts":1785224403608}

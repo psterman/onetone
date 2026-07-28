@@ -974,6 +974,7 @@
 
   function render(){
     if(!global.OneToneHomeV9||!global.OneToneHomeV9.buildViewModel) return;
+    if(global.OneToneQuickStart&&global.OneToneQuickStart.isOpen&&global.OneToneQuickStart.isOpen()) return;
     if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.isOpen&&global.OneToneHabitTriggerSetup.isOpen()) return;
     var micApi=global.OneToneAppMic;
     if(micApi&&typeof micApi.listLoaded==='function'&&!micApi.listLoaded()&&typeof micApi.loadMicDevices==='function'){
@@ -1081,7 +1082,9 @@
     var testBtn=$('wbBtnTestSend');
     if(testBtn){
       testBtn.onclick=function(){
-        if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.open){
+        if(global.OneToneQuickStart&&global.OneToneQuickStart.open){
+          global.OneToneQuickStart.open({ entry:'intent' });
+        }else if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.open){
           global.OneToneHabitTriggerSetup.open();
         }
       };

@@ -212,8 +212,10 @@
       global.OneToneMappingEditorChrome.setRecordBtnLabel($('btnRecordTrigger'),trigRaw?t('btnRerecordTrigger'):t('btnRecordTrigger'));
       global.OneToneMappingEditorChrome.setRecordBtnLabel($('btnRecordTarget'),inKeysPanel?'':tgtLbl);
     }else{
-      $('btnRecordTrigger').textContent=trigRaw?t('btnRerecordTrigger'):t('btnRecordTrigger');
-      if(!inKeysPanel) $('btnRecordTarget').textContent=tgtLbl;
+      var triggerBtn=$('btnRecordTrigger');
+      var targetBtn=$('btnRecordTarget');
+      if(triggerBtn) triggerBtn.textContent=trigRaw?t('btnRerecordTrigger'):t('btnRecordTrigger');
+      if(!inKeysPanel&&targetBtn) targetBtn.textContent=tgtLbl;
     }
     hooks().updatePrimaryCTA();
     hooks().applyKeyWakeRecordingUi();

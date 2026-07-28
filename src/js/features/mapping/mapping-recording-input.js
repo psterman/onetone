@@ -187,7 +187,7 @@
     e.stopPropagation();
     if(Rec().isHardwareDelegatedTriggerKey(key,code)){
     const physical=webEventToPhysicalKey(key,code)||key;
-    $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(physical);
+    if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(physical);
     hooks().pushLog(t('triggerRecordDetected')+hooks().friendlyKeyName(physical));
     Rec().finishDetectedHardwareTrigger(physical);
     return;
@@ -198,7 +198,7 @@
     cap.mods=mods;
     noteModifierSide(code);
     const standalone=normalizeStandaloneModifier(code);
-    $('triggerState').textContent=t('comboHint')+(standalone||'');
+    if($('triggerState')) $('triggerState').textContent=t('comboHint')+(standalone||'');
     hooks().pushLog(t('logWaitMain'));
     if(standalone) Rec().updatePreview('trigger',standalone);
     return;
@@ -206,7 +206,7 @@
     const main=normalizeKeyFromCode(code, key);
     const combo=normalizeTargetCombination(mods, main, cap.modSide);
     if(combo){
-    $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(combo);
+    if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(combo);
     Rec().finishFrontendTrigger(combo);
     }
     return;
@@ -252,7 +252,7 @@
     cap.mods=mods;
     noteModifierSide(code);
     const standalone=normalizeStandaloneModifier(code);
-    $('targetState').textContent=t('comboHint');
+    if($('targetState')) $('targetState').textContent=t('comboHint');
     hooks().pushLog(t('logWaitMain'));
     if(standalone) Rec().updatePreview('target',standalone);
     return;
@@ -340,7 +340,7 @@
     const combo=sanitizeTargetCombo(normalizeTargetCombination(mods, btn, cap.modSide));
     if(rejectLeftMouseRecording(Rec().mode(), combo, btn, null)) return;
     if(Rec().mode()==='trigger'){
-    $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(combo);
+    if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(combo);
     Rec().finishFrontendTrigger(combo);
     return;
     }
@@ -359,7 +359,7 @@
     else if(Rec().mode()==='trigger'){
     e.preventDefault();
     e.stopPropagation();
-    $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(modifierName);
+    if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(modifierName);
     Rec().finishFrontendTrigger(modifierName);
     }
     else if(Rec().mode()==='agentBinding'){
@@ -394,20 +394,20 @@
     const preview=Rec().previewCaptureKey('trigger',seen);
     Rec().updatePreview('trigger',preview);
     Rec().notifyOnboardingPreview('trigger',preview);
-    $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(preview);
+    if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(preview);
     }else if(Rec().mode()==='target'){
     if(rejectLeftMouseRecording('target', seen, seen, null)) return true;
     const preview=Rec().previewCaptureKey('target',seen);
     Rec().updatePreview('target',preview);
     Rec().notifyOnboardingPreview('target',preview);
-    $('targetState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(preview);
+    if($('targetState')) $('targetState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(preview);
     }else if(Rec().mode()==='agentBinding'){
     if(rejectLeftMouseRecording('trigger', seen, seen, null)) return true;
     const previewAb=Rec().previewCaptureKey('agentBinding',seen);
     Rec().updatePreview('agentBinding',previewAb);
-    $('targetState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(previewAb);
+    if($('targetState')) $('targetState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(previewAb);
     }else if(Rec().mode()==='nativeRestore'){
-    $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(seen);
+    if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(seen);
     }
     hooks().pushLog(t('triggerRecordDetected')+hooks().friendlyKeyName(seen));
     if(Rec().mode()==='trigger' && Rec().isHardwareCaptureToken(seen)){
@@ -425,13 +425,13 @@
     const preview=Rec().previewCaptureKey('trigger',seen);
     Rec().updatePreview('trigger',preview);
     Rec().notifyOnboardingPreview('trigger',preview);
-    $('triggerState').textContent=t('comboHint')+hooks().friendlyKeyName(preview);
+    if($('triggerState')) $('triggerState').textContent=t('comboHint')+hooks().friendlyKeyName(preview);
     }else if(Rec().mode()==='target'){
     if(rejectLeftMouseRecording('target', seen, seen, null)) return true;
     const preview=Rec().previewCaptureKey('target',seen);
     Rec().updatePreview('target',preview);
     Rec().notifyOnboardingPreview('target',preview);
-    $('targetState').textContent=t('comboHint');
+    if($('targetState')) $('targetState').textContent=t('comboHint');
     }else if(Rec().mode()==='agentBinding'){
     const previewPending=Rec().previewCaptureKey('agentBinding',seen);
     Rec().updatePreview('agentBinding',previewPending);

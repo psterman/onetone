@@ -244,40 +244,35 @@ pub fn send_wake_to_target(
     target_key: &str,
     duration_ms: u32,
 ) -> bool {
-    let restored = crate::keyboard::restore_external_foreground();
+    // Prefer last tracked external window. Never hide the main window as a
+    // fallback — hide/show during Quick Start / settings freezes WebView2 and
+    // can leave a blank chrome (seen as「未响应」when verifying RAlt etc.).
+    let mut restored = crate::keyboard::restore_external_foreground();
+    if !restored {
+        restored = crate::keyboard::focus_any_external_top_level();
+    }
     if restored {
         std::thread::sleep(Duration::from_millis(50));
-    } else if let Some(app) = app {
-        if let Some(window) = crate::ipc::get_main_window(app) {
-            let _ = window.run_on_main_thread({
-                let w = window.clone();
-                move || {
-                    let _ = w.hide();
-                }
-            });
-            std::thread::sleep(Duration::from_millis(80));
-            if !crate::keyboard::restore_external_foreground() {
-                std::thread::sleep(Duration::from_millis(40));
-            }
-        }
     }
+
+    // Sending Alt/Win chords into OneTone itself freezes the overlay (menu-key /
+    // find-in-page storms). Skip inject when we still own foreground.
+    if crate::app_identity::foreground_is_self() {
+        if let Some(s) = state {
+            crate::app_log::log_line(
+                s,
+                "send",
+                &format!("send_wake skipped self-fg key={target_key}"),
+            );
+        }
+        let _ = app; // keep signature; callers may still show the window
+        return false;
+    }
+
     let sent = crate::keyboard::send_chord(target_key, duration_ms);
     if sent {
         if let Some(s) = state {
             mark_voice_wake_key_sent(s);
-        }
-    }
-    if !restored {
-        std::thread::sleep(Duration::from_millis(60));
-        if let Some(app) = app {
-            if let Some(window) = crate::ipc::get_main_window(app) {
-                let _ = window.run_on_main_thread({
-                    let w = window.clone();
-                    move || {
-                        let _ = w.show();
-                    }
-                });
-            }
         }
     }
     sent

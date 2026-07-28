@@ -11,6 +11,7 @@
   /** Serialize cmd_save so a stale in-flight payload cannot wipe newer app scenarios. */
   var saveInFlight=null;
   var saveNeedsRerun=false;
+  var pendingSaveSource='unknown';
   var saveWaiters=[];
   /** Survives partial FE state: re-inject app scenarios omitted from mappings[] unless trashed. */
   var lastKnownAppScenarios={};
@@ -759,7 +760,12 @@
     }
   }
 
-  function buildSavePayload(){
+  function normalizeSaveSource(source){
+    source=String(source||'').trim();
+    return source||'unknown';
+  }
+
+  function buildSavePayload(source){
     ensureConfig();
     hooks().flushAllEditorToMappings();
     const st=state();
@@ -771,6 +777,7 @@
       ?diffApi.getGlobalKeyBaseline(st.config,global.OneToneMappingCore)
       :null;
     const payload={
+      saveSource:normalizeSaveSource(source),
       version:6,
       activeSceneId:String(st.config.activeSceneId||''),
       mappings:st.config.mappings.map(function(m,i){
@@ -924,10 +931,10 @@
     return JSON.stringify(payload);
   }
 
-  function invokeSaveOnce(){
+  function invokeSaveOnce(source){
     var payload;
     try{
-      payload=buildSavePayload();
+      payload=buildSavePayload(source);
     }catch(err){
       if(typeof console!=='undefined'&&console.error){
         console.error('cmd_save build failed',err);
@@ -951,7 +958,8 @@
 
   function flushSaveQueue(){
     if(saveInFlight) return saveInFlight;
-    saveInFlight=invokeSaveOnce().then(function(ok){
+    var source=pendingSaveSource;
+    saveInFlight=invokeSaveOnce(source).then(function(ok){
       if(saveNeedsRerun){
         saveNeedsRerun=false;
         saveInFlight=null;
@@ -965,7 +973,8 @@
     return saveInFlight;
   }
 
-  function save(){
+  function save(opts){
+    pendingSaveSource=normalizeSaveSource(opts&&opts.source);
     if(saveInFlight){
       saveNeedsRerun=true;
       return;
@@ -973,8 +982,9 @@
     flushSaveQueue();
   }
 
-  function saveAsync(){
+  function saveAsync(opts){
     return new Promise(function(resolve){
+      pendingSaveSource=normalizeSaveSource(opts&&opts.source);
       saveWaiters.push(resolve);
       if(saveInFlight){
         saveNeedsRerun=true;

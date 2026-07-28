@@ -19,7 +19,8 @@
     practiceIndex: 0,
     onPhrasesChange: null,
     multiSelect: false,
-    onHeardChange: null
+    onHeardChange: null,
+    hintText: ''
   };
 
   function app(){
@@ -190,10 +191,14 @@
     }
     var hint = $('phrasePracticeHint');
     if(hint){
-      var hintKey='phrasePracticeHint';
-      if(isEndMode()) hintKey='phrasePracticeHintEnd';
-      else if(isCancelMode()) hintKey='phrasePracticeHintCancel';
-      hint.textContent = t(hintKey);
+      if(state.hintText){
+        hint.textContent = state.hintText;
+      }else{
+        var hintKey='phrasePracticeHint';
+        if(isEndMode()) hintKey='phrasePracticeHintEnd';
+        else if(isCancelMode()) hintKey='phrasePracticeHintCancel';
+        hint.textContent = t(hintKey);
+      }
       hint.classList.remove('is-success-note');
     }
     var skip = $('btnPhrasePracticeSkip');
@@ -362,7 +367,13 @@
     var previewLbl = mount.querySelector('[data-phrase-practice-preview-label]');
     if(previewLbl) previewLbl.textContent = t('phrasePracticeLivePreview');
     var hint = mount.querySelector('[data-phrase-practice-hint]');
-    if(hint) hint.textContent = t(isTranscriptMode() ? (isCancelMode() ? 'phrasePracticeHintCancel' : 'phrasePracticeHintEnd') : 'phrasePracticeHint');
+    if(hint){
+      if(state.hintText){
+        hint.textContent = state.hintText;
+      }else{
+        hint.textContent = t(isTranscriptMode() ? (isCancelMode() ? 'phrasePracticeHintCancel' : 'phrasePracticeHintEnd') : 'phrasePracticeHint');
+      }
+    }
     renderChips(mount.querySelector('[data-phrase-practice-chips]'));
   }
 
@@ -443,6 +454,7 @@
     state.onMatch = opts.onMatch || null;
     state.onSkip = opts.onSkip || null;
     state.onHeardChange = opts.onHeardChange || null;
+    state.hintText = String(opts.hintText || '').trim();
     state.readOnly = !!opts.readOnly;
     state.embedded = !!opts.embedded;
     state.mountEl = opts.mount || null;
@@ -521,6 +533,8 @@
     state.phraseOptions = [];
     state.onPhrasesChange = null;
     state.multiSelect = false;
+    state.hintText = '';
+    state.onHeardChange = null;
     if(global.OneToneOnboarding && global.OneToneOnboarding.refreshPhrasesStep){
       global.OneToneOnboarding.refreshPhrasesStep();
     }
@@ -537,7 +551,10 @@
       var mount = typeof state.mountEl === 'string' ? $(String(state.mountEl).replace(/^#/,'')) : state.mountEl;
       if(mount){
         var eh = mount.querySelector('[data-phrase-practice-hint]');
-        if(eh) eh.textContent = t(isCancelMode() ? 'phrasePracticeHintCancel' : (isEndMode() ? 'phrasePracticeHintEnd' : 'phrasePracticeHint'));
+        if(eh){
+          if(state.hintText) eh.textContent = state.hintText;
+          else eh.textContent = t(isCancelMode() ? 'phrasePracticeHintCancel' : (isEndMode() ? 'phrasePracticeHintEnd' : 'phrasePracticeHint'));
+        }
         var pl = mount.querySelector('[data-phrase-practice-preview-label]');
         if(pl) pl.textContent = t('phrasePracticeLivePreview');
       }

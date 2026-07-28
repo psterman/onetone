@@ -12,6 +12,11 @@
       var rec=recordingInput();
       if(e.key==='Escape'){
         var habitSetupOpen=$('habitSetupOverlay')&&$('habitSetupOverlay').classList.contains('open');
+        if(habitSetupOpen&&global.OneToneQuickStart&&global.OneToneQuickStart.isOpen&&global.OneToneQuickStart.isOpen()
+          &&global.OneToneQuickStart.handleEsc()){
+          e.preventDefault();
+          return;
+        }
         if(habitSetupOpen&&global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.handleEsc()){
           e.preventDefault();
           return;

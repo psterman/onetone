@@ -2,13 +2,15 @@
   'use strict';
 
   var PRESETS = [
-    { id:'typeless', nameKey:'imePresetTypeless', icon:'icons/ime/typeless.png', targetKey:'RAlt' },
-    { id:'zhipu', nameKey:'imePresetZhipu', icon:'icons/ime/zhipu.png', targetKey:'RAlt' },
-    { id:'qianwen', nameKey:'imePresetQianwen', icon:'icons/ime/qianwen.png', targetKey:'RAlt' },
-    { id:'shandianshuo', nameKey:'imePresetShandianshuo', icon:'icons/ime/shandianshuo.jpg', targetKey:'RAlt' },
-    { id:'sogou', nameKey:'imePresetSogou', icon:'icons/ime/sougou.png', targetKey:'Ctrl+Space' },
-    { id:'wechat', nameKey:'imePresetWechat', icon:'icons/ime/weixin.png', targetKey:'Ctrl+Shift+Win' },
-    { id:'xunfei', nameKey:'imePresetXunfei', icon:'icons/ime/xunfei.png', targetKey:'F2' }
+    { id:'xunfei', nameKey:'imePresetXunfei', icon:'icons/ime/xunfei.png', targetKey:'F2', verified:true, tier:'primary' },
+    { id:'wechat', nameKey:'imePresetWechat', icon:'icons/ime/weixin.png', targetKey:'Ctrl+Shift+Win', verified:true, tier:'primary' },
+    { id:'typeless', nameKey:'imePresetTypeless', icon:'icons/ime/typeless.png', targetKey:'RAlt', verified:true, tier:'primary' },
+    { id:'microsoft', nameKey:'imePresetMicrosoft', icon:'icons/ime/microsoft.svg', targetKey:'Win+H', verified:true, tier:'primary' },
+    { id:'zhipu', nameKey:'imePresetZhipu', icon:'icons/ime/zhipu.png', targetKey:'RAlt', verified:true, tier:'more' },
+    { id:'qianwen', nameKey:'imePresetQianwen', icon:'icons/ime/qianwen.png', targetKey:'RAlt', verified:true, tier:'more' },
+    { id:'shandianshuo', nameKey:'imePresetShandianshuo', icon:'icons/ime/shandianshuo.jpg', targetKey:'RAlt', verified:true, tier:'more' },
+    { id:'sogou', nameKey:'imePresetSogou', icon:'icons/ime/sougou.png', targetKey:'Ctrl+Shift+Z', verified:false, tier:'more' },
+    { id:'baidu', nameKey:'imePresetBaidu', icon:'icons/ime/baidu.svg', targetKey:'Alt+`', verified:false, tier:'more' }
   ];
 
   var MOUNTS = {
@@ -193,7 +195,7 @@
     if(wrap){
       wrap.classList.remove('has-ime-badge','has-custom-badge');
     }
-    if(preset){
+    if(preset && String(preset.icon||'').trim()){
       iconEl.src=preset.icon;
       iconEl.hidden=false;
       iconEl.alt=t(preset.nameKey);
@@ -216,7 +218,7 @@
     var presetId = getSelectedId(ctx);
     var preset = presetById(presetId);
     var wrap = iconEl.closest ? iconEl.closest('.target-key-display') : null;
-    if(preset){
+    if(preset && String(preset.icon||'').trim()){
       iconEl.src = preset.icon;
       iconEl.hidden = false;
       iconEl.classList.remove('is-placeholder');
@@ -393,8 +395,12 @@
       var keyLabel = global.OneToneKeyLabels
         ? global.OneToneKeyLabels.friendlyKeyName(p.targetKey, global.OneToneApp && global.OneToneApp.getLang ? global.OneToneApp.getLang() : 'zh')
         : p.targetKey;
+      var icon = String(p.icon || '').trim();
+      var iconHtml = icon
+        ? '<img class="ime-preset-icon" src="'+esc(icon)+'" alt="" decoding="async" />'
+        : '<span class="ime-preset-icon ime-preset-icon--empty" aria-hidden="true"></span>';
       return '<button type="button" class="ime-preset-item'+(selected?' is-selected':'')+'" data-ime-context="'+esc(ctx)+'" data-ime-id="'+esc(p.id)+'"'+(disabled?' disabled':'')+' title="'+esc(label+' · '+keyLabel)+'" aria-label="'+esc(label)+'" aria-pressed="'+(selected?'true':'false')+'">'
-        +'<img class="ime-preset-icon" src="'+esc(p.icon)+'" alt="" decoding="async" />'
+        +iconHtml
         +'</button>';
     }).join('');
     host.innerHTML = html;

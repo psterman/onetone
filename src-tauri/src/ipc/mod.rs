@@ -6,6 +6,7 @@ mod runtime_dispatch;
 mod scheme;
 mod trigger_compat;
 mod trigger_dispatch;
+mod trigger_verify;
 
 pub use commands::*;
 pub use core::*;
@@ -15,3 +16,4 @@ pub use runtime_dispatch::*;
 pub use scheme::*;
 pub use trigger_compat::*;
 pub use trigger_dispatch::*;
+pub use trigger_verify::*;

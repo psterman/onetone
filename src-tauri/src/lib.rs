@@ -159,6 +159,8 @@ pub struct AppState {
     pub agent_modifier_tap: Mutex<Option<AgentModifierTapState>>,
     pub record_gesture: Mutex<press_gesture::RecordGestureDetector>,
     pub trigger_compat_probe: Mutex<Option<ipc::TriggerCompatProbeSession>>,
+    pub trigger_verify_listen: Mutex<Option<ipc::TriggerVerifyListenSession>>,
+    pub setup_interaction_active: Mutex<bool>,
     pub process_usage_sampler: Mutex<resource_monitor::ProcessUsageSampler>,
     pub log_ring: Mutex<VecDeque<String>>,
     pub runtime_events: onetone_logic::runtime_event::RuntimeEventRing,
@@ -274,6 +276,8 @@ pub fn run() {
         agent_modifier_tap: Mutex::new(None),
         record_gesture: Mutex::new(press_gesture::RecordGestureDetector::new()),
         trigger_compat_probe: Mutex::new(None),
+        trigger_verify_listen: Mutex::new(None),
+        setup_interaction_active: Mutex::new(false),
         process_usage_sampler: Mutex::new(resource_monitor::ProcessUsageSampler::default()),
         log_ring: Mutex::new(VecDeque::new()),
         runtime_events: onetone_logic::runtime_event::RuntimeEventRing::new(),
@@ -496,7 +500,11 @@ pub fn run() {
                     window_layout::persist_now(&state_for_close, &window_clone);
                     api.prevent_close();
                     let _ = window_clone.hide();
-                    app_log::log_line(&state_for_close, "window", "main window hidden");
+                    app_log::log_line(
+                        &state_for_close,
+                        "window",
+                        "main window hidden source=close_request",
+                    );
                 }
                 tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Moved(_) => {
                     window_layout::schedule_save(state_for_close.clone(), window_clone.clone());
@@ -544,7 +552,9 @@ pub fn run() {
                         let cfg = state2.cfg.lock();
                         let mut gesture = state2.gesture.lock();
                         gesture.expire_double_waits(std::time::Instant::now());
-                        let long_fires = if ipc::trigger_compat_probe_active(&state2) {
+                        let long_fires = if ipc::trigger_compat_probe_active(&state2)
+                            || ipc::trigger_verify_listen_active(&state2)
+                        {
                             Vec::new()
                         } else {
                             gesture.poll_long_press(&cfg, std::time::Instant::now())
@@ -597,6 +607,11 @@ pub fn run() {
 
                     if ipc::trigger_compat_probe_active(&state2) {
                         ipc::handle_trigger_compat_probe(&state2, &win2, &key_name);
+                        continue;
+                    }
+
+                    if ipc::trigger_verify_listen_active(&state2) {
+                        ipc::handle_trigger_verify_listen(&state2, &win2, &key_name);
                         continue;
                     }
 
@@ -678,6 +693,8 @@ pub fn run() {
             ipc::cmd_stop_recording,
             ipc::cmd_start_trigger_compat_probe,
             ipc::cmd_stop_trigger_compat_probe,
+            ipc::cmd_start_trigger_verify_listen,
+            ipc::cmd_stop_trigger_verify_listen,
             ipc::cmd_pause,
             ipc::cmd_resume,
             ipc::cmd_request_runtime,
@@ -685,6 +702,7 @@ pub fn run() {
             ipc::cmd_foreground_app,
             ipc::cmd_running_apps,
             ipc::cmd_app_icon,
+            ipc::cmd_set_setup_interaction_active,
             ipc::cmd_capture_source,
             ipc::cmd_frontend_keydown,
             ipc::cmd_physical_trigger,

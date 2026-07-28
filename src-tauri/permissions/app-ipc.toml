@@ -11,6 +11,8 @@ permissions = [
   "allow-cmd-stop-recording",
   "allow-cmd-start-trigger-compat-probe",
   "allow-cmd-stop-trigger-compat-probe",
+  "allow-cmd-start-trigger-verify-listen",
+  "allow-cmd-stop-trigger-verify-listen",
   "allow-cmd-pause",
   "allow-cmd-resume",
   "allow-cmd-request-runtime",

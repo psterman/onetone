@@ -24,6 +24,8 @@ fn main() {
         "cmd_stop_recording",
         "cmd_start_trigger_compat_probe",
         "cmd_stop_trigger_compat_probe",
+        "cmd_start_trigger_verify_listen",
+        "cmd_stop_trigger_verify_listen",
         "cmd_pause",
         "cmd_resume",
         "cmd_request_runtime",

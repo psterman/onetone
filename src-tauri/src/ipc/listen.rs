@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tauri::AppHandle;
 
-use crate::ipc::stop_trigger_compat_probe;
+use crate::ipc::{stop_trigger_compat_probe, stop_trigger_verify_listen};
 use crate::AppState;
 
 use super::core::{emit_to_main_if_available, push_runtime_via_app};
@@ -16,6 +16,7 @@ pub fn pause_listen(state: &Arc<AppState>, app: &AppHandle) {
     *state.record_hw_pending.lock() = None;
     *state.record_started_at.lock() = None;
     stop_trigger_compat_probe(state);
+    stop_trigger_verify_listen(state);
     if let Some(ref mgr) = *state.hotkey_mgr.lock() {
         mgr.stop_recording();
     }

@@ -124,6 +124,26 @@ fn hook_needs_input_hold() -> bool {
     }
 }
 
+fn overlay_runtime_gate_flags(state: &AppState) -> (bool, bool, bool) {
+    let setup_open = *state.setup_interaction_active.lock();
+    let verify_active = state.trigger_verify_listen.lock().is_some();
+    let recording_active = *state.recording.lock();
+    (setup_open, verify_active, recording_active)
+}
+
+fn overlay_runtime_gate_reason(state: &AppState) -> Option<&'static str> {
+    let (setup_open, verify_active, recording_active) = overlay_runtime_gate_flags(state);
+    if setup_open {
+        Some("setup_open")
+    } else if verify_active {
+        Some("verify_active")
+    } else if recording_active {
+        Some("recording_active")
+    } else {
+        None
+    }
+}
+
 /// Toggle WS_EX_TRANSPARENT on the overlay HWND (any thread — does not need the UI loop).
 /// Used so PermissionRequest can enable click-through even when WebView main is wedged.
 pub fn set_overlay_click_through(pass: bool) {
@@ -1112,7 +1132,12 @@ fn claude_waiting_hint_for(
 
 pub fn build_snapshot(state: &AppState) -> CodexMicroOverlaySnapshot {
     let cfg = state.cfg.lock();
-    build_snapshot_from_cfg(&cfg)
+    let mut snapshot = build_snapshot_from_cfg(&cfg);
+    if let Some(reason) = overlay_runtime_gate_reason(state) {
+        snapshot.visible = false;
+        snapshot.visible_reason = reason.to_string();
+    }
+    snapshot
 }
 
 fn pad_run_status_slot() -> &'static ParkingMutex<(String, String, Instant)> {
@@ -2165,7 +2190,8 @@ pub fn dismiss_overlay(app: &AppHandle, state: &AppState) -> bool {
 
 pub fn maybe_tick(app: &AppHandle, state: &AppState) {
     let was_fg = *last_foreground_codex().lock();
-    let host_ok = overlay_should_be_visible_host();
+    let gate_reason = overlay_runtime_gate_reason(state);
+    let host_ok = gate_reason.is_none() && overlay_should_be_visible_host();
     let is_fg = *last_foreground_codex().lock();
 
     if is_fg {
@@ -2227,12 +2253,19 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
     if vis_changed {
         let raw = overlay_host_allows_show_raw();
         let fg = crate::app_identity::foreground_app_identity();
+        let (setup_open, verify_active, recording_active) = overlay_runtime_gate_flags(state);
+        let reason = gate_reason
+            .map(str::to_string)
+            .unwrap_or_else(overlay_visible_reason);
         let detail = format!(
-            "overlay visible={} host_ok={} raw_host={} reason={} fg_exe={} fg_title={:?} fg_preset={:?} path={:?}",
+            "overlay visible={} host_ok={} raw_host={} reason={} setup_open={} verify_active={} recording_active={} fg_exe={} fg_title={:?} fg_preset={:?} path={:?}",
             desired_visible,
             host_ok,
             raw,
-            overlay_visible_reason(),
+            reason,
+            setup_open,
+            verify_active,
+            recording_active,
             fg.as_ref().map(|i| i.exe_name.as_str()).unwrap_or(""),
             fg.as_ref().map(|i| i.window_title.as_str()).unwrap_or(""),
             fg.as_ref().and_then(|i| i.matched_preset_app_id.as_deref()),

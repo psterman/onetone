@@ -63,6 +63,95 @@ pub fn restore_external_foreground() -> bool {
     focus_window(target_hwnd)
 }
 
+/// Pick any visible top-level window that is not OneTone, then focus it.
+/// Used when Quick Start / settings own FG and no LAST_EXTERNAL_HWND was tracked.
+#[cfg(windows)]
+pub fn focus_any_external_top_level() -> bool {
+    use winapi::shared::minwindef::{BOOL, LPARAM, TRUE};
+    use winapi::shared::windef::HWND;
+    use winapi::um::processthreadsapi::GetCurrentProcessId;
+    use winapi::um::winuser::{
+        EnumWindows, GetClassNameW, GetWindow, GetWindowLongW, GetWindowThreadProcessId, IsIconic,
+        IsWindowVisible, GWL_EXSTYLE, GWL_STYLE, GW_OWNER, WS_EX_TOOLWINDOW, WS_VISIBLE,
+    };
+
+    struct Ctx {
+        our_pid: u32,
+        our_hwnd: isize,
+        found: isize,
+    }
+
+    unsafe extern "system" fn enum_cb(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        let ctx = &mut *(lparam as *mut Ctx);
+        if ctx.found != 0 {
+            return TRUE;
+        }
+        if ctx.our_hwnd != 0 && hwnd as isize == ctx.our_hwnd {
+            return TRUE;
+        }
+        if IsWindowVisible(hwnd) == 0 {
+            return TRUE;
+        }
+        if IsIconic(hwnd) != 0 {
+            return TRUE;
+        }
+        let style = GetWindowLongW(hwnd, GWL_STYLE) as u32;
+        if (style & WS_VISIBLE) == 0 {
+            return TRUE;
+        }
+        let ex = GetWindowLongW(hwnd, GWL_EXSTYLE) as u32;
+        if (ex & WS_EX_TOOLWINDOW) != 0 {
+            return TRUE;
+        }
+        if !GetWindow(hwnd, GW_OWNER).is_null() {
+            return TRUE;
+        }
+        let mut pid = 0u32;
+        GetWindowThreadProcessId(hwnd, &mut pid);
+        if pid == 0 || pid == ctx.our_pid {
+            return TRUE;
+        }
+        // WebView2 / Chromium host windows share the app UI; never treat as external FG.
+        let mut class_buf = [0u16; 256];
+        let class_len = GetClassNameW(hwnd, class_buf.as_mut_ptr(), class_buf.len() as i32);
+        if class_len > 0 {
+            let class = String::from_utf16_lossy(&class_buf[..class_len as usize]).to_ascii_lowercase();
+            if class.contains("chrome_widgetwin")
+                || class.contains("chrome_renderwidget")
+                || class.contains("intermediate d3d")
+                || class.contains("webview")
+            {
+                return TRUE;
+            }
+        }
+        ctx.found = hwnd as isize;
+        TRUE
+    }
+
+    let our_hwnd = *OUR_HWND.get_or_init(|| Mutex::new(0)).lock().unwrap();
+    let mut ctx = Ctx {
+        our_pid: unsafe { GetCurrentProcessId() },
+        our_hwnd,
+        found: 0,
+    };
+    unsafe {
+        EnumWindows(Some(enum_cb), &mut ctx as *mut Ctx as LPARAM);
+    }
+    if ctx.found == 0 {
+        return false;
+    }
+    *LAST_EXTERNAL_HWND
+        .get_or_init(|| Mutex::new(0))
+        .lock()
+        .unwrap() = ctx.found;
+    focus_window(ctx.found as winapi::shared::windef::HWND)
+}
+
+#[cfg(not(windows))]
+pub fn focus_any_external_top_level() -> bool {
+    false
+}
+
 /// Show a window without activating it (does not steal foreground).
 #[cfg(windows)]
 pub fn show_window_no_activate(target_hwnd: winapi::shared::windef::HWND) -> bool {

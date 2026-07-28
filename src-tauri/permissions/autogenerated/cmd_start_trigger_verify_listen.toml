@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-start-trigger-verify-listen"
+description = "Enables the cmd_start_trigger_verify_listen command without any pre-configured scope."
+commands.allow = ["cmd_start_trigger_verify_listen"]
+
+[[permission]]
+identifier = "deny-cmd-start-trigger-verify-listen"
+description = "Denies the cmd_start_trigger_verify_listen command without any pre-configured scope."
+commands.deny = ["cmd_start_trigger_verify_listen"]

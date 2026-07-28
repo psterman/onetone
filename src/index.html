@@ -3613,17 +3613,6 @@
         <p class="habit-setup-mode-summary" id="habitSetupTriggerSummary"></p>
         <div class="habit-setup-activation-body" id="habitSetupActivationBody">
         <div class="habit-setup-ime-grid" id="habitSetupImeGrid" role="listbox" aria-label="语音输入法"></div>
-        <div class="habit-setup-ime-selected" id="habitSetupImeSelected" hidden>
-          <div class="habit-setup-ime-selected-head">
-            <img id="habitSetupTargetImeIcon" class="habit-setup-ime-selected-icon is-placeholder" alt="" hidden />
-            <span class="habit-setup-ime-selected-icon habit-setup-ime-selected-icon--custom" id="habitSetupImeCustomIcon" aria-hidden="true" hidden>⌨</span>
-            <div class="habit-setup-ime-selected-copy">
-              <p class="habit-setup-ime-selected-name" id="habitSetupImeSelectedName"></p>
-              <p class="habit-setup-status habit-setup-ime-selected-key" id="habitSetupImeSelectedKey"></p>
-            </div>
-          </div>
-          <button type="button" class="btn secondary" id="btnHabitSetupImeReRecord">重新录制快捷键</button>
-        </div>
         <div class="habit-setup-sub-host" id="habitSetupSubHost" hidden>
           <div class="habit-setup-sub-panel" id="habitSetupRecordPanel" hidden>
             <p class="habit-setup-sub-title" id="habitSetupRecordTitle"></p>
@@ -3634,8 +3623,21 @@
           </div>
         </div>
         </div>
-        <div class="habit-setup-actions habit-setup-actions--footer">
-          <button type="button" class="btn primary" id="btnHabitSetupNext" disabled>下一步</button>
+        <div class="habit-setup-activation-dock" id="habitSetupActivationDock">
+          <div class="habit-setup-ime-selected" id="habitSetupImeSelected" hidden>
+            <div class="habit-setup-ime-selected-head">
+              <img id="habitSetupTargetImeIcon" class="habit-setup-ime-selected-icon is-placeholder" alt="" hidden />
+              <img class="habit-setup-ime-selected-icon habit-setup-ime-selected-icon--custom" id="habitSetupImeCustomIcon" src="icons/ime/custom.svg" alt="" hidden />
+              <div class="habit-setup-ime-selected-copy">
+                <p class="habit-setup-ime-selected-name" id="habitSetupImeSelectedName"></p>
+                <p class="habit-setup-status habit-setup-ime-selected-key" id="habitSetupImeSelectedKey"></p>
+              </div>
+            </div>
+            <button type="button" class="btn secondary" id="btnHabitSetupImeReRecord">重新录制快捷键</button>
+          </div>
+          <div class="habit-setup-actions habit-setup-actions--footer">
+            <button type="button" class="btn primary" id="btnHabitSetupNext" disabled>下一步</button>
+          </div>
         </div>
       </div>
       <div class="habit-setup-view habit-setup-screen" id="habitSetupTriggerView" hidden>
@@ -3643,25 +3645,26 @@
         <div class="habit-setup-badge" id="habitSetupTriggerBadge">🧪 现场测试</div>
         <h3 class="habit-setup-title" id="habitSetupTriggerTitle">试试 OneTone 能不能用</h3>
         <p class="habit-setup-desc" id="habitSetupTriggerDesc">先录启动键，再分别测试按键响应和语音唤起是否正常。</p>
-        <div class="habit-setup-stage">
-          <div class="habit-setup-keyboard" id="habitSetupTriggerKeyboard" aria-hidden="true"></div>
-          <p class="habit-setup-status" id="habitSetupTriggerStatus"></p>
-          <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupTriggerStartRecord">开始录制启动键</button>
+        <div class="habit-setup-trigger-body" id="habitSetupTriggerBody">
+          <div class="habit-setup-stage">
+            <p class="habit-setup-status" id="habitSetupTriggerStatus"></p>
+            <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupTriggerStartRecord">开始录制启动键</button>
+          </div>
+          <div class="habit-setup-test-grid" id="habitSetupTestGrid">
+            <section class="habit-setup-test-panel" id="habitSetupKeyTestPanel">
+              <h4 class="habit-setup-test-panel-title" id="habitSetupKeyTestTitle">按键测试</h4>
+              <p class="habit-setup-status" id="habitSetupKeyTestStatus"></p>
+              <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupKeyTestRetry">重新测试</button>
+            </section>
+            <section class="habit-setup-test-panel" id="habitSetupVoiceTestPanel2">
+              <h4 class="habit-setup-test-panel-title" id="habitSetupVoiceTestTitle2">语音测试</h4>
+              <p class="habit-setup-desc" id="habitSetupVoiceTestDesc2"></p>
+              <div id="habitSetupStep2VoiceHost"></div>
+              <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupVoiceTestRetry">重新测试</button>
+            </section>
+          </div>
         </div>
-        <div class="habit-setup-test-grid" id="habitSetupTestGrid">
-          <section class="habit-setup-test-panel" id="habitSetupKeyTestPanel">
-            <h4 class="habit-setup-test-panel-title" id="habitSetupKeyTestTitle">按键测试</h4>
-            <p class="habit-setup-status" id="habitSetupKeyTestStatus"></p>
-            <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupKeyTestRetry">重新测试</button>
-          </section>
-          <section class="habit-setup-test-panel" id="habitSetupVoiceTestPanel2">
-            <h4 class="habit-setup-test-panel-title" id="habitSetupVoiceTestTitle2">语音测试</h4>
-            <p class="habit-setup-desc" id="habitSetupVoiceTestDesc2"></p>
-            <div id="habitSetupStep2VoiceHost"></div>
-            <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupVoiceTestRetry">重新测试</button>
-          </section>
-        </div>
-        <div class="habit-setup-actions habit-setup-actions--footer">
+        <div class="habit-setup-actions habit-setup-actions--footer habit-setup-activation-dock" id="habitSetupTriggerDock">
           <button type="button" class="btn secondary" id="btnHabitSetupBackToActivationFromTrigger">上一步</button>
           <button type="button" class="btn primary" id="btnHabitSetupNextTrigger" disabled>下一步</button>
         </div>
@@ -3710,6 +3713,18 @@
           <button type="button" class="btn secondary" id="btnHabitSetupBackFromVoiceLesson">上一步</button>
           <button type="button" class="btn primary" id="btnHabitSetupSaveVoice" disabled>完成设置</button>
         </div>
+      </div>
+      <div class="habit-setup-view habit-setup-screen" id="habitSetupIntentView" hidden>
+        <div class="habit-setup-screen-inner habit-setup-screen-inner--left" id="habitSetupIntentBody"></div>
+      </div>
+      <div class="habit-setup-view habit-setup-screen" id="habitSetupToolView" hidden>
+        <div class="habit-setup-screen-inner habit-setup-screen-inner--left" id="habitSetupToolBody"></div>
+      </div>
+      <div class="habit-setup-view habit-setup-screen" id="habitSetupSoftPadView" hidden>
+        <div class="habit-setup-screen-inner habit-setup-screen-inner--left" id="habitSetupSoftPadBody"></div>
+      </div>
+      <div class="habit-setup-view habit-setup-screen" id="habitSetupDoneView" hidden>
+        <div class="habit-setup-screen-inner habit-setup-screen-inner--left" id="habitSetupDoneBody"></div>
       </div>
     </div>
   </div>
@@ -3988,6 +4003,7 @@
   <script src="js/features/home/home-live-actions.js"></script>
   <script src="js/home-v9.js"></script>
   <script src="js/features/home/habit-trigger-setup.js"></script>
+  <script src="js/features/home/quick-start-orchestrator.js"></script>
   <script src="js/features/home/home-workbench-compat.js"></script>
   <script src="js/features/home/home-workbench-cmdk.js"></script>
   <script src="js/features/home/home-workbench-alerts.js"></script>

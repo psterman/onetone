@@ -145,6 +145,25 @@ struct MainWindowHideGuard {
 
 impl MainWindowHideGuard {
     fn maybe_hide(app: &AppHandle) -> Self {
+        if let Some(state) = app.try_state::<Arc<AppState>>() {
+            let setup_open = *state.setup_interaction_active.lock();
+            let verify_active = state.trigger_verify_listen.lock().is_some();
+            let recording_active = *state.recording.lock();
+            if setup_open || verify_active || recording_active {
+                crate::app_log::log_line(
+                    state.inner(),
+                    "window",
+                    &format!(
+                        "main window hide blocked source=workflow setup_open={} verify_active={} recording_active={}",
+                        setup_open, verify_active, recording_active
+                    ),
+                );
+                return Self {
+                    app: app.clone(),
+                    hidden: false,
+                };
+            }
+        }
         let hidden = if let Some(main) = crate::ipc::get_main_window(app) {
             let _ = main.run_on_main_thread({
                 let w = main.clone();
@@ -153,6 +172,9 @@ impl MainWindowHideGuard {
                 }
             });
             std::thread::sleep(Duration::from_millis(80));
+            if let Some(state) = app.try_state::<Arc<AppState>>() {
+                crate::app_log::log_line(state.inner(), "window", "main window hidden source=workflow");
+            }
             true
         } else {
             false

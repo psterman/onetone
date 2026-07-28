@@ -375,7 +375,8 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
   }
 
   function invokeRecordingCommand(cmd,args){
-    const invoke=window.__vp_invoke__;
+    const ipc=global.OneToneIpc;
+    const invoke=ipc&&typeof ipc.invoke==='function'?ipc.invoke.bind(ipc):window.__vp_invoke__;
     const payload=window.__vp_tauri_args__?window.__vp_tauri_args__(args||{}):(args||{});
     if(invoke){
       try{
@@ -713,7 +714,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
   }else{
     hooks().maybeEnableMappingAfterComplete(m);
   }
-    try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){ }
+    void invokeStopRecording();
     return true;
   }
 
@@ -811,7 +812,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     }
     if(global.OneToneImePresets) global.OneToneImePresets.refresh('mapping');
     if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.refresh('mapping');
-    try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){ }
+    void invokeStopRecording();
     return true;
   }
 

@@ -756,7 +756,9 @@
     var btnTestSend=$('vp9BtnTestSend');
     if(btnTestSend){
       btnTestSend.onclick=function(){
-        if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.open){
+        if(global.OneToneQuickStart&&global.OneToneQuickStart.open){
+          global.OneToneQuickStart.open({ entry:'intent' });
+        }else if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.open){
           global.OneToneHabitTriggerSetup.open();
         }else{
           openTemplatePick();
