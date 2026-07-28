@@ -577,7 +577,9 @@
           openPalm:pa.openPalm!=null?pa.openPalm:(pa.open_palm!=null?pa.open_palm:'none'),
           okHand:pa.okHand!=null?pa.okHand:(pa.ok_hand!=null?pa.ok_hand:'none'),
           fist:pa.fist!=null?pa.fist:'none',
-          wave:pa.wave!=null?pa.wave:'none'
+          wave:pa.wave!=null?pa.wave:'none',
+          awayMs:Math.max(1000,Math.min(30000,Number(pa.awayMs!=null?pa.awayMs:pa.away_ms)||3000))|0,
+          presentMs:Math.max(500,Math.min(10000,Number(pa.presentMs!=null?pa.presentMs:pa.present_ms)||1000))|0
         };
       }
       if(cp.selectedDeviceId==null&&cp.selected_device_id!=null) cp.selectedDeviceId=cp.selected_device_id;
@@ -630,7 +632,7 @@
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
       debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,startMinimizedToTray:false,
-      cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,smartPointer:null,snapWindow:null,autoMute:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none'},videoEnhancement:{enabled:false,look:'off',faceMask:'off',preset:'natural',beautyEnabled:false,whiten:0,smooth:0,rosy:0,slim:0,beauty:18,brightness:0,contrast:8,saturation:6,sharpen:8,denoise:8,lowLight:0,antiFlicker:'auto',displayFrameRate:0}},
+      cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,smartPointer:null,snapWindow:null,autoMute:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none',awayMs:3000,presentMs:1000},videoEnhancement:{enabled:false,look:'off',faceMask:'off',preset:'natural',beautyEnabled:false,whiten:0,smooth:0,rosy:0,slim:0,beauty:18,brightness:0,contrast:8,saturation:6,sharpen:8,denoise:8,lowLight:0,antiFlicker:'auto',displayFrameRate:0}},
       sounds:hooks().defaultSoundsConfig(),
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:pack?pack.voskModelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:pack?pack.voskModelPreset:'cn-light'},
@@ -706,7 +708,7 @@
       if(st.config.cameraPrefs.autoMute===undefined) st.config.cameraPrefs.autoMute=null;
       st.config.cameraPrefs.videoEnhancement=normalizeVideoEnhancementPrefs(st.config.cameraPrefs.videoEnhancement);
       if(!st.config.cameraPrefs.presenceActions||typeof st.config.cameraPrefs.presenceActions!=='object'){
-        st.config.cameraPrefs.presenceActions={enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none'};
+        st.config.cameraPrefs.presenceActions={enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none',awayMs:3000,presentMs:1000};
       }else{
         var pa=st.config.cameraPrefs.presenceActions;
         if(pa.enabled===undefined) pa.enabled=false;
@@ -852,7 +854,9 @@
             openPalm:String(pa.openPalm||'none').trim()||'none',
             okHand:String(pa.okHand||'none').trim()||'none',
             fist:String(pa.fist||'none').trim()||'none',
-            wave:String(pa.wave||'none').trim()||'none'
+            wave:String(pa.wave||'none').trim()||'none',
+            awayMs:Math.max(1000,Math.min(30000,Number(pa.awayMs!=null?pa.awayMs:pa.away_ms)||3000))|0,
+            presentMs:Math.max(500,Math.min(10000,Number(pa.presentMs!=null?pa.presentMs:pa.present_ms)||1000))|0
           }
         };
       })(),
@@ -1258,7 +1262,9 @@
         openPalm:String(pa.openPalm||'none').trim()||'none',
         okHand:String(pa.okHand||'none').trim()||'none',
         fist:String(pa.fist||'none').trim()||'none',
-        wave:String(pa.wave||'none').trim()||'none'
+        wave:String(pa.wave||'none').trim()||'none',
+        awayMs:Math.max(1000,Math.min(30000,Number(pa.awayMs!=null?pa.awayMs:pa.away_ms)||3000))|0,
+        presentMs:Math.max(500,Math.min(10000,Number(pa.presentMs!=null?pa.presentMs:pa.present_ms)||1000))|0
       },
       videoEnhancement:normalizeVideoEnhancementPrefs(ve)
     };

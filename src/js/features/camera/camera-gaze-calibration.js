@@ -61,6 +61,26 @@
     if(picker&&picker.forZone) return picker.forZone(zone);
     return t('cameraGazeCalibReadCenter','屏幕正中 · 读这行字');
   }
+
+  function targetActionCue(targetId){
+    var id=String(targetId||'center');
+    if(id==='tl') return t('cameraGazeCalibCueTL','动作：抬头 + 左转，到位后再读字');
+    if(id==='tc') return t('cameraGazeCalibCueTC','动作：抬头，到位后再读字');
+    if(id==='tr') return t('cameraGazeCalibCueTR','动作：抬头 + 右转，到位后再读字');
+    if(id==='ml') return t('cameraGazeCalibCueML','动作：左转头，到位后再读字');
+    if(id==='mr') return t('cameraGazeCalibCueMR','动作：右转头，到位后再读字');
+    if(id==='bl') return t('cameraGazeCalibCueBL','动作：点头 + 左转，到位后再读字');
+    if(id==='bc') return t('cameraGazeCalibCueBC','动作：点头，到位后再读字');
+    if(id==='br') return t('cameraGazeCalibCueBR','动作：点头 + 右转，到位后再读字');
+    return t('cameraGazeCalibCueCenter','动作：看正中，轻微放松，稳定读字');
+  }
+
+  function phaseRhythmCue(phase){
+    if(String(phase)==='sample'){
+      return t('cameraGazeCalibRhythmSample','采样中：保持头姿，稳定读字，不要边读边动');
+    }
+    return t('cameraGazeCalibRhythmPrepare','准备中：先把头姿摆到位，再开始读字');
+  }
   function normalizeCalibMode(mode){
     return mode==='fine'?'fine':'fast';
   }
@@ -156,8 +176,22 @@
   var WEAK_WEIGHT_LOCK=0.30;
   var WEAK_HOVER_ENABLED=false;
   var weakClickEnabled=false; // default off — opt-in via UI
+  var APPLY_CONF_GATE_MIN=0.42;
+  var APPLY_CONF_GATE_MIN_STALE=0.5;
+  var MONITOR_TOPOLOGY_REFRESH_MS=8000;
 
   var model=null; // {betaX,betaY,rmse,vw,vh,lowQuality,stale,kind:'ridge',deviceId,resKey}
+  var modelProfileStore=null; // schemaVersion=2 store (legacy + profilesByMonitor)
+  var activeProfileKey='legacy';
+  var activeProfileMeta={source:'legacy'};
+var activeProfileSwitchedAt=0;
+  var routeState={
+    topology:null,
+    topologyAt:0,
+    refreshInFlight:false,
+    lastRefreshErrAt:0
+  };
+  var metrics=createCalibrationMetrics();
   var running=false;
   var cancelled=false;
   var sampleBuf=[];
@@ -181,6 +215,166 @@
   var weakClickBound=false;
   var calibPoseRef=null; // {yaw,pitch} from center sample
   var lastSampleFailReason='';
+
+  function createCalibrationMetrics(){
+    return {
+      startedAt:Date.now(),
+      samplesByTarget:{},
+      looByKind:{},
+      latestBuild:null,
+      apply:{
+        calls:0,
+        fallbackCounts:{},
+        coarseGateCount:0,
+        lowConfidenceCount:0,
+        staleGateCount:0,
+        lowQualityGateCount:0
+      }
+    };
+  }
+
+  function cloneJsonSafe(v){
+    try{ return JSON.parse(JSON.stringify(v)); }catch(_){ return null; }
+  }
+
+  function getMetricsSnapshot(){
+    return cloneJsonSafe(metrics)||createCalibrationMetrics();
+  }
+
+  function ensureTargetMetric(targetId){
+    var id=String(targetId||'unknown');
+    var map=metrics.samplesByTarget;
+    if(!map[id]){
+      map[id]={
+        attempts:0,
+        success:0,
+        fail:0,
+        reasons:{},
+        lastReason:'',
+        avgConfidence:0,
+        unstableCount:0,
+        lowConfidenceCount:0
+      };
+    }
+    return map[id];
+  }
+
+  function recordTargetSampleMetric(targetId,res){
+    var m=ensureTargetMetric(targetId);
+    m.attempts++;
+    if(res&&res.ok){
+      m.success++;
+      if(isFinite(Number(res.avgConf))){
+        var c=Number(res.avgConf);
+        var n=Math.max(1,m.success);
+        m.avgConfidence=((m.avgConfidence*(n-1))+c)/n;
+      }
+      m.lastReason='';
+      return;
+    }
+    m.fail++;
+    var reason=String(res&&res.reason||'unknown');
+    m.lastReason=reason;
+    m.reasons[reason]=(m.reasons[reason]||0)+1;
+    if(reason==='unstable') m.unstableCount++;
+    if(reason==='low-confidence') m.lowConfidenceCount++;
+  }
+
+  function recordLooMetrics(kind, errors, scored){
+    if(!metrics.looByKind) metrics.looByKind={};
+    var k=String(kind||'idw');
+    var list=Array.isArray(errors)?errors:[];
+    var worst={targetId:'',errorPx:0};
+    for(var i=0;i<list.length;i++){
+      var e=list[i];
+      if(!e||!isFinite(Number(e.errorPx))) continue;
+      if(Number(e.errorPx)>worst.errorPx){
+        worst={targetId:String(e.targetId||''),errorPx:Number(e.errorPx)};
+      }
+    }
+    metrics.looByKind[k]={
+      rmse:isFinite(Number(scored&&scored.rmse))?Number(scored.rmse):null,
+      cornerRmse:isFinite(Number(scored&&scored.cornerRmse))?Number(scored.cornerRmse):null,
+      worstTarget:worst.targetId||null,
+      worstErrorPx:worst.errorPx||null,
+      sampleCount:list.length|0,
+      updatedAt:Date.now()
+    };
+  }
+
+  function bumpApplyMetric(name){
+    var map=metrics.apply.fallbackCounts;
+    map[name]=(map[name]||0)+1;
+  }
+
+  function monitorTopologyApi(){
+    return global.OneToneCameraGazeMonitorTopology||null;
+  }
+
+  function monitorFingerprintFallback(){
+    return [
+      'fp',
+      Number(global.screenX)||0,
+      Number(global.screenY)||0,
+      Number(global.innerWidth)||0,
+      Number(global.innerHeight)||0,
+      Number(global.devicePixelRatio||1).toFixed(3)
+    ].join('|');
+  }
+
+  function monitorProfileKeyFromMonitor(m){
+    if(!m) return '';
+    return [
+      String(m.id||'monitor'),
+      String((Number(m.width)||0)|0)+'x'+String((Number(m.height)||0)|0),
+      Number(m.scaleFactor||1).toFixed(3)
+    ].join('|');
+  }
+
+  function refreshMonitorTopologyAsync(force){
+    var now=Date.now();
+    if(routeState.refreshInFlight) return;
+    if(!force&&routeState.topology&&(now-routeState.topologyAt)<MONITOR_TOPOLOGY_REFRESH_MS) return;
+    var topo=monitorTopologyApi();
+    if(!topo||!topo.listMonitors) return;
+    routeState.refreshInFlight=true;
+    topo.listMonitors({screenCount:3}).then(function(res){
+      routeState.topology=res||null;
+      routeState.topologyAt=Date.now();
+    }).catch(function(){
+      routeState.lastRefreshErrAt=Date.now();
+    }).then(function(){
+      routeState.refreshInFlight=false;
+    });
+  }
+
+  function resolveMonitorRouteKey(){
+    refreshMonitorTopologyAsync(false);
+    var topo=routeState.topology;
+    var monitor=null;
+    if(topo){
+      try{
+        var x=(Number(global.screenX)||0)+Math.round((Number(global.innerWidth)||0)/2);
+        var y=(Number(global.screenY)||0)+Math.round((Number(global.innerHeight)||0)/2);
+        var api=monitorTopologyApi();
+        if(api&&api.getMonitorForPoint){
+          monitor=api.getMonitorForPoint(topo,x,y);
+        }
+      }catch(_){}
+    }
+    if(monitor){
+      return {
+        key:monitorProfileKeyFromMonitor(monitor),
+        source:'topology',
+        monitorId:String(monitor.id||'')
+      };
+    }
+    return {
+      key:monitorFingerprintFallback(),
+      source:'fingerprint',
+      monitorId:''
+    };
+  }
 
   function resetRuntimeSmoothers(){
     featSmooth=null;
@@ -1597,6 +1791,7 @@
   function logKindLooErrors(kind,prep){
     var scored=evalKindWeightedLooRmse(kind,prep.pairs,prep.anchors,prep.scaler);
     var errors=scored.errors||[];
+    recordLooMetrics(kind, errors, scored);
     for(var i=0;i<errors.length;i++){
       calibLog('LOO '+kind+' point '+errors[i].targetId+' err='+Math.round(errors[i].errorPx)+'px');
     }
@@ -1686,6 +1881,16 @@
     }
     calibLog('model pick kind='+kind+' idwLoo='+Math.round(idwLoo)+' ridgeLoo='+Math.round(ridgeLoo)+' gridLoo='+Math.round(gridLoo));
     var thr=rmseThreshold();
+    metrics.latestBuild={
+      at:Date.now(),
+      kind:kind,
+      idwLoo:idwLoo<1e8?Number(idwLoo):null,
+      ridgeLoo:ridgeLoo<1e8?Number(ridgeLoo):null,
+      gridLoo:gridLoo<1e8?Number(gridLoo):null,
+      rmse:isFinite(Number(rmse))?Number(rmse):null,
+      threshold:Number(thr),
+      lowQuality:!!(calibrationValidation?calibrationValidation.quality==='poor':rmse>thr)
+    };
     return stampModelFingerprint({
       anchors:prep.anchors,
       scaler:prep.scaler,
@@ -1791,6 +1996,7 @@
   }
 
   function weakWeightForSource(source){
+    if(source==='confirmed') return 0.36;
     if(source==='lock') return WEAK_WEIGHT_LOCK;
     if(source==='hover') return 0.12;
     return WEAK_WEIGHT_CLICK;
@@ -1840,7 +2046,7 @@
     var nx=raw.nx!=null?clamp01(raw.nx):clamp01(cx/vw);
     var ny=raw.ny!=null?clamp01(raw.ny):clamp01(cy/vh);
     var source=String(raw.source||'click');
-    if(source!=='click'&&source!=='lock'&&source!=='hover') source='click';
+    if(source!=='click'&&source!=='lock'&&source!=='hover'&&source!=='confirmed') source='click';
     var weight=raw.weight!=null?Number(raw.weight):weakWeightForSource(source);
     if(!isFinite(weight)||weight<=0) weight=weakWeightForSource(source);
     weight=clamp(weight,0.05,0.5);
@@ -1898,7 +2104,7 @@
     model.weakSampleCount=weakSamples.length;
     model.continuousUpdatedAt=Date.now();
     model.savedAt=Date.now();
-    persistGazeCalibrationSnapshot(serializeModel(model));
+    persistCurrentCalibrationStore();
     resetRuntimeSmoothers();
     calibLog('weak refit samples='+weakSamples.length+' (formal anchors unchanged)');
     return true;
@@ -1921,8 +2127,12 @@
     if(running||!hasFormalCalibrationModel()) return false;
     if(!isPreviewLiveForWeak()) return false;
     if(source==='hover'&&!WEAK_HOVER_ENABLED) return false;
+    if(model&&model.stale) return false;
+    if(model&&model.lowQuality) return false;
+    if(activeProfileSwitchedAt&&Date.now()-activeProfileSwitchedAt<2500) return false;
+    if(activeProfileMeta&&activeProfileMeta.source==='fingerprint'&&source!=='lock') return false;
     var now=Date.now();
-    var minGap=source==='hover'?2500:(source==='lock'?WEAK_MIN_INTERVAL_LOCK_MS:WEAK_MIN_INTERVAL_CLICK_MS);
+    var minGap=source==='hover'?2500:(source==='lock'?WEAK_MIN_INTERVAL_LOCK_MS:(source==='confirmed'?300:WEAK_MIN_INTERVAL_CLICK_MS));
     if(now-weakLastSampleAt<minGap) return false;
     var point=lastRaw;
     var lm=global.OneToneCameraGazeLandmarker;
@@ -2059,6 +2269,121 @@
     if(fp.deviceId) m.deviceId=fp.deviceId;
     if(fp.resKey) m.resKey=fp.resKey;
     return m;
+  }
+
+  function emptyProfileStore(){
+    return {
+      schemaVersion:2,
+      activeProfileKey:'legacy',
+      legacyProfile:null,
+      profilesByMonitor:{}
+    };
+  }
+
+  function cloneProfilesMap(raw){
+    var out={};
+    if(!raw||typeof raw!=='object') return out;
+    var keys=Object.keys(raw);
+    for(var i=0;i<keys.length;i++){
+      var key=String(keys[i]||'');
+      var snap=raw[key];
+      if(snap&&snap.anchors&&snap.anchors.length) out[key]=snap;
+    }
+    return out;
+  }
+
+  function normalizeProfileStoreSnapshot(saved){
+    if(!saved||typeof saved!=='object') return emptyProfileStore();
+    if(saved.schemaVersion===2){
+      var legacy=saved.legacyProfile&&saved.legacyProfile.anchors?saved.legacyProfile:null;
+      var profiles=cloneProfilesMap(saved.profilesByMonitor);
+      var active=String(saved.activeProfileKey||'').trim()||'legacy';
+      if(active!=='legacy'&&!profiles[active]) active='legacy';
+      return {
+        schemaVersion:2,
+        activeProfileKey:active,
+        legacyProfile:legacy,
+        profilesByMonitor:profiles
+      };
+    }
+    // Legacy single-model snapshot.
+    if(saved.anchors&&saved.anchors.length){
+      return {
+        schemaVersion:2,
+        activeProfileKey:'legacy',
+        legacyProfile:saved,
+        profilesByMonitor:{}
+      };
+    }
+    return emptyProfileStore();
+  }
+
+  function activeModelSnapshot(){
+    return model?serializeModel(model):null;
+  }
+
+  function saveActiveModelToProfile(route){
+    if(!model) return;
+    if(!modelProfileStore) modelProfileStore=emptyProfileStore();
+    var snap=activeModelSnapshot();
+    if(!snap) return;
+    modelProfileStore.legacyProfile=snap;
+    if(route&&route.key){
+      modelProfileStore.profilesByMonitor[route.key]=snap;
+      modelProfileStore.activeProfileKey=route.key;
+      activeProfileKey=route.key;
+      activeProfileMeta={source:route.source||'fingerprint'};
+    }else{
+      modelProfileStore.activeProfileKey='legacy';
+      activeProfileKey='legacy';
+      activeProfileMeta={source:'legacy'};
+    }
+  }
+
+  function persistCurrentCalibrationStore(opts){
+    opts=opts&&typeof opts==='object'?opts:{};
+    if(opts.clear){
+      modelProfileStore=emptyProfileStore();
+      activeProfileKey='legacy';
+      activeProfileMeta={source:'legacy'};
+      persistGazeCalibrationSnapshot(null);
+      return;
+    }
+    if(!modelProfileStore) modelProfileStore=emptyProfileStore();
+    var route=resolveMonitorRouteKey();
+    saveActiveModelToProfile(route);
+    persistGazeCalibrationSnapshot({
+      schemaVersion:2,
+      activeProfileKey:modelProfileStore.activeProfileKey||'legacy',
+      legacyProfile:modelProfileStore.legacyProfile||null,
+      profilesByMonitor:modelProfileStore.profilesByMonitor||{}
+    });
+  }
+
+  function maybeSwitchModelProfile(route){
+    if(!modelProfileStore) return;
+    var target=route&&route.key?String(route.key):'';
+    var source=route&&route.source?String(route.source):'legacy';
+    if(!target){
+      activeProfileKey='legacy';
+      activeProfileMeta={source:'legacy'};
+      return;
+    }
+    if(activeProfileKey===target) return;
+    var snap=modelProfileStore.profilesByMonitor&&modelProfileStore.profilesByMonitor[target];
+    if(!snap){
+      // No monitor-specific profile yet — keep current model, only mark route source.
+      activeProfileMeta={source:source};
+      return;
+    }
+    var next=deserializeModel(snap);
+    if(!next) return;
+    model=next;
+    activeProfileSwitchedAt=Date.now();
+    activeProfileKey=target;
+    activeProfileMeta={source:source};
+    modelProfileStore.activeProfileKey=target;
+    resetRuntimeSmoothers();
   }
 
   function serializeModel(m){
@@ -2204,19 +2529,42 @@
     if(running) return false;
     var prefs=getCameraPrefsRef();
     var saved=prefs&&prefs.gazeCalibration;
-    if(model&&model.savedAt){
+    modelProfileStore=normalizeProfileStoreSnapshot(saved);
+    var route=resolveMonitorRouteKey();
+    var routeKey=route&&route.key?route.key:'';
+    var preferred=null;
+    if(routeKey&&modelProfileStore.profilesByMonitor&&modelProfileStore.profilesByMonitor[routeKey]){
+      preferred=modelProfileStore.profilesByMonitor[routeKey];
+      modelProfileStore.activeProfileKey=routeKey;
+      activeProfileKey=routeKey;
+      activeProfileMeta={source:route.source||'topology'};
+    }else if(modelProfileStore.activeProfileKey&&modelProfileStore.activeProfileKey!=='legacy'
+      &&modelProfileStore.profilesByMonitor[modelProfileStore.activeProfileKey]){
+      preferred=modelProfileStore.profilesByMonitor[modelProfileStore.activeProfileKey];
+      activeProfileKey=modelProfileStore.activeProfileKey;
+      activeProfileMeta={source:'stored-active'};
+    }else{
+      preferred=modelProfileStore.legacyProfile;
+      activeProfileKey='legacy';
+      activeProfileMeta={source:'legacy'};
+      if(routeKey&&preferred&&preferred.anchors&&preferred.anchors.length&&!modelProfileStore.profilesByMonitor[routeKey]){
+        // Lazy migrate legacy profile into current monitor bucket.
+        modelProfileStore.profilesByMonitor[routeKey]=preferred;
+      }
+    }
+    if(model&&model.savedAt&&preferred){
       var memAt=Number(model.savedAt)||0;
-      var prefAt=saved&&saved.savedAt?Number(saved.savedAt):0;
-      if(!saved||!saved.anchors||!saved.anchors.length||memAt>=prefAt){
+      var prefAt=preferred&&preferred.savedAt?Number(preferred.savedAt):0;
+      if(memAt>=prefAt){
         syncUiFromModel();
         return false;
       }
     }
-    if(!saved||!saved.anchors||!saved.anchors.length){
+    if(!preferred||!preferred.anchors||!preferred.anchors.length){
       syncUiFromModel();
       return false;
     }
-    var restored=deserializeModel(saved);
+    var restored=deserializeModel(preferred);
     if(!restored){
       syncUiFromModel();
       return false;
@@ -2323,7 +2671,14 @@
       weakSampleCount:model?model.weakSampleCount:null,
       anchorCount:model&&model.anchors?model.anchors.length:0,
       statusKind:statusKind,
-      lastRaw:lastRaw
+      lastRaw:lastRaw,
+      monitorProfileKey:activeProfileKey||'legacy',
+      monitorProfileSource:activeProfileMeta&&activeProfileMeta.source?activeProfileMeta.source:'legacy',
+      profileSchemaVersion:modelProfileStore&&modelProfileStore.schemaVersion||1,
+      profileCount:modelProfileStore&&modelProfileStore.profilesByMonitor
+        ?Object.keys(modelProfileStore.profilesByMonitor).length
+        :0,
+      metrics:metrics
     };
   }
 
@@ -2400,7 +2755,7 @@
     }
     model.stale=true;
     if(reason) model.staleReason=String(reason);
-    persistGazeCalibrationSnapshot(serializeModel(model));
+    persistCurrentCalibrationStore();
     if(!running){
       setStatusKind('stale');
       syncUiFromModel();
@@ -2544,6 +2899,25 @@
     return {cx:cx,cy:cy};
   }
 
+  function shouldCoarseGateOutput(outConf, fallback){
+    if(model&&model.stale&&outConf<APPLY_CONF_GATE_MIN_STALE){
+      metrics.apply.staleGateCount++;
+      return true;
+    }
+    if(model&&model.lowQuality&&outConf<APPLY_CONF_GATE_MIN_STALE){
+      metrics.apply.lowQualityGateCount++;
+      return true;
+    }
+    if(fallback==='raw'){
+      return true;
+    }
+    if(outConf<APPLY_CONF_GATE_MIN){
+      metrics.apply.lowConfidenceCount++;
+      return true;
+    }
+    return false;
+  }
+
   function apply(rawPoint){
     var raw=rawPoint&&typeof rawPoint==='object'?rawPoint:{};
     var rx=clamp01(raw.x!=null?raw.x:0.5);
@@ -2564,6 +2938,9 @@
     // Strict: use stored model.kind only — never upgrade to grid at runtime.
     var kind=model.kind||'idw';
     var fallback=null;
+    metrics.apply.calls++;
+    var route=resolveMonitorRouteKey();
+    maybeSwitchModelProfile(route);
     var pred=predictWithKind(kind,feats,rx,ry,ext,model,vw,vh);
     if(!pred&&kind!=='ridge'){
       pred=predictWithKind('ridge',feats,rx,ry,ext,model,vw,vh);
@@ -2618,6 +2995,17 @@
     clampedX=outNx*vw;
     clampedY=outNy*vh;
     var regionZone=snapped.zone;
+    if(fallback) bumpApplyMetric(fallback);
+    var coarseOnly=shouldCoarseGateOutput(outConf, fallback);
+    if(coarseOnly){
+      var center=regionCenterNorm(regionZone);
+      outNx=center.x;
+      outNy=center.y;
+      clampedX=outNx*vw;
+      clampedY=outNy*vh;
+      metrics.apply.coarseGateCount++;
+      bumpApplyMetric('coarse-gate');
+    }
     return {
       x:outNx,
       y:outNy,
@@ -2634,6 +3022,9 @@
       regionLabel:regionZoneLabel(regionZone),
       applyKind:kind,
       applyFallback:fallback,
+      coarseOnly:coarseOnly,
+      monitorProfileKey:activeProfileKey||'legacy',
+      monitorProfileSource:activeProfileMeta&&activeProfileMeta.source?activeProfileMeta.source:'legacy',
       feats:normalizeFeats(feats)
     };
   }
@@ -2737,6 +3128,11 @@
     var confSum=0;
     for(var i=0;i<sampleBuf.length;i++) confSum+=sampleBuf[i].confidence;
     var avgConf=confSum/sampleBuf.length;
+    var confNeed=corner?(relaxed?0.50:0.56):(relaxed?0.42:0.48);
+    if(avgConf<confNeed){
+      lastSampleFailReason='low-confidence';
+      return {ok:false,reason:'low-confidence',avgConf:avgConf,needConf:confNeed,count:sampleBuf.length};
+    }
     var vw=global.innerWidth||1;
     var vh=global.innerHeight||1;
     var fix=fixation||currentFixation;
@@ -2777,7 +3173,8 @@
       targetId:target.id||'',
       cx:fix.cx,
       cy:fix.cy,
-      weight:clamp(weight,0.4,1.8)
+      weight:clamp(weight,0.4,1.8),
+      avgConf:avgConf
     };
     if(sample.targetId==='center'){
       calibPoseRef={yaw:Number(feats[4])||0,pitch:Number(feats[5])||0};
@@ -2804,6 +3201,7 @@
 
   function waitAndSampleOnce(target,pointIndex,attempt,gen,collectedCount){
     var readText=pickKaraokeForTarget(target);
+    var actionCue=targetActionCue(target&&target.id);
     var prepareSec=prepareDurationForTarget(target);
     var sampleSec=sampleDurationForTarget(target);
     var totalSec=prepareSec+sampleSec;
@@ -2832,7 +3230,7 @@
     }
     function paintUi(extra){
       var o={
-        title:'',
+        title:actionCue+' · '+phaseRhythmCue('prepare'),
         subtitle:pointLabel,
         phase:'prepare',
         karaokeP:0
@@ -2842,6 +3240,7 @@
           if(Object.prototype.hasOwnProperty.call(extra,k)) o[k]=extra[k];
         }
       }
+      o.title=actionCue+' · '+phaseRhythmCue(o.phase||'prepare');
       // Paint karaoke line once per point; ticks only update fill progress.
       if(o.read==null&&!paintUi._linePainted){
         o.read=readText;
@@ -2920,6 +3319,17 @@
     var limit=maxAttempts!=null?maxAttempts:maxAttemptsForTarget(target&&target.id);
     function tryAttempt(attempt){
       return waitAndSampleOnce(target,pointIndex,attempt,gen,collectedCount).then(function(res){
+        recordTargetSampleMetric(target&&target.id,res);
+        if(res&&res.ok!==true&&isCriticalCorner(target&&target.id)){
+          var reason=String(res.reason||'');
+          if(reason==='low-confidence'){
+            toastLite(t('cameraGazeCalibCornerLowConf','角落点置信度偏低，建议稍停稳后重试'));
+          }else if(reason==='unstable'){
+            toastLite(t('cameraGazeCalibCornerUnstable','角落点抖动较大，建议减小头部移动再读'));
+          }else if(reason==='yaw-right'||reason==='yaw-left'||reason==='pitch-up'||reason==='pitch-down'){
+            toastLite(poseFailHint(reason));
+          }
+        }
         if(!res||res.ok||cancelled||!running||gen!==calibGen) return res;
         if(attempt<limit-1) return tryAttempt(attempt+1);
         return res;
@@ -3102,7 +3512,7 @@
         built.calibMode=currentCalibMode==='fine'?'fine':'fast';
         resetRuntimeSmoothers();
         model=built;
-        persistGazeCalibrationSnapshot(serializeModel(model));
+        persistCurrentCalibrationStore();
         setOverlayVisible(false);
         setCalibrationUi({countdown:'',phase:'idle'});
         setStatusKind(built.lowQuality?'low':'ready');
@@ -3414,7 +3824,7 @@
     weakLastSampleAt=0;
     model=null;
     resetRuntimeSmoothers();
-    persistGazeCalibrationSnapshot(null);
+    persistCurrentCalibrationStore({clear:true});
     setStatusKind('idle');
     updateCalibWarnings();
     notifyPreviewCalibrated();
@@ -3561,7 +3971,9 @@
     tryAddWeakSample:tryAddWeakSample,
     regionZoneFromNorm:regionZoneFromNorm,
     regionZoneLabel:regionZoneLabel,
-    regionCenterNorm:regionCenterNorm
+    regionCenterNorm:regionCenterNorm,
+    getMetrics:getMetricsSnapshot,
+    _debugResolveMonitorRouteKey:resolveMonitorRouteKey
   };
 
   if(document.readyState==='loading'){

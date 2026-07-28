@@ -72,7 +72,13 @@ assert.strictEqual(derived.triggers.blink,false);
 assert.strictEqual(derived.onAway,'privacyScreen');
 assert.strictEqual(derived.shakeHead,'pressEsc');
 
-// Explicit triggers win even when actions are none (recognize without binding).
+// normalizePrefs duration defaults
+var durationNorm=Api.normalizePrefs({awayMs:99999,presentMs:100});
+assert.strictEqual(durationNorm.awayMs,30000,'awayMs clamped to max');
+assert.strictEqual(durationNorm.presentMs,500,'presentMs clamped to min');
+assert.strictEqual(Api.awayThresholdMs({awayMs:5000}),5000);
+assert.strictEqual(Api.presentThresholdMs({presentMs:2000}),2000);
+
 var keepTrig=Api.normalizePrefs({
   enabled:true,
   triggers:{away:true,shake:false,blink:true},

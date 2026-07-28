@@ -642,7 +642,18 @@
 
   function readCalibLabel(){
     var el=$('cameraGazeCalibrationStatus');
-    if(el&&el.textContent) return el.textContent.trim();
+    if(el&&el.textContent){
+      var base=el.textContent.trim();
+      var cal=calibrationApi();
+      if(cal&&cal.getState){
+        var st=cal.getState();
+        var m=st&&st.metrics&&st.metrics.apply?st.metrics.apply:null;
+        if(m&&m.coarseGateCount>0){
+          base+=' · '+t('cameraGazeCoarseGateHint','低置信回退')+' '+m.coarseGateCount;
+        }
+      }
+      return base;
+    }
     var glance=$('cameraGlanceCalib');
     if(glance&&glance.textContent) return glance.textContent.trim();
     return t('cameraGlanceCalibIdle','未开始');

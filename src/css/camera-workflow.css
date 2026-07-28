@@ -440,6 +440,28 @@
   padding:0 10px;
 }
 
+.camera-presence-duration-row{
+  justify-content:flex-end;
+  gap:8px;
+}
+.camera-presence-duration-lbl{
+  font-size:11px;
+  font-weight:700;
+  color:var(--on-surface-muted);
+  white-space:nowrap;
+}
+.camera-presence-duration-select{
+  min-width:96px;
+  min-height:30px;
+  border:1px solid var(--outline-variant);
+  border-radius:10px;
+  background:var(--surface);
+  color:var(--on-surface);
+  font-size:12px;
+  font-weight:700;
+  padding:0 10px;
+}
+
 .camera-rule-row-extra{
   grid-column:1 / -1;
   display:flex;

@@ -17,8 +17,10 @@
     return fallback!=null?fallback:key;
   };
 
-  var AWAY_MS=3000;
-  var PRESENT_MS=1000;
+  var DEFAULT_AWAY_MS=3000;
+  var DEFAULT_PRESENT_MS=1000;
+  var AWAY_DURATION_OPTS=[1000,2000,3000,5000,10000,15000,30000,60000];
+  var PRESENT_DURATION_OPTS=[500,1000,2000,3000,5000];
   // Yaw bins for coarse L/C/R display (landmark yaw ~±1).
   var YAW_LEFT=-0.12;
   var YAW_RIGHT=0.12;
@@ -203,6 +205,42 @@
     return global.OneToneState&&global.OneToneState.state?global.OneToneState.state:{};
   }
 
+  function clampPresenceMs(raw,kind){
+    var n=Math.round(Number(raw));
+    if(!isFinite(n)||n<=0){
+      return kind==='present'?DEFAULT_PRESENT_MS:DEFAULT_AWAY_MS;
+    }
+    if(kind==='present') return Math.max(500,Math.min(10000,n));
+    return Math.max(1000,Math.min(30000,n));
+  }
+
+  function awayThresholdMs(p){
+    var pa=p&&typeof p==='object'?p:prefs();
+    return clampPresenceMs(pa.awayMs!=null?pa.awayMs:pa.away_ms,'away');
+  }
+
+  function presentThresholdMs(p){
+    var pa=p&&typeof p==='object'?p:prefs();
+    return clampPresenceMs(pa.presentMs!=null?pa.presentMs:pa.present_ms,'present');
+  }
+
+  function formatPresenceDurationLabel(ms){
+    var n=Number(ms);
+    if(!isFinite(n)||n<=0) return '—';
+    if(n<1000) return String(n)+' ms';
+
+    var sec=n/1000;
+    // If exact minutes (e.g. 60000ms), show "1 分钟" instead of "60 秒".
+    if(sec>=60 && Math.abs(sec/60-Math.round(sec/60))<0.001){
+      var mins=Math.round(sec/60);
+      return mins+' '+t('cameraPresenceDurationMin','分钟');
+    }
+    var unit=t('cameraPresenceDurationSec','秒');
+    var rounded=Math.round(sec);
+    if(Math.abs(sec-rounded)<0.001) return rounded+' '+unit;
+    return sec.toFixed(1).replace(/\.0$/,'')+' '+unit;
+  }
+
   function defaultPresencePrefs(){
     return {
       enabled:false,
@@ -217,7 +255,9 @@
       openPalm:'none',
       okHand:'none',
       fist:'none',
-      wave:'none'
+      wave:'none',
+      awayMs:DEFAULT_AWAY_MS,
+      presentMs:DEFAULT_PRESENT_MS
     };
   }
 
@@ -282,7 +322,9 @@
       openPalm:openPalm,
       okHand:okHand,
       fist:fist,
-      wave:wave
+      wave:wave,
+      awayMs:clampPresenceMs(raw.awayMs!=null?raw.awayMs:raw.away_ms,'away'),
+      presentMs:clampPresenceMs(raw.presentMs!=null?raw.presentMs:raw.present_ms,'present')
     };
   }
 
@@ -734,6 +776,8 @@
     if(partial.okHand!=null) cur.okHand=normalizeAction(partial.okHand);
     if(partial.fist!=null) cur.fist=normalizeAction(partial.fist);
     if(partial.wave!=null) cur.wave=normalizeAction(partial.wave);
+    if(partial.awayMs!=null) cur.awayMs=clampPresenceMs(partial.awayMs,'away');
+    if(partial.presentMs!=null) cur.presentMs=clampPresenceMs(partial.presentMs,'present');
     if(hasTriggers){
       cur.triggers=normalizeTriggers(Object.assign({},cur.triggers,partial.triggers),cur);
     }else if(hasAction){
@@ -2122,7 +2166,7 @@
       st.faceFalseSince=0;
       st.presentDurationMs=now-st.faceTrueSince;
       st.absentDurationMs=0;
-      if(st.presentDurationMs>=PRESENT_MS){
+      if(st.presentDurationMs>=presentThresholdMs()){
         transitionPresence('present',now);
       }
     }else{
@@ -2130,7 +2174,7 @@
       st.faceTrueSince=0;
       st.absentDurationMs=now-st.faceFalseSince;
       st.presentDurationMs=0;
-      if(st.absentDurationMs>=AWAY_MS){
+      if(st.absentDurationMs>=awayThresholdMs()){
         transitionPresence('away',now);
       }
     }
@@ -2409,6 +2453,45 @@
     }
   }
 
+  function ensureDurationSelect(key,ms,opts){
+    var row=document.querySelector('#cameraPresenceConfig [data-camera-duration-key="'+key+'"]');
+    if(!row) return;
+    var sel=row.querySelector('select[data-presence-duration]');
+    if(!sel) return;
+    var options=opts||[];
+    var cur=clampPresenceMs(ms,key==='presentMs'?'present':'away');
+    var readyKey=key+'|'+options.join(',');
+    if(sel.getAttribute('data-select-ready')!==readyKey){
+      sel.setAttribute('data-select-ready',readyKey);
+      sel.setAttribute('data-presence-duration',key);
+      sel.innerHTML='';
+      for(var i=0;i<options.length;i++){
+        var option=document.createElement('option');
+        option.value=String(options[i]);
+        option.textContent=formatPresenceDurationLabel(options[i]);
+        sel.appendChild(option);
+      }
+    }
+    if(String(sel.value)!==String(cur)) sel.value=String(cur);
+  }
+
+  function syncPresenceDurationUi(p){
+    ensureDurationSelect('awayMs',p.awayMs,AWAY_DURATION_OPTS);
+    ensureDurationSelect('presentMs',p.presentMs,PRESENT_DURATION_OPTS);
+    var awayDesc=document.querySelector('#cameraBindRowAway .camera-card-desc');
+    if(awayDesc){
+      awayDesc.textContent=t('cameraCardAwayDescDynamic','人脸消失约 {duration} 视为离席。')
+        .replace('{duration}',formatPresenceDurationLabel(p.awayMs));
+      awayDesc.title=awayDesc.textContent;
+    }
+    var returnDesc=document.querySelector('#cameraBindRowReturn .camera-card-desc');
+    if(returnDesc){
+      returnDesc.textContent=t('cameraCardReturnDescDynamic','与离席共用识别开关；人脸回到画面约 {duration} 视为回席。')
+        .replace('{duration}',formatPresenceDurationLabel(p.presentMs));
+      returnDesc.title=returnDesc.textContent;
+    }
+  }
+
   function setSwitchState(el,on){
     if(!el) return;
     el.classList.toggle('is-on',!!on);
@@ -2660,6 +2743,7 @@
       ensureActionTiles(document.querySelector('#cameraPresenceBindList [data-camera-bind-key="shakeHead"]'),'shakeHead',p.shakeHead);
       ensureActionTiles(document.querySelector('#cameraPresenceBindList [data-camera-bind-key="deliberateBlink"]'),'deliberateBlink',p.deliberateBlink);
       syncTriggerSummaries(p);
+      syncPresenceDurationUi(p);
       syncBlinkBaselineUi();
       syncMasterLockUi();
       // Basic rules stay on Visual recognition; Pro hand rules live under Pro · Gesture.
@@ -2826,6 +2910,16 @@
 
     function onRulesChange(e){
       if(st.uiSyncing) return;
+      var durSel=e.target&&e.target.closest?e.target.closest('select[data-presence-duration]'):null;
+      if(durSel){
+        var durKey=String(durSel.getAttribute('data-presence-duration')||'');
+        if(durKey==='awayMs'||durKey==='presentMs'){
+          var patch={};
+          patch[durKey]=clampPresenceMs(durSel.value,durKey==='presentMs'?'present':'away');
+          persistPresencePrefs(patch);
+        }
+        return;
+      }
       var sel=e.target&&e.target.closest?e.target.closest('select.camera-action-select'):null;
       if(!sel) return;
       var key=String(sel.getAttribute('data-camera-action-for')||'');
@@ -2978,8 +3072,12 @@
     },
     _testSetLastKeyAt:function(ms){ st.lastKeyAt=Number(ms)||0; },
     MID_RISK_DELAY_MS:MID_RISK_DELAY_MS,
-    AWAY_MS:AWAY_MS,
-    PRESENT_MS:PRESENT_MS,
+    DEFAULT_AWAY_MS:DEFAULT_AWAY_MS,
+    DEFAULT_PRESENT_MS:DEFAULT_PRESENT_MS,
+    awayThresholdMs:awayThresholdMs,
+    presentThresholdMs:presentThresholdMs,
+    AWAY_MS:DEFAULT_AWAY_MS,
+    PRESENT_MS:DEFAULT_PRESENT_MS,
     DETECT_PRESENT_MS:DETECT_PRESENT_MS,
     DETECT_AWAY_MS:DETECT_AWAY_MS
   };

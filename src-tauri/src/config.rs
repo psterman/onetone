@@ -1397,6 +1397,14 @@ fn default_presence_action_none() -> String {
     "none".into()
 }
 
+fn default_presence_away_ms() -> u32 {
+    3000
+}
+
+fn default_presence_present_ms() -> u32 {
+    1000
+}
+
 /// Independent recognition toggles — must persist separately from action bindings.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
@@ -1441,6 +1449,10 @@ pub struct PresenceActionsPrefs {
     pub fist: String,
     #[serde(default = "default_presence_action_none")]
     pub wave: String,
+    #[serde(default = "default_presence_away_ms")]
+    pub away_ms: u32,
+    #[serde(default = "default_presence_present_ms")]
+    pub present_ms: u32,
 }
 
 impl Default for PresenceActionsPrefs {
@@ -1456,6 +1468,8 @@ impl Default for PresenceActionsPrefs {
             ok_hand: default_presence_action_none(),
             fist: default_presence_action_none(),
             wave: default_presence_action_none(),
+            away_ms: default_presence_away_ms(),
+            present_ms: default_presence_present_ms(),
         }
     }
 }

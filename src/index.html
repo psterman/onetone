@@ -2500,22 +2500,30 @@
                           <button type="button" class="toggle-switch" id="cameraTriggerToggleAway" data-camera-trigger-toggle="away" role="switch" aria-checked="false" aria-label="离席回席"></button>
                           <div class="camera-rule-row-text">
                             <div class="camera-card-title" data-i18n="cameraCardAwayTitle">离席</div>
-                            <div class="camera-card-desc" data-i18n="cameraCardAwayDesc" title="人脸消失约 3 秒视为离席。">人脸消失约 3 秒视为离席。</div>
+                            <div class="camera-card-desc" data-i18n="cameraCardAwayDesc" title="人脸消失达到设定时长视为离席。">人脸消失达到设定时长视为离席。</div>
                           </div>
                         </div>
                         <p class="camera-bind-summary" id="cameraTriggerSummaryAway" hidden>尚未绑定结果</p>
                         <select class="camera-action-select" data-camera-action-for="onAway" aria-label="离席动作"></select>
+                        <div class="camera-rule-row-extra camera-presence-duration-row" data-camera-duration-key="awayMs">
+                          <label class="camera-presence-duration-lbl" for="cameraAwayDurationSelect" data-i18n="cameraPresenceAwayDurationLbl">判定时长</label>
+                          <select class="camera-presence-duration-select" id="cameraAwayDurationSelect" data-presence-duration="awayMs" aria-label="离席判定时长"></select>
+                        </div>
                       </div>
                       <div class="camera-rule-row" data-camera-card="return" data-camera-trigger="return" data-camera-bind-key="onReturn" id="cameraBindRowReturn">
                         <div class="camera-rule-row-main">
                           <span class="camera-rule-row-spacer" aria-hidden="true"></span>
                           <div class="camera-rule-row-text">
                             <div class="camera-card-title" data-i18n="cameraCardReturnTitle">回席 · 跟随离席/回席识别</div>
-                            <div class="camera-card-desc" data-i18n="cameraCardReturnDesc" title="与离席共用识别开关；人脸回到画面约 1 秒视为回席。">与离席共用识别开关；人脸回到画面约 1 秒视为回席。</div>
+                            <div class="camera-card-desc" data-i18n="cameraCardReturnDesc" title="与离席共用识别开关；人脸回到画面达到设定时长视为回席。">与离席共用识别开关；人脸回到画面达到设定时长视为回席。无独立启停。</div>
                           </div>
                         </div>
                         <p class="camera-bind-summary" id="cameraTriggerSummaryReturn" hidden>尚未绑定结果</p>
                         <select class="camera-action-select" data-camera-action-for="onReturn" aria-label="回席动作"></select>
+                        <div class="camera-rule-row-extra camera-presence-duration-row" data-camera-duration-key="presentMs">
+                          <label class="camera-presence-duration-lbl" for="cameraReturnDurationSelect" data-i18n="cameraPresenceReturnDurationLbl">回席判定时长</label>
+                          <select class="camera-presence-duration-select" id="cameraReturnDurationSelect" data-presence-duration="presentMs" aria-label="回席判定时长"></select>
+                        </div>
                       </div>
                       <div class="camera-rule-row" data-camera-card="shake" data-camera-trigger="shake" data-camera-bind-key="shakeHead" id="cameraBindRowShake">
                         <div class="camera-rule-row-main">
