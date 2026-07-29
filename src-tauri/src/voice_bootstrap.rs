@@ -13,6 +13,7 @@
 //! Runtime modules may only start/stop **themselves**; they must not stop peers.
 //! Runtime-only paths never mutate config enabled flags or call save_config.
 
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use tauri::{AppHandle, Manager};
@@ -28,6 +29,29 @@ pub use onetone_logic::voice_reload::DesiredVoiceEngine;
 
 /// Serialize activate across strategy IPC spawn + config watcher to avoid interleaved stop/start.
 static ACTIVATE_LOCK: Mutex<()> = Mutex::new(());
+
+/// Count of async activate jobs spawned from strategy IPC (set before thread acquires ACTIVATE_LOCK).
+static ACTIVATE_ASYNC_PENDING: AtomicUsize = AtomicUsize::new(0);
+
+/// Mark that a background activate was scheduled (FE must wait before draining the next switch).
+pub fn begin_activate_async() {
+    ACTIVATE_ASYNC_PENDING.fetch_add(1, Ordering::SeqCst);
+}
+
+pub fn end_activate_async() {
+    ACTIVATE_ASYNC_PENDING.fetch_sub(1, Ordering::SeqCst);
+}
+
+pub fn activate_busy() -> bool {
+    if ACTIVATE_ASYNC_PENDING.load(Ordering::SeqCst) > 0 {
+        return true;
+    }
+    match ACTIVATE_LOCK.try_lock() {
+        Ok(_guard) => false,
+        Err(std::sync::TryLockError::WouldBlock) => true,
+        Err(std::sync::TryLockError::Poisoned(_)) => true,
+    }
+}
 
 fn voice_reload_snapshot(cfg: &VoiceConfig) -> onetone_logic::voice_reload::VoiceReloadConfig {
     onetone_logic::voice_reload::VoiceReloadConfig {
@@ -862,6 +886,7 @@ pub fn supervisor_status_json(state: &AppState) -> serde_json::Value {
         "activeEngine": engine_label(active),
         "degraded": degraded,
         "degradedReason": degraded_reason,
+        "activateBusy": activate_busy(),
     })
 }
 

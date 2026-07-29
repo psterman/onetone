@@ -54,15 +54,21 @@ pub fn voice_set_listening_strategy(
     );
     // Never block the IPC thread on stop_sync/join or heavy status probes — stopping Vosk
     // while FE awaits this invoke previously wedged the UI (省电假死).
+    // FE must wait for activateBusy=false before finish/drain — early ok alone caused click-storm 无响应.
     let app2 = app.clone();
     let state2 = Arc::clone(state);
     let reason2 = reason.to_string();
-    std::thread::Builder::new()
+    crate::voice_bootstrap::begin_activate_async();
+    let spawn_ok = std::thread::Builder::new()
         .name("voice-strategy-activate".into())
         .spawn(move || {
+            let _end = ActivateAsyncEnd;
             crate::voice_bootstrap::activate_desired_engine(&app2, &state2, &reason2);
-        })
-        .map_err(|e| format!("spawn strategy activate failed: {e}"))?;
+        });
+    if let Err(e) = spawn_ok {
+        crate::voice_bootstrap::end_activate_async();
+        return Err(format!("spawn strategy activate failed: {e}"));
+    }
 
     let supervisor = crate::voice_bootstrap::supervisor_status_json(state);
     Ok(serde_json::json!({
@@ -71,7 +77,15 @@ pub fn voice_set_listening_strategy(
         "engine": supervisor.get("desiredEngine").cloned().unwrap_or(serde_json::json!("none")),
         "supervisor": supervisor,
         "activateAsync": true,
+        "activateBusy": true,
     }))
+}
+
+struct ActivateAsyncEnd;
+impl Drop for ActivateAsyncEnd {
+    fn drop(&mut self) {
+        crate::voice_bootstrap::end_activate_async();
+    }
 }
 
 #[tauri::command]

@@ -1279,6 +1279,31 @@
     return false;
   }
 
+  /** Wait until Rust strategy activate finishes (activateBusy=false). Early IPC ok is not enough. */
+  function waitForActivateIdle(seq,timeoutMs){
+    timeoutMs=timeoutMs||15000;
+    const t0=Date.now();
+    function delay(ms){
+      return new Promise(function(resolve){ setTimeout(resolve,ms); });
+    }
+    function tick(){
+      if(seq!==voiceModeSwitchSeq) return Promise.resolve('cancelled');
+      return ipcWithTimeout('cmd_voice_vosk_status',{},4000).then(function(st){
+        if(seq!==voiceModeSwitchSeq) return 'cancelled';
+        const busy=!!(st&&(st.activateBusy===true||(st.supervisor&&st.supervisor.activateBusy===true)));
+        if(!busy) return 'idle';
+        if(Date.now()-t0>=timeoutMs) return 'timeout';
+        return delay(120).then(tick);
+      }).catch(function(){
+        if(seq!==voiceModeSwitchSeq) return 'cancelled';
+        if(Date.now()-t0>=timeoutMs) return 'timeout';
+        return delay(200).then(tick);
+      });
+    }
+    // Let the activate thread set pending / take ACTIVATE_LOCK before first poll.
+    return delay(40).then(tick);
+  }
+
   function pumpListeningStrategySwitch(strategy,opts){
     strategy=String(strategy||'').trim();
     if(strategy!=='auto'&&strategy!=='resourceSaver'&&strategy!=='enhanced'&&strategy!=='off') return;
@@ -1301,6 +1326,13 @@
     const finish=function(){
       voiceModeSwitchInFlight=false;
       setVoiceModeCardBusy(false);
+      // Flush islands refresh deferred during applyMvpInit while switch was in-flight.
+      try{
+        if(global.__otPendingIslandsRefresh){
+          global.__otPendingIslandsRefresh=false;
+          if(typeof global.OneToneIslandsRefresh==='function') global.OneToneIslandsRefresh();
+        }
+      }catch(_){}
       if(drainVoiceModeSwitchPending()) return;
       if(strategySwitchOk){
         applyListeningStrategyToConfig(strategy);
@@ -1320,64 +1352,77 @@
       strategySwitchOk=true;
       try{
         if(global.OneToneIpc&&global.OneToneIpc.invoke){
-          global.OneToneIpc.invoke('cmd_app_log',{line:'fe set_listening_strategy ok strategy='+strategy+' bundle='+String((bundle&&bundle.strategy)||'')}).catch(function(){});
+          global.OneToneIpc.invoke('cmd_app_log',{line:'fe set_listening_strategy ok strategy='+strategy+' bundle='+String((bundle&&bundle.strategy)||'')+' activateAsync='+(bundle&&bundle.activateAsync?1:0)}).catch(function(){});
         }
       }catch(_){}
-      // Force the user-requested strategy onto the bundle so stale supervisor fields cannot win.
-      const forced=Object.assign({},bundle||{},{strategy:strategy});
-      const uiMode=strategy==='resourceSaver'?'kws':'vosk';
-      const applied=applyDesiredEngineResult(forced,uiMode,statusOpts,syncOpts);
-      applyListeningStrategyToConfig(strategy);
-      setStrategyHold(strategy,8000,true);
-      if(strategy==='off'){
-        hooks().syncHomeFromVoiceSettings(
-          applied.voskRes||{enabled:false,state:'stopped'},
-          applied.sapiRes||{enabled:false,state:'stopped'},
-          null,
-          syncOpts,
-          applied.kwsRes
-        );
-        scheduleVoiceToggleRefresh();
-        return;
-      }
-      if(strategy==='resourceSaver'){
-        voiceWakeExpandedMode='kws';
-        hideVoiceSetupOverlay();
-        hooks().syncHomeFromVoiceSettings(
-          applied.voskRes||{enabled:false,state:'stopped'},
-          applied.sapiRes||{enabled:false,state:'stopped'},
-          null,
-          syncOpts,
-          applied.kwsRes
-        );
-        strategySwitchSuccessToast(strategy,toastLite);
-        scheduleVoiceToggleRefresh();
-        return;
-      }
-      voiceWakeExpandedMode='vosk';
-      if(shouldShowVoskMissingPanel(applied.voskRes)){
-        handleVoskMissingAfterStrategySwitch(strategy,applied.voskRes);
-      }else{
-        hideVoiceSetupOverlay();
-      }
-      pollVoskAfterStrategySwitch(strategy,seq);
-      return ipcWithTimeout('cmd_voice_end_status',{},8000).catch(function(){return null;}).then(function(endRes){
-        if(voiceModeSwitchPending) return;
-        if(endRes){
-          global.OneToneVoiceEnd.syncConfigFromStatus(endRes);
-          const snap=hooks().voiceUiSnapshot;
-          if(snap) snap.end=Object.assign({},snap.end||{},endRes);
-        }
+      const settle=(bundle&&bundle.activateAsync)
+        ?waitForActivateIdle(seq,15000).then(function(state){
+          try{
+            if(global.OneToneIpc&&global.OneToneIpc.invoke){
+              global.OneToneIpc.invoke('cmd_app_log',{line:'fe set_listening_strategy settled strategy='+strategy+' state='+String(state||'')}).catch(function(){});
+            }
+          }catch(_){}
+          return state;
+        })
+        :Promise.resolve('sync');
+      return settle.then(function(){
+        if(seq!==voiceModeSwitchSeq&&voiceModeSwitchPending) return;
+        // Force the user-requested strategy onto the bundle so stale supervisor fields cannot win.
+        const forced=Object.assign({},bundle||{},{strategy:strategy});
+        const uiMode=strategy==='resourceSaver'?'kws':'vosk';
+        const applied=applyDesiredEngineResult(forced,uiMode,statusOpts,syncOpts);
         applyListeningStrategyToConfig(strategy);
-        hooks().syncHomeFromVoiceSettings(
-          applied.voskRes||{enabled:false,state:'stopped'},
-          {enabled:false,state:'stopped'},
-          endRes,
-          syncOpts,
-          applied.kwsRes
-        );
-        strategySwitchSuccessToast(strategy,toastLite);
-        scheduleVoiceToggleRefresh();
+        setStrategyHold(strategy,8000,true);
+        if(strategy==='off'){
+          hooks().syncHomeFromVoiceSettings(
+            applied.voskRes||{enabled:false,state:'stopped'},
+            applied.sapiRes||{enabled:false,state:'stopped'},
+            null,
+            syncOpts,
+            applied.kwsRes
+          );
+          scheduleVoiceToggleRefresh();
+          return;
+        }
+        if(strategy==='resourceSaver'){
+          voiceWakeExpandedMode='kws';
+          hideVoiceSetupOverlay();
+          hooks().syncHomeFromVoiceSettings(
+            applied.voskRes||{enabled:false,state:'stopped'},
+            applied.sapiRes||{enabled:false,state:'stopped'},
+            null,
+            syncOpts,
+            applied.kwsRes
+          );
+          strategySwitchSuccessToast(strategy,toastLite);
+          scheduleVoiceToggleRefresh();
+          return;
+        }
+        voiceWakeExpandedMode='vosk';
+        if(shouldShowVoskMissingPanel(applied.voskRes)){
+          handleVoskMissingAfterStrategySwitch(strategy,applied.voskRes);
+        }else{
+          hideVoiceSetupOverlay();
+        }
+        pollVoskAfterStrategySwitch(strategy,seq);
+        return ipcWithTimeout('cmd_voice_end_status',{},8000).catch(function(){return null;}).then(function(endRes){
+          if(voiceModeSwitchPending) return;
+          if(endRes){
+            global.OneToneVoiceEnd.syncConfigFromStatus(endRes);
+            const snap=hooks().voiceUiSnapshot;
+            if(snap) snap.end=Object.assign({},snap.end||{},endRes);
+          }
+          applyListeningStrategyToConfig(strategy);
+          hooks().syncHomeFromVoiceSettings(
+            applied.voskRes||{enabled:false,state:'stopped'},
+            {enabled:false,state:'stopped'},
+            endRes,
+            syncOpts,
+            applied.kwsRes
+          );
+          strategySwitchSuccessToast(strategy,toastLite);
+          scheduleVoiceToggleRefresh();
+        });
       });
     }).catch(function(err){
       if(voiceModeSwitchPending) return;
@@ -1437,6 +1482,12 @@
       if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.mirrorGlobalToOverride){
         global.OneToneVoiceSchemeContext.mirrorGlobalToOverride();
       }
+      try{
+        if(global.__otPendingIslandsRefresh){
+          global.__otPendingIslandsRefresh=false;
+          if(typeof global.OneToneIslandsRefresh==='function') global.OneToneIslandsRefresh();
+        }
+      }catch(_){}
       return;
     }
     applyHomeVoiceModeSwitchUi();

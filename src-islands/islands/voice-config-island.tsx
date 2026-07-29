@@ -19,31 +19,64 @@ const STRATEGIES: { key: string; label: string }[] = [
   { key: 'enhanced', label: '增强' },
 ];
 
+function getWakeApi(): {
+  switchListeningStrategy?: (s: string, opts?: { toastKind?: string }) => void;
+  isModeSwitchPending?: () => boolean;
+} | undefined {
+  return (window as unknown as { OneToneVoiceWake?: {
+    switchListeningStrategy?: (s: string, opts?: { toastKind?: string }) => void;
+    isModeSwitchPending?: () => boolean;
+  } }).OneToneVoiceWake;
+}
+
 function StrategySelector(): JSX.Element {
   const [strategy, setStrategy] = React.useState<string>(() => vc.getListeningStrategy());
-  useIslandRefresh(() => setStrategy(vc.getListeningStrategy()));
+  const [busy, setBusy] = React.useState<boolean>(() => !!getWakeApi()?.isModeSwitchPending?.());
+  useIslandRefresh(() => {
+    setStrategy(vc.getListeningStrategy());
+    setBusy(!!getWakeApi()?.isModeSwitchPending?.());
+  });
+  // Keep island buttons in sync with legacy inFlight while activateAsync settles.
+  React.useEffect(() => {
+    const id = window.setInterval(() => {
+      setBusy(!!getWakeApi()?.isModeSwitchPending?.());
+    }, 200);
+    return () => window.clearInterval(id);
+  }, []);
 
   const apply = async (key: string): Promise<void> => {
+    const wake = getWakeApi();
+    if (wake?.isModeSwitchPending?.()) return;
     setStrategy(key);
+    setBusy(true);
+    // 单一路径：走 legacy switchListeningStrategy（busy/finish/hold + 与 applyMvpInit 延后刷新配合），
+    // 避免岛屿再直调 typed IPC 与 legacy 双通道叠加。
+    if (wake && typeof wake.switchListeningStrategy === 'function') {
+      wake.switchListeningStrategy(key, { toastKind: 'lite' });
+      return;
+    }
     try {
       await vc.setListeningStrategy(key);
       const label = STRATEGIES.find((s) => s.key === key)?.label ?? key;
       toast('已保存监听策略：' + label);
     } catch {
       toast('保存失败，请重试');
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
     <div className="ot-vc-block">
       <div className="ot-vc-label">监听策略 / 引擎</div>
-      <div className="ot-vc-seg" role="group" aria-label="监听策略">
+      <div className="ot-vc-seg" role="group" aria-label="监听策略" aria-busy={busy ? 'true' : 'false'}>
         {STRATEGIES.map((s) => (
           <button
             key={s.key}
             type="button"
             className={cn('ot-vc-seg-btn', strategy === s.key ? 'is-active' : '')}
             aria-pressed={strategy === s.key}
+            disabled={busy}
             onClick={() => apply(s.key)}
           >
             {s.label}

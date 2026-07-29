@@ -1626,9 +1626,16 @@
       flushPendingCameraPrefsQuiet();
       earlyPersistLog('applyMvpInit ok maps='+(st.config.mappings?st.config.mappings.length:0)+
         ' appRemembered='+Object.keys(lastKnownAppScenarios).length);
-      // P8 契约接线：config 已整体替换，通知 React 岛重拉状态（见 docs/migration-react-islands.md §4）。
-      // 轻量事件派发（非重挂载），不受 mvpInitHeavyRemountBlocked 约束；岛未加载时为 no-op。
-      try{ if(typeof global.OneToneIslandsRefresh==='function') global.OneToneIslandsRefresh(); }catch(_){}
+      // P8：通知 React 岛重拉。策略切换 in-flight 时延后，避免与 syncHome/islands refresh 同秒打满主线程（表现为 ok 后假死）。
+      try{
+        var wake=global.OneToneVoiceWake;
+        if(wake&&typeof wake.isModeSwitchPending==='function'&&wake.isModeSwitchPending()){
+          global.__otPendingIslandsRefresh=true;
+          try{ if(global.OneToneIpc&&global.OneToneIpc.invoke) global.OneToneIpc.invoke('cmd_app_log',{line:'fe islands refresh deferred (voice mode switch in flight)'}).catch(function(){}); }catch(_){}
+        }else if(typeof global.OneToneIslandsRefresh==='function'){
+          global.OneToneIslandsRefresh();
+        }
+      }catch(_){}
       if(bootSettling()||mvpInitHeavyRemountBlocked()){
         scheduleDeferredMvpInitSideEffects();
         return;

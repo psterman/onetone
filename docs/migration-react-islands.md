@@ -1,9 +1,29 @@
 # React Islands 渐进迁移契约（OneTone / voice-pilot）
 
-> 阶段状态：✅ P0–P8 工程轨静态通过；✅ 验收债收口（2026-07-29）：Toast legacy 主路径单轨桥接 + Command 明确脚手架 + 孤儿轨清理 + i18n 护栏。
-> **裁定**：静态通过 + Toast 单轨桥接 + Command 脚手架 + **产品验收待 Tauri 人工清单**。最后更新：2026-07-29
+> 阶段状态：✅ P0–P8 工程轨静态通过；✅ 验收债收口；✅ 完成度裁定锁定（2026-07-29）。
+> **裁定**：工程骨架 + 第一批岛完成，可继续演进；**最痛区域未全部迁完**；**产品验收待 §8.5 Tauri 人工清单**。正式 shadcn/Radix **未接入**（自实现兼容层）。最后更新：2026-07-29
 >
-> P4 口径修正：共享 UI 为「能力就绪 + Toast 单轨桥接」，**不是**全局切流完成；`#wbCommandSearch` **未接管**（仍 legacy `home-workbench-cmdk.js`）。
+> P4：共享 UI = 能力就绪 + Toast 单轨桥接，**不是**全局切流；`#wbCommandSearch` **未接管**。
+> P7：仅 **映射列表** keyed diff，**不是**完整映射编辑器。
+
+### 完成度表（正式口径）
+
+| 项 | 裁定 |
+|---|---|
+| 旧页面继续跑 | 完成 |
+| React 岛挂现有 DOM | 完成 |
+| React/TS/Vite/Tailwind 双轨 | 完成 |
+| Island runtime + typed IPC | 完成 / 基本完成 |
+| Basic 设置岛 | 完成（仅 Basic，非全部设置 panel） |
+| 语音配置 | 部分（文本短语+策略；声学留 legacy） |
+| 映射 | 部分（仅 `#mappingList` keyed diff；编辑器/录制/菜单仍 legacy） |
+| Confirm | 部分（React 可用；legacy 弹层未全换） |
+| Toast | 单轨桥接完成；非 React 全局接管 |
+| Command 真实搜索 | **未完成**（脚手架 ≠ 接管 `#wbCommandSearch`） |
+| 正式 shadcn/Radix | **未完成**（零依赖 API 对齐壳） |
+| Tauri 产品验收 | **未完成** |
+
+下一步：**§8.5 人工清单**；之后再单独开 P9（Command 或完整 Mapping Editor）。不开「为完善而完善」的伪 shadcn 打磨。
 ## 0. 目标与范围
 
 **做什么**：在现有 Tauri 2 + Rust 桌面应用的前端里，以「React Island」方式渐进挂载 React/TypeScript 组件，**不重写应用壳、不改 Rust/Tauri 主架构、不改成完整 SPA**。
@@ -23,7 +43,7 @@
 2. React/TS 像「岛」一样挂到明确 mount point。
 3. 每个岛只拥有自己的 DOM 子树；legacy 不得再 `innerHTML`/`render` 覆盖该子树。
 4. 新代码走 typed IPC；legacy 暂用 `window.OneToneIpc`。
-5. shadcn/ui 仅用于 React islands，不污染旧页面。
+5. 岛内 UI 组件层目标对齐 shadcn/ui API，**正式 Radix/shadcn 尚未接入**（当前为零依赖兼容实现）；样式仅作用于 `.ot-island`，不污染旧页面。
 6. 不迁相机/HUD/tray/shell IA（除非极小兼容）。
 7. 每阶段完成后必须能运行现有 开发/构建/测试 命令并记录结果。
 8. 不确定行为优先保留 legacy，不做视觉/交互大改。
@@ -42,7 +62,7 @@
 
 - 挂载点 = `index.html` 中已存在的具名容器 id（见下表），或新增的空 `.ot-island` 容器。
 - React root **只挂在空容器**；容器内容完全由 React 管理，legacy 停止对其 `innerHTML`。
-- 命名：岛容器加类 `.ot-island`；内部 React 组件用 shadcn。
+- 命名：岛容器加类 `.ot-island`；内部组件优先复用 `components/ui/*`（shadcn **API 兼容壳**，非官方包）。
 - 入口：在 `index.html` 仅追加一个最小 `type="module"` 脚本（不重排旧脚本）。
 
 ### 已知挂载点（index.html）
@@ -80,7 +100,7 @@
 | `#settingsPanelBasic` | P5 | 基础设置岛 | 不在 render 列表（事件驱动）→ 无需摘除；已加两道 legacy 守卫：`basic-panel-ui.js` 的 `render()` 在岛接管后 return、`app-lang-settings.js` 的 `applySettingsTexts` 跳过 `#settingsPanelBasicDesc` | 是（岛内文案由岛自管，且 `OneToneI18n.t` 取词；legacy `data-i18n` sweep 不命中本面板） | 是（Toggle/Segmented 用 scoped CSS，不引 shadcn 弹层） |
 | `#settingsPanelVoiceWake` 等语音面板 | P6 | 语音配置岛（按 tab 分岛） | `renderVoiceModeSwitch` 及 voice 页自有 render；迁移后禁用对应 hook | 是 | 是（Dialog/Toast） |
 | `#mappingList`（行列表） | P7 | 映射列表岛（keyed diff 渲染，交互留 legacy 委托） | `renderMappingList` 顶部守卫：岛挂载后改调 `window.__otMappingListSync()`，不再 `innerHTML` 整表重建；行 markup 由 legacy `OneToneMappingList.rowView` 单一来源生成（岛与 legacy 共用）；`renderEditor` / `renderMappingChrome` 其余子渲染与 `renderRecordCancelBar` **留 legacy**（编辑器/录制/取消条不迁） | 是（行内文案由 rowView 内 `t()` 生成，`#mappingList` 无 data-i18n 扫描） | 否（无弹层；菜单 `#mapMenuFloat` 留 legacy） |
-| `#voiceConfigIsland`（新建，位于 `#settingsPanelVoiceWake` 内） | P6 | 语音配置岛（按 tab 分岛） | 接管 **文本短语编辑器**：`renderPhraseTags` 加 `isInsideIsland` 守卫；`renderWakePage`/`renderRecognizePage` 在岛挂载后隐藏 legacy 文本短语面板（`voiceWakeKindTextPane`/`voiceWakeCustomBlock`/`voiceCancelKindTextPane`/`voiceCancelCustomBlock`/`voiceEndKindTextPane`/`voiceEndCustomBlock`）与策略开关（`#voiceSummaryEngineSwitch`）；**声音录制（acoustic）子页保留 legacy** | 是（岛内文案自管） | 是（Dialog/Toast via OneToneUi） |
+| `#voiceConfigIsland`（新建，位于 `#voiceDeskPanel` 内） | P6 | 语音配置岛 | 接管文本短语+策略；声学留 legacy；**勿**作为 `voice-page-body` 网格子项（会挤占流程 hero） | 是 | 经 OneToneUi |
 | `#appWorkbenchShell` / `#appContentColumn` | 不迁 | — | 主 shell IA 保留 legacy | — | — |
 
 > 每个岛挂载时运行时自动给容器加 `.ot-island`；`unmountIsland` 会移除该类、解除所有权声明，legacy 可回收该子树。
@@ -108,10 +128,11 @@
 - **P1**：Vite+TS+React 接入；`serve src` 与旧脚本顺序仍可用；islands bundle 输出到稳定路径（默认 `src/assets/islands/`）；Tailwind preflight 隔离、`.ot-island` 作用域；smoke test 证明旧页面仍可加载。
 - **P2**：`typedIpc.ts` 覆盖高频命令并带类型；可被岛使用；legacy 未强制迁移。
 - **P3**：`mountIsland/unmountIsland/updateIsland` + `window.OneToneIslands` 宿主 API；文档列出每个岛 DOM 所有权；mvp_init 后可 remount/update。✅
-- **P4**：共享交互能力就绪（Toast/Dialog/Confirm/Command 岛 + `OneToneUi`）；Toast **legacy 主路径单轨**（`OneToneUi.toast` 反向代理 `OneToneAppToast`，兼容 string|opts）；Command **未接管** `#wbCommandSearch`。✅（债收口后口径）- **P5**：基础设置（运行/外观/字体/语言/偏好）成岛；修改可保存；语言/主题/字体切换一致；mvp_init/reload 后一致；其它 panel 不受影响。✅
-- **P6**：语音配置按 tab 分岛；切引擎不回归；短语可保存且 reload 一致；legacy voice render 不再覆盖岛 DOM。✅
-- **P7**：映射编辑器守习惯契约 + persist 守卫；增删复制重排/冲突检测/字段不丢；保存 reload mvp_init 后一致。✅
-- **P8**：清理临时 bridge（不破 legacy）；本文档更新为最终态；补 smoke/typecheck/build 脚本；记录 `npm install`/typecheck/`vite build`/JS 测试/Tauri dev·build 验证结果；列出后续安全收口计划（CSP / `withGlobalTauri`）。✅（见 §10 P8 执行记录：验证矩阵 8.4，npm install 与 Tauri dev·build 为环境限制待办）
+- **P4**：共享交互能力就绪（Toast/Dialog/Confirm/Command 岛 + `OneToneUi`）；Toast **legacy 主路径单轨**（`OneToneUi.toast` 反向代理 `OneToneAppToast`，兼容 string|opts）；Command **未接管** `#wbCommandSearch`。✅（债收口后口径）
+- **P5**：基础设置（运行/外观/字体/语言/偏好）成岛；修改可保存；语言/主题/字体切换一致；mvp_init/reload 后一致；其它 panel 不受影响。✅
+- **P6**：语音配置岛（文本短语 + 监听策略）；声学/录音子页留 legacy；legacy voice render 不再覆盖岛 DOM。✅（部分完成）
+- **P7**：映射**列表**岛（keyed diff + `rowView` 单一来源）；交互仍 legacy 委托；**完整映射编辑器未迁**。增删复制重排/冲突展示走原路径；保存 reload mvp_init 后列表一致。✅（列表完成 / 编辑器未完成）
+- **P8**：清理临时 bridge（不破 legacy）；本文档更新；补 smoke/typecheck/build；安全收口计划。✅（见 §10；Tauri 人工清单见 §8.5）
 
 ## 7. 已知债务与风险（必须持续追踪）
 
@@ -121,8 +142,10 @@
 4. **收益边界**：home/workbench、相机、HUD、tray 留 legacy，真实长期收益 < 70%，除非后续补迁。
 5. **构建产物落点**：`src/assets/islands/` 已 `.gitignore`；`emptyOutDir: false` 环境坑见 P1 记录。
 6. **Toast 二次切流**：正式 shadcn/a11y 就绪前，**禁止**恢复 `OneToneUi.toast → pushToast` 并行渲染（会与 legacy 双弹）。
-7. **Command 接管**：`#wbCommandSearch` 仍是独立迁移项（home/workbench/快捷键/焦点），勿塞进债收口。
-8. **最大不确定项**：P7 运行期回归 + typed IPC 部分 `[UNVERIFIED]`；建议整体 +20–30% 缓冲。
+7. **Command 接管**：`#wbCommandSearch` 仍是独立迁移项（P9），勿与债收口混做。
+8. **正式 shadcn**：`components/ui/*` 为零依赖壳；换 Radix 前勿对外宣称「已上 shadcn」。
+9. **vosk stop_sync 假死**：日志可见 `switchListeningStrategy` → `vosk stop_sync begin` 无 `end`（Rust 停机路径）；与 islands 正交，复现后单开缺陷。
+10. **最大不确定项**：列表岛运行期回归 + typed IPC 部分 `[UNVERIFIED]`；建议整体 +20–30% 缓冲。
 
 ## 8. 验证命令
 
@@ -360,22 +383,32 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 | 验证项 | 结果 |
 |---|---|
 | `tsc --noEmit` | ✅ 退出 0 |
-| `vite build` | ✅ 退出 0（`src/assets/islands/main.js` 801.69 KB / gzip 189.58 KB，51 模块） |
+| `vite build` | ✅ 退出 0（修复 `process.env` 后约 **260 KB** / gzip ~66 KB；无 `process.env` 残留） |
 | `npm run test:islands` | ✅ 全 PASS：smoke + runtime + ui-store + **toast-bridge** + voice-config + mapping-island |
 | `npm install`（lockfile 补齐） | ⚠️ 本环境 npm 写 lockfile/装新包挂起（沙箱网络限制）；**待联网环境执行一次 `npm install` 生成 `package-lock.json`** 保证可复现构建 |
-| `tauri dev` / `tauri build` | ⚠️ 需 Rust 工具链 + 交互窗口，本环境未执行；**待本机人工跑一遍**（见 8.5 人工验收清单，全部待测） |
+| `tauri` 运行期 | ⚠️ 本机有 release 进程可观察日志；**交互式 §8.5 项 1–5 仍待人工点选**（见下表） |
 
-#### 8.5 运行期人工验收清单（汇总 P5–P8，需 `tauri dev` 实测一次）
+#### 8.5 运行期人工验收清单（汇总 P5–P8）
 
 | # | 项 | 结果（2026-07-29） |
 |---|---|---|
-| 1 | Basic 面板：切主题/语言/字号 → UI 与窗口 backdrop 一致；开关保存 reload 生效；其余 panel 不受影响 | ⚠️ 待测 |
-| 2 | 语音页：策略/短语增删保存；与声学子页互不干扰；切引擎；reload 一致 | ⚠️ 待测 |
-| 3 | 按键面板：增删复制重排、行内控件、浮动菜单、冲突；reload；观察 render slow | ⚠️ 待测 |
-| 4 | P8 接线：`mvp_init` 后三岛状态自动同步 | ⚠️ 待测 |
-| 5 | Toast 单轨：控制台 `OneToneUi.toast('…')` / `toast({title})` 只出 **一套** legacy toast | ⚠️ 待测 |
+| 1 | Basic 面板：切主题/语言/字号 → UI 与窗口 backdrop 一致；开关保存 reload 生效；其余 panel 不受影响 | ⚠️ 待人工点选 |
+| 2 | 语音页：策略/短语增删保存；与声学子页互不干扰；切引擎；reload 一致；**hero 主栏不错位** | ⚠️ 待人工点选（DOM 已修：岛在 `#voiceDeskPanel`） |
+| 3 | 按键面板：映射**列表**增删复制重排、行内控件、浮动菜单、冲突；reload | ⚠️ 待人工点选 |
+| 4 | P8 接线：`mvp_init` 后三岛状态自动同步 | ⚠️ 待人工点选 |
+| 5 | Toast 单轨：控制台 `OneToneUi.toast('…')` / `toast({title})` 只出 **一套** legacy toast | ⚠️ 待人工点选 |
+| 6 | Boot：日志无 `process is not defined`；产物无 `process.env`；岛容器在 desk 内 | ✅ 日志核验：最新 `process run entered`（~12:35 boot）**无**该错误；`main.js` ~260KB / `process.env`×0；`island_after_desk=true` |
+| 7 | 假死观察：切策略后 `vosk stop_sync begin` 是否有配对 `end` | ⚠️ 分两类（见 8.5.1） |
 
-> 本轮债收口不阻塞代码合入；产品验收以本表实测为准。
+> 项 1–5 需本机 WebView 点选；Agent 已完成产物与日志前置核验（项 6）。产品验收仍以人工点选为准。
+
+#### 8.5.1 Boot / 假死日志摘录（2026-07-29）
+
+- 修复前多次 boot：`window.error … process is not defined @ assets/islands/main.js` → islands 整包失败。
+- 修复后最新 boot：`process run entered` 后 **无** `process is not defined`；随即 `vosk stop_sync begin` + `end` 配对。
+- **历史假死 A**（`1785292379`）：`switchListeningStrategy resourceSaver` → `vosk stop_sync begin` **无 end** → Rust join 挂死（已知债，本轮未改 Rust）。
+- **本次假死 B**（`1785300172`）：同切省电，但 `begin/end` 配对 + `activate complete` + `fe set_listening_strategy ok`；同秒还有 `cmd_ready`/`applyMvpInit`。判定 **不是 stop_sync 挂死**，更像成功后主线程忙或进程被结束。
+- **缓解（FE）**：`applyMvpInit` 在 `OneToneVoiceWake.isModeSwitchPending()` 时延后 `OneToneIslandsRefresh`，于策略 `finish()` 再刷；语音岛策略点击改走 legacy `switchListeningStrategy`（避免双 IPC）。
 
 #### 8.6 后续路线图（契约外，按需启动）
 
@@ -386,21 +419,27 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 
 ---
 
-## 11. 迁移总结（P0–P8 + 债收口）
+## 11. 迁移总结（P0–P8 + 债收口 + 裁定锁定）
 
 - **工程轨 P0–P8 静态通过**，legacy 零破坏：`index.html` 仅 +1 个 module 入口与岛容器/标记；170+ 旧脚本顺序未动；守卫「岛未挂载即回退 legacy」。
-- **落地资产**：typed IPC（含 voiceEnd 短语签名修复）、Island Runtime + DOM 所有权、3 个业务岛（Basic / Voice / Mapping keyed diff）、共享 UI 桥（Confirm 走 React；Toast 反向代理 legacy；Command 脚手架）。
-- **测试护栏**：`npm run test:islands` = typecheck + smoke + runtime + ui-store + **toast-bridge** + voice-config + mapping-island。
-- **裁定口径**：静态通过 + Toast 单轨桥接 + Command 明确脚手架 + **产品验收待 §8.5 人工清单**。
-- **纪律**：新岛必须过 §3/§4；二次切流前禁止 `pushToast` 与 legacy Toast 并行。
+- **落地资产**：typed IPC、Island Runtime、Basic / Voice（部分）/ Mapping **列表**岛、共享 UI 桥（Confirm React；Toast 反向代理 legacy；Command 脚手架）。
+- **明确未完成**：Command 真实接管、完整映射编辑器、正式 shadcn/Radix、Tauri §8.5 产品验收。
+- **测试护栏**：`npm run test:islands` = typecheck + smoke + runtime + ui-store + toast-bridge + voice-config + mapping-island。
+- **裁定**：工程骨架 + 第一批岛完成，可继续演进；最痛区域未全部迁完。下一步 = §8.5，再视情况开 P9。
 
 ### 12. 验收债收口执行记录（2026-07-29）
 
 | 项 | 处置 |
 |---|---|
-| Toast 单轨 | `OneToneUi.toast(string\|opts)` → `OneToneAppToast.show(title, {detail,type,duration})`；不 `pushToast`；缺席 warn 一次 |
-| Command | 明确脚手架，不接管 `#wbCommandSearch` |
-| 孤儿轨 | 删除 `src-react/`、`MIGRATION_GUIDE.md`、`package-v2.json`（正式入口 `assets/islands/main.js` ← `src-islands`） |
-| i18n 护栏 | `home-workbench.js` `renderQuickActions` / `applyLang` 跳过 `.ot-island` |
-| 单测 | `scripts/test-toast-bridge.mjs`（源码静态 + 运行时 mock）串入 `test:islands` |
-| 人工清单 | §8.5 表项全部 ⚠️ 待测（本环境未跑 `tauri dev`） |
+| Toast 单轨 | `OneToneUi.toast(string\|opts)` → `OneToneAppToast.show`；不 `pushToast` |
+| Command | 脚手架，不接管 `#wbCommandSearch` |
+| 孤儿轨 | 删除 `src-react/`、`MIGRATION_GUIDE.md`、`package-v2.json` |
+| i18n 护栏 | `home-workbench.js` sweep 跳过 `.ot-island` |
+| 单测 | `test-toast-bridge.mjs` 串入 `test:islands` |
+| 语音 hero | `#voiceConfigIsland` 移入 `#voiceDeskPanel`（勿作 `voice-page-body` 网格子项） |
+| islands boot | `vite.config.ts` `define process.env.NODE_ENV=production`（修 `process is not defined`；bundle ~260KB） |
+| 人工清单 | §8.5：项 6 boot ✅；项 1–5/7 待人工点选 |
+
+### 13. 完成度裁定锁定（2026-07-29）
+
+正式采纳文首「完成度表」。文档内凡写「映射编辑器已迁」「已上 shadcn」「Command 已迁」均以该表为准作废。
