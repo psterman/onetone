@@ -16,7 +16,9 @@ style.setAttribute('data-ot-island', '');
 style.textContent = islandCss;
 document.head.appendChild(style);
 
-// P4：挂载共享交互岛到各自 portal 根（均位于 .ot-island 作用域内）
+// P4：挂载共享交互岛到各自 portal 根（均位于 .ot-island 作用域内）。
+// Toast 岛保留挂载但默认无数据（OneToneUi.toast → legacy OneToneAppToast）；
+// Command 岛为脚手架，未接管 #wbCommandSearch。
 OneToneIslands.mountIsland(toastPortal.id, ToastIsland);
 OneToneIslands.mountIsland(dialogPortal.id, ConfirmIsland);
 OneToneIslands.mountIsland(commandPortal.id, CommandIsland);
@@ -75,6 +77,6 @@ try {
 (window as unknown as { OneToneIslandsRefresh: () => void }).OneToneIslandsRefresh = () =>
   OneToneIslands.dispatchRefresh();
 
-// 信号：React 共享 UI 已就绪，legacy 可优先调用 OneToneUi（不再自建并行 toast/confirm）
+// 信号：岛桥就绪。Toast 走 legacy 主路径（OneToneUi.toast 反向代理）；Confirm 走 React。
 (window as unknown as { OneToneUiReady: boolean }).OneToneUiReady = true;
 (window as unknown as { OneToneIslandsReady: boolean }).OneToneIslandsReady = true;

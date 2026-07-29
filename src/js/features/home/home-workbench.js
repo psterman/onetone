@@ -642,6 +642,8 @@
     var shell=$('homeWorkbench');
     if(shell){
       shell.querySelectorAll('[data-i18n]').forEach(function(el){
+        // Islands 护栏：.ot-island 子树由 React 自管文案，legacy data-i18n sweep 跳过
+        if(global.OneToneIslands&&typeof global.OneToneIslands.isInsideIsland==='function'&&global.OneToneIslands.isInsideIsland(el)) return;
         var key=el.getAttribute('data-i18n');
         if(key) el.textContent=t(key);
       });
@@ -1158,6 +1160,8 @@
     var shell=$('appWorkbenchShell')||$('homeWorkbench');
     if(shell){
       shell.querySelectorAll('[data-i18n]').forEach(function(el){
+        // Islands 护栏：.ot-island 子树由 React 自管文案，legacy data-i18n sweep 跳过
+        if(global.OneToneIslands&&typeof global.OneToneIslands.isInsideIsland==='function'&&global.OneToneIslands.isInsideIsland(el)) return;
         var key=el.getAttribute('data-i18n');
         if(key) el.textContent=t(key);
       });

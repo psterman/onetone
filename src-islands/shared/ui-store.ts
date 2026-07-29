@@ -1,7 +1,7 @@
 // P4: 共享交互岛的纯状态仓库（不依赖 React/DOM，可在 node 下单测）。
-// React 岛订阅本仓库渲染；宿主桥 OneToneUi 调用本仓库的方法触发 UI。
-// 关键纪律：Toast / Confirm 只有这一套实现；legacy 调用点迁到 OneToneUi 后，
-// 同一用户动作只走 React 岛，避免「两套 Toast/Confirm 同时弹出」。
+// Confirm / Command 由 OneToneUi 写入本仓库，React 岛订阅渲染。
+// Toast：当前阶段 OneToneUi.toast 反向代理到 legacy OneToneAppToast，不调用 pushToast；
+// pushToast / Toast 岛保留供二次切流（正式 shadcn Toast 接管）使用，默认无数据。
 
 export type ToastVariant = 'default' | 'destructive' | 'success';
 export interface ToastOptions {

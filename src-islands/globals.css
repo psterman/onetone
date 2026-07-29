@@ -34,7 +34,15 @@
   color: inherit;
 }
 
-/* ---- P6 语音配置岛 ---- */
+/* ---- P6 语音配置岛 ----
+   挂在 #voiceDeskPanel 内（主栏），不得作为 .voice-page-body 网格子项，否则会挤占流程 hero 宽列。 */
+#voiceConfigIsland.ot-island {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 0.75rem;
+}
+
 .ot-voice-config {
   display: flex;
   flex-direction: column;

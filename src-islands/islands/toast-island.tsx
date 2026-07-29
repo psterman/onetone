@@ -38,8 +38,8 @@ function ToastCard({ toast }: { toast: ToastItem }) {
   );
 }
 
-// P4 Toast 岛：订阅 ui-store 渲染所有 Toast。
-// 单一数据源：只有 OneToneUi.toast() 会 push，legacy 调用点迁过来后不会与旧 toast 系统并存。
+// P4 Toast 岛：订阅 ui-store。当前阶段 OneToneUi.toast 反向代理 legacy，不 pushToast，
+// 本岛默认无数据；保留挂载供二次切流（正式 shadcn Toast 接管）使用。
 export function ToastIsland() {
   const [, force] = useState(0);
   useEffect(() => subscribeToasts(() => force((n) => n + 1)), []);

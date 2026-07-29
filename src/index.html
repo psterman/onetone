@@ -1510,8 +1510,6 @@
             </div>
           </div>
           <div class="voice-page-body">
-            <!-- P6 React 岛容器：接管语音文本短语配置，独占其子树；legacy 文本编辑器在岛挂载后隐藏 -->
-            <div id="voiceConfigIsland" class="ot-island"></div>
             <div class="voice-page-main">
           <div class="voice-page-layout">
               <div class="keys-workflow-pipeline voice-workflow-pipeline" id="voiceWorkflowPipeline">
@@ -1557,6 +1555,8 @@
               </div>
             </section>
               <div class="flow-desk-panel" id="voiceDeskPanel">
+              <!-- P6 React 岛：在 desk 主栏内（非 voice-page-body 网格子项），避免挤占流程 hero 宽列 -->
+              <div id="voiceConfigIsland" class="ot-island"></div>
               <section class="voice-step-stack voice-settings-flow keys-workflow-grid" id="voiceSettingsFlow" aria-label="语音流程">
                   <div class="voice-flow-step habit-flow-step voice-step-card voice-settings-card keys-step-card keys-workflow-col is-clickable voice-wake-root" id="voiceSettingsWakeCard" data-voice-subpage="wake">
                     <div class="keys-step-card-head flow-step-card-head keys-workflow-col-head voice-step-card-head" role="button" tabindex="0" aria-controls="voiceSettingsWakeBody">

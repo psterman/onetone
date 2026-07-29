@@ -1,8 +1,9 @@
 # React Islands 渐进迁移契约（OneTone / voice-pilot）
 
-> 阶段状态：✅ P0 已完成（审计 + 契约）；✅ P1 已完成（工程双轨 + 验证）；✅ P2 已完成（typed IPC 层）；✅ P3 已完成（Island Runtime + 宿主桥 + DOM 所有权护栏）；✅ P4 已完成（共享交互岛 Toast/Dialog/Confirm/Command + OneToneUi 宿主桥）；✅ P5 已完成（基础设置岛 + legacy 守卫 + typed IPC 增补）；✅ P6 已完成（语音配置岛 按 tab 分岛 + legacy 守卫 + typed IPC 修正）；✅ P7 已完成（映射列表岛 keyed diff + rowView 单一来源 + 守卫）；✅ P8 已完成（收尾：bridge 契约固化 + mvp_init 刷新接线 + 安全收口计划）
-> **P0–P8 全部完成，本文档为最终态契约。** 最后更新：2026-07-29
-
+> 阶段状态：✅ P0–P8 工程轨静态通过；✅ 验收债收口（2026-07-29）：Toast legacy 主路径单轨桥接 + Command 明确脚手架 + 孤儿轨清理 + i18n 护栏。
+> **裁定**：静态通过 + Toast 单轨桥接 + Command 脚手架 + **产品验收待 Tauri 人工清单**。最后更新：2026-07-29
+>
+> P4 口径修正：共享 UI 为「能力就绪 + Toast 单轨桥接」，**不是**全局切流完成；`#wbCommandSearch` **未接管**（仍 legacy `home-workbench-cmdk.js`）。
 ## 0. 目标与范围
 
 **做什么**：在现有 Tauri 2 + Rust 桌面应用的前端里，以「React Island」方式渐进挂载 React/TypeScript 组件，**不重写应用壳、不改 Rust/Tauri 主架构、不改成完整 SPA**。
@@ -55,13 +56,12 @@
 | 语音唤醒配置 | `#settingsPanelVoiceWake` (L1446) | P6 |
 | 映射列表 | `#mappingList` (L1439) | P7 |
 | 语音流程 | `#voiceWorkflowPipeline` / `#voiceFlowNodes` (L1515+) | P6 |
-| Command 搜索 | `#wbCommandSearch` + `#wbCmdkPanel` (L92) | P4 |
+| Command 搜索 | `#wbCommandSearch` + `#wbCmdkPanel` (L92) | P4 脚手架（未接管，仍 legacy） |
 | 语音声学 host | `#voiceWakeAcousticHost` / `#voiceCancelAcousticHost` / `#voiceEndAcousticHost` | P6 |
 | 主 shell | `#appWorkbenchShell` (L81) / `#appContentColumn` (L153) | 不迁 |
 
-> Toast：由 `app-toast.js` 动态创建容器 → P4 新建独立 React toast root（如 `#ot-toast-root`），不接手旧容器。
-> Dialog/Confirm：legacy 弹层（onboard/welcome/phrasePractice/test/camera modal）保留；P4 新建独立 portal 根供新岛使用。
-
+> Toast：**legacy `OneToneAppToast` 为主路径**；`OneToneUi.toast` 反向代理到 legacy（兼容 `string | ToastOptions`），React Toast 岛挂载但默认无数据。二次切流前禁止恢复 `pushToast` 并行渲染。
+> Dialog/Confirm：legacy 弹层保留；新确认可走 `OneToneUi.confirm`（React）。Command 岛为独立 portal 脚手架，**不**替换 `#wbCommandSearch`。
 ## 4. legacy / React DOM 所有权规则
 
 - **每个岛在 `__vp_render_hooks__` / `render-loop.js` 中对应的 `render*` 必须摘除或加守卫**。`P3` 提供 `isInsideIsland(node)`（`src-islands/dom-ownership.ts`）供 legacy render / i18n sweep 调用：遇到位于 `.ot-island` 子树内的节点一律跳过。
@@ -74,9 +74,9 @@
 
 | 岛（容器 id） | 阶段 | React 所有者 | 需摘除/守卫的 legacy render 入口 | i18n 跳过 | portal 作用域 |
 |---|---|---|---|---|---|
-| `#ot-toast-root`（新建） | P4 | Toast 岛 | legacy `app-toast.js` 停止写入，改走 `OneToneUi.toast` | 是 | 是（Toast portal） |
+| `#ot-toast-root`（新建） | P4 | Toast 岛（默认空；二次切流用） | legacy `OneToneAppToast` **仍为主路径**；`OneToneUi.toast` 反向代理，不 `pushToast` | 是 | 是（Toast portal，当前无数据） |
 | `#ot-dialog-root`（新建） | P4 | Dialog/Confirm 岛 | legacy 弹层保留，新确认走 `OneToneUi.confirm` | 是 | 是 |
-| `#wbCommandSearch` / `#wbCmdkPanel` | P4 | Command 搜索岛 | `render-loop` 无对应 hook（独立组件），守卫 innerHTML | 是 | 是（Dropdown/Command） |
+| `#wbCommandSearch` / `#wbCmdkPanel` | P4 脚手架 | **未接管**；React Command 岛挂独立 portal | 仍由 `home-workbench-cmdk.js` 驱动 | — | React portal 存在但不接产品入口 |
 | `#settingsPanelBasic` | P5 | 基础设置岛 | 不在 render 列表（事件驱动）→ 无需摘除；已加两道 legacy 守卫：`basic-panel-ui.js` 的 `render()` 在岛接管后 return、`app-lang-settings.js` 的 `applySettingsTexts` 跳过 `#settingsPanelBasicDesc` | 是（岛内文案由岛自管，且 `OneToneI18n.t` 取词；legacy `data-i18n` sweep 不命中本面板） | 是（Toggle/Segmented 用 scoped CSS，不引 shadcn 弹层） |
 | `#settingsPanelVoiceWake` 等语音面板 | P6 | 语音配置岛（按 tab 分岛） | `renderVoiceModeSwitch` 及 voice 页自有 render；迁移后禁用对应 hook | 是 | 是（Dialog/Toast） |
 | `#mappingList`（行列表） | P7 | 映射列表岛（keyed diff 渲染，交互留 legacy 委托） | `renderMappingList` 顶部守卫：岛挂载后改调 `window.__otMappingListSync()`，不再 `innerHTML` 整表重建；行 markup 由 legacy `OneToneMappingList.rowView` 单一来源生成（岛与 legacy 共用）；`renderEditor` / `renderMappingChrome` 其余子渲染与 `renderRecordCancelBar` **留 legacy**（编辑器/录制/取消条不迁） | 是（行内文案由 rowView 内 `t()` 生成，`#mappingList` 无 data-i18n 扫描） | 否（无弹层；菜单 `#mapMenuFloat` 留 legacy） |
@@ -108,20 +108,21 @@
 - **P1**：Vite+TS+React 接入；`serve src` 与旧脚本顺序仍可用；islands bundle 输出到稳定路径（默认 `src/assets/islands/`）；Tailwind preflight 隔离、`.ot-island` 作用域；smoke test 证明旧页面仍可加载。
 - **P2**：`typedIpc.ts` 覆盖高频命令并带类型；可被岛使用；legacy 未强制迁移。
 - **P3**：`mountIsland/unmountIsland/updateIsland` + `window.OneToneIslands` 宿主 API；文档列出每个岛 DOM 所有权；mvp_init 后可 remount/update。✅
-- **P4**：Toast/Dialog/Tabs/Command 迁为岛；`window.OneToneUi.toast/confirm` 供 legacy 调用；**不出现两套 Toast/Confirm 同时弹出**。✅
-- **P5**：基础设置（运行/外观/字体/语言/偏好）成岛；修改可保存；语言/主题/字体切换一致；mvp_init/reload 后一致；其它 panel 不受影响。✅
+- **P4**：共享交互能力就绪（Toast/Dialog/Confirm/Command 岛 + `OneToneUi`）；Toast **legacy 主路径单轨**（`OneToneUi.toast` 反向代理 `OneToneAppToast`，兼容 string|opts）；Command **未接管** `#wbCommandSearch`。✅（债收口后口径）- **P5**：基础设置（运行/外观/字体/语言/偏好）成岛；修改可保存；语言/主题/字体切换一致；mvp_init/reload 后一致；其它 panel 不受影响。✅
 - **P6**：语音配置按 tab 分岛；切引擎不回归；短语可保存且 reload 一致；legacy voice render 不再覆盖岛 DOM。✅
 - **P7**：映射编辑器守习惯契约 + persist 守卫；增删复制重排/冲突检测/字段不丢；保存 reload mvp_init 后一致。✅
 - **P8**：清理临时 bridge（不破 legacy）；本文档更新为最终态；补 smoke/typecheck/build 脚本；记录 `npm install`/typecheck/`vite build`/JS 测试/Tauri dev·build 验证结果；列出后续安全收口计划（CSP / `withGlobalTauri`）。✅（见 §10 P8 执行记录：验证矩阵 8.4，npm install 与 Tauri dev·build 为环境限制待办）
 
 ## 7. 已知债务与风险（必须持续追踪）
 
-1. **双轨系统债（ intentional ）**：legacy 与 React 长期并存；靠本契约 + 冒烟测试护栏，纪律松懈即退化成两套 Toast/双向写 DOM。
-2. **i18n 覆盖**：data-i18n sweep 必须跳过岛子树，否则 React 文本被覆盖。
-3. **portal 逃逸**：shadcn 弹层逃出 `.ot-island`，Tailwind prefix 不够，需显式作用域。
+1. **双轨系统债（ intentional ）**：legacy 与 React 长期并存；靠本契约 + 冒烟测试护栏。
+2. **i18n 覆盖**：`home-workbench.js` 的 `data-i18n` sweep 已 `isInsideIsland` 跳过；其它定点写文案路径仍需纪律。
+3. **portal 逃逸**：shadcn 弹层逃出 `.ot-island`，需显式 portal 作用域。
 4. **收益边界**：home/workbench、相机、HUD、tray 留 legacy，真实长期收益 < 70%，除非后续补迁。
-5. **构建产物落点**：写入 `src/assets/islands/` 会进源码树，需 `.gitignore` 排除并固化路径。
-6. **最大不确定项**：P7 回归（重挂载风暴路径）+ typed IPC 准确性（需读 Rust 命令签名，未查）。建议整体 +20–30% 缓冲。
+5. **构建产物落点**：`src/assets/islands/` 已 `.gitignore`；`emptyOutDir: false` 环境坑见 P1 记录。
+6. **Toast 二次切流**：正式 shadcn/a11y 就绪前，**禁止**恢复 `OneToneUi.toast → pushToast` 并行渲染（会与 legacy 双弹）。
+7. **Command 接管**：`#wbCommandSearch` 仍是独立迁移项（home/workbench/快捷键/焦点），勿塞进债收口。
+8. **最大不确定项**：P7 运行期回归 + typed IPC 部分 `[UNVERIFIED]`；建议整体 +20–30% 缓冲。
 
 ## 8. 验证命令
 
@@ -326,9 +327,9 @@
 | 全局 API | 定性 | 处置 |
 |---|---|---|
 | `window.OneToneIslands`（mount/update/unmount/refreshAll/isMounted/isInsideIsland/createPortalRoot） | **长期契约** | 保留；后续新岛均经此挂载 |
-| `window.OneToneUi`（toast/confirm/openCommand/closeCommand/registerCommands） | **长期契约** | 保留；legacy 逐步改调（单一数据源保证不双弹） |
+| `window.OneToneUi`（toast/confirm/openCommand/closeCommand/registerCommands） | **长期契约** | 保留；**toast 反向代理 legacy**；confirm 走 React；Command 为脚手架 |
 | `window.OneToneIslandsRefresh()` | **长期契约** | 保留；P8 已补 legacy 调用点（见 8.2） |
-| `window.OneToneUiReady` / `OneToneIslandsReady` | **长期契约（就绪信号）** | 保留；legacy 探测后优先走 React UI |
+| `window.OneToneUiReady` / `OneToneIslandsReady` | **长期契约（就绪信号）** | 保留；就绪 ≠ Toast/Command 已全局切流 |
 | `window.__otMappingListSync` | **窄桥（P7 专用）** | 保留；已有正确生命周期（岛 unmount 时 `delete`，legacy 探测 `typeof === 'function'` 后调用，缺席即回退原路径） |
 | `src-islands/components/IslandTemplate.tsx` | **P1 脚手架残留** | 已删除（全仓零引用） |
 
@@ -360,16 +361,21 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 |---|---|
 | `tsc --noEmit` | ✅ 退出 0 |
 | `vite build` | ✅ 退出 0（`src/assets/islands/main.js` 801.69 KB / gzip 189.58 KB，51 模块） |
-| `npm run test:islands` | ✅ 全 PASS：smoke 13/13（含 P8 接线校验）+ runtime 8/8 + ui-store 13/13 + voice-config 13/13 + mapping-island 23/23 |
+| `npm run test:islands` | ✅ 全 PASS：smoke + runtime + ui-store + **toast-bridge** + voice-config + mapping-island |
 | `npm install`（lockfile 补齐） | ⚠️ 本环境 npm 写 lockfile/装新包挂起（沙箱网络限制）；**待联网环境执行一次 `npm install` 生成 `package-lock.json`** 保证可复现构建 |
-| `tauri dev` / `tauri build` | ⚠️ 需 Rust 工具链 + 交互窗口，本环境未执行；**待本机人工跑一遍**（见 8.5 人工验收清单） |
+| `tauri dev` / `tauri build` | ⚠️ 需 Rust 工具链 + 交互窗口，本环境未执行；**待本机人工跑一遍**（见 8.5 人工验收清单，全部待测） |
 
 #### 8.5 运行期人工验收清单（汇总 P5–P8，需 `tauri dev` 实测一次）
 
-1. Basic 面板：切主题/语言/字号 → UI 与窗口 backdrop 一致；开关保存 reload 生效；其余 panel 不受影响。
-2. 语音页：岛的策略/短语控件增删保存正常；与 legacy 声音录制子页互不干扰；切引擎后唤醒词读写正确；reload 后配置一致。
-3. 按键面板：增删复制重排、行内开关/滑条/录制切换键、浮动菜单、冲突提示；reload 后列表一致；观察 `render slow` 告警是否减少。
-4. P8 接线：改配置触发 `mvp_init` 后确认三岛状态自动同步（无需切页）。
+| # | 项 | 结果（2026-07-29） |
+|---|---|---|
+| 1 | Basic 面板：切主题/语言/字号 → UI 与窗口 backdrop 一致；开关保存 reload 生效；其余 panel 不受影响 | ⚠️ 待测 |
+| 2 | 语音页：策略/短语增删保存；与声学子页互不干扰；切引擎；reload 一致 | ⚠️ 待测 |
+| 3 | 按键面板：增删复制重排、行内控件、浮动菜单、冲突；reload；观察 render slow | ⚠️ 待测 |
+| 4 | P8 接线：`mvp_init` 后三岛状态自动同步 | ⚠️ 待测 |
+| 5 | Toast 单轨：控制台 `OneToneUi.toast('…')` / `toast({title})` 只出 **一套** legacy toast | ⚠️ 待测 |
+
+> 本轮债收口不阻塞代码合入；产品验收以本表实测为准。
 
 #### 8.6 后续路线图（契约外，按需启动）
 
@@ -380,9 +386,21 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 
 ---
 
-## 11. 迁移总结（P0–P8）
+## 11. 迁移总结（P0–P8 + 债收口）
 
-- **9 个阶段全部完成**，legacy 零破坏：`index.html` 仅 +1 个 module 入口与 2 个岛容器/标记；170+ 旧脚本顺序未动；所有守卫「岛未挂载即回退 legacy」。
-- **落地资产**：typed IPC 层（含 2 个真实 bug 修复：voiceEnd 短语签名）、Island Runtime + DOM 所有权护栏、共享 UI 单一数据源（Toast/Confirm/Command）、3 个业务岛（基础设置 / 语音配置 / 映射列表 keyed diff）。
-- **测试护栏**：`npm run test:islands` = typecheck + smoke 13 + runtime 8 + ui-store 13 + voice-config 13 + mapping-island 23，全绿即可安全迭代。
-- **纪律**：新岛必须过本契约 §3/§4（挂载约定 + 所有权登记 + 守卫 + smoke 标记），否则双轨会退化为两套 UI 互写。
+- **工程轨 P0–P8 静态通过**，legacy 零破坏：`index.html` 仅 +1 个 module 入口与岛容器/标记；170+ 旧脚本顺序未动；守卫「岛未挂载即回退 legacy」。
+- **落地资产**：typed IPC（含 voiceEnd 短语签名修复）、Island Runtime + DOM 所有权、3 个业务岛（Basic / Voice / Mapping keyed diff）、共享 UI 桥（Confirm 走 React；Toast 反向代理 legacy；Command 脚手架）。
+- **测试护栏**：`npm run test:islands` = typecheck + smoke + runtime + ui-store + **toast-bridge** + voice-config + mapping-island。
+- **裁定口径**：静态通过 + Toast 单轨桥接 + Command 明确脚手架 + **产品验收待 §8.5 人工清单**。
+- **纪律**：新岛必须过 §3/§4；二次切流前禁止 `pushToast` 与 legacy Toast 并行。
+
+### 12. 验收债收口执行记录（2026-07-29）
+
+| 项 | 处置 |
+|---|---|
+| Toast 单轨 | `OneToneUi.toast(string\|opts)` → `OneToneAppToast.show(title, {detail,type,duration})`；不 `pushToast`；缺席 warn 一次 |
+| Command | 明确脚手架，不接管 `#wbCommandSearch` |
+| 孤儿轨 | 删除 `src-react/`、`MIGRATION_GUIDE.md`、`package-v2.json`（正式入口 `assets/islands/main.js` ← `src-islands`） |
+| i18n 护栏 | `home-workbench.js` `renderQuickActions` / `applyLang` 跳过 `.ot-island` |
+| 单测 | `scripts/test-toast-bridge.mjs`（源码静态 + 运行时 mock）串入 `test:islands` |
+| 人工清单 | §8.5 表项全部 ⚠️ 待测（本环境未跑 `tauri dev`） |

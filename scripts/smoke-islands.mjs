@@ -38,6 +38,15 @@ check('P8 applyMvpInit → OneToneIslandsRefresh 接线已就位', configPersist
 const html = readFileSync(htmlPath, 'utf8');
 check('legacy state.js 脚本仍在', html.includes('js/core/state.js'));
 check('P6 语音配置岛容器已注入 index.html', html.includes('id="voiceConfigIsland"'));
+{
+  const mainIdx = html.indexOf('class="voice-page-main"');
+  const deskIdx = html.indexOf('id="voiceDeskPanel"');
+  const islandIdx = html.indexOf('id="voiceConfigIsland"');
+  check(
+    'P6 voiceConfigIsland 位于 voiceDeskPanel 内（非 voice-page-body 网格子项）',
+    mainIdx >= 0 && deskIdx > mainIdx && islandIdx > deskIdx,
+  );
+}
 const legacyIdx = html.indexOf('js/main-legacy.js');
 const moduleIdx = html.indexOf('assets/islands/main.js');
 check('module 入口已注入', moduleIdx >= 0);
