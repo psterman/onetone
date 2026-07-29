@@ -33,6 +33,8 @@ if (existsSync(bundle)) {
   check('P9a 命令搜索岛含 wb-cmdk 标记', code.includes('wb-cmdk-panel') && code.includes('wbCommandSearchInput'));
   check('P10 SoftPad 状态栏岛已打进 bundle（含 __otSoftPadStatusMounted 标记）', code.includes('__otSoftPadStatusMounted'));
   check('P10 SoftPad 状态栏岛含状态栏 DOM 标记（softPadSummaryName）', code.includes('softPadSummaryName'));
+  check('P11 Keys 状态栏岛已打进 bundle（含 __otKeysStatusMounted 标记）', code.includes('__otKeysStatusMounted'));
+  check('P11 Keys 状态栏岛含状态栏 DOM 标记（keysSummaryName）', code.includes('keysSummaryName'));
 }
 const mappingListJs = readFileSync(resolve(root, 'src/js/features/mapping/mapping-list.js'), 'utf8');
 check('P7 legacy rowView 单一来源已导出', mappingListJs.includes('rowView:rowView'));
@@ -42,6 +44,10 @@ check('P9a legacy cmdk 岛守卫已就位', cmdkJs.includes('__otCommandPaletteM
 const softPadHubJs = readFileSync(resolve(root, 'src/js/features/agent/soft-pad-hub-ui.js'), 'utf8');
 check('P10 legacy soft-pad-hub updateStatusBar 岛守卫已就位', softPadHubJs.includes('__otSoftPadStatusMounted') && softPadHubJs.includes('__otSoftPadStatusSync'));
 check('P10 legacy __otSoftPadStatusRead 读桥已就位', softPadHubJs.includes('__otSoftPadStatusRead'));
+const keysPanelJs = readFileSync(resolve(root, 'src/js/features/settings/keys-panel-ui.js'), 'utf8');
+check('P11 legacy keys-panel renderSchemeSummary 岛守卫已就位', keysPanelJs.includes('__otKeysStatusMounted') && keysPanelJs.includes('__otKeysStatusSync'));
+check('P11 legacy __otKeysStatusRead 读桥已就位', keysPanelJs.includes('__otKeysStatusRead'));
+check('P11 legacy toggleMappingEnable 委托已导出', keysPanelJs.includes('toggleMappingEnable'));
 const configPersistJs = readFileSync(resolve(root, 'src/js/core/config-persist.js'), 'utf8');
 check('P8 applyMvpInit → OneToneIslandsRefresh 接线已就位', configPersistJs.includes('OneToneIslandsRefresh'));
 const html = readFileSync(htmlPath, 'utf8');

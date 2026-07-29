@@ -251,16 +251,117 @@
     return 'RAlt';
   }
 
+  function buildKeysStatusProps(m){
+    var rec=global.OneToneMappingRecording;
+    var recMode=rec&&rec.mode?rec.mode():'none';
+    var recording=recMode==='trigger'||recMode==='target'||recMode==='agentBinding';
+    var capUi=global.OneToneAgentCapabilityUi;
+    var codexCtx=capUi&&capUi.isCodexKeysEditing&&capUi.isCodexKeysEditing();
+    var dirty=m?isEditorDirty():false;
+    var trig='';
+    var trigLabel='';
+    if(m){
+      trig=core().editorTrigger?core().editorTrigger(m):((m.triggerKey||'').trim());
+      var lang=global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():'zh';
+      if(global.OneToneKeyLabels&&global.OneToneKeyLabels.triggerDisplayLabel){
+        trigLabel=global.OneToneKeyLabels.triggerDisplayLabel(m,lang)||'';
+      }
+      if(!trigLabel&&trig) trigLabel=friendlyKey(trig);
+    }
+    var name='—';
+    var status='—';
+    var statusCls='';
+    if(m){
+      if(codexCtx) name=habitName(m);
+      else name=habitName(m)+(trigLabel?' · '+trigLabel:(trig?friendlyKey(trig):''));
+      if(recording){
+        status=recMode==='trigger'?t('keysStatusRecordingTrigger')
+          :(recMode==='agentBinding'?t('keysStatusRecordingCap','录制能力快捷键中'):t('keysStatusRecordingTarget'));
+      }else if(dirty){
+        status=t('keysSummaryStatusDirty');
+        statusCls='is-dirty';
+      }else if(m.enabled){
+        status=t('keysSummaryStatusActive');
+        statusCls='is-on';
+      }else if(core().isSaved&&core().isSaved(m)){
+        status=t('keysSummaryStatusSaved');
+      }else{
+        status=t('keysSummaryStatusInactive');
+        statusCls='is-off';
+      }
+    }
+    var scopeVal='—';
+    if(m){
+      if(codexCtx&&capUi&&capUi.pushToTalkDisplay){
+        var talkKey=capUi.pushToTalkDisplay(m);
+        scopeVal=talkKey
+          ?(t('codexSummaryTalkKey','说话键')+' '+talkKey)
+          :scopeSummaryText(m);
+      }else{
+        scopeVal=scopeSummaryText(m);
+      }
+    }
+    var tgt=m?(core().editorTarget?core().editorTarget(m):((m.targetKey||'').trim())):'';
+    var mappingEnabled=!!(m&&m.enabled);
+    if(recording){
+      mappingEnabled=rec&&rec.wasEnabledBeforeRecording?rec.wasEnabledBeforeRecording():!!(m&&m.enabled);
+    }
+    return {
+      name:name,
+      status:status,
+      statusCls:statusCls,
+      triggerLbl:t('keysSummaryTriggerLbl'),
+      triggerVal:m?(trigLabel||(trig?friendlyKey(trig):t('keysStatusUnset'))):'—',
+      scopeLbl:t('keysSummaryScopeLbl'),
+      scopeVal:scopeVal,
+      saveLabel:t('keysSave'),
+      testLabel:t('keysTestOnce'),
+      addLabel:'+ '+t('addKeysDraft'),
+      saveDisabled:!dirty,
+      saveHidden:!!codexCtx,
+      testDisabled:!m||!trig||!tgt,
+      mappingEnabled:mappingEnabled,
+      toggleDisabled:!m||recording,
+      hasMapping:!!m
+    };
+  }
+
+  function pushKeysStatusIfMounted(m){
+    if(global.__otKeysStatusMounted&&global.__otKeysStatusSync){
+      global.__otKeysStatusSync(buildKeysStatusProps(m));
+      return true;
+    }
+    return false;
+  }
+
+  function testOnceTop(){
+    var main=$('btnTestSend');
+    if(main&&!main.disabled) main.click();
+  }
+
+  function addScheme(){
+    var addBtn=$('btnAddMapping');
+    if(addBtn) addBtn.click();
+  }
+
+  function toggleMappingEnable(){
+    var m=core()&&core().selected?core().selected():null;
+    if(!m||!core().isSaved||!core().isSaved(m)) return;
+    var edit=global.OneToneMappingEditActions;
+    if(edit&&edit.setMappingEnabled) edit.setMappingEnabled(m.id,!m.enabled);
+  }
+
   function renderSchemeSummary(m){
-    var nameEl=$('keysSummaryName');
-    var statusEl=$('keysSummaryStatus');
-    var trigLbl=$('keysSummaryTriggerLbl');
-    var trigVal=$('keysSummaryTrigger');
-    var scopeLbl=$('keysSummaryScopeLbl');
-    var scopeVal=$('keysSummaryScope');
-    var saveBtn=$('btnKeysSave');
-    var testBtn=$('btnKeysTestTop');
-    var schemeAddBtn=$('btnKeysSchemeAdd');
+    var islandOn=pushKeysStatusIfMounted(m);
+    var nameEl=islandOn?null:$('keysSummaryName');
+    var statusEl=islandOn?null:$('keysSummaryStatus');
+    var trigLbl=islandOn?null:$('keysSummaryTriggerLbl');
+    var trigVal=islandOn?null:$('keysSummaryTrigger');
+    var scopeLbl=islandOn?null:$('keysSummaryScopeLbl');
+    var scopeVal=islandOn?null:$('keysSummaryScope');
+    var saveBtn=islandOn?null:$('btnKeysSave');
+    var testBtn=islandOn?null:$('btnKeysTestTop');
+    var schemeAddBtn=islandOn?null:$('btnKeysSchemeAdd');
     var keycapHint=$('keysKeycapHint');
     var targetKeycapHint=$('keysTargetKeycapHint');
     var keycapHost=$('habitKeyMapCellTrigger');
@@ -545,7 +646,7 @@
         activePill.classList.add('is-recording');
         activePill.classList.add('is-on');
       }
-      if(toggle){
+      if(!global.__otKeysStatusMounted&&toggle){
         toggle.disabled=true;
         toggle.classList.toggle('is-on',wasOn);
         toggle.setAttribute('aria-checked',wasOn?'true':'false');
@@ -564,7 +665,7 @@
     }
     if(activeDot) activeDot.hidden=!enabled;
     if(activePill) activePill.classList.toggle('is-on',enabled);
-    if(toggle){
+    if(!global.__otKeysStatusMounted&&toggle){
       toggle.classList.toggle('is-on',enabled);
       toggle.setAttribute('aria-checked',enabled?'true':'false');
       toggle.disabled=!m||recording;
@@ -1332,6 +1433,14 @@
     isEditorDirty:isEditorDirty,
     saveCurrentScheme:saveCurrentScheme,
     keysPanelActive:keysPanelActive,
-    previewKeyConflict:previewKeyConflict
+    previewKeyConflict:previewKeyConflict,
+    testOnceTop:testOnceTop,
+    addScheme:addScheme,
+    toggleMappingEnable:toggleMappingEnable,
+    buildKeysStatusProps:buildKeysStatusProps
+  };
+  global.__otKeysStatusRead=function(){
+    var m=core()&&core().selected?core().selected():null;
+    return buildKeysStatusProps(m);
   };
 })((typeof window!=='undefined')?window:globalThis);

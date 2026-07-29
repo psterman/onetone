@@ -691,6 +691,11 @@
 
     if(panel==='keys'){
 
+      try{
+        var mountKeys=global.__otMountKeysStatusIsland;
+        if(typeof mountKeys==='function') mountKeys();
+      }catch(err){ console.error('keys status island mount',err); }
+
       if(opts.deferHeavy){
         var afterHeavy=opts.afterHeavy;
         requestAnimationFrame(function(){

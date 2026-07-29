@@ -1786,6 +1786,10 @@
     opts = opts || {};
     var t0 = Date.now();
     feLog('fe softPad.render begin');
+    try{
+      var mountSoft=global.__otMountSoftPadStatusIsland;
+      if(typeof mountSoft==='function') mountSoft();
+    }catch(_){}
     bindChrome();
     // Will land on runtime via selectScheme({ resetView: true }); keep hub only until then.
     softPadView = 'hub';

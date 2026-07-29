@@ -907,3 +907,12 @@
 {"ts":1785328361490}
 {"ts":1785328426049,"hook_event_name":"stop","session_id":"4aa9cd6f-53fd-4ad5-b8ff-a38169c2e7ac","model":"default"}
 {"ts":1785328495459}
+{"ts":1785328870688,"hook_event_name":"stop","session_id":"4aa9cd6f-53fd-4ad5-b8ff-a38169c2e7ac","model":"default"}
+{"ts":1785330814187,"hook_event_name":"beforeSubmitPrompt","session_id":"4aa9cd6f-53fd-4ad5-b8ff-a38169c2e7ac","model":"default"}
+{"ts":1785330987423,"hook_event_name":"stop","session_id":"4aa9cd6f-53fd-4ad5-b8ff-a38169c2e7ac","model":"default"}
+{"ts":1785331187758}
+{"ts":1785331489897,"hook_event_name":"stop","session_id":"4aa9cd6f-53fd-4ad5-b8ff-a38169c2e7ac","model":"default"}
+{"ts":1785331567997,"hook_event_name":"beforeSubmitPrompt","session_id":"4aa9cd6f-53fd-4ad5-b8ff-a38169c2e7ac","model":"default"}
+{"ts":1785331670925,"hook_event_name":"stop","session_id":"4aa9cd6f-53fd-4ad5-b8ff-a38169c2e7ac","model":"default"}
+{"ts":1785332009667,"hook_event_name":"beforeSubmitPrompt","session_id":"4aa9cd6f-53fd-4ad5-b8ff-a38169c2e7ac","model":"default"}
+{"ts":1785332049666,"hook_event_name":"stop","session_id":"4aa9cd6f-53fd-4ad5-b8ff-a38169c2e7ac","model":"default"}

@@ -7,6 +7,7 @@ import { VoiceConfigIsland } from './islands/voice-config-island';
 import { MappingListIsland } from './islands/mapping-list-island';
 import { WbCommandIsland } from './islands/wb-command-island';
 import { SoftPadStatusBarIsland } from './islands/soft-pad-status-island';
+import { KeysStatusBarIsland } from './islands/keys-status-island';
 import { toastPortal, dialogPortal } from './shared/portal-roots';
 // ?inline 让 CSS 直接内联进 bundle，产物为单文件 main.js，便于 Tauri 静态加载
 import islandCss from './globals.css?inline';
@@ -84,26 +85,41 @@ try {
   console.error('[islands] wb command mount failed, keeping legacy cmdk', err);
 }
 
-// P10：挂载 SoftPad 状态栏岛到 #softPadStatusBar（接管 name/status/enable；失败则保留 legacy DOM 写入）
-// 延迟到面板首次可见时挂载，避免在 boot 时清空 hidden 面板 DOM 破坏 legacy 事件绑定。
+// P10：挂载 SoftPad 状态栏岛（延迟到面板首次 render，避免 boot 清空 hidden DOM）
 function mountSoftPadStatusIsland(): void {
   const host = document.getElementById('softPadStatusBar');
   if (!host) return;
-  // Already mounted — skip
   if (OneToneIslands.isMounted('softPadStatus')) return;
   host.innerHTML = '';
   OneToneIslands.mountIsland('softPadStatus', SoftPadStatusBarIsland, {}, {
     onRefresh: () => ({}) as Record<string, unknown>,
   });
 }
-// Defer mount: legacy soft-pad-hub-ui.js binds events to #softPadSummaryEnable at first render.
-// Mount on first island refresh (after applyMvpInit) rather than boot time.
-try {
-  // Try mount now (safe if panel is visible); also register for deferred mount on refresh.
-  mountSoftPadStatusIsland();
-} catch (err) {
-  console.error('[islands] softPad status bar mount failed, keeping legacy DOM', err);
+(window as unknown as { __otMountSoftPadStatusIsland?: () => void }).__otMountSoftPadStatusIsland =
+  mountSoftPadStatusIsland;
+
+// P11：挂载 Keys 状态栏岛（延迟到按键面板首次打开；保留 sr-only 辅助节点）
+function mountKeysStatusIsland(): void {
+  const bar = document.getElementById('keysWorkflowTabsBar');
+  if (!bar || OneToneIslands.isMounted('keysStatus')) return;
+
+  bar.querySelector('.page-status-bar-main')?.remove();
+  bar.querySelector('.page-status-bar-actions')?.remove();
+
+  let host = document.getElementById('keysStatus');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'keysStatus';
+    host.className = 'ot-island keys-status-island-host';
+    bar.insertBefore(host, bar.firstChild);
+  }
+
+  OneToneIslands.mountIsland('keysStatus', KeysStatusBarIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
 }
+(window as unknown as { __otMountKeysStatusIsland?: () => void }).__otMountKeysStatusIsland =
+  mountKeysStatusIsland;
 
 // 暴露宿主桥，供 legacy 与后续阶段调用
 (window as unknown as { OneToneIslands: typeof OneToneIslands }).OneToneIslands = OneToneIslands;
