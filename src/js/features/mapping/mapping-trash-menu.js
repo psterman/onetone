@@ -67,7 +67,7 @@
     state.config.mappings.forEach(function(m,i){ m.order=i; });
     hooks.syncEditorFromSelection();
     closeMenu();
-    hooks.saveAsync().then(function(){
+    hooks.saveAsync({source:'mapping'}).then(function(){
       renderTrashList();
       hooks.render();
       hooks.toast(t('movedToTrash'));
@@ -186,7 +186,7 @@
     state.config.mappings.push(item);
     state.selectedMappingId=item.id;
     hooks.syncEditorFromSelection();
-    hooks.saveAsync().then(function(){
+    hooks.saveAsync({source:'mapping'}).then(function(){
       renderTrashList();
       hooks.render();
     }).catch(function(){

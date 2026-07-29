@@ -53,6 +53,21 @@
     hooks.markBoot('setRecording complete');
     hooks.pushLog(t('waitLog'));
     hooks.deferProcessUsagePoll();
+    // UI heartbeat: detect main-thread blocks > 2s (console only — no user-facing banner)
+    (function(){
+      var last=Date.now();
+      var hbId=setInterval(function(){
+        var now=Date.now();
+        var gap=now-last;
+        if(gap>2000){
+          try{ hooks.markBoot('UI-BLOCK gap='+gap+'ms'); }catch(_){}
+          try{ console.error('[onetone] UI-BLOCK',gap+'ms'); }catch(_){}
+        }
+        last=now;
+      },500);
+      setTimeout(function(){ clearInterval(hbId); },120000);
+    })();
+
     if(session&&session.whenBootSettled){
       session.whenBootSettled(function(){
         hooks.markBoot('boot settled');
@@ -62,6 +77,9 @@
         }
         if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.flushDeferredMvpInitSideEffects==='function'){
           global.OneToneConfigPersist.flushDeferredMvpInitSideEffects();
+        }
+        if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.suppressUnknownSave==='function'){
+          global.OneToneConfigPersist.suppressUnknownSave(2000);
         }
         if(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.checkAfterBoot){
           global.OneToneVoiceEngineReadiness.checkAfterBoot();

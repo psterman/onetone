@@ -912,6 +912,11 @@
     try{
       feLog('fe openDrawer panel='+String(opts.panel||'basic')+(opts.habitWizard?' wizard=1':''));
     }catch(_){}
+    try{
+      if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.suppressUnknownSave==='function'){
+        global.OneToneConfigPersist.suppressUnknownSave(2500);
+      }
+    }catch(_){}
 
     hooks().closeHomeSchemeMenu();
 

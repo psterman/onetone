@@ -328,8 +328,8 @@
   function persistMapping(m){
     notifyChange();
     var persist=global.OneToneConfigPersist;
-    if(persist&&persist.saveAsync) return persist.saveAsync();
-    if(persist&&persist.save){ persist.save(); return Promise.resolve(true); }
+    if(persist&&persist.saveAsync) return persist.saveAsync({source:'voice'});
+    if(persist&&persist.save){ persist.save({source:'voice'}); return Promise.resolve(true); }
     return Promise.resolve(false);
   }
 

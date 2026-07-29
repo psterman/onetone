@@ -114,8 +114,8 @@
     if(!m) return null;
     ui().voiceEditSchemeId=m.id;
     state().selectedMappingId=m.id;
-    persistConfig();
-    refreshVoiceSchemeSurfaces();
+    if(opts.persist!==false) persistConfig({source:'voiceDraft'});
+    if(opts.skipRefresh!==true) refreshVoiceSchemeSurfaces();
     return m;
   }
 
@@ -131,38 +131,44 @@
     return m;
   }
 
-  function persistConfig(){
+  function persistConfig(opts){
+    opts=opts||{};
     if(global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync){
-      return global.OneToneConfigPersist.saveAsync();
+      return global.OneToneConfigPersist.saveAsync({source:opts.source||'voice'});
     }
     if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
-      global.OneToneConfigPersist.save();
+      global.OneToneConfigPersist.save({source:opts.source||'voice'});
     }
     return Promise.resolve(false);
   }
 
+  var refreshVoiceSurfacesTimer=0;
   function refreshVoiceSchemeSurfaces(){
-    requestAnimationFrame(function(){
-      try{
-        if(global.OneToneVoiceSchemesUi&&global.OneToneVoiceSchemesUi.render){
-          global.OneToneVoiceSchemesUi.render();
+    clearTimeout(refreshVoiceSurfacesTimer);
+    refreshVoiceSurfacesTimer=setTimeout(function(){
+      refreshVoiceSurfacesTimer=0;
+      requestAnimationFrame(function(){
+        try{
+          if(global.OneToneVoiceSchemesUi&&global.OneToneVoiceSchemesUi.render){
+            global.OneToneVoiceSchemesUi.render();
+          }
+          if(global.OneToneSceneModeHub&&global.OneToneSceneModeHub.render){
+            global.OneToneSceneModeHub.render();
+          }
+          if(global.OneToneHabitHub&&global.OneToneHabitHub.render){
+            global.OneToneHabitHub.render();
+          }
+          if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+            global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+          }
+          if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.render){
+            global.OneToneAppBehaviorRules.render();
+          }
+        }catch(err){
+          console.error('refreshVoiceSchemeSurfaces',err);
         }
-        if(global.OneToneSceneModeHub&&global.OneToneSceneModeHub.render){
-          global.OneToneSceneModeHub.render();
-        }
-        if(global.OneToneHabitHub&&global.OneToneHabitHub.render){
-          global.OneToneHabitHub.render();
-        }
-        if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
-          global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
-        }
-        if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.render){
-          global.OneToneAppBehaviorRules.render();
-        }
-      }catch(err){
-        console.error('refreshVoiceSchemeSurfaces',err);
-      }
-    });
+      });
+    },32);
   }
 
   function touchUpdated(m){

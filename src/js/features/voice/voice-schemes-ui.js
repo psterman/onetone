@@ -212,7 +212,7 @@
     }
     st.config.activeSceneId=id;
     if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
-      global.OneToneConfigPersist.save();
+      global.OneToneConfigPersist.save({source:'voice'});
     }
     if(global.OneToneSchemeSwitchFeedback&&global.OneToneSchemeSwitchFeedback.refreshVoiceAfterSceneSwitch){
       global.OneToneSchemeSwitchFeedback.refreshVoiceAfterSceneSwitch();
@@ -419,7 +419,7 @@
     m.group=next;
     if(global.OneToneHabitHub&&global.OneToneHabitHub.touchUpdated) global.OneToneHabitHub.touchUpdated(m);
     else m.updatedAt=Date.now();
-    if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
+    if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save({source:'voice'});
     if(global.OneToneVoiceSchemePersist&&global.OneToneVoiceSchemePersist.refreshVoiceSchemeSurfaces){
       global.OneToneVoiceSchemePersist.refreshVoiceSchemeSurfaces();
     }else render();
@@ -461,9 +461,6 @@
         e.preventDefault();
         e.stopPropagation();
         if(global.OneToneMappingTrashMenu) global.OneToneMappingTrashMenu.deleteFromMenu(delBtn.getAttribute('data-voice-scheme-delete')||'');
-        if(global.OneToneVoiceSchemePersist&&global.OneToneVoiceSchemePersist.refreshVoiceSchemeSurfaces){
-          global.OneToneVoiceSchemePersist.refreshVoiceSchemeSurfaces();
-        }
         return;
       }
       var newTpl=e.target.closest&&e.target.closest('[data-voice-new-template]');
@@ -484,7 +481,7 @@
       if(addDraft){
         e.preventDefault();
         var m=global.OneToneVoiceSchemePersist&&global.OneToneVoiceSchemePersist.createVoiceDraft
-          ?global.OneToneVoiceSchemePersist.createVoiceDraft()
+          ?global.OneToneVoiceSchemePersist.createVoiceDraft({persist:false,skipRefresh:true})
           :null;
         if(m&&m.id) selectVoiceSchemeForEdit(m.id);
       }
@@ -506,7 +503,7 @@
       if(add){
         e.preventDefault();
         var m=global.OneToneVoiceSchemePersist&&global.OneToneVoiceSchemePersist.createVoiceDraft
-          ?global.OneToneVoiceSchemePersist.createVoiceDraft()
+          ?global.OneToneVoiceSchemePersist.createVoiceDraft({persist:false,skipRefresh:true})
           :null;
         if(m&&m.id) selectVoiceSchemeForEdit(m.id);
       }

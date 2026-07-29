@@ -175,7 +175,7 @@
     return confirmFn(msg,opts).then(function(ok){
       if(!ok) return false;
       var draft=global.OneToneVoiceSchemePersist&&global.OneToneVoiceSchemePersist.createVoiceDraft
-        ?global.OneToneVoiceSchemePersist.createVoiceDraft({name:t(tpl.nameKey)})
+        ?global.OneToneVoiceSchemePersist.createVoiceDraft({name:t(tpl.nameKey),persist:false})
         :null;
       if(!draft) return false;
       applyVoiceFields(tpl,draft);

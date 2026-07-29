@@ -2255,7 +2255,7 @@
         global.OneToneVoiceSchemeContext.mirrorGlobalToOverride();
       }
       if(global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync){
-        global.OneToneConfigPersist.saveAsync();
+        global.OneToneConfigPersist.saveAsync({source:'voice'});
       }else if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
         global.OneToneConfigPersist.save();
       }

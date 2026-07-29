@@ -432,7 +432,27 @@
     return !!(entry && entry.mapping && entry.mapping.id);
   }
 
+  function buildStatusProps(entry) {
+    if (!entry) {
+      return { name: '—', status: '—', presentation: '—', kind: '—', padEnabled: false, hasMapping: false };
+    }
+    return {
+      name: displayTitle(entry),
+      status: statusLabel(entry),
+      statusCls: statusTag(entry).cls,
+      presentation: presentationLabel(entry.presentation),
+      kind: displayKind(entry),
+      padEnabled: !!entry.padEnabled,
+      hasMapping: hasMapping(entry),
+    };
+  }
+
   function updateStatusBar(entry) {
+    // P10: React island owns this DOM when mounted — push state and skip legacy DOM writes.
+    if (global.__otSoftPadStatusMounted) {
+      if (global.__otSoftPadStatusSync) global.__otSoftPadStatusSync(buildStatusProps(entry));
+      return;
+    }
     var e = els();
     if (!entry) {
       if (e.name) e.name.textContent = '—';
@@ -1888,7 +1908,14 @@
     listSoftPadSchemes: listSoftPadSchemes,
     listAppScopes: listAppScopes,
     listHubEntries: listHubEntries,
-    isSoftPadSchemeEligible: isSoftPadSchemeEligible
+    isSoftPadSchemeEligible: isSoftPadSchemeEligible,
+    // P10: exposed for React island toggle delegation
+    toggleSelectedEnable: toggleSelectedEnable,
+    toggleRowEnable: toggleRowEnable,
+  };
+  // P10: read bridge — island calls this on mount / refresh to get initial state
+  global.__otSoftPadStatusRead = function () {
+    return buildStatusProps(findEntry(getSelectedMappingId()));
   };
   global.OneToneSoftPadSchemesUi = global.OneToneSoftPadHub;
 })(window);

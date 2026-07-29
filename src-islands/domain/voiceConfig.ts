@@ -40,10 +40,18 @@ function engineKeys(eng: Engine): { camel: string; snake: string } {
   return { camel: 'voiceSapi', snake: 'voice_sapi' };
 }
 
+let _persistTimer: ReturnType<typeof setTimeout> | null = null;
 function persistSoon(): void {
-  const cp = w().OneToneConfigPersist;
-  if (cp && typeof cp.saveAsync === 'function') cp.saveAsync();
-  else if (cp && typeof cp.save === 'function') cp.save();
+  // Debounce 500ms to avoid overlapping with applyMvpInit / drawer open render storms.
+  // The IPC phrase commands (setVoiceVoskPhrases etc.) already push the change to Rust
+  // immediately; persistSoon only writes the full config snapshot for reload consistency.
+  if (_persistTimer) clearTimeout(_persistTimer);
+  _persistTimer = setTimeout(() => {
+    _persistTimer = null;
+    const cp = w().OneToneConfigPersist;
+    if (cp && typeof cp.saveAsync === 'function') cp.saveAsync({ source: 'voice' });
+    else if (cp && typeof cp.save === 'function') cp.save();
+  }, 500);
 }
 
 // ---------------------------------------------------------------------------

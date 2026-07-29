@@ -162,7 +162,7 @@
 
   function persistCommands(){
     var persist=global.OneToneConfigPersist;
-    if(persist&&persist.saveAsync) return persist.saveAsync();
+    if(persist&&persist.saveAsync) return persist.saveAsync({source:'voice'});
     if(persist&&persist.save){ persist.save(); return Promise.resolve(true); }
     return Promise.resolve(false);
   }

@@ -1593,7 +1593,7 @@
       }
       if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubAppScenarioCreated'),'scheme');
     };
-    if(saveFn) saveFn().then(done).catch(function(){ done(false); });
+    if(saveFn) saveFn({source:'mapping'}).then(done).catch(function(){ done(false); });
     else{
       if(hooks().save) hooks().save();
       else if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();

@@ -19,6 +19,8 @@
   var lastKnownCameraPrefs=null;
   var APP_SCENARIO_BACKUP_KEY='onetone.appScenarios.v1';
   var deferredMvpInitSideEffects=false;
+  var lastSaveCompletedAt=0;
+  var suppressUnknownSaveUntil=0;
 
   function bootSettling(){
     var s=global.OneToneAppSession;
@@ -39,7 +41,7 @@
       var ui=global.OneToneState&&global.OneToneState.ui;
       if(!ui||!ui.drawerOpen) return false;
       var p=ui.settingsPanel;
-      return p==='softPad'||p==='keys'||p==='camera';
+      return p==='softPad'||p==='keys'||p==='camera'||p==='voiceWake';
     }catch(_){ return false; }
   }
 
@@ -938,21 +940,32 @@
   function invokeSaveOnce(source){
     var payload;
     try{
+      earlyPersistLog('cmd_save buildPayload begin source='+source);
+      var t0=Date.now();
       payload=buildSavePayload(source);
+      earlyPersistLog('cmd_save buildPayload done '+(Date.now()-t0)+'ms');
     }catch(err){
       if(typeof console!=='undefined'&&console.error){
         console.error('cmd_save build failed',err);
       }
       return Promise.resolve(false);
     }
-    try{
-      if(global.chrome&&global.chrome.webview&&global.chrome.webview.postMessage){
-        global.chrome.webview.postMessage({type:'mvp_save',json:payload});
-      }
-    }catch(_){ }
     var invoke=global.__vp_invoke__;
-    if(!invoke) return Promise.resolve(false);
-    return invoke('cmd_save',{json:payload}).then(function(){ return true; }).catch(function(err){
+    if(!invoke){
+      try{
+        if(global.chrome&&global.chrome.webview&&global.chrome.webview.postMessage){
+          global.chrome.webview.postMessage({type:'mvp_save',json:payload});
+        }
+      }catch(_){ }
+      return Promise.resolve(false);
+    }
+    // Tauri invoke only — postMessage mvp_save also calls cmd_save (events.js) → duplicate save 假死.
+    earlyPersistLog('cmd_save invoke begin');
+    return invoke('cmd_save',{json:payload}).then(function(){
+      earlyPersistLog('cmd_save invoke ok');
+      return true;
+    }).catch(function(err){
+      earlyPersistLog('cmd_save invoke fail '+err);
       if(typeof console!=='undefined'&&console.error){
         console.error('cmd_save',err);
       }
@@ -964,6 +977,7 @@
     if(saveInFlight) return saveInFlight;
     var source=pendingSaveSource;
     saveInFlight=invokeSaveOnce(source).then(function(ok){
+      lastSaveCompletedAt=Date.now();
       if(saveNeedsRerun){
         saveNeedsRerun=false;
         saveInFlight=null;
@@ -977,8 +991,26 @@
     return saveInFlight;
   }
 
+  function voicePanelOpen(){
+    try{
+      var ui=global.OneToneState&&global.OneToneState.ui;
+      return !!(ui&&ui.drawerOpen&&ui.settingsPanel==='voiceWake');
+    }catch(_){ return false; }
+  }
+
   function save(opts){
-    pendingSaveSource=normalizeSaveSource(opts&&opts.source);
+    var source=normalizeSaveSource(opts&&opts.source);
+    if(source==='unknown'&&(Date.now()<suppressUnknownSaveUntil||voicePanelOpen())){
+      earlyPersistLog('cmd_save suppressed source=unknown (drawer/boot/voice guard)');
+      return;
+    }
+    if(source==='unknown'){
+      try{
+        var stack=(new Error('save-trace')).stack||'';
+        earlyPersistLog('cmd_save unknown caller '+String(stack).split('\n').slice(0,4).join(' | '));
+      }catch(_){}
+    }
+    pendingSaveSource=source;
     if(saveInFlight){
       saveNeedsRerun=true;
       return;
@@ -988,7 +1020,19 @@
 
   function saveAsync(opts){
     return new Promise(function(resolve){
-      pendingSaveSource=normalizeSaveSource(opts&&opts.source);
+      var source=normalizeSaveSource(opts&&opts.source);
+      if(source==='unknown'&&(Date.now()<suppressUnknownSaveUntil||voicePanelOpen())){
+        earlyPersistLog('cmd_saveAsync suppressed source=unknown (drawer/boot/voice guard)');
+        resolve(true);
+        return;
+      }
+      if(source==='unknown'){
+        try{
+          var stack=(new Error('saveAsync-trace')).stack||'';
+          earlyPersistLog('cmd_saveAsync unknown caller '+String(stack).split('\n').slice(0,4).join(' | '));
+        }catch(_){}
+      }
+      pendingSaveSource=source;
       saveWaiters.push(resolve);
       if(saveInFlight){
         saveNeedsRerun=true;
@@ -1427,6 +1471,28 @@
   }
 
   /** Keep in-memory app scenarios when a stale mvp_init omits them (before next save). */
+  function mergeLocalVoiceDrafts(localCfg,inboundCfg){
+    if(!inboundCfg||typeof inboundCfg!=='object') return inboundCfg;
+    var localMaps=localCfg&&Array.isArray(localCfg.mappings)?localCfg.mappings:[];
+    if(!localMaps.length) return inboundCfg;
+    var inboundMaps=Array.isArray(inboundCfg.mappings)?inboundCfg.mappings.slice():[];
+    var inboundIds={};
+    inboundMaps.forEach(function(m){ if(m&&m.id) inboundIds[String(m.id)]=true; });
+    var trashIds={};
+    (inboundCfg.trash||[]).forEach(function(m){ if(m&&m.id) trashIds[String(m.id)]=true; });
+    var added=false;
+    localMaps.forEach(function(m){
+      if(!m||!m.id||inboundIds[String(m.id)]||trashIds[String(m.id)]) return;
+      var vs=global.OneToneVoiceSchemePersist;
+      if(!vs||!vs.isVoiceOnly||!vs.isVoiceOnly(m)) return;
+      inboundMaps.push(m);
+      inboundIds[String(m.id)]=true;
+      added=true;
+    });
+    if(added) inboundCfg.mappings=inboundMaps;
+    return inboundCfg;
+  }
+
   function mergeLocalAppScenarios(localCfg,inboundCfg){
     if(!inboundCfg||typeof inboundCfg!=='object') return inboundCfg;
     rememberAppScenariosFromConfig(localCfg);
@@ -1553,7 +1619,10 @@
       if(msg.config){
         var inbound=normalizeInboundConfig(msg.config);
         var rustMapN=Array.isArray(msg.config.mappings)?msg.config.mappings.length:0;
-        if(configLoadedFromBackend) mergeLocalAppScenarios(st.config,inbound);
+        if(configLoadedFromBackend){
+          mergeLocalAppScenarios(st.config,inbound);
+          mergeLocalVoiceDrafts(st.config,inbound);
+        }
         // Always reinject localStorage / in-memory app scenarios omitted by a partial payload.
         reinjectRememberedAppScenarios(inbound);
         st.config=inbound;
@@ -1619,13 +1688,23 @@
       var rustMapN=Number(st.__vp_rustMapN)||0;
       var finalMapN=st.config.mappings?st.config.mappings.length:0;
       if(finalMapN>rustMapN){
-        earlyPersistLog('applyMvpInit heal disk maps '+rustMapN+' -> '+finalMapN);
-        save();
+        var uiHeal=global.OneToneState&&global.OneToneState.ui;
+        // In-memory voice drafts (persist:false) are not on disk yet — do not auto cmd_save.
+        if(uiHeal&&uiHeal.drawerOpen&&uiHeal.settingsPanel==='voiceWake'){
+          earlyPersistLog('applyMvpInit skip disk heal on voiceWake (local voice drafts)');
+        }else{
+          earlyPersistLog('applyMvpInit heal disk maps '+rustMapN+' -> '+finalMapN);
+          save({source:'mapping'});
+        }
       }
       try{ delete st.__vp_rustMapN; }catch(_){}
       flushPendingCameraPrefsQuiet();
       earlyPersistLog('applyMvpInit ok maps='+(st.config.mappings?st.config.mappings.length:0)+
         ' appRemembered='+Object.keys(lastKnownAppScenarios).length);
+      if(bootSettling()||mvpInitHeavyRemountBlocked()){
+        scheduleDeferredMvpInitSideEffects();
+        return;
+      }
       // P8：通知 React 岛重拉。策略切换 in-flight 时延后，避免与 syncHome/islands refresh 同秒打满主线程（表现为 ok 后假死）。
       try{
         var wake=global.OneToneVoiceWake;
@@ -1636,8 +1715,10 @@
           global.OneToneIslandsRefresh();
         }
       }catch(_){}
-      if(bootSettling()||mvpInitHeavyRemountBlocked()){
-        scheduleDeferredMvpInitSideEffects();
+      // Skip heavy side effects when mvp_init is a post-save echo — config is already
+      // up-to-date from the save; re-running all renders + voice sync causes 假死.
+      if(lastSaveCompletedAt&&Date.now()-lastSaveCompletedAt<3000){
+        earlyPersistLog('applyMvpInit skip heavy side effects (post-save echo)');
         return;
       }
       runMvpInitHeavySideEffects();
@@ -1688,6 +1769,10 @@
     if(!tauriBridgeReady()) return Promise.resolve(false);
     // Pad / keys / camera open: cmd_ready → applyMvpInit remount storm 假死's the UI (esp. MediaPipe).
     if(mvpInitHeavyRemountBlocked()) return Promise.resolve(false);
+    try{
+      var ui=global.OneToneState&&global.OneToneState.ui;
+      if(ui&&ui.drawerOpen&&ui.settingsPanel==='voiceWake') return Promise.resolve(false);
+    }catch(_){}
     if(bootSettling()&&configLoadedFromBackend&&configHasSceneData()) return Promise.resolve(false);
     clearTimeout(pullBackendConfigTimer);
     return new Promise(function(resolve){
@@ -1831,6 +1916,11 @@
     buildSavePayload:buildSavePayload,
     save:save,
     saveAsync:saveAsync,
+    suppressUnknownSave:function(ms){
+      var until=Date.now()+Math.max(0,Number(ms)||0);
+      if(until>suppressUnknownSaveUntil) suppressUnknownSaveUntil=until;
+      earlyPersistLog('cmd_save suppress unknown until +'+Math.max(0,Number(ms)||0)+'ms');
+    },
     saveCameraPrefsQuiet:saveCameraPrefsQuiet,
     rememberCameraPrefs:function(){ rememberCameraPrefsFromConfig(state().config); },
     applyMvpInit:applyMvpInit,

@@ -138,14 +138,29 @@
     hooks().ensureConfig();
     const m=state().config.mappings.find(function(x){return x.id===id;});
     if(!m||!isDraftMapping(m)) return;
+    var voiceOnly=false;
+    try{
+      var vs=global.OneToneVoiceSchemePersist;
+      voiceOnly=!!(vs&&vs.isVoiceOnly&&vs.isVoiceOnly(m));
+    }catch(_){}
     state().config.mappings=state().config.mappings.filter(function(x){return x.id!==id;});
     if(hooks().getPendingNewDraftId()===id) hooks().setPendingNewDraftId(null);
     if(state().selectedMappingId===id){
       const remain=state().config.mappings;
       state().selectedMappingId=remain.length?remain[remain.length-1].id:null;
-      hooks().syncEditorFromSelection();
+      if(!voiceOnly) hooks().syncEditorFromSelection();
     }
-    hooks().save();
+    if(voiceOnly){
+      var ui=global.OneToneState&&global.OneToneState.ui;
+      if(ui&&String(ui.voiceEditSchemeId||'')===id) ui.voiceEditSchemeId='__global__';
+      requestAnimationFrame(function(){
+        if(global.OneToneVoiceSchemePersist&&global.OneToneVoiceSchemePersist.refreshVoiceSchemeSurfaces){
+          global.OneToneVoiceSchemePersist.refreshVoiceSchemeSurfaces();
+        }
+      });
+      return;
+    }
+    hooks().save({source:'mapping'});
     hooks().render();
   }
 

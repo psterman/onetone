@@ -3,7 +3,6 @@ use std::sync::Arc;
 use tauri::{Emitter, Manager};
 
 use crate::config::{self, CameraPrefs};
-use crate::ipc::core::{push_runtime, sync_config_ui};
 use crate::AppState;
 
 fn save_source_label(value: &serde_json::Value) -> &'static str {
@@ -13,6 +12,8 @@ fn save_source_label(value: &serde_json::Value) -> &'static str {
             "camera" => return "camera",
             "layout" => return "layout",
             "mapping" => return "mapping",
+            "voice" => return "voice",
+            "voiceDraft" => return "voice",
             "unknown" => return "unknown",
             _ => {}
         }
@@ -126,15 +127,34 @@ pub fn cmd_save(
         return Ok(());
     }
 
+    // Voice panel persistence (phrase/sensitivity/strategy) is typically already applied by
+    // dedicated voice IPC commands. Saving here should persist to disk only; avoid full mvp_init
+    // and voice restart chain, which can freeze UI during drawer open/new-habit flows.
+    if source == "voice" {
+        crate::config::save_config(&cfg);
+        *state.cfg.lock() = cfg;
+        crate::app_log::log_line(
+            &state,
+            "config",
+            "cmd_save source=voice persist only, skip mvp_init/voice",
+        );
+        let ack = serde_json::json!({"type":"mvp_saved","ok":true,"quiet":true});
+        window.emit("to_js", &ack).ok();
+        return Ok(());
+    }
+
     crate::config::save_config(&cfg);
     *state.cfg.lock() = cfg.clone();
     crate::config::apply_config(&state, &cfg);
-    // Defer voice stop/start off the IPC thread. Sync Vosk join + main-thread emit used to
-    // 假死 while JS awaited this invoke (especially after keys/cancel timing saves).
+    state.machine_pool.lock().reset_all();
+    // FE already holds this config — never echo mvp_init/runtime after cmd_save.
+    // Pushing mvp_init used to remount the drawer (假死). Voice restart stays off the
+    // IPC thread; coach/overlay refresh is fire-and-forget on a worker.
     let app = window.app_handle().clone();
     let state_bg = Arc::clone(state.inner());
     let old_bg = existing.clone();
     let new_bg = cfg.clone();
+    let source_owned = source.to_string();
     let _ = std::thread::Builder::new()
         .name("voice-save-activate".into())
         .spawn(move || {
@@ -142,12 +162,13 @@ pub fn cmd_save(
             crate::audio_win::request_recording_audio_policy_sync(Arc::clone(&state_bg));
             crate::coach_hud::push_state(&app, &state_bg);
             crate::codex_micro_overlay::push_state(&app, &state_bg);
+            crate::app_log::log_line(
+                &state_bg,
+                "config",
+                &format!("cmd_save source={source_owned} full (no mvp_init echo)"),
+            );
         });
-    sync_config_ui(&state, &window, "unchanged");
-    state.machine_pool.lock().reset_all();
-    push_runtime(&state, &window, "saved", "");
-    crate::app_log::log_line(&state, "config", &format!("cmd_save source={source} full"));
-    let ack = serde_json::json!({"type":"mvp_saved","ok":true});
+    let ack = serde_json::json!({"type":"mvp_saved","ok":true,"quiet":true});
     window.emit("to_js", &ack).ok();
     Ok(())
 }
