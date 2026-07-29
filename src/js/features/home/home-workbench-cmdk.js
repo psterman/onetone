@@ -1,11 +1,20 @@
 (function(global){
   'use strict';
 
+  // P9a: React 岛接管 #wbCommandSearch 后，本模块仅作 API 回退/委托层。
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
   var bound=false;
   var activeIndex=-1;
   var visibleItems=[];
+
+  function islandMounted(){
+    return !!(global.__otCommandPaletteMounted);
+  }
+
+  function paletteApi(){
+    return global.__otCommandPalette;
+  }
 
   function commands(){
     return [
@@ -116,6 +125,8 @@
   }
 
   function openPalette(){
+    var api=paletteApi();
+    if(api&&typeof api.openPalette==='function') return api.openPalette();
     var input=inputEl();
     if(!input) return;
     input.focus();
@@ -126,6 +137,7 @@
 
   function bindOnce(){
     if(bound) return;
+    if(islandMounted()) return;
     bound=true;
     var input=inputEl();
     var panel=panelEl();
@@ -192,7 +204,15 @@
   global.OneToneHomeWorkbenchCmdk={
     bindOnce:bindOnce,
     openPalette:openPalette,
-    isOpen:isOpen,
-    close:function(){ setOpen(false); }
+    isOpen:function(){
+      var api=paletteApi();
+      if(api&&typeof api.isOpen==='function') return api.isOpen();
+      return isOpen();
+    },
+    close:function(){
+      var api=paletteApi();
+      if(api&&typeof api.close==='function') return api.close();
+      setOpen(false);
+    }
   };
 })((typeof window!=='undefined')?window:globalThis);

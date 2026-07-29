@@ -1052,15 +1052,23 @@
     var searchInput=$('wbCommandSearchInput');
     if(searchInput){
       searchInput.addEventListener('keydown',function(e){
-        if(e.key==='Enter'&&(!global.OneToneHomeWorkbenchCmdk||!global.OneToneHomeWorkbenchCmdk.isOpen())) searchInput.blur();
+        var cmdkOpen=global.__otCommandPalette
+          ?global.__otCommandPalette.isOpen&&global.__otCommandPalette.isOpen()
+          :(global.OneToneHomeWorkbenchCmdk&&global.OneToneHomeWorkbenchCmdk.isOpen&&global.OneToneHomeWorkbenchCmdk.isOpen());
+        if(e.key==='Enter'&&(!cmdkOpen)) searchInput.blur();
       });
     }
     document.addEventListener('keydown',function(e){
       if((e.ctrlKey||e.metaKey)&&String(e.key||'').toLowerCase()==='k'){
         if(!$('homeWorkbench')) return;
         e.preventDefault();
-        if(global.OneToneHomeWorkbenchCmdk) global.OneToneHomeWorkbenchCmdk.openPalette();
-        else if(searchInput) searchInput.focus();
+        if(global.__otCommandPalette&&global.__otCommandPalette.openPalette){
+          global.__otCommandPalette.openPalette();
+        }else if(global.OneToneHomeWorkbenchCmdk){
+          global.OneToneHomeWorkbenchCmdk.openPalette();
+        }else if(searchInput){
+          searchInput.focus();
+        }
       }
     });
     var endBtn=$('wbBtnEnd');

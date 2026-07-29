@@ -2,11 +2,11 @@ import { OneToneIslands } from './island-runtime';
 import { OneToneUi } from './shared/ui-bridge';
 import { ToastIsland } from './islands/toast-island';
 import { ConfirmIsland } from './islands/confirm-island';
-import { CommandIsland } from './islands/command-island';
 import { BasicSettingsIsland } from './islands/basic-settings-island';
 import { VoiceConfigIsland } from './islands/voice-config-island';
 import { MappingListIsland } from './islands/mapping-list-island';
-import { toastPortal, dialogPortal, commandPortal } from './shared/portal-roots';
+import { WbCommandIsland } from './islands/wb-command-island';
+import { toastPortal, dialogPortal } from './shared/portal-roots';
 // ?inline 让 CSS 直接内联进 bundle，产物为单文件 main.js，便于 Tauri 静态加载
 import islandCss from './globals.css?inline';
 
@@ -18,10 +18,9 @@ document.head.appendChild(style);
 
 // P4：挂载共享交互岛到各自 portal 根（均位于 .ot-island 作用域内）。
 // Toast 岛保留挂载但默认无数据（OneToneUi.toast → legacy OneToneAppToast）；
-// Command 岛为脚手架，未接管 #wbCommandSearch。
+// P9a：Command 产品入口 = inline #wbCommandSearch 岛（见 mountWbCommandIsland）。
 OneToneIslands.mountIsland(toastPortal.id, ToastIsland);
 OneToneIslands.mountIsland(dialogPortal.id, ConfirmIsland);
-OneToneIslands.mountIsland(commandPortal.id, CommandIsland);
 
 // P5：挂载基础设置岛到 #settingsPanelBasic（替换 legacy 内联 HTML，独占其子树）
 function mountBasicIsland(): void {
@@ -69,9 +68,28 @@ try {
   console.error('[islands] mapping list mount failed, keeping legacy DOM', err);
 }
 
+// P9a：挂载首页命令搜索岛到 #wbCommandSearch（inline combobox；失败则保留 legacy cmdk）
+function mountWbCommandIsland(): void {
+  const host = document.getElementById('wbCommandSearch');
+  if (!host) return;
+  host.innerHTML = '';
+  OneToneIslands.mountIsland('wbCommandSearch', WbCommandIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+try {
+  mountWbCommandIsland();
+} catch (err) {
+  console.error('[islands] wb command mount failed, keeping legacy cmdk', err);
+}
+
 // 暴露宿主桥，供 legacy 与后续阶段调用
 (window as unknown as { OneToneIslands: typeof OneToneIslands }).OneToneIslands = OneToneIslands;
 (window as unknown as { OneToneUi: typeof OneToneUi }).OneToneUi = OneToneUi;
+
+// Expose jumpAndHighlight for legacy registration script
+import { jumpAndHighlight } from './domain/commandPalette';
+(window as unknown as { __otJumpAndHighlight: typeof jumpAndHighlight }).__otJumpAndHighlight = jumpAndHighlight;
 
 // legacy 在 applyMvpInit / render 后调用，触发所有岛刷新（避免 React 与 OneToneState 分叉）
 (window as unknown as { OneToneIslandsRefresh: () => void }).OneToneIslandsRefresh = () =>

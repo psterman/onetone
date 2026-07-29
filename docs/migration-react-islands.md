@@ -3,7 +3,7 @@
 > 阶段状态：✅ P0–P8 工程轨静态通过；✅ 验收债收口；✅ 完成度裁定锁定（2026-07-29）。
 > **裁定**：工程骨架 + 第一批岛完成，可继续演进；**最痛区域未全部迁完**；**产品验收待 §8.5 Tauri 人工清单**。正式 shadcn/Radix **未接入**（自实现兼容层）。最后更新：2026-07-29
 >
-> P4：共享 UI = 能力就绪 + Toast 单轨桥接，**不是**全局切流；`#wbCommandSearch` **未接管**。
+> P4：共享 UI = 能力就绪 + Toast 单轨桥接；Command **P9a 已接管** `#wbCommandSearch`（inline 岛）。
 > P7：仅 **映射列表** keyed diff，**不是**完整映射编辑器。
 
 ### 完成度表（正式口径）
@@ -19,11 +19,11 @@
 | 映射 | 部分（仅 `#mappingList` keyed diff；编辑器/录制/菜单仍 legacy） |
 | Confirm | 部分（React 可用；legacy 弹层未全换） |
 | Toast | 单轨桥接完成；非 React 全局接管 |
-| Command 真实搜索 | **未完成**（脚手架 ≠ 接管 `#wbCommandSearch`） |
+| Command 真实搜索 | **P9a 完成**（React inline 岛接管 `#wbCommandSearch`；`home-workbench-cmdk.js` 守卫回退） |
 | 正式 shadcn/Radix | **未完成**（零依赖 API 对齐壳） |
 | Tauri 产品验收 | **未完成** |
 
-下一步：**§8.5 人工清单**；之后再单独开 P9（Command 或完整 Mapping Editor）。不开「为完善而完善」的伪 shadcn 打磨。
+下一步：**§8.5 人工清单**（含 P9a Command 项 8）；**P9b** = 完整 Mapping Editor（单独开）。不开「为完善而完善」的伪 shadcn 打磨。
 ## 0. 目标与范围
 
 **做什么**：在现有 Tauri 2 + Rust 桌面应用的前端里，以「React Island」方式渐进挂载 React/TypeScript 组件，**不重写应用壳、不改 Rust/Tauri 主架构、不改成完整 SPA**。
@@ -76,12 +76,12 @@
 | 语音唤醒配置 | `#settingsPanelVoiceWake` (L1446) | P6 |
 | 映射列表 | `#mappingList` (L1439) | P7 |
 | 语音流程 | `#voiceWorkflowPipeline` / `#voiceFlowNodes` (L1515+) | P6 |
-| Command 搜索 | `#wbCommandSearch` + `#wbCmdkPanel` (L92) | P4 脚手架（未接管，仍 legacy） |
+| Command 搜索 | `#wbCommandSearch` + `#wbCmdkPanel` (L92) | P9a |
 | 语音声学 host | `#voiceWakeAcousticHost` / `#voiceCancelAcousticHost` / `#voiceEndAcousticHost` | P6 |
 | 主 shell | `#appWorkbenchShell` (L81) / `#appContentColumn` (L153) | 不迁 |
 
 > Toast：**legacy `OneToneAppToast` 为主路径**；`OneToneUi.toast` 反向代理到 legacy（兼容 `string | ToastOptions`），React Toast 岛挂载但默认无数据。二次切流前禁止恢复 `pushToast` 并行渲染。
-> Dialog/Confirm：legacy 弹层保留；新确认可走 `OneToneUi.confirm`（React）。Command 岛为独立 portal 脚手架，**不**替换 `#wbCommandSearch`。
+> Dialog/Confirm：legacy 弹层保留；新确认可走 `OneToneUi.confirm`（React）。Command：**P9a inline 岛**接管 `#wbCommandSearch`；`OneToneUi.openCommand` / Ctrl+K 聚焦内联面板。
 ## 4. legacy / React DOM 所有权规则
 
 - **每个岛在 `__vp_render_hooks__` / `render-loop.js` 中对应的 `render*` 必须摘除或加守卫**。`P3` 提供 `isInsideIsland(node)`（`src-islands/dom-ownership.ts`）供 legacy render / i18n sweep 调用：遇到位于 `.ot-island` 子树内的节点一律跳过。
@@ -96,7 +96,7 @@
 |---|---|---|---|---|---|
 | `#ot-toast-root`（新建） | P4 | Toast 岛（默认空；二次切流用） | legacy `OneToneAppToast` **仍为主路径**；`OneToneUi.toast` 反向代理，不 `pushToast` | 是 | 是（Toast portal，当前无数据） |
 | `#ot-dialog-root`（新建） | P4 | Dialog/Confirm 岛 | legacy 弹层保留，新确认走 `OneToneUi.confirm` | 是 | 是 |
-| `#wbCommandSearch` / `#wbCmdkPanel` | P4 脚手架 | **未接管**；React Command 岛挂独立 portal | 仍由 `home-workbench-cmdk.js` 驱动 | — | React portal 存在但不接产品入口 |
+| `#wbCommandSearch` / `#wbCmdkPanel` | P9a | **inline 命令搜索岛**（`wb-command-island.tsx`） | `home-workbench-cmdk.js`：`__otCommandPaletteMounted` 时 `bindOnce` 跳过；`openPalette`/`isOpen`/`close` 委托 `__otCommandPalette` | 是（`OneToneI18n.t` 自管 placeholder/aria/条目） | 否（inline 下拉，复用 legacy `wb-cmdk-*` CSS） |
 | `#settingsPanelBasic` | P5 | 基础设置岛 | 不在 render 列表（事件驱动）→ 无需摘除；已加两道 legacy 守卫：`basic-panel-ui.js` 的 `render()` 在岛接管后 return、`app-lang-settings.js` 的 `applySettingsTexts` 跳过 `#settingsPanelBasicDesc` | 是（岛内文案由岛自管，且 `OneToneI18n.t` 取词；legacy `data-i18n` sweep 不命中本面板） | 是（Toggle/Segmented 用 scoped CSS，不引 shadcn 弹层） |
 | `#settingsPanelVoiceWake` 等语音面板 | P6 | 语音配置岛（按 tab 分岛） | `renderVoiceModeSwitch` 及 voice 页自有 render；迁移后禁用对应 hook | 是 | 是（Dialog/Toast） |
 | `#mappingList`（行列表） | P7 | 映射列表岛（keyed diff 渲染，交互留 legacy 委托） | `renderMappingList` 顶部守卫：岛挂载后改调 `window.__otMappingListSync()`，不再 `innerHTML` 整表重建；行 markup 由 legacy `OneToneMappingList.rowView` 单一来源生成（岛与 legacy 共用）；`renderEditor` / `renderMappingChrome` 其余子渲染与 `renderRecordCancelBar` **留 legacy**（编辑器/录制/取消条不迁） | 是（行内文案由 rowView 内 `t()` 生成，`#mappingList` 无 data-i18n 扫描） | 否（无弹层；菜单 `#mapMenuFloat` 留 legacy） |
@@ -142,7 +142,7 @@
 4. **收益边界**：home/workbench、相机、HUD、tray 留 legacy，真实长期收益 < 70%，除非后续补迁。
 5. **构建产物落点**：`src/assets/islands/` 已 `.gitignore`；`emptyOutDir: false` 环境坑见 P1 记录。
 6. **Toast 二次切流**：正式 shadcn/a11y 就绪前，**禁止**恢复 `OneToneUi.toast → pushToast` 并行渲染（会与 legacy 双弹）。
-7. **Command 接管**：`#wbCommandSearch` 仍是独立迁移项（P9），勿与债收口混做。
+7. **Command 接管**：✅ P9a 完成（inline `#wbCommandSearch`）；`#ot-command-root` Dialog 脚手架已移除挂载。
 8. **正式 shadcn**：`components/ui/*` 为零依赖壳；换 Radix 前勿对外宣称「已上 shadcn」。
 9. **vosk stop_sync 假死**：日志可见 `switchListeningStrategy` → `vosk stop_sync begin` 无 `end`（Rust 停机路径）；与 islands 正交，复现后单开缺陷。
 10. **最大不确定项**：列表岛运行期回归 + typed IPC 部分 `[UNVERIFIED]`；建议整体 +20–30% 缓冲。
@@ -399,6 +399,7 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 | 5 | Toast 单轨：控制台 `OneToneUi.toast('…')` / `toast({title})` 只出 **一套** legacy toast | ⚠️ 待人工点选 |
 | 6 | Boot：日志无 `process is not defined`；产物无 `process.env`；岛容器在 desk 内 | ✅ 日志核验：最新 `process run entered`（~12:35 boot）**无**该错误；`main.js` ~260KB / `process.env`×0；`island_after_desk=true` |
 | 7 | 假死观察：切策略后 `vosk stop_sync begin` 是否有配对 `end` | ⚠️ 分两类（见 8.5.1） |
+| 8 | **P9a Command**：点击/Ctrl+K 展开；过滤/键盘；执行打开 drawer 或测试发送；岛失败时 legacy cmdk 回退 | ⚠️ 待人工点选 |
 
 > 项 1–5 需本机 WebView 点选；Agent 已完成产物与日志前置核验（项 6）。产品验收仍以人工点选为准。
 
@@ -423,7 +424,7 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 
 - **工程轨 P0–P8 静态通过**，legacy 零破坏：`index.html` 仅 +1 个 module 入口与岛容器/标记；170+ 旧脚本顺序未动；守卫「岛未挂载即回退 legacy」。
 - **落地资产**：typed IPC、Island Runtime、Basic / Voice（部分）/ Mapping **列表**岛、共享 UI 桥（Confirm React；Toast 反向代理 legacy；Command 脚手架）。
-- **明确未完成**：Command 真实接管、完整映射编辑器、正式 shadcn/Radix、Tauri §8.5 产品验收。
+- **明确未完成**：完整映射编辑器、正式 shadcn/Radix、Tauri §8.5 产品验收（含 P9a Command 项 8）。
 - **测试护栏**：`npm run test:islands` = typecheck + smoke + runtime + ui-store + toast-bridge + voice-config + mapping-island。
 - **裁定**：工程骨架 + 第一批岛完成，可继续演进；最痛区域未全部迁完。下一步 = §8.5，再视情况开 P9。
 
@@ -432,7 +433,7 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 | 项 | 处置 |
 |---|---|
 | Toast 单轨 | `OneToneUi.toast(string\|opts)` → `OneToneAppToast.show`；不 `pushToast` |
-| Command | 脚手架，不接管 `#wbCommandSearch` |
+| Command | **P9a 完成**：inline 岛接管 `#wbCommandSearch` |
 | 孤儿轨 | 删除 `src-react/`、`MIGRATION_GUIDE.md`、`package-v2.json` |
 | i18n 护栏 | `home-workbench.js` sweep 跳过 `.ot-island` |
 | 单测 | `test-toast-bridge.mjs` 串入 `test:islands` |

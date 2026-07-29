@@ -29,10 +29,14 @@ if (existsSync(bundle)) {
   check('P6 语音配置岛已打进 bundle（含 ot-voice-config 标记）', code.includes('ot-voice-config'));
   check('P6 语音配置岛含策略/短语 Tab 标记', code.includes('ot-vc-seg') && code.includes('ot-phrase-tags'));
   check('P7 映射列表岛已打进 bundle（含 __otMappingListSync 同步入口）', code.includes('__otMappingListSync'));
+  check('P9a 命令搜索岛已打进 bundle（含 __otCommandPalette 入口）', code.includes('__otCommandPalette'));
+  check('P9a 命令搜索岛含 wb-cmdk 标记', code.includes('wb-cmdk-panel') && code.includes('wbCommandSearchInput'));
 }
 const mappingListJs = readFileSync(resolve(root, 'src/js/features/mapping/mapping-list.js'), 'utf8');
 check('P7 legacy rowView 单一来源已导出', mappingListJs.includes('rowView:rowView'));
 check('P7 legacy renderMappingList 岛守卫已就位', mappingListJs.includes("isMounted('mappingList')") && mappingListJs.includes('__otMappingListSync'));
+const cmdkJs = readFileSync(resolve(root, 'src/js/features/home/home-workbench-cmdk.js'), 'utf8');
+check('P9a legacy cmdk 岛守卫已就位', cmdkJs.includes('__otCommandPaletteMounted') && cmdkJs.includes('__otCommandPalette'));
 const configPersistJs = readFileSync(resolve(root, 'src/js/core/config-persist.js'), 'utf8');
 check('P8 applyMvpInit → OneToneIslandsRefresh 接线已就位', configPersistJs.includes('OneToneIslandsRefresh'));
 const html = readFileSync(htmlPath, 'utf8');

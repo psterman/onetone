@@ -1,6 +1,5 @@
 import {
   confirm as confirmStore,
-  setCommandOpen,
   registerCommands,
   type ToastOptions,
   type ConfirmOptions,
@@ -9,8 +8,19 @@ import {
 
 // P4 宿主桥（债收口后口径）：
 // - Toast：legacy OneToneAppToast 为主路径；OneToneUi.toast 反向代理过去，禁止 pushToast 双弹。
-// - Confirm / Command：仍走 React 岛（Command 为脚手架，未接管 #wbCommandSearch）。
+// - Confirm：React 岛。
+// - Command（P9a）：inline #wbCommandSearch 岛；registerCommands 追加 extras。
 // 二次切流（正式 shadcn Toast 接管）前禁止恢复 pushToast 并行渲染。
+
+interface CommandPaletteApi {
+  openPalette: () => void;
+  isOpen: () => boolean;
+  close: () => void;
+}
+
+function commandPaletteApi(): CommandPaletteApi | undefined {
+  return (window as unknown as { __otCommandPalette?: CommandPaletteApi }).__otCommandPalette;
+}
 
 interface LegacyAppToast {
   show(message: string, optionsOrKind?: unknown): unknown;
@@ -53,8 +63,21 @@ function toast(input: ToastInput): void {
 export const OneToneUi = {
   toast,
   confirm: (opts: ConfirmOptions): Promise<boolean> => confirmStore(opts),
-  openCommand: (): void => setCommandOpen(true),
-  closeCommand: (): void => setCommandOpen(false),
+  openCommand: (): void => {
+    const api = commandPaletteApi();
+    if (api?.openPalette) {
+      api.openPalette();
+      return;
+    }
+    document.getElementById('wbCommandSearchInput')?.focus();
+  },
+  closeCommand: (): void => {
+    const api = commandPaletteApi();
+    if (api?.close) {
+      api.close();
+      return;
+    }
+  },
   registerCommands: (items: CommandItem[]): void => registerCommands(items),
 };
 

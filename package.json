@@ -21,7 +21,7 @@
     "typecheck": "tsc --noEmit",
     "build:islands": "vite build",
     "dev:islands": "vite build --watch",
-    "test:islands": "tsc --noEmit && node scripts/smoke-islands.mjs && node scripts/test-island-runtime.mjs && node scripts/test-island-ui.mjs && node scripts/test-toast-bridge.mjs && node scripts/test-voice-config.mjs && node scripts/test-mapping-island.mjs"
+    "test:islands": "tsc --noEmit && node scripts/smoke-islands.mjs && node scripts/test-island-runtime.mjs && node scripts/test-island-ui.mjs && node scripts/test-toast-bridge.mjs && node scripts/test-voice-config.mjs && node scripts/test-mapping-island.mjs && node scripts/test-command-palette.mjs"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4",

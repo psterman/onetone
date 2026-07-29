@@ -26,6 +26,7 @@ export interface ConfirmOptions {
 export interface CommandItem {
   id: string;
   title: string;
+  keywords?: string[];
   group?: string;
   run: () => void;
 }
