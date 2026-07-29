@@ -1626,6 +1626,9 @@
       flushPendingCameraPrefsQuiet();
       earlyPersistLog('applyMvpInit ok maps='+(st.config.mappings?st.config.mappings.length:0)+
         ' appRemembered='+Object.keys(lastKnownAppScenarios).length);
+      // P8 契约接线：config 已整体替换，通知 React 岛重拉状态（见 docs/migration-react-islands.md §4）。
+      // 轻量事件派发（非重挂载），不受 mvpInitHeavyRemountBlocked 约束；岛未加载时为 no-op。
+      try{ if(typeof global.OneToneIslandsRefresh==='function') global.OneToneIslandsRefresh(); }catch(_){}
       if(bootSettling()||mvpInitHeavyRemountBlocked()){
         scheduleDeferredMvpInitSideEffects();
         return;

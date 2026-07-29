@@ -33,6 +33,8 @@
   }
 
   function render(){
+    // P5：若基础设置岛已接管 #settingsPanelBasic，则该子树改由 React 管理，legacy 不再写
+    if (global.OneToneIslands && typeof global.OneToneIslands.isMounted === 'function' && global.OneToneIslands.isMounted('settingsPanelBasic')) return;
     var autostartOn=!!($('btnAutostart')&&$('btnAutostart').classList.contains('is-on'));
     var trayOn=!!($('btnStartMinimized')&&$('btnStartMinimized').classList.contains('is-on'));
     var fontKey=fontScaleKey(currentFontScale());

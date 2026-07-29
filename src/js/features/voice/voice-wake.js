@@ -160,6 +160,10 @@
     const strategy=currentListeningStrategy();
     const grid=document.getElementById('voiceSummaryEngineSwitch');
     if(!grid) return;
+    // P6 守卫：语音配置岛挂载后隐藏 legacy 策略开关（岛提供等价 React 控件），岛卸载即恢复显示。
+    var islandOn=!!(window.OneToneIslands&&window.OneToneIslands.isMounted&&window.OneToneIslands.isMounted('voiceConfig'));
+    grid.hidden=islandOn;
+    if(islandOn) return;
     grid.querySelectorAll('[data-voice-strategy-tab]').forEach(function(btn){
       const tab=btn.getAttribute('data-voice-strategy-tab')||'';
       // Keep the clicked tab active even while loading/in-flight.

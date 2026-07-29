@@ -511,7 +511,7 @@
             </div>
           </aside>
           <div class="settings-panel-wrap" id="settingsPanelWrap">
-        <section class="settings-panel drawer-section pref-page basic-page" id="settingsPanelBasic" style="border-top:0;padding-top:0">
+        <section class="settings-panel drawer-section pref-page basic-page ot-island" id="settingsPanelBasic" style="border-top:0;padding-top:0">
           <header class="pref-page-head basic-page-head">
             <div class="basic-page-head-row">
               <div class="basic-page-head-copy">
@@ -1510,6 +1510,8 @@
             </div>
           </div>
           <div class="voice-page-body">
+            <!-- P6 React 岛容器：接管语音文本短语配置，独占其子树；legacy 文本编辑器在岛挂载后隐藏 -->
+            <div id="voiceConfigIsland" class="ot-island"></div>
             <div class="voice-page-main">
           <div class="voice-page-layout">
               <div class="keys-workflow-pipeline voice-workflow-pipeline" id="voiceWorkflowPipeline">
@@ -4091,5 +4093,7 @@
       <button type="button" class="camera-gaze-calibration-cancel" id="cameraGazeCalibrationCancel" data-i18n="cameraGazeCalibrationCancel">取消校准</button>
     </div>
   </div>
+  <!-- P1: React Islands 入口（追加于 legacy 脚本之后，不重排旧脚本顺序） -->
+  <script type="module" src="assets/islands/main.js"></script>
 </body>
 </html>

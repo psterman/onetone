@@ -1,0 +1,174 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* shadcn 风格设计 token —— 全部限定在 .ot-island 作用域，不污染旧页面 */
+.ot-island {
+  --ot-background: 0 0% 100%;
+  --ot-foreground: 222 47% 11%;
+  --ot-muted: 210 40% 96%;
+  --ot-muted-foreground: 215 16% 47%;
+  --ot-primary: 221 83% 53%;
+  --ot-primary-foreground: 0 0% 100%;
+  --ot-destructive: 0 72% 51%;
+  --ot-destructive-foreground: 0 0% 100%;
+  --ot-border: 214 32% 91%;
+  --ot-input: 214 32% 91%;
+  --ot-ring: 221 83% 53%;
+  --ot-radius: 0.5rem;
+  --ot-secondary: 210 40% 96%;
+  --ot-secondary-foreground: 222 47% 11%;
+  --ot-accent: 210 40% 96%;
+  --ot-accent-foreground: 222 47% 11%;
+  --ot-popover: 0 0% 100%;
+  --ot-popover-foreground: 222 47% 11%;
+  --ot-card: 0 0% 100%;
+  --ot-card-foreground: 222 47% 11%;
+  color: hsl(var(--ot-foreground));
+}
+
+/* ---- P7 映射列表岛 ----
+   #mappingList 行 markup 复用 legacy 样式（map-row 等），岛只负责 keyed diff 渲染；
+   中和 .ot-island 基础前景色，避免覆盖 legacy 的继承色。 */
+#mappingList.ot-island {
+  color: inherit;
+}
+
+/* ---- P6 语音配置岛 ---- */
+.ot-voice-config {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid hsl(var(--ot-border));
+  border-radius: var(--ot-radius);
+  background: hsl(var(--ot-card));
+  color: hsl(var(--ot-foreground));
+}
+.ot-vc-head {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: hsl(var(--ot-muted-foreground));
+}
+.ot-vc-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.ot-vc-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+.ot-vc-seg {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  border-radius: var(--ot-radius);
+  background: hsl(var(--ot-muted));
+  width: fit-content;
+}
+.ot-vc-seg-btn {
+  border: none;
+  background: transparent;
+  color: hsl(var(--ot-muted-foreground));
+  padding: 0.3rem 0.8rem;
+  border-radius: calc(var(--ot-radius) - 2px);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.ot-vc-seg-btn.is-active {
+  background: hsl(var(--ot-background));
+  color: hsl(var(--ot-foreground));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+.ot-vc-divider {
+  height: 1px;
+  background: hsl(var(--ot-border));
+  margin: 0.25rem 0;
+}
+.ot-phrase-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.ot-phrase-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.ot-phrase-add {
+  display: flex;
+  gap: 0.5rem;
+}
+.ot-phrase-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid hsl(var(--ot-input));
+  border-radius: var(--ot-radius);
+  background: hsl(var(--ot-background));
+  color: hsl(var(--ot-foreground));
+  font-size: 0.85rem;
+}
+.ot-phrase-input:focus {
+  outline: 2px solid hsl(var(--ot-ring));
+  outline-offset: 1px;
+}
+.ot-phrase-hint {
+  font-size: 0.72rem;
+  color: hsl(var(--ot-muted-foreground));
+  margin: 0;
+}
+.ot-phrase-empty {
+  font-size: 0.78rem;
+  color: hsl(var(--ot-muted-foreground));
+  margin: 0;
+}
+.ot-phrase-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.ot-phrase-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: hsl(var(--ot-muted));
+  color: hsl(var(--ot-foreground));
+  font-size: 0.8rem;
+}
+.ot-phrase-tag-del {
+  border: none;
+  background: transparent;
+  color: hsl(var(--ot-muted-foreground));
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0 0.1rem;
+}
+.ot-phrase-tag-del:hover {
+  color: hsl(var(--ot-destructive));
+}
+
+.ot-island.dark {
+  --ot-background: 222 47% 11%;
+  --ot-foreground: 210 40% 98%;
+  --ot-muted: 217 33% 17%;
+  --ot-muted-foreground: 215 20% 65%;
+  --ot-primary: 217 91% 60%;
+  --ot-primary-foreground: 222 47% 11%;
+  --ot-destructive: 0 63% 31%;
+  --ot-destructive-foreground: 210 40% 98%;
+  --ot-border: 217 33% 22%;
+  --ot-input: 217 33% 22%;
+  --ot-ring: 224 76% 60%;
+  --ot-secondary: 217 33% 17%;
+  --ot-secondary-foreground: 210 40% 98%;
+  --ot-accent: 217 33% 17%;
+  --ot-accent-foreground: 210 40% 98%;
+  --ot-popover: 222 47% 11%;
+  --ot-popover-foreground: 210 40% 98%;
+  --ot-card: 222 47% 11%;
+  --ot-card-foreground: 210 40% 98%;
+}

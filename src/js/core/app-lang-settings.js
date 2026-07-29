@@ -13,7 +13,7 @@
     var settingsNavCamera=$('settingsNavCameraLabel'); if(settingsNavCamera) settingsNavCamera.textContent=d.settingsNavCamera||d.homeWbNavCamera||'摄像头';
     var settingsNavModels=$('settingsNavModelsLabel'); if(settingsNavModels) settingsNavModels.textContent=d.settingsNavModels||'识别资源';
     var settingsNavDebug=$('settingsNavDebugLabel'); if(settingsNavDebug) settingsNavDebug.textContent=d.settingsNavDebug;
-    var spBasic=$('settingsPanelBasicDesc'); if(spBasic) spBasic.textContent=d.settingsPanelBasicDesc;
+    var spBasic=$('settingsPanelBasicDesc'); if(spBasic&&!(global.OneToneIslands&&typeof global.OneToneIslands.isMounted==='function'&&global.OneToneIslands.isMounted('settingsPanelBasic'))) spBasic.textContent=d.settingsPanelBasicDesc;
     var spKeys=$('settingsPanelKeysDesc'); if(spKeys) spKeys.textContent=d.settingsPanelKeysDesc;
     var spKeysTitle=$('settingsPanelKeysTitle'); if(spKeysTitle) spKeysTitle.textContent=d.settingsNavKeys;
     var spSoftPad=$('settingsPanelSoftPadDesc'); if(spSoftPad) spSoftPad.textContent=d.settingsPanelSoftPadDesc||'';

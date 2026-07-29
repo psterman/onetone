@@ -360,6 +360,11 @@
     if(presetLbl) presetLbl.textContent=t('voiceWakePresetQuickLbl');
     var wakeAdd=$('btnVoiceWakeCustomAdd');
     if(wakeAdd) wakeAdd.textContent=t('voiceWakeAddBtn');
+    // P6 守卫：语音配置岛挂载后，隐藏 legacy 文本短语编辑器（保留声音录制子页），避免重复控件。岛未挂载则原样保留。
+    if(window.OneToneIslands&&window.OneToneIslands.isMounted&&window.OneToneIslands.isMounted('voiceConfig')){
+      var tp=$('voiceWakeKindTextPane'); if(tp) tp.hidden=true;
+      var cb=$('voiceWakeCustomBlock'); if(cb) cb.hidden=true;
+    }
   }
 
   global.OneToneVoiceStepWake={

@@ -110,56 +110,71 @@
     const hasTarget=!!OneToneMappingCore.editorTarget(m);
     return '<button type="button" class="map-test'+(hooks().testSendState()==='sending'&&hooks().testSendMappingId()===m.id?' sending':'')+'" data-test="'+m.id+'"'+(hasTarget?'':' disabled')+'>'+t('testShort')+'</button>';
   }
+  // P7: 每行视图的单一来源 —— legacy 与 React 岛共用，保证 markup / data-* 契约零偏差。
+  // 返回 {id, cls, inner}（inner = .map-row 内部 HTML），非可见行返回 null。
+  function rowView(m){
+    const d=OneToneI18n.dict();
+    if(OneToneMappingCore.isDraft(m)){
+      const sel=m.id===state.selectedMappingId;
+      const left=m.triggerKey?hooks().friendlyKeyName(m.triggerKey):d.triggerPlaceholder;
+      const right=m.targetKey?hooks().friendlyKeyName(m.targetKey):d.targetPlaceholder;
+      let inner='<div class="toggle" role="presentation" aria-hidden="true"></div>';
+      inner+='<div class="map-main"><div class="map-pair map-pair-draft">';
+      inner+='<span class="draft-ph">'+left+'</span> → <span class="draft-ph">'+right+'</span>';
+      inner+='</div>';
+      inner+=mappingOverviewHtml(m);
+      inner+='</div>';
+      inner+='<button type="button" class="map-test" disabled>'+d.testShort+'</button>';
+      inner+='<button type="button" class="map-menu-btn" data-menu="'+m.id+'">⋮</button>';
+      return {id:m.id, cls:'map-row map-row-draft'+(sel?' selected':''), inner:inner};
+    }
+    if(!OneToneMappingCore.isSaved(m)) return null;
+    const sel=m.id===state.selectedMappingId;
+    const on=!!m.enabled;
+    const rowConflicts=OneToneMappingCore.conflictsFor(m.id);
+    const hasConflict=OneToneMappingCore.schemeHasConflict(m);
+    const snap=hooks().voiceUiSnapshot().end||{};
+    const isDictating=hooks().sessionActiveState(snap.state)&&snap.mappingId===m.id;
+    const activeId=state.config&&state.config.activeSceneId;
+    const isActiveScene=activeId&&m.id===activeId;
+    const cls='map-row'+(sel?' selected':'')+(on?' is-on':'')+(isDictating?' is-dictating':'')+(isActiveScene?' is-active-scene':'')+(hooks().openMenuId()===m.id?' menu-open':'');
+    let inner='<div class="toggle'+(on?' on':'')+'" data-toggle="'+m.id+'" role="switch" aria-checked="'+(on?'true':'false')+'"></div>';
+    inner+='<div class="map-main"><div class="map-pair">'+hooks().friendlyPair(m.triggerKey,m.targetKey,m)+'</div>';
+    inner+=mappingOverviewHtml(m);
+    inner+=mappingKeySwitchesHtml(m);
+    inner+=mappingRowExtrasHtml(m);
+    if(hasConflict){
+      const c=rowConflicts[0];
+      inner+='<div class="map-conflict">'+OneToneMappingCore.conflictHint(c,m.id)+'</div>';
+    }
+    inner+='</div>';
+    inner+=renderMapRowAction(m);
+    inner+='<button type="button" class="map-menu-btn" data-menu="'+m.id+'">⋮</button>';
+    return {id:m.id, cls:cls, inner:inner};
+  }
+
+  function listHasRows(){
+    return hasCompleteMappings()||OneToneMappingCore.hasDrafts();
+  }
+
   function renderMappingList(){
     hooks().ensureConfig();
     const list=$('mappingList');
     const empty=$('mappingEmpty');
-    const d=OneToneI18n.dict();
-    const hasRows=hasCompleteMappings()||OneToneMappingCore.hasDrafts();
+    const hasRows=listHasRows();
     if(empty) empty.hidden=hasRows;
+    // P7 守卫：React 岛接管 #mappingList 后，legacy 不再 innerHTML 重建整表；
+    // 改为通知岛做 keyed diff 同步（消除 remount storm）。岛未挂载时走原路径。
+    if(global.OneToneIslands&&global.OneToneIslands.isMounted&&global.OneToneIslands.isMounted('mappingList')){
+      if(typeof global.__otMappingListSync==='function') global.__otMappingListSync();
+      return;
+    }
     if(!hasRows){ list.innerHTML=''; return; }
     let html='';
     OneToneMappingCore.sorted().forEach(function(m){
-      if(OneToneMappingCore.isDraft(m)){
-        const sel=m.id===state.selectedMappingId;
-        const left=m.triggerKey?hooks().friendlyKeyName(m.triggerKey):d.triggerPlaceholder;
-        const right=m.targetKey?hooks().friendlyKeyName(m.targetKey):d.targetPlaceholder;
-        html+='<div class="map-row map-row-draft'+(sel?' selected':'')+'" data-id="'+m.id+'">';
-        html+='<div class="toggle" role="presentation" aria-hidden="true"></div>';
-        html+='<div class="map-main"><div class="map-pair map-pair-draft">';
-        html+='<span class="draft-ph">'+left+'</span> → <span class="draft-ph">'+right+'</span>';
-        html+='</div>';
-        html+=mappingOverviewHtml(m);
-        html+='</div>';
-        html+='<button type="button" class="map-test" disabled>'+d.testShort+'</button>';
-        html+='<button type="button" class="map-menu-btn" data-menu="'+m.id+'">⋮</button>';
-        html+='</div>';
-        return;
-      }
-      if(!OneToneMappingCore.isSaved(m)) return;
-      const sel=m.id===state.selectedMappingId;
-      const on=!!m.enabled;
-      const hasTarget=!!m.targetKey;
-      const rowConflicts=OneToneMappingCore.conflictsFor(m.id);
-      const hasConflict=OneToneMappingCore.schemeHasConflict(m);
-      const snap=hooks().voiceUiSnapshot().end||{};
-      const isDictating=hooks().sessionActiveState(snap.state)&&snap.mappingId===m.id;
-      const activeId=state.config&&state.config.activeSceneId;
-      const isActiveScene=activeId&&m.id===activeId;
-      html+='<div class="map-row'+(sel?' selected':'')+(on?' is-on':'')+(isDictating?' is-dictating':'')+(isActiveScene?' is-active-scene':'')+(hooks().openMenuId()===m.id?' menu-open':'')+'" data-id="'+m.id+'">';
-      html+='<div class="toggle'+(on?' on':'')+'" data-toggle="'+m.id+'" role="switch" aria-checked="'+(on?'true':'false')+'"></div>';
-      html+='<div class="map-main"><div class="map-pair">'+hooks().friendlyPair(m.triggerKey,m.targetKey,m)+'</div>';
-      html+=mappingOverviewHtml(m);
-      html+=mappingKeySwitchesHtml(m);
-      html+=mappingRowExtrasHtml(m);
-      if(hasConflict){
-        const c=rowConflicts[0];
-        html+='<div class="map-conflict">'+OneToneMappingCore.conflictHint(c,m.id)+'</div>';
-      }
-      html+='</div>';
-      html+=renderMapRowAction(m);
-      html+='<button type="button" class="map-menu-btn" data-menu="'+m.id+'">⋮</button>';
-      html+='</div>';
+      const row=rowView(m);
+      if(!row) return;
+      html+='<div class="'+row.cls+'" data-id="'+row.id+'">'+row.inner+'</div>';
     });
     list.innerHTML=html;
     hooks().syncAllTimingRanges(list);
@@ -237,6 +252,10 @@
     overviewHtml:mappingOverviewHtml,
     keySwitchesHtml:mappingKeySwitchesHtml,
     rowExtrasHtml:mappingRowExtrasHtml,
-    rowActionHtml:renderMapRowAction
+    rowActionHtml:renderMapRowAction,
+    // P7：单一来源行视图 + 空态判定，供 React 岛复用（markup/data-* 契约零偏差）
+    rowView:rowView,
+    listHasRows:listHasRows,
+    syncTimingRanges:function(list){ hooks().syncAllTimingRanges(list||$('mappingList')); }
   };
 })((typeof window!=='undefined')?window:globalThis);

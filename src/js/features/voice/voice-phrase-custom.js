@@ -67,6 +67,8 @@
   function renderPhraseTags(containerId,model){
     var el=$(containerId);
     if(!el) return;
+    // P6 守卫：若容器被 React 语音配置岛接管（位于 .ot-island 内），legacy 不得覆盖其 DOM。
+    if(window.OneToneIslands&&typeof window.OneToneIslands.isInsideIsland==='function'&&window.OneToneIslands.isInsideIsland(el)) return;
     if(!model||!model.length){
       el.innerHTML='<span class="voice-phrase-tags-empty">—</span>';
       return;
