@@ -1,4 +1,4 @@
-﻿(function(global){
+(function(global){
   'use strict';
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
