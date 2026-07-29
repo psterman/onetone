@@ -1198,9 +1198,53 @@
     });
   }
 
+  function appSwitcherChipView(scope) {
+    var active = scope.id === String(selectedScopeId || '');
+    var icon = iconHtml(scope.kind, 'soft-pad-app-chip-icon');
+    return (
+      '<button type="button" class="soft-pad-app-chip' +
+      (active ? ' is-active' : '') +
+      (scope.padEnabled ? '' : ' is-off') +
+      (scope.canPrepare ? ' is-prepare' : '') +
+      '" role="tab" data-scope="' + esc(scope.id) + '"' +
+      (scope.appId ? ' data-app-id="' + esc(scope.appId) + '"' : '') +
+      ' aria-controls="softPadHubStage"' +
+      ' aria-selected="' + (active ? 'true' : 'false') + '"' +
+      ' title="' + esc(scope.title) + '">' +
+      icon +
+      '<span>' + esc(scope.title) + '</span>' +
+      '</button>'
+    );
+  }
+
+  function buildSoftPadWorkflowModel() {
+    var scopes = listAppScopes();
+    var entries = listAsideEntries();
+    return {
+      switcherHidden: !scopes.length,
+      switcherLabel: t('softPadAppSwitcherAria', '应用虚拟键盘'),
+      switcherChips: scopes.map(function (scope) {
+        return { id: scope.id, html: appSwitcherChipView(scope) };
+      }),
+      schemeTitle: t('keysHubTitle', '方案'),
+      schemeCount: String(entries.length),
+      schemeRows: entries.map(function (entry) {
+        var rowId = entry.mapping && entry.mapping.id ? String(entry.mapping.id) : String(entry.kind || '');
+        return { id: rowId, html: renderSchemeRow(entry) };
+      }),
+      emptyHtml: entries.length
+        ? ''
+        : t('softPadHubEmptyTitle', '还没有可管理的虚拟键盘'),
+    };
+  }
+
   function renderAppSwitcher() {
     var e = els();
     if (!e.switcher) return;
+    if (global.__otSoftPadWorkflowMounted && typeof global.__otSoftPadWorkflowSync === 'function') {
+      global.__otSoftPadWorkflowSync();
+      return;
+    }
     var scopes = listAppScopes();
     if (!scopes.length) {
       e.switcher.innerHTML = '';
@@ -1209,24 +1253,7 @@
     }
     e.switcher.hidden = false;
     e.switcher.setAttribute('aria-label', t('softPadAppSwitcherAria', '应用虚拟键盘'));
-    e.switcher.innerHTML = scopes.map(function (scope) {
-      var active = scope.id === String(selectedScopeId || '');
-      var icon = iconHtml(scope.kind, 'soft-pad-app-chip-icon');
-      return (
-        '<button type="button" class="soft-pad-app-chip' +
-        (active ? ' is-active' : '') +
-        (scope.padEnabled ? '' : ' is-off') +
-        (scope.canPrepare ? ' is-prepare' : '') +
-        '" role="tab" data-scope="' + esc(scope.id) + '"' +
-        (scope.appId ? ' data-app-id="' + esc(scope.appId) + '"' : '') +
-        ' aria-controls="softPadHubStage"' +
-        ' aria-selected="' + (active ? 'true' : 'false') + '"' +
-        ' title="' + esc(scope.title) + '">' +
-        icon +
-        '<span>' + esc(scope.title) + '</span>' +
-        '</button>'
-      );
-    }).join('');
+    e.switcher.innerHTML = scopes.map(appSwitcherChipView).join('');
   }
 
   function paintPreview(entry, opts) {
@@ -1577,6 +1604,14 @@
   function renderSchemeList() {
     var e = els();
     if (!e.list) return;
+    if (global.__otSoftPadWorkflowMounted && typeof global.__otSoftPadWorkflowSync === 'function') {
+      if (e.titleLbl) e.titleLbl.textContent = t('keysHubTitle', '方案');
+      if (e.aside) e.aside.setAttribute('aria-label', t('keysHubTitle', '方案'));
+      var entries = listAsideEntries();
+      if (e.count) e.count.textContent = String(entries.length);
+      global.__otSoftPadWorkflowSync();
+      return;
+    }
     if (e.titleLbl) e.titleLbl.textContent = t('keysHubTitle', '方案');
     if (e.aside) e.aside.setAttribute('aria-label', t('keysHubTitle', '方案'));
     var entries = listAsideEntries();
@@ -1789,6 +1824,8 @@
     try{
       var mountSoft=global.__otMountSoftPadStatusIsland;
       if(typeof mountSoft==='function') mountSoft();
+      var mountWorkflow=global.__otMountSoftPadWorkflowIsland;
+      if(typeof mountWorkflow==='function') mountWorkflow();
     }catch(_){}
     bindChrome();
     // Will land on runtime via selectScheme({ resetView: true }); keep hub only until then.
@@ -1916,6 +1953,9 @@
     // P10: exposed for React island toggle delegation
     toggleSelectedEnable: toggleSelectedEnable,
     toggleRowEnable: toggleRowEnable,
+    buildSoftPadWorkflowModel: buildSoftPadWorkflowModel,
+    schemeRowView: renderSchemeRow,
+    appSwitcherChipView: appSwitcherChipView,
   };
   // P10: read bridge — island calls this on mount / refresh to get initial state
   global.__otSoftPadStatusRead = function () {

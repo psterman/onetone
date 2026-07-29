@@ -35,6 +35,12 @@ if (existsSync(bundle)) {
   check('P10 SoftPad 状态栏岛含状态栏 DOM 标记（softPadSummaryName）', code.includes('softPadSummaryName'));
   check('P11 Keys 状态栏岛已打进 bundle（含 __otKeysStatusMounted 标记）', code.includes('__otKeysStatusMounted'));
   check('P11 Keys 状态栏岛含状态栏 DOM 标记（keysSummaryName）', code.includes('keysSummaryName'));
+  check('P12 习惯列表岛已打进 bundle（含 __otHabitHubListSync 同步入口）', code.includes('__otHabitHubListSync'));
+  check('P12 习惯列表岛含 __otHabitHubListMounted 标记', code.includes('__otHabitHubListMounted'));
+  check('P13 习惯 Hub 壳层岛已打进 bundle（含 __otHabitHubChromeSync）', code.includes('__otHabitHubChromeSync'));
+  check('P13 习惯 Hub 壳层岛含 __otHabitHubChromeMounted 标记', code.includes('__otHabitHubChromeMounted'));
+  check('P14a Keys 工作流岛已打进 bundle（含 __otKeysWorkflowSync）', code.includes('__otKeysWorkflowSync'));
+  check('P14b SoftPad 工作流岛已打进 bundle（含 __otSoftPadWorkflowSync）', code.includes('__otSoftPadWorkflowSync'));
 }
 const mappingListJs = readFileSync(resolve(root, 'src/js/features/mapping/mapping-list.js'), 'utf8');
 check('P7 legacy rowView 单一来源已导出', mappingListJs.includes('rowView:rowView'));
@@ -48,6 +54,23 @@ const keysPanelJs = readFileSync(resolve(root, 'src/js/features/settings/keys-pa
 check('P11 legacy keys-panel renderSchemeSummary 岛守卫已就位', keysPanelJs.includes('__otKeysStatusMounted') && keysPanelJs.includes('__otKeysStatusSync'));
 check('P11 legacy __otKeysStatusRead 读桥已就位', keysPanelJs.includes('__otKeysStatusRead'));
 check('P11 legacy toggleMappingEnable 委托已导出', keysPanelJs.includes('toggleMappingEnable'));
+const habitHubJs = readFileSync(resolve(root, 'src/js/features/mapping/habit-hub.js'), 'utf8');
+check('P12 legacy cardView 单一来源已导出', habitHubJs.includes('cardView:renderCard'));
+check('P12 legacy buildHabitHubListModel 已导出', habitHubJs.includes('buildHabitHubListModel:buildHabitHubListModel'));
+check('P12 legacy renderList 岛守卫已就位', habitHubJs.includes("isMounted('habitHubList')") && habitHubJs.includes('__otHabitHubListSync'));
+check('P12 delete 走 scheduleHubPaint 轻量刷新', habitHubJs.includes('scheduleHubPaint'));
+check('P13 legacy buildHabitHubChromeModel 已导出', habitHubJs.includes('buildHabitHubChromeModel:buildHabitHubChromeModel'));
+check('P13 legacy renderFilters chrome 守卫', habitHubJs.includes('__otHabitHubChromeSync'));
+const settingsDrawerJs = readFileSync(resolve(root, 'src/js/features/settings/settings-drawer.js'), 'utf8');
+check('P12 settings-drawer 延迟挂载已接线', settingsDrawerJs.includes('__otMountHabitHubListIsland'));
+check('P13 settings-drawer chrome 延迟挂载', settingsDrawerJs.includes('__otMountHabitHubChromeIsland'));
+check('P14a keys workflow 岛守卫', keysPanelJs.includes('__otKeysWorkflowMounted'));
+check('P14b soft-pad workflow 岛守卫', softPadHubJs.includes('__otSoftPadWorkflowMounted'));
+const tauriConf = JSON.parse(readFileSync(resolve(root, 'src-tauri/tauri.conf.json'), 'utf8'));
+check('§8.3 withGlobalTauri 已关闭', tauriConf.app.withGlobalTauri === false);
+check('§8.3 CSP 已收紧（非 null）', !!(tauriConf.app.security && tauriConf.app.security.csp));
+const ipcJs = readFileSync(resolve(root, 'src/js/core/ipc.js'), 'utf8');
+check('§8.3 OneToneIpc.listen 集中事件桥', ipcJs.includes('listen:tauriListen') && ipcJs.includes('bridgeReady:bridgeReady'));
 const configPersistJs = readFileSync(resolve(root, 'src/js/core/config-persist.js'), 'utf8');
 check('P8 applyMvpInit → OneToneIslandsRefresh 接线已就位', configPersistJs.includes('OneToneIslandsRefresh'));
 const html = readFileSync(htmlPath, 'utf8');

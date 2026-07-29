@@ -8,6 +8,19 @@ import { MappingListIsland } from './islands/mapping-list-island';
 import { WbCommandIsland } from './islands/wb-command-island';
 import { SoftPadStatusBarIsland } from './islands/soft-pad-status-island';
 import { KeysStatusBarIsland } from './islands/keys-status-island';
+import { HabitHubListIsland } from './islands/habit-hub-list-island';
+import {
+  HabitHubEmptyIsland,
+  HabitHubGuideIsland,
+  HabitHubSortIsland,
+  registerHabitHubChromeSync,
+} from './islands/habit-hub-chrome-island';
+import { KeysWorkflowTabsIsland } from './islands/keys-workflow-island';
+import {
+  SoftPadAppSwitcherIsland,
+  SoftPadSchemeListIsland,
+  registerSoftPadWorkflowSync,
+} from './islands/soft-pad-workflow-island';
 import { toastPortal, dialogPortal } from './shared/portal-roots';
 // ?inline 让 CSS 直接内联进 bundle，产物为单文件 main.js，便于 Tauri 静态加载
 import islandCss from './globals.css?inline';
@@ -120,6 +133,90 @@ function mountKeysStatusIsland(): void {
 }
 (window as unknown as { __otMountKeysStatusIsland?: () => void }).__otMountKeysStatusIsland =
   mountKeysStatusIsland;
+
+// P12：挂载习惯列表岛（延迟到习惯面板首次打开；避免 boot 清空 hidden DOM）
+function mountHabitHubListIsland(): void {
+  const host = document.getElementById('habitHubList');
+  if (!host || OneToneIslands.isMounted('habitHubList')) return;
+  host.innerHTML = '';
+  OneToneIslands.mountIsland('habitHubList', HabitHubListIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountHabitHubListIsland?: () => void }).__otMountHabitHubListIsland =
+  mountHabitHubListIsland;
+
+// P13：挂载习惯 Hub 壳层岛（guide / empty / sort；延迟到习惯面板首次打开）
+function mountHabitHubChromeIsland(): void {
+  if ((window as unknown as { __otHabitHubChromeMounted?: boolean }).__otHabitHubChromeMounted) return;
+
+  const guideHost = document.getElementById('habitHubGuideSteps');
+  const emptyHost = document.getElementById('habitHubEmpty');
+  const sortEl = document.getElementById('habitHubSort');
+  if (!guideHost || !emptyHost) return;
+
+  let sortHost = document.getElementById('habitHubSortHost');
+  if (sortEl && !sortHost) {
+    sortHost = document.createElement('div');
+    sortHost.id = 'habitHubSortHost';
+    sortHost.className = 'ot-island habit-hub-sort-host';
+    sortEl.replaceWith(sortHost);
+  }
+
+  guideHost.innerHTML = '';
+  emptyHost.innerHTML = '';
+
+  OneToneIslands.mountIsland('habitHubGuideSteps', HabitHubGuideIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+  OneToneIslands.mountIsland('habitHubEmpty', HabitHubEmptyIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+  if (sortHost) {
+    OneToneIslands.mountIsland('habitHubSortHost', HabitHubSortIsland, {}, {
+      onRefresh: () => ({}) as Record<string, unknown>,
+    });
+  }
+
+  registerHabitHubChromeSync();
+}
+(window as unknown as { __otMountHabitHubChromeIsland?: () => void }).__otMountHabitHubChromeIsland =
+  mountHabitHubChromeIsland;
+
+// P14a：挂载 Keys 工作流 tabs 岛（延迟到按键面板首次打开）
+function mountKeysWorkflowIsland(): void {
+  const host = document.getElementById('keysWorkflowTabs');
+  if (!host || OneToneIslands.isMounted('keysWorkflowTabs')) return;
+  host.innerHTML = '';
+  OneToneIslands.mountIsland('keysWorkflowTabs', KeysWorkflowTabsIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountKeysWorkflowIsland?: () => void }).__otMountKeysWorkflowIsland =
+  mountKeysWorkflowIsland;
+
+// P14b：挂载 SoftPad 工作流壳岛（app switcher + scheme list；延迟到 SoftPad 首次 render）
+function mountSoftPadWorkflowIsland(): void {
+  if ((window as unknown as { __otSoftPadWorkflowMounted?: boolean }).__otSoftPadWorkflowMounted) return;
+
+  const switcherHost = document.getElementById('softPadAppSwitcher');
+  const listHost = document.getElementById('softPadSchemeList');
+  if (!switcherHost || !listHost) return;
+
+  switcherHost.innerHTML = '';
+  listHost.innerHTML = '';
+
+  OneToneIslands.mountIsland('softPadAppSwitcher', SoftPadAppSwitcherIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+  OneToneIslands.mountIsland('softPadSchemeList', SoftPadSchemeListIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+
+  registerSoftPadWorkflowSync();
+}
+(window as unknown as { __otMountSoftPadWorkflowIsland?: () => void }).__otMountSoftPadWorkflowIsland =
+  mountSoftPadWorkflowIsland;
 
 // 暴露宿主桥，供 legacy 与后续阶段调用
 (window as unknown as { OneToneIslands: typeof OneToneIslands }).OneToneIslands = OneToneIslands;

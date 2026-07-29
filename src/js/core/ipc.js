@@ -1,15 +1,44 @@
-﻿(function(global){
+(function(global){
   'use strict';
-  function vpInvokeInternal(cmd,args){
-    const core=global.__TAURI__&&global.__TAURI__.core;
-    if(core&&typeof core.invoke==='function'){
-      return core.invoke(cmd,args);
+  function tauriInternals(){
+    return global.__TAURI_INTERNALS__||null;
+  }
+  function tauriGlobalCore(){
+    const tauri=global.__TAURI__;
+    return tauri&&tauri.core?tauri.core:null;
+  }
+  function tauriEventApi(){
+    const tauri=global.__TAURI__;
+    if(tauri&&tauri.event&&typeof tauri.event.listen==='function') return tauri.event;
+    const internals=tauriInternals();
+    if(internals&&typeof internals.listen==='function'){
+      return {listen:internals.listen.bind(internals)};
     }
-    const internals=global.__TAURI_INTERNALS__;
+    return null;
+  }
+  function bridgeReady(){
+    const internals=tauriInternals();
+    if(internals&&typeof internals.invoke==='function') return true;
+    const core=tauriGlobalCore();
+    return !!(core&&typeof core.invoke==='function');
+  }
+  function vpInvokeInternal(cmd,args){
+    const internals=tauriInternals();
     if(internals&&typeof internals.invoke==='function'){
       return internals.invoke(cmd,args);
     }
+    const core=tauriGlobalCore();
+    if(core&&typeof core.invoke==='function'){
+      return core.invoke(cmd,args);
+    }
     return Promise.reject(new Error('tauri invoke unavailable'));
+  }
+  function tauriListen(event,handler){
+    const eventApi=tauriEventApi();
+    if(!eventApi||typeof eventApi.listen!=='function'){
+      return Promise.reject(new Error('tauri event listen unavailable'));
+    }
+    return eventApi.listen(event,handler);
   }
   function tauriArgs(args){
     const out=Object.assign({},args||{});
@@ -50,7 +79,15 @@
       });
     });
   }
-  global.OneToneIpc={invoke:vpInvoke,invokeTimeout:vpInvokeTimeout,raw:vpInvokeInternal,tauriArgs:tauriArgs};
+  global.OneToneIpc={
+    invoke:vpInvoke,
+    invokeTimeout:vpInvokeTimeout,
+    raw:vpInvokeInternal,
+    tauriArgs:tauriArgs,
+    bridgeReady:bridgeReady,
+    listen:tauriListen,
+    eventApi:tauriEventApi
+  };
   global.vpInvoke=vpInvoke;
   global.vpInvokeTimeout=vpInvokeTimeout;
 })((typeof window!=='undefined')?window:globalThis);

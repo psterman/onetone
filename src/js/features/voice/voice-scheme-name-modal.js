@@ -7,7 +7,7 @@
   var bound=false;
 
   function isDesktopApp(){
-    if(global.__TAURI__||global.__TAURI_INTERNALS__) return true;
+    if(global.OneToneIpc&&typeof global.OneToneIpc.bridgeReady==='function'&&global.OneToneIpc.bridgeReady()) return true;
     if(global.OneToneIpc&&typeof global.OneToneIpc.invoke==='function') return true;
     try{
       if(typeof location!=='undefined'&&String(location.hostname||'').toLowerCase()==='tauri.localhost') return true;

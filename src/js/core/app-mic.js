@@ -697,10 +697,10 @@
 
   function bindTrayMicSync(){
     if(trayMicBound) return;
-    var eventApi=global.__TAURI__&&global.__TAURI__.event;
-    if(!eventApi||typeof eventApi.listen!=='function') return;
+    var ipc=global.OneToneIpc;
+    if(!ipc||typeof ipc.listen!=='function') return;
     trayMicBound=true;
-    eventApi.listen('mic_tray_state',function(ev){
+    ipc.listen('mic_tray_state',function(ev){
       var st=ev&&ev.payload;
       if(st) applyMicMuteState(st);
     }).catch(function(){

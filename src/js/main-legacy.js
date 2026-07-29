@@ -8,10 +8,7 @@
       const ipc=global.OneToneIpc;
       if(ipc&&typeof ipc.invoke==='function'){
         ipc.invoke('cmd_app_log',{line:text}).catch(function(){});
-        return;
       }
-      const core=global.__TAURI__&&global.__TAURI__.core;
-      if(core&&typeof core.invoke==='function') core.invoke('cmd_app_log',{line:text}).catch(function(){});
     }catch(_){}
   }
 

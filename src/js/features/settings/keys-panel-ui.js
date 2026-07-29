@@ -908,6 +908,10 @@
     var tabsLbl=$('keysWorkflowTabsLbl');
     if(tabsLbl) tabsLbl.textContent=t('keysWorkflowTabsLbl');
     if(!tabs) return;
+    if(global.__otKeysWorkflowMounted&&typeof global.__otKeysWorkflowSync==='function'){
+      global.__otKeysWorkflowSync();
+      return;
+    }
     if(!core()||!core().sorted){
       tabs.innerHTML='';
       return;
@@ -919,16 +923,37 @@
       return;
     }
     tabs.innerHTML=schemes.map(function(m){
-      var isSel=m.id===selected;
-      var enabled=!!m.enabled;
-      var isDraft=core().isIncomplete&&core().isIncomplete(m);
-      var isStrictDraft=core().isDraft&&core().isDraft(m);
-      var draftBadge=isStrictDraft?t('homeLiveSchemeDraft'):t('keySchemeCompletenessIncomplete');
-      return '<button type="button" class="keys-workflow-tab'+(isSel?' is-active':'')+(!enabled?' is-disabled-scheme':'')+(isDraft?' is-draft':'')+'" role="tab" aria-selected="'+(isSel?'true':'false')+'" id="keysWorkflowTab-'+esc(m.id)+'" data-scheme-id="'+esc(m.id)+'">'
-        +'<span class="keys-workflow-tab-name">'+esc(habitName(m))+'</span>'
-        +(isDraft?'<span class="keys-workflow-tab-draft">'+esc(draftBadge)+'</span>':'')
-        +'</button>';
+      return workflowTabView(m,selected);
     }).join('');
+  }
+
+  function workflowTabView(m,selected){
+    var isSel=m.id===selected;
+    var enabled=!!m.enabled;
+    var isDraft=core().isIncomplete&&core().isIncomplete(m);
+    var isStrictDraft=core().isDraft&&core().isDraft(m);
+    var draftBadge=isStrictDraft?t('homeLiveSchemeDraft'):t('keySchemeCompletenessIncomplete');
+    return '<button type="button" class="keys-workflow-tab'+(isSel?' is-active':'')+(!enabled?' is-disabled-scheme':'')+(isDraft?' is-draft':'')+'" role="tab" aria-selected="'+(isSel?'true':'false')+'" id="keysWorkflowTab-'+esc(m.id)+'" data-scheme-id="'+esc(m.id)+'">'
+      +'<span class="keys-workflow-tab-name">'+esc(habitName(m))+'</span>'
+      +(isDraft?'<span class="keys-workflow-tab-draft">'+esc(draftBadge)+'</span>':'')
+      +'</button>';
+  }
+
+  function buildKeysWorkflowTabsModel(){
+    if(!core()||!core().sorted){
+      return {emptyHtml:'',tabs:[]};
+    }
+    var schemes=contextFilteredSchemes();
+    var selected=ensureContextSelection();
+    if(!schemes.length){
+      return {emptyHtml:t('mappingEmptyTitle'),tabs:[]};
+    }
+    return {
+      emptyHtml:'',
+      tabs:schemes.map(function(m){
+        return {id:m.id,html:workflowTabView(m,selected)};
+      })
+    };
   }
 
   function renameScheme(id){
@@ -1437,7 +1462,9 @@
     testOnceTop:testOnceTop,
     addScheme:addScheme,
     toggleMappingEnable:toggleMappingEnable,
-    buildKeysStatusProps:buildKeysStatusProps
+    buildKeysStatusProps:buildKeysStatusProps,
+    workflowTabView:workflowTabView,
+    buildKeysWorkflowTabsModel:buildKeysWorkflowTabsModel
   };
   global.__otKeysStatusRead=function(){
     var m=core()&&core().selected?core().selected():null;

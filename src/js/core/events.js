@@ -1,4 +1,4 @@
-﻿(function(global){
+(function(global){
   'use strict';
   const listeners={message:[]};
   const pendingToJsQueue=[];
@@ -79,10 +79,10 @@
   }
   function ensureToJsListener(){
     if(ensureToJsListener.ready) return !!ensureToJsListener.ready;
-    const eventApi=global.__TAURI__&&global.__TAURI__.event;
-    if(!eventApi||typeof eventApi.listen!=='function') return false;
+    const ipc=global.OneToneIpc;
+    if(!ipc||typeof ipc.listen!=='function') return false;
     ensureToJsListener.ready=true;
-    eventApi.listen('to_js',function(event){
+    ipc.listen('to_js',function(event){
       dispatchToJs(event&&event.payload);
     }).then(function(){
       if(typeof global.__vp_on_to_js_ready__==='function') global.__vp_on_to_js_ready__();

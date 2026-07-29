@@ -1,6 +1,6 @@
 # React Islands 渐进迁移契约（OneTone / voice-pilot）
 
-> 阶段状态：✅ P0–P11 工程轨静态通过；✅ §8.5 Tauri 人工验收通过（2026-07-29）。正式 shadcn/Radix **未接入**（自实现兼容层）。最后更新：2026-07-29
+> 阶段状态：✅ P0–P14 + §8.3 工程轨静态通过；✅ §8.5 Tauri 人工验收通过（2026-07-29，项 1–12）。正式 shadcn/Radix **未接入**（自实现兼容层）。最后更新：2026-07-29
 >
 > P4：共享 UI = 能力就绪 + Toast 单轨桥接；Command **P9a 已接管** `#wbCommandSearch`（inline 岛）。
 > P9b：动态命令注册 + `jumpAndHighlight`（**不是**完整映射编辑器；映射编辑器见 **P12 延后**）。
@@ -23,10 +23,15 @@
 | Command 动态注册 | **P9b 完成**（`register-palette-commands.js` + keywords + `jumpAndHighlight`） |
 | SoftPad 状态栏 | **P10 完成**（`#softPadStatusBar` sync-push 岛；hub 其余留 legacy） |
 | Keys 状态栏 | **P11 完成**（`#keysWorkflowTabsBar` 主栏+操作区；流程/编辑器留 legacy） |
+| 习惯列表 | **P12 完成**（`#habitHubList` keyed diff；aside 筛选/向导 P13 壳层岛接管） |
+| 习惯 Hub 壳层 | **P13 完成**（`#habitHubGuideSteps` / `#habitHubEmpty` / `#habitHubSort`；filter tab HTML 仍 P12） |
+| Keys 工作流壳 | **P14a 完成**（`#keysWorkflowTabs` keyed diff；编辑器/录制仍 legacy） |
+| SoftPad 工作流壳 | **P14b 完成**（`#softPadAppSwitcher` + `#softPadSchemeList`；`#softPadHubStage` 主区仍 legacy） |
+| 安全收口 §8.3 | **完成**（CSP 收紧 + `withGlobalTauri:false` + `__TAURI__` 直引收敛至 `ipc.js`） |
 | 正式 shadcn/Radix | **未完成**（零依赖 API 对齐壳） |
-| Tauri 产品验收 | **完成**（§8.5 项 1–11 人工点选 ✅，2026-07-29） |
+| Tauri 产品验收 | **完成**（§8.5 项 1–12 人工点选 ✅，2026-07-29） |
 
-下一步：**P12 `#habitHubList` 习惯列表岛**（P7 keyed-diff 模式）→ §8.3 CSP 收口 → 完整映射编辑器（延后单独开）。
+下一步：**P12b 映射编辑器四段式**（各独立立项）；capability 持续最小化。
 ## 0. 目标与范围
 
 **做什么**：在现有 Tauri 2 + Rust 桌面应用的前端里，以「React Island」方式渐进挂载 React/TypeScript 组件，**不重写应用壳、不改 Rust/Tauri 主架构、不改成完整 SPA**。
@@ -57,7 +62,7 @@
 - **前端**：零构建 vanilla JS。`tauri.conf.json` → `frontendDist: "../src"`、`beforeBuildCommand: ""`；开发用 `npm run serve`（serve src -l 1420）。
 - **体量与加载**：`src/js/` 共 **183 文件 / ~87,344 行**；`index.html` 用 **170+ 个经典 `<script src>`** 按加载顺序挂载全局对象。
 - **状态**：单一全局可变对象 `OneToneState = {state, ui, runtime}`（`src/js/core/state.js`），无响应式，手动重渲染。
-- **原生桥**：`withGlobalTauri: true`，用 `window.__TAURI__`（全局）；`OneToneIpc`（`src/js/core/ipc.js`）提供 `invoke / invokeTimeout / raw / tauriArgs`，且 **`tauriArgs` 已内置 snake⇄camel 兼容** —— typed IPC 可直接复用，不必重写。
+- **原生桥**：`withGlobalTauri: false`（§8.3）；网页侧 invoke/listen 经 `OneToneIpc`（`src/js/core/ipc.js`）优先 `__TAURI_INTERNALS__`；typed IPC 复用 `OneToneIpc.invoke`（`tauriArgs` snake⇄camel 兼容）。
 - **渲染分发（关键）**：`render-loop.js` 的 `render()` 经 `global.__vp_render_hooks__` 在每个周期整树刷新：`renderEditor / renderMappingChrome / renderVoiceModeSwitch / renderHome / renderListenRuntime / renderUpdateUi / renderRecordCancelBar / renderSoundSettingsPanel / renderKeyFinishFlowPanel / renderTrashList / renderDebugDeveloperPanel` 等。并有 `render slow >250ms` 告警（已存在性能问题）。
 - **现存重挂载隐患（最大风险，已证实）**：`config-persist.js` 注释明确写「Full applyMvpInit here used to remount editors and 假死 the home switch path」「cmd_ready → applyMvpInit remount storm 假死's the UI (esp. MediaPipe)」，并有 `mvpInitHeavyRemountBlocked()` 守卫压制。说明 legacy 今天就在和重挂载假死搏斗——岛必须显式避开。
 
@@ -78,6 +83,10 @@
 | 习惯/场景 | `#settingsPanelScenes` (L1121) / `#settingsPanelHabits` (L1152) | 后续 |
 | 语音唤醒配置 | `#settingsPanelVoiceWake` (L1446) | P6 |
 | 映射列表 | `#mappingList` (L1439) | P7 |
+| 习惯列表 | `#habitHubList` | P12 |
+| 习惯 Hub 壳层 | `#habitHubGuideSteps` / `#habitHubEmpty` / `#habitHubSortHost` | P13 |
+| Keys 工作流 tabs | `#keysWorkflowTabs` | P14a |
+| SoftPad 工作流 | `#softPadAppSwitcher` / `#softPadSchemeList` | P14b |
 | 语音流程 | `#voiceWorkflowPipeline` / `#voiceFlowNodes` (L1515+) | P6 |
 | Command 搜索 | `#wbCommandSearch` + `#wbCmdkPanel` (L92) | P9a |
 | 语音声学 host | `#voiceWakeAcousticHost` / `#voiceCancelAcousticHost` / `#voiceEndAcousticHost` | P6 |
@@ -105,6 +114,10 @@
 | `#mappingList`（行列表） | P7 | 映射列表岛（keyed diff 渲染，交互留 legacy 委托） | `renderMappingList` 顶部守卫：岛挂载后改调 `window.__otMappingListSync()`，不再 `innerHTML` 整表重建；行 markup 由 legacy `OneToneMappingList.rowView` 单一来源生成（岛与 legacy 共用）；`renderEditor` / `renderMappingChrome` 其余子渲染与 `renderRecordCancelBar` **留 legacy**（编辑器/录制/取消条不迁） | 是（行内文案由 rowView 内 `t()` 生成，`#mappingList` 无 data-i18n 扫描） | 否（无弹层；菜单 `#mapMenuFloat` 留 legacy） |
 | `#softPadStatusBar` | P10 | SoftPad 状态栏岛（name/status/presentation/kind + enable） | `soft-pad-hub-ui.js` `updateStatusBar`：`__otSoftPadStatusMounted` 时 `__otSoftPadStatusSync` 推送，不写 DOM；hub/子页/预览 **留 legacy** | 是 | 否 |
 | `#keysStatus`（`#keysWorkflowTabsBar` 内） | P11 | Keys 状态栏岛（摘要 + 测试/保存/启用/新建） | `keys-panel-ui.js` `renderSchemeSummary`：`__otKeysStatusMounted` 时 sync-push；`#keysWorkflowTabs` / `#keysHabitSwitcher` sr-only 节点 **留 legacy 写** | 是 | 否 |
+| `#habitHubList` | P12 | 习惯列表岛（keyed diff；`cardView` 单一来源） | `habit-hub.js` `renderList`：`__otHabitHubListMounted` 时改调 `__otHabitHubListSync`；`#habitHubView` 事件委托 / wizard **留 legacy**；**延迟挂载** `__otMountHabitHubListIsland()` | 是（卡片 markup 内 `t()`） | 否 |
+| `#habitHubGuideSteps` / `#habitHubEmpty` / `#habitHubSortHost` | P13 | 习惯 Hub 壳层岛（guide / empty / sort） | `habit-hub.js`：`buildHabitHubChromeModel` + `scheduleHubPaint`；`renderLabels`/`renderFilters`/`renderList` 守卫；filter tab markup 仍 P12 `renderAppFilterBar`；**延迟挂载** `__otMountHabitHubChromeIsland()` | 是 | 否 |
+| `#keysWorkflowTabs` | P14a | Keys 工作流 tabs 岛 | `keys-panel-ui.js` `renderWorkflowTabs`：`__otKeysWorkflowMounted` 时 `__otKeysWorkflowSync`；`#keysHabitSwitcher` sr-only **留 legacy** | 是 | 否 |
+| `#softPadAppSwitcher` / `#softPadSchemeList` | P14b | SoftPad 工作流壳岛 | `soft-pad-hub-ui.js` `renderAppSwitcher`/`renderSchemeList` 守卫；`#softPadHubStage` 预览/子页 **留 legacy**；**延迟挂载** `__otMountSoftPadWorkflowIsland()` | 是 | 否 |
 | `#voiceConfigIsland`（新建，位于 `#voiceDeskPanel` 内） | P6 | 语音配置岛 | 接管文本短语+策略；声学留 legacy；**勿**作为 `voice-page-body` 网格子项（会挤占流程 hero） | 是 | 经 OneToneUi |
 | `#appWorkbenchShell` / `#appContentColumn` | 不迁 | — | 主 shell IA 保留 legacy | — | — |
 
@@ -372,17 +385,19 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 - 定性为**轻量事件派发**（React 只重算 props/重渲染，不重挂载），不受 `mvpInitHeavyRemountBlocked()` 压制——不会加剧 remount storm；岛 bundle 未加载时为 no-op。
 - `smoke-islands.mjs` 新增校验「P8 applyMvpInit → OneToneIslandsRefresh 接线已就位」。
 
-#### 8.3 安全收口计划（后续，不在 P8 内执行）
+#### 8.3 安全收口（2026-07-29 ✅ 已执行）
 
-现状取证：`tauri.conf.json` → `"withGlobalTauri": true`、`"csp": null`；capability 已较小（`default.json` 仅 `core:default` + `app-ipc` + autostart 三项，按窗口分文件）；legacy 有 **8 个 JS 文件**直接引用 `window.__TAURI__`。
+**执行前现状**：`withGlobalTauri: true`、`csp: null`；8 个 legacy 文件直引 `window.__TAURI__`。
 
-分步收口（每步独立可验证、可回滚）：
-1. **CSP 从 null 收紧（先行，与 withGlobalTauri 无耦合）**：先以 report-only 心态在 dev 验证 `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost`。注意两点：islands 的 scoped CSS 经 JS 注入 `<style>`（需 `style-src 'unsafe-inline'`，Tauri 的 CSP nonce 注入只处理静态 HTML）；`assets/islands/main.js` 为本地静态文件，`script-src 'self'` 天然放行。
-2. **收敛 `__TAURI__` 直引**：8 个 legacy 文件改走 `OneToneIpc`（已是绝大多数代码的路径），使 `withGlobalTauri` 的依赖面收敛到 `ipc.js` 单文件。
-3. **退出 `withGlobalTauri`**：依赖面收敛后，`ipc.js` 改由 islands bundle 转出的 `@tauri-apps/api` ESM 提供 invoke/listen（或保留全局但仅注入 `ipc.js` 作用域）；届时 `withGlobalTauri:false`，网页上下文不再暴露全局 Tauri 句柄。
-4. **capability 持续最小化**：新增 Rust 命令时按窗口最小授权（现有三 capability 文件已是正确形态）。
+**已落地**（按原计划顺序）：
+1. **CSP 收紧**（`src-tauri/tauri.conf.json`）：`default-src 'self'` + `script-src 'self' 'wasm-unsafe-eval'`（MediaPipe WASM）+ `style-src 'self' 'unsafe-inline'`（islands 注入式 CSS）+ `connect-src` 含 `ipc:` / `http://ipc.localhost` / Codex overlay `127.0.0.1:8796` + `media-src`/`worker-src` blob。
+2. **`__TAURI__` 直引收敛**：`ipc.js` 新增 `bridgeReady` / `listen` / `eventApi`；`events.js`、`app-mic.js`、`voice-acoustic-ipc.js`、`config-persist.js`、`dom.js`、`main-legacy.js`、`voice-scheme-name-modal.js` 改走 `OneToneIpc`；卫星窗口 `coach-hud.html` / `codex-micro-overlay.html` 仅用 `__TAURI_INTERNALS__`。
+3. **退出 `withGlobalTauri`**：`withGlobalTauri: false`；`ipc.js` / `typedIpc.ts` 优先 `__TAURI_INTERNALS__`。
+4. **capability 持续最小化**：维持现有三 capability 文件形态；新增 Rust 命令时按窗口最小授权。
 
-顺序不可颠倒：先 CSP（低风险高收益）、再收敛直引（纯 JS 重构）、最后退出全局桥（需 ESM 通道就绪）。
+**护栏**：`scripts/test-security-hardening.mjs` 纳入 `test:islands`；smoke 校验 CSP / `withGlobalTauri` / `OneToneIpc.listen`。
+
+**人工验收建议**：冷启动 → IPC（保存/语音/按键）→ 摄像头预览（WASM）→ Coach HUD / Codex overlay 事件 → 控制台无 CSP violation。
 
 #### 8.4 最终验证矩阵（2026-07-29）
 
@@ -409,8 +424,9 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 | 9 | **P10 SoftPad**：虚拟键盘状态栏由 React 渲染，功能正常 | ✅ 人工点选通过（2026-07-29） |
 | 10 | **假死回归**：冷启动不卡死；语音习惯新建/删除不触发 save storm | ✅ 人工点选通过（2026-07-29） |
 | 11 | **P11 Keys 状态栏**：摘要 + 测试/保存/启用/新建与迁移前一致 | ✅ 人工点选通过（2026-07-29） |
+| 12 | **P12 习惯列表岛**：冷启动延迟挂载；legacy/场景/批量删除、重命名、勾选、筛选排序；`scheduleHubPaint` 无假死 | ✅ 人工点选通过（2026-07-29） |
 
-> **裁定**：§8.5 全部通过（2026-07-29，用户确认）。可进入 P12 下一迁移阶段。
+> **裁定**：§8.5 全部通过（2026-07-29，用户确认）。P13–P14 工程轨已落地，待 §8.5 扩展人工项补录。
 
 #### 8.5.2 人工点选指引（2026-07-29）
 
@@ -426,6 +442,7 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 | 8 | 首页 Ctrl+K / 点击搜索框；输入「语音」「按键」「vosk」 | 有过滤结果；点击条目打开 drawer 并高亮目标区域 |
 | 9 | 设置 → **虚拟键盘** | P10 状态栏（名称/状态/显示形态/应用 + 启用开关）由 React 渲染且可切换 |
 | 11 | 设置 → **按键** | P11 状态栏摘要 + 测试/保存/启用/新建 与迁移前行为一致 |
+| 12 | 设置 → **我的习惯**：冷启动后首次打开；legacy 删除确认；批量删除；重命名；勾选；filter tab + `#habitHubSort` 排序 | 列表/空态/引导/排序正常；删除/批量后不卡死；P13 壳层与 P12 列表联调无闪烁 |
 
 验收后请将上表 ⚠️ 改为 ✅ 并注明日期。**（已完成：2026-07-29）**
 
@@ -440,7 +457,12 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 
 #### 8.6 后续路线图（契约外，按需启动）
 
-- **补迁候选**（按 §3 挂载点表）：`#settingsPanelKeys` / `#settingsPanelSoftPad` / `#settingsPanelScenes` / `#settingsPanelHabits`——均为表单型，模式已被 P5/P6 验证，可逐个复制。
+- **P12b 映射编辑器四段式**（各独立 plan + §8.5 人工项；禁止一段吞掉录制+菜单+editor）：
+  - **P12b-1**：`#triggerView` / `#targetView` 只读展示（低风险）
+  - **P12b-2**：时序滑条 / toggle（复用 P7 `syncTimingRanges` 模式，中风险）
+  - **P12b-3**：录制条 + `applyMvpInit` 联动（高风险）
+  - **P12b-4**：`#mapMenuFloat` 浮动菜单（高风险）
+- **补迁候选**（按 §3 挂载点表）：`#settingsPanelKeys` / `#settingsPanelSoftPad` 编辑器区等——模式已被 P5–P14 验证，可逐个复制。
 - **shadcn 官方化**：联网环境 `npm install` 稳定后 `npx shadcn@latest add` 覆盖 `components/ui/*`（API 已对齐，调用方基本不改）。
 - **home/workbench 决策**：留 legacy 则总收益 <70%；若迁移需先解 render-loop 每帧整树刷新的所有权问题（P7 keyed diff 模式可复制）。
 - **安全收口**：按 8.3 顺序执行。
@@ -451,9 +473,9 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 
 - **工程轨 P0–P8 静态通过**，legacy 零破坏：`index.html` 仅 +1 个 module 入口与岛容器/标记；170+ 旧脚本顺序未动；守卫「岛未挂载即回退 legacy」。
 - **落地资产**：typed IPC、Island Runtime、Basic / Voice（部分）/ Mapping **列表**岛、共享 UI 桥（Confirm React；Toast 反向代理 legacy；Command 脚手架）。
-- **明确未完成**：P12 习惯列表岛、完整映射编辑器、正式 shadcn/Radix、§8.3 CSP 收口。
-- **测试护栏**：`npm run test:islands` = typecheck + smoke + runtime + ui-store + toast-bridge + voice-config + mapping-island + command-palette；`npm run verify:islands-runtime` = §8.5 日志自动项。
-- **裁定**：P0–P11 + §8.5 验收完成，可继续演进。下一步 = **P12 `#habitHubList`** → §8.3 → 映射编辑器（延后）。
+- **明确未完成**：P12b 完整映射编辑器、正式 shadcn/Radix。
+- **测试护栏**：`npm run test:islands` = typecheck + smoke + runtime + ui-store + toast-bridge + voice-config + mapping-island + habit-hub-island + **habit-hub-chrome-island** + **workflow-islands** + security-hardening + command-palette；`npm run verify:islands-runtime` = §8.5 日志自动项。
+- **裁定**：P0–P14 + §8.3 + §8.5（项 1–12）验收完成。下一步 = **P12b 映射编辑器四段式**；capability 持续审计。
 
 ### 14. P9b / P10 / P11 执行记录（2026-07-29）
 
@@ -471,11 +493,29 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 - **延迟挂载**：boot 时不 mount（避免清空 hidden 面板 DOM 导致假死）；首次打开按键面板时 `__otMountKeysStatusIsland()`（`settings-drawer.js`）。
 - P10 SoftPad 状态栏同理：`__otMountSoftPadStatusIsland()` 在 `soft-pad-hub-ui.js` 首次 render 时调用。
 
-#### P12 — 习惯列表岛（`#habitHubList`）🔄 下一项
-- 模式：沿用 P7 keyed-diff + legacy `renderCard` 单一来源 + 容器级事件委托。
-- 范围：仅 `#habitHubList` 列表区；`habitHubAside` / 筛选栏 / inline create picker 留 legacy。
+#### P12 — 习惯列表岛（`#habitHubList`）✅
+- 模式：P7 keyed-diff + legacy `cardView`（= `renderCard`）单一来源 + `#habitHubView` 事件委托。
+- `habit-hub.js`：`buildHabitHubListModel()` 块模型（`section-global` / `codex-banner` / `section-app`+内层 `card-{id}` / `section-legacy`）；`renderList` 岛守卫；`afterHabitHubListCommit()`（`hydrateHubAppIcons` + `focusRenameInput`）。
+- `src-islands/domain/habitHubList.ts` + `habit-hub-list-island.tsx`：`__otHabitHubListSync` + `blocksSignature`。
+- **延迟挂载**：boot 不 mount；`settings-drawer.js` 打开 habits 面板时 `__otMountHabitHubListIsland()`。
+- `scripts/test-habit-hub-island.mjs` 纳入 `test:islands`。
+- **补丁（2026-07-29）**：legacy 卡 `confirmingDel`/`renaming` 不受 `appScenario` 限制；`deleteHabits` → 乐观 `scheduleHubPaint()` + `saveAsync({source:'mapping'})`；`mvpInitHeavyRemountBlocked` 含 `habits` hub 视图。
 
-#### P12b — 完整映射编辑器（延后）
+#### P13 — 习惯 Hub 壳层岛 ✅
+- 范围：`#habitHubGuideSteps`（guide keyed diff）、`#habitHubEmpty`（空态 + hidden）、`#habitHubSort`（controlled select）；filter tab HTML 仍 P12 `renderAppFilterBar`，P13 仅 `syncFilterTabStates`。
+- `habit-hub.js`：`buildHabitHubChromeModel()`、`guideView`、`scheduleHubPaint()`（取代 `scheduleHubListPaint`）、`#habitHubView` sort 委托。
+- `src-islands/domain/habitHubChrome.ts` + `habit-hub-chrome-island.tsx`：三宿主 + `__otHabitHubChromeSync`。
+- **延迟挂载**：`__otMountHabitHubChromeIsland()` 在 list 岛之后（`settings-drawer.js`）。
+
+#### P14a — Keys 工作流 tabs 岛 ✅
+- `#keysWorkflowTabs` keyed diff；`workflowTabView` 单一来源；`renderWorkflowTabs` 岛守卫。
+- **延迟挂载**：`__otMountKeysWorkflowIsland()`（`settings-drawer.js` `panel === 'keys'`）。
+
+#### P14b — SoftPad 工作流壳岛 ✅
+- `#softPadAppSwitcher` + `#softPadSchemeList`；`buildSoftPadWorkflowModel()`；`#softPadHubStage` 预览/子页仍 legacy。
+- **延迟挂载**：`__otMountSoftPadWorkflowIsland()`（`soft-pad-hub-ui.js` 首次 `render()`）。
+
+#### P12b — 完整映射编辑器（四段式，各独立立项）
 - 原「P9b = Mapping Editor」编号，触及 `renderEditor` + 录制 + `applyMvpInit` 高风险区；待 P12 列表岛稳定后单独立项。
 
 ### 12. 验收债收口执行记录（2026-07-29）
@@ -489,7 +529,7 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 | 单测 | `test-toast-bridge.mjs` 串入 `test:islands` |
 | 语音 hero | `#voiceConfigIsland` 移入 `#voiceDeskPanel`（勿作 `voice-page-body` 网格子项） |
 | islands boot | `vite.config.ts` `define process.env.NODE_ENV=production`（修 `process is not defined`；bundle ~260KB） |
-| 人工清单 | §8.5：项 1–11 全部 ✅（2026-07-29，用户确认） |
+| 人工清单 | §8.5：项 1–12 全部 ✅（2026-07-29，用户确认） |
 
 ### 13. 完成度裁定锁定（2026-07-29）
 

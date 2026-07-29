@@ -55,9 +55,9 @@
   </div>
   <script>
     var invoke=window.__TAURI_INTERNALS__?function(cmd,args){return window.__TAURI_INTERNALS__.invoke(cmd,args);}:function(){return Promise.resolve();};
-    var listen=window.__TAURI__&&window.__TAURI__.event&&window.__TAURI__.event.listen
-      ?window.__TAURI__.event.listen.bind(window.__TAURI__.event)
-      :(window.__TAURI_INTERNALS__&&window.__TAURI_INTERNALS__.listen?window.__TAURI_INTERNALS__.listen.bind(window.__TAURI_INTERNALS__):null);
+    var listen=window.__TAURI_INTERNALS__&&window.__TAURI_INTERNALS__.listen
+      ?window.__TAURI_INTERNALS__.listen.bind(window.__TAURI_INTERNALS__)
+      :null;
 
     var LAYOUT=[
       {id:'ENC',kind:'control',row:1,col:2,icon:'power'},

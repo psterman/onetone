@@ -38,9 +38,9 @@ function getLegacyIpc(): LegacyIpc | null {
 }
 
 async function rawTauriInvoke(cmd: string, args?: IpcArgs): Promise<unknown> {
-  const w = window as unknown as { __TAURI__?: { core?: { invoke?: (c: string, a?: IpcArgs) => Promise<unknown> } }; __TAURI_INTERNALS__?: { invoke?: (c: string, a?: IpcArgs) => Promise<unknown> } };
-  const core = w.__TAURI__?.core ?? w.__TAURI_INTERNALS__;
-  if (core && typeof core.invoke === 'function') return core.invoke(cmd, args);
+  const w = window as unknown as { __TAURI_INTERNALS__?: { invoke?: (c: string, a?: IpcArgs) => Promise<unknown> } };
+  const internals = w.__TAURI_INTERNALS__;
+  if (internals && typeof internals.invoke === 'function') return internals.invoke(cmd, args);
   throw new Error('tauri invoke unavailable');
 }
 

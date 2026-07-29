@@ -694,7 +694,9 @@
       try{
         var mountKeys=global.__otMountKeysStatusIsland;
         if(typeof mountKeys==='function') mountKeys();
-      }catch(err){ console.error('keys status island mount',err); }
+        var mountKeysWorkflow=global.__otMountKeysWorkflowIsland;
+        if(typeof mountKeysWorkflow==='function') mountKeysWorkflow();
+      }catch(err){ console.error('keys island mount',err); }
 
       if(opts.deferHeavy){
         var afterHeavy=opts.afterHeavy;
@@ -741,6 +743,13 @@
 
       var habitView=ui.habitView||'hub';
       if(habitView!=='wizard') ui.habitView='hub';
+
+      try{
+        var mountHabits=global.__otMountHabitHubListIsland;
+        if(typeof mountHabits==='function') mountHabits();
+        var mountHubChrome=global.__otMountHabitHubChromeIsland;
+        if(typeof mountHubChrome==='function') mountHubChrome();
+      }catch(err){ console.error('habit hub island mount',err); }
 
       refreshHabitsPanel();
 

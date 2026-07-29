@@ -30,10 +30,8 @@
   }
 
   function tauriEventApi(){
-    try{
-      var t=global.__TAURI__;
-      if(t&&t.event&&typeof t.event.listen==='function') return t.event;
-    }catch(_e){}
+    var ipc=global.OneToneIpc;
+    if(ipc&&typeof ipc.eventApi==='function') return ipc.eventApi();
     return null;
   }
 

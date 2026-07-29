@@ -110,9 +110,9 @@
   <script src="js/key-labels.js"></script>
   <script>
     const invoke=window.__TAURI_INTERNALS__?function(cmd,args){return window.__TAURI_INTERNALS__.invoke(cmd,args);}:function(){return Promise.resolve();};
-    const listen=window.__TAURI__&&window.__TAURI__.event&&window.__TAURI__.event.listen
-      ?window.__TAURI__.event.listen.bind(window.__TAURI__.event)
-      :(window.__TAURI_INTERNALS__&&window.__TAURI_INTERNALS__.listen?window.__TAURI_INTERNALS__.listen.bind(window.__TAURI_INTERNALS__):null);
+    const listen=window.__TAURI_INTERNALS__&&window.__TAURI_INTERNALS__.listen
+      ?window.__TAURI_INTERNALS__.listen.bind(window.__TAURI_INTERNALS__)
+      :null;
 
     const I18N={
       zh:{

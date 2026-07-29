@@ -41,6 +41,7 @@
       var ui=global.OneToneState&&global.OneToneState.ui;
       if(!ui||!ui.drawerOpen) return false;
       var p=ui.settingsPanel;
+      if(p==='habits'&&(ui.habitView||'hub')==='hub') return true;
       return p==='softPad'||p==='keys'||p==='camera'||p==='voiceWake';
     }catch(_){ return false; }
   }
@@ -1824,10 +1825,8 @@
   }
 
   function tauriBridgeReady(){
-    const core=global.__TAURI__&&global.__TAURI__.core;
-    if(core&&typeof core.invoke==='function') return true;
-    const internals=global.__TAURI_INTERNALS__;
-    return !!(internals&&typeof internals.invoke==='function');
+    const ipc=global.OneToneIpc;
+    return !!(ipc&&typeof ipc.bridgeReady==='function'&&ipc.bridgeReady());
   }
 
   function unlockConfigUi(){
