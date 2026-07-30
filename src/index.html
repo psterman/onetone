@@ -138,13 +138,14 @@
                 <div class="global-mic-hub-main">
                   <span class="global-mic-hub-dot" aria-hidden="true"></span>
                   <div class="global-mic-hub-copy">
-                    <strong id="globalMicHubStatus" data-i18n="micUiMissing">麦克风不可用</strong>
-                    <span id="globalMicHubDevice" data-i18n="micUiDeviceMissing">未检测到设备</span>
+                    <!-- 状态/设备/静音按钮由 OneToneAppMic 动态写入；禁止 data-i18n，避免 applyLang 扫成「不可用」假象 -->
+                    <strong id="globalMicHubStatus">麦克风可用</strong>
+                    <span id="globalMicHubDevice">—</span>
                   </div>
                 </div>
                 <span class="mic-level-bars mic-level-bars--global" id="globalMicHubBars" aria-hidden="true"></span>
                 <div class="global-mic-hub-actions">
-                  <button type="button" class="global-mic-hub-btn" id="globalMicHubToggle" data-mic-ui-action="toggle" data-i18n="micUiMute">静音</button>
+                  <button type="button" class="global-mic-hub-btn" id="globalMicHubToggle" data-mic-ui-action="toggle">静音</button>
                   <button type="button" class="global-mic-hub-btn" id="globalMicHubPick" data-mic-ui-action="pick" data-i18n="micUiPick">换麦克风</button>
                   <button type="button" class="global-mic-hub-btn" id="globalMicHubAutoMute" data-mic-ui-action="automute" data-i18n="micUiAutoMute">自动静音</button>
                 </div>
@@ -2517,6 +2518,7 @@
                     <div>
                       <h2 class="camera-panel-title" data-i18n="cameraPanelTriggerTitle">视觉识别</h2>
                       <p class="camera-panel-desc" data-i18n="cameraPanelTriggerDesc">设计基础 if-then：离席、回席、摇头、故意眨眼。Pro 手势在「Pro 视觉能力 · 手势」。主开关只在本页。</p>
+                      <p class="camera-presence-override-hint" id="cameraPresenceOverrideHint" hidden></p>
                       <p class="camera-master-inactive-hint" id="cameraMasterInactiveHint" hidden data-i18n="cameraMasterConfiguredInactive">已配置，但不会生效</p>
                     </div>
                     <button type="button" class="toggle-switch page-status-toggle" id="cameraPresenceEnabledToggle" role="switch" aria-checked="false" aria-label="开启摄像头识别" title="开启摄像头识别"></button>
@@ -3158,19 +3160,19 @@
                             <div class="camera-card-kicker" data-i18n="cameraSnapMicKicker">麦克风确认</div>
                             <div class="camera-card-title" data-i18n="cameraSnapMicTitle">切屏前确认麦克风</div>
                           </div>
-                          <span class="camera-am-mic-pill" id="cameraSnapMicStatus" data-i18n="micUiMissing">麦克风不可用</span>
+                          <span class="camera-am-mic-pill" id="cameraSnapMicStatus">麦克风可用</span>
                         </div>
                         <div class="camera-snap-mic-live">
                           <span class="mic-level-bars mic-level-bars--snap" id="cameraSnapMicBars" aria-hidden="true"></span>
-                          <strong id="cameraSnapMicDevice" data-i18n="micUiDeviceMissing">未检测到设备</strong>
+                          <strong id="cameraSnapMicDevice">—</strong>
                         </div>
                         <div class="camera-snap-mic-facts">
                           <span><span data-i18n="cameraSnapMicMutedLabel">静音</span>：<strong id="cameraSnapMicMuted">—</strong></span>
                           <span><span data-i18n="cameraSnapMicInputLabel">输入</span>：<strong id="cameraSnapMicInput">—</strong></span>
                         </div>
-                        <p class="camera-pro-status-line" id="cameraSnapMicHint" data-i18n="cameraSnapMicHintMissing">切到会议屏前先恢复麦克风。</p>
+                        <p class="camera-pro-status-line" id="cameraSnapMicHint">切到会议屏前先恢复麦克风。</p>
                         <div class="camera-pro-lab-actions">
-                          <button type="button" class="control-btn" id="cameraSnapMicToggle" data-mic-ui-action="toggle" data-i18n="micUiMute">静音</button>
+                          <button type="button" class="control-btn" id="cameraSnapMicToggle" data-mic-ui-action="toggle">静音</button>
                           <button type="button" class="control-btn" id="cameraSnapMicPick" data-mic-ui-action="pick" data-i18n="micUiPick">换麦克风</button>
                           <button type="button" class="control-btn" id="cameraSnapMicAutoMute" data-mic-ui-action="automute" data-i18n="micUiAutoMute">自动静音</button>
                         </div>

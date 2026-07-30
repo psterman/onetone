@@ -98,8 +98,40 @@ assert.strictEqual(Api.actionRiskLevel('pauseVoice'),'low');
 assert.strictEqual(Api.actionRiskLevel('lowPowerMode'),'low');
 assert.strictEqual(Api.actionRiskLevel('pressEsc'),'mid');
 assert.strictEqual(Api.actionRiskLevel('pressCtrlI'),'mid');
+assert.strictEqual(Api.actionRiskLevel('pressCtrlI','shake'),'low','shake→IME is immediate');
+assert.strictEqual(Api.actionRiskLevel('pressEsc','shake'),'low','shake→Esc is immediate');
+assert.strictEqual(Api.actionRiskLevel('pressCtrlI','blink'),'low','blink→IME is immediate');
 assert.strictEqual(Api.actionRiskLevel('resumeVoice'),'mid');
 assert.strictEqual(Api.actionRiskLevel('none'),'none');
+
+// —— resolveVoiceActivateKey: prefer recorded IME habit over voice default RAlt ——
+global.OneToneState.state.config={
+  mappings:[
+    {id:'codex',enabled:true,appTargetId:'codex-chat',targetKey:'Ctrl+I'},
+    {id:'ime',enabled:true,appTargetId:'',targetKey:'F2',imePresetId:''}
+  ],
+  activeSceneId:'codex',
+  voiceVosk:{enabled:true,targetKey:'RAlt'},
+  voiceSapi:{enabled:false,targetKey:'RAlt'},
+  cameraPrefs:{presenceActions:{enabled:false}}
+};
+assert.strictEqual(Api.resolveVoiceActivateKey(),'F2','uses IME habit key while Codex scene active');
+
+global.OneToneState.state.config={
+  mappings:[{id:'ime',enabled:true,appTargetId:'',targetKey:'Ctrl+Shift+Win',imePresetId:''}],
+  activeSceneId:'ime',
+  voiceVosk:{enabled:false,targetKey:'RAlt'},
+  cameraPrefs:{presenceActions:{enabled:false}}
+};
+assert.strictEqual(Api.resolveVoiceActivateKey(),'Ctrl+Shift+Win','uses active IME habit key');
+
+global.OneToneState.state.config={
+  mappings:[{id:'codex',enabled:true,appTargetId:'codex-chat',targetKey:'Ctrl+I'}],
+  activeSceneId:'codex',
+  voiceVosk:{enabled:true,targetKey:'Win+H'},
+  cameraPrefs:{presenceActions:{enabled:false}}
+};
+assert.strictEqual(Api.resolveVoiceActivateKey(),'Win+H','falls back to voice settings when no IME habit');
 
 // —— canExecuteCameraAction ——
 function enablePresence(){
@@ -241,6 +273,59 @@ assert.strictEqual(Api.normalizePrefs({deliberateBlink:'agent:stopOrSendDictatio
 Api.dispatchAction('send','blink').then(function(r){
   assert.strictEqual(r.ok,false);
   assert.strictEqual(r.reason,'send_guard');
+
+  // Active Codex cameraOverride must not silently beat global UI bindings.
+  var codex={
+    id:'codex-1',
+    enabled:true,
+    appTargetId:'codex-chat',
+    label:'Codex',
+    cameraOverride:{
+      shakeHead:'agent:cancel',
+      deliberateBlink:'agent:startDictation',
+      triggers:{shake:true,blink:true}
+    }
+  };
+  global.OneToneState.state.config={
+    activeSceneId:'codex-1',
+    mappings:[codex],
+    cameraPrefs:{
+      presenceActions:{
+        enabled:true,
+        triggers:{away:false,shake:true,blink:true},
+        onAway:'none',onReturn:'none',
+        shakeHead:'pressCtrlI',
+        deliberateBlink:'pressCtrlI',
+        openPalm:'none',okHand:'none',fist:'none',wave:'none'
+      }
+    }
+  };
+  global.OneToneState.ui={cameraEditMode:'global',habitScenarioReturnPanel:'',habitScenarioReturnId:''};
+  global.OneToneState.selectedMappingId='';
+  global.OneToneMappingCore={byId:function(id){ return id==='codex-1'?codex:null; }};
+  global.OneToneHabitOverrideDiff={isAppScenarioMapping:function(m){ return !!(m&&m.appTargetId); }};
+  global.OneToneAgentActions={
+    actionById:function(id){
+      return {cancel:1,startDictation:1,openAgent:1,status:1,commandPalette:1}[id]
+        ?{id:id,risk:'safe'}:null;
+    }
+  };
+
+  var eff=Api.prefs();
+  assert.strictEqual(eff.shakeHead,'agent:cancel','runtime merges active scenario override');
+  assert.strictEqual(eff.deliberateBlink,'agent:startDictation');
+  assert.strictEqual(Api.overrideDiffersFromBase(),true);
+
+  assert.strictEqual(Api.clearShadowingCameraOverride({shakeHead:'pressCtrlI'}),true);
+  assert.ok(codex.cameraOverride.shakeHead==null,'cleared override key removed');
+  assert.strictEqual(Api.prefs().shakeHead,'pressCtrlI','cleared override key falls back to global');
+  assert.strictEqual(Api.prefs().deliberateBlink,'agent:startDictation','untouched override keys remain');
+
+  assert.strictEqual(Api.applyGlobalPresenceOverActiveOverride(),true);
+  assert.strictEqual(codex.cameraOverride,null);
+  assert.strictEqual(Api.prefs().deliberateBlink,'pressCtrlI');
+  assert.strictEqual(Api.overrideDiffersFromBase(),false);
+
   assert.ok(!listeners.DOMContentLoaded||listeners.DOMContentLoaded.length===1,
     'module may register init listener but tests do not fire it');
   console.log('camera-presence-actions.test.js: ok');

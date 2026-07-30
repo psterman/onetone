@@ -303,13 +303,19 @@
     opts = opts || {};
     var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
     if (!invoke) return Promise.resolve({ ok: false, reason: 'input_failed', detail: 'no invoke' });
-    return invoke('cmd_agent_action_execute', {
+    return Promise.resolve(invoke('cmd_agent_action_execute', {
       providerId: opts.providerId || PROVIDER_ID,
       actionId: opts.actionId,
       mappingId: opts.mappingId || null,
       slotId: opts.slotId || null,
       executionMode: opts.executionMode || null,
       activationScope: opts.activationScope || null
+    })).catch(function (err) {
+      return {
+        ok: false,
+        reason: 'input_failed',
+        detail: err && err.message ? err.message : String(err || 'invoke_failed')
+      };
     });
   }
 

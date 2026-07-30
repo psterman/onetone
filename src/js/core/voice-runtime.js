@@ -26,9 +26,10 @@
     var ui=hooks().ui();
     if(ui.drawerOpen&&ui.settingsPanel==='voiceWake'){
       if(active){
-        hooks().stopMicLevelPoll();
+        // Drop exclusive monitor while Vosk holds the device; keep read-only level poll for hub/hero.
         hooks().stopMicMonitor();
-      }else if(!active&&!global.OneToneAppMic.hasMicPollTimer()){
+        if(!global.OneToneAppMic.hasMicPollTimer()) hooks().startMicLevelPoll();
+      }else if(!global.OneToneAppMic.hasMicPollTimer()){
         hooks().startMicLevelPoll();
       }
     }

@@ -478,6 +478,95 @@
     return mergeCameraOverride(base,m&&m.cameraOverride);
   }
 
+  function overrideDiffersFromBase(){
+    if(scenarioCameraEditMapping()) return false;
+    var m=resolveCameraOverrideMapping();
+    if(!m||!m.cameraOverride||isEmptyCameraOverride(m.cameraOverride)) return false;
+    var base=basePresencePrefs();
+    var eff=prefs();
+    var keys=['onAway','onReturn','shakeHead','deliberateBlink','openPalm','okHand','fist','wave'];
+    for(var i=0;i<keys.length;i++){
+      if(normalizeAction(base[keys[i]])!==normalizeAction(eff[keys[i]])) return true;
+    }
+    var bt=base.triggers||{};
+    var et=eff.triggers||{};
+    var trig=['away','shake','blink','openPalm','okHand','fist','wave'];
+    for(var j=0;j<trig.length;j++){
+      if(!!bt[trig[j]]!==!!et[trig[j]]) return true;
+    }
+    return false;
+  }
+
+  /** Global camera page edits base prefs; clear shadowed keys on the active scenario override so UI matches runtime. */
+  function clearShadowingCameraOverride(partial){
+    if(scenarioCameraEditMapping()) return false;
+    var m=resolveCameraOverrideMapping();
+    if(!m||!m.cameraOverride||typeof m.cameraOverride!=='object') return false;
+    var ov=Object.assign({},m.cameraOverride);
+    var changed=false;
+    ['onAway','onReturn','shakeHead','deliberateBlink','openPalm','okHand','fist','wave'].forEach(function(k){
+      if(partial[k]===undefined) return;
+      if(ov[k]!=null){
+        delete ov[k];
+        changed=true;
+      }
+    });
+    if(partial.triggers&&typeof partial.triggers==='object'){
+      var ovTr=ov.triggers&&typeof ov.triggers==='object'?Object.assign({},ov.triggers):{};
+      var trigChanged=false;
+      ['away','shake','blink','openPalm','okHand','fist','wave'].forEach(function(k){
+        if(partial.triggers[k]===undefined) return;
+        if(ovTr[k]!==undefined){
+          delete ovTr[k];
+          trigChanged=true;
+        }
+      });
+      if(trigChanged){
+        changed=true;
+        if(Object.keys(ovTr).length) ov.triggers=ovTr;
+        else delete ov.triggers;
+      }
+    }
+    if(!changed) return false;
+    m.cameraOverride=isEmptyCameraOverride(ov)?null:ov;
+    scheduleScenarioCameraSave();
+    return true;
+  }
+
+  function applyGlobalPresenceOverActiveOverride(){
+    if(scenarioCameraEditMapping()) return false;
+    var m=resolveCameraOverrideMapping();
+    if(!m||!m.cameraOverride) return false;
+    m.cameraOverride=null;
+    scheduleScenarioCameraSave();
+    syncUiFromPrefs();
+    emitRuntime();
+    toast(t('cameraPresenceOverrideCleared','已改用本页设置，当前习惯不再覆盖视觉动作'));
+    return true;
+  }
+
+  function syncPresenceOverrideHint(){
+    var hint=$('cameraPresenceOverrideHint');
+    if(!hint) return;
+    if(scenarioCameraEditMapping()||!overrideDiffersFromBase()){
+      hint.hidden=true;
+      hint.textContent='';
+      hint.onclick=null;
+      return;
+    }
+    var m=resolveCameraOverrideMapping();
+    var name=m?(m.label||m.group||m.appTargetId||m.id||''):'';
+    hint.hidden=false;
+    hint.textContent=t('cameraPresenceOverrideHint','当前习惯「{name}」覆盖了本页动作（实际在跑覆盖值）。点此改用本页设置')
+      .replace('{name}',name||t('cameraPresenceOverrideHabit','应用习惯'));
+    hint.setAttribute('role','button');
+    hint.tabIndex=0;
+    hint.onclick=function(e){
+      e.preventDefault();
+      applyGlobalPresenceOverActiveOverride();
+    };
+  }
+
   function isEmptyCameraOverride(ov){
     if(!ov||typeof ov!=='object') return true;
     var actionEmpty=['onAway','onReturn','shakeHead','deliberateBlink','openPalm','okHand','fist','wave'].every(function(k){
@@ -823,6 +912,7 @@
     }
     cp.presenceActions=cur;
     mirrorTopLevelEnabled(cp,!!cur.enabled);
+    if(hasAction||hasTriggers) clearShadowingCameraOverride(partial);
     st.enabled=!!cur.enabled;
     if(global.OneToneConfigPersist){
       if(global.OneToneConfigPersist.rememberCameraPrefs){
@@ -990,10 +1080,14 @@
     return isVoiceDictating()?BLINK_COOLDOWN_END_MS:BLINK_COOLDOWN_MS;
   }
 
-  function actionRiskLevel(action){
+  function actionRiskLevel(action,source){
     action=normalizeAction(action);
+    source=String(source||'');
     // Ending dictation via blink must be immediate — mid delay blocked toggle-off.
     if(action==='pressCtrlI'&&isVoiceDictating()) return 'low';
+    // Gesture already confirmed intent. Mid delay + face flicker during shake
+    // flips presence→away and cancelPendingAction, so the key never sends.
+    if((action==='pressCtrlI'||action==='pressEsc')&&isGestureSource(source)) return 'low';
     if(action==='privacyScreen'||action==='pauseVoice'||action==='lowPowerMode') return 'low';
     if(action==='pressEsc'||action==='pressCtrlI'||action==='resumeVoice') return 'mid';
     if(isAgentActionToken(action)){
@@ -1006,6 +1100,12 @@
     }
     if(action==='none') return 'none';
     return 'high';
+  }
+
+  function isGestureSource(source){
+    source=String(source||'');
+    return source==='shake'||source==='blink'
+      ||source==='openPalm'||source==='ok'||source==='okHand'||source==='fist'||source==='wave';
   }
 
   function skipMsg(reason,fallback){
@@ -1175,8 +1275,9 @@
   }
 
   /**
-   * User's IME activate shortcut from their custom scheme — never invent RAlt / Ctrl+I / Win+H.
-   * Prefer current habit IME binding, then voice-settings keys, then global imePresetId.
+   * User's IME activate shortcut from their recorded scheme — never invent RAlt / Ctrl+I / Win+H.
+   * Prefer: habit voiceOverride → active IME habit key → any enabled IME habit → voice-settings keys → global imePreset.
+   * Workflow app scenes (Codex/Cursor) keep Ctrl+L etc. on mapping.targetKey; those must not steal IME activate.
    */
   function resolveVoiceActivateKey(){
     var cfg=stateRoot().config||{};
@@ -1187,7 +1288,6 @@
       if(ov&&ov.targetKey&&String(ov.targetKey).trim()){
         return String(ov.targetKey).trim();
       }
-      // Habit IME / custom activate key (not Cursor/workflow app shortcuts).
       if(!isWorkflowAppTarget(m.appTargetId||m.app_target_id)){
         var mapKey=String(m.targetKey||m.target_key||'').trim();
         if(mapKey) return mapKey;
@@ -1196,23 +1296,47 @@
       }
     }
 
+    var imeFromHabits=findEnabledImeActivateKey(cfg,m&&m.id);
+    if(imeFromHabits) return imeFromHabits;
+
     var fromVoice=resolveConfiguredVoiceEngineKey(cfg);
     if(fromVoice) return fromVoice;
 
     return presetActivateKey(cfg.imePresetId||cfg.ime_preset_id);
   }
 
+  function findEnabledImeActivateKey(cfg,skipId){
+    var mappings=Array.isArray(cfg&&cfg.mappings)?cfg.mappings:[];
+    var skip=String(skipId||'');
+    for(var i=0;i<mappings.length;i++){
+      var row=mappings[i];
+      if(!row||row.enabled===false) continue;
+      if(skip&&String(row.id||'')===skip) continue;
+      if(isWorkflowAppTarget(row.appTargetId||row.app_target_id)) continue;
+      var k=String(row.targetKey||row.target_key||'').trim();
+      if(k) return k;
+      var pk=presetActivateKey(row.imePresetId||row.ime_preset_id);
+      if(pk) return pk;
+    }
+    return '';
+  }
+
+  function friendlyKeyLabel(key){
+    key=String(key||'').trim();
+    if(!key) return '';
+    try{
+      if(global.OneToneKeyLabels&&global.OneToneKeyLabels.friendlyKeyName){
+        return global.OneToneKeyLabels.friendlyKeyName(key,global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():'zh')||key;
+      }
+    }catch(_){}
+    return key;
+  }
+
   function voiceActivateActionLabel(){
     var base=t('cameraPresenceActionCtrlI','语音输入法激活');
     var key=resolveVoiceActivateKey();
     if(!key) return base+'（'+t('cameraPresenceVoiceKeyUnset','未配置')+'）';
-    var friendly=key;
-    try{
-      if(global.OneToneKeyLabels&&global.OneToneKeyLabels.friendlyKeyName){
-        friendly=global.OneToneKeyLabels.friendlyKeyName(key,global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():'zh')||key;
-      }
-    }catch(_){}
-    return base+'（'+friendly+'）';
+    return base+'（'+friendlyKeyLabel(key)+'）';
   }
 
   function pressKey(targetKey,opts){
@@ -1237,21 +1361,26 @@
         logPresence('key fail '+targetKey+' reason='+reason);
         if(reason==='paused'){
           toast(t('cameraPresenceKeyPaused','监听已暂停，无法注入按键'));
+        }else if(reason==='self_foreground'){
+          toast(t('cameraPresenceKeySelfFg','请先点到记事本等要听写的窗口，再摇头/眨眼（OneTone 在前台时不会发送 Alt）'));
+          setSkipReason(t('cameraPresenceKeySelfFgShort','目标窗口不在前台'),'key');
+        }else if(reason==='recording'){
+          toast(t('cameraPresenceKeyRecording','录制快捷键时无法注入按键'));
         }else{
-          toast(t('cameraPresenceKeyFailed','按键发送失败')+'（'+targetKey+'）');
+          toast(t('cameraPresenceKeyFailed','按键发送失败')+'（'+friendlyKeyLabel(targetKey)+'）');
         }
       }else{
         logPresence('key ok '+targetKey+(ending?' end':' start'));
         if(opts.voiceActivate){
           if(ending||st.cameraVoiceSessionActive){
             st.cameraVoiceSessionActive=false;
-            toast(t('cameraPresenceVoiceEnded','已眨眼结束听写'));
+            toast(t('cameraPresenceVoiceEnded','已结束语音输入法'));
           }else{
             st.cameraVoiceSessionActive=true;
-            toast(t('cameraPresenceVoiceStarted','已眨眼开始听写')+' · '+targetKey);
+            toast(t('cameraPresenceVoiceStarted','已激活语音输入法')+' · '+friendlyKeyLabel(targetKey));
           }
         }else{
-          toast(t('cameraPresenceKeySent','已发送激活键')+' '+targetKey);
+          toast(t('cameraPresenceKeySent','已发送激活键')+' '+friendlyKeyLabel(targetKey));
         }
       }
       return res||{ok:false};
@@ -1539,6 +1668,9 @@
         mappingId:mappingId||null
       }).then(function(res){
         return res&&typeof res==='object'?res:{ok:false,reason:'input_failed'};
+      }).catch(function(err){
+        logPresence('agent action fail '+action+' '+(err&&err.message?err.message:String(err||'')));
+        return {ok:false,reason:'invoke_failed',detail:err&&err.message?err.message:String(err||'')};
       });
     }
 
@@ -1637,7 +1769,7 @@
       return Promise.resolve({ok:false,reason:thr.reason,message:thr.message});
     }
 
-    var risk=actionRiskLevel(action);
+    var risk=actionRiskLevel(action,source);
     // mid-risk pendingAction = delayed execute; NOT send-confirm / pendingConfirm.
     if(risk==='mid'&&!opts.immediate){
       cancelPendingAction();
@@ -1664,6 +1796,8 @@
           if(!res||res.ok===false||res.skipped) return;
           playCameraActionCue(res);
           if(pending.source==='return') toast(t('cameraPresenceReturnFired','已回席'));
+        }).catch(function(err){
+          logPresence('pending execute fail '+(err&&err.message?err.message:String(err||'')));
         });
       },MID_RISK_DELAY_MS);
       return Promise.resolve({ok:true,action:action,pending:true});
@@ -1672,6 +1806,9 @@
     return executeActionNow(action,source).then(function(res){
       playCameraActionCue(res);
       return res;
+    }).catch(function(err){
+      logPresence('execute fail '+source+' '+(err&&err.message?err.message:String(err||'')));
+      return {ok:false,reason:'invoke_failed'};
     });
   }
 
@@ -1787,7 +1924,9 @@
     else if(kind==='fist') toast(t('cameraPresenceFistDetected','已识别：握拳'));
     else if(kind==='wave') toast(t('cameraPresenceWaveDetected','已识别：挥手'));
     pulseGesture(kind);
-    dispatchAction(action,kind);
+    dispatchAction(action,kind).catch(function(err){
+      logPresence(kind+' dispatch fail '+(err&&err.message?err.message:String(err||'')));
+    });
   }
 
   var HAND_KIND_TO_TRIGGER={
@@ -2761,8 +2900,9 @@
     if(st.uiSyncing) return;
     st.uiSyncing=true;
     try{
-      // Global camera page shows/edits global bindings; scenario edit uses merged override.
-      var p=scenarioCameraEditMapping()?prefs():basePresencePrefs();
+      // Always paint effective prefs (global + active scenario override) so the dropdown
+      // matches what shake/blink will actually fire — not a lying global-only snapshot.
+      var p=prefs();
       st.enabled=!!basePresencePrefs().enabled;
       ensureActionSelect('onAway',p.onAway);
       ensureActionSelect('onReturn',p.onReturn);
@@ -2781,6 +2921,7 @@
       syncPresenceDurationUi(p);
       syncBlinkBaselineUi();
       syncMasterLockUi();
+      syncPresenceOverrideHint();
       // Basic rules stay on Visual recognition; Pro hand rules live under Pro · Gesture.
       var basic=$('cameraRulesBasic');
       if(basic) basic.hidden=false;
@@ -3079,6 +3220,9 @@
     normalizePrefs:normalizePrefs,
     defaultPrefs:defaultPresencePrefs,
     persist:persistPresencePrefs,
+    clearShadowingCameraOverride:clearShadowingCameraOverride,
+    applyGlobalPresenceOverActiveOverride:applyGlobalPresenceOverActiveOverride,
+    overrideDiffersFromBase:overrideDiffersFromBase,
     dispatchAction:dispatchAction,
     canExecuteCameraAction:canExecuteCameraAction,
     shouldThrottleCameraAction:shouldThrottleCameraAction,

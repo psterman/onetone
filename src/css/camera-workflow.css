@@ -822,6 +822,23 @@
   color:#b45309;
 }
 
+.camera-presence-override-hint{
+  margin:8px 0 0;
+  padding:8px 10px;
+  border-radius:8px;
+  border:1px solid color-mix(in srgb, var(--warning, #f59e0b) 45%, var(--outline-variant));
+  background:color-mix(in srgb, var(--warning, #f59e0b) 12%, var(--surface-high));
+  color:var(--on-surface);
+  font-size:12px;
+  font-weight:650;
+  line-height:1.4;
+  cursor:pointer;
+}
+
+.camera-presence-override-hint:hover{
+  border-color:var(--warning, #f59e0b);
+}
+
 .camera-weak-calib-toggle{
   display:inline-flex;
   align-items:center;

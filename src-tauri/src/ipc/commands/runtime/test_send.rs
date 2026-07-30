@@ -79,10 +79,27 @@ pub fn perform_test_send(
         duration_ms,
     );
 
+    if !ok {
+        // Alt/Win into OneTone itself is blocked on purpose; surface that so camera
+        // gestures don't look like "recognized but broken" while settings are focused.
+        let reason = if crate::app_identity::foreground_is_self() {
+            "self_foreground"
+        } else {
+            "send_failed"
+        };
+        return serde_json::json!({
+            "type": "mvp_test_sent",
+            "ok": false,
+            "reason": reason,
+            "key": key,
+            "mappingLabel": mapping_label,
+        });
+    }
+
     // Camera / test-send voice activate must open a dictation session, otherwise
     // Vosk can hear 「结束输入」 and show it in the transcript UI while end-phrase
     // matching is skipped (session stays idle).
-    if ok {
+    {
         let action = {
             let cfg = state.cfg.lock();
             let voice_key = crate::voice_end_runtime::resolve_voice_input_target_key(&cfg);
@@ -139,8 +156,8 @@ pub fn perform_test_send(
 
     serde_json::json!({
         "type": "mvp_test_sent",
-        "ok": ok,
-        "reason": if ok { "sent" } else { "send_failed" },
+        "ok": true,
+        "reason": "sent",
         "key": key,
         "mappingLabel": mapping_label,
     })

@@ -203,13 +203,17 @@
   }
 
   function micLevelPollAllowed(){
-    if(onboardingMicContextOpen()) return true;
-    if(voiceCaptureActive()) return false;
-    return micLevelUiVisible();
+    // Read-only poll of shared MicLevelState is safe while Vosk/KWS holds the device.
+    // Exclusive capture monitor stays gated in ensureMicMonitor.
+    return micLevelUiVisible()||onboardingMicContextOpen();
   }
 
   function syncHomeMicMonitor(){
-    if(!micLevelUiVisible()||voiceCaptureActive()) return Promise.resolve();
+    if(!micLevelUiVisible()) return Promise.resolve();
+    if(voiceCaptureActive()){
+      startMicLevelPoll();
+      return Promise.resolve();
+    }
     var devId=activeMicId||'';
     return ensureMicMonitor(devId||null).then(function(){
       if(micLevelUiVisible()) startMicLevelPoll();
@@ -225,8 +229,9 @@
   }
 
   function micPollIntervalMs(){
-    if(voiceCaptureActive()) return 0;
     if(ui.drawerOpen&&ui.settingsPanel==='voiceWake') return 400;
+    // Vosk/KWS already fill MicLevelState — poll even before bootMicReady.
+    if(voiceCaptureActive()) return 500;
     if(!hooks().bootMicReady()) return 0;
     return 600;
   }
@@ -430,16 +435,21 @@
       activeMicId=resolveActiveMicId(micDevices,prevId);
       renderMicDevices();
       renderMicSurfaces();
+      var muteProbe=vpInvoke('cmd_mic_get_mute',{}).then(function(st){
+        applyMicMuteState(st||{});
+      }).catch(function(){});
       var pick=micDevices.find(function(d){ return d.id===activeMicId; });
       if(!micDeviceAvailable(pick)){
         micMonitorDeviceId='';
         if(micLevelUiVisible()) startMicLevelPoll();
         if(manual&&prevId) hooks().toast(t('micOfflineHint'));
-        return;
+        return muteProbe;
       }
-      return ensureMicMonitor(activeMicId||null,{force:manual}).then(function(){
-        if(micLevelUiVisible()) startMicLevelPoll();
-        if(opts.reconnect) hooks().toast(t('micReconnected'));
+      return muteProbe.then(function(){
+        return ensureMicMonitor(activeMicId||null,{force:manual}).then(function(){
+          if(micLevelUiVisible()) startMicLevelPoll();
+          if(opts.reconnect) hooks().toast(t('micReconnected'));
+        });
       });
     }).catch(function(err){
       micListLoaded=true;
@@ -500,17 +510,21 @@
     return activeMicLabel()||t('micUiDeviceMissing');
   }
 
+  // Device-first status (align with hero): mute probe never parks the primary label on「检测中」.
+  function resolveMicSurfaceKey(hasDevice, recovering, muteKnown, muted){
+    if(recovering&&!hasDevice) return 'recovering';
+    if(!hasDevice) return 'missing';
+    if(muteKnown&&muted) return 'muted';
+    return 'ready';
+  }
+
   function getMicUiState(){
     var dev=micDevices.find(function(d){ return d.id===activeMicId; })
       ||micDevices.find(function(d){ return d.isDefault; })
       ||micDevices[0]||null;
     var recovering=micBackoffActive()||!!micRecoveryTimer||!!micDeviceRefreshInFlight;
     var hasDevice=!!(dev&&micDeviceAvailable(dev)&&micSystemAvailable!==false);
-    var key='ready';
-    if(recovering&&!hasDevice) key='recovering';
-    else if(!hasDevice) key='missing';
-    else if(!micMuteKnown) key='checking';
-    else if(micMuted) key='muted';
+    var key=resolveMicSurfaceKey(hasDevice,recovering,micMuteKnown,!!micMuted);
     var level=Number(homeMicLastLevel)||0;
     var labels={
       ready:t('micUiReady'),
@@ -553,18 +567,24 @@
     return getMicUiState();
   }
 
+  var micMuteProbeInFlight=false;
   function refreshMicUiState(opts){
     opts=opts||{};
     var prep=(!micListLoaded||opts.forceDevices)
       ?loadMicDevices({manual:!!opts.manual}).catch(function(){})
       :Promise.resolve();
     return prep.then(function(){
+      if(micMuteProbeInFlight&&!opts.forceMute) return getMicUiState();
+      micMuteProbeInFlight=true;
       return vpInvoke('cmd_mic_get_mute',{}).then(function(st){
-        return applyMicMuteState(st);
+        return applyMicMuteState(st||{});
       }).catch(function(){
+        // Keep device-first UI; mute toggle stays disabled until a later probe succeeds.
         micSystemAvailable=micDevices.length>0;
         renderMicSurfaces();
         return getMicUiState();
+      }).finally(function(){
+        micMuteProbeInFlight=false;
       });
     });
   }
@@ -632,12 +652,21 @@
     return st.muted?t('micUiMutedYes'):t('micUiMutedNo');
   }
 
+  var micMuteProbeArmed=false;
+  function armMicMuteProbe(){
+    if(micMuteProbeArmed) return;
+    micMuteProbeArmed=true;
+    refreshMicUiState().catch(function(){});
+  }
+
   function renderGlobalMicHub(){
     var hub=$('globalMicHub');
     if(!hub) return;
     bindMicUi();
+    armMicMuteProbe();
     var st=getMicUiState();
     ensureLevelBars(hub,'mic-level-bars--global',8);
+    updateMicLevelBars(st.deviceId||activeMicId||'',homeMicLastLevel);
     setSurfaceStateClass(hub,st);
     var status=$('globalMicHubStatus');
     if(status) status.textContent=st.label;
@@ -655,6 +684,7 @@
       }
     }
     hub.title=(st.deviceName||'')+' · '+st.label;
+    if(micLevelUiVisible()&&!micPollTimer) startMicLevelPoll();
   }
 
   function renderSnapMicCheck(){
@@ -754,6 +784,7 @@
     listLoaded:function(){ return micListLoaded; },
     activeMicId:function(){ return activeMicId; },
     activeMicLabel:activeMicLabel,
+    resolveMicSurfaceKey:resolveMicSurfaceKey,
     getMicUiState:getMicUiState,
     refreshMicUiState:refreshMicUiState,
     setMicUiMuted:setMicUiMuted,

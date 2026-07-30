@@ -1514,6 +1514,17 @@
       global.OneToneHomeWorkbench.forceHomeRender();
     }
     if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.render) global.OneToneHomeWorkbench.render();
+    // 左下角 mic hub 文案由 AppMic 动态维护；applyLang 扫完后必须重刷，并补一次静音探测
+    try{
+      var mic=global.OneToneAppMic;
+      if(mic&&typeof mic.refreshMicUiState==='function'){
+        mic.refreshMicUiState().catch(function(){
+          if(typeof mic.renderMicSurfaces==='function') mic.renderMicSurfaces();
+        });
+      }else if(mic&&typeof mic.renderMicSurfaces==='function'){
+        mic.renderMicSurfaces();
+      }
+    }catch(_){}
   }
 
   global.OneToneHomeWorkbench={
