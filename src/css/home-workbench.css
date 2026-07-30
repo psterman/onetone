@@ -1382,6 +1382,8 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
 .wb-hero:has(.wb-hero-mode[data-wb-hero-mode="voice"]:hover) .wb-hero-wave,
 .wb-hero.is-mode-keys .wb-hero-wave,
 .wb-hero:has(.wb-hero-mode[data-wb-hero-mode="keys"]:hover) .wb-hero-wave,
+.wb-hero.is-mode-softPad .wb-hero-wave,
+.wb-hero:has(.wb-hero-mode[data-wb-hero-mode="softPad"]:hover) .wb-hero-wave,
 .wb-hero.is-mode-camera .wb-hero-wave,
 .wb-hero:has(.wb-hero-mode[data-wb-hero-mode="camera"]:hover) .wb-hero-wave {
   display: flex;
@@ -2005,10 +2007,17 @@ button.wb-hero-pill:hover,
   transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
 }
 
+@media (max-width: 720px) {
+  .wb-hero-mode {
+    padding: 0 9px;
+    font-size: 11px;
+  }
+}
+
 @media (max-width: 640px) {
   .wb-hero-mode {
-    padding: 0 10px;
-    font-size: 11px;
+    padding: 0 8px;
+    font-size: 10.5px;
   }
 }
 

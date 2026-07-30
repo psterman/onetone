@@ -250,8 +250,20 @@
     var camArt='<span class="wb-howto-cam-dot'+(cam.running?' is-on':(cam.enabled?' is-configured':''))+'" aria-hidden="true"></span>';
     var softArt='<span class="wb-howto-softpad-art" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>';
 
+    // 顺序必须与 Hero tabs 一致：voice → keys → softPad → camera
     host.innerHTML=
       '<div class="wb-howto-grid wb-howto-grid--quad">'
+      +'<article class="wb-howto-card is-voice'+(mode==='voice'?' is-active':'')+'" data-wb-howto="voice">'
+      +'<div class="wb-howto-card-head">'
+      +'<span class="wb-howto-card-ico" aria-hidden="true">'+voiceIcon+'</span>'
+      +'<span class="wb-howto-card-title">'+esc(t('homeWbHowToVoiceTitle'))+'</span>'
+      +'</div>'
+      +'<button type="button" class="wb-howto-zone wb-howto-card-main wb-howto-card-main--voice" data-wb-howto-channel="voice" data-wb-howto-focus="wakePhrases" title="'+esc(t('homeWbHowToVoiceTip'))+'">'
+      +'<strong class="wb-howto-card-value">'+esc(wakeMain)+'</strong>'
+      +'</button>'
+      +voicePhrasePanelHtml(vm)
+      +'<button type="button" class="wb-howto-zone wb-howto-card-tip" data-wb-howto-channel="voice" data-wb-howto-focus="wakePhrases">'+esc(t('homeWbHowToVoiceTip'))+'</button>'
+      +'</article>'
       +howToCardHtml({
         kind:'keys',
         active:mode==='keys',
@@ -268,17 +280,23 @@
         icon:keyIcon,
         art:keycapArt(trig)
       })
-      +'<article class="wb-howto-card is-voice'+(mode==='voice'?' is-active':'')+'" data-wb-howto="voice">'
-      +'<div class="wb-howto-card-head">'
-      +'<span class="wb-howto-card-ico" aria-hidden="true">'+voiceIcon+'</span>'
-      +'<span class="wb-howto-card-title">'+esc(t('homeWbHowToVoiceTitle'))+'</span>'
-      +'</div>'
-      +'<button type="button" class="wb-howto-zone wb-howto-card-main wb-howto-card-main--voice" data-wb-howto-channel="voice" data-wb-howto-focus="wakePhrases" title="'+esc(t('homeWbHowToVoiceTip'))+'">'
-      +'<strong class="wb-howto-card-value">'+esc(wakeMain)+'</strong>'
-      +'</button>'
-      +voicePhrasePanelHtml(vm)
-      +'<button type="button" class="wb-howto-zone wb-howto-card-tip" data-wb-howto-channel="voice" data-wb-howto-focus="wakePhrases">'+esc(t('homeWbHowToVoiceTip'))+'</button>'
-      +'</article>'
+      +howToCardHtml({
+        kind:'softPad',
+        active:mode==='softPad',
+        title:t('homeWbHowToSoftPadTitle'),
+        value:pad.value,
+        mainFocus:'',
+        status:pad.status,
+        meta1Lbl:t('homeWbHowToSoftPadStatus'),
+        meta1Val:pad.statusLbl,
+        meta1Focus:'',
+        meta2Lbl:t('homeWbHowToSoftPadBound','绑定场景'),
+        meta2Val:pad.boundName||pad.countLbl,
+        meta2Focus:'',
+        tip:t('homeWbHowToSoftPadTip'),
+        icon:softIcon,
+        art:softArt
+      })
       +howToCardHtml({
         kind:'camera',
         active:mode==='camera',
@@ -295,23 +313,6 @@
         tip:t('homeWbHowToCameraTip'),
         icon:camIcon,
         art:camArt
-      })
-      +howToCardHtml({
-        kind:'softPad',
-        active:false,
-        title:t('homeWbHowToSoftPadTitle'),
-        value:pad.value,
-        mainFocus:'',
-        status:pad.status,
-        meta1Lbl:t('homeWbHowToSoftPadStatus'),
-        meta1Val:pad.statusLbl,
-        meta1Focus:'',
-        meta2Lbl:t('homeWbHowToSoftPadBound','绑定场景'),
-        meta2Val:pad.boundName||pad.countLbl,
-        meta2Focus:'',
-        tip:t('homeWbHowToSoftPadTip'),
-        icon:softIcon,
-        art:softArt
       })
       +'</div>';
   }
@@ -575,6 +576,7 @@
     renderScenarioPanel:renderScenarioPanel,
     renderVoicePanel:renderMicCard,
     renderMicCard:renderMicCard,
+    softPadHowToSnapshot:softPadHowToSnapshot,
     bindOnce:bindOnce,
     stopWave:function(){}
   };

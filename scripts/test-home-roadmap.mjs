@@ -208,6 +208,30 @@ check('publish runtime protocol', wb.includes('publishRuntimeStatusProtocol') &&
 check('publish 优先 model.protocol', wb.includes('var snap=model.protocol') || wb.includes('model.protocol||null') || wb.includes('__otRuntimeStatusOverride'));
 check('publish 尊重 simulate override', wb.includes('__otRuntimeStatusOverride'));
 check('bindNav 无死 fallback', !wb.includes("if(action==='schemes')") && wb.includes('只认 shell-ia'));
+check('hero softPad mode', wb.includes("return 'softPad'") && wb.includes('paintHeroModeChrome'));
+check('refreshHeroModeSurfaces', wb.includes('function refreshHeroModeSurfaces') && wb.includes('renderHeroFlowSummary(model)') && wb.includes('renderLiveText(vm)'));
+check('setHeroMode 走 refreshHeroModeSurfaces', /function setHeroMode[\s\S]*refreshHeroModeSurfaces\(\)/.test(wb) && !wb.includes('标签切换只刷 mode chrome'));
+check('softPad pills 早返回', wb.includes("heroMode==='softPad'") && wb.includes('wbBtnSoftPadOpen') && wb.includes('softPadHeroSnapshot'));
+check('heroModeFlowBits 四模式', wb.includes('function heroModeFlowBits') && wb.includes('homeWbFlowCtaVoice') && wb.includes('homeWbFlowCtaKeys') && wb.includes('homeWbFlowCtaSoftPad') && wb.includes('homeWbFlowCtaCamera'));
+
+const htmlHome = readFileSync(join(root, 'src/index.html'), 'utf8');
+check('hero softPad tab', htmlHome.includes('data-wb-hero-mode="softPad"') && htmlHome.includes('id="wbHeroModeSoftPad"'));
+
+const panels = readFileSync(join(root, 'src/js/features/home/home-workbench-panels.js'), 'utf8');
+check('howto softPad active 跟 mode', panels.includes("active:mode==='softPad'"));
+check('panels 导出 softPadHowToSnapshot', panels.includes('softPadHowToSnapshot:softPadHowToSnapshot'));
+{
+  const howtoIdx = panels.indexOf("wb-howto-grid--quad");
+  const voiceIdx = panels.indexOf('data-wb-howto="voice"', howtoIdx);
+  const keysIdx = panels.indexOf("kind:'keys'", howtoIdx);
+  const softIdx = panels.indexOf("kind:'softPad'", howtoIdx);
+  const camIdx = panels.indexOf("kind:'camera'", howtoIdx);
+  check('howto 卡片顺序对齐 tabs', howtoIdx >= 0 && voiceIdx > howtoIdx && keysIdx > voiceIdx && softIdx > keysIdx && camIdx > softIdx);
+}
+
+const i18nHome = readFileSync(join(root, 'src/js/core/i18n.js'), 'utf8');
+check('hero 小白入口文案', i18nHome.includes("homeWbHeroModeVoice:'说话触发'") && i18nHome.includes("homeWbHeroModeKeys:'按键触发'") && i18nHome.includes("homeWbHeroModeSoftPad:'屏幕按钮'") && i18nHome.includes("homeWbHeroModeCamera:'摄像头确认'"));
+check('hero flow 空态/CTA 文案键', i18nHome.includes("homeWbFlowEmptySoftPad:'还没有屏幕按钮方案'") && i18nHome.includes("homeWbFlowCtaSoftPad:'设置屏幕按钮'") && i18nHome.includes("homeWbFlowEmptyMic:'还没选麦克风，先选一个输入设备'"));
 
 const shell = readFileSync(join(root, 'src/js/features/home/home-shell.js'), 'utf8');
 check('shell workbench 不写平行状态', shell.includes('有 workbench 时状态/CTA 只走'));
