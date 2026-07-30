@@ -88,6 +88,7 @@ const src = readFileSync(join(root, 'src/js/features/agent/soft-pad-hub-ui.js'),
 const API = globalThis.OneToneSoftPadHub;
 
 console.log('[soft-pad-detail-chrome] 模型:');
+check('buildSoftPadFourPanelModel 已导出', typeof API.buildSoftPadFourPanelModel === 'function');
 check('buildSoftPadDetailChromeModel 已导出', typeof API.buildSoftPadDetailChromeModel === 'function');
 check('closeSubpage 已导出', typeof API.closeSubpage === 'function');
 
@@ -100,12 +101,15 @@ check('backLabel 非空', typeof model.backLabel === 'string' && model.backLabel
 
 console.log('[soft-pad-detail-chrome] 源码护栏:');
 const softPadJs = src;
+check('导出 buildSoftPadFourPanelModel', softPadJs.includes('buildSoftPadFourPanelModel: buildSoftPadFourPanelModel'));
 check('导出 buildSoftPadDetailChromeModel', softPadJs.includes('buildSoftPadDetailChromeModel: buildSoftPadDetailChromeModel'));
+check('detail chrome 读 fourPanel model', /function buildSoftPadDetailChromeModel\([\s\S]*?buildSoftPadFourPanelModel/.test(softPadJs));
 check('导出 closeSubpage', softPadJs.includes('closeSubpage: closeSubpage'));
 check('syncHubChrome 岛守卫', /function syncHubChrome\([\s\S]*?__otSoftPadDetailChromeMounted/.test(softPadJs));
 check('clearSubpage 岛守卫', /function clearSubpage\([\s\S]*?__otSoftPadDetailChromeMounted/.test(softPadJs));
 check('paintSubpage 标题岛守卫', /function paintSubpage\([\s\S]*?__otSoftPadDetailChromeMounted/.test(softPadJs));
 check('bindChrome 跳过 subBack', /function bindChrome\([\s\S]*?__otSoftPadDetailChromeMounted/.test(softPadJs));
+check('setDetailOpen 岛守卫 P14i', /function setDetailOpen\([\s\S]*?__otSoftPadDetailChromeMounted/.test(softPadJs));
 check('render 接线挂载', softPadJs.includes('__otMountSoftPadDetailChromeIsland'));
 
 const html = readFileSync(join(root, 'src/index.html'), 'utf8');
@@ -115,6 +119,10 @@ const islandTsx = readFileSync(join(root, 'src-islands/islands/soft-pad-detail-c
 check('岛含返回按钮', islandTsx.includes('btnSoftPadSubBack') || islandTsx.includes('soft-pad-subpage-back'));
 check('岛含标题', islandTsx.includes('softPadSubpageTitle') || islandTsx.includes('soft-pad-subpage-title'));
 check('岛 onClick → closeSoftPadSubpage', islandTsx.includes('closeSoftPadSubpage'));
+check('P14i 写 detail shell attrs', islandTsx.includes('applySoftPadDetailShellAttrs'));
+
+const domainTs = readFileSync(join(root, 'src-islands/domain/softPadDetailChrome.ts'), 'utf8');
+check('domain 含 applySoftPadDetailShellAttrs', domainTs.includes('applySoftPadDetailShellAttrs'));
 
 const mainTsx = readFileSync(join(root, 'src-islands/main.tsx'), 'utf8');
 check('main 暴露挂载入口', mainTsx.includes('__otMountSoftPadDetailChromeIsland'));

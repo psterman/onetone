@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useSyncExternalStore } from 'react';
 import { useIslandRefresh } from '../island-runtime';
 import {
+  applySoftPadDetailShellAttrs,
   buildSoftPadDetailChromeModel,
   closeSoftPadSubpage,
   softPadDetailChromeReady,
@@ -9,8 +10,8 @@ import {
   type SoftPadDetailChromeModel,
 } from '../domain/softPadDetailChrome';
 
-// P14g: #softPadSubpageBar 顶栏岛（返回 + 标题）。
-// React 拥有 bar 内容；detailPanel / subpage body 仍由 P14d/P14f 管。
+// P14g + P14i: #softPadSubpageBar 顶栏 + detailPanel/stage/subHost 显隐 sync。
+// React 拥有 bar 内容；panel/stage attrs 由 sync 副作用写入。
 
 const EMPTY: SoftPadDetailChromeModel = {
   view: 'hub',
@@ -41,6 +42,7 @@ function pullModel(): SoftPadDetailChromeModel {
 
 function syncFromLegacy(): void {
   const next = pullModel();
+  applySoftPadDetailShellAttrs(next);
   const sig = softPadDetailChromeSignature(next);
   if (sig === currentSig) return;
   currentSig = sig;

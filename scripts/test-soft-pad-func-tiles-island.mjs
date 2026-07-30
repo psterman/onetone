@@ -98,13 +98,22 @@ const entry = {
 };
 
 console.log('[soft-pad-func-tiles] 模型:');
+check('buildSoftPadFourPanelModel 已导出', typeof API.buildSoftPadFourPanelModel === 'function');
 check('buildSoftPadFuncTilesModel 已导出', typeof API.buildSoftPadFuncTilesModel === 'function');
+
+const fourPanel = API.buildSoftPadFourPanelModel(entry);
+check('fourPanel 含 4 个 panel', Array.isArray(fourPanel.panels) && fourPanel.panels.length === 4);
+check('fourPanel agent 映射 advanced alias', fourPanel.panels.some((p) => p.id === 'agent' && p.aliasId === 'advanced'));
+check('fourPanel panelOrder', Array.isArray(fourPanel.panelOrder) && fourPanel.panelOrder[0] === 'runtime');
+check('fourPanel landingView', fourPanel.landingView === 'runtime');
+check('fourPanel runtime recommended', fourPanel.panels.some((p) => p.id === 'runtime' && p.recommended));
 
 let model = API.buildSoftPadFuncTilesModel(entry);
 check('有 entry 时 hidden=false', model.hidden === false);
 check('有 tilesHtml 与 data-tile', typeof model.tilesHtml === 'string' && model.tilesHtml.includes('data-tile'));
 check('ready=true', model.ready === true);
 check('含四块瓷砖', model.tilesHtml.includes('data-tile="runtime"') && model.tilesHtml.includes('data-tile="agent"'));
+check('含 recommended 瓷砖', model.tilesHtml.includes('data-recommended="1"'));
 check('sig 非空', typeof model.sig === 'string' && model.sig.length > 0);
 
 model = API.buildSoftPadFuncTilesModel(null);
@@ -112,7 +121,9 @@ check('无 entry 时 hidden', model.hidden === true && model.tilesHtml === '');
 
 console.log('[soft-pad-func-tiles] 源码护栏:');
 const softPadJs = src;
+check('导出 buildSoftPadFourPanelModel', softPadJs.includes('buildSoftPadFourPanelModel: buildSoftPadFourPanelModel'));
 check('导出 buildSoftPadFuncTilesModel', softPadJs.includes('buildSoftPadFuncTilesModel: buildSoftPadFuncTilesModel'));
+check('func tiles 读 fourPanel model', /function buildSoftPadFuncTilesModel\([\s\S]*?buildSoftPadFourPanelModel/.test(softPadJs));
 check('applySoftPadFuncTilesHost 岛守卫', softPadJs.includes('function applySoftPadFuncTilesHost') && softPadJs.includes('__otSoftPadFuncTilesSync'));
 check('patchActiveTiles 岛守卫', /function patchActiveTiles\([\s\S]*?__otSoftPadFuncTilesSync/.test(softPadJs));
 check('syncHubChrome 岛守卫', /function syncHubChrome\([\s\S]*?__otSoftPadFuncTilesMounted/.test(softPadJs));

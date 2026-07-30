@@ -204,7 +204,7 @@ pub fn refresh_menu(app: &AppHandle) {
     open_tray_menu(&menu_win, state.inner(), cx, cy);
 }
 
-fn refresh_menu_data(app: &AppHandle) {
+pub fn refresh_menu_data(app: &AppHandle) {
     let Some(menu_win) = app.get_webview_window(TRAY_MENU_LABEL) else {
         return;
     };
@@ -261,11 +261,70 @@ pub fn tray_menu_init_json(state: &AppState) -> String {
     } else {
         agent.light.clone()
     };
-    let (status_title, status_badge, status_tone) =
+    // Local derive only when no published protocol (home is source of truth).
+    let mut status_token = String::new();
+    let mut can_pause = !paused;
+    let mut can_resume = paused;
+    let mut target_text = String::new();
+    let mut repair_text = String::new();
+    let mut last_event_text = String::new();
+    let (mut status_title, mut status_badge, mut status_tone) =
         tray_status_card(paused, voice_engine, &voice_state, &voice_error, &agent);
+    if let Some(proto) = state.runtime_status_protocol.lock().clone() {
+        if let Some(tok) = proto.get("statusToken").and_then(|v| v.as_str()) {
+            if !tok.is_empty() {
+                status_token = tok.to_string();
+            }
+        }
+        let status_text = proto
+            .get("statusText")
+            .and_then(|v| v.as_str())
+            .or_else(|| proto.get("label").and_then(|v| v.as_str()))
+            .unwrap_or("");
+        if !status_text.is_empty() {
+            status_title = status_text.to_string();
+        }
+        let trigger_text = proto
+            .get("triggerText")
+            .and_then(|v| v.as_str())
+            .or_else(|| proto.get("detail").and_then(|v| v.as_str()))
+            .unwrap_or("");
+        if !trigger_text.is_empty() {
+            status_badge = trigger_text.to_string();
+        }
+        if let Some(t) = proto.get("targetText").and_then(|v| v.as_str()) {
+            target_text = t.to_string();
+        }
+        if let Some(t) = proto.get("repairText").and_then(|v| v.as_str()) {
+            repair_text = t.to_string();
+        }
+        if let Some(t) = proto.get("lastEventText").and_then(|v| v.as_str()) {
+            last_event_text = t.to_string();
+        }
+        if let Some(b) = proto.get("canPause").and_then(|v| v.as_bool()) {
+            can_pause = b;
+        }
+        if let Some(b) = proto.get("canResume").and_then(|v| v.as_bool()) {
+            can_resume = b;
+        }
+        if status_token.is_empty() {
+            status_token = tray_derive_status_token(paused, voice_engine, &voice_state, &voice_error);
+        }
+        status_tone = match status_token.as_str() {
+            "paused" => "paused",
+            "error" => "error",
+            "needsSetup" => "needs_input",
+            "triggered" | "dictating" | "listening" => "normal",
+            _ => status_tone,
+        };
+    } else {
+        status_token = tray_derive_status_token(paused, voice_engine, &voice_state, &voice_error);
+    }
 
     let payload = serde_json::json!({
         "paused": paused,
+        "canPause": can_pause,
+        "canResume": can_resume,
         "activeMode": mode_id(active_mode),
         "triggerKeyLabel": trigger_key_label,
         "triggerModeLabel": trigger_mode_label,
@@ -283,6 +342,12 @@ pub fn tray_menu_init_json(state: &AppState) -> String {
         "statusTitle": status_title,
         "statusBadge": status_badge,
         "statusTone": status_tone,
+        "statusToken": status_token,
+        "statusText": status_title,
+        "triggerText": status_badge,
+        "targetText": target_text,
+        "repairText": repair_text,
+        "lastEventText": last_event_text,
         "modes": [
             {"id": "perpress", "label": "每按即发"},
             {"id": "tap", "label": "智能连按"},
@@ -818,6 +883,29 @@ fn truncate_label(s: &str, max_chars: usize) -> String {
         .take(max_chars.saturating_sub(1))
         .collect::<String>()
         + "…"
+}
+
+fn tray_derive_status_token(
+    paused: bool,
+    engine: &str,
+    voice_state: &str,
+    voice_error: &str,
+) -> String {
+    if paused {
+        return "paused".into();
+    }
+    if voice_state == "error" || !voice_error.trim().is_empty() {
+        return "error".into();
+    }
+    if engine == "off" {
+        return "needsSetup".into();
+    }
+    match voice_state {
+        "triggered" => "triggered".into(),
+        "listening" | "cooldown" => "listening".into(),
+        "stopped" => "idle".into(),
+        _ => "listening".into(),
+    }
 }
 
 fn tray_status_card(

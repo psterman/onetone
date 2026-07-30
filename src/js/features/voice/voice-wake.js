@@ -114,6 +114,11 @@
   }
 
   function syncVoiceEngineTabButtons(tabMode,loading){
+    if(global.__otVoiceEngineTabsMounted&&typeof global.__otVoiceEngineTabsSync==='function'){
+      global.__otVoiceEngineTabsSync();
+      syncVoiceStrategyTabButtons(loading);
+      return;
+    }
     const voskOnly=global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi();
     const pending=!!(global.OneToneVoiceWake&&global.OneToneVoiceWake.isModeSwitchPending&&global.OneToneVoiceWake.isModeSwitchPending());
     const grid=document.getElementById('voiceRecognizeSourceGrid');
@@ -432,19 +437,53 @@
     return defaultUiVoiceMode();
   }
 
+  function buildVoiceEngineTabsModel(){
+    let tabMode=resolveActiveTabMode();
+    if(tabMode==='off'||tabMode==='none') tabMode=defaultUiVoiceMode();
+    const voskOnly=!!voskOnlyUi();
+    const pending=!!(global.OneToneVoiceWake&&global.OneToneVoiceWake.isModeSwitchPending&&global.OneToneVoiceWake.isModeSwitchPending());
+    const busy=!!(document.getElementById('btnVoiceModeVosk')&&document.getElementById('btnVoiceModeVosk').classList.contains('is-busy'));
+    const tFn=global.OneToneI18n&&global.OneToneI18n.t?global.OneToneI18n.t:function(k){ return k; };
+    const tabs=[
+      {id:'sapi',label:tFn('voiceRecognizeSourceSapi')||'系统兼容',hidden:voskOnly},
+      {id:'vosk',label:tFn('voiceRecognizeSourceVosk')||'本地识别',hidden:false},
+      {id:'kws',label:tFn('voiceRecognizeSourceKws')||'快速口令',hidden:false}
+    ];
+    const disabled=pending||busy;
+    const sig=[tabMode,voskOnly?'1':'0',disabled?'1':'0',busy?'1':'0',tabs.map(function(x){ return x.id+':'+(x.hidden?'1':'0'); }).join(',')].join('\0');
+    return {
+      activeTab:tabMode,
+      voskOnly:voskOnly,
+      disabled:disabled,
+      busy:busy,
+      tabs:tabs,
+      sig:sig
+    };
+  }
+
+  function applyVoiceEngineTabsHost(model){
+    if(!model) model=buildVoiceEngineTabsModel();
+    if(global.__otVoiceEngineTabsMounted&&typeof global.__otVoiceEngineTabsSync==='function'){
+      global.__otVoiceEngineTabsSync();
+      return;
+    }
+    const grid=$('voiceRecognizeSourceGrid');
+    if(!grid) return;
+    grid.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
+      const tab=btn.getAttribute('data-voice-engine-tab')||'';
+      const on=tab===model.activeTab;
+      btn.classList.toggle('is-active',on);
+      btn.disabled=!!model.disabled;
+      btn.setAttribute('aria-busy',model.busy?'true':'false');
+      if(tab==='sapi') btn.hidden=!!model.voskOnly;
+      else btn.hidden=false;
+    });
+  }
+
   function renderVoiceEngineTabs(){
     let tabMode=resolveActiveTabMode();
     if(tabMode==='off'||tabMode==='none') tabMode=defaultUiVoiceMode();
-    const grid=$('voiceRecognizeSourceGrid');
-    if(grid){
-      grid.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
-        const tab=btn.getAttribute('data-voice-engine-tab')||'';
-        const on=tab===tabMode;
-        btn.classList.toggle('is-active',on);
-        if(tab==='sapi') btn.hidden=!!voskOnlyUi();
-        else btn.hidden=false;
-      });
-    }
+    applyVoiceEngineTabsHost(buildVoiceEngineTabsModel());
     if(voskOnlyUi()){
       if(voiceWakeExpandedMode!=='vosk'&&voiceWakeExpandedMode!=='kws') setVoiceWakeExpandedMode('vosk');
       syncVoskOnlyCopy();
@@ -724,10 +763,14 @@
     });
     const grid=$('voiceRecognizeSourceGrid');
     if(grid){
-      grid.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
-        btn.disabled=!!busy;
-        btn.setAttribute('aria-busy',busy?'true':'false');
-      });
+      if(global.__otVoiceEngineTabsMounted&&typeof global.__otVoiceEngineTabsSync==='function'){
+        global.__otVoiceEngineTabsSync();
+      }else{
+        grid.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
+          btn.disabled=!!busy;
+          btn.setAttribute('aria-busy',busy?'true':'false');
+        });
+      }
     }
     const strategyGrid=$('voiceSummaryEngineSwitch');
     if(strategyGrid){
@@ -1356,7 +1399,8 @@
         }
       }catch(_){}
       const settle=(bundle&&bundle.activateAsync)
-        ?waitForActivateIdle(seq,15000).then(function(state){
+        // off 只需停机，不必等满 15s（否则顶栏开关会像假死）。
+        ?waitForActivateIdle(seq,strategy==='off'?3500:15000).then(function(state){
           try{
             if(global.OneToneIpc&&global.OneToneIpc.invoke){
               global.OneToneIpc.invoke('cmd_app_log',{line:'fe set_listening_strategy settled strategy='+strategy+' state='+String(state||'')}).catch(function(){});
@@ -3277,6 +3321,7 @@
     renderMicLive:renderVoiceMicLive,
     renderSubnav:renderSettingsVoiceSubnav,
     renderEngineTabs:renderVoiceEngineTabs,
+    buildVoiceEngineTabsModel:buildVoiceEngineTabsModel,
     mergeWakeSnapshot:mergeWakeSnapshot,
     resolveRuntimeEngine:resolveRuntimeEngine,
     isKwsNativeListening:isKwsNativeListening,

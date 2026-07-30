@@ -115,7 +115,8 @@
     }
     activateTab('pro');
     var sub='';
-    if(id==='cameraProFilterSection'||id==='cameraProSubBeauty') sub='beauty';
+    if(id==='cameraProSubSafety'||id==='cameraProSendGuardCard') sub='safety';
+    else if(id==='cameraProFilterSection'||id==='cameraProSubBeauty') sub='beauty';
     else if(id==='cameraProPrivacySection'||id==='cameraProSubPrivacy') sub='privacy';
     else if(id==='cameraProWellnessSection'||id==='cameraProSubWellness') sub='wellness';
     else if(id==='cameraProHandCard'||id==='cameraProSubGesture') sub='gesture';
@@ -124,6 +125,7 @@
       scrollToEl($('cameraProSubtabs')||$('cameraPanelPro'));
       return;
     }
+    activateProSubtab(currentProSubtab||'safety');
     var el=$(id)||$('cameraPanelPro');
     scrollToEl(el);
   }
@@ -159,21 +161,60 @@
     });
   }
 
+  function buildCameraFlowChromeModel(){
+    var running=isCalibrating();
+    var hints={
+      trigger:t('cameraFlowNodeTriggerHint','看到动作 → 执行结果'),
+      action:t('cameraFlowNodeActionHint','预览 · 设备 · 校准'),
+      pro:t('cameraFlowNodeProHint','美颜 · 手势 · 身份识别')
+    };
+    var sig=[currentTab,running?'1':'0',hints.trigger,hints.action,hints.pro].join('\0');
+    return {
+      activeTab:currentTab,
+      locked:!!running,
+      triggerHint:hints.trigger,
+      actionHint:hints.action,
+      proHint:hints.pro,
+      sig:sig
+    };
+  }
+
+  function applyCameraFlowChromeHost(model){
+    if(!model) model=buildCameraFlowChromeModel();
+    if(global.__otCameraFlowChromeMounted&&typeof global.__otCameraFlowChromeSync==='function'){
+      global.__otCameraFlowChromeSync();
+      return;
+    }
+    TABS.forEach(function(tab){
+      var btn=$('cameraFlowNode'+tab.charAt(0).toUpperCase()+tab.slice(1));
+      if(!btn) return;
+      var on=tab===model.activeTab;
+      btn.classList.toggle('is-active',on);
+      btn.setAttribute('aria-selected',on?'true':'false');
+      btn.disabled=!!model.locked;
+      btn.setAttribute('aria-disabled',model.locked?'true':'false');
+      btn.classList.toggle('is-locked',!!model.locked);
+      var hint=$('cameraFlowNode'+tab.charAt(0).toUpperCase()+tab.slice(1)+'Hint');
+      if(hint){
+        var key=tab+'Hint';
+        hint.textContent=model[key]||'';
+      }
+    });
+    var lockHint=$('cameraCalibLockHint');
+    if(lockHint) lockHint.hidden=!model.locked;
+  }
+
   function showTabUi(name){
     currentTab=name;
     TABS.forEach(function(tab){
-      var btn=$('cameraFlowNode'+tab.charAt(0).toUpperCase()+tab.slice(1));
       var panel=$('cameraPanel'+tab.charAt(0).toUpperCase()+tab.slice(1));
       var on=tab===name;
-      if(btn){
-        btn.classList.toggle('is-active',on);
-        btn.setAttribute('aria-selected',on?'true':'false');
-      }
       if(panel){
         panel.classList.toggle('is-active',on);
         panel.hidden=!on;
       }
     });
+    applyCameraFlowChromeHost(buildCameraFlowChromeModel());
     syncBoardMod(name);
     var copy=TAB_COPY[name]||TAB_COPY.trigger;
     setText('cameraWorkflowPreviewKicker',t(copy.kicker[0],copy.kicker[1]));
@@ -214,13 +255,7 @@
 
   function syncCalibTabLock(){
     var running=isCalibrating();
-    TABS.forEach(function(tab){
-      var btn=$('cameraFlowNode'+tab.charAt(0).toUpperCase()+tab.slice(1));
-      if(!btn) return;
-      btn.disabled=!!running;
-      btn.setAttribute('aria-disabled',running?'true':'false');
-      btn.classList.toggle('is-locked',!!running);
-    });
+    applyCameraFlowChromeHost(buildCameraFlowChromeModel());
     var hint=$('cameraCalibLockHint');
     if(hint) hint.hidden=!running;
     var cancel=$('cameraGazeCalibrationCancel');
@@ -786,8 +821,8 @@
     }
   }
 
-  var currentProSubtab='beauty';
-  var PRO_SUBTABS=['beauty','privacy','wellness','gesture','track','snap','automute'];
+  var currentProSubtab='safety';
+  var PRO_SUBTABS=['safety','privacy','beauty','gesture','track','wellness','snap','automute'];
 
   function notifyProFeatureSubtab(name, visible){
     try{
@@ -821,8 +856,8 @@
   }
 
   function activateProSubtab(name){
-    name=String(name||'beauty');
-    if(PRO_SUBTABS.indexOf(name)<0) name='beauty';
+    name=String(name||'safety');
+    if(PRO_SUBTABS.indexOf(name)<0) name='safety';
     var prev=currentProSubtab;
     if(prev!==name){
       if(prev==='track'||prev==='snap'||prev==='automute'){
@@ -871,7 +906,36 @@
       var btn=e.target&&e.target.closest?e.target.closest('[data-pro-subtab]'):null;
       if(!btn) return;
       e.preventDefault();
-      activateProSubtab(btn.getAttribute('data-pro-subtab')||'beauty');
+      activateProSubtab(btn.getAttribute('data-pro-subtab')||'safety');
+    });
+  }
+
+  function bindProSafetyCtas(){
+    var root=$('cameraProSafetyCtas');
+    if(!root||root.dataset.bound==='1') return;
+    root.dataset.bound='1';
+    root.addEventListener('click',function(e){
+      var btn=e.target&&e.target.closest?e.target.closest('[data-camera-pro-safety-act]'):null;
+      if(!btn||btn.disabled) return;
+      var act=btn.getAttribute('data-camera-pro-safety-act')||'';
+      if(act==='rules'){
+        activateProSubtab('safety');
+        var card=$('cameraProSendGuardCard');
+        if(card){
+          try{ card.classList.add('is-highlight'); }catch(_){}
+          scrollToEl(card);
+          global.setTimeout(function(){
+            try{ card.classList.remove('is-highlight'); }catch(_){}
+          },1600);
+        }
+        return;
+      }
+      if(act==='preview'){
+        try{
+          var pv=global.OneToneCameraPreview;
+          if(pv&&pv.startPreview) pv.startPreview({reason:'pro_safety_cta'});
+        }catch(_){}
+      }
     });
   }
 
@@ -880,7 +944,8 @@
     bound=true;
     bindProEnhUi();
     bindProSubtabs();
-    activateProSubtab(currentProSubtab||'beauty');
+    bindProSafetyCtas();
+    activateProSubtab(currentProSubtab||'safety');
     var nodes=$('cameraFlowNodes');
     if(nodes){
       nodes.addEventListener('click',function(e){
@@ -973,6 +1038,7 @@
     onPanelHidden:onPanelHidden,
     activateTab:activateTab,
     activateProSubtab:activateProSubtab,
+    getProSubtabs:function(){ return PRO_SUBTABS.slice(); },
     syncMetrics:syncMetrics,
     syncInactiveHint:syncInactiveHint,
     syncGazeMap:syncGazeMap,
@@ -980,7 +1046,9 @@
     openTriggerTools:openTriggerTools,
     openAdvancedConfirmFold:openAdvancedConfirmFold,
     getTab:function(){ return currentTab; },
-    getProSubtab:function(){ return currentProSubtab; }
+    getProSubtab:function(){ return currentProSubtab; },
+    // Camera flow chrome（岛 sync-push）
+    buildCameraFlowChromeModel:buildCameraFlowChromeModel
   };
 
   if(document.readyState==='loading'){

@@ -244,9 +244,15 @@
         +'<div class="cell"><span class="k">引擎</span><span class="v" data-k="engine"></span></div>'
         +'<div class="cell"><span class="k">麦克风</span><span class="v" data-k="mic"></span></div>'
         +'</div>';
-      card.querySelector('.title').textContent=data.statusTitle||'—';
-      card.querySelector('.badge').textContent=data.statusBadge||'';
-      card.querySelector('[data-k="triggerKey"]').textContent=data.triggerKeyLabel||'—';
+      card.querySelector('.title').textContent=data.statusText||data.statusTitle||'—';
+      card.querySelector('.badge').textContent=data.triggerText||data.statusBadge||'';
+      card.setAttribute('data-status-token',data.statusToken||'');
+      if(data.statusToken){
+        card.querySelector('.badge').title='statusToken='+data.statusToken
+          +(data.targetText?(' · '+data.targetText):'')
+          +(data.lastEventText?(' · '+data.lastEventText):'');
+      }
+      card.querySelector('[data-k="triggerKey"]').textContent=data.triggerKeyLabel||data.triggerText||'—';
       card.querySelector('[data-k="triggerMode"]').textContent=data.triggerModeLabel||'—';
       card.querySelector('[data-k="engine"]').textContent=data.engineLabel||'—';
       const micBadge=card.querySelector('.mic-badge');
@@ -257,6 +263,12 @@
       const micVal=data.micLabel||'默认';
       const micStatus=data.micStatusLabel||'';
       card.querySelector('[data-k="mic"]').textContent=micStatus?(micVal+' · '+micStatus):micVal;
+      if(data.targetText){
+        const modeCell=card.querySelector('[data-k="triggerMode"]');
+        if(modeCell&&(!data.triggerModeLabel||data.triggerModeLabel==='—')){
+          modeCell.textContent=data.targetText;
+        }
+      }
       return card;
     }
 
@@ -265,11 +277,14 @@
       root.appendChild(sep());
       root.appendChild(row({icon:ICONS.open,label:'打开主窗口',action:'show'}));
       root.appendChild(sep());
-      root.appendChild(row({icon:ICONS.test,label:'测试一次触发',greenIco:true,action:'test_trigger',disabled:!!data.paused}));
+      const listenPaused=!!data.paused||!!data.canResume;
+      const listenDisabled=listenPaused?data.canResume===false:data.canPause===false;
+      root.appendChild(row({icon:ICONS.test,label:'测试一次触发',greenIco:true,action:'test_trigger',disabled:listenPaused}));
       root.appendChild(row({
-        icon:data.paused?ICONS.play:ICONS.pause,
-        label:data.paused?'恢复监听':'暂停监听',
-        action:'listen_toggle'
+        icon:listenPaused?ICONS.play:ICONS.pause,
+        label:listenPaused?'恢复监听':'暂停监听',
+        action:'listen_toggle',
+        disabled:!!listenDisabled
       }));
       root.appendChild(row({
         icon:data.micMuted?ICONS.micOff:ICONS.mic,

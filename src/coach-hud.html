@@ -169,35 +169,43 @@
 
     function applyState(s){
       const mode=s&&s.mode?s.mode:'hidden';
+      const statusToken=s&&s.statusToken?String(s.statusToken):'';
+      const statusText=s&&s.statusText?String(s.statusText):'';
+      const triggerText=s&&s.triggerText?String(s.triggerText):'';
+      const targetText=s&&s.targetText?String(s.targetText):'';
+      const lastEventText=s&&s.lastEventText?String(s.lastEventText):'';
       const visible=!!(s&&s.visible);
       pill.classList.toggle('is-hidden',!visible);
       pill.classList.toggle('is-success',visible&&mode==='success');
       pill.classList.toggle('is-dictating',visible&&mode==='dictating');
+      pill.setAttribute('data-status-token',statusToken||mode);
       actions.hidden=!(visible&&mode==='dictating');
       dismiss.hidden=visible&&mode==='dictating';
       windowNote.hidden=!(visible&&mode==='dictating');
       if(!visible) return;
 
       const keys=renderKeys(s.triggerKey||'',s.targetKey||'');
-      if(mode==='dictating'){
+      const protoSub=[triggerText,targetText].filter(Boolean).join(' → ')||keys;
+      if(mode==='dictating'||statusToken==='dictating'){
         icon.textContent='🎙';
-        title.textContent=t('dictating_title');
+        title.textContent=statusText||t('dictating_title');
         const hint=s.cancelPhraseHint||'';
         const phraseLine=hint?t('dictating_cancel_hint').replace('{phrase}',hint):'';
-        sub.textContent=t('dictating_sub')+(phraseLine?(' · '+phraseLine):'');
+        const base=statusText? (protoSub||t('dictating_sub')) : t('dictating_sub');
+        sub.textContent=base+(phraseLine?(' · '+phraseLine):'');
         windowNote.textContent=s.cancelWindowActive?t('dictating_window'):'';
         windowNote.classList.toggle('is-live',!!s.cancelWindowActive);
         return;
       }
-      if(mode==='success'){
+      if(mode==='success'||statusToken==='triggered'){
         icon.textContent='✓';
-        title.textContent=t('success_title');
-        sub.innerHTML=t('success_sub')+(keys?' · '+keys:'');
+        title.textContent=statusText||lastEventText||t('success_title');
+        sub.innerHTML=(protoSub||t('success_sub'))+(keys&&!protoSub?' · '+keys:'');
         return;
       }
       icon.textContent='⌨';
-      title.textContent=t('key_only_title');
-      sub.innerHTML=keys||t('key_only_sub');
+      title.textContent=statusText||t('key_only_title');
+      sub.innerHTML=protoSub||keys||t('key_only_sub');
     }
 
     dismiss.onclick=function(){ invoke('cmd_coach_hud_dismiss',{}).catch(function(){}); };

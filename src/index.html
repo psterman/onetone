@@ -2343,6 +2343,31 @@
           <section class="developer-debug-panel debug-focus-section status-maintenance-section" id="debugFocusDeveloperSection">
             <div class="mini-title" id="debugTitle">维护</div>
             <p class="developer-debug-desc" id="debugDeveloperDesc" hidden></p>
+            <section class="drawer-section status-maintenance-card ot-quick-ctrl" id="debugQuickControlPanel" aria-label="快速控制">
+              <div class="ot-quick-ctrl-head">
+                <div class="mini-title" id="debugQuickCtrlTitle" data-i18n="debugQuickCtrlTitle">快速控制</div>
+                <span class="ot-quick-ctrl-token" id="debugQuickCtrlTokenPill" aria-live="polite">idle</span>
+              </div>
+              <p class="mini" id="debugQuickCtrlDesc" data-i18n="debugQuickCtrlDesc">主窗 / 托盘 / HUD 同一 statusToken；可暂停、进修复、打开按键设置。</p>
+              <div class="ot-quick-ctrl-status" id="debugQuickCtrlStatus" role="status"></div>
+              <pre class="ot-quick-ctrl-probe" id="debugQuickCtrlProbe" aria-label="协议探针" hidden></pre>
+              <div class="ot-quick-ctrl-grid" id="debugQuickCtrlGrid"></div>
+              <div class="ot-quick-ctrl-actions" id="debugQuickCtrlActions"></div>
+            </section>
+            <section class="drawer-section status-maintenance-card ot-verify-checklist" id="debugVerifyChecklistPanel" aria-label="验收清单">
+              <div class="ot-verify-head">
+                <div class="mini-title" id="debugVerifyTitle" data-i18n="debugVerifyTitle">验收清单</div>
+                <span class="ot-verify-progress" id="debugVerifyProgress" aria-live="polite">0/0</span>
+              </div>
+              <p class="mini" id="debugVerifyDesc" data-i18n="debugVerifyDesc">按顺序操作；勾选表示你已目视通过。三端步骤可点「去做」联动上方快控；Gate0 点「打开」跳到对应设置页。</p>
+              <div class="ot-verify-next" id="debugVerifyNext" hidden></div>
+              <div class="ot-verify-list" id="debugVerifyChecklist" role="list"></div>
+              <div class="ot-verify-toolbar" id="debugVerifyToolbar">
+                <button type="button" class="control-btn" data-verify-act="next" id="debugVerifyNextBtn" data-i18n="debugVerifyNextBtn">下一项</button>
+                <button type="button" class="control-btn" data-verify-act="reset" id="debugVerifyReset" data-i18n="debugVerifyReset">重置勾选</button>
+                <button type="button" class="control-btn" data-verify-act="copy" id="debugVerifyCopy" data-i18n="debugVerifyCopy">复制进度</button>
+              </div>
+            </section>
             <section class="drawer-section status-maintenance-card" id="settingsBackupSection">
               <div class="mini-title" id="settingsBackupTitle">配置备份</div>
               <p class="mini" id="settingsBackupDesc" title="%APPDATA%\com.onetone\app\settings.json">升级前可备份 settings.json</p>
@@ -2730,17 +2755,51 @@
                     <div class="camera-pro-preview-host" id="cameraProPreviewHost" aria-label="Pro 预览"></div>
                     <div class="camera-pro-stack" id="cameraProStack">
                     <div class="camera-pro-subtabs" id="cameraProSubtabs" role="tablist" aria-label="Pro sections">
-                      <button type="button" class="camera-pro-subtab is-active" role="tab" id="cameraProSubtabBeauty" data-pro-subtab="beauty" aria-selected="true" aria-controls="cameraProSubBeauty" data-i18n="cameraProSubtabBeauty">美颜</button>
+                      <button type="button" class="camera-pro-subtab is-active" role="tab" id="cameraProSubtabSafety" data-pro-subtab="safety" aria-selected="true" aria-controls="cameraProSubSafety" data-i18n="cameraProSubtabSafety">安全</button>
                       <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabPrivacy" data-pro-subtab="privacy" aria-selected="false" aria-controls="cameraProSubPrivacy" data-i18n="cameraProSubtabPrivacy">隐私</button>
-                      <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabWellness" data-pro-subtab="wellness" aria-selected="false" aria-controls="cameraProSubWellness" data-i18n="cameraProSubtabWellness">健康</button>
+                      <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabBeauty" data-pro-subtab="beauty" aria-selected="false" aria-controls="cameraProSubBeauty" data-i18n="cameraProSubtabBeauty">美颜</button>
                       <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabGesture" data-pro-subtab="gesture" aria-selected="false" aria-controls="cameraProSubGesture" data-i18n="cameraProSubtabGesture">手势</button>
                       <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabTrack" data-pro-subtab="track" aria-selected="false" aria-controls="cameraProSubTrack" data-i18n="cameraProSubtabTrack">自动追踪</button>
+                      <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabWellness" data-pro-subtab="wellness" aria-selected="false" aria-controls="cameraProSubWellness" data-i18n="cameraProSubtabWellness">健康</button>
                       <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabSnap" data-pro-subtab="snap" aria-selected="false" aria-controls="cameraProSubSnap" data-i18n="cameraProSubtabSnap">移窗</button>
                       <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabAutoMute" data-pro-subtab="automute" aria-selected="false" aria-controls="cameraProSubAutoMute" data-i18n="cameraProSubtabAutoMute">自动静音</button>
                     </div>
 
                     <div class="camera-pro-subpanels" id="cameraProSubpanels">
-                    <section class="camera-pro-section camera-pro-filter-section camera-pro-subpanel is-active" id="cameraProSubBeauty" role="tabpanel" data-pro-subpanel="beauty" aria-labelledby="cameraProSubtabBeauty">
+                    <section class="camera-pro-section camera-pro-subpanel is-active" id="cameraProSubSafety" role="tabpanel" data-pro-subpanel="safety" aria-labelledby="cameraProSubtabSafety">
+                      <p class="camera-pro-hard-rule" id="cameraProHardRule" data-i18n="cameraProHardRule">视觉动作不能单独发送</p>
+                      <div class="camera-pro-card camera-pro-send-guard" id="cameraProSendGuardCard">
+                        <div class="camera-card-kicker" data-i18n="cameraProSendGuardKicker">安全规则</div>
+                        <div class="camera-card-title" data-i18n="cameraProSendGuardTitle">发送前确认</div>
+                        <p class="camera-card-desc" data-i18n="cameraProSendGuardDesc">发送类操作需要多一步确认，避免单一视觉动作误发。不允许单一视觉动作直接发送。</p>
+                        <p class="camera-pro-safety-note" id="cameraProSendGuardRule" data-i18n="cameraProSendGuardRule">发送不会因单个视觉动作直接发出。不允许单视觉直送。</p>
+                        <ul class="camera-pro-send-guard-list" id="cameraProSendGuardList">
+                          <li data-i18n="cameraProSendGuardItemVision">视觉区选择只会进入「待确认」，不会直接发送</li>
+                          <li data-i18n="cameraProSendGuardItemConfirm">真正发送须来自按键、语音、按钮或 Hello / PIN 确认</li>
+                          <li data-i18n="cameraProSendGuardItemHighRisk">高风险动作必须二次确认</li>
+                        </ul>
+                      </div>
+                      <div class="camera-pro-card" id="cameraProHelloSection">
+                        <div class="camera-card-kicker" data-i18n="cameraProHelloKicker">身份确认</div>
+                        <div class="camera-card-title" data-i18n="cameraProHelloTitle">Windows Hello / PIN</div>
+                        <p class="camera-card-desc" data-i18n="cameraProHelloDesc">用于认证与再认证，不是 MediaPipe 识别增强，也不提供 IR 原始流。</p>
+                        <p class="camera-pro-safety-note" data-i18n="cameraProHelloNoIr">不承诺 IR / 深度 / gaze 增强；多人与隐私仍走 RGB MediaPipe。</p>
+                        <button type="button" class="control-btn" id="cameraProHelloCheckBtn" data-i18n="cameraProHelloLearn" disabled>了解（本轮不调用系统 Hello）</button>
+                        <p class="camera-pro-card-status" id="cameraProStatusHello" data-i18n="cameraProHelloStatusIdle">认证能力说明 · 未接系统调用</p>
+                      </div>
+                      <div class="camera-pro-card" id="cameraProCoarseConfirmCard">
+                        <div class="camera-card-kicker" data-i18n="cameraProCoarseKicker">粗区域确认</div>
+                        <div class="camera-card-title" data-i18n="cameraProCoarseTitle">看向哪里 → 待确认</div>
+                        <p class="camera-card-desc" data-i18n="cameraProCoarseDesc">粗区域选择只会变成 pendingConfirm，不会单独完成发送。</p>
+                      </div>
+                      <div class="camera-pro-safety-ctas" id="cameraProSafetyCtas" role="group" aria-label="Pro safety actions">
+                        <button type="button" class="control-btn primary" id="cameraProSafetyCtaRules" data-camera-pro-safety-act="rules" data-i18n="cameraProSafetyCtaRules">配置确认规则</button>
+                        <button type="button" class="control-btn" id="cameraProSafetyCtaProbe" data-camera-pro-safety-act="probe" data-i18n="cameraProSafetyCtaProbe" disabled title="下一刀 #4c">查看能力探测</button>
+                        <button type="button" class="control-btn" id="cameraProSafetyCtaPreview" data-camera-pro-safety-act="preview" data-i18n="cameraProSafetyCtaPreview">开启预览</button>
+                      </div>
+                      <p class="camera-action-send-note" data-i18n="cameraActionSendDesc">发送需要二次确认。本轮不会把单个视觉动作直接绑定为发送。</p>
+                    </section>
+                    <section class="camera-pro-section camera-pro-filter-section camera-pro-subpanel" id="cameraProSubBeauty" role="tabpanel" data-pro-subpanel="beauty" aria-labelledby="cameraProSubtabBeauty" hidden>
                       <div class="camera-card-kicker" data-i18n="cameraProFilterKicker">本地预览</div>
                       <div class="camera-card-title-row">
                         <div class="camera-card-title" id="cameraProFilterTitle" data-i18n="cameraProFilterTitle">美颜 / 画面增强</div>
@@ -3264,17 +3323,13 @@
                         <div class="camera-gaze-map is-coarse is-docs-only" id="cameraGazeMap"></div>
                         <span id="cameraGazeMapModeChip"></span>
                       </details>
-                      <section id="cameraProHelloSection"></section>
                       <section id="cameraProDeviceSection"></section>
-                      <button type="button" id="cameraProHelloCheckBtn"></button>
-                      <p id="cameraProStatusHello"></p>
                       <details id="cameraProFutureFold"></details>
                       <div class="camera-bind-list" id="cameraPresenceBindList"></div>
                       <div id="cameraRulesSegment"></div>
                       <button type="button" id="cameraRulesSegBasic" data-camera-rules-seg="basic"></button>
                       <button type="button" id="cameraRulesSegPro" data-camera-rules-seg="pro"></button>
                       <button type="button" id="cameraProHandGotoBind"></button>
-                      <p class="camera-action-send-note" data-i18n="cameraActionSendDesc">发送需要二次确认。本轮不会把单个视觉动作直接绑定为发送。</p>
                     </div>
                     </div>
                   </div>
@@ -4005,6 +4060,7 @@
   <script src="js/features/mapping/habit-key-mapping-table.js"></script>
   <script src="js/features/mapping/key-finish-flow-render.js"></script>
   <script src="js/features/mapping/key-finish-flow-ui.js"></script>
+  <script src="js/features/mapping/record-ipc-lifecycle.js"></script>
   <script src="js/features/mapping/mapping-recording.js"></script>
   <script src="js/features/mapping/mapping-test-send.js"></script>
   <script src="js/features/mapping/mapping-trash-menu.js"></script>
@@ -4025,6 +4081,9 @@
   <script src="js/features/home/home-scheme.js"></script>
   <script src="js/features/home/home-guide.js"></script>
   <script src="js/features/home/home-live.js"></script>
+  <script src="js/shared/runtime-status-lexicon.js"></script>
+  <script src="js/shared/shell-ia-convergence.js"></script>
+  <script src="js/features/home/home-workbench-model.js"></script>
   <script src="js/features/home/home-shell.js"></script>
   <script src="js/features/home/scheme-switch-feedback.js"></script>
   <script src="js/features/home/home-ui-bindings.js"></script>

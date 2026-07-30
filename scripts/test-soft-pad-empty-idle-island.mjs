@@ -85,6 +85,7 @@ check('模型含 create/prepare 字段',
 
 console.log('[soft-pad-empty-idle] 源码护栏:');
 const softPadJs = src;
+check('idle 含 landingHint 接线', softPadJs.includes('softPadLandingHint'));
 check('导出 buildSoftPadEmptyIdleModel', softPadJs.includes('buildSoftPadEmptyIdleModel: buildSoftPadEmptyIdleModel'));
 check('applySoftPadEmptyIdleHost 岛守卫', softPadJs.includes('function applySoftPadEmptyIdleHost') && softPadJs.includes('__otSoftPadEmptyIdleSync'));
 check('renderEmptyMain 走 apply', /function renderEmptyMain\([\s\S]*?applySoftPadEmptyIdleHost/.test(softPadJs));
@@ -92,6 +93,7 @@ check('hideEmpty 不 innerHTML 清空（岛路径）', /function hideEmpty\([\s\
 check('showPrepareMain 走 apply', /function showPrepareMain\([\s\S]*?emptySurfaceMode\s*=\s*'prepare'[\s\S]*?applySoftPadEmptyIdleHost/.test(softPadJs));
 check('syncHubChrome idle 岛守卫', /function syncHubChrome\([\s\S]*?__otSoftPadEmptyIdleMounted/.test(softPadJs));
 check('bindEmptyCreateCtas 岛跳过', /function bindEmptyCreateCtas\([\s\S]*?__otSoftPadEmptyIdleMounted/.test(softPadJs));
+check('render 空路径不摧毁岛 root', /emptySurfaceMode = 'empty'[\s\S]*?applySoftPadEmptyIdleHost/.test(softPadJs) || /__otSoftPadEmptyIdleMounted[\s\S]*?emptyCreateCtaHtml/.test(softPadJs));
 check('render 接线挂载', softPadJs.includes('__otMountSoftPadEmptyIdleIsland'));
 
 const islandTsx = readFileSync(join(root, 'src-islands/islands/soft-pad-empty-idle-island.tsx'), 'utf8');

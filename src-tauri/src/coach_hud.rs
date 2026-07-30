@@ -23,6 +23,20 @@ static SUCCESS_UNTIL: Mutex<Option<Instant>> = Mutex::new(None);
 pub struct CoachHudSnapshot {
     pub visible: bool,
     pub mode: String,
+    /// Unified with home/tray lexicon (`paused`/`listening`/`dictating`/`error`/`triggered`/`needsSetup`/`idle`).
+    #[serde(default)]
+    pub status_token: String,
+    /// Locked protocol surface texts (same as home / tray).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub status_text: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub trigger_text: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub target_text: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub repair_text: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub last_event_text: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub trigger_key: String,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -30,6 +44,80 @@ pub struct CoachHudSnapshot {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub cancel_phrase_hint: String,
     pub cancel_window_active: bool,
+}
+
+#[derive(Default, Clone)]
+struct ProtoSurface {
+    token: String,
+    status_text: String,
+    trigger_text: String,
+    target_text: String,
+    repair_text: String,
+    last_event_text: String,
+}
+
+fn read_protocol_surface(state: &AppState) -> ProtoSurface {
+    let guard = state.runtime_status_protocol.lock();
+    let Some(v) = guard.as_ref() else {
+        return ProtoSurface::default();
+    };
+    let str_field = |primary: &str, fallback: &str| -> String {
+        v.get(primary)
+            .and_then(|x| x.as_str())
+            .or_else(|| v.get(fallback).and_then(|x| x.as_str()))
+            .unwrap_or("")
+            .to_string()
+    };
+    ProtoSurface {
+        token: v
+            .get("statusToken")
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string(),
+        status_text: str_field("statusText", "label"),
+        trigger_text: str_field("triggerText", "detail"),
+        target_text: v
+            .get("targetText")
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string(),
+        repair_text: v
+            .get("repairText")
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string(),
+        last_event_text: v
+            .get("lastEventText")
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string(),
+    }
+}
+
+fn snap_with_proto(
+    visible: bool,
+    mode: &str,
+    token: String,
+    proto: &ProtoSurface,
+    trigger_key: String,
+    target_key: String,
+    cancel_phrase_hint: String,
+    cancel_window_active: bool,
+) -> CoachHudSnapshot {
+    CoachHudSnapshot {
+        visible,
+        mode: mode.into(),
+        status_token: token,
+        status_text: proto.status_text.clone(),
+        trigger_text: proto.trigger_text.clone(),
+        target_text: proto.target_text.clone(),
+        repair_text: proto.repair_text.clone(),
+        last_event_text: proto.last_event_text.clone(),
+        trigger_key,
+        target_key,
+        cancel_phrase_hint,
+        cancel_window_active,
+    }
 }
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
@@ -57,15 +145,32 @@ pub fn build_snapshot(state: &AppState) -> CoachHudSnapshot {
 }
 
 fn build_snapshot_from_cfg(cfg: &VoiceConfig, state: &AppState) -> CoachHudSnapshot {
-    if !cfg.coach_hud_enabled || *state.coach_hud_session_dismissed.lock() || *state.paused.lock() {
-        return CoachHudSnapshot {
-            visible: false,
-            mode: "hidden".into(),
-            trigger_key: String::new(),
-            target_key: String::new(),
-            cancel_phrase_hint: String::new(),
-            cancel_window_active: false,
+    let proto = read_protocol_surface(state);
+    let proto_token = proto.token.clone();
+
+    let paused = *state.paused.lock();
+    if !cfg.coach_hud_enabled || *state.coach_hud_session_dismissed.lock() || paused {
+        let token = if paused {
+            if !proto_token.is_empty() {
+                proto_token
+            } else {
+                "paused".to_string()
+            }
+        } else if !proto_token.is_empty() {
+            proto_token
+        } else {
+            "idle".into()
         };
+        return snap_with_proto(
+            false,
+            "hidden",
+            token,
+            &proto,
+            String::new(),
+            String::new(),
+            String::new(),
+            false,
+        );
     }
 
     let (trigger_key, target_key) = active_mapping_keys(cfg);
@@ -73,40 +178,58 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig, state: &AppState) -> CoachHudSnaps
 
     if session == "dictating" {
         let mapping_id = state.voice_session_mapping_id.lock().clone();
-        return CoachHudSnapshot {
-            visible: true,
-            mode: "dictating".into(),
+        let token = if proto_token.is_empty() {
+            "dictating".into()
+        } else {
+            proto_token
+        };
+        return snap_with_proto(
+            true,
+            "dictating",
+            token,
+            &proto,
             trigger_key,
             target_key,
-            cancel_phrase_hint: dictation_cancel_phrase_hint(state),
-            cancel_window_active: crate::voice_end_runtime::is_in_trigger_cancel_window(
-                state,
-                &mapping_id,
-            ),
-        };
+            dictation_cancel_phrase_hint(state),
+            crate::voice_end_runtime::is_in_trigger_cancel_window(state, &mapping_id),
+        );
     }
 
     if let Some(until) = *SUCCESS_UNTIL.lock() {
         if Instant::now() < until {
-            return CoachHudSnapshot {
-                visible: true,
-                mode: "success".into(),
+            let token = if proto_token.is_empty() {
+                "triggered".into()
+            } else {
+                proto_token
+            };
+            return snap_with_proto(
+                true,
+                "success",
+                token,
+                &proto,
                 trigger_key,
                 target_key,
-                cancel_phrase_hint: String::new(),
-                cancel_window_active: false,
-            };
+                String::new(),
+                false,
+            );
         }
     }
 
-    CoachHudSnapshot {
-        visible: true,
-        mode: "key_only".into(),
+    let token = if proto_token.is_empty() {
+        "listening".into()
+    } else {
+        proto_token
+    };
+    snap_with_proto(
+        true,
+        "key_only",
+        token,
+        &proto,
         trigger_key,
         target_key,
-        cancel_phrase_hint: String::new(),
-        cancel_window_active: false,
-    }
+        String::new(),
+        false,
+    )
 }
 
 fn dictation_cancel_phrase_hint(state: &AppState) -> String {

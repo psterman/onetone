@@ -21,7 +21,7 @@ pub fn pause_listen(state: &Arc<AppState>, app: &AppHandle) {
         mgr.stop_recording();
     }
     *state.paused.lock() = true;
-    crate::voice_bootstrap::pause_voice_engines(state);
+    // ACK / tray / HUD first so FE status flips before engine teardown cost.
     let ack = serde_json::json!({"type":"mvp_paused","ok":true});
     emit_to_main_if_available(app, Some(state), ack);
     push_runtime_via_app(app, state.as_ref(), "paused", "", None);
@@ -37,11 +37,12 @@ pub fn pause_listen(state: &Arc<AppState>, app: &AppHandle) {
     crate::tray::refresh_tray_tooltip(app, state.as_ref());
     crate::tray::refresh_tray_visual_forced(app);
     crate::coach_hud::push_state(app, state.as_ref());
+    crate::voice_bootstrap::pause_voice_engines(state);
 }
 
 pub fn resume_listen(state: &Arc<AppState>, app: &AppHandle) {
     *state.paused.lock() = false;
-    crate::voice_bootstrap::resume_voice_engines(app, state);
+    // ACK / tray / HUD first — activate_desired_engine can take hundreds of ms.
     let ack = serde_json::json!({"type":"mvp_resumed","ok":true});
     emit_to_main_if_available(app, Some(state), ack);
     push_runtime_via_app(app, state.as_ref(), "resumed", "", None);
@@ -57,4 +58,10 @@ pub fn resume_listen(state: &Arc<AppState>, app: &AppHandle) {
     crate::tray::refresh_tray_tooltip(app, state.as_ref());
     crate::tray::refresh_tray_visual_forced(app);
     crate::coach_hud::push_state(app, state.as_ref());
+    // Don't block IPC/FE on engine restart; supervisor serializes via ACTIVATE_LOCK.
+    let app_h = app.clone();
+    let state_h = Arc::clone(state);
+    std::thread::spawn(move || {
+        crate::voice_bootstrap::resume_voice_engines(&app_h, &state_h);
+    });
 }

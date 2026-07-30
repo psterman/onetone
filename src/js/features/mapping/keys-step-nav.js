@@ -3,6 +3,7 @@
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
   var STEPS=['trigger','target','finish'];
+  var lastFlowMapping=null;
 
   var FLOW_NODE_IDS={
     trigger:{btn:'keysFlowNodeTrigger',hint:'keysFlowNodeTriggerHint'},
@@ -17,6 +18,22 @@
   function recordingMode(){
     var rec=global.OneToneMappingRecording;
     return rec&&rec.mode?rec.mode():'none';
+  }
+
+  function recordingIpcPhase(){
+    var rec=global.OneToneMappingRecording;
+    if(rec&&rec.ipcPhase) return rec.ipcPhase();
+    return global.__otRecordIpcPhase||'idle';
+  }
+
+  function isRecordingUi(){
+    var rec=global.OneToneMappingRecording;
+    if(rec&&rec.isRecordingUi) return !!rec.isRecordingUi();
+    var life=global.OneToneRecordIpcLifecycle;
+    var mode=recordingMode();
+    var phase=recordingIpcPhase();
+    if(life&&life.isRecordingUi) return !!life.isRecordingUi(mode,phase);
+    return mode==='trigger'||mode==='target'||mode==='agentBinding';
   }
 
   function friendlyKey(key){
@@ -76,18 +93,59 @@
     };
   }
 
-  function syncFlowNodes(step){
+  function buildKeysFlowChromeModel(m){
+    if(m) lastFlowMapping=m;
+    m=m||lastFlowMapping||(core()&&core().selected?core().selected():null);
+    var step=global.OneToneKeysPageState&&global.OneToneKeysPageState.getStep
+      ?global.OneToneKeysPageState.getStep()
+      :'trigger';
     var mode=recordingMode();
+    var ipcPhase=recordingIpcPhase();
+    var recording=isRecordingUi();
+    var hints=resolveStepHints(m);
+    var sig=[step,mode,ipcPhase,recording?'1':'0',hints.trigger||'',hints.target||'',hints.finish||'',hints.codexCtx?'1':'0'].join('\0');
+    return {
+      activeStep:step,
+      recordingMode:mode,
+      ipcPhase:ipcPhase,
+      recording:recording,
+      triggerHint:hints.trigger||'',
+      targetHint:hints.target||'',
+      finishHint:hints.finish||'',
+      sig:sig
+    };
+  }
+
+  function applyKeysFlowChromeHost(model){
+    if(!model) model=buildKeysFlowChromeModel();
+    if(global.__otKeysFlowChromeMounted&&typeof global.__otKeysFlowChromeSync==='function'){
+      global.__otKeysFlowChromeSync();
+      return;
+    }
+    var mode=model.recordingMode||recordingMode();
+    var recording=typeof model.recording==='boolean'?model.recording:isRecordingUi();
     STEPS.forEach(function(page){
       var meta=FLOW_NODE_IDS[page];
       if(!meta) return;
       var btn=$(meta.btn);
-      if(!btn) return;
-      var on=page===step;
-      btn.classList.toggle('is-active',on);
-      btn.setAttribute('aria-selected',on?'true':'false');
-      btn.classList.toggle('is-recording',mode===page||(page==='target'&&mode==='agentBinding'));
+      if(btn){
+        var on=page===model.activeStep;
+        btn.classList.toggle('is-active',on);
+        btn.setAttribute('aria-selected',on?'true':'false');
+        btn.classList.toggle('is-recording',!!recording&&(mode===page||(page==='target'&&mode==='agentBinding')));
+      }
+      var hintEl=$(meta.hint);
+      if(hintEl){
+        var key=page+'Hint';
+        hintEl.textContent=model[key]||'';
+      }
     });
+  }
+
+  function syncFlowNodes(step){
+    var model=buildKeysFlowChromeModel();
+    if(step) model.activeStep=step;
+    applyKeysFlowChromeHost(model);
   }
 
   function syncActive(step){
@@ -139,17 +197,12 @@
   }
 
   function renderStepHints(m){
-    var hints=resolveStepHints(m);
-    STEPS.forEach(function(page){
-      var meta=FLOW_NODE_IDS[page];
-      if(!meta) return;
-      var hintEl=$(meta.hint);
-      if(hintEl) hintEl.textContent=hints[page]||'';
-    });
-    syncFlowNodes(global.OneToneKeysPageState?global.OneToneKeysPageState.getStep():'trigger');
+    if(m) lastFlowMapping=m;
+    applyKeysFlowChromeHost(buildKeysFlowChromeModel(m));
   }
 
   function render(m){
+    if(m) lastFlowMapping=m;
     syncActive(global.OneToneKeysPageState?global.OneToneKeysPageState.getStep():'trigger');
     renderStepHints(m);
   }
@@ -158,6 +211,8 @@
     bind:bind,
     render:render,
     syncActive:syncActive,
-    renderStepHints:renderStepHints
+    renderStepHints:renderStepHints,
+    // P12c-1：flow nodes / hints chrome
+    buildKeysFlowChromeModel:buildKeysFlowChromeModel
   };
 })((typeof window!=='undefined')?window:globalThis);

@@ -859,21 +859,21 @@ html[data-theme="dark"] .wb-dot-grid {
 }
 
 .wb-howto-card-tip {
-  margin: 0;
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
+  margin: 2px 0 0;
+  align-self: flex-start;
+  padding: 2px 0;
   font-size: 11px;
   line-height: 1.4;
   color: var(--primary-strong);
-  transition: max-height 0.2s ease, opacity 0.2s ease, margin 0.2s ease;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
 
-.wb-howto-card:hover .wb-howto-card-tip,
-.wb-howto-card:focus-visible .wb-howto-card-tip {
-  max-height: 48px;
-  opacity: 1;
-  margin-top: 2px;
+.wb-howto-card-tip:hover,
+.wb-howto-card-tip:focus-visible {
+  background: transparent;
+  color: var(--primary);
 }
 
 .wb-howto-card.is-voice .wb-howto-card-main--voice {

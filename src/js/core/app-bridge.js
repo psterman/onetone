@@ -111,7 +111,11 @@
       },
       playSoundCue:function(id){ hooks().playSoundCue(id); },
       toast:function(msg){ hooks().toast(msg); },
-      isRecording:function(){ return global.OneToneMappingRecording.mode()!=='none'; },
+      isRecording:function(){
+        var rec=global.OneToneMappingRecording;
+        if(rec&&rec.isRecordingUi) return !!rec.isRecordingUi();
+        return rec&&rec.mode?rec.mode()!=='none':false;
+      },
       isRecordingPending:function(){ return global.OneToneMappingRecording.isPending(); },
       homeOneClickStart:function(){ homeOneClickStart(); },
       isVoiceWakeEnabled:function(){ return hooks().homeVoiceEngineOn()!=='off'; },

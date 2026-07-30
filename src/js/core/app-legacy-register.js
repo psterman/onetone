@@ -108,6 +108,10 @@
               mappingListUiActive:d.mappingListUiActive,
               renderRecordCancelBar:d.renderRecordCancelBar,
               renderHome:d.renderHome,
+              shouldSkipHomeRender:function(){
+                return !!(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.shouldSkipHomeRender
+                  &&global.OneToneHomeWorkbench.shouldSkipHomeRender());
+              },
               renderListenRuntime:d.renderListenRuntime,
               renderUpdateUi:d.renderUpdateUi,
               frontendLog:d.frontendLog,

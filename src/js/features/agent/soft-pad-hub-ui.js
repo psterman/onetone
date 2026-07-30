@@ -19,6 +19,8 @@
   /** Last opened Soft Pad detail tile — restored on later opens; first prepare forces runtime. */
   var lastSoftPadView = 'runtime';
   var VALID_SOFT_PAD_VIEWS = { layout: 1, presentation: 1, runtime: 1, agent: 1 };
+  /** SoftPad #3c：四面板唯一顺序源（func tiles / model / 测试共用）。 */
+  var SOFT_PAD_PANEL_ORDER = ['runtime', 'layout', 'presentation', 'agent'];
   var chromeBound = false;
   var selectToken = 0;
   var selectTimer = 0;
@@ -514,6 +516,12 @@
   function clearSubpage() {
     ++subpageToken;
     ++agentLoadToken;
+    // P14k–n：清深面板挂载标记（岛 epoch 由 subpageToken 管）。
+    try {
+      global.__otSoftPadRuntimeMounted = false;
+      global.__otSoftPadPresentationMounted = false;
+      global.__otSoftPadLayoutShellMounted = false;
+    } catch (_) {}
     try {
       var PadClose = global.OneToneCodexMicroPadUi;
       if (PadClose && PadClose.closeEditKeycap) PadClose.closeEditKeycap({ reopenInline: false });
@@ -558,6 +566,10 @@
     if (global.__otSoftPadDetailChromeMounted && typeof global.__otSoftPadDetailChromeSync === 'function') {
       global.__otSoftPadDetailChromeSync();
     }
+    // clear 语义优先：即使 sync 时 view 尚未回到 hub，也强制收起详情壳。
+    if (e.detailPanel) e.detailPanel.hidden = true;
+    if (e.subHost) e.subHost.classList.remove('is-open');
+    if (e.stage) e.stage.classList.remove('is-detail-open');
   }
 
   // P14d：空态 / 详情 idle 表面（岛挂载后由 buildSoftPadEmptyIdleModel 驱动）
@@ -569,6 +581,19 @@
     var e = els();
     open = !!open;
     detailIdleOpen = open;
+    if (global.__otSoftPadDetailChromeMounted && typeof global.__otSoftPadDetailChromeSync === 'function') {
+      // P14i: panel/stage/subHost 显隐由 detail chrome sync 写。
+      if (e.detailIdle) {
+        if (!(global.__otSoftPadEmptyIdleMounted && typeof global.__otSoftPadEmptyIdleSync === 'function')) {
+          e.detailIdle.hidden = open;
+        }
+      }
+      if (global.__otSoftPadEmptyIdleMounted && typeof global.__otSoftPadEmptyIdleSync === 'function') {
+        global.__otSoftPadEmptyIdleSync();
+      }
+      global.__otSoftPadDetailChromeSync();
+      return;
+    }
     if (e.detailPanel) e.detailPanel.hidden = !open;
     if (e.detailIdle) {
       if (!(global.__otSoftPadEmptyIdleMounted && typeof global.__otSoftPadEmptyIdleSync === 'function')) {
@@ -724,6 +749,17 @@
       });
     }
 
+    // #3c：有 mapping 且详情未开时，idle 指向默认落点面板。
+    if (mode === 'none' && !idleHidden) {
+      var idleEntry = findEntry(getSelectedMappingId());
+      if (hasMapping(idleEntry)) {
+        var landingId = defaultDetailView();
+        idleTitle = t('softPadLandingHint', '建议从「{panel}」开始')
+          .replace('{panel}', subpageTitle(landingId));
+        idleSub = t('softPadDetailIdleSub', '右侧打开详情；左侧键盘与列表保持不动');
+      }
+    }
+
     return {
       mode: mode,
       emptyHtml: emptyHtml,
@@ -868,6 +904,232 @@
     return t('softPadShowModeFollow', '跟随应用显示');
   }
 
+  function normalizeFourPanelView(view) {
+    view = String(view || 'runtime');
+    if (view === 'advanced') return 'agent';
+    if (VALID_SOFT_PAD_VIEWS[view]) return view;
+    return 'runtime';
+  }
+
+  function subpageTitle(view) {
+    view = normalizeFourPanelView(view);
+    if (view === 'layout') return t('softPadTileLayout', '改按键');
+    if (view === 'presentation') return t('softPadTilePres', '外观');
+    if (view === 'runtime') return t('softPadTileRuntime', '何时显示');
+    if (view === 'agent') return t('softPadTileMore', '更多');
+    return '';
+  }
+
+  function fourPanelSub(entry, id) {
+    if (id === 'runtime') return t('softPadTileRuntimeSub', '浮窗怎么出现；要不要占数字键');
+    if (id === 'layout') return t('softPadTileLayoutSub', '点键盘上的键，改它做什么');
+    if (id === 'presentation') return t('softPadTilePresSub', '换皮肤；大键盘/迷你条在「何时显示」');
+    return t('softPadTileMoreSub', '状态灯等进阶选项');
+  }
+
+  function resolveSurfaceEmpty(has) {
+    if (emptySurfaceMode === 'empty') return 'noScenarios';
+    if (emptySurfaceMode === 'prepare') return 'prepare';
+    if (has) return 'ready';
+    return 'none';
+  }
+
+  function resolvePreviewEmpty(entry, view) {
+    if (!hasMapping(entry)) return 'noMapping';
+    view = String(view || softPadView || 'hub');
+    var light = view === 'runtime' || view === 'presentation' || view === 'agent';
+    var canPaint = view === 'hub' || view === 'layout' || light;
+    if (!canPaint) return 'unavailable';
+    return 'ready';
+  }
+
+  function panelEmptyState(entry, id) {
+    if (!hasMapping(entry)) {
+      return {
+        mode: 'needsAction',
+        title: t('softPadTileNeedPrepare', '先点右侧准备'),
+        desc: t('softPadHubPrepareHint', '点击准备后才会创建该应用的虚拟键盘配置。')
+      };
+    }
+    var pad = entry.mapping && entry.mapping.codexMicroPad;
+    if (id === 'layout' && boundKeyCount(entry) === 0) {
+      return {
+        mode: 'needsAction',
+        title: t('softPadPanelEmptyLayout', '还没有绑定按键'),
+        desc: t('softPadPanelEmptyLayoutDesc', '点左侧预览或下方按钮，选一个键开始配置。')
+      };
+    }
+    if (id === 'runtime') {
+      var Pad = global.OneToneCodexMicroPadUi;
+      var mode = Pad && Pad.resolveSoftPadShowMode
+        ? Pad.resolveSoftPadShowMode(pad)
+        : (pad && pad.overlayEnabled ? 'follow' : 'hidden');
+      if (mode === 'hidden') {
+        return {
+          mode: 'needsAction',
+          title: t('softPadPanelEmptyRuntime', '浮窗当前未显示'),
+          desc: t('softPadPanelEmptyRuntimeDesc', '先选一种显示方式，目标应用前台时才会出现悬浮键盘。')
+        };
+      }
+    }
+    return { mode: 'ready', title: '', desc: '' };
+  }
+
+  function panelPrimaryCta(entry, id) {
+    var ready = hasMapping(entry);
+    var empty = panelEmptyState(entry, id);
+    if (id === 'runtime') {
+      return {
+        act: 'showMode',
+        label: empty.mode === 'needsAction'
+          ? t('softPadPrimaryRuntime', '启用浮窗显示')
+          : t('softPadPrimaryRuntimeReady', '调整显示方式'),
+        disabled: !ready
+      };
+    }
+    if (id === 'layout') {
+      return {
+        act: 'focusLayoutKey',
+        label: t('softPadPrimaryLayout', '编辑按键'),
+        disabled: !ready
+      };
+    }
+    if (id === 'presentation') {
+      return {
+        act: 'focusSkin',
+        label: t('softPadPrimaryPresentation', '换皮肤'),
+        disabled: !ready
+      };
+    }
+    return {
+      act: 'focusAgent',
+      label: t('softPadPrimaryAgent', '查看进阶选项'),
+      disabled: !ready
+    };
+  }
+
+  function buildPreviewEmptyHtml(reason) {
+    if (reason === 'unavailable') {
+      return '<div class="soft-pad-preview-empty">' +
+        '<p class="soft-pad-preview-empty__title">' +
+        esc(t('softPadPreviewEmptyUnavailable', '当前页暂不刷新预览')) +
+        '</p></div>';
+    }
+    if (reason !== 'noMapping') return '';
+    var prepareAppId = (emptyPrepareCtx && emptyPrepareCtx.appId) ||
+      (selectedScopeId === 'claude' ? 'claude-code' : 'codex-chat');
+    var prepareKind = (emptyPrepareCtx && emptyPrepareCtx.kind) ||
+      (selectedScopeId === 'claude' ? 'claude' : 'codex');
+    return '<div class="soft-pad-preview-empty">' +
+      '<p class="soft-pad-preview-empty__title">' +
+      esc(t('softPadPreviewEmptyNoMapping', '还没有可预览的虚拟键盘')) +
+      '</p>' +
+      '<p class="soft-pad-preview-empty__desc">' +
+      esc(t('softPadHubPrepareHint', '点击准备后才会创建该应用的虚拟键盘配置。')) +
+      '</p>' +
+      '<button type="button" class="codex-micro-pad__btn is-primary" data-soft-pad-prepare-cta="' +
+      esc(prepareAppId) + '" data-scheme-kind="' + esc(prepareKind) + '">' +
+      esc(t('softPadHubPrepareShort', '准备')) + '</button></div>';
+  }
+
+  /** SoftPad #3c：面板顶栏唯一主 CTA / 空态 HTML（供 Pad paint 复用）。 */
+  function softPadPanelExperienceHtml(panelId, entry) {
+    if (arguments.length < 2) entry = findEntry(getSelectedMappingId());
+    panelId = normalizeFourPanelView(panelId);
+    var model = buildSoftPadFourPanelModel(entry);
+    var panel = null;
+    for (var i = 0; i < model.panels.length; i++) {
+      if (model.panels[i].id === panelId) {
+        panel = model.panels[i];
+        break;
+      }
+    }
+    if (!panel || !panel.primaryCta) return '';
+    var cta = panel.primaryCta;
+    var empty = panel.panelEmpty || { mode: 'ready' };
+    if (empty.mode === 'needsAction') {
+      return '<div class="soft-pad-panel-empty" data-soft-pad-panel-empty="' + esc(panelId) + '">' +
+        '<p class="soft-pad-panel-empty__title">' + esc(empty.title || '') + '</p>' +
+        '<p class="soft-pad-panel-empty__desc">' + esc(empty.desc || '') + '</p>' +
+        '<button type="button" class="codex-micro-pad__btn is-primary" data-act="' +
+        esc(cta.act) + '"' + (cta.disabled ? ' disabled' : '') + '>' +
+        esc(cta.label) + '</button></div>';
+    }
+    return '<div class="soft-pad-panel-primary">' +
+      '<button type="button" class="codex-micro-pad__btn is-primary" data-act="' +
+      esc(cta.act) + '"' + (cta.disabled ? ' disabled' : '') + '>' +
+      esc(cta.label) + '</button></div>';
+  }
+
+  function buildSoftPadFourPanelModel(entry) {
+    if (arguments.length === 0) entry = findEntry(getSelectedMappingId());
+    var rawView = softPadView || 'hub';
+    var activeView = rawView === 'hub' ? 'hub' : normalizeFourPanelView(rawView);
+    var mappingId = hasMapping(entry) ? String(entry.mapping.id) : '';
+    var has = hasMapping(entry);
+    var detailOpen = activeView !== 'hub' && has;
+    var landingView = defaultDetailView();
+    var landingHint = t('softPadLandingHint', '建议从「{panel}」开始')
+      .replace('{panel}', subpageTitle(landingView));
+    var surfaceEmpty = resolveSurfaceEmpty(has);
+    var previewEmpty = resolvePreviewEmpty(entry, rawView);
+    var panels = SOFT_PAD_PANEL_ORDER.map(function (id, index) {
+      var empty = panelEmptyState(entry, id);
+      var cta = panelPrimaryCta(entry, id);
+      return {
+        id: id,
+        index: String(index + 1),
+        title: subpageTitle(id),
+        summary: fourPanelSub(entry, id),
+        status: tileStatus(entry, id),
+        disabled: !has,
+        iaGroup: id === 'layout' ? 'presentation' : (id === 'agent' ? 'advanced' : id),
+        aliasId: id === 'agent' ? 'advanced' : id,
+        active: activeView === id,
+        recommended: landingView === id,
+        primaryCta: cta,
+        panelEmpty: empty
+      };
+    });
+    var sig = [
+      mappingId,
+      activeView,
+      has ? '1' : '0',
+      detailOpen ? '1' : '0',
+      landingView,
+      surfaceEmpty,
+      previewEmpty,
+      panels.map(function (panel) {
+        return [
+          panel.id,
+          panel.aliasId,
+          panel.status,
+          panel.disabled ? '1' : '0',
+          panel.active ? '1' : '0',
+          panel.recommended ? '1' : '0',
+          panel.primaryCta && panel.primaryCta.act,
+          panel.panelEmpty && panel.panelEmpty.mode
+        ].join('|');
+      }).join('\0')
+    ].join('\0');
+    return {
+      mappingId: mappingId,
+      activeView: activeView,
+      hasMapping: has,
+      detailOpen: detailOpen,
+      panels: panels,
+      panelOrder: SOFT_PAD_PANEL_ORDER.slice(),
+      landingView: landingView,
+      landingHint: landingHint,
+      surfaceEmpty: surfaceEmpty,
+      previewEmpty: previewEmpty,
+      emptyState: has ? 'ready' : 'prepare',
+      previewState: has ? 'preview' : 'empty',
+      defaultView: landingView,
+      sig: sig
+    };
+  }
+
   function defaultDetailView(opts) {
     opts = opts || {};
     if (opts.firstPrepare) return 'runtime';
@@ -898,62 +1160,48 @@
         sig: 'hidden|' + (softPadView || 'hub')
       };
     }
-    var ready = hasMapping(entry);
-    var tiles = [
-      {
-        id: 'runtime',
-        index: '1',
-        title: t('softPadTileRuntime', '何时显示'),
-        sub: t('softPadTileRuntimeSub', '浮窗怎么出现；要不要占数字键')
-      },
-      {
-        id: 'layout',
-        index: '2',
-        title: t('softPadTileLayout', '改按键'),
-        sub: t('softPadTileLayoutSub', '点键盘上的键，改它做什么')
-      },
-      {
-        id: 'presentation',
-        index: '3',
-        title: t('softPadTilePres', '外观'),
-        sub: t('softPadTilePresSub', '换皮肤；大键盘/迷你条在「何时显示」')
-      },
-      {
-        id: 'agent',
-        index: '4',
-        title: t('softPadTileMore', '更多'),
-        sub: t('softPadTileMoreSub', '状态灯等进阶选项')
-      }
-    ];
+    var panelModel = buildSoftPadFourPanelModel(entry);
+    var ready = panelModel.hasMapping;
+    var tiles = panelModel.panels.map(function (panel) {
+      return {
+        id: panel.id,
+        index: panel.index,
+        title: panel.title,
+        sub: panel.summary,
+        status: panel.status,
+        active: panel.active,
+        disabled: panel.disabled,
+        recommended: !!panel.recommended
+      };
+    });
     var tilesHtml =
       '<div class="soft-pad-func-tiles__head">' +
       '<h4 class="soft-pad-func-tiles__title">' + esc(t('softPadFuncTilesTitle', '你想改什么？')) + '</h4>' +
-      '<p class="soft-pad-func-tiles__sub">' + esc(t('softPadFuncTilesSub', '动作入口更像任务清单，适合第一次配置')) + '</p>' +
+      '<p class="soft-pad-func-tiles__sub">' + esc(panelModel.landingHint ||
+        t('softPadFuncTilesSub', '动作入口更像任务清单，适合第一次配置')) + '</p>' +
       '</div>' +
       tiles.map(function (tile) {
-        var active = softPadView === tile.id;
-        var status = tileStatus(entry, tile.id);
         return (
           '<button type="button" class="soft-pad-func-tile' +
-          (ready ? '' : ' is-disabled') +
-          (active ? ' is-active' : '') +
+          (tile.disabled ? ' is-disabled' : '') +
+          (tile.active ? ' is-active' : '') +
+          (tile.recommended ? ' is-recommended' : '') +
           '" data-tile="' + esc(tile.id) + '"' +
-          (ready ? '' : ' disabled aria-disabled="true"') +
-          (active ? ' aria-current="true"' : '') + '>' +
+          (tile.recommended ? ' data-recommended="1"' : '') +
+          (tile.disabled ? ' disabled aria-disabled="true"' : '') +
+          (tile.active ? ' aria-current="true"' : '') + '>' +
           '<span class="soft-pad-func-tile__index" aria-hidden="true">' + esc(tile.index) + '</span>' +
           '<span class="soft-pad-func-tile__copy">' +
           '<span class="soft-pad-func-tile__title">' + esc(tile.title) + '</span>' +
           '<span class="soft-pad-func-tile__sub">' + esc(tile.sub) + '</span>' +
           '</span>' +
-          '<span class="soft-pad-func-tile__status">' + esc(status) + '</span>' +
+          '<span class="soft-pad-func-tile__status">' + esc(tile.status) + '</span>' +
           '</button>'
         );
       }).join('');
     var mappingId = entry.mapping && entry.mapping.id ? String(entry.mapping.id) : '';
     var sig = [
-      mappingId,
-      softPadView || 'hub',
-      ready ? '1' : '0',
+      panelModel.sig,
       tilesHtml
     ].join('\0');
     return {
@@ -963,6 +1211,7 @@
       mappingId: mappingId,
       view: softPadView || 'hub',
       ready: !!ready,
+      landingView: panelModel.landingView,
       sig: sig
     };
   }
@@ -998,12 +1247,9 @@
       // chrome attrs (hidden / collapsed) via preview model sync
       global.__otSoftPadPreviewSync();
     } else if (e.preview) {
-      if (!hasMapping(entry)) {
-        e.preview.hidden = true;
-      } else {
-        e.preview.hidden = false;
-        e.preview.classList.remove('is-collapsed');
-      }
+      var previewModel = buildSoftPadPreviewModel();
+      e.preview.hidden = !!previewModel.hidden;
+      if (!previewModel.hidden) e.preview.classList.remove('is-collapsed');
     }
     if (e.stage) {
       e.stage.classList.remove('is-preview-collapsed');
@@ -1049,28 +1295,22 @@
     }
   }
 
-  function subpageTitle(view) {
-    if (view === 'layout') return t('softPadTileLayout', '改按键');
-    if (view === 'presentation') return t('softPadTilePres', '外观');
-    if (view === 'runtime') return t('softPadTileRuntime', '何时显示');
-    if (view === 'agent') return t('softPadTileMore', '更多');
-    return '';
-  }
-
   /** P14g：SoftPad detail 顶栏（返回 / 标题）模型。 */
   function buildSoftPadDetailChromeModel() {
-    var view = softPadView || 'hub';
-    var entry = findEntry(getSelectedMappingId());
-    var detailOpen = view !== 'hub' && hasMapping(entry);
+    var panelModel = buildSoftPadFourPanelModel(findEntry(getSelectedMappingId()));
+    var view = panelModel.activeView || 'hub';
+    var detailOpen = !!panelModel.detailOpen;
     var backHidden = !detailOpen || view === 'runtime';
     var title = detailOpen ? subpageTitle(view) : '';
     var backLabel = t('softPadSubBack', '← 返回');
+    var landingView = panelModel.landingView || 'runtime';
     var sig = [
       view,
       detailOpen ? '1' : '0',
       backHidden ? '1' : '0',
       title,
-      backLabel
+      backLabel,
+      landingView
     ].join('\0');
     return {
       view: view,
@@ -1078,6 +1318,7 @@
       backHidden: backHidden,
       backLabel: backLabel,
       title: title,
+      landingView: landingView,
       sig: sig
     };
   }
@@ -1089,6 +1330,12 @@
     }
     if (!model) model = buildSoftPadDetailChromeModel();
     var e = els();
+    if (e.detailPanel) e.detailPanel.hidden = !model.detailOpen;
+    if (e.subHost) {
+      e.subHost.classList.toggle('is-open', !!model.detailOpen);
+      e.subHost.removeAttribute('hidden');
+    }
+    if (e.stage) e.stage.classList.toggle('is-detail-open', !!model.detailOpen);
     if (e.subBack) {
       e.subBack.hidden = !!model.backHidden;
       e.subBack.textContent = model.backLabel || t('softPadSubBack', '← 返回');
@@ -1157,22 +1404,49 @@
     if (steps) steps.textContent = boundKeyCount(entry) + '/15';
   }
 
+  /** P14k：runtime / presentation / layout 已 paint 时跳过整板 remount。 */
+  function softPadSubpageAlreadyPainted(entry, view) {
+    var e = els();
+    if (!e.subBody || !hasMapping(entry) || !view) return false;
+    var mapId = String(entry.mapping.id || '');
+    if (e.subBody.getAttribute('data-soft-pad-panel') !== view) return false;
+    if (e.subBody.getAttribute('data-soft-pad-mapping') !== mapId) return false;
+    var host = softPadSubpagePaintEl(e.subBody) || e.subBody;
+    if (view === 'runtime') {
+      return !!(global.__otSoftPadRuntimeMounted || host.querySelector('[data-act="showMode"]'));
+    }
+    if (view === 'presentation') {
+      return !!(global.__otSoftPadPresentationMounted || host.querySelector('[data-pad-skin-opt]'));
+    }
+    if (view === 'layout') {
+      return !!(global.__otSoftPadLayoutShellMounted ||
+        host.querySelector('[data-soft-pad-layout-editor]'));
+    }
+    return false;
+  }
+
   function syncRuntimeCheckboxes(entry) {
     if (softPadView !== 'runtime' || !hasMapping(entry)) return;
     var e = els();
     if (!e.subBody) return;
+    // P14k：query paint-target（岛挂载后控件在 paint 子节点内）。
+    var body = softPadSubpagePaintEl(e.subBody) || e.subBody;
     var pad = entry.mapping.codexMicroPad;
     if (!pad) return;
     var Pad = global.OneToneCodexMicroPadUi;
+    if (Pad && typeof Pad.syncSoftPadRuntimePanel === 'function') {
+      Pad.syncSoftPadRuntimePanel(body, entry.mapping);
+      return;
+    }
     var mode = Pad && Pad.resolveSoftPadShowMode
       ? Pad.resolveSoftPadShowMode(pad)
       : (pad.overlayEnabled ? 'follow' : 'hidden');
-    var showModeEl = e.subBody.querySelector('[data-act="showMode"]');
+    var showModeEl = body.querySelector('[data-act="showMode"]');
     if (showModeEl) showModeEl.value = mode;
     if (Pad && Pad.syncSoftPadShowModeChrome) {
-      Pad.syncSoftPadShowModeChrome(e.subBody, mode, pad);
+      Pad.syncSoftPadShowModeChrome(body, mode, pad);
     } else {
-      var hint = e.subBody.querySelector('[data-show-mode-hint]');
+      var hint = body.querySelector('[data-show-mode-hint]');
       if (hint) {
         hint.textContent = mode === 'front'
           ? t('softPadShowModeFrontHint', '浮窗保持可见；按键动作仍发给对应应用，不会接管其它窗口。')
@@ -1182,58 +1456,58 @@
               ? t('softPadShowModeHiddenHint', '不显示悬浮键盘；你改过的键位配置会保留。')
               : t('softPadShowModeFollowHint', '目标应用在前台时显示悬浮键盘。');
       }
-      var scene = e.subBody.querySelector('[data-show-scene]');
+      var scene = body.querySelector('[data-show-scene]');
       if (scene) scene.setAttribute('data-show-scene', mode);
     }
-    var numLockEl = e.subBody.querySelector('[data-act="numlock"]');
+    var numLockEl = body.querySelector('[data-act="numlock"]');
     if (numLockEl) {
       numLockEl.checked = !!pad.requireNumLockOff;
       numLockEl.disabled = !pad.enabled;
     }
-    var enabledEl = e.subBody.querySelector('[data-act="enabled"]');
+    var enabledEl = body.querySelector('[data-act="enabled"]');
     if (enabledEl) enabledEl.checked = !!pad.enabled;
-    var navKeysEl = e.subBody.querySelector('[data-act="navKeys"]');
+    var navKeysEl = body.querySelector('[data-act="navKeys"]');
     if (navKeysEl) {
       navKeysEl.checked = pad.navKeysEnabled !== false;
       navKeysEl.disabled = !pad.enabled;
     }
-    var cards = e.subBody.querySelector('.soft-pad-feature-cards');
+    var cards = body.querySelector('.soft-pad-feature-cards');
     if (cards) cards.setAttribute('data-mapping-on', pad.enabled ? '1' : '0');
-    e.subBody.querySelectorAll('[data-feature="occupy"], [data-feature="nav"]').forEach(function (card) {
+    body.querySelectorAll('[data-feature="occupy"], [data-feature="nav"]').forEach(function (card) {
       card.classList.toggle('is-disabled', !pad.enabled);
       if (pad.enabled) card.removeAttribute('aria-disabled');
       else card.setAttribute('aria-disabled', 'true');
     });
-    var numpadMap = e.subBody.querySelector('[data-numpad-on]');
+    var numpadMap = body.querySelector('[data-numpad-on]');
     if (numpadMap) numpadMap.setAttribute('data-numpad-on', pad.requireNumLockOff ? '1' : '0');
-    var demo = e.subBody.querySelector('[data-demo-mode]');
+    var demo = body.querySelector('[data-demo-mode]');
     if (demo && !demo.classList.contains('is-user-driven')) {
       demo.setAttribute('data-demo-mode', pad.requireNumLockOff ? 'soft' : 'numpad');
     }
-    var navCap = e.subBody.querySelector('[data-nav-cap]');
+    var navCap = body.querySelector('[data-nav-cap]');
     if (navCap) {
       navCap.textContent = pad.navKeysEnabled === false
         ? t('softPadFeatureNavCapOff', '方向键保持系统原样，Soft Pad 不显示左侧方向列。')
         : t('softPadFeatureNavCapOn', '主键盘方向键临时靠在虚拟键盘左侧；与小键盘 2/4/6/8 无关。');
     }
-    var navHost = e.subBody.querySelector('[data-nav-demo-host]');
+    var navHost = body.querySelector('[data-nav-demo-host]');
     if (navHost && Pad && typeof Pad.renderNavArrowDemoHtml === 'function') {
       navHost.innerHTML = Pad.renderNavArrowDemoHtml(pad);
     } else {
-      var arrowStory = e.subBody.querySelector('[data-nav-on]');
+      var arrowStory = body.querySelector('[data-nav-on]');
       if (arrowStory) {
         arrowStory.setAttribute('data-nav-on', pad.navKeysEnabled === false ? '0' : '1');
       }
     }
-    var hint = e.subBody.querySelector('[data-numpad-hint]');
-    if (hint) {
+    var hintEl = body.querySelector('[data-numpad-hint]');
+    if (hintEl) {
       var showHint = pad.requireNumLockOff && softLikelyNoNumpadHint();
       if (showHint) {
-        hint.hidden = false;
-        hint.textContent = t('softPadNumpadNoPadHint',
+        hintEl.hidden = false;
+        hintEl.textContent = t('softPadNumpadNoPadHint',
           '未检测到独立数字键区。你可以关闭占用，只用悬浮 Soft Pad。');
       } else {
-        hint.hidden = true;
+        hintEl.hidden = true;
       }
     }
   }
@@ -1258,7 +1532,7 @@
     if (!entry) return;
     panel = panel || softPadView;
     changeOpts = changeOpts || {};
-    // Presentation toggle is ultra-hot — skip chrome rebuild before return.
+    // P14l：皮肤切换 ultra-hot — 不 remount presentation、不 force preview。
     if (panel === 'presentation') {
       updateStatusBar(entry);
       patchSchemeRowPresentation(entry);
@@ -1283,8 +1557,9 @@
           softPadView === 'runtime' || softPadView === 'agent') {
         renderFuncTiles(entry);
       }
+      // P14m：仅 import/clear 等显式 remount；profile 切换 remountLayout:false。
       if (softPadView === 'layout' && changeOpts.remountLayout !== false) {
-        paintSubpage(entry);
+        paintSubpage(entry, { forceRemount: true });
       }
       return;
     }
@@ -1292,7 +1567,7 @@
       updateStatusBar(entry);
       patchSchemeRowEnable(entry);
       patchSchemeRowPresentation(entry);
-      // Never remount runtime three-cards on toggle — SVG demos remount = 假死.
+      // P14k：Never remount runtime three-cards on toggle — SVG demos remount = 假死.
       syncRuntimeCheckboxes(entry);
       if (changeOpts.refreshPreview) {
         var mapId = String(entry.mapping.id);
@@ -1301,7 +1576,12 @@
           if (String(getSelectedMappingId() || '') !== mapId) return;
           var cur = findEntry(mapId);
           if (!hasMapping(cur)) return;
-          paintPreview(cur, { force: true });
+          // P14k：in-place preview shell patch（勿 forceFull 整板炸 preview）。
+          var PadUi = global.OneToneCodexMicroPadUi;
+          var prevHost = document.getElementById('softPadPreviewHost');
+          if (PadUi && typeof PadUi.renderSoftPadPreview === 'function' && prevHost) {
+            try { PadUi.renderSoftPadPreview(prevHost, cur.mapping); } catch (_) {}
+          }
         });
       }
       if (softPadView === 'hub' || softPadView === 'layout' || softPadView === 'presentation' ||
@@ -1357,17 +1637,17 @@
 
   /** P14f：SoftPad 子页 body 模型（单一来源）。 */
   function buildSoftPadSubpageModel() {
-    var view = softPadView || 'hub';
-    var entry = findEntry(getSelectedMappingId());
-    var has = hasMapping(entry);
-    var mappingId = has ? String(entry.mapping.id) : '';
+    var panelModel = buildSoftPadFourPanelModel(findEntry(getSelectedMappingId()));
+    var view = panelModel.activeView || 'hub';
+    var has = !!panelModel.hasMapping;
+    var mappingId = panelModel.mappingId || '';
     var panel = '';
     var mode = 'clear';
     var clear = true;
     var agentLoadTokenStr = '';
     if (has && (view === 'layout' || view === 'presentation' || view === 'runtime' || view === 'agent')) {
       clear = false;
-      panel = view;
+      panel = normalizeFourPanelView(view);
       if (view === 'agent' && !isHubSoftPadKind(selectedScopeId)) {
         mode = 'agent-pick';
       } else {
@@ -1450,7 +1730,8 @@
     host.innerHTML = '<p class="codex-pad-mgr__hint">' + esc(msg) + '</p>';
   }
 
-  function paintSubpage(entry) {
+  function paintSubpage(entry, paintOpts) {
+    paintOpts = paintOpts || {};
     var e = els();
     var targetView = softPadView;
     var t0 = Date.now();
@@ -1464,6 +1745,13 @@
     var Pad = global.OneToneCodexMicroPadUi;
     if (!Pad) {
       feLog('fe softPad.paintSubpage no Pad ui');
+      return;
+    }
+
+    // P14k/l/m：同 mapping 已挂载 → 禁止 bump token / 整板 remount（checkbox / 皮肤 / 键编辑热路径）。
+    if (!paintOpts.forceRemount && softPadSubpageAlreadyPainted(entry, targetView)) {
+      if (targetView === 'runtime') syncRuntimeCheckboxes(entry);
+      feLog('fe softPad.paintSubpage skip-remount ' + targetView);
       return;
     }
 
@@ -1688,13 +1976,17 @@
   /** P14e：SoftPad 预览宿主模型（单一来源）。 */
   function buildSoftPadPreviewModel() {
     var entry = findEntry(getSelectedMappingId());
-    var has = hasMapping(entry);
-    var mappingId = has ? String(entry.mapping.id) : '';
+    var panelModel = buildSoftPadFourPanelModel(entry);
+    var has = !!panelModel.hasMapping;
+    var mappingId = panelModel.mappingId || '';
     var view = softPadView || 'hub';
     var light = view === 'runtime' || view === 'presentation' || view === 'agent';
     var canPaint = view === 'hub' || view === 'layout' || light;
     var force = !!previewForceOnce;
-    var hidden = !has;
+    var previewEmpty = panelModel.previewEmpty || resolvePreviewEmpty(entry, view);
+    var emptyReason = previewEmpty === 'ready' || previewEmpty === 'none' ? '' : previewEmpty;
+    var emptyHtml = emptyReason ? buildPreviewEmptyHtml(emptyReason) : '';
+    var hidden = !has && !emptyHtml;
     var clear = !has;
     var collapsed = false;
     var skipPaint = false;
@@ -1714,6 +2006,8 @@
       force ? '1' : '0',
       skipPaint ? '1' : '0',
       view,
+      previewEmpty,
+      emptyHtml,
       String(previewEpoch || 0),
       String(paintedMappingId || '')
     ].join('\0');
@@ -1725,6 +2019,9 @@
       force: force,
       skipPaint: skipPaint,
       view: view,
+      previewEmpty: previewEmpty,
+      emptyReason: emptyReason,
+      emptyHtml: emptyHtml,
       epoch: previewEpoch || 0,
       sig: sig
     };
@@ -1741,8 +2038,18 @@
     e.preview.hidden = !!model.hidden;
     e.preview.classList.toggle('is-collapsed', !!model.collapsed);
     if (model.clear) {
+      if (model.emptyHtml) {
+        e.preview.innerHTML = model.emptyHtml;
+        return;
+      }
       e.preview.replaceChildren();
       return;
+    }
+    if (model.skipPaint && model.emptyHtml && model.emptyReason === 'unavailable') {
+      var paint = e.preview.querySelector('[data-soft-pad-preview-paint]') || e.preview;
+      if (paint && !paint.querySelector('.codex-micro-pad.soft-pad-preview')) {
+        paint.innerHTML = model.emptyHtml;
+      }
     }
   }
 
@@ -2121,10 +2428,7 @@
     var e = els();
     if (!e.list) return;
     if (global.__otSoftPadWorkflowMounted && typeof global.__otSoftPadWorkflowSync === 'function') {
-      if (e.titleLbl) e.titleLbl.textContent = t('keysHubTitle', '方案');
-      if (e.aside) e.aside.setAttribute('aria-label', t('keysHubTitle', '方案'));
-      var entries = listAsideEntries();
-      if (e.count) e.count.textContent = String(entries.length);
+      // P14b owns title/count/aside via SoftPadSchemeListIsland — do not dual-write.
       global.__otSoftPadWorkflowSync();
       return;
     }
@@ -2139,6 +2443,21 @@
     e.list.innerHTML = '<div class="keys-hub-scheme-group">' +
       entries.map(renderSchemeRow).join('') +
       '</div>';
+  }
+
+  function buildSoftPadEnsureCtaModel() {
+    var label = '+ ' + t('softPadHubEnsureCodex', '准备 Codex 虚拟键盘');
+    return { label: label, sig: label };
+  }
+
+  function applySoftPadEnsureCtaHost(model) {
+    if (global.__otSoftPadEnsureCtaMounted && typeof global.__otSoftPadEnsureCtaSync === 'function') {
+      global.__otSoftPadEnsureCtaSync();
+      return;
+    }
+    if (!model) model = buildSoftPadEnsureCtaModel();
+    var e = els();
+    if (e.ensureBtn) e.ensureBtn.textContent = model.label || '';
   }
 
   function ensureCodex() {
@@ -2271,6 +2590,17 @@
         openSubpage(tile.getAttribute('data-tile'));
       });
     }
+    if (e.preview) {
+      e.preview.addEventListener('click', function (ev) {
+        var prep = ev.target.closest && ev.target.closest('[data-soft-pad-prepare-cta]');
+        if (!prep) return;
+        ev.preventDefault();
+        prepareAppFromUi(
+          prep.getAttribute('data-soft-pad-prepare-cta'),
+          prep.getAttribute('data-scheme-kind')
+        );
+      });
+    }
     if (e.subBack && !(global.__otSoftPadDetailChromeMounted)) {
       e.subBack.addEventListener('click', function () { closeSubpage(); });
     }
@@ -2305,10 +2635,11 @@
         });
       });
     }
-    if (e.ensureBtn) {
+    if (e.ensureBtn && !global.__otSoftPadEnsureCtaMounted) {
       e.ensureBtn.addEventListener('click', function () { ensureCodex(); });
     }
-    if (e.enable) {
+    // P10 owns #softPadSummaryEnable when status island mounted.
+    if (e.enable && !global.__otSoftPadStatusMounted) {
       e.enable.addEventListener('click', function () { toggleSelectedEnable(); });
     }
   }
@@ -2354,15 +2685,15 @@
       if(typeof mountDetailChrome==='function') mountDetailChrome();
       var mountScopeHint=global.__otMountSoftPadScopeHintIsland;
       if(typeof mountScopeHint==='function') mountScopeHint();
+      var mountEnsureCta=global.__otMountSoftPadEnsureCtaIsland;
+      if(typeof mountEnsureCta==='function') mountEnsureCta();
     }catch(_){}
     bindChrome();
     // Will land on runtime via selectScheme({ resetView: true }); keep hub only until then.
     softPadView = 'hub';
     clearSubpage();
     var e = els();
-    if (e.ensureBtn) {
-      e.ensureBtn.textContent = '+ ' + t('softPadHubEnsureCodex', '准备 Codex 虚拟键盘');
-    }
+    applySoftPadEnsureCtaHost(buildSoftPadEnsureCtaModel());
     var entries = listSoftPadSchemes();
     renderSchemeList();
     renderAppSwitcher();
@@ -2399,9 +2730,15 @@
       clearMain();
       var empty = e.empty;
       if (empty) {
-        empty.hidden = false;
-        empty.innerHTML = emptyCreateCtaHtml();
-        bindEmptyCreateCtas(empty);
+        if (global.__otSoftPadEmptyIdleMounted && typeof global.__otSoftPadEmptyIdleSync === 'function') {
+          emptySurfaceMode = 'empty';
+          emptyPrepareCtx = null;
+          applySoftPadEmptyIdleHost(buildSoftPadEmptyIdleModel());
+        } else {
+          empty.hidden = false;
+          empty.innerHTML = emptyCreateCtaHtml();
+          bindEmptyCreateCtas(empty);
+        }
       }
       ensureSoftPadBoundaryHint();
       if (global.OneToneHabitChannelStatusStrip && global.OneToneHabitChannelStatusStrip.render) {
@@ -2482,6 +2819,8 @@
     toggleSelectedEnable: toggleSelectedEnable,
     toggleRowEnable: toggleRowEnable,
     buildSoftPadWorkflowModel: buildSoftPadWorkflowModel,
+    buildSoftPadFourPanelModel: buildSoftPadFourPanelModel,
+    softPadPanelExperienceHtml: softPadPanelExperienceHtml,
     // P14c：功能瓷砖宿主模型（单一来源）
     buildSoftPadFuncTilesModel: buildSoftPadFuncTilesModel,
     // P14d：空态 / 详情 idle 双宿主模型（单一来源）
@@ -2496,11 +2835,14 @@
     writeSoftPadSubpageAgentPick: writeSoftPadSubpageAgentPick,
     writeSoftPadSubpageHint: writeSoftPadSubpageHint,
     bindSoftPadAgentPickCta: bindSoftPadAgentPickCta,
-    // P14g：detail 顶栏模型 + 返回动作
+    // P14g/P14i：detail 顶栏 + panel 显隐
     buildSoftPadDetailChromeModel: buildSoftPadDetailChromeModel,
     closeSubpage: closeSubpage,
     // P14h：scope 提示文案模型
     buildSoftPadScopeHintModel: buildSoftPadScopeHintModel,
+    // P14j：准备 Codex CTA
+    buildSoftPadEnsureCtaModel: buildSoftPadEnsureCtaModel,
+    ensureCodex: ensureCodex,
     prepareAppFromUi: prepareAppFromUi,
     prepareSoftPadCreateKind: function (kind) {
       kind = String(kind || 'codex');

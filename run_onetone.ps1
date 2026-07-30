@@ -153,6 +153,7 @@ function Test-PortOpen {
 }
 
 ## Dev webview loads http://localhost:1420 — without serve, the window shows ERR_CONNECTION_REFUSED.
+## Release embeds frontendDist, but this launcher still starts serve for hybrid/dev asset reloads.
 function Ensure-FrontendServe {
   if (Test-PortOpen -Port 1420) {
     Write-LaunchLog 'frontend serve already on :1420'
@@ -164,8 +165,9 @@ function Ensure-FrontendServe {
     Write-LaunchLog 'npm not found; cannot start serve — UI will show localhost refused'
     return
   }
-  Start-Process -FilePath $npm.Source -ArgumentList @('run', 'serve') -WorkingDirectory $root -WindowStyle Hidden | Out-Null
-  $deadline = (Get-Date).AddSeconds(12)
+  # npm.cmd via Start-Process often exits immediately; use cmd /c so serve stays up.
+  Start-Process -FilePath 'cmd.exe' -ArgumentList @('/c', 'npm', 'run', 'serve') -WorkingDirectory $root -WindowStyle Hidden | Out-Null
+  $deadline = (Get-Date).AddSeconds(15)
   while ((Get-Date) -lt $deadline) {
     if (Test-PortOpen -Port 1420) {
       Write-LaunchLog 'frontend serve ready on :1420'

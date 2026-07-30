@@ -4,6 +4,30 @@ import { ToastIsland } from './islands/toast-island';
 import { ConfirmIsland } from './islands/confirm-island';
 import { BasicSettingsIsland } from './islands/basic-settings-island';
 import { VoiceConfigIsland } from './islands/voice-config-island';
+import {
+  VoiceStatusChromeIsland,
+  registerVoiceStatusChromeBridge,
+} from './islands/voice-status-chrome-island';
+import {
+  VoiceEngineTabsIsland,
+  registerVoiceEngineTabsBridge,
+} from './islands/voice-engine-tabs-island';
+import {
+  VoiceFlowChromeIsland,
+  registerVoiceFlowChromeBridge,
+} from './islands/voice-flow-chrome-island';
+import {
+  VoiceAcousticHostIsland,
+  registerVoiceAcousticBridge,
+} from './islands/voice-acoustic-host-island';
+import {
+  CameraFlowChromeIsland,
+  registerCameraFlowChromeBridge,
+} from './islands/camera-flow-chrome-island';
+import {
+  DebugOverviewIsland,
+  registerDebugOverviewBridge,
+} from './islands/debug-overview-island';
 import { MappingListIsland } from './islands/mapping-list-island';
 import { WbCommandIsland } from './islands/wb-command-island';
 import { SoftPadStatusBarIsland } from './islands/soft-pad-status-island';
@@ -47,6 +71,10 @@ import {
   registerSoftPadScopeHintBridge,
 } from './islands/soft-pad-scope-hint-island';
 import {
+  SoftPadEnsureCtaIsland,
+  registerSoftPadEnsureCtaBridge,
+} from './islands/soft-pad-ensure-cta-island';
+import {
   MappingEditorTargetIsland,
   MappingEditorTriggerIsland,
   registerMappingEditorDisplayBridge,
@@ -61,9 +89,40 @@ import {
   registerKeysFinishModeBridge,
 } from './islands/keys-finish-mode-island';
 import {
+  KeysFinishChromeIsland,
+  registerKeysFinishChromeBridge,
+} from './islands/keys-finish-chrome-island';
+import {
   KeysTriggerModeIsland,
   registerKeysTriggerModeBridge,
 } from './islands/keys-trigger-mode-island';
+import {
+  KeysTriggerConflictIsland,
+  registerKeysTriggerConflictBridge,
+} from './islands/keys-trigger-conflict-island';
+import {
+  KeysFlowChromeIsland,
+  registerKeysFlowChromeBridge,
+} from './islands/keys-flow-chrome-island';
+import {
+  KeysStatusPillsIsland,
+  registerKeysStatusPillsBridge,
+} from './islands/keys-status-pills-island';
+import {
+  KeysRecordingFeedbackIsland,
+  registerKeysRecordingFeedbackBridge,
+} from './islands/keys-recording-feedback-island';
+import {
+  KeysHubSchemeListIsland,
+  registerKeysHubSchemeListBridge,
+} from './islands/keys-hub-scheme-list-island';
+import {
+  registerKeysAppContextStripBridge,
+} from './islands/keys-app-context-strip-island';
+import {
+  KeysDisplayChromeIsland,
+  registerKeysDisplayChromeBridge,
+} from './islands/keys-display-chrome-island';
 import {
   RecordCancelBarIsland,
   registerRecordCancelBarBridge,
@@ -133,6 +192,93 @@ try {
 } catch (err) {
   console.error('[islands] voice config mount failed, keeping legacy DOM', err);
 }
+
+// P6b：Voice 状态栏 chrome（延迟到 voice 面板打开）
+function mountVoiceStatusChromeIsland(): void {
+  const host = document.getElementById('voiceSummaryStatus');
+  if (!host || OneToneIslands.isMounted('voiceSummaryStatus')) return;
+
+  host.textContent = '';
+  registerVoiceStatusChromeBridge();
+
+  OneToneIslands.mountIsland('voiceSummaryStatus', VoiceStatusChromeIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountVoiceStatusChromeIsland?: () => void }).__otMountVoiceStatusChromeIsland =
+  mountVoiceStatusChromeIsland;
+
+// P6c：Voice 引擎 tabs（挂 sr-only label，不拆 grid）
+function mountVoiceEngineTabsIsland(): void {
+  const host = document.getElementById('voiceRecognizeSourceLbl');
+  if (!host || OneToneIslands.isMounted('voiceRecognizeSourceLbl')) return;
+
+  registerVoiceEngineTabsBridge();
+
+  OneToneIslands.mountIsland('voiceRecognizeSourceLbl', VoiceEngineTabsIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountVoiceEngineTabsIsland?: () => void }).__otMountVoiceEngineTabsIsland =
+  mountVoiceEngineTabsIsland;
+
+// P6d：Voice flow chrome
+function mountVoiceFlowChromeIsland(): void {
+  const host = document.getElementById('voiceFlowNodeWakeHint');
+  if (!host || OneToneIslands.isMounted('voiceFlowNodeWakeHint')) return;
+
+  host.textContent = '';
+  registerVoiceFlowChromeBridge();
+
+  OneToneIslands.mountIsland('voiceFlowNodeWakeHint', VoiceFlowChromeIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountVoiceFlowChromeIsland?: () => void }).__otMountVoiceFlowChromeIsland =
+  mountVoiceFlowChromeIsland;
+
+// P6e：声学三宿主 paint-target
+function mountVoiceAcousticIslands(): void {
+  registerVoiceAcousticBridge();
+  (['voiceWakeAcousticHost', 'voiceCancelAcousticHost', 'voiceEndAcousticHost'] as const).forEach(
+    (id) => {
+      const host = document.getElementById(id);
+      if (!host || OneToneIslands.isMounted(id)) return;
+      host.innerHTML = '';
+      OneToneIslands.mountIsland(id, VoiceAcousticHostIsland, {}, {
+        onRefresh: () => ({}) as Record<string, unknown>,
+      });
+    },
+  );
+}
+(window as unknown as { __otMountVoiceAcousticIslands?: () => void }).__otMountVoiceAcousticIslands =
+  mountVoiceAcousticIslands;
+
+// Camera flow chrome（不碰 MediaPipe）
+function mountCameraFlowChromeIsland(): void {
+  const host = document.getElementById('cameraFlowNodeTriggerHint');
+  if (!host || OneToneIslands.isMounted('cameraFlowNodeTriggerHint')) return;
+  host.textContent = '';
+  registerCameraFlowChromeBridge();
+  OneToneIslands.mountIsland('cameraFlowNodeTriggerHint', CameraFlowChromeIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountCameraFlowChromeIsland?: () => void }).__otMountCameraFlowChromeIsland =
+  mountCameraFlowChromeIsland;
+
+// Debug overview chrome
+function mountDebugOverviewIsland(): void {
+  const host = document.getElementById('debugHeroTitle');
+  if (!host || OneToneIslands.isMounted('debugHeroTitle')) return;
+  host.textContent = '';
+  registerDebugOverviewBridge();
+  OneToneIslands.mountIsland('debugHeroTitle', DebugOverviewIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountDebugOverviewIsland?: () => void }).__otMountDebugOverviewIsland =
+  mountDebugOverviewIsland;
 
 // P7：挂载映射列表岛到 #mappingList（接管行渲染 keyed diff；交互仍走 legacy 容器级事件委托）
 function mountMappingListIsland(): void {
@@ -319,6 +465,21 @@ function mountKeysFinishModeIsland(): void {
 (window as unknown as { __otMountKeysFinishModeIsland?: () => void }).__otMountKeysFinishModeIsland =
   mountKeysFinishModeIsland;
 
+// P12b-7：挂载 Keys 收尾 hint / preview chrome 岛
+function mountKeysFinishChromeIsland(): void {
+  const host = document.getElementById('keysFinishModeHint');
+  if (!host || OneToneIslands.isMounted('keysFinishModeHint')) return;
+
+  host.textContent = '';
+  registerKeysFinishChromeBridge();
+
+  OneToneIslands.mountIsland('keysFinishModeHint', KeysFinishChromeIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountKeysFinishChromeIsland?: () => void }).__otMountKeysFinishChromeIsland =
+  mountKeysFinishChromeIsland;
+
 // P12b-6：挂载 Keys 启动手势分段岛（延迟到按键面板首次打开）
 function mountKeysTriggerModeIsland(): void {
   const host = document.getElementById('keysTriggerModeHost');
@@ -333,6 +494,98 @@ function mountKeysTriggerModeIsland(): void {
 }
 (window as unknown as { __otMountKeysTriggerModeIsland?: () => void }).__otMountKeysTriggerModeIsland =
   mountKeysTriggerModeIsland;
+
+// P12b-8：挂载 Keys 启动键冲突提示岛
+function mountKeysTriggerConflictIsland(): void {
+  const host = document.getElementById('keysTriggerConflict');
+  if (!host || OneToneIslands.isMounted('keysTriggerConflict')) return;
+
+  host.innerHTML = '';
+  registerKeysTriggerConflictBridge();
+
+  OneToneIslands.mountIsland('keysTriggerConflict', KeysTriggerConflictIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountKeysTriggerConflictIsland?: () => void }).__otMountKeysTriggerConflictIsland =
+  mountKeysTriggerConflictIsland;
+
+// P12c-1：Keys flow nodes chrome
+function mountKeysFlowChromeIsland(): void {
+  const host = document.getElementById('keysFlowNodeTriggerHint');
+  if (!host || OneToneIslands.isMounted('keysFlowNodeTriggerHint')) return;
+
+  host.textContent = '';
+  registerKeysFlowChromeBridge();
+
+  OneToneIslands.mountIsland('keysFlowNodeTriggerHint', KeysFlowChromeIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountKeysFlowChromeIsland?: () => void }).__otMountKeysFlowChromeIsland =
+  mountKeysFlowChromeIsland;
+
+// P12c-2：Keys status pills — bridge-only（避免挂载清掉 step label / pill 文案）
+function mountKeysStatusPillsIsland(): void {
+  const w = window as unknown as { __otKeysStatusPillsMounted?: boolean };
+  if (w.__otKeysStatusPillsMounted) return;
+  registerKeysStatusPillsBridge();
+}
+(window as unknown as { __otMountKeysStatusPillsIsland?: () => void }).__otMountKeysStatusPillsIsland =
+  mountKeysStatusPillsIsland;
+
+// P12c-3：录制反馈
+function mountKeysRecordingFeedbackIsland(): void {
+  const host = document.getElementById('keysRecordingFeedbackText');
+  if (!host || OneToneIslands.isMounted('keysRecordingFeedbackText')) return;
+
+  host.textContent = '';
+  registerKeysRecordingFeedbackBridge();
+
+  OneToneIslands.mountIsland('keysRecordingFeedbackText', KeysRecordingFeedbackIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountKeysRecordingFeedbackIsland?: () => void }).__otMountKeysRecordingFeedbackIsland =
+  mountKeysRecordingFeedbackIsland;
+
+// P12c-4：hub 方案列表（挂 count，apply 写 list HTML）
+function mountKeysHubSchemeListIsland(): void {
+  const host = document.getElementById('keysHubCount');
+  if (!host || OneToneIslands.isMounted('keysHubCount')) return;
+
+  registerKeysHubSchemeListBridge();
+
+  OneToneIslands.mountIsland('keysHubCount', KeysHubSchemeListIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountKeysHubSchemeListIsland?: () => void }).__otMountKeysHubSchemeListIsland =
+  mountKeysHubSchemeListIsland;
+
+// P12c-5：应用上下文 strip — bridge-only（apply 写 strip；不挂 lbl）
+function mountKeysAppContextStripIsland(): void {
+  const w = window as unknown as { __otKeysAppContextStripMounted?: boolean };
+  if (w.__otKeysAppContextStripMounted) return;
+  registerKeysAppContextStripBridge();
+}
+(window as unknown as { __otMountKeysAppContextStripIsland?: () => void }).__otMountKeysAppContextStripIsland =
+  mountKeysAppContextStripIsland;
+
+// P12c-6：display chrome
+function mountKeysDisplayChromeIsland(): void {
+  const host = document.getElementById('triggerTrace');
+  if (!host || OneToneIslands.isMounted('triggerTrace')) return;
+
+  host.textContent = '';
+  registerKeysDisplayChromeBridge();
+
+  OneToneIslands.mountIsland('triggerTrace', KeysDisplayChromeIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountKeysDisplayChromeIsland?: () => void }).__otMountKeysDisplayChromeIsland =
+  mountKeysDisplayChromeIsland;
 
 // P12b-3：挂载录制取消条岛（延迟到按键面板首次打开）
 function mountRecordCancelBarIsland(): void {
@@ -473,6 +726,21 @@ function mountSoftPadScopeHintIsland(): void {
 }
 (window as unknown as { __otMountSoftPadScopeHintIsland?: () => void }).__otMountSoftPadScopeHintIsland =
   mountSoftPadScopeHintIsland;
+
+// P14j：挂载 SoftPad Ensure CTA 岛
+function mountSoftPadEnsureCtaIsland(): void {
+  const host = document.getElementById('btnSoftPadEnsureCodex');
+  if (!host || OneToneIslands.isMounted('btnSoftPadEnsureCodex')) return;
+
+  host.textContent = '';
+  registerSoftPadEnsureCtaBridge();
+
+  OneToneIslands.mountIsland('btnSoftPadEnsureCodex', SoftPadEnsureCtaIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountSoftPadEnsureCtaIsland?: () => void }).__otMountSoftPadEnsureCtaIsland =
+  mountSoftPadEnsureCtaIsland;
 
 // 暴露宿主桥，供 legacy 与后续阶段调用
 (window as unknown as { OneToneIslands: typeof OneToneIslands }).OneToneIslands = OneToneIslands;

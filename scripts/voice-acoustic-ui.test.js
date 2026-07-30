@@ -34,7 +34,21 @@ global.OneToneI18n={
       habitAcousticCmdErrHintBusy:'请先关掉占用麦克风的应用',
       habitAcousticCmdErrHintGeneric:'请靠近麦克风再录一次',
       habitAcousticCmdNeedRebuild:'录音功能未就绪',
-      habitAcousticCmdMatchFailHint:'三次录音差异较大'
+      habitAcousticCmdMatchFailHint:'三次录音差异较大',
+      habitAcousticCmdSampleCount:'已采样本 {n} / {total}',
+      habitAcousticCmdSampleTooShort:'第 {n} 条太短',
+      habitAcousticCmdSampleTooLong:'第 {n} 条偏长',
+      habitAcousticCmdSampleMicTooLow:'第 {n} 条音量偏低',
+      habitAcousticDiagTitle:'诊断',
+      habitAcousticDiagMicOk:'麦克风权限：已允许',
+      habitAcousticDiagMicDenied:'麦克风权限：已拒绝',
+      habitAcousticDiagMicPrompt:'麦克风权限：待授权',
+      habitAcousticDiagMicUnknown:'麦克风权限：未知',
+      habitAcousticDiagBackendOk:'后端：可用',
+      habitAcousticDiagBackendFail:'后端：不可用',
+      habitAcousticDiagBackendUnknown:'后端：检测中',
+      habitAcousticDiagLastError:'最近失败：{err}',
+      habitAcousticDiagThresholds:'阈值 · 最短 {min}ms · 推荐 {prefer}ms · 最长 {max}ms'
     };
     var s=map[key]||key;
     if(!vars) return s;
@@ -47,8 +61,13 @@ global.OneToneState={ state:{ config:{} }, ui:function(){ return {}; } };
 global.OneToneMappingCore={ byId:function(){ return null; } };
 global.OneToneHabitOverrideDiff={ isAppScenarioMapping:function(){ return true; } };
 global.OneToneVoiceAcousticIpc={ isAvailable:function(){ return true; } };
+global.OneToneRecordIpcLifecycle={
+  transition:function(next){ return next; },
+  isBusy:function(phase){ return phase==='starting'||phase==='recording'||phase==='stopping'; }
+};
 
 require('../src/js/features/mapping/habit-scenario-voice-command.js');
+require('../src/js/features/voice/voice-wake-acoustic.js');
 
 var H=global.OneToneHabitScenarioVoiceCommand;
 
@@ -112,5 +131,25 @@ assert.strictEqual(meter.zone,'good');
 assert.ok(meter.pct>0&&meter.pct<=100);
 var meterLong=H.durationMeterState(0,2500,{minSpeechMs:450,preferSpeechMs:700,maxSpeechMs:2000});
 assert.strictEqual(meterLong.zone,'warn');
+
+var acoustic=global.OneToneVoiceWakeAcoustic;
+var summary=acoustic.buildAcousticSampleSummary([
+  { duration_ms:300 },
+  { duration_ms:2600, qualitySignals:{ micTooLow:true } }
+],{ minSpeechMs:450, preferSpeechMs:700, maxSpeechMs:2000 });
+assert.strictEqual(summary.count,2);
+assert.ok(summary.flags.some(function(x){ return x.code==='tooShort'; }));
+assert.ok(summary.flags.some(function(x){ return x.code==='tooLong'; }));
+assert.ok(summary.flags.some(function(x){ return x.code==='micTooLow'; }));
+
+var diag=acoustic.buildAcousticDiagModel({
+  thresholds:{ minSpeechMs:450, preferSpeechMs:700, maxSpeechMs:2000 }
+});
+assert.ok(diag.thresholds);
+assert.strictEqual(diag.thresholds.minSpeechMs,450);
+assert.ok(diag.backend==='ok'||diag.backend==='unknown'||diag.backend==='fail');
+var diagHtml=acoustic.renderAcousticDiagHtml(diag);
+assert.ok(diagHtml.indexOf('data-acoustic-diag="1"')>=0);
+assert.ok(diagHtml.indexOf('habitAcousticDiagTitle')>=0||diagHtml.indexOf('诊断')>=0||diagHtml.indexOf('Diagnostics')>=0);
 
 console.log('voice-acoustic-ui.test.js: ok');

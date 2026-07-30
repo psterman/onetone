@@ -133,7 +133,7 @@
       +'<button type="button" class="wb-howto-zone wb-howto-meta-row" data-wb-howto-channel="'+esc(kind)+'" data-wb-howto-focus="'+esc(meta2Focus)+'">'
       +'<span>'+esc(opts.meta2Lbl)+'</span><strong>'+esc(opts.meta2Val)+'</strong></button>'
       +'</div>'
-      +'<p class="wb-howto-card-tip">'+esc(opts.tip)+'</p>'
+      +'<button type="button" class="wb-howto-zone wb-howto-card-tip" data-wb-howto-channel="'+esc(kind)+'" data-wb-howto-focus="'+esc(mainFocus)+'">'+esc(opts.tip)+'</button>'
       +'</article>';
   }
 
@@ -277,7 +277,7 @@
       +'<strong class="wb-howto-card-value">'+esc(wakeMain)+'</strong>'
       +'</button>'
       +voicePhrasePanelHtml(vm)
-      +'<p class="wb-howto-card-tip">'+esc(t('homeWbHowToVoiceTip'))+'</p>'
+      +'<button type="button" class="wb-howto-zone wb-howto-card-tip" data-wb-howto-channel="voice" data-wb-howto-focus="wakePhrases">'+esc(t('homeWbHowToVoiceTip'))+'</button>'
       +'</article>'
       +howToCardHtml({
         kind:'camera',

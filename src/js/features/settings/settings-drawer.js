@@ -76,6 +76,9 @@
 
     if(panel==='keyWake') return 'keys';
 
+    // scenes 死壳：导航已迁 habits；兜底映射避免落到 settingsPanelScenes
+    if(panel==='scenes') return 'habits';
+
     return panel;
 
   }
@@ -673,6 +676,11 @@
 
     if(panel==='debug'){
 
+      try{
+        var mountDebugOverview=global.__otMountDebugOverviewIsland;
+        if(typeof mountDebugOverview==='function') mountDebugOverview();
+      }catch(err){ console.error('debug island mount',err); }
+
       hooks().startProcessUsagePoll();
 
       hooks().refreshProcessUsage();
@@ -691,39 +699,61 @@
 
     if(panel==='keys'){
 
-      try{
-        var mountKeys=global.__otMountKeysStatusIsland;
-        if(typeof mountKeys==='function') mountKeys();
-        var mountKeysWorkflow=global.__otMountKeysWorkflowIsland;
-        if(typeof mountKeysWorkflow==='function') mountKeysWorkflow();
-        var mountEditorDisplay=global.__otMountMappingEditorDisplayIsland;
-        if(typeof mountEditorDisplay==='function') mountEditorDisplay();
-        var mountFinishTiming=global.__otMountKeysFinishTimingIsland;
-        if(typeof mountFinishTiming==='function') mountFinishTiming();
-        var mountFinishMode=global.__otMountKeysFinishModeIsland;
-        if(typeof mountFinishMode==='function') mountFinishMode();
-        var mountTriggerMode=global.__otMountKeysTriggerModeIsland;
-        if(typeof mountTriggerMode==='function') mountTriggerMode();
-        var mountRecordCancel=global.__otMountRecordCancelBarIsland;
-        if(typeof mountRecordCancel==='function') mountRecordCancel();
-      }catch(err){ console.error('keys island mount',err); }
-
-      if(opts.deferHeavy){
-        var afterHeavy=opts.afterHeavy;
-        requestAnimationFrame(function(){
-          setTimeout(function(){
-            if(normalizePanel(ui.settingsPanel)!=='keys') return;
-            if(typeof afterHeavy==='function'){
-              try{ afterHeavy(); }
-              catch(err){ console.error('keys panel deferHeavy',err); }
-            }else{
-              refreshKeysPanel();
-            }
-          },0);
-        });
-      }else{
-        refreshKeysPanel();
+      // Two-phase defer (edit-habit 假死 fix):
+      // 1) mount islands after chrome paints
+      // 2) refresh / afterHeavy on a later tick — never stack ~14 mounts + syncEditor/render
+      var keysDeferHeavy=!!opts.deferHeavy;
+      var keysAfterHeavy=opts.afterHeavy;
+      function runKeysAfterMount(){
+        if(normalizePanel(ui.settingsPanel)!=='keys') return;
+        if(keysDeferHeavy){
+          if(typeof keysAfterHeavy==='function'){
+            try{ keysAfterHeavy(); }
+            catch(err){ console.error('keys panel deferHeavy',err); }
+          }else{
+            refreshKeysPanel();
+          }
+        }else{
+          refreshKeysPanel();
+        }
       }
+      function mountKeysIslands(){
+        if(normalizePanel(ui.settingsPanel)!=='keys') return;
+        try{
+          var mountKeys=global.__otMountKeysStatusIsland;
+          if(typeof mountKeys==='function') mountKeys();
+          var mountKeysWorkflow=global.__otMountKeysWorkflowIsland;
+          if(typeof mountKeysWorkflow==='function') mountKeysWorkflow();
+          var mountEditorDisplay=global.__otMountMappingEditorDisplayIsland;
+          if(typeof mountEditorDisplay==='function') mountEditorDisplay();
+          var mountFinishTiming=global.__otMountKeysFinishTimingIsland;
+          if(typeof mountFinishTiming==='function') mountFinishTiming();
+          var mountFinishMode=global.__otMountKeysFinishModeIsland;
+          if(typeof mountFinishMode==='function') mountFinishMode();
+          var mountFinishChrome=global.__otMountKeysFinishChromeIsland;
+          if(typeof mountFinishChrome==='function') mountFinishChrome();
+          var mountTriggerMode=global.__otMountKeysTriggerModeIsland;
+          if(typeof mountTriggerMode==='function') mountTriggerMode();
+          var mountTriggerConflict=global.__otMountKeysTriggerConflictIsland;
+          if(typeof mountTriggerConflict==='function') mountTriggerConflict();
+          var mountKeysFlow=global.__otMountKeysFlowChromeIsland;
+          if(typeof mountKeysFlow==='function') mountKeysFlow();
+          var mountKeysPills=global.__otMountKeysStatusPillsIsland;
+          if(typeof mountKeysPills==='function') mountKeysPills();
+          var mountKeysRecording=global.__otMountKeysRecordingFeedbackIsland;
+          if(typeof mountKeysRecording==='function') mountKeysRecording();
+          var mountKeysHub=global.__otMountKeysHubSchemeListIsland;
+          if(typeof mountKeysHub==='function') mountKeysHub();
+          var mountKeysAppStrip=global.__otMountKeysAppContextStripIsland;
+          if(typeof mountKeysAppStrip==='function') mountKeysAppStrip();
+          var mountKeysDisplay=global.__otMountKeysDisplayChromeIsland;
+          if(typeof mountKeysDisplay==='function') mountKeysDisplay();
+          var mountRecordCancel=global.__otMountRecordCancelBarIsland;
+          if(typeof mountRecordCancel==='function') mountRecordCancel();
+        }catch(err){ console.error('keys island mount',err); }
+        requestAnimationFrame(function(){ setTimeout(runKeysAfterMount,0); });
+      }
+      requestAnimationFrame(function(){ setTimeout(mountKeysIslands,0); });
 
     }else if(panel==='softPad'){
 
@@ -754,24 +784,42 @@
       var habitView=ui.habitView||'hub';
       if(habitView!=='wizard') ui.habitView='hub';
 
-      try{
-        var mountHabits=global.__otMountHabitHubListIsland;
-        if(typeof mountHabits==='function') mountHabits();
-        var mountHubChrome=global.__otMountHabitHubChromeIsland;
-        if(typeof mountHubChrome==='function') mountHubChrome();
-      }catch(err){ console.error('habit hub island mount',err); }
-
-      refreshHabitsPanel();
-
-    }else if(panel==='scenes'){
-
-      if(global.OneToneSceneModeHub) global.OneToneSceneModeHub.render();
+      // Defer habit island mount so drawer chrome paints before hub HTML (同 keys).
+      requestAnimationFrame(function(){
+        setTimeout(function(){
+          if(!isHabitsPanel()) return;
+          try{
+            var mountHabits=global.__otMountHabitHubListIsland;
+            if(typeof mountHabits==='function') mountHabits();
+            var mountHubChrome=global.__otMountHabitHubChromeIsland;
+            if(typeof mountHubChrome==='function') mountHubChrome();
+          }catch(err){ console.error('habit hub island mount',err); }
+          refreshHabitsPanel();
+        },0);
+      });
 
     }else if(panel==='sounds'){
 
       hooks().renderSoundSettingsPanel();
 
     }else if(panel==='voiceWake'){
+
+      // Defer voice island mounts so drawer chrome can paint first (同 keys 打开假死模式).
+      requestAnimationFrame(function(){
+        setTimeout(function(){
+          if(normalizePanel(ui.settingsPanel)!=='voiceWake') return;
+          try{
+            var mountVoiceStatus=global.__otMountVoiceStatusChromeIsland;
+            if(typeof mountVoiceStatus==='function') mountVoiceStatus();
+            var mountVoiceEngineTabs=global.__otMountVoiceEngineTabsIsland;
+            if(typeof mountVoiceEngineTabs==='function') mountVoiceEngineTabs();
+            var mountVoiceFlow=global.__otMountVoiceFlowChromeIsland;
+            if(typeof mountVoiceFlow==='function') mountVoiceFlow();
+            var mountVoiceAcoustic=global.__otMountVoiceAcousticIslands;
+            if(typeof mountVoiceAcoustic==='function') mountVoiceAcoustic();
+          }catch(err){ console.error('voice island mount',err); }
+        },0);
+      });
 
       if(enteringVoice){
 
@@ -804,6 +852,11 @@
       }
 
     }else if(panel==='camera'){
+
+      try{
+        var mountCameraFlow=global.__otMountCameraFlowChromeIsland;
+        if(typeof mountCameraFlow==='function') mountCameraFlow();
+      }catch(err){ console.error('camera island mount',err); }
 
       if(String(ui.habitScenarioReturnPanel||'')!=='camera'||!String(ui.habitScenarioReturnId||'').trim()){
         ui.cameraEditMode='global';

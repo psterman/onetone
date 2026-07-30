@@ -19,6 +19,21 @@
     return keysPanelVisible();
   }
 
+  function recordingUiSnapshot(){
+    var rec=global.OneToneMappingRecording;
+    var mode=rec&&rec.mode?rec.mode():'none';
+    var ipcPhase=rec&&rec.ipcPhase?rec.ipcPhase():(global.__otRecordIpcPhase||'idle');
+    var recording=false;
+    if(rec&&rec.isRecordingUi) recording=!!rec.isRecordingUi();
+    else{
+      var life=global.OneToneRecordIpcLifecycle;
+      recording=life&&life.isRecordingUi
+        ?!!life.isRecordingUi(mode,ipcPhase)
+        :(mode==='trigger'||mode==='target'||mode==='agentBinding');
+    }
+    return { mode:mode, ipcPhase:ipcPhase, recording:recording, pending:!!(rec&&rec.isPending&&rec.isPending()) };
+  }
+
   // Returns true when the user entered keys panel FROM an app scenario
   // (i.e. habitScenarioReturnId points to an app-scenario mapping).
   // When false, the keys panel is showing GLOBAL mappings only.
@@ -252,9 +267,9 @@
   }
 
   function buildKeysStatusProps(m){
-    var rec=global.OneToneMappingRecording;
-    var recMode=rec&&rec.mode?rec.mode():'none';
-    var recording=recMode==='trigger'||recMode==='target'||recMode==='agentBinding';
+    var snap=recordingUiSnapshot();
+    var recMode=snap.mode;
+    var recording=snap.recording;
     var capUi=global.OneToneAgentCapabilityUi;
     var codexCtx=capUi&&capUi.isCodexKeysEditing&&capUi.isCodexKeysEditing();
     var dirty=m?isEditorDirty():false;
@@ -398,10 +413,10 @@
       if(!trigLabel&&trig) trigLabel=friendlyKey(trig);
     }
     var dirty=isEditorDirty();
-    var rec=global.OneToneMappingRecording;
-    var recMode=rec&&rec.mode?rec.mode():'none';
-    var recPending=rec&&rec.isPending?rec.isPending():false;
-    var recording=recMode==='trigger'||recMode==='target'||recMode==='agentBinding';
+    var snap=recordingUiSnapshot();
+    var recMode=snap.mode;
+    var recPending=snap.pending;
+    var recording=snap.recording;
     var capUi=global.OneToneAgentCapabilityUi;
     var codexCtx=capUi&&capUi.isCodexKeysEditing&&capUi.isCodexKeysEditing();
     if(nameEl){
@@ -572,25 +587,49 @@
     host.innerHTML=model.modeHtml||'';
   }
 
-  function renderTriggerConflict(m){
-    var box=$('keysTriggerConflict');
-    if(!box) return;
+  function buildKeysTriggerConflictModel(m){
+    if(arguments.length===0){
+      m=core()&&core().selected?core().selected():null;
+    }
     var trig=core().editorTrigger?core().editorTrigger(m):((m&&m.triggerKey)||'').trim();
     var msg=previewKeyConflict('trigger',trig);
     if(!msg&&m&&core().schemeHasConflict&&core().schemeHasConflict(m)){
       msg=t('keysRecordConflictScheme');
     }
+    var mappingId=m&&m.id?String(m.id):'';
     if(!msg){
-      box.hidden=true;
-      box.innerHTML='';
-      return;
+      return {
+        html:'',
+        hidden:true,
+        mappingId:mappingId,
+        msg:'',
+        sig:'empty'
+      };
     }
-    box.hidden=false;
-    box.innerHTML='<span class="keys-trigger-conflict-text">'+esc(msg)+'</span>'
+    var html='<span class="keys-trigger-conflict-text">'+esc(msg)+'</span>'
       +'<div class="keys-trigger-conflict-actions">'
       +'<button type="button" class="keys-trigger-conflict-btn" data-keys-conflict-recommend="1">'+esc(t('keysConflictRecommend'))+'</button>'
       +'<button type="button" class="keys-trigger-conflict-btn" data-keys-conflict-view="1">'+esc(t('keysConflictView'))+'</button>'
       +'</div>';
+    return {
+      html:html,
+      hidden:false,
+      mappingId:mappingId,
+      msg:String(msg),
+      sig:[mappingId,msg,html].join('\0')
+    };
+  }
+
+  function renderTriggerConflict(m){
+    var box=$('keysTriggerConflict');
+    if(!box) return;
+    var model=buildKeysTriggerConflictModel(m);
+    if(global.__otKeysTriggerConflictMounted&&typeof global.__otKeysTriggerConflictSync==='function'){
+      global.__otKeysTriggerConflictSync();
+      return;
+    }
+    box.hidden=!!model.hidden;
+    box.innerHTML=model.html||'';
   }
 
   function saveCurrentScheme(){
@@ -665,12 +704,16 @@
       imePill.textContent=t('keysStatusImePill').replace('{val}',info.name);
       imePill.classList.toggle('is-on',info.name!==t('keysStatusUnset'));
     }
-    var rec=global.OneToneMappingRecording;
-    var mode=rec&&rec.mode?rec.mode():'none';
-    var recording=mode==='trigger'||mode==='target';
+    var snap=recordingUiSnapshot();
+    var mode=snap.mode;
+    var recording=snap.recording&&(mode==='trigger'||mode==='target'||mode==='agentBinding');
     if(recording){
+      var rec=global.OneToneMappingRecording;
       var wasOn=rec&&rec.wasEnabledBeforeRecording?rec.wasEnabledBeforeRecording():!!(m&&m.enabled);
-      if(activeLbl) activeLbl.textContent=mode==='target'?t('keysStatusRecordingTarget'):t('keysStatusRecordingTrigger');
+      if(activeLbl){
+        activeLbl.textContent=mode==='target'?t('keysStatusRecordingTarget')
+          :(mode==='agentBinding'?t('keysStatusRecordingCap','录制能力快捷键中'):t('keysStatusRecordingTrigger'));
+      }
       if(activeDot) activeDot.hidden=false;
       if(activePill){
         activePill.classList.add('is-recording');
@@ -714,62 +757,84 @@
     return false;
   }
 
-  function renderAppContextStrip(){
+  function buildKeysAppContextStripModel(){
+    var m=core()&&core().selected?core().selected():null;
+    var hide=shouldHideAppBindingStrip(m)||!m||!core().isSaved||!core().isSaved(m);
+    if(hide){
+      return {
+        hidden:true,
+        html:'',
+        mappingId:m&&m.id?String(m.id):'',
+        contextId:'',
+        sig:'hidden'
+      };
+    }
+    var rulesApi=appRules();
+    var ctxId=activeAppContextId();
+    var html='';
+    if(rulesApi&&rulesApi.renderContextChipsHtml){
+      html=rulesApi.renderContextChipsHtml(m,{
+        variant:'chip',
+        contextId:ctxId
+      })||'';
+    }else{
+      var presets=rulesApi&&rulesApi.behaviorPresets?rulesApi.behaviorPresets:[];
+      if(!presets.length&&global.OneToneAppTargetPresets&&Array.isArray(global.OneToneAppTargetPresets.presets)){
+        presets=global.OneToneAppTargetPresets.presets.map(function(p){ return {id:p.id}; });
+      }
+      var primaryId=m?String(m.appTargetId||'').trim():'';
+      var noneSelected=!ctxId&&!primaryId;
+      html='<button type="button" class="keys-app-chip keys-app-chip--none'+(noneSelected?' is-selected':'')+'" data-app-chip-none="1" role="radio" aria-checked="'+(noneSelected?'true':'false')+'" title="'+esc(t('keysAppChipNoneHint'))+'"><span>'+esc(t('keysAppChipNone'))+'</span></button>';
+      presets.forEach(function(p){
+        var icon=presetIcon(p.id);
+        var isSel=ctxId===p.id;
+        var isPri=m&&String(m.appTargetId||'')===p.id;
+        var name=rulesApi&&rulesApi.appDisplayName?rulesApi.appDisplayName(p.id):(function(){
+          var atp=global.OneToneAppTargetPresets;
+          var preset=atp&&atp.presetById?atp.presetById(p.id):null;
+          return preset&&preset.nameKey?t(preset.nameKey):p.id;
+        })();
+        html+='<button type="button" class="keys-app-chip'+(isSel?' is-selected':'')+(isPri?' is-primary':'')+'" data-app-context="'+esc(p.id)+'" role="radio" aria-checked="'+(isSel?'true':'false')+'" title="'+esc(name)+'">';
+        if(icon){
+          html+='<img class="keys-app-chip-icon" src="'+esc(icon)+'" alt="" decoding="async" />';
+        }
+        html+='<span>'+esc(name)+'</span></button>';
+      });
+    }
+    var mappingId=m&&m.id?String(m.id):'';
+    return {
+      hidden:false,
+      html:html,
+      mappingId:mappingId,
+      contextId:ctxId||'',
+      sig:[mappingId,ctxId||'',html].join('\0')
+    };
+  }
+
+  function applyKeysAppContextStripHost(model){
+    if(!model) model=buildKeysAppContextStripModel();
+    if(global.__otKeysAppContextStripMounted&&typeof global.__otKeysAppContextStripSync==='function'){
+      global.__otKeysAppContextStripSync();
+      return;
+    }
     var strip=$('keysAppContextStrip');
     var wrap=$('keysAppContextStripWrap');
     var bindingStrip=$('keysAppBindingStrip');
+    if(!strip||!wrap) return;
+    wrap.hidden=!!model.hidden;
+    if(bindingStrip) bindingStrip.hidden=!!model.hidden;
+    if(model.hidden) return;
+    strip.innerHTML=model.html||'';
+    var rulesApi=appRules();
+    if(rulesApi&&rulesApi.scheduleHydrateCustomRuleIcons) rulesApi.scheduleHydrateCustomRuleIcons();
+  }
+
+  function renderAppContextStrip(){
     var bindingLbl=$('keysAppBindingLbl');
     var addBtn=$('btnKeysAppChipAdd');
     if(bindingLbl) bindingLbl.textContent=t('keysAppBindingLbl');
     if(addBtn) addBtn.textContent=t('keysAppChipAdd');
-    if(!strip||!wrap) return;
-    var m=core()&&core().selected?core().selected():null;
-    // 应用场景 / Codex 已绑定目标应用；display:flex 需配合 [hidden] CSS。
-    if(shouldHideAppBindingStrip(m)){
-      wrap.hidden=true;
-      if(bindingStrip) bindingStrip.hidden=true;
-      return;
-    }
-    if(!m||!core().isSaved||!core().isSaved(m)){
-      wrap.hidden=true;
-      if(bindingStrip) bindingStrip.hidden=true;
-      return;
-    }
-    wrap.hidden=false;
-    if(bindingStrip) bindingStrip.hidden=false;
-    var rulesApi=appRules();
-    if(rulesApi&&rulesApi.renderContextChipsHtml){
-      strip.innerHTML=rulesApi.renderContextChipsHtml(m,{
-        variant:'chip',
-        contextId:activeAppContextId()
-      });
-      if(rulesApi.scheduleHydrateCustomRuleIcons) rulesApi.scheduleHydrateCustomRuleIcons();
-      return;
-    }
-    var ctxId=activeAppContextId();
-    var presets=rulesApi&&rulesApi.behaviorPresets?rulesApi.behaviorPresets:[];
-    if(!presets.length&&global.OneToneAppTargetPresets&&Array.isArray(global.OneToneAppTargetPresets.presets)){
-      presets=global.OneToneAppTargetPresets.presets.map(function(p){ return {id:p.id}; });
-    }
-    var primaryId=m?String(m.appTargetId||'').trim():'';
-    var noneSelected=!ctxId&&!primaryId;
-    var html='<button type="button" class="keys-app-chip keys-app-chip--none'+(noneSelected?' is-selected':'')+'" data-app-chip-none="1" role="radio" aria-checked="'+(noneSelected?'true':'false')+'" title="'+esc(t('keysAppChipNoneHint'))+'"><span>'+esc(t('keysAppChipNone'))+'</span></button>';
-    presets.forEach(function(p){
-      var icon=presetIcon(p.id);
-      var isSel=ctxId===p.id;
-      var isPri=m&&String(m.appTargetId||'')===p.id;
-      var name=rulesApi&&rulesApi.appDisplayName?rulesApi.appDisplayName(p.id):(function(){
-        var atp=global.OneToneAppTargetPresets;
-        var preset=atp&&atp.presetById?atp.presetById(p.id):null;
-        return preset&&preset.nameKey?t(preset.nameKey):p.id;
-      })();
-      html+='<button type="button" class="keys-app-chip'+(isSel?' is-selected':'')+(isPri?' is-primary':'')+'" data-app-context="'+esc(p.id)+'" role="radio" aria-checked="'+(isSel?'true':'false')+'" title="'+esc(name)+'">';
-      if(icon){
-        html+='<img class="keys-app-chip-icon" src="'+esc(icon)+'" alt="" decoding="async" />';
-      }
-      html+='<span>'+esc(name)+'</span></button>';
-    });
-    strip.innerHTML=html;
+    applyKeysAppContextStripHost(buildKeysAppContextStripModel());
   }
 
   function renderHabitSwitcher(){
@@ -856,11 +921,53 @@
     void selectedId;
   }
 
-  function renderKeysHub(){
+  function buildKeysHubSchemeListModel(){
+    if(!core()||!core().sorted){
+      return { html:'', count:0, cardHidden:true, selected:'', sig:'empty' };
+    }
+    var schemes=contextFilteredSchemes();
+    var selected=ensureContextSelection();
+    var html='';
+    if(!schemes.length){
+      html='<p class="keys-hub-empty">'+esc(t('keysWorkflowOverviewEmpty'))+'</p>';
+    }else{
+      var sorted=schemes.slice().sort(function(a,b){
+        if(a.id===selected) return -1;
+        if(b.id===selected) return 1;
+        var aSaved=core().isSaved&&core().isSaved(a);
+        var bSaved=core().isSaved&&core().isSaved(b);
+        if(aSaved!==bSaved) return aSaved?-1:1;
+        return (a.order||0)-(b.order||0);
+      });
+      html='<div class="keys-hub-scheme-group">'
+        +sorted.map(function(m){ return renderKeysHubSchemeRow(m,selected); }).join('')
+        +'</div>';
+    }
+    return {
+      html:html,
+      count:schemes.length,
+      cardHidden:false,
+      selected:selected||'',
+      sig:[selected||'',schemes.length,html].join('\0')
+    };
+  }
+
+  function applyKeysHubSchemeListHost(model){
+    if(!model) model=buildKeysHubSchemeListModel();
+    if(global.__otKeysHubSchemeListMounted&&typeof global.__otKeysHubSchemeListSync==='function'){
+      global.__otKeysHubSchemeListSync();
+      return;
+    }
     var schemeList=$('keysHubSchemeList');
-    var tplList=$('keysHubTemplateList');
     var card=$('keysHubCard');
     var countEl=$('keysHubCount');
+    if(card) card.hidden=!!model.cardHidden;
+    if(countEl) countEl.textContent=String(model.count||0);
+    if(schemeList) schemeList.innerHTML=model.html||'';
+  }
+
+  function renderKeysHub(){
+    var tplList=$('keysHubTemplateList');
     var titleLbl=$('keysHubTitleLbl');
     var tplLbl=$('keysHubTemplatesLbl');
     var tplCountEl=$('keysHubTemplatesCount');
@@ -877,34 +984,14 @@
     var addSchemeBtn=$('btnKeysHubAddScheme');
     if(addSchemeBtn) addSchemeBtn.textContent='+ '+t('addKeysDraft');
     if(aside) aside.setAttribute('aria-label',t('keysHubTitle'));
-    if(!schemeList) return;
-    if(!core()||!core().sorted){
-      schemeList.innerHTML='';
+    var schemeModel=buildKeysHubSchemeListModel();
+    applyKeysHubSchemeListHost(schemeModel);
+    if(schemeModel.cardHidden){
       if(tplList) tplList.innerHTML='';
-      if(card) card.hidden=true;
       renderCodexPadMapList('');
       return;
     }
-    var schemes=contextFilteredSchemes();
-    var selected=ensureContextSelection();
-    if(card) card.hidden=false;
-    if(countEl) countEl.textContent=String(schemes.length);
-    if(!schemes.length){
-      schemeList.innerHTML='<p class="keys-hub-empty">'+esc(t('keysWorkflowOverviewEmpty'))+'</p>';
-    }else{
-      var sorted=schemes.slice().sort(function(a,b){
-        if(a.id===selected) return -1;
-        if(b.id===selected) return 1;
-        var aSaved=core().isSaved&&core().isSaved(a);
-        var bSaved=core().isSaved&&core().isSaved(b);
-        if(aSaved!==bSaved) return aSaved?-1:1;
-        return (a.order||0)-(b.order||0);
-      });
-      schemeList.innerHTML='<div class="keys-hub-scheme-group">'
-        +sorted.map(function(m){ return renderKeysHubSchemeRow(m,selected); }).join('')
-        +'</div>';
-    }
-    renderCodexPadMapList(selected);
+    renderCodexPadMapList(schemeModel.selected);
     if(!tplList||!tplApi||!tplApi.list) return;
     var templates=tplApi.list();
     var m=core()&&core().selected?core().selected():null;
@@ -1138,55 +1225,70 @@
     var feedbackMain=$('keysRecordingFeedbackMain');
     var bar=$('recordCancelBar');
     if(!btn||!bar) return;
-    var rec=global.OneToneMappingRecording;
-    var mode=rec&&rec.mode?rec.mode():'none';
-    var recording=mode==='trigger'||mode==='target'||mode==='agentBinding';
+    var snap=recordingUiSnapshot();
+    var recording=snap.recording;
     var onKeys=keysPanelActive();
     var host=(onKeys&&recording&&feedbackMain)?feedbackMain:bar;
     if(btn.parentNode!==host) host.appendChild(btn);
   }
 
-  function renderRecordingFeedback(){
+  function buildKeysRecordingFeedbackModel(){
+    var snap=recordingUiSnapshot();
+    var mode=snap.mode;
+    var ipcPhase=snap.ipcPhase;
+    var recording=snap.recording;
+    var text='';
+    var previewKey='';
+    var conflictMsg='';
+    if(recording){
+      text=mode==='trigger'?t('keysRecordingTrigger')
+        :(mode==='agentBinding'?t('keysStatusRecordingCap','录制能力快捷键中'):t('keysRecordingTarget'));
+      if(mode==='trigger'&&ed()) previewKey=ed().getEditorTriggerKey?ed().getEditorTriggerKey():'';
+      if(mode==='target'&&ed()) previewKey=ed().getEditorTargetKey?ed().getEditorTargetKey():'';
+      conflictMsg=previewKeyConflict(mode,previewKey)||'';
+    }
+    var sig=[mode,ipcPhase,recording?'1':'0',text,conflictMsg].join('\0');
+    return {
+      mode:mode,
+      ipcPhase:ipcPhase,
+      recording:recording,
+      hidden:!recording,
+      text:text,
+      conflictText:conflictMsg,
+      conflictHidden:!conflictMsg,
+      conflictWarn:!!conflictMsg,
+      sig:sig
+    };
+  }
+
+  function applyKeysRecordingFeedbackHost(model){
+    if(!model) model=buildKeysRecordingFeedbackModel();
+    if(global.__otKeysRecordingFeedbackMounted&&typeof global.__otKeysRecordingFeedbackSync==='function'){
+      global.__otKeysRecordingFeedbackSync();
+      return;
+    }
     var wrap=$('keysRecordingFeedback');
     var text=$('keysRecordingFeedbackText');
     var conflict=$('keysRecordingConflict');
     if(!wrap||!text) return;
-    var rec=global.OneToneMappingRecording;
-    var mode=rec&&rec.mode?rec.mode():'none';
-    var recording=mode==='trigger'||mode==='target'||mode==='agentBinding';
-    wrap.hidden=!recording;
-    wrap.classList.toggle('is-trigger',mode==='trigger');
-    wrap.classList.toggle('is-target',mode==='target'||mode==='agentBinding');
-    if(!recording){
-      if(conflict){ conflict.hidden=true; conflict.textContent=''; }
-      ['habitKeyMapRowTrigger','habitKeyMapRowTarget'].forEach(function(id){
-        var row=$(id);
-        if(row) row.classList.remove('is-recording-active');
-      });
-      syncCancelButtonHost();
-      var mOff=core()&&core().selected?core().selected():null;
-      renderFlowStatusBar(mOff);
-      renderTriggerConflict(mOff);
-      if(global.OneToneKeysPageNav&&global.OneToneKeysPageNav.renderStepHints){
-        global.OneToneKeysPageNav.renderStepHints(mOff);
-      }
-      return;
+    wrap.hidden=!!model.hidden;
+    wrap.classList.toggle('is-trigger',model.mode==='trigger');
+    wrap.classList.toggle('is-target',model.mode==='target'||model.mode==='agentBinding');
+    text.textContent=model.text||'';
+    if(conflict){
+      conflict.hidden=!!model.conflictHidden;
+      conflict.textContent=model.conflictText||'';
+      conflict.classList.toggle('is-warn',!!model.conflictWarn);
     }
     var trigRow=$('habitKeyMapRowTrigger');
     var tgtRow=$('habitKeyMapRowTarget');
-    if(trigRow) trigRow.classList.toggle('is-recording-active',mode==='trigger');
-    if(tgtRow) tgtRow.classList.toggle('is-recording-active',mode==='target'||mode==='agentBinding');
-    text.textContent=mode==='trigger'?t('keysRecordingTrigger')
-      :(mode==='agentBinding'?t('keysStatusRecordingCap','录制能力快捷键中'):t('keysRecordingTarget'));
-    var previewKey='';
-    if(mode==='trigger'&&ed()) previewKey=ed().getEditorTriggerKey?ed().getEditorTriggerKey():'';
-    if(mode==='target'&&ed()) previewKey=ed().getEditorTargetKey?ed().getEditorTargetKey():'';
-    var conflictMsg=previewKeyConflict(mode,previewKey);
-    if(conflict){
-      conflict.hidden=!conflictMsg;
-      conflict.textContent=conflictMsg||'';
-      conflict.classList.toggle('is-warn',!!conflictMsg);
-    }
+    if(trigRow) trigRow.classList.toggle('is-recording-active',model.mode==='trigger');
+    if(tgtRow) tgtRow.classList.toggle('is-recording-active',model.mode==='target'||model.mode==='agentBinding');
+  }
+
+  function renderRecordingFeedback(){
+    var model=buildKeysRecordingFeedbackModel();
+    applyKeysRecordingFeedbackHost(model);
     syncCancelButtonHost();
     var m=core()&&core().selected?core().selected():null;
     renderFlowStatusBar(m);
@@ -1498,7 +1600,15 @@
     workflowTabView:workflowTabView,
     buildKeysWorkflowTabsModel:buildKeysWorkflowTabsModel,
     // P12b-6：启动手势分段宿主模型（单一来源）
-    buildKeysTriggerModeModel:buildKeysTriggerModeModel
+    buildKeysTriggerModeModel:buildKeysTriggerModeModel,
+    // P12b-8：启动键冲突提示
+    buildKeysTriggerConflictModel:buildKeysTriggerConflictModel,
+    // P12c-3：录制反馈
+    buildKeysRecordingFeedbackModel:buildKeysRecordingFeedbackModel,
+    // P12c-4：方案列表
+    buildKeysHubSchemeListModel:buildKeysHubSchemeListModel,
+    // P12c-5：应用上下文 chips
+    buildKeysAppContextStripModel:buildKeysAppContextStripModel
   };
   global.__otKeysStatusRead=function(){
     var m=core()&&core().selected?core().selected():null;

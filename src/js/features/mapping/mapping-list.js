@@ -1,4 +1,4 @@
-﻿(function(global){
+(function(global){
   'use strict';
   var OneToneMappingCore=global.OneToneMappingCore;
   var OneToneI18n=global.OneToneI18n;
@@ -216,12 +216,65 @@
     };
   }
 
-  function renderEditor(){
-    const triggerEl=$('triggerView');
-    const targetEl=$('targetView');
+  // P12c-6：triggerDisplay/targetDisplay empty/icon/recording/trace chrome（文案仍归 P12b-1）
+  function buildKeysDisplayChromeModel(){
+    const model=buildEditorDisplayModel();
+    const m=OneToneMappingCore.selected();
+    var recApi=global.OneToneMappingRecording;
+    var recMode=recApi&&typeof recApi.mode==='function'?recApi.mode():'none';
+    const trace=OneToneMappingCore.formatTriggerTrace?OneToneMappingCore.formatTriggerTrace(m):'';
+    var mappingId=m&&m.id?String(m.id):'';
+    return {
+      triggerEmpty:!!model.triggerEmpty,
+      targetEmpty:!!model.targetEmpty,
+      triggerRaw:model.triggerRaw||'',
+      targetRaw:model.targetRaw||'',
+      triggerRecording:recMode==='trigger',
+      targetRecording:recMode==='target'||recMode==='agentBinding',
+      traceText:trace||'',
+      traceShow:!!trace,
+      mappingId:mappingId,
+      recMode:recMode,
+      sig:[mappingId,recMode,model.triggerRaw||'',model.targetRaw||'',trace||''].join('\0')
+    };
+  }
+
+  function applyKeysDisplayChromeHost(chrome){
+    if(!chrome) chrome=buildKeysDisplayChromeModel();
+    if(global.__otKeysDisplayChromeMounted&&typeof global.__otKeysDisplayChromeSync==='function'){
+      global.__otKeysDisplayChromeSync();
+      return;
+    }
     const triggerDisp=$('triggerDisplay');
     const targetDisp=$('targetDisplay');
     const traceEl=$('triggerTrace');
+    if(triggerDisp){
+      triggerDisp.classList.toggle('empty',!!chrome.triggerEmpty);
+      triggerDisp.classList.toggle('is-recording',!!chrome.triggerRecording);
+      if(global.OneToneKeyIcons&&global.OneToneKeyIcons.syncDisplayIcon){
+        global.OneToneKeyIcons.syncDisplayIcon(triggerDisp,chrome.triggerRaw||'');
+      }
+    }
+    if(targetDisp){
+      targetDisp.classList.toggle('empty',!!chrome.targetEmpty);
+      targetDisp.classList.toggle('is-recording',!!chrome.targetRecording);
+    }
+    if(traceEl){
+      if(chrome.traceShow){
+        traceEl.textContent=chrome.traceText||'';
+        traceEl.classList.add('show');
+        traceEl.hidden=false;
+      }else{
+        traceEl.textContent='';
+        traceEl.classList.remove('show');
+        traceEl.hidden=true;
+      }
+    }
+  }
+
+  function renderEditor(){
+    const triggerEl=$('triggerView');
+    const targetEl=$('targetView');
     const m=OneToneMappingCore.selected();
     const model=buildEditorDisplayModel();
     const trigRaw=model.triggerRaw;
@@ -233,30 +286,12 @@
       if(triggerEl) triggerEl.textContent=model.triggerLabel;
       if(targetEl) targetEl.textContent=model.targetLabel;
     }
-    if(triggerDisp) triggerDisp.classList.toggle('empty',!trigRaw);
-    if(targetDisp) targetDisp.classList.toggle('empty',!tgt);
-    if(global.OneToneKeyIcons){
-      if(global.OneToneKeyIcons.syncDisplayIcon){
-        if(triggerDisp) global.OneToneKeyIcons.syncDisplayIcon(triggerDisp,trigRaw);
-      }
-    }
+    applyKeysDisplayChromeHost(buildKeysDisplayChromeModel());
     if(global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.applyRecognitionOverlay){
       global.OneToneAgentCapabilityUi.applyRecognitionOverlay();
     }
     if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.applyTriggerHeroPreview){
       global.OneToneCodexMicroPadUi.applyTriggerHeroPreview(m);
-    }
-    const trace=OneToneMappingCore.formatTriggerTrace(m);
-    if(traceEl){
-      if(trace){
-        traceEl.textContent=trace;
-        traceEl.classList.add('show');
-        traceEl.hidden=false;
-      }else{
-        traceEl.textContent='';
-        traceEl.classList.remove('show');
-        traceEl.hidden=true;
-      }
     }
     var inKeysPanel=global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.keysPanelActive&&global.OneToneKeysPanelUi.keysPanelActive();
     var tgtLbl=tgt?t('btnRerecordTarget'):t('btnRecordTarget');
@@ -295,6 +330,8 @@
     listHasRows:listHasRows,
     syncTimingRanges:function(list){ hooks().syncAllTimingRanges(list||$('mappingList')); },
     // P12b-1：编辑器 trigger/target 只读文案模型
-    buildEditorDisplayModel:buildEditorDisplayModel
+    buildEditorDisplayModel:buildEditorDisplayModel,
+    // P12c-6：display empty/icon/recording/trace chrome
+    buildKeysDisplayChromeModel:buildKeysDisplayChromeModel
   };
 })((typeof window!=='undefined')?window:globalThis);

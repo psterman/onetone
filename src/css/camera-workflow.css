@@ -1546,6 +1546,37 @@
   color:#b45309;
 }
 
+.camera-pro-hard-rule{
+  margin:0 0 4px;
+  font-size:15px;
+  font-weight:800;
+  line-height:1.35;
+  color:var(--on-surface);
+}
+
+.camera-pro-send-guard-list{
+  margin:8px 0 0;
+  padding:0 0 0 1.15em;
+  display:grid;
+  gap:6px;
+  font-size:12px;
+  font-weight:600;
+  line-height:1.4;
+  color:var(--on-surface-muted);
+}
+
+.camera-pro-send-guard.is-highlight{
+  outline:2px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  outline-offset:2px;
+}
+
+.camera-pro-safety-ctas{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+}
+
 .camera-pro-card .camera-coarse-gaze-grid{
   margin-top:4px;
 }

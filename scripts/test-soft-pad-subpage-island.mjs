@@ -92,6 +92,7 @@ const src = readFileSync(join(root, 'src/js/features/agent/soft-pad-hub-ui.js'),
 const API = globalThis.OneToneSoftPadHub;
 
 console.log('[soft-pad-subpage] 模型:');
+check('buildSoftPadFourPanelModel 已导出', typeof API.buildSoftPadFourPanelModel === 'function');
 check('buildSoftPadSubpageModel 已导出', typeof API.buildSoftPadSubpageModel === 'function');
 check('getSelectedSoftPadMappingForSubpage 已导出', typeof API.getSelectedSoftPadMappingForSubpage === 'function');
 check('getSoftPadSubpagePaintOpts 已导出', typeof API.getSoftPadSubpagePaintOpts === 'function');
@@ -101,6 +102,9 @@ let model = API.buildSoftPadSubpageModel();
 check('hub 时 clear=true', model.clear === true && model.mode === 'clear');
 check('hub 时 panel 空', !model.panel);
 check('sig 非空', typeof model.sig === 'string' && model.sig.length > 0);
+
+const fourPanel = API.buildSoftPadFourPanelModel();
+check('fourPanel defaultView 存在', typeof fourPanel.defaultView === 'string' && fourPanel.defaultView.length > 0);
 
 // openSubpage is not easily callable without full UI; poke softPadView via paint path after select.
 // Simulate view by calling openSubpage if available, else inspect source guards.
@@ -115,7 +119,9 @@ state.selectedMappingId = 'm1';
 
 console.log('[soft-pad-subpage] 源码护栏:');
 const softPadJs = src;
+check('导出 buildSoftPadFourPanelModel', softPadJs.includes('buildSoftPadFourPanelModel: buildSoftPadFourPanelModel'));
 check('导出 buildSoftPadSubpageModel', softPadJs.includes('buildSoftPadSubpageModel: buildSoftPadSubpageModel'));
+check('subpage model 读 fourPanel model', /function buildSoftPadSubpageModel\([\s\S]*?buildSoftPadFourPanelModel/.test(softPadJs));
 check('applySoftPadSubpageHost 岛守卫', softPadJs.includes('function applySoftPadSubpageHost') && softPadJs.includes('__otSoftPadSubpageSync'));
 check('paintSubpage 岛守卫', /function paintSubpage\([\s\S]*?__otSoftPadSubpageMounted/.test(softPadJs));
 check('clearSubpage 不摧毁岛 root', /function clearSubpage\([\s\S]*?__otSoftPadSubpageMounted/.test(softPadJs) && /function clearSubpage\([\s\S]*?replaceChildren/.test(softPadJs));

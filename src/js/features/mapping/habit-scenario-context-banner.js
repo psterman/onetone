@@ -69,12 +69,20 @@
         break;
       }
     }
-    if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('keys');
-    render();
-    // Global keys: never show Codex UI — clear any leftover hosts.
-    setTimeout(function(){
-      if(global.OneToneAgentCapabilityUi) global.OneToneAgentCapabilityUi.mountKeys();
-    },60);
+    if(global.OneToneSettingsDrawer){
+      if(!ui().drawerOpen&&typeof global.OneToneSettingsDrawer.open==='function'){
+        global.OneToneSettingsDrawer.open({panel:'keys'});
+      }else{
+        global.OneToneSettingsDrawer.setPanel('keys');
+      }
+    }
+    // Defer full render — setPanel already schedules keys mounts; stacking used to 假死.
+    requestAnimationFrame(function(){
+      setTimeout(function(){
+        render();
+        if(global.OneToneAgentCapabilityUi) global.OneToneAgentCapabilityUi.mountKeys();
+      },60);
+    });
   }
 
   function openGlobalVoice(opts){
@@ -137,24 +145,44 @@
           if(hooks.renderKeyFinishFlowPanel) hooks.renderKeyFinishFlowPanel();
           if(global.OneToneKeysPanelUi) global.OneToneKeysPanelUi.render();
         }
-        render();
-        if(global.OneToneAgentCapabilityUi) global.OneToneAgentCapabilityUi.mountKeys();
-        var p=global.OneToneConfigPersist;
-        if(p&&p.saveAsync) p.saveAsync();
-        else if(p&&p.save) p.save();
-        try{
-          if(global.OneToneIpc&&global.OneToneIpc.invoke){
-            global.OneToneIpc.invoke('cmd_app_log',{line:'fe openScenarioKeysEdit heavy done id='+id}).catch(function(){});
-          }
-        }catch(_){}
+        // Split full render / Codex mount / save off the keys-refresh tick (编辑习惯假死).
+        requestAnimationFrame(function(){
+          setTimeout(function(){
+            try{
+              if(normalizePanelSafe()!=='keys') return;
+              render();
+              if(global.OneToneAgentCapabilityUi) global.OneToneAgentCapabilityUi.mountKeys();
+              var p=global.OneToneConfigPersist;
+              if(p&&p.saveAsync) p.saveAsync();
+              else if(p&&p.save) p.save();
+              if(global.OneToneIpc&&global.OneToneIpc.invoke){
+                global.OneToneIpc.invoke('cmd_app_log',{line:'fe openScenarioKeysEdit heavy done id='+id}).catch(function(){});
+              }
+            }catch(err2){
+              try{ console.error('openScenarioKeysEdit late',err2); }catch(_){}
+            }
+          },0);
+        });
       }catch(err){
         try{ console.error('openScenarioKeysEdit',err); }catch(_){}
       }
     }
 
+    function normalizePanelSafe(){
+      var drawer=global.OneToneSettingsDrawer;
+      if(drawer&&drawer.normalizePanel) return drawer.normalizePanel(ui().settingsPanel||'');
+      return String(ui().settingsPanel||'');
+    }
+
     if(global.OneToneSettingsDrawer){
-      // Paint keys panel chrome first, then load pack/pad (same pattern as habit hub).
-      global.OneToneSettingsDrawer.setPanel('keys',{deferHeavy:true,afterHeavy:finishHeavy});
+      // Ensure drawer is open (home「编辑」used to only setPanel → 无响应).
+      // Paint keys chrome first, then load pack/pad (same pattern as habit hub).
+      var keysOpts={panel:'keys',deferHeavy:true,afterHeavy:finishHeavy};
+      if(!ui().drawerOpen&&typeof global.OneToneSettingsDrawer.open==='function'){
+        global.OneToneSettingsDrawer.open(keysOpts);
+      }else{
+        global.OneToneSettingsDrawer.setPanel('keys',keysOpts);
+      }
     }else{
       finishHeavy();
     }

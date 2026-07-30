@@ -103,6 +103,7 @@
       renderKeyFinishFlowPanel:deps.renderKeyFinishFlowPanel,
       renderVoiceModeSwitch:deps.renderVoiceModeSwitch,
       renderHome:deps.renderHome,
+      shouldSkipHomeRender:deps.shouldSkipHomeRender,
       renderListenRuntime:deps.renderListenRuntime,
       renderUpdateUi:deps.renderUpdateUi,
       frontendLog:deps.frontendLog,

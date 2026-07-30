@@ -27,6 +27,8 @@ console.log('[workflow-islands] P14b SoftPad:');
 check('buildSoftPadWorkflowModel 已导出', softPadJs.includes('buildSoftPadWorkflowModel: buildSoftPadWorkflowModel'));
 check('renderAppSwitcher 岛守卫', softPadJs.includes('__otSoftPadWorkflowMounted') && softPadJs.includes('__otSoftPadWorkflowSync'));
 check('renderSchemeList 岛守卫', softPadJs.includes('__otSoftPadWorkflowSync'));
+check('renderSchemeList 岛上不双写 title/count', /__otSoftPadWorkflowMounted[\s\S]*?__otSoftPadWorkflowSync\(\);\s*return;/.test(softPadJs) && !/__otSoftPadWorkflowMounted[\s\S]*?e\.titleLbl\.textContent[\s\S]*?__otSoftPadWorkflowSync/.test(softPadJs));
+check('bindChrome 岛上跳过 status enable', /e\.enable && !global\.__otSoftPadStatusMounted/.test(softPadJs));
 check('main.tsx SoftPad workflow mount', mainTsx.includes('__otMountSoftPadWorkflowIsland'));
 check('soft-pad-hub render 挂载 workflow', softPadJs.includes('__otMountSoftPadWorkflowIsland'));
 

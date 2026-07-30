@@ -3,6 +3,7 @@
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
   var STEPS=['wake','recognize','send'];
+  var lastFlowVm=null;
 
   var FLOW_NODE_IDS={
     wake:{btn:'voiceFlowNodeWake',hint:'voiceFlowNodeWakeHint'},
@@ -20,17 +21,79 @@
     return root.querySelector('[data-voice-subpage="'+step+'"]');
   }
 
-  function syncFlowNodes(step){
+  function resolveStepHints(vm){
+    var V=global.OneToneVoiceSettingsViewModel;
+    if(!V||!vm) return {wake:'',recognize:'',send:''};
+    var wakeHint=vm.loading?t('homeLiveLoading'):V.resolveDisplayWakePhrase(vm).display;
+    var wake=global.OneToneVoiceStepWake;
+    if(!vm.loading&&wake&&wake.isScenarioVoiceEdit&&wake.isScenarioVoiceEdit()){
+      var cmd=global.OneToneHabitScenarioVoiceCommand;
+      if(cmd&&cmd.feedbackInfo){
+        var info=cmd.feedbackInfo();
+        if(info&&info.wakeHint) wakeHint=info.wakeHint;
+      }
+    }
+    var recHint=vm.loading?t('homeLiveLoading'):vm.modeLabel;
+    if(!vm.loading&&vm.mode==='vosk'&&global.OneToneVoiceWake&&global.OneToneVoiceWake.currentVoskPreset){
+      var preset=global.OneToneVoiceWake.currentVoskPreset();
+      var labelApi=global.OneToneVoiceModelLabels;
+      if(labelApi&&labelApi.presetLabel) recHint+=' · '+labelApi.presetLabel(preset);
+    }
+    var sendHint=vm.loading?t('homeLiveLoading'):V.resolveOutputSummaryLabel(vm);
+    return {wake:wakeHint,recognize:recHint,send:sendHint};
+  }
+
+  function buildVoiceFlowChromeModel(vm){
+    if(vm) lastFlowVm=vm;
+    vm=vm||lastFlowVm||{};
+    var step=global.OneToneVoicePageState&&global.OneToneVoicePageState.getStep
+      ?global.OneToneVoicePageState.getStep()
+      :'wake';
+    var hints=resolveStepHints(vm);
+    var sig=[step,hints.wake||'',hints.recognize||'',hints.send||''].join('\0');
+    return {
+      activeStep:step,
+      wakeHint:hints.wake||'',
+      recognizeHint:hints.recognize||'',
+      sendHint:hints.send||'',
+      sig:sig
+    };
+  }
+
+  function applyVoiceFlowChromeHost(model){
+    if(!model) model=buildVoiceFlowChromeModel();
+    if(global.__otVoiceFlowChromeMounted&&typeof global.__otVoiceFlowChromeSync==='function'){
+      global.__otVoiceFlowChromeSync();
+      return;
+    }
     STEPS.forEach(function(page){
       var meta=FLOW_NODE_IDS[page];
       if(!meta) return;
       var btn=$(meta.btn);
       if(btn){
-        var on=page===step;
+        var on=page===model.activeStep;
         btn.classList.toggle('is-active',on);
         btn.setAttribute('aria-selected',on?'true':'false');
       }
+      var hintEl=$(meta.hint);
+      if(hintEl){
+        var key=page+'Hint';
+        hintEl.textContent=model[key]||'';
+      }
     });
+    var wake=$('voiceSubtabWakeHint');
+    var rec=$('voiceSubtabRecognizeHint');
+    var send=$('voiceSubtabSendHint');
+    if(wake) wake.textContent=model.wakeHint||'';
+    if(rec) rec.textContent=model.recognizeHint||'';
+    if(send) send.textContent=model.sendHint||'';
+  }
+
+  function syncFlowNodes(step){
+    // step cards callers pass step; page state should already match.
+    var model=buildVoiceFlowChromeModel();
+    if(step) model.activeStep=step;
+    applyVoiceFlowChromeHost(model);
   }
 
   function syncActive(step){
@@ -103,45 +166,12 @@
     }
   }
 
-  function resolveStepHints(vm){
-    var V=global.OneToneVoiceSettingsViewModel;
-    if(!V||!vm) return {wake:'',recognize:'',send:''};
-    var wakeHint=vm.loading?t('homeLiveLoading'):V.resolveDisplayWakePhrase(vm).display;
-    var wake=global.OneToneVoiceStepWake;
-    if(!vm.loading&&wake&&wake.isScenarioVoiceEdit&&wake.isScenarioVoiceEdit()){
-      var cmd=global.OneToneHabitScenarioVoiceCommand;
-      if(cmd&&cmd.feedbackInfo){
-        var info=cmd.feedbackInfo();
-        if(info&&info.wakeHint) wakeHint=info.wakeHint;
-      }
-    }
-    var recHint=vm.loading?t('homeLiveLoading'):vm.modeLabel;
-    if(!vm.loading&&vm.mode==='vosk'&&global.OneToneVoiceWake&&global.OneToneVoiceWake.currentVoskPreset){
-      var preset=global.OneToneVoiceWake.currentVoskPreset();
-      var labelApi=global.OneToneVoiceModelLabels;
-      if(labelApi&&labelApi.presetLabel) recHint+=' · '+labelApi.presetLabel(preset);
-    }
-    var sendHint=vm.loading?t('homeLiveLoading'):V.resolveOutputSummaryLabel(vm);
-    return {wake:wakeHint,recognize:recHint,send:sendHint};
-  }
-
   function renderStepHints(vm){
-    var hints=resolveStepHints(vm);
-    var wake=$('voiceSubtabWakeHint');
-    var rec=$('voiceSubtabRecognizeHint');
-    var send=$('voiceSubtabSendHint');
-    if(wake) wake.textContent=hints.wake;
-    if(rec) rec.textContent=hints.recognize;
-    if(send) send.textContent=hints.send;
-    STEPS.forEach(function(page){
-      var meta=FLOW_NODE_IDS[page];
-      if(!meta) return;
-      var hintEl=$(meta.hint);
-      if(hintEl) hintEl.textContent=hints[page]||'';
-    });
+    applyVoiceFlowChromeHost(buildVoiceFlowChromeModel(vm));
   }
 
   function render(vm){
+    if(vm) lastFlowVm=vm;
     syncActive(global.OneToneVoicePageState?global.OneToneVoicePageState.getStep():'wake');
     renderStepHints(vm);
   }
@@ -149,6 +179,8 @@
   global.OneToneVoicePageNav={
     bind:bind,
     render:render,
-    syncActive:syncActive
+    syncActive:syncActive,
+    // P6d：flow nodes / hints chrome
+    buildVoiceFlowChromeModel:buildVoiceFlowChromeModel
   };
 })((typeof window!=='undefined')?window:globalThis);

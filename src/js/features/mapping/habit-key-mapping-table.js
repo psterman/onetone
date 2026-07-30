@@ -71,18 +71,51 @@
     el.className='home-key-map-key habit-flow-finish-preview'+(fin.saved?' is-set':' is-empty');
   }
 
-  function syncRowStatus(){
-    ensureMounted();
-    var m=core()&&core().selected?core().selected():null;
+  function buildKeysStatusPillsModel(m){
+    if(arguments.length===0){
+      m=core()&&core().selected?core().selected():null;
+    }
+    var pills={};
+    var parts=[];
+    [['Trigger','trigger'],['Target','target'],['Cancel','cancel'],['Finish','finish']].forEach(function(pair){
+      var st=rowStatusForStep(m,pair[1]);
+      pills[pair[1]]={text:st.text,kind:st.kind};
+      parts.push(pair[1]+':'+(st.text||'')+':'+(st.kind||''));
+    });
+    var mappingId=m&&m.id?String(m.id):'';
+    var hl=highlightStep||'';
+    return {
+      trigger:pills.trigger,
+      target:pills.target,
+      cancel:pills.cancel,
+      finish:pills.finish,
+      highlightStep:hl,
+      mappingId:mappingId,
+      sig:[mappingId,hl].concat(parts).join('\0')
+    };
+  }
+
+  function applyKeysStatusPillsHost(model){
+    if(!model) model=buildKeysStatusPillsModel();
+    if(global.__otKeysStatusPillsMounted&&typeof global.__otKeysStatusPillsSync==='function'){
+      global.__otKeysStatusPillsSync();
+      return;
+    }
     [['Trigger','trigger'],['Target','target'],['Cancel','cancel'],['Finish','finish']].forEach(function(pair){
       var stEl=$('habitKeyMapSt'+pair[0]);
       var row=$('habitKeyMapRow'+pair[0]);
       if(!stEl) return;
-      var st=rowStatusForStep(m,pair[1]);
+      var st=model[pair[1]]||{text:'—',kind:'none'};
       stEl.textContent=st.text;
-      stEl.className='habit-flow-step-status is-'+st.kind;
-      if(row) row.classList.toggle('is-highlight',highlightStep===pair[1]);
+      stEl.className='habit-flow-step-status is-'+(st.kind||'none');
+      if(row) row.classList.toggle('is-highlight',model.highlightStep===pair[1]);
     });
+  }
+
+  function syncRowStatus(){
+    ensureMounted();
+    var m=core()&&core().selected?core().selected():null;
+    applyKeysStatusPillsHost(buildKeysStatusPillsModel(m));
     syncFinishPreview(m);
     if(global.OneToneSceneFlowSummary&&m){
       var preview=global.OneToneAppBehaviorRules?global.OneToneAppBehaviorRules.getActiveAppContextId():'';
@@ -272,6 +305,8 @@
     highlightRow:highlightRow,
     bindEvents:bindEvents,
     openTargetKeyPicker:openTargetKeyPicker,
-    startTargetRecordForKeysPanel:startTargetRecordForKeysPanel
+    startTargetRecordForKeysPanel:startTargetRecordForKeysPanel,
+    // P12c-2：状态 pills sync-push 模型
+    buildKeysStatusPillsModel:buildKeysStatusPillsModel
   };
 })((typeof window!=='undefined')?window:globalThis);

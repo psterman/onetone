@@ -5,6 +5,7 @@ export interface RecordCancelBarModel {
   show: boolean;
   label: string;
   mode: string;
+  ipcPhase?: string;
   mappingId: string;
   sig: string;
 }
@@ -44,7 +45,10 @@ export function buildRecordCancelBarModel(): RecordCancelBarModel {
 }
 
 export function cancelBarSignature(model: RecordCancelBarModel): string {
-  return model.sig || `${model.mode}\0${model.show}\0${model.label}\0${model.mappingId}`;
+  return (
+    model.sig ||
+    `${model.mode}\0${model.ipcPhase || ''}\0${model.show}\0${model.label}\0${model.mappingId}`
+  );
 }
 
 export function cancelDraftOrRecording(): void {

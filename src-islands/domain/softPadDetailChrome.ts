@@ -52,6 +52,20 @@ export function softPadDetailChromeSignature(model: SoftPadDetailChromeModel): s
   );
 }
 
+/** P14i: detail panel / stage / subHost 显隐（宿主不在 bar React root 内）。 */
+export function applySoftPadDetailShellAttrs(model: SoftPadDetailChromeModel): void {
+  const detailPanel = document.getElementById('softPadDetailPanel');
+  const subHost = document.getElementById('softPadSubpageHost');
+  const stage = document.getElementById('softPadHubStage');
+  const open = !!model.detailOpen;
+  if (detailPanel) detailPanel.hidden = !open;
+  if (subHost) {
+    subHost.classList.toggle('is-open', open);
+    subHost.removeAttribute('hidden');
+  }
+  if (stage) stage.classList.toggle('is-detail-open', open);
+}
+
 export function closeSoftPadSubpage(): void {
   const api = legacyHub();
   if (typeof api.closeSubpage !== 'function') return;

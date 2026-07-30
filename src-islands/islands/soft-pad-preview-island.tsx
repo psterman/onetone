@@ -23,6 +23,9 @@ const EMPTY: SoftPadPreviewModel = {
   view: 'hub',
   epoch: 0,
   sig: 'empty',
+  previewEmpty: 'noMapping',
+  emptyReason: 'noMapping',
+  emptyHtml: '',
 };
 
 type Win = Window & {
@@ -55,10 +58,19 @@ function applyPaint(model: SoftPadPreviewModel): void {
   const el = paintTarget();
   if (!el) return;
   if (model.clear || !model.mappingId) {
+    if (model.emptyHtml) {
+      el.innerHTML = model.emptyHtml;
+      return;
+    }
     paintSoftPadPreviewTarget(el, null);
     return;
   }
-  if (model.skipPaint) return;
+  if (model.skipPaint) {
+    if (model.emptyHtml && model.emptyReason === 'unavailable' && !el.querySelector('.codex-micro-pad.soft-pad-preview')) {
+      el.innerHTML = model.emptyHtml;
+    }
+    return;
+  }
   const mapping = getSelectedSoftPadMappingForPreview();
   paintSoftPadPreviewTarget(el, mapping, model.force ? { forceFull: true } : undefined);
 }

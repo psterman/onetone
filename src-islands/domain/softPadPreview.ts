@@ -11,6 +11,9 @@ export interface SoftPadPreviewModel {
   view: string;
   epoch: number;
   sig: string;
+  previewEmpty?: string;
+  emptyReason?: string;
+  emptyHtml?: string;
 }
 
 interface LegacySoftPadHub {
@@ -33,6 +36,9 @@ const EMPTY: SoftPadPreviewModel = {
   view: 'hub',
   epoch: 0,
   sig: 'empty',
+  previewEmpty: 'noMapping',
+  emptyReason: 'noMapping',
+  emptyHtml: '',
 };
 
 function legacyHub(): LegacySoftPadHub {

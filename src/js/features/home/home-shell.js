@@ -1,4 +1,4 @@
-﻿(function(global){
+(function(global){
   'use strict';
   var state=global.OneToneState.state;
   var ui=global.OneToneState.ui;
@@ -70,32 +70,35 @@
     const showKeyEntry=entryVis.showKey;
     const showVoiceEntry=entryVis.showVoice;
 
-    const hs=global.OneToneHomeLive.computeState();
-    shellState=hs;
-    const unlocked=hooks().isHomeAdvancedUnlocked();
-    const icon=$('homeStatusIcon');
-    const title=$('homeStatusTitle');
-    if(icon){
-      icon.className='home-status-icon';
-      if(hs.statusMode==='ready') icon.classList.add('is-ready');
-      else if(hs.statusMode==='active') icon.classList.add('is-active');
-      else if(hs.statusMode==='error') icon.classList.add('is-error');
-      else if(hs.statusMode==='warn') icon.classList.add('is-warn');
-    }
-    if(title) title.textContent=hs.statusLine;
-    const statusSummary=$('homeStatusSummary');
-    if(statusSummary){
-      const modeKey=userEntryMode==='keys'?'homeEntryModeKeys':userEntryMode==='voice'?'homeEntryModeVoice':'homeEntryModeBoth';
-      statusSummary.textContent=t(modeKey);
-      statusSummary.hidden=false;
-      statusSummary.setAttribute('aria-hidden','false');
-    }
     const focusMode=hooks().isHomeFirstRunFocusMode();
     const useWorkbench=!!($('homeWorkbench'));
     const appEl=document.querySelector('.app');
     if(appEl) appEl.classList.toggle('is-workbench',useWorkbench);
-    if(!useWorkbench) placeHomeHabitsBtn(unlocked);
-    else{
+
+    // Phase1：有 workbench 时状态/CTA 只走 buildHomeWorkbenchModel → workbench paint，不写平行壳文案
+    const hs=global.OneToneHomeLive.computeState();
+    shellState=hs;
+    const unlocked=hooks().isHomeAdvancedUnlocked();
+    if(!useWorkbench){
+      const icon=$('homeStatusIcon');
+      const title=$('homeStatusTitle');
+      if(icon){
+        icon.className='home-status-icon';
+        if(hs.statusMode==='ready') icon.classList.add('is-ready');
+        else if(hs.statusMode==='active') icon.classList.add('is-active');
+        else if(hs.statusMode==='error') icon.classList.add('is-error');
+        else if(hs.statusMode==='warn') icon.classList.add('is-warn');
+      }
+      if(title) title.textContent=hs.statusLine;
+      const statusSummary=$('homeStatusSummary');
+      if(statusSummary){
+        const modeKey=userEntryMode==='keys'?'homeEntryModeKeys':userEntryMode==='voice'?'homeEntryModeVoice':'homeEntryModeBoth';
+        statusSummary.textContent=t(modeKey);
+        statusSummary.hidden=false;
+        statusSummary.setAttribute('aria-hidden','false');
+      }
+      placeHomeHabitsBtn(unlocked);
+    }else{
       const cta=$('btnHomeCta');
       if(cta) cta.hidden=true;
     }

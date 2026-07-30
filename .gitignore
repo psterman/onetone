@@ -21,6 +21,13 @@ settings.json
 voice_input_settings.json
 *.log
 logs/*.log
+logs/*.json
+logs/*.jsonl
+
+# 本地 AI agent / skills 安装产物
+.agents/
+.codex/skills/
+skills-lock.json
 
 # 编辑器与系统
 .idea/
@@ -44,4 +51,3 @@ src/vendor/mediapipe/wasm/
 src/vendor/mediapipe/*.task
 src/vendor/mediapipe/vision_bundle.mjs
 src/vendor/mediapipe/vision_bundle.mjs.map
-

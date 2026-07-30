@@ -173,9 +173,40 @@
     return 'is-warn';
   }
 
-  function renderAlerts(vm){
+  function renderAlerts(vm,model){
     var host=$('wbHomeAlerts');
     if(!host) return;
+    // Phase1：model.repair / needsSetup CTA 优先于 alerts 启发式
+    if(model&&model.repair){
+      var repairAction={
+        type:'openSettings',
+        panel:model.repair.panel||'debug',
+        debugMode:model.repair.debugMode||'repair'
+      };
+      host.hidden=false;
+      host.className='wb-home-alert is-error';
+      host._lastAlertAction=repairAction;
+      host.innerHTML=
+        '<span class="wb-home-alert-text">'+esc(model.statusLine||t('homeWbAlertRecogError'))+'</span>'
+        +'<button type="button" class="wb-home-alert-action" data-wb-alert-action="1">'
+        +esc(model.repair.label||t('debugFocusRepair'))+'</button>';
+      return;
+    }
+    if(model&&model.needsSetup&&model.cta){
+      var setupAction={
+        type:'openSettings',
+        panel:model.cta.panel||'keys',
+        focus:model.cta.focus||null
+      };
+      host.hidden=false;
+      host.className='wb-home-alert is-warn';
+      host._lastAlertAction=setupAction;
+      host.innerHTML=
+        '<span class="wb-home-alert-text">'+esc(model.statusLine||t('homeSetupStart'))+'</span>'
+        +'<button type="button" class="wb-home-alert-action" data-wb-alert-action="1">'
+        +esc(model.cta.label||t('homeSetupStart'))+'</button>';
+      return;
+    }
     var alertsApi=global.OneToneHomeWorkbenchAlerts;
     var alert=alertsApi&&alertsApi.pickPrimaryAlert?alertsApi.pickPrimaryAlert(buildAlertInput(vm)):null;
     if(!alert){
@@ -319,59 +350,46 @@
     return s;
   }
 
-  function renderHeroFlowSummary(vm){
+  /** Phase1：五问条只读 model（状态 / 触发 / 目标 / 下一步 / 修复）。 */
+  function renderHeroFlowSummary(model){
     var host=$('wbHeroFlowSummary');
     if(!host) return;
     try{
-    var mode=normalizeHeroMode(heroMode);
-    var paused=!!(vm.runtime&&vm.runtime.paused);
-    var live=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating);
-    var listening=!paused&&!live&&((vm.summary&&vm.summary.statusMode==='listening')||vm.vpState==='LISTENING');
-    var target=String(vm.targetLabel||'').trim()||t('homeV9TargetUnknown');
-    var habit=String(vm.habitName||'').trim();
-    if(habit&&habit!==target) target=habit+' · '+target;
-    var trigger;
-    if(mode==='keys'){
-      trigger=vm.triggerKey&&vm.triggerKey!==t('homeLiveUnset')?vm.triggerKey:t('homeWbHeroModeKeys');
-    }else if(mode==='camera'){
-      var cam=cameraPresenceSnapshot();
-      trigger=cameraChannelLabel(cam)||t('homeWbHeroModeCamera');
-    }else{
-      trigger=vm.wakePrimary&&vm.wakePrimary!==t('homeLiveUnset')?vm.wakePrimary:t('homeWbHeroModeVoice');
-    }
+    model=model||{};
+    var token=String(model.statusToken||'idle');
     var statusCls='';
-    var status;
-    if(paused){
-      status=t('homeWbListenResume');
-      statusCls='is-warn';
-    }else if(mode==='camera'){
-      var camSt=cameraPresenceSnapshot();
-      status=cameraChannelLabel(camSt)||t('homeWbStatusIdle');
-      if(camSt&&(camSt.running||camSt.status==='running')) statusCls='is-live';
-    }else if(live){
-      status=t('homeWbTriggerLive')||t('homeWbTriggerHeroLive');
-      statusCls='is-live';
-    }else if(listening){
-      status=t('homeWbVoiceWaitingWake')||t('homeWbStatusReady');
-      statusCls='is-live';
-    }else if(vm.summary&&vm.summary.statusMode==='error'){
-      status=t('homeWbDiagRecogError')||t('homeV9EngineOffline');
-      statusCls='is-warn';
-    }else{
-      status=t('homeWbStatusReady');
+    if(token==='error'||token==='paused'||token==='needsSetup') statusCls='is-warn';
+    else if(token==='dictating'||token==='listening'||token==='triggered') statusCls='is-live';
+    var status=model.statusLine||token;
+    var trigger=model.triggerLabel||t('homeLiveUnset');
+    var mode=normalizeHeroMode(heroMode);
+    if(mode==='camera'){
+      var cam=cameraPresenceSnapshot();
+      trigger=cameraChannelLabel(cam)||trigger||t('homeWbHeroModeCamera');
+    }else if(mode==='voice'){
+      var vm=model.rawVm||{};
+      if(vm.wakePrimary&&vm.wakePrimary!==t('homeLiveUnset')) trigger=vm.wakePrimary;
     }
-    var finish=String(vm.finishPill||vm.finishText||'').trim()||t('homeLiveUnset');
+    var target=model.targetLabel||t('homeLiveUnset');
+    var next=model.nextActionLabel||(model.cta&&model.cta.label)||t('homeSetupStart');
+    var repair=model.repair?model.repair.label:'';
     function cell(lbl,val,cls){
       return '<div class="wb-hero-flow-item">'
         +'<span class="wb-hero-flow-lbl">'+esc(lbl)+'</span>'
         +'<strong class="wb-hero-flow-val'+(cls?' '+cls:'')+'" title="'+esc(val)+'">'+esc(val)+'</strong>'
         +'</div>';
     }
-    host.innerHTML=
-      cell(t('homeWbFlowTarget'),target,'')+
-      cell(t('homeWbFlowTrigger'),trigger,'')+
+    var html=
       cell(t('homeWbFlowStatus'),status,statusCls)+
-      cell(t('homeWbFlowFinish'),finish,'');
+      cell(t('homeWbFlowTrigger'),trigger,'')+
+      cell(t('homeWbFlowTarget'),target,'')+
+      cell(t('homeWbStatusWork'),next,model.cta&&model.cta.mode==='repair'?'is-warn':'');
+    if(repair){
+      html+=cell(t('debugFocusRepair'),repair,'is-warn');
+    }
+    host.innerHTML=html;
+    host.setAttribute('data-wb-status-token',token);
+    host.setAttribute('data-wb-from-model','1');
     }catch(err){
       try{ console.error('wbHeroFlowSummary',err); }catch(_){}
     }
@@ -502,7 +520,7 @@
     var stats=global.OneToneHomeWorkbenchStats
       ?global.OneToneHomeWorkbenchStats.buildHeroStats(vm)
       :{uptime:'—',opCount:'—',topTarget:'—',topShortcut:'—',latency:'—'};
-    renderHeroFlowSummary(vm);
+    // Hero 五问由 render() 用 model 单独绘制；此处只画 pills/stats
     renderHeroPills(vm,stats);
     renderHeroStats(stats);
   }
@@ -974,6 +992,94 @@
     return vm;
   }
 
+  var lastWorkbenchSig='';
+  var homeRenderForce=false;
+
+  function peekHomeModel(opts){
+    if(global.OneToneHomeWorkbenchModel&&typeof global.OneToneHomeWorkbenchModel.build==='function'){
+      return global.OneToneHomeWorkbenchModel.build(opts||{});
+    }
+    return null;
+  }
+
+  function shouldSkipHomeRender(){
+    if(homeRenderForce) return false;
+    if(global.__otHomeWorkbenchGuardEnabled===false) return false;
+    var model=peekHomeModel();
+    if(!model||!model.ready||!model.sig) return false;
+    return model.sig===lastWorkbenchSig;
+  }
+
+  function forceHomeRender(){
+    homeRenderForce=true;
+    lastWorkbenchSig='';
+  }
+
+  function applyWorkbenchIaChrome(model){
+    if(!model) return;
+    var shell=$('homeWorkbench')||$('appWorkbenchShell');
+    if(shell){
+      shell.setAttribute('data-wb-status',model.statusToken||'idle');
+      shell.setAttribute('data-wb-card-cap',String(model.cardHardCap||5));
+      if(model.cta&&model.cta.mode) shell.setAttribute('data-wb-cta-mode',model.cta.mode);
+      if(model.needsSetup) shell.setAttribute('data-wb-needs-setup','1');
+      else shell.removeAttribute('data-wb-needs-setup');
+    }
+    var alertHost=$('wbHomeAlerts');
+    if(alertHost&&model.repair){
+      alertHost.setAttribute('data-wb-repair','1');
+    }else if(alertHost){
+      alertHost.removeAttribute('data-wb-repair');
+    }
+  }
+
+  var lastPublishedStatusSig='';
+  function publishRuntimeStatusProtocol(model){
+    if(!model) return;
+    // Sticky simulate override wins so tray/HUD/home stay aligned during 模拟异常.
+    var override=global.__otRuntimeStatusOverride;
+    var snap=(override&&override.statusToken)?override:(model.protocol||null);
+    if(!snap&&global.OneToneRuntimeStatusLexicon&&global.OneToneRuntimeStatusLexicon.protocolSnapshot){
+      // Fallback only — prefer model.protocol so publish never rewrites hero copy.
+      snap=global.OneToneRuntimeStatusLexicon.protocolSnapshot(model);
+    }
+    if(!snap||!snap.statusToken) return;
+    global.__otRuntimeStatusProtocol=snap;
+    // Cache five-question surface for maintenance quick panel (must not rebuild model there).
+    try{
+      var tFn=global.OneToneI18n&&global.OneToneI18n.t?global.OneToneI18n.t:function(k){ return k; };
+      global.__otWorkbenchFiveSnapshot=[
+        [tFn('homeWbFlowStatus'),snap.statusText||model.statusLine||snap.statusToken||'—'],
+        [tFn('homeWbFlowTrigger'),snap.triggerText||model.triggerLabel||'—'],
+        [tFn('homeWbFlowTarget'),snap.targetText||model.targetLabel||'—'],
+        [tFn('homeWbStatusWork'),model.nextActionLabel||(model.cta&&model.cta.label)||'—'],
+        [tFn('debugFocusRepair'),snap.repairText||(model.repair&&model.repair.label)||tFn('debugQuickCtrlNoRepair')]
+      ];
+    }catch(_){}
+    var sig=[
+      snap.statusToken,
+      snap.statusText||'',
+      snap.triggerText||'',
+      snap.targetText||'',
+      snap.repairText||'',
+      snap.canPause?'1':'0',
+      snap.canResume?'1':'0',
+      snap.lastEventText||''
+    ].join('\0');
+    if(sig===lastPublishedStatusSig) return;
+    lastPublishedStatusSig=sig;
+    try{
+      if(typeof global.dispatchEvent==='function'){
+        global.dispatchEvent(new CustomEvent('ot:runtime-status',{detail:snap}));
+      }
+    }catch(_){}
+    try{
+      if(global.OneToneIpc&&typeof global.OneToneIpc.invoke==='function'){
+        global.OneToneIpc.invoke('cmd_runtime_status_protocol',snap).catch(function(){});
+      }
+    }catch(_){}
+  }
+
   function render(){
     if(!global.OneToneHomeV9||!global.OneToneHomeV9.buildViewModel) return;
     if(global.OneToneQuickStart&&global.OneToneQuickStart.isOpen&&global.OneToneQuickStart.isOpen()) return;
@@ -985,11 +1091,22 @@
         micApi.loadMicDevices().catch(function(){});
       }
     }
-    var vm=enrichViewModel(global.OneToneHomeV9.buildViewModel());
+    var model=peekHomeModel({force:homeRenderForce});
+    homeRenderForce=false;
+    var vm=model&&model.rawVm?model.rawVm:enrichViewModel(global.OneToneHomeV9.buildViewModel());
+    if(model&&model.sig){
+      if(global.__otHomeWorkbenchGuardEnabled!==false&&model.sig===lastWorkbenchSig&&!model.force){
+        return;
+      }
+      lastWorkbenchSig=model.sig;
+    }
+    applyWorkbenchIaChrome(model);
+    publishRuntimeStatusProtocol(model);
     if(global.vp9&&global.vp9.updateState) global.vp9.updateState(vm.vpState);
     renderNavSidebar(vm);
     renderOverview(vm);
-    renderAlerts(vm);
+    renderAlerts(vm,model);
+    renderHeroFlowSummary(model);
     renderCommandCard(vm);
     renderFinishSummary(vm);
     renderQuickActions();
@@ -1019,24 +1136,34 @@
   function bindNav(){
     var nav=$('wbLeftNav');
     if(!nav) return;
+    var ia=global.OneToneShellIaConvergence;
+    if(ia&&ia.NAV){
+      Object.keys(ia.NAV).forEach(function(key){
+        var btn=nav.querySelector('[data-wb-nav="'+key+'"]');
+        var row=ia.NAV[key];
+        if(!btn||!row) return;
+        btn.setAttribute('data-wb-deep',row.deep?'1':'0');
+        btn.setAttribute('data-wb-pro',row.pro?'1':'0');
+        if(row.home) btn.setAttribute('data-wb-home','1');
+      });
+    }
     nav.addEventListener('click',function(e){
       var btn=e.target.closest&&e.target.closest('[data-wb-nav]');
       if(!btn) return;
       var action=btn.getAttribute('data-wb-nav');
-      if(action==='home'){
+      var row=ia&&ia.resolve?ia.resolve(action):null;
+      // Phase2：一级 nav 只认 shell-ia NAV（无死 fallback）
+      if(!row) return;
+      if(row.home){
         if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.close) global.OneToneSettingsDrawer.close();
         syncNavActiveState('home');
         return;
       }
-      if(action==='schemes'){ openSettings({panel:'habits'}); return; }
-      if(action==='triggers'){ openSettings({panel:'keys'}); return; }
-      if(action==='softPad'){ openSettings({panel:'softPad'}); return; }
-      if(action==='voice'){ openSettings({panel:'voiceWake'}); return; }
-      if(action==='camera'){ openSettings({panel:'camera'}); return; }
-      if(action==='sounds'){ openSettings({panel:'sounds'}); return; }
-      if(action==='general'){ openSettings({panel:'basic'}); return; }
-      if(action==='maintenance'){ openSettings({panel:'debug', debugMode:'repair'}); return; }
-      if(action==='runtime'){ openSettings({panel:'debug', debugMode:'overview'}); return; }
+      if(row.panel){
+        var opts={panel:row.panel};
+        if(row.debugMode) opts.debugMode=row.debugMode;
+        openSettings(opts);
+      }
     });
   }
 
@@ -1191,6 +1318,9 @@
     var searchInput=$('wbCommandSearchInput');
     if(searchInput) searchInput.placeholder=t('homeWbCmdSearchPlaceholder');
     renderQuickActions();
+    if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.forceHomeRender){
+      global.OneToneHomeWorkbench.forceHomeRender();
+    }
     if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.render) global.OneToneHomeWorkbench.render();
   }
 
@@ -1201,6 +1331,11 @@
     syncNavActiveState:syncNavActiveState,
     buildPerf:buildPerf,
     enrichViewModel:enrichViewModel,
+    buildHomeWorkbenchModel:function(opts){
+      return peekHomeModel(opts);
+    },
+    shouldSkipHomeRender:shouldSkipHomeRender,
+    forceHomeRender:forceHomeRender,
     renderTriggerDiagBlocks:renderTriggerDiagBlocks,
     startCompatProbe:startCompatProbe,
     getHeroMode:function(){ return normalizeHeroMode(heroMode); },
@@ -1209,6 +1344,7 @@
       if(global.OneToneHomeWorkbenchCompat&&msg){
         global.OneToneHomeWorkbenchCompat.store(msg.mappingId,msg);
       }
+      forceHomeRender();
       render();
       renderTriggerDiagBlocks();
     }

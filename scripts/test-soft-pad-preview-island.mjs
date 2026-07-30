@@ -97,7 +97,10 @@ check('sig 非空', typeof model.sig === 'string' && model.sig.length > 0);
 
 state.selectedMappingId = null;
 model = API.buildSoftPadPreviewModel();
-check('无选中时 clear+hidden', model.clear === true && model.hidden === true);
+check('无选中时 clear=true', model.clear === true);
+check('无选中时 previewEmpty=noMapping', model.previewEmpty === 'noMapping');
+check('无选中时 emptyHtml', typeof model.emptyHtml === 'string' && model.emptyHtml.includes('soft-pad-preview-empty'));
+check('无选中时可不藏预览空态', model.hidden === false || model.hidden === true);
 
 const map = API.getSelectedSoftPadMappingForPreview();
 check('无选中时 mapping 读桥为 null', map == null);

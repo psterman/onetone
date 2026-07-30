@@ -4549,6 +4549,19 @@
     outer.classList.toggle('is-editing-key', from.classList.contains('is-editing-key'));
   }
 
+  function softPadExperienceChrome(panelId, m) {
+    var Hub = global.OneToneSoftPadHub;
+    if (!Hub || typeof Hub.softPadPanelExperienceHtml !== 'function') return '';
+    try {
+      var entry = m && m.id
+        ? { mapping: m, padEnabled: !!(m.codexMicroPad && m.codexMicroPad.enabled) }
+        : undefined;
+      return Hub.softPadPanelExperienceHtml(panelId, entry) || '';
+    } catch (_) {
+      return '';
+    }
+  }
+
   function renderSoftPadLayoutPanel(container, m, opts) {
     opts = opts || {};
     container = resolveSoftPadSubpagePaintHost(container);
@@ -4564,6 +4577,7 @@
       return;
     }
     container.innerHTML =
+      softPadExperienceChrome('layout', m) +
       '<div class="soft-pad-layout-shell">' +
       '<div class="soft-pad-layout-editor" data-soft-pad-layout-editor="1"></div>' +
       '<details class="soft-pad-layout-actions" data-soft-pad-layout-tools="1">' +
@@ -4591,6 +4605,7 @@
     container.classList.add('is-editing-key');
     mirrorSoftPadSubpageChrome(container);
     bindSoftPadLightPanelEvents(container, m, pad, Object.assign({}, opts, { panel: 'layout' }));
+    try { global.__otSoftPadLayoutShellMounted = true; } catch (_) {}
     var focusId = pickDefaultLayoutKey(m);
     // Open editor immediately — never leave the right pane blank.
     requestAnimationFrame(function () {
@@ -4683,6 +4698,7 @@
       return;
     }
     container.innerHTML =
+      softPadExperienceChrome('presentation', m) +
       '<div class="codex-pad-mgr__section">' +
       '<p class="codex-pad-mgr__label">' + esc(t('softPadSkinLbl', '外观风格')) + '</p>' +
       '<p class="codex-pad-mgr__hint">' +
@@ -4698,6 +4714,7 @@
     container.classList.remove('is-editing-key');
     mirrorSoftPadSubpageChrome(container);
     bindSoftPadLightPanelEvents(container, m, pad, Object.assign({}, opts, { panel: 'presentation' }));
+    try { global.__otSoftPadPresentationMounted = true; } catch (_) {}
   }
 
   /** Soft Pad show-mode for hub「何时显示」dropdown. */
@@ -5089,6 +5106,7 @@
     var pad = m.codexMicroPad;
     var mode = resolveSoftPadShowMode(pad);
     container.innerHTML =
+      softPadExperienceChrome('runtime', m) +
       '<div class="soft-pad-runtime-show">' +
       '<p class="codex-pad-mgr__label">' + esc(t('softPadShowModeLbl', '显示方式')) + '</p>' +
       '<select class="soft-pad-runtime-show__select" data-act="showMode" aria-label="' +
@@ -5116,6 +5134,7 @@
     container.classList.remove('is-editing-key');
     mirrorSoftPadSubpageChrome(container);
     bindSoftPadLightPanelEvents(container, m, pad, Object.assign({}, opts, { panel: 'runtime' }));
+    try { global.__otSoftPadRuntimeMounted = true; } catch (_) {}
   }
 
   /** Agent subpage — advanced status lights; fill immediately (user entered intentionally). */
@@ -5127,6 +5146,7 @@
     var pad = m.codexMicroPad;
     var token = opts.agentLoadToken != null ? opts.agentLoadToken : opts.token;
     container.innerHTML =
+      softPadExperienceChrome('agent', m) +
       '<div class="codex-pad-mgr__agent-connect" data-lazy-agent="1">' +
       '<p class="codex-pad-mgr__label">' +
       esc(t('softPadAgentPanelTitle', '更多')) +
@@ -5300,7 +5320,7 @@
         softPadPanelChanged(m, opts);
       });
     }
-    var showModeEl = body.querySelector('[data-act="showMode"]');
+    var showModeEl = body.querySelector('select[data-act="showMode"]');
     if (showModeEl) {
       showModeEl.addEventListener('change', function () {
         if (isBusy()) {
@@ -5315,6 +5335,58 @@
         softPadPanelChanged(m, opts);
       });
     }
+    body.querySelectorAll('button[data-act="showMode"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (isBusy()) return;
+        var cur = resolveSoftPadShowMode(pad);
+        if (cur === 'hidden') {
+          markBusy(280);
+          applySoftPadShowMode(m, 'follow');
+          var sel = body.querySelector('select[data-act="showMode"]');
+          if (sel) sel.value = 'follow';
+          syncSoftPadShowModeChrome(body, 'follow', pad);
+          softPadPanelChanged(m, opts);
+          return;
+        }
+        var focusSel = body.querySelector('select[data-act="showMode"]');
+        if (focusSel && typeof focusSel.focus === 'function') {
+          try { focusSel.focus(); } catch (_) {}
+        }
+      });
+    });
+    body.querySelectorAll('[data-act="focusLayoutKey"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (isBusy()) return;
+        openEditKeycap(m, pickDefaultLayoutKey(m), { mode: 'inline' });
+      });
+    });
+    body.querySelectorAll('[data-act="focusSkin"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (isBusy()) return;
+        var skin = body.querySelector('[data-pad-skin-opt]');
+        if (skin && typeof skin.focus === 'function') {
+          try { skin.focus(); } catch (_) {}
+        }
+        if (skin && typeof skin.scrollIntoView === 'function') {
+          try { skin.scrollIntoView({ block: 'nearest' }); } catch (_) {}
+        }
+      });
+    });
+    body.querySelectorAll('[data-act="focusAgent"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (isBusy()) return;
+        var agentBody = body.querySelector('[data-lazy-agent-body]');
+        if (agentBody && typeof agentBody.scrollIntoView === 'function') {
+          try { agentBody.scrollIntoView({ block: 'nearest' }); } catch (_) {}
+        }
+        if (agentBody && typeof agentBody.focus === 'function') {
+          try {
+            if (!agentBody.hasAttribute('tabindex')) agentBody.setAttribute('tabindex', '-1');
+            agentBody.focus();
+          } catch (_) {}
+        }
+      });
+    });
     var numLockEl = body.querySelector('[data-act="numlock"]');
     if (numLockEl) {
       numLockEl.addEventListener('change', function () {

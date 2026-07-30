@@ -165,6 +165,8 @@ pub struct AppState {
     pub log_ring: Mutex<VecDeque<String>>,
     pub runtime_events: onetone_logic::runtime_event::RuntimeEventRing,
     pub coach_hud_session_dismissed: Mutex<bool>,
+    /// Shared home/HUD/tray status protocol snapshot from frontend (`statusToken`…).
+    pub runtime_status_protocol: Mutex<Option<serde_json::Value>>,
     pub acoustic_voice: voice_acoustic_runtime::AcousticVoiceRuntime,
     pub audio_frame_bus: audio_frame_bus::AudioFrameBus,
 }
@@ -282,6 +284,7 @@ pub fn run() {
         log_ring: Mutex::new(VecDeque::new()),
         runtime_events: onetone_logic::runtime_event::RuntimeEventRing::new(),
         coach_hud_session_dismissed: Mutex::new(false),
+        runtime_status_protocol: Mutex::new(None),
         acoustic_voice: voice_acoustic_runtime::AcousticVoiceRuntime::new(),
         audio_frame_bus: audio_frame_bus::AudioFrameBus::new(),
     });
@@ -723,6 +726,7 @@ pub fn run() {
             ipc::cmd_tray_action,
             ipc::cmd_tray_menu_present,
             ipc::cmd_tray_sync_mic,
+            ipc::cmd_runtime_status_protocol,
             ipc::cmd_autostart_get,
             ipc::cmd_autostart_set,
             ipc::cmd_mic_list,

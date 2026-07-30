@@ -223,8 +223,28 @@ assert.strictEqual(Api.canExecuteCameraAction('pressEsc','openPalm').ok,true);
 assert.strictEqual(Api.canExecuteCameraAction('pressEsc','wave').ok,true);
 assert.strictEqual(Api.canExecuteCameraAction('pressEsc','ok').ok,true);
 
-// DOMContentLoaded must not have been required for these pure helpers.
-assert.ok(!listeners.DOMContentLoaded||listeners.DOMContentLoaded.length===1,
-  'module may register init listener but tests do not fire it');
+// #4b Send Guard model + bind-time rejection of send-class tokens.
+assert.equal(typeof Api.buildCameraSendGuardModel,'function');
+assert.equal(typeof Api.isSendClassAction,'function');
+var guard=Api.buildCameraSendGuardModel();
+assert.strictEqual(guard.allowsDirectSend,false);
+assert.strictEqual(guard.visionOutcome,'pendingConfirm');
+assert.strictEqual(guard.pendingActionIsNotSendConfirm,true);
+assert.ok(Array.isArray(guard.confirmSources)&&guard.confirmSources.indexOf('key')>=0);
+assert.ok(Api.isSendClassAction('send'));
+assert.ok(Api.isSendClassAction('agent:stopOrSendDictation'));
+assert.ok(!Api.isSendClassAction('pressEsc'));
+assert.ok(!Api.isSendClassAction('agent:openAgent'));
+assert.strictEqual(Api.normalizePrefs({shakeHead:'send'}).shakeHead,'none','send prefs normalize to none');
+assert.strictEqual(Api.normalizePrefs({deliberateBlink:'agent:stopOrSendDictation'}).deliberateBlink,'none');
 
-console.log('camera-presence-actions.test.js: ok');
+Api.dispatchAction('send','blink').then(function(r){
+  assert.strictEqual(r.ok,false);
+  assert.strictEqual(r.reason,'send_guard');
+  assert.ok(!listeners.DOMContentLoaded||listeners.DOMContentLoaded.length===1,
+    'module may register init listener but tests do not fire it');
+  console.log('camera-presence-actions.test.js: ok');
+}).catch(function(err){
+  console.error(err);
+  process.exit(1);
+});

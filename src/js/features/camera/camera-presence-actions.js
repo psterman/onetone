@@ -263,13 +263,41 @@
 
   function normalizeAction(v){
     var s=String(v||'none').trim();
+    // #4b Send Guard：视觉绑定永不接受 send-class 动作。
+    if(isSendClassAction(s)) return 'none';
     if(isAgentActionToken(s)){
       var id=s.slice(6).trim();
+      if(isSendClassAction('agent:'+id)) return 'none';
       var A=global.OneToneAgentActions;
       if(A&&A.actionById&&A.actionById(id)) return 'agent:'+id;
       return 'none';
     }
     return ACTIONS[s]?s:'none';
+  }
+
+  /** #4b：产品态 Send Guard（pendingAction 延后执行 ≠ 发送确认）。 */
+  function isSendClassAction(action){
+    var s=String(action||'').trim().toLowerCase();
+    if(!s||s==='none') return false;
+    if(s==='send'||s==='submit'||s==='stoporsend'||s==='stoporsenddictation') return true;
+    if(s.indexOf('agent:')===0){
+      var id=s.slice(6);
+      return id==='stoporsenddictation'||id==='send'||id==='submit'||id.indexOf('send')>=0;
+    }
+    return s.indexOf('send')>=0||s.indexOf('submit')>=0;
+  }
+
+  function buildCameraSendGuardModel(){
+    return {
+      allowsDirectSend:false,
+      visionOutcome:'pendingConfirm',
+      confirmSources:['key','voice','button','helloPin'],
+      ruleText:t('cameraProSendGuardRule','发送不会因单个视觉动作直接发出。不允许单视觉直送。'),
+      ruleShort:t('cameraProSendGuardRuleShort','不允许单视觉直送'),
+      // mid-risk pendingAction delay is not a send-confirm gate
+      pendingActionIsNotSendConfirm:true,
+      allowedProCtas:['rules','probe','preview']
+    };
   }
 
   function normalizeTriggers(raw,fallbackActions){
@@ -1586,6 +1614,12 @@
 
   function dispatchAction(action,source,opts){
     opts=opts||{};
+    // #4b：视觉路径禁止 send-class（normalize 也会压成 none）。
+    if(isSendClassAction(action)){
+      toast(t('cameraProSendGuardRuleShort','不允许单视觉直送'));
+      logPresence('block send-class '+String(source||'')+' action='+String(action||''));
+      return Promise.resolve({ok:false,reason:'send_guard',visionOutcome:'pendingConfirm'});
+    }
     action=normalizeAction(action);
     source=String(source||'');
     if(action==='none') return Promise.resolve({ok:true,action:'none'});
@@ -1604,6 +1638,7 @@
     }
 
     var risk=actionRiskLevel(action);
+    // mid-risk pendingAction = delayed execute; NOT send-confirm / pendingConfirm.
     if(risk==='mid'&&!opts.immediate){
       cancelPendingAction();
       setPendingPreview(action,source);
@@ -3048,6 +3083,8 @@
     canExecuteCameraAction:canExecuteCameraAction,
     shouldThrottleCameraAction:shouldThrottleCameraAction,
     actionRiskLevel:actionRiskLevel,
+    buildCameraSendGuardModel:buildCameraSendGuardModel,
+    isSendClassAction:isSendClassAction,
     applyRecommendedPresencePrefs:applyRecommendedPresencePrefs,
     recommendedPresencePrefs:recommendedPresencePrefs,
     resolveVoiceActivateKey:resolveVoiceActivateKey,

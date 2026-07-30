@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use tauri::Emitter;
+
 use crate::AppState;
 
 #[tauri::command]
@@ -33,4 +35,17 @@ pub fn cmd_tray_menu_present(
 #[tauri::command]
 pub fn cmd_tray_sync_mic(app: tauri::AppHandle) {
     crate::tray::refresh_tray_visual_forced(&app);
+}
+
+/// Home workbench publishes unified runtime status for tray / HUD.
+#[tauri::command]
+pub fn cmd_runtime_status_protocol(
+    app: tauri::AppHandle,
+    state: tauri::State<Arc<AppState>>,
+    payload: serde_json::Value,
+) {
+    *state.runtime_status_protocol.lock() = Some(payload.clone());
+    crate::tray::refresh_menu_data(&app);
+    crate::coach_hud::push_state(&app, state.inner());
+    let _ = app.emit("runtime_status_protocol", payload);
 }

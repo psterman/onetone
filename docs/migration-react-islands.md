@@ -1,6 +1,6 @@
 # React Islands 渐进迁移契约（OneTone / voice-pilot）
 
-> 阶段状态：✅ P0–P15a + P12b-1～6 + **P14c** + **P14d** + **P14e** + **P14f** + **P14g** + **P14h** 工程轨；✅ §8.5 项 1–13；#14–#25 待人工。最后更新：2026-07-30
+> 阶段状态：✅ P0–P15a + P12b–P14 + P6b–e + Camera/Debug/Scenes；✅ §8.5 项 1–13；✅ **#14–#28 Gate0-hard 人工点选（2026-07-30，维护页验收清单）**；✅ **总收益路线图 Phase1–3**（见 [`roadmap-total-benefit.md`](./roadmap-total-benefit.md) §发布前验收 / §测试矩阵）。✅ SoftPad #3a–c / 声学 #2a–c / **Camera Pro #4a/#4b**；Camera 冷却验收 ✅ 2026-07-30（功能边界仍冻结）。**不自动开** #4c / Hello / MediaPipe。最后更新：2026-07-30
 >
 > P4：共享 UI = 能力就绪 + Toast 单轨桥接；Command **P9a 已接管** `#wbCommandSearch`（inline 岛）。
 > P9b：动态命令注册 + `jumpAndHighlight`（**不是**完整映射编辑器；映射编辑器见 **P12 延后**）。
@@ -15,8 +15,8 @@
 | React/TS/Vite/Tailwind 双轨 | 完成 |
 | Island runtime + typed IPC | 完成 / 基本完成 |
 | Basic 设置岛 | 完成（仅 Basic，非全部设置 panel） |
-| 语音配置 | 部分（文本短语+策略；声学留 legacy） |
-| 映射 | 部分（列表 + P12b-1～6） |
+| 语音配置 | 部分（短语+策略 P6；状态/引擎/flow 壳 P6b–d；声学 host paint-target P6e；MediaRecorder 留 legacy） |
+| 映射 | 部分（列表 + P12b-1～8 + P12c-1～6） |
 | Confirm | 部分（React 可用；legacy 弹层未全换） |
 | Toast | 单轨桥接完成；非 React 全局接管 |
 | Command 真实搜索 | **P9a 完成**（React inline 岛接管 `#wbCommandSearch`；`home-workbench-cmdk.js` 守卫回退） |
@@ -33,11 +33,20 @@
 | SoftPad 子页 body | **P14f 完成**（`#softPadSubpageBody` paint-target handoff；四面板仍 Pad 写入 paint） |
 | SoftPad detail 顶栏 | **P14g 完成**（`#softPadSubpageBar` 返回/标题 sync-push） |
 | SoftPad scope 提示 | **P14h 完成**（`#softPadScopeHint` sync-push 文案） |
+| SoftPad detail 壳 | **P14i 完成**（panel/stage/subHost 显隐并入 P14g sync） |
+| SoftPad Ensure CTA | **P14j 完成**（`#btnSoftPadEnsureCodex`） |
+| SoftPad 深编辑器 | **P14k–n 守卫完成**（runtime/pres/layout remount + editKeycap 仍 Pad；非 JSX 四面板） |
+| Keys 收尾 chrome | **P12b-7 完成**（hint/preview/finish-more） |
+| Keys 冲突提示 | **P12b-8 完成**（`#keysTriggerConflict`） |
+| Keys 深编辑器 | **P12c-1～6 完成**（flow/pills/recording/hub/strip/display chrome） |
+| Voice 状态/引擎/流程/声学壳 | **P6b/c/d/e 完成**（MediaRecorder 业务仍 legacy） |
+| Camera / Debug 设置壳 | **完成**（flow chrome / overview；MediaPipe 与 diag 深页不迁） |
+| Scenes 设置壳 | **死壳收口**（`scenes`→`habits`；无独立 SPA） |
 | 安全收口 §8.3 | **完成**（CSP 收紧 + `withGlobalTauri:false` + `__TAURI__` 直引收敛至 `ipc.js`） |
 | 正式 shadcn/Radix | **P15a 完成**（dialog/tabs/toast → Radix；button shadcn variants；Toast 单轨保持） |
 | Tauri 产品验收 | **完成**（§8.5 项 1–12 人工点选 ✅，2026-07-29） |
 
-下一步：§8.5 #14–#25 人工点选。
+下一步：发布前验收真源 → [`roadmap-total-benefit.md`](./roadmap-total-benefit.md) **§发布前验收清单** / **§测试矩阵**。Camera 冷却验收 ✅；功能边界仍冻结（不开 #4c、不接系统 Hello、不改 MediaPipe）。**默认不自动开下一功能刀**；候选（须另开计划）：HUD/tray 抽检、Camera #4c UI-only。禁止未排期时改 SoftPad/Camera `__otMount*` 深改；禁止 MediaPipe 进 React。
 ## 0. 目标与范围
 
 **做什么**：在现有 Tauri 2 + Rust 桌面应用的前端里，以「React Island」方式渐进挂载 React/TypeScript 组件，**不重写应用壳、不改 Rust/Tauri 主架构、不改成完整 SPA**。
@@ -84,9 +93,10 @@
 | 区域 | 容器 id | 对应阶段 |
 |---|---|---|
 | 基础设置 | `#settingsPanelBasic` (L514) | P5 |
-| 按键设置 | `#settingsPanelKeys` (L677) | 后续 |
-| 虚拟键盘 | `#settingsPanelSoftPad` (L1055) | 后续 |
-| 习惯/场景 | `#settingsPanelScenes` (L1121) / `#settingsPanelHabits` (L1152) | 后续 |
+| 按键设置 | `#settingsPanelKeys` | **壳层已迁**（P11/P12b/P12c/P14a）；录制 IPC / 编辑器业务仍 legacy |
+| 虚拟键盘 | `#settingsPanelSoftPad` | **壳层已迁**（P10/P14b–n）；Pad 四面板仍 paint 写入 |
+| 习惯/场景 | `#settingsPanelHabits`（`#settingsPanelScenes` 死壳，导航映射 habits） | P12 / 死壳 |
+| 语音声学 host | `#voiceWakeAcousticHost` / `#voiceCancelAcousticHost` / `#voiceEndAcousticHost` | **P6e** |
 | 语音唤醒配置 | `#settingsPanelVoiceWake` (L1446) | P6 |
 | 映射列表 | `#mappingList` (L1439) | P7 |
 | 映射编辑器只读文案 | `#triggerView` / `#targetView` | **P12b-1** |
@@ -105,9 +115,10 @@
 | SoftPad 子页 body | `#softPadSubpageBody` | **P14f** |
 | SoftPad detail 顶栏 | `#softPadSubpageBar` | **P14g** |
 | SoftPad scope 提示 | `#softPadScopeHint` | **P14h** |
-| 语音流程 | `#voiceWorkflowPipeline` / `#voiceFlowNodes` (L1515+) | P6 |
+| 语音流程 | `#voiceWorkflowPipeline` / `#voiceFlowNodes` (L1515+) | P6 / P6d |
+| Camera flow chrome | `#cameraFlowNodeTriggerHint` | Camera shell |
+| Debug overview | `#debugHeroTitle` | Debug shell |
 | Command 搜索 | `#wbCommandSearch` + `#wbCmdkPanel` (L92) | P9a |
-| 语音声学 host | `#voiceWakeAcousticHost` / `#voiceCancelAcousticHost` / `#voiceEndAcousticHost` | P6 |
 | 主 shell | `#appWorkbenchShell` (L81) / `#appContentColumn` (L153) | 不迁 |
 
 > Toast：**legacy `OneToneAppToast` 为主路径**；`OneToneUi.toast` 反向代理到 legacy（兼容 `string | ToastOptions`），React Toast 岛挂载但默认无数据。二次切流前禁止恢复 `pushToast` 并行渲染。
@@ -149,6 +160,10 @@
 | `#softPadSubpageBar` | **P14g** | SoftPad detail 顶栏岛（返回 + 标题 sync-push） | `syncHubChrome` / `clearSubpage` / `paintSubpage` 标题 → `__otSoftPadDetailChromeSync`；React onClick → `closeSubpage`；`bindChrome` 跳过 subBack；**延迟挂载** `__otMountSoftPadDetailChromeIsland()` | 是 | 否 |
 | `#softPadScopeHint` | **P14h** | SoftPad scope 提示文案岛（sync-push） | `updateScopeHint` → `__otSoftPadScopeHintSync`；宿主保留 `aria-live`；**延迟挂载** `__otMountSoftPadScopeHintIsland()` | 是 | 否 |
 | `#voiceConfigIsland`（新建，位于 `#voiceDeskPanel` 内） | P6 | 语音配置岛 | 接管文本短语+策略；声学留 legacy；**勿**作为 `voice-page-body` 网格子项（会挤占流程 hero） | 是 | 经 OneToneUi |
+| `#voiceWakeAcousticHost` / `#voiceCancelAcousticHost` / `#voiceEndAcousticHost` | **P6e** | 声学 paint-target 岛（共享组件；外层 React、业务写 `[data-voice-acoustic-paint]`） | `voice-wake-acoustic.js`：`__otVoiceAcousticMounted` 时 `resolveAcousticPaintHost`；MediaRecorder / 校准业务 **留 legacy**；**延迟挂载** `__otMountVoiceAcousticIslands()` | 是 | 否 |
+| `#cameraFlowNodeTriggerHint`（+ tabs/lock 由 apply 写） | **Camera shell** | Camera flow chrome 岛（sync-push；hint 文案 React） | `camera-workflow.js`：`__otCameraFlowChromeMounted` → `__otCameraFlowChromeSync`；预览 / MediaPipe / presence **不迁**；**延迟挂载** `__otMountCameraFlowChromeIsland()` | 是 | 否 |
+| `#debugHeroTitle`（+ hero/cards/actions 由 apply 写） | **Debug shell** | Debug overview 岛（sync-push；title React） | `debug-panel.js`：`__otDebugOverviewMounted` → `__otDebugOverviewSync`；diag / MediaPipe 邻域 **留 legacy**；**延迟挂载** `__otMountDebugOverviewIsland()` | 是 | 否 |
+| `#settingsPanelScenes` | **Scenes 死壳** | —（不挂岛） | `resolveSettingsPanelRequest` / `normalizePanel` / `navHighlightPanel`：`scenes`→`habits`；已移除 `OneToneSceneModeHub.render` 可达分支；HTML 可保留 hidden | — | — |
 | `#appWorkbenchShell` / `#appContentColumn` | 不迁 | — | 主 shell IA 保留 legacy | — | — |
 
 > 每个岛挂载时运行时自动给容器加 `.ot-island`；`unmountIsland` 会移除该类、解除所有权声明，legacy 可回收该子树。
@@ -178,7 +193,7 @@
 - **P3**：`mountIsland/unmountIsland/updateIsland` + `window.OneToneIslands` 宿主 API；文档列出每个岛 DOM 所有权；mvp_init 后可 remount/update。✅
 - **P4**：共享交互能力就绪（Toast/Dialog/Confirm/Command 岛 + `OneToneUi`）；Toast **legacy 主路径单轨**（`OneToneUi.toast` 反向代理 `OneToneAppToast`，兼容 string|opts）；Command **未接管** `#wbCommandSearch`。✅（债收口后口径）
 - **P5**：基础设置（运行/外观/字体/语言/偏好）成岛；修改可保存；语言/主题/字体切换一致；mvp_init/reload 后一致；其它 panel 不受影响。✅
-- **P6**：语音配置岛（文本短语 + 监听策略）；声学/录音子页留 legacy；legacy voice render 不再覆盖岛 DOM。✅（部分完成）
+- **P6**：语音配置岛（文本短语 + 监听策略）；**P6e** 声学三宿主 paint-target；MediaRecorder 业务留 legacy。✅（配置+壳完成；录音业务未迁）
 - **P7**：映射**列表**岛（keyed diff + `rowView` 单一来源）；交互仍 legacy 委托；**完整映射编辑器未迁**。增删复制重排/冲突展示走原路径；保存 reload mvp_init 后列表一致。✅（列表完成 / 编辑器未完成）
 - **P8**：清理临时 bridge（不破 legacy）；本文档更新；补 smoke/typecheck/build；安全收口计划。✅（见 §10；Tauri 人工清单见 §8.5）
 
@@ -452,20 +467,36 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 | 11 | **P11 Keys 状态栏**：摘要 + 测试/保存/启用/新建与迁移前一致 | ✅ 人工点选通过（2026-07-29） |
 | 12 | **P12 习惯列表岛**：冷启动延迟挂载；legacy/场景/批量删除、重命名、勾选、筛选排序；`scheduleHubPaint` 无假死 | ✅ 人工点选通过（2026-07-29） |
 | 13 | **P15a Radix**：Confirm 打开/关闭/Escape/backdrop；Voice Tabs 切换；`OneToneUi.toast` 仍单轨；`.ot-island` 外 legacy 样式无污染 | ✅ 人工点选通过（2026-07-29） |
-| 14 | **P12b-1 编辑器只读文案**：切映射 → trigger/target 文案正确；录制中预览更新；reload 一致；列表/菜单/录制条仍 legacy | ⚠️ 待人工点选 |
-| 15 | **P12b-2 收尾时序**：选「确认发送」→ delay/cancel 滑条与 toggle 可用；拖动不丢手；切映射一致；mode 分段仍 legacy | ⚠️ 待人工点选 |
-| 16 | **P12b-3 录制取消条**：开始录制 → 取消条出现；点取消结束；草稿「取消草稿」；mvp_init 不假死 | ⚠️ 待人工点选 |
-| 17 | **P12b-4 浮动菜单**：列表 ⋮ 打开/再点关闭；测试/复制/上下移/删除；点外侧关闭；滚动关闭；resize 重定位；与 P7 列表无闪烁 | ⚠️ 待人工点选 |
-| 18 | **P12b-5 收尾模式分段**：切映射 → 模式分段正确；点选模式 → 时序区显隐与 preview 一致；手势切换后允许模式集合变化；与 P12b-2 联调无闪烁 | ⚠️ 待人工点选 |
-| 19 | **P12b-6 启动手势分段**：切映射 → 手势分段正确；点 tap/double/hold（含 gate toast）；hold 风险提示切换；切手势后收尾模式与 P12b-5 一致、无闪烁 | ⚠️ 待人工点选 |
-| 20 | **P14c SoftPad 功能瓷砖**：打开 SoftPad → 四瓷砖可见；点瓷砖进子页；active 高亮；无 mapping 时 disabled；返回 hub 不闪烁；预览/子页仍 legacy | ⚠️ 待人工点选 |
-| 21 | **P14d SoftPad 空态/idle**：无场景 → empty CTA；点创建 Codex/Claude；prepare 态 CTA；有映射时 detail idle 文案；与 P14c 瓷砖联调无闪烁；preview handoff 见 #22 | ⚠️ 待人工点选 |
-| 22 | **P14e SoftPad 预览 handoff**：有 mapping 时左侧预览出现；切皮肤/启用更新；hub↔layout 不闪烁；light 页不重复整树 remount；empty/prepare 清空且 React root 仍在；与 #23 子页联调 | ⚠️ 待人工点选 |
-| 23 | **P14f SoftPad 子页 handoff**：点四瓷砖进子页；layout 点键打开 inline editor；presentation 换肤联动预览；runtime/agent 可用；返回 hub 清空 body 且 React root 仍在；与 P14e 预览联调无闪烁 | ⚠️ 待人工点选 |
-| 24 | **P14g SoftPad detail 顶栏**：进子页标题正确；runtime 隐藏返回；其它子页点返回；清子页标题清空；与 #23 body 联调无闪烁/双触发 | ⚠️ 待人工点选 |
-| 25 | **P14h SoftPad scope 提示**：切 scope / 选习惯 / 空态 / 返回 hub，提示文案与迁移前一致、无闪烁 | ⚠️ 待人工点选 |
+| 14 | **P12b-1 编辑器只读文案**：切映射 → trigger/target 文案正确；录制中预览更新；reload 一致；列表/菜单/录制条仍 legacy | ✅ 人工点选通过（2026-07-30，维护页验收清单） |
+| 15 | **P12b-2 收尾时序**：选「确认发送」→ delay/cancel 滑条与 toggle 可用；拖动不丢手；切映射一致；mode 分段仍 legacy | ✅ 人工点选通过（2026-07-30，维护页验收清单） |
+| 16 | **P12b-3 录制取消条**：开始录制 → 取消条出现；点取消结束；草稿「取消草稿」；mvp_init 不假死 | ✅ 人工点选通过（2026-07-30，维护页验收清单） |
+| 17 | **P12b-4 浮动菜单**：列表 ⋮ 打开/再点关闭；测试/复制/上下移/删除；点外侧关闭；滚动关闭；resize 重定位；与 P7 列表无闪烁 | ✅ 人工点选通过（2026-07-30，维护页验收清单） |
+| 18 | **P12b-5 收尾模式分段**：切映射 → 模式分段正确；点选模式 → 时序区显隐与 preview 一致；手势切换后允许模式集合变化；与 P12b-2 联调无闪烁 | ✅ 人工点选通过（2026-07-30，维护页验收清单） |
+| 19 | **P12b-6 启动手势分段**：切映射 → 手势分段正确；点 tap/double/hold（含 gate toast）；hold 风险提示切换；切手势后收尾模式与 P12b-5 一致、无闪烁 | ✅ 人工点选通过（2026-07-30，维护页验收清单） |
+| 20 | **P14c SoftPad 功能瓷砖**：打开 SoftPad → 四瓷砖可见；点瓷砖进子页；active 高亮；无 mapping 时 disabled；返回 hub 不闪烁；预览/子页仍 legacy | ✅ 人工点选通过（2026-07-30，维护页验收清单） |
+| 21 | **P14d SoftPad 空态/idle**：无场景 → empty CTA；点创建 Codex/Claude；prepare 态 CTA；有映射时 detail idle 文案；与 P14c 瓷砖联调无闪烁；preview handoff 见 #22 | ✅ 人工点选通过（2026-07-30，维护页验收清单） |
+| 22 | **P14e SoftPad 预览 handoff**：有 mapping 时左侧预览出现；切皮肤/启用更新；hub↔layout 不闪烁；light 页不重复整树 remount；empty/prepare 清空且 React root 仍在；与 #23 子页联调 | ✅ 人工点选通过（2026-07-30，维护页验收清单） |
+| 23 | **P14f SoftPad 子页 handoff**：点四瓷砖进子页；layout 点键打开 inline editor；presentation 换肤联动预览；runtime/agent 可用；返回 hub 清空 body 且 React root 仍在；与 P14e 预览联调无闪烁 | ✅ 人工点选通过（2026-07-30，维护页验收清单） |
+| 24 | **P14g SoftPad detail 顶栏**：进子页标题正确；runtime 隐藏返回；其它子页点返回；清子页标题清空；与 #23 body 联调无闪烁/双触发 | ✅ 人工点选通过（2026-07-30，维护页验收清单） |
+| 25 | **P14h SoftPad scope 提示**：切 scope / 选习惯 / 空态 / 返回 hub，提示文案与迁移前一致、无闪烁 | ✅ 人工点选通过（2026-07-30，维护页验收清单） |
+| 26 | **P6e 声学 paint-target**：语音页打开三宿主；录制/校准仍走 MediaRecorder；切引擎不摧毁 React root；`[data-voice-acoustic-paint]` 可写 | ✅ 人工点选通过（2026-07-30，维护页验收清单） |
+| 27 | **Camera flow chrome**：切 trigger/action/pro；校准锁 tab；hint 文案正确；预览/MediaPipe 仍 legacy | ✅ 人工点选通过（2026-07-30，维护页验收清单） |
+| 28 | **Debug overview**：打开 Debug → hero 标题/卡片/动作刷新；diag 深页仍 legacy | ✅ 人工点选通过（2026-07-30，维护页验收清单） |
 
-> **裁定**：§8.5 项 1–13 全部通过（2026-07-29）。P12b-1～6 + P14c–h 工程轨已落地；项 #14–#25 待人工。
+### Gate0-hard 点选顺序（进入 Phase3 SoftPad/Camera 前必过）
+
+1. **Keys** #14 → #15 → #16 → #17 → #18 → #19  
+2. **SoftPad** #20 → #21 → #22 → #23 → #24 → #25  
+3. **P6e 声学** #26  
+4. **Camera** #27  
+5. **Debug** #28  
+
+每项通过后改 ⚠️→✅ 并注日期。任一项失败 → **禁止**改对应 `__otMount*` / 岛文件推进 Phase3 深改。自动闸门 `npm run test:islands` **不代替** WebView 点选。
+
+> **裁定**：§8.5 项 1–13 全部通过（2026-07-29）。项 **#14–#28** 人工点选通过（2026-07-30，维护页「验收清单」勾选 + 三端协议探针）。  
+>
+> **Phase A 自动闸门（2026-07-30）**：`npm run build:islands` + `npm run test:islands` ✅；`npm run verify:islands-runtime` ✅。  
+> **Gate0-hard（2026-07-30）**：已通过。Phase3 深改解禁顺序：录制 IPC 消费 →（可选）声学 → SoftPad 四面板体验重组 → Camera Pro。仍禁止 SoftPad 四面板整页 JSX / Camera MediaPipe 重写。
 
 #### 8.5.2 人工点选指引（2026-07-29）
 
@@ -486,8 +517,11 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 | 14 | 设置 → **按键**：切映射；点录制看预览；reload | `#triggerView`/`#targetView` 文案正确；录制预览更新；列表/菜单/录制条仍 legacy |
 | 15 | 设置 → **按键**：选「确认发送」；拖 delay/cancel；切映射 | 滑条/toggle 可用；拖动不丢手；mode 分段与录制/菜单仍 legacy |
 | 16 | 设置 → **按键**：录制触发/目标；点取消；建草稿看取消草稿 | 取消条文案/显示正确；取消有效；mvp_init 不卡死 |
+| 26 | 设置 → **语音**：打开声学子页；试录一段；切引擎返回 | 三宿主 React root 仍在；paint 子节点可更新；业务仍 MediaRecorder |
+| 27 | 设置 → **相机**：切 trigger/action/pro；开始/取消校准 | tab/lock/hint 正常；预览与 MediaPipe 行为与迁移前一致 |
+| 28 | 设置 → **调试**：看 overview hero；点动作按钮 | 标题/卡片刷新正确；diag 分区仍可用 |
 
-验收后请将上表 ⚠️ 改为 ✅ 并注明日期。**（项 1–13 已完成：2026-07-29；项 14–16 待点选）**
+验收后请将上表 ⚠️ 改为 ✅ 并注明日期。**（项 1–13：2026-07-29；项 14–28：2026-07-30 维护页验收清单）**
 
 #### 8.5.1 Boot / 假死日志摘录（2026-07-29）
 
@@ -500,23 +534,18 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 
 #### 8.6 后续路线图（契约外，按需启动）
 
-- **P12b 映射编辑器**（各独立 plan + §8.5 人工项；禁止一段吞掉录制+菜单+editor）：
-  - **P12b-1**：`#triggerView` / `#targetView` 只读展示（低风险）— **工程轨已落地，待 §8.5 #14**
-  - **P12b-2**：时序滑条 / toggle（`#keysFinishDelayHost` / `#keysFinishCancelHost`）— **工程轨已落地，待 §8.5 #15**
-  - **P12b-3**：录制条 `#recordCancelBar` — **工程轨已落地，待 §8.5 #16**
-  - **P12b-4**：`#mapMenuFloat` 浮动菜单 — **工程轨已落地，待 §8.5 #17**
-  - **P12b-5**：`#voiceEndKeyModePanel` 收尾模式分段 — **工程轨已落地，待 §8.5 #18**
-  - **P12b-6**：`#keysTriggerModeHost` 启动手势分段 — **工程轨已落地，待 §8.5 #19**
-  - **P14c**：`#softPadFuncTiles` 功能瓷砖 — **工程轨已落地，待 §8.5 #20**
-  - **P14d**：`#softPadEmpty` + `#softPadDetailIdle` 空态/idle — **工程轨已落地，待 §8.5 #21**
-  - **P14e**：`#softPadPreviewHost` 预览 paint-target handoff — **工程轨已落地，待 §8.5 #22**
-  - **P14f**：`#softPadSubpageBody` 子页 paint-target handoff — **工程轨已落地，待 §8.5 #23**
-  - **P14g**：`#softPadSubpageBar` detail 顶栏（返回/标题）— **工程轨已落地，待 §8.5 #24**
-  - **P14h**：`#softPadScopeHint` scope 提示文案 — **工程轨已落地，待 §8.5 #25**
-- **补迁候选**（按 §3 挂载点表）：`#settingsPanelKeys` / `#settingsPanelSoftPad` 编辑器区等——模式已被 P5–P14 验证，可逐个复制。
-- **shadcn 扩展**：P15a 已试点 Dialog/Tabs/Toast/Button；后续 primitives（Select/Dropdown 等）按需接入，须遵守 island portal root 规则。
-- **home/workbench 决策**：留 legacy 则总收益 <70%；若迁移需先解 render-loop 每帧整树刷新的所有权问题（P7 keyed diff 模式可复制）。
-- **安全收口**：按 8.3 顺序执行。
+- **人工闸门**：§8.5 **#14–#28** ✅（2026-07-30）。证据：维护页验收清单勾选；三端协议探针 `[同源]`。  
+- **P12b / SoftPad 壳层**：工程轨已落地；人工项已勾。**Phase3a 录制 IPC 消费已落地**；SoftPad #3a–c / 声学 #2a–c / Camera #4a–b ✅。  
+  - SoftPad 四面板体验重组 ✅；Camera Pro #4a/#4b ✅；冷却验收 ✅ 2026-07-30（功能边界仍冻结）。发布前真源：[`roadmap-total-benefit.md`](./roadmap-total-benefit.md) §发布前验收 / §测试矩阵。仍禁止整页 JSX / MediaPipe 重写 / 系统 Hello API / 未排期 #4c
+- **双写收口（2026-07-30）**：React 文案宿主禁止 apply `textContent` 覆盖——已对齐 `#voiceFlowNodeWakeHint` / `#keysFlowNodeTriggerHint` / `#cameraFlowNodeTriggerHint` / `#debugHeroTitle` / `#keysFinishModeHint`（hidden only）/ `#triggerTrace`。
+- **补迁候选（Phase C，须 #14–#28 稳定后切片）**：
+  1. Keys 录制 chrome 父壳边界（display empty/icon/按钮仍可收口；**录制 IPC 不迁**）
+  2. SoftPad 四面板：**保持 paint-target**；**禁止** JSX 重写（P14k–n）
+  3. Voice MediaRecorder UI：默认 **留 legacy**；仅声学子页回归成本高时再拆
+  4. home/workbench：须先解 `render-loop` 整树刷新所有权，否则 **不做**
+  5. shadcn Select/Dropdown：按岛需求接入 + portal root；不宣称全量 shadcn
+- **明确不迁（锁定）**：Camera MediaPipe / Coach HUD / tray / 主 shell IA / Scenes SPA（已死壳）/ SoftPad 四面板 JSX。
+- **安全收口**：§8.3 已完成；勿回退 `withGlobalTauri`。
 
 ---
 
@@ -524,9 +553,9 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 
 - **工程轨 P0–P8 静态通过**，legacy 零破坏：`index.html` 仅 +1 个 module 入口与岛容器/标记；170+ 旧脚本顺序未动；守卫「岛未挂载即回退 legacy」。
 - **落地资产**：typed IPC、Island Runtime、Basic / Voice（部分）/ Mapping **列表**岛、共享 UI 桥（Confirm React；Toast 反向代理 legacy；Command 脚手架）。
-- **明确未完成**：§8.5 #14–#25 人工点选；更多 shadcn primitives（P15a 仅试点四控件）。
-- **测试护栏**：`npm run test:islands` = … + soft-pad-detail-chrome + **soft-pad-scope-hint** + habit-hub…。
-- **裁定**：P0–P15a + P12b-1～6 + P14c–h 工程轨 + §8.3 + §8.5（项 1–13）；§8.5 #14–#25 待人工。
+- **明确未完成**：Camera #4c / #4d（功能冻结外）；更多 shadcn primitives（P15a 仅试点四控件）。Phase1 冷启动抽检可选（机器契约靠 `test:home-roadmap`）。SoftPad #3a–c / 声学 #2a–c / Camera #4a–b / 冷却验收 / 发布前必跑矩阵见 roadmap。  
+- **测试护栏**：roadmap §测试矩阵「必跑」✅ 2026-07-30；`npm run verify:islands-runtime`（按域）。  
+- **裁定**：工程轨齐；§8.5 项 1–28 ✅（2026-07-30）；Gate0-hard 通过；Phase3 SoftPad/声学/Camera #4a–b 已兑现；Camera 功能冻结；**不自动开**下一功能刀。
 
 ### 14. P9b / P10 / P11 执行记录（2026-07-29）
 
@@ -686,7 +715,7 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 | 单测 | `test-toast-bridge.mjs` 串入 `test:islands` |
 | 语音 hero | `#voiceConfigIsland` 移入 `#voiceDeskPanel`（勿作 `voice-page-body` 网格子项） |
 | islands boot | `vite.config.ts` `define process.env.NODE_ENV=production`（修 `process is not defined`；bundle ~260KB） |
-| 人工清单 | §8.5：项 1–13 全部 ✅（2026-07-29，用户确认）；项 14 P12b-1 待点选 |
+| 人工清单 | §8.5：项 1–13 ✅（2026-07-29）；项 **14–28** 待点选；Phase A 自动闸门 ✅（2026-07-30） |
 
 ### 13. 完成度裁定锁定（2026-07-29）
 

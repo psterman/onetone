@@ -592,6 +592,38 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
         ),
     );
 
+    // off/none：停机后尽快释放 ACTIVATE_LOCK，避免 FE 长时间 activateBusy 像假死。
+    if desired == EffectiveVoiceEngine::None {
+        *state.last_voice_fingerprint.lock() = crate::scene_config::idle_voice_fingerprint(&cfg);
+        {
+            let app_tip = app.clone();
+            let state_tip = Arc::clone(state);
+            let _ = std::thread::Builder::new()
+                .name("tray-tooltip-refresh".into())
+                .spawn(move || {
+                    crate::tray::refresh_tray_tooltip(&app_tip, state_tip.as_ref());
+                });
+        }
+        {
+            let state_audio = Arc::clone(state);
+            let _ = std::thread::Builder::new()
+                .name("recording-audio-sync-kick".into())
+                .spawn(move || {
+                    crate::audio_win::request_recording_audio_policy_sync(state_audio);
+                });
+        }
+        schedule_acoustic_match_sync(Some(app), state);
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!(
+                "voice_bootstrap activate complete reason={} desired=none",
+                reason
+            ),
+        );
+        return;
+    }
+
     start_self_engine(app, state, desired, reason);
 
     *state.last_voice_fingerprint.lock() = crate::scene_config::idle_voice_fingerprint(&cfg);

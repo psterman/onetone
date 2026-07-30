@@ -20,7 +20,10 @@
       }
       if(ui.drawerOpen&&global.OneToneSettingsDrawer&&(global.OneToneSettingsDrawer.isKeysPanel()||global.OneToneSettingsDrawer.isHabitsPanel())) h.renderKeyFinishFlowPanel();
       h.renderVoiceModeSwitch();
-      h.renderHome();
+      // Phase1c：home 轻守卫 — 签名未变则跳过整树 renderHome（未来岛/低重绘）
+      if(!(h.shouldSkipHomeRender&&h.shouldSkipHomeRender())){
+        h.renderHome();
+      }
       h.renderListenRuntime();
       h.renderUpdateUi();
       const elapsed=Math.round(performance.now()-renderStarted);

@@ -97,24 +97,73 @@
     return finishModeOptionMeta(mode,gesture||'tap').hint;
   }
 
-  function syncKeysFinishModeChrome(m,finishMode){
+  function buildKeysFinishChromeModel(m,finishMode){
+    if(arguments.length===0){
+      m=hooks().selectedMapping();
+      finishMode=m?resolveDisplayedFinishMode(m):'';
+    }else if(arguments.length===1){
+      finishMode=m?resolveDisplayedFinishMode(m):'';
+    }
     var gesture=m?startGesture(m):'tap';
+    var hintText='';
+    var hintHidden=true;
+    if(m&&finishMode){
+      hintText=t(finishModeHintKey(finishMode,gesture));
+      hintHidden=false;
+    }
+    var moreHidden=!(m&&finishMode==='confirm');
+    var previewText='—';
+    var previewSaved=false;
+    if(m&&global.OneToneSceneFlowSummary&&global.OneToneSceneFlowSummary.finishStrategyPreviewText){
+      var rules=global.OneToneAppBehaviorRules;
+      var ctx=activeAppContextId();
+      if(!ctx&&rules&&rules.resolvePreviewContext) ctx=rules.resolvePreviewContext(m)||'';
+      if(!ctx) ctx=primaryAppIdForMapping(m)||'';
+      var preview=global.OneToneSceneFlowSummary.finishStrategyPreviewText(m,ctx);
+      previewText=preview.text||'—';
+      previewSaved=!!preview.saved;
+    }
+    var previewClass='keys-finish-strategy-preview'+(previewSaved?' is-set':' is-empty');
+    var mappingId=m&&m.id?String(m.id):'';
+    var sig=[mappingId,finishMode||'',hintText,moreHidden?'1':'0',previewText,previewSaved?'1':'0'].join('\0');
+    return {
+      hintText:hintText,
+      hintHidden:hintHidden,
+      moreHidden:moreHidden,
+      previewText:previewText,
+      previewClass:previewClass,
+      previewSaved:previewSaved,
+      mappingId:mappingId,
+      finishMode:finishMode||'',
+      sig:sig
+    };
+  }
+
+  function applyKeysFinishChromeHost(model){
+    if(!model) model=buildKeysFinishChromeModel();
+    if(global.__otKeysFinishChromeMounted&&typeof global.__otKeysFinishChromeSync==='function'){
+      global.__otKeysFinishChromeSync();
+      return;
+    }
     var hint=$('keysFinishModeHint');
     if(hint){
-      if(m&&finishMode){
-        hint.textContent=t(finishModeHintKey(finishMode,gesture));
-        hint.hidden=false;
-      }else{
-        hint.textContent='';
-        hint.hidden=true;
-      }
+      hint.textContent=model.hintText||'';
+      hint.hidden=!!model.hintHidden;
     }
     var more=$('habitFlowFinishMore');
     if(more){
-      var showCancel=!!(m&&finishMode==='confirm');
-      more.hidden=!showCancel;
-      if(!showCancel) more.open=false;
+      more.hidden=!!model.moreHidden;
+      if(model.moreHidden) more.open=false;
     }
+    var el=$('keysFinishStrategyPreview');
+    if(el){
+      el.textContent=model.previewText||'—';
+      el.className=model.previewClass||'keys-finish-strategy-preview is-empty';
+    }
+  }
+
+  function syncKeysFinishModeChrome(m,finishMode){
+    applyKeysFinishChromeHost(buildKeysFinishChromeModel(m,finishMode));
   }
 
   function renderKeyFinishModeSegmented(m){
@@ -156,15 +205,12 @@
   }
 
   function renderKeysFinishStrategyPreview(m){
-    var el=$('keysFinishStrategyPreview');
-    if(!el||!global.OneToneSceneFlowSummary||!global.OneToneSceneFlowSummary.finishStrategyPreviewText) return;
-    var rules=global.OneToneAppBehaviorRules;
-    var ctx=activeAppContextId();
-    if(!ctx&&rules&&rules.resolvePreviewContext) ctx=rules.resolvePreviewContext(m)||'';
-    if(!ctx) ctx=primaryAppIdForMapping(m)||'';
-    var preview=global.OneToneSceneFlowSummary.finishStrategyPreviewText(m,ctx);
-    el.textContent=preview.text||'—';
-    el.className='keys-finish-strategy-preview'+(preview.saved?' is-set':' is-empty');
+    if(global.__otKeysFinishChromeMounted&&typeof global.__otKeysFinishChromeSync==='function'){
+      global.__otKeysFinishChromeSync();
+      return;
+    }
+    if(!global.OneToneSceneFlowSummary||!global.OneToneSceneFlowSummary.finishStrategyPreviewText) return;
+    applyKeysFinishChromeHost(buildKeysFinishChromeModel(m));
   }
 
   function refreshFinishModeSegment(m){
@@ -748,6 +794,8 @@
     // P12b-2：delay/cancel 宿主模型（单一来源）
     buildKeysFinishTimingModel:buildKeysFinishTimingModel,
     // P12b-5：收尾模式分段宿主模型（单一来源）
-    buildKeysFinishModeModel:buildKeysFinishModeModel
+    buildKeysFinishModeModel:buildKeysFinishModeModel,
+    // P12b-7：hint / strategy preview / finish-more 显隐
+    buildKeysFinishChromeModel:buildKeysFinishChromeModel
   };
 })((typeof window!=='undefined')?window:globalThis);

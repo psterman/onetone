@@ -7,6 +7,21 @@
   var t=function(key){ return global.OneToneI18n.t(key); };
   function hooks(){ return global.__vp_mapping_recording_hooks__ || {}; }
 var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,mappingWasEnabled:null,nativeRestoreSnapshot:null, schemeSwitchSnapshot:'',captureGen:0,suppressAutoEnableOnce:false,beforeFinishTargetHook:null,agentBindingCapture:null,previewKey:'' };
+  function acousticCalibrating(){
+    var wake=global.OneToneVoiceWakeAcoustic;
+    var control=global.OneToneVoiceControlAcoustic;
+    return !!(
+      (wake&&wake.isCalibrating&&wake.isCalibrating()) ||
+      (control&&control.isCalibrating&&control.isCalibrating())
+    );
+  }
+
+  function blockIfAcousticCalibrating(){
+    if(!acousticCalibrating()) return false;
+    hooks().toast(t('keysRecordBlockedByAcoustic'));
+    return true;
+  }
+
   function clearRecTimer(){ clearTimeout(rec.timer); rec.timer=0; }
   function beginRecordSnapshot(){
     const m=OneToneMappingCore.selected();
@@ -169,23 +184,42 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     const islandOn=!!global.__otMappingEditorDisplayMounted;
     if(mode==='trigger'){
       const el=$('triggerView');
-      const disp=$('triggerDisplay');
       if(!islandOn&&el) el.textContent=label;
-      if(disp) disp.classList.toggle('empty',!normalized);
-      if(disp&&global.OneToneKeyIcons&&global.OneToneKeyIcons.syncDisplayIcon){
-        global.OneToneKeyIcons.syncDisplayIcon(disp,normalized);
-      }
     }else if(mode==='target'||mode==='agentBinding'){
       const el=$('targetView');
-      const disp=$('targetDisplay');
       if(!islandOn&&el) el.textContent=label;
-      if(disp) disp.classList.toggle('empty',!normalized);
-      if(disp&&global.OneToneKeyIcons&&global.OneToneKeyIcons.syncDisplayIcon){
-        global.OneToneKeyIcons.syncDisplayIcon(disp,normalized);
-      }
     }
     if(islandOn&&typeof global.__otMappingEditorDisplaySync==='function'){
       global.__otMappingEditorDisplaySync();
+    }
+    if(global.OneToneMappingList&&global.OneToneMappingList.buildKeysDisplayChromeModel){
+      // P12c-6：empty/icon chrome 走 display chrome 岛 / legacy apply
+      var chromeApi=global.OneToneMappingList;
+      if(global.__otKeysDisplayChromeMounted&&typeof global.__otKeysDisplayChromeSync==='function'){
+        global.__otKeysDisplayChromeSync();
+      }else{
+        const triggerDisp=$('triggerDisplay');
+        const targetDisp=$('targetDisplay');
+        if(mode==='trigger'){
+          if(triggerDisp) triggerDisp.classList.toggle('empty',!normalized);
+          if(triggerDisp&&global.OneToneKeyIcons&&global.OneToneKeyIcons.syncDisplayIcon){
+            global.OneToneKeyIcons.syncDisplayIcon(triggerDisp,normalized);
+          }
+        }else if(mode==='target'||mode==='agentBinding'){
+          if(targetDisp) targetDisp.classList.toggle('empty',!normalized);
+        }
+      }
+    }else{
+      if(mode==='trigger'){
+        const disp=$('triggerDisplay');
+        if(disp) disp.classList.toggle('empty',!normalized);
+        if(disp&&global.OneToneKeyIcons&&global.OneToneKeyIcons.syncDisplayIcon){
+          global.OneToneKeyIcons.syncDisplayIcon(disp,normalized);
+        }
+      }else if(mode==='target'||mode==='agentBinding'){
+        const disp=$('targetDisplay');
+        if(disp) disp.classList.toggle('empty',!normalized);
+      }
     }
     if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.renderRecordingFeedback) global.OneToneKeysPanelUi.renderRecordingFeedback();
     if(mode==='target'&&global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.isOpen&&global.OneToneHabitTriggerSetup.isOpen()){
@@ -346,7 +380,11 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     const m=OneToneMappingCore.selected();
     const showDraft=!!(m&&OneToneMappingCore.isDraft(m));
     const mode=rec.mode||'none';
-    const recording=mode!=='none';
+    const ipcPhase=rec.ipcPhase||(global.__otRecordIpcPhase||'idle');
+    const life=global.OneToneRecordIpcLifecycle;
+    const recording=life&&life.isRecordingUi
+      ?life.isRecordingUi(mode,ipcPhase)
+      :(mode!=='none');
     const show=recording||showDraft;
     const label=recording?t('cancelRecord'):t('cancelDraft');
     const mappingId=m&&m.id?String(m.id):'';
@@ -354,8 +392,9 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       show:show,
       label:label,
       mode:mode,
+      ipcPhase:ipcPhase,
       mappingId:mappingId,
-      sig:[mode,show?'1':'0',label,mappingId].join('\0')
+      sig:[mode,ipcPhase,show?'1':'0',label,mappingId].join('\0')
     };
   }
 
@@ -381,6 +420,35 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     rec.mode=mode;
     if(mode==='none') rec.previewKey='';
     clearRecTimer();
+    if(global.OneToneRecordIpcLifecycle){
+      var phase=global.OneToneRecordIpcLifecycle.applyLegacyMode
+        ?global.OneToneRecordIpcLifecycle.applyLegacyMode(rec.mode,opts)
+        :global.OneToneRecordIpcLifecycle.fromLegacyRecordingMode(rec.mode);
+      rec.ipcPhase=phase;
+    }
+    if(!global.__otRecordIpcUiBound){
+      global.__otRecordIpcUiBound=true;
+      try{
+        global.addEventListener('ot:record-ipc',function(){
+          try{
+            if(typeof rec.ipcPhase==='string'||global.__otRecordIpcPhase){
+              rec.ipcPhase=global.__otRecordIpcPhase||rec.ipcPhase;
+            }
+            renderRecordCancelBar();
+            if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.renderRecordingFeedback){
+              global.OneToneKeysPanelUi.renderRecordingFeedback();
+            }
+            if(global.OneToneKeysPageNav&&global.OneToneKeysPageNav.renderStepHints){
+              global.OneToneKeysPageNav.renderStepHints();
+            }else if(global.__otKeysFlowChromeMounted&&typeof global.__otKeysFlowChromeSync==='function'){
+              global.__otKeysFlowChromeSync();
+            }
+          }catch(err){
+            try{ console.error('[record-ipc] ui sync',err); }catch(_){}
+          }
+        });
+      }catch(_){}
+    }
     const d=OneToneI18n.dict();
     const triggerState=$('triggerState');
     const targetState=$('targetState');
@@ -440,6 +508,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
   function startTriggerRecord(pinnedMappingId){
     if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
     if(rec.mode!=='none'||rec.startPending) return Promise.resolve(false);
+    if(blockIfAcousticCalibrating()) return Promise.resolve(false);
     hooks().ensureConfig();
     const pin=String(pinnedMappingId||'').trim();
     hooks().resetTargetCapture();
@@ -520,6 +589,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
   function startAgentBindingRecord(mappingId,opts){
     opts=opts||{};
     if(rec.mode!=='none'||rec.startPending) return Promise.resolve(false);
+    if(blockIfAcousticCalibrating()) return Promise.resolve(false);
     if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
     hooks().ensureConfig();
     var pin=String(mappingId||'').trim();
@@ -579,6 +649,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     }
     if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
     if(rec.mode!=='none'||rec.startPending) return Promise.resolve(false);
+    if(blockIfAcousticCalibrating()) return Promise.resolve(false);
     hooks().ensureConfig();
     const pin=String(pinnedMappingId||'').trim();
     hooks().resetTargetCapture();
@@ -886,7 +957,14 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     isPending:function(){ return rec.startPending; }, setPending:function(v){ rec.startPending=v; },
     clearTimer:clearRecTimer, setTimer:function(fn,ms){ clearRecTimer(); rec.timer=setTimeout(fn,ms); },
     cancel:cancelRecording, cancelDraftOrRecording:cancelDraftOrRecording,
-    disableForRecordingAsync:disableMappingForRecordingAsync, setRecording:setRecording,
+    disableForRecordingAsync:disableMappingForRecordingAsync,     setRecording:setRecording,
+    ipcPhase:function(){ return rec.ipcPhase||(global.__otRecordIpcPhase||'idle'); },
+    isRecordingUi:function(){
+      var life=global.OneToneRecordIpcLifecycle;
+      var phase=rec.ipcPhase||(global.__otRecordIpcPhase||'idle');
+      if(life&&life.isRecordingUi) return !!life.isRecordingUi(rec.mode,phase);
+      return rec.mode&&rec.mode!=='none';
+    },
     startTrigger:startTriggerRecord, startTarget:startTargetRecord,
     startAgentBinding:startAgentBindingRecord,
     startNativeRestore:startNativeRestoreRecord, finishNativeRestore:finishNativeRestoreCapture,

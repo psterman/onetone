@@ -101,8 +101,20 @@
         }
         return;
       }
-      if(msg.type==='mvp_paused'&&msg.ok){ runtime.paused=true; hooks.render(); }
-      if(msg.type==='mvp_resumed'&&msg.ok){ runtime.paused=false; hooks.render(); }
+      if(msg.type==='mvp_paused'&&msg.ok){
+        runtime.paused=true;
+        if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.forceHomeRender){
+          global.OneToneHomeWorkbench.forceHomeRender();
+        }
+        hooks.render();
+      }
+      if(msg.type==='mvp_resumed'&&msg.ok){
+        runtime.paused=false;
+        if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.forceHomeRender){
+          global.OneToneHomeWorkbench.forceHomeRender();
+        }
+        hooks.render();
+      }
       function applyRuntimeFields(msg){
         runtime.lastAction=msg.lastAction||'-';
         runtime.timerActive=!!msg.timerActive;
