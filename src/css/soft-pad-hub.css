@@ -398,6 +398,14 @@
   display: flex;
   flex-direction: column;
 }
+/* P14f: React paint target fills the body flex column. */
+.soft-pad-subpage-body > [data-soft-pad-subpage-paint],
+.soft-pad-subpage-body > .soft-pad-subpage-paint {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 /* Only lock scroll while editing keycaps on the layout panel.
    Leaving `is-editing-key` on銆屼綍鏃舵樉绀恒€島sed to clip cards 2/3 (no scroll). */
 .soft-pad-subpage-body.is-editing-key[data-soft-pad-panel="layout"] {

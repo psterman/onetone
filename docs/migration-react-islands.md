@@ -1,6 +1,6 @@
 # React Islands 渐进迁移契约（OneTone / voice-pilot）
 
-> 阶段状态：✅ P0–P15a + P12b-1～6 + **P14c** + **P14d** 工程轨；✅ §8.5 项 1–13；#14–#21 待人工。最后更新：2026-07-30
+> 阶段状态：✅ P0–P15a + P12b-1～6 + **P14c** + **P14d** + **P14e** + **P14f** + **P14g** + **P14h** 工程轨；✅ §8.5 项 1–13；#14–#25 待人工。最后更新：2026-07-30
 >
 > P4：共享 UI = 能力就绪 + Toast 单轨桥接；Command **P9a 已接管** `#wbCommandSearch`（inline 岛）。
 > P9b：动态命令注册 + `jumpAndHighlight`（**不是**完整映射编辑器；映射编辑器见 **P12 延后**）。
@@ -28,12 +28,16 @@
 | Keys 工作流壳 | **P14a 完成**（`#keysWorkflowTabs` keyed diff；编辑器/录制仍 legacy） |
 | SoftPad 工作流壳 | **P14b 完成**（`#softPadAppSwitcher` + `#softPadSchemeList`） |
 | SoftPad 功能瓷砖 | **P14c 完成**（`#softPadFuncTiles`；preview/subpage 仍 legacy） |
-| SoftPad 空态 / 详情 idle | **P14d 完成**（`#softPadEmpty` + `#softPadDetailIdle`；preview/subpage 仍 legacy） |
+| SoftPad 空态 / 详情 idle | **P14d 完成**（`#softPadEmpty` + `#softPadDetailIdle`；preview handoff 见 P14e） |
+| SoftPad 预览宿主 | **P14e 完成**（`#softPadPreviewHost` paint-target handoff） |
+| SoftPad 子页 body | **P14f 完成**（`#softPadSubpageBody` paint-target handoff；四面板仍 Pad 写入 paint） |
+| SoftPad detail 顶栏 | **P14g 完成**（`#softPadSubpageBar` 返回/标题 sync-push） |
+| SoftPad scope 提示 | **P14h 完成**（`#softPadScopeHint` sync-push 文案） |
 | 安全收口 §8.3 | **完成**（CSP 收紧 + `withGlobalTauri:false` + `__TAURI__` 直引收敛至 `ipc.js`） |
 | 正式 shadcn/Radix | **P15a 完成**（dialog/tabs/toast → Radix；button shadcn variants；Toast 单轨保持） |
 | Tauri 产品验收 | **完成**（§8.5 项 1–12 人工点选 ✅，2026-07-29） |
 
-下一步：§8.5 #14–#21 人工点选；下一工程候选 SoftPad preview/subpage 子切片。
+下一步：§8.5 #14–#25 人工点选。
 ## 0. 目标与范围
 
 **做什么**：在现有 Tauri 2 + Rust 桌面应用的前端里，以「React Island」方式渐进挂载 React/TypeScript 组件，**不重写应用壳、不改 Rust/Tauri 主架构、不改成完整 SPA**。
@@ -97,6 +101,10 @@
 | SoftPad 工作流 | `#softPadAppSwitcher` / `#softPadSchemeList` | P14b |
 | SoftPad 功能瓷砖 | `#softPadFuncTiles` | **P14c** |
 | SoftPad 空态 / 详情 idle | `#softPadEmpty` / `#softPadDetailIdle` | **P14d** |
+| SoftPad 预览宿主 | `#softPadPreviewHost` | **P14e** |
+| SoftPad 子页 body | `#softPadSubpageBody` | **P14f** |
+| SoftPad detail 顶栏 | `#softPadSubpageBar` | **P14g** |
+| SoftPad scope 提示 | `#softPadScopeHint` | **P14h** |
 | 语音流程 | `#voiceWorkflowPipeline` / `#voiceFlowNodes` (L1515+) | P6 |
 | Command 搜索 | `#wbCommandSearch` + `#wbCmdkPanel` (L92) | P9a |
 | 语音声学 host | `#voiceWakeAcousticHost` / `#voiceCancelAcousticHost` / `#voiceEndAcousticHost` | P6 |
@@ -135,7 +143,11 @@
 | `#keysWorkflowTabs` | P14a | Keys 工作流 tabs 岛 | `keys-panel-ui.js` `renderWorkflowTabs`：`__otKeysWorkflowMounted` 时 `__otKeysWorkflowSync`；`#keysHabitSwitcher` sr-only **留 legacy** | 是 | 否 |
 | `#softPadAppSwitcher` / `#softPadSchemeList` | P14b | SoftPad 工作流壳岛 | `soft-pad-hub-ui.js` `renderAppSwitcher`/`renderSchemeList` 守卫；`#softPadHubStage` 预览/子页 **留 legacy**；**延迟挂载** `__otMountSoftPadWorkflowIsland()` | 是 | 否 |
 | `#softPadFuncTiles` | **P14c** | SoftPad 功能瓷砖岛（sync-push；legacy HTML） | `renderFuncTiles` / `patchActiveTiles` / `syncHubChrome` tiles 直写 → `__otSoftPadFuncTilesSync`；`data-tile` 委托留 legacy；preview/subpage **留 legacy**；**延迟挂载** `__otMountSoftPadFuncTilesIsland()` | 是 | 否 |
-| `#softPadEmpty` / `#softPadDetailIdle` | **P14d** | SoftPad 空态 / 详情 idle 壳岛（sync-push；双宿主共享 store） | `renderEmptyMain` / `showPrepareMain` / `hideEmpty` / `syncHubChrome` idle → `__otSoftPadEmptyIdleSync`；React onClick → `prepareAppFromUi`；preview/subpage **留 legacy**；**延迟挂载** `__otMountSoftPadEmptyIdleIsland()` | 是 | 否 |
+| `#softPadEmpty` / `#softPadDetailIdle` | **P14d** | SoftPad 空态 / 详情 idle 壳岛（sync-push；双宿主共享 store） | `renderEmptyMain` / `showPrepareMain` / `hideEmpty` / `syncHubChrome` idle → `__otSoftPadEmptyIdleSync`；React onClick → `prepareAppFromUi`；preview handoff 见 P14e；subpage **留 legacy**；**延迟挂载** `__otMountSoftPadEmptyIdleIsland()` | 是 | 否 |
+| `#softPadPreviewHost` | **P14e** | SoftPad 预览 paint-target handoff 岛（sync-push） | `paintPreview` / `clearMain` / `showPrepareMain` / `syncHubChrome` preview → `__otSoftPadPreviewSync`；Pad `renderSoftPadPreview` 写入 `[data-soft-pad-preview-paint]`；**延迟挂载** `__otMountSoftPadPreviewIsland()` | 是 | 否 |
+| `#softPadSubpageBody` | **P14f** | SoftPad 子页 paint-target handoff 岛（sync-push） | `paintSubpage` / `clearSubpage` → `__otSoftPadSubpageSync`；外层 attrs `data-soft-pad-panel` / mapping / token / `is-editing-key`；Pad 四面板写入 `[data-soft-pad-subpage-paint]`；**延迟挂载** `__otMountSoftPadSubpageIsland()`；顶栏见 P14g | 是 | 否 |
+| `#softPadSubpageBar` | **P14g** | SoftPad detail 顶栏岛（返回 + 标题 sync-push） | `syncHubChrome` / `clearSubpage` / `paintSubpage` 标题 → `__otSoftPadDetailChromeSync`；React onClick → `closeSubpage`；`bindChrome` 跳过 subBack；**延迟挂载** `__otMountSoftPadDetailChromeIsland()` | 是 | 否 |
+| `#softPadScopeHint` | **P14h** | SoftPad scope 提示文案岛（sync-push） | `updateScopeHint` → `__otSoftPadScopeHintSync`；宿主保留 `aria-live`；**延迟挂载** `__otMountSoftPadScopeHintIsland()` | 是 | 否 |
 | `#voiceConfigIsland`（新建，位于 `#voiceDeskPanel` 内） | P6 | 语音配置岛 | 接管文本短语+策略；声学留 legacy；**勿**作为 `voice-page-body` 网格子项（会挤占流程 hero） | 是 | 经 OneToneUi |
 | `#appWorkbenchShell` / `#appContentColumn` | 不迁 | — | 主 shell IA 保留 legacy | — | — |
 
@@ -447,9 +459,13 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 | 18 | **P12b-5 收尾模式分段**：切映射 → 模式分段正确；点选模式 → 时序区显隐与 preview 一致；手势切换后允许模式集合变化；与 P12b-2 联调无闪烁 | ⚠️ 待人工点选 |
 | 19 | **P12b-6 启动手势分段**：切映射 → 手势分段正确；点 tap/double/hold（含 gate toast）；hold 风险提示切换；切手势后收尾模式与 P12b-5 一致、无闪烁 | ⚠️ 待人工点选 |
 | 20 | **P14c SoftPad 功能瓷砖**：打开 SoftPad → 四瓷砖可见；点瓷砖进子页；active 高亮；无 mapping 时 disabled；返回 hub 不闪烁；预览/子页仍 legacy | ⚠️ 待人工点选 |
-| 21 | **P14d SoftPad 空态/idle**：无场景 → empty CTA；点创建 Codex/Claude；prepare 态 CTA；有映射时 detail idle 文案；与 P14c 瓷砖联调无闪烁；preview/subpage 仍 legacy | ⚠️ 待人工点选 |
+| 21 | **P14d SoftPad 空态/idle**：无场景 → empty CTA；点创建 Codex/Claude；prepare 态 CTA；有映射时 detail idle 文案；与 P14c 瓷砖联调无闪烁；preview handoff 见 #22 | ⚠️ 待人工点选 |
+| 22 | **P14e SoftPad 预览 handoff**：有 mapping 时左侧预览出现；切皮肤/启用更新；hub↔layout 不闪烁；light 页不重复整树 remount；empty/prepare 清空且 React root 仍在；与 #23 子页联调 | ⚠️ 待人工点选 |
+| 23 | **P14f SoftPad 子页 handoff**：点四瓷砖进子页；layout 点键打开 inline editor；presentation 换肤联动预览；runtime/agent 可用；返回 hub 清空 body 且 React root 仍在；与 P14e 预览联调无闪烁 | ⚠️ 待人工点选 |
+| 24 | **P14g SoftPad detail 顶栏**：进子页标题正确；runtime 隐藏返回；其它子页点返回；清子页标题清空；与 #23 body 联调无闪烁/双触发 | ⚠️ 待人工点选 |
+| 25 | **P14h SoftPad scope 提示**：切 scope / 选习惯 / 空态 / 返回 hub，提示文案与迁移前一致、无闪烁 | ⚠️ 待人工点选 |
 
-> **裁定**：§8.5 项 1–13 全部通过（2026-07-29）。P12b-1～6 + P14c + P14d 工程轨已落地；项 #14–#21 待人工。
+> **裁定**：§8.5 项 1–13 全部通过（2026-07-29）。P12b-1～6 + P14c–h 工程轨已落地；项 #14–#25 待人工。
 
 #### 8.5.2 人工点选指引（2026-07-29）
 
@@ -493,7 +509,11 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
   - **P12b-6**：`#keysTriggerModeHost` 启动手势分段 — **工程轨已落地，待 §8.5 #19**
   - **P14c**：`#softPadFuncTiles` 功能瓷砖 — **工程轨已落地，待 §8.5 #20**
   - **P14d**：`#softPadEmpty` + `#softPadDetailIdle` 空态/idle — **工程轨已落地，待 §8.5 #21**
-- **补迁候选**（按 §3 挂载点表）：SoftPad preview/subpage / stage 子切片；`#settingsPanelKeys` / `#settingsPanelSoftPad` 编辑器区等——模式已被 P5–P14 验证，可逐个复制。
+  - **P14e**：`#softPadPreviewHost` 预览 paint-target handoff — **工程轨已落地，待 §8.5 #22**
+  - **P14f**：`#softPadSubpageBody` 子页 paint-target handoff — **工程轨已落地，待 §8.5 #23**
+  - **P14g**：`#softPadSubpageBar` detail 顶栏（返回/标题）— **工程轨已落地，待 §8.5 #24**
+  - **P14h**：`#softPadScopeHint` scope 提示文案 — **工程轨已落地，待 §8.5 #25**
+- **补迁候选**（按 §3 挂载点表）：`#settingsPanelKeys` / `#settingsPanelSoftPad` 编辑器区等——模式已被 P5–P14 验证，可逐个复制。
 - **shadcn 扩展**：P15a 已试点 Dialog/Tabs/Toast/Button；后续 primitives（Select/Dropdown 等）按需接入，须遵守 island portal root 规则。
 - **home/workbench 决策**：留 legacy 则总收益 <70%；若迁移需先解 render-loop 每帧整树刷新的所有权问题（P7 keyed diff 模式可复制）。
 - **安全收口**：按 8.3 顺序执行。
@@ -504,9 +524,9 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 
 - **工程轨 P0–P8 静态通过**，legacy 零破坏：`index.html` 仅 +1 个 module 入口与岛容器/标记；170+ 旧脚本顺序未动；守卫「岛未挂载即回退 legacy」。
 - **落地资产**：typed IPC、Island Runtime、Basic / Voice（部分）/ Mapping **列表**岛、共享 UI 桥（Confirm React；Toast 反向代理 legacy；Command 脚手架）。
-- **明确未完成**：§8.5 #14–#21 人工点选；更多 shadcn primitives（P15a 仅试点四控件）。
-- **测试护栏**：`npm run test:islands` = … + soft-pad-func-tiles + **soft-pad-empty-idle** + habit-hub…。
-- **裁定**：P0–P15a + P12b-1～6 + P14c + P14d 工程轨 + §8.3 + §8.5（项 1–13）；§8.5 #14–#21 待人工。
+- **明确未完成**：§8.5 #14–#25 人工点选；更多 shadcn primitives（P15a 仅试点四控件）。
+- **测试护栏**：`npm run test:islands` = … + soft-pad-detail-chrome + **soft-pad-scope-hint** + habit-hub…。
+- **裁定**：P0–P15a + P12b-1～6 + P14c–h 工程轨 + §8.3 + §8.5（项 1–13）；§8.5 #14–#25 待人工。
 
 ### 14. P9b / P10 / P11 执行记录（2026-07-29）
 
@@ -589,12 +609,46 @@ P8 审计发现 §4 的刷新约定只做了一半：岛侧 `OneToneIslandsRefre
 - **验证**：`test-soft-pad-func-tiles-island.mjs` + smoke；`npm run test:islands` / `build:islands`。
 
 #### P14d — SoftPad 空态 / 详情 idle 壳岛 ✅（工程轨）
-- **范围**：`#softPadEmpty`（create / prepare CTA）+ `#softPadDetailIdle`（idle 标题/副文案）；preview / subpage / detail panel **不迁**。
+- **范围**：`#softPadEmpty`（create / prepare CTA）+ `#softPadDetailIdle`（idle 标题/副文案）；preview handoff 见 P14e；subpage / detail panel **不迁**。
 - **单一来源**：`OneToneSoftPadHub.buildSoftPadEmptyIdleModel`（双宿主共享 store）。
 - **守卫**：`renderEmptyMain` / `showPrepareMain` / `hideEmpty` / `syncHubChrome` idle / `setDetailOpen` / `clearSubpage` → `__otSoftPadEmptyIdleSync`；岛挂载后不 `innerHTML` 清空 React root；`bindEmptyCreateCtas` 跳过。
 - **岛**：`soft-pad-empty-idle-island.tsx`；React `onClick` → `prepareAppFromUi` / `prepareSoftPadCreateKind`。
 - **延迟挂载**：`__otMountSoftPadEmptyIdleIsland()`（SoftPad `render` 与 P14b/P14c 一并）。
 - **验证**：`test-soft-pad-empty-idle-island.mjs` + smoke；`npm run test:islands` / `build:islands`。
+
+#### P14e — SoftPad 预览 paint-target handoff 岛 ✅（工程轨）
+- **范围**：`#softPadPreviewHost` 外壳 hidden/collapsed + 稳定 paint 子节点；子页见 P14f。
+- **单一来源**：`OneToneSoftPadHub.buildSoftPadPreviewModel`；读桥 `getSelectedSoftPadMappingForPreview`。
+- **守卫**：`paintPreview` / `schedulePreviewPaint` / `clearMain` / `showPrepareMain` / `syncHubChrome` preview → `__otSoftPadPreviewSync`；禁止对 React root `replaceChildren`。
+- **Pad**：`resolveSoftPadPreviewPaintHost`；`renderSoftPadPreview` 归一到 `[data-soft-pad-preview-paint]`。
+- **岛**：`soft-pad-preview-island.tsx`；sync 内调 `Pad.renderSoftPadPreview(paintEl, mapping)`。
+- **延迟挂载**：`__otMountSoftPadPreviewIsland()`（SoftPad `render` 与 P14b–d 一并）。
+- **验证**：`test-soft-pad-preview-island.mjs` + smoke；`npm run test:islands` / `build:islands`。
+
+#### P14f — SoftPad 子页 body paint-target handoff 岛 ✅（工程轨）
+- **范围**：`#softPadSubpageBody` 外壳 attrs + 稳定 paint 子节点；四面板 HTML 仍由 Pad 写入 paint；editKeycap 业务 **不重写**；顶栏见 P14g。
+- **单一来源**：`OneToneSoftPadHub.buildSoftPadSubpageModel`；读桥 `getSelectedSoftPadMappingForSubpage` / `getSoftPadSubpagePaintOpts`。
+- **守卫**：`paintSubpage` / `clearSubpage` → `__otSoftPadSubpageSync`；岛挂载后禁止对 body `replaceChildren`；agent pick / hint 写 paint。
+- **Pad**：`resolveSoftPadSubpagePaintHost` + `mirrorSoftPadSubpageChrome`；四面板归一 paint；`softPadLayoutEditorHost` 读外层 `data-soft-pad-panel`。
+- **岛**：`soft-pad-subpage-island.tsx`；sync 写外层 attrs 并调 Pad / hub write helpers。
+- **延迟挂载**：`__otMountSoftPadSubpageIsland()`（SoftPad `render` 与 P14b–e 一并）。
+- **验证**：`test-soft-pad-subpage-island.mjs` + smoke；`npm run test:islands` / `build:islands`。
+
+#### P14g — SoftPad detail 顶栏岛 ✅（工程轨）
+- **范围**：`#softPadSubpageBar` 返回按钮 + 标题；`#softPadDetailPanel` 显隐仍 legacy `setDetailOpen`；body 见 P14f。
+- **单一来源**：`OneToneSoftPadHub.buildSoftPadDetailChromeModel`；动作 `closeSubpage`。
+- **守卫**：`syncHubChrome` / `clearSubpage` / `paintSubpage` 标题 → `__otSoftPadDetailChromeSync`；`bindChrome` 跳过 subBack（防双触发）。
+- **岛**：`soft-pad-detail-chrome-island.tsx`；React `onClick` → `closeSubpage`；保留 `#btnSoftPadSubBack` / `#softPadSubpageTitle` id 兼容 CSS。
+- **延迟挂载**：`__otMountSoftPadDetailChromeIsland()`（SoftPad `render` 与 P14b–f 一并）。
+- **验证**：`test-soft-pad-detail-chrome-island.mjs` + smoke；`npm run test:islands` / `build:islands`。
+
+#### P14h — SoftPad scope 提示岛 ✅（工程轨）
+- **范围**：`#softPadScopeHint` 文案；宿主保留 `aria-live`。
+- **单一来源**：`OneToneSoftPadHub.buildSoftPadScopeHintModel`（由原 `updateScopeHint` 文案逻辑抽出）。
+- **守卫**：`updateScopeHint` → `__otSoftPadScopeHintSync`；岛挂载后不写 `textContent`。
+- **岛**：`soft-pad-scope-hint-island.tsx`；sync-push 渲染 `model.text`。
+- **延迟挂载**：`__otMountSoftPadScopeHintIsland()`（SoftPad `render` 与 P14b–g 一并）。
+- **验证**：`test-soft-pad-scope-hint-island.mjs` + smoke；`npm run test:islands` / `build:islands`。
 
 #### P12b-3 — 录制取消条岛 ✅（工程轨）
 - **范围**：`#recordCancelBar` 显示态 + `#btnCancelRecord` 文案；`applyKeyWakeRecordingUi` / 录制 IPC / 菜单 **不迁**。

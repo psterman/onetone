@@ -31,6 +31,22 @@ import {
   registerSoftPadEmptyIdleBridge,
 } from './islands/soft-pad-empty-idle-island';
 import {
+  SoftPadPreviewIsland,
+  registerSoftPadPreviewBridge,
+} from './islands/soft-pad-preview-island';
+import {
+  SoftPadSubpageIsland,
+  registerSoftPadSubpageBridge,
+} from './islands/soft-pad-subpage-island';
+import {
+  SoftPadDetailChromeIsland,
+  registerSoftPadDetailChromeBridge,
+} from './islands/soft-pad-detail-chrome-island';
+import {
+  SoftPadScopeHintIsland,
+  registerSoftPadScopeHintBridge,
+} from './islands/soft-pad-scope-hint-island';
+import {
   MappingEditorTargetIsland,
   MappingEditorTriggerIsland,
   registerMappingEditorDisplayBridge,
@@ -397,6 +413,66 @@ function mountSoftPadEmptyIdleIsland(): void {
 }
 (window as unknown as { __otMountSoftPadEmptyIdleIsland?: () => void }).__otMountSoftPadEmptyIdleIsland =
   mountSoftPadEmptyIdleIsland;
+
+// P14e：挂载 SoftPad 预览 handoff 岛（延迟到 SoftPad 首次 render）
+function mountSoftPadPreviewIsland(): void {
+  const host = document.getElementById('softPadPreviewHost');
+  if (!host || OneToneIslands.isMounted('softPadPreviewHost')) return;
+
+  host.innerHTML = '';
+  registerSoftPadPreviewBridge();
+
+  OneToneIslands.mountIsland('softPadPreviewHost', SoftPadPreviewIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountSoftPadPreviewIsland?: () => void }).__otMountSoftPadPreviewIsland =
+  mountSoftPadPreviewIsland;
+
+// P14f：挂载 SoftPad 子页 body handoff 岛（延迟到 SoftPad 首次 render）
+function mountSoftPadSubpageIsland(): void {
+  const host = document.getElementById('softPadSubpageBody');
+  if (!host || OneToneIslands.isMounted('softPadSubpageBody')) return;
+
+  host.innerHTML = '';
+  registerSoftPadSubpageBridge();
+
+  OneToneIslands.mountIsland('softPadSubpageBody', SoftPadSubpageIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountSoftPadSubpageIsland?: () => void }).__otMountSoftPadSubpageIsland =
+  mountSoftPadSubpageIsland;
+
+// P14g：挂载 SoftPad detail 顶栏岛（延迟到 SoftPad 首次 render）
+function mountSoftPadDetailChromeIsland(): void {
+  const host = document.getElementById('softPadSubpageBar');
+  if (!host || OneToneIslands.isMounted('softPadSubpageBar')) return;
+
+  host.innerHTML = '';
+  registerSoftPadDetailChromeBridge();
+
+  OneToneIslands.mountIsland('softPadSubpageBar', SoftPadDetailChromeIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountSoftPadDetailChromeIsland?: () => void }).__otMountSoftPadDetailChromeIsland =
+  mountSoftPadDetailChromeIsland;
+
+// P14h：挂载 SoftPad scope 提示岛（延迟到 SoftPad 首次 render）
+function mountSoftPadScopeHintIsland(): void {
+  const host = document.getElementById('softPadScopeHint');
+  if (!host || OneToneIslands.isMounted('softPadScopeHint')) return;
+
+  host.textContent = '';
+  registerSoftPadScopeHintBridge();
+
+  OneToneIslands.mountIsland('softPadScopeHint', SoftPadScopeHintIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountSoftPadScopeHintIsland?: () => void }).__otMountSoftPadScopeHintIsland =
+  mountSoftPadScopeHintIsland;
 
 // 暴露宿主桥，供 legacy 与后续阶段调用
 (window as unknown as { OneToneIslands: typeof OneToneIslands }).OneToneIslands = OneToneIslands;

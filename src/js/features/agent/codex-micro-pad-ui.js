@@ -4401,7 +4401,19 @@
     });
   }
 
+  function resolveSoftPadPreviewPaintHost(preferred) {
+    var outer = document.getElementById('softPadPreviewHost');
+    if (!outer) return preferred || null;
+    var paint = outer.querySelector('[data-soft-pad-preview-paint]');
+    if (paint) return paint;
+    if (preferred && (preferred === outer || (outer.contains && outer.contains(preferred)))) {
+      return preferred;
+    }
+    return outer;
+  }
+
   function remountSoftPadPreviewShell(host, m) {
+    host = resolveSoftPadPreviewPaintHost(host);
     if (!host || !m) return false;
     ensurePad(m, { persist: false });
     var pad = m.codexMicroPad;
@@ -4458,11 +4470,15 @@
 
   function renderSoftPadPreview(host, m, opts) {
     opts = opts || {};
+    host = resolveSoftPadPreviewPaintHost(host);
     if (!host) return;
+    var handoff = !!(host.getAttribute && host.getAttribute('data-soft-pad-preview-paint') != null
+      && host.hasAttribute('data-soft-pad-preview-paint'));
     if (!m) {
       softPadPreviewMapping = null;
       host.innerHTML = '';
-      host.hidden = true;
+      // paint-target handoff：外层 #softPadPreviewHost.hidden 由岛 sync 管
+      if (!handoff) host.hidden = true;
       return;
     }
     ensurePad(m, { persist: false });
@@ -4472,7 +4488,7 @@
     previewPadMode = on ? 'codex' : 'numpad';
     softPadPreviewMapping = m;
     ensureSoftPadPreviewDelegate(host);
-    host.hidden = false;
+    if (!handoff) host.hidden = false;
     if (!opts.forceFull && remountSoftPadPreviewShell(host, m)) return;
     var skin = canonicalizePadSkin(pad && pad.skin);
     host.innerHTML =
@@ -4506,8 +4522,36 @@
   }
 
   /** Layout subpage — tools idle + inline editor host; no profile/enhance UI. */
+  function resolveSoftPadSubpagePaintHost(preferred) {
+    var outer = document.getElementById('softPadSubpageBody');
+    if (!outer) return preferred || null;
+    var paint = outer.querySelector('[data-soft-pad-subpage-paint]');
+    if (paint) return paint;
+    if (preferred && (preferred === outer || (outer.contains && outer.contains(preferred)))) {
+      return preferred;
+    }
+    return outer;
+  }
+
+  /** CSS / softPadLayoutEditorHost 读外层 #softPadSubpageBody 上的 panel 属性。 */
+  function mirrorSoftPadSubpageChrome(from) {
+    var outer = document.getElementById('softPadSubpageBody');
+    if (!outer || !from || from === outer) return;
+    var panel = from.getAttribute('data-soft-pad-panel');
+    var mapping = from.getAttribute('data-soft-pad-mapping');
+    var token = from.getAttribute('data-agent-load-token');
+    if (panel) outer.setAttribute('data-soft-pad-panel', panel);
+    else outer.removeAttribute('data-soft-pad-panel');
+    if (mapping) outer.setAttribute('data-soft-pad-mapping', mapping);
+    else outer.removeAttribute('data-soft-pad-mapping');
+    if (token != null) outer.setAttribute('data-agent-load-token', token);
+    else outer.removeAttribute('data-agent-load-token');
+    outer.classList.toggle('is-editing-key', from.classList.contains('is-editing-key'));
+  }
+
   function renderSoftPadLayoutPanel(container, m, opts) {
     opts = opts || {};
+    container = resolveSoftPadSubpagePaintHost(container);
     if (!container || !m) return;
     var pad = m.codexMicroPad;
     if (!pad) {
@@ -4516,6 +4560,7 @@
     }
     if (!pad) {
       container.innerHTML = '<p class="codex-pad-mgr__hint">—</p>';
+      mirrorSoftPadSubpageChrome(container);
       return;
     }
     container.innerHTML =
@@ -4544,6 +4589,7 @@
     container.setAttribute('data-soft-pad-mapping', String(m.id || ''));
     container.setAttribute('data-soft-pad-panel', 'layout');
     container.classList.add('is-editing-key');
+    mirrorSoftPadSubpageChrome(container);
     bindSoftPadLightPanelEvents(container, m, pad, Object.assign({}, opts, { panel: 'layout' }));
     var focusId = pickDefaultLayoutKey(m);
     // Open editor immediately — never leave the right pane blank.
@@ -4605,6 +4651,7 @@
     var editor = container.querySelector('[data-soft-pad-layout-editor]');
     if (editor) editor.hidden = false;
     container.classList.add('is-editing-key');
+    mirrorSoftPadSubpageChrome(container);
     var mapId = container.getAttribute('data-soft-pad-mapping');
     var m = mapId ? findMappingById(mapId) : null;
     if (m) {
@@ -4623,6 +4670,7 @@
   /** Presentation subpage — skins only (full/mini live under「何时显示」). */
   function renderSoftPadPresentationPanel(container, m, opts) {
     opts = opts || {};
+    container = resolveSoftPadSubpagePaintHost(container);
     if (!container || !m) return;
     var pad = m.codexMicroPad;
     if (!pad) {
@@ -4631,6 +4679,7 @@
     }
     if (!pad) {
       container.innerHTML = '<p class="codex-pad-mgr__hint">—</p>';
+      mirrorSoftPadSubpageChrome(container);
       return;
     }
     container.innerHTML =
@@ -4647,6 +4696,7 @@
     container.setAttribute('data-soft-pad-mapping', String(m.id || ''));
     container.setAttribute('data-soft-pad-panel', 'presentation');
     container.classList.remove('is-editing-key');
+    mirrorSoftPadSubpageChrome(container);
     bindSoftPadLightPanelEvents(container, m, pad, Object.assign({}, opts, { panel: 'presentation' }));
   }
 
@@ -5033,6 +5083,7 @@
   /** Runtime subpage — show mode + three feature cards. */
   function renderSoftPadRuntimePanel(container, m, opts) {
     opts = opts || {};
+    container = resolveSoftPadSubpagePaintHost(container);
     if (!container || !m) return;
     ensurePad(m, { persist: false });
     var pad = m.codexMicroPad;
@@ -5063,12 +5114,14 @@
     container.setAttribute('data-soft-pad-panel', 'runtime');
     // Layout panel leaves is-editing-key (overflow:hidden); clear so cards 2/3 can scroll.
     container.classList.remove('is-editing-key');
+    mirrorSoftPadSubpageChrome(container);
     bindSoftPadLightPanelEvents(container, m, pad, Object.assign({}, opts, { panel: 'runtime' }));
   }
 
   /** Agent subpage — advanced status lights; fill immediately (user entered intentionally). */
   function renderSoftPadAgentPanel(container, m, opts) {
     opts = opts || {};
+    container = resolveSoftPadSubpagePaintHost(container);
     if (!container || !m) return;
     ensurePad(m, { persist: false });
     var pad = m.codexMicroPad;
@@ -5088,6 +5141,7 @@
     container.setAttribute('data-soft-pad-panel', 'agent');
     container.classList.remove('is-editing-key');
     if (token != null) container.setAttribute('data-agent-load-token', String(token));
+    mirrorSoftPadSubpageChrome(container);
     fillLazyAgentConnect(container, m, pad, {
       agentLoadToken: token,
       requireSoftPad: true
@@ -6026,7 +6080,7 @@
         } else if (host.id === 'codexMicroPadHostTarget') {
           if (!remountTargetPadShell(host, m)) renderTarget(host, m, { skipEnsure: true });
         } else if (host.id === 'softPadPreviewHost' || host.closest('#softPadPreviewHost')) {
-          renderSoftPadPreview(host.id === 'softPadPreviewHost' ? host : document.getElementById('softPadPreviewHost'), m, { forceFull: true });
+          renderSoftPadPreview(resolveSoftPadPreviewPaintHost(host), m, { forceFull: true });
         } else {
           var oldWrap = host.querySelector('.micro-hw-wrap') || host.querySelector('.micro-hw-shell');
           if (oldWrap) {
@@ -6391,6 +6445,11 @@
     host.hidden = false;
     if (mode === 'inline') {
       // Intro + batch fold stay visible; editor fills the middle.
+      // CSS targets #softPadSubpageBody.is-editing-key — mirror onto outer + paint.
+      var bodyEl = document.getElementById('softPadSubpageBody');
+      var paintEl = resolveSoftPadSubpagePaintHost(bodyEl);
+      if (paintEl) paintEl.classList.add('is-editing-key');
+      if (bodyEl) bodyEl.classList.add('is-editing-key');
       if (host.parentNode) host.parentNode.classList.add('is-editing-key');
       markSoftPadPreviewFocus(microKeyId);
     }
@@ -7042,10 +7101,13 @@
     openPadManager: openPadManager,
     renderCodexMicroPadManager: renderCodexMicroPadManager,
     renderSoftPadPreview: renderSoftPadPreview,
+    resolveSoftPadPreviewPaintHost: resolveSoftPadPreviewPaintHost,
     renderSoftPadLayoutPanel: renderSoftPadLayoutPanel,
     renderSoftPadPresentationPanel: renderSoftPadPresentationPanel,
     renderSoftPadRuntimePanel: renderSoftPadRuntimePanel,
     renderSoftPadAgentPanel: renderSoftPadAgentPanel,
+    resolveSoftPadSubpagePaintHost: resolveSoftPadSubpagePaintHost,
+    mirrorSoftPadSubpageChrome: mirrorSoftPadSubpageChrome,
     resolveSoftPadShowMode: resolveSoftPadShowMode,
     softPadShowModeLabel: softPadShowModeLabel,
     applySoftPadShowMode: applySoftPadShowMode,
