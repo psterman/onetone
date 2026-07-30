@@ -18,12 +18,16 @@
     setText('btnClearAll',d.clearAll);
     setText('trashTitle',d.trashTitle);
     setText('trashEmpty',d.trashEmpty);
-    setText('menuActTest',d.testShort);
+    if(global.__otMapMenuFloatMounted&&typeof global.__otMapMenuFloatSync==='function'){
+      global.__otMapMenuFloatSync();
+    }else{
+      setText('menuActTest',d.testShort);
+      setText('menuActDup',d.duplicate);
+      setText('menuActUp',d.moveUp);
+      setText('menuActDown',d.moveDown);
+      setText('menuActDel',d.delete);
+    }
     setText('btnTestModalOk',d.testModalOk);
-    setText('menuActDup',d.duplicate);
-    setText('menuActUp',d.moveUp);
-    setText('menuActDown',d.moveDown);
-    setText('menuActDel',d.delete);
     hooks().applyTheme();
     hooks().applyFontScale();
     if(hooks().mappingRecordMode()==='none') hooks().setRecording('none');

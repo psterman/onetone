@@ -696,6 +696,16 @@
         if(typeof mountKeys==='function') mountKeys();
         var mountKeysWorkflow=global.__otMountKeysWorkflowIsland;
         if(typeof mountKeysWorkflow==='function') mountKeysWorkflow();
+        var mountEditorDisplay=global.__otMountMappingEditorDisplayIsland;
+        if(typeof mountEditorDisplay==='function') mountEditorDisplay();
+        var mountFinishTiming=global.__otMountKeysFinishTimingIsland;
+        if(typeof mountFinishTiming==='function') mountFinishTiming();
+        var mountFinishMode=global.__otMountKeysFinishModeIsland;
+        if(typeof mountFinishMode==='function') mountFinishMode();
+        var mountTriggerMode=global.__otMountKeysTriggerModeIsland;
+        if(typeof mountTriggerMode==='function') mountTriggerMode();
+        var mountRecordCancel=global.__otMountRecordCancelBarIsland;
+        if(typeof mountRecordCancel==='function') mountRecordCancel();
       }catch(err){ console.error('keys island mount',err); }
 
       if(opts.deferHeavy){

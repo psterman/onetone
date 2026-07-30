@@ -4,44 +4,146 @@
   function h(){ return global.__vp_mapping_trash_menu_hooks__ || {}; }
   var openMenuId=null;
   var menuAnchorBtn=null;
+  var menuLeft=0;
+  var menuTop=0;
+
+  function mapMenuFloatIslandMounted(){
+    return !!global.__otMapMenuFloatMounted;
+  }
+
+  function buildMapMenuFloatModel(){
+    var hooks=h();
+    var t=typeof hooks.t==='function'?hooks.t:function(k){ return k; };
+    var labels={
+      test:t('testShort'),
+      dup:t('duplicate'),
+      up:t('moveUp'),
+      down:t('moveDown'),
+      del:t('delete')
+    };
+    if(!openMenuId){
+      return {
+        open:false,
+        id:'',
+        left:0,
+        top:0,
+        disabled:{ test:true, dup:true, up:true, down:true, del:true },
+        labels:labels,
+        sig:'closed'
+      };
+    }
+    var state=global.OneToneState.state;
+    var list=hooks.sortedMappings?hooks.sortedMappings():[];
+    var i=list.findIndex(function(m){ return m.id===openMenuId; });
+    var m=(state.config.mappings||[]).find(function(x){ return x.id===openMenuId; });
+    var disabled={
+      test:!m||!(hooks.editorTargetForMapping&&hooks.editorTargetForMapping(m)),
+      dup:!m,
+      up:!m||i<=0,
+      down:!m||i<0||i>=list.length-1,
+      del:false
+    };
+    var sig=[
+      '1',
+      openMenuId,
+      String(menuLeft),
+      String(menuTop),
+      disabled.test?'1':'0',
+      disabled.dup?'1':'0',
+      disabled.up?'1':'0',
+      disabled.down?'1':'0',
+      disabled.del?'1':'0',
+      labels.test,
+      labels.dup,
+      labels.up,
+      labels.down,
+      labels.del
+    ].join('|');
+    return {
+      open:true,
+      id:openMenuId,
+      left:menuLeft,
+      top:menuTop,
+      disabled:disabled,
+      labels:labels,
+      sig:sig
+    };
+  }
+
+  function applyMapMenuFloatDom(model){
+    var pop=$('mapMenuFloat');
+    if(!pop) return;
+    if(model.open){
+      pop.dataset.id=model.id;
+      pop.style.left=model.left+'px';
+      pop.style.top=model.top+'px';
+      pop.classList.add('open');
+    }else{
+      pop.classList.remove('open');
+      pop.removeAttribute('data-id');
+    }
+    if(mapMenuFloatIslandMounted()) return;
+    var dup=$('menuActDup');
+    var test=$('menuActTest');
+    var up=$('menuActUp');
+    var down=$('menuActDown');
+    var del=$('menuActDel');
+    if(dup) dup.disabled=model.disabled.dup;
+    if(test) test.disabled=model.disabled.test;
+    if(up) up.disabled=model.disabled.up;
+    if(down) down.disabled=model.disabled.down;
+    if(del) del.disabled=model.disabled.del;
+  }
+
+  function pushMapMenuFloatView(){
+    var model=buildMapMenuFloatModel();
+    if(mapMenuFloatIslandMounted()&&typeof global.__otMapMenuFloatSync==='function'){
+      global.__otMapMenuFloatSync();
+      return;
+    }
+    applyMapMenuFloatDom(model);
+  }
 
   function closeMenu(){
     openMenuId=null;
     menuAnchorBtn=null;
-    var pop=$('mapMenuFloat');
-    pop.classList.remove('open');
-    pop.removeAttribute('data-id');
+    menuLeft=0;
+    menuTop=0;
     document.querySelectorAll('.map-row.menu-open').forEach(function(row){ row.classList.remove('menu-open'); });
+    pushMapMenuFloatView();
   }
 
   function openMenu(id, btn){
     if(openMenuId===id){ closeMenu(); return; }
     openMenuId=id;
     menuAnchorBtn=btn;
-    var pop=$('mapMenuFloat');
-    pop.dataset.id=id;
     var rect=btn.getBoundingClientRect();
     var width=148;
     var left=rect.right-width;
     if(left<8) left=8;
     var top=rect.bottom+6;
     if(top+120>window.innerHeight) top=Math.max(8, rect.top-120);
-    pop.style.left=left+'px';
-    pop.style.top=top+'px';
-    pop.classList.add('open');
+    menuLeft=left;
+    menuTop=top;
     document.querySelectorAll('.map-row.menu-open').forEach(function(row){ row.classList.remove('menu-open'); });
     var row=btn.closest('.map-row');
     if(row) row.classList.add('menu-open');
-    var hooks=h();
-    var state=global.OneToneState.state;
-    var list=hooks.sortedMappings();
-    var i=list.findIndex(function(m){ return m.id===id; });
-    var m=state.config.mappings.find(function(x){ return x.id===id; });
-    $('menuActDup').disabled=!m;
-    $('menuActTest').disabled=!m||!hooks.editorTargetForMapping(m);
-    $('menuActUp').disabled=!m||i<=0;
-    $('menuActDown').disabled=!m||i<0||i>=list.length-1;
-    $('menuActDel').disabled=false;
+    pushMapMenuFloatView();
+  }
+
+  function runMenuAct(act){
+    var id=openMenuId;
+    if(!id) return;
+    if(act==='test'){
+      closeMenu();
+      var listHooks=global.__vp_mapping_list_ui_hooks__||{};
+      if(typeof listHooks.fireTestSend==='function') listHooks.fireTestSend(id);
+      return;
+    }
+    if(act==='dup'){ duplicate(id); return; }
+    if(act==='up'){ reorder(id,'up'); return; }
+    if(act==='down'){ reorder(id,'down'); return; }
+    if(act==='del'){ closeMenu(); deleteFromMenu(id); }
   }
 
   function softDelete(id){
@@ -222,6 +324,9 @@
     restoreFromTrash:restoreFromTrash,
     renderTrashList:renderTrashList,
     openMenuId:function(){ return openMenuId; },
-    menuAnchorBtn:function(){ return menuAnchorBtn; }
+    menuAnchorBtn:function(){ return menuAnchorBtn; },
+    buildMapMenuFloatModel:buildMapMenuFloatModel,
+    applyMapMenuFloatDom:applyMapMenuFloatDom,
+    runMenuAct:runMenuAct
   };
 })((typeof window!=='undefined')?window:globalThis);

@@ -1,9 +1,12 @@
 import * as React from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { cn } from '../../lib/utils';
+import { getDialogPortalContainer } from '../../shared/portal-roots';
 
-// P4 Dialog：零依赖实现（不依赖 @radix-ui/react-dialog，因本环境无法稳定安装）。
-// API 形态刻意对齐 shadcn/ui：<Dialog open onOpenChange> + DialogHeader/Footer/Title/Description，
-// 后续若接入真实 Radix，仅需替换本文件实现、调用方基本不动。
+// P15a Dialog：官方 @radix-ui/react-dialog。
+// 保持 P4 扁平 API：<Dialog open onOpenChange> + Header/Footer/Title/Description，
+// 调用方（confirm-island / command-island）基本不动。
+// Portal container → wrap.ot-island（见 getDialogPortalContainer），禁止裸 document.body。
 export interface DialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -19,42 +22,26 @@ export function Dialog({
   className,
   closeOnBackdrop = true,
 }: DialogProps) {
-  const ref = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onOpenChange(false);
-    };
-    document.addEventListener('keydown', onKey);
-    const t = window.setTimeout(() => ref.current?.focus(), 0);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      window.clearTimeout(t);
-    };
-  }, [open, onOpenChange]);
-
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      onMouseDown={(e) => {
-        if (closeOnBackdrop && e.target === e.currentTarget) onOpenChange(false);
-      }}
-    >
-      <div
-        ref={ref}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        className={cn(
-          'relative z-50 grid w-full max-w-lg gap-4 border border-border bg-background p-6 shadow-lg rounded-lg outline-none',
-          className,
-        )}
-      >
-        {children}
-      </div>
-    </div>
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal container={getDialogPortalContainer()}>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60" />
+        <DialogPrimitive.Content
+          className={cn(
+            'fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border border-border bg-background p-6 shadow-lg rounded-lg outline-none',
+            className,
+          )}
+          onPointerDownOutside={(e) => {
+            if (!closeOnBackdrop) e.preventDefault();
+          }}
+          onInteractOutside={(e) => {
+            if (!closeOnBackdrop) e.preventDefault();
+          }}
+        >
+          {children}
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
 
@@ -71,15 +58,26 @@ export const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLD
 );
 DialogFooter.displayName = 'DialogFooter';
 
-export const DialogTitle = ({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-  <h2 className={cn('text-lg font-semibold text-foreground', className)} {...props} />
-);
+export const DialogTitle = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Title>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Title
+    ref={ref}
+    className={cn('text-lg font-semibold text-foreground', className)}
+    {...props}
+  />
+));
 DialogTitle.displayName = 'DialogTitle';
 
-export const DialogDescription = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLParagraphElement>) => (
-  <p className={cn('text-sm text-muted-foreground', className)} {...props} />
-);
+export const DialogDescription = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Description>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Description
+    ref={ref}
+    className={cn('text-sm text-muted-foreground', className)}
+    {...props}
+  />
+));
 DialogDescription.displayName = 'DialogDescription';

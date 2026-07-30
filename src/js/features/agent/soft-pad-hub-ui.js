@@ -510,19 +510,37 @@
       e.subBody.removeAttribute('data-agent-load-token');
     }
     if (e.detailPanel) e.detailPanel.hidden = true;
-    if (e.detailIdle) e.detailIdle.hidden = false;
+    detailIdleOpen = false;
+    if (e.detailIdle) {
+      if (!(global.__otSoftPadEmptyIdleMounted && typeof global.__otSoftPadEmptyIdleSync === 'function')) {
+        e.detailIdle.hidden = false;
+      }
+    }
     if (e.subHost) {
       e.subHost.classList.remove('is-open');
       e.subHost.removeAttribute('hidden');
     }
     if (e.subTitle) e.subTitle.textContent = '';
+    if (global.__otSoftPadEmptyIdleMounted && typeof global.__otSoftPadEmptyIdleSync === 'function') {
+      global.__otSoftPadEmptyIdleSync();
+    }
   }
+
+  // P14d：空态 / 详情 idle 表面（岛挂载后由 buildSoftPadEmptyIdleModel 驱动）
+  var emptySurfaceMode = 'none'; // none | empty | prepare
+  var emptyPrepareCtx = null; // { appId, kind, title }
+  var detailIdleOpen = false; // true → 详情开，idle 隐藏
 
   function setDetailOpen(open) {
     var e = els();
     open = !!open;
+    detailIdleOpen = open;
     if (e.detailPanel) e.detailPanel.hidden = !open;
-    if (e.detailIdle) e.detailIdle.hidden = open;
+    if (e.detailIdle) {
+      if (!(global.__otSoftPadEmptyIdleMounted && typeof global.__otSoftPadEmptyIdleSync === 'function')) {
+        e.detailIdle.hidden = open;
+      }
+    }
     if (e.subHost) {
       e.subHost.classList.toggle('is-open', open);
       e.subHost.removeAttribute('hidden');
@@ -533,6 +551,10 @@
   function patchActiveTiles() {
     var e = els();
     if (!e.tiles) return;
+    if (global.__otSoftPadFuncTilesMounted && typeof global.__otSoftPadFuncTilesSync === 'function') {
+      global.__otSoftPadFuncTilesSync();
+      return;
+    }
     e.tiles.querySelectorAll('[data-tile]').forEach(function (btn) {
       var on = softPadView !== 'hub' && btn.getAttribute('data-tile') === softPadView;
       btn.classList.toggle('is-active', on);
@@ -544,10 +566,17 @@
   function clearMain() {
     var e = els();
     if (e.preview) e.preview.replaceChildren();
-    if (e.tiles) e.tiles.innerHTML = '';
+    if (e.tiles) {
+      if (!(global.__otSoftPadFuncTilesMounted && typeof global.__otSoftPadFuncTilesSync === 'function')) {
+        e.tiles.innerHTML = '';
+      }
+    }
     clearSubpage();
     softPadView = 'hub';
     paintedMappingId = null;
+    if (global.__otSoftPadFuncTilesMounted && typeof global.__otSoftPadFuncTilesSync === 'function') {
+      global.__otSoftPadFuncTilesSync();
+    }
   }
 
   function onPanelLeave() {
@@ -571,6 +600,7 @@
 
   function bindEmptyCreateCtas(host) {
     if (!host) return;
+    if (global.__otSoftPadEmptyIdleMounted) return;
     host.querySelectorAll('[data-soft-pad-create-kind]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var kind = btn.getAttribute('data-soft-pad-create-kind') || 'codex';
@@ -579,25 +609,138 @@
     });
   }
 
-  function renderEmptyMain() {
+  function prepareEmptyHtml(ctx) {
+    ctx = ctx || {};
+    var prepareAppId = ctx.appId || 'codex-chat';
+    var prepareKind = ctx.kind || 'codex';
+    var title = ctx.title || t('softPadHubPrepareApp', '准备 {app} Soft Pad')
+      .replace('{app}', appTitleFor(prepareKind));
+    return '<p class="soft-pad-empty__title">' + esc(title) + '</p>' +
+      '<p class="soft-pad-empty__desc">' +
+      esc(t('softPadHubPrepareHint', '点击准备后才会创建该应用的虚拟键盘配置。')) +
+      '</p>' +
+      '<button type="button" class="codex-micro-pad__btn codex-micro-pad__btn--primary" data-soft-pad-prepare-cta="' +
+      esc(prepareAppId) + '" data-scheme-kind="' + esc(prepareKind) + '">' +
+      esc(t('softPadHubPrepareShort', '准备')) + '</button>';
+  }
+
+  function bindPrepareCta(host) {
+    if (!host || global.__otSoftPadEmptyIdleMounted) return;
+    var btn = host.querySelector('[data-soft-pad-prepare-cta]');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      prepareAppFromUi(
+        btn.getAttribute('data-soft-pad-prepare-cta'),
+        btn.getAttribute('data-scheme-kind')
+      );
+    });
+  }
+
+  /** P14d：空态 + 详情 idle 双宿主模型（单一来源）。 */
+  function buildSoftPadEmptyIdleModel() {
+    var idleTitle = t('softPadDetailIdleTitle', '点左侧一项开始调整');
+    var idleSub = t('softPadDetailIdleSub', '右侧打开详情；左侧键盘与列表保持不动');
+    var idleHidden = !!detailIdleOpen;
+    var mode = emptySurfaceMode === 'empty' || emptySurfaceMode === 'prepare'
+      ? emptySurfaceMode
+      : 'none';
+    var prepareAppId = '';
+    var prepareKind = '';
+    var prepareTitle = '';
+    var emptyHtml = '';
+    var emptyHidden = true;
+    var emptyTitle = '';
+    var emptyDesc = '';
+    var createCodexLabel = t('softPadEmptyCreateCodex', '创建 Codex 应用场景');
+    var createClaudeLabel = t('softPadEmptyCreateClaude', '创建 Claude 应用场景');
+    var prepareHint = t('softPadHubPrepareHint', '点击准备后才会创建该应用的虚拟键盘配置。');
+    var prepareBtnLabel = t('softPadHubPrepareShort', '准备');
+
+    if (mode === 'empty') {
+      emptyHidden = false;
+      emptyTitle = t('softPadEmptyTitle', '还没有可配置的应用场景');
+      emptyDesc = t('softPadBoundaryHint', '虚拟键盘只绑定到应用场景。先创建 Codex 或 Claude 应用场景，再配置它的虚拟键盘。');
+      emptyHtml = emptyCreateCtaHtml();
+    } else if (mode === 'prepare') {
+      emptyHidden = false;
+      prepareAppId = (emptyPrepareCtx && emptyPrepareCtx.appId) || 'codex-chat';
+      prepareKind = (emptyPrepareCtx && emptyPrepareCtx.kind) || 'codex';
+      prepareTitle = (emptyPrepareCtx && emptyPrepareCtx.title) ||
+        t('softPadHubPrepareApp', '准备 {app} Soft Pad').replace('{app}', appTitleFor(prepareKind));
+      emptyTitle = prepareTitle;
+      emptyDesc = prepareHint;
+      emptyHtml = prepareEmptyHtml({
+        appId: prepareAppId,
+        kind: prepareKind,
+        title: prepareTitle
+      });
+    }
+
+    return {
+      mode: mode,
+      emptyHtml: emptyHtml,
+      emptyHidden: emptyHidden,
+      emptyTitle: emptyTitle,
+      emptyDesc: emptyDesc,
+      createCodexLabel: createCodexLabel,
+      createClaudeLabel: createClaudeLabel,
+      prepareAppId: prepareAppId,
+      prepareKind: prepareKind,
+      prepareTitle: prepareTitle,
+      prepareHint: prepareHint,
+      prepareBtnLabel: prepareBtnLabel,
+      idleTitle: idleTitle,
+      idleSub: idleSub,
+      idleHidden: idleHidden,
+      sig: [
+        mode,
+        emptyHidden ? '1' : '0',
+        idleHidden ? '1' : '0',
+        emptyHtml,
+        idleTitle,
+        idleSub,
+        prepareAppId,
+        prepareKind
+      ].join('\0')
+    };
+  }
+
+  function applySoftPadEmptyIdleHost(model) {
     var e = els();
+    if (global.__otSoftPadEmptyIdleMounted && typeof global.__otSoftPadEmptyIdleSync === 'function') {
+      global.__otSoftPadEmptyIdleSync();
+      return;
+    }
+    if (!model) model = buildSoftPadEmptyIdleModel();
+    if (e.empty) {
+      e.empty.hidden = !!model.emptyHidden;
+      e.empty.innerHTML = model.emptyHtml || '';
+      if (model.mode === 'empty') bindEmptyCreateCtas(e.empty);
+      else if (model.mode === 'prepare') bindPrepareCta(e.empty);
+    }
+    if (e.detailIdle) {
+      e.detailIdle.hidden = !!model.idleHidden;
+      var idleTitleEl = e.detailIdle.querySelector('.soft-pad-detail-idle__title');
+      var idleSubEl = e.detailIdle.querySelector('.soft-pad-detail-idle__sub');
+      if (idleTitleEl) idleTitleEl.textContent = model.idleTitle || '';
+      if (idleSubEl) idleSubEl.textContent = model.idleSub || '';
+    }
+  }
+
+  function renderEmptyMain() {
     clearMain();
     updateStatusBar(null);
     updateScopeHint();
     renderAppSwitcher();
-    if (e.empty) {
-      e.empty.hidden = false;
-      e.empty.innerHTML = emptyCreateCtaHtml();
-      bindEmptyCreateCtas(e.empty);
-    }
+    emptySurfaceMode = 'empty';
+    emptyPrepareCtx = null;
+    applySoftPadEmptyIdleHost(buildSoftPadEmptyIdleModel());
   }
 
   function hideEmpty() {
-    var e = els();
-    if (e.empty) {
-      e.empty.hidden = true;
-      e.empty.innerHTML = '';
-    }
+    emptySurfaceMode = 'none';
+    emptyPrepareCtx = null;
+    applySoftPadEmptyIdleHost(buildSoftPadEmptyIdleModel());
   }
 
   /** Scope without mapping: CTA only — never auto-create. */
@@ -627,26 +770,9 @@
     var title = t('softPadHubPrepareApp', '准备 {app} Soft Pad')
       .replace('{app}', (scope && scope.title) || appTitleFor(prepareKind));
 
-    if (e.empty) {
-      e.empty.hidden = false;
-      e.empty.innerHTML =
-        '<p class="soft-pad-empty__title">' + esc(title) + '</p>' +
-        '<p class="soft-pad-empty__desc">' +
-        esc(t('softPadHubPrepareHint', '点击准备后才会创建该应用的虚拟键盘配置。')) +
-        '</p>' +
-        '<button type="button" class="codex-micro-pad__btn codex-micro-pad__btn--primary" data-soft-pad-prepare-cta="' +
-        esc(prepareAppId) + '" data-scheme-kind="' + esc(prepareKind) + '">' +
-        esc(t('softPadHubPrepareShort', '准备')) + '</button>';
-      var btn = e.empty.querySelector('[data-soft-pad-prepare-cta]');
-      if (btn) {
-        btn.addEventListener('click', function () {
-          prepareAppFromUi(
-            btn.getAttribute('data-soft-pad-prepare-cta'),
-            btn.getAttribute('data-scheme-kind')
-          );
-        });
-      }
-    }
+    emptySurfaceMode = 'prepare';
+    emptyPrepareCtx = { appId: prepareAppId, kind: prepareKind, title: title };
+    applySoftPadEmptyIdleHost(buildSoftPadEmptyIdleModel());
   }
 
   function tileStatus(entry, tile) {
@@ -692,17 +818,24 @@
     if (VALID_SOFT_PAD_VIEWS[view]) lastSoftPadView = view;
   }
 
-  function renderFuncTiles(entry) {
-    var e = els();
-    if (!e.tiles) return;
+  function buildSoftPadFuncTilesModel(entry) {
+    if (arguments.length === 0) {
+      entry = findEntry(getSelectedMappingId());
+    }
     var inPadViews = softPadView === 'hub' || softPadView === 'layout' ||
       softPadView === 'presentation' || softPadView === 'runtime' || softPadView === 'agent';
+    var ariaLabel = t('softPadFuncTilesAria', '你想改什么？');
     if (!entry || !inPadViews) {
-      e.tiles.hidden = true;
-      return;
+      return {
+        tilesHtml: '',
+        hidden: true,
+        ariaLabel: ariaLabel,
+        mappingId: '',
+        view: softPadView || 'hub',
+        ready: false,
+        sig: 'hidden|' + (softPadView || 'hub')
+      };
     }
-    e.tiles.hidden = false;
-    e.tiles.setAttribute('aria-label', t('softPadFuncTilesAria', '你想改什么？'));
     var ready = hasMapping(entry);
     var tiles = [
       {
@@ -730,13 +863,14 @@
         sub: t('softPadTileMoreSub', '状态灯等进阶选项')
       }
     ];
-    e.tiles.innerHTML =
+    var tilesHtml =
       '<div class="soft-pad-func-tiles__head">' +
       '<h4 class="soft-pad-func-tiles__title">' + esc(t('softPadFuncTilesTitle', '你想改什么？')) + '</h4>' +
       '<p class="soft-pad-func-tiles__sub">' + esc(t('softPadFuncTilesSub', '动作入口更像任务清单，适合第一次配置')) + '</p>' +
       '</div>' +
       tiles.map(function (tile) {
         var active = softPadView === tile.id;
+        var status = tileStatus(entry, tile.id);
         return (
           '<button type="button" class="soft-pad-func-tile' +
           (ready ? '' : ' is-disabled') +
@@ -749,10 +883,44 @@
           '<span class="soft-pad-func-tile__title">' + esc(tile.title) + '</span>' +
           '<span class="soft-pad-func-tile__sub">' + esc(tile.sub) + '</span>' +
           '</span>' +
-          '<span class="soft-pad-func-tile__status">' + esc(tileStatus(entry, tile.id)) + '</span>' +
+          '<span class="soft-pad-func-tile__status">' + esc(status) + '</span>' +
           '</button>'
         );
       }).join('');
+    var mappingId = entry.mapping && entry.mapping.id ? String(entry.mapping.id) : '';
+    var sig = [
+      mappingId,
+      softPadView || 'hub',
+      ready ? '1' : '0',
+      tilesHtml
+    ].join('\0');
+    return {
+      tilesHtml: tilesHtml,
+      hidden: false,
+      ariaLabel: ariaLabel,
+      mappingId: mappingId,
+      view: softPadView || 'hub',
+      ready: !!ready,
+      sig: sig
+    };
+  }
+
+  function applySoftPadFuncTilesHost(model) {
+    var e = els();
+    if (!e.tiles) return;
+    if (global.__otSoftPadFuncTilesMounted && typeof global.__otSoftPadFuncTilesSync === 'function') {
+      global.__otSoftPadFuncTilesSync();
+      return;
+    }
+    e.tiles.hidden = !!model.hidden;
+    if (model.ariaLabel) e.tiles.setAttribute('aria-label', model.ariaLabel);
+    e.tiles.innerHTML = model.tilesHtml || '';
+  }
+
+  function renderFuncTiles(entry) {
+    var e = els();
+    if (!e.tiles) return;
+    applySoftPadFuncTilesHost(buildSoftPadFuncTilesModel(entry));
   }
 
   function syncHubChrome(entry) {
@@ -760,7 +928,9 @@
     var onHub = softPadView === 'hub';
     var detailOpen = !onHub && hasMapping(entry);
     // 左侧导航（键盘+卡片）结构固定；任意子页都不收起预览，避免布局崩坏。
-    if (e.tiles) e.tiles.hidden = !entry;
+    if (e.tiles && !(global.__otSoftPadFuncTilesMounted && typeof global.__otSoftPadFuncTilesSync === 'function')) {
+      e.tiles.hidden = !entry;
+    }
     setDetailOpen(detailOpen);
     if (e.preview) {
       if (!hasMapping(entry)) {
@@ -780,7 +950,9 @@
       e.subBack.textContent = t('softPadSubBack', '← 返回');
     }
     if (e.subTitle && detailOpen) e.subTitle.textContent = subpageTitle(softPadView);
-    if (e.detailIdle) {
+    if (global.__otSoftPadEmptyIdleMounted && typeof global.__otSoftPadEmptyIdleSync === 'function') {
+      global.__otSoftPadEmptyIdleSync();
+    } else if (e.detailIdle) {
       var idleTitle = e.detailIdle.querySelector('.soft-pad-detail-idle__title');
       var idleSub = e.detailIdle.querySelector('.soft-pad-detail-idle__sub');
       if (idleTitle) {
@@ -791,8 +963,11 @@
       }
     }
     if (entry) {
-      if (!e.tiles.querySelector('[data-tile]')) renderFuncTiles(entry);
-      else {
+      if (global.__otSoftPadFuncTilesMounted && typeof global.__otSoftPadFuncTilesSync === 'function') {
+        renderFuncTiles(entry);
+      } else if (!e.tiles.querySelector('[data-tile]')) {
+        renderFuncTiles(entry);
+      } else {
         e.tiles.querySelectorAll('[data-tile]').forEach(function (btn) {
           var id = btn.getAttribute('data-tile');
           var statusEl = btn.querySelector('.soft-pad-func-tile__status');
@@ -800,6 +975,8 @@
         });
         patchActiveTiles();
       }
+    } else if (global.__otSoftPadFuncTilesMounted && typeof global.__otSoftPadFuncTilesSync === 'function') {
+      renderFuncTiles(null);
     }
   }
 
@@ -1826,6 +2003,10 @@
       if(typeof mountSoft==='function') mountSoft();
       var mountWorkflow=global.__otMountSoftPadWorkflowIsland;
       if(typeof mountWorkflow==='function') mountWorkflow();
+      var mountFuncTiles=global.__otMountSoftPadFuncTilesIsland;
+      if(typeof mountFuncTiles==='function') mountFuncTiles();
+      var mountEmptyIdle=global.__otMountSoftPadEmptyIdleIsland;
+      if(typeof mountEmptyIdle==='function') mountEmptyIdle();
     }catch(_){}
     bindChrome();
     // Will land on runtime via selectScheme({ resetView: true }); keep hub only until then.
@@ -1954,6 +2135,15 @@
     toggleSelectedEnable: toggleSelectedEnable,
     toggleRowEnable: toggleRowEnable,
     buildSoftPadWorkflowModel: buildSoftPadWorkflowModel,
+    // P14c：功能瓷砖宿主模型（单一来源）
+    buildSoftPadFuncTilesModel: buildSoftPadFuncTilesModel,
+    // P14d：空态 / 详情 idle 双宿主模型（单一来源）
+    buildSoftPadEmptyIdleModel: buildSoftPadEmptyIdleModel,
+    prepareAppFromUi: prepareAppFromUi,
+    prepareSoftPadCreateKind: function (kind) {
+      kind = String(kind || 'codex');
+      prepareAppFromUi(appIdForKind(kind) || (kind === 'claude' ? 'claude-code' : 'codex-chat'), kind);
+    },
     schemeRowView: renderSchemeRow,
     appSwitcherChipView: appSwitcherChipView,
   };

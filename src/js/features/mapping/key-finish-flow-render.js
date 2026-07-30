@@ -173,6 +173,12 @@
     var modePanel=$('voiceEndKeyModePanel');
     if(!modePanel) return;
     var current=resolveDisplayedFinishMode(m);
+    if(global.__otKeysFinishModeMounted&&typeof global.__otKeysFinishModeSync==='function'){
+      global.__otKeysFinishModeSync();
+      syncKeysFinishModeChrome(m,current);
+      renderKeysFinishStrategyPreview(m);
+      return;
+    }
     modePanel.querySelectorAll('[data-finish-mode]').forEach(function(btn){
       var active=btn.dataset.finishMode===current;
       btn.classList.toggle('is-active',active);
@@ -367,24 +373,134 @@
     if(section) section.hidden=true;
   }
 
+  // P12b-2：Keys 分段收尾 delay/cancel 宿主单一来源（供 React 岛复用）
+  function buildKeysFinishTimingModel(){
+    hooks().ensureConfig();
+    var m=hooks().selectedMapping();
+    var keysPanel=useKeysFinishSegmented();
+    var empty={
+      delayHtml:'',
+      cancelHtml:'',
+      delayHidden:true,
+      cancelHidden:true,
+      mappingId:'',
+      finishMode:'',
+      sig:'empty'
+    };
+    if(!m||!hooks().isSavedMapping(m)){
+      return Object.assign({},empty,{sig:'unsaved'});
+    }
+    var finishMode=resolveDisplayedFinishMode(m);
+    var show=!!(keysPanel&&finishMode==='confirm');
+    var delayHtml='';
+    var cancelHtml='';
+    if(show){
+      delayHtml=renderKeysFinishDelayOnly(m,m.id);
+      cancelHtml=renderKeysFinishCancelOnly(m,m.id);
+    }
+    hooks().ensureMappingTiming(m);
+    var sig=[
+      m.id,
+      finishMode,
+      show?'1':'0',
+      String(m.enterDelayMs||0),
+      String(m.intervalMs||0),
+      m.cancelEnabled?'1':'0',
+      m.autoEnterEnabled?'1':'0'
+    ].join('\0');
+    return {
+      delayHtml:delayHtml,
+      cancelHtml:cancelHtml,
+      delayHidden:!show,
+      cancelHidden:!show,
+      mappingId:m.id,
+      finishMode:finishMode,
+      sig:sig
+    };
+  }
+
+  function applyKeysFinishTimingHosts(model){
+    var delayHost=$('keysFinishDelayHost');
+    var cancelHost=$('keysFinishCancelHost');
+    var islandOn=!!global.__otKeysFinishTimingMounted;
+    if(islandOn){
+      if(typeof global.__otKeysFinishTimingSync==='function') global.__otKeysFinishTimingSync();
+      return;
+    }
+    if(delayHost){
+      delayHost.innerHTML=model.delayHtml||'';
+      delayHost.hidden=!!model.delayHidden;
+      if(model.delayHtml) syncAllTimingRanges(delayHost);
+    }
+    if(cancelHost){
+      cancelHost.innerHTML=model.cancelHtml||'';
+      cancelHost.hidden=!!model.cancelHidden;
+      if(model.cancelHtml) syncAllTimingRanges(cancelHost);
+    }
+  }
+
+  function buildKeysFinishModeModel(){
+    var m=hooks().selectedMapping();
+    var esc=hooks().escHtml;
+    if(!m||!hooks().isSavedMapping(m)){
+      return {
+        modeHtml:'<p class="mic-desc key-finish-empty">'+esc(t('keyFinishFlowNeedKeys'))+'</p>',
+        mappingId:'',
+        finishMode:'',
+        variant:'empty',
+        sig:'empty'
+      };
+    }
+    var finishMode=resolveDisplayedFinishMode(m);
+    var gesture=startGesture(m);
+    var allowed=allowedFinishModes(m);
+    if(allowed.indexOf(finishMode)<0) finishMode=allowed[0]||'manual';
+    var segmented=useKeysFinishSegmented();
+    var modeHtml=segmented?renderKeyFinishModeSegmented(m):renderKeyFinishModeBlock(m);
+    var sig=[
+      m.id,
+      finishMode,
+      gesture||'',
+      segmented?'seg':'block',
+      allowed.join(','),
+      modeHtml
+    ].join('\0');
+    return {
+      modeHtml:modeHtml,
+      mappingId:m.id,
+      finishMode:finishMode,
+      variant:segmented?'segmented':'block',
+      sig:sig
+    };
+  }
+
+  function applyKeysFinishModeHost(model){
+    var modePanel=$('voiceEndKeyModePanel');
+    if(!modePanel) return;
+    if(global.__otKeysFinishModeMounted&&typeof global.__otKeysFinishModeSync==='function'){
+      global.__otKeysFinishModeSync();
+      return;
+    }
+    modePanel.innerHTML=model.modeHtml||'';
+  }
+
   function renderKeyFinishFlowPanel(){
     var modePanel=$('voiceEndKeyModePanel');
     var cancelCard=$('voiceEndCancelCard');
     var confirmCard=$('voiceEndConfirmCard');
-    var delayHost=$('keysFinishDelayHost');
-    var cancelHost=$('keysFinishCancelHost');
     if(!modePanel||!cancelCard||!confirmCard) return;
     hooks().ensureConfig();
     var m=hooks().selectedMapping();
     var esc=hooks().escHtml;
+    var timingModel=buildKeysFinishTimingModel();
+    var modeModel=buildKeysFinishModeModel();
     if(!m||!hooks().isSavedMapping(m)){
       var empty='<p class="mic-desc key-finish-empty">'+esc(t('keyFinishFlowNeedKeys'))+'</p>';
       syncKeyExecFinishCard();
-      modePanel.innerHTML=empty;
+      applyKeysFinishModeHost(modeModel);
       cancelCard.innerHTML='<div class="setting-row"><div class="setting-row-main"><span class="setting-row-text">'+t('cancelTimingTitle')+'</span></div></div>'+empty;
       confirmCard.innerHTML='<div class="setting-row"><div class="setting-row-main"><span class="setting-row-text">'+t('sendTimingTitle')+'</span></div></div>'+empty;
-      if(delayHost){ delayHost.innerHTML=''; delayHost.hidden=true; }
-      if(cancelHost){ cancelHost.innerHTML=''; cancelHost.hidden=true; }
+      applyKeysFinishTimingHosts(timingModel);
       syncKeysFinishModeChrome(null,'');
       renderKeysFinishStrategyPreview(null);
       syncKeyExecFinishTimingSection(null);
@@ -398,7 +514,7 @@
       return;
     }
     syncKeyExecFinishCard();
-    modePanel.innerHTML=useKeysFinishSegmented()?renderKeyFinishModeSegmented(m):renderKeyFinishModeBlock(m);
+    applyKeysFinishModeHost(modeModel);
     var keysPanel=useKeysFinishSegmented();
     var finishMode=resolveDisplayedFinishMode(m);
     syncKeysFinishModeChrome(m,finishMode);
@@ -409,26 +525,7 @@
       cancelCard.innerHTML=renderKeyTimingCard(m,m.id,'cancel');
       confirmCard.innerHTML=renderKeyTimingCard(m,m.id,'confirm');
     }
-    if(delayHost){
-      if(keysPanel&&finishMode==='confirm'){
-        delayHost.innerHTML=renderKeysFinishDelayOnly(m,m.id);
-        syncAllTimingRanges(delayHost);
-        delayHost.hidden=false;
-      }else{
-        delayHost.innerHTML='';
-        delayHost.hidden=true;
-      }
-    }
-    if(cancelHost){
-      if(keysPanel&&finishMode==='confirm'){
-        cancelHost.innerHTML=renderKeysFinishCancelOnly(m,m.id);
-        syncAllTimingRanges(cancelHost);
-        cancelHost.hidden=false;
-      }else{
-        cancelHost.innerHTML='';
-        cancelHost.hidden=true;
-      }
-    }
+    applyKeysFinishTimingHosts(timingModel);
     if(!keysPanel){
       syncAllTimingRanges(cancelCard);
       syncAllTimingRanges(confirmCard);
@@ -647,6 +744,10 @@
     refreshFinishModeSegment:refreshFinishModeSegment,
     renderKeysFinishStrategyPreview:renderKeysFinishStrategyPreview,
     schemeStepFocus:function(){ return schemeStepFocus; },
-    syncKeyExecFinishCard:syncKeyExecFinishCard
+    syncKeyExecFinishCard:syncKeyExecFinishCard,
+    // P12b-2：delay/cancel 宿主模型（单一来源）
+    buildKeysFinishTimingModel:buildKeysFinishTimingModel,
+    // P12b-5：收尾模式分段宿主模型（单一来源）
+    buildKeysFinishModeModel:buildKeysFinishModeModel
   };
 })((typeof window!=='undefined')?window:globalThis);

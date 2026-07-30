@@ -150,6 +150,7 @@
       hooks().openSettings({panel:'keys',focus:'trigger'});
     });
     bindEvent('mapMenuFloat','click',function(e){
+      if(global.__otMapMenuFloatMounted) return;
       e.stopPropagation();
       const actBtn=e.target.closest&&e.target.closest('[data-act]');
       if(!actBtn||actBtn.disabled) return;
@@ -162,7 +163,7 @@
       if(act==='del'){ hooks().closeFloatMenu(); hooks().deleteMappingFromMenu(id); return; }
       if(act==='up'||act==='down'){ hooks().reorderMapping(id, act); return; }
     });
-         function triggerOpenMenuAction(act){
+    function triggerOpenMenuAction(act){
       const pop=$('mapMenuFloat');
       if(!pop||!pop.dataset.id) return;
       const id=pop.dataset.id;
@@ -171,11 +172,13 @@
       if(act==='del'){ hooks().closeFloatMenu(); hooks().deleteMappingFromMenu(id); return; }
       if(act==='up'||act==='down'){ hooks().reorderMapping(id, act); }
     }
-         bindClick('menuActTest',function(e){ e.stopPropagation(); triggerOpenMenuAction('test'); });
-    bindClick('menuActDup',function(e){ e.stopPropagation(); triggerOpenMenuAction('dup'); });
-    bindClick('menuActUp',function(e){ e.stopPropagation(); triggerOpenMenuAction('up'); });
-    bindClick('menuActDown',function(e){ e.stopPropagation(); triggerOpenMenuAction('down'); });
-    bindClick('menuActDel',function(e){ e.stopPropagation(); triggerOpenMenuAction('del'); });
+    if(!global.__otMapMenuFloatMounted){
+      bindClick('menuActTest',function(e){ e.stopPropagation(); triggerOpenMenuAction('test'); });
+      bindClick('menuActDup',function(e){ e.stopPropagation(); triggerOpenMenuAction('dup'); });
+      bindClick('menuActUp',function(e){ e.stopPropagation(); triggerOpenMenuAction('up'); });
+      bindClick('menuActDown',function(e){ e.stopPropagation(); triggerOpenMenuAction('down'); });
+      bindClick('menuActDel',function(e){ e.stopPropagation(); triggerOpenMenuAction('del'); });
+    }
     document.addEventListener('pointerdown',function(e){
       const menuBtn=e.target.closest&&e.target.closest('.map-menu-btn[data-menu]');
       if(!menuBtn) return;

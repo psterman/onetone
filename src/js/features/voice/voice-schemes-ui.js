@@ -143,6 +143,23 @@
     return null;
   }
 
+  /** Voice-only habits never have trigger/target — MappingCore.isIncomplete is always true for them. */
+  function isPristineVoiceDraft(m){
+    if(!m) return false;
+    var ov=m.voiceOverride;
+    if(!ov||typeof ov!=='object') return true;
+    if(Array.isArray(ov.wakePhrases)&&ov.wakePhrases.length) return false;
+    if(ov.endPhrases&&typeof ov.endPhrases==='object'){
+      if(Array.isArray(ov.endPhrases.zh)&&ov.endPhrases.zh.length) return false;
+      if(Array.isArray(ov.endPhrases.en)&&ov.endPhrases.en.length) return false;
+    }
+    if(ov.targetKey&&String(ov.targetKey).trim()) return false;
+    var eng=String(ov.engine||'').trim();
+    if(eng&&eng!=='off') return false;
+    if(ov.modelPreset&&String(ov.modelPreset).trim()) return false;
+    return true;
+  }
+
   function voiceSchemeNeedsLeaveConfirm(nextId){
     var cfg=state().config||{};
     var schemes=voiceSchemes(cfg);
@@ -151,6 +168,12 @@
     if(nextId!=null&&String(cur)===nextId) return false;
     var m=currentVoiceEditMapping(cfg,schemes);
     if(!m||!core()) return false;
+    var vs=global.OneToneVoiceSchemePersist;
+    if(vs&&vs.isVoiceOnly&&vs.isVoiceOnly(m)){
+      // Do NOT use MappingCore.isIncomplete here — it is always true for voice-only
+      // (no trigger/target) and used to block every switch / 「新建」behind a confirm overlay.
+      return isPristineVoiceDraft(m);
+    }
     if(core().isDraft&&core().isDraft(m)) return true;
     if(core().isIncomplete&&core().isIncomplete(m)) return true;
     return false;
@@ -171,6 +194,33 @@
     }
     if(!window.confirm(t('voiceUnsavedSwitchPrompt')||'当前语音方案尚未完成，放弃并切换？')) return;
     fn();
+  }
+
+  /** Create draft then edit — leave current first; never create-before-leave (skips confirm / feels stuck). */
+  function startNewVoiceDraft(){
+    leaveVoiceSchemeThen(function(){
+      var prevId=editSchemeId(state().config||{},voiceSchemes());
+      var m=global.OneToneVoiceSchemePersist&&global.OneToneVoiceSchemePersist.createVoiceDraft
+        ?global.OneToneVoiceSchemePersist.createVoiceDraft({persist:false,skipRefresh:true})
+        :null;
+      if(!m||!m.id) return;
+      // Drop previous pristine voice draft so 「新建」does not stack empty shells.
+      if(prevId&&prevId!==GLOBAL_SCHEME_ID&&prevId!==m.id&&core()&&core().byId){
+        var prev=core().byId(prevId);
+        var vs=global.OneToneVoiceSchemePersist;
+        if(prev&&vs&&vs.isVoiceOnly&&vs.isVoiceOnly(prev)&&isPristineVoiceDraft(prev)&&core().removeDraft){
+          try{ core().removeDraft(prevId); }catch(_){}
+        }
+      }
+      // Selection already set by createVoiceDraft — activate + paint without leaveVoiceSchemeThen again.
+      if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.activateEditingScheme){
+        global.OneToneVoiceSchemeContext.activateEditingScheme();
+      }
+      scheduleVoiceRender();
+      render();
+      var tab=$('voiceWorkflowTab-'+m.id);
+      if(tab&&tab.scrollIntoView) tab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
+    },null);
   }
 
   /** Tab / arrow: edit only — never activate. */
@@ -480,10 +530,7 @@
       var addDraft=e.target.closest&&e.target.closest('#btnVoiceHubAddDraft');
       if(addDraft){
         e.preventDefault();
-        var m=global.OneToneVoiceSchemePersist&&global.OneToneVoiceSchemePersist.createVoiceDraft
-          ?global.OneToneVoiceSchemePersist.createVoiceDraft({persist:false,skipRefresh:true})
-          :null;
-        if(m&&m.id) selectVoiceSchemeForEdit(m.id);
+        startNewVoiceDraft();
       }
     });
   }
@@ -502,12 +549,19 @@
       var add=e.target.closest&&e.target.closest('#btnVoiceSchemeAdd');
       if(add){
         e.preventDefault();
-        var m=global.OneToneVoiceSchemePersist&&global.OneToneVoiceSchemePersist.createVoiceDraft
-          ?global.OneToneVoiceSchemePersist.createVoiceDraft({persist:false,skipRefresh:true})
-          :null;
-        if(m&&m.id) selectVoiceSchemeForEdit(m.id);
+        startNewVoiceDraft();
       }
     });
+    // Direct bind: status-bar 「新建」must work even if a parent stopsPropagation.
+    var addBtn=$('btnVoiceSchemeAdd');
+    if(addBtn&&addBtn.dataset.voiceSchemeAddBound!=='1'){
+      addBtn.dataset.voiceSchemeAddBound='1';
+      addBtn.addEventListener('click',function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        startNewVoiceDraft();
+      });
+    }
     var tabs=$('voiceWorkflowTabs');
     if(tabs){
       tabs.addEventListener('keydown',function(e){
@@ -542,6 +596,7 @@
     selectedSchemeId:selectedSchemeId,
     activeRuntimeSchemeId:activeRuntimeSchemeId,
     selectVoiceSchemeForEdit:selectVoiceSchemeForEdit,
+    startNewVoiceDraft:startNewVoiceDraft,
     selectVoiceRuntimeGlobal:selectVoiceRuntimeGlobal,
     editVoiceScheme:editVoiceScheme,
     setVoiceInUse:setVoiceInUse,

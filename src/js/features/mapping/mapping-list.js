@@ -180,22 +180,59 @@
     hooks().syncAllTimingRanges(list);
   }
 
-  function renderEditor(){
+  // P12b-1：trigger/target 只读文案单一来源（供 React 岛 + renderEditor/录音预览共用）
+  function buildEditorDisplayModel(){
     const d=OneToneI18n.dict();
+    const m=OneToneMappingCore.selected();
+    const lang=OneToneI18n.getLang?OneToneI18n.getLang():'zh';
+    var trigRaw=hooks().selectedDisplayTriggerKey()||'';
+    var tgt=hooks().selectedDisplayTargetKey()||'';
+    var recApi=global.OneToneMappingRecording;
+    var recMode=recApi&&typeof recApi.mode==='function'?recApi.mode():'none';
+    var previewKey=recApi&&typeof recApi.previewKey==='function'?recApi.previewKey():'';
+    if(recMode==='trigger'){
+      trigRaw=previewKey||'';
+    }else if(recMode==='target'||recMode==='agentBinding'){
+      tgt=previewKey||'';
+    }
+    var triggerLabel;
+    if(recMode==='trigger'){
+      triggerLabel=trigRaw?hooks().friendlyKeyName(trigRaw):d.triggerPlaceholder;
+    }else{
+      triggerLabel=m&&global.OneToneKeyLabels&&global.OneToneKeyLabels.triggerDisplayLabel
+        ?global.OneToneKeyLabels.triggerDisplayLabel(m,lang)
+        :(trigRaw?hooks().friendlyKeyName(trigRaw):'');
+      triggerLabel=triggerLabel||d.triggerPlaceholder;
+    }
+    var targetLabel=tgt?hooks().friendlyKeyName(tgt):d.targetPlaceholder;
+    return {
+      triggerLabel:triggerLabel,
+      targetLabel:targetLabel,
+      triggerRaw:trigRaw,
+      targetRaw:tgt,
+      triggerEmpty:!trigRaw,
+      targetEmpty:!tgt,
+      sig:String(triggerLabel)+'\0'+String(targetLabel)+'\0'+String(trigRaw)+'\0'+String(tgt)+'\0'+String(recMode)
+    };
+  }
+
+  function renderEditor(){
     const triggerEl=$('triggerView');
     const targetEl=$('targetView');
     const triggerDisp=$('triggerDisplay');
     const targetDisp=$('targetDisplay');
     const traceEl=$('triggerTrace');
     const m=OneToneMappingCore.selected();
-    const lang=OneToneI18n.getLang?OneToneI18n.getLang():'zh';
-    const trigRaw=hooks().selectedDisplayTriggerKey();
-    const tgt=hooks().selectedDisplayTargetKey();
-    const trigLabel=m&&global.OneToneKeyLabels&&global.OneToneKeyLabels.triggerDisplayLabel
-      ?global.OneToneKeyLabels.triggerDisplayLabel(m,lang)
-      :(trigRaw?hooks().friendlyKeyName(trigRaw):'');
-    triggerEl.textContent=trigLabel||d.triggerPlaceholder;
-    targetEl.textContent=tgt?hooks().friendlyKeyName(tgt):d.targetPlaceholder;
+    const model=buildEditorDisplayModel();
+    const trigRaw=model.triggerRaw;
+    const tgt=model.targetRaw;
+    var islandOn=!!global.__otMappingEditorDisplayMounted;
+    if(islandOn){
+      if(typeof global.__otMappingEditorDisplaySync==='function') global.__otMappingEditorDisplaySync();
+    }else{
+      if(triggerEl) triggerEl.textContent=model.triggerLabel;
+      if(targetEl) targetEl.textContent=model.targetLabel;
+    }
     if(triggerDisp) triggerDisp.classList.toggle('empty',!trigRaw);
     if(targetDisp) targetDisp.classList.toggle('empty',!tgt);
     if(global.OneToneKeyIcons){
@@ -256,6 +293,8 @@
     // P7：单一来源行视图 + 空态判定，供 React 岛复用（markup/data-* 契约零偏差）
     rowView:rowView,
     listHasRows:listHasRows,
-    syncTimingRanges:function(list){ hooks().syncAllTimingRanges(list||$('mappingList')); }
+    syncTimingRanges:function(list){ hooks().syncAllTimingRanges(list||$('mappingList')); },
+    // P12b-1：编辑器 trigger/target 只读文案模型
+    buildEditorDisplayModel:buildEditorDisplayModel
   };
 })((typeof window!=='undefined')?window:globalThis);

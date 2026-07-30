@@ -499,12 +499,18 @@
     return api.canUseHoldMode(m.id,{currentMode:m.triggerMode});
   }
 
-  function renderTriggerModeSegments(m){
-    var host=$('keysTriggerModeHost');
-    if(!host) return;
+  function buildKeysTriggerModeModel(m){
+    if(arguments.length===0){
+      m=core()&&core().selected?core().selected():null;
+    }
     if(!m){
-      host.innerHTML='';
-      return;
+      return {
+        modeHtml:'',
+        mappingId:'',
+        triggerUi:'',
+        gateOk:false,
+        sig:'empty'
+      };
     }
     var current=normalizeTriggerModeUi(m.triggerMode);
     var gate=holdGateFor(m);
@@ -539,7 +545,31 @@
         +'<button type="button" class="keys-trigger-conflict-btn" data-keys-hold-switch="double" data-mapping-id="'+esc(m.id)+'">'+esc(t('keysHoldSwitchDouble'))+'</button>'
         +'</div></div>';
     }
-    host.innerHTML=html;
+    var sig=[
+      m.id,
+      current,
+      gate.ok?'1':'0',
+      String(gate.reason||''),
+      html
+    ].join('\0');
+    return {
+      modeHtml:html,
+      mappingId:m.id,
+      triggerUi:current,
+      gateOk:!!gate.ok,
+      sig:sig
+    };
+  }
+
+  function renderTriggerModeSegments(m){
+    var host=$('keysTriggerModeHost');
+    if(!host) return;
+    var model=buildKeysTriggerModeModel(m);
+    if(global.__otKeysTriggerModeMounted&&typeof global.__otKeysTriggerModeSync==='function'){
+      global.__otKeysTriggerModeSync();
+      return;
+    }
+    host.innerHTML=model.modeHtml||'';
   }
 
   function renderTriggerConflict(m){
@@ -1102,6 +1132,8 @@
   }
 
   function syncCancelButtonHost(){
+    // P12b-3：录制取消条岛拥有 #btnCancelRecord，禁止挪出 React root
+    if(global.__otRecordCancelBarMounted) return;
     var btn=$('btnCancelRecord');
     var feedbackMain=$('keysRecordingFeedbackMain');
     var bar=$('recordCancelBar');
@@ -1464,7 +1496,9 @@
     toggleMappingEnable:toggleMappingEnable,
     buildKeysStatusProps:buildKeysStatusProps,
     workflowTabView:workflowTabView,
-    buildKeysWorkflowTabsModel:buildKeysWorkflowTabsModel
+    buildKeysWorkflowTabsModel:buildKeysWorkflowTabsModel,
+    // P12b-6：启动手势分段宿主模型（单一来源）
+    buildKeysTriggerModeModel:buildKeysTriggerModeModel
   };
   global.__otKeysStatusRead=function(){
     var m=core()&&core().selected?core().selected():null;

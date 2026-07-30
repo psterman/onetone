@@ -11,3 +11,15 @@ dialogPortal.id = 'ot-dialog-root';
 
 export const commandPortal = createIslandPortalRoot('command');
 commandPortal.id = 'ot-command-root';
+
+/**
+ * P15a：Radix Dialog.Portal 的 container。
+ * Confirm 岛 createRoot 挂在 dialogPortal（inner）；若 Portal 也挂同一节点会被 React 冲掉。
+ * 因此指向 wrap.ot-island（parent），Portal 内容作为 sibling，仍在 .ot-island 作用域内。
+ * 禁止回退到 document.body（会逃出 scoped Tailwind、污染 legacy）。
+ */
+export function getDialogPortalContainer(): HTMLElement {
+  const wrap = dialogPortal.parentElement;
+  if (wrap instanceof HTMLElement) return wrap;
+  return dialogPortal;
+}

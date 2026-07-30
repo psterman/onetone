@@ -21,6 +21,41 @@ import {
   SoftPadSchemeListIsland,
   registerSoftPadWorkflowSync,
 } from './islands/soft-pad-workflow-island';
+import {
+  SoftPadFuncTilesIsland,
+  registerSoftPadFuncTilesBridge,
+} from './islands/soft-pad-func-tiles-island';
+import {
+  SoftPadEmptyIsland,
+  SoftPadDetailIdleIsland,
+  registerSoftPadEmptyIdleBridge,
+} from './islands/soft-pad-empty-idle-island';
+import {
+  MappingEditorTargetIsland,
+  MappingEditorTriggerIsland,
+  registerMappingEditorDisplayBridge,
+} from './islands/mapping-editor-display-island';
+import {
+  KeysFinishCancelIsland,
+  KeysFinishDelayIsland,
+  registerKeysFinishTimingBridge,
+} from './islands/keys-finish-timing-island';
+import {
+  KeysFinishModeIsland,
+  registerKeysFinishModeBridge,
+} from './islands/keys-finish-mode-island';
+import {
+  KeysTriggerModeIsland,
+  registerKeysTriggerModeBridge,
+} from './islands/keys-trigger-mode-island';
+import {
+  RecordCancelBarIsland,
+  registerRecordCancelBarBridge,
+} from './islands/record-cancel-bar-island';
+import {
+  MapMenuFloatIsland,
+  registerMapMenuFloatBridge,
+} from './islands/map-menu-float-island';
 import { toastPortal, dialogPortal } from './shared/portal-roots';
 // ?inline 让 CSS 直接内联进 bundle，产物为单文件 main.js，便于 Tauri 静态加载
 import islandCss from './globals.css?inline';
@@ -36,6 +71,22 @@ document.head.appendChild(style);
 // P9a：Command 产品入口 = inline #wbCommandSearch 岛（见 mountWbCommandIsland）。
 OneToneIslands.mountIsland(toastPortal.id, ToastIsland);
 OneToneIslands.mountIsland(dialogPortal.id, ConfirmIsland);
+
+// P12b-4：映射浮动菜单在 body 下，boot 即可挂载（不依赖 keys 面板）
+function mountMapMenuFloatIsland(): void {
+  const host = document.getElementById('mapMenuFloat');
+  if (!host || OneToneIslands.isMounted('mapMenuFloat')) return;
+  host.innerHTML = '';
+  registerMapMenuFloatBridge();
+  OneToneIslands.mountIsland('mapMenuFloat', MapMenuFloatIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+try {
+  mountMapMenuFloatIsland();
+} catch (err) {
+  console.error('[islands] map menu float mount failed, keeping legacy DOM', err);
+}
 
 // P5：挂载基础设置岛到 #settingsPanelBasic（替换 legacy 内联 HTML，独占其子树）
 function mountBasicIsland(): void {
@@ -195,6 +246,93 @@ function mountKeysWorkflowIsland(): void {
 (window as unknown as { __otMountKeysWorkflowIsland?: () => void }).__otMountKeysWorkflowIsland =
   mountKeysWorkflowIsland;
 
+// P12b-1：挂载映射编辑器 trigger/target 只读文案岛（延迟到按键面板首次打开）
+function mountMappingEditorDisplayIsland(): void {
+  const triggerHost = document.getElementById('triggerView');
+  const targetHost = document.getElementById('targetView');
+  if (!triggerHost || !targetHost) return;
+  if (OneToneIslands.isMounted('triggerView')) return;
+
+  triggerHost.textContent = '';
+  targetHost.textContent = '';
+  registerMappingEditorDisplayBridge();
+
+  OneToneIslands.mountIsland('triggerView', MappingEditorTriggerIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+  OneToneIslands.mountIsland('targetView', MappingEditorTargetIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountMappingEditorDisplayIsland?: () => void }).__otMountMappingEditorDisplayIsland =
+  mountMappingEditorDisplayIsland;
+
+// P12b-2：挂载 Keys 收尾时序 delay/cancel 岛（延迟到按键面板首次打开）
+function mountKeysFinishTimingIsland(): void {
+  const delayHost = document.getElementById('keysFinishDelayHost');
+  const cancelHost = document.getElementById('keysFinishCancelHost');
+  if (!delayHost || !cancelHost) return;
+  if (OneToneIslands.isMounted('keysFinishDelayHost')) return;
+
+  delayHost.innerHTML = '';
+  cancelHost.innerHTML = '';
+  registerKeysFinishTimingBridge();
+
+  OneToneIslands.mountIsland('keysFinishDelayHost', KeysFinishDelayIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+  OneToneIslands.mountIsland('keysFinishCancelHost', KeysFinishCancelIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountKeysFinishTimingIsland?: () => void }).__otMountKeysFinishTimingIsland =
+  mountKeysFinishTimingIsland;
+
+// P12b-5：挂载 Keys 收尾模式分段岛（延迟到按键面板首次打开）
+function mountKeysFinishModeIsland(): void {
+  const host = document.getElementById('voiceEndKeyModePanel');
+  if (!host || OneToneIslands.isMounted('voiceEndKeyModePanel')) return;
+
+  host.innerHTML = '';
+  registerKeysFinishModeBridge();
+
+  OneToneIslands.mountIsland('voiceEndKeyModePanel', KeysFinishModeIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountKeysFinishModeIsland?: () => void }).__otMountKeysFinishModeIsland =
+  mountKeysFinishModeIsland;
+
+// P12b-6：挂载 Keys 启动手势分段岛（延迟到按键面板首次打开）
+function mountKeysTriggerModeIsland(): void {
+  const host = document.getElementById('keysTriggerModeHost');
+  if (!host || OneToneIslands.isMounted('keysTriggerModeHost')) return;
+
+  host.innerHTML = '';
+  registerKeysTriggerModeBridge();
+
+  OneToneIslands.mountIsland('keysTriggerModeHost', KeysTriggerModeIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountKeysTriggerModeIsland?: () => void }).__otMountKeysTriggerModeIsland =
+  mountKeysTriggerModeIsland;
+
+// P12b-3：挂载录制取消条岛（延迟到按键面板首次打开）
+function mountRecordCancelBarIsland(): void {
+  const host = document.getElementById('recordCancelBar');
+  if (!host || OneToneIslands.isMounted('recordCancelBar')) return;
+
+  host.innerHTML = '';
+  registerRecordCancelBarBridge();
+
+  OneToneIslands.mountIsland('recordCancelBar', RecordCancelBarIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountRecordCancelBarIsland?: () => void }).__otMountRecordCancelBarIsland =
+  mountRecordCancelBarIsland;
+
 // P14b：挂载 SoftPad 工作流壳岛（app switcher + scheme list；延迟到 SoftPad 首次 render）
 function mountSoftPadWorkflowIsland(): void {
   if ((window as unknown as { __otSoftPadWorkflowMounted?: boolean }).__otSoftPadWorkflowMounted) return;
@@ -217,6 +355,48 @@ function mountSoftPadWorkflowIsland(): void {
 }
 (window as unknown as { __otMountSoftPadWorkflowIsland?: () => void }).__otMountSoftPadWorkflowIsland =
   mountSoftPadWorkflowIsland;
+
+// P14c：挂载 SoftPad 功能瓷砖岛（延迟到 SoftPad 首次 render）
+function mountSoftPadFuncTilesIsland(): void {
+  const host = document.getElementById('softPadFuncTiles');
+  if (!host || OneToneIslands.isMounted('softPadFuncTiles')) return;
+
+  host.innerHTML = '';
+  registerSoftPadFuncTilesBridge();
+
+  OneToneIslands.mountIsland('softPadFuncTiles', SoftPadFuncTilesIsland, {}, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountSoftPadFuncTilesIsland?: () => void }).__otMountSoftPadFuncTilesIsland =
+  mountSoftPadFuncTilesIsland;
+
+// P14d：挂载 SoftPad 空态 / 详情 idle 双宿主岛（延迟到 SoftPad 首次 render）
+function mountSoftPadEmptyIdleIsland(): void {
+  const emptyHost = document.getElementById('softPadEmpty');
+  const idleHost = document.getElementById('softPadDetailIdle');
+  if (!emptyHost || !idleHost) return;
+  if (OneToneIslands.isMounted('softPadEmpty') && OneToneIslands.isMounted('softPadDetailIdle')) {
+    return;
+  }
+
+  if (!OneToneIslands.isMounted('softPadEmpty')) emptyHost.innerHTML = '';
+  if (!OneToneIslands.isMounted('softPadDetailIdle')) idleHost.innerHTML = '';
+  registerSoftPadEmptyIdleBridge();
+
+  if (!OneToneIslands.isMounted('softPadEmpty')) {
+    OneToneIslands.mountIsland('softPadEmpty', SoftPadEmptyIsland, {}, {
+      onRefresh: () => ({}) as Record<string, unknown>,
+    });
+  }
+  if (!OneToneIslands.isMounted('softPadDetailIdle')) {
+    OneToneIslands.mountIsland('softPadDetailIdle', SoftPadDetailIdleIsland, {}, {
+      onRefresh: () => ({}) as Record<string, unknown>,
+    });
+  }
+}
+(window as unknown as { __otMountSoftPadEmptyIdleIsland?: () => void }).__otMountSoftPadEmptyIdleIsland =
+  mountSoftPadEmptyIdleIsland;
 
 // 暴露宿主桥，供 legacy 与后续阶段调用
 (window as unknown as { OneToneIslands: typeof OneToneIslands }).OneToneIslands = OneToneIslands;

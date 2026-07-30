@@ -34,6 +34,23 @@
   color: inherit;
 }
 
+/* P12b-1：trigger/target 只读文案岛 — 继承父级 display 色，不覆盖 legacy */
+#triggerView.ot-island,
+#targetView.ot-island {
+  color: inherit;
+}
+
+/* P12b-2：收尾时序岛 — 继承 keys 面板色 */
+#keysFinishDelayHost.ot-island,
+#keysFinishCancelHost.ot-island {
+  color: inherit;
+}
+
+/* P12b-3：录制取消条岛 */
+#recordCancelBar.ot-island {
+  color: inherit;
+}
+
 /* ---- P6 语音配置岛 ----
    挂在 #voiceDeskPanel 内（主栏），不得作为 .voice-page-body 网格子项，否则会挤占流程 hero 宽列。 */
 #voiceConfigIsland.ot-island {

@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { cn } from '../../lib/utils';
 
+// P15a Button：shadcn 风格 variants（零 Radix 依赖；复用 cn，不引 cva/clsx/tw-merge）。
 const variantClasses: Record<string, string> = {
   default: 'bg-primary text-primary-foreground hover:bg-primary/90',
   destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',

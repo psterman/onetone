@@ -6,7 +6,7 @@
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
   function hooks(){ return global.__vp_mapping_recording_hooks__ || {}; }
-var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,mappingWasEnabled:null,nativeRestoreSnapshot:null, schemeSwitchSnapshot:'',captureGen:0,suppressAutoEnableOnce:false,beforeFinishTargetHook:null,agentBindingCapture:null };
+var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,mappingWasEnabled:null,nativeRestoreSnapshot:null, schemeSwitchSnapshot:'',captureGen:0,suppressAutoEnableOnce:false,beforeFinishTargetHook:null,agentBindingCapture:null,previewKey:'' };
   function clearRecTimer(){ clearTimeout(rec.timer); rec.timer=0; }
   function beginRecordSnapshot(){
     const m=OneToneMappingCore.selected();
@@ -92,6 +92,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     var agentCap=rec.agentBindingCapture;
     if(agentCap) rec.agentBindingCapture=null;
     rec.suppressAutoEnableOnce=false;
+    rec.previewKey='';
     const draftId=state.selectedMappingId;
     clearRecTimer();
     if(rec.mode==='schemeSwitch'){
@@ -163,11 +164,13 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     if(rec.mode!==mode) return;
     const d=OneToneI18n.dict();
     const normalized=previewCaptureKey(mode,key);
+    rec.previewKey=normalized;
     const label=normalized?hooks().friendlyKeyName(normalized):(mode==='trigger'?d.triggerPlaceholder:d.targetPlaceholder);
+    const islandOn=!!global.__otMappingEditorDisplayMounted;
     if(mode==='trigger'){
       const el=$('triggerView');
       const disp=$('triggerDisplay');
-      if(el) el.textContent=label;
+      if(!islandOn&&el) el.textContent=label;
       if(disp) disp.classList.toggle('empty',!normalized);
       if(disp&&global.OneToneKeyIcons&&global.OneToneKeyIcons.syncDisplayIcon){
         global.OneToneKeyIcons.syncDisplayIcon(disp,normalized);
@@ -175,11 +178,14 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     }else if(mode==='target'||mode==='agentBinding'){
       const el=$('targetView');
       const disp=$('targetDisplay');
-      if(el) el.textContent=label;
+      if(!islandOn&&el) el.textContent=label;
       if(disp) disp.classList.toggle('empty',!normalized);
       if(disp&&global.OneToneKeyIcons&&global.OneToneKeyIcons.syncDisplayIcon){
         global.OneToneKeyIcons.syncDisplayIcon(disp,normalized);
       }
+    }
+    if(islandOn&&typeof global.__otMappingEditorDisplaySync==='function'){
+      global.__otMappingEditorDisplaySync();
     }
     if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.renderRecordingFeedback) global.OneToneKeysPanelUi.renderRecordingFeedback();
     if(mode==='target'&&global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.isOpen&&global.OneToneHabitTriggerSetup.isOpen()){
@@ -336,23 +342,44 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.renderRecordingFeedback) global.OneToneKeysPanelUi.renderRecordingFeedback();
   }
 
+  function buildRecordCancelBarModel(){
+    const m=OneToneMappingCore.selected();
+    const showDraft=!!(m&&OneToneMappingCore.isDraft(m));
+    const mode=rec.mode||'none';
+    const recording=mode!=='none';
+    const show=recording||showDraft;
+    const label=recording?t('cancelRecord'):t('cancelDraft');
+    const mappingId=m&&m.id?String(m.id):'';
+    return {
+      show:show,
+      label:label,
+      mode:mode,
+      mappingId:mappingId,
+      sig:[mode,show?'1':'0',label,mappingId].join('\0')
+    };
+  }
+
   function renderRecordCancelBar(){
     const bar=$('recordCancelBar');
-    const btn=$('btnCancelRecord');
     if(!bar) return;
-    const m=OneToneMappingCore.selected();
-    const showDraft=m&&OneToneMappingCore.isDraft(m);
-    const show=rec.mode!=='none'||showDraft;
-    if(btn) btn.textContent=rec.mode!=='none'?t('cancelRecord'):t('cancelDraft');
+    const islandOn=!!global.__otRecordCancelBarMounted;
+    if(islandOn){
+      if(typeof global.__otRecordCancelBarSync==='function') global.__otRecordCancelBarSync();
+      return;
+    }
+    const btn=$('btnCancelRecord');
+    const model=buildRecordCancelBarModel();
+    if(btn) btn.textContent=model.label;
     if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.syncCancelButtonHost){
       global.OneToneKeysPanelUi.syncCancelButtonHost();
     }
-    bar.classList.toggle('show',show&&btn&&btn.parentNode===bar);
+    bar.classList.toggle('show',model.show&&btn&&btn.parentNode===bar);
   }
 
   function setRecording(mode,opts){
     opts=opts||{};
     rec.mode=mode;
+    if(mode==='none') rec.previewKey='';
     clearRecTimer();
     const d=OneToneI18n.dict();
     const triggerState=$('triggerState');
@@ -852,6 +879,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
 
   global.OneToneMappingRecording={
     mode:function(){ return rec.mode; }, setMode:function(v){ rec.mode=v; },
+    previewKey:function(){ return rec.previewKey||''; },
     mappingId:function(){ return rec.mappingId; }, setMappingId:function(v){ rec.mappingId=v; },
     setSuppressAutoEnableOnce:function(v){ rec.suppressAutoEnableOnce=!!v; },
     wasEnabledBeforeRecording:function(){ return !!(rec.mappingWasEnabled&&rec.mappingWasEnabled.enabled); },
@@ -865,6 +893,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     startSchemeSwitch:startSchemeSwitchRecord, finishSchemeSwitch:finishSchemeSwitchCapture,
     startMappingSwitch:startMappingSwitchRecord, finishMappingSwitch:finishMappingSwitchCapture,
     applyRecordingUi:applyKeyWakeRecordingUi, renderCancelBar:renderRecordCancelBar,
+    buildRecordCancelBarModel:buildRecordCancelBarModel,
     updatePreview:updateRecordingPreview, armLocalCaptureGuard:armLocalCaptureGuard,
     notifyOnboardingCapture:notifyOnboardingCapture, notifyOnboardingPreview:notifyOnboardingRecordingPreview,
     clearMappingGuard:clearRecordMappingGuard, beginSnapshot:beginRecordSnapshot,
