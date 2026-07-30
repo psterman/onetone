@@ -120,6 +120,9 @@
 | Debug overview | `#debugHeroTitle` | Debug shell |
 | Command 搜索 | `#wbCommandSearch` + `#wbCmdkPanel` (L92) | P9a |
 | 主 shell | `#appWorkbenchShell` (L81) / `#appContentColumn` (L153) | 不迁 |
+| Home Hero 四模式投影 | `#wbHero` / `#wbHeroFlowSummary` / `#wbHeroPills` / `#wbHowTo` | **模型契约已落地**（`home-hero-mode-model.js`）；**暂不建岛** |
+
+> **Home Hero React 岛 blocker（2026-07-30）**：`#wbHowTo` / `#wbHeroPills` / `#wbHeroFlowSummary` 仍由 legacy 整段 `innerHTML` 重写，无安全连续宿主。本刀完成 `buildHomeHeroModeModel` + `paintHeroSurfaces` 单向刷新；岛需先做「挂载后停写 innerHTML」所有权迁移后再开。
 
 > Toast：**legacy `OneToneAppToast` 为主路径**；`OneToneUi.toast` 反向代理到 legacy（兼容 `string | ToastOptions`），React Toast 岛挂载但默认无数据。二次切流前禁止恢复 `pushToast` 并行渲染。
 > Dialog/Confirm：legacy 弹层保留；新确认可走 `OneToneUi.confirm`（React）。Command：**P9a inline 岛**接管 `#wbCommandSearch`；`OneToneUi.openCommand` / Ctrl+K 聚焦内联面板。

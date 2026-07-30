@@ -203,36 +203,198 @@ check('render-loop home 轻守卫', loop.includes('shouldSkipHomeRender'));
 const wb = readFileSync(join(root, 'src/js/features/home/home-workbench.js'), 'utf8');
 check('workbench 导出 shouldSkipHomeRender', wb.includes('shouldSkipHomeRender:shouldSkipHomeRender'));
 check('workbench 读 model', wb.includes('peekHomeModel'));
-check('hero 只读 model', wb.includes('data-wb-from-model') && wb.includes('renderHeroFlowSummary(model)'));
+check('hero 走 projection', wb.includes('data-wb-from-projection') && wb.includes('paintHeroSurfaces') && wb.includes('buildHeroProjection'));
 check('publish runtime protocol', wb.includes('publishRuntimeStatusProtocol') && wb.includes('cmd_runtime_status_protocol'));
 check('publish 优先 model.protocol', wb.includes('var snap=model.protocol') || wb.includes('model.protocol||null') || wb.includes('__otRuntimeStatusOverride'));
 check('publish 尊重 simulate override', wb.includes('__otRuntimeStatusOverride'));
 check('bindNav 无死 fallback', !wb.includes("if(action==='schemes')") && wb.includes('只认 shell-ia'));
 check('hero softPad mode', wb.includes("return 'softPad'") && wb.includes('paintHeroModeChrome'));
-check('refreshHeroModeSurfaces', wb.includes('function refreshHeroModeSurfaces') && wb.includes('renderHeroFlowSummary(model)') && wb.includes('renderLiveText(vm)'));
+check('refreshHeroModeSurfaces 统一事务', wb.includes('function refreshHeroModeSurfaces') && wb.includes('buildHeroProjection') && wb.includes('paintHeroSurfaces(projection)'));
 check('setHeroMode 走 refreshHeroModeSurfaces', /function setHeroMode[\s\S]*refreshHeroModeSurfaces\(\)/.test(wb) && !wb.includes('标签切换只刷 mode chrome'));
-check('softPad pills 早返回', wb.includes("heroMode==='softPad'") && wb.includes('wbBtnSoftPadOpen') && wb.includes('softPadHeroSnapshot'));
-check('heroModeFlowBits 四模式', wb.includes('function heroModeFlowBits') && wb.includes('homeWbFlowCtaVoice') && wb.includes('homeWbFlowCtaKeys') && wb.includes('homeWbFlowCtaSoftPad') && wb.includes('homeWbFlowCtaCamera'));
+check('setHeroMode 普通路径不整页 render', /function setHeroMode[\s\S]*if\(opts\.force\)\{[\s\S]*render\(\);[\s\S]*return;[\s\S]*\}[\s\S]*refreshHeroModeSurfaces\(\)/.test(wb));
+check('caps 一次采集', wb.includes('function collectHeroModeCaps') && wb.includes('softPadHeroSnapshot'));
+check('pills/flow 不内采 Camera snap', !/function renderHeroPills[\s\S]*cameraPresenceSnapshot\(\)/.test(wb) && !/function renderHeroFlowSummary[\s\S]*cameraPresenceSnapshot\(\)/.test(wb));
+
+const heroModelSrc = readFileSync(join(root, 'src/js/features/home/home-hero-mode-model.js'), 'utf8');
+check('home-hero-mode-model 存在', heroModelSrc.includes('function buildHomeHeroModeModel') && heroModelSrc.includes('OneToneHomeHeroModeModel'));
+check('projection 四模式 CTA', heroModelSrc.includes('homeWbFlowCtaVoice') && heroModelSrc.includes('homeWbFlowCtaKeys') && heroModelSrc.includes('homeWbFlowCtaSoftPad') && heroModelSrc.includes('homeWbFlowCtaCamera'));
 
 const htmlHome = readFileSync(join(root, 'src/index.html'), 'utf8');
 check('hero softPad tab', htmlHome.includes('data-wb-hero-mode="softPad"') && htmlHome.includes('id="wbHeroModeSoftPad"'));
+check('index 挂载 hero-mode-model', htmlHome.includes('home-hero-mode-model.js'));
 
 const panels = readFileSync(join(root, 'src/js/features/home/home-workbench-panels.js'), 'utf8');
-check('howto softPad active 跟 mode', panels.includes("active:mode==='softPad'"));
+check('howto 只吃 projection', panels.includes('projection.howtoCards') && panels.includes('禁止在此再采集'));
 check('panels 导出 softPadHowToSnapshot', panels.includes('softPadHowToSnapshot:softPadHowToSnapshot'));
+check('panels 导出 collectHowToSurfaceBits', panels.includes('collectHowToSurfaceBits:collectHowToSurfaceBits'));
+check('renderHowTo 不再调 snapshot', (() => {
+  const m = panels.match(/function renderHowTo\(projection\)\{[\s\S]*?\n  function /);
+  return !!(m && !m[0].includes('cameraHowToSnapshot()') && !m[0].includes('softPadHowToSnapshot()'));
+})());
+check('howto 只读无 channel', panels.includes('howToSummaryCardHtml') && panels.includes('只读摘要') && !/data-wb-howto-channel=/.test(panels));
+check('howto 点卡只切模式', wb.includes("closest('#wbHowTo [data-wb-howto]')") && /#wbHowTo \[data-wb-howto\][\s\S]*setHeroMode\(kind\)/.test(wb) && !/#wbHowTo \[data-wb-howto\][\s\S]*openHabitChannelChip/.test(wb));
 {
-  const howtoIdx = panels.indexOf("wb-howto-grid--quad");
-  const voiceIdx = panels.indexOf('data-wb-howto="voice"', howtoIdx);
-  const keysIdx = panels.indexOf("kind:'keys'", howtoIdx);
-  const softIdx = panels.indexOf("kind:'softPad'", howtoIdx);
-  const camIdx = panels.indexOf("kind:'camera'", howtoIdx);
-  check('howto 卡片顺序对齐 tabs', howtoIdx >= 0 && voiceIdx > howtoIdx && keysIdx > voiceIdx && softIdx > keysIdx && camIdx > softIdx);
+  const orderSrc = heroModelSrc;
+  const voiceIdx = orderSrc.indexOf("mode: 'voice'");
+  const keysIdx = orderSrc.indexOf("mode: 'keys'");
+  const softIdx = orderSrc.indexOf("mode: 'softPad'");
+  const camIdx = orderSrc.indexOf("mode: 'camera'");
+  // howtoCards 数组内第一次出现顺序
+  const howtoFn = orderSrc.indexOf('function howtoCards');
+  check('howto 卡片顺序对齐 tabs', howtoFn >= 0 && voiceIdx > howtoFn && keysIdx > voiceIdx && softIdx > keysIdx && camIdx > softIdx);
 }
 
 const i18nHome = readFileSync(join(root, 'src/js/core/i18n.js'), 'utf8');
 check('hero 小白入口文案', i18nHome.includes("homeWbHeroModeVoice:'说话触发'") && i18nHome.includes("homeWbHeroModeKeys:'按键触发'") && i18nHome.includes("homeWbHeroModeSoftPad:'屏幕按钮'") && i18nHome.includes("homeWbHeroModeCamera:'摄像头确认'"));
-check('hero flow 空态/CTA 文案键', i18nHome.includes("homeWbFlowEmptySoftPad:'还没有屏幕按钮方案'") && i18nHome.includes("homeWbFlowCtaSoftPad:'设置屏幕按钮'") && i18nHome.includes("homeWbFlowEmptyMic:'还没选麦克风，先选一个输入设备'"));
+check('hero flow 空态/CTA 文案键', i18nHome.includes("homeWbFlowEmptySoftPad:'还没有屏幕按钮方案'") && i18nHome.includes("homeWbFlowCtaSoftPad:'设置屏幕按钮'") && i18nHome.includes("homeWbFlowEmptyMic:'还没选麦克风，先选一个输入设备'") && i18nHome.includes("homeWbFlowCtaVoice:'设置说话触发'") && i18nHome.includes("homeWbFlowCtaCamera:'打开 Camera Pro 设置'"));
 
+// —— 小型行为：四模式 projection 字段 ——
+loadIife('src/js/features/home/home-hero-mode-model.js', sandbox);
+{
+  const build = sandbox.OneToneHomeHeroModeModel && sandbox.OneToneHomeHeroModeModel.build;
+  check('HeroModeModel.build 可用', typeof build === 'function');
+  const tFn = (k, fb) => {
+    const map = {
+      homeLiveUnset: '还没设置',
+      homeLiveMicUnset: '未选麦克风',
+      homeLiveMicUnknown: '未知麦克风',
+      homeWbChannelUnset: '未设置',
+      homeWbHowToSoftPadOff: '未启用',
+      homeWbHowToSoftPadOn: '已启用',
+      homeWbCameraOff: '未开启',
+      homeWbCameraOn: '已开启',
+      homeWbCameraPresenceIdle: '待命',
+      homeWbCameraBoundCount: '已绑定 {n} 项',
+      homeWbHeroModeVoice: '说话触发',
+      homeWbHeroModeKeys: '按键触发',
+      homeWbHeroModeSoftPad: '屏幕按钮',
+      homeWbHeroModeCamera: '摄像头确认',
+      homeWbHeroHintVoice: 'hint-v',
+      homeWbHeroHintKeys: 'hint-k',
+      homeWbHeroHintSoftPad: 'hint-s',
+      homeWbHeroHintCamera: 'hint-c',
+      homeWbFlowCtaVoice: '设置说话触发',
+      homeWbFlowCtaKeys: '设置按键触发',
+      homeWbFlowCtaSoftPad: '设置屏幕按钮',
+      homeWbFlowCtaCamera: '打开 Camera Pro 设置',
+      homeWbFlowEmptyMic: '还没选麦克风，先选一个输入设备',
+      homeWbFlowEmptyKeys: '还没有按键触发方式',
+      homeWbFlowEmptySoftPad: '还没有屏幕按钮方案',
+      homeWbFlowEmptyCamera: '摄像头确认未启用，需要时再打开',
+      homeWbHowToMic: '麦克风',
+      homeWbHowToVoiceTitle: '语音',
+      homeWbHowToKeysTitle: '按键',
+      homeWbHowToSoftPadTitle: '屏幕',
+      homeWbHowToCameraTitle: '摄像头',
+      homeWbHowToVoiceTip: 'tip',
+      homeWbHowToKeysTip: 'tip',
+      homeWbHowToSoftPadTip: 'tip',
+      homeWbHowToCameraTip: 'tip',
+      homeWbHowToFinish: '结束',
+      homeWbHowToSilence: '静默',
+      homeWbHowToSoftPadStatus: '状态',
+      homeWbHowToSoftPadBound: '绑定',
+      homeWbHowToCameraPresence: '在席',
+      homeWbHowToCameraBound: '绑定',
+      homeWbHabitActive: '启用',
+      homeWbHeroModeVoice: '说话触发',
+      homeWbHeroModeKeys: '按键触发',
+      homeWbHeroModeSoftPad: '屏幕按钮',
+      homeWbHeroModeCamera: '摄像头确认',
+      homeWbHeroHintVoice: 'hint-v',
+      homeWbHeroHintKeys: 'hint-k',
+      homeWbHeroHintSoftPad: 'hint-s',
+      homeWbHeroHintCamera: 'hint-c',
+      homeWbFlowCtaVoice: '设置说话触发',
+      homeWbFlowCtaKeys: '设置按键触发',
+      homeWbFlowCtaSoftPad: '设置屏幕按钮',
+      homeWbFlowCtaCamera: '打开 Camera Pro 设置',
+      homeWbFlowEmptyMic: '还没选麦克风，先选一个输入设备',
+      homeWbFlowEmptyKeys: '还没有按键触发方式',
+      homeWbFlowEmptySoftPad: '还没有屏幕按钮方案',
+      homeWbFlowEmptyCamera: '摄像头确认未启用，需要时再打开',
+      homeWbLiveCameraHint: 'cam-hint',
+      homeWbLiveSoftPadHint: 'pad-hint',
+      homeWbLivePreviewStandby: '待命',
+      homeWbVoiceOff: '语音关',
+      homeWbCameraBoundCount: '已绑定 {n} 项',
+    };
+    return map[k] || fb || k;
+  };
+  const baseWb = {
+    statusToken: 'listening',
+    statusLine: 'listening',
+    triggerLabel: 'F1',
+    targetLabel: 'App',
+    repair: null,
+    cta: { mode: 'config', label: 'ok', panel: 'keys' },
+  };
+  const baseVm = {
+    micLabel: 'Mic A',
+    wakePrimary: '你好',
+    triggerKey: 'F1',
+    summary: { engine: 'vosk', statusMode: 'listening' },
+    runtime: { paused: false },
+  };
+  const modes = ['voice', 'keys', 'softPad', 'camera'];
+  let allOk = true;
+  for (const mode of modes) {
+    const p = build({
+      mode,
+      workbench: baseWb,
+      vm: baseVm,
+      camera: { enabled: mode === 'camera', running: false, presence: 'idle', bound: 1 },
+      softPad: {
+        value: 'Pad',
+        statusLbl: '已启用',
+        boundName: '场景',
+        schemeCount: mode === 'softPad' ? 0 : 1,
+        empty: mode === 'softPad',
+      },
+      howto: {
+        wakeMain: '你好',
+        keysLine: 'F1',
+        triggerKey: 'F1',
+        finish: '回车',
+        micEmpty: false,
+        keysEmpty: false,
+        micLabel: 'Mic A',
+      },
+      t: tFn,
+    });
+    const fields =
+      p &&
+      p.mode === mode &&
+      p.tab &&
+      p.status &&
+      p.flow &&
+      Array.isArray(p.pills) &&
+      p.preview &&
+      Array.isArray(p.howtoCards) &&
+      p.howtoCards.length === 4 &&
+      p.localAction &&
+      p.localAction.kind === 'settings';
+    if (!fields) allOk = false;
+    // 摘要卡：无 phrases；每卡 lines ≤ 2
+    for (const c of p.howtoCards || []) {
+      if (c.phrases) allOk = false;
+      if ((c.lines || []).length > 2) allOk = false;
+    }
+    if (mode === 'softPad') {
+      const bad = p.pills.some((x) => x.id === 'mic' || x.action === 'listen-toggle');
+      if (bad || p.guards.softPadHasMicPill) allOk = false;
+      if (p.flow.trigger !== '还没有屏幕按钮方案') allOk = false;
+    }
+    if (mode === 'camera') {
+      const send = p.pills.some((x) => /send/i.test(x.id || '') || /send/i.test(x.action || ''));
+      if (send || p.guards.cameraSendClass) allOk = false;
+      if (p.localAction.panel !== 'camera') allOk = false;
+      if (p.guards.globalCtaIsCamera) allOk = false;
+    }
+    if (p.howtoCards.map((c) => c.mode).join(',') !== 'voice,keys,softPad,camera') allOk = false;
+  }
+  check('四模式 projection 字段完整', allOk);
+}
 const shell = readFileSync(join(root, 'src/js/features/home/home-shell.js'), 'utf8');
 check('shell workbench 不写平行状态', shell.includes('有 workbench 时状态/CTA 只走'));
 

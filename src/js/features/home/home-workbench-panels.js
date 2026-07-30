@@ -112,29 +112,48 @@
     return s;
   }
 
-  function howToCardHtml(opts){
-    var kind=opts.kind||'';
-    var mainFocus=opts.mainFocus||'';
-    var meta1Focus=opts.meta1Focus||'';
-    var meta2Focus=opts.meta2Focus||'';
-    return '<article class="wb-howto-card'+(opts.active?' is-active':'')+(kind?' is-'+kind:'')+'" data-wb-howto="'+esc(kind)+'">'
+  function howToSummaryCardHtml(card,icon,art){
+    card=card||{};
+    var kind=card.mode||'';
+    var lines=(card.lines||[]).slice(0,2);
+    var linesHtml='';
+    if(lines.length){
+      linesHtml='<div class="wb-howto-card-meta is-readonly">'
+        +lines.map(function(ln){
+          return '<div class="wb-howto-meta-row is-readonly">'
+            +'<span>'+esc(ln.lbl||'')+'</span>'
+            +'<strong>'+esc(ln.val||'—')+'</strong>'
+            +'</div>';
+        }).join('')
+        +'</div>';
+    }
+    return '<article class="wb-howto-card is-readonly'+(card.active?' is-active':'')+(kind?' is-'+kind:'')+(card.empty?' is-empty':'')+'" data-wb-howto="'+esc(kind)+'" role="button" tabindex="0" aria-pressed="'+(card.active?'true':'false')+'">'
       +'<div class="wb-howto-card-head">'
-      +'<span class="wb-howto-card-ico" aria-hidden="true">'+opts.icon+'</span>'
-      +'<span class="wb-howto-card-title">'+esc(opts.title)+'</span>'
-      +(opts.status?'<span class="wb-howto-card-status">'+esc(opts.status)+'</span>':'')
+      +'<span class="wb-howto-card-ico" aria-hidden="true">'+icon+'</span>'
+      +'<span class="wb-howto-card-title">'+esc(card.title||'')+'</span>'
+      +(card.status?'<span class="wb-howto-card-status">'+esc(card.status)+'</span>':'')
       +'</div>'
-      +'<button type="button" class="wb-howto-zone wb-howto-card-main" data-wb-howto-channel="'+esc(kind)+'" data-wb-howto-focus="'+esc(mainFocus)+'" title="'+esc(opts.tip||'')+'">'
-      +'<strong class="wb-howto-card-value">'+esc(opts.value)+'</strong>'
-      +(opts.art?'<span class="wb-howto-card-art" aria-hidden="true">'+opts.art+'</span>':'')
-      +'</button>'
-      +'<div class="wb-howto-card-meta">'
-      +'<button type="button" class="wb-howto-zone wb-howto-meta-row" data-wb-howto-channel="'+esc(kind)+'" data-wb-howto-focus="'+esc(meta1Focus)+'">'
-      +'<span>'+esc(opts.meta1Lbl)+'</span><strong>'+esc(opts.meta1Val)+'</strong></button>'
-      +'<button type="button" class="wb-howto-zone wb-howto-meta-row" data-wb-howto-channel="'+esc(kind)+'" data-wb-howto-focus="'+esc(meta2Focus)+'">'
-      +'<span>'+esc(opts.meta2Lbl)+'</span><strong>'+esc(opts.meta2Val)+'</strong></button>'
+      +'<div class="wb-howto-card-main is-readonly">'
+      +'<strong class="wb-howto-card-value">'+esc(card.value||'—')+'</strong>'
+      +(art?'<span class="wb-howto-card-art" aria-hidden="true">'+art+'</span>':'')
       +'</div>'
-      +'<button type="button" class="wb-howto-zone wb-howto-card-tip" data-wb-howto-channel="'+esc(kind)+'" data-wb-howto-focus="'+esc(mainFocus)+'">'+esc(opts.tip)+'</button>'
+      +linesHtml
       +'</article>';
+  }
+
+  function howToCardHtml(opts){
+    // 兼容旧调用：转成只读摘要卡
+    return howToSummaryCardHtml({
+      mode:opts.kind,
+      title:opts.title,
+      value:opts.value,
+      status:opts.status,
+      active:opts.active,
+      lines:[
+        opts.meta1Lbl?{lbl:opts.meta1Lbl,val:opts.meta1Val}:null,
+        opts.meta2Lbl?{lbl:opts.meta2Lbl,val:opts.meta2Val}:null
+      ].filter(Boolean).slice(0,2)
+    },opts.icon,opts.art);
   }
 
   function engineName(vm){
@@ -144,43 +163,37 @@
     return split>=0?engineRaw.slice(0,split):engineRaw;
   }
 
-  function phraseIconSvg(kind){
-    if(kind==='wake'){
-      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>';
+  /** 采集 howto 文案位（不读 Camera/SoftPad 运行态；由 caps 层注入）。 */
+  function collectHowToSurfaceBits(vm){
+    var m=activeHabitMapping(vm);
+    var trig=dash(vm&&vm.triggerKey);
+    var keysLine=m&&global.OneToneHomeScheme&&global.OneToneHomeScheme.pairLine
+      ?global.OneToneHomeScheme.pairLine(m)
+      :trig;
+    if(!keysLine||keysLine==='—') keysLine=trig;
+    var finish=dash(vm&&vm.finishText);
+    var phrasesWake=wakePhrases(vm);
+    var wakeMain=phrasesWake.length?phrasesWake[0]:dash(vm&&vm.wakePrimary);
+    if(m&&m.voiceOverride&&Array.isArray(m.voiceOverride.wakePhrases)&&m.voiceOverride.wakePhrases.length){
+      wakeMain=String(m.voiceOverride.wakePhrases[0]||wakeMain);
     }
-    if(kind==='end'){
-      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>';
+    var micEmpty=!vm||!vm.micLabel||vm.micLabel===t('homeLiveMicUnset')||vm.micLabel===t('homeLiveMicUnknown');
+    var keysEmpty=!trig||trig==='—';
+    var micLabel='';
+    if(!micEmpty&&vm&&vm.micLabel){
+      micLabel=String(vm.micLabel);
+      var mMic=micLabel.match(/^(?:麦克风|Microphone)\s*[（(]\s*(.+?)\s*[）)]\s*$/i);
+      if(mMic&&mMic[1]) micLabel=mMic[1].trim();
     }
-    if(kind==='cancel'){
-      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>';
-    }
-    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>';
-  }
-
-  function phraseGroupHtml(kind,label,phrases){
-    var shown=phrases.slice(0,2);
-    var more=Math.max(0,phrases.length-shown.length);
-    var chips=shown.length
-      ?shown.map(function(p){ return '<span class="wb-howto-phrase-chip">'+esc(p)+'</span>'; }).join('')
-      :'<span class="wb-howto-phrase-chip is-empty">—</span>';
-    if(more>0){
-      chips+='<span class="wb-howto-phrase-chip is-more" title="'+esc(phrases.slice(2).join(' · '))+'">+'+more+'</span>';
-    }
-    var focus=kind==='wake'?'wakePhrases':'endPhrases';
-    return '<button type="button" class="wb-howto-zone wb-howto-phrase-row" data-wb-howto-channel="voice" data-wb-howto-focus="'+esc(focus)+'" data-phrase-kind="'+esc(kind)+'">'
-      +'<span class="wb-howto-phrase-ico" title="'+esc(label)+'" aria-hidden="true">'+phraseIconSvg(kind)+'</span>'
-      +'<span class="wb-howto-phrase-lbl">'+esc(label)+'</span>'
-      +'<div class="wb-howto-phrase-list">'+chips+'</div>'
-      +'</button>';
-  }
-
-  function voicePhrasePanelHtml(vm){
-    return '<div class="wb-howto-phrase-panel">'
-      +phraseGroupHtml('wake',t('homeWbPhraseWake'),phraseList('wake',vm))
-      +phraseGroupHtml('end',t('homeWbPhraseEnd'),phraseList('end',vm))
-      +phraseGroupHtml('cancel',t('homeWbPhraseCancel'),phraseList('cancel',vm))
-      +phraseGroupHtml('send',t('homeWbPhraseSend'),phraseList('send',vm))
-      +'</div>';
+    return {
+      keysLine:keysLine,
+      triggerKey:trig,
+      finish:finish,
+      wakeMain:wakeMain,
+      micEmpty:micEmpty,
+      keysEmpty:keysEmpty,
+      micLabel:micLabel
+    };
   }
 
   function cameraHowToSnapshot(){
@@ -220,101 +233,39 @@
     };
   }
 
-  function renderHowTo(vm){
+  function renderHowTo(projection){
     var host=$('wbHowTo');
     if(!host) return;
-    var mode=currentHeroMode();
-    var m=activeHabitMapping(vm);
-    var trig=dash(vm&&vm.triggerKey);
-    var keysLine=m&&global.OneToneHomeScheme&&global.OneToneHomeScheme.pairLine
-      ?global.OneToneHomeScheme.pairLine(m)
-      :trig;
-    if(!keysLine||keysLine==='—') keysLine=trig;
-    var finish=dash(vm&&vm.finishText);
-    var silence='—';
-    if(vm&&vm.m&&vm.m.intervalMs!=null&&vm.cancelDelaySec){
-      silence=String(vm.cancelDelaySec)+' '+t('homeWbHowToSec');
-    }
-    var phrases=wakePhrases(vm);
-    var wakeMain=phrases.length?phrases[0]:dash(vm&&vm.wakePrimary);
-    if(m&&m.voiceOverride&&Array.isArray(m.voiceOverride.wakePhrases)&&m.voiceOverride.wakePhrases.length){
-      wakeMain=String(m.voiceOverride.wakePhrases[0]||wakeMain);
-    }
-    var cam=cameraHowToSnapshot();
-    var pad=softPadHowToSnapshot();
-
+    // 只吃 projection；禁止在此再采集 Camera/SoftPad 快照
+    if(!projection||!Array.isArray(projection.howtoCards)) return;
+    var cards=projection.howtoCards;
     var keyIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>';
     var voiceIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>';
     var camIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
     var softIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/></svg>';
-    var camArt='<span class="wb-howto-cam-dot'+(cam.running?' is-on':(cam.enabled?' is-configured':''))+'" aria-hidden="true"></span>';
     var softArt='<span class="wb-howto-softpad-art" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>';
 
     // 顺序必须与 Hero tabs 一致：voice → keys → softPad → camera
-    host.innerHTML=
-      '<div class="wb-howto-grid wb-howto-grid--quad">'
-      +'<article class="wb-howto-card is-voice'+(mode==='voice'?' is-active':'')+'" data-wb-howto="voice">'
-      +'<div class="wb-howto-card-head">'
-      +'<span class="wb-howto-card-ico" aria-hidden="true">'+voiceIcon+'</span>'
-      +'<span class="wb-howto-card-title">'+esc(t('homeWbHowToVoiceTitle'))+'</span>'
-      +'</div>'
-      +'<button type="button" class="wb-howto-zone wb-howto-card-main wb-howto-card-main--voice" data-wb-howto-channel="voice" data-wb-howto-focus="wakePhrases" title="'+esc(t('homeWbHowToVoiceTip'))+'">'
-      +'<strong class="wb-howto-card-value">'+esc(wakeMain)+'</strong>'
-      +'</button>'
-      +voicePhrasePanelHtml(vm)
-      +'<button type="button" class="wb-howto-zone wb-howto-card-tip" data-wb-howto-channel="voice" data-wb-howto-focus="wakePhrases">'+esc(t('homeWbHowToVoiceTip'))+'</button>'
-      +'</article>'
-      +howToCardHtml({
-        kind:'keys',
-        active:mode==='keys',
-        title:t('homeWbHowToKeysTitle'),
-        value:keysLine,
-        mainFocus:'trigger',
-        meta1Lbl:t('homeWbHowToFinish'),
-        meta1Val:finish,
-        meta1Focus:'keyFinishFlow',
-        meta2Lbl:t('homeWbHowToSilence'),
-        meta2Val:silence,
-        meta2Focus:'cancel',
-        tip:t('homeWbHowToKeysTip'),
-        icon:keyIcon,
-        art:keycapArt(trig)
-      })
-      +howToCardHtml({
-        kind:'softPad',
-        active:mode==='softPad',
-        title:t('homeWbHowToSoftPadTitle'),
-        value:pad.value,
-        mainFocus:'',
-        status:pad.status,
-        meta1Lbl:t('homeWbHowToSoftPadStatus'),
-        meta1Val:pad.statusLbl,
-        meta1Focus:'',
-        meta2Lbl:t('homeWbHowToSoftPadBound','绑定场景'),
-        meta2Val:pad.boundName||pad.countLbl,
-        meta2Focus:'',
-        tip:t('homeWbHowToSoftPadTip'),
-        icon:softIcon,
-        art:softArt
-      })
-      +howToCardHtml({
-        kind:'camera',
-        active:mode==='camera',
-        title:t('homeWbHowToCameraTitle'),
-        value:cam.value,
-        mainFocus:'',
-        status:cam.enabled?t('homeWbHabitActive'):'',
-        meta1Lbl:t('homeWbHowToCameraPresence'),
-        meta1Val:cam.presenceLbl,
-        meta1Focus:'',
-        meta2Lbl:t('homeWbHowToCameraBound'),
-        meta2Val:cam.boundLbl,
-        meta2Focus:'cameraActions',
-        tip:t('homeWbHowToCameraTip'),
-        icon:camIcon,
-        art:camArt
-      })
-      +'</div>';
+    // 只读摘要：无 data-wb-howto-channel，点卡只切模式
+    var html='<div class="wb-howto-grid wb-howto-grid--quad">';
+    cards.forEach(function(card){
+      if(!card) return;
+      var icon=voiceIcon;
+      var art='';
+      if(card.mode==='keys'){
+        icon=keyIcon;
+        art=keycapArt(card.artPayload||'');
+      }else if(card.mode==='softPad'){
+        icon=softIcon;
+        art=softArt;
+      }else if(card.mode==='camera'){
+        icon=camIcon;
+        art='<span class="wb-howto-cam-dot'+(card.cameraRunning?' is-on':(card.cameraEnabled?' is-configured':''))+'" aria-hidden="true"></span>';
+      }
+      html+=howToSummaryCardHtml(card,icon,art);
+    });
+    html+='</div>';
+    host.innerHTML=html;
   }
 
   function keycapArt(trig){
@@ -509,48 +460,6 @@
     return html;
   }
 
-  function phraseList(kind,vm){
-    var live=global.OneToneHomeLive;
-    var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
-    var end=(cfg&&(cfg.voiceEnd||cfg.voice_end))||{};
-    var lang=global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():'zh';
-    var out=[];
-    var seen={};
-    function push(p){
-      var clean=String(p||'').trim();
-      if(!clean||seen[clean]) return;
-      seen[clean]=true;
-      out.push(clean);
-    }
-    if(kind==='wake'){
-      wakePhrases(vm).forEach(push);
-      if(live&&live.voiceWakePhrases) live.voiceWakePhrases().forEach(push);
-      return out.slice(0,3);
-    }
-    if(kind==='end'){
-      if(live&&live.voiceEndPhrases) live.voiceEndPhrases().forEach(push);
-      if(!out.length){
-        var endZh=end.phrasesZh||end.phrases_zh||[];
-        var endEn=end.phrasesEn||end.phrases_en||[];
-        (lang==='en'?(endEn.length?endEn:endZh):(endZh.length?endZh:endEn)).forEach(push);
-      }
-      return out.slice(0,2);
-    }
-    if(kind==='cancel'){
-      var cZh=end.cancelPhrasesZh||end.cancel_phrases_zh||[];
-      var cEn=end.cancelPhrasesEn||end.cancel_phrases_en||[];
-      (lang==='en'?(cEn.length?cEn:cZh):(cZh.length?cZh:cEn)).forEach(push);
-      return out.slice(0,2);
-    }
-    if(kind==='send'){
-      var sZh=end.sendPhrasesZh||end.send_phrases_zh||[];
-      var sEn=end.sendPhrasesEn||end.send_phrases_en||[];
-      (lang==='en'?(sEn.length?sEn:sZh):(sZh.length?sZh:sEn)).forEach(push);
-      return out.slice(0,2);
-    }
-    return out;
-  }
-
   function renderMicCard(vm){
     var host=$('wbVoicePanel');
     if(!host||host.hidden||host.closest('[hidden]')) return;
@@ -558,7 +467,7 @@
 
   function renderAll(vm){
     renderHabitBar(vm);
-    renderHowTo(vm);
+    // howto 仅由 workbench.paintHeroSurfaces(projection) 驱动，避免二次 snapshot / 漂移
     renderScenarioPanel(vm);
   }
 
@@ -577,6 +486,8 @@
     renderVoicePanel:renderMicCard,
     renderMicCard:renderMicCard,
     softPadHowToSnapshot:softPadHowToSnapshot,
+    cameraHowToSnapshot:cameraHowToSnapshot,
+    collectHowToSurfaceBits:collectHowToSurfaceBits,
     bindOnce:bindOnce,
     stopWave:function(){}
   };

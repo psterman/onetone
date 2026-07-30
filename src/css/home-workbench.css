@@ -646,6 +646,27 @@ html[data-theme="dark"] .wb-dot-grid {
   overflow: hidden;
 }
 
+.wb-howto-card.is-readonly {
+  cursor: pointer;
+}
+
+.wb-howto-card.is-readonly .wb-howto-card-main.is-readonly,
+.wb-howto-card.is-readonly .wb-howto-meta-row.is-readonly {
+  cursor: inherit;
+}
+
+.wb-howto-card.is-readonly .wb-howto-card-main.is-readonly {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+.wb-howto-card-meta.is-readonly .wb-howto-meta-row.is-readonly {
+  pointer-events: none;
+}
+
 .wb-howto-zone {
   appearance: none;
   border: 0;

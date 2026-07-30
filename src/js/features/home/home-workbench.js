@@ -323,7 +323,8 @@
   }
 
   function renderTriggerHero(vm){
-    renderHero(vm);
+    var projection=buildHeroProjection(peekHomeModel({})||{},vm);
+    paintHeroSurfaces(projection);
   }
 
   function pillHtml(label,extraClass,dotClass){
@@ -356,71 +357,87 @@
   /** Phase1：五问条只读 model（状态 / 触发 / 目标 / 下一步 / 修复）。 */
   function softPadHeroSnapshot(){
     var panels=global.OneToneHomeWorkbenchPanels;
-    if(panels&&typeof panels.softPadHowToSnapshot==='function') return panels.softPadHowToSnapshot();
-    return {
-      value:t('homeWbChannelUnset'),
-      statusLbl:t('homeWbHowToSoftPadOff'),
-      boundName:t('homeWbChannelUnset'),
-      mappingId:''
-    };
+    var snap=panels&&typeof panels.softPadHowToSnapshot==='function'
+      ?panels.softPadHowToSnapshot()
+      :{
+        value:t('homeWbChannelUnset'),
+        statusLbl:t('homeWbHowToSoftPadOff'),
+        boundName:t('homeWbChannelUnset'),
+        mappingId:''
+      };
+    var hub=global.OneToneSoftPadHub;
+    var entries=(hub&&hub.listSoftPadSchemes)?hub.listSoftPadSchemes():[];
+    snap.schemeCount=entries.length;
+    snap.empty=!entries.length;
+    return snap;
   }
 
-  // 四模式五问：覆盖触发 / 目标 / 下一步；状态与修复仍走 model。
-  function heroModeFlowBits(mode,model,vm){
-    mode=normalizeHeroMode(mode);
-    model=model||{};
-    vm=vm||model.rawVm||{};
-    var trigger=model.triggerLabel||t('homeLiveUnset');
-    var target=model.targetLabel||t('homeLiveUnset');
-    var next=model.nextActionLabel||(model.cta&&model.cta.label)||t('homeSetupStart');
-    if(mode==='voice'){
-      var micOk=vm.micLabel&&vm.micLabel!==t('homeLiveMicUnset')&&vm.micLabel!==t('homeLiveMicUnknown');
-      if(!micOk) trigger=t('homeWbFlowEmptyMic');
-      else if(vm.wakePrimary&&vm.wakePrimary!==t('homeLiveUnset')) trigger=vm.wakePrimary;
-      else if(vm.summary&&vm.summary.engine&&vm.summary.engine!=='off') trigger=enginePillLabel(vm);
-      next=t('homeWbFlowCtaVoice');
-    }else if(mode==='keys'){
-      var trig=vm.triggerKey||'';
-      if(trig&&trig!==t('homeLiveUnset')) trigger=trig;
-      else trigger=t('homeWbFlowEmptyKeys');
-      next=t('homeWbFlowCtaKeys');
-    }else if(mode==='softPad'){
-      var hub=global.OneToneSoftPadHub;
-      var entries=(hub&&hub.listSoftPadSchemes)?hub.listSoftPadSchemes():[];
-      var snap=softPadHeroSnapshot();
-      if(!entries.length){
-        trigger=t('homeWbFlowEmptySoftPad');
-        target=t('homeWbChannelUnset');
-      }else{
-        trigger=snap.value||snap.boundName||trigger;
-        target=snap.boundName||target;
-      }
-      next=t('homeWbFlowCtaSoftPad');
-    }else if(mode==='camera'){
-      var cam=cameraPresenceSnapshot();
-      if(!cam.enabled) trigger=t('homeWbFlowEmptyCamera');
-      else trigger=cameraChannelLabel(cam)||trigger||t('homeWbHeroModeCamera');
-      if(cam.bound) target=t('homeWbCameraBoundCount').replace('{n}',String(cam.bound));
-      next=t('homeWbFlowCtaCamera');
+  var lastHeroProjection=null;
+
+  function collectHeroModeCaps(vm){
+    var panels=global.OneToneHomeWorkbenchPanels;
+    var camera=cameraPresenceSnapshot();
+    var softPad=softPadHeroSnapshot();
+    var howto=panels&&typeof panels.collectHowToSurfaceBits==='function'
+      ?panels.collectHowToSurfaceBits(vm)
+      :{};
+    return {camera:camera,softPad:softPad,howto:howto};
+  }
+
+  function buildHeroProjection(workbench,vm){
+    var caps=collectHeroModeCaps(vm);
+    var api=global.OneToneHomeHeroModeModel;
+    if(!api||typeof api.build!=='function'){
+      return {
+        mode:normalizeHeroMode(heroMode),
+        tab:{label:'',hint:''},
+        status:{token:'idle',text:'',tone:'idle'},
+        flow:{trigger:'—',target:'—',next:'—'},
+        pills:[],
+        preview:{title:'',value:'—',meta:[],empty:true},
+        howtoCards:[],
+        localAction:null,
+        liveHint:'',
+        liveStatus:'',
+        chrome:{mode:normalizeHeroMode(heroMode),hint:'',isLive:false,isPaused:false,cameraRunning:false},
+        guards:{cameraSendClass:false,softPadHasMicPill:false,globalCtaIsCamera:false},
+        _caps:caps,
+        _vm:vm,
+        _workbench:workbench
+      };
     }
-    return {trigger:trigger,target:target,next:next};
+    var projection=api.build({
+      mode:heroMode,
+      workbench:workbench||{},
+      vm:vm||(workbench&&workbench.rawVm)||{},
+      camera:caps.camera,
+      softPad:caps.softPad,
+      howto:caps.howto,
+      t:t
+    });
+    projection._caps=caps;
+    projection._vm=vm;
+    projection._workbench=workbench;
+    lastHeroProjection=projection;
+    return projection;
   }
 
-  function renderHeroFlowSummary(model){
+  function renderHeroFlowSummary(projection){
     var host=$('wbHeroFlowSummary');
     if(!host) return;
     try{
-    model=model||{};
-    var token=String(model.statusToken||'idle');
+    var p=projection&&projection.flow?projection:null;
+    if(!p) return;
+    var token=String((projection.status&&projection.status.token)||'idle');
     var statusCls='';
     if(token==='error'||token==='paused'||token==='needsSetup') statusCls='is-warn';
     else if(token==='dictating'||token==='listening'||token==='triggered') statusCls='is-live';
-    var status=model.statusLine||token;
-    var bits=heroModeFlowBits(heroMode,model,model.rawVm);
-    var trigger=bits.trigger;
-    var target=bits.target;
-    var next=bits.next;
-    var repair=model.repair?model.repair.label:'';
+    var status=(projection.status&&projection.status.text)||token;
+    var trigger=projection.flow.trigger;
+    var target=projection.flow.target;
+    var next=projection.flow.next;
+    var repair=projection.flow.repair||'';
+    var ctaWarn=projection._workbench&&projection._workbench.cta&&projection._workbench.cta.mode==='repair';
     function cell(lbl,val,cls){
       return '<div class="wb-hero-flow-item">'
         +'<span class="wb-hero-flow-lbl">'+esc(lbl)+'</span>'
@@ -431,81 +448,89 @@
       cell(t('homeWbFlowStatus'),status,statusCls)+
       cell(t('homeWbFlowTrigger'),trigger,'')+
       cell(t('homeWbFlowTarget'),target,'')+
-      cell(t('homeWbStatusWork'),next,model.cta&&model.cta.mode==='repair'?'is-warn':'');
+      cell(t('homeWbStatusWork'),next,ctaWarn?'is-warn':'');
     if(repair){
       html+=cell(t('debugFocusRepair'),repair,'is-warn');
     }
     host.innerHTML=html;
     host.setAttribute('data-wb-status-token',token);
     host.setAttribute('data-wb-from-model','1');
+    host.setAttribute('data-wb-from-projection','1');
     }catch(err){
       try{ console.error('wbHeroFlowSummary',err); }catch(_){}
     }
   }
 
-  function renderHeroPills(vm,stats){
+  function renderHeroPills(projection,stats){
     var host=$('wbHeroPills');
     if(!host) return;
-    var paused=!!(vm.runtime&&vm.runtime.paused);
+    var pills=(projection&&projection.pills)||[];
+    var mode=projection&&projection.mode?projection.mode:heroMode;
     var html='';
+    var vm=projection&&projection._vm?projection._vm:{};
 
-    if(heroMode==='camera'){
-      var cam=cameraPresenceSnapshot();
-      var tone=cameraChannelTone(cam);
-      html+=pillHtml(cameraChannelLabel(cam),tone.pill,tone.hero);
-      html+=pillHtml(cameraPresenceLabel(cam.presence),'is-presence','');
-      html+='<button type="button" class="wb-hero-pill wb-hero-pill-listen is-solo" id="wbBtnCameraOpen" title="'+esc(t('homeWbCameraOpenSettings'))+'">'
-        +'<span>'+esc(t('homeWbCameraOpenSettings'))+'</span>'
-        +'</button>';
+    if(mode==='camera'||mode==='softPad'){
+      pills.forEach(function(pill){
+        if(!pill) return;
+        if(pill.action==='open-camera-settings'){
+          html+='<button type="button" class="wb-hero-pill wb-hero-pill-listen is-solo" id="wbBtnCameraOpen" title="'+esc(pill.label)+'">'
+            +'<span>'+esc(pill.label)+'</span></button>';
+          return;
+        }
+        if(pill.action==='open-softPad-settings'){
+          html+='<button type="button" class="wb-hero-pill wb-hero-pill-listen is-solo" id="wbBtnSoftPadOpen" title="'+esc(pill.label)+'">'
+            +'<span>'+esc(pill.label)+'</span></button>';
+          return;
+        }
+        html+=pillHtml(pill.label,pill.tone||'','');
+      });
       host.innerHTML=html;
       return;
     }
 
-    if(heroMode==='softPad'){
-      var sp=softPadHeroSnapshot();
-      var spOn=sp.statusLbl===t('homeWbHowToSoftPadOn');
-      html+=pillHtml(sp.statusLbl||t('homeWbHowToSoftPadOff'),spOn?'is-ok':'is-muted','');
-      html+=pillHtml(sp.boundName||t('homeWbChannelUnset'),'is-bound','');
-      html+='<button type="button" class="wb-hero-pill wb-hero-pill-listen is-solo" id="wbBtnSoftPadOpen" title="'+esc(t('homeWbSoftPadOpenSettings'))+'">'
-        +'<span>'+esc(t('homeWbSoftPadOpenSettings'))+'</span>'
-        +'</button>';
-      host.innerHTML=html;
-      return;
-    }
-
-    var engineOn=vm.summary&&vm.summary.engine&&vm.summary.engine!=='off';
-    if(engineOn){
-      var engOk=vm.summary.statusMode!=='error'&&vm.engineStatus!==t('homeV9EngineOffline');
-      html+='<span class="wb-hero-pill is-engine'+(engOk?' is-ok':' is-warn')+'" role="listitem" title="'+esc(enginePillLabel(vm))+'">'
-        +'<span class="wb-hero-pill-dot '+(engOk?'is-ok':'is-warn')+'" aria-hidden="true"></span>'
-        +'<span>'+esc(enginePillLabel(vm))+'</span></span>';
-    }else{
-      html+=pillHtml(t('homeWbVoiceOff'),'is-muted','');
-    }
-
-    if(heroMode==='keys'){
-      var trig=vm.triggerKey||'';
-      if(trig&&trig!==t('homeLiveUnset')) html+=pillHtml(trig,'is-key','');
-      var listenLblKeys=paused?t('homeWbListenResume'):t('homeWbListenPause');
-      html+='<button type="button" class="wb-hero-pill wb-hero-pill-listen is-solo'+(paused?' is-paused':'')+'" id="wbBtnListenToggle" aria-pressed="'+(paused?'true':'false')+'" title="'+esc(paused?t('homeWbListenResumeTip'):t('homeWbListenPauseTip'))+'">'
-        +'<span id="wbBtnListenToggleLabel">'+esc(listenLblKeys)+'</span>'
-        +'</button>';
-    }else{
-      var micFull=vm.micLabel&&vm.micLabel!==t('homeLiveMicUnset')&&vm.micLabel!==t('homeLiveMicUnknown')
-        ?vm.micLabel
-        :t('homeLiveMicUnset');
-      var micShort=shortMicLabel(micFull)||micFull;
-      var listenLbl=paused?t('homeWbListenResume'):t('homeWbListenPause');
-      html+='<span class="wb-hero-pill is-mic is-mic-level'+(paused?' is-paused':'')+'" role="listitem">'
-        +'<button type="button" class="wb-hero-pill-mic-btn" id="wbVoiceChangeMic" title="'+esc(micFull)+'">'
-        +'<span class="mic-level-bars mic-level-bars--pill" id="wbHomeMicLevel" aria-hidden="true">'+buildPillMicBars(8)+'</span>'
-        +'<span class="wb-hero-pill-mic-label">'+esc(micShort)+'</span>'
-        +'</button>'
-        +'<button type="button" class="wb-hero-pill-listen" id="wbBtnListenToggle" aria-pressed="'+(paused?'true':'false')+'" title="'+esc(paused?t('homeWbListenResumeTip'):t('homeWbListenPauseTip'))+'">'
-        +'<span id="wbBtnListenToggleLabel">'+esc(listenLbl)+'</span>'
-        +'</button>'
-        +'</span>';
-    }
+    var paused=!!(vm.runtime&&vm.runtime.paused);
+    pills.forEach(function(pill){
+      if(!pill) return;
+      if(pill.id==='engine'||pill.id==='engine-off'){
+        if(pill.id==='engine'){
+          var engOk=(pill.tone||'').indexOf('is-ok')>=0;
+          html+='<span class="wb-hero-pill is-engine'+(engOk?' is-ok':' is-warn')+'" role="listitem" title="'+esc(pill.label)+'">'
+            +'<span class="wb-hero-pill-dot '+(engOk?'is-ok':'is-warn')+'" aria-hidden="true"></span>'
+            +'<span>'+esc(pill.label)+'</span></span>';
+        }else{
+          html+=pillHtml(pill.label,'is-muted','');
+        }
+        return;
+      }
+      if(pill.id==='trigger-key'){
+        html+=pillHtml(pill.label,'is-key','');
+        return;
+      }
+      if(pill.action==='listen-toggle'&&mode==='keys'){
+        html+='<button type="button" class="wb-hero-pill wb-hero-pill-listen is-solo'+(paused?' is-paused':'')+'" id="wbBtnListenToggle" aria-pressed="'+(paused?'true':'false')+'" title="'+esc(paused?t('homeWbListenResumeTip'):t('homeWbListenPauseTip'))+'">'
+          +'<span id="wbBtnListenToggleLabel">'+esc(pill.label)+'</span></button>';
+        return;
+      }
+      if(pill.id==='mic'){
+        var micFull=pill.label;
+        var micShort=shortMicLabel(micFull)||micFull;
+        var listenPill=null;
+        for(var i=0;i<pills.length;i++){
+          if(pills[i]&&pills[i].action==='listen-toggle'){ listenPill=pills[i]; break; }
+        }
+        html+='<span class="wb-hero-pill is-mic is-mic-level'+(paused?' is-paused':'')+'" role="listitem">'
+          +'<button type="button" class="wb-hero-pill-mic-btn" id="wbVoiceChangeMic" title="'+esc(micFull)+'">'
+          +'<span class="mic-level-bars mic-level-bars--pill" id="wbHomeMicLevel" aria-hidden="true">'+buildPillMicBars(8)+'</span>'
+          +'<span class="wb-hero-pill-mic-label">'+esc(micShort)+'</span>'
+          +'</button>'
+          +'<button type="button" class="wb-hero-pill-listen" id="wbBtnListenToggle" aria-pressed="'+(paused?'true':'false')+'" title="'+esc(paused?t('homeWbListenResumeTip'):t('homeWbListenPauseTip'))+'">'
+          +'<span id="wbBtnListenToggleLabel">'+esc(listenPill?listenPill.label:(paused?t('homeWbListenResume'):t('homeWbListenPause')))+'</span>'
+          +'</button>'
+          +'</span>';
+        return;
+      }
+      if(pill.action==='listen-toggle'&&mode==='voice') return; // paired with mic
+    });
 
     if(stats&&stats.latency&&stats.latency!=='—') html+=pillHtml(stats.latency,'is-latency','');
     host.innerHTML=html;
@@ -570,8 +595,9 @@
     });
   }
 
-  function paintHeroModeChrome(){
-    var mode=normalizeHeroMode(heroMode);
+  function paintHeroModeChrome(projection){
+    var mode=projection&&projection.mode?normalizeHeroMode(projection.mode):normalizeHeroMode(heroMode);
+    var chrome=projection&&projection.chrome?projection.chrome:{};
     var hero=$('wbHero');
     var orb=$('wbHeroOrb');
     var icon=$('wbHeroOrbIcon');
@@ -582,16 +608,14 @@
       hero.classList.toggle('is-mode-softPad',mode==='softPad');
       hero.classList.toggle('is-mode-camera',mode==='camera');
       if(mode==='camera'){
-        var cam=cameraPresenceSnapshot();
-        hero.classList.toggle('is-live',!!(cam&&(cam.running||cam.status==='running')));
+        hero.classList.toggle('is-live',!!chrome.cameraRunning);
       }
     }
     if(orb){
       orb.setAttribute('data-mode',mode);
-      orb.setAttribute('aria-label',heroModeHint(mode));
+      orb.setAttribute('aria-label',(projection&&projection.tab&&projection.tab.hint)||heroModeHint(mode));
       if(mode==='camera'){
-        var cam2=cameraPresenceSnapshot();
-        orb.classList.toggle('is-live',!!(cam2&&(cam2.running||cam2.status==='running')));
+        orb.classList.toggle('is-live',!!chrome.cameraRunning);
       }
     }
     if(icon){
@@ -616,27 +640,27 @@
     renderHeroModeHint();
   }
 
-  function renderHero(vm){
-    var mode=normalizeHeroMode(heroMode);
+  function renderHero(projection,stats){
+    var mode=projection&&projection.mode?normalizeHeroMode(projection.mode):normalizeHeroMode(heroMode);
+    var chrome=projection&&projection.chrome?projection.chrome:{};
     var hero=$('wbHero');
     var orb=$('wbHeroOrb');
     var icon=$('wbHeroOrbIcon');
-    var live=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating);
-    var paused=!!(vm.runtime&&vm.runtime.paused);
-    var cam=mode==='camera'?cameraPresenceSnapshot():null;
+    var live=!!chrome.isLive;
+    var paused=!!chrome.isPaused;
     if(hero){
       hero.classList.toggle('is-mode-voice',mode==='voice');
       hero.classList.toggle('is-mode-keys',mode==='keys');
       hero.classList.toggle('is-mode-softPad',mode==='softPad');
       hero.classList.toggle('is-mode-camera',mode==='camera');
-      hero.classList.toggle('is-live',mode==='camera'?!!(cam&&(cam.running||cam.status==='running')):live);
+      hero.classList.toggle('is-live',live);
       hero.classList.toggle('is-paused',paused);
     }
     if(orb){
       orb.setAttribute('data-mode',mode);
-      orb.classList.toggle('is-live',mode==='camera'?!!(cam&&(cam.running||cam.status==='running')):live);
+      orb.classList.toggle('is-live',live);
       orb.classList.toggle('is-paused',paused);
-      orb.setAttribute('aria-label',heroModeHint(mode));
+      orb.setAttribute('aria-label',(projection&&projection.tab&&projection.tab.hint)||heroModeHint(mode));
     }
     if(icon){
       var next=heroModeIconSvg(mode);
@@ -650,25 +674,34 @@
       }
     }
     syncHeroModeTabs(mode);
-    var stats=global.OneToneHomeWorkbenchStats
-      ?global.OneToneHomeWorkbenchStats.buildHeroStats(vm)
-      :{uptime:'—',opCount:'—',topTarget:'—',topShortcut:'—',latency:'—'};
-    // Hero 五问由 render() 用 model 单独绘制；此处只画 pills/stats
-    renderHeroPills(vm,stats);
-    renderHeroStats(stats);
+    var st=stats;
+    if(!st){
+      st=global.OneToneHomeWorkbenchStats&&projection&&projection._vm
+        ?global.OneToneHomeWorkbenchStats.buildHeroStats(projection._vm)
+        :{uptime:'—',opCount:'—',topTarget:'—',topShortcut:'—',latency:'—'};
+    }
+    renderHeroPills(projection,st);
+    renderHeroStats(st);
+  }
+
+  function paintHeroSurfaces(projection,opts){
+    opts=opts||{};
+    if(!projection) return;
+    paintHeroModeChrome(projection);
+    renderHeroFlowSummary(projection);
+    renderHero(projection,opts.stats);
+    if(global.OneToneHomeWorkbenchPanels&&typeof global.OneToneHomeWorkbenchPanels.renderHowTo==='function'){
+      global.OneToneHomeWorkbenchPanels.renderHowTo(projection);
+    }
+    renderLiveText(projection);
   }
 
   function refreshHeroModeSurfaces(){
-    paintHeroModeChrome();
     if(!global.OneToneHomeV9||!global.OneToneHomeV9.buildViewModel) return;
     var model=peekHomeModel({force:true})||{};
     var vm=model.rawVm||enrichViewModel(global.OneToneHomeV9.buildViewModel());
-    renderHeroFlowSummary(model);
-    renderHero(vm);
-    if(global.OneToneHomeWorkbenchPanels&&typeof global.OneToneHomeWorkbenchPanels.renderHowTo==='function'){
-      global.OneToneHomeWorkbenchPanels.renderHowTo(vm);
-    }
-    renderLiveText(vm);
+    var projection=buildHeroProjection(model,vm);
+    paintHeroSurfaces(projection);
   }
 
   function setHeroMode(mode,opts){
@@ -704,22 +737,27 @@
     hint.textContent=t('homeWbHeroModeHint');
   }
 
-  function renderCommandCard(vm){
+  function renderCommandCard(vm,projection){
     var card=$('wbTriggerCard');
+    var mode=projection&&projection.mode?projection.mode:heroMode;
+    var chrome=projection&&projection.chrome?projection.chrome:{};
     if(card){
-      var live=vm.vpState==='DICTATING'||!!vm.summary.dictating;
-      card.classList.toggle('is-live',live);
-      card.classList.toggle('is-paused',!!(vm.runtime&&vm.runtime.paused));
+      var live=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating);
+      card.classList.toggle('is-live',projection?!!chrome.isLive:live);
+      card.classList.toggle('is-paused',projection?!!chrome.isPaused:!!(vm.runtime&&vm.runtime.paused));
       card.classList.toggle('is-error',!!(vm.hs&&vm.hs.statusMode==='error'));
-      card.classList.toggle('is-mode-keys',heroMode==='keys');
-      card.classList.toggle('is-mode-voice',heroMode==='voice');
-      card.classList.toggle('is-mode-softPad',heroMode==='softPad');
-      card.classList.toggle('is-mode-camera',heroMode==='camera');
+      card.classList.toggle('is-mode-keys',mode==='keys');
+      card.classList.toggle('is-mode-voice',mode==='voice');
+      card.classList.toggle('is-mode-softPad',mode==='softPad');
+      card.classList.toggle('is-mode-camera',mode==='camera');
     }
-    renderHero(vm);
+    // pills/live/howto 由 paintHeroSurfaces 统一驱动；此处只维护收尾按钮
+    if(!projection){
+      var fallback=buildHeroProjection(peekHomeModel({force:true})||{},vm);
+      paintHeroSurfaces(fallback);
+    }
     renderHeroModeHint();
-    renderLiveText(vm);
-    var dictating=vm.vpState==='DICTATING'||!!vm.summary.dictating;
+    var dictating=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating);
     var actions=$('wbTriggerActions');
     if(actions) actions.classList.toggle('is-dictating',dictating);
     var endBtn=$('wbBtnEnd');
@@ -746,9 +784,12 @@
     if(el) el.textContent=text||'';
   }
 
-  function renderLiveText(vm){
+  function renderLiveText(projectionOrVm){
     var liveEl=$('wbLiveText');
     if(!liveEl) return;
+    var projection=projectionOrVm&&projectionOrVm.flow?projectionOrVm:null;
+    var vm=projection?projection._vm:(projectionOrVm||{});
+    var mode=projection?projection.mode:heroMode;
     var card=$('wbTriggerCard')||$('wbHero');
     var status=$('wbLivePreviewStatus');
     var statusLbl=$('wbLivePreviewStatusLabel')||status;
@@ -758,8 +799,8 @@
     var dictating=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating);
     var listening=!paused&&(dictating||(vm.summary&&vm.summary.statusMode==='listening')||vm.vpState==='LISTENING');
     if(card){
-      card.classList.toggle('is-live',!!listening);
-      card.classList.toggle('is-paused',paused);
+      card.classList.toggle('is-live',projection?!!(projection.chrome&&projection.chrome.isLive):!!listening);
+      card.classList.toggle('is-paused',projection?!!(projection.chrome&&projection.chrome.isPaused):paused);
     }
     if(status){
       status.classList.toggle('is-live',!!listening);
@@ -767,16 +808,9 @@
       status.classList.toggle('is-paused',paused);
     }
     if(statusLbl){
-      if(heroMode==='camera'){
-        var camSt=cameraPresenceSnapshot();
-        statusLbl.textContent=cameraChannelLabel(camSt);
-      }else if(heroMode==='softPad'){
-        statusLbl.textContent=softPadHeroSnapshot().statusLbl||t('homeWbHowToSoftPadOff');
-      }else{
-        statusLbl.textContent=paused
-          ?t('homeWbLivePreviewPaused')
-          :(listening?t('homeWbLivePreviewListening'):t('homeWbLivePreviewStandby'));
-      }
+      statusLbl.textContent=projection&&projection.liveStatus
+        ?projection.liveStatus
+        :(paused?t('homeWbLivePreviewPaused'):(listening?t('homeWbLivePreviewListening'):t('homeWbLivePreviewStandby')));
     }
     if(listenBtn){
       listenBtn.classList.toggle('is-paused',paused);
@@ -789,17 +823,12 @@
       liveEl.innerHTML='<div class="vp-empty">'+esc(t('homeLiveLoading'))+'</div>';
       return;
     }
-    if(heroMode==='camera'){
+    if(mode==='camera'||mode==='softPad'){
       liveEl.classList.add('is-placeholder');
-      liveEl.innerHTML='<div class="vp-empty">'+esc(t('homeWbLiveCameraHint'))+'</div>';
+      liveEl.innerHTML='<div class="vp-empty">'+esc((projection&&projection.liveHint)||(mode==='camera'?t('homeWbLiveCameraHint'):t('homeWbLiveSoftPadHint')))+'</div>';
       return;
     }
-    if(heroMode==='softPad'){
-      liveEl.classList.add('is-placeholder');
-      liveEl.innerHTML='<div class="vp-empty">'+esc(t('homeWbLiveSoftPadHint'))+'</div>';
-      return;
-    }
-    if(vm.live.placeholder){
+    if(vm.live&&vm.live.placeholder){
       var hintKey=vm.live.hintKey||'homeWbLiveIdleHint';
       liveEl.classList.add('is-placeholder');
       liveEl.innerHTML='<div class="vp-empty">'+esc(t(hintKey))+'</div>';
@@ -807,9 +836,9 @@
     }
     liveEl.classList.remove('is-placeholder');
     if(global.vp9&&global.vp9.setText){
-      global.vp9.setText('#wbLiveText',vm.live.finalized,vm.live.pending);
+      global.vp9.setText('#wbLiveText',(vm.live&&vm.live.finalized)||'',(vm.live&&vm.live.pending)||'');
     }else{
-      liveEl.textContent=(vm.live.finalized||'')+(vm.live.pending||'');
+      liveEl.textContent=((vm.live&&vm.live.finalized)||'')+((vm.live&&vm.live.pending)||'');
     }
   }
 
@@ -1025,22 +1054,14 @@
         openSettings({panel:'habits',habitWizard:true});
         return;
       }
-      var howtoZone=e.target.closest&&e.target.closest('[data-wb-howto-channel]');
-      if(howtoZone){
-        e.preventDefault();
-        e.stopPropagation();
-        openHabitChannelChip(
-          howtoZone.getAttribute('data-wb-howto-channel')||'',
-          {focus:howtoZone.getAttribute('data-wb-howto-focus')||''}
-        );
-        return;
-      }
-      var howto=e.target.closest&&e.target.closest('[data-wb-howto]');
+      // 首页 howto 只读：点卡只切 Hero 模式，绝不进设置
+      var howto=e.target.closest&&e.target.closest('#wbHowTo [data-wb-howto]');
       if(howto){
         var kind=howto.getAttribute('data-wb-howto')||'';
         if(kind==='keys'||kind==='voice'||kind==='camera'||kind==='softPad'){
-          openHabitChannelChip(kind);
+          setHeroMode(kind);
         }
+        return;
       }
     });
   }
@@ -1272,8 +1293,12 @@
     renderNavSidebar(vm);
     renderOverview(vm);
     renderAlerts(vm,model);
-    renderHeroFlowSummary(model);
-    renderCommandCard(vm);
+    var projection=buildHeroProjection(model,vm);
+    var stats=global.OneToneHomeWorkbenchStats
+      ?global.OneToneHomeWorkbenchStats.buildHeroStats(vm)
+      :{uptime:'—',opCount:'—',topTarget:'—',topShortcut:'—',latency:'—'};
+    paintHeroSurfaces(projection,{stats:stats});
+    renderCommandCard(vm,projection);
     renderFinishSummary(vm);
     renderQuickActions();
     if(global.OneToneHomeWorkbenchPanels){
