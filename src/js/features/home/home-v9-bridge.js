@@ -711,6 +711,11 @@
     global.OneToneIpc.invoke('cmd_foreground_app',{}).then(function(res){
       foregroundIdentity=res||null;
       var next=res&&res.appId?String(res.appId):'';
+      try{
+        if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.noteLaneForeground){
+          global.OneToneSoftPadHub.noteLaneForeground(next);
+        }
+      }catch(_){}
       var labelKey=next+'|'+(res&&res.exeName||res&&res.exe_name||'')+'|'+(res&&res.windowTitle||res&&res.window_title||'');
       if(labelKey!==foregroundLabelKey){
         foregroundLabelKey=labelKey;

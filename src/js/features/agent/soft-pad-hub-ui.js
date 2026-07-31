@@ -144,12 +144,12 @@
     return t('softPadHubKindSoft', 'Soft Pad');
   }
 
-  /** Default app tab when opening Soft Pad (no「全局」). */
-  function pickDefaultScopeId(entries) {
+  /** Default Hub tab when opening Soft Pad (may be Codex placeholder — UI only). */
+  function pickHubDefaultScopeId(entries) {
     entries = entries || listSoftPadSchemes();
     var i;
     for (i = 0; i < entries.length; i++) {
-      if (entries[i].kind === 'codex' && entries[i].padEnabled) return 'codex';
+      if (entries[i].padEnabled && entries[i].kind === 'codex') return 'codex';
     }
     for (i = 0; i < entries.length; i++) {
       if (entries[i].padEnabled) return entries[i].kind;
@@ -158,14 +158,114 @@
     return 'codex';
   }
 
-  function pickDefaultEntry(entries) {
+  /** Hub tab entry (may be disabled / prepare-only). Not for keycap / home primary lane. */
+  function pickHubDefaultEntry(entries) {
     entries = entries || listSoftPadSchemes();
-    var scopeId = pickDefaultScopeId(entries);
+    var scopeId = pickHubDefaultScopeId(entries);
     var i;
     for (i = 0; i < entries.length; i++) {
       if (entries[i].kind === scopeId) return entries[i];
     }
     return pickGlobalEntry(entries) || entries[0] || null;
+  }
+
+  // Deprecated alias — Hub UI only. Do not use for primary lane / homepage.
+  function pickDefaultScopeId(entries) {
+    return pickHubDefaultScopeId(entries);
+  }
+
+  function pickDefaultEntry(entries) {
+    return pickHubDefaultEntry(entries);
+  }
+
+  /**
+   * Primary Soft Pad lane: ONLY from padEnabled===true.
+   * Priority: waitingKinds → foregroundAppId → userLaneId → first enabled → null.
+   */
+  function resolvePrimaryLane(entries, ctx) {
+    ctx = ctx || {};
+    entries = Array.isArray(entries) ? entries : [];
+    var pool = entries.filter(function (e) {
+      return !!(e && e.padEnabled && e.kind && isHubSoftPadKind(e.kind));
+    });
+    if (!pool.length) return null;
+
+    function findKind(kind) {
+      kind = String(kind || '').trim();
+      if (!kind) return null;
+      for (var i = 0; i < pool.length; i++) {
+        if (pool[i].kind === kind) return pool[i];
+      }
+      return null;
+    }
+
+    var waiting = Array.isArray(ctx.waitingKinds) ? ctx.waitingKinds : [];
+    var w;
+    for (w = 0; w < waiting.length; w++) {
+      var hitW = findKind(waiting[w]);
+      if (hitW) return hitW;
+    }
+
+    var fgKind = kindForAppId(ctx.foregroundAppId);
+    if (fgKind && isHubSoftPadKind(fgKind)) {
+      var hitFg = findKind(fgKind);
+      if (hitFg) return hitFg;
+    }
+
+    var userHit = findKind(ctx.userLaneId);
+    if (userHit) return userHit;
+
+    return pool[0] || null;
+  }
+
+  function laneCache() {
+    if (!global.__otSoftPadLaneCache || typeof global.__otSoftPadLaneCache !== 'object') {
+      global.__otSoftPadLaneCache = { foregroundAppId: '', waitingKinds: [] };
+    }
+    return global.__otSoftPadLaneCache;
+  }
+
+  /** Sync writers only — never await IPC from homepage snapshot. */
+  function noteLaneForeground(appId) {
+    laneCache().foregroundAppId = String(appId || '').trim();
+  }
+
+  function noteLaneWaitingKinds(kinds) {
+    laneCache().waitingKinds = Array.isArray(kinds)
+      ? kinds.map(function (k) { return String(k || '').trim(); }).filter(Boolean)
+      : [];
+  }
+
+  /**
+   * Read-only lane context for resolvePrimaryLane.
+   * Prefers Soft Pad cache; falls back to habit-layer-nav foreground if present.
+   */
+  function laneContextFromRuntime() {
+    var cache = laneCache();
+    var fg = String(cache.foregroundAppId || '').trim();
+    if (!fg) {
+      try {
+        var nav = global.OneToneHabitLayerNav;
+        if (nav && typeof nav.foregroundAppId === 'function') {
+          fg = String(nav.foregroundAppId() || '').trim();
+        }
+      } catch (_) {}
+    }
+    if (!fg) {
+      try {
+        var ui = global.OneToneState && global.OneToneState.ui;
+        var id = ui && ui.habitHubFgIdentity;
+        if (id) {
+          fg = String(id.matchedPresetAppId || id.matched_preset_app_id || id.appId || '').trim();
+        }
+      } catch (_) {}
+    }
+    return {
+      foregroundAppId: fg,
+      waitingKinds: Array.isArray(cache.waitingKinds) ? cache.waitingKinds.slice() : [],
+      // Hub tab only — never selectedMappingId / activeSceneId.
+      userLaneId: String(selectedScopeId || '').trim()
+    };
   }
 
   function schemeRank(entry) {
@@ -2815,6 +2915,12 @@
     listAppScopes: listAppScopes,
     listHubEntries: listHubEntries,
     isSoftPadSchemeEligible: isSoftPadSchemeEligible,
+    resolvePrimaryLane: resolvePrimaryLane,
+    laneContextFromRuntime: laneContextFromRuntime,
+    noteLaneForeground: noteLaneForeground,
+    noteLaneWaitingKinds: noteLaneWaitingKinds,
+    pickHubDefaultScopeId: pickHubDefaultScopeId,
+    pickHubDefaultEntry: pickHubDefaultEntry,
     // P10: exposed for React island toggle delegation
     toggleSelectedEnable: toggleSelectedEnable,
     toggleRowEnable: toggleRowEnable,

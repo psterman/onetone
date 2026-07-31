@@ -227,12 +227,54 @@ const panels = readFileSync(join(root, 'src/js/features/home/home-workbench-pane
 check('howto 只吃 projection', panels.includes('projection.howtoCards') && panels.includes('禁止在此再采集'));
 check('panels 导出 softPadHowToSnapshot', panels.includes('softPadHowToSnapshot:softPadHowToSnapshot'));
 check('panels 导出 collectHowToSurfaceBits', panels.includes('collectHowToSurfaceBits:collectHowToSurfaceBits'));
+check('softPad snapshot 走 resolvePrimaryLane', (() => {
+  const snap = panels.match(/function softPadHowToSnapshot\(\)\{[\s\S]*?\n  function /);
+  return !!(snap
+    && snap[0].includes('resolvePrimaryLane')
+    && snap[0].includes('laneContextFromRuntime')
+    && !/\(on\.length\s*\?\s*on\s*:\s*entries\)\s*\[\s*0\s*\]/.test(snap[0]));
+})());
+check('softPad hub 导出选道 API', (() => {
+  const hub = readFileSync(join(root, 'src/js/features/agent/soft-pad-hub-ui.js'), 'utf8');
+  return /resolvePrimaryLane:\s*resolvePrimaryLane/.test(hub)
+    && /pickHubDefaultScopeId:\s*pickHubDefaultScopeId/.test(hub)
+    && /noteLaneForeground:\s*noteLaneForeground/.test(hub);
+})());
 check('renderHowTo 不再调 snapshot', (() => {
   const m = panels.match(/function renderHowTo\(projection\)\{[\s\S]*?\n  function /);
   return !!(m && !m[0].includes('cameraHowToSnapshot()') && !m[0].includes('softPadHowToSnapshot()'));
 })());
-check('howto 只读无 channel', panels.includes('howToSummaryCardHtml') && panels.includes('只读摘要') && !/data-wb-howto-channel=/.test(panels));
-check('howto 点卡只切模式', wb.includes("closest('#wbHowTo [data-wb-howto]')") && /#wbHowTo \[data-wb-howto\][\s\S]*setHeroMode\(kind\)/.test(wb) && !/#wbHowTo \[data-wb-howto\][\s\S]*openHabitChannelChip/.test(wb));
+check('howto 摘要可点进配置', panels.includes('howToSummaryCardHtml') && panels.includes('点此打开该通道设置') && !/data-wb-howto-channel=/.test(panels));
+check('howto 点卡开通道', wb.includes("closest('#wbHowTo [data-wb-howto]')") && /#wbHowTo \[data-wb-howto\][\s\S]*setHeroMode\(kind\)/.test(wb) && /#wbHowTo \[data-wb-howto\][\s\S]*openHabitChannelChip\(kind\)/.test(wb));
+check('activate 乐观刷新首页', (() => {
+  const act = readFileSync(join(root, 'src/js/features/scene/scene-activate.js'), 'utf8');
+  return act.includes('cfg.activeSceneId=id') && act.includes('forceHomeRender');
+})());
+check('scheme-switch forceHomeRender', (() => {
+  const fb = readFileSync(join(root, 'src/js/features/home/scheme-switch-feedback.js'), 'utf8');
+  return fb.includes('forceHomeRender') && fb.includes('HomeWorkbench.render');
+})());
+check('workbench sig 含 activeSceneId', (() => {
+  const model = readFileSync(join(root, 'src/js/features/home/home-workbench-model.js'), 'utf8');
+  return model.includes('activeSceneId');
+})());
+check('hub 通用设置无四通道栅格', (() => {
+  const hub = readFileSync(join(root, 'src/js/features/mapping/habit-hub.js'), 'utf8');
+  const fn = hub.match(/function renderGlobalDefaultCard\(\)\{[\s\S]*?\n  function /);
+  return !!(fn && !fn[0].includes('habit-hub-channels') && fn[0].includes('data-habit-global-home') && fn[0].includes('habit-hub-hero--thin'));
+})());
+check('scenario 点卡激活、编辑独立、无 use 按钮', (() => {
+  const card = panels.match(/function sceneCardHtml\([\s\S]*?\n  function /);
+  if (!card) return false;
+  const html = card[0];
+  return !html.includes('data-wb-scenario-use')
+    && html.includes('wb-scene-card-badge')
+    && html.includes('data-wb-scenario-edit')
+    && wb.includes('data-wb-scenario-edit')
+    && /data-wb-scenario-edit[\s\S]*openWorkbenchScenario/.test(wb)
+    && !wb.includes('data-wb-scenario-use')
+    && /data-wb-scenario-id[\s\S]*selectWorkbenchMapping/.test(wb);
+})());
 {
   const orderSrc = heroModelSrc;
   const voiceIdx = orderSrc.indexOf("mode: 'voice'");

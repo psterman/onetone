@@ -40,6 +40,7 @@
 
   function cameraChannelLabel(cam, t) {
     if (!cam || !cam.enabled) return t('homeWbCameraOff');
+    if (cam.actionsLine) return cam.actionsLine;
     if (cam.running || cam.status === 'running') return t('homeWbCameraOn');
     var base = t('homeWbCameraConfiguredIdle', '已配置 · 未运行');
     if (cam.lastError && cam.lastError.message) return base + ' · ' + cam.lastError.message;
@@ -305,12 +306,30 @@
         });
       }
     }
+    if (softPad.agentOnlyHint) {
+      softLines.push({
+        lbl: t('homeWbHowToSoftPadApps', '应用场景'),
+        val: softPad.agentOnlyHint,
+      });
+    } else if (softEmpty) {
+      softLines.push({
+        lbl: t('homeWbHowToSoftPadApps', '应用场景'),
+        val: t('homeWbHowToSoftPadAgentOnly', '仅 Codex / Claude Agent'),
+      });
+    }
 
     var camLines = [];
     if (camera.enabled) {
       camLines.push({
         lbl: t('homeWbHowToCameraPresence'),
         val: cameraPresenceLabel(camera.presence, t),
+      });
+      camLines.push({
+        lbl: t('homeWbHowToStatus'),
+        val:
+          camera.running || camera.status === 'running'
+            ? t('homeWbCameraOn')
+            : t('homeWbCameraConfiguredIdle', '已配置 · 未运行'),
       });
     }
 
@@ -327,7 +346,7 @@
       {
         mode: 'keys',
         title: t('homeWbHeroModeKeys'),
-        value: keysEmpty ? t('homeWbFlowEmptyKeys') : howto.triggerKey || howto.keysLine || '—',
+        value: keysEmpty ? t('homeWbFlowEmptyKeys') : howto.keysLine || howto.triggerKey || '—',
         lines: keysLines.slice(0, 2),
         artKind: 'keycaps',
         artPayload: howto.triggerKey || '',
@@ -340,7 +359,7 @@
         title: t('homeWbHeroModeSoftPad'),
         value: softEmpty
           ? t('homeWbFlowEmptySoftPad')
-          : softPad.value || t('homeWbChannelUnset'),
+          : softPad.boundName || softPad.value || t('homeWbChannelUnset'),
         lines: softLines.slice(0, 2),
         status: softEmpty ? '' : softPad.status || softPad.statusLbl || '',
         artKind: 'softArt',

@@ -3165,6 +3165,9 @@
     .habit-hub-hero-title-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .habit-hub-hero-title{margin:0;font-size:14px;font-weight:800;color:var(--on-surface)}
     .habit-hub-hero-desc{margin:0;font-size:11px;line-height:1.45;color:var(--on-surface-muted)}
+    .habit-hub-hero-pair{margin:6px 0 0;font-size:12px;font-weight:700;color:var(--on-surface)}
+    .habit-hub-hero-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:4px}
+    .habit-hub-hero--thin{gap:10px}
     .habit-hub-hero-rows{display:grid;gap:8px}
     .habit-hub-hero-row{
       display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;

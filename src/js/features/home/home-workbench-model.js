@@ -359,6 +359,15 @@
       model.engineLine,
       model.micLabel,
       (raw.compatSnapshot && raw.compatSnapshot.status) || '',
+      (function(){
+        try{
+          var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
+          return String(cfg&&cfg.activeSceneId||'');
+        }catch(_){ return ''; }
+      })(),
+      String(raw.habitName||''),
+      String(raw.triggerKey||''),
+      String(raw.finishText||'')
     ]);
     return model;
   }

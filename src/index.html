@@ -216,7 +216,7 @@
                         </div>
                       </section>
 
-                      <section class="wb-howto" id="wbHowTo" aria-label="说话触发、按键触发、屏幕按钮与摄像头确认"></section>
+                      <section class="wb-howto" id="wbHowTo" aria-label="正在使用习惯的四个通道：说话、按键、屏幕按钮与摄像头；点卡打开设置，点下方习惯即可切换并加载"></section>
 
                       <div class="wb-detail-row wb-detail-row--single" id="wbDetailRow" hidden>
                         <div id="wbVoicePanel" hidden></div>
@@ -225,6 +225,10 @@
                       <section class="wb-scene-rail" id="wbSceneRail" aria-label="习惯">
                         <div class="wb-scene-rail-head">
                           <span class="wb-scene-rail-title" data-i18n="homeWbSceneRailTitle">我的习惯</span>
+                          <label class="wb-scene-rail-follow" title="开：前台有应用场景就自动用它；关：保持通用设置">
+                            <span class="wb-scene-rail-follow-label" data-i18n="homeWbFollowFgLabel">跟前台应用</span>
+                            <button type="button" class="toggle-switch" id="wbFollowFgToggle" role="switch" aria-checked="false" data-i18n-aria="homeWbFollowFgLabel"></button>
+                          </label>
                         </div>
                         <div class="wb-scene-rail-track" id="wbScenarioPanel"></div>
                       </section>
@@ -2560,22 +2564,38 @@
                           <button type="button" class="toggle-switch" id="cameraTriggerToggleShake" data-camera-trigger-toggle="shake" role="switch" aria-checked="false" aria-label="摇头"></button>
                           <div class="camera-rule-row-text">
                             <div class="camera-card-title" data-i18n="cameraCardShakeTitle">摇头</div>
-                            <div class="camera-card-desc" data-i18n="cameraCardShakeDesc" title="连续左右摆头后执行所选结果。">连续左右摆头后执行所选结果。</div>
+                            <div class="camera-card-desc" data-i18n="cameraCardShakeDesc" title="左右摆头再回来（三下）。开启「响声后点头确认」时，听到提示音后马上点一下头才生效，不点则取消。">左右摆头再回来（三下）。开启「响声后点头确认」时，听到提示音后马上点一下头才生效，不点则取消。</div>
                           </div>
                         </div>
                         <p class="camera-bind-summary" id="cameraTriggerSummaryShake" hidden>尚未绑定结果</p>
                         <select class="camera-action-select" data-camera-action-for="shakeHead" aria-label="摇头动作"></select>
+                        <div class="camera-rule-row-extra camera-presence-duration-row" data-camera-shake-how="1">
+                          <label class="camera-presence-duration-lbl" for="cameraShakeHowSelect" data-i18n="cameraShakeHowLbl">摇头速度</label>
+                          <select class="camera-presence-duration-select" id="cameraShakeHowSelect" data-presence-shake-how="1" aria-label="摇头速度"></select>
+                        </div>
+                        <div class="camera-rule-row-extra camera-presence-duration-row" data-camera-shake-confirm-cue="1">
+                          <label class="camera-presence-duration-lbl" for="cameraShakeConfirmCueToggle" data-i18n="cameraShakeConfirmCueLbl">响声后点头确认</label>
+                          <button type="button" class="toggle-switch" id="cameraShakeConfirmCueToggle" data-presence-shake-confirm-cue="1" role="switch" aria-checked="true" aria-label="响声后点头确认"></button>
+                        </div>
                       </div>
                       <div class="camera-rule-row" data-camera-card="blink" data-camera-trigger="blink" data-camera-bind-key="deliberateBlink" id="cameraBindRowBlink">
                         <div class="camera-rule-row-main">
                           <button type="button" class="toggle-switch" id="cameraTriggerToggleBlink" data-camera-trigger-toggle="blink" role="switch" aria-checked="false" aria-label="故意眨眼确认"></button>
                           <div class="camera-rule-row-text">
                             <div class="camera-card-title" data-i18n="cameraCardBlinkTitle">故意眨眼确认</div>
-                            <div class="camera-card-desc" data-i18n="cameraCardBlinkDesc" title="故意闭眼约 0.6 秒再睁开，再短眨确认。">故意闭眼约 0.6 秒再睁开，再短眨确认。</div>
+                            <div class="camera-card-desc" data-i18n="cameraCardBlinkDesc" title="普通眨眼不算。故意闭眼达到所选秒数后睁开；开启「响声后眨眼确认」时，听到提示音后马上再眨一下才生效，不眨则取消。">普通眨眼不算。故意闭眼达到所选秒数后睁开；开启「响声后眨眼确认」时，听到提示音后马上再眨一下才生效，不眨则取消。</div>
                           </div>
                         </div>
                         <p class="camera-bind-summary" id="cameraTriggerSummaryBlink" hidden>尚未绑定结果</p>
                         <select class="camera-action-select" data-camera-action-for="deliberateBlink" aria-label="故意眨眼动作"></select>
+                        <div class="camera-rule-row-extra camera-presence-duration-row" data-camera-blink-close-sec="1">
+                          <label class="camera-presence-duration-lbl" for="cameraBlinkCloseSecSelect" data-i18n="cameraBlinkCloseHowLbl">闭眼多久</label>
+                          <select class="camera-presence-duration-select" id="cameraBlinkCloseSecSelect" data-presence-blink-close-sec="1" aria-label="闭眼多久"></select>
+                        </div>
+                        <div class="camera-rule-row-extra camera-presence-duration-row" data-camera-blink-confirm-cue="1">
+                          <label class="camera-presence-duration-lbl" for="cameraBlinkConfirmCueToggle" data-i18n="cameraBlinkConfirmCueLbl">响声后眨眼确认</label>
+                          <button type="button" class="toggle-switch" id="cameraBlinkConfirmCueToggle" data-presence-blink-confirm-cue="1" role="switch" aria-checked="true" aria-label="响声后眨眼确认"></button>
+                        </div>
                         <div class="camera-rule-row-extra">
                           <p class="camera-blink-baseline-hint" id="cameraBlinkBaselineHint">尚未适配 · 开启识别后自动采集</p>
                           <button type="button" class="control-btn camera-rule-extra-btn" id="cameraBlinkRecalibrateBtn" data-i18n="cameraPresenceBlinkRecalibrate">去摄像头设置适配</button>

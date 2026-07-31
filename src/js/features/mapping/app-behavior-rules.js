@@ -1530,30 +1530,108 @@
       &&String(m.appTargetId||'').trim()!=='custom'){
       return;
     }
+    if(!isIncompleteCustomStub(m)) return;
+    var cfg=state().config||{};
+    if(Array.isArray(cfg.mappings)){
+      cfg.mappings=cfg.mappings.filter(function(x){ return x&&x.id!==mappingId; });
+    }
+    if(String(state().selectedMappingId||'')===mappingId){
+      var baseline=global.OneToneHabitOverrideDiff&&global.OneToneHabitOverrideDiff.findGlobalBaselineMapping
+        ?global.OneToneHabitOverrideDiff.findGlobalBaselineMapping(cfg,core())
+        :null;
+      state().selectedMappingId=baseline&&baseline.id||null;
+    }
+    if(String(cfg.activeSceneId||'')===mappingId){
+      var base2=global.OneToneHabitOverrideDiff&&global.OneToneHabitOverrideDiff.findGlobalBaselineMapping
+        ?global.OneToneHabitOverrideDiff.findGlobalBaselineMapping(cfg,core())
+        :null;
+      cfg.activeSceneId=base2&&base2.id||'';
+    }
+    try{
+      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.forgetAppScenarioIds){
+        global.OneToneConfigPersist.forgetAppScenarioIds([mappingId]);
+      }
+    }catch(_){}
+    if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
+    if(global.OneToneHabitHub&&global.OneToneHabitHub.render) global.OneToneHabitHub.render();
+    if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.forceHomeRender){
+      try{ global.OneToneHomeWorkbench.forceHomeRender(); }catch(_){}
+    }
+    if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.render){
+      try{ global.OneToneHomeWorkbench.render(); }catch(_){}
+    }
+  }
+
+  /** Bare appTargetId=custom with no process rule — not a real habit yet. */
+  function isIncompleteCustomStub(m){
+    if(!m) return false;
+    if(String(m.appTargetId||'').trim()!=='custom') return false;
     var customs=customRulesForMapping(m);
     var hasRealCustom=customs.some(function(rule){
       return !!(rule&&rule.match&&(
         (Array.isArray(rule.match.exeNames)&&rule.match.exeNames.length)||
-        String(rule.match.fullPath||'').trim()||
+        String(rule.match.fullPath||rule.match.full_path||'').trim()||
         String(rule.match.pathContains||'').trim()
       ));
     });
-    var appId=String(m.appTargetId||'').trim();
-    // Incomplete stub: still on "custom" with no concrete running-app rule.
-    if(appId==='custom'&&!hasRealCustom){
-      var cfg=state().config||{};
-      if(Array.isArray(cfg.mappings)){
-        cfg.mappings=cfg.mappings.filter(function(x){ return x&&x.id!==mappingId; });
+    return !hasRealCustom;
+  }
+
+  /** Drop unsaved custom stubs from config (keep picker-in-flight id if any). */
+  function pruneIncompleteCustomStubs(opts){
+    opts=opts||{};
+    var cfg=state().config||{};
+    if(!Array.isArray(cfg.mappings)||!cfg.mappings.length) return false;
+    var keepPicker=String(opts.keepId||pickerCreateMappingId||'').trim();
+    var before=cfg.mappings.length;
+    var removedIds={};
+    var removedMaps=[];
+    cfg.mappings=cfg.mappings.filter(function(m){
+      if(!isIncompleteCustomStub(m)) return true;
+      var id=String(m&&m.id||'');
+      if(keepPicker&&id===keepPicker) return true;
+      if(id){
+        removedIds[id]=true;
+        removedMaps.push(m);
       }
-      if(String(state().selectedMappingId||'')===mappingId){
-        var baseline=global.OneToneHabitOverrideDiff&&global.OneToneHabitOverrideDiff.findGlobalBaselineMapping
-          ?global.OneToneHabitOverrideDiff.findGlobalBaselineMapping(cfg,core())
-          :null;
-        state().selectedMappingId=baseline&&baseline.id||null;
-      }
-      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
-      if(global.OneToneHabitHub&&global.OneToneHabitHub.render) global.OneToneHabitHub.render();
+      return false;
+    });
+    if(cfg.mappings.length===before) return false;
+    if(removedIds[String(state().selectedMappingId||'')]){
+      var baseline=global.OneToneHabitOverrideDiff&&global.OneToneHabitOverrideDiff.findGlobalBaselineMapping
+        ?global.OneToneHabitOverrideDiff.findGlobalBaselineMapping(cfg,core())
+        :null;
+      state().selectedMappingId=baseline&&baseline.id||null;
     }
+    if(removedIds[String(cfg.activeSceneId||'')]){
+      var base2=global.OneToneHabitOverrideDiff&&global.OneToneHabitOverrideDiff.findGlobalBaselineMapping
+        ?global.OneToneHabitOverrideDiff.findGlobalBaselineMapping(cfg,core())
+        :null;
+      cfg.activeSceneId=base2&&base2.id||'';
+    }
+    // Must land in trash — Rust merge_save preserves omitted app scenarios otherwise,
+    // and paint-path prune+save would thrash forever (UI 假死).
+    cfg.trash=Array.isArray(cfg.trash)?cfg.trash:[];
+    var trashIds={};
+    cfg.trash.forEach(function(m){ if(m&&m.id) trashIds[String(m.id)]=true; });
+    removedMaps.forEach(function(m){
+      var id=String(m&&m.id||'');
+      if(!id||trashIds[id]) return;
+      var copy;
+      try{ copy=JSON.parse(JSON.stringify(m)); }catch(_){ copy=m; }
+      if(copy) copy.enabled=false;
+      cfg.trash.push(copy);
+      trashIds[id]=true;
+    });
+    try{
+      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.forgetAppScenarioIds){
+        global.OneToneConfigPersist.forgetAppScenarioIds(Object.keys(removedIds));
+      }
+    }catch(_){}
+    if(opts.persist!==false&&global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
+      global.OneToneConfigPersist.save();
+    }
+    return true;
   }
   var ruleIconCache={};
 
@@ -1976,10 +2054,14 @@
     removeRuleById:removeRuleById,
     customRulesForMapping:customRulesForMapping,
     addCustomRuleFromIdentity:addCustomRuleFromIdentity,
+    pickRunningIdentity:pickRunningIdentity,
     openAppPicker:openAppPicker,
     ruleIconDataUrl:ruleIconDataUrl,
     setPickerCreateTarget:setPickerCreateTarget,
     clearPickerCreateTarget:clearPickerCreateTarget,
+    discardIncompleteCustomCreate:discardIncompleteCustomCreate,
+    isIncompleteCustomStub:isIncompleteCustomStub,
+    pruneIncompleteCustomStubs:pruneIncompleteCustomStubs,
     renderContextChipsHtml:renderContextChipsHtml,
     isPresetAppId:isPresetAppId,
     isCustomRule:isCustomRule,

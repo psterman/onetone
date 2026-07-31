@@ -582,7 +582,33 @@
           fist:pa.fist!=null?pa.fist:'none',
           wave:pa.wave!=null?pa.wave:'none',
           awayMs:Math.max(1000,Math.min(30000,Number(pa.awayMs!=null?pa.awayMs:pa.away_ms)||3000))|0,
-          presentMs:Math.max(500,Math.min(10000,Number(pa.presentMs!=null?pa.presentMs:pa.present_ms)||1000))|0
+          presentMs:Math.max(500,Math.min(10000,Number(pa.presentMs!=null?pa.presentMs:pa.present_ms)||1000))|0,
+          shakeHow:(function(){
+            var h=String(pa.shakeHow!=null?pa.shakeHow:pa.shake_how||'normal').trim().toLowerCase();
+            return (h==='easy'||h==='strong')?h:'normal';
+          })(),
+          shakeConfirmCue:(function(){
+            var v=pa.shakeConfirmCue!=null?pa.shakeConfirmCue:pa.shake_confirm_cue;
+            if(v===undefined||v===null) return true;
+            return !!v;
+          })(),
+          blinkCloseSec:(function(){
+            var raw=pa.blinkCloseSec!=null?pa.blinkCloseSec:(pa.blink_close_sec!=null?pa.blink_close_sec:(pa.blinkCloseHow!=null?pa.blinkCloseHow:pa.blink_close_how));
+            var s=String(raw==null?'':raw).trim().toLowerCase();
+            if(s==='easy'||s==='short'||s==='light'||s==='quick'||s==='normal') return 0.6;
+            if(s==='long'||s==='strong'||s==='hard'||s==='firm') return 1;
+            var n=Number(raw);
+            if(n===0.6||n===1||n===2) return n;
+            if(n===600) return 0.6;
+            if(n===1000) return 1;
+            if(n===2000) return 2;
+            return 0.6;
+          })(),
+          blinkConfirmCue:(function(){
+            var v=pa.blinkConfirmCue!=null?pa.blinkConfirmCue:pa.blink_confirm_cue;
+            if(v===undefined||v===null) return true;
+            return !!v;
+          })()
         };
       }
       if(cp.selectedDeviceId==null&&cp.selected_device_id!=null) cp.selectedDeviceId=cp.selected_device_id;
@@ -634,7 +660,7 @@
       mappings:[{id:id,label:'AutoTrigger → '+labelSuffix,group:'通用设置',triggerKey:'AutoTrigger',targetKey:targetKey,enabled:true,order:0,triggerMode:'tap',intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,switchKeys:[],nativeKeyRestore:false,appTargetId:'',imePresetId:'',voiceOverride:null}],
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
-      debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,startMinimizedToTray:false,
+      debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,followForegroundAppScenario:false,startMinimizedToTray:false,
       cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,smartPointer:null,snapWindow:null,autoMute:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none',awayMs:3000,presentMs:1000},videoEnhancement:{enabled:false,look:'off',faceMask:'off',preset:'natural',beautyEnabled:false,whiten:0,smooth:0,rosy:0,slim:0,beauty:18,brightness:0,contrast:8,saturation:6,sharpen:8,denoise:8,lowLight:0,antiFlicker:'auto',displayFrameRate:0}},
       sounds:hooks().defaultSoundsConfig(),
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
@@ -691,6 +717,7 @@
     st.config.schemeSwitchKey='';
     if(st.config.keyWakeSoundEnabled===undefined) st.config.keyWakeSoundEnabled=false;
     if(st.config.coachHudEnabled===undefined) st.config.coachHudEnabled=false;
+    if(st.config.followForegroundAppScenario===undefined) st.config.followForegroundAppScenario=false;
     if(st.config.startMinimizedToTray===undefined) st.config.startMinimizedToTray=false;
     if(!st.config.cameraPrefs||typeof st.config.cameraPrefs!=='object'){
       // Before backend hydrate, do not invent defaults onto config — a later
@@ -819,6 +846,7 @@
       schemeSwitchKey:'',
       keyWakeSoundEnabled:!!(st.config.sounds&&st.config.sounds.keyWake&&st.config.sounds.keyWake.enabled),
       coachHudEnabled:!!st.config.coachHudEnabled,
+      followForegroundAppScenario:!!st.config.followForegroundAppScenario,
       startMinimizedToTray:!!st.config.startMinimizedToTray,
       cameraPrefs:(function(){
         var p=st.config.cameraPrefs||{};
@@ -859,7 +887,33 @@
             fist:String(pa.fist||'none').trim()||'none',
             wave:String(pa.wave||'none').trim()||'none',
             awayMs:Math.max(1000,Math.min(30000,Number(pa.awayMs!=null?pa.awayMs:pa.away_ms)||3000))|0,
-            presentMs:Math.max(500,Math.min(10000,Number(pa.presentMs!=null?pa.presentMs:pa.present_ms)||1000))|0
+            presentMs:Math.max(500,Math.min(10000,Number(pa.presentMs!=null?pa.presentMs:pa.present_ms)||1000))|0,
+            shakeHow:(function(){
+              var h=String(pa.shakeHow!=null?pa.shakeHow:pa.shake_how||'normal').trim().toLowerCase();
+              return (h==='easy'||h==='strong')?h:'normal';
+            })(),
+            shakeConfirmCue:(function(){
+              var v=pa.shakeConfirmCue!=null?pa.shakeConfirmCue:pa.shake_confirm_cue;
+              if(v===undefined||v===null) return true;
+              return !!v;
+            })(),
+            blinkCloseSec:(function(){
+              var raw=pa.blinkCloseSec!=null?pa.blinkCloseSec:(pa.blink_close_sec!=null?pa.blink_close_sec:(pa.blinkCloseHow!=null?pa.blinkCloseHow:pa.blink_close_how));
+              var s=String(raw==null?'':raw).trim().toLowerCase();
+              if(s==='easy'||s==='short'||s==='light'||s==='quick'||s==='normal') return 0.6;
+              if(s==='long'||s==='strong'||s==='hard'||s==='firm') return 1;
+              var n=Number(raw);
+              if(n===0.6||n===1||n===2) return n;
+              if(n===600) return 0.6;
+              if(n===1000) return 1;
+              if(n===2000) return 2;
+              return 0.6;
+            })(),
+            blinkConfirmCue:(function(){
+              var v=pa.blinkConfirmCue!=null?pa.blinkConfirmCue:pa.blink_confirm_cue;
+              if(v===undefined||v===null) return true;
+              return !!v;
+            })()
           }
         };
       })(),
@@ -1309,7 +1363,33 @@
         fist:String(pa.fist||'none').trim()||'none',
         wave:String(pa.wave||'none').trim()||'none',
         awayMs:Math.max(1000,Math.min(30000,Number(pa.awayMs!=null?pa.awayMs:pa.away_ms)||3000))|0,
-        presentMs:Math.max(500,Math.min(10000,Number(pa.presentMs!=null?pa.presentMs:pa.present_ms)||1000))|0
+        presentMs:Math.max(500,Math.min(10000,Number(pa.presentMs!=null?pa.presentMs:pa.present_ms)||1000))|0,
+        shakeHow:(function(){
+          var h=String(pa.shakeHow!=null?pa.shakeHow:pa.shake_how||'normal').trim().toLowerCase();
+          return (h==='easy'||h==='strong')?h:'normal';
+        })(),
+        shakeConfirmCue:(function(){
+          var v=pa.shakeConfirmCue!=null?pa.shakeConfirmCue:pa.shake_confirm_cue;
+          if(v===undefined||v===null) return true;
+          return !!v;
+        })(),
+        blinkCloseSec:(function(){
+          var raw=pa.blinkCloseSec!=null?pa.blinkCloseSec:(pa.blink_close_sec!=null?pa.blink_close_sec:(pa.blinkCloseHow!=null?pa.blinkCloseHow:pa.blink_close_how));
+          var s=String(raw==null?'':raw).trim().toLowerCase();
+          if(s==='easy'||s==='short'||s==='light'||s==='quick'||s==='normal') return 0.6;
+          if(s==='long'||s==='strong'||s==='hard'||s==='firm') return 1;
+          var n=Number(raw);
+          if(n===0.6||n===1||n===2) return n;
+          if(n===600) return 0.6;
+          if(n===1000) return 1;
+          if(n===2000) return 2;
+          return 0.6;
+        })(),
+        blinkConfirmCue:(function(){
+          var v=pa.blinkConfirmCue!=null?pa.blinkConfirmCue:pa.blink_confirm_cue;
+          if(v===undefined||v===null) return true;
+          return !!v;
+        })()
       },
       videoEnhancement:normalizeVideoEnhancementPrefs(ve)
     };
@@ -1431,11 +1511,29 @@
     }catch(_){}
   }
 
+  function forgetAppScenarioIds(ids){
+    if(!ids||!ids.length) return;
+    var changed=false;
+    ids.forEach(function(id){
+      id=String(id||'').trim();
+      if(!id||!lastKnownAppScenarios[id]) return;
+      delete lastKnownAppScenarios[id];
+      changed=true;
+    });
+    if(changed) persistAppScenarioBackup();
+  }
+
   function rememberAppScenariosFromConfig(cfg){
     if(!cfg||typeof cfg!=='object') return;
     var maps=Array.isArray(cfg.mappings)?cfg.mappings:[];
+    var rules=global.OneToneAppBehaviorRules;
     maps.forEach(function(m){
       if(!m||!m.id||!isAppScopedMapping(m)) return;
+      // Bare custom stubs are not habits yet — never backup/reinject them.
+      if(rules&&rules.isIncompleteCustomStub&&rules.isIncompleteCustomStub(m)){
+        delete lastKnownAppScenarios[String(m.id)];
+        return;
+      }
       try{
         lastKnownAppScenarios[String(m.id)]=JSON.parse(JSON.stringify(m));
       }catch(_){
@@ -1455,11 +1553,16 @@
     cfg.mappings.forEach(function(m){ if(m&&m.id) ids[String(m.id)]=true; });
     var trashIds={};
     (cfg.trash||[]).forEach(function(m){ if(m&&m.id) trashIds[String(m.id)]=true; });
+    var rules=global.OneToneAppBehaviorRules;
     var added=0;
     Object.keys(lastKnownAppScenarios).forEach(function(id){
       if(ids[id]||trashIds[id]) return;
       var snap=lastKnownAppScenarios[id];
       if(!snap||!isAppScopedMapping(snap)) return;
+      if(rules&&rules.isIncompleteCustomStub&&rules.isIncompleteCustomStub(snap)){
+        delete lastKnownAppScenarios[id];
+        return;
+      }
       try{
         cfg.mappings.push(JSON.parse(JSON.stringify(snap)));
       }catch(_){
@@ -1934,6 +2037,7 @@
     fallbackConfigLoaded:fallbackConfigLoaded,
     isLoaded:function(){ return configLoadedFromBackend; },
     rememberAppScenariosNow:rememberAppScenariosFromConfig,
+    forgetAppScenarioIds:forgetAppScenarioIds,
     installToJsReady:installToJsReady,
     normalizeVoiceCommands:normalizeVoiceCommands,
     serializeVoiceCommands:serializeVoiceCommands,

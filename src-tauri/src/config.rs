@@ -1680,6 +1680,10 @@ pub struct VoiceConfig {
     pub key_wake_sound_enabled: bool,
     #[serde(default, rename = "coachHudEnabled")]
     pub coach_hud_enabled: bool,
+    /// When true, prefer the matching app-scenario mapping for the foreground app
+    /// (keys + auto `activeSceneId` follow on the FE). Default false = stay on global / manual in-use.
+    #[serde(default, rename = "followForegroundAppScenario")]
+    pub follow_foreground_app_scenario: bool,
     #[serde(default, rename = "cameraPrefs")]
     pub camera_prefs: CameraPrefs,
     #[serde(default, rename = "sounds")]
@@ -3060,6 +3064,7 @@ impl Default for VoiceConfig {
             scheme_switch_key: String::new(),
             key_wake_sound_enabled: false,
             coach_hud_enabled: false,
+            follow_foreground_app_scenario: false,
             camera_prefs: CameraPrefs::default(),
             sounds: SoundsConfig::default(),
             start_minimized_to_tray: false,
@@ -3254,10 +3259,14 @@ pub fn mapping_shadowed_by_foreground_app_scenario(
 }
 
 /// Best dedicated app-scenario mapping for the foreground app (prefers agent packs).
+/// No-op when `follow_foreground_app_scenario` is off (default: stay on global / manual in-use).
 pub fn find_app_scenario_for_foreground<'a>(
     cfg: &'a VoiceConfig,
     identity: &crate::app_identity::AppIdentity,
 ) -> Option<&'a MappingEntry> {
+    if !cfg.follow_foreground_app_scenario {
+        return None;
+    }
     cfg.active_mappings()
         .into_iter()
         .filter(|m| is_app_scenario_mapping(m) && mapping_matches_foreground_identity(m, identity))
@@ -3837,7 +3846,9 @@ impl VoiceConfig {
             }
         }
         if let Some(ref identity) = foreground {
-            candidates.retain(|m| !mapping_shadowed_by_foreground_app_scenario(self, m, identity));
+            if self.follow_foreground_app_scenario {
+                candidates.retain(|m| !mapping_shadowed_by_foreground_app_scenario(self, m, identity));
+            }
         }
         if candidates.is_empty() {
             return None;
@@ -3845,14 +3856,22 @@ impl VoiceConfig {
         if candidates.len() == 1 {
             return Some(candidates[0]);
         }
-        if let Some(ref identity) = foreground {
-            if let Some(hit) = candidates.iter().copied().find(|m| {
-                is_app_scenario_mapping(m) && mapping_matches_foreground_identity(m, identity)
-            }) {
+        if self.follow_foreground_app_scenario {
+            if let Some(ref identity) = foreground {
+                if let Some(hit) = candidates.iter().copied().find(|m| {
+                    is_app_scenario_mapping(m) && mapping_matches_foreground_identity(m, identity)
+                }) {
+                    return Some(hit);
+                }
+            }
+            if let Some(hit) = candidates.iter().copied().find(|m| is_app_scenario_mapping(m)) {
                 return Some(hit);
             }
-        }
-        if let Some(hit) = candidates.iter().copied().find(|m| is_app_scenario_mapping(m)) {
+        } else if let Some(hit) = candidates
+            .iter()
+            .copied()
+            .find(|m| m.id == self.active_scene_id)
+        {
             return Some(hit);
         }
         Some(candidates[0])
@@ -6212,6 +6231,7 @@ mod tests {
             codex_micro_pad: None,
         });
         let fg = test_identity(Some("codex-chat"), "Codex.exe");
+        cfg.follow_foreground_app_scenario = true;
         assert!(mapping_shadowed_by_foreground_app_scenario(
             &cfg,
             &cfg.mappings[0],
@@ -6227,6 +6247,12 @@ mod tests {
             &cfg,
             &cfg.mappings[0],
             &cursor
+        ));
+        cfg.follow_foreground_app_scenario = false;
+        assert!(!mapping_shadowed_by_foreground_app_scenario(
+            &cfg,
+            &cfg.mappings[0],
+            &fg
         ));
     }
 
@@ -6277,12 +6303,15 @@ mod tests {
             codex_micro_pad: None,
         });
         let fg = test_identity(Some("codex-chat"), "Codex.exe");
+        cfg.follow_foreground_app_scenario = true;
         let hit = find_app_scenario_for_foreground(&cfg, &fg).expect("codex scenario");
         assert_eq!(hit.id, "codex-scene");
         assert_ne!(hit.id, global_id);
         let workflow =
             resolve_foreground_workflow_target(&cfg.mappings[0], &fg).expect("global workflow");
         assert_eq!(workflow, "codex-chat");
+        cfg.follow_foreground_app_scenario = false;
+        assert!(find_app_scenario_for_foreground(&cfg, &fg).is_none());
     }
 
     #[test]

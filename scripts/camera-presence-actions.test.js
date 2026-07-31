@@ -270,6 +270,42 @@ assert.ok(!Api.isSendClassAction('agent:openAgent'));
 assert.strictEqual(Api.normalizePrefs({shakeHead:'send'}).shakeHead,'none','send prefs normalize to none');
 assert.strictEqual(Api.normalizePrefs({deliberateBlink:'agent:stopOrSendDictation'}).deliberateBlink,'none');
 
+assert.strictEqual(Api.normalizeShakeHow('easy'),'easy');
+assert.strictEqual(Api.normalizeShakeHow('strong'),'strong');
+assert.strictEqual(Api.shakeEnterForHow('easy'),0.10);
+assert.strictEqual(Api.shakeEnterForHow('normal'),0.16);
+assert.strictEqual(Api.shakeEnterForHow('strong'),0.22);
+assert.strictEqual(Api.normalizePrefs({}).shakeHow,'normal');
+assert.strictEqual(Api.normalizePrefs({shakeHow:'strong'}).shakeHow,'strong');
+assert.strictEqual(Api.normalizePrefs({}).shakeConfirmCue,true);
+assert.strictEqual(Api.normalizePrefs({shakeConfirmCue:false}).shakeConfirmCue,false);
+
+assert.strictEqual(Api.normalizeBlinkCloseSec(0.6),0.6);
+assert.strictEqual(Api.normalizeBlinkCloseSec(1),1);
+assert.strictEqual(Api.normalizeBlinkCloseSec(2),2);
+assert.strictEqual(Api.normalizeBlinkCloseSec('easy'),0.6);
+assert.strictEqual(Api.normalizeBlinkCloseSec('long'),1);
+assert.strictEqual(Api.blinkHoldMinMs(0.6),600);
+assert.strictEqual(Api.blinkHoldMinMs(1),1000);
+assert.strictEqual(Api.blinkHoldMinMs(2),2000);
+assert.ok(Api.blinkHoldMinMs(0.6)<Api.blinkHoldMinMs(1));
+assert.ok(Api.blinkHoldMinMs(1)<Api.blinkHoldMinMs(2));
+assert.strictEqual(Api.normalizePrefs({}).blinkCloseSec,0.6);
+assert.strictEqual(Api.normalizePrefs({}).blinkConfirmCue,true);
+assert.strictEqual(Api.normalizePrefs({blinkCloseSec:2}).blinkCloseSec,2);
+assert.strictEqual(Api.normalizePrefs({blinkCloseHow:'long'}).blinkCloseSec,1);
+assert.strictEqual(Api.normalizePrefs({blinkConfirmCue:false}).blinkConfirmCue,false);
+
+Api._testSetShakeSeq([{side:'left',t:1},{side:'right',t:2}]);
+assert.strictEqual(Api.matchShakePattern(),false,'two beats do not fire');
+(function(){
+  var now=(global.performance&&performance.now)?performance.now():Date.now();
+  Api._testSetShakeSeq([{side:'left',t:now-400},{side:'right',t:now-200},{side:'left',t:now}]);
+  assert.strictEqual(Api.matchShakePattern(),true,'three beats L-R-L fire');
+  Api._testSetShakeSeq([{side:'right',t:now-400},{side:'left',t:now-200},{side:'right',t:now}]);
+  assert.strictEqual(Api.matchShakePattern(),true,'three beats R-L-R fire');
+})();
+
 Api.dispatchAction('send','blink').then(function(r){
   assert.strictEqual(r.ok,false);
   assert.strictEqual(r.reason,'send_guard');

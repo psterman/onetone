@@ -69,22 +69,48 @@ habitScenarioReturnPanel === 'camera' && habitScenarioReturnId
 
 ## Soft Pad
 
-- **无全局 pad**；mapping 选中真相 = `state.selectedMappingId`。
-- 局部 UI（tab / 子页 / 预览）可留模块内。
+- **无全局 pad**；编辑 Soft Pad 时 mapping 选中真相 = `state.selectedMappingId`（与主车道无关）。
+- 局部 UI（tab / 子页 / 预览）可留模块内（如 `selectedScopeId`）。
 - 空态 CTA：创建 Codex / Claude **应用场景** → 选中新 id；**默认不**自动 `activeSceneId`（除非文案为「创建并使用」）。
+- **专用边界**：Soft Pad 仅服务 Agent 应用场景（本阶段 Hub 列表 = Codex / Claude）。Cursor 等 kind 可预留映射名，**不**进入可启用列表与主车道候选池。
 
-## 状态源目标态
+### 多 Agent 车道（FE 真相源）
+
+一块 Soft Pad 表面；**主车道**只从 `padEnabled === true` 的方案里选。未启用 / 仅可准备的 lane **不得**因等待态、前台或点选成为主控。
+
+| 优先级（padEnabled 池内） | 条件 |
+|---------------------------|------|
+| 1 | `waitingKinds` 命中且该 kind 已启用 |
+| 2 | 缓存的 `foregroundAppId` → `codex-chat` / `claude-code` 且已启用 |
+| 3 | Soft Pad `selectedScopeId`（`userLaneId`）且已启用 |
+| 4 | 池内第一个 enabled |
+| — | 池空 → 主车道 `null`（不派发键帽；可空态/准备 CTA） |
+
+| 名字 | 含义 | 影响主车道？ |
+|------|------|----------------|
+| Soft Pad `selectedScopeId` | Hub 点的 Agent tab | 是 → `userLaneId` |
+| `state.selectedMappingId` | 正在编辑的习惯 | 否 |
+| `config.activeSceneId` | 习惯正在使用 | 否（与 Soft Pad 解耦） |
+| `pickHubDefaultScopeId` | Hub 默认 tab（可 Codex placeholder） | 否（仅 UI） |
+| `resolvePrimaryLane` | 运行 / 首页主车道 | 权威；无 enabled → `null` |
+
+运行时上下文只读缓存（前台轮询 / pad 等待态写入）；**禁止**在首页同步 snapshot 路径里临时 await IPC。叠层 key 路由本阶段不改。
+
+### 状态源目标态
 
 | 角色 | 权威源 |
 |------|--------|
 | 正在使用 | `config.activeSceneId` |
 | 正在编辑（习惯） | `state.selectedMappingId` |
+| Soft Pad 主车道 | `resolvePrimaryLane`（仅 padEnabled） |
+| Soft Pad Hub tab | `selectedScopeId` / `pickHubDefaultScopeId` |
+| Soft Pad 编辑 mapping | `state.selectedMappingId`（禁止模块私有 mapping 真相） |
 | 语音 UI 哨兵 | 可映射到 null + 局部「配全局底座」 |
 | Camera 编辑模式 | `ui.cameraEditMode` |
-| Soft Pad mapping | 禁止模块私有真相 |
 
 ## 批次
 
 - **B0**：本文档 + i18n 对齐五词。
 - **B1**：Voice 代理、Soft Pad 去私有 mapping 选中、Camera 门闩、Soft Pad 空态 CTA。
-- **B2+**：aside / 首页统管条 — B1 验收后再开。
+- **B2（首页通道表面）**：首页四卡 = **正在使用**习惯的 keys/voice/camera/softPad 摘要与入口；点卡打开对应通道配置；点下方习惯 = `activateScene`（设为正在使用）并刷新四卡。习惯卡「编辑」只改 `selectedMappingId`，不切换运行。Hub「通用设置」不再画四通道栅格（薄入口）。aside 大统管条仍可后续迭代。
+- **B2+（可选）**：aside / 更深统管条 — 在 B2 首页通道验收后再开。

@@ -37,6 +37,47 @@
     return global.OneToneCameraPresenceActions||null;
   }
 
+  function cameraLbl(key,fallback){
+    var v=t(key);
+    return (!v||v===key)?fallback:v;
+  }
+
+  function cameraActionShort(action){
+    var s=String(action||'').trim();
+    if(!s||s==='none') return '';
+    if(s==='pressEsc') return cameraLbl('cameraPresenceActionEsc','取消');
+    if(s==='pressCtrlI') return cameraLbl('homeLiveVoiceTitle','语音激活');
+    if(s==='privacyScreen') return cameraLbl('cameraPresenceActionPrivacy','遮罩');
+    if(s==='resumeVoice') return cameraLbl('cameraPresenceActionResume','恢复语音');
+    if(s==='pauseVoice') return cameraLbl('cameraPresenceActionPause','暂停语音');
+    if(s==='lowPowerMode'||s==='lowPower') return cameraLbl('cameraPresenceActionLowPower','低消耗');
+    if(s.indexOf('agent:')===0){
+      var id=s.slice(6);
+      if(id==='cancel') return cameraLbl('cameraPresenceActionEsc','取消');
+      if(id==='startDictation') return cameraLbl('cameraPresenceActionCtrlI','听写');
+      return id;
+    }
+    return s;
+  }
+
+  function cameraActionsLine(prefs){
+    if(!prefs) return '';
+    var tr=prefs.triggers||{};
+    var parts=[];
+    function add(trigOn,action,title){
+      if(!trigOn) return;
+      if(!action||action==='none') return;
+      var short=cameraActionShort(action);
+      if(!short) return;
+      parts.push(title+'→'+short);
+    }
+    add(!!tr.shake,prefs.shakeHead,cameraLbl('cameraCardShakeTitle','摇头'));
+    add(!!tr.blink,prefs.deliberateBlink,cameraLbl('homeWbCameraBlinkShort','闭眼'));
+    add(!!tr.away,prefs.onAway,cameraLbl('cameraPresenceOnAway','离席'));
+    add(!!tr.away,prefs.onReturn,cameraLbl('cameraPresenceOnReturn','回席'));
+    return parts.slice(0,3).join(' · ');
+  }
+
   function cameraPresenceSnapshot(){
     var api=cameraPresenceApi();
     var prefs=api&&api.prefs?api.prefs():null;
@@ -58,6 +99,7 @@
         });
       }
     }
+    var actionsLine=cameraActionsLine(prefs);
     return {
       enabled:enabled,
       running:running,
@@ -66,6 +108,7 @@
       lastError:rs&&rs.lastError?rs.lastError:null,
       presence:presence,
       bound:bound,
+      actionsLine:actionsLine,
       prefs:prefs,
       state:st,
       runtime:rs
@@ -80,6 +123,7 @@
 
   function cameraChannelLabel(cam){
     if(!cam||!cam.enabled) return t('homeWbCameraOff');
+    if(cam.actionsLine) return cam.actionsLine;
     if(cam.running||cam.status==='running') return t('homeWbCameraOn');
     var base=t('homeWbCameraConfiguredIdle','已配置 · 未运行');
     if(cam.lastError&&cam.lastError.message) return base+' · '+cam.lastError.message;
@@ -972,10 +1016,112 @@
     }
   }
 
+  var followFgPollTimer=null;
+
+  function isFollowFgEnabled(){
+    var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
+    return !!(cfg&&cfg.followForegroundAppScenario);
+  }
+
+  function isSelfFgIdentity(identity){
+    if(!identity) return true;
+    var exe=String(identity.exeName||identity.exe_name||'').toLowerCase();
+    if(exe.indexOf('onetone')>=0) return true;
+    var path=String(identity.fullPath||identity.full_path||'').toLowerCase();
+    return path.indexOf('onetone')>=0||path.indexOf('voice-pilot')>=0;
+  }
+
+  function baselineMappingId(){
+    var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
+    var core=global.OneToneMappingCore;
+    var api=global.OneToneHabitOverrideDiff;
+    if(api&&api.findGlobalBaselineMapping){
+      var b=api.findGlobalBaselineMapping(cfg,core);
+      if(b&&b.id) return String(b.id);
+    }
+    return String(cfg&&cfg.activeSceneId||'').trim();
+  }
+
+  function desiredFollowFgSceneId(identity){
+    // OneTone itself is foreground while clicking habit cards — do not yank in-use back
+    // to baseline on every poll (that fought activateScene and felt like 假死).
+    if(!identity||isSelfFgIdentity(identity)) return '';
+    var hub=global.OneToneHabitHub;
+    if(hub&&hub.findAppScenarioForIdentity){
+      var hit=hub.findAppScenarioForIdentity(identity);
+      if(hit&&hit.id) return String(hit.id);
+    }
+    return baselineMappingId();
+  }
+
+  function syncFollowForegroundApp(){
+    if(!isFollowFgEnabled()) return;
+    if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
+    global.OneToneIpc.invoke('cmd_foreground_app',{}).then(function(res){
+      if(!isFollowFgEnabled()) return;
+      try{
+        var appId=res&&(res.matchedPresetAppId||res.matched_preset_app_id||res.appId)||'';
+        if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.noteLaneForeground){
+          global.OneToneSoftPadHub.noteLaneForeground(appId);
+        }
+      }catch(_){}
+      var id=desiredFollowFgSceneId(res);
+      if(!id) return;
+      if(global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene){
+        global.OneToneSceneActivate.activateScene(id);
+      }
+    }).catch(function(){});
+  }
+
+  function startFollowFgPoll(){
+    if(followFgPollTimer) return;
+    syncFollowForegroundApp();
+    followFgPollTimer=setInterval(syncFollowForegroundApp,2000);
+  }
+
+  function stopFollowFgPoll(){
+    if(followFgPollTimer){
+      clearInterval(followFgPollTimer);
+      followFgPollTimer=null;
+    }
+  }
+
+  function refreshFollowFgToggle(){
+    var btn=$('wbFollowFgToggle');
+    if(!btn) return;
+    var on=isFollowFgEnabled();
+    btn.classList.toggle('is-on',on);
+    btn.setAttribute('aria-checked',on?'true':'false');
+    var label=document.querySelector('.wb-scene-rail-follow-label');
+    if(label) label.textContent=t('homeWbFollowFgLabel');
+    var wrap=document.querySelector('.wb-scene-rail-follow');
+    if(wrap) wrap.title=t('homeWbFollowFgHint');
+    if(on) startFollowFgPoll();
+    else stopFollowFgPoll();
+  }
+
+  function setFollowFgEnabled(on){
+    var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
+    if(!cfg) return;
+    cfg.followForegroundAppScenario=!!on;
+    refreshFollowFgToggle();
+    if(!on){
+      var base=baselineMappingId();
+      if(base&&global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene){
+        global.OneToneSceneActivate.activateScene(base);
+      }
+    }else{
+      syncFollowForegroundApp();
+    }
+    var persist=global.OneToneConfigPersist;
+    if(persist&&persist.saveAsync) persist.saveAsync({source:'followFg'});
+    else if(persist&&persist.save) persist.save();
+  }
+
   function selectWorkbenchMapping(id){
     if(!id||!global.OneToneHomeScheme) return;
+    // activateScene already forceHomeRender+render when the id changes.
     global.OneToneHomeScheme.selectMapping(id);
-    render();
   }
 
   function bindPanelActions(){
@@ -983,6 +1129,13 @@
     if(!center||center._wbPanelsBound) return;
     center._wbPanelsBound=true;
     center.addEventListener('click',function(e){
+      var followFg=e.target.closest&&e.target.closest('#wbFollowFgToggle');
+      if(followFg){
+        e.preventDefault();
+        e.stopPropagation();
+        setFollowFgEnabled(!isFollowFgEnabled());
+        return;
+      }
       var channelChip=e.target.closest&&e.target.closest('[data-wb-habit-channel]');
       if(channelChip){
         e.preventDefault();
@@ -999,13 +1152,6 @@
         e.preventDefault();
         e.stopPropagation();
         openWorkbenchScenario(scenarioEdit.getAttribute('data-wb-scenario-edit')||'');
-        return;
-      }
-      var scenarioUse=e.target.closest&&e.target.closest('[data-wb-scenario-use]');
-      if(scenarioUse){
-        e.preventDefault();
-        e.stopPropagation();
-        selectWorkbenchMapping(scenarioUse.getAttribute('data-wb-scenario-use')||'');
         return;
       }
       var habit=e.target.closest&&e.target.closest('[data-wb-habit-id]');
@@ -1054,12 +1200,13 @@
         openSettings({panel:'habits',habitWizard:true});
         return;
       }
-      // 首页 howto 只读：点卡只切 Hero 模式，绝不进设置
+      // 首页 howto：切 Hero 模式 + 打开正在使用习惯的对应通道配置（融合原「通用设置」）
       var howto=e.target.closest&&e.target.closest('#wbHowTo [data-wb-howto]');
       if(howto){
         var kind=howto.getAttribute('data-wb-howto')||'';
         if(kind==='keys'||kind==='voice'||kind==='camera'||kind==='softPad'){
           setHeroMode(kind);
+          openHabitChannelChip(kind);
         }
         return;
       }
@@ -1304,6 +1451,7 @@
     if(global.OneToneHomeWorkbenchPanels){
       global.OneToneHomeWorkbenchPanels.renderAll(vm);
     }
+    refreshFollowFgToggle();
     if(global.OneToneState&&global.OneToneState.ui){
       var ui=global.OneToneState.ui;
       if(ui.drawerOpen&&ui.settingsPanel==='debug'&&global.OneToneVoiceDiag&&global.OneToneVoiceDiag.getFocusMode()==='repair'){
@@ -1365,6 +1513,7 @@
     bindNav();
     bindPanelActions();
     hookCameraPresence();
+    refreshFollowFgToggle();
     if(global.OneToneHomeWorkbenchPanels) global.OneToneHomeWorkbenchPanels.bindOnce();
     if(global.OneToneHomeWorkbenchCmdk) global.OneToneHomeWorkbenchCmdk.bindOnce();
     var searchInput=$('wbCommandSearchInput');
@@ -1507,6 +1656,7 @@
     setText($('wbHeroModeCamera'),t('homeWbHeroModeCamera'));
     var sceneTitle=document.querySelector('#wbSceneRail .wb-scene-rail-title');
     if(sceneTitle) sceneTitle.textContent=t('homeWbSceneRailTitle');
+    refreshFollowFgToggle();
     var searchInput=$('wbCommandSearchInput');
     if(searchInput) searchInput.placeholder=t('homeWbCmdSearchPlaceholder');
     renderQuickActions();

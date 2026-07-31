@@ -69,23 +69,32 @@
     return DETECT_GAZE_MS;
   }
 
-  // Shake: yaw hysteresis + L-R / R-L / L-R-L within window.
+  // Shake: yaw hysteresis + L-R-L / R-L-R only (three beats). Optional beep → nod confirm.
   var SHAKE_WINDOW_MS=3600;
   var SHAKE_COOLDOWN_MS=2200;
+  var SHAKE_ARMED_WINDOW_MS=2800;
+  var SHAKE_NOD_ENTER=0.16;
+  var SHAKE_NOD_EXIT=0.08;
+  var SHAKE_NOD_MIN_MS=60;
+  var SHAKE_NOD_MAX_MS=900;
+  var SHAKE_NOD_SETTLE_MS=80;
   var HAND_COOLDOWN_MS=1400;
   /** Defer openPalm when wave is also on — wave always starts as Open_Palm. */
   var OPEN_PALM_WAVE_DEFER_MS=1200;
-  var SHAKE_ENTER=0.12;
-  var SHAKE_EXIT=0.06;
+  // User-facing「摇头力度」→ enter amplitude (exit ≈ half). No jargon in UI.
+  var SHAKE_HOW_OPTS=['easy','normal','strong'];
+  var SHAKE_ENTER_BY_HOW={ easy:0.10, normal:0.16, strong:0.22 };
   var SHAKE_LOG_MIN_MS=2000;
 
-  // Deliberate blink: hold closed then short confirm. Natural blinks never arm.
+  // Deliberate blink: hold closed then (optional) sound + short confirm. Natural blinks never arm.
   var BLINK_DEFAULT_ON=0.48;
   var BLINK_DEFAULT_OFF=0.22;
   var BLINK_CLOSE_CONFIRM_MS=80;
   var BLINK_OPEN_SETTLE_MS=80;
-  var BLINK_HOLD_MIN_MS=480;
-  var BLINK_HOLD_MAX_MS=2400;
+  // Concrete hold lengths users can memorize (seconds).
+  var BLINK_CLOSE_SEC_OPTS=[0.6,1,2];
+  var BLINK_HOLD_MIN_MS=600;
+  var BLINK_HOLD_MAX_MS=2100;
   var BLINK_CONFIRM_MAX_MS=650;
   var BLINK_CONFIRM_MIN_MS=35;
   var BLINK_CONFIRM_CLOSE_MS=40;
@@ -158,12 +167,20 @@
     lastError:null,
     runtimeStatus:'off',
     ensureInflight:null,
-    // Shake tracking (yaw hysteresis)
+    // Shake tracking (yaw hysteresis) + optional armed nod confirm
     shakeSeq:[],
     shakeHyst:'center',
+    shakePhase:'idle',
+    shakeArmedAt:0,
+    shakeArmedPitch:0,
+    shakeNodPhase:'ready',
+    shakeNodDownSince:0,
+    shakeNodSettleSince:0,
     lastShakeAt:0,
     lastShakeLogAt:0,
+    lastShakeHintAt:0,
     lastYaw:null,
+    lastPitch:null,
     // Blink: idle → holding (deliberate close) → armed → short confirm → fire
     blinkPhase:'idle',
     blinkClosed:false,
@@ -257,9 +274,68 @@
       fist:'none',
       wave:'none',
       awayMs:DEFAULT_AWAY_MS,
-      presentMs:DEFAULT_PRESENT_MS
+      presentMs:DEFAULT_PRESENT_MS,
+      shakeHow:'normal',
+      shakeConfirmCue:true,
+      blinkCloseSec:0.6,
+      blinkConfirmCue:true
     };
   }
+
+  function normalizeShakeHow(v){
+    var s=String(v||'').trim().toLowerCase();
+    if(s==='easy'||s==='light'||s==='gentle') return 'easy';
+    if(s==='strong'||s==='hard'||s==='firm') return 'strong';
+    return 'normal';
+  }
+
+  function shakeEnterForHow(how){
+    return SHAKE_ENTER_BY_HOW[normalizeShakeHow(how)]||SHAKE_ENTER_BY_HOW.normal;
+  }
+
+  function shakeExitForHow(how){
+    return shakeEnterForHow(how)*0.5;
+  }
+
+  function normalizeBlinkCloseSec(v){
+    // Migrate old vague tiers → concrete seconds.
+    var s=String(v==null?'':v).trim().toLowerCase();
+    if(s==='easy'||s==='short'||s==='light'||s==='quick'||s==='normal') return 0.6;
+    if(s==='long'||s==='strong'||s==='hard'||s==='firm') return 1;
+    var n=Number(v);
+    if(n===600) return 0.6;
+    if(n===1000) return 1;
+    if(n===2000) return 2;
+    if(n===0.6||n===1||n===2) return n;
+    return 0.6;
+  }
+
+  function blinkHoldMinMs(sec){
+    return Math.round(normalizeBlinkCloseSec(sec)*1000);
+  }
+
+  function blinkHoldMaxMs(sec){
+    // Room to open after the target hold without feeling stuck.
+    return blinkHoldMinMs(sec)+1500;
+  }
+
+  function blinkCloseSecLabel(sec){
+    sec=normalizeBlinkCloseSec(sec);
+    if(sec===1) return t('cameraBlinkCloseSec1','1 秒');
+    if(sec===2) return t('cameraBlinkCloseSec2','2 秒');
+    return t('cameraBlinkCloseSec06','0.6 秒');
+  }
+
+  /** @deprecated keep export alias for older tests */
+  function normalizeBlinkCloseHow(v){
+    var sec=normalizeBlinkCloseSec(v);
+    if(sec===2) return 'long';
+    if(sec===1) return 'long';
+    return 'normal';
+  }
+  function blinkHoldMinForHow(how){ return blinkHoldMinMs(how); }
+  function blinkHoldMaxForHow(how){ return blinkHoldMaxMs(how); }
+  function blinkCloseHowHint(how){ return blinkCloseSecLabel(how); }
 
   function normalizeAction(v){
     var s=String(v||'none').trim();
@@ -352,7 +428,23 @@
       fist:fist,
       wave:wave,
       awayMs:clampPresenceMs(raw.awayMs!=null?raw.awayMs:raw.away_ms,'away'),
-      presentMs:clampPresenceMs(raw.presentMs!=null?raw.presentMs:raw.present_ms,'present')
+      presentMs:clampPresenceMs(raw.presentMs!=null?raw.presentMs:raw.present_ms,'present'),
+      shakeHow:normalizeShakeHow(raw.shakeHow!=null?raw.shakeHow:raw.shake_how),
+      shakeConfirmCue:(function(){
+        var v=raw.shakeConfirmCue!=null?raw.shakeConfirmCue:raw.shake_confirm_cue;
+        if(v===undefined||v===null) return true;
+        return !!v;
+      })(),
+      blinkCloseSec:normalizeBlinkCloseSec(
+        raw.blinkCloseSec!=null?raw.blinkCloseSec:
+        (raw.blink_close_sec!=null?raw.blink_close_sec:
+        (raw.blinkCloseHow!=null?raw.blinkCloseHow:raw.blink_close_how))
+      ),
+      blinkConfirmCue:(function(){
+        var v=raw.blinkConfirmCue!=null?raw.blinkConfirmCue:raw.blink_confirm_cue;
+        if(v===undefined||v===null) return true;
+        return !!v;
+      })()
     };
   }
 
@@ -467,7 +559,13 @@
       openPalm:ov.openPalm!=null?normalizeAction(ov.openPalm):base.openPalm,
       okHand:ov.okHand!=null?normalizeAction(ov.okHand):base.okHand,
       fist:ov.fist!=null?normalizeAction(ov.fist):base.fist,
-      wave:ov.wave!=null?normalizeAction(ov.wave):base.wave
+      wave:ov.wave!=null?normalizeAction(ov.wave):base.wave,
+      awayMs:base.awayMs,
+      presentMs:base.presentMs,
+      shakeHow:normalizeShakeHow(base.shakeHow),
+      shakeConfirmCue:base.shakeConfirmCue!==false,
+      blinkCloseSec:normalizeBlinkCloseSec(base.blinkCloseSec),
+      blinkConfirmCue:base.blinkConfirmCue!==false
     };
     return merged;
   }
@@ -895,6 +993,22 @@
     if(partial.wave!=null) cur.wave=normalizeAction(partial.wave);
     if(partial.awayMs!=null) cur.awayMs=clampPresenceMs(partial.awayMs,'away');
     if(partial.presentMs!=null) cur.presentMs=clampPresenceMs(partial.presentMs,'present');
+    if(partial.shakeHow!=null) cur.shakeHow=normalizeShakeHow(partial.shakeHow);
+    if(partial.shakeConfirmCue!=null||partial.shake_confirm_cue!=null){
+      var shakeCue=partial.shakeConfirmCue!=null?partial.shakeConfirmCue:partial.shake_confirm_cue;
+      cur.shakeConfirmCue=!!shakeCue;
+    }
+    if(partial.blinkCloseSec!=null||partial.blinkCloseHow!=null||partial.blink_close_sec!=null||partial.blink_close_how!=null){
+      cur.blinkCloseSec=normalizeBlinkCloseSec(
+        partial.blinkCloseSec!=null?partial.blinkCloseSec:
+        (partial.blink_close_sec!=null?partial.blink_close_sec:
+        (partial.blinkCloseHow!=null?partial.blinkCloseHow:partial.blink_close_how))
+      );
+    }
+    if(partial.blinkConfirmCue!=null||partial.blink_confirm_cue!=null){
+      var cue=partial.blinkConfirmCue!=null?partial.blinkConfirmCue:partial.blink_confirm_cue;
+      cur.blinkConfirmCue=!!cue;
+    }
     if(hasTriggers){
       cur.triggers=normalizeTriggers(Object.assign({},cur.triggers,partial.triggers),cur);
     }else if(hasAction){
@@ -1479,6 +1593,21 @@
     }catch(_){}
   }
 
+  /** Armed-phase cue: always audible when confirm-cue mode is on (preview bypasses slot mute). */
+  function playArmedCue(){
+    try{
+      var T=global.OneToneAppThemePrefs;
+      if(T&&typeof T.previewSoundSlot==='function'){
+        T.previewSoundSlot('cameraAction');
+        return;
+      }
+      if(T&&typeof T.playSoundCue==='function') T.playSoundCue('camera_action');
+    }catch(_){}
+  }
+
+  /** @deprecated alias */
+  function playBlinkArmedCue(){ playArmedCue(); }
+
   function clearBlinkClosed(){
     st.blinkClosed=false;
     st.blinkCloseSince=0;
@@ -1879,11 +2008,22 @@
   function resetGestureTrackers(){
     st.shakeSeq=[];
     st.shakeHyst='center';
+    resetShakeArmed();
     st.lastYaw=null;
+    st.lastPitch=null;
     resetBlinkGesture();
     st.blinkOpenSince=0;
     clearPendingOpenPalm();
     st.handHoldKind='none';
+  }
+
+  function resetShakeArmed(){
+    st.shakePhase='idle';
+    st.shakeArmedAt=0;
+    st.shakeArmedPitch=0;
+    st.shakeNodPhase='ready';
+    st.shakeNodDownSince=0;
+    st.shakeNodSettleSince=0;
   }
 
   function clearPendingOpenPalm(){
@@ -2006,50 +2146,137 @@
     }
   }
 
-  function shakeHystSide(yaw){
+  function shakeHystSide(yaw,how){
+    var enter=shakeEnterForHow(how);
+    var exit=shakeExitForHow(how);
     var cur=st.shakeHyst||'center';
     if(cur==='left'){
-      if(yaw>-SHAKE_EXIT) return 'center';
+      if(yaw>-exit) return 'center';
       return 'left';
     }
     if(cur==='right'){
-      if(yaw<SHAKE_EXIT) return 'center';
+      if(yaw<exit) return 'center';
       return 'right';
     }
-    if(yaw<=-SHAKE_ENTER) return 'left';
-    if(yaw>=SHAKE_ENTER) return 'right';
+    if(yaw<=-enter) return 'left';
+    if(yaw>=enter) return 'right';
     return 'center';
   }
 
   function matchShakePattern(){
     pruneShakeSeq(performance.now());
-    if(st.shakeSeq.length<2) return false;
-    // Prefer L-R-L / R-L-R when available.
-    if(st.shakeSeq.length>=3){
-      var a=st.shakeSeq[st.shakeSeq.length-3].side;
-      var b=st.shakeSeq[st.shakeSeq.length-2].side;
-      var c=st.shakeSeq[st.shakeSeq.length-1].side;
-      if(a!==b&&b!==c&&((a==='left'&&b==='right'&&c==='left')||(a==='right'&&b==='left'&&c==='right'))){
-        return true;
-      }
-    }
-    // Also accept a clear L↔R pair within the window (easier to land).
-    var x=st.shakeSeq[st.shakeSeq.length-2];
-    var y=st.shakeSeq[st.shakeSeq.length-1];
-    if(!x||!y) return false;
-    if(x.side===y.side) return false;
-    if((y.t-x.t)<120||(y.t-x.t)>SHAKE_WINDOW_MS) return false;
-    return (x.side==='left'&&y.side==='right')||(x.side==='right'&&y.side==='left');
+    // Three beats only: L-R-L or R-L-R. Single left↔right is too easy to false-trigger.
+    if(st.shakeSeq.length<3) return false;
+    var a=st.shakeSeq[st.shakeSeq.length-3].side;
+    var b=st.shakeSeq[st.shakeSeq.length-2].side;
+    var c=st.shakeSeq[st.shakeSeq.length-1].side;
+    if(a===b||b===c) return false;
+    return (a==='left'&&b==='right'&&c==='left')||(a==='right'&&b==='left'&&c==='right');
   }
 
-  function updateShake(now,yaw){
+  function fireShakeAction(p){
+    st.lastShakeAt=performance.now();
+    resetShakeArmed();
+    st.shakeSeq=[];
+    st.shakeHyst='center';
+    resetBlinkGesture();
+    noteEvent('shake');
+    if(normalizeAction(p.shakeHead)==='none'){
+      pulseGesture('shake');
+      setSkipReason(t('cameraTriggerRecognizedUnbound','已识别 · 未绑定动作'),'shake');
+      toast(t('cameraPresenceShakeDetected','已识别摇头'));
+      return;
+    }
+    fireGesture('shake',p.shakeHead);
+  }
+
+  function maybeExpireShakeArmed(now){
+    if(st.shakePhase!=='armed') return;
+    if((now-st.shakeArmedAt)<=SHAKE_ARMED_WINDOW_MS) return;
+    resetShakeArmed();
+    st.shakeSeq=[];
+    st.shakeHyst='center';
+    if((now-st.lastShakeHintAt)>BLINK_HINT_COOLDOWN_MS){
+      st.lastShakeHintAt=now;
+      logPresence('shake armed timeout');
+      toast(t('cameraPresenceShakeNeedNod','没有点头确认，已取消'));
+    }
+  }
+
+  function updateShakeNodConfirm(now,pitch){
+    if(pitch==null||!isFinite(pitch)){
+      if(st.lastPitch==null||!isFinite(st.lastPitch)) return;
+      pitch=st.lastPitch;
+    }
+    st.lastPitch=pitch;
+    var base=isFinite(st.shakeArmedPitch)?st.shakeArmedPitch:0;
+    // Landmark pitch+: look down. Nod confirm = dip then return.
+    var delta=pitch-base;
+
+    if(st.shakeNodPhase==='ready'){
+      if(delta<SHAKE_NOD_EXIT){
+        if(!st.shakeNodSettleSince) st.shakeNodSettleSince=now;
+        if((now-st.shakeNodSettleSince)>=SHAKE_NOD_SETTLE_MS){
+          st.shakeNodPhase='open';
+          st.shakeNodSettleSince=0;
+        }
+      }else{
+        st.shakeNodSettleSince=0;
+      }
+      return;
+    }
+
+    if(st.shakeNodPhase==='open'){
+      if(delta>=SHAKE_NOD_ENTER){
+        st.shakeNodPhase='down';
+        st.shakeNodDownSince=now;
+      }
+      return;
+    }
+
+    if(st.shakeNodPhase!=='down') return;
+    if(delta>=SHAKE_NOD_EXIT){
+      if((now-st.shakeNodDownSince)>SHAKE_NOD_MAX_MS){
+        st.shakeNodPhase='open';
+        st.shakeNodDownSince=0;
+        logPresence('shake nod too long');
+      }
+      return;
+    }
+    var dur=now-st.shakeNodDownSince;
+    st.shakeNodPhase='open';
+    st.shakeNodDownSince=0;
+    if(dur<SHAKE_NOD_MIN_MS||dur>SHAKE_NOD_MAX_MS){
+      logPresence('shake nod dur='+Math.round(dur));
+      return;
+    }
+    logPresence('shake nod confirm dur='+Math.round(dur));
+    fireShakeAction(prefs());
+  }
+
+  function updateShake(now,yaw,pitch){
     var p=prefs();
     if(!triggerEnabled('shake',p)){
       st.shakeSeq=[];
       st.shakeHyst='center';
+      resetShakeArmed();
       return;
     }
     if(st.presence!=='present') return;
+
+    if(pitch!=null&&isFinite(pitch)) st.lastPitch=pitch;
+
+    if(st.shakePhase==='armed'){
+      if(!p.shakeConfirmCue){
+        resetShakeArmed();
+        return;
+      }
+      maybeExpireShakeArmed(now);
+      if(st.shakePhase!=='armed') return;
+      updateShakeNodConfirm(now,pitch);
+      return;
+    }
+
     if(yaw==null||!isFinite(yaw)){
       // Keep last yaw briefly so face flicker during shake does not wipe progress.
       if(st.lastYaw==null||!isFinite(st.lastYaw)) return;
@@ -2057,7 +2284,7 @@
     }
     st.lastYaw=yaw;
 
-    var next=shakeHystSide(yaw);
+    var next=shakeHystSide(yaw,p.shakeHow);
     if(next!==st.shakeHyst){
       var prev=st.shakeHyst;
       st.shakeHyst=next;
@@ -2069,30 +2296,41 @@
           if(st.shakeSeq.length>5) st.shakeSeq=st.shakeSeq.slice(-5);
           if((now-st.lastShakeLogAt)>=SHAKE_LOG_MIN_MS){
             st.lastShakeLogAt=now;
-            logPresence('shake seq='+st.shakeSeq.map(function(x){ return x.side[0]; }).join('')+' yaw='+yaw.toFixed(2));
+            logPresence('shake seq='+st.shakeSeq.map(function(x){ return x.side[0]; }).join('')+' yaw='+yaw.toFixed(2)+' how='+normalizeShakeHow(p.shakeHow));
           }
         }
       }
     }
 
-    if(matchShakePattern()){
-      if((now-st.lastShakeAt)<SHAKE_COOLDOWN_MS){
-        st.shakeSeq=[];
-        return;
-      }
-      st.lastShakeAt=now;
+    if(!matchShakePattern()) return;
+    if((now-st.lastShakeAt)<SHAKE_COOLDOWN_MS){
       st.shakeSeq=[];
-      st.shakeHyst='center';
-      resetBlinkGesture();
-      noteEvent('shake');
-      if(normalizeAction(p.shakeHead)==='none'){
-        pulseGesture('shake');
-        setSkipReason(t('cameraTriggerRecognizedUnbound','已识别 · 未绑定动作'),'shake');
-        toast(t('cameraPresenceShakeDetected','已识别摇头'));
-        return;
-      }
-      fireGesture('shake',p.shakeHead);
+      return;
     }
+
+    st.shakeSeq=[];
+    st.shakeHyst='center';
+    resetBlinkGesture();
+
+    if(!p.shakeConfirmCue){
+      fireShakeAction(p);
+      return;
+    }
+
+    st.shakePhase='armed';
+    st.shakeArmedAt=now;
+    st.shakeArmedPitch=(st.lastPitch!=null&&isFinite(st.lastPitch))?st.lastPitch:0;
+    st.shakeNodPhase='ready';
+    st.shakeNodDownSince=0;
+    st.shakeNodSettleSince=0;
+    playArmedCue();
+    if((now-st.lastShakeHintAt)>BLINK_HINT_COOLDOWN_MS){
+      st.lastShakeHintAt=now;
+      toast(t('cameraPresenceShakeArmedSoft','听到提示音后马上点头确认'));
+    }
+    logPresence('shake armed wait nod');
+    renderHeroUi();
+    syncDetectInterval();
   }
 
   function fireBlinkAction(p){
@@ -2150,6 +2388,11 @@
     }
 
     if(st.blinkPhase==='armed'){
+      if(!p.blinkConfirmCue){
+        resetBlinkGesture();
+        st.blinkOpenSince=now;
+        return;
+      }
       maybeExpireBlinkArmed(now);
       if(st.blinkPhase!=='armed') return;
 
@@ -2231,26 +2474,43 @@
       var holdDur=now-st.blinkCloseSince;
       clearBlinkClosed();
       st.blinkOpenSince=now;
+      var holdMin=blinkHoldMinMs(p.blinkCloseSec);
+      var holdMax=blinkHoldMaxMs(p.blinkCloseSec);
 
-      if(holdDur<BLINK_HOLD_MIN_MS){
+      if(holdDur<holdMin){
         // Natural blink — silent discard.
         resetBlinkGesture();
         st.blinkOpenSince=now;
         return;
       }
-      if(holdDur>BLINK_HOLD_MAX_MS){
+      if(holdDur>holdMax){
         resetBlinkGesture();
         st.blinkOpenSince=now;
         return;
       }
+
+      // Option off: fire on successful hold alone (no second blink).
+      if(!p.blinkConfirmCue){
+        if((now-st.lastBlinkAt)<blinkGestureCooldownMs()){
+          logPresence('blink cooldown');
+          resetBlinkGesture();
+          st.blinkOpenSince=now;
+          return;
+        }
+        logPresence('blink fire hold='+Math.round(holdDur)+' noCue');
+        fireBlinkAction(p);
+        return;
+      }
+
       st.blinkPhase='armed';
       st.blinkArmedAt=now;
       st.blinkArmedReady=false;
       // Soft cue only — do not pulse as "已识别故意眨眼" until confirm fires.
       renderHeroUi();
+      playArmedCue();
       if((now-st.lastBlinkHintAt)>BLINK_HINT_COOLDOWN_MS){
         st.lastBlinkHintAt=now;
-        toast(t('cameraPresenceBlinkArmedSoft','再短眨一下确认'));
+        toast(t('cameraPresenceBlinkArmedSoft','听到提示音后马上眨眼确认'));
       }
       logPresence('blink armed hold='+Math.round(holdDur));
       syncDetectInterval();
@@ -2293,21 +2553,26 @@
     if((now-st.lastBlinkHintAt)>BLINK_HINT_COOLDOWN_MS){
       st.lastBlinkHintAt=now;
       logPresence('blink armed timeout');
-      toast(t('cameraPresenceBlinkNeedSecond','请马上再短眨一下确认'));
+      toast(t('cameraPresenceBlinkNeedSecond','没有眨眼确认，已取消'));
     }
   }
 
   function maybeExpireBlinkHold(now){
     if(st.blinkPhase!=='holding'||!st.blinkClosed) return;
+    var p=prefs();
+    var holdMax=blinkHoldMaxMs(p.blinkCloseSec);
     var held=now-st.blinkCloseSince;
-    if(held<=BLINK_HOLD_MAX_MS) return;
+    if(held<=holdMax) return;
     resetBlinkGesture();
     st.blinkOpenSince=now;
     // Soft hint — only when clearly stuck closed (not borderline).
-    if(held>=BLINK_HOLD_MAX_MS+400&&(now-st.lastBlinkHintAt)>BLINK_HINT_COOLDOWN_MS){
+    if(held>=holdMax+400&&(now-st.lastBlinkHintAt)>BLINK_HINT_COOLDOWN_MS){
       st.lastBlinkHintAt=now;
       logPresence('blink hold too long held='+Math.round(held));
-      toast(t('cameraPresenceBlinkTooLong','闭太久了，请闭眼约半秒再睁开，然后马上短眨确认'));
+      var how=blinkCloseSecLabel(p.blinkCloseSec);
+      toast(p.blinkConfirmCue
+        ? t('cameraPresenceBlinkTooLong','闭太久了，请闭眼约 {how} 再睁开，听到提示音后马上眨眼确认').replace('{how}',how)
+        : t('cameraPresenceBlinkTooLongNoCue','闭太久了，请闭眼约 {how} 再睁开').replace('{how}',how));
     }else{
       logPresence('blink hold expire held='+Math.round(held));
     }
@@ -2319,8 +2584,8 @@
     var face=!!(point&&(point.faceDetected===true||(point.state&&point.state!=='lost'&&point.state!=='idle'&&point.confidence>0.12)));
     if(point&&point.faceDetected===false) face=false;
     if(point&&point.state==='lost') face=false;
-    // Soften face-lost during deliberate blink — eyelids down often drops tracking.
-    if(!face&&st.presence==='present'&&(st.blinkClosed||st.blinkPhase==='holding'||st.blinkPhase==='armed')){
+    // Soften face-lost during deliberate blink / shake-armed — eyelids down / nod often drops tracking.
+    if(!face&&st.presence==='present'&&(st.blinkClosed||st.blinkPhase==='holding'||st.blinkPhase==='armed'||st.shakePhase==='armed')){
       face=true;
     }
 
@@ -2328,6 +2593,8 @@
     st.headDirection=headDirFromYaw(point&&point.yaw);
     var yaw=point&&point.yaw;
     if(yaw==null||!isFinite(yaw)) yaw=null;
+    var pitch=point&&point.pitch;
+    if(pitch==null||!isFinite(pitch)) pitch=null;
 
     try{
       if(global.OneToneCameraProGlance&&global.OneToneCameraProGlance.onVisionFrame){
@@ -2354,8 +2621,8 @@
     }
 
     if(st.presence==='present'&&!isCalibrating()){
-      // Keep shake tracking even if face flickers for a frame (use last yaw).
-      updateShake(now,yaw);
+      // Keep shake tracking even if face flickers for a frame (use last yaw/pitch).
+      updateShake(now,yaw,pitch);
       updateBlink(now,point&&point.blink,yaw);
       updateHandGestures(now);
     }
@@ -2421,12 +2688,15 @@
       var handPulse=handGesturePulseLabel(st.lastGesture);
       if(handPulse) return handPulse;
     }
+    if(st.shakePhase==='armed'){
+      return t('cameraPresenceShakeArmedHint','听到声响后点头确认');
+    }
     if(st.blinkBaselineStatus==='sampling'){
       return t('cameraPresenceBlinkBaselineSampling','正在采开眼基线…');
     }
     if(st.blinkPhase==='armed'){
       return st.blinkArmedReady
-        ?t('cameraPresenceBlinkArmedHint','再短眨确认')
+        ?t('cameraPresenceBlinkArmedHint','听到声响后眨眼确认')
         :t('cameraPresenceBlinkOpenThenConfirm','先睁开，再短眨确认');
     }
     if(st.blinkPhase==='holding'){
@@ -2649,9 +2919,70 @@
     if(String(sel.value)!==String(cur)) sel.value=String(cur);
   }
 
+  function syncShakeHowUi(p){
+    var sel=$('cameraShakeHowSelect');
+    if(!sel) return;
+    if(!sel.options||!sel.options.length){
+      sel.replaceChildren();
+      SHAKE_HOW_OPTS.forEach(function(how){
+        var opt=document.createElement('option');
+        opt.value=how;
+        opt.textContent=shakeHowLabel(how);
+        sel.appendChild(opt);
+      });
+    }
+    var cur=normalizeShakeHow(p&&p.shakeHow);
+    if(String(sel.value)!==cur) sel.value=cur;
+  }
+
+  function shakeHowLabel(how){
+    how=normalizeShakeHow(how);
+    if(how==='easy') return t('cameraShakeHowEasy','轻轻摇');
+    if(how==='strong') return t('cameraShakeHowStrong','用力摇');
+    return t('cameraShakeHowNormal','正常摇');
+  }
+
+  function syncBlinkCloseSecUi(p){
+    var sel=$('cameraBlinkCloseSecSelect')||$('cameraBlinkCloseHowSelect');
+    if(!sel) return;
+    var needRebuild=!sel.options||!sel.options.length;
+    if(!needRebuild){
+      var vals=[];
+      for(var i=0;i<sel.options.length;i++) vals.push(sel.options[i].value);
+      needRebuild=BLINK_CLOSE_SEC_OPTS.some(function(sec,idx){ return String(vals[idx])!==String(sec); });
+    }
+    if(needRebuild){
+      sel.replaceChildren();
+      BLINK_CLOSE_SEC_OPTS.forEach(function(sec){
+        var opt=document.createElement('option');
+        opt.value=String(sec);
+        opt.textContent=blinkCloseSecLabel(sec);
+        sel.appendChild(opt);
+      });
+    }
+    var cur=String(normalizeBlinkCloseSec(p&&p.blinkCloseSec));
+    if(String(sel.value)!==cur) sel.value=cur;
+  }
+
+  function syncBlinkConfirmCueUi(p){
+    var sw=$('cameraBlinkConfirmCueToggle');
+    if(!sw) return;
+    setSwitchState(sw,p&&p.blinkConfirmCue!==false);
+  }
+
+  function syncShakeConfirmCueUi(p){
+    var sw=$('cameraShakeConfirmCueToggle');
+    if(!sw) return;
+    setSwitchState(sw,p&&p.shakeConfirmCue!==false);
+  }
+
   function syncPresenceDurationUi(p){
     ensureDurationSelect('awayMs',p.awayMs,AWAY_DURATION_OPTS);
     ensureDurationSelect('presentMs',p.presentMs,PRESENT_DURATION_OPTS);
+    syncShakeHowUi(p);
+    syncShakeConfirmCueUi(p);
+    syncBlinkCloseSecUi(p);
+    syncBlinkConfirmCueUi(p);
     var awayDesc=document.querySelector('#cameraBindRowAway .camera-card-desc');
     if(awayDesc){
       awayDesc.textContent=t('cameraCardAwayDescDynamic','人脸消失约 {duration} 视为离席。')
@@ -3058,6 +3389,20 @@
     }
 
     function onRulesClick(e){
+      var shakeCueSw=e.target&&e.target.closest?e.target.closest('[data-presence-shake-confirm-cue]'):null;
+      if(shakeCueSw){
+        e.preventDefault();
+        var shakeCueOn=shakeCueSw.getAttribute('aria-checked')==='true';
+        persistPresencePrefs({shakeConfirmCue:!shakeCueOn});
+        return;
+      }
+      var cueSw=e.target&&e.target.closest?e.target.closest('[data-presence-blink-confirm-cue]'):null;
+      if(cueSw){
+        e.preventDefault();
+        var cueOn=cueSw.getAttribute('aria-checked')==='true';
+        persistPresencePrefs({blinkConfirmCue:!cueOn});
+        return;
+      }
       var sw=e.target&&e.target.closest?e.target.closest('[data-camera-trigger-toggle]'):null;
       if(sw){
         e.preventDefault();
@@ -3094,6 +3439,16 @@
           patch[durKey]=clampPresenceMs(durSel.value,durKey==='presentMs'?'present':'away');
           persistPresencePrefs(patch);
         }
+        return;
+      }
+      var howSel=e.target&&e.target.closest?e.target.closest('select[data-presence-shake-how]'):null;
+      if(howSel){
+        persistPresencePrefs({shakeHow:normalizeShakeHow(howSel.value)});
+        return;
+      }
+      var blinkSecSel=e.target&&e.target.closest?e.target.closest('select[data-presence-blink-close-sec],select[data-presence-blink-close-how]'):null;
+      if(blinkSecSel){
+        persistPresencePrefs({blinkCloseSec:normalizeBlinkCloseSec(blinkSecSel.value)});
         return;
       }
       var sel=e.target&&e.target.closest?e.target.closest('select.camera-action-select'):null;
@@ -3220,6 +3575,16 @@
     normalizePrefs:normalizePrefs,
     defaultPrefs:defaultPresencePrefs,
     persist:persistPresencePrefs,
+    normalizeShakeHow:normalizeShakeHow,
+    shakeEnterForHow:shakeEnterForHow,
+    normalizeBlinkCloseSec:normalizeBlinkCloseSec,
+    blinkHoldMinMs:blinkHoldMinMs,
+    blinkHoldMaxMs:blinkHoldMaxMs,
+    normalizeBlinkCloseHow:normalizeBlinkCloseHow,
+    blinkHoldMinForHow:blinkHoldMinForHow,
+    blinkHoldMaxForHow:blinkHoldMaxForHow,
+    matchShakePattern:matchShakePattern,
+    _testSetShakeSeq:function(seq){ st.shakeSeq=Array.isArray(seq)?seq.slice():[]; },
     clearShadowingCameraOverride:clearShadowingCameraOverride,
     applyGlobalPresenceOverActiveOverride:applyGlobalPresenceOverActiveOverride,
     overrideDiffersFromBase:overrideDiffersFromBase,

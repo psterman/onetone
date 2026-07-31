@@ -158,6 +158,11 @@
     global.OneToneIpc.invoke('cmd_foreground_app',{}).then(function(res){
       foregroundIdentity=res||null;
       foregroundAppId=res&&res.appId?String(res.appId):'';
+      try{
+        if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.noteLaneForeground){
+          global.OneToneSoftPadHub.noteLaneForeground(foregroundAppId);
+        }
+      }catch(_){}
       refreshForegroundConsumers();
     }).catch(function(){
       foregroundAppId='';

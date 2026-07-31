@@ -34,8 +34,11 @@
       try{ global.OneToneHabitChannelStatusStrip.render(); }catch(_){}
     }
     // Prefer workbench refresh (scenario rail / howto) over legacy live-zone only.
-    if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.render){
-      try{ global.OneToneHomeWorkbench.render(); }catch(_){}
+    if(global.OneToneHomeWorkbench){
+      try{
+        if(global.OneToneHomeWorkbench.forceHomeRender) global.OneToneHomeWorkbench.forceHomeRender();
+        if(global.OneToneHomeWorkbench.render) global.OneToneHomeWorkbench.render();
+      }catch(_){}
     }
     if(toId){
       requestAnimationFrame(function(){

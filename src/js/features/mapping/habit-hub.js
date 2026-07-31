@@ -248,9 +248,11 @@
     if(!core()) return [];
     core().ensureConfig&&core().ensureConfig();
     var cfg=state().config||{};
+    var rules=global.OneToneAppBehaviorRules;
     var items=[];
     core().sorted().forEach(function(m){
       if(!isLibraryHabit(m,cfg)) return;
+      if(rules&&rules.isIncompleteCustomStub&&rules.isIncompleteCustomStub(m)) return;
       var profile=hp()&&hp().project?hp().project(m,cfg):null;
       var type=profile?profile.habitType:classifyHabit(m,cfg);
       items.push({mapping:m,profile:profile,type:type});
@@ -653,11 +655,12 @@
   function renderGlobalDefaultCard(){
     var cfg=state().config||{};
     var keyChannel=globalKeyChannel(cfg);
-    var voiceChannel=globalVoiceChannel(cfg);
     var setup=universalSetupState(cfg);
-    var keysTip=t('habitHubChannelKeysHoverTip');
-    var voiceTip=t('habitHubChannelVoiceHoverTip');
-    var html='<article class="habit-hub-hero'+(setup.ready?' is-ready':' is-pending')+'" role="region" aria-label="'+esc(t('habitHubGlobalDefaultTitle'))+'">';
+    var baseline=globalBaselineMapping();
+    var baselineId=baseline&&baseline.id?String(baseline.id):'';
+    var isActive=!!(baselineId&&cfg.activeSceneId===baselineId);
+    var pairLine=(keyChannel.trigger||'—')+' → '+(keyChannel.target||'—');
+    var html='<article class="habit-hub-hero habit-hub-hero--thin'+(setup.ready?' is-ready':' is-pending')+'" role="region" aria-label="'+esc(t('habitHubGlobalDefaultTitle'))+'">';
     if(ui().habitGuideMode){
       html+='<div class="habit-hub-guide-bubble" role="status">'
         +'<span>'+esc(t('habitHubGuideBubble'))+'</span>'
@@ -671,50 +674,19 @@
     html+='<h5 class="habit-hub-hero-title">'+esc(t('habitHubGlobalDefaultTitle'))+'</h5>';
     html+='</div>';
     html+='<p class="habit-hub-hero-desc">'+esc(t('habitHubGlobalDefaultDesc'))+'</p>';
+    html+='<p class="habit-hub-hero-pair">'+esc(pairLine)+'</p>';
     html+='</div>';
     html+='<span class="habit-hub-card-status '+(setup.ready?'is-ready':'is-pending')+'">'
       +esc(setup.ready?t('habitHubUniversalReady'):t('habitHubUniversalPending'))+'</span>';
     html+='</div>';
-    html+='<div class="habit-hub-channels">';
-    html+='<div class="habit-hub-channel habit-hub-spring" data-habit-channel="keys" tabindex="0" role="button" aria-label="'+esc(t('habitHubGlobalKeysLbl')+'。'+keysTip)+'">';
-    html+='<div class="habit-hub-channel-end is-input">'
-      +channelGlyph('keys',keyChannel.trigger)
-      +'<span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelKeysInput'))+'</span><strong>'+esc(keyChannel.trigger)+'</strong></span></div>';
-    html+=habitHubFlowRail();
-    html+='<div class="habit-hub-channel-end is-output"><span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelKeysOutput'))+'</span><strong>'+esc(keyChannel.target)+'</strong></span>'
-      +channelKeycap(keyChannel.target,'is-output')+'</div>';
-    html+=ctaActBtn('data-habit-global-keys',t('habitHubGlobalOpenKeys'),ACT_ICON.keys,{primary:true,tip:t('habitHubKeysCtaTip')});
-    html+='<span class="habit-hub-channel-hover-tip">'+esc(keysTip)+'</span>';
-    html+='</div>';
-    html+='<div class="habit-hub-channel habit-hub-spring" data-habit-channel="voice" tabindex="0" role="button" aria-label="'+esc(t('habitHubGlobalVoiceLbl')+'。'+voiceTip)+'">';
-    html+='<div class="habit-hub-channel-end is-input">'
-      +channelGlyph('voice',t('habitHubChannelVoiceInput'))
-      +'<span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelVoiceInput'))+'</span><strong>'+esc(voiceChannel.engine)+'</strong><em>'+esc(voiceChannel.wake)+'</em></span></div>';
-    html+='<div class="habit-hub-channel-rail is-voice" aria-hidden="true"><span class="habit-hub-voice-bar"></span><span class="habit-hub-voice-bar"></span><span class="habit-hub-voice-bar"></span><span class="habit-hub-voice-bar"></span><span class="habit-hub-voice-bar"></span></div>';
-    html+='<div class="habit-hub-channel-end is-output"><span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelVoiceOutput'))+'</span><strong>'+esc(voiceChannel.status)+'</strong></span></div>';
-    html+=ctaActBtn('data-habit-global-voice',t('habitHubGlobalOpenVoice'),ACT_ICON.voice,{primary:true,tip:t('habitHubVoiceCtaTip')});
-    html+='<span class="habit-hub-channel-hover-tip">'+esc(voiceTip)+'</span>';
-    html+='</div>';
-    html+='<div class="habit-hub-channel habit-hub-spring" data-habit-channel="camera" tabindex="0" role="button" aria-label="'+esc(t('habitHubGlobalCameraLbl')+'。'+t('habitHubChannelCameraHoverTip'))+'">';
-    html+='<div class="habit-hub-channel-end is-input">'
-      +channelGlyph('camera',t('habitHubChannelCameraInput'))
-      +'<span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelCameraInput'))+'</span><strong>'+esc(t('habitHubChannelCameraInputVal'))+'</strong></span></div>';
-    html+=cameraSpectrumRail();
-    html+='<div class="habit-hub-channel-end is-output"><span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelCameraOutput'))+'</span><strong>'+esc(t('habitHubChannelCameraOutputVal'))+'</strong></span></div>';
-    html+=ctaActBtn('data-habit-global-camera',t('habitHubGlobalOpenCamera'),ACT_ICON.camera,{primary:true,tip:t('habitHubCameraCtaTip')});
-    html+='<span class="habit-hub-channel-hover-tip">'+esc(t('habitHubChannelCameraHoverTip'))+'</span>';
-    html+='</div>';
-    var softChannel=globalSoftPadChannel();
-    var softTip=t('habitHubChannelSoftPadHoverTip')||t('softPadBoundaryHint');
-    html+='<div class="habit-hub-channel habit-hub-spring" data-habit-channel="softPad" tabindex="0" role="button" aria-label="'+esc(t('habitHubGlobalSoftPadLbl')+'。'+softTip)+'">';
-    html+='<div class="habit-hub-channel-end is-input">'
-      +channelGlyph('softPad',t('habitHubChannelSoftPadInput'))
-      +'<span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelSoftPadInput'))+'</span><strong>'+esc(softChannel.apps)+'</strong><em>'+esc(t('habitHubChannelSoftPadBoundHint'))+'</em></span></div>';
-    html+=softPadChannelRail();
-    html+='<div class="habit-hub-channel-end is-output"><span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelSoftPadOutput'))+'</span><strong>'+esc(softChannel.status)+'</strong></span></div>';
-    html+=ctaActBtn('data-habit-global-softpad',t('habitHubOpenAppSoftPad')||t('habitHubGlobalOpenSoftPad'),ACT_ICON.softPad,{primary:true,tip:t('habitHubSoftPadCtaTip')});
-    html+='<span class="habit-hub-channel-hover-tip">'+esc(softTip)+'</span>';
-    html+='</div>';
+    html+='<div class="habit-hub-hero-actions">';
+    if(baselineId&&!isActive){
+      html+=ctaActBtn('data-habit-global-use="'+esc(baselineId)+'"',t('homeWbHabitBarUse'),ACT_ICON.keys,{primary:true,tip:t('homeWbHabitBarUse')});
+    }else if(isActive){
+      html+='<span class="habit-hub-card-status is-ready">'+esc(t('habitHubActiveBadge'))+'</span>';
+    }
+    html+=ctaActBtn('data-habit-global-keys',t('habitHubGlobalOpenKeys'),ACT_ICON.keys,{primary:!baselineId||isActive,tip:t('habitHubKeysCtaTip')});
+    html+=ctaActBtn('data-habit-global-home',t('habitHubGlobalGoHome','回首页看四通道'),ACT_ICON.softPad,{tip:t('habitHubGlobalGoHomeTip','四通道摘要在首页，点习惯即可切换')});
     html+='</div></article>';
     return html;
   }
@@ -1248,12 +1220,20 @@
       }
       return;
     }
+    try{
+      // One-shot cleanup when opening hub; stubs go to trash so merge_save allows delete.
+      if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.pruneIncompleteCustomStubs){
+        global.OneToneAppBehaviorRules.pruneIncompleteCustomStubs({persist:true});
+      }
+    }catch(_){}
     var t0=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
     renderLabels();
     renderList();
     renderFilters();
     applyShellVisibility();
     syncCameraWaveRails($('habitHubList'));
+    // Avoid re-pruning on every paint: once stubs are trashed they stay gone.
+    // (prune is idempotent after trash, but save was still thrashing before trash fix.)
     try{
       if(global.OneToneIpc&&global.OneToneIpc.invoke){
         var ms=Math.round(((typeof performance!=='undefined'&&performance.now)?performance.now():Date.now())-t0);
@@ -1617,17 +1597,123 @@
     state().selectedMappingId=null;
   }
 
+  function isSelfForegroundIdentity(identity){
+    if(!identity) return true;
+    var exe=String(identity.exeName||identity.exe_name||'').toLowerCase();
+    if(exe.indexOf('onetone')>=0) return true;
+    var path=String(identity.fullPath||identity.full_path||'').toLowerCase();
+    return path.indexOf('onetone')>=0||path.indexOf('voice-pilot')>=0;
+  }
+
+  function fgIdentityKey(identity){
+    if(!identity) return '';
+    return String(identity.exeName||identity.exe_name||'')+'|'
+      +String(identity.matchedPresetAppId||identity.matched_preset_app_id||identity.appId||'')+'|'
+      +String(identity.fullPath||identity.full_path||'');
+  }
+
+  function refreshInlineCreateForeground(){
+    if(!ui().habitHubCreating) return;
+    if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
+    global.OneToneIpc.invoke('cmd_foreground_app',{}).then(function(res){
+      if(!ui().habitHubCreating) return;
+      var next=null;
+      if(res&&(res.exeName||res.exe_name)&&!isSelfForegroundIdentity(res)) next=res;
+      var prevKey=fgIdentityKey(ui().habitHubFgIdentity);
+      var nextKey=fgIdentityKey(next);
+      ui().habitHubFgIdentity=next;
+      if(prevKey!==nextKey) render();
+    }).catch(function(){});
+  }
+
+  function acceptForegroundRecommend(){
+    var identity=ui().habitHubFgIdentity;
+    if(!identity) return;
+    var existing=findAppScenarioForIdentity(identity);
+    if(existing){
+      openExistingFgScenario(existing.id);
+      return;
+    }
+    var rules=global.OneToneAppBehaviorRules;
+    var presetId=String(identity.matchedPresetAppId||identity.matched_preset_app_id||identity.appId||'').trim();
+    if(presetId&&rules&&rules.isPresetAppId&&rules.isPresetAppId(presetId)){
+      ui().habitHubFgIdentity=null;
+      createAppScenario(presetId);
+      return;
+    }
+    var prevSelected=String(state().selectedMappingId||'');
+    var m=createAppScenario('custom',{deferPersist:true});
+    if(!m) return;
+    if(rules&&rules.setPickerCreateTarget) rules.setPickerCreateTarget(m.id);
+    if(rules&&rules.pickRunningIdentity) rules.pickRunningIdentity(m,identity);
+    if(rules&&rules.isIncompleteCustomStub&&rules.isIncompleteCustomStub(m)){
+      if(rules.discardIncompleteCustomCreate) rules.discardIncompleteCustomCreate(m.id);
+      ui().habitHubFgIdentity=null;
+      render();
+      return;
+    }
+    try{
+      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.rememberAppScenariosNow){
+        global.OneToneConfigPersist.rememberAppScenariosNow(state().config);
+      }
+    }catch(_){}
+    restoreBaselineSelection(prevSelected);
+    ui().habitHubFgIdentity=null;
+    render();
+  }
+
+  function openExistingFgScenario(mappingId){
+    mappingId=String(mappingId||'').trim();
+    ui().habitHubCreating=false;
+    ui().habitHubFgIdentity=null;
+    if(mappingId&&core()&&core().byId&&core().byId(mappingId)){
+      state().selectedMappingId=mappingId;
+    }
+    if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubAppScenarioExists'),'scheme');
+    render();
+  }
+
+  function renderFgRecommendCard(){
+    var identity=ui().habitHubFgIdentity;
+    if(!identity) return '';
+    var rules=global.OneToneAppBehaviorRules;
+    var name=rules&&rules.identityDisplayName?String(rules.identityDisplayName(identity)||'').trim():'';
+    if(!name){
+      name=String(identity.displayName||identity.display_name||identity.exeName||identity.exe_name||'')
+        .replace(/\.exe$/i,'').trim()||t('appPickerForeground');
+    }
+    var exe=String(identity.exeName||identity.exe_name||'').trim();
+    var existing=findAppScenarioForIdentity(identity);
+    if(existing){
+      return '<button type="button" class="habit-hub-codex-recommend habit-hub-fg-recommend" data-habit-open-fg-existing="'+esc(existing.id)+'" role="listitem">'
+        +'<span class="habit-hub-codex-recommend-badge">'+esc(t('habitHubFgBadge'))+'</span>'
+        +'<span class="habit-hub-codex-recommend-title">'+esc(name)+'</span>'
+        +'<span class="habit-hub-codex-recommend-sub">'+esc(t('habitHubFgRecommendOpen'))+'</span>'
+        +(exe?'<span class="habit-hub-codex-recommend-note">'+esc(exe)+'</span>':'')
+        +'</button>';
+    }
+    return '<button type="button" class="habit-hub-codex-recommend habit-hub-fg-recommend" data-habit-create-fg role="listitem">'
+      +'<span class="habit-hub-codex-recommend-badge">'+esc(t('habitHubFgBadge'))+'</span>'
+      +'<span class="habit-hub-codex-recommend-title">'+esc(t('habitHubFgRecommendTitle').replace('{name}',name))+'</span>'
+      +'<span class="habit-hub-codex-recommend-sub">'+esc(t('habitHubFgRecommendHint'))+'</span>'
+      +(exe?'<span class="habit-hub-codex-recommend-note">'+esc(exe)+'</span>':'')
+      +'</button>';
+  }
+
   function startInlineCreate(){
     ui().habitHubCreating=true;
+    ui().habitHubFgIdentity=null;
     ui().habitView='hub';
     if(ui().habitHubFilter==='legacy') ui().habitHubFilter='all';
     if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('habits');
     applyShellVisibility();
     render();
+    refreshInlineCreateForeground();
   }
 
   function cancelInlineCreate(){
     ui().habitHubCreating=false;
+    ui().habitHubFgIdentity=null;
     render();
   }
 
@@ -1723,12 +1809,14 @@
     cfg.mappings.push(m);
     ui().habitHubCreating=false;
     touchUpdated(m);
-    // Remember immediately so a later partial save cannot drop this row.
-    try{
-      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.rememberAppScenariosNow){
-        global.OneToneConfigPersist.rememberAppScenariosNow(cfg);
-      }
-    }catch(_){}
+    // Remember only real app scenarios — bare custom stubs must not reinject later.
+    if(!(appId==='custom'&&opts.deferPersist)){
+      try{
+        if(global.OneToneConfigPersist&&global.OneToneConfigPersist.rememberAppScenariosNow){
+          global.OneToneConfigPersist.rememberAppScenariosNow(cfg);
+        }
+      }catch(_){}
+    }
     if(opts.deferPersist){
       // Keep selection on the draft so the app picker can bind identity/icon.
       state().selectedMappingId=m.id;
@@ -1806,6 +1894,7 @@
     html+='<p class="habit-hub-inline-create-title">'+esc(t('habitHubInlineCreateTitle'))+'</p>';
     html+='<p class="habit-hub-inline-create-hint">'+esc(t('habitHubInlineCreateHint'))+'</p>';
     html+='</div>';
+    html+=renderFgRecommendCard();
     var A=global.OneToneAgentActions;
     if(A){
       html+='<button type="button" class="habit-hub-codex-recommend" data-habit-codex-apply role="listitem">'
@@ -1977,6 +2066,26 @@
           else if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('keys');
           return;
         }
+        var globalUseBtn=e.target.closest&&e.target.closest('[data-habit-global-use]');
+        if(globalUseBtn){
+          e.preventDefault();
+          e.stopPropagation();
+          var useId=String(globalUseBtn.getAttribute('data-habit-global-use')||'').trim();
+          if(useId&&global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene){
+            global.OneToneSceneActivate.activateScene(useId);
+          }
+          scheduleHubPaint();
+          return;
+        }
+        var globalHomeBtn=e.target.closest&&e.target.closest('[data-habit-global-home]');
+        if(globalHomeBtn){
+          e.preventDefault();
+          e.stopPropagation();
+          if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.close){
+            global.OneToneSettingsDrawer.close();
+          }
+          return;
+        }
         var globalVoiceBtn=e.target.closest&&e.target.closest('[data-habit-global-voice]');
         if(globalVoiceBtn){
           e.preventDefault();
@@ -2089,17 +2198,31 @@
           cancelInlineCreate();
           return;
         }
+        var createFg=e.target.closest&&e.target.closest('[data-habit-create-fg]');
+        if(createFg){
+          e.preventDefault();
+          acceptForegroundRecommend();
+          return;
+        }
+        var openFgExisting=e.target.closest&&e.target.closest('[data-habit-open-fg-existing]');
+        if(openFgExisting){
+          e.preventDefault();
+          openExistingFgScenario(openFgExisting.getAttribute('data-habit-open-fg-existing')||'');
+          return;
+        }
         var createAppBtn=e.target.closest&&e.target.closest('[data-habit-create-app]');
         if(createAppBtn){
           e.preventDefault();
           var migrateFrom=String(ui().habitHubMigrateFrom||'').trim();
           ui().habitHubMigrateFrom='';
+          ui().habitHubFgIdentity=null;
           createAppScenario(createAppBtn.getAttribute('data-habit-create-app')||'',migrateFrom?{migrateFrom:migrateFrom}:{});
           return;
         }
         var createCustom=e.target.closest&&e.target.closest('[data-habit-create-custom]');
         if(createCustom){
           e.preventDefault();
+          ui().habitHubFgIdentity=null;
           var mCustom=createAppScenario('custom',{deferPersist:true});
           if(mCustom&&global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.openAppPicker){
             global.OneToneAppBehaviorRules.openAppPicker({mappingId:mCustom.id});

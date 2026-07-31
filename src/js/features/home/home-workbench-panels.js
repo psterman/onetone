@@ -118,22 +118,23 @@
     var lines=(card.lines||[]).slice(0,2);
     var linesHtml='';
     if(lines.length){
-      linesHtml='<div class="wb-howto-card-meta is-readonly">'
+      linesHtml='<div class="wb-howto-card-meta">'
         +lines.map(function(ln){
-          return '<div class="wb-howto-meta-row is-readonly">'
+          return '<div class="wb-howto-meta-row">'
             +'<span>'+esc(ln.lbl||'')+'</span>'
             +'<strong>'+esc(ln.val||'—')+'</strong>'
             +'</div>';
         }).join('')
         +'</div>';
     }
-    return '<article class="wb-howto-card is-readonly'+(card.active?' is-active':'')+(kind?' is-'+kind:'')+(card.empty?' is-empty':'')+'" data-wb-howto="'+esc(kind)+'" role="button" tabindex="0" aria-pressed="'+(card.active?'true':'false')+'">'
+    // Summary card: shows active-habit channel bits; click opens that channel config.
+    return '<article class="wb-howto-card'+(card.active?' is-active':'')+(kind?' is-'+kind:'')+(card.empty?' is-empty':'')+'" data-wb-howto="'+esc(kind)+'" role="button" tabindex="0" aria-pressed="'+(card.active?'true':'false')+'" title="'+esc(t('homeWbHowToOpenTip','点此打开该通道设置'))+'">'
       +'<div class="wb-howto-card-head">'
       +'<span class="wb-howto-card-ico" aria-hidden="true">'+icon+'</span>'
       +'<span class="wb-howto-card-title">'+esc(card.title||'')+'</span>'
       +(card.status?'<span class="wb-howto-card-status">'+esc(card.status)+'</span>':'')
       +'</div>'
-      +'<div class="wb-howto-card-main is-readonly">'
+      +'<div class="wb-howto-card-main">'
       +'<strong class="wb-howto-card-value">'+esc(card.value||'—')+'</strong>'
       +(art?'<span class="wb-howto-card-art" aria-hidden="true">'+art+'</span>':'')
       +'</div>'
@@ -142,7 +143,7 @@
   }
 
   function howToCardHtml(opts){
-    // 兼容旧调用：转成只读摘要卡
+    // 兼容旧调用：转成摘要卡
     return howToSummaryCardHtml({
       mode:opts.kind,
       title:opts.title,
@@ -217,8 +218,47 @@
     var presenceLbl=t('homeWbCameraPresenceIdle');
     if(presence==='present') presenceLbl=t('homeWbCameraPresencePresent');
     else if(presence==='away') presenceLbl=t('homeWbCameraPresenceAway');
+    var actionsLine='';
+    if(prefs){
+      var bits=[];
+      var tr=prefs.triggers||{};
+      function shortAct(act){
+        var s=String(act||'').trim();
+        if(!s||s==='none') return '';
+        if(s==='pressEsc'){
+          var e=t('cameraPresenceActionEsc');
+          return (!e||e==='cameraPresenceActionEsc')?'Esc':e;
+        }
+        if(s==='pressCtrlI'){
+          var c=t('homeLiveVoiceTitle');
+          return (!c||c==='homeLiveVoiceTitle')?'语音激活':c;
+        }
+        if(s==='privacyScreen'){
+          var p=t('cameraPresenceActionPrivacy');
+          return (!p||p==='cameraPresenceActionPrivacy')?'遮罩':p;
+        }
+        if(s==='resumeVoice'){
+          var r=t('cameraPresenceActionResume');
+          return (!r||r==='cameraPresenceActionResume')?'恢复语音':r;
+        }
+        if(s.indexOf('agent:')===0) return s.slice(6);
+        return s;
+      }
+      function addAct(on,act,title){
+        if(!on||!act||act==='none') return;
+        var short=shortAct(act);
+        if(!short) return;
+        bits.push(title+'→'+short);
+      }
+      addAct(!!tr.shake,prefs.shakeHead,t('cameraCardShakeTitle')==='cameraCardShakeTitle'?'摇头':t('cameraCardShakeTitle'));
+      addAct(!!tr.blink,prefs.deliberateBlink,'闭眼');
+      addAct(!!tr.away,prefs.onAway,t('cameraPresenceOnAway')==='cameraPresenceOnAway'?'离席':t('cameraPresenceOnAway'));
+      addAct(!!tr.away,prefs.onReturn,t('cameraPresenceOnReturn')==='cameraPresenceOnReturn'?'回席':t('cameraPresenceOnReturn'));
+      actionsLine=bits.slice(0,3).join(' · ');
+    }
     var value=t('homeWbCameraOff');
-    if(enabled&&running) value=t('homeWbCameraOn');
+    if(enabled&&actionsLine) value=actionsLine;
+    else if(enabled&&running) value=t('homeWbCameraOn');
     else if(enabled){
       value=t('homeWbCameraConfiguredIdle','已配置 · 未运行');
       if(rs&&rs.lastError&&rs.lastError.message) value+=' · '+rs.lastError.message;
@@ -229,6 +269,7 @@
       running:running,
       presenceLbl:presenceLbl,
       boundLbl:t('homeWbCameraBoundCount').replace('{n}',String(bound)),
+      actionsLine:actionsLine,
       value:value
     };
   }
@@ -246,7 +287,7 @@
     var softArt='<span class="wb-howto-softpad-art" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>';
 
     // 顺序必须与 Hero tabs 一致：voice → keys → softPad → camera
-    // 只读摘要：无 data-wb-howto-channel，点卡只切模式
+    // 摘要卡：展示正在使用习惯；点卡切模式并打开通道配置
     var html='<div class="wb-howto-grid wb-howto-grid--quad">';
     cards.forEach(function(card){
       if(!card) return;
@@ -356,38 +397,50 @@
   function softPadHowToSnapshot(){
     var hub=global.OneToneSoftPadHub;
     var entries=(hub&&hub.listSoftPadSchemes)?hub.listSoftPadSchemes():[];
-    if(!entries.length){
+    var enabled=entries.filter(function(e){ return e&&e.padEnabled; });
+    var ctx=(hub&&hub.laneContextFromRuntime)?hub.laneContextFromRuntime():{};
+    var lane=(hub&&hub.resolvePrimaryLane)?hub.resolvePrimaryLane(entries,ctx):null;
+    var agentHint=t('homeWbHowToSoftPadAgentOnly');
+    if(!lane){
       return {
         value:t('homeWbChannelUnset'),
         status:'',
-        statusLbl:t('homeWbChannelUnset'),
-        countLbl:t('homeWbHowToSoftPadCount').replace('{n}','0'),
+        statusLbl:enabled.length?t('homeWbHowToSoftPadOff'):t('homeWbChannelUnset'),
+        countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(enabled.length)),
         boundName:t('homeWbChannelUnset'),
-        mappingId:''
+        mappingId:'',
+        agentOnlyHint:agentHint,
+        empty:true,
+        schemeCount:enabled.length
       };
     }
-    var on=entries.filter(function(e){ return e&&e.padEnabled; });
-    var pick=(on.length?on:entries)[0]||null;
-    var titles=(on.length?on:entries).map(function(e){ return e.title; }).filter(Boolean);
-    var value=titles.length?titles.join(' · '):t('homeWbChannelUnset');
     var boundName='';
-    var mappingId='';
-    if(pick&&pick.mapping){
-      mappingId=String(pick.mapping.id||'');
+    var mappingId=lane.mapping?String(lane.mapping.id||''):'';
+    if(lane.mapping){
       if(global.OneToneHabitProfile&&global.OneToneHabitProfile.habitDisplayName){
-        boundName=global.OneToneHabitProfile.habitDisplayName(pick.mapping);
+        boundName=global.OneToneHabitProfile.habitDisplayName(lane.mapping);
       }else if(global.OneToneHomeScheme&&global.OneToneHomeScheme.shortName){
-        boundName=global.OneToneHomeScheme.shortName(pick.mapping);
+        boundName=global.OneToneHomeScheme.shortName(lane.mapping);
       }
     }
-    if(!boundName) boundName=t('homeWbHowToSoftPadCount').replace('{n}',String(entries.length));
+    if(!boundName) boundName=lane.title||t('homeWbChannelUnset');
+    var others=Math.max(0,enabled.length-1);
+    var value=boundName;
+    if(others>0){
+      value=t('homeWbHowToSoftPadLaneOthers')
+        .replace('{name}',boundName)
+        .replace('{n}',String(others));
+    }
     return {
       value:value,
-      status:on.length?t('homeWbHabitActive'):'',
-      statusLbl:on.length?t('homeWbHowToSoftPadOn'):t('homeWbHowToSoftPadOff'),
-      countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(entries.length)),
+      status:t('homeWbHabitActive'),
+      statusLbl:t('homeWbHowToSoftPadOn'),
+      countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(enabled.length)),
       boundName:boundName,
-      mappingId:mappingId
+      mappingId:mappingId,
+      agentOnlyHint:agentHint,
+      empty:false,
+      schemeCount:enabled.length
     };
   }
 
@@ -419,14 +472,18 @@
     var name=(global.OneToneHabitProfile&&global.OneToneHabitProfile.habitDisplayName)
       ?global.OneToneHabitProfile.habitDisplayName(m)
       :(global.OneToneHomeScheme?global.OneToneHomeScheme.shortName(m):'—');
-    var useLbl=active?t('homeWbHabitActive'):t('homeWbHabitBarUse');
+    var badge=active
+      ?'<span class="wb-scene-card-badge">'+esc(t('homeWbHabitActive'))+'</span>'
+      :'';
     return '<div class="wb-scene-card'+(active?' is-active':'')+'" data-wb-scenario-id="'+esc(m.id)+'">'
       +sceneIconHtml(m)
       +'<span class="wb-scene-card-body">'
+      +'<span class="wb-scene-card-name-row">'
       +'<span class="wb-scene-card-name">'+esc(name)+'</span>'
+      +badge
+      +'</span>'
       +'<span class="wb-scene-card-desc">'+esc(sceneDesc(m))+'</span>'
       +'<span class="wb-scene-card-actions">'
-      +'<button type="button" class="wb-scene-card-btn" data-wb-scenario-use="'+esc(m.id)+'">'+esc(useLbl)+'</button>'
       +'<button type="button" class="wb-scene-card-btn wb-scene-card-btn--ghost" data-wb-scenario-edit="'+esc(m.id)+'">'+esc(t('homeWbHabitBarEdit'))+'</button>'
       +'</span>'
       +'</span>'
@@ -436,8 +493,15 @@
   function renderScenarioPanel(vm){
     var host=$('wbScenarioPanel');
     if(!host) return;
+    var rules=global.OneToneAppBehaviorRules;
+    // Never prune+persist on paint — omitting stubs without trash fights Rust merge_save
+    // and loops save/mvp_init until the UI freezes. Display filter below is enough.
     var activeId=activeSceneId();
-    var items=sortedMappings().filter(function(m){ return !!m.enabled; }).slice(0,8);
+    var items=sortedMappings().filter(function(m){
+      if(!m||!m.enabled) return false;
+      if(rules&&rules.isIncompleteCustomStub&&rules.isIncompleteCustomStub(m)) return false;
+      return true;
+    }).slice(0,8);
     var html='';
     items.forEach(function(m){ html+=sceneCardHtml(m,activeId); });
     html+='<button type="button" class="wb-scene-card wb-scene-card--new" id="wbHabitNew">'
@@ -448,7 +512,6 @@
       +'</span>'
       +'</button>';
     host.innerHTML=html;
-    var rules=global.OneToneAppBehaviorRules;
     if(rules&&rules.prefetchMappingRuleIcons){
       items.forEach(function(m){ rules.prefetchMappingRuleIcons(m); });
     }
