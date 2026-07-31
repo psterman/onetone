@@ -88,5 +88,22 @@ pub fn ingest_codex_app_payload_at(payload: &CodexAppStatePayload, now: u64) -> 
             last_event: Some(event.to_string()),
         },
     };
-    store::apply_candidate_at(cand, now).winner
+    let winner = store::apply_candidate_at(cand, now).winner;
+    // Dual-write AttentionStore for Soft Pad waiting_kinds (not PadStatus 24h sticky).
+    let is_app_server = payload.source.trim() == "codex_app_server"
+        || payload.source.trim() == "app_server";
+    if is_app_server {
+        crate::agent_attention::ingest_codex_app_server_event(
+            event,
+            incoming_session,
+            payload.turn_id.trim(),
+        );
+    } else {
+        crate::agent_attention::ingest_codex_hook_event(
+            event,
+            incoming_session,
+            payload.turn_id.trim(),
+        );
+    }
+    winner
 }

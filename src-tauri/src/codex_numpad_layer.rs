@@ -344,7 +344,17 @@ pub fn hook_should_swallow(source: &NumpadSourceKey) -> bool {
 }
 
 pub fn sync_hook_cache(cfg: &VoiceConfig) {
-    // Preserve overlay-session JOY rail state across config-driven cache rebuilds.
+    // Soft Pad Runtime Arbiter owns agent route application.
+    // All former direct writers must go through request_soft_pad_recompute.
+    crate::soft_pad_runtime::note_config_revision_bump();
+    crate::soft_pad_runtime::request_soft_pad_recompute(cfg);
+    if !crate::soft_pad_runtime::soft_pad_cutover_enabled() {
+        sync_hook_cache_legacy(cfg);
+    }
+}
+
+/// Pre-cutover merge of all enabled pads (Phase 1A legacy path only).
+fn sync_hook_cache_legacy(cfg: &VoiceConfig) {
     let prev_joy = hook_gate()
         .lock()
         .unwrap()
@@ -363,11 +373,45 @@ pub fn sync_hook_cache(cfg: &VoiceConfig) {
         }
         merge_pad_routes(&mut gate, m, pad);
     }
-    // Numpad mode: never leave arrow capture armed.
     if !gate.pad_active {
         gate.joy_nav_panel_open = false;
     }
     *hook_gate().lock().unwrap() = gate;
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct HookGateInstall {
+    pub routes: HashMap<String, CodexNumpadRouteSnapshot>,
+    pub routes_by_micro: HashMap<String, CodexNumpadRouteSnapshot>,
+    pub pad_active: bool,
+    pub nav_keys_enabled: bool,
+    pub software_enhance_enabled: bool,
+    pub require_num_lock_off: bool,
+    pub claude_cli_inject_pref_enabled: bool,
+    pub joy_nav_panel_open: bool,
+}
+
+/// Atomically replace HookGate agent routes from Soft Pad Runtime (cutover).
+pub fn install_hook_gate(install: HookGateInstall) {
+    let mut gate = HookGate {
+        require_num_lock_off: install.require_num_lock_off,
+        pad_active: install.pad_active,
+        nav_keys_enabled: install.nav_keys_enabled,
+        software_enhance_enabled: install.software_enhance_enabled,
+        joy_nav_panel_open: install.joy_nav_panel_open,
+        claude_cli_inject_pref_enabled: install.claude_cli_inject_pref_enabled,
+        routes: install.routes,
+        routes_by_micro: install.routes_by_micro,
+    };
+    if !gate.pad_active {
+        gate.joy_nav_panel_open = false;
+    }
+    *hook_gate().lock().unwrap() = gate;
+}
+
+pub fn peek_first_route_mapping_id() -> Option<String> {
+    let g = hook_gate().lock().unwrap();
+    g.routes_by_micro.values().next().map(|r| r.mapping_id.clone())
 }
 
 /// Soft Pad user preference: allow Claude CLI key inject when latch is high.

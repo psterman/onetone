@@ -280,6 +280,47 @@ export async function setVoiceEndCommitDelay(commitDelayMs: number): Promise<voi
 export async function setVoiceEndCommitKey(commitKey: string): Promise<void> {
   await invoke<void>('cmd_voice_end_set_commit_key', { commitKey });
 }
+
+export interface DataRootStatus {
+  effectiveRoot: string;
+  defaultRoot: string;
+  isCustom: boolean;
+  pointerPath: string;
+  configPath: string;
+  logsDir: string;
+  restartRequired: boolean;
+}
+
+export async function dataRootStatus(): Promise<DataRootStatus> {
+  return invoke<DataRootStatus>('cmd_data_root_status', {});
+}
+export async function dataRootPick(): Promise<DataRootStatus> {
+  return invoke<DataRootStatus>('cmd_data_root_pick', {});
+}
+export async function dataRootOpen(): Promise<void> {
+  await invoke<void>('cmd_data_root_open', {});
+}
+export async function dataRootReset(): Promise<DataRootStatus> {
+  return invoke<DataRootStatus>('cmd_data_root_reset', {});
+}
+export async function openPath(path: string): Promise<void> {
+  await invoke<void>('cmd_open_path', { path });
+}
+export async function exportLogs(frontendLines?: string[]): Promise<{
+  ok: boolean;
+  path?: string;
+  dir?: string;
+}> {
+  return invoke('cmd_export_logs', {
+    frontendLines: frontendLines ?? [],
+  });
+}
+export async function updateCheck(): Promise<unknown> {
+  return invoke('cmd_update_check', {});
+}
+export async function updateInstall(): Promise<unknown> {
+  return invoke('cmd_update_install', {});
+}
 /**
  * Set the END (confirm/commit) phrases. [VERIFIED vs legacy voice-end.js:804]
  * Legacy sends `{ phrasesZh, phrasesEn }` to `cmd_voice_end_set_phrases`.

@@ -1,4 +1,4 @@
-// Soft Pad primary lane: only padEnabled; waiting > fg > user > first; empty → null.
+// Soft Pad displayLane + Runtime Arbiter (pin > waiting > fg); FE oracle retained for tests.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -20,6 +20,7 @@ const sandbox = {
   setTimeout,
   clearTimeout,
   performance: { now: () => Date.now() },
+  Promise,
 };
 sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
@@ -38,10 +39,8 @@ vm.runInNewContext(
 );
 
 const Hub = sandbox.OneToneSoftPadHub;
-assert.ok(Hub && typeof Hub.resolvePrimaryLane === 'function', 'export resolvePrimaryLane');
-assert.ok(typeof Hub.laneContextFromRuntime === 'function', 'export laneContextFromRuntime');
-assert.ok(typeof Hub.pickHubDefaultScopeId === 'function', 'export pickHubDefaultScopeId');
-assert.ok(typeof Hub.noteLaneForeground === 'function', 'export noteLaneForeground');
+assert.ok(Hub && typeof Hub.resolvePrimaryLaneResult === 'function');
+assert.ok(typeof Hub.ingestSoftPadRuntimeSnapshot === 'function');
 
 function entry(kind, padEnabled) {
   return {
@@ -55,61 +54,66 @@ function entry(kind, padEnabled) {
 
 const codexOn = entry('codex', true);
 const claudeOn = entry('claude', true);
-const codexOff = entry('codex', false);
-const claudeOff = entry('claude', false);
 
-assert.equal(Hub.resolvePrimaryLane([], {}), null);
-assert.equal(Hub.resolvePrimaryLane([codexOff, claudeOff], { waitingKinds: ['codex'] }), null);
-assert.equal(
-  Hub.resolvePrimaryLane([codexOff, claudeOn], { waitingKinds: ['codex'] }),
-  claudeOn,
-  'waiting on disabled kind must not win'
-);
-assert.equal(
-  Hub.resolvePrimaryLane([codexOn, claudeOn], { waitingKinds: ['claude'] }),
-  claudeOn
-);
-assert.equal(
-  Hub.resolvePrimaryLane([codexOn, claudeOn], {
-    waitingKinds: [],
-    foregroundAppId: 'claude-code',
-  }),
-  claudeOn
-);
-assert.equal(
-  Hub.resolvePrimaryLane([codexOn, claudeOn], {
-    foregroundAppId: 'cursor-chat',
-    userLaneId: 'claude',
-  }),
-  claudeOn
-);
-assert.equal(
-  Hub.resolvePrimaryLane([codexOn, claudeOn], {}),
-  codexOn,
-  'first enabled in list order'
-);
-assert.equal(
-  Hub.pickHubDefaultScopeId([codexOff, claudeOff]),
-  'codex',
-  'hub tab may placeholder Codex when none enabled'
-);
-assert.equal(Hub.resolvePrimaryLane([codexOff], { userLaneId: 'codex' }), null);
+function assertResult(entries, ctx, expectKind, expectReason) {
+  const r = Hub.resolvePrimaryLaneResult(entries, ctx);
+  assert.equal(Hub.resolvePrimaryLane(entries, ctx), r.entry);
+  if (expectKind == null) {
+    assert.equal(r.entry, null);
+    assert.equal(r.reason, 'none');
+  } else {
+    assert.equal(r.entry.kind, expectKind);
+    assert.equal(r.reason, expectReason);
+  }
+}
+
+// Scheme A / Pinned: pin beats waiting + foreground
+assertResult([codexOn, claudeOn], {
+  userLaneId: 'claude',
+  foregroundAppId: 'codex-chat',
+  waitingKinds: ['codex'],
+}, 'claude', 'userPin');
+
+assertResult([codexOn, claudeOn], {
+  waitingKinds: ['claude'],
+}, 'claude', 'waiting');
+
+assertResult([codexOn, claudeOn], {
+  foregroundAppId: 'claude-code',
+}, 'claude', 'foreground');
+
+assertResult([], {}, null, 'none');
+
+// FE revision guard
+assert.equal(Hub.ingestSoftPadRuntimeSnapshot({
+  decisionRevision: 12,
+  statusRevision: 1,
+  cutover: true,
+  health: 'ready',
+  applied: { revision: 12, laneKind: 'claude', reason: 'foreground', mappingId: 'm1' },
+}), true);
+assert.equal(Hub.ingestSoftPadRuntimeSnapshot({
+  decisionRevision: 11,
+  statusRevision: 9,
+  cutover: true,
+  health: 'ready',
+  applied: { revision: 11, laneKind: 'codex', reason: 'fallback', mappingId: 'm0' },
+}), false, 'stale decisionRevision ignored');
+assert.equal(Hub.getCachedSoftPadRuntime().snap.applied.laneKind, 'claude');
 
 const panels = readFileSync(join(root, 'src/js/features/home/home-workbench-panels.js'), 'utf8');
-const snap = panels.match(/function softPadHowToSnapshot\(\)\{[\s\S]*?\n  function /);
-assert.ok(snap, 'softPadHowToSnapshot present');
-assert.match(snap[0], /resolvePrimaryLane/);
-assert.doesNotMatch(snap[0], /\(on\.length\s*\?\s*on\s*:\s*entries\)\s*\[\s*0\s*\]/);
+assert.match(panels, /softPadSnapshotFromApplied|getCachedSoftPadRuntime/);
+assert.match(panels, /homeWbSoftPadConfirming|正在确认 Soft Pad 状态/);
 
 const i18n = readFileSync(join(root, 'src/js/core/i18n.js'), 'utf8');
-assert.match(i18n, /softPadHubEmptyDesc:'点顶栏 Claude \/ Codex/);
-assert.doesNotMatch(
-  i18n.match(/softPadHubEmptyDesc:'[^']+'/)?.[0] || '',
-  /Cursor/
-);
+assert.match(i18n, /homeWbSoftPadCurrentControl:'当前控制：\{name\}'/);
+assert.match(i18n, /homeWbSoftPadConfirming:/);
 
 const contract = readFileSync(join(root, 'docs/HABIT_UNIFIED_CONTRACT.md'), 'utf8');
-assert.match(contract, /resolvePrimaryLane/);
-assert.match(contract, /padEnabled/);
+assert.match(contract, /AppliedDecision/);
+assert.match(contract, /request_soft_pad_recompute/);
+
+const migration = readFileSync(join(root, 'docs/SOFT_PAD_ARBITER_MIGRATION.md'), 'utf8');
+assert.match(migration, /sync_hook_cache/);
 
 console.log('ok softpad-lane');

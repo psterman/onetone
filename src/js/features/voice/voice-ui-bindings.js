@@ -121,6 +121,13 @@
         hooks.setVoiceEndCommitKey('Enter');
       };
     }
+    var btnVoiceSettingsCommitShiftEnter=$('btnVoiceSettingsCommitShiftEnter');
+    if(btnVoiceSettingsCommitShiftEnter){
+      btnVoiceSettingsCommitShiftEnter.onclick=function(e){
+        e.stopPropagation();
+        hooks.setVoiceEndCommitKey('Shift+Enter');
+      };
+    }
     var btnVoiceSettingsCommitCtrlEnter=$('btnVoiceSettingsCommitCtrlEnter');
     if(btnVoiceSettingsCommitCtrlEnter){
       btnVoiceSettingsCommitCtrlEnter.onclick=function(e){

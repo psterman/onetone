@@ -1,4 +1,4 @@
-﻿/* Soft Pad page - status + app switcher + hero preview + light aside
+/* Soft Pad page - status + app switcher + hero preview + light aside
    Colors follow app.css tokens (cyan brand), not a separate Tailwind blue system. */
 .soft-pad-page-head { margin-bottom: 8px; }
 
@@ -38,6 +38,17 @@
 .soft-pad-app-chip:hover {
   color: var(--btn-label);
   background: color-mix(in srgb, var(--surface) 85%, transparent);
+}
+.soft-pad-follow-chip.is-auto {
+  border-color: color-mix(in srgb, var(--brand, #0d9488) 35%, transparent);
+}
+.soft-pad-follow-chip.is-pin {
+  border-color: color-mix(in srgb, var(--brand, #0d9488) 55%, transparent);
+  color: var(--btn-label);
+}
+.soft-pad-follow-chip.is-pin-opt {
+  font-weight: 500;
+  font-size: calc(var(--type-body, 13px) - 1px);
 }
 .soft-pad-app-chip:focus-visible {
   outline: 2px solid var(--primary);

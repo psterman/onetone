@@ -83,6 +83,17 @@
           global.OneToneHabitTriggerSetup.onModeCompatSeen(msg);
         }
       }
+      if(msg.type==='soft_pad_decision_changed'||msg.type==='soft_pad_runtime'){
+        if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.ingestSoftPadRuntimeSnapshot){
+          var body=msg.softPad||msg.snapshot||msg;
+          if(global.OneToneSoftPadHub.ingestSoftPadRuntimeSnapshot(body)){
+            if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.forceHomeRender){
+              global.OneToneHomeWorkbench.forceHomeRender();
+            }
+          }
+        }
+        return;
+      }
       if(msg.type==='codex_micro_pad_key'){
         if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.onPadKeyEvent){
           global.OneToneCodexMicroPadUi.onPadKeyEvent(msg);

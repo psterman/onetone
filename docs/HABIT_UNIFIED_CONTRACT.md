@@ -72,29 +72,42 @@ habitScenarioReturnPanel === 'camera' && habitScenarioReturnId
 - **无全局 pad**；编辑 Soft Pad 时 mapping 选中真相 = `state.selectedMappingId`（与主车道无关）。
 - 局部 UI（tab / 子页 / 预览）可留模块内（如 `selectedScopeId`）。
 - 空态 CTA：创建 Codex / Claude **应用场景** → 选中新 id；**默认不**自动 `activeSceneId`（除非文案为「创建并使用」）。
-- **专用边界**：Soft Pad 仅服务 Agent 应用场景（本阶段 Hub 列表 = Codex / Claude）。Cursor 等 kind 可预留映射名，**不**进入可启用列表与主车道候选池。
+- **专用边界**：Soft Pad 服务 Agent 应用场景。Hub 列表 = **Codex / Claude / Cursor**。Cursor 诚实上限 = 官方 Lifecycle Hooks + Desktop Automation（focus/chord）；**默认** `can_observe_needs_input=false`，不凭推断参加 Auto 等待抢主控。Copilot Cloud Agent **不**参与桌面抢主控。
 
-### 多 Agent 车道（FE 真相源）
+### 多 Agent 车道（Runtime Arbiter）
 
-一块 Soft Pad 表面；**主车道**只从 `padEnabled === true` 的方案里选。未启用 / 仅可准备的 lane **不得**因等待态、前台或点选成为主控。
+一块 Soft Pad 表面。**Phase 1B cutover 后**：`displayLane === dispatchLane === AppliedDecision`（同源同锁 agent_routes）。
 
-| 优先级（padEnabled 池内） | 条件 |
-|---------------------------|------|
-| 1 | `waitingKinds` 命中且该 kind 已启用 |
-| 2 | 缓存的 `foregroundAppId` → `codex-chat` / `claude-code` 且已启用 |
-| 3 | Soft Pad `selectedScopeId`（`userLaneId`）且已启用 |
-| 4 | 池内第一个 enabled |
-| — | 池空 → 主车道 `null`（不派发键帽；可空态/准备 CTA） |
+| 模式 | 优先级 |
+|------|--------|
+| Pinned（有效 userPin） | pin > 一切；其它 Agent needs_input 只进 **AgentAttentionStore**（旁观，不切 Applied） |
+| Auto | needs_input（Attention 投影）> foreground > fallback > none |
 
-| 名字 | 含义 | 影响主车道？ |
-|------|------|----------------|
-| Soft Pad `selectedScopeId` | Hub 点的 Agent tab | 是 → `userLaneId` |
-| `state.selectedMappingId` | 正在编辑的习惯 | 否 |
-| `config.activeSceneId` | 习惯正在使用 | 否（与 Soft Pad 解耦） |
-| `pickHubDefaultScopeId` | Hub 默认 tab（可 Codex placeholder） | 否（仅 UI） |
-| `resolvePrimaryLane` | 运行 / 首页主车道 | 权威；无 enabled → `null` |
+| 概念 | 含义 |
+|------|------|
+| `ShadowDecision` | 1A 诊断产出；**不是**已生效路由 |
+| `AppliedDecision` | 路由已原子 swap；UI「当前控制」只读它 |
+| `AgentAttentionStore` | 官方 App Server / Hooks / OneTone ask 事实仓；`waiting_kinds` **仅**从此投影 |
+| `dispatchReady` | `padEnabled && faceCompatible && capabilities.can_focus∧can_send_chord` |
+| `PadFace` / `AgentCatalog` | 键位模板与产品身份；`app_target_id` 仅为兼容 fallback |
+| `agent_routes` | 仅 Applied mapping；`lane=null` 时必须为空 |
+| `system_routes` / ENC·NP | 全局系统键，独立 gate |
+| FE confirming | 本地 `!receivedFirstSnapshot`，不是 Rust availability |
+| `sync_hook_cache` | 仅代理 `request_soft_pad_recompute` |
 
-运行时上下文只读缓存（前台轮询 / pad 等待态写入）；**禁止**在首页同步 snapshot 路径里临时 await IPC。叠层 key 路由本阶段不改。
+FE `resolvePrimaryLaneResult` = oracle / Hub 预览；正式首页在 cutover 后读 Rust Applied。Pin 经 `cmd_soft_pad_set_follow` 上移 Rust。
+
+**waiting_kinds 规则**：AppServer / Native / 官方明确等待 Hook / OneTone ask → 可进；Inferred（FG/标题/文本）→ **只点灯，禁入**。PadStatus 24h sticky **不得**直喂 Arbiter。投影变化才 `request_soft_pad_recompute`。
+
+### 五级诚实能力
+
+1. Official App Server  
+2. Official Lifecycle Hooks  
+3. Desktop Automation（focus + chord）  
+4. Inferred Status（只点灯）  
+5. Official Native Hardware（Codex Micro — 体验参考，非第三方协议）
+
+Skills 只负责 Hook 安装/配置/诊断，**不是**实时状态源。
 
 ### 状态源目标态
 
@@ -102,8 +115,9 @@ habitScenarioReturnPanel === 'camera' && habitScenarioReturnId
 |------|--------|
 | 正在使用 | `config.activeSceneId` |
 | 正在编辑（习惯） | `state.selectedMappingId` |
-| Soft Pad 主车道 | `resolvePrimaryLane`（仅 padEnabled） |
-| Soft Pad Hub tab | `selectedScopeId` / `pickHubDefaultScopeId` |
+| Soft Pad 主车道（displayLane） | `resolvePrimaryLane` / `Result`（仅 padEnabled） |
+| Soft Pad Hub tab | `selectedScopeId` / `pickHubDefaultScopeId`（浏览，非 pin） |
+| Soft Pad 暂时固定 | 内存 `userLaneId`（null = 自动跟随） |
 | Soft Pad 编辑 mapping | `state.selectedMappingId`（禁止模块私有 mapping 真相） |
 | 语音 UI 哨兵 | 可映射到 null + 局部「配全局底座」 |
 | Camera 编辑模式 | `ui.cameraEditMode` |

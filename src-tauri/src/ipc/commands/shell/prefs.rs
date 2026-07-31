@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::AppState;
@@ -25,9 +26,14 @@ pub fn cmd_export_logs(
 ) -> Result<serde_json::Value, String> {
     let lines = frontend_lines.unwrap_or_default();
     let path = crate::app_log::export_diagnostic_zip(state.inner(), &lines)?;
+    let dir = path
+        .parent()
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(|| path.clone());
     Ok(serde_json::json!({
         "ok": true,
         "path": crate::app_log::sanitize_path(&path),
+        "dir": dir.to_string_lossy(),
     }))
 }
 
@@ -51,6 +57,39 @@ pub fn cmd_open_url(url: String) -> Result<(), String> {
         let _ = url;
         Err("open url is only supported on Windows".into())
     }
+}
+
+#[tauri::command]
+pub fn cmd_open_path(path: String) -> Result<(), String> {
+    let p = PathBuf::from(path.trim());
+    if p.as_os_str().is_empty() {
+        return Err("empty path".into());
+    }
+    crate::data_root::open_path(&p)
+}
+
+#[tauri::command]
+pub fn cmd_data_root_status() -> crate::data_root::DataRootStatus {
+    crate::data_root::status()
+}
+
+#[tauri::command]
+pub fn cmd_data_root_pick() -> Result<crate::data_root::DataRootStatus, String> {
+    let Some(folder) = crate::data_root::pick_folder_dialog()? else {
+        return Ok(crate::data_root::status());
+    };
+    crate::data_root::set_custom_root(folder)
+}
+
+#[tauri::command]
+pub fn cmd_data_root_open() -> Result<(), String> {
+    let root = crate::data_root::effective_data_root();
+    crate::data_root::open_path(&root)
+}
+
+#[tauri::command]
+pub fn cmd_data_root_reset() -> Result<crate::data_root::DataRootStatus, String> {
+    crate::data_root::reset_to_default()
 }
 
 #[tauri::command]

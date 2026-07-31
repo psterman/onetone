@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-open-path"
+description = "Enables the cmd_open_path command without any pre-configured scope."
+commands.allow = ["cmd_open_path"]
+
+[[permission]]
+identifier = "deny-cmd-open-path"
+description = "Denies the cmd_open_path command without any pre-configured scope."
+commands.deny = ["cmd_open_path"]

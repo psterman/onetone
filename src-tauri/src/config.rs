@@ -1883,6 +1883,15 @@ fn default_voice_end_commit_key() -> String {
     "Enter".into()
 }
 
+pub fn normalize_voice_end_commit_key(raw: &str) -> String {
+    let key = raw.trim().to_ascii_lowercase().replace(' ', "");
+    match key.as_str() {
+        "ctrl+enter" | "control+enter" => "Ctrl+Enter".into(),
+        "shift+enter" => "Shift+Enter".into(),
+        _ => "Enter".into(),
+    }
+}
+
 fn default_voice_end_dictation_timeout_ms() -> u32 {
     60000
 }
@@ -3661,6 +3670,9 @@ impl VoiceConfig {
         sync_send_mode_and_auto_send(&mut self.voice_end);
         if self.voice_end.commit_key.trim().is_empty() {
             self.voice_end.commit_key = default_voice_end_commit_key();
+        } else {
+            self.voice_end.commit_key =
+                normalize_voice_end_commit_key(&self.voice_end.commit_key);
         }
         if self.voice_end.target_key.trim().is_empty() {
             self.voice_end.target_key = default_voice_end_target_key();
@@ -4061,6 +4073,17 @@ fn canonical_config_path() -> PathBuf {
 }
 
 fn resolve_config_path() -> PathBuf {
+    // Custom data root (pointer) wins for the live settings.json location.
+    let custom = crate::data_root::effective_settings_path();
+    if custom.exists() {
+        return custom;
+    }
+    // If pointer set a custom root but settings not yet there, still use that path
+    // so first save lands correctly.
+    if crate::data_root::status().is_custom {
+        return custom;
+    }
+
     let canonical = canonical_config_path();
     let mut best: Option<(PathBuf, VoiceConfig, usize)> = None;
 

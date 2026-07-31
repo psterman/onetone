@@ -4,6 +4,9 @@
 export interface SoftPadScopeHintModel {
   text: string;
   sig: string;
+  supportRange?: string;
+  followMode?: 'auto' | 'pin';
+  userLaneId?: string | null;
 }
 
 interface LegacySoftPadHub {

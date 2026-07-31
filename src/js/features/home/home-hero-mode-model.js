@@ -296,25 +296,22 @@
 
     var softLines = [];
     if (!softEmpty) {
-      var softBits = [];
-      if (softPad.statusLbl) softBits.push(softPad.statusLbl);
-      if (softPad.boundName) softBits.push(softPad.boundName);
-      if (softBits.length) {
+      if (softPad.displayPrimary || softPad.agentName) {
         softLines.push({
-          lbl: t('homeWbHowToSoftPadBound', '绑定场景'),
-          val: softBits.join(' · '),
+          lbl: t('homeWbSoftPadCurrentLbl', '当前 Agent'),
+          val: softPad.agentName || softPad.boundName || '',
         });
       }
-    }
-    if (softPad.agentOnlyHint) {
+      if (softPad.displayReason) {
+        softLines.push({
+          lbl: t('homeWbSoftPadWhyLbl', '说明'),
+          val: String(softPad.displayReason),
+        });
+      }
+    } else {
       softLines.push({
         lbl: t('homeWbHowToSoftPadApps', '应用场景'),
-        val: softPad.agentOnlyHint,
-      });
-    } else if (softEmpty) {
-      softLines.push({
-        lbl: t('homeWbHowToSoftPadApps', '应用场景'),
-        val: t('homeWbHowToSoftPadAgentOnly', '仅 Codex / Claude Agent'),
+        val: softPad.displayPrimary || softPad.value || t('homeWbSoftPadReasonNone', '还没有可用的 Agent，先准备 Codex 或 Claude'),
       });
     }
 
@@ -358,14 +355,16 @@
         mode: 'softPad',
         title: t('homeWbHeroModeSoftPad'),
         value: softEmpty
-          ? t('homeWbFlowEmptySoftPad')
-          : softPad.boundName || softPad.value || t('homeWbChannelUnset'),
+          ? (softPad.displayPrimary || softPad.value || t('homeWbSoftPadReasonNone', '还没有可用的 Agent，先准备 Codex 或 Claude'))
+          : softPad.displayPrimary || softPad.agentName || softPad.boundName || softPad.value || t('homeWbChannelUnset'),
         lines: softLines.slice(0, 2),
-        status: softEmpty ? '' : softPad.status || softPad.statusLbl || '',
+        status: softEmpty ? '' : softPad.displayReason || softPad.status || softPad.statusLbl || '',
         artKind: 'softArt',
         active: mode === 'softPad',
         empty: softEmpty,
-        emptyText: softEmpty ? t('homeWbFlowEmptySoftPad') : undefined,
+        emptyText: softEmpty
+          ? (softPad.displayPrimary || softPad.value || t('homeWbSoftPadReasonNone', '还没有可用的 Agent，先准备 Codex 或 Claude'))
+          : undefined,
       },
       {
         mode: 'camera',

@@ -1,4 +1,6 @@
 mod agent;
+mod agent_attention;
+mod agent_catalog;
 mod app_chat_workflow;
 mod app_exe_icon;
 mod app_icon;
@@ -10,10 +12,12 @@ mod backdrop;
 mod camera_capability_probe;
 mod coach_hud;
 mod gaze_monitor;
+mod data_root;
 mod claude_cli_session;
 mod claude_hook_setup;
 mod codex_app_state;
 mod pad_status;
+mod soft_pad_runtime;
 mod codex_micro_overlay;
 mod codex_micro_protocol_server;
 mod codex_micro_vendor;
@@ -314,6 +318,14 @@ pub fn run() {
         .manage(app_state.clone())
         .setup(move |app| {
             app_log::log_line(&app_state, "startup", "setup begin");
+
+            {
+                let state_for_attention = app_state.clone();
+                crate::agent_attention::set_recompute_hook(move || {
+                    let cfg = state_for_attention.cfg.lock().clone();
+                    crate::soft_pad_runtime::request_soft_pad_recompute(&cfg);
+                });
+            }
 
             #[cfg(windows)]
             if !safe_mode {
@@ -777,6 +789,11 @@ pub fn run() {
             ipc::cmd_export_logs,
             ipc::cmd_app_log,
             ipc::cmd_open_url,
+            ipc::cmd_open_path,
+            ipc::cmd_data_root_status,
+            ipc::cmd_data_root_pick,
+            ipc::cmd_data_root_open,
+            ipc::cmd_data_root_reset,
             ipc::cmd_probe_camera_capabilities,
             ipc::cmd_windows_hello_confirm,
             ipc::cmd_coach_hud_get_state,
@@ -804,6 +821,14 @@ pub fn run() {
             ipc::cmd_codex_micro_overlay_toggle_pad_mode,
             ipc::cmd_codex_micro_overlay_toggle_joy_panel,
             ipc::cmd_codex_micro_pad_fire,
+            ipc::cmd_soft_pad_runtime_snapshot,
+            ipc::cmd_soft_pad_set_follow,
+            ipc::cmd_agent_attention_snapshot,
+            ipc::cmd_cursor_soft_pad_capabilities,
+            ipc::cmd_cursor_set_needs_input_gate,
+            ipc::cmd_cursor_hook_ingest,
+            ipc::cmd_onetone_attention_ask,
+            ipc::cmd_onetone_attention_clear,
             ipc::cmd_codex_micro_pad_set_flags,
             ipc::cmd_codex_micro_pad_set_layout,
             ipc::cmd_codex_micro_pad_set_presentation,

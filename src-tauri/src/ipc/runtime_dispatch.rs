@@ -525,30 +525,47 @@ fn try_dispatch_codex_numpad(
         return false;
     };
     let source_id = source.id();
+    // One lock / one ticket — never call lookup_route repeatedly across a phase transition.
+    let ticket = if crate::soft_pad_runtime::soft_pad_cutover_enabled() {
+        crate::soft_pad_runtime::lookup_agent_ticket_by_physical(&source)
+    } else {
+        crate::codex_numpad_layer::lookup_route(&source).map(|route| {
+            crate::soft_pad_runtime::AgentDispatchTicket {
+                revision: 0,
+                lane_kind: crate::soft_pad_runtime::AgentKind::Codex,
+                mapping_id: route.mapping_id.clone(),
+                route,
+            }
+        })
+    };
+    let micro_for_ui = ticket
+        .as_ref()
+        .map(|t| t.route.micro_key_id.clone())
+        .unwrap_or_default();
     let _ = window.emit(
         "to_js",
         &serde_json::json!({
             "type": "codex_micro_pad_key",
             "sourceId": source_id,
-            "microKeyId": crate::codex_numpad_layer::lookup_route(&source)
-                .map(|r| r.micro_key_id)
-                .unwrap_or_default(),
+            "microKeyId": micro_for_ui,
             "phase": if key_down { "down" } else { "up" },
         }),
     );
-    if let Some(route) = crate::codex_numpad_layer::lookup_route(&source) {
-        crate::codex_micro_overlay::note_micro_key(&route.micro_key_id, key_down);
-        // Status-only push — full push_state remounts geometry/AOT and makes Soft Pad 抖动.
+    if let Some(ref t) = ticket {
+        crate::codex_micro_overlay::note_micro_key(&t.route.micro_key_id, key_down);
         crate::codex_micro_overlay::push_overlay_status(&window.app_handle(), state.as_ref());
     }
 
-    let Some(route) = crate::codex_numpad_layer::lookup_route(&source) else {
+    let Some(ticket) = ticket else {
         return true;
     };
+    let route = &ticket.route;
 
     if route.is_hold {
         let app = window.app_handle();
         if !key_down {
+            // Press lease: always release the key-down lease even if Applied revision moved.
+            let _ = crate::soft_pad_runtime::end_agent_press_lease(&route.micro_key_id);
             try_end_codex_numpad_hold(state, &app, &route.micro_key_id, Some(&source_id));
             return true;
         }
@@ -562,6 +579,7 @@ fn try_dispatch_codex_numpad(
         let duration_ms = state.cfg.lock().key_press_duration_ms;
         ensure_codex_focus_for_pad_hold(state.as_ref(), duration_ms);
         *state.codex_numpad_hold_source.lock() = Some(route.micro_key_id.clone());
+        crate::soft_pad_runtime::begin_agent_press_lease(&ticket);
         let hold_ok = app_chat_workflow::run_hold_voice_foreground(
             state,
             window,
@@ -572,6 +590,7 @@ fn try_dispatch_codex_numpad(
         .is_ok();
         if !hold_ok {
             *state.codex_numpad_hold_source.lock() = None;
+            let _ = crate::soft_pad_runtime::end_agent_press_lease(&route.micro_key_id);
         }
         return true;
     }
@@ -638,9 +657,23 @@ pub fn fire_codex_micro_pad_key(
         return serde_json::json!({ "ok": false, "reason": "not_foreground" });
     }
 
-    // Claude Soft Pad C1/C2: ACT12/ACT08 when latch high or pending Hook approval.
+    // Claude Soft Pad C1/C2: ACT12/ACT08 only when Applied lane is Claude (cutover).
+    let agent_ticket = if crate::soft_pad_runtime::soft_pad_cutover_enabled() {
+        crate::soft_pad_runtime::lookup_agent_ticket_by_micro(micro_key_id)
+    } else {
+        None
+    };
+    let lane_is_claude = match &agent_ticket {
+        Some(t) => matches!(
+            t.lane_kind,
+            crate::soft_pad_runtime::AgentKind::Claude
+        ),
+        None => !crate::soft_pad_runtime::soft_pad_cutover_enabled(),
+    };
     if key_down {
-        if let Some(handled) = crate::claude_cli_session::try_softpad_fire(micro_key_id) {
+        if let Some(handled) =
+            crate::claude_cli_session::try_softpad_fire(micro_key_id, lane_is_claude)
+        {
             let ok = handled.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
             crate::codex_micro_overlay::note_pad_run_status(
                 if ok { "done" } else { "failed" },
@@ -649,6 +682,24 @@ pub fn fire_codex_micro_pad_key(
             crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
             return handled;
         }
+    }
+
+    // Cutover: no Applied agent ticket → do not dispatch agent keycaps (system NP/ENC still below).
+    if crate::soft_pad_runtime::soft_pad_cutover_enabled()
+        && agent_ticket.is_none()
+        && !crate::codex_numpad_layer::is_overlay_numpad_key(micro_key_id)
+        && micro_key_id != "ENC"
+        && !is_nav_micro_key(micro_key_id)
+    {
+        if key_down {
+            crate::codex_micro_overlay::note_pad_run_status("failed", micro_key_id);
+            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        }
+        return serde_json::json!({
+            "ok": false,
+            "reason": "no_applied_lane",
+            "microKeyId": micro_key_id,
+        });
     }
 
     // Numpad mode: ENC summons Codex; NP* inject digits; other Micro keys blocked.
@@ -767,7 +818,11 @@ pub fn fire_codex_micro_pad_key(
         let _ = exec_window.emit("to_js", &payload);
     }
 
-    let Some(route) = crate::codex_numpad_layer::lookup_route_by_micro_key(micro_key_id) else {
+    let Some(route) = agent_ticket
+        .as_ref()
+        .map(|t| t.route.clone())
+        .or_else(|| crate::codex_numpad_layer::lookup_route_by_micro_key(micro_key_id))
+    else {
         // M4: software-enhance keys may pulse without a bound slot (NAV injects arrows).
         if crate::codex_numpad_layer::is_software_enhance_micro_key(micro_key_id)
             && (crate::codex_numpad_layer::software_enhance_enabled()

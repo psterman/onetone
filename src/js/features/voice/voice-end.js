@@ -110,27 +110,20 @@
 
 
   function normalizeVoiceEndCommitKey(raw){
-
-    const key=String(raw||'').trim();
-
-    return /^ctrl\+enter$/i.test(key)?'Ctrl+Enter':'Enter';
-
+    const key=String(raw||'').trim().replace(/\s+/g,'');
+    if(/^ctrl\+enter$/i.test(key)||/^control\+enter$/i.test(key)) return 'Ctrl+Enter';
+    if(/^shift\+enter$/i.test(key)) return 'Shift+Enter';
+    return 'Enter';
   }
 
-
-
   function syncVoiceEndCommitKeyUi(commitKey){
-
     const key=normalizeVoiceEndCommitKey(commitKey);
-
     const enterBtn=$('btnVoiceSettingsCommitEnter');
-
+    const shiftBtn=$('btnVoiceSettingsCommitShiftEnter');
     const ctrlBtn=$('btnVoiceSettingsCommitCtrlEnter');
-
     if(enterBtn) enterBtn.classList.toggle('is-active',key==='Enter');
-
+    if(shiftBtn) shiftBtn.classList.toggle('is-active',key==='Shift+Enter');
     if(ctrlBtn) ctrlBtn.classList.toggle('is-active',key==='Ctrl+Enter');
-
   }
 
 

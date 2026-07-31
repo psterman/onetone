@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-data-root-reset"
+description = "Enables the cmd_data_root_reset command without any pre-configured scope."
+commands.allow = ["cmd_data_root_reset"]
+
+[[permission]]
+identifier = "deny-cmd-data-root-reset"
+description = "Denies the cmd_data_root_reset command without any pre-configured scope."
+commands.deny = ["cmd_data_root_reset"]

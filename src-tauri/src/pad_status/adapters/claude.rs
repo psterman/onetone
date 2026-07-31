@@ -196,6 +196,13 @@ pub fn ingest_claude_payload_at(payload: &ClaudeHookPayload, now: u64) -> PadSta
         },
     };
     let winner = store::apply_candidate_at(cand, now).winner;
+    // Dual-write AttentionStore (Arbiter waiting); PadStatus sticky stays overlay-only.
+    crate::agent_attention::ingest_claude_hook_event(
+        event,
+        incoming_session,
+        payload.turn_id.trim(),
+        src_label,
+    );
     if matches!(event, "PermissionRequest" | "Elicitation") {
         crate::claude_cli_session::note_permission_request(
             incoming_session,

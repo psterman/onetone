@@ -397,50 +397,235 @@
   function softPadHowToSnapshot(){
     var hub=global.OneToneSoftPadHub;
     var entries=(hub&&hub.listSoftPadSchemes)?hub.listSoftPadSchemes():[];
+    if(hub&&hub.pruneInvalidUserLanePin) hub.pruneInvalidUserLanePin(entries);
     var enabled=entries.filter(function(e){ return e&&e.padEnabled; });
-    var ctx=(hub&&hub.laneContextFromRuntime)?hub.laneContextFromRuntime():{};
-    var lane=(hub&&hub.resolvePrimaryLane)?hub.resolvePrimaryLane(entries,ctx):null;
-    var agentHint=t('homeWbHowToSoftPadAgentOnly');
-    if(!lane){
+    var cache=(hub&&hub.getCachedSoftPadRuntime)?hub.getCachedSoftPadRuntime():null;
+    if(hub&&hub.refreshSoftPadRuntimeAsync) hub.refreshSoftPadRuntimeAsync();
+
+    // Prefer Rust Applied when cutover + first snapshot received.
+    if(cache&&cache.receivedFirstSnapshot&&cache.snap&&cache.snap.cutover&&cache.snap.applied){
+      return softPadSnapshotFromApplied(cache.snap,enabled);
+    }
+    if(cache&&!cache.receivedFirstSnapshot){
+      var confirming=t('homeWbSoftPadConfirming','正在确认 Soft Pad 状态');
       return {
-        value:t('homeWbChannelUnset'),
+        value:confirming,
         status:'',
-        statusLbl:enabled.length?t('homeWbHowToSoftPadOff'):t('homeWbChannelUnset'),
+        statusLbl:confirming,
         countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(enabled.length)),
-        boundName:t('homeWbChannelUnset'),
+        boundName:confirming,
+        agentName:'',
+        displayPrimary:confirming,
+        displayReason:'',
+        reason:'confirming',
         mappingId:'',
-        agentOnlyHint:agentHint,
+        agentOnlyHint:'',
+        empty:true,
+        schemeCount:enabled.length,
+        confirming:true
+      };
+    }
+    if(cache&&cache.snap&&cache.snap.cutover&&cache.snap.health==='unavailable'){
+      var unavail=t('homeWbSoftPadUnavailable','Soft Pad 暂时不可用');
+      return {
+        value:unavail,
+        status:'',
+        statusLbl:unavail,
+        countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(enabled.length)),
+        boundName:unavail,
+        agentName:'',
+        displayPrimary:unavail,
+        displayReason:'',
+        reason:'unavailable',
+        mappingId:'',
+        agentOnlyHint:'',
         empty:true,
         schemeCount:enabled.length
       };
     }
-    var boundName='';
+
+    // Oracle / pre-cutover display path (not "当前控制").
+    var ctx=(hub&&hub.laneContextFromRuntime)?hub.laneContextFromRuntime():{};
+    var result=(hub&&hub.resolvePrimaryLaneResult)
+      ?hub.resolvePrimaryLaneResult(entries,ctx)
+      :{entry:(hub&&hub.resolvePrimaryLane)?hub.resolvePrimaryLane(entries,ctx):null,reason:enabled.length?'fallback':'none'};
+    var lane=result.entry||null;
+    var reason=result.reason||(lane?'fallback':'none');
+    var others=Math.max(0,enabled.length-(lane?1:0));
+    if(hub&&hub.publishSoftPadLaneSnapshot){
+      hub.publishSoftPadLaneSnapshot({
+        displayLaneKind:lane&&lane.kind?lane.kind:null,
+        reason:reason,
+        userLaneId:ctx.userLaneId==null?null:ctx.userLaneId,
+        foregroundAppId:ctx.foregroundAppId||'',
+        waitingKinds:Array.isArray(ctx.waitingKinds)?ctx.waitingKinds:[],
+        foregroundFresh:!!ctx.foregroundFresh,
+        waitingFresh:!!ctx.waitingFresh,
+        foregroundObservedAt:ctx.foregroundObservedAt==null?null:ctx.foregroundObservedAt,
+        waitingObservedAt:ctx.waitingObservedAt==null?null:ctx.waitingObservedAt,
+        otherEnabledCount:others,
+        source:'home'
+      });
+    }
+    if(!lane){
+      var noneText=t('homeWbSoftPadReasonNone','还没有可用的 Agent，先准备 Codex 或 Claude');
+      return {
+        value:noneText,
+        status:'',
+        statusLbl:enabled.length?t('homeWbHowToSoftPadOff'):t('homeWbChannelUnset'),
+        countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(enabled.length)),
+        boundName:t('homeWbChannelUnset'),
+        agentName:'',
+        displayPrimary:noneText,
+        displayReason:'',
+        reason:'none',
+        mappingId:'',
+        agentOnlyHint:'',
+        empty:true,
+        schemeCount:enabled.length
+      };
+    }
+    var agentName=agentTitleFromKind(lane.kind,lane.title);
+    var boundName=agentName;
     var mappingId=lane.mapping?String(lane.mapping.id||''):'';
     if(lane.mapping){
       if(global.OneToneHabitProfile&&global.OneToneHabitProfile.habitDisplayName){
-        boundName=global.OneToneHabitProfile.habitDisplayName(lane.mapping);
+        var hn=global.OneToneHabitProfile.habitDisplayName(lane.mapping);
+        if(hn&&hn!=='—') boundName=hn;
       }else if(global.OneToneHomeScheme&&global.OneToneHomeScheme.shortName){
-        boundName=global.OneToneHomeScheme.shortName(lane.mapping);
+        var sn=global.OneToneHomeScheme.shortName(lane.mapping);
+        if(sn) boundName=sn;
       }
     }
-    if(!boundName) boundName=lane.title||t('homeWbChannelUnset');
-    var others=Math.max(0,enabled.length-1);
-    var value=boundName;
+    var displayPrimary=t('homeWbSoftPadCurrentAgent','当前 Agent：{name}').replace('{name}',agentName);
+    var displayReason=(hub&&hub.formatDisplayLaneReason)
+      ?hub.formatDisplayLaneReason(reason,agentName)
+      :'';
     if(others>0){
-      value=t('homeWbHowToSoftPadLaneOthers')
-        .replace('{name}',boundName)
-        .replace('{n}',String(others));
+      displayReason=displayReason
+        ?(displayReason+' · '+t('homeWbSoftPadOthersReady','另有 {n} 个已准备').replace('{n}',String(others)))
+        :t('homeWbSoftPadOthersReady','另有 {n} 个已准备').replace('{n}',String(others));
     }
     return {
-      value:value,
+      value:displayPrimary,
       status:t('homeWbHabitActive'),
       statusLbl:t('homeWbHowToSoftPadOn'),
       countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(enabled.length)),
       boundName:boundName,
+      agentName:agentName,
+      displayPrimary:displayPrimary,
+      displayReason:displayReason,
+      reason:reason,
       mappingId:mappingId,
-      agentOnlyHint:agentHint,
+      agentOnlyHint:'',
       empty:false,
       schemeCount:enabled.length
+    };
+  }
+
+  function agentTitleFromKind(kind,fallback){
+    if(kind==='claude') return t('softPadHubKindClaude','Claude');
+    if(kind==='codex') return t('softPadHubKindCodex','Codex');
+    return fallback||String(kind||'');
+  }
+
+  function softPadSnapshotFromApplied(snap,enabled){
+    enabled=Array.isArray(enabled)?enabled:[];
+    var applied=snap.applied||{};
+    var health=String(snap.health||'ready').toLowerCase();
+    if(health==='unavailable'){
+      var unavail=t('homeWbSoftPadUnavailable','Soft Pad 暂时不可用');
+      return {
+        value:unavail,
+        status:'',
+        statusLbl:unavail,
+        countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(enabled.length)),
+        boundName:unavail,
+        agentName:'',
+        displayPrimary:unavail,
+        displayReason:'',
+        reason:'unavailable',
+        mappingId:'',
+        agentOnlyHint:'',
+        empty:true,
+        schemeCount:enabled.length
+      };
+    }
+
+    var reason=String(applied.reason||'none');
+    if(reason==='UserPin'||reason==='user_pin') reason='userPin';
+    if(reason==='Waiting') reason='waiting';
+    if(reason==='Foreground') reason='foreground';
+    if(reason==='Fallback') reason='fallback';
+    if(reason==='None') reason='none';
+
+    var kind=applied.laneKind;
+    if(kind&&typeof kind==='object'){
+      kind=kind.claude!=null?'claude':(kind.codex!=null?'codex':'');
+    }
+    kind=kind==null?'':String(kind).toLowerCase();
+    if(kind!=='codex'&&kind!=='claude') kind='';
+
+    if(!kind||reason==='none'){
+      var noneText=t('homeWbSoftPadReasonNone','还没有可用的 Agent，先准备 Codex 或 Claude');
+      return {
+        value:noneText,
+        status:'',
+        statusLbl:enabled.length?t('homeWbHowToSoftPadOff'):t('homeWbChannelUnset'),
+        countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(enabled.length)),
+        boundName:t('homeWbChannelUnset'),
+        agentName:'',
+        displayPrimary:noneText,
+        displayReason:'',
+        reason:'none',
+        mappingId:applied.mappingId||'',
+        agentOnlyHint:'',
+        empty:true,
+        schemeCount:enabled.length
+      };
+    }
+
+    var agentName=agentTitleFromKind(kind,'');
+    var others=Math.max(0,enabled.length-1);
+    var displayPrimary=t('homeWbSoftPadCurrentControl','当前控制：{name}').replace('{name}',agentName);
+    var hub=global.OneToneSoftPadHub;
+    var displayReason=(hub&&hub.formatDisplayLaneReason)
+      ?hub.formatDisplayLaneReason(reason,agentName)
+      :'';
+    // Control-copy upgrades for cutover (display === dispatch).
+    if(reason==='foreground'){
+      displayReason=t('homeWbSoftPadReasonForegroundControl','你正在使用 {app}，Soft Pad 已自动跟随')
+        .replace('{app}',kind==='claude'?'Claude Code':'Codex');
+    }else if(reason==='waiting'){
+      displayReason=t('homeWbSoftPadReasonWaitingControl','{name} 正在等待你，所以已切换到 {name}')
+        .replace(/\{name\}/g,agentName);
+    }else if(reason==='userPin'){
+      displayReason=t('homeWbSoftPadReasonUserPinControl','已暂时固定到 {name}').replace('{name}',agentName);
+    }
+    if(health==='degraded'&&snap.lastRecomputeError){
+      displayReason=(displayReason?displayReason+' · ':'')+t('homeWbSoftPadDegraded','重算未完全成功，仍使用当前主控');
+    }
+    if(others>0){
+      displayReason=displayReason
+        ?(displayReason+' · '+t('homeWbSoftPadOthersReady','另有 {n} 个已准备').replace('{n}',String(others)))
+        :t('homeWbSoftPadOthersReady','另有 {n} 个已准备').replace('{n}',String(others));
+    }
+    return {
+      value:displayPrimary,
+      status:t('homeWbHabitActive'),
+      statusLbl:t('homeWbHowToSoftPadOn'),
+      countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(enabled.length)),
+      boundName:agentName,
+      agentName:agentName,
+      displayPrimary:displayPrimary,
+      displayReason:displayReason,
+      reason:reason,
+      mappingId:applied.mappingId||'',
+      agentOnlyHint:'',
+      empty:false,
+      schemeCount:enabled.length,
+      applied:true,
+      health:health
     };
   }
 

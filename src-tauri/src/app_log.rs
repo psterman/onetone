@@ -57,12 +57,7 @@ fn diagnostic_export_dir() -> Result<PathBuf, String> {
             return Ok(path);
         }
     }
-    let cfg = config::config_path();
-    let base = cfg
-        .parent()
-        .and_then(|p| p.parent())
-        .ok_or_else(|| "invalid config path".to_string())?;
-    Ok(base.join("logs"))
+    Ok(crate::data_root::effective_logs_dir())
 }
 
 fn append_live_log(line: &str) {
@@ -85,6 +80,7 @@ fn live_log_dirs() -> Vec<PathBuf> {
             out.push(path);
         }
     }
+    out.push(crate::data_root::effective_logs_dir());
     if let Ok(exe) = std::env::current_exe() {
         if let Some(parent) = exe.parent() {
             out.push(parent.join("logs"));

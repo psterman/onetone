@@ -22,6 +22,9 @@
       if(res&&res.path){
         toast(t('exportLogsOk')+' '+res.path);
         global.OneToneAppGlobalError.pushLog('[export] '+res.path);
+        if(res.dir){
+          return vpInvoke('cmd_open_path',{path:res.dir}).catch(function(){});
+        }
       }
     }).catch(function(err){
       console.error('export logs',err);

@@ -59,8 +59,20 @@ Snapshot：`statusLightMicroKeyId`、`appAgent`、`agentLights`、`agentLightsOv
 - Soft RGB / meta 跟主 `PadStatus`，不跟 Claude 多灯。
 - Hook 通过 ≠ Micro native thstatus；不把 Hook 标成 Native Micro；**Claude 不使用 `v.oai.thstatus`**。
 - 不做 Codex Hook 多灯；不做 `agentLightId` 设置页 UI（本刀）。
-- **多应用数字键盘现状**：仍靠 `mapping.app_target_id`；产品级 `activeApp` / `padFace` 未实现。
+- **多 Agent 身份**：`AgentCatalog` + `PadFace` + Capabilities；`mapping.app_target_id` 仅为兼容 fallback。
+- **Soft Pad 等待抢主控**：只信 `AgentAttentionStore` 投影的 `waiting_kinds`；**禁止**把 PadStatus 24h sticky / Inferred 直喂 Arbiter。
+- **Cursor**：可 focus + chord + Hook 生命周期（Working/Idle/Complete）；默认 `can_observe_needs_input=false`；OneTone ask 可进 waiting；不宣称内部 Agent API / Micro 对等。
 - **日志测试隔离**：单测临时 jsonl，不污染 `logs/pad-status.jsonl`。
+
+### 五级诚实能力（契约）
+
+1. Official App Server  
+2. Official Lifecycle Hooks  
+3. Desktop Automation  
+4. Inferred Status（只点灯）  
+5. Official Native Hardware（Codex Micro）
+
+顶栏灯条 / Overlay 等待语义应投影 AttentionStore（+ PadStatus 只读点灯），不另起第二套状态机。
 
 ## `PadStatus` 字段
 

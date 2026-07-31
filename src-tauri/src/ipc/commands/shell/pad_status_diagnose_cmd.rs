@@ -98,6 +98,9 @@ pub struct PadStatusDiagnoseView {
     pub claude_cli_latch: crate::claude_cli_session::ClaudeCliSessionLatch,
     pub claude_cli_can_inject: crate::claude_cli_session::ClaudeCliCanInject,
     pub claude_pending_approval: crate::claude_cli_session::ClaudePendingApproval,
+    /// Soft Pad Arbiter waiting feed (AgentAttentionStore projection — not PadStatus sticky).
+    pub attention: crate::agent_attention::AttentionPublicSnapshot,
+    pub cursor_capabilities: crate::agent_catalog::AgentCapabilities,
 }
 
 fn repo_root() -> PathBuf {
@@ -525,6 +528,8 @@ pub fn cmd_pad_status_diagnose(
         claude_cli_latch: crate::claude_cli_session::claude_cli_session_latch(),
         claude_cli_can_inject: crate::claude_cli_session::claude_cli_can_inject(),
         claude_pending_approval: crate::claude_cli_session::pending_approval_view(),
+        attention: crate::agent_attention::public_snapshot(),
+        cursor_capabilities: crate::agent_catalog::cursor_capabilities(),
     }
 }
 
