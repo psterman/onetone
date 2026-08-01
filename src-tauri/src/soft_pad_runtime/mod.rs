@@ -22,6 +22,6 @@ pub use model::{
 };
 pub use resolver::{resolve_candidate, CandidateInput, DispatchReadyEntry};
 pub use store::{
-    get_public_snapshot, get_shadow_decision, note_config_revision_bump, request_soft_pad_recompute,
-    set_follow_pin, soft_pad_cutover_enabled, SoftPadRuntimeState,
+    applied_lane, get_public_snapshot, get_shadow_decision, note_config_revision_bump,
+    request_soft_pad_recompute, set_follow_pin, soft_pad_cutover_enabled, SoftPadRuntimeState,
 };

@@ -1,28 +1,15 @@
-import './index.css';
-import { Composition } from 'remotion';
-import { OneToneIntro } from './Composition';
+import {Composition} from "remotion";
+import {FirstVideo} from "./FirstVideo";
 
-export const RemotionRoot: React.FC = () => {
+export const RemotionRoot = () => {
   return (
-    <>
-      <Composition
-        id='OneToneIntroMale'
-        component={OneToneIntro}
-        defaultProps={{ persona: 'male' }}
-        durationInFrames={450}
-        fps={30}
-        width={1920}
-        height={1080}
-      />
-      <Composition
-        id='OneToneIntroFemale'
-        component={OneToneIntro}
-        defaultProps={{ persona: 'female' }}
-        durationInFrames={450}
-        fps={30}
-        width={1920}
-        height={1080}
-      />
-    </>
+    <Composition
+      id="FirstVideo"
+      component={FirstVideo}
+      durationInFrames={180}
+      fps={30}
+      width={1920}
+      height={432}
+    />
   );
 };

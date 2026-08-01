@@ -355,21 +355,21 @@ pub fn focus_composer_only(
 
 /// IPC-safe focus for overlay / virtual-pad hold-to-talk — no UIA, no launch polling.
 #[cfg(windows)]
-pub fn quick_focus_codex_for_hold() -> bool {
-    if crate::app_identity::foreground_app_target_id()
-        .is_some_and(|id| id.trim() == CODEX_APP_TARGET_ID)
-    {
+pub fn quick_focus_app_target_for_hold(app_target_id: &str) -> bool {
+    let tid = app_target_id.trim();
+    if tid.is_empty() {
+        return false;
+    }
+    if crate::app_identity::foreground_app_target_id().is_some_and(|id| id.trim() == tid) {
         return true;
     }
     if crate::keyboard::restore_external_foreground() {
         std::thread::sleep(Duration::from_millis(30));
-        if crate::app_identity::foreground_app_target_id()
-            .is_some_and(|id| id.trim() == CODEX_APP_TARGET_ID)
-        {
+        if crate::app_identity::foreground_app_target_id().is_some_and(|id| id.trim() == tid) {
             return true;
         }
     }
-    let Some(profile) = profile_for(CODEX_APP_TARGET_ID) else {
+    let Some(profile) = profile_for(tid) else {
         return false;
     };
     let Some(hwnd) = find_app_window(profile) else {
@@ -379,7 +379,17 @@ pub fn quick_focus_codex_for_hold() -> bool {
         return false;
     }
     std::thread::sleep(Duration::from_millis(40));
-    crate::app_identity::foreground_app_target_id().is_some_and(|id| id.trim() == CODEX_APP_TARGET_ID)
+    crate::app_identity::foreground_app_target_id().is_some_and(|id| id.trim() == tid)
+}
+
+#[cfg(not(windows))]
+pub fn quick_focus_app_target_for_hold(_app_target_id: &str) -> bool {
+    false
+}
+
+#[cfg(windows)]
+pub fn quick_focus_codex_for_hold() -> bool {
+    quick_focus_app_target_for_hold(CODEX_APP_TARGET_ID)
 }
 
 #[cfg(not(windows))]

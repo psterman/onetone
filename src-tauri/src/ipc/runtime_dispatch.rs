@@ -36,10 +36,27 @@ fn take_overlay_pad_ptt_chord() -> Option<String> {
     overlay_pad_ptt_chord_slot().lock().unwrap().take()
 }
 
+fn soft_pad_inject_target_id(state: &AppState, mapping_id: &str) -> String {
+    let mapping_tid = if mapping_id.trim().is_empty() {
+        None
+    } else {
+        state
+            .cfg
+            .lock()
+            .mappings
+            .iter()
+            .find(|m| m.id == mapping_id)
+            .map(|m| m.app_target_id.trim().to_string())
+            .filter(|s| !s.is_empty())
+    };
+    crate::codex_micro_overlay::soft_pad_inject_target_fallback(mapping_tid.as_deref())
+}
+
 fn focus_codex_before_ptt_release() {
     #[cfg(windows)]
     {
-        let _ = app_chat_workflow::quick_focus_codex_for_hold();
+        let tid = crate::codex_micro_overlay::soft_pad_inject_target_fallback(None);
+        let _ = crate::codex_micro_overlay::ensure_soft_pad_inject_ready(&tid);
         std::thread::sleep(Duration::from_millis(35));
     }
 }
@@ -136,11 +153,19 @@ fn spawn_overlay_hold_start(
             if gen != overlay_pad_hold_gen() {
                 return;
             }
-            ensure_codex_focus_for_pad_hold(state.as_ref(), 0);
+            if !ensure_codex_focus_for_pad_hold(state.as_ref(), 0) {
+                if gen == overlay_pad_hold_gen() {
+                    *state.codex_numpad_hold_source.lock() = None;
+                    crate::codex_micro_overlay::note_pad_run_status("failed", &micro_key_id);
+                    crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+                }
+                return;
+            }
             if gen != overlay_pad_hold_gen() {
                 return;
             }
-            let Some(profile) = app_chat_workflow::profile_for(CODEX_APP_TARGET_ID) else {
+            let tid = soft_pad_inject_target_id(state.as_ref(), &mapping_id);
+            let Some(profile) = app_chat_workflow::profile_for(&tid) else {
                 if gen == overlay_pad_hold_gen() {
                     *state.codex_numpad_hold_source.lock() = None;
                     crate::codex_micro_overlay::note_pad_run_status("failed", &micro_key_id);
@@ -306,19 +331,15 @@ fn run_overlay_tap_action(
             | "focusBrowserAddressBar"
     );
     if hotkey_action && !chord.is_empty() {
-        // Never SendInput while OneTone (overlay/main) still owns FG — chords land in
-        // WebView2 and freeze Soft Pad (Ctrl+F find / Ctrl+N noop storms).
-        crate::keyboard::track_foreground_for_send();
-        let focused = app_chat_workflow::quick_focus_codex_for_hold();
-        let codex_fg = crate::app_identity::foreground_app_target_id()
-            .is_some_and(|id| id.trim() == CODEX_APP_TARGET_ID);
-        if !focused || !codex_fg || crate::app_identity::foreground_is_self() {
+        // Single inject gate: target agent owns FG and OneTone does not.
+        let target_id = soft_pad_inject_target_id(state, &route.mapping_id);
+        if !crate::codex_micro_overlay::ensure_soft_pad_inject_ready(&target_id) {
             crate::app_log::log_line(
                 state.as_ref(),
                 "codex_pad",
                 &format!(
-                    "inject skipped chord={chord} focused={focused} codex_fg={codex_fg} self={}",
-                    crate::app_identity::foreground_is_self()
+                    "inject skipped chord={chord} target={target_id} legal={}",
+                    crate::codex_micro_overlay::soft_pad_inject_legal(&target_id)
                 ),
             );
             return;
@@ -573,11 +594,14 @@ fn try_dispatch_codex_numpad(
         if state.codex_numpad_hold_source.lock().is_some() {
             return true;
         }
-        let Some(profile) = app_chat_workflow::profile_for(CODEX_APP_TARGET_ID) else {
+        let tid = soft_pad_inject_target_id(state.as_ref(), &route.mapping_id);
+        let Some(profile) = app_chat_workflow::profile_for(&tid) else {
             return true;
         };
         let duration_ms = state.cfg.lock().key_press_duration_ms;
-        ensure_codex_focus_for_pad_hold(state.as_ref(), duration_ms);
+        if !ensure_codex_focus_for_pad_hold(state.as_ref(), duration_ms) {
+            return true;
+        }
         *state.codex_numpad_hold_source.lock() = Some(route.micro_key_id.clone());
         crate::soft_pad_runtime::begin_agent_press_lease(&ticket);
         let hold_ok = app_chat_workflow::run_hold_voice_foreground(
@@ -623,11 +647,18 @@ fn try_dispatch_codex_micro_key(
     true
 }
 
-/// Overlay hold-to-talk must target Codex, not the overlay webview (fast path — no UIA).
-fn ensure_codex_focus_for_pad_hold(state: &AppState, _duration_ms: u32) {
-    if !app_chat_workflow::quick_focus_codex_for_hold() {
-        crate::app_log::log_line(state, "hold", "quick_focus_codex_for_hold failed");
+/// Overlay hold-to-talk must pass the Soft Pad inject gate before keydown.
+fn ensure_codex_focus_for_pad_hold(state: &AppState, _duration_ms: u32) -> bool {
+    let tid = soft_pad_inject_target_id(state, "");
+    let ok = crate::codex_micro_overlay::ensure_soft_pad_inject_ready(&tid);
+    if !ok {
+        crate::app_log::log_line(
+            state,
+            "hold",
+            &format!("soft_pad_inject not ready target={tid}"),
+        );
     }
+    ok
 }
 
 /// Screen / overlay fire path for Micro keycaps (M2 run mode).
@@ -928,13 +959,18 @@ pub fn fire_codex_micro_pad_key(
             crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
             return serde_json::json!({ "ok": true, "reason": "hold_down", "slotId": route.slot_id });
         }
-        let Some(profile) = app_chat_workflow::profile_for(CODEX_APP_TARGET_ID) else {
+        let tid = soft_pad_inject_target_id(state.as_ref(), &route.mapping_id);
+        let Some(profile) = app_chat_workflow::profile_for(&tid) else {
             crate::codex_micro_overlay::note_pad_run_status("failed", micro_key_id);
             crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
             return serde_json::json!({ "ok": false, "reason": "no_profile" });
         };
         let duration_ms = state.cfg.lock().key_press_duration_ms;
-        ensure_codex_focus_for_pad_hold(state.as_ref(), duration_ms);
+        if !ensure_codex_focus_for_pad_hold(state.as_ref(), duration_ms) {
+            crate::codex_micro_overlay::note_pad_run_status("failed", micro_key_id);
+            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+            return serde_json::json!({ "ok": false, "reason": "inject_not_ready" });
+        }
         *state.codex_numpad_hold_source.lock() = Some(micro_key_id.to_string());
         let hold_ok = app_chat_workflow::run_hold_voice_foreground(
             state,
@@ -992,8 +1028,7 @@ fn inject_software_enhance_key(micro_key_id: &str) {
     }
 }
 
-/// Overlay D-pad: focus Codex then inject arrow. Never run on the IPC thread (sleep + focus
-/// would freeze the overlay), and never emit overlay status (repeat would thrash the webview).
+/// Overlay D-pad: inject only when Soft Pad inject gate passes.
 fn spawn_nav_arrow_inject(micro_key_id: String) {
     use std::sync::atomic::{AtomicBool, Ordering};
     static BUSY: AtomicBool = AtomicBool::new(false);
@@ -1004,7 +1039,10 @@ fn spawn_nav_arrow_inject(micro_key_id: String) {
         .name("overlay-nav-inject".into())
         .spawn(move || {
             let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                let _ = app_chat_workflow::quick_focus_codex_for_hold();
+                let tid = crate::codex_micro_overlay::soft_pad_inject_target_fallback(None);
+                if !crate::codex_micro_overlay::ensure_soft_pad_inject_ready(&tid) {
+                    return;
+                }
                 inject_software_enhance_key(&micro_key_id);
             }));
             BUSY.store(false, Ordering::SeqCst);
@@ -1021,7 +1059,10 @@ fn spawn_numpad_digit_inject(micro_key_id: String) {
         .name("overlay-numpad-inject".into())
         .spawn(move || {
             let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                let _ = app_chat_workflow::quick_focus_codex_for_hold();
+                let tid = crate::codex_micro_overlay::soft_pad_inject_target_fallback(None);
+                if !crate::codex_micro_overlay::ensure_soft_pad_inject_ready(&tid) {
+                    return;
+                }
                 inject_overlay_numpad_key(&micro_key_id);
             }));
             BUSY.store(false, Ordering::SeqCst);

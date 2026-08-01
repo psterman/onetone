@@ -517,6 +517,12 @@
             </div>
           </aside>
           <div class="settings-panel-wrap" id="settingsPanelWrap">
+            <div class="settings-panel-toolbar" id="settingsPanelToolbar">
+              <button type="button" class="settings-page-back" id="btnSettingsPageBack" aria-label="返回">
+                <svg class="header-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+                <span id="btnSettingsPageBackLabel">返回</span>
+              </button>
+            </div>
         <section class="settings-panel drawer-section pref-page basic-page ot-island" id="settingsPanelBasic" style="border-top:0;padding-top:0">
           <header class="pref-page-head basic-page-head">
             <div class="basic-page-head-row">
@@ -2361,20 +2367,7 @@
               <div class="ot-quick-ctrl-grid" id="debugQuickCtrlGrid"></div>
               <div class="ot-quick-ctrl-actions" id="debugQuickCtrlActions"></div>
             </section>
-            <section class="drawer-section status-maintenance-card ot-verify-checklist" id="debugVerifyChecklistPanel" aria-label="验收清单">
-              <div class="ot-verify-head">
-                <div class="mini-title" id="debugVerifyTitle" data-i18n="debugVerifyTitle">验收清单</div>
-                <span class="ot-verify-progress" id="debugVerifyProgress" aria-live="polite">0/0</span>
-              </div>
-              <p class="mini" id="debugVerifyDesc" data-i18n="debugVerifyDesc">按顺序操作；勾选表示你已目视通过。三端步骤可点「去做」联动上方快控；Gate0 点「打开」跳到对应设置页。</p>
-              <div class="ot-verify-next" id="debugVerifyNext" hidden></div>
-              <div class="ot-verify-list" id="debugVerifyChecklist" role="list"></div>
-              <div class="ot-verify-toolbar" id="debugVerifyToolbar">
-                <button type="button" class="control-btn" data-verify-act="next" id="debugVerifyNextBtn" data-i18n="debugVerifyNextBtn">下一项</button>
-                <button type="button" class="control-btn" data-verify-act="reset" id="debugVerifyReset" data-i18n="debugVerifyReset">重置勾选</button>
-                <button type="button" class="control-btn" data-verify-act="copy" id="debugVerifyCopy" data-i18n="debugVerifyCopy">复制进度</button>
-              </div>
-            </section>
+
             <section class="drawer-section status-maintenance-card" id="settingsBackupSection">
               <div class="mini-title" id="settingsBackupTitle">配置备份</div>
               <p class="mini" id="settingsBackupDesc" title="%APPDATA%\com.onetone\app\settings.json">升级前可备份 settings.json</p>

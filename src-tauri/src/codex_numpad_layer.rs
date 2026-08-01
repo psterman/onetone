@@ -320,7 +320,7 @@ fn codex_is_foreground() -> bool {
 }
 
 /// Public FG check for screen/overlay Micro fire (M2).
-/// Uses stable Codex latch + overlay HWND tree so overlay taps don't fail spuriously.
+/// Agent FG or overlay HWND FG — not the sticky visibility latch.
 pub fn codex_foreground_for_micro() -> bool {
     crate::codex_micro_overlay::micro_pad_session_active()
 }
@@ -331,9 +331,8 @@ pub fn hook_should_swallow(source: &NumpadSourceKey) -> bool {
     if gate.routes.is_empty() {
         return false;
     }
-    // Match overlay/screen Micro fire: Codex FG, Soft Pad overlay FG, or recent Codex latch.
-    // Strict `codex_is_foreground()` alone meant clicking the Soft Pad stole FG and
-    // physical numpad stopped driving the pad (看起来「虚拟键盘没反应」).
+    // Match overlay/screen Micro fire: Soft Pad agent FG or Soft Pad overlay FG.
+    // Sticky visibility latch alone must not authorize session (that caused inject-into-self 假死).
     if !codex_foreground_for_micro() {
         return false;
     }

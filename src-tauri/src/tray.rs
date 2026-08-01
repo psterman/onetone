@@ -46,6 +46,9 @@ fn tray_icon() -> tauri::Result<Image<'static>> {
 }
 
 pub fn setup(app: &AppHandle, state: Arc<AppState>) -> tauri::Result<()> {
+    // Drop any stale tray with the same id (force-killed previous process left a ghost icon).
+    let _ = app.remove_tray_by_id(TRAY_ID);
+
     if let Some(menu_win) = app.get_webview_window(TRAY_MENU_LABEL) {
         configure_tray_menu_window(&menu_win)?;
         let app_for_blur = app.clone();
@@ -187,6 +190,7 @@ pub fn refresh_tray_tooltip(app: &AppHandle, state: &AppState) {
 fn configure_tray_menu_window(menu_win: &WebviewWindow) -> tauri::Result<()> {
     menu_win.set_background_color(Some(tauri::webview::Color(0, 0, 0, 0)))?;
     let _ = menu_win.set_shadow(false);
+    let _ = menu_win.set_skip_taskbar(true);
     Ok(())
 }
 

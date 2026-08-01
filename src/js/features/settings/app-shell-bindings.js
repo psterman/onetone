@@ -20,6 +20,9 @@
       if(ui.drawerOpen) hooks.closeDrawer();
       else hooks.openSettings({panel:'basic'});
     });
+    bindClick('btnSettingsPageBack',function(){
+      if(ui.drawerOpen) hooks.closeDrawer();
+    });
     var btnUpdatePrimary=$('btnUpdatePrimary');
     if(btnUpdatePrimary){
       btnUpdatePrimary.onclick=function(){

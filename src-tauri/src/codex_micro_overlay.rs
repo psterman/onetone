@@ -216,16 +216,42 @@ fn set_overlay_click_through_impl(pass: bool, force: bool) {
     }
 }
 
-/// While Hook asks for permission, let clicks reach Codex (avoid overlay covering the dialog = 假死感).
+/// Punch-through only while the sticky agent's own window owns FG.
+/// Applied lane alone is wrong: sticky Codex needs_input keeps Applied on Codex while the
+/// user is in Cursor/explorer — pad would stay click-through and undraggable.
+fn soft_pad_pass_through_decision(
+    visible: bool,
+    app_state_enabled: bool,
+    app_status: &str,
+    app_last_source: &str,
+    codex_fg: bool,
+    claude_fg: bool,
+) -> bool {
+    if !visible || !app_state_enabled || app_status != "needs_input" {
+        return false;
+    }
+    match app_last_source {
+        "codex_hook" | "codex_app" => codex_fg,
+        "claude_hook" | "claude_app" => claude_fg,
+        _ => false,
+    }
+}
+
+fn soft_pad_pass_through_for_needs_input(snap: &CodexMicroOverlaySnapshot) -> bool {
+    soft_pad_pass_through_decision(
+        snap.visible,
+        snap.app_state_enabled,
+        &snap.app_status,
+        &snap.app_last_source,
+        codex_is_foreground(),
+        claude_is_foreground(),
+    )
+}
+
+/// While Hook asks for permission, let clicks reach that agent's dialog.
 fn sync_needs_input_pass_through(win: &WebviewWindow, snap: &CodexMicroOverlaySnapshot) {
     cache_overlay_hwnd_from_window(win);
-    let pass = snap.visible
-        && snap.app_state_enabled
-        && snap.app_status == "needs_input"
-        && (snap.app_last_source == "codex_hook"
-            || snap.app_last_source == "codex_app"
-            || snap.app_last_source == "claude_hook"
-            || snap.app_last_source == "claude_app");
+    let pass = soft_pad_pass_through_for_needs_input(snap);
     // Force re-apply while holding needs_input — HWND / EXSTYLE can be reset by show/geometry.
     set_overlay_click_through_impl(pass, pass);
     let _ = win.set_ignore_cursor_events(pass);
@@ -635,6 +661,71 @@ fn claude_is_foreground() -> bool {
     false
 }
 
+#[cfg(windows)]
+fn cursor_is_foreground() -> bool {
+    crate::app_identity::foreground_app_target_id()
+        .is_some_and(|id| id.trim() == crate::app_identity::CURSOR_APP_TARGET_ID)
+}
+
+#[cfg(not(windows))]
+fn cursor_is_foreground() -> bool {
+    false
+}
+
+/// Soft Pad agent app currently in foreground (Codex / Claude / Cursor).
+pub fn soft_pad_agent_is_foreground() -> bool {
+    codex_is_foreground() || claude_is_foreground() || cursor_is_foreground()
+}
+
+/// Inject legality: Applied Soft Pad target owns FG and OneTone does not.
+/// Visibility / sticky hosts / overlay identity must NEVER authorize SendInput alone.
+pub fn soft_pad_inject_legal(target_app_id: &str) -> bool {
+    let tid = target_app_id.trim();
+    if tid.is_empty() {
+        return false;
+    }
+    if crate::app_identity::foreground_is_self() {
+        return false;
+    }
+    crate::app_identity::foreground_app_target_id().is_some_and(|id| id.trim() == tid)
+}
+
+/// Focus the Soft Pad target, then re-check inject legality.
+pub fn ensure_soft_pad_inject_ready(target_app_id: &str) -> bool {
+    crate::keyboard::track_foreground_for_send();
+    let _ = crate::app_chat_workflow::quick_focus_app_target_for_hold(target_app_id);
+    soft_pad_inject_legal(target_app_id)
+}
+
+/// Resolve Soft Pad inject target without AppState (Applied → FG agent → Codex).
+pub fn soft_pad_inject_target_fallback(mapping_app_target: Option<&str>) -> String {
+    if let Some((kind, _)) = crate::soft_pad_runtime::applied_lane() {
+        return kind.app_target_id().to_string();
+    }
+    if let Some(tid) = mapping_app_target.map(str::trim).filter(|s| !s.is_empty()) {
+        return tid.to_string();
+    }
+    if let Some(tid) = crate::app_identity::foreground_app_target_id() {
+        if crate::soft_pad_runtime::AgentKind::from_app_target(&tid).is_some() {
+            return tid;
+        }
+    }
+    CODEX_APP_TARGET_ID.to_string()
+}
+
+/// Session for physical swallow / micro fire: agent FG or overlay HWND FG only.
+/// Sticky visibility latch must NOT keep session active (that authorized inject into self).
+pub fn micro_pad_session_active() -> bool {
+    #[cfg(windows)]
+    {
+        soft_pad_agent_is_foreground() || overlay_is_foreground()
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
 /// Claude Hook/App near-window (or active lights) keeps Soft Pad host-visible.
 /// Primary source: durable `claude_lights` stamp — not sole reliance on primary PadStatus.
 pub fn claude_activity_hold() -> bool {
@@ -676,6 +767,9 @@ pub fn overlay_visible_reason() -> String {
     if codex_is_foreground() {
         return "codex_foreground".into();
     }
+    if cursor_is_foreground() {
+        return "cursor_foreground".into();
+    }
     if overlay_hwnd_is_foreground() {
         return "overlay_foreground".into();
     }
@@ -703,10 +797,9 @@ fn overlay_host_allows_show_raw() -> bool {
     if onetone_main_is_foreground() {
         return false;
     }
-    codex_is_foreground()
+    soft_pad_agent_is_foreground()
         || overlay_hwnd_is_foreground()
         || hook_needs_input_hold()
-        || claude_is_foreground()
         || claude_activity_hold()
 }
 
@@ -724,19 +817,6 @@ pub fn overlay_is_foreground() -> bool {
 #[cfg(not(windows))]
 pub fn overlay_is_foreground() -> bool {
     false
-}
-
-/// Overlay fire / screen tap is allowed while Codex was recently foreground (stable latch),
-/// Codex is foreground now, or the overlay HWND (or a child) holds focus.
-pub fn micro_pad_session_active() -> bool {
-  #[cfg(windows)]
-  {
-    codex_is_foreground() || overlay_is_foreground() || *last_foreground_codex().lock()
-  }
-  #[cfg(not(windows))]
-  {
-    false
-  }
 }
 
 #[cfg(windows)]
@@ -843,17 +923,43 @@ pub fn status_lights_enabled(cfg: &VoiceConfig) -> bool {
 }
 
 /// Overlay visibility depends only on `overlay_enabled` (not `pad.enabled`).
-/// Numpad mode (`pad.enabled=false`) still shows the floating pad.
+/// Prefers Soft Pad Applied lane, then FG Soft Pad agent mapping, then Codex.
 fn active_codex_mapping_with_overlay(cfg: &VoiceConfig) -> Option<(&MappingEntry, &CodexMicroPadConfig)> {
-    for m in cfg.active_mappings() {
-        if m.app_target_id.trim() != CODEX_APP_TARGET_ID {
+    if let Some((_, mid)) = crate::soft_pad_runtime::applied_lane() {
+        for m in &cfg.mappings {
+            if m.enabled && m.id == mid {
+                if let Some(pad) = m.codex_micro_pad.as_ref() {
+                    if pad.overlay_enabled {
+                        return Some((m, pad));
+                    }
+                }
+            }
+        }
+    }
+
+    if let Some(tid) = crate::app_identity::foreground_app_target_id() {
+        if crate::soft_pad_runtime::AgentKind::from_app_target(&tid).is_some() {
+            for m in &cfg.mappings {
+                if m.enabled && m.app_target_id.trim() == tid.trim() {
+                    if let Some(pad) = m.codex_micro_pad.as_ref() {
+                        if pad.overlay_enabled {
+                            return Some((m, pad));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for m in &cfg.mappings {
+        if !m.enabled || m.app_target_id.trim() != CODEX_APP_TARGET_ID {
             continue;
         }
-        let pad = m.codex_micro_pad.as_ref()?;
-        if !pad.overlay_enabled {
-            continue;
+        if let Some(pad) = m.codex_micro_pad.as_ref() {
+            if pad.overlay_enabled {
+                return Some((m, pad));
+            }
         }
-        return Some((m, pad));
     }
     None
 }
@@ -1891,14 +1997,45 @@ pub fn set_overlay_minimized_persist(_app: &AppHandle, state: &AppState, minimiz
 fn active_codex_mapping_with_overlay_mut(
     cfg: &mut VoiceConfig,
 ) -> Option<&mut CodexMicroPadConfig> {
-    let idx = cfg.mappings.iter().position(|m| {
-        m.enabled
-            && m.app_target_id.trim() == CODEX_APP_TARGET_ID
-            && m.codex_micro_pad
-                .as_ref()
-                .map(|p| p.overlay_enabled)
-                .unwrap_or(false)
-    })?;
+    let prefer_id = crate::soft_pad_runtime::applied_lane().map(|(_, mid)| mid);
+    let fg_tid = crate::app_identity::foreground_app_target_id();
+
+    let idx = prefer_id
+        .as_ref()
+        .and_then(|mid| {
+            cfg.mappings.iter().position(|m| {
+                m.enabled
+                    && m.id == *mid
+                    && m.codex_micro_pad
+                        .as_ref()
+                        .map(|p| p.overlay_enabled)
+                        .unwrap_or(false)
+            })
+        })
+        .or_else(|| {
+            let tid = fg_tid.as_deref()?;
+            if crate::soft_pad_runtime::AgentKind::from_app_target(tid).is_none() {
+                return None;
+            }
+            cfg.mappings.iter().position(|m| {
+                m.enabled
+                    && m.app_target_id.trim() == tid.trim()
+                    && m.codex_micro_pad
+                        .as_ref()
+                        .map(|p| p.overlay_enabled)
+                        .unwrap_or(false)
+            })
+        })
+        .or_else(|| {
+            cfg.mappings.iter().position(|m| {
+                m.enabled
+                    && m.app_target_id.trim() == CODEX_APP_TARGET_ID
+                    && m.codex_micro_pad
+                        .as_ref()
+                        .map(|p| p.overlay_enabled)
+                        .unwrap_or(false)
+            })
+        })?;
     cfg.mappings.get_mut(idx)?.codex_micro_pad.as_mut()
 }
 
@@ -1979,6 +2116,7 @@ fn push_state_impl(app: &AppHandle, state: &AppState, reposition: bool) {
                 // returns — skipping show when geom was unchanged left the pad hidden.
                 let _ = apply_overlay_geometry(&win, &payload);
                 let _ = win.set_always_on_top(true);
+                let _ = win.set_skip_taskbar(true);
                 #[cfg(windows)]
                 {
                     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
@@ -2195,12 +2333,12 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
     let is_fg = *last_foreground_codex().lock();
 
     if is_fg {
-        // Codex returned to FG — clear soft dismiss so the pad can show again
-        // (only when overlay_enabled remains true in settings).
-        if !was_fg && is_overlay_session_dismissed() {
+        // Soft Pad agent returned to FG — clear soft dismiss so the pad can show again.
+        if !was_fg && is_overlay_session_dismissed() && soft_pad_agent_is_foreground() {
             *overlay_session_dismissed().lock() = false;
         }
-        let result = {
+        // Only auto-ensure Codex pad when Codex itself is FG (not Cursor/Claude host latch).
+        let result = if codex_is_foreground() {
             let mut cfg = state.cfg.lock();
             let blocker = crate::codex_numpad_layer::readiness_snapshot(&cfg).blocker;
             let should_ensure = !was_fg
@@ -2217,6 +2355,8 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
                 }
                 Some(result)
             }
+        } else {
+            None
         };
         if let Some(result) = result {
             if result.changed {
@@ -2280,7 +2420,8 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
         // Clear press highlight without geometry/AOT thrash (was Soft Pad 抖动).
         push_overlay_status(app, state);
     } else if hook_needs_input_hold() {
-        // Re-assert click-through ~1Hz while permission wait is sticky (HWND/EXSTYLE can reset).
+        // Re-sync pass-through ~1Hz while sticky needs_input may still be set — but only
+        // when the serving lane matches (Cursor FG clears punch-through).
         let mut last = last_pass_resync().lock();
         let now = Instant::now();
         if last.map(|t| now.duration_since(t) >= Duration::from_millis(1000)).unwrap_or(true) {
@@ -3708,5 +3849,63 @@ mod tests {
         }"#;
         let pad: CodexMicroPadConfig = serde_json::from_str(json).expect("deserialize pad");
         assert_eq!(pad.skin, "default");
+    }
+
+    #[test]
+    fn soft_pad_inject_legal_rejects_empty_target() {
+        assert!(!soft_pad_inject_legal(""));
+        assert!(!soft_pad_inject_legal("   "));
+    }
+
+    #[test]
+    fn soft_pad_inject_target_fallback_defaults_to_codex() {
+        // No Applied lane in unit test → Codex fallback.
+        assert_eq!(
+            soft_pad_inject_target_fallback(None),
+            CODEX_APP_TARGET_ID
+        );
+        assert_eq!(
+            soft_pad_inject_target_fallback(Some("cursor-chat")),
+            "cursor-chat"
+        );
+    }
+
+    #[test]
+    fn pass_through_requires_agent_foreground() {
+        // Sticky Codex needs_input but Codex not FG → no punch-through (Cursor/explorer case).
+        assert!(!soft_pad_pass_through_decision(
+            true,
+            true,
+            "needs_input",
+            "codex_hook",
+            false,
+            false,
+        ));
+        // Codex needs_input while Codex is FG → punch-through ok.
+        assert!(soft_pad_pass_through_decision(
+            true,
+            true,
+            "needs_input",
+            "codex_hook",
+            true,
+            false,
+        ));
+        // Claude sticky + Claude FG → ok; Codex FG alone does not unlock Claude sticky.
+        assert!(soft_pad_pass_through_decision(
+            true,
+            true,
+            "needs_input",
+            "claude_hook",
+            false,
+            true,
+        ));
+        assert!(!soft_pad_pass_through_decision(
+            true,
+            true,
+            "needs_input",
+            "claude_hook",
+            true,
+            false,
+        ));
     }
 }

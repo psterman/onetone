@@ -935,9 +935,17 @@
 
     const iconGear=$('btnSettingsIconGear');
 
+    const pageBackLabel=$('btnSettingsPageBackLabel');
+
+    const pageBack=$('btnSettingsPageBack');
+
     const open=!!ui.drawerOpen;
 
     if(btnLabel) btnLabel.textContent=open?t('homeNavTitle'):t('settingsTitle');
+
+    if(pageBackLabel) pageBackLabel.textContent=t('settingsBack');
+
+    if(pageBack) pageBack.setAttribute('aria-label',t('settingsBack'));
 
     if(iconHome){
 

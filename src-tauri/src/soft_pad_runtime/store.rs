@@ -108,6 +108,16 @@ pub fn get_follow_pin() -> Option<AgentKind> {
     USER_PIN.lock().ok().and_then(|g| *g)
 }
 
+/// Applied lane for overlay / inject (cutover). None when no Applied decision.
+pub fn applied_lane() -> Option<(AgentKind, String)> {
+    with_runtime(|rt| {
+        let a = rt.applied.as_ref()?;
+        let kind = a.public.lane_kind?;
+        let mid = a.public.mapping_id.clone()?;
+        Some((kind, mid))
+    })
+}
+
 pub fn with_runtime<R>(f: impl FnOnce(&SoftPadRuntimeState) -> R) -> R {
     runtime_mut(|rt| f(rt))
 }

@@ -1,4 +1,4 @@
-    :root{
+﻿    :root{
       --primary:#2a9cc4;
       --primary-strong:#1f8fb8;
       --primary-muted:#45b0d4;
@@ -44,7 +44,7 @@
     }
     html{zoom:var(--ui-font-scale); color-scheme:light}
     html[data-theme="dark"]{color-scheme:dark}
-    /* Shared keyboard focus — never leave outline:none without a replacement. */
+    /* Shared keyboard focus 鈥?never leave outline:none without a replacement. */
     :where(
       button,
       a[href],
@@ -1764,6 +1764,22 @@
       overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-padding-bottom:96px;
       display:flex;flex-direction:column;
     }
+    .settings-panel-toolbar{
+      display:none;justify-content:flex-end;align-items:center;
+      flex-shrink:0;margin:0 0 8px;position:sticky;top:0;z-index:6;
+      padding:0 0 4px;background:linear-gradient(180deg,var(--surface-high) 70%,transparent);
+    }
+    .app.is-settings .settings-panel-toolbar{display:flex}
+    .settings-page-back{
+      height:34px;padding:0 12px;border-radius:var(--radius-pill);
+      border:1px solid var(--outline-variant);background:var(--surface-high);
+      color:var(--btn-label);font:inherit;font-size:13px;font-weight:600;cursor:pointer;
+      display:inline-flex;align-items:center;justify-content:center;gap:6px;
+      box-shadow:0 1px 2px rgba(15,23,42,.06);
+      transition:transform var(--dur-fast) var(--ease-standard),background var(--dur-fast) var(--ease-standard),border-color var(--dur-fast) var(--ease-standard);
+    }
+    .settings-page-back:hover{background:var(--primary-soft);border-color:rgba(42,156,196,.26);transform:translateY(-1px)}
+    .settings-page-back:active{transform:scale(.97)}
     .settings-panel-wrap:has(#settingsPanelKeys:not([hidden])),
     .settings-panel-wrap:has(#settingsPanelVoiceWake:not([hidden])){
       padding-bottom:20px;
@@ -3896,7 +3912,7 @@
     .habit-hub-channel.is-hover .habit-hub-softpad-key{
       animation:none;
     }
-    /* Only a few keys tap, one at a time — long cycle, sparse delays */
+    /* Only a few keys tap, one at a time 鈥?long cycle, sparse delays */
     .habit-hub-channel:hover .habit-hub-softpad-key:nth-child(2),
     .habit-hub-channel.is-hover .habit-hub-softpad-key:nth-child(2),
     .habit-hub-channel:hover .habit-hub-softpad-key:nth-child(5),
@@ -4955,7 +4971,7 @@
       #habitSetupActivationView .habit-setup-activation-dock .btn.secondary{width:auto}
       #habitSetupActivationView .habit-setup-activation-dock .btn.primary{width:100%!important}
     }
-    /* —— Quick Start: intent / tool / softpad / done (product tokens) —— */
+    /* 鈥斺€?Quick Start: intent / tool / softpad / done (product tokens) 鈥斺€?*/
     .habit-setup-screen-inner--left{
       width:min(640px,100%);align-items:stretch;text-align:left
     }
@@ -5278,9 +5294,8 @@
       box-shadow:0 0 0 3px rgba(42,156,196,.12);
     }
     /* ================================================================
-       选择按键方式 · 3 张卡动画
-       每张卡动画节奏完全不同：扫一眼就懂，不读字也知道是哪种
-       ================================================================ */
+       閫夋嫨鎸夐敭鏂瑰紡 路 3 寮犲崱鍔ㄧ敾
+       姣忓紶鍗″姩鐢昏妭濂忓畬鍏ㄤ笉鍚岋細鎵竴鐪煎氨鎳傦紝涓嶈瀛椾篃鐭ラ亾鏄摢绉?       ================================================================ */
     .template-pick-card-anim{
       height:118px;
       display:flex;align-items:center;justify-content:center;
@@ -5295,7 +5310,7 @@
       position:relative;width:100%;height:100%;
       display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
     }
-    /* 通用键帽 */
+    /* 閫氱敤閿附 */
     .tp-key{
       width:54px;height:54px;
       background:#fff;border:2px solid #1c1c1e;border-radius:9px;
@@ -5304,11 +5319,10 @@
       font-size:14px;font-weight:700;color:#1c1c1e;
       box-shadow:0 3px 0 #1c1c1e;position:relative;flex-shrink:0;
     }
-    /* ========== 卡1 · 按住说话 ==========
-       键：按住 → 长时间不动（占周期65%） → 松开
-       副指标：进度条从0长到100%
-       波形：按住期间持续跳动
-       特征：键明显"沉下去 + 不动 + 进度条在走" → 一眼就知道是"长按" */
+    /* ========== 鍗? 路 鎸変綇璇磋瘽 ==========
+       閿細鎸変綇 鈫?闀挎椂闂翠笉鍔紙鍗犲懆鏈?5%锛?鈫?鏉惧紑
+       鍓寚鏍囷細杩涘害鏉′粠0闀垮埌100%
+       娉㈠舰锛氭寜浣忔湡闂存寔缁烦鍔?       鐗瑰緛锛氶敭鏄庢樉"娌変笅鍘?+ 涓嶅姩 + 杩涘害鏉″湪璧? 鈫?涓€鐪煎氨鐭ラ亾鏄?闀挎寜" */
     .template-pick-card-anim--hold .tp-key{
       animation:holdKeyIdle 3.2s ease-in-out infinite;
     }
@@ -5321,7 +5335,7 @@
       animation:holdHalo 2.4s ease-in-out infinite;pointer-events:none;
     }
     @keyframes holdKeyIdle{
-      /* 0→5%：键正常；5→72%：键沉下；72→80%：键弹回；80→100%：正常 */
+      /* 0鈫?%锛氶敭姝ｅ父锛?鈫?2%锛氶敭娌変笅锛?2鈫?0%锛氶敭寮瑰洖锛?0鈫?00%锛氭甯?*/
       0%,100%{transform:translateY(0);box-shadow:0 3px 0 #1c1c1e;background:#fff;color:#1c1c1e;border-color:#1c1c1e}
       5%{transform:translateY(3px);box-shadow:0 0 0 #1c1c1e;background:#FFD9D6;color:#FF3B30;border-color:#FF3B30}
       72%{transform:translateY(3px);box-shadow:0 0 0 #1c1c1e;background:#FF3B30;color:#fff;border-color:#FF3B30}
@@ -5330,7 +5344,7 @@
     @keyframes holdKey{
       0%,100%{transform:translateY(0);box-shadow:0 3px 0 #1c1c1e;background:#fff;color:#1c1c1e;border-color:#1c1c1e}
       5%{transform:translateY(3px);box-shadow:0 0 0 #1c1c1e;background:#FF3B30;color:#fff;border-color:#FF3B30}
-      /* 键在72%前一直保持按下状态（明显的长按感） */
+      /* 閿湪72%鍓嶄竴鐩翠繚鎸佹寜涓嬬姸鎬侊紙鏄庢樉鐨勯暱鎸夋劅锛?*/
       72%{transform:translateY(3px);box-shadow:0 0 0 #1c1c1e;background:#FF3B30;color:#fff;border-color:#FF3B30}
       80%{transform:translateY(0);box-shadow:0 3px 0 #1c1c1e;background:#fff;color:#1c1c1e;border-color:#1c1c1e}
     }
@@ -5341,7 +5355,7 @@
       80%{opacity:0;transform:scale(1.1)}
       100%{opacity:0;transform:scale(.8)}
     }
-    /* 波形：按住期间一直跳 */
+    /* 娉㈠舰锛氭寜浣忔湡闂翠竴鐩磋烦 */
     .tp-wave-hold{
       display:flex;gap:2.5px;align-items:center;height:18px;
     }
@@ -5357,7 +5371,7 @@
     .tp-wave-hold .b:nth-child(8){height:30%;animation-delay:.56s}
     @keyframes tpWaveIdle{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(.6)}}
     @keyframes tpWaveBar{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
-    /* 进度条：按住期间从0填到100% */
+    /* 杩涘害鏉★細鎸変綇鏈熼棿浠?濉埌100% */
     .tp-hold-bar{
       position:absolute;bottom:8px;left:12px;right:12px;height:5px;
       background:rgba(0,0,0,.07);border-radius:3px;overflow:hidden;
@@ -5376,7 +5390,7 @@
       80%{width:100%}
       86%,100%{width:0%}
     }
-    /* 顶部按住提示文字 */
+    /* 椤堕儴鎸変綇鎻愮ず鏂囧瓧 */
     .tp-hold-label{
       position:absolute;top:7px;left:0;right:0;text-align:center;
       font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9px;
@@ -5388,11 +5402,10 @@
       0%,3%{opacity:0}5%,72%{opacity:1}80%,100%{opacity:0}
     }
 
-    /* ========== 卡2 · 单击开始/结束 ==========
-       键：快速按一下（占周期12%）→ 立即弹回
-       波形：出现 → 快速淡出（表示"说完了"）
-       特征：键只动了1次，且迅速恢复 → 一眼就知道是"单击"
-       注意节奏跟长按完全不同：单击是"快 → 等"；长按是"沉下 → 等 → 弹回" */
+    /* ========== 鍗? 路 鍗曞嚮寮€濮?缁撴潫 ==========
+       閿細蹇€熸寜涓€涓嬶紙鍗犲懆鏈?2%锛夆啋 绔嬪嵆寮瑰洖
+       娉㈠舰锛氬嚭鐜?鈫?蹇€熸贰鍑猴紙琛ㄧず"璇村畬浜?锛?       鐗瑰緛锛氶敭鍙姩浜?娆★紝涓旇繀閫熸仮澶?鈫?涓€鐪煎氨鐭ラ亾鏄?鍗曞嚮"
+       娉ㄦ剰鑺傚璺熼暱鎸夊畬鍏ㄤ笉鍚岋細鍗曞嚮鏄?蹇?鈫?绛?锛涢暱鎸夋槸"娌変笅 鈫?绛?鈫?寮瑰洖" */
     .template-pick-card-anim--tap .tp-key{
       animation:tapKeyIdle 2.8s ease-in-out infinite;
     }
@@ -5427,7 +5440,7 @@
       62%{opacity:0;transform:scale(1.1)}
       100%{opacity:0;transform:scale(.8)}
     }
-    /* 单击波形：按完出现 → 淡出 */
+    /* 鍗曞嚮娉㈠舰锛氭寜瀹屽嚭鐜?鈫?娣″嚭 */
     .tp-tap-wave{
       display:flex;gap:2.5px;align-items:center;height:18px;
     }
@@ -5449,10 +5462,9 @@
     }
     .tp-tap-label{position:absolute;top:7px;left:0;right:0;text-align:center;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9px;color:#a1a1a6;letter-spacing:.05em}
 
-    /* ========== 卡3 · 双击开始/结束 ==========
-       键：第1次按下（5%）→弹回（9%）→短暂停顿（22%）→第2次按下（28%）→弹回（32%）
-       副指标：×2 数字在两次按键时分别闪亮
-       特征：两次按键之间有明显停顿，×2 提示"按了两次" → 一眼识别双击 */
+    /* ========== 鍗? 路 鍙屽嚮寮€濮?缁撴潫 ==========
+       閿細绗?娆℃寜涓嬶紙5%锛夆啋寮瑰洖锛?%锛夆啋鐭殏鍋滈】锛?2%锛夆啋绗?娆℃寜涓嬶紙28%锛夆啋寮瑰洖锛?2%锛?       鍓寚鏍囷細脳2 鏁板瓧鍦ㄤ袱娆℃寜閿椂鍒嗗埆闂寒
+       鐗瑰緛锛氫袱娆℃寜閿箣闂存湁鏄庢樉鍋滈】锛屆? 鎻愮ず"鎸変簡涓ゆ" 鈫?涓€鐪艰瘑鍒弻鍑?*/
     .template-pick-card-anim--double .tp-key{
       animation:doubleKeyIdle 2.8s ease-in-out infinite;
     }
@@ -5465,7 +5477,7 @@
       animation:doubleHalo 2s ease-in-out infinite;pointer-events:none;
     }
     @keyframes doubleKeyIdle{
-      /* 第1次：4→8%；弹回：9→12%；停顿；第2次：23→27%；弹回：28→32% */
+      /* 绗?娆★細4鈫?%锛涘脊鍥烇細9鈫?2%锛涘仠椤匡紱绗?娆★細23鈫?7%锛涘脊鍥烇細28鈫?2% */
       0%,100%{transform:translateY(0);box-shadow:0 3px 0 #1c1c1e;background:#fff;color:#1c1c1e;border-color:#1c1c1e}
       4%{transform:translateY(3px);box-shadow:0 0 0 #1c1c1e;background:#FFD9D6;color:#FF3B30;border-color:#FF3B30}
       9%{transform:translateY(0);box-shadow:0 3px 0 #1c1c1e;background:#fff;color:#1c1c1e;border-color:#1c1c1e}
@@ -5474,7 +5486,7 @@
     }
     @keyframes doubleKey{
       0%,100%{transform:translateY(0);box-shadow:0 3px 0 #1c1c1e;background:#fff;color:#1c1c1e;border-color:#1c1c1e}
-      /* 第1次快按：3→7%；弹回：8→11%；停顿约15%；第2次快按：24→28%；弹回：29→32% */
+      /* 绗?娆″揩鎸夛細3鈫?%锛涘脊鍥烇細8鈫?1%锛涘仠椤跨害15%锛涚2娆″揩鎸夛細24鈫?8%锛涘脊鍥烇細29鈫?2% */
       3%{transform:translateY(3px);box-shadow:0 0 0 #1c1c1e;background:#FF3B30;color:#fff;border-color:#FF3B30}
       8%{transform:translateY(0);box-shadow:0 3px 0 #1c1c1e;background:#fff;color:#1c1c1e;border-color:#1c1c1e}
       24%{transform:translateY(3px);box-shadow:0 0 0 #1c1c1e;background:#FF3B30;color:#fff;border-color:#FF3B30}
@@ -5489,7 +5501,7 @@
       29%{opacity:0;transform:scale(1.1)}
       100%{opacity:0}
     }
-    /* ×2 数字：两次按键时都闪亮 */
+    /* 脳2 鏁板瓧锛氫袱娆℃寜閿椂閮介棯浜?*/
     .tp-double-count{
       font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;
       color:#D8D8DC;font-weight:700;letter-spacing:.05em;
@@ -5510,7 +5522,7 @@
     }
     .tp-double-hint{position:absolute;top:7px;left:0;right:0;text-align:center;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9px;color:#a1a1a6;letter-spacing:.05em}
 
-    /* 通用文字区 */
+    /* 閫氱敤鏂囧瓧鍖?*/
     .tp-wave{display:flex;gap:2.5px;align-items:center;height:18px}
     .tp-wave .b{width:2.5px;background:#D8D8DC;border-radius:2px;animation:tpWaveIdle 1.6s ease-in-out infinite}
     .template-pick-card b{
@@ -7528,118 +7540,7 @@
       border-color:rgba(220,38,38,.55);
       color:var(--on-surface);
       background:rgba(220,38,38,.06);
-    }
-    .ot-verify-checklist{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-    .ot-verify-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-    }
-    .ot-verify-head .mini-title{margin:0}
-    .ot-verify-progress{
-      flex:0 0 auto;
-      font-size:11px;
-      font-weight:650;
-      padding:3px 8px;
-      border-radius:999px;
-      border:1px solid var(--outline-variant);
-      color:var(--on-surface-muted);
-      background:var(--surface);
-    }
-    .ot-verify-progress.is-done{
-      border-color:rgba(22,163,74,.45);
-      color:rgb(21,128,61);
-      background:rgba(22,163,74,.08);
-    }
-    .ot-verify-next{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid rgba(37,99,235,.35);
-      background:rgba(37,99,235,.06);
-      font-size:12px;
-      line-height:1.4;
-      color:var(--on-surface);
-    }
-    .ot-verify-next[hidden]{display:none!important}
-    .ot-verify-next .control-btn{
-      flex:0 0 auto;
-      font-size:11px;
-      padding:4px 10px;
-      min-height:28px;
-    }
-    .ot-verify-list{
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-      max-height:min(52vh,420px);
-      overflow:auto;
-      padding-right:2px;
-    }
-    .ot-verify-group-title{
-      margin:0;
-      font-size:12px;
-      font-weight:700;
-      color:var(--on-surface);
-    }
-    .ot-verify-item{
-      display:grid;
-      grid-template-columns:auto 1fr auto;
-      gap:8px 10px;
-      align-items:start;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid var(--outline-variant);
-      background:var(--surface);
-    }
-    .ot-verify-item.is-done{
-      border-color:rgba(22,163,74,.35);
-      background:rgba(22,163,74,.05);
-    }
-    .ot-verify-item.is-current{
-      border-color:rgba(37,99,235,.55);
-      box-shadow:0 0 0 1px rgba(37,99,235,.18);
-    }
-    .ot-verify-item input[type="checkbox"]{
-      margin-top:3px;
-      width:16px;
-      height:16px;
-    }
-    .ot-verify-item-body{min-width:0}
-    .ot-verify-item-title{
-      font-size:12px;
-      font-weight:650;
-      color:var(--on-surface);
-      line-height:1.35;
-    }
-    .ot-verify-item-how,
-    .ot-verify-item-pass{
-      margin:4px 0 0;
-      font-size:11px;
-      line-height:1.4;
-      color:var(--on-surface-muted);
-    }
-    .ot-verify-item-pass strong{font-weight:650;color:var(--on-surface)}
-    .ot-verify-item .control-btn{
-      align-self:start;
-      font-size:11px;
-      padding:4px 10px;
-      min-height:28px;
-    }
-    .ot-verify-toolbar{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-    }
-    .ot-quick-ctrl-grid{
+    }`n    .ot-quick-ctrl-grid{
       display:grid;
       grid-template-columns:repeat(2,minmax(0,1fr));
       gap:8px;
@@ -7728,7 +7629,7 @@
     .map-menu-float button:hover{background:var(--primary-soft)}
     .map-menu-float button.danger{color:var(--error)}
     .map-menu-float button:disabled{opacity:.45;cursor:not-allowed}
-    /* Toast stack root (#toast kept for legacy lookups) — not a single-node banner */
+    /* Toast stack root (#toast kept for legacy lookups) 鈥?not a single-node banner */
     #toast.toast-stack,
     #toast{
       position:fixed;
@@ -8273,7 +8174,7 @@
     }
     .camera-gaze-window-layer .camera-gaze-orb{
       position:fixed;
-      /* Large region cursor — visual tolerance, not pixel crosshair. */
+      /* Large region cursor 鈥?visual tolerance, not pixel crosshair. */
       width:128px;height:128px;
       opacity:.9;
       z-index:1200;
@@ -8577,7 +8478,7 @@
     .habit-hub-codex-recommend-title{font-size:15px;font-weight:700}
     .habit-hub-codex-recommend-sub{font-size:13px;color:var(--on-surface-variant)}
     .habit-hub-codex-recommend-note{font-size:11px;opacity:.75}
-    /* Codex capability cards — Codex scenario, step-gated (识别/收尾) */
+    /* Codex capability cards 鈥?Codex scenario, step-gated (璇嗗埆/鏀跺熬) */
     .codex-pack-host{margin:10px 0 0}
     .codex-cap-host--target{margin-top:10px}
     .codex-cap-host--finish{margin-top:10px}

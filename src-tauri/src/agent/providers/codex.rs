@@ -278,6 +278,14 @@ impl CodexProviderAdapter {
     }
 
     fn send_hotkey(chord: &str, duration_ms: u32, mode: ExecutionMode) -> ProviderActionOutcome {
+        // Soft Pad / provider chords must never land in OneTone WebView2.
+        if crate::app_identity::foreground_is_self() {
+            return ProviderActionOutcome::err(
+                "inject_self_fg",
+                Some(format!("refused {chord}: OneTone owns foreground")),
+                mode,
+            );
+        }
         if crate::keyboard::send_chord(chord, duration_ms) {
             ProviderActionOutcome::ok_mode(mode)
         } else {
@@ -301,6 +309,13 @@ impl CodexProviderAdapter {
             return focus;
         }
         std::thread::sleep(Duration::from_millis(80));
+        if crate::app_identity::foreground_is_self() {
+            return ProviderActionOutcome::err(
+                "inject_self_fg",
+                Some(format!("refused {chord}: OneTone owns foreground after focus")),
+                mode,
+            );
+        }
         Self::send_hotkey(chord, duration_ms, mode)
     }
 
