@@ -787,20 +787,23 @@ pub fn overlay_visible_reason() -> String {
 
 /// Soft Pad must not cover OneTone settings while the user is configuring.
 fn onetone_main_is_foreground() -> bool {
-    if overlay_hwnd_is_foreground() {
-        return false;
+    // Main settings webview (not the floating overlay) holds FG.
+    if crate::app_identity::foreground_is_self() && !overlay_hwnd_is_foreground() {
+        return true;
     }
-    crate::app_identity::foreground_is_self()
+    false
 }
 
 fn overlay_host_allows_show_raw() -> bool {
     if onetone_main_is_foreground() {
         return false;
     }
-    soft_pad_agent_is_foreground()
-        || overlay_hwnd_is_foreground()
-        || hook_needs_input_hold()
-        || claude_activity_hold()
+    if soft_pad_agent_is_foreground() || hook_needs_input_hold() || claude_activity_hold() {
+        return true;
+    }
+    // Overlay self-FG: keep an already-shown pad interactive, but do not *become*
+    // visible solely from stealing focus off OneTone settings (that felt like 假死).
+    overlay_hwnd_is_foreground() && *last_visible().lock() && !is_overlay_session_dismissed()
 }
 
 /// Single debounce entry — callers must not wrap again with `stable_overlay_host`.
@@ -1556,8 +1559,21 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     let readiness = crate::codex_numpad_layer::readiness_snapshot(cfg);
     // "保持在最前" (require_foreground=false): stay visible while Soft Pad is enabled,
     // except over OneTone main settings. Still not "hijack any app" for key dispatch.
+    // Overlay self-FG alone must not uncover a hidden pad over settings (假死).
     let host_ok = if !pad.require_foreground {
-        !onetone_main_is_foreground()
+        if onetone_main_is_foreground() {
+            false
+        } else if soft_pad_agent_is_foreground()
+            || hook_needs_input_hold()
+            || claude_activity_hold()
+        {
+            true
+        } else if overlay_hwnd_is_foreground() {
+            *last_visible().lock() && !is_overlay_session_dismissed()
+        } else {
+            // Other app focused — keep-on-top.
+            true
+        }
     } else {
         show
     };
@@ -2488,6 +2504,7 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![],
+            time_machine_workspace: String::new(),
         }
     }
 

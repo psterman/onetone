@@ -3,6 +3,7 @@
 // Pattern: legacy pushes state via window.__otSoftPadStatusSync; island reads initial
 // state via window.__otSoftPadStatusRead on mount/refresh. Toggle delegates back to
 // window.OneToneSoftPadHub.toggleSelectedEnable (preserves IPC + saveAsync path).
+// Hero chrome matches Keys/Voice page-status-bar (name + pill + meta + page-status-btn).
 
 import * as React from 'react';
 import { useIslandRefresh } from '../island-runtime';
@@ -15,16 +16,24 @@ interface SoftPadStatusProps {
   statusCls?: string;
   presentation: string;
   kind: string;
+  agent: string;
+  keys: string;
+  restorePoint: string;
   padEnabled: boolean;
   hasMapping: boolean;
 }
+
+type SoftPadHubApi = {
+  toggleSelectedEnable?: () => void;
+  handleStatusAction?: (action: string) => void;
+};
 
 function w() {
   return window as unknown as {
     __otSoftPadStatusRead?: () => SoftPadStatusProps;
     __otSoftPadStatusSync?: (props: SoftPadStatusProps) => void;
     __otSoftPadStatusMounted?: boolean;
-    OneToneSoftPadHub?: { toggleSelectedEnable?: () => void };
+    OneToneSoftPadHub?: SoftPadHubApi;
   };
 }
 
@@ -34,6 +43,9 @@ const EMPTY: SoftPadStatusProps = {
   statusCls: '',
   presentation: '—',
   kind: '—',
+  agent: '—',
+  keys: '—',
+  restorePoint: '即将接入',
   padEnabled: false,
   hasMapping: false,
 };
@@ -42,71 +54,15 @@ function readProps(): SoftPadStatusProps {
   return w().__otSoftPadStatusRead?.() ?? EMPTY;
 }
 
-export function SoftPadStatusIsland(): JSX.Element {
-  const [props, setProps] = React.useState<SoftPadStatusProps>(readProps);
-
-  // Register sync-push receiver so legacy can push updates reactively
-  React.useEffect(() => {
-    const win = w();
-    win.__otSoftPadStatusSync = (next: SoftPadStatusProps) => setProps(next);
-    win.__otSoftPadStatusMounted = true;
-    return () => {
-      win.__otSoftPadStatusSync = undefined;
-      win.__otSoftPadStatusMounted = false;
-    };
-  }, []);
-
-  // Also re-read on island-wide refresh (mvp_init / config reload)
-  useIslandRefresh(() => {
-    setProps(readProps());
-  });
-
-  const handleToggle = React.useCallback(() => {
-    const hub = w().OneToneSoftPadHub;
-    if (hub?.toggleSelectedEnable) hub.toggleSelectedEnable();
-  }, []);
-
-  const { name, status, statusCls, presentation, kind, padEnabled, hasMapping } = props;
-
-  return (
-    <div className="page-status-bar-main keys-scheme-status-main">
-      <div className="keys-scheme-summary-title-row">
-        <span className="keys-scheme-summary-name" id="softPadSummaryName">
-          {name}
-        </span>
-        <span
-          className={['keys-scheme-summary-pill', statusCls].filter(Boolean).join(' ')}
-          id="softPadSummaryStatus"
-        >
-          {status}
-        </span>
-      </div>
-      <div className="keys-scheme-summary-meta">
-        <span className="keys-scheme-summary-item">
-          <span className="keys-scheme-summary-lbl" id="softPadSummaryPresentationLbl">
-            显示形态
-          </span>
-          <span className="keys-scheme-summary-val" id="softPadSummaryPresentation">
-            {presentation}
-          </span>
-        </span>
-        <span className="keys-scheme-summary-divider" aria-hidden="true" />
-        <span className="keys-scheme-summary-item">
-          <span className="keys-scheme-summary-lbl" id="softPadSummaryKindLbl">
-            应用
-          </span>
-          <span className="keys-scheme-summary-val" id="softPadSummaryKind">
-            {kind}
-          </span>
-        </span>
-      </div>
-    </div>
-  );
+function runAction(action: string) {
+  const hub = w().OneToneSoftPadHub;
+  if (hub?.handleStatusAction) hub.handleStatusAction(action);
 }
 
-// Render the actions section separately so the container layout is preserved.
-// The island mounts into #softPadStatusBar which holds both .page-status-bar-main
-// and .page-status-bar-actions; we render both here.
+export function SoftPadStatusIsland(): JSX.Element {
+  return <SoftPadStatusBarIsland />;
+}
+
 export function SoftPadStatusBarIsland(): JSX.Element {
   const [props, setProps] = React.useState<SoftPadStatusProps>(readProps);
 
@@ -129,7 +85,7 @@ export function SoftPadStatusBarIsland(): JSX.Element {
     if (hub?.toggleSelectedEnable) hub.toggleSelectedEnable();
   }, []);
 
-  const { name, status, statusCls, presentation, kind, padEnabled, hasMapping } = props;
+  const { name, status, statusCls, agent, keys, restorePoint, padEnabled, hasMapping } = props;
 
   return (
     <>
@@ -147,25 +103,60 @@ export function SoftPadStatusBarIsland(): JSX.Element {
         </div>
         <div className="keys-scheme-summary-meta">
           <span className="keys-scheme-summary-item">
-            <span className="keys-scheme-summary-lbl" id="softPadSummaryPresentationLbl">
-              显示形态
+            <span className="keys-scheme-summary-lbl" id="softPadSummaryAgentLbl">
+              Agent 灯
             </span>
-            <span className="keys-scheme-summary-val" id="softPadSummaryPresentation">
-              {presentation}
+            <span className="keys-scheme-summary-val" id="softPadSummaryAgent">
+              {agent}
             </span>
           </span>
           <span className="keys-scheme-summary-divider" aria-hidden="true" />
           <span className="keys-scheme-summary-item">
-            <span className="keys-scheme-summary-lbl" id="softPadSummaryKindLbl">
-              应用
+            <span className="keys-scheme-summary-lbl" id="softPadSummaryKeysLbl">
+              键位
             </span>
-            <span className="keys-scheme-summary-val" id="softPadSummaryKind">
-              {kind}
+            <span className="keys-scheme-summary-val" id="softPadSummaryKeys">
+              {keys}
+            </span>
+          </span>
+          <span className="keys-scheme-summary-divider" aria-hidden="true" />
+          <span className="keys-scheme-summary-item">
+            <span className="keys-scheme-summary-lbl" id="softPadSummaryTmLbl">
+              恢复点
+            </span>
+            <span className="keys-scheme-summary-val" id="softPadSummaryTm">
+              {restorePoint}
             </span>
           </span>
         </div>
       </div>
       <div className="page-status-bar-actions keys-scheme-status-actions">
+        <button
+          type="button"
+          className="page-status-btn"
+          id="btnSoftPadTestFg"
+          disabled={!hasMapping}
+          onClick={() => runAction('test-fg')}
+        >
+          测试前台
+        </button>
+        <button
+          type="button"
+          className="page-status-btn"
+          id="btnSoftPadEditKeys"
+          disabled={!hasMapping}
+          onClick={() => runAction('edit-keys')}
+        >
+          编辑键位
+        </button>
+        <button
+          type="button"
+          className="page-status-btn"
+          id="btnSoftPadTimeline"
+          onClick={() => runAction('open-timeline')}
+        >
+          打开时间线
+        </button>
         <button
           type="button"
           className={['toggle-switch', 'keys-summary-enable', 'page-status-toggle', padEnabled ? 'is-on' : ''].filter(Boolean).join(' ')}

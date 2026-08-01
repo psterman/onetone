@@ -1,0 +1,11 @@
+﻿# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-tm-undo-restore"
+description = "Enables the cmd_tm_undo_restore command without any pre-configured scope."
+commands.allow = ["cmd_tm_undo_restore"]
+
+[[permission]]
+identifier = "deny-cmd-tm-undo-restore"
+description = "Denies the cmd_tm_undo_restore command without any pre-configured scope."
+commands.deny = ["cmd_tm_undo_restore"]

@@ -1073,20 +1073,69 @@
               </div>
               <div class="keys-scheme-summary-meta">
                 <span class="keys-scheme-summary-item">
-                  <span class="keys-scheme-summary-lbl" id="softPadSummaryPresentationLbl">显示形态</span>
-                  <span class="keys-scheme-summary-val" id="softPadSummaryPresentation">—</span>
+                  <span class="keys-scheme-summary-lbl" id="softPadSummaryAgentLbl">Agent 灯</span>
+                  <span class="keys-scheme-summary-val" id="softPadSummaryAgent">—</span>
                 </span>
                 <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
                 <span class="keys-scheme-summary-item">
-                  <span class="keys-scheme-summary-lbl" id="softPadSummaryKindLbl">应用</span>
-                  <span class="keys-scheme-summary-val" id="softPadSummaryKind">—</span>
+                  <span class="keys-scheme-summary-lbl" id="softPadSummaryKeysLbl">键位</span>
+                  <span class="keys-scheme-summary-val" id="softPadSummaryKeys">—</span>
+                </span>
+                <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
+                <span class="keys-scheme-summary-item">
+                  <span class="keys-scheme-summary-lbl" id="softPadSummaryTmLbl">项目胶囊</span>
+                  <span class="keys-scheme-summary-val" id="softPadSummaryTm">即将接入</span>
                 </span>
               </div>
             </div>
             <div class="page-status-bar-actions keys-scheme-status-actions">
+              <button type="button" class="page-status-btn" id="btnSoftPadTestFg" data-cockpit-action="test-fg">测试前台</button>
+              <button type="button" class="page-status-btn" id="btnSoftPadEditKeys" data-cockpit-action="edit-keys">编辑键位</button>
+              <button type="button" class="page-status-btn" id="btnSoftPadTimeline" data-cockpit-action="open-timeline">打开时间线</button>
               <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="softPadSummaryEnable" role="switch" aria-checked="false" aria-labelledby="settingsPanelSoftPadTitle"></button>
             </div>
           </div>
+          <section class="flow-nodes soft-pad-flow-nodes" id="softPadFlowNodes" role="tablist" aria-label="虚拟键盘流程导航">
+            <div class="flow-nodes-track" aria-hidden="true">
+              <svg class="flow-nodes-svg" viewBox="0 0 1000 8" fill="none" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="softPadFlowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="rgba(79, 172, 254, 0.85)" />
+                    <stop offset="50%" stop-color="rgba(42, 156, 196, 0.95)" />
+                    <stop offset="100%" stop-color="rgba(245, 158, 11, 0.85)" />
+                  </linearGradient>
+                </defs>
+                <path class="flow-nodes-path-base" d="M 0,4 Q 250,-5 500,4 T 1000,4" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+                <path class="flow-nodes-path" d="M 0,4 Q 250,-5 500,4 T 1000,4" stroke="url(#softPadFlowGrad)" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="flow-nodes-grid">
+              <div class="flow-node" data-soft-pad-node="agent">
+                <span class="flow-node-tag" id="softPadFlowNodeAgentTag">01 / Agent 灯</span>
+                <button type="button" class="flow-node-btn" id="softPadFlowNodeAgent" role="tab" aria-selected="false" aria-labelledby="softPadFlowNodeAgentTitle" aria-controls="softPadSubpageBody">
+                  <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="15" rx="3"/><circle cx="12" cy="6.5" r="1.35" fill="currentColor" stroke="none"/><circle cx="12" cy="10" r="1.35" fill="currentColor" stroke="none" opacity=".7"/><circle cx="12" cy="13.5" r="1.35" fill="currentColor" stroke="none" opacity=".4"/><path d="M10.5 19.5h3M11 21.5h2"/></svg>
+                </button>
+                <h3 class="flow-node-title" id="softPadFlowNodeAgentTitle">Agent 灯</h3>
+                <p class="flow-node-hint" id="softPadFlowNodeAgentHint">—</p>
+              </div>
+              <div class="flow-node" data-soft-pad-node="pad">
+                <span class="flow-node-tag" id="softPadFlowNodePadTag">02 / Soft Pad</span>
+                <button type="button" class="flow-node-btn is-active" id="softPadFlowNodePad" role="tab" aria-selected="true" aria-labelledby="softPadFlowNodePadTitle" aria-controls="softPadSubpageBody">
+                  <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><rect x="6.2" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="10.3" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="14.4" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="6.2" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="10.3" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="14.4" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="6.2" y="14.4" width="7.5" height="3.4" rx=".7"/><rect x="14.4" y="14.4" width="3.4" height="3.4" rx=".7"/></svg>
+                </button>
+                <h3 class="flow-node-title" id="softPadFlowNodePadTitle">Soft Pad</h3>
+                <p class="flow-node-hint" id="softPadFlowNodePadHint">—</p>
+              </div>
+              <div class="flow-node" data-soft-pad-node="timeline">
+                <span class="flow-node-tag" id="softPadFlowNodeTimelineTag">03 / 项目胶囊</span>
+                <button type="button" class="flow-node-btn" id="softPadFlowNodeTimeline" role="tab" aria-selected="false" aria-labelledby="softPadFlowNodeTimelineTitle" aria-controls="softPadSubpageBody">
+                  <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="7" width="19" height="10" rx="5"/><path d="M12 7v10"/><circle cx="7.5" cy="12" r="1.35" fill="currentColor" stroke="none"/><path d="M15.2 9.8a2.6 2.6 0 11-1.1 3.4"/><path d="M14.2 9.2l1.2.2.2 1.2"/></svg>
+                </button>
+                <h3 class="flow-node-title" id="softPadFlowNodeTimelineTitle">项目时间胶囊</h3>
+                <p class="flow-node-hint" id="softPadFlowNodeTimelineHint">恢复前自动保存</p>
+              </div>
+            </div>
+          </section>
           <div class="soft-pad-app-switcher" id="softPadAppSwitcher" role="tablist" aria-label="应用"></div>
           <p class="soft-pad-scope-hint" id="softPadScopeHint" aria-live="polite"></p>
           <header class="pref-page-head soft-pad-page-head sr-only">
@@ -1102,6 +1151,7 @@
                   <div class="soft-pad-preview-host" id="softPadPreviewHost"></div>
                   <div class="soft-pad-func-tiles" id="softPadFuncTiles" role="navigation" aria-label="你想改什么？"></div>
                 </div>
+                <div class="soft-pad-tm-desk" id="softPadTmDesk" hidden aria-label="项目时间胶囊"></div>
                 <aside class="soft-pad-detail" id="softPadSubpageHost" aria-live="polite">
                   <div class="soft-pad-detail-idle" id="softPadDetailIdle">
                     <p class="soft-pad-detail-idle__title" id="softPadDetailIdleTitle">点左侧一项开始调整</p>
@@ -4063,6 +4113,7 @@
   <script src="js/features/agent/agent-actions.js"></script>
   <script src="js/features/agent/agent-scenario-template.js"></script>
   <script src="js/features/agent/codex-micro-pad-ui.js"></script>
+  <script src="js/features/agent/soft-pad-time-machine-ui.js"></script>
   <script src="js/features/agent/soft-pad-hub-ui.js"></script>
   <script src="js/features/agent/agent-capability-ui.js"></script>
   <script src="js/features/mapping/habit-hub.js"></script>

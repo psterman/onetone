@@ -38,8 +38,17 @@ pub fn cmd_export_logs(
 }
 
 #[tauri::command]
-pub fn cmd_app_log(state: tauri::State<Arc<AppState>>, line: String) {
-    crate::app_log::log_line(state.inner(), "frontend", &line);
+pub async fn cmd_app_log(
+    state: tauri::State<'_, Arc<AppState>>,
+    line: String,
+) -> Result<(), String> {
+    // Disk I/O off the UI thread — sync cmd_app_log flooded main and marked the window 未响应.
+    let state = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::app_log::log_line(&state, "frontend", &line);
+    })
+    .await
+    .map_err(|e| format!("log task failed: {e}"))
 }
 
 #[tauri::command]

@@ -1,0 +1,11 @@
+﻿# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-tm-diff-summary"
+description = "Enables the cmd_tm_diff_summary command without any pre-configured scope."
+commands.allow = ["cmd_tm_diff_summary"]
+
+[[permission]]
+identifier = "deny-cmd-tm-diff-summary"
+description = "Denies the cmd_tm_diff_summary command without any pre-configured scope."
+commands.deny = ["cmd_tm_diff_summary"]

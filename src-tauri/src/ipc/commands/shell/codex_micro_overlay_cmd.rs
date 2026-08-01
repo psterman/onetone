@@ -57,13 +57,19 @@ pub fn cmd_codex_micro_protocol_server_status(
     crate::codex_micro_protocol_server::status()
 }
 
-/// User closed the floating pad — persist overlayEnabled=false.
+/// Soft-dismiss floating pad for this FG session (do not persist overlayEnabled=false).
 #[tauri::command]
-pub fn cmd_codex_micro_overlay_dismiss(
+pub async fn cmd_codex_micro_overlay_dismiss(
     app: AppHandle,
     state: State<'_, Arc<AppState>>,
 ) -> Result<bool, String> {
-    Ok(codex_micro_overlay::dismiss_overlay(&app, state.inner()))
+    // push_state / HWND work must not run as a sync command on the UI thread.
+    let state = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || {
+        codex_micro_overlay::dismiss_overlay(&app, &state)
+    })
+    .await
+    .map_err(|e| format!("overlay dismiss failed: {e}"))
 }
 
 #[tauri::command]

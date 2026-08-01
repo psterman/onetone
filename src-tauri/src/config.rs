@@ -1222,6 +1222,9 @@ pub struct MappingEntry {
         skip_serializing_if = "Option::is_none"
     )]
     pub codex_micro_pad: Option<CodexMicroPadConfig>,
+    /// Soft Pad → Time Machine folder bind (absolute workspace path). Capsules stay folder-scoped.
+    #[serde(rename = "timeMachineWorkspace", default, skip_serializing_if = "String::is_empty")]
+    pub time_machine_workspace: String,
 }
 
 /// Codex scenario numpad layer — routes physical numpad keys to agent slots.
@@ -1405,6 +1408,18 @@ fn default_presence_present_ms() -> u32 {
     1000
 }
 
+fn default_presence_shake_how() -> String {
+    "normal".into()
+}
+
+fn default_presence_confirm_cue_true() -> bool {
+    true
+}
+
+fn default_presence_blink_close_sec() -> f64 {
+    0.6
+}
+
 /// Independent recognition toggles — must persist separately from action bindings.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
@@ -1453,6 +1468,18 @@ pub struct PresenceActionsPrefs {
     pub away_ms: u32,
     #[serde(default = "default_presence_present_ms")]
     pub present_ms: u32,
+    /// Shake intensity: easy | normal | strong
+    #[serde(default = "default_presence_shake_how")]
+    pub shake_how: String,
+    /// After shake cue sound, require a nod to confirm.
+    #[serde(default = "default_presence_confirm_cue_true")]
+    pub shake_confirm_cue: bool,
+    /// Deliberate blink hold seconds: 0.6 | 1 | 2
+    #[serde(default = "default_presence_blink_close_sec")]
+    pub blink_close_sec: f64,
+    /// After blink cue sound, require another blink to confirm.
+    #[serde(default = "default_presence_confirm_cue_true")]
+    pub blink_confirm_cue: bool,
 }
 
 impl Default for PresenceActionsPrefs {
@@ -1470,6 +1497,10 @@ impl Default for PresenceActionsPrefs {
             wave: default_presence_action_none(),
             away_ms: default_presence_away_ms(),
             present_ms: default_presence_present_ms(),
+            shake_how: default_presence_shake_how(),
+            shake_confirm_cue: default_presence_confirm_cue_true(),
+            blink_close_sec: default_presence_blink_close_sec(),
+            blink_confirm_cue: default_presence_confirm_cue_true(),
         }
     }
 }
@@ -3055,6 +3086,7 @@ impl Default for VoiceConfig {
                 agent_provider_id: String::new(),
                 agent_bindings: vec![],
                 codex_micro_pad: None,
+                time_machine_workspace: String::new(),
             }],
             trash: vec![],
             interval_ms: default_interval_ms(),
@@ -3445,6 +3477,7 @@ impl VoiceConfig {
                 agent_provider_id: String::new(),
                 agent_bindings: vec![],
                 codex_micro_pad: None,
+                time_machine_workspace: String::new(),
             });
         }
 
@@ -5103,6 +5136,53 @@ mod tests {
     }
 
     #[test]
+    fn camera_prefs_serde_preserves_shake_blink_tuning() {
+        // FE writes these via cmd_save_camera_prefs; missing Rust fields used to drop them.
+        let prefs = CameraPrefs {
+            enabled: true,
+            presence_actions: PresenceActionsPrefs {
+                enabled: true,
+                triggers: PresenceTriggersPrefs {
+                    shake: true,
+                    blink: true,
+                    ..Default::default()
+                },
+                shake_head: "pressCtrlI".into(),
+                deliberate_blink: "pressCtrlI".into(),
+                shake_how: "strong".into(),
+                shake_confirm_cue: false,
+                blink_close_sec: 2.0,
+                blink_confirm_cue: false,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&prefs).expect("serialize");
+        assert!(json.contains("\"shakeHow\""));
+        assert!(json.contains("\"blinkCloseSec\""));
+        assert!(json.contains("\"shakeConfirmCue\""));
+        assert!(json.contains("\"blinkConfirmCue\""));
+        let parsed: CameraPrefs = serde_json::from_str(&json).expect("parse");
+        assert_eq!(parsed.presence_actions.shake_how, "strong");
+        assert!(!parsed.presence_actions.shake_confirm_cue);
+        assert!((parsed.presence_actions.blink_close_sec - 2.0).abs() < f64::EPSILON);
+        assert!(!parsed.presence_actions.blink_confirm_cue);
+
+        let merged = merge_camera_prefs_quiet(
+            &CameraPrefs::default(),
+            prefs.clone(),
+            false,
+            false,
+            false,
+            false,
+        );
+        assert_eq!(merged.presence_actions.shake_how, "strong");
+        assert!(!merged.presence_actions.shake_confirm_cue);
+        assert!((merged.presence_actions.blink_close_sec - 2.0).abs() < f64::EPSILON);
+        assert!(!merged.presence_actions.blink_confirm_cue);
+    }
+
+    #[test]
     fn merge_camera_prefs_quiet_keeps_gaze_when_incoming_null() {
         let existing = CameraPrefs {
             enabled: true,
@@ -5361,7 +5441,8 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-        });
+                time_machine_workspace: String::new(),
+            });
         let conflicts = cfg.conflicts_on_enable(&cfg.mappings[0].id);
         assert!(!conflicts.is_empty());
         assert!(matches!(conflicts[0].kind, ConflictKind::PhysicalKey));
@@ -5403,7 +5484,8 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-        });
+                time_machine_workspace: String::new(),
+            });
         cfg.enable_mapping("b");
         assert!(!cfg.mappings.iter().find(|m| m.id == id_a).unwrap().enabled);
         assert!(cfg.mappings.iter().find(|m| m.id == "b").unwrap().enabled);
@@ -5447,7 +5529,8 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-        });
+                time_machine_workspace: String::new(),
+            });
         cfg.normalize();
         let m = cfg
             .mappings
@@ -5604,7 +5687,8 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-        });
+                time_machine_workspace: String::new(),
+            });
         let result = cfg.cycle_scheme_same_trigger();
         assert!(result.is_some());
         let (_, to_id) = result.unwrap();
@@ -5662,7 +5746,8 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-        };
+                time_machine_workspace: String::new(),
+            };
         let bindings = mapping_physical_bindings(&m);
         assert_eq!(bindings, vec!["F1".to_string()]);
     }
@@ -5701,7 +5786,8 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-        };
+                time_machine_workspace: String::new(),
+            };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         let bindings = mapping_physical_bindings(&m);
         assert_eq!(
@@ -5746,7 +5832,8 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-        });
+                time_machine_workspace: String::new(),
+            });
         let result = cfg.select_scheme("b");
         assert!(result.is_some());
         assert_eq!(cfg.active_scene_id, "b");
@@ -5790,7 +5877,8 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-        });
+                time_machine_workspace: String::new(),
+            });
         cfg.enable_mapping("b");
         assert_eq!(cfg.active_scene_id, active_id);
         assert!(cfg.mappings.iter().find(|m| m.id == "b").unwrap().enabled);
@@ -5830,7 +5918,8 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-        };
+                time_machine_workspace: String::new(),
+            };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         assert!(!mapping_physical_bindings(&m).is_empty());
         assert!(effective_physical_bindings(&m).is_empty());
@@ -6023,7 +6112,8 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-        };
+                time_machine_workspace: String::new(),
+            };
         let bindings = hotkey_registration_bindings(&m);
         assert!(bindings.contains(&"Gamepad_A".to_string()));
         assert!(bindings.contains(&"dev:xinput:0::Gamepad_A".to_string()));
@@ -6066,7 +6156,8 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-        });
+                time_machine_workspace: String::new(),
+            });
         let hit0 = cfg.find_mapping_for_event(&crate::press_gesture::PhysicalKeyEvent {
             is_keyup: false,
             device: Some("xinput:0".into()),
@@ -6252,7 +6343,8 @@ mod tests {
             agent_provider_id: "codex".into(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-        });
+                time_machine_workspace: String::new(),
+            });
         let fg = test_identity(Some("codex-chat"), "Codex.exe");
         cfg.follow_foreground_app_scenario = true;
         assert!(mapping_shadowed_by_foreground_app_scenario(
@@ -6324,7 +6416,8 @@ mod tests {
                 activation_scope: "foregroundApp".into(),
             }],
             codex_micro_pad: None,
-        });
+                time_machine_workspace: String::new(),
+            });
         let fg = test_identity(Some("codex-chat"), "Codex.exe");
         cfg.follow_foreground_app_scenario = true;
         let hit = find_app_scenario_for_foreground(&cfg, &fg).expect("codex scenario");
@@ -6843,9 +6936,12 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-        };
+            time_machine_workspace: r"C:\work\demo".into(),
+            };
         let json = serde_json::to_string(&mapping).expect("serialize");
+        assert!(json.contains("timeMachineWorkspace"));
         let back: MappingEntry = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.time_machine_workspace, r"C:\work\demo");
         assert_eq!(back.acoustic_voice_commands.len(), 1);
         assert_eq!(
             back.acoustic_voice_commands[0].samples[0].feature_frames,

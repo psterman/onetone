@@ -190,20 +190,40 @@ pub fn reset_to_default() -> Result<DataRootStatus, String> {
 
 #[cfg(windows)]
 pub fn pick_folder_dialog() -> Result<Option<PathBuf>, String> {
+    pick_folder_dialog_desc("选择文件夹")
+}
+
+#[cfg(windows)]
+pub fn pick_folder_dialog_desc(description: &str) -> Result<Option<PathBuf>, String> {
     // ponytail: WinForms FolderBrowser via PowerShell — avoids new crate / COM glue.
-    let script = r#"
+    // CREATE_NO_WINDOW + Hidden: no black console flash under Tauri.
+    let desc = description.replace('\'', "''");
+    let script = format!(
+        r#"
 Add-Type -AssemblyName System.Windows.Forms | Out-Null
 $d = New-Object System.Windows.Forms.FolderBrowserDialog
-$d.Description = 'Select OneTone data folder'
+$d.Description = '{desc}'
 $d.ShowNewFolderButton = $true
-if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
   Write-Output $d.SelectedPath
-}
-"#;
-    let output = std::process::Command::new("powershell")
-        .args(["-NoProfile", "-STA", "-Command", script])
-        .output()
-        .map_err(|e| e.to_string())?;
+}}
+"#
+    );
+    let mut cmd = std::process::Command::new("powershell");
+    cmd.args([
+        "-NoProfile",
+        "-STA",
+        "-WindowStyle",
+        "Hidden",
+        "-Command",
+        &script,
+    ]);
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    let output = cmd.output().map_err(|e| e.to_string())?;
     if !output.status.success() {
         let err = String::from_utf8_lossy(&output.stderr);
         return Err(format!("folder dialog failed: {err}"));
@@ -219,6 +239,11 @@ if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
 #[cfg(not(windows))]
 pub fn pick_folder_dialog() -> Result<Option<PathBuf>, String> {
     Err("folder picker is only supported on Windows".into())
+}
+
+#[cfg(not(windows))]
+pub fn pick_folder_dialog_desc(_description: &str) -> Result<Option<PathBuf>, String> {
+    pick_folder_dialog()
 }
 
 pub fn open_path(path: &Path) -> Result<(), String> {

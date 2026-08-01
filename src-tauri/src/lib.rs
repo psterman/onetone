@@ -42,6 +42,7 @@ mod runtime_event;
 mod scene_config;
 mod send_guard;
 mod state;
+pub mod time_machine;
 mod tray;
 mod tray_agent_bridge;
 mod tray_icon_render;
@@ -823,6 +824,16 @@ pub fn run() {
             ipc::cmd_codex_micro_pad_fire,
             ipc::cmd_soft_pad_runtime_snapshot,
             ipc::cmd_soft_pad_set_follow,
+            ipc::cmd_tm_status,
+            ipc::cmd_tm_set_workspace,
+            ipc::cmd_tm_set_autosave,
+            ipc::cmd_tm_pick_workspace,
+            ipc::cmd_tm_list,
+            ipc::cmd_tm_create,
+            ipc::cmd_tm_preview_restore,
+            ipc::cmd_tm_restore,
+            ipc::cmd_tm_diff_summary,
+            ipc::cmd_tm_undo_restore,
             ipc::cmd_agent_attention_snapshot,
             ipc::cmd_cursor_soft_pad_capabilities,
             ipc::cmd_cursor_set_needs_input_gate,

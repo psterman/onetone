@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OneTone · 虚拟键盘设置 · Cockpit Mock v1</title>
+<style>
+  :root {
+    --bg-desk: #0a0e14;
+    --bg-app: #0f1419;
+    --bg-app-end: #151d2b;
+    --surface: #161e2c;
+    --surface-high: #1c2636;
+    --text: #e8f0f8;
+    --text-muted: #9aa8b8;
+    --text-faint: #6b7a8d;
+    --primary: #5ec8e8;
+    --primary-strong: #3eb8dc;
+    --on-primary: #0b1220;
+    --agent: #34d399;
+    --agent-glow: rgba(52, 211, 153, 0.28);
+    --amber: #f59e0b;
+    --amber-soft: rgba(245, 158, 11, 0.12);
+    --outline: rgba(94, 200, 232, 0.22);
+    --outline-variant: rgba(148, 163, 184, 0.14);
+    --divider: rgba(148, 163, 184, 0.16);
+    --radius: 8px;
+    --radius-sm: 6px;
+    --font: "Segoe UI", "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-desk);
+    color: var(--text);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: inherit;
+  }
+
+  /* —— 16:9 artboard —— */
+  .desk {
+    padding: 24px;
+  }
+
+  .app {
+    width: 1440px;
+    height: 810px;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, var(--bg-app) 0%, var(--bg-app-end) 100%);
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  /* —— Title bar —— */
+  .titlebar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 20px 12px;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .titlebar-text h1 {
+    font: 600 17px/24px var(--font);
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+
+  .titlebar-text p {
+    margin-top: 2px;
+    font: 400 12px/16px var(--font);
+    color: var(--text-muted);
+  }
+
+  .titlebar-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .icon-btn {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    border: 1px solid transparent;
+  }
+
+  .icon-btn:hover {
+    color: var(--text);
+    border-color: var(--outline);
+    background: rgba(94, 200, 232, 0.06);
+  }
+
+  .icon-btn svg { width: 16px; height: 16px; }
+
+  /* —— Body —— */
+  .body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 20px 16px;
+    gap: 14px;
+  }
+
+  /* —— Cockpit: one shared frame —— */
+  .cockpit {
+    flex: 0 0 auto;
+    max-height: 460px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--radius);
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .col {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 11px 13px 11px;
+    min-width: 0;
+    outline: 1px solid transparent;
+    outline-offset: -1px;
+    transition: outline-color 0.15s ease;
+  }
+
+  .col + .col {
+    border-left: 1px solid var(--divider);
+  }
+
+  .col:hover,
+  .col:focus-within {
+    outline-color: rgba(94, 200, 232, 0.35);
+    z-index: 1;
+  }
+
+  .col-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-height: 0;
+  }
+
+  .col-visual {
+    flex: 0 0 auto;
+  }
+
+  .col-meta {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .col-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font: 500 11px/14px var(--font);
+    color: var(--text-faint);
+    letter-spacing: 0.04em;
+    text-transform: none;
+  }
+
+  .col-label svg {
+    width: 14px;
+    height: 14px;
+    color: var(--text-muted);
+  }
+
+  .col-main {
+    margin-top: 3px;
+    font: 600 15px/20px var(--font);
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .col-sub {
+    margin-top: 2px;
+    font: 400 12px/16px var(--font);
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Agent light strip */
+  .agent-strip {
+    width: 6px;
+    height: 52px;
+    border-radius: 3px;
+    background: var(--agent);
+    box-shadow: 0 0 0 3px var(--agent-glow);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .agent-strip {
+      animation: agent-pulse 2.4s ease-in-out infinite;
+    }
+  }
+
+  @keyframes agent-pulse {
+    0%, 100% { box-shadow: 0 0 0 3px var(--agent-glow); }
+    50% { box-shadow: 0 0 10px 4px rgba(52, 211, 153, 0.38); }
+  }
+
+  /* Mini Soft Pad grid */
+  .mini-pad {
+    display: grid;
+    grid-template-columns: repeat(4, 18px);
+    grid-template-rows: repeat(3, 16px);
+    gap: 3px;
+    padding: 4px;
+    background: var(--surface-high);
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--radius-sm);
+  }
+
+  .mini-pad span {
+    display: block;
+    border-radius: 3px;
+    background: rgba(148, 163, 184, 0.12);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+  }
+
+  .mini-pad span.is-hot {
+    background: rgba(94, 200, 232, 0.28);
+    border-color: var(--primary);
+    box-shadow: inset 0 0 0 1px rgba(94, 200, 232, 0.4);
+  }
+
+  /* Timeline capsule */
+  .timeline {
+    width: 88px;
+    padding: 6px 8px;
+    background: var(--surface-high);
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--radius-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .tl-item {
+    display: grid;
+    grid-template-columns: 10px 1fr;
+    gap: 6px;
+    align-items: start;
+    position: relative;
+    padding: 3px 0;
+    font: 500 10px/13px var(--font);
+    color: var(--text-muted);
+  }
+
+  .tl-item.is-now { color: var(--primary); }
+  .tl-item.is-active { color: var(--text); }
+
+  .tl-dot {
+    width: 8px;
+    height: 8px;
+    margin-top: 2px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    border: 1.5px solid var(--surface-high);
+    position: relative;
+    z-index: 1;
+  }
+
+  .tl-item.is-now .tl-dot {
+    background: var(--primary);
+    box-shadow: 0 0 0 2px rgba(94, 200, 232, 0.25);
+  }
+
+  .tl-item.is-active .tl-dot {
+    background: var(--amber);
+  }
+
+  .tl-item:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 13px;
+    bottom: -3px;
+    width: 1px;
+    background: var(--divider);
+  }
+
+  .tl-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Highlight block (UNDO / safety) */
+  .hl-block {
+    padding: 7px 9px;
+    border-radius: var(--radius-sm);
+    background: rgba(94, 200, 232, 0.07);
+    border: 1px solid rgba(94, 200, 232, 0.16);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .hl-block .hl-row {
+    font: 500 11px/15px var(--font);
+    color: var(--text);
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .hl-block .hl-row span:first-child {
+    color: var(--primary);
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .hl-block .hl-row span:last-child {
+    color: var(--text-muted);
+    font-weight: 400;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .safety {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 9px;
+    border-radius: var(--radius-sm);
+    background: var(--amber-soft);
+    border: 1px solid rgba(245, 158, 11, 0.28);
+    font: 500 11px/14px var(--font);
+    color: #fbbf24;
+  }
+
+  .safety svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    color: var(--amber);
+  }
+
+  .safety span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Meta rows */
+  .rows {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+
+  .row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font: 400 11px/16px var(--font);
+    color: var(--text-muted);
+    min-width: 0;
+  }
+
+  .row::before {
+    content: "";
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    flex-shrink: 0;
+    margin-top: 6px;
+  }
+
+  .row strong {
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .row-ok::before { background: var(--agent); }
+
+  /* Actions */
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+    padding-top: 2px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 30px;
+    padding: 0 11px;
+    border-radius: var(--radius-sm);
+    font: 500 12px/1 var(--font);
+    white-space: nowrap;
+    border: 1px solid transparent;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  }
+
+  .btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  .btn-primary {
+    background: var(--primary);
+    color: var(--on-primary);
+  }
+
+  .btn-primary:hover {
+    background: var(--primary-strong);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-muted);
+    border-color: var(--outline-variant);
+  }
+
+  .btn-secondary:hover {
+    color: var(--text);
+    border-color: var(--outline);
+    background: rgba(94, 200, 232, 0.06);
+  }
+
+  .btn-text {
+    height: 30px;
+    padding: 0 6px;
+    color: var(--text-muted);
+    font: 500 12px/1 var(--font);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: var(--radius-sm);
+  }
+
+  .btn-text:hover {
+    color: var(--primary);
+  }
+
+  .btn-text svg { width: 13px; height: 13px; }
+
+  /* —— Below stubs —— */
+  .stubs {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  .section {
+    padding: 10px 0 12px;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .section:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .section-label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .section-label h2 {
+    font: 600 11px/14px var(--font);
+    letter-spacing: 0.1em;
+    color: var(--text-faint);
+  }
+
+  .section-label .hint {
+    font: 400 11px/14px var(--font);
+    color: var(--text-faint);
+  }
+
+  /* Layout preview */
+  .layout-preview {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .layout-pad {
+    display: grid;
+    grid-template-columns: repeat(4, 28px);
+    grid-template-rows: repeat(3, 22px);
+    gap: 4px;
+    padding: 6px;
+    background: var(--surface);
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--radius-sm);
+  }
+
+  .layout-pad span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    background: var(--surface-high);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    font: 500 9px/1 var(--font);
+    color: var(--text-faint);
+  }
+
+  .layout-pad span.is-hot {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(94, 200, 232, 0.14);
+  }
+
+  .layout-note {
+    font: 400 12px/18px var(--font);
+    color: var(--text-muted);
+  }
+
+  .layout-note strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* Route rows */
+  .route-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .route-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 12px;
+    height: 30px;
+    padding: 0 8px;
+    border-radius: var(--radius-sm);
+    font: 500 12px/1 var(--font);
+    color: var(--text);
+  }
+
+  .route-row:hover {
+    background: rgba(94, 200, 232, 0.06);
+    outline: 1px solid rgba(94, 200, 232, 0.2);
+    outline-offset: -1px;
+  }
+
+  .route-status {
+    font: 400 11px/1 var(--font);
+    color: var(--text-muted);
+  }
+
+  .route-status.is-active {
+    color: var(--agent);
+  }
+
+  .route-chev {
+    width: 14px;
+    height: 14px;
+    color: var(--text-faint);
+  }
+
+  /* Advanced collapsed */
+  .adv-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 30px;
+    padding: 0 8px;
+    border-radius: var(--radius-sm);
+    font: 500 12px/1 var(--font);
+    color: var(--text-muted);
+    border: 1px solid transparent;
+  }
+
+  .adv-row:hover {
+    color: var(--text);
+    border-color: var(--outline-variant);
+    background: rgba(94, 200, 232, 0.04);
+  }
+
+  .adv-chev {
+    width: 12px;
+    height: 12px;
+    color: var(--text-faint);
+    transition: transform 0.12s ease;
+  }
+
+  .adv-row[aria-expanded="false"] .adv-chev {
+    transform: rotate(-90deg);
+  }
+</style>
+</head>
+<body>
+  <div class="desk">
+    <div class="app" role="application" aria-label="虚拟键盘设置">
+      <!-- Title -->
+      <header class="titlebar">
+        <div class="titlebar-text">
+          <h1>虚拟键盘设置</h1>
+          <p>配置 AI 操作层、键位和回滚保护</p>
+        </div>
+        <div class="titlebar-actions">
+          <button class="icon-btn" type="button" aria-label="设置" title="设置">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+          <button class="icon-btn" type="button" aria-label="关闭" title="关闭">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="body">
+        <!-- Cockpit -->
+        <section class="cockpit" aria-label="操作状态中心">
+          <!-- Column 1: Agent 灯 -->
+          <article class="col" tabindex="0" aria-label="Agent 灯">
+            <div class="col-head">
+              <div class="col-visual">
+                <div class="agent-strip" title="健康" aria-hidden="true"></div>
+              </div>
+              <div class="col-meta">
+                <div class="col-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M9 18h6M10 22h4M12 2a7 7 0 014 12.7V17a1 1 0 01-1 1h-6a1 1 0 01-1-1v-2.3A7 7 0 0112 2z"/>
+                  </svg>
+                  Agent 灯
+                </div>
+                <div class="col-main">Claude 前台</div>
+                <div class="col-sub">可注入 /rewind</div>
+              </div>
+            </div>
+
+            <div class="rows">
+              <div class="row row-ok">前台识别：<strong>正常</strong></div>
+              <div class="row">最近动作：<strong>2 分钟前</strong></div>
+              <div class="row">控制模式：<strong>键盘 + 文本注入</strong></div>
+            </div>
+
+            <div class="actions">
+              <button class="btn btn-primary" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="8"/>
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M12 2v2M12 20v2M2 12h2M20 12h2"/>
+                </svg>
+                测试前台
+              </button>
+              <button class="btn-text" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 6h16M4 12h10M4 18h14"/>
+                </svg>
+                分流规则
+              </button>
+            </div>
+          </article>
+
+          <!-- Column 2: Soft Pad -->
+          <article class="col" tabindex="0" aria-label="Soft Pad">
+            <div class="col-head">
+              <div class="col-visual">
+                <div class="mini-pad" aria-hidden="true">
+                  <span></span><span></span><span></span><span></span>
+                  <span></span><span class="is-hot"></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span>
+                </div>
+              </div>
+              <div class="col-meta">
+                <div class="col-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="2" y="6" width="20" height="12" rx="2"/>
+                    <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M10 14h4M18 14h.01"/>
+                  </svg>
+                  Soft Pad
+                </div>
+                <div class="col-main">已启用</div>
+                <div class="col-sub">12 个键位 / 1 个二级槽</div>
+              </div>
+            </div>
+
+            <div class="hl-block">
+              <div class="hl-row"><span>UNDO：</span><span>打开时间线</span></div>
+              <div class="hl-row"><span>Ctrl+Z：</span><span>保留在二级菜单</span></div>
+            </div>
+
+            <div class="rows">
+              <div class="row">当前层：<strong>Codex Numpad Layer</strong></div>
+              <div class="row">冲突：<strong>0</strong></div>
+              <div class="row">长按：<strong>打快照</strong></div>
+            </div>
+
+            <div class="actions">
+              <button class="btn btn-primary" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                </svg>
+                编辑键位
+              </button>
+              <button class="btn btn-secondary" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="2" y="6" width="20" height="12" rx="2"/>
+                  <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01"/>
+                </svg>
+                预览键盘
+              </button>
+            </div>
+          </article>
+
+          <!-- Column 3: Time Machine -->
+          <article class="col" tabindex="0" aria-label="Time Machine">
+            <div class="col-head">
+              <div class="col-visual">
+                <div class="timeline" aria-hidden="true">
+                  <div class="tl-item is-now">
+                    <span class="tl-dot"></span>
+                    <span class="tl-label">现在</span>
+                  </div>
+                  <div class="tl-item is-active">
+                    <span class="tl-dot"></span>
+                    <span class="tl-label">10:42 快照 B</span>
+                  </div>
+                  <div class="tl-item">
+                    <span class="tl-dot"></span>
+                    <span class="tl-label">10:16 快照 A</span>
+                  </div>
+                </div>
+              </div>
+              <div class="col-meta">
+                <div class="col-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M12 7v5l3 2"/>
+                  </svg>
+                  Time Machine
+                </div>
+                <div class="col-main">最近快照 10:42</div>
+                <div class="col-sub">当前 7 个文件有变化</div>
+              </div>
+            </div>
+
+            <div class="safety">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              <span>恢复前会自动保存当前状态</span>
+            </div>
+
+            <div class="rows">
+              <div class="row">项目：<strong>voice-pilot</strong></div>
+              <div class="row">关联：<strong>Claude session</strong></div>
+              <div class="row">可随时回到恢复前</div>
+            </div>
+
+            <div class="actions">
+              <button class="btn btn-primary" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9"/>
+                  <path d="M12 7v5l3 2"/>
+                </svg>
+                打开时间线
+              </button>
+              <button class="btn btn-secondary" type="button">打快照</button>
+            </div>
+          </article>
+        </section>
+
+        <!-- Below stubs -->
+        <div class="stubs">
+          <section class="section" aria-label="键位布局">
+            <div class="section-label">
+              <h2>键位布局</h2>
+              <span class="hint">Codex Numpad Layer</span>
+            </div>
+            <div class="layout-preview">
+              <div class="layout-pad" aria-hidden="true">
+                <span>7</span><span>8</span><span>9</span><span>/</span>
+                <span>4</span><span class="is-hot">5</span><span>6</span><span>*</span>
+                <span>1</span><span>2</span><span>3</span><span>−</span>
+              </div>
+              <p class="layout-note">
+                <strong>12 键</strong>主层 · UNDO 映射到时间线<br />
+                长按任意键可打快照
+              </p>
+            </div>
+          </section>
+
+          <section class="section" aria-label="前台分流">
+            <div class="section-label">
+              <h2>前台分流</h2>
+              <span class="hint">自动跟随前台 Agent</span>
+            </div>
+            <div class="route-list">
+              <div class="route-row" role="button" tabindex="0">
+                <span>Codex</span>
+                <span class="route-status">待命</span>
+                <svg class="route-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+              <div class="route-row" role="button" tabindex="0">
+                <span>Cursor</span>
+                <span class="route-status">待命</span>
+                <svg class="route-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+              <div class="route-row" role="button" tabindex="0">
+                <span>Claude</span>
+                <span class="route-status is-active">前台</span>
+                <svg class="route-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+            </div>
+          </section>
+
+          <section class="section" aria-label="高级">
+            <div class="section-label">
+              <h2>高级</h2>
+            </div>
+            <button class="adv-row" type="button" aria-expanded="false">
+              <svg class="adv-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+              Git 恢复点存储
+            </button>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1296,7 +1296,8 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-        });
+                time_machine_workspace: String::new(),
+            });
         let result = ensure_codex_pad_ready(&mut cfg, "zh-CN");
         assert!(result.changed);
         assert!(result.readiness.mapping_found);
@@ -1361,7 +1362,8 @@ mod tests {
                 activation_scope: "global".into(),
             }],
             codex_micro_pad: Some(pad),
-        };
+                time_machine_workspace: String::new(),
+            };
         let (slot, route_changed) = {
             let pad = m.codex_micro_pad.as_mut().unwrap();
             heal_pad_route_for_micro_key(pad, "ACT10").unwrap()
@@ -1429,7 +1431,8 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: bindings,
             codex_micro_pad: Some(pad),
-        };
+                time_machine_workspace: String::new(),
+            };
         let mut cfg = VoiceConfig {
             mappings: vec![m],
             ..VoiceConfig::default()
@@ -1497,6 +1500,7 @@ mod tests {
                 agent_provider_id: CODEX_PROVIDER_ID.into(),
                 agent_bindings: build_codex_micro_13_bindings("zh-CN"),
                 codex_micro_pad: Some(pad),
+                time_machine_workspace: String::new(),
             }],
             ..VoiceConfig::default()
         };
@@ -1576,7 +1580,8 @@ mod tests {
             agent_provider_id: CODEX_PROVIDER_ID.into(),
             agent_bindings: build_codex_micro_13_bindings("zh-CN"),
             codex_micro_pad: Some(pad),
-        }];
+                time_machine_workspace: String::new(),
+            }];
         sync_hook_cache(&cfg);
         assert!(pad_mapping_active());
         // Capture depends on Soft Pad session (Codex/overlay FG latch) + pad_active.
@@ -1626,7 +1631,8 @@ mod tests {
             agent_provider_id: CODEX_PROVIDER_ID.into(),
             agent_bindings: build_codex_micro_13_bindings("zh-CN"),
             codex_micro_pad: Some(pad),
-        }];
+                time_machine_workspace: String::new(),
+            }];
         sync_hook_cache(&cfg);
         assert!(pad_mapping_active());
         crate::codex_micro_overlay::test_set_foreground_latch(true);

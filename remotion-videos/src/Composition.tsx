@@ -616,4 +616,195 @@ const BrandOutro = () => {
   return (
     <AbsoluteFill
       style={{
-        background: "radial-gradient(ellipse at center, #0a0a14 0%, #010108 10
+        background: "radial-gradient(ellipse at center, #0a0a14 0%, #010108 100%)",
+        opacity: bgFade,
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          paddingBottom: 40,
+        }}
+      >
+        {/* Logo */}
+        <div
+          style={{
+            transform: `scale(${logoScale})`,
+            opacity: logoOpacity,
+          }}
+        >
+          <img
+            src={staticFile("onetone-icon-refined-1024.png")}
+            alt="OneTone"
+            style={{
+              width: 120,
+              height: 120,
+              objectFit: "contain",
+              filter: "drop-shadow(0 0 35px rgba(0,122,255,0.5))",
+            }}
+          />
+        </div>
+
+        {/* 品牌名 */}
+        <div
+          style={{
+            opacity: titleOpacity,
+            transform: `translateY(${titleY}px)`,
+            marginTop: 20,
+          }}
+        >
+          <h1
+            style={{
+              fontSize: 72,
+              fontWeight: 700,
+              margin: 0,
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif",
+              letterSpacing: -1,
+              background: "linear-gradient(180deg, #ffffff 0%, rgba(255,255,255,0.65) 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            OneTone
+          </h1>
+        </div>
+
+        {/* 价值主张 - 主文案 */}
+        <div
+          style={{
+            opacity: slogan1Opacity,
+            transform: `translateY(${slogan1Y}px)`,
+            marginTop: 35,
+            textAlign: "center",
+          }}
+        >
+          <p
+            style={{
+              fontSize: 36,
+              fontWeight: 600,
+              color: "rgba(255,255,255,0.95)",
+              margin: 0,
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif",
+              letterSpacing: 2,
+            }}
+          >
+            把触发直接接到输入法
+          </p>
+        </div>
+
+        {/* 支持场景标签 */}
+        <div
+          style={{
+            opacity: featuresOpacity,
+            transform: `translateY(${featuresY}px)`,
+            display: "flex",
+            gap: 18,
+            marginTop: 30,
+          }}
+        >
+          {["鼠标侧键", "键盘热键", "蓝牙耳机", "游戏手柄", "触控条", "脚踏板"].map((feature, i) => (
+            <div
+              key={i}
+              style={{
+                padding: "10px 22px",
+                background: "rgba(0,122,255,0.1)",
+                borderRadius: 25,
+                border: "1px solid rgba(0,122,255,0.25)",
+              }}
+            >
+              <span
+                style={{
+                  color: "rgba(100,180,255,0.9)",
+                  fontSize: 15,
+                  fontWeight: 500,
+                  fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
+                  letterSpacing: 0.5,
+                }}
+              >
+                {feature}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* 收尾口号 */}
+        <div
+          style={{
+            opacity: taglineOpacity,
+            transform: `translateY(${taglineY}px)`,
+            marginTop: 50,
+          }}
+        >
+          <p
+            style={{
+              fontSize: 40,
+              fontWeight: 700,
+              margin: 0,
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif",
+              letterSpacing: 3,
+              background: "linear-gradient(90deg, #ffd60a, #ff9f0a, #ff6b35)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+              textShadow: "0 0 40px rgba(255,180,10,0.3)",
+            }}
+          >
+            按一下，就开始。
+          </p>
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// 主组件 - 11秒品牌故事
+export const OneToneIntro = () => {
+  return (
+    <AbsoluteFill style={{ background: "#0a0a14" }}>
+      {/* Scene 1: 深夜Vibecoding场景 (0-80帧 / 0-2.67s) */}
+      <Sequence from={0} durationInFrames={80}>
+        <VibeCodingScene />
+      </Sequence>
+
+      {/* Scene 2: 多种外设触发 (60-130帧 / 2-4.33s) - 交叠20帧 */}
+      <Sequence from={60} durationInFrames={70}>
+        <TriggerScene />
+      </Sequence>
+
+      {/* Scene 3: OneTone连接动画 (110-180帧 / 3.67-6s) - 交叠20帧 */}
+      <Sequence from={110} durationInFrames={70}>
+        <OneToneBridge />
+      </Sequence>
+
+      {/* Scene 4: 语音输入效果展示 (165-240帧 / 5.5-8s) - 交叠15帧 */}
+      <Sequence from={165} durationInFrames={75}>
+        <VoiceInputScene />
+      </Sequence>
+
+      {/* Scene 5: 品牌收尾 (225-330帧 / 7.5-11s) - 交叠15帧 */}
+      <Sequence from={225} durationInFrames={105}>
+        <BrandOutro />
+      </Sequence>
+    </AbsoluteFill>
+  );
+};
+
+// 导出Composition配置
+export const MyComposition = () => {
+  return (
+    <Composition
+      id="OneToneIntro"
+      component={OneToneIntro}
+      durationInFrames={330} // 11秒 @ 30fps
+      fps={30}
+      width={1920}
+      height={1080}
+    />
+  );
+};

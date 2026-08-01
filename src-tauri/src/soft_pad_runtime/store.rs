@@ -643,6 +643,7 @@ mod attention_feed_tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: Some(pad),
+            time_machine_workspace: String::new(),
         }
     }
 

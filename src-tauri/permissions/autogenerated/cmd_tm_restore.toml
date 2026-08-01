@@ -1,0 +1,11 @@
+﻿# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-tm-restore"
+description = "Enables the cmd_tm_restore command without any pre-configured scope."
+commands.allow = ["cmd_tm_restore"]
+
+[[permission]]
+identifier = "deny-cmd-tm-restore"
+description = "Denies the cmd_tm_restore command without any pre-configured scope."
+commands.deny = ["cmd_tm_restore"]

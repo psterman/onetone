@@ -364,6 +364,7 @@
     if(m.cameraOverride===undefined) m.cameraOverride=null;
     if(!Array.isArray(m.voiceCommands)) m.voiceCommands=[];
     if(!Array.isArray(m.acousticVoiceCommands)) m.acousticVoiceCommands=[];
+    if(m.timeMachineWorkspace===undefined) m.timeMachineWorkspace='';
   }
 
   function isAutoTriggerMapping(m){

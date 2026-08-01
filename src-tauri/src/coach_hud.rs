@@ -425,6 +425,7 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
+            time_machine_workspace: String::new(),
         }
     }
 

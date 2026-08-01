@@ -36,10 +36,11 @@
   var softPadView = 'hub'; // hub | layout | presentation | runtime | agent
   /** Last opened Soft Pad detail tile — restored on later opens; first prepare forces runtime. */
   var lastSoftPadView = 'runtime';
-  var VALID_SOFT_PAD_VIEWS = { layout: 1, presentation: 1, runtime: 1, agent: 1 };
+  var VALID_SOFT_PAD_VIEWS = { layout: 1, presentation: 1, runtime: 1, agent: 1, timeline: 1 };
   /** SoftPad #3c：四面板唯一顺序源（func tiles / model / 测试共用）。 */
   var SOFT_PAD_PANEL_ORDER = ['runtime', 'layout', 'presentation', 'agent'];
   var chromeBound = false;
+  var tmHeroBooted = false;
   var selectToken = 0;
   var selectTimer = 0;
   var paintBusy = false;
@@ -59,6 +60,22 @@
     try {
       var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
       if (invoke) invoke('cmd_app_log', { line: String(line || '') }).catch(function () {});
+    } catch (_) {}
+  }
+
+  /** Floating Soft Pad overlay can take FG and cover settings — feels like 假死. */
+  var overlayDismissAt = 0;
+  function dismissSoftPadOverlay(reason) {
+    try {
+      var now = Date.now();
+      // render + timeline open used to fire two sync dismisses in the same tick.
+      if (now - overlayDismissAt < 400) return;
+      overlayDismissAt = now;
+      var ipc = global.OneToneIpc;
+      if (!ipc || typeof ipc.invoke !== 'function') return;
+      ipc.invoke('cmd_codex_micro_overlay_dismiss', {}).then(function () {
+        feLog('fe softPad.overlayDismiss ' + String(reason || ''));
+      }).catch(function () {});
     } catch (_) {}
   }
 
@@ -729,9 +746,11 @@
       empty: document.getElementById('softPadEmpty'),
       name: document.getElementById('softPadSummaryName'),
       status: document.getElementById('softPadSummaryStatus'),
-      presentation: document.getElementById('softPadSummaryPresentation'),
-      kind: document.getElementById('softPadSummaryKind'),
+      agent: document.getElementById('softPadSummaryAgent'),
+      keysMeta: document.getElementById('softPadSummaryKeys'),
+      tm: document.getElementById('softPadSummaryTm'),
       enable: document.getElementById('softPadSummaryEnable'),
+      statusBar: document.getElementById('softPadStatusBar'),
       ensureBtn: document.getElementById('btnSoftPadEnsureCodex'),
       titleLbl: document.getElementById('softPadSchemeTitleLbl'),
       switcher: document.getElementById('softPadAppSwitcher'),
@@ -773,18 +792,69 @@
     return !!(entry && entry.mapping && entry.mapping.id);
   }
 
+  function countPadKeys(entry) {
+    try {
+      var keys = entry && entry.mapping && entry.mapping.codexMicroPad && entry.mapping.codexMicroPad.keys;
+      return Array.isArray(keys) ? keys.length : 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  function buildHeroMeta(entry) {
+    var scope = selectedScopeId || (entry && entry.kind) || 'codex';
+    var agentName = appTitleFor(scope);
+    var pin = getUserLaneId();
+    var agent = pin
+      ? t('softPadCockpitAgentPinned', '{name} · 暂时').replace('{name}', agentName)
+      : t('softPadCockpitAgentFg', '{name} 前台').replace('{name}', agentName);
+    var n = countPadKeys(entry);
+    var keys = n > 0
+      ? t('softPadCockpitPadKeys', '{n} 个').replace('{n}', String(n))
+      : t('softPadCockpitPadKeysEmpty', '未准备');
+    var tm = global.OneToneSoftPadTimeMachine;
+    var restorePoint =
+      (tm && typeof tm.heroLabel === 'function' && tm.heroLabel()) ||
+      t('softPadCockpitTmSoon', '即将接入');
+    return {
+      agent: agent,
+      keys: keys,
+      restorePoint: restorePoint,
+      presentation: entry ? presentationLabel(entry.presentation) : '—',
+      kind: entry ? displayKind(entry) : '—'
+    };
+  }
+
   function buildStatusProps(entry) {
     if (!entry) {
-      return { name: '—', status: '—', presentation: '—', kind: '—', padEnabled: false, hasMapping: false };
+      var tmEmpty = global.OneToneSoftPadTimeMachine;
+      return {
+        name: '—',
+        status: '—',
+        statusCls: '',
+        presentation: '—',
+        kind: '—',
+        agent: '—',
+        keys: '—',
+        restorePoint:
+          (tmEmpty && typeof tmEmpty.heroLabel === 'function' && tmEmpty.heroLabel()) ||
+          t('softPadCockpitTmSoon', '即将接入'),
+        padEnabled: false,
+        hasMapping: false
+      };
     }
+    var hero = buildHeroMeta(entry);
     return {
       name: displayTitle(entry),
       status: statusLabel(entry),
       statusCls: statusTag(entry).cls,
-      presentation: presentationLabel(entry.presentation),
-      kind: displayKind(entry),
+      presentation: hero.presentation,
+      kind: hero.kind,
+      agent: hero.agent,
+      keys: hero.keys,
+      restorePoint: hero.restorePoint,
       padEnabled: !!entry.padEnabled,
-      hasMapping: hasMapping(entry),
+      hasMapping: hasMapping(entry)
     };
   }
 
@@ -792,29 +862,86 @@
     // P10: React island owns this DOM when mounted — push state and skip legacy DOM writes.
     if (global.__otSoftPadStatusMounted) {
       if (global.__otSoftPadStatusSync) global.__otSoftPadStatusSync(buildStatusProps(entry));
+      updateSoftPadFlowHints(entry);
+      syncSoftPadFlowNodes(entry);
       return;
     }
     var e = els();
-    if (!entry) {
-      if (e.name) e.name.textContent = '—';
-      if (e.status) e.status.textContent = '—';
-      if (e.presentation) e.presentation.textContent = '—';
-      if (e.kind) e.kind.textContent = '—';
-      if (e.enable) {
-        e.enable.classList.remove('is-on');
-        e.enable.setAttribute('aria-checked', 'false');
-        e.enable.disabled = true;
+    var props = buildStatusProps(entry);
+    if (e.name) e.name.textContent = props.name;
+    if (e.status) {
+      e.status.textContent = props.status;
+      e.status.className = ['keys-scheme-summary-pill', props.statusCls].filter(Boolean).join(' ');
+    }
+    if (e.agent) e.agent.textContent = props.agent;
+    if (e.keysMeta) e.keysMeta.textContent = props.keys;
+    if (e.tm) e.tm.textContent = props.restorePoint;
+    if (e.enable) {
+      e.enable.disabled = !props.hasMapping;
+      e.enable.classList.toggle('is-on', !!props.padEnabled);
+      e.enable.setAttribute('aria-checked', props.padEnabled ? 'true' : 'false');
+    }
+    var testBtn = document.getElementById('btnSoftPadTestFg');
+    var editBtn = document.getElementById('btnSoftPadEditKeys');
+    if (testBtn) testBtn.disabled = !props.hasMapping;
+    if (editBtn) editBtn.disabled = !props.hasMapping;
+    updateSoftPadFlowHints(entry);
+  }
+
+  function handleStatusAction(action) {
+    var entry = findEntry(getSelectedMappingId());
+    if (action === 'test-fg') {
+      var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
+      var done = function () {
+        updateStatusBar(findEntry(getSelectedMappingId()) || entry);
+        var lane = resolvePrimaryLaneResult(listSoftPadSchemes(), laneContextFromRuntime());
+        var name = lane && lane.entry ? displayKind(lane.entry) : appTitleFor(selectedScopeId || 'codex');
+        toastPad(formatDisplayLaneReason(lane && lane.reason, name));
+      };
+      if (!invoke) {
+        refreshSoftPadRuntimeAsync();
+        done();
+        return;
+      }
+      Promise.resolve(invoke('cmd_soft_pad_runtime_snapshot'))
+        .then(function (snap) {
+          ingestSoftPadRuntimeSnapshot(snap);
+          try {
+            if (global.__otSoftPadWorkflowSync) global.__otSoftPadWorkflowSync();
+          } catch (_) {}
+          updateScopeHint();
+          done();
+        })
+        .catch(function () {
+          toastPad(t('softPadCockpitTestFgFail', '前台检测失败，请重试'));
+        });
+      return;
+    }
+    if (action === 'edit-keys') {
+      openSubpage('layout');
+      return;
+    }
+    if (action === 'preview-pad') {
+      if (entry) schedulePreviewPaint(entry);
+      var preview = document.getElementById('softPadPreviewHost');
+      if (preview && preview.scrollIntoView) {
+        try { preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {}
       }
       return;
     }
-    if (e.name) e.name.textContent = displayTitle(entry);
-    if (e.status) e.status.textContent = statusLabel(entry);
-    if (e.presentation) e.presentation.textContent = presentationLabel(entry.presentation);
-    if (e.kind) e.kind.textContent = displayKind(entry);
-    if (e.enable) {
-      e.enable.disabled = !hasMapping(entry);
-      e.enable.classList.toggle('is-on', !!entry.padEnabled);
-      e.enable.setAttribute('aria-checked', entry.padEnabled ? 'true' : 'false');
+    if (action === 'open-timeline') {
+      openSubpage('timeline');
+      return;
+    }
+    if (action === 'take-snapshot') {
+      var tmSnap = global.OneToneSoftPadTimeMachine;
+      if (tmSnap && tmSnap.takeSnapshot) {
+        Promise.resolve(tmSnap.takeSnapshot()).then(function () {
+          updateStatusBar(entry);
+        });
+        return;
+      }
+      toastPad(t('softPadCockpitTimeMachineSoon', '项目时间胶囊即将接入，恢复前会先保存当前项目'));
     }
   }
 
@@ -854,10 +981,12 @@
     if (!e.hint) return;
     if (global.__otSoftPadScopeHintMounted && typeof global.__otSoftPadScopeHintSync === 'function') {
       global.__otSoftPadScopeHintSync();
+      updateStatusBar(findEntry(getSelectedMappingId()));
       return;
     }
     var model = buildSoftPadScopeHintModel();
     e.hint.textContent = model.text || '';
+    updateStatusBar(findEntry(getSelectedMappingId()));
   }
 
   function clearSubpage() {
@@ -1259,12 +1388,94 @@
   }
 
   function subpageTitle(view) {
+    view = String(view || '');
+    if (view === 'timeline') return t('softPadFlowTimelineTitle', '项目时间胶囊');
     view = normalizeFourPanelView(view);
     if (view === 'layout') return t('softPadTileLayout', '改按键');
     if (view === 'presentation') return t('softPadTilePres', '外观');
     if (view === 'runtime') return t('softPadTileRuntime', '何时显示');
     if (view === 'agent') return t('softPadTileMore', '更多');
     return '';
+  }
+
+  function flowNodeForView(view) {
+    view = String(view || softPadView || 'hub');
+    if (view === 'agent') return 'agent';
+    if (view === 'timeline') return 'timeline';
+    return 'pad';
+  }
+
+  function syncSoftPadFlowNodes(entry) {
+    var root = document.getElementById('softPadFlowNodes');
+    if (!root) return;
+    var active = flowNodeForView(softPadView);
+    root.querySelectorAll('[data-soft-pad-node]').forEach(function (node) {
+      var id = node.getAttribute('data-soft-pad-node');
+      var on = id === active;
+      var btn = node.querySelector('.flow-node-btn');
+      if (btn) {
+        btn.classList.toggle('is-active', on);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      }
+    });
+    updateSoftPadFlowHints(entry);
+  }
+
+  function updateSoftPadFlowHints(entry) {
+    var hero = buildHeroMeta(entry);
+    var agentHint = document.getElementById('softPadFlowNodeAgentHint');
+    var padHint = document.getElementById('softPadFlowNodePadHint');
+    var tmHint = document.getElementById('softPadFlowNodeTimelineHint');
+    if (agentHint) agentHint.textContent = hero.agent || '—';
+    if (padHint) {
+      padHint.textContent = entry
+        ? (statusLabel(entry) + ' · ' + hero.keys)
+        : (hero.keys || '—');
+    }
+    if (tmHint) {
+      tmHint.textContent = hero.restorePoint || t('softPadFlowTimelineHint', '只保护已接入项目');
+    }
+  }
+
+  function goSoftPadFlowNode(nodeId) {
+    nodeId = String(nodeId || '');
+    if (nodeId === 'agent') {
+      openSubpage('agent');
+      return;
+    }
+    if (nodeId === 'timeline') {
+      openSubpage('timeline');
+      return;
+    }
+    if (nodeId === 'pad') {
+      // Leave TM stage first so Soft Pad chrome is visible before layout paint.
+      if (softPadView === 'timeline') {
+        var tm = global.OneToneSoftPadTimeMachine;
+        if (tm && tm.closeDesk) tm.closeDesk();
+      }
+      // Soft Pad node lands on layout (键位) — runtime/presentation stay reachable via tiles.
+      openSubpage('layout');
+    }
+  }
+
+  function writeSoftPadTimelinePanel(host) {
+    var tm = global.OneToneSoftPadTimeMachine;
+    if (tm) {
+      tm.bindDesk();
+      var bound = tm.resolveBoundWorkspace ? tm.resolveBoundWorkspace() : '';
+      // First paint may reuse session; force only when switching Soft Pad–bound folder.
+      tm.openDesk(bound ? { workspace: bound } : {});
+    }
+    // Desk lives in #softPadTmDesk; mark subBody so paintSubpage skip-remount works (else 假死 reload loop).
+    var e = els();
+    var body = host || (e && e.subBody);
+    if (body) {
+      if (host) host.innerHTML = '';
+      body.setAttribute('data-soft-pad-panel', 'timeline');
+      var mid = getSelectedMappingId();
+      if (mid) body.setAttribute('data-soft-pad-mapping', String(mid));
+      else body.removeAttribute('data-soft-pad-mapping');
+    }
   }
 
   function fourPanelSub(entry, id) {
@@ -1284,6 +1495,7 @@
   function resolvePreviewEmpty(entry, view) {
     if (!hasMapping(entry)) return 'noMapping';
     view = String(view || softPadView || 'hub');
+    if (view === 'timeline') return 'unavailable';
     var light = view === 'runtime' || view === 'presentation' || view === 'agent';
     var canPaint = view === 'hub' || view === 'layout' || light;
     if (!canPaint) return 'unavailable';
@@ -1411,10 +1623,12 @@
   function buildSoftPadFourPanelModel(entry) {
     if (arguments.length === 0) entry = findEntry(getSelectedMappingId());
     var rawView = softPadView || 'hub';
-    var activeView = rawView === 'hub' ? 'hub' : normalizeFourPanelView(rawView);
+    var isTm = rawView === 'timeline';
+    // Timeline is a stage mode (flow node), not a Soft Pad detail tile.
+    var activeView = rawView === 'hub' || isTm ? 'hub' : normalizeFourPanelView(rawView);
     var mappingId = hasMapping(entry) ? String(entry.mapping.id) : '';
     var has = hasMapping(entry);
-    var detailOpen = activeView !== 'hub' && has;
+    var detailOpen = !isTm && activeView !== 'hub' && has;
     var landingView = defaultDetailView();
     var landingHint = t('softPadLandingHint', '建议从「{panel}」开始')
       .replace('{panel}', subpageTitle(landingView));
@@ -1480,13 +1694,18 @@
   function defaultDetailView(opts) {
     opts = opts || {};
     if (opts.firstPrepare) return 'runtime';
-    if (opts.forceView && VALID_SOFT_PAD_VIEWS[opts.forceView]) return opts.forceView;
-    if (VALID_SOFT_PAD_VIEWS[lastSoftPadView]) return lastSoftPadView;
+    if (opts.forceView && VALID_SOFT_PAD_VIEWS[opts.forceView] && opts.forceView !== 'timeline') {
+      return opts.forceView;
+    }
+    // Timeline is stage-only — never restore it as Soft Pad landing (会假死/盖住虚拟键盘).
+    if (VALID_SOFT_PAD_VIEWS[lastSoftPadView] && lastSoftPadView !== 'timeline') {
+      return lastSoftPadView;
+    }
     return 'runtime';
   }
 
   function rememberSoftPadView(view) {
-    if (VALID_SOFT_PAD_VIEWS[view]) lastSoftPadView = view;
+    if (VALID_SOFT_PAD_VIEWS[view] && view !== 'timeline') lastSoftPadView = view;
   }
 
   function buildSoftPadFuncTilesModel(entry) {
@@ -1496,7 +1715,7 @@
     var inPadViews = softPadView === 'hub' || softPadView === 'layout' ||
       softPadView === 'presentation' || softPadView === 'runtime' || softPadView === 'agent';
     var ariaLabel = t('softPadFuncTilesAria', '你想改什么？');
-    if (!entry || !inPadViews) {
+    if (!entry || !inPadViews || softPadView === 'timeline') {
       return {
         tilesHtml: '',
         hidden: true,
@@ -1584,10 +1803,19 @@
   function syncHubChrome(entry) {
     var e = els();
     var onHub = softPadView === 'hub';
-    var detailOpen = !onHub && hasMapping(entry);
-    // 左侧导航（键盘+卡片）结构固定；任意子页都不收起预览，避免布局崩坏。
+    var onTm = softPadView === 'timeline';
+    var tm = global.OneToneSoftPadTimeMachine;
+    if (onTm) {
+      // Visibility only — openDesk/loadAll is owned by writeSoftPadTimelinePanel (not every chrome sync).
+      if (tm && typeof tm.ensureDeskVisible === 'function') tm.ensureDeskVisible();
+      else if (tm && tm.bindDesk) tm.bindDesk();
+    } else if (tm) {
+      tm.closeDesk();
+    }
+    // Timeline uses stage.is-tm-desk; Soft Pad detail shell stays closed.
+    var detailOpen = !onHub && !onTm && hasMapping(entry);
     if (e.tiles && !(global.__otSoftPadFuncTilesMounted && typeof global.__otSoftPadFuncTilesSync === 'function')) {
-      e.tiles.hidden = !entry;
+      e.tiles.hidden = !entry || onTm;
     }
     setDetailOpen(detailOpen);
     if (global.__otSoftPadPreviewMounted && typeof global.__otSoftPadPreviewSync === 'function') {
@@ -1624,6 +1852,7 @@
         idleSub.textContent = t('softPadDetailIdleSub', '右侧打开详情；左侧键盘与列表保持不动');
       }
     }
+    syncSoftPadFlowNodes(entry);
     if (entry) {
       if (global.__otSoftPadFuncTilesMounted && typeof global.__otSoftPadFuncTilesSync === 'function') {
         renderFuncTiles(entry);
@@ -1751,7 +1980,7 @@
     if (steps) steps.textContent = boundKeyCount(entry) + '/15';
   }
 
-  /** P14k：runtime / presentation / layout 已 paint 时跳过整板 remount。 */
+  /** P14k：runtime / presentation / layout / timeline 已 paint 时跳过整板 remount。 */
   function softPadSubpageAlreadyPainted(entry, view) {
     var e = els();
     if (!e.subBody || !hasMapping(entry) || !view) return false;
@@ -1768,6 +1997,10 @@
     if (view === 'layout') {
       return !!(global.__otSoftPadLayoutShellMounted ||
         host.querySelector('[data-soft-pad-layout-editor]'));
+    }
+    if (view === 'timeline') {
+      var desk = document.getElementById('softPadTmDesk');
+      return !!(desk && desk.dataset.tmBound === '1' && !desk.hidden);
     }
     return false;
   }
@@ -2118,6 +2351,20 @@
     }
     if (!stillValid()) return;
 
+    if (targetView === 'timeline') {
+      try {
+        if (Pad.closeEditKeycap) Pad.closeEditKeycap({ reopenInline: false });
+        e.subBody.classList.remove('is-editing-key');
+        writeSoftPadTimelinePanel(null);
+      } catch (err) {
+        feLog('fe softPad.paintSubpage error ' + (err && err.message ? err.message : 'unknown'));
+        throw err;
+      } finally {
+        feLog('fe softPad.paintSubpage timeline ' + (Date.now() - t0) + 'ms');
+      }
+      return;
+    }
+
     if (global.__otSoftPadSubpageMounted && typeof global.__otSoftPadSubpageSync === 'function') {
       try {
         if (Pad.closeEditKeycap) Pad.closeEditKeycap({ reopenInline: false });
@@ -2150,6 +2397,11 @@
         return;
       }
 
+      if (targetView === 'timeline') {
+        writeSoftPadTimelinePanel(null);
+        return;
+      }
+
       var m = entry.mapping;
       if (targetView === 'layout' && Pad.renderSoftPadLayoutPanel) {
         Pad.renderSoftPadLayoutPanel(paintHost, m, { onChanged: onChanged });
@@ -2179,11 +2431,13 @@
   }
 
   function openSubpage(view) {
-    if (view !== 'layout' && view !== 'presentation' && view !== 'runtime' && view !== 'agent') return;
+    if (view !== 'layout' && view !== 'presentation' && view !== 'runtime' && view !== 'agent' && view !== 'timeline') return;
     var entry = findEntry(getSelectedMappingId());
-    if (!hasMapping(entry)) return;
+    // Project capsules are workspace-scoped; allow open without Soft Pad mapping.
+    if (view !== 'timeline' && !hasMapping(entry)) return;
     // Re-clicking the active tile must not remount — that wiped the inline key editor.
     if (view === softPadView) {
+      if (view === 'timeline') dismissSoftPadOverlay('timeline-reclick');
       syncHubChrome(entry);
       return;
     }
@@ -2199,6 +2453,11 @@
     rememberSoftPadView(view);
     // Sync chrome + light panel immediately (no blank frame between hide tiles and fill body).
     syncHubChrome(entry);
+    if (view === 'timeline') {
+      dismissSoftPadOverlay('timeline');
+      writeSoftPadTimelinePanel(null);
+      return;
+    }
     paintSubpage(entry);
     ensureSoftPadPreview(entry);
   }
@@ -2207,6 +2466,10 @@
     var from = softPadView;
     feLog('fe softPad.closeSubpage from=' + from);
     var entry = findEntry(getSelectedMappingId());
+    if (from === 'timeline') {
+      var tmClose = global.OneToneSoftPadTimeMachine;
+      if (tmClose) tmClose.closeDesk();
+    }
     // 默认落地「何时显示」：其它子页返回到 runtime，不再回到空白提示态。
     if (hasMapping(entry) && from !== 'runtime') {
       openSubpage('runtime');
@@ -2369,7 +2632,7 @@
     var previewEmpty = panelModel.previewEmpty || resolvePreviewEmpty(entry, view);
     var emptyReason = previewEmpty === 'ready' || previewEmpty === 'none' ? '' : previewEmpty;
     var emptyHtml = emptyReason ? buildPreviewEmptyHtml(emptyReason) : '';
-    var hidden = !has && !emptyHtml;
+    var hidden = view === 'timeline' || (!has && !emptyHtml);
     var clear = !has;
     var collapsed = false;
     var skipPaint = false;
@@ -2452,7 +2715,7 @@
       return;
     }
     if (paintReentry > 0) return;
-    var light = softPadView === 'runtime' || softPadView === 'presentation' || softPadView === 'agent';
+    var light = softPadView === 'runtime' || softPadView === 'presentation' || softPadView === 'agent' || softPadView === 'timeline';
     if (softPadView !== 'hub' && softPadView !== 'layout' && !light && !opts.force) return;
     var e = els();
     if (!e.preview) return;
@@ -2619,6 +2882,11 @@
     if (softPadView === 'hub') renderFuncTiles(entry);
 
     if (opts.previewOnly) return;
+    // Time Machine owns the stage; don't flush Soft Pad preview/layout remount under it.
+    if (softPadView === 'timeline') {
+      writeSoftPadTimelinePanel(null);
+      return;
+    }
     // 轻量子页立即刷右栏；改按键也立刻填说明区，避免先闪空白提示。
     // 键位预览仍走下面的 deferred paint（假死根因）。
     if (softPadView === 'presentation' || softPadView === 'runtime' || softPadView === 'agent' ||
@@ -2678,9 +2946,14 @@
     }
 
     if (opts.resetView !== false) {
-      // Default landing: 何时显示；later opens restore last tile.
-      softPadView = defaultDetailView(opts);
-      rememberSoftPadView(softPadView);
+      // Stay on Time Machine unless caller forces another Soft Pad tile.
+      if (softPadView === 'timeline' && !(opts.forceView && opts.forceView !== 'timeline')) {
+        /* keep timeline */
+      } else {
+        // Default landing: 何时显示；later opens restore last tile.
+        softPadView = defaultDetailView(opts);
+        rememberSoftPadView(softPadView);
+      }
     }
 
     var sameMap = id === String(getSelectedMappingId() || '');
@@ -3032,6 +3305,44 @@
     if (e.enable && !global.__otSoftPadStatusMounted) {
       e.enable.addEventListener('click', function () { toggleSelectedEnable(); });
     }
+    if (e.statusBar) {
+      e.statusBar.addEventListener('click', function (ev) {
+        var btn = ev.target.closest && ev.target.closest('[data-cockpit-action]');
+        if (!btn || btn.disabled) return;
+        ev.preventDefault();
+        handleStatusAction(btn.getAttribute('data-cockpit-action'));
+      });
+    }
+    var flowNodes = document.getElementById('softPadFlowNodes');
+    if (flowNodes) {
+      flowNodes.addEventListener('click', function (ev) {
+        var btn = ev.target.closest && ev.target.closest('.flow-node-btn');
+        if (!btn) return;
+        var node = btn.closest('[data-soft-pad-node]');
+        if (!node) return;
+        goSoftPadFlowNode(node.getAttribute('data-soft-pad-node'));
+      });
+    }
+    if (e.subHost) {
+      e.subHost.addEventListener('click', function (ev) {
+        var btn = ev.target.closest && ev.target.closest('[data-cockpit-action]');
+        if (!btn || !e.subHost.contains(btn)) return;
+        ev.preventDefault();
+        handleStatusAction(btn.getAttribute('data-cockpit-action'));
+      });
+    }
+    var tmBoot = global.OneToneSoftPadTimeMachine;
+    if (tmBoot && tmBoot.refreshHero && !tmHeroBooted) {
+      tmHeroBooted = true;
+      // Defer: never block Soft Pad first paint on git IPC.
+      setTimeout(function () {
+        Promise.resolve(tmBoot.refreshHero())
+          .then(function () {
+            updateStatusBar(findEntry(getSelectedMappingId()));
+          })
+          .catch(function () {});
+      }, 0);
+    }
   }
 
   function refreshSelected(m) {
@@ -3042,6 +3353,8 @@
     updateScopeHint();
     if (entry) {
       updateStatusBar(entry);
+      // Timeline owns the stage — don't remount Soft Pad preview/chrome under it.
+      if (softPadView === 'timeline') return;
       // Never remount pad while on light subpages (显示形态/返回假死).
       if (softPadView === 'hub' || softPadView === 'layout') {
         schedulePreviewPaint(entry);
@@ -3058,6 +3371,7 @@
     opts = opts || {};
     var t0 = Date.now();
     feLog('fe softPad.render begin');
+    dismissSoftPadOverlay('render');
     try{
       var mountSoft=global.__otMountSoftPadStatusIsland;
       if(typeof mountSoft==='function') mountSoft();
@@ -3081,6 +3395,12 @@
     bindChrome();
     // Will land on runtime via selectScheme({ resetView: true }); keep hub only until then.
     softPadView = 'hub';
+    // Drop stale timeline landing from a previous TM visit (otherwise Soft Pad opens into TM).
+    if (lastSoftPadView === 'timeline') lastSoftPadView = 'runtime';
+    try {
+      var tmReset = global.OneToneSoftPadTimeMachine;
+      if (tmReset && tmReset.closeDesk) tmReset.closeDesk();
+    } catch (_) {}
     clearSubpage();
     var e = els();
     applySoftPadEnsureCtaHost(buildSoftPadEnsureCtaModel());
@@ -3248,6 +3568,8 @@
     // P14g/P14i：detail 顶栏 + panel 显隐
     buildSoftPadDetailChromeModel: buildSoftPadDetailChromeModel,
     closeSubpage: closeSubpage,
+    openSubpage: openSubpage,
+    handleStatusAction: handleStatusAction,
     // P14h：scope 提示文案模型
     buildSoftPadScopeHintModel: buildSoftPadScopeHintModel,
     // P14j：准备 Codex CTA

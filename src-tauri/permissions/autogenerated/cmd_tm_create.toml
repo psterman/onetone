@@ -1,0 +1,11 @@
+﻿# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-tm-create"
+description = "Enables the cmd_tm_create command without any pre-configured scope."
+commands.allow = ["cmd_tm_create"]
+
+[[permission]]
+identifier = "deny-cmd-tm-create"
+description = "Denies the cmd_tm_create command without any pre-configured scope."
+commands.deny = ["cmd_tm_create"]

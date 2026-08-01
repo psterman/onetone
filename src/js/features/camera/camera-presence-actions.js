@@ -562,10 +562,21 @@
       wave:ov.wave!=null?normalizeAction(ov.wave):base.wave,
       awayMs:base.awayMs,
       presentMs:base.presentMs,
-      shakeHow:normalizeShakeHow(base.shakeHow),
-      shakeConfirmCue:base.shakeConfirmCue!==false,
-      blinkCloseSec:normalizeBlinkCloseSec(base.blinkCloseSec),
-      blinkConfirmCue:base.blinkConfirmCue!==false
+      shakeHow:normalizeShakeHow(ov.shakeHow!=null?ov.shakeHow:base.shakeHow),
+      shakeConfirmCue:(function(){
+        if(ov.shakeConfirmCue!=null) return !!ov.shakeConfirmCue;
+        if(ov.shake_confirm_cue!=null) return !!ov.shake_confirm_cue;
+        return base.shakeConfirmCue!==false;
+      })(),
+      blinkCloseSec:normalizeBlinkCloseSec(
+        ov.blinkCloseSec!=null?ov.blinkCloseSec:
+        (ov.blink_close_sec!=null?ov.blink_close_sec:base.blinkCloseSec)
+      ),
+      blinkConfirmCue:(function(){
+        if(ov.blinkConfirmCue!=null) return !!ov.blinkConfirmCue;
+        if(ov.blink_confirm_cue!=null) return !!ov.blink_confirm_cue;
+        return base.blinkConfirmCue!==false;
+      })()
     };
     return merged;
   }
@@ -937,6 +948,25 @@
     return ensureStopped({reason:'master_off'});
   }
 
+  function deferCameraHeavyWork(fn){
+    // Let dropdown/toggle paint first — sync MediaPipe on the click path used to 假死.
+    if(typeof global.requestAnimationFrame==='function'){
+      global.requestAnimationFrame(function(){
+        global.setTimeout(fn,0);
+      });
+    }else{
+      global.setTimeout(fn,0);
+    }
+  }
+
+  function syncLiveLandmarkerDeferred(){
+    deferCameraHeavyWork(function(){
+      if(global.OneToneCameraPreview&&global.OneToneCameraPreview.syncLiveLandmarker){
+        try{ global.OneToneCameraPreview.syncLiveLandmarker(); }catch(_){}
+      }
+    });
+  }
+
   function persistPresencePrefs(partial){
     partial=partial&&typeof partial==='object'?partial:{};
     var cp=cameraPrefs();
@@ -946,6 +976,13 @@
     var hasAction=partial.onAway!=null||partial.onReturn!=null||partial.shakeHead!=null||partial.deliberateBlink!=null
       ||partial.openPalm!=null||partial.okHand!=null||partial.fist!=null||partial.wave!=null;
     var hasTriggers=partial.triggers!=null&&typeof partial.triggers==='object';
+    var hasTuning=partial.shakeHow!=null
+      ||partial.shakeConfirmCue!=null||partial.shake_confirm_cue!=null
+      ||partial.blinkCloseSec!=null||partial.blinkCloseHow!=null
+      ||partial.blink_close_sec!=null||partial.blink_close_how!=null
+      ||partial.blinkConfirmCue!=null||partial.blink_confirm_cue!=null
+      ||partial.awayMs!=null||partial.presentMs!=null;
+    var paramOnly=hasTuning&&!hasAction&&!hasTriggers&&!touchedEnabled;
 
     if(touchedEnabled){
       cur.enabled=!!partial.enabled;
@@ -969,16 +1006,16 @@
       syncUiFromPrefs();
       syncDetectInterval();
       emitRuntime();
-      if(global.OneToneCameraPreview&&global.OneToneCameraPreview.syncLiveLandmarker){
-        try{ global.OneToneCameraPreview.syncLiveLandmarker(); }catch(_){}
-      }
+      syncLiveLandmarkerDeferred();
       if(touchedEnabled&&cur.enabled!==wasEnabled){
-        if(cur.enabled){
-          st.manualStopped=false;
-          reconcileRuntime({reason:'master_on'});
-        }else{
-          ensureStopped({reason:'master_off'});
-        }
+        deferCameraHeavyWork(function(){
+          if(cur.enabled){
+            st.manualStopped=false;
+            reconcileRuntime({reason:'master_on'});
+          }else{
+            ensureStopped({reason:'master_off'});
+          }
+        });
       }
       return;
     }
@@ -1036,19 +1073,29 @@
       else if(global.OneToneConfigPersist.saveAsync) global.OneToneConfigPersist.saveAsync();
       else if(global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
     }
+    if(paramOnly){
+      // Tuning only — patch local controls; do not rebuild all selects or touch MediaPipe.
+      syncPresenceDurationUi(cur);
+      syncShakeHowUi(cur);
+      syncBlinkCloseSecUi(cur);
+      syncBlinkConfirmCueUi(cur);
+      syncShakeConfirmCueUi(cur);
+      syncDetectInterval();
+      return;
+    }
     syncUiFromPrefs();
     syncDetectInterval();
     emitRuntime();
-    if(global.OneToneCameraPreview&&global.OneToneCameraPreview.syncLiveLandmarker){
-      try{ global.OneToneCameraPreview.syncLiveLandmarker(); }catch(_){}
-    }
+    syncLiveLandmarkerDeferred();
     if(touchedEnabled&&cur.enabled!==wasEnabled){
-      if(cur.enabled){
-        st.manualStopped=false;
-        reconcileRuntime({reason:'master_on'});
-      }else{
-        ensureStopped({reason:'master_off'});
-      }
+      deferCameraHeavyWork(function(){
+        if(cur.enabled){
+          st.manualStopped=false;
+          reconcileRuntime({reason:'master_on'});
+        }else{
+          ensureStopped({reason:'master_off'});
+        }
+      });
     }
   }
 
