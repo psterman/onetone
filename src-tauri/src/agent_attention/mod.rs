@@ -9,6 +9,7 @@ pub use bridge::{
     ingest_codex_hook_event, ingest_cursor_hook_event, raise_onetone_ask,
 };
 pub use model::{AttentionCause, AttentionPublicSnapshot, AttentionState, SignalSource};
-pub use store::{
-    project_waiting_kinds, public_snapshot, raise_needs_input, set_recompute_hook,
-};
+pub use store::{project_waiting_kinds, public_snapshot, raise_needs_input, set_recompute_hook};
+
+#[cfg(test)]
+pub use store::reset_for_test;

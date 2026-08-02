@@ -164,6 +164,7 @@
     runtimeListeners:[],
     // Non-persistent runtime hold — never written to prefs.
     manualStopped:false,
+    drawerUiPaused:false,
     lastError:null,
     runtimeStatus:'off',
     ensureInflight:null,
@@ -3603,6 +3604,24 @@
     syncUiFromPrefs();
   }
 
+  function setDrawerUiPaused(paused){
+    paused=!!paused;
+    if(st.drawerUiPaused===paused) return;
+    st.drawerUiPaused=paused;
+    var lm=global.OneToneCameraGazeLandmarker;
+    var hg=global.OneToneCameraHandGesture;
+    try{
+      if(paused){
+        if(lm&&lm.pauseInfer) lm.pauseInfer();
+        if(hg&&hg.pauseInfer) hg.pauseInfer();
+      }else{
+        if(lm&&lm.resumeInfer) lm.resumeInfer();
+        if(hg&&hg.resumeInfer) hg.resumeInfer();
+        syncDetectInterval();
+      }
+    }catch(_){}
+  }
+
   function init(){
     st.enabled=!!basePresencePrefs().enabled;
     bindUi();
@@ -3623,6 +3642,7 @@
     ensureStopped:ensureStopped,
     reconcileRuntime:reconcileRuntime,
     deferCameraHeavyWork:deferCameraHeavyWork,
+    setDrawerUiPaused:setDrawerUiPaused,
     setRuntimeStateListener:setRuntimeStateListener,
     clearManualStop:clearManualStop,
     requestRestart:requestRestart,

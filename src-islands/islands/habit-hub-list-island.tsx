@@ -30,7 +30,11 @@ const InnerBlock = memo(function InnerBlock({ block }: { block: HabitHubInnerBlo
 const SectionAppBlock = memo(function SectionAppBlock({ block }: { block: HabitHubBlock }) {
   const extra = block.extraClass ? ` habit-hub-section--${block.extraClass}` : '';
   return (
-    <section className={`habit-hub-section${extra}`} aria-label={block.ariaLabel}>
+    <section
+      className={`habit-hub-section${extra}`}
+      aria-label={block.ariaLabel}
+      {...(block.dataHabitGuide ? { 'data-habit-guide': block.dataHabitGuide } : {})}
+    >
       <div style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: block.headInner ?? '' }} />
       <div className="habit-hub-section-list habit-hub-section-list--cards">
         {(block.innerBlocks ?? []).map((ib) => (
@@ -44,6 +48,7 @@ const SectionAppBlock = memo(function SectionAppBlock({ block }: { block: HabitH
   if (prev.block.headInner !== next.block.headInner) return false;
   if (prev.block.ariaLabel !== next.block.ariaLabel) return false;
   if (prev.block.extraClass !== next.block.extraClass) return false;
+  if (prev.block.dataHabitGuide !== next.block.dataHabitGuide) return false;
   const a = prev.block.innerBlocks ?? [];
   const b = next.block.innerBlocks ?? [];
   if (a.length !== b.length) return false;

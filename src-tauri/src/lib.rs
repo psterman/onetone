@@ -1,24 +1,22 @@
 mod agent;
 mod agent_attention;
 mod agent_catalog;
+mod agent_model_metadata;
+mod agent_usage;
+mod connector_health;
 mod app_chat_workflow;
 mod app_exe_icon;
 mod app_icon;
 mod app_identity;
 mod app_log;
-mod ui_heartbeat;
 mod audio_frame_bus;
 mod audio_win;
 mod backdrop;
 mod camera_capability_probe;
-mod coach_hud;
-mod gaze_monitor;
-mod data_root;
 mod claude_cli_session;
 mod claude_hook_setup;
+mod coach_hud;
 mod codex_app_state;
-mod pad_status;
-mod soft_pad_runtime;
 mod codex_micro_overlay;
 mod codex_micro_protocol_server;
 mod codex_micro_vendor;
@@ -26,7 +24,9 @@ mod codex_numpad_layer;
 mod codex_pad_binding_diagnose;
 mod config;
 mod cursor_workflow;
+mod data_root;
 mod device_identity;
+mod gaze_monitor;
 mod gesture_timing;
 mod habit_profile;
 mod input_ext;
@@ -36,24 +36,26 @@ mod key_chord;
 mod keyboard;
 mod kws_model_download;
 mod native_dll;
+mod pad_status;
 mod policy_config;
 mod press_gesture;
 mod resource_monitor;
 mod runtime_event;
 mod scene_config;
 mod send_guard;
+mod soft_pad_runtime;
 mod state;
 pub mod time_machine;
 mod tray;
 mod tray_agent_bridge;
 mod tray_icon_render;
+mod ui_heartbeat;
 mod update;
 mod vendor_hid;
 pub mod voice_acoustic_command;
 pub mod voice_acoustic_record;
 pub mod voice_acoustic_runtime;
 mod voice_bootstrap;
-mod voice_supervisor;
 mod voice_command_router;
 mod voice_end_runtime;
 mod voice_keyword_dispatch;
@@ -64,6 +66,7 @@ mod voice_kws_native;
 mod voice_kws_runtime;
 mod voice_sapi;
 mod voice_sapi_runtime;
+mod voice_supervisor;
 mod voice_vosk;
 mod voice_vosk_runtime;
 mod vosk_model_download;
@@ -324,6 +327,8 @@ pub fn run() {
         .manage(app_state.clone())
         .setup(move |app| {
             app_log::log_line(&app_state, "startup", "setup begin");
+
+            crate::agent_usage::start_codex_account_poll(app.handle().clone(), app_state.clone());
 
             {
                 let state_for_attention = app_state.clone();
@@ -683,11 +688,7 @@ pub fn run() {
                 if lights_on || labs {
                     let labs_app = app.handle().clone();
                     let labs_state = Arc::clone(&app_state);
-                    let reason = if labs {
-                        "Labs"
-                    } else {
-                        "status_lights"
-                    };
+                    let reason = if labs { "Labs" } else { "status_lights" };
                     match codex_micro_protocol_server::start(labs_app, labs_state, None) {
                         Ok(r) => app_log::log_line(
                             &app_state,

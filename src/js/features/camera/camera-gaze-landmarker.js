@@ -47,6 +47,7 @@
   var detectTimeoutId=0;
   var workerFailed=false;
   var queueDepth=0; // 0 or 1 (pending) + in-flight tracked separately
+  var inferPaused=false;
 
   function experimentalPresenceAllowed(){
     try{
@@ -529,7 +530,7 @@
 
   function detectLoop(wallNow){
     detectRaf=0;
-    if(!running) return;
+    if(!running||inferPaused) return;
     if(typeof document!=='undefined'&&document.hidden){
       detectRaf=requestAnimationFrame(detectLoop);
       return;
@@ -541,14 +542,29 @@
     detectRaf=requestAnimationFrame(detectLoop);
   }
 
+  function pauseInfer(){
+    inferPaused=true;
+    clearDetectLoop();
+    clearDetectTimeout();
+    detectInFlight=false;
+    dropPendingBitmap();
+    setActivityTag('');
+  }
+
+  function resumeInfer(){
+    if(!inferPaused) return;
+    inferPaused=false;
+    if(running&&workerReady) scheduleDetectLoop();
+  }
+
   function start(video,callback){
     videoEl=video||null;
     onPoint=callback||null;
-    if(running&&detectRaf&&workerReady) return ensureReady();
+    if(running&&detectRaf&&workerReady&&!inferPaused) return ensureReady();
     running=true; lastTs=-1; lastDetectWall=0;
     return ensureReady().then(function(){
       if(!running) return;
-      scheduleDetectLoop();
+      if(!inferPaused) scheduleDetectLoop();
     }).catch(function(err){
       running=false; workerFailed=true; throw err;
     });
@@ -556,12 +572,13 @@
 
   function stop(){
     running=false;
+    inferPaused=false;
     clearDetectLoop(); clearDetectTimeout(); dropPendingBitmap();
     detectInFlight=false; videoEl=null; onPoint=null; lastTs=-1;
     setActivityTag('');
   }
 
-  function isRunning(){ return !!running&&!!detectRaf; }
+  function isRunning(){ return !!running&&!!detectRaf&&!inferPaused; }
 
   function getLastPoint(){
     return {x:lastGood.x,y:lastGood.y,confidence:lastGood.confidence,state:lastGood.state,feats:lastGood.feats||null};
@@ -587,6 +604,8 @@
     getContainRect:getContainRect,
     estimateGazeProxy:estimateGazeProxy,
     getInferQueueDepth:getInferQueueDepth,
+    pauseInfer:pauseInfer,
+    resumeInfer:resumeInfer,
     isWorkerFailed:function(){ return !!workerFailed; },
     experimentalPresenceAllowed:experimentalPresenceAllowed,
     getLastLandmarks:function(){ return lastLandmarks||null; },

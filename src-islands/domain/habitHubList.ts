@@ -11,6 +11,7 @@ export interface HabitHubBlock {
   html?: string;
   ariaLabel?: string;
   extraClass?: string;
+  dataHabitGuide?: string;
   headInner?: string;
   innerBlocks?: HabitHubInnerBlock[];
 }
@@ -50,7 +51,7 @@ export function blocksSignature(blocks: HabitHubBlock[]): string {
   for (const b of blocks) {
     sig += b.id + '\u0001';
     if (b.innerBlocks) {
-      sig += (b.headInner ?? '') + '\u0001' + (b.ariaLabel ?? '') + '\u0001' + (b.extraClass ?? '');
+      sig += (b.headInner ?? '') + '\u0001' + (b.ariaLabel ?? '') + '\u0001' + (b.extraClass ?? '') + '\u0001' + (b.dataHabitGuide ?? '');
       for (const ib of b.innerBlocks) {
         sig += '\u0003' + ib.id + '\u0001' + ib.html;
       }

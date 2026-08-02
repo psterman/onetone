@@ -10,11 +10,19 @@
   <div class="root">
     <div class="wrap" id="wrap">
       <div class="overlay-mini" id="overlayMini">
-        <span class="overlay-mini__mark" aria-hidden="true">M</span>
-        <div class="overlay-mini__leds" id="miniLeds" data-pad-status="idle" aria-hidden="true">
-          <span class="overlay-mini__led"></span>
-          <span class="overlay-mini__led"></span>
-          <span class="overlay-mini__led"></span>
+        <div class="overlay-mini__agents" id="miniAgents" role="list" aria-label="Agent 状态">
+          <span class="overlay-mini__agent" role="listitem" data-agent="codex" data-status="idle" aria-label="Codex：空闲">
+            <img src="icons/app-target/codex.svg" alt="" aria-hidden="true">
+            <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
+          </span>
+          <span class="overlay-mini__agent" role="listitem" data-agent="claude" data-status="idle" aria-label="Claude：空闲">
+            <img src="icons/app-target/claude.svg" alt="" aria-hidden="true">
+            <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
+          </span>
+          <span class="overlay-mini__agent" role="listitem" data-agent="cursor" data-status="idle" aria-label="Cursor：空闲">
+            <img src="icons/app-target/cursor.svg" alt="" aria-hidden="true">
+            <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
+          </span>
         </div>
         <button type="button" class="overlay-mini__btn overlay-mini__btn--expand" data-act="expand" title="展开" aria-label="展开浮窗">
           <span class="overlay-mini__switch" aria-hidden="true">
@@ -48,6 +56,11 @@
         <div class="overlay-app-meta" id="overlayAppMeta" hidden aria-live="polite">
           <div class="overlay-app-meta__row" id="overlayAppMetaRow"></div>
           <div class="overlay-app-meta__task" id="overlayAppMetaTask" hidden></div>
+        </div>
+        <div class="overlay-usage-rail" id="overlayUsageRail" hidden aria-label="Agent 用量">
+          <span class="overlay-usage-rail__item" data-usage-agent="codex"><b>Codex</b><i>--</i></span>
+          <span class="overlay-usage-rail__item" data-usage-agent="claude"><b>Claude</b><i>--</i></span>
+          <span class="overlay-usage-rail__item" data-usage-agent="cursor"><b>Cursor</b><i>--</i></span>
         </div>
         <div class="overlay-toast" id="overlayToast" aria-live="polite"></div>
       </div>
@@ -194,11 +207,12 @@
     var wrap=document.getElementById('wrap');
     var grid=document.getElementById('grid');
     var overlayToast=document.getElementById('overlayToast');
-    var miniLeds=document.getElementById('miniLeds');
+    var miniAgents=document.getElementById('miniAgents');
     var statusChip=document.getElementById('statusChip');
     var overlayAppMeta=document.getElementById('overlayAppMeta');
     var overlayAppMetaRow=document.getElementById('overlayAppMetaRow');
     var overlayAppMetaTask=document.getElementById('overlayAppMetaTask');
+    var overlayUsageRail=document.getElementById('overlayUsageRail');
     var activePtr='';
     /** ACT10 hold-to-talk: block grid rebuild while pressed (innerHTML breaks pointer capture). */
     var holdLockId='';
@@ -337,6 +351,104 @@
       if(st==='done') return '完成';
       if(st==='failed') return '失败';
       return '空闲';
+    }
+
+    function agentLabel(kind){
+      if(kind==='claude') return 'Claude';
+      if(kind==='cursor') return 'Cursor';
+      return 'Codex';
+    }
+
+    function compactNumber(value){
+      var n=Number(value);
+      if(!Number.isFinite(n)||n<0) return '';
+      if(n>=1000000) return (n/1000000).toFixed(n>=10000000?0:1).replace(/\.0$/,'')+'M';
+      if(n>=1000) return (n/1000).toFixed(n>=100000?0:1).replace(/\.0$/,'')+'k';
+      return String(Math.round(n));
+    }
+
+    function usageValue(usage,camel,snake){
+      if(!usage) return null;
+      return usage[camel]!=null?usage[camel]:usage[snake];
+    }
+
+    function usageSummary(kind,usage,detail){
+      usage=usage||{};
+      var status=String(usage.status||'unavailable');
+      if(kind==='cursor') return detail?'用量：暂无稳定官方接口':'用量 --';
+      if(status!=='ready'){
+        var message=String(usage.message||'').trim();
+        return detail?(message||'用量数据未连接'):'未连接';
+      }
+      var bits=[];
+      var session=usageValue(usage,'sessionTokens','session_tokens');
+      var auxiliary=usageValue(usage,'auxiliaryTokens','auxiliary_tokens');
+      var lifetime=usageValue(usage,'lifetimeTokens','lifetime_tokens');
+      var remaining=usageValue(usage,'remainingPercent','remaining_percent');
+      var cost=usageValue(usage,'estimatedCostUsd','estimated_cost_usd');
+      if(kind==='codex'){
+        if(remaining!=null) bits.push('窗口余 '+Math.round(Number(remaining))+'%');
+        if(session!=null) bits.push('会话 '+compactNumber(session));
+        if(lifetime!=null) bits.push('累计 '+compactNumber(lifetime));
+      } else {
+        if(session!=null) bits.push('本会话 '+compactNumber(session));
+        if(auxiliary!=null) bits.push('子任务 '+compactNumber(auxiliary));
+        if(cost!=null) bits.push('估算 $'+Number(cost).toFixed(3).replace(/0+$/,'').replace(/\.$/,''));
+      }
+      return bits.length?bits.join(detail?' · ':' / '):(detail?'用量数据未返回':'--');
+    }
+
+    function applyUsageRail(s){
+      if(!overlayUsageRail) return;
+      var rows=Array.isArray(s&&s.agents)?s.agents:[];
+      var byKind={};
+      rows.forEach(function(row){ if(row&&row.kind) byKind[row.kind]=row; });
+      var hasData=false;
+      overlayUsageRail.querySelectorAll('[data-usage-agent]').forEach(function(el){
+        var kind=String(el.getAttribute('data-usage-agent')||'');
+        var row=byKind[kind]||{};
+        var usage=row.usage||{};
+        var summary=usageSummary(kind,usage,false);
+        var detail=agentLabel(kind)+' · '+usageSummary(kind,usage,true);
+        var valueEl=el.querySelector('i');
+        if(valueEl) valueEl.textContent=summary;
+        el.title=detail;
+        el.setAttribute('aria-label',detail);
+        if(String(usage.status||'')==='ready') hasData=true;
+      });
+      overlayUsageRail.hidden=!hasData;
+    }
+
+    function applyMiniAgentChips(s){
+      if(!miniAgents) return;
+      var rows=Array.isArray(s&&s.agents)?s.agents:[];
+      var byKind={};
+      rows.forEach(function(row){
+        var kind=String(row&&row.kind||'').trim();
+        if(kind) byKind[kind]=row;
+      });
+      miniAgents.querySelectorAll('.overlay-mini__agent').forEach(function(el){
+        var kind=String(el.getAttribute('data-agent')||'');
+        var row=byKind[kind]||{};
+        var state=String(row.state||'idle').trim()||'idle';
+        var model=String(row.model||'').trim();
+        var confidence=String(row.modelConfidence||row.model_confidence||'').trim();
+        var usage=row.usage||{};
+        var label=agentLabel(kind)+'：'+lightStatusLabel(state);
+        var tip=label;
+        if(model){
+          tip+=' · 模型 '+model;
+          if(kind==='claude'&&confidence==='low') tip+='（会话值，可能不精确）';
+          else if(kind==='cursor'&&model==='Auto') tip+='（自动路由，不代表精确模型）';
+          else if(confidence==='low'||confidence==='medium') tip+='（可能不是最终路由模型）';
+        } else {
+          tip+=' · 模型 --';
+        }
+        tip+=' · '+usageSummary(kind,usage,true);
+        el.setAttribute('data-status', state);
+        el.setAttribute('aria-label', label+(model?'，模型 '+model:'，模型 --'));
+        el.setAttribute('title', tip);
+      });
     }
 
     function formatAgeMs(ageMs){
@@ -517,7 +629,6 @@
       var rootEl=document.querySelector('.root');
       if(rootEl) rootEl.classList.toggle('is-mini-host', !!localMinimized);
       syncEncSwitchDom();
-      if(miniLeds) miniLeds.setAttribute('data-pad-status', padSt);
       if(statusChip){
         statusChip.setAttribute('data-status', padSt);
       }
@@ -903,6 +1014,8 @@
       s=s||{};
       lastSnap=Object.assign({}, lastSnap, s);
       syncOverlayTheme();
+      applyMiniAgentChips(s);
+      applyUsageRail(s);
       var padSkin=normalizeOverlaySkin(s.skin||s.padSkin);
       var rootEl=document.querySelector('.root');
       if(rootEl) rootEl.setAttribute('data-pad-skin', padSkin);
@@ -1156,6 +1269,7 @@
             joyContextHint=String(s.joyContextHint||s.joy_context_hint||'').trim();
             applyPadLightGlow(lastSnap);
             applyAppMetaChip(lastSnap);
+            applyMiniAgentChips(lastSnap);
             applyLocalStatusDom();
             return;
           }

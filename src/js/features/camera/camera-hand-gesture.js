@@ -56,6 +56,7 @@
   var detectReqId=0;
   var detectTimeoutId=0;
   var workerFailed=false;
+  var inferPaused=false;
 
   function setActivityTag(tag){
     try{
@@ -416,7 +417,11 @@
 
   function loop(){
     detectRaf=0;
-    if(!running) return;
+    if(!running||inferPaused) return;
+    if(typeof document!=='undefined'&&document.hidden){
+      detectRaf=requestAnimationFrame(loop);
+      return;
+    }
     var now=nowMs();
     if((now-lastDetectWall)>=DETECT_INTERVAL_MS){
       lastDetectWall=now;
@@ -426,7 +431,7 @@
   }
 
   function startLoop(){
-    if(detectRaf) return;
+    if(detectRaf||inferPaused) return;
     detectRaf=requestAnimationFrame(loop);
   }
 
@@ -435,6 +440,21 @@
       try{ cancelAnimationFrame(detectRaf); }catch(_){}
     }
     detectRaf=0;
+  }
+
+  function pauseInfer(){
+    inferPaused=true;
+    stopLoop();
+    clearDetectTimeout();
+    detectInFlight=false;
+    dropPendingBitmap();
+    setActivityTag('');
+  }
+
+  function resumeInfer(){
+    if(!inferPaused) return;
+    inferPaused=false;
+    if(running&&workerReady) startLoop();
   }
 
   function attach(video){
@@ -448,12 +468,12 @@
   }
 
   function start(){
-    if(running&&detectRaf&&workerReady) return ensureReady();
+    if(running&&detectRaf&&workerReady&&!inferPaused) return ensureReady();
     if(!videoEl) return Promise.resolve(false);
     running=true;
     return ensureReady().then(function(){
       if(!running) return false;
-      startLoop();
+      if(!inferPaused) startLoop();
       return true;
     }).catch(function(){
       running=false;
@@ -463,6 +483,7 @@
 
   function stop(){
     running=false;
+    inferPaused=false;
     stopLoop();
     clearDetectTimeout();
     dropPendingBitmap();
@@ -488,7 +509,7 @@
 
   function getRuntimeStatus(){
     return {
-      running:!!running,
+      running:!!running&&!inferPaused,
       ready:!!(worker&&workerReady),
       modelFailed:!!modelFailed,
       error:lastError||'',
@@ -511,6 +532,8 @@
     detach:detach,
     start:start,
     stop:stop,
+    pauseInfer:pauseInfer,
+    resumeInfer:resumeInfer,
     ensureReady:ensureReady,
     getLastGesture:getLastGesture,
     getRuntimeStatus:getRuntimeStatus,

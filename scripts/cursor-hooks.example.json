@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeSubmitPrompt": [
+      { "command": "node ./scripts/cursor-hook-probe.js" }
+    ],
+    "afterAgentResponse": [
+      { "command": "node ./scripts/cursor-hook-probe.js" }
+    ],
+    "stop": [
+      { "command": "node ./scripts/cursor-hook-probe.js" }
+    ],
+    "subagentStart": [
+      { "command": "node ./scripts/cursor-hook-probe.js" }
+    ]
+  }
+}

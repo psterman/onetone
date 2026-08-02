@@ -660,13 +660,8 @@
     var baselineId=baseline&&baseline.id?String(baseline.id):'';
     var isActive=!!(baselineId&&cfg.activeSceneId===baselineId);
     var pairLine=(keyChannel.trigger||'—')+' → '+(keyChannel.target||'—');
-    var html='<article class="habit-hub-hero habit-hub-hero--thin'+(setup.ready?' is-ready':' is-pending')+'" role="region" aria-label="'+esc(t('habitHubGlobalDefaultTitle'))+'">';
-    if(ui().habitGuideMode){
-      html+='<div class="habit-hub-guide-bubble" role="status">'
-        +'<span>'+esc(t('habitHubGuideBubble'))+'</span>'
-        +'<button type="button" class="habit-hub-guide-close" data-habit-guide-close aria-label="'+esc(t('habitHubGuideClose'))+'">×</button>'
-        +'</div>';
-    }
+    var html='<article class="habit-hub-hero habit-hub-hero--thin'+(setup.ready?' is-ready':' is-pending')+'" role="region" data-habit-guide="universal" aria-label="'+esc(t('habitHubGlobalDefaultTitle'))+'">';
+    html+=guideStructurePin(1,'habitHubGuidePinUniversal');
     html+='<div class="habit-hub-hero-head">';
     html+='<span class="habit-hub-hero-pulse" aria-hidden="true"><span></span></span>';
     html+='<div class="habit-hub-hero-head-text">';
@@ -714,8 +709,53 @@
       +'<span class="habit-hub-app-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="3"/><path d="M8 21h8M12 18v3"/></svg></span>'
       +'<p class="habit-hub-app-empty-title">'+esc(t('habitHubAppEmptyTitle'))+'</p>'
       +'<p class="habit-hub-app-empty-desc">'+esc(t('habitHubAppEmptyDesc'))+'</p>'
+      +'<div class="habit-hub-guide-anchor" data-habit-guide="new">'
+      +guideStructurePin(3,'habitHubGuidePinNew')
       +'<button type="button" class="habit-hub-new-btn is-primary" data-habit-app-empty-new>'+esc(t('habitHubAppNewCta'))+'</button>'
+      +'</div>'
       +'</div>';
+  }
+
+  function guideStructurePin(step, detailKey){
+    if(!ui().habitGuideMode) return '';
+    return ''
+      +'<div class="habit-hub-guide-pin" data-habit-guide-pin="'+step+'">'
+      +'<span class="habit-hub-guide-pin-num" aria-hidden="true">'+step+'</span>'
+      +'<span class="habit-hub-guide-pin-callout">'
+      +'<span class="habit-hub-guide-pin-label">'+esc(t(detailKey))+'</span>'
+      +(step===1
+        ?'<button type="button" class="habit-hub-guide-close" data-habit-guide-close aria-label="'+esc(t('habitHubGuideClose'))+'">×</button>'
+        :'')
+      +'</span>'
+      +'</div>';
+  }
+
+  function syncGuideStructureClass(){
+    var on=!!ui().habitGuideMode;
+    var list=$('habitHubList');
+    if(list) list.classList.toggle('is-guide-structure',on);
+    var main=document.querySelector('.habit-hub-main');
+    if(main) main.classList.toggle('is-guide-structure',on);
+    var emptyNew=$('btnHabitHubEmptyNew');
+    if(!emptyNew||typeof emptyNew.closest!=='function') return;
+    emptyNew.setAttribute('data-habit-guide','new');
+    var wrap=emptyNew.closest('.habit-hub-guide-anchor');
+    if(on&&!wrap){
+      if(!emptyNew.parentNode) return;
+      wrap=document.createElement('div');
+      wrap.className='habit-hub-guide-anchor';
+      wrap.setAttribute('data-habit-guide','new');
+      emptyNew.parentNode.insertBefore(wrap,emptyNew);
+      wrap.appendChild(emptyNew);
+    }
+    if(wrap){
+      var existing=wrap.querySelector('[data-habit-guide-pin="3"]');
+      if(on&&!existing){
+        wrap.insertAdjacentHTML('afterbegin',guideStructurePin(3,'habitHubGuidePinNew'));
+      }else if(!on&&existing&&existing.parentNode){
+        existing.parentNode.removeChild(existing);
+      }
+    }
   }
 
   function renderGuideAside(setup,appCount){
@@ -792,7 +832,8 @@
     (model.blocks||[]).forEach(function(b){
       if(b.innerBlocks){
         var extra=b.extraClass?' habit-hub-section--'+b.extraClass:'';
-        html+='<section class="habit-hub-section'+extra+'" aria-label="'+esc(b.ariaLabel||'')+'">';
+        var guideAttr=b.dataHabitGuide?' data-habit-guide="'+esc(b.dataHabitGuide)+'"':'';
+        html+='<section class="habit-hub-section'+extra+'"'+guideAttr+' aria-label="'+esc(b.ariaLabel||'')+'">';
         html+=b.headInner||'';
         html+='<div class="habit-hub-section-list habit-hub-section-list--cards">';
         b.innerBlocks.forEach(function(ib){ html+=ib.html||''; });
@@ -815,7 +856,7 @@
     if(filter!=='legacy'){
       blocks.push({
         id:'section-global',
-        html:'<section class="habit-hub-section habit-hub-section--hero" aria-label="'+esc(t('habitHubSectionGlobal'))+'">'
+        html:'<section class="habit-hub-section habit-hub-section--hero" data-habit-guide="universal" aria-label="'+esc(t('habitHubSectionGlobal'))+'">'
           +'<div class="habit-hub-section-head"><div class="habit-hub-section-head-text">'
           +'<h4 class="habit-hub-section-title">'+esc(t('habitHubSectionGlobal'))+'</h4>'
           +'<p class="habit-hub-section-desc">'+esc(t('habitHubSectionGlobalDesc'))+'</p>'
@@ -867,7 +908,11 @@
       }
       var shell=renderSectionShell(t('habitHubSectionApp'),{
         desc:t('habitHubSectionAppDesc'),
-        actionsHtml:'<button type="button" class="habit-hub-filter-like is-primary habit-hub-section-new" data-habit-hub-new>'+esc(t('habitHubNew'))+'</button>',
+        actionsHtml:''
+          +'<div class="habit-hub-guide-anchor habit-hub-guide-anchor--new" data-habit-guide="new">'
+          +guideStructurePin(3,'habitHubGuidePinNew')
+          +'<button type="button" class="habit-hub-filter-like is-primary habit-hub-section-new" data-habit-hub-new>'+esc(t('habitHubNew'))+'</button>'
+          +'</div>',
         toolbarHtml:renderAppFilterBar({showLegacy:hasLegacy}),
         allowEmpty:true
       });
@@ -876,7 +921,8 @@
           id:'section-app',
           ariaLabel:t('habitHubSectionApp'),
           extraClass:'',
-          headInner:shell.headInner,
+          dataHabitGuide:'apps',
+          headInner:guideStructurePin(2,'habitHubGuidePinApps')+shell.headInner,
           innerBlocks:innerBlocks
         });
       }
@@ -897,6 +943,7 @@
 
   function afterHabitHubListCommit(){
     applyViewMode();
+    syncGuideStructureClass();
     setTimeout(function(){
       hydrateHubAppIcons();
       focusRenameInput();
@@ -1154,6 +1201,7 @@
       guideBtn.classList.toggle('is-active',guideOn);
       guideBtn.setAttribute('aria-pressed',guideOn?'true':'false');
     }
+    syncGuideStructureClass();
   }
 
   function renderFilters(){

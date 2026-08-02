@@ -98,6 +98,7 @@ fn normalize_source(raw: &str) -> Option<&'static str> {
         "codex_app" => Some("codex_app"),
         "claude_hook" => Some("claude_hook"),
         "claude_app" => Some("claude_app"),
+        "cursor_hook" => Some("cursor_hook"),
         _ => None,
     }
 }
@@ -136,8 +137,7 @@ pub fn validate_app_state_body(raw: &str) -> Result<CodexAppStatePayload, &'stat
     if trimmed.len() > MAX_BODY_BYTES {
         return Err("body_too_large");
     }
-    let value: serde_json::Value =
-        serde_json::from_str(trimmed).map_err(|_| "invalid_json")?;
+    let value: serde_json::Value = serde_json::from_str(trimmed).map_err(|_| "invalid_json")?;
     if !value.is_object() {
         return Err("invalid_json");
     }
@@ -153,10 +153,7 @@ pub fn validate_app_state_body(raw: &str) -> Result<CodexAppStatePayload, &'stat
 }
 
 fn settle(store: &mut CodexAppStateStore, now: u64) {
-    if store.pending_idle_at_ms > 0
-        && now >= store.pending_idle_at_ms
-        && store.status == "done"
-    {
+    if store.pending_idle_at_ms > 0 && now >= store.pending_idle_at_ms && store.status == "done" {
         store.status = "idle".into();
         store.pending_idle_at_ms = 0;
     }
@@ -172,10 +169,7 @@ fn apply_payload_at(store: &mut CodexAppStateStore, payload: &CodexAppStatePaylo
         && incoming_session != store.session_id;
 
     // Another Codex session's Stop/SessionStart must not clear this session's permission wait.
-    if sticky
-        && foreign_session
-        && matches!(event, "Stop" | "SessionStart")
-    {
+    if sticky && foreign_session && matches!(event, "Stop" | "SessionStart") {
         settle(store, now);
         return;
     }
@@ -254,11 +248,8 @@ fn fresh_signal_at(now: u64) -> Option<(String, String)> {
     if pad.updated_at == 0 {
         return None;
     }
-    let sticky = pad.is_sticky_active(now)
-        || matches!(
-            pad.state.as_str(),
-            "needs_input" | "running"
-        );
+    let sticky =
+        pad.is_sticky_active(now) || matches!(pad.state.as_str(), "needs_input" | "running");
     if !sticky {
         let age = now.saturating_sub(pad.updated_at);
         if age > HOOK_STALE_MS {
@@ -340,8 +331,12 @@ mod tests {
             validate_app_state_body(r#"{"source":"native_micro","event":"Stop"}"#).err(),
             Some("invalid_source")
         );
+        assert!(
+            validate_app_state_body(r#"{"source":"codex_hook","event":"UserPromptSubmit"}"#)
+                .is_ok()
+        );
         assert!(validate_app_state_body(
-            r#"{"source":"codex_hook","event":"UserPromptSubmit"}"#
+            r#"{"source":"cursor_hook","event":"beforeSubmitPrompt"}"#
         )
         .is_ok());
     }
@@ -438,9 +433,11 @@ mod tests {
     }
 
     #[test]
-    fn source_must_be_codex_hook_or_codex_app() {
+    fn source_must_be_a_supported_loopback_ingress() {
         assert_eq!(normalize_source("codex_hook"), Some("codex_hook"));
         assert_eq!(normalize_source("codex_app"), Some("codex_app"));
+        assert_eq!(normalize_source("claude_hook"), Some("claude_hook"));
+        assert_eq!(normalize_source("cursor_hook"), Some("cursor_hook"));
         assert_eq!(normalize_source("native_micro"), None);
         assert_eq!(normalize_source("native"), None);
     }

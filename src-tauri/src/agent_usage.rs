@@ -1,0 +1,900 @@
+//! Non-hook usage sources for Soft Pad.
+//!
+//! Codex account limits come from a read-only App Server connection. Claude usage
+//! comes from an opt-in OTLP/HTTP JSON metrics export. Neither path reads transcripts.
+
+use crate::soft_pad_runtime::AgentKind;
+use serde::Serialize;
+use serde_json::Value;
+use std::collections::HashMap;
+use std::ffi::OsString;
+use std::io::{BufRead, BufReader, Write};
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{mpsc, Mutex, OnceLock};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tauri::AppHandle;
+
+const CODEX_REFRESH_SECS: u64 = 5 * 60;
+const CODEX_REQUEST_TIMEOUT_SECS: u64 = 15;
+pub const ENV_USAGE_ENABLED: &str = "ONETONE_AGENT_USAGE";
+pub const ENV_CODEX_BIN: &str = "ONETONE_CODEX_BIN";
+
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UsageWindow {
+    pub id: String,
+    /// primary | secondary | code_review | unknown
+    pub kind: String,
+    pub duration_mins: Option<u64>,
+    pub used_percent: Option<f64>,
+    pub remaining_percent: Option<f64>,
+    pub resets_at: Option<u64>,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentUsageSnapshot {
+    pub source: String,
+    pub status: String,
+    pub session_tokens: Option<u64>,
+    pub auxiliary_tokens: Option<u64>,
+    pub lifetime_tokens: Option<u64>,
+    pub latest_daily_tokens: Option<u64>,
+    pub latest_daily_date: String,
+    pub estimated_cost_usd: Option<f64>,
+    /// Compat scalar: first/highest-risk window remaining (prefer primary).
+    pub remaining_percent: Option<f64>,
+    pub window_duration_mins: Option<u64>,
+    pub resets_at: Option<u64>,
+    pub windows: Vec<UsageWindow>,
+    pub updated_at: u64,
+    pub last_success_at: u64,
+    pub message: String,
+}
+
+fn usage_store() -> &'static Mutex<HashMap<AgentKind, AgentUsageSnapshot>> {
+    static STORE: OnceLock<Mutex<HashMap<AgentKind, AgentUsageSnapshot>>> = OnceLock::new();
+    STORE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+pub fn snapshot(agent: AgentKind) -> AgentUsageSnapshot {
+    usage_store()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(&agent)
+        .cloned()
+        .unwrap_or_else(|| default_snapshot(agent))
+}
+
+fn default_snapshot(agent: AgentKind) -> AgentUsageSnapshot {
+    if agent == AgentKind::Cursor {
+        return AgentUsageSnapshot {
+            status: "unavailable".into(),
+            message: "Cursor 暂无稳定官方用量接口".into(),
+            ..Default::default()
+        };
+    }
+    if agent == AgentKind::Codex && !env_enabled() {
+        return AgentUsageSnapshot {
+            status: "disabled".into(),
+            message: "用量轮询已关闭 (ONETONE_AGENT_USAGE=0)".into(),
+            ..Default::default()
+        };
+    }
+    AgentUsageSnapshot {
+        status: "unavailable".into(),
+        ..Default::default()
+    }
+}
+
+/// Human label for an unknown window id — duration-based, never guess "weekly".
+pub fn window_display_label(window: &UsageWindow) -> String {
+    match window.kind.as_str() {
+        "primary" => match window.duration_mins {
+            Some(mins) if mins > 0 && mins % 60 == 0 && mins <= 24 * 60 => {
+                format!("{}h余", mins / 60)
+            }
+            Some(mins) if mins > 0 => format!("{mins}min余"),
+            _ => "主窗口余".into(),
+        },
+        "secondary" => match window.duration_mins {
+            Some(mins) if mins > 0 && mins % (24 * 60) == 0 => {
+                format!("{}d余", mins / (24 * 60))
+            }
+            Some(mins) if mins > 0 && mins % 60 == 0 => format!("{}h余", mins / 60),
+            Some(mins) if mins > 0 => format!("{mins}min窗口余"),
+            _ => "次窗口余".into(),
+        },
+        "code_review" => "评审余".into(),
+        _ => match window.duration_mins {
+            Some(mins) if mins > 0 => format!("{mins}min窗口余"),
+            _ => {
+                if window.id.is_empty() {
+                    "窗口余".into()
+                } else {
+                    format!("{}余", window.id)
+                }
+            }
+        },
+    }
+}
+
+fn parse_window_entry(id: &str, kind: &str, node: &Value) -> Option<UsageWindow> {
+    let used = as_f64(node.get("usedPercent"));
+    let remaining = used.map(|u| (100.0 - u).clamp(0.0, 100.0));
+    if used.is_none()
+        && node.get("windowDurationMins").is_none()
+        && node.get("resetsAt").is_none()
+    {
+        return None;
+    }
+    Some(UsageWindow {
+        id: id.to_string(),
+        kind: kind.to_string(),
+        duration_mins: as_u64(node.get("windowDurationMins")),
+        used_percent: used,
+        remaining_percent: remaining,
+        resets_at: as_u64(node.get("resetsAt")),
+    })
+}
+
+fn collect_rate_windows(rate: &Value) -> Vec<UsageWindow> {
+    let mut out = Vec::new();
+    if let Some(primary) = rate.get("primary") {
+        if let Some(w) = parse_window_entry("primary", "primary", primary) {
+            out.push(w);
+        }
+    }
+    if let Some(secondary) = rate.get("secondary") {
+        if let Some(w) = parse_window_entry("secondary", "secondary", secondary) {
+            out.push(w);
+        }
+    }
+    if let Some(cr) = rate.get("codeReview").or_else(|| rate.get("code_review")) {
+        if let Some(w) = parse_window_entry("code_review", "code_review", cr) {
+            out.push(w);
+        }
+    }
+    // Unknown sibling objects under rateLimits (skip known keys).
+    if let Some(obj) = rate.as_object() {
+        for (key, value) in obj {
+            if matches!(
+                key.as_str(),
+                "primary" | "secondary" | "codeReview" | "code_review"
+            ) {
+                continue;
+            }
+            if value.is_object() {
+                if let Some(w) = parse_window_entry(key, "unknown", value) {
+                    out.push(w);
+                }
+            }
+        }
+    }
+    out
+}
+
+fn apply_compat_scalars(snap: &mut AgentUsageSnapshot) {
+    let pick = snap
+        .windows
+        .iter()
+        .find(|w| w.kind == "primary")
+        .or_else(|| snap.windows.first());
+    if let Some(w) = pick {
+        snap.remaining_percent = w.remaining_percent;
+        snap.window_duration_mins = w.duration_mins;
+        snap.resets_at = w.resets_at;
+    }
+}
+
+fn sync_codex_usage_health(snap: &AgentUsageSnapshot) {
+    use crate::connector_health::{
+        upsert, CapabilityKind, HealthState, ValueState,
+    };
+    let value_state = if snap.windows.iter().any(|w| w.remaining_percent.is_some())
+        || snap.lifetime_tokens.is_some()
+    {
+        ValueState::Present
+    } else if snap.status == "ready" || snap.status == "stale" {
+        ValueState::Absent
+    } else {
+        ValueState::Absent
+    };
+    let (state, reason, mark_ok) = match snap.status.as_str() {
+        "disabled" => (HealthState::Disabled, "usage_disabled", false),
+        "ready" => (HealthState::Live, "", true),
+        "stale" => (HealthState::Stale, "stale_timeout", false),
+        _ => {
+            if snap.last_success_at > 0 {
+                (HealthState::Stale, "export_timeout", false)
+            } else {
+                (HealthState::Error, "cli_not_found", false)
+            }
+        }
+    };
+    upsert(
+        AgentKind::Codex,
+        CapabilityKind::Usage,
+        state,
+        value_state,
+        reason,
+        &snap.message,
+        "codex_app_server",
+        snap.updated_at.max(now_ms()),
+        mark_ok,
+    );
+}
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+fn as_u64(value: Option<&Value>) -> Option<u64> {
+    let value = value?;
+    value
+        .as_u64()
+        .or_else(|| value.as_i64().and_then(|n| u64::try_from(n).ok()))
+        .or_else(|| value.as_str().and_then(|s| s.parse().ok()))
+}
+
+fn as_f64(value: Option<&Value>) -> Option<f64> {
+    let value = value?;
+    value
+        .as_f64()
+        .or_else(|| value.as_str().and_then(|s| s.parse().ok()))
+}
+
+fn selected_rate_limit(result: &Value) -> Option<&Value> {
+    result
+        .get("rateLimitsByLimitId")
+        .and_then(|v| v.get("codex"))
+        .or_else(|| result.get("rateLimits"))
+}
+
+pub fn ingest_codex_account_results(
+    rate_result: Option<&Value>,
+    usage_result: Option<&Value>,
+    error: Option<&str>,
+) {
+    let previous = snapshot(AgentKind::Codex);
+    let mut current = previous.clone();
+    current.source = "codex_app_server".into();
+    let received = rate_result.is_some() || usage_result.is_some();
+    let attempt_at = now_ms();
+    current.updated_at = attempt_at;
+
+    if let Some(rate) = rate_result.and_then(selected_rate_limit) {
+        let windows = collect_rate_windows(rate);
+        if !windows.is_empty() {
+            current.windows = windows;
+            apply_compat_scalars(&mut current);
+        }
+    }
+
+    if let Some(usage) = usage_result {
+        current.lifetime_tokens = usage
+            .get("summary")
+            .and_then(|v| as_u64(v.get("lifetimeTokens")));
+        if let Some(last) = usage
+            .get("dailyUsageBuckets")
+            .and_then(Value::as_array)
+            .and_then(|rows| rows.last())
+        {
+            current.latest_daily_tokens = as_u64(last.get("tokens"));
+            current.latest_daily_date = last
+                .get("startDate")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+        }
+    }
+
+    let has_data = current.windows.iter().any(|w| w.remaining_percent.is_some())
+        || current.lifetime_tokens.is_some()
+        || current.remaining_percent.is_some();
+
+    if received && has_data {
+        current.status = "ready".into();
+        current.message = String::new();
+        current.last_success_at = attempt_at;
+    } else if has_data
+        || (previous.last_success_at > 0
+            && (previous.remaining_percent.is_some()
+                || !previous.windows.is_empty()
+                || previous.lifetime_tokens.is_some()))
+    {
+        // Stale last-good (in-memory only for this process).
+        if !has_data {
+            current.windows = previous.windows;
+            current.remaining_percent = previous.remaining_percent;
+            current.window_duration_mins = previous.window_duration_mins;
+            current.resets_at = previous.resets_at;
+            current.lifetime_tokens = previous.lifetime_tokens;
+            current.latest_daily_tokens = previous.latest_daily_tokens;
+            current.latest_daily_date = previous.latest_daily_date;
+            current.last_success_at = previous.last_success_at;
+        }
+        current.status = "stale".into();
+        current.message = error.unwrap_or("Codex 刷新失败，显示上次成功值").to_string();
+    } else {
+        current.status = "unavailable".into();
+        current.message = error.unwrap_or("Codex 窗口限额未连接").to_string();
+    }
+
+    usage_store()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(AgentKind::Codex, current.clone());
+    sync_codex_usage_health(&current);
+}
+
+pub fn mark_codex_usage_disabled() {
+    let snap = AgentUsageSnapshot {
+        source: "codex_app_server".into(),
+        status: "disabled".into(),
+        message: "用量轮询已关闭 (ONETONE_AGENT_USAGE=0)".into(),
+        updated_at: now_ms(),
+        ..Default::default()
+    };
+    usage_store()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(AgentKind::Codex, snap.clone());
+    sync_codex_usage_health(&snap);
+}
+
+/// Accept App Server notifications from a future OneTone-managed thread transport.
+/// A passive account reader does not fabricate thread usage.
+pub fn ingest_codex_app_server_message(message: &Value) -> bool {
+    if message.get("method").and_then(Value::as_str) != Some("thread/tokenUsage/updated") {
+        return false;
+    }
+    let Some(params) = message.get("params") else {
+        return false;
+    };
+    let total = params.get("tokenUsage").and_then(|v| v.get("total"));
+    let Some(tokens) = total.and_then(|v| as_u64(v.get("totalTokens"))) else {
+        return false;
+    };
+    let mut current = snapshot(AgentKind::Codex);
+    current.source = "codex_app_server".into();
+    current.status = "ready".into();
+    current.session_tokens = Some(tokens);
+    current.updated_at = now_ms();
+    usage_store()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(AgentKind::Codex, current);
+    true
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+struct OtelSeriesKey {
+    metric: String,
+    session_id: String,
+    model: String,
+    token_type: String,
+    query_source: String,
+}
+
+#[derive(Debug, Clone, Default)]
+struct OtelSeriesValue {
+    value: f64,
+    observed_at: u64,
+}
+
+fn otel_series() -> &'static Mutex<HashMap<OtelSeriesKey, OtelSeriesValue>> {
+    static SERIES: OnceLock<Mutex<HashMap<OtelSeriesKey, OtelSeriesValue>>> = OnceLock::new();
+    SERIES.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn attribute_string(point: &Value, key: &str) -> String {
+    point
+        .get("attributes")
+        .and_then(Value::as_array)
+        .and_then(|attrs| {
+            attrs.iter().find_map(|attr| {
+                if attr.get("key").and_then(Value::as_str) != Some(key) {
+                    return None;
+                }
+                let value = attr.get("value")?;
+                value
+                    .get("stringValue")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+                    .or_else(|| value.get("intValue").map(|v| v.to_string()))
+            })
+        })
+        .unwrap_or_default()
+}
+
+fn point_value(point: &Value) -> Option<f64> {
+    as_f64(point.get("asDouble")).or_else(|| as_f64(point.get("asInt")))
+}
+
+fn active_claude_session(series: &HashMap<OtelSeriesKey, OtelSeriesValue>) -> String {
+    let hook_session = crate::agent_model_metadata::snapshot(AgentKind::Claude).session_id;
+    if !hook_session.is_empty() && series.keys().any(|key| key.session_id == hook_session) {
+        return hook_session;
+    }
+    series
+        .iter()
+        .max_by_key(|(_, value)| value.observed_at)
+        .map(|(key, _)| key.session_id.clone())
+        .unwrap_or_default()
+}
+
+fn rebuild_claude_snapshot(series: &HashMap<OtelSeriesKey, OtelSeriesValue>) {
+    let session_id = active_claude_session(series);
+    if session_id.is_empty() {
+        return;
+    }
+    let mut main_tokens = 0.0;
+    let mut auxiliary_tokens = 0.0;
+    let mut cost = 0.0;
+    let mut has_tokens = false;
+    let mut has_cost = false;
+    let mut updated_at = 0;
+    for (key, value) in series
+        .iter()
+        .filter(|(key, _)| key.session_id == session_id)
+    {
+        updated_at = updated_at.max(value.observed_at);
+        if key.metric == "claude_code.token.usage" {
+            has_tokens = true;
+            if key.query_source.is_empty() || key.query_source == "main" {
+                main_tokens += value.value;
+            } else {
+                auxiliary_tokens += value.value;
+            }
+        } else if key.metric == "claude_code.cost.usage" {
+            has_cost = true;
+            cost += value.value;
+        }
+    }
+    let snap = AgentUsageSnapshot {
+        source: "claude_otel".into(),
+        status: "ready".into(),
+        session_tokens: has_tokens.then_some(main_tokens.max(0.0).round() as u64),
+        auxiliary_tokens: (auxiliary_tokens > 0.0).then_some(auxiliary_tokens.round() as u64),
+        estimated_cost_usd: has_cost.then_some((cost * 1_000_000.0).round() / 1_000_000.0),
+        updated_at,
+        message: "费用为 Claude Code 本地估算".into(),
+        ..Default::default()
+    };
+    usage_store()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(AgentKind::Claude, snap);
+}
+
+/// Ingest OTLP/HTTP JSON metrics. Only the two documented Claude usage metrics are retained.
+pub fn ingest_claude_otel_json(raw: &str) -> Result<usize, &'static str> {
+    let root: Value = serde_json::from_str(raw).map_err(|_| "invalid_json")?;
+    let mut accepted = 0usize;
+    let observed_now = now_ms();
+    let mut series = otel_series().lock().unwrap_or_else(|e| e.into_inner());
+    let resources = root
+        .get("resourceMetrics")
+        .and_then(Value::as_array)
+        .ok_or("invalid_otlp_metrics")?;
+    for resource in resources {
+        let scopes = resource
+            .get("scopeMetrics")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten();
+        for scope in scopes {
+            let metrics = scope
+                .get("metrics")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten();
+            for metric in metrics {
+                let name = metric.get("name").and_then(Value::as_str).unwrap_or("");
+                if !matches!(name, "claude_code.token.usage" | "claude_code.cost.usage") {
+                    continue;
+                }
+                let Some(sum) = metric.get("sum") else {
+                    continue;
+                };
+                let is_delta = as_u64(sum.get("aggregationTemporality")) == Some(1);
+                let points = sum
+                    .get("dataPoints")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten();
+                for point in points {
+                    let Some(value) = point_value(point) else {
+                        continue;
+                    };
+                    let session_id = attribute_string(point, "session.id");
+                    if session_id.is_empty() {
+                        continue;
+                    }
+                    let key = OtelSeriesKey {
+                        metric: name.to_string(),
+                        session_id,
+                        model: attribute_string(point, "model"),
+                        token_type: attribute_string(point, "type"),
+                        query_source: attribute_string(point, "query_source"),
+                    };
+                    let observed_at = as_u64(point.get("timeUnixNano"))
+                        .map(|n| n / 1_000_000)
+                        .unwrap_or(observed_now);
+                    let entry = series.entry(key).or_default();
+                    entry.value = if is_delta { entry.value + value } else { value };
+                    entry.observed_at = observed_at;
+                    accepted += 1;
+                }
+            }
+        }
+    }
+    rebuild_claude_snapshot(&series);
+    Ok(accepted)
+}
+
+fn env_enabled() -> bool {
+    !matches!(
+        std::env::var(ENV_USAGE_ENABLED)
+            .unwrap_or_else(|_| "1".into())
+            .trim()
+            .to_ascii_lowercase()
+            .as_str(),
+        "0" | "false" | "no" | "off"
+    )
+}
+
+fn send_json_line(stdin: &mut impl Write, value: Value) -> Result<(), String> {
+    serde_json::to_writer(&mut *stdin, &value).map_err(|e| e.to_string())?;
+    stdin.write_all(b"\n").map_err(|e| e.to_string())?;
+    stdin.flush().map_err(|e| e.to_string())
+}
+
+#[derive(Debug, Clone)]
+struct CodexCommandSpec {
+    program: OsString,
+    prefix_args: Vec<OsString>,
+}
+
+fn candidate_exists(path: PathBuf) -> Option<PathBuf> {
+    path.is_file().then_some(path)
+}
+
+fn path_candidates(name: &str) -> Vec<PathBuf> {
+    std::env::var_os("PATH")
+        .into_iter()
+        .flat_map(|paths| std::env::split_paths(&paths).collect::<Vec<_>>())
+        .map(|dir| dir.join(name))
+        .collect()
+}
+
+#[cfg(windows)]
+fn codex_command_spec() -> Result<CodexCommandSpec, String> {
+    if let Some(bin) = std::env::var_os(ENV_CODEX_BIN) {
+        return Ok(CodexCommandSpec {
+            program: bin,
+            prefix_args: Vec::new(),
+        });
+    }
+
+    let appdata_npm = std::env::var_os("APPDATA")
+        .map(PathBuf::from)
+        .map(|p| p.join("npm"));
+    let candidates = ["codex.exe", "codex.cmd", "codex.bat"]
+        .into_iter()
+        .flat_map(|name| {
+            let mut paths = path_candidates(name);
+            if let Some(dir) = &appdata_npm {
+                paths.push(dir.join(name));
+            }
+            paths
+        });
+    if let Some(path) = candidates.filter_map(candidate_exists).next() {
+        return Ok(CodexCommandSpec {
+            program: path.into_os_string(),
+            prefix_args: Vec::new(),
+        });
+    }
+
+    let ps1 = appdata_npm
+        .map(|dir| dir.join("codex.ps1"))
+        .into_iter()
+        .chain(path_candidates("codex.ps1"))
+        .filter_map(candidate_exists)
+        .next();
+    if let Some(path) = ps1 {
+        return Ok(CodexCommandSpec {
+            program: OsString::from("powershell.exe"),
+            prefix_args: vec![
+                OsString::from("-NoProfile"),
+                OsString::from("-ExecutionPolicy"),
+                OsString::from("Bypass"),
+                OsString::from("-File"),
+                path.into_os_string(),
+            ],
+        });
+    }
+
+    Err("codex app-server: codex CLI not found; install Codex CLI or set ONETONE_CODEX_BIN".into())
+}
+
+#[cfg(not(windows))]
+fn codex_command_spec() -> Result<CodexCommandSpec, String> {
+    if let Some(bin) = std::env::var_os(ENV_CODEX_BIN) {
+        return Ok(CodexCommandSpec {
+            program: bin,
+            prefix_args: Vec::new(),
+        });
+    }
+    Ok(CodexCommandSpec {
+        program: OsString::from("codex"),
+        prefix_args: Vec::new(),
+    })
+}
+
+fn refresh_codex_account_once() -> Result<(), String> {
+    let spec = codex_command_spec()?;
+    let mut command = Command::new(spec.program);
+    command
+        .args(spec.prefix_args)
+        .args(["app-server", "--stdio"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000);
+    }
+    let mut child = command
+        .spawn()
+        .map_err(|e| format!("codex app-server: {e}"))?;
+    let Some(mut stdin) = child.stdin.take() else {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err("app-server stdin unavailable".into());
+    };
+    let Some(stdout) = child.stdout.take() else {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err("app-server stdout unavailable".into());
+    };
+    let (tx, rx) = mpsc::channel();
+    std::thread::spawn(move || {
+        for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+            if let Ok(value) = serde_json::from_str::<Value>(&line) {
+                let _ = tx.send(value);
+            }
+        }
+    });
+
+    let send_result = (|| {
+        send_json_line(
+            &mut stdin,
+            serde_json::json!({
+                "method": "initialize",
+                "id": 1,
+                "params": { "clientInfo": { "name": "onetone", "title": "OneTone", "version": env!("CARGO_PKG_VERSION") } }
+            }),
+        )?;
+        send_json_line(
+            &mut stdin,
+            serde_json::json!({ "method": "initialized", "params": {} }),
+        )?;
+        send_json_line(
+            &mut stdin,
+            serde_json::json!({ "method": "account/rateLimits/read", "id": 2 }),
+        )?;
+        send_json_line(
+            &mut stdin,
+            serde_json::json!({ "method": "account/usage/read", "id": 3 }),
+        )
+    })();
+    if let Err(error) = send_result {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(error);
+    }
+
+    let deadline = std::time::Instant::now() + Duration::from_secs(CODEX_REQUEST_TIMEOUT_SECS);
+    let mut rate = None;
+    let mut usage = None;
+    let mut errors = Vec::new();
+    while std::time::Instant::now() < deadline && (rate.is_none() || usage.is_none()) {
+        let wait = deadline.saturating_duration_since(std::time::Instant::now());
+        let Ok(message) = rx.recv_timeout(wait.min(Duration::from_millis(500))) else {
+            continue;
+        };
+        match message.get("id").and_then(Value::as_u64) {
+            Some(2) => {
+                if let Some(result) = message.get("result") {
+                    rate = Some(result.clone());
+                } else if let Some(err) = message.get("error") {
+                    errors.push(
+                        err.get("message")
+                            .and_then(Value::as_str)
+                            .unwrap_or("rate limits unavailable")
+                            .to_string(),
+                    );
+                }
+            }
+            Some(3) => {
+                if let Some(result) = message.get("result") {
+                    usage = Some(result.clone());
+                } else if let Some(err) = message.get("error") {
+                    errors.push(
+                        err.get("message")
+                            .and_then(Value::as_str)
+                            .unwrap_or("account usage unavailable")
+                            .to_string(),
+                    );
+                }
+            }
+            _ => {
+                let _ = ingest_codex_app_server_message(&message);
+            }
+        }
+    }
+    drop(stdin);
+    let _ = child.kill();
+    let _ = child.wait();
+    let error = (!errors.is_empty()).then(|| errors.join("; "));
+    ingest_codex_account_results(rate.as_ref(), usage.as_ref(), error.as_deref());
+    if rate.is_none() && usage.is_none() {
+        return Err(error.unwrap_or_else(|| "Codex account usage timed out".into()));
+    }
+    Ok(())
+}
+
+pub fn start_codex_account_poll(app: AppHandle, state: std::sync::Arc<crate::AppState>) {
+    static STARTED: AtomicBool = AtomicBool::new(false);
+    if !env_enabled() {
+        mark_codex_usage_disabled();
+        return;
+    }
+    if STARTED.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let _ = std::thread::Builder::new()
+        .name("codex-account-usage".into())
+        .spawn(move || loop {
+            if let Err(error) = refresh_codex_account_once() {
+                ingest_codex_account_results(None, None, Some(&error));
+            }
+            crate::codex_micro_overlay::request_overlay_push(&app, state.as_ref(), false);
+            std::thread::sleep(Duration::from_secs(CODEX_REFRESH_SECS));
+        });
+}
+
+#[cfg(test)]
+pub fn reset_for_test() {
+    usage_store()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clear();
+    otel_series()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clear();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn codex_rate_limit_is_window_remaining_not_balance() {
+        reset_for_test();
+        let rate = serde_json::json!({
+            "rateLimits": { "primary": { "usedPercent": 37.5, "windowDurationMins": 300, "resetsAt": 123 } }
+        });
+        let usage = serde_json::json!({
+            "summary": { "lifetimeTokens": 12000 },
+            "dailyUsageBuckets": [{ "startDate": "2026-08-02", "tokens": 345 }]
+        });
+        ingest_codex_account_results(Some(&rate), Some(&usage), None);
+        let got = snapshot(AgentKind::Codex);
+        assert_eq!(got.remaining_percent, Some(62.5));
+        assert_eq!(got.lifetime_tokens, Some(12000));
+        assert_eq!(got.latest_daily_tokens, Some(345));
+        assert_eq!(got.windows.len(), 1);
+        assert_eq!(got.windows[0].kind, "primary");
+        assert_eq!(got.windows[0].remaining_percent, Some(62.5));
+    }
+
+    #[test]
+    fn codex_primary_and_secondary_windows() {
+        reset_for_test();
+        let rate = serde_json::json!({
+            "rateLimits": {
+                "primary": { "usedPercent": 28.0, "windowDurationMins": 300, "resetsAt": 1 },
+                "secondary": { "usedPercent": 59.0, "windowDurationMins": 10080, "resetsAt": 2 }
+            }
+        });
+        ingest_codex_account_results(Some(&rate), None, None);
+        let got = snapshot(AgentKind::Codex);
+        assert_eq!(got.windows.len(), 2);
+        assert_eq!(got.windows[0].remaining_percent, Some(72.0));
+        assert_eq!(got.windows[1].remaining_percent, Some(41.0));
+        assert!(window_display_label(&got.windows[0]).contains("5h"));
+        assert!(window_display_label(&got.windows[1]).contains("7d") || window_display_label(&got.windows[1]).contains("10080"));
+    }
+
+    #[test]
+    fn codex_secondary_only_and_unknown_by_duration() {
+        reset_for_test();
+        let rate = serde_json::json!({
+            "rateLimits": {
+                "secondary": { "usedPercent": 10.0, "windowDurationMins": 10080, "resetsAt": 9 },
+                "oddBucket": { "usedPercent": 50.0, "windowDurationMins": 42, "resetsAt": 8 }
+            }
+        });
+        ingest_codex_account_results(Some(&rate), None, None);
+        let got = snapshot(AgentKind::Codex);
+        assert!(got.windows.iter().any(|w| w.kind == "secondary"));
+        let unknown = got.windows.iter().find(|w| w.kind == "unknown").expect("unknown");
+        assert_eq!(window_display_label(unknown), "42min窗口余");
+    }
+
+    #[test]
+    fn codex_timeout_keeps_stale_last_good() {
+        reset_for_test();
+        let rate = serde_json::json!({
+            "rateLimits": { "primary": { "usedPercent": 32.0, "windowDurationMins": 300, "resetsAt": 1 } }
+        });
+        ingest_codex_account_results(Some(&rate), None, None);
+        assert_eq!(snapshot(AgentKind::Codex).status, "ready");
+        ingest_codex_account_results(None, None, Some("Codex CLI 未响应"));
+        let got = snapshot(AgentKind::Codex);
+        assert_eq!(got.status, "stale");
+        assert_eq!(got.remaining_percent, Some(68.0));
+        assert!(got.message.contains("未响应") || got.message.contains("上次"));
+    }
+
+    #[test]
+    fn mark_disabled_when_usage_env_off() {
+        reset_for_test();
+        mark_codex_usage_disabled();
+        let got = snapshot(AgentKind::Codex);
+        assert_eq!(got.status, "disabled");
+        assert!(got.message.contains("ONETONE_AGENT_USAGE"));
+    }
+
+    #[test]
+    fn claude_otel_keeps_main_and_auxiliary_separate() {
+        reset_for_test();
+        let raw = serde_json::json!({
+            "resourceMetrics": [{ "scopeMetrics": [{ "metrics": [
+                { "name": "claude_code.token.usage", "sum": { "aggregationTemporality": 2, "dataPoints": [
+                    { "asInt": "100", "attributes": [
+                        { "key": "session.id", "value": { "stringValue": "s1" } },
+                        { "key": "type", "value": { "stringValue": "input" } },
+                        { "key": "query_source", "value": { "stringValue": "main" } }
+                    ]},
+                    { "asInt": "25", "attributes": [
+                        { "key": "session.id", "value": { "stringValue": "s1" } },
+                        { "key": "type", "value": { "stringValue": "output" } },
+                        { "key": "query_source", "value": { "stringValue": "subagent" } }
+                    ]}
+                ]}},
+                { "name": "claude_code.cost.usage", "sum": { "aggregationTemporality": 2, "dataPoints": [
+                    { "asDouble": 0.1234, "attributes": [
+                        { "key": "session.id", "value": { "stringValue": "s1" } },
+                        { "key": "query_source", "value": { "stringValue": "main" } }
+                    ]}
+                ]}}
+            ]}]}]
+        });
+        assert_eq!(ingest_claude_otel_json(&raw.to_string()), Ok(3));
+        let got = snapshot(AgentKind::Claude);
+        assert_eq!(got.session_tokens, Some(100));
+        assert_eq!(got.auxiliary_tokens, Some(25));
+        assert_eq!(got.estimated_cost_usd, Some(0.1234));
+    }
+}

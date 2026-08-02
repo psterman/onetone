@@ -903,6 +903,10 @@
 
     lastPanel=panel;
 
+    // Presence/MediaPipe createImageBitmap + habit/softPad remount on the same turn wedges WebView2.
+    // Pause infer while drawer shows non-camera panels; keep stream; resume on camera or close.
+    syncCameraInferForPanel(panel);
+
     hooks().renderSettingsSchemeSubnav();
 
     hooks().renderSettingsVoiceSubnav();
@@ -1081,6 +1085,13 @@
 
   }
 
+  function syncCameraInferForPanel(panel){
+    var pa=global.OneToneCameraPresenceActions;
+    if(!pa||typeof pa.setDrawerUiPaused!=='function') return;
+    var pause=!!ui.drawerOpen&&normalizePanel(panel)!=='camera';
+    try{ pa.setDrawerUiPaused(pause); }catch(_){}
+  }
+
   function closeDrawer(){
 
     if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
@@ -1088,6 +1099,9 @@
     // Keep camera running when enabled — do not stop on drawer close.
     // Coordinator decides via reconcile (manual stop / master off still honored).
     try{
+      if(global.OneToneCameraPresenceActions&&global.OneToneCameraPresenceActions.setDrawerUiPaused){
+        global.OneToneCameraPresenceActions.setDrawerUiPaused(false);
+      }
       if(global.OneToneCameraPresenceActions&&global.OneToneCameraPresenceActions.reconcileRuntime){
         global.OneToneCameraPresenceActions.reconcileRuntime({reason:'drawer_close'});
       }

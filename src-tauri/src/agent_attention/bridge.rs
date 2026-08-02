@@ -174,10 +174,15 @@ pub fn ingest_cursor_hook_event(event: &str, session_id: &str) {
             | "beforemcpexecution"
             | "pretooluse"
             | "agentstart"
+            | "subagentstart"
             | "sessionstart"
     ) || matches!(
         ev,
-        "beforeSubmitPrompt" | "beforeShellExecution" | "agentStart" | "sessionStart"
+        "beforeSubmitPrompt"
+            | "beforeShellExecution"
+            | "agentStart"
+            | "subagentStart"
+            | "sessionStart"
     ) {
         Some(AttentionState::Working)
     } else if matches!(
@@ -248,6 +253,16 @@ mod tests {
         assert_eq!(
             primary_state_for(AgentKind::Cursor),
             Some(AttentionState::Working)
+        );
+        ingest_cursor_hook_event("subagentStart", "c1");
+        assert_eq!(
+            primary_state_for(AgentKind::Cursor),
+            Some(AttentionState::Working)
+        );
+        ingest_cursor_hook_event("stop", "c1");
+        assert_eq!(
+            primary_state_for(AgentKind::Cursor),
+            Some(AttentionState::Complete)
         );
     }
 }

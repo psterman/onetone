@@ -26,6 +26,8 @@ pub const MAX_BODY_BYTES: usize = 16 * 1024;
 pub const PROTOCOL_PATH: &str = "/api/codex-micro/protocol";
 pub const APP_STATE_PATH: &str = codex_app_state::APP_STATE_PATH;
 pub const CLAUDE_APPROVAL_PATH: &str = "/api/claude-approval";
+pub const CLAUDE_OTEL_METRICS_PATH: &str = "/v1/metrics";
+pub const MAX_OTEL_BODY_BYTES: usize = 512 * 1024;
 
 /// Env flag: Labs/验收 only. When set to `1`/`true`/`yes`, setup may auto-start the listener.
 pub const ENV_ENABLE: &str = "ONETONE_CODEX_MICRO_PROTOCOL";
@@ -116,8 +118,7 @@ pub fn validate_protocol_body(raw: &str) -> Result<String, &'static str> {
     if trimmed.len() > MAX_BODY_BYTES {
         return Err("body_too_large");
     }
-    let value: serde_json::Value =
-        serde_json::from_str(trimmed).map_err(|_| "invalid_json")?;
+    let value: serde_json::Value = serde_json::from_str(trimmed).map_err(|_| "invalid_json")?;
     let obj = value.as_object().ok_or("invalid_json")?;
     let method = obj
         .get("m")
@@ -265,7 +266,6 @@ pub fn apply_status_rpc(
     Ok(codex_micro_overlay::build_snapshot(state))
 }
 
-
 /// HTTP serve thread entry — vendor store is lock-safe; overlay push is fire-and-forget on UI thread.
 fn apply_status_rpc_from_http(
     app: &AppHandle,
@@ -279,12 +279,7 @@ fn apply_status_rpc_from_http(
     Ok(snapshot)
 }
 
-fn serve_loop(
-    listener: TcpListener,
-    stop: Arc<AtomicBool>,
-    app: AppHandle,
-    state: Arc<AppState>,
-) {
+fn serve_loop(listener: TcpListener, stop: Arc<AtomicBool>, app: AppHandle, state: Arc<AppState>) {
     while !stop.load(Ordering::SeqCst) {
         match listener.accept() {
             Ok((stream, _)) => {
@@ -315,7 +310,11 @@ fn serve_loop(
     }
 }
 
-fn handle_client(mut stream: TcpStream, app: &AppHandle, state: Arc<AppState>) -> Result<(), String> {
+fn handle_client(
+    mut stream: TcpStream,
+    app: &AppHandle,
+    state: Arc<AppState>,
+) -> Result<(), String> {
     let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
     let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
 
@@ -328,7 +327,7 @@ fn handle_client(mut stream: TcpStream, app: &AppHandle, state: Arc<AppState>) -
             return Ok(());
         }
         buf.extend_from_slice(&tmp[..n]);
-        if buf.len() > MAX_BODY_BYTES + 8192 {
+        if buf.len() > MAX_OTEL_BODY_BYTES + 8192 {
             write_error(&mut stream, 413, "body_too_large")?;
             return Ok(());
         }
@@ -355,7 +354,8 @@ fn handle_client(mut stream: TcpStream, app: &AppHandle, state: Arc<AppState>) -
     let is_protocol = path == PROTOCOL_PATH;
     let is_app_state = path == APP_STATE_PATH;
     let is_claude_approval = path == CLAUDE_APPROVAL_PATH;
-    if !is_protocol && !is_app_state && !is_claude_approval {
+    let is_claude_otel = path == CLAUDE_OTEL_METRICS_PATH;
+    if !is_protocol && !is_app_state && !is_claude_approval && !is_claude_otel {
         write_error(&mut stream, 404, "not_found")?;
         return Ok(());
     }
@@ -393,8 +393,13 @@ fn handle_client(mut stream: TcpStream, app: &AppHandle, state: Arc<AppState>) -
         return handle_claude_approval_post(&mut stream, &raw);
     }
 
+    let max_body_bytes = if is_claude_otel {
+        MAX_OTEL_BODY_BYTES
+    } else {
+        MAX_BODY_BYTES
+    };
     let content_length = parse_content_length(header).unwrap_or(0);
-    if content_length > MAX_BODY_BYTES {
+    if content_length > max_body_bytes {
         write_error(&mut stream, 413, "body_too_large")?;
         return Ok(());
     }
@@ -406,7 +411,7 @@ fn handle_client(mut stream: TcpStream, app: &AppHandle, state: Arc<AppState>) -
             break;
         }
         body.extend_from_slice(&tmp[..n]);
-        if body.len() > MAX_BODY_BYTES {
+        if body.len() > max_body_bytes {
             write_error(&mut stream, 413, "body_too_large")?;
             return Ok(());
         }
@@ -416,6 +421,9 @@ fn handle_client(mut stream: TcpStream, app: &AppHandle, state: Arc<AppState>) -
 
     if is_app_state {
         return handle_app_state_post(&mut stream, app, state, &raw);
+    }
+    if is_claude_otel {
+        return handle_claude_otel_metrics_post(&mut stream, app, state, &raw);
     }
 
     match validate_protocol_body(&raw) {
@@ -449,10 +457,7 @@ fn handle_client(mut stream: TcpStream, app: &AppHandle, state: Arc<AppState>) -
     Ok(())
 }
 
-fn handle_app_state_get(
-    stream: &mut TcpStream,
-    state: Arc<AppState>,
-) -> Result<(), String> {
+fn handle_app_state_get(stream: &mut TcpStream, state: Arc<AppState>) -> Result<(), String> {
     let view = codex_app_state::snapshot();
     let lights = {
         let cfg = state.cfg.lock();
@@ -461,9 +466,8 @@ fn handle_app_state_get(
     let pad = crate::pad_status::snapshot();
     let app_status = crate::pad_status::ui_status_from_pad(&pad);
     let soft_rgb = if lights {
-        crate::pad_status::rgb_for_ui_status(&app_status).map(|(r, g, b)| {
-            serde_json::json!({ "r": r, "g": g, "b": b })
-        })
+        crate::pad_status::rgb_for_ui_status(&app_status)
+            .map(|(r, g, b)| serde_json::json!({ "r": r, "g": g, "b": b }))
     } else {
         None
     };
@@ -576,6 +580,36 @@ fn handle_app_state_post(
     Ok(())
 }
 
+fn handle_claude_otel_metrics_post(
+    stream: &mut TcpStream,
+    app: &AppHandle,
+    state: Arc<AppState>,
+    raw: &str,
+) -> Result<(), String> {
+    match crate::agent_usage::ingest_claude_otel_json(raw) {
+        Ok(accepted) => {
+            if accepted > 0 {
+                schedule_overlay_status_push(app, state);
+            }
+            write_raw(
+                stream,
+                200,
+                "OK",
+                &format!(
+                    "{}Content-Type: application/json; charset=utf-8\r\n",
+                    cors_headers()
+                ),
+                b"{}",
+            )?;
+        }
+        Err(code) => {
+            proto_log(&format!("claude-otel reject err={code}"));
+            write_error(stream, 400, code)?;
+        }
+    }
+    Ok(())
+}
+
 fn apply_app_state_from_http(
     app: &AppHandle,
     state: Arc<AppState>,
@@ -603,9 +637,7 @@ fn apply_app_state_from_http(
 }
 
 fn find_header_end(buf: &[u8]) -> Option<usize> {
-    buf.windows(4)
-        .position(|w| w == b"\r\n\r\n")
-        .map(|i| i + 4)
+    buf.windows(4).position(|w| w == b"\r\n\r\n").map(|i| i + 4)
 }
 
 fn parse_request_line(header: &str) -> Option<(&str, &str)> {
@@ -671,7 +703,9 @@ fn write_raw(
         "HTTP/1.1 {status} {reason}\r\nContent-Length: {}\r\nConnection: close\r\n{extra_headers}\r\n",
         body.len()
     );
-    stream.write_all(head.as_bytes()).map_err(|e| e.to_string())?;
+    stream
+        .write_all(head.as_bytes())
+        .map_err(|e| e.to_string())?;
     if !body.is_empty() {
         stream.write_all(body).map_err(|e| e.to_string())?;
     }
@@ -772,6 +806,7 @@ mod tests {
         assert_ne!(PROTOCOL_PATH, APP_STATE_PATH);
         assert_eq!(APP_STATE_PATH, "/api/codex-app/state");
         assert_eq!(CLAUDE_APPROVAL_PATH, "/api/claude-approval");
+        assert_eq!(CLAUDE_OTEL_METRICS_PATH, "/v1/metrics");
         assert!(codex_app_state::validate_app_state_body(
             r#"{"source":"codex_hook","event":"UserPromptSubmit"}"#
         )
