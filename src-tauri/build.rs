@@ -101,6 +101,7 @@ fn main() {
         "cmd_voice_end_test_commit",
         "cmd_export_logs",
         "cmd_app_log",
+        "cmd_ui_heartbeat",
         "cmd_open_url",
         "cmd_open_path",
         "cmd_data_root_status",

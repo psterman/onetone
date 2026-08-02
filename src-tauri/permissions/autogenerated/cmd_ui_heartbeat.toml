@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-ui-heartbeat"
+description = "Enables the cmd_ui_heartbeat command without any pre-configured scope."
+commands.allow = ["cmd_ui_heartbeat"]
+
+[[permission]]
+identifier = "deny-cmd-ui-heartbeat"
+description = "Denies the cmd_ui_heartbeat command without any pre-configured scope."
+commands.deny = ["cmd_ui_heartbeat"]

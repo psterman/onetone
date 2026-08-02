@@ -168,7 +168,7 @@ impl ManualCaptureSession {
             Err(_) => {
                 // play()/open may finish just after the wait — honor ready_flag.
                 if stream_ready.load(Ordering::SeqCst) {
-                    eprintln!("acoustic manual capture: ready raced timeout; treating as ok");
+                    crate::app_log::sync_emergency_line("rs", &format!("acoustic manual capture: ready raced timeout; treating as ok"));
                     return Ok(Self {
                         stop,
                         pcm,
@@ -249,14 +249,14 @@ fn run_manual_capture_loop(
                 let _ = ready_tx.send(Err(err.clone()));
                 return Err(err);
             }
-            eprintln!("acoustic manual capture: open attempt {attempt}/{OPEN_RETRY_COUNT}");
+            crate::app_log::sync_emergency_line("rs", &format!("acoustic manual capture: open attempt {attempt}/{OPEN_RETRY_COUNT}"));
             match open_manual_input_stream() {
                 Ok(bundle) => break 'open bundle,
                 Err(err) => {
-                    eprintln!(
+                    crate::app_log::sync_emergency_line("rs", &format!(
                         "acoustic manual capture: open attempt {attempt} failed kind={:?} detail={}",
                         err.kind, err.detail
-                    );
+                    ));
                     last_err = err;
                     if attempt < OPEN_RETRY_COUNT {
                         std::thread::sleep(Duration::from_millis(OPEN_RETRY_DELAY_MS));
@@ -279,7 +279,7 @@ fn run_manual_capture_loop(
 
     stream_ready.store(true, Ordering::SeqCst);
     if ready_tx.send(Ok(())).is_err() {
-        eprintln!("acoustic manual capture: ready notify dropped (caller timed out?)");
+        crate::app_log::sync_emergency_line("rs", &format!("acoustic manual capture: ready notify dropped (caller timed out?)"));
         // Keep recording if caller already accepted via ready_flag; otherwise exit.
         if stop.load(Ordering::SeqCst) {
             drop(stream);
@@ -377,7 +377,7 @@ fn open_manual_input_stream() -> Result<ManualStreamBundle, CaptureError> {
     let err_flag = Arc::new(AtomicBool::new(false));
     let err_flag_cb = err_flag.clone();
     let err_fn = move |err| {
-        eprintln!("acoustic manual cpal stream error: {err}");
+        crate::app_log::sync_emergency_line("rs", &format!("acoustic manual cpal stream error: {err}"));
         err_flag_cb.store(true, Ordering::Relaxed);
     };
 
@@ -454,7 +454,7 @@ pub fn capture_pcm_mono_16k(
     let err_flag = Arc::new(AtomicBool::new(false));
     let err_flag_cb = err_flag.clone();
     let err_fn = move |err| {
-        eprintln!("acoustic cpal stream error: {err}");
+        crate::app_log::sync_emergency_line("rs", &format!("acoustic cpal stream error: {err}"));
         err_flag_cb.store(true, Ordering::Relaxed);
     };
 

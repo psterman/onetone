@@ -53,9 +53,12 @@ pub fn cmd_save(
         .unwrap_or("unknown");
     let existing = state.cfg.lock().clone();
     let mut cfg = crate::config::merge_save_payload(&existing, &json).ok_or_else(|| {
-        eprintln!(
-            "cmd_save: merge_save_payload failed (json_len={})",
-            json.len()
+        crate::app_log::sync_emergency_line(
+            "cmd_save",
+            &format!(
+                "cmd_save: merge_save_payload failed (json_len={})",
+                json.len()
+            ),
         );
         "save_payload_invalid".to_string()
     })?;
@@ -181,7 +184,10 @@ pub fn cmd_save_camera_prefs(
     json: String,
 ) -> Result<(), String> {
     let value: serde_json::Value = serde_json::from_str(&json).map_err(|e| {
-        eprintln!("cmd_save_camera_prefs: parse failed: {e}");
+        crate::app_log::sync_emergency_line(
+            "cmd_save",
+            &format!("cmd_save_camera_prefs: parse failed: {e}"),
+        );
         "camera_prefs_invalid".to_string()
     })?;
     let clear_gaze = value
@@ -195,7 +201,10 @@ pub fn cmd_save_camera_prefs(
     let has_video_enhancement = value.get("videoEnhancement").is_some();
     let has_selected_frame_rate = value.get("selectedFrameRate").is_some();
     let incoming: CameraPrefs = serde_json::from_value(value).map_err(|e| {
-        eprintln!("cmd_save_camera_prefs: prefs parse failed: {e}");
+        crate::app_log::sync_emergency_line(
+            "cmd_save",
+            &format!("cmd_save_camera_prefs: prefs parse failed: {e}"),
+        );
         "camera_prefs_invalid".to_string()
     })?;
     {

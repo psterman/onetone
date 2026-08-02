@@ -963,9 +963,12 @@ fn ensure_custom_rule_window(
                 return Some((hwnd, false));
             }
         }
-        eprintln!(
-            "custom rule {}: process running but no activatable window; refusing relaunch",
-            rule.rule_id
+        crate::app_log::sync_emergency_line(
+            "chat_workflow",
+            &format!(
+                "custom rule {}: process running but no activatable window; refusing relaunch",
+                rule.rule_id
+            ),
         );
         return None;
     }

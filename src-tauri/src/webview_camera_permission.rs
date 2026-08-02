@@ -42,7 +42,10 @@ pub fn install_camera_permission_allow(window: &tauri::WebviewWindow) {
     });
 
     if let Err(err) = result {
-        eprintln!("webview camera permission hook failed: {err}");
+        crate::app_log::sync_emergency_line(
+            "webview_camera",
+            &format!("webview camera permission hook failed: {err}"),
+        );
     }
 }
 

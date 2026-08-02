@@ -612,15 +612,23 @@
     });
   }
 
-  function setAutosaveFromDesk() {
+  function setAutosaveFromDesk(src) {
     var desk = document.getElementById('softPadTmDesk');
     if (!desk) return;
-    var toggle = desk.querySelector('[data-tm-autosave-toggle]');
-    var select = desk.querySelector('[data-tm-autosave-interval]');
-    // Keep chrome + footer toggles in sync before the round-trip re-render.
+    // Must read the control that fired change — chrome + footer both have
+    // [data-tm-autosave-toggle]; querySelector always hit chrome (still off)
+    // when the user flipped the footer switch, so enable could never stick.
+    var toggle = (src && src.matches && src.matches('[data-tm-autosave-toggle]'))
+      ? src
+      : desk.querySelector('[data-tm-autosave-toggle]');
+    var select = (src && src.matches && src.matches('[data-tm-autosave-interval]'))
+      ? src
+      : desk.querySelector('[data-tm-autosave-interval]');
     var enabled = !!(toggle && toggle.checked);
     desk.querySelectorAll('[data-tm-autosave-toggle]').forEach(function (el) {
       el.checked = enabled;
+      var label = el.closest && el.closest('.soft-pad-tm-auto-toggle');
+      if (label) label.classList.toggle('is-on', enabled);
     });
     var intervalMin = Number(select && select.value) || 15;
     feLog('fe tm.autosave.set enabled=' + enabled + ' interval=' + intervalMin);
@@ -757,9 +765,19 @@
       var t = ev.target;
       if (!t) return;
       if (t.matches && t.matches('[data-tm-autosave-toggle], [data-tm-autosave-interval]')) {
-        setAutosaveFromDesk();
+        setAutosaveFromDesk(t);
       }
     });
+  }
+
+  // Overdue lastAuto must NOT collapse to "due now" — that stampedes git add on
+  // enable (last save hours ago) and holds TM_LOCK while Soft Pad looks 假死.
+  function nextDueAt(lastAutoIso, intervalMs, priorDue) {
+    var lastAuto = asDate(lastAutoIso);
+    var natural = lastAuto ? lastAuto.getTime() + intervalMs : 0;
+    if (natural > Date.now()) return natural;
+    if (priorDue && priorDue > Date.now()) return priorDue;
+    return Date.now() + AUTO_HEARTBEAT_MS;
   }
 
   function syncAutoSchedule(status) {
@@ -769,19 +787,20 @@
     if (key !== autoScheduleKey) {
       autoScheduleKey = key;
       var intervalMs = ((status && status.autoSaveIntervalMin) || 15) * 60000;
-      var lastAuto = asDate(status && status.lastAutoSaveAt);
-      autoNextAt = lastAuto ? Math.max(Date.now(), lastAuto.getTime() + intervalMs) : Date.now() + intervalMs;
+      autoNextAt = status && status.autoSaveEnabled
+        ? nextDueAt(status.lastAutoSaveAt, intervalMs, autoNextAt)
+        : 0;
     }
   }
 
   function syncWorkspaceSchedule(status) {
     if (!status || !status.workspace) return;
     var intervalMs = (status.autoSaveIntervalMin || 15) * 60000;
-    var lastAuto = asDate(status.lastAutoSaveAt);
-    var dueAt = lastAuto
-      ? lastAuto.getTime() + intervalMs
-      : (autoNextByWorkspace[status.workspace] || Date.now() + intervalMs);
-    autoNextByWorkspace[status.workspace] = Math.max(Date.now(), dueAt);
+    autoNextByWorkspace[status.workspace] = nextDueAt(
+      status.lastAutoSaveAt,
+      intervalMs,
+      autoNextByWorkspace[status.workspace]
+    );
   }
 
   function selectWorkspace(path) {
@@ -796,19 +815,30 @@
     }).catch(function (e) { toast(String((e && e.message) || e)); });
   }
 
+  function softPadUiOpen() {
+    try {
+      var ui = global.OneToneState && global.OneToneState.ui;
+      if (ui && ui.drawerOpen && ui.settingsPanel === 'softPad') return true;
+    } catch (_) {}
+    return false;
+  }
+
   function autoSaveHeartbeat() {
-    if (autoSaveInFlight || deskLoading) return;
+    // Soft Pad open (layout/runtime/TM) or TM desk — create holds TM_LOCK and the
+    // settings window goes 未响应. Only snapshot when the drawer is closed.
+    if (autoSaveInFlight || deskLoading || deskSession || softPadUiOpen()) return;
     autoSaveInFlight = true;
     invoke('cmd_tm_status', {}).then(function (status) {
       lastStatus = status;
       refreshStatusBar(status);
       syncAutoSchedule(status);
       if (!status || !status.autoSaveEnabled) return null;
+      if (softPadUiOpen() || deskSession) return null;
       var candidates = workspaceChoices(status);
       if (!candidates.length) return null;
       return candidates.reduce(function (chain, workspace) {
         return chain.then(function () {
-          if (deskLoading) return null;
+          if (deskLoading || deskSession || softPadUiOpen()) return null;
           return invoke('cmd_tm_status', { workspace: workspace }).then(function (workspaceStatus) {
             syncWorkspaceSchedule(workspaceStatus);
             if (!workspaceStatus || workspaceStatus.level === 'L0' || !workspaceStatus.workspace) return null;
@@ -819,13 +849,13 @@
               triggerSource: 'scheduled',
               agentContext: buildAgentContext()
             }).then(function (result) {
-              var retrySoon = result && (result.skippedReason === 'busy' || result.skippedReason === 'conflict');
+              var retrySoon = result && (result.skippedReason === 'busy' ||
+                result.skippedReason === 'conflict' || result.skippedReason === 'mutating');
               var intervalMs = (workspaceStatus.autoSaveIntervalMin || 15) * 60000;
               autoNextByWorkspace[workspace] = Date.now() + (retrySoon ? AUTO_HEARTBEAT_MS : intervalMs);
               if (result && result.created) {
                 feLog('fe tm.autosave created ' + shortPath(workspace));
                 refreshHero();
-                if (deskSession && lastStatus && workspace === lastStatus.workspace) loadAll({ force: true });
               }
               return result;
             }).catch(function (err) {

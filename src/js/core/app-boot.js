@@ -53,19 +53,38 @@
     hooks.markBoot('setRecording complete');
     hooks.pushLog(t('waitLog'));
     hooks.deferProcessUsagePoll();
-    // UI heartbeat: detect main-thread blocks > 2s (console only — no user-facing banner)
+    // Permanent UI heartbeat: Atomic ping only (cmd_ui_heartbeat). Rust watchdog logs stalls
+    // when FE is permanently stuck — do NOT use cmd_app_log here.
     (function(){
-      var last=Date.now();
-      var hbId=setInterval(function(){
+      var seq=0;
+      var lastLocal=Date.now();
+      function activityTag(){
+        try{
+          if(global.__otActivityTag) return String(global.__otActivityTag);
+        }catch(_){}
+        return '';
+      }
+      global.OneToneUiHeartbeat={
+        setTag:function(tag){ try{ global.__otActivityTag=String(tag||''); }catch(_){} },
+        clearTag:function(){ try{ global.__otActivityTag=''; }catch(_){} }
+      };
+      setInterval(function(){
         var now=Date.now();
-        var gap=now-last;
-        if(gap>2000){
-          try{ hooks.markBoot('UI-BLOCK gap='+gap+'ms'); }catch(_){}
-          try{ console.error('[onetone] UI-BLOCK',gap+'ms'); }catch(_){}
+        var gap=now-lastLocal;
+        lastLocal=now;
+        seq=(seq+1)>>>0;
+        if(gap>500){
+          try{ console.warn('[onetone] UI-BLOCK local gap='+gap+'ms tag='+activityTag()); }catch(_){}
         }
-        last=now;
-      },500);
-      setTimeout(function(){ clearInterval(hbId); },120000);
+        if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
+        try{
+          global.OneToneIpc.invoke('cmd_ui_heartbeat',{
+            seq:seq,
+            activityTag:activityTag(),
+            frontendTime:now
+          }).catch(function(){});
+        }catch(_){}
+      },200);
     })();
 
     if(session&&session.whenBootSettled){
@@ -99,9 +118,9 @@
       lastRuntimeRefreshAt=now;
       if(global.OneToneAppSession&&global.OneToneAppSession.isBootSettling&&global.OneToneAppSession.isBootSettling()) return;
       if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
-      if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.pullBackendConfig==='function'){
-        global.OneToneConfigPersist.pullBackendConfig();
-      }
+      // Do NOT pullBackendConfig/cmd_ready here — identical mvp_init remounts MediaPipe
+      // + home on every click-to-focus and 假死's the UI. Runtime snapshot is enough;
+      // disk/config changes arrive via mvp_init / mvp_saved / watcher.
       global.OneToneIpc.invoke('cmd_request_runtime',{}).then(function(snapshot){
         if(snapshot&&snapshot.type==='mvp_runtime_snapshot'&&global.__vp_dispatch_to_js__){
           global.__vp_dispatch_to_js__(snapshot);

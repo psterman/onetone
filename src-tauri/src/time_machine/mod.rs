@@ -19,6 +19,14 @@ fn with_lock<T>(f: impl FnOnce() -> Result<T, String>) -> Result<T, String> {
     f()
 }
 
+/// Autosave must not block behind (or ahead of) desk list/preview for minutes.
+fn with_try_lock<T>(f: impl FnOnce() -> Result<T, String>) -> Result<Option<T>, String> {
+    let Some(_guard) = TM_LOCK.try_lock() else {
+        return Ok(None);
+    };
+    f().map(Some)
+}
+
 pub fn sidecar_root_for(workspace: &Path) -> PathBuf {
     store::sidecar_dir(workspace)
 }
@@ -167,7 +175,7 @@ pub fn run_autosave(
     agent_busy: bool,
     agent_context: AgentContext,
 ) -> Result<TmCreateResult, String> {
-    with_lock(|| {
+    match with_try_lock(|| {
         let config = store::load_config();
         if !config.auto_save_enabled {
             return Ok(skipped("disabled"));
@@ -191,7 +199,10 @@ pub fn run_autosave(
         };
         store::save_last_auto_save_at(&ws, &op.created_at)?;
         Ok(result)
-    })
+    })? {
+        Some(result) => Ok(result),
+        None => Ok(skipped("busy")),
+    }
 }
 
 /// Create a scheduled checkpoint without consulting the global enabled/due setting.
@@ -211,14 +222,15 @@ fn create_scheduled_unlocked(
     workspace: &Path,
     agent_context: AgentContext,
 ) -> Result<TmCreateResult, String> {
-    let Some(op) = git_ops::create_scheduled_checkpoint(workspace, agent_context)? else {
-        return Ok(skipped("unchanged"));
-    };
-    Ok(TmCreateResult {
-        created: true,
-        skipped_reason: None,
-        op: Some(op),
-    })
+    let (op, skip) = git_ops::create_scheduled_checkpoint(workspace, agent_context)?;
+    match op {
+        Some(op) => Ok(TmCreateResult {
+            created: true,
+            skipped_reason: None,
+            op: Some(op),
+        }),
+        None => Ok(skipped(skip.unwrap_or("unchanged"))),
+    }
 }
 
 fn skipped(reason: &str) -> TmCreateResult {

@@ -4,7 +4,7 @@ use tauri::{AppHandle, Manager, WebviewWindow};
 
 use crate::AppState;
 
-/// Persist global desired wake engine and activate it via supervisor.
+/// Persist global desired wake engine and activate via single voice supervisor worker.
 pub fn voice_set_desired_engine(
     app: &AppHandle,
     state: &Arc<AppState>,
@@ -14,13 +14,14 @@ pub fn voice_set_desired_engine(
     let label = crate::config::parse_desired_engine_label(engine)
         .map(crate::config::desired_engine_label)
         .ok_or_else(|| format!("unknown desired engine: {engine}"))?;
-    {
+    let cfg_snapshot = {
         let mut cfg = state.cfg.lock();
         crate::config::apply_desired_engine(&mut cfg, label);
         cfg.normalize();
-        crate::config::save_config(&cfg);
-    }
-    crate::voice_bootstrap::activate_desired_engine(app, state, reason);
+        cfg.clone()
+    };
+    crate::config::save_config(&cfg_snapshot);
+    crate::voice_supervisor::enqueue_activate(app.clone(), Arc::clone(state), reason);
     let resource_dir = app.path().resource_dir().ok();
     Ok(serde_json::json!({
         "ok": true,
@@ -29,6 +30,8 @@ pub fn voice_set_desired_engine(
         "voiceVosk": crate::voice_vosk_runtime::voice_vosk_status(state, resource_dir.clone()),
         "voiceSapi": crate::voice_sapi_runtime::voice_sapi_status(state),
         "voiceKws": crate::voice_kws_runtime::voice_kws_status(state, resource_dir),
+        "activateAsync": true,
+        "activateBusy": crate::voice_supervisor::activate_busy(),
     }))
 }
 
@@ -52,23 +55,8 @@ pub fn voice_set_listening_strategy(
         "voice",
         &format!("set_listening_strategy label={label} reason={reason}"),
     );
-    // Never block the IPC thread on stop_sync/join or heavy status probes — stopping Vosk
-    // while FE awaits this invoke previously wedged the UI (省电假死).
-    // FE must wait for activateBusy=false before finish/drain — early ok alone caused click-storm 无响应.
-    let app2 = app.clone();
-    let state2 = Arc::clone(state);
-    let reason2 = reason.to_string();
-    crate::voice_bootstrap::begin_activate_async();
-    let spawn_ok = std::thread::Builder::new()
-        .name("voice-strategy-activate".into())
-        .spawn(move || {
-            let _end = ActivateAsyncEnd;
-            crate::voice_bootstrap::activate_desired_engine(&app2, &state2, &reason2);
-        });
-    if let Err(e) = spawn_ok {
-        crate::voice_bootstrap::end_activate_async();
-        return Err(format!("spawn strategy activate failed: {e}"));
-    }
+    // Single supervisor worker — never spawn one thread per switch.
+    crate::voice_supervisor::enqueue_activate(app.clone(), Arc::clone(state), reason);
 
     let supervisor = crate::voice_bootstrap::supervisor_status_json(state);
     Ok(serde_json::json!({
@@ -79,13 +67,6 @@ pub fn voice_set_listening_strategy(
         "activateAsync": true,
         "activateBusy": true,
     }))
-}
-
-struct ActivateAsyncEnd;
-impl Drop for ActivateAsyncEnd {
-    fn drop(&mut self) {
-        crate::voice_bootstrap::end_activate_async();
-    }
 }
 
 #[tauri::command]

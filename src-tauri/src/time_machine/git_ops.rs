@@ -86,11 +86,12 @@ pub fn create_checkpoint(
     .ok_or_else(|| "恢复点未创建".to_string())
 }
 
+/// Scheduled create: `Ok((Some(op), None))` created; `Ok((None, Some(reason)))` skipped.
 pub fn create_scheduled_checkpoint(
     workspace: &Path,
     agent_context: AgentContext,
-) -> Result<Option<TmOp>, String> {
-    create_checkpoint_inner(
+) -> Result<(Option<TmOp>, Option<&'static str>), String> {
+    match create_checkpoint_inner_tagged(
         workspace,
         "scheduled",
         None,
@@ -98,7 +99,10 @@ pub fn create_scheduled_checkpoint(
         None,
         None,
         true,
-    )
+    )? {
+        CheckpointOutcome::Created(op) => Ok((Some(op), None)),
+        CheckpointOutcome::Skipped(reason) => Ok((None, Some(reason))),
+    }
 }
 
 fn create_checkpoint_inner(
@@ -110,6 +114,34 @@ fn create_checkpoint_inner(
     restore_safety: Option<String>,
     skip_unchanged: bool,
 ) -> Result<Option<TmOp>, String> {
+    match create_checkpoint_inner_tagged(
+        workspace,
+        trigger_source,
+        label,
+        agent_context,
+        restore_target,
+        restore_safety,
+        skip_unchanged,
+    )? {
+        CheckpointOutcome::Created(op) => Ok(Some(op)),
+        CheckpointOutcome::Skipped(_) => Ok(None),
+    }
+}
+
+enum CheckpointOutcome {
+    Created(TmOp),
+    Skipped(&'static str),
+}
+
+fn create_checkpoint_inner_tagged(
+    workspace: &Path,
+    trigger_source: &str,
+    label: Option<String>,
+    agent_context: AgentContext,
+    restore_target: Option<String>,
+    restore_safety: Option<String>,
+    skip_unchanged: bool,
+) -> Result<CheckpointOutcome, String> {
     if let Some(reason) = conflict_block_reason(workspace) {
         return Err(reason);
     }
@@ -119,7 +151,7 @@ fn create_checkpoint_inner(
     if skip_unchanged {
         let dirty = count_porcelain_changes(workspace).unwrap_or(1);
         if dirty == 0 {
-            return Ok(None);
+            return Ok(CheckpointOutcome::Skipped("unchanged"));
         }
     }
 
@@ -133,13 +165,35 @@ fn create_checkpoint_inner(
         .as_ref()
         .and_then(|_| oplog::tip_op(workspace).map(|o| o.id));
 
+    // Scheduled: refuse torn trees before expensive snapshot when worktree is mid-mutate.
+    let fp_before = if skip_unchanged {
+        Some(dirty_fingerprint(workspace)?)
+    } else {
+        None
+    };
+    if skip_unchanged {
+        if let Some(ref before) = fp_before {
+            // Cheap second sample — if dirty set moved, skip without git add.
+            let mid = dirty_fingerprint(workspace)?;
+            if before != &mid {
+                return Ok(CheckpointOutcome::Skipped("mutating"));
+            }
+        }
+    }
+
     let tree = snapshot_worktree_tree(workspace, &id, base_head.as_deref())?;
 
     if skip_unchanged {
+        if let Some(ref before) = fp_before {
+            let after = dirty_fingerprint(workspace)?;
+            if before != &after {
+                return Ok(CheckpointOutcome::Skipped("mutating"));
+            }
+        }
         if let Some(compare_commit) = parent_commit.as_ref().or(base_head.as_ref()) {
             let tip_tree = git(workspace, &["show", "-s", "--format=%T", compare_commit])?;
             if tip_tree.trim() == tree {
-                return Ok(None);
+                return Ok(CheckpointOutcome::Skipped("unchanged"));
             }
         }
     }
@@ -200,7 +254,7 @@ fn create_checkpoint_inner(
     store::write_metadata(workspace, &op)?;
     store::append_oplog(workspace, &op)?;
     prune_old(workspace)?;
-    Ok(Some(op))
+    Ok(CheckpointOutcome::Created(op))
 }
 
 pub fn preview_restore(workspace: &Path, target_id: &str) -> Result<RestorePreview, String> {

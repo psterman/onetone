@@ -88,6 +88,7 @@ permissions = [
   "allow-cmd-voice-end-test-commit",
   "allow-cmd-export-logs",
   "allow-cmd-app-log",
+  "allow-cmd-ui-heartbeat",
   "allow-cmd-open-url",
   "allow-cmd-probe-camera-capabilities",
   "allow-cmd-windows-hello-confirm",

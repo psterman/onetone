@@ -43,6 +43,10 @@ pub fn end_activate_async() {
 }
 
 pub fn activate_busy() -> bool {
+    // Prefer single-worker supervisor busy flag; fall back to lock for sync paths.
+    if crate::voice_supervisor::activate_busy() {
+        return true;
+    }
     if ACTIVATE_ASYNC_PENDING.load(Ordering::SeqCst) > 0 {
         return true;
     }

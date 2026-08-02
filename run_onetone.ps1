@@ -115,18 +115,31 @@ $script:BuildLockPath = Join-Path $logDir 'build.lock'
 function Enter-BuildLock {
   $deadline = (Get-Date).AddMinutes(8)
   while (Test-Path -LiteralPath $script:BuildLockPath) {
+    $holder = $null
+    try { $holder = (Get-Content -LiteralPath $script:BuildLockPath -ErrorAction SilentlyContinue | Select-Object -First 1).Trim() } catch {}
+    $holderAlive = $false
+    if ($holder -match '^\d+$') {
+      $holderAlive = $null -ne (Get-Process -Id ([int]$holder) -ErrorAction SilentlyContinue)
+    }
+    if (-not $holderAlive) {
+      Write-LaunchLog "clearing stale build.lock (holder pid=$holder not running)"
+      Remove-Item -LiteralPath $script:BuildLockPath -Force -ErrorAction SilentlyContinue
+      break
+    }
     if ((Get-Date) -gt $deadline) {
       Write-LaunchLog 'build lock timeout, clearing stale lock'
       Remove-Item -LiteralPath $script:BuildLockPath -Force -ErrorAction SilentlyContinue
       break
     }
-    Write-LaunchLog 'waiting for another build to finish...'
+    Write-Host "waiting for build lock (pid=$holder)..."
+    Write-LaunchLog "waiting for another build to finish (pid=$holder)..."
     Start-Sleep -Seconds 3
   }
   if (-not (Test-Path $logDir)) {
     New-Item -ItemType Directory -Path $logDir -Force | Out-Null
   }
   Set-Content -LiteralPath $script:BuildLockPath -Value $PID -Encoding ascii
+  Write-LaunchLog "build.lock acquired pid=$PID"
 }
 
 function Exit-BuildLock {

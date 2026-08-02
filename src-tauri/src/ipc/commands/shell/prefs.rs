@@ -51,6 +51,16 @@ pub async fn cmd_app_log(
     .map_err(|e| format!("log task failed: {e}"))
 }
 
+/// Atomic-only UI heartbeat. No disk, no cfg/log_ring, no emit.
+#[tauri::command]
+pub fn cmd_ui_heartbeat(seq: u64, activity_tag: Option<String>, frontend_time: Option<u64>) {
+    crate::ui_heartbeat::note_ping(
+        seq,
+        activity_tag.as_deref().unwrap_or(""),
+        frontend_time.unwrap_or(0),
+    );
+}
+
 #[tauri::command]
 pub fn cmd_open_url(url: String) -> Result<(), String> {
     #[cfg(windows)]
@@ -83,11 +93,15 @@ pub fn cmd_data_root_status() -> crate::data_root::DataRootStatus {
 }
 
 #[tauri::command]
-pub fn cmd_data_root_pick() -> Result<crate::data_root::DataRootStatus, String> {
-    let Some(folder) = crate::data_root::pick_folder_dialog()? else {
-        return Ok(crate::data_root::status());
-    };
-    crate::data_root::set_custom_root(folder)
+pub async fn cmd_data_root_pick() -> Result<crate::data_root::DataRootStatus, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        let Some(folder) = crate::data_root::pick_folder_dialog()? else {
+            return Ok(crate::data_root::status());
+        };
+        crate::data_root::set_custom_root(folder)
+    })
+    .await
+    .map_err(|e| format!("data_root_pick task failed: {e}"))?
 }
 
 #[tauri::command]

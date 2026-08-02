@@ -5153,7 +5153,7 @@
       '</p>' +
       '<p class="codex-pad-mgr__hint">' +
       esc(t('softPadAgentPanelLead',
-        '用上方标签切换：状态灯、Claude、开发测试。')) +
+        '这里只看 AI 忙不忙：开状态灯就行。其它进阶选项可先跳过。')) +
       '</p>' +
       '<div class="codex-pad-mgr__agent-lazy" data-lazy-agent-body></div>' +
       '</div>';

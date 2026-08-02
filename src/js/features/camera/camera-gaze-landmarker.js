@@ -8,10 +8,12 @@
 
   var DETECT_INTERVAL_MS=33;
   var detectIntervalMs=DETECT_INTERVAL_MS;
+  var DETECT_TIMEOUT_MS=2500;
   var VENDOR_BASE='vendor/mediapipe';
   var LOW_CONF=0.35;
+  var WORKER_SCRIPT='js/features/camera/camera-gaze-landmarker-worker.js';
 
-  var landmarker=null;
+  var landmarker=null; // unused on UI thread when worker path is active
   var readyPromise=null;
   var running=false;
   var detectRaf=0;
@@ -33,6 +35,36 @@
   var blinkHoldUntil=0;
   var lastLandmarks=null;
   var lastLandmarksAt=0;
+
+  // Worker isolation — UI thread must never call detectForVideo (cannot interrupt WASM).
+  var worker=null;
+  var workerReady=false;
+  var workerGen=0;
+  var detectInFlight=false;
+  var pendingBitmap=null;
+  var pendingTs=0;
+  var detectReqId=0;
+  var detectTimeoutId=0;
+  var workerFailed=false;
+  var queueDepth=0; // 0 or 1 (pending) + in-flight tracked separately
+
+  function experimentalPresenceAllowed(){
+    try{
+      if(global.localStorage&&global.localStorage.getItem('ot_presence_experimental')==='1') return true;
+    }catch(_){}
+    try{
+      var cp=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config&&global.OneToneState.state.config.cameraPrefs;
+      if(cp&&cp.presenceExperimental===true) return true;
+    }catch(_){}
+    return false;
+  }
+
+  function setActivityTag(tag){
+    try{
+      if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.setTag) global.OneToneUiHeartbeat.setTag(tag);
+      else global.__otActivityTag=tag;
+    }catch(_){}
+  }
 
   function clamp01(v){
     v=Number(v);
@@ -303,7 +335,6 @@
   }
 
   function resolveVendorUrl(rel){
-    // Page-relative under src/ (Tauri frontendDist).
     try{
       return new URL(VENDOR_BASE+'/'+rel,global.location.href).href;
     }catch(_){
@@ -311,152 +342,198 @@
     }
   }
 
-  function ensureReady(){
-    if(landmarker) return Promise.resolve(landmarker);
-    if(readyPromise) return readyPromise;
-    readyPromise=import(resolveVendorUrl('vision_bundle.mjs')).then(function(mod){
-      var FilesetResolver=mod.FilesetResolver;
-      var FaceLandmarker=mod.FaceLandmarker;
-      if(!FilesetResolver||!FaceLandmarker){
-        throw new Error('vision_bundle missing FaceLandmarker exports');
+  function resolveWorkerUrl(){
+    try{ return new URL(WORKER_SCRIPT,global.location.href).href; }
+    catch(_){ return WORKER_SCRIPT; }
+  }
+
+  function clearDetectTimeout(){
+    if(detectTimeoutId){ clearTimeout(detectTimeoutId); detectTimeoutId=0; }
+  }
+
+  function dropPendingBitmap(){
+    if(pendingBitmap&&pendingBitmap.close){ try{ pendingBitmap.close(); }catch(_){} }
+    pendingBitmap=null; pendingTs=0; queueDepth=0;
+  }
+
+  function terminateWorker(reason){
+    clearDetectTimeout();
+    detectInFlight=false;
+    dropPendingBitmap();
+    workerReady=false;
+    if(worker){ try{ worker.terminate(); }catch(_){} worker=null; }
+    workerGen++;
+    setActivityTag('');
+    try{ console.warn('[onetone] landmarker worker terminated:',reason||''); }catch(_){}
+  }
+
+  function handleWorkerResult(msg){
+    clearDetectTimeout();
+    detectInFlight=false;
+    setActivityTag('');
+    if(!running){ dropPendingBitmap(); return; }
+    var faces=msg.faces||[];
+    var blendMap=buildBlendMap(msg.blendshapes);
+    var mats=msg.matrices;
+    var mat=mats&&mats[0]?mats[0]:null;
+    if(mat&&mat.data) mat=mat.data;
+    if(!faces.length){
+      lastLandmarks=null;
+      emitPoint({x:lastGood.x,y:lastGood.y,confidence:0.08,state:'lost',faceDetected:false,faceCount:0,faceArea:0,pitch:null,yaw:null,blink:null});
+    }else{
+      lastLandmarks=faces[0];
+      lastLandmarksAt=performance.now();
+      var pose=headPoseFromMatrix(mat);
+      var lmYaw=yawFromLandmarks(faces[0]);
+      var yawOut=pose.yaw;
+      if(lmYaw!=null&&(mat==null||Math.abs(pose.yaw)<0.08||Math.abs(lmYaw)>Math.abs(pose.yaw))) yawOut=lmYaw;
+      var blinkScore=avgBlend(blendMap,['eyeBlinkLeft','eyeBlinkRight']);
+      var proxy=estimateGazeProxy(faces[0],blendMap,mat);
+      var overlay=global.document&&global.document.getElementById('cameraGazeOverlay');
+      var mapped=mapVideoNormToOverlay(proxy.x,proxy.y,videoEl,overlay);
+      var faceArea=faceAreaFromLandmarks(faces[0]);
+      var out={x:mapped.x,y:mapped.y,confidence:proxy.confidence,state:proxy.state,feats:proxy.feats||null,faceDetected:true,faceCount:faces.length,faceArea:faceArea,pitch:pose.pitch!=null?pose.pitch:null,yaw:yawOut,matrixYaw:pose.yaw,landmarkYaw:lmYaw,blink:blinkScore,blinking:!!proxy.blinking};
+      if(!proxy.blinking&&(out.state==='tracking'||(out.state==='low-confidence'&&out.confidence>0.15))){
+        lastGood={x:out.x,y:out.y,confidence:out.confidence,state:out.state,feats:out.feats};
       }
-      var wasmPath=resolveVendorUrl('wasm');
-      var modelPath=resolveVendorUrl('face_landmarker.task');
-      return FilesetResolver.forVisionTasks(wasmPath).then(function(vision){
-        function createWithDelegate(delegate){
-          return FaceLandmarker.createFromOptions(vision,{
-            baseOptions:{
-              modelAssetPath:modelPath,
-              delegate:delegate
-            },
-            runningMode:'VIDEO',
-            numFaces:2,
-            outputFaceBlendshapes:true,
-            outputFacialTransformationMatrixes:true,
-            minFaceDetectionConfidence:0.5,
-            minFacePresenceConfidence:0.5,
-            minTrackingConfidence:0.5
-          });
+      emitPoint(out);
+    }
+    if(pendingBitmap){
+      var bm=pendingBitmap, ts=pendingTs;
+      pendingBitmap=null; pendingTs=0; queueDepth=0;
+      postDetect(bm,ts);
+    }
+  }
+
+  function armDetectTimeout(id,gen){
+    clearDetectTimeout();
+    detectTimeoutId=setTimeout(function(){
+      detectTimeoutId=0;
+      if(gen!==workerGen) return;
+      terminateWorker('detect timeout id='+id);
+      workerFailed=false;
+      ensureReady().then(function(){ if(running) scheduleDetectLoop(); }).catch(function(){ workerFailed=true; });
+    },DETECT_TIMEOUT_MS);
+  }
+
+  function postDetect(bitmap,ts){
+    if(!worker||!workerReady||!running){
+      if(bitmap&&bitmap.close) try{ bitmap.close(); }catch(_){}
+      return;
+    }
+    detectInFlight=true;
+    detectReqId++;
+    var id=detectReqId, gen=workerGen;
+    setActivityTag('cameraDetect');
+    armDetectTimeout(id,gen);
+    try{ worker.postMessage({type:'detect',bitmap:bitmap,ts:ts,id:id},[bitmap]); }
+    catch(err){
+      detectInFlight=false; clearDetectTimeout(); setActivityTag('');
+      if(bitmap&&bitmap.close) try{ bitmap.close(); }catch(_){}
+      terminateWorker('postMessage failed'); workerFailed=true;
+    }
+  }
+
+  function bitmapOpts(video){
+    var vw=video&&video.videoWidth|0;
+    var vh=video&&video.videoHeight|0;
+    // 1080p createImageBitmap every frame can wedge WebView2; gaze works at 720w.
+    var maxW=720;
+    if(!vw||!vh||vw<=maxW) return undefined;
+    return {
+      resizeWidth:maxW,
+      resizeHeight:Math.max(1,Math.round(maxW*vh/vw))
+    };
+  }
+
+  function ensureReady(){
+    if(worker&&workerReady) return Promise.resolve(true);
+    if(readyPromise) return readyPromise;
+    if(typeof Worker==='undefined'){
+      workerFailed=true;
+      return Promise.reject(new Error('Worker unavailable — continuous MediaPipe blocked on UI thread'));
+    }
+    readyPromise=new Promise(function(resolve,reject){
+      terminateWorker('reinit');
+      workerFailed=false;
+      var gen=workerGen;
+      var w;
+      try{ w=new Worker(resolveWorkerUrl()); }
+      catch(err){
+        readyPromise=null; workerFailed=true;
+        reject(new Error('Worker create failed: '+(err&&err.message||err)));
+        return;
+      }
+      worker=w;
+      w.onmessage=function(ev){
+        if(gen!==workerGen) return;
+        var msg=ev.data||{};
+        if(msg.type==='ready'){ workerReady=true; readyPromise=null; resolve(true); return; }
+        if(msg.type==='result'){ handleWorkerResult(msg); return; }
+        if(msg.type==='error'){
+          if(!workerReady){
+            readyPromise=null; workerFailed=true; terminateWorker('init error');
+            reject(new Error('landmarker worker init: '+(msg.message||'unknown')));
+          }else{
+            detectInFlight=false; clearDetectTimeout(); setActivityTag('');
+            emitPoint({x:lastGood.x,y:lastGood.y,confidence:0.05,state:'lost',faceDetected:false,faceCount:0,faceArea:0,pitch:null,yaw:null,blink:null,error:msg.message});
+            if(pendingBitmap){ var bm=pendingBitmap,ts=pendingTs; pendingBitmap=null; pendingTs=0; postDetect(bm,ts); }
+          }
         }
-        // Prefer GPU; fall back to CPU when WebGL/GPU init fails.
-        return createWithDelegate('GPU').catch(function(){
-          return createWithDelegate('CPU');
-        });
-      });
-    }).then(function(fl){
-      landmarker=fl;
-      return landmarker;
-    }).catch(function(err){
-      readyPromise=null;
-      landmarker=null;
-      // Surface clear failure — never silently fall back to CDN.
-      var msg=err&&err.message?err.message:String(err||'unknown');
-      throw new Error('local MediaPipe load failed: '+msg);
+      };
+      w.onerror=function(err){
+        if(gen!==workerGen) return;
+        readyPromise=null; workerFailed=true; terminateWorker('worker onerror');
+        reject(new Error('landmarker worker: '+(err&&err.message||'onerror')));
+      };
+      w.postMessage({type:'init',bundleUrl:resolveVendorUrl('vision_bundle.mjs'),wasmUrl:resolveVendorUrl('wasm'),modelUrl:resolveVendorUrl('face_landmarker.task')});
     });
     return readyPromise;
   }
 
   function emitPoint(point){
-    if(typeof onPoint==='function'){
-      try{ onPoint(point); }catch(_){}
-    }
+    if(typeof onPoint==='function'){ try{ onPoint(point); }catch(_){} }
   }
 
   function detectOnce(){
-    if(!running||!landmarker||!videoEl) return;
+    if(!running||!videoEl) return;
     if(videoEl.readyState<2) return;
+    // Formal: never call detectForVideo on UI main thread.
+    if(workerFailed||!workerReady) return;
     var now=performance.now();
-    // MediaPipe requires strictly increasing timestamps.
     if(now<=lastTs) now=lastTs+1;
     lastTs=now;
-    var result;
-    try{
-      result=landmarker.detectForVideo(videoEl,now);
-    }catch(err){
-      emitPoint({
-        x:lastGood.x,
-        y:lastGood.y,
-        confidence:0.05,
-        state:'lost',
-        faceDetected:false,
-        faceCount:0,
-        faceArea:0,
-        pitch:null,
-        yaw:null,
-        blink:null,
-        error:err&&err.message
-      });
-      return;
-    }
-    var faces=result&&result.faceLandmarks;
-    if(!faces||!faces.length){
-      lastLandmarks=null;
-      emitPoint({
-        x:lastGood.x,
-        y:lastGood.y,
-        confidence:0.08,
-        state:'lost',
-        faceDetected:false,
-        faceCount:0,
-        faceArea:0,
-        pitch:null,
-        yaw:null,
-        blink:null
-      });
-      return;
-    }
-    lastLandmarks=faces[0];
-    lastLandmarksAt=now;
-    var blendMap=buildBlendMap(result.faceBlendshapes);
-    var mats=result.facialTransformationMatrixes;
-    var mat=mats&&mats[0]?mats[0]:null;
-    if(mat&&mat.data) mat=mat.data;
-    var pose=headPoseFromMatrix(mat);
-    var lmYaw=yawFromLandmarks(faces[0]);
-    // Prefer landmark yaw for gestures when matrix is flat/missing.
-    var yawOut=pose.yaw;
-    if(lmYaw!=null&&(mat==null||Math.abs(pose.yaw)<0.08||Math.abs(lmYaw)>Math.abs(pose.yaw))){
-      yawOut=lmYaw;
-    }
-    var blinkScore=avgBlend(blendMap,['eyeBlinkLeft','eyeBlinkRight']);
-    var proxy=estimateGazeProxy(faces[0],blendMap,mat);
-    var overlay=global.document&&global.document.getElementById('cameraGazeOverlay');
-    var mapped=mapVideoNormToOverlay(proxy.x,proxy.y,videoEl,overlay);
-    var faceArea=faceAreaFromLandmarks(faces[0]);
-    var out={
-      x:mapped.x,
-      y:mapped.y,
-      confidence:proxy.confidence,
-      state:proxy.state,
-      feats:proxy.feats||null,
-      faceDetected:true,
-      faceCount:faces.length,
-      faceArea:faceArea,
-      pitch:pose.pitch!=null?pose.pitch:null,
-      yaw:yawOut,
-      matrixYaw:pose.yaw,
-      landmarkYaw:lmYaw,
-      blink:blinkScore,
-      blinking:!!proxy.blinking
-    };
-    // Skip lastGood updates while blinking — corrupted Y would stick after reopen.
-    if(!proxy.blinking&&(out.state==='tracking'||(out.state==='low-confidence'&&out.confidence>0.15))){
-      lastGood={x:out.x,y:out.y,confidence:out.confidence,state:out.state,feats:out.feats};
-    }
-    emitPoint(out);
+    if(typeof createImageBitmap!=='function'){ workerFailed=true; return; }
+    var opts=bitmapOpts(videoEl);
+    var p=opts?createImageBitmap(videoEl,opts):createImageBitmap(videoEl);
+    p.then(function(bitmap){
+      if(!running){ if(bitmap.close) try{ bitmap.close(); }catch(_){} return; }
+      if(detectInFlight){
+        dropPendingBitmap();
+        pendingBitmap=bitmap; pendingTs=now; queueDepth=1;
+        return;
+      }
+      postDetect(bitmap,now);
+    }).catch(function(){});
   }
 
   function clearDetectLoop(){
-    if(detectRaf){
-      cancelAnimationFrame(detectRaf);
-      detectRaf=0;
-    }
+    if(detectRaf){ cancelAnimationFrame(detectRaf); detectRaf=0; }
     lastDetectWall=0;
+  }
+
+  function scheduleDetectLoop(){
+    clearDetectLoop();
+    detectRaf=requestAnimationFrame(detectLoop);
   }
 
   function detectLoop(wallNow){
     detectRaf=0;
     if(!running) return;
+    if(typeof document!=='undefined'&&document.hidden){
+      detectRaf=requestAnimationFrame(detectLoop);
+      return;
+    }
     if(!lastDetectWall||(wallNow-lastDetectWall)>=detectIntervalMs){
       lastDetectWall=wallNow;
       detectOnce();
@@ -467,37 +544,27 @@
   function start(video,callback){
     videoEl=video||null;
     onPoint=callback||null;
-    if(running&&detectRaf){
-      return ensureReady();
-    }
-    running=true;
-    lastTs=-1;
-    lastDetectWall=0;
+    if(running&&detectRaf&&workerReady) return ensureReady();
+    running=true; lastTs=-1; lastDetectWall=0;
     return ensureReady().then(function(){
       if(!running) return;
-      clearDetectLoop();
-      detectRaf=requestAnimationFrame(detectLoop);
+      scheduleDetectLoop();
+    }).catch(function(err){
+      running=false; workerFailed=true; throw err;
     });
   }
 
   function stop(){
     running=false;
-    clearDetectLoop();
-    videoEl=null;
-    onPoint=null;
-    lastTs=-1;
+    clearDetectLoop(); clearDetectTimeout(); dropPendingBitmap();
+    detectInFlight=false; videoEl=null; onPoint=null; lastTs=-1;
+    setActivityTag('');
   }
 
   function isRunning(){ return !!running&&!!detectRaf; }
 
   function getLastPoint(){
-    return {
-      x:lastGood.x,
-      y:lastGood.y,
-      confidence:lastGood.confidence,
-      state:lastGood.state,
-      feats:lastGood.feats||null
-    };
+    return {x:lastGood.x,y:lastGood.y,confidence:lastGood.confidence,state:lastGood.state,feats:lastGood.feats||null};
   }
 
   function setDetectIntervalMs(ms){
@@ -505,7 +572,10 @@
     detectIntervalMs=(isFinite(n)&&n>=20)?n:DETECT_INTERVAL_MS;
   }
 
-  // Expose mapping helpers for tests / preview shell.
+  function getInferQueueDepth(){
+    return pendingBitmap?1:0;
+  }
+
   global.OneToneCameraGazeLandmarker={
     ensureReady:ensureReady,
     start:start,
@@ -516,12 +586,10 @@
     mapVideoNormToOverlay:mapVideoNormToOverlay,
     getContainRect:getContainRect,
     estimateGazeProxy:estimateGazeProxy,
-    /** Read-only Face Landmarker points for preview beauty (does not alter onPoint). */
-    getLastLandmarks:function(){
-      return lastLandmarks||null;
-    },
-    getLastLandmarksAt:function(){
-      return lastLandmarksAt||0;
-    }
+    getInferQueueDepth:getInferQueueDepth,
+    isWorkerFailed:function(){ return !!workerFailed; },
+    experimentalPresenceAllowed:experimentalPresenceAllowed,
+    getLastLandmarks:function(){ return lastLandmarks||null; },
+    getLastLandmarksAt:function(){ return lastLandmarksAt||0; }
   };
 })((typeof window!=='undefined')?window:globalThis);

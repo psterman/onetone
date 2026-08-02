@@ -4306,8 +4306,7 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
                 .collect::<Vec<_>>()
                 .join(", ")
         );
-        eprintln!("{msg}");
-        crate::app_log::early_line("config", &msg);
+        crate::app_log::sync_emergency_line("config", &msg);
         cfg.mappings.extend(preserved);
     }
 

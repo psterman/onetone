@@ -193,7 +193,7 @@ pub fn record_session_start(
     // Reuse parked lease between takes — avoids Vosk reclaiming the device.
     let lease = match take_calibration_lease(&state.acoustic_voice) {
         Some(l) => {
-            eprintln!("acoustic record_start: reusing calibration mic lease");
+            crate::app_log::sync_emergency_line("rs", &format!("acoustic record_start: reusing calibration mic lease"));
             crate::app_log::log_line(
                 state.as_ref(),
                 "voice",
@@ -216,10 +216,10 @@ pub fn record_session_start(
     let capture = match ManualCaptureSession::start(MANUAL_MAX_MS, on_level) {
         Ok(c) => c,
         Err(err) => {
-            eprintln!(
+            crate::app_log::sync_emergency_line("rs", &format!(
                 "acoustic record_start failed kind={:?} detail={}",
                 err.kind, err.detail
-            );
+            ));
             crate::app_log::log_line(
                 state.as_ref(),
                 "voice",
@@ -437,7 +437,7 @@ pub fn record_once(
         .record_in_progress
         .swap(true, Ordering::SeqCst)
     {
-        eprintln!("acoustic record_once rejected: already in progress");
+        crate::app_log::sync_emergency_line("rs", &format!("acoustic record_once rejected: already in progress"));
         return record_error_json(RecordReason::Internal, "habitAcousticCmdUnavailable", None);
     }
     let _record_guard = RecordInProgressGuard {
@@ -449,7 +449,7 @@ pub fn record_once(
         .filter(|s| !s.is_empty())
         .unwrap_or("")
         .to_string();
-    eprintln!("acoustic record_once begin session={session}");
+    crate::app_log::sync_emergency_line("rs", &format!("acoustic record_once begin session={session}"));
     crate::audio_win::stop_mic_monitor(&state.mic_monitor);
 
     let pcm_result = {
@@ -485,19 +485,19 @@ pub fn record_once(
     let pcm = match pcm_result {
         Ok(p) => p,
         Err(err) => {
-            eprintln!(
+            crate::app_log::sync_emergency_line("rs", &format!(
                 "acoustic record_once capture failed kind={:?} detail={}",
                 err.kind, err.detail
-            );
+            ));
             return capture_error_json(&err);
         }
     };
 
     let out = process_pcm_buffer(&pcm);
-    eprintln!(
+    crate::app_log::sync_emergency_line("rs", &format!(
         "acoustic record_once end ok={}",
         out.get("ok").and_then(|v| v.as_bool()).unwrap_or(false)
-    );
+    ));
     out
 }
 
@@ -550,7 +550,7 @@ fn process_pcm_with_extractor(pcm: &[f32], manual: bool) -> serde_json::Value {
                 "rms": debug.rms,
                 "featureFrames": debug.feature_frames,
             })) {
-                eprintln!("acoustic record process debugSummary: {line}");
+                crate::app_log::sync_emergency_line("rs", &format!("acoustic record process debugSummary: {line}"));
             }
             let truncated = debug.speech_ms > MAX_SPEECH_MS;
             let mut out = serde_json::json!({

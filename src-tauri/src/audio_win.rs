@@ -194,11 +194,11 @@ impl MicMonitorHandle {
                         .ok();
                     match rx.recv_timeout(Duration::from_millis(MONITOR_JOIN_TIMEOUT_MS)) {
                         Ok(Ok(())) => {}
-                        Ok(Err(e)) => eprintln!("mic monitor join error: {e:?}"),
-                        Err(_) => eprintln!(
+                        Ok(Err(e)) => crate::app_log::sync_emergency_line("rs", &format!("mic monitor join error: {e:?}")),
+                        Err(_) => crate::app_log::sync_emergency_line("rs", &format!(
                             "mic monitor: join timed out after {}ms (WASAPI/cpal thread may be stuck)",
                             MONITOR_JOIN_TIMEOUT_MS
-                        ),
+                        )),
                     }
                 })
                 .ok();
@@ -303,7 +303,7 @@ mod imp {
             let id = HSTRING::from(device_id);
             set_default_endpoint(&id, eConsole).map_err(|e| format!("set default console: {e}"))?;
             if let Err(err) = set_default_endpoint(&id, eCommunications) {
-                eprintln!("set default communications (non-fatal): {err}");
+                crate::app_log::sync_emergency_line("rs", &format!("set default communications (non-fatal): {err}"));
             }
             Ok(())
         }
@@ -408,7 +408,7 @@ mod imp {
             state
                 .recording_audio_sync_running
                 .store(false, Ordering::Release);
-            eprintln!("recording audio sync spawn failed: {err}");
+            crate::app_log::sync_emergency_line("rs", &format!("recording audio sync spawn failed: {err}"));
             sync_recording_audio_policy_now(state.as_ref());
         }
     }
@@ -430,7 +430,7 @@ mod imp {
             restore_recording_audio(state)
         };
         if let Err(err) = result {
-            eprintln!("recording audio policy sync failed: {err}");
+            crate::app_log::sync_emergency_line("rs", &format!("recording audio policy sync failed: {err}"));
         }
     }
 
@@ -690,7 +690,7 @@ mod imp {
                 stop_thread,
                 level_state,
             ) {
-                eprintln!("mic monitor: {err}");
+                crate::app_log::sync_emergency_line("rs", &format!("mic monitor: {err}"));
                 emit_mic_monitor_error(
                     &app_err,
                     &device_id_err,
@@ -729,7 +729,7 @@ mod imp {
         let app_err = app.clone();
         let device_id_err = device_id.clone();
         let err_fn = move |err: cpal::StreamError| {
-            eprintln!("cpal stream error: {err}");
+            crate::app_log::sync_emergency_line("rs", &format!("cpal stream error: {err}"));
             emit_mic_monitor_error(
                 &app_err,
                 &device_id_err,
@@ -1032,7 +1032,7 @@ mod tests {
     #[ignore = "requires audio hardware"]
     fn list_input_devices_returns_ok() {
         let devices = super::list_input_devices().expect("list_input_devices");
-        eprintln!("mic devices: {devices:?}");
+        crate::app_log::sync_emergency_line("rs", &format!("mic devices: {devices:?}"));
         assert!(!devices.is_empty());
     }
 
@@ -1068,6 +1068,6 @@ mod tests {
             .expect("default input device required");
         let name = device.name().unwrap_or_default();
         let cfg = device.default_input_config().expect("default input config");
-        eprintln!("cpal default: {name} format={:?}", cfg.sample_format());
+        crate::app_log::sync_emergency_line("rs", &format!("cpal default: {name} format={:?}", cfg.sample_format()));
     }
 }

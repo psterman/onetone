@@ -1073,7 +1073,7 @@
               </div>
               <div class="keys-scheme-summary-meta">
                 <span class="keys-scheme-summary-item">
-                  <span class="keys-scheme-summary-lbl" id="softPadSummaryAgentLbl">Agent 灯</span>
+                  <span class="keys-scheme-summary-lbl" id="softPadSummaryAgentLbl">状态灯</span>
                   <span class="keys-scheme-summary-val" id="softPadSummaryAgent">—</span>
                 </span>
                 <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
@@ -1110,21 +1110,21 @@
               </svg>
             </div>
             <div class="flow-nodes-grid">
-              <div class="flow-node" data-soft-pad-node="agent">
-                <span class="flow-node-tag" id="softPadFlowNodeAgentTag">01 / Agent 灯</span>
-                <button type="button" class="flow-node-btn" id="softPadFlowNodeAgent" role="tab" aria-selected="false" aria-labelledby="softPadFlowNodeAgentTitle" aria-controls="softPadSubpageBody">
-                  <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="15" rx="3"/><circle cx="12" cy="6.5" r="1.35" fill="currentColor" stroke="none"/><circle cx="12" cy="10" r="1.35" fill="currentColor" stroke="none" opacity=".7"/><circle cx="12" cy="13.5" r="1.35" fill="currentColor" stroke="none" opacity=".4"/><path d="M10.5 19.5h3M11 21.5h2"/></svg>
-                </button>
-                <h3 class="flow-node-title" id="softPadFlowNodeAgentTitle">Agent 灯</h3>
-                <p class="flow-node-hint" id="softPadFlowNodeAgentHint">—</p>
-              </div>
               <div class="flow-node" data-soft-pad-node="pad">
-                <span class="flow-node-tag" id="softPadFlowNodePadTag">02 / Soft Pad</span>
+                <span class="flow-node-tag" id="softPadFlowNodePadTag">01 / Soft Pad</span>
                 <button type="button" class="flow-node-btn is-active" id="softPadFlowNodePad" role="tab" aria-selected="true" aria-labelledby="softPadFlowNodePadTitle" aria-controls="softPadSubpageBody">
                   <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><rect x="6.2" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="10.3" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="14.4" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="6.2" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="10.3" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="14.4" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="6.2" y="14.4" width="7.5" height="3.4" rx=".7"/><rect x="14.4" y="14.4" width="3.4" height="3.4" rx=".7"/></svg>
                 </button>
                 <h3 class="flow-node-title" id="softPadFlowNodePadTitle">Soft Pad</h3>
-                <p class="flow-node-hint" id="softPadFlowNodePadHint">—</p>
+                <p class="flow-node-hint" id="softPadFlowNodePadHint">改键位 · 何时显示</p>
+              </div>
+              <div class="flow-node" data-soft-pad-node="agent">
+                <span class="flow-node-tag" id="softPadFlowNodeAgentTag">02 / 状态灯</span>
+                <button type="button" class="flow-node-btn" id="softPadFlowNodeAgent" role="tab" aria-selected="false" aria-labelledby="softPadFlowNodeAgentTitle" aria-controls="softPadSubpageBody">
+                  <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="15" rx="3"/><circle cx="12" cy="6.5" r="1.35" fill="currentColor" stroke="none"/><circle cx="12" cy="10" r="1.35" fill="currentColor" stroke="none" opacity=".7"/><circle cx="12" cy="13.5" r="1.35" fill="currentColor" stroke="none" opacity=".4"/><path d="M10.5 19.5h3M11 21.5h2"/></svg>
+                </button>
+                <h3 class="flow-node-title" id="softPadFlowNodeAgentTitle">状态灯</h3>
+                <p class="flow-node-hint" id="softPadFlowNodeAgentHint">看 AI 忙不忙</p>
               </div>
               <div class="flow-node" data-soft-pad-node="timeline">
                 <span class="flow-node-tag" id="softPadFlowNodeTimelineTag">03 / 项目胶囊</span>
@@ -1168,10 +1168,10 @@
               </div>
               <div class="soft-pad-empty" id="softPadEmpty" hidden></div>
             </div>
-            <aside class="keys-page-aside soft-pad-page-aside soft-pad-aside--secondary" id="softPadSchemeAside" aria-label="习惯">
+            <aside class="keys-page-aside soft-pad-page-aside soft-pad-aside--secondary" id="softPadSchemeAside" aria-label="选应用">
               <section class="keys-aside-card soft-pad-scheme-card keys-hub-card" id="softPadSchemeCard">
                 <header class="keys-aside-card-head keys-hub-head">
-                  <span class="keys-aside-title" id="softPadSchemeTitleLbl">习惯</span>
+                  <span class="keys-aside-title" id="softPadSchemeTitleLbl">选应用</span>
                   <span class="keys-aside-count" id="softPadSchemeCount">—</span>
                 </header>
                 <div class="keys-hub-schemes" id="softPadSchemeList" role="list"></div>
@@ -4138,6 +4138,7 @@
   <script src="js/home-v9.js"></script>
   <script src="js/features/home/habit-trigger-setup.js"></script>
   <script src="js/features/home/quick-start-orchestrator.js"></script>
+  <script src="js/shared/shell-ia-convergence.js"></script>
   <script src="js/features/home/home-workbench-compat.js"></script>
   <script src="js/features/home/home-workbench-cmdk.js"></script>
   <script src="js/features/home/home-workbench-alerts.js"></script>
@@ -4150,7 +4151,6 @@
   <script src="js/features/home/home-guide.js"></script>
   <script src="js/features/home/home-live.js"></script>
   <script src="js/shared/runtime-status-lexicon.js"></script>
-  <script src="js/shared/shell-ia-convergence.js"></script>
   <script src="js/features/home/home-workbench-model.js"></script>
   <script src="js/features/home/home-hero-mode-model.js"></script>
   <script src="js/features/home/home-shell.js"></script>

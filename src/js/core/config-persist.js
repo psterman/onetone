@@ -51,17 +51,28 @@
     const toggleBusy=voiceToggleBusy();
     const syncEditor=hookFn('syncEditorFromSelection');
     if(syncEditor) syncEditor();
+    // Camera MediaPipe / getUserMedia must NEVER run inline with applyMvpInit —
+    // sync reconcile previously wedged the UI after "applyMvpInit ok" (Responding=False).
     try{
-      if(global.OneToneCameraPresenceActions){
-        if(typeof global.OneToneCameraPresenceActions.syncUiFromPrefs==='function'){
-          global.OneToneCameraPresenceActions.syncUiFromPrefs();
-        }
-        if(typeof global.OneToneCameraPresenceActions.reconcileRuntime==='function'){
-          global.OneToneCameraPresenceActions.reconcileRuntime({reason:'config_applied'});
-        }
-      }
-      if(global.OneToneCameraGazeCalibration&&typeof global.OneToneCameraGazeCalibration.loadFromPrefs==='function'){
-        global.OneToneCameraGazeCalibration.loadFromPrefs();
+      var deferCam=function(){
+        try{
+          if(!global.OneToneCameraPresenceActions) return;
+          if(typeof global.OneToneCameraPresenceActions.syncUiFromPrefs==='function'){
+            global.OneToneCameraPresenceActions.syncUiFromPrefs();
+          }
+          if(typeof global.OneToneCameraPresenceActions.reconcileRuntime==='function'){
+            global.OneToneCameraPresenceActions.reconcileRuntime({reason:'config_applied'});
+          }
+          if(global.OneToneCameraGazeCalibration&&typeof global.OneToneCameraGazeCalibration.loadFromPrefs==='function'){
+            global.OneToneCameraGazeCalibration.loadFromPrefs();
+          }
+        }catch(_){}
+      };
+      if(typeof global.OneToneCameraPresenceActions==='object'&&
+         typeof global.OneToneCameraPresenceActions.deferCameraHeavyWork==='function'){
+        global.OneToneCameraPresenceActions.deferCameraHeavyWork(deferCam);
+      }else{
+        setTimeout(deferCam,0);
       }
     }catch(_){}
     if(global.OneToneAppStartMinimized) global.OneToneAppStartMinimized.loadState();
@@ -1687,6 +1698,10 @@
 
   function applyMvpInit(msg){
     if(!msg||typeof msg!=='object') return;
+    try{
+      if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.setTag) global.OneToneUiHeartbeat.setTag('applyMvpInit');
+      else global.__otActivityTag='applyMvpInit';
+    }catch(_){}
     if(!hooksReady()){
       pendingMvpInitMsg=msg;
       if(msg.config){
@@ -1707,8 +1722,12 @@
     try{
       const fp=mvpInitFingerprint(msg);
       const now=Date.now();
-      const dedupMs=bootSettling()?2500:600;
-      if(fp&&fp===lastMvpInitKey&&now-lastMvpInitAt<dedupMs&&configLoadedFromBackend&&configHasSceneData()) return;
+      // Same payload always no-ops once loaded — focus/echo used a 600ms window and
+      // remounted MediaPipe + home after that (首页点击假死).
+      if(fp&&fp===lastMvpInitKey&&configLoadedFromBackend&&configHasSceneData()){
+        lastMvpInitAt=now;
+        return;
+      }
       if(fp){ lastMvpInitKey=fp; lastMvpInitAt=now; }
       const st=state();
       var heldStrategy=null;
@@ -1807,28 +1826,40 @@
         ' appRemembered='+Object.keys(lastKnownAppScenarios).length);
       if(bootSettling()||mvpInitHeavyRemountBlocked()){
         scheduleDeferredMvpInitSideEffects();
+        try{
+          if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag) global.OneToneUiHeartbeat.clearTag();
+          else global.__otActivityTag='';
+        }catch(_){}
         return;
       }
-      // P8：通知 React 岛重拉。策略切换 in-flight 时延后，避免与 syncHome/islands refresh 同秒打满主线程（表现为 ok 后假死）。
-      try{
-        var wake=global.OneToneVoiceWake;
-        if(wake&&typeof wake.isModeSwitchPending==='function'&&wake.isModeSwitchPending()){
-          global.__otPendingIslandsRefresh=true;
-          try{ if(global.OneToneIpc&&global.OneToneIpc.invoke) global.OneToneIpc.invoke('cmd_app_log',{line:'fe islands refresh deferred (voice mode switch in flight)'}).catch(function(){}); }catch(_){}
-        }else if(typeof global.OneToneIslandsRefresh==='function'){
-          global.OneToneIslandsRefresh();
+      // Defer islands + heavy remount off this turn — sync IslandsRefresh + camera
+      // reconcile after ok previously left Responding=False (ui_hb tag=applyMvpInit).
+      setTimeout(function(){
+        try{
+          var wake=global.OneToneVoiceWake;
+          if(wake&&typeof wake.isModeSwitchPending==='function'&&wake.isModeSwitchPending()){
+            global.__otPendingIslandsRefresh=true;
+          }else if(typeof global.OneToneIslandsRefresh==='function'){
+            global.OneToneIslandsRefresh();
+          }
+        }catch(_){}
+        if(lastSaveCompletedAt&&Date.now()-lastSaveCompletedAt<3000){
+          earlyPersistLog('applyMvpInit skip heavy side effects (post-save echo)');
+          return;
         }
+        runMvpInitHeavySideEffects();
+      },0);
+      try{
+        if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag) global.OneToneUiHeartbeat.clearTag();
+        else global.__otActivityTag='';
       }catch(_){}
-      // Skip heavy side effects when mvp_init is a post-save echo — config is already
-      // up-to-date from the save; re-running all renders + voice sync causes 假死.
-      if(lastSaveCompletedAt&&Date.now()-lastSaveCompletedAt<3000){
-        earlyPersistLog('applyMvpInit skip heavy side effects (post-save echo)');
-        return;
-      }
-      runMvpInitHeavySideEffects();
     }catch(err){
       console.error('applyMvpInit',err);
       pendingMvpInitMsg=msg;
+      try{
+        if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag) global.OneToneUiHeartbeat.clearTag();
+        else global.__otActivityTag='';
+      }catch(_){}
     }
   }
 

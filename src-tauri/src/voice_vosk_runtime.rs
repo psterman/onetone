@@ -230,7 +230,7 @@ pub fn spawn_voice_vosk_start(
                     );
                 }
                 Err(e) => {
-                    eprintln!("voice_vosk background start failed: {e}");
+                    crate::app_log::sync_emergency_line("rs", &format!("voice_vosk background start failed: {e}"));
                     let code = {
                         let err = state.voice_vosk_last_error.lock().clone();
                         if err.contains("model_missing") {

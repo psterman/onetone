@@ -6,6 +6,7 @@ mod app_exe_icon;
 mod app_icon;
 mod app_identity;
 mod app_log;
+mod ui_heartbeat;
 mod audio_frame_bus;
 mod audio_win;
 mod backdrop;
@@ -52,6 +53,7 @@ pub mod voice_acoustic_command;
 pub mod voice_acoustic_record;
 pub mod voice_acoustic_runtime;
 mod voice_bootstrap;
+mod voice_supervisor;
 mod voice_command_router;
 mod voice_end_runtime;
 mod voice_keyword_dispatch;
@@ -202,11 +204,14 @@ fn shutdown_runtime(state: &Arc<AppState>) {
 }
 
 pub fn run() {
-    app_log::early_line("startup", "process run entered");
+    app_log::ensure_writer_started();
+    app_log::sync_emergency_line("startup", "process run entered");
     std::panic::set_hook(Box::new(|info| {
-        app_log::early_line("panic", &info.to_string());
+        // Never use async logger / multi-dir early_line from panic hook.
+        app_log::panic_line(&info.to_string());
     }));
     app_log::early_line("startup", "loading config");
+    ui_heartbeat::start_watchdog();
     let mut initial = load_config();
     app_log::early_line("startup", "config loaded");
     initial.migrate();
@@ -789,6 +794,7 @@ pub fn run() {
             ipc::cmd_update_install,
             ipc::cmd_export_logs,
             ipc::cmd_app_log,
+            ipc::cmd_ui_heartbeat,
             ipc::cmd_open_url,
             ipc::cmd_open_path,
             ipc::cmd_data_root_status,

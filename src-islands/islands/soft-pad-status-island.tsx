@@ -104,7 +104,7 @@ export function SoftPadStatusBarIsland(): JSX.Element {
         <div className="keys-scheme-summary-meta">
           <span className="keys-scheme-summary-item">
             <span className="keys-scheme-summary-lbl" id="softPadSummaryAgentLbl">
-              Agent 灯
+              状态灯
             </span>
             <span className="keys-scheme-summary-val" id="softPadSummaryAgent">
               {agent}

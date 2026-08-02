@@ -1,6 +1,7 @@
 //! Codex Micro always-on-top overlay — compact pad grid when Codex is foreground.
 
-use std::sync::{Mutex, OnceLock};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Condvar, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use parking_lot::Mutex as ParkingMutex;
@@ -323,6 +324,14 @@ fn is_overlay_session_dismissed() -> bool {
 
 /// Require two consecutive FG samples before flipping — avoids show/hide thrash 假死.
 fn stable_overlay_host(raw: bool) -> bool {
+    // Instant hide when OneTone settings hold FG — debounce only applies to *showing*.
+    // Otherwise the floating pad stays always-on-top for ~500ms and eats left-nav clicks
+    // (feels like「链接失效 / 点不了」).
+    if !raw && onetone_main_is_foreground() {
+        *fg_confirm().lock() = (false, 2);
+        *last_foreground_codex().lock() = false;
+        return false;
+    }
     let mut slot = fg_confirm().lock();
     let (pending, streak) = *slot;
     if pending == raw {
@@ -612,15 +621,103 @@ const OVERLAY_CELLS: &[OverlayCellDef] = &[
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     let Some(win) = app.get_webview_window(CODEX_MICRO_OVERLAY_LABEL) else {
-        eprintln!("codex_micro_overlay: window label missing — overlay will not show");
+        crate::app_log::sync_emergency_line(
+            "codex_overlay",
+            "codex_micro_overlay: window label missing — overlay will not show",
+        );
         return Ok(());
     };
+    bump_window_generation();
+    ensure_overlay_scheduler();
     cache_overlay_hwnd_from_window(&win);
     win.set_background_color(Some(tauri::webview::Color(0, 0, 0, 0)))?;
     let _ = win.set_shadow(false);
     let _ = win.set_always_on_top(true);
     apply_overlay_no_activate();
     Ok(())
+}
+
+// --- Single overlay push scheduler: latest snapshot + trailing flush ---
+
+static WINDOW_GEN: AtomicU64 = AtomicU64::new(1);
+static SCHED_STARTED: AtomicBool = AtomicBool::new(false);
+static SCHED_PENDING: AtomicBool = AtomicBool::new(false);
+static SCHED_WAKE: OnceLock<(Mutex<()>, Condvar)> = OnceLock::new();
+static SCHED_LATEST: OnceLock<
+    ParkingMutex<Option<(AppHandle, CodexMicroOverlaySnapshot, bool, u64)>>,
+> = OnceLock::new();
+
+fn bump_window_generation() {
+    WINDOW_GEN.fetch_add(1, Ordering::SeqCst);
+}
+
+pub fn window_generation() -> u64 {
+    WINDOW_GEN.load(Ordering::SeqCst)
+}
+
+fn sched_wake() -> &'static (Mutex<()>, Condvar) {
+    SCHED_WAKE.get_or_init(|| (Mutex::new(()), Condvar::new()))
+}
+
+fn sched_latest() -> &'static ParkingMutex<Option<(AppHandle, CodexMicroOverlaySnapshot, bool, u64)>>
+{
+    SCHED_LATEST.get_or_init(|| ParkingMutex::new(None))
+}
+
+fn ensure_overlay_scheduler() {
+    if SCHED_STARTED
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
+        return;
+    }
+    let _ = std::thread::Builder::new()
+        .name("codex-overlay-sched".into())
+        .spawn(move || overlay_scheduler_loop());
+}
+
+fn overlay_scheduler_loop() {
+    let (lock, cv) = sched_wake();
+    loop {
+        {
+            let guard = lock.lock().unwrap_or_else(|e| e.into_inner());
+            let (_g, _) = cv
+                .wait_timeout(guard, Duration::from_millis(100))
+                .unwrap_or_else(|e| e.into_inner());
+        }
+        while SCHED_PENDING.swap(false, Ordering::SeqCst) {
+            let job = sched_latest().lock().take();
+            let Some((app, payload, reposition, gen)) = job else {
+                continue;
+            };
+            if gen != window_generation() {
+                continue;
+            }
+            apply_overlay_payload(&app, &payload, reposition, gen);
+        }
+    }
+}
+
+/// Coalesced push: keeps only the latest snapshot; trailing flush via pending flag.
+pub fn request_overlay_push(app: &AppHandle, state: &AppState, reposition: bool) {
+    ensure_overlay_scheduler();
+    let snapshot = build_snapshot(state);
+    {
+        *last_visible().lock() = snapshot.visible;
+    }
+    let gen = window_generation();
+    {
+        let mut slot = sched_latest().lock();
+        let reposition = match slot.as_ref() {
+            Some((_, _, prev_repos, _)) => *prev_repos || reposition,
+            None => reposition,
+        };
+        *slot = Some((app.clone(), snapshot, reposition, gen));
+    }
+    SCHED_PENDING.store(true, Ordering::SeqCst);
+    let (lock, cv) = sched_wake();
+    let _guard = lock.lock();
+    cv.notify_one();
 }
 
 #[cfg(windows)]
@@ -2102,68 +2199,64 @@ pub fn note_micro_key(micro_key_id: &str, key_down: bool) {
 }
 
 pub fn push_state(app: &AppHandle, state: &AppState) {
-    push_state_impl(app, state, true);
+    request_overlay_push(app, state, true);
 }
 
 /// Status-only refresh — skip reposition/resize (hold-to-talk must not thrash overlay layout).
 pub fn push_overlay_status(app: &AppHandle, state: &AppState) {
-    push_state_impl(app, state, false);
+    request_overlay_push(app, state, false);
 }
 
-fn push_state_impl(app: &AppHandle, state: &AppState, reposition: bool) {
-    let snapshot = build_snapshot(state);
-    let visible = snapshot.visible;
-    {
-        *last_visible().lock() = visible;
+fn apply_overlay_payload(
+    app: &AppHandle,
+    payload: &CodexMicroOverlaySnapshot,
+    reposition: bool,
+    gen: u64,
+) {
+    if gen != window_generation() {
+        return;
     }
-    let payload = snapshot;
-    let app_clone = app.clone();
-
-    let _ = std::thread::Builder::new()
-        .name("codex-micro-overlay-push".into())
-        .spawn(move || {
-            let Some(win) = app_clone.get_webview_window(CODEX_MICRO_OVERLAY_LABEL) else {
-                return;
-            };
-            // Always refresh HWND before pass-through — status-only pushes used to skip this.
-            cache_overlay_hwnd_from_window(&win);
-            if visible && reposition {
-                // Geometry may no-op (mode switch), but we must still show after Codex FG
-                // returns — skipping show when geom was unchanged left the pad hidden.
-                let _ = apply_overlay_geometry(&win, &payload);
-                let _ = win.set_always_on_top(true);
-                let _ = win.set_skip_taskbar(true);
-                #[cfg(windows)]
-                {
-                    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-                    if let Ok(handle) = win.window_handle() {
-                        if let RawWindowHandle::Win32(platform) = handle.as_raw() {
-                            let hwnd = platform.hwnd.get() as winapi::shared::windef::HWND;
-                            let _ = crate::keyboard::show_window_no_activate(hwnd);
-                        } else {
-                            let _ = win.show();
-                        }
-                    } else {
-                        let _ = win.show();
-                    }
-                    apply_overlay_no_activate();
-                }
-                #[cfg(not(windows))]
-                {
+    let visible = payload.visible;
+    let Some(win) = app.get_webview_window(CODEX_MICRO_OVERLAY_LABEL) else {
+        return;
+    };
+    if gen != window_generation() {
+        return;
+    }
+    cache_overlay_hwnd_from_window(&win);
+    if visible && reposition {
+        let _ = apply_overlay_geometry(&win, payload);
+        let _ = win.set_always_on_top(true);
+        let _ = win.set_skip_taskbar(true);
+        #[cfg(windows)]
+        {
+            use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+            if let Ok(handle) = win.window_handle() {
+                if let RawWindowHandle::Win32(platform) = handle.as_raw() {
+                    let hwnd = platform.hwnd.get() as winapi::shared::windef::HWND;
+                    let _ = crate::keyboard::show_window_no_activate(hwnd);
+                } else {
                     let _ = win.show();
                 }
-            } else if !visible {
-                let _ = win.hide();
-            }
-            // Permission wait: click-through so Codex dialog stays usable (avoids 假死感).
-            if visible {
-                sync_needs_input_pass_through(&win, &payload);
             } else {
-                set_overlay_click_through(false);
-                let _ = win.set_ignore_cursor_events(false);
+                let _ = win.show();
             }
-            let _ = win.emit("codex_micro_overlay_state", &payload);
-        });
+            apply_overlay_no_activate();
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = win.show();
+        }
+    } else if !visible {
+        let _ = win.hide();
+    }
+    if visible {
+        sync_needs_input_pass_through(&win, payload);
+    } else {
+        set_overlay_click_through(false);
+        let _ = win.set_ignore_cursor_events(false);
+    }
+    let _ = win.emit("codex_micro_overlay_state", payload);
 }
 
 fn overlay_logical_size(minimized: bool, _joy_open: bool) -> (f64, f64) {

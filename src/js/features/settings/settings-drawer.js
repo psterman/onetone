@@ -997,6 +997,13 @@
     try{
       feLog('fe openDrawer panel='+String(opts.panel||'basic')+(opts.habitWizard?' wizard=1':''));
     }catch(_){}
+    // Soft Pad float is always-on-top; dismiss so left nav / drawer stay clickable.
+    try{
+      var ipc=global.OneToneIpc;
+      if(ipc&&typeof ipc.invoke==='function'){
+        ipc.invoke('cmd_codex_micro_overlay_dismiss',{}).catch(function(){});
+      }
+    }catch(_){}
     try{
       if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.suppressUnknownSave==='function'){
         global.OneToneConfigPersist.suppressUnknownSave(2500);

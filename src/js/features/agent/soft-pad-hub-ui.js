@@ -807,7 +807,7 @@
     var pin = getUserLaneId();
     var agent = pin
       ? t('softPadCockpitAgentPinned', '{name} · 暂时').replace('{name}', agentName)
-      : t('softPadCockpitAgentFg', '{name} 前台').replace('{name}', agentName);
+      : agentName;
     var n = countPadKeys(entry);
     var keys = n > 0
       ? t('softPadCockpitPadKeys', '{n} 个').replace('{n}', String(n))
@@ -1426,11 +1426,14 @@
     var agentHint = document.getElementById('softPadFlowNodeAgentHint');
     var padHint = document.getElementById('softPadFlowNodePadHint');
     var tmHint = document.getElementById('softPadFlowNodeTimelineHint');
-    if (agentHint) agentHint.textContent = hero.agent || '—';
+    // Status lights = glanceable busy/idle — not scheme/management copy.
+    if (agentHint) {
+      agentHint.textContent = t('softPadFlowAgentHint', '看 AI 忙不忙');
+    }
     if (padHint) {
       padHint.textContent = entry
         ? (statusLabel(entry) + ' · ' + hero.keys)
-        : (hero.keys || '—');
+        : t('softPadFlowPadHint', '改键位 · 何时显示');
     }
     if (tmHint) {
       tmHint.textContent = hero.restorePoint || t('softPadFlowTimelineHint', '只保护已接入项目');
@@ -2556,7 +2559,7 @@
       switcherHidden: !scopes.length,
       switcherLabel: t('softPadAppSwitcherAria', '应用虚拟键盘'),
       switcherChips: chips,
-      schemeTitle: t('keysHubTitle', '方案'),
+      schemeTitle: t('softPadSchemeTitle', '选应用'),
       schemeCount: String(entries.length),
       schemeRows: entries.map(function (entry) {
         var rowId = entry.mapping && entry.mapping.id ? String(entry.mapping.id) : String(entry.kind || '');
@@ -3088,7 +3091,7 @@
       global.__otSoftPadWorkflowSync();
       return;
     }
-    if (e.titleLbl) e.titleLbl.textContent = t('keysHubTitle', '方案');
+    if (e.titleLbl) e.titleLbl.textContent = t('softPadSchemeTitle', '选应用');
     if (e.aside) e.aside.setAttribute('aria-label', t('keysHubTitle', '方案'));
     var entries = listAsideEntries();
     if (e.count) e.count.textContent = String(entries.length);

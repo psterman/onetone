@@ -816,6 +816,13 @@
   function ensureRunning(opts){
     opts=opts&&typeof opts==='object'?opts:{};
     var reason=String(opts.reason||'ensure');
+    var lm=global.OneToneCameraGazeLandmarker;
+    if(lm&&lm.isWorkerFailed&&lm.isWorkerFailed()&&!(lm.experimentalPresenceAllowed&&lm.experimentalPresenceAllowed())){
+      st.lastError={code:'presence_experimental',message:t('cameraPresenceExperimental','Presence 连续推理需 Worker；失败后仅实验开关可启用（ot_presence_experimental=1）')};
+      st.runtimeStatus='error';
+      emitRuntime();
+      return Promise.resolve({ok:false,reason:'presence_experimental',error:st.lastError});
+    }
     if(!isEnabled()){
       return Promise.resolve({ok:false,reason:'disabled'});
     }
@@ -3615,6 +3622,7 @@
     ensureRunning:ensureRunning,
     ensureStopped:ensureStopped,
     reconcileRuntime:reconcileRuntime,
+    deferCameraHeavyWork:deferCameraHeavyWork,
     setRuntimeStateListener:setRuntimeStateListener,
     clearManualStop:clearManualStop,
     requestRestart:requestRestart,

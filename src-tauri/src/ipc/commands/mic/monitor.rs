@@ -63,7 +63,10 @@ pub fn cmd_mic_monitor_start(
                 &state.mic_monitor,
                 &state.mic_level,
             ) {
-                eprintln!("mic monitor start: {err}");
+                crate::app_log::sync_emergency_line(
+                    "mic_monitor",
+                    &format!("mic monitor start: {err}"),
+                );
                 state.audio_backoff.enter(std::time::Duration::from_millis(
                     crate::audio_win::DEFAULT_AUDIO_BACKOFF_MS,
                 ));

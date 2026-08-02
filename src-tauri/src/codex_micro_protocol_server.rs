@@ -11,11 +11,12 @@ use std::net::{Shutdown, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
 use tauri::AppHandle;
 
+use crate::app_log;
 use crate::codex_app_state;
 use crate::codex_micro_overlay::{self, CodexMicroOverlaySnapshot};
 use crate::AppState;
@@ -29,6 +30,24 @@ pub const CLAUDE_APPROVAL_PATH: &str = "/api/claude-approval";
 /// Env flag: Labs/验收 only. When set to `1`/`true`/`yes`, setup may auto-start the listener.
 pub const ENV_ENABLE: &str = "ONETONE_CODEX_MICRO_PROTOCOL";
 pub const ENV_PORT: &str = "ONETONE_CODEX_MICRO_PROTOCOL_PORT";
+
+/// Never `eprintln!` here — GUI under a closed/redirected stderr pipe panics
+/// (`failed printing to stderr: 管道正在被关闭`) and Soft Pad looks 假死.
+fn proto_log(message: &str) {
+    app_log::early_line("codex_micro_protocol", message);
+}
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+/// Coalesce Hook flood → single overlay scheduler (no run_on_main_thread).
+fn schedule_overlay_status_push(app: &AppHandle, state: Arc<AppState>) {
+    codex_micro_overlay::request_overlay_push(app, state.as_ref(), false);
+}
 
 const ALLOWED_METHODS: &[&str] = &[
     "v.oai.thstatus",
@@ -221,9 +240,9 @@ pub fn start(
     g.join = Some(join);
     drop(g);
 
-    eprintln!(
-        "[codex-micro-protocol] Labs/验收 loopback listening on {url_thread} (status RPC only; hid/rad rejected)"
-    );
+    proto_log(&format!(
+        "Labs/验收 loopback listening on {url_thread} (status RPC only; hid/rad rejected)"
+    ));
 
     Ok(ProtocolServerStartResult {
         ok: true,
@@ -256,11 +275,7 @@ fn apply_status_rpc_from_http(
     validate_protocol_body(raw)?;
     crate::codex_micro_vendor::apply_rpc_json(raw);
     let snapshot = codex_micro_overlay::build_snapshot(state.as_ref());
-    let app2 = app.clone();
-    let state2 = Arc::clone(&state);
-    let _ = app.run_on_main_thread(move || {
-        codex_micro_overlay::push_overlay_status(&app2, state2.as_ref());
-    });
+    schedule_overlay_status_push(app, state);
     Ok(snapshot)
 }
 
@@ -284,7 +299,7 @@ fn serve_loop(
                     .name("codex-micro-http".into())
                     .spawn(move || {
                         if let Err(err) = handle_client(stream, &app_c, state_c) {
-                            eprintln!("[codex-micro-protocol] request error: {err}");
+                            proto_log(&format!("request error: {err}"));
                         }
                     });
             }
@@ -293,7 +308,7 @@ fn serve_loop(
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
             Err(e) => {
-                eprintln!("[codex-micro-protocol] accept: {e}");
+                proto_log(&format!("accept: {e}"));
                 thread::sleep(Duration::from_millis(100));
             }
         }
@@ -406,7 +421,7 @@ fn handle_client(mut stream: TcpStream, app: &AppHandle, state: Arc<AppState>) -
     match validate_protocol_body(&raw) {
         Ok(rpc_method) => match apply_status_rpc_from_http(app, state, &raw) {
             Ok(snapshot) => {
-                eprintln!("[codex-micro-protocol] ok method={rpc_method}");
+                let _ = rpc_method;
                 let payload = serde_json::json!({ "ok": true, "snapshot": snapshot });
                 let bytes = serde_json::to_vec(&payload).map_err(|e| e.to_string())?;
                 write_raw(
@@ -421,12 +436,12 @@ fn handle_client(mut stream: TcpStream, app: &AppHandle, state: Arc<AppState>) -
                 )?;
             }
             Err(code) => {
-                eprintln!("[codex-micro-protocol] fail method={rpc_method} err={code}");
+                proto_log(&format!("fail method={rpc_method} err={code}"));
                 write_error(&mut stream, 400, &code)?;
             }
         },
         Err(code) => {
-            eprintln!("[codex-micro-protocol] reject err={code}");
+            proto_log(&format!("reject err={code}"));
             let status = if code == "body_too_large" { 413 } else { 400 };
             write_error(&mut stream, status, code)?;
         }
@@ -534,10 +549,6 @@ fn handle_app_state_post(
 ) -> Result<(), String> {
     match apply_app_state_from_http(app, state, raw) {
         Ok((view, lights_enabled)) => {
-            eprintln!(
-                "[codex-app-state] ok source={} event={} status={} lights={}",
-                view.source, view.event, view.status, lights_enabled
-            );
             let payload = serde_json::json!({
                 "ok": true,
                 "disabled": !lights_enabled,
@@ -557,7 +568,7 @@ fn handle_app_state_post(
             )?;
         }
         Err(code) => {
-            eprintln!("[codex-app-state] reject err={code}");
+            proto_log(&format!("app-state reject err={code}"));
             let status = if code == "body_too_large" { 413 } else { 400 };
             write_error(stream, status, &code)?;
         }
@@ -587,11 +598,7 @@ fn apply_app_state_from_http(
     codex_micro_overlay::set_overlay_click_through(pass);
 
     // Best-effort UI refresh; never block the Hook HTTP response on it.
-    let app2 = app.clone();
-    let state2 = Arc::clone(&state);
-    let _ = app.run_on_main_thread(move || {
-        codex_micro_overlay::push_overlay_status(&app2, state2.as_ref());
-    });
+    schedule_overlay_status_push(app, state);
     Ok((view, lights))
 }
 

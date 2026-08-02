@@ -51,3 +51,12 @@ src/vendor/mediapipe/wasm/
 src/vendor/mediapipe/*.task
 src/vendor/mediapipe/vision_bundle.mjs
 src/vendor/mediapipe/vision_bundle.mjs.map
+
+# Hang / crash dumps (never commit)
+*.dmp
+*.hdmp
+HangDumps/
+CrashDumps/
+scripts/hang-dumps/procdump.exe
+scripts/hang-dumps/procdump64.exe
+

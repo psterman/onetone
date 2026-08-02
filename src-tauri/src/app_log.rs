@@ -32,17 +32,204 @@ fn now_label() -> String {
 
 pub fn early_line(source: &str, message: &str) {
     let line = format!("[{}] [{source}] {}", now_label(), sanitize_text(message));
+    // Compatibility path — still multi-dir sync. Prefer enqueue_* / sync_emergency_line.
     append_live_log(&line);
 }
 
-pub fn log_line(state: &AppState, source: &str, message: &str) {
+/// Panic-/hang-safe: one file, no locks, no channel. Never call from async logger.
+pub fn sync_emergency_line(source: &str, message: &str) {
     let line = format!("[{}] [{source}] {}", now_label(), sanitize_text(message));
-    let mut ring = state.log_ring.lock();
-    if ring.len() >= LOG_RING_CAPACITY {
-        ring.pop_front();
+    let dir = crate::data_root::effective_logs_dir();
+    let _ = fs::create_dir_all(&dir);
+    let path = dir.join("runtime-live.log");
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(file, "{line}");
     }
-    ring.push_back(line.clone());
-    append_live_log(&line);
+}
+
+/// Alias for panic hook — must not use async writer or multi-dir early_line.
+pub fn panic_line(message: &str) {
+    sync_emergency_line("panic", message);
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum LogPriority {
+    High,
+    Normal,
+}
+
+pub fn log_line(state: &AppState, source: &str, message: &str) {
+    log_line_with_priority(state, source, message, LogPriority::Normal);
+}
+
+pub fn log_line_high(state: &AppState, source: &str, message: &str) {
+    log_line_with_priority(state, source, message, LogPriority::High);
+}
+
+fn log_line_with_priority(state: &AppState, source: &str, message: &str, prio: LogPriority) {
+    let line = format!("[{}] [{source}] {}", now_label(), sanitize_text(message));
+    {
+        let mut ring = state.log_ring.lock();
+        if ring.len() >= LOG_RING_CAPACITY {
+            ring.pop_front();
+        }
+        ring.push_back(line.clone());
+    } // release log_ring before disk / channel
+    enqueue_live_log(line, prio);
+}
+
+fn append_live_log(line: &str) {
+    // Legacy sync multi-dir — used only by early_line until callers migrate.
+    if let Some(dir) = live_log_dirs().into_iter().next() {
+        let _ = fs::create_dir_all(&dir);
+        let path = dir.join("runtime-live.log");
+        if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
+            let _ = writeln!(file, "{line}");
+        }
+    }
+}
+
+const NORMAL_QUEUE_CAP: usize = 2048;
+const HIGH_QUEUE_CAP: usize = 512;
+const MAX_LOG_BYTES: u64 = 32 * 1024 * 1024;
+
+struct LogQueues {
+    high: std::sync::Mutex<std::collections::VecDeque<String>>,
+    normal: std::sync::Mutex<std::collections::VecDeque<String>>,
+    wake: std::sync::Condvar,
+    shutdown: AtomicBool,
+}
+
+use std::sync::atomic::{AtomicBool, Ordering};
+
+static LOG_Q: OnceLock<std::sync::Arc<LogQueues>> = OnceLock::new();
+static WRITER_STARTED: AtomicBool = AtomicBool::new(false);
+
+fn log_queues() -> &'static std::sync::Arc<LogQueues> {
+    LOG_Q.get_or_init(|| {
+        std::sync::Arc::new(LogQueues {
+            high: std::sync::Mutex::new(std::collections::VecDeque::with_capacity(HIGH_QUEUE_CAP)),
+            normal: std::sync::Mutex::new(std::collections::VecDeque::with_capacity(NORMAL_QUEUE_CAP)),
+            wake: std::sync::Condvar::new(),
+            shutdown: AtomicBool::new(false),
+        })
+    })
+}
+
+fn enqueue_live_log(line: String, prio: LogPriority) {
+    ensure_writer_started();
+    let q = log_queues();
+    match prio {
+        LogPriority::High => {
+            if let Ok(mut g) = q.high.lock() {
+                if g.len() >= HIGH_QUEUE_CAP {
+                    // Merge: drop oldest high only if identical prefix flood; else drop oldest.
+                    let _ = g.pop_front();
+                }
+                g.push_back(line);
+            }
+        }
+        LogPriority::Normal => {
+            if let Ok(mut g) = q.normal.lock() {
+                if g.len() >= NORMAL_QUEUE_CAP {
+                    let _ = g.pop_front();
+                } else {
+                    g.push_back(line);
+                    q.wake.notify_one();
+                    return;
+                }
+                // Dropped under pressure — still notify so high can drain.
+            }
+        }
+    }
+    q.wake.notify_one();
+}
+
+pub fn ensure_writer_started() {
+    if WRITER_STARTED
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
+        return;
+    }
+    let q = std::sync::Arc::clone(log_queues());
+    let _ = std::thread::Builder::new()
+        .name("app-log-writer".into())
+        .spawn(move || writer_loop(q));
+}
+
+fn authoritative_log_path() -> PathBuf {
+    crate::data_root::effective_logs_dir().join("runtime-live.log")
+}
+
+fn rotate_if_needed(path: &Path) {
+    let Ok(meta) = fs::metadata(path) else {
+        return;
+    };
+    if meta.len() < MAX_LOG_BYTES {
+        return;
+    }
+    let bak = path.with_extension("log.1");
+    let _ = fs::remove_file(&bak);
+    let _ = fs::rename(path, &bak);
+}
+
+fn writer_loop(q: std::sync::Arc<LogQueues>) {
+    let dir = crate::data_root::effective_logs_dir();
+    let _ = fs::create_dir_all(&dir);
+    let path = authoritative_log_path();
+    loop {
+        let line = {
+            let mut high = q.high.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(l) = high.pop_front() {
+                drop(high);
+                Some(l)
+            } else {
+                drop(high);
+                let mut normal = q.normal.lock().unwrap_or_else(|e| e.into_inner());
+                if let Some(l) = normal.pop_front() {
+                    drop(normal);
+                    Some(l)
+                } else {
+                    if q.shutdown.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    let (n2, _) = q
+                        .wake
+                        .wait_timeout(normal, std::time::Duration::from_millis(500))
+                        .unwrap_or_else(|e| e.into_inner());
+                    drop(n2);
+                    None
+                }
+            }
+        };
+        let Some(line) = line else {
+            if q.shutdown.load(Ordering::SeqCst) {
+                break;
+            }
+            continue;
+        };
+        rotate_if_needed(&path);
+        if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&path) {
+            let _ = writeln!(file, "{line}");
+        }
+    }
+}
+
+/// Best-effort flush on process exit (bounded).
+pub fn shutdown_writer(timeout: std::time::Duration) {
+    let q = log_queues();
+    q.shutdown.store(true, Ordering::SeqCst);
+    q.wake.notify_all();
+    let start = std::time::Instant::now();
+    while start.elapsed() < timeout {
+        let high_empty = q.high.lock().map(|g| g.is_empty()).unwrap_or(true);
+        let normal_empty = q.normal.lock().map(|g| g.is_empty()).unwrap_or(true);
+        if high_empty && normal_empty {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
 }
 
 fn dump_ring(state: &AppState) -> String {
@@ -60,53 +247,9 @@ fn diagnostic_export_dir() -> Result<PathBuf, String> {
     Ok(crate::data_root::effective_logs_dir())
 }
 
-fn append_live_log(line: &str) {
-    for logs_dir in live_log_dirs() {
-        if fs::create_dir_all(&logs_dir).is_err() {
-            continue;
-        }
-        let path = logs_dir.join("runtime-live.log");
-        if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
-            let _ = writeln!(file, "{line}");
-        }
-    }
-}
-
 fn live_log_dirs() -> Vec<PathBuf> {
-    let mut out = Vec::new();
-    if let Ok(dir) = std::env::var("ONETONE_LOG_DIR") {
-        let path = PathBuf::from(dir);
-        if !path.as_os_str().is_empty() {
-            out.push(path);
-        }
-    }
-    out.push(crate::data_root::effective_logs_dir());
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(parent) = exe.parent() {
-            out.push(parent.join("logs"));
-            if let Some(grandparent) = parent.parent() {
-                out.push(grandparent.join("logs"));
-            }
-        }
-    }
-    if let Some(ws_logs) = workspace_logs_dir() {
-        out.push(ws_logs);
-    } else if let Ok(cwd) = std::env::current_dir() {
-        out.push(cwd.join("logs"));
-    }
-    if let Some(manifest) = std::env::var_os("CARGO_MANIFEST_DIR") {
-        let manifest = PathBuf::from(manifest);
-        out.retain(|p| !p.starts_with(&manifest));
-    }
-    out.sort();
-    out.dedup();
-    out
-}
-
-/// Prefer repo-root `logs/` when building from `src-tauri` (cargo/tauri dev cwd).
-fn workspace_logs_dir() -> Option<PathBuf> {
-    let manifest = std::env::var_os("CARGO_MANIFEST_DIR").map(PathBuf::from)?;
-    manifest.parent().map(|p| p.join("logs"))
+    // Single authoritative dir for early_line sync path.
+    vec![crate::data_root::effective_logs_dir()]
 }
 
 fn optional_launch_log() -> Option<PathBuf> {

@@ -80,9 +80,9 @@ pub fn cmd_mic_set_default(
         Ok(()) => {
             let desired = crate::scene_config::idle_desired_voice_engine(&state.cfg.lock());
             if desired != crate::scene_config::DesiredVoiceEngine::None {
-                crate::voice_bootstrap::activate_desired_engine(
-                    &app,
-                    state.inner(),
+                crate::voice_supervisor::enqueue_activate(
+                    app.clone(),
+                    Arc::clone(state.inner()),
                     "force:mic_default_changed",
                 );
             }

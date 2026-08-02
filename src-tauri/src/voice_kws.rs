@@ -351,7 +351,7 @@ pub fn prepare_runtime_keywords(
     match crate::voice_kws_keywords::build_runtime_keywords_file(model_dir, phrases) {
         Ok(result) => result,
         Err(e) => {
-            eprintln!("kws prepare_runtime_keywords: {e}");
+            crate::app_log::sync_emergency_line("rs", &format!("kws prepare_runtime_keywords: {e}"));
             crate::voice_kws_keywords::KwsKeywordBuildResult::default()
         }
     }

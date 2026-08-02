@@ -33,7 +33,8 @@ End If
 
 cmd = Q(ps) & " -NoLogo -NoProfile -ExecutionPolicy Bypass -Command " & _
   Q("Set-Location -LiteralPath '" & projectRoot & "'; & (Join-Path '" & projectRoot & "' 'run_onetone.ps1') -Rebuild")
-exitCode = shell.Run(cmd, 0, True)
+' Window style 1 = show console so rebuild progress is visible (0 was hidden = 「没有反应」).
+exitCode = shell.Run(cmd, 1, True)
 
 If exitCode <> 0 Then
   MsgBox "OneTone rebuild failed (exit " & exitCode & ")." & vbCrLf & vbCrLf & "See log:" & vbCrLf & logFile, 16, "OneTone"

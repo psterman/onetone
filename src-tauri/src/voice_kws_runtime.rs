@@ -200,10 +200,10 @@ pub fn voice_kws_start(
         crate::voice_kws::prepare_runtime_keywords(&model_dir, &keyword_plan.included);
     store_kws_keyword_build_snapshot(state, &keyword_plan, &build_result);
     if build_result.encoded.is_empty() {
-        eprintln!(
+        crate::app_log::sync_emergency_line("rs", &format!(
             "kws: runtime keywords empty (skipped={:?}, truncated={:?}); falling back to bundled keywords.txt",
             build_result.skipped, keyword_plan.truncated
-        );
+        ));
     }
 
     let handle = start_voice_kws(

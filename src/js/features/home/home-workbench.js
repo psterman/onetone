@@ -1491,7 +1491,7 @@
       if(!btn) return;
       var action=btn.getAttribute('data-wb-nav');
       var row=ia&&ia.resolve?ia.resolve(action):null;
-      // Phase2：一级 nav 只认 shell-ia NAV（无死 fallback）
+      // 只认 shell-ia — missing script must be fixed by load order, not a parallel nav map.
       if(!row) return;
       if(row.home){
         if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.close) global.OneToneSettingsDrawer.close();

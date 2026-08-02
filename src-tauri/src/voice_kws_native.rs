@@ -81,7 +81,7 @@ fn run_worker(
     let channels = stream_config.channels as usize;
 
     let (audio_tx, audio_rx) = bounded(AUDIO_CHANNEL_CAP);
-    let err_fn = |err| eprintln!("kws cpal stream error: {err}");
+    let err_fn = |err| crate::app_log::sync_emergency_line("rs", &format!("kws cpal stream error: {err}"));
 
     let input_stream = match sample_format {
         SampleFormat::F32 => {

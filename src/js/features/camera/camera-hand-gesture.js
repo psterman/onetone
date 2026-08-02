@@ -4,12 +4,18 @@
  *
  * Kinds: openPalm (Open_Palm), fist (Closed_Fist), ok (landmark heuristic),
  *        wave (Open_Palm + wrist oscillation).
+ *
+ * Formal: recognizeForVideo runs only in a Worker (timeout → terminate + rebuild).
+ * UI-thread budget/skip is not a hang fix — WASM cannot be interrupted once stuck.
  */
 (function(global){
   'use strict';
 
   var VENDOR_BASE='vendor/mediapipe';
+  var WORKER_SCRIPT='js/features/camera/camera-hand-gesture-worker.js';
   var DETECT_INTERVAL_MS=50;
+  var DETECT_TIMEOUT_MS=2500;
+  var BITMAP_MAX_W=480;
   var SCORE_MIN=0.55;
   var HOLD_MS=280;
   var OK_HOLD_MS=420;
@@ -20,7 +26,6 @@
   var WAVE_GRACE_MS=320;
   var WAVE_LATCH_MS=800;
 
-  var recognizer=null;
   var readyPromise=null;
   var running=false;
   var videoEl=null;
@@ -42,6 +47,23 @@
   var waveLostSince=0;
   var waveLatchUntil=0;
 
+  var worker=null;
+  var workerReady=false;
+  var workerGen=0;
+  var detectInFlight=false;
+  var pendingBitmap=null;
+  var pendingTs=0;
+  var detectReqId=0;
+  var detectTimeoutId=0;
+  var workerFailed=false;
+
+  function setActivityTag(tag){
+    try{
+      if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.setTag) global.OneToneUiHeartbeat.setTag(tag);
+      else global.__otActivityTag=tag;
+    }catch(_){}
+  }
+
   function clamp01(v){
     v=Number(v);
     if(!isFinite(v)) return 0;
@@ -56,6 +78,11 @@
     }catch(_){
       return VENDOR_BASE+'/'+rel;
     }
+  }
+
+  function resolveWorkerUrl(){
+    try{ return new URL(WORKER_SCRIPT,global.location.href).href; }
+    catch(_){ return WORKER_SCRIPT; }
   }
 
   function nowMs(){
@@ -229,64 +256,162 @@
     return lastGesture;
   }
 
+  function clearDetectTimeout(){
+    if(detectTimeoutId){ clearTimeout(detectTimeoutId); detectTimeoutId=0; }
+  }
+
+  function dropPendingBitmap(){
+    if(pendingBitmap&&pendingBitmap.close){ try{ pendingBitmap.close(); }catch(_){} }
+    pendingBitmap=null; pendingTs=0;
+  }
+
+  function terminateWorker(reason){
+    clearDetectTimeout();
+    detectInFlight=false;
+    dropPendingBitmap();
+    workerReady=false;
+    if(worker){ try{ worker.terminate(); }catch(_){} worker=null; }
+    workerGen++;
+    setActivityTag('');
+    try{ console.warn('[onetone] hand-gesture worker terminated:',reason||''); }catch(_){}
+  }
+
+  function armDetectTimeout(id,gen){
+    clearDetectTimeout();
+    detectTimeoutId=setTimeout(function(){
+      detectTimeoutId=0;
+      if(gen!==workerGen) return;
+      terminateWorker('detect timeout id='+id);
+      workerFailed=false;
+      ensureReady().then(function(){ if(running) startLoop(); }).catch(function(){ workerFailed=true; });
+    },DETECT_TIMEOUT_MS);
+  }
+
+  function handleWorkerResult(msg){
+    clearDetectTimeout();
+    detectInFlight=false;
+    setActivityTag('');
+    if(!running){ dropPendingBitmap(); return; }
+    var now=nowMs();
+    var candidate=pickGesture({
+      gestures:msg.gestures||[],
+      landmarks:msg.landmarks||[]
+    },now);
+    stabilize(candidate,now);
+    if(pendingBitmap){
+      var bm=pendingBitmap, ts=pendingTs;
+      pendingBitmap=null; pendingTs=0;
+      postDetect(bm,ts);
+    }
+  }
+
+  function postDetect(bitmap,ts){
+    if(!worker||!workerReady||!running){
+      if(bitmap&&bitmap.close) try{ bitmap.close(); }catch(_){}
+      return;
+    }
+    detectInFlight=true;
+    detectReqId++;
+    var id=detectReqId, gen=workerGen;
+    setActivityTag('cameraHandDetect');
+    armDetectTimeout(id,gen);
+    try{ worker.postMessage({type:'detect',bitmap:bitmap,ts:ts,id:id},[bitmap]); }
+    catch(err){
+      detectInFlight=false; clearDetectTimeout(); setActivityTag('');
+      if(bitmap&&bitmap.close) try{ bitmap.close(); }catch(_){}
+      terminateWorker('postMessage failed'); workerFailed=true;
+    }
+  }
+
+  function bitmapOpts(video){
+    var vw=video&&video.videoWidth|0;
+    var vh=video&&video.videoHeight|0;
+    if(!vw||!vh||vw<=BITMAP_MAX_W) return undefined;
+    return {
+      resizeWidth:BITMAP_MAX_W,
+      resizeHeight:Math.max(1,Math.round(BITMAP_MAX_W*vh/vw))
+    };
+  }
+
   function ensureReady(){
-    if(recognizer) return Promise.resolve(recognizer);
+    if(worker&&workerReady) return Promise.resolve(true);
     if(readyPromise) return readyPromise;
+    if(typeof Worker==='undefined'){
+      workerFailed=true;
+      modelFailed=true;
+      lastError='Worker unavailable — continuous GestureRecognizer blocked on UI thread';
+      return Promise.reject(new Error(lastError));
+    }
     modelFailed=false;
     lastError='';
-    readyPromise=import(resolveVendorUrl('vision_bundle.mjs')).then(function(mod){
-      var FilesetResolver=mod.FilesetResolver;
-      var GestureRecognizer=mod.GestureRecognizer;
-      if(!FilesetResolver||!GestureRecognizer){
-        throw new Error('vision_bundle missing GestureRecognizer exports');
+    readyPromise=new Promise(function(resolve,reject){
+      terminateWorker('reinit');
+      workerFailed=false;
+      var gen=workerGen;
+      var w;
+      try{ w=new Worker(resolveWorkerUrl()); }
+      catch(err){
+        readyPromise=null; workerFailed=true; modelFailed=true;
+        lastError=err&&err.message?err.message:String(err||'unknown');
+        reject(new Error('hand-gesture Worker create failed: '+lastError));
+        return;
       }
-      var wasmPath=resolveVendorUrl('wasm');
-      var modelPath=resolveVendorUrl('gesture_recognizer.task');
-      return FilesetResolver.forVisionTasks(wasmPath).then(function(vision){
-        function createWithDelegate(delegate){
-          return GestureRecognizer.createFromOptions(vision,{
-            baseOptions:{
-              modelAssetPath:modelPath,
-              delegate:delegate
-            },
-            runningMode:'VIDEO',
-            numHands:1,
-            minHandDetectionConfidence:0.5,
-            minHandPresenceConfidence:0.5,
-            minTrackingConfidence:0.5
-          });
+      worker=w;
+      w.onmessage=function(ev){
+        if(gen!==workerGen) return;
+        var msg=ev.data||{};
+        if(msg.type==='ready'){ workerReady=true; readyPromise=null; resolve(true); return; }
+        if(msg.type==='result'){ handleWorkerResult(msg); return; }
+        if(msg.type==='error'){
+          if(!workerReady){
+            readyPromise=null; workerFailed=true; modelFailed=true;
+            lastError=msg.message||'unknown';
+            terminateWorker('init error');
+            reject(new Error('hand-gesture worker init: '+lastError));
+          }else{
+            detectInFlight=false; clearDetectTimeout(); setActivityTag('');
+            if(pendingBitmap){ var bm=pendingBitmap,ts=pendingTs; pendingBitmap=null; pendingTs=0; postDetect(bm,ts); }
+          }
         }
-        return createWithDelegate('GPU').catch(function(){
-          return createWithDelegate('CPU');
-        });
+      };
+      w.onerror=function(err){
+        if(gen!==workerGen) return;
+        readyPromise=null; workerFailed=true; modelFailed=true;
+        lastError=err&&err.message?err.message:'onerror';
+        terminateWorker('worker onerror');
+        reject(new Error('hand-gesture worker: '+lastError));
+      };
+      w.postMessage({
+        type:'init',
+        bundleUrl:resolveVendorUrl('vision_bundle.mjs'),
+        wasmUrl:resolveVendorUrl('wasm'),
+        modelUrl:resolveVendorUrl('gesture_recognizer.task')
       });
-    }).then(function(gr){
-      recognizer=gr;
-      return recognizer;
-    }).catch(function(err){
-      readyPromise=null;
-      recognizer=null;
-      modelFailed=true;
-      lastError=err&&err.message?err.message:String(err||'unknown');
-      throw new Error('local GestureRecognizer load failed: '+lastError);
     });
     return readyPromise;
   }
 
   function detectOnce(){
-    if(!running||!recognizer||!videoEl) return;
+    if(!running||!videoEl) return;
+    if(typeof document!=='undefined'&&document.hidden) return;
     if(videoEl.readyState<2) return;
+    // Formal: never call recognizeForVideo on UI main thread.
+    if(workerFailed||!workerReady) return;
+    if(typeof createImageBitmap!=='function'){ workerFailed=true; return; }
     var now=nowMs();
     if(now<=lastTs) now=lastTs+1;
     lastTs=now;
-    var result=null;
-    try{
-      result=recognizer.recognizeForVideo(videoEl,now);
-    }catch(_){
-      return;
-    }
-    var candidate=pickGesture(result,now);
-    stabilize(candidate,now);
+    var opts=bitmapOpts(videoEl);
+    var p=opts?createImageBitmap(videoEl,opts):createImageBitmap(videoEl);
+    p.then(function(bitmap){
+      if(!running){ if(bitmap.close) try{ bitmap.close(); }catch(_){} return; }
+      if(detectInFlight){
+        dropPendingBitmap();
+        pendingBitmap=bitmap; pendingTs=now;
+        return;
+      }
+      postDetect(bitmap,now);
+    }).catch(function(){});
   }
 
   function loop(){
@@ -323,10 +448,11 @@
   }
 
   function start(){
-    if(running) return Promise.resolve(true);
+    if(running&&detectRaf&&workerReady) return ensureReady();
     if(!videoEl) return Promise.resolve(false);
+    running=true;
     return ensureReady().then(function(){
-      running=true;
+      if(!running) return false;
       startLoop();
       return true;
     }).catch(function(){
@@ -338,6 +464,10 @@
   function stop(){
     running=false;
     stopLoop();
+    clearDetectTimeout();
+    dropPendingBitmap();
+    detectInFlight=false;
+    setActivityTag('');
     wristHist=[];
     waveLostSince=0;
     lastPalmishAt=0;
@@ -359,7 +489,7 @@
   function getRuntimeStatus(){
     return {
       running:!!running,
-      ready:!!recognizer,
+      ready:!!(worker&&workerReady),
       modelFailed:!!modelFailed,
       error:lastError||'',
       gesture:getLastGesture(),
