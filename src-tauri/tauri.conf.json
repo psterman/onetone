@@ -86,7 +86,10 @@
       "resources/vosk/libgcc_s_seh-1.dll": "libgcc_s_seh-1.dll",
       "resources/vosk/libstdc++-6.dll": "libstdc++-6.dll",
       "resources/vosk/libwinpthread-1.dll": "libwinpthread-1.dll",
-      "resources/vosk/vosk-model-small-cn-0.22/": "resources/vosk/vosk-model-small-cn-0.22/"
+      "resources/vosk/vosk-model-small-cn-0.22/": "resources/vosk/vosk-model-small-cn-0.22/",
+      "../scripts/cursor-hook-probe.js": "scripts/cursor-hook-probe.js",
+      "../scripts/codex-hook-probe.js": "scripts/codex-hook-probe.js",
+      "../scripts/claude-hook-probe.js": "scripts/claude-hook-probe.js"
     },
     "windows": {
       "nsis": {

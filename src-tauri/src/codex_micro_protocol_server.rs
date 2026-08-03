@@ -27,6 +27,7 @@ pub const PROTOCOL_PATH: &str = "/api/codex-micro/protocol";
 pub const APP_STATE_PATH: &str = codex_app_state::APP_STATE_PATH;
 pub const CLAUDE_APPROVAL_PATH: &str = "/api/claude-approval";
 pub const CLAUDE_OTEL_METRICS_PATH: &str = "/v1/metrics";
+pub const TEST_PULSE_PATH: &str = "/api/soft-pad/test-pulse";
 pub const MAX_OTEL_BODY_BYTES: usize = 512 * 1024;
 
 /// Env flag: Labs/验收 only. When set to `1`/`true`/`yes`, setup may auto-start the listener.
@@ -197,6 +198,7 @@ pub fn start(
     state: Arc<AppState>,
     port: Option<u16>,
 ) -> Result<ProtocolServerStartResult, String> {
+    let _ = crate::integration_token::ensure_token();
     let port = resolve_port(port);
     {
         let g = runtime().lock().unwrap();
@@ -293,7 +295,7 @@ fn serve_loop(listener: TcpListener, stop: Arc<AtomicBool>, app: AppHandle, stat
                 let _ = thread::Builder::new()
                     .name("codex-micro-http".into())
                     .spawn(move || {
-                        if let Err(err) = handle_client(stream, &app_c, state_c) {
+                        if let Err(err) = handle_client(stream, Some(&app_c), Some(state_c)) {
                             proto_log(&format!("request error: {err}"));
                         }
                     });
@@ -312,8 +314,8 @@ fn serve_loop(listener: TcpListener, stop: Arc<AtomicBool>, app: AppHandle, stat
 
 fn handle_client(
     mut stream: TcpStream,
-    app: &AppHandle,
-    state: Arc<AppState>,
+    app: Option<&AppHandle>,
+    state: Option<Arc<AppState>>,
 ) -> Result<(), String> {
     let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
     let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
@@ -339,13 +341,19 @@ fn handle_client(
 
     let header = std::str::from_utf8(&buf[..header_end]).unwrap_or("");
     let (method, path) = parse_request_line(header).unwrap_or(("", ""));
+    let port = runtime().lock().unwrap().port;
+
+    if !host_is_loopback(header, port) {
+        write_error(&mut stream, 403, "host_forbidden")?;
+        return Ok(());
+    }
 
     if method.eq_ignore_ascii_case("OPTIONS") {
         write_raw(
             &mut stream,
             204,
             "No Content",
-            &format!("{}\r\nAllow: GET, POST, OPTIONS\r\n", cors_headers()),
+            &format!("{}\r\nAllow: GET, POST, OPTIONS\r\n", cors_headers_get()),
             b"",
         )?;
         return Ok(());
@@ -355,14 +363,19 @@ fn handle_client(
     let is_app_state = path == APP_STATE_PATH;
     let is_claude_approval = path == CLAUDE_APPROVAL_PATH;
     let is_claude_otel = path == CLAUDE_OTEL_METRICS_PATH;
-    if !is_protocol && !is_app_state && !is_claude_approval && !is_claude_otel {
+    let is_test_pulse = path == TEST_PULSE_PATH;
+    if !is_protocol && !is_app_state && !is_claude_approval && !is_claude_otel && !is_test_pulse {
         write_error(&mut stream, 404, "not_found")?;
         return Ok(());
     }
 
     if method.eq_ignore_ascii_case("GET") {
         if is_app_state {
-            return handle_app_state_get(&mut stream, Arc::clone(&state));
+            let Some(state) = state else {
+                write_error(&mut stream, 503, "app_unavailable")?;
+                return Ok(());
+            };
+            return handle_app_state_get(&mut stream, state);
         }
         if is_claude_approval {
             return handle_claude_approval_get(&mut stream);
@@ -374,6 +387,37 @@ fn handle_client(
     if !method.eq_ignore_ascii_case("POST") {
         write_error(&mut stream, 405, "not_found")?;
         return Ok(());
+    }
+
+    // Authenticated connector POSTs: no wildcard CORS.
+    if is_app_state || is_claude_otel || is_test_pulse {
+        if let Err(code) = require_integration_token(header) {
+            write_error(&mut stream, 401, code)?;
+            return Ok(());
+        }
+        if !rate_limit_allow(path) {
+            write_error(&mut stream, 429, "rate_limited")?;
+            return Ok(());
+        }
+    }
+
+    if is_test_pulse {
+        let content_length = parse_content_length(header).unwrap_or(0);
+        if content_length > MAX_BODY_BYTES {
+            write_error(&mut stream, 413, "body_too_large")?;
+            return Ok(());
+        }
+        let mut body = buf[header_end..].to_vec();
+        while body.len() < content_length {
+            let n = stream.read(&mut tmp).map_err(|e| e.to_string())?;
+            if n == 0 {
+                break;
+            }
+            body.extend_from_slice(&tmp[..n]);
+        }
+        body.truncate(content_length);
+        let raw = String::from_utf8(body).unwrap_or_default();
+        return handle_test_pulse_post(&mut stream, &raw);
     }
 
     if is_claude_approval {
@@ -420,12 +464,24 @@ fn handle_client(
     let raw = String::from_utf8(body).map_err(|_| "invalid_json".to_string())?;
 
     if is_app_state {
+        let (Some(app), Some(state)) = (app, state) else {
+            write_error(&mut stream, 503, "app_unavailable")?;
+            return Ok(());
+        };
         return handle_app_state_post(&mut stream, app, state, &raw);
     }
     if is_claude_otel {
+        let (Some(app), Some(state)) = (app, state) else {
+            write_error(&mut stream, 503, "app_unavailable")?;
+            return Ok(());
+        };
         return handle_claude_otel_metrics_post(&mut stream, app, state, &raw);
     }
 
+    let (Some(app), Some(state)) = (app, state) else {
+        write_error(&mut stream, 503, "app_unavailable")?;
+        return Ok(());
+    };
     match validate_protocol_body(&raw) {
         Ok(rpc_method) => match apply_status_rpc_from_http(app, state, &raw) {
             Ok(snapshot) => {
@@ -660,13 +716,113 @@ fn parse_content_length(header: &str) -> Option<usize> {
     None
 }
 
-fn cors_headers() -> String {
-    // Loopback Labs only (bound 127.0.0.1). Wildcard so overlay (tauri.localhost /
-    // localhost:1420) and acceptance (:8766) can poll / POST without CORS blocks.
-    "Access-Control-Allow-Origin: *\r\n\
+fn host_is_loopback(header: &str, listen_port: u16) -> bool {
+    let host = header_value(header, "host").unwrap_or_default();
+    let host = host.trim().to_ascii_lowercase();
+    if host.is_empty() {
+        // Some loopback clients omit Host; require explicit Host for auth surfaces.
+        return false;
+    }
+    let (name, port_part) = if let Some((n, p)) = host.rsplit_once(':') {
+        // IPv6 [::1]:port not used; plain localhost:port / 127.0.0.1:port
+        if n.starts_with('[') {
+            return false;
+        }
+        (n, Some(p))
+    } else {
+        (host.as_str(), None)
+    };
+    let name_ok = name == "127.0.0.1" || name == "localhost";
+    if !name_ok {
+        return false;
+    }
+    match port_part {
+        None => true,
+        Some(p) => p.parse::<u16>().ok() == Some(listen_port) || listen_port == 0,
+    }
+}
+
+fn header_value<'a>(header: &'a str, name: &str) -> Option<&'a str> {
+    let want = format!("{}:", name.to_ascii_lowercase());
+    for line in header.lines().skip(1) {
+        let lower = line.to_ascii_lowercase();
+        if let Some(rest) = lower.strip_prefix(&want) {
+            let start = line.len() - rest.len();
+            return Some(line[start..].trim());
+        }
+    }
+    None
+}
+
+fn require_integration_token(header: &str) -> Result<(), &'static str> {
+    let presented = header_value(header, crate::integration_token::TOKEN_HEADER)
+        .or_else(|| header_value(header, "authorization").and_then(|v| {
+            let v = v.trim();
+            v.strip_prefix("Bearer ")
+                .or_else(|| v.strip_prefix("bearer "))
+        }));
+    crate::integration_token::validate_presented(presented)
+}
+
+fn rate_limit_allow(path: &str) -> bool {
+    use std::sync::atomic::AtomicU64;
+    static LAST_MS: AtomicU64 = AtomicU64::new(0);
+    static OTEL_WINDOW_START: AtomicU64 = AtomicU64::new(0);
+    static OTEL_COUNT: AtomicU64 = AtomicU64::new(0);
+    let now = now_ms();
+    if path == CLAUDE_OTEL_METRICS_PATH {
+        let start = OTEL_WINDOW_START.load(Ordering::Relaxed);
+        if now.saturating_sub(start) > 1000 {
+            OTEL_WINDOW_START.store(now, Ordering::Relaxed);
+            OTEL_COUNT.store(1, Ordering::Relaxed);
+            return true;
+        }
+        let n = OTEL_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
+        return n <= 30;
+    }
+    let prev = LAST_MS.swap(now, Ordering::Relaxed);
+    now.saturating_sub(prev) >= 20
+}
+
+fn handle_test_pulse_post(stream: &mut TcpStream, raw: &str) -> Result<(), String> {
+    let value: serde_json::Value = serde_json::from_str(raw).unwrap_or(serde_json::json!({}));
+    let nonce = value
+        .get("testNonce")
+        .or_else(|| value.get("nonce"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim();
+    if nonce.is_empty() {
+        write_error(stream, 400, "nonce_required")?;
+        return Ok(());
+    }
+    // Must not touch AttentionStore / formal CapabilityHealth.lastSuccessAt.
+    let result = crate::test_pulse::record(nonce, true, true, true, true, "ok");
+    let body = serde_json::to_vec(&serde_json::json!({
+        "ok": true,
+        "result": result,
+    }))
+    .map_err(|e| e.to_string())?;
+    write_raw(
+        stream,
+        200,
+        "OK",
+        "Content-Type: application/json; charset=utf-8\r\n",
+        &body,
+    )
+}
+
+fn cors_headers_get() -> String {
+    // GET allowlist for Tauri/dev origins only — never wildcard on connector POSTs.
+    "Access-Control-Allow-Origin: http://localhost:1420\r\n\
      Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n\
-     Access-Control-Allow-Headers: Content-Type\r\n"
+     Access-Control-Allow-Headers: Content-Type, X-Onetone-Token, Authorization\r\n\
+     Vary: Origin\r\n"
         .to_string()
+}
+
+fn cors_headers() -> String {
+    cors_headers_get()
 }
 
 fn write_error(stream: &mut TcpStream, status: u16, code: &str) -> Result<(), String> {
@@ -675,9 +831,12 @@ fn write_error(stream: &mut TcpStream, status: u16, code: &str) -> Result<(), St
     let reason = match status {
         204 => "No Content",
         400 => "Bad Request",
+        401 => "Unauthorized",
+        403 => "Forbidden",
         404 => "Not Found",
         405 => "Method Not Allowed",
         413 => "Payload Too Large",
+        429 => "Too Many Requests",
         _ => "Error",
     };
     write_raw(
@@ -807,6 +966,7 @@ mod tests {
         assert_eq!(APP_STATE_PATH, "/api/codex-app/state");
         assert_eq!(CLAUDE_APPROVAL_PATH, "/api/claude-approval");
         assert_eq!(CLAUDE_OTEL_METRICS_PATH, "/v1/metrics");
+        assert_eq!(TEST_PULSE_PATH, "/api/soft-pad/test-pulse");
         assert!(codex_app_state::validate_app_state_body(
             r#"{"source":"codex_hook","event":"UserPromptSubmit"}"#
         )
@@ -815,5 +975,155 @@ mod tests {
             codex_app_state::validate_app_state_body(r#"{"m":"v.oai.hid","p":{}}"#).err(),
             Some("invalid_method")
         );
+    }
+
+    #[test]
+    fn host_loopback_only() {
+        assert!(host_is_loopback(
+            "GET /x HTTP/1.1\r\nHost: 127.0.0.1:8796\r\n\r\n",
+            8796
+        ));
+        assert!(host_is_loopback(
+            "GET /x HTTP/1.1\r\nHost: localhost\r\n\r\n",
+            8796
+        ));
+        assert!(!host_is_loopback(
+            "GET /x HTTP/1.1\r\nHost: evil.example\r\n\r\n",
+            8796
+        ));
+        assert!(!host_is_loopback(
+            "GET /x HTTP/1.1\r\nHost: 127.0.0.1:9999\r\n\r\n",
+            8796
+        ));
+        assert!(!host_is_loopback("GET /x HTTP/1.1\r\n\r\n", 8796));
+    }
+
+    #[test]
+    fn cors_get_is_not_wildcard() {
+        assert!(!cors_headers_get().contains("Access-Control-Allow-Origin: *"));
+        assert!(cors_headers_get().contains("localhost:1420"));
+    }
+
+    fn http_exchange(port: u16, req: &str) -> String {
+        let mut stream = TcpStream::connect(("127.0.0.1", port)).expect("connect");
+        stream
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .ok();
+        stream.write_all(req.as_bytes()).expect("write");
+        let _ = stream.shutdown(Shutdown::Write);
+        let mut buf = Vec::new();
+        let _ = stream.read_to_end(&mut buf);
+        String::from_utf8_lossy(&buf).into_owned()
+    }
+
+    #[test]
+    fn http_e2e_host_token_and_test_pulse() {
+        use crate::connector_health::{self, CapabilityKind};
+        use crate::integration_token::{self, TOKEN_HEADER, TOKEN_VERSION_PREFIX};
+        use crate::soft_pad_runtime::AgentKind;
+        use std::sync::atomic::AtomicBool;
+
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        let _g = LOCK
+            .get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+
+        let _ = stop();
+        integration_token::reset_cache_for_test();
+        let token = format!("{TOKEN_VERSION_PREFIX}http_e2e_aabbccddeeff0011223344556677");
+        integration_token::set_token_for_test(token.clone());
+
+        // Seed a formal health row; pulse must not refresh lastSuccessAt.
+        connector_health::upsert(
+            AgentKind::Cursor,
+            CapabilityKind::Lifecycle,
+            connector_health::HealthState::Live,
+            connector_health::ValueState::Present,
+            "seed",
+            "seed",
+            "cursor_hook",
+            1,
+            true,
+        );
+        let before = connector_health::get(AgentKind::Cursor, CapabilityKind::Lifecycle);
+        let before_success = before.last_success_at;
+
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind");
+        let port = listener.local_addr().expect("addr").port();
+        {
+            let mut rt = runtime().lock().unwrap();
+            rt.enabled = true;
+            rt.port = port;
+            rt.url = format!("http://127.0.0.1:{port}");
+            rt.stop = Arc::new(AtomicBool::new(false));
+        }
+        let stop_flag = Arc::new(AtomicBool::new(false));
+        let stop_c = Arc::clone(&stop_flag);
+        let join = thread::spawn(move || {
+            let _ = listener.set_nonblocking(true);
+            while !stop_c.load(Ordering::SeqCst) {
+                match listener.accept() {
+                    Ok((stream, _)) => {
+                        let _ = handle_client(stream, None, None);
+                    }
+                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                        thread::sleep(Duration::from_millis(20));
+                    }
+                    Err(_) => thread::sleep(Duration::from_millis(20)),
+                }
+            }
+        });
+        // Let the accept loop start.
+        thread::sleep(Duration::from_millis(50));
+
+        let host_bad = http_exchange(
+            port,
+            &format!(
+                "POST {TEST_PULSE_PATH} HTTP/1.1\r\nHost: evil.example\r\nContent-Length: 2\r\n\r\n{{}}"
+            ),
+        );
+        assert!(
+            host_bad.contains("403") && host_bad.contains("host_forbidden"),
+            "host reject: {host_bad}"
+        );
+
+        let token_bad = http_exchange(
+            port,
+            &format!(
+                "POST {TEST_PULSE_PATH} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n{TOKEN_HEADER}: nope\r\nContent-Length: 2\r\n\r\n{{}}"
+            ),
+        );
+        assert!(
+            token_bad.contains("401") && token_bad.contains("token_invalid"),
+            "token reject: {token_bad}"
+        );
+
+        let body = r#"{"testNonce":"e2e-1"}"#;
+        let ok = http_exchange(
+            port,
+            &format!(
+                "POST {TEST_PULSE_PATH} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n{TOKEN_HEADER}: {token}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}",
+                body.len()
+            ),
+        );
+        assert!(
+            ok.contains("200") && ok.contains("e2e-1") && ok.contains("\"ok\":true"),
+            "pulse ok: {ok}"
+        );
+
+        let after = connector_health::get(AgentKind::Cursor, CapabilityKind::Lifecycle);
+        assert_eq!(
+            after.last_success_at, before_success,
+            "test pulse must not refresh formal lastSuccessAt"
+        );
+        let pulse = crate::test_pulse::get("e2e-1").expect("pulse stored");
+        assert_eq!(pulse.nonce, "e2e-1");
+        assert!(pulse.probe_ok && pulse.listener_ok && pulse.auth_ok);
+
+        stop_flag.store(true, Ordering::SeqCst);
+        let _ = join.join();
+        let _ = stop();
+        integration_token::reset_cache_for_test();
     }
 }

@@ -18,6 +18,10 @@ use tauri::AppHandle;
 
 const CODEX_REFRESH_SECS: u64 = 5 * 60;
 const CODEX_REQUEST_TIMEOUT_SECS: u64 = 15;
+/// After rate+usage settle, wait at most this long for account/read.
+const ACCOUNT_EXTRA_WAIT: Duration = Duration::from_millis(2500);
+const OTEL_SESSION_TTL_MS: u64 = 6 * 60 * 60 * 1000;
+const OTEL_SERIES_CAP: usize = 256;
 pub const ENV_USAGE_ENABLED: &str = "ONETONE_AGENT_USAGE";
 pub const ENV_CODEX_BIN: &str = "ONETONE_CODEX_BIN";
 
@@ -49,9 +53,28 @@ pub struct AgentUsageSnapshot {
     pub window_duration_mins: Option<u64>,
     pub resets_at: Option<u64>,
     pub windows: Vec<UsageWindow>,
+    /// chatgpt | api_key | … from account/read (never a secret).
+    pub account_type: String,
+    /// Masked email for UI (e.g. m***@example.com); never the full address.
+    pub account_label: String,
+    /// Plus / Pro / Team / … from account.planType or rate-limit planType.
+    pub plan_type: String,
     pub updated_at: u64,
     pub last_success_at: u64,
     pub message: String,
+}
+
+/// Mask an email for Soft Pad UI. Never returns the full local-part.
+pub fn mask_email(email: &str) -> String {
+    let email = email.trim();
+    let Some((local, domain)) = email.split_once('@') else {
+        return String::new();
+    };
+    if local.is_empty() || domain.is_empty() || !domain.contains('.') {
+        return String::new();
+    }
+    let first = local.chars().next().unwrap_or('?');
+    format!("{first}***@{domain}")
 }
 
 fn usage_store() -> &'static Mutex<HashMap<AgentKind, AgentUsageSnapshot>> {
@@ -256,15 +279,67 @@ fn selected_rate_limit(result: &Value) -> Option<&Value> {
         .or_else(|| result.get("rateLimits"))
 }
 
+fn apply_account_identity(snap: &mut AgentUsageSnapshot, account: &Value, rate_root: Option<&Value>) {
+    let account_node = account.get("account").unwrap_or(account);
+    let account_type = account_node
+        .get("type")
+        .or_else(|| account_node.get("accountType"))
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    if let Some(t) = account_type {
+        snap.account_type = t.to_string();
+    }
+
+    let email = account_node.get("email").and_then(Value::as_str);
+    if let Some(email) = email {
+        let masked = mask_email(email);
+        if !masked.is_empty() {
+            snap.account_label = masked;
+        }
+    } else if snap.account_label.is_empty() {
+        // API-key (or no-email) accounts: show type, never invent a plan from thin air.
+        let t = snap.account_type.to_ascii_lowercase();
+        if t.contains("api") || t == "apikey" || t == "api_key" {
+            snap.account_label = "API Key".into();
+        }
+    }
+
+    let plan_from_account = account_node
+        .get("planType")
+        .or_else(|| account_node.get("plan"))
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    let plan_from_rate = rate_root
+        .and_then(|r| {
+            r.get("planType")
+                .or_else(|| selected_rate_limit(r).and_then(|rl| rl.get("planType")))
+        })
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    // ChatGPT: prefer account.planType. Never invent a plan for API-key-only identity.
+    if let Some(plan) = plan_from_account.or(plan_from_rate) {
+        let api_key_only = snap.account_label == "API Key"
+            && email.is_none()
+            && plan_from_account.is_none();
+        if !api_key_only {
+            snap.plan_type = plan.to_string();
+        }
+    }
+}
+
 pub fn ingest_codex_account_results(
     rate_result: Option<&Value>,
     usage_result: Option<&Value>,
+    account_result: Option<&Value>,
     error: Option<&str>,
 ) {
     let previous = snapshot(AgentKind::Codex);
     let mut current = previous.clone();
     current.source = "codex_app_server".into();
-    let received = rate_result.is_some() || usage_result.is_some();
+    let received_usage = rate_result.is_some() || usage_result.is_some();
     let attempt_at = now_ms();
     current.updated_at = attempt_at;
 
@@ -294,11 +369,19 @@ pub fn ingest_codex_account_results(
         }
     }
 
+    if let Some(account) = account_result {
+        apply_account_identity(&mut current, account, rate_result);
+    } else if rate_result.is_some() {
+        // Rate-limit planType fallback when account/read was unavailable.
+        apply_account_identity(&mut current, &serde_json::json!({}), rate_result);
+    }
+
     let has_data = current.windows.iter().any(|w| w.remaining_percent.is_some())
         || current.lifetime_tokens.is_some()
         || current.remaining_percent.is_some();
 
-    if received && has_data {
+    // Identity alone never marks usage ready.
+    if received_usage && has_data {
         current.status = "ready".into();
         current.message = String::new();
         current.last_success_at = attempt_at;
@@ -319,8 +402,28 @@ pub fn ingest_codex_account_results(
             current.latest_daily_date = previous.latest_daily_date;
             current.last_success_at = previous.last_success_at;
         }
+        // Keep prior identity when this attempt did not refresh account.
+        if account_result.is_none() && rate_result.is_none() {
+            current.account_type = previous.account_type;
+            current.account_label = previous.account_label;
+            current.plan_type = previous.plan_type;
+        } else if account_result.is_none() {
+            if current.account_type.is_empty() {
+                current.account_type = previous.account_type;
+            }
+            if current.account_label.is_empty() {
+                current.account_label = previous.account_label;
+            }
+            if current.plan_type.is_empty() {
+                current.plan_type = previous.plan_type;
+            }
+        }
         current.status = "stale".into();
         current.message = error.unwrap_or("Codex 刷新失败，显示上次成功值").to_string();
+    } else if account_result.is_some() {
+        // Account-only: identity saved, usage still unavailable.
+        current.status = "unavailable".into();
+        current.message = error.unwrap_or("Codex 窗口限额未连接").to_string();
     } else {
         current.status = "unavailable".into();
         current.message = error.unwrap_or("Codex 窗口限额未连接").to_string();
@@ -429,11 +532,26 @@ fn active_claude_session(series: &HashMap<OtelSeriesKey, OtelSeriesValue>) -> St
         .unwrap_or_default()
 }
 
-fn rebuild_claude_snapshot(series: &HashMap<OtelSeriesKey, OtelSeriesValue>) {
+fn rebuild_claude_snapshot(series: &mut HashMap<OtelSeriesKey, OtelSeriesValue>) {
+    let now = now_ms();
+    // Drop expired series (in-memory TTL) and enforce cardinality — mutate in place
+    // because the caller already holds `otel_series()` lock.
+    series.retain(|_, v| now.saturating_sub(v.observed_at) <= OTEL_SESSION_TTL_MS);
+    if series.len() > OTEL_SERIES_CAP {
+        let mut rows: Vec<_> = series.iter().map(|(k, v)| (k.clone(), v.observed_at)).collect();
+        rows.sort_by_key(|(_, at)| *at);
+        let drop_n = rows.len().saturating_sub(OTEL_SERIES_CAP);
+        for (key, _) in rows.into_iter().take(drop_n) {
+            series.remove(&key);
+        }
+    }
+
     let session_id = active_claude_session(series);
     if session_id.is_empty() {
         return;
     }
+    let hook_session = crate::agent_model_metadata::snapshot(AgentKind::Claude).session_id;
+    let fallback = !hook_session.is_empty() && hook_session != session_id;
     let mut main_tokens = 0.0;
     let mut auxiliary_tokens = 0.0;
     let mut cost = 0.0;
@@ -457,14 +575,20 @@ fn rebuild_claude_snapshot(series: &HashMap<OtelSeriesKey, OtelSeriesValue>) {
             cost += value.value;
         }
     }
+    let stale = now.saturating_sub(updated_at) > OTEL_SESSION_TTL_MS / 12;
+    let mut message = "费用为 Claude Code 本地估算".to_string();
+    if fallback {
+        message.push_str(" · latest_session_fallback");
+    }
     let snap = AgentUsageSnapshot {
         source: "claude_otel".into(),
-        status: "ready".into(),
+        status: if stale { "stale".into() } else { "ready".into() },
         session_tokens: has_tokens.then_some(main_tokens.max(0.0).round() as u64),
         auxiliary_tokens: (auxiliary_tokens > 0.0).then_some(auxiliary_tokens.round() as u64),
         estimated_cost_usd: has_cost.then_some((cost * 1_000_000.0).round() / 1_000_000.0),
         updated_at,
-        message: "费用为 Claude Code 本地估算".into(),
+        last_success_at: updated_at,
+        message,
         ..Default::default()
     };
     usage_store()
@@ -503,7 +627,21 @@ pub fn ingest_claude_otel_json(raw: &str) -> Result<usize, &'static str> {
                 let Some(sum) = metric.get("sum") else {
                     continue;
                 };
-                let is_delta = as_u64(sum.get("aggregationTemporality")) == Some(1);
+                let is_delta = match sum.get("aggregationTemporality") {
+                    Some(v) if v.as_u64() == Some(1) => true,
+                    Some(v) if v.as_str().map(|s| s.eq_ignore_ascii_case("delta")).unwrap_or(false) => {
+                        true
+                    }
+                    Some(v) if v.as_u64() == Some(2) => false,
+                    Some(v)
+                        if v.as_str()
+                            .map(|s| s.eq_ignore_ascii_case("cumulative"))
+                            .unwrap_or(false) =>
+                    {
+                        false
+                    }
+                    _ => false,
+                };
                 let points = sum
                     .get("dataPoints")
                     .and_then(Value::as_array)
@@ -535,7 +673,7 @@ pub fn ingest_claude_otel_json(raw: &str) -> Result<usize, &'static str> {
             }
         }
     }
-    rebuild_claude_snapshot(&series);
+    rebuild_claude_snapshot(&mut series);
     Ok(accepted)
 }
 
@@ -548,6 +686,37 @@ fn env_enabled() -> bool {
             .as_str(),
         "0" | "false" | "no" | "off"
     )
+}
+
+/// Detect Claude settings.env OTel endpoint conflicts with OneTone's fixed 8796 listener.
+/// Returns stable reason codes (not user-facing copy).
+pub fn otel_settings_conflicts(settings: &Value) -> Vec<&'static str> {
+    let Some(env) = settings.get("env").and_then(|v| v.as_object()) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    let endpoint = env
+        .get("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .trim_end_matches('/');
+    if !endpoint.is_empty()
+        && endpoint != "http://127.0.0.1:8796/v1/metrics"
+        && endpoint != "http://localhost:8796/v1/metrics"
+    {
+        out.push("otel_endpoint_conflict");
+    }
+    let exporter = env
+        .get("OTEL_METRICS_EXPORTER")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_ascii_lowercase();
+    if !exporter.is_empty() && exporter != "otlp" && exporter != "none" {
+        out.push("otel_exporter_conflict");
+    }
+    out
 }
 
 fn send_json_line(stdin: &mut impl Write, value: Value) -> Result<(), String> {
@@ -694,6 +863,14 @@ fn refresh_codex_account_once() -> Result<(), String> {
         send_json_line(
             &mut stdin,
             serde_json::json!({ "method": "account/usage/read", "id": 3 }),
+        )?;
+        send_json_line(
+            &mut stdin,
+            serde_json::json!({
+                "method": "account/read",
+                "id": 4,
+                "params": { "refreshToken": false }
+            }),
         )
     })();
     if let Err(error) = send_result {
@@ -705,14 +882,44 @@ fn refresh_codex_account_once() -> Result<(), String> {
     let deadline = std::time::Instant::now() + Duration::from_secs(CODEX_REQUEST_TIMEOUT_SECS);
     let mut rate = None;
     let mut usage = None;
+    let mut account = None;
+    let mut rate_settled = false;
+    let mut usage_settled = false;
+    let mut account_settled = false;
+    let mut account_deadline: Option<std::time::Instant> = None;
     let mut errors = Vec::new();
-    while std::time::Instant::now() < deadline && (rate.is_none() || usage.is_none()) {
-        let wait = deadline.saturating_duration_since(std::time::Instant::now());
+
+    while std::time::Instant::now() < deadline {
+        if rate_settled && usage_settled && account_settled {
+            break;
+        }
+        if rate_settled && usage_settled {
+            if account_deadline.is_none() {
+                account_deadline = Some(std::time::Instant::now() + ACCOUNT_EXTRA_WAIT);
+            }
+            if account_deadline.is_some_and(|d| std::time::Instant::now() >= d) {
+                account_settled = true;
+                break;
+            }
+        }
+        let loop_deadline = if rate_settled && usage_settled {
+            account_deadline.unwrap_or(deadline).min(deadline)
+        } else {
+            deadline
+        };
+        let wait = loop_deadline.saturating_duration_since(std::time::Instant::now());
+        if wait.is_zero() {
+            if rate_settled && usage_settled {
+                account_settled = true;
+            }
+            break;
+        }
         let Ok(message) = rx.recv_timeout(wait.min(Duration::from_millis(500))) else {
             continue;
         };
         match message.get("id").and_then(Value::as_u64) {
             Some(2) => {
+                rate_settled = true;
                 if let Some(result) = message.get("result") {
                     rate = Some(result.clone());
                 } else if let Some(err) = message.get("error") {
@@ -725,6 +932,7 @@ fn refresh_codex_account_once() -> Result<(), String> {
                 }
             }
             Some(3) => {
+                usage_settled = true;
                 if let Some(result) = message.get("result") {
                     usage = Some(result.clone());
                 } else if let Some(err) = message.get("error") {
@@ -736,6 +944,13 @@ fn refresh_codex_account_once() -> Result<(), String> {
                     );
                 }
             }
+            Some(4) => {
+                account_settled = true;
+                if let Some(result) = message.get("result") {
+                    account = Some(result.clone());
+                }
+                // account/read errors settle identity without poisoning usage errors.
+            }
             _ => {
                 let _ = ingest_codex_app_server_message(&message);
             }
@@ -745,7 +960,12 @@ fn refresh_codex_account_once() -> Result<(), String> {
     let _ = child.kill();
     let _ = child.wait();
     let error = (!errors.is_empty()).then(|| errors.join("; "));
-    ingest_codex_account_results(rate.as_ref(), usage.as_ref(), error.as_deref());
+    ingest_codex_account_results(
+        rate.as_ref(),
+        usage.as_ref(),
+        account.as_ref(),
+        error.as_deref(),
+    );
     if rate.is_none() && usage.is_none() {
         return Err(error.unwrap_or_else(|| "Codex account usage timed out".into()));
     }
@@ -765,7 +985,7 @@ pub fn start_codex_account_poll(app: AppHandle, state: std::sync::Arc<crate::App
         .name("codex-account-usage".into())
         .spawn(move || loop {
             if let Err(error) = refresh_codex_account_once() {
-                ingest_codex_account_results(None, None, Some(&error));
+                ingest_codex_account_results(None, None, None, Some(&error));
             }
             crate::codex_micro_overlay::request_overlay_push(&app, state.as_ref(), false);
             std::thread::sleep(Duration::from_secs(CODEX_REFRESH_SECS));
@@ -782,6 +1002,15 @@ pub fn reset_for_test() {
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .clear();
+    crate::connector_health::reset_for_test();
+}
+
+#[cfg(test)]
+pub fn test_lock() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
 }
 
 #[cfg(test)]
@@ -790,6 +1019,7 @@ mod tests {
 
     #[test]
     fn codex_rate_limit_is_window_remaining_not_balance() {
+        let _g = test_lock();
         reset_for_test();
         let rate = serde_json::json!({
             "rateLimits": { "primary": { "usedPercent": 37.5, "windowDurationMins": 300, "resetsAt": 123 } }
@@ -798,7 +1028,7 @@ mod tests {
             "summary": { "lifetimeTokens": 12000 },
             "dailyUsageBuckets": [{ "startDate": "2026-08-02", "tokens": 345 }]
         });
-        ingest_codex_account_results(Some(&rate), Some(&usage), None);
+        ingest_codex_account_results(Some(&rate), Some(&usage), None, None);
         let got = snapshot(AgentKind::Codex);
         assert_eq!(got.remaining_percent, Some(62.5));
         assert_eq!(got.lifetime_tokens, Some(12000));
@@ -809,7 +1039,96 @@ mod tests {
     }
 
     #[test]
+    fn mask_email_hides_local_part() {
+        assert_eq!(mask_email("mike@example.com"), "m***@example.com");
+        assert_eq!(mask_email("  a@b.co  "), "a***@b.co");
+        assert_eq!(mask_email("not-an-email"), "");
+        assert_eq!(mask_email(""), "");
+    }
+
+    #[test]
+    fn codex_account_identity_and_plan_fallback() {
+        let _g = test_lock();
+        reset_for_test();
+        let rate = serde_json::json!({
+            "planType": "Plus",
+            "rateLimits": {
+                "primary": { "usedPercent": 37.0, "windowDurationMins": 300, "resetsAt": 1 }
+            }
+        });
+        let account = serde_json::json!({
+            "account": { "type": "chatgpt", "email": "mike@example.com", "planType": "Pro" }
+        });
+        ingest_codex_account_results(Some(&rate), None, Some(&account), None);
+        let got = snapshot(AgentKind::Codex);
+        assert_eq!(got.account_type, "chatgpt");
+        assert_eq!(got.account_label, "m***@example.com");
+        assert_eq!(got.plan_type, "Pro"); // account wins over rate planType
+
+        reset_for_test();
+        ingest_codex_account_results(Some(&rate), None, None, None);
+        let got2 = snapshot(AgentKind::Codex);
+        assert_eq!(got2.plan_type, "Plus"); // rate-limit fallback
+        assert!(got2.account_label.is_empty());
+    }
+
+    #[test]
+    fn codex_api_key_account_no_fake_plan() {
+        let _g = test_lock();
+        reset_for_test();
+        let rate = serde_json::json!({
+            "planType": "Plus",
+            "rateLimits": {
+                "primary": { "usedPercent": 10.0, "windowDurationMins": 300, "resetsAt": 1 }
+            }
+        });
+        let account = serde_json::json!({
+            "account": { "type": "api_key" }
+        });
+        ingest_codex_account_results(Some(&rate), None, Some(&account), None);
+        let got = snapshot(AgentKind::Codex);
+        assert_eq!(got.account_type, "api_key");
+        assert_eq!(got.account_label, "API Key");
+        assert!(got.plan_type.is_empty(), "API Key must not inherit rate planType");
+        assert_eq!(got.status, "ready");
+    }
+
+    #[test]
+    fn codex_account_only_does_not_mark_usage_ready() {
+        let _g = test_lock();
+        reset_for_test();
+        let account = serde_json::json!({
+            "account": { "type": "chatgpt", "email": "mike@example.com", "planType": "Plus" }
+        });
+        ingest_codex_account_results(None, None, Some(&account), None);
+        let got = snapshot(AgentKind::Codex);
+        assert_eq!(got.account_label, "m***@example.com");
+        assert_eq!(got.plan_type, "Plus");
+        assert_eq!(got.status, "unavailable");
+        assert!(got.windows.is_empty());
+    }
+
+    #[test]
+    fn codex_account_timeout_keeps_rate_usage_ready() {
+        let _g = test_lock();
+        reset_for_test();
+        let rate = serde_json::json!({
+            "rateLimits": {
+                "primary": { "usedPercent": 20.0, "windowDurationMins": 300, "resetsAt": 9 }
+            }
+        });
+        let usage = serde_json::json!({ "summary": { "lifetimeTokens": 1 } });
+        // Account absent (timed out) — usage still ready; no identity error.
+        ingest_codex_account_results(Some(&rate), Some(&usage), None, None);
+        let got = snapshot(AgentKind::Codex);
+        assert_eq!(got.status, "ready");
+        assert_eq!(got.remaining_percent, Some(80.0));
+        assert!(got.account_label.is_empty());
+    }
+
+    #[test]
     fn codex_primary_and_secondary_windows() {
+        let _g = test_lock();
         reset_for_test();
         let rate = serde_json::json!({
             "rateLimits": {
@@ -817,7 +1136,7 @@ mod tests {
                 "secondary": { "usedPercent": 59.0, "windowDurationMins": 10080, "resetsAt": 2 }
             }
         });
-        ingest_codex_account_results(Some(&rate), None, None);
+        ingest_codex_account_results(Some(&rate), None, None, None);
         let got = snapshot(AgentKind::Codex);
         assert_eq!(got.windows.len(), 2);
         assert_eq!(got.windows[0].remaining_percent, Some(72.0));
@@ -828,6 +1147,7 @@ mod tests {
 
     #[test]
     fn codex_secondary_only_and_unknown_by_duration() {
+        let _g = test_lock();
         reset_for_test();
         let rate = serde_json::json!({
             "rateLimits": {
@@ -835,7 +1155,7 @@ mod tests {
                 "oddBucket": { "usedPercent": 50.0, "windowDurationMins": 42, "resetsAt": 8 }
             }
         });
-        ingest_codex_account_results(Some(&rate), None, None);
+        ingest_codex_account_results(Some(&rate), None, None, None);
         let got = snapshot(AgentKind::Codex);
         assert!(got.windows.iter().any(|w| w.kind == "secondary"));
         let unknown = got.windows.iter().find(|w| w.kind == "unknown").expect("unknown");
@@ -844,21 +1164,28 @@ mod tests {
 
     #[test]
     fn codex_timeout_keeps_stale_last_good() {
+        let _g = test_lock();
         reset_for_test();
         let rate = serde_json::json!({
             "rateLimits": { "primary": { "usedPercent": 32.0, "windowDurationMins": 300, "resetsAt": 1 } }
         });
-        ingest_codex_account_results(Some(&rate), None, None);
+        let account = serde_json::json!({
+            "account": { "type": "chatgpt", "email": "mike@example.com", "planType": "Plus" }
+        });
+        ingest_codex_account_results(Some(&rate), None, Some(&account), None);
         assert_eq!(snapshot(AgentKind::Codex).status, "ready");
-        ingest_codex_account_results(None, None, Some("Codex CLI 未响应"));
+        ingest_codex_account_results(None, None, None, Some("Codex CLI 未响应"));
         let got = snapshot(AgentKind::Codex);
         assert_eq!(got.status, "stale");
         assert_eq!(got.remaining_percent, Some(68.0));
+        assert_eq!(got.account_label, "m***@example.com");
+        assert_eq!(got.plan_type, "Plus");
         assert!(got.message.contains("未响应") || got.message.contains("上次"));
     }
 
     #[test]
     fn mark_disabled_when_usage_env_off() {
+        let _g = test_lock();
         reset_for_test();
         mark_codex_usage_disabled();
         let got = snapshot(AgentKind::Codex);
@@ -867,7 +1194,28 @@ mod tests {
     }
 
     #[test]
+    fn otel_settings_conflict_codes() {
+        let ok = serde_json::json!({
+            "env": {
+                "OTEL_METRICS_EXPORTER": "otlp",
+                "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "http://127.0.0.1:8796/v1/metrics"
+            }
+        });
+        assert!(otel_settings_conflicts(&ok).is_empty());
+        let bad = serde_json::json!({
+            "env": {
+                "OTEL_METRICS_EXPORTER": "prometheus",
+                "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "http://127.0.0.1:4318/v1/metrics"
+            }
+        });
+        let codes = otel_settings_conflicts(&bad);
+        assert!(codes.contains(&"otel_endpoint_conflict"));
+        assert!(codes.contains(&"otel_exporter_conflict"));
+    }
+
+    #[test]
     fn claude_otel_keeps_main_and_auxiliary_separate() {
+        let _g = test_lock();
         reset_for_test();
         let raw = serde_json::json!({
             "resourceMetrics": [{ "scopeMetrics": [{ "metrics": [

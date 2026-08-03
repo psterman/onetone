@@ -122,6 +122,7 @@ permissions = [
   "allow-cmd-pad-status-diagnose",
   "allow-cmd-claude-activity-inject",
   "allow-cmd-claude-activity-clear",
+  "allow-cmd-cursor-hook-setup-status",
   "allow-cmd-claude-hook-setup-status",
   "allow-cmd-claude-hook-install-confirm",
   "allow-cmd-claude-hook-uninstall-onetone",

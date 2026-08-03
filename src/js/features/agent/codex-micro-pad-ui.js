@@ -2653,6 +2653,42 @@
     );
   }
 
+  function renderCursorHookSetupCard() {
+    return (
+      '<div class="codex-pad-mgr__claude-act" id="codexCursorHookPad" data-phase="not_configured">' +
+      '<div class="codex-pad-mgr__claude-act-head">' +
+      '<p class="codex-pad-mgr__label">' +
+      esc(t('cursorHookTitle', 'Cursor Hook 接入')) + '</p>' +
+      '</div>' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t(
+        'cursorHookHint',
+        '检测用户级 hooks；项目级需你选择工作区后检测。用量暂无官方接口。需双回执后才会写入。'
+      )) +
+      '</p>' +
+      '<div class="codex-pad-mgr__claude-status" data-cursor-setup-status aria-live="polite">' +
+      '<div class="codex-pad-mgr__claude-status-row"><span>Node</span><strong data-cursor-node>—</strong></div>' +
+      '<div class="codex-pad-mgr__claude-status-row"><span>Probe</span><strong data-cursor-probe>—</strong></div>' +
+      '<div class="codex-pad-mgr__claude-status-row"><span>Scope</span><strong data-cursor-scope>—</strong></div>' +
+      '<div class="codex-pad-mgr__claude-status-row"><span>Token</span><strong data-cursor-token>—</strong></div>' +
+      '<div class="codex-pad-mgr__claude-status-row"><span>冲突</span><strong data-cursor-conflicts>—</strong></div>' +
+      '</div>' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t(
+        'cursorHookUsageHonesty',
+        '悬停迷你栏可看模型提示；Cursor 用量固定为「暂无官方接口」。'
+      )) +
+      '</p>' +
+      '<pre class="codex-pad-mgr__diag-pre" data-cursor-merge-preview hidden></pre>' +
+      '<div class="codex-pad-mgr__claude-act-actions">' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="cursor-hook-redetect">' +
+      esc(t('cursorHookRedetect', '重新检测')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="cursor-hook-copy">' +
+      esc(t('cursorHookCopy', '复制合并预览')) + '</button>' +
+      '</div></div>'
+    );
+  }
+
   /** Soft Pad「更多」：横向标签 + 规整卡片（主题 segmented）。 */
   function renderSoftPadMoreBody(pad) {
     return (
@@ -2661,6 +2697,8 @@
       esc(t('softPadMoreTabsAria', '更多选项')) + '">' +
       '<button type="button" class="pref-segmented-btn is-active" role="tab" id="softPadMoreTabStatus" data-more-tab-btn="status" aria-controls="softPadMorePanelStatus" aria-selected="true">' +
       esc(t('softPadMoreTabStatus', '状态灯')) + '</button>' +
+      '<button type="button" class="pref-segmented-btn" role="tab" id="softPadMoreTabCursor" data-more-tab-btn="cursor" aria-controls="softPadMorePanelCursor" aria-selected="false">' +
+      esc(t('softPadMoreTabCursor', 'Cursor')) + '</button>' +
       '<button type="button" class="pref-segmented-btn" role="tab" id="softPadMoreTabClaude" data-more-tab-btn="claude" aria-controls="softPadMorePanelClaude" aria-selected="false">' +
       esc(t('softPadMoreTabClaude', 'Claude')) + '</button>' +
       '<button type="button" class="pref-segmented-btn" role="tab" id="softPadMoreTabLab" data-more-tab-btn="lab" aria-controls="softPadMorePanelLab" aria-selected="false">' +
@@ -2670,6 +2708,10 @@
       '<section class="soft-pad-more__panel is-active" id="softPadMorePanelStatus" data-more-panel="status" role="tabpanel" aria-labelledby="softPadMoreTabStatus">' +
       '<article class="soft-pad-more-card">' +
       renderHookStatusCard(pad, { includeDiag: false }) +
+      '</article></section>' +
+      '<section class="soft-pad-more__panel" id="softPadMorePanelCursor" data-more-panel="cursor" role="tabpanel" aria-labelledby="softPadMoreTabCursor" hidden>' +
+      '<article class="soft-pad-more-card">' +
+      renderCursorHookSetupCard() +
       '</article></section>' +
       '<section class="soft-pad-more__panel" id="softPadMorePanelClaude" data-more-panel="claude" role="tabpanel" aria-labelledby="softPadMoreTabClaude" hidden>' +
       '<article class="soft-pad-more-card">' +
@@ -2710,7 +2752,106 @@
         if (id === 'lab') {
           try { refreshPadDiagnose(); } catch (_) {}
         }
+        if (id === 'cursor') {
+          try { refreshCursorHookSetup(); } catch (_) {}
+        }
+        if (id === 'claude') {
+          try { refreshClaudeHookSetup(); } catch (_) {}
+        }
       });
+    });
+  }
+
+  var cursorHookSetupLast = null;
+
+  function applyCursorHookSetupDom(st) {
+    var root = document.getElementById('codexCursorHookPad');
+    if (!root || !st) return;
+    cursorHookSetupLast = st;
+    var scopes = Array.isArray(st.configuredScopes || st.configured_scopes)
+      ? (st.configuredScopes || st.configured_scopes)
+      : [];
+    var phase = scopes.length
+      ? 'configured_waiting'
+      : 'not_configured';
+    if (!(st.nodeOk || st.node_ok)) phase = 'error';
+    root.setAttribute('data-phase', phase);
+    var nodeEl = root.querySelector('[data-cursor-node]');
+    if (nodeEl) {
+      nodeEl.textContent = (st.nodeOk || st.node_ok)
+        ? t('cursorHookNodeOk', '可用')
+        : t('cursorHookNodeMissing', st.nodeReason || st.node_reason || 'runtime_not_found');
+    }
+    var probeEl = root.querySelector('[data-cursor-probe]');
+    if (probeEl) {
+      probeEl.textContent = (st.probeExists || st.probe_exists)
+        ? t('cursorHookProbeOk', '已找到')
+        : t('cursorHookProbeMissing', '未找到');
+    }
+    var scopeEl = root.querySelector('[data-cursor-scope]');
+    if (scopeEl) {
+      var eff = String(st.effectiveScope || st.effective_scope || '').trim();
+      scopeEl.textContent = scopes.length
+        ? (eff || scopes.join('+'))
+        : t('cursorHookScopeNone', '未配置');
+    }
+    var tokenEl = root.querySelector('[data-cursor-token]');
+    if (tokenEl) {
+      tokenEl.textContent = (st.tokenConfigured || st.token_configured)
+        ? t('cursorHookTokenOk', '已就绪')
+        : t('cursorHookTokenMissing', '未生成');
+    }
+    var confEl = root.querySelector('[data-cursor-conflicts]');
+    if (confEl) {
+      var conflicts = Array.isArray(st.conflicts) ? st.conflicts : [];
+      confEl.textContent = conflicts.length
+        ? conflicts.slice(0, 2).join(' · ')
+        : t('cursorHookConflictsNone', '无');
+    }
+    var pre = root.querySelector('[data-cursor-merge-preview]');
+    if (pre) {
+      pre.textContent = String(st.mergePreview || st.merge_preview || '');
+      pre.hidden = !pre.textContent;
+    }
+  }
+
+  function refreshCursorHookSetup() {
+    return padInvoke('cmd_cursor_hook_setup_status', { workspace: null })
+      .then(function (st) {
+        applyCursorHookSetupDom(st || {});
+        return st;
+      })
+      .catch(function () {
+        return null;
+      });
+  }
+
+  function copyCursorHookPreview() {
+    return refreshCursorHookSetup().then(function (st) {
+      var text = (st && (st.mergePreview || st.merge_preview)) || '';
+      if (!text) {
+        toast(t('cursorHookCopyFail', '无法生成 Cursor Hook 预览'));
+        return;
+      }
+      var done = function () {
+        toast(t('cursorHookCopied', '已复制 Cursor Hook 合并预览（不会自动写入）'));
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text).then(done).catch(function () {
+          toast(t('cursorHookCopyFail', '无法生成 Cursor Hook 预览'));
+        });
+      }
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        done();
+      } catch (e) {
+        toast(t('cursorHookCopyFail', '无法生成 Cursor Hook 预览'));
+      }
     });
   }
 
@@ -5769,6 +5910,22 @@
     if (claudeRefreshBtn && !claudeRefreshBtn.__softPadBound) {
       claudeRefreshBtn.__softPadBound = true;
       claudeRefreshBtn.addEventListener('click', function () { refreshPadDiagnose(); });
+    }
+    var cursorRedetect = body.querySelector('[data-act="cursor-hook-redetect"]');
+    if (cursorRedetect && !cursorRedetect.__softPadBound) {
+      cursorRedetect.__softPadBound = true;
+      cursorRedetect.addEventListener('click', function () {
+        refreshCursorHookSetup().then(function (st) {
+          toast(st
+            ? t('cursorHookRedetectOk', '已重新检测 Cursor Hook')
+            : t('cursorHookRedetectFail', '检测失败'));
+        });
+      });
+    }
+    var cursorHookCopy = body.querySelector('[data-act="cursor-hook-copy"]');
+    if (cursorHookCopy && !cursorHookCopy.__softPadBound) {
+      cursorHookCopy.__softPadBound = true;
+      cursorHookCopy.addEventListener('click', function () { copyCursorHookPreview(); });
     }
     var claudeRedetect = body.querySelector('[data-act="claude-hook-redetect"]');
     if (claudeRedetect && !claudeRedetect.__softPadBound) {

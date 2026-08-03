@@ -748,14 +748,190 @@
       status: document.getElementById('softPadSummaryStatus'),
       agent: document.getElementById('softPadSummaryAgent'),
       keysMeta: document.getElementById('softPadSummaryKeys'),
+      accountMeta: document.getElementById('softPadSummaryAccount'),
+      usageMeta: document.getElementById('softPadSummaryUsage'),
       tm: document.getElementById('softPadSummaryTm'),
+      resetMeta: document.getElementById('softPadSummaryReset'),
       enable: document.getElementById('softPadSummaryEnable'),
       statusBar: document.getElementById('softPadStatusBar'),
       ensureBtn: document.getElementById('btnSoftPadEnsureCodex'),
       titleLbl: document.getElementById('softPadSchemeTitleLbl'),
       switcher: document.getElementById('softPadAppSwitcher'),
-      aside: document.getElementById('softPadSchemeAside')
+      aside: document.getElementById('softPadSchemeAside'),
+      softPadPanel: document.getElementById('settingsPanelSoftPad')
     };
+  }
+
+  var overlayUsageCache = { snap: null, at: 0 };
+  var overlayUsageTimer = 0;
+  var overlayUsageInFlight = false;
+  var overlayUsageDeferToken = 0;
+  var OVERLAY_USAGE_POLL_MS = 30000;
+
+  function hubInvoke(cmd, args) {
+    var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
+    if (typeof invoke !== 'function') return Promise.reject(new Error('no invoke'));
+    return Promise.resolve(invoke(cmd, args || {}));
+  }
+
+  function formatResetCountdown(resetsAt) {
+    if (resetsAt == null || resetsAt === '') return '';
+    var n = Number(resetsAt);
+    if (!isFinite(n) || n <= 0) return '';
+    var ms = n < 1e12 ? n * 1000 : n;
+    var rem = ms - Date.now();
+    if (rem <= 0) return '待刷新';
+    var totalMins = Math.floor(rem / 60000);
+    if (totalMins < 1) return '1m';
+    var days = Math.floor(totalMins / (24 * 60));
+    var hours = Math.floor((totalMins % (24 * 60)) / 60);
+    var mins = totalMins % 60;
+    if (days > 0) return hours > 0 ? days + 'd' + hours + 'h' : days + 'd';
+    if (hours > 0) return mins > 0 ? hours + 'h' + mins + 'm' : hours + 'h';
+    return mins + 'm';
+  }
+
+  function usageVal(usage, camel, snake) {
+    if (!usage) return null;
+    return usage[camel] != null ? usage[camel] : usage[snake];
+  }
+
+  function windowQuotaLabel(w) {
+    if (!w) return '';
+    var kind = String(w.kind || '');
+    var mins = Number(w.durationMins != null ? w.durationMins : w.duration_mins) || 0;
+    var rem = w.remainingPercent != null ? w.remainingPercent : w.remaining_percent;
+    if (rem == null) return '';
+    var pct = Math.round(Number(rem));
+    if (kind === 'primary' && mins > 0 && mins % 60 === 0 && mins <= 1440) return (mins / 60) + 'h余' + pct + '%';
+    if (kind === 'secondary' && mins > 0 && mins % (24 * 60) === 0) return (mins / (24 * 60)) + 'd余' + pct + '%';
+    if (kind === 'secondary' && mins > 0 && mins % 60 === 0) return (mins / 60) + 'h余' + pct + '%';
+    if (mins > 0) return mins + 'min窗口余' + pct + '%';
+    return '窗口余' + pct + '%';
+  }
+
+  function usagePropsFromAgent(kind, usage) {
+    usage = usage || {};
+    var status = String(usage.status || 'unavailable');
+    var windows = Array.isArray(usage.windows) ? usage.windows : [];
+    var bits = [];
+    if (kind === 'codex') {
+      windows.slice(0, 2).forEach(function (w) {
+        var lab = windowQuotaLabel(w);
+        if (lab) bits.push(lab);
+      });
+      if (!bits.length) {
+        var remaining = usageVal(usage, 'remainingPercent', 'remaining_percent');
+        if (remaining != null) bits.push('窗口余 ' + Math.round(Number(remaining)) + '%');
+      }
+    } else if (kind === 'claude') {
+      var session = usageVal(usage, 'sessionTokens', 'session_tokens');
+      var cost = usageVal(usage, 'estimatedCostUsd', 'estimated_cost_usd');
+      if (session != null) bits.push('本会话' + session);
+      if (cost != null) bits.push('估算$' + Number(cost).toFixed(3).replace(/0+$/, '').replace(/\.$/, ''));
+    } else if (kind === 'cursor') {
+      bits.push('用量 --');
+    }
+    var resetAt = usageVal(usage, 'resetsAt', 'resets_at');
+    if (!resetAt && windows.length) {
+      var primary = null;
+      for (var wi = 0; wi < windows.length; wi++) {
+        if (String(windows[wi].kind || '') === 'primary') { primary = windows[wi]; break; }
+      }
+      primary = primary || windows[0];
+      resetAt = primary && (primary.resetsAt != null ? primary.resetsAt : primary.resets_at);
+    }
+    return {
+      account: String(usageVal(usage, 'accountLabel', 'account_label') || '').trim(),
+      plan: String(usageVal(usage, 'planType', 'plan_type') || '').trim(),
+      usageSummary: bits.length ? bits.join(' / ') : (status === 'ready' ? '--' : '—'),
+      resetCountdown: formatResetCountdown(resetAt) || '—',
+      usageState: status
+    };
+  }
+
+  function pickUsageAgentRow(snap, preferredKind) {
+    var rows = snap && Array.isArray(snap.agents) ? snap.agents : [];
+    var want = String(preferredKind || selectedScopeId || 'codex').trim();
+    for (var i = 0; i < rows.length; i++) {
+      if (String(rows[i] && rows[i].kind || '') === want) return rows[i];
+    }
+    return rows[0] || null;
+  }
+
+  function isSoftPadPageVisible() {
+    try {
+      var st = global.OneToneState && global.OneToneState.state;
+      var ui = st && st.ui;
+      if (ui) {
+        if (!ui.drawerOpen) return false;
+        var panel = String(ui.settingsPanel || '');
+        if (panel !== 'softPad') return false;
+      }
+    } catch (_) {}
+    var panelEl = document.getElementById('settingsPanelSoftPad');
+    return !!(panelEl && !panelEl.hidden);
+  }
+
+  function refreshOverlayUsageAsync(opts) {
+    opts = opts || {};
+    if (!isSoftPadPageVisible()) return Promise.resolve(overlayUsageCache.snap);
+    if (overlayUsageInFlight) return Promise.resolve(overlayUsageCache.snap);
+    overlayUsageInFlight = true;
+    return hubInvoke('cmd_codex_micro_overlay_get_state', {})
+      .then(function (snap) {
+        overlayUsageCache.snap = snap || null;
+        overlayUsageCache.at = Date.now();
+        if (!opts.silent && isSoftPadPageVisible()) {
+          // Defer status sync so we never fight Soft Pad remount / paint on the same turn.
+          setTimeout(function () {
+            if (!isSoftPadPageVisible()) return;
+            updateStatusBar(findEntry(getSelectedMappingId()));
+          }, 0);
+        }
+        return snap;
+      })
+      .catch(function () {
+        return null;
+      })
+      .then(function (snap) {
+        overlayUsageInFlight = false;
+        return snap;
+      });
+  }
+
+  function stopOverlayUsagePolling() {
+    if (overlayUsageTimer) {
+      clearInterval(overlayUsageTimer);
+      overlayUsageTimer = 0;
+    }
+    overlayUsageDeferToken += 1;
+  }
+
+  function ensureOverlayUsagePolling() {
+    if (overlayUsageTimer) return;
+    overlayUsageTimer = setInterval(function () {
+      if (!isSoftPadPageVisible()) return;
+      refreshOverlayUsageAsync({ silent: false });
+    }, OVERLAY_USAGE_POLL_MS);
+  }
+
+  /** Never call get_state on the Soft Pad open/remount turn — defer like settings-drawer. */
+  function requestOverlayUsageForScope(scopeId) {
+    var kind = String(scopeId || selectedScopeId || '');
+    if (kind !== 'codex' && kind !== 'claude' && kind !== 'cursor') return;
+    if (!isSoftPadPageVisible()) return;
+    ensureOverlayUsagePolling();
+    // Scope switch: reuse cache immediately, then one deferred refresh.
+    updateStatusBar(findEntry(getSelectedMappingId()));
+    var token = ++overlayUsageDeferToken;
+    requestAnimationFrame(function () {
+      setTimeout(function () {
+        if (token !== overlayUsageDeferToken) return;
+        if (!isSoftPadPageVisible()) return;
+        refreshOverlayUsageAsync({ silent: false });
+      }, 120);
+    });
   }
 
   function findEntry(mappingId) {
@@ -827,8 +1003,7 @@
 
   function buildStatusProps(entry) {
     if (!entry) {
-      var tmEmpty = global.OneToneSoftPadTimeMachine;
-      return {
+      return mergeUsageIntoStatusProps({
         name: '—',
         status: '—',
         statusCls: '',
@@ -836,15 +1011,18 @@
         kind: '—',
         agent: '—',
         keys: '—',
-        restorePoint:
-          (tmEmpty && typeof tmEmpty.heroLabel === 'function' && tmEmpty.heroLabel()) ||
-          t('softPadCockpitTmSoon', '即将接入'),
+        restorePoint: '—',
+        account: '',
+        plan: '',
+        usageSummary: '—',
+        resetCountdown: '—',
+        usageState: 'unavailable',
         padEnabled: false,
         hasMapping: false
-      };
+      }, selectedScopeId);
     }
     var hero = buildHeroMeta(entry);
-    return {
+    return mergeUsageIntoStatusProps({
       name: displayTitle(entry),
       status: statusLabel(entry),
       statusCls: statusTag(entry).cls,
@@ -853,9 +1031,14 @@
       agent: hero.agent,
       keys: hero.keys,
       restorePoint: hero.restorePoint,
+      account: '',
+      plan: '',
+      usageSummary: '—',
+      resetCountdown: '—',
+      usageState: 'unavailable',
       padEnabled: !!entry.padEnabled,
       hasMapping: hasMapping(entry)
-    };
+    }, entry.kind || selectedScopeId);
   }
 
   function updateStatusBar(entry) {
@@ -874,8 +1057,15 @@
       e.status.className = ['keys-scheme-summary-pill', props.statusCls].filter(Boolean).join(' ');
     }
     if (e.agent) e.agent.textContent = props.agent;
+    if (e.accountMeta) {
+      var acc = String(props.account || '').trim();
+      var plan = String(props.plan || '').trim();
+      e.accountMeta.textContent = acc && plan ? acc + ' · ' + plan : (acc || plan || '—');
+    }
+    if (e.usageMeta) e.usageMeta.textContent = props.usageSummary || '—';
     if (e.keysMeta) e.keysMeta.textContent = props.keys;
-    if (e.tm) e.tm.textContent = props.restorePoint;
+    if (e.tm) e.tm.textContent = props.restorePoint || '—';
+    if (e.resetMeta) e.resetMeta.textContent = props.resetCountdown || '—';
     if (e.enable) {
       e.enable.disabled = !props.hasMapping;
       e.enable.classList.toggle('is-on', !!props.padEnabled);
@@ -1131,6 +1321,7 @@
   function onPanelLeave() {
     ++selectToken;
     ++agentLoadToken;
+    stopOverlayUsagePolling();
     clearMain();
   }
 
@@ -3020,6 +3211,7 @@
       softPadView = 'hub';
       clearSubpage();
       showPrepareMain(scope);
+      requestOverlayUsageForScope(selectedScopeId);
       return;
     }
 
@@ -3031,6 +3223,7 @@
       forceRemount: false,
       resetView: true
     });
+    requestOverlayUsageForScope(selectedScopeId);
   }
 
   function renderSchemeRow(entry) {
@@ -3480,6 +3673,7 @@
     if (global.OneToneHabitChannelStatusStrip && global.OneToneHabitChannelStatusStrip.render) {
       try { global.OneToneHabitChannelStatusStrip.render(); } catch (_) {}
     }
+    requestOverlayUsageForScope(selectedScopeId);
     feLog('fe softPad.render chrome ' + (Date.now() - t0) + 'ms map=' + String(getSelectedMappingId() || ''));
   }
 

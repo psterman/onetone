@@ -4,6 +4,7 @@
 // state via window.__otSoftPadStatusRead on mount/refresh. Toggle delegates back to
 // window.OneToneSoftPadHub.toggleSelectedEnable (preserves IPC + saveAsync path).
 // Hero chrome matches Keys/Voice page-status-bar (name + pill + meta + page-status-btn).
+// Two meta rows: (状态灯 / 键位 / 恢复点) + (账号 / 额度 / 重置).
 
 import * as React from 'react';
 import { useIslandRefresh } from '../island-runtime';
@@ -18,7 +19,13 @@ interface SoftPadStatusProps {
   kind: string;
   agent: string;
   keys: string;
+  /** Time Machine hero label (未保护 / 已保护 / 自动 · 15m). */
   restorePoint: string;
+  account: string;
+  plan: string;
+  usageSummary: string;
+  resetCountdown: string;
+  usageState: string;
   padEnabled: boolean;
   hasMapping: boolean;
 }
@@ -46,17 +53,31 @@ const EMPTY: SoftPadStatusProps = {
   agent: '—',
   keys: '—',
   restorePoint: '即将接入',
+  account: '',
+  plan: '',
+  usageSummary: '—',
+  resetCountdown: '—',
+  usageState: 'unavailable',
   padEnabled: false,
   hasMapping: false,
 };
 
 function readProps(): SoftPadStatusProps {
-  return w().__otSoftPadStatusRead?.() ?? EMPTY;
+  return { ...EMPTY, ...(w().__otSoftPadStatusRead?.() ?? {}) };
 }
 
 function runAction(action: string) {
   const hub = w().OneToneSoftPadHub;
   if (hub?.handleStatusAction) hub.handleStatusAction(action);
+}
+
+function accountLine(account: string, plan: string): string {
+  const a = String(account || '').trim();
+  const p = String(plan || '').trim();
+  if (a && p) return `${a} · ${p}`;
+  if (a) return a;
+  if (p) return p;
+  return '—';
 }
 
 export function SoftPadStatusIsland(): JSX.Element {
@@ -68,7 +89,7 @@ export function SoftPadStatusBarIsland(): JSX.Element {
 
   React.useEffect(() => {
     const win = w();
-    win.__otSoftPadStatusSync = (next: SoftPadStatusProps) => setProps(next);
+    win.__otSoftPadStatusSync = (next: SoftPadStatusProps) => setProps({ ...EMPTY, ...next });
     win.__otSoftPadStatusMounted = true;
     return () => {
       win.__otSoftPadStatusSync = undefined;
@@ -85,7 +106,20 @@ export function SoftPadStatusBarIsland(): JSX.Element {
     if (hub?.toggleSelectedEnable) hub.toggleSelectedEnable();
   }, []);
 
-  const { name, status, statusCls, agent, keys, restorePoint, padEnabled, hasMapping } = props;
+  const {
+    name,
+    status,
+    statusCls,
+    agent,
+    keys,
+    restorePoint,
+    account,
+    plan,
+    usageSummary,
+    resetCountdown,
+    padEnabled,
+    hasMapping,
+  } = props;
 
   return (
     <>
@@ -116,7 +150,7 @@ export function SoftPadStatusBarIsland(): JSX.Element {
               键位
             </span>
             <span className="keys-scheme-summary-val" id="softPadSummaryKeys">
-              {keys}
+              {keys || '—'}
             </span>
           </span>
           <span className="keys-scheme-summary-divider" aria-hidden="true" />
@@ -125,7 +159,35 @@ export function SoftPadStatusBarIsland(): JSX.Element {
               恢复点
             </span>
             <span className="keys-scheme-summary-val" id="softPadSummaryTm">
-              {restorePoint}
+              {restorePoint || '—'}
+            </span>
+          </span>
+        </div>
+        <div className="keys-scheme-summary-meta soft-pad-status-usage-meta">
+          <span className="keys-scheme-summary-item">
+            <span className="keys-scheme-summary-lbl" id="softPadSummaryAccountLbl">
+              账号
+            </span>
+            <span className="keys-scheme-summary-val" id="softPadSummaryAccount">
+              {accountLine(account, plan)}
+            </span>
+          </span>
+          <span className="keys-scheme-summary-divider" aria-hidden="true" />
+          <span className="keys-scheme-summary-item">
+            <span className="keys-scheme-summary-lbl" id="softPadSummaryUsageLbl">
+              额度
+            </span>
+            <span className="keys-scheme-summary-val" id="softPadSummaryUsage">
+              {usageSummary || '—'}
+            </span>
+          </span>
+          <span className="keys-scheme-summary-divider" aria-hidden="true" />
+          <span className="keys-scheme-summary-item">
+            <span className="keys-scheme-summary-lbl" id="softPadSummaryResetLbl">
+              重置
+            </span>
+            <span className="keys-scheme-summary-val" id="softPadSummaryReset">
+              {resetCountdown || '—'}
             </span>
           </span>
         </div>

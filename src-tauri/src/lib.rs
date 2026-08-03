@@ -3,7 +3,6 @@ mod agent_attention;
 mod agent_catalog;
 mod agent_model_metadata;
 mod agent_usage;
-mod connector_health;
 mod app_chat_workflow;
 mod app_exe_icon;
 mod app_icon;
@@ -23,6 +22,8 @@ mod codex_micro_vendor;
 mod codex_numpad_layer;
 mod codex_pad_binding_diagnose;
 mod config;
+mod connector_health;
+mod cursor_hook_setup;
 mod cursor_workflow;
 mod data_root;
 mod device_identity;
@@ -31,6 +32,7 @@ mod gesture_timing;
 mod habit_profile;
 mod input_ext;
 mod input_obs;
+mod integration_token;
 mod ipc;
 mod key_chord;
 mod keyboard;
@@ -45,6 +47,7 @@ mod scene_config;
 mod send_guard;
 mod soft_pad_runtime;
 mod state;
+mod test_pulse;
 pub mod time_machine;
 mod tray;
 mod tray_agent_bridge;
@@ -845,6 +848,7 @@ pub fn run() {
             ipc::cmd_cursor_soft_pad_capabilities,
             ipc::cmd_cursor_set_needs_input_gate,
             ipc::cmd_cursor_hook_ingest,
+            ipc::cmd_cursor_hook_setup_status,
             ipc::cmd_onetone_attention_ask,
             ipc::cmd_onetone_attention_clear,
             ipc::cmd_codex_micro_pad_set_flags,

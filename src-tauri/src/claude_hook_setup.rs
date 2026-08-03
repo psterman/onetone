@@ -797,6 +797,34 @@ pub fn setup_status(inputs: StatusInputs) -> ClaudeHookSetupStatus {
         node_ok,
         &phase,
     );
+    let mut issues = issues;
+    if settings_parse_ok {
+        for code in crate::agent_usage::otel_settings_conflicts(&root) {
+            let (title, reason, action) = match code {
+                "otel_endpoint_conflict" => (
+                    "用量 OTel 端点冲突",
+                    "settings.env 的 OTEL 指标端点不是 OneTone 的 127.0.0.1:8796/v1/metrics。",
+                    "Lifecycle Hook 与 Usage OTel 分开：改端点或保留现有导出器，不要静默覆盖。",
+                ),
+                "otel_exporter_conflict" => (
+                    "用量 OTel 导出器冲突",
+                    "settings.env 已配置非 otlp 的 OTEL_METRICS_EXPORTER。",
+                    "保留你的导出器，或手动改为 otlp 并指向 OneTone loopback。",
+                ),
+                _ => (
+                    "用量 OTel 配置冲突",
+                    "检测到与 OneTone Usage 通道不兼容的 OTel 设置。",
+                    "请手动核对 ~/.claude/settings.json 的 env。",
+                ),
+            };
+            issues.push(ClaudeHookIssue {
+                severity: "warn".into(),
+                title: title.into(),
+                reason: reason.into(),
+                action: action.into(),
+            });
+        }
+    }
 
     let panel_phase = match phase.as_str() {
         "connected" => "connected",

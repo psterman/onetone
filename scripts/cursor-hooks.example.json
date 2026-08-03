@@ -2,16 +2,16 @@
   "version": 1,
   "hooks": {
     "beforeSubmitPrompt": [
-      { "command": "node ./scripts/cursor-hook-probe.js" }
+      { "command": "node \"./scripts/cursor-hook-probe.js\" --onetone-hook-id cursor-observer-v1" }
     ],
     "afterAgentResponse": [
-      { "command": "node ./scripts/cursor-hook-probe.js" }
+      { "command": "node \"./scripts/cursor-hook-probe.js\" --onetone-hook-id cursor-observer-v1" }
     ],
     "stop": [
-      { "command": "node ./scripts/cursor-hook-probe.js" }
+      { "command": "node \"./scripts/cursor-hook-probe.js\" --onetone-hook-id cursor-observer-v1" }
     ],
     "subagentStart": [
-      { "command": "node ./scripts/cursor-hook-probe.js" }
+      { "command": "node \"./scripts/cursor-hook-probe.js\" --onetone-hook-id cursor-observer-v1" }
     ]
   }
 }

@@ -13,7 +13,13 @@ const VOSK_RUNTIME_DLLS: &[&str] = &[
 
 fn main() {
     ensure_icons_exist();
-    link_vosk_if_present();
+    // Gate on feature so `cargo test --lib --no-default-features` does not hard-link
+    // MinGW libvosk into the harness (STATUS_ENTRYPOINT_NOT_FOUND on Windows).
+    if std::env::var_os("CARGO_FEATURE_VOSK_ENGINE").is_some() {
+        link_vosk_if_present();
+    } else {
+        println!("cargo:rustc-cfg=vosk_disabled");
+    }
 
     const COMMANDS: &[&str] = &[
         "cmd_ready",
@@ -141,6 +147,7 @@ fn main() {
         "cmd_pad_status_diagnose",
         "cmd_claude_activity_inject",
         "cmd_claude_activity_clear",
+        "cmd_cursor_hook_setup_status",
         "cmd_claude_hook_setup_status",
         "cmd_claude_hook_install_confirm",
         "cmd_claude_hook_uninstall_onetone",

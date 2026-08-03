@@ -88,21 +88,44 @@ function buildPostBody(fields) {
   };
 }
 
+function readIntegrationToken() {
+  try {
+    if (process.env.ONETONE_SOFT_PAD_TOKEN) return String(process.env.ONETONE_SOFT_PAD_TOKEN).trim();
+    var appdata = process.env.APPDATA || '';
+    var candidates = [];
+    if (appdata) {
+      candidates.push(path.join(appdata, 'com.onetone', 'app', 'soft-pad-integration.token'));
+      candidates.push(path.join(appdata, 'onetone', 'app', 'soft-pad-integration.token'));
+      candidates.push(path.join(appdata, 'com.onetone.app', 'soft-pad-integration.token'));
+    }
+    for (var i = 0; i < candidates.length; i++) {
+      if (fs.existsSync(candidates[i])) {
+        return String(fs.readFileSync(candidates[i], 'utf8') || '').trim();
+      }
+    }
+  } catch (_) {}
+  return '';
+}
+
 function postState(urlStr, body, timeoutMs) {
   return new Promise(function (resolve) {
     try {
       var u = new URL(urlStr || DEFAULT_URL);
       var raw = Buffer.from(JSON.stringify(body), 'utf8');
+      var headers = {
+        'Content-Type': 'application/json',
+        'Content-Length': raw.length,
+        Host: (u.hostname || '127.0.0.1') + (u.port ? ':' + u.port : '')
+      };
+      var token = readIntegrationToken();
+      if (token) headers['X-Onetone-Token'] = token;
       var req = http.request(
         {
           hostname: u.hostname,
           port: u.port || 80,
           path: u.pathname + (u.search || ''),
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': raw.length
-          },
+          headers: headers,
           timeout: timeoutMs != null ? timeoutMs : POST_TIMEOUT_MS
         },
         function (res) {

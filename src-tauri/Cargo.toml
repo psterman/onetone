@@ -9,7 +9,9 @@ edition = "2021"
 
 [lib]
 # Unit tests in lib modules crash on Windows (STATUS_ENTRYPOINT_NOT_FOUND) when the Tauri
-# test harness loads the full native stack. Pure-logic tests live in tests/ instead.
+# test harness loads the full native stack — even with --no-default-features.
+# Pure-logic: cargo test --manifest-path src-tauri/Cargo.toml -p onetone-logic
+# Soft Pad smokes: node scripts/soft-pad-mini-agents.test.js (etc.)
 test = false
 
 [features]

@@ -101,15 +101,42 @@ function approvalUrlFromStateUrl(stateUrl) {
   }
 }
 
+function readIntegrationToken() {
+  try {
+    if (process.env.ONETONE_SOFT_PAD_TOKEN) return String(process.env.ONETONE_SOFT_PAD_TOKEN).trim();
+    var appdata = process.env.APPDATA || '';
+    var candidates = [];
+    if (appdata) {
+      candidates.push(path.join(appdata, 'com.onetone', 'app', 'soft-pad-integration.token'));
+      candidates.push(path.join(appdata, 'onetone', 'app', 'soft-pad-integration.token'));
+      candidates.push(path.join(appdata, 'com.onetone.app', 'soft-pad-integration.token'));
+    }
+    for (var i = 0; i < candidates.length; i++) {
+      if (fs.existsSync(candidates[i])) {
+        return String(fs.readFileSync(candidates[i], 'utf8') || '').trim();
+      }
+    }
+  } catch (_) {}
+  return '';
+}
+
 function httpJson(method, urlStr, bodyObj, timeoutMs) {
   return new Promise(function (resolve) {
     try {
       var u = new URL(urlStr);
       var raw = bodyObj != null ? Buffer.from(JSON.stringify(bodyObj), 'utf8') : null;
-      var headers = {};
+      var headers = {
+        Host: (u.hostname || '127.0.0.1') + (u.port ? ':' + u.port : '')
+      };
       if (raw) {
         headers['Content-Type'] = 'application/json';
         headers['Content-Length'] = raw.length;
+      }
+      var needsToken = String(u.pathname || '').indexOf('/api/codex-app/state') >= 0
+        || String(u.pathname || '').indexOf('/v1/metrics') >= 0;
+      if (needsToken) {
+        var token = readIntegrationToken();
+        if (token) headers['X-Onetone-Token'] = token;
       }
       var req = http.request(
         {

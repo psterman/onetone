@@ -23,7 +23,7 @@ const OVERLAY_HEIGHT_FULL: f64 = 570.0;
 /// resizes/repositions the pad (CSS fades the rail in-place).
 /// Deprecated: JOY side-rail removed; NAV keys live on the 5-col main pad.
 #[allow(dead_code)]
-const OVERLAY_WIDTH_MINI: f64 = 156.0;
+const OVERLAY_WIDTH_MINI: f64 = 240.0;
 const OVERLAY_HEIGHT_MINI: f64 = 44.0;
 const HIGHLIGHT_MS: u64 = 320;
 
@@ -457,6 +457,9 @@ pub struct CodexMicroAgentSnapshot {
     pub model: String,
     pub model_confidence: String,
     pub usage: crate::agent_usage::AgentUsageSnapshot,
+    pub health: Vec<crate::connector_health::CapabilityHealth>,
+    pub headline_state: String,
+    pub headline_label: String,
     pub updated_at: u64,
 }
 
@@ -1978,6 +1981,8 @@ fn agent_chip_snapshots() -> Vec<CodexMicroAgentSnapshot> {
             };
             let metadata = crate::agent_model_metadata::snapshot(kind);
             let usage = crate::agent_usage::snapshot(kind);
+            let health = crate::connector_health::snapshot_agent(kind);
+            let (headline, headline_label) = crate::connector_health::headline_for_agent(kind);
             let updated_at = public
                 .rows
                 .iter()
@@ -1993,6 +1998,9 @@ fn agent_chip_snapshots() -> Vec<CodexMicroAgentSnapshot> {
                 model: metadata.model,
                 model_confidence: metadata.confidence,
                 usage,
+                health,
+                headline_state: headline.as_str().to_string(),
+                headline_label: headline_label.to_string(),
                 updated_at,
             }
         })

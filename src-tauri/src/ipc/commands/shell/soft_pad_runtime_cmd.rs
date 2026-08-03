@@ -88,6 +88,22 @@ pub fn cmd_cursor_hook_ingest(
     agent_attention::public_snapshot()
 }
 
+/// Read-only Cursor Hook setup probe — never writes `~/.cursor` or project hooks.
+/// `workspace` must be user-selected / Soft Pad scene-bound; empty = user scope only.
+#[tauri::command]
+pub fn cmd_cursor_hook_setup_status(
+    state: State<'_, Arc<AppState>>,
+    workspace: Option<String>,
+) -> crate::cursor_hook_setup::CursorHookSetupStatus {
+    let _ = state;
+    let ws = workspace
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(std::path::PathBuf::from);
+    crate::cursor_hook_setup::setup_status(ws.as_deref())
+}
+
 /// OneTone-originated ask (may enter waiting even when Cursor official gate is closed).
 #[tauri::command]
 pub fn cmd_onetone_attention_ask(

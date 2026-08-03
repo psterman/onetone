@@ -24,6 +24,7 @@
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
           </span>
         </div>
+        <span class="overlay-mini__usage" id="miniUsagePill" hidden aria-live="polite"></span>
         <button type="button" class="overlay-mini__btn overlay-mini__btn--expand" data-act="expand" title="展开" aria-label="展开浮窗">
           <span class="overlay-mini__switch" aria-hidden="true">
             <span class="overlay-mini__switch-track"></span>
@@ -57,10 +58,22 @@
           <div class="overlay-app-meta__row" id="overlayAppMetaRow"></div>
           <div class="overlay-app-meta__task" id="overlayAppMetaTask" hidden></div>
         </div>
-        <div class="overlay-usage-rail" id="overlayUsageRail" hidden aria-label="Agent 用量">
-          <span class="overlay-usage-rail__item" data-usage-agent="codex"><b>Codex</b><i>--</i></span>
-          <span class="overlay-usage-rail__item" data-usage-agent="claude"><b>Claude</b><i>--</i></span>
-          <span class="overlay-usage-rail__item" data-usage-agent="cursor"><b>Cursor</b><i>--</i></span>
+        <div class="overlay-usage-rail" id="overlayUsageRail" aria-label="Agent 用量与连接健康">
+          <div class="overlay-usage-rail__item" data-usage-agent="codex">
+            <b>Codex</b><span class="overlay-usage-rail__badge" data-badge>未配置</span>
+            <i data-summary>--</i>
+            <small data-sub></small>
+          </div>
+          <div class="overlay-usage-rail__item" data-usage-agent="claude">
+            <b>Claude</b><span class="overlay-usage-rail__badge" data-badge>未配置</span>
+            <i data-summary>--</i>
+            <small data-sub></small>
+          </div>
+          <div class="overlay-usage-rail__item" data-usage-agent="cursor">
+            <b>Cursor</b><span class="overlay-usage-rail__badge" data-badge>未配置</span>
+            <i data-summary>--</i>
+            <small data-sub></small>
+          </div>
         </div>
         <div class="overlay-toast" id="overlayToast" aria-live="polite"></div>
       </div>
@@ -208,6 +221,7 @@
     var grid=document.getElementById('grid');
     var overlayToast=document.getElementById('overlayToast');
     var miniAgents=document.getElementById('miniAgents');
+    var miniUsagePill=document.getElementById('miniUsagePill');
     var statusChip=document.getElementById('statusChip');
     var overlayAppMeta=document.getElementById('overlayAppMeta');
     var overlayAppMetaRow=document.getElementById('overlayAppMetaRow');
@@ -372,51 +386,232 @@
       return usage[camel]!=null?usage[camel]:usage[snake];
     }
 
+    /** < 1e12 → epoch seconds; >= 1e12 → epoch ms. Expired → 待刷新. */
+    function formatResetCountdown(resetsAt){
+      if(resetsAt==null||resetsAt==='') return '';
+      var n=Number(resetsAt);
+      if(!isFinite(n)||n<=0) return '';
+      var ms=n<1e12?n*1000:n;
+      var rem=ms-Date.now();
+      if(rem<=0) return '待刷新';
+      var totalMins=Math.floor(rem/60000);
+      if(totalMins<1) return '1m';
+      var days=Math.floor(totalMins/(24*60));
+      var hours=Math.floor((totalMins%(24*60))/60);
+      var mins=totalMins%60;
+      if(days>0) return hours>0?(days+'d'+hours+'h'):(days+'d');
+      if(hours>0) return mins>0?(hours+'h'+mins+'m'):(hours+'h');
+      return mins+'m';
+    }
+
+    function windowLabel(w,withReset){
+      var kind=String(w&&(w.kind||'')||'');
+      var mins=Number(w&&(w.durationMins!=null?w.durationMins:w.duration_mins))||0;
+      var rem=w&&(w.remainingPercent!=null?w.remainingPercent:w.remaining_percent);
+      if(rem==null) return '';
+      var pct=Math.round(Number(rem));
+      var base='';
+      if(kind==='primary'&&mins>0&&mins%60===0&&mins<=1440) base=(mins/60)+'h余'+pct+'%';
+      else if(kind==='secondary'&&mins>0&&mins%(24*60)===0) base=(mins/(24*60))+'d余'+pct+'%';
+      else if(kind==='secondary'&&mins>0&&mins%60===0) base=(mins/60)+'h余'+pct+'%';
+      else if(mins>0) base=mins+'min窗口余'+pct+'%';
+      else base='窗口余'+pct+'%';
+      if(!withReset) return base;
+      var cd=formatResetCountdown(w&&(w.resetsAt!=null?w.resetsAt:w.resets_at));
+      return cd?(base+' · '+cd+'重置'):base;
+    }
+
+    function freshnessLabel(usage,healthRows){
+      var ts=Number(usage&&(usage.lastSuccessAt!=null?usage.lastSuccessAt:usage.last_success_at))||0;
+      if(!ts&&Array.isArray(healthRows)){
+        healthRows.forEach(function(h){
+          if(h&&h.capability==='usage') ts=Number(h.lastSuccessAt||h.last_success_at)||ts;
+        });
+      }
+      if(!ts) return '';
+      var age=Date.now()-ts;
+      if(age<60_000) return '刚刚';
+      if(age<3600_000) return Math.floor(age/60_000)+'分钟前';
+      return Math.floor(age/3600_000)+'小时前';
+    }
+
     function usageSummary(kind,usage,detail){
       usage=usage||{};
       var status=String(usage.status||'unavailable');
-      if(kind==='cursor') return detail?'用量：暂无稳定官方接口':'用量 --';
+      if(kind==='cursor') return detail?'用量暂无官方接口':'用量 --';
+      if(status==='disabled') return detail?'用量已关闭':'已关闭';
+      var windows=Array.isArray(usage.windows)?usage.windows:[];
+      var bits=[];
+      if(kind==='codex'){
+        windows.slice(0,2).forEach(function(w){
+          // Each window shows its own reset (do not share primary countdown with 7d).
+          var lab=windowLabel(w,true);
+          if(lab) bits.push(lab);
+        });
+        if(windows.length>2) bits.push('另 '+(windows.length-2)+' 项');
+        if(!bits.length){
+          var remaining=usageValue(usage,'remainingPercent','remaining_percent');
+          if(remaining!=null){
+            var base='窗口余 '+Math.round(Number(remaining))+'%';
+            if(detail){
+              var cd=formatResetCountdown(usageValue(usage,'resetsAt','resets_at'));
+              if(cd) base+=' · '+cd+'重置';
+            }
+            bits.push(base);
+          }
+        }
+        var lifetime=usageValue(usage,'lifetimeTokens','lifetime_tokens');
+        if(detail&&lifetime!=null) bits.push('累计 '+compactNumber(lifetime));
+      } else {
+        var session=usageValue(usage,'sessionTokens','session_tokens');
+        var auxiliary=usageValue(usage,'auxiliaryTokens','auxiliary_tokens');
+        var cost=usageValue(usage,'estimatedCostUsd','estimated_cost_usd');
+        if(session!=null) bits.push('本会话'+compactNumber(session));
+        if(auxiliary!=null) bits.push('子任务'+compactNumber(auxiliary));
+        if(cost!=null) bits.push('估算$'+Number(cost).toFixed(3).replace(/0+$/,'').replace(/\.$/,''));
+      }
+      if(status==='stale'){
+        if(bits.length) return bits.join(detail?' · ':' / ')+(detail?' · 数据陈旧':' · 陈旧');
+        return detail?(String(usage.message||'').trim()||'数据陈旧，保留上次值'):'数据陈旧';
+      }
       if(status!=='ready'){
+        if(bits.length) return bits.join(detail?' · ':' / ');
         var message=String(usage.message||'').trim();
         return detail?(message||'用量数据未连接'):'未连接';
-      }
-      var bits=[];
-      var session=usageValue(usage,'sessionTokens','session_tokens');
-      var auxiliary=usageValue(usage,'auxiliaryTokens','auxiliary_tokens');
-      var lifetime=usageValue(usage,'lifetimeTokens','lifetime_tokens');
-      var remaining=usageValue(usage,'remainingPercent','remaining_percent');
-      var cost=usageValue(usage,'estimatedCostUsd','estimated_cost_usd');
-      if(kind==='codex'){
-        if(remaining!=null) bits.push('窗口余 '+Math.round(Number(remaining))+'%');
-        if(session!=null) bits.push('会话 '+compactNumber(session));
-        if(lifetime!=null) bits.push('累计 '+compactNumber(lifetime));
-      } else {
-        if(session!=null) bits.push('本会话 '+compactNumber(session));
-        if(auxiliary!=null) bits.push('子任务 '+compactNumber(auxiliary));
-        if(cost!=null) bits.push('估算 $'+Number(cost).toFixed(3).replace(/0+$/,'').replace(/\.$/,''));
       }
       return bits.length?bits.join(detail?' · ':' / '):(detail?'用量数据未返回':'--');
     }
 
+    function miniUsageAbbrev(kind){
+      if(kind==='codex') return 'C';
+      if(kind==='claude') return 'Cl';
+      if(kind==='cursor') return 'Cu';
+      return String(kind||'?').slice(0,1).toUpperCase();
+    }
+
+    function isRenderableUsage(kind,usage){
+      usage=usage||{};
+      var status=String(usage.status||'');
+      if(kind==='cursor') return false;
+      if(status==='disabled'||status==='unavailable') return false;
+      if(kind==='codex'){
+        var rem=usageValue(usage,'remainingPercent','remaining_percent');
+        var windows=Array.isArray(usage.windows)?usage.windows:[];
+        if(rem==null&&windows.length){
+          var primary=windows.find(function(w){ return String(w.kind||'')==='primary'; });
+          var w=primary||windows[0];
+          rem=w&&(w.remainingPercent!=null?w.remainingPercent:w.remaining_percent);
+        }
+        return rem!=null;
+      }
+      if(kind==='claude'){
+        return usageValue(usage,'sessionTokens','session_tokens')!=null
+          || usageValue(usage,'estimatedCostUsd','estimated_cost_usd')!=null;
+      }
+      return false;
+    }
+
+    function miniUsageText(kind,usage){
+      usage=usage||{};
+      if(!isRenderableUsage(kind,usage)) return '';
+      if(kind==='codex'){
+        var rem=usageValue(usage,'remainingPercent','remaining_percent');
+        var windows=Array.isArray(usage.windows)?usage.windows:[];
+        var pw=windows.find(function(w){ return String(w.kind||'')==='primary'; })||windows[0];
+        if(rem==null&&pw) rem=pw.remainingPercent!=null?pw.remainingPercent:pw.remaining_percent;
+        if(rem==null) return '';
+        var cd=formatResetCountdown(usageValue(usage,'resetsAt','resets_at'));
+        if(!cd&&pw) cd=formatResetCountdown(pw.resetsAt!=null?pw.resetsAt:pw.resets_at);
+        return miniUsageAbbrev(kind)+' '+Math.round(Number(rem))+'%'+(cd?' · '+cd:'');
+      }
+      if(kind==='claude'){
+        var session=usageValue(usage,'sessionTokens','session_tokens');
+        var cost=usageValue(usage,'estimatedCostUsd','estimated_cost_usd');
+        var bits=[];
+        if(session!=null) bits.push(compactNumber(session));
+        if(cost!=null) bits.push('$'+Number(cost).toFixed(2).replace(/0+$/,'').replace(/\.$/,''));
+        if(!bits.length) return '';
+        return miniUsageAbbrev(kind)+' '+bits.join(' · ');
+      }
+      return '';
+    }
+
+    /** One visible pill: renderable-first (never Cursor without quota). */
+    function pickMiniUsageKind(s){
+      var rows=Array.isArray(s&&s.agents)?s.agents:[];
+      var byKind={};
+      rows.forEach(function(row){
+        var kind=String(row&&row.kind||'').trim();
+        if(kind) byKind[kind]=row;
+      });
+      function hasRenderable(kind){
+        return isRenderableUsage(kind,(byKind[kind]||{}).usage||{});
+      }
+      var app=String(s&&(s.appAgent||s.app_agent)||'').trim().toLowerCase();
+      if(app&&hasRenderable(app)) return app;
+      var active=['needs_input','running'];
+      for(var i=0;i<rows.length;i++){
+        var st=String(rows[i]&&rows[i].state||'').trim();
+        var k=String(rows[i]&&rows[i].kind||'').trim();
+        if(active.indexOf(st)>=0&&hasRenderable(k)) return k;
+      }
+      if(hasRenderable('codex')) return 'codex';
+      var order=['claude'];
+      for(var j=0;j<order.length;j++){
+        if(hasRenderable(order[j])) return order[j];
+      }
+      for(var n=0;n<rows.length;n++){
+        var kk=String(rows[n]&&rows[n].kind||'').trim();
+        if(kk&&kk!=='cursor'&&hasRenderable(kk)) return kk;
+      }
+      return '';
+    }
+
+    function applyMiniUsagePill(s){
+      if(!miniUsagePill) return;
+      var kind=pickMiniUsageKind(s);
+      var rows=Array.isArray(s&&s.agents)?s.agents:[];
+      var row=rows.find(function(r){ return String(r&&r.kind||'')===kind; })||{};
+      var text=kind?miniUsageText(kind,row.usage||{}):'';
+      if(!text){
+        miniUsagePill.hidden=true;
+        miniUsagePill.textContent='';
+        miniUsagePill.removeAttribute('title');
+        return;
+      }
+      miniUsagePill.hidden=false;
+      miniUsagePill.textContent=text;
+      miniUsagePill.title=agentLabel(kind)+' · '+usageSummary(kind,row.usage||{},true);
+    }
+
     function applyUsageRail(s){
       if(!overlayUsageRail) return;
+      overlayUsageRail.hidden=false;
       var rows=Array.isArray(s&&s.agents)?s.agents:[];
       var byKind={};
       rows.forEach(function(row){ if(row&&row.kind) byKind[row.kind]=row; });
-      var hasData=false;
       overlayUsageRail.querySelectorAll('[data-usage-agent]').forEach(function(el){
         var kind=String(el.getAttribute('data-usage-agent')||'');
         var row=byKind[kind]||{};
         var usage=row.usage||{};
+        var headline=String(row.headlineLabel||row.headline_label||'').trim()||'未配置';
+        var headlineState=String(row.headlineState||row.headline_state||'not_configured');
         var summary=usageSummary(kind,usage,false);
-        var detail=agentLabel(kind)+' · '+usageSummary(kind,usage,true);
-        var valueEl=el.querySelector('i');
+        var fresh=freshnessLabel(usage,row.health);
+        var sub=fresh?(String(usage.source||'')+' · '+fresh):String(usage.message||usage.source||'');
+        var badge=el.querySelector('[data-badge]');
+        var valueEl=el.querySelector('[data-summary]')||el.querySelector('i');
+        var subEl=el.querySelector('[data-sub]');
+        if(badge){
+          badge.textContent=headline;
+          badge.setAttribute('data-health', headlineState);
+        }
         if(valueEl) valueEl.textContent=summary;
-        el.title=detail;
-        el.setAttribute('aria-label',detail);
-        if(String(usage.status||'')==='ready') hasData=true;
+        if(subEl) subEl.textContent=sub;
+        el.setAttribute('data-health', headlineState);
+        el.title=agentLabel(kind)+' · '+headline+' · '+usageSummary(kind,usage,true);
+        el.setAttribute('aria-label', agentLabel(kind)+'，'+headline+'，'+summary);
       });
-      overlayUsageRail.hidden=!hasData;
     }
 
     function applyMiniAgentChips(s){
@@ -435,18 +630,25 @@
         var confidence=String(row.modelConfidence||row.model_confidence||'').trim();
         var usage=row.usage||{};
         var label=agentLabel(kind)+'：'+lightStatusLabel(state);
-        var tip=label;
+        var line2='';
         if(model){
-          tip+=' · 模型 '+model;
-          if(kind==='claude'&&confidence==='low') tip+='（会话值，可能不精确）';
-          else if(kind==='cursor'&&model==='Auto') tip+='（自动路由，不代表精确模型）';
-          else if(confidence==='low'||confidence==='medium') tip+='（可能不是最终路由模型）';
+          line2=model;
+          if(kind==='claude'&&confidence==='low') line2+='（会话开始值）';
+          else if(kind==='cursor'&&model==='Auto') line2+='（自动路由）';
         } else {
-          tip+=' · 模型 --';
+          line2='模型 --';
         }
-        tip+=' · '+usageSummary(kind,usage,true);
+        var usageShort=usageSummary(kind,usage,false);
+        if(usageShort) line2+=' · '+usageShort;
+        var fresh=freshnessLabel(usage,row.health);
+        var src=String(usage.source||'');
+        if(kind==='cursor') src=src||'Cursor Hook';
+        var line3=(src||'—')+(fresh?' · '+fresh:'');
+        if(String(usage.status||'')==='stale') line3='数据陈旧'+(fresh?' · 上次成功 '+fresh:'');
+        var tip=label+'\n'+line2+'\n'+line3;
+        if(tip.length>140) tip=tip.slice(0,137)+'…';
         el.setAttribute('data-status', state);
-        el.setAttribute('aria-label', label+(model?'，模型 '+model:'，模型 --'));
+        el.setAttribute('aria-label', label+'，'+line2);
         el.setAttribute('title', tip);
       });
     }
@@ -1015,6 +1217,7 @@
       lastSnap=Object.assign({}, lastSnap, s);
       syncOverlayTheme();
       applyMiniAgentChips(s);
+      applyMiniUsagePill(s);
       applyUsageRail(s);
       var padSkin=normalizeOverlaySkin(s.skin||s.padSkin);
       var rootEl=document.querySelector('.root');
