@@ -41,9 +41,37 @@
     return usage.resetsAt != null ? usage.resetsAt : usage.resets_at;
   }
 
+  /**
+   * Duration-first window label. Never emit "10080min窗口余…".
+   * withReset: append " · Xm重置" using that window's own resetsAt.
+   */
+  function windowQuotaLabel(w, withReset) {
+    if (!w) return '';
+    var mins = Number(w.durationMins != null ? w.durationMins : w.duration_mins) || 0;
+    var rem = w.remainingPercent != null ? w.remainingPercent : w.remaining_percent;
+    if (rem == null) return '';
+    var pct = Math.round(Number(rem));
+    if (!isFinite(pct)) return '';
+    var base = '';
+    var dayMins = 24 * 60;
+    if (mins > 0 && mins % dayMins === 0) {
+      base = mins / dayMins + 'd余' + pct + '%';
+    } else if (mins > 0 && mins % 60 === 0) {
+      base = mins / 60 + 'h余' + pct + '%';
+    } else if (mins > 0) {
+      base = mins + 'min余' + pct + '%';
+    } else {
+      base = '窗口余' + pct + '%';
+    }
+    if (!withReset) return base;
+    var cd = formatResetCountdown(w.resetsAt != null ? w.resetsAt : w.resets_at);
+    return cd ? base + ' · ' + cd + '重置' : base;
+  }
+
   var api = {
     formatResetCountdown: formatResetCountdown,
-    primaryResetAt: primaryResetAt
+    primaryResetAt: primaryResetAt,
+    windowQuotaLabel: windowQuotaLabel
   };
 
   if (typeof module !== 'undefined' && module.exports) {

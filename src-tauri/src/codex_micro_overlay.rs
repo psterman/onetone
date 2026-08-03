@@ -17,8 +17,8 @@ use crate::AppState;
 pub const CODEX_MICRO_OVERLAY_LABEL: &str = "codex_micro_overlay";
 
 const OVERLAY_WIDTH: f64 = 432.0;
-/// Extra strip for status meta under the pad (avoids clipping Chinese glyphs).
-const OVERLAY_HEIGHT_FULL: f64 = 570.0;
+/// Pad chassis + key caption (agent bar lives inside micro-hw; no separate usage rail).
+const OVERLAY_HEIGHT_FULL: f64 = 468.0;
 /// Left NAV rail strip is always reserved in the window so JOY open/close never
 /// resizes/repositions the pad (CSS fades the rail in-place).
 /// Deprecated: JOY side-rail removed; NAV keys live on the 5-col main pad.

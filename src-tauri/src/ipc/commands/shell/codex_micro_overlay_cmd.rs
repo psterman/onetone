@@ -123,3 +123,29 @@ pub fn cmd_codex_micro_overlay_toggle_joy_panel(
 ) -> Result<bool, String> {
     codex_micro_overlay::toggle_joy_nav_panel(&app, state.inner())
 }
+
+/// Soft Pad agent chip: focus / open Codex, Claude Code, or Cursor composer.
+#[tauri::command]
+pub async fn cmd_soft_pad_focus_agent(app: AppHandle, kind: String) -> Result<serde_json::Value, String> {
+    use crate::app_chat_workflow::{
+        self, CLAUDE_CODE_APP_TARGET_ID, CODEX_APP_TARGET_ID, CURSOR_APP_TARGET_ID,
+    };
+    let kind = kind.trim().to_ascii_lowercase();
+    let target = match kind.as_str() {
+        "codex" => CODEX_APP_TARGET_ID,
+        "claude" => CLAUDE_CODE_APP_TARGET_ID,
+        "cursor" => CURSOR_APP_TARGET_ID,
+        _ => return Err("unknown_agent".into()),
+    };
+    let target_owned = target.to_string();
+    let app2 = app.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        app_chat_workflow::focus_composer_only(&app2, &target_owned, 800)
+    })
+    .await
+    .map_err(|e| format!("soft_pad_focus_join:{e}"))?;
+    match result {
+        Ok(()) => Ok(serde_json::json!({ "ok": true, "appTargetId": target, "kind": kind })),
+        Err(err) => Err(err.reason("soft_pad_focus")),
+    }
+}

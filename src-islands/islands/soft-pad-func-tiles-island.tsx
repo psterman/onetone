@@ -23,6 +23,7 @@ const EMPTY: SoftPadFuncTilesModel = {
 
 type Win = Window & {
   __otSoftPadFuncTilesSync?: () => void;
+  __otSoftPadFuncTilesForce?: () => void;
   __otSoftPadFuncTilesMounted?: boolean;
 };
 
@@ -70,6 +71,10 @@ function getSnapshot(): SoftPadFuncTilesModel {
 function ensureBridge(): void {
   const w = window as Win;
   w.__otSoftPadFuncTilesSync = syncFromLegacy;
+  w.__otSoftPadFuncTilesForce = () => {
+    currentSig = '';
+    syncFromLegacy();
+  };
   w.__otSoftPadFuncTilesMounted = true;
 }
 

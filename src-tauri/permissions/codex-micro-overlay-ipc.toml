@@ -12,4 +12,5 @@ permissions = [
   "allow-cmd-codex-micro-overlay-toggle-master",
   "allow-cmd-codex-micro-overlay-toggle-num-mode",
   "allow-cmd-codex-micro-pad-fire",
+  "allow-cmd-soft-pad-focus-agent",
 ]

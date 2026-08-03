@@ -49,13 +49,14 @@ assert.ok(server.includes('http://localhost:1420'));
 var corsFn = server.match(/fn cors_headers_get\(\)[\s\S]*?\n\}/);
 assert.ok(corsFn, 'cors_headers_get missing');
 assert.ok(!/Access-Control-Allow-Origin:\s*\*/.test(corsFn[0]));
-assert.ok(overlay.includes('id="overlayUsageRail"'));
+assert.ok(overlay.includes('id="padAgentBar"') || overlay.includes('soft-pad-agent-bar'));
 assert.ok(overlay.includes('function usageSummary'));
 assert.ok(overlay.includes('usage-format.js'));
 assert.ok(overlay.includes('OneToneUsageFormat'));
 assert.ok(overlay.includes('id="miniUsagePill"') || overlay.includes("id='miniUsagePill'"));
 assert.ok(overlay.includes('function pickMiniUsageKind') || overlay.includes('function applyMiniUsagePill'));
-assert.ok(overlay.includes('overlayUsageRail.hidden=false') || overlay.includes('overlayUsageRail.hidden = false'));
+assert.ok(overlay.includes('cmd_soft_pad_focus_agent'));
+assert.ok(!overlay.includes('id="overlayUsageRail"'));
 assert.ok(!overlay.includes('账户余额'));
 assert.ok(example.includes('http://127.0.0.1:8796/v1/metrics'));
 assert.ok(example.includes('"OTEL_LOGS_EXPORTER": "none"'));
@@ -126,5 +127,11 @@ assert.strictEqual(
 );
 assert.strictEqual(fmt.primaryResetAt({ resetsAt: 999, windows: [] }), 999);
 assert.strictEqual(fmt.primaryResetAt({ windows: [{ kind: 'primary' }] }), undefined);
+
+assert.strictEqual(typeof fmt.windowQuotaLabel, 'function');
+assert.strictEqual(fmt.windowQuotaLabel({ kind: 'primary', durationMins: 10080, remainingPercent: 35 }), '7d余35%');
+assert.strictEqual(fmt.windowQuotaLabel({ kind: 'secondary', duration_mins: 10080, remaining_percent: 59 }), '7d余59%');
+assert.strictEqual(fmt.windowQuotaLabel({ durationMins: 300, remainingPercent: 76 }), '5h余76%');
+assert.ok(fmt.windowQuotaLabel({ durationMins: 300, remainingPercent: 76, resetsAt: Math.floor(Date.now()/1000)+3600 }, true).indexOf('重置') > 0);
 
 console.log('agent usage Phase B tests passed');

@@ -138,6 +138,7 @@ fn main() {
         "cmd_codex_micro_overlay_toggle_num_mode",
         "cmd_codex_micro_overlay_toggle_pad_mode",
         "cmd_codex_micro_overlay_toggle_joy_panel",
+        "cmd_soft_pad_focus_agent",
         "cmd_codex_micro_pad_fire",
         "cmd_codex_micro_pad_set_flags",
         "cmd_codex_micro_pad_ensure_ready",

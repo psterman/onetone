@@ -44,6 +44,8 @@
   var selectToken = 0;
   var selectTimer = 0;
   var paintBusy = false;
+  /** Soft Pad panel-open generation — not tied to selectToken (schedulePaint bumps that). */
+  var softPadOpenGen = 0;
   var pendingPaintEntry = null;
   var pendingPaintOpts = null;
   var paintedMappingId = null;
@@ -790,19 +792,17 @@
   }
 
   function windowQuotaLabel(w) {
+    var fmt = global.OneToneUsageFormat;
+    if (fmt && fmt.windowQuotaLabel) return fmt.windowQuotaLabel(w, false);
     if (!w) return '';
-    var kind = String(w.kind || '');
     var mins = Number(w.durationMins != null ? w.durationMins : w.duration_mins) || 0;
     var rem = w.remainingPercent != null ? w.remainingPercent : w.remaining_percent;
     if (rem == null) return '';
     var pct = Math.round(Number(rem));
-    if (kind === 'primary' && mins > 0 && mins % 60 === 0 && mins <= 1440) return (mins / 60) + 'h余' + pct + '%';
-    if ((kind === 'secondary' || kind === 'unknown' || !kind) && mins > 0 && mins % (24 * 60) === 0) {
-      return (mins / (24 * 60)) + 'd余' + pct + '%';
-    }
-    if (kind === 'secondary' && mins > 0 && mins % 60 === 0) return (mins / 60) + 'h余' + pct + '%';
-    if (mins > 0 && mins % 60 === 0 && mins <= 1440) return (mins / 60) + 'h余' + pct + '%';
-    if (mins > 0) return mins + 'min窗口余' + pct + '%';
+    var dayMins = 24 * 60;
+    if (mins > 0 && mins % dayMins === 0) return mins / dayMins + 'd余' + pct + '%';
+    if (mins > 0 && mins % 60 === 0) return mins / 60 + 'h余' + pct + '%';
+    if (mins > 0) return mins + 'min余' + pct + '%';
     return '窗口余' + pct + '%';
   }
 
@@ -936,6 +936,29 @@
       if (String(entries[i].mapping.id) === id) return entries[i];
     }
     return null;
+  }
+
+  /**
+   * Soft Pad page must not trust habit-editor selectedMappingId (often「通用设置」).
+   * Prefer current Soft Pad scheme → current app scope → default Soft Pad entry.
+   */
+  function resolveSoftPadEntry() {
+    var byId = findEntry(getSelectedMappingId());
+    if (hasMapping(byId)) return byId;
+    var scope = findScope(selectedScopeId || 'codex');
+    if (scope && hasMapping(scope.entry)) return scope.entry;
+    // Current app chip still needs「准备」— don't steal another app's pad for preview.
+    if (scope && scope.canPrepare) return scope.entry || null;
+    var entries = listSoftPadSchemes();
+    if (!entries.length) return null;
+    return pickDefaultEntry(entries) || entries[0] || null;
+  }
+
+  function adoptSoftPadSelection(entry) {
+    if (!hasMapping(entry)) return null;
+    setSelectedMappingId(String(entry.mapping.id));
+    if (entry.kind) selectedScopeId = entry.kind;
+    return entry;
   }
 
   function hostsNeedPaint(entry) {
@@ -1242,30 +1265,21 @@
     var e = els();
     open = !!open;
     detailIdleOpen = open;
-    if (global.__otSoftPadDetailChromeMounted && typeof global.__otSoftPadDetailChromeSync === 'function') {
-      // P14i: panel/stage/subHost 显隐由 detail chrome sync 写。
-      if (e.detailIdle) {
-        if (!(global.__otSoftPadEmptyIdleMounted && typeof global.__otSoftPadEmptyIdleSync === 'function')) {
-          e.detailIdle.hidden = open;
-        }
-      }
-      if (global.__otSoftPadEmptyIdleMounted && typeof global.__otSoftPadEmptyIdleSync === 'function') {
-        global.__otSoftPadEmptyIdleSync();
-      }
-      global.__otSoftPadDetailChromeSync();
-      return;
-    }
+    // Always write shell attrs. Island sync can lag (React paint-target not ready) or
+    // re-apply a stale hub model and leave idle tip covering an empty detail.
     if (e.detailPanel) e.detailPanel.hidden = !open;
-    if (e.detailIdle) {
-      if (!(global.__otSoftPadEmptyIdleMounted && typeof global.__otSoftPadEmptyIdleSync === 'function')) {
-        e.detailIdle.hidden = open;
-      }
-    }
+    if (e.detailIdle) e.detailIdle.hidden = open;
     if (e.subHost) {
       e.subHost.classList.toggle('is-open', open);
       e.subHost.removeAttribute('hidden');
     }
     if (e.stage) e.stage.classList.toggle('is-detail-open', open);
+    if (global.__otSoftPadEmptyIdleMounted && typeof global.__otSoftPadEmptyIdleSync === 'function') {
+      global.__otSoftPadEmptyIdleSync();
+    }
+    if (global.__otSoftPadDetailChromeMounted && typeof global.__otSoftPadDetailChromeSync === 'function') {
+      global.__otSoftPadDetailChromeSync();
+    }
   }
 
   function patchActiveTiles() {
@@ -1413,7 +1427,7 @@
 
     // #3c：有 mapping 且详情未开时，idle 指向默认落点面板。
     if (mode === 'none' && !idleHidden) {
-      var idleEntry = findEntry(getSelectedMappingId());
+      var idleEntry = resolveSoftPadEntry();
       if (hasMapping(idleEntry)) {
         var landingId = defaultDetailView();
         idleTitle = t('softPadLandingHint', '建议从「{panel}」开始')
@@ -1782,7 +1796,7 @@
 
   /** SoftPad #3c：面板顶栏唯一主 CTA / 空态 HTML（供 Pad paint 复用）。 */
   function softPadPanelExperienceHtml(panelId, entry) {
-    if (arguments.length < 2) entry = findEntry(getSelectedMappingId());
+    if (arguments.length < 2) entry = resolveSoftPadEntry();
     panelId = normalizeFourPanelView(panelId);
     var model = buildSoftPadFourPanelModel(entry);
     var panel = null;
@@ -1810,7 +1824,7 @@
   }
 
   function buildSoftPadFourPanelModel(entry) {
-    if (arguments.length === 0) entry = findEntry(getSelectedMappingId());
+    if (arguments.length === 0) entry = resolveSoftPadEntry();
     var rawView = softPadView || 'hub';
     var isTm = rawView === 'timeline';
     // Timeline is a stage mode (flow node), not a Soft Pad detail tile.
@@ -1899,7 +1913,7 @@
 
   function buildSoftPadFuncTilesModel(entry) {
     if (arguments.length === 0) {
-      entry = findEntry(getSelectedMappingId());
+      entry = resolveSoftPadEntry();
     }
     var inPadViews = softPadView === 'hub' || softPadView === 'layout' ||
       softPadView === 'presentation' || softPadView === 'runtime' || softPadView === 'agent';
@@ -1989,6 +2003,50 @@
     applySoftPadFuncTilesHost(buildSoftPadFuncTilesModel(entry));
   }
 
+  /** After island sync: if left chrome still empty/hidden, force-resync or legacy fill. */
+  function ensureSoftPadLeftChrome(entry) {
+    if (!hasMapping(entry)) return;
+    var e = els();
+    if (e.tiles) {
+      if (typeof global.__otSoftPadFuncTilesForce === 'function') {
+        global.__otSoftPadFuncTilesForce();
+      } else {
+        renderFuncTiles(entry);
+      }
+      if (!e.tiles.querySelector('[data-tile]')) {
+        var tileModel = buildSoftPadFuncTilesModel(entry);
+        e.tiles.hidden = !!tileModel.hidden;
+        if (!tileModel.hidden && tileModel.tilesHtml && !global.__otSoftPadFuncTilesMounted) {
+          e.tiles.innerHTML = tileModel.tilesHtml;
+        }
+      } else {
+        e.tiles.hidden = false;
+      }
+    }
+    paintPreview(entry, { force: true });
+    if (e.preview && !e.preview.querySelector('.codex-micro-pad.soft-pad-preview')) {
+      var Pad = global.OneToneCodexMicroPadUi;
+      if (Pad && Pad.renderSoftPadPreview) {
+        var paint = e.preview.querySelector('[data-soft-pad-preview-paint]');
+        if (!paint) {
+          paint = document.createElement('div');
+          paint.setAttribute('data-soft-pad-preview-paint', '');
+          paint.className = 'soft-pad-preview-paint';
+          e.preview.appendChild(paint);
+        }
+        try {
+          Pad.renderSoftPadPreview(paint, entry.mapping, { forceFull: true });
+          e.preview.hidden = false;
+          if (e.preview.querySelector('.codex-micro-pad.soft-pad-preview')) {
+            paintedMappingId = String(entry.mapping.id);
+          }
+        } catch (_) {}
+      }
+    } else if (e.preview) {
+      e.preview.hidden = false;
+    }
+  }
+
   function syncHubChrome(entry) {
     var e = els();
     var onHub = softPadView === 'hub';
@@ -2062,7 +2120,7 @@
 
   /** P14g：SoftPad detail 顶栏（返回 / 标题）模型。 */
   function buildSoftPadDetailChromeModel() {
-    var panelModel = buildSoftPadFourPanelModel(findEntry(getSelectedMappingId()));
+    var panelModel = buildSoftPadFourPanelModel(resolveSoftPadEntry());
     var view = panelModel.activeView || 'hub';
     var detailOpen = !!panelModel.detailOpen;
     var backHidden = !detailOpen || view === 'runtime';
@@ -2406,7 +2464,7 @@
 
   /** P14f：SoftPad 子页 body 模型（单一来源）。 */
   function buildSoftPadSubpageModel() {
-    var panelModel = buildSoftPadFourPanelModel(findEntry(getSelectedMappingId()));
+    var panelModel = buildSoftPadFourPanelModel(resolveSoftPadEntry());
     var view = panelModel.activeView || 'hub';
     var has = !!panelModel.hasMapping;
     var mappingId = panelModel.mappingId || '';
@@ -2457,7 +2515,7 @@
   }
 
   function getSelectedSoftPadMappingForSubpage() {
-    var entry = findEntry(getSelectedMappingId());
+    var entry = resolveSoftPadEntry();
     return hasMapping(entry) ? entry.mapping : null;
   }
 
@@ -2509,6 +2567,10 @@
         applySoftPadSubpageHost(buildSoftPadSubpageModel());
       }
       return;
+    }
+    // Habit「通用设置」等非 Soft Pad id 时仍画当前 Soft Pad 方案。
+    if (String(entry.mapping.id) !== String(getSelectedMappingId() || '')) {
+      adoptSoftPadSelection(entry);
     }
     if (String(entry.mapping.id) !== String(getSelectedMappingId() || '')) return;
     var Pad = global.OneToneCodexMicroPadUi;
@@ -2621,9 +2683,10 @@
 
   function openSubpage(view) {
     if (view !== 'layout' && view !== 'presentation' && view !== 'runtime' && view !== 'agent' && view !== 'timeline') return;
-    var entry = findEntry(getSelectedMappingId());
+    var entry = resolveSoftPadEntry();
     // Project capsules are workspace-scoped; allow open without Soft Pad mapping.
     if (view !== 'timeline' && !hasMapping(entry)) return;
+    if (hasMapping(entry)) adoptSoftPadSelection(entry);
     // Re-clicking the active tile must not remount — that wiped the inline key editor.
     if (view === softPadView) {
       if (view === 'timeline') dismissSoftPadOverlay('timeline-reclick');
@@ -2647,14 +2710,15 @@
       writeSoftPadTimelinePanel(null);
       return;
     }
-    paintSubpage(entry);
+    paintSubpage(entry, { forceRemount: true });
     ensureSoftPadPreview(entry);
   }
 
   function closeSubpage() {
     var from = softPadView;
     feLog('fe softPad.closeSubpage from=' + from);
-    var entry = findEntry(getSelectedMappingId());
+    var entry = resolveSoftPadEntry();
+    if (hasMapping(entry)) adoptSoftPadSelection(entry);
     if (from === 'timeline') {
       var tmClose = global.OneToneSoftPadTimeMachine;
       if (tmClose) tmClose.closeDesk();
@@ -2810,7 +2874,7 @@
 
   /** P14e：SoftPad 预览宿主模型（单一来源）。 */
   function buildSoftPadPreviewModel() {
-    var entry = findEntry(getSelectedMappingId());
+    var entry = resolveSoftPadEntry();
     var panelModel = buildSoftPadFourPanelModel(entry);
     var has = !!panelModel.hasMapping;
     var mappingId = panelModel.mappingId || '';
@@ -2889,7 +2953,7 @@
   }
 
   function getSelectedSoftPadMappingForPreview() {
-    var entry = findEntry(getSelectedMappingId());
+    var entry = resolveSoftPadEntry();
     return hasMapping(entry) ? entry.mapping : null;
   }
 
@@ -2918,8 +2982,26 @@
       previewForceOnce = !!opts.force;
       paintReentry++;
       try {
-        applySoftPadPreviewHost(buildSoftPadPreviewModel());
-        paintedMappingId = String(entry.mapping.id);
+        if (typeof global.__otSoftPadPreviewForce === 'function' && opts.force) {
+          global.__otSoftPadPreviewForce();
+        } else {
+          applySoftPadPreviewHost(buildSoftPadPreviewModel());
+        }
+        // Only mark painted when keyboard actually landed (island paint-target may lag one frame).
+        if (e.preview.querySelector('.codex-micro-pad.soft-pad-preview')) {
+          paintedMappingId = String(entry.mapping.id);
+        } else if (opts.force) {
+          // Island sync no-oped (no paint node yet) — paint directly into host/target.
+          var PadFallback = global.OneToneCodexMicroPadUi;
+          if (PadFallback && PadFallback.renderSoftPadPreview) {
+            var paintEl = e.preview.querySelector('[data-soft-pad-preview-paint]') || e.preview;
+            PadFallback.renderSoftPadPreview(paintEl, entry.mapping, { forceFull: true });
+            e.preview.hidden = false;
+            if (e.preview.querySelector('.codex-micro-pad.soft-pad-preview')) {
+              paintedMappingId = String(entry.mapping.id);
+            }
+          }
+        }
       } finally {
         paintReentry--;
         previewForceOnce = false;
@@ -2932,7 +3014,9 @@
       paintReentry++;
       try {
         Pad.renderSoftPadPreview(e.preview, entry.mapping, opts.force ? { forceFull: true } : undefined);
-        paintedMappingId = String(entry.mapping.id);
+        if (e.preview.querySelector('.codex-micro-pad.soft-pad-preview')) {
+          paintedMappingId = String(entry.mapping.id);
+        }
       } finally {
         paintReentry--;
       }
@@ -3584,15 +3668,12 @@
       if(typeof mountEnsureCta==='function') mountEnsureCta();
     }catch(_){}
     bindChrome();
-    // Will land on runtime via selectScheme({ resetView: true }); keep hub only until then.
-    softPadView = 'hub';
     // Drop stale timeline landing from a previous TM visit (otherwise Soft Pad opens into TM).
     if (lastSoftPadView === 'timeline') lastSoftPadView = 'runtime';
     try {
       var tmReset = global.OneToneSoftPadTimeMachine;
       if (tmReset && tmReset.closeDesk) tmReset.closeDesk();
     } catch (_) {}
-    clearSubpage();
     var e = els();
     applySoftPadEnsureCtaHost(buildSoftPadEnsureCtaModel());
     var entries = listSoftPadSchemes();
@@ -3613,6 +3694,8 @@
     }
 
     if (!entries.length) {
+      softPadView = 'hub';
+      clearSubpage();
       // Don't wipe unrelated habit edit selection when Soft Pad has no app scenarios yet.
       var curId = getSelectedMappingId();
       if (curId) {
@@ -3648,28 +3731,73 @@
       feLog('fe softPad.render empty ' + (Date.now() - t0) + 'ms');
       return;
     }
-    if (!findEntry(getSelectedMappingId())) {
-      var fallback = pickDefaultEntry(entries) || entries[0];
-      setSelectedMappingId(String(fallback.mapping.id));
-      selectedScopeId = fallback.kind || pickDefaultScopeId(entries);
+
+    // Habit editor often leaves selectedMappingId on「通用设置」— adopt Soft Pad scheme for scope.
+    var softEntry = resolveSoftPadEntry();
+    if (hasMapping(softEntry)) {
+      adoptSoftPadSelection(softEntry);
+    } else {
+      softPadView = 'hub';
+      clearSubpage();
+      showPrepareMain(findScope(selectedScopeId || 'codex'));
+      ensureSoftPadBoundaryHint();
+      if (global.OneToneHabitChannelStatusStrip && global.OneToneHabitChannelStatusStrip.render) {
+        try { global.OneToneHabitChannelStatusStrip.render(); } catch (_) {}
+      }
+      feLog('fe softPad.render prepare ' + (Date.now() - t0) + 'ms scope=' + String(selectedScopeId || ''));
+      return;
     }
 
-    var needEntry = findEntry(getSelectedMappingId());
-    var needForce = hostsNeedPaint(needEntry) || !!opts.force || !!opts.mappingId;
-    // Chrome + list sync now; pad preview always deferred (never block drawer open).
-    selectScheme(getSelectedMappingId(), {
-      forceRemount: needForce,
-      scopeId: selectedScopeId,
-      rebuildList: false,
-      immediateMgr: false,
-      resetView: true
-    });
-    ensureSoftPadBoundaryHint();
-    if (global.OneToneHabitChannelStatusStrip && global.OneToneHabitChannelStatusStrip.render) {
-      try { global.OneToneHabitChannelStatusStrip.render(); } catch (_) {}
+    // Clear under hub so clearSubpage force-hide matches view.
+    softPadView = 'hub';
+    clearSubpage();
+    var openScopeId = selectedScopeId;
+    var openEntry = resolveSoftPadEntry();
+    // Paint left nav NOW (hub + mapping). Deferred-only landing was cancelled by
+    // selectToken bumps and left Soft Pad empty after React island host clears.
+    if (hasMapping(openEntry)) {
+      hideEmpty();
+      renderFuncTiles(openEntry);
+      paintPreview(openEntry, { force: true });
+      syncHubChrome(openEntry);
+      updateStatusBar(openEntry);
+      ensureSoftPadLeftChrome(openEntry);
     }
-    requestOverlayUsageForScope(selectedScopeId);
-    feLog('fe softPad.render chrome ' + (Date.now() - t0) + 'ms map=' + String(getSelectedMappingId() || ''));
+    var openGen = ++softPadOpenGen;
+    function paintSoftPadLanding() {
+      if (openGen !== softPadOpenGen) return;
+      var ui = global.OneToneState && global.OneToneState.ui;
+      if (ui && ui.settingsPanel && ui.settingsPanel !== 'softPad') return;
+      var landed = resolveSoftPadEntry();
+      if (!hasMapping(landed)) return;
+      adoptSoftPadSelection(landed);
+      var landId = String(landed.mapping.id);
+      selectScheme(landId, {
+        forceRemount: true,
+        scopeId: openScopeId || landed.kind,
+        rebuildList: false,
+        immediateMgr: false,
+        resetView: true
+      });
+      // openSubpage resolves Soft Pad even if habit still holds「通用设置」.
+      softPadView = 'hub';
+      openSubpage(defaultDetailView(opts));
+      landed = resolveSoftPadEntry() || landed;
+      if (hasMapping(landed)) {
+        paintPreview(landed, { force: true });
+        ensureSoftPadLeftChrome(landed);
+      }
+      ensureSoftPadBoundaryHint();
+      if (global.OneToneHabitChannelStatusStrip && global.OneToneHabitChannelStatusStrip.render) {
+        try { global.OneToneHabitChannelStatusStrip.render(); } catch (_) {}
+      }
+      requestOverlayUsageForScope(selectedScopeId);
+      feLog('fe softPad.render chrome ' + (Date.now() - t0) + 'ms map=' + String(getSelectedMappingId() || ''));
+    }
+    // Second pass after island paint-targets commit (createRoot is async).
+    requestAnimationFrame(function () {
+      setTimeout(paintSoftPadLanding, 0);
+    });
   }
 
   function ensureSoftPadBoundaryHint() {
@@ -3718,6 +3846,8 @@
     listSoftPadSchemes: listSoftPadSchemes,
     listAppScopes: listAppScopes,
     listHubEntries: listHubEntries,
+    resolveSoftPadEntry: resolveSoftPadEntry,
+    adoptSoftPadSelection: adoptSoftPadSelection,
     isSoftPadSchemeEligible: isSoftPadSchemeEligible,
     resolvePrimaryLane: resolvePrimaryLane,
     resolvePrimaryLaneResult: resolvePrimaryLaneResult,

@@ -13,15 +13,15 @@
       <div class="overlay-mini" id="overlayMini">
         <div class="overlay-mini__agents" id="miniAgents" role="list" aria-label="Agent 状态">
           <span class="overlay-mini__agent" role="listitem" data-agent="codex" data-status="idle" aria-label="Codex：空闲">
-            <img src="icons/app-target/codex.svg" alt="" aria-hidden="true">
+            <img src="icons/app-target/codex.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
           </span>
           <span class="overlay-mini__agent" role="listitem" data-agent="claude" data-status="idle" aria-label="Claude：空闲">
-            <img src="icons/app-target/claude.svg" alt="" aria-hidden="true">
+            <img src="icons/app-target/claude.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
           </span>
           <span class="overlay-mini__agent" role="listitem" data-agent="cursor" data-status="idle" aria-label="Cursor：空闲">
-            <img src="icons/app-target/cursor.svg" alt="" aria-hidden="true">
+            <img src="icons/app-target/cursor.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
           </span>
         </div>
@@ -45,6 +45,20 @@
             <div class="micro-hw micro-hw--sm">
               <span class="micro-hw__aura" aria-hidden="true"></span>
               <div class="micro-hw__face">
+                <div class="soft-pad-agent-bar" id="padAgentBar" role="toolbar" aria-label="Agent">
+                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="codex" data-status="idle" aria-pressed="false" aria-label="Codex" title="Codex">
+                    <img src="icons/app-target/codex.png" alt="" aria-hidden="true">
+                    <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="claude" data-status="idle" aria-pressed="false" aria-label="Claude" title="Claude">
+                    <img src="icons/app-target/claude.png" alt="" aria-hidden="true">
+                    <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="cursor" data-status="idle" aria-pressed="false" aria-label="Cursor" title="Cursor">
+                    <img src="icons/app-target/cursor.png" alt="" aria-hidden="true">
+                    <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
+                  </button>
+                </div>
                 <div class="micro-hw__grid" id="grid"></div>
                 <div class="status-chip" id="statusChip" data-status="idle" aria-hidden="true"></div>
               </div>
@@ -58,23 +72,6 @@
         <div class="overlay-app-meta" id="overlayAppMeta" hidden aria-live="polite">
           <div class="overlay-app-meta__row" id="overlayAppMetaRow"></div>
           <div class="overlay-app-meta__task" id="overlayAppMetaTask" hidden></div>
-        </div>
-        <div class="overlay-usage-rail" id="overlayUsageRail" aria-label="Agent 用量与连接健康">
-          <div class="overlay-usage-rail__item" data-usage-agent="codex">
-            <b>Codex</b><span class="overlay-usage-rail__badge" data-badge>未配置</span>
-            <i data-summary>--</i>
-            <small data-sub></small>
-          </div>
-          <div class="overlay-usage-rail__item" data-usage-agent="claude">
-            <b>Claude</b><span class="overlay-usage-rail__badge" data-badge>未配置</span>
-            <i data-summary>--</i>
-            <small data-sub></small>
-          </div>
-          <div class="overlay-usage-rail__item" data-usage-agent="cursor">
-            <b>Cursor</b><span class="overlay-usage-rail__badge" data-badge>未配置</span>
-            <i data-summary>--</i>
-            <small data-sub></small>
-          </div>
         </div>
         <div class="overlay-toast" id="overlayToast" aria-live="polite"></div>
       </div>
@@ -222,12 +219,12 @@
     var grid=document.getElementById('grid');
     var overlayToast=document.getElementById('overlayToast');
     var miniAgents=document.getElementById('miniAgents');
+    var padAgentBar=document.getElementById('padAgentBar');
     var miniUsagePill=document.getElementById('miniUsagePill');
     var statusChip=document.getElementById('statusChip');
     var overlayAppMeta=document.getElementById('overlayAppMeta');
     var overlayAppMetaRow=document.getElementById('overlayAppMetaRow');
     var overlayAppMetaTask=document.getElementById('overlayAppMetaTask');
-    var overlayUsageRail=document.getElementById('overlayUsageRail');
     var activePtr='';
     /** ACT10 hold-to-talk: block grid rebuild while pressed (innerHTML breaks pointer capture). */
     var holdLockId='';
@@ -248,6 +245,13 @@
     var enhanceOn=false;
     var padEnabled=true;
     var padMode='codex';
+    var focusedUsageAgent='';
+    var usageFocusPinned=false;
+    try{
+      var savedFocus=localStorage.getItem('onetoneFocusedUsageAgent');
+      if(savedFocus==='codex'||savedFocus==='claude'||savedFocus==='cursor') focusedUsageAgent=savedFocus;
+      usageFocusPinned=localStorage.getItem('onetoneUsageFocusPinned')==='1';
+    }catch(_){}
     try{
       var savedMode=localStorage.getItem('onetoneSoftPadMode');
       if(savedMode==='numpad'||savedMode==='codex'){
@@ -255,6 +259,15 @@
         padEnabled=savedMode==='codex';
       }
     }catch(_){}
+
+    function persistUsageFocus(kind, pinned){
+      focusedUsageAgent=kind;
+      if(pinned) usageFocusPinned=true;
+      try{
+        localStorage.setItem('onetoneFocusedUsageAgent', kind);
+        localStorage.setItem('onetoneUsageFocusPinned', usageFocusPinned?'1':'0');
+      }catch(_){}
+    }
 
     function persistPadMode(){
       try{ localStorage.setItem('onetoneSoftPadMode', padMode); }catch(_){}
@@ -396,21 +409,9 @@
     }
 
     function windowLabel(w,withReset){
-      var kind=String(w&&(w.kind||'')||'');
-      var mins=Number(w&&(w.durationMins!=null?w.durationMins:w.duration_mins))||0;
-      var rem=w&&(w.remainingPercent!=null?w.remainingPercent:w.remaining_percent);
-      if(rem==null) return '';
-      var pct=Math.round(Number(rem));
-      var base='';
-      if(kind==='primary'&&mins>0&&mins%60===0&&mins<=1440) base=(mins/60)+'h余'+pct+'%';
-      else if((kind==='secondary'||kind==='unknown'||!kind)&&mins>0&&mins%(24*60)===0) base=(mins/(24*60))+'d余'+pct+'%';
-      else if(kind==='secondary'&&mins>0&&mins%60===0) base=(mins/60)+'h余'+pct+'%';
-      else if(mins>0&&mins%60===0&&mins<=1440) base=(mins/60)+'h余'+pct+'%';
-      else if(mins>0) base=mins+'min窗口余'+pct+'%';
-      else base='窗口余'+pct+'%';
-      if(!withReset) return base;
-      var cd=formatResetCountdown(w&&(w.resetsAt!=null?w.resetsAt:w.resets_at));
-      return cd?(base+' · '+cd+'重置'):base;
+      return usageFmt.windowQuotaLabel
+        ? usageFmt.windowQuotaLabel(w, !!withReset)
+        : '';
     }
 
     function freshnessLabel(usage,healthRows){
@@ -544,32 +545,6 @@
       return { label:'同步中', state:'configured_waiting' };
     }
 
-    function usageRailSub(kind,usage,healthRows,fresh){
-      usage=usage||{};
-      if(kind==='cursor'){
-        var life=healthCap(healthRows,'lifecycle');
-        var tip=String(life&&(life.shortReason||life.short_reason)||'').trim();
-        if(!tip){
-          var ls=String(life&&life.state||'');
-          if(ls==='live') tip='活动可观察';
-          else if(ls==='configured_waiting') tip='已配置，等待首次 Hook 事件';
-          else tip='可装 Cursor Hook 观察状态';
-        }
-        return tip;
-      }
-      if(kind==='claude'){
-        if(isRenderableUsage(kind,usage)||claudeOtelBits(usage,false).length){
-          var msg=friendlyUsageMessage(usage.message);
-          if(fresh) return (String(usage.source||'')+(msg?' · '+msg:''))+' · '+fresh;
-          return msg||String(usage.source||(isRenderableUsage(kind,usage)?'claude_statusline':'claude_otel'));
-        }
-        return '无官方额度窗口';
-      }
-      var msg=friendlyUsageMessage(usage.message);
-      if(fresh) return (String(usage.source||'')+(msg?' · '+msg:''))+' · '+fresh;
-      return msg||String(usage.source||'');
-    }
-
     function miniUsageAbbrev(kind){
       if(kind==='codex') return 'C';
       if(kind==='claude') return 'Cl';
@@ -611,7 +586,7 @@
       return miniUsageAbbrev(kind)+' '+Math.round(Number(rem))+'%'+(cd?' · '+cd:'');
     }
 
-    /** One visible pill: renderable-first (never Cursor without quota). */
+    /** One visible pill: pinned focus → app_agent → renderable-first (never Cursor without quota). */
     function pickMiniUsageKind(s){
       var rows=Array.isArray(s&&s.agents)?s.agents:[];
       var byKind={};
@@ -622,6 +597,7 @@
       function hasRenderable(kind){
         return isRenderableUsage(kind,(byKind[kind]||{}).usage||{});
       }
+      if(usageFocusPinned&&focusedUsageAgent&&hasRenderable(focusedUsageAgent)) return focusedUsageAgent;
       var app=String(s&&(s.appAgent||s.app_agent)||'').trim().toLowerCase();
       if(app&&hasRenderable(app)) return app;
       var active=['needs_input','running'];
@@ -631,15 +607,55 @@
         if(active.indexOf(st)>=0&&hasRenderable(k)) return k;
       }
       if(hasRenderable('codex')) return 'codex';
-      var order=['claude'];
-      for(var j=0;j<order.length;j++){
-        if(hasRenderable(order[j])) return order[j];
-      }
+      if(hasRenderable('claude')) return 'claude';
       for(var n=0;n<rows.length;n++){
         var kk=String(rows[n]&&rows[n].kind||'').trim();
         if(kk&&kk!=='cursor'&&hasRenderable(kk)) return kk;
       }
       return '';
+    }
+
+    function resolveUsageFocus(s){
+      if(usageFocusPinned&&(focusedUsageAgent==='codex'||focusedUsageAgent==='claude'||focusedUsageAgent==='cursor')){
+        return focusedUsageAgent;
+      }
+      var app=String(s&&(s.appAgent||s.app_agent)||'').trim().toLowerCase();
+      if(app==='codex'||app==='claude'||app==='cursor') return app;
+      var auto=pickMiniUsageKind(s);
+      if(auto) return auto;
+      return focusedUsageAgent||'codex';
+    }
+
+    function usageLineBits(kind,usage){
+      usage=usage||{};
+      var lines=[];
+      var windows=Array.isArray(usage.windows)?usage.windows:[];
+      windows.slice(0,2).forEach(function(w){
+        var lab=windowLabel(w,true);
+        if(lab) lines.push(lab);
+      });
+      if(!lines.length&&kind==='claude'){
+        claudeOtelBits(usage,true).forEach(function(b){ lines.push(b); });
+      }
+      if(!lines.length&&kind==='codex'){
+        var remaining=usageValue(usage,'remainingPercent','remaining_percent');
+        if(remaining!=null){
+          var base='窗口余 '+Math.round(Number(remaining))+'%';
+          var cd=formatResetCountdown(usageValue(usage,'resetsAt','resets_at'));
+          lines.push(cd?base+' · '+cd+'重置':base);
+        }
+      }
+      if(!lines.length){
+        if(kind==='cursor') lines.push('用量暂无官方接口');
+        else if(kind==='claude') lines.push('无官方额度');
+        else lines.push('用量 --');
+      }
+      return lines;
+    }
+
+    function usageCaptionText(kind,usage){
+      var lines=usageLineBits(kind,usage||{});
+      return lines.length?lines[0]:'';
     }
 
     function applyMiniUsagePill(s){
@@ -652,85 +668,87 @@
         miniUsagePill.hidden=true;
         miniUsagePill.textContent='';
         miniUsagePill.removeAttribute('title');
+        miniUsagePill.removeAttribute('data-agent');
         return;
       }
       miniUsagePill.hidden=false;
       miniUsagePill.textContent=text;
+      miniUsagePill.setAttribute('data-agent', kind);
       miniUsagePill.title=agentLabel(kind)+' · '+usageSummary(kind,row.usage||{},true);
     }
 
-    function applyUsageRail(s){
-      if(!overlayUsageRail) return;
-      overlayUsageRail.hidden=false;
+    var usageCaptionIdle='';
+    var keyHoverActive=false;
+
+    function applyUsageCaptionIdle(s){
+      var focus=resolveUsageFocus(s);
       var rows=Array.isArray(s&&s.agents)?s.agents:[];
-      var byKind={};
-      rows.forEach(function(row){ if(row&&row.kind) byKind[row.kind]=row; });
-      overlayUsageRail.querySelectorAll('[data-usage-agent]').forEach(function(el){
-        var kind=String(el.getAttribute('data-usage-agent')||'');
-        var row=byKind[kind]||{};
-        var usage=row.usage||{};
-        var badgeInfo=usageRailBadge(kind,usage,row.health);
-        var headline=badgeInfo.label;
-        var headlineState=badgeInfo.state;
-        var summary=usageSummary(kind,usage,false);
-        var fresh=freshnessLabel(usage,row.health);
-        var sub=usageRailSub(kind,usage,row.health,fresh);
-        var badge=el.querySelector('[data-badge]');
-        var valueEl=el.querySelector('[data-summary]')||el.querySelector('i');
-        var subEl=el.querySelector('[data-sub]');
-        if(badge){
-          badge.textContent=headline;
-          badge.setAttribute('data-health', headlineState);
-        }
-        if(valueEl) valueEl.textContent=summary;
-        if(subEl) subEl.textContent=sub;
-        el.setAttribute('data-health', headlineState);
-        el.title=agentLabel(kind)+' · '+headline+' · '+usageSummary(kind,usage,true);
-        el.setAttribute('aria-label', agentLabel(kind)+'，'+headline+'，'+summary);
-      });
+      var row=rows.find(function(r){ return String(r&&r.kind||'')===focus; })||{};
+      var usage=row.usage||{};
+      var badge=usageRailBadge(focus,usage,row.health);
+      var cap=usageCaptionText(focus,usage);
+      usageCaptionIdle=cap
+        ?(agentLabel(focus)+' · '+cap)
+        :(agentLabel(focus)+' · '+badge.label);
+      if(!keyHoverActive) setKeyCaption('', '');
+    }
+
+    function applyAgentChipEl(el,s,byKind,focus){
+      if(!el) return;
+      var kind=String(el.getAttribute('data-agent')||'');
+      var row=byKind[kind]||{};
+      var state=String(row.state||'idle').trim()||'idle';
+      var model=String(row.model||'').trim();
+      var confidence=String(row.modelConfidence||row.model_confidence||'').trim();
+      var usage=row.usage||{};
+      var label=agentLabel(kind)+'：'+lightStatusLabel(state);
+      var line2='';
+      if(model){
+        line2=model;
+        if(kind==='claude'&&confidence==='low') line2+='（会话开始值）';
+        else if(kind==='cursor'&&model==='Auto') line2+='（自动路由）';
+      } else {
+        line2='模型 --';
+      }
+      if(kind!=='claude'||isRenderableUsage(kind,usage)||claudeOtelBits(usage,false).length){
+        var usageShort=usageSummary(kind,usage,false);
+        if(usageShort) line2+=' · '+usageShort;
+      }
+      var hasClaudeData=kind==='claude'&&(isRenderableUsage(kind,usage)||claudeOtelBits(usage,false).length);
+      var fresh=kind==='claude'&&!hasClaudeData?'':freshnessLabel(usage,row.health);
+      var src=String(usage.source||'');
+      if(kind==='cursor') src=src||'Cursor Hook';
+      if(kind==='claude'&&!hasClaudeData) src='—';
+      var line3=(src||'—')+(fresh?' · '+fresh:'');
+      if((kind!=='claude'||hasClaudeData)&&String(usage.status||'')==='stale') line3='数据陈旧'+(fresh?' · 上次成功 '+fresh:'');
+      var tip=label+'\n'+line2+'\n'+line3;
+      if(tip.length>140) tip=tip.slice(0,137)+'…';
+      el.setAttribute('data-status', state);
+      el.classList.toggle('is-usage-focus', kind===focus);
+      el.setAttribute('aria-pressed', kind===focus?'true':'false');
+      el.setAttribute('aria-label', label+'，'+line2);
+      el.setAttribute('title', tip);
     }
 
     function applyMiniAgentChips(s){
-      if(!miniAgents) return;
       var rows=Array.isArray(s&&s.agents)?s.agents:[];
       var byKind={};
       rows.forEach(function(row){
         var kind=String(row&&row.kind||'').trim();
         if(kind) byKind[kind]=row;
       });
-      miniAgents.querySelectorAll('.overlay-mini__agent').forEach(function(el){
-        var kind=String(el.getAttribute('data-agent')||'');
-        var row=byKind[kind]||{};
-        var state=String(row.state||'idle').trim()||'idle';
-        var model=String(row.model||'').trim();
-        var confidence=String(row.modelConfidence||row.model_confidence||'').trim();
-        var usage=row.usage||{};
-        var label=agentLabel(kind)+'：'+lightStatusLabel(state);
-        var line2='';
-        if(model){
-          line2=model;
-          if(kind==='claude'&&confidence==='low') line2+='（会话开始值）';
-          else if(kind==='cursor'&&model==='Auto') line2+='（自动路由）';
-        } else {
-          line2='模型 --';
-        }
-        if(kind!=='claude'||isRenderableUsage(kind,usage)||claudeOtelBits(usage,false).length){
-          var usageShort=usageSummary(kind,usage,false);
-          if(usageShort) line2+=' · '+usageShort;
-        }
-        var hasClaudeData=kind==='claude'&&(isRenderableUsage(kind,usage)||claudeOtelBits(usage,false).length);
-        var fresh=kind==='claude'&&!hasClaudeData?'':freshnessLabel(usage,row.health);
-        var src=String(usage.source||'');
-        if(kind==='cursor') src=src||'Cursor Hook';
-        if(kind==='claude'&&!hasClaudeData) src='—';
-        var line3=(src||'—')+(fresh?' · '+fresh:'');
-        if((kind!=='claude'||hasClaudeData)&&String(usage.status||'')==='stale') line3='数据陈旧'+(fresh?' · 上次成功 '+fresh:'');
-        var tip=label+'\n'+line2+'\n'+line3;
-        if(tip.length>140) tip=tip.slice(0,137)+'…';
-        el.setAttribute('data-status', state);
-        el.setAttribute('aria-label', label+'，'+line2);
-        el.setAttribute('title', tip);
-      });
+      var focus=resolveUsageFocus(s);
+      if(miniAgents){
+        miniAgents.querySelectorAll('[data-agent]').forEach(function(el){
+          applyAgentChipEl(el,s,byKind,focus);
+        });
+      }
+      if(padAgentBar){
+        padAgentBar.querySelectorAll('[data-agent]').forEach(function(el){
+          applyAgentChipEl(el,s,byKind,focus);
+        });
+      }
+      applyUsageCaptionIdle(s);
     }
 
     function formatAgeMs(ageMs){
@@ -968,12 +986,24 @@
       var chordEl=cap.querySelector('[data-cap-chord]');
       var n=String(name||'').trim();
       var c=String(chord||'').trim();
-      if(nameEl) nameEl.textContent=n||keyCaptionIdle;
-      if(chordEl){
-        chordEl.textContent=c;
-        chordEl.hidden=!c;
+      if(n){
+        keyHoverActive=true;
+        if(nameEl) nameEl.textContent=n;
+        if(chordEl){
+          chordEl.textContent=c;
+          chordEl.hidden=!c;
+        }
+        cap.classList.add('is-active');
+        return;
       }
-      cap.classList.toggle('is-active', !!n);
+      keyHoverActive=false;
+      var idle=usageCaptionIdle||keyCaptionIdle;
+      if(nameEl) nameEl.textContent=idle;
+      if(chordEl){
+        chordEl.textContent='';
+        chordEl.hidden=true;
+      }
+      cap.classList.toggle('is-active', !!usageCaptionIdle);
     }
 
     function captionFromKeyEl(el){
@@ -1298,7 +1328,6 @@
       syncOverlayTheme();
       applyMiniAgentChips(s);
       applyMiniUsagePill(s);
-      applyUsageRail(s);
       var padSkin=normalizeOverlaySkin(s.skin||s.padSkin);
       var rootEl=document.querySelector('.root');
       if(rootEl) rootEl.setAttribute('data-pad-skin', padSkin);
@@ -1531,6 +1560,38 @@
         invoke('cmd_codex_micro_overlay_set_minimized',{minimized:false}).catch(function(){});
       });
     });
+
+    function setUsageFocusFromUi(kind){
+      kind=String(kind||'').trim();
+      if(kind!=='codex'&&kind!=='claude'&&kind!=='cursor') return;
+      persistUsageFocus(kind, true);
+      var s=lastSnap||{};
+      applyMiniAgentChips(s);
+      applyMiniUsagePill(s);
+      invoke('cmd_soft_pad_focus_agent',{kind:kind}).catch(function(){});
+    }
+
+    function bindAgentFocusClicks(root){
+      if(!root||root.__agentFocusBound) return;
+      root.__agentFocusBound=true;
+      root.querySelectorAll('[data-agent]').forEach(function(el){
+        el.setAttribute('tabindex','0');
+        if(el.tagName!=='BUTTON') el.setAttribute('role','button');
+        el.addEventListener('click',function(e){
+          e.preventDefault();
+          e.stopPropagation();
+          setUsageFocusFromUi(el.getAttribute('data-agent'));
+        });
+        el.addEventListener('keydown',function(e){
+          if(e.key==='Enter'||e.key===' '){
+            e.preventDefault();
+            setUsageFocusFromUi(el.getAttribute('data-agent'));
+          }
+        });
+      });
+    }
+    bindAgentFocusClicks(miniAgents);
+    bindAgentFocusClicks(padAgentBar);
 
     function bootstrapOverlayState(){
       // Seed chrome from last known mode immediately (before IPC).

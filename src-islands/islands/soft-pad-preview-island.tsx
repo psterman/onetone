@@ -30,6 +30,7 @@ const EMPTY: SoftPadPreviewModel = {
 
 type Win = Window & {
   __otSoftPadPreviewSync?: () => void;
+  __otSoftPadPreviewForce?: () => void;
   __otSoftPadPreviewMounted?: boolean;
 };
 
@@ -105,6 +106,10 @@ function getSnapshot(): SoftPadPreviewModel {
 function ensureBridge(): void {
   const w = window as Win;
   w.__otSoftPadPreviewSync = syncFromLegacy;
+  w.__otSoftPadPreviewForce = () => {
+    currentSig = '';
+    syncFromLegacy();
+  };
   w.__otSoftPadPreviewMounted = true;
 }
 
@@ -115,6 +120,8 @@ function usePreviewModel(): SoftPadPreviewModel {
     ensureBridge();
     if (!mountedOnce.current) {
       mountedOnce.current = true;
+      // 强制首刷：挂载前可能已有 sync（无 paint 节点），需在 paint 节点就绪后重绘。
+      currentSig = '';
       syncFromLegacy();
     }
   }, []);

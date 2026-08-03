@@ -7,7 +7,16 @@
 
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, spring } from "remotion";
-import { icons, getDesignMockList, getSourceFiles } from "../utils/projectFiles";
+import { icons } from "../utils/projectFiles";
+
+const getDesignMockList = () => [
+  { name: "Home Redesign", type: "UI设计", count: 19 },
+  { name: "Camera Pro", type: "功能原型", count: 1 },
+];
+
+const getSourceFiles = () => [
+  { path: "src/js/features/", name: "Visual Agent", description: "视觉感知系统" },
+];
 
 interface FileCardProps {
   name: string;

@@ -133,10 +133,13 @@ check('runtime ready 为 slim primary', readyChrome.includes('soft-pad-panel-pri
   !readyChrome.includes('soft-pad-panel-empty'));
 
 state.selectedMappingId = null;
+const keptMaps = state.config.mappings.slice();
+state.config.mappings = [];
 const previewEmpty = API.buildSoftPadPreviewModel();
-check('无 mapping previewEmpty=noMapping', previewEmpty.previewEmpty === 'noMapping');
-check('无 mapping emptyHtml 非空', typeof previewEmpty.emptyHtml === 'string' &&
+check('无 Soft Pad 方案 previewEmpty=noMapping', previewEmpty.previewEmpty === 'noMapping');
+check('无 Soft Pad 方案 emptyHtml 非空', typeof previewEmpty.emptyHtml === 'string' &&
   previewEmpty.emptyHtml.includes('soft-pad-preview-empty'));
+state.config.mappings = keptMaps;
 
 console.log('[soft-pad-3c] 源码护栏:');
 check('SOFT_PAD_PANEL_ORDER 常量', hubSrc.includes("SOFT_PAD_PANEL_ORDER = ['runtime', 'layout', 'presentation', 'agent']"));

@@ -61,6 +61,9 @@ function pullModel(): SoftPadSubpageModel {
   // Same sig → skip remount (避免 refresh 清掉 layout 内联编辑器)；
   // paintSubpage / clearSubpage 会改 model.sig（含 subpageToken）。
   if (sig === currentSig) return;
+  const el = paintTarget();
+  // Paint-target not in DOM yet (createRoot lag) — don't lock sig or retries will no-op.
+  if (!el && !next.clear) return;
   applyPaint(next);
   currentSig = sig;
   currentModel = next;

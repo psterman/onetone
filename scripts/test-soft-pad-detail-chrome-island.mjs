@@ -109,8 +109,14 @@ check('syncHubChrome 岛守卫', /function syncHubChrome\([\s\S]*?__otSoftPadDet
 check('clearSubpage 岛守卫', /function clearSubpage\([\s\S]*?__otSoftPadDetailChromeMounted/.test(softPadJs));
 check('paintSubpage 标题岛守卫', /function paintSubpage\([\s\S]*?__otSoftPadDetailChromeMounted/.test(softPadJs));
 check('bindChrome 跳过 subBack', /function bindChrome\([\s\S]*?__otSoftPadDetailChromeMounted/.test(softPadJs));
+check('setDetailOpen 先写 panel/idle attrs', /function setDetailOpen\([\s\S]*?detailPanel\.hidden = !open[\s\S]*?__otSoftPadDetailChromeSync/.test(softPadJs));
 check('setDetailOpen 岛守卫 P14i', /function setDetailOpen\([\s\S]*?__otSoftPadDetailChromeMounted/.test(softPadJs));
 check('render 接线挂载', softPadJs.includes('__otMountSoftPadDetailChromeIsland'));
+check('render 延迟落地 paint', /function render\([\s\S]*?paintSoftPadLanding[\s\S]*?requestAnimationFrame/.test(softPadJs));
+check('render 先画左侧再落地', /ensureSoftPadLeftChrome[\s\S]*?paintSoftPadLanding/.test(softPadJs) || /paintPreview\(openEntry[\s\S]*?paintSoftPadLanding/.test(softPadJs));
+check('openGen 不跟 selectToken 绑死', softPadJs.includes('softPadOpenGen'));
+check('落地走 openSubpage', /function paintSoftPadLanding\([\s\S]*?openSubpage\(/.test(softPadJs));
+check('openSubpage resolve Soft Pad', /function openSubpage\([\s\S]*?resolveSoftPadEntry\(/.test(softPadJs));
 
 const html = readFileSync(join(root, 'src/index.html'), 'utf8');
 check('index 含 softPadSubpageBar', html.includes('id="softPadSubpageBar"'));

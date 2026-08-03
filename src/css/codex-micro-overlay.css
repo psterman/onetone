@@ -188,13 +188,13 @@ body {
   display: none !important;
 }
 
-html[data-theme="dark"] .overlay-key-caption {
-  background: rgba(20, 28, 40, 0.72);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: #e2e8f0;
-}
-html[data-theme="dark"] .overlay-key-caption__chord {
-  color: #94a3b8;
+/* Caption stays Soft Pad face material — do not follow app dark chrome. */
+.overlay-body .overlay-key-caption,
+.overlay-pad-stack .overlay-key-caption {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(112, 126, 142, 0.18);
+  color: #3a4454;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 .overlay-full {
@@ -368,9 +368,12 @@ html[data-theme="dark"] .overlay-key-caption__chord {
 
 .overlay-body .micro-hw__face {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   width: 100%;
   height: 100%;
-  padding: 32px 37px 35px;
+  padding: 18px 28px 28px;
   border-radius: 20px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(218, 226, 234, 0.42)),
@@ -531,8 +534,10 @@ html[data-theme="dark"] .overlay-key-caption__chord {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   grid-template-rows: repeat(5, minmax(0, 1fr));
   gap: var(--overlay-gap);
+  flex: 1 1 auto;
   width: 100%;
-  height: 100%;
+  min-height: 0;
+  height: auto;
   overflow: visible;
 }
 
@@ -959,96 +964,128 @@ html[data-theme="dark"] .overlay-key-caption__chord {
   opacity: 0.72;
 }
 
-.overlay-usage-rail {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-height: 28px;
-  margin: 0 12px 8px;
-  padding: 6px 8px;
-  border: 1px solid rgba(76, 100, 132, 0.14);
-  border-radius: 9px;
-  background: rgba(232, 239, 247, 0.72);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
-}
-
-.overlay-usage-rail__item {
-  min-width: 0;
+/* Agent bar: same sculpted soft keys as command row — follow pad face, not app theme. */
+.soft-pad-agent-bar {
+  position: relative;
+  z-index: 2;
   display: grid;
-  grid-template-columns: 52px auto 1fr;
-  grid-template-rows: auto auto;
-  column-gap: 6px;
-  row-gap: 1px;
-  align-items: baseline;
-  color: #657286;
-  font: 10px/1.25 "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
-}
-
-.overlay-usage-rail__item b {
-  grid-column: 1;
-  grid-row: 1;
-  color: #344155;
-  font-weight: 700;
-}
-.overlay-usage-rail__badge {
-  grid-column: 2;
-  grid-row: 1;
-  font-size: 9px;
-  padding: 0 5px;
-  border-radius: 999px;
-  border: 1px solid rgba(100, 120, 140, 0.25);
-  color: #5a6a7c;
-  background: rgba(240, 244, 248, 0.9);
-}
-.overlay-usage-rail__badge[data-health="live"] {
-  color: #1f7a4c;
-  border-color: rgba(40, 160, 100, 0.35);
-  background: rgba(220, 245, 230, 0.9);
-}
-.overlay-usage-rail__badge[data-health="stale"] {
-  color: #8a5a10;
-  border-color: rgba(220, 160, 40, 0.4);
-  background: rgba(255, 240, 210, 0.95);
-}
-.overlay-usage-rail__badge[data-health="error"] {
-  color: #a12c2c;
-  border-color: rgba(200, 60, 60, 0.35);
-  background: rgba(255, 230, 230, 0.95);
-}
-.overlay-usage-rail__badge[data-health="unsupported"] {
-  border-style: dashed;
-  color: #6a7686;
-}
-.overlay-usage-rail__item i,
-.overlay-usage-rail__item [data-summary] {
-  grid-column: 3;
-  grid-row: 1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  flex: 0 0 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-style: normal;
-  text-align: right;
-  color: #2c3a4c;
-}
-.overlay-usage-rail__item small,
-.overlay-usage-rail__item [data-sub] {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  color: rgba(70, 85, 105, 0.75);
-  font-size: 9px;
+  margin: 0;
+  padding: 5px;
+  border-radius: 14px;
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow:
+    inset 0 1px 2px rgba(20, 30, 50, 0.06),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.7);
 }
 
-html[data-theme="dark"] .overlay-usage-rail {
-  border-color: rgba(148, 163, 184, 0.16);
-  background: rgba(15, 23, 36, 0.76);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+.soft-pad-agent-bar__chip {
+  position: relative;
+  min-width: 0;
+  height: 34px;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  border: 1px solid rgba(92, 105, 122, 0.16);
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f2f5f8 52%, #dce4eb 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -5px 10px rgba(139, 152, 169, 0.14),
+    0 3px 0 #cfd8e0,
+    0 5px 10px rgba(35, 45, 58, 0.14);
+  color: #334155;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.12s ease, filter 0.12s ease;
 }
-html[data-theme="dark"] .overlay-usage-rail__item { color: #94a3b8; }
-html[data-theme="dark"] .overlay-usage-rail__item b { color: #d8e2ef; }
-html[data-theme="dark"] .overlay-usage-rail__item [data-summary] { color: #e4ecf6; }
-html[data-theme="dark"] .overlay-usage-rail__item [data-sub] { color: rgba(156, 169, 188, 0.78); }
+
+/* Soft brand tint — still white Soft Pad keys, not dark pills. */
+.soft-pad-agent-bar__chip[data-agent="codex"] {
+  background: linear-gradient(180deg, #ffffff 0%, #eef8f4 55%, #d4ebe2 100%);
+  border-color: rgba(16, 163, 127, 0.22);
+}
+.soft-pad-agent-bar__chip[data-agent="claude"] {
+  background: linear-gradient(180deg, #ffffff 0%, #faf1ec 55%, #ead8cf 100%);
+  border-color: rgba(217, 119, 87, 0.28);
+}
+.soft-pad-agent-bar__chip[data-agent="cursor"] {
+  background: linear-gradient(180deg, #ffffff 0%, #f3f4f6 55%, #dde1e6 100%);
+  border-color: rgba(80, 90, 110, 0.22);
+}
+
+.soft-pad-agent-bar__chip:hover {
+  filter: brightness(1.03);
+}
+
+.soft-pad-agent-bar__chip:active {
+  transform: translateY(2px) scale(0.97);
+  box-shadow:
+    inset 0 2px 6px rgba(20, 30, 50, 0.16),
+    0 1px 0 #cfd8e0;
+}
+
+.soft-pad-agent-bar__chip img {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  border-radius: 5px;
+  pointer-events: none;
+}
+
+.soft-pad-agent-bar__dot {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(120, 136, 156, 0.4);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65);
+}
+
+.soft-pad-agent-bar__chip[data-status="needs_input"] .soft-pad-agent-bar__dot {
+  background: #f59e0b;
+}
+.soft-pad-agent-bar__chip[data-status="running"] .soft-pad-agent-bar__dot {
+  background: #22a05a;
+}
+.soft-pad-agent-bar__chip[data-status="failed"] .soft-pad-agent-bar__dot,
+.soft-pad-agent-bar__chip[data-status="error"] .soft-pad-agent-bar__dot {
+  background: #e11d48;
+}
+
+.soft-pad-agent-bar__chip[data-agent="codex"].is-usage-focus {
+  border-color: rgba(16, 163, 127, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -5px 10px rgba(139, 152, 169, 0.12),
+    0 0 0 2px rgba(16, 163, 127, 0.35),
+    0 3px 0 #cfd8e0;
+}
+.soft-pad-agent-bar__chip[data-agent="claude"].is-usage-focus {
+  border-color: rgba(217, 119, 87, 0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -5px 10px rgba(139, 152, 169, 0.12),
+    0 0 0 2px rgba(217, 119, 87, 0.35),
+    0 3px 0 #cfd8e0;
+}
+.soft-pad-agent-bar__chip[data-agent="cursor"].is-usage-focus {
+  border-color: rgba(80, 90, 110, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -5px 10px rgba(139, 152, 169, 0.12),
+    0 0 0 2px rgba(80, 90, 110, 0.32),
+    0 3px 0 #cfd8e0;
+}
 
 .foot { display: none; }
 
@@ -1105,6 +1142,19 @@ html[data-theme="dark"] .overlay-usage-rail__item [data-sub] { color: rgba(156, 
   box-sizing: border-box;
 }
 
+.overlay-mini__usage[data-agent="codex"] {
+  border-color: rgba(34, 160, 90, 0.45);
+  box-shadow: inset 3px 0 0 #22a05a;
+}
+.overlay-mini__usage[data-agent="claude"] {
+  border-color: rgba(217, 119, 87, 0.5);
+  box-shadow: inset 3px 0 0 #d97757;
+}
+.overlay-mini__usage[data-agent="cursor"] {
+  border-color: rgba(80, 90, 110, 0.4);
+  box-shadow: inset 3px 0 0 #505a6e;
+}
+
 .overlay-mini__usage[hidden] {
   display: none !important;
 }
@@ -1122,12 +1172,19 @@ html[data-theme="dark"] .overlay-usage-rail__item [data-sub] { color: rgba(156, 
   flex: 0 0 22px;
   background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(229,236,245,.9));
   box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 1px 3px rgba(20,30,50,.12);
+  cursor: pointer;
+}
+
+.overlay-mini__agent.is-usage-focus {
+  border-color: rgba(40, 100, 180, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 0 0 2px rgba(59, 130, 246, 0.35);
 }
 
 .overlay-mini__agent img {
   width: 14px;
   height: 14px;
   object-fit: contain;
+  border-radius: 3px;
 }
 
 .overlay-mini__agent-dot {
@@ -1819,6 +1876,48 @@ html[data-theme="dark"] .root[data-pad-skin="vibe-light"] .micro-hw__key:not(.mi
 html[data-theme="dark"] .wrap[data-pad-skin="vibe-light"] .micro-hw__key:not(.micro-hw__key--placeholder):hover {
   transform: translateY(-3px);
   filter: brightness(1.08);
+}
+
+/* Agent bar well follows pad skin; chip face keeps brand soft-key tints. */
+.root[data-pad-skin="glass-light"] .soft-pad-agent-bar,
+.wrap[data-pad-skin="glass-light"] .soft-pad-agent-bar,
+.micro-hw[data-pad-skin="glass-light"] .soft-pad-agent-bar {
+  background: rgba(15, 23, 42, 0.05);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+.root[data-pad-skin="hybrid-pro"] .soft-pad-agent-bar,
+.wrap[data-pad-skin="hybrid-pro"] .soft-pad-agent-bar,
+.micro-hw[data-pad-skin="hybrid-pro"] .soft-pad-agent-bar {
+  background: rgba(23, 32, 51, 0.06);
+}
+.root[data-pad-skin="vibe-light"] .soft-pad-agent-bar,
+.wrap[data-pad-skin="vibe-light"] .soft-pad-agent-bar,
+.micro-hw[data-pad-skin="vibe-light"] .soft-pad-agent-bar {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.12);
+}
+.root[data-pad-skin="vibe-dark"] .soft-pad-agent-bar,
+.wrap[data-pad-skin="vibe-dark"] .soft-pad-agent-bar,
+.micro-hw[data-pad-skin="vibe-dark"] .soft-pad-agent-bar {
+  background: rgba(2, 6, 23, 0.4);
+  border-color: rgba(148, 163, 184, 0.16);
+}
+.root[data-pad-skin="vibe-dark"] .soft-pad-agent-bar__chip,
+.wrap[data-pad-skin="vibe-dark"] .soft-pad-agent-bar__chip,
+.micro-hw[data-pad-skin="vibe-dark"] .soft-pad-agent-bar__chip {
+  background: linear-gradient(160deg, #334155, #1e293b);
+  border-color: rgba(148, 163, 184, 0.22);
+  box-shadow: 0 6px 14px rgba(2, 6, 23, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.root[data-pad-skin="vibe-dark"] .soft-pad-agent-bar__chip[data-agent="codex"],
+.wrap[data-pad-skin="vibe-dark"] .soft-pad-agent-bar__chip[data-agent="codex"],
+.micro-hw[data-pad-skin="vibe-dark"] .soft-pad-agent-bar__chip[data-agent="codex"] {
+  border-color: rgba(16, 163, 127, 0.4);
+}
+.root[data-pad-skin="vibe-dark"] .soft-pad-agent-bar__chip[data-agent="claude"],
+.wrap[data-pad-skin="vibe-dark"] .soft-pad-agent-bar__chip[data-agent="claude"],
+.micro-hw[data-pad-skin="vibe-dark"] .soft-pad-agent-bar__chip[data-agent="claude"] {
+  border-color: rgba(217, 119, 87, 0.45);
 }
 
 @media (prefers-reduced-motion: reduce) {

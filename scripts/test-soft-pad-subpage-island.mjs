@@ -112,8 +112,9 @@ check('有选中时 mapping 读桥有 id', API.getSelectedSoftPadMappingForSubpa
 
 state.selectedMappingId = null;
 model = API.buildSoftPadSubpageModel();
-check('无选中时 clear', model.clear === true);
-check('无选中时 mapping 读桥为 null', API.getSelectedSoftPadMappingForSubpage() == null);
+// Soft Pad falls back to current app scope when habit selection is empty (hub view → clear).
+check('无习惯选中 hub 时 clear', model.clear === true);
+check('无习惯选中时仍可读到 Soft Pad mapping', API.getSelectedSoftPadMappingForSubpage() && API.getSelectedSoftPadMappingForSubpage().id === 'm1');
 
 state.selectedMappingId = 'm1';
 
@@ -148,6 +149,7 @@ check('softPadLayoutEditorHost 读外层 panel', /function softPadLayoutEditorHo
 const islandTsx = readFileSync(join(root, 'src-islands/islands/soft-pad-subpage-island.tsx'), 'utf8');
 check('岛含 paint 节点', islandTsx.includes('data-soft-pad-subpage-paint'));
 check('岛调 paintSoftPadSubpageTarget', islandTsx.includes('paintSoftPadSubpageTarget'));
+check('无 paint 节点不锁 sig', islandTsx.includes('!el && !next.clear'));
 
 const domainTs = readFileSync(join(root, 'src-islands/domain/softPadSubpage.ts'), 'utf8');
 check('domain 调四面板', domainTs.includes('renderSoftPadLayoutPanel') && domainTs.includes('renderSoftPadAgentPanel'));

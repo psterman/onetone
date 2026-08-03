@@ -831,6 +831,7 @@ pub fn run() {
             ipc::cmd_codex_micro_overlay_toggle_num_mode,
             ipc::cmd_codex_micro_overlay_toggle_pad_mode,
             ipc::cmd_codex_micro_overlay_toggle_joy_panel,
+            ipc::cmd_soft_pad_focus_agent,
             ipc::cmd_codex_micro_pad_fire,
             ipc::cmd_soft_pad_runtime_snapshot,
             ipc::cmd_soft_pad_set_follow,
