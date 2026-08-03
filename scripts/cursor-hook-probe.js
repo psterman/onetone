@@ -68,7 +68,11 @@ function readIntegrationToken() {
     var appdata = process.env.APPDATA || '';
     var candidates = [];
     if (appdata) {
+      candidates.push(path.join(appdata, 'onetone', 'app', 'config', 'soft-pad-integration.token'));
+      candidates.push(path.join(appdata, 'com.onetone', 'app', 'config', 'soft-pad-integration.token'));
+      candidates.push(path.join(appdata, 'com.onetone.app', 'config', 'soft-pad-integration.token'));
       candidates.push(path.join(appdata, 'com.onetone', 'app', 'soft-pad-integration.token'));
+      candidates.push(path.join(appdata, 'onetone', 'app', 'soft-pad-integration.token'));
       candidates.push(path.join(appdata, 'com.onetone.app', 'soft-pad-integration.token'));
     }
     for (var i = 0; i < candidates.length; i++) {

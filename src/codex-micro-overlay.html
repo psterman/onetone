@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Codex Micro</title>
   <link rel="stylesheet" href="css/codex-micro-overlay.css" />
+  <script src="js/features/agent/usage-format.js"></script>
 </head>
 <body>
   <div class="root">
@@ -386,22 +387,12 @@
       return usage[camel]!=null?usage[camel]:usage[snake];
     }
 
-    /** < 1e12 → epoch seconds; >= 1e12 → epoch ms. Expired → 待刷新. */
+    var usageFmt=window.OneToneUsageFormat||{};
     function formatResetCountdown(resetsAt){
-      if(resetsAt==null||resetsAt==='') return '';
-      var n=Number(resetsAt);
-      if(!isFinite(n)||n<=0) return '';
-      var ms=n<1e12?n*1000:n;
-      var rem=ms-Date.now();
-      if(rem<=0) return '待刷新';
-      var totalMins=Math.floor(rem/60000);
-      if(totalMins<1) return '1m';
-      var days=Math.floor(totalMins/(24*60));
-      var hours=Math.floor((totalMins%(24*60))/60);
-      var mins=totalMins%60;
-      if(days>0) return hours>0?(days+'d'+hours+'h'):(days+'d');
-      if(hours>0) return mins>0?(hours+'h'+mins+'m'):(hours+'h');
-      return mins+'m';
+      return usageFmt.formatResetCountdown?usageFmt.formatResetCountdown(resetsAt):'';
+    }
+    function primaryResetAt(usage){
+      return usageFmt.primaryResetAt?usageFmt.primaryResetAt(usage):null;
     }
 
     function windowLabel(w,withReset){
@@ -412,8 +403,9 @@
       var pct=Math.round(Number(rem));
       var base='';
       if(kind==='primary'&&mins>0&&mins%60===0&&mins<=1440) base=(mins/60)+'h余'+pct+'%';
-      else if(kind==='secondary'&&mins>0&&mins%(24*60)===0) base=(mins/(24*60))+'d余'+pct+'%';
+      else if((kind==='secondary'||kind==='unknown'||!kind)&&mins>0&&mins%(24*60)===0) base=(mins/(24*60))+'d余'+pct+'%';
       else if(kind==='secondary'&&mins>0&&mins%60===0) base=(mins/60)+'h余'+pct+'%';
+      else if(mins>0&&mins%60===0&&mins<=1440) base=(mins/60)+'h余'+pct+'%';
       else if(mins>0) base=mins+'min窗口余'+pct+'%';
       else base='窗口余'+pct+'%';
       if(!withReset) return base;
@@ -462,24 +454,90 @@
         }
         var lifetime=usageValue(usage,'lifetimeTokens','lifetime_tokens');
         if(detail&&lifetime!=null) bits.push('累计 '+compactNumber(lifetime));
-      } else {
-        var session=usageValue(usage,'sessionTokens','session_tokens');
-        var auxiliary=usageValue(usage,'auxiliaryTokens','auxiliary_tokens');
-        var cost=usageValue(usage,'estimatedCostUsd','estimated_cost_usd');
-        if(session!=null) bits.push('本会话'+compactNumber(session));
-        if(auxiliary!=null) bits.push('子任务'+compactNumber(auxiliary));
-        if(cost!=null) bits.push('估算$'+Number(cost).toFixed(3).replace(/0+$/,'').replace(/\.$/,''));
+      } else if(kind==='claude'){
+        // OTel session/$ is not useful quota; hide until official windows exist.
+        return detail?'无官方额度窗口':'用量 --';
       }
       if(status==='stale'){
         if(bits.length) return bits.join(detail?' · ':' / ')+(detail?' · 数据陈旧':' · 陈旧');
-        return detail?(String(usage.message||'').trim()||'数据陈旧，保留上次值'):'数据陈旧';
+        return detail?(friendlyUsageMessage(usage.message)||'数据陈旧，保留上次值'):'数据陈旧';
+      }
+      if(status==='waiting'){
+        if(bits.length) return bits.join(detail?' · ':' / ');
+        return detail?(friendlyUsageMessage(usage.message)||'正在同步额度'):'同步中';
       }
       if(status!=='ready'){
         if(bits.length) return bits.join(detail?' · ':' / ');
-        var message=String(usage.message||'').trim();
+        var message=friendlyUsageMessage(usage.message);
         return detail?(message||'用量数据未连接'):'未连接';
       }
       return bits.length?bits.join(detail?' · ':' / '):(detail?'用量数据未返回':'--');
+    }
+
+    function friendlyUsageMessage(msg){
+      var s=String(msg||'').trim();
+      if(!s) return '';
+      var lower=s.toLowerCase();
+      if(lower.indexOf('timed out')>=0||lower.indexOf('timeout')>=0) return '同步超时，稍后重试';
+      if(lower.indexOf('token usage profile')>=0) return '同步超时，稍后重试';
+      return s;
+    }
+
+    function healthCap(healthRows,cap){
+      if(!Array.isArray(healthRows)) return null;
+      for(var i=0;i<healthRows.length;i++){
+        if(healthRows[i]&&String(healthRows[i].capability||'')===cap) return healthRows[i];
+      }
+      return null;
+    }
+
+    /** Usage-rail badge: usage channel only (never lifecycle aggregate). */
+    function usageRailBadge(kind,usage,healthRows){
+      usage=usage||{};
+      var u=healthCap(healthRows,'usage');
+      var state=String(u&&u.state||'');
+      var status=String(usage.status||'unavailable');
+      var hasWindows=Array.isArray(usage.windows)&&usage.windows.some(function(w){
+        return w&&(w.remainingPercent!=null||w.remaining_percent!=null);
+      });
+      var hasRem=usageValue(usage,'remainingPercent','remaining_percent')!=null||hasWindows;
+      if(kind==='cursor'){
+        return { label:'用量暂无接口', state:'unsupported' };
+      }
+      if(kind==='claude'){
+        return { label:'用量暂无接口', state:'unsupported' };
+      }
+      // Codex
+      if(status==='ready'||state==='live'||(hasRem&&status!=='stale'&&status!=='waiting')){
+        return { label:'正常', state:'live' };
+      }
+      if(status==='stale'||state==='stale') return { label:'数据陈旧', state:'stale' };
+      if(status==='waiting'||state==='configured_waiting') return { label:'同步中', state:'configured_waiting' };
+      if(status==='disabled'||state==='disabled') return { label:'已关闭', state:'disabled' };
+      if(state==='error'&&!hasRem) return { label:'出错', state:'error' };
+      if(hasRem) return { label:'正常', state:'live' };
+      return { label:'同步中', state:'configured_waiting' };
+    }
+
+    function usageRailSub(kind,usage,healthRows,fresh){
+      usage=usage||{};
+      if(kind==='cursor'){
+        var life=healthCap(healthRows,'lifecycle');
+        var tip=String(life&&(life.shortReason||life.short_reason)||'').trim();
+        if(!tip){
+          var ls=String(life&&life.state||'');
+          if(ls==='live') tip='活动可观察';
+          else if(ls==='configured_waiting') tip='已配置，等待首次 Hook 事件';
+          else tip='可装 Cursor Hook 观察状态';
+        }
+        return tip;
+      }
+      if(kind==='claude'){
+        return '无官方额度窗口（OTel 不展示）';
+      }
+      var msg=friendlyUsageMessage(usage.message);
+      if(fresh) return (String(usage.source||'')+(msg?' · '+msg:''))+' · '+fresh;
+      return msg||String(usage.source||'');
     }
 
     function miniUsageAbbrev(kind){
@@ -504,10 +562,8 @@
         }
         return rem!=null;
       }
-      if(kind==='claude'){
-        return usageValue(usage,'sessionTokens','session_tokens')!=null
-          || usageValue(usage,'estimatedCostUsd','estimated_cost_usd')!=null;
-      }
+      // Claude OTel session/$ is not product-useful quota; never occupy the mini pill.
+      if(kind==='claude') return false;
       return false;
     }
 
@@ -520,18 +576,8 @@
         var pw=windows.find(function(w){ return String(w.kind||'')==='primary'; })||windows[0];
         if(rem==null&&pw) rem=pw.remainingPercent!=null?pw.remainingPercent:pw.remaining_percent;
         if(rem==null) return '';
-        var cd=formatResetCountdown(usageValue(usage,'resetsAt','resets_at'));
-        if(!cd&&pw) cd=formatResetCountdown(pw.resetsAt!=null?pw.resetsAt:pw.resets_at);
+        var cd=formatResetCountdown(primaryResetAt(usage));
         return miniUsageAbbrev(kind)+' '+Math.round(Number(rem))+'%'+(cd?' · '+cd:'');
-      }
-      if(kind==='claude'){
-        var session=usageValue(usage,'sessionTokens','session_tokens');
-        var cost=usageValue(usage,'estimatedCostUsd','estimated_cost_usd');
-        var bits=[];
-        if(session!=null) bits.push(compactNumber(session));
-        if(cost!=null) bits.push('$'+Number(cost).toFixed(2).replace(/0+$/,'').replace(/\.$/,''));
-        if(!bits.length) return '';
-        return miniUsageAbbrev(kind)+' '+bits.join(' · ');
       }
       return '';
     }
@@ -594,11 +640,12 @@
         var kind=String(el.getAttribute('data-usage-agent')||'');
         var row=byKind[kind]||{};
         var usage=row.usage||{};
-        var headline=String(row.headlineLabel||row.headline_label||'').trim()||'未配置';
-        var headlineState=String(row.headlineState||row.headline_state||'not_configured');
+        var badgeInfo=usageRailBadge(kind,usage,row.health);
+        var headline=badgeInfo.label;
+        var headlineState=badgeInfo.state;
         var summary=usageSummary(kind,usage,false);
         var fresh=freshnessLabel(usage,row.health);
-        var sub=fresh?(String(usage.source||'')+' · '+fresh):String(usage.message||usage.source||'');
+        var sub=usageRailSub(kind,usage,row.health,fresh);
         var badge=el.querySelector('[data-badge]');
         var valueEl=el.querySelector('[data-summary]')||el.querySelector('i');
         var subEl=el.querySelector('[data-sub]');
@@ -638,13 +685,16 @@
         } else {
           line2='模型 --';
         }
-        var usageShort=usageSummary(kind,usage,false);
-        if(usageShort) line2+=' · '+usageShort;
-        var fresh=freshnessLabel(usage,row.health);
+        if(kind!=='claude'){
+          var usageShort=usageSummary(kind,usage,false);
+          if(usageShort) line2+=' · '+usageShort;
+        }
+        var fresh=kind==='claude'?'':freshnessLabel(usage,row.health);
         var src=String(usage.source||'');
         if(kind==='cursor') src=src||'Cursor Hook';
+        if(kind==='claude') src='—';
         var line3=(src||'—')+(fresh?' · '+fresh:'');
-        if(String(usage.status||'')==='stale') line3='数据陈旧'+(fresh?' · 上次成功 '+fresh:'');
+        if(kind!=='claude'&&String(usage.status||'')==='stale') line3='数据陈旧'+(fresh?' · 上次成功 '+fresh:'');
         var tip=label+'\n'+line2+'\n'+line3;
         if(tip.length>140) tip=tip.slice(0,137)+'…';
         el.setAttribute('data-status', state);

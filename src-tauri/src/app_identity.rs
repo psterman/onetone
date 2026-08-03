@@ -1,11 +1,17 @@
 //! Foreground / running-app identification (Windows). Separate from chat workflow actions.
 
 use serde::Serialize;
+use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 pub const CURSOR_APP_TARGET_ID: &str = "cursor-chat";
 pub const CODEX_APP_TARGET_ID: &str = "codex-chat";
 pub const MINIMAX_APP_TARGET_ID: &str = "minimax-chat";
 pub const CLAUDE_CODE_APP_TARGET_ID: &str = "claude-code";
+
+/// ponytail: Toolhelp process-tree walk is O(processes); overlay ticks every 250ms.
+/// Cache terminal-CLI resolution so we don't snapshot the whole machine multiple times per tick.
+const TERMINAL_CLI_CACHE_TTL: Duration = Duration::from_millis(750);
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -378,6 +384,193 @@ pub fn foreground_app_identity() -> Option<AppIdentity> {
 
 pub fn foreground_app_target_id() -> Option<String> {
     foreground_app_identity().and_then(|i| i.matched_preset_app_id)
+}
+
+/// Preset app target, else terminal host + Claude/Codex CLI child tree.
+/// Soft Pad / overlay activation should prefer this over preset-only.
+pub fn foreground_effective_app_target_id() -> Option<String> {
+    foreground_app_target_id().or_else(foreground_terminal_cli_target_id)
+}
+
+fn exe_base_name(name: &str) -> &str {
+    name.rsplit(['\\', '/']).next().unwrap_or(name)
+}
+
+/// True when the exe is a terminal host (Windows Terminal, PowerShell, cmd, etc.).
+pub fn is_terminal_host_exe(name: &str) -> bool {
+    let n = exe_base_name(name).to_ascii_lowercase();
+    matches!(
+        n.as_str(),
+        "windowsterminal.exe"
+            | "wt.exe"
+            | "powershell.exe"
+            | "pwsh.exe"
+            | "cmd.exe"
+            | "conhost.exe"
+            | "bash.exe"
+            | "mintty.exe"
+    )
+}
+
+pub fn is_claude_cli_exe(name: &str) -> bool {
+    let n = exe_base_name(name).to_ascii_lowercase();
+    n == "claude.exe" || n == "claude code.exe" || n == "claude"
+}
+
+pub fn is_codex_cli_exe(name: &str) -> bool {
+    let n = exe_base_name(name).to_ascii_lowercase();
+    n == "codex.exe" || n == "codex"
+}
+
+fn terminal_cli_target_from_title(title: &str) -> Option<String> {
+    let t = title.to_ascii_lowercase();
+    if t.contains("claude") {
+        return Some(CLAUDE_CODE_APP_TARGET_ID.to_string());
+    }
+    if t.contains("codex") {
+        return Some(CODEX_APP_TARGET_ID.to_string());
+    }
+    None
+}
+
+struct TerminalCliCache {
+    pid: u32,
+    exe_key: String,
+    at: Instant,
+    target: Option<String>,
+}
+
+fn terminal_cli_cache() -> &'static Mutex<Option<TerminalCliCache>> {
+    static C: OnceLock<Mutex<Option<TerminalCliCache>>> = OnceLock::new();
+    C.get_or_init(|| Mutex::new(None))
+}
+
+/// One Toolhelp snapshot: first Claude child wins, else Codex child.
+#[cfg(windows)]
+fn process_tree_cli_target(root_pid: u32) -> Option<&'static str> {
+    use std::collections::{HashMap, HashSet, VecDeque};
+    use winapi::um::handleapi::CloseHandle;
+    use winapi::um::tlhelp32::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+        TH32CS_SNAPPROCESS,
+    };
+
+    unsafe {
+        let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snap.is_null() || snap == winapi::um::handleapi::INVALID_HANDLE_VALUE {
+            return None;
+        }
+        let mut children: HashMap<u32, Vec<u32>> = HashMap::new();
+        let mut names: HashMap<u32, String> = HashMap::new();
+        let mut pe: PROCESSENTRY32W = std::mem::zeroed();
+        pe.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+        if Process32FirstW(snap, &mut pe) != 0 {
+            loop {
+                let pid = pe.th32ProcessID;
+                let ppid = pe.th32ParentProcessID;
+                let name = String::from_utf16_lossy(
+                    &pe.szExeFile
+                        .iter()
+                        .copied()
+                        .take_while(|&c| c != 0)
+                        .collect::<Vec<_>>(),
+                );
+                names.insert(pid, name);
+                children.entry(ppid).or_default().push(pid);
+                if Process32NextW(snap, &mut pe) == 0 {
+                    break;
+                }
+            }
+        }
+        CloseHandle(snap);
+
+        let mut q = VecDeque::from([root_pid]);
+        let mut seen = HashSet::from([root_pid]);
+        let mut found_codex = false;
+        while let Some(pid) = q.pop_front() {
+            if pid != root_pid {
+                if let Some(n) = names.get(&pid) {
+                    if is_claude_cli_exe(n) {
+                        return Some(CLAUDE_CODE_APP_TARGET_ID);
+                    }
+                    if !found_codex && is_codex_cli_exe(n) {
+                        found_codex = true;
+                    }
+                }
+            }
+            if let Some(kids) = children.get(&pid) {
+                for &c in kids {
+                    if seen.insert(c) {
+                        q.push_back(c);
+                    }
+                }
+            }
+        }
+        found_codex.then_some(CODEX_APP_TARGET_ID)
+    }
+}
+
+#[cfg(not(windows))]
+fn process_tree_cli_target(_root_pid: u32) -> Option<&'static str> {
+    None
+}
+
+#[cfg(windows)]
+pub fn process_tree_has_claude_child(root_pid: u32) -> bool {
+    process_tree_cli_target(root_pid) == Some(CLAUDE_CODE_APP_TARGET_ID)
+}
+
+#[cfg(windows)]
+pub fn process_tree_has_codex_child(root_pid: u32) -> bool {
+    process_tree_cli_target(root_pid) == Some(CODEX_APP_TARGET_ID)
+}
+
+#[cfg(not(windows))]
+pub fn process_tree_has_claude_child(_root_pid: u32) -> bool {
+    false
+}
+
+#[cfg(not(windows))]
+pub fn process_tree_has_codex_child(_root_pid: u32) -> bool {
+    false
+}
+
+/// True when foreground is a terminal host and a descendant process looks like Claude.
+pub fn terminal_has_claude_child() -> bool {
+    foreground_terminal_cli_target_id().as_deref() == Some(CLAUDE_CODE_APP_TARGET_ID)
+}
+
+/// True when foreground is a terminal host and a descendant process looks like Codex.
+pub fn terminal_has_codex_child() -> bool {
+    foreground_terminal_cli_target_id().as_deref() == Some(CODEX_APP_TARGET_ID)
+}
+
+/// Preset miss fallback: foreground terminal host + Claude/Codex child tree (title optional).
+pub fn foreground_terminal_cli_target_id() -> Option<String> {
+    let fg = foreground_app_identity()?;
+    if !is_terminal_host_exe(&fg.exe_name) {
+        return None;
+    }
+    let exe_key = fg.exe_name.to_ascii_lowercase();
+    if let Ok(guard) = terminal_cli_cache().lock() {
+        if let Some(c) = guard.as_ref() {
+            if c.pid == fg.pid && c.exe_key == exe_key && c.at.elapsed() < TERMINAL_CLI_CACHE_TTL {
+                return c.target.clone();
+            }
+        }
+    }
+    let target = process_tree_cli_target(fg.pid)
+        .map(str::to_string)
+        .or_else(|| terminal_cli_target_from_title(&fg.window_title));
+    if let Ok(mut guard) = terminal_cli_cache().lock() {
+        *guard = Some(TerminalCliCache {
+            pid: fg.pid,
+            exe_key,
+            at: Instant::now(),
+            target: target.clone(),
+        });
+    }
+    target
 }
 
 /// True when the live foreground process is OneTone itself (settings / Soft Pad manager).
@@ -763,6 +956,49 @@ mod tests {
             None,
         );
         assert_eq!(name, "Cursor");
+    }
+
+    #[test]
+    fn terminal_host_exe_classification() {
+        assert!(is_terminal_host_exe("WindowsTerminal.exe"));
+        assert!(is_terminal_host_exe("pwsh.exe"));
+        assert!(is_terminal_host_exe("powershell.exe"));
+        assert!(is_terminal_host_exe("cmd.exe"));
+        assert!(is_terminal_host_exe("conhost.exe"));
+        assert!(!is_terminal_host_exe("Cursor.exe"));
+        assert!(!is_terminal_host_exe("ChatGPT.exe"));
+    }
+
+    #[test]
+    fn cli_child_exe_name_matching() {
+        assert!(is_claude_cli_exe("claude"));
+        assert!(is_claude_cli_exe("claude.exe"));
+        assert!(is_claude_cli_exe("Claude Code.exe"));
+        assert!(!is_claude_cli_exe("notepad.exe"));
+
+        assert!(is_codex_cli_exe("codex"));
+        assert!(is_codex_cli_exe("codex.exe"));
+        assert!(!is_codex_cli_exe("ChatGPT.exe"));
+    }
+
+    #[test]
+    fn terminal_cli_target_from_title_fallback() {
+        assert_eq!(
+            terminal_cli_target_from_title("Claude Code session").as_deref(),
+            Some(CLAUDE_CODE_APP_TARGET_ID)
+        );
+        assert_eq!(
+            terminal_cli_target_from_title("Codex CLI").as_deref(),
+            Some(CODEX_APP_TARGET_ID)
+        );
+        assert_eq!(terminal_cli_target_from_title("Windows PowerShell"), None);
+    }
+
+    #[test]
+    fn effective_target_id_helpers_exist() {
+        // Compile/smoke: effective id is preset-or-terminal fallback.
+        let _ = foreground_effective_app_target_id();
+        let _ = foreground_terminal_cli_target_id();
     }
 
     #[test]

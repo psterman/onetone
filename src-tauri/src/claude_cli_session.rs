@@ -79,147 +79,18 @@ fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
-fn is_terminal_host_exe(name: &str) -> bool {
-    let n = name.to_ascii_lowercase();
-    matches!(
-        n.as_str(),
-        "windowsterminal.exe"
-            | "powershell.exe"
-            | "pwsh.exe"
-            | "cmd.exe"
-            | "bash.exe"
-            | "mintty.exe"
-    )
-}
-
 fn is_claude_exe(name: &str) -> bool {
-    let n = name.to_ascii_lowercase();
-    n == "claude.exe" || n == "claude code.exe" || n.starts_with("claude")
+    app_identity::is_claude_cli_exe(name)
 }
 
 /// True when foreground is a terminal host and a descendant process looks like Claude.
 pub fn terminal_has_claude_child() -> bool {
-    #[cfg(windows)]
-    {
-        terminal_has_claude_child_windows()
-    }
-    #[cfg(not(windows))]
-    {
-        false
-    }
+    app_identity::terminal_has_claude_child()
 }
 
-#[cfg(windows)]
-fn terminal_has_claude_child_windows() -> bool {
-    use winapi::um::winuser::{GetForegroundWindow, GetWindowThreadProcessId, IsWindow};
-
-    unsafe {
-        let fg = GetForegroundWindow();
-        if fg.is_null() || IsWindow(fg) == 0 {
-            return false;
-        }
-        let mut pid = 0u32;
-        GetWindowThreadProcessId(fg, &mut pid);
-        if pid == 0 {
-            return false;
-        }
-        let Some(exe) = process_exe_name(pid) else {
-            return false;
-        };
-        if !is_terminal_host_exe(&exe) {
-            return false;
-        }
-        process_tree_has_claude(pid)
-    }
-}
-
-#[cfg(windows)]
-fn process_exe_name(pid: u32) -> Option<String> {
-    use winapi::um::handleapi::CloseHandle;
-    use winapi::um::processthreadsapi::OpenProcess;
-    use winapi::um::winbase::QueryFullProcessImageNameW;
-    use winapi::um::winnt::{HANDLE, PROCESS_QUERY_LIMITED_INFORMATION};
-
-    unsafe {
-        let h: HANDLE = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
-        if h.is_null() {
-            return None;
-        }
-        let mut buf = [0u16; 512];
-        let mut size = buf.len() as u32;
-        let ok = QueryFullProcessImageNameW(h, 0, buf.as_mut_ptr(), &mut size);
-        CloseHandle(h);
-        if ok == 0 || size == 0 {
-            return None;
-        }
-        let path = String::from_utf16_lossy(&buf[..size as usize]);
-        Some(
-            path.rsplit(['\\', '/'])
-                .next()
-                .unwrap_or(path.as_str())
-                .to_string(),
-        )
-    }
-}
-
-#[cfg(windows)]
-fn process_tree_has_claude(root_pid: u32) -> bool {
-    use std::collections::{HashMap, HashSet, VecDeque};
-    use winapi::um::handleapi::CloseHandle;
-    use winapi::um::tlhelp32::{
-        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
-        TH32CS_SNAPPROCESS,
-    };
-
-    unsafe {
-        let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-        if snap.is_null() || snap == winapi::um::handleapi::INVALID_HANDLE_VALUE {
-            return false;
-        }
-        let mut children: HashMap<u32, Vec<u32>> = HashMap::new();
-        let mut names: HashMap<u32, String> = HashMap::new();
-        let mut pe: PROCESSENTRY32W = std::mem::zeroed();
-        pe.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
-        if Process32FirstW(snap, &mut pe) != 0 {
-            loop {
-                let pid = pe.th32ProcessID;
-                let ppid = pe.th32ParentProcessID;
-                let name = String::from_utf16_lossy(
-                    &pe.szExeFile
-                        .iter()
-                        .copied()
-                        .take_while(|&c| c != 0)
-                        .collect::<Vec<_>>(),
-                );
-                names.insert(pid, name);
-                children.entry(ppid).or_default().push(pid);
-                if Process32NextW(snap, &mut pe) == 0 {
-                    break;
-                }
-            }
-        }
-        CloseHandle(snap);
-
-        let mut q = VecDeque::from([root_pid]);
-        let mut seen = HashSet::from([root_pid]);
-        while let Some(pid) = q.pop_front() {
-            if pid != root_pid {
-                if let Some(n) = names.get(&pid) {
-                    if is_claude_exe(n) {
-                        return true;
-                    }
-                }
-            }
-            if let Some(kids) = children.get(&pid) {
-                for &c in kids {
-                    if seen.insert(c) {
-                        q.push_back(c);
-                    }
-                }
-            }
-        }
-        false
-    }
+/// True when foreground is a terminal host and a descendant process looks like Codex.
+pub fn terminal_has_codex_child() -> bool {
+    app_identity::terminal_has_codex_child()
 }
 
 fn foreground_hwnd_pid() -> (isize, u32) {
@@ -274,7 +145,7 @@ fn claude_running_or_needs() -> bool {
 pub fn claude_cli_session_latch() -> ClaudeCliSessionLatch {
     let now = now_ms();
     let (hwnd, pid) = foreground_hwnd_pid();
-    let fg = app_identity::foreground_app_target_id();
+    let fg = app_identity::foreground_effective_app_target_id();
     let claude_app = fg.as_deref() == Some(CLAUDE_CODE_APP_TARGET_ID);
     let has_child = terminal_has_claude_child();
     let activity = claude_activity_hold();
@@ -620,9 +491,9 @@ mod tests {
 
     #[test]
     fn terminal_host_names() {
-        assert!(is_terminal_host_exe("WindowsTerminal.exe"));
-        assert!(is_terminal_host_exe("powershell.exe"));
-        assert!(!is_terminal_host_exe("claude.exe"));
+        assert!(app_identity::is_terminal_host_exe("WindowsTerminal.exe"));
+        assert!(app_identity::is_terminal_host_exe("powershell.exe"));
+        assert!(!app_identity::is_terminal_host_exe("claude.exe"));
         assert!(is_claude_exe("claude.exe"));
         assert!(!is_claude_exe("notepad.exe"));
     }

@@ -229,11 +229,13 @@ fn sync_codex_usage_health(snap: &AgentUsageSnapshot) {
         "disabled" => (HealthState::Disabled, "usage_disabled", false),
         "ready" => (HealthState::Live, "", true),
         "stale" => (HealthState::Stale, "stale_timeout", false),
+        // First poll / never succeeded: show 同步中, not 出错.
+        "waiting" => (HealthState::ConfiguredWaiting, "waiting_first", false),
         _ => {
             if snap.last_success_at > 0 {
                 (HealthState::Stale, "export_timeout", false)
             } else {
-                (HealthState::Error, "cli_not_found", false)
+                (HealthState::ConfiguredWaiting, "waiting_first", false)
             }
         }
     };
@@ -243,11 +245,23 @@ fn sync_codex_usage_health(snap: &AgentUsageSnapshot) {
         state,
         value_state,
         reason,
-        &snap.message,
+        &friendly_codex_usage_message(&snap.message),
         "codex_app_server",
         snap.updated_at.max(now_ms()),
         mark_ok,
     );
+}
+
+fn friendly_codex_usage_message(message: &str) -> String {
+    let lower = message.to_ascii_lowercase();
+    if lower.contains("timed out") || lower.contains("timeout") || lower.contains("token usage profile")
+    {
+        return "同步超时，稍后重试".into();
+    }
+    if message.trim().is_empty() {
+        return String::new();
+    }
+    message.to_string()
 }
 
 fn now_ms() -> u64 {
@@ -594,7 +608,42 @@ fn rebuild_claude_snapshot(series: &mut HashMap<OtelSeriesKey, OtelSeriesValue>)
     usage_store()
         .lock()
         .unwrap_or_else(|e| e.into_inner())
-        .insert(AgentKind::Claude, snap);
+        .insert(AgentKind::Claude, snap.clone());
+    sync_claude_usage_health(&snap);
+}
+
+fn sync_claude_usage_health(snap: &AgentUsageSnapshot) {
+    use crate::connector_health::{upsert, CapabilityKind, HealthState, ValueState};
+    let has_value = snap.session_tokens.is_some() || snap.estimated_cost_usd.is_some();
+    let value_state = if has_value {
+        ValueState::Present
+    } else {
+        ValueState::Absent
+    };
+    let (state, reason, mark_ok) = match snap.status.as_str() {
+        "ready" => (HealthState::Live, "", true),
+        "stale" => (HealthState::Stale, "stale_timeout", false),
+        "waiting" => (HealthState::ConfiguredWaiting, "waiting_first", false),
+        "disabled" => (HealthState::Disabled, "usage_disabled", false),
+        _ => {
+            if snap.last_success_at > 0 {
+                (HealthState::Stale, "export_timeout", false)
+            } else {
+                (HealthState::ConfiguredWaiting, "waiting_first", false)
+            }
+        }
+    };
+    upsert(
+        AgentKind::Claude,
+        CapabilityKind::Usage,
+        state,
+        value_state,
+        reason,
+        &snap.message,
+        "claude_otel",
+        snap.updated_at.max(now_ms()),
+        mark_ok,
+    );
 }
 
 /// Ingest OTLP/HTTP JSON metrics. Only the two documented Claude usage metrics are retained.
@@ -717,6 +766,71 @@ pub fn otel_settings_conflicts(settings: &Value) -> Vec<&'static str> {
         out.push("otel_exporter_conflict");
     }
     out
+}
+
+/// OneTone Claude Usage OTel env keys (same contract as scripts/claude-otel-onetone.example.json).
+pub fn onetone_otel_env_pairs() -> &'static [(&'static str, &'static str)] {
+    &[
+        ("CLAUDE_CODE_ENABLE_TELEMETRY", "1"),
+        ("OTEL_METRICS_EXPORTER", "otlp"),
+        ("OTEL_LOGS_EXPORTER", "none"),
+        ("OTEL_EXPORTER_OTLP_METRICS_PROTOCOL", "http/json"),
+        ("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "http://127.0.0.1:8796/v1/metrics"),
+        ("OTEL_METRIC_EXPORT_INTERVAL", "10000"),
+        ("OTEL_LOG_USER_PROMPTS", "0"),
+        ("OTEL_LOG_ASSISTANT_RESPONSES", "0"),
+        ("OTEL_LOG_TOOL_DETAILS", "0"),
+    ]
+}
+
+/// Merge OneTone OTel env into Claude settings when safe.
+/// - Never overwrites an existing conflicting exporter/endpoint (returns Err reason code).
+/// - Fills only missing keys; leaves other env values untouched.
+/// Returns Ok(added_key_count).
+pub fn merge_onetone_otel_env(settings: &mut Value) -> Result<usize, &'static str> {
+    let conflicts = otel_settings_conflicts(settings);
+    if !conflicts.is_empty() {
+        return Err(conflicts[0]);
+    }
+    let env = settings
+        .as_object_mut()
+        .ok_or("settings_not_object")?
+        .entry("env")
+        .or_insert_with(|| Value::Object(Default::default()));
+    let env_obj = env.as_object_mut().ok_or("env_not_object")?;
+    let mut added = 0usize;
+    for &(key, value) in onetone_otel_env_pairs() {
+        match env_obj.get(key).and_then(|v| v.as_str()).map(str::trim) {
+            None | Some("") => {
+                env_obj.insert(key.to_string(), Value::String(value.to_string()));
+                added += 1;
+            }
+            Some(_) => {}
+        }
+    }
+    Ok(added)
+}
+
+/// Mark Claude Usage as waiting after OTel env is known present (no metrics yet).
+pub fn mark_claude_usage_waiting(message: &str) {
+    let now = now_ms();
+    let snap = AgentUsageSnapshot {
+        source: "claude_otel".into(),
+        status: "waiting".into(),
+        updated_at: now,
+        message: message.to_string(),
+        ..Default::default()
+    };
+    let mut store = usage_store().lock().unwrap_or_else(|e| e.into_inner());
+    let replace = match store.get(&AgentKind::Claude) {
+        None => true,
+        Some(prev) => prev.status == "unavailable" || prev.status.is_empty(),
+    };
+    if replace {
+        store.insert(AgentKind::Claude, snap.clone());
+        drop(store);
+        sync_claude_usage_health(&snap);
+    }
 }
 
 fn send_json_line(stdin: &mut impl Write, value: Value) -> Result<(), String> {
@@ -1211,6 +1325,37 @@ mod tests {
         let codes = otel_settings_conflicts(&bad);
         assert!(codes.contains(&"otel_endpoint_conflict"));
         assert!(codes.contains(&"otel_exporter_conflict"));
+    }
+
+    #[test]
+    fn merge_onetone_otel_env_fills_missing_only() {
+        let mut settings = serde_json::json!({
+            "env": {
+                "ANTHROPIC_MODEL": "keep-me",
+                "OTEL_METRICS_EXPORTER": "otlp"
+            }
+        });
+        assert_eq!(merge_onetone_otel_env(&mut settings), Ok(8));
+        let env = settings.get("env").unwrap();
+        assert_eq!(env.get("ANTHROPIC_MODEL").and_then(|v| v.as_str()), Some("keep-me"));
+        assert_eq!(
+            env.get("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT")
+                .and_then(|v| v.as_str()),
+            Some("http://127.0.0.1:8796/v1/metrics")
+        );
+        // Second merge is idempotent.
+        assert_eq!(merge_onetone_otel_env(&mut settings), Ok(0));
+    }
+
+    #[test]
+    fn merge_onetone_otel_env_refuses_conflict() {
+        let mut settings = serde_json::json!({
+            "env": {
+                "OTEL_METRICS_EXPORTER": "prometheus",
+                "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "http://127.0.0.1:4318/v1/metrics"
+            }
+        });
+        assert_eq!(merge_onetone_otel_env(&mut settings), Err("otel_endpoint_conflict"));
     }
 
     #[test]

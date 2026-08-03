@@ -741,7 +741,7 @@ fn codex_is_foreground() -> bool {
     if let Some(v) = *test_force_codex_fg().lock() {
         return v;
     }
-    crate::app_identity::foreground_app_target_id()
+    crate::app_identity::foreground_effective_app_target_id()
         .is_some_and(|id| id.trim() == CODEX_APP_TARGET_ID)
 }
 
@@ -760,7 +760,7 @@ fn claude_is_foreground() -> bool {
     if let Some(v) = *test_force_claude_fg().lock() {
         return v;
     }
-    crate::app_identity::foreground_app_target_id()
+    crate::app_identity::foreground_effective_app_target_id()
         .is_some_and(|id| id.trim() == crate::app_identity::CLAUDE_CODE_APP_TARGET_ID)
 }
 
@@ -799,7 +799,7 @@ pub fn soft_pad_inject_legal(target_app_id: &str) -> bool {
     if crate::app_identity::foreground_is_self() {
         return false;
     }
-    crate::app_identity::foreground_app_target_id().is_some_and(|id| id.trim() == tid)
+    crate::app_identity::foreground_effective_app_target_id().is_some_and(|id| id.trim() == tid)
 }
 
 /// Focus the Soft Pad target, then re-check inject legality.
@@ -817,7 +817,7 @@ pub fn soft_pad_inject_target_fallback(mapping_app_target: Option<&str>) -> Stri
     if let Some(tid) = mapping_app_target.map(str::trim).filter(|s| !s.is_empty()) {
         return tid.to_string();
     }
-    if let Some(tid) = crate::app_identity::foreground_app_target_id() {
+    if let Some(tid) = crate::app_identity::foreground_effective_app_target_id() {
         if crate::soft_pad_runtime::AgentKind::from_app_target(&tid).is_some() {
             return tid;
         }
@@ -1054,7 +1054,7 @@ fn active_codex_mapping_with_overlay(
         }
     }
 
-    if let Some(tid) = crate::app_identity::foreground_app_target_id() {
+    if let Some(tid) = crate::app_identity::foreground_effective_app_target_id() {
         if crate::soft_pad_runtime::AgentKind::from_app_target(&tid).is_some() {
             for m in &cfg.mappings {
                 if m.enabled && m.app_target_id.trim() == tid.trim() {
@@ -2170,7 +2170,7 @@ fn active_codex_mapping_with_overlay_mut(
     cfg: &mut VoiceConfig,
 ) -> Option<&mut CodexMicroPadConfig> {
     let prefer_id = crate::soft_pad_runtime::applied_lane().map(|(_, mid)| mid);
-    let fg_tid = crate::app_identity::foreground_app_target_id();
+    let fg_tid = crate::app_identity::foreground_effective_app_target_id();
 
     let idx = prefer_id
         .as_ref()
@@ -2496,6 +2496,27 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
     let gate_reason = overlay_runtime_gate_reason(state);
     let host_ok = gate_reason.is_none() && overlay_should_be_visible_host();
     let is_fg = *last_foreground_codex().lock();
+
+    // Soft Pad lane follows live FG (cached terminal-CLI probe; do not re-walk process tree here).
+    // Throttle recompute: at most once per second when FG kind changes.
+    {
+        static LAST_RECOMPUTE: std::sync::OnceLock<parking_lot::Mutex<(Option<crate::soft_pad_runtime::AgentKind>, std::time::Instant)>> =
+            std::sync::OnceLock::new();
+        let slot = LAST_RECOMPUTE.get_or_init(|| {
+            parking_lot::Mutex::new((None, std::time::Instant::now() - std::time::Duration::from_secs(2)))
+        });
+        let fg_kind = crate::app_identity::foreground_effective_app_target_id()
+            .as_deref()
+            .and_then(crate::soft_pad_runtime::AgentKind::from_app_target);
+        let mut g = slot.lock();
+        let (prev_kind, last_at) = *g;
+        if prev_kind != fg_kind && last_at.elapsed() >= std::time::Duration::from_millis(1000) {
+            *g = (fg_kind, std::time::Instant::now());
+            drop(g);
+            let cfg = state.cfg.lock().clone();
+            crate::soft_pad_runtime::request_soft_pad_recompute(&cfg);
+        }
+    }
 
     if is_fg {
         // Soft Pad agent returned to FG — clear soft dismiss so the pad can show again.

@@ -390,10 +390,30 @@ fn handle_client(
     }
 
     // Authenticated connector POSTs: no wildcard CORS.
-    if is_app_state || is_claude_otel || is_test_pulse {
+    // Claude OTel exporter cannot attach X-Onetone-Token; loopback + Host check already applied.
+    if (is_app_state || is_test_pulse) {
         if let Err(code) = require_integration_token(header) {
             write_error(&mut stream, 401, code)?;
             return Ok(());
+        }
+        if !rate_limit_allow(path) {
+            write_error(&mut stream, 429, "rate_limited")?;
+            return Ok(());
+        }
+    } else if is_claude_otel {
+        if let Some(presented) = header_value(header, crate::integration_token::TOKEN_HEADER)
+            .or_else(|| {
+                header_value(header, "authorization").and_then(|v| {
+                    let v = v.trim();
+                    v.strip_prefix("Bearer ")
+                        .or_else(|| v.strip_prefix("bearer "))
+                })
+            })
+        {
+            if let Err(code) = crate::integration_token::validate_presented(Some(presented)) {
+                write_error(&mut stream, 401, code)?;
+                return Ok(());
+            }
         }
         if !rate_limit_allow(path) {
             write_error(&mut stream, 429, "rate_limited")?;

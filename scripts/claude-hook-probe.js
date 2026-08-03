@@ -107,6 +107,11 @@ function readIntegrationToken() {
     var appdata = process.env.APPDATA || '';
     var candidates = [];
     if (appdata) {
+      // directories ProjectDirs config_dir on Windows is often ...\onetone\app\config
+      candidates.push(path.join(appdata, 'onetone', 'app', 'config', 'soft-pad-integration.token'));
+      candidates.push(path.join(appdata, 'com.onetone', 'app', 'config', 'soft-pad-integration.token'));
+      candidates.push(path.join(appdata, 'com.onetone.app', 'config', 'soft-pad-integration.token'));
+      // Legacy / mistaken flat paths (keep as fallback)
       candidates.push(path.join(appdata, 'com.onetone', 'app', 'soft-pad-integration.token'));
       candidates.push(path.join(appdata, 'onetone', 'app', 'soft-pad-integration.token'));
       candidates.push(path.join(appdata, 'com.onetone.app', 'soft-pad-integration.token'));
@@ -169,14 +174,19 @@ function httpJson(method, urlStr, bodyObj, timeoutMs) {
           });
         }
       );
-      req.on('error', function () {
-        resolve({ ok: false, status: 0, json: null, text: '' });
+      req.on('error', function (err) {
+        resolve({
+          ok: false,
+          status: 0,
+          json: null,
+          text: String((err && err.message) || 'error')
+        });
       });
       req.on('timeout', function () {
         try {
           req.destroy();
         } catch (_) {}
-        resolve({ ok: false, status: 0, json: null, text: '' });
+        resolve({ ok: false, status: 0, json: null, text: 'timeout' });
       });
       if (raw) req.write(raw);
       req.end();
@@ -188,7 +198,7 @@ function httpJson(method, urlStr, bodyObj, timeoutMs) {
 
 function postState(urlStr, body, timeoutMs) {
   return httpJson('POST', urlStr || DEFAULT_URL, body, timeoutMs).then(function (res) {
-    return { ok: !!res.ok, status: res.status };
+    return { ok: !!res.ok, status: res.status, text: res.text || '' };
   });
 }
 
@@ -286,7 +296,16 @@ async function run(opts) {
       }
       postOk = !!(res && res.ok);
       if (!postOk) {
-        debugLog('post failed url=' + url + ' event=' + (fields.hook_event_name || ''));
+        debugLog(
+          'post failed url=' +
+            url +
+            ' event=' +
+            (fields.hook_event_name || '') +
+            ' status=' +
+            (res && res.status) +
+            ' token=' +
+            (readIntegrationToken() ? 'yes' : 'no')
+        );
       }
     } catch (err) {
       debugLog('post failed: ' + (err && err.message));

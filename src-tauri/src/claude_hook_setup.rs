@@ -937,6 +937,14 @@ pub fn install_confirm() -> ClaudeHookWriteResult {
     }
 
     let stats = merge_onetone_hooks(&mut root, &probe_abs);
+    let otel_added = match crate::agent_usage::merge_onetone_otel_env(&mut root) {
+        Ok(n) => n,
+        Err(code) => {
+            // Hooks still install; Usage OTel stays user-owned on conflict.
+            let _ = code;
+            0
+        }
+    };
     if let Err(e) = atomic_write_json(&settings_path, &root) {
         return ClaudeHookWriteResult {
             ok: false,
@@ -950,13 +958,29 @@ pub fn install_confirm() -> ClaudeHookWriteResult {
             removed_count: 0,
         };
     }
+    if otel_added > 0
+        || crate::agent_usage::otel_settings_conflicts(&root).is_empty()
+            && root
+                .get("env")
+                .and_then(|e| e.get("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"))
+                .and_then(|v| v.as_str())
+                .is_some_and(|ep| {
+                    let ep = ep.trim().trim_end_matches('/');
+                    ep == "http://127.0.0.1:8796/v1/metrics"
+                        || ep == "http://localhost:8796/v1/metrics"
+                })
+    {
+        crate::agent_usage::mark_claude_usage_waiting("已配置 OTel，等待 Claude 上报用量");
+    }
 
     ClaudeHookWriteResult {
         ok: true,
-        reason: if stats.added.is_empty() && stats.refreshed.is_empty() {
+        reason: if stats.added.is_empty() && stats.refreshed.is_empty() && otel_added == 0 {
             "already_up_to_date".into()
-        } else if !stats.refreshed.is_empty() && stats.added.is_empty() {
+        } else if !stats.refreshed.is_empty() && stats.added.is_empty() && otel_added == 0 {
             "path_refreshed".into()
+        } else if otel_added > 0 && stats.added.is_empty() && stats.refreshed.is_empty() {
+            "otel_env_merged".into()
         } else {
             "installed".into()
         },

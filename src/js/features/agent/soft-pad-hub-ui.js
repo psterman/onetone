@@ -775,20 +775,13 @@
   }
 
   function formatResetCountdown(resetsAt) {
-    if (resetsAt == null || resetsAt === '') return '';
-    var n = Number(resetsAt);
-    if (!isFinite(n) || n <= 0) return '';
-    var ms = n < 1e12 ? n * 1000 : n;
-    var rem = ms - Date.now();
-    if (rem <= 0) return '待刷新';
-    var totalMins = Math.floor(rem / 60000);
-    if (totalMins < 1) return '1m';
-    var days = Math.floor(totalMins / (24 * 60));
-    var hours = Math.floor((totalMins % (24 * 60)) / 60);
-    var mins = totalMins % 60;
-    if (days > 0) return hours > 0 ? days + 'd' + hours + 'h' : days + 'd';
-    if (hours > 0) return mins > 0 ? hours + 'h' + mins + 'm' : hours + 'h';
-    return mins + 'm';
+    var fmt = global.OneToneUsageFormat;
+    return fmt && fmt.formatResetCountdown ? fmt.formatResetCountdown(resetsAt) : '';
+  }
+
+  function primaryResetAt(usage) {
+    var fmt = global.OneToneUsageFormat;
+    return fmt && fmt.primaryResetAt ? fmt.primaryResetAt(usage) : null;
   }
 
   function usageVal(usage, camel, snake) {
@@ -804,8 +797,11 @@
     if (rem == null) return '';
     var pct = Math.round(Number(rem));
     if (kind === 'primary' && mins > 0 && mins % 60 === 0 && mins <= 1440) return (mins / 60) + 'h余' + pct + '%';
-    if (kind === 'secondary' && mins > 0 && mins % (24 * 60) === 0) return (mins / (24 * 60)) + 'd余' + pct + '%';
+    if ((kind === 'secondary' || kind === 'unknown' || !kind) && mins > 0 && mins % (24 * 60) === 0) {
+      return (mins / (24 * 60)) + 'd余' + pct + '%';
+    }
     if (kind === 'secondary' && mins > 0 && mins % 60 === 0) return (mins / 60) + 'h余' + pct + '%';
+    if (mins > 0 && mins % 60 === 0 && mins <= 1440) return (mins / 60) + 'h余' + pct + '%';
     if (mins > 0) return mins + 'min窗口余' + pct + '%';
     return '窗口余' + pct + '%';
   }
@@ -825,27 +821,15 @@
         if (remaining != null) bits.push('窗口余 ' + Math.round(Number(remaining)) + '%');
       }
     } else if (kind === 'claude') {
-      var session = usageVal(usage, 'sessionTokens', 'session_tokens');
-      var cost = usageVal(usage, 'estimatedCostUsd', 'estimated_cost_usd');
-      if (session != null) bits.push('本会话' + session);
-      if (cost != null) bits.push('估算$' + Number(cost).toFixed(3).replace(/0+$/, '').replace(/\.$/, ''));
+      bits.push('用量 --');
     } else if (kind === 'cursor') {
       bits.push('用量 --');
-    }
-    var resetAt = usageVal(usage, 'resetsAt', 'resets_at');
-    if (!resetAt && windows.length) {
-      var primary = null;
-      for (var wi = 0; wi < windows.length; wi++) {
-        if (String(windows[wi].kind || '') === 'primary') { primary = windows[wi]; break; }
-      }
-      primary = primary || windows[0];
-      resetAt = primary && (primary.resetsAt != null ? primary.resetsAt : primary.resets_at);
     }
     return {
       account: String(usageVal(usage, 'accountLabel', 'account_label') || '').trim(),
       plan: String(usageVal(usage, 'planType', 'plan_type') || '').trim(),
       usageSummary: bits.length ? bits.join(' / ') : (status === 'ready' ? '--' : '—'),
-      resetCountdown: formatResetCountdown(resetAt) || '—',
+      resetCountdown: formatResetCountdown(primaryResetAt(usage)) || '—',
       usageState: status
     };
   }
