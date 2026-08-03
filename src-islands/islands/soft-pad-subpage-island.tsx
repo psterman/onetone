@@ -67,7 +67,8 @@ function pullModel(): SoftPadSubpageModel {
   applyPaint(next);
   currentSig = sig;
   currentModel = next;
-  emit();
+  // Do NOT emit(): JSX is an empty paint host; a React re-render can wipe
+  // Pad.renderSoftPad*Panel HTML (状态灯 / 何时显示详情空白).
 }
 
 function subscribe(listener: () => void): () => void {

@@ -150,6 +150,7 @@ const islandTsx = readFileSync(join(root, 'src-islands/islands/soft-pad-subpage-
 check('岛含 paint 节点', islandTsx.includes('data-soft-pad-subpage-paint'));
 check('岛调 paintSoftPadSubpageTarget', islandTsx.includes('paintSoftPadSubpageTarget'));
 check('无 paint 节点不锁 sig', islandTsx.includes('!el && !next.clear'));
+check('sync 不 emit 以免冲掉 Pad HTML', islandTsx.includes('Do NOT emit') || (!/currentModel = next;\s*\n\s*emit\(\)/.test(islandTsx)));
 
 const domainTs = readFileSync(join(root, 'src-islands/domain/softPadSubpage.ts'), 'utf8');
 check('domain 调四面板', domainTs.includes('renderSoftPadLayoutPanel') && domainTs.includes('renderSoftPadAgentPanel'));

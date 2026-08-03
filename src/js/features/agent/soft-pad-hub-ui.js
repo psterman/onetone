@@ -1809,6 +1809,8 @@
     if (!panel || !panel.primaryCta) return '';
     var cta = panel.primaryCta;
     var empty = panel.panelEmpty || { mode: 'ready' };
+    // 状态灯页本身就是选项；不必再垫一层「查看进阶」主 CTA。
+    if (panelId === 'agent' && empty.mode === 'ready') return '';
     if (empty.mode === 'needsAction') {
       return '<div class="soft-pad-panel-empty" data-soft-pad-panel-empty="' + esc(panelId) + '">' +
         '<p class="soft-pad-panel-empty__title">' + esc(empty.title || '') + '</p>' +
@@ -2249,6 +2251,10 @@
       var desk = document.getElementById('softPadTmDesk');
       return !!(desk && desk.dataset.tmBound === '1' && !desk.hidden);
     }
+    if (view === 'agent') {
+      var lazy = host.querySelector('[data-lazy-agent-body]');
+      return !!(lazy && lazy.getAttribute('data-filled') === '1' && lazy.childNodes.length > 0);
+    }
     return false;
   }
 
@@ -2688,9 +2694,13 @@
     if (view !== 'timeline' && !hasMapping(entry)) return;
     if (hasMapping(entry)) adoptSoftPadSelection(entry);
     // Re-clicking the active tile must not remount — that wiped the inline key editor.
+    // But if the body was wiped (island re-render / cancelled paint), repaint.
     if (view === softPadView) {
       if (view === 'timeline') dismissSoftPadOverlay('timeline-reclick');
       syncHubChrome(entry);
+      if (view !== 'timeline' && !softPadSubpageAlreadyPainted(entry, view)) {
+        paintSubpage(entry, { forceRemount: true });
+      }
       return;
     }
     feLog('fe softPad.openSubpage ' + view);

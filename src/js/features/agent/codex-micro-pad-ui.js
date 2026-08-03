@@ -5307,6 +5307,7 @@
       agentLoadToken: token,
       requireSoftPad: true
     });
+    bindSoftPadLightPanelEvents(container, m, pad, Object.assign({}, opts, { panel: 'agent' }));
   }
 
   function setSoftPadControlsBusy(body, busy) {

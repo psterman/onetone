@@ -114,6 +114,8 @@ check('setDetailOpen 岛守卫 P14i', /function setDetailOpen\([\s\S]*?__otSoftP
 check('render 接线挂载', softPadJs.includes('__otMountSoftPadDetailChromeIsland'));
 check('render 延迟落地 paint', /function render\([\s\S]*?paintSoftPadLanding[\s\S]*?requestAnimationFrame/.test(softPadJs));
 check('render 先画左侧再落地', /ensureSoftPadLeftChrome[\s\S]*?paintSoftPadLanding/.test(softPadJs) || /paintPreview\(openEntry[\s\S]*?paintSoftPadLanding/.test(softPadJs));
+check('openSubpage 空壳再点会重绘', /view === softPadView[\s\S]*?softPadSubpageAlreadyPainted[\s\S]*?forceRemount:\s*true/.test(softPadJs));
+check('AlreadyPainted 含 agent lazy body', /view === 'agent'[\s\S]*?data-lazy-agent-body/.test(softPadJs));
 check('openGen 不跟 selectToken 绑死', softPadJs.includes('softPadOpenGen'));
 check('落地走 openSubpage', /function paintSoftPadLanding\([\s\S]*?openSubpage\(/.test(softPadJs));
 check('openSubpage resolve Soft Pad', /function openSubpage\([\s\S]*?resolveSoftPadEntry\(/.test(softPadJs));
