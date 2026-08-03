@@ -89,7 +89,8 @@
       "resources/vosk/vosk-model-small-cn-0.22/": "resources/vosk/vosk-model-small-cn-0.22/",
       "../scripts/cursor-hook-probe.js": "scripts/cursor-hook-probe.js",
       "../scripts/codex-hook-probe.js": "scripts/codex-hook-probe.js",
-      "../scripts/claude-hook-probe.js": "scripts/claude-hook-probe.js"
+      "../scripts/claude-hook-probe.js": "scripts/claude-hook-probe.js",
+      "../scripts/claude-statusline-probe.js": "scripts/claude-statusline-probe.js"
     },
     "windows": {
       "nsis": {

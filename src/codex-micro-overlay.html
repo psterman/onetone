@@ -427,6 +427,22 @@
       return Math.floor(age/3600_000)+'小时前';
     }
 
+    /** Claude OTel session/$ — shown when statusLine windows are absent. */
+    function claudeOtelBits(usage,detail){
+      usage=usage||{};
+      var bits=[];
+      var sess=usageValue(usage,'sessionTokens','session_tokens');
+      var aux=usageValue(usage,'auxiliaryTokens','auxiliary_tokens');
+      var cost=usageValue(usage,'estimatedCostUsd','estimated_cost_usd');
+      if(sess!=null) bits.push((detail?'本会话 ':'')+compactNumber(sess));
+      if(detail&&aux!=null) bits.push('子任务 '+compactNumber(aux));
+      if(cost!=null){
+        var c=Number(cost);
+        bits.push((detail?'估算 ':'')+'$'+(isFinite(c)?(Math.round(c*1e4)/1e4):cost));
+      }
+      return bits;
+    }
+
     function usageSummary(kind,usage,detail){
       usage=usage||{};
       var status=String(usage.status||'unavailable');
@@ -434,7 +450,7 @@
       if(status==='disabled') return detail?'用量已关闭':'已关闭';
       var windows=Array.isArray(usage.windows)?usage.windows:[];
       var bits=[];
-      if(kind==='codex'){
+      if(kind==='codex'||kind==='claude'){
         windows.slice(0,2).forEach(function(w){
           // Each window shows its own reset (do not share primary countdown with 7d).
           var lab=windowLabel(w,true);
@@ -442,21 +458,26 @@
         });
         if(windows.length>2) bits.push('另 '+(windows.length-2)+' 项');
         if(!bits.length){
-          var remaining=usageValue(usage,'remainingPercent','remaining_percent');
-          if(remaining!=null){
-            var base='窗口余 '+Math.round(Number(remaining))+'%';
-            if(detail){
-              var cd=formatResetCountdown(usageValue(usage,'resetsAt','resets_at'));
-              if(cd) base+=' · '+cd+'重置';
+          if(kind==='claude'){
+            var otel=claudeOtelBits(usage,detail);
+            if(otel.length) bits=otel;
+            else return detail?'无官方额度窗口':'用量 --';
+          } else {
+            var remaining=usageValue(usage,'remainingPercent','remaining_percent');
+            if(remaining!=null){
+              var base='窗口余 '+Math.round(Number(remaining))+'%';
+              if(detail){
+                var cd=formatResetCountdown(usageValue(usage,'resetsAt','resets_at'));
+                if(cd) base+=' · '+cd+'重置';
+              }
+              bits.push(base);
             }
-            bits.push(base);
           }
         }
-        var lifetime=usageValue(usage,'lifetimeTokens','lifetime_tokens');
-        if(detail&&lifetime!=null) bits.push('累计 '+compactNumber(lifetime));
-      } else if(kind==='claude'){
-        // OTel session/$ is not useful quota; hide until official windows exist.
-        return detail?'无官方额度窗口':'用量 --';
+        if(kind==='codex'){
+          var lifetime=usageValue(usage,'lifetimeTokens','lifetime_tokens');
+          if(detail&&lifetime!=null) bits.push('累计 '+compactNumber(lifetime));
+        }
       }
       if(status==='stale'){
         if(bits.length) return bits.join(detail?' · ':' / ')+(detail?' · 数据陈旧':' · 陈旧');
@@ -504,18 +525,22 @@
       if(kind==='cursor'){
         return { label:'用量暂无接口', state:'unsupported' };
       }
-      if(kind==='claude'){
+      var hasOtel=kind==='claude'&&(
+        usageValue(usage,'sessionTokens','session_tokens')!=null||
+        usageValue(usage,'estimatedCostUsd','estimated_cost_usd')!=null
+      );
+      if(kind==='claude'&&!hasRem&&!hasOtel){
         return { label:'用量暂无接口', state:'unsupported' };
       }
-      // Codex
-      if(status==='ready'||state==='live'||(hasRem&&status!=='stale'&&status!=='waiting')){
+      // Codex + Claude with windows or OTel
+      if(status==='ready'||state==='live'||((hasRem||hasOtel)&&status!=='stale'&&status!=='waiting')){
         return { label:'正常', state:'live' };
       }
       if(status==='stale'||state==='stale') return { label:'数据陈旧', state:'stale' };
       if(status==='waiting'||state==='configured_waiting') return { label:'同步中', state:'configured_waiting' };
       if(status==='disabled'||state==='disabled') return { label:'已关闭', state:'disabled' };
-      if(state==='error'&&!hasRem) return { label:'出错', state:'error' };
-      if(hasRem) return { label:'正常', state:'live' };
+      if(state==='error'&&!hasRem&&!hasOtel) return { label:'出错', state:'error' };
+      if(hasRem||hasOtel) return { label:'正常', state:'live' };
       return { label:'同步中', state:'configured_waiting' };
     }
 
@@ -533,7 +558,12 @@
         return tip;
       }
       if(kind==='claude'){
-        return '无官方额度窗口（OTel 不展示）';
+        if(isRenderableUsage(kind,usage)||claudeOtelBits(usage,false).length){
+          var msg=friendlyUsageMessage(usage.message);
+          if(fresh) return (String(usage.source||'')+(msg?' · '+msg:''))+' · '+fresh;
+          return msg||String(usage.source||(isRenderableUsage(kind,usage)?'claude_statusline':'claude_otel'));
+        }
+        return '无官方额度窗口';
       }
       var msg=friendlyUsageMessage(usage.message);
       if(fresh) return (String(usage.source||'')+(msg?' · '+msg:''))+' · '+fresh;
@@ -552,34 +582,33 @@
       var status=String(usage.status||'');
       if(kind==='cursor') return false;
       if(status==='disabled'||status==='unavailable') return false;
-      if(kind==='codex'){
-        var rem=usageValue(usage,'remainingPercent','remaining_percent');
-        var windows=Array.isArray(usage.windows)?usage.windows:[];
-        if(rem==null&&windows.length){
-          var primary=windows.find(function(w){ return String(w.kind||'')==='primary'; });
-          var w=primary||windows[0];
-          rem=w&&(w.remainingPercent!=null?w.remainingPercent:w.remaining_percent);
-        }
-        return rem!=null;
+      var windows=Array.isArray(usage.windows)?usage.windows:[];
+      for(var i=0;i<windows.length;i++){
+        var w=windows[i];
+        if(!w) continue;
+        var rem=w.remainingPercent!=null?w.remainingPercent:w.remaining_percent;
+        if(rem==null) continue;
+        var n=Number(rem);
+        if(Number.isFinite(n)&&n>=0&&n<=100) return true;
       }
-      // Claude OTel session/$ is not product-useful quota; never occupy the mini pill.
-      if(kind==='claude') return false;
+      var remScalar=usageValue(usage,'remainingPercent','remaining_percent');
+      if(remScalar!=null){
+        var sn=Number(remScalar);
+        if(Number.isFinite(sn)&&sn>=0&&sn<=100) return true;
+      }
       return false;
     }
 
     function miniUsageText(kind,usage){
       usage=usage||{};
       if(!isRenderableUsage(kind,usage)) return '';
-      if(kind==='codex'){
-        var rem=usageValue(usage,'remainingPercent','remaining_percent');
-        var windows=Array.isArray(usage.windows)?usage.windows:[];
-        var pw=windows.find(function(w){ return String(w.kind||'')==='primary'; })||windows[0];
-        if(rem==null&&pw) rem=pw.remainingPercent!=null?pw.remainingPercent:pw.remaining_percent;
-        if(rem==null) return '';
-        var cd=formatResetCountdown(primaryResetAt(usage));
-        return miniUsageAbbrev(kind)+' '+Math.round(Number(rem))+'%'+(cd?' · '+cd:'');
-      }
-      return '';
+      var rem=usageValue(usage,'remainingPercent','remaining_percent');
+      var windows=Array.isArray(usage.windows)?usage.windows:[];
+      var pw=windows.find(function(w){ return String(w.kind||'')==='primary'; })||windows[0];
+      if(rem==null&&pw) rem=pw.remainingPercent!=null?pw.remainingPercent:pw.remaining_percent;
+      if(rem==null) return '';
+      var cd=formatResetCountdown(primaryResetAt(usage));
+      return miniUsageAbbrev(kind)+' '+Math.round(Number(rem))+'%'+(cd?' · '+cd:'');
     }
 
     /** One visible pill: renderable-first (never Cursor without quota). */
@@ -685,16 +714,17 @@
         } else {
           line2='模型 --';
         }
-        if(kind!=='claude'){
+        if(kind!=='claude'||isRenderableUsage(kind,usage)||claudeOtelBits(usage,false).length){
           var usageShort=usageSummary(kind,usage,false);
           if(usageShort) line2+=' · '+usageShort;
         }
-        var fresh=kind==='claude'?'':freshnessLabel(usage,row.health);
+        var hasClaudeData=kind==='claude'&&(isRenderableUsage(kind,usage)||claudeOtelBits(usage,false).length);
+        var fresh=kind==='claude'&&!hasClaudeData?'':freshnessLabel(usage,row.health);
         var src=String(usage.source||'');
         if(kind==='cursor') src=src||'Cursor Hook';
-        if(kind==='claude') src='—';
+        if(kind==='claude'&&!hasClaudeData) src='—';
         var line3=(src||'—')+(fresh?' · '+fresh:'');
-        if(kind!=='claude'&&String(usage.status||'')==='stale') line3='数据陈旧'+(fresh?' · 上次成功 '+fresh:'');
+        if((kind!=='claude'||hasClaudeData)&&String(usage.status||'')==='stale') line3='数据陈旧'+(fresh?' · 上次成功 '+fresh:'');
         var tip=label+'\n'+line2+'\n'+line3;
         if(tip.length>140) tip=tip.slice(0,137)+'…';
         el.setAttribute('data-status', state);

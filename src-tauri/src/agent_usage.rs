@@ -22,6 +22,11 @@ const CODEX_REQUEST_TIMEOUT_SECS: u64 = 15;
 const ACCOUNT_EXTRA_WAIT: Duration = Duration::from_millis(2500);
 const OTEL_SESSION_TTL_MS: u64 = 6 * 60 * 60 * 1000;
 const OTEL_SERIES_CAP: usize = 256;
+/// statusLine windows: ready while fresh, keep as stale, then drop.
+const STATUSLINE_READY_MS: u64 = 15 * 60 * 1000;
+const STATUSLINE_KEEP_MS: u64 = 6 * 60 * 60 * 1000;
+const RESETS_AT_PAST_SLACK_SECS: i64 = 10 * 60;
+const RESETS_AT_FUTURE_MAX_SECS: i64 = 8 * 24 * 60 * 60;
 pub const ENV_USAGE_ENABLED: &str = "ONETONE_AGENT_USAGE";
 pub const ENV_CODEX_BIN: &str = "ONETONE_CODEX_BIN";
 
@@ -505,9 +510,44 @@ struct OtelSeriesValue {
     observed_at: u64,
 }
 
+#[derive(Debug, Clone, Default)]
+struct ClaudeOtelState {
+    session_tokens: Option<u64>,
+    auxiliary_tokens: Option<u64>,
+    estimated_cost_usd: Option<f64>,
+    session_id: String,
+    observed_at: u64,
+    message: String,
+    stale: bool,
+}
+
+#[derive(Debug, Clone, Default)]
+struct ClaudeStatusLineState {
+    windows: Vec<UsageWindow>,
+    session_id: String,
+    model_id: String,
+    observed_at: u64,
+    /// True when the latest payload had an explicit rate_limits object (even if empty).
+    saw_rate_limits: bool,
+}
+
 fn otel_series() -> &'static Mutex<HashMap<OtelSeriesKey, OtelSeriesValue>> {
     static SERIES: OnceLock<Mutex<HashMap<OtelSeriesKey, OtelSeriesValue>>> = OnceLock::new();
     SERIES.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn claude_otel_state() -> &'static Mutex<ClaudeOtelState> {
+    static STATE: OnceLock<Mutex<ClaudeOtelState>> = OnceLock::new();
+    STATE.get_or_init(|| Mutex::new(ClaudeOtelState::default()))
+}
+
+fn claude_statusline_state() -> &'static Mutex<ClaudeStatusLineState> {
+    static STATE: OnceLock<Mutex<ClaudeStatusLineState>> = OnceLock::new();
+    STATE.get_or_init(|| Mutex::new(ClaudeStatusLineState::default()))
+}
+
+fn is_main_query_source(value: &str) -> bool {
+    matches!(value, "" | "main" | "repl_main_thread")
 }
 
 fn attribute_string(point: &Value, key: &str) -> String {
@@ -546,7 +586,7 @@ fn active_claude_session(series: &HashMap<OtelSeriesKey, OtelSeriesValue>) -> St
         .unwrap_or_default()
 }
 
-fn rebuild_claude_snapshot(series: &mut HashMap<OtelSeriesKey, OtelSeriesValue>) {
+fn rebuild_claude_otel_state(series: &mut HashMap<OtelSeriesKey, OtelSeriesValue>) {
     let now = now_ms();
     // Drop expired series (in-memory TTL) and enforce cardinality — mutate in place
     // because the caller already holds `otel_series()` lock.
@@ -579,7 +619,7 @@ fn rebuild_claude_snapshot(series: &mut HashMap<OtelSeriesKey, OtelSeriesValue>)
         updated_at = updated_at.max(value.observed_at);
         if key.metric == "claude_code.token.usage" {
             has_tokens = true;
-            if key.query_source.is_empty() || key.query_source == "main" {
+            if is_main_query_source(&key.query_source) {
                 main_tokens += value.value;
             } else {
                 auxiliary_tokens += value.value;
@@ -594,27 +634,293 @@ fn rebuild_claude_snapshot(series: &mut HashMap<OtelSeriesKey, OtelSeriesValue>)
     if fallback {
         message.push_str(" · latest_session_fallback");
     }
-    let snap = AgentUsageSnapshot {
-        source: "claude_otel".into(),
-        status: if stale { "stale".into() } else { "ready".into() },
+    let otel = ClaudeOtelState {
         session_tokens: has_tokens.then_some(main_tokens.max(0.0).round() as u64),
         auxiliary_tokens: (auxiliary_tokens > 0.0).then_some(auxiliary_tokens.round() as u64),
         estimated_cost_usd: has_cost.then_some((cost * 1_000_000.0).round() / 1_000_000.0),
+        session_id,
+        observed_at: updated_at,
+        message,
+        stale,
+    };
+    *claude_otel_state()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = otel;
+    compose_claude_snapshot();
+}
+
+fn parse_statusline_used_percent(node: &Value) -> Option<f64> {
+    let raw = node
+        .get("used_percentage")
+        .or_else(|| node.get("usedPercentage"))?;
+    // Numbers only — reject strings / timestamps masquerading as percentages.
+    let used = raw.as_f64()?;
+    if !used.is_finite() || !(0.0..=100.0).contains(&used) {
+        return None;
+    }
+    Some(used)
+}
+
+fn parse_statusline_resets_at(node: &Value, now_secs: u64) -> Option<u64> {
+    let raw = node.get("resets_at").or_else(|| node.get("resetsAt"))?;
+    let resets = raw.as_u64().or_else(|| {
+        raw.as_i64()
+            .and_then(|n| u64::try_from(n).ok())
+            .or_else(|| raw.as_f64().and_then(|f| {
+                if f.is_finite() && f > 0.0 && f < 1e12 {
+                    Some(f as u64)
+                } else {
+                    None
+                }
+            }))
+    })?;
+    if resets == 0 {
+        return None;
+    }
+    // Reject millisecond timestamps that slipped into seconds field.
+    if resets >= 1_000_000_000_000 {
+        return None;
+    }
+    let now = now_secs as i64;
+    let r = resets as i64;
+    if r < now - RESETS_AT_PAST_SLACK_SECS {
+        return None;
+    }
+    if r > now + RESETS_AT_FUTURE_MAX_SECS {
+        return None;
+    }
+    Some(resets)
+}
+
+fn parse_statusline_window(
+    id: &str,
+    kind: &str,
+    duration_mins: u64,
+    node: Option<&Value>,
+    now_secs: u64,
+) -> Option<UsageWindow> {
+    let node = node?;
+    if !node.is_object() {
+        return None;
+    }
+    let used = parse_statusline_used_percent(node)?;
+    let remaining = (100.0 - used).clamp(0.0, 100.0);
+    Some(UsageWindow {
+        id: id.to_string(),
+        kind: kind.to_string(),
+        duration_mins: Some(duration_mins),
+        used_percent: Some(used),
+        remaining_percent: Some(remaining),
+        resets_at: parse_statusline_resets_at(node, now_secs),
+    })
+}
+
+/// Ingest Claude Code statusLine JSON (session_id + rate_limits). Per-window reject.
+pub fn ingest_claude_statusline_json(raw: &str) -> Result<usize, &'static str> {
+    let root: Value = serde_json::from_str(raw).map_err(|_| "invalid_json")?;
+    let now = now_ms();
+    let now_secs = now / 1000;
+    let session_id = root
+        .get("session_id")
+        .or_else(|| root.get("sessionId"))
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let model_id = root
+        .get("model")
+        .and_then(|m| {
+            if let Some(id) = m.get("id").and_then(Value::as_str) {
+                Some(id.to_string())
+            } else {
+                m.as_str().map(str::to_string)
+            }
+        })
+        .unwrap_or_default();
+
+    let rate = root.get("rate_limits").or_else(|| root.get("rateLimits"));
+    let saw_rate_limits = rate.map(|v| v.is_object()).unwrap_or(false);
+
+    let mut windows = Vec::new();
+    let mut accepted = 0usize;
+    if let Some(rate) = rate.filter(|v| v.is_object()) {
+        if let Some(w) = parse_statusline_window(
+            "five_hour",
+            "primary",
+            300,
+            rate.get("five_hour").or_else(|| rate.get("fiveHour")),
+            now_secs,
+        ) {
+            windows.push(w);
+            accepted += 1;
+        }
+        if let Some(w) = parse_statusline_window(
+            "seven_day",
+            "secondary",
+            10080,
+            rate.get("seven_day").or_else(|| rate.get("sevenDay")),
+            now_secs,
+        ) {
+            windows.push(w);
+            accepted += 1;
+        }
+    }
+
+    {
+        let mut sl = claude_statusline_state()
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        // Explicit rate_limits (including empty) replaces prior windows — no forever-keep.
+        // Missing rate_limits key leaves prior state untouched (partial/diagnostic payload).
+        if saw_rate_limits {
+            // Session change: do not glue old windows onto a new session.
+            if !session_id.is_empty()
+                && !sl.session_id.is_empty()
+                && session_id != sl.session_id
+            {
+                sl.windows.clear();
+            }
+            sl.windows = windows;
+            sl.saw_rate_limits = true;
+            sl.observed_at = now;
+            if !session_id.is_empty() {
+                sl.session_id = session_id.clone();
+            }
+            if !model_id.is_empty() {
+                sl.model_id = model_id.clone();
+            }
+        } else if accepted == 0 && !session_id.is_empty() && sl.session_id != session_id {
+            // Session id only, no rate_limits — clear stale other-session windows.
+            sl.windows.clear();
+            sl.session_id = session_id.clone();
+            sl.observed_at = now;
+            sl.saw_rate_limits = false;
+            if !model_id.is_empty() {
+                sl.model_id = model_id.clone();
+            }
+        } else {
+            if !session_id.is_empty() {
+                sl.session_id = session_id.clone();
+            }
+            if !model_id.is_empty() {
+                sl.model_id = model_id.clone();
+            }
+        }
+    }
+    if !model_id.is_empty() {
+        crate::agent_model_metadata::ingest_statusline_model(&session_id, &model_id, now);
+    }
+    compose_claude_snapshot();
+    Ok(accepted)
+}
+
+fn compose_claude_snapshot() {
+    let now = now_ms();
+    let otel = claude_otel_state()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
+    let mut sl = claude_statusline_state()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
+
+    let sl_age = if sl.observed_at > 0 {
+        now.saturating_sub(sl.observed_at)
+    } else {
+        u64::MAX
+    };
+
+    // Drop expired windows so mini never shows yesterday's %.
+    if sl_age > STATUSLINE_KEEP_MS && !sl.windows.is_empty() {
+        sl.windows.clear();
+        if let Ok(mut guard) = claude_statusline_state().lock() {
+            guard.windows.clear();
+        }
+    }
+
+    let has_windows = sl.windows.iter().any(|w| {
+        w.remaining_percent
+            .is_some_and(|p| p.is_finite() && (0.0..=100.0).contains(&p))
+    });
+    let has_otel = otel.session_tokens.is_some()
+        || otel.auxiliary_tokens.is_some()
+        || otel.estimated_cost_usd.is_some();
+
+    if !has_windows && !has_otel && otel.observed_at == 0 && sl.observed_at == 0 {
+        return;
+    }
+
+    let (status, windows) = if has_windows {
+        if sl_age <= STATUSLINE_READY_MS {
+            ("ready", sl.windows.clone())
+        } else {
+            ("stale", sl.windows.clone())
+        }
+    } else if has_otel {
+        (if otel.stale { "stale" } else { "ready" }, Vec::new())
+    } else if sl.observed_at > 0 || otel.observed_at > 0 {
+        ("waiting", Vec::new())
+    } else {
+        return;
+    };
+
+    let message = if has_windows && has_otel {
+        let mut m = "额度：Claude statusLine · Token/费用：Claude OTel".to_string();
+        if !otel.message.is_empty() {
+            m.push_str(" · ");
+            m.push_str(&otel.message);
+        }
+        m
+    } else if has_windows {
+        "额度：Claude statusLine".into()
+    } else if has_otel {
+        otel.message.clone()
+    } else {
+        "等待 Claude 上报用量".into()
+    };
+
+    // Public source: statusLine when windows present; else OTel.
+    let source = if has_windows {
+        "claude_statusline"
+    } else if has_otel {
+        "claude_otel"
+    } else {
+        "claude_otel"
+    };
+
+    // updated_at / last_success_at: window freshness from statusLine only when windows shown.
+    let (updated_at, last_success_at) = if has_windows {
+        (sl.observed_at, sl.observed_at)
+    } else {
+        (otel.observed_at, otel.observed_at)
+    };
+
+    let mut snap = AgentUsageSnapshot {
+        source: source.into(),
+        status: status.into(),
+        session_tokens: otel.session_tokens,
+        auxiliary_tokens: otel.auxiliary_tokens,
+        estimated_cost_usd: otel.estimated_cost_usd,
+        windows,
         updated_at,
-        last_success_at: updated_at,
+        last_success_at,
         message,
         ..Default::default()
     };
+    apply_compat_scalars(&mut snap);
     usage_store()
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .insert(AgentKind::Claude, snap.clone());
-    sync_claude_usage_health(&snap);
+    sync_claude_usage_health(&snap, has_windows);
 }
 
-fn sync_claude_usage_health(snap: &AgentUsageSnapshot) {
+fn sync_claude_usage_health(snap: &AgentUsageSnapshot, has_windows: bool) {
     use crate::connector_health::{upsert, CapabilityKind, HealthState, ValueState};
-    let has_value = snap.session_tokens.is_some() || snap.estimated_cost_usd.is_some();
+    let has_value = has_windows
+        || snap.session_tokens.is_some()
+        || snap.estimated_cost_usd.is_some();
     let value_state = if has_value {
         ValueState::Present
     } else {
@@ -633,6 +939,11 @@ fn sync_claude_usage_health(snap: &AgentUsageSnapshot) {
             }
         }
     };
+    let channel = if has_windows {
+        "claude_statusline"
+    } else {
+        "claude_otel"
+    };
     upsert(
         AgentKind::Claude,
         CapabilityKind::Usage,
@@ -640,7 +951,7 @@ fn sync_claude_usage_health(snap: &AgentUsageSnapshot) {
         value_state,
         reason,
         &snap.message,
-        "claude_otel",
+        channel,
         snap.updated_at.max(now_ms()),
         mark_ok,
     );
@@ -722,7 +1033,7 @@ pub fn ingest_claude_otel_json(raw: &str) -> Result<usize, &'static str> {
             }
         }
     }
-    rebuild_claude_snapshot(&mut series);
+    rebuild_claude_otel_state(&mut series);
     Ok(accepted)
 }
 
@@ -814,22 +1125,46 @@ pub fn merge_onetone_otel_env(settings: &mut Value) -> Result<usize, &'static st
 /// Mark Claude Usage as waiting after OTel env is known present (no metrics yet).
 pub fn mark_claude_usage_waiting(message: &str) {
     let now = now_ms();
-    let snap = AgentUsageSnapshot {
-        source: "claude_otel".into(),
-        status: "waiting".into(),
-        updated_at: now,
-        message: message.to_string(),
-        ..Default::default()
-    };
-    let mut store = usage_store().lock().unwrap_or_else(|e| e.into_inner());
-    let replace = match store.get(&AgentKind::Claude) {
-        None => true,
-        Some(prev) => prev.status == "unavailable" || prev.status.is_empty(),
-    };
-    if replace {
-        store.insert(AgentKind::Claude, snap.clone());
-        drop(store);
-        sync_claude_usage_health(&snap);
+    {
+        let mut otel = claude_otel_state()
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        let replace = otel.observed_at == 0
+            || (otel.session_tokens.is_none()
+                && otel.auxiliary_tokens.is_none()
+                && otel.estimated_cost_usd.is_none());
+        if replace {
+            otel.message = message.to_string();
+            if otel.observed_at == 0 {
+                otel.observed_at = now;
+            }
+        }
+    }
+    let prev = snapshot(AgentKind::Claude);
+    if prev.status == "unavailable"
+        || prev.status.is_empty()
+        || prev.status == "waiting"
+        || prev.windows.is_empty()
+            && prev.session_tokens.is_none()
+            && prev.estimated_cost_usd.is_none()
+    {
+        compose_claude_snapshot();
+        // If compose had nothing, seed a waiting snap.
+        let after = snapshot(AgentKind::Claude);
+        if after.status == "unavailable" || after.status.is_empty() {
+            let snap = AgentUsageSnapshot {
+                source: "claude_otel".into(),
+                status: "waiting".into(),
+                updated_at: now,
+                message: message.to_string(),
+                ..Default::default()
+            };
+            usage_store()
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .insert(AgentKind::Claude, snap.clone());
+            sync_claude_usage_health(&snap, false);
+        }
     }
 }
 
@@ -1116,7 +1451,23 @@ pub fn reset_for_test() {
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .clear();
+    *claude_otel_state()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = ClaudeOtelState::default();
+    *claude_statusline_state()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = ClaudeStatusLineState::default();
     crate::connector_health::reset_for_test();
+}
+
+#[cfg(test)]
+fn statusline_age_for_test(age_ms: u64) {
+    let mut sl = claude_statusline_state()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    if sl.observed_at > 0 {
+        sl.observed_at = now_ms().saturating_sub(age_ms);
+    }
 }
 
 #[cfg(test)]
@@ -1389,5 +1740,160 @@ mod tests {
         assert_eq!(got.session_tokens, Some(100));
         assert_eq!(got.auxiliary_tokens, Some(25));
         assert_eq!(got.estimated_cost_usd, Some(0.1234));
+    }
+
+    #[test]
+    fn claude_otel_repl_main_thread_counts_as_main() {
+        let _g = test_lock();
+        reset_for_test();
+        let raw = serde_json::json!({
+            "resourceMetrics": [{ "scopeMetrics": [{ "metrics": [
+                { "name": "claude_code.token.usage", "sum": { "aggregationTemporality": 2, "dataPoints": [
+                    { "asInt": "50", "attributes": [
+                        { "key": "session.id", "value": { "stringValue": "s1" } },
+                        { "key": "query_source", "value": { "stringValue": "repl_main_thread" } }
+                    ]},
+                    { "asInt": "7", "attributes": [
+                        { "key": "session.id", "value": { "stringValue": "s1" } },
+                        { "key": "query_source", "value": { "stringValue": "subagent" } }
+                    ]}
+                ]}}
+            ]}]}]
+        });
+        assert_eq!(ingest_claude_otel_json(&raw.to_string()), Ok(2));
+        let got = snapshot(AgentKind::Claude);
+        assert_eq!(got.session_tokens, Some(50));
+        assert_eq!(got.auxiliary_tokens, Some(7));
+    }
+
+    fn statusline_payload(five: Option<f64>, seven: Option<f64>) -> String {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let mut rate = serde_json::Map::new();
+        if let Some(u) = five {
+            rate.insert(
+                "five_hour".into(),
+                serde_json::json!({ "used_percentage": u, "resets_at": now + 3600 }),
+            );
+        }
+        if let Some(u) = seven {
+            rate.insert(
+                "seven_day".into(),
+                serde_json::json!({ "used_percentage": u, "resets_at": now + 86400 }),
+            );
+        }
+        serde_json::json!({
+            "session_id": "s1",
+            "rate_limits": Value::Object(rate)
+        })
+        .to_string()
+    }
+
+    #[test]
+    fn statusline_rejects_bad_five_keeps_good_seven() {
+        let _g = test_lock();
+        reset_for_test();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let raw = serde_json::json!({
+            "session_id": "s1",
+            "rate_limits": {
+                "five_hour": { "used_percentage": 250.0, "resets_at": now + 3600 },
+                "seven_day": { "used_percentage": 41.0, "resets_at": now + 86400 }
+            }
+        })
+        .to_string();
+        assert_eq!(ingest_claude_statusline_json(&raw), Ok(1));
+        let got = snapshot(AgentKind::Claude);
+        assert_eq!(got.windows.len(), 1);
+        assert_eq!(got.windows[0].id, "seven_day");
+        assert_eq!(got.windows[0].remaining_percent, Some(59.0));
+        assert_eq!(got.source, "claude_statusline");
+        assert_eq!(got.status, "ready");
+    }
+
+    #[test]
+    fn statusline_rejects_nan_and_string_percent() {
+        let _g = test_lock();
+        reset_for_test();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let raw = serde_json::json!({
+            "session_id": "s1",
+            "rate_limits": {
+                "five_hour": { "used_percentage": "24", "resets_at": now + 3600 },
+                "seven_day": { "used_percentage": null, "resets_at": now + 86400 }
+            }
+        })
+        .to_string();
+        assert_eq!(ingest_claude_statusline_json(&raw), Ok(0));
+        assert!(snapshot(AgentKind::Claude).windows.is_empty());
+    }
+
+    #[test]
+    fn statusline_and_otel_do_not_clear_each_other() {
+        let _g = test_lock();
+        reset_for_test();
+        assert_eq!(ingest_claude_statusline_json(&statusline_payload(Some(24.0), Some(41.0))), Ok(2));
+        let after_sl = snapshot(AgentKind::Claude);
+        let sl_updated = after_sl.updated_at;
+        assert_eq!(after_sl.windows.len(), 2);
+
+        let otel = serde_json::json!({
+            "resourceMetrics": [{ "scopeMetrics": [{ "metrics": [
+                { "name": "claude_code.token.usage", "sum": { "aggregationTemporality": 2, "dataPoints": [
+                    { "asInt": "100", "attributes": [
+                        { "key": "session.id", "value": { "stringValue": "s1" } },
+                        { "key": "query_source", "value": { "stringValue": "main" } }
+                    ]}
+                ]}}
+            ]}]}]
+        });
+        assert_eq!(ingest_claude_otel_json(&otel.to_string()), Ok(1));
+        let after_otel = snapshot(AgentKind::Claude);
+        assert_eq!(after_otel.session_tokens, Some(100));
+        assert_eq!(after_otel.windows.len(), 2);
+        // OTel must not refresh statusLine window freshness.
+        assert_eq!(after_otel.updated_at, sl_updated);
+
+        assert_eq!(ingest_claude_statusline_json(&statusline_payload(Some(30.0), None)), Ok(1));
+        let after_sl2 = snapshot(AgentKind::Claude);
+        assert_eq!(after_sl2.session_tokens, Some(100));
+        assert_eq!(after_sl2.windows.len(), 1);
+        assert_eq!(after_sl2.windows[0].id, "five_hour");
+    }
+
+    #[test]
+    fn statusline_empty_rate_limits_clears_windows() {
+        let _g = test_lock();
+        reset_for_test();
+        assert_eq!(ingest_claude_statusline_json(&statusline_payload(Some(24.0), Some(41.0))), Ok(2));
+        assert_eq!(snapshot(AgentKind::Claude).windows.len(), 2);
+        let empty = serde_json::json!({ "session_id": "s1", "rate_limits": {} }).to_string();
+        assert_eq!(ingest_claude_statusline_json(&empty), Ok(0));
+        assert!(snapshot(AgentKind::Claude).windows.is_empty());
+    }
+
+    #[test]
+    fn statusline_ages_to_stale_then_drops() {
+        let _g = test_lock();
+        reset_for_test();
+        assert_eq!(ingest_claude_statusline_json(&statusline_payload(Some(24.0), None)), Ok(1));
+        assert_eq!(snapshot(AgentKind::Claude).status, "ready");
+
+        statusline_age_for_test(STATUSLINE_READY_MS + 1);
+        compose_claude_snapshot();
+        assert_eq!(snapshot(AgentKind::Claude).status, "stale");
+        assert_eq!(snapshot(AgentKind::Claude).windows.len(), 1);
+
+        statusline_age_for_test(STATUSLINE_KEEP_MS + 1);
+        compose_claude_snapshot();
+        assert!(snapshot(AgentKind::Claude).windows.is_empty());
     }
 }

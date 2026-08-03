@@ -14,6 +14,8 @@ use serde::Serialize;
 use serde_json::{json, Map, Value};
 
 pub const HOOK_ID: &str = "claude-activity-v1";
+/// Strict marker flag; ownership checks must match this exact form.
+pub const STATUSLINE_MARKER: &str = "--onetone-statusline-id=onetone-claude-usage-v1";
 
 const PHASE_CONNECTED_MS: u64 = 30_000;
 const PHASE_STALE_MS: u64 = 300_000;
@@ -39,6 +41,7 @@ const UNINSTALL_PREVIEW: &str = "\
 不会删除：\n\
 - 你自己配置的 Claude Hooks\n\
 - 其他工具的 Hooks\n\
+- 非 OneTone 的 statusLine\n\
 - Claude 设置里的权限、模型、主题等配置";
 
 /// Event name → command timeout seconds.
@@ -149,8 +152,21 @@ pub fn probe_script_path() -> PathBuf {
     repo_root().join("scripts").join("claude-hook-probe.js")
 }
 
+pub fn statusline_probe_script_path() -> PathBuf {
+    repo_root().join("scripts").join("claude-statusline-probe.js")
+}
+
 pub fn probe_script_abs_slash() -> String {
     let p = probe_script_path();
+    if p.is_file() {
+        p.to_string_lossy().replace('\\', "/")
+    } else {
+        String::new()
+    }
+}
+
+pub fn statusline_probe_abs_slash() -> String {
+    let p = statusline_probe_script_path();
     if p.is_file() {
         p.to_string_lossy().replace('\\', "/")
     } else {
@@ -167,9 +183,93 @@ pub fn build_onetone_command(probe_abs: &str) -> String {
     format!("node \"{path}\" --onetone-hook-id {HOOK_ID} --source onetone")
 }
 
+pub fn build_onetone_statusline_command(probe_abs: &str) -> String {
+    let path = if probe_abs.is_empty() {
+        "REPO_ROOT/scripts/claude-statusline-probe.js"
+    } else {
+        probe_abs
+    };
+    format!("node \"{path}\" {STATUSLINE_MARKER}")
+}
+
 pub fn command_has_onetone_id(command: &str) -> bool {
     let c = command.to_ascii_lowercase();
     c.contains("claude-activity-v1") && c.contains("onetone-hook-id")
+}
+
+pub fn command_has_onetone_statusline_id(command: &str) -> bool {
+    command.contains(STATUSLINE_MARKER)
+}
+
+/// missing | onetone_owned | foreign | malformed
+pub fn statusline_ownership(root: &Value) -> &'static str {
+    let Some(sl) = root.get("statusLine") else {
+        return "missing";
+    };
+    if !sl.is_object() {
+        return "malformed";
+    }
+    let cmd = sl.get("command").and_then(|c| c.as_str()).unwrap_or("");
+    if cmd.is_empty() {
+        // type-only or empty command — treat as foreign to avoid overwrite
+        if sl.as_object().map(|o| o.is_empty()).unwrap_or(true) {
+            return "missing";
+        }
+        return "foreign";
+    }
+    if command_has_onetone_statusline_id(cmd) {
+        "onetone_owned"
+    } else {
+        "foreign"
+    }
+}
+
+/// Install or refresh OneTone statusLine. Returns Ok(action) where action is
+/// added | refreshed | skipped_foreign | skipped_malformed | unchanged.
+pub fn merge_onetone_statusline(root: &mut Value, probe_abs: &str) -> Result<&'static str, &'static str> {
+    let ownership = statusline_ownership(root);
+    match ownership {
+        "foreign" => Ok("skipped_foreign"),
+        "malformed" => Ok("skipped_malformed"),
+        "missing" | "onetone_owned" => {
+            let cmd = build_onetone_statusline_command(probe_abs);
+            let obj = root
+                .as_object_mut()
+                .ok_or("settings_not_object")?;
+            let already = obj
+                .get("statusLine")
+                .and_then(|v| v.get("command"))
+                .and_then(|c| c.as_str())
+                == Some(cmd.as_str());
+            obj.insert(
+                "statusLine".into(),
+                json!({
+                    "type": "command",
+                    "command": cmd
+                }),
+            );
+            if ownership == "missing" {
+                Ok("added")
+            } else if already {
+                Ok("unchanged")
+            } else {
+                Ok("refreshed")
+            }
+        }
+        _ => Ok("unchanged"),
+    }
+}
+
+/// Remove only OneTone-marked statusLine. Returns 1 if removed.
+pub fn uninstall_onetone_statusline(root: &mut Value) -> usize {
+    if statusline_ownership(root) != "onetone_owned" {
+        return 0;
+    }
+    if let Some(obj) = root.as_object_mut() {
+        obj.remove("statusLine");
+        return 1;
+    }
+    0
 }
 
 /// Best-effort extract of the quoted path after `node`.
@@ -824,6 +924,21 @@ pub fn setup_status(inputs: StatusInputs) -> ClaudeHookSetupStatus {
                 action: action.into(),
             });
         }
+        match statusline_ownership(&root) {
+            "foreign" => issues.push(ClaudeHookIssue {
+                severity: "warn".into(),
+                title: "statusLine 已被占用".into(),
+                reason: "Claude settings.statusLine 已有第三方或自定义命令；OneTone 不会覆盖。".into(),
+                action: "手动把 statusLine.command 改为 OneTone relay，或先移除现有 statusLine。".into(),
+            }),
+            "malformed" => issues.push(ClaudeHookIssue {
+                severity: "warn".into(),
+                title: "statusLine 结构异常".into(),
+                reason: "settings.statusLine 不是可识别的 command 对象。".into(),
+                action: "请手动修正或删除 statusLine 后再安装。".into(),
+            }),
+            _ => {}
+        }
     }
 
     let panel_phase = match phase.as_str() {
@@ -945,6 +1060,13 @@ pub fn install_confirm() -> ClaudeHookWriteResult {
             0
         }
     };
+    let statusline_probe = statusline_probe_script_path();
+    let statusline_action = if statusline_probe.is_file() {
+        let sl_abs = statusline_probe.to_string_lossy().replace('\\', "/");
+        merge_onetone_statusline(&mut root, &sl_abs).unwrap_or("unchanged")
+    } else {
+        "unchanged"
+    };
     if let Err(e) = atomic_write_json(&settings_path, &root) {
         return ClaudeHookWriteResult {
             ok: false,
@@ -975,12 +1097,32 @@ pub fn install_confirm() -> ClaudeHookWriteResult {
 
     ClaudeHookWriteResult {
         ok: true,
-        reason: if stats.added.is_empty() && stats.refreshed.is_empty() && otel_added == 0 {
-            "already_up_to_date".into()
-        } else if !stats.refreshed.is_empty() && stats.added.is_empty() && otel_added == 0 {
+        reason: if stats.added.is_empty()
+            && stats.refreshed.is_empty()
+            && otel_added == 0
+            && matches!(statusline_action, "unchanged" | "skipped_foreign" | "skipped_malformed")
+        {
+            if statusline_action == "skipped_foreign" {
+                "statusline_foreign".into()
+            } else if statusline_action == "skipped_malformed" {
+                "statusline_malformed".into()
+            } else {
+                "already_up_to_date".into()
+            }
+        } else if !stats.refreshed.is_empty()
+            && stats.added.is_empty()
+            && otel_added == 0
+            && matches!(statusline_action, "unchanged" | "refreshed")
+        {
             "path_refreshed".into()
         } else if otel_added > 0 && stats.added.is_empty() && stats.refreshed.is_empty() {
             "otel_env_merged".into()
+        } else if statusline_action == "added"
+            && stats.added.is_empty()
+            && stats.refreshed.is_empty()
+            && otel_added == 0
+        {
+            "statusline_merged".into()
         } else {
             "installed".into()
         },
@@ -1054,7 +1196,7 @@ pub fn uninstall_onetone() -> ClaudeHookWriteResult {
         };
     }
     let backup_path = bp.display().to_string();
-    let removed = uninstall_onetone_hooks(&mut root);
+    let removed = uninstall_onetone_hooks(&mut root) + uninstall_onetone_statusline(&mut root);
     if let Err(e) = atomic_write_json(&settings_path, &root) {
         return ClaudeHookWriteResult {
             ok: false,
@@ -1252,5 +1394,47 @@ mod tests {
         let cmd = r#"node "C:/Users/a/scripts/claude-hook-probe.js" --onetone-hook-id claude-activity-v1"#;
         let p = extract_probe_path_from_command(cmd).unwrap();
         assert!(p.contains("claude-hook-probe.js"));
+    }
+
+    #[test]
+    fn statusline_missing_install_and_foreign_untouched() {
+        let mut root = json!({ "theme": "dark" });
+        assert_eq!(statusline_ownership(&root), "missing");
+        assert_eq!(
+            merge_onetone_statusline(&mut root, "C:/repo/scripts/claude-statusline-probe.js").unwrap(),
+            "added"
+        );
+        assert_eq!(statusline_ownership(&root), "onetone_owned");
+        let cmd = root["statusLine"]["command"].as_str().unwrap();
+        assert!(command_has_onetone_statusline_id(cmd));
+        assert!(cmd.contains(STATUSLINE_MARKER));
+
+        let foreign = json!({
+            "statusLine": { "type": "command", "command": "npx claude-code-usage-bar" }
+        });
+        let before = serde_json::to_string(&foreign).unwrap();
+        let mut foreign_mut = foreign.clone();
+        assert_eq!(statusline_ownership(&foreign_mut), "foreign");
+        assert_eq!(
+            merge_onetone_statusline(&mut foreign_mut, "C:/x/claude-statusline-probe.js").unwrap(),
+            "skipped_foreign"
+        );
+        assert_eq!(serde_json::to_string(&foreign_mut).unwrap(), before);
+        assert_eq!(uninstall_onetone_statusline(&mut foreign_mut), 0);
+        assert_eq!(serde_json::to_string(&foreign_mut).unwrap(), before);
+
+        assert_eq!(uninstall_onetone_statusline(&mut root), 1);
+        assert!(root.get("statusLine").is_none());
+    }
+
+    #[test]
+    fn statusline_filename_alone_is_not_owned() {
+        let root = json!({
+            "statusLine": {
+                "type": "command",
+                "command": "node \"C:/x/claude-statusline-probe.js\""
+            }
+        });
+        assert_eq!(statusline_ownership(&root), "foreign");
     }
 }

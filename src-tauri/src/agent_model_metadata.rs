@@ -119,10 +119,13 @@ pub fn ingest_hook_model(
     }
     if raw.is_empty() {
         if agent == AgentKind::Claude && event.trim() == "SessionStart" {
-            store()
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .remove(&AgentKind::Claude);
+            // New session with omitted model must not wipe the chip to "模型 --".
+            // Refresh session_id only; snapshot() can still fall back to settings.env.
+            let mut g = store().lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(meta) = g.get_mut(&AgentKind::Claude) {
+                meta.session_id = session_id.trim().to_string();
+                meta.updated_at = updated_at;
+            }
         }
         return;
     }
@@ -147,6 +150,75 @@ pub fn ingest_hook_model(
     );
 }
 
+/// statusLine model.id — refreshes Claude chip without waiting for SessionStart.
+pub fn ingest_statusline_model(session_id: &str, model_id: &str, updated_at: u64) {
+    let raw = model_id.trim();
+    if raw.is_empty() {
+        return;
+    }
+    let mut g = store().lock().unwrap_or_else(|e| e.into_inner());
+    g.insert(
+        AgentKind::Claude,
+        AgentModelMetadata {
+            model: raw.to_string(),
+            confidence: "medium".into(),
+            session_id: session_id.trim().to_string(),
+            updated_at,
+        },
+    );
+}
+
+fn claude_settings_json_path() -> PathBuf {
+    #[cfg(test)]
+    if let Some(p) = claude_settings_override().lock().unwrap().clone() {
+        return p;
+    }
+    if let Ok(home) = std::env::var("USERPROFILE") {
+        return PathBuf::from(home).join(".claude").join("settings.json");
+    }
+    if let Ok(home) = std::env::var("HOME") {
+        return PathBuf::from(home).join(".claude").join("settings.json");
+    }
+    PathBuf::from(".claude").join("settings.json")
+}
+
+#[cfg(test)]
+fn claude_settings_override() -> &'static Mutex<Option<PathBuf>> {
+    static OVR: OnceLock<Mutex<Option<PathBuf>>> = OnceLock::new();
+    OVR.get_or_init(|| Mutex::new(None))
+}
+
+#[cfg(test)]
+pub fn set_claude_settings_path_override_for_test(path: Option<PathBuf>) {
+    *claude_settings_override().lock().unwrap() = path;
+}
+
+/// Prefer display-oriented env names, then ANTHROPIC_MODEL.
+pub fn parse_claude_settings_model_label(contents: &str) -> Option<String> {
+    let v: serde_json::Value = serde_json::from_str(contents).ok()?;
+    let env = v.get("env")?.as_object()?;
+    for key in [
+        "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL_NAME",
+        "ANTHROPIC_MODEL",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL",
+    ] {
+        if let Some(s) = env.get(key).and_then(|x| x.as_str()).map(str::trim) {
+            if !s.is_empty() {
+                return Some(s.to_string());
+            }
+        }
+    }
+    None
+}
+
+fn read_claude_settings_model_label() -> Option<String> {
+    let path = claude_settings_json_path();
+    let contents = std::fs::read_to_string(path).ok()?;
+    parse_claude_settings_model_label(&contents)
+}
+
 pub fn snapshot(agent: AgentKind) -> AgentModelMetadata {
     let mut meta = store()
         .lock()
@@ -161,6 +233,14 @@ pub fn snapshot(agent: AgentKind) -> AgentModelMetadata {
             meta.confidence = "medium".into();
         }
     }
+    // Claude SessionStart often omits model (esp. API-key / proxy); settings.env is the durable default.
+    if agent == AgentKind::Claude && meta.model.trim().is_empty() {
+        if let Some(label) = read_claude_settings_model_label() {
+            meta.model = label;
+            // Not "low" — UI treats low as SessionStart-only hint.
+            meta.confidence = "settings".into();
+        }
+    }
     meta
 }
 
@@ -168,6 +248,7 @@ pub fn snapshot(agent: AgentKind) -> AgentModelMetadata {
 pub fn reset_for_test() {
     store().lock().unwrap_or_else(|e| e.into_inner()).clear();
     set_codex_config_path_override_for_test(None);
+    set_claude_settings_path_override_for_test(None);
 }
 
 #[cfg(test)]
@@ -190,8 +271,44 @@ mod tests {
         ingest_hook_model(AgentKind::Claude, "SessionStart", "s1", "claude-sonnet", 1);
         ingest_hook_model(AgentKind::Claude, "Stop", "s1", "claude-opus", 2);
         assert_eq!(snapshot(AgentKind::Claude).model, "claude-sonnet");
+        // Empty SessionStart must not wipe the chip to "模型 --".
         ingest_hook_model(AgentKind::Claude, "SessionStart", "s2", "", 3);
-        assert!(snapshot(AgentKind::Claude).model.is_empty());
+        let got = snapshot(AgentKind::Claude);
+        assert_eq!(got.model, "claude-sonnet");
+        assert_eq!(got.session_id, "s2");
+    }
+
+    #[test]
+    fn claude_snapshot_falls_back_to_settings_env() {
+        reset_for_test();
+        let dir = std::env::temp_dir().join(format!(
+            "onetone-claude-model-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let settings = dir.join("settings.json");
+        std::fs::write(
+            &settings,
+            r#"{"env":{"ANTHROPIC_MODEL":"deepseek-v4-pro","ANTHROPIC_DEFAULT_SONNET_MODEL_NAME":"deepseek-v4-pro"}}"#,
+        )
+        .unwrap();
+        set_claude_settings_path_override_for_test(Some(settings));
+        let got = snapshot(AgentKind::Claude);
+        assert_eq!(got.model, "deepseek-v4-pro");
+        assert_eq!(got.confidence, "settings");
+        let _ = std::fs::remove_dir_all(&dir);
+        reset_for_test();
+    }
+
+    #[test]
+    fn statusline_model_refreshes_claude_chip() {
+        reset_for_test();
+        ingest_statusline_model("s9", "claude-opus-4", 42);
+        let got = snapshot(AgentKind::Claude);
+        assert_eq!(got.model, "claude-opus-4");
+        assert_eq!(got.confidence, "medium");
+        assert_eq!(got.session_id, "s9");
     }
 
     #[test]

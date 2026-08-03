@@ -25,6 +25,14 @@ assert.ok(rust.includes('Identity alone never marks usage ready') || rust.includ
 assert.ok(rust.includes('thread/tokenUsage/updated'));
 assert.ok(rust.includes('claude_code.token.usage'));
 assert.ok(rust.includes('claude_code.cost.usage'));
+assert.ok(rust.includes('ingest_claude_statusline_json') || rust.includes('fn ingest_claude_statusline'));
+assert.ok(rust.includes('ClaudeStatusLineState') || rust.includes('claude_statusline_state'));
+assert.ok(rust.includes('compose_claude_snapshot'));
+assert.ok(rust.includes('repl_main_thread'));
+assert.ok(rust.includes('is_main_query_source'));
+assert.ok(rust.includes('STATUSLINE_READY_MS') || rust.includes('15 * 60'));
+assert.ok(server.includes('CLAUDE_STATUSLINE_PATH') || server.includes('/api/claude-statusline'));
+assert.ok(fs.existsSync(path.join(root, 'scripts/claude-statusline-probe.js')));
 assert.ok(rust.includes('100.0 - used') || rust.includes('100.0 - u'));
 assert.ok(rust.includes('pub windows: Vec<UsageWindow>'));
 assert.ok(rust.includes('Neither path reads transcripts'));

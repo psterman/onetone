@@ -27,6 +27,7 @@ pub const PROTOCOL_PATH: &str = "/api/codex-micro/protocol";
 pub const APP_STATE_PATH: &str = codex_app_state::APP_STATE_PATH;
 pub const CLAUDE_APPROVAL_PATH: &str = "/api/claude-approval";
 pub const CLAUDE_OTEL_METRICS_PATH: &str = "/v1/metrics";
+pub const CLAUDE_STATUSLINE_PATH: &str = "/api/claude-statusline";
 pub const TEST_PULSE_PATH: &str = "/api/soft-pad/test-pulse";
 pub const MAX_OTEL_BODY_BYTES: usize = 512 * 1024;
 
@@ -363,8 +364,15 @@ fn handle_client(
     let is_app_state = path == APP_STATE_PATH;
     let is_claude_approval = path == CLAUDE_APPROVAL_PATH;
     let is_claude_otel = path == CLAUDE_OTEL_METRICS_PATH;
+    let is_claude_statusline = path == CLAUDE_STATUSLINE_PATH;
     let is_test_pulse = path == TEST_PULSE_PATH;
-    if !is_protocol && !is_app_state && !is_claude_approval && !is_claude_otel && !is_test_pulse {
+    if !is_protocol
+        && !is_app_state
+        && !is_claude_approval
+        && !is_claude_otel
+        && !is_claude_statusline
+        && !is_test_pulse
+    {
         write_error(&mut stream, 404, "not_found")?;
         return Ok(());
     }
@@ -391,7 +399,7 @@ fn handle_client(
 
     // Authenticated connector POSTs: no wildcard CORS.
     // Claude OTel exporter cannot attach X-Onetone-Token; loopback + Host check already applied.
-    if (is_app_state || is_test_pulse) {
+    if is_app_state || is_test_pulse || is_claude_statusline {
         if let Err(code) = require_integration_token(header) {
             write_error(&mut stream, 401, code)?;
             return Ok(());
@@ -496,6 +504,13 @@ fn handle_client(
             return Ok(());
         };
         return handle_claude_otel_metrics_post(&mut stream, app, state, &raw);
+    }
+    if is_claude_statusline {
+        let (Some(app), Some(state)) = (app, state) else {
+            write_error(&mut stream, 503, "app_unavailable")?;
+            return Ok(());
+        };
+        return handle_claude_statusline_post(&mut stream, app, state, &raw);
     }
 
     let (Some(app), Some(state)) = (app, state) else {
@@ -686,6 +701,34 @@ fn handle_claude_otel_metrics_post(
     Ok(())
 }
 
+fn handle_claude_statusline_post(
+    stream: &mut TcpStream,
+    app: &AppHandle,
+    state: Arc<AppState>,
+    raw: &str,
+) -> Result<(), String> {
+    match crate::agent_usage::ingest_claude_statusline_json(raw) {
+        Ok(_accepted) => {
+            schedule_overlay_status_push(app, state);
+            write_raw(
+                stream,
+                200,
+                "OK",
+                &format!(
+                    "{}Content-Type: application/json; charset=utf-8\r\n",
+                    cors_headers()
+                ),
+                b"{}",
+            )?;
+        }
+        Err(code) => {
+            proto_log(&format!("claude-statusline reject err={code}"));
+            write_error(stream, 400, code)?;
+        }
+    }
+    Ok(())
+}
+
 fn apply_app_state_from_http(
     app: &AppHandle,
     state: Arc<AppState>,
@@ -787,6 +830,7 @@ fn require_integration_token(header: &str) -> Result<(), &'static str> {
 fn rate_limit_allow(path: &str) -> bool {
     use std::sync::atomic::AtomicU64;
     static LAST_MS: AtomicU64 = AtomicU64::new(0);
+    static STATUSLINE_LAST_MS: AtomicU64 = AtomicU64::new(0);
     static OTEL_WINDOW_START: AtomicU64 = AtomicU64::new(0);
     static OTEL_COUNT: AtomicU64 = AtomicU64::new(0);
     let now = now_ms();
@@ -799,6 +843,11 @@ fn rate_limit_allow(path: &str) -> bool {
         }
         let n = OTEL_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
         return n <= 30;
+    }
+    // statusLine must not share the app-state 20ms bucket — OTel/hook floods starve it.
+    if path == CLAUDE_STATUSLINE_PATH {
+        let prev = STATUSLINE_LAST_MS.swap(now, Ordering::Relaxed);
+        return now.saturating_sub(prev) >= 50;
     }
     let prev = LAST_MS.swap(now, Ordering::Relaxed);
     now.saturating_sub(prev) >= 20
@@ -986,6 +1035,7 @@ mod tests {
         assert_eq!(APP_STATE_PATH, "/api/codex-app/state");
         assert_eq!(CLAUDE_APPROVAL_PATH, "/api/claude-approval");
         assert_eq!(CLAUDE_OTEL_METRICS_PATH, "/v1/metrics");
+        assert_eq!(CLAUDE_STATUSLINE_PATH, "/api/claude-statusline");
         assert_eq!(TEST_PULSE_PATH, "/api/soft-pad/test-pulse");
         assert!(codex_app_state::validate_app_state_body(
             r#"{"source":"codex_hook","event":"UserPromptSubmit"}"#

@@ -69,7 +69,7 @@ Phase B 已经把硬数据存进 `AgentUsageSnapshot`。v1 是复用现有 overl
 | 面 | 文案 | 规则 |
 |---|---|---|
 | mini Codex | `C 63% · 2h12m` | primary 窗口 % + primary `resetsAt`；无 primary 才用第一个有效窗口 |
-| mini Claude | （隐藏） | OTel session/$ 不展示；有官方窗口后再启用 |
+| mini Claude | `Cl 76% · 3h12m` | Claude Code **statusLine** 的 5h/7d 窗口；无窗口时隐藏（OTel session/$ 仍不展示） |
 | mini Cursor | （隐藏） | 无可用 quota 不占 pill |
 | expanded rail | `5h余63% · 2h12m重置` / `7d余41% · …` | **每个窗口各自** reset；禁止 5h/7d 共用一个倒计时 |
 | Soft Pad 设置 | 见上两行 layout | `resetCountdown` 取 primary；无 primary → 首个有效窗口 |
@@ -89,6 +89,8 @@ flowchart LR
   AppServer -->|"rateLimits/read"| Store
   AppServer -->|"usage/read"| Store
   AppServer -->|"account/read id=4"| Store
+  StatusLine["Claude statusLine relay"] -->|"5h/7d windows"| Store
+  OTel["Claude OTel"] -->|"tokens/cost side"| Store
   Store["AgentUsageSnapshot"]
   Store --> Overlay["overlay agents[].usage"]
   Overlay --> Mini["mini usage pill"]
@@ -96,16 +98,19 @@ flowchart LR
   Overlay --> Settings["soft-pad status island"]
 ```
 
+Claude 用量双通道：`ClaudeStatusLineState`（额度窗口）与 `ClaudeOtelState`（token/费用）独立 `observed_at`，经 `compose_claude_snapshot` 合成；OTel 不得刷新窗口新鲜度。statusLine 超时：≤15m ready → ≤6h stale → 之后丢弃窗口。
+
 ## Explicitly out of v1
 
 - PitStop provider/account cards、多账号切换
-- 外部 CLI adapters（`codex-rate` / `codexbar` / `claude-monitor`）— phase 2 merge-only
+- 外部 CLI adapters（`codex-rate` / `codexbar` / `claude-monitor`）— phase 2 merge-only；**Claude 5h/7d 已由 statusLine 官方通道覆盖**
 - 新 IPC、burn-rate 预测、Cursor quota
 - 后端 countdown timer（overlay 已 ~1.5s 刷新）
+- statusLine 包装用户自定义 command；转发 `context_window` / statusLine `cost`
 
 ## Phase 2（现在不实现）
 
-PATH probe + 超时 + max stdout + 严格 JSON；只合并空字段；Claude 5h/7d 来自 monitor；session/$ 来自 OTel；缺工具静默 skip。
+PATH probe + 超时 + max stdout + 严格 JSON；只合并空字段；Codex 外部 CLI；Claude session/$ 仍仅 OTel；缺工具静默 skip。
 
 ## UI 文案合同（数据源）
 
@@ -116,7 +121,8 @@ PATH probe + 超时 + max stdout + 严格 JSON；只合并空字段；Claude 5h/
 | 脱敏账号 / 套餐 | `account/read` → `accountLabel` / `planType` | 后端脱敏；plan 优先 account |
 | `累计 N` | `account/usage/read` | lifetime token summary |
 | `会话 N` | `thread/tokenUsage/updated` | 仅 OneTone 管理的 thread |
-| `本会话 N` / `子任务 N` / `估算 $N` | Claude OTel | **v1 不展示**（本地估算，非正式账单） |
+| `本会话 N` / `子任务 N` / `估算 $N` | Claude OTel | **不在 mini/Soft Pad 额度行展示**（本地估算，非正式账单） |
+| `Nh余 N%`（Claude） | Claude Code statusLine → `/api/claude-statusline` | 官方 5h/7d 限额窗口 |
 | Cursor `用量 --` | 无官方接口 | 产品边界 |
 | Claude `用量 --` | 无官方额度窗口 | 与 Cursor 同边界；后端仍可 ingest OTel |
 

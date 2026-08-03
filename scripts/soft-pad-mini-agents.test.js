@@ -36,7 +36,10 @@ var miniFn = html.match(/function applyMiniAgentChips\(s\)\{[\s\S]*?\n    \}/);
 assert.ok(miniFn, 'applyMiniAgentChips body missing');
 assert.ok(!/appAgent|app_agent|appStatus|app_status/.test(miniFn[0]), 'mini chips must not read singleton appAgent/appStatus');
 assert.ok(html.includes('isRenderableUsage') || html.includes('hasRenderable'));
-assert.ok(html.includes("kind==='claude') return false") || html.includes('kind===\'claude\') return false'), 'Claude OTel must not be renderable for mini pill');
+// Claude is renderable only via valid remaining windows (not OTel session/$ alone).
+assert.ok(!/if\s*\(\s*kind\s*===\s*['"]claude['"]\s*\)\s*return\s*false/.test(html), 'Claude must not be hard-blocked for mini pill');
+assert.ok(html.includes('Number.isFinite') || html.includes('isFinite'));
+assert.ok(html.includes('claudeOtelBits') || html.includes('本会话'));
 assert.ok(html.includes('无官方额度窗口') || html.includes('用量暂无接口'));
 assert.ok(css.includes('.overlay-mini__agent[data-status="needs_input"]'));
 assert.ok(css.includes('.overlay-mini__agent[data-status="running"]'));

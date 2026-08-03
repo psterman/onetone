@@ -811,17 +811,28 @@
     var status = String(usage.status || 'unavailable');
     var windows = Array.isArray(usage.windows) ? usage.windows : [];
     var bits = [];
-    if (kind === 'codex') {
+    if (kind === 'codex' || kind === 'claude') {
       windows.slice(0, 2).forEach(function (w) {
         var lab = windowQuotaLabel(w);
         if (lab) bits.push(lab);
       });
       if (!bits.length) {
-        var remaining = usageVal(usage, 'remainingPercent', 'remaining_percent');
-        if (remaining != null) bits.push('窗口余 ' + Math.round(Number(remaining)) + '%');
+        if (kind === 'claude') {
+          var sess = usageVal(usage, 'sessionTokens', 'session_tokens');
+          var aux = usageVal(usage, 'auxiliaryTokens', 'auxiliary_tokens');
+          var cost = usageVal(usage, 'estimatedCostUsd', 'estimated_cost_usd');
+          if (sess != null) bits.push('本会话 ' + Math.round(Number(sess)));
+          if (aux != null) bits.push('子任务 ' + Math.round(Number(aux)));
+          if (cost != null) {
+            var c = Number(cost);
+            bits.push('估算 $' + (isFinite(c) ? (Math.round(c * 1e4) / 1e4) : cost));
+          }
+          if (!bits.length) bits.push('用量 --');
+        } else {
+          var remaining = usageVal(usage, 'remainingPercent', 'remaining_percent');
+          if (remaining != null) bits.push('窗口余 ' + Math.round(Number(remaining)) + '%');
+        }
       }
-    } else if (kind === 'claude') {
-      bits.push('用量 --');
     } else if (kind === 'cursor') {
       bits.push('用量 --');
     }
