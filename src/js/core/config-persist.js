@@ -29,6 +29,8 @@
 
   function scheduleDeferredMvpInitSideEffects(){
     deferredMvpInitSideEffects=true;
+    // First flush after boot should cold-start camera later (getUserMedia 假死).
+    try{ global.__otBootCameraCold=true; }catch(_){}
   }
 
   /** Full remount during Soft Pad / keys / camera open 假死's the drawer (MediaPipe + pad remount). */
@@ -50,30 +52,61 @@
     const st=state();
     const toggleBusy=voiceToggleBusy();
     const syncEditor=hookFn('syncEditorFromSelection');
-    if(syncEditor) syncEditor();
+    // Off this turn — sync syncEditor on boot-settled flush used to stack with camera → 假死.
+    if(syncEditor){
+      setTimeout(function(){
+        try{ syncEditor(); }catch(_){}
+      },0);
+    }
     // Camera MediaPipe / getUserMedia must NEVER run inline with applyMvpInit —
     // sync reconcile previously wedged the UI after "applyMvpInit ok" (Responding=False).
     try{
       var deferCam=function(){
+        var clearCamTag=function(){
+          try{
+            if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag) global.OneToneUiHeartbeat.clearTag();
+            else if(global.__otActivityTag==='bootCameraReconcile') global.__otActivityTag='';
+          }catch(_){}
+        };
         try{
-          if(!global.OneToneCameraPresenceActions) return;
+          try{
+            if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.setTag) global.OneToneUiHeartbeat.setTag('bootCameraReconcile');
+            else global.__otActivityTag='bootCameraReconcile';
+          }catch(_){}
+          if(!global.OneToneCameraPresenceActions){ clearCamTag(); return; }
           if(typeof global.OneToneCameraPresenceActions.syncUiFromPrefs==='function'){
             global.OneToneCameraPresenceActions.syncUiFromPrefs();
           }
+          var done=null;
           if(typeof global.OneToneCameraPresenceActions.reconcileRuntime==='function'){
-            global.OneToneCameraPresenceActions.reconcileRuntime({reason:'config_applied'});
+            done=global.OneToneCameraPresenceActions.reconcileRuntime({reason:'config_applied'});
           }
           if(global.OneToneCameraGazeCalibration&&typeof global.OneToneCameraGazeCalibration.loadFromPrefs==='function'){
             global.OneToneCameraGazeCalibration.loadFromPrefs();
           }
-        }catch(_){}
+          if(done&&typeof done.then==='function') done.then(clearCamTag,clearCamTag);
+          else clearCamTag();
+        }catch(_){
+          clearCamTag();
+        }
       };
-      if(typeof global.OneToneCameraPresenceActions==='object'&&
-         typeof global.OneToneCameraPresenceActions.deferCameraHeavyWork==='function'){
-        global.OneToneCameraPresenceActions.deferCameraHeavyWork(deferCam);
-      }else{
-        setTimeout(deferCam,0);
-      }
+      var camDelay=0;
+      try{
+        if(global.__otBootCameraCold){
+          camDelay=2500;
+          global.__otBootCameraCold=false;
+        }
+      }catch(_){}
+      var scheduleCam=function(){
+        if(typeof global.OneToneCameraPresenceActions==='object'&&
+           typeof global.OneToneCameraPresenceActions.deferCameraHeavyWork==='function'){
+          global.OneToneCameraPresenceActions.deferCameraHeavyWork(deferCam);
+        }else{
+          setTimeout(deferCam,0);
+        }
+      };
+      if(camDelay>0) setTimeout(scheduleCam,camDelay);
+      else scheduleCam();
     }catch(_){}
     if(global.OneToneAppStartMinimized) global.OneToneAppStartMinimized.loadState();
     const scheduleBootMic=hookFn('scheduleBootMicReady');

@@ -94,15 +94,30 @@
         if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.startConfigSyncPoll==='function'){
           global.OneToneConfigPersist.startConfigSyncPoll(3000,8);
         }
-        if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.flushDeferredMvpInitSideEffects==='function'){
-          global.OneToneConfigPersist.flushDeferredMvpInitSideEffects();
-        }
         if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.suppressUnknownSave==='function'){
           global.OneToneConfigPersist.suppressUnknownSave(2000);
         }
-        if(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.checkAfterBoot){
-          global.OneToneVoiceEngineReadiness.checkAfterBoot();
-        }
+        // Stagger heavy remount off the settle tick — sync flush + camera reconcile
+        // used to 假死 ~5s right after "boot settled" (ui_hb seq~49, howto 无法点).
+        // Camera cold-start waits another ~2.5s inside flush (see __otBootCameraCold).
+        setTimeout(function(){
+          try{
+            if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.flushDeferredMvpInitSideEffects==='function'){
+              global.OneToneConfigPersist.flushDeferredMvpInitSideEffects();
+            }
+          }catch(err){
+            try{ console.error('boot settled flush',err); }catch(_){}
+          }
+        },120);
+        setTimeout(function(){
+          try{
+            if(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.checkAfterBoot){
+              global.OneToneVoiceEngineReadiness.checkAfterBoot();
+            }
+          }catch(err){
+            try{ console.error('boot settled voice check',err); }catch(_){}
+          }
+        },400);
       });
     }
     setTimeout(function(){ hooks.markBoot('requestBackendConfig begin'); hooks.requestBackendConfig(8); }, 200);

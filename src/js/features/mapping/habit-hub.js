@@ -1266,7 +1266,8 @@
         render._bootDefer=true;
         global.OneToneAppSession.whenBootSettled(function(){
           render._bootDefer=false;
-          render();
+          // Off settle tick — sync hub paint stacked with camera cold-start → 假死.
+          setTimeout(function(){ render(); },80);
         });
       }
       return;

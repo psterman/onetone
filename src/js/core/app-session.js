@@ -268,9 +268,15 @@
   function runBootSettledCallbacks(){
     var list=bootSettledCallbacks.slice();
     bootSettledCallbacks=[];
-    list.forEach(function(fn){
+    // Yield between settle jobs — HabitHub + SoftPad + voice poll + mvp flush
+    // used to run in one sync turn and 假死 ~5s right after "boot settled".
+    function next(){
+      if(!list.length) return;
+      var fn=list.shift();
       try{ fn(); }catch(err){ console.error('bootSettled',err); }
-    });
+      if(list.length) setTimeout(next,0);
+    }
+    next();
   }
 
   function markBootSettled(){

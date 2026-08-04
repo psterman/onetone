@@ -214,17 +214,22 @@ check('setHeroMode 走 refreshHeroModeSurfaces', /function setHeroMode[\s\S]*ref
 check('setHeroMode 普通路径不整页 render', /function setHeroMode[\s\S]*if\(opts\.force\)\{[\s\S]*render\(\);[\s\S]*return;[\s\S]*\}[\s\S]*refreshHeroModeSurfaces\(\)/.test(wb));
 check('caps 一次采集', wb.includes('function collectHeroModeCaps') && wb.includes('softPadHeroSnapshot'));
 check('pills/flow 不内采 Camera snap', !/function renderHeroPills[\s\S]*cameraPresenceSnapshot\(\)/.test(wb) && !/function renderHeroFlowSummary[\s\S]*cameraPresenceSnapshot\(\)/.test(wb));
+check('flow 单行状态·目标', wb.includes('wb-hero-flow-line') && wb.includes('is-oneline') && !/cell\(t\('homeWbFlowTrigger'\)/.test(wb));
+check('pills 麦克风只进 title', /if\(pill\.id==='mic'\) return/.test(wb) && wb.includes('device name lives on engine pill title'));
+check('hero mode hint 已移除可见 tip', /Preview tip moved to howto/.test(wb) && !/hint\.textContent=t\('homeWbHeroModeHint'\)/.test(wb));
 
 const heroModelSrc = readFileSync(join(root, 'src/js/features/home/home-hero-mode-model.js'), 'utf8');
 check('home-hero-mode-model 存在', heroModelSrc.includes('function buildHomeHeroModeModel') && heroModelSrc.includes('OneToneHomeHeroModeModel'));
 check('projection 四模式 CTA', heroModelSrc.includes('homeWbFlowCtaVoice') && heroModelSrc.includes('homeWbFlowCtaKeys') && heroModelSrc.includes('homeWbFlowCtaSoftPad') && heroModelSrc.includes('homeWbFlowCtaCamera'));
 
 const htmlHome = readFileSync(join(root, 'src/index.html'), 'utf8');
-check('hero softPad tab', htmlHome.includes('data-wb-hero-mode="softPad"') && htmlHome.includes('id="wbHeroModeSoftPad"'));
+check('hero softPad 由 howto 切换', htmlHome.includes('id="wbHowTo"') && !htmlHome.includes('wb-hero-modes') && !htmlHome.includes('id="wbHeroModeSoftPad"'));
+check('hero 无重复模式条', !htmlHome.includes('data-wb-hero-mode=') && wb.includes('syncHowToActive') && !wb.includes('function syncHeroModeTabs'));
 check('index 挂载 hero-mode-model', htmlHome.includes('home-hero-mode-model.js'));
 
 const panels = readFileSync(join(root, 'src/js/features/home/home-workbench-panels.js'), 'utf8');
 check('howto 只吃 projection', panels.includes('projection.howtoCards') && panels.includes('禁止在此再采集'));
+check('inactive howto 无 meta', panels.includes('card.active?1:0'));
 check('panels 导出 softPadHowToSnapshot', panels.includes('softPadHowToSnapshot:softPadHowToSnapshot'));
 check('panels 导出 collectHowToSurfaceBits', panels.includes('collectHowToSurfaceBits:collectHowToSurfaceBits'));
 check('softPad snapshot 走 resolvePrimaryLane', (() => {
@@ -248,6 +253,61 @@ check('howto 摘要点卡切 Hero', panels.includes('howToSummaryCardHtml') && p
 check('howto 点卡切 Hero / 再点开设置', (() => {
   const m = wb.match(/#wbHowTo \[data-wb-howto\][\s\S]*?return;\s*\}/);
   return !!(m && m[0].includes('setHeroMode(kind)') && m[0].includes('openHabitChannelChip(kind)') && m[0].includes('heroMode'));
+})());
+check('openGlobalVoice 会打开抽屉', (() => {
+  const banner = readFileSync(join(root, 'src/js/features/mapping/habit-scenario-context-banner.js'), 'utf8');
+  return banner.includes('function ensureDrawerPanel')
+    && /function openGlobalVoice[\s\S]*ensureDrawerPanel\('voiceWake'\)/.test(banner)
+    && /function openGlobalCamera[\s\S]*ensureDrawerPanel\('camera'\)/.test(banner)
+    && /function openGlobalVoice[\s\S]*requestAnimationFrame[\s\S]*mountVoice/.test(banner)
+    && /function openScenarioVoiceEdit[\s\S]*persist:false/.test(banner);
+})());
+check('boot settled heavy 错峰', (() => {
+  const boot = readFileSync(join(root, 'src/js/core/app-boot.js'), 'utf8');
+  const persist = readFileSync(join(root, 'src/js/core/config-persist.js'), 'utf8');
+  const session = readFileSync(join(root, 'src/js/core/app-session.js'), 'utf8');
+  return persist.includes('__otBootCameraCold')
+    && persist.includes('bootCameraReconcile')
+    && /camDelay\s*=\s*2500/.test(persist)
+    && session.includes('Yield between settle jobs')
+    && /setTimeout\(next,\s*0\)/.test(session)
+    && /setTimeout\(function\(\)\{[\s\S]*flushDeferredMvpInitSideEffects[\s\S]*\},120\)/.test(boot);
+})());
+check('camera/softPad liveHint 不指上方下方', (() => {
+  const model = readFileSync(join(root, 'src/js/features/home/home-hero-mode-model.js'), 'utf8');
+  const zh = readFileSync(join(root, 'src/js/core/i18n.js'), 'utf8');
+  const wbFlow = readFileSync(join(root, 'src/js/features/home/home-workbench.js'), 'utf8');
+  return model.includes('liveHintFor(mode, camera, softPad, t)')
+    && model.includes('homeWbLiveCameraOffHint')
+    && zh.includes('homeWbLiveCameraOffHint:')
+    && !zh.includes('点上方或下方')
+    && /mode==='camera'\|\|mode==='softPad'/.test(wbFlow)
+    && wbFlow.includes('projection.liveStatus')
+    && wbFlow.includes('is-settings-cta')
+    && wbFlow.includes('openHeroSettings');
+})());
+check('camera actionsLine 含手势', (() => {
+  const wb = readFileSync(join(root, 'src/js/features/home/home-workbench.js'), 'utf8');
+  const fn = wb.match(/function cameraActionsLine\(prefs\)\{[\s\S]*?\n  function /);
+  return !!(fn && fn[0].includes('openPalm') && fn[0].includes('homeWbCameraPalmShort'));
+})());
+check('flow 状态条不叠习惯·前台', (() => {
+  const model = readFileSync(join(root, 'src/js/features/home/home-workbench-model.js'), 'utf8');
+  const wb = readFileSync(join(root, 'src/js/features/home/home-workbench.js'), 'utf8');
+  const zh = readFileSync(join(root, 'src/js/core/i18n.js'), 'utf8');
+  return model.includes('One name only')
+    && !model.includes("habitName + ' · ' + draftTarget")
+    && wb.includes('Happy-path listening')
+    && /homeStatusListening:'就绪'/.test(zh);
+})());
+check('flow 场景图标芯片', (() => {
+  const wb = readFileSync(join(root, 'src/js/features/home/home-workbench.js'), 'utf8');
+  const panels = readFileSync(join(root, 'src/js/features/home/home-workbench-panels.js'), 'utf8');
+  const css = readFileSync(join(root, 'src/css/home-workbench.css'), 'utf8');
+  return wb.includes('wb-hero-flow-scene')
+    && wb.includes('sceneIconHtml')
+    && panels.includes('sceneIconHtml:sceneIconHtml')
+    && css.includes('.wb-hero-flow-scene-ico');
 })());
 check('activate 乐观刷新首页', (() => {
   const act = readFileSync(join(root, 'src/js/features/scene/scene-activate.js'), 'utf8');
@@ -359,9 +419,14 @@ loadIife('src/js/features/home/home-hero-mode-model.js', sandbox);
       homeWbFlowEmptySoftPad: '还没有屏幕按钮方案',
       homeWbFlowEmptyCamera: '摄像头确认未启用，需要时再打开',
       homeWbLiveCameraHint: 'cam-hint',
+      homeWbLiveCameraOffHint: 'cam-off',
+      homeWbLiveCameraEmptyHint: 'cam-empty',
       homeWbLiveSoftPadHint: 'pad-hint',
+      homeWbLiveSoftPadOffHint: 'pad-off',
       homeWbLivePreviewStandby: '待命',
       homeWbVoiceOff: '语音关',
+      homeWbCameraOff: '未开启',
+      homeWbCameraReady: '已就绪',
       homeWbCameraBoundCount: '已绑定 {n} 项',
     };
     return map[k] || fb || k;
@@ -425,20 +490,42 @@ loadIife('src/js/features/home/home-hero-mode-model.js', sandbox);
       if (c.phrases) allOk = false;
       if ((c.lines || []).length > 2) allOk = false;
     }
-    if (mode === 'softPad') {
-      const bad = p.pills.some((x) => x.id === 'mic' || x.action === 'listen-toggle');
-      if (bad || p.guards.softPadHasMicPill) allOk = false;
-      if (p.flow.trigger !== '还没有屏幕按钮方案') allOk = false;
-    }
     if (mode === 'camera') {
       const send = p.pills.some((x) => /send/i.test(x.id || '') || /send/i.test(x.action || ''));
       if (send || p.guards.cameraSendClass) allOk = false;
       if (p.localAction.panel !== 'camera') allOk = false;
       if (p.guards.globalCtaIsCamera) allOk = false;
+      if (p.liveHint !== 'cam-empty') allOk = false;
+      if (p.liveStatus !== '已就绪') allOk = false;
+    }
+    if (mode === 'softPad') {
+      const bad = p.pills.some((x) => x.id === 'mic' || x.action === 'listen-toggle');
+      if (bad || p.guards.softPadHasMicPill) allOk = false;
+      if (p.flow.trigger !== '还没有屏幕按钮方案') allOk = false;
+      if (p.liveHint !== 'pad-off') allOk = false;
     }
     if (p.howtoCards.map((c) => c.mode).join(',') !== 'voice,keys,softPad,camera') allOk = false;
   }
   check('四模式 projection 字段完整', allOk);
+  const camBound = build({
+    mode: 'camera',
+    workbench: baseWb,
+    vm: baseVm,
+    camera: {
+      enabled: true,
+      running: true,
+      presence: 'present',
+      bound: 5,
+      actionsLine: '摇头→取消 · 闭眼→听写 · 离席→遮罩',
+    },
+    softPad: { schemeCount: 1, empty: false },
+    howto: {},
+    t: tFn,
+  });
+  check(
+    'camera liveHint 用动作摘要',
+    !!(camBound && camBound.liveHint === '摇头→取消 · 闭眼→听写 · 离席→遮罩' && camBound.liveStatus === '已就绪')
+  );
 }
 const shell = readFileSync(join(root, 'src/js/features/home/home-shell.js'), 'utf8');
 check('shell workbench 不写平行状态', shell.includes('有 workbench 时状态/CTA 只走'));

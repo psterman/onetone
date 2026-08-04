@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一声 OneTone vs 主流 Vibecoding 软件 · 差异化分析</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#11182e; --panel2:#0f1626; --line:#243049;
+    --txt:#e6ecf7; --dim:#93a1c0; --accent:#7c9cff; --accent2:#a78bfa;
+    --ok:#4ade80; --warn:#fbbf24; --bad:#f87171;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'SF Pro Display','Segoe UI',system-ui,-apple-system,sans-serif;
+    background:radial-gradient(1200px 600px at 70% -10%,#16203c 0%,var(--bg) 60%);
+    color:var(--txt);line-height:1.6;padding:40px 22px 80px}
+  .wrap{max-width:1080px;margin:0 auto}
+  h1{font-size:30px;font-weight:800;letter-spacing:.3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .sub{color:var(--dim);margin-top:8px;font-size:14px}
+  .tag{display:inline-block;font-size:12px;color:var(--accent);border:1px solid var(--line);
+    border-radius:999px;padding:2px 10px;margin-top:14px}
+  section{margin-top:38px}
+  h2{font-size:20px;font-weight:700;margin-bottom:14px;padding-left:12px;
+    border-left:3px solid var(--accent)}
+  h3{font-size:15px;color:var(--dim);font-weight:600;margin:18px 0 8px}
+  p{color:var(--txt);font-size:14.5px}
+  .grid{display:grid;gap:14px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:820px){.g2,.g3{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .card h4{font-size:14.5px;font-weight:700;margin-bottom:6px}
+  .card p{font-size:13px;color:var(--dim)}
+  .pill{display:inline-block;font-size:11px;padding:1px 8px;border-radius:6px;margin:2px 4px 2px 0}
+  .p-new{background:rgba(124,156,255,.16);color:#aebfff;border:1px solid rgba(124,156,255,.4)}
+  .p-uniq{background:rgba(74,222,128,.14);color:#9af0b8;border:1px solid rgba(74,222,128,.4)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:6px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--accent);font-weight:700;background:var(--panel2)}
+  td:first-child{color:var(--txt);font-weight:600}
+  .yes{color:var(--ok)} .no{color:var(--bad)} .part{color:var(--warn)}
+  .stack{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  .layer{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--panel2)}
+  .layer .t{font-size:13px;font-weight:700}
+  .layer .d{font-size:12px;color:var(--dim)}
+  .arrow{text-align:center;color:var(--accent);font-size:18px}
+  .note{background:var(--panel2);border:1px dashed var(--line);border-radius:12px;padding:14px 16px;font-size:13.5px;color:var(--dim)}
+  .note b{color:var(--accent)}
+  ul{margin:8px 0 0 18px;font-size:13.5px;color:var(--dim)}
+  li{margin:4px 0}
+  .foot{margin-top:46px;color:var(--dim);font-size:12px;text-align:center;border-top:1px solid var(--line);padding-top:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>一声 OneTone · 与主流 Vibecoding 软件的差异化分析</h1>
+  <div class="sub">结论先行：OneTone 不与 Cursor / Claude Code / Codex 在「AI 引擎」层面竞争，而是在它们之上补了一层「人的接口」——硬件控制器 + 语音输入 + 跨工具编排监控。</div>
+  <span class="tag">分析基准：2026-08-04 · 来源 = 本仓库 CHANGELOG/docs + 2026 市场评测</span>
+
+  <!-- 1. 产品定位 -->
+  <section>
+    <h2>1. 这个软件到底是什么</h2>
+    <div class="grid g2">
+      <div class="card">
+        <h4>定位</h4>
+        <p>Windows 桌面「后台触发层」：把鼠标侧键、音量键、手柄、蓝牙戒指、遥控器、小键盘等外设，以及麦克风口令，连接到你正在用的语音/流式输入法与 AI 编码工具。它不是新输入法，也不是编码引擎。</p>
+      </div>
+      <div class="card">
+        <h4>它的「vibecoding」含义</h4>
+        <p>用一块 <b>Soft Pad 小键盘 + 语音</b> 去驱动 AI 编码助手（Codex / Claude）——把「说一句话 + 按一下键」变成控制 vibe coding 的方式。键盘文件命名为 <i>Vibecoding Pro 键盘</i> 即此意。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. 新功能 -->
+  <section>
+    <h2>2. 近期新增 / 未发布的新功能</h2>
+    <div class="grid g3">
+      <div class="card">
+        <h4>① 情景方案 config v6 <span class="pill p-new">NEW</span></h4>
+        <p>activeSceneId 为运行时真相；按情景稀疏覆盖语音快捷键 / 唤醒词 / 结束词；设置页四页签（键 / 语音 / 目标 / 高级）+ 生效预览 +「设为当前情景」。</p>
+      </div>
+      <div class="card">
+        <h4>② Coach HUD <span class="pill p-new">NEW</span></h4>
+        <p>底部居中浮层，触发→目标提示与成功闪示；开关在 设置→基础→情景教练浮层。</p>
+      </div>
+      <div class="card">
+        <h4>③ 规则 C 同步确认 <span class="pill p-new">NEW</span></h4>
+        <p>改全局语音快捷键时，若当前情景有 targetKey 覆盖，弹三选一对话框（仅全局 / 全局+清覆盖 / 取消）。</p>
+      </div>
+      <div class="card">
+        <h4>④ Soft Pad 小键盘 <span class="pill p-new">NEW</span></h4>
+        <p>物理小键盘映射 AI 编码命令：命令面板(Ctrl+K)、新对话(Ctrl+N)、快聊(Ctrl+Alt+N)、查找(Ctrl+F)、发送/结束口述(Enter)、取消(Esc)、推送对话、撤销、summonCodex 总开关。</p>
+      </div>
+      <div class="card">
+        <h4>⑤ Agent 用量监控 <span class="pill p-new">NEW</span></h4>
+        <p>在同一处看 Codex 与 Claude 的 5h/7d 额度窗口、重置倒计时、脱敏账号与套餐；单例 30s 轮询、页面门控。</p>
+      </div>
+      <div class="card">
+        <h4>⑥ 视觉智能脚本推荐 <span class="pill p-new">NEW</span></h4>
+        <p>「看见」网页（WebView / 浏览器扩展 / OCR）→ 理解上下文 → 推荐自动化脚本 → 一键运行。偏 RPA 范式，是另一类能力。</p>
+      </div>
+      <div class="card">
+        <h4>⑦ Camera Pro <span class="pill p-new">NEW</span></h4>
+        <p>Windows Hello 摄像头扩展；Send Guard 安全模型；在场/视觉触发。功能已冻结验收。</p>
+      </div>
+      <div class="card">
+        <h4>⑧ 本地优先 / 隐私</h4>
+        <p>SAPI、离线 Vosk、本地 KWS 关键词唤醒；配置在本机，唤醒与上屏链路不上传 OneTone 服务器。</p>
+      </div>
+      <div class="card">
+        <h4>⑨ 输入法无关</h4>
+        <p>适配 Typeless、智谱、千问、闪电说、搜狗、讯飞、微信输入法等，或手动录制任意快捷键——不被单一 AI 厂商绑定。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. 市场 -->
+  <section>
+    <h2>3. 2026 主流 Vibecoding 软件在做什么</h2>
+    <div class="grid g3">
+      <div class="card"><h4>Claude Code</h4><p>终端 Agent，CLAUDE.md 项目记忆、Hooks、自主多文件、Git 原生、SWE-bench 80.9% 领先。</p></div>
+      <div class="card"><h4>Cursor</h4><p>VS Code 分支 IDE，Tab 预测、Composer 多文件、内联编辑、@提及；日常编码体验最佳。</p></div>
+      <div class="card"><h4>Codex CLI</h4><p>终端优先，云/本地双轨，OpenAI 模型，脚本化/无头 CI 任务强。</p></div>
+      <div class="card"><h4>Windsurf</h4><p>Cascade Agent IDE，性价比高（$15/月），整项目上下文。</p></div>
+      <div class="card"><h4>Cline / Aider</h4><p>开源、BYOK（自带密钥），隐私与成本敏感用户首选。</p></div>
+      <div class="card"><h4>GitHub Copilot</h4><p>扩展形态，GitHub 原生，1500 万开发者装机量最大。</p></div>
+    </div>
+    <div class="note">市场共识能力（它们都在卷的）：内联补全、对话、Agent 多文件编辑、长上下文窗口、项目记忆（CLAUDE.md）、Hooks/MCP 扩展、PR 工作流、SWE-bench 等基准。<b>核心是「AI 引擎与推理能力」这一层。</b></div>
+  </section>
+
+  <!-- 4. 差异矩阵 -->
+  <section>
+    <h2>4. 差异化矩阵（OneTone 有 / 市场没有）</h2>
+    <table>
+      <thead><tr><th>能力维度</th><th>一声 OneTone</th><th>主流 Vibecoding（Cursor/Claude Code…）</th><th>判定</th></tr></thead>
+      <tbody>
+        <tr><td>硬件 / 物理控制面</td><td>小键盘、鼠标侧键、手柄、蓝牙戒指、遥控器一键触发</td><td>几乎全部键盘/鼠标/聊天，无物理控制器映射</td><td class="yes">OneTone 独有</td></tr>
+        <tr><td>语音口述输入桥</td><td>把任意语音/流式输入法接到任意输入框（含 AI 聊天）</td><td>纯文本/对话，无「语音口述→代码/注释/对话」输入层</td><td class="yes">OneTone 独有</td></tr>
+        <tr><td>跨工具用量监控</td><td>Codex + Claude 额度同屏、5h/7d 窗口、脱敏账号</td><td>各家只显示自己；无聚合视图</td><td class="yes">OneTone 独有</td></tr>
+        <tr><td>按情景的语音档案</td><td>按应用目标键 + 每情景唤醒/结束词（绑定硬件触发）</td><td>有项目记忆(CLAUDE.md)，但无绑定物理上下文的语音档案</td><td class="part">部分差异</td></tr>
+        <tr><td>视觉/RPA 脚本推荐</td><td>看网页→推荐脚本→一键运行</td><td>属浏览器自动化另一品类，编码 Agent 不含</td><td class="yes">品类差异</td></tr>
+        <tr><td>本地优先语音</td><td>离线 Vosk / 本地 KWS，隐私在输入层</td><td>一般不处理输入层隐私</td><td class="part">角度差异</td></tr>
+        <tr><td>厂商无关</td><td>可驱动任意语音输入法 + 任意 AI 编码工具</td><td>各自绑定自家模型/生态</td><td class="yes">OneTone 独有</td></tr>
+        <tr><td>AI 代码生成 / 自主推理</td><td>不提供（它去驱动那些工具）</td><td>核心能力：生成、重构、跑测试、开 PR</td><td class="no">OneTone 不竞争</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 5. 核心图 -->
+  <section>
+    <h2>5. 核心图：它补的是哪一层</h2>
+    <div class="stack">
+      <div class="layer"><div class="t">👤 人（手在鼠标上 / 离键盘 / 不想打字）</div><div class="d">物理按键、语音口令、在场/视觉触发</div></div>
+      <div class="arrow">⬇ 经由 OneTone 触发层</div>
+      <div class="layer" style="border-color:rgba(124,156,255,.5)"><div class="t">🎛️ 一声 OneTone（控制 / 接口 / 编排层）</div><div class="d">硬件映射 · 语音激活 · Soft Pad · 情景语音档案 · 跨工具用量监控 · 视觉脚本推荐</div></div>
+      <div class="arrow">⬇ 驱动</div>
+      <div class="layer"><div class="t">🤖 AI 编码助手（被驱动的引擎）</div><div class="d">Claude Code · Codex CLI · Cursor · Windsurf · Copilot … 负责真正的代码生成与推理</div></div>
+      <div class="arrow">⬇ 读写</div>
+      <div class="layer"><div class="t">📦 代码仓库 / 应用</div><div class="d">真实工程产物</div></div>
+    </div>
+    <div class="note" style="margin-top:16px"><b>一句话定位：</b>主流工具在「怎么把需求变成代码」上内卷；OneTone 解决的是「人怎么更顺手地把意图交给 AI、并在多个 AI 工具间统一操控与看板」。它是 vibe coding 的<b>控制器 / 人机接口操作系统</b>，是互补品而非替代品。</div>
+  </section>
+
+  <!-- 6. 差距 -->
+  <section>
+    <h2>6. OneTone 不与之竞争的地方（客观差距）</h2>
+    <ul>
+      <li>没有 AI 代码生成 / Agent 自主能力 / 模型推理——它驱动那些工具，不取代它们。</li>
+      <li>没有内联补全、Composer、PR 创建、SWE-bench 之类的「编码能力」指标。</li>
+      <li>不是 IDE，是配套层；目前仅 Windows 10/11 x64，无 macOS / Linux。</li>
+      <li>未做代码签名，首次安装有 SmartScreen 摩擦（需「仍要运行」）。</li>
+      <li>视觉脚本推荐、Camera Pro 仍偏早期/规划态，工程完成度低于核心触发链路。</li>
+    </ul>
+  </section>
+
+  <div class="foot">生成于 2026-08-04 · 一声 OneTone 差异化分析 · 数据：本仓库 CHANGELOG.md / docs/* + 2026 公开评测（tembo / app-lab / scotthavird 等）</div>
+</div>
+</body>
+</html>

@@ -804,11 +804,19 @@
 
     }else if(panel==='voiceWake'){
 
-      // Defer voice island mounts so drawer chrome can paint first (同 keys 打开假死模式).
+      // Defer voice island mounts + entering status so drawer chrome can paint first (同 keys 打开假死模式).
       requestAnimationFrame(function(){
         setTimeout(function(){
           if(normalizePanel(ui.settingsPanel)!=='voiceWake') return;
           try{
+            if(enteringVoice){
+              const active=hooks().currentVoiceMode();
+              hooks().setVoiceWakeExpandedMode(active==='vosk'?'vosk':active==='sapi'?'sapi':((global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi())?'vosk':(global.OneToneVoiceWake.getExpandedMode()||'vosk')));
+              global.OneToneVoiceWake.clearLiveFingerprints();
+              const w=hooks().voiceUiSnapshot().wake||{};
+              if(w.sapi) hooks().renderVoiceSapiStatus(w.sapi);
+              if(w.vosk) hooks().renderVoiceVoskStatus(w.vosk);
+            }
             var mountVoiceStatus=global.__otMountVoiceStatusChromeIsland;
             if(typeof mountVoiceStatus==='function') mountVoiceStatus();
             var mountVoiceEngineTabs=global.__otMountVoiceEngineTabsIsland;
@@ -820,22 +828,6 @@
           }catch(err){ console.error('voice island mount',err); }
         },0);
       });
-
-      if(enteringVoice){
-
-        const active=hooks().currentVoiceMode();
-
-        hooks().setVoiceWakeExpandedMode(active==='vosk'?'vosk':active==='sapi'?'sapi':((global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi())?'vosk':(global.OneToneVoiceWake.getExpandedMode()||'vosk')));
-
-        global.OneToneVoiceWake.clearLiveFingerprints();
-
-        const w=hooks().voiceUiSnapshot().wake||{};
-
-        if(w.sapi) hooks().renderVoiceSapiStatus(w.sapi);
-
-        if(w.vosk) hooks().renderVoiceVoskStatus(w.vosk);
-
-      }
 
       hooks().renderVoiceModeSwitch();
 

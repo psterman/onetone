@@ -1326,14 +1326,75 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
 }
 
 .wb-hero-flow {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px 8px;
+  display: flex;
+  justify-content: center;
   width: min(100%, 520px);
-  padding: 8px 10px;
-  border-radius: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
   border: 1px solid var(--outline-variant);
   background: color-mix(in srgb, var(--surface-soft) 88%, var(--surface-high));
+}
+
+.wb-hero-flow.is-oneline,
+.wb-hero-flow-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.wb-hero-flow-sep {
+  color: var(--on-surface-muted);
+  font-weight: 600;
+  opacity: 0.55;
+}
+
+.wb-hero-flow-scene {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: min(70vw, 320px);
+}
+
+.wb-hero-flow-scene-ico {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surface-high) 70%, transparent);
+  color: var(--on-surface-muted);
+}
+
+.wb-hero-flow-scene-ico .habit-app-badge,
+.wb-hero-flow-scene-ico .habit-app-badge-fallback,
+.wb-hero-flow-scene-ico .wb-scene-card-ico {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border-radius: 6px;
+  font-size: 9px;
+  display: grid;
+  place-items: center;
+}
+
+.wb-hero-flow-scene-ico img,
+.wb-hero-flow-scene-ico .habit-app-badge-icon,
+.wb-hero-flow-scene-ico svg {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  display: block;
+}
+
+.wb-hero-flow-scene .wb-hero-flow-val {
+  max-width: min(52vw, 240px);
 }
 
 .wb-hero-flow-item {
@@ -1359,6 +1420,7 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: min(42vw, 220px);
 }
 
 .wb-hero-flow-val.is-live {
@@ -1371,7 +1433,7 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
 
 @media (max-width: 640px) {
   .wb-hero-flow {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
   }
 }
 
@@ -1400,13 +1462,9 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
 }
 
 .wb-hero.is-mode-voice .wb-hero-wave,
-.wb-hero:has(.wb-hero-mode[data-wb-hero-mode="voice"]:hover) .wb-hero-wave,
 .wb-hero.is-mode-keys .wb-hero-wave,
-.wb-hero:has(.wb-hero-mode[data-wb-hero-mode="keys"]:hover) .wb-hero-wave,
 .wb-hero.is-mode-softPad .wb-hero-wave,
-.wb-hero:has(.wb-hero-mode[data-wb-hero-mode="softPad"]:hover) .wb-hero-wave,
-.wb-hero.is-mode-camera .wb-hero-wave,
-.wb-hero:has(.wb-hero-mode[data-wb-hero-mode="camera"]:hover) .wb-hero-wave {
+.wb-hero.is-mode-camera .wb-hero-wave {
   display: flex;
 }
 
@@ -1582,6 +1640,28 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
   border-color: color-mix(in srgb, var(--primary) 38%, transparent);
   box-shadow: 0 0 25px color-mix(in srgb, var(--primary) 16%, transparent);
 }
+
+.wb-hero.is-mode-voice .wb-hero-ring-outer {
+  border-color: color-mix(in srgb, var(--primary) 22%, transparent);
+  box-shadow: 0 12px 34px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+.wb-hero.is-mode-keys .wb-hero-ring-outer {
+  border-color: color-mix(in srgb, #6366f1 28%, transparent);
+  box-shadow: 0 12px 34px color-mix(in srgb, #6366f1 12%, transparent);
+}
+.wb-hero.is-mode-softPad .wb-hero-ring-outer {
+  border-color: color-mix(in srgb, #0d9488 28%, transparent);
+  box-shadow: 0 12px 34px color-mix(in srgb, #0d9488 12%, transparent);
+}
+.wb-hero.is-mode-camera .wb-hero-ring-outer {
+  border-color: color-mix(in srgb, #ea580c 28%, transparent);
+  box-shadow: 0 12px 34px color-mix(in srgb, #ea580c 12%, transparent);
+}
+
+.wb-hero.is-mode-voice:not(.is-live) .wb-hero-wave { opacity: 0.28; }
+.wb-hero.is-mode-keys:not(.is-live) .wb-hero-wave,
+.wb-hero.is-mode-softPad:not(.is-live) .wb-hero-wave,
+.wb-hero.is-mode-camera:not(.is-live) .wb-hero-wave { opacity: 0.22; }
 
 .wb-hero-key-trail {
   display: none !important;
@@ -2000,56 +2080,12 @@ button.wb-hero-pill:hover,
 .wb-hero-pill-dot.is-warn { background: #f59e0b; }
 .wb-hero-pill-dot.is-standby { background: var(--on-surface-muted); }
 
-.wb-hero-modes {
-  display: inline-flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 2px;
-  max-width: 100%;
-  padding: 3px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--surface-soft) 90%, #cbd5e1);
-  border: 1px solid color-mix(in srgb, var(--outline-variant) 60%, transparent);
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+.wb-hero-mode-hint {
+  display: none !important;
 }
 
-.wb-hero-mode {
-  min-height: 34px;
-  padding: 0 14px;
-  border: none;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--on-surface-muted);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
-}
-
-@media (max-width: 720px) {
-  .wb-hero-mode {
-    padding: 0 9px;
-    font-size: 11px;
-  }
-}
-
-@media (max-width: 640px) {
-  .wb-hero-mode {
-    padding: 0 8px;
-    font-size: 10.5px;
-  }
-}
-
-.wb-hero-mode:hover {
-  color: var(--on-surface);
-}
-
-.wb-hero-mode.is-active {
-  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 75%, #38bdf8), var(--primary));
-  color: #fff;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 22%, transparent);
+.wb-howto-card:not(.is-active) .wb-howto-card-meta {
+  display: none;
 }
 
 .wb-hero-footer {
@@ -2475,6 +2511,18 @@ html[data-theme="dark"] .wb-live-text {
   font-size: 14px;
   font-weight: 500;
   font-style: italic;
+}
+
+.wb-live-text.is-settings-cta {
+  cursor: pointer;
+  font-style: normal;
+}
+
+.wb-live-text.is-settings-cta:hover,
+.wb-live-text.is-settings-cta:focus-visible {
+  color: var(--on-surface);
+  outline: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent);
 }
 
 .wb-live-text .vp-empty {

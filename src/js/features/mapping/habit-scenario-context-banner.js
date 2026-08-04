@@ -23,6 +23,19 @@
     return appId||'—';
   }
 
+  /** Home howto re-click used to only setPanel while drawer stayed closed → 看起来无法选中. */
+  function ensureDrawerPanel(panel,opts){
+    var drawer=global.OneToneSettingsDrawer;
+    if(!drawer) return;
+    opts=opts||{};
+    var next=Object.assign({},opts,{panel:panel});
+    if(!ui().drawerOpen&&typeof drawer.open==='function'){
+      drawer.open(next);
+      return;
+    }
+    if(typeof drawer.setPanel==='function') drawer.setPanel(panel,opts);
+  }
+
   function returnMapping(){
     var id=String(ui().habitScenarioReturnId||'').trim();
     if(!id||!core()||!core().byId) return null;
@@ -92,11 +105,19 @@
     // Global voice base: page-local sentinel — do not claim selectedMappingId as「正在编辑」.
     state().selectedMappingId=null;
     ui().voiceEditSchemeId='__global__';
-    if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('voiceWake');
-    render();
-    setTimeout(function(){
-      if(global.OneToneAgentCapabilityUi) global.OneToneAgentCapabilityUi.mountVoice();
-    },60);
+    try{
+      if(global.OneToneIpc&&global.OneToneIpc.invoke){
+        global.OneToneIpc.invoke('cmd_app_log',{line:'fe openGlobalVoice'}).catch(function(){});
+      }
+    }catch(_){}
+    ensureDrawerPanel('voiceWake');
+    // Defer banner + Codex mount — sync render on open stacked with voiceWake islands → 假死.
+    requestAnimationFrame(function(){
+      setTimeout(function(){
+        render();
+        if(global.OneToneAgentCapabilityUi) global.OneToneAgentCapabilityUi.mountVoice();
+      },60);
+    });
   }
 
   function openGlobalCamera(opts){
@@ -106,13 +127,15 @@
     ui().cameraEditMode='global';
     // Global camera base (device/calibration/actions on cameraPrefs) — not habit edit.
     state().selectedMappingId=null;
-    if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('camera');
-    render();
-    setTimeout(function(){
-      if(global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.mountCamera){
-        global.OneToneAgentCapabilityUi.mountCamera();
-      }
-    },60);
+    ensureDrawerPanel('camera');
+    requestAnimationFrame(function(){
+      setTimeout(function(){
+        render();
+        if(global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.mountCamera){
+          global.OneToneAgentCapabilityUi.mountCamera();
+        }
+      },60);
+    });
   }
 
   /** App-scenario key/voice/camera always reuses the full settings pages. */
@@ -198,17 +221,34 @@
     ui().voiceEditSchemeId=id;
     ui().habitScenarioReturnId=id;
     ui().habitScenarioReturnPanel='voice';
-    try{
-      var Tv=global.OneToneAgentScenarioTemplate;
-      var mv=core()&&core().byId?core().byId(id):null;
-      if(Tv&&Tv.ensurePackForMapping&&mv) Tv.ensurePackForMapping(mv,{persist:true});
-    }catch(_){}
-    syncEditor(id);
-    if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('voiceWake');
-    render();
-    setTimeout(function(){
-      if(global.OneToneAgentCapabilityUi) global.OneToneAgentCapabilityUi.mountVoice();
-    },60);
+
+    function finishHeavy(){
+      try{
+        try{
+          if(global.OneToneIpc&&global.OneToneIpc.invoke){
+            global.OneToneIpc.invoke('cmd_app_log',{line:'fe openScenarioVoiceEdit heavy id='+id}).catch(function(){});
+          }
+        }catch(_){}
+        var Tv=global.OneToneAgentScenarioTemplate;
+        var mv=core()&&core().byId?core().byId(id):null;
+        // Memory-only before paint — sync cmd_save + voice remount used to 假死 (同 camera).
+        if(Tv&&Tv.ensurePackForMapping&&mv) Tv.ensurePackForMapping(mv,{persist:false});
+        syncEditor(id);
+        render();
+        if(global.OneToneAgentCapabilityUi) global.OneToneAgentCapabilityUi.mountVoice();
+        var p=global.OneToneConfigPersist;
+        if(p&&p.saveAsync) p.saveAsync();
+        else if(p&&p.save) p.save();
+      }catch(err){
+        try{ console.error('openScenarioVoiceEdit',err); }catch(_){}
+      }
+    }
+
+    // Paint voice chrome first, then pack/mount (同 openScenarioKeysEdit).
+    ensureDrawerPanel('voiceWake');
+    requestAnimationFrame(function(){
+      setTimeout(finishHeavy,0);
+    });
   }
 
   function openScenarioCameraEdit(id,opts){
@@ -228,7 +268,7 @@
       if(Tc&&Tc.ensurePackForMapping&&mc) Tc.ensurePackForMapping(mc,{persist:false});
       syncEditor(id);
     }catch(_){}
-    if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('camera');
+    ensureDrawerPanel('camera');
     render();
     setTimeout(function(){
       var p=global.OneToneConfigPersist;

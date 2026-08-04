@@ -234,11 +234,11 @@
         ? t('homeSetupStart')
         : hs.statusLine || summary.statusLine || statusToken;
     var draftTrigger = isUnset(raw.triggerKey) ? unsetLabel() : String(raw.triggerKey);
-    var draftTarget = isUnset(raw.targetLabel) ? unsetLabel() : String(raw.targetLabel);
-    var habitName = raw.habitName || '';
-    if (habitName && habitName !== draftTarget && !isUnset(draftTarget)) {
-      draftTarget = habitName + ' · ' + draftTarget;
-    }
+    // One name only — habit · foreground used to 啰嗦 as「Codex 场景 · 桌面整理-主程序」.
+    var habitName = String(raw.habitName || '').trim();
+    var draftTarget = habitName
+      ? habitName
+      : (isUnset(raw.targetLabel) ? unsetLabel() : String(raw.targetLabel));
     var draftRepair =
       statusToken === 'error' || hs.ctaMode === 'error' ? t('debugFocusRepair') : '';
 

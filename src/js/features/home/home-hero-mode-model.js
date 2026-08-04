@@ -176,7 +176,7 @@
       var tone = cameraChannelTone(camera);
       out.push({
         id: 'camera-status',
-        label: cameraChannelLabel(camera, t),
+        label: cameraLiveStatusShort(camera, t),
         tone: tone.pill,
       });
       out.push({
@@ -387,14 +387,37 @@
     ];
   }
 
-  function liveHintFor(mode, t) {
-    if (mode === 'camera') return t('homeWbLiveCameraHint');
-    if (mode === 'softPad') return t('homeWbLiveSoftPadHint');
+  /** Live preview copy for modes without dictation — capability summary, not "click above/below". */
+  function liveHintFor(mode, camera, softPad, t) {
+    if (mode === 'camera') {
+      if (!camera || !camera.enabled) return t('homeWbLiveCameraOffHint', t('homeWbFlowEmptyCamera'));
+      if (camera.actionsLine) return String(camera.actionsLine);
+      return t('homeWbLiveCameraEmptyHint', '已开启，还没绑定动作 — 再点下方「摄像头确认」去绑定');
+    }
+    if (mode === 'softPad') {
+      if (softPad && (softPad.empty || softPad.schemeCount === 0)) {
+        return t('homeWbLiveSoftPadOffHint', t('homeWbFlowEmptySoftPad'));
+      }
+      var softLine =
+        (softPad && (softPad.displayPrimary || softPad.agentName || softPad.boundName || softPad.value)) || '';
+      if (softLine) return String(softLine);
+      return t('homeWbLiveSoftPadHint');
+    }
     return '';
   }
 
+  /** Short ready-state for the flow pill — not the full actionsLine (that lives in liveHint). */
+  function cameraLiveStatusShort(cam, t) {
+    if (!cam || !cam.enabled) return t('homeWbCameraOff');
+    if (cam.running || cam.status === 'running') return t('homeWbCameraReady', '已就绪');
+    if (cam.manualStopped || cam.status === 'manual_stopped') {
+      return t('homeWbCameraManualStopped', '已配置 · 未运行（已手动停止）');
+    }
+    return t('homeWbCameraReady', '已就绪');
+  }
+
   function liveStatusFor(mode, vm, camera, softPad, t) {
-    if (mode === 'camera') return cameraChannelLabel(camera, t);
+    if (mode === 'camera') return cameraLiveStatusShort(camera, t);
     if (mode === 'softPad') {
       return (softPad && softPad.statusLbl) || t('homeWbHowToSoftPadOff');
     }
@@ -493,7 +516,7 @@
       },
       howtoCards: cards,
       localAction: localActionFor(mode, t),
-      liveHint: liveHintFor(mode, t),
+      liveHint: liveHintFor(mode, camera, softPad, t),
       liveStatus: liveStatusFor(mode, vm, camera, softPad, t),
       chrome: {
         mode: mode,

@@ -115,7 +115,7 @@
   function howToSummaryCardHtml(card,icon,art){
     card=card||{};
     var kind=card.mode||'';
-    var lines=(card.lines||[]).slice(0,2);
+    var lines=(card.lines||[]).slice(0,card.active?1:0);
     var linesHtml='';
     if(lines.length){
       linesHtml='<div class="wb-howto-card-meta">'
@@ -254,6 +254,10 @@
       addAct(!!tr.blink,prefs.deliberateBlink,'闭眼');
       addAct(!!tr.away,prefs.onAway,t('cameraPresenceOnAway')==='cameraPresenceOnAway'?'离席':t('cameraPresenceOnAway'));
       addAct(!!tr.away,prefs.onReturn,t('cameraPresenceOnReturn')==='cameraPresenceOnReturn'?'回席':t('cameraPresenceOnReturn'));
+      addAct(!!tr.openPalm,prefs.openPalm,t('homeWbCameraPalmShort')==='homeWbCameraPalmShort'?'张掌':t('homeWbCameraPalmShort'));
+      addAct(!!tr.okHand,prefs.okHand,t('homeWbCameraOkShort')==='homeWbCameraOkShort'?'OK':t('homeWbCameraOkShort'));
+      addAct(!!tr.fist,prefs.fist,t('homeWbCameraFistShort')==='homeWbCameraFistShort'?'握拳':t('homeWbCameraFistShort'));
+      addAct(!!tr.wave,prefs.wave,t('homeWbCameraWaveShort')==='homeWbCameraWaveShort'?'挥手':t('homeWbCameraWaveShort'));
       actionsLine=bits.slice(0,3).join(' · ');
     }
     var value=t('homeWbCameraOff');
@@ -748,6 +752,7 @@
     softPadHowToSnapshot:softPadHowToSnapshot,
     cameraHowToSnapshot:cameraHowToSnapshot,
     collectHowToSurfaceBits:collectHowToSurfaceBits,
+    sceneIconHtml:sceneIconHtml,
     bindOnce:bindOnce,
     stopWave:function(){}
   };

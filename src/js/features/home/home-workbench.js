@@ -75,6 +75,10 @@
     add(!!tr.blink,prefs.deliberateBlink,cameraLbl('homeWbCameraBlinkShort','闭眼'));
     add(!!tr.away,prefs.onAway,cameraLbl('cameraPresenceOnAway','离席'));
     add(!!tr.away,prefs.onReturn,cameraLbl('cameraPresenceOnReturn','回席'));
+    add(!!tr.openPalm,prefs.openPalm,cameraLbl('homeWbCameraPalmShort','张掌'));
+    add(!!tr.okHand,prefs.okHand,cameraLbl('homeWbCameraOkShort','OK'));
+    add(!!tr.fist,prefs.fist,cameraLbl('homeWbCameraFistShort','握拳'));
+    add(!!tr.wave,prefs.wave,cameraLbl('homeWbCameraWaveShort','挥手'));
     return parts.slice(0,3).join(' · ');
   }
 
@@ -476,30 +480,48 @@
     var statusCls='';
     if(token==='error'||token==='paused'||token==='needsSetup') statusCls='is-warn';
     else if(token==='dictating'||token==='listening'||token==='triggered') statusCls='is-live';
-    var status=(projection.status&&projection.status.text)||token;
-    var trigger=projection.flow.trigger;
-    var target=projection.flow.target;
-    var next=projection.flow.next;
+    var mode=projection.mode||'';
+    // Camera/softPad must not inherit voice statusLine.
+    var status=(mode==='camera'||mode==='softPad')
+      ?(projection.liveStatus||(projection.flow&&projection.flow.trigger)||'')
+      :((projection.status&&projection.status.text)||token);
+    var target=projection.flow.target||'';
     var repair=projection.flow.repair||'';
-    var ctaWarn=projection._workbench&&projection._workbench.cta&&projection._workbench.cta.mode==='repair';
-    function cell(lbl,val,cls){
-      return '<div class="wb-hero-flow-item">'
-        +'<span class="wb-hero-flow-lbl">'+esc(lbl)+'</span>'
-        +'<strong class="wb-hero-flow-val'+(cls?' '+cls:'')+'" title="'+esc(val)+'">'+esc(val)+'</strong>'
-        +'</div>';
+    // Happy-path listening: habit name alone — status text restates the obvious.
+    if((mode==='voice'||mode==='keys')&&target&&(token==='listening'||token==='ready'||token==='idle')
+      &&(status===t('homeStatusListening')||status===t('homeStatusTapToStart')||status==='listening'||status==='idle'||status==='Ready')){
+      status='';
     }
-    var html=
-      cell(t('homeWbFlowStatus'),status,statusCls)+
-      cell(t('homeWbFlowTrigger'),trigger,'')+
-      cell(t('homeWbFlowTarget'),target,'')+
-      cell(t('homeWbStatusWork'),next,ctaWarn?'is-warn':'');
-    if(repair){
-      html+=cell(t('debugFocusRepair'),repair,'is-warn');
+    var m=currentHabitMapping();
+    var panels=global.OneToneHomeWorkbenchPanels;
+    var iconHtml=(panels&&typeof panels.sceneIconHtml==='function')?panels.sceneIconHtml(m):'';
+    var sceneName=target||(m&&global.OneToneHomeScheme&&global.OneToneHomeScheme.shortName
+      ?global.OneToneHomeScheme.shortName(m):'')||t('homeLiveUnset');
+    var parts=[];
+    function pushSep(){
+      if(parts.length) parts.push('<span class="wb-hero-flow-sep" aria-hidden="true">·</span>');
     }
-    host.innerHTML=html;
+    function pushVal(text,extraCls){
+      if(!text) return;
+      pushSep();
+      parts.push('<strong class="wb-hero-flow-val'+(extraCls?' '+extraCls:'')+'" title="'+esc(text)+'">'+esc(text)+'</strong>');
+    }
+    // Graphical "which scene": app/preset icon + habit name (reuse scene rail icons).
+    parts.push('<span class="wb-hero-flow-scene'+(statusCls&&!status?' '+statusCls:'')+'" title="'+esc(sceneName)+'">'
+      +'<span class="wb-hero-flow-scene-ico" aria-hidden="true">'+(iconHtml||'')+'</span>'
+      +'<strong class="wb-hero-flow-val">'+esc(sceneName)+'</strong>'
+      +'</span>');
+    pushVal(status,statusCls);
+    pushVal(repair,'is-warn');
+    host.innerHTML='<div class="wb-hero-flow-line" role="status">'+parts.join('')+'</div>';
     host.setAttribute('data-wb-status-token',token);
     host.setAttribute('data-wb-from-model','1');
     host.setAttribute('data-wb-from-projection','1');
+    host.classList.add('is-oneline');
+    try{
+      var rules=global.OneToneAppBehaviorRules;
+      if(rules&&rules.hydrateCustomRuleChipIcons) rules.hydrateCustomRuleChipIcons(host);
+    }catch(_){}
     }catch(err){
       try{ console.error('wbHeroFlowSummary',err); }catch(_){}
     }
@@ -514,35 +536,46 @@
     var vm=projection&&projection._vm?projection._vm:{};
 
     if(mode==='camera'||mode==='softPad'){
+      var statusPill=null;
+      var ctaPill=null;
       pills.forEach(function(pill){
         if(!pill) return;
-        if(pill.action==='open-camera-settings'){
-          html+='<button type="button" class="wb-hero-pill wb-hero-pill-listen is-solo" id="wbBtnCameraOpen" title="'+esc(pill.label)+'">'
-            +'<span>'+esc(pill.label)+'</span></button>';
-          return;
-        }
-        if(pill.action==='open-softPad-settings'){
-          html+='<button type="button" class="wb-hero-pill wb-hero-pill-listen is-solo" id="wbBtnSoftPadOpen" title="'+esc(pill.label)+'">'
-            +'<span>'+esc(pill.label)+'</span></button>';
-          return;
-        }
-        html+=pillHtml(pill.label,pill.tone||'','');
+        if(pill.action==='open-camera-settings'||pill.action==='open-softPad-settings') ctaPill=pill;
+        else if(!statusPill) statusPill=pill;
       });
+      if(statusPill){
+        var extra=pills.filter(function(p){ return p&&p!==statusPill&&p!==ctaPill; })
+          .map(function(p){ return p.label; }).filter(Boolean).join(' · ');
+        var tip=extra?String(statusPill.label)+' · '+extra:String(statusPill.label||'');
+        html+='<span class="wb-hero-pill'+(statusPill.tone?' '+statusPill.tone:'')+'" role="listitem" title="'+esc(tip)+'">'
+          +'<span>'+esc(statusPill.label)+'</span></span>';
+      }
+      if(ctaPill){
+        var ctaId=ctaPill.action==='open-camera-settings'?'wbBtnCameraOpen':'wbBtnSoftPadOpen';
+        html+='<button type="button" class="wb-hero-pill wb-hero-pill-listen is-solo" id="'+ctaId+'" title="'+esc(ctaPill.label)+'">'
+          +'<span>'+esc(ctaPill.label)+'</span></button>';
+      }
       host.innerHTML=html;
       return;
     }
 
     var paused=!!(vm.runtime&&vm.runtime.paused);
+    var micFull='';
+    pills.forEach(function(pill){
+      if(pill&&pill.id==='mic') micFull=String(pill.label||'');
+    });
     pills.forEach(function(pill){
       if(!pill) return;
       if(pill.id==='engine'||pill.id==='engine-off'){
+        var tip=pill.label;
+        if(micFull) tip=String(pill.label)+' · '+micFull;
         if(pill.id==='engine'){
           var engOk=(pill.tone||'').indexOf('is-ok')>=0;
-          html+='<span class="wb-hero-pill is-engine'+(engOk?' is-ok':' is-warn')+'" role="listitem" title="'+esc(pill.label)+'">'
+          html+='<span class="wb-hero-pill is-engine'+(engOk?' is-ok':' is-warn')+'" role="listitem" title="'+esc(tip)+'">'
             +'<span class="wb-hero-pill-dot '+(engOk?'is-ok':'is-warn')+'" aria-hidden="true"></span>'
             +'<span>'+esc(pill.label)+'</span></span>';
         }else{
-          html+=pillHtml(pill.label,'is-muted','');
+          html+='<span class="wb-hero-pill is-muted" role="listitem" title="'+esc(tip)+'"><span>'+esc(pill.label)+'</span></span>';
         }
         return;
       }
@@ -550,30 +583,12 @@
         html+=pillHtml(pill.label,'is-key','');
         return;
       }
-      if(pill.action==='listen-toggle'&&mode==='keys'){
+      if(pill.action==='listen-toggle'){
         html+='<button type="button" class="wb-hero-pill wb-hero-pill-listen is-solo'+(paused?' is-paused':'')+'" id="wbBtnListenToggle" aria-pressed="'+(paused?'true':'false')+'" title="'+esc(paused?t('homeWbListenResumeTip'):t('homeWbListenPauseTip'))+'">'
           +'<span id="wbBtnListenToggleLabel">'+esc(pill.label)+'</span></button>';
         return;
       }
-      if(pill.id==='mic'){
-        var micFull=pill.label;
-        var micShort=shortMicLabel(micFull)||micFull;
-        var listenPill=null;
-        for(var i=0;i<pills.length;i++){
-          if(pills[i]&&pills[i].action==='listen-toggle'){ listenPill=pills[i]; break; }
-        }
-        html+='<span class="wb-hero-pill is-mic is-mic-level'+(paused?' is-paused':'')+'" role="listitem">'
-          +'<button type="button" class="wb-hero-pill-mic-btn" id="wbVoiceChangeMic" title="'+esc(micFull)+'">'
-          +'<span class="mic-level-bars mic-level-bars--pill" id="wbHomeMicLevel" aria-hidden="true">'+buildPillMicBars(8)+'</span>'
-          +'<span class="wb-hero-pill-mic-label">'+esc(micShort)+'</span>'
-          +'</button>'
-          +'<button type="button" class="wb-hero-pill-listen" id="wbBtnListenToggle" aria-pressed="'+(paused?'true':'false')+'" title="'+esc(paused?t('homeWbListenResumeTip'):t('homeWbListenPauseTip'))+'">'
-          +'<span id="wbBtnListenToggleLabel">'+esc(listenPill?listenPill.label:(paused?t('homeWbListenResume'):t('homeWbListenPause')))+'</span>'
-          +'</button>'
-          +'</span>';
-        return;
-      }
-      if(pill.action==='listen-toggle'&&mode==='voice') return; // paired with mic
+      if(pill.id==='mic') return; // device name lives on engine pill title
     });
 
     if(stats&&stats.latency&&stats.latency!=='—') html+=pillHtml(stats.latency,'is-latency','');
@@ -613,20 +628,12 @@
     return MIC_SVG;
   }
 
-  function syncHeroModeTabs(mode){
-    mode=normalizeHeroMode(mode||heroMode);
-    [
-      ['wbHeroModeVoice','voice'],
-      ['wbHeroModeKeys','keys'],
-      ['wbHeroModeSoftPad','softPad'],
-      ['wbHeroModeCamera','camera']
-    ].forEach(function(pair){
-      var el=$(pair[0]);
-      if(!el) return;
-      var on=mode===pair[1];
-      el.classList.toggle('is-active',on);
-      el.setAttribute('aria-selected',on?'true':'false');
-    });
+  function renderHeroModeHint(){
+    // Preview tip moved to howto section aria/title — do not paint under modes.
+    var modes=$('wbHero');
+    if(!modes) return;
+    var hint=modes.querySelector('.wb-hero-mode-hint');
+    if(hint&&hint.parentNode) hint.parentNode.removeChild(hint);
   }
 
   function syncHowToActive(mode){
@@ -679,7 +686,6 @@
       card.classList.toggle('is-mode-softPad',mode==='softPad');
       card.classList.toggle('is-mode-camera',mode==='camera');
     }
-    syncHeroModeTabs(mode);
     syncHowToActive(mode);
     renderHeroModeHint();
   }
@@ -717,7 +723,7 @@
         },150);
       }
     }
-    syncHeroModeTabs(mode);
+    syncHowToActive(mode);
     var st=stats;
     if(!st){
       st=global.OneToneHomeWorkbenchStats&&projection&&projection._vm
@@ -765,20 +771,6 @@
     var live=vm.vpState==='DICTATING'||!!vm.summary.dictating;
     if(live) return t('homeWbTriggerHeroLive');
     return heroModeHint(heroMode);
-  }
-
-  function renderHeroModeHint(){
-    var modes=$('wbHero');
-    if(!modes) return;
-    var hint=modes.querySelector('.wb-hero-mode-hint');
-    if(!hint){
-      var footer=modes.querySelector('.wb-hero-footer')||modes.querySelector('.wb-hero-modes');
-      hint=document.createElement('p');
-      hint.className='wb-hero-mode-hint';
-      if(footer&&footer.parentNode) footer.parentNode.insertBefore(hint,footer);
-      else modes.appendChild(hint);
-    }
-    hint.textContent=t('homeWbHeroModeHint');
   }
 
   function renderCommandCard(vm,projection){
@@ -864,14 +856,26 @@
     if(listenLbl) listenLbl.textContent=paused?t('homeWbListenResume'):t('homeWbListenPause');
     if(vm.loading){
       liveEl.classList.add('is-placeholder');
+      liveEl.classList.remove('is-settings-cta');
+      liveEl.removeAttribute('tabindex');
+      liveEl.setAttribute('role','log');
+      liveEl.removeAttribute('title');
       liveEl.innerHTML='<div class="vp-empty">'+esc(t('homeLiveLoading'))+'</div>';
       return;
     }
     if(mode==='camera'||mode==='softPad'){
       liveEl.classList.add('is-placeholder');
+      liveEl.classList.add('is-settings-cta');
+      liveEl.setAttribute('role','button');
+      liveEl.setAttribute('tabindex','0');
+      liveEl.title=mode==='camera'?t('homeWbHeroHintCamera'):t('homeWbHeroHintSoftPad');
       liveEl.innerHTML='<div class="vp-empty">'+esc((projection&&projection.liveHint)||(mode==='camera'?t('homeWbLiveCameraHint'):t('homeWbLiveSoftPadHint')))+'</div>';
       return;
     }
+    liveEl.classList.remove('is-settings-cta');
+    liveEl.removeAttribute('tabindex');
+    liveEl.setAttribute('role','log');
+    liveEl.removeAttribute('title');
     if(vm.live&&vm.live.placeholder){
       var hintKey=vm.live.hintKey||'homeWbLiveIdleHint';
       liveEl.classList.add('is-placeholder');
@@ -1200,16 +1204,35 @@
         openSettings({panel:'habits',habitWizard:true});
         return;
       }
+      // Camera/softPad live box is a settings CTA (no dictation to show).
+      var liveCta=e.target.closest&&e.target.closest('#wbLiveText.is-settings-cta');
+      if(liveCta){
+        e.preventDefault();
+        openHeroSettings();
+        return;
+      }
       // 首页 howto：点未激活卡切 Hero；再点当前激活卡打开通道设置
       var howto=e.target.closest&&e.target.closest('#wbHowTo [data-wb-howto]');
       if(howto){
         var kind=howto.getAttribute('data-wb-howto')||'';
+        try{
+          if(global.OneToneIpc&&global.OneToneIpc.invoke){
+            global.OneToneIpc.invoke('cmd_app_log',{line:'fe howto click kind='+kind+' hero='+heroMode}).catch(function(){});
+          }
+        }catch(_){}
         if(kind==='keys'||kind==='voice'||kind==='camera'||kind==='softPad'){
           if(normalizeHeroMode(kind)===heroMode) openHabitChannelChip(kind);
           else setHeroMode(kind);
         }
         return;
       }
+    });
+    center.addEventListener('keydown',function(e){
+      if(e.key!=='Enter'&&e.key!==' ') return;
+      var liveCta=e.target.closest&&e.target.closest('#wbLiveText.is-settings-cta');
+      if(!liveCta) return;
+      e.preventDefault();
+      openHeroSettings();
     });
   }
 
@@ -1576,14 +1599,6 @@
     if(heroOrb){
       heroOrb.onclick=function(){ openHeroSettings(); };
     }
-    var heroModes=$('wbHero');
-    if(heroModes){
-      heroModes.addEventListener('click',function(e){
-        var btn=e.target.closest&&e.target.closest('[data-wb-hero-mode]');
-        if(!btn) return;
-        setHeroMode(btn.getAttribute('data-wb-hero-mode')||'voice');
-      });
-    }
     var alertsHost=$('wbHomeAlerts');
     if(alertsHost){
       alertsHost.addEventListener('click',function(e){
@@ -1651,9 +1666,6 @@
       (global.OneToneState&&global.OneToneState.runtime&&global.OneToneState.runtime.paused)
         ?t('homeWbListenResume')
         :t('homeWbListenPause'));
-    setText($('wbHeroModeVoice'),t('homeWbHeroModeVoice'));
-    setText($('wbHeroModeKeys'),t('homeWbHeroModeKeys'));
-    setText($('wbHeroModeCamera'),t('homeWbHeroModeCamera'));
     var sceneTitle=document.querySelector('#wbSceneRail .wb-scene-rail-title');
     if(sceneTitle) sceneTitle.textContent=t('homeWbSceneRailTitle');
     refreshFollowFgToggle();
