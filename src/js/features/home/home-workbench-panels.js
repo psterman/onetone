@@ -127,8 +127,8 @@
         }).join('')
         +'</div>';
     }
-    // Summary card: shows active-habit channel bits; click opens that channel config.
-    return '<article class="wb-howto-card'+(card.active?' is-active':'')+(kind?' is-'+kind:'')+(card.empty?' is-empty':'')+'" data-wb-howto="'+esc(kind)+'" role="button" tabindex="0" aria-pressed="'+(card.active?'true':'false')+'" title="'+esc(t('homeWbHowToOpenTip','点此打开该通道设置'))+'">'
+    // Summary card: inactive → switch hero; active → open channel settings.
+    return '<article class="wb-howto-card'+(card.active?' is-active':'')+(kind?' is-'+kind:'')+(card.empty?' is-empty':'')+'" data-wb-howto="'+esc(kind)+'" role="button" tabindex="0" aria-pressed="'+(card.active?'true':'false')+'" title="'+esc(t('homeWbHowToOpenTip','点此切换上方预览；再点打开设置'))+'">'
       +'<div class="wb-howto-card-head">'
       +'<span class="wb-howto-card-ico" aria-hidden="true">'+icon+'</span>'
       +'<span class="wb-howto-card-title">'+esc(card.title||'')+'</span>'
@@ -287,7 +287,7 @@
     var softArt='<span class="wb-howto-softpad-art" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>';
 
     // 顺序必须与 Hero tabs 一致：voice → keys → softPad → camera
-    // 摘要卡：展示正在使用习惯；点卡切模式并打开通道配置
+    // 摘要卡：展示正在使用习惯；点未激活卡切 Hero，再点激活卡开设置
     var html='<div class="wb-howto-grid wb-howto-grid--quad">';
     cards.forEach(function(card){
       if(!card) return;
@@ -400,7 +400,19 @@
     if(hub&&hub.pruneInvalidUserLanePin) hub.pruneInvalidUserLanePin(entries);
     var enabled=entries.filter(function(e){ return e&&e.padEnabled; });
     var cache=(hub&&hub.getCachedSoftPadRuntime)?hub.getCachedSoftPadRuntime():null;
-    if(hub&&hub.refreshSoftPadRuntimeAsync) hub.refreshSoftPadRuntimeAsync();
+    // Only poll Soft Pad runtime when that hero is active — every paint used to IPC-refresh.
+    var heroSoft=false;
+    try{
+      heroSoft=!!(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.getHeroMode
+        &&global.OneToneHomeWorkbench.getHeroMode()==='softPad');
+    }catch(_){}
+    if(heroSoft&&hub&&hub.refreshSoftPadRuntimeAsync){
+      var now=Date.now();
+      if(!softPadHowToSnapshot._lastRefreshAt||(now-softPadHowToSnapshot._lastRefreshAt)>=2000){
+        softPadHowToSnapshot._lastRefreshAt=now;
+        hub.refreshSoftPadRuntimeAsync();
+      }
+    }
 
     // Prefer Rust Applied when cutover + first snapshot received.
     if(cache&&cache.receivedFirstSnapshot&&cache.snap&&cache.snap.cutover&&cache.snap.applied){

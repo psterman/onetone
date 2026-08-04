@@ -1257,7 +1257,10 @@
     if(rulesApi.scheduleHydrateCustomRuleIcons) rulesApi.scheduleHydrateCustomRuleIcons();
   }
 
-  function render(){
+  var renderRaf=0;
+  var pruneOnceDone=false;
+
+  function renderNow(){
     if(global.OneToneAppSession&&global.OneToneAppSession.isBootSettling&&global.OneToneAppSession.isBootSettling()){
       if(!render._bootDefer){
         render._bootDefer=true;
@@ -1268,26 +1271,40 @@
       }
       return;
     }
-    try{
-      // One-shot cleanup when opening hub; stubs go to trash so merge_save allows delete.
-      if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.pruneIncompleteCustomStubs){
-        global.OneToneAppBehaviorRules.pruneIncompleteCustomStubs({persist:true});
-      }
-    }catch(_){}
+    // One-shot only — paint-path prune+save used to thrash and 假死 side-nav clicks.
+    if(!pruneOnceDone){
+      pruneOnceDone=true;
+      try{
+        if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.pruneIncompleteCustomStubs){
+          global.OneToneAppBehaviorRules.pruneIncompleteCustomStubs({persist:true});
+        }
+      }catch(_){}
+    }
     var t0=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
     renderLabels();
     renderList();
     renderFilters();
     applyShellVisibility();
     syncCameraWaveRails($('habitHubList'));
-    // Avoid re-pruning on every paint: once stubs are trashed they stay gone.
-    // (prune is idempotent after trash, but save was still thrashing before trash fix.)
     try{
       if(global.OneToneIpc&&global.OneToneIpc.invoke){
         var ms=Math.round(((typeof performance!=='undefined'&&performance.now)?performance.now():Date.now())-t0);
         global.OneToneIpc.invoke('cmd_app_log',{line:'fe habitHub.render '+ms+'ms'}).catch(function(){});
       }
     }catch(_){}
+  }
+
+  // Coalesce SceneModeHub / HabitMulti / applyLang callers — full paint every 2ms made side options unclickable.
+  function render(){
+    if(renderRaf) return;
+    if(typeof requestAnimationFrame!=='function'){
+      renderNow();
+      return;
+    }
+    renderRaf=requestAnimationFrame(function(){
+      renderRaf=0;
+      renderNow();
+    });
   }
 
   function applyShellVisibility(){

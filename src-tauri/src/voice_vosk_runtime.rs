@@ -139,6 +139,14 @@ pub fn voice_vosk_start(
     let probe = probe_vosk_resources(cfg, resource_dir.as_deref());
     *state.voice_vosk_probe.lock() = Some(probe.clone());
 
+    crate::app_log::log_line(
+        state,
+        "voice",
+        &format!(
+            "voice_bootstrap phase=model_open engine=vosk begin {}",
+            crate::ui_heartbeat::ui_hb_diag()
+        ),
+    );
     // Clone grammar while holding cfg briefly — never keep cfg locked across model open
     // (start_voice_vosk can take seconds; holding the lock 假死'd IPC / UI on launch).
     let grammar = crate::scene_config::vosk_grammar_phrases_for_cfg(&state.cfg.lock());
@@ -149,6 +157,14 @@ pub fn voice_vosk_start(
         Some(state.audio_frame_bus.publisher()),
     ) {
         Ok(handle) => {
+            crate::app_log::log_line(
+                state,
+                "voice",
+                &format!(
+                    "voice_bootstrap phase=model_open engine=vosk ok {}",
+                    crate::ui_heartbeat::ui_hb_diag()
+                ),
+            );
             if !vosk_epoch_matches(state, epoch) {
                 stop_voice_vosk(handle);
                 crate::app_log::log_line(
@@ -165,6 +181,15 @@ pub fn voice_vosk_start(
             Ok(())
         }
         Err(e) => {
+            crate::app_log::log_line(
+                state,
+                "voice",
+                &format!(
+                    "voice_bootstrap phase=model_open engine=vosk err={} {}",
+                    e,
+                    crate::ui_heartbeat::ui_hb_diag()
+                ),
+            );
             if vosk_epoch_matches(state, epoch) {
                 let issue = vosk_resource_issue(&probe).unwrap_or("start_failed");
                 *state.voice_vosk_last_error.lock() = if issue == "model_missing" {
@@ -402,6 +427,14 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, app: &AppHandle) {
             }
             VoiceVoskEvent::ModelLoaded { load_time_ms } => {
                 *state.voice_vosk_model_load_time_ms.lock() = Some(load_time_ms);
+                crate::app_log::log_line(
+                    state,
+                    "voice",
+                    &format!(
+                        "voice_bootstrap phase=worker_ready engine=vosk load_time_ms={load_time_ms} {}",
+                        crate::ui_heartbeat::ui_hb_diag()
+                    ),
+                );
             }
             VoiceVoskEvent::Detected { phrase, text } => {
                 if let Some(reason) = crate::voice_end_runtime::wake_phrase_skip_reason(state) {

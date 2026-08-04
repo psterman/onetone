@@ -18,6 +18,10 @@ var Api=global.OneToneCameraHandGesture;
 assert.ok(Api,'OneToneCameraHandGesture should export');
 assert.equal(typeof Api.mapCategoryForTest,'function');
 assert.equal(typeof Api.detectOkForTest,'function');
+assert.equal(typeof Api.setDetectIntervalMs,'function');
+Api.setDetectIntervalMs(200);
+assert.strictEqual(Api.getDetectIntervalMs(),200);
+Api.setDetectIntervalMs(50);
 
 var palm=Api.mapCategoryForTest('Open_Palm',0.9);
 assert.strictEqual(palm.kind,'openPalm');

@@ -16,6 +16,7 @@
   var DETECT_INTERVAL_MS=50;
   var DETECT_TIMEOUT_MS=2500;
   var BITMAP_MAX_W=480;
+  var detectIntervalMs=DETECT_INTERVAL_MS;
   var SCORE_MIN=0.55;
   var HOLD_MS=280;
   var OK_HOLD_MS=420;
@@ -409,9 +410,13 @@
     var opts=bitmapOpts(videoEl);
     bitmapInFlight=true;
     setActivityTag('cameraHandBitmap');
+    var tBitmap=nowMs();
     var p=opts?createImageBitmap(videoEl,opts):createImageBitmap(videoEl);
     p.then(function(bitmap){
       bitmapInFlight=false;
+      var took=nowMs()-tBitmap;
+      // Slow bitmap decode → back off so the next rAF does not immediately re-enter (同 gaze).
+      if(took>80) lastDetectWall=nowMs()+Math.min(took*2,600);
       if(!running){
         if(bitmap.close) try{ bitmap.close(); }catch(_){}
         setActivityTag('');
@@ -438,7 +443,8 @@
       return;
     }
     var now=nowMs();
-    if((now-lastDetectWall)>=DETECT_INTERVAL_MS){
+    var gap=Math.max(16,Number(detectIntervalMs)||DETECT_INTERVAL_MS);
+    if((now-lastDetectWall)>=gap){
       lastDetectWall=now;
       detectOnce();
     }
@@ -543,6 +549,16 @@
     return detectOkFromLandmarks(hand);
   }
 
+  function setDetectIntervalMs(ms){
+    ms=Number(ms);
+    if(!(ms>0)) ms=DETECT_INTERVAL_MS;
+    detectIntervalMs=Math.max(16,Math.min(1000,ms|0));
+  }
+
+  function getDetectIntervalMs(){
+    return detectIntervalMs;
+  }
+
   global.OneToneCameraHandGesture={
     init:function(){},
     attach:attach,
@@ -551,6 +567,8 @@
     stop:stop,
     pauseInfer:pauseInfer,
     resumeInfer:resumeInfer,
+    setDetectIntervalMs:setDetectIntervalMs,
+    getDetectIntervalMs:getDetectIntervalMs,
     ensureReady:ensureReady,
     getLastGesture:getLastGesture,
     getRuntimeStatus:getRuntimeStatus,

@@ -12,7 +12,11 @@
 
   /** Thin compatibility shell: list UI lives in OneToneHabitHub. */
   function render(){
-    if(habitHub()&&habitHub().render) habitHub().render();
+    var hub=habitHub();
+    if(!hub) return;
+    // Prefer light list paint — full hub.render from applyLang/scheme-switch was stacking into a 假死 loop.
+    if(typeof hub.scheduleHubPaint==='function') hub.scheduleHubPaint();
+    else if(typeof hub.render==='function') hub.render();
   }
 
   function renderVoiceSubnav(){

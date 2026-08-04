@@ -36,7 +36,10 @@
   }
 
   function renderHabitMultiCards(){
-    if(global.OneToneHabitHub) global.OneToneHabitHub.render();
+    var hub=global.OneToneHabitHub;
+    if(!hub) return;
+    if(typeof hub.scheduleHubPaint==='function') hub.scheduleHubPaint();
+    else if(typeof hub.render==='function') hub.render();
   }
 
   function bindEvents(){

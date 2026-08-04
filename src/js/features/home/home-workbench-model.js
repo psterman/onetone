@@ -340,6 +340,10 @@
       force: force,
     };
     model.sig = signature([
+      (function(){
+        try{ return String(global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():''); }
+        catch(_){ return ''; }
+      })(),
       model.statusToken,
       model.statusLine,
       model.triggerMode,

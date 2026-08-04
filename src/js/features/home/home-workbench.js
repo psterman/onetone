@@ -1200,13 +1200,13 @@
         openSettings({panel:'habits',habitWizard:true});
         return;
       }
-      // 首页 howto：切 Hero 模式 + 打开正在使用习惯的对应通道配置（融合原「通用设置」）
+      // 首页 howto：点未激活卡切 Hero；再点当前激活卡打开通道设置
       var howto=e.target.closest&&e.target.closest('#wbHowTo [data-wb-howto]');
       if(howto){
         var kind=howto.getAttribute('data-wb-howto')||'';
         if(kind==='keys'||kind==='voice'||kind==='camera'||kind==='softPad'){
-          setHeroMode(kind);
-          openHabitChannelChip(kind);
+          if(normalizeHeroMode(kind)===heroMode) openHabitChannelChip(kind);
+          else setHeroMode(kind);
         }
         return;
       }
@@ -1660,9 +1660,8 @@
     var searchInput=$('wbCommandSearchInput');
     if(searchInput) searchInput.placeholder=t('homeWbCmdSearchPlaceholder');
     renderQuickActions();
-    if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.forceHomeRender){
-      global.OneToneHomeWorkbench.forceHomeRender();
-    }
+    // Do not forceHomeRender here — wipe sig on every applyLang/renderHome cascade
+    // turned boot + presence ticks into full hero remount storms.
     if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.render) global.OneToneHomeWorkbench.render();
     // 左下角 mic hub 文案由 AppMic 动态维护；applyLang 扫完后必须重刷，并补一次静音探测
     try{

@@ -1,6 +1,34 @@
 (function(global){
   'use strict';
   function h(){ return global.__vp_bootstrap_hooks__ || {}; }
+  var softPadHomeDirty=false;
+  var softPadHomeFlushArmed=false;
+
+  function flushSoftPadHomeDirty(){
+    if(!softPadHomeDirty) return;
+    softPadHomeDirty=false;
+    softPadHomeFlushArmed=false;
+    try{
+      var softHero=global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.getHeroMode
+        &&global.OneToneHomeWorkbench.getHeroMode()==='softPad';
+      if(!softHero) return;
+      if(global.OneToneHomeWorkbench.forceHomeRender) global.OneToneHomeWorkbench.forceHomeRender();
+      if(global.OneToneHomeWorkbench.render) global.OneToneHomeWorkbench.render();
+    }catch(_){}
+  }
+
+  function markSoftPadHomeDirty(){
+    softPadHomeDirty=true;
+    if(softPadHomeFlushArmed) return;
+    softPadHomeFlushArmed=true;
+    if(global.OneToneAppSession&&global.OneToneAppSession.whenBootSettled){
+      global.OneToneAppSession.whenBootSettled(flushSoftPadHomeDirty);
+    }else{
+      softPadHomeFlushArmed=false;
+      flushSoftPadHomeDirty();
+    }
+  }
+
   function bindListeners(){
     var hooks=h();
     var state=global.OneToneState.state;
@@ -87,8 +115,18 @@
         if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.ingestSoftPadRuntimeSnapshot){
           var body=msg.softPad||msg.snapshot||msg;
           if(global.OneToneSoftPadHub.ingestSoftPadRuntimeSnapshot(body)){
-            if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.forceHomeRender){
+            // Boot settle: ingest cache now; flush Soft Pad hero once after settle (do not drop).
+            if(global.OneToneAppSession&&global.OneToneAppSession.isBootSettling&&global.OneToneAppSession.isBootSettling()){
+              markSoftPadHomeDirty();
+              return;
+            }
+            var softHero=global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.getHeroMode
+              &&global.OneToneHomeWorkbench.getHeroMode()==='softPad';
+            if(softHero&&global.OneToneHomeWorkbench.forceHomeRender){
               global.OneToneHomeWorkbench.forceHomeRender();
+            }
+            if(softHero&&global.OneToneHomeWorkbench.render){
+              try{ global.OneToneHomeWorkbench.render(); }catch(_){}
             }
           }
         }

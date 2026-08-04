@@ -971,8 +971,13 @@
 
   function syncLiveLandmarkerDeferred(){
     deferCameraHeavyWork(function(){
-      if(global.OneToneCameraPreview&&global.OneToneCameraPreview.syncLiveLandmarker){
-        try{ global.OneToneCameraPreview.syncLiveLandmarker(); }catch(_){}
+      var pv=global.OneToneCameraPreview;
+      if(pv&&pv.syncLiveLandmarker){
+        try{ pv.syncLiveLandmarker(); }catch(_){}
+      }
+      // Hand start is gated; prefs may have just enabled openPalm/etc.
+      if(pv&&pv.syncHandGesture){
+        try{ pv.syncHandGesture(); }catch(_){}
       }
     });
   }
@@ -1171,41 +1176,30 @@
 
   function clampDetectIntervalMs(ms){
     ms=Number(ms)||DETECT_PRESENT_MS;
-    // Camera settings page / calibration / gaze overlay may run faster.
+    // Only the camera settings page / calibration need full-rate bitmaps.
+    // gaze.enabled defaults true for overlay chrome — must NOT bypass home floor
+    // (that made DETECT_HOME_MS dead and dual-bitmap 假死 on the workbench).
     if(cameraPanelHot()||isCalibrating()) return ms;
-    var gazeOn=false;
-    try{
-      var gp=global.OneToneCameraPreview;
-      if(gp&&gp.getGazeDebugState){
-        var gs=gp.getGazeDebugState();
-        gazeOn=!!(gs&&gs.enabled);
-      }
-    }catch(_){}
-    if(gazeOn) return ms;
     return Math.max(ms,DETECT_HOME_MS);
   }
 
   function syncDetectInterval(){
     var api=global.OneToneCameraGazeLandmarker;
+    var hand=global.OneToneCameraHandGesture;
     if(!api||!api.setDetectIntervalMs) return;
-    var gazeOn=false;
-    try{
-      var gp=global.OneToneCameraPreview;
-      if(gp&&gp.getGazeDebugState){
-        var gs=gp.getGazeDebugState();
-        gazeOn=!!(gs&&gs.enabled);
-      }
-    }catch(_){}
     var gazeMs=preferredDetectIntervalMs(0);
     var next=gazeMs;
-    if(gazeOn||isCalibrating()){
+    // Camera panel / calibration: prefer capture FPS (clamp still floors on home).
+    if(cameraPanelHot()||isCalibrating()){
       next=clampDetectIntervalMs(gazeMs);
       api.setDetectIntervalMs(next);
+      if(hand&&hand.setDetectIntervalMs) hand.setDetectIntervalMs(next);
       return;
     }
     if(!isEnabled()){
       next=clampDetectIntervalMs(gazeMs);
       api.setDetectIntervalMs(next);
+      if(hand&&hand.setDetectIntervalMs) hand.setDetectIntervalMs(next);
       return;
     }
     var p=prefs();
@@ -1217,6 +1211,8 @@
     if(gestureOn&&st.presence!=='away'){
       next=clampDetectIntervalMs(gazeMs);
       api.setDetectIntervalMs(next);
+      // Hand used to stay at 50ms on home while gaze was home-throttled → dual createImageBitmap 假死.
+      if(hand&&hand.setDetectIntervalMs) hand.setDetectIntervalMs(next);
       if(typeof st.onDetectInterval==='function'){
         try{ st.onDetectInterval(next); }catch(_){}
       }
@@ -1227,6 +1223,7 @@
     else next=DETECT_PRESENT_MS;
     next=clampDetectIntervalMs(next);
     api.setDetectIntervalMs(next);
+    if(hand&&hand.setDetectIntervalMs) hand.setDetectIntervalMs(next);
     if(typeof st.onDetectInterval==='function'){
       try{ st.onDetectInterval(next); }catch(_){}
     }

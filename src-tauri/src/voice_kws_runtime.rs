@@ -206,11 +206,27 @@ pub fn voice_kws_start(
         ));
     }
 
+    crate::app_log::log_line(
+        state,
+        "voice",
+        &format!(
+            "voice_bootstrap phase=model_open engine=kws begin {}",
+            crate::ui_heartbeat::ui_hb_diag()
+        ),
+    );
     let handle = start_voice_kws(
         cfg,
         resource_dir.as_deref(),
         Some(state.audio_frame_bus.publisher()),
     )?;
+    crate::app_log::log_line(
+        state,
+        "voice",
+        &format!(
+            "voice_bootstrap phase=model_open engine=kws ok {}",
+            crate::ui_heartbeat::ui_hb_diag()
+        ),
+    );
     if !kws_epoch_matches(state, epoch) {
         stop_voice_kws(handle);
         crate::app_log::log_line(
@@ -223,6 +239,14 @@ pub fn voice_kws_start(
     *state.voice_kws.lock() = Some(handle);
     *state.voice_kws_last_error.lock() = String::new();
     crate::app_log::log_line(state, "voice", "kws start worker opened handle");
+    crate::app_log::log_line(
+        state,
+        "voice",
+        &format!(
+            "voice_bootstrap phase=worker_ready engine=kws {}",
+            crate::ui_heartbeat::ui_hb_diag()
+        ),
+    );
     Ok(())
 }
 

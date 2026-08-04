@@ -15,6 +15,7 @@
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use tauri::{AppHandle, Manager};
 
@@ -32,6 +33,17 @@ static ACTIVATE_LOCK: Mutex<()> = Mutex::new(());
 
 /// Count of async activate jobs spawned from strategy IPC (set before thread acquires ACTIVATE_LOCK).
 static ACTIVATE_ASYNC_PENDING: AtomicUsize = AtomicUsize::new(0);
+
+fn log_bootstrap_phase(state: &AppState, t0: Instant, phase: &str, detail: &str) {
+    let elapsed = t0.elapsed().as_millis();
+    let hb = crate::ui_heartbeat::ui_hb_diag();
+    let msg = if detail.is_empty() {
+        format!("voice_bootstrap phase={phase} elapsed_ms={elapsed} {hb}")
+    } else {
+        format!("voice_bootstrap phase={phase} {detail} elapsed_ms={elapsed} {hb}")
+    };
+    crate::app_log::log_line(state, "voice", &msg);
+}
 
 /// Mark that a background activate was scheduled (FE must wait before draining the next switch).
 pub fn begin_activate_async() {
@@ -488,6 +500,11 @@ pub fn activate_desired_engine(app: &AppHandle, state: &Arc<AppState>, reason: &
 }
 
 fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason: &str) {
+    let t0 = Instant::now();
+    let phase_log = reason == "bootstrap" || reason.starts_with("bootstrap:");
+    if phase_log {
+        log_bootstrap_phase(state, t0, "begin", &format!("reason={reason}"));
+    }
     // Fresh activate retries desired engine; clear previous fallover unless reason is degrade.
     if !reason.starts_with("degrade:") {
         clear_degrade_status(state);
@@ -497,6 +514,18 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
     let kws_ready = crate::voice_kws_runtime::kws_readiness(state, &cfg, resource_dir.as_deref());
     let desired = resolve_supervisor_desired_engine(state, &cfg, resource_dir.as_deref());
     let from = observe_running_engine(state);
+    if phase_log {
+        log_bootstrap_phase(
+            state,
+            t0,
+            "desired_resolved",
+            &format!(
+                "desired={} from={}",
+                engine_label(desired),
+                engine_label(from)
+            ),
+        );
+    }
     if crate::scene_config::voice_listening_strategy(&cfg) == "resourceSaver"
         && desired == EffectiveVoiceEngine::None
         && !kws_ready.ready
@@ -533,6 +562,9 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
         *state.last_voice_fingerprint.lock() = crate::scene_config::idle_voice_fingerprint(&cfg);
         crate::tray::refresh_tray_tooltip(app, state.as_ref());
         schedule_acoustic_match_sync(Some(app), state);
+        if phase_log {
+            log_bootstrap_phase(state, t0, "end", "action=noop_already_active");
+        }
         return;
     }
 
@@ -549,6 +581,9 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
         *state.last_voice_fingerprint.lock() = crate::scene_config::idle_voice_fingerprint(&cfg);
         crate::tray::refresh_tray_tooltip(app, state.as_ref());
         schedule_acoustic_match_sync(Some(app), state);
+        if phase_log {
+            log_bootstrap_phase(state, t0, "end", "action=skip_still_starting");
+        }
         return;
     }
 
@@ -581,12 +616,26 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
     );
 
     // Exclusive: sync self-stop peers before start_self (avoids dual listen / handle-exists skip).
+    if phase_log {
+        log_bootstrap_phase(state, t0, "stop_sync_begin", "peer=vosk");
+    }
     crate::app_log::log_line(state, "voice", "stop self vosk (supervisor)");
     voice_vosk_runtime::voice_vosk_stop_sync(state);
+    if phase_log {
+        log_bootstrap_phase(state, t0, "stop_sync_end", "peer=vosk");
+        log_bootstrap_phase(state, t0, "stop_sync_begin", "peer=sapi");
+    }
     crate::app_log::log_line(state, "voice", "stop self sapi (supervisor)");
     voice_sapi_runtime::voice_sapi_stop(state);
+    if phase_log {
+        log_bootstrap_phase(state, t0, "stop_sync_end", "peer=sapi");
+        log_bootstrap_phase(state, t0, "stop_sync_begin", "peer=kws");
+    }
     crate::app_log::log_line(state, "voice", "stop self kws (supervisor)");
     voice_kws_runtime::voice_kws_stop_sync(state);
+    if phase_log {
+        log_bootstrap_phase(state, t0, "stop_sync_end", "peer=kws");
+    }
     crate::app_log::log_line(
         state,
         "voice",
@@ -608,6 +657,9 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
                     crate::tray::refresh_tray_tooltip(&app_tip, state_tip.as_ref());
                 });
         }
+        if phase_log {
+            log_bootstrap_phase(state, t0, "audio_policy_begin", "desired=none");
+        }
         {
             let state_audio = Arc::clone(state);
             let _ = std::thread::Builder::new()
@@ -615,6 +667,9 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
                 .spawn(move || {
                     crate::audio_win::request_recording_audio_policy_sync(state_audio);
                 });
+        }
+        if phase_log {
+            log_bootstrap_phase(state, t0, "audio_policy_kicked", "desired=none");
         }
         schedule_acoustic_match_sync(Some(app), state);
         crate::app_log::log_line(
@@ -625,10 +680,34 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
                 reason
             ),
         );
+        if phase_log {
+            log_bootstrap_phase(
+                state,
+                t0,
+                "end",
+                &format!("total_ms={} desired=none", t0.elapsed().as_millis()),
+            );
+        }
         return;
     }
 
+    if phase_log {
+        log_bootstrap_phase(
+            state,
+            t0,
+            "start_self_begin",
+            &format!("desired={}", engine_label(desired)),
+        );
+    }
     start_self_engine(app, state, desired, reason);
+    if phase_log {
+        log_bootstrap_phase(
+            state,
+            t0,
+            "start_self_end",
+            &format!("desired={}", engine_label(desired)),
+        );
+    }
 
     *state.last_voice_fingerprint.lock() = crate::scene_config::idle_voice_fingerprint(&cfg);
     // Tray tooltip can touch Win UI; never block activate completion on it.
@@ -641,7 +720,13 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
                 crate::tray::refresh_tray_tooltip(&app_tip, state_tip.as_ref());
             });
     }
+    if phase_log {
+        log_bootstrap_phase(state, t0, "audio_policy_begin", "");
+    }
     crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
+    if phase_log {
+        log_bootstrap_phase(state, t0, "audio_policy_end", "");
+    }
     crate::app_log::log_line(
         state,
         "voice",
@@ -659,6 +744,18 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
             engine_label(desired)
         ),
     );
+    if phase_log {
+        log_bootstrap_phase(
+            state,
+            t0,
+            "end",
+            &format!(
+                "total_ms={} desired={}",
+                t0.elapsed().as_millis(),
+                engine_label(desired)
+            ),
+        );
+    }
 }
 
 fn schedule_acoustic_match_sync(app: Option<&AppHandle>, state: &Arc<AppState>) {
@@ -1172,6 +1269,8 @@ impl Drop for MicLease {
 
 /// Startup entry. Safe mode starts nothing.
 pub fn bootstrap_voice_engines(app: &AppHandle, state: &Arc<AppState>, safe_mode: bool) {
+    let t0 = Instant::now();
+    log_bootstrap_phase(state, t0, "entry", if safe_mode { "safe_mode=1" } else { "safe_mode=0" });
     if safe_mode {
         crate::app_log::log_line(state, "voice", "voice bootstrap skipped (safe mode)");
         crate::runtime_event::publish_runtime_event(
@@ -1189,6 +1288,7 @@ pub fn bootstrap_voice_engines(app: &AppHandle, state: &Arc<AppState>, safe_mode
                 "fingerprintChanged": false,
             })),
         );
+        log_bootstrap_phase(state, t0, "end", "total_ms=0 action=safe_mode");
         return;
     }
     activate_desired_engine(app, state, "bootstrap");

@@ -340,92 +340,165 @@ const Scene3MultiTask = () => {
 };
 
 // ============================================================
-// 场景④ 找不到入口 (15-20s) — 视频：人物办公 + 真实图标标注
+// 场景④ 找不到入口 (9-12s) — 英雄场景：20个应用窗口乱入堆叠
 // ============================================================
+
+// 应用窗口数据（真实办公全场景 + 真实品牌图标）
+const chaosApps = [
+  { name: "微信", color: "#07C160", icon: "icons/apps/wechat.svg", left: "3%", top: "8%", rot: -7 },
+  { name: "钉钉", color: "#0089FF", icon: "icons/apps/dingtalk.svg", left: "58%", top: "5%", rot: 6 },
+  { name: "WPS", color: "#E8332E", icon: "icons/apps/wps.svg", left: "25%", top: "3%", rot: -4 },
+  { name: "飞书", color: "#3370FF", icon: "icons/apps/feishu.svg", left: "76%", top: "12%", rot: 8 },
+  { name: "企业微信", color: "#0F7BFF", icon: "icons/apps/wecom.svg", left: "11%", top: "33%", rot: 5 },
+  { name: "QQ", color: "#12B7F5", icon: "icons/apps/tencentqq.svg", left: "68%", top: "38%", rot: -6 },
+  { name: "腾讯文档", color: "#0066FF", icon: "icons/apps/tencentdocs.svg", left: "42%", top: "27%", rot: 4 },
+  { name: "腾讯会议", color: "#0F5AE8", icon: "icons/apps/tencentmeeting.svg", left: "84%", top: "62%", rot: -8 },
+  { name: "浏览器", color: "#4285F4", icon: "icons/apps/googlechrome.svg", left: "5%", top: "60%", rot: 7 },
+  { name: "Word", color: "#2B579A", icon: "icons/apps/microsoftword.svg", left: "37%", top: "55%", rot: -5 },
+  { name: "Excel", color: "#217346", icon: "icons/apps/microsoftexcel.svg", left: "57%", top: "70%", rot: 9 },
+  { name: "PPT", color: "#B7472A", icon: "icons/apps/microsoftpowerpoint.svg", left: "21%", top: "74%", rot: -9 },
+  { name: "剪映", color: "#1A1A1A", icon: "icons/apps/capcut.svg", left: "87%", top: "28%", rot: 10 },
+  { name: "Photoshop", color: "#31A8FF", icon: "icons/apps/adobephotoshop.svg", left: "48%", top: "82%", rot: -3 },
+  { name: "Notion", color: "#000000", icon: "icons/apps/notion.svg", left: "73%", top: "82%", rot: 3 },
+  { name: "Obsidian", color: "#7C3AED", icon: "icons/apps/obsidian.svg", left: "32%", top: "86%", rot: -10 },
+  { name: "Cursor", color: "#0A0A0A", icon: "icons/apps/cursor.svg", left: "13%", top: "84%", rot: 6 },
+  { name: "DeepSeek", color: "#4D6BFE", icon: "icons/apps/deepseek.svg", left: "85%", top: "84%", rot: -5 },
+  { name: "压缩包", color: "#F7B500", icon: "icons/apps/zip.svg", left: "54%", top: "15%", rot: 11 },
+  { name: "TRAE", color: "#3B82F6", icon: "icons/apps/ttrae.svg", left: "39%", top: "39%", rot: -7 },
+];
+
+// 单个应用窗口（品牌图标 + 名称，高辨识度）
+const ChaosAppWindow = ({ app, delay }: { app: (typeof chaosApps)[number]; delay: number }) => {
+  const frame = useCurrentFrame();
+  const p = interpolate(frame, [delay, delay + 9], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOut });
+  // 快速飞入：从远处缩放+旋转
+  const scale = interpolate(p, [0, 1], [0.5, 1]);
+  const rotate = interpolate(p, [0, 1], [app.rot + 25, app.rot]);
+  // 出现时震动
+  const shake = p > 0 && frame < delay + 18 ? Math.sin((frame - delay) * 1.3) * (1 - p) * 7 : 0;
+  // 持续轻微晃动（烦躁感）
+  const idleShake = frame > delay + 18 ? Math.sin(frame * 0.22 + delay * 0.7) * 1.6 : 0;
+  // 内容线条
+  const lines = [72, 88, 60];
+
+  return (
+    <div style={{
+      position: "absolute",
+      left: app.left,
+      top: app.top,
+      width: 205,
+      height: 128,
+      background: "rgba(24,27,34,0.94)",
+      borderRadius: 10,
+      border: "1px solid rgba(255,255,255,0.18)",
+      boxShadow: "0 12px 32px rgba(0,0,0,0.55)",
+      opacity: p,
+      transform: `scale(${scale}) rotate(${rotate}deg) translateX(${shake + idleShake}px) translateY(${idleShake * 0.6}px)`,
+      fontFamily: "Segoe UI, PingFang SC, sans-serif",
+      overflow: "hidden",
+      zIndex: 10 + Math.round(app.rot),
+    }}>
+      {/* 标题栏：品牌图标（白底圆垫）+ 应用名 */}
+      <div style={{
+        height: 38, background: app.color,
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "0 10px",
+      }}>
+        <div style={{
+          width: 26, height: 26, borderRadius: 6,
+          background: "#fff",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0,
+        }}>
+          <Img src={staticFile(app.icon)} style={{ width: 18, height: 18, objectFit: "contain" }} />
+        </div>
+        <span style={{
+          fontSize: 14, fontWeight: 700, color: "#fff",
+          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+        }}>{app.name}</span>
+        {/* 红点 */}
+        <span style={{
+          marginLeft: "auto", width: 9, height: 9, borderRadius: "50%",
+          background: Math.sin(frame * 0.3 + delay) > 0 ? "#f5222d" : "transparent",
+          flexShrink: 0,
+        }} />
+      </div>
+      {/* 内容区：乱线条模拟界面 */}
+      <div style={{ padding: "10px 11px" }}>
+        <div style={{ width: "90%", height: 8, background: "rgba(255,255,255,0.2)", borderRadius: 3, marginBottom: 8 }} />
+        {lines.map((w, i) => (
+          <div key={i} style={{ width: `${w}%`, height: 7, background: "rgba(255,255,255,0.12)", borderRadius: 3, marginBottom: 6 }} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const Scene4NoButton = () => {
   const frame = useCurrentFrame();
   const opacity = useSceneFade();
-  // 固定缩放（无逐帧插值，彻底消除亚像素抖动）
   const zoom = 1.04;
-
-  // 三个真实平台语音标注（3秒内逐个弹出）
-  const marks = [
-    { app: "微信", icon: "icons/apps/wechat.svg", color: "#07C160", pos: "8%", top: "24%", delay: 10 },
-    { app: "钉钉", icon: "icons/apps/dingtalk.svg", color: "#0089FF", pos: "60%", top: "15%", delay: 28 },
-    { app: "WPS 表格", icon: "icons/apps/wps.svg", color: "#E8332E", pos: "26%", top: "52%", delay: 46 },
-  ];
-  const pulse = frame > 58 ? 1 + Math.sin(frame * 0.09) * 0.03 : 0.97;
+  const pulse = frame > 62 ? 1 + Math.sin(frame * 0.09) * 0.03 : 0.97;
 
   return (
     <AbsoluteFill style={{ opacity }}>
-      {/* 人物办公视频背景（与场景③不同素材） */}
+      {/* 人物办公视频背景（用已验证稳定的素材） */}
       <div style={{ position: "absolute", inset: "-6%", transform: `scale(${zoom})` }}>
         <Video
           muted
           loop
-          src={staticFile("videos/screen-4916.mp4")}
+          src={staticFile("videos/screen-50748.mp4")}
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
         />
       </div>
-      <div style={{ position: "absolute", inset: 0, background: "rgba(5,8,18,0.52)" }} />
+      <div style={{ position: "absolute", inset: 0, background: "rgba(5,8,18,0.6)" }} />
       <TopShade />
-      <BottomShade intensity={0.5} />
+      <BottomShade intensity={0.6} />
 
-      {/* 第一人称：我想说话 */}
-      <POVTag text="我 · 想开口说句话" startFrame={6} />
+      {/* 第一人称：所有软件一起涌来 */}
+      <POVTag text="我 · 所有软件同时炸了" startFrame={4} />
 
-      {/* 语音按钮标注（真实图标 + 位置各不同） */}
-      {marks.map((m) => {
-        const p = interpolate(frame, [m.delay, m.delay + 24], [0, 1], {
-          extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOut,
-        });
-        const y = interpolate(p, [0, 1], [18, 0]);
-        return (
-          <div key={m.app} style={{
-            position: "absolute", left: m.pos, top: m.top,
-            background: "rgba(18,24,40,0.93)",
-            border: `1.5px solid ${m.color}aa`,
-            borderRadius: 14,
-            padding: "10px 16px",
-            display: "flex", alignItems: "center", gap: 10,
-            opacity: p, transform: `translateY(${y}px)`,
-            fontFamily: "Segoe UI, PingFang SC, sans-serif",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
-            zIndex: 25,
-          }}>
-            <Img src={staticFile(m.icon)} style={{ width: 34, height: 34, objectFit: "contain" }} />
-            <div>
-              <div style={{ color: "#fff", fontSize: 15, fontWeight: 600 }}>{m.app}</div>
-              <div style={{ color: m.color, fontSize: 11 }}>🎤 语音入口在这</div>
-            </div>
-          </div>
-        );
-      })}
+      {/* 英雄场景：20个应用窗口快速乱入堆叠（每2帧弹入一个） */}
+      {chaosApps.map((app, i) => (
+        <ChaosAppWindow key={app.name} app={app} delay={4 + i * 2} />
+      ))}
 
-      {/* 第一人称疑问 */}
+      {/* 中心焦点：好乱，找不到语音入口 */}
       <div style={{
-        position: "absolute", left: "50%", bottom: "16%",
+        position: "absolute", left: "50%", top: "36%",
         transform: `translateX(-50%) scale(${pulse})`,
-        opacity: interpolate(frame, [100, 130], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
-        textAlign: "center", width: "88%", zIndex: 30,
+        opacity: interpolate(frame, [64, 78], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+        textAlign: "center", zIndex: 30, width: "100%",
       }}>
         <div style={{
-          fontSize: 56, fontWeight: 800, color: "#fff",
+          fontSize: 52, fontWeight: 800, color: "#fff",
           fontFamily: "Segoe UI, PingFang SC, sans-serif",
-          letterSpacing: 2, textShadow: "0 8px 50px rgba(0,0,0,0.8)",
-        }}>想说话…可按钮在哪？</div>
+          letterSpacing: 3, textShadow: "0 8px 60px rgba(0,0,0,0.95)",
+          background: "rgba(10,14,24,0.72)",
+          padding: "12px 44px", borderRadius: 999, display: "inline-block",
+          border: "2px solid rgba(255,255,255,0.18)",
+        }}>好乱…语音按钮到底在哪？</div>
+      </div>
+
+      {/* 底部解释 */}
+      <div style={{
+        position: "absolute", left: "50%", bottom: "11%",
+        transform: "translateX(-50%)",
+        opacity: interpolate(frame, [72, 84], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+        textAlign: "center", zIndex: 30, width: "88%",
+      }}>
         <div style={{
-          fontSize: 18, color: "rgba(255,255,255,0.6)", marginTop: 10,
-          fontFamily: "Segoe UI, PingFang SC, sans-serif",
-          opacity: interpolate(frame, [118, 140], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
-        }}>每个软件的语音入口，都不一样</div>
+          fontSize: 17, color: "rgba(255,255,255,0.8)",
+          fontFamily: "Segoe UI, PingFang SC, sans-serif", letterSpacing: 1,
+          textShadow: "0 3px 20px rgba(0,0,0,0.9)",
+        }}>20 个软件，语音入口被埋在每个角落</div>
       </div>
     </AbsoluteFill>
   );
 };
 
 // ============================================================
-// 场景⑤ 灵魂提问 (20-25s) — 全新素材：电脑屏幕沉思
+// 场景⑤ 灵魂提问 (12-15s) — 全新素材：电脑屏幕沉思
 // ============================================================
 const Scene5Ending = () => {
   const frame = useCurrentFrame();
@@ -433,21 +506,21 @@ const Scene5Ending = () => {
   // 固定缩放（无逐帧插值，彻底消除亚像素抖动）
   const zoom = 1.03;
 
-  const l1 = interpolate(frame, [20, 58], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOut });
+  const l1 = interpolate(frame, [12, 34], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOut });
   const l1y = interpolate(l1, [0, 1], [20, 0]);
-  const l2 = interpolate(frame, [60, 98], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOut });
+  const l2 = interpolate(frame, [36, 58], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOut });
   const l2y = interpolate(l2, [0, 1], [20, 0]);
-  const l3 = interpolate(frame, [96, 118], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const dark = interpolate(frame, [112, 150], [0, 0.92], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const l3 = interpolate(frame, [58, 70], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const dark = interpolate(frame, [66, 90], [0, 0.92], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   return (
     <AbsoluteFill style={{ opacity }}>
-      {/* 全新素材：电脑屏幕（区别于其他所有场景） */}
+      {/* 全新素材：城市夜景（呼应开头，结尾沉思收束） */}
       <div style={{ position: "absolute", inset: "-6%", transform: `scale(${zoom})` }}>
         <Video
           muted
           loop
-          src={staticFile("videos/screen-50748.mp4")}
+          src={staticFile("videos/city-night.mp4")}
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
         />
       </div>
@@ -458,7 +531,7 @@ const Scene5Ending = () => {
       <TopShade />
 
       {/* 第一人称：最后的自问 */}
-      <POVTag text="深夜 · 我放下工作想了想" startFrame={12} />
+      <POVTag text="深夜 · 我放下工作想了想" startFrame={8} />
 
       {/* 主文案 */}
       <div style={{
@@ -490,16 +563,16 @@ const Scene5Ending = () => {
 };
 
 // ============================================================
-// 主场景：25秒第一人称故事（视频背景）
+// 主场景：15秒第一人称故事（5个场景 × 3秒）
 // ============================================================
 export const VibeCodingScene = () => {
   return (
     <AbsoluteFill style={{ background: "#000" }}>
-      <Sequence from={0} durationInFrames={150}><Scene1CityNight /></Sequence>
-      <Sequence from={150} durationInFrames={150}><Scene2Keyboard /></Sequence>
-      <Sequence from={300} durationInFrames={150}><Scene3MultiTask /></Sequence>
-      <Sequence from={450} durationInFrames={150}><Scene4NoButton /></Sequence>
-      <Sequence from={600} durationInFrames={150}><Scene5Ending /></Sequence>
+      <Sequence from={0} durationInFrames={90}><Scene1CityNight /></Sequence>
+      <Sequence from={90} durationInFrames={90}><Scene2Keyboard /></Sequence>
+      <Sequence from={180} durationInFrames={90}><Scene3MultiTask /></Sequence>
+      <Sequence from={270} durationInFrames={90}><Scene4NoButton /></Sequence>
+      <Sequence from={360} durationInFrames={90}><Scene5Ending /></Sequence>
     </AbsoluteFill>
   );
 };

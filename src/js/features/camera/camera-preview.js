@@ -458,9 +458,34 @@
     }
   }
 
+  function cameraPanelHot(){
+    try{
+      var ui=global.OneToneState&&global.OneToneState.ui;
+      return !!(ui&&ui.drawerOpen&&ui.settingsPanel==='camera');
+    }catch(_){
+      return false;
+    }
+  }
+
+  function handGestureWanted(){
+    var api=presenceApi();
+    if(!api||!api.prefs) return false;
+    var prefs;
+    try{ prefs=api.prefs(); }catch(_){ prefs=null; }
+    if(!prefs) return false;
+    return prefs.openPalm!=='none'||prefs.okHand!=='none'||prefs.fist!=='none'||prefs.wave!=='none'
+      ||!!(prefs.triggers&&(prefs.triggers.openPalm||prefs.triggers.okHand||prefs.triggers.fist||prefs.triggers.wave));
+  }
+
   /** Preview-live hand recognizer on raw video; soft-fail if model missing. */
   function syncHandGesture(){
     if(!previewLive){
+      stopHandGesture();
+      return Promise.resolve(false);
+    }
+    // Presence home still runs getUserMedia + gaze (DETECT_HOME_MS floor). Hand Worker is
+    // separate: only when openPalm/ok/fist/wave bound, or camera settings panel is open.
+    if(!handGestureWanted()&&!cameraPanelHot()){
       stopHandGesture();
       return Promise.resolve(false);
     }
@@ -530,18 +555,20 @@
     var api=presenceApi();
     if(api&&api.syncDetectInterval){
       try{ api.syncDetectInterval(); }catch(_){}
-      // Still apply Smart Pointer interval preference when presence helper ran.
     }
     var lm=landmarkerApi();
     if(!lm||!lm.setDetectIntervalMs) return;
     var cal=calibrationApi();
     var calRunning=!!(cal&&cal.getState&&cal.getState().running);
+    var panelHot=cameraPanelHot();
+    // Presence already applied DETECT_HOME_MS — do not overwrite with gaze full-rate on home.
+    if(presenceEnabled()&&!panelHot&&!calRunning) return;
     var spWanted=smartPointerWanted();
     var gazeMs=33;
     if(api&&api.preferredDetectIntervalMs){
       try{ gazeMs=api.preferredDetectIntervalMs(getCaptureFpsHint())||33; }catch(_){ gazeMs=33; }
     }
-    if(gaze.enabled||calRunning){
+    if((gaze.enabled&&panelHot)||calRunning){
       lm.setDetectIntervalMs(gazeMs);
       return;
     }
@@ -557,16 +584,6 @@
         lm.setDetectIntervalMs(80);
         return;
       }
-      lm.setDetectIntervalMs(gazeMs);
-      return;
-    }
-    var prefs=api&&api.prefs?api.prefs():null;
-    var gestureOn=!!(prefs&&(
-      prefs.shakeHead!=='none'||prefs.deliberateBlink!=='none'
-      ||prefs.openPalm!=='none'||prefs.okHand!=='none'||prefs.fist!=='none'||prefs.wave!=='none'
-      ||(prefs.triggers&&(prefs.triggers.openPalm||prefs.triggers.okHand||prefs.triggers.fist||prefs.triggers.wave))
-    ));
-    if(gestureOn){
       lm.setDetectIntervalMs(gazeMs);
       return;
     }
@@ -2142,7 +2159,9 @@
     starting=false;
     setPlaceholderVisible(false);
     setButtons();
-    if(!gaze.enabled) setGazeDebugEnabled(true);
+    // Do not force gaze overlay on for presence/home preview — that used to
+    // unlock full-rate createImageBitmap via gaze.enabled default/bypass.
+    if(cameraPanelHot()&&!gaze.enabled) setGazeDebugEnabled(true);
     else refreshGazeUi();
     if(deviceId) persistSelectedDeviceId(deviceId);
     setStatus(t('cameraStatusLive','预览中 · 仅本地显示'));

@@ -24,7 +24,11 @@
     var spVoiceTitle=$('settingsPanelVoiceWakeTitle'); if(spVoiceTitle) spVoiceTitle.textContent=d.settingsPanelVoiceWakeTitle;
     var spModels=$('settingsPanelModelsDesc'); if(spModels) spModels.textContent=d.settingsPanelModelsDesc||'管理本地语音识别、系统识别与后续云端能力。';
     var spModelsTitle=$('settingsPanelModelsTitle'); if(spModelsTitle) spModelsTitle.textContent=d.settingsNavModels||'识别资源';
-    if(global.OneToneSceneModeHub) global.OneToneSceneModeHub.render();
+    if(global.OneToneSceneModeHub){
+      // Drawer closed: habit list paint is wasted work on the home load path.
+      var ui=global.OneToneState&&global.OneToneState.ui;
+      if(ui&&ui.drawerOpen) global.OneToneSceneModeHub.render();
+    }
     var settingsVoiceCommonTitle=$('settingsVoiceCommonTitle'); if(settingsVoiceCommonTitle) settingsVoiceCommonTitle.textContent=d.settingsVoiceCommonTitle;
     var settingsVoiceAdvancedSummary=$('settingsVoiceAdvancedSummary'); if(settingsVoiceAdvancedSummary) settingsVoiceAdvancedSummary.textContent=d.settingsVoiceAdvancedSummary;
     var voiceSettingsEngineSub=$('voiceSettingsEngineSub'); if(voiceSettingsEngineSub) voiceSettingsEngineSub.textContent=d.settingsVoiceEngineSub;
@@ -71,11 +75,15 @@
       voiceDiagnosticsDesc.textContent=d.voiceDiagnosticsDesc||'';
       voiceDiagnosticsDesc.hidden=!d.voiceDiagnosticsDesc;
     }
-    hooks().renderVoiceDiagTabs();
-    hooks().renderVoiceDiagLog('sapi');
-    hooks().renderVoiceDiagLog('vosk');
-    hooks().renderVoiceDiagLog('end');
-    hooks().renderVoiceDiagLog('usage');
+    var uiNow=global.OneToneState&&global.OneToneState.ui;
+    var voiceDiagHot=!!(uiNow&&uiNow.drawerOpen&&uiNow.settingsPanel==='voiceWake');
+    if(voiceDiagHot){
+      hooks().renderVoiceDiagTabs();
+      hooks().renderVoiceDiagLog('sapi');
+      hooks().renderVoiceDiagLog('vosk');
+      hooks().renderVoiceDiagLog('end');
+      hooks().renderVoiceDiagLog('usage');
+    }
   }
 
   global.OneToneAppLangSettings={applySettingsTexts:applySettingsTexts};

@@ -43,11 +43,32 @@ pub fn last_ping_age_ms() -> u64 {
     now_ms().saturating_sub(last)
 }
 
-fn activity_tag_snapshot() -> String {
+pub fn activity_tag_snapshot() -> String {
     ACTIVITY_TAG
         .lock()
         .map(|g| g.clone())
         .unwrap_or_default()
+}
+
+pub fn last_seq() -> u64 {
+    LAST_SEQ.load(Ordering::Relaxed)
+}
+
+/// Read-only diag for voice bootstrap phase logs — Atomic + short Mutex, no disk.
+pub fn ui_hb_diag() -> String {
+    let age = last_ping_age_ms();
+    let gap = if age == u64::MAX {
+        "n/a".to_string()
+    } else {
+        format!("{age}ms")
+    };
+    let tag = activity_tag_snapshot();
+    let tag_part = if tag.is_empty() {
+        String::new()
+    } else {
+        format!(" tag={tag}")
+    };
+    format!("ui_hb gap={gap}{tag_part} seq={}", last_seq())
 }
 
 /// Start once from app setup. Watchdog reads atomics and logs via emergency path.

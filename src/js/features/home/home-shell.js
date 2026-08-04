@@ -143,8 +143,8 @@
       }
       if(global.OneToneHomeWorkbench){
         global.OneToneHomeWorkbench.bindOnce();
+        // applyLang already paints workbench; avoid force+render double storm.
         global.OneToneHomeWorkbench.applyLang();
-        global.OneToneHomeWorkbench.render();
       }
     }else{
       global.OneToneHomeLive.renderZone();

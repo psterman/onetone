@@ -675,7 +675,23 @@ pub fn run() {
                 let _ = std::thread::Builder::new()
                     .name("voice-bootstrap".into())
                     .spawn(move || {
+                        crate::app_log::log_line(
+                            &boot_state,
+                            "voice",
+                            &format!(
+                                "voice_bootstrap thread sleep begin delay=3000 {}",
+                                crate::ui_heartbeat::ui_hb_diag()
+                            ),
+                        );
                         std::thread::sleep(Duration::from_secs(3));
+                        crate::app_log::log_line(
+                            &boot_state,
+                            "voice",
+                            &format!(
+                                "voice_bootstrap thread wake delay=3000 {}",
+                                crate::ui_heartbeat::ui_hb_diag()
+                            ),
+                        );
                         voice_bootstrap::bootstrap_voice_engines(&boot_app, &boot_state, boot_safe);
                     });
             }

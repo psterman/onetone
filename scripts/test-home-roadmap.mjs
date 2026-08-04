@@ -244,8 +244,11 @@ check('renderHowTo 不再调 snapshot', (() => {
   const m = panels.match(/function renderHowTo\(projection\)\{[\s\S]*?\n  function /);
   return !!(m && !m[0].includes('cameraHowToSnapshot()') && !m[0].includes('softPadHowToSnapshot()'));
 })());
-check('howto 摘要可点进配置', panels.includes('howToSummaryCardHtml') && panels.includes('点此打开该通道设置') && !/data-wb-howto-channel=/.test(panels));
-check('howto 点卡开通道', wb.includes("closest('#wbHowTo [data-wb-howto]')") && /#wbHowTo \[data-wb-howto\][\s\S]*setHeroMode\(kind\)/.test(wb) && /#wbHowTo \[data-wb-howto\][\s\S]*openHabitChannelChip\(kind\)/.test(wb));
+check('howto 摘要点卡切 Hero', panels.includes('howToSummaryCardHtml') && panels.includes('点此切换上方预览；再点打开设置') && !/data-wb-howto-channel=/.test(panels));
+check('howto 点卡切 Hero / 再点开设置', (() => {
+  const m = wb.match(/#wbHowTo \[data-wb-howto\][\s\S]*?return;\s*\}/);
+  return !!(m && m[0].includes('setHeroMode(kind)') && m[0].includes('openHabitChannelChip(kind)') && m[0].includes('heroMode'));
+})());
 check('activate 乐观刷新首页', (() => {
   const act = readFileSync(join(root, 'src/js/features/scene/scene-activate.js'), 'utf8');
   return act.includes('cfg.activeSceneId=id') && act.includes('forceHomeRender');
