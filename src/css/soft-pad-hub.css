@@ -669,20 +669,38 @@ html[data-theme="dark"] .soft-pad-tm-detail .soft-pad-tm-safety { color: #f2c56f
   min-width: 0;
 }
 
-/* Stable 2-pane: left nav (preview+tiles) never reflows; right detail only swaps content */
+/* Stable stage: top subtabs + left preview + right detail */
 .soft-pad-hub-stage {
   display: grid;
   grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
-  gap: 14px 16px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px 16px;
   align-items: start;
   margin-bottom: 12px;
   min-height: 420px;
 }
+.soft-pad-hub-stage > .soft-pad-func-tiles {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  position: relative;
+  z-index: 6;
+  pointer-events: auto;
+}
+.soft-pad-hub-stage > .soft-pad-hub-nav {
+  grid-column: 1;
+  grid-row: 2;
+}
+.soft-pad-hub-stage > .soft-pad-detail {
+  grid-column: 2;
+  grid-row: 2;
+}
 /* TM stage mode — after base stage so layout ownership is unambiguous */
 .soft-pad-hub-stage.is-tm-desk {
   grid-template-columns: 1fr;
+  grid-template-rows: minmax(0, 1fr);
   min-height: 480px;
 }
+.soft-pad-hub-stage.is-tm-desk > .soft-pad-func-tiles,
 .soft-pad-hub-stage.is-tm-desk > .soft-pad-hub-nav,
 .soft-pad-hub-stage.is-tm-desk > .soft-pad-detail {
   display: none !important;
@@ -690,6 +708,7 @@ html[data-theme="dark"] .soft-pad-tm-detail .soft-pad-tm-safety { color: #f2c56f
 .soft-pad-hub-stage.is-tm-desk > .soft-pad-tm-desk {
   display: flex !important;
   grid-column: 1 / -1;
+  grid-row: 1;
 }
 /* Beat `.soft-pad-tm-desk[hidden]` if attribute races with class toggle. */
 .soft-pad-hub-stage.is-tm-desk > .soft-pad-tm-desk[hidden] {
@@ -808,7 +827,7 @@ html[data-theme="dark"] .soft-pad-tm-detail .soft-pad-tm-safety { color: #f2c56f
 .soft-pad-func-tiles {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   margin-bottom: 0;
   max-width: none;
   min-width: 0;
@@ -817,133 +836,79 @@ html[data-theme="dark"] .soft-pad-tm-detail .soft-pad-tm-safety { color: #f2c56f
 .soft-pad-func-tiles[hidden] {
   display: none !important;
 }
-
-.soft-pad-func-tiles__head {
-  margin: 0 0 2px;
-  flex: 0 0 auto;
-}
-.soft-pad-func-tiles__title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 750;
-  color: var(--on-surface, #1e293b);
-}
-.soft-pad-func-tiles__sub {
-  margin: 4px 0 0;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--on-surface-muted);
-}
-.soft-pad-func-tile {
-  appearance: none;
-  position: relative;
-  display: grid;
-  grid-template-columns: 32px 1fr auto;
-  gap: 6px 8px;
-  align-items: center;
-  text-align: left;
-  flex: 0 0 auto;
-  min-height: 56px;
-  padding: 10px 12px 10px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(26, 45, 74, 0.1);
-  background: rgba(255, 255, 255, 0.92);
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
-  overflow: hidden;
-  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
-}
-.soft-pad-func-tile::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 10px;
-  bottom: 10px;
-  width: 3px;
-  border-radius: 0 2px 2px 0;
-  background: rgba(26, 45, 74, 0.16);
-  transition: background 0.15s ease;
-}
-.soft-pad-func-tile:hover {
-  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 35%, transparent);
-  background: var(--primary-soft, rgba(42, 156, 196, 0.1));
-}
-.soft-pad-func-tile.is-active {
-  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 55%, transparent);
-  background: var(--primary-soft, rgba(42, 156, 196, 0.16));
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--primary, #2a9cc4) 22%, transparent),
-    0 1px 0 rgba(15, 23, 42, 0.03);
-}
-.soft-pad-func-tile.is-active::before {
-  background: var(--primary, #2a9cc4);
-}
-.soft-pad-func-tile.is-active .soft-pad-func-tile__index {
-  color: var(--primary-strong, #1f8fb8);
-}
-.soft-pad-func-tile.is-active .soft-pad-func-tile__title {
-  color: var(--indigo, #1a2d4a);
-}
-.soft-pad-func-tile.is-disabled,
-.soft-pad-func-tile:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-.soft-pad-func-tile.is-disabled:hover,
-.soft-pad-func-tile:disabled:hover {
-  border-color: rgba(26, 45, 74, 0.1);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
-}
-.soft-pad-func-tile.is-disabled::before,
-.soft-pad-func-tile:disabled::before {
-  background: rgba(26, 45, 74, 0.12);
-}
-.soft-pad-func-tile__index {
-  width: 32px;
-  display: grid;
-  place-items: center;
-  font-size: 13px;
-  font-weight: 750;
-  color: var(--on-surface-muted);
-  flex-shrink: 0;
-}
-.soft-pad-func-tile__copy {
-  display: grid;
-  gap: 3px;
+.soft-pad-func-tiles__tabs {
+  width: 100%;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0;
   min-width: 0;
 }
-.soft-pad-func-tile__title {
-  font-size: 14px;
-  font-weight: 700;
+.soft-pad-func-tiles__tabs.pref-segmented {
+  padding: 3px;
+  box-sizing: border-box;
+  border: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.18));
+  background: var(--surface-soft, rgba(248, 250, 252, 0.92));
+  /* Read as one segmented control, not a lone cyan title. */
+  min-height: 42px;
+}
+.soft-pad-func-tiles__tabs .soft-pad-func-tile {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 36px;
+  height: auto;
+  padding: 8px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  text-align: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  appearance: none;
+  font: inherit;
+  color: var(--on-surface-muted, #64748b);
+  cursor: pointer !important;
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+  transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.soft-pad-func-tiles__tabs .soft-pad-func-tile::before {
+  display: none;
+}
+.soft-pad-func-tiles__tabs .soft-pad-func-tile:hover {
   color: var(--on-surface, #1e293b);
+  background: transparent;
+  border-color: transparent;
 }
-.soft-pad-func-tile__sub {
-  font-size: 12px;
-  line-height: 1.35;
-  color: var(--on-surface-muted);
+.soft-pad-func-tiles__tabs .soft-pad-func-tile.is-active,
+.soft-pad-func-tiles__tabs .soft-pad-func-tile[aria-selected="true"] {
+  color: var(--on-surface, #1e293b);
+  background: var(--surface, #fff);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.1);
+  border-color: transparent;
+  font-weight: 700;
+}
+.soft-pad-func-tiles__tabs .soft-pad-func-tile.is-recommended:not(.is-active) {
+  /* Keep same chrome as siblings — cyan text alone read as a title, not a tab. */
+  color: var(--on-surface-muted, #64748b);
+}
+.soft-pad-func-tiles__tabs .soft-pad-func-tile.is-disabled,
+.soft-pad-func-tiles__tabs .soft-pad-func-tile:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.soft-pad-func-tile__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.soft-pad-func-tile__status {
-  justify-self: end;
-  max-width: 120px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--indigo-muted);
-  text-align: right;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.soft-pad-func-tile.is-recommended:not(.is-active)::before {
-  background: color-mix(in srgb, var(--indigo, #4f46e5) 35%, transparent);
-}
-.soft-pad-func-tile.is-recommended:not(.is-active) .soft-pad-func-tile__index {
-  color: var(--indigo, #4f46e5);
+  max-width: 100%;
 }
 .soft-pad-panel-empty,
 .soft-pad-panel-primary {
@@ -1348,44 +1313,32 @@ html[data-theme="dark"] #settingsPanelSoftPad .keys-aside-card {
 html[data-theme="dark"] .soft-pad-scope-hint {
   color: var(--indigo-muted);
 }
-html[data-theme="dark"] .soft-pad-func-tiles__title {
+html[data-theme="dark"] .soft-pad-func-tiles__tabs.pref-segmented {
+  background: rgba(18, 26, 40, 0.98);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+html[data-theme="dark"] .soft-pad-func-tiles__tabs .soft-pad-func-tile {
+  color: rgba(226, 232, 240, 0.72);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+html[data-theme="dark"] .soft-pad-func-tiles__tabs .soft-pad-func-tile:hover {
   color: #e2e8f0;
+  background: transparent;
 }
-html[data-theme="dark"] .soft-pad-func-tiles__sub {
-  color: var(--indigo-muted);
+html[data-theme="dark"] .soft-pad-func-tiles__tabs .soft-pad-func-tile.is-active,
+html[data-theme="dark"] .soft-pad-func-tiles__tabs .soft-pad-func-tile[aria-selected="true"] {
+  color: #e2e8f0;
+  background: rgba(30, 40, 56, 0.98);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
 }
-html[data-theme="dark"] .soft-pad-func-tile {
-  background: rgba(30, 40, 56, 0.85);
-  border-color: rgba(255, 255, 255, 0.08);
-}
-html[data-theme="dark"] .soft-pad-func-tile:hover {
-  background: var(--primary-soft, rgba(94, 200, 232, 0.14));
-  border-color: color-mix(in srgb, var(--primary, #5ec8e8) 40%, transparent);
-}
-html[data-theme="dark"] .soft-pad-func-tile.is-active {
-  background: var(--primary-soft, rgba(94, 200, 232, 0.18));
-  border-color: color-mix(in srgb, var(--primary, #5ec8e8) 50%, transparent);
-}
-html[data-theme="dark"] .soft-pad-func-tile.is-active::before {
-  background: var(--primary, #5ec8e8);
-}
-html[data-theme="dark"] .soft-pad-func-tile.is-active .soft-pad-func-tile__index {
-  color: var(--primary, #5ec8e8);
-}
-html[data-theme="dark"] .soft-pad-func-tile.is-active .soft-pad-func-tile__title {
-  color: var(--indigo, #dce8f5);
-}
-html[data-theme="dark"] .soft-pad-func-tile.is-disabled:hover,
-html[data-theme="dark"] .soft-pad-func-tile:disabled:hover {
-  background: rgba(30, 40, 56, 0.85);
-  border-color: rgba(255, 255, 255, 0.08);
+html[data-theme="dark"] .soft-pad-func-tiles__tabs .soft-pad-func-tile.is-recommended:not(.is-active) {
+  color: rgba(226, 232, 240, 0.72);
 }
 html[data-theme="dark"] .soft-pad-func-tile__title {
-  color: #e2e8f0;
+  color: inherit;
 }
-html[data-theme="dark"] .soft-pad-func-tile__index,
-html[data-theme="dark"] .soft-pad-func-tile__status,
-html[data-theme="dark"] .soft-pad-func-tile__sub,
 html[data-theme="dark"] .soft-pad-agent-guide p {
   color: var(--indigo-muted);
 }

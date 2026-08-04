@@ -117,7 +117,20 @@ check('render 先画左侧再落地', /ensureSoftPadLeftChrome[\s\S]*?paintSoftP
 check('openSubpage 空壳再点会重绘', /view === softPadView[\s\S]*?softPadSubpageAlreadyPainted[\s\S]*?forceRemount:\s*true/.test(softPadJs));
 check('AlreadyPainted 含 agent lazy body', /view === 'agent'[\s\S]*?data-lazy-agent-body/.test(softPadJs));
 check('openGen 不跟 selectToken 绑死', softPadJs.includes('softPadOpenGen'));
-check('落地走 openSubpage', /function paintSoftPadLanding\([\s\S]*?openSubpage\(/.test(softPadJs));
+check('落地硬编码 runtime', /var landView = 'runtime'/.test(softPadJs) && /fe softPad\.land/.test(softPadJs));
+check('落地锁定 suppress layout', /softPadLandUntil[\s\S]*?suppress-layout/.test(softPadJs));
+check('顶栏 tile 带 fromUser', /openSubpage\(tile\.getAttribute\('data-tile'\),\s*\{\s*fromUser:\s*true/.test(softPadJs));
+check('Soft Pad 流程节点落地 runtime', /nodeId === 'pad'[\s\S]*?openSubpage\('runtime'\)/.test(softPadJs));
+check('openSubpage 面板不一致会重绘', /panelMismatch[\s\S]*?forceRemount:\s*true/.test(softPadJs));
+check('render 同步先 openSubpage 落地', /var landView = 'runtime';[\s\S]*?openSubpage\(landView\)/.test(softPadJs));
+const landingStart = softPadJs.indexOf('function paintSoftPadLanding()');
+const landingEnd = softPadJs.indexOf('// Second pass after island paint-targets commit', landingStart);
+const landingRetry = landingStart >= 0 && landingEnd > landingStart
+  ? softPadJs.slice(landingStart, landingEnd)
+  : '';
+check('延迟落地不重复 selectScheme', !landingRetry.includes('selectScheme('));
+check('延迟落地只在缺页时补画', /!softPadSubpageAlreadyPainted[\s\S]*?paintSubpage/.test(landingRetry));
+check('defaultDetailView 默认 runtime', /function defaultDetailView\([\s\S]*?return 'runtime'/.test(softPadJs));
 check('openSubpage resolve Soft Pad', /function openSubpage\([\s\S]*?resolveSoftPadEntry\(/.test(softPadJs));
 
 const html = readFileSync(join(root, 'src/index.html'), 'utf8');

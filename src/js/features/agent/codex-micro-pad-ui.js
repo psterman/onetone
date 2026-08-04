@@ -4449,6 +4449,11 @@
   /** Last key focused in hub layout editor (persists across preview remounts). */
   var softPadLayoutFocusKeyId = '';
 
+  function softPadPreviewOnLayout() {
+    var Hub = global.OneToneSoftPadHub;
+    return !!(softPadPanelActive() && Hub && typeof Hub.getView === 'function' && Hub.getView() === 'layout');
+  }
+
   function ensureSoftPadPreviewDelegate(host) {
     if (!host || host.getAttribute('data-soft-pad-preview-delegate') === '1') return;
     host.setAttribute('data-soft-pad-preview-delegate', '1');
@@ -4482,7 +4487,7 @@
         ev.preventDefault();
         ev.stopPropagation();
         var nav = navEl.getAttribute('data-nav');
-        if (nav) openEditKeycap(m, nav);
+        if (nav) softPadPreviewEditKey(m, nav);
         return;
       }
       var keyEl = ev.target.closest && ev.target.closest('.micro-hw__key[data-micro-key]');
@@ -4492,8 +4497,18 @@
       if (!id || id === 'JOY') return;
       ev.preventDefault();
       ev.stopPropagation();
-      openEditKeycap(m, id);
+      softPadPreviewEditKey(m, id);
     });
+  }
+
+  /** Preview key → only edit when already on「改按键」; otherwise browse caption only.
+   *  Auto-openSubpage(layout) stole「何时显示」landing (and ghost-clicks on open). */
+  function softPadPreviewEditKey(m, microKeyId) {
+    if (softPadPreviewOnLayout()) {
+      openEditKeycap(m, microKeyId, { mode: 'inline' });
+      return;
+    }
+    markSoftPadPreviewFocus(microKeyId);
   }
 
   function setSoftPadPreviewCaption(host, name, chord) {
@@ -4575,8 +4590,12 @@
         : t('codexMicroPadStatusOff', '已关闭');
     }
     var hintEl = root.querySelector('.soft-pad-preview__hint');
+    var onLayout = softPadPreviewOnLayout();
     if (hintEl) {
-      hintEl.textContent = t('softPadPreviewTapHint', '蓝框=正在编辑 · 点其它键可切换');
+      hintEl.textContent = onLayout
+        ? t('softPadPreviewTapHint', '蓝框=正在编辑 · 点其它键可切换')
+        : t('softPadPreviewBrowseHint', '点按键可去「改按键」编辑');
+      hintEl.hidden = false;
     }
     if (!root.querySelector('[data-soft-pad-caption]')) {
       var cap = document.createElement('div');
@@ -4594,7 +4613,9 @@
     var next = tmp.firstChild;
     if (!next) return false;
     oldWrap.parentNode.replaceChild(next, oldWrap);
-    markSoftPadPreviewFocus(softPadLayoutFocusKeyId || (editDraft && editDraft.microKeyId) || '');
+    markSoftPadPreviewFocus(onLayout
+      ? (softPadLayoutFocusKeyId || (editDraft && editDraft.microKeyId) || '')
+      : '');
     bindSoftPadPreviewCaption(host);
     var focused = host.querySelector('.micro-hw__key.is-focused[data-micro-key]');
     if (focused) {
@@ -4648,9 +4669,13 @@
       '<span class="soft-pad-key-caption__chord" data-cap-chord hidden></span>' +
       '</div>' +
       '<p class="soft-pad-preview__hint codex-pad-mgr__hint">' +
-      esc(t('softPadPreviewTapHint', '蓝框=正在编辑 · 点其它键可切换')) +
+      esc(softPadPreviewOnLayout()
+        ? t('softPadPreviewTapHint', '蓝框=正在编辑 · 点其它键可切换')
+        : t('softPadPreviewBrowseHint', '点按键可去「改按键」编辑')) +
       '</p></div>';
-    markSoftPadPreviewFocus(softPadLayoutFocusKeyId || (editDraft && editDraft.microKeyId) || '');
+    markSoftPadPreviewFocus(softPadPreviewOnLayout()
+      ? (softPadLayoutFocusKeyId || (editDraft && editDraft.microKeyId) || '')
+      : '');
     bindSoftPadPreviewCaption(host);
   }
 
@@ -4743,17 +4768,29 @@
       '</div>';
     container.setAttribute('data-soft-pad-mapping', String(m.id || ''));
     container.setAttribute('data-soft-pad-panel', 'layout');
-    container.classList.add('is-editing-key');
+    // Do NOT set is-editing-key yet — that locks overflow before chrome/tabs paint.
+    // openEditKeycap(inline) adds the class when the editor actually mounts.
     mirrorSoftPadSubpageChrome(container);
     bindSoftPadLightPanelEvents(container, m, pad, Object.assign({}, opts, { panel: 'layout' }));
     try { global.__otSoftPadLayoutShellMounted = true; } catch (_) {}
+    var editorHost = container.querySelector('[data-soft-pad-layout-editor]');
+    if (editorHost) {
+      editorHost.innerHTML =
+        '<p class="codex-pad-mgr__hint soft-pad-layout-editor-pending">' +
+        esc(t('softPadLayoutPickKey', '点左侧键盘选一个键开始改')) +
+        '</p>';
+    }
     var focusId = pickDefaultLayoutKey(m);
-    // Open editor immediately — never leave the right pane blank.
+    // Defer heavy inline editor until Soft Pad tabs/chrome can take clicks.
+    // Sync openEditKeycap on Soft Pad entry used to wedge「何时显示」(no pointer / 点不动).
+    var mapId = String(m.id || '');
     requestAnimationFrame(function () {
-      if (!container.isConnected) return;
-      if (container.getAttribute('data-soft-pad-panel') !== 'layout') return;
-      if (String(container.getAttribute('data-soft-pad-mapping') || '') !== String(m.id || '')) return;
-      openEditKeycap(m, focusId, { mode: 'inline' });
+      setTimeout(function () {
+        if (!container.isConnected) return;
+        if (container.getAttribute('data-soft-pad-panel') !== 'layout') return;
+        if (String(container.getAttribute('data-soft-pad-mapping') || '') !== mapId) return;
+        openEditKeycap(m, focusId, { mode: 'inline' });
+      }, 48);
     });
   }
 

@@ -1,899 +1,505 @@
-import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+﻿import {
+  AbsoluteFill,
+  Img,
+  Video,
+  staticFile,
+  interpolate,
+  useCurrentFrame,
+  Sequence,
+} from "remotion";
 
-const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
-const easeInOut = (t: number) =>
-  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
-const ScreenReflection = ({ visibleFrame }: { visibleFrame: number }) => {
+// ============================================================
+// 统一组件（PPT式：分层 / 快入 / 安全区 / 第一人称）
+// ============================================================
+
+// 大标题（"我"的独白）—— 底部安全区
+const BigTitle = ({ text, startFrame, delay = 20, size = 50 }: {
+  text: string;
+  startFrame: number;
+  delay?: number;
+  size?: number;
+}) => {
   const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [visibleFrame, visibleFrame + 80], [0, 0.85], { extrapolateRight: "clamp" });
-  const blinkCycle = Math.floor(frame / 45) % 3;
-  const blinkProgress = (frame % 45) / 45;
-  const eyeOpen = blinkCycle === 1 && blinkProgress > 0.08 && blinkProgress < 0.18 ? 0.05 : 1;
-  const breathing = Math.sin(frame * 0.04) * 0.2;
-
-  return (
-    <div style={{
-      position: "absolute",
-      top: "42%",
-      left: "50%",
-      transform: "translate(-50%, -50%)",
-      width: 700,
-      height: 500,
-      borderRadius: 16,
-      opacity,
-      overflow: "hidden",
-      pointerEvents: "none",
-      zIndex: 50,
-    }}>
-      <div style={{
-        position: "absolute",
-        inset: 0,
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 16,
-      }} />
-      <div style={{
-        position: "absolute",
-        top: "15%",
-        left: "50%",
-        transform: `translateX(-50%) translateY(${breathing}%) scaleY(0.65)`,
-        filter: "blur(1.5px)",
-      }}>
-        <div style={{
-          width: 160,
-          height: 190,
-          borderRadius: "80px 80px 60px 60px",
-          background: "radial-gradient(ellipse at 50% 35%, rgba(200,180,220,0.5) 0%, rgba(140,120,170,0.4) 50%, rgba(100,80,140,0.3) 100%)",
-          boxShadow: "0 0 60px rgba(100,140,255,0.15)",
-        }} />
-        <div style={{ position: "absolute", top: 55, left: 12, display: "flex", gap: 38 }}>
-          <div style={{ position: "relative" }}>
-            <div style={{
-              width: 26,
-              height: 12 * eyeOpen + 3,
-              borderRadius: "50%",
-              background: "rgba(220,240,255,0.7)",
-              boxShadow: "0 0 12px rgba(100,150,255,0.4)",
-              transition: "height 0.12s ease",
-            }} />
-            {eyeOpen > 0.5 && <div style={{
-              position: "absolute",
-              top: 2,
-              left: 9,
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "rgba(80,100,140,0.8)",
-            }} />}
-            <div style={{
-              position: "absolute",
-              bottom: -12,
-              left: -5,
-              width: 36,
-              height: 8,
-              borderRadius: "50%",
-              background: "rgba(120,100,170,0.35)",
-              filter: "blur(3px)",
-            }} />
-          </div>
-          <div style={{ position: "relative" }}>
-            <div style={{
-              width: 26,
-              height: 12 * eyeOpen + 3,
-              borderRadius: "50%",
-              background: "rgba(220,240,255,0.7)",
-              boxShadow: "0 0 12px rgba(100,150,255,0.4)",
-              transition: "height 0.12s ease",
-            }} />
-            {eyeOpen > 0.5 && <div style={{
-              position: "absolute",
-              top: 2,
-              left: 9,
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "rgba(80,100,140,0.8)",
-            }} />}
-            <div style={{
-              position: "absolute",
-              bottom: -12,
-              right: -5,
-              width: 36,
-              height: 8,
-              borderRadius: "50%",
-              background: "rgba(120,100,170,0.35)",
-              filter: "blur(3px)",
-            }} />
-          </div>
-        </div>
-        <div style={{ position: "absolute", top: 42, left: 5, display: "flex", gap: 38 }}>
-          <div style={{ width: 34, height: 2.5, background: "rgba(160,140,190,0.55)", borderRadius: 2, transform: "rotate(10deg)" }} />
-          <div style={{ width: 34, height: 2.5, background: "rgba(160,140,190,0.55)", borderRadius: 2, transform: "rotate(-10deg)" }} />
-        </div>
-        <div style={{
-          position: "absolute",
-          bottom: 32,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: 44,
-          height: 5,
-          borderRadius: 3,
-          background: "rgba(190,150,170,0.45)",
-        }} />
-      </div>
-      <div style={{
-        position: "absolute",
-        bottom: 10,
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: 380,
-        height: 100,
-        background: "linear-gradient(0deg, rgba(70,60,95,0.25) 0%, transparent 100%)",
-        borderRadius: "120px 120px 0 0",
-      }} />
-    </div>
-  );
-};
-
-const TappingFinger = ({ startFrame }: { startFrame: number }) => {
-  const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [startFrame, startFrame + 30], [0, 0.8], { extrapolateRight: "clamp" });
-  const progress = Math.max(0, (frame - startFrame) / 150);
-  const tapSpeed = interpolate(progress, [0, 1], [25, 12]);
-  const tapPhase = ((frame - startFrame) % tapSpeed) / tapSpeed;
-  const tapHeight = interpolate(tapPhase, [0, 0.3, 0.6, 1], [0, -8, 0, -3], { extrapolateRight: "clamp" });
-
-  return (
-    <div style={{
-      position: "absolute",
-      bottom: 70,
-      right: 420,
-      opacity,
-      transform: `translateY(${tapHeight}px)`,
-      zIndex: 60,
-    }}>
-      <div style={{ display: "flex", gap: 6 }}>
-        <div style={{
-          width: 16, height: 55,
-          background: "linear-gradient(180deg, rgba(90,80,100,0.65) 0%, rgba(70,60,80,0.45) 100%)",
-          borderRadius: "8px 8px 5px 5px",
-        }} />
-        <div style={{
-          width: 16, height: 48,
-          background: "linear-gradient(180deg, rgba(85,75,95,0.6) 0%, rgba(65,55,75,0.4) 100%)",
-          borderRadius: "8px 8px 5px 5px",
-          transform: "translateY(6px)",
-        }} />
-      </div>
-    </div>
-  );
-};
-
-const EditorWindow = () => {
-  const frame = useCurrentFrame();
-  const flicker = 0.97 + Math.sin(frame * 0.06) * 0.03;
-  const blinkPhase = Math.sin(frame * 0.12);
-  const cursorOpacity = interpolate(blinkPhase, [-1, 0, 1], [0.2, 1, 0.2]);
-  const scrollOffset = interpolate(frame, [20, 280], [0, 80], { extrapolateRight: "clamp" });
-
-  return (
-    <div style={{
-      position: "absolute",
-      top: "50%",
-      left: "50%",
-      transform: "translate(-50%, -50%)",
-      width: 780,
-      height: 520,
-      background: "#1e1e1e",
-      borderRadius: 14,
-      border: "1px solid rgba(255,255,255,0.12)",
-      boxShadow: `0 25px 100px rgba(0,0,0,0.5), 0 0 ${40 * flicker}px rgba(100,180,255,${0.08 * flicker})`,
-      overflow: "hidden",
-      zIndex: 10,
-    }}>
-      <div style={{
-        height: 35,
-        background: "#252526",
-        display: "flex",
-        alignItems: "center",
-        padding: "0 10px",
-        gap: 3,
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
-      }}>
-        <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#ff5f57", marginRight: 4 }} />
-        <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#ffbd2e" }} />
-        <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#28ca42" }} />
-        <div style={{ marginLeft: 12, display: "flex", gap: 2 }}>
-          {[0, 1, 2].map(i => (
-            <div key={i} style={{
-              padding: "4px 12px",
-              background: i === 0 ? "#1e1e1e" : "#2d2d30",
-              borderRadius: "4px 4px 0 0",
-              color: i === 0 ? "#ccc" : "#858585",
-              fontSize: 11,
-            }}>
-              {["project-report.md", "feature.tsx", "config.json"][i]}
-            </div>
-          ))}
-        </div>
-      </div>
-      <div style={{
-        position: "absolute",
-        left: 0,
-        top: 35,
-        bottom: 0,
-        width: 52,
-        background: "#333333",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        paddingTop: 14,
-        gap: 18,
-      }}>
-        {[0, 1, 2, 3, 4, 5].map(i => (
-          <div key={i} style={{
-            width: 24, height: 24,
-            background: i === 0 ? "rgba(100,180,255,0.6)" : "rgba(255,255,255,0.2)",
-            borderRadius: 2,
-            borderLeft: i === 0 ? "2px solid #007acc" : "none",
-          }} />
-        ))}
-      </div>
-      <div style={{
-        position: "absolute",
-        left: 60,
-        top: 40,
-        right: 0,
-        bottom: 0,
-        padding: "16px 20px",
-        fontFamily: "Consolas, monospace",
-        fontSize: 14.5,
-        lineHeight: 1.85,
-        transform: `translateY(-${scrollOffset}px)`,
-      }}>
-        <div style={{
-          position: "absolute",
-          left: 0,
-          top: 16,
-          bottom: 0,
-          width: 44,
-          color: "rgba(255,255,255,0.22)",
-          textAlign: "right",
-          paddingRight: 10,
-        }}>
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(i => (
-            <div key={i} style={{ height: 27 }}>{i}</div>
-          ))}
-        </div>
-        <div style={{ marginLeft: 32 }}>
-          <div><span style={{ color: "#569cd6" }}>#</span> <span style={{ color: "#dcdcaa" }}>项目周报</span></div>
-          <div style={{ marginTop: 6 }}><span style={{ color: "#6a9955" }}>// TODO: 补充本周工作内容</span></div>
-          <div style={{ marginTop: 12 }}><span style={{ color: "#569cd6" }}>##</span> <span style={{ color: "#dcdcaa" }}> 工作进展</span></div>
-          <div style={{ marginTop: 6 }}>
-            <span style={{ color: "#c586c0" }}>-</span>
-            <span style={{ color: "#d4d4d4", marginLeft: 6 }}> 完成核心功能开发</span>
-            <span style={{ color: "#9cdcfe" }}> // 需要补充细节...</span>
-          </div>
-          <div style={{ marginTop: 3 }}>
-            <span style={{ color: "#c586c0" }}>-</span>
-            <span style={{ color: "#d4d4d4", marginLeft: 6 }}> 修复性能问题</span>
-            <span style={{ color: "#ffd700" }}> // 还有bug待修复</span>
-          </div>
-          <div style={{ marginTop: 3 }}>
-            <span style={{ color: "#c586c0" }}>-</span>
-            <span style={{ color: "#d4d4d4", marginLeft: 6 }}> 代码审查进行中...</span>
-          </div>
-          <div style={{ marginTop: 3 }}>
-            <span style={{ color: "#c586c0" }}>-</span>
-            <span style={{ color: "#d4d4d4", marginLeft: 6 }}> 文档未完成</span>
-            <span style={{ color: "#f44747" }}> // 紧急！</span>
-          </div>
-          <div style={{ marginTop: 14 }}><span style={{ color: "#569cd6" }}>##</span> <span style={{ color: "#dcdcaa" }}> 下周计划</span></div>
-          <div style={{ marginTop: 6 }}><span style={{ color: "#808080" }}>// 待补充...</span></div>
-          <div style={{ marginTop: 3 }}><span style={{ color: "#808080" }}>// 待补充...</span></div>
-          <div style={{ marginTop: 6 }}>
-            <div style={{
-              display: "inline-block",
-              width: 3, height: 20,
-              background: "#aeafad",
-              verticalAlign: "middle",
-              opacity: cursorOpacity,
-              boxShadow: `0 0 ${6 * cursorOpacity}px rgba(174,175,173,${cursorOpacity * 0.5})`,
-            }} />
-          </div>
-        </div>
-      </div>
-      <div style={{
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 22,
-        background: "#007acc",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 12px",
-        fontSize: 10.5,
-        color: "#fff",
-      }}>
-        <span>Ln 12, Col 1</span>
-        <span>TypeScript</span>
-      </div>
-    </div>
-  );
-};
-
-const ChatWindow = ({ startFrame, position = "right" }: { startFrame: number, position?: "left" | "right" }) => {
-  const frame = useCurrentFrame();
-  const isRight = position === "right";
-  const opacity = interpolate(frame, [startFrame, startFrame + 45], [0, 0.92], { extrapolateRight: "clamp" });
-  const yOffset = interpolate(frame, [startFrame, startFrame + 45], [25, 0], { extrapolateRight: "clamp" });
-  const notificationBlink = Math.sin((frame - startFrame) * 0.15) > 0;
-  const hasNewMessage = frame > startFrame + 80 && notificationBlink;
-
-  return (
-    <div style={{
-      position: "absolute",
-      top: isRight ? 45 : 55,
-      [isRight ? "right" : "left"]: isRight ? 60 : 60,
-      width: 240,
-      height: 170,
-      background: "#36393f",
-      borderRadius: 10,
-      border: "1px solid rgba(255,255,255,0.1)",
-      boxShadow: "0 10px 40px rgba(0,0,0,0.45)",
-      opacity,
-      transform: `translateY(${yOffset}px)`,
-      zIndex: isRight ? 30 : 28,
-    }}>
-      <div style={{
-        height: 38,
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
-        display: "flex",
-        alignItems: "center",
-        padding: "0 12px",
-        background: "#2f3136",
-        borderRadius: "10px 10px 0 0",
-      }}>
-        <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#7289da", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ color: "white", fontSize: 10, fontWeight: "bold" }}>团</span>
-        </div>
-        <span style={{ color: "#dcddde", fontSize: 11.5, marginLeft: 8 }}>产品研发群</span>
-        {hasNewMessage && (
-          <div style={{
-            marginLeft: "auto",
-            width: 18, height: 18,
-            borderRadius: "50%",
-            background: "#f04747",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            fontSize: 10,
-            fontWeight: "bold",
-          }}>3</div>
-        )}
-      </div>
-      <div style={{ padding: "8px 12px" }}>
-        {[
-          { name: "张小明", msg: "周末前能发版吗？", color: "#43b581" },
-          { name: "李小红", msg: "周报写完了吗？", color: "#faa61a" },
-          { name: "王经理", msg: "客户又提需求了", color: "#f04747" },
-        ].map((item, i) => (
-          <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-            <div style={{ width: 18, height: 18, borderRadius: "50%", background: item.color, flexShrink: 0 }} />
-            <div>
-              <div style={{ fontSize: 9.5, color: item.color }}>{item.name}</div>
-              <div style={{
-                marginTop: 1,
-                fontSize: 10.5,
-                color: "#dcddde",
-                background: "rgba(255,255,255,0.08)",
-                padding: "4px 7px",
-                borderRadius: 5,
-                display: "inline-block",
-              }}>{item.msg}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{
-        position: "absolute",
-        bottom: 8,
-        left: 10,
-        right: 10,
-        height: 28,
-        background: "#40444b",
-        borderRadius: 5,
-        display: "flex",
-        alignItems: "center",
-        paddingLeft: 10,
-      }}>
-        <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 10 }}>回复消息...</span>
-      </div>
-    </div>
-  );
-};
-
-const BrowserWindow = ({ startFrame }: { startFrame: number }) => {
-  const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [startFrame, startFrame + 50], [0, 0.88], { extrapolateRight: "clamp" });
-  const yOffset = interpolate(frame, [startFrame, startFrame + 50], [20, 0], { extrapolateRight: "clamp" });
-
-  return (
-    <div style={{
-      position: "absolute",
-      top: 90,
-      right: 70,
-      width: 290,
-      height: 165,
-      background: "#202124",
-      borderRadius: 10,
-      border: "1px solid rgba(255,255,255,0.1)",
-      boxShadow: "0 10px 35px rgba(0,0,0,0.45)",
-      opacity,
-      transform: `translateY(${yOffset}px)`,
-      zIndex: 25,
-    }}>
-      <div style={{
-        height: 30,
-        background: "#35363a",
-        borderTopLeftRadius: 10,
-        borderTopRightRadius: 10,
-        display: "flex",
-        alignItems: "flex-end",
-        paddingLeft: 8,
-        gap: 2,
-      }}>
-        {[0, 1, 2].map(i => (
-          <div key={i} style={{
-            width: i === 0 ? 90 : 60,
-            height: 20,
-            background: "#202124",
-            borderTopLeftRadius: 5,
-            borderTopRightRadius: 5,
-            display: "flex",
-            alignItems: "center",
-            paddingLeft: 8,
-            fontSize: 9.5,
-            color: i === 0 ? "#e8eaed" : "#80868b",
-          }}>
-            {["下周一机票", "Stack Overflow", "GitHub"][i]}
-          </div>
-        ))}
-      </div>
-      <div style={{ padding: "10px 14px" }}>
-        <div style={{
-          fontSize: 18,
-          color: "#fff",
-          fontWeight: 500,
-          marginBottom: 10,
-          textAlign: "center",
-          letterSpacing: 1,
-        }}>
-          <span style={{ color: "#4285f4" }}>G</span>
-          <span style={{ color: "#ea4335" }}>o</span>
-          <span style={{ color: "#fbbc05" }}>o</span>
-          <span style={{ color: "#4285f4" }}>g</span>
-          <span style={{ color: "#34a853" }}>l</span>
-          <span style={{ color: "#ea4335" }}>e</span>
-        </div>
-        <div style={{
-          width: "100%",
-          height: 28,
-          background: "#303134",
-          borderRadius: 14,
-          border: "1px solid rgba(255,255,255,0.1)",
-          display: "flex",
-          alignItems: "center",
-          paddingLeft: 12,
-        }}>
-          <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 10 }}>下周一北京到上海机票...</span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const TerminalWindow = ({ startFrame }: { startFrame: number }) => {
-  const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [startFrame, startFrame + 40], [0, 0.85], { extrapolateRight: "clamp" });
-  const yOffset = interpolate(frame, [startFrame, startFrame + 40], [15, 0], { extrapolateRight: "clamp" });
-  const logLines = Math.min(Math.floor((frame - startFrame - 40) / 8) + 1, 5);
-
-  return (
-    <div style={{
-      position: "absolute",
-      bottom: 80,
-      left: 70,
-      width: 220,
-      height: 130,
-      background: "#0d1117",
-      borderRadius: 8,
-      border: "1px solid rgba(255,255,255,0.12)",
-      boxShadow: "0 8px 30px rgba(0,0,0,0.5)",
-      opacity,
-      transform: `translateY(${yOffset}px)`,
-      zIndex: 32,
-    }}>
-      <div style={{
-        height: 28,
-        background: "#161b22",
-        borderRadius: "8px 8px 0 0",
-        display: "flex",
-        alignItems: "center",
-        padding: "0 10px",
-        gap: 6,
-      }}>
-        <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
-        <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ffbd2e" }} />
-        <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#28ca42" }} />
-        <span style={{ color: "#8b949e", fontSize: 10, marginLeft: 10 }}>Terminal</span>
-      </div>
-      <div style={{
-        padding: "8px 10px",
-        fontFamily: "monospace",
-        fontSize: 10,
-        color: "#c9d1d9",
-        lineHeight: 1.5,
-      }}>
-        <div style={{ color: "#58a6ff" }}>$ npm run build</div>
-        {logLines > 0 && <div style={{ color: "#8b949e" }}>Compiling...</div>}
-        {logLines > 1 && <div style={{ color: "#d29922" }}>warn: bundle size exceeds limit</div>}
-        {logLines > 2 && <div style={{ color: "#8b949e" }}>Processing modules...</div>}
-        {logLines > 3 && <div style={{ color: "#f85149" }}>error: type mismatch found!</div>}
-        {logLines > 4 && <div style={{ color: "#58a6ff", marginTop: 2 }}>$ █</div>}
-      </div>
-    </div>
-  );
-};
-
-const NotificationWindow = ({ startFrame }: { startFrame: number }) => {
-  const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [startFrame, startFrame + 35], [0, 0.8], { extrapolateRight: "clamp" });
-  const yOffset = interpolate(frame, [startFrame, startFrame + 35], [10, 0], { extrapolateRight: "clamp" });
-
-  return (
-    <div style={{
-      position: "absolute",
-      top: 65,
-      left: 80,
-      width: 200,
-      height: 100,
-      background: "linear-gradient(135deg, #5865f2 0%, #7289da 100%)",
-      borderRadius: 10,
-      boxShadow: "0 8px 25px rgba(88,101,242,0.4)",
-      opacity,
-      transform: `translateY(${yOffset}px)`,
-      zIndex: 35,
-    }}>
-      <div style={{ padding: "12px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-          <span style={{ fontSize: 16 }}>📧</span>
-          <span style={{ color: "white", fontSize: 11.5, fontWeight: 600 }}>新邮件通知</span>
-        </div>
-        <div style={{ color: "rgba(255,255,255,0.9)", fontSize: 10.5, marginBottom: 4 }}>
-          王经理 - 紧急任务变更
-        </div>
-        <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 10 }}>
-          "请在今晚之前务必完成..."
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const CalendarPopup = ({ startFrame }: { startFrame: number }) => {
-  const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [startFrame, startFrame + 30], [0, 0.75], { extrapolateRight: "clamp" });
-  const yOffset = interpolate(frame, [startFrame, startFrame + 30], [8, 0], { extrapolateRight: "clamp" });
-
-  return (
-    <div style={{
-      position: "absolute",
-      top: 180,
-      right: 55,
-      width: 180,
-      height: 95,
-      background: "#1a1a2e",
-      borderRadius: 10,
-      border: "1px solid rgba(255,255,255,0.1)",
-      boxShadow: "0 8px 25px rgba(0,0,0,0.45)",
-      opacity,
-      transform: `translateY(${yOffset}px)`,
-      zIndex: 22,
-    }}>
-      <div style={{
-        height: 28,
-        background: "#16213e",
-        borderRadius: "10px 10px 0 0",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 12px",
-      }}>
-        <span style={{ color: "#e94560", fontSize: 11, fontWeight: 600 }}>📅 明天</span>
-        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 10 }}>3个会议</span>
-      </div>
-      <div style={{ padding: "8px 12px" }}>
-        <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 10, marginBottom: 4 }}>
-          09:00 项目周会
-        </div>
-        <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 10, marginBottom: 4 }}>
-          14:00 客户演示
-        </div>
-        <div style={{ color: "#e94560", fontSize: 10 }}>
-          18:30 紧急代码审查
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const DeskDetails = () => {
-  const frame = useCurrentFrame();
-  const appearFrame = 0;
-  const steamFlicker = Math.sin(frame * 0.05) * 0.3 + 0.7;
-  const opacity = interpolate(frame, [appearFrame, appearFrame + 25], [0, 0.9], { extrapolateRight: "clamp" });
-
-  return (
-    <div style={{
-      position: "absolute",
-      bottom: 60,
-      left: 50,
-      opacity,
-      zIndex: 40,
-    }}>
-      <div style={{ position: "relative" }}>
-        <div style={{ display: "flex", gap: 4, paddingLeft: 15, marginBottom: -2, opacity: steamFlicker }}>
-          {[0, 1, 2].map(i => (
-            <div key={i} style={{
-              width: 5,
-              height: 28 + i * 8 + Math.sin(frame * (0.08 + i * 0.02)) * 4,
-              background: "linear-gradient(to top, rgba(255,255,255,0.22), transparent)",
-              borderRadius: 4,
-            }} />
-          ))}
-        </div>
-        <div style={{
-          width: 58,
-          height: 42,
-          background: "linear-gradient(180deg, rgba(100,70,50,0.95) 0%, rgba(80,55,35,0.9) 100%)",
-          borderRadius: "0 0 12px 12px",
-          position: "relative",
-          boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
-        }} />
-        <div style={{
-          position: "absolute",
-          right: -14,
-          top: 5,
-          width: 18,
-          height: 28,
-          border: "3px solid rgba(110,80,60,0.9)",
-          borderRadius: "0 14px 14px 0",
-          borderLeft: "none",
-        }} />
-      </div>
-      <div style={{ marginTop: 20, textAlign: "center" }}>
-        <div style={{
-          fontSize: 40,
-          fontWeight: 300,
-          color: "rgba(255,255,255,0.75)",
-          fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
-          letterSpacing: 3,
-          textShadow: "0 2px 20px rgba(0,0,0,0.3)",
-        }}>23:47</div>
-        <div style={{
-          fontSize: 11.5,
-          color: "rgba(255,255,255,0.35)",
-          marginTop: 3,
-          fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
-          letterSpacing: 1,
-        }}>星期四</div>
-      </div>
-    </div>
-  );
-};
-
-const MicButtonHighlight = ({ startFrame }: { startFrame: number }) => {
-  const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [startFrame, startFrame + 35], [0, 1], { extrapolateRight: "clamp" });
-  const pulseProgress = interpolate(frame, [startFrame, startFrame + 60], [0, 1], { extrapolateRight: "clamp" });
-  const pulseIntensity = 0.5 + pulseProgress * 0.5;
-  const pulse = Math.sin((frame - startFrame) * 0.08) * pulseIntensity + 0.5;
-  const scale = interpolate(frame, [startFrame, startFrame + 45], [1, 1.25], { extrapolateRight: "clamp" });
-  const vignetteOpacity = interpolate(frame, [startFrame, startFrame + 50], [0, 0.35], { extrapolateRight: "clamp" });
-
-  return (
-    <>
-      <div style={{
-        position: "absolute",
-        inset: 0,
-        background: `radial-gradient(circle 200px at 75% 85%, transparent 0%, rgba(0,0,0,${vignetteOpacity}) 100%)`,
-        pointerEvents: "none",
-        zIndex: 55,
-      }} />
-      <div style={{
-        position: "absolute",
-        bottom: 85,
-        right: 380,
-        opacity,
-        zIndex: 60,
-      }}>
-        <div style={{
-          position: "absolute",
-          top: -55,
-          left: -55,
-          width: 160,
-          height: 160,
-          borderRadius: "50%",
-          background: `radial-gradient(circle, rgba(100,180,255,${0.18 * pulse}) 0%, transparent 65%)`,
-        }} />
-        <div style={{
-          width: 58,
-          height: 58,
-          borderRadius: "50%",
-          background: "linear-gradient(135deg, #007acc 0%, #005a9e 100%)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: `0 0 ${35 * pulse}px rgba(0,122,204,${0.5 * pulse})`,
-          border: "2px solid rgba(255,255,255,0.2)",
-          transform: `scale(${scale})`,
-        }}>
-          <span style={{ fontSize: 26 }}>🎤</span>
-        </div>
-        <div style={{
-          position: "absolute",
-          top: 68,
-          left: "50%",
-          transform: "translateX(-50%)",
-          textAlign: "center",
-        }}>
-          <div style={{
-            fontSize: 16,
-            color: "rgba(255,255,255,0.5)",
-            marginBottom: 2,
-          }}>↓</div>
-          <div style={{
-            fontSize: 11.5,
-            color: "rgba(255,255,255,0.35)",
-            fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
-            whiteSpace: "nowrap",
-          }}>每次说话都要找的按钮</div>
-        </div>
-      </div>
-    </>
-  );
-};
-
-const AmbientLight = () => {
-  const frame = useCurrentFrame();
-  const pulseSpeed = interpolate(frame, [0, 300], [0.02, 0.05]);
-  const screenPulse = Math.sin(frame * pulseSpeed) * 0.2 + 0.8;
-
-  return (
-    <>
-      <div style={{
-        position: "absolute",
-        right: 0,
-        top: 0,
-        bottom: 0,
-        width: "50%",
-        background: `linear-gradient(90deg, transparent 0%, rgba(255,160,100,${0.06 * screenPulse}) 100%)`,
-        pointerEvents: "none",
-        zIndex: 1,
-      }} />
-      <div style={{
-        position: "absolute",
-        left: 0,
-        top: 0,
-        bottom: 0,
-        width: "35%",
-        background: `linear-gradient(-90deg, transparent 0%, rgba(80,140,255,${0.05 * screenPulse}) 100%)`,
-        pointerEvents: "none",
-        zIndex: 1,
-      }} />
-      <div style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        height: "25%",
-        background: `linear-gradient(180deg, rgba(60,80,120,${0.04 * screenPulse}) 0%, transparent 100%)`,
-        pointerEvents: "none",
-        zIndex: 1,
-      }} />
-    </>
-  );
-};
-
-export const VibeCodingScene = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  const cameraProgress = interpolate(frame, [0, 300], [0, 1], {
-    easing: easeInOut,
-    extrapolateRight: "clamp",
+  const p = interpolate(frame, [startFrame, startFrame + delay], [0, 1], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOut,
   });
-  const cameraZoom = 1 + cameraProgress * 0.12;
-  const cameraY = cameraProgress * -15;
-  const cameraX = cameraProgress * 5;
+  const y = interpolate(p, [0, 1], [24, 0]);
+  const breathe = frame > startFrame + delay ? 1 + Math.sin(frame * 0.03) * 0.008 : 1;
+  return (
+    <div style={{
+      position: "absolute", left: "50%", bottom: "11%",
+      transform: `translateX(-50%) translateY(${y}px) scale(${breathe})`,
+      opacity: p, textAlign: "center", width: "86%", zIndex: 30,
+    }}>
+      <div style={{
+        fontSize: size, fontWeight: 600, color: "#fff",
+        fontFamily: "Segoe UI, PingFang SC, sans-serif",
+        letterSpacing: 3, lineHeight: 1.45,
+        textShadow: "0 4px 40px rgba(0,0,0,0.8)",
+      }}>{text}</div>
+    </div>
+  );
+};
 
-  const textProgress = interpolate(frame, [255, 285], [0, 1], { extrapolateRight: "clamp" });
-  const textY = interpolate(textProgress, [0, 1], [25, 0]);
-  const fadeOutProgress = interpolate(frame, [285, 300], [0, 1], { extrapolateRight: "clamp" });
+// 副文字
+const SubTitle = ({ text, startFrame, delay = 20 }: { text: string; startFrame: number; delay?: number }) => {
+  const frame = useCurrentFrame();
+  const p = interpolate(frame, [startFrame, startFrame + delay], [0, 1], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOut,
+  });
+  const y = interpolate(p, [0, 1], [14, 0]);
+  return (
+    <div style={{
+      position: "absolute", left: "50%", bottom: "6.5%",
+      transform: `translateX(-50%) translateY(${y}px)`,
+      opacity: p, textAlign: "center", width: "86%", zIndex: 30,
+    }}>
+      <div style={{
+        fontSize: 18, fontWeight: 400, color: "rgba(255,255,255,0.6)",
+        fontFamily: "Segoe UI, PingFang SC, sans-serif", letterSpacing: 2,
+      }}>{text}</div>
+    </div>
+  );
+};
+
+// 角落时钟
+const CornerClock = ({ text, startFrame, delay = 30 }: { text: string; startFrame: number; delay?: number }) => {
+  const frame = useCurrentFrame();
+  const p = interpolate(frame, [startFrame, startFrame + delay], [0, 1], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOut,
+  });
+  const scale = interpolate(p, [0, 1], [1.35, 1]);
+  return (
+    <div style={{
+      position: "absolute", right: "8%", top: "16%",
+      opacity: p, transform: `scale(${scale})`, textAlign: "right", zIndex: 20,
+    }}>
+      <div style={{
+        fontSize: 100, fontWeight: 200, color: "#fff",
+        fontFamily: "Segoe UI, sans-serif", letterSpacing: 4, lineHeight: 1,
+        textShadow: "0 6px 50px rgba(0,0,0,0.7)",
+      }}>{text}</div>
+    </div>
+  );
+};
+
+// 第一人称视角标签（画面顶部 - 模拟"我在看"）
+const POVTag = ({ text, startFrame, delay = 18 }: { text: string; startFrame: number; delay?: number }) => {
+  const frame = useCurrentFrame();
+  const p = interpolate(frame, [startFrame, startFrame + delay], [0, 1], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOut,
+  });
+  const y = interpolate(p, [0, 1], [-12, 0]);
+  return (
+    <div style={{
+      position: "absolute", left: "50%", top: "7%",
+      transform: `translateX(-50%) translateY(${y}px)`,
+      opacity: p, zIndex: 30, pointerEvents: "none",
+    }}>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10,
+        background: "rgba(10,14,24,0.6)",
+        backdropFilter: "blur(8px)",
+        border: "1px solid rgba(255,255,255,0.14)",
+        borderRadius: 999,
+        padding: "8px 18px",
+        fontFamily: "Segoe UI, PingFang SC, sans-serif",
+        boxShadow: "0 8px 30px rgba(0,0,0,0.4)",
+      }}>
+        <span style={{ fontSize: 16 }}>👁️</span>
+        <span style={{ fontSize: 15, color: "rgba(255,255,255,0.85)", letterSpacing: 1 }}>{text}</span>
+      </div>
+    </div>
+  );
+};
+
+// 底部渐暗遮罩
+const BottomShade = ({ intensity = 0.55 }: { intensity?: number }) => (
+  <div style={{
+    position: "absolute", left: 0, right: 0, bottom: 0, height: "34%",
+    background: `linear-gradient(180deg, transparent 0%, rgba(0,0,0,${intensity}) 100%)`,
+    zIndex: 15, pointerEvents: "none",
+  }} />
+);
+
+// 顶部微暗（保证 POV 标签可读）
+const TopShade = () => (
+  <div style={{
+    position: "absolute", left: 0, right: 0, top: 0, height: "16%",
+    background: "linear-gradient(180deg, rgba(0,0,0,0.45) 0%, transparent 100%)",
+    zIndex: 14, pointerEvents: "none",
+  }} />
+);
+
+// 场景淡入淡出（相对帧 0-89，每场景3秒）
+const useSceneFade = (fade = 12) => {
+  const frame = useCurrentFrame();
+  const from = interpolate(frame, [0, fade], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const to = interpolate(frame, [90 - fade, 90], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  return Math.min(from, to);
+};
+
+// ============================================================
+// 场景① 深夜独白 (0-5s) — 视频：城市夜景
+// ============================================================
+const Scene1CityNight = () => {
+  const frame = useCurrentFrame();
+  const opacity = useSceneFade();
+  // 固定缩放（无逐帧插值，彻底消除亚像素抖动）
+  const zoom = 1.05;
 
   return (
-    <AbsoluteFill style={{ overflow: "hidden" }}>
+    <AbsoluteFill style={{ opacity }}>
+      {/* 城市夜景视频背景 */}
+      <div style={{ position: "absolute", inset: "-6%", transform: `scale(${zoom})` }}>
+        <Video
+          muted
+          loop
+          src={staticFile("videos/city-night.mp4")}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      </div>
       <div style={{
-        width: "100%",
-        height: "100%",
-        background: `
-          radial-gradient(ellipse at 85% 15%, rgba(255,130,80,0.1) 0%, transparent 55%),
-          radial-gradient(ellipse at 15% 85%, rgba(80,140,255,0.09) 0%, transparent 50%),
-          linear-gradient(180deg, #0a0c14 0%, #0d1018 50%, #090b10 100%)
-        `,
+        position: "absolute", inset: 0,
+        background: "linear-gradient(180deg, rgba(5,8,20,0.2) 0%, rgba(5,8,20,0.55) 100%)",
       }} />
-      <AmbientLight />
-      <div style={{
-        width: "100%",
-        height: "100%",
-        transform: `scale(${cameraZoom}) translateY(${cameraY}px) translateX(${cameraX}px)`,
-        transformOrigin: "center center",
-      }}>
-        <EditorWindow />
-        <ScreenReflection visibleFrame={45} />
-        <ChatWindow startFrame={35} position="right" />
-        <ChatWindow startFrame={80} position="left" />
-        <BrowserWindow startFrame={60} />
-        <TerminalWindow startFrame={90} />
-        <NotificationWindow startFrame={105} />
-        <CalendarPopup startFrame={135} />
-        <DeskDetails />
-        <TappingFinger startFrame={75} />
-        <MicButtonHighlight startFrame={225} />
+      <TopShade />
+      <BottomShade intensity={0.55} />
+
+      {/* 第一人称：我在深夜加班，望向窗外 */}
+      <POVTag text="我的深夜 · 第3天加班" startFrame={10} />
+      <CornerClock text="23:47" startFrame={22} />
+      <BigTitle text="晚上11:47，办公室只剩我一个" startFrame={42} size={46} />
+      <SubTitle text="城市还没睡，我也还没走" startFrame={62} />
+    </AbsoluteFill>
+  );
+};
+
+// ============================================================
+// 场景② 键盘战场 (5-10s) — 视频：键盘打字
+// ============================================================
+const Scene2Keyboard = () => {
+  const frame = useCurrentFrame();
+  const opacity = useSceneFade();
+  // 固定缩放（无逐帧插值，彻底消除亚像素抖动）
+  const zoom = 1.03;
+
+  // 通知卡弹入（真实 IM 弹窗感）
+  const np = interpolate(frame, [28, 48], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOut });
+  const ny = interpolate(np, [0, 1], [40, 0]);
+  const shake = np > 0 && frame < 66 ? Math.sin((frame - 28) * 0.7) * (1 - np) * 9 : 0;
+
+  // 光标脉冲（第一人称光标感）
+  const cursorPulse = frame > 20 ? Math.sin(frame * 0.15) * 0.4 + 0.6 : 0;
+
+  return (
+    <AbsoluteFill style={{ opacity }}>
+      {/* 键盘打字视频背景 */}
+      <div style={{ position: "absolute", inset: "-6%", transform: `scale(${zoom})` }}>
+        <Video
+          muted
+          loop
+          src={staticFile("videos/typing-1781.mp4")}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
       </div>
       <div style={{
-        position: "absolute",
-        bottom: 90,
-        left: "50%",
-        transform: `translateX(-50%) translateY(${textY}px)`,
-        opacity: textProgress,
-        textAlign: "center",
-        zIndex: 100,
-      }}>
-        <p style={{
-          fontSize: 42,
-          fontWeight: 500,
-          color: "#ffffff",
-          margin: 0,
-          fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif",
-          letterSpacing: 2.5,
-          lineHeight: 1.5,
-          textShadow: "0 4px 40px rgba(0,0,0,0.6)",
-        }}>为什么开始说话</p>
-        <p style={{
-          fontSize: 42,
-          fontWeight: 500,
-          color: "rgba(255,255,255,0.65)",
-          margin: "8px 0 0 0",
-          fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif",
-          letterSpacing: 2.5,
-          lineHeight: 1.5,
-          textShadow: "0 4px 40px rgba(0,0,0,0.6)",
-        }}>总要先找按钮？</p>
-      </div>
-      {fadeOutProgress > 0 && (
-        <div style={{
+        position: "absolute", inset: 0,
+        background: "linear-gradient(200deg, rgba(30,60,140,0.15) 0%, rgba(5,10,25,0.5) 100%)",
+      }} />
+      <TopShade />
+      <BottomShade intensity={0.5} />
+
+      {/* 第一人称：光标正在输入 */}
+      <POVTag text="我 · 正在赶工" startFrame={8} />
+
+      {/* 实时消息弹窗（真实 IM 风） */}
+      <div
+        style={{
           position: "absolute",
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: `rgba(0,0,0,${fadeOutProgress})`,
-          pointerEvents: "none",
-          zIndex: 200,
+          right: "7%",
+          top: "16%",
+          width: 400,
+          background: "rgba(32,35,42,0.95)",
+          borderRadius: 16,
+          border: "1px solid rgba(255,255,255,0.14)",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+          opacity: np,
+          transform: `translateY(${ny}px) translateX(${shake}px)`,
+          padding: "18px 20px",
+          fontFamily: "Segoe UI, PingFang SC, sans-serif",
+          zIndex: 25,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          <div style={{
+            width: 34, height: 34, borderRadius: "50%", background: "#f04747",
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16,
+          }}>🔴</div>
+          <div>
+            <div style={{ color: "#fff", fontSize: 14, fontWeight: 600 }}>产品研发群</div>
+            <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>@我 · 23:41</div>
+          </div>
+          <div style={{
+            marginLeft: "auto", background: "#f04747", borderRadius: 10,
+            padding: "2px 9px", color: "#fff", fontSize: 12, fontWeight: 700,
+          }}>紧急</div>
+        </div>
+        <div style={{ color: "#e8eaed", fontSize: 15, lineHeight: 1.6 }}>
+          这个 bug 今晚必须修，明天上线！
+        </div>
+      </div>
+
+      <BigTitle text="手上的活还没干完，群里又炸了" startFrame={44} size={46} />
+      <SubTitle text="消息、Bug、需求……一起涌来" startFrame={62} />
+    </AbsoluteFill>
+  );
+};
+
+// ============================================================
+// 场景③ 软件海 (10-15s) — 视频：办公桌 + 真实平台图标
+// ============================================================
+const Scene3MultiTask = () => {
+  const frame = useCurrentFrame();
+  const opacity = useSceneFade();
+
+  // 软件轮播（真实图标 + 品牌色）
+  // 真实品牌图标 + 更慢的轮播（每个停留2秒，观众看清）
+  const apps = [
+    { name: "微信", act: "回消息", icon: "icons/apps/wechat.svg", color: "#07C160" },
+    { name: "钉钉", act: "看通知", icon: "icons/apps/dingtalk.svg", color: "#0089FF" },
+    { name: "浏览器", act: "查资料", icon: "icons/apps/googlechrome.svg", color: "#4285F4" },
+    { name: "WPS 表格", act: "填数据", icon: "icons/apps/wps.svg", color: "#E8332E" },
+  ];
+  // 慢速轮播：微信2秒(0-60帧)→钉钉1秒(60-90帧)
+  const idx = frame < 60 ? 0 : 1;
+  const nextApp = frame >= 60 && frame < 90;
+  const flash = nextApp ? interpolate(frame, [60, 62], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) : 0;
+  const showSw = interpolate(frame, [12, 26], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+
+  return (
+    <AbsoluteFill style={{ opacity }}>
+      {/* 办公视频背景 */}
+      <div style={{ position: "absolute", inset: "-6%" }}>
+        <Video
+          muted
+          loop
+          src={staticFile("videos/office-4809.mp4")}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      </div>
+      <div style={{
+        position: "absolute", inset: 0,
+        background: "linear-gradient(180deg, rgba(10,15,30,0.3) 0%, rgba(5,8,18,0.55) 100%)",
+      }} />
+      <TopShade />
+      <BottomShade intensity={0.5} />
+
+      {/* 第一人称：我在来回切换 */}
+      <POVTag text="我 · 同时应付所有群" startFrame={7} />
+
+      {/* 中央：软件切换轮播（真实图标） */}
+      <div
+        style={{
+          position: "absolute", left: "50%", top: "32%",
+          transform: "translateX(-50%)", textAlign: "center",
+          opacity: showSw, zIndex: 25,
+        }}
+      >
+        <div style={{
+          position: "absolute", left: "50%", top: "50%", width: 360, height: 360,
+          transform: "translate(-50%, -50%)",
+          background: `radial-gradient(circle, rgba(255,255,255,${0.16 * flash}) 0%, transparent 70%)`,
         }} />
-      )}
+        {/* 真实图标 */}
+        <Img
+          src={staticFile(apps[idx].icon)}
+          style={{
+            width: 92, height: 92, margin: "0 auto 14px",
+            objectFit: "contain",
+            filter: `drop-shadow(0 8px 24px ${apps[idx].color}66)`,
+          }}
+        />
+        <div style={{
+          fontSize: 54, fontWeight: 700, color: "#fff",
+          fontFamily: "Segoe UI, PingFang SC, sans-serif",
+          textShadow: "0 8px 50px rgba(0,0,0,0.8)",
+        }}>{apps[idx].name}</div>
+        <div style={{
+          fontSize: 18, color: "rgba(255,255,255,0.65)", marginTop: 8,
+          fontFamily: "Segoe UI, PingFang SC, sans-serif",
+        }}>{apps[idx].act}</div>
+      </div>
+
+      <BigTitle text="微信、钉钉、浏览器，来回切了一晚" startFrame={24} size={42} />
+      <SubTitle text="Alt+Tab 按到手抽筋" startFrame={44} />
+    </AbsoluteFill>
+  );
+};
+
+// ============================================================
+// 场景④ 找不到入口 (15-20s) — 视频：人物办公 + 真实图标标注
+// ============================================================
+const Scene4NoButton = () => {
+  const frame = useCurrentFrame();
+  const opacity = useSceneFade();
+  // 固定缩放（无逐帧插值，彻底消除亚像素抖动）
+  const zoom = 1.04;
+
+  // 三个真实平台语音标注（3秒内逐个弹出）
+  const marks = [
+    { app: "微信", icon: "icons/apps/wechat.svg", color: "#07C160", pos: "8%", top: "24%", delay: 10 },
+    { app: "钉钉", icon: "icons/apps/dingtalk.svg", color: "#0089FF", pos: "60%", top: "15%", delay: 28 },
+    { app: "WPS 表格", icon: "icons/apps/wps.svg", color: "#E8332E", pos: "26%", top: "52%", delay: 46 },
+  ];
+  const pulse = frame > 58 ? 1 + Math.sin(frame * 0.09) * 0.03 : 0.97;
+
+  return (
+    <AbsoluteFill style={{ opacity }}>
+      {/* 人物办公视频背景（与场景③不同素材） */}
+      <div style={{ position: "absolute", inset: "-6%", transform: `scale(${zoom})` }}>
+        <Video
+          muted
+          loop
+          src={staticFile("videos/screen-4916.mp4")}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      </div>
+      <div style={{ position: "absolute", inset: 0, background: "rgba(5,8,18,0.52)" }} />
+      <TopShade />
+      <BottomShade intensity={0.5} />
+
+      {/* 第一人称：我想说话 */}
+      <POVTag text="我 · 想开口说句话" startFrame={6} />
+
+      {/* 语音按钮标注（真实图标 + 位置各不同） */}
+      {marks.map((m) => {
+        const p = interpolate(frame, [m.delay, m.delay + 24], [0, 1], {
+          extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOut,
+        });
+        const y = interpolate(p, [0, 1], [18, 0]);
+        return (
+          <div key={m.app} style={{
+            position: "absolute", left: m.pos, top: m.top,
+            background: "rgba(18,24,40,0.93)",
+            border: `1.5px solid ${m.color}aa`,
+            borderRadius: 14,
+            padding: "10px 16px",
+            display: "flex", alignItems: "center", gap: 10,
+            opacity: p, transform: `translateY(${y}px)`,
+            fontFamily: "Segoe UI, PingFang SC, sans-serif",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+            zIndex: 25,
+          }}>
+            <Img src={staticFile(m.icon)} style={{ width: 34, height: 34, objectFit: "contain" }} />
+            <div>
+              <div style={{ color: "#fff", fontSize: 15, fontWeight: 600 }}>{m.app}</div>
+              <div style={{ color: m.color, fontSize: 11 }}>🎤 语音入口在这</div>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* 第一人称疑问 */}
+      <div style={{
+        position: "absolute", left: "50%", bottom: "16%",
+        transform: `translateX(-50%) scale(${pulse})`,
+        opacity: interpolate(frame, [100, 130], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+        textAlign: "center", width: "88%", zIndex: 30,
+      }}>
+        <div style={{
+          fontSize: 56, fontWeight: 800, color: "#fff",
+          fontFamily: "Segoe UI, PingFang SC, sans-serif",
+          letterSpacing: 2, textShadow: "0 8px 50px rgba(0,0,0,0.8)",
+        }}>想说话…可按钮在哪？</div>
+        <div style={{
+          fontSize: 18, color: "rgba(255,255,255,0.6)", marginTop: 10,
+          fontFamily: "Segoe UI, PingFang SC, sans-serif",
+          opacity: interpolate(frame, [118, 140], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+        }}>每个软件的语音入口，都不一样</div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// ============================================================
+// 场景⑤ 灵魂提问 (20-25s) — 全新素材：电脑屏幕沉思
+// ============================================================
+const Scene5Ending = () => {
+  const frame = useCurrentFrame();
+  const opacity = useSceneFade();
+  // 固定缩放（无逐帧插值，彻底消除亚像素抖动）
+  const zoom = 1.03;
+
+  const l1 = interpolate(frame, [20, 58], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOut });
+  const l1y = interpolate(l1, [0, 1], [20, 0]);
+  const l2 = interpolate(frame, [60, 98], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOut });
+  const l2y = interpolate(l2, [0, 1], [20, 0]);
+  const l3 = interpolate(frame, [96, 118], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const dark = interpolate(frame, [112, 150], [0, 0.92], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+
+  return (
+    <AbsoluteFill style={{ opacity }}>
+      {/* 全新素材：电脑屏幕（区别于其他所有场景） */}
+      <div style={{ position: "absolute", inset: "-6%", transform: `scale(${zoom})` }}>
+        <Video
+          muted
+          loop
+          src={staticFile("videos/screen-50748.mp4")}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      </div>
+      <div style={{
+        position: "absolute", inset: 0,
+        background: "linear-gradient(180deg, rgba(5,10,25,0.4) 0%, rgba(3,6,15,0.8) 100%)",
+      }} />
+      <TopShade />
+
+      {/* 第一人称：最后的自问 */}
+      <POVTag text="深夜 · 我放下工作想了想" startFrame={12} />
+
+      {/* 主文案 */}
+      <div style={{
+        position: "absolute", left: "50%", top: "34%",
+        transform: "translateX(-50%)", textAlign: "center", width: "92%", zIndex: 30,
+        fontFamily: "Segoe UI, PingFang SC, sans-serif",
+      }}>
+        <div style={{
+          fontSize: 58, fontWeight: 600, color: "#fff",
+          opacity: l1, transform: `translateY(${l1y}px)`,
+          letterSpacing: 4, textShadow: "0 8px 60px rgba(0,0,0,0.8)",
+        }}>为什么开始说话</div>
+        <div style={{
+          fontSize: 58, fontWeight: 600,
+          color: "rgba(255,255,255,0.72)",
+          opacity: l2, transform: `translateY(${l2y}px)`,
+          letterSpacing: 4, marginTop: 16, textShadow: "0 8px 60px rgba(0,0,0,0.8)",
+        }}>总要先找按钮？</div>
+        <div style={{
+          fontSize: 18, color: "rgba(255,255,255,0.4)", marginTop: 28,
+          opacity: l3, letterSpacing: 3,
+        }}>— 敬请期待 —</div>
+      </div>
+
+      {/* 结尾渐暗 */}
+      <div style={{ position: "absolute", inset: 0, background: `rgba(0,0,0,${dark})` }} />
+    </AbsoluteFill>
+  );
+};
+
+// ============================================================
+// 主场景：25秒第一人称故事（视频背景）
+// ============================================================
+export const VibeCodingScene = () => {
+  return (
+    <AbsoluteFill style={{ background: "#000" }}>
+      <Sequence from={0} durationInFrames={150}><Scene1CityNight /></Sequence>
+      <Sequence from={150} durationInFrames={150}><Scene2Keyboard /></Sequence>
+      <Sequence from={300} durationInFrames={150}><Scene3MultiTask /></Sequence>
+      <Sequence from={450} durationInFrames={150}><Scene4NoButton /></Sequence>
+      <Sequence from={600} durationInFrames={150}><Scene5Ending /></Sequence>
     </AbsoluteFill>
   );
 };

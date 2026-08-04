@@ -34,6 +34,8 @@
   var DETECT_AWAY_MS=333;
   var DETECT_GAZE_MS=33;
   var DETECT_SHAKE_MS=33;
+  /** Home / non-camera panels: keep presence alive but never hammer createImageBitmap. */
+  var DETECT_HOME_MS=200;
 
   /** Capture-FPS-aware interval for gaze/shake only — never for away/present power tiers. */
   function preferredDetectIntervalMs(captureFps){
@@ -1158,6 +1160,31 @@
     }
   }
 
+  function cameraPanelHot(){
+    try{
+      var ui=global.OneToneState&&global.OneToneState.ui;
+      return !!(ui&&ui.drawerOpen&&ui.settingsPanel==='camera');
+    }catch(_){
+      return false;
+    }
+  }
+
+  function clampDetectIntervalMs(ms){
+    ms=Number(ms)||DETECT_PRESENT_MS;
+    // Camera settings page / calibration / gaze overlay may run faster.
+    if(cameraPanelHot()||isCalibrating()) return ms;
+    var gazeOn=false;
+    try{
+      var gp=global.OneToneCameraPreview;
+      if(gp&&gp.getGazeDebugState){
+        var gs=gp.getGazeDebugState();
+        gazeOn=!!(gs&&gs.enabled);
+      }
+    }catch(_){}
+    if(gazeOn) return ms;
+    return Math.max(ms,DETECT_HOME_MS);
+  }
+
   function syncDetectInterval(){
     var api=global.OneToneCameraGazeLandmarker;
     if(!api||!api.setDetectIntervalMs) return;
@@ -1170,12 +1197,15 @@
       }
     }catch(_){}
     var gazeMs=preferredDetectIntervalMs(0);
+    var next=gazeMs;
     if(gazeOn||isCalibrating()){
-      api.setDetectIntervalMs(gazeMs);
+      next=clampDetectIntervalMs(gazeMs);
+      api.setDetectIntervalMs(next);
       return;
     }
     if(!isEnabled()){
-      api.setDetectIntervalMs(gazeMs);
+      next=clampDetectIntervalMs(gazeMs);
+      api.setDetectIntervalMs(next);
       return;
     }
     var p=prefs();
@@ -1185,17 +1215,20 @@
       ||normalizeAction(p.openPalm)!=='none'||normalizeAction(p.okHand)!=='none'
       ||normalizeAction(p.fist)!=='none'||normalizeAction(p.wave)!=='none';
     if(gestureOn&&st.presence!=='away'){
-      api.setDetectIntervalMs(gazeMs);
+      next=clampDetectIntervalMs(gazeMs);
+      api.setDetectIntervalMs(next);
       if(typeof st.onDetectInterval==='function'){
-        try{ st.onDetectInterval(gazeMs); }catch(_){}
+        try{ st.onDetectInterval(next); }catch(_){}
       }
       return;
     }
     // away / present power tiers unchanged — not tied to Pro display FPS.
-    if(st.presence==='away') api.setDetectIntervalMs(DETECT_AWAY_MS);
-    else api.setDetectIntervalMs(DETECT_PRESENT_MS);
+    if(st.presence==='away') next=DETECT_AWAY_MS;
+    else next=DETECT_PRESENT_MS;
+    next=clampDetectIntervalMs(next);
+    api.setDetectIntervalMs(next);
     if(typeof st.onDetectInterval==='function'){
-      try{ st.onDetectInterval(st.presence==='away'?DETECT_AWAY_MS:DETECT_PRESENT_MS); }catch(_){}
+      try{ st.onDetectInterval(next); }catch(_){}
     }
   }
 
@@ -2635,6 +2668,13 @@
 
   function onFrame(point){
     if(!isEnabled()) return;
+    try{
+      if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.setTag){
+        global.OneToneUiHeartbeat.setTag('presenceFrame');
+      }else{
+        global.__otActivityTag='presenceFrame';
+      }
+    }catch(_){}
     var now=performance.now();
     var face=!!(point&&(point.faceDetected===true||(point.state&&point.state!=='lost'&&point.state!=='idle'&&point.confidence>0.12)));
     if(point&&point.faceDetected===false) face=false;
@@ -2683,6 +2723,13 @@
     }
 
     renderHeroUi();
+    try{
+      if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag){
+        global.OneToneUiHeartbeat.clearTag();
+      }else{
+        global.__otActivityTag='';
+      }
+    }catch(_){}
   }
 
   function reset(opts){
@@ -2778,21 +2825,38 @@
     return t('cameraPresenceGestureNone','无');
   }
 
+  var lastHeroSig='';
   function renderHeroUi(){
+    var pillText=presenceLabel();
+    var headText=headLabel();
+    var gestText=gestureLabel();
+    var faceText='';
+    if(isEnabled()){
+      if(st.presence==='present') faceText=t('cameraPresenceStatePresent','在席');
+      else if(st.presence==='away') faceText=t('cameraPresenceStateAway','离席');
+      else if(st.faceDetected) faceText=t('cameraGazeStateTracking','估计中');
+      else faceText=t('cameraGlanceFaceUndetected','未检测');
+    }
+    var orbSig=[
+      st.presence==='present'&&!st.privacyOpen?'1':'0',
+      st.presence==='away'&&!st.privacyOpen?'1':'0',
+      st.privacyOpen?'1':'0',
+      st.presence==='unknown'&&!st.privacyOpen?'1':'0',
+      isEnabled()?'1':'0'
+    ].join('');
+    var sig=[pillText,headText,gestText,faceText,orbSig,isEnabled()?'1':'0'].join('\0');
+    if(sig===lastHeroSig) return;
+    lastHeroSig=sig;
+
     var pill=$('cameraPresenceStatusPill');
-    if(pill) pill.textContent=presenceLabel();
+    if(pill) pill.textContent=pillText;
     var head=$('cameraPresenceHeadText');
-    if(head) head.textContent=headLabel();
+    if(head) head.textContent=headText;
     var gest=$('cameraPresenceGestureText');
-    if(gest) gest.textContent=gestureLabel();
+    if(gest) gest.textContent=gestText;
 
     var faceEl=$('cameraGlanceFace');
-    if(faceEl&&isEnabled()){
-      if(st.presence==='present') faceEl.textContent=t('cameraPresenceStatePresent','在席');
-      else if(st.presence==='away') faceEl.textContent=t('cameraPresenceStateAway','离席');
-      else if(st.faceDetected) faceEl.textContent=t('cameraGazeStateTracking','估计中');
-      else faceEl.textContent=t('cameraGlanceFaceUndetected','未检测');
-    }
+    if(faceEl&&isEnabled()) faceEl.textContent=faceText;
 
     var orb=$('cameraPresenceOrb');
     if(orb){
@@ -3700,7 +3764,8 @@
     AWAY_MS:DEFAULT_AWAY_MS,
     PRESENT_MS:DEFAULT_PRESENT_MS,
     DETECT_PRESENT_MS:DETECT_PRESENT_MS,
-    DETECT_AWAY_MS:DETECT_AWAY_MS
+    DETECT_AWAY_MS:DETECT_AWAY_MS,
+    DETECT_HOME_MS:DETECT_HOME_MS
   };
 
   if(document.readyState==='loading'){

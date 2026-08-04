@@ -137,6 +137,16 @@ export function paintSoftPadSubpageTarget(paintEl: HTMLElement, model: SoftPadSu
     paintEl.removeAttribute('data-soft-pad-mapping');
     paintEl.removeAttribute('data-soft-pad-panel');
     paintEl.removeAttribute('data-agent-load-token');
+    try {
+      const w = window as Window & {
+        __otSoftPadRuntimeMounted?: boolean;
+        __otSoftPadPresentationMounted?: boolean;
+        __otSoftPadLayoutShellMounted?: boolean;
+      };
+      w.__otSoftPadRuntimeMounted = false;
+      w.__otSoftPadPresentationMounted = false;
+      w.__otSoftPadLayoutShellMounted = false;
+    } catch (_) {}
     return;
   }
 

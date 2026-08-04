@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- WPS Office 官方视觉：红橙渐变圆角方块 + 白色斜向 W -->
+  <defs>
+    <linearGradient id="wpsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF5A3C"/>
+      <stop offset="100%" stop-color="#E8332E"/>
+    </linearGradient>
+  </defs>
+  <rect x="0.6" y="0.6" width="22.8" height="22.8" rx="5.6" fill="url(#wpsGrad)"/>
+  <!-- 白色 W 字（WPS 标志） -->
+  <path d="M6.2 6.8l2.4 11 3.4-6.4 3.4 6.4 2.4-11" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

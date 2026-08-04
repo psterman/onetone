@@ -51,6 +51,7 @@
   var workerReady=false;
   var workerGen=0;
   var detectInFlight=false;
+  var bitmapInFlight=false;
   var pendingBitmap=null;
   var pendingTs=0;
   var detectReqId=0;
@@ -269,6 +270,7 @@
   function terminateWorker(reason){
     clearDetectTimeout();
     detectInFlight=false;
+    bitmapInFlight=false;
     dropPendingBitmap();
     workerReady=false;
     if(worker){ try{ worker.terminate(); }catch(_){} worker=null; }
@@ -398,21 +400,34 @@
     if(videoEl.readyState<2) return;
     // Formal: never call recognizeForVideo on UI main thread.
     if(workerFailed||!workerReady) return;
+    // Same WebView2 wedge as gaze: do not stack createImageBitmap.
+    if(bitmapInFlight||detectInFlight) return;
     if(typeof createImageBitmap!=='function'){ workerFailed=true; return; }
     var now=nowMs();
     if(now<=lastTs) now=lastTs+1;
     lastTs=now;
     var opts=bitmapOpts(videoEl);
+    bitmapInFlight=true;
+    setActivityTag('cameraHandBitmap');
     var p=opts?createImageBitmap(videoEl,opts):createImageBitmap(videoEl);
     p.then(function(bitmap){
-      if(!running){ if(bitmap.close) try{ bitmap.close(); }catch(_){} return; }
+      bitmapInFlight=false;
+      if(!running){
+        if(bitmap.close) try{ bitmap.close(); }catch(_){}
+        setActivityTag('');
+        return;
+      }
       if(detectInFlight){
         dropPendingBitmap();
         pendingBitmap=bitmap; pendingTs=now;
+        setActivityTag('cameraHandDetect');
         return;
       }
       postDetect(bitmap,now);
-    }).catch(function(){});
+    }).catch(function(){
+      bitmapInFlight=false;
+      setActivityTag('');
+    });
   }
 
   function loop(){
@@ -447,6 +462,7 @@
     stopLoop();
     clearDetectTimeout();
     detectInFlight=false;
+    bitmapInFlight=false;
     dropPendingBitmap();
     setActivityTag('');
   }
@@ -488,6 +504,7 @@
     clearDetectTimeout();
     dropPendingBitmap();
     detectInFlight=false;
+    bitmapInFlight=false;
     setActivityTag('');
     wristHist=[];
     waveLostSince=0;

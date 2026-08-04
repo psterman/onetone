@@ -26,19 +26,20 @@
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
     "lint": "eslint src && tsc",
-    
+
     "preview": "remotion studio",
     "list": "remotion compositions",
-    
+
     "render:intro": "remotion render OneToneIntro out/voice-pilot-intro.mp4",
     "render:files": "remotion render ProjectFileBrowser out/project-files.mp4",
-    "render:vibecoding": "remotion render VibeCodingScene out/vibecoding.mp4",
-    
+    "render:vibecoding": "remotion render VibeCodingScene out/vibecoding-25s.mp4",
+    "render:watch": "remotion render VibeCodingScene out/vibecoding-25s.mp4 && start out/vibecoding-25s.mp4",
+
     "render:all": "npm run render:intro && npm run render:files && npm run render:vibecoding",
-    
+
     "render:4k": "remotion render --width 3840 --height 2160 --quality 100",
     "render:60fps": "remotion render --fps 60",
-    
+
     "still:thumbnail": "remotion still OneToneIntro out/thumbnail.png --frame 0"
   },
   "sideEffects": [

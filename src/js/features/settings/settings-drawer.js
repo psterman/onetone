@@ -1008,6 +1008,13 @@
         ipc.invoke('cmd_codex_micro_overlay_dismiss',{}).catch(function(){});
       }
     }catch(_){}
+      // If a home-guide veil got stuck in "is-open" we can end up with a visually-calm but pointer-blocked UI.
+      // Close it whenever we enter the drawer to guarantee nav clickability.
+      try{
+        if(global.OneToneHomeGuide&&typeof global.OneToneHomeGuide.close==='function'){
+          global.OneToneHomeGuide.close(true);
+        }
+      }catch(_){}
     try{
       if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.suppressUnknownSave==='function'){
         global.OneToneConfigPersist.suppressUnknownSave(2500);

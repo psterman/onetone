@@ -46,6 +46,8 @@
   var paintBusy = false;
   /** Soft Pad panel-open generation — not tied to selectToken (schedulePaint bumps that). */
   var softPadOpenGen = 0;
+  /** Ignore non-user layout opens right after land — ghost-clicks / preview used to steal「何时显示」. */
+  var softPadLandUntil = 0;
   var pendingPaintEntry = null;
   var pendingPaintOpts = null;
   var paintedMappingId = null;
@@ -1126,7 +1128,7 @@
       return;
     }
     if (action === 'edit-keys') {
-      openSubpage('layout');
+      openSubpage('layout', { fromUser: true });
       return;
     }
     if (action === 'preview-pad') {
@@ -1292,6 +1294,7 @@
     e.tiles.querySelectorAll('[data-tile]').forEach(function (btn) {
       var on = softPadView !== 'hub' && btn.getAttribute('data-tile') === softPadView;
       btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
       if (on) btn.setAttribute('aria-current', 'true');
       else btn.removeAttribute('aria-current');
     });
@@ -1651,13 +1654,13 @@
       return;
     }
     if (nodeId === 'pad') {
-      // Leave TM stage first so Soft Pad chrome is visible before layout paint.
+      // Leave TM stage first so Soft Pad chrome is visible before detail paint.
       if (softPadView === 'timeline') {
         var tm = global.OneToneSoftPadTimeMachine;
         if (tm && tm.closeDesk) tm.closeDesk();
       }
-      // Soft Pad node lands on layout (键位) — runtime/presentation stay reachable via tiles.
-      openSubpage('layout');
+      // Soft Pad node lands on「何时显示」— 改按键/外观/状态灯 via top tabs.
+      openSubpage('runtime');
     }
   }
 
@@ -1898,13 +1901,10 @@
 
   function defaultDetailView(opts) {
     opts = opts || {};
-    if (opts.firstPrepare) return 'runtime';
-    if (opts.forceView && VALID_SOFT_PAD_VIEWS[opts.forceView] && opts.forceView !== 'timeline') {
+    // Soft Pad page always lands on「何时显示」— never leave hub idle asking the user to click.
+    if (opts.forceView && VALID_SOFT_PAD_VIEWS[opts.forceView] && opts.forceView !== 'timeline' &&
+        opts.forceView !== 'layout') {
       return opts.forceView;
-    }
-    // Timeline is stage-only — never restore it as Soft Pad landing (会假死/盖住虚拟键盘).
-    if (VALID_SOFT_PAD_VIEWS[lastSoftPadView] && lastSoftPadView !== 'timeline') {
-      return lastSoftPadView;
     }
     return 'runtime';
   }
@@ -1946,30 +1946,24 @@
       };
     });
     var tilesHtml =
-      '<div class="soft-pad-func-tiles__head">' +
-      '<h4 class="soft-pad-func-tiles__title">' + esc(t('softPadFuncTilesTitle', '你想改什么？')) + '</h4>' +
-      '<p class="soft-pad-func-tiles__sub">' + esc(panelModel.landingHint ||
-        t('softPadFuncTilesSub', '动作入口更像任务清单，适合第一次配置')) + '</p>' +
-      '</div>' +
+      '<div class="soft-pad-func-tiles__tabs pref-segmented is-wide" role="presentation">' +
       tiles.map(function (tile) {
+        var tip = [tile.sub, tile.status].filter(Boolean).join(' · ');
         return (
-          '<button type="button" class="soft-pad-func-tile' +
+          '<button type="button" role="tab" class="pref-segmented-btn soft-pad-func-tile' +
           (tile.disabled ? ' is-disabled' : '') +
           (tile.active ? ' is-active' : '') +
           (tile.recommended ? ' is-recommended' : '') +
           '" data-tile="' + esc(tile.id) + '"' +
           (tile.recommended ? ' data-recommended="1"' : '') +
           (tile.disabled ? ' disabled aria-disabled="true"' : '') +
-          (tile.active ? ' aria-current="true"' : '') + '>' +
-          '<span class="soft-pad-func-tile__index" aria-hidden="true">' + esc(tile.index) + '</span>' +
-          '<span class="soft-pad-func-tile__copy">' +
+          (tile.active ? ' aria-selected="true" aria-current="true"' : ' aria-selected="false"') +
+          (tip ? ' title="' + esc(tip) + '"' : '') + '>' +
           '<span class="soft-pad-func-tile__title">' + esc(tile.title) + '</span>' +
-          '<span class="soft-pad-func-tile__sub">' + esc(tile.sub) + '</span>' +
-          '</span>' +
-          '<span class="soft-pad-func-tile__status">' + esc(tile.status) + '</span>' +
           '</button>'
         );
-      }).join('');
+      }).join('') +
+      '</div>';
     var mappingId = entry.mapping && entry.mapping.id ? String(entry.mapping.id) : '';
     var sig = [
       panelModel.sig,
@@ -2095,10 +2089,10 @@
       var idleTitle = e.detailIdle.querySelector('.soft-pad-detail-idle__title');
       var idleSub = e.detailIdle.querySelector('.soft-pad-detail-idle__sub');
       if (idleTitle) {
-        idleTitle.textContent = t('softPadDetailIdleTitle', '点左侧一项开始调整');
+        idleTitle.textContent = t('softPadDetailIdleTitle', '点顶部一项开始调整');
       }
       if (idleSub) {
-        idleSub.textContent = t('softPadDetailIdleSub', '右侧打开详情；左侧键盘与列表保持不动');
+        idleSub.textContent = t('softPadDetailIdleSub', '右侧打开详情；左侧键盘保持不动');
       }
     }
     syncSoftPadFlowNodes(entry);
@@ -2110,8 +2104,9 @@
       } else {
         e.tiles.querySelectorAll('[data-tile]').forEach(function (btn) {
           var id = btn.getAttribute('data-tile');
-          var statusEl = btn.querySelector('.soft-pad-func-tile__status');
-          if (statusEl) statusEl.textContent = tileStatus(entry, id);
+          var tip = [fourPanelSub(entry, id), tileStatus(entry, id)].filter(Boolean).join(' · ');
+          if (tip) btn.setAttribute('title', tip);
+          else btn.removeAttribute('title');
         });
         patchActiveTiles();
       }
@@ -2229,7 +2224,9 @@
     if (steps) steps.textContent = boundKeyCount(entry) + '/15';
   }
 
-  /** P14k：runtime / presentation / layout / timeline 已 paint 时跳过整板 remount。 */
+  /** P14k：runtime / presentation / layout / timeline 已 paint 时跳过整板 remount。
+   * 只认 paint-host 里的活 DOM —— 岛清空后 `__otSoftPad*Mounted` 仍可能为 true，
+   * 再点默认落地的「何时显示」会被当成 AlreadyPainted 而假死。 */
   function softPadSubpageAlreadyPainted(entry, view) {
     var e = els();
     if (!e.subBody || !hasMapping(entry) || !view) return false;
@@ -2238,14 +2235,13 @@
     if (e.subBody.getAttribute('data-soft-pad-mapping') !== mapId) return false;
     var host = softPadSubpagePaintEl(e.subBody) || e.subBody;
     if (view === 'runtime') {
-      return !!(global.__otSoftPadRuntimeMounted || host.querySelector('[data-act="showMode"]'));
+      return !!host.querySelector('[data-act="showMode"]');
     }
     if (view === 'presentation') {
-      return !!(global.__otSoftPadPresentationMounted || host.querySelector('[data-pad-skin-opt]'));
+      return !!host.querySelector('[data-pad-skin-opt]');
     }
     if (view === 'layout') {
-      return !!(global.__otSoftPadLayoutShellMounted ||
-        host.querySelector('[data-soft-pad-layout-editor]'));
+      return !!host.querySelector('[data-soft-pad-layout-editor]');
     }
     if (view === 'timeline') {
       var desk = document.getElementById('softPadTmDesk');
@@ -2687,18 +2683,38 @@
     }
   }
 
-  function openSubpage(view) {
+  function openSubpage(view, openOpts) {
+    openOpts = openOpts || {};
     if (view !== 'layout' && view !== 'presentation' && view !== 'runtime' && view !== 'agent' && view !== 'timeline') return;
+    // Landing lock: block non-user「改按键」steals (ghost-click / preview).
+    // Real tile clicks must stay responsive immediately after entering Soft Pad.
+    if (!openOpts.fromUser && view === 'layout' && Date.now() < softPadLandUntil) {
+      feLog('fe softPad.openSubpage suppress-layout' + (openOpts.fromUser ? ' user' : ''));
+      return;
+    }
     var entry = resolveSoftPadEntry();
     // Project capsules are workspace-scoped; allow open without Soft Pad mapping.
-    if (view !== 'timeline' && !hasMapping(entry)) return;
+    if (view !== 'timeline' && !hasMapping(entry)) {
+      feLog('fe softPad.openSubpage skip-no-map ' + view);
+      return;
+    }
     if (hasMapping(entry)) adoptSoftPadSelection(entry);
+    var e0 = els();
+    var bodyPanel = e0.subBody && e0.subBody.getAttribute('data-soft-pad-panel');
+    var panelMismatch = !!view && view !== 'timeline' && bodyPanel !== view;
     // Re-clicking the active tile must not remount — that wiped the inline key editor.
-    // But if the body was wiped (island re-render / cancelled paint), repaint.
+    // But if body was wiped / shows another panel (view desync), force repaint.
     if (view === softPadView) {
+      feLog('fe softPad.openSubpage reclick ' + view +
+        (panelMismatch ? ' mismatch=' + String(bodyPanel || '') : ''));
       if (view === 'timeline') dismissSoftPadOverlay('timeline-reclick');
       syncHubChrome(entry);
-      if (view !== 'timeline' && !softPadSubpageAlreadyPainted(entry, view)) {
+      if (view !== 'timeline' && (panelMismatch || !softPadSubpageAlreadyPainted(entry, view))) {
+        // Close stale layout editor so it cannot cover tabs / steal clicks.
+        try {
+          var PadSame = global.OneToneCodexMicroPadUi;
+          if (PadSame && PadSame.closeEditKeycap) PadSame.closeEditKeycap({ reopenInline: false });
+        } catch (_) {}
         paintSubpage(entry, { forceRemount: true });
       }
       return;
@@ -3535,7 +3551,7 @@
       e.tiles.addEventListener('click', function (ev) {
         var tile = ev.target.closest && ev.target.closest('[data-tile]');
         if (!tile || tile.disabled || tile.getAttribute('aria-disabled') === 'true') return;
-        openSubpage(tile.getAttribute('data-tile'));
+        openSubpage(tile.getAttribute('data-tile'), { fromUser: true });
       });
     }
     if (e.preview) {
@@ -3656,6 +3672,14 @@
     opts = opts || {};
     var t0 = Date.now();
     feLog('fe softPad.render begin');
+    // Guardrail: when Soft Pad opens right after a Home guide/veil mis-sync,
+    // the veil can stay pointer-blocking even if it's not obvious visually.
+    // Close it here so Soft Pad doesn't make the rest of the nav unclickable.
+    try {
+      if (global.OneToneHomeGuide && typeof global.OneToneHomeGuide.close === 'function') {
+        global.OneToneHomeGuide.close(true);
+      }
+    } catch (_) {}
     dismissSoftPadOverlay('render');
     try{
       var mountSoft=global.__otMountSoftPadStatusIsland;
@@ -3763,13 +3787,18 @@
     clearSubpage();
     var openScopeId = selectedScopeId;
     var openEntry = resolveSoftPadEntry();
-    // Paint left nav NOW (hub + mapping). Deferred-only landing was cancelled by
-    // selectToken bumps and left Soft Pad empty after React island host clears.
+    // Always「何时显示」— never restore 改按键 (layout editor wedges tabs).
+    var landView = 'runtime';
+    // 2.5s covers drawer open ghost-click + deferred island remount.
+    softPadLandUntil = Date.now() + 2500;
+    feLog('fe softPad.land ' + landView);
     if (hasMapping(openEntry)) {
       hideEmpty();
-      renderFuncTiles(openEntry);
-      paintPreview(openEntry, { force: true });
-      syncHubChrome(openEntry);
+      adoptSoftPadSelection(openEntry);
+      try { openSubpage(landView); } catch (err) {
+        feLog('fe softPad.land error ' + (err && err.message ? err.message : 'unknown'));
+      }
+      ensureSoftPadPreview(openEntry);
       updateStatusBar(openEntry);
       ensureSoftPadLeftChrome(openEntry);
     }
@@ -3781,22 +3810,17 @@
       var landed = resolveSoftPadEntry();
       if (!hasMapping(landed)) return;
       adoptSoftPadSelection(landed);
-      var landId = String(landed.mapping.id);
-      selectScheme(landId, {
-        forceRemount: true,
-        scopeId: openScopeId || landed.kind,
-        rebuildList: false,
-        immediateMgr: false,
-        resetView: true
-      });
-      // openSubpage resolves Soft Pad even if habit still holds「通用设置」.
-      softPadView = 'hub';
-      openSubpage(defaultDetailView(opts));
-      landed = resolveSoftPadEntry() || landed;
-      if (hasMapping(landed)) {
-        paintPreview(landed, { force: true });
-        ensureSoftPadLeftChrome(landed);
+      softPadLandUntil = Date.now() + 2500;
+      // The first pass already selected and painted runtime. Re-selecting with a forced remount
+      // cleared the fresh island body and synchronously repainted the keyboard, freezing entry.
+      softPadView = landView;
+      rememberSoftPadView(landView);
+      syncHubChrome(landed);
+      if (!softPadSubpageAlreadyPainted(landed, landView)) {
+        paintSubpage(landed, { forceRemount: true });
       }
+      ensureSoftPadPreview(landed);
+      ensureSoftPadLeftChrome(landed);
       ensureSoftPadBoundaryHint();
       if (global.OneToneHabitChannelStatusStrip && global.OneToneHabitChannelStatusStrip.render) {
         try { global.OneToneHabitChannelStatusStrip.render(); } catch (_) {}

@@ -6,7 +6,7 @@
    * Not screen gaze. Runtime loads only vendor/mediapipe (no CDN).
    */
 
-  var DETECT_INTERVAL_MS=33;
+  var DETECT_INTERVAL_MS=100;
   var detectIntervalMs=DETECT_INTERVAL_MS;
   var DETECT_TIMEOUT_MS=2500;
   var VENDOR_BASE='vendor/mediapipe';
@@ -41,6 +41,7 @@
   var workerReady=false;
   var workerGen=0;
   var detectInFlight=false;
+  var bitmapInFlight=false;
   var pendingBitmap=null;
   var pendingTs=0;
   var detectReqId=0;
@@ -360,6 +361,7 @@
   function terminateWorker(reason){
     clearDetectTimeout();
     detectInFlight=false;
+    bitmapInFlight=false;
     dropPendingBitmap();
     workerReady=false;
     if(worker){ try{ worker.terminate(); }catch(_){} worker=null; }
@@ -438,8 +440,8 @@
   function bitmapOpts(video){
     var vw=video&&video.videoWidth|0;
     var vh=video&&video.videoHeight|0;
-    // 1080p createImageBitmap every frame can wedge WebView2; gaze works at 720w.
-    var maxW=720;
+    // 720p+ createImageBitmap every frame wedges WebView2; presence works at 480w.
+    var maxW=480;
     if(!vw||!vh||vw<=maxW) return undefined;
     return {
       resizeWidth:maxW,
@@ -501,21 +503,39 @@
     if(videoEl.readyState<2) return;
     // Formal: never call detectForVideo on UI main thread.
     if(workerFailed||!workerReady) return;
+    // WebView2: stacking createImageBitmap while a prior bitmap/detect is in flight
+    // wedges the UI thread (Responding=False); head-shake still works in workers.
+    if(bitmapInFlight||detectInFlight) return;
     var now=performance.now();
     if(now<=lastTs) now=lastTs+1;
     lastTs=now;
     if(typeof createImageBitmap!=='function'){ workerFailed=true; return; }
     var opts=bitmapOpts(videoEl);
+    bitmapInFlight=true;
+    setActivityTag('cameraBitmap');
+    var tBitmap=performance.now();
     var p=opts?createImageBitmap(videoEl,opts):createImageBitmap(videoEl);
     p.then(function(bitmap){
-      if(!running){ if(bitmap.close) try{ bitmap.close(); }catch(_){} return; }
+      bitmapInFlight=false;
+      var took=performance.now()-tBitmap;
+      // Slow bitmap decode → back off so the next rAF does not immediately re-enter.
+      if(took>80) lastDetectWall=performance.now()+Math.min(took*2,600);
+      if(!running){
+        if(bitmap.close) try{ bitmap.close(); }catch(_){}
+        setActivityTag('');
+        return;
+      }
       if(detectInFlight){
         dropPendingBitmap();
         pendingBitmap=bitmap; pendingTs=now; queueDepth=1;
+        setActivityTag('cameraDetect');
         return;
       }
       postDetect(bitmap,now);
-    }).catch(function(){});
+    }).catch(function(){
+      bitmapInFlight=false;
+      setActivityTag('');
+    });
   }
 
   function clearDetectLoop(){
@@ -547,6 +567,7 @@
     clearDetectLoop();
     clearDetectTimeout();
     detectInFlight=false;
+    bitmapInFlight=false;
     dropPendingBitmap();
     setActivityTag('');
   }
@@ -574,7 +595,7 @@
     running=false;
     inferPaused=false;
     clearDetectLoop(); clearDetectTimeout(); dropPendingBitmap();
-    detectInFlight=false; videoEl=null; onPoint=null; lastTs=-1;
+    detectInFlight=false; bitmapInFlight=false; videoEl=null; onPoint=null; lastTs=-1;
     setActivityTag('');
   }
 

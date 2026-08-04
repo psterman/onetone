@@ -38,7 +38,7 @@ export const RemotionRoot = () => {
       <Composition
         id="VibeCodingScene"
         component={VibeCodingScene}
-        durationInFrames={300} // 10秒 @ 30fps
+        durationInFrames={450} // 15秒 @ 30fps (5个场景 × 3秒)
         fps={30}
         width={1920}
         height={1080}

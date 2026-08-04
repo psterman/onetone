@@ -15,14 +15,16 @@ const hub = readFileSync(join(root, 'src/js/features/agent/soft-pad-hub-ui.js'),
 const pad = readFileSync(join(root, 'src/js/features/agent/codex-micro-pad-ui.js'), 'utf8');
 
 console.log('[soft-pad-deep] P14k runtime:');
-check('softPadSubpageAlreadyPainted 含 runtime', hub.includes("view === 'runtime'") && hub.includes('__otSoftPadRuntimeMounted'));
+check('softPadSubpageAlreadyPainted 含 runtime', hub.includes("view === 'runtime'") && hub.includes('[data-act="showMode"]'));
+check('AlreadyPainted 不盲信 RuntimeMounted 旗标', /view === 'runtime'[\s\S]*?querySelector\('\[data-act="showMode"\]'\)/.test(hub) &&
+  !/view === 'runtime'[\s\S]*?__otSoftPadRuntimeMounted[\s\S]*?querySelector/.test(hub));
 check('runtime 热路径 syncRuntimeCheckboxes', hub.includes('syncRuntimeCheckboxes(entry)'));
 check('paintSubpage skip-remount', hub.includes('skip-remount') && hub.includes('softPadSubpageAlreadyPainted'));
 check('Pad 渲染后置 RuntimeMounted', pad.includes('__otSoftPadRuntimeMounted = true'));
 
 console.log('[soft-pad-deep] P14l presentation:');
 check('presentation 热路径不 remount', /panel === 'presentation'[\s\S]*?return;/.test(hub));
-check('AlreadyPainted 含 presentation', hub.includes('__otSoftPadPresentationMounted'));
+check('AlreadyPainted 含 presentation DOM', hub.includes('[data-pad-skin-opt]'));
 check('Pad 渲染后置 PresentationMounted', pad.includes('__otSoftPadPresentationMounted = true'));
 
 console.log('[soft-pad-deep] P14m layout shell:');
@@ -33,7 +35,8 @@ check('Pad 渲染后置 LayoutShellMounted', pad.includes('__otSoftPadLayoutShel
 
 console.log('[soft-pad-deep] P14n editKeycap:');
 check('openEditKeycap 仍由 Pad 导出', pad.includes('openEditKeycap: openEditKeycap'));
-check('layout 打开后 rAF openEditKeycap inline', pad.includes("openEditKeycap(m, focusId, { mode: 'inline' })"));
+check('layout 打开后延迟 openEditKeycap inline', pad.includes("openEditKeycap(m, focusId, { mode: 'inline' })") &&
+  pad.includes('soft-pad-layout-editor-pending') && pad.includes('setTimeout'));
 check('clearSubpage 清深面板挂载标记', hub.includes('__otSoftPadRuntimeMounted = false') && hub.includes('__otSoftPadLayoutShellMounted = false'));
 
 console.log(`[soft-pad-deep] ${pass} 通过 / ${fail} 失败`);
