@@ -45,6 +45,8 @@ mod resource_monitor;
 mod runtime_event;
 mod scene_config;
 mod send_guard;
+mod soft_pad_purpose;
+mod agent_lane;
 mod soft_pad_runtime;
 mod state;
 mod test_pulse;
@@ -851,6 +853,12 @@ pub fn run() {
             ipc::cmd_codex_micro_pad_fire,
             ipc::cmd_soft_pad_runtime_snapshot,
             ipc::cmd_soft_pad_set_follow,
+            ipc::cmd_soft_pad_lane_page,
+            ipc::cmd_soft_pad_set_purpose,
+            ipc::cmd_soft_pad_set_navigation_slots,
+            ipc::cmd_soft_pad_agent_lights_set,
+            ipc::cmd_soft_pad_resume_lane,
+            ipc::cmd_soft_pad_inject_lane,
             ipc::cmd_tm_status,
             ipc::cmd_tm_set_workspace,
             ipc::cmd_tm_set_autosave,

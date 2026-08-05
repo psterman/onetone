@@ -128,8 +128,14 @@ pub fn window_display_label(window: &UsageWindow) -> String {
             _ => "主窗口余".into(),
         },
         "secondary" => match window.duration_mins {
+            // Window length ≠ days until reset (Codex "Weekly … Aug 8").
             Some(mins) if mins > 0 && mins % (24 * 60) == 0 => {
-                format!("{}d余", mins / (24 * 60))
+                let days = mins / (24 * 60);
+                if days == 7 {
+                    "周余".into()
+                } else {
+                    format!("{days}天窗余")
+                }
             }
             Some(mins) if mins > 0 && mins % 60 == 0 => format!("{}h余", mins / 60),
             Some(mins) if mins > 0 => format!("{mins}min窗口余"),
@@ -473,15 +479,16 @@ pub fn mark_codex_usage_disabled() {
 /// Accept App Server notifications from a future OneTone-managed thread transport.
 /// A passive account reader does not fabricate thread usage.
 pub fn ingest_codex_app_server_message(message: &Value) -> bool {
+    let lane_hit = crate::agent_lane::app_server_bridge::ingest_app_server_message(message);
     if message.get("method").and_then(Value::as_str) != Some("thread/tokenUsage/updated") {
-        return false;
+        return lane_hit;
     }
     let Some(params) = message.get("params") else {
-        return false;
+        return lane_hit;
     };
     let total = params.get("tokenUsage").and_then(|v| v.get("total"));
     let Some(tokens) = total.and_then(|v| as_u64(v.get("totalTokens"))) else {
-        return false;
+        return lane_hit;
     };
     let mut current = snapshot(AgentKind::Codex);
     current.source = "codex_app_server".into();
@@ -1320,6 +1327,19 @@ fn refresh_codex_account_once() -> Result<(), String> {
                 "id": 4,
                 "params": { "refreshToken": false }
             }),
+        )?;
+        send_json_line(
+            &mut stdin,
+            serde_json::json!({
+                "method": "thread/list",
+                "id": 5,
+                "params": {
+                    "cursor": null,
+                    "limit": 25,
+                    "sortKey": "updated_at",
+                    "sortDirection": "desc"
+                }
+            }),
         )
     })();
     if let Err(error) = send_result {
@@ -1335,11 +1355,12 @@ fn refresh_codex_account_once() -> Result<(), String> {
     let mut rate_settled = false;
     let mut usage_settled = false;
     let mut account_settled = false;
+    let mut threads_settled = false;
     let mut account_deadline: Option<std::time::Instant> = None;
     let mut errors = Vec::new();
 
     while std::time::Instant::now() < deadline {
-        if rate_settled && usage_settled && account_settled {
+        if rate_settled && usage_settled && account_settled && threads_settled {
             break;
         }
         if rate_settled && usage_settled {
@@ -1348,17 +1369,19 @@ fn refresh_codex_account_once() -> Result<(), String> {
             }
             if account_deadline.is_some_and(|d| std::time::Instant::now() >= d) {
                 account_settled = true;
-                break;
+                if threads_settled {
+                    break;
+                }
             }
         }
-        let loop_deadline = if rate_settled && usage_settled {
+        let loop_deadline = if rate_settled && usage_settled && !account_settled {
             account_deadline.unwrap_or(deadline).min(deadline)
         } else {
             deadline
         };
         let wait = loop_deadline.saturating_duration_since(std::time::Instant::now());
         if wait.is_zero() {
-            if rate_settled && usage_settled {
+            if rate_settled && usage_settled && !account_settled {
                 account_settled = true;
             }
             break;
@@ -1399,6 +1422,13 @@ fn refresh_codex_account_once() -> Result<(), String> {
                     account = Some(result.clone());
                 }
                 // account/read errors settle identity without poisoning usage errors.
+            }
+            Some(5) => {
+                threads_settled = true;
+                if let Some(result) = message.get("result") {
+                    let _ = crate::agent_lane::app_server_bridge::discover_threads_from_list_result(result);
+                }
+                // Discovery is best-effort and must not poison usage health.
             }
             _ => {
                 let _ = ingest_codex_app_server_message(&message);
@@ -1607,7 +1637,10 @@ mod tests {
         assert_eq!(got.windows[0].remaining_percent, Some(72.0));
         assert_eq!(got.windows[1].remaining_percent, Some(41.0));
         assert!(window_display_label(&got.windows[0]).contains("5h"));
-        assert!(window_display_label(&got.windows[1]).contains("7d") || window_display_label(&got.windows[1]).contains("10080"));
+        assert!(
+            window_display_label(&got.windows[1]).contains("周余")
+                || window_display_label(&got.windows[1]).contains("10080")
+        );
     }
 
     #[test]

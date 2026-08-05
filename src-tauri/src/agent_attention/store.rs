@@ -7,7 +7,7 @@ use super::model::{
 use crate::soft_pad_runtime::AgentKind;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 static SEQUENCE: AtomicU64 = AtomicU64::new(1);
@@ -15,22 +15,26 @@ static STORE: Mutex<Option<AttentionStoreInner>> = Mutex::new(None);
 static LAST_WAITING_SIG: Mutex<Vec<AgentKind>> = Mutex::new(Vec::new());
 static REVISION: AtomicU64 = AtomicU64::new(0);
 
-static RECOMPUTE_HOOK: Mutex<Option<Box<dyn Fn() + Send + Sync>>> = Mutex::new(None);
+static RECOMPUTE_HOOK: Mutex<Option<Arc<dyn Fn() + Send + Sync>>> = Mutex::new(None);
 
 pub fn set_recompute_hook<F>(hook: F)
 where
     F: Fn() + Send + Sync + 'static,
 {
     if let Ok(mut g) = RECOMPUTE_HOOK.lock() {
-        *g = Some(Box::new(hook));
+        *g = Some(Arc::new(hook));
     }
 }
 
 fn fire_recompute_hook() {
-    if let Ok(g) = RECOMPUTE_HOOK.lock() {
-        if let Some(ref hook) = *g {
-            hook();
-        }
+    // Drop RECOMPUTE_HOOK before calling — hook locks cfg; holding both deadlocks
+    // against build_snapshot / set_purpose paths.
+    let hook = RECOMPUTE_HOOK
+        .lock()
+        .ok()
+        .and_then(|g| g.as_ref().cloned());
+    if let Some(hook) = hook {
+        hook();
     }
 }
 

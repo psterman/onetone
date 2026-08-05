@@ -1996,6 +1996,98 @@ html[data-theme="dark"] .micro-hw-modal__icon-btn {
   margin-bottom: 6px;
 }
 
+.soft-pad-agent-light-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.soft-pad-agent-light-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.1));
+  background: var(--surface-soft, rgba(248, 250, 252, 0.9));
+  box-sizing: border-box;
+}
+.soft-pad-agent-light-row__toggle {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.soft-pad-agent-light-row__chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  flex: 0 0 auto;
+}
+.soft-pad-agent-light-row__chip img {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+.soft-pad-agent-light-row__dot {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: #94a3b8;
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+}
+.soft-pad-agent-light-row__chip[data-status="running"] .soft-pad-agent-light-row__dot {
+  background: var(--pad-status-running, #3b82f6);
+}
+.soft-pad-agent-light-row__chip[data-status="needs_input"] .soft-pad-agent-light-row__dot {
+  background: var(--pad-status-needs-input, #f59e0b);
+}
+.soft-pad-agent-light-row__chip[data-status="done"] .soft-pad-agent-light-row__dot {
+  background: var(--pad-status-done, #22c55e);
+}
+.soft-pad-agent-light-row__chip[data-status="failed"] .soft-pad-agent-light-row__dot,
+.soft-pad-agent-light-row__chip[data-status="error"] .soft-pad-agent-light-row__dot {
+  background: var(--pad-status-failed, #ef4444);
+}
+.soft-pad-agent-light-row__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface, #1e293b);
+}
+.soft-pad-agent-light-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+.soft-pad-agent-light-row__cta {
+  flex: 0 0 auto;
+  max-width: 46%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.soft-pad-agent-light-legend {
+  margin-top: 2px;
+}
+html[data-theme="dark"] .soft-pad-agent-light-row {
+  background: rgba(30, 41, 59, 0.55);
+}
+html[data-theme="dark"] .soft-pad-agent-light-row__chip {
+  background: rgba(15, 23, 42, 0.85);
+}
+
 /* Soft Pad「更多」: horizontal tabs + theme cards */
 .soft-pad-more {
   display: flex;

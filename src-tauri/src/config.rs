@@ -1246,6 +1246,9 @@ pub struct CodexMicroPadConfig {
     /// beginner | standard | advanced | custom — UI Profile only; does not change scan codes.
     #[serde(default)]
     pub layout_profile: String,
+    /// shortcuts | sessions — AG surface mode; orthogonal to layout_profile.
+    #[serde(default)]
+    pub purpose: crate::soft_pad_purpose::SoftPadPurpose,
     /// Software enhance (ENC wheel / JOY nav). Default on; independent of layout profile.
     #[serde(default = "default_true")]
     pub software_enhance_enabled: bool,
@@ -1253,6 +1256,12 @@ pub struct CodexMicroPadConfig {
     /// When false, overlay does not merge `codex_hook`; listener is not stopped.
     #[serde(default)]
     pub codex_status_lights_enabled: bool,
+    /// Soft Pad top-bar Claude status dot. Independent of Hook install; off → idle chip.
+    #[serde(default)]
+    pub claude_status_lights_enabled: bool,
+    /// Soft Pad top-bar Cursor status dot. Independent of Hook install; off → idle chip.
+    #[serde(default)]
+    pub cursor_status_lights_enabled: bool,
     /// User opt-in for Claude CLI key inject. Default off. Still requires high-confidence latch.
     #[serde(default)]
     pub claude_cli_inject_pref_enabled: bool,
@@ -1264,6 +1273,36 @@ pub struct CodexMicroPadConfig {
     pub skin: String,
     #[serde(default)]
     pub keys: Vec<CodexMicroPadKeyRoute>,
+    /// User-pinned lane preferences (not runtime slot assignments).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pinned_lane_preferences: Vec<crate::soft_pad_purpose::LaneSlotPreference>,
+    /// One-time per-key navigation migration from legacy whole-grid sessions.
+    #[serde(default)]
+    pub navigation_layout_migrated: bool,
+}
+
+impl Default for CodexMicroPadConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            require_foreground: true,
+            require_num_lock_off: false,
+            nav_keys_enabled: true,
+            overlay_enabled: false,
+            layout_profile: String::new(),
+            purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
+            software_enhance_enabled: true,
+            codex_status_lights_enabled: false,
+            claude_status_lights_enabled: false,
+            cursor_status_lights_enabled: false,
+            claude_cli_inject_pref_enabled: false,
+            presentation: default_codex_micro_presentation(),
+            skin: default_codex_micro_skin(),
+            keys: Vec::new(),
+            pinned_lane_preferences: Vec::new(),
+            navigation_layout_migrated: false,
+        }
+    }
 }
 
 fn default_codex_micro_presentation() -> String {
@@ -1297,6 +1336,29 @@ pub struct CodexMicroPadKeyRoute {
     /// Serde-only: bind this key to a Claude agent light id/type/`claude/main`. No settings UI yet.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub agent_light_id: String,
+    /// Explicit key role; `None` resolves from purpose + micro_key_id (see soft_pad_purpose).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key_role: Option<crate::soft_pad_purpose::SoftPadKeyRole>,
+    /// Whether AgentLane keys accept auto session assign; `None` resolves from purpose.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_assignable: Option<bool>,
+}
+
+impl Default for CodexMicroPadKeyRoute {
+    fn default() -> Self {
+        Self {
+            micro_key_id: String::new(),
+            source_scan: 0,
+            source_extended: false,
+            slot_id: String::new(),
+            ui_icon_id: String::new(),
+            enabled: true,
+            advanced: false,
+            agent_light_id: String::new(),
+            key_role: None,
+            auto_assignable: None,
+        }
+    }
 }
 
 /// Binding from a physical key, voice phrase, or camera gesture to an AgentAction slot.
@@ -3761,6 +3823,12 @@ impl VoiceConfig {
             }
             if let Some(pad) = m.codex_micro_pad.as_mut() {
                 crate::codex_numpad_layer::heal_stock_mic_on_numpad0(pad);
+                if let Some(kind) = crate::agent_catalog::kind_from_mapping(
+                    m.app_target_id.trim(),
+                    m.agent_provider_id.trim(),
+                ) {
+                    crate::soft_pad_purpose::migrate_navigation_layout(pad, kind);
+                }
             }
             m.voice_override = normalize_voice_override(m.voice_override.take());
             // Legacy configs may still carry triggerDevice full paths ??? migrate below.

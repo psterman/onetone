@@ -25,6 +25,28 @@ pub fn ingest_codex_app_payload_at(payload: &CodexAppStatePayload, now: u64) -> 
     let event = payload.event.trim();
     let incoming_session = payload.session_id.trim();
 
+    // Soft Pad LaneStore (per-thread); independent of global PadStatus.
+    {
+        use crate::agent_lane::store::{ingest_lane_event, LaneIngest};
+        use crate::soft_pad_runtime::AgentKind;
+        if !incoming_session.is_empty() || !payload.cwd.trim().is_empty() {
+            let _ = ingest_lane_event(LaneIngest {
+                provider: AgentKind::Codex,
+                workspace_id: payload.cwd.clone(),
+                session_id: payload.session_id.clone(),
+                subagent_id: None,
+                title: None,
+                event: event.into(),
+                source: payload.source.clone(),
+                cwd: payload.cwd.clone(),
+                host_pid: 0,
+                terminal_hwnd: 0,
+                sequence: None,
+                at: Some(if payload.ts > 0 { payload.ts } else { now }),
+            });
+        }
+    }
+
     let cur = store::snapshot_at(now);
     let sticky = matches!(
         cur.state_enum(),

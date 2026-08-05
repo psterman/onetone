@@ -1,0 +1,268 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - complementary "主导航" [ref=e4]:
+      - generic [ref=e7]:
+        - generic [ref=e8]: 一声 OneTone
+        - generic [ref=e9]: 言出即行，万象成形
+      - generic [ref=e10]:
+        - img [ref=e11]
+        - combobox "搜索功能或设置" [ref=e14]
+      - generic [ref=e15]: 主面板
+      - button "首页" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+        - generic [ref=e20]: 首页
+      - button "我的习惯" [ref=e21] [cursor=pointer]:
+        - img [ref=e22]
+        - generic [ref=e23]: 我的习惯
+      - button "按键设置" [ref=e24] [cursor=pointer]:
+        - img [ref=e25]
+        - generic [ref=e28]: 按键设置
+      - button "虚拟键盘" [ref=e29] [cursor=pointer]:
+        - img [ref=e30]
+        - generic [ref=e33]: 虚拟键盘
+      - button "语音设置" [ref=e34] [cursor=pointer]:
+        - img [ref=e35]
+        - generic [ref=e38]: 语音设置
+      - button "摄像头" [ref=e39] [cursor=pointer]:
+        - img [ref=e40]
+        - generic [ref=e43]: 摄像头
+      - generic [ref=e44]: 系统
+      - button "通用设置" [ref=e45] [cursor=pointer]:
+        - img [ref=e46]
+        - generic [ref=e49]: 通用设置
+      - button "声音与反馈" [ref=e50] [cursor=pointer]:
+        - img [ref=e51]
+        - generic [ref=e54]: 声音与反馈
+      - button "状态与维护" [ref=e55] [cursor=pointer]:
+        - img [ref=e56]
+        - generic [ref=e58]: 状态与维护
+      - button "快速入门" [ref=e59] [cursor=pointer]
+      - generic "未检测到设备 · 正在恢复麦克风" [ref=e60]:
+        - generic [ref=e63]:
+          - strong [ref=e64]: 正在恢复麦克风
+          - generic [ref=e65]: 未检测到设备
+        - generic [ref=e75]:
+          - button "静音未知" [disabled] [ref=e76] [cursor=pointer]
+          - button "换麦克风" [ref=e77] [cursor=pointer]
+          - button "自动静音" [ref=e78] [cursor=pointer]
+    - generic [ref=e81]:
+      - generic [ref=e84]:
+        - status [ref=e85]:
+          - generic [ref=e86]: 开始设置
+          - button "继续配置" [ref=e87] [cursor=pointer]
+        - generic [ref=e88]:
+          - region "语音工作台" [ref=e89]:
+            - generic [ref=e90]:
+              - log [ref=e92]:
+                - generic [ref=e93]: 加载中…
+              - generic "当前工作流摘要" [ref=e94]:
+                - status [ref=e95]:
+                  - generic "通用设置" [ref=e96]:
+                    - img [ref=e99]
+                    - strong [ref=e104]: 通用设置
+                  - generic [ref=e105]: ·
+                  - strong [ref=e106]: 开始设置
+              - button [ref=e109] [cursor=pointer]:
+                - img [ref=e111]
+              - list [ref=e113]:
+                - listitem "语音没开 · 加载中…" [ref=e114]:
+                  - generic [ref=e115]: 语音没开
+                - button "停止转写" [ref=e116] [cursor=pointer]:
+                  - generic [ref=e117]: 停止转写
+          - region "正在使用习惯的四个通道：说话、按键、屏幕按钮与摄像头；点卡切换上方预览，再点打开设置；点下方习惯即可切换并加载" [ref=e118]:
+            - generic [ref=e119]:
+              - button "说话触发 开始输入 麦克风 加载中…" [pressed] [ref=e120]:
+                - generic [ref=e121]:
+                  - img [ref=e123]
+                  - generic [ref=e126]: 说话触发
+                - strong [ref=e128]: 开始输入
+                - generic [ref=e130]:
+                  - generic [ref=e131]: 麦克风
+                  - strong [ref=e132]: 加载中…
+              - button "按键触发 还没有按键触发方式" [ref=e133]:
+                - generic [ref=e134]:
+                  - img [ref=e136]
+                  - generic [ref=e139]: 按键触发
+                - strong [ref=e141]: 还没有按键触发方式
+              - button "屏幕按钮 正在确认 Soft Pad 状态" [ref=e144]:
+                - generic [ref=e145]:
+                  - img [ref=e147]
+                  - generic [ref=e150]: 屏幕按钮
+                - strong [ref=e152]: 正在确认 Soft Pad 状态
+              - button "摄像头确认 摄像头确认未启用，需要时再打开" [ref=e161]:
+                - generic [ref=e162]:
+                  - img [ref=e164]
+                  - generic [ref=e167]: 摄像头确认
+                - strong [ref=e169]: 摄像头确认未启用，需要时再打开
+          - region "习惯" [ref=e172]:
+            - generic [ref=e173]:
+              - generic [ref=e174]: 我的习惯
+              - generic "开：前台有应用场景就自动用它；关：保持通用设置" [ref=e175] [cursor=pointer]:
+                - generic [ref=e176]: 跟前台应用
+                - switch "跟前台应用" [ref=e177]
+            - generic [ref=e178]:
+              - generic [ref=e179] [cursor=pointer]:
+                - img [ref=e181]
+                - generic [ref=e186]:
+                  - generic [ref=e187]:
+                    - generic [ref=e188]: 通用设置
+                    - generic: 正在使用
+                  - generic [ref=e189]: 音量减 / 音量加 → 右 Alt
+                  - button "编辑" [ref=e191]
+              - button "自定义 新建习惯" [ref=e192] [cursor=pointer]:
+                - img [ref=e194]
+                - generic [ref=e195]:
+                  - generic [ref=e196]: 自定义
+                  - generic [ref=e197]: 新建习惯
+      - group [ref=e198]:
+        - generic "高级微调（更多选项） ?" [ref=e199] [cursor=pointer]
+  - dialog "录制两个按键" [ref=e201]:
+    - generic [ref=e202]:
+      - generic [ref=e204]: "1"
+      - generic [ref=e206]: "2"
+      - generic [ref=e208]: "3"
+      - generic [ref=e210]: "4"
+    - generic [ref=e211]:
+      - generic [ref=e212]:
+        - generic [ref=e213]: 首次使用
+        - heading "录制两个按键" [level=2] [ref=e214]
+        - paragraph [ref=e216]: 两步就好：先录你想按的键，再录「打开语音输入」的快捷键。
+      - button "关闭" [ref=e217] [cursor=pointer]: ×
+    - generic [ref=e220]:
+      - generic [ref=e221]:
+        - generic [ref=e223]:
+          - paragraph [ref=e224]: 选择你的默认语音输入法，点击即可自动完成快捷键设置
+          - generic [ref=e225]:
+            - button "从列表选择" [ref=e226] [cursor=pointer]:
+              - img [ref=e227]
+            - button "自定义" [pressed] [ref=e230] [cursor=pointer]:
+              - img [ref=e231]
+            - button "讯飞输入法" [ref=e233] [cursor=pointer]
+            - button "微信输入法" [ref=e234] [cursor=pointer]
+            - button "Typeless" [ref=e235] [cursor=pointer]
+            - button "Windows 语音输入" [ref=e236] [cursor=pointer]
+            - button "智谱输入法" [ref=e237] [cursor=pointer]
+            - button "千问输入法" [ref=e238] [cursor=pointer]
+            - button "闪电说" [ref=e239] [cursor=pointer]
+            - button "搜狗输入法" [ref=e240] [cursor=pointer]
+            - button "百度输入法" [ref=e241] [cursor=pointer]
+        - generic [ref=e242]:
+          - generic [ref=e243]:
+            - paragraph [ref=e244]: ① 你要按的键
+            - generic [ref=e245]: 音量减 / 音量加
+            - paragraph [ref=e246]: ✓ 已录好
+            - button "换一个键" [ref=e247] [cursor=pointer]
+          - generic [ref=e248]: →
+          - generic [ref=e249]:
+            - paragraph [ref=e250]: ② 打开语音输入的快捷键
+            - generic [ref=e253]: 右 Alt
+            - paragraph [ref=e254]: 录你平时用来打开语音输入的快捷键
+            - button "换一个键" [ref=e255] [cursor=pointer]
+        - generic [ref=e256]:
+          - paragraph [ref=e257]: 选择目标应用
+          - generic [ref=e258]:
+            - paragraph [ref=e259]: 推荐 Cursor 工作流，点击即可选择
+            - generic [ref=e260]:
+              - button "Cursor" [ref=e261] [cursor=pointer]:
+                - generic [ref=e262]: Cursor
+              - button "Codex" [ref=e263] [cursor=pointer]:
+                - generic [ref=e264]: Codex
+              - button "MiniMax 工作流" [ref=e265] [cursor=pointer]:
+                - generic [ref=e266]: MiniMax 工作流
+              - button "Claude Code" [ref=e267] [cursor=pointer]:
+                - generic [ref=e268]: Claude Code
+      - paragraph [ref=e269]: 两个键都录好了，下一步试一下
+    - generic [ref=e270]:
+      - paragraph [ref=e272]: 完成后，你可以随时在首页或设置里再调整。
+      - button "下一步" [ref=e275] [cursor=pointer]
+  - generic:
+    - dialog:
+      - button: ×
+      - paragraph: 结束词
+      - heading [level=3]: 跟读唤醒词
+      - paragraph: 对着麦克风说出高亮词语
+      - generic:
+        - generic:
+          - generic: 麦克风
+      - paragraph: 可多选，选中的词将用于语音唤起
+      - paragraph
+      - generic:
+        - button: 跳过
+  - generic:
+    - dialog:
+      - generic:
+        - generic:
+          - generic: …
+          - heading [level=3]: 测试语音快捷键
+          - button: ×
+        - generic:
+          - button: 保存为全局习惯
+          - button: 知道了
+  - generic:
+    - dialog:
+      - banner:
+        - button: ×
+      - generic:
+        - generic: ⌨ 选择语音输入法
+        - heading [level=3]: 你平时用哪个语音输入法？
+        - paragraph: 点选你的输入法，会自动填入默认快捷键；也可以自己录制调整。
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - paragraph
+            - button: 重新录制快捷键
+          - generic:
+            - button [disabled]: 下一步
+  - generic:
+    - dialog:
+      - generic:
+        - heading [level=3]: 选择按键方式
+        - button: ×
+      - paragraph: 选一个最顺手的说话方式 · 之后随时能改 · 对所有程序生效
+      - generic:
+        - button: 取消
+        - button: 存为习惯（通用设置）
+  - generic:
+    - dialog:
+      - generic:
+        - heading [level=3]: 选择应用
+        - button: ×
+      - paragraph: 从预设或当前运行的程序中选择，为其配置单独的发送方式
+      - heading [level=4]: AI 工作流
+      - heading [level=4]: 正在运行
+      - generic:
+        - button: 取消
+  - generic:
+    - dialog:
+      - generic:
+        - heading [level=3]: 选择语音快捷键
+        - button: ×
+      - paragraph: 选择常用按键，或手动录制你的输入法语音快捷键
+      - generic:
+        - searchbox
+      - generic:
+        - heading [level=4]: 常用组合
+      - tablist
+      - generic:
+        - generic:
+          - button: 手动录制
+          - button: 取消
+  - generic:
+    - dialog:
+      - heading [level=3]: 给这套语音习惯起个名字
+      - textbox
+      - generic:
+        - button: 取消
+        - button: 确定
+  - generic:
+    - dialog:
+      - heading [level=3]: 确认操作
+      - generic:
+        - button: 取消
+        - button: 确定
+  - status
+  - generic:
+    - generic:
+      - region "Notifications (F8)":
+        - list

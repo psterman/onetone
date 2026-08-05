@@ -546,6 +546,47 @@ fn try_dispatch_codex_numpad(
         return false;
     };
     let source_id = source.id();
+    // Sessions purpose owns AgentLane physical keys before the ordinary
+    // AgentDispatchTicket path. Never let an assigned/unassigned lane key
+    // fall through to its stored shortcut binding.
+    if let Some(lane_ticket) = crate::agent_lane::lookup_lane_ticket_by_physical(&source) {
+        let micro_key_id = lane_ticket.micro_key_id.clone();
+        let _ = window.emit(
+            "to_js",
+            &serde_json::json!({
+                "type": "codex_micro_pad_key",
+                "sourceId": source_id,
+                "microKeyId": micro_key_id,
+                "phase": if key_down { "down" } else { "up" },
+            }),
+        );
+        crate::codex_micro_overlay::note_micro_key(&micro_key_id, key_down);
+        if key_down {
+            crate::agent_lane::begin_lane_press_lease(&lane_ticket);
+            let _ = crate::agent_lane::navigate_lane(&lane_ticket);
+        } else {
+            let _ = crate::agent_lane::end_lane_press_lease(&micro_key_id);
+        }
+        crate::codex_micro_overlay::push_overlay_status(&window.app_handle(), state.as_ref());
+        return true;
+    }
+    // An unassigned AgentLane key is still consumed. Resolve its physical
+    // route without requiring a slot assignment.
+    if let Some(micro_key_id) = crate::agent_lane::physical_lane_micro_key(&source) {
+        let _ = window.emit(
+            "to_js",
+            &serde_json::json!({
+                "type": "codex_micro_pad_key",
+                "sourceId": source_id,
+                "microKeyId": micro_key_id,
+                "phase": if key_down { "down" } else { "up" },
+            }),
+        );
+        if !key_down {
+            let _ = crate::agent_lane::end_lane_press_lease(&micro_key_id);
+        }
+        return true;
+    }
     // One lock / one ticket — never call lookup_route repeatedly across a phase transition.
     let ticket = if crate::soft_pad_runtime::soft_pad_cutover_enabled() {
         crate::soft_pad_runtime::lookup_agent_ticket_by_physical(&source)
@@ -677,6 +718,59 @@ pub fn fire_codex_micro_pad_key(
     let app = window.app_handle();
     let claude_inject_ok = crate::claude_cli_session::claude_cli_can_inject().ok
         || crate::claude_cli_session::pending_approval_view().active;
+    // Agent Lane (SessionLanes surface): independent ticket BEFORE foreground gate /
+    // AgentDispatchTicket — navigate/resume must work even when agent is not focused.
+    {
+        use crate::soft_pad_purpose::is_navigation_micro_key;
+        let cfg = state.cfg.lock().clone();
+        if let Some((kind, mid)) = crate::soft_pad_runtime::applied_lane() {
+            if let Some(m) = cfg.mappings.iter().find(|m| m.id == mid) {
+                if let Some(pad) = m.codex_micro_pad.as_ref() {
+                    if is_navigation_micro_key(kind, pad, micro_key_id) {
+                        if let Some(lane_ticket) =
+                            crate::agent_lane::lookup_lane_ticket_by_micro(micro_key_id)
+                        {
+                                if !key_down {
+                                    let consumed =
+                                        crate::agent_lane::end_lane_press_lease(micro_key_id);
+                                    return serde_json::json!({
+                                        "ok": true,
+                                        "reason": if consumed { "lane_keyup" } else { "lane_keyup_orphan" },
+                                        "microKeyId": micro_key_id,
+                                        "laneId": lane_ticket.lane_id,
+                                    });
+                                }
+                                crate::agent_lane::begin_lane_press_lease(&lane_ticket);
+                                let nav = crate::agent_lane::navigate_lane(&lane_ticket);
+                                crate::codex_micro_overlay::note_micro_key(micro_key_id, true);
+                                crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+                            return serde_json::json!({
+                                "ok": nav.ok,
+                                "reason": "lane_navigate",
+                                "microKeyId": micro_key_id,
+                                "laneId": nav.lane_id,
+                                "action": nav.action,
+                                "detail": nav.detail,
+                                "appliedRevisionUnchanged": true,
+                            });
+                        }
+                        // AgentLane key with no assignment: never fall through to shortcut.
+                        if !key_down {
+                            let _ = crate::agent_lane::end_lane_press_lease(micro_key_id);
+                        }
+                        let _ = mid;
+                        return serde_json::json!({
+                            "ok": true,
+                            "reason": "lane_unassigned",
+                            "microKeyId": micro_key_id,
+                            "agentKind": kind.as_str(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
     let session_ok = crate::codex_numpad_layer::codex_foreground_for_micro()
         || window.label() == crate::codex_micro_overlay::CODEX_MICRO_OVERLAY_LABEL
         || claude_inject_ok;

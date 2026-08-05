@@ -36,7 +36,7 @@ assert.ok(html.includes('focusedUsageAgent') || html.includes('onetoneFocusedUsa
 assert.ok(html.includes('usageFocusPinned') || html.includes('onetoneUsageFocusPinned'));
 assert.ok(html.includes('is-usage-focus') || html.includes('setUsageFocusFromUi'));
 assert.ok(fmt.windowQuotaLabel, 'windowQuotaLabel missing');
-assert.strictEqual(fmt.windowQuotaLabel({ kind: 'primary', durationMins: 10080, remainingPercent: 35 }), '7d余35%');
+assert.strictEqual(fmt.windowQuotaLabel({ kind: 'primary', durationMins: 10080, remainingPercent: 35 }), '周余35%');
 assert.strictEqual(fmt.windowQuotaLabel({ kind: 'primary', durationMins: 300, remainingPercent: 76 }), '5h余76%');
 assert.ok(!String(fmt.windowQuotaLabel({ durationMins: 10080, remainingPercent: 35 })).includes('10080'));
 assert.ok(css.includes('soft-pad-agent-bar'));
@@ -63,7 +63,8 @@ assert.ok(html.includes('isRenderableUsage') || html.includes('hasRenderable'));
 assert.ok(!/if\s*\(\s*kind\s*===\s*['"]claude['"]\s*\)\s*return\s*false/.test(html), 'Claude must not be hard-blocked for mini pill');
 assert.ok(html.includes('Number.isFinite') || html.includes('isFinite'));
 assert.ok(html.includes('claudeOtelBits') || html.includes('本会话'));
-assert.ok(html.includes('无官方额度') || html.includes('用量暂无接口'));
+assert.ok(html.includes('额度未同步') || html.includes('无官方额度') || html.includes('用量暂无接口'));
+assert.ok(html.includes('claudeFallbackCaption') || html.includes('额度未同步'));
 assert.ok(css.includes('.overlay-mini__agent[data-status="needs_input"]'));
 assert.ok(css.includes('.overlay-mini__agent[data-status="running"]'));
 assert.ok(css.includes('.overlay-mini__usage'));

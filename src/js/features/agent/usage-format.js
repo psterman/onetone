@@ -43,6 +43,8 @@
 
   /**
    * Duration-first window label. Never emit "10080min窗口余…".
+   * Day-length windows must NOT read as "Nd remaining" (that is resetsAt).
+   * Weekly (7d) → 周余N%; other day multiples → N天窗余N%.
    * withReset: append " · Xm重置" using that window's own resetsAt.
    */
   function windowQuotaLabel(w, withReset) {
@@ -55,7 +57,9 @@
     var base = '';
     var dayMins = 24 * 60;
     if (mins > 0 && mins % dayMins === 0) {
-      base = mins / dayMins + 'd余' + pct + '%';
+      var days = mins / dayMins;
+      // 7d window length ≠ days until reset (Codex "Weekly 23% Aug 8").
+      base = days === 7 ? '周余' + pct + '%' : days + '天窗余' + pct + '%';
     } else if (mins > 0 && mins % 60 === 0) {
       base = mins / 60 + 'h余' + pct + '%';
     } else if (mins > 0) {

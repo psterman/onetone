@@ -445,6 +445,11 @@ fn terminal_cli_cache() -> &'static Mutex<Option<TerminalCliCache>> {
     C.get_or_init(|| Mutex::new(None))
 }
 
+fn terminal_cli_walk_lock() -> &'static Mutex<()> {
+    static L: OnceLock<Mutex<()>> = OnceLock::new();
+    L.get_or_init(|| Mutex::new(()))
+}
+
 /// One Toolhelp snapshot: first Claude child wins, else Codex child.
 #[cfg(windows)]
 fn process_tree_cli_target(root_pid: u32) -> Option<&'static str> {
@@ -545,13 +550,22 @@ pub fn terminal_has_codex_child() -> bool {
     foreground_terminal_cli_target_id().as_deref() == Some(CODEX_APP_TARGET_ID)
 }
 
-/// Preset miss fallback: foreground terminal host + Claude/Codex child tree (title optional).
+/// True when foreground is a terminal host and a descendant process looks like Claude/Codex.
 pub fn foreground_terminal_cli_target_id() -> Option<String> {
     let fg = foreground_app_identity()?;
     if !is_terminal_host_exe(&fg.exe_name) {
         return None;
     }
     let exe_key = fg.exe_name.to_ascii_lowercase();
+    if let Ok(guard) = terminal_cli_cache().lock() {
+        if let Some(c) = guard.as_ref() {
+            if c.pid == fg.pid && c.exe_key == exe_key && c.at.elapsed() < TERMINAL_CLI_CACHE_TTL {
+                return c.target.clone();
+            }
+        }
+    }
+    // Single-flight: Claude SessionStart herds must not N× CreateToolhelp32Snapshot.
+    let _walk = terminal_cli_walk_lock().lock().unwrap_or_else(|e| e.into_inner());
     if let Ok(guard) = terminal_cli_cache().lock() {
         if let Some(c) = guard.as_ref() {
             if c.pid == fg.pid && c.exe_key == exe_key && c.at.elapsed() < TERMINAL_CLI_CACHE_TTL {

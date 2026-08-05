@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-soft-pad-set-follow"
+description = "Enables the cmd_soft_pad_set_follow command without any pre-configured scope."
+commands.allow = ["cmd_soft_pad_set_follow"]
+
+[[permission]]
+identifier = "deny-cmd-soft-pad-set-follow"
+description = "Denies the cmd_soft_pad_set_follow command without any pre-configured scope."
+commands.deny = ["cmd_soft_pad_set_follow"]

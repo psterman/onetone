@@ -546,6 +546,15 @@ html[data-theme="light"] {
   pointer-events: none;
 }
 
+/* Session-lane / status lamps must stay visible even if a stale unbound class sticks. */
+.micro-hw__key--lane[data-run-status="needs_input"],
+.micro-hw__key--lane[data-run-status="running"],
+.micro-hw__key--agent[data-run-status="needs_input"],
+.micro-hw__key--agent[data-run-status="running"] {
+  opacity: 1;
+  filter: none;
+}
+
 .micro-hw__key.is-pressed,
 .micro-hw__key.is-active {
   transform: translateY(var(--micro-hw-press-y)) scale(var(--micro-hw-press-scale));

@@ -750,6 +750,24 @@ fn apply_app_state_from_http(
         );
     codex_micro_overlay::set_overlay_click_through(pass);
 
+    let claude_live = matches!(view.last_source.as_str(), "claude_hook" | "claude_app")
+        && !view.status.is_empty()
+        && view.status != "idle";
+    if claude_live {
+        let healed = {
+            let mut cfg = state.cfg.lock();
+            crate::soft_pad_purpose::auto_heal_claude_session_nav_if_stuck(&mut cfg)
+                .unwrap_or(false)
+        };
+        if healed {
+            let cfg = state.cfg.lock().clone();
+            crate::config::save_config(&cfg);
+            let cfg = state.cfg.lock();
+            crate::soft_pad_runtime::request_soft_pad_recompute(&cfg);
+            proto_log("auto-heal: claude session nav (purpose=sessions + AG00-03)");
+        }
+    }
+
     // Best-effort UI refresh; never block the Hook HTTP response on it.
     schedule_overlay_status_push(app, state);
     Ok((view, lights))

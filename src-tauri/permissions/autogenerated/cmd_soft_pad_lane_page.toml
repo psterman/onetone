@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-soft-pad-lane-page"
+description = "Enables the cmd_soft_pad_lane_page command without any pre-configured scope."
+commands.allow = ["cmd_soft_pad_lane_page"]
+
+[[permission]]
+identifier = "deny-cmd-soft-pad-lane-page"
+description = "Denies the cmd_soft_pad_lane_page command without any pre-configured scope."
+commands.deny = ["cmd_soft_pad_lane_page"]

@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 static CURSOR_NEEDS_INPUT: AtomicBool = AtomicBool::new(false);
 
 /// Honest integration capabilities per agent kind.
+/// Catalog = platform ceiling. Per-lane focus/resume still use [`crate::agent_lane::AgentLane::caps`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentCapabilities {
@@ -15,7 +16,16 @@ pub struct AgentCapabilities {
     pub can_send_chord: bool,
     pub can_observe_lifecycle: bool,
     pub can_observe_needs_input: bool,
-    pub can_list_sessions: bool,
+    /// Show top-level thread/session lanes on Soft Pad AG (not App-sidebar deep link).
+    pub can_observe_session_lanes: bool,
+    /// Platform supports focusing a live terminal when HWND exists (instance still via Lane.caps).
+    pub can_focus_live_session: bool,
+    /// Platform supports resume (instance still needs session_id + cwd).
+    pub can_resume_session: bool,
+    /// Open the exact in-app sidebar conversation (none of Codex/Claude/Cursor today).
+    pub can_open_exact_app_conversation: bool,
+    /// Sub-agent activity decoration on a session slot (not clickable AG objects).
+    pub can_multi_agent_lights: bool,
     pub can_invoke_internal_actions: bool,
     pub official_hid: bool,
 }
@@ -75,7 +85,11 @@ pub fn descriptor(kind: AgentKind) -> AgentDescriptor {
                 can_send_chord: true,
                 can_observe_lifecycle: true,
                 can_observe_needs_input: true,
-                can_list_sessions: false,
+                can_observe_session_lanes: true,
+                can_focus_live_session: true,
+                can_resume_session: true,
+                can_open_exact_app_conversation: false,
+                can_multi_agent_lights: false,
                 can_invoke_internal_actions: false,
                 official_hid: false,
             },
@@ -91,7 +105,11 @@ pub fn descriptor(kind: AgentKind) -> AgentDescriptor {
                 can_send_chord: true,
                 can_observe_lifecycle: true,
                 can_observe_needs_input: true,
-                can_list_sessions: false,
+                can_observe_session_lanes: true,
+                can_focus_live_session: true,
+                can_resume_session: true,
+                can_open_exact_app_conversation: false,
+                can_multi_agent_lights: true,
                 can_invoke_internal_actions: false,
                 official_hid: false,
             },
@@ -115,7 +133,11 @@ pub fn descriptor(kind: AgentKind) -> AgentDescriptor {
                 can_send_chord: false,
                 can_observe_lifecycle: true,
                 can_observe_needs_input: true,
-                can_list_sessions: false,
+                can_observe_session_lanes: false,
+                can_focus_live_session: false,
+                can_resume_session: false,
+                can_open_exact_app_conversation: false,
+                can_multi_agent_lights: false,
                 can_invoke_internal_actions: false,
                 official_hid: false,
             },
@@ -130,7 +152,11 @@ pub fn cursor_capabilities() -> AgentCapabilities {
         can_send_chord: true,
         can_observe_lifecycle: true,
         can_observe_needs_input: cursor_can_observe_needs_input(),
-        can_list_sessions: false,
+        can_observe_session_lanes: false,
+        can_focus_live_session: false,
+        can_resume_session: false,
+        can_open_exact_app_conversation: false,
+        can_multi_agent_lights: false,
         can_invoke_internal_actions: false,
         official_hid: false,
     }
@@ -159,7 +185,11 @@ pub fn pad_face(face_id: &str) -> Option<PadFace> {
                 can_send_chord: true,
                 can_observe_lifecycle: false,
                 can_observe_needs_input: false,
-                can_list_sessions: false,
+                can_observe_session_lanes: false,
+                can_focus_live_session: false,
+                can_resume_session: false,
+                can_open_exact_app_conversation: false,
+                can_multi_agent_lights: false,
                 can_invoke_internal_actions: false,
                 official_hid: false,
             },
@@ -170,6 +200,15 @@ pub fn pad_face(face_id: &str) -> Option<PadFace> {
 
 pub fn default_face_id_for(kind: AgentKind) -> &'static str {
     descriptor(kind).default_face_id
+}
+
+/// Product default AG purpose for a new/recommended pad face (not disk rewrite).
+pub fn recommended_purpose(kind: AgentKind) -> crate::soft_pad_purpose::SoftPadPurpose {
+    use crate::soft_pad_purpose::SoftPadPurpose;
+    match kind {
+        AgentKind::Claude => SoftPadPurpose::Sessions,
+        _ => SoftPadPurpose::Shortcuts,
+    }
 }
 
 /// Resolve agent kind from mapping: prefer explicit agent_provider / catalog, fallback app_target_id.
@@ -251,6 +290,18 @@ mod tests {
         let caps = cursor_capabilities();
         assert!(caps.soft_pad_dispatch_ready());
         assert!(!caps.can_observe_needs_input);
+        assert!(!caps.can_observe_session_lanes);
+    }
+
+    #[test]
+    fn codex_and_claude_observe_session_lanes() {
+        assert!(descriptor(AgentKind::Codex).capabilities.can_observe_session_lanes);
+        assert!(descriptor(AgentKind::Claude).capabilities.can_observe_session_lanes);
+        assert!(descriptor(AgentKind::Claude).capabilities.can_multi_agent_lights);
+        assert!(!descriptor(AgentKind::Codex).capabilities.can_multi_agent_lights);
+        assert!(!descriptor(AgentKind::Codex)
+            .capabilities
+            .can_open_exact_app_conversation);
     }
 
     #[test]

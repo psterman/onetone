@@ -201,6 +201,8 @@ pub fn resolve_enc_summon_route(cfg: &VoiceConfig) -> Option<CodexNumpadRouteSna
                 enabled: true,
                 advanced: false,
                 agent_light_id: String::new(),
+                key_role: None,
+                auto_assignable: None,
             });
         let slot = if route.slot_id.trim().is_empty() {
             "summonCodex"
@@ -1010,12 +1012,17 @@ pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
         nav_keys_enabled: true,
         overlay_enabled: true,
         layout_profile: "custom".into(),
+        purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
         software_enhance_enabled: true,
         codex_status_lights_enabled: false,
+        claude_status_lights_enabled: false,
+        cursor_status_lights_enabled: false,
         claude_cli_inject_pref_enabled: false,
         presentation: "full".into(),
         skin: "default".into(),
         keys: default_codex_micro_pad_routes(),
+        pinned_lane_preferences: Vec::new(),
+        navigation_layout_migrated: false,
     }
 }
 
@@ -1113,6 +1120,8 @@ fn route(micro_key_id: &str, scan: u16, extended: bool, slot_id: &str) -> CodexM
         enabled: true,
         advanced: false,
         agent_light_id: String::new(),
+        key_role: None,
+        auto_assignable: None,
     }
 }
 

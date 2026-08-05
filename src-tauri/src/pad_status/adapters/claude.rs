@@ -32,6 +32,7 @@ pub struct ClaudeHookPayload {
     pub turn_id: String,
     pub agent_id: String,
     pub agent_type: String,
+    pub cwd: String,
     pub ts: u64,
     /// claude_hook | claude_app
     pub source: String,
@@ -67,6 +68,7 @@ impl ClaudeHookPayload {
             turn_id: get(&["turnId", "turn_id", "task_id", "taskId"]),
             agent_id: get(&["agentId", "agent_id"]),
             agent_type: get(&["agentType", "agent_type"]),
+            cwd: get(&["cwd"]),
             ts,
             source: if source.is_empty() {
                 "claude_hook".into()
@@ -103,6 +105,57 @@ pub fn ingest_claude_payload_at(payload: &ClaudeHookPayload, now: u64) -> PadSta
     };
 
     let at = if payload.ts > 0 { payload.ts } else { now };
+
+    // Lane lifecycle must run before the primary-light early returns below.
+    // Hook cwd is session-scoped; a high-confidence foreground latch supplies
+    // HWND/PID only for live events and is cleared by SessionEnd in LaneStore.
+    {
+        use crate::agent_lane::store::{ingest_lane_event, LaneIngest};
+        use crate::soft_pad_runtime::AgentKind;
+        let sub = if payload.agent_id.trim().is_empty() {
+            None
+        } else {
+            Some(payload.agent_id.clone())
+        };
+        let is_end = matches!(event, "SessionEnd" | "sessionEnd");
+        let is_session_start = matches!(event, "SessionStart" | "sessionStart");
+        // SessionStart floods at CLI boot — skip process-tree latch (hwnd/pid optional).
+        let (host_pid, terminal_hwnd, latch_cwd) = if is_end || is_session_start {
+            (0u32, 0u64, String::new())
+        } else {
+            let latch = crate::claude_cli_session::claude_cli_session_latch();
+            if latch.confidence == "high"
+                && (latch.session_id.is_empty() || latch.session_id == payload.session_id)
+            {
+                (latch.terminal_pid, latch.hwnd as u64, latch.cwd)
+            } else {
+                (0u32, 0u64, String::new())
+            }
+        };
+        let cwd = if payload.cwd.trim().is_empty() {
+            latch_cwd
+        } else {
+            payload.cwd.clone()
+        };
+        let _ = ingest_lane_event(LaneIngest {
+            provider: AgentKind::Claude,
+            workspace_id: cwd.clone(),
+            session_id: payload.session_id.clone(),
+            subagent_id: sub,
+            title: if payload.agent_type.is_empty() {
+                None
+            } else {
+                Some(payload.agent_type.clone())
+            },
+            event: event.into(),
+            source: src_label.into(),
+            cwd,
+            host_pid,
+            terminal_hwnd,
+            sequence: None,
+            at: Some(at),
+        });
+    }
 
     // SessionStart: Soft Pad near-window only — no light, no primary.
     if claude_lights::is_session_start(event) {
@@ -243,6 +296,7 @@ mod tests {
                 turn_id: String::new(),
                 agent_id: String::new(),
                 agent_type: String::new(),
+                cwd: String::new(),
                 ts: 100,
                 source: "claude_hook".into(),
             },
@@ -266,6 +320,7 @@ mod tests {
                 turn_id: "t1".into(),
                 agent_id: String::new(),
                 agent_type: String::new(),
+                cwd: String::new(),
                 ts: 100,
                 source: "claude_hook".into(),
             },
@@ -292,6 +347,7 @@ mod tests {
                 turn_id: String::new(),
                 agent_id: "agent-a".into(),
                 agent_type: "code-reviewer".into(),
+                cwd: String::new(),
                 ts: 50,
                 source: "claude_hook".into(),
             },
@@ -317,6 +373,7 @@ mod tests {
                 turn_id: String::new(),
                 agent_id: String::new(),
                 agent_type: String::new(),
+                cwd: String::new(),
                 ts: 1,
                 source: "claude_hook".into(),
             },
@@ -329,6 +386,7 @@ mod tests {
                 turn_id: String::new(),
                 agent_id: String::new(),
                 agent_type: String::new(),
+                cwd: String::new(),
                 ts: 2,
                 source: "claude_hook".into(),
             },

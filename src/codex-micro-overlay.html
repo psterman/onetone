@@ -67,6 +67,18 @@
               <span class="overlay-key-caption__name" data-cap-name>悬停按键查看名称</span>
               <span class="overlay-key-caption__chord" data-cap-chord></span>
             </div>
+            <button type="button" class="overlay-nav-cta" id="overlayNavCta" hidden>
+              <span class="overlay-nav-cta__label" data-nav-cta-label>AG 当前为动作键</span>
+              <span class="overlay-nav-cta__action" data-nav-cta-action>启用 4 个会话导航灯</span>
+            </button>
+            <details class="overlay-light-gate" id="overlayLightGate" hidden>
+              <summary class="overlay-light-gate__sum">
+                <span data-gate-sum>灯路诊断</span>
+                <span class="overlay-light-gate__fail" data-gate-fail hidden></span>
+              </summary>
+              <ol class="overlay-light-gate__list" id="overlayLightGateList"></ol>
+              <p class="overlay-light-gate__hint" data-gate-hint></p>
+            </details>
           </div>
         </div>
         <div class="overlay-app-meta" id="overlayAppMeta" hidden aria-live="polite">
@@ -175,6 +187,7 @@
       folder:'<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>',
       cloud:'<svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 00.5-8 5.5 5.5 0 00-10.7 1.5A3.5 3.5 0 007 18z"/></svg>',
       agent:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 5v2M12 17v2M5 12h2M17 12h2"/></svg>',
+      lane:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="8" fill="none" stroke-dasharray="2 3"/></svg>',
       claude:'<svg viewBox="0 0 24 24"><path d="M12 3l2.2 6.2L21 12l-6.8 2.8L12 21l-2.2-6.2L3 12l6.8-2.8z"/></svg>',
       model:'<svg viewBox="0 0 24 24"><path d="M4 7h16v10H4z"/><path d="M8 7V5h8v2M8 17v2h8v-2"/><path d="M9 11h6M9 14h4"/></svg>',
       undo:'<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a5 5 0 010 10h-1"/></svg>',
@@ -225,6 +238,11 @@
     var overlayAppMeta=document.getElementById('overlayAppMeta');
     var overlayAppMetaRow=document.getElementById('overlayAppMetaRow');
     var overlayAppMetaTask=document.getElementById('overlayAppMetaTask');
+    var overlayNavCta=document.getElementById('overlayNavCta');
+    var overlayLightGate=document.getElementById('overlayLightGate');
+    var overlayLightGateList=document.getElementById('overlayLightGateList');
+    var navCtaBusy=false;
+    var navCtaArmedUntil=0;
     var activePtr='';
     /** ACT10 hold-to-talk: block grid rebuild while pressed (innerHTML breaks pointer capture). */
     var holdLockId='';
@@ -305,6 +323,169 @@
       },1800);
     }
 
+    function recommendedNavSlotsForAgent(agent){
+      agent=String(agent||'').toLowerCase();
+      if(agent==='claude') return ['AG00','AG01','AG02','AG03'];
+      if(agent==='codex') return ['AG00','AG01'];
+      return [];
+    }
+
+    function applyNavCta(s){
+      if(!overlayNavCta) return;
+      var mid=String(s&&(s.navCtaMappingId||s.nav_cta_mapping_id)||'').trim();
+      var agent=String(s&&(s.navCtaAgent||s.nav_cta_agent)||'').toLowerCase();
+      var slots=Array.isArray(s&&s.navCtaSlots)?s.navCtaSlots
+        :(Array.isArray(s&&s.nav_cta_slots)?s.nav_cta_slots:[]);
+      // Fallback for older snapshots: current applied mapping only.
+      if(!mid||!slots.length){
+        var purpose=String(s&&(s.purpose)||'shortcuts').toLowerCase()==='sessions'?'sessions':'shortcuts';
+        agent=String(s&&(s.appliedAgent||s.applied_agent)||'').toLowerCase();
+        mid=String(s&&(s.mappingId||s.mapping_id)||'').trim();
+        var navSlots=Array.isArray(s&&s.navigationSlots)?s.navigationSlots
+          :(Array.isArray(s&&s.navigation_slots)?s.navigation_slots:[]);
+        slots=recommendedNavSlotsForAgent(agent);
+        if(!(purpose==='shortcuts'&&mid&&slots.length&&!navSlots.length&&(agent==='claude'||agent==='codex'))){
+          overlayNavCta.hidden=true;
+          navCtaArmedUntil=0;
+          overlayNavCta.classList.remove('is-armed');
+          return;
+        }
+      }
+      overlayNavCta.hidden=false;
+      var label=overlayNavCta.querySelector('[data-nav-cta-label]');
+      var action=overlayNavCta.querySelector('[data-nav-cta-action]');
+      var armed=Date.now()<navCtaArmedUntil;
+      overlayNavCta.classList.toggle('is-armed', armed);
+      if(label){
+        label.textContent=armed
+          ?('将占用 '+slots.join('/'))
+          :'AG 当前为动作键';
+      }
+      if(action){
+        if(armed){
+          action.textContent='再次点击确认启用';
+        }else{
+          action.textContent=agent==='codex'
+            ?('启用 '+slots.length+' 个线程导航灯')
+            :('启用 '+slots.length+' 个会话导航灯');
+        }
+      }
+      overlayNavCta.setAttribute('data-mapping-id', mid);
+      overlayNavCta.setAttribute('data-agent', agent);
+      overlayNavCta.setAttribute('data-slots', slots.join(','));
+      overlayNavCta.disabled=!!navCtaBusy;
+    }
+
+    var GATE_FIX={
+      hook:'等 Claude Hook 上报状态（执行中/等待输入）',
+      applied:'点顶栏 Claude 图标，或把 Soft Pad Applied 切到 Claude',
+      purpose:'点上方「启用会话导航灯」两下确认',
+      nav_slots:'点上方 CTA，或到 Soft Pad 设置里开会话导航',
+      lanes:'在终端里开 Claude 会话（SessionStart）',
+      projected:'先满足 Applied=Claude + sessions + 导航槽',
+      status_host:'状态宿主键无亮灯时检查 Hook 与 Applied'
+    };
+
+    function applyLightGate(s){
+      if(!overlayLightGate||!overlayLightGateList) return;
+      var gates=Array.isArray(s&&s.agLightGates)?s.agLightGates
+        :(Array.isArray(s&&s.ag_light_gates)?s.ag_light_gates:[]);
+      var claudeLive=String(s&&(s.appAgent||s.app_agent)||'').toLowerCase()==='claude'
+        || String(s&&(s.appLastSource||s.app_last_source)||'').indexOf('claude')>=0;
+      var ctaVisible=overlayNavCta&&!overlayNavCta.hidden;
+      if(!gates.length&&!claudeLive&&!ctaVisible){
+        overlayLightGate.hidden=true;
+        return;
+      }
+      // Fallback when older binary has no agLightGates — derive from snapshot.
+      if(!gates.length){
+        var purpose=String(s&&s.purpose||'shortcuts').toLowerCase();
+        var applied=String(s&&(s.appliedAgent||s.applied_agent)||'').toLowerCase();
+        var navSlots=Array.isArray(s&&s.navigationSlots)?s.navigationSlots
+          :(Array.isArray(s&&s.navigation_slots)?s.navigation_slots:[]);
+        var cells=Array.isArray(s&&s.cells)?s.cells:[];
+        var laneCells=cells.filter(function(c){ return String(c.laneId||c.lane_id||'').trim(); });
+        var status=String(s&&(s.appStatus||s.app_status)||'');
+        gates=[
+          {id:'hook',ok:claudeLive&&status&&status!=='idle',label:'Claude Hook 有状态',detail:status||'—'},
+          {id:'applied',ok:applied==='claude',label:'Applied Soft Pad = Claude',detail:applied?('当前 Applied='+applied):'无 Applied'},
+          {id:'purpose',ok:purpose==='sessions',label:'purpose = sessions',detail:'purpose='+purpose},
+          {id:'nav_slots',ok:navSlots.length>0,label:'导航槽 AG00–03',detail:navSlots.length?navSlots.join(','):'[]'},
+          {id:'projected',ok:laneCells.length>0,label:'AG 格子已投影会话',detail:laneCells.length?laneCells.map(function(c){return c.microKeyId||c.micro_key_id;}).join(','):'无'}
+        ];
+      }
+      var fail=gates.filter(function(g){ return !g.ok; });
+      var sum=overlayLightGate.querySelector('[data-gate-sum]');
+      var failEl=overlayLightGate.querySelector('[data-gate-fail]');
+      var hint=overlayLightGate.querySelector('[data-gate-hint]');
+      overlayLightGate.hidden=false;
+      if(fail.length){
+        // Keep collapsed by default — forcing open used to clip the Soft Pad in the fixed window.
+        if(sum) sum.textContent='灯路诊断 · 堵塞在第 '+(gates.findIndex(function(g){return !g.ok;})+1)+' 步';
+        if(failEl){
+          failEl.hidden=false;
+          failEl.textContent=fail.length+' 项未过';
+        }
+        if(hint){
+          var first=fail[0];
+          hint.textContent='下一步：'+(GATE_FIX[first.id]||first.detail||first.label);
+        }
+      }else{
+        if(sum) sum.textContent='灯路诊断 · 全部通过';
+        if(failEl){ failEl.hidden=true; failEl.textContent=''; }
+        if(hint) hint.textContent='AG 会话灯 / 状态单灯应可亮；若仍暗，重启浮窗后再看';
+      }
+      overlayLightGateList.innerHTML=gates.map(function(g){
+        var ok=!!g.ok;
+        return '<li class="overlay-light-gate__row'+(ok?' is-ok':' is-fail')+'" data-gate="'+String(g.id||'')+'">'
+          +'<span class="overlay-light-gate__mark" aria-hidden="true">'+(ok?'✓':'✗')+'</span>'
+          +'<span class="overlay-light-gate__label">'+escHtml(g.label||g.id||'')+'</span>'
+          +'<span class="overlay-light-gate__detail">'+escHtml(g.detail||'')+'</span>'
+          +'</li>';
+      }).join('');
+    }
+
+    function invokeErrText(err){
+      if(!err) return 'unknown';
+      if(typeof err==='string') return err;
+      if(err.message) return String(err.message);
+      try{ return JSON.stringify(err); }catch(_){ return String(err); }
+    }
+
+    function enableNavFromOverlay(){
+      if(!overlayNavCta||overlayNavCta.hidden||navCtaBusy) return;
+      var mid=overlayNavCta.getAttribute('data-mapping-id')||'';
+      var agent=overlayNavCta.getAttribute('data-agent')||'';
+      var slots=(overlayNavCta.getAttribute('data-slots')||'').split(',').filter(Boolean);
+      if(!mid||!slots.length) return;
+      // Overlay webview has no reliable native confirm — two-tap arm/confirm instead.
+      if(Date.now()>=navCtaArmedUntil){
+        navCtaArmedUntil=Date.now()+8000;
+        applyNavCta(lastSnap||{});
+        toast('再次点击确认：将占用 '+slots.join(', '));
+        return;
+      }
+      navCtaArmedUntil=0;
+      navCtaBusy=true;
+      overlayNavCta.disabled=true;
+      Promise.resolve(invoke('cmd_soft_pad_set_purpose',{mappingId:mid,purpose:'sessions'}))
+        .then(function(){
+          return invoke('cmd_soft_pad_set_navigation_slots',{mappingId:mid,slots:slots});
+        })
+        .then(function(){
+          toast(agent==='codex'?'已启用线程导航灯':'已启用会话导航灯');
+          return invoke('cmd_codex_micro_overlay_get_state',{});
+        })
+        .then(function(s){ if(s) render(s); })
+        .catch(function(err){
+          toast('启用失败：'+invokeErrText(err));
+        })
+        .then(function(){
+          navCtaBusy=false;
+          if(overlayNavCta) overlayNavCta.disabled=false;
+        });
+    }
+
     function toastNumpadMode(){
       var now=Date.now();
       if(now-lastNumpadToastAt<2200) return;
@@ -381,6 +562,21 @@
       return '空闲';
     }
 
+    /** Claude when rate-limit/OTel absent — prefer live agent / pad state over barren copy. */
+    function claudeFallbackCaption(row, snap, detail){
+      row=row||{};
+      var st=String(row.state||'').trim();
+      if(st&&st!=='idle') return lightStatusLabel(st);
+      var appSt=String(snap&&(snap.appStatus||snap.app_status)||'').trim();
+      var appAgent=String(snap&&(snap.appAgent||snap.app_agent)||'').trim().toLowerCase();
+      if(appAgent==='claude'&&appSt&&appSt!=='idle') return lightStatusLabel(appSt);
+      var msg=String(snap&&(snap.appMessage||snap.app_message)||'').trim();
+      if(appAgent==='claude'&&msg) return msg;
+      var model=String(row.model||'').trim();
+      if(model) return detail?('模型 '+model+' · 额度未同步'):('模型 '+model);
+      return detail?'额度未同步（可装 Hook / statusline）':'额度未同步';
+    }
+
     function agentLabel(kind){
       if(kind==='claude') return 'Claude';
       if(kind==='cursor') return 'Cursor';
@@ -444,7 +640,7 @@
       return bits;
     }
 
-    function usageSummary(kind,usage,detail){
+    function usageSummary(kind,usage,detail,row,snap){
       usage=usage||{};
       var status=String(usage.status||'unavailable');
       if(kind==='cursor') return detail?'用量暂无官方接口':'用量 --';
@@ -462,7 +658,7 @@
           if(kind==='claude'){
             var otel=claudeOtelBits(usage,detail);
             if(otel.length) bits=otel;
-            else return detail?'无官方额度窗口':'用量 --';
+            else return claudeFallbackCaption(row,snap,!!detail);
           } else {
             var remaining=usageValue(usage,'remainingPercent','remaining_percent');
             if(remaining!=null){
@@ -626,7 +822,7 @@
       return focusedUsageAgent||'codex';
     }
 
-    function usageLineBits(kind,usage){
+    function usageLineBits(kind,usage,row,snap){
       usage=usage||{};
       var lines=[];
       var windows=Array.isArray(usage.windows)?usage.windows:[];
@@ -647,14 +843,14 @@
       }
       if(!lines.length){
         if(kind==='cursor') lines.push('用量暂无官方接口');
-        else if(kind==='claude') lines.push('无官方额度');
+        else if(kind==='claude') lines.push(claudeFallbackCaption(row,snap,true));
         else lines.push('用量 --');
       }
       return lines;
     }
 
-    function usageCaptionText(kind,usage){
-      var lines=usageLineBits(kind,usage||{});
+    function usageCaptionText(kind,usage,row,snap){
+      var lines=usageLineBits(kind,usage||{},row,snap);
       return lines.length?lines[0]:'';
     }
 
@@ -674,7 +870,7 @@
       miniUsagePill.hidden=false;
       miniUsagePill.textContent=text;
       miniUsagePill.setAttribute('data-agent', kind);
-      miniUsagePill.title=agentLabel(kind)+' · '+usageSummary(kind,row.usage||{},true);
+      miniUsagePill.title=agentLabel(kind)+' · '+usageSummary(kind,row.usage||{},true,row,s);
     }
 
     var usageCaptionIdle='';
@@ -686,7 +882,7 @@
       var row=rows.find(function(r){ return String(r&&r.kind||'')===focus; })||{};
       var usage=row.usage||{};
       var badge=usageRailBadge(focus,usage,row.health);
-      var cap=usageCaptionText(focus,usage);
+      var cap=usageCaptionText(focus,usage,row,s);
       usageCaptionIdle=cap
         ?(agentLabel(focus)+' · '+cap)
         :(agentLabel(focus)+' · '+badge.label);
@@ -697,7 +893,22 @@
       if(!el) return;
       var kind=String(el.getAttribute('data-agent')||'');
       var row=byKind[kind]||{};
-      var state=String(row.state||'idle').trim()||'idle';
+      var state=String(row.state||'idle').trim().toLowerCase()||'idle';
+      var activeState=(state==='running'||state==='needs_input'||state==='done'||state==='failed'||state==='error');
+      // Fallback: when usage rail/model rows lag behind, derive Claude chip state
+      // from app-state / hook source so the lamp still reflects live CLI progress.
+      if(kind==='claude'&&!activeState){
+        var appAgent=String(s&&(s.appAgent||s.app_agent)||'').trim().toLowerCase();
+        var appStatus=String(s&&(s.appStatus||s.app_status)||'').trim().toLowerCase();
+        var appSrc=String(s&&(s.appLastSource||s.app_last_source)||'').trim().toLowerCase();
+        var waitingHint=String(s&&(s.claudeWaitingHint||s.claude_waiting_hint)||'').trim();
+        var claudeLiveSrc=(appSrc==='claude_hook'||appSrc==='claude_app');
+        if((appAgent==='claude'||claudeLiveSrc)&&(appStatus==='running'||appStatus==='needs_input'||appStatus==='done'||appStatus==='failed')){
+          state=appStatus;
+        }else if(waitingHint){
+          state='needs_input';
+        }
+      }
       var model=String(row.model||'').trim();
       var confidence=String(row.modelConfidence||row.model_confidence||'').trim();
       var usage=row.usage||{};
@@ -711,7 +922,7 @@
         line2='模型 --';
       }
       if(kind!=='claude'||isRenderableUsage(kind,usage)||claudeOtelBits(usage,false).length){
-        var usageShort=usageSummary(kind,usage,false);
+        var usageShort=usageSummary(kind,usage,false,row,s);
         if(usageShort) line2+=' · '+usageShort;
       }
       var hasClaudeData=kind==='claude'&&(isRenderableUsage(kind,usage)||claudeOtelBits(usage,false).length);
@@ -1251,15 +1462,19 @@
     function gridSignature(s,map,_active){
       // Structural identity only — ephemeral press/run/context/connection fields are
       // patched in place. Including connectionState/visible forced remount → 位移抖动.
+      // keyRole must be structural: sessions heal flips AG to agentLane without always
+      // changing uiIconId on a stale client cache.
       var parts=(s.cells||[]).map(function(c){
         if(!c||!c.microKeyId) return '';
-        return c.microKeyId+':'+(c.bound?1:0)+':'+(c.uiIconId||'')+':'+(c.sourceKind||'');
+        return c.microKeyId+':'+(c.bound?1:0)+':'+(c.uiIconId||'')+':'+(c.sourceKind||'')+':'+(c.keyRole||'action');
       });
       var mode=String(s.padMode||'')==='numpad'?'numpad':(s.enabled===false?'numpad':'codex');
       var navOn=s.navKeysEnabled!==false && s.nav_keys_enabled!==false;
       var cols=Number(s.layoutColumns||s.layout_columns||0)|| (navOn?5:4);
       if(mode==='numpad') cols=4;
-      return [!!s.softwareEnhanceEnabled,mode,navOn?1:0,cols,parts.join('|')].join(';');
+      var purpose=String(s.purpose||'shortcuts');
+      var ag=String(s.agSurface||s.ag_surface||'');
+      return [!!s.softwareEnhanceEnabled,mode,navOn?1:0,cols,purpose,ag,parts.join('|')].join(';');
     }
 
     function patchGridRunStates(map,active){
@@ -1269,9 +1484,22 @@
         var info=map[id]||{};
         var backendRun=String(info.runStatus||'idle');
         var src=String(info.statusSource||'inferred');
+        var keyRole=String(info.keyRole||'action');
+        var isNav=isNavKeyId(id);
+        var isNp=isNumpadKeyId(id);
+        // Session lanes / status host may lack chord binding but must stay lit.
+        var bound=isNp||isNav||!!info.bound||keyRole==='agentLane';
         el.setAttribute('data-backend-run',backendRun);
         el.setAttribute('data-run-status',mergeRunStatus(id,backendRun));
         el.setAttribute('data-status-source',src);
+        el.setAttribute('data-key-role',keyRole);
+        el.classList.toggle('micro-hw__key--lane', keyRole==='agentLane');
+        el.classList.toggle('is-bound', bound);
+        el.classList.toggle('is-route-disabled', !bound && id!=='ENC');
+        if(info.laneId) el.setAttribute('data-lane-id',String(info.laneId));
+        else el.removeAttribute('data-lane-id');
+        if(info.subagentCount) el.setAttribute('data-subagent-count',String(info.subagentCount));
+        else el.removeAttribute('data-subagent-count');
         var rank=String(info.contextRank||'').trim();
         el.classList.toggle('is-context-emphasize',rank==='emphasize');
         el.classList.toggle('is-context-dim',rank==='dim');
@@ -1332,8 +1560,36 @@
       var rootEl=document.querySelector('.root');
       if(rootEl) rootEl.setAttribute('data-pad-skin', padSkin);
       wrap.setAttribute('data-pad-skin', padSkin);
+      var purpose=String(s.purpose||'shortcuts').toLowerCase()==='sessions'?'sessions':'shortcuts';
+      var agRaw=String(s.agSurface||'').toLowerCase();
+      var agSurface=(agRaw==='mixed'||agRaw==='sessionlanes')?'mixed':'actions';
+      var navSlots=Array.isArray(s.navigationSlots)?s.navigationSlots:(Array.isArray(s.navigation_slots)?s.navigation_slots:[]);
+      var navOverflow=Number(s.navigationOverflow!=null?s.navigationOverflow:(s.navigation_overflow!=null?s.navigation_overflow:0))||0;
+      var multiLights=!!s.multiAgentLights;
+      if(rootEl){
+        rootEl.setAttribute('data-purpose', purpose);
+        rootEl.setAttribute('data-ag-surface', agSurface);
+        rootEl.setAttribute('data-multi-agent-lights', multiLights?'true':'false');
+        rootEl.setAttribute('data-navigation-slots', navSlots.join(','));
+        rootEl.setAttribute('data-navigation-overflow', String(navOverflow));
+        if(s.appliedAgent) rootEl.setAttribute('data-applied-agent', String(s.appliedAgent));
+      }
+      wrap.setAttribute('data-purpose', purpose);
+      wrap.setAttribute('data-ag-surface', agSurface);
+      wrap.setAttribute('data-multi-agent-lights', multiLights?'true':'false');
+      wrap.setAttribute('data-navigation-slots', navSlots.join(','));
+      wrap.setAttribute('data-navigation-overflow', String(navOverflow));
+      applyNavCta(s);
+      applyLightGate(s);
       var hw=wrap.querySelector('.micro-hw');
-      if(hw) hw.setAttribute('data-pad-skin', padSkin);
+      if(hw){
+        hw.setAttribute('data-pad-skin', padSkin);
+        hw.setAttribute('data-purpose', purpose);
+        hw.setAttribute('data-ag-surface', agSurface);
+        hw.setAttribute('data-multi-agent-lights', multiLights?'true':'false');
+        hw.setAttribute('data-navigation-slots', navSlots.join(','));
+        hw.setAttribute('data-navigation-overflow', String(navOverflow));
+      }
       wrap.classList.toggle('is-visible',!!s.visible);
       // Always sync mode — previously returned early while hidden, so first show
       // still showed default Codex even when last mode was 数字键.
@@ -1431,11 +1687,15 @@
         if(isNp || isNav) bound=true;
         boundKeys[cell.id]=bound;
         var iconId=info.uiIconId||cell.icon||'empty';
+        var keyRole=String(info.keyRole||'action');
         var kind=String(info.sourceKind||'none');
         var backendRun=String(info.runStatus||'idle');
         var runSt=mergeRunStatus(cell.id, backendRun);
         var statusSrc=String(info.statusSource||'inferred');
+        // agentLane has no chord — still show lamp (do not grey via is-route-disabled).
+        if(keyRole==='agentLane') bound=true;
         var cls='micro-hw__key micro-hw__key--'+cell.kind + sourceClass(kind, cell.id);
+        if(keyRole==='agentLane') cls+=' micro-hw__key--lane';
         if(cell.span===2) cls+=' micro-hw__key--span2';
         if(cell.rowSpan===2) cls+=' micro-hw__key--rowspan2';
         if(isNp || isNav || bound) cls+=' is-bound';
@@ -1474,6 +1734,9 @@
         } else if(isNav){
           metaName=({NAV_UP:'上',NAV_DOWN:'下',NAV_LEFT:'左',NAV_RIGHT:'右'})[cell.id]||cell.id;
           metaChord=joyArrowsLive?'方向键已接入':'';
+        } else if(keyRole==='agentLane'){
+          metaName=String(info.label||'').trim()||cell.id;
+          metaChord=String(info.sub||'').trim()||'会话槽 · 灯=状态';
         } else {
           metaName=String(info.label||'').trim();
           metaChord=String(info.sub||'').trim();
@@ -1491,6 +1754,8 @@
         if(isNav){
           if(joyContextHint) actTitle=joyContextHint;
           else if(joyArrowsLive) actTitle='主键盘方向键已接入';
+        } else if(keyRole==='agentLane'){
+          actTitle='会话槽：查看状态、聚焦终端或恢复线程；不保证打开 App 内侧栏对话';
         } else if(cell.id.indexOf('ACT')===0){
           if(ctxHint) actTitle=ctxHint;
           else if(cell.id==='ACT10') actTitle='按住说话';
@@ -1499,6 +1764,9 @@
           ? ' data-act="pad-mode" role="switch" aria-checked="'+(padEnabled?'true':'false')+'"'
           : '';
         return '<'+tag+type+encAttrs+' class="'+cls+'" data-micro-key="'+cell.id+'"'+agAttr
+          +' data-key-role="'+escHtml(keyRole)+'"'
+          +(info.laneId?' data-lane-id="'+escHtml(String(info.laneId))+'"':'')
+          +(info.subagentCount?' data-subagent-count="'+escHtml(String(info.subagentCount))+'"':'')
           +' data-run-status="'+runSt+'" data-backend-run="'+backendRun+'" data-status-source="'+escHtml(statusSrc)+'" data-source-kind="'+kind+'"'
           +(ctxHint?' data-context-hint="'+escHtml(ctxHint)+'"':'')
           +(metaName?' data-cap-name="'+escHtml(metaName)+'"':'')
@@ -1560,6 +1828,14 @@
         invoke('cmd_codex_micro_overlay_set_minimized',{minimized:false}).catch(function(){});
       });
     });
+
+    if(overlayNavCta){
+      overlayNavCta.addEventListener('click',function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        enableNavFromOverlay();
+      });
+    }
 
     function setUsageFocusFromUi(kind){
       kind=String(kind||'').trim();

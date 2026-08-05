@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-soft-pad-agent-lights-set"
+description = "Enables the cmd_soft_pad_agent_lights_set command without any pre-configured scope."
+commands.allow = ["cmd_soft_pad_agent_lights_set"]
+
+[[permission]]
+identifier = "deny-cmd-soft-pad-agent-lights-set"
+description = "Denies the cmd_soft_pad_agent_lights_set command without any pre-configured scope."
+commands.deny = ["cmd_soft_pad_agent_lights_set"]

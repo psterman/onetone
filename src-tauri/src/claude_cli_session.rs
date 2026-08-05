@@ -246,6 +246,17 @@ fn type_digit_and_enter(digit: &str) -> bool {
     ok1
 }
 
+fn selected_lane_session_id() -> Option<String> {
+    let lid = crate::agent_lane::selected_lane_id_for_applied()?;
+    let lane = crate::agent_lane::store::get_lane(&lid)?;
+    let sid = lane.key.session_id.trim();
+    if sid.is_empty() {
+        None
+    } else {
+        Some(sid.to_string())
+    }
+}
+
 /// C1 keyboard inject. Never writes thstatus.
 pub fn claude_cli_inject(action: &str) -> ClaudeCliInjectResult {
     let action = action.trim().to_ascii_lowercase();
@@ -332,6 +343,19 @@ pub fn try_softpad_fire(
     // C2 pending approval takes priority over key inject (no keyboard).
     let pending = pending_approval_view();
     if pending.active {
+        // Prefer binding ACT allow/deny to the Soft Pad selected lane session.
+        if let Some(sel_sid) = selected_lane_session_id() {
+            if !pending.session_id.is_empty() && pending.session_id != sel_sid {
+                return Some(serde_json::json!({
+                    "ok": false,
+                    "reason": "approval_not_for_selected_lane",
+                    "microKeyId": mid,
+                    "pendingSessionId": pending.session_id,
+                    "selectedSessionId": sel_sid,
+                    "channel": "hook_approval",
+                }));
+            }
+        }
         let decide = if mid == "ACT12" { "allow" } else { "deny" };
         let r = claude_cli_decide(decide);
         return Some(serde_json::json!({
@@ -340,6 +364,7 @@ pub fn try_softpad_fire(
             "microKeyId": mid,
             "claudeAction": decide,
             "channel": "hook_approval",
+            "selectedLaneId": crate::agent_lane::selected_lane_id_for_applied(),
         }));
     }
 

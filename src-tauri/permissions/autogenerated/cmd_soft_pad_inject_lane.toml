@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-soft-pad-inject-lane"
+description = "Enables the cmd_soft_pad_inject_lane command without any pre-configured scope."
+commands.allow = ["cmd_soft_pad_inject_lane"]
+
+[[permission]]
+identifier = "deny-cmd-soft-pad-inject-lane"
+description = "Denies the cmd_soft_pad_inject_lane command without any pre-configured scope."
+commands.deny = ["cmd_soft_pad_inject_lane"]

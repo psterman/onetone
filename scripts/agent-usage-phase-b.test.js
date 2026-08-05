@@ -129,8 +129,9 @@ assert.strictEqual(fmt.primaryResetAt({ resetsAt: 999, windows: [] }), 999);
 assert.strictEqual(fmt.primaryResetAt({ windows: [{ kind: 'primary' }] }), undefined);
 
 assert.strictEqual(typeof fmt.windowQuotaLabel, 'function');
-assert.strictEqual(fmt.windowQuotaLabel({ kind: 'primary', durationMins: 10080, remainingPercent: 35 }), '7d余35%');
-assert.strictEqual(fmt.windowQuotaLabel({ kind: 'secondary', duration_mins: 10080, remaining_percent: 59 }), '7d余59%');
+assert.strictEqual(fmt.windowQuotaLabel({ kind: 'primary', durationMins: 10080, remainingPercent: 35 }), '周余35%');
+assert.strictEqual(fmt.windowQuotaLabel({ kind: 'secondary', duration_mins: 10080, remaining_percent: 59 }), '周余59%');
+assert.strictEqual(fmt.windowQuotaLabel({ durationMins: 1440 * 14, remainingPercent: 40 }), '14天窗余40%');
 assert.strictEqual(fmt.windowQuotaLabel({ durationMins: 300, remainingPercent: 76 }), '5h余76%');
 assert.ok(fmt.windowQuotaLabel({ durationMins: 300, remainingPercent: 76, resetsAt: Math.floor(Date.now()/1000)+3600 }, true).indexOf('重置') > 0);
 

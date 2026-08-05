@@ -684,6 +684,126 @@ body {
   max-height: 34px;
   opacity: 0.92;
 }
+/* Mixed navigation: per-key AgentLane slots. Whole-key glow = status; badge = subagents. */
+.micro-hw[data-ag-surface="sessionLanes"] .micro-hw__key--lane,
+.micro-hw[data-ag-surface="mixed"] .micro-hw__key--lane {
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.35);
+}
+.micro-hw[data-ag-surface="sessionLanes"] .micro-hw__key--lane .micro-hw__icon,
+.micro-hw[data-ag-surface="mixed"] .micro-hw__key--lane .micro-hw__icon {
+  opacity: 0.55;
+}
+.micro-hw[data-ag-surface="sessionLanes"] .micro-hw__key--lane::after,
+.micro-hw[data-ag-surface="mixed"] .micro-hw__key--lane::after {
+  content: '';
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #94a3b8;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.9);
+  pointer-events: none;
+  z-index: 3;
+}
+.micro-hw[data-ag-surface="sessionLanes"] .micro-hw__key--lane[data-run-status="running"],
+.micro-hw[data-ag-surface="mixed"] .micro-hw__key--lane[data-run-status="running"] {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(59, 130, 246, 0.55), transparent 62%),
+    linear-gradient(180deg, rgba(219, 234, 254, 0.92), rgba(147, 197, 253, 0.55));
+  border-color: rgba(59, 130, 246, 0.55);
+  box-shadow:
+    0 0 14px rgba(59, 130, 246, 0.55),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+.micro-hw[data-ag-surface="sessionLanes"] .micro-hw__key--lane[data-run-status="running"]::after,
+.micro-hw[data-ag-surface="mixed"] .micro-hw__key--lane[data-run-status="running"]::after {
+  background: var(--micro-hw-status-running, #3b82f6);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.95), 0 0 0 1.5px rgba(255, 255, 255, 0.9);
+}
+.micro-hw[data-ag-surface="sessionLanes"] .micro-hw__key--lane[data-run-status="needs_input"],
+.micro-hw[data-ag-surface="mixed"] .micro-hw__key--lane[data-run-status="needs_input"] {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(245, 158, 11, 0.62), transparent 62%),
+    linear-gradient(180deg, rgba(255, 247, 220, 0.95), rgba(251, 191, 36, 0.58));
+  border-color: rgba(245, 158, 11, 0.6);
+  box-shadow:
+    0 0 16px rgba(245, 158, 11, 0.62),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+.micro-hw[data-ag-surface="sessionLanes"] .micro-hw__key--lane[data-run-status="needs_input"]::after,
+.micro-hw[data-ag-surface="mixed"] .micro-hw__key--lane[data-run-status="needs_input"]::after {
+  background: var(--micro-hw-status-needs-input, #f59e0b);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.95), 0 0 0 1.5px rgba(255, 255, 255, 0.9);
+}
+.micro-hw[data-ag-surface="sessionLanes"] .micro-hw__key--lane[data-run-status="done"],
+.micro-hw[data-ag-surface="mixed"] .micro-hw__key--lane[data-run-status="done"] {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(34, 197, 94, 0.45), transparent 62%),
+    linear-gradient(180deg, rgba(220, 252, 231, 0.9), rgba(134, 239, 172, 0.5));
+  border-color: rgba(34, 197, 94, 0.5);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.45);
+}
+.micro-hw[data-ag-surface="sessionLanes"] .micro-hw__key--lane[data-run-status="done"]::after,
+.micro-hw[data-ag-surface="mixed"] .micro-hw__key--lane[data-run-status="done"]::after {
+  background: var(--micro-hw-status-done, #22c55e);
+}
+.micro-hw[data-ag-surface="sessionLanes"] .micro-hw__key--lane[data-run-status="failed"],
+.micro-hw[data-ag-surface="sessionLanes"] .micro-hw__key--lane[data-run-status="error"],
+.micro-hw[data-ag-surface="mixed"] .micro-hw__key--lane[data-run-status="failed"],
+.micro-hw[data-ag-surface="mixed"] .micro-hw__key--lane[data-run-status="error"] {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(239, 68, 68, 0.5), transparent 62%),
+    linear-gradient(180deg, rgba(254, 226, 226, 0.92), rgba(252, 165, 165, 0.55));
+  border-color: rgba(239, 68, 68, 0.55);
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.5);
+}
+.micro-hw[data-ag-surface="sessionLanes"] .micro-hw__key--lane[data-run-status="failed"]::after,
+.micro-hw[data-ag-surface="sessionLanes"] .micro-hw__key--lane[data-run-status="error"]::after,
+.micro-hw[data-ag-surface="mixed"] .micro-hw__key--lane[data-run-status="failed"]::after,
+.micro-hw[data-ag-surface="mixed"] .micro-hw__key--lane[data-run-status="error"]::after {
+  background: var(--micro-hw-status-failed, #ef4444);
+}
+.micro-hw[data-ag-surface="sessionLanes"][data-multi-agent-lights="true"] .micro-hw__key--lane[data-subagent-count]:not([data-subagent-count="0"])::before,
+.micro-hw[data-ag-surface="mixed"][data-multi-agent-lights="true"] .micro-hw__key--lane[data-subagent-count]:not([data-subagent-count="0"])::before {
+  content: attr(data-subagent-count);
+  position: absolute;
+  left: 4px;
+  top: 3px;
+  min-width: 12px;
+  height: 12px;
+  padding: 0 3px;
+  border-radius: 6px;
+  font-size: 9px;
+  line-height: 12px;
+  text-align: center;
+  color: #0f172a;
+  background: rgba(226, 232, 240, 0.95);
+  pointer-events: none;
+  z-index: 1;
+}
+/* Legacy purpose attr: keep corner dots if ag-surface missing */
+.micro-hw[data-purpose="sessions"]:not([data-ag-surface]) .micro-hw__key--lane {
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.35);
+}
+.micro-hw[data-purpose="sessions"]:not([data-ag-surface]) .micro-hw__key--lane .micro-hw__icon {
+  opacity: 0.5;
+}
+.micro-hw[data-purpose="sessions"]:not([data-ag-surface]) .micro-hw__key--lane::after {
+  content: '';
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #94a3b8;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+}
 
 /* ACT context from State Core — visual hint only; never blocks fire. */
 .overlay-body .micro-hw__key.is-context-emphasize {
@@ -887,6 +1007,137 @@ body {
 .status-chip[data-status="needs_input"] {
   background: var(--micro-hw-status-needs-input, rgba(245, 166, 35, 0.88));
   box-shadow: 0 0 10px var(--micro-hw-status-needs-input, rgba(245, 166, 35, 0.88));
+}
+
+.overlay-nav-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 7px 10px;
+  border: 1px solid rgba(120, 150, 190, 0.28);
+  border-radius: 8px;
+  background: rgba(18, 28, 42, 0.72);
+  color: rgba(220, 232, 246, 0.92);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.overlay-nav-cta[hidden] {
+  display: none !important;
+}
+
+.overlay-nav-cta:hover:not(:disabled) {
+  border-color: rgba(245, 166, 35, 0.55);
+  background: rgba(36, 32, 18, 0.82);
+}
+
+.overlay-nav-cta.is-armed {
+  border-color: rgba(245, 166, 35, 0.75);
+  background: rgba(48, 36, 12, 0.9);
+}
+
+.overlay-nav-cta:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.overlay-nav-cta__label {
+  color: rgba(190, 208, 228, 0.78);
+  white-space: nowrap;
+}
+
+.overlay-nav-cta__action {
+  color: rgba(245, 180, 70, 0.95);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.overlay-light-gate {
+  width: 100%;
+  margin-top: 6px;
+  border: 1px solid rgba(120, 150, 190, 0.22);
+  border-radius: 8px;
+  background: rgba(12, 18, 28, 0.78);
+  color: rgba(210, 224, 240, 0.9);
+  font-size: 10.5px;
+  line-height: 1.35;
+  box-sizing: border-box;
+}
+
+.overlay-light-gate[hidden] {
+  display: none !important;
+}
+
+.overlay-light-gate__sum {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 9px;
+  user-select: none;
+}
+
+.overlay-light-gate__sum::-webkit-details-marker {
+  display: none;
+}
+
+.overlay-light-gate__fail {
+  color: rgba(255, 140, 110, 0.95);
+  font-weight: 600;
+}
+
+.overlay-light-gate__list {
+  margin: 0;
+  padding: 0 8px 6px;
+  list-style: none;
+  max-height: 132px;
+  overflow-y: auto;
+}
+
+.overlay-light-gate__row {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1.1fr) minmax(0, 1.2fr);
+  gap: 6px;
+  align-items: start;
+  padding: 3px 0;
+  border-top: 1px solid rgba(120, 150, 190, 0.12);
+}
+
+.overlay-light-gate__mark {
+  font-weight: 700;
+}
+
+.overlay-light-gate__row.is-ok .overlay-light-gate__mark {
+  color: rgba(110, 210, 150, 0.95);
+}
+
+.overlay-light-gate__row.is-fail .overlay-light-gate__mark {
+  color: rgba(255, 140, 110, 0.95);
+}
+
+.overlay-light-gate__label {
+  color: rgba(230, 238, 248, 0.92);
+}
+
+.overlay-light-gate__detail {
+  color: rgba(170, 190, 210, 0.82);
+  word-break: break-word;
+}
+
+.overlay-light-gate__hint {
+  margin: 0;
+  padding: 0 9px 7px;
+  color: rgba(245, 186, 66, 0.92);
 }
 
 .overlay-app-meta {

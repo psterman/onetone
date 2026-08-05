@@ -525,6 +525,185 @@
     );
   }
 
+  function currentPadPurpose(entry) {
+    var pad = entry && entry.mapping && entry.mapping.codexMicroPad;
+    var p = pad && pad.purpose ? String(pad.purpose).toLowerCase() : 'shortcuts';
+    return p === 'sessions' ? 'sessions' : 'shortcuts';
+  }
+
+  /** Top segmented: shortcuts vs sessions (per mapping). Does not change ACT/NAV/ENC. */
+  function purposeChipView(entry) {
+    if (!entry || !entry.mapping || !entry.mapping.codexMicroPad) return '';
+    var cur = currentPadPurpose(entry);
+    var mid = String(entry.mapping.id || '');
+    var kind = String(entry.kind || kindForAppId(entry.mapping.appTargetId) || '').toLowerCase();
+    var sessionsAllowed = kind === 'claude' || kind === 'codex';
+    function btn(id, label, opts) {
+      opts = opts || {};
+      var on = cur === id;
+      var disabled = !!opts.disabled;
+      return (
+        '<button type="button" class="soft-pad-app-chip soft-pad-purpose-chip' +
+        (on ? ' is-active' : '') +
+        (disabled ? ' is-disabled' : '') +
+        '" data-pad-purpose="' + id + '" data-mapping-id="' + esc(mid) + '"' +
+        (disabled ? ' disabled aria-disabled="true"' : '') +
+        ' aria-pressed="' + (on ? 'true' : 'false') + '"' +
+        ' title="' + esc(opts.title || label) + '"><span>' + esc(label) + '</span></button>'
+      );
+    }
+    var sessionsLbl = kind === 'codex'
+      ? t('softPadPurposeSessionsCodex', '线程槽（实验）')
+      : t('softPadPurposeSessions', '会话槽');
+    var sessionsTitle = kind === 'codex'
+      ? t('softPadPurposeSessionsCodexHint', '查看状态、聚焦终端或恢复线程；不保证打开 App 内侧栏。')
+      : kind === 'claude'
+        ? t('softPadPurposeSessionsClaudeHint', 'AG=顶层会话；角点为子代理装饰。不保证打开 App 内侧栏。')
+        : t('softPadPurposeSessionsCursorHint', 'Cursor 不支持会话槽，AG 保持动作键。');
+    return (
+      '<span class="soft-pad-purpose-seg" role="group" aria-label="' +
+      esc(t('softPadPurposeAria', 'AG 键做什么')) + '">' +
+      btn('shortcuts', t('softPadPurposeShortcuts', '动作键')) +
+      (sessionsAllowed
+        ? btn('sessions', sessionsLbl, { title: sessionsTitle })
+        : '') +
+      '</span>'
+    );
+  }
+
+  function recommendedNavigationSlots(kind) {
+    if (kind === 'claude') return ['AG00', 'AG01', 'AG02', 'AG03'];
+    if (kind === 'codex') return ['AG00', 'AG01'];
+    return [];
+  }
+
+  function navigationSlotConflicts(pad, slots) {
+    var conflicts = [];
+    (slots || []).forEach(function (slot) {
+      var route = (pad && pad.keys || []).find(function (k) {
+        return k.enabled !== false && String(k.microKeyId || '') === slot;
+      });
+      if (!route) return;
+      var sid = String(route.slotId || '').trim();
+      if (!sid || sid === 'status') return;
+      conflicts.push(slot);
+    });
+    return conflicts;
+  }
+
+  function applyNavigationKeyRolesOnPad(pad, slots) {
+    if (!pad) return;
+    var set = {};
+    (slots || []).forEach(function (s) { set[s] = true; });
+    (pad.keys || []).forEach(function (k) {
+      var mid = String(k.microKeyId || '');
+      if (!/^AG\d+$/i.test(mid)) return;
+      if (set[mid]) {
+        k.keyRole = 'agentLane';
+        k.autoAssignable = true;
+      } else {
+        k.keyRole = 'action';
+        k.autoAssignable = false;
+      }
+    });
+  }
+
+  function navigationSlotsOnPad(pad) {
+    return (pad && pad.keys || []).filter(function (k) {
+      return k.enabled !== false &&
+        String(k.keyRole || '').toLowerCase() === 'agentlane';
+    }).map(function (k) { return String(k.microKeyId || ''); }).filter(Boolean);
+  }
+
+  function findMappingById(mappingId) {
+    mappingId = String(mappingId || '').trim();
+    if (!mappingId) return null;
+    var list = mappings();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] && String(list[i].id) === mappingId) return list[i];
+    }
+    return null;
+  }
+
+  function persistPadPurposeAndSlots(mappingId, purpose, slots) {
+    var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
+    if (!invoke) return Promise.resolve();
+    mappingId = String(mappingId || '');
+    purpose = purpose === 'sessions' ? 'sessions' : 'shortcuts';
+    slots = slots || [];
+    if (purpose === 'shortcuts') {
+      return Promise.resolve(invoke('cmd_soft_pad_set_navigation_slots', {
+        mappingId: mappingId,
+        slots: []
+      })).then(function () {
+        return invoke('cmd_soft_pad_set_purpose', { mappingId: mappingId, purpose: 'shortcuts' });
+      });
+    }
+    return Promise.resolve(invoke('cmd_soft_pad_set_purpose', {
+      mappingId: mappingId,
+      purpose: 'sessions'
+    })).then(function () {
+      // Backend seeds recommended slots when empty; skip empty follow-up (would clear them).
+      if (!slots.length) return null;
+      return invoke('cmd_soft_pad_set_navigation_slots', {
+        mappingId: mappingId,
+        slots: slots
+      });
+    });
+  }
+
+  function setPadPurpose(mappingId, purpose) {
+    mappingId = String(mappingId || '').trim();
+    purpose = String(purpose || '').toLowerCase() === 'sessions' ? 'sessions' : 'shortcuts';
+    if (!mappingId) return;
+    var mapping = findMappingById(mappingId);
+    var pad = mapping && mapping.codexMicroPad;
+    var kind = String(kindForAppId(mapping && mapping.appTargetId) || '').toLowerCase();
+    if (purpose === 'sessions' && kind !== 'claude' && kind !== 'codex') return;
+    if (String((pad && pad.purpose) || 'shortcuts') === purpose) {
+      if (purpose !== 'sessions' || navigationSlotsOnPad(pad).length) return;
+    }
+    var recommended = recommendedNavigationSlots(kind);
+    if (purpose === 'sessions') {
+      var conflicts = navigationSlotConflicts(pad, recommended);
+      var msg = t('softPadNavEnableConfirm',
+        '启用导航后，将把 {slots} 设为物理会话槽（其余 AG 保持动作键）。')
+        .replace('{slots}', recommended.join(', '));
+      if (conflicts.length) {
+        msg += ' ' + t('softPadNavConflictWarn',
+          '以下键将不再执行原快捷动作：{keys}。')
+          .replace('{keys}', conflicts.join(', '));
+      }
+      if (typeof global.confirm === 'function' && !global.confirm(msg)) return;
+    }
+    if (pad) {
+      pad.purpose = purpose;
+      applyNavigationKeyRolesOnPad(pad, purpose === 'sessions' ? recommended : []);
+    }
+    persistPadPurposeAndSlots(mappingId, purpose, purpose === 'sessions' ? recommended : [])
+      .then(function () {
+        try {
+          if (global.__otSoftPadWorkflowSync) global.__otSoftPadWorkflowSync();
+        } catch (_) {}
+        if (!patchAppSwitcher()) renderAppSwitcher();
+        schedulePreviewPaint(resolveSoftPadEntry());
+      })
+      .catch(function (err) {
+        toast(t('softPadPurposePersistFail', '会话导航保存失败：{err}')
+          .replace('{err}', String((err && err.message) || err || 'unknown')));
+        if (!patchAppSwitcher()) renderAppSwitcher();
+      });
+  }
+
+  function handlePurposeChipClick(el) {
+    if (!el) return false;
+    var purpose = el.getAttribute('data-pad-purpose');
+    if (!purpose) return false;
+    var mid = el.getAttribute('data-mapping-id') || '';
+    setPadPurpose(mid, purpose);
+    return true;
+  }
+
   function schemeRank(entry) {
     var pad = entry.mapping && entry.mapping.codexMicroPad;
     var score = 0;
@@ -802,7 +981,10 @@
     if (rem == null) return '';
     var pct = Math.round(Number(rem));
     var dayMins = 24 * 60;
-    if (mins > 0 && mins % dayMins === 0) return mins / dayMins + 'd余' + pct + '%';
+    if (mins > 0 && mins % dayMins === 0) {
+      var days = mins / dayMins;
+      return days === 7 ? '周余' + pct + '%' : days + '天窗余' + pct + '%';
+    }
     if (mins > 0 && mins % 60 === 0) return mins / 60 + 'h余' + pct + '%';
     if (mins > 0) return mins + 'min余' + pct + '%';
     return '窗口余' + pct + '%';
@@ -2827,7 +3009,10 @@
     var scopes = listAppScopes();
     var entries = listAsideEntries();
     pruneInvalidUserLanePin(listSoftPadSchemes());
+    var entry = resolveSoftPadEntry();
     var chips = [{ id: 'follow', html: followChipView() }];
+    var purposeHtml = purposeChipView(entry);
+    if (purposeHtml) chips.push({ id: 'purpose', html: purposeHtml });
     scopes.forEach(function (scope) {
       chips.push({ id: scope.id, html: appSwitcherChipView(scope) });
     });
@@ -2866,7 +3051,11 @@
     }
     e.switcher.hidden = false;
     e.switcher.setAttribute('aria-label', t('softPadAppSwitcherAria', '应用虚拟键盘'));
-    e.switcher.innerHTML = followChipView() + scopes.map(appSwitcherChipView).join('');
+    var entry = resolveSoftPadEntry();
+    e.switcher.innerHTML =
+      followChipView() +
+      purposeChipView(entry) +
+      scopes.map(appSwitcherChipView).join('');
   }
 
   function handleFollowChipClick(el) {
@@ -3541,6 +3730,8 @@
       e.switcher.addEventListener('click', function (ev) {
         var followEl = ev.target.closest && ev.target.closest('[data-lane-follow], [data-lane-pin]');
         if (followEl && handleFollowChipClick(followEl)) return;
+        var purposeEl = ev.target.closest && ev.target.closest('[data-pad-purpose]');
+        if (purposeEl && handlePurposeChipClick(purposeEl)) return;
         var chip = ev.target.closest && ev.target.closest('[data-scope]');
         if (!chip) return;
         // Tab = browse only — does not write userLaneId.
@@ -3893,6 +4084,12 @@
     getUserLaneId: getUserLaneId,
     setUserLaneId: setUserLaneId,
     clearUserLanePin: clearUserLanePin,
+    currentPadPurpose: currentPadPurpose,
+    purposeChipView: purposeChipView,
+    recommendedNavigationSlots: recommendedNavigationSlots,
+    persistPadPurposeAndSlots: persistPadPurposeAndSlots,
+    setPadPurpose: setPadPurpose,
+    kindForAppId: kindForAppId,
     pruneInvalidUserLanePin: pruneInvalidUserLanePin,
     ingestSoftPadRuntimeSnapshot: ingestSoftPadRuntimeSnapshot,
     refreshSoftPadRuntimeAsync: refreshSoftPadRuntimeAsync,

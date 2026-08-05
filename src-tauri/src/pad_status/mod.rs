@@ -64,6 +64,7 @@ pub fn ingest_codex_payload(payload: &CodexAppStatePayload) -> PadStatus {
             turn_id: payload.turn_id.clone(),
             agent_id: payload.agent_id.clone(),
             agent_type: payload.agent_type.clone(),
+            cwd: payload.cwd.clone(),
             ts: payload.ts,
             source: payload.source.clone(),
         });
