@@ -18,6 +18,23 @@ pub fn ingest_claude_hook_event(
     event: &str,
     session_id: &str,
     request_id: &str,
+    source_label: &str,
+) {
+    ingest_lifecycle_hook_event(
+        AgentKind::Claude,
+        event,
+        session_id,
+        request_id,
+        source_label,
+    );
+}
+
+/// Shared lifecycle → attention for Claude-like shell hooks (WorkBuddy / Trae / Qoder).
+pub fn ingest_lifecycle_hook_event(
+    agent: AgentKind,
+    event: &str,
+    session_id: &str,
+    request_id: &str,
     _source_label: &str,
 ) {
     let source = SignalSource::OfficialHook;
@@ -32,18 +49,12 @@ pub fn ingest_claude_hook_event(
     ) || lower == "permission_prompt"
         || lower == "agent_needs_input"
     {
-        raise_needs_input(
-            AgentKind::Claude,
-            session,
-            request,
-            AttentionCause::Permission,
-            source,
-        );
+        raise_needs_input(agent, session, request, AttentionCause::Permission, source);
         return;
     }
     if matches!(ev, "Elicitation" | "elicitation_dialog") || lower == "elicitation_dialog" {
         raise_needs_input(
-            AgentKind::Claude,
+            agent,
             session,
             request,
             AttentionCause::Elicitation,
@@ -58,20 +69,20 @@ pub fn ingest_claude_hook_event(
         || lower == "elicitation_response"
         || lower == "elicitation_complete"
     {
-        clear(AgentKind::Claude, session, request);
-        raise_lifecycle(AgentKind::Claude, session, AttentionState::Complete, source);
+        clear(agent, session, request);
+        raise_lifecycle(agent, session, AttentionState::Complete, source);
         return;
     }
     if matches!(ev, "StopFailure" | "PostToolUseFailure") {
-        clear(AgentKind::Claude, session, request);
-        raise_lifecycle(AgentKind::Claude, session, AttentionState::Error, source);
+        clear(agent, session, request);
+        raise_lifecycle(agent, session, AttentionState::Error, source);
         return;
     }
     if matches!(
         ev,
         "UserPromptSubmit" | "PreToolUse" | "PostToolUse" | "PostToolBatch"
     ) {
-        raise_lifecycle(AgentKind::Claude, session, AttentionState::Working, source);
+        raise_lifecycle(agent, session, AttentionState::Working, source);
     }
 }
 

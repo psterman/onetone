@@ -24,6 +24,7 @@ mod codex_pad_binding_diagnose;
 mod config;
 mod connector_health;
 mod cursor_hook_setup;
+mod shell_agent_hook_setup;
 mod cursor_workflow;
 mod data_root;
 mod device_identity;
@@ -176,6 +177,8 @@ pub struct AppState {
     pub trigger_compat_probe: Mutex<Option<ipc::TriggerCompatProbeSession>>,
     pub trigger_verify_listen: Mutex<Option<ipc::TriggerVerifyListenSession>>,
     pub setup_interaction_active: Mutex<bool>,
+    /// Settings drawer open — Soft Pad float must stay hidden (click-through).
+    pub settings_drawer_open: Mutex<bool>,
     pub process_usage_sampler: Mutex<resource_monitor::ProcessUsageSampler>,
     pub log_ring: Mutex<VecDeque<String>>,
     pub runtime_events: onetone_logic::runtime_event::RuntimeEventRing,
@@ -300,6 +303,7 @@ pub fn run() {
         trigger_compat_probe: Mutex::new(None),
         trigger_verify_listen: Mutex::new(None),
         setup_interaction_active: Mutex::new(false),
+        settings_drawer_open: Mutex::new(false),
         process_usage_sampler: Mutex::new(resource_monitor::ProcessUsageSampler::default()),
         log_ring: Mutex::new(VecDeque::new()),
         runtime_events: onetone_logic::runtime_event::RuntimeEventRing::new(),
@@ -748,6 +752,7 @@ pub fn run() {
             ipc::cmd_running_apps,
             ipc::cmd_app_icon,
             ipc::cmd_set_setup_interaction_active,
+            ipc::cmd_set_settings_drawer_open,
             ipc::cmd_capture_source,
             ipc::cmd_frontend_keydown,
             ipc::cmd_physical_trigger,
@@ -894,6 +899,9 @@ pub fn run() {
             ipc::cmd_claude_hook_setup_status,
             ipc::cmd_claude_hook_install_confirm,
             ipc::cmd_claude_hook_uninstall_onetone,
+            ipc::cmd_shell_agent_hook_setup_status,
+            ipc::cmd_shell_agent_hook_install_confirm,
+            ipc::cmd_shell_agent_hook_uninstall,
             ipc::cmd_claude_cli_inject_pref_set,
             ipc::cmd_claude_cli_inject,
             ipc::cmd_claude_cli_decide,

@@ -11,6 +11,9 @@ dist/
 build/
 src-tauri/gen/
 
+# 误在 src-tauri/ 下再套一层工程/target（错误 cwd 或 --target-dir）
+src-tauri/src-tauri/
+
 # Python 脚本缓存
 __pycache__/
 *.py[cod]

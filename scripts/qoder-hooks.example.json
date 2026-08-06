@@ -1,0 +1,64 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id qoder-activity-v1 --source qoder",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id qoder-activity-v1 --source qoder",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id qoder-activity-v1 --source qoder",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id qoder-activity-v1 --source qoder",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id qoder-activity-v1 --source qoder",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

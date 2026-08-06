@@ -18,6 +18,7 @@ pub use adapters::codex::{
     ingest_codex_app_payload, ingest_codex_app_payload_at, map_codex_event_to_state,
 };
 pub use adapters::hid::{plan_from_pad as plan_hid_output, HidOutputIntent};
+pub use adapters::shell_agent::{agent_kind_from_hook_source, ingest_shell_agent_payload};
 pub use adapters::soft_rgb::{rgb_for_pad, rgb_for_ui_status, ui_status_from_pad};
 pub use arbiter::{propose, ProposeResult};
 pub use claude_lights::{short_agent_type, ClaudeAgentLightState, CLAUDE_MAIN_KEY};
@@ -33,13 +34,16 @@ pub use store::{reset_for_test, test_lock};
 
 use crate::codex_app_state::CodexAppStatePayload;
 
-/// Ingest a validated Codex/Claude/Cursor hook/app payload into the appropriate state core.
+/// Ingest a validated Codex/Claude/Cursor/shell-agent hook/app payload into the appropriate state core.
 pub fn ingest_codex_payload(payload: &CodexAppStatePayload) -> PadStatus {
     let source = payload.source.trim();
     let agent = match source {
         "codex_hook" | "codex_app" => Some(crate::soft_pad_runtime::AgentKind::Codex),
         "claude_hook" | "claude_app" => Some(crate::soft_pad_runtime::AgentKind::Claude),
         "cursor_hook" => Some(crate::soft_pad_runtime::AgentKind::Cursor),
+        "workbuddy_hook" => Some(crate::soft_pad_runtime::AgentKind::WorkBuddy),
+        "trae_hook" => Some(crate::soft_pad_runtime::AgentKind::Trae),
+        "qoder_hook" => Some(crate::soft_pad_runtime::AgentKind::Qoder),
         _ => None,
     };
     if let Some(agent) = agent {
@@ -69,5 +73,19 @@ pub fn ingest_codex_payload(payload: &CodexAppStatePayload) -> PadStatus {
             source: payload.source.clone(),
         });
     }
+
+    if agent_kind_from_hook_source(source).is_some() {
+        return ingest_shell_agent_payload(&ClaudeHookPayload {
+            event: payload.event.clone(),
+            session_id: payload.session_id.clone(),
+            turn_id: payload.turn_id.clone(),
+            agent_id: payload.agent_id.clone(),
+            agent_type: payload.agent_type.clone(),
+            cwd: payload.cwd.clone(),
+            ts: payload.ts,
+            source: payload.source.clone(),
+        });
+    }
+
     ingest_codex_app_payload(payload)
 }

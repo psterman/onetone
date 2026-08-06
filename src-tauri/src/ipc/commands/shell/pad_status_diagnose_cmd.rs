@@ -137,6 +137,9 @@ fn pad_for_diagnose(cfg: &crate::config::VoiceConfig) -> CodexMicroPadConfig {
         codex_status_lights_enabled: false,
         claude_status_lights_enabled: false,
         cursor_status_lights_enabled: false,
+        workbuddy_status_lights_enabled: false,
+        trae_status_lights_enabled: false,
+        qoder_status_lights_enabled: false,
         claude_cli_inject_pref_enabled: false,
         presentation: "full".into(),
         skin: "default".into(),
@@ -723,6 +726,27 @@ pub fn cmd_claude_hook_uninstall_onetone() -> crate::claude_hook_setup::ClaudeHo
 }
 
 #[tauri::command]
+pub fn cmd_shell_agent_hook_setup_status(
+    kind: String,
+) -> Result<crate::shell_agent_hook_setup::ShellHookSetupStatus, String> {
+    crate::shell_agent_hook_setup::setup_status(kind.trim())
+}
+
+#[tauri::command]
+pub fn cmd_shell_agent_hook_install_confirm(
+    kind: String,
+) -> crate::shell_agent_hook_setup::ShellHookWriteResult {
+    crate::shell_agent_hook_setup::install_confirm(kind.trim())
+}
+
+#[tauri::command]
+pub fn cmd_shell_agent_hook_uninstall(
+    kind: String,
+) -> crate::shell_agent_hook_setup::ShellHookWriteResult {
+    crate::shell_agent_hook_setup::uninstall(kind.trim())
+}
+
+#[tauri::command]
 pub fn cmd_claude_cli_inject_pref_set(
     state: State<'_, Arc<AppState>>,
     mapping_id: String,
@@ -798,6 +822,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -868,6 +895,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),

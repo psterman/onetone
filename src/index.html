@@ -1067,6 +1067,13 @@
               <div class="keys-scheme-summary-title-row">
                 <span class="keys-scheme-summary-name" id="softPadSummaryName">—</span>
                 <span class="keys-scheme-summary-pill" id="softPadSummaryStatus">—</span>
+                <div class="soft-pad-bind-app" id="softPadBindApp">
+                  <button type="button" class="soft-pad-bind-app__btn" id="softPadBindAppBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="softPadBindAppMenu">
+                    <span class="soft-pad-bind-app__lbl" id="softPadBindAppLbl">绑定 · —</span>
+                    <span class="soft-pad-bind-app__chev" aria-hidden="true">▾</span>
+                  </button>
+                  <div class="soft-pad-bind-app__menu" id="softPadBindAppMenu" role="listbox" hidden></div>
+                </div>
               </div>
               <div class="keys-scheme-summary-meta">
                 <span class="keys-scheme-summary-item">
@@ -1149,7 +1156,7 @@
               </div>
             </div>
           </section>
-          <div class="soft-pad-app-switcher" id="softPadAppSwitcher" role="tablist" aria-label="应用"></div>
+          <div class="soft-pad-app-switcher" id="softPadAppSwitcher" role="tablist" aria-label="应用" hidden></div>
           <p class="soft-pad-scope-hint" id="softPadScopeHint" aria-live="polite"></p>
           <header class="pref-page-head soft-pad-page-head sr-only">
             <div class="soft-pad-page-head-text">
@@ -1160,15 +1167,19 @@
           <div class="keys-page-body soft-pad-page-body" id="softPadPageBody">
             <div class="keys-page-main soft-pad-page-main">
               <div class="soft-pad-hub-stage" id="softPadHubStage" role="tabpanel" aria-label="虚拟键盘详情">
-                <div class="soft-pad-func-tiles" id="softPadFuncTiles" role="tablist" aria-label="你想改什么？"></div>
+                <div class="soft-pad-func-tiles" id="softPadFuncTiles" role="tablist" aria-label="你想改什么？" hidden></div>
                 <div class="soft-pad-hub-nav" id="softPadHubNav">
-                  <div class="soft-pad-preview-host" id="softPadPreviewHost"></div>
+                  <div class="soft-pad-pad-chassis" id="softPadPadChassis">
+                    <div class="soft-pad-pad-ring" id="softPadPadRing" role="toolbar" aria-label="舞台操作"></div>
+                    <div class="soft-pad-preview-host" id="softPadPreviewHost"></div>
+                    <div class="soft-pad-ring-float" id="softPadRingFloat" hidden></div>
+                  </div>
                 </div>
                 <div class="soft-pad-tm-desk" id="softPadTmDesk" hidden aria-label="项目时间胶囊"></div>
                 <aside class="soft-pad-detail" id="softPadSubpageHost" aria-live="polite">
                   <div class="soft-pad-detail-idle" id="softPadDetailIdle">
-                    <p class="soft-pad-detail-idle__title" id="softPadDetailIdleTitle">点顶部一项开始调整</p>
-                    <p class="soft-pad-detail-idle__sub" id="softPadDetailIdleSub">右侧打开详情；左侧键盘保持不动</p>
+                    <p class="soft-pad-detail-idle__title" id="softPadDetailIdleTitle">点环上芯片或键盘开始调整</p>
+                    <p class="soft-pad-detail-idle__sub" id="softPadDetailIdleSub">状态栏切换绑定应用；右侧打开详情</p>
                   </div>
                   <div class="soft-pad-detail-panel" id="softPadDetailPanel" hidden>
                     <div class="soft-pad-subpage-bar" id="softPadSubpageBar">
@@ -1181,7 +1192,7 @@
               </div>
               <div class="soft-pad-empty" id="softPadEmpty" hidden></div>
             </div>
-            <aside class="keys-page-aside soft-pad-page-aside soft-pad-aside--secondary" id="softPadSchemeAside" aria-label="选应用">
+            <aside class="keys-page-aside soft-pad-page-aside soft-pad-aside--secondary" id="softPadSchemeAside" hidden aria-hidden="true" aria-label="选应用">
               <section class="keys-aside-card soft-pad-scheme-card keys-hub-card" id="softPadSchemeCard">
                 <header class="keys-aside-card-head keys-hub-head">
                   <span class="keys-aside-title" id="softPadSchemeTitleLbl">选应用</span>
@@ -4128,6 +4139,7 @@
   <script src="js/features/agent/codex-micro-pad-ui.js"></script>
   <script src="js/features/agent/soft-pad-time-machine-ui.js"></script>
   <script src="js/features/agent/usage-format.js"></script>
+  <script src="js/features/agent/shell-agent-hook-panel.js"></script>
   <script src="js/features/agent/soft-pad-hub-ui.js"></script>
   <script src="js/features/agent/agent-capability-ui.js"></script>
   <script src="js/features/mapping/habit-hub.js"></script>

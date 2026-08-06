@@ -25,6 +25,9 @@ type Win = Window & {
   __otSoftPadFuncTilesSync?: () => void;
   __otSoftPadFuncTilesForce?: () => void;
   __otSoftPadFuncTilesMounted?: boolean;
+  OneToneSoftPadHub?: {
+    openSubpage?: (view: string, opts?: { fromUser?: boolean }) => void;
+  };
 };
 
 let currentModel: SoftPadFuncTilesModel = EMPTY;
@@ -99,7 +102,19 @@ export function SoftPadFuncTilesIsland(): JSX.Element {
 
   if (!model.tilesHtml) return <></>;
   // eslint-disable-next-line react/no-danger -- markup 来自 legacy buildSoftPadFuncTilesModel
-  return <div dangerouslySetInnerHTML={{ __html: model.tilesHtml }} />;
+  return (
+    <div
+      onClickCapture={(ev) => {
+        const target = ev.target as Element | null;
+        const tile = target?.closest?.('[data-tile]') as HTMLButtonElement | null;
+        if (!tile || tile.disabled || tile.getAttribute('aria-disabled') === 'true') return;
+        const view = tile.getAttribute('data-tile');
+        if (!view) return;
+        (window as Win).OneToneSoftPadHub?.openSubpage?.(view, { fromUser: true });
+      }}
+      dangerouslySetInnerHTML={{ __html: model.tilesHtml }}
+    />
+  );
 }
 
 export function registerSoftPadFuncTilesBridge(): void {

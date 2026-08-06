@@ -29,17 +29,14 @@ pub fn cmd_soft_pad_runtime_snapshot(state: State<'_, Arc<AppState>>) -> SoftPad
     get_public_snapshot()
 }
 
+/// Soft Pad follow pin removed from product — always clear and recompute as Auto.
 #[tauri::command]
 pub fn cmd_soft_pad_set_follow(
     state: State<'_, Arc<AppState>>,
     lane: Option<String>,
 ) -> SoftPadPublicSnapshot {
-    let pin = lane
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .and_then(AgentKind::from_kind_str);
-    set_follow_pin(pin);
+    let _ = lane;
+    set_follow_pin(None);
     {
         let cfg = state.cfg.lock();
         request_soft_pad_recompute(&cfg);
@@ -199,8 +196,8 @@ pub fn cmd_soft_pad_lane_page(
     })
 }
 
-/// Persist Soft Pad top-bar agent light switch: `codex` | `claude` | `cursor`.
-/// Codex on → also ensure loopback (same as `cmd_codex_status_lights_set`).
+/// Persist Soft Pad top-bar agent light switch: `codex` | `claude` | `cursor` | shell hook kinds.
+/// Codex or shell hook on → also ensure loopback (same as `cmd_codex_status_lights_set`).
 /// Disk write runs off the IPC thread — sync save used to 假死 Soft Pad toggles.
 #[tauri::command]
 pub fn cmd_soft_pad_agent_lights_set(
@@ -215,7 +212,10 @@ pub fn cmd_soft_pad_agent_lights_set(
     if mapping_id.is_empty() {
         return Err("mapping_id_empty".into());
     }
-    if !matches!(agent.as_str(), "codex" | "claude" | "cursor") {
+    if !matches!(
+        agent.as_str(),
+        "codex" | "claude" | "cursor" | "workbuddy" | "trae" | "qoder"
+    ) {
         return Err("bad_agent".into());
     }
 
@@ -232,14 +232,22 @@ pub fn cmd_soft_pad_agent_lights_set(
             "codex" => pad.codex_status_lights_enabled = enabled,
             "claude" => pad.claude_status_lights_enabled = enabled,
             "cursor" => pad.cursor_status_lights_enabled = enabled,
+            "workbuddy" => pad.workbuddy_status_lights_enabled = enabled,
+            "trae" => pad.trae_status_lights_enabled = enabled,
+            "qoder" => pad.qoder_status_lights_enabled = enabled,
             _ => {}
         }
         crate::codex_numpad_layer::sync_hook_cache(&cfg);
         cfg_to_save = cfg.clone();
     }
 
+    let needs_loopback = enabled
+        && matches!(
+            agent.as_str(),
+            "codex" | "workbuddy" | "trae" | "qoder"
+        );
     let mut loopback_error: Option<String> = None;
-    if agent == "codex" && enabled {
+    if needs_loopback {
         match crate::codex_micro_protocol_server::start(app.clone(), Arc::clone(state.inner()), None)
         {
             Ok(_) => {}

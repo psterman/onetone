@@ -5,7 +5,10 @@
     'cursor-chat': true,
     'codex-chat': true,
     'claude-code': true,
-    'minimax-chat': true
+    'minimax-chat': true,
+    'workbuddy-chat': true,
+    'trae-chat': true,
+    'qoder-chat': true
   };
 
   var PRESETS = [
@@ -44,6 +47,33 @@
       icon: 'icons/app-target/claude.png',
       badge: 'Cc',
       badgeEn: 'Cc'
+    },
+    {
+      id: 'workbuddy-chat',
+      nameKey: 'appTargetWorkBuddy',
+      descKey: 'appTargetWorkBuddyDesc',
+      targetKey: '',
+      icon: 'icons/app-target/workbuddy.png',
+      badge: 'Wb',
+      badgeEn: 'Wb'
+    },
+    {
+      id: 'trae-chat',
+      nameKey: 'appTargetTrae',
+      descKey: 'appTargetTraeDesc',
+      targetKey: '',
+      icon: 'icons/app-target/trae.png',
+      badge: 'Tr',
+      badgeEn: 'Tr'
+    },
+    {
+      id: 'qoder-chat',
+      nameKey: 'appTargetQoder',
+      descKey: 'appTargetQoderDesc',
+      targetKey: '',
+      icon: 'icons/app-target/qoder.png',
+      badge: 'Qd',
+      badgeEn: 'Qd'
     }
   ];
 

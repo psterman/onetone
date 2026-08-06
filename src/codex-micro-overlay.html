@@ -24,6 +24,18 @@
             <img src="icons/app-target/cursor.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
           </span>
+          <span class="overlay-mini__agent" role="listitem" data-agent="workbuddy" data-status="idle" aria-label="WorkBuddy：空闲" hidden>
+            <img src="icons/app-target/workbuddy.png" alt="" aria-hidden="true">
+            <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
+          </span>
+          <span class="overlay-mini__agent" role="listitem" data-agent="trae" data-status="idle" aria-label="Trae：空闲" hidden>
+            <img src="icons/app-target/trae.png" alt="" aria-hidden="true">
+            <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
+          </span>
+          <span class="overlay-mini__agent" role="listitem" data-agent="qoder" data-status="idle" aria-label="Qoder：空闲" hidden>
+            <img src="icons/app-target/qoder.png" alt="" aria-hidden="true">
+            <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
+          </span>
         </div>
         <span class="overlay-mini__usage" id="miniUsagePill" hidden aria-live="polite"></span>
         <button type="button" class="overlay-mini__btn overlay-mini__btn--expand" data-act="expand" title="展开" aria-label="展开浮窗">
@@ -56,6 +68,18 @@
                   </button>
                   <button type="button" class="soft-pad-agent-bar__chip" data-agent="cursor" data-status="idle" aria-pressed="false" aria-label="Cursor" title="Cursor">
                     <img src="icons/app-target/cursor.png" alt="" aria-hidden="true">
+                    <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="workbuddy" data-status="idle" aria-pressed="false" aria-label="WorkBuddy" title="WorkBuddy" hidden>
+                    <img src="icons/app-target/workbuddy.png" alt="" aria-hidden="true">
+                    <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="trae" data-status="idle" aria-pressed="false" aria-label="Trae" title="Trae" hidden>
+                    <img src="icons/app-target/trae.png" alt="" aria-hidden="true">
+                    <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="qoder" data-status="idle" aria-pressed="false" aria-label="Qoder" title="Qoder" hidden>
+                    <img src="icons/app-target/qoder.png" alt="" aria-hidden="true">
                     <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
                   </button>
                 </div>
@@ -580,8 +604,13 @@
     function agentLabel(kind){
       if(kind==='claude') return 'Claude';
       if(kind==='cursor') return 'Cursor';
+      if(kind==='workbuddy') return 'WorkBuddy';
+      if(kind==='trae') return 'Trae';
+      if(kind==='qoder') return 'Qoder';
       return 'Codex';
     }
+
+    var SHELL_LIGHT_AGENTS={workbuddy:1,trae:1,qoder:1};
 
     function compactNumber(value){
       var n=Number(value);
@@ -893,6 +922,11 @@
       if(!el) return;
       var kind=String(el.getAttribute('data-agent')||'');
       var row=byKind[kind]||{};
+      var lightsOn = !!(row.lightsEnabled || row.lights_enabled);
+      if (SHELL_LIGHT_AGENTS[kind]) {
+        el.hidden = !lightsOn;
+        if (!lightsOn) return;
+      }
       var state=String(row.state||'idle').trim().toLowerCase()||'idle';
       var activeState=(state==='running'||state==='needs_input'||state==='done'||state==='failed'||state==='error');
       // Fallback: when usage rail/model rows lag behind, derive Claude chip state
@@ -1841,7 +1875,12 @@
 
     function setUsageFocusFromUi(kind){
       kind=String(kind||'').trim();
-      if(kind!=='codex'&&kind!=='claude'&&kind!=='cursor') return;
+      if(kind!=='codex'&&kind!=='claude'&&kind!=='cursor'&&kind!=='workbuddy'&&kind!=='trae'&&kind!=='qoder') return;
+      // Shell hook apps have no usage pill in the mini overlay; we only need to focus the target app.
+      if(kind==='workbuddy'||kind==='trae'||kind==='qoder'){
+        invoke('cmd_soft_pad_focus_agent',{kind:kind}).catch(function(){});
+        return;
+      }
       persistUsageFocus(kind, true);
       var s=lastSnap||{};
       applyMiniAgentChips(s);

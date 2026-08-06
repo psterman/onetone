@@ -8,6 +8,9 @@ pub const CURSOR_APP_TARGET_ID: &str = "cursor-chat";
 pub const CODEX_APP_TARGET_ID: &str = "codex-chat";
 pub const MINIMAX_APP_TARGET_ID: &str = "minimax-chat";
 pub const CLAUDE_CODE_APP_TARGET_ID: &str = "claude-code";
+pub const WORKBUDDY_APP_TARGET_ID: &str = "workbuddy-chat";
+pub const TRAE_APP_TARGET_ID: &str = "trae-chat";
+pub const QODER_APP_TARGET_ID: &str = "qoder-chat";
 
 /// ponytail: Toolhelp process-tree walk is O(processes); overlay ticks every 250ms.
 /// Cache terminal-CLI resolution so we don't snapshot the whole machine multiple times per tick.
@@ -42,36 +45,55 @@ pub struct RunningAppEntry {
 struct PresetMatcher {
     id: &'static str,
     process_names: &'static [&'static str],
-    path_marker: Option<&'static str>,
+    path_markers: Option<&'static [&'static str]>,
 }
 
 const PRESET_MATCHERS: &[PresetMatcher] = &[
     PresetMatcher {
         id: CURSOR_APP_TARGET_ID,
         process_names: &["Cursor.exe"],
-        path_marker: None,
+        path_markers: None,
     },
     PresetMatcher {
         id: CODEX_APP_TARGET_ID,
         // Store Codex UI is ChatGPT.exe under OpenAI.Codex_*; CLI helper remains Codex.exe.
         process_names: &["ChatGPT.exe", "Codex.exe"],
-        path_marker: Some("OpenAI.Codex"),
+        path_markers: Some(&["OpenAI.Codex"]),
     },
     PresetMatcher {
         id: MINIMAX_APP_TARGET_ID,
         process_names: &["MiniMax Code.exe"],
-        path_marker: Some("MiniMax Code"),
+        path_markers: Some(&["MiniMax Code"]),
     },
     PresetMatcher {
         id: CLAUDE_CODE_APP_TARGET_ID,
         process_names: &["claude.exe", "Claude Code.exe"],
-        path_marker: None,
+        path_markers: None,
+    },
+    PresetMatcher {
+        id: WORKBUDDY_APP_TARGET_ID,
+        process_names: &["WorkBuddy.exe", "CodeBuddy.exe", "codebuddy.exe"],
+        path_markers: Some(&["WorkBuddy", "CodeBuddy"]),
+    },
+    PresetMatcher {
+        id: TRAE_APP_TARGET_ID,
+        process_names: &["Trae.exe", "trae.exe", "TRAE SOLO.exe"],
+        path_markers: Some(&["Trae", "TRAE SOLO"]),
+    },
+    PresetMatcher {
+        id: QODER_APP_TARGET_ID,
+        process_names: &["Qoder.exe", "qoder.exe"],
+        path_markers: Some(&["Qoder"]),
     },
 ];
 
 fn path_has_marker(path: &str, marker: &str) -> bool {
     path.to_ascii_lowercase()
         .contains(&marker.to_ascii_lowercase())
+}
+
+fn path_matches_markers(path: &str, markers: &[&str]) -> bool {
+    markers.iter().any(|marker| path_has_marker(path, marker))
 }
 
 pub fn preset_app_id_for_path(path: &str) -> Option<String> {
@@ -85,8 +107,8 @@ pub fn preset_app_id_for_path(path: &str) -> Option<String> {
             continue;
         }
         let path_ok = matcher
-            .path_marker
-            .map(|marker| path_has_marker(path, marker))
+            .path_markers
+            .map(|markers| path_matches_markers(path, markers))
             .unwrap_or(true);
         if path_ok {
             return Some(matcher.id.to_string());
@@ -894,6 +916,25 @@ mod tests {
             preset_app_id_for_path(r"C:\Users\me\AppData\Local\Programs\cursor\Cursor.exe")
                 .as_deref(),
             Some(CURSOR_APP_TARGET_ID)
+        );
+    }
+
+    #[test]
+    fn preset_path_matches_workbuddy_desktop_install() {
+        assert_eq!(
+            preset_app_id_for_path(
+                r"C:\Users\Administrator\Desktop\WorkBuddy\WorkBuddy.exe"
+            )
+            .as_deref(),
+            Some(WORKBUDDY_APP_TARGET_ID)
+        );
+    }
+
+    #[test]
+    fn preset_path_matches_trae_solo_install() {
+        assert_eq!(
+            preset_app_id_for_path(r"D:\TRAE SOLO\TRAE SOLO.exe").as_deref(),
+            Some(TRAE_APP_TARGET_ID)
         );
     }
 

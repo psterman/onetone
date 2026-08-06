@@ -616,7 +616,8 @@
       displayReason=t('homeWbSoftPadReasonWaitingControl','{name} 正在等待你，所以已切换到 {name}')
         .replace(/\{name\}/g,agentName);
     }else if(reason==='userPin'){
-      displayReason=t('homeWbSoftPadReasonUserPinControl','已暂时固定到 {name}').replace('{name}',agentName);
+      // Pin removed — show auto/fallback copy instead of temporary-pin messaging.
+      displayReason=t('homeWbSoftPadReasonFallback','已使用准备好的 {name}').replace('{name}',agentName);
     }
     if(health==='degraded'&&snap.lastRecomputeError){
       displayReason=(displayReason?displayReason+' · ':'')+t('homeWbSoftPadDegraded','重算未完全成功，仍使用当前主控');

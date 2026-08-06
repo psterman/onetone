@@ -143,6 +143,47 @@ pub fn descriptor(kind: AgentKind) -> AgentDescriptor {
             },
             default_face_id: "copilot-cli-v1",
         },
+        AgentKind::WorkBuddy => AgentDescriptor {
+            kind,
+            app_target_id: "workbuddy-chat",
+            windows_process_hints: &["WorkBuddy.exe", "CodeBuddy.exe", "codebuddy.exe"],
+            macos_bundle_ids: &[],
+            capabilities: shell_hook_capabilities(),
+            default_face_id: "workbuddy-chord-v1",
+        },
+        AgentKind::Trae => AgentDescriptor {
+            kind,
+            app_target_id: "trae-chat",
+            windows_process_hints: &["Trae.exe", "trae.exe", "TRAE SOLO.exe"],
+            macos_bundle_ids: &[],
+            capabilities: shell_hook_capabilities(),
+            default_face_id: "trae-chord-v1",
+        },
+        AgentKind::Qoder => AgentDescriptor {
+            kind,
+            app_target_id: "qoder-chat",
+            windows_process_hints: &["Qoder.exe", "qoder.exe"],
+            macos_bundle_ids: &[],
+            capabilities: shell_hook_capabilities(),
+            default_face_id: "qoder-chord-v1",
+        },
+    }
+}
+
+/// Honest ceiling for WorkBuddy / Trae / Qoder Soft Pad batch (no sessions/resume/multi-lights).
+fn shell_hook_capabilities() -> AgentCapabilities {
+    AgentCapabilities {
+        can_focus: true,
+        can_send_chord: true,
+        can_observe_lifecycle: true,
+        can_observe_needs_input: true,
+        can_observe_session_lanes: false,
+        can_focus_live_session: false,
+        can_resume_session: false,
+        can_open_exact_app_conversation: false,
+        can_multi_agent_lights: false,
+        can_invoke_internal_actions: false,
+        official_hid: false,
     }
 }
 
@@ -193,6 +234,24 @@ pub fn pad_face(face_id: &str) -> Option<PadFace> {
                 can_invoke_internal_actions: false,
                 official_hid: false,
             },
+        }),
+        "workbuddy-chord-v1" => Some(PadFace {
+            face_id: "workbuddy-chord-v1",
+            version: 1,
+            agent_kind: AgentKind::WorkBuddy,
+            required: shell_hook_capabilities(),
+        }),
+        "trae-chord-v1" => Some(PadFace {
+            face_id: "trae-chord-v1",
+            version: 1,
+            agent_kind: AgentKind::Trae,
+            required: shell_hook_capabilities(),
+        }),
+        "qoder-chord-v1" => Some(PadFace {
+            face_id: "qoder-chord-v1",
+            version: 1,
+            agent_kind: AgentKind::Qoder,
+            required: shell_hook_capabilities(),
         }),
         _ => None,
     }

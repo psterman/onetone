@@ -15,6 +15,7 @@ const keysPanelJs = readFileSync(join(root, 'src/js/features/settings/keys-panel
 const softPadJs = readFileSync(join(root, 'src/js/features/agent/soft-pad-hub-ui.js'), 'utf8');
 const mainTsx = readFileSync(join(root, 'src-islands/main.tsx'), 'utf8');
 const settingsDrawerJs = readFileSync(join(root, 'src/js/features/settings/settings-drawer.js'), 'utf8');
+const softPadWorkflowIsland = readFileSync(join(root, 'src-islands/islands/soft-pad-workflow-island.tsx'), 'utf8');
 
 console.log('[workflow-islands] P14a Keys:');
 check('buildKeysWorkflowTabsModel 已导出', keysPanelJs.includes('buildKeysWorkflowTabsModel:buildKeysWorkflowTabsModel'));
@@ -31,6 +32,10 @@ check('renderSchemeList 岛上不双写 title/count', /__otSoftPadWorkflowMounte
 check('bindChrome 岛上跳过 status enable', /e\.enable && !global\.__otSoftPadStatusMounted/.test(softPadJs));
 check('main.tsx SoftPad workflow mount', mainTsx.includes('__otMountSoftPadWorkflowIsland'));
 check('soft-pad-hub render 挂载 workflow', softPadJs.includes('__otMountSoftPadWorkflowIsland'));
+check('应用标签由 island 直接处理点击', softPadWorkflowIsland.includes('onClickCapture') &&
+  softPadWorkflowIsland.includes('OneToneSoftPadHub?.selectScope?.(scopeId)'));
+check('应用标签点击即时同步选中态', softPadWorkflowIsland.includes("classList.toggle('is-active', active)") &&
+  softPadWorkflowIsland.includes('__otSoftPadWorkflowSync?.()'));
 
 console.log(`[workflow-islands] ${pass} 通过 / ${fail} 失败`);
 if (fail > 0) process.exit(1);

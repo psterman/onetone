@@ -985,6 +985,15 @@
 
   }
 
+  function setSettingsDrawerGate(open){
+    try{
+      var ipc=global.OneToneIpc;
+      if(ipc&&typeof ipc.invoke==='function'){
+        ipc.invoke('cmd_set_settings_drawer_open',{open:!!open}).catch(function(){});
+      }
+    }catch(_){}
+  }
+
   function openDrawer(opts){
 
     hooks().ensureFullLangApplied();
@@ -993,7 +1002,8 @@
     try{
       feLog('fe openDrawer panel='+String(opts.panel||'basic')+(opts.habitWizard?' wizard=1':''));
     }catch(_){}
-    // Soft Pad float is always-on-top; dismiss so left nav / drawer stay clickable.
+    // Soft Pad float is always-on-top; durable gate + soft-dismiss so left nav / drawer stay clickable.
+    setSettingsDrawerGate(true);
     try{
       var ipc=global.OneToneIpc;
       if(ipc&&typeof ipc.invoke==='function'){
@@ -1107,6 +1117,7 @@
     }catch(_){}
 
     ui.drawerOpen=false;
+    setSettingsDrawerGate(false);
 
     lastPanel='basic';
 

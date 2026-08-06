@@ -57,6 +57,31 @@ pub fn cmd_set_setup_interaction_active(
     }
 }
 
+#[tauri::command]
+pub fn cmd_set_settings_drawer_open(
+    state: tauri::State<Arc<AppState>>,
+    window: tauri::WebviewWindow,
+    open: bool,
+) {
+    let changed = {
+        let mut gate = state.settings_drawer_open.lock();
+        if *gate == open {
+            false
+        } else {
+            *gate = open;
+            true
+        }
+    };
+    if changed {
+        crate::app_log::log_line(
+            &state,
+            "workflow",
+            &format!("settings drawer open={open}"),
+        );
+        crate::codex_micro_overlay::push_state(&window.app_handle(), state.inner());
+    }
+}
+
 fn identity_to_json(identity: &AppIdentity) -> serde_json::Value {
     let icon_data_url = app_identity::icon_data_url_for_path(identity.full_path.as_deref());
     let display_name = app_identity::identity_display_name(identity);

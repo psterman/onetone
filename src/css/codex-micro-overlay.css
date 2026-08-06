@@ -1270,6 +1270,18 @@ body {
   background: linear-gradient(180deg, #ffffff 0%, #f3f4f6 55%, #dde1e6 100%);
   border-color: rgba(80, 90, 110, 0.22);
 }
+.soft-pad-agent-bar__chip[data-agent="workbuddy"] {
+  background: linear-gradient(180deg, #ffffff 0%, #ecfdf8 55%, #c9f0e4 100%);
+  border-color: rgba(1, 200, 134, 0.28);
+}
+.soft-pad-agent-bar__chip[data-agent="trae"] {
+  background: linear-gradient(180deg, #ffffff 0%, #eef2ff 55%, #dbe4ff 100%);
+  border-color: rgba(59, 130, 246, 0.28);
+}
+.soft-pad-agent-bar__chip[data-agent="qoder"] {
+  background: linear-gradient(180deg, #ffffff 0%, #f3efff 55%, #e4dbff 100%);
+  border-color: rgba(108, 77, 255, 0.28);
+}
 
 .soft-pad-agent-bar__chip:hover {
   filter: brightness(1.03);

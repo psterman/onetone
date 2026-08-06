@@ -5,11 +5,20 @@
 // window.OneToneSoftPadHub.toggleSelectedEnable (preserves IPC + saveAsync path).
 // Hero chrome matches Keys/Voice page-status-bar (name + pill + meta + page-status-btn).
 // Two meta rows: (状态灯 / 键位 / 恢复点) + (账号 / 额度 / 重置).
+// Pad-centric: 「绑定 · App」dropdown lives here (replaces horizontal APP directory).
 
 import * as React from 'react';
 import { useIslandRefresh } from '../island-runtime';
 
 // P10 island marker — kept as data attribute in rendered output for smoke tests
+
+interface SoftPadBindScope {
+  id: string;
+  title: string;
+  active: boolean;
+  padEnabled?: boolean;
+  canPrepare?: boolean;
+}
 
 interface SoftPadStatusProps {
   name: string;
@@ -28,11 +37,15 @@ interface SoftPadStatusProps {
   usageState: string;
   padEnabled: boolean;
   hasMapping: boolean;
+  activeScope?: string;
+  bindLabel?: string;
+  scopes?: SoftPadBindScope[];
 }
 
 type SoftPadHubApi = {
   toggleSelectedEnable?: () => void;
   handleStatusAction?: (action: string) => void;
+  selectScope?: (scopeId: string, opts?: { fromUser?: boolean; resetView?: boolean }) => void;
 };
 
 function w() {
@@ -60,6 +73,9 @@ const EMPTY: SoftPadStatusProps = {
   usageState: 'unavailable',
   padEnabled: false,
   hasMapping: false,
+  activeScope: 'codex',
+  bindLabel: '绑定 · —',
+  scopes: [],
 };
 
 function readProps(): SoftPadStatusProps {
@@ -86,6 +102,8 @@ export function SoftPadStatusIsland(): JSX.Element {
 
 export function SoftPadStatusBarIsland(): JSX.Element {
   const [props, setProps] = React.useState<SoftPadStatusProps>(readProps);
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const bindRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
     const win = w();
@@ -97,6 +115,17 @@ export function SoftPadStatusBarIsland(): JSX.Element {
     };
   }, []);
 
+  React.useEffect(() => {
+    if (!menuOpen) return;
+    const onDoc = (ev: MouseEvent) => {
+      const t = ev.target as Node | null;
+      if (bindRef.current && t && bindRef.current.contains(t)) return;
+      setMenuOpen(false);
+    };
+    document.addEventListener('click', onDoc);
+    return () => document.removeEventListener('click', onDoc);
+  }, [menuOpen]);
+
   useIslandRefresh(() => {
     setProps(readProps());
   });
@@ -104,6 +133,12 @@ export function SoftPadStatusBarIsland(): JSX.Element {
   const handleToggle = React.useCallback(() => {
     const hub = w().OneToneSoftPadHub;
     if (hub?.toggleSelectedEnable) hub.toggleSelectedEnable();
+  }, []);
+
+  const selectScope = React.useCallback((scopeId: string) => {
+    const hub = w().OneToneSoftPadHub;
+    if (hub?.selectScope) hub.selectScope(scopeId, { fromUser: true, resetView: false });
+    setMenuOpen(false);
   }, []);
 
   const {
@@ -119,6 +154,8 @@ export function SoftPadStatusBarIsland(): JSX.Element {
     resetCountdown,
     padEnabled,
     hasMapping,
+    bindLabel,
+    scopes,
   } = props;
 
   return (
@@ -134,6 +171,54 @@ export function SoftPadStatusBarIsland(): JSX.Element {
           >
             {status}
           </span>
+          <div className="soft-pad-bind-app" id="softPadBindApp" ref={bindRef}>
+            <button
+              type="button"
+              className="soft-pad-bind-app__btn"
+              id="softPadBindAppBtn"
+              aria-haspopup="listbox"
+              aria-expanded={menuOpen ? 'true' : 'false'}
+              aria-controls="softPadBindAppMenu"
+              onClick={(ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                setMenuOpen((v) => !v);
+              }}
+            >
+              <span className="soft-pad-bind-app__lbl" id="softPadBindAppLbl">
+                {bindLabel || '绑定 · —'}
+              </span>
+              <span className="soft-pad-bind-app__chev" aria-hidden="true">
+                ▾
+              </span>
+            </button>
+            <div
+              className="soft-pad-bind-app__menu"
+              id="softPadBindAppMenu"
+              role="listbox"
+              hidden={!menuOpen}
+            >
+              {(scopes || []).map((scope) => (
+                <button
+                  key={scope.id}
+                  type="button"
+                  className={['soft-pad-bind-app__opt', scope.active ? 'is-active' : '']
+                    .filter(Boolean)
+                    .join(' ')}
+                  role="option"
+                  data-scope={scope.id}
+                  aria-selected={scope.active ? 'true' : 'false'}
+                  onClick={(ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    selectScope(scope.id);
+                  }}
+                >
+                  {scope.title}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <div className="keys-scheme-summary-meta">
           <span className="keys-scheme-summary-item">

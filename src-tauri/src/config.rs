@@ -1271,6 +1271,15 @@ pub struct CodexMicroPadConfig {
     /// Soft Pad top-bar Cursor status dot. Independent of Hook install; off → idle chip.
     #[serde(default)]
     pub cursor_status_lights_enabled: bool,
+    /// Soft Pad top-bar WorkBuddy status dot (shell hook lifecycle).
+    #[serde(default)]
+    pub workbuddy_status_lights_enabled: bool,
+    /// Soft Pad top-bar Trae status dot (shell hook lifecycle).
+    #[serde(default)]
+    pub trae_status_lights_enabled: bool,
+    /// Soft Pad top-bar Qoder status dot (shell hook lifecycle).
+    #[serde(default)]
+    pub qoder_status_lights_enabled: bool,
     /// User opt-in for Claude CLI key inject. Default off. Still requires high-confidence latch.
     #[serde(default)]
     pub claude_cli_inject_pref_enabled: bool,
@@ -1305,6 +1314,9 @@ impl Default for CodexMicroPadConfig {
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: default_codex_micro_presentation(),
             skin: default_codex_micro_skin(),

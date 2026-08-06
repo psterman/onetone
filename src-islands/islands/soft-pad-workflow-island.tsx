@@ -8,6 +8,15 @@ import {
 } from '../domain/softPadWorkflow';
 
 // P14b: SoftPad 工作流壳岛 — app switcher + scheme list；#softPadHubStage 主区留 legacy。
+// The island owns app-chip clicks. The legacy host listener remains as a fallback
+// when the island is not mounted.
+
+type SoftPadWindow = Window & {
+  OneToneSoftPadHub?: {
+    selectScope?: (scopeId: string) => void;
+  };
+  __otSoftPadWorkflowSync?: () => void;
+};
 
 type WorkflowListener = () => void;
 const workflowListeners = new Set<WorkflowListener>();
@@ -47,7 +56,6 @@ function useWorkflowModel(): SoftPadWorkflowModel {
 const HtmlBlock = memo(function HtmlBlock({ html }: { html: string }) {
   return (
     <div
-      style={{ display: 'contents' }}
       // eslint-disable-next-line react/no-danger -- markup 来自 legacy chip/row view
       dangerouslySetInnerHTML={{ __html: html }}
     />
@@ -67,12 +75,31 @@ export function SoftPadAppSwitcherIsland(): JSX.Element {
 
   if (model.switcherHidden) return <></>;
 
+  const chipsHtml = model.switcherChips.map((chip) => chip.html).join('');
+
   return (
-    <>
-      {model.switcherChips.map((chip) => (
-        <HtmlBlock key={chip.id} html={chip.html} />
-      ))}
-    </>
+    <div
+      className="soft-pad-app-switcher__chips"
+      onClickCapture={(ev) => {
+        const target = ev.target as Element | null;
+        const chip = target?.closest?.('[data-scope]') as HTMLButtonElement | null;
+        const scopeId = chip?.getAttribute('data-scope');
+        if (!chip || !scopeId) return;
+        // Avoid a second selectScope call from the legacy host bubble listener.
+        ev.preventDefault();
+        ev.stopPropagation();
+        chip.parentElement?.querySelectorAll<HTMLButtonElement>('[data-scope]').forEach((item) => {
+          const active = item === chip;
+          item.classList.toggle('is-active', active);
+          item.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        const win = window as SoftPadWindow;
+        win.OneToneSoftPadHub?.selectScope?.(scopeId);
+        win.__otSoftPadWorkflowSync?.();
+      }}
+      // eslint-disable-next-line react/no-danger -- markup 来自 legacy appSwitcherChipView / purposeChipView
+      dangerouslySetInnerHTML={{ __html: chipsHtml }}
+    />
   );
 }
 

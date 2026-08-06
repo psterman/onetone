@@ -125,7 +125,12 @@ pub fn project_waiting_kinds() -> (Vec<AgentKind>, Vec<Instant>) {
 
 fn signal_allows_waiting(s: &AgentAttentionSignal) -> bool {
     match s.agent {
-        AgentKind::Claude | AgentKind::Codex | AgentKind::CopilotCli => true,
+        AgentKind::Claude
+        | AgentKind::Codex
+        | AgentKind::CopilotCli
+        | AgentKind::WorkBuddy
+        | AgentKind::Trae
+        | AgentKind::Qoder => true,
         AgentKind::Cursor => {
             // Official Cursor waiting only when gated open; OneTone ask always allowed.
             s.source == SignalSource::OneToneAsk
@@ -136,7 +141,12 @@ fn signal_allows_waiting(s: &AgentAttentionSignal) -> bool {
 
 fn agent_allows_waiting_row(agent: AgentKind, source: SignalSource) -> bool {
     match agent {
-        AgentKind::Claude | AgentKind::Codex | AgentKind::CopilotCli => true,
+        AgentKind::Claude
+        | AgentKind::Codex
+        | AgentKind::CopilotCli
+        | AgentKind::WorkBuddy
+        | AgentKind::Trae
+        | AgentKind::Qoder => true,
         AgentKind::Cursor => {
             source == SignalSource::OneToneAsk
                 || crate::agent_catalog::cursor_can_observe_needs_input()

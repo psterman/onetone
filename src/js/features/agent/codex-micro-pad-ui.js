@@ -901,6 +901,9 @@
         codexStatusLightsEnabled: false,
         claudeStatusLightsEnabled: false,
         cursorStatusLightsEnabled: false,
+        workbuddyStatusLightsEnabled: false,
+        traeStatusLightsEnabled: false,
+        qoderStatusLightsEnabled: false,
         presentation: 'full',
         skin: 'default',
         keys: defaultSeedRoutes()
@@ -944,6 +947,15 @@
     }
     if (m.codexMicroPad.cursorStatusLightsEnabled == null) {
       m.codexMicroPad.cursorStatusLightsEnabled = false;
+    }
+    if (m.codexMicroPad.workbuddyStatusLightsEnabled == null) {
+      m.codexMicroPad.workbuddyStatusLightsEnabled = false;
+    }
+    if (m.codexMicroPad.traeStatusLightsEnabled == null) {
+      m.codexMicroPad.traeStatusLightsEnabled = false;
+    }
+    if (m.codexMicroPad.qoderStatusLightsEnabled == null) {
+      m.codexMicroPad.qoderStatusLightsEnabled = false;
     }
     if (!m.codexMicroPad.presentation ||
         (m.codexMicroPad.presentation !== 'full' && m.codexMicroPad.presentation !== 'mini')) {
@@ -2728,10 +2740,24 @@
     return String((pad && pad.layoutProfile) || '').toLowerCase() === 'advanced';
   }
 
+  var AGENT_LIGHT_SPECS = [
+    { agent: 'codex', label: 'Codex' },
+    { agent: 'claude', label: 'Claude' },
+    { agent: 'cursor', label: 'Cursor' },
+    { agent: 'workbuddy', label: 'WorkBuddy' },
+    { agent: 'trae', label: 'Trae' },
+    { agent: 'qoder', label: 'Qoder' }
+  ];
+
+  var SHELL_HOOK_LIGHT_AGENTS = { workbuddy: true, trae: true, qoder: true };
+
   function agentLightEnabledOnPad(pad, agent) {
     if (!pad) return false;
     if (agent === 'claude') return !!pad.claudeStatusLightsEnabled;
     if (agent === 'cursor') return !!pad.cursorStatusLightsEnabled;
+    if (agent === 'workbuddy') return !!pad.workbuddyStatusLightsEnabled;
+    if (agent === 'trae') return !!pad.traeStatusLightsEnabled;
+    if (agent === 'qoder') return !!pad.qoderStatusLightsEnabled;
     return !!pad.codexStatusLightsEnabled;
   }
 
@@ -2739,6 +2765,9 @@
     if (!pad) return;
     if (agent === 'claude') pad.claudeStatusLightsEnabled = !!enabled;
     else if (agent === 'cursor') pad.cursorStatusLightsEnabled = !!enabled;
+    else if (agent === 'workbuddy') pad.workbuddyStatusLightsEnabled = !!enabled;
+    else if (agent === 'trae') pad.traeStatusLightsEnabled = !!enabled;
+    else if (agent === 'qoder') pad.qoderStatusLightsEnabled = !!enabled;
     else pad.codexStatusLightsEnabled = !!enabled;
   }
 
@@ -2764,9 +2793,9 @@
   }
 
   function renderAgentLightsPicker(m, pad) {
-    var anyOn = agentLightEnabledOnPad(pad, 'codex') ||
-      agentLightEnabledOnPad(pad, 'claude') ||
-      agentLightEnabledOnPad(pad, 'cursor');
+    var anyOn = AGENT_LIGHT_SPECS.some(function (spec) {
+      return agentLightEnabledOnPad(pad, spec.agent);
+    });
     var sessionsNote = String((pad && pad.purpose) || '') === 'sessions'
       ? t('softPadLightsSessionsNote', '混排导航：仅配置的 AG 会话槽显示 Lane 角标；Claude 子代理只做角点装饰。')
       : t('softPadLightsShortcutsNote', 'AG 仍是动作键。顶栏灯只控显示；导航槽需在「更多」里启用。');
@@ -2789,13 +2818,13 @@
       '</p>' +
       '<p class="codex-pad-mgr__hint">' +
       esc(t('softPadAgentLightsLead',
-        '对照 Soft Pad 顶栏三盏灯：开关决定谁显示忙闲。灯≠按下动作。')) +
+        '对照 Soft Pad 顶栏状态灯：开关决定谁显示忙闲。灯≠按下动作。')) +
       '</p>' +
       '<div class="soft-pad-agent-light-list" role="group" aria-label="' +
       esc(t('softPadAgentLightsTitle', '顶栏状态灯')) + '" aria-live="polite">' +
-      renderAgentLightRow('codex', 'Codex', pad) +
-      renderAgentLightRow('claude', 'Claude', pad) +
-      renderAgentLightRow('cursor', 'Cursor', pad) +
+      AGENT_LIGHT_SPECS.map(function (spec) {
+        return renderAgentLightRow(spec.agent, spec.label, pad);
+      }).join('') +
       '</div>' +
       '<p class="codex-pad-mgr__hint soft-pad-agent-light-legend">' +
       esc(t('softPadAgentLightsLegend',
@@ -3038,16 +3067,25 @@
     }
   }
 
-  var agentLightsHookCache = { claude: null, cursor: null };
+  var agentLightsHookCache = { claude: null, cursor: null, workbuddy: null, trae: null, qoder: null };
+
+  function shellHookConnectNeeded(kind, st) {
+    kind = String(kind || '').toLowerCase();
+    st = st || {};
+    if (st.probeExists === false) return true;
+    if (st.onetoneConfigured) return false;
+    if (st.settingsParseOk === false && st.settingsExists) return true;
+    return !st.onetoneConfigured;
+  }
 
   function refreshAgentLightsPickerState(root, m, pad, opts) {
     opts = opts || {};
     if (!root) return Promise.resolve();
     var empty = root.querySelector('[data-agent-lights-empty]');
     if (empty) {
-      var any = agentLightEnabledOnPad(pad, 'codex') ||
-        agentLightEnabledOnPad(pad, 'claude') ||
-        agentLightEnabledOnPad(pad, 'cursor');
+      var any = AGENT_LIGHT_SPECS.some(function (spec) {
+        return agentLightEnabledOnPad(pad, spec.agent);
+      });
       empty.hidden = !!any;
     }
     function paintFromCache(attn) {
@@ -3076,7 +3114,6 @@
       var claudePhase = String(
         claude.panelPhase || claude.panel_phase || claude.installPhase || claude.phase || ''
       ).toLowerCase();
-      // Until hook status returns, do not block UI — hide connect CTA.
       var claudeKnown = !!agentLightsHookCache.claude;
       var cursorKnown = !!agentLightsHookCache.cursor;
       var claudeNeed = claudeKnown && (
@@ -3100,18 +3137,34 @@
         cursorNeed,
         t('softPadCursorConnect', '复制 Cursor Hook 配置')
       );
+      ['workbuddy', 'trae', 'qoder'].forEach(function (kind) {
+        var st = agentLightsHookCache[kind] || {};
+        var known = !!agentLightsHookCache[kind];
+        var need = known && shellHookConnectNeeded(kind, st);
+        var label = kind === 'workbuddy'
+          ? t('softPadShellHookInstall', '接入')
+          : kind === 'trae'
+            ? t('softPadShellHookInstall', '接入')
+            : t('softPadShellHookInstall', '接入');
+        paintAgentLightRowStatus(root, kind, stateFor(kind), need, label);
+      });
     }
-    // Hot path: attention only. Hook setup scans disk and 假死'd Soft Pad toggles.
     return padInvoke('cmd_agent_attention_snapshot', {}).catch(function () { return null; })
       .then(function (attn) {
         paintFromCache(attn);
         if (!opts.hooks) return { attn: attn };
         return Promise.all([
           padInvoke('cmd_claude_hook_setup_status', {}).catch(function () { return null; }),
-          padInvoke('cmd_cursor_hook_setup_status', {}).catch(function () { return null; })
+          padInvoke('cmd_cursor_hook_setup_status', {}).catch(function () { return null; }),
+          padInvoke('cmd_shell_agent_hook_setup_status', { kind: 'workbuddy' }).catch(function () { return null; }),
+          padInvoke('cmd_shell_agent_hook_setup_status', { kind: 'trae' }).catch(function () { return null; }),
+          padInvoke('cmd_shell_agent_hook_setup_status', { kind: 'qoder' }).catch(function () { return null; })
         ]).then(function (pair) {
           if (pair[0]) agentLightsHookCache.claude = pair[0];
           if (pair[1]) agentLightsHookCache.cursor = pair[1];
+          if (pair[2]) agentLightsHookCache.workbuddy = pair[2];
+          if (pair[3]) agentLightsHookCache.trae = pair[3];
+          if (pair[4]) agentLightsHookCache.qoder = pair[4];
           paintFromCache(attn);
           return { attn: attn, claude: pair[0], cursor: pair[1] };
         });
@@ -3128,9 +3181,9 @@
     if (picker) {
       var empty = picker.querySelector('[data-agent-lights-empty]');
       if (empty) {
-        var any = agentLightEnabledOnPad(pad, 'codex') ||
-          agentLightEnabledOnPad(pad, 'claude') ||
-          agentLightEnabledOnPad(pad, 'cursor');
+        var any = AGENT_LIGHT_SPECS.some(function (spec) {
+          return agentLightEnabledOnPad(pad, spec.agent);
+        });
         empty.hidden = !!any;
       }
     }
@@ -4878,14 +4931,17 @@
     });
   }
 
-  /** Preview key → only edit when already on「改按键」; otherwise browse caption only.
-   *  Auto-openSubpage(layout) stole「何时显示」landing (and ghost-clicks on open). */
+  /** Preview key → open「改按键」with that key focused (fromUser; land-lock still blocks ghosts). */
   function softPadPreviewEditKey(m, microKeyId) {
+    markSoftPadPreviewFocus(microKeyId);
     if (softPadPreviewOnLayout()) {
       openEditKeycap(m, microKeyId, { mode: 'inline' });
       return;
     }
-    markSoftPadPreviewFocus(microKeyId);
+    var Hub = global.OneToneSoftPadHub;
+    if (Hub && typeof Hub.openSubpage === 'function') {
+      Hub.openSubpage('layout', { fromUser: true, keyId: microKeyId });
+    }
   }
 
   function setSoftPadPreviewCaption(host, name, chord) {
@@ -6374,6 +6430,24 @@
             btn.disabled = false;
             toast(t('cursorHookCopyFail', '无法生成 Cursor Hook 预览'));
           });
+          return;
+        }
+        if (SHELL_HOOK_LIGHT_AGENTS[agent]) {
+          var Shell = global.OneToneShellAgentHookPanel;
+          btn.disabled = true;
+          btn.textContent = t('softPadConnecting', '连接中…');
+          var install = Shell && Shell.installShellAgentHook
+            ? Shell.installShellAgentHook(agent)
+            : padInvoke('cmd_shell_agent_hook_install_confirm', { kind: agent });
+          Promise.resolve(install).then(function () {
+            return padInvoke('cmd_shell_agent_hook_setup_status', { kind: agent }).then(function (st) {
+              if (st) agentLightsHookCache[agent] = st;
+            });
+          }).then(function () {
+            refreshAgentLightsPickerState(body, m, pad, { hooks: true });
+          }).finally(function () {
+            btn.disabled = false;
+          });
         }
       });
     });
@@ -7829,6 +7903,7 @@
     onCapabilitySelected: onCapabilitySelected,
     routeForSlot: routeForSlot,
     badgeForSlot: badgeForSlot,
+    ensurePad: ensurePad,
     listPadMappings: listPadMappings,
     openEditKeycap: openEditKeycap,
     closeEditKeycap: closeEditKeycap,

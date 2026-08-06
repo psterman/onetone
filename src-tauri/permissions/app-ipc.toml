@@ -20,6 +20,7 @@ permissions = [
   "allow-cmd-foreground-app",
   "allow-cmd-running-apps",
   "allow-cmd-app-icon",
+  "allow-cmd-set-settings-drawer-open",
   "allow-cmd-process-usage",
   "allow-cmd-capture-source",
   "allow-cmd-frontend-keydown",

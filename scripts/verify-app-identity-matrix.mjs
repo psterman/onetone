@@ -67,7 +67,15 @@ function serializeAppBehaviorRules(rules) {
   });
 }
 
-const PRESETS = new Set(['cursor-chat', 'codex-chat', 'claude-code', 'minimax-chat']);
+const PRESETS = new Set([
+  'cursor-chat',
+  'codex-chat',
+  'claude-code',
+  'minimax-chat',
+  'workbuddy-chat',
+  'trae-chat',
+  'qoder-chat'
+]);
 
 function ruleIsExplicitMatch(rule) {
   if (!rule || !rule.match) return false;
@@ -254,8 +262,32 @@ assert(r.match.exeNames[0] === 'WINWORD.EXE', 'round-trip: exeNames');
 assert(r.match.pathContains === 'Microsoft Office', 'round-trip: pathContains');
 assert(r.match.titleContains === 'Document', 'round-trip: titleContains');
 
+function pathHasMarker(path, marker) {
+  return String(path || '').toLowerCase().indexOf(String(marker || '').toLowerCase()) >= 0;
+}
+function presetPathMatch(path) {
+  var file = String(path || '').split(/[\\/]/).pop() || '';
+  if (file.toLowerCase() === 'workbuddy.exe' &&
+      (pathHasMarker(path, 'WorkBuddy') || pathHasMarker(path, 'CodeBuddy'))) {
+    return 'workbuddy-chat';
+  }
+  if (file.toLowerCase() === 'trae solo.exe' &&
+      (pathHasMarker(path, 'Trae') || pathHasMarker(path, 'TRAE SOLO'))) {
+    return 'trae-chat';
+  }
+  return '';
+}
+assert(
+  presetPathMatch('C:\\Users\\Administrator\\Desktop\\WorkBuddy\\WorkBuddy.exe') === 'workbuddy-chat',
+  'preset: WorkBuddy desktop path'
+);
+assert(
+  presetPathMatch('D:\\TRAE SOLO\\TRAE SOLO.exe') === 'trae-chat',
+  'preset: Trae SOLO path'
+);
+
 if (failed) {
   console.error('\n' + failed + ' assertion(s) failed');
   process.exit(1);
 }
-console.log('\nAll AppIdentity verify-matrix checks passed (' + (9) + ' cases).');
+console.log('\nAll AppIdentity verify-matrix checks passed (' + (11) + ' cases).');

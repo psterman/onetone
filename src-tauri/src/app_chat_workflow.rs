@@ -30,6 +30,9 @@ fn mark_custom_rule_launched(rule_id: &str) {
 pub const CURSOR_APP_TARGET_ID: &str = "cursor-chat";
 pub const CODEX_APP_TARGET_ID: &str = "codex-chat";
 pub const MINIMAX_APP_TARGET_ID: &str = "minimax-chat";
+pub const WORKBUDDY_APP_TARGET_ID: &str = "workbuddy-chat";
+pub const TRAE_APP_TARGET_ID: &str = "trae-chat";
+pub const QODER_APP_TARGET_ID: &str = "qoder-chat";
 
 #[derive(Debug, Clone, Copy)]
 pub struct AppChatProfile {
@@ -104,12 +107,56 @@ const CLAUDE_PROFILE: AppChatProfile = AppChatProfile {
     launch_localappdata_rel: &[],
 };
 
+const WORKBUDDY_PROFILE: AppChatProfile = AppChatProfile {
+    id: WORKBUDDY_APP_TARGET_ID,
+    error_prefix: "workbuddy",
+    process_names: &["WorkBuddy.exe", "CodeBuddy.exe", "codebuddy.exe"],
+    // Shell hook apps are identified by process name; avoid over-strict path markers here.
+    path_marker: None,
+    open_key: None,
+    composer_anchor: (0.50, 0.91),
+    accept_click_without_uia: true,
+    post_voice_key_ms: 420,
+    restore_main_delay_ms: 360,
+    launch_localappdata_rel: &[],
+};
+
+const TRAE_PROFILE: AppChatProfile = AppChatProfile {
+    id: TRAE_APP_TARGET_ID,
+    error_prefix: "trae",
+    process_names: &["Trae.exe", "trae.exe", "TRAE SOLO.exe"],
+    // Shell hook apps are identified by process name; avoid over-strict path markers here.
+    path_marker: None,
+    open_key: None,
+    composer_anchor: (0.50, 0.91),
+    accept_click_without_uia: true,
+    post_voice_key_ms: 420,
+    restore_main_delay_ms: 360,
+    launch_localappdata_rel: &[],
+};
+
+const QODER_PROFILE: AppChatProfile = AppChatProfile {
+    id: QODER_APP_TARGET_ID,
+    error_prefix: "qoder",
+    process_names: &["Qoder.exe", "qoder.exe"],
+    path_marker: None,
+    open_key: None,
+    composer_anchor: (0.50, 0.91),
+    accept_click_without_uia: true,
+    post_voice_key_ms: 420,
+    restore_main_delay_ms: 360,
+    launch_localappdata_rel: &[],
+};
+
 pub fn profile_for(app_target_id: &str) -> Option<&'static AppChatProfile> {
     match app_target_id {
         CURSOR_APP_TARGET_ID => Some(&CURSOR_PROFILE),
         CODEX_APP_TARGET_ID => Some(&CODEX_PROFILE),
         MINIMAX_APP_TARGET_ID => Some(&MINIMAX_PROFILE),
         CLAUDE_CODE_APP_TARGET_ID => Some(&CLAUDE_PROFILE),
+        WORKBUDDY_APP_TARGET_ID => Some(&WORKBUDDY_PROFILE),
+        TRAE_APP_TARGET_ID => Some(&TRAE_PROFILE),
+        QODER_APP_TARGET_ID => Some(&QODER_PROFILE),
         _ => None,
     }
 }
@@ -147,15 +194,16 @@ impl MainWindowHideGuard {
     fn maybe_hide(app: &AppHandle) -> Self {
         if let Some(state) = app.try_state::<Arc<AppState>>() {
             let setup_open = *state.setup_interaction_active.lock();
+            let settings_open = *state.settings_drawer_open.lock();
             let verify_active = state.trigger_verify_listen.lock().is_some();
             let recording_active = *state.recording.lock();
-            if setup_open || verify_active || recording_active {
+            if setup_open || settings_open || verify_active || recording_active {
                 crate::app_log::log_line(
                     state.inner(),
                     "window",
                     &format!(
-                        "main window hide blocked source=workflow setup_open={} verify_active={} recording_active={}",
-                        setup_open, verify_active, recording_active
+                        "main window hide blocked source=workflow setup_open={} settings_open={} verify_active={} recording_active={}",
+                        setup_open, settings_open, verify_active, recording_active
                     ),
                 );
                 return Self {

@@ -41,11 +41,6 @@ import {
 } from './islands/habit-hub-chrome-island';
 import { KeysWorkflowTabsIsland } from './islands/keys-workflow-island';
 import {
-  SoftPadAppSwitcherIsland,
-  SoftPadSchemeListIsland,
-  registerSoftPadWorkflowSync,
-} from './islands/soft-pad-workflow-island';
-import {
   SoftPadFuncTilesIsland,
   registerSoftPadFuncTilesBridge,
 } from './islands/soft-pad-func-tiles-island';
@@ -602,25 +597,23 @@ function mountRecordCancelBarIsland(): void {
 (window as unknown as { __otMountRecordCancelBarIsland?: () => void }).__otMountRecordCancelBarIsland =
   mountRecordCancelBarIsland;
 
-// P14b：挂载 SoftPad 工作流壳岛（app switcher + scheme list；延迟到 SoftPad 首次 render）
+// Soft Pad app switcher is legacy DOM — React root on #softPadAppSwitcher ate chip clicks in WebView2.
+// Scheme aside removed; top bar owns app selection.
 function mountSoftPadWorkflowIsland(): void {
-  if ((window as unknown as { __otSoftPadWorkflowMounted?: boolean }).__otSoftPadWorkflowMounted) return;
-
-  const switcherHost = document.getElementById('softPadAppSwitcher');
-  const listHost = document.getElementById('softPadSchemeList');
-  if (!switcherHost || !listHost) return;
-
-  switcherHost.innerHTML = '';
-  listHost.innerHTML = '';
-
-  OneToneIslands.mountIsland('softPadAppSwitcher', SoftPadAppSwitcherIsland, {}, {
-    onRefresh: () => ({}) as Record<string, unknown>,
-  });
-  OneToneIslands.mountIsland('softPadSchemeList', SoftPadSchemeListIsland, {}, {
-    onRefresh: () => ({}) as Record<string, unknown>,
-  });
-
-  registerSoftPadWorkflowSync();
+  try {
+    if (OneToneIslands.isMounted('softPadAppSwitcher')) {
+      OneToneIslands.unmountIsland('softPadAppSwitcher');
+    }
+    if (OneToneIslands.isMounted('softPadSchemeList')) {
+      OneToneIslands.unmountIsland('softPadSchemeList');
+    }
+  } catch (_) {}
+  const win = window as unknown as {
+    __otSoftPadWorkflowMounted?: boolean;
+    __otSoftPadWorkflowSync?: () => void;
+  };
+  win.__otSoftPadWorkflowMounted = false;
+  if (win.__otSoftPadWorkflowSync) delete win.__otSoftPadWorkflowSync;
 }
 (window as unknown as { __otMountSoftPadWorkflowIsland?: () => void }).__otMountSoftPadWorkflowIsland =
   mountSoftPadWorkflowIsland;

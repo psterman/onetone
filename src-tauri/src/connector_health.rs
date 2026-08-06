@@ -283,12 +283,7 @@ pub fn headline_for_agent(agent: AgentKind) -> (HealthState, &'static str) {
 }
 
 fn parse_agent(s: &str) -> Result<AgentKind, ()> {
-    match s {
-        "codex" => Ok(AgentKind::Codex),
-        "claude" => Ok(AgentKind::Claude),
-        "cursor" => Ok(AgentKind::Cursor),
-        _ => Err(()),
-    }
+    AgentKind::from_kind_str(s).ok_or(())
 }
 
 fn parse_capability(s: &str) -> Result<CapabilityKind, ()> {

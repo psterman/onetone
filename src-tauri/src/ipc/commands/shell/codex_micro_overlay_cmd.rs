@@ -128,13 +128,17 @@ pub fn cmd_codex_micro_overlay_toggle_joy_panel(
 #[tauri::command]
 pub async fn cmd_soft_pad_focus_agent(app: AppHandle, kind: String) -> Result<serde_json::Value, String> {
     use crate::app_chat_workflow::{
-        self, CLAUDE_CODE_APP_TARGET_ID, CODEX_APP_TARGET_ID, CURSOR_APP_TARGET_ID,
+        self, CLAUDE_CODE_APP_TARGET_ID, CODEX_APP_TARGET_ID, CURSOR_APP_TARGET_ID, QODER_APP_TARGET_ID,
+        TRAE_APP_TARGET_ID, WORKBUDDY_APP_TARGET_ID,
     };
     let kind = kind.trim().to_ascii_lowercase();
     let target = match kind.as_str() {
         "codex" => CODEX_APP_TARGET_ID,
         "claude" => CLAUDE_CODE_APP_TARGET_ID,
         "cursor" => CURSOR_APP_TARGET_ID,
+        "workbuddy" => WORKBUDDY_APP_TARGET_ID,
+        "trae" => TRAE_APP_TARGET_ID,
+        "qoder" => QODER_APP_TARGET_ID,
         _ => return Err("unknown_agent".into()),
     };
     let target_owned = target.to_string();

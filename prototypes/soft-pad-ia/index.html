@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Soft Pad IA 原型 · 三方案对比</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0e1116;
+      --surface: #161b22;
+      --surface-2: #1c2330;
+      --surface-soft: rgba(255,255,255,.04);
+      --line: rgba(255,255,255,.08);
+      --line-strong: rgba(255,255,255,.14);
+      --text: #e8eef5;
+      --muted: #8b97a8;
+      --cyan: #3eb8dc;
+      --cyan-soft: rgba(62,184,220,.14);
+      --cyan-border: rgba(62,184,220,.35);
+      --amber: #d97706;
+      --amber-soft: rgba(245,158,11,.12);
+      --green: #34d399;
+      --danger: #f87171;
+      --radius: 10px;
+      --font: "IBM Plex Sans", system-ui, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); }
+    body { display: grid; grid-template-rows: auto 1fr; }
+
+    /* —— Prototype chrome —— */
+    .proto-bar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 12px 18px; border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #141920, #10141a);
+      position: sticky; top: 0; z-index: 40;
+    }
+    .proto-bar h1 {
+      margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .02em;
+      color: var(--muted); text-transform: uppercase;
+    }
+    .proto-bar h1 strong { color: var(--text); font-weight: 700; }
+    .variant-switch {
+      display: inline-flex; gap: 4px; padding: 3px; border-radius: 999px;
+      background: var(--surface); border: 1px solid var(--line);
+    }
+    .variant-switch button {
+      border: 0; background: transparent; color: var(--muted);
+      font: 600 12px/1 var(--font); padding: 8px 14px; border-radius: 999px;
+      cursor: pointer; transition: .15s ease;
+    }
+    .variant-switch button[aria-pressed="true"] {
+      background: var(--cyan-soft); color: var(--cyan); box-shadow: inset 0 0 0 1px var(--cyan-border);
+    }
+    .variant-note {
+      flex: 1; min-width: 220px; font-size: 12px; color: var(--muted); line-height: 1.35;
+    }
+    .variant-note b { color: var(--text); font-weight: 600; }
+
+    .stage-wrap { padding: 18px; max-width: 1100px; margin: 0 auto; width: 100%; }
+    .mock {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,.35);
+    }
+    .mock[hidden] { display: none !important; }
+
+    /* —— Shared product chrome —— */
+    .status-bar {
+      display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+      padding: 14px 18px; border-bottom: 1px solid var(--line);
+      background: linear-gradient(90deg, rgba(62,184,220,.06), transparent 55%);
+    }
+    .status-main { display: grid; gap: 6px; }
+    .title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .title-row .name { font-size: 15px; font-weight: 700; }
+    .pill {
+      font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      border: 1px solid rgba(52,211,153,.28); background: rgba(52,211,153,.12); color: var(--green);
+    }
+    .meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+    .meta strong { color: var(--text); font-weight: 700; }
+    .status-actions { display: flex; gap: 8px; align-items: center; }
+    .btn {
+      border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text);
+      font: 600 12px/1 var(--font); padding: 8px 12px; border-radius: 8px; cursor: pointer;
+    }
+    .btn.primary { background: var(--cyan-soft); border-color: var(--cyan-border); color: var(--cyan); }
+    .toggle {
+      width: 40px; height: 22px; border-radius: 999px; border: 1px solid var(--cyan-border);
+      background: var(--cyan); position: relative;
+    }
+    .toggle::after {
+      content: ""; position: absolute; top: 2px; right: 2px; width: 16px; height: 16px;
+      border-radius: 50%; background: #fff;
+    }
+
+    /* Hero flow nodes */
+    .flow {
+      position: relative; padding: 18px 24px 10px; border-bottom: 1px solid var(--line);
+    }
+    .flow-track {
+      position: absolute; left: 12%; right: 12%; top: 52px; height: 3px;
+      background: linear-gradient(90deg, rgba(62,184,220,.7), rgba(42,156,196,.9), rgba(245,158,11,.7));
+      border-radius: 999px; opacity: .55; pointer-events: none;
+    }
+    .flow-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; position: relative;
+    }
+    .node {
+      display: grid; justify-items: center; gap: 6px; text-align: center; cursor: pointer;
+      background: transparent; border: 0; color: inherit; font: inherit; padding: 0;
+    }
+    .node .tag {
+      font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .04em;
+      color: var(--muted); padding: 2px 8px; border-radius: 999px;
+      border: 1px solid var(--line); background: var(--surface-soft);
+    }
+    .node[data-active="true"] .tag { color: var(--cyan); border-color: var(--cyan-border); background: var(--cyan-soft); }
+    .node[data-stage="timeline"][data-active="true"] .tag { color: var(--amber); border-color: rgba(245,158,11,.35); background: var(--amber-soft); }
+    .node-btn {
+      width: 56px; height: 56px; border-radius: 50%;
+      border: 2px solid var(--line-strong); background: var(--surface-2);
+      display: grid; place-items: center; color: var(--muted); transition: .15s ease;
+    }
+    .node[data-active="true"] .node-btn {
+      border-color: var(--cyan); color: var(--cyan);
+      box-shadow: 0 0 0 4px var(--cyan-soft);
+    }
+    .node[data-stage="timeline"][data-active="true"] .node-btn {
+      border-color: var(--amber); color: var(--amber); box-shadow: 0 0 0 4px var(--amber-soft);
+    }
+    .node h3 { margin: 0; font-size: 13px; font-weight: 700; }
+    .node p { margin: 0; font-size: 11px; color: var(--muted); }
+
+    /* Context strip (APP) */
+    .ctx {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 10px 16px; border-bottom: 1px solid var(--line);
+      background: var(--bg);
+    }
+    .ctx-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--muted); white-space: nowrap;
+    }
+    .apps { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+    .app {
+      width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line);
+      background: var(--surface-2); color: var(--muted); font: 700 10px/1 var(--mono);
+      cursor: pointer; display: grid; place-items: center;
+    }
+    .app[aria-pressed="true"] {
+      border-color: var(--cyan-border); color: var(--cyan); background: var(--cyan-soft);
+      box-shadow: 0 0 0 2px rgba(62,184,220,.12);
+    }
+    .purpose { display: flex; gap: 6px; margin-left: auto; }
+    .chip {
+      border: 1px solid var(--line); background: transparent; color: var(--muted);
+      font: 600 11px/1 var(--font); padding: 7px 10px; border-radius: 999px; cursor: pointer;
+    }
+    .chip[aria-pressed="true"] { border-color: var(--cyan-border); color: var(--cyan); background: var(--cyan-soft); }
+    .bind-app {
+      position: relative; display: inline-flex; align-items: center; margin-left: 6px;
+    }
+    .bind-app > button {
+      border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text);
+      font: 700 12px/1 var(--font); padding: 6px 10px; border-radius: 999px; cursor: pointer;
+    }
+    .bind-app[data-open="true"] > button { border-color: var(--cyan-border); color: var(--cyan); }
+    .bind-menu {
+      position: absolute; top: calc(100% + 6px); left: 0; z-index: 8;
+      min-width: 140px; padding: 4px; border-radius: 10px;
+      border: 1px solid var(--line); background: var(--surface-2);
+      display: none; flex-direction: column; gap: 2px;
+    }
+    .bind-app[data-open="true"] .bind-menu { display: flex; }
+    .bind-menu button {
+      border: 0; background: transparent; color: var(--text); text-align: left;
+      font: 600 12px/1.3 var(--font); padding: 8px 10px; border-radius: 8px; cursor: pointer;
+    }
+    .bind-menu button[aria-selected="true"], .bind-menu button:hover {
+      background: var(--cyan-soft); color: var(--cyan);
+    }
+    .pad-chassis { padding: 16px; }
+    .pad-ring {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 12px;
+    }
+    .pad-ring .chip { font-weight: 700; }
+    .pad-ring[data-stage] { min-height: 36px; }
+    .big-pad {
+      margin: 0 auto; max-width: 420px; padding: 18px; border-radius: 16px;
+      border: 1px solid var(--line); background: var(--surface-2);
+    }
+    .big-pad .pad-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .big-pad .key { height: 44px; }
+    .assert-bar {
+      margin-top: 14px; padding: 10px 14px; border-radius: 10px;
+      border: 1px solid var(--line); background: var(--surface-soft);
+      font: 600 12px/1.4 var(--mono); color: var(--muted);
+    }
+    .assert-bar.ok { color: var(--green); border-color: rgba(52,211,153,.35); }
+    .assert-bar.bad { color: var(--danger); border-color: rgba(248,113,113,.35); }
+    .hint {
+      margin: 0; padding: 8px 16px 0; font-size: 12px; color: var(--muted);
+    }
+    .hint strong { color: var(--text); }
+
+    /* Detail tabs */
+    .tabs {
+      display: flex; gap: 4px; padding: 12px 16px 0; flex-wrap: wrap;
+    }
+    .tab {
+      border: 1px solid transparent; background: transparent; color: var(--muted);
+      font: 600 12px/1 var(--font); padding: 9px 14px; border-radius: 8px; cursor: pointer;
+    }
+    .tab[aria-selected="true"] {
+      color: var(--text); background: var(--surface-2); border-color: var(--line-strong);
+    }
+    .tabs.segmented {
+      background: var(--bg); margin: 12px 16px 0; padding: 4px; border-radius: 10px;
+      border: 1px solid var(--line); width: fit-content; max-width: calc(100% - 32px);
+    }
+    .tabs.segmented .tab { flex: 1; text-align: center; }
+    .tabs.segmented .tab[aria-selected="true"] {
+      background: var(--cyan-soft); color: var(--cyan); border-color: var(--cyan-border);
+    }
+
+    /* Workspace */
+    .workspace {
+      display: grid; grid-template-columns: 160px 1fr; gap: 16px;
+      padding: 14px 16px 18px; min-height: 280px;
+    }
+    .preview {
+      border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg);
+      padding: 10px; display: grid; gap: 8px; align-content: start;
+    }
+    .preview .cap { font-size: 11px; color: var(--muted); font-weight: 600; }
+    .pad-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+    }
+    .key {
+      aspect-ratio: 1; border-radius: 5px; background: var(--surface-2);
+      border: 1px solid var(--line); font-size: 9px; color: var(--muted);
+      display: grid; place-items: center;
+    }
+    .panel {
+      border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg);
+      padding: 16px; display: grid; gap: 12px; align-content: start;
+    }
+    .panel h4 { margin: 0; font-size: 14px; }
+    .panel p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+    .field {
+      display: grid; gap: 6px;
+    }
+    .field label { font-size: 11px; font-weight: 700; color: var(--muted); }
+    .select {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line-strong);
+      background: var(--surface-2); font-size: 13px; font-weight: 600;
+    }
+    .mock-illus {
+      height: 110px; border-radius: 8px; border: 1px dashed var(--line-strong);
+      background:
+        linear-gradient(135deg, rgba(62,184,220,.08), transparent 50%),
+        repeating-linear-gradient(90deg, transparent, transparent 18px, rgba(255,255,255,.03) 18px, rgba(255,255,255,.03) 19px);
+      display: grid; place-items: center; color: var(--muted); font-size: 12px; text-align: center; padding: 12px;
+    }
+    .full-stage {
+      grid-column: 1 / -1;
+      min-height: 240px;
+      display: grid; place-items: center; text-align: center; gap: 8px;
+      border: 1px dashed var(--line-strong); border-radius: var(--radius);
+      background: var(--bg); color: var(--muted); padding: 24px;
+    }
+    .full-stage strong { color: var(--text); font-size: 16px; display: block; }
+    .crumb {
+      display: flex; align-items: center; gap: 8px; padding: 10px 16px 0;
+      font-size: 12px; color: var(--muted);
+    }
+    .crumb button {
+      border: 0; background: transparent; color: var(--cyan); font: 600 12px/1 var(--font); cursor: pointer; padding: 0;
+    }
+
+    /* Variant B: app-first elevates context */
+    .mock-b .ctx {
+      padding: 12px 16px;
+      background: linear-gradient(180deg, #12171e, #0e1116);
+      border-bottom-width: 2px; border-bottom-color: var(--cyan-border);
+    }
+    .mock-b .ctx-label { color: var(--cyan); }
+    .mock-b .flow { padding-top: 14px; }
+
+    /* Variant C: compact stage when in Soft Pad detail */
+    .mock-c .flow.is-compact .flow-track { display: none; }
+    .mock-c .flow.is-compact .flow-grid { grid-template-columns: auto; justify-content: start; }
+    .mock-c .flow.is-compact .node { display: none; }
+    .mock-c .flow.is-compact .node[data-active="true"] {
+      display: inline-flex; flex-direction: row; align-items: center; gap: 10px; text-align: left;
+    }
+    .mock-c .flow.is-compact .node-btn { width: 36px; height: 36px; }
+    .mock-c .flow.is-compact .node p { display: none; }
+
+    .axis-legend {
+      margin-top: 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    }
+    .axis-card {
+      border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: var(--surface);
+      font-size: 12px; color: var(--muted); line-height: 1.4;
+    }
+    .axis-card b { display: block; color: var(--text); margin-bottom: 4px; font-size: 12px; }
+    .axis-card code { font-family: var(--mono); font-size: 10px; color: var(--cyan); }
+
+    @media (max-width: 720px) {
+      .workspace { grid-template-columns: 1fr; }
+      .axis-legend { grid-template-columns: 1fr; }
+      .flow-grid { gap: 6px; }
+      .node-btn { width: 48px; height: 48px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="proto-bar">
+    <h1><strong>Soft Pad IA</strong> · 解耦原型</h1>
+    <div class="variant-switch" role="tablist" aria-label="原型方案">
+      <button type="button" role="tab" id="vD" aria-pressed="true" data-variant="d">D · Pad 环</button>
+      <button type="button" role="tab" id="vA" aria-pressed="false" data-variant="a">A · 去重三格</button>
+      <button type="button" role="tab" id="vB" aria-pressed="false" data-variant="b">B · 应用优先</button>
+      <button type="button" role="tab" id="vC" aria-pressed="false" data-variant="c">C · 舞台全页</button>
+    </div>
+    <p class="variant-note" id="variantNote"></p>
+  </header>
+
+  <main class="stage-wrap">
+    <!-- ========== D · Pad-centric (ship target) ========== -->
+    <section class="mock mock-d" id="mockD" data-variant-panel="d" aria-label="方案 D">
+      <div class="status-bar">
+        <div class="status-main">
+          <div class="title-row">
+            <span class="name">正在编辑: Codex 场景</span>
+            <span class="pill">正在使用</span>
+            <div class="bind-app" data-role="bind-app" data-open="false">
+              <button type="button" data-act="toggle-bind">绑定 · <span data-app-name>Codex</span> ▾</button>
+              <div class="bind-menu" data-role="apps" role="listbox"></div>
+            </div>
+          </div>
+          <div class="meta">状态灯 <strong>空闲</strong> · 键位 <strong>21</strong> · 恢复点 <strong>即将接入</strong></div>
+        </div>
+        <div class="status-actions">
+          <button class="btn" type="button">测试前台</button>
+          <button class="btn primary" type="button">编辑键位</button>
+          <span class="toggle" role="presentation"></span>
+        </div>
+      </div>
+
+      <div class="flow">
+        <div class="flow-track" aria-hidden="true"></div>
+        <div class="flow-grid" data-role="stage">
+          <button type="button" class="node" data-stage="pad" data-active="true">
+            <span class="tag">01 / Soft Pad</span>
+            <span class="node-btn" aria-hidden="true">▦</span>
+            <h3>Soft Pad</h3>
+            <p>改键位 · 何时显示</p>
+          </button>
+          <button type="button" class="node" data-stage="agent" data-active="false">
+            <span class="tag">02 / 状态灯</span>
+            <span class="node-btn" aria-hidden="true">💡</span>
+            <h3>状态灯</h3>
+            <p>看 AI 忙不忙</p>
+          </button>
+          <button type="button" class="node" data-stage="timeline" data-active="false">
+            <span class="tag">03 / 项目胶囊</span>
+            <span class="node-btn" aria-hidden="true">◎</span>
+            <h3>项目时间胶囊</h3>
+            <p>恢复前自动保存</p>
+          </button>
+        </div>
+      </div>
+
+      <div class="pad-chassis">
+        <div class="pad-ring" data-role="pad-ring" data-stage="pad"></div>
+        <div class="big-pad" data-role="workspace">
+          <div class="cap">大键盘预览 · <span data-app-name>Codex</span></div>
+          <div class="pad-grid" data-role="pad-grid"></div>
+        </div>
+      </div>
+      <div class="assert-bar" id="protoAssert">assert pending</div>
+    </section>
+
+    <!-- ========== A ========== -->
+    <section class="mock mock-a" id="mockA" data-variant-panel="a" hidden aria-label="方案 A">
+      <div class="status-bar">
+        <div class="status-main">
+          <div class="title-row">
+            <span class="name">正在编辑: Codex 场景</span>
+            <span class="pill">正在使用</span>
+          </div>
+          <div class="meta">状态灯 <strong>空闲</strong> · 键位 <strong>21</strong> · 恢复点 <strong>即将接入</strong></div>
+        </div>
+        <div class="status-actions">
+          <button class="btn" type="button">测试前台</button>
+          <button class="btn primary" type="button">设为正在使用</button>
+          <span class="toggle" role="presentation"></span>
+        </div>
+      </div>
+
+      <div class="flow">
+        <div class="flow-track" aria-hidden="true"></div>
+        <div class="flow-grid" data-role="stage">
+          <button type="button" class="node" data-stage="pad" data-active="true">
+            <span class="tag">01 / Soft Pad</span>
+            <span class="node-btn" aria-hidden="true">▦</span>
+            <h3>Soft Pad</h3>
+            <p>可开启 · 21 个</p>
+          </button>
+          <button type="button" class="node" data-stage="agent" data-active="false">
+            <span class="tag">02 / 状态灯</span>
+            <span class="node-btn" aria-hidden="true">💡</span>
+            <h3>状态灯</h3>
+            <p>看 AI 忙不忙</p>
+          </button>
+          <button type="button" class="node" data-stage="timeline" data-active="false">
+            <span class="tag">03 / 项目胶囊</span>
+            <span class="node-btn" aria-hidden="true">◎</span>
+            <h3>项目时间胶囊</h3>
+            <p>恢复前自动保存</p>
+          </button>
+        </div>
+      </div>
+
+      <div class="ctx" data-role="app-ctx">
+        <span class="ctx-label">编辑应用</span>
+        <div class="apps" data-role="apps"></div>
+        <div class="purpose">
+          <button type="button" class="chip" aria-pressed="true">动作键</button>
+          <button type="button" class="chip" aria-pressed="false">线程槽（实验）</button>
+        </div>
+      </div>
+      <p class="hint">当前编辑 — <strong data-app-name>Codex</strong> — 绑定「Codex 场景」：该应用前台时的键位与状态灯</p>
+
+      <div class="tabs segmented" data-role="pad-tabs" hidden>
+        <button type="button" class="tab" data-panel="runtime" aria-selected="true">何时显示</button>
+        <button type="button" class="tab" data-panel="layout" aria-selected="false">改按键</button>
+        <button type="button" class="tab" data-panel="presentation" aria-selected="false">外观</button>
+      </div>
+
+      <div class="workspace" data-role="workspace"></div>
+    </section>
+
+    <!-- ========== B ========== -->
+    <section class="mock mock-b" id="mockB" data-variant-panel="b" hidden aria-label="方案 B">
+      <div class="status-bar">
+        <div class="status-main">
+          <div class="title-row">
+            <span class="name">正在编辑: Codex 场景</span>
+            <span class="pill">正在使用</span>
+          </div>
+          <div class="meta">状态灯 <strong>空闲</strong> · 键位 <strong>21</strong> · 恢复点 <strong>即将接入</strong></div>
+        </div>
+        <div class="status-actions">
+          <button class="btn" type="button">测试前台</button>
+          <button class="btn primary" type="button">设为正在使用</button>
+          <span class="toggle" role="presentation"></span>
+        </div>
+      </div>
+
+      <div class="ctx" data-role="app-ctx">
+        <span class="ctx-label">① 应用上下文 · 始终生效</span>
+        <div class="apps" data-role="apps"></div>
+        <div class="purpose">
+          <button type="button" class="chip" aria-pressed="true">动作键</button>
+          <button type="button" class="chip" aria-pressed="false">线程槽（实验）</button>
+        </div>
+      </div>
+      <p class="hint">切换应用<strong>不会</strong>重置下方舞台；只换绑定的键位 / 状态灯配置</p>
+
+      <div class="flow">
+        <div class="flow-track" aria-hidden="true"></div>
+        <div class="flow-grid" data-role="stage">
+          <button type="button" class="node" data-stage="pad" data-active="true">
+            <span class="tag">② Soft Pad</span>
+            <span class="node-btn" aria-hidden="true">▦</span>
+            <h3>Soft Pad</h3>
+            <p>键盘何时出现、键位、外观</p>
+          </button>
+          <button type="button" class="node" data-stage="agent" data-active="false">
+            <span class="tag">② 状态灯</span>
+            <span class="node-btn" aria-hidden="true">💡</span>
+            <h3>状态灯</h3>
+            <p>独立舞台 · 非 Soft Pad 子页</p>
+          </button>
+          <button type="button" class="node" data-stage="timeline" data-active="false">
+            <span class="tag">② 项目胶囊</span>
+            <span class="node-btn" aria-hidden="true">◎</span>
+            <h3>项目时间胶囊</h3>
+            <p>独立舞台 · 无细节标签</p>
+          </button>
+        </div>
+      </div>
+
+      <div class="tabs segmented" data-role="pad-tabs" hidden>
+        <button type="button" class="tab" data-panel="runtime" aria-selected="true">③ 何时显示</button>
+        <button type="button" class="tab" data-panel="layout" aria-selected="false">③ 改按键</button>
+        <button type="button" class="tab" data-panel="presentation" aria-selected="false">③ 外观</button>
+      </div>
+
+      <div class="workspace" data-role="workspace"></div>
+    </section>
+
+    <!-- ========== C ========== -->
+    <section class="mock mock-c" id="mockC" data-variant-panel="c" hidden aria-label="方案 C">
+      <div class="status-bar">
+        <div class="status-main">
+          <div class="title-row">
+            <span class="name">正在编辑: Codex 场景</span>
+            <span class="pill">正在使用</span>
+          </div>
+          <div class="meta">状态灯 <strong>空闲</strong> · 键位 <strong>21</strong> · 恢复点 <strong>即将接入</strong></div>
+        </div>
+        <div class="status-actions">
+          <button class="btn" type="button">测试前台</button>
+          <button class="btn primary" type="button">设为正在使用</button>
+          <span class="toggle" role="presentation"></span>
+        </div>
+      </div>
+
+      <div class="flow" data-role="flow-shell">
+        <div class="flow-track" aria-hidden="true"></div>
+        <div class="flow-grid" data-role="stage">
+          <button type="button" class="node" data-stage="pad" data-active="true">
+            <span class="tag">Soft Pad</span>
+            <span class="node-btn" aria-hidden="true">▦</span>
+            <h3>Soft Pad</h3>
+            <p>进入后 Hero 收成面包屑</p>
+          </button>
+          <button type="button" class="node" data-stage="agent" data-active="false">
+            <span class="tag">状态灯</span>
+            <span class="node-btn" aria-hidden="true">💡</span>
+            <h3>状态灯</h3>
+            <p>全页模式</p>
+          </button>
+          <button type="button" class="node" data-stage="timeline" data-active="false">
+            <span class="tag">项目胶囊</span>
+            <span class="node-btn" aria-hidden="true">◎</span>
+            <h3>项目时间胶囊</h3>
+            <p>全页模式</p>
+          </button>
+        </div>
+      </div>
+
+      <div class="crumb" data-role="crumb" hidden>
+        <button type="button" data-act="expand-stage">← 换功能</button>
+        <span>/</span>
+        <span data-crumb-stage>Soft Pad</span>
+        <span>/</span>
+        <strong data-app-name>Codex</strong>
+      </div>
+
+      <div class="ctx" data-role="app-ctx">
+        <span class="ctx-label">编辑应用</span>
+        <div class="apps" data-role="apps"></div>
+        <div class="purpose">
+          <button type="button" class="chip" aria-pressed="true">动作键</button>
+          <button type="button" class="chip" aria-pressed="false">线程槽（实验）</button>
+        </div>
+      </div>
+
+      <div class="tabs segmented" data-role="pad-tabs" hidden>
+        <button type="button" class="tab" data-panel="runtime" aria-selected="true">何时显示</button>
+        <button type="button" class="tab" data-panel="layout" aria-selected="false">改按键</button>
+        <button type="button" class="tab" data-panel="presentation" aria-selected="false">外观</button>
+      </div>
+
+      <div class="workspace" data-role="workspace"></div>
+    </section>
+
+    <div class="axis-legend" id="axisLegend"></div>
+  </main>
+
+  <script>
+    const APPS = [
+      { id: "codex", label: "CX" },
+      { id: "claude", label: "CL" },
+      { id: "cursor", label: "CU" },
+      { id: "workbuddy", label: "WB" },
+      { id: "trae", label: "TR" },
+      { id: "qoder", label: "QO" }
+    ];
+    const APP_NAMES = {
+      codex: "Codex", claude: "Claude", cursor: "Cursor",
+      workbuddy: "WorkBuddy", trae: "Trae", qoder: "Qoder"
+    };
+    const NOTES = {
+      d: "<b>D · Pad 环（落地）</b> — 状态栏「绑定·App」；原版三节点 Hero；环芯片随舞台切换；无横向 APP 目录、无 agent tile。",
+      a: "<b>A · 去重三格</b> — 保留现有布局；四格去掉「状态灯」；APP 降权为「编辑应用」上下文条。改动最小。",
+      b: "<b>B · 应用优先</b> — APP 提到最上并编号为①；Hero 为②；细节标签仅 Soft Pad 下为③。切应用不重置舞台。",
+      c: "<b>C · 舞台全页</b> — Soft Pad 进入后 Hero 收成面包屑，同屏只剩一层细节标签；状态灯/胶囊是整页，无嵌套 tab。"
+    };
+    const AXES = {
+      d: [
+        { t: "绑定", d: "状态栏 App 下拉；切应用保舞台", c: "selectScope resetView:false" },
+        { t: "Hero", d: "原版三节点保留", c: "flowNodes" },
+        { t: "环芯片", d: "随 Soft Pad / 灯 / 胶囊切换", c: "padRing(stage)" }
+      ],
+      a: [
+        { t: "APP", d: "上下文过滤（非功能 tab）", c: "selectedScopeId" },
+        { t: "Hero", d: "互斥舞台：Pad / 灯 / 胶囊", c: "stage" },
+        { t: "细节", d: "仅 Pad：何时显示 / 改按键 / 外观", c: "panel ×3" }
+      ],
+      b: [
+        { t: "① APP", d: "置顶、视觉权重最高；切应用保舞台", c: "scope sticky" },
+        { t: "② Hero", d: "与现网一致的三节点", c: "stage" },
+        { t: "③ 细节", d: "编号明示层级；无状态灯重复", c: "panel ×3" }
+      ],
+      c: [
+        { t: "进入", d: "先选舞台；进入后收折 Hero", c: "compact flow" },
+        { t: "工作区", d: "同屏最多一层 tab", c: "single tablist" },
+        { t: "退出", d: "面包屑「换功能」展开三节点", c: "expand stage" }
+      ]
+    };
+
+    const RINGS = {
+      pad: ["何时显示", "外观", "启用", "动作键|线程槽"],
+      agent: ["灯位对照", "连接", "说明"],
+      timeline: ["打开时间线", "绑定工作区"]
+    };
+
+    const state = {
+      variant: "d",
+      app: "codex",
+      stage: "pad", // pad | agent | timeline
+      panel: "runtime", // runtime | layout | presentation
+      cExpanded: true
+    };
+
+    function qs(root, sel) { return root.querySelector(sel); }
+    function qsa(root, sel) { return [...root.querySelectorAll(sel)]; }
+
+    function panelCopy(panel) {
+      if (panel === "layout") {
+        return {
+          title: "改按键",
+          body: "绑定 15 个动作键位。切应用时保留本面板（方案 B/C），不再强制跳回「何时显示」。",
+          field: "当前映射",
+          value: "Codex Soft Pad · 21 键"
+        };
+      }
+      if (panel === "presentation") {
+        return {
+          title: "外观",
+          body: "皮肤、尺寸、透明度。属于 Soft Pad 细节，与状态灯舞台无关。",
+          field: "皮肤",
+          value: "默认深色"
+        };
+      }
+      return {
+        title: "何时显示",
+        body: "目标应用在前台时才出现。显示方式与应用上下文绑定，但不与 Hero 抢同一条状态轴。",
+        field: "显示方式",
+        value: "跟随应用显示"
+      };
+    }
+
+    function renderApps(root) {
+      const host = qs(root, "[data-role=apps]");
+      if (!host) return;
+      const isBindMenu = host.classList.contains("bind-menu") || host.closest("[data-role=bind-app]");
+      host.innerHTML = APPS.map((a) =>
+        isBindMenu
+          ? `<button type="button" data-app="${a.id}" aria-selected="${state.app === a.id}" role="option">${APP_NAMES[a.id]}</button>`
+          : `<button type="button" class="app" data-app="${a.id}" aria-pressed="${state.app === a.id}" title="${APP_NAMES[a.id]}">${a.label}</button>`
+      ).join("");
+      host.onclick = (e) => {
+        const btn = e.target.closest("[data-app]");
+        if (!btn) return;
+        state.app = btn.dataset.app;
+        // Key IA rule: switching app does NOT reset stage/panel
+        const bind = root.querySelector("[data-role=bind-app]");
+        if (bind) bind.dataset.open = "false";
+        paint();
+      };
+      const bind = root.querySelector("[data-role=bind-app]");
+      if (bind) {
+        const toggle = bind.querySelector("[data-act=toggle-bind]");
+        if (toggle) {
+          toggle.onclick = (e) => {
+            e.stopPropagation();
+            bind.dataset.open = bind.dataset.open === "true" ? "false" : "true";
+          };
+        }
+      }
+    }
+
+    function renderRing(root) {
+      const ring = qs(root, "[data-role=pad-ring]");
+      if (!ring) return;
+      const chips = RINGS[state.stage] || RINGS.pad;
+      ring.dataset.stage = state.stage;
+      ring.innerHTML = chips.map((label, i) =>
+        `<button type="button" class="chip" data-ring="${label}" aria-pressed="${i === 0 && state.stage === "pad" ? "true" : "false"}">${label}</button>`
+      ).join("");
+    }
+
+    function renderDWorkspace(root) {
+      const chassis = qs(root, ".pad-chassis");
+      if (!chassis) return;
+      qsa(root, "[data-app-name]").forEach((el) => { el.textContent = APP_NAMES[state.app]; });
+      let ws = qs(root, ".big-pad");
+      if (!ws) {
+        ws = document.createElement("div");
+        ws.className = "big-pad";
+        ws.setAttribute("data-role", "workspace");
+        chassis.appendChild(ws);
+      }
+      if (state.stage === "agent") {
+        ws.innerHTML = `<div class="cap">状态灯舞台 · ${APP_NAMES[state.app]}</div><p style="margin:12px 0 0;color:var(--muted);font-size:12px">环芯片：灯位对照 / 连接 / 说明</p>`;
+        return;
+      }
+      if (state.stage === "timeline") {
+        ws.innerHTML = `<div class="cap">项目时间胶囊</div><p style="margin:12px 0 0;color:var(--muted);font-size:12px">环芯片：打开时间线 / 绑定工作区</p>`;
+        return;
+      }
+      ws.innerHTML =
+        `<div class="cap">大键盘预览 · <span data-app-name>${APP_NAMES[state.app]}</span></div>` +
+        `<div class="pad-grid" data-role="pad-grid">${Array.from({ length: 16 }, (_, i) => `<div class="key">${i + 1}</div>`).join("")}</div>`;
+    }
+
+    function runAssert() {
+      const el = document.getElementById("protoAssert");
+      if (!el) return;
+      const root = document.querySelector('[data-variant-panel="d"]');
+      const ring = root && qs(root, "[data-role=pad-ring]");
+      const hasAppDir = !!(root && qs(root, ".ctx [data-role=apps]"));
+      const labels = ring ? [...ring.querySelectorAll(".chip")].map((c) => c.textContent.trim()) : [];
+      const stage = state.stage;
+      const expected = RINGS[stage];
+      const ringOk = expected && expected.every((x) => labels.includes(x)) && labels.length === expected.length;
+      const noAgentTile = !root || !root.querySelector('[data-panel="agent"], [data-tile="agent"]');
+      const ok = ringOk && !hasAppDir && noAgentTile;
+      el.className = "assert-bar " + (ok ? "ok" : "bad");
+      el.textContent = ok
+        ? `PASS ring(${stage})=[${labels.join(" · ")}] · no APP directory · no agent tile`
+        : `FAIL ring=${JSON.stringify(labels)} expected=${JSON.stringify(expected)} appDir=${hasAppDir}`;
+    }
+
+    function renderStage(root) {
+      qsa(root, "[data-role=stage] .node").forEach((node) => {
+        const on = node.dataset.stage === state.stage;
+        node.dataset.active = on ? "true" : "false";
+        node.onclick = () => {
+          state.stage = node.dataset.stage;
+          if (state.variant === "c") state.cExpanded = state.stage !== "pad";
+          if (state.stage === "pad" && state.variant === "c") state.cExpanded = false;
+          paint();
+        };
+      });
+    }
+
+    function renderTabs(root) {
+      const tabs = qs(root, "[data-role=pad-tabs]");
+      if (!tabs) return;
+      const show = state.stage === "pad";
+      tabs.hidden = !show;
+      if (!show) return;
+      qsa(tabs, ".tab").forEach((tab) => {
+        tab.setAttribute("aria-selected", tab.dataset.panel === state.panel ? "true" : "false");
+        tab.onclick = () => {
+          state.panel = tab.dataset.panel;
+          paint();
+        };
+      });
+    }
+
+    function renderWorkspace(root) {
+      if (state.variant === "d") {
+        renderRing(root);
+        renderDWorkspace(root);
+        runAssert();
+        return;
+      }
+      const ws = qs(root, "[data-role=workspace]");
+      if (!ws) return;
+      const appName = APP_NAMES[state.app];
+      qsa(root, "[data-app-name]").forEach((el) => { el.textContent = appName; });
+
+      if (state.stage === "agent") {
+        ws.innerHTML = `
+          <div class="full-stage">
+            <div>
+              <strong>状态灯 · ${appName}</strong>
+              独立舞台：不再出现在 Soft Pad 细节标签里。<br/>
+              这里只配置「看 AI 忙不忙」的灯位与规则。
+            </div>
+          </div>`;
+        return;
+      }
+      if (state.stage === "timeline") {
+        ws.innerHTML = `
+          <div class="full-stage">
+            <div>
+              <strong>项目时间胶囊</strong>
+              工作区级舞台；不依赖 Soft Pad mapping。<br/>
+              无细节标签 — 避免与 Hero 双入口。
+            </div>
+          </div>`;
+        return;
+      }
+
+      const copy = panelCopy(state.panel);
+      ws.innerHTML = `
+        <aside class="preview">
+          <div class="cap">小键盘 · ${appName}</div>
+          <div class="pad-grid">${Array.from({ length: 16 }, (_, i) => `<div class="key">${i + 1}</div>`).join("")}</div>
+        </aside>
+        <section class="panel">
+          <h4>${copy.title}</h4>
+          <p>${copy.body}</p>
+          <div class="field">
+            <label>${copy.field}</label>
+            <div class="select"><span>${copy.value}</span><span>▾</span></div>
+          </div>
+          <div class="mock-illus">目标应用在前台时才出现<br/><span style="opacity:.7">预览示意 · 非真实渲染</span></div>
+        </section>`;
+    }
+
+    function renderCChrome(root) {
+      if (state.variant !== "c") return;
+      const flow = qs(root, "[data-role=flow-shell]");
+      const crumb = qs(root, "[data-role=crumb]");
+      const compact = state.stage === "pad" && !state.cExpanded;
+      if (flow) flow.classList.toggle("is-compact", compact);
+      if (crumb) {
+        crumb.hidden = !compact;
+        const label = qs(crumb, "[data-crumb-stage]");
+        if (label) label.textContent = "Soft Pad";
+        const back = qs(crumb, "[data-act=expand-stage]");
+        if (back) back.onclick = () => { state.cExpanded = true; paint(); };
+      }
+    }
+
+    function paintLegend() {
+      const host = document.getElementById("axisLegend");
+      host.innerHTML = AXES[state.variant].map((a) =>
+        `<div class="axis-card"><b>${a.t}</b>${a.d}<br/><code>${a.c}</code></div>`
+      ).join("");
+    }
+
+    function paint() {
+      document.getElementById("variantNote").innerHTML = NOTES[state.variant];
+      document.querySelectorAll(".variant-switch button").forEach((b) => {
+        b.setAttribute("aria-pressed", b.dataset.variant === state.variant ? "true" : "false");
+      });
+      document.querySelectorAll("[data-variant-panel]").forEach((panel) => {
+        panel.hidden = panel.getAttribute("data-variant-panel") !== state.variant;
+      });
+      const root = document.querySelector(`[data-variant-panel="${state.variant}"]`);
+      renderApps(root);
+      renderStage(root);
+      renderTabs(root);
+      renderCChrome(root);
+      renderWorkspace(root);
+      paintLegend();
+    }
+
+    document.querySelector(".variant-switch").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-variant]");
+      if (!btn) return;
+      state.variant = btn.dataset.variant;
+      if (state.variant === "c") {
+        state.cExpanded = state.stage !== "pad";
+        if (state.stage === "pad") state.cExpanded = false;
+      }
+      paint();
+    });
+
+    // purpose chips (cosmetic)
+    document.addEventListener("click", (e) => {
+      const chip = e.target.closest(".purpose .chip");
+      if (!chip) return;
+      const group = chip.parentElement;
+      group.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", "false"));
+      chip.setAttribute("aria-pressed", "true");
+    });
+
+    paint();
+  </script>
+</body>
+</html>

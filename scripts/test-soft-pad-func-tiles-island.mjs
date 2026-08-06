@@ -100,21 +100,21 @@ const entry = {
 console.log('[soft-pad-func-tiles] 模型:');
 check('buildSoftPadFourPanelModel 已导出', typeof API.buildSoftPadFourPanelModel === 'function');
 check('buildSoftPadFuncTilesModel 已导出', typeof API.buildSoftPadFuncTilesModel === 'function');
+check('buildSoftPadPadRingModel 已导出', typeof API.buildSoftPadPadRingModel === 'function');
 
 const fourPanel = API.buildSoftPadFourPanelModel(entry);
-check('fourPanel 含 4 个 panel', Array.isArray(fourPanel.panels) && fourPanel.panels.length === 4);
-check('fourPanel agent 映射 advanced alias', fourPanel.panels.some((p) => p.id === 'agent' && p.aliasId === 'advanced'));
-check('fourPanel panelOrder', Array.isArray(fourPanel.panelOrder) && fourPanel.panelOrder[0] === 'runtime');
+check('fourPanel 含 3 个 panel', Array.isArray(fourPanel.panels) && fourPanel.panels.length === 3);
+check('fourPanel 无 agent tile', !fourPanel.panels.some((p) => p.id === 'agent'));
+check('fourPanel panelOrder', Array.isArray(fourPanel.panelOrder) && fourPanel.panelOrder.join(',') === 'runtime,layout,presentation');
 check('fourPanel landingView', fourPanel.landingView === 'runtime');
 check('fourPanel runtime recommended', fourPanel.panels.some((p) => p.id === 'runtime' && p.recommended));
 
 let model = API.buildSoftPadFuncTilesModel(entry);
-check('有 entry 时 hidden=false', model.hidden === false);
-check('有 tilesHtml 与 data-tile', typeof model.tilesHtml === 'string' && model.tilesHtml.includes('data-tile'));
-check('ready=true', model.ready === true);
-check('含四块瓷砖', model.tilesHtml.includes('data-tile="runtime"') && model.tilesHtml.includes('data-tile="agent"'));
-check('含 recommended 瓷砖', model.tilesHtml.includes('data-recommended="1"'));
+check('有 entry 时 tiles 仍隐藏（环接管）', model.hidden === true && model.tilesHtml === '');
 check('sig 非空', typeof model.sig === 'string' && model.sig.length > 0);
+const ring = API.buildSoftPadPadRingModel('pad', entry);
+check('pad ring 含何时显示', ring.chipsHtml.includes('何时显示') || ring.chipsHtml.includes('softPadTileRuntime'));
+check('agent ring 不同于 pad', API.buildSoftPadPadRingModel('agent', entry).chipsHtml !== ring.chipsHtml);
 
 model = API.buildSoftPadFuncTilesModel(null);
 check('无 entry 时 hidden', model.hidden === true && model.tilesHtml === '');
@@ -123,10 +123,10 @@ console.log('[soft-pad-func-tiles] 源码护栏:');
 const softPadJs = src;
 check('导出 buildSoftPadFourPanelModel', softPadJs.includes('buildSoftPadFourPanelModel: buildSoftPadFourPanelModel'));
 check('导出 buildSoftPadFuncTilesModel', softPadJs.includes('buildSoftPadFuncTilesModel: buildSoftPadFuncTilesModel'));
-check('func tiles 读 fourPanel model', /function buildSoftPadFuncTilesModel\([\s\S]*?buildSoftPadFourPanelModel/.test(softPadJs));
+check('导出 buildSoftPadPadRingModel', softPadJs.includes('buildSoftPadPadRingModel: buildSoftPadPadRingModel'));
 check('applySoftPadFuncTilesHost 岛守卫', softPadJs.includes('function applySoftPadFuncTilesHost') && softPadJs.includes('__otSoftPadFuncTilesSync'));
 check('patchActiveTiles 岛守卫', /function patchActiveTiles\([\s\S]*?__otSoftPadFuncTilesSync/.test(softPadJs));
-check('syncHubChrome 岛守卫', /function syncHubChrome\([\s\S]*?__otSoftPadFuncTilesMounted/.test(softPadJs));
+check('syncHubChrome 调 pad ring', /function syncHubChrome\([\s\S]*?syncSoftPadPadRing/.test(softPadJs));
 check('clearMain 不摧毁岛 root', /function clearMain\([\s\S]*?__otSoftPadFuncTilesMounted/.test(softPadJs));
 check('render 接线挂载', softPadJs.includes('__otMountSoftPadFuncTilesIsland'));
 
@@ -134,6 +134,9 @@ const mainSrc = readFileSync(join(root, 'src-islands/main.tsx'), 'utf8');
 check('main 延迟挂载入口', mainSrc.includes('__otMountSoftPadFuncTilesIsland'));
 check('挂载到 softPadFuncTiles', mainSrc.includes("mountIsland('softPadFuncTiles'"));
 check('registerSoftPadFuncTilesBridge', mainSrc.includes('registerSoftPadFuncTilesBridge'));
+const islandSrc = readFileSync(join(root, 'src-islands/islands/soft-pad-func-tiles-island.tsx'), 'utf8');
+check('island 兜底点击 openSubpage', islandSrc.includes('onClickCapture') &&
+  islandSrc.includes('OneToneSoftPadHub?.openSubpage?.(view, { fromUser: true })'));
 
 console.log(`[soft-pad-func-tiles] ${pass} 通过 / ${fail} 失败`);
 if (fail > 0) process.exit(1);

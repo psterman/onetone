@@ -442,8 +442,9 @@ assert.ok(padSrc.indexOf('id="microHwEffectSection"') >= 0);
 assert.ok(padSrc.indexOf('id="microHwIconPreviewTip"') >= 0);
 assert.ok(padSrc.indexOf('bindIconToCapabilitySlot') < 0, 'must not force-bind icon on every slot pick');
 (function () {
-  var ensureAt = padSrc.indexOf('function ensureEditModal');
-  var ensureSlice = padSrc.slice(ensureAt, ensureAt + 4200);
+  var buildAt = padSrc.indexOf('function buildEditKeycapInnerHtml');
+  assert.ok(buildAt >= 0, 'buildEditKeycapInnerHtml present');
+  var ensureSlice = padSrc.slice(buildAt, buildAt + 4200);
   assert.ok(ensureSlice.indexOf('id="microHwCapList"') >= 0);
   assert.ok(ensureSlice.indexOf('id="microHwEditIcons"') >= 0, 'icon grid in edit modal');
   assert.ok(ensureSlice.indexOf('id="microHwIconDetails"') >= 0);
@@ -465,7 +466,6 @@ assert.ok(padSrc.indexOf('bindIconToCapabilitySlot') < 0, 'must not force-bind i
   var saveSlice = padSrc.slice(saveAt, saveAt + 900);
   assert.ok(saveSlice.indexOf('editDraft.slotId') >= 0, 'save reads editDraft.slotId');
   assert.ok(saveSlice.indexOf('microHwEditSlot.value') < 0, 'save must not read DOM select');
-  assert.ok(saveSlice.indexOf('Unique source of truth') >= 0);
   assert.ok(padSrc.indexOf("setAttribute('data-icon-id'") >= 0 || padSrc.indexOf('data-icon-id') >= 0);
 
   // Icon hover must not write into Zone 2 effect tip
@@ -510,8 +510,8 @@ assert.ok(padSrc.indexOf('bindIconToCapabilitySlot') < 0, 'must not force-bind i
   assert.equal(Pad.maybeAutoSuggestIcon(draftFresh), true);
   assert.equal(draftFresh.uiIconId, 'palette');
 
-  assert.equal(Pad.humanMicroKeyLabel('AG00'), '数字区 7');
-  assert.equal(Pad.humanMicroKeyLabel('AG01'), '数字区 8');
+  assert.equal(Pad.humanMicroKeyLabel('AG00'), '\u6570\u5b57 7');
+  assert.equal(Pad.humanMicroKeyLabel('AG01'), '\u6570\u5b57 8');
 })();
 // JSON layout mirrors JS AG stock
 assert.equal(layout.cells.find(function (c) { return c.microKeyId === 'AG00'; }).defaultSlotId, 'commandPalette');
@@ -543,8 +543,8 @@ var mapping = {
   agentBindings: []
 };
 Pad.ensurePad(mapping, { force: true, persist: false });
-assert.equal(mapping.codexMicroPad.layoutProfile, 'standard');
-assert.equal(!!mapping.codexMicroPad.softwareEnhanceEnabled, false);
+assert.equal(mapping.codexMicroPad.layoutProfile, 'custom');
+assert.equal(!!mapping.codexMicroPad.softwareEnhanceEnabled, true);
 var encRoute = mapping.codexMicroPad.keys.find(function (k) { return k.microKeyId === 'ENC'; });
 assert.equal(Number(encRoute.sourceScan), 0);
 assert.equal(encRoute.slotId, 'summonCodex');
@@ -818,7 +818,11 @@ var applyLayoutFn = (function () {
 assert.ok(applyLayoutFn.indexOf('persistLayout(m)') >= 0, 'applyLayoutProfile quiet-saves layout');
 assert.ok(applyLayoutFn.indexOf('persist();') < 0, 'applyLayoutProfile must not full cmd_save');
 var persistSrc = fs.readFileSync(path.join(__dirname, '../src/js/core/config-persist.js'), 'utf8');
-assert.ok(persistSrc.indexOf("settingsPanel==='softPad'") >= 0, 'pullBackendConfig skips Soft Pad');
+assert.ok(
+  persistSrc.indexOf("settingsPanel==='softPad'") >= 0 ||
+    persistSrc.indexOf("p==='softPad'") >= 0,
+  'pullBackendConfig skips Soft Pad'
+);
 assert.ok(padUiSrc.indexOf('Native Micro') >= 0);
 assert.ok(padUiSrc.indexOf('Codex Hook') >= 0);
 assert.ok(padUiSrc.indexOf('Claude Hook') >= 0 || padUiSrc.indexOf('claude_hook') >= 0);
@@ -1212,8 +1216,19 @@ assert.ok(saveEditFn.indexOf('forceFull: true') < 0, 'Soft Pad keycap save must 
 assert.ok(saveEditFn.indexOf('schedulePreviewPaint') >= 0 || saveEditFn.indexOf('notifyLinkedUi') >= 0,
   'Soft Pad keycap save refreshes via schedule/notify');
 
-assert.ok(!/BUILTIN_SOFT_PAD_APPS[\s\S]*?cursor-chat/.test(softPadHubSrc), 'BUILTIN excludes cursor');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?cursor-chat/.test(softPadHubSrc), 'BUILTIN includes cursor');
 assert.ok(!/BUILTIN_SOFT_PAD_APPS[\s\S]*?minimax-chat/.test(softPadHubSrc), 'BUILTIN excludes minimax');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?workbuddy-chat/.test(softPadHubSrc), 'BUILTIN includes workbuddy');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-chat/.test(softPadHubSrc), 'BUILTIN includes trae');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?qoder-chat/.test(softPadHubSrc), 'BUILTIN includes qoder');
+assert.ok(softPadHubSrc.indexOf('HUB_KIND_RANK') >= 0 || softPadHubSrc.indexOf('workbuddy: 3') >= 0, 'hub kind rank');
+assert.ok(softPadHubSrc.indexOf('BUILTIN_SOFT_PAD_APPS.map') >= 0, 'scopes from BUILTIN map');
+assert.ok(softPadHubSrc.indexOf('data-scope') >= 0, 'switcher uses data-scope');
+assert.ok(softPadHubSrc.indexOf('data-lane-pin') < 0, 'no temporary pin chips');
+assert.ok(softPadHubSrc.indexOf('data-lane-follow') < 0, 'no follow chip');
+assert.ok(softPadHubSrc.indexOf('OneToneShellAgentHookPanel') >= 0, 'hub mounts shell hook panel');
+assert.ok(fs.existsSync(path.join(__dirname, '../src/js/features/agent/shell-agent-hook-panel.js')),
+  'shell-agent-hook-panel.js exists');
 assert.ok(softPadHubSrc.indexOf('function appTitleFor(kind)') >= 0);
 assert.ok(softPadHubSrc.indexOf('function isHubSoftPadKind(kind)') >= 0);
 assert.ok(softPadHubSrc.indexOf("id: 'global'") < 0 || softPadHubSrc.indexOf('pickDefaultScopeId') >= 0);

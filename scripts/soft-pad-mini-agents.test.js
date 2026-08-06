@@ -14,7 +14,7 @@ var overlayCmd = fs.readFileSync(
 );
 var fmt = require(path.join(root, 'src/js/features/agent/usage-format.js'));
 
-['codex', 'claude', 'cursor'].forEach(function (kind) {
+['codex', 'claude', 'cursor', 'workbuddy', 'trae', 'qoder'].forEach(function (kind) {
   assert.ok(html.includes('data-agent="' + kind + '"'), 'missing agent chip: ' + kind);
 });
 assert.ok(html.includes('id="padAgentBar"') || html.includes('soft-pad-agent-bar'));
@@ -51,8 +51,8 @@ assert.ok(fs.existsSync(path.join(root, 'src/icons/app-target/claude.png')));
 assert.ok(fs.existsSync(path.join(root, 'src/icons/app-target/cursor.png')));
 var padUi = fs.readFileSync(path.join(root, 'src/js/features/agent/codex-micro-pad-ui.js'), 'utf8');
 assert.ok(padUi.includes('cmd_cursor_hook_setup_status'));
-assert.ok(padUi.includes('renderAgentLightRow(\'cursor\'') || padUi.includes("renderAgentLightRow('cursor'"));
-assert.ok(padUi.includes('cursorStatusLightsEnabled'));
+assert.ok(padUi.includes('AGENT_LIGHT_SPECS') || padUi.includes("renderAgentLightRow('cursor'"));
+assert.ok(padUi.includes('workbuddyStatusLightsEnabled'));
 assert.ok(padUi.includes("agent === 'cursor'") || padUi.includes('softPadCursorConnect'));
 assert.ok(!html.includes('模型未知'));
 assert.ok(!html.includes('账户余额'));
@@ -76,7 +76,8 @@ assert.ok(rust.includes('primary_state_for(kind)'));
 assert.ok(rust.includes('agent_model_metadata::snapshot'));
 assert.ok(rust.includes('headline_label') || rust.includes('headline_for_agent'));
 assert.ok(rust.includes('AgentKind::Codex') && rust.includes('AgentKind::Claude') && rust.includes('AgentKind::Cursor'));
-assert.ok(rust.includes('cursor_status_lights_enabled'));
+assert.ok(rust.includes('AgentKind::WorkBuddy') && rust.includes('AgentKind::Trae') && rust.includes('AgentKind::Qoder'));
+assert.ok(rust.includes('workbuddy_status_lights_enabled'));
 assert.ok(rust.includes('cmd_soft_pad_focus_agent') || overlayCmd.includes('cmd_soft_pad_focus_agent'));
 assert.ok(/OVERLAY_WIDTH_MINI:\s*f64\s*=\s*24[0-9]\.0/.test(rust), 'mini width should be ~240-249');
 assert.ok(/OVERLAY_HEIGHT_MINI:\s*f64\s*=\s*44\.0/.test(rust), 'mini height should stay 44');

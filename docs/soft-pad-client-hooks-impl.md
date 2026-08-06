@@ -2,8 +2,8 @@
 
 调研结论见 Cursor plan「Soft Pad 后台数据联动：六客户端调研」。本文把结论落成可执行实现顺序。
 
-**默认优先客户端：WorkBuddy / CodeBuddy（Phase 1）。**  
-MiniMax 官方客户端不作为 Soft Pad 数据源（见 Phase 0）。
+**默认优先：WorkBuddy / Trae / Qoder 一批（shell hooks）。**  
+详见 [`soft-pad-shell-agents-hook-setup.md`](soft-pad-shell-agents-hook-setup.md)。MiniMax 官方客户端不作为 Soft Pad 数据源（见 Phase 0）。
 
 共享管道（与现有 Claude / Codex / Cursor 相同）：
 
@@ -11,6 +11,8 @@ MiniMax 官方客户端不作为 Soft Pad 数据源（见 Phase 0）。
 Agent Hook / Plugin → probe → POST 127.0.0.1:8796/api/codex-app/state
   → pad_status + agent_attention → soft_pad_runtime / overlay
 ```
+
+**Shell 三端一批（已实现骨架）：** 共享 [`scripts/agent-shell-hook-probe.js`](../scripts/agent-shell-hook-probe.js)；`AgentKind::{WorkBuddy,Trae,Qoder}`；ingest `*_hook`；三分 example + `shell_agent_hook_setup`。
 
 复用现成文件模式：
 

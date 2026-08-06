@@ -1,0 +1,64 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id workbuddy-activity-v1 --source workbuddy",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id workbuddy-activity-v1 --source workbuddy",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id workbuddy-activity-v1 --source workbuddy",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id workbuddy-activity-v1 --source workbuddy",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id workbuddy-activity-v1 --source workbuddy",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -128,17 +128,25 @@ fn hook_needs_input_hold() -> bool {
     }
 }
 
-fn overlay_runtime_gate_flags(state: &AppState) -> (bool, bool, bool) {
+fn overlay_runtime_gate_flags(state: &AppState) -> (bool, bool, bool, bool) {
     let setup_open = *state.setup_interaction_active.lock();
+    let settings_open = *state.settings_drawer_open.lock();
     let verify_active = state.trigger_verify_listen.lock().is_some();
     let recording_active = *state.recording.lock();
-    (setup_open, verify_active, recording_active)
+    (setup_open, settings_open, verify_active, recording_active)
 }
 
-fn overlay_runtime_gate_reason(state: &AppState) -> Option<&'static str> {
-    let (setup_open, verify_active, recording_active) = overlay_runtime_gate_flags(state);
+/// Pure gate reason — unit-tested without a full AppState.
+pub(crate) fn overlay_runtime_gate_reason_flags(
+    setup_open: bool,
+    settings_open: bool,
+    verify_active: bool,
+    recording_active: bool,
+) -> Option<&'static str> {
     if setup_open {
         Some("setup_open")
+    } else if settings_open {
+        Some("settings_open")
     } else if verify_active {
         Some("verify_active")
     } else if recording_active {
@@ -146,6 +154,12 @@ fn overlay_runtime_gate_reason(state: &AppState) -> Option<&'static str> {
     } else {
         None
     }
+}
+
+fn overlay_runtime_gate_reason(state: &AppState) -> Option<&'static str> {
+    let (setup_open, settings_open, verify_active, recording_active) =
+        overlay_runtime_gate_flags(state);
+    overlay_runtime_gate_reason_flags(setup_open, settings_open, verify_active, recording_active)
 }
 
 /// Toggle WS_EX_TRANSPARENT on the overlay HWND (any thread ? does not need the UI loop).
@@ -510,6 +524,8 @@ pub struct CodexMicroAgentSnapshot {
     pub headline_state: String,
     pub headline_label: String,
     pub updated_at: u64,
+    /// User toggle for this agent row (shell kinds hidden in overlay when false).
+    pub lights_enabled: bool,
 }
 
 /// Unhosted Claude agent when AG pool is exhausted.
@@ -982,6 +998,9 @@ fn overlay_host_allows_show_raw() -> bool {
         clear_agent_show_reason();
         return false;
     }
+    // Overlay self-FG alone never authorizes show over OneTone settings — only after a
+    // real agent/hold show, and never while the main process holds a settings gate
+    // (gated in build_snapshot / maybe_tick via settings_drawer_open).
     if soft_pad_agent_is_foreground() || hook_needs_input_hold() || claude_activity_hold() {
         note_agent_show_reason();
         return true;
@@ -1964,6 +1983,9 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             codex_status_lights_enabled: app_state_enabled,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -2385,6 +2407,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     let host_ok = if !pad.require_foreground {
         if crate::app_identity::foreground_is_self() {
             // Never treat OneTone process as "other app" for keep-on-top.
+            // Overlay self-FG while settings are open is forced off in build_snapshot gate.
             if onetone_main_is_foreground() {
                 false
             } else if soft_pad_agent_is_foreground()
@@ -2393,9 +2416,11 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             {
                 true
             } else if overlay_hwnd_is_foreground() {
+                // Do not keep float solely because the pad stole FG from OneTone main.
                 *last_visible().lock()
                     && !is_overlay_session_dismissed()
                     && agent_show_reason_recent()
+                    && !onetone_main_is_foreground()
             } else {
                 false
             }
@@ -2728,6 +2753,9 @@ fn agent_status_light_enabled(cfg: &VoiceConfig, kind: crate::soft_pad_runtime::
             AgentKind::Codex => pad.codex_status_lights_enabled,
             AgentKind::Claude => pad.claude_status_lights_enabled,
             AgentKind::Cursor => pad.cursor_status_lights_enabled,
+            AgentKind::WorkBuddy => pad.workbuddy_status_lights_enabled,
+            AgentKind::Trae => pad.trae_status_lights_enabled,
+            AgentKind::Qoder => pad.qoder_status_lights_enabled,
             AgentKind::CopilotCli => false,
         }
     })
@@ -2738,7 +2766,14 @@ fn agent_chip_snapshots(cfg: &VoiceConfig) -> Vec<CodexMicroAgentSnapshot> {
     use crate::soft_pad_runtime::AgentKind;
 
     let public = crate::agent_attention::public_snapshot();
-    [AgentKind::Codex, AgentKind::Claude, AgentKind::Cursor]
+    [
+        AgentKind::Codex,
+        AgentKind::Claude,
+        AgentKind::Cursor,
+        AgentKind::WorkBuddy,
+        AgentKind::Trae,
+        AgentKind::Qoder,
+    ]
         .into_iter()
         .map(|kind| {
             let lights_on = agent_status_light_enabled(cfg, kind);
@@ -2793,6 +2828,7 @@ fn agent_chip_snapshots(cfg: &VoiceConfig) -> Vec<CodexMicroAgentSnapshot> {
                 headline_state: headline.as_str().to_string(),
                 headline_label: headline_label.to_string(),
                 updated_at,
+                lights_enabled: lights_on,
             }
         })
         .collect()
@@ -3103,8 +3139,9 @@ fn apply_overlay_payload(
     if visible {
         sync_needs_input_pass_through(&win, payload);
     } else {
-        set_overlay_click_through(false);
-        let _ = win.set_ignore_cursor_events(false);
+        // Hidden: punch through so a failed hide cannot steal clicks from settings.
+        set_overlay_click_through(true);
+        let _ = win.set_ignore_cursor_events(true);
     }
     let _ = win.emit("codex_micro_overlay_state", payload);
 }
@@ -3311,8 +3348,13 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
     }
 
     if is_fg {
-        // Soft Pad agent returned to FG ? clear soft dismiss so the pad can show again.
-        if !was_fg && is_overlay_session_dismissed() && soft_pad_agent_is_foreground() {
+        // Soft Pad agent returned to FG — clear soft dismiss so the pad can show again.
+        // Never clear while settings/setup/recording gates are active (float would cover UI).
+        if !was_fg
+            && is_overlay_session_dismissed()
+            && soft_pad_agent_is_foreground()
+            && gate_reason.is_none()
+        {
             *overlay_session_dismissed().lock() = false;
         }
         // Only auto-ensure Codex pad when Codex itself is FG (not Cursor/Claude host latch).
@@ -3369,17 +3411,19 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
     if vis_changed {
         let raw = overlay_host_allows_show_raw();
         let fg = crate::app_identity::foreground_app_identity();
-        let (setup_open, verify_active, recording_active) = overlay_runtime_gate_flags(state);
+        let (setup_open, settings_open, verify_active, recording_active) =
+            overlay_runtime_gate_flags(state);
         let reason = gate_reason
             .map(str::to_string)
             .unwrap_or_else(overlay_visible_reason);
         let detail = format!(
-            "overlay visible={} host_ok={} raw_host={} reason={} setup_open={} verify_active={} recording_active={} fg_exe={} fg_title={:?} fg_preset={:?} path={:?}",
+            "overlay visible={} host_ok={} raw_host={} reason={} setup_open={} settings_open={} verify_active={} recording_active={} fg_exe={} fg_title={:?} fg_preset={:?} path={:?}",
             desired_visible,
             host_ok,
             raw,
             reason,
             setup_open,
+            settings_open,
             verify_active,
             recording_active,
             fg.as_ref().map(|i| i.exe_name.as_str()).unwrap_or(""),
@@ -3415,6 +3459,22 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
 mod tests {
     use super::*;
     use crate::config::{MappingEntry, TriggerMode, VoiceConfig};
+
+    #[test]
+    fn settings_open_gate_hides_overlay() {
+        assert_eq!(
+            overlay_runtime_gate_reason_flags(false, true, false, false),
+            Some("settings_open")
+        );
+        assert_eq!(
+            overlay_runtime_gate_reason_flags(true, true, false, false),
+            Some("setup_open")
+        );
+        assert_eq!(
+            overlay_runtime_gate_reason_flags(false, false, false, false),
+            None
+        );
+    }
 
     /// Isolate global vendor / app / pad_status / local inferred run status.
     fn isolate_status_globals() -> (
@@ -3452,6 +3512,9 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -3535,6 +3598,9 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -3600,6 +3666,9 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -3634,6 +3703,9 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -3737,6 +3809,9 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -3784,6 +3859,9 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -3830,6 +3908,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -3879,6 +3960,9 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -3922,6 +4006,9 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -3976,6 +4063,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4024,6 +4114,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4106,6 +4199,9 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: true,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4200,6 +4296,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: true,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4290,6 +4389,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4319,6 +4421,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4384,6 +4489,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4434,6 +4542,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4497,6 +4608,9 @@ mod tests {
             codex_status_lights_enabled: false, // force pad_run as ACT context
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4553,6 +4667,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4575,6 +4692,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4624,6 +4744,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4669,6 +4792,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4713,6 +4839,9 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4751,6 +4880,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4798,6 +4930,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4835,6 +4970,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4878,6 +5016,9 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4910,6 +5051,9 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -4975,6 +5119,9 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -5161,6 +5308,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -5200,6 +5350,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -5236,6 +5389,9 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -5270,6 +5426,9 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "default".into(),
@@ -5312,6 +5471,9 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: false,
+            trae_status_lights_enabled: false,
+            qoder_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
             skin: "hybrid-pro".into(),
@@ -5442,7 +5604,7 @@ mod tests {
             ..crate::codex_numpad_layer::default_codex_micro_pad()
         }));
         let agents = agent_chip_snapshots(&cfg);
-        assert_eq!(agents.len(), 3);
+        assert_eq!(agents.len(), 6);
         assert_eq!(agents[0].kind, "codex");
         assert_eq!(agents[0].state, "running");
         assert_eq!(agents[0].model, "gpt-5.4");

@@ -11,6 +11,12 @@ pub enum AgentKind {
     Cursor,
     /// GitHub Copilot CLI (desktop wait signals only; Cloud Agent excluded from Soft Pad).
     CopilotCli,
+    /// Tencent WorkBuddy / CodeBuddy — shell hooks (lifecycle + needs_input; no Claude resume).
+    WorkBuddy,
+    /// ByteDance Trae IDE — shell hooks.
+    Trae,
+    /// Alibaba Qoder IDE/CLI — shell hooks.
+    Qoder,
 }
 
 impl AgentKind {
@@ -20,6 +26,9 @@ impl AgentKind {
             AgentKind::Claude => "claude",
             AgentKind::Cursor => "cursor",
             AgentKind::CopilotCli => "copilotCli",
+            AgentKind::WorkBuddy => "workbuddy",
+            AgentKind::Trae => "trae",
+            AgentKind::Qoder => "qoder",
         }
     }
 
@@ -29,6 +38,9 @@ impl AgentKind {
             "claude-code" => Some(AgentKind::Claude),
             "cursor-chat" => Some(AgentKind::Cursor),
             "copilot-cli" => Some(AgentKind::CopilotCli),
+            "workbuddy-chat" | "codebuddy-chat" => Some(AgentKind::WorkBuddy),
+            "trae-chat" => Some(AgentKind::Trae),
+            "qoder-chat" => Some(AgentKind::Qoder),
             _ => None,
         }
     }
@@ -39,6 +51,9 @@ impl AgentKind {
             "claude" => Some(AgentKind::Claude),
             "cursor" => Some(AgentKind::Cursor),
             "copilotCli" | "copilot_cli" | "copilot-cli" => Some(AgentKind::CopilotCli),
+            "workbuddy" | "codebuddy" => Some(AgentKind::WorkBuddy),
+            "trae" => Some(AgentKind::Trae),
+            "qoder" => Some(AgentKind::Qoder),
             _ => None,
         }
     }
@@ -49,7 +64,18 @@ impl AgentKind {
             AgentKind::Claude => "claude-code",
             AgentKind::Cursor => "cursor-chat",
             AgentKind::CopilotCli => "copilot-cli",
+            AgentKind::WorkBuddy => "workbuddy-chat",
+            AgentKind::Trae => "trae-chat",
+            AgentKind::Qoder => "qoder-chat",
         }
+    }
+
+    /// Soft Pad shell-hook agents (WorkBuddy / Trae / Qoder).
+    pub fn is_shell_hook_agent(self) -> bool {
+        matches!(
+            self,
+            AgentKind::WorkBuddy | AgentKind::Trae | AgentKind::Qoder
+        )
     }
 }
 

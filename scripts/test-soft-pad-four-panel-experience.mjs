@@ -77,6 +77,18 @@ globalThis.OneToneDom = { $: (id) => fakeEl(id) };
 globalThis.OneToneCodexMicroPadUi = {
   resolveSoftPadShowMode: (pad) => (pad && pad.overlayEnabled ? 'follow' : 'hidden'),
   softPadShowModeLabel: (mode) => String(mode),
+  ensurePad: (mapping) => {
+    if (!mapping.codexMicroPad) {
+      mapping.codexMicroPad = {
+        enabled: true,
+        skin: 'graphite',
+        overlayEnabled: true,
+        presentation: 'full',
+        keys: [],
+      };
+    }
+    return mapping.codexMicroPad;
+  },
 };
 globalThis.OneToneAgentActions = {};
 globalThis.OneToneHabitProfile = {};
@@ -101,14 +113,14 @@ check('buildSoftPadFourPanelModel 已导出', typeof API.buildSoftPadFourPanelMo
 check('softPadPanelExperienceHtml 已导出', typeof API.softPadPanelExperienceHtml === 'function');
 
 const model = API.buildSoftPadFourPanelModel(entry);
-check('panelOrder 固定四面板', Array.isArray(model.panelOrder) &&
-  model.panelOrder.join(',') === 'runtime,layout,presentation,agent');
+check('panelOrder 固定三面板', Array.isArray(model.panelOrder) &&
+  model.panelOrder.join(',') === 'runtime,layout,presentation');
 check('landingView 默认 runtime', model.landingView === 'runtime');
 check('landingHint 非空', typeof model.landingHint === 'string' && model.landingHint.length > 0);
 check('每面板有且仅有一个 primaryCta.act', model.panels.every((p) =>
   p.primaryCta && typeof p.primaryCta.act === 'string' && p.primaryCta.act.length > 0));
 const acts = model.panels.map((p) => p.primaryCta.act);
-check('CTA acts 为四类', acts.join(',') === 'showMode,focusLayoutKey,focusSkin,focusAgent');
+check('CTA acts 为三类', acts.join(',') === 'showMode,focusLayoutKey,focusSkin');
 check('layout 0 keys → needsAction', model.panels.find((p) => p.id === 'layout').panelEmpty.mode === 'needsAction');
 check('runtime hidden overlay → needsAction',
   model.panels.find((p) => p.id === 'runtime').panelEmpty.mode === 'needsAction');
@@ -116,8 +128,15 @@ check('presentation ready', model.panels.find((p) => p.id === 'presentation').pa
 check('runtime tile recommended', model.panels.find((p) => p.id === 'runtime').recommended === true);
 
 const tiles = API.buildSoftPadFuncTilesModel(entry);
-check('tiles 含 data-recommended', tiles.tilesHtml.includes('data-recommended="1"'));
-check('tiles landingView=runtime', tiles.landingView === 'runtime');
+check('func tiles 已隐藏（环芯片接管）', tiles.hidden === true && !tiles.tilesHtml);
+check('pad ring 随 stage 变', typeof API.buildSoftPadPadRingModel === 'function');
+const ringPad = API.buildSoftPadPadRingModel('pad', entry);
+const ringAgent = API.buildSoftPadPadRingModel('agent', entry);
+const ringTm = API.buildSoftPadPadRingModel('timeline', entry);
+check('pad ring Soft Pad 芯片', ringPad.chipsHtml.includes('何时显示') && ringPad.chipsHtml.includes('外观'));
+check('pad ring 状态灯芯片不同', ringAgent.chipsHtml.includes('灯位对照') && !ringAgent.chipsHtml.includes('何时显示'));
+check('pad ring 胶囊芯片不同', ringTm.chipsHtml.includes('打开时间线') && !ringTm.chipsHtml.includes('何时显示'));
+check('无 agent tile', !ringPad.chipsHtml.includes('data-tile="agent"') && !model.panelOrder.includes('agent'));
 
 const chrome = API.softPadPanelExperienceHtml('layout', entry);
 check('layout chrome 含主 CTA', chrome.includes('data-act="focusLayoutKey"') && chrome.includes('is-primary'));
@@ -141,12 +160,45 @@ check('无 Soft Pad 方案 emptyHtml 非空', typeof previewEmpty.emptyHtml === 
   previewEmpty.emptyHtml.includes('soft-pad-preview-empty'));
 state.config.mappings = keptMaps;
 
+const shellPadless = {
+  id: 'm-shell',
+  enabled: true,
+  appTargetId: 'qoder-chat',
+  agentTemplateId: 'qoder',
+};
+state.selectedMappingId = 'm-shell';
+state.config.mappings = [shellPadless];
+const shellEntry = API.resolveSoftPadEntry();
+const shellModel = API.buildSoftPadFourPanelModel(shellEntry);
+check('Shell Hook mapping 缺 pad 时会补齐配置', !!shellPadless.codexMicroPad);
+check('Shell Hook mapping 补齐后三面板可进入', shellModel.hasMapping === true &&
+  shellModel.panels.every((p) => p.disabled === false));
+state.selectedMappingId = 'm1';
+state.config.mappings = keptMaps;
+
+const shellPlaceholder = {
+  mapping: null,
+  padEnabled: false,
+  presentation: 'full',
+  title: 'WorkBuddy',
+  kind: 'workbuddy',
+  appId: 'workbuddy-chat',
+  canPrepare: true,
+  canEnable: false,
+};
+const placeholderModel = API.buildSoftPadFourPanelModel(shellPlaceholder);
+const placeholderTiles = API.buildSoftPadFuncTilesModel(shellPlaceholder);
+check('未准备的内置应用三面板仍可点击', placeholderModel.hasMapping === false &&
+  placeholderModel.panels.every((p) => p.disabled === false));
+check('未准备的内置应用页签已隐藏', placeholderTiles.hidden === true);
+
 console.log('[soft-pad-3c] 源码护栏:');
-check('SOFT_PAD_PANEL_ORDER 常量', hubSrc.includes("SOFT_PAD_PANEL_ORDER = ['runtime', 'layout', 'presentation', 'agent']"));
+check('SOFT_PAD_PANEL_ORDER 常量', hubSrc.includes("SOFT_PAD_PANEL_ORDER = ['runtime', 'layout', 'presentation']"));
 check('Pad 用 softPadExperienceChrome', readFileSync(join(root, 'src/js/features/agent/codex-micro-pad-ui.js'), 'utf8')
   .includes('softPadExperienceChrome('));
 check('Pad 绑 focusLayoutKey', readFileSync(join(root, 'src/js/features/agent/codex-micro-pad-ui.js'), 'utf8')
   .includes('focusLayoutKey'));
+check('pad ring sync 存在', hubSrc.includes('function syncSoftPadPadRing') && hubSrc.includes('function buildSoftPadPadRingModel'));
 
 console.log(`[soft-pad-3c] ${pass} 通过 / ${fail} 失败`);
 if (fail > 0) process.exit(1);

@@ -80,8 +80,9 @@ habitScenarioReturnPanel === 'camera' && habitScenarioReturnId
 
 | 模式 | 优先级 |
 |------|--------|
-| Pinned（有效 userPin） | pin > 一切；其它 Agent needs_input 只进 **AgentAttentionStore**（旁观，不切 Applied） |
-| Auto | needs_input（Attention 投影）> foreground > fallback > none |
+| Auto（唯一模式） | needs_input（Attention 投影）> foreground > fallback > none |
+
+~~Pinned / 暂时设为~~ 已从产品移除：Hub 应用标签只负责**浏览/编辑**配置；运行时始终自动跟随前台（+ waiting / fallback）。
 
 | 概念 | 含义 |
 |------|------|
@@ -95,7 +96,7 @@ habitScenarioReturnPanel === 'camera' && habitScenarioReturnId
 | FE confirming | 本地 `!receivedFirstSnapshot`，不是 Rust availability |
 | `sync_hook_cache` | 仅代理 `request_soft_pad_recompute` |
 
-FE `resolvePrimaryLaneResult` = oracle / Hub 预览；正式首页在 cutover 后读 Rust Applied。Pin 经 `cmd_soft_pad_set_follow` 上移 Rust。
+FE `resolvePrimaryLaneResult` = oracle / Hub 预览（无 pin）；正式首页在 cutover 后读 Rust Applied。`cmd_soft_pad_set_follow` 保留为清 pin / Auto 兼容入口。
 
 **waiting_kinds 规则**：AppServer / Native / 官方明确等待 Hook / OneTone ask → 可进；Inferred（FG/标题/文本）→ **只点灯，禁入**。PadStatus 24h sticky **不得**直喂 Arbiter。投影变化才 `request_soft_pad_recompute`。
 
@@ -116,8 +117,8 @@ Skills 只负责 Hook 安装/配置/诊断，**不是**实时状态源。
 | 正在使用 | `config.activeSceneId` |
 | 正在编辑（习惯） | `state.selectedMappingId` |
 | Soft Pad 主车道（displayLane） | `resolvePrimaryLane` / `Result`（仅 padEnabled） |
-| Soft Pad Hub tab | `selectedScopeId` / `pickHubDefaultScopeId`（浏览，非 pin） |
-| Soft Pad 暂时固定 | 内存 `userLaneId`（null = 自动跟随） |
+| Soft Pad Hub tab | `selectedScopeId` / `pickHubDefaultScopeId`（浏览/编辑，非运行跟随） |
+| Soft Pad 运行跟随 | 始终 Auto（waiting → foreground → fallback）；无暂时固定 |
 | Soft Pad 编辑 mapping | `state.selectedMappingId`（禁止模块私有 mapping 真相） |
 | 语音 UI 哨兵 | 可映射到 null + 局部「配全局底座」 |
 | Camera 编辑模式 | `ui.cameraEditMode` |
