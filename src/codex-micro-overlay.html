@@ -1469,7 +1469,8 @@
         return c.microKeyId+':'+(c.bound?1:0)+':'+(c.uiIconId||'')+':'+(c.sourceKind||'')+':'+(c.keyRole||'action');
       });
       var mode=String(s.padMode||'')==='numpad'?'numpad':(s.enabled===false?'numpad':'codex');
-      var navOn=s.navKeysEnabled!==false && s.nav_keys_enabled!==false;
+      var navOn=s.showNavigationPad!==false && s.show_navigation_pad!==false
+        && s.navKeysEnabled!==false && s.nav_keys_enabled!==false;
       var cols=Number(s.layoutColumns||s.layout_columns||0)|| (navOn?5:4);
       if(mode==='numpad') cols=4;
       var purpose=String(s.purpose||'shortcuts');
@@ -1621,7 +1622,8 @@
       joyContextHint=String(s.joyContextHint||s.joy_context_hint||'').trim();
       requireNumLockOff=!!s.requireNumLockOff;
       numLockBlocking=!!s.numLockBlocking;
-      navKeysEnabled=s.navKeysEnabled!==false && s.nav_keys_enabled!==false;
+      navKeysEnabled=s.showNavigationPad!==false && s.show_navigation_pad!==false
+        && s.navKeysEnabled!==false && s.nav_keys_enabled!==false;
       layoutColumns=Number(s.layoutColumns||s.layout_columns||0)||(navKeysEnabled?5:4);
       if(padMode==='numpad') layoutColumns=4;
       enhanceOn=!!s.softwareEnhanceEnabled;

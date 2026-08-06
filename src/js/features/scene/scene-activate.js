@@ -39,14 +39,10 @@
     try{
       global.chrome&&global.chrome.webview&&global.chrome.webview.postMessage({type:'mvp_scheme_select',mappingId:id});
     }catch(_){}
+    // Do not forceHomeRender/render here — sync home remount on the click path froze the UI.
+    // mvp_scheme_switched → scheme-switch-feedback paints once (deferred).
     if(global.OneToneHabitChannelStatusStrip&&global.OneToneHabitChannelStatusStrip.render){
       try{ global.OneToneHabitChannelStatusStrip.render(); }catch(_){}
-    }
-    if(global.OneToneHomeWorkbench){
-      try{
-        if(global.OneToneHomeWorkbench.forceHomeRender) global.OneToneHomeWorkbench.forceHomeRender();
-        if(global.OneToneHomeWorkbench.render) global.OneToneHomeWorkbench.render();
-      }catch(_){}
     }
   }
 

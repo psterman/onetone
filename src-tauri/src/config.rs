@@ -1237,10 +1237,18 @@ pub struct CodexMicroPadConfig {
     pub require_foreground: bool,
     #[serde(default)]
     pub require_num_lock_off: bool,
-    /// When false, main-keyboard arrows are not captured into Soft Pad NAV_*.
-    /// NAV routes stay in config; preview/overlay hide the NAV column.
-    #[serde(default = "default_true")]
+    /// Show Soft Pad left NAV column (virtual D-pad). Does **not** capture physical arrows.
+    /// JSON: `showNavigationPad` (alias `navKeysEnabled` for older configs).
+    #[serde(
+        default = "default_true",
+        rename = "showNavigationPad",
+        alias = "navKeysEnabled"
+    )]
     pub nav_keys_enabled: bool,
+    /// Allow LL hook to swallow main-keyboard arrows only when that NAV_* has a bound slot.
+    /// Default off — physical ↑↓←→ stay native; screen/joystick NAV inject is separate.
+    #[serde(default)]
+    pub capture_physical_arrows: bool,
     #[serde(default)]
     pub overlay_enabled: bool,
     /// beginner | standard | advanced | custom — UI Profile only; does not change scan codes.
@@ -1249,7 +1257,8 @@ pub struct CodexMicroPadConfig {
     /// shortcuts | sessions — AG surface mode; orthogonal to layout_profile.
     #[serde(default)]
     pub purpose: crate::soft_pad_purpose::SoftPadPurpose,
-    /// Software enhance (ENC wheel / JOY nav). Default on; independent of layout profile.
+    /// Software enhance: screen NAV / encoder / joystick may inject arrows when unbound.
+    /// Does **not** enable physical main-keyboard arrow capture.
     #[serde(default = "default_true")]
     pub software_enhance_enabled: bool,
     /// Status-bridge switch: Codex Hook / app-state → status-slot host lights. Not a key route.
@@ -1288,6 +1297,7 @@ impl Default for CodexMicroPadConfig {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: false,
             layout_profile: String::new(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,

@@ -311,11 +311,16 @@ check('flow 场景图标芯片', (() => {
 })());
 check('activate 乐观刷新首页', (() => {
   const act = readFileSync(join(root, 'src/js/features/scene/scene-activate.js'), 'utf8');
-  return act.includes('cfg.activeSceneId=id') && act.includes('forceHomeRender');
+  // Optimistic activeSceneId + postMessage; home paint comes from scheme-switch-feedback.
+  return act.includes('cfg.activeSceneId=id')
+    && act.includes('mvp_scheme_select')
+    && !/forceHomeRender[\s\S]*requestAnimationFrame[\s\S]*wb\.render/.test(act);
 })());
 check('scheme-switch forceHomeRender', (() => {
   const fb = readFileSync(join(root, 'src/js/features/home/scheme-switch-feedback.js'), 'utf8');
-  return fb.includes('forceHomeRender') && fb.includes('HomeWorkbench.render');
+  return fb.includes('forceHomeRender')
+    && fb.includes('requestAnimationFrame')
+    && /wb\.render|HomeWorkbench\.render/.test(fb);
 })());
 check('workbench sig 含 activeSceneId', (() => {
   const model = readFileSync(join(root, 'src/js/features/home/home-workbench-model.js'), 'utf8');
@@ -326,21 +331,23 @@ check('hub 通用设置无四通道栅格', (() => {
   const fn = hub.match(/function renderGlobalDefaultCard\(\)\{[\s\S]*?\n  function /);
   return !!(fn && !fn[0].includes('habit-hub-channels') && fn[0].includes('data-habit-global-home') && fn[0].includes('habit-hub-hero--thin'));
 })());
-check('scenario 芯片切换、摘要进习惯页、无 per-card 编辑深链', (() => {
+check('scenario 芯片切换、浮层进习惯页、无摘要卡/无 per-card 编辑深链', (() => {
   const chip = panels.match(/function sceneChipHtml\([\s\S]*?\n  function /);
-  const summary = panels.match(/function sceneSummaryHtml\([\s\S]*?\n  function /);
   const render = panels.match(/function renderScenarioPanel\([\s\S]*?\n  function /);
-  if (!chip || !summary || !render) return false;
-  return !chip[0].includes('data-wb-scenario-use')
-    && !chip[0].includes('data-wb-scenario-edit')
+  if (!chip || !render) return false;
+  return !chip[0].includes('data-wb-scenario-edit')
     && chip[0].includes('wb-scene-chip')
-    && summary[0].includes('data-wb-habit-open-hub')
-    && summary[0].includes('wb-scene-card-badge')
+    && chip[0].includes('data-wb-chip-id')
+    && !panels.includes('function sceneSummaryHtml')
+    && !render[0].includes('sceneSummaryHtml')
     && render[0].includes('wb-scene-chips')
+    && panels.includes('wbSceneChipFlyout')
+    && panels.includes('sceneChipFlyoutShellHtml')
     && wb.includes('openHabitsHubForMapping')
+    && wb.includes('showChipFlyout')
     && /data-wb-habit-open-hub[\s\S]*openHabitsHubForMapping/.test(wb)
     && /panel:'habits',\s*focus:'mappings'/.test(wb)
-    && !wb.includes('data-wb-scenario-use')
+    && /data-wb-scenario-use[\s\S]*selectWorkbenchMapping/.test(wb)
     && /data-wb-scenario-id[\s\S]*selectWorkbenchMapping/.test(wb)
     && !/data-wb-scenario-edit[\s\S]*openWorkbenchScenario/.test(wb);
 })());

@@ -187,6 +187,7 @@ pub struct AppState {
 }
 
 pub fn graceful_exit(app: &tauri::AppHandle) {
+    crate::ui_heartbeat::on_graceful_exit();
     if let Some(menu_win) = app.get_webview_window("tray_menu") {
         let _ = menu_win.hide();
     }
@@ -220,6 +221,7 @@ pub fn run() {
     }));
     app_log::early_line("startup", "loading config");
     ui_heartbeat::start_watchdog();
+    ui_heartbeat::on_process_start();
     let mut initial = load_config();
     app_log::early_line("startup", "config loaded");
     initial.migrate();
@@ -817,6 +819,8 @@ pub fn run() {
             ipc::cmd_export_logs,
             ipc::cmd_app_log,
             ipc::cmd_ui_heartbeat,
+            ipc::cmd_last_ui_stall,
+            ipc::cmd_clear_last_ui_stall,
             ipc::cmd_open_url,
             ipc::cmd_open_path,
             ipc::cmd_data_root_status,

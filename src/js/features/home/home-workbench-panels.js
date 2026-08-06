@@ -725,40 +725,64 @@
       +'</span>';
   }
 
+  function sceneChipShortName(m){
+    if(isBaselineScene(m)) return t('homeWbChipUniversal','通用');
+    var full=sceneHabitName(m);
+    var short=String(full||'')
+      .replace(/\s*场景\s*$/,'')
+      .replace(/\s*Scene\s*$/i,'')
+      .trim();
+    return short||full||'—';
+  }
+
+  function chipFlyoutContent(id){
+    id=String(id||'').trim();
+    if(!id||!global.OneToneMappingCore||!global.OneToneMappingCore.byId) return null;
+    var m=global.OneToneMappingCore.byId(id);
+    if(!m) return null;
+    return {
+      id:String(m.id),
+      name:sceneHabitName(m),
+      pair:sceneDesc(m),
+      pillsHtml:sceneChannelPillsHtml(m),
+      active:String(m.id)===String(activeSceneId()||'')
+    };
+  }
+
+  function sceneChipFlyoutShellHtml(){
+    return '<div id="wbSceneChipFlyout" class="wb-scene-chip-flyout" hidden role="dialog" aria-label="'+esc(t('homeWbChipFlyoutAria','习惯预览'))+'">'
+      +'<div class="wb-scene-chip-flyout-name" data-flyout-name></div>'
+      +'<p class="wb-scene-chip-flyout-pair" data-flyout-pair></p>'
+      +'<div class="wb-scene-chip-flyout-pills" data-flyout-pills></div>'
+      +'<div class="wb-scene-chip-flyout-actions">'
+      +'<button type="button" class="wb-scene-summary-cta" data-flyout-use data-wb-scenario-use="">'
+      +esc(t('homeWbHabitBarUse','设为正在使用'))
+      +'</button>'
+      +'<button type="button" class="wb-scene-summary-cta is-ghost" data-flyout-hub data-wb-habit-open-hub="">'
+      +esc(t('homeWbHabitOpenHub','查看全部'))
+      +'</button>'
+      +'</div>'
+      +'</div>';
+  }
+
   function sceneChipHtml(m,activeId){
     var active=m.id===activeId;
-    var name=sceneHabitName(m);
+    var full=sceneHabitName(m);
+    var short=sceneChipShortName(m);
     var activeDot=active
       ?'<span class="wb-scene-chip-dot" title="'+esc(t('homeWbHabitActive'))+'"></span>'
       :'';
     return '<button type="button" class="wb-scene-chip'+(active?' is-active':'')+'"'
       +' data-wb-scenario-id="'+esc(m.id)+'"'
+      +' data-wb-chip-id="'+esc(m.id)+'"'
       +' aria-pressed="'+(active?'true':'false')+'"'
-      +' title="'+esc(name)+'"'
-      +' aria-label="'+esc(name+(active?' · '+t('homeWbHabitActive'):''))+'">'
+      +' aria-haspopup="dialog"'
+      +' title="'+esc(full)+'"'
+      +' aria-label="'+esc(full+(active?' · '+t('homeWbHabitActive'):''))+'">'
       +sceneIconHtml(m)
-      +'<span class="wb-scene-chip-name">'+esc(name)+'</span>'
+      +'<span class="wb-scene-chip-name">'+esc(short)+'</span>'
       +activeDot
       +'</button>';
-  }
-
-  function sceneSummaryHtml(m){
-    if(!m||!m.id) return '';
-    var name=sceneHabitName(m);
-    return '<div class="wb-scene-summary" data-wb-summary-for="'+esc(m.id)+'">'
-      +sceneIconHtml(m)
-      +'<div class="wb-scene-summary-body">'
-      +'<div class="wb-scene-summary-top">'
-      +'<span class="wb-scene-summary-name">'+esc(name)+'</span>'
-      +'<span class="wb-scene-card-badge">'+esc(t('homeWbHabitActive'))+'</span>'
-      +'</div>'
-      +'<p class="wb-scene-summary-action">'+esc(sceneDesc(m))+'</p>'
-      +sceneChannelPillsHtml(m)
-      +'</div>'
-      +'<button type="button" class="wb-scene-summary-cta" data-wb-habit-open-hub="'+esc(m.id)+'">'
-      +esc(t('homeWbHabitOpenHub','查看全部'))
-      +'</button>'
-      +'</div>';
   }
 
   function renderScenarioPanel(vm){
@@ -797,7 +821,8 @@
       +'<span class="wb-scene-chip-name">'+esc(t('homeWbSceneNewHabit'))+'</span>'
       +'</button>';
     html+='</div>';
-    if(active) html+=sceneSummaryHtml(active);
+    // No summary card under chips — hero + active chip + hover flyout already cover it.
+    html+=sceneChipFlyoutShellHtml();
     if(!appCount){
       html+='<p class="wb-scene-rail-hint">'+esc(t(
         'homeWbHabitRailHint',
@@ -847,6 +872,8 @@
     renderVoicePanel:renderMicCard,
     renderMicCard:renderMicCard,
     softPadHowToSnapshot:softPadHowToSnapshot,
+    chipFlyoutContent:chipFlyoutContent,
+    sceneChipShortName:sceneChipShortName,
     cameraHowToSnapshot:cameraHowToSnapshot,
     collectHowToSurfaceBits:collectHowToSurfaceBits,
     sceneIconHtml:sceneIconHtml,

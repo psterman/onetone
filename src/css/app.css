@@ -3629,6 +3629,12 @@
     }
     .habit-hub-card-desc{font-size:11px;line-height:1.4;color:var(--on-surface-muted)}
     .habit-hub-card-meta{font-size:10px;color:var(--on-surface-muted);opacity:.85}
+    .habit-hub-micro-pills{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+    .habit-hub-micro-pill{
+      font-size:10px;font-weight:700;line-height:1.2;padding:2px 7px;border-radius:999px;
+      color:var(--on-surface-muted);background:var(--surface-soft);border:1px solid var(--outline-variant)
+    }
+    .habit-hub-hero--thin .habit-hub-micro-pills{margin-top:6px}
     .habit-hub-card-actions{
       display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;
       padding-left:12px;border-left:1px dashed var(--outline-variant);

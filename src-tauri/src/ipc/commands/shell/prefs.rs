@@ -61,6 +61,18 @@ pub fn cmd_ui_heartbeat(seq: u64, activity_tag: Option<String>, frontend_time: O
     );
 }
 
+/// Last UI stall / unclean exit for next-boot home banner (does not clear).
+#[tauri::command]
+pub fn cmd_last_ui_stall() -> Option<crate::ui_heartbeat::LastUiStall> {
+    crate::ui_heartbeat::take_last_stall_for_ui()
+}
+
+/// User dismissed the last-stall home banner.
+#[tauri::command]
+pub fn cmd_clear_last_ui_stall() {
+    crate::ui_heartbeat::clear_last_stall_for_ui();
+}
+
 #[tauri::command]
 pub fn cmd_open_url(url: String) -> Result<(), String> {
     #[cfg(windows)]

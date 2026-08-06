@@ -491,7 +491,7 @@
       requireNumLockOff: !!pad.requireNumLockOff,
       overlayEnabled: !!pad.overlayEnabled,
       requireForeground: pad.requireForeground !== false,
-      navKeysEnabled: pad.navKeysEnabled !== false
+      navKeysEnabled: navKeysOn(pad)
     };
     if (padFlagsPersistTimer) clearTimeout(padFlagsPersistTimer);
     padFlagsPersistTimer = setTimeout(function () {
@@ -891,7 +891,9 @@
         enabled: true,
         requireForeground: true,
         requireNumLockOff: false,
+        showNavigationPad: true,
         navKeysEnabled: true,
+        capturePhysicalArrows: false,
         overlayEnabled: true,
         layoutProfile: 'custom',
         purpose: 'shortcuts',
@@ -923,8 +925,16 @@
     if (m.codexMicroPad.requireForeground == null) {
       m.codexMicroPad.requireForeground = true;
     }
-    if (m.codexMicroPad.navKeysEnabled == null) {
-      m.codexMicroPad.navKeysEnabled = true;
+    // showNavigationPad (display) — alias navKeysEnabled for older configs.
+    if (m.codexMicroPad.showNavigationPad == null && m.codexMicroPad.navKeysEnabled != null) {
+      m.codexMicroPad.showNavigationPad = m.codexMicroPad.navKeysEnabled !== false;
+    }
+    if (m.codexMicroPad.showNavigationPad == null) {
+      m.codexMicroPad.showNavigationPad = true;
+    }
+    m.codexMicroPad.navKeysEnabled = m.codexMicroPad.showNavigationPad !== false;
+    if (m.codexMicroPad.capturePhysicalArrows == null) {
+      m.codexMicroPad.capturePhysicalArrows = false;
     }
     if (m.codexMicroPad.codexStatusLightsEnabled == null) {
       m.codexMicroPad.codexStatusLightsEnabled = false;
@@ -1973,9 +1983,17 @@
     return /^NAV_/.test(String(id || ''));
   }
 
-  /** Direction-key capture + NAV column — default on when field missing. */
+  /** Soft Pad left NAV column visibility (showNavigationPad). Does not capture physical arrows. */
   function navKeysOn(pad) {
-    return !pad || pad.navKeysEnabled !== false;
+    if (!pad) return true;
+    if (pad.showNavigationPad != null) return pad.showNavigationPad !== false;
+    return pad.navKeysEnabled !== false;
+  }
+
+  function setNavColumnShown(pad, on) {
+    if (!pad) return;
+    pad.showNavigationPad = !!on;
+    pad.navKeysEnabled = !!on;
   }
 
   /** Shift Soft Pad cell one column left after removing the NAV rail. */
@@ -5614,18 +5632,18 @@
       '<header class="soft-pad-numpad-step__head">' +
       '<span class="soft-pad-numpad-step__n">3</span>' +
       '<span class="soft-pad-numpad-step__h">' +
-      esc(t('softPadFeatureNavTitle', '方向键进 Soft Pad')) + '</span>' +
+      esc(t('softPadFeatureNavTitle', 'Soft Pad 方向栏')) + '</span>' +
       '</header>' +
       '<label class="codex-pad-mgr__setting soft-pad-feature-card__toggle">' +
       '<input type="checkbox" data-act="navKeys"' +
       (navOn ? ' checked' : '') + mapDisabled + '>' +
-      esc(t('softPadFeatureNavSwitch', '主键盘方向键进入 Soft Pad')) + '</label>' +
+      esc(t('softPadFeatureNavSwitch', '显示左侧方向栏')) + '</label>' +
       '<p class="soft-pad-feature-card__cap" data-nav-cap>' +
       esc(navOn
         ? t('softPadFeatureNavCapOn',
-          '主键盘方向键临时靠在虚拟键盘左侧；与小键盘 2/4/6/8 无关。')
+          '屏幕方向钮可注入 ↑↓←→；主键盘倒 T 保持系统原样（不劫持）。')
         : t('softPadFeatureNavCapOff',
-          '方向键保持系统原样，Soft Pad 不显示左侧方向列。')) + '</p>' +
+          'Soft Pad 不显示左侧方向列；主键盘方向键始终系统原样。')) + '</p>' +
       '<div data-nav-demo-host>' +
       renderNavArrowDemoHtml(pad) +
       '</div>' +
@@ -5982,14 +6000,14 @@
         var next = !!navKeysEl.checked;
         if (next === navKeysOn(pad)) return;
         markBusy(280);
-        pad.navKeysEnabled = next;
+        setNavColumnShown(pad, next);
         var navCap = body.querySelector('[data-nav-cap]');
         if (navCap) {
           navCap.textContent = next
             ? t('softPadFeatureNavCapOn',
-              '主键盘方向键临时靠在虚拟键盘左侧；与小键盘 2/4/6/8 无关。')
+              '屏幕方向钮可注入 ↑↓←→；主键盘倒 T 保持系统原样（不劫持）。')
             : t('softPadFeatureNavCapOff',
-              '方向键保持系统原样，Soft Pad 不显示左侧方向列。');
+              'Soft Pad 不显示左侧方向列；主键盘方向键始终系统原样。');
         }
         var arrowStory = body.querySelector('[data-nav-on]');
         if (arrowStory) arrowStory.setAttribute('data-nav-on', next ? '1' : '0');

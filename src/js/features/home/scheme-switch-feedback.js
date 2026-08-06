@@ -28,16 +28,22 @@
       // Runtime in-use only — never drag editing selection or remount the editor form.
       if(state.config) state.config.activeSceneId=toId;
     }
-    hooks.renderMappingList();
+    // Skip mapping-list remount on home — remounting editors on every scheme switch froze the UI.
+    var drawerOpen=!!(state.ui&&state.ui.drawerOpen);
+    if(drawerOpen&&hooks.renderMappingList) hooks.renderMappingList();
     if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
     if(global.OneToneHabitChannelStatusStrip&&global.OneToneHabitChannelStatusStrip.render){
       try{ global.OneToneHabitChannelStatusStrip.render(); }catch(_){}
     }
     // Prefer workbench refresh (scenario rail / howto) over legacy live-zone only.
+    // Defer paint — sync full home render after scheme switch froze the UI on habit chips.
     if(global.OneToneHomeWorkbench){
       try{
         if(global.OneToneHomeWorkbench.forceHomeRender) global.OneToneHomeWorkbench.forceHomeRender();
-        if(global.OneToneHomeWorkbench.render) global.OneToneHomeWorkbench.render();
+        var wb=global.OneToneHomeWorkbench;
+        requestAnimationFrame(function(){
+          try{ if(wb&&wb.render) wb.render(); }catch(_){}
+        });
       }catch(_){}
     }
     if(toId){
@@ -57,7 +63,10 @@
       hooks.toast(msg,'scheme');
     }
     notifyIfBackground(msg);
-    refreshVoiceAfterSceneSwitch();
+    // Defer voice remount — sync loadSapi/Vosk on switch fought home paint (假死).
+    requestAnimationFrame(function(){
+      try{ refreshVoiceAfterSceneSwitch(); }catch(_){}
+    });
   }
 
   function refreshVoiceAfterSceneSwitch(){

@@ -27,9 +27,8 @@ assert.ok(card);
 assert.doesNotMatch(card[0], /data-wb-scenario-use/);
 assert.doesNotMatch(card[0], /data-wb-scenario-edit/);
 assert.match(card[0], /wb-scene-chip/);
-assert.match(panels, /function sceneSummaryHtml/);
 assert.match(panels, /data-wb-habit-open-hub/);
-assert.match(panels, /wb-scene-card-badge/);
+assert.doesNotMatch(panels, /function sceneSummaryHtml/);
 assert.match(panels, /Never prune\+persist on paint|Display filter below is enough/);
 assert.doesNotMatch(
   panels.match(/function renderScenarioPanel\([\s\S]*?\n  function /)?.[0] || '',
@@ -41,7 +40,8 @@ assert.match(wb, /panel:'habits',\s*focus:'mappings'/);
 assert.match(wb, /hasAppScenarioMappings/);
 assert.match(html, /id="wbHabitManage"/);
 assert.match(css, /\.wb-scene-chip\b/);
-assert.match(css, /\.wb-scene-summary\b/);
+assert.match(css, /align-self:\s*center/);
+assert.doesNotMatch(css, /\.wb-scene-summary\s*\{/);
 
 const snap = panels.match(/function softPadHowToSnapshot\(\)\{[\s\S]*?\n  function /);
 assert.ok(snap);

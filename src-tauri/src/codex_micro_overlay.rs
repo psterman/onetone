@@ -35,6 +35,8 @@ static LAST_FOREGROUND_CODEX: OnceLock<ParkingMutex<bool>> = OnceLock::new();
 static LAST_PASS_THROUGH: OnceLock<ParkingMutex<bool>> = OnceLock::new();
 static LAST_PASS_RESYNC: OnceLock<ParkingMutex<Option<Instant>>> = OnceLock::new();
 static LAST_VISIBLE: OnceLock<ParkingMutex<bool>> = OnceLock::new();
+/// Last time Soft Pad was allowed to show for a real agent/hold reason (not overlay FG steal).
+static LAST_AGENT_SHOW_REASON_AT: OnceLock<ParkingMutex<Option<Instant>>> = OnceLock::new();
 static FG_CONFIRM: OnceLock<ParkingMutex<(bool, u8)>> = OnceLock::new();
 /// (status, micro_key_id, since)
 static PAD_RUN_STATUS: OnceLock<ParkingMutex<(String, String, Instant)>> = OnceLock::new();
@@ -406,15 +408,17 @@ pub struct CodexMicroOverlaySnapshot {
     pub pad_mode: String,
     /// Overlay session: JOY left NAV rail open (not persisted).
     pub joy_nav_panel_open: bool,
-    /// True when physical arrows are hijacked into NAV_* (Codex FG + pad on + rail open).
+    /// True when physical arrows are hijacked into bound NAV_* (capturePhysicalArrows + slot).
     pub joy_arrows_live: bool,
     /// Short context copy for the NAV rail / toast (empty when rail closed).
     pub joy_context_hint: String,
     pub require_num_lock_off: bool,
     pub num_lock_blocking: bool,
-    /// When false, main-keyboard arrows are not captured; overlay uses compact Soft Pad (no NAV col).
+    /// When false, overlay hides the left NAV column (showNavigationPad).
+    /// Does not control physical arrow capture — see capture path / joy_arrows_live.
+    #[serde(rename = "showNavigationPad", alias = "navKeysEnabled")]
     pub nav_keys_enabled: bool,
-    /// Soft Pad grid columns: 5 with NAV, 4 when navKeysEnabled is false (codex mode).
+    /// Soft Pad grid columns: 5 with NAV, 4 when showNavigationPad is false (codex mode).
     pub layout_columns: u32,
     pub bound_count: u32,
     pub active_micro_key_id: String,
@@ -951,16 +955,47 @@ fn onetone_main_is_foreground() -> bool {
     false
 }
 
+fn last_agent_show_reason_at() -> &'static ParkingMutex<Option<Instant>> {
+    LAST_AGENT_SHOW_REASON_AT.get_or_init(|| ParkingMutex::new(None))
+}
+
+fn note_agent_show_reason() {
+    *last_agent_show_reason_at().lock() = Some(Instant::now());
+}
+
+fn clear_agent_show_reason() {
+    *last_agent_show_reason_at().lock() = None;
+}
+
+/// How long overlay may keep FG after a real agent/hold show (clicking keycaps).
+const OVERLAY_KEEP_AFTER_AGENT_MS: u64 = 4_000;
+
+fn agent_show_reason_recent() -> bool {
+    last_agent_show_reason_at()
+        .lock()
+        .map(|at| at.elapsed() <= Duration::from_millis(OVERLAY_KEEP_AFTER_AGENT_MS))
+        .unwrap_or(false)
+}
+
 fn overlay_host_allows_show_raw() -> bool {
     if onetone_main_is_foreground() {
+        clear_agent_show_reason();
         return false;
     }
     if soft_pad_agent_is_foreground() || hook_needs_input_hold() || claude_activity_hold() {
+        note_agent_show_reason();
         return true;
     }
-    // Overlay self-FG: keep an already-shown pad interactive, but do not *become*
-    // visible solely from stealing focus off OneTone settings (that felt like ??).
-    overlay_hwnd_is_foreground() && *last_visible().lock() && !is_overlay_session_dismissed()
+    // Overlay self-FG: keep only after a real agent/hold show. Naked focus-steal from
+    // OneTone main used to leave the pad always-on-top forever (不响应 / 假死).
+    if overlay_hwnd_is_foreground()
+        && *last_visible().lock()
+        && !is_overlay_session_dismissed()
+        && agent_show_reason_recent()
+    {
+        return true;
+    }
+    false
 }
 
 /// Single debounce entry ? callers must not wrap again with `stable_overlay_host`.
@@ -1921,6 +1956,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: false,
             layout_profile: String::new(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -2345,20 +2381,35 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     let (joy_nav_panel_open, joy_arrows_live, joy_context_hint) = joy_context_fields(pad.enabled);
     let readiness = crate::codex_numpad_layer::readiness_snapshot(cfg);
     // "保持在最前" (require_foreground=false): stay visible while Soft Pad is enabled,
-    // except over OneTone main settings. Still not "hijack any app" for key dispatch.
-    // Overlay self-FG alone must not uncover a hidden pad over settings (??).
+    // except over OneTone (main or focus-steal race). Still not "hijack any app" for key dispatch.
     let host_ok = if !pad.require_foreground {
-        if onetone_main_is_foreground() {
-            false
+        if crate::app_identity::foreground_is_self() {
+            // Never treat OneTone process as "other app" for keep-on-top.
+            if onetone_main_is_foreground() {
+                false
+            } else if soft_pad_agent_is_foreground()
+                || hook_needs_input_hold()
+                || claude_activity_hold()
+            {
+                true
+            } else if overlay_hwnd_is_foreground() {
+                *last_visible().lock()
+                    && !is_overlay_session_dismissed()
+                    && agent_show_reason_recent()
+            } else {
+                false
+            }
         } else if soft_pad_agent_is_foreground()
             || hook_needs_input_hold()
             || claude_activity_hold()
         {
             true
         } else if overlay_hwnd_is_foreground() {
-            *last_visible().lock() && !is_overlay_session_dismissed()
+            *last_visible().lock()
+                && !is_overlay_session_dismissed()
+                && agent_show_reason_recent()
         } else {
-            // Other app focused ? keep-on-top.
+            // Other app focused — keep-on-top.
             true
         }
     } else {
@@ -3393,6 +3444,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: String::new(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -3475,6 +3527,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: false,
             layout_profile: String::new(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -3539,6 +3592,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -3572,6 +3626,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -3674,6 +3729,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -3720,6 +3776,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -3765,6 +3822,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -3813,6 +3871,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -3855,6 +3914,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -3908,6 +3968,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -3955,6 +4016,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -4036,6 +4098,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Sessions,
@@ -4129,6 +4192,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Sessions,
@@ -4218,6 +4282,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -4246,6 +4311,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -4310,6 +4376,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Sessions,
@@ -4359,6 +4426,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -4421,6 +4489,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -4476,6 +4545,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -4497,6 +4567,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -4545,6 +4616,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -4589,6 +4661,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -4632,6 +4705,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -4669,6 +4743,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -4715,6 +4790,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -4751,6 +4827,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -4793,6 +4870,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -4816,18 +4894,19 @@ mod tests {
     }
 
     #[test]
-    fn joy_arrows_live_follows_pad_active_not_rail() {
+    fn joy_arrows_live_requires_capture_opt_in_and_bound_nav() {
         let _iso = isolate_status_globals();
         let mut cfg = VoiceConfig::default();
-        cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
+        let mut pad = CodexMicroPadConfig {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
-            software_enhance_enabled: false,
+            software_enhance_enabled: true,
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
@@ -4837,37 +4916,46 @@ mod tests {
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
             keys: vec![],
-        })];
+        };
+        cfg.mappings = vec![codex_mapping(pad.clone())];
         crate::codex_numpad_layer::sync_hook_cache(&cfg);
         crate::codex_numpad_layer::set_joy_nav_panel_open(true);
-        // Soft Pad session latch (Codex/overlay FG) enables main-keyboard ? NAV_* capture.
         test_set_foreground_latch(true);
         let snap = build_snapshot_from_cfg(&cfg);
+        assert!(!snap.joy_nav_panel_open);
         assert!(
-            !snap.joy_nav_panel_open,
-            "side-rail deprecated ? always false"
+            !snap.joy_arrows_live,
+            "show NAV column alone must not mark arrows live"
         );
+
+        pad.capture_physical_arrows = true;
+        pad.keys.push(crate::config::CodexMicroPadKeyRoute {
+            micro_key_id: "NAV_LEFT".into(),
+            source_scan: 0,
+            source_extended: false,
+            slot_id: "navBack".into(),
+            ui_icon_id: "navLeft".into(),
+            enabled: true,
+            advanced: true,
+            agent_light_id: String::new(),
+            key_role: None,
+            auto_assignable: None,
+        });
+        cfg.mappings = vec![codex_mapping(pad)];
+        // agent bindings needed for route merge
+        if let Some(m) = cfg.mappings.get_mut(0) {
+            m.agent_bindings = crate::agent::bindings_build::build_codex_micro_13_bindings("zh-CN");
+            m.agent_provider_id = crate::agent::templates::CODEX_PROVIDER_ID.into();
+        }
+        crate::codex_numpad_layer::sync_hook_cache(&cfg);
+        let snap_on = build_snapshot_from_cfg(&cfg);
         assert!(
-            snap.joy_arrows_live,
-            "Soft Pad session + pad on ? main arrows live"
-        );
-        assert!(
-            snap.joy_context_hint.contains("主键盘") || snap.joy_context_hint.contains("方向"),
-            "hint={}",
-            snap.joy_context_hint
+            snap_on.joy_arrows_live,
+            "capture opt-in + bound NAV → arrows live"
         );
         test_set_foreground_latch(false);
         let snap_off = build_snapshot_from_cfg(&cfg);
-        assert!(
-            !snap_off.joy_arrows_live,
-            "no Soft Pad session ? arrows not live"
-        );
-        assert!(
-            snap_off.joy_context_hint.contains("前台")
-                || snap_off.joy_context_hint.contains("方向"),
-            "hint={}",
-            snap_off.joy_context_hint
-        );
+        assert!(!snap_off.joy_arrows_live);
     }
 
     #[test]
@@ -4879,6 +4967,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: false,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -5064,6 +5153,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -5102,6 +5192,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -5137,6 +5228,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: false,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -5170,6 +5262,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -5211,6 +5304,7 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
+            capture_physical_arrows: false,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,

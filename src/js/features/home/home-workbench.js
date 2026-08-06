@@ -196,6 +196,7 @@
 
   function alertActionLabel(action){
     if(!action) return '';
+    if(action.type==='dismissLastStall') return t('homeWbAlertLastStallDismiss','知道了');
     if(action.type==='resumeListening') return t('homeWbAlertActionResume');
     if(action.type==='openSettings'){
       if(action.panel==='voiceWake') return t('homeWbAlertActionVoice');
@@ -207,6 +208,10 @@
 
   function handleAlertAction(action){
     if(!action) return;
+    if(action.type==='dismissLastStall'){
+      dismissLastUiStall();
+      return;
+    }
     if(action.type==='resumeListening'){
       if(global.OneToneIpc) global.OneToneIpc.invoke('cmd_resume',{}).catch(function(){});
       return;
@@ -219,14 +224,56 @@
     }
   }
 
+  var pendingLastStall=null;
+  var lastStallFetchStarted=false;
+
+  function fetchLastUiStallOnce(){
+    if(lastStallFetchStarted) return;
+    lastStallFetchStarted=true;
+    if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
+    global.OneToneIpc.invoke('cmd_last_ui_stall',{}).then(function(s){
+      if(!s||!s.code) return;
+      pendingLastStall=s;
+      try{
+        forceHomeRender();
+        render();
+      }catch(_){}
+    }).catch(function(){});
+  }
+
+  function dismissLastUiStall(){
+    pendingLastStall=null;
+    if(global.OneToneIpc&&global.OneToneIpc.invoke){
+      global.OneToneIpc.invoke('cmd_clear_last_ui_stall',{}).catch(function(){});
+    }
+    try{
+      forceHomeRender();
+      render();
+    }catch(_){}
+  }
+
   function alertSeverity(kind){
-    if(kind==='recognition_error'||kind==='send_failed'||kind==='mic_unavailable') return 'is-error';
+    if(kind==='recognition_error'||kind==='send_failed'||kind==='mic_unavailable'||kind==='last_stall') return 'is-error';
     return 'is-warn';
   }
 
   function renderAlerts(vm,model){
     var host=$('wbHomeAlerts');
     if(!host) return;
+    // One-shot: last session stall / unclean exit (persisted by Rust watchdog).
+    if(pendingLastStall&&pendingLastStall.code){
+      host.hidden=false;
+      host.className='wb-home-alert is-error';
+      host._lastAlertAction={type:'dismissLastStall'};
+      var stallText=t('homeWbAlertLastStall','上次异常：{code} — {reason}')
+        .replace('{code}',String(pendingLastStall.code||''))
+        .replace('{reason}',String(pendingLastStall.reason||''));
+      host.innerHTML=
+        '<span class="wb-home-alert-text">'+esc(stallText)+'</span>'
+        +'<button type="button" class="wb-home-alert-action" data-wb-alert-action="1">'
+        +esc(t('homeWbAlertLastStallDismiss','知道了'))+'</button>';
+      return;
+    }
     // Phase1：model.repair / needsSetup CTA 优先于 alerts 启发式
     if(model&&model.repair){
       var repairAction={
@@ -1175,15 +1222,134 @@
   }
 
   function selectWorkbenchMapping(id){
-    if(!id||!global.OneToneHomeScheme) return;
-    // activateScene already forceHomeRender+render when the id changes.
-    global.OneToneHomeScheme.selectMapping(id);
+    id=String(id||'').trim();
+    if(!id) return;
+    hideChipFlyout(true);
+    // Home rail: activate directly — skip scheme-menu flush path (unnecessary on chip click).
+    if(global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene){
+      global.OneToneSceneActivate.activateScene(id);
+      return;
+    }
+    if(global.OneToneHomeScheme) global.OneToneHomeScheme.selectMapping(id);
+  }
+
+  var chipFlyoutHideTimer=0;
+  var chipFlyoutAnchor=null;
+  var chipFlyoutOpenId='';
+
+  function hideChipFlyout(immediate){
+    if(chipFlyoutHideTimer){
+      clearTimeout(chipFlyoutHideTimer);
+      chipFlyoutHideTimer=0;
+    }
+    function hide(){
+      var fly=$('wbSceneChipFlyout');
+      if(fly) fly.hidden=true;
+      chipFlyoutAnchor=null;
+      chipFlyoutOpenId='';
+    }
+    if(immediate) hide();
+    else chipFlyoutHideTimer=setTimeout(hide,160);
+  }
+
+  function showChipFlyout(chip){
+    // Boot settle: skip hover flyout while first paints churn (pointerover storm → 假死).
+    try{
+      if(global.OneToneAppSession&&global.OneToneAppSession.isBootSettling
+        &&global.OneToneAppSession.isBootSettling()) return;
+    }catch(_){}
+    if(!chip||chip.id==='wbHabitNew'||chip.classList.contains('wb-scene-chip--new')){
+      hideChipFlyout(true);
+      return;
+    }
+    var id=String(chip.getAttribute('data-wb-chip-id')||chip.getAttribute('data-wb-scenario-id')||'').trim();
+    if(!id) return;
+    var fly=$('wbSceneChipFlyout');
+    var rail=$('wbScenarioPanel');
+    if(!rail||!fly) return;
+    // Same chip already open — skip DOM churn (pointerover/enter spam was freezing).
+    if(chipFlyoutOpenId===id&&!fly.hidden&&chipFlyoutAnchor===chip) return;
+    var panels=global.OneToneHomeWorkbenchPanels;
+    var model=panels&&panels.chipFlyoutContent?panels.chipFlyoutContent(id):null;
+    if(!model) return;
+    if(chipFlyoutHideTimer){
+      clearTimeout(chipFlyoutHideTimer);
+      chipFlyoutHideTimer=0;
+    }
+    chipFlyoutAnchor=chip;
+    chipFlyoutOpenId=id;
+    var nameEl=fly.querySelector('[data-flyout-name]');
+    var pairEl=fly.querySelector('[data-flyout-pair]');
+    var pillsEl=fly.querySelector('[data-flyout-pills]');
+    var useBtn=fly.querySelector('[data-flyout-use]');
+    var hubBtn=fly.querySelector('[data-flyout-hub]');
+    if(nameEl) nameEl.textContent=model.name||'—';
+    if(pairEl) pairEl.textContent=model.pair||'—';
+    if(pillsEl) pillsEl.innerHTML=model.pillsHtml||'';
+    if(useBtn){
+      useBtn.setAttribute('data-wb-scenario-use',model.id);
+      useBtn.hidden=!!model.active;
+    }
+    if(hubBtn) hubBtn.setAttribute('data-wb-habit-open-hub',model.id);
+    fly.hidden=false;
+    var cr=chip.getBoundingClientRect();
+    var rr=rail.getBoundingClientRect();
+    var left=cr.left-rr.left+cr.width/2;
+    var bottom=rr.bottom-cr.top+8;
+    var fw=fly.offsetWidth||240;
+    var minPad=8;
+    var maxLeft=Math.max(minPad+fw/2,rr.width-minPad-fw/2);
+    left=Math.min(Math.max(left,minPad+fw/2),maxLeft);
+    fly.style.left=left+'px';
+    fly.style.bottom=bottom+'px';
+    fly.style.top='auto';
+  }
+
+  function bindChipFlyout(center){
+    if(!center||center._wbChipFlyoutBound) return;
+    center._wbChipFlyoutBound=true;
+    // pointerover bubbles for delegation; same-chip early-return in showChipFlyout kills thrash.
+    center.addEventListener('pointerover',function(e){
+      var chip=e.target.closest&&e.target.closest('#wbScenarioPanel .wb-scene-chip[data-wb-chip-id]');
+      if(chip) showChipFlyout(chip);
+    });
+    center.addEventListener('pointerout',function(e){
+      var fromChip=e.target.closest&&e.target.closest('#wbScenarioPanel .wb-scene-chip[data-wb-chip-id]');
+      var fromFly=e.target.closest&&e.target.closest('#wbSceneChipFlyout');
+      var to=e.relatedTarget;
+      if(to&&to.closest){
+        if(to.closest('#wbSceneChipFlyout')) return;
+        if(fromChip&&to.closest('#wbScenarioPanel .wb-scene-chip[data-wb-chip-id]')===fromChip) return;
+      }
+      if(fromChip||fromFly) hideChipFlyout(false);
+    });
+    center.addEventListener('focusin',function(e){
+      var chip=e.target.closest&&e.target.closest('#wbScenarioPanel .wb-scene-chip[data-wb-chip-id]');
+      if(chip) showChipFlyout(chip);
+    });
+    center.addEventListener('focusout',function(e){
+      var to=e.relatedTarget;
+      if(to&&to.closest&&(to.closest('#wbSceneChipFlyout')||to.closest('#wbScenarioPanel .wb-scene-chip[data-wb-chip-id]'))) return;
+      hideChipFlyout(false);
+    });
+    var rail=$('wbScenarioPanel');
+    if(rail&&!rail._wbChipFlyoutScroll){
+      rail._wbChipFlyoutScroll=true;
+      rail.addEventListener('scroll',function(){ hideChipFlyout(true); },{passive:true});
+    }
+    if(!document._wbChipFlyoutEsc){
+      document._wbChipFlyoutEsc=true;
+      document.addEventListener('keydown',function(e){
+        if(e.key==='Escape') hideChipFlyout(true);
+      });
+    }
   }
 
   function bindPanelActions(){
     var center=$('wbCenter');
     if(!center||center._wbPanelsBound) return;
     center._wbPanelsBound=true;
+    bindChipFlyout(center);
     center.addEventListener('click',function(e){
       var followFg=e.target.closest&&e.target.closest('#wbFollowFgToggle');
       if(followFg){
@@ -1194,10 +1360,19 @@
         setFollowFgEnabled(!isFollowFgEnabled());
         return;
       }
+      var scenarioUse=e.target.closest&&e.target.closest('[data-wb-scenario-use]');
+      if(scenarioUse){
+        e.preventDefault();
+        e.stopPropagation();
+        selectWorkbenchMapping(scenarioUse.getAttribute('data-wb-scenario-use')||'');
+        hideChipFlyout(true);
+        return;
+      }
       var openHub=e.target.closest&&e.target.closest('[data-wb-habit-open-hub]');
       if(openHub){
         e.preventDefault();
         e.stopPropagation();
+        hideChipFlyout(true);
         openHabitsHubForMapping(openHub.getAttribute('data-wb-habit-open-hub')||'');
         return;
       }
@@ -1221,6 +1396,7 @@
       if(scenario){
         // Chip click defaults to set in-use (not edit). Full data lives in habits hub.
         selectWorkbenchMapping(scenario.getAttribute('data-wb-scenario-id')||'');
+        hideChipFlyout(true);
         return;
       }
       var micBtn=e.target.closest&&e.target.closest('#wbVoiceChangeMic,.wb-hero-pill-mic-btn');
@@ -1591,6 +1767,10 @@
     bindPanelActions();
     hookCameraPresence();
     refreshFollowFgToggle();
+    fetchLastUiStallOnce();
+    if(global.OneToneAppSession&&global.OneToneAppSession.whenBootSettled){
+      global.OneToneAppSession.whenBootSettled(fetchLastUiStallOnce);
+    }
     if(global.OneToneHomeWorkbenchPanels) global.OneToneHomeWorkbenchPanels.bindOnce();
     if(global.OneToneHomeWorkbenchCmdk) global.OneToneHomeWorkbenchCmdk.bindOnce();
     var searchInput=$('wbCommandSearchInput');

@@ -48,7 +48,7 @@ pub struct SoftPadRuntimeState {
     pub last_recompute_error: Option<ApplyError>,
     pub status_revision: u64,
     pub pad_active: bool,
-    pub nav_keys_enabled: bool,
+    pub capture_physical_arrows: bool,
     pub software_enhance_enabled: bool,
     pub require_num_lock_off: bool,
     pub claude_cli_inject_pref_enabled: bool,
@@ -71,7 +71,7 @@ impl Default for SoftPadRuntimeState {
             last_recompute_error: None,
             status_revision: 0,
             pad_active: false,
-            nav_keys_enabled: false,
+            capture_physical_arrows: false,
             software_enhance_enabled: false,
             require_num_lock_off: false,
             claude_cli_inject_pref_enabled: false,
@@ -307,7 +307,7 @@ fn request_soft_pad_recompute_body(cfg: &VoiceConfig) {
 
 struct PadFlags {
     pad_active: bool,
-    nav_keys_enabled: bool,
+    capture_physical_arrows: bool,
     software_enhance_enabled: bool,
     require_num_lock_off: bool,
     claude_cli_inject_pref_enabled: bool,
@@ -330,7 +330,7 @@ fn apply_build_locked(
     rt.foreground_kind = foreground_kind;
     rt.legacy_dispatch_mapping = legacy_mapping;
     rt.pad_active = flags.pad_active;
-    rt.nav_keys_enabled = flags.nav_keys_enabled;
+    rt.capture_physical_arrows = flags.capture_physical_arrows;
     rt.software_enhance_enabled = flags.software_enhance_enabled;
     rt.require_num_lock_off = flags.require_num_lock_off;
     rt.claude_cli_inject_pref_enabled = flags.claude_cli_inject_pref_enabled;
@@ -490,7 +490,7 @@ fn build_agent_routes_for_candidate(
 ) {
     let mut flags = PadFlags {
         pad_active: false,
-        nav_keys_enabled: false,
+        capture_physical_arrows: false,
         software_enhance_enabled: false,
         require_num_lock_off: false,
         claude_cli_inject_pref_enabled: false,
@@ -520,8 +520,8 @@ fn build_agent_routes_for_candidate(
     }
 
     flags.pad_active = true;
-    if pad.nav_keys_enabled {
-        flags.nav_keys_enabled = true;
+    if pad.capture_physical_arrows {
+        flags.capture_physical_arrows = true;
     }
     if pad.software_enhance_enabled {
         flags.software_enhance_enabled = true;
@@ -581,7 +581,7 @@ fn install_hook_gate_from_runtime() {
         routes: rt.agent_routes.clone(),
         routes_by_micro: rt.agent_routes_by_micro.clone(),
         pad_active: rt.pad_active,
-        nav_keys_enabled: rt.nav_keys_enabled,
+        capture_physical_arrows: rt.capture_physical_arrows,
         software_enhance_enabled: rt.software_enhance_enabled,
         require_num_lock_off: rt.require_num_lock_off,
         claude_cli_inject_pref_enabled: rt.claude_cli_inject_pref_enabled,

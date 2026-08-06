@@ -51,8 +51,8 @@ pub struct CodexNumpadRouteSnapshot {
 struct HookGate {
     require_num_lock_off: bool,
     pad_active: bool,
-    /// When false, physical arrows are not captured into NAV_* (Soft Pad mapping may still be on).
-    nav_keys_enabled: bool,
+    /// Opt-in: physical main-keyboard arrows may be swallowed when NAV_* has a bound slot.
+    capture_physical_arrows: bool,
     software_enhance_enabled: bool,
     /// Overlay session: JOY NAV rail open — physical arrows only hijacked when true.
     joy_nav_panel_open: bool,
@@ -124,14 +124,35 @@ pub fn arrow_nav_micro_key(name: &str) -> Option<&'static str> {
     }
 }
 
-/// Physical arrows → NAV_* when Soft Pad session is active, pad mapping is on,
-/// and nav keys are enabled (no longer requires JOY side-rail open — NAV lives on the main pad).
+/// True when this main-keyboard arrow may be swallowed into Soft Pad NAV_*.
+/// Requires Soft Pad session + `capturePhysicalArrows` + a bound slot on that NAV_*
+/// (never re-injects the same arrow — empty slot means pass-through).
+pub fn pad_should_capture_arrow(nav_micro_key_id: &str) -> bool {
+    if !codex_foreground_for_micro() {
+        return false;
+    }
+    let id = nav_micro_key_id.trim();
+    if id.is_empty() {
+        return false;
+    }
+    let gate = hook_gate().lock().unwrap();
+    gate.pad_active
+        && gate.capture_physical_arrows
+        && gate.routes_by_micro.contains_key(id)
+}
+
+/// True if any physical arrow would currently be captured (live indicator).
 pub fn pad_should_capture_arrows() -> bool {
     if !codex_foreground_for_micro() {
         return false;
     }
     let gate = hook_gate().lock().unwrap();
-    gate.pad_active && gate.nav_keys_enabled
+    if !gate.pad_active || !gate.capture_physical_arrows {
+        return false;
+    }
+    ["NAV_UP", "NAV_DOWN", "NAV_LEFT", "NAV_RIGHT"]
+        .iter()
+        .any(|k| gate.routes_by_micro.contains_key(*k))
 }
 
 /// Whether Codex Micro pad mapping is currently active (pad.enabled).
@@ -385,7 +406,7 @@ pub struct HookGateInstall {
     pub routes: HashMap<String, CodexNumpadRouteSnapshot>,
     pub routes_by_micro: HashMap<String, CodexNumpadRouteSnapshot>,
     pub pad_active: bool,
-    pub nav_keys_enabled: bool,
+    pub capture_physical_arrows: bool,
     pub software_enhance_enabled: bool,
     pub require_num_lock_off: bool,
     pub claude_cli_inject_pref_enabled: bool,
@@ -397,7 +418,7 @@ pub fn install_hook_gate(install: HookGateInstall) {
     let mut gate = HookGate {
         require_num_lock_off: install.require_num_lock_off,
         pad_active: install.pad_active,
-        nav_keys_enabled: install.nav_keys_enabled,
+        capture_physical_arrows: install.capture_physical_arrows,
         software_enhance_enabled: install.software_enhance_enabled,
         joy_nav_panel_open: install.joy_nav_panel_open,
         claude_cli_inject_pref_enabled: install.claude_cli_inject_pref_enabled,
@@ -947,9 +968,9 @@ pub fn readiness_snapshot(cfg: &VoiceConfig) -> CodexPadReadiness {
 
 fn merge_pad_routes(gate: &mut HookGate, mapping: &MappingEntry, pad: &CodexMicroPadConfig) {
     gate.pad_active = true;
-    // OR across active pads: any pad with nav on keeps arrow capture armed.
-    if pad.nav_keys_enabled {
-        gate.nav_keys_enabled = true;
+    // Capture opt-in OR across pads; showNavigationPad is overlay-only (not in HookGate).
+    if pad.capture_physical_arrows {
+        gate.capture_physical_arrows = true;
     }
     if pad.software_enhance_enabled {
         gate.software_enhance_enabled = true;
@@ -1010,6 +1031,7 @@ pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
         require_foreground: true,
         require_num_lock_off: false,
         nav_keys_enabled: true,
+        capture_physical_arrows: false,
         overlay_enabled: true,
         layout_profile: "custom".into(),
         purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
@@ -1601,15 +1623,16 @@ mod tests {
     }
 
     #[test]
-    fn arrow_capture_requires_nav_keys_enabled() {
-        use crate::config::{MappingEntry, TriggerMode};
+    fn arrow_capture_requires_opt_in_and_bound_slot() {
+        use crate::config::{CodexMicroPadKeyRoute, MappingEntry, TriggerMode};
 
         let mut cfg = VoiceConfig::default();
         let mut pad = default_codex_micro_pad();
         pad.enabled = true;
-        pad.nav_keys_enabled = false;
+        pad.nav_keys_enabled = true; // show column — must NOT capture alone
+        pad.capture_physical_arrows = false;
         cfg.mappings = vec![MappingEntry {
-            id: "codex-arrows-nav-off".into(),
+            id: "codex-arrows-capture".into(),
             label: String::new(),
             group: "默认".into(),
             app_target_id: CODEX_APP_TARGET_ID.into(),
@@ -1640,23 +1663,51 @@ mod tests {
             agent_provider_id: CODEX_PROVIDER_ID.into(),
             agent_bindings: build_codex_micro_13_bindings("zh-CN"),
             codex_micro_pad: Some(pad),
-                time_machine_workspace: String::new(),
-            }];
+            time_machine_workspace: String::new(),
+        }];
         sync_hook_cache(&cfg);
-        assert!(pad_mapping_active());
         crate::codex_micro_overlay::test_set_foreground_latch(true);
         assert!(
             !pad_should_capture_arrows(),
-            "nav_keys_enabled=false must block arrow capture"
+            "showNavigationPad alone must not capture"
         );
+        assert!(!pad_should_capture_arrow("NAV_LEFT"));
+
         if let Some(p) = cfg.mappings[0].codex_micro_pad.as_mut() {
-            p.nav_keys_enabled = true;
+            p.capture_physical_arrows = true;
+            // Still no NAV slot bound → still no capture (avoid re-inject loop).
         }
         sync_hook_cache(&cfg);
         assert!(
-            pad_should_capture_arrows(),
-            "nav_keys_enabled=true restores arrow capture when session live"
+            !pad_should_capture_arrows(),
+            "capture opt-in without bound NAV slot must not capture"
         );
+
+        if let Some(p) = cfg.mappings[0].codex_micro_pad.as_mut() {
+            p.keys.push(CodexMicroPadKeyRoute {
+                micro_key_id: "NAV_LEFT".into(),
+                source_scan: 0,
+                source_extended: false,
+                slot_id: "navBack".into(),
+                ui_icon_id: "navLeft".into(),
+                enabled: true,
+                advanced: true,
+                agent_light_id: String::new(),
+                key_role: None,
+                auto_assignable: None,
+            });
+        }
+        sync_hook_cache(&cfg);
+        assert!(
+            pad_should_capture_arrow("NAV_LEFT"),
+            "opt-in + bound NAV_LEFT → capture Left only"
+        );
+        assert!(
+            !pad_should_capture_arrow("NAV_RIGHT"),
+            "unbound NAV_RIGHT stays native"
+        );
+        assert!(pad_should_capture_arrows());
         crate::codex_micro_overlay::test_set_foreground_latch(false);
+        assert!(!pad_should_capture_arrow("NAV_LEFT"));
     }
 }

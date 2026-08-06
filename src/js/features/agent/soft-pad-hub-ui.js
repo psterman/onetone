@@ -825,7 +825,7 @@
           enabled: true,
           requireNumLockOff: !!m.codexMicroPad.requireNumLockOff,
           overlayEnabled: true,
-          navKeysEnabled: m.codexMicroPad.navKeysEnabled !== false
+          navKeysEnabled: m.codexMicroPad.showNavigationPad !== false && m.codexMicroPad.navKeysEnabled !== false
         }).catch(function () {
           var p = global.OneToneConfigPersist;
           if (p && p.saveAsync) p.saveAsync();
@@ -2479,7 +2479,7 @@
     if (enabledEl) enabledEl.checked = !!pad.enabled;
     var navKeysEl = body.querySelector('[data-act="navKeys"]');
     if (navKeysEl) {
-      navKeysEl.checked = pad.navKeysEnabled !== false;
+      navKeysEl.checked = pad.showNavigationPad !== false && pad.navKeysEnabled !== false;
       navKeysEl.disabled = !pad.enabled;
     }
     var cards = body.querySelector('.soft-pad-feature-cards');
@@ -2497,9 +2497,9 @@
     }
     var navCap = body.querySelector('[data-nav-cap]');
     if (navCap) {
-      navCap.textContent = pad.navKeysEnabled === false
-        ? t('softPadFeatureNavCapOff', '方向键保持系统原样，Soft Pad 不显示左侧方向列。')
-        : t('softPadFeatureNavCapOn', '主键盘方向键临时靠在虚拟键盘左侧；与小键盘 2/4/6/8 无关。');
+      navCap.textContent = (pad.showNavigationPad === false || pad.navKeysEnabled === false)
+        ? t('softPadFeatureNavCapOff', 'Soft Pad 不显示左侧方向列；主键盘方向键始终系统原样。')
+        : t('softPadFeatureNavCapOn', '屏幕方向钮可注入 ↑↓←→；主键盘倒 T 保持系统原样（不劫持）。');
     }
     var navHost = body.querySelector('[data-nav-demo-host]');
     if (navHost && Pad && typeof Pad.renderNavArrowDemoHtml === 'function') {
@@ -2507,7 +2507,7 @@
     } else {
       var arrowStory = body.querySelector('[data-nav-on]');
       if (arrowStory) {
-        arrowStory.setAttribute('data-nav-on', pad.navKeysEnabled === false ? '0' : '1');
+        arrowStory.setAttribute('data-nav-on', (pad.showNavigationPad === false || pad.navKeysEnabled === false) ? '0' : '1');
       }
     }
     var hintEl = body.querySelector('[data-numpad-hint]');
@@ -3668,7 +3668,7 @@
       requireNumLockOff: !!m.codexMicroPad.requireNumLockOff,
       overlayEnabled: !!m.codexMicroPad.overlayEnabled,
       requireForeground: m.codexMicroPad.requireForeground !== false,
-      navKeysEnabled: m.codexMicroPad.navKeysEnabled !== false
+      navKeysEnabled: m.codexMicroPad.showNavigationPad !== false && m.codexMicroPad.navKeysEnabled !== false
     }).catch(function () {
       m.codexMicroPad.enabled = prevEnabled;
       m.codexMicroPad.overlayEnabled = prevOverlay;

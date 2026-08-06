@@ -1,15 +1,22 @@
 //! Lightweight UI heartbeat: FE pings Atomic only; Rust watchdog logs stalls.
 //! cmd_ui_heartbeat must never take cfg/log_ring locks, write disk, or emit.
+//! Stall persistence (last-ui-stall.json) is written only from the watchdog thread.
 
+use std::fs::{self, File};
+use std::io::Write;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use serde::{Deserialize, Serialize};
+
 static LAST_PING_MS: AtomicU64 = AtomicU64::new(0);
 static LAST_SEQ: AtomicU64 = AtomicU64::new(0);
 static LAST_FE_TIME: AtomicU64 = AtomicU64::new(0);
 static WATCHDOG_STARTED: AtomicBool = AtomicBool::new(false);
+static PROCESS_START_SECS: AtomicU64 = AtomicU64::new(0);
 static ACTIVITY_TAG: Mutex<String> = Mutex::new(String::new());
 
 fn now_ms() -> u64 {
@@ -17,6 +24,139 @@ fn now_ms() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
         .unwrap_or(0)
+}
+
+fn now_secs() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+/// Snapshot of the last serious UI stall / unclean exit — shown once on next boot.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LastUiStall {
+    pub code: String,
+    pub reason: String,
+    #[serde(default)]
+    pub tag: String,
+    #[serde(default)]
+    pub gap_ms: u64,
+    #[serde(default)]
+    pub seq: u64,
+    pub ts: u64,
+}
+
+fn stall_path() -> PathBuf {
+    crate::data_root::effective_logs_dir().join("last-ui-stall.json")
+}
+
+fn session_path() -> PathBuf {
+    crate::data_root::effective_logs_dir().join("session-running.json")
+}
+
+fn write_stall(stall: &LastUiStall) {
+    let dir = crate::data_root::effective_logs_dir();
+    let _ = fs::create_dir_all(&dir);
+    let Ok(body) = serde_json::to_vec_pretty(stall) else {
+        return;
+    };
+    let path = stall_path();
+    if let Ok(mut file) = File::create(&path) {
+        let _ = file.write_all(&body);
+    }
+}
+
+fn read_stall_file() -> Option<LastUiStall> {
+    let raw = fs::read_to_string(stall_path()).ok()?;
+    serde_json::from_str(&raw).ok()
+}
+
+fn clear_stall_file() {
+    let _ = fs::remove_file(stall_path());
+}
+
+/// Clear only if the stall was recorded in *this* process (keep prior-boot banner).
+fn clear_stall_file_if_current_session() {
+    let start = PROCESS_START_SECS.load(Ordering::Acquire);
+    if let Some(prev) = read_stall_file() {
+        if start > 0 && prev.ts >= start {
+            clear_stall_file();
+        }
+    }
+}
+
+/// Persist a stall marker (watchdog only). Upgrades 2s → 5s; never downgrades.
+fn persist_stall_emergency(level: &str, gap_ms: u64, tag: &str, seq: u64) {
+    let code = if level == "5s" {
+        "UI_HB_STALL_5S"
+    } else {
+        "UI_HB_STALL_2S"
+    };
+    if let Some(prev) = read_stall_file() {
+        if prev.code == "UI_HB_STALL_5S" && code == "UI_HB_STALL_2S" {
+            return;
+        }
+    }
+    let tag = tag.trim();
+    let reason = if tag.is_empty() {
+        format!("界面卡顿超过{level}（gap={gap_ms}ms）")
+    } else {
+        format!("界面卡顿超过{level}（gap={gap_ms}ms，活动={tag}）")
+    };
+    write_stall(&LastUiStall {
+        code: code.into(),
+        reason,
+        tag: tag.chars().take(64).collect(),
+        gap_ms,
+        seq,
+        ts: now_secs(),
+    });
+}
+
+/// Call once at process start: detect unclean previous exit, then mark this session alive.
+pub fn on_process_start() {
+    let start = now_secs();
+    PROCESS_START_SECS.store(start, Ordering::Release);
+    let session = session_path();
+    let unclean = session.is_file();
+    if unclean && read_stall_file().is_none() {
+        write_stall(&LastUiStall {
+            code: "UNCLEAN_EXIT".into(),
+            reason: "上次未正常退出（可能未响应后被结束）".into(),
+            tag: String::new(),
+            gap_ms: 0,
+            seq: 0,
+            // Stamp before PROCESS_START so recover in this session won't wipe it.
+            ts: start.saturating_sub(1),
+        });
+    }
+    let dir = crate::data_root::effective_logs_dir();
+    let _ = fs::create_dir_all(&dir);
+    let body = format!(
+        "{{\n  \"pid\": {},\n  \"ts\": {}\n}}\n",
+        std::process::id(),
+        start
+    );
+    if let Ok(mut file) = File::create(&session) {
+        let _ = file.write_all(body.as_bytes());
+    }
+}
+
+/// Graceful exit: drop session lock only. Stall banner stays until FE dismisses.
+pub fn on_graceful_exit() {
+    let _ = fs::remove_file(session_path());
+}
+
+/// FE: peek last stall (does not clear).
+pub fn take_last_stall_for_ui() -> Option<LastUiStall> {
+    read_stall_file()
+}
+
+/// FE: user dismissed the banner.
+pub fn clear_last_stall_for_ui() {
+    clear_stall_file();
 }
 
 /// Update atomics only — no disk, no business locks, no emit.
@@ -109,37 +249,71 @@ pub fn start_watchdog() {
                             emerg_5s = true;
                             emerg_2s = true;
                             warn_500 = true;
+                            let seq = LAST_SEQ.load(Ordering::Relaxed);
                             crate::app_log::sync_emergency_line(
                                 "ui_hb",
-                                &format!("emergency gap>{age}ms (5s){tag_part} seq={}", LAST_SEQ.load(Ordering::Relaxed)),
+                                &format!("emergency gap>{age}ms (5s){tag_part} seq={seq}"),
                             );
+                            persist_stall_emergency("5s", age, &tag, seq);
                         }
                     } else if age > 2000 {
                         if !emerg_2s {
                             emerg_2s = true;
                             warn_500 = true;
+                            let seq = LAST_SEQ.load(Ordering::Relaxed);
                             crate::app_log::sync_emergency_line(
                                 "ui_hb",
-                                &format!("emergency gap>{age}ms (2s){tag_part} seq={}", LAST_SEQ.load(Ordering::Relaxed)),
+                                &format!("emergency gap>{age}ms (2s){tag_part} seq={seq}"),
                             );
+                            persist_stall_emergency("2s", age, &tag, seq);
                         }
                     } else if !warn_500 {
                         warn_500 = true;
                         crate::app_log::sync_emergency_line(
                             "ui_hb",
-                            &format!("warning gap>{age}ms (500ms){tag_part} seq={}", LAST_SEQ.load(Ordering::Relaxed)),
+                            &format!(
+                                "warning gap>{age}ms (500ms){tag_part} seq={}",
+                                LAST_SEQ.load(Ordering::Relaxed)
+                            ),
                         );
                     }
                 } else if let Some(since) = stall_since.take() {
                     let blocked_ms = since.elapsed().as_millis();
                     crate::app_log::sync_emergency_line(
                         "ui_hb",
-                        &format!("recovered blocked_ms={blocked_ms}{tag_part} seq={}", LAST_SEQ.load(Ordering::Relaxed)),
+                        &format!(
+                            "recovered blocked_ms={blocked_ms}{tag_part} seq={}",
+                            LAST_SEQ.load(Ordering::Relaxed)
+                        ),
                     );
+                    // Same-session recovery — keep prior-boot banner if still unread.
+                    clear_stall_file_if_current_session();
                     warn_500 = false;
                     emerg_2s = false;
                     emerg_5s = false;
                 }
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stall_json_roundtrip() {
+        let s = LastUiStall {
+            code: "UI_HB_STALL_2S".into(),
+            reason: "界面卡顿超过2s".into(),
+            tag: "test".into(),
+            gap_ms: 2100,
+            seq: 3,
+            ts: 1,
+        };
+        let raw = serde_json::to_string(&s).unwrap();
+        let back: LastUiStall = serde_json::from_str(&raw).unwrap();
+        assert_eq!(back.code, "UI_HB_STALL_2S");
+        assert_eq!(back.gap_ms, 2100);
+        assert_eq!(back.tag, "test");
+    }
 }

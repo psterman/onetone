@@ -937,7 +937,7 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
             // names but are non-extended and belong to the Soft Pad numpad route above.
             if extended {
                 if let Some(nav_id) = crate::codex_numpad_layer::arrow_nav_micro_key(&name) {
-                    if crate::codex_numpad_layer::pad_should_capture_arrows() {
+                    if crate::codex_numpad_layer::pad_should_capture_arrow(nav_id) {
                         if let Some(sender) = active_sender().lock().unwrap().as_ref() {
                             let payload = crate::codex_numpad_layer::format_micro_key_event(
                                 nav_id, is_key_down,

@@ -476,9 +476,73 @@
     if(mappingId&&global.OneToneState&&global.OneToneState.state){
       global.OneToneState.state.selectedMappingId=mappingId;
     }
+    // Light hub: Soft Pad edits return to habits list, same as keys/voice/camera doors.
+    ui().habitHubEditReturn=true;
+    ui().habitScenarioReturnHub=true;
     if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.setPanel){
       global.OneToneSettingsDrawer.setPanel('softPad');
     }
+  }
+
+  /** Channel micro-status for light hub cards — status only, never inline editors. */
+  function hubChannelMicroPillsHtml(m){
+    var keysOn=!!(m&&String(m.triggerKey||'').trim());
+    if(!keysOn&&hasKeyParts(m)) keysOn=true;
+    var keysLbl=keysOn
+      ?t('homeWbHabitChKeysOn','按键·已设')
+      :t('homeWbHabitChKeysOff','按键·未设');
+    var vo=m&&m.voiceOverride?m.voiceOverride:null;
+    var voiceCustom=!!(vo&&(
+      (Array.isArray(vo.wakePhrases)&&vo.wakePhrases.length)||
+      String(vo.engine||'').trim()||
+      String(vo.modelPreset||'').trim()
+    ));
+    var app=isAppScenario(m);
+    var voiceLbl;
+    if(!app){
+      voiceLbl=t('homeWbHabitChVoiceBase','语音·通用');
+    }else if(voiceCustom){
+      voiceLbl=t('homeWbHabitChVoiceOn','语音·已设');
+    }else{
+      voiceLbl=t('homeWbHabitChVoiceInherit','语音·沿用通用');
+    }
+    var camOv=m&&m.cameraOverride;
+    var camCustom=!!(camOv&&typeof camOv==='object'&&Object.keys(camOv).length);
+    var camLbl;
+    if(!app){
+      camLbl=t('habitHubChCamBase','摄像头·通用');
+    }else if(camCustom){
+      camLbl=t('habitHubChCamOn','摄像头·已设');
+    }else{
+      camLbl=t('habitHubChCamInherit','摄像头·沿用通用');
+    }
+    var softHub=global.OneToneSoftPadHub;
+    var padEligible=!!(softHub&&softHub.isSoftPadSchemeEligible&&softHub.isSoftPadSchemeEligible(m));
+    var padOn=!!(m&&m.codexMicroPad&&m.codexMicroPad.enabled);
+    var padLbl;
+    if(!padEligible){
+      padLbl=t('homeWbHabitChPadNa','Soft Pad·—');
+    }else if(padOn){
+      padLbl=t('homeWbHabitChPadOn','Soft Pad·开');
+    }else{
+      padLbl=t('homeWbHabitChPadOff','Soft Pad·关');
+    }
+    function pill(label){
+      return '<span class="habit-hub-micro-pill">'+esc(label)+'</span>';
+    }
+    return '<span class="habit-hub-micro-pills" aria-hidden="true">'
+      +pill(keysLbl)+pill(voiceLbl)+pill(camLbl)+pill(padLbl)
+      +'</span>';
+  }
+
+  function hubPairLine(m){
+    if(global.OneToneHomeScheme&&global.OneToneHomeScheme.pairLine){
+      return global.OneToneHomeScheme.pairLine(m);
+    }
+    if(!m) return '—';
+    var trig=String(m.triggerKey||'').trim()||'—';
+    var tgt=String(m.targetKey||'').trim()||'—';
+    return trig+' → '+tgt;
   }
 
   function camWaveTheme(){
@@ -670,6 +734,7 @@
     html+='</div>';
     html+='<p class="habit-hub-hero-desc">'+esc(t('habitHubGlobalDefaultDesc'))+'</p>';
     html+='<p class="habit-hub-hero-pair">'+esc(pairLine)+'</p>';
+    if(baseline) html+=hubChannelMicroPillsHtml(baseline);
     html+='</div>';
     html+='<span class="habit-hub-card-status '+(setup.ready?'is-ready':'is-pending')+'">'
       +esc(setup.ready?t('habitHubUniversalReady'):t('habitHubUniversalPending'))+'</span>';
@@ -681,6 +746,8 @@
       html+='<span class="habit-hub-card-status is-ready">'+esc(t('habitHubActiveBadge'))+'</span>';
     }
     html+=ctaActBtn('data-habit-global-keys',t('habitHubGlobalOpenKeys'),ACT_ICON.keys,{primary:!baselineId||isActive,tip:t('habitHubKeysCtaTip')});
+    html+=ctaActBtn('data-habit-global-voice',t('habitHubGlobalOpenVoice','配语音'),ACT_ICON.voice,{tip:t('habitHubVoiceCtaTip')});
+    html+=ctaActBtn('data-habit-global-camera',t('habitHubGlobalOpenCamera','配摄像头'),ACT_ICON.camera,{tip:t('habitHubCameraCtaTip')});
     html+=ctaActBtn('data-habit-global-home',t('habitHubGlobalGoHome','回首页看四通道'),ACT_ICON.softPad,{tip:t('habitHubGlobalGoHomeTip','四通道摘要在首页，点习惯即可切换')});
     html+='</div></article>';
     return html;
@@ -1045,6 +1112,7 @@
   }
 
   function renderCard(it,opts){
+    // Light hub: status + doors only. Never embed keys/voice/camera/Soft Pad editors here.
     opts=opts||{};
     var m=it.mapping;
     var type=it.type;
@@ -1095,13 +1163,19 @@
     }
     html+='</span>';
     if(!renaming){
+      html+='<span class="habit-hub-card-desc">'+esc(hubPairLine(m))+'</span>';
+      html+=hubChannelMicroPillsHtml(m);
       if(!isAppScenario(m)){
-        html+='<span class="habit-hub-card-desc">'+esc(habitDescription(m,type,cfg,profile))+'</span>';
-      }
-      var meta=habitMetaLine(m,profile);
-      if(meta) html+='<span class="habit-hub-card-meta">'+esc(meta)+'</span>';
-      if(appScenario&&global.OneToneHabitScenarioVoiceCommand&&global.OneToneHabitScenarioVoiceCommand.hubChipHtml){
-        html+=global.OneToneHabitScenarioVoiceCommand.hubChipHtml(m)||'';
+        var longDesc=habitDescription(m,type,cfg,profile);
+        if(longDesc&&longDesc!==hubPairLine(m)){
+          html+='<span class="habit-hub-card-meta">'+esc(longDesc)+'</span>';
+        }
+      }else{
+        var meta=habitMetaLine(m,profile);
+        if(meta) html+='<span class="habit-hub-card-meta">'+esc(meta)+'</span>';
+        if(global.OneToneHabitScenarioVoiceCommand&&global.OneToneHabitScenarioVoiceCommand.hubChipHtml){
+          html+=global.OneToneHabitScenarioVoiceCommand.hubChipHtml(m)||'';
+        }
       }
     }
     html+='</span>';
@@ -1117,12 +1191,15 @@
       if(appScenario){
         var enOn=!!m.enabled;
         html+='<button type="button" class="toggle-switch habit-hub-enable-toggle'+(enOn?' is-on':'')+'" data-habit-enable="'+esc(m.id)+'" role="switch" aria-checked="'+(enOn?'true':'false')+'" title="'+esc(t('habitScenarioEnableLbl'))+'" data-tip="'+esc(t('habitScenarioEnableLbl'))+'" aria-label="'+esc(t('habitScenarioEnableLbl'))+'"></button>';
-        html+=ctaActBtn('data-habit-scenario-keys="'+esc(m.id)+'"',t('habitHubGlobalOpenKeys','改按键'),ACT_ICON.keys,{primary:true,tip:t('habitHubKeysCtaTip')});
-        html+=ctaActBtn('data-habit-scenario-voice="'+esc(m.id)+'"',t('habitHubGlobalOpenVoice','配语音'),ACT_ICON.voice,{primary:true,tip:t('habitHubVoiceCtaTip')});
-        html+=ctaActBtn('data-habit-scenario-camera="'+esc(m.id)+'"',t('habitHubGlobalOpenCamera','配摄像头'),ACT_ICON.camera,{primary:true,tip:t('habitHubCameraCtaTip')});
+        if(!isActive){
+          html+=ctaActBtn('data-habit-scenario-use="'+esc(m.id)+'"',t('homeWbHabitBarUse','设为正在使用'),ACT_ICON.keys,{primary:true,tip:t('homeWbHabitBarUse')});
+        }
+        html+=ctaActBtn('data-habit-scenario-keys="'+esc(m.id)+'"',t('habitHubGlobalOpenKeys','改按键'),ACT_ICON.keys,{primary:isActive,tip:t('habitHubKeysCtaTip')});
+        html+=ctaActBtn('data-habit-scenario-voice="'+esc(m.id)+'"',t('habitHubGlobalOpenVoice','配语音'),ACT_ICON.voice,{tip:t('habitHubVoiceCtaTip')});
+        html+=ctaActBtn('data-habit-scenario-camera="'+esc(m.id)+'"',t('habitHubGlobalOpenCamera','配摄像头'),ACT_ICON.camera,{tip:t('habitHubCameraCtaTip')});
         var softHub=global.OneToneSoftPadHub;
         if(softHub&&softHub.isSoftPadSchemeEligible&&softHub.isSoftPadSchemeEligible(m)){
-          html+=ctaActBtn('data-habit-scenario-softpad="'+esc(m.id)+'"',t('habitHubGlobalOpenSoftPad','配虚拟键盘'),ACT_ICON.softPad,{primary:true,tip:t('habitHubSoftPadCtaTip')});
+          html+=ctaActBtn('data-habit-scenario-softpad="'+esc(m.id)+'"',t('habitHubGlobalOpenSoftPad','配虚拟键盘'),ACT_ICON.softPad,{tip:t('habitHubSoftPadCtaTip')});
         }
         html+='<span class="habit-hub-act-sep" aria-hidden="true"></span>';
         html+=iconActBtn('data-habit-move="up" data-habit-id="'+esc(m.id)+'"',t('habitHubActMoveUp'),ACT_ICON.up,{disabled:!opts.canMoveUp});
@@ -2358,7 +2435,7 @@
           render();
           return;
         }
-        var actBtn=e.target.closest&&e.target.closest('.habit-hub-card-actions [data-habit-dup],.habit-hub-card-actions [data-habit-rename],.habit-hub-card-actions [data-habit-migrate],.habit-hub-card-actions [data-habit-scenario-keys],.habit-hub-card-actions [data-habit-scenario-voice],.habit-hub-card-actions [data-habit-scenario-camera],.habit-hub-card-actions [data-habit-scenario-softpad],.habit-hub-card-actions [data-habit-enable]');
+        var actBtn=e.target.closest&&e.target.closest('.habit-hub-card-actions [data-habit-dup],.habit-hub-card-actions [data-habit-rename],.habit-hub-card-actions [data-habit-migrate],.habit-hub-card-actions [data-habit-scenario-keys],.habit-hub-card-actions [data-habit-scenario-voice],.habit-hub-card-actions [data-habit-scenario-camera],.habit-hub-card-actions [data-habit-scenario-softpad],.habit-hub-card-actions [data-habit-scenario-use],.habit-hub-card-actions [data-habit-enable]');
         if(actBtn){
           e.stopPropagation();
         }
@@ -2381,6 +2458,17 @@
             persistHub();
             render();
           }
+          return;
+        }
+        var scenarioUseBtn=e.target.closest&&e.target.closest('[data-habit-scenario-use]');
+        if(scenarioUseBtn){
+          e.preventDefault();
+          e.stopPropagation();
+          var sceneUseId=String(scenarioUseBtn.getAttribute('data-habit-scenario-use')||'').trim();
+          if(sceneUseId&&global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene){
+            global.OneToneSceneActivate.activateScene(sceneUseId);
+          }
+          scheduleHubPaint();
           return;
         }
         var scenarioKeysBtn=e.target.closest&&e.target.closest('[data-habit-scenario-keys]');
