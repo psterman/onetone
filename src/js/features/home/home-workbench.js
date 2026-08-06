@@ -1090,21 +1090,73 @@
     }
   }
 
+  function hasAppScenarioMappings(){
+    var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
+    var list=cfg&&Array.isArray(cfg.mappings)?cfg.mappings:[];
+    var diff=global.OneToneHabitOverrideDiff;
+    var rules=global.OneToneAppBehaviorRules;
+    for(var i=0;i<list.length;i++){
+      var m=list[i];
+      if(!m||m.enabled===false) continue;
+      if(rules&&rules.isIncompleteCustomStub&&rules.isIncompleteCustomStub(m)) continue;
+      if(diff&&diff.isAppScenarioMapping&&diff.isAppScenarioMapping(m)) return true;
+      if(!diff&&String(m.appTargetId||'').trim()) return true;
+    }
+    return false;
+  }
+
+  function openHabitsHubForMapping(id){
+    id=String(id||'').trim();
+    if(!id){
+      var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
+      id=String(cfg&&cfg.activeSceneId||'').trim();
+    }
+    if(id&&global.OneToneState&&global.OneToneState.state){
+      global.OneToneState.state.selectedMappingId=id;
+    }
+    openSettings({panel:'habits',focus:'mappings'});
+    if(!id) return;
+    var tries=0;
+    function scrollToCard(){
+      tries+=1;
+      var el=document.querySelector('[data-habit-card="'+id.replace(/"/g,'')+'"]');
+      if(el){
+        try{ el.scrollIntoView({behavior:'smooth',block:'nearest'}); }catch(_){}
+        el.classList.add('is-hub-focus');
+        setTimeout(function(){ el.classList.remove('is-hub-focus'); },1600);
+        return;
+      }
+      if(tries<24) setTimeout(scrollToCard,50);
+    }
+    requestAnimationFrame(function(){ setTimeout(scrollToCard,0); });
+  }
+
   function refreshFollowFgToggle(){
     var btn=$('wbFollowFgToggle');
     if(!btn) return;
-    var on=isFollowFgEnabled();
+    var canFollow=hasAppScenarioMappings();
+    var on=isFollowFgEnabled()&&canFollow;
+    btn.disabled=!canFollow;
+    btn.setAttribute('aria-disabled',canFollow?'false':'true');
     btn.classList.toggle('is-on',on);
     btn.setAttribute('aria-checked',on?'true':'false');
     var label=document.querySelector('.wb-scene-rail-follow-label');
     if(label) label.textContent=t('homeWbFollowFgLabel');
     var wrap=document.querySelector('.wb-scene-rail-follow');
-    if(wrap) wrap.title=t('homeWbFollowFgHint');
+    if(wrap){
+      wrap.classList.toggle('is-disabled',!canFollow);
+      wrap.title=canFollow
+        ?t('homeWbFollowFgHint')
+        :t('homeWbFollowFgNeedScenario','先建一个应用场景，跟前台才有用');
+    }
+    var manage=$('wbHabitManage');
+    if(manage) manage.textContent=t('homeWbHabitManage','管理');
     if(on) startFollowFgPoll();
     else stopFollowFgPoll();
   }
 
   function setFollowFgEnabled(on){
+    if(on&&!hasAppScenarioMappings()) return;
     var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
     if(!cfg) return;
     cfg.followForegroundAppScenario=!!on;
@@ -1137,7 +1189,16 @@
       if(followFg){
         e.preventDefault();
         e.stopPropagation();
+        if(followFg.disabled||followFg.getAttribute('aria-disabled')==='true') return;
+        if(!hasAppScenarioMappings()) return;
         setFollowFgEnabled(!isFollowFgEnabled());
+        return;
+      }
+      var openHub=e.target.closest&&e.target.closest('[data-wb-habit-open-hub]');
+      if(openHub){
+        e.preventDefault();
+        e.stopPropagation();
+        openHabitsHubForMapping(openHub.getAttribute('data-wb-habit-open-hub')||'');
         return;
       }
       var channelChip=e.target.closest&&e.target.closest('[data-wb-habit-channel]');
@@ -1148,14 +1209,7 @@
       }
       var habitEdit=e.target.closest&&e.target.closest('[data-wb-habit-edit]');
       if(habitEdit){
-        openWorkbenchScenario(habitEdit.getAttribute('data-wb-habit-edit')||'');
-        return;
-      }
-      var scenarioEdit=e.target.closest&&e.target.closest('[data-wb-scenario-edit]');
-      if(scenarioEdit){
-        e.preventDefault();
-        e.stopPropagation();
-        openWorkbenchScenario(scenarioEdit.getAttribute('data-wb-scenario-edit')||'');
+        openHabitsHubForMapping(habitEdit.getAttribute('data-wb-habit-edit')||'');
         return;
       }
       var habit=e.target.closest&&e.target.closest('[data-wb-habit-id]');
@@ -1165,7 +1219,7 @@
       }
       var scenario=e.target.closest&&e.target.closest('[data-wb-scenario-id]');
       if(scenario){
-        // Card body click defaults to set in-use (not edit).
+        // Chip click defaults to set in-use (not edit). Full data lives in habits hub.
         selectWorkbenchMapping(scenario.getAttribute('data-wb-scenario-id')||'');
         return;
       }
@@ -1668,6 +1722,9 @@
         :t('homeWbListenPause'));
     var sceneTitle=document.querySelector('#wbSceneRail .wb-scene-rail-title');
     if(sceneTitle) sceneTitle.textContent=t('homeWbSceneRailTitle');
+    var manage=$('wbHabitManage');
+    if(manage) manage.textContent=t('homeWbHabitManage','管理');
+    refreshFollowFgToggle();
     refreshFollowFgToggle();
     var searchInput=$('wbCommandSearchInput');
     if(searchInput) searchInput.placeholder=t('homeWbCmdSearchPlaceholder');

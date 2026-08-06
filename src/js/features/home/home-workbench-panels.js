@@ -668,26 +668,96 @@
     }
   }
 
-  function sceneCardHtml(m,activeId){
+  function sceneHabitName(m){
+    if(global.OneToneHabitProfile&&global.OneToneHabitProfile.habitDisplayName){
+      return global.OneToneHabitProfile.habitDisplayName(m);
+    }
+    return global.OneToneHomeScheme?global.OneToneHomeScheme.shortName(m):'—';
+  }
+
+  function isBaselineScene(m){
+    var cfg=global.OneToneState&&global.OneToneState.state?global.OneToneState.state.config:null;
+    var diff=global.OneToneHabitOverrideDiff;
+    return !!(diff&&diff.isGlobalBaselineMapping
+      &&diff.isGlobalBaselineMapping(m,cfg||{},global.OneToneMappingCore));
+  }
+
+  function isAppScenarioScene(m){
+    var diff=global.OneToneHabitOverrideDiff;
+    return !!(diff&&diff.isAppScenarioMapping&&diff.isAppScenarioMapping(m));
+  }
+
+  function sceneChannelPillsHtml(m){
+    var keysOn=!!(m&&String(m.triggerKey||'').trim());
+    var keysLbl=keysOn
+      ?t('homeWbHabitChKeysOn','按键·已设')
+      :t('homeWbHabitChKeysOff','按键·未设');
+    var vo=m&&m.voiceOverride?m.voiceOverride:null;
+    var voiceCustom=!!(vo&&(
+      (Array.isArray(vo.wakePhrases)&&vo.wakePhrases.length)||
+      String(vo.engine||'').trim()||
+      String(vo.modelPreset||'').trim()
+    ));
+    var voiceLbl;
+    if(!isAppScenarioScene(m)){
+      voiceLbl=t('homeWbHabitChVoiceBase','语音·通用');
+    }else if(voiceCustom){
+      voiceLbl=t('homeWbHabitChVoiceOn','语音·已设');
+    }else{
+      voiceLbl=t('homeWbHabitChVoiceInherit','语音·沿用通用');
+    }
+    var hub=global.OneToneSoftPadHub;
+    var padEligible=!!(hub&&hub.isSoftPadSchemeEligible&&hub.isSoftPadSchemeEligible(m));
+    var padOn=!!(m&&m.codexMicroPad&&m.codexMicroPad.enabled);
+    var padLbl;
+    if(!padEligible){
+      padLbl=t('homeWbHabitChPadNa','Soft Pad·—');
+    }else if(padOn){
+      padLbl=t('homeWbHabitChPadOn','Soft Pad·开');
+    }else{
+      padLbl=t('homeWbHabitChPadOff','Soft Pad·关');
+    }
+    function pill(label){
+      return '<span class="wb-scene-summary-pill">'+esc(label)+'</span>';
+    }
+    return '<span class="wb-scene-summary-pills" aria-hidden="true">'
+      +pill(keysLbl)+pill(voiceLbl)+pill(padLbl)
+      +'</span>';
+  }
+
+  function sceneChipHtml(m,activeId){
     var active=m.id===activeId;
-    var name=(global.OneToneHabitProfile&&global.OneToneHabitProfile.habitDisplayName)
-      ?global.OneToneHabitProfile.habitDisplayName(m)
-      :(global.OneToneHomeScheme?global.OneToneHomeScheme.shortName(m):'—');
-    var badge=active
-      ?'<span class="wb-scene-card-badge">'+esc(t('homeWbHabitActive'))+'</span>'
+    var name=sceneHabitName(m);
+    var activeDot=active
+      ?'<span class="wb-scene-chip-dot" title="'+esc(t('homeWbHabitActive'))+'"></span>'
       :'';
-    return '<div class="wb-scene-card'+(active?' is-active':'')+'" data-wb-scenario-id="'+esc(m.id)+'">'
+    return '<button type="button" class="wb-scene-chip'+(active?' is-active':'')+'"'
+      +' data-wb-scenario-id="'+esc(m.id)+'"'
+      +' aria-pressed="'+(active?'true':'false')+'"'
+      +' title="'+esc(name)+'"'
+      +' aria-label="'+esc(name+(active?' · '+t('homeWbHabitActive'):''))+'">'
       +sceneIconHtml(m)
-      +'<span class="wb-scene-card-body">'
-      +'<span class="wb-scene-card-name-row">'
-      +'<span class="wb-scene-card-name">'+esc(name)+'</span>'
-      +badge
-      +'</span>'
-      +'<span class="wb-scene-card-desc">'+esc(sceneDesc(m))+'</span>'
-      +'<span class="wb-scene-card-actions">'
-      +'<button type="button" class="wb-scene-card-btn wb-scene-card-btn--ghost" data-wb-scenario-edit="'+esc(m.id)+'">'+esc(t('homeWbHabitBarEdit'))+'</button>'
-      +'</span>'
-      +'</span>'
+      +'<span class="wb-scene-chip-name">'+esc(name)+'</span>'
+      +activeDot
+      +'</button>';
+  }
+
+  function sceneSummaryHtml(m){
+    if(!m||!m.id) return '';
+    var name=sceneHabitName(m);
+    return '<div class="wb-scene-summary" data-wb-summary-for="'+esc(m.id)+'">'
+      +sceneIconHtml(m)
+      +'<div class="wb-scene-summary-body">'
+      +'<div class="wb-scene-summary-top">'
+      +'<span class="wb-scene-summary-name">'+esc(name)+'</span>'
+      +'<span class="wb-scene-card-badge">'+esc(t('homeWbHabitActive'))+'</span>'
+      +'</div>'
+      +'<p class="wb-scene-summary-action">'+esc(sceneDesc(m))+'</p>'
+      +sceneChannelPillsHtml(m)
+      +'</div>'
+      +'<button type="button" class="wb-scene-summary-cta" data-wb-habit-open-hub="'+esc(m.id)+'">'
+      +esc(t('homeWbHabitOpenHub','查看全部'))
+      +'</button>'
       +'</div>';
   }
 
@@ -702,17 +772,44 @@
       if(!m||!m.enabled) return false;
       if(rules&&rules.isIncompleteCustomStub&&rules.isIncompleteCustomStub(m)) return false;
       return true;
-    }).slice(0,8);
-    var html='';
-    items.forEach(function(m){ html+=sceneCardHtml(m,activeId); });
-    html+='<button type="button" class="wb-scene-card wb-scene-card--new" id="wbHabitNew">'
+    });
+    // Baseline first so 「通用」anchors the chip rail for beginners.
+    items.sort(function(a,b){
+      var ab=isBaselineScene(a)?0:1;
+      var bb=isBaselineScene(b)?0:1;
+      if(ab!==bb) return ab-bb;
+      return (a.order||0)-(b.order||0);
+    });
+    items=items.slice(0,8);
+    var active=null;
+    for(var i=0;i<items.length;i++){
+      if(items[i].id===activeId){ active=items[i]; break; }
+    }
+    if(!active&&items.length) active=items[0];
+    var appCount=0;
+    items.forEach(function(m){ if(isAppScenarioScene(m)) appCount++; });
+    var html='<div class="wb-scene-chips" role="list">';
+    items.forEach(function(m){ html+=sceneChipHtml(m,active?active.id:activeId); });
+    html+='<button type="button" class="wb-scene-chip wb-scene-chip--new" id="wbHabitNew"'
+      +' title="'+esc(t('homeWbSceneNewHabitDesc'))+'"'
+      +' aria-label="'+esc(t('homeWbSceneNewHabit')+' · '+t('homeWbSceneNewHabitDesc'))+'">'
       +'<span class="wb-scene-card-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>'
-      +'<span class="wb-scene-card-body">'
-      +'<span class="wb-scene-card-name">'+esc(t('homeWbSceneNewHabit'))+'</span>'
-      +'<span class="wb-scene-card-desc">'+esc(t('homeWbSceneNewHabitDesc'))+'</span>'
-      +'</span>'
+      +'<span class="wb-scene-chip-name">'+esc(t('homeWbSceneNewHabit'))+'</span>'
       +'</button>';
+    html+='</div>';
+    if(active) html+=sceneSummaryHtml(active);
+    if(!appCount){
+      html+='<p class="wb-scene-rail-hint">'+esc(t(
+        'homeWbHabitRailHint',
+        '先配好通用设置即可日常使用；某个软件要不同按键时，再点 + 加应用场景。'
+      ))+'</p>';
+    }
     host.innerHTML=html;
+    var manage=$('wbHabitManage');
+    if(manage){
+      manage.textContent=t('homeWbHabitManage','管理');
+      manage.setAttribute('data-wb-habit-open-hub',active&&active.id?String(active.id):'');
+    }
     if(rules&&rules.prefetchMappingRuleIcons){
       items.forEach(function(m){ rules.prefetchMappingRuleIcons(m); });
     }

@@ -218,13 +218,16 @@
 
                       <section class="wb-scene-rail" id="wbSceneRail" aria-label="习惯">
                         <div class="wb-scene-rail-head">
-                          <span class="wb-scene-rail-title" data-i18n="homeWbSceneRailTitle">我的习惯</span>
+                          <div class="wb-scene-rail-title-row">
+                            <span class="wb-scene-rail-title" data-i18n="homeWbSceneRailTitle">我的习惯</span>
+                            <button type="button" class="wb-scene-rail-manage" id="wbHabitManage" data-wb-habit-open-hub="">管理</button>
+                          </div>
                           <label class="wb-scene-rail-follow" title="开：前台有应用场景就自动用它；关：保持通用设置">
                             <span class="wb-scene-rail-follow-label" data-i18n="homeWbFollowFgLabel">跟前台应用</span>
                             <button type="button" class="toggle-switch" id="wbFollowFgToggle" role="switch" aria-checked="false" data-i18n-aria="homeWbFollowFgLabel"></button>
                           </label>
                         </div>
-                        <div class="wb-scene-rail-track" id="wbScenarioPanel"></div>
+                        <div class="wb-scene-rail-body" id="wbScenarioPanel"></div>
                       </section>
                   </div>
                 </div>

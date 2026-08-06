@@ -326,17 +326,23 @@ check('hub 通用设置无四通道栅格', (() => {
   const fn = hub.match(/function renderGlobalDefaultCard\(\)\{[\s\S]*?\n  function /);
   return !!(fn && !fn[0].includes('habit-hub-channels') && fn[0].includes('data-habit-global-home') && fn[0].includes('habit-hub-hero--thin'));
 })());
-check('scenario 点卡激活、编辑独立、无 use 按钮', (() => {
-  const card = panels.match(/function sceneCardHtml\([\s\S]*?\n  function /);
-  if (!card) return false;
-  const html = card[0];
-  return !html.includes('data-wb-scenario-use')
-    && html.includes('wb-scene-card-badge')
-    && html.includes('data-wb-scenario-edit')
-    && wb.includes('data-wb-scenario-edit')
-    && /data-wb-scenario-edit[\s\S]*openWorkbenchScenario/.test(wb)
+check('scenario 芯片切换、摘要进习惯页、无 per-card 编辑深链', (() => {
+  const chip = panels.match(/function sceneChipHtml\([\s\S]*?\n  function /);
+  const summary = panels.match(/function sceneSummaryHtml\([\s\S]*?\n  function /);
+  const render = panels.match(/function renderScenarioPanel\([\s\S]*?\n  function /);
+  if (!chip || !summary || !render) return false;
+  return !chip[0].includes('data-wb-scenario-use')
+    && !chip[0].includes('data-wb-scenario-edit')
+    && chip[0].includes('wb-scene-chip')
+    && summary[0].includes('data-wb-habit-open-hub')
+    && summary[0].includes('wb-scene-card-badge')
+    && render[0].includes('wb-scene-chips')
+    && wb.includes('openHabitsHubForMapping')
+    && /data-wb-habit-open-hub[\s\S]*openHabitsHubForMapping/.test(wb)
+    && /panel:'habits',\s*focus:'mappings'/.test(wb)
     && !wb.includes('data-wb-scenario-use')
-    && /data-wb-scenario-id[\s\S]*selectWorkbenchMapping/.test(wb);
+    && /data-wb-scenario-id[\s\S]*selectWorkbenchMapping/.test(wb)
+    && !/data-wb-scenario-edit[\s\S]*openWorkbenchScenario/.test(wb);
 })());
 {
   const orderSrc = heroModelSrc;

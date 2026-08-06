@@ -4010,6 +4010,7 @@
     }
     .habit-hub-card-check input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
     .habit-hub-card.is-selected{background:linear-gradient(180deg,var(--primary-soft) 0%,var(--surface-high) 100%);box-shadow:inset 3px 0 0 var(--primary)}
+    .habit-hub-card.is-hub-focus{outline:2px solid color-mix(in srgb,var(--primary) 55%,transparent);outline-offset:1px}
     .habit-hub-card.is-confirm-del{background:rgba(198,40,40,.08)}
     .habit-hub-selection-bar{
       display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;
