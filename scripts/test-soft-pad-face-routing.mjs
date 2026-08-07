@@ -61,7 +61,7 @@ assert(/soft-pad-face-agent/.test(css), 'css C2 face grid');
 assert(/soft-pad-face-timeline/.test(css), 'css C3 face grid');
 assert(/soft-pad-tm-spine/.test(css), 'css C3 horizontal spine');
 assert(/soft-pad-tm-mark/.test(tm), 'tm spine mark markup');
-assert(/#softPadPreviewHost.*micro-hw|min\(100%,\s*520px\)/.test(css), 'hub Soft Pad fills left column');
+assert(/#softPadPreviewHost.*micro-hw|min\(100%,\s*380px\)/.test(css), 'hub Soft Pad fills left column');
 assert(/\.soft-pad-face-agent[\s\S]{0,1200}?max-width:\s*300px/.test(css),
   'C2 Soft Pad preview compact');
 assert(/\.soft-pad-page-body\.is-face-agent[\s\S]*?grid-template-columns/.test(css),
@@ -109,7 +109,7 @@ assert(/empty\.mode === 'ready'[\s\S]*?return ''/.test(src),
   'ready panel chrome returns empty (no idle primary shell)');
 assert(/soft-pad-layout-key-preview/.test(padUi) && /mode:\s*'modal'/.test(padUi),
   'layout uses key preview + modal editor');
-assert(/min\(100%,\s*520px\)/.test(css), 'C1 Soft Pad fills left column up to 520px');
+assert(/min\(100%,\s*380px\)/.test(css), 'C1 Soft Pad fills left column up to 380px');
 assert(/commitEditKeycapDraft/.test(padUi) && /keepOpen:\s*true/.test(padUi),
   'key editor autosaves on pick');
 assert(/micro-hw-modal__guide/.test(padUi) && /data-guide-label="action"/.test(padUi),
@@ -149,15 +149,26 @@ assert(/agentLightIconSrc/.test(padUi) && /focusAgent/.test(padUi),
 assert(/CREATE_NO_WINDOW/.test(
   fs.readFileSync(path.join(root, 'src-tauri/src/shell_agent_hook_setup.rs'), 'utf8')
 ), 'shell hook node -v uses CREATE_NO_WINDOW');
+assert(/CREATE_NO_WINDOW/.test(
+  fs.readFileSync(path.join(root, 'src-tauri/src/claude_hook_setup.rs'), 'utf8')
+), 'claude hook node -v uses CREATE_NO_WINDOW');
+assert(/CREATE_NO_WINDOW/.test(
+  fs.readFileSync(path.join(root, 'src-tauri/src/cursor_hook_setup.rs'), 'utf8')
+), 'cursor hook node -v uses CREATE_NO_WINDOW');
 
 // v13 habit UX: no center-column Shell Hook mount; topbar add menu; ambient solid
 assert(!/mountShellAgentHookPanel\(paintHost/.test(src),
   'agent face does not mount Shell Hook into center column');
 assert(!/<details class="soft-pad-topbar-light-add">/.test(padUi),
   'topbar add is not details/summary box');
-assert(/data-act="topbar-add-toggle"/.test(padUi) && /soft-pad-topbar-add__menu/.test(padUi),
-  'topbar add uses compact toggle menu');
-assert(/\.soft-pad-topbar-add__btn/.test(css) && /soft-pad-topbar-add__menu\[hidden\]/.test(css),
+assert(/data-act="topbar-add-open"/.test(padUi) && /openTopbarMonitorPicker/.test(padUi),
+  'topbar add opens shared app picker in monitor mode');
+assert(/mode:\s*'topbarMonitor'/.test(
+  fs.readFileSync(path.join(root, 'src/js/features/mapping/app-behavior-rules.js'), 'utf8')
+) || /mode==='topbarMonitor'/.test(
+  fs.readFileSync(path.join(root, 'src/js/features/mapping/app-behavior-rules.js'), 'utf8')
+), 'app picker supports topbarMonitor mode');
+assert(/\.soft-pad-topbar-add__btn/.test(css),
   'topbar add compact button css');
 assert(/data-act="ambient-mode"/.test(padUi) && /ambientSolidRgb|ambient-solid-rgb/.test(padUi),
   'ambient mode status/solid + color control');
@@ -169,12 +180,35 @@ assert(/data-lights-keys-unsupported/.test(padUi),
   'unsupported keys habit hint');
 assert(/kind === 'soft'/.test(src) && /softExtras/.test(src),
   'aside includes Soft Pad custom habits');
-assert(/rgb_for_ambient|parse_hex_rgb/.test(
-  fs.readFileSync(path.join(root, 'src-tauri/src/pad_status/adapters/soft_rgb.rs'), 'utf8')
-), 'soft_rgb solid ambient support');
-assert(/ambient_mode/.test(
+assert(/data-act="ambient-opacity"/.test(padUi) && /ambientOpacity/.test(padUi),
+  'ambient opacity control');
+assert(/ambient_opacity/.test(
   fs.readFileSync(path.join(root, 'src-tauri/src/config.rs'), 'utf8')
-), 'pad config has ambient_mode field');
+), 'pad config has ambient_opacity field');
+assert(/data-act="key-light-preset"/.test(padUi) && /statusColors|status-color/.test(padUi),
+  'key light preset + custom colors');
+assert(/key_light_preset|SoftPadStatusColors/.test(
+  fs.readFileSync(path.join(root, 'src-tauri/src/config.rs'), 'utf8')
+), 'pad config has key light palette fields');
+assert(/rgb_for_ambient_full|apply_rgb_opacity/.test(
+  fs.readFileSync(path.join(root, 'src-tauri/src/pad_status/adapters/soft_rgb.rs'), 'utf8')
+), 'soft_rgb opacity + palette');
+assert(/grid-template-columns:\s*1fr auto auto/.test(css),
+  'topbar chip remove button on far right');
+assert(/ambientEnabled|ambient_enabled/.test(padUi) && /ambient_enabled/.test(
+  fs.readFileSync(path.join(root, 'src-tauri/src/config.rs'), 'utf8')
+), 'ambientEnabled pad flag');
+assert(/applyStatusPaletteToPreview|paintKeysPaletteDemo/.test(padUi),
+  'preview applies status palette + demo');
+assert(/lightRgb|light_rgb/.test(padUi) && /light_rgb/.test(
+  fs.readFileSync(path.join(root, 'src-tauri/src/config.rs'), 'utf8')
+), 'per-key lightRgb field');
+assert(/data-key-light|microHwKeyLightRgb|--key-light-rgb/.test(padUi + css),
+  'per-key light color UI + preview tint');
+assert(/soft-pad-key-swatch-disk|key-light-swatch|edit-guide-tab/.test(padUi + css),
+  'key look tab swatch disk');
+assert(/echoStatusPaletteOnSoftPads|softPadPreviewHost/.test(padUi),
+  'status palette echoes onto Soft Pad previews');
 
 if (fail) {
   console.error(fail + ' failed');

@@ -1286,9 +1286,21 @@ pub struct CodexMicroPadConfig {
     /// Fixed bezel color when `ambient_mode == "solid"` (`#RRGGBB` or `RRGGBB`).
     #[serde(default)]
     pub ambient_solid_rgb: String,
+    /// Soft RGB brightness for ambient (0–100). Hardware has no alpha; scales RGB.
+    #[serde(default = "default_ambient_opacity")]
+    pub ambient_opacity: u8,
+    /// When false, Soft RGB / bezel ambient is off (does not disable Soft Pad keys).
+    #[serde(default = "default_true")]
+    pub ambient_enabled: bool,
     /// Soft Pad top-bar habit mapping ids (non-agent Soft Pad habits).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub topbar_habit_ids: Vec<String>,
+    /// Key/status light palette preset id: `default` | `cool` | `warm` | `highContrast`.
+    #[serde(default = "default_key_light_preset")]
+    pub key_light_preset: String,
+    /// Optional per-status hex overrides (`#RRGGBB`) on top of the preset.
+    #[serde(default)]
+    pub status_colors: SoftPadStatusColors,
     /// User opt-in for Claude CLI key inject. Default off. Still requires high-confidence latch.
     #[serde(default)]
     pub claude_cli_inject_pref_enabled: bool,
@@ -1328,7 +1340,11 @@ impl Default for CodexMicroPadConfig {
             qoder_status_lights_enabled: false,
             ambient_mode: default_ambient_mode(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: default_ambient_opacity(),
+            ambient_enabled: true,
             topbar_habit_ids: Vec::new(),
+            key_light_preset: default_key_light_preset(),
+            status_colors: SoftPadStatusColors::default(),
             claude_cli_inject_pref_enabled: false,
             presentation: default_codex_micro_presentation(),
             skin: default_codex_micro_skin(),
@@ -1345,6 +1361,30 @@ fn default_codex_micro_presentation() -> String {
 
 fn default_ambient_mode() -> String {
     "status".into()
+}
+
+fn default_ambient_opacity() -> u8 {
+    100
+}
+
+fn default_key_light_preset() -> String {
+    "default".into()
+}
+
+/// Optional hex overrides for Soft Pad status / key lights.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SoftPadStatusColors {
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub running: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub needs_input: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub done: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub failed: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub listening: String,
 }
 
 fn default_codex_micro_skin() -> String {
@@ -1374,6 +1414,9 @@ pub struct CodexMicroPadKeyRoute {
     /// Serde-only: bind this key to a Claude agent light id/type/`claude/main`. No settings UI yet.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub agent_light_id: String,
+    /// Optional fixed key light color (`#RRGGBB`). Empty = follow pad status palette.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub light_rgb: String,
     /// Explicit key role; `None` resolves from purpose + micro_key_id (see soft_pad_purpose).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub key_role: Option<crate::soft_pad_purpose::SoftPadKeyRole>,
@@ -1393,6 +1436,7 @@ impl Default for CodexMicroPadKeyRoute {
             enabled: true,
             advanced: false,
             agent_light_id: String::new(),
+            light_rgb: String::new(),
             key_role: None,
             auto_assignable: None,
         }

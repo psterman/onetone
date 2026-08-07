@@ -557,12 +557,23 @@ fn handle_app_state_get(stream: &mut TcpStream, state: Arc<AppState>) -> Result<
     let pad = crate::pad_status::snapshot();
     let app_status = crate::pad_status::ui_status_from_pad(&pad);
     let soft_rgb = if lights {
-        let (mode, solid) = {
+        let (mode, solid, opacity, preset, colors, ambient_on) = {
             let cfg = state.cfg.lock();
             codex_micro_overlay::active_ambient_for_soft_rgb(&cfg)
         };
-        crate::pad_status::rgb_for_ambient(&app_status, &mode, &solid)
+        if !ambient_on {
+            None
+        } else {
+            crate::pad_status::rgb_for_ambient_full(
+                &app_status,
+                &mode,
+                &solid,
+                opacity,
+                &preset,
+                Some(&colors),
+            )
             .map(|(r, g, b)| serde_json::json!({ "r": r, "g": g, "b": b }))
+        }
     } else {
         None
     };

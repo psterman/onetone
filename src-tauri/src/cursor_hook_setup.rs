@@ -59,10 +59,16 @@ fn project_hooks_path(workspace: &Path) -> PathBuf {
 }
 
 pub fn detect_node() -> Result<PathBuf, String> {
-    let out = Command::new("node")
-        .arg("-v")
-        .output()
-        .map_err(|_| "runtime_not_found".to_string())?;
+    let mut cmd = Command::new("node");
+    cmd.arg("-v");
+    #[cfg(windows)]
+    {
+        // ponytail: avoid black console flash when Soft Pad polls hook status on app switch.
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    let out = cmd.output().map_err(|_| "runtime_not_found".to_string())?;
     if !out.status.success() {
         return Err("runtime_not_found".into());
     }

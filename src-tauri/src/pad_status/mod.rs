@@ -20,8 +20,8 @@ pub use adapters::codex::{
 pub use adapters::hid::{plan_from_pad as plan_hid_output, HidOutputIntent};
 pub use adapters::shell_agent::{agent_kind_from_hook_source, ingest_shell_agent_payload};
 pub use adapters::soft_rgb::{
-    parse_hex_rgb, rgb_for_ambient, rgb_for_pad, rgb_for_pad_ambient, rgb_for_ui_status,
-    ui_status_from_pad,
+    apply_rgb_opacity, parse_hex_rgb, rgb_for_ambient, rgb_for_ambient_full, rgb_for_pad,
+    rgb_for_pad_ambient, rgb_for_ui_status, rgb_for_ui_status_with_palette, ui_status_from_pad,
 };
 pub use arbiter::{propose, ProposeResult};
 pub use claude_lights::{short_agent_type, ClaudeAgentLightState, CLAUDE_MAIN_KEY};

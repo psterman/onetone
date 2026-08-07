@@ -580,13 +580,18 @@ pub fn probe_node_available() -> bool {
             }
         }
     }
-    let ok = Command::new("node")
-        .arg("-v")
+    let mut cmd = Command::new("node");
+    cmd.arg("-v")
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
+        .stderr(std::process::Stdio::null());
+    #[cfg(windows)]
+    {
+        // ponytail: avoid black console flash when Soft Pad polls hook status on app switch.
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    let ok = cmd.status().map(|s| s.success()).unwrap_or(false);
     if let Ok(mut g) = lock.lock() {
         *g = Some(Cache {
             at: Instant::now(),

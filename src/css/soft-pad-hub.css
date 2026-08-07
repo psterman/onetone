@@ -963,7 +963,7 @@ html[data-theme="dark"] .soft-pad-tm-detail .soft-pad-tm-safety { color: #f2c56f
 /* C1 Soft Pad: left pure keyboard + right tabs/panel, equal height */
 .soft-pad-face-pad {
   display: grid;
-  grid-template-columns: minmax(480px, 1.25fr) minmax(0, 0.95fr);
+  grid-template-columns: minmax(340px, 1.05fr) minmax(0, 1.1fr);
   grid-template-rows: minmax(0, 1fr);
   gap: 12px 18px;
   align-items: stretch;
@@ -1107,24 +1107,24 @@ html[data-theme="dark"] .soft-pad-face-tm__detail {
   justify-content: center;
   align-items: center;
   width: 100%;
-  min-height: 520px;
+  min-height: 380px;
   padding: 10px 8px 12px;
   border-radius: 18px;
   border: 1px solid rgba(26, 45, 74, 0.1);
   background: rgba(248, 250, 252, 0.55);
   box-sizing: border-box;
 }
-/* C1 Soft Pad: large, centered keyboard in the left stage */
+/* C1 Soft Pad: compact centered keyboard in the left stage */
 .soft-pad-face-pad__preview.soft-pad-preview-host,
 #softPadPreviewHost.soft-pad-preview-host {
-  min-height: 540px;
+  min-height: 400px;
   height: 100%;
   align-self: stretch;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 12px 10px 14px;
+  padding: 10px 8px 12px;
   box-sizing: border-box;
 }
 .soft-pad-face-pad__preview .soft-pad-preview-paint,
@@ -1145,20 +1145,20 @@ html[data-theme="dark"] .soft-pad-face-tm__detail {
 .soft-pad-face-pad .soft-pad-preview-host .codex-micro-pad__head,
 #softPadPreviewHost .codex-micro-pad__head {
   width: 100%;
-  max-width: min(100%, 520px);
+  max-width: min(100%, 380px);
   flex: 0 0 auto;
 }
 .soft-pad-face-pad .soft-pad-preview-host .micro-hw-wrap,
 #softPadPreviewHost .micro-hw-wrap {
-  width: min(100%, 520px) !important;
-  max-width: min(100%, 520px) !important;
+  width: min(100%, 380px) !important;
+  max-width: min(100%, 380px) !important;
   margin: 0 auto !important;
   flex: 0 0 auto;
 }
 .soft-pad-face-pad .soft-pad-preview-host .micro-hw-shell,
 #softPadPreviewHost .micro-hw-shell {
-  max-width: min(100%, 520px) !important;
-  width: min(100%, 520px) !important;
+  max-width: min(100%, 380px) !important;
+  width: min(100%, 380px) !important;
   margin: 0 auto !important;
 }
 .soft-pad-face-pad .soft-pad-preview-host .micro-hw,
@@ -1166,7 +1166,7 @@ html[data-theme="dark"] .soft-pad-face-tm__detail {
 #softPadPreviewHost .micro-hw,
 #softPadPreviewHost .micro-hw-shell .micro-hw {
   width: 100% !important;
-  max-width: min(100%, 520px) !important;
+  max-width: min(100%, 380px) !important;
   margin: 0 auto !important;
 }
 .soft-pad-face-pad .soft-pad-preview-host .soft-pad-key-caption,
@@ -1174,7 +1174,7 @@ html[data-theme="dark"] .soft-pad-face-tm__detail {
 #softPadPreviewHost .soft-pad-key-caption,
 #softPadPreviewHost .soft-pad-preview__hint {
   width: 100%;
-  max-width: min(100%, 520px);
+  max-width: min(100%, 380px);
   flex: 0 0 auto;
 }
 /* C2 / C3: compact reference Soft Pad (not the edit surface) */
@@ -1399,7 +1399,7 @@ html[data-theme="dark"] .soft-pad-topbar-lights-card {
 }
 .soft-pad-topbar-light-active {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
@@ -1606,6 +1606,115 @@ html[data-theme="dark"] .soft-pad-topbar-lights-card {
 .soft-pad-lights-template.is-active {
   border-color: rgba(42, 156, 196, 0.45);
   background: rgba(62, 184, 220, 0.08);
+}
+html[data-theme="dark"] .soft-pad-lights-template {
+  background: rgba(18, 28, 42, 0.72);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--on-surface, #e8eef6);
+}
+html[data-theme="dark"] .soft-pad-lights-template.is-active {
+  border-color: rgba(62, 184, 220, 0.55);
+  background: rgba(62, 184, 220, 0.14);
+}
+html[data-theme="dark"] .soft-pad-lights-template__title {
+  color: var(--on-surface, #e8eef6);
+}
+html[data-theme="dark"] .soft-pad-lights-template__hint {
+  color: var(--on-surface-muted, #9aabbd);
+}
+.soft-pad-ambient-opacity {
+  margin-top: 8px;
+}
+.soft-pad-ambient-opacity label,
+.soft-pad-keylight-colors label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.soft-pad-ambient-opacity input[type="range"],
+.soft-pad-keylight-colors input[type="range"] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.soft-pad-keylight-presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 8px 0;
+}
+.soft-pad-keylight-colors {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.soft-pad-keylight-color-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+.soft-pad-key-light-rgb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 12px;
+  flex-wrap: wrap;
+}
+.soft-pad-key-light-rgb__lbl {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.soft-pad-key-light-rgb input[type="color"] {
+  width: 36px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.soft-pad-key-swatch-disk {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.soft-pad-key-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  background: var(--swatch, #3053FE);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+  padding: 0;
+}
+.soft-pad-key-swatch.is-active {
+  outline: 2px solid color-mix(in srgb, var(--primary, #3eb8dc) 80%, white);
+  outline-offset: 2px;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.soft-pad-keycap-look .codex-pad-mgr__hint {
+  margin: 0 0 10px;
+}
+
+.micro-hw__key[data-key-light="1"] {
+  box-shadow:
+    0 0 0 2px var(--key-light-rgb, #3053FE),
+    0 0 12px var(--key-light-rgb, #3053FE);
+}
+.micro-hw__key[data-key-light="1"][data-run-status="idle"] {
+  box-shadow:
+    0 0 0 2px var(--key-light-rgb, #3053FE),
+    0 0 10px var(--key-light-rgb, #3053FE);
 }
 .soft-pad-lights-template__title {
   display: block;

@@ -1136,11 +1136,39 @@ pub fn status_lights_enabled(cfg: &VoiceConfig) -> bool {
     })
 }
 
-/// Ambient mode + solid hex for Soft RGB protocol (from active overlay pad).
-pub fn active_ambient_for_soft_rgb(cfg: &VoiceConfig) -> (String, String) {
+/// Ambient mode + solid hex + opacity + palette for Soft RGB protocol (from active overlay pad).
+/// Returns `None` for soft RGB when `ambient_enabled` is false.
+pub fn active_ambient_for_soft_rgb(
+    cfg: &VoiceConfig,
+) -> (
+    String,
+    String,
+    u8,
+    String,
+    crate::config::SoftPadStatusColors,
+    bool,
+) {
     active_codex_mapping_with_overlay(cfg)
-        .map(|(_, p)| (p.ambient_mode.clone(), p.ambient_solid_rgb.clone()))
-        .unwrap_or_else(|| ("status".into(), String::new()))
+        .map(|(_, p)| {
+            (
+                p.ambient_mode.clone(),
+                p.ambient_solid_rgb.clone(),
+                p.ambient_opacity,
+                p.key_light_preset.clone(),
+                p.status_colors.clone(),
+                p.ambient_enabled,
+            )
+        })
+        .unwrap_or_else(|| {
+            (
+                "status".into(),
+                String::new(),
+                100,
+                "default".into(),
+                crate::config::SoftPadStatusColors::default(),
+                true,
+            )
+        })
 }
 
 /// Overlay visibility depends only on `overlay_enabled` (not `pad.enabled`).
@@ -1964,16 +1992,39 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         g: c.g,
         b: c.b,
     });
-    let (ambient_mode, ambient_solid) = active_codex_mapping_with_overlay(cfg)
-        .map(|(_, p)| (p.ambient_mode.as_str(), p.ambient_solid_rgb.as_str()))
-        .unwrap_or(("status", ""));
+    let (ambient_mode, ambient_solid, ambient_opacity, key_preset, status_colors, ambient_enabled) =
+        active_codex_mapping_with_overlay(cfg)
+            .map(|(_, p)| {
+                (
+                    p.ambient_mode.clone(),
+                    p.ambient_solid_rgb.clone(),
+                    p.ambient_opacity,
+                    p.key_light_preset.clone(),
+                    p.status_colors.clone(),
+                    p.ambient_enabled,
+                )
+            })
+            .unwrap_or_else(|| {
+                (
+                    "status".into(),
+                    String::new(),
+                    100,
+                    "default".into(),
+                    crate::config::SoftPadStatusColors::default(),
+                    true,
+                )
+            });
     let rgb = resolve_overlay_rgb(
         app_state_enabled,
         &app_status,
         &pad_status,
         vendor_rgb,
-        ambient_mode,
-        ambient_solid,
+        &ambient_mode,
+        &ambient_solid,
+        ambient_opacity,
+        &key_preset,
+        &status_colors,
+        ambient_enabled,
     );
     let now_ms = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -2005,6 +2056,10 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -2855,7 +2910,7 @@ fn agent_chip_snapshots(cfg: &VoiceConfig) -> Vec<CodexMicroAgentSnapshot> {
 }
 
 /// Soft RGB Output Adapter: status-lights ? Core UI status; else local pad run, then vendor rgbcfg.
-/// When `ambient_mode == "solid"`, use fixed `ambient_solid` hex and skip status palette.
+/// When `ambient_enabled` is false, no Soft RGB. When `ambient_mode == "solid"`, use fixed hex.
 fn resolve_overlay_rgb(
     app_state_enabled: bool,
     app_status: &str,
@@ -2863,19 +2918,50 @@ fn resolve_overlay_rgb(
     vendor_rgb: Option<CodexMicroOverlayRgb>,
     ambient_mode: &str,
     ambient_solid: &str,
+    ambient_opacity: u8,
+    key_preset: &str,
+    status_colors: &crate::config::SoftPadStatusColors,
+    ambient_enabled: bool,
 ) -> Option<CodexMicroOverlayRgb> {
+    if !ambient_enabled {
+        return None;
+    }
     if ambient_mode.trim().eq_ignore_ascii_case("solid") {
-        if let Some((r, g, b)) = crate::pad_status::parse_hex_rgb(ambient_solid) {
-            return Some(CodexMicroOverlayRgb { r, g, b });
+        if let Some(rgb) =
+            crate::pad_status::rgb_for_ambient_full(
+                app_status,
+                "solid",
+                ambient_solid,
+                ambient_opacity,
+                key_preset,
+                Some(status_colors),
+            )
+        {
+            return Some(CodexMicroOverlayRgb {
+                r: rgb.0,
+                g: rgb.1,
+                b: rgb.2,
+            });
         }
     }
-    let semantic = if app_state_enabled {
-        crate::pad_status::rgb_for_ui_status(app_status)
+    let status = if app_state_enabled {
+        app_status
     } else {
-        crate::pad_status::rgb_for_ui_status(pad_run_status)
+        pad_run_status
     };
-    if let Some((r, g, b)) = semantic {
-        return Some(CodexMicroOverlayRgb { r, g, b });
+    if let Some(rgb) = crate::pad_status::rgb_for_ambient_full(
+        status,
+        "status",
+        "",
+        ambient_opacity,
+        key_preset,
+        Some(status_colors),
+    ) {
+        return Some(CodexMicroOverlayRgb {
+            r: rgb.0,
+            g: rgb.1,
+            b: rgb.2,
+        });
     }
     if app_state_enabled {
         // Status-lights mode: never keep sticky vendor mint when idle.
@@ -3545,6 +3631,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -3634,6 +3724,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -3705,6 +3799,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -3745,6 +3843,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -3761,6 +3863,7 @@ mod tests {
                     enabled: true,
                     advanced: false,
                     agent_light_id: String::new(),
+                light_rgb: String::new(),
                 key_role: None,
                 auto_assignable: None,
                 },
@@ -3773,6 +3876,7 @@ mod tests {
                     enabled: true,
                     advanced: false,
                     agent_light_id: String::new(),
+                light_rgb: String::new(),
                 key_role: None,
                 auto_assignable: None,
                 },
@@ -3854,6 +3958,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -3869,6 +3977,7 @@ mod tests {
                 enabled: true,
                 advanced: false,
                 agent_light_id: String::new(),
+            light_rgb: String::new(),
             key_role: None,
             auto_assignable: None,
             }],
@@ -3907,6 +4016,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -3959,6 +4072,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -4014,6 +4131,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -4063,6 +4184,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -4123,6 +4248,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -4177,6 +4306,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -4207,6 +4340,7 @@ mod tests {
             enabled: true,
             advanced: false,
             agent_light_id: String::new(),
+        light_rgb: String::new(),
         key_role: None,
         auto_assignable: None,
         }
@@ -4265,6 +4399,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -4365,6 +4503,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -4461,6 +4603,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -4496,6 +4642,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -4567,6 +4717,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -4623,6 +4777,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -4692,6 +4850,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -4728,6 +4890,7 @@ mod tests {
             enabled: true,
             advanced: false,
             agent_light_id: String::new(),
+        light_rgb: String::new(),
         key_role: None,
         auto_assignable: None,
         }
@@ -4754,6 +4917,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -4782,6 +4949,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -4805,6 +4976,7 @@ mod tests {
                 enabled: true,
                 advanced: false,
                 agent_light_id: String::new(),
+            light_rgb: String::new(),
             key_role: None,
             auto_assignable: None,
             }],
@@ -4837,6 +5009,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -4888,6 +5064,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -4938,6 +5118,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -4982,6 +5166,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -5035,6 +5223,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -5078,6 +5270,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -5127,6 +5323,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -5165,6 +5365,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -5194,6 +5398,7 @@ mod tests {
             enabled: true,
             advanced: true,
             agent_light_id: String::new(),
+            light_rgb: String::new(),
             key_role: None,
             auto_assignable: None,
         });
@@ -5236,6 +5441,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -5254,6 +5463,7 @@ mod tests {
             enabled: true,
             advanced: true,
             agent_light_id: String::new(),
+        light_rgb: String::new(),
         key_role: None,
         auto_assignable: None,
         });
@@ -5428,6 +5638,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -5473,6 +5687,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -5515,6 +5733,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -5555,6 +5777,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
@@ -5603,6 +5829,10 @@ mod tests {
             qoder_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
+            ambient_opacity: 100,
+            ambient_enabled: true,
+            key_light_preset: "default".into(),
+            status_colors: Default::default(),
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),

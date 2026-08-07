@@ -1721,8 +1721,11 @@ html[data-theme="dark"] .micro-hw-modal__effect-tip {
   font-size: 12px;
   font-weight: 650;
   line-height: 1.2;
+  font-family: inherit;
+  cursor: pointer;
   animation: microHwGuideIn 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+button.micro-hw-modal__guide-step:not(.is-active),
 .micro-hw-modal__guide-step.is-optional {
   border-color: rgba(26, 45, 74, 0.1);
   background: rgba(248, 250, 252, 0.95);
@@ -1807,6 +1810,7 @@ html[data-theme="dark"] .micro-hw-modal__guide-step {
   background: rgba(62, 184, 220, 0.14);
   color: #7dd3fc;
 }
+html[data-theme="dark"] button.micro-hw-modal__guide-step:not(.is-active),
 html[data-theme="dark"] .micro-hw-modal__guide-step.is-optional {
   border-color: rgba(255, 255, 255, 0.1);
   background: rgba(18, 24, 36, 0.9);

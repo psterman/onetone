@@ -222,6 +222,7 @@ pub fn resolve_enc_summon_route(cfg: &VoiceConfig) -> Option<CodexNumpadRouteSna
                 enabled: true,
                 advanced: false,
                 agent_light_id: String::new(),
+                light_rgb: String::new(),
                 key_role: None,
                 auto_assignable: None,
             });
@@ -1044,6 +1045,10 @@ pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
         qoder_status_lights_enabled: false,
         ambient_mode: "status".into(),
         ambient_solid_rgb: String::new(),
+        ambient_opacity: 100,
+        ambient_enabled: true,
+        key_light_preset: "default".into(),
+        status_colors: Default::default(),
         topbar_habit_ids: Vec::new(),
         claude_cli_inject_pref_enabled: false,
         presentation: "full".into(),
@@ -1148,6 +1153,7 @@ fn route(micro_key_id: &str, scan: u16, extended: bool, slot_id: &str) -> CodexM
         enabled: true,
         advanced: false,
         agent_light_id: String::new(),
+        light_rgb: String::new(),
         key_role: None,
         auto_assignable: None,
     }
@@ -1699,6 +1705,7 @@ mod tests {
                 enabled: true,
                 advanced: true,
                 agent_light_id: String::new(),
+                light_rgb: String::new(),
                 key_role: None,
                 auto_assignable: None,
             });

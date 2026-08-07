@@ -3,6 +3,10 @@
 
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
+  function tf(key, fallback){
+    var v=t(key);
+    return (v && v!==key) ? v : (fallback||key);
+  }
   function state(){ return global.OneToneState.state; }
   function core(){ return global.OneToneMappingCore; }
   function flowSummary(){ return global.OneToneSceneFlowSummary; }
@@ -1441,10 +1445,13 @@
       overlay.classList.remove('open');
       overlay.setAttribute('aria-hidden','true');
     }
-    if(pickerCreateMappingId){
+    if(pickerCreateMappingId && !isTopbarMonitorPicker()){
       discardIncompleteCustomCreate(pickerCreateMappingId);
       clearPickerCreateTarget();
+    }else{
+      clearPickerCreateTarget();
     }
+    clearPickerSession();
   }
 
   function resolveAppIconUrl(app){
@@ -1490,6 +1497,7 @@
     var meta=esc(opts.meta||'');
     var html='<button type="button" class="app-picker-item" role="option"';
     if(opts.presetId) html+=' data-pick-preset="'+esc(opts.presetId)+'"';
+    if(opts.habitId) html+=' data-pick-habit="'+esc(opts.habitId)+'"';
     if(opts.pickIndex!=null) html+=' data-pick-running="'+opts.pickIndex+'"';
     html+='>';
     if(opts.icon){
@@ -1506,6 +1514,7 @@
   var pickerRunningCache=[];
   var pickerForegroundIdentity=null;
   var pickerCreateMappingId='';
+  var pickerSession={ mode:null, onPick:null, habitItems:null };
 
   function setPickerCreateTarget(mappingId){
     pickerCreateMappingId=String(mappingId||'').trim();
@@ -1513,6 +1522,14 @@
 
   function clearPickerCreateTarget(){
     pickerCreateMappingId='';
+  }
+
+  function clearPickerSession(){
+    pickerSession={ mode:null, onPick:null, habitItems:null };
+  }
+
+  function isTopbarMonitorPicker(){
+    return pickerSession.mode==='topbarMonitor' && typeof pickerSession.onPick==='function';
   }
 
   function discardIncompleteCustomCreate(mappingId){
@@ -1853,45 +1870,68 @@
     var runningHost=$('appPickerRunning');
     var emptyEl=$('appPickerRunningEmpty');
     var cancelBtn=$('btnAppPickerCancel');
-    if(title) title.textContent=t('appPickerTitle');
-    if(desc) desc.textContent=t('appPickerDesc');
+    var topbar=isTopbarMonitorPicker();
+    if(title) title.textContent=topbar
+      ? tf('softPadTopbarPickerTitle','添加到顶栏监视')
+      : t('appPickerTitle');
+    if(desc) desc.textContent=topbar
+      ? tf('softPadTopbarPickerDesc','选择要监视并快速跳转的应用；按当前习惯分别保存，不改生效应用')
+      : t('appPickerDesc');
     if(presetsLbl) presetsLbl.textContent=t('appPickerPresets');
-    if(runningLbl) runningLbl.textContent=t('appPickerRunning');
+    if(runningLbl) runningLbl.textContent=topbar
+      ? tf('softPadTopbarPickerHabits','习惯与正在运行')
+      : t('appPickerRunning');
     if(cancelBtn) cancelBtn.textContent=t('homeTestPickCancel');
     populateAppPickerForeground();
     if(!presetsHost||!runningHost) return;
     var presetHtml='';
-    BEHAVIOR_PRESETS.forEach(function(p){
+    var presetList=BEHAVIOR_PRESETS;
+    if(topbar && global.OneToneAppTargetPresets && Array.isArray(global.OneToneAppTargetPresets.presets)){
+      presetList=global.OneToneAppTargetPresets.presets.filter(function(p){
+        return p && p.id && p.id!=='minimax-chat';
+      });
+    }
+    presetList.forEach(function(p){
       presetHtml+=renderAppPickerItem({
         presetId:p.id,
         name:appDisplayName(p.id),
-        meta:t(p.noteKey||'habitAppRulesPickApp'),
+        meta:topbar
+          ? tf('softPadTopbarPickerPresetMeta','加入顶栏监视')
+          : t(p.noteKey||'habitAppRulesPickApp'),
         icon:iconForApp(p.id)
       });
     });
     presetsHost.innerHTML=presetHtml;
-    runningHost.innerHTML='<p class="app-picker-empty">'+esc(t('homeLiveLoading'))+'</p>';
+    var habitHtml='';
+    if(topbar && Array.isArray(pickerSession.habitItems)){
+      habitHtml=pickerSession.habitItems.map(function(h){
+        return renderAppPickerItem({
+          habitId:h.id,
+          name:h.title||h.id,
+          meta:tf('softPadTopbarPickerHabitMeta','Soft Pad 习惯'),
+          icon:h.icon||''
+        });
+      }).join('');
+    }
+    runningHost.innerHTML=habitHtml
+      || ('<p class="app-picker-empty">'+esc(t('homeLiveLoading'))+'</p>');
     if(emptyEl) emptyEl.hidden=true;
     pickerRunningCache=[];
     if(!global.OneToneIpc||!global.OneToneIpc.invoke){
-      runningHost.innerHTML='';
-      if(emptyEl){ emptyEl.hidden=false; emptyEl.textContent=t('appPickerRunningEmpty'); }
+      if(!habitHtml){
+        runningHost.innerHTML='';
+        if(emptyEl){ emptyEl.hidden=false; emptyEl.textContent=t('appPickerRunningEmpty'); }
+      }
       return;
     }
     global.OneToneIpc.invoke('cmd_running_apps',{}).then(function(res){
       var apps=res&&Array.isArray(res.apps)?res.apps:[];
       var m=resolvePickerMapping();
-      if(m){
+      if(m && !topbar){
         apps=apps.filter(function(app){ return !identityAlreadyInRules(m,app); });
       }
       pickerRunningCache=apps;
-      if(!apps.length){
-        runningHost.innerHTML='';
-        if(emptyEl){ emptyEl.hidden=false; emptyEl.textContent=t('appPickerRunningEmpty'); }
-        return;
-      }
-      if(emptyEl) emptyEl.hidden=true;
-      runningHost.innerHTML=apps.map(function(app,idx){
+      var runHtml=apps.map(function(app,idx){
         var name=String(app.displayName||app.display_name||app.exeName||app.exe_name||'—');
         var exe=String(app.exeName||app.exe_name||'');
         var meta=runningAppPickerMeta(name,exe);
@@ -1902,8 +1942,21 @@
           icon:resolveAppIconUrl(app)
         });
       }).join('');
+      var combined=habitHtml+runHtml;
+      if(!combined){
+        runningHost.innerHTML='';
+        if(emptyEl){ emptyEl.hidden=false; emptyEl.textContent=t('appPickerRunningEmpty'); }
+        return;
+      }
+      if(emptyEl) emptyEl.hidden=true;
+      runningHost.innerHTML=combined;
     }).catch(function(err){
       console.error('cmd_running_apps',err);
+      if(habitHtml){
+        runningHost.innerHTML=habitHtml;
+        if(emptyEl) emptyEl.hidden=true;
+        return;
+      }
       runningHost.innerHTML='';
       if(emptyEl){ emptyEl.hidden=false; emptyEl.textContent=t('appPickerRunningFailed'); }
     });
@@ -1911,7 +1964,11 @@
 
   function openAppPicker(opts){
     opts=opts||{};
-    if(opts.mappingId) setPickerCreateTarget(opts.mappingId);
+    clearPickerSession();
+    pickerSession.mode=opts.mode||null;
+    pickerSession.onPick=typeof opts.onPick==='function'?opts.onPick:null;
+    pickerSession.habitItems=Array.isArray(opts.habitItems)?opts.habitItems:null;
+    if(opts.mappingId && !isTopbarMonitorPicker()) setPickerCreateTarget(opts.mappingId);
     bindAppPickerEvents();
     var overlay=$('appPickerOverlay');
     if(!overlay) return;
@@ -1920,10 +1977,27 @@
     overlay.setAttribute('aria-hidden','false');
   }
 
+  function finishTopbarPick(payload){
+    var cb=pickerSession.onPick;
+    closeAppPicker();
+    if(typeof cb==='function') cb(payload||{});
+  }
+
   function handleAppPickerClick(e){
+    var habitBtn=e.target.closest&&e.target.closest('[data-pick-habit]');
+    if(habitBtn){
+      e.preventDefault();
+      if(!isTopbarMonitorPicker()) return;
+      finishTopbarPick({ type:'habit', habitId:habitBtn.getAttribute('data-pick-habit')||'' });
+      return;
+    }
     var presetBtn=e.target.closest&&e.target.closest('[data-pick-preset]');
     if(presetBtn){
       e.preventDefault();
+      if(isTopbarMonitorPicker()){
+        finishTopbarPick({ type:'preset', presetId:presetBtn.getAttribute('data-pick-preset')||'' });
+        return;
+      }
       var m=resolvePickerMapping();
       if(!m) return;
       pickPresetApp(m,presetBtn.getAttribute('data-pick-preset')||'');
@@ -1937,10 +2011,14 @@
     var runBtn=e.target.closest&&e.target.closest('[data-pick-running]');
     if(runBtn){
       e.preventDefault();
-      var m2=resolvePickerMapping();
-      if(!m2) return;
       var idx=parseInt(runBtn.getAttribute('data-pick-running')||'',10);
       var identity=pickerRunningCache[idx];
+      if(isTopbarMonitorPicker()){
+        finishTopbarPick({ type:'running', identity:identity||null });
+        return;
+      }
+      var m2=resolvePickerMapping();
+      if(!m2) return;
       if(identity) pickRunningIdentity(m2,identity);
       closeAppPicker();
       if(global.OneToneVoicePageHeaderRender&&global.OneToneVoicePageHeaderRender.renderAppScope){
@@ -1967,6 +2045,10 @@
       fgBtn.addEventListener('click',function(e){
         e.preventDefault();
         e.stopPropagation();
+        if(isTopbarMonitorPicker()){
+          finishTopbarPick({ type:'running', identity:pickerForegroundIdentity||null });
+          return;
+        }
         var m=resolvePickerMapping();
         if(!m||!pickerForegroundIdentity) return;
         pickForegroundIdentity(m,pickerForegroundIdentity);
