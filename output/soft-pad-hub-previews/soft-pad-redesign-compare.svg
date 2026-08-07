@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="920" viewBox="0 0 1440 920">
+  <defs><style type="text/css"><![CDATA[
+.bg{fill:#e8eef3}.card{fill:#fafcfe;stroke:#d3dee9}
+.ink{fill:#142033}.muted{fill:#6b7a8d}.faint{fill:#94a3b4}
+.tag{fill:#e8f6fb;stroke:#3eb8dc}
+.h1{font:700 28px 'Segoe UI','Microsoft YaHei',sans-serif}
+.title{font:700 16px 'Segoe UI','Microsoft YaHei',sans-serif}
+.body{font:13px 'Segoe UI','Microsoft YaHei',sans-serif}
+.small{font:11px 'Segoe UI','Microsoft YaHei',sans-serif}
+.cap{font:700 11px 'Segoe UI','Microsoft YaHei',sans-serif}
+.mini{fill:#f3f7fa;stroke:#d5e0eb}.key{fill:#fff;stroke:#d2deea}
+.kA{fill:#f5f1fb;stroke:#c4b0e4}.kB{fill:#eef5ff;stroke:#9bb8e8}
+.kC{fill:#eef9f1;stroke:#95d0a8}.kD{fill:#f0fafc;stroke:#8ecfdf}
+]]></style></defs>
+
+  <rect class="bg" width="1440" height="920"/>
+  <text x="48" y="52" class="h1 ink">Soft Pad 改版预览 · 三方案对比</text>
+  <text x="48" y="78" class="body muted">共同约束：不丢功能 · 单行状态 · 无编号 · 无 cyan 光晕 · 详情默认展开 · 高级项折叠</text>
+  
+  <g transform="translate(40 108)">
+    <rect class="card" width="440" height="680" rx="16"/>
+    <rect class="tag" x="20" y="18" width="72" height="24" rx="12"/>
+    <text x="56" y="34" text-anchor="middle" class="cap" fill="#1f7a92">V1</text>
+    <text x="104" y="36" class="title ink">仪器台稳妥版</text>
+    <text x="20" y="68" class="small muted">迁移成本最低 · 推荐默认落地</text>
+    
+    <rect class="mini" x="20" y="88" width="400" height="300" rx="12"/>
+    <rect x="36" y="104" width="60" height="18" rx="6" fill="#dff3fa" stroke="#3eb8dc"/>
+    <rect x="104" y="104" width="48" height="18" rx="6" class="key"/>
+    <rect x="160" y="104" width="48" height="18" rx="6" class="key"/>
+    <g transform="translate(48 140)">
+      <rect class="key" x="0" y="0" width="44" height="32" rx="6"/>
+      <rect class="key" x="52" y="0" width="44" height="32" rx="6"/>
+      <rect class="key" x="104" y="0" width="44" height="32" rx="6"/>
+      <rect class="key" x="156" y="0" width="44" height="32" rx="6"/>
+      <rect class="key" x="0" y="40" width="44" height="32" rx="6"/>
+      <rect class="key" x="52" y="40" width="44" height="32" rx="6"/>
+      <rect class="key" x="104" y="40" width="96" height="32" rx="6"/>
+      <rect class="key" x="0" y="80" width="96" height="32" rx="6"/>
+      <rect class="key" x="104" y="80" width="96" height="32" rx="6"/>
+    </g>
+    <rect x="250" y="120" width="150" height="200" rx="8" fill="#fff" stroke="#e2eaf2"/>
+    <rect x="262" y="136" width="126" height="28" rx="6" fill="#eaf7fb" stroke="#3eb8dc"/>
+    <rect x="262" y="174" width="126" height="28" rx="6" class="key"/>
+    <rect x="262" y="212" width="126" height="28" rx="6" class="key"/>
+    <rect x="262" y="250" width="126" height="28" rx="6" class="key"/>
+    <text x="20" y="420" class="title ink">布局</text>
+    <text x="20" y="444" class="body muted">50% pad + 50% detail</text>
+    <text x="20" y="472" class="title ink">舞台切换</text>
+    <text x="20" y="496" class="body muted">3 quiet cards</text>
+    <text x="20" y="524" class="title ink">键面</text>
+    <text x="20" y="548" class="body muted">white + light cyan</text>
+    <text x="20" y="576" class="title ink">适合</text>
+    <text x="20" y="600" class="body muted">lowest risk default</text>
+    <text x="20" y="640" class="small faint">soft-pad-redesign-v1-instrument.png</text>
+  </g>
+  
+  <g transform="translate(500 108)">
+    <rect class="card" width="440" height="680" rx="16"/>
+    <rect class="tag" x="20" y="18" width="72" height="24" rx="12"/>
+    <text x="56" y="34" text-anchor="middle" class="cap" fill="#1f7a92">V2</text>
+    <text x="104" y="36" class="title ink">极简图形版</text>
+    <text x="20" y="68" class="small muted">图形优先最强 · 改动最大</text>
+    
+    <rect class="mini" x="20" y="88" width="400" height="300" rx="12"/>
+    <rect x="36" y="104" width="160" height="22" rx="8" fill="#eef3f7"/>
+    <rect x="40" y="108" width="52" height="14" rx="5" fill="#fff" stroke="#3eb8dc"/>
+    <g transform="translate(40 144)">
+      <rect class="key" x="0" y="0" width="52" height="40" rx="8"/>
+      <rect class="key" x="60" y="0" width="52" height="40" rx="8"/>
+      <rect class="key" x="120" y="0" width="52" height="40" rx="8"/>
+      <rect class="key" x="180" y="0" width="52" height="40" rx="8"/>
+      <rect class="key" x="0" y="48" width="52" height="40" rx="8"/>
+      <rect class="key" x="60" y="48" width="52" height="40" rx="8"/>
+      <rect class="key" x="120" y="48" width="112" height="40" rx="8"/>
+      <rect class="key" x="0" y="96" width="112" height="40" rx="8"/>
+      <rect class="key" x="120" y="96" width="112" height="40" rx="8"/>
+    </g>
+    <rect x="290" y="140" width="110" height="180" rx="8" fill="#fff" stroke="#e2eaf2"/>
+    <rect x="300" y="156" width="90" height="28" rx="6" fill="#eaf7fb" stroke="#3eb8dc"/>
+    <rect x="300" y="194" width="90" height="28" rx="6" class="key"/>
+    <rect x="300" y="232" width="90" height="28" rx="6" class="key"/>
+    <text x="20" y="420" class="title ink">布局</text>
+    <text x="20" y="444" class="body muted">pad ~63% + narrow detail</text>
+    <text x="20" y="472" class="title ink">舞台切换</text>
+    <text x="20" y="496" class="body muted">segmented control</text>
+    <text x="20" y="524" class="title ink">键面</text>
+    <text x="20" y="548" class="body muted">large glyph-first keys</text>
+    <text x="20" y="576" class="title ink">适合</text>
+    <text x="20" y="600" class="body muted">strongest graphic feel</text>
+    <text x="20" y="640" class="small faint">soft-pad-redesign-v2-graphic.png</text>
+  </g>
+  
+  <g transform="translate(960 108)">
+    <rect class="card" width="440" height="680" rx="16"/>
+    <rect class="tag" x="20" y="18" width="72" height="24" rx="12"/>
+    <text x="56" y="34" text-anchor="middle" class="cap" fill="#1f7a92">V3</text>
+    <text x="104" y="36" class="title ink">分区图形版</text>
+    <text x="20" y="68" class="small muted">V1 骨架 + 键面自解释色</text>
+    
+    <rect class="mini" x="20" y="88" width="400" height="300" rx="12"/>
+    <rect x="36" y="104" width="60" height="18" rx="6" fill="#dff3fa" stroke="#3eb8dc"/>
+    <rect x="104" y="104" width="48" height="18" rx="6" class="key"/>
+    <g transform="translate(48 140)">
+      <rect class="kD" x="0" y="0" width="44" height="32" rx="6"/>
+      <rect class="kA" x="52" y="0" width="44" height="32" rx="6"/>
+      <rect class="kA" x="104" y="0" width="44" height="32" rx="6"/>
+      <rect class="kB" x="156" y="0" width="44" height="32" rx="6"/>
+      <rect class="kB" x="0" y="40" width="44" height="32" rx="6"/>
+      <rect class="kB" x="52" y="40" width="44" height="32" rx="6"/>
+      <rect class="kC" x="104" y="40" width="96" height="32" rx="6"/>
+      <rect class="kC" x="0" y="80" width="96" height="32" rx="6"/>
+      <rect class="kB" x="104" y="80" width="96" height="32" rx="6"/>
+    </g>
+    <rect x="250" y="120" width="150" height="200" rx="8" fill="#fff" stroke="#e2eaf2"/>
+    <rect x="262" y="136" width="126" height="28" rx="6" fill="#eaf7fb" stroke="#3eb8dc"/>
+    <rect x="262" y="174" width="126" height="28" rx="6" class="key"/>
+    <rect x="262" y="212" width="126" height="28" rx="6" class="key"/>
+    <text x="20" y="420" class="title ink">布局</text>
+    <text x="20" y="444" class="body muted">same as V1</text>
+    <text x="20" y="472" class="title ink">舞台切换</text>
+    <text x="20" y="496" class="body muted">same as V1</text>
+    <text x="20" y="524" class="title ink">键面</text>
+    <text x="20" y="548" class="body muted">zone tint colors</text>
+    <text x="20" y="576" class="title ink">适合</text>
+    <text x="20" y="600" class="body muted">graphic without layout churn</text>
+    <text x="20" y="640" class="small faint">soft-pad-redesign-v3-zones.png</text>
+  </g>
+  <text x="48" y="840" class="title ink">怎么选</text>
+  <text x="48" y="866" class="body muted">优先落地 → V1；图形感要最强 → V2；要一眼看出键区但不想大改布局 → V3。也可 V1 骨架 + V3 分区色作为折中落地。</text>

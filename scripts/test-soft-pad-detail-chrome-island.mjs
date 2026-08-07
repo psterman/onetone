@@ -93,11 +93,15 @@ check('buildSoftPadDetailChromeModel 已导出', typeof API.buildSoftPadDetailCh
 check('closeSubpage 已导出', typeof API.closeSubpage === 'function');
 
 let model = API.buildSoftPadDetailChromeModel();
-check('hub 时 detailOpen=false', model.detailOpen === false);
-check('hub 时 backHidden=true', model.backHidden === true);
-check('hub 时 title 空', !model.title);
+check('pad/appear 时 detailOpen=true', model.detailOpen === true);
+check('appear 时 backHidden=true', model.backHidden === true);
+check('appear 时有标题', typeof model.title === 'string' && model.title.length > 0);
 check('sig 非空', typeof model.sig === 'string' && model.sig.length > 0);
 check('backLabel 非空', typeof model.backLabel === 'string' && model.backLabel.length > 0);
+API.setSoftPadFace('agent');
+model = API.buildSoftPadDetailChromeModel();
+check('agent face 时 detailOpen=false', model.detailOpen === false);
+API.setSoftPadFace('pad', { padMode: 'appear' });
 
 console.log('[soft-pad-detail-chrome] 源码护栏:');
 const softPadJs = src;
@@ -105,7 +109,7 @@ check('导出 buildSoftPadFourPanelModel', softPadJs.includes('buildSoftPadFourP
 check('导出 buildSoftPadDetailChromeModel', softPadJs.includes('buildSoftPadDetailChromeModel: buildSoftPadDetailChromeModel'));
 check('detail chrome 读 fourPanel model', /function buildSoftPadDetailChromeModel\([\s\S]*?buildSoftPadFourPanelModel/.test(softPadJs));
 check('导出 closeSubpage', softPadJs.includes('closeSubpage: closeSubpage'));
-check('syncHubChrome 岛守卫', /function syncHubChrome\([\s\S]*?__otSoftPadDetailChromeMounted/.test(softPadJs));
+check('syncFaceChrome 岛守卫', /function syncFaceChrome\([\s\S]*?__otSoftPadDetailChromeMounted/.test(softPadJs));
 check('clearSubpage 岛守卫', /function clearSubpage\([\s\S]*?__otSoftPadDetailChromeMounted/.test(softPadJs));
 check('paintSubpage 标题岛守卫', /function paintSubpage\([\s\S]*?__otSoftPadDetailChromeMounted/.test(softPadJs));
 check('bindChrome 跳过 subBack', /function bindChrome\([\s\S]*?__otSoftPadDetailChromeMounted/.test(softPadJs));
@@ -114,15 +118,14 @@ check('setDetailOpen 岛守卫 P14i', /function setDetailOpen\([\s\S]*?__otSoftP
 check('render 接线挂载', softPadJs.includes('__otMountSoftPadDetailChromeIsland'));
 check('render 延迟落地 paint', /function render\([\s\S]*?paintSoftPadLanding[\s\S]*?requestAnimationFrame/.test(softPadJs));
 check('render 先画左侧再落地', /ensureSoftPadLeftChrome[\s\S]*?paintSoftPadLanding/.test(softPadJs) || /paintPreview\(openEntry[\s\S]*?paintSoftPadLanding/.test(softPadJs));
-check('openSubpage 空壳再点会重绘', /view === softPadView[\s\S]*?softPadSubpageAlreadyPainted[\s\S]*?forceRemount:\s*true/.test(softPadJs));
+check('setSoftPadPadMode 空壳再点会重绘', /function setSoftPadPadMode[\s\S]*?softPadSubpageAlreadyPainted[\s\S]*?forceRemount:\s*true/.test(softPadJs));
 check('AlreadyPainted 含 agent lazy body', /view === 'agent'[\s\S]*?data-lazy-agent-body/.test(softPadJs));
 check('openGen 不跟 selectToken 绑死', softPadJs.includes('softPadOpenGen'));
-check('落地硬编码 runtime', /var landView = 'runtime'/.test(softPadJs) && /fe softPad\.land/.test(softPadJs));
-check('落地锁定 suppress layout', /softPadLandUntil[\s\S]*?suppress-layout/.test(softPadJs));
-check('顶栏 tile 带 fromUser', /openSubpage\(tile\.getAttribute\('data-tile'\),\s*\{\s*fromUser:\s*true/.test(softPadJs));
-check('Soft Pad 流程节点落地 runtime', /nodeId === 'pad'[\s\S]*?openSubpage\('runtime'\)/.test(softPadJs));
-check('openSubpage 面板不一致会重绘', /panelMismatch[\s\S]*?forceRemount:\s*true/.test(softPadJs));
-check('render 同步先 openSubpage 落地', /var landView = 'runtime';[\s\S]*?openSubpage\(landView\)/.test(softPadJs));
+check('落地硬编码 appear', /var landMode = 'appear'/.test(softPadJs) && /fe softPad\.land/.test(softPadJs));
+check('落地锁定 suppress keys', /softPadLandUntil[\s\S]*?suppress-keys/.test(softPadJs));
+check('pad tabs 带 fromUser', /setSoftPadPadMode\(tab\.getAttribute\('data-pad-mode'\),\s*\{\s*fromUser:\s*true/.test(softPadJs));
+check('Soft Pad 流程节点落地 face pad', /nodeId === 'pad'[\s\S]*?setSoftPadFace\('pad'/.test(softPadJs));
+check('render 同步先 setSoftPadFace 落地', /var landMode = 'appear';[\s\S]*?setSoftPadFace\('pad'/.test(softPadJs));
 const landingStart = softPadJs.indexOf('function paintSoftPadLanding()');
 const landingEnd = softPadJs.indexOf('// Second pass after island paint-targets commit', landingStart);
 const landingRetry = landingStart >= 0 && landingEnd > landingStart
@@ -131,7 +134,9 @@ const landingRetry = landingStart >= 0 && landingEnd > landingStart
 check('延迟落地不重复 selectScheme', !landingRetry.includes('selectScheme('));
 check('延迟落地只在缺页时补画', /!softPadSubpageAlreadyPainted[\s\S]*?paintSubpage/.test(landingRetry));
 check('defaultDetailView 默认 runtime', /function defaultDetailView\([\s\S]*?return 'runtime'/.test(softPadJs));
-check('openSubpage resolve Soft Pad', /function openSubpage\([\s\S]*?resolveSoftPadEntry\(/.test(softPadJs));
+check('openSubpage 适配 legacyViewToRoute', /function openSubpage\([\s\S]*?legacyViewToRoute/.test(softPadJs));
+check('setSoftPadFace 导出', softPadJs.includes('setSoftPadFace: setSoftPadFace'));
+check('无 softPadView 驱动', !/(?:^|[^\w/])softPadView\s*=/.test(softPadJs));
 
 const html = readFileSync(join(root, 'src/index.html'), 'utf8');
 check('index 含 softPadSubpageBar', html.includes('id="softPadSubpageBar"'));

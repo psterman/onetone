@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" viewBox="0 0 1280 900">
+  <defs><style type="text/css"><![CDATA[
+.bg{fill:#e9eef3}.shell{fill:#f7fafc;stroke:#d2dde8}
+.ink{fill:#132033}.muted{fill:#6b7a8d}.faint{fill:#93a0b0}
+.cyan{fill:#3eb8dc}
+.small{font:11px 'Segoe UI','Microsoft YaHei',sans-serif}
+.body{font:13px 'Segoe UI','Microsoft YaHei',sans-serif}
+.title{font:700 15px 'Segoe UI','Microsoft YaHei',sans-serif}
+.h1{font:700 20px 'Segoe UI','Microsoft YaHei',sans-serif}
+.h0{font:700 26px 'Segoe UI','Microsoft YaHei',sans-serif}
+.label{font:700 12px 'Segoe UI','Microsoft YaHei',sans-serif}
+.cap{font:700 10px 'Segoe UI','Microsoft YaHei',sans-serif}
+.key{fill:#fff;stroke:#d2deea}.keyA{fill:#eef8fb;stroke:#8ecfe0}
+.chip{fill:#fff;stroke:#d2deea}.chipOn{fill:#e5f5fb;stroke:#3eb8dc}
+.seg{fill:#e8eef4}.segOn{fill:#fff;stroke:#3eb8dc;stroke-width:1.5}
+.panel{fill:#f3f7fa;stroke:#d2dde8}.row{fill:#fff;stroke:#e1e9f1}
+.rail{fill:#121820}.railInk{fill:#e8f0f8}.railMuted{fill:#8b9aab}
+.railOn{fill:#1c2836;stroke:#3eb8dc}
+.bezel{fill:#dfe8f0}.bezelDial{fill:#1a2430}
+.lb{fill:#0f141c}.dot{fill:#34d399}
+.spine{fill:#f7f1e6;stroke:#e5d2a8}
+]]></style></defs>
+
+  <rect class="bg" width="1280" height="900"/>
+  <rect x="40" y="28" width="1200" height="780" rx="16" class="shell"/>
+
+  <!-- L0 app bar -->
+  <rect x="40" y="28" width="1200" height="48" rx="16" fill="#fff" stroke="#dce5ef"/>
+  <text x="64" y="58" class="h1 ink">Codex</text>
+  <rect x="140" y="42" width="52" height="22" rx="11" fill="#e7f7ee" stroke="#9ed9b5"/>
+  <text x="166" y="57" text-anchor="middle" class="cap" fill="#1f7a4a">已启用</text>
+  <rect x="204" y="42" width="88" height="22" rx="11" class="chip"/>
+  <text x="248" y="57" text-anchor="middle" class="cap ink">绑定</text>
+  <rect x="1168" y="42" width="48" height="22" rx="11" class="chip"/>
+  <text x="1192" y="57" text-anchor="middle" class="cap muted">更多</text>
+  <text x="64" y="98" class="small faint">L0 细条应用 → L1 面分段 → L2 键面+bezel拨杆+贴边检视；三面不共用 ring</text>
+
+  <!-- L1 face segment -->
+  <g transform="translate(64 112)">
+    <rect class="seg" width="420" height="36" rx="10"/>
+    <rect class="segOn" x="3" y="3" width="130" height="30" rx="8"/>
+    <text x="68" y="23" text-anchor="middle" class="label" fill="#1f7a92">Soft Pad</text>
+    <text x="206" y="23" text-anchor="middle" class="label muted">状态灯</text>
+    <text x="330" y="23" text-anchor="middle" class="label muted">时间胶囊</text>
+  </g>
+
+  <!-- L2 Soft Pad: chassis with bezel dial fused -->
+  <g transform="translate(64 168)">
+    <rect width="740" height="520" rx="18" fill="#edf3f8" stroke="#cfdbe6"/>
+    <!-- hardware bezel frame -->
+    <rect x="28" y="24" width="684" height="430" rx="22" class="bezel"/>
+    <rect x="48" y="44" width="644" height="340" rx="16" fill="#f7fafc" stroke="#c5d3e0"/>
+    <g transform="translate(72 64)"><rect class="keyA" x="0" y="0" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="35.7" y="20" text-anchor="middle" class="label ink">ENC</text>
+        <text x="35.7" y="36" text-anchor="middle" class="cap faint">模式</text><rect class="key" x="81.9" y="0" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="117.60000000000001" y="20" text-anchor="middle" class="label ink">7</text>
+        <text x="117.60000000000001" y="36" text-anchor="middle" class="cap faint">AG</text><rect class="key" x="163.8" y="0" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="199.5" y="20" text-anchor="middle" class="label ink">8</text>
+        <text x="199.5" y="36" text-anchor="middle" class="cap faint">CL</text><rect class="key" x="245.70000000000002" y="0" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="281.40000000000003" y="20" text-anchor="middle" class="label ink">9</text>
+        <text x="281.40000000000003" y="36" text-anchor="middle" class="cap faint">CX</text><rect class="key" x="327.6" y="0" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="363.3" y="20" text-anchor="middle" class="label ink">NAV</text>
+        <text x="363.3" y="36" text-anchor="middle" class="cap faint">方向</text><rect class="key" x="0" y="60.900000000000006" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="35.7" y="80.9" text-anchor="middle" class="label ink">4</text>
+        <text x="35.7" y="96.9" text-anchor="middle" class="cap faint">PERM</text><rect class="key" x="81.9" y="60.900000000000006" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="117.60000000000001" y="80.9" text-anchor="middle" class="label ink">5</text>
+        <text x="117.60000000000001" y="96.9" text-anchor="middle" class="cap faint">STAT</text><rect class="key" x="163.8" y="60.900000000000006" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="199.5" y="80.9" text-anchor="middle" class="label ink">6</text>
+        <text x="199.5" y="96.9" text-anchor="middle" class="cap faint">APPS</text><rect class="keyA" x="245.70000000000002" y="60.900000000000006" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="281.40000000000003" y="80.9" text-anchor="middle" class="label ink">UNDO</text>
+        <text x="281.40000000000003" y="96.9" text-anchor="middle" class="cap faint">撤销</text><rect class="keyA" x="327.6" y="60.900000000000006" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="363.3" y="80.9" text-anchor="middle" class="label ink">FIND</text>
+        <text x="363.3" y="96.9" text-anchor="middle" class="cap faint">搜索</text><rect class="key" x="0" y="121.80000000000001" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="35.7" y="141.8" text-anchor="middle" class="label ink">1</text>
+        <text x="35.7" y="157.8" text-anchor="middle" class="cap faint">FAST</text><rect class="key" x="81.9" y="121.80000000000001" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="117.60000000000001" y="141.8" text-anchor="middle" class="label ink">2</text>
+        <text x="117.60000000000001" y="157.8" text-anchor="middle" class="cap faint">CMD</text><rect class="key" x="163.8" y="121.80000000000001" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="199.5" y="141.8" text-anchor="middle" class="label ink">3</text>
+        <text x="199.5" y="157.8" text-anchor="middle" class="cap faint">NO</text><rect class="keyA" x="245.70000000000002" y="121.80000000000001" width="153.3" height="50.400000000000006" rx="9"/>
+        <text x="322.35" y="141.8" text-anchor="middle" class="label ink">SEND</text>
+        <text x="322.35" y="157.8" text-anchor="middle" class="cap faint">发送</text><rect class="key" x="0" y="182.70000000000002" width="153.3" height="50.400000000000006" rx="9"/>
+        <text x="76.65" y="202.70000000000002" text-anchor="middle" class="label ink">VOICE</text>
+        <text x="76.65" y="218.70000000000002" text-anchor="middle" class="cap faint">语音</text><rect class="key" x="163.8" y="182.70000000000002" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="199.5" y="202.70000000000002" text-anchor="middle" class="label ink">0</text>
+        <text x="199.5" y="218.70000000000002" text-anchor="middle" class="cap faint">DOT</text><rect class="key" x="245.70000000000002" y="182.70000000000002" width="153.3" height="50.400000000000006" rx="9"/>
+        <text x="322.35" y="202.70000000000002" text-anchor="middle" class="label ink">PLUS</text>
+        <text x="322.35" y="218.70000000000002" text-anchor="middle" class="cap faint">+</text></g>
+    <!-- bezel mode dial fused at bottom of pad -->
+    <g transform="translate(48 400)">
+      <rect width="644" height="40" rx="12" class="bezelDial"/>
+      <rect x="8" y="6" width="150" height="28" rx="8" fill="#3eb8dc"/>
+      <text x="83" y="24" text-anchor="middle" class="cap" fill="#06202a">出现</text>
+      <text x="240" y="24" text-anchor="middle" class="cap" fill="#c5d4e2">键位</text>
+      <text x="370" y="24" text-anchor="middle" class="cap" fill="#c5d4e2">外观</text>
+      <text x="520" y="24" text-anchor="middle" class="cap" fill="#c5d4e2">用途</text>
+    </g>
+    <text x="28" y="500" class="small faint">bezel dial = Soft Pad padMode only · not shared ring</text>
+  </g>
+  
+  <g transform="translate(840 168)">
+    <rect class="panel" width="360" height="520" rx="14"/>
+    <text x="18" y="28" class="title ink">出现</text>
+    <text x="18" y="48" class="small muted">前台匹配时显示</text>
+    <rect class="row" x="16" y="66" width="328" height="48" rx="10"/>
+    <circle cx="36" cy="90" r="6" fill="#3eb8dc"/>
+    <text x="52" y="86" class="label ink">跟随应用</text>
+    <text x="52" y="102" class="small muted">前台匹配时显示</text>
+    <rect class="row" x="16" y="124" width="328" height="48" rx="10"/>
+    <circle cx="36" cy="148" r="6" fill="#fff" stroke="#c5d0dc"/>
+    <text x="52" y="144" class="label ink">置顶</text>
+    <rect class="row" x="16" y="182" width="328" height="48" rx="10"/>
+    <circle cx="36" cy="206" r="6" fill="#fff" stroke="#c5d0dc"/>
+    <text x="52" y="202" class="label ink">迷你条</text>
+    <rect class="row" x="16" y="240" width="328" height="48" rx="10"/>
+    <circle cx="36" cy="264" r="6" fill="#fff" stroke="#c5d0dc"/>
+    <text x="52" y="260" class="label ink">不显示</text>
+  </g>
+
+  <text x="64" y="850" class="title ink">思路 A · Bezel 仪器台</text>
+  <text x="64" y="874" class="body muted">Soft Pad 面：拨杆融在键盘底托上。状态灯/胶囊切换后整面换 Hero，不留键盘残片。</text>
+
+</svg>

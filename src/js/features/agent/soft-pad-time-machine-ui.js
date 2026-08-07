@@ -208,11 +208,13 @@
   }
 
   function setDeskVisible(on) {
-    var stage = document.getElementById('softPadHubStage');
+    // Face chrome owns #softPadFaceTimeline visibility — do not flip stage.is-tm-desk.
     var desk = document.getElementById('softPadTmDesk');
+    var detail = document.getElementById('softPadTmDetailHost');
+    var stage = document.getElementById('softPadHubStage');
     var page = document.getElementById('settingsPanelSoftPad');
-    if (stage) stage.classList.toggle('is-tm-desk', !!on);
-    if (page) page.classList.toggle('is-tm-desk', !!on);
+    if (stage) stage.classList.remove('is-tm-desk');
+    if (page) page.classList.remove('is-tm-desk');
     if (desk) {
       if (on) {
         desk.hidden = false;
@@ -222,9 +224,11 @@
         desk.setAttribute('hidden', '');
       }
     }
+    if (detail && !on) {
+      detail.innerHTML = '';
+    }
     try {
       feLog('fe tm.deskVisible on=' + (!!on) +
-        ' stage=' + !!(stage && stage.classList.contains('is-tm-desk')) +
         ' hiddenAttr=' + !!(desk && desk.hasAttribute('hidden')));
     } catch (_) {}
   }
@@ -239,7 +243,6 @@
     var autosaveOn = !!(status && status.autoSaveEnabled);
     return (
       '<header class="soft-pad-tm-chrome">' +
-      '<button type="button" class="page-status-btn soft-pad-tm-back" data-tm-act="back">← 返回</button>' +
       '<div class="soft-pad-tm-heading"><h3 class="soft-pad-tm-chrome__title">项目时间胶囊</h3>' +
       '<span class="soft-pad-tm-chrome__path" title="' + esc(status && status.workspace) + '">' +
       esc(shortPath(status && status.workspace)) + esc(boundHint) + '</span></div>' +
@@ -289,39 +292,61 @@
     );
   }
 
+  function markTag(op) {
+    var p = opProvider(op);
+    if (p === 'claude') return 'Claude';
+    if (p === 'codex') return 'Codex';
+    if (p === 'cursor') return 'Cursor';
+    return '存档';
+  }
+
+  function dayPill(iso) {
+    var d = asDate(iso);
+    if (!d) return '';
+    var mm = String(d.getMonth() + 1).padStart(2, '0');
+    var dd = String(d.getDate()).padStart(2, '0');
+    return mm + '-' + dd;
+  }
+
   function timelineHtml(ops) {
+    // C3 blueprint: horizontal amber spine — time / dot / kind / tag; date pills below.
     var html =
-      '<div class="soft-pad-tm-group"><div class="soft-pad-tm-group__label">当前胶囊</div>' +
-      '<button type="button" class="soft-pad-tm-op soft-pad-tm-op--now' +
+      '<div class="soft-pad-tm-spine-wrap">' +
+      '<div class="soft-pad-tm-spine" role="list">' +
+      '<button type="button" class="soft-pad-tm-mark soft-pad-tm-mark--now' +
       (selectedId === NOW_ID ? ' is-active' : '') +
-      '" data-tm-select="' + NOW_ID + '" aria-current="' +
+      '" data-tm-select="' + NOW_ID + '" role="listitem" aria-current="' +
       (selectedId === NOW_ID ? 'true' : 'false') + '">' +
-      '<span class="soft-pad-tm-op__rail"><i></i></span><span class="soft-pad-tm-op__body">' +
-      '<span class="soft-pad-tm-op__top"><strong>现在</strong><em>当前文件夹</em></span>' +
-      '<span class="soft-pad-tm-op__meta">这个项目的最新状态</span></span></button></div>';
-    var activeGroup = '';
+      '<span class="soft-pad-tm-mark__time">现在</span>' +
+      '<i class="soft-pad-tm-mark__dot" aria-hidden="true"></i>' +
+      '<span class="soft-pad-tm-mark__kind">live</span>' +
+      '<span class="soft-pad-tm-mark__tag">ENC</span></button>';
+    var daySeen = {};
+    var dayPills = [];
     (ops || []).forEach(function (op) {
-      var group = dayKey(op.createdAt);
-      if (group !== activeGroup) {
-        if (activeGroup) html += '</div>';
-        activeGroup = group;
-        html += '<div class="soft-pad-tm-group"><div class="soft-pad-tm-group__label">' + esc(group) + '</div>';
+      var pill = dayPill(op.createdAt);
+      if (pill && !daySeen[pill]) {
+        daySeen[pill] = 1;
+        dayPills.push(pill);
       }
-      var stats = op.stats || {};
-      var agent = agentLine(op.agentContext);
       html +=
-        '<button type="button" class="soft-pad-tm-op' + (op.id === selectedId ? ' is-active' : '') +
-        '" data-tm-select="' + esc(op.id) + '" aria-current="' +
-        (op.id === selectedId ? 'true' : 'false') + '">' +
-        '<span class="soft-pad-tm-op__rail"><i></i></span><span class="soft-pad-tm-op__body">' +
-        '<span class="soft-pad-tm-op__top"><strong>' + esc(shortTime(op.createdAt)) + '</strong>' +
-        '<em>' + esc(triggerLabel(op.triggerSource)) + '</em></span>' +
-        '<span class="soft-pad-tm-op__meta">' + esc(relativeTime(op.createdAt)) +
-        ' · ' + esc(String(stats.changed || 0)) + ' 个文件</span>' +
-        (agent ? '<span class="soft-pad-tm-op__agent">' + esc(agent) + '</span>' : '') +
-        '</span></button>';
+        '<button type="button" class="soft-pad-tm-mark' + (op.id === selectedId ? ' is-active' : '') +
+        '" data-tm-select="' + esc(op.id) + '" role="listitem" aria-current="' +
+        (op.id === selectedId ? 'true' : 'false') +
+        '" title="' + esc(relativeTime(op.createdAt)) + '">' +
+        '<span class="soft-pad-tm-mark__time">' + esc(shortTime(op.createdAt)) + '</span>' +
+        '<i class="soft-pad-tm-mark__dot" aria-hidden="true"></i>' +
+        '<span class="soft-pad-tm-mark__kind">' + esc(triggerLabel(op.triggerSource)) + '</span>' +
+        '<span class="soft-pad-tm-mark__tag">' + esc(markTag(op)) + '</span></button>';
     });
-    if (activeGroup) html += '</div>';
+    html += '</div>';
+    if (dayPills.length) {
+      html += '<div class="soft-pad-tm-days" aria-label="日期">' +
+        dayPills.slice(0, 6).map(function (d) {
+          return '<span class="soft-pad-tm-daypill">' + esc(d) + '</span>';
+        }).join('') + '</div>';
+    }
+    html += '</div>';
     if (!ops || !ops.length) {
       html += agentFilter === 'all'
         ? '<div class="soft-pad-tm-empty-action"><p>还没有存档。先存一份现在，之后做错了就能回来。</p><button type="button" class="page-status-btn is-primary" data-tm-act="snapshot">先存一份现在</button></div>'
@@ -447,23 +472,31 @@
 
   function renderDesk(status, ops, diff, loading) {
     var desk = document.getElementById('softPadTmDesk');
+    var detailHost = document.getElementById('softPadTmDetailHost');
     if (!desk) return;
     lastStatus = status;
     currentOps = ops || [];
     if (!status || status.level === 'L0' || !status.isGit) {
       renderL0(status || {});
+      if (detailHost) detailHost.innerHTML = '';
       return;
     }
     var visible = filterOps(ops);
     var detail = selectedId === NOW_ID ? nowDetailHtml(status) : checkpointDetailHtml(status, diff, loading);
+    // Bottom rail: chrome + horizontal axis + settings. Right panel: node detail.
     desk.innerHTML = chromeHtml(status,
-      '<div class="soft-pad-tm-layout"><aside class="soft-pad-tm-timeline" aria-label="当前项目的恢复点时间轴">' +
-      timelineHtml(visible) + '</aside><section class="soft-pad-tm-detail" aria-live="polite">' +
-      detail + '<div class="soft-pad-tm-post" id="softPadTmPost" hidden><p>文件已恢复。聊天记录可能还要跟 AI 说一声。</p>' +
-      '<details><summary>告诉 AI</summary><div><button type="button" class="page-status-btn is-primary" data-tm-act="remind-agent">提醒 AI 重读文件</button>' +
-      '<button type="button" class="page-status-btn" data-tm-act="claude-rewind">复制 /rewind</button>' +
-      (lastRestoreOpId ? '<button type="button" class="page-status-btn" data-tm-act="undo-restore">撤销这次恢复</button>' : '') +
-      '</div></details></div></section></div>' + settingsHtml(status));
+      '<div class="soft-pad-tm-rail-body" aria-label="当前项目的恢复点时间轴">' +
+      agentFilterHtml() + timelineHtml(visible) + '</div>' + settingsHtml(status));
+    if (detailHost) {
+      detailHost.innerHTML =
+        '<section class="soft-pad-tm-detail soft-pad-tm-detail--face" aria-live="polite">' +
+        detail +
+        '<div class="soft-pad-tm-post" id="softPadTmPost" hidden><p>文件已恢复。聊天记录可能还要跟 AI 说一声。</p>' +
+        '<details><summary>告诉 AI</summary><div><button type="button" class="page-status-btn is-primary" data-tm-act="remind-agent">提醒 AI 重读文件</button>' +
+        '<button type="button" class="page-status-btn" data-tm-act="claude-rewind">复制 /rewind</button>' +
+        (lastRestoreOpId ? '<button type="button" class="page-status-btn" data-tm-act="undo-restore">撤销这次恢复</button>' : '') +
+        '</div></details></div></section>';
+    }
   }
 
   function heroLabelFromStatus(status) {
@@ -651,7 +684,8 @@
   function onAct(act) {
     if (act === 'back') {
       var hub = global.OneToneSoftPadHub;
-      if (hub && typeof hub.closeSubpage === 'function') hub.closeSubpage();
+      if (hub && typeof hub.setSoftPadFace === 'function') hub.setSoftPadFace('pad');
+      else if (hub && typeof hub.closeSubpage === 'function') hub.closeSubpage();
       else closeDesk();
       return;
     }
@@ -736,9 +770,8 @@
 
   function bindDesk() {
     var desk = document.getElementById('softPadTmDesk');
-    if (!desk || desk.dataset.tmBound === '1') return;
-    desk.dataset.tmBound = '1';
-    desk.addEventListener('click', function (ev) {
+    var detail = document.getElementById('softPadTmDetailHost');
+    function onClick(ev) {
       var filterBtn = ev.target.closest && ev.target.closest('[data-tm-agent-filter]');
       if (filterBtn) {
         agentFilter = filterBtn.getAttribute('data-tm-agent-filter') || 'all';
@@ -760,14 +793,23 @@
       if (workspaceBtn) {
         selectWorkspace(workspaceBtn.getAttribute('data-tm-workspace'));
       }
-    });
-    desk.addEventListener('change', function (ev) {
+    }
+    function onChange(ev) {
       var t = ev.target;
       if (!t) return;
       if (t.matches && t.matches('[data-tm-autosave-toggle], [data-tm-autosave-interval]')) {
         setAutosaveFromDesk(t);
       }
-    });
+    }
+    if (desk && desk.dataset.tmBound !== '1') {
+      desk.dataset.tmBound = '1';
+      desk.addEventListener('click', onClick);
+      desk.addEventListener('change', onChange);
+    }
+    if (detail && detail.dataset.tmBound !== '1') {
+      detail.dataset.tmBound = '1';
+      detail.addEventListener('click', onClick);
+    }
   }
 
   // Overdue lastAuto must NOT collapse to "due now" — that stampedes git add on

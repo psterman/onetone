@@ -110,11 +110,12 @@ check('fourPanel landingView', fourPanel.landingView === 'runtime');
 check('fourPanel runtime recommended', fourPanel.panels.some((p) => p.id === 'runtime' && p.recommended));
 
 let model = API.buildSoftPadFuncTilesModel(entry);
-check('有 entry 时 tiles 仍隐藏（环接管）', model.hidden === true && model.tilesHtml === '');
+check('有 entry 时 tiles 仍隐藏（pad tabs 接管）', model.hidden === true && model.tilesHtml === '');
 check('sig 非空', typeof model.sig === 'string' && model.sig.length > 0);
 const ring = API.buildSoftPadPadRingModel('pad', entry);
-check('pad ring 含何时显示', ring.chipsHtml.includes('何时显示') || ring.chipsHtml.includes('softPadTileRuntime'));
-check('agent ring 不同于 pad', API.buildSoftPadPadRingModel('agent', entry).chipsHtml !== ring.chipsHtml);
+check('pad ring 已退役', ring.chipsHtml === '' && ring.sig && String(ring.sig).startsWith('retired'));
+check('agent ring 同样退役', API.buildSoftPadPadRingModel('agent', entry).chipsHtml === '');
+check('fourPanel face/padMode', fourPanel.face === 'pad' && fourPanel.padMode === 'appear');
 
 model = API.buildSoftPadFuncTilesModel(null);
 check('无 entry 时 hidden', model.hidden === true && model.tilesHtml === '');
@@ -126,7 +127,8 @@ check('导出 buildSoftPadFuncTilesModel', softPadJs.includes('buildSoftPadFuncT
 check('导出 buildSoftPadPadRingModel', softPadJs.includes('buildSoftPadPadRingModel: buildSoftPadPadRingModel'));
 check('applySoftPadFuncTilesHost 岛守卫', softPadJs.includes('function applySoftPadFuncTilesHost') && softPadJs.includes('__otSoftPadFuncTilesSync'));
 check('patchActiveTiles 岛守卫', /function patchActiveTiles\([\s\S]*?__otSoftPadFuncTilesSync/.test(softPadJs));
-check('syncHubChrome 调 pad ring', /function syncHubChrome\([\s\S]*?syncSoftPadPadRing/.test(softPadJs));
+check('syncFaceChrome 退役 pad ring', /function syncFaceChrome\([\s\S]*?syncSoftPadPadRing/.test(softPadJs));
+check('syncHubChrome 别名 syncFaceChrome', /function syncHubChrome\(entry\) \{\s*syncFaceChrome\(entry\);/.test(softPadJs));
 check('clearMain 不摧毁岛 root', /function clearMain\([\s\S]*?__otSoftPadFuncTilesMounted/.test(softPadJs));
 check('render 接线挂载', softPadJs.includes('__otMountSoftPadFuncTilesIsland'));
 

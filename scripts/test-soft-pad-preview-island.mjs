@@ -140,15 +140,16 @@ check('通用设置选中时仍 resolve 到 Soft Pad mapping', API.resolveSoftPa
 check('通用设置选中时 preview model 仍有 mappingId', API.buildSoftPadPreviewModel().mappingId === 'm1');
 check('通用设置选中时 clear=false', API.buildSoftPadPreviewModel().clear === false);
 check('render 采用 Soft Pad 方案', src.includes('resolveSoftPadEntry') && src.includes('adoptSoftPadSelection'));
-check('openSubpage 走 resolveSoftPadEntry', /function openSubpage\([\s\S]*?resolveSoftPadEntry\(/.test(src));
-check('openSubpage 会 adopt Soft Pad', /function openSubpage\([\s\S]*?adoptSoftPadSelection\(/.test(src));
+check('setSoftPadFace 走 resolveSoftPadEntry', /function setSoftPadFace\([\s\S]*?resolveSoftPadEntry\(/.test(src));
+check('setSoftPadFace 会 adopt Soft Pad', /function setSoftPadFace\([\s\S]*?adoptSoftPadSelection\(/.test(src));
 globalThis.OneToneCodexMicroPadUi.renderSoftPadAgentPanel = function () {};
 globalThis.OneToneCodexMicroPadUi.renderSoftPadRuntimePanel = function () {};
 API.openSubpage('agent');
 check('通用设置下点状态灯会 adopt Soft Pad id', state.selectedMappingId === 'm1');
 check('通用设置下点状态灯四面板为 agent', API.buildSoftPadFourPanelModel().activeView === 'agent');
-check('通用设置下点状态灯详情打开', API.buildSoftPadFourPanelModel().detailOpen === true);
+check('agent face 不走 pad detail 壳', API.buildSoftPadFourPanelModel().detailOpen === false && API.getFace() === 'agent');
 state.selectedMappingId = 'm1';
+API.setSoftPadFace('pad', { padMode: 'appear' });
 
 console.log('[soft-pad-preview] 源码护栏:');
 const softPadJs = src;
@@ -157,7 +158,7 @@ check('applySoftPadPreviewHost 岛守卫', softPadJs.includes('function applySof
 check('paintPreview 岛守卫', /function paintPreview\([\s\S]*?__otSoftPadPreviewMounted/.test(softPadJs));
 check('clearMain 不摧毁岛 root', /function clearMain\([\s\S]*?__otSoftPadPreviewMounted/.test(softPadJs));
 check('showPrepareMain 岛守卫', /function showPrepareMain\([\s\S]*?__otSoftPadPreviewMounted/.test(softPadJs));
-check('syncHubChrome preview 岛守卫', /function syncHubChrome\([\s\S]*?__otSoftPadPreviewMounted/.test(softPadJs));
+check('syncFaceChrome preview 岛守卫', /function syncFaceChrome\([\s\S]*?__otSoftPadPreviewMounted/.test(softPadJs));
 check('render 接线挂载', softPadJs.includes('__otMountSoftPadPreviewIsland'));
 
 const padJs = readFileSync(join(root, 'src/js/features/agent/codex-micro-pad-ui.js'), 'utf8');

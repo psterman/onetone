@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" viewBox="0 0 1280 900">
+  <defs><style type="text/css"><![CDATA[
+.bg{fill:#eef3f7}.shell{fill:#f8fbfd;stroke:#d5e0eb}
+.ink{fill:#142033}.muted{fill:#6b7a8d}.faint{fill:#94a3b4}
+.surface{fill:#ffffff;stroke:rgba(26,45,74,0.14)}
+.soft{fill:#f1f5f9;stroke:rgba(26,45,74,0.14)}
+.small{font:11px 'Segoe UI','Microsoft YaHei',sans-serif}
+.body{font:13px 'Segoe UI','Microsoft YaHei',sans-serif}
+.title{font:700 15px 'Segoe UI','Microsoft YaHei',sans-serif}
+.h1{font:700 18px 'Segoe UI','Microsoft YaHei',sans-serif}
+.label{font:700 12px 'Segoe UI','Microsoft YaHei',sans-serif}
+.cap{font:700 10px 'Segoe UI','Microsoft YaHei',sans-serif}
+]]></style></defs>
+
+  
+  <rect x="40" y="16" width="1200" height="56" rx="12" class="surface"/>
+  <text x="60" y="42" class="h1 ink">状态灯</text>
+  <text x="160" y="42" class="small muted">看 AI 忙不忙</text>
+  <g transform="translate(520 24)">
+    <circle cx="80" cy="20" r="16" fill="#fff" stroke="rgba(26,45,74,0.14)"/>
+    <circle cx="200" cy="20" r="16" fill="#fff" stroke="#34d399" stroke-width="2"/>
+    <circle cx="320" cy="20" r="16" fill="#fff" stroke="rgba(26,45,74,0.14)"/>
+    <text x="80" y="48" text-anchor="middle" class="cap muted">Soft Pad</text>
+    <text x="200" y="48" text-anchor="middle" class="cap" fill="#34d399">状态灯</text>
+    <text x="320" y="48" text-anchor="middle" class="cap muted">时间胶囊</text>
+  </g>
+  <rect x="40" y="88" width="380" height="780" rx="14" fill="#ecf8f3" stroke="rgba(52,211,153,0.35)"/>
+  <text x="54" y="110" class="cap" fill="#34d399">键盘预览</text>
+  <g transform="translate(100 150)"><rect x="0" y="0" width="200" height="200" rx="16" fill="#d9eef6" stroke="#3eb8dc" stroke-width="2"/><rect x="16" y="16" width="168" height="140" rx="12" fill="#f7fbfd" stroke="#b7dcea"/><rect x="28" y="28" width="44" height="36" rx="8" fill="#fff" stroke="#d5e1ec"/><rect x="80" y="28" width="44" height="36" rx="8" fill="#3b82f6" stroke="#d5e1ec"/><text x="102" y="50" text-anchor="middle" class="cap" fill="#fff">忙</text><rect x="132" y="28" width="44" height="36" rx="8" fill="#fff" stroke="#d5e1ec"/><rect x="28" y="72" width="44" height="36" rx="8" fill="#fff" stroke="#d5e1ec"/><rect x="80" y="72" width="44" height="36" rx="8" fill="#fff" stroke="#d5e1ec"/><rect x="132" y="72" width="44" height="36" rx="8" fill="#fff" stroke="#d5e1ec"/><rect x="16" y="162" width="168" height="22" rx="6" fill="#1e3a48"/><circle cx="36" cy="173" r="4" fill="#d97706"/><text x="170" y="176" text-anchor="end" class="cap" fill="#9ec9d8">顶栏</text></g><text x="60" y="390" class="small muted">一整段任务亮在一盏键上</text>
+  <rect x="432" y="88" width="480" height="780" rx="14" class="surface"/>
+  <text x="446" y="110" class="cap muted">配置</text>
+  <g transform="translate(448 150)">
+    <text x="0" y="0" class="body ink">整段任务亮在一盏键上（自动）</text>
+    <rect x="0" y="36" width="40" height="22" rx="11" fill="#2e7d4f" stroke="#2e7d4f"/>
+    <circle cx="28" cy="47" r="8" fill="#fff"/><text x="52" y="51" class="label ink">显示 Codex 状态灯</text>
+    <rect x="0" y="72" width="120" height="32" rx="8" fill="#3eb8dc"/>
+    <text x="60" y="93" text-anchor="middle" class="cap" fill="#fff">连接 Codex</text>
+    <text x="0" y="130" class="small faint">▸ 高级设置（折叠）</text>
+  </g>
+  <rect x="924" y="88" width="280" height="780" rx="14" class="surface"/>
+  <text x="938" y="110" class="cap muted">识别应用</text>
+  <g transform="translate(936 124)"><rect width="256" height="72" rx="10" fill="#f1f5f9" stroke="rgba(26,45,74,0.14)"/><text x="12" y="22" class="label ink">识别应用</text><text x="12" y="42" class="small muted">前台：Codex</text><rect x="0" y="84" width="256" height="40" rx="8" fill="#fff" stroke="rgba(26,45,74,0.14)"/><circle cx="18" cy="104" r="5" fill="#94a3b4"/><text x="32" y="108" class="small ink">Claude</text><rect x="0" y="130" width="256" height="40" rx="8" fill="#ecf8f3" stroke="#34d399"/><circle cx="18" cy="150" r="5" fill="#34d399"/><text x="32" y="154" class="small ink">Codex</text><rect x="0" y="176" width="256" height="40" rx="8" fill="#fff" stroke="rgba(26,45,74,0.14)"/><circle cx="18" cy="196" r="5" fill="#94a3b4"/><text x="32" y="200" class="small ink">Cursor</text><rect x="0" y="222" width="256" height="40" rx="8" fill="#fff" stroke="rgba(26,45,74,0.14)"/><circle cx="18" cy="242" r="5" fill="#94a3b4"/><text x="32" y="246" class="small ink">VS Code</text></g>
+  <text x="60" y="876" class="title ink">图 C · Codex · 待连接 · 三栏布局</text>
+</svg>

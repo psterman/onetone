@@ -128,15 +128,15 @@ check('presentation ready', model.panels.find((p) => p.id === 'presentation').pa
 check('runtime tile recommended', model.panels.find((p) => p.id === 'runtime').recommended === true);
 
 const tiles = API.buildSoftPadFuncTilesModel(entry);
-check('func tiles 已隐藏（环芯片接管）', tiles.hidden === true && !tiles.tilesHtml);
-check('pad ring 随 stage 变', typeof API.buildSoftPadPadRingModel === 'function');
+check('func tiles 已隐藏（pad tabs 接管）', tiles.hidden === true && !tiles.tilesHtml);
+check('pad ring 已退役', typeof API.buildSoftPadPadRingModel === 'function');
 const ringPad = API.buildSoftPadPadRingModel('pad', entry);
 const ringAgent = API.buildSoftPadPadRingModel('agent', entry);
 const ringTm = API.buildSoftPadPadRingModel('timeline', entry);
-check('pad ring Soft Pad 芯片', ringPad.chipsHtml.includes('何时显示') && ringPad.chipsHtml.includes('外观'));
-check('pad ring 状态灯芯片不同', ringAgent.chipsHtml.includes('灯位对照') && !ringAgent.chipsHtml.includes('何时显示'));
-check('pad ring 胶囊芯片不同', ringTm.chipsHtml.includes('打开时间线') && !ringTm.chipsHtml.includes('何时显示'));
-check('无 agent tile', !ringPad.chipsHtml.includes('data-tile="agent"') && !model.panelOrder.includes('agent'));
+check('pad ring 已退役（空芯片）', ringPad.chipsHtml === '' && Array.isArray(ringPad.chips) && ringPad.chips.length === 0);
+check('agent/timeline ring 同样退役', ringAgent.chipsHtml === '' && ringTm.chipsHtml === '');
+check('无 agent tile', !model.panelOrder.includes('agent'));
+check('fourPanel 含 face/padMode', model.face === 'pad' && model.padMode === 'appear');
 
 const chrome = API.softPadPanelExperienceHtml('layout', entry);
 check('layout chrome 含主 CTA', chrome.includes('data-act="focusLayoutKey"') && chrome.includes('is-primary'));
@@ -148,8 +148,12 @@ const ready = API.buildSoftPadFourPanelModel(entry);
 check('有键后 layout ready', ready.panels.find((p) => p.id === 'layout').panelEmpty.mode === 'ready');
 check('浮窗开后 runtime ready', ready.panels.find((p) => p.id === 'runtime').panelEmpty.mode === 'ready');
 const readyChrome = API.softPadPanelExperienceHtml('runtime', entry);
-check('runtime ready 为 slim primary', readyChrome.includes('soft-pad-panel-primary') &&
-  !readyChrome.includes('soft-pad-panel-empty'));
+check('runtime ready 无空壳 primary', readyChrome === '' ||
+  (!readyChrome.includes('soft-pad-panel-primary') && !readyChrome.includes('soft-pad-panel-empty')));
+const layoutReadyChrome = API.softPadPanelExperienceHtml('layout', entry);
+check('layout ready 无空壳 primary', layoutReadyChrome === '');
+const lookReadyChrome = API.softPadPanelExperienceHtml('presentation', entry);
+check('presentation ready 无空壳 primary', lookReadyChrome === '');
 
 state.selectedMappingId = null;
 const keptMaps = state.config.mappings.slice();
@@ -199,6 +203,11 @@ check('Pad 用 softPadExperienceChrome', readFileSync(join(root, 'src/js/feature
 check('Pad 绑 focusLayoutKey', readFileSync(join(root, 'src/js/features/agent/codex-micro-pad-ui.js'), 'utf8')
   .includes('focusLayoutKey'));
 check('pad ring sync 存在', hubSrc.includes('function syncSoftPadPadRing') && hubSrc.includes('function buildSoftPadPadRingModel'));
+check('isLandLocked 已导出', typeof API.isLandLocked === 'function' && hubSrc.includes('isLandLocked: isLandLocked'));
+const padSrc = readFileSync(join(root, 'src/js/features/agent/codex-micro-pad-ui.js'), 'utf8');
+check('preview key 尊重 isLandLocked', padSrc.includes('Hub.isLandLocked()') &&
+  /function softPadPreviewEditKey\([\s\S]*?isLandLocked/.test(padSrc));
+check('pad ring 落地锁忽略', /function handlePadRingAct\([\s\S]*?isLandLocked\(\)/.test(hubSrc));
 
 console.log(`[soft-pad-3c] ${pass} 通过 / ${fail} 失败`);
 if (fail > 0) process.exit(1);

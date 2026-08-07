@@ -99,24 +99,26 @@ check('getSoftPadSubpagePaintOpts 已导出', typeof API.getSoftPadSubpagePaintO
 check('writeSoftPadSubpageAgentPick 已导出', typeof API.writeSoftPadSubpageAgentPick === 'function');
 
 let model = API.buildSoftPadSubpageModel();
-check('hub 时 clear=true', model.clear === true && model.mode === 'clear');
-check('hub 时 panel 空', !model.panel);
+check('pad/appear 默认 panel=runtime', model.clear === false && model.panel === 'runtime' && model.mode === 'panel');
+check('pad 默认有 panel', !!model.panel);
 check('sig 非空', typeof model.sig === 'string' && model.sig.length > 0);
 
 const fourPanel = API.buildSoftPadFourPanelModel();
 check('fourPanel defaultView 存在', typeof fourPanel.defaultView === 'string' && fourPanel.defaultView.length > 0);
 
-// openSubpage is not easily callable without full UI; poke softPadView via paint path after select.
-// Simulate view by calling openSubpage if available, else inspect source guards.
 check('有选中时 mapping 读桥有 id', API.getSelectedSoftPadMappingForSubpage() && API.getSelectedSoftPadMappingForSubpage().id === 'm1');
 
 state.selectedMappingId = null;
 model = API.buildSoftPadSubpageModel();
-// Soft Pad falls back to current app scope when habit selection is empty (hub view → clear).
-check('无习惯选中 hub 时 clear', model.clear === true);
+// Soft Pad falls back to current app scope when habit selection is empty.
+check('无习惯选中仍 paint Soft Pad panel', model.clear === false && model.panel === 'runtime');
 check('无习惯选中时仍可读到 Soft Pad mapping', API.getSelectedSoftPadMappingForSubpage() && API.getSelectedSoftPadMappingForSubpage().id === 'm1');
 
 state.selectedMappingId = 'm1';
+API.setSoftPadFace('agent');
+model = API.buildSoftPadSubpageModel();
+check('agent face subpage 走 agent panel', model.panel === 'agent' && model.clear === false);
+API.setSoftPadFace('pad', { padMode: 'appear' });
 
 console.log('[soft-pad-subpage] 源码护栏:');
 const softPadJs = src;
@@ -134,7 +136,8 @@ check('clearSubpage 岛路径无 replaceChildren 于 body', (() => {
   return body.includes('__otSoftPadSubpageMounted') && body.includes('else') && body.includes('replaceChildren');
 })());
 check('render 接线挂载', softPadJs.includes('__otMountSoftPadSubpageIsland'));
-check('clearMain 先 hub 再 clearSubpage', /softPadView = 'hub';\s*clearSubpage\(\);/.test(softPadJs));
+check('clearMain 先 reset face 再 clearSubpage', /resetSoftPadRouteToPadAppear\(\);\s*clearSubpage\(\);/.test(softPadJs) ||
+  /function clearMain\([\s\S]*?resetSoftPadRouteToPadAppear[\s\S]*?clearSubpage/.test(softPadJs));
 
 const padJs = readFileSync(join(root, 'src/js/features/agent/codex-micro-pad-ui.js'), 'utf8');
 check('resolveSoftPadSubpagePaintHost 存在', padJs.includes('function resolveSoftPadSubpagePaintHost'));

@@ -65,12 +65,11 @@
     var actions = '';
 
     if (phase === 'probe_missing') {
+      // Advanced-only: muted one-liner, no red error card (center column never mounts this).
+      if (opts.hideProbeMissing) return '';
       line =
-        '<strong class="shell-hook-panel__phase is-error">' +
-        esc(t('softPadShellHookProbeMissing', '探针缺失')) +
-        '</strong>' +
         '<span class="shell-hook-panel__hint">' +
-        esc(t('softPadShellHookProbeMissingHint', '找不到 agent-shell-hook-probe.js，请确认 OneTone 安装完整')) +
+        esc(t('softPadShellHookProbeMissingMuted', '探针未找到时仍可用氛围灯/顶栏；键灯自动同步不可用。')) +
         '</span>';
       actions =
         '<button type="button" class="codex-micro-pad__btn" data-shell-hook-act="detect">' +
@@ -142,8 +141,9 @@
     );
   }
 
-  function mountShellAgentHookPanel(host, kind) {
+  function mountShellAgentHookPanel(host, kind, opts) {
     if (!host) return null;
+    opts = opts || {};
     kind = String(kind || '').toLowerCase();
     if (!SHELL_KINDS[kind]) return null;
     var existing = host.querySelector('[data-shell-hook-kind="' + kind + '"]');
@@ -153,12 +153,35 @@
       wrap.className = 'shell-hook-panel-host';
       host.appendChild(wrap);
     }
-    wrap.innerHTML = renderShellAgentHookPanel({ kind: kind, status: lastStatusByKind[kind] });
+    var renderOpts = {
+      kind: kind,
+      status: lastStatusByKind[kind],
+      hideProbeMissing: !!opts.hideProbeMissing
+    };
+    wrap.innerHTML = renderShellAgentHookPanel(renderOpts);
+    if (!wrap.innerHTML) {
+      wrap.innerHTML =
+        '<p class="codex-pad-mgr__hint">' +
+        esc(t('softPadShellHookProbeMissingMuted',
+          '探针未找到时仍可用氛围灯/顶栏；键灯自动同步不可用。')) +
+        '</p>';
+      return wrap;
+    }
     bindShellHookPanel(wrap, kind);
     refreshShellAgentHookStatus(kind).then(function () {
       if (!wrap.isConnected) return;
-      wrap.innerHTML = renderShellAgentHookPanel({ kind: kind, status: lastStatusByKind[kind] });
-      bindShellHookPanel(wrap, kind);
+      renderOpts.status = lastStatusByKind[kind];
+      var html = renderShellAgentHookPanel(renderOpts);
+      wrap.innerHTML = html || (
+        '<p class="codex-pad-mgr__hint">' +
+        esc(t('softPadShellHookProbeMissingMuted',
+          '探针未找到时仍可用氛围灯/顶栏；键灯自动同步不可用。')) +
+        '</p>'
+      );
+      if (html) {
+        wrap.__shellHookBound = false;
+        bindShellHookPanel(wrap, kind);
+      }
     });
     return wrap;
   }

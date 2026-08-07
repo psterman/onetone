@@ -1280,6 +1280,15 @@ pub struct CodexMicroPadConfig {
     /// Soft Pad top-bar Qoder status dot (shell hook lifecycle).
     #[serde(default)]
     pub qoder_status_lights_enabled: bool,
+    /// Ambient bezel: `"status"` (follow pad status palette) | `"solid"` (fixed color).
+    #[serde(default = "default_ambient_mode")]
+    pub ambient_mode: String,
+    /// Fixed bezel color when `ambient_mode == "solid"` (`#RRGGBB` or `RRGGBB`).
+    #[serde(default)]
+    pub ambient_solid_rgb: String,
+    /// Soft Pad top-bar habit mapping ids (non-agent Soft Pad habits).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub topbar_habit_ids: Vec<String>,
     /// User opt-in for Claude CLI key inject. Default off. Still requires high-confidence latch.
     #[serde(default)]
     pub claude_cli_inject_pref_enabled: bool,
@@ -1317,6 +1326,9 @@ impl Default for CodexMicroPadConfig {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            ambient_mode: default_ambient_mode(),
+            ambient_solid_rgb: String::new(),
+            topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: default_codex_micro_presentation(),
             skin: default_codex_micro_skin(),
@@ -1329,6 +1341,10 @@ impl Default for CodexMicroPadConfig {
 
 fn default_codex_micro_presentation() -> String {
     "full".into()
+}
+
+fn default_ambient_mode() -> String {
+    "status".into()
 }
 
 fn default_codex_micro_skin() -> String {
@@ -4279,8 +4295,26 @@ pub fn config_path() -> PathBuf {
 /// Apply a frontend mapping save. Voice sections always stay from `existing` because
 /// toggles are persisted only via voice IPC commands (`cmd_voice_vosk_set_enabled`, etc.).
 pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceConfig> {
-    let raw: serde_json::Value = serde_json::from_str(json).ok()?;
-    let mut cfg: VoiceConfig = serde_json::from_value(raw.clone()).ok()?;
+    let raw: serde_json::Value = match serde_json::from_str(json) {
+        Ok(v) => v,
+        Err(e) => {
+            crate::app_log::sync_emergency_line(
+                "cmd_save",
+                &format!("merge_save_payload json parse failed: {e}"),
+            );
+            return None;
+        }
+    };
+    let mut cfg: VoiceConfig = match serde_json::from_value(raw.clone()) {
+        Ok(c) => c,
+        Err(e) => {
+            crate::app_log::sync_emergency_line(
+                "cmd_save",
+                &format!("merge_save_payload deserialize failed: {e}"),
+            );
+            return None;
+        }
+    };
     for m in &mut cfg.mappings {
         if m.app_behavior_rules.is_empty() {
             if let Some(prev) = existing.mappings.iter().find(|x| x.id == m.id) {

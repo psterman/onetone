@@ -266,9 +266,11 @@ check('boot settled heavy 错峰', (() => {
   const boot = readFileSync(join(root, 'src/js/core/app-boot.js'), 'utf8');
   const persist = readFileSync(join(root, 'src/js/core/config-persist.js'), 'utf8');
   const session = readFileSync(join(root, 'src/js/core/app-session.js'), 'utf8');
+  const presence = readFileSync(join(root, 'src/js/features/camera/camera-presence-actions.js'), 'utf8');
   return persist.includes('__otBootCameraCold')
     && persist.includes('bootCameraReconcile')
     && /camDelay\s*=\s*2500/.test(persist)
+    && /reason==='config_applied'[\s\S]*?boot_deferred/.test(presence)
     && session.includes('Yield between settle jobs')
     && /setTimeout\(next,\s*0\)/.test(session)
     && /setTimeout\(function\(\)\{[\s\S]*flushDeferredMvpInitSideEffects[\s\S]*\},120\)/.test(boot);

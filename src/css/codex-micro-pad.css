@@ -527,7 +527,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  place-content: center;
+  gap: 0;
   cursor: default;
   min-width: 0;
   min-height: 0;
@@ -595,14 +596,20 @@
   height: 54%;
   max-width: 30px;
   max-height: 30px;
+  margin: 0 auto;
   color: var(--hw-ink);
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  place-self: center;
+  flex-shrink: 0;
   transition: transform 0.14s ease;
 }
 .micro-hw__icon svg {
   width: 100%;
   height: 100%;
   display: block;
+  margin: 0;
   stroke: currentColor;
   fill: none;
   stroke-width: 1.55;
@@ -1578,6 +1585,11 @@ html[data-theme="dark"] .codex-pad-mgr__foot {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+  flex: 0 0 auto;
+}
+.micro-hw-modal__head-main {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 .micro-hw-modal__title {
   margin: 0;
@@ -1590,16 +1602,67 @@ html[data-theme="dark"] .codex-pad-mgr__foot {
   color: #6b7a8d;
 }
 .micro-hw-modal__close {
-  width: 32px;
-  height: 32px;
+  position: relative;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
   border: none;
-  border-radius: 8px;
-  background: transparent;
-  font-size: 18px;
-  color: #6b7a8d;
+  border-radius: 999px;
+  background: rgba(26, 45, 74, 0.06);
+  color: #5a6b80;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  isolation: isolate;
+  transition: color 0.18s ease, background 0.18s ease, transform 0.18s ease;
 }
-.micro-hw-modal__close:hover { background: #f0f3f7; }
+.micro-hw-modal__close-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid transparent;
+  transform: scale(0.72);
+  opacity: 0;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.18s ease, border-color 0.18s ease;
+  pointer-events: none;
+}
+.micro-hw-modal__close-x {
+  display: block;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.micro-hw-modal__close:hover {
+  color: #0f172a;
+  background: rgba(42, 156, 196, 0.14);
+}
+.micro-hw-modal__close:hover .micro-hw-modal__close-ring {
+  opacity: 1;
+  transform: scale(1);
+  border-color: rgba(42, 156, 196, 0.45);
+}
+.micro-hw-modal__close:hover .micro-hw-modal__close-x {
+  transform: rotate(90deg);
+}
+.micro-hw-modal__close:active {
+  transform: scale(0.92);
+}
+.micro-hw-modal__close:focus-visible {
+  outline: 2px solid rgba(42, 156, 196, 0.55);
+  outline-offset: 2px;
+}
+html[data-theme="dark"] .micro-hw-modal__close {
+  background: rgba(255, 255, 255, 0.06);
+  color: #9aa8b8;
+}
+html[data-theme="dark"] .micro-hw-modal__close:hover {
+  color: #e8eef6;
+  background: rgba(62, 184, 220, 0.16);
+}
+html[data-theme="dark"] .micro-hw-modal__close:hover .micro-hw-modal__close-ring {
+  border-color: rgba(125, 211, 252, 0.45);
+}
 
 .micro-hw-modal__search {
   width: 100%;
@@ -1639,6 +1702,69 @@ html[data-theme="dark"] .micro-hw-modal__effect-tip {
   line-height: 1.45;
   color: #5a6b80;
 }
+.micro-hw-modal__guide {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+}
+.micro-hw-modal__guide-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(42, 156, 196, 0.28);
+  background: rgba(62, 184, 220, 0.1);
+  color: #0369a1;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
+  animation: microHwGuideIn 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.micro-hw-modal__guide-step.is-optional {
+  border-color: rgba(26, 45, 74, 0.1);
+  background: rgba(248, 250, 252, 0.95);
+  color: #5a6b80;
+  animation-delay: 0.1s;
+}
+.micro-hw-modal__guide-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: inherit;
+}
+.micro-hw-modal__guide-sep {
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(42, 156, 196, 0.55), rgba(26, 45, 74, 0.12));
+  transform-origin: left center;
+  animation: microHwGuideSep 0.42s cubic-bezier(0.22, 1, 0.36, 1) 0.06s both;
+}
+@keyframes microHwGuideIn {
+  from { opacity: 0; transform: translateY(4px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes microHwGuideSep {
+  from { opacity: 0; transform: scaleX(0.2); }
+  to { opacity: 1; transform: scaleX(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .micro-hw-modal__guide-step,
+  .micro-hw-modal__guide-sep,
+  .micro-hw-modal__close,
+  .micro-hw-modal__close-ring,
+  .micro-hw-modal__close-x {
+    animation: none !important;
+    transition: none !important;
+  }
+}
 .micro-hw-modal__effect-section {
   margin: 0 0 12px;
   padding: 10px 12px;
@@ -1676,6 +1802,22 @@ html[data-theme="dark"] .micro-hw-modal__effect-tip {
   margin-top: 2px;
 }
 html[data-theme="dark"] .micro-hw-modal__lead { color: #9aa8b8; }
+html[data-theme="dark"] .micro-hw-modal__guide-step {
+  border-color: rgba(125, 211, 252, 0.28);
+  background: rgba(62, 184, 220, 0.14);
+  color: #7dd3fc;
+}
+html[data-theme="dark"] .micro-hw-modal__guide-step.is-optional {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(18, 24, 36, 0.9);
+  color: #9aa8b8;
+}
+html[data-theme="dark"] .micro-hw-modal__guide-ico {
+  background: rgba(30, 40, 56, 0.9);
+}
+html[data-theme="dark"] .micro-hw-modal__guide-sep {
+  background: linear-gradient(90deg, rgba(125, 211, 252, 0.55), rgba(255, 255, 255, 0.12));
+}
 html[data-theme="dark"] .micro-hw-modal__effect-section {
   background: #151c27;
   border-color: rgba(255, 255, 255, 0.08);
@@ -1698,7 +1840,23 @@ html[data-theme="dark"] .micro-hw-modal__cap-trigger { color: #7dd3f0; }
   color: #1a2d4a;
 }
 .micro-hw-modal--edit .micro-hw-modal__card {
-  max-height: min(96vh, 860px);
+  display: flex;
+  flex-direction: column;
+  max-height: min(92vh, 820px);
+  overflow: hidden;
+  padding-bottom: 16px;
+}
+.micro-hw-modal--edit .soft-pad-keycap-editor__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding-bottom: 4px;
+}
+.micro-hw-modal--edit .micro-hw-modal__cap-list {
+  max-height: none;
+  overflow: visible;
 }
 .micro-hw-modal__cap-list {
   display: flex;
@@ -1897,6 +2055,9 @@ html[data-theme="dark"] .micro-hw-modal__details > summary { color: #c5d0de; }
   margin-top: 8px;
   padding-top: 10px;
   border-top: 1px solid rgba(26, 45, 74, 0.08);
+}
+.micro-hw-modal__foot .codex-micro-pad__btn[data-act="close"] {
+  min-width: 88px;
 }
 
 html[data-theme="dark"] .micro-hw-modal__card {

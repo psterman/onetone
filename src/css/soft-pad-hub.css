@@ -168,7 +168,7 @@ html[data-theme="dark"] #settingsPanelSoftPad .flow-node-btn {
 }
 .soft-pad-tm-desk {
   min-width: 0;
-  min-height: 480px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   border-radius: 14px;
@@ -183,6 +183,186 @@ html[data-theme="dark"] #settingsPanelSoftPad .flow-node-btn {
 html[data-theme="dark"] .soft-pad-tm-desk {
   border-color: rgba(255, 255, 255, 0.1);
   background: rgba(18, 24, 36, 0.92);
+}
+/* C3 horizontal spine — time / amber line / kind+tag / day pills */
+.soft-pad-tm-rail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 6px 14px 8px;
+  min-height: 0;
+  flex: 1;
+}
+.soft-pad-tm-rail-body .soft-pad-tm-filter {
+  margin: 0;
+  gap: 6px;
+}
+.soft-pad-tm-spine-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.soft-pad-tm-spine {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 4px 8px;
+  scroll-snap-type: x proximity;
+}
+.soft-pad-tm-spine::before {
+  content: "";
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  top: 34px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f59e0b 0%, rgba(245, 158, 11, 0.35) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+.soft-pad-tm-mark {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: 108px;
+  min-width: 108px;
+  display: grid;
+  grid-template-rows: 22px 24px auto auto;
+  justify-items: center;
+  align-items: center;
+  gap: 0;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  color: var(--on-surface);
+  cursor: pointer;
+  scroll-snap-align: center;
+  font: inherit;
+  text-align: center;
+}
+.soft-pad-tm-mark__time {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+}
+.soft-pad-tm-mark__dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f59e0b;
+  border: 3px solid rgba(255, 247, 230, 0.95);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.35);
+  box-sizing: border-box;
+}
+.soft-pad-tm-mark__kind {
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.soft-pad-tm-mark__tag {
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #9a620f;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+}
+.soft-pad-tm-mark:hover .soft-pad-tm-mark__dot {
+  transform: scale(1.12);
+}
+.soft-pad-tm-mark.is-active .soft-pad-tm-mark__time {
+  color: #d97706;
+}
+.soft-pad-tm-mark.is-active .soft-pad-tm-mark__dot {
+  width: 18px;
+  height: 18px;
+  background: #f59e0b;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.28);
+}
+.soft-pad-tm-mark--now .soft-pad-tm-mark__time {
+  color: var(--primary-strong, #2a9cc4);
+}
+.soft-pad-tm-mark--now .soft-pad-tm-mark__dot {
+  background: var(--primary, #3eb8dc);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #3eb8dc) 35%, transparent);
+}
+.soft-pad-tm-mark--now .soft-pad-tm-mark__tag {
+  color: var(--primary-strong, #2a9cc4);
+  background: color-mix(in srgb, var(--primary, #3eb8dc) 14%, transparent);
+  border-color: color-mix(in srgb, var(--primary, #3eb8dc) 35%, transparent);
+}
+.soft-pad-tm-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 4px 2px;
+}
+.soft-pad-tm-daypill {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: var(--primary-strong, #2a9cc4);
+  background: color-mix(in srgb, var(--primary, #3eb8dc) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary, #3eb8dc) 28%, transparent);
+}
+html[data-theme="dark"] .soft-pad-tm-spine::before {
+  background: linear-gradient(90deg, #fbbf24 0%, rgba(251, 191, 36, 0.28) 100%);
+}
+html[data-theme="dark"] .soft-pad-tm-mark {
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .soft-pad-tm-mark__dot {
+  border-color: rgba(22, 30, 44, 0.95);
+}
+html[data-theme="dark"] .soft-pad-tm-mark.is-active .soft-pad-tm-mark__time {
+  color: #fbbf24;
+}
+html[data-theme="dark"] .soft-pad-tm-daypill {
+  color: #7dd3fc;
+  background: rgba(62, 184, 220, 0.14);
+  border-color: rgba(62, 184, 220, 0.32);
+}
+.soft-pad-face-tm__detail .soft-pad-tm-detail {
+  padding: 8px 4px;
+  overflow: visible;
+}
+.soft-pad-face-tm__preview {
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.55);
+}
+html[data-theme="dark"] .soft-pad-face-tm__preview {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(18, 24, 36, 0.55);
+}
+.soft-pad-face-agent__panel .codex-pad-mgr {
+  padding: 12px 14px;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+/* retire card-style hrail leftovers */
+.soft-pad-tm-hrail,
+.soft-pad-tm-hnode,
+.soft-pad-tm-hday {
+  display: none !important;
 }
 .soft-pad-tm-chrome {
   display: flex;
@@ -582,17 +762,17 @@ html[data-theme="dark"] .soft-pad-tm-detail .soft-pad-tm-safety { color: #f2c56f
 .soft-pad-tm-rec strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .soft-pad-tm-rec span { color: var(--on-surface-muted); font-size: 11px; }
 .soft-pad-tm-empty-action {
-  display: grid; gap: 8px; margin: 12px 8px 12px 25px; color: var(--on-surface-muted);
+  display: grid; gap: 8px; margin: 8px 0; color: var(--on-surface-muted);
   font-size: 11px; line-height: 1.45;
 }
 .soft-pad-tm-empty-action p { margin: 0; }
 .soft-pad-tm-filter {
-  display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0 10px 25px;
+  display: flex; flex-wrap: wrap; gap: 6px; margin: 0;
 }
 .soft-pad-tm-filter__btn {
-  padding: 3px 8px; border: 1px solid var(--outline-variant); border-radius: 999px;
+  padding: 5px 12px; border: 1px solid var(--outline-variant); border-radius: 999px;
   background: transparent; color: var(--on-surface-muted); cursor: pointer;
-  font: inherit; font-size: 10px; font-weight: 750;
+  font: inherit; font-size: 11px; font-weight: 750;
 }
 .soft-pad-tm-filter__btn:hover { color: var(--on-surface); border-color: var(--outline); }
 .soft-pad-tm-filter__btn.is-active {
@@ -729,66 +909,164 @@ html[data-theme="dark"] .soft-pad-tm-detail .soft-pad-tm-safety { color: #f2c56f
   gap: 14px;
   align-items: start;
 }
-/* Top bar owns app selection — aside list retired. */
+/* Top bar owns app selection on pad/timeline faces; C2 agent face shows scheme rail. */
 #softPadSchemeAside,
 .soft-pad-page-aside {
   display: none !important;
 }
+.soft-pad-page-body.is-face-agent {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.28fr);
+  align-items: stretch;
+}
+.soft-pad-page-body.is-face-agent #softPadSchemeAside,
+.soft-pad-page-body.is-face-agent .soft-pad-page-aside {
+  display: flex !important;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
 @media (max-width: 1040px) {
   .soft-pad-page-body.keys-page-body { grid-template-columns: 1fr; }
+  .soft-pad-page-body.is-face-agent #softPadSchemeAside,
+  .soft-pad-page-body.is-face-agent .soft-pad-page-aside {
+    display: none !important;
+  }
 }
 .soft-pad-page-main {
   min-width: 0;
 }
 
-/* Stable stage: left enlarged pad+ring + right detail */
+/* Face stage: one active face-root fills the stage (C IA) */
 .soft-pad-hub-stage {
   display: grid;
-  grid-template-columns: minmax(360px, 1.05fr) minmax(0, 1fr);
+  grid-template-columns: 1fr;
   grid-template-rows: minmax(0, 1fr);
-  gap: 12px 20px;
-  align-items: start;
+  gap: 0;
+  align-items: stretch;
   margin-bottom: 12px;
   min-height: 480px;
 }
-.soft-pad-hub-stage > .soft-pad-func-tiles {
+.soft-pad-hub-stage > .soft-pad-func-tiles,
+.soft-pad-hub-stage > .soft-pad-pad-ring {
   display: none !important;
 }
-.soft-pad-hub-stage > .soft-pad-hub-nav {
+.soft-pad-face-root {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  min-height: 480px;
+}
+.soft-pad-face-root[hidden] {
+  display: none !important;
+}
+
+/* C1 Soft Pad: left pure keyboard + right tabs/panel, equal height */
+.soft-pad-face-pad {
+  display: grid;
+  grid-template-columns: minmax(480px, 1.25fr) minmax(0, 0.95fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 12px 18px;
+  align-items: stretch;
+}
+.soft-pad-face-pad__preview {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: stretch;
+}
+.soft-pad-face-pad__panel {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 0;
+}
+.soft-pad-pad-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px 0;
+  flex: 0 0 auto;
+}
+.soft-pad-pad-tab {
+  border: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.18));
+  background: transparent;
+  color: var(--on-surface-muted);
+  font: 700 12px/1.2 inherit;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.soft-pad-pad-tab:hover {
+  border-color: color-mix(in srgb, var(--primary, #3eb8dc) 45%, transparent);
+  color: var(--on-surface);
+}
+.soft-pad-pad-tab.is-active {
+  color: var(--primary-strong, #2a9cc4);
+  background: color-mix(in srgb, var(--primary, #3eb8dc) 14%, transparent);
+  border-color: color-mix(in srgb, var(--primary, #3eb8dc) 40%, transparent);
+}
+html[data-theme="dark"] .soft-pad-pad-tab {
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(226, 232, 240, 0.72);
+}
+html[data-theme="dark"] .soft-pad-pad-tab.is-active {
+  color: #7dd3fc;
+  background: rgba(62, 184, 220, 0.16);
+  border-color: rgba(62, 184, 220, 0.4);
+}
+
+/* C2 Agent: left preview + center config (v10 three-column with page aside) */
+.soft-pad-face-agent {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.34fr) minmax(0, 0.66fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 12px 16px;
+  align-items: stretch;
+}
+.soft-pad-face-agent__preview {
   grid-column: 1;
   grid-row: 1;
 }
-.soft-pad-hub-stage > .soft-pad-detail {
+.soft-pad-face-agent__panel {
   grid-column: 2;
   grid-row: 1;
+  min-height: 0;
 }
-/* TM stage mode — after base stage so layout ownership is unambiguous */
-.soft-pad-hub-stage.is-tm-desk {
-  grid-template-columns: 1fr;
-  grid-template-rows: minmax(0, 1fr);
-  min-height: 480px;
+
+/* C3 Timeline: compact Soft Pad, right node detail, bottom date rail */
+.soft-pad-face-timeline {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.7fr) minmax(0, 1.3fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 12px 16px;
+  align-items: stretch;
 }
-.soft-pad-hub-stage.is-tm-desk > .soft-pad-func-tiles,
-.soft-pad-hub-stage.is-tm-desk > .soft-pad-hub-nav,
-.soft-pad-hub-stage.is-tm-desk > .soft-pad-detail {
-  display: none !important;
-}
-.soft-pad-hub-stage.is-tm-desk > .soft-pad-tm-desk {
-  display: flex !important;
-  grid-column: 1 / -1;
+.soft-pad-face-tm__preview {
+  grid-column: 1;
   grid-row: 1;
+  min-height: 220px;
 }
-/* Beat `.soft-pad-tm-desk[hidden]` if attribute races with class toggle. */
-.soft-pad-hub-stage.is-tm-desk > .soft-pad-tm-desk[hidden] {
-  display: flex !important;
+.soft-pad-face-tm__detail {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 14px;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  background: rgba(248, 250, 252, 0.9);
+  overflow: auto;
+  padding: 12px;
+  box-sizing: border-box;
 }
-#settingsPanelSoftPad.is-tm-desk .soft-pad-page-aside,
-#settingsPanelSoftPad.is-tm-desk #softPadSchemeAside {
-  display: none !important;
+html[data-theme="dark"] .soft-pad-face-tm__detail {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(18, 24, 36, 0.92);
 }
-#settingsPanelSoftPad.is-tm-desk .soft-pad-page-body.keys-page-body {
-  grid-template-columns: 1fr;
+.soft-pad-face-tm__rail {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-height: 168px;
+  max-height: none;
 }
+/* Face-owned timeline: legacy is-tm-desk class is cleared in JS; unused as layout driver. */
 .soft-pad-hub-nav {
   display: flex;
   flex-direction: column;
@@ -808,8 +1086,18 @@ html[data-theme="dark"] .soft-pad-tm-detail .soft-pad-tm-safety { color: #f2c56f
   overflow: hidden;
 }
 @media (max-width: 720px) {
-  .soft-pad-hub-stage {
+  .soft-pad-face-pad,
+  .soft-pad-face-agent,
+  .soft-pad-face-timeline {
     grid-template-columns: 1fr;
+  }
+  .soft-pad-face-timeline {
+    grid-template-rows: auto auto auto;
+  }
+  .soft-pad-face-tm__preview,
+  .soft-pad-face-tm__detail,
+  .soft-pad-face-tm__rail {
+    grid-column: 1;
   }
 }
 
@@ -819,14 +1107,563 @@ html[data-theme="dark"] .soft-pad-tm-detail .soft-pad-tm-safety { color: #f2c56f
   justify-content: center;
   align-items: center;
   width: 100%;
-  min-height: 360px;
-  padding: 18px 16px 22px;
+  min-height: 520px;
+  padding: 10px 8px 12px;
   border-radius: 18px;
   border: 1px solid rgba(26, 45, 74, 0.1);
-  background:
-    radial-gradient(ellipse at 50% 0%, rgba(62, 184, 220, 0.1), transparent 55%),
-    rgba(248, 250, 252, 0.65);
+  background: rgba(248, 250, 252, 0.55);
   box-sizing: border-box;
+}
+/* C1 Soft Pad: large, centered keyboard in the left stage */
+.soft-pad-face-pad__preview.soft-pad-preview-host,
+#softPadPreviewHost.soft-pad-preview-host {
+  min-height: 540px;
+  height: 100%;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 10px 14px;
+  box-sizing: border-box;
+}
+.soft-pad-face-pad__preview .soft-pad-preview-paint,
+#softPadPreviewHost > [data-soft-pad-preview-paint],
+.soft-pad-face-pad__preview .codex-micro-pad.soft-pad-preview,
+#softPadPreviewHost .codex-micro-pad.soft-pad-preview {
+  width: 100%;
+  max-width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+}
+.soft-pad-face-pad .soft-pad-preview-host .codex-micro-pad__head,
+#softPadPreviewHost .codex-micro-pad__head {
+  width: 100%;
+  max-width: min(100%, 520px);
+  flex: 0 0 auto;
+}
+.soft-pad-face-pad .soft-pad-preview-host .micro-hw-wrap,
+#softPadPreviewHost .micro-hw-wrap {
+  width: min(100%, 520px) !important;
+  max-width: min(100%, 520px) !important;
+  margin: 0 auto !important;
+  flex: 0 0 auto;
+}
+.soft-pad-face-pad .soft-pad-preview-host .micro-hw-shell,
+#softPadPreviewHost .micro-hw-shell {
+  max-width: min(100%, 520px) !important;
+  width: min(100%, 520px) !important;
+  margin: 0 auto !important;
+}
+.soft-pad-face-pad .soft-pad-preview-host .micro-hw,
+.soft-pad-face-pad .soft-pad-preview-host .micro-hw-shell .micro-hw,
+#softPadPreviewHost .micro-hw,
+#softPadPreviewHost .micro-hw-shell .micro-hw {
+  width: 100% !important;
+  max-width: min(100%, 520px) !important;
+  margin: 0 auto !important;
+}
+.soft-pad-face-pad .soft-pad-preview-host .soft-pad-key-caption,
+.soft-pad-face-pad .soft-pad-preview-host .soft-pad-preview__hint,
+#softPadPreviewHost .soft-pad-key-caption,
+#softPadPreviewHost .soft-pad-preview__hint {
+  width: 100%;
+  max-width: min(100%, 520px);
+  flex: 0 0 auto;
+}
+/* C2 / C3: compact reference Soft Pad (not the edit surface) */
+.soft-pad-face-agent__preview.soft-pad-preview-host,
+.soft-pad-face-tm__preview.soft-pad-preview-host {
+  min-height: 260px;
+  align-self: start;
+  padding: 8px 6px 10px;
+}
+.soft-pad-face-agent .soft-pad-preview-host .codex-micro-pad.soft-pad-preview,
+.soft-pad-face-tm .soft-pad-preview-host .codex-micro-pad.soft-pad-preview {
+  width: min(100%, 300px);
+  max-width: 300px;
+  margin: 0 auto;
+}
+.soft-pad-face-agent .soft-pad-preview-host .micro-hw-shell,
+.soft-pad-face-tm .soft-pad-preview-host .micro-hw-shell {
+  max-width: 300px !important;
+  width: min(100%, 300px) !important;
+  margin: 0 auto !important;
+}
+.soft-pad-face-agent .soft-pad-preview-host .micro-hw,
+.soft-pad-face-agent .soft-pad-preview-host .micro-hw-shell .micro-hw,
+.soft-pad-face-tm .soft-pad-preview-host .micro-hw,
+.soft-pad-face-tm .soft-pad-preview-host .micro-hw-shell .micro-hw {
+  max-width: 300px !important;
+  width: min(100%, 300px) !important;
+  margin: 0 auto !important;
+}
+
+/* C2 v10: preview legend + simple config panel */
+.soft-pad-face-agent__preview.soft-pad-preview-host {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.soft-pad-lights-preview-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  justify-content: center;
+  padding: 0 8px 4px;
+  font-size: 11px;
+  color: var(--on-surface-muted, #6b7a8d);
+}
+.soft-pad-lights-preview-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.soft-pad-lights-preview-legend__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.soft-pad-lights-preview-legend__dot.is-idle { background: #94a3b4; }
+.soft-pad-lights-preview-legend__dot.is-running { background: #3b82f6; }
+.soft-pad-lights-preview-legend__dot.is-wait { background: #f59e0b; }
+.soft-pad-lights-preview-legend__dot.is-done { background: #22c55e; }
+.soft-pad-lights-preview-legend__dot.is-fail { background: #dc2626; }
+
+/* C2 v11: topbar preview strip (agent face only) */
+.soft-pad-face-agent__preview .soft-pad-lights-topbar-preview {
+  flex: 0 0 auto;
+  width: min(100%, 300px);
+  margin: 0 auto 4px;
+  padding: 0 4px;
+}
+.soft-pad-lights-topbar-preview__label {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--on-surface-muted, #6b7a8d);
+}
+.soft-pad-lights-topbar-preview__empty {
+  font-size: 11px;
+  color: var(--on-surface-muted, #6b7a8d);
+  padding: 8px 0;
+}
+.soft-pad-face-agent__preview .soft-pad-agent-bar--preview {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  pointer-events: none;
+}
+.soft-pad-face-agent__preview .soft-pad-agent-bar__chip--preview {
+  position: relative;
+  width: 36px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  border: 1px solid rgba(92, 105, 122, 0.16);
+  background: linear-gradient(180deg, #fff 0%, #f2f5f8 100%);
+}
+.soft-pad-face-agent__preview .soft-pad-agent-bar__chip--preview img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+.soft-pad-face-agent__preview .soft-pad-agent-bar__chip--preview.is-focused {
+  border-color: rgba(42, 156, 196, 0.55);
+  background: linear-gradient(180deg, #f0fafc 0%, #e4f4fa 100%);
+  box-shadow: 0 0 0 2px rgba(62, 184, 220, 0.28);
+}
+.soft-pad-face-agent__preview .soft-pad-agent-bar__chip--preview:not(.is-focused) {
+  opacity: 0.55;
+}
+.soft-pad-face-agent__preview .soft-pad-agent-bar--preview:not(:has(.is-focused))
+  .soft-pad-agent-bar__chip--preview {
+  opacity: 1;
+}
+
+/* C2 v12: center subtabs + scope lead + tab panel */
+.soft-pad-lights-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -2px 0 2px;
+}
+.soft-pad-lights-subtabs .soft-pad-lights-subtab {
+  flex: 1 1 0;
+  min-width: 72px;
+  justify-content: center;
+}
+.soft-pad-lights-scope-lead {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--on-surface-muted, #6b7a8d);
+}
+.soft-pad-lights-scope-lead__app {
+  font-weight: 700;
+  color: var(--on-surface, #142033);
+}
+.soft-pad-lights-tab-panel {
+  min-height: 0;
+}
+.soft-pad-lights-tab-panel__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* C2 v12: left preview accent per active subtab */
+.soft-pad-preview-host[data-lights-preview-accent="topbar"] .micro-hw-shell {
+  opacity: 0.52;
+  filter: saturate(0.75);
+}
+.soft-pad-preview-host[data-lights-preview-accent="topbar"] .soft-pad-lights-topbar-preview {
+  opacity: 1;
+}
+.soft-pad-preview-host[data-lights-preview-accent="ambient"] .soft-pad-lights-topbar-preview {
+  opacity: 0.42;
+}
+.soft-pad-preview-host[data-lights-preview-accent="ambient"] .micro-hw-shell {
+  opacity: 1;
+  filter: none;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.35), 0 0 24px rgba(124, 58, 237, 0.18);
+  border-radius: 18px;
+}
+.soft-pad-preview-host[data-lights-preview-accent="keys"] .soft-pad-lights-topbar-preview {
+  opacity: 0.42;
+}
+.soft-pad-preview-host[data-lights-preview-accent="keys"] .micro-hw-shell {
+  opacity: 1;
+  filter: none;
+}
+.soft-pad-face-agent__preview .soft-pad-agent-bar__dot {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+.soft-pad-face-agent__preview .soft-pad-agent-bar__chip[data-status="running"] .soft-pad-agent-bar__dot {
+  background: #3b82f6;
+}
+.soft-pad-face-agent__preview .soft-pad-agent-bar__chip[data-status="needs_input"] .soft-pad-agent-bar__dot {
+  background: #f59e0b;
+}
+.soft-pad-face-agent__preview .soft-pad-agent-bar__chip[data-status="done"] .soft-pad-agent-bar__dot {
+  background: #22c55e;
+}
+.soft-pad-face-agent__preview .soft-pad-agent-bar__chip[data-status="failed"] .soft-pad-agent-bar__dot,
+.soft-pad-face-agent__preview .soft-pad-agent-bar__chip[data-status="error"] .soft-pad-agent-bar__dot {
+  background: #dc2626;
+}
+
+/* C2 v11: topbar monitor card (center column) */
+.soft-pad-topbar-lights-card {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(26, 45, 74, 0.08);
+  background: rgba(255, 255, 255, 0.45);
+}
+html[data-theme="dark"] .soft-pad-topbar-lights-card {
+  background: rgba(18, 28, 42, 0.55);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.soft-pad-lights-scope-config {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.soft-pad-topbar-light-active-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+.soft-pad-topbar-light-active {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.08);
+}
+.soft-pad-topbar-light-active__name {
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 0;
+}
+.soft-pad-topbar-light-active__remove {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.soft-pad-topbar-add {
+  position: relative;
+  margin-top: 8px;
+}
+.soft-pad-topbar-add__btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 4px 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary, #2a9cc4);
+  cursor: pointer;
+}
+.soft-pad-topbar-add__btn:hover {
+  text-decoration: underline;
+}
+.soft-pad-topbar-add__menu {
+  position: absolute;
+  z-index: 6;
+  left: 0;
+  top: calc(100% + 4px);
+  min-width: 200px;
+  max-width: min(280px, 100%);
+  max-height: 240px;
+  overflow: auto;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(26, 45, 74, 0.14);
+  background: var(--surface, #fff);
+  box-shadow: 0 8px 24px rgba(20, 32, 51, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.soft-pad-topbar-add__menu[hidden] {
+  display: none !important;
+}
+.soft-pad-topbar-add-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--on-surface, #142033);
+}
+.soft-pad-topbar-add-menu__item:hover {
+  background: rgba(62, 184, 220, 0.1);
+}
+.soft-pad-topbar-light-active__jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+.soft-pad-ambient-modes {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.soft-pad-ambient-color {
+  margin-top: 4px;
+}
+.soft-pad-ambient-color.is-dim {
+  opacity: 0.45;
+}
+.soft-pad-ambient-color__lbl {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.soft-pad-topbar-light-add {
+  margin-top: 4px;
+}
+.soft-pad-topbar-light-add__btn {
+  font-size: 12px;
+  font-weight: 700;
+  color: #2a9cc4;
+  cursor: pointer;
+  list-style: none;
+}
+.soft-pad-topbar-light-add__menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+.soft-pad-topbar-light-add__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(26, 45, 74, 0.08);
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+.soft-pad-topbar-light-add__item:hover {
+  background: rgba(62, 184, 220, 0.1);
+}
+.soft-pad-topbar-more-hint {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.soft-pad-lights-simple {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 12px 14px 16px;
+  min-height: 0;
+  overflow: auto;
+}
+.soft-pad-lights-simple__lead {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--on-surface-muted, #6b7a8d);
+}
+.soft-pad-lights-simple__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+}
+.soft-pad-lights-simple__row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface, #142033);
+  cursor: pointer;
+}
+.soft-pad-lights-simple__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--on-surface, #142033);
+}
+.soft-pad-lights-simple__status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2e7d4f;
+  flex: 0 0 auto;
+}
+.soft-pad-lights-templates {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.soft-pad-lights-template {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(26, 45, 74, 0.12);
+  background: #fff;
+  cursor: pointer;
+}
+.soft-pad-lights-template.is-active {
+  border-color: rgba(42, 156, 196, 0.45);
+  background: rgba(62, 184, 220, 0.08);
+}
+.soft-pad-lights-template__title {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--on-surface, #142033);
+}
+.soft-pad-lights-template__hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--on-surface-muted, #6b7a8d);
+}
+.soft-pad-lights-template__badge {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #d97706;
+}
+.soft-pad-lights-advanced {
+  margin-top: 4px;
+  border-top: 1px solid rgba(26, 45, 74, 0.08);
+  padding-top: 8px;
+}
+.soft-pad-lights-advanced > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--on-surface-muted, #6b7a8d);
+  user-select: none;
+}
+.soft-pad-scheme-fg {
+  padding: 10px 12px 12px;
+  border-bottom: 1px solid rgba(26, 45, 74, 0.08);
+  margin-bottom: 8px;
+}
+.soft-pad-scheme-fg__label {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--on-surface, #142033);
+}
+.soft-pad-scheme-fg__app {
+  margin: 0;
+  font-size: 11px;
+  color: var(--on-surface-muted, #6b7a8d);
+}
+.soft-pad-scheme-fg__switch {
+  margin-top: 8px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(42, 156, 196, 0.28);
+  background: rgba(62, 184, 220, 0.12);
+  color: #2a9cc4;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 /* Pad chassis + stage-synced ring chips */
@@ -984,6 +1821,16 @@ html[data-theme="dark"] .soft-pad-ring-float {
 }
 .soft-pad-preview-host .micro-hw__key:not(.micro-hw__key--placeholder) {
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  place-content: center;
+}
+.soft-pad-preview-host .micro-hw__icon {
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .soft-pad-func-tiles,
 .soft-pad-func-tiles[hidden] {
@@ -1187,6 +2034,101 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   min-height: 0;
   height: 100%;
 }
+.soft-pad-layout-key-preview {
+  flex: 1 1 auto;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(42, 156, 196, 0.16);
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(62, 184, 220, 0.1), transparent 55%),
+    rgba(248, 250, 252, 0.92);
+  box-sizing: border-box;
+  text-align: center;
+}
+.soft-pad-layout-key-preview.is-idle {
+  justify-content: center;
+}
+.soft-pad-layout-key-preview__badge {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #2563eb;
+}
+.soft-pad-layout-key-preview__stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 96px;
+}
+.soft-pad-layout-key-preview__cap {
+  width: 84px !important;
+  height: 84px !important;
+  min-width: 84px;
+  min-height: 84px;
+  border-radius: 18px !important;
+  pointer-events: none;
+  cursor: default;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  place-content: center;
+}
+.soft-pad-layout-key-preview__cap .micro-hw__icon {
+  width: 36px;
+  height: 36px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.soft-pad-layout-key-preview__cap .micro-hw__icon svg {
+  width: 36px;
+  height: 36px;
+  display: block;
+  margin: 0;
+}
+.soft-pad-layout-key-preview__name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a2d4a;
+}
+.soft-pad-layout-key-preview__chord {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #3eb8dc;
+}
+.soft-pad-layout-key-preview__effect {
+  margin: 0;
+  max-width: 28ch;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #64748b;
+}
+.soft-pad-layout-key-preview .codex-micro-pad__btn {
+  margin-top: 4px;
+}
+html[data-theme="dark"] .soft-pad-layout-key-preview {
+  border-color: rgba(125, 211, 252, 0.2);
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(62, 184, 220, 0.12), transparent 55%),
+    rgba(18, 24, 36, 0.92);
+}
+html[data-theme="dark"] .soft-pad-layout-key-preview__name {
+  color: #e8eef6;
+}
+html[data-theme="dark"] .soft-pad-layout-key-preview__effect {
+  color: #9aa8b8;
+}
 .soft-pad-layout-intro {
   display: flex;
   flex-direction: column;
@@ -1297,18 +2239,21 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   padding-bottom: 8px;
 }
 .soft-pad-keycap-editor__effect {
-  position: sticky;
-  top: 0;
-  z-index: 3;
+  /* Stay with content — sticky chrome + outer scroll made dual scrollbars louder. */
+  position: relative;
+  top: auto;
+  z-index: 1;
   margin: 0 0 10px;
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid rgba(42, 156, 196, 0.14);
   background: rgba(248, 250, 252, 0.97);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
+  box-shadow: none;
 }
 .soft-pad-keycap-editor__effect .micro-hw-modal__section-title {
   margin-top: 0;
@@ -1316,20 +2261,12 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
 .soft-pad-layout-editor .micro-hw-modal__cap-section {
   margin-top: 2px;
 }
-.soft-pad-keycap-editor__foot {
-  flex: 0 0 auto;
-  position: sticky;
-  bottom: 0;
-  padding-top: 10px;
-  padding-bottom: 2px;
-  margin-top: 4px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.96) 28%);
-}
 .soft-pad-layout-editor .micro-hw-modal__cap-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   max-height: none;
+  overflow: visible;
 }
 @media (max-width: 720px) {
   .soft-pad-layout-editor .micro-hw-modal__cap-list {
@@ -1578,9 +2515,41 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   color: #9aa8b8;
 }
 
-/* 閳光偓閳光偓 娴ｆ洘妞傞弰鍓с仛閿涙碍妯夌粈鐑樻煙瀵繐婧€閺咁垰濮╅悽?+ 閺佹澘鐡ч柨顔芥Ё鐏?閳光偓閳光偓 */
+/* 显示方式 — show mode only; mapping demos live on「用途」. */
 .soft-pad-runtime-show {
   margin-bottom: 16px;
+}
+.soft-pad-show-mode-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.soft-pad-show-mode-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  background: rgba(248, 250, 252, 0.9);
+  color: #475569;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.25;
+  cursor: pointer;
+  text-align: center;
+}
+.soft-pad-show-mode-tab:hover {
+  border-color: rgba(42, 156, 196, 0.35);
+  color: #1a2d4a;
+}
+.soft-pad-show-mode-tab.is-active {
+  color: #0369a1;
+  background: rgba(62, 184, 220, 0.14);
+  border-color: rgba(62, 184, 220, 0.4);
 }
 .soft-pad-runtime-show__select {
   display: block;
@@ -2067,6 +3036,73 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+.soft-pad-feature-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.soft-pad-feature-subtab {
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  background: rgba(248, 250, 252, 0.9);
+  color: #475569;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.soft-pad-feature-subtab:hover {
+  border-color: rgba(42, 156, 196, 0.35);
+  color: #1a2d4a;
+}
+.soft-pad-feature-subtab.is-active {
+  color: #0369a1;
+  background: rgba(62, 184, 220, 0.14);
+  border-color: rgba(62, 184, 220, 0.4);
+}
+.soft-pad-feature-subtab__n {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: #94a3b8;
+}
+.soft-pad-feature-subtab.is-active .soft-pad-feature-subtab__n {
+  background: #2563eb;
+}
+.soft-pad-feature-subtab__lbl {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.soft-pad-feature-panels {
+  min-width: 0;
+}
+.soft-pad-feature-panels > [data-feature][hidden] {
+  display: none !important;
+}
+html[data-theme="dark"] .soft-pad-feature-subtab {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(18, 24, 36, 0.9);
+  color: #9aa8b8;
+}
+html[data-theme="dark"] .soft-pad-feature-subtab.is-active {
+  color: #7dd3fc;
+  background: rgba(62, 184, 220, 0.16);
+  border-color: rgba(62, 184, 220, 0.4);
 }
 .soft-pad-feature-card__toggle {
   margin: 0 0 6px;
@@ -2679,6 +3715,40 @@ html[data-theme="dark"] .soft-pad-runtime-show__select {
   background: rgba(30, 40, 56, 0.9);
   border-color: rgba(255, 255, 255, 0.12);
   color: #e2e8f0;
+}
+html[data-theme="dark"] .soft-pad-show-mode-tab {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(18, 24, 36, 0.9);
+  color: #c5d0de;
+}
+html[data-theme="dark"] .soft-pad-show-mode-tab:hover {
+  color: #e8eef6;
+  border-color: rgba(125, 211, 252, 0.35);
+}
+html[data-theme="dark"] .soft-pad-show-mode-tab.is-active {
+  color: #7dd3fc;
+  background: rgba(62, 184, 220, 0.16);
+  border-color: rgba(62, 184, 220, 0.4);
+}
+html[data-theme="dark"] .soft-pad-hub-stage .codex-pad-mgr__label,
+html[data-theme="dark"] .soft-pad-purpose-panel .codex-pad-mgr__label,
+html[data-theme="dark"] .soft-pad-face-root .codex-pad-mgr__label {
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .soft-pad-hub-stage .codex-pad-mgr__hint,
+html[data-theme="dark"] .soft-pad-face-root .codex-pad-mgr__hint,
+html[data-theme="dark"] .soft-pad-runtime-show__hint {
+  color: #9aa8b8;
+}
+html[data-theme="dark"] .soft-pad-hub-stage .codex-pad-mgr__setting,
+html[data-theme="dark"] .soft-pad-face-root .codex-pad-mgr__setting {
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .soft-pad-purpose-chip {
+  color: #c5d0de;
+}
+html[data-theme="dark"] .soft-pad-purpose-chip.is-active {
+  color: #7dd3fc;
 }
 html[data-theme="dark"] .soft-pad-show-scene {
   background: #1a2332;

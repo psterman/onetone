@@ -77,15 +77,15 @@
           if(typeof global.OneToneCameraPresenceActions.syncUiFromPrefs==='function'){
             global.OneToneCameraPresenceActions.syncUiFromPrefs();
           }
-          var done=null;
+          // reconcileRuntime(config_applied) only schedules a deferred start — do not
+          // keep bootCameraReconcile tagged across getUserMedia (that path 假死'd).
           if(typeof global.OneToneCameraPresenceActions.reconcileRuntime==='function'){
-            done=global.OneToneCameraPresenceActions.reconcileRuntime({reason:'config_applied'});
+            try{ global.OneToneCameraPresenceActions.reconcileRuntime({reason:'config_applied'}); }catch(_){}
           }
           if(global.OneToneCameraGazeCalibration&&typeof global.OneToneCameraGazeCalibration.loadFromPrefs==='function'){
             global.OneToneCameraGazeCalibration.loadFromPrefs();
           }
-          if(done&&typeof done.then==='function') done.then(clearCamTag,clearCamTag);
-          else clearCamTag();
+          clearCamTag();
         }catch(_){
           clearCamTag();
         }

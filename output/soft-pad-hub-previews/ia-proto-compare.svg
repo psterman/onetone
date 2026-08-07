@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="920" viewBox="0 0 1440 920">
+  <defs><style type="text/css"><![CDATA[
+.bg{fill:#e9eef3}.shell{fill:#f7fafc;stroke:#d2dde8}
+.ink{fill:#132033}.muted{fill:#6b7a8d}.faint{fill:#93a0b0}
+.cyan{fill:#3eb8dc}
+.small{font:11px 'Segoe UI','Microsoft YaHei',sans-serif}
+.body{font:13px 'Segoe UI','Microsoft YaHei',sans-serif}
+.title{font:700 15px 'Segoe UI','Microsoft YaHei',sans-serif}
+.h1{font:700 20px 'Segoe UI','Microsoft YaHei',sans-serif}
+.h0{font:700 26px 'Segoe UI','Microsoft YaHei',sans-serif}
+.label{font:700 12px 'Segoe UI','Microsoft YaHei',sans-serif}
+.cap{font:700 10px 'Segoe UI','Microsoft YaHei',sans-serif}
+.key{fill:#fff;stroke:#d2deea}.keyA{fill:#eef8fb;stroke:#8ecfe0}
+.chip{fill:#fff;stroke:#d2deea}.chipOn{fill:#e5f5fb;stroke:#3eb8dc}
+.seg{fill:#e8eef4}.segOn{fill:#fff;stroke:#3eb8dc;stroke-width:1.5}
+.panel{fill:#f3f7fa;stroke:#d2dde8}.row{fill:#fff;stroke:#e1e9f1}
+.rail{fill:#121820}.railInk{fill:#e8f0f8}.railMuted{fill:#8b9aab}
+.railOn{fill:#1c2836;stroke:#3eb8dc}
+.bezel{fill:#dfe8f0}.bezelDial{fill:#1a2430}
+.lb{fill:#0f141c}.dot{fill:#34d399}
+.spine{fill:#f7f1e6;stroke:#e5d2a8}
+.card{fill:#fafcfe;stroke:#d3dee9}.tag{fill:#e8f6fb;stroke:#3eb8dc}
+     .mini{fill:#f0f4f8;stroke:#d3dee9}.dark{fill:#1a2430}]]></style></defs>
+
+  <rect class="bg" width="1440" height="920"/>
+  <text x="48" y="48" class="h0 ink">三层 IA · 三种思路对比</text>
+  <text x="48" y="74" class="body muted">共同约束：拆开 App / Face / Hero；不共用 Soft Pad chassis；不用卡片+subtab 包装</text>
+
+  <!-- A -->
+  <g transform="translate(40 100)">
+    <rect class="card" width="440" height="660" rx="16"/>
+    <rect class="tag" x="20" y="18" width="56" height="24" rx="12"/>
+    <text x="48" y="34" text-anchor="middle" class="cap" fill="#1f7a92">A</text>
+    <text x="88" y="36" class="title ink">Bezel 仪器台</text>
+    <rect class="mini" x="20" y="60" width="400" height="260" rx="12"/>
+    <rect x="40" y="80" width="200" height="22" rx="8" class="seg"/>
+    <rect x="44" y="84" width="60" height="14" rx="5" fill="#fff" stroke="#3eb8dc"/>
+    <rect x="40" y="118" width="240" height="160" rx="12" fill="#dfe8f0"/>
+    <rect x="52" y="130" width="216" height="110" rx="8" fill="#fff"/>
+    <rect x="52" y="248" width="216" height="22" rx="6" class="bezelDial"/>
+    <rect x="300" y="118" width="100" height="160" rx="8" class="panel"/>
+    <text x="20" y="360" class="title ink">L0</text>
+    <text x="20" y="384" class="body muted">thin top app bar</text>
+    <text x="20" y="416" class="title ink">L1</text>
+    <text x="20" y="440" class="body muted">face segment control</text>
+    <text x="20" y="472" class="title ink">L2 Soft Pad</text>
+    <text x="20" y="496" class="body muted">pad + fused bezel dial + dock</text>
+    <text x="20" y="528" class="title ink">other faces</text>
+    <text x="20" y="552" class="body muted">full replace hero (no pad residue)</text>
+    <text x="20" y="600" class="small faint">ia-proto-a-bezel.png</text>
+  </g>
+
+  <!-- B -->
+  <g transform="translate(500 100)">
+    <rect class="card" width="440" height="660" rx="16"/>
+    <rect class="tag" x="20" y="18" width="56" height="24" rx="12"/>
+    <text x="48" y="34" text-anchor="middle" class="cap" fill="#1f7a92">B</text>
+    <text x="88" y="36" class="title ink">应用轨工作台</text>
+    <rect class="mini" x="20" y="60" width="400" height="260" rx="12"/>
+    <rect x="36" y="76" width="70" height="228" rx="8" class="rail"/>
+    <rect x="120" y="76" width="280" height="228" rx="8" fill="#eef3f7" stroke="#d0dbe6"/>
+    <rect x="136" y="100" width="140" height="120" rx="8" fill="#fff"/>
+    <rect x="290" y="100" width="90" height="160" rx="8" class="panel"/>
+    <text x="20" y="360" class="title ink">L0</text>
+    <text x="20" y="384" class="body muted">left persistent app rail</text>
+    <text x="20" y="416" class="title ink">L1</text>
+    <text x="20" y="440" class="body muted">face name stack (not cards)</text>
+    <text x="20" y="472" class="title ink">L2 Soft Pad</text>
+    <text x="20" y="496" class="body muted">full workspace swap right</text>
+    <text x="20" y="528" class="title ink">strength</text>
+    <text x="20" y="552" class="body muted">clearest App vs Face separation</text>
+    <text x="20" y="600" class="small faint">ia-proto-b-rail.png</text>
+  </g>
+
+  <!-- C -->
+  <g transform="translate(960 100)">
+    <rect class="card" width="440" height="660" rx="16"/>
+    <rect class="tag" x="20" y="18" width="56" height="24" rx="12"/>
+    <text x="48" y="34" text-anchor="middle" class="cap" fill="#1f7a92">C</text>
+    <text x="88" y="36" class="title ink">异形舞台</text>
+    <rect class="mini" x="20" y="60" width="400" height="260" rx="12"/>
+    <rect x="36" y="88" width="220" height="160" rx="12" class="dark"/>
+    <rect x="270" y="88" width="130" height="70" rx="10" class="lb"/>
+    <rect x="270" y="168" width="130" height="80" rx="10" class="spine"/>
+    <text x="20" y="360" class="title ink">L0</text>
+    <text x="20" y="384" class="body muted">minimal stamp only</text>
+    <text x="20" y="416" class="title ink">L1</text>
+    <text x="20" y="440" class="body muted">heterogeneous face ports</text>
+    <text x="20" y="472" class="title ink">L2 Soft Pad</text>
+    <text x="20" y="496" class="body muted">dark instrument language</text>
+    <text x="20" y="528" class="title ink">strength</text>
+    <text x="20" y="552" class="body muted">faces cannot be confused</text>
+    <text x="20" y="600" class="small faint">ia-proto-c-hetero.png</text>
+  </g>
+
+  <text x="48" y="820" class="title ink">怎么看</text>
+  <text x="48" y="848" class="body muted">A 最像硬件仪器；B 最清层级（App轨独立）；C 三面异形感最强。落地可以 A 的 Soft Pad bezel + B 的 App 轨 + C 的异形 Hero。</text>
+
+</svg>

@@ -15,8 +15,8 @@ const hub = readFileSync(join(root, 'src/js/features/agent/soft-pad-hub-ui.js'),
 const pad = readFileSync(join(root, 'src/js/features/agent/codex-micro-pad-ui.js'), 'utf8');
 
 console.log('[soft-pad-deep] P14k runtime:');
-check('softPadSubpageAlreadyPainted 含 runtime', hub.includes("view === 'runtime'") && hub.includes('[data-act="showMode"]'));
-check('AlreadyPainted 不盲信 RuntimeMounted 旗标', /view === 'runtime'[\s\S]*?querySelector\('\[data-act="showMode"\]'\)/.test(hub) &&
+check('softPadSubpageAlreadyPainted 含 runtime', hub.includes("view === 'runtime'") && hub.includes('data-show-mode'));
+check('AlreadyPainted 不盲信 RuntimeMounted 旗标', /view === 'runtime'[\s\S]*?data-show-mode/.test(hub) &&
   !/view === 'runtime'[\s\S]*?__otSoftPadRuntimeMounted[\s\S]*?querySelector/.test(hub));
 check('runtime 热路径 syncRuntimeCheckboxes', hub.includes('syncRuntimeCheckboxes(entry)'));
 check('paintSubpage skip-remount', hub.includes('skip-remount') && hub.includes('softPadSubpageAlreadyPainted'));
@@ -35,9 +35,16 @@ check('Pad 渲染后置 LayoutShellMounted', pad.includes('__otSoftPadLayoutShel
 
 console.log('[soft-pad-deep] P14n editKeycap:');
 check('openEditKeycap 仍由 Pad 导出', pad.includes('openEditKeycap: openEditKeycap'));
-check('layout 打开后延迟 openEditKeycap inline', pad.includes("openEditKeycap(m, focusId, { mode: 'inline' })") &&
-  pad.includes('soft-pad-layout-editor-pending') && pad.includes('setTimeout'));
+check('layout 右侧为键预览 + modal 编辑', pad.includes('soft-pad-layout-key-preview') &&
+  pad.includes("mode: 'modal'") && pad.includes('soft-pad-layout-editor-pending'));
 check('clearSubpage 清深面板挂载标记', hub.includes('__otSoftPadRuntimeMounted = false') && hub.includes('__otSoftPadLayoutShellMounted = false'));
+
+console.log('[soft-pad-deep] screen opacity float:');
+check('openRingFloat look 先清空 float', /function openRingFloat[\s\S]*?e\.ringFloat\.innerHTML = ''[\s\S]*?kind === 'look'/.test(hub));
+check('look 不经 renderSoftPadPresentationPanel 重挂', /kind === 'look'[\s\S]*?appendScreenOpacityControl[\s\S]*?return;/.test(hub) &&
+  !/kind === 'look'[\s\S]*?renderSoftPadPresentationPanel[\s\S]*?appendScreenOpacityControl/.test(hub));
+check('appendScreenOpacityControl 先移除旧控件', hub.includes("querySelectorAll('.soft-pad-ring-float__opacity')") &&
+  hub.includes('softPadScreenOpacityLbl'));
 
 console.log(`[soft-pad-deep] ${pass} 通过 / ${fail} 失败`);
 if (fail > 0) process.exit(1);

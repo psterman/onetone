@@ -928,7 +928,23 @@
       emitRuntime();
       return Promise.resolve({ok:false,reason:'error_hold',error:st.lastError});
     }
-    return ensureRunning({reason:reason==='config_applied'?'config_applied':reason});
+    // Boot/config apply must not open the camera on this turn.
+    // WebView2 getUserMedia can block the UI thread (Responding=false / 假死);
+    // last stall: last-ui-stall.json tag=bootCameraReconcile.
+    if(reason==='config_applied'){
+      try{
+        if(st._bootCamTimer) clearTimeout(st._bootCamTimer);
+      }catch(_){}
+      st.runtimeStatus='off';
+      emitRuntime();
+      st._bootCamTimer=setTimeout(function(){
+        st._bootCamTimer=null;
+        if(!isEnabled()||st.manualStopped||isCameraPreviewLive()) return;
+        ensureRunning({reason:'boot_deferred'});
+      },12000);
+      return Promise.resolve({ok:true,reason:'boot_deferred'});
+    }
+    return ensureRunning({reason:reason});
   }
 
   function setRuntimeStateListener(fn){

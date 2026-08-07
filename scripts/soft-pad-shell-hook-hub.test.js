@@ -53,15 +53,28 @@ assert.ok(hubSrc.indexOf('addEventListener(\'click\', onSwitcherActivate, true)'
   'capture-phase switcher click');
 assert.ok(hubSrc.indexOf('fromList: true') >= 0 && hubSrc.indexOf('function selectScope') >= 0,
   'selectScope uses same fromList path as aside');
-assert.ok(hubSrc.indexOf('Legacy-owned: React island') >= 0, 'switcher stays legacy');
+assert.ok(
+  hubSrc.indexOf('legacy owns DOM') >= 0 ||
+    hubSrc.indexOf('React island owns this DOM when mounted') >= 0,
+  'switcher stays legacy when island unmounted'
+);
 var mainIslands = fs.readFileSync(path.join(root, 'src-islands/main.tsx'), 'utf8');
 assert.ok(mainIslands.indexOf("unmountIsland('softPadAppSwitcher')") >= 0, 'tears down switcher island');
 assert.ok(indexHtml.indexOf('id="softPadSchemeAside"') >= 0 && indexHtml.indexOf('softPadSchemeAside" hidden') >= 0,
-  'aside hidden — top bar owns apps');
+  'aside hidden by default — shown on agent face via CSS');
 var hubCss = fs.readFileSync(path.join(root, 'src/css/soft-pad-hub.css'), 'utf8');
 assert.ok(hubCss.indexOf('#softPadSchemeAside') >= 0 && /#softPadSchemeAside[\s\S]*?display:\s*none/.test(hubCss),
-  'aside display none');
-assert.ok(hubSrc.indexOf('OneToneShellAgentHookPanel') >= 0, 'hub mounts shell hook panel');
+  'aside display none by default');
+assert.ok(/\.soft-pad-page-body\.is-face-agent[\s\S]*?#softPadSchemeAside[\s\S]*?display:\s*flex/.test(hubCss),
+  'aside visible on agent face');
+assert.ok(hubSrc.indexOf('mountShellAgentHookPanel(paintHost') < 0,
+  'hub does not mount shell hook into agent center column');
+assert.ok(padUiSrc.indexOf('bindShellDiagOptional') >= 0 &&
+  padUiSrc.indexOf('hideProbeMissing') >= 0,
+  'shell hook diagnose is optional under keys advanced');
+assert.ok(panelSrc.indexOf('hideProbeMissing') >= 0 &&
+  panelSrc.indexOf('softPadShellHookProbeMissingMuted') >= 0,
+  'probe missing is muted, not a red center card');
 assert.ok(/sessionsAllowed\s*=\s*kind === 'claude' \|\| kind === 'codex'/.test(hubSrc),
   'sessions only claude/codex');
 

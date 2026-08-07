@@ -91,7 +91,7 @@ check('applySoftPadEmptyIdleHost 岛守卫', softPadJs.includes('function applyS
 check('renderEmptyMain 走 apply', /function renderEmptyMain\([\s\S]*?applySoftPadEmptyIdleHost/.test(softPadJs));
 check('hideEmpty 不 innerHTML 清空（岛路径）', /function hideEmpty\([\s\S]*?applySoftPadEmptyIdleHost/.test(softPadJs) && !/function hideEmpty\([\s\S]*?e\.empty\.innerHTML\s*=\s*''/.test(softPadJs));
 check('showPrepareMain 走 apply', /function showPrepareMain\([\s\S]*?emptySurfaceMode\s*=\s*'prepare'[\s\S]*?applySoftPadEmptyIdleHost/.test(softPadJs));
-check('syncHubChrome idle 岛守卫', /function syncHubChrome\([\s\S]*?__otSoftPadEmptyIdleMounted/.test(softPadJs));
+check('syncFaceChrome idle 岛守卫', /function syncFaceChrome\([\s\S]*?__otSoftPadEmptyIdleMounted/.test(softPadJs));
 check('bindEmptyCreateCtas 岛跳过', /function bindEmptyCreateCtas\([\s\S]*?__otSoftPadEmptyIdleMounted/.test(softPadJs));
 check('render 空路径不摧毁岛 root', /emptySurfaceMode = 'empty'[\s\S]*?applySoftPadEmptyIdleHost/.test(softPadJs) || /__otSoftPadEmptyIdleMounted[\s\S]*?emptyCreateCtaHtml/.test(softPadJs));
 check('render 接线挂载', softPadJs.includes('__otMountSoftPadEmptyIdleIsland'));

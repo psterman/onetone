@@ -1195,13 +1195,21 @@ function softPadPanelRenderSlice(src, name, nextName) {
   return softPadFnSlice(src, name, nextName);
 }
 var presentationPanelFn = softPadPanelRenderSlice(padUiAgentSrc, 'renderSoftPadPresentationPanel', 'renderSoftPadRuntimePanel');
-var runtimePanelFn = softPadPanelRenderSlice(padUiAgentSrc, 'renderSoftPadRuntimePanel', 'renderSoftPadAgentPanel');
+var runtimePanelFn = softPadPanelRenderSlice(padUiAgentSrc, 'renderSoftPadRuntimePanel', 'renderSoftPadPurposePanel');
+var purposePanelFn = softPadPanelRenderSlice(padUiAgentSrc, 'renderSoftPadPurposePanel', 'renderSoftPadAgentPanel');
 var agentPanelFn = softPadPanelRenderSlice(padUiAgentSrc, 'renderSoftPadAgentPanel', 'setSoftPadControlsBusy');
 ['renderSoftPadPreview', 'paintPreview', 'remountSoftPadPreviewShell'].forEach(function (banned) {
   assert.ok(presentationPanelFn.indexOf(banned) < 0, 'presentation panel bans ' + banned);
   assert.ok(runtimePanelFn.indexOf(banned) < 0, 'runtime panel bans ' + banned);
+  assert.ok(purposePanelFn.indexOf(banned) < 0, 'purpose panel bans ' + banned);
   assert.ok(agentPanelFn.indexOf(banned) < 0, 'agent panel bans ' + banned);
 });
+assert.ok(runtimePanelFn.indexOf('renderNumpadMapHtml') < 0, 'runtime panel no feature demos');
+assert.ok(purposePanelFn.indexOf('renderNumpadMapHtml') >= 0, 'purpose panel hosts feature demos');
+assert.ok(softPadHubSrc.indexOf('renderSoftPadPurposePanel') >= 0, 'hub routes purpose to Pad panel');
+assert.ok(softPadHubSrc.indexOf("softPadPadMode !== 'purpose'") >= 0 ||
+  softPadHubSrc.indexOf("softPadPadMode === 'purpose'") >= 0,
+  'purpose syncs feature checkboxes');
 
 var remountPreviewFn = softPadFnSlice(padUiAgentSrc, 'remountSoftPadPreviewShell', 'renderSoftPadPreview');
 assert.ok(remountPreviewFn.indexOf('bindPadClicks') < 0, 'remountSoftPadPreviewShell must not rebindPadClicks');
@@ -1234,7 +1242,7 @@ assert.ok(softPadHubSrc.indexOf('function isHubSoftPadKind(kind)') >= 0);
 assert.ok(softPadHubSrc.indexOf("id: 'global'") < 0 || softPadHubSrc.indexOf('pickDefaultScopeId') >= 0);
 assert.ok(softPadHubSrc.indexOf('pickDefaultScopeId') >= 0);
 assert.ok(/function listAppScopes[\s\S]*?BUILTIN_SOFT_PAD_APPS\.map/.test(softPadHubSrc), 'scopes from builtin only');
-assert.ok(softPadHubSrc.indexOf('keepPreview') >= 0 || softPadHubSrc.indexOf("softPadView === 'layout'") >= 0, 'layout keeps preview');
+assert.ok(softPadHubSrc.indexOf('keepPreview') >= 0 || softPadHubSrc.indexOf("softPadPadMode === 'keys'") >= 0 || softPadHubSrc.indexOf('previewHostForFace') >= 0, 'layout/keys keeps preview');
 assert.ok(softPadHubSrc.indexOf('is-collapsed') >= 0, 'subpage collapses preview');
 assert.ok(padUiAgentSrc.indexOf("mode === 'softPad'") >= 0);
 assert.ok(padUiAgentSrc.indexOf('openEditKeycap(m, id)') >= 0);
@@ -1284,7 +1292,7 @@ assert.ok(skinClickSlice.indexOf('canonicalizePadSkin') >= 0);
 assert.ok(padUiAgentSrc.indexOf("data-micro-key") >= 0);
 assert.ok(padUiAgentSrc.indexOf('data-run-status') >= 0);
 assert.ok(padUiAgentSrc.indexOf('data-status-source') >= 0);
-assert.ok(softPadHubSrc.indexOf("softPadView === 'presentation'") >= 0, 'presentation keeps preview');
+assert.ok(softPadHubSrc.indexOf("softPadPadMode === 'look'") >= 0 || softPadHubSrc.indexOf('previewHostForFace') >= 0, 'presentation/look keeps preview');
 
 var padCss = fs.readFileSync(path.join(__dirname, '../src/css/codex-micro-pad.css'), 'utf8');
 var overlayCss = fs.readFileSync(path.join(__dirname, '../src/css/codex-micro-overlay.css'), 'utf8');

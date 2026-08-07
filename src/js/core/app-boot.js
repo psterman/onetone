@@ -9,6 +9,14 @@
     if(session&&session.markBootStarted) session.markBootStarted(8000);
     var hasBootConfig=!!(state.config&&Array.isArray(state.config.mappings)&&state.config.mappings.length);
     hooks.markBoot('script init');
+    // Soft Pad float is always-on-top; dismiss on cold start so home stays clickable
+    // while FG settles (front-mode used to cover the launching window → 假死).
+    try{
+      var ipcBoot=global.OneToneIpc;
+      if(ipcBoot&&typeof ipcBoot.invoke==='function'){
+        ipcBoot.invoke('cmd_codex_micro_overlay_dismiss',{}).catch(function(){});
+      }
+    }catch(_){}
     if(window.OneToneLocaleDefaults) window.OneToneLocaleDefaults.applyUiLocaleBootstrap();
     if(window.OneTonePhrasePractice) window.OneTonePhrasePractice.init();
     if(window.OneToneOnboarding) window.OneToneOnboarding.init();

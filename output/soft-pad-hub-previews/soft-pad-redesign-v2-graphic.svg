@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" viewBox="0 0 1280 900">
+  <defs><style type="text/css"><![CDATA[
+.bg{fill:#eef3f7}.shell{fill:#f8fbfd;stroke:#d5e0eb}.top{fill:#fff;stroke:#dce5ef}
+.ink{fill:#142033}.muted{fill:#6b7a8d}.faint{fill:#94a3b4}
+.key{fill:#fff;stroke:#d5e1ec}.keyA{fill:#f0f9fc;stroke:#9ed6e8}
+.chip{fill:#fff;stroke:#d5e1ec}.chipOn{fill:#e8f6fb;stroke:#3eb8dc}
+.stage{fill:#fff;stroke:#d5e1ec}.stageOn{fill:#e8f6fb;stroke:#3eb8dc;stroke-width:1.6}
+.panel{fill:#f4f8fb;stroke:#d5e0eb}.row{fill:#fff;stroke:#e2eaf2}
+.small{font:11px 'Segoe UI','Microsoft YaHei',sans-serif}
+.body{font:13px 'Segoe UI','Microsoft YaHei',sans-serif}
+.title{font:700 15px 'Segoe UI','Microsoft YaHei',sans-serif}
+.h1{font:700 20px 'Segoe UI','Microsoft YaHei',sans-serif}
+.label{font:700 13px 'Segoe UI','Microsoft YaHei',sans-serif}
+.cap{font:700 10px 'Segoe UI','Microsoft YaHei',sans-serif}
+
+.bg{fill:#edf1f5}.keySoft{fill:#f3f8fb;stroke:#c5d6e4}
+.seg{fill:#eef3f7}.segOn{fill:#fff;stroke:#3eb8dc;stroke-width:1.5}
+.side{fill:#f5f8fb;stroke:#d5e0eb}.opt{fill:#fff;stroke:#e1e9f1}.optOn{fill:#eaf7fb;stroke:#3eb8dc}
+.huge{font:700 12px 'Segoe UI','Microsoft YaHei',sans-serif}
+]]></style></defs>
+
+  <rect class="bg" width="1280" height="900"/>
+  <rect x="48" y="36" width="1184" height="760" rx="18" class="shell"/>
+  <rect x="48" y="36" width="1184" height="52" rx="18" class="top"/>
+  <text x="72" y="68" class="h1 ink">虚拟键盘</text>
+  <text x="178" y="68" class="body muted">Codex</text>
+  <rect x="240" y="52" width="40" height="22" rx="11" fill="#2f9f66"/>
+  <circle cx="270" cy="63" r="8" fill="#fff"/>
+  <rect x="296" y="52" width="72" height="22" rx="11" class="chip"/>
+  <text x="332" y="67" text-anchor="middle" class="small ink">绑定</text>
+  <rect x="1168" y="52" width="36" height="22" rx="11" class="chip"/>
+  <text x="1186" y="67" text-anchor="middle" class="small muted">...</text>
+  <text x="72" y="108" class="small faint">方案 V2 · 极简图形版 — 分段舞台 · 键盘占主视觉 · 右侧只留当前一项</text>
+  <g transform="translate(72 124)">
+    <rect class="seg" width="360" height="40" rx="12"/>
+    <rect class="segOn" x="4" y="4" width="116" height="32" rx="9"/>
+    <text x="62" y="25" text-anchor="middle" class="huge" fill="#1f7a92">Soft Pad</text>
+    <text x="180" y="25" text-anchor="middle" class="huge muted">状态灯</text>
+    <text x="286" y="25" text-anchor="middle" class="huge muted">时间胶囊</text>
+  </g>
+  <g transform="translate(72 184)">
+    <rect x="0" y="0" width="700" height="520" rx="18" fill="#f3f7fa" stroke="#d5e0eb"/>
+    <g transform="translate(20 16)">
+      <rect class="chipOn" x="0" y="0" width="80" height="26" rx="13"/>
+      <text x="40" y="17" text-anchor="middle" class="cap" fill="#1f7a92">何时显示</text>
+      <rect class="chip" x="90" y="0" width="56" height="26" rx="13"/>
+      <text x="118" y="17" text-anchor="middle" class="cap muted">外观</text>
+      <rect class="chip" x="156" y="0" width="64" height="26" rx="13"/>
+      <text x="188" y="17" text-anchor="middle" class="cap muted">改按键</text>
+      <text x="560" y="18" text-anchor="end" class="small faint">已设 12 / 15</text>
+    </g>
+    <g transform="translate(58 70)">
+      <rect class="keySoft" x="0" y="0" width="100" height="72" rx="14"/>
+    <text x="50" y="30" text-anchor="middle" class="title ink">ENC</text>
+    <text x="50" y="52" text-anchor="middle" class="cap faint">模式</text>
+      <rect class="key" x="116" y="0" width="100" height="72" rx="14"/>
+    <text x="166" y="30" text-anchor="middle" class="h1 ink">7</text>
+    <text x="166" y="52" text-anchor="middle" class="cap faint">AGENT</text>
+      <rect class="key" x="232" y="0" width="100" height="72" rx="14"/>
+    <text x="282" y="30" text-anchor="middle" class="h1 ink">8</text>
+    <text x="282" y="52" text-anchor="middle" class="cap faint">CLAUDE</text>
+      <rect class="key" x="348" y="0" width="100" height="72" rx="14"/>
+    <text x="398" y="30" text-anchor="middle" class="h1 ink">9</text>
+    <text x="398" y="52" text-anchor="middle" class="cap faint">CODEX</text>
+      <rect class="keySoft" x="464" y="0" width="100" height="72" rx="14"/>
+    <text x="514" y="30" text-anchor="middle" class="title ink">NAV</text>
+    <text x="514" y="52" text-anchor="middle" class="cap faint">方向</text>
+      <rect class="key" x="0" y="90" width="100" height="72" rx="14"/>
+    <text x="50" y="120" text-anchor="middle" class="h1 ink">4</text>
+    <text x="50" y="142" text-anchor="middle" class="cap faint">PERMIT</text>
+      <rect class="key" x="116" y="90" width="100" height="72" rx="14"/>
+    <text x="166" y="120" text-anchor="middle" class="h1 ink">5</text>
+    <text x="166" y="142" text-anchor="middle" class="cap faint">STATUS</text>
+      <rect class="key" x="232" y="90" width="100" height="72" rx="14"/>
+    <text x="282" y="120" text-anchor="middle" class="h1 ink">6</text>
+    <text x="282" y="142" text-anchor="middle" class="cap faint">APPS</text>
+      <rect class="keySoft" x="348" y="90" width="100" height="72" rx="14"/>
+    <text x="398" y="120" text-anchor="middle" class="title ink">UNDO</text>
+    <text x="398" y="142" text-anchor="middle" class="cap faint">撤销</text>
+      <rect class="keySoft" x="464" y="90" width="100" height="72" rx="14"/>
+    <text x="514" y="120" text-anchor="middle" class="title ink">SEARCH</text>
+    <text x="514" y="142" text-anchor="middle" class="cap faint">搜索</text>
+      <rect class="key" x="0" y="180" width="100" height="72" rx="14"/>
+    <text x="50" y="210" text-anchor="middle" class="h1 ink">1</text>
+    <text x="50" y="232" text-anchor="middle" class="cap faint">FAST</text>
+      <rect class="key" x="116" y="180" width="100" height="72" rx="14"/>
+    <text x="166" y="210" text-anchor="middle" class="h1 ink">2</text>
+    <text x="166" y="232" text-anchor="middle" class="cap faint">CMD</text>
+      <rect class="key" x="232" y="180" width="100" height="72" rx="14"/>
+    <text x="282" y="210" text-anchor="middle" class="h1 ink">3</text>
+    <text x="282" y="232" text-anchor="middle" class="cap faint">REJECT</text>
+      <rect class="keySoft" x="348" y="180" width="216" height="72" rx="14"/>
+    <text x="456" y="210" text-anchor="middle" class="title ink">SEND</text>
+    <text x="456" y="232" text-anchor="middle" class="cap faint">发送</text>
+      <rect class="key" x="0" y="270" width="216" height="72" rx="14"/>
+    <text x="108" y="300" text-anchor="middle" class="title ink">VOICE</text>
+    <text x="108" y="322" text-anchor="middle" class="cap faint">语音</text>
+      <rect class="key" x="232" y="270" width="100" height="72" rx="14"/>
+    <text x="282" y="300" text-anchor="middle" class="h1 ink">0</text>
+    <text x="282" y="322" text-anchor="middle" class="cap faint">DOT</text>
+      <rect class="key" x="348" y="270" width="216" height="72" rx="14"/>
+    <text x="456" y="300" text-anchor="middle" class="title ink">PLUS</text>
+    <text x="456" y="322" text-anchor="middle" class="cap faint">扩展</text>
+      <text x="0" y="380" class="small faint">键面即导航：点键进入改按键；环上芯片只保留 3 个主操作</text>
+    </g>
+  </g>
+  <g transform="translate(796 184)">
+    <rect class="side" width="404" height="520" rx="18"/>
+    <text x="24" y="40" class="title ink">何时显示</text>
+    <text x="24" y="62" class="small muted">选一种出现方式</text>
+    <rect class="optOn" x="24" y="88" width="356" height="70" rx="12"/>
+    <text x="44" y="118" class="label ink">跟随应用</text>
+    <text x="44" y="138" class="small muted">前台匹配时浮出</text>
+    <rect class="opt" x="24" y="170" width="356" height="70" rx="12"/>
+    <text x="44" y="200" class="label ink">保持在最前</text>
+    <text x="44" y="220" class="small muted">始终置顶</text>
+    <rect class="opt" x="24" y="252" width="356" height="70" rx="12"/>
+    <text x="44" y="282" class="label ink">迷你条</text>
+    <text x="44" y="302" class="small muted">状态灯条</text>
+    <rect class="opt" x="24" y="334" width="356" height="70" rx="12"/>
+    <text x="44" y="364" class="label ink">不显示</text>
+    <text x="44" y="384" class="small muted">仅热键</text>
+    <text x="24" y="450" class="small faint">高级 · NumLock / 导航 / 额度</text>
+    <text x="24" y="474" class="small faint">状态灯 · 时间胶囊 → 顶部分段</text>
+  </g>
+  <text x="72" y="840" class="title ink">V2 · 极简图形版</text>
+  <text x="72" y="866" class="body muted">最大胆：flow 收成分段控件，键盘占主视觉；详情变窄栏。适合图形优先诉求最强的一档。</text>

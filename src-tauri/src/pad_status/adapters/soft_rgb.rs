@@ -15,6 +15,27 @@ pub fn rgb_for_ui_status(status: &str) -> Option<(u8, u8, u8)> {
     }
 }
 
+/// Parse `#RRGGBB` / `RRGGBB` into RGB triple.
+pub fn parse_hex_rgb(s: &str) -> Option<(u8, u8, u8)> {
+    let t = s.trim().trim_start_matches('#');
+    if t.len() != 6 {
+        return None;
+    }
+    let r = u8::from_str_radix(&t[0..2], 16).ok()?;
+    let g = u8::from_str_radix(&t[2..4], 16).ok()?;
+    let b = u8::from_str_radix(&t[4..6], 16).ok()?;
+    Some((r, g, b))
+}
+
+/// Resolve soft RGB with optional ambient override from Soft Pad config.
+/// `ambient_mode == "solid"` → fixed color; otherwise status palette.
+pub fn rgb_for_ambient(status: &str, ambient_mode: &str, solid_hex: &str) -> Option<(u8, u8, u8)> {
+    if ambient_mode.trim().eq_ignore_ascii_case("solid") {
+        return parse_hex_rgb(solid_hex);
+    }
+    rgb_for_ui_status(status)
+}
+
 /// Core `PadStatus` → UI status string (error→failed, phase=hold→listening).
 pub fn ui_status_from_pad(pad: &crate::pad_status::PadStatus) -> String {
     let mut status = pad.state.clone();
@@ -29,6 +50,14 @@ pub fn ui_status_from_pad(pad: &crate::pad_status::PadStatus) -> String {
 
 pub fn rgb_for_pad(pad: &crate::pad_status::PadStatus) -> Option<(u8, u8, u8)> {
     rgb_for_ui_status(&ui_status_from_pad(pad))
+}
+
+pub fn rgb_for_pad_ambient(
+    pad: &crate::pad_status::PadStatus,
+    ambient_mode: &str,
+    solid_hex: &str,
+) -> Option<(u8, u8, u8)> {
+    rgb_for_ambient(&ui_status_from_pad(pad), ambient_mode, solid_hex)
 }
 
 #[cfg(test)]
@@ -64,5 +93,19 @@ mod tests {
         };
         assert_eq!(ui_status_from_pad(&pad), "listening");
         assert_eq!(rgb_for_pad(&pad), Some((0, 163, 255)));
+    }
+
+    #[test]
+    fn solid_ambient_overrides_status() {
+        assert_eq!(
+            rgb_for_ambient("running", "solid", "#112233"),
+            Some((0x11, 0x22, 0x33))
+        );
+        assert_eq!(
+            rgb_for_ambient("running", "status", "#112233"),
+            Some((48, 83, 254))
+        );
+        assert_eq!(parse_hex_rgb("aabbcc"), Some((0xaa, 0xbb, 0xcc)));
+        assert_eq!(parse_hex_rgb("bad"), None);
     }
 }

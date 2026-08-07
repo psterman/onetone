@@ -306,9 +306,16 @@ pub struct ShellHookWriteResult {
 }
 
 fn node_available() -> bool {
-    std::process::Command::new("node")
-        .arg("-v")
-        .output()
+    let mut cmd = std::process::Command::new("node");
+    cmd.arg("-v");
+    #[cfg(windows)]
+    {
+        // ponytail: avoid black console flash when Soft Pad polls hook status on app switch.
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd.output()
         .map(|o| o.status.success())
         .unwrap_or(false)
 }

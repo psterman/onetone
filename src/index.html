@@ -1131,24 +1131,24 @@
             </div>
             <div class="flow-nodes-grid">
               <div class="flow-node" data-soft-pad-node="pad">
-                <span class="flow-node-tag" id="softPadFlowNodePadTag">01 / Soft Pad</span>
-                <button type="button" class="flow-node-btn is-active" id="softPadFlowNodePad" role="tab" aria-selected="true" aria-labelledby="softPadFlowNodePadTitle" aria-controls="softPadSubpageBody">
+                <span class="flow-node-tag" id="softPadFlowNodePadTag">Soft Pad</span>
+                <button type="button" class="flow-node-btn is-active" id="softPadFlowNodePad" role="tab" aria-selected="true" aria-labelledby="softPadFlowNodePadTitle" aria-controls="softPadFacePad">
                   <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><rect x="6.2" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="10.3" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="14.4" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="6.2" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="10.3" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="14.4" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="6.2" y="14.4" width="7.5" height="3.4" rx=".7"/><rect x="14.4" y="14.4" width="3.4" height="3.4" rx=".7"/></svg>
                 </button>
                 <h3 class="flow-node-title" id="softPadFlowNodePadTitle">Soft Pad</h3>
                 <p class="flow-node-hint" id="softPadFlowNodePadHint">改键位 · 何时显示</p>
               </div>
               <div class="flow-node" data-soft-pad-node="agent">
-                <span class="flow-node-tag" id="softPadFlowNodeAgentTag">02 / 状态灯</span>
-                <button type="button" class="flow-node-btn" id="softPadFlowNodeAgent" role="tab" aria-selected="false" aria-labelledby="softPadFlowNodeAgentTitle" aria-controls="softPadSubpageBody">
+                <span class="flow-node-tag" id="softPadFlowNodeAgentTag">状态灯</span>
+                <button type="button" class="flow-node-btn" id="softPadFlowNodeAgent" role="tab" aria-selected="false" aria-labelledby="softPadFlowNodeAgentTitle" aria-controls="softPadFaceAgent">
                   <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="15" rx="3"/><circle cx="12" cy="6.5" r="1.35" fill="currentColor" stroke="none"/><circle cx="12" cy="10" r="1.35" fill="currentColor" stroke="none" opacity=".7"/><circle cx="12" cy="13.5" r="1.35" fill="currentColor" stroke="none" opacity=".4"/><path d="M10.5 19.5h3M11 21.5h2"/></svg>
                 </button>
                 <h3 class="flow-node-title" id="softPadFlowNodeAgentTitle">状态灯</h3>
                 <p class="flow-node-hint" id="softPadFlowNodeAgentHint">看 AI 忙不忙</p>
               </div>
               <div class="flow-node" data-soft-pad-node="timeline">
-                <span class="flow-node-tag" id="softPadFlowNodeTimelineTag">03 / 项目胶囊</span>
-                <button type="button" class="flow-node-btn" id="softPadFlowNodeTimeline" role="tab" aria-selected="false" aria-labelledby="softPadFlowNodeTimelineTitle" aria-controls="softPadSubpageBody">
+                <span class="flow-node-tag" id="softPadFlowNodeTimelineTag">项目胶囊</span>
+                <button type="button" class="flow-node-btn" id="softPadFlowNodeTimeline" role="tab" aria-selected="false" aria-labelledby="softPadFlowNodeTimelineTitle" aria-controls="softPadFaceTimeline">
                   <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="7" width="19" height="10" rx="5"/><path d="M12 7v10"/><circle cx="7.5" cy="12" r="1.35" fill="currentColor" stroke="none"/><path d="M15.2 9.8a2.6 2.6 0 11-1.1 3.4"/><path d="M14.2 9.2l1.2.2.2 1.2"/></svg>
                 </button>
                 <h3 class="flow-node-title" id="softPadFlowNodeTimelineTitle">项目时间胶囊</h3>
@@ -1166,29 +1166,47 @@
           </header>
           <div class="keys-page-body soft-pad-page-body" id="softPadPageBody">
             <div class="keys-page-main soft-pad-page-main">
-              <div class="soft-pad-hub-stage" id="softPadHubStage" role="tabpanel" aria-label="虚拟键盘详情">
+              <div class="soft-pad-hub-stage" id="softPadHubStage" data-soft-pad-face="pad" role="tabpanel" aria-label="虚拟键盘详情">
                 <div class="soft-pad-func-tiles" id="softPadFuncTiles" role="tablist" aria-label="你想改什么？" hidden></div>
-                <div class="soft-pad-hub-nav" id="softPadHubNav">
-                  <div class="soft-pad-pad-chassis" id="softPadPadChassis">
-                    <div class="soft-pad-pad-ring" id="softPadPadRing" role="toolbar" aria-label="舞台操作"></div>
-                    <div class="soft-pad-preview-host" id="softPadPreviewHost"></div>
-                    <div class="soft-pad-ring-float" id="softPadRingFloat" hidden></div>
-                  </div>
-                </div>
-                <div class="soft-pad-tm-desk" id="softPadTmDesk" hidden aria-label="项目时间胶囊"></div>
-                <aside class="soft-pad-detail" id="softPadSubpageHost" aria-live="polite">
-                  <div class="soft-pad-detail-idle" id="softPadDetailIdle">
-                    <p class="soft-pad-detail-idle__title" id="softPadDetailIdleTitle">点环上芯片或键盘开始调整</p>
-                    <p class="soft-pad-detail-idle__sub" id="softPadDetailIdleSub">状态栏切换绑定应用；右侧打开详情</p>
-                  </div>
-                  <div class="soft-pad-detail-panel" id="softPadDetailPanel" hidden>
-                    <div class="soft-pad-subpage-bar" id="softPadSubpageBar">
-                      <button type="button" class="codex-micro-pad__btn soft-pad-subpage-back" id="btnSoftPadSubBack">← 返回</button>
-                      <h4 class="soft-pad-subpage-title" id="softPadSubpageTitle"></h4>
+                <!-- C1 Soft Pad face: left preview + right padMode tabs + panel -->
+                <div class="soft-pad-face-root soft-pad-face-pad" id="softPadFacePad" data-face="pad">
+                  <div class="soft-pad-face-pad__preview soft-pad-preview-host" id="softPadPreviewHost"></div>
+                  <aside class="soft-pad-face-pad__panel soft-pad-detail" id="softPadSubpageHost" aria-live="polite">
+                    <div class="soft-pad-pad-tabs" id="softPadPadTabs" role="tablist" aria-label="Soft Pad 调整">
+                      <button type="button" class="soft-pad-pad-tab is-active" role="tab" data-pad-mode="appear" aria-selected="true" id="softPadPadTabAppear">出现</button>
+                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="keys" aria-selected="false" id="softPadPadTabKeys">键位</button>
+                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="look" aria-selected="false" id="softPadPadTabLook">外观</button>
+                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="purpose" aria-selected="false" id="softPadPadTabPurpose">用途</button>
                     </div>
-                    <div class="codex-pad-mgr soft-pad-subpage-body" id="softPadSubpageBody"></div>
-                  </div>
-                </aside>
+                    <div class="soft-pad-detail-idle" id="softPadDetailIdle" hidden>
+                      <p class="soft-pad-detail-idle__title" id="softPadDetailIdleTitle">选择上方一项开始调整</p>
+                      <p class="soft-pad-detail-idle__sub" id="softPadDetailIdleSub">状态栏切换绑定应用</p>
+                    </div>
+                    <div class="soft-pad-detail-panel" id="softPadDetailPanel">
+                      <div class="soft-pad-subpage-bar" id="softPadSubpageBar" hidden>
+                        <button type="button" class="codex-micro-pad__btn soft-pad-subpage-back" id="btnSoftPadSubBack" hidden>← 返回</button>
+                        <h4 class="soft-pad-subpage-title" id="softPadSubpageTitle"></h4>
+                      </div>
+                      <div class="codex-pad-mgr soft-pad-subpage-body" id="softPadSubpageBody"></div>
+                    </div>
+                  </aside>
+                  <!-- retired pad-ring host (kept for legacy id lookups; always hidden) -->
+                  <div class="soft-pad-pad-ring" id="softPadPadRing" hidden aria-hidden="true"></div>
+                  <div class="soft-pad-ring-float" id="softPadRingFloat" hidden></div>
+                </div>
+                <!-- C2 Agent face: left Soft Pad preview + right single-app lightboard -->
+                <div class="soft-pad-face-root soft-pad-face-agent" id="softPadFaceAgent" data-face="agent" hidden>
+                  <div class="soft-pad-face-agent__preview soft-pad-preview-host" id="softPadAgentPreviewHost"></div>
+                  <aside class="soft-pad-face-agent__panel soft-pad-detail" id="softPadAgentPanelHost" aria-live="polite">
+                    <div class="codex-pad-mgr soft-pad-subpage-body" id="softPadAgentBody"></div>
+                  </aside>
+                </div>
+                <!-- C3 Timeline face: left Soft Pad + right node detail + bottom date rail -->
+                <div class="soft-pad-face-root soft-pad-face-timeline" id="softPadFaceTimeline" data-face="timeline" hidden>
+                  <div class="soft-pad-face-tm__preview soft-pad-preview-host" id="softPadTmPreviewHost"></div>
+                  <aside class="soft-pad-face-tm__detail" id="softPadTmDetailHost" aria-live="polite"></aside>
+                  <div class="soft-pad-face-tm__rail soft-pad-tm-desk" id="softPadTmDesk" aria-label="项目时间胶囊"></div>
+                </div>
               </div>
               <div class="soft-pad-empty" id="softPadEmpty" hidden></div>
             </div>

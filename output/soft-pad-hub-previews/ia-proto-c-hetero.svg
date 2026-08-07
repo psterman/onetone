@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" viewBox="0 0 1280 900">
+  <defs><style type="text/css"><![CDATA[
+.bg{fill:#e9eef3}.shell{fill:#f7fafc;stroke:#d2dde8}
+.ink{fill:#132033}.muted{fill:#6b7a8d}.faint{fill:#93a0b0}
+.cyan{fill:#3eb8dc}
+.small{font:11px 'Segoe UI','Microsoft YaHei',sans-serif}
+.body{font:13px 'Segoe UI','Microsoft YaHei',sans-serif}
+.title{font:700 15px 'Segoe UI','Microsoft YaHei',sans-serif}
+.h1{font:700 20px 'Segoe UI','Microsoft YaHei',sans-serif}
+.h0{font:700 26px 'Segoe UI','Microsoft YaHei',sans-serif}
+.label{font:700 12px 'Segoe UI','Microsoft YaHei',sans-serif}
+.cap{font:700 10px 'Segoe UI','Microsoft YaHei',sans-serif}
+.key{fill:#fff;stroke:#d2deea}.keyA{fill:#eef8fb;stroke:#8ecfe0}
+.chip{fill:#fff;stroke:#d2deea}.chipOn{fill:#e5f5fb;stroke:#3eb8dc}
+.seg{fill:#e8eef4}.segOn{fill:#fff;stroke:#3eb8dc;stroke-width:1.5}
+.panel{fill:#f3f7fa;stroke:#d2dde8}.row{fill:#fff;stroke:#e1e9f1}
+.rail{fill:#121820}.railInk{fill:#e8f0f8}.railMuted{fill:#8b9aab}
+.railOn{fill:#1c2836;stroke:#3eb8dc}
+.bezel{fill:#dfe8f0}.bezelDial{fill:#1a2430}
+.lb{fill:#0f141c}.dot{fill:#34d399}
+.spine{fill:#f7f1e6;stroke:#e5d2a8}
+]]></style></defs>
+
+  <rect class="bg" width="1280" height="900"/>
+  <rect x="40" y="28" width="1200" height="780" rx="16" class="shell"/>
+
+  <!-- minimal L0 -->
+  <text x="64" y="60" class="h1 ink">Codex</text>
+  <circle cx="148" cy="54" r="6" fill="#2f9f66"/>
+  <text x="164" y="58" class="small muted">绑定</text>
+  <text x="64" y="88" class="small faint">三面各自一套视觉语言：键面仪器 / 灯板雷达 / 时间脊线—不共用任何 chrome 皮</text>
+
+  <!-- face ports: three different shapes, not same card chrome -->
+  <g transform="translate(64 108)">
+    <!-- Soft Pad port = hardware plate -->
+    <rect x="0" y="0" width="120" height="44" rx="8" fill="#1a2430"/>
+    <text x="60" y="27" text-anchor="middle" class="cap" fill="#8fd6ea">Soft Pad</text>
+    <!-- lights port = glowing pill -->
+    <rect x="140" y="6" width="120" height="32" rx="16" fill="#0f141c" stroke="#34d399"/>
+    <circle cx="162" cy="22" r="5" class="dot"/>
+    <text x="210" y="26" text-anchor="middle" class="cap" fill="#a7f3d0">状态灯</text>
+    <!-- capsule port = amber capsule -->
+    <rect x="280" y="6" width="130" height="32" rx="16" class="spine"/>
+    <text x="345" y="26" text-anchor="middle" class="cap" fill="#9a620f">时间胶囊</text>
+  </g>
+
+  <!-- MAIN: Soft Pad face as hardware instrument (different language) -->
+  <g transform="translate(64 172)">
+    <rect width="720" height="520" rx="20" fill="#1a2430"/>
+    <text x="24" y="36" class="cap" fill="#5ec8e8">INSTRUMENT</text>
+    <rect x="24" y="52" width="672" height="380" rx="18" fill="#0f141c" stroke="#2a3a4c"/>
+    <g transform="translate(48 72)"><rect fill="#163040" stroke="#3eb8dc" x="0" y="0" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="35.7" y="20" text-anchor="middle" class="label" fill="#e8f0f8">ENC</text>
+        <text x="35.7" y="36" text-anchor="middle" class="cap" fill="#7a8b9c">模式</text><rect fill="#1c2836" stroke="#3a4d63" x="81.9" y="0" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="117.60000000000001" y="20" text-anchor="middle" class="label" fill="#e8f0f8">7</text>
+        <text x="117.60000000000001" y="36" text-anchor="middle" class="cap" fill="#7a8b9c">AG</text><rect fill="#1c2836" stroke="#3a4d63" x="163.8" y="0" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="199.5" y="20" text-anchor="middle" class="label" fill="#e8f0f8">8</text>
+        <text x="199.5" y="36" text-anchor="middle" class="cap" fill="#7a8b9c">CL</text><rect fill="#1c2836" stroke="#3a4d63" x="245.70000000000002" y="0" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="281.40000000000003" y="20" text-anchor="middle" class="label" fill="#e8f0f8">9</text>
+        <text x="281.40000000000003" y="36" text-anchor="middle" class="cap" fill="#7a8b9c">CX</text><rect fill="#1c2836" stroke="#3a4d63" x="327.6" y="0" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="363.3" y="20" text-anchor="middle" class="label" fill="#e8f0f8">NAV</text>
+        <text x="363.3" y="36" text-anchor="middle" class="cap" fill="#7a8b9c">方向</text><rect fill="#1c2836" stroke="#3a4d63" x="0" y="60.900000000000006" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="35.7" y="80.9" text-anchor="middle" class="label" fill="#e8f0f8">4</text>
+        <text x="35.7" y="96.9" text-anchor="middle" class="cap" fill="#7a8b9c">PERM</text><rect fill="#1c2836" stroke="#3a4d63" x="81.9" y="60.900000000000006" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="117.60000000000001" y="80.9" text-anchor="middle" class="label" fill="#e8f0f8">5</text>
+        <text x="117.60000000000001" y="96.9" text-anchor="middle" class="cap" fill="#7a8b9c">STAT</text><rect fill="#1c2836" stroke="#3a4d63" x="163.8" y="60.900000000000006" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="199.5" y="80.9" text-anchor="middle" class="label" fill="#e8f0f8">6</text>
+        <text x="199.5" y="96.9" text-anchor="middle" class="cap" fill="#7a8b9c">APPS</text><rect fill="#163040" stroke="#3eb8dc" x="245.70000000000002" y="60.900000000000006" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="281.40000000000003" y="80.9" text-anchor="middle" class="label" fill="#e8f0f8">UNDO</text>
+        <text x="281.40000000000003" y="96.9" text-anchor="middle" class="cap" fill="#7a8b9c">撤销</text><rect fill="#163040" stroke="#3eb8dc" x="327.6" y="60.900000000000006" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="363.3" y="80.9" text-anchor="middle" class="label" fill="#e8f0f8">FIND</text>
+        <text x="363.3" y="96.9" text-anchor="middle" class="cap" fill="#7a8b9c">搜索</text><rect fill="#1c2836" stroke="#3a4d63" x="0" y="121.80000000000001" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="35.7" y="141.8" text-anchor="middle" class="label" fill="#e8f0f8">1</text>
+        <text x="35.7" y="157.8" text-anchor="middle" class="cap" fill="#7a8b9c">FAST</text><rect fill="#1c2836" stroke="#3a4d63" x="81.9" y="121.80000000000001" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="117.60000000000001" y="141.8" text-anchor="middle" class="label" fill="#e8f0f8">2</text>
+        <text x="117.60000000000001" y="157.8" text-anchor="middle" class="cap" fill="#7a8b9c">CMD</text><rect fill="#1c2836" stroke="#3a4d63" x="163.8" y="121.80000000000001" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="199.5" y="141.8" text-anchor="middle" class="label" fill="#e8f0f8">3</text>
+        <text x="199.5" y="157.8" text-anchor="middle" class="cap" fill="#7a8b9c">NO</text><rect fill="#163040" stroke="#3eb8dc" x="245.70000000000002" y="121.80000000000001" width="153.3" height="50.400000000000006" rx="9"/>
+        <text x="322.35" y="141.8" text-anchor="middle" class="label" fill="#e8f0f8">SEND</text>
+        <text x="322.35" y="157.8" text-anchor="middle" class="cap" fill="#7a8b9c">发送</text><rect fill="#1c2836" stroke="#3a4d63" x="0" y="182.70000000000002" width="153.3" height="50.400000000000006" rx="9"/>
+        <text x="76.65" y="202.70000000000002" text-anchor="middle" class="label" fill="#e8f0f8">VOICE</text>
+        <text x="76.65" y="218.70000000000002" text-anchor="middle" class="cap" fill="#7a8b9c">语音</text><rect fill="#1c2836" stroke="#3a4d63" x="163.8" y="182.70000000000002" width="71.4" height="50.400000000000006" rx="9"/>
+        <text x="199.5" y="202.70000000000002" text-anchor="middle" class="label" fill="#e8f0f8">0</text>
+        <text x="199.5" y="218.70000000000002" text-anchor="middle" class="cap" fill="#7a8b9c">DOT</text><rect fill="#1c2836" stroke="#3a4d63" x="245.70000000000002" y="182.70000000000002" width="153.3" height="50.400000000000006" rx="9"/>
+        <text x="322.35" y="202.70000000000002" text-anchor="middle" class="label" fill="#e8f0f8">PLUS</text>
+        <text x="322.35" y="218.70000000000002" text-anchor="middle" class="cap" fill="#7a8b9c">+</text></g>
+    <!-- purpose as physical rocker under pad -->
+    <g transform="translate(24 450)">
+      <rect width="672" height="44" rx="10" fill="#121a24"/>
+      <rect x="12" y="8" width="156" height="28" rx="6" fill="#3eb8dc"/>
+      <text x="90" y="26" text-anchor="middle" class="cap" fill="#06202a">出现</text>
+      <text x="250" y="26" text-anchor="middle" class="cap" fill="#6b7c8e">键位</text>
+      <text x="380" y="26" text-anchor="middle" class="cap" fill="#6b7c8e">外观</text>
+      <text x="530" y="26" text-anchor="middle" class="cap" fill="#6b7c8e">用途</text>
+    </g>
+  </g>
+
+  <!-- right: ghost previews of OTHER faces' languages -->
+  <g transform="translate(820 172)">
+    <text x="0" y="0" class="cap faint">状态灯 face →</text>
+    <rect y="12" width="380" height="200" rx="14" class="lb"/>
+    <text x="20" y="44" class="label" fill="#e8f0f8">灯板</text>
+    <g transform="translate(24 70)">
+      <rect width="56" height="56" rx="12" fill="#1c2836"/><circle cx="44" cy="44" r="5" fill="#60a5fa"/>
+      <text x="28" y="78" text-anchor="middle" class="cap" fill="#94a3b8">Codex</text>
+      <rect x="72" width="56" height="56" rx="12" fill="#1c2836"/><circle cx="116" cy="44" r="5" fill="#34d399"/>
+      <text x="100" y="78" text-anchor="middle" class="cap" fill="#94a3b8">Claude</text>
+      <rect x="144" width="56" height="56" rx="12" fill="#1c2836"/><circle cx="188" cy="44" r="5" fill="#f59e0b"/>
+      <text x="172" y="78" text-anchor="middle" class="cap" fill="#94a3b8">Cursor</text>
+    </g>
+    <text x="20" y="180" class="small" fill="#64748b">连接 / hooks · no pad chassis</text>
+
+    <text x="0" y="240" class="cap faint">时间胶囊 face →</text>
+    <rect y="252" width="380" height="240" rx="14" class="spine"/>
+    <text x="20" y="284" class="label" fill="#9a620f">时间脊</text>
+    <!-- mini spine -->
+    <line x1="40" y1="310" x2="40" y2="460" stroke="#d99a22" stroke-width="2"/>
+    <circle cx="40" cy="330" r="5" fill="#f59e0b"/>
+    <text x="56" y="334" class="small" fill="#9a620f">恢复点 12:40</text>
+    <circle cx="40" cy="380" r="4" fill="#fff" stroke="#d99a22"/>
+    <text x="56" y="384" class="small" fill="#9a620f">commit</text>
+    <circle cx="40" cy="430" r="4" fill="#fff" stroke="#d99a22"/>
+    <text x="56" y="434" class="small" fill="#9a620f">autosave</text>
+    <text x="20" y="478" class="small" fill="#b66f08">full-bleed desk · no Soft Pad chrome</text>
+  </g>
+
+  <text x="64" y="850" class="title ink">思路 C · 异形舞台</text>
+  <text x="64" y="874" class="body muted">面切换只是换“道具”，不是同一壳里换 tab。下图展示 Soft Pad 面；右侧小预览为另两面形态。</text>
+
+</svg>
