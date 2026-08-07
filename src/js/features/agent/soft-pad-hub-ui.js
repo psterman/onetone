@@ -1712,7 +1712,7 @@
   function emptyCreateCtaHtml() {
     return '<p class="soft-pad-empty__title">' + esc(t('softPadEmptyTitle', '还没有可配置的应用场景')) + '</p>' +
       '<p class="soft-pad-empty__desc">' +
-      esc(t('softPadBoundaryHint', '虚拟键盘只绑定到应用场景。先创建 Codex 或 Claude 应用场景，再配置它的虚拟键盘。')) +
+      esc(t('softPadBoundaryHint', '虚拟键盘只绑定 Agent 应用场景（Codex / Claude / Cursor / WorkBuddy / Trae / Qoder；MiniMax 不进 Hub）。先创建应用场景，再配置虚拟键盘。')) +
       '</p>' +
       '<div class="soft-pad-empty__actions">' +
       '<button type="button" class="codex-micro-pad__btn codex-micro-pad__btn--primary" data-soft-pad-create-kind="codex">' +
@@ -1786,7 +1786,7 @@
     if (mode === 'empty') {
       emptyHidden = false;
       emptyTitle = t('softPadEmptyTitle', '还没有可配置的应用场景');
-      emptyDesc = t('softPadBoundaryHint', '虚拟键盘只绑定到应用场景。先创建 Codex 或 Claude 应用场景，再配置它的虚拟键盘。');
+      emptyDesc = t('softPadBoundaryHint', '虚拟键盘只绑定 Agent 应用场景（Codex / Claude / Cursor / WorkBuddy / Trae / Qoder；MiniMax 不进 Hub）。先创建应用场景，再配置虚拟键盘。');
       emptyHtml = emptyCreateCtaHtml();
     } else if (mode === 'prepare') {
       emptyHidden = false;
@@ -4558,13 +4558,12 @@
       else if (status) panel.insertBefore(hint, status);
       else panel.insertBefore(hint, anchor);
     }
+    // Fixed one-liner: Soft Pad Auto ≠ 「正在使用」habit switch.
     hint.textContent = t(
-      'softPadHubSupportRange',
-      '支持 Codex、Claude、Cursor，以及 WorkBuddy / Trae / Qoder（Shell Hook · Shortcuts）'
+      'softPadAutoVsActiveHint',
+      '键位跟随前台 Agent（Auto），与「正在使用」习惯不是同一个开关。'
     );
-    var entries = listSoftPadSchemes();
-    // Always show support range when no real Soft Pad app scenarios exist.
-    hint.hidden = entries.length > 0;
+    hint.hidden = false;
   }
 
   function showList() { render({}); }

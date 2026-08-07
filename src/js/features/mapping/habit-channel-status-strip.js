@@ -43,7 +43,32 @@
   }
 
   function universalLabel(){
-    return t('habitChannelStripUniversal')||t('habitGlobalBaseLabel')||'通用设置';
+    // 主标签短名「通用」（设置入口「通用设置」留给 Hub 分区标题）
+    return t('homeWbChipUniversal')||t('habitChannelStripUniversal')||'通用';
+  }
+
+  function isAppScenarioMapping(m){
+    if(!m) return false;
+    var diff=global.OneToneHabitOverrideDiff;
+    if(diff&&diff.isAppScenarioMapping) return !!diff.isAppScenarioMapping(m);
+    return !!(String(m.appTargetId||'').trim()||(Array.isArray(m.appBehaviorRules)&&m.appBehaviorRules.some(function(r){ return r&&r.appId; })));
+  }
+
+  function resolveHint(editing,active,panel){
+    if(panel==='softPad'){
+      return t('softPadAutoVsActiveHint')
+        ||'键位跟随前台 Agent（Auto），与「正在使用」习惯不是同一个开关。';
+    }
+    // 编辑通用 + 使用中为应用场景
+    if(!editing.id&&active.id){
+      var activeM=mappingById(active.id);
+      if(isAppScenarioMapping(activeM)){
+        var tpl=t('habitChannelStripHintEditUniversalActiveApp')
+          ||'你在改通用，{name} 仍在使用；未单独覆盖的语音/摄像头会沿用这里。';
+        return tpl.replace('{name}',active.name||'—');
+      }
+    }
+    return t('habitChannelStripHint')||'';
   }
 
   function resolveEditing(channel){
@@ -118,7 +143,7 @@
     var active=resolveActive();
     var editingTpl=t('habitChannelStripEditing')||'正在编辑：{name}';
     var activeTpl=t('habitChannelStripActive')||'正在使用：{name}';
-    var hint=t('habitChannelStripHint')||'';
+    var hint=resolveHint(editing,active,spec.panel);
     var btnLbl=t('habitChannelStripSetActive')||t('homeWbHabitBarUse')||'设为正在使用';
     var editingEl=el.querySelector('[data-strip-editing]');
     var activeEl=el.querySelector('[data-strip-active]');

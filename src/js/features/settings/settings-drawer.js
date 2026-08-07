@@ -804,7 +804,16 @@
 
     }else if(panel==='voiceWake'){
 
-      // Defer voice island mounts + entering status so drawer chrome can paint first (同 keys 打开假死模式).
+      // Two-phase defer (同 keys)：先让 drawer chrome 上屏，再跑 mode switch / 整页 flow /
+      // island mounts。同步 renderVoiceModeSwitch 曾与 MediaPipe + howto 幽灵点击叠在
+      // 同一帧 → WebView2 假死。
+      var voiceDeferHeavy=!!opts.deferHeavy;
+      var voiceAfterHeavy=opts.afterHeavy;
+      var voiceScrollTarget=opts.scrollTarget;
+      var voiceSubpage=opts.voiceSubpage||'wake';
+      if(global.OneToneVoiceWake&&typeof global.OneToneVoiceWake.armOpenClickGuard==='function'){
+        try{ global.OneToneVoiceWake.armOpenClickGuard(450); }catch(_){}
+      }
       requestAnimationFrame(function(){
         setTimeout(function(){
           if(normalizePanel(ui.settingsPanel)!=='voiceWake') return;
@@ -825,23 +834,27 @@
             if(typeof mountVoiceFlow==='function') mountVoiceFlow();
             var mountVoiceAcoustic=global.__otMountVoiceAcousticIslands;
             if(typeof mountVoiceAcoustic==='function') mountVoiceAcoustic();
-          }catch(err){ console.error('voice island mount',err); }
+            hooks().renderVoiceModeSwitch();
+            if(global.OneToneVoiceSubpages&&typeof global.OneToneVoiceSubpages.setPage==='function'){
+              global.OneToneVoiceSubpages.setPage(voiceSubpage,{keepScroll:true});
+            }
+            if(global.OneToneHabitChannelStatusStrip){
+              if(global.OneToneHabitChannelStatusStrip.bindOnce) global.OneToneHabitChannelStatusStrip.bindOnce();
+              if(global.OneToneHabitChannelStatusStrip.render){
+                try{ global.OneToneHabitChannelStatusStrip.render(); }catch(_){}
+              }
+            }
+            if(voiceDeferHeavy&&typeof voiceAfterHeavy==='function'){
+              try{ voiceAfterHeavy(); }
+              catch(errHeavy){ console.error('voice panel deferHeavy',errHeavy); }
+            }
+            if(voiceScrollTarget){
+              var target=$(voiceScrollTarget);
+              if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
+            }
+          }catch(err){ console.error('voice panel deferred paint',err); }
         },0);
       });
-
-      hooks().renderVoiceModeSwitch();
-
-      if(global.OneToneVoiceSubpages&&typeof global.OneToneVoiceSubpages.setPage==='function'){
-        var nextSubpage=opts.voiceSubpage||'wake';
-        global.OneToneVoiceSubpages.setPage(nextSubpage,{keepScroll:true});
-      }
-
-      if(opts.scrollTarget){
-        requestAnimationFrame(function(){
-          var target=$(opts.scrollTarget);
-          if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
-        });
-      }
 
     }else if(panel==='camera'){
 
@@ -884,7 +897,8 @@
       }
     }
 
-    if(panel==='keys'||panel==='voiceWake'||panel==='camera'||panel==='softPad'){
+    // voiceWake strip renders in the deferred paint tick (see voiceWake branch above).
+    if(panel==='keys'||panel==='camera'||panel==='softPad'){
       if(global.OneToneHabitChannelStatusStrip){
         if(global.OneToneHabitChannelStatusStrip.bindOnce) global.OneToneHabitChannelStatusStrip.bindOnce();
         if(global.OneToneHabitChannelStatusStrip.render){

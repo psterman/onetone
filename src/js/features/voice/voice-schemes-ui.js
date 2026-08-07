@@ -94,6 +94,27 @@
     return '';
   }
 
+  /** Baseline / 通用 is「运行中」only when activeSceneId is empty or a true baseline mapping — not Cursor etc. */
+  function isBaselineRuntimeActive(cfg){
+    cfg=cfg||{};
+    var active=String(cfg.activeSceneId||'').trim();
+    if(!active) return true;
+    var list=Array.isArray(cfg.mappings)?cfg.mappings:[];
+    var m=null;
+    for(var i=0;i<list.length;i++){
+      if(list[i]&&list[i].id===active){ m=list[i]; break; }
+    }
+    if(!m) return true;
+    var diff=global.OneToneHabitOverrideDiff;
+    if(diff&&diff.isGlobalBaselineMapping) return !!diff.isGlobalBaselineMapping(m,cfg,hp());
+    if(diff&&diff.isAppScenarioMapping) return !diff.isAppScenarioMapping(m);
+    return !String(m.appTargetId||'').trim();
+  }
+
+  function universalShortName(){
+    return t('homeWbChipUniversal')||t('voiceSchemeDefaultName').split('·')[0].trim()||'通用';
+  }
+
   function scheduleVoiceRender(){
     if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
       global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
@@ -283,7 +304,7 @@
   }
 
   function renderGlobalTab(isEditing,isRunning){
-    var globalName=esc(t('voiceSchemeDefaultName').split('·')[0].trim());
+    var globalName=esc(universalShortName());
     return '<button type="button" class="keys-workflow-tab voice-workflow-tab'+(isEditing?' is-active':'')+(isRunning?' is-voice-running':'')+'" role="tab" aria-selected="'+(isEditing?'true':'false')+'" id="voiceWorkflowTab-global" data-voice-scheme-id="'+GLOBAL_SCHEME_ID+'" title="'+esc(t('voiceSchemeRuntimeGlobalHint'))+'">'
       +'<span class="keys-workflow-tab-name">'+globalName+'</span>'
       +(isRunning?'<span class="voice-workflow-tab-running" aria-hidden="true">●</span>':'')
@@ -302,12 +323,13 @@
     var schemes=voiceSchemes(cfg);
     var editing=editSchemeId(cfg,schemes);
     var running=activeRuntimeSchemeId(cfg,schemes);
+    var baselineRunning=isBaselineRuntimeActive(cfg);
     if(bar) bar.hidden=false;
     if(!schemes.length){
-      tabs.innerHTML=renderGlobalTab(editing===GLOBAL_SCHEME_ID,false);
+      tabs.innerHTML=renderGlobalTab(editing===GLOBAL_SCHEME_ID,baselineRunning);
       return;
     }
-    var html=renderGlobalTab(editing===GLOBAL_SCHEME_ID,running==='');
+    var html=renderGlobalTab(editing===GLOBAL_SCHEME_ID,baselineRunning);
     html+=schemes.map(function(m){
       var isEditing=m.id===editing;
       var isRunning=!!running&&m.id===running;
@@ -355,10 +377,10 @@
     return {cls:'is-saved',key:'voiceHubStatusSaved'};
   }
 
-  function renderVoiceHubRuntimeRow(editing,running){
-    var globalName=t('voiceSchemeDefaultName').split('·')[0].trim();
+  function renderVoiceHubRuntimeRow(editing,cfg){
+    var globalName=universalShortName();
     var isEditing=editing===GLOBAL_SCHEME_ID;
-    var isRunning=!running;
+    var isRunning=isBaselineRuntimeActive(cfg);
     var tag=isRunning?{cls:'is-active',key:'voiceHubStatusRunning'}:{cls:'is-incomplete',key:'voiceHubStatusRuntime'};
     return '<div class="keys-hub-scheme-row voice-hub-scheme-row'+(isEditing?' is-editing':'')+'" role="listitem" data-voice-edit-global="1">'
       +'<button type="button" class="keys-hub-scheme-main" data-voice-edit-global="1" aria-current="'+(isEditing?'true':'false')+'">'
@@ -409,7 +431,7 @@
     var editing=editSchemeId(cfg,schemes);
     var running=activeRuntimeSchemeId(cfg,schemes);
     if(countEl) countEl.textContent=String(schemes.length);
-    var html=renderVoiceHubRuntimeRow(editing,running);
+    var html=renderVoiceHubRuntimeRow(editing,cfg);
     if(!schemes.length){
       schemeList.innerHTML=html;
     }else{
@@ -595,6 +617,8 @@
     editSchemeId:editSchemeId,
     selectedSchemeId:selectedSchemeId,
     activeRuntimeSchemeId:activeRuntimeSchemeId,
+    isBaselineRuntimeActive:isBaselineRuntimeActive,
+    universalShortName:universalShortName,
     selectVoiceSchemeForEdit:selectVoiceSchemeForEdit,
     startNewVoiceDraft:startNewVoiceDraft,
     selectVoiceRuntimeGlobal:selectVoiceRuntimeGlobal,

@@ -3099,7 +3099,7 @@
       '<p class="codex-pad-mgr__label">' + esc(t('softPadTopbarMonitorTitle', '顶栏监视')) + '</p>' +
       '<p class="codex-pad-mgr__hint">' +
       esc(t('softPadTopbarMonitorLead',
-        '跨应用显示忙闲；点条目可跳转习惯。按当前习惯分别保存，只读展示，不影响按键动作。')) +
+        '跨应用显示忙闲；点条目可跳转习惯。只读观察，不是钉主控（主控始终 Auto）。切换「通用」习惯不会关掉 Soft Pad 键位。')) +
       '</p>' +
       '<div class="soft-pad-topbar-light-active-list" role="list" aria-live="polite">' + activeHtml + '</div>' +
       addHtml +

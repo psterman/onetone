@@ -244,11 +244,17 @@
       }
     }
 
-    // Paint voice chrome first, then pack/mount (同 openScenarioKeysEdit).
-    ensureDrawerPanel('voiceWake');
-    requestAnimationFrame(function(){
-      setTimeout(finishHeavy,0);
-    });
+    // Paint voice chrome first via drawer deferHeavy, then pack/mount (同 openScenarioKeysEdit).
+    var voiceOpts={panel:'voiceWake',voiceSubpage:'wake',deferHeavy:true,afterHeavy:finishHeavy};
+    if(global.OneToneSettingsDrawer){
+      if(!ui().drawerOpen&&typeof global.OneToneSettingsDrawer.open==='function'){
+        global.OneToneSettingsDrawer.open(voiceOpts);
+      }else{
+        global.OneToneSettingsDrawer.setPanel('voiceWake',voiceOpts);
+      }
+    }else{
+      finishHeavy();
+    }
   }
 
   function openScenarioCameraEdit(id,opts){

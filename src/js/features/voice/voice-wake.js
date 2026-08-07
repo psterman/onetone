@@ -20,6 +20,14 @@
   var voiceModeSwitchPending=null;
   /** Sticky UI/config strategy while IPC + mvp_init race; prevents snap-back to auto. */
   var voiceStrategyHold=null;
+  /** Ignore strategy/engine clicks shortly after opening voice panel (howto → drawer ghost click). */
+  var voiceOpenClickGuardUntil=0;
+  function armOpenClickGuard(ms){
+    voiceOpenClickGuardUntil=Date.now()+(Number(ms)||450);
+  }
+  function isOpenClickGuarded(){
+    return Date.now()<voiceOpenClickGuardUntil;
+  }
   var voiceSapiTogglePending=false;
   var voiceVoskTogglePending=false;
   var voiceVoskPendingPreset=null;
@@ -1505,6 +1513,15 @@
     opts=opts||{};
     strategy=String(strategy||'').trim();
     if(strategy!=='auto'&&strategy!=='resourceSaver'&&strategy!=='enhanced'&&strategy!=='off') return;
+    // Homepage howto click opening the drawer must not land on strategy tabs under the cursor.
+    if(isOpenClickGuarded()&&opts.toastKind==='lite'){
+      try{
+        if(global.OneToneIpc&&global.OneToneIpc.invoke){
+          global.OneToneIpc.invoke('cmd_app_log',{line:'fe switchListeningStrategy ignored open-guard strategy='+strategy}).catch(function(){});
+        }
+      }catch(_){}
+      return;
+    }
     voiceModeSwitchSeq++;
     hooks().markVoiceEngineBootHandled();
     if(strategy==='resourceSaver') setVoiceWakeExpandedMode('kws');
@@ -1663,6 +1680,14 @@
   function switchVoiceMode(mode, opts){
     opts=opts||{};
     if(voskOnlyUi()&&mode==='sapi') return;
+    if(isOpenClickGuarded()&&opts.toastKind==='lite'){
+      try{
+        if(global.OneToneIpc&&global.OneToneIpc.invoke){
+          global.OneToneIpc.invoke('cmd_app_log',{line:'fe switchVoiceMode ignored open-guard mode='+mode}).catch(function(){});
+        }
+      }catch(_){}
+      return;
+    }
     const toastKind=opts.toastKind||'default';
     const toastLite=toastKind==='lite';
     function modeToast(){
@@ -3336,6 +3361,8 @@
     syncExpandedUi:syncVoiceWakeExpandedUi,
     setExpandedMode:setVoiceWakeExpandedMode,
     getExpandedMode:function(){ return voiceWakeExpandedMode; },
+    armOpenClickGuard:armOpenClickGuard,
+    isOpenClickGuarded:isOpenClickGuarded,
     renderModeSwitch:renderVoiceModeSwitch,
     switchMode:switchVoiceMode,
     switchListeningStrategy:switchListeningStrategy,

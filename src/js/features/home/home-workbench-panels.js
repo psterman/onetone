@@ -707,6 +707,16 @@
     }else{
       voiceLbl=t('homeWbHabitChVoiceInherit','语音·沿用通用');
     }
+    var camOv=m&&m.cameraOverride;
+    var camCustom=!!(camOv&&typeof camOv==='object'&&Object.keys(camOv).length);
+    var camLbl;
+    if(!isAppScenarioScene(m)){
+      camLbl=t('habitHubChCamBase','摄像头·通用');
+    }else if(camCustom){
+      camLbl=t('habitHubChCamOn','摄像头·已设');
+    }else{
+      camLbl=t('habitHubChCamInherit','摄像头·沿用通用');
+    }
     var hub=global.OneToneSoftPadHub;
     var padEligible=!!(hub&&hub.isSoftPadSchemeEligible&&hub.isSoftPadSchemeEligible(m));
     var padOn=!!(m&&m.codexMicroPad&&m.codexMicroPad.enabled);
@@ -721,8 +731,9 @@
     function pill(label){
       return '<span class="wb-scene-summary-pill">'+esc(label)+'</span>';
     }
+    // Order matches homepage howto quad + Hub micro-pills: keys · voice · camera · softPad.
     return '<span class="wb-scene-summary-pills" aria-hidden="true">'
-      +pill(keysLbl)+pill(voiceLbl)+pill(padLbl)
+      +pill(keysLbl)+pill(voiceLbl)+pill(camLbl)+pill(padLbl)
       +'</span>';
   }
 

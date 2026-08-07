@@ -18,7 +18,7 @@
   }
 
   function resolveHabitDisplayName(mapping){
-    if(!mapping) return '—';
+    if(!mapping) return t('homeWbChipUniversal')||'通用';
     if((mapping.group||'').trim()) return mapping.group.trim();
     if(global.OneToneHomeScheme&&global.OneToneHomeScheme.shortName) return global.OneToneHomeScheme.shortName(mapping);
     if((mapping.label||'').trim()) return mapping.label.trim();
@@ -34,17 +34,23 @@
     function findById(id){
       return id&&Array.isArray(cfg.mappings)?cfg.mappings.find(function(m){ return m.id===id; }):null;
     }
-    // App-scenario voice/keys edit: always bind to the scenario mapping being edited.
+    function universalHabit(){
+      return {id:'',name:t('homeWbChipUniversal')||'通用',mapping:null};
+    }
+    var uiEdit=global.OneToneState.ui&&global.OneToneState.ui.voiceEditSchemeId;
+    // Global voice base wins over leftover habitScenarioReturnId (openGlobalVoice clears it,
+    // but nav reopen / race must not reattach active Cursor as the edit identity).
+    if(uiEdit==='__global__'||uiEdit===null){
+      return universalHabit();
+    }
+    // App-scenario voice edit: bind to the scenario mapping being edited.
     var scenarioEditId=global.OneToneState.ui&&global.OneToneState.ui.habitScenarioReturnId;
-    if(scenarioEditId!=null&&String(scenarioEditId).trim()){
+    var scenarioPanel=global.OneToneState.ui&&global.OneToneState.ui.habitScenarioReturnPanel;
+    if(String(scenarioPanel||'')==='voice'&&scenarioEditId!=null&&String(scenarioEditId).trim()){
       var scenarioMapping=findById(String(scenarioEditId).trim());
       if(scenarioMapping){
         return {id:scenarioMapping.id,name:resolveHabitDisplayName(scenarioMapping),mapping:scenarioMapping};
       }
-    }
-    var uiEdit=global.OneToneState.ui&&global.OneToneState.ui.voiceEditSchemeId;
-    if(uiEdit==='__global__'){
-      return {id:'',name:resolveHabitDisplayName(null),mapping:null};
     }
     var selId=state.selectedMappingId;
     var sel=findById(selId);
@@ -56,9 +62,12 @@
       if(editMapping&&isVoiceOnly(editMapping)){
         return {id:editMapping.id,name:resolveHabitDisplayName(editMapping),mapping:editMapping};
       }
+      if(editMapping){
+        return {id:editMapping.id,name:resolveHabitDisplayName(editMapping),mapping:editMapping};
+      }
     }
-    if(uiEdit===null||uiEdit==='__global__'){
-      return {id:'',name:resolveHabitDisplayName(null),mapping:null};
+    if(!String(selId||'').trim()){
+      return universalHabit();
     }
     var activeId=cfg.activeSceneId;
     var active=findById(activeId);
@@ -120,13 +129,14 @@
 
   function resolveScopeSummary(vm){
     const m=vm.habitMapping;
-    if(!m) return t('voiceSummaryScopeAll');
+    // Global voice edit: never list active app / Agent scope as if this were that scene.
+    if(!m) return t('voiceSummaryScopeUniversal')||t('voiceSummaryScopeAll')||'所有未单独覆盖的习惯';
     const appRules=global.OneToneAppBehaviorRules;
     const primary=String(m.appTargetId||'').trim();
     const rules=Array.isArray(m.appBehaviorRules)?m.appBehaviorRules.filter(function(r){
       return r&&r.appId;
     }):[];
-    if(!primary&&!rules.length) return t('voiceSummaryScopeAll');
+    if(!primary&&!rules.length) return t('voiceSummaryScopeUniversal')||t('voiceSummaryScopeAll')||'所有未单独覆盖的习惯';
     const ids=[];
     const labels=[];
     rules.forEach(function(r){
@@ -147,12 +157,12 @@
     if(labels.length>1) return t('voiceSummaryScopeMulti').replace('{n}',String(labels.length));
     if(ids.length===1&&appRules) return appRules.appDisplayName(ids[0]);
     if(ids.length>1) return t('voiceSummaryScopeMulti').replace('{n}',String(ids.length));
-    return t('voiceSummaryScopeAll');
+    return t('voiceSummaryScopeUniversal')||t('voiceSummaryScopeAll')||'所有未单独覆盖的习惯';
   }
 
   function resolveSchemeDisplayName(vm){
     if(vm.loading) return t('homeLiveLoading');
-    const habit=vm.habitName&&vm.habitName!=='—'?vm.habitName:t('voiceSchemeDefaultName').split('·')[0].trim();
+    const habit=vm.habitName&&vm.habitName!=='—'?vm.habitName:(t('homeWbChipUniversal')||'通用');
     return habit+' · '+vm.modeLabel;
   }
 

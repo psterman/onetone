@@ -1292,7 +1292,7 @@ pub struct CodexMicroPadConfig {
     /// When false, Soft RGB / bezel ambient is off (does not disable Soft Pad keys).
     #[serde(default = "default_true")]
     pub ambient_enabled: bool,
-    /// Soft Pad top-bar habit mapping ids (non-agent Soft Pad habits).
+    /// Soft Pad top-bar status-monitor habit ids (observe/jump only — not runtime pin).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub topbar_habit_ids: Vec<String>,
     /// Key/status light palette preset id: `default` | `cool` | `warm` | `highContrast`.

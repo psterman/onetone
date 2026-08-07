@@ -231,13 +231,14 @@
     if(schemes.length&&selectedId&&selectedId!=='__global__'){
       mapping=schemes.find(function(m){ return m.id===selectedId; })||mapping;
     }
+    var universalLbl=t('homeWbChipUniversal')||'通用';
     var displayName;
     if(selectedId==='__global__'){
-      displayName=t('voiceSchemeDefaultName').split('·')[0].trim();
+      displayName=universalLbl;
     }else if(schemes.length&&mapping){
       displayName=(global.OneToneHabitProfile&&global.OneToneHabitProfile.habitDisplayName)?global.OneToneHabitProfile.habitDisplayName(mapping):(mapping.group||mapping.label||'—');
     }else{
-      displayName=vm.habitName&&vm.habitName!=='—'?vm.habitName:t('voiceSchemeDefaultName').split('·')[0].trim();
+      displayName=vm.habitName&&vm.habitName!=='—'?vm.habitName:universalLbl;
     }
     var pillCls='keys-scheme-summary-pill voice-scheme-summary-pill';
     var statusBit=vm.voiceOn?t('voiceSummaryStatusOn'):t('voiceSummaryStatusOff');

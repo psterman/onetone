@@ -362,6 +362,46 @@ Api.dispatchAction('send','blink').then(function(r){
   assert.strictEqual(Api.prefs().deliberateBlink,'pressCtrlI');
   assert.strictEqual(Api.overrideDiffersFromBase(),false);
 
+  // Gate: global edit writes cameraPrefs, never invents cameraOverride on the active scenario.
+  global.OneToneState.ui={cameraEditMode:'global',habitScenarioReturnPanel:'',habitScenarioReturnId:''};
+  global.OneToneState.state.selectedMappingId='';
+  Api.persist({shakeHead:'pressEsc'});
+  assert.strictEqual(
+    global.OneToneState.state.config.cameraPrefs.presenceActions.shakeHead,
+    'pressEsc',
+    'global persist writes cameraPrefs'
+  );
+  assert.strictEqual(codex.cameraOverride,null,'global persist must not write cameraOverride');
+
+  // Gate: appScenario + return panel + aligned selectedMappingId → cameraOverride only.
+  global.OneToneState.ui={
+    cameraEditMode:'appScenario',
+    habitScenarioReturnPanel:'camera',
+    habitScenarioReturnId:'codex-1'
+  };
+  global.OneToneState.state.selectedMappingId='codex-1';
+  Api.persist({shakeHead:'agent:cancel',triggers:{shake:true}});
+  assert.ok(codex.cameraOverride&&codex.cameraOverride.shakeHead==='agent:cancel',
+    'appScenario persist writes cameraOverride action');
+  assert.strictEqual(
+    global.OneToneState.state.config.cameraPrefs.presenceActions.shakeHead,
+    'pressEsc',
+    'appScenario persist leaves cameraPrefs action unchanged'
+  );
+  assert.strictEqual(Api.prefs().shakeHead,'agent:cancel','runtime merge prefers active override');
+
+  // Misaligned selectedMappingId must not authorize override writes.
+  global.OneToneState.state.selectedMappingId='other';
+  var before=JSON.stringify(codex.cameraOverride);
+  Api.persist({deliberateBlink:'agent:openAgent'});
+  assert.strictEqual(JSON.stringify(codex.cameraOverride),before,
+    'misaligned selectedMappingId blocks cameraOverride write');
+  assert.strictEqual(
+    global.OneToneState.state.config.cameraPrefs.presenceActions.deliberateBlink,
+    'agent:openAgent',
+    'blocked gate falls through to cameraPrefs'
+  );
+
   assert.ok(!listeners.DOMContentLoaded||listeners.DOMContentLoaded.length===1,
     'module may register init listener but tests do not fire it');
   console.log('camera-presence-actions.test.js: ok');

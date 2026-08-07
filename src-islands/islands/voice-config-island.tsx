@@ -22,10 +22,12 @@ const STRATEGIES: { key: string; label: string }[] = [
 function getWakeApi(): {
   switchListeningStrategy?: (s: string, opts?: { toastKind?: string }) => void;
   isModeSwitchPending?: () => boolean;
+  isOpenClickGuarded?: () => boolean;
 } | undefined {
   return (window as unknown as { OneToneVoiceWake?: {
     switchListeningStrategy?: (s: string, opts?: { toastKind?: string }) => void;
     isModeSwitchPending?: () => boolean;
+    isOpenClickGuarded?: () => boolean;
   } }).OneToneVoiceWake;
 }
 
@@ -47,6 +49,8 @@ function StrategySelector(): JSX.Element {
   const apply = async (key: string): Promise<void> => {
     const wake = getWakeApi();
     if (wake?.isModeSwitchPending?.()) return;
+    // Homepage howto → drawer open must not ghost-click strategy segments.
+    if (wake?.isOpenClickGuarded?.()) return;
     setStrategy(key);
     setBusy(true);
     // 单一路径：走 legacy switchListeningStrategy（busy/finish/hold + 与 applyMvpInit 延后刷新配合），
