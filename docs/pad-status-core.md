@@ -62,6 +62,7 @@ Snapshot：`statusLightMicroKeyId`、`appAgent`、`agentLights`、`agentLightsOv
 - **多 Agent 身份**：`AgentCatalog` + `PadFace` + Capabilities；`mapping.app_target_id` 仅为兼容 fallback。
 - **Soft Pad 等待抢主控**：只信 `AgentAttentionStore` 投影的 `waiting_kinds`；**禁止**把 PadStatus 24h sticky / Inferred 直喂 Arbiter。
 - **Cursor**：可 focus + chord + Hook 生命周期（Working/Idle/Complete）；默认 `can_observe_needs_input=false`；OneTone ask 可进 waiting；不宣称内部 Agent API / Micro 对等。
+- **Codex 失败边沿**：当前官方 Hook 没有 `StopFailure` / `PostToolUseFailure`；不得从普通 `Stop` 或 `PostToolUse` 推断失败。App Server 只在 `turn/completed.turn.status=failed` 或 `thread/status/changed.status.type=systemError` 时投影 `AttentionState::Error` → `agent.failed`；`interrupted` 归 Idle，不响失败音。bridge 仅为未来明确 Hook 事件保留同名兼容映射。
 - **日志测试隔离**：单测临时 jsonl，不污染 `logs/pad-status.jsonl`。
 
 ### 五级诚实能力（契约）

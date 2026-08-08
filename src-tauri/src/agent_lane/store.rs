@@ -69,7 +69,7 @@ fn map_event(event: &str) -> Option<LaneState> {
         }
         "StopFailure" | "PostToolUseFailure" | "error" | "failed" => Some(LaneState::ErrorUnread),
         "SessionEnd" | "sessionEnd" | "disconnected" => Some(LaneState::Disconnected),
-        "SessionStart" | "sessionStart" | "idle" => Some(LaneState::Idle),
+        "SessionStart" | "sessionStart" | "idle" | "interrupted" => Some(LaneState::Idle),
         _ => None,
     }
 }

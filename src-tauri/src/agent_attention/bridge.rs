@@ -110,6 +110,18 @@ pub fn ingest_codex_hook_event(event: &str, session_id: &str, request_id: &str) 
                 SignalSource::OfficialHook,
             );
         }
+        // The current Codex Hook contract does not emit these names. Keep the
+        // bridge ready for an explicit future event or an external relay,
+        // without inferring failure from a normal Stop/PostToolUse.
+        "StopFailure" | "PostToolUseFailure" => {
+            clear(AgentKind::Codex, session, request);
+            raise_lifecycle(
+                AgentKind::Codex,
+                session,
+                AttentionState::Error,
+                SignalSource::OfficialHook,
+            );
+        }
         "Stop" | "SessionStart" | "PostToolUse" | "TaskComplete" => {
             clear(AgentKind::Codex, session, request);
             if matches!(ev, "Stop" | "TaskComplete") {
@@ -145,6 +157,7 @@ pub fn ingest_codex_app_server_event(event: &str, session_id: &str, request_id: 
     if lower.contains("approval")
         || lower.contains("requestuserinput")
         || lower.contains("request_user_input")
+        || lower == "needs_input"
     {
         raise_needs_input(
             AgentKind::Codex,
@@ -153,6 +166,46 @@ pub fn ingest_codex_app_server_event(event: &str, session_id: &str, request_id: 
             AttentionCause::UserInput,
             SignalSource::AppServer,
         );
+        return;
+    }
+
+    match lower.as_str() {
+        "error" | "failed" | "system_error" => {
+            clear(AgentKind::Codex, session, request);
+            raise_lifecycle(
+                AgentKind::Codex,
+                session,
+                AttentionState::Error,
+                SignalSource::AppServer,
+            );
+        }
+        "done" | "complete" | "completed" => {
+            clear(AgentKind::Codex, session, request);
+            raise_lifecycle(
+                AgentKind::Codex,
+                session,
+                AttentionState::Complete,
+                SignalSource::AppServer,
+            );
+        }
+        "idle" | "interrupted" => {
+            clear(AgentKind::Codex, session, request);
+            raise_lifecycle(
+                AgentKind::Codex,
+                session,
+                AttentionState::Idle,
+                SignalSource::AppServer,
+            );
+        }
+        "working" | "active" | "started" => {
+            raise_lifecycle(
+                AgentKind::Codex,
+                session,
+                AttentionState::Working,
+                SignalSource::AppServer,
+            );
+        }
+        _ => {}
     }
 }
 
@@ -252,6 +305,34 @@ mod tests {
         assert_eq!(project_waiting_kinds().0, vec![AgentKind::Codex]);
         ingest_codex_hook_event("Stop", "sess", "turn");
         assert!(project_waiting_kinds().0.is_empty());
+    }
+
+    #[test]
+    fn codex_explicit_hook_failure_maps_to_error() {
+        let _g = test_lock();
+        reset_for_test();
+        ingest_codex_hook_event("PostToolUseFailure", "sess", "turn");
+        assert_eq!(
+            primary_state_for(AgentKind::Codex),
+            Some(AttentionState::Error)
+        );
+    }
+
+    #[test]
+    fn codex_app_server_failed_and_interrupted_are_distinct() {
+        let _g = test_lock();
+        reset_for_test();
+        ingest_codex_app_server_event("failed", "sess", "turn");
+        assert_eq!(
+            primary_state_for(AgentKind::Codex),
+            Some(AttentionState::Error)
+        );
+
+        ingest_codex_app_server_event("interrupted", "sess", "turn");
+        assert_eq!(
+            primary_state_for(AgentKind::Codex),
+            Some(AttentionState::Idle)
+        );
     }
 
     #[test]

@@ -13,7 +13,7 @@ pub fn ingest_app_server_message(message: &Value) -> bool {
         .unwrap_or("");
     let params = message.get("params").cloned().unwrap_or(Value::Null);
 
-    let (event, thread_id, cwd) = match method {
+    let (event, thread_id, request_id, cwd) = match method {
         "thread/status/changed" => {
             let tid = params
                 .get("threadId")
@@ -49,7 +49,7 @@ pub fn ingest_app_server_message(message: &Value) -> bool {
                 "idle" => "idle",
                 _ => "idle",
             };
-            (event, tid, String::new())
+            (event, tid, String::new(), String::new())
         }
         "turn/started" => {
             let tid = params
@@ -58,7 +58,12 @@ pub fn ingest_app_server_message(message: &Value) -> bool {
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
-            ("working", tid, String::new())
+            let request_id = params
+                .pointer("/turn/id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            ("working", tid, request_id, String::new())
         }
         "turn/completed" => {
             let tid = params
@@ -71,8 +76,19 @@ pub fn ingest_app_server_message(message: &Value) -> bool {
                 .pointer("/turn/status")
                 .and_then(|v| v.as_str())
                 .unwrap_or("completed");
-            let event = if st == "completed" { "done" } else { "error" };
-            (event, tid, String::new())
+            let request_id = params
+                .pointer("/turn/id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let event = match st {
+                "completed" => "done",
+                "failed" => "error",
+                // A user interruption is terminal, but it is not a failure.
+                "interrupted" => "interrupted",
+                _ => "idle",
+            };
+            (event, tid, request_id, String::new())
         }
         "thread/started" => {
             let tid = params
@@ -86,7 +102,7 @@ pub fn ingest_app_server_message(message: &Value) -> bool {
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
-            ("working", tid, cwd)
+            ("working", tid, String::new(), cwd)
         }
         _ => return false,
     };
@@ -94,6 +110,7 @@ pub fn ingest_app_server_message(message: &Value) -> bool {
     if thread_id.is_empty() {
         return false;
     }
+    crate::agent_attention::ingest_codex_app_server_event(event, &thread_id, &request_id);
     ingest_lane_event(LaneIngest {
         provider: AgentKind::Codex,
         workspace_id: cwd.clone(),
@@ -172,10 +189,13 @@ pub fn discover_threads_from_list_result(result: &Value) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agent_attention::store::{reset_for_test as reset_attention, test_lock};
     use crate::agent_lane::store::{public_lanes_for_page, reset_for_test};
 
     #[test]
     fn app_server_status_changed_creates_lane() {
+        let _g = test_lock();
+        reset_attention();
         reset_for_test();
         let msg = serde_json::json!({
             "method": "thread/status/changed",
@@ -192,6 +212,8 @@ mod tests {
 
     #[test]
     fn started_with_cwd_then_status_without_cwd_updates_same_lane() {
+        let _g = test_lock();
+        reset_attention();
         reset_for_test();
         assert!(ingest_app_server_message(&serde_json::json!({
             "method": "thread/started",
@@ -208,5 +230,36 @@ mod tests {
         assert_eq!(lanes.len(), 1);
         assert_eq!(lanes[0].navigation.cwd, "C:/repo");
         assert_eq!(lanes[0].state.as_str(), "needs_input");
+    }
+
+    #[test]
+    fn failed_turn_enters_error_but_interrupted_turn_does_not() {
+        use crate::agent_attention::model::AttentionState;
+        use crate::agent_attention::store::primary_state_for;
+
+        let _g = test_lock();
+        reset_attention();
+        reset_for_test();
+        assert!(ingest_app_server_message(&serde_json::json!({
+            "method": "turn/completed",
+            "params": {
+                "turn": { "id": "turn_1", "threadId": "thr_1", "status": "failed" }
+            }
+        })));
+        assert_eq!(
+            primary_state_for(AgentKind::Codex),
+            Some(AttentionState::Error)
+        );
+
+        assert!(ingest_app_server_message(&serde_json::json!({
+            "method": "turn/completed",
+            "params": {
+                "turn": { "id": "turn_2", "threadId": "thr_1", "status": "interrupted" }
+            }
+        })));
+        assert_eq!(
+            primary_state_for(AgentKind::Codex),
+            Some(AttentionState::Idle)
+        );
     }
 }
