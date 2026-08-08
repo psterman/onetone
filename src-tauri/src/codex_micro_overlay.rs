@@ -17,9 +17,9 @@ use crate::AppState;
 pub const CODEX_MICRO_OVERLAY_LABEL: &str = "codex_micro_overlay";
 
 const OVERLAY_WIDTH: f64 = 432.0;
-/// Pad chassis (400) + caption/CTA/gate summary + app-meta + root pad.
-/// Was 468 — diagnose panel / nav CTA made the centered chassis clip top/bottom.
-const OVERLAY_HEIGHT_FULL: f64 = 620.0;
+/// Pad chassis (400) + usage caption + light-gate / nav CTA + root pad.
+/// Keep ahead of content: short windows clip the bottom caption/gate (flat cut).
+const OVERLAY_HEIGHT_FULL: f64 = 680.0;
 /// Left NAV rail strip is always reserved in the window so JOY open/close never
 /// resizes/repositions the pad (CSS fades the rail in-place).
 /// Deprecated: JOY side-rail removed; NAV keys live on the 5-col main pad.
@@ -3275,8 +3275,14 @@ fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnaps
     let (logical_w, logical_h) = overlay_logical_size(minimized, snapshot.joy_nav_panel_open);
     let height_key = logical_h.round() as i32;
     let prev = *overlay_last_geom().lock();
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let target_h = (logical_h * scale).round() as u32;
+    let size_mismatch = win
+        .outer_size()
+        .ok()
+        .is_none_or(|size| size.height.abs_diff(target_h) > 2);
 
-    if prev == Some((minimized, height_key)) {
+    if prev == Some((minimized, height_key)) && !size_mismatch {
         return false;
     }
 
@@ -3439,6 +3445,21 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
     let gate_reason = overlay_runtime_gate_reason(state);
     let host_ok = gate_reason.is_none() && overlay_should_be_visible_host();
     let is_fg = *last_foreground_codex().lock();
+
+    // Claude FG: nudge DeepSeek cash-balance refresh (5min poll alone is too cold for Soft Pad).
+    if claude_is_foreground() {
+        static LAST_DS_KICK: std::sync::OnceLock<parking_lot::Mutex<std::time::Instant>> =
+            std::sync::OnceLock::new();
+        let slot = LAST_DS_KICK.get_or_init(|| {
+            parking_lot::Mutex::new(std::time::Instant::now() - std::time::Duration::from_secs(120))
+        });
+        let mut last = slot.lock();
+        if last.elapsed() >= std::time::Duration::from_secs(45) {
+            *last = std::time::Instant::now();
+            drop(last);
+            crate::agent_usage::kick_deepseek_balance_refresh();
+        }
+    }
 
     // Soft Pad lane follows live FG (cached terminal-CLI probe; do not re-walk process tree here).
     // Throttle recompute: at most once per second when FG kind changes.

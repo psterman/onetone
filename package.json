@@ -16,6 +16,8 @@
     "test:home-alerts": "node scripts/test-home-workbench-alerts.js",
     "test:home-habit-channels": "node scripts/test-home-habit-channel-pills.mjs",
     "test:habit-ia-copy": "node scripts/test-habit-ia-universal-copy.mjs",
+    "test:deepseek-usage": "node scripts/test-deepseek-usage.mjs",
+    "test:provider-usage": "node scripts/test-provider-usage.mjs",
     "test:voice-open-defer": "node scripts/test-voice-open-defer-freeze.mjs",
     "test:target-key-catalog": "node scripts/verify-target-key-catalog.mjs",
     "test:voice-acoustic": "node scripts/voice-acoustic-config.test.js && node scripts/voice-acoustic-matcher.test.js && node scripts/voice-acoustic-ui.test.js",

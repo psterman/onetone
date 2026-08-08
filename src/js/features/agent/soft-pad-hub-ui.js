@@ -1073,12 +1073,20 @@
     usage = usage || {};
     var status = String(usage.status || 'unavailable');
     var windows = Array.isArray(usage.windows) ? usage.windows : [];
+    var conf = String(usage.confidence || usageVal(usage, 'confidence', 'confidence') || '');
     var bits = [];
     if (kind === 'codex' || kind === 'claude') {
-      windows.slice(0, 2).forEach(function (w) {
-        var lab = windowQuotaLabel(w);
-        if (lab) bits.push(lab);
-      });
+      var src = String(usage.source || '');
+      if (kind === 'claude' && (src === 'deepseek_balance' || src === 'kimi_balance' || conf === 'manual_or_local_estimate')) {
+        var balMsg = String(usage.message || '').trim();
+        if (balMsg) bits.push(balMsg.split(' · ')[0]);
+      }
+      if (!bits.length) {
+        windows.slice(0, 2).forEach(function (w) {
+          var lab = windowQuotaLabel(w);
+          if (lab) bits.push(lab);
+        });
+      }
       if (!bits.length) {
         if (kind === 'claude') {
           var sess = usageVal(usage, 'sessionTokens', 'session_tokens');
@@ -1090,12 +1098,16 @@
             var c = Number(cost);
             bits.push('估算 $' + (isFinite(c) ? (Math.round(c * 1e4) / 1e4) : cost));
           }
-          if (!bits.length) bits.push('用量 --');
+          if (!bits.length) bits.push(conf === 'manual_or_local_estimate' ? '官方剩余请到控制台' : '用量 --');
         } else {
           var remaining = usageVal(usage, 'remainingPercent', 'remaining_percent');
           if (remaining != null) bits.push('窗口余 ' + Math.round(Number(remaining)) + '%');
         }
       }
+      var locT = usageVal(usage, 'localTodayTokens', 'local_today_tokens');
+      var locM = usageVal(usage, 'localMonthTokens', 'local_month_tokens');
+      if (locT != null && Number(locT) > 0) bits.push('本机今日 ' + Math.round(Number(locT)));
+      else if (locM != null && Number(locM) > 0) bits.push('本机本月 ' + Math.round(Number(locM)));
     } else if (kind === 'cursor') {
       bits.push('用量 --');
     }
@@ -1104,7 +1116,10 @@
       plan: String(usageVal(usage, 'planType', 'plan_type') || '').trim(),
       usageSummary: bits.length ? bits.join(' / ') : (status === 'ready' ? '--' : '—'),
       resetCountdown: formatResetCountdown(primaryResetAt(usage)) || '—',
-      usageState: status
+      usageState: status,
+      confidence: conf || '',
+      consoleUrl: String(usageVal(usage, 'consoleUrl', 'console_url') || '').trim(),
+      codingPlanWarning: !!(usage.codingPlanWarning || usage.coding_plan_warning)
     };
   }
 
@@ -1303,7 +1318,10 @@
         plan: usageProps.plan,
         usageSummary: usageProps.usageSummary,
         resetCountdown: usageProps.resetCountdown,
-        usageState: usageProps.usageState
+        usageState: usageProps.usageState,
+        confidence: usageProps.confidence,
+        consoleUrl: usageProps.consoleUrl,
+        codingPlanWarning: usageProps.codingPlanWarning
       });
     } catch (_) {
       return props;
@@ -4559,10 +4577,33 @@
       else panel.insertBefore(hint, anchor);
     }
     // Fixed one-liner: Soft Pad Auto ≠ 「正在使用」habit switch.
-    hint.textContent = t(
-      'softPadAutoVsActiveHint',
-      '键位跟随前台 Agent（Auto），与「正在使用」习惯不是同一个开关。'
-    );
+    var lines = [
+      t(
+        'softPadAutoVsActiveHint',
+        '键位跟随前台 Agent（Auto），与「正在使用」习惯不是同一个开关。'
+      )
+    ];
+    try {
+      var snap = overlayUsageCache && overlayUsageCache.snap;
+      var row = pickUsageAgentRow(snap, selectedScopeId || 'claude');
+      var usage = row && (row.usage || {});
+      if (usage && (usage.codingPlanWarning || usage.coding_plan_warning)) {
+        lines.push(
+          t(
+            'softPadCodingPlanProbeWarn',
+            'Coding Plan 套餐 key 勿用于 curl/批量等非编程工具探测，以免封禁或额外扣费。'
+          )
+        );
+      }
+      var conf = String((usage && (usage.confidence || '')) || '');
+      var curl = String((usage && (usage.consoleUrl || usage.console_url)) || '').trim();
+      if (conf === 'manual_or_local_estimate' && curl) {
+        lines.push(
+          t('softPadManualQuotaHint', '官方剩余请到控制台查看') + ' · ' + curl
+        );
+      }
+    } catch (_) {}
+    hint.textContent = lines.join(' ');
     hint.hidden = false;
   }
 

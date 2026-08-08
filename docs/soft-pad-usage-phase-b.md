@@ -123,6 +123,10 @@ PATH probe + 超时 + max stdout + 严格 JSON；只合并空字段；Codex 外�
 | `会话 N` | `thread/tokenUsage/updated` | 仅 OneTone 管理的 thread |
 | `本会话 N` / `子任务 N` / `估算 $N` | Claude OTel | **不在 mini/Soft Pad 额度行展示**（本地估算，非正式账单） |
 | `Nh余 N%`（Claude） | Claude Code statusLine → `/api/claude-statusline` | 官方 5h/7d 限额窗口 |
+| `DeepSeek 余额 ¥N` / `$N` | Claude `ANTHROPIC_BASE_URL=api.deepseek.com` → `GET /user/balance` | API 现金余额（无 % 窗口；不接 cookie 日用量） |
+| `Ark/GLM/MiniMax Nh余N%` | `provider_usage`：arkcli / quota/limit / remains | Coding Plan 窗口；见 `docs` 多厂商方案 |
+| `Kimi 余额` | Moonshot `GET /v1/users/me/balance` | 余额文案；细分消耗看本机账本 |
+| 百炼 / MiMo | `manual_or_local_estimate` | 本机消耗 + 控制台入口，不伪造官方剩余 |
 | Cursor `用量 --` | 无官方接口 | 产品边界 |
 | Claude `用量 --` | 无官方额度窗口 | 与 Cursor 同边界；后端仍可 ingest OTel |
 

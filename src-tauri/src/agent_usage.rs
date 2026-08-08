@@ -1,7 +1,9 @@
 //! Non-hook usage sources for Soft Pad.
 //!
 //! Codex account limits come from a read-only App Server connection. Claude usage
-//! comes from an opt-in OTLP/HTTP JSON metrics export. Neither path reads transcripts.
+//! comes from statusLine windows, optional OTLP/HTTP metrics, or — when Claude Code
+//! points `ANTHROPIC_BASE_URL` at DeepSeek — `GET /user/balance` (cash balance, not %).
+//! Neither path reads transcripts.
 
 use crate::soft_pad_runtime::AgentKind;
 use serde::Serialize;
@@ -17,6 +19,9 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::AppHandle;
 
 const CODEX_REFRESH_SECS: u64 = 5 * 60;
+const DEEPSEEK_REFRESH_SECS: u64 = 5 * 60;
+const DEEPSEEK_REQUEST_TIMEOUT_SECS: u64 = 15;
+const DEEPSEEK_BALANCE_URL: &str = "https://api.deepseek.com/user/balance";
 const CODEX_REQUEST_TIMEOUT_SECS: u64 = 15;
 /// After rate+usage settle, wait at most this long for account/read.
 const ACCOUNT_EXTRA_WAIT: Duration = Duration::from_millis(2500);
@@ -67,6 +72,19 @@ pub struct AgentUsageSnapshot {
     pub updated_at: u64,
     pub last_success_at: u64,
     pub message: String,
+    /// official | stale | local_only | manual_or_local_estimate (empty = legacy)
+    #[serde(default)]
+    pub confidence: String,
+    #[serde(default)]
+    pub console_url: String,
+    #[serde(default)]
+    pub coding_plan_warning: bool,
+    #[serde(default)]
+    pub local_today_tokens: Option<u64>,
+    #[serde(default)]
+    pub local_month_tokens: Option<u64>,
+    #[serde(default)]
+    pub local_today_requests: Option<u64>,
 }
 
 /// Mask an email for Soft Pad UI. Never returns the full local-part.
@@ -821,8 +839,438 @@ pub fn ingest_claude_statusline_json(raw: &str) -> Result<usize, &'static str> {
     Ok(accepted)
 }
 
+#[derive(Debug, Clone, Default)]
+struct DeepSeekBalanceState {
+    /// Claude settings currently point at api.deepseek.com.
+    detected: bool,
+    currency: String,
+    total_balance: String,
+    caption: String,
+    status: String,
+    observed_at: u64,
+    last_success_at: u64,
+    message: String,
+}
+
+fn deepseek_balance_state() -> &'static Mutex<DeepSeekBalanceState> {
+    static STATE: OnceLock<Mutex<DeepSeekBalanceState>> = OnceLock::new();
+    STATE.get_or_init(|| Mutex::new(DeepSeekBalanceState::default()))
+}
+
+fn claude_settings_json_path() -> PathBuf {
+    #[cfg(test)]
+    if let Some(p) = deepseek_settings_override().lock().unwrap().clone() {
+        return p;
+    }
+    if let Ok(home) = std::env::var("USERPROFILE") {
+        return PathBuf::from(home).join(".claude").join("settings.json");
+    }
+    if let Ok(home) = std::env::var("HOME") {
+        return PathBuf::from(home).join(".claude").join("settings.json");
+    }
+    PathBuf::from(".claude").join("settings.json")
+}
+
+#[cfg(test)]
+fn deepseek_settings_override() -> &'static Mutex<Option<PathBuf>> {
+    static OVR: OnceLock<Mutex<Option<PathBuf>>> = OnceLock::new();
+    OVR.get_or_init(|| Mutex::new(None))
+}
+
+#[cfg(test)]
+pub fn set_deepseek_settings_path_override_for_test(path: Option<PathBuf>) {
+    *deepseek_settings_override().lock().unwrap() = path;
+}
+
+/// Host-only match: official DeepSeek API (not random relays).
+pub fn is_deepseek_api_base(url: &str) -> bool {
+    let raw = url.trim();
+    if raw.is_empty() {
+        return false;
+    }
+    let lower = raw.to_ascii_lowercase();
+    let without_scheme = lower
+        .strip_prefix("https://")
+        .or_else(|| lower.strip_prefix("http://"))
+        .unwrap_or(lower.as_str());
+    let host = without_scheme
+        .split('/')
+        .next()
+        .unwrap_or("")
+        .split(':')
+        .next()
+        .unwrap_or("")
+        .trim();
+    host == "api.deepseek.com"
+}
+
+fn env_str_from_settings(env: &serde_json::Map<String, Value>, keys: &[&str]) -> Option<String> {
+    for key in keys {
+        if let Some(s) = env.get(*key).and_then(|x| x.as_str()).map(str::trim) {
+            if !s.is_empty() {
+                return Some(s.to_string());
+            }
+        }
+    }
+    None
+}
+
+/// Parse Claude Code settings for DeepSeek base URL + Bearer key.
+/// Returns `(base_url, api_key)` only when base URL host is api.deepseek.com.
+pub fn parse_claude_deepseek_auth(contents: &str) -> Option<(String, String)> {
+    let v: Value = serde_json::from_str(contents).ok()?;
+    let env = v.get("env")?.as_object()?;
+    let base = env_str_from_settings(
+        env,
+        &[
+            "ANTHROPIC_BASE_URL",
+            "ANTHROPIC_API_BASE",
+            "ANTHROPIC_BASE_URL_OVERRIDE",
+        ],
+    )?;
+    if !is_deepseek_api_base(&base) {
+        return None;
+    }
+    let key = env_str_from_settings(
+        env,
+        &[
+            "ANTHROPIC_AUTH_TOKEN",
+            "ANTHROPIC_API_KEY",
+            "DEEPSEEK_API_KEY",
+        ],
+    )
+    .unwrap_or_default();
+    Some((base, key))
+}
+
+pub fn format_deepseek_balance_caption(currency: &str, total_balance: &str) -> String {
+    let bal = total_balance.trim();
+    if bal.is_empty() {
+        return "DeepSeek 余额".into();
+    }
+    let cur = currency.trim().to_ascii_uppercase();
+    let amount = match cur.as_str() {
+        "CNY" | "RMB" => format!("¥{bal}"),
+        "USD" => format!("${bal}"),
+        "" => bal.to_string(),
+        other => format!("{bal} {other}"),
+    };
+    format!("DeepSeek 余额 {amount}")
+}
+
+fn parse_deepseek_balance_json(raw: &str) -> Result<(String, String), String> {
+    let v: Value = serde_json::from_str(raw).map_err(|e| e.to_string())?;
+    let infos = v
+        .get("balance_infos")
+        .and_then(|x| x.as_array())
+        .ok_or_else(|| "missing balance_infos".to_string())?;
+    let first = infos
+        .first()
+        .ok_or_else(|| "empty balance_infos".to_string())?;
+    let currency = first
+        .get("currency")
+        .and_then(|x| x.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let total = first
+        .get("total_balance")
+        .and_then(|x| x.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    if total.is_empty() {
+        return Err("empty total_balance".into());
+    }
+    Ok((currency, total))
+}
+
+fn fetch_deepseek_user_balance(api_key: &str) -> Result<(String, String), String> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(DEEPSEEK_REQUEST_TIMEOUT_SECS))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .get(DEEPSEEK_BALANCE_URL)
+        .bearer_auth(api_key.trim())
+        .send()
+        .map_err(|e| e.to_string())?;
+    let status = resp.status();
+    let body = resp.text().map_err(|e| e.to_string())?;
+    if !status.is_success() {
+        return Err(format!("HTTP {status}: {}", body.chars().take(120).collect::<String>()));
+    }
+    parse_deepseek_balance_json(&body)
+}
+
+fn read_claude_deepseek_auth_from_disk() -> Option<(String, String)> {
+    let path = claude_settings_json_path();
+    let contents = std::fs::read_to_string(path).ok()?;
+    parse_claude_deepseek_auth(&contents)
+}
+
+/// Apply DeepSeek probe result into state, then recompose Claude usage.
+pub fn ingest_deepseek_balance_result(
+    detected: bool,
+    balance: Option<(String, String)>,
+    error: Option<&str>,
+) {
+    let now = now_ms();
+    let mut st = deepseek_balance_state()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    if !detected {
+        *st = DeepSeekBalanceState::default();
+        drop(st);
+        usage_store()
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&AgentKind::Claude);
+        compose_claude_snapshot();
+        return;
+    }
+    st.detected = true;
+    st.observed_at = now;
+    if let Some((currency, total)) = balance {
+        st.currency = currency;
+        st.total_balance = total;
+        st.caption = format_deepseek_balance_caption(&st.currency, &st.total_balance);
+        st.status = "ready".into();
+        st.last_success_at = now;
+        st.message = st.caption.clone();
+    } else if st.last_success_at > 0 && !st.caption.is_empty() {
+        st.status = "stale".into();
+        st.message = error
+            .map(|e| format!("{}（刷新失败：{}）", st.caption, e))
+            .unwrap_or_else(|| format!("{} · 数据陈旧", st.caption));
+    } else {
+        // No prior balance: still surface the reason (missing key / HTTP) as waiting copy.
+        st.status = "waiting".into();
+        st.message = error
+            .unwrap_or("DeepSeek 余额同步中")
+            .to_string();
+        st.caption.clear();
+        st.currency.clear();
+        st.total_balance.clear();
+    }
+    drop(st);
+    compose_claude_snapshot();
+}
+
+fn refresh_deepseek_balance_once() {
+    if !env_enabled() {
+        ingest_deepseek_balance_result(false, None, None);
+        return;
+    }
+    let Some((_base, key)) = read_claude_deepseek_auth_from_disk() else {
+        // Not DeepSeek — clear any prior DeepSeek overlay on Claude.
+        let was = deepseek_balance_state()
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .detected;
+        if was {
+            ingest_deepseek_balance_result(false, None, None);
+        }
+        return;
+    };
+    // Surface DeepSeek lane immediately so Soft Pad never falls back to OTel-only「本会话」.
+    {
+        let st = deepseek_balance_state()
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        let need_waiting = !st.detected || (st.status == "waiting" && st.message.is_empty());
+        drop(st);
+        if need_waiting {
+            ingest_deepseek_balance_result(true, None, Some("DeepSeek 余额同步中"));
+        }
+    }
+    if key.trim().is_empty() {
+        ingest_deepseek_balance_result(
+            true,
+            None,
+            Some("DeepSeek 已配置，缺少 API Key"),
+        );
+        return;
+    }
+    match fetch_deepseek_user_balance(&key) {
+        Ok((currency, total)) => ingest_deepseek_balance_result(true, Some((currency, total)), None),
+        Err(err) => ingest_deepseek_balance_result(true, None, Some(&err)),
+    }
+}
+
+/// Fire-and-forget DeepSeek balance refresh (debounce one in-flight).
+pub fn kick_deepseek_balance_refresh() {
+    static INFLIGHT: AtomicBool = AtomicBool::new(false);
+    if !env_enabled() {
+        return;
+    }
+    if INFLIGHT.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let _ = std::thread::Builder::new()
+        .name("deepseek-balance-kick".into())
+        .spawn(|| {
+            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                refresh_deepseek_balance_once();
+            }));
+            INFLIGHT.store(false, Ordering::SeqCst);
+        });
+}
+
+pub fn start_deepseek_balance_poll(app: AppHandle, state: std::sync::Arc<crate::AppState>) {
+    static STARTED: AtomicBool = AtomicBool::new(false);
+    if !env_enabled() {
+        return;
+    }
+    if STARTED.load(Ordering::SeqCst) {
+        return;
+    }
+    let spawned = std::thread::Builder::new()
+        .name("deepseek-balance".into())
+        .spawn(move || loop {
+            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                refresh_deepseek_balance_once();
+            }));
+            crate::codex_micro_overlay::request_overlay_push(&app, state.as_ref(), false);
+            std::thread::sleep(Duration::from_secs(DEEPSEEK_REFRESH_SECS));
+        });
+    if spawned.is_ok() {
+        STARTED.store(true, Ordering::SeqCst);
+    }
+}
+
+fn apply_deepseek_usage_snap(ds: &DeepSeekBalanceState, now: u64) {
+    let otel = claude_otel_state()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
+    let status = if ds.status.is_empty() {
+        "waiting"
+    } else {
+        ds.status.as_str()
+    };
+    let message = if !ds.message.is_empty() {
+        ds.message.clone()
+    } else {
+        "DeepSeek 余额同步中".into()
+    };
+    let mut snap = AgentUsageSnapshot {
+        source: "deepseek_balance".into(),
+        status: status.into(),
+        session_tokens: otel.session_tokens,
+        auxiliary_tokens: otel.auxiliary_tokens,
+        estimated_cost_usd: otel.estimated_cost_usd,
+        windows: Vec::new(),
+        account_type: "deepseek".into(),
+        account_label: "DeepSeek".into(),
+        plan_type: "API".into(),
+        updated_at: if ds.observed_at > 0 {
+            ds.observed_at
+        } else {
+            now
+        },
+        last_success_at: ds.last_success_at,
+        message,
+        confidence: if status == "ready" {
+            "official".into()
+        } else if status == "stale" {
+            "stale".into()
+        } else {
+            "local_only".into()
+        },
+        console_url: "https://platform.deepseek.com/".into(),
+        ..Default::default()
+    };
+    let (lt, lm, lr) = crate::provider_usage::local_totals_for_provider("deepseek");
+    if lt > 0 || lm > 0 || lr > 0 {
+        snap.local_today_tokens = Some(lt);
+        snap.local_month_tokens = Some(lm);
+        snap.local_today_requests = Some(lr);
+    }
+    apply_compat_scalars(&mut snap);
+    usage_store()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(AgentKind::Claude, snap.clone());
+    sync_claude_usage_health(&snap, false);
+}
+
 fn compose_claude_snapshot() {
     let now = now_ms();
+    let ds = deepseek_balance_state()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
+
+    // DeepSeek API billing: ignore Anthropic-style statusLine windows (usually empty/bogus).
+    if ds.detected {
+        apply_deepseek_usage_snap(&ds, now);
+        return;
+    }
+
+    // Settings already point at DeepSeek, but poll hasn't marked detected yet.
+    // Prefer waiting balance caption over OTel「本会话」so Soft Pad shows real billing lane.
+    if read_claude_deepseek_auth_from_disk().is_some() {
+        let pending = DeepSeekBalanceState {
+            detected: true,
+            status: "waiting".into(),
+            message: "DeepSeek 余额同步中".into(),
+            observed_at: now,
+            ..Default::default()
+        };
+        apply_deepseek_usage_snap(&pending, now);
+        return;
+    }
+
+    // Multi-provider adapter (Ark / GLM / Kimi / MiniMax / bailian / mimo).
+    let pv = crate::provider_usage::active_view();
+    if pv.detected {
+        let otel = claude_otel_state()
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        let mut snap = AgentUsageSnapshot {
+            source: pv.source.clone(),
+            status: if pv.status.is_empty() {
+                "waiting".into()
+            } else {
+                pv.status.clone()
+            },
+            session_tokens: otel.session_tokens,
+            auxiliary_tokens: otel.auxiliary_tokens,
+            estimated_cost_usd: otel.estimated_cost_usd,
+            windows: pv.windows.clone(),
+            account_type: pv.provider.clone(),
+            account_label: pv.account_label.clone(),
+            plan_type: pv.plan_type.clone(),
+            updated_at: if pv.observed_at > 0 {
+                pv.observed_at
+            } else {
+                now
+            },
+            last_success_at: pv.last_success_at,
+            message: pv.message.clone(),
+            confidence: pv.confidence.clone(),
+            console_url: pv.console_url.clone(),
+            coding_plan_warning: pv.coding_plan_warning,
+            local_today_tokens: pv.local_today_tokens,
+            local_month_tokens: pv.local_month_tokens,
+            local_today_requests: pv.local_today_requests,
+            ..Default::default()
+        };
+        apply_compat_scalars(&mut snap);
+        usage_store()
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(AgentKind::Claude, snap.clone());
+        let has_windows = snap.windows.iter().any(|w| {
+            w.remaining_percent
+                .is_some_and(|p| p.is_finite() && (0.0..=100.0).contains(&p))
+        });
+        sync_claude_usage_health(&snap, has_windows);
+        return;
+    }
+
     let otel = claude_otel_state()
         .lock()
         .unwrap_or_else(|e| e.into_inner())
@@ -925,7 +1373,10 @@ fn compose_claude_snapshot() {
 
 fn sync_claude_usage_health(snap: &AgentUsageSnapshot, has_windows: bool) {
     use crate::connector_health::{upsert, CapabilityKind, HealthState, ValueState};
+    let has_deepseek = snap.source == "deepseek_balance"
+        && (!snap.account_label.is_empty() || snap.last_success_at > 0);
     let has_value = has_windows
+        || has_deepseek
         || snap.session_tokens.is_some()
         || snap.estimated_cost_usd.is_some();
     let value_state = if has_value {
@@ -948,6 +1399,17 @@ fn sync_claude_usage_health(snap: &AgentUsageSnapshot, has_windows: bool) {
     };
     let channel = if has_windows {
         "claude_statusline"
+    } else if snap.source == "deepseek_balance" {
+        "deepseek_balance"
+    } else if !snap.source.is_empty()
+        && (snap.source.starts_with("ark")
+            || snap.source.starts_with("glm")
+            || snap.source.starts_with("kimi")
+            || snap.source.starts_with("minimax")
+            || snap.source.starts_with("bailian")
+            || snap.source.starts_with("mimo"))
+    {
+        snap.source.as_str()
     } else {
         "claude_otel"
     };
@@ -1053,6 +1515,40 @@ fn env_enabled() -> bool {
             .as_str(),
         "0" | "false" | "no" | "off"
     )
+}
+
+pub fn usage_env_enabled() -> bool {
+    env_enabled()
+}
+
+/// Apply multi-provider adapter view into Claude usage store.
+pub fn ingest_claude_provider_view(view: &crate::provider_usage::ProviderUsageView) {
+    if !view.detected {
+        clear_claude_provider_view();
+        return;
+    }
+    compose_claude_snapshot();
+}
+
+pub fn clear_claude_provider_view() {
+    let mut guard = usage_store().lock().unwrap_or_else(|e| e.into_inner());
+    let drop_it = guard
+        .get(&AgentKind::Claude)
+        .map(|s| {
+            let src = s.source.as_str();
+            src.starts_with("ark")
+                || src.starts_with("glm")
+                || src.starts_with("kimi")
+                || src.starts_with("minimax")
+                || src.starts_with("bailian")
+                || src.starts_with("mimo")
+        })
+        .unwrap_or(false);
+    if drop_it {
+        guard.remove(&AgentKind::Claude);
+    }
+    drop(guard);
+    compose_claude_snapshot();
 }
 
 /// Detect Claude settings.env OTel endpoint conflicts with OneTone's fixed 8796 listener.
@@ -1487,6 +1983,11 @@ pub fn reset_for_test() {
     *claude_statusline_state()
         .lock()
         .unwrap_or_else(|e| e.into_inner()) = ClaudeStatusLineState::default();
+    *deepseek_balance_state()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = DeepSeekBalanceState::default();
+    #[cfg(test)]
+    set_deepseek_settings_path_override_for_test(None);
     crate::connector_health::reset_for_test();
 }
 
@@ -1928,5 +2429,112 @@ mod tests {
         statusline_age_for_test(STATUSLINE_KEEP_MS + 1);
         compose_claude_snapshot();
         assert!(snapshot(AgentKind::Claude).windows.is_empty());
+    }
+
+    #[test]
+    fn deepseek_host_match_is_strict() {
+        assert!(is_deepseek_api_base("https://api.deepseek.com"));
+        assert!(is_deepseek_api_base("https://api.deepseek.com/v1"));
+        assert!(is_deepseek_api_base("http://api.deepseek.com/anthropic"));
+        assert!(!is_deepseek_api_base("https://api.openai.com"));
+        assert!(!is_deepseek_api_base("https://relay.example.com/deepseek"));
+        assert!(!is_deepseek_api_base(""));
+    }
+
+    #[test]
+    fn parse_claude_deepseek_auth_requires_deepseek_base() {
+        let hit = r#"{"env":{"ANTHROPIC_BASE_URL":"https://api.deepseek.com","ANTHROPIC_AUTH_TOKEN":"sk-test"}}"#;
+        let got = parse_claude_deepseek_auth(hit).expect("auth");
+        assert_eq!(got.1, "sk-test");
+        let miss = r#"{"env":{"ANTHROPIC_BASE_URL":"https://api.anthropic.com","ANTHROPIC_AUTH_TOKEN":"sk-test","ANTHROPIC_MODEL":"deepseek-v4-pro"}}"#;
+        assert!(parse_claude_deepseek_auth(miss).is_none());
+        let no_key = r#"{"env":{"ANTHROPIC_BASE_URL":"https://api.deepseek.com"}}"#;
+        let got2 = parse_claude_deepseek_auth(no_key).expect("detected");
+        assert!(got2.1.is_empty());
+    }
+
+    #[test]
+    fn deepseek_balance_caption_formats_currency() {
+        assert_eq!(
+            format_deepseek_balance_caption("CNY", "12.34"),
+            "DeepSeek 余额 ¥12.34"
+        );
+        assert_eq!(
+            format_deepseek_balance_caption("USD", "1.5"),
+            "DeepSeek 余额 $1.5"
+        );
+    }
+
+    #[test]
+    fn deepseek_compose_ignores_statusline_windows() {
+        let _g = test_lock();
+        reset_for_test();
+        assert_eq!(
+            ingest_claude_statusline_json(&statusline_payload(Some(24.0), Some(41.0))),
+            Ok(2)
+        );
+        assert_eq!(snapshot(AgentKind::Claude).windows.len(), 2);
+        ingest_deepseek_balance_result(true, Some(("CNY".into(), "9.99".into())), None);
+        let got = snapshot(AgentKind::Claude);
+        assert_eq!(got.source, "deepseek_balance");
+        assert!(got.windows.is_empty());
+        assert_eq!(got.status, "ready");
+        assert!(got.message.contains("¥9.99"));
+        assert_eq!(got.account_label, "DeepSeek");
+        // Leave DeepSeek → statusLine can return.
+        ingest_deepseek_balance_result(false, None, None);
+        // Isolate from developer ~/.claude/settings.json (may already be DeepSeek).
+        set_deepseek_settings_path_override_for_test(Some(std::env::temp_dir().join(
+            format!("onetone-ds-miss-{}", std::process::id()),
+        )));
+        assert_eq!(ingest_claude_statusline_json(&statusline_payload(Some(10.0), None)), Ok(1));
+        let back = snapshot(AgentKind::Claude);
+        assert_eq!(back.source, "claude_statusline");
+        assert_eq!(back.windows.len(), 1);
+        set_deepseek_settings_path_override_for_test(None);
+    }
+
+    #[test]
+    fn deepseek_settings_pending_beats_otel_only() {
+        let _g = test_lock();
+        reset_for_test();
+        let dir = std::env::temp_dir().join(format!(
+            "onetone-ds-pending-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("settings.json");
+        std::fs::write(
+            &path,
+            r#"{"env":{"ANTHROPIC_BASE_URL":"https://api.deepseek.com/anthropic","ANTHROPIC_AUTH_TOKEN":"sk-test"}}"#,
+        )
+        .expect("write settings");
+        set_deepseek_settings_path_override_for_test(Some(path));
+        let raw = serde_json::json!({
+            "resourceMetrics": [{ "scopeMetrics": [{ "metrics": [
+                { "name": "claude_code.token.usage", "sum": { "aggregationTemporality": 2, "dataPoints": [
+                    { "asInt": "100", "attributes": [
+                        { "key": "session.id", "value": { "stringValue": "s1" } },
+                        { "key": "query_source", "value": { "stringValue": "repl_main_thread" } }
+                    ]}
+                ]}}
+            ]}]}]
+        });
+        assert_eq!(ingest_claude_otel_json(&raw.to_string()), Ok(1));
+        let got = snapshot(AgentKind::Claude);
+        assert_eq!(got.source, "deepseek_balance");
+        assert_eq!(got.status, "waiting");
+        assert!(got.message.contains("DeepSeek"));
+        assert_eq!(got.session_tokens, Some(100));
+        set_deepseek_settings_path_override_for_test(None);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn parse_deepseek_balance_json_reads_total() {
+        let raw = r#"{"is_available":true,"balance_infos":[{"currency":"CNY","total_balance":"56.42","granted_balance":"0.00","topped_up_balance":"56.42"}]}"#;
+        let (cur, total) = parse_deepseek_balance_json(raw).expect("parse");
+        assert_eq!(cur, "CNY");
+        assert_eq!(total, "56.42");
     }
 }

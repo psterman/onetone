@@ -601,6 +601,20 @@
       return detail?'额度未同步（可装 Hook / statusline）':'额度未同步';
     }
 
+    /** Balance / manual caption on Claude row — not a % window. */
+    function providerBalanceCaption(usage){
+      usage=usage||{};
+      var src=String(usage.source||'');
+      var conf=String(usage.confidence||'');
+      if(src==='deepseek_balance'||src==='kimi_balance'||conf==='manual_or_local_estimate'){
+        var msg=String(usage.message||'').trim();
+        if(msg) return msg.split(' · ')[0];
+        return String(usageValue(usage,'accountLabel','account_label')||'').trim();
+      }
+      return '';
+    }
+    function deepseekBalanceCaption(usage){ return providerBalanceCaption(usage); }
+
     function agentLabel(kind){
       if(kind==='claude') return 'Claude';
       if(kind==='cursor') return 'Cursor';
@@ -674,6 +688,15 @@
       var status=String(usage.status||'unavailable');
       if(kind==='cursor') return detail?'用量暂无官方接口':'用量 --';
       if(status==='disabled') return detail?'用量已关闭':'已关闭';
+      var balCap=kind==='claude'?providerBalanceCaption(usage):'';
+      if(balCap){
+        var locBits=[];
+        var lt=usageValue(usage,'localTodayTokens','local_today_tokens');
+        if(detail&&lt!=null&&Number(lt)>0) locBits.push('本机今日 '+Math.round(Number(lt)));
+        var base=balCap+(locBits.length?(' · '+locBits.join(' · ')):'');
+        if(status==='stale') return base+(detail?' · 数据陈旧':' · 陈旧');
+        return base;
+      }
       var windows=Array.isArray(usage.windows)?usage.windows:[];
       var bits=[];
       if(kind==='codex'||kind==='claude'){
@@ -782,6 +805,12 @@
       var status=String(usage.status||'');
       if(kind==='cursor') return false;
       if(status==='disabled'||status==='unavailable') return false;
+      if(kind==='claude'&&providerBalanceCaption(usage)){
+        return status==='ready'||status==='stale'||status==='waiting';
+      }
+      if(kind==='claude'&&String(usage.confidence||'')==='manual_or_local_estimate'){
+        return status==='ready'||status==='stale'||status==='waiting';
+      }
       var windows=Array.isArray(usage.windows)?usage.windows:[];
       for(var i=0;i<windows.length;i++){
         var w=windows[i];
@@ -802,6 +831,15 @@
     function miniUsageText(kind,usage){
       usage=usage||{};
       if(!isRenderableUsage(kind,usage)) return '';
+      var bal=kind==='claude'?providerBalanceCaption(usage):'';
+      if(bal){
+        return bal.replace(/^(DeepSeek|Kimi)\s+/,'');
+      }
+      if(kind==='claude'&&String(usage.confidence||'')==='manual_or_local_estimate'){
+        var loc=usageValue(usage,'localTodayTokens','local_today_tokens');
+        if(loc!=null&&Number(loc)>0) return '本机今日 '+Math.round(Number(loc));
+        return '控制台查额度';
+      }
       var rem=usageValue(usage,'remainingPercent','remaining_percent');
       var windows=Array.isArray(usage.windows)?usage.windows:[];
       var pw=windows.find(function(w){ return String(w.kind||'')==='primary'; })||windows[0];
@@ -854,6 +892,12 @@
     function usageLineBits(kind,usage,row,snap){
       usage=usage||{};
       var lines=[];
+      // Prefer official balance / windows over OTel「本会话」(Soft Pad caption + tooltip).
+      var balCap=kind==='claude'?providerBalanceCaption(usage):'';
+      if(balCap){
+        lines.push(balCap);
+        return lines;
+      }
       var windows=Array.isArray(usage.windows)?usage.windows:[];
       windows.slice(0,2).forEach(function(w){
         var lab=windowLabel(w,true);
@@ -879,6 +923,9 @@
     }
 
     function usageCaptionText(kind,usage,row,snap){
+      // Same contract as usageSummary (balance-first); do not bypass via OTel-only bits.
+      var summary=usageSummary(kind,usage||{},false,row,snap);
+      if(summary) return summary;
       var lines=usageLineBits(kind,usage||{},row,snap);
       return lines.length?lines[0]:'';
     }

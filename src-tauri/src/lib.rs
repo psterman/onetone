@@ -3,6 +3,7 @@ mod agent_attention;
 mod agent_catalog;
 mod agent_model_metadata;
 mod agent_usage;
+mod provider_usage;
 mod app_chat_workflow;
 mod app_exe_icon;
 mod app_icon;
@@ -340,6 +341,8 @@ pub fn run() {
             app_log::log_line(&app_state, "startup", "setup begin");
 
             crate::agent_usage::start_codex_account_poll(app.handle().clone(), app_state.clone());
+            crate::agent_usage::start_deepseek_balance_poll(app.handle().clone(), app_state.clone());
+            crate::provider_usage::start_provider_usage_poll(app.handle().clone(), app_state.clone());
 
             {
                 let state_for_attention = app_state.clone();
