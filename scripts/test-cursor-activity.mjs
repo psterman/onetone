@@ -49,6 +49,7 @@ assert.ok(/id="overlayAgentTip"/.test(overlay), 'L1 overlayAgentTip dom');
 assert.ok(/function showAgentTip/.test(overlay) && /function bindAgentTipHover/.test(overlay), 'L1 tip hover');
 assert.ok(/usageCaptionSub/.test(overlay), 'L1 caption sub line');
 assert.ok(/OVERLAY_WIDTH_MINI:\s*f64\s*=\s*320/.test(read('src-tauri/src/codex_micro_overlay.rs')), 'L1 mini width 320');
+assert.ok(/overlay_geom_needs_apply/.test(read('src-tauri/src/codex_micro_overlay.rs')), 'L1 geom thrash guard');
 assert.ok(/min-width:\s*64px/.test(read('src/css/codex-micro-overlay.css')), 'L1 usage pill min-width');
 assert.ok(/Always light tip plate/.test(read('src/css/codex-micro-overlay.css')), 'L1 tip pinned light ink');
 {

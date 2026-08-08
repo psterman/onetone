@@ -2189,6 +2189,9 @@
     document.querySelectorAll('[data-act="minimize"]').forEach(function(btn){
       btn.addEventListener('click',function(e){
         e.preventDefault(); e.stopPropagation();
+        hideAgentTip();
+        localMinimized=true;
+        applyLocalStatusDom();
         invoke('cmd_codex_micro_overlay_set_minimized',{minimized:true}).catch(function(){});
       });
     });
@@ -2196,6 +2199,9 @@
     document.querySelectorAll('[data-act="expand"]').forEach(function(btn){
       btn.addEventListener('click',function(e){
         e.preventDefault(); e.stopPropagation();
+        hideAgentTip();
+        localMinimized=false;
+        applyLocalStatusDom();
         invoke('cmd_codex_micro_overlay_set_minimized',{minimized:false}).catch(function(){});
       });
     });

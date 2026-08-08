@@ -119,8 +119,15 @@ check('render 接线挂载', softPadJs.includes('__otMountSoftPadDetailChromeIsl
 check('render 延迟落地 paint', /function render\([\s\S]*?paintSoftPadLanding[\s\S]*?requestAnimationFrame/.test(softPadJs));
 check('render 先画左侧再落地', /ensureSoftPadLeftChrome[\s\S]*?paintSoftPadLanding/.test(softPadJs) || /paintPreview\(openEntry[\s\S]*?paintSoftPadLanding/.test(softPadJs));
 check('setSoftPadPadMode 空壳再点会重绘', /function setSoftPadPadMode[\s\S]*?softPadSubpageAlreadyPainted[\s\S]*?forceRemount:\s*true/.test(softPadJs));
-check('AlreadyPainted 含 agent lazy body', /view === 'agent'[\s\S]*?data-lazy-agent-body/.test(softPadJs));
+check('AlreadyPainted 含 agent lights', /view === 'agent'[\s\S]*?data-lights-simple/.test(softPadJs));
 check('openGen 不跟 selectToken 绑死', softPadJs.includes('softPadOpenGen'));
+check('onPanelLeave bump softPadOpenGen', /function onPanelLeave\([\s\S]*?\+\+softPadOpenGen/.test(softPadJs));
+check('render 开头 bump openGen', /function render\([\s\S]*?var openGen = \+\+softPadOpenGen/.test(softPadJs));
+check('render aborted stale 日志', softPadJs.includes("fe softPad.render aborted stale"));
+check('render softPadRender 心跳 tag', softPadJs.includes("setTag('softPadRender')"));
+check('floatingOverlayBlocked 门闩', softPadJs.includes('function floatingOverlayBlocked') &&
+  softPadJs.includes('ui.drawerOpen') && softPadJs.includes('isSoftPadPageVisible()'));
+check('export getOpenGen', softPadJs.includes('getOpenGen:'));
 check('落地硬编码 appear', /var landMode = 'appear'/.test(softPadJs) && /fe softPad\.land/.test(softPadJs));
 check('落地锁定 suppress keys', /softPadLandUntil[\s\S]*?suppress-keys/.test(softPadJs));
 check('pad tabs 带 fromUser', /setSoftPadPadMode\(tab\.getAttribute\('data-pad-mode'\),\s*\{\s*fromUser:\s*true/.test(softPadJs));

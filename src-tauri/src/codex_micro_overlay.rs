@@ -48,8 +48,9 @@ static PAD_RUN_STATUS: OnceLock<ParkingMutex<(String, String, Instant)>> = OnceL
 static OVERLAY_MINIMIZED: OnceLock<ParkingMutex<bool>> = OnceLock::new();
 static OVERLAY_USER_POSITIONED: OnceLock<ParkingMutex<bool>> = OnceLock::new();
 static OVERLAY_USER_POSITION: OnceLock<ParkingMutex<Option<(i32, i32)>>> = OnceLock::new();
-/// Last applied (minimized, logical_h). Height must participate so constant bumps resize.
-static OVERLAY_LAST_GEOM: OnceLock<ParkingMutex<Option<(bool, i32)>>> = OnceLock::new();
+/// Last applied (minimized, logical_w, logical_h). Width must participate so mini widen
+/// actually resizes; do not fight outer_size 1–2px DPI drift every tick (that 假死's mini).
+static OVERLAY_LAST_GEOM: OnceLock<ParkingMutex<Option<(bool, i32, i32)>>> = OnceLock::new();
 /// Soft dismiss (X): hide until next Codex FG. Does not persist overlay_enabled=false
 /// (settings "不显示浮窗" owns that durable flag).
 static OVERLAY_SESSION_DISMISSED: OnceLock<ParkingMutex<bool>> = OnceLock::new();
@@ -332,7 +333,7 @@ fn overlay_user_position() -> &'static ParkingMutex<Option<(i32, i32)>> {
     OVERLAY_USER_POSITION.get_or_init(|| ParkingMutex::new(None))
 }
 
-fn overlay_last_geom() -> &'static ParkingMutex<Option<(bool, i32)>> {
+fn overlay_last_geom() -> &'static ParkingMutex<Option<(bool, i32, i32)>> {
     OVERLAY_LAST_GEOM.get_or_init(|| ParkingMutex::new(None))
 }
 
@@ -3141,14 +3142,27 @@ pub fn set_overlay_minimized(minimized: bool) {
 /// Set overlay mini/full chrome and persist `presentation` on the active overlay mapping.
 pub fn set_overlay_minimized_persist(_app: &AppHandle, state: &AppState, minimized: bool) {
     *overlay_minimized().lock() = minimized;
+    // Invalidate geom cache so the next push always resizes mini↔full (do not wait on DPI drift).
+    *overlay_last_geom().lock() = None;
     let presentation = if minimized { "mini" } else { "full" };
-    let mut cfg = state.cfg.lock();
-    if let Some(pad) = active_codex_mapping_with_overlay_mut(&mut cfg) {
-        if pad.presentation != presentation {
-            pad.presentation = presentation.into();
-            crate::config::save_config(&cfg);
-            crate::codex_numpad_layer::sync_hook_cache(&cfg);
+    let dirty = {
+        let mut cfg = state.cfg.lock();
+        if let Some(pad) = active_codex_mapping_with_overlay_mut(&mut cfg) {
+            if pad.presentation != presentation {
+                pad.presentation = presentation.into();
+                true
+            } else {
+                false
+            }
+        } else {
+            false
         }
+    };
+    if dirty {
+        // Clone then save — never hold cfg across disk I/O (watcher / scheduler can need the lock).
+        let cfg = state.cfg.lock().clone();
+        crate::config::save_config(&cfg);
+        crate::codex_numpad_layer::sync_hook_cache(&cfg);
     }
 }
 
@@ -3324,16 +3338,15 @@ fn overlay_logical_size(minimized: bool, _joy_open: bool) -> (f64, f64) {
 fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnapshot) -> bool {
     let minimized = snapshot.minimized;
     let (logical_w, logical_h) = overlay_logical_size(minimized, snapshot.joy_nav_panel_open);
+    let width_key = logical_w.round() as i32;
     let height_key = logical_h.round() as i32;
+    let want = (minimized, width_key, height_key);
     let prev = *overlay_last_geom().lock();
     let scale = win.scale_factor().unwrap_or(1.0);
     let target_w = (logical_w * scale).round() as u32;
     let target_h = (logical_h * scale).round() as u32;
-    let size_mismatch = win.outer_size().ok().is_none_or(|size| {
-        size.height.abs_diff(target_h) > 2 || size.width.abs_diff(target_w) > 2
-    });
-
-    if prev == Some((minimized, height_key)) && !size_mismatch {
+    let outer = win.outer_size().ok().map(|s| (s.width, s.height));
+    if !overlay_geom_needs_apply(prev, want, outer, (target_w, target_h)) {
         return false;
     }
 
@@ -3345,7 +3358,7 @@ fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnaps
         position_overlay(win);
     }
     let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-    *overlay_last_geom().lock() = Some((minimized, height_key));
+    *overlay_last_geom().lock() = Some(want);
     true
 }
 
@@ -3379,6 +3392,23 @@ fn resize_overlay_anchored(win: &WebviewWindow, logical_w: f64, logical_h: f64) 
 fn anchored_origin_x(old_x: i32, old_width: u32, target_width: i32) -> i32 {
     let dw = target_width - old_width as i32;
     old_x - dw
+}
+
+/// Whether geometry must be re-applied. Key change always applies; same key only
+/// recovers when outer size is grossly wrong (not 1–2px DPI drift).
+fn overlay_geom_needs_apply(
+    prev: Option<(bool, i32, i32)>,
+    want: (bool, i32, i32),
+    outer: Option<(u32, u32)>,
+    target: (u32, u32),
+) -> bool {
+    if prev != Some(want) {
+        return true;
+    }
+    match outer {
+        Some((w, h)) => w.abs_diff(target.0) > 48 || h.abs_diff(target.1) > 48,
+        None => false,
+    }
 }
 
 fn position_overlay(win: &WebviewWindow) {
@@ -3901,6 +3931,32 @@ mod tests {
         assert_eq!(anchored_origin_x(848, 584, 432), 1000);
         // No change.
         assert_eq!(anchored_origin_x(100, 432, 432), 100);
+    }
+
+    #[test]
+    fn overlay_geom_ignores_dpi_drift_but_recovers_stuck_full() {
+        let want = (true, 320, 44);
+        // Same key + 2px drift: do not re-apply (mini 假死 thrash).
+        assert!(!overlay_geom_needs_apply(
+            Some(want),
+            want,
+            Some((322, 44)),
+            (320, 44)
+        ));
+        // Key change mini→full: apply.
+        assert!(overlay_geom_needs_apply(
+            Some(want),
+            (false, 432, 680),
+            Some((320, 44)),
+            (432, 680)
+        ));
+        // Stuck at full outer while want mini: recover.
+        assert!(overlay_geom_needs_apply(
+            Some(want),
+            want,
+            Some((432, 680)),
+            (320, 44)
+        ));
     }
 
     #[test]

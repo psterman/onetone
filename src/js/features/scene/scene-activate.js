@@ -5,6 +5,9 @@
   function t(key){ return global.OneToneI18n.t(key); }
   function toast(msg,kind){ return global.OneToneAppToast.show(msg,kind); }
 
+  /** Consumed once by scheme-switch-feedback after mvp_scheme_switched. */
+  var pendingSwitchSource='manual';
+
   function activeSceneId(){
     var cfg=state().config;
     return cfg&&cfg.activeSceneId?String(cfg.activeSceneId):'';
@@ -14,7 +17,23 @@
     return !!id&&activeSceneId()===id;
   }
 
-  function activateScene(id){
+  function normalizeSource(src){
+    src=String(src||'').trim().toLowerCase();
+    if(src==='foreground'||src==='follow'||src==='auto') return 'foreground';
+    return 'manual';
+  }
+
+  function takePendingSwitchSource(){
+    var src=pendingSwitchSource||'manual';
+    pendingSwitchSource='manual';
+    return src;
+  }
+
+  function peekPendingSwitchSource(){
+    return pendingSwitchSource||'manual';
+  }
+
+  function activateScene(id,opts){
     if(!id) return;
     var cfg=state().config;
     if(!cfg) return;
@@ -32,6 +51,7 @@
       toast(t('sceneActivateNeedComplete'),'warn');
       return;
     }
+    pendingSwitchSource=normalizeSource(opts&&opts.source);
     m.lastUsedAt=Date.now();
     m.useCount=(m.useCount||0)+1;
     // Optimistic in-use so home howto refreshes before mvp_scheme_switched round-trip.
@@ -49,6 +69,8 @@
   global.OneToneSceneActivate={
     activeSceneId:activeSceneId,
     isActiveScene:isActiveScene,
-    activateScene:activateScene
+    activateScene:activateScene,
+    takePendingSwitchSource:takePendingSwitchSource,
+    peekPendingSwitchSource:peekPendingSwitchSource
   };
 })((typeof window!=='undefined')?window:globalThis);

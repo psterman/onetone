@@ -458,12 +458,16 @@
         value:t('homeWbChannelUnset'),
         statusLbl:t('homeWbHowToSoftPadOff'),
         boundName:t('homeWbChannelUnset'),
-        mappingId:''
+        mappingId:'',
+        configLbl:t('homeWbSoftPadHabitNa','不含 Soft Pad'),
+        controlLbl:t('homeWbSoftPadControlNone','暂无'),
+        empty:false,
+        schemeCount:0
       };
-    var hub=global.OneToneSoftPadHub;
-    var entries=(hub&&hub.listSoftPadSchemes)?hub.listSoftPadSchemes():[];
-    snap.schemeCount=entries.length;
-    snap.empty=!entries.length;
+    // Keep two-layer fields from finalizeSoftPadSnapshot — do not re-list schemes or
+    // clobber empty/config (that used to thrash howto + presence paints).
+    if(typeof snap.schemeCount!=='number') snap.schemeCount=0;
+    if(snap.empty==null) snap.empty=false;
     return snap;
   }
 
@@ -1119,7 +1123,7 @@
       var id=desiredFollowFgSceneId(res);
       if(!id) return;
       if(global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene){
-        global.OneToneSceneActivate.activateScene(id);
+        global.OneToneSceneActivate.activateScene(id,{source:'foreground'});
       }
     }).catch(function(){});
   }
@@ -1183,21 +1187,41 @@
     if(!btn) return;
     var canFollow=hasAppScenarioMappings();
     var on=isFollowFgEnabled()&&canFollow;
-    btn.disabled=!canFollow;
+    var wantDisabled=!canFollow;
+    var wantChecked=on?'true':'false';
+    var hintText=canFollow
+      ?(on?t('homeWbFollowFgHint'):t('homeWbFollowFgOffHint','关闭后回到通用习惯'))
+      :t('homeWbFollowFgNeedScenario','先建一个应用场景，自动切换才有用');
+    var labelText=t('homeWbFollowFgLabel');
+    // Skip DOM writes when unchanged — presence/home paints used to thrash this every tick.
+    if(btn.disabled===wantDisabled
+      && btn.getAttribute('aria-checked')===wantChecked
+      && btn.classList.contains('is-on')===on){
+      var hintElFast=$('wbFollowFgHint')||document.querySelector('.wb-scene-rail-follow-hint');
+      if(hintElFast&&hintElFast.textContent===hintText){
+        if(on) startFollowFgPoll();
+        else stopFollowFgPoll();
+        return;
+      }
+    }
+    btn.disabled=wantDisabled;
     btn.setAttribute('aria-disabled',canFollow?'false':'true');
     btn.classList.toggle('is-on',on);
-    btn.setAttribute('aria-checked',on?'true':'false');
+    btn.setAttribute('aria-checked',wantChecked);
     var label=document.querySelector('.wb-scene-rail-follow-label');
-    if(label) label.textContent=t('homeWbFollowFgLabel');
+    if(label&&label.textContent!==labelText) label.textContent=labelText;
+    var hintEl=$('wbFollowFgHint')||document.querySelector('.wb-scene-rail-follow-hint');
     var wrap=document.querySelector('.wb-scene-rail-follow');
+    if(hintEl&&hintEl.textContent!==hintText) hintEl.textContent=hintText;
     if(wrap){
       wrap.classList.toggle('is-disabled',!canFollow);
-      wrap.title=canFollow
-        ?t('homeWbFollowFgHint')
-        :t('homeWbFollowFgNeedScenario','先建一个应用场景，跟前台才有用');
+      if(wrap.title!==hintText) wrap.title=hintText;
     }
     var manage=$('wbHabitManage');
-    if(manage) manage.textContent=t('homeWbHabitManage','管理');
+    if(manage){
+      var manageLbl=t('homeWbHabitManage','管理');
+      if(manage.textContent!==manageLbl) manage.textContent=manageLbl;
+    }
     if(on) startFollowFgPoll();
     else stopFollowFgPoll();
   }
@@ -1211,7 +1235,7 @@
     if(!on){
       var base=baselineMappingId();
       if(base&&global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene){
-        global.OneToneSceneActivate.activateScene(base);
+        global.OneToneSceneActivate.activateScene(base,{source:'manual'});
       }
     }else{
       syncFollowForegroundApp();
@@ -1227,7 +1251,7 @@
     hideChipFlyout(true);
     // Home rail: activate directly — skip scheme-menu flush path (unnecessary on chip click).
     if(global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene){
-      global.OneToneSceneActivate.activateScene(id);
+      global.OneToneSceneActivate.activateScene(id,{source:'manual'});
       return;
     }
     if(global.OneToneHomeScheme) global.OneToneHomeScheme.selectMapping(id);

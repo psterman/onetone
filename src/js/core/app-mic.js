@@ -344,11 +344,15 @@
     if(!micLevelUiVisible()) return Promise.resolve();
     if(voiceCaptureActive()) return Promise.resolve();
     if(micBackoffActive()&&!opts.force) return Promise.resolve();
+    var want=deviceId||'';
+    // Already on this device — stop/start on every home paint used to 假死 boot (~5s).
+    if(!opts.force&&micMonitorDeviceId&&micMonitorDeviceId===want) return Promise.resolve();
     var payload={};
     if(deviceId) payload.device_id=deviceId;
     if(opts.force) payload.force=true;
-    micMonitorDeviceId=deviceId||'';
+    micMonitorDeviceId=want;
     return stopMicMonitor().then(function(){
+      micMonitorDeviceId=want;
       if(!micLevelPollAllowed()) return;
       if(micBackoffActive()&&!opts.force) return;
       return vpInvoke('cmd_mic_monitor_start',payload).catch(function(err){

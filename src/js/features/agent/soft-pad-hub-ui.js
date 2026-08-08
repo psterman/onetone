@@ -75,11 +75,20 @@
 
   /** Floating Soft Pad overlay can take FG and cover settings — feels like 假死. */
   var overlayDismissAt = 0;
+  /** Drawer / Soft Pad settings open — never let floating overlay reclaim FG. */
+  function floatingOverlayBlocked() {
+    try {
+      var ui = global.OneToneState && global.OneToneState.ui;
+      if (ui && ui.drawerOpen) return true;
+    } catch (_) {}
+    return isSoftPadPageVisible();
+  }
   function dismissSoftPadOverlay(reason) {
     try {
       var now = Date.now();
+      var force = reason === 'settings' || reason === 'render' || reason === 'panel';
       // render + timeline open used to fire two sync dismisses in the same tick.
-      if (now - overlayDismissAt < 400) return;
+      if (!force && now - overlayDismissAt < 400) return;
       overlayDismissAt = now;
       var ipc = global.OneToneIpc;
       if (!ipc || typeof ipc.invoke !== 'function') return;
@@ -87,6 +96,11 @@
         feLog('fe softPad.overlayDismiss ' + String(reason || ''));
       }).catch(function () {});
     } catch (_) {}
+  }
+  function ensureFloatingOverlayHidden(reason) {
+    // Call sites may run before ui.drawerOpen flips — force=settings/panel always dismisses.
+    if (reason !== 'settings' && reason !== 'panel' && reason !== 'render' && !floatingOverlayBlocked()) return;
+    dismissSoftPadOverlay(reason || 'settings');
   }
 
   /** Agent Soft Pad app targets (extensible for future apps). */
@@ -1799,6 +1813,7 @@
   }
 
   function onPanelLeave() {
+    ++softPadOpenGen;
     ++selectToken;
     ++agentLoadToken;
     stopOverlayUsagePolling();
@@ -4474,7 +4489,29 @@
   function render(opts) {
     opts = opts || {};
     var t0 = Date.now();
+    var uiGate = global.OneToneState && global.OneToneState.ui;
+    if (uiGate && uiGate.settingsPanel && uiGate.settingsPanel !== 'softPad') {
+      feLog('fe softPad.render aborted stale');
+      return;
+    }
+    // Cancel prior deferred landing / remount before any island work.
+    var openGen = ++softPadOpenGen;
     feLog('fe softPad.render begin');
+    if (global.OneToneUiHeartbeat && global.OneToneUiHeartbeat.setTag) {
+      try { global.OneToneUiHeartbeat.setTag('softPadRender'); } catch (_) {}
+    }
+    function clearSoftPadRenderTag() {
+      if (global.OneToneUiHeartbeat && global.OneToneUiHeartbeat.clearTag) {
+        try { global.OneToneUiHeartbeat.clearTag(); } catch (_) {}
+      }
+    }
+    function softPadRenderStale() {
+      if (openGen !== softPadOpenGen) return true;
+      var ui = global.OneToneState && global.OneToneState.ui;
+      return !!(ui && ui.settingsPanel && ui.settingsPanel !== 'softPad');
+    }
+    var keepSoftPadRenderTag = false;
+    try {
     // Guardrail: when Soft Pad opens right after a Home guide/veil mis-sync,
     // the veil can stay pointer-blocking even if it's not obvious visually.
     // Close it here so Soft Pad doesn't make the rest of the nav unclickable.
@@ -4484,6 +4521,7 @@
       }
     } catch (_) {}
     dismissSoftPadOverlay('render');
+    ensureFloatingOverlayHidden('settings');
     try{
       var mountSoft=global.__otMountSoftPadStatusIsland;
       if(typeof mountSoft==='function') mountSoft();
@@ -4504,6 +4542,10 @@
       var mountEnsureCta=global.__otMountSoftPadEnsureCtaIsland;
       if(typeof mountEnsureCta==='function') mountEnsureCta();
     }catch(_){}
+    if (softPadRenderStale()) {
+      feLog('fe softPad.render aborted stale');
+      return;
+    }
     ensureSwitcherClickBound();
     bindChrome();
     // Drop any legacy Soft Pad pin so runtime stays Auto.
@@ -4587,6 +4629,11 @@
       return;
     }
 
+    if (softPadRenderStale()) {
+      feLog('fe softPad.render aborted stale');
+      return;
+    }
+
     // Clear under pad/appear so clearSubpage force-hide matches route.
     resetSoftPadRouteToPadAppear();
     clearSubpage();
@@ -4607,35 +4654,42 @@
       updateStatusBar(openEntry);
       ensureSoftPadLeftChrome(openEntry);
     }
-    var openGen = ++softPadOpenGen;
     function paintSoftPadLanding() {
-      if (openGen !== softPadOpenGen) return;
-      var ui = global.OneToneState && global.OneToneState.ui;
-      if (ui && ui.settingsPanel && ui.settingsPanel !== 'softPad') return;
-      var landed = resolveSoftPadEntry();
-      if (!hasMapping(landed)) return;
-      adoptSoftPadSelection(landed);
-      softPadLandUntil = Date.now() + 2500;
-      softPadFace = 'pad';
-      softPadPadMode = landMode;
-      rememberSoftPadPadMode(landMode);
-      syncFaceChrome(landed);
-      if (!softPadSubpageAlreadyPainted(landed, softPadPanelId())) {
-        paintSubpage(landed, { forceRemount: true });
+      try {
+        if (openGen !== softPadOpenGen) return;
+        var ui = global.OneToneState && global.OneToneState.ui;
+        if (ui && ui.settingsPanel && ui.settingsPanel !== 'softPad') return;
+        var landed = resolveSoftPadEntry();
+        if (!hasMapping(landed)) return;
+        adoptSoftPadSelection(landed);
+        softPadLandUntil = Date.now() + 2500;
+        softPadFace = 'pad';
+        softPadPadMode = landMode;
+        rememberSoftPadPadMode(landMode);
+        syncFaceChrome(landed);
+        if (!softPadSubpageAlreadyPainted(landed, softPadPanelId())) {
+          paintSubpage(landed, { forceRemount: true });
+        }
+        ensureSoftPadPreview(landed);
+        ensureSoftPadLeftChrome(landed);
+        ensureSoftPadBoundaryHint();
+        if (global.OneToneHabitChannelStatusStrip && global.OneToneHabitChannelStatusStrip.render) {
+          try { global.OneToneHabitChannelStatusStrip.render(); } catch (_) {}
+        }
+        requestOverlayUsageForScope(selectedScopeId);
+        feLog('fe softPad.render chrome ' + (Date.now() - t0) + 'ms map=' + String(getSelectedMappingId() || ''));
+      } finally {
+        clearSoftPadRenderTag();
       }
-      ensureSoftPadPreview(landed);
-      ensureSoftPadLeftChrome(landed);
-      ensureSoftPadBoundaryHint();
-      if (global.OneToneHabitChannelStatusStrip && global.OneToneHabitChannelStatusStrip.render) {
-        try { global.OneToneHabitChannelStatusStrip.render(); } catch (_) {}
-      }
-      requestOverlayUsageForScope(selectedScopeId);
-      feLog('fe softPad.render chrome ' + (Date.now() - t0) + 'ms map=' + String(getSelectedMappingId() || ''));
     }
+    keepSoftPadRenderTag = true;
     // Second pass after island paint-targets commit (createRoot is async).
     requestAnimationFrame(function () {
       setTimeout(paintSoftPadLanding, 0);
     });
+    } finally {
+      if (!keepSoftPadRenderTag) clearSoftPadRenderTag();
+    }
   }
 
   function ensureSoftPadBoundaryHint() {
@@ -4824,6 +4878,9 @@
     refreshSelected: refreshSelected,
     schedulePreviewPaint: schedulePreviewPaint,
     onPanelLeave: onPanelLeave,
+    getOpenGen: function () { return softPadOpenGen; },
+    floatingOverlayBlocked: floatingOverlayBlocked,
+    ensureFloatingOverlayHidden: ensureFloatingOverlayHidden,
     ensureAppSoftPad: ensureAppSoftPad,
     isAgentPanelCurrent: isAgentPanelCurrent,
     isPaintBusy: function () { return paintBusy || paintReentry > 0 || !!previewTimer; },

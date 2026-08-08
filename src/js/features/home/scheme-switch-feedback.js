@@ -19,11 +19,31 @@
     }catch(_){}
   }
 
+  function resolveSwitchSource(){
+    var act=global.OneToneSceneActivate;
+    if(act&&typeof act.takePendingSwitchSource==='function'){
+      return act.takePendingSwitchSource();
+    }
+    return 'manual';
+  }
+
+  function formatSwitchMessage(source,label){
+    var t=h().t;
+    var name=String(label||'').trim()||'—';
+    if(source==='foreground'){
+      var shortTpl=t('schemeSwitchedAuto')||'已自动使用「{name}」习惯。';
+      return shortTpl.replace(/\{name\}/g,name);
+    }
+    var longTpl=t('schemeSwitchedHonest')
+      ||'已使用「{name}」：按键、语音和摄像头动作已更新；Soft Pad 仍自动跟随。';
+    return longTpl.replace(/\{name\}/g,name);
+  }
+
   function show(toId, label){
     var hooks=h();
     var state=global.OneToneState.state;
-    var t=hooks.t;
-    var msg=t('schemeSwitched')+(label||'');
+    var source=resolveSwitchSource();
+    var msg=formatSwitchMessage(source,label);
     if(toId){
       // Runtime in-use only — never drag editing selection or remount the editor form.
       if(state.config) state.config.activeSceneId=toId;
@@ -62,7 +82,13 @@
     }else{
       hooks.toast(msg,'scheme');
     }
-    notifyIfBackground(msg);
+    // Foreground auto-switch: never push the long body as a system notification.
+    if(source==='foreground'){
+      var shortNote=formatSwitchMessage('foreground',label);
+      notifyIfBackground(shortNote);
+    }else{
+      notifyIfBackground(msg);
+    }
     // Defer voice remount — sync loadSapi/Vosk on switch fought home paint (假死).
     requestAnimationFrame(function(){
       try{ refreshVoiceAfterSceneSwitch(); }catch(_){}

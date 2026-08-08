@@ -398,10 +398,82 @@
     return snap.value;
   }
 
+  /** Config layer: only activeSceneId → mapping → codexMicroPad. Never read Applied. */
+  function softPadActiveHabitConfigLayer(){
+    var m=null;
+    var id=activeSceneId();
+    if(id&&global.OneToneMappingCore&&global.OneToneMappingCore.byId){
+      m=global.OneToneMappingCore.byId(id);
+    }
+    var hub=global.OneToneSoftPadHub;
+    var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
+    var diff=global.OneToneHabitOverrideDiff;
+    var isBaseline=!!(m&&diff&&diff.isGlobalBaselineMapping
+      &&diff.isGlobalBaselineMapping(m,cfg||{},global.OneToneMappingCore));
+    var pad=m&&m.codexMicroPad;
+    var padConfigured=!!(pad&&pad.enabled===true);
+    var eligible=!!(hub&&hub.isSoftPadSchemeEligible&&hub.isSoftPadSchemeEligible(m));
+    // Soft Pad is agent-app scoped; baseline / non-agent → not applicable.
+    if(!m||isBaseline||(!eligible&&!pad)){
+      return {
+        configKind:'na',
+        configLbl:t('homeWbSoftPadHabitNa','不含 Soft Pad'),
+        configConfigured:false
+      };
+    }
+    if(padConfigured){
+      return {
+        configKind:'configured',
+        configLbl:t('homeWbSoftPadHabitConfigured','已配置'),
+        configConfigured:true
+      };
+    }
+    return {
+      configKind:'unconfigured',
+      configLbl:t('homeWbSoftPadHabitUnconfigured','未配置'),
+      configConfigured:false
+    };
+  }
+
+  function softPadControlAutoLbl(agentName){
+    if(!agentName) return t('homeWbSoftPadControlNone','暂无');
+    return t('homeWbSoftPadControlAuto','{name}（自动）').replace(/\{name\}/g,agentName);
+  }
+
+  /** Merge habit-config + runtime-control into one homepage Soft Pad snapshot. */
+  function finalizeSoftPadSnapshot(control){
+    control=control||{};
+    var cfgLayer=softPadActiveHabitConfigLayer();
+    var configLine=t('homeWbSoftPadHabitLine','此习惯：{state}').replace('{state}',cfgLayer.configLbl);
+    var controlLbl=control.controlLbl
+      ||(control.confirming
+        ?t('homeWbSoftPadControlConfirming','正在确认当前控制')
+        :(control.agentName?softPadControlAutoLbl(control.agentName):t('homeWbSoftPadControlNone','暂无')));
+    var controlLine=t('homeWbSoftPadControlLine','当前控制：{state}').replace('{state}',controlLbl);
+    var followHint=t('homeWbSoftPadFollowHint','运行时自动跟随 Agent');
+    var value=configLine+' · '+controlLine;
+    return Object.assign({},control,{
+      configKind:cfgLayer.configKind,
+      configLbl:cfgLayer.configLbl,
+      configConfigured:cfgLayer.configConfigured,
+      configLine:configLine,
+      controlLbl:controlLbl,
+      controlLine:controlLine,
+      followHint:followHint,
+      value:value,
+      displayPrimary:controlLine,
+      // Stop pressing a single「已启用」status — hero/howto use config+control lines.
+      statusLbl:controlLbl,
+      status:followHint,
+      boundName:control.agentName||cfgLayer.configLbl,
+      empty:false
+    });
+  }
+
   function softPadHowToSnapshot(){
     var hub=global.OneToneSoftPadHub;
     var entries=(hub&&hub.listSoftPadSchemes)?hub.listSoftPadSchemes():[];
-    if(hub&&hub.pruneInvalidUserLanePin) hub.pruneInvalidUserLanePin(entries);
+    // Homepage paint: skip pin prune — it only clears an already-removed product state.
     var enabled=entries.filter(function(e){ return e&&e.padEnabled; });
     var cache=(hub&&hub.getCachedSoftPadRuntime)?hub.getCachedSoftPadRuntime():null;
     // Only poll Soft Pad runtime when that hero is active — every paint used to IPC-refresh.
@@ -423,44 +495,33 @@
       return softPadSnapshotFromApplied(cache.snap,enabled);
     }
     if(cache&&!cache.receivedFirstSnapshot){
-      var confirming=t('homeWbSoftPadConfirming','正在确认 Soft Pad 状态');
-      return {
-        value:confirming,
-        status:'',
-        statusLbl:confirming,
+      return finalizeSoftPadSnapshot({
+        confirming:true,
+        controlLbl:t('homeWbSoftPadControlConfirming','正在确认当前控制'),
         countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(enabled.length)),
-        boundName:confirming,
         agentName:'',
-        displayPrimary:confirming,
         displayReason:'',
         reason:'confirming',
         mappingId:'',
         agentOnlyHint:'',
-        empty:true,
-        schemeCount:enabled.length,
-        confirming:true
-      };
+        schemeCount:enabled.length
+      });
     }
     if(cache&&cache.snap&&cache.snap.cutover&&cache.snap.health==='unavailable'){
       var unavail=t('homeWbSoftPadUnavailable','Soft Pad 暂时不可用');
-      return {
-        value:unavail,
-        status:'',
-        statusLbl:unavail,
+      return finalizeSoftPadSnapshot({
+        controlLbl:unavail,
         countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(enabled.length)),
-        boundName:unavail,
         agentName:'',
-        displayPrimary:unavail,
         displayReason:'',
         reason:'unavailable',
         mappingId:'',
         agentOnlyHint:'',
-        empty:true,
         schemeCount:enabled.length
-      };
+      });
     }
 
-    // Oracle / pre-cutover display path (not "当前控制").
+    // Oracle / pre-cutover display path (not "当前控制" from habit).
     var ctx=(hub&&hub.laneContextFromRuntime)?hub.laneContextFromRuntime():{};
     var result=(hub&&hub.resolvePrimaryLaneResult)
       ?hub.resolvePrimaryLaneResult(entries,ctx)
@@ -469,51 +530,39 @@
     var reason=result.reason||(lane?'fallback':'none');
     var others=Math.max(0,enabled.length-(lane?1:0));
     if(hub&&hub.publishSoftPadLaneSnapshot){
-      hub.publishSoftPadLaneSnapshot({
-        displayLaneKind:lane&&lane.kind?lane.kind:null,
-        reason:reason,
-        userLaneId:ctx.userLaneId==null?null:ctx.userLaneId,
-        foregroundAppId:ctx.foregroundAppId||'',
-        waitingKinds:Array.isArray(ctx.waitingKinds)?ctx.waitingKinds:[],
-        foregroundFresh:!!ctx.foregroundFresh,
-        waitingFresh:!!ctx.waitingFresh,
-        foregroundObservedAt:ctx.foregroundObservedAt==null?null:ctx.foregroundObservedAt,
-        waitingObservedAt:ctx.waitingObservedAt==null?null:ctx.waitingObservedAt,
-        otherEnabledCount:others,
-        source:'home'
-      });
+      var laneKind=lane&&lane.kind?lane.kind:null;
+      var pubKey=String(laneKind||'')+'\0'+String(reason||'')+'\0'+others;
+      if(softPadHowToSnapshot._lastPubKey!==pubKey){
+        softPadHowToSnapshot._lastPubKey=pubKey;
+        hub.publishSoftPadLaneSnapshot({
+          displayLaneKind:laneKind,
+          reason:reason,
+          userLaneId:ctx.userLaneId==null?null:ctx.userLaneId,
+          foregroundAppId:ctx.foregroundAppId||'',
+          waitingKinds:Array.isArray(ctx.waitingKinds)?ctx.waitingKinds:[],
+          foregroundFresh:!!ctx.foregroundFresh,
+          waitingFresh:!!ctx.waitingFresh,
+          foregroundObservedAt:ctx.foregroundObservedAt==null?null:ctx.foregroundObservedAt,
+          waitingObservedAt:ctx.waitingObservedAt==null?null:ctx.waitingObservedAt,
+          otherEnabledCount:others,
+          source:'home'
+        });
+      }
     }
     if(!lane){
-      var noneText=t('homeWbSoftPadReasonNone','还没有可用的 Agent，先准备 Codex 或 Claude');
-      return {
-        value:noneText,
-        status:'',
-        statusLbl:enabled.length?t('homeWbHowToSoftPadOff'):t('homeWbChannelUnset'),
+      return finalizeSoftPadSnapshot({
+        controlLbl:t('homeWbSoftPadControlNone','暂无'),
         countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(enabled.length)),
-        boundName:t('homeWbChannelUnset'),
         agentName:'',
-        displayPrimary:noneText,
-        displayReason:'',
+        displayReason:t('homeWbSoftPadReasonNone','还没有可用的 Agent，先准备 Codex 或 Claude'),
         reason:'none',
         mappingId:'',
         agentOnlyHint:'',
-        empty:true,
         schemeCount:enabled.length
-      };
+      });
     }
     var agentName=agentTitleFromKind(lane.kind,lane.title);
-    var boundName=agentName;
     var mappingId=lane.mapping?String(lane.mapping.id||''):'';
-    if(lane.mapping){
-      if(global.OneToneHabitProfile&&global.OneToneHabitProfile.habitDisplayName){
-        var hn=global.OneToneHabitProfile.habitDisplayName(lane.mapping);
-        if(hn&&hn!=='—') boundName=hn;
-      }else if(global.OneToneHomeScheme&&global.OneToneHomeScheme.shortName){
-        var sn=global.OneToneHomeScheme.shortName(lane.mapping);
-        if(sn) boundName=sn;
-      }
-    }
-    var displayPrimary=t('homeWbSoftPadCurrentAgent','当前 Agent：{name}').replace('{name}',agentName);
     var displayReason=(hub&&hub.formatDisplayLaneReason)
       ?hub.formatDisplayLaneReason(reason,agentName)
       :'';
@@ -522,26 +571,26 @@
         ?(displayReason+' · '+t('homeWbSoftPadOthersReady','另有 {n} 个已准备').replace('{n}',String(others)))
         :t('homeWbSoftPadOthersReady','另有 {n} 个已准备').replace('{n}',String(others));
     }
-    return {
-      value:displayPrimary,
-      status:t('homeWbHabitActive'),
-      statusLbl:t('homeWbHowToSoftPadOn'),
+    return finalizeSoftPadSnapshot({
       countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(enabled.length)),
-      boundName:boundName,
       agentName:agentName,
-      displayPrimary:displayPrimary,
       displayReason:displayReason,
       reason:reason,
       mappingId:mappingId,
       agentOnlyHint:'',
-      empty:false,
       schemeCount:enabled.length
-    };
+    });
   }
 
   function agentTitleFromKind(kind,fallback){
+    kind=String(kind||'').toLowerCase();
     if(kind==='claude') return t('softPadHubKindClaude','Claude');
     if(kind==='codex') return t('softPadHubKindCodex','Codex');
+    if(kind==='cursor') return t('softPadHubKindCursor','Cursor');
+    if(kind==='workbuddy') return t('softPadHubKindWorkBuddy','WorkBuddy');
+    if(kind==='trae') return t('softPadHubKindTrae','Trae');
+    if(kind==='qoder') return t('softPadHubKindQoder','Qoder');
+    if(kind==='minimax') return t('softPadHubKindMinimax','MiniMax');
     return fallback||String(kind||'');
   }
 
@@ -551,21 +600,16 @@
     var health=String(snap.health||'ready').toLowerCase();
     if(health==='unavailable'){
       var unavail=t('homeWbSoftPadUnavailable','Soft Pad 暂时不可用');
-      return {
-        value:unavail,
-        status:'',
-        statusLbl:unavail,
+      return finalizeSoftPadSnapshot({
+        controlLbl:unavail,
         countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(enabled.length)),
-        boundName:unavail,
         agentName:'',
-        displayPrimary:unavail,
         displayReason:'',
         reason:'unavailable',
         mappingId:'',
         agentOnlyHint:'',
-        empty:true,
         schemeCount:enabled.length
-      };
+      });
     }
 
     var reason=String(applied.reason||'none');
@@ -577,46 +621,37 @@
 
     var kind=applied.laneKind;
     if(kind&&typeof kind==='object'){
-      kind=kind.claude!=null?'claude':(kind.codex!=null?'codex':'');
+      kind=kind.claude!=null?'claude':(kind.codex!=null?'codex':(kind.cursor!=null?'cursor':''));
     }
     kind=kind==null?'':String(kind).toLowerCase();
-    if(kind!=='codex'&&kind!=='claude') kind='';
+    if(kind&&['codex','claude','cursor','workbuddy','trae','qoder','minimax'].indexOf(kind)<0) kind='';
 
     if(!kind||reason==='none'){
-      var noneText=t('homeWbSoftPadReasonNone','还没有可用的 Agent，先准备 Codex 或 Claude');
-      return {
-        value:noneText,
-        status:'',
-        statusLbl:enabled.length?t('homeWbHowToSoftPadOff'):t('homeWbChannelUnset'),
+      return finalizeSoftPadSnapshot({
+        controlLbl:t('homeWbSoftPadControlNone','暂无'),
         countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(enabled.length)),
-        boundName:t('homeWbChannelUnset'),
         agentName:'',
-        displayPrimary:noneText,
         displayReason:'',
         reason:'none',
         mappingId:applied.mappingId||'',
         agentOnlyHint:'',
-        empty:true,
         schemeCount:enabled.length
-      };
+      });
     }
 
     var agentName=agentTitleFromKind(kind,'');
     var others=Math.max(0,enabled.length-1);
-    var displayPrimary=t('homeWbSoftPadCurrentControl','当前控制：{name}').replace('{name}',agentName);
     var hub=global.OneToneSoftPadHub;
     var displayReason=(hub&&hub.formatDisplayLaneReason)
       ?hub.formatDisplayLaneReason(reason,agentName)
       :'';
-    // Control-copy upgrades for cutover (display === dispatch).
     if(reason==='foreground'){
       displayReason=t('homeWbSoftPadReasonForegroundControl','你正在使用 {app}，Soft Pad 已自动跟随')
-        .replace('{app}',kind==='claude'?'Claude Code':'Codex');
+        .replace('{app}',agentName);
     }else if(reason==='waiting'){
       displayReason=t('homeWbSoftPadReasonWaitingControl','{name} 正在等待你，所以已切换到 {name}')
         .replace(/\{name\}/g,agentName);
     }else if(reason==='userPin'){
-      // Pin removed — show auto/fallback copy instead of temporary-pin messaging.
       displayReason=t('homeWbSoftPadReasonFallback','已使用准备好的 {name}').replace('{name}',agentName);
     }
     if(health==='degraded'&&snap.lastRecomputeError){
@@ -627,23 +662,17 @@
         ?(displayReason+' · '+t('homeWbSoftPadOthersReady','另有 {n} 个已准备').replace('{n}',String(others)))
         :t('homeWbSoftPadOthersReady','另有 {n} 个已准备').replace('{n}',String(others));
     }
-    return {
-      value:displayPrimary,
-      status:t('homeWbHabitActive'),
-      statusLbl:t('homeWbHowToSoftPadOn'),
+    return finalizeSoftPadSnapshot({
       countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(enabled.length)),
-      boundName:agentName,
       agentName:agentName,
-      displayPrimary:displayPrimary,
       displayReason:displayReason,
       reason:reason,
       mappingId:applied.mappingId||'',
       agentOnlyHint:'',
-      empty:false,
       schemeCount:enabled.length,
       applied:true,
       health:health
-    };
+    });
   }
 
   function activeHabitMapping(vm){
@@ -839,6 +868,11 @@
       html+='<p class="wb-scene-rail-hint">'+esc(t(
         'homeWbHabitRailHint',
         '先配好通用设置即可日常使用；某个软件要不同按键时，再点 + 加应用场景。'
+      ))+'</p>';
+    }else{
+      html+='<p class="wb-scene-rail-hint">'+esc(t(
+        'homeWbHabitRailTempPick',
+        '也可以临时手动选择；开启自动切换后，离开首页会继续跟随前台。'
       ))+'</p>';
     }
     host.innerHTML=html;

@@ -222,10 +222,15 @@
                             <span class="wb-scene-rail-title" data-i18n="homeWbSceneRailTitle">我的习惯</span>
                             <button type="button" class="wb-scene-rail-manage" id="wbHabitManage" data-wb-habit-open-hub="">管理</button>
                           </div>
-                          <label class="wb-scene-rail-follow" title="开：前台有应用场景就自动用它；关：保持通用设置">
-                            <span class="wb-scene-rail-follow-label" data-i18n="homeWbFollowFgLabel">跟前台应用</span>
-                            <button type="button" class="toggle-switch" id="wbFollowFgToggle" role="switch" aria-checked="false" data-i18n-aria="homeWbFollowFgLabel"></button>
-                          </label>
+                          <div class="wb-scene-rail-follow-block">
+                            <div class="wb-scene-rail-follow" title="根据前台应用使用对应习惯">
+                              <div class="wb-scene-rail-follow-copy">
+                                <span class="wb-scene-rail-follow-label" data-i18n="homeWbFollowFgLabel">自动切换习惯（推荐）</span>
+                                <span class="wb-scene-rail-follow-hint" id="wbFollowFgHint" data-i18n="homeWbFollowFgHint">根据前台应用使用对应习惯</span>
+                              </div>
+                              <button type="button" class="toggle-switch" id="wbFollowFgToggle" role="switch" aria-checked="false" data-i18n-aria="homeWbFollowFgLabel"></button>
+                            </div>
+                          </div>
                         </div>
                         <div class="wb-scene-rail-body" id="wbScenarioPanel"></div>
                       </section>
@@ -1263,7 +1268,9 @@
               </div>
             </header>
             <div class="habit-hub-toolbar">
-              <div class="habit-hub-toolbar-spacer" aria-hidden="true"></div>
+              <div class="habit-hub-toolbar-left">
+                <button type="button" class="habit-hub-guide-toggle" id="btnHabitHubGuideMode" aria-pressed="false">怎么用</button>
+              </div>
               <div class="habit-hub-toolbar-right">
                 <label class="habit-hub-sort-wrap">
                   <span class="sr-only" id="habitHubSortLabel">排序</span>
@@ -1284,8 +1291,11 @@
                 </div>
               </div>
             </div>
-            <div class="habit-hub-body">
+            <div class="habit-hub-body habit-hub-body--full">
               <div class="habit-hub-main">
+                <div class="habit-hub-guide-bar" id="habitHubGuideBar" hidden>
+                  <div class="habit-hub-guide-steps" id="habitHubGuideSteps"></div>
+                </div>
                 <div class="habit-hub-empty" id="habitHubEmpty" hidden>
                   <p class="habit-hub-empty-title" id="habitHubEmptyTitle">还没有习惯</p>
                   <p class="habit-hub-empty-desc" id="habitHubEmptyDesc">在「按键」或「语音」里保存设置后，会自动出现在这里</p>
@@ -1295,15 +1305,6 @@
                 </div>
                 <div class="habit-hub-list is-list" id="habitHubList" role="list"></div>
               </div>
-              <aside class="habit-hub-aside" id="habitHubAside" aria-labelledby="habitHubAsideTitle">
-                <div class="habit-hub-aside-head">
-                  <h4 class="habit-hub-aside-title" id="habitHubAsideTitle">怎么用</h4>
-                  <button type="button" class="habit-hub-guide-toggle" id="btnHabitHubGuideMode" aria-pressed="false">引导模式</button>
-                </div>
-                <div class="habit-hub-guide-steps" id="habitHubGuideSteps"></div>
-                <p class="habit-hub-aside-tip" id="habitHubAsideTip">小提示：应用场景不会改坏通用设置。可放心单独试验，不行就关掉或删除该场景。</p>
-                <button type="button" class="habit-hub-aside-help" id="btnHabitHubHelp">如何使用习惯？</button>
-              </aside>
             </div>
           </div>
           <div class="habit-scenario-shell" id="habitWizardView" hidden>

@@ -34,6 +34,8 @@ const uiState = {
   habitHubCreating: false,
   habitHubSelectedIds: [],
   habitHubBatchConfirm: false,
+  habitHubBatchMode: false,
+  habitGuideMode: false,
 };
 
 globalThis.OneToneState = { state, ui: uiState };
@@ -114,13 +116,20 @@ check('afterHabitHubChromeCommit 已导出', typeof Hub.afterHabitHubChromeCommi
 check('scheduleHubPaint 已导出', typeof Hub.scheduleHubPaint === 'function');
 
 const chrome = Hub.buildHabitHubChromeModel();
-check('chrome model 含 guideHtml', typeof chrome.guideHtml === 'string' && chrome.guideHtml.includes('habit-hub-guide-steps'));
+check('chrome model 含 guideHtml', typeof chrome.guideHtml === 'string');
+check('guide off 时 guideHtml 为空', chrome.guideHtml === '');
 check('chrome model 含 sort.options', Array.isArray(chrome.sort.options) && chrome.sort.options.length === 4);
 check('chrome model hasContent 与列表同源', chrome.hasContent === true);
 check('empty.hidden 与 hasContent 一致', chrome.empty.hidden === chrome.hasContent);
 
+const guideOff = Hub.guideView({ ready: true }, 1);
+check('guide off 时 guideView 为空', guideOff === '');
+globalThis.OneToneState.ui.habitGuideMode = true;
 const guide = Hub.guideView({ ready: true }, 1);
-check('guideView 返回 HTML', typeof guide === 'string' && guide.includes('habit-hub-guide-step'));
+check('guide on 时 guideView 返回紧凑三步', typeof guide === 'string' && guide.includes('habit-hub-guide-step') && guide.includes('habit-hub-guide-steps--compact'));
+const chromeOn = Hub.buildHabitHubChromeModel();
+check('guide on 时 chrome guideHtml 含 steps', chromeOn.guideHtml.includes('habit-hub-guide-steps'));
+globalThis.OneToneState.ui.habitGuideMode = false;
 
 console.log('[habit-hub-chrome-island] 岛守卫:');
 globalThis.__otHabitHubChromeMounted = true;

@@ -622,6 +622,16 @@
 
     const panelChanged=panel!==lastPanel;
 
+    // Leave camera / open non-camera: pause infer before heavy paint (same-turn MediaPipe 假死).
+    if(ui.drawerOpen&&panel!=='camera'&&(panelChanged||lastPanel==='camera')){
+      try{
+        var paLeave=global.OneToneCameraPresenceActions;
+        if(paLeave&&typeof paLeave.setDrawerUiPaused==='function'){
+          paLeave.setDrawerUiPaused(true);
+        }
+      }catch(_){}
+    }
+
     if(panelChanged&&panel!=='keys'&&global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close){
       global.OneToneTargetKeyPicker.close();
     }
@@ -762,9 +772,30 @@
         mappingId:opts.mappingId||'',
         skipHookRefresh:!!opts.skipHookRefresh
       };
+      var softOpenGen=0;
+      try{
+        if(global.OneToneSoftPadHub&&typeof global.OneToneSoftPadHub.getOpenGen==='function'){
+          softOpenGen=global.OneToneSoftPadHub.getOpenGen();
+        }
+      }catch(_){}
+      try{
+        if(global.OneToneSoftPadHub&&typeof global.OneToneSoftPadHub.ensureFloatingOverlayHidden==='function'){
+          global.OneToneSoftPadHub.ensureFloatingOverlayHidden('panel');
+        }
+      }catch(_){}
       requestAnimationFrame(function(){
         setTimeout(function(){
-          if(normalizePanel(ui.settingsPanel)!=='softPad') return;
+          if(normalizePanel(ui.settingsPanel)!=='softPad'){
+            try{ feLog('fe softPad.render aborted stale'); }catch(_){}
+            return;
+          }
+          try{
+            if(global.OneToneSoftPadHub&&typeof global.OneToneSoftPadHub.getOpenGen==='function'&&
+               softOpenGen!==global.OneToneSoftPadHub.getOpenGen()){
+              feLog('fe softPad.render aborted stale');
+              return;
+            }
+          }catch(_){}
           if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.render){
             try{
               global.OneToneSoftPadHub.render(softOpts);
@@ -1054,6 +1085,18 @@
     }
 
     ui.drawerOpen=true;
+
+    // Pause MediaPipe before any panel remount — presence createImageBitmap + habit/softPad
+    // remount on the same turn wedges WebView2 (Responding=false).
+    try{
+      var openPanel=normalizePanel(opts.panel||'basic');
+      if(openPanel!=='camera'){
+        var paEarly=global.OneToneCameraPresenceActions;
+        if(paEarly&&typeof paEarly.setDrawerUiPaused==='function'){
+          paEarly.setDrawerUiPaused(true);
+        }
+      }
+    }catch(_){}
 
     setSettingsPanel(opts.panel||'basic',opts);
 

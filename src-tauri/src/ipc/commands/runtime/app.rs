@@ -78,7 +78,16 @@ pub fn cmd_set_settings_drawer_open(
             "workflow",
             &format!("settings drawer open={open}"),
         );
-        crate::codex_micro_overlay::push_state(&window.app_handle(), state.inner());
+        // Opening settings: soft-dismiss float so always-on-top pad cannot cover the drawer
+        // (gate alone races one tick behind FG host — feels like 假死 / 未响应).
+        if open {
+            let _ = crate::codex_micro_overlay::dismiss_overlay(&window.app_handle(), state.inner());
+        } else {
+            crate::codex_micro_overlay::push_state(&window.app_handle(), state.inner());
+        }
+    } else if open {
+        // Re-entry while already open (panel hops): keep float down.
+        let _ = crate::codex_micro_overlay::dismiss_overlay(&window.app_handle(), state.inner());
     }
 }
 

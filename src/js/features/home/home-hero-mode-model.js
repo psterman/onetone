@@ -148,8 +148,10 @@
       if (trig && trig !== unsetLabel(t)) trigger = trig;
       else trigger = t('homeWbFlowEmptyKeys');
     } else if (mode === 'softPad') {
-      var empty = softPad && (softPad.empty || softPad.schemeCount === 0);
-      if (empty) {
+      if (softPad && (softPad.controlLine || softPad.configLine)) {
+        trigger = softPad.controlLine || softPad.value || trigger;
+        target = softPad.configLine || softPad.configLbl || target;
+      } else if (softPad && (softPad.empty || softPad.schemeCount === 0)) {
         trigger = t('homeWbFlowEmptySoftPad');
         target = t('homeWbChannelUnset');
       } else {
@@ -194,16 +196,27 @@
     }
 
     if (mode === 'softPad') {
-      var spOn = softPad && softPad.statusLbl === t('homeWbHowToSoftPadOn');
+      var cfgOk = !!(softPad && softPad.configConfigured);
+      var hasControl = !!(softPad && softPad.agentName);
       out.push({
-        id: 'softPad-status',
-        label: (softPad && softPad.statusLbl) || t('homeWbHowToSoftPadOff'),
-        tone: spOn ? 'is-ok' : 'is-muted',
+        id: 'softPad-config',
+        label:
+          (softPad && softPad.configLine) ||
+          t('homeWbSoftPadHabitLine', '此习惯：{state}').replace(
+            '{state}',
+            (softPad && softPad.configLbl) || t('homeWbSoftPadHabitNa', '不含 Soft Pad')
+          ),
+        tone: cfgOk ? 'is-ok' : 'is-muted',
       });
       out.push({
-        id: 'softPad-bound',
-        label: (softPad && softPad.boundName) || t('homeWbChannelUnset'),
-        tone: 'is-bound',
+        id: 'softPad-control',
+        label:
+          (softPad && softPad.controlLine) ||
+          t('homeWbSoftPadControlLine', '当前控制：{state}').replace(
+            '{state}',
+            (softPad && softPad.controlLbl) || t('homeWbSoftPadControlNone', '暂无')
+          ),
+        tone: hasControl ? 'is-bound' : 'is-muted',
       });
       out.push({
         id: 'open-softPad-settings',
@@ -268,7 +281,6 @@
     softPad = softPad || {};
     camera = camera || {};
     var camLabel = cameraChannelLabel(camera, t);
-    var softEmpty = !!(softPad.empty || softPad.schemeCount === 0);
     var micEmpty = !!howto.micEmpty;
     var keysEmpty = !!howto.keysEmpty;
     var wakeEmpty = isUnset(howto.wakeMain, t);
@@ -295,25 +307,14 @@
     }
 
     var softLines = [];
-    if (!softEmpty) {
-      if (softPad.displayPrimary || softPad.agentName) {
-        softLines.push({
-          lbl: t('homeWbSoftPadCurrentLbl', '当前 Agent'),
-          val: softPad.agentName || softPad.boundName || '',
-        });
-      }
-      if (softPad.displayReason) {
-        softLines.push({
-          lbl: t('homeWbSoftPadWhyLbl', '说明'),
-          val: String(softPad.displayReason),
-        });
-      }
-    } else {
-      softLines.push({
-        lbl: t('homeWbHowToSoftPadApps', '应用场景'),
-        val: softPad.displayPrimary || softPad.value || t('homeWbSoftPadReasonNone', '还没有可用的 Agent，先准备 Codex 或 Claude'),
-      });
-    }
+    softLines.push({
+      lbl: t('homeWbSoftPadHabitMetaLbl', '此习惯'),
+      val: softPad.configLbl || t('homeWbSoftPadHabitNa', '不含 Soft Pad'),
+    });
+    softLines.push({
+      lbl: t('homeWbSoftPadControlMetaLbl', '当前控制'),
+      val: softPad.controlLbl || t('homeWbSoftPadControlNone', '暂无'),
+    });
 
     var camLines = [];
     if (camera.enabled) {
@@ -354,17 +355,19 @@
       {
         mode: 'softPad',
         title: t('homeWbHeroModeSoftPad'),
-        value: softEmpty
-          ? (softPad.displayPrimary || softPad.value || t('homeWbSoftPadReasonNone', '还没有可用的 Agent，先准备 Codex 或 Claude'))
-          : softPad.displayPrimary || softPad.agentName || softPad.boundName || softPad.value || t('homeWbChannelUnset'),
+        value:
+          softPad.controlLine ||
+          softPad.displayPrimary ||
+          softPad.value ||
+          t('homeWbSoftPadControlLine', '当前控制：{state}').replace(
+            '{state}',
+            softPad.controlLbl || t('homeWbSoftPadControlNone', '暂无')
+          ),
         lines: softLines.slice(0, 2),
-        status: softEmpty ? '' : softPad.displayReason || softPad.status || softPad.statusLbl || '',
+        status: softPad.followHint || softPad.status || '',
         artKind: 'softArt',
         active: mode === 'softPad',
-        empty: softEmpty,
-        emptyText: softEmpty
-          ? (softPad.displayPrimary || softPad.value || t('homeWbSoftPadReasonNone', '还没有可用的 Agent，先准备 Codex 或 Claude'))
-          : undefined,
+        empty: false,
       },
       {
         mode: 'camera',
@@ -395,7 +398,9 @@
       return t('homeWbLiveCameraEmptyHint', '已开启，还没绑定动作 — 再点下方「摄像头确认」去绑定');
     }
     if (mode === 'softPad') {
-      if (softPad && (softPad.empty || softPad.schemeCount === 0)) {
+      if (softPad && softPad.followHint) return String(softPad.followHint);
+      if (softPad && softPad.controlLine) return String(softPad.controlLine);
+      if (softPad && (softPad.empty || softPad.schemeCount === 0) && !softPad.configLbl) {
         return t('homeWbLiveSoftPadOffHint', t('homeWbFlowEmptySoftPad'));
       }
       var softLine =
@@ -419,7 +424,10 @@
   function liveStatusFor(mode, vm, camera, softPad, t) {
     if (mode === 'camera') return cameraLiveStatusShort(camera, t);
     if (mode === 'softPad') {
-      return (softPad && softPad.statusLbl) || t('homeWbHowToSoftPadOff');
+      return (
+        (softPad && (softPad.controlLbl || softPad.followHint || softPad.statusLbl)) ||
+        t('homeWbSoftPadControlNone', '暂无')
+      );
     }
     var paused = !!(vm && vm.runtime && vm.runtime.paused);
     var dictating =

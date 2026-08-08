@@ -470,11 +470,18 @@ loadIife('src/js/features/home/home-hero-mode-model.js', sandbox);
       vm: baseVm,
       camera: { enabled: mode === 'camera', running: false, presence: 'idle', bound: 1 },
       softPad: {
-        value: 'Pad',
-        statusLbl: '已启用',
-        boundName: '场景',
+        value: '当前控制：暂无 · 此习惯：不含 Soft Pad',
+        configLbl: '不含 Soft Pad',
+        configLine: '此习惯：不含 Soft Pad',
+        controlLbl: '暂无',
+        controlLine: '当前控制：暂无',
+        followHint: '运行时自动跟随 Agent',
+        configConfigured: false,
+        agentName: '',
+        statusLbl: '暂无',
+        boundName: '不含 Soft Pad',
         schemeCount: mode === 'softPad' ? 0 : 1,
-        empty: mode === 'softPad',
+        empty: false,
       },
       howto: {
         wakeMain: '你好',
@@ -516,8 +523,14 @@ loadIife('src/js/features/home/home-hero-mode-model.js', sandbox);
     if (mode === 'softPad') {
       const bad = p.pills.some((x) => x.id === 'mic' || x.action === 'listen-toggle');
       if (bad || p.guards.softPadHasMicPill) allOk = false;
-      if (p.flow.trigger !== '还没有屏幕按钮方案') allOk = false;
-      if (p.liveHint !== 'pad-off') allOk = false;
+      if (!p.pills.some((x) => x.id === 'softPad-config')) allOk = false;
+      if (!p.pills.some((x) => x.id === 'softPad-control')) allOk = false;
+      if (p.flow.trigger !== '当前控制：暂无') allOk = false;
+      if (p.liveHint !== '运行时自动跟随 Agent') allOk = false;
+      if (p.liveStatus !== '暂无') allOk = false;
+      const softCard = (p.howtoCards || []).find((c) => c.mode === 'softPad');
+      if (!softCard || softCard.empty) allOk = false;
+      if (!softCard || (softCard.lines || []).length !== 2) allOk = false;
     }
     if (p.howtoCards.map((c) => c.mode).join(',') !== 'voice,keys,softPad,camera') allOk = false;
   }

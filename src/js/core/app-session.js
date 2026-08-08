@@ -147,14 +147,32 @@
     });
   }
 
+  function resourceSaverStaysIdle(cfg){
+    cfg=cfg||{};
+    var kws=cfg.voiceKws||cfg.voice_kws||{};
+    var phrases=kws.phrases||kws.keywords||[];
+    return !Array.isArray(phrases)||!phrases.length;
+  }
+
   function scheduleDeferredVoiceEngineBoot(){
     if(voiceEngineBootDone||voiceEngineBootTimer||hooks().welcomeOpen()||hooks().onboardIsOpen()) return;
+    var cfgEarly=hooks().state().config||{};
+    var strategyEarly=currentListeningStrategy(cfgEarly);
+    // off / empty-KWS resourceSaver: Rust voice_bootstrap already settled on desired=none.
+    // A settle+10s cmd_request_runtime + renderHomeLiveZone used to restart the mic and 假死 ~5s.
+    if(strategyEarly==='off'||(strategyEarly==='resourceSaver'&&resourceSaverStaysIdle(cfgEarly))){
+      markVoiceEngineBootHandled();
+      return;
+    }
     voiceEngineBootTimer=setTimeout(function(){
       voiceEngineBootTimer=0;
       if(voiceEngineBootDone||hooks().welcomeOpen()||hooks().onboardIsOpen()||!global.OneToneConfigPersist.isLoaded()) return;
       var cfg=hooks().state().config||{};
       var strategy=currentListeningStrategy(cfg);
-      if(strategy==='off') return;
+      if(strategy==='off'||(strategy==='resourceSaver'&&resourceSaverStaysIdle(cfg))){
+        markVoiceEngineBootHandled();
+        return;
+      }
 
       if(!global.OneToneIpc||!global.OneToneIpc.invoke){
         markVoiceEngineBootHandled();
@@ -162,10 +180,14 @@
       }
 
       if(strategy!=='advanced'){
+        try{
+          if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.setTag) global.OneToneUiHeartbeat.setTag('voiceBootStrategy');
+          else global.__otActivityTag='voiceBootStrategy';
+        }catch(_){}
         global.OneToneIpc.invoke('cmd_request_runtime',{}).catch(function(){ return null; }).then(function(snapshot){
           if(runtimeAlreadyMatchesStrategy(snapshot,strategy)){
             markVoiceEngineBootHandled();
-            hooks().renderHomeLiveZone&&hooks().renderHomeLiveZone();
+            // Already correct — do not remount home live / mic (that path 假死'd after boot settled).
             return null;
           }
           return global.OneToneIpc.invoke('cmd_voice_set_listening_strategy',{strategy:strategy}).then(function(bundle){
@@ -179,12 +201,20 @@
               hooks().syncHomeFromVoiceSettings(voskRes,sapiRes,null,{homeOnly:true,lightOnly:true},kwsRes);
             }
             markVoiceEngineBootHandled();
-            hooks().renderHomeLiveZone&&hooks().renderHomeLiveZone();
+            // Defer paint — sync renderHomeLiveZone stacked with mic start 假死'd WebView2.
+            setTimeout(function(){
+              try{ hooks().renderHomeLiveZone&&hooks().renderHomeLiveZone(); }catch(_){}
+            },0);
             return null;
           });
         }).catch(function(err){
           console.error('voice boot strategy',err);
           markVoiceEngineBootHandled();
+        }).then(function(){
+          try{
+            if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag) global.OneToneUiHeartbeat.clearTag();
+            else if(global.__otActivityTag==='voiceBootStrategy') global.__otActivityTag='';
+          }catch(_){}
         });
         return;
       }

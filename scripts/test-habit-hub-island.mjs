@@ -34,6 +34,7 @@ const uiState = {
   habitHubCreating: false,
   habitHubSelectedIds: [],
   habitHubBatchConfirm: false,
+  habitHubBatchMode: false,
 };
 
 globalThis.OneToneState = { state, ui: uiState };
@@ -118,8 +119,15 @@ const card = Hub.cardView(item, { horizontal: true });
 check('cardView 返回 HTML 字符串', typeof card === 'string' && card.length > 0);
 check('含 data-habit-card', card.includes('data-habit-card="m1"'));
 check('含 data-habit-open', card.includes('data-habit-open="m1"'));
-check('含 data-habit-select', card.includes('data-habit-select="m1"'));
+check('普通模式无复选框', !card.includes('data-habit-select="m1"'));
 check('含 data-habit-enable', card.includes('data-habit-enable="m1"'));
+check('通道门在配置菜单', card.includes('habit-hub-config-menu') && card.includes('data-habit-scenario-keys="m1"'));
+check('管理动作在更多菜单', card.includes('habit-hub-more-menu') && card.includes('data-habit-dup="m1"'));
+check('当前习惯无设为正在使用按钮', !card.includes('data-habit-scenario-use="m1"'));
+uiState.habitHubBatchMode = true;
+const cardBatch = Hub.cardView(item, { horizontal: true });
+check('批量模式出现复选框', cardBatch.includes('data-habit-select="m1"'));
+uiState.habitHubBatchMode = false;
 
 const legacyItem = {
   mapping: { id: 'leg1', group: 'Legacy Voice', triggerKey: 'F1', targetKey: 'Enter' },
