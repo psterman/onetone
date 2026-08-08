@@ -24,7 +24,8 @@ const OVERLAY_HEIGHT_FULL: f64 = 680.0;
 /// resizes/repositions the pad (CSS fades the rail in-place).
 /// Deprecated: JOY side-rail removed; NAV keys live on the 5-col main pad.
 #[allow(dead_code)]
-const OVERLAY_WIDTH_MINI: f64 = 240.0;
+/// 6 agent chips + usage pill (`Cu · N次`) + expand/close; 240px crushed the pill to "C.".
+const OVERLAY_WIDTH_MINI: f64 = 320.0;
 const OVERLAY_HEIGHT_MINI: f64 = 44.0;
 const HIGHLIGHT_MS: u64 = 320;
 
@@ -38,6 +39,10 @@ static LAST_VISIBLE: OnceLock<ParkingMutex<bool>> = OnceLock::new();
 /// Last time Soft Pad was allowed to show for a real agent/hold reason (not overlay FG steal).
 static LAST_AGENT_SHOW_REASON_AT: OnceLock<ParkingMutex<Option<Instant>>> = OnceLock::new();
 static FG_CONFIRM: OnceLock<ParkingMutex<(bool, u8)>> = OnceLock::new();
+/// When Soft Pad was showing and host raw goes false, delay hide to ride out Alt-Tab FG gaps.
+static HIDE_GRACE_SINCE: OnceLock<ParkingMutex<Option<Instant>>> = OnceLock::new();
+/// Hide grace while FG briefly leaves Soft Pad agents (Alt-Tab / Cursor switch).
+const OVERLAY_HIDE_GRACE_MS: u64 = 500;
 /// (status, micro_key_id, since)
 static PAD_RUN_STATUS: OnceLock<ParkingMutex<(String, String, Instant)>> = OnceLock::new();
 static OVERLAY_MINIMIZED: OnceLock<ParkingMutex<bool>> = OnceLock::new();
@@ -86,6 +91,7 @@ fn test_force_claude_fg() -> &'static ParkingMutex<Option<bool>> {
 pub(crate) fn test_set_foreground_latch(v: bool) {
     *last_foreground_codex().lock() = v;
     *fg_confirm().lock() = (v, 2);
+    *hide_grace_since().lock() = None;
     *test_force_codex_fg().lock() = Some(v);
 }
 
@@ -100,6 +106,7 @@ pub(crate) fn test_clear_fg_overrides() {
     *test_force_claude_fg().lock() = None;
     *fg_confirm().lock() = (false, 0);
     *last_foreground_codex().lock() = false;
+    *hide_grace_since().lock() = None;
 }
 
 /// Prime single-sample debounce so the next snapshot/tick sees a stable host.
@@ -309,6 +316,10 @@ fn fg_confirm() -> &'static ParkingMutex<(bool, u8)> {
     FG_CONFIRM.get_or_init(|| ParkingMutex::new((false, 0)))
 }
 
+fn hide_grace_since() -> &'static ParkingMutex<Option<Instant>> {
+    HIDE_GRACE_SINCE.get_or_init(|| ParkingMutex::new(None))
+}
+
 fn overlay_minimized() -> &'static ParkingMutex<bool> {
     OVERLAY_MINIMIZED.get_or_init(|| ParkingMutex::new(false))
 }
@@ -338,14 +349,19 @@ fn is_overlay_session_dismissed() -> bool {
     *overlay_session_dismissed().lock()
 }
 
-/// Require two consecutive FG samples before flipping ? avoids show/hide thrash ??.
+/// Require two consecutive FG samples before *showing*; delay *hide* with grace so
+/// Alt-Tab / Cursor FG handoff does not flash Soft Pad off then on.
 fn stable_overlay_host(raw: bool) -> bool {
-    // Instant hide when OneTone settings hold FG ? debounce only applies to *showing*.
-    // Otherwise the floating pad stays always-on-top for ~500ms and eats left-nav clicks
-    // (feels like????? / ????).
-    if !raw && onetone_main_is_foreground() {
+    stable_overlay_host_at(raw, Instant::now(), onetone_main_is_foreground())
+}
+
+/// Pure host latch — unit-tested with injected clock / OneTone gate.
+fn stable_overlay_host_at(raw: bool, now: Instant, force_hide_onetone: bool) -> bool {
+    // Instant hide when OneTone settings hold FG — never grace over the settings UI.
+    if !raw && force_hide_onetone {
         *fg_confirm().lock() = (false, 2);
         *last_foreground_codex().lock() = false;
+        *hide_grace_since().lock() = None;
         return false;
     }
     let mut slot = fg_confirm().lock();
@@ -356,11 +372,37 @@ fn stable_overlay_host(raw: bool) -> bool {
         *slot = (raw, 1);
     }
     let (pending, streak) = *slot;
+    drop(slot);
+
     let mut last = last_foreground_codex().lock();
-    if streak >= 2 && *last != pending {
-        *last = pending;
+    if pending {
+        *hide_grace_since().lock() = None;
+        if streak >= 2 {
+            *last = true;
+        }
+        return *last;
     }
-    *last
+
+    // raw false
+    if !*last {
+        *hide_grace_since().lock() = None;
+        return false;
+    }
+
+    // Was showing — hold through brief FG gaps.
+    let mut since = hide_grace_since().lock();
+    match *since {
+        None => {
+            *since = Some(now);
+            true
+        }
+        Some(t) if now.duration_since(t) < Duration::from_millis(OVERLAY_HIDE_GRACE_MS) => true,
+        Some(_) => {
+            *since = None;
+            *last = false;
+            false
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -3229,28 +3271,32 @@ fn apply_overlay_payload(
         return;
     }
     cache_overlay_hwnd_from_window(&win);
+    let already_visible = win.is_visible().unwrap_or(false);
     if visible && reposition {
         let _ = apply_overlay_geometry(&win, payload);
         let _ = win.set_always_on_top(true);
         let _ = win.set_skip_taskbar(true);
-        #[cfg(windows)]
-        {
-            use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-            if let Ok(handle) = win.window_handle() {
-                if let RawWindowHandle::Win32(platform) = handle.as_raw() {
-                    let hwnd = platform.hwnd.get() as winapi::shared::windef::HWND;
-                    let _ = crate::keyboard::show_window_no_activate(hwnd);
+        // Already-on Soft Pad: geometry only — re-show causes FG flash on mapping switch.
+        if !already_visible {
+            #[cfg(windows)]
+            {
+                use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+                if let Ok(handle) = win.window_handle() {
+                    if let RawWindowHandle::Win32(platform) = handle.as_raw() {
+                        let hwnd = platform.hwnd.get() as winapi::shared::windef::HWND;
+                        let _ = crate::keyboard::show_window_no_activate(hwnd);
+                    } else {
+                        let _ = win.show();
+                    }
                 } else {
                     let _ = win.show();
                 }
-            } else {
+                apply_overlay_no_activate();
+            }
+            #[cfg(not(windows))]
+            {
                 let _ = win.show();
             }
-            apply_overlay_no_activate();
-        }
-        #[cfg(not(windows))]
-        {
-            let _ = win.show();
         }
     } else if !visible {
         let _ = win.hide();
@@ -3281,11 +3327,11 @@ fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnaps
     let height_key = logical_h.round() as i32;
     let prev = *overlay_last_geom().lock();
     let scale = win.scale_factor().unwrap_or(1.0);
+    let target_w = (logical_w * scale).round() as u32;
     let target_h = (logical_h * scale).round() as u32;
-    let size_mismatch = win
-        .outer_size()
-        .ok()
-        .is_none_or(|size| size.height.abs_diff(target_h) > 2);
+    let size_mismatch = win.outer_size().ok().is_none_or(|size| {
+        size.height.abs_diff(target_h) > 2 || size.width.abs_diff(target_w) > 2
+    });
 
     if prev == Some((minimized, height_key)) && !size_mismatch {
         return false;
@@ -3616,6 +3662,58 @@ mod tests {
             overlay_runtime_gate_reason_flags(false, false, false, false),
             None
         );
+    }
+
+    #[test]
+    fn host_hide_grace_holds_then_releases() {
+        test_clear_fg_overrides();
+        let t0 = Instant::now();
+        // Show: need two true ticks.
+        assert!(!stable_overlay_host_at(true, t0, false));
+        assert!(stable_overlay_host_at(true, t0, false));
+        // Brief raw false — still showing.
+        assert!(stable_overlay_host_at(false, t0, false));
+        assert!(stable_overlay_host_at(
+            false,
+            t0 + Duration::from_millis(200),
+            false
+        ));
+        // After grace — hide.
+        assert!(!stable_overlay_host_at(
+            false,
+            t0 + Duration::from_millis(OVERLAY_HIDE_GRACE_MS + 20),
+            false
+        ));
+        test_clear_fg_overrides();
+    }
+
+    #[test]
+    fn host_hide_grace_cancelled_by_raw_true() {
+        test_clear_fg_overrides();
+        let t0 = Instant::now();
+        assert!(!stable_overlay_host_at(true, t0, false));
+        assert!(stable_overlay_host_at(true, t0, false));
+        assert!(stable_overlay_host_at(false, t0, false));
+        // FG returns during grace — stay / reconfirm show.
+        assert!(stable_overlay_host_at(
+            true,
+            t0 + Duration::from_millis(100),
+            false
+        ));
+        assert!(*last_foreground_codex().lock());
+        assert!(hide_grace_since().lock().is_none());
+        test_clear_fg_overrides();
+    }
+
+    #[test]
+    fn host_onetone_force_hide_skips_grace() {
+        test_clear_fg_overrides();
+        let t0 = Instant::now();
+        assert!(!stable_overlay_host_at(true, t0, false));
+        assert!(stable_overlay_host_at(true, t0, false));
+        assert!(!stable_overlay_host_at(false, t0, true));
+        assert!(!*last_foreground_codex().lock());
+        test_clear_fg_overrides();
     }
 
     /// Isolate global vendor / app / pad_status / local inferred run status.

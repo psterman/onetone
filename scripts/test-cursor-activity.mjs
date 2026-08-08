@@ -45,6 +45,12 @@ assert.ok(/function cursorActivityIntensityBits/.test(overlay), 'L1 intensity bi
 assert.ok(/function usageSourceLabel/.test(overlay), 'L1 overlay usageSourceLabel');
 assert.ok(/function usageSourceLabel/.test(hub), 'L1 hub usageSourceLabel');
 assert.ok(/本地统计/.test(overlay) && /本地统计/.test(hub), 'L1 本地统计 label');
+assert.ok(/id="overlayAgentTip"/.test(overlay), 'L1 overlayAgentTip dom');
+assert.ok(/function showAgentTip/.test(overlay) && /function bindAgentTipHover/.test(overlay), 'L1 tip hover');
+assert.ok(/usageCaptionSub/.test(overlay), 'L1 caption sub line');
+assert.ok(/OVERLAY_WIDTH_MINI:\s*f64\s*=\s*320/.test(read('src-tauri/src/codex_micro_overlay.rs')), 'L1 mini width 320');
+assert.ok(/min-width:\s*64px/.test(read('src/css/codex-micro-overlay.css')), 'L1 usage pill min-width');
+assert.ok(/Always light tip plate/.test(read('src/css/codex-micro-overlay.css')), 'L1 tip pinned light ink');
 {
   const tipMatch = overlay.match(/function cursorChipTipText\([\s\S]*?\n    function /);
   assert.ok(tipMatch, 'L1 extract cursorChipTipText');
@@ -57,7 +63,7 @@ assert.ok(/本地统计/.test(overlay) && /本地统计/.test(hub), 'L1 本地�
   assert.ok(srcMatch && /本地统计/.test(srcMatch[0]), 'L1 usageSourceLabel → 本地统计');
 }
 assert.ok(/kind==='cursor'/.test(overlay) && /cursorChipTipText\(row/.test(overlay), 'L1 chip uses cursor tip');
-assert.ok(/miniUsagePill\.title=cursorChipTipText/.test(overlay), 'L1 pill title uses cursor tip');
+assert.ok(/bindAgentTipHover\(miniUsagePill/.test(overlay), 'L1 pill uses agent tip');
 assert.ok(/本地活动统计模式|不提供官方额度展示/.test(docs), 'L1 docs product line');
 assert.ok(!/永不占 pill/.test(docs), 'L1 no never-pill residue');
 

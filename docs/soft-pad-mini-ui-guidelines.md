@@ -11,6 +11,10 @@
 - 三个 Agent 永远按 Codex → Claude → Cursor 排列，位置不随状态跳动。
 - 图标回答“是谁”，右下状态点回答“现在怎样”。
 - 模型放原生 tooltip，不在 44px 高的条里常显。
+- Activity / 多行用量：用共享 `#overlayAgentTip`（状态 · 可选模型 · 强度 · 脚注）；单行模型仍可兜底 aria。
+- Soft Pad 底栏与 `#overlayAgentTip`：永远浅底深字，不跟深色 chrome 的 `--overlay-ink`。
+- Soft Pad 底栏：主行 `Agent · 今日 N 次`；副行只放会话/活跃/本地统计/新鲜度（日环比进 tip）。
+- mini 宽约 `320 × 44`（6 chip + `Cu · N次`）；用量 pill `min-width: 64px`，不要再挤成 `C.`。
 - `PadStatus` 仍只控制主灯与主控，不用来复制三个 Agent 状态。
 
 ## 状态词与颜色
@@ -34,12 +38,13 @@
 
 ## 尺寸与间距
 
-- 窗口：`156 × 44px`。
+- 窗口：`320 × 44px`（含用量 pill；旧稿 156 已不够）。
 - 外边距：`6px`。
 - Agent 图标盒：`22 × 22px`，圆角 `7px`。
 - 图标：`14 × 14px`。
 - 状态点：主体 `6px`，加 `1.5px` 外圈。
 - 三图标间距：`2px`；控件组间距：`5px`。
+- 用量 pill：`min-width 64px` / `max-width 96px`，文案如 `Cu · 83次`。
 - 展开按钮 `30px`，关闭按钮 `24px`。
 
 如果新增内容导致拥挤，优先放入 tooltip 或 full overlay；不要继续缩小图标和点击目标。
@@ -67,5 +72,5 @@
 3. JavaScript 只把 snapshot 字段写到 `data-status`、`title`、`aria-label`，不重新推断生命周期。
 4. CSS 只按 `data-status` 上色，不读取事件名。
 5. 同时检查浅色、深色、空闲、执行中、等待输入、完成、失败。
-6. 鼠标悬停能读到 Agent、状态、模型；无模型时明确显示 `--`。
+6. 鼠标悬停能读到 Agent、状态、模型（或 Activity 强度行）；无模型时 Cursor 省略模型行，其它 Agent 显示 `模型 --`。
 7. 改完运行 Rust 测试、前端 typecheck，并做一次 156×44 的截图检查。
