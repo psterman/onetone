@@ -667,14 +667,14 @@
       return Math.floor(age/3600_000)+'小时前';
     }
 
-    /** Claude OTel session/$ — shown when statusLine windows are absent. */
+    /** Claude OTel session/$ — auxiliary burn only (never remaining %). */
     function claudeOtelBits(usage,detail){
       usage=usage||{};
       var bits=[];
       var sess=usageValue(usage,'sessionTokens','session_tokens');
       var aux=usageValue(usage,'auxiliaryTokens','auxiliary_tokens');
       var cost=usageValue(usage,'estimatedCostUsd','estimated_cost_usd');
-      if(sess!=null) bits.push((detail?'本会话 ':'')+compactNumber(sess));
+      if(sess!=null) bits.push((detail?'本会话消耗 ':'本会话 ')+compactNumber(sess));
       if(detail&&aux!=null) bits.push('子任务 '+compactNumber(aux));
       if(cost!=null){
         var c=Number(cost);
@@ -683,10 +683,111 @@
       return bits;
     }
 
+    function formatActiveDuration(ms){
+      var totalMin=Math.max(0,Math.round(Number(ms)/60000));
+      var h=Math.floor(totalMin/60);
+      var m=totalMin%60;
+      if(h>0) return h+'h '+m+'m';
+      return m+'m';
+    }
+
+    function cursorActivityIntensityBits(usage){
+      usage=usage||{};
+      var turns=usageValue(usage,'localTodayRequests','local_today_requests');
+      if(turns==null) return [];
+      var n=Math.round(Number(turns));
+      var bits=['今日 '+n+' 次对话'];
+      var sess=usageValue(usage,'localTodaySessions','local_today_sessions');
+      var activeMs=usageValue(usage,'localTodayActiveMs','local_today_active_ms');
+      var yest=usageValue(usage,'localYesterdayRequests','local_yesterday_requests');
+      if(sess!=null) bits.push(Math.round(Number(sess))+' 个会话');
+      if(activeMs!=null&&Number(activeMs)>0) bits.push('活跃 '+formatActiveDuration(Number(activeMs)));
+      if(yest!=null&&Number(yest)>0){
+        var delta=Math.round(((Number(turns)-Number(yest))/Number(yest))*100);
+        var arrow=delta>0?'↑':(delta<0?'↓':'');
+        bits.push('较昨日对话 '+arrow+Math.abs(delta)+'%');
+      }
+      return bits;
+    }
+
+    function cursorActivityBits(usage,detail){
+      usage=usage||{};
+      var turns=usageValue(usage,'localTodayRequests','local_today_requests');
+      if(turns==null) return [];
+      var n=Math.round(Number(turns));
+      if(!detail) return ['今日 '+n+' 次'];
+      var bits=['Cursor 本地活动'].concat(cursorActivityIntensityBits(usage));
+      bits.push('本地统计');
+      bits.push('不代表官方额度');
+      return bits;
+    }
+
+    function isCursorActivityUsage(usage){
+      usage=usage||{};
+      var status=String(usage.status||'');
+      if(status!=='ready'&&status!=='stale'&&status!=='waiting') return false;
+      if(String(usage.source||'')!=='cursor_local_activity'&&String(usage.confidence||'')!=='local_only') return false;
+      return usageValue(usage,'localTodayRequests','local_today_requests')!=null;
+    }
+
+    /** User-facing usage source — never leak cursor_local_activity id. */
+    function usageSourceLabel(kind,usage){
+      if(kind==='cursor') return '本地统计';
+      var src=String(usage&&usage.source||'').trim();
+      return src||'—';
+    }
+
+    /**
+     * Cursor Activity Provider chip tip.
+     * Hierarchy: status → optional model → intensity → 本地统计 · freshness.
+     * Never 「模型 --」; never bare cursor_local_activity.
+     */
+    function cursorChipTipText(row,usage,state){
+      row=row||{};
+      usage=usage||{};
+      var lines=[];
+      var label=agentLabel('cursor')+'：'+lightStatusLabel(state);
+      lines.push(label);
+      var model=String(row.model||'').trim();
+      if(model){
+        lines.push(model==='Auto'?model+'（自动路由）':model);
+      }
+      if(isCursorActivityUsage(usage)){
+        var intensity=cursorActivityIntensityBits(usage);
+        if(intensity.length) lines.push(intensity.join(' · '));
+      } else {
+        var cmsg=String(usage.message||'').trim();
+        if(/未启用/.test(cmsg)||!cmsg) lines.push('点击启用 Cursor 活动统计');
+        else lines.push(cmsg);
+      }
+      var fresh=freshnessLabel(usage,row.health);
+      var status=String(usage.status||'');
+      if(status==='stale'){
+        lines.push('数据陈旧'+(fresh?' · 上次成功 '+fresh:''));
+      } else {
+        lines.push(usageSourceLabel('cursor',usage)+(fresh?' · '+fresh:''));
+      }
+      var tip=lines.join('\n');
+      if(tip.length>140) tip=tip.slice(0,137)+'…';
+      var aria=label;
+      if(lines.length>1) aria+=('，'+lines[1]);
+      return { tip: tip, aria: aria, lines: lines };
+    }
+
     function usageSummary(kind,usage,detail,row,snap){
       usage=usage||{};
       var status=String(usage.status||'unavailable');
-      if(kind==='cursor') return detail?'用量暂无官方接口':'用量 --';
+      if(kind==='cursor'){
+        if(isCursorActivityUsage(usage)){
+          var bits=cursorActivityBits(usage,!!detail);
+          return bits.join(detail?' · ':' / ');
+        }
+        var cmsg=String(usage.message||'').trim();
+        if(/未启用/.test(cmsg)||!cmsg){
+          return detail?'点击启用 Cursor 活动统计':'点击启用统计';
+        }
+        return cmsg;
+      }
       if(status==='disabled') return detail?'用量已关闭':'已关闭';
       var balCap=kind==='claude'?providerBalanceCaption(usage):'';
       if(balCap){
@@ -772,7 +873,10 @@
       });
       var hasRem=usageValue(usage,'remainingPercent','remaining_percent')!=null||hasWindows;
       if(kind==='cursor'){
-        return { label:'用量暂无接口', state:'unsupported' };
+        if(isCursorActivityUsage(usage)){
+          return { label:'本地活动', state:'live' };
+        }
+        return { label:String(usage.message||'未启用活动统计').slice(0,12)||'未启用', state:'unsupported' };
       }
       var hasOtel=kind==='claude'&&(
         usageValue(usage,'sessionTokens','session_tokens')!=null||
@@ -793,22 +897,47 @@
       return { label:'同步中', state:'configured_waiting' };
     }
 
+    function isShellUsageKind(kind){
+      return kind==='workbuddy'||kind==='trae'||kind==='qoder';
+    }
+
     function miniUsageAbbrev(kind){
       if(kind==='codex') return 'C';
       if(kind==='claude') return 'Cl';
       if(kind==='cursor') return 'Cu';
+      if(kind==='workbuddy') return 'Wb';
+      if(kind==='trae') return 'Tr';
+      if(kind==='qoder') return 'Qd';
       return String(kind||'?').slice(0,1).toUpperCase();
+    }
+
+    function shellUsageCaption(usage){
+      usage=usage||{};
+      var src=String(usage.source||'');
+      var conf=String(usage.confidence||'');
+      if(conf==='manual_or_local_estimate'||/qoder_|workbuddy_|trae_/.test(src)){
+        var msg=String(usage.message||'').trim();
+        if(msg) return msg.split(' · ')[0];
+      }
+      return '';
     }
 
     function isRenderableUsage(kind,usage){
       usage=usage||{};
       var status=String(usage.status||'');
-      if(kind==='cursor') return false;
+      if(kind==='cursor') return isCursorActivityUsage(usage);
       if(status==='disabled'||status==='unavailable') return false;
       if(kind==='claude'&&providerBalanceCaption(usage)){
         return status==='ready'||status==='stale'||status==='waiting';
       }
       if(kind==='claude'&&String(usage.confidence||'')==='manual_or_local_estimate'){
+        return status==='ready'||status==='stale'||status==='waiting';
+      }
+      if(isShellUsageKind(kind)&&(shellUsageCaption(usage)||String(usage.confidence||'')==='manual_or_local_estimate')){
+        return status==='ready'||status==='stale'||status==='waiting';
+      }
+      // Claude OTel session burn — auxiliary only; never invent remaining %.
+      if(kind==='claude'&&claudeOtelBits(usage,false).length){
         return status==='ready'||status==='stale'||status==='waiting';
       }
       var windows=Array.isArray(usage.windows)?usage.windows:[];
@@ -831,11 +960,16 @@
     function miniUsageText(kind,usage){
       usage=usage||{};
       if(!isRenderableUsage(kind,usage)) return '';
-      var bal=kind==='claude'?providerBalanceCaption(usage):'';
+      if(kind==='cursor'){
+        var turns=usageValue(usage,'localTodayRequests','local_today_requests');
+        if(turns==null) return '';
+        return 'Cu · '+Math.round(Number(turns))+'次';
+      }
+      var bal=kind==='claude'?providerBalanceCaption(usage):(isShellUsageKind(kind)?shellUsageCaption(usage):'');
       if(bal){
         return bal.replace(/^(DeepSeek|Kimi)\s+/,'');
       }
-      if(kind==='claude'&&String(usage.confidence||'')==='manual_or_local_estimate'){
+      if((kind==='claude'||isShellUsageKind(kind))&&String(usage.confidence||'')==='manual_or_local_estimate'){
         var loc=usageValue(usage,'localTodayTokens','local_today_tokens');
         if(loc!=null&&Number(loc)>0) return '本机今日 '+Math.round(Number(loc));
         return '控制台查额度';
@@ -844,12 +978,19 @@
       var windows=Array.isArray(usage.windows)?usage.windows:[];
       var pw=windows.find(function(w){ return String(w.kind||'')==='primary'; })||windows[0];
       if(rem==null&&pw) rem=pw.remainingPercent!=null?pw.remainingPercent:pw.remaining_percent;
-      if(rem==null) return '';
-      var cd=formatResetCountdown(primaryResetAt(usage));
-      return miniUsageAbbrev(kind)+' '+Math.round(Number(rem))+'%'+(cd?' · '+cd:'');
+      if(rem!=null){
+        var cd=formatResetCountdown(primaryResetAt(usage));
+        return miniUsageAbbrev(kind)+' '+Math.round(Number(rem))+'%'+(cd?' · '+cd:'');
+      }
+      // Claude OTel-only: show session burn, never as remaining %.
+      if(kind==='claude'){
+        var otel=claudeOtelBits(usage,false);
+        if(otel.length) return otel[0];
+      }
+      return '';
     }
 
-    /** One visible pill: pinned focus → app_agent → renderable-first (never Cursor without quota). */
+    /** One visible pill: pinned focus → app_agent → renderable-first (Cursor activity ok). */
     function pickMiniUsageKind(s){
       var rows=Array.isArray(s&&s.agents)?s.agents:[];
       var byKind={};
@@ -871,19 +1012,25 @@
       }
       if(hasRenderable('codex')) return 'codex';
       if(hasRenderable('claude')) return 'claude';
+      if(hasRenderable('cursor')) return 'cursor';
       for(var n=0;n<rows.length;n++){
         var kk=String(rows[n]&&rows[n].kind||'').trim();
-        if(kk&&kk!=='cursor'&&hasRenderable(kk)) return kk;
+        if(kk&&hasRenderable(kk)) return kk;
       }
       return '';
     }
 
+    function isUsageFocusKind(kind){
+      return kind==='codex'||kind==='claude'||kind==='cursor'||
+        kind==='workbuddy'||kind==='trae'||kind==='qoder';
+    }
+
     function resolveUsageFocus(s){
-      if(usageFocusPinned&&(focusedUsageAgent==='codex'||focusedUsageAgent==='claude'||focusedUsageAgent==='cursor')){
+      if(usageFocusPinned&&isUsageFocusKind(focusedUsageAgent)){
         return focusedUsageAgent;
       }
       var app=String(s&&(s.appAgent||s.app_agent)||'').trim().toLowerCase();
-      if(app==='codex'||app==='claude'||app==='cursor') return app;
+      if(isUsageFocusKind(app)) return app;
       var auto=pickMiniUsageKind(s);
       if(auto) return auto;
       return focusedUsageAgent||'codex';
@@ -893,7 +1040,7 @@
       usage=usage||{};
       var lines=[];
       // Prefer official balance / windows over OTel「本会话」(Soft Pad caption + tooltip).
-      var balCap=kind==='claude'?providerBalanceCaption(usage):'';
+      var balCap=kind==='claude'?providerBalanceCaption(usage):(isShellUsageKind(kind)?shellUsageCaption(usage):'');
       if(balCap){
         lines.push(balCap);
         return lines;
@@ -915,7 +1062,10 @@
         }
       }
       if(!lines.length){
-        if(kind==='cursor') lines.push('用量暂无官方接口');
+        if(kind==='cursor'){
+          if(isCursorActivityUsage(usage)) cursorActivityBits(usage,true).forEach(function(b){ lines.push(b); });
+          else lines.push(String(usage.message||'').trim()||'点击启用 Cursor 活动统计');
+        }
         else if(kind==='claude') lines.push(claudeFallbackCaption(row,snap,true));
         else lines.push('用量 --');
       }
@@ -946,7 +1096,11 @@
       miniUsagePill.hidden=false;
       miniUsagePill.textContent=text;
       miniUsagePill.setAttribute('data-agent', kind);
-      miniUsagePill.title=agentLabel(kind)+' · '+usageSummary(kind,row.usage||{},true,row,s);
+      if(kind==='cursor'){
+        miniUsagePill.title=cursorChipTipText(row,row.usage||{},String(row.state||'idle')).tip;
+      } else {
+        miniUsagePill.title=agentLabel(kind)+' · '+usageSummary(kind,row.usage||{},true,row,s);
+      }
     }
 
     var usageCaptionIdle='';
@@ -994,11 +1148,19 @@
       var confidence=String(row.modelConfidence||row.model_confidence||'').trim();
       var usage=row.usage||{};
       var label=agentLabel(kind)+'：'+lightStatusLabel(state);
+      if(kind==='cursor'){
+        var built=cursorChipTipText(row,usage,state);
+        el.setAttribute('data-status', state);
+        el.classList.toggle('is-usage-focus', kind===focus);
+        el.setAttribute('aria-pressed', kind===focus?'true':'false');
+        el.setAttribute('aria-label', built.aria);
+        el.setAttribute('title', built.tip);
+        return;
+      }
       var line2='';
       if(model){
         line2=model;
         if(kind==='claude'&&confidence==='low') line2+='（会话开始值）';
-        else if(kind==='cursor'&&model==='Auto') line2+='（自动路由）';
       } else {
         line2='模型 --';
       }
@@ -1008,8 +1170,7 @@
       }
       var hasClaudeData=kind==='claude'&&(isRenderableUsage(kind,usage)||claudeOtelBits(usage,false).length);
       var fresh=kind==='claude'&&!hasClaudeData?'':freshnessLabel(usage,row.health);
-      var src=String(usage.source||'');
-      if(kind==='cursor') src=src||'Cursor Hook';
+      var src=usageSourceLabel(kind,usage);
       if(kind==='claude'&&!hasClaudeData) src='—';
       var line3=(src||'—')+(fresh?' · '+fresh:'');
       if((kind!=='claude'||hasClaudeData)&&String(usage.status||'')==='stale') line3='数据陈旧'+(fresh?' · 上次成功 '+fresh:'');
@@ -1994,6 +2155,29 @@
     function pull(){
       if(holdLockId||localPadStatus==='listening') return;
       invoke('cmd_codex_micro_overlay_get_state',{}).then(function(s){ render(s); }).catch(function(){});
+    }
+    function enableCursorActivityFromOverlay(){
+      return invoke('cmd_cursor_activity_pref_set',{enabled:true})
+        .then(function(){ return invoke('cmd_codex_micro_overlay_get_state',{}); })
+        .then(function(s){ if(s) render(s); })
+        .catch(function(){});
+    }
+    function captionWantsEnable(text){
+      return /点击启用/.test(String(text||''))||/未启用/.test(String(text||''));
+    }
+    var capEl=document.getElementById('overlayKeyCaption');
+    if(capEl){
+      capEl.style.cursor='pointer';
+      capEl.addEventListener('click',function(){
+        if(captionWantsEnable(usageCaptionIdle)) enableCursorActivityFromOverlay();
+      });
+    }
+    if(miniUsagePill){
+      miniUsagePill.style.cursor='pointer';
+      miniUsagePill.addEventListener('click',function(){
+        var t=String(miniUsagePill.getAttribute('title')||miniUsagePill.textContent||'');
+        if(captionWantsEnable(t)) enableCursorActivityFromOverlay();
+      });
     }
     setInterval(pull, 1500);
     setInterval(pullAppLightHttp, 500);

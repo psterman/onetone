@@ -840,7 +840,8 @@ fn claude_is_foreground() -> bool {
 
 #[cfg(windows)]
 fn cursor_is_foreground() -> bool {
-    crate::app_identity::foreground_app_target_id()
+    // Same effective FG path as Codex/Claude Soft Pad hosts (preset + terminal-cli).
+    crate::app_identity::foreground_effective_app_target_id()
         .is_some_and(|id| id.trim() == crate::app_identity::CURSOR_APP_TARGET_ID)
 }
 
@@ -1172,22 +1173,12 @@ pub fn active_ambient_for_soft_rgb(
 }
 
 /// Overlay visibility depends only on `overlay_enabled` (not `pad.enabled`).
-/// Prefers Soft Pad Applied lane, then FG Soft Pad agent mapping, then Codex.
+/// Prefers FG Soft Pad agent mapping, then Applied lane, then Codex.
+/// FG-first: opening Cursor/Claude/Codex must show that agent's mini even if
+/// Applied still lags on another agent's waiting.
 fn active_codex_mapping_with_overlay(
     cfg: &VoiceConfig,
 ) -> Option<(&MappingEntry, &CodexMicroPadConfig)> {
-    if let Some((_, mid)) = crate::soft_pad_runtime::applied_lane() {
-        for m in &cfg.mappings {
-            if m.enabled && m.id == mid {
-                if let Some(pad) = m.codex_micro_pad.as_ref() {
-                    if pad.overlay_enabled {
-                        return Some((m, pad));
-                    }
-                }
-            }
-        }
-    }
-
     if let Some(tid) = crate::app_identity::foreground_effective_app_target_id() {
         if crate::soft_pad_runtime::AgentKind::from_app_target(&tid).is_some() {
             for m in &cfg.mappings {
@@ -1196,6 +1187,18 @@ fn active_codex_mapping_with_overlay(
                         if pad.overlay_enabled {
                             return Some((m, pad));
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    if let Some((_, mid)) = crate::soft_pad_runtime::applied_lane() {
+        for m in &cfg.mappings {
+            if m.enabled && m.id == mid {
+                if let Some(pad) = m.codex_micro_pad.as_ref() {
+                    if pad.overlay_enabled {
+                        return Some((m, pad));
                     }
                 }
             }
@@ -3110,23 +3113,13 @@ pub fn set_overlay_minimized_persist(_app: &AppHandle, state: &AppState, minimiz
 fn active_codex_mapping_with_overlay_mut(
     cfg: &mut VoiceConfig,
 ) -> Option<&mut CodexMicroPadConfig> {
-    let prefer_id = crate::soft_pad_runtime::applied_lane().map(|(_, mid)| mid);
+    // Same order as active_codex_mapping_with_overlay: FG Soft Pad → Applied → Codex.
     let fg_tid = crate::app_identity::foreground_effective_app_target_id();
+    let prefer_id = crate::soft_pad_runtime::applied_lane().map(|(_, mid)| mid);
 
-    let idx = prefer_id
-        .as_ref()
-        .and_then(|mid| {
-            cfg.mappings.iter().position(|m| {
-                m.enabled
-                    && m.id == *mid
-                    && m.codex_micro_pad
-                        .as_ref()
-                        .map(|p| p.overlay_enabled)
-                        .unwrap_or(false)
-            })
-        })
-        .or_else(|| {
-            let tid = fg_tid.as_deref()?;
+    let idx = fg_tid
+        .as_deref()
+        .and_then(|tid| {
             if crate::soft_pad_runtime::AgentKind::from_app_target(tid).is_none() {
                 return None;
             }
@@ -3137,6 +3130,18 @@ fn active_codex_mapping_with_overlay_mut(
                         .as_ref()
                         .map(|p| p.overlay_enabled)
                         .unwrap_or(false)
+            })
+        })
+        .or_else(|| {
+            prefer_id.as_ref().and_then(|mid| {
+                cfg.mappings.iter().position(|m| {
+                    m.enabled
+                        && m.id == *mid
+                        && m.codex_micro_pad
+                            .as_ref()
+                            .map(|p| p.overlay_enabled)
+                            .unwrap_or(false)
+                })
             })
         })
         .or_else(|| {
@@ -3485,8 +3490,8 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
     if is_fg {
         // Soft Pad agent returned to FG — clear soft dismiss so the pad can show again.
         // Never clear while settings/setup/recording gates are active (float would cover UI).
-        if !was_fg
-            && is_overlay_session_dismissed()
+        // Clear whenever agent is FG (not only rising edge): latch can stick if was_fg desyncs.
+        if is_overlay_session_dismissed()
             && soft_pad_agent_is_foreground()
             && gate_reason.is_none()
         {
@@ -3539,7 +3544,9 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
 
     let desired_visible = {
         let cfg = state.cfg.lock();
-        active_codex_mapping_with_overlay(&cfg).is_some() && host_ok
+        active_codex_mapping_with_overlay(&cfg).is_some()
+            && host_ok
+            && !is_overlay_session_dismissed()
     };
     let vis_changed = *last_visible().lock() != desired_visible;
 

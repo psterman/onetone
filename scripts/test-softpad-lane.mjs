@@ -54,6 +54,13 @@ function entry(kind, padEnabled) {
 
 const codexOn = entry('codex', true);
 const claudeOn = entry('claude', true);
+const cursorOn = {
+  kind: 'cursor',
+  padEnabled: true,
+  appId: 'cursor-chat',
+  title: 'cursor',
+  mapping: { id: 'm-cursor', appTargetId: 'cursor-chat' },
+};
 
 function assertResult(entries, ctx, expectKind, expectReason) {
   const r = Hub.resolvePrimaryLaneResult(entries, ctx);
@@ -67,12 +74,11 @@ function assertResult(entries, ctx, expectKind, expectReason) {
   }
 }
 
-// Scheme A / Pinned: pin beats waiting + foreground
+// Auto: waiting still wins when FG is that waiting agent
 assertResult([codexOn, claudeOn], {
-  userLaneId: 'claude',
   foregroundAppId: 'codex-chat',
   waitingKinds: ['codex'],
-}, 'claude', 'userPin');
+}, 'codex', 'waiting');
 
 assertResult([codexOn, claudeOn], {
   waitingKinds: ['claude'],
@@ -81,6 +87,12 @@ assertResult([codexOn, claudeOn], {
 assertResult([codexOn, claudeOn], {
   foregroundAppId: 'claude-code',
 }, 'claude', 'foreground');
+
+// Intentional Soft Pad FG (open Cursor) beats another agent's waiting
+assertResult([claudeOn, cursorOn], {
+  foregroundAppId: 'cursor-chat',
+  waitingKinds: ['claude'],
+}, 'cursor', 'foreground');
 
 assertResult([], {}, null, 'none');
 

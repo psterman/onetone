@@ -62,7 +62,7 @@ Phase B 已经把硬数据存进 `AgentUsageSnapshot`。v1 是复用现有 overl
   3. Codex ready/renderable
   4. 首个其他 renderable provider
   5. 隐藏 pill（不要显示 `--` 挤掉有效 Codex 额度）
-- Cursor：无官方 quota → **永不占 pill**
+- Cursor：**不提供官方额度展示，采用本地活动统计模式**（Activity Provider）。已启用且有本地数据时可占 pill；**禁止**用 remaining% 冒充官方额度
 
 ### 4. 展示合同
 
@@ -70,7 +70,7 @@ Phase B 已经把硬数据存进 `AgentUsageSnapshot`。v1 是复用现有 overl
 |---|---|---|
 | mini Codex | `C 63% · 2h12m` | primary 窗口 % + primary `resetsAt`；无 primary 才用第一个有效窗口 |
 | mini Claude | `Cl 76% · 3h12m` | Claude Code **statusLine** 的 5h/7d 窗口；无窗口时隐藏（OTel session/$ 仍不展示） |
-| mini Cursor | （隐藏） | 无可用 quota 不占 pill |
+| mini Cursor | `Cu · 54次` | 本地活动 turns；hover 首行「Cursor 本地活动」+ 会话/活跃 + 本地声明；未启用则不占 pill |
 | expanded rail | `5h余63% · 2h12m重置` / `7d余41% · …` | **每个窗口各自** reset；禁止 5h/7d 共用一个倒计时 |
 | Soft Pad 设置 | 见上两行 layout | `resetCountdown` 取 primary；无 primary → 首个有效窗口 |
 | tooltip | 双窗口 + source + 上次刷新 | 仅脱敏账号 |
@@ -104,7 +104,7 @@ Claude 用量双通道：`ClaudeStatusLineState`（额度窗口）与 `ClaudeOte
 
 - PitStop provider/account cards、多账号切换
 - 外部 CLI adapters（`codex-rate` / `codexbar` / `claude-monitor`）— phase 2 merge-only；**Claude 5h/7d 已由 statusLine 官方通道覆盖**
-- 新 IPC、burn-rate 预测、Cursor quota
+- 新 IPC、burn-rate 预测、**伪造 Cursor 官方 quota**（Cursor 走 Activity Provider：本地次数，非 remaining%）
 - 后端 countdown timer（overlay 已 ~1.5s 刷新）
 - statusLine 包装用户自定义 command；转发 `context_window` / statusLine `cost`
 
@@ -127,8 +127,8 @@ PATH probe + 超时 + max stdout + 严格 JSON；只合并空字段；Codex 外�
 | `Ark/GLM/MiniMax Nh余N%` | `provider_usage`：arkcli / quota/limit / remains | Coding Plan 窗口；见 `docs` 多厂商方案 |
 | `Kimi 余额` | Moonshot `GET /v1/users/me/balance` | 余额文案；细分消耗看本机账本 |
 | 百炼 / MiMo | `manual_or_local_estimate` | 本机消耗 + 控制台入口，不伪造官方剩余 |
-| Cursor `用量 --` | 无官方接口 | 产品边界 |
-| Claude `用量 --` | 无官方额度窗口 | 与 Cursor 同边界；后端仍可 ingest OTel |
+| Cursor `今日 N 次` | `cursor_local_activity`（只读 state.vscdb） | Cursor 不提供官方额度展示，采用本地活动统计模式；禁止当官方额度；需首次启用同意 |
+| Claude `用量 --` | 无官方额度窗口 | 产品边界；后端仍可 ingest OTel |
 
 ## Tests（合同）
 
@@ -145,13 +145,13 @@ PATH probe + 超时 + max stdout + 严格 JSON；只合并空字段；Codex 外�
 
 - `formatResetCountdown` **必须真正执行函数**（不是只断言源码含函数名）：秒时间戳、毫秒时间戳、过去时间、0/null/NaN、跨天格式、primary 缺失 fallback
 - 共享实现：`src/js/features/agent/usage-format.js`（overlay + Soft Pad hub + node tests）
-- mini：`applyMiniUsagePill` 独立于 chips；picker renderable-first；Cursor 不占 pill
+- mini：`applyMiniUsagePill` 独立于 chips；picker renderable-first；Cursor Activity 可占 pill（非 remaining%）
 - Soft Pad：单例 30s timer + 页面门控字符串/行为护栏
 
 ## 新手排错
 
 - Codex「未连接」：终端 `codex --version`；ChatGPT/受支持身份登录；API-key-only 不提供 account usage。Windows PATH 缺 CLI 时设 `ONETONE_CODEX_BIN`。
 - Claude「未连接」：确认 loopback `:8796`、OTel env、`claude --debug`。
-- Cursor `--`：产品边界，不是安装故障。
+- Cursor「未启用活动统计」：Soft Pad → Cursor → 首次启用隐私清单；本地次数 ≠ 官方额度。
 - 文案只写「窗口余」，不要改成「账户余额」。
 - 关闭轮询：`ONETONE_AGENT_USAGE=0`。

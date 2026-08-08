@@ -15,4 +15,6 @@ permissions = [
   "allow-cmd-soft-pad-focus-agent",
   "allow-cmd-soft-pad-set-purpose",
   "allow-cmd-soft-pad-set-navigation-slots",
+  "allow-cmd-cursor-activity-pref-get",
+  "allow-cmd-cursor-activity-pref-set",
 ]

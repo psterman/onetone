@@ -124,6 +124,13 @@ fn pick_waiting(input: &CandidateInput) -> Option<AgentKind> {
     if waiting.is_empty() {
         return None;
     }
+    // Intentional Soft Pad FG (e.g. open Cursor) beats another agent's waiting.
+    // Waiting still wins when FG is the waiting agent, or FG is not a Soft Pad host.
+    if let Some(fg) = fresh_foreground(input) {
+        if input.entries.iter().any(|e| e.kind == fg) && !waiting.contains(&fg) {
+            return None;
+        }
+    }
     // Current primary also waiting → keep.
     if let Some(cur) = input.current_lane {
         if waiting.contains(&cur) {
@@ -284,6 +291,55 @@ mod tests {
             waiting_observed_at: vec![],
             now,
             current_lane: Some(AgentKind::Claude),
+        };
+        let c = resolve_candidate(&input);
+        assert_eq!(c.lane_kind, Some(AgentKind::Claude));
+        assert_eq!(c.reason, SelectionReason::Waiting);
+    }
+
+    #[test]
+    fn soft_pad_fg_beats_other_agent_waiting() {
+        let now = Instant::now();
+        let input = CandidateInput {
+            entries: vec![
+                entry(AgentKind::Claude, "m-claude", 0, true),
+                entry(AgentKind::Cursor, "m-cursor", 1, true),
+            ],
+            user_pin: None,
+            foreground: Some(ForegroundEvidence {
+                agent_kind: Some(AgentKind::Cursor),
+                observed_at: now,
+                sequence: 1,
+            }),
+            waiting_kinds: vec![AgentKind::Claude],
+            waiting_observed_at: vec![],
+            now,
+            current_lane: Some(AgentKind::Claude),
+        };
+        let c = resolve_candidate(&input);
+        assert_eq!(c.lane_kind, Some(AgentKind::Cursor));
+        assert_eq!(c.mapping_id.as_deref(), Some("m-cursor"));
+        assert_eq!(c.reason, SelectionReason::Foreground);
+    }
+
+    #[test]
+    fn waiting_still_wins_when_fg_is_that_agent() {
+        let now = Instant::now();
+        let input = CandidateInput {
+            entries: vec![
+                entry(AgentKind::Claude, "m-claude", 0, true),
+                entry(AgentKind::Cursor, "m-cursor", 1, true),
+            ],
+            user_pin: None,
+            foreground: Some(ForegroundEvidence {
+                agent_kind: Some(AgentKind::Claude),
+                observed_at: now,
+                sequence: 1,
+            }),
+            waiting_kinds: vec![AgentKind::Claude],
+            waiting_observed_at: vec![],
+            now,
+            current_lane: Some(AgentKind::Cursor),
         };
         let c = resolve_candidate(&input);
         assert_eq!(c.lane_kind, Some(AgentKind::Claude));

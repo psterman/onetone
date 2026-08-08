@@ -3,7 +3,7 @@
 use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use crate::codex_micro_overlay::{
     resolve_claude_agent_light_hosts, ClaudeOverflowItem,
@@ -751,6 +751,37 @@ pub fn cmd_shell_agent_hook_uninstall(
     kind: String,
 ) -> crate::shell_agent_hook_setup::ShellHookWriteResult {
     crate::shell_agent_hook_setup::uninstall(kind.trim())
+}
+
+#[tauri::command]
+pub fn cmd_cursor_activity_pref_get(
+    state: State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    let enabled = state.cfg.lock().cursor_activity_stats_enabled;
+    Ok(serde_json::json!({
+        "enabled": enabled,
+        "consent": enabled,
+    }))
+}
+
+#[tauri::command]
+pub fn cmd_cursor_activity_pref_set(
+    state: State<'_, Arc<AppState>>,
+    app: AppHandle,
+    enabled: bool,
+) -> Result<serde_json::Value, String> {
+    {
+        let mut cfg = state.cfg.lock();
+        cfg.cursor_activity_stats_enabled = enabled;
+        crate::config::save_config(&cfg);
+    }
+    crate::cursor_local_activity::set_consent_enabled(enabled);
+    crate::cursor_local_activity::refresh_once();
+    crate::codex_micro_overlay::request_overlay_push(&app, state.inner().as_ref(), false);
+    Ok(serde_json::json!({
+        "ok": true,
+        "enabled": enabled,
+    }))
 }
 
 #[tauri::command]

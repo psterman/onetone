@@ -892,7 +892,6 @@
         requireForeground: true,
         requireNumLockOff: false,
         showNavigationPad: true,
-        navKeysEnabled: true,
         capturePhysicalArrows: false,
         overlayEnabled: true,
         layoutProfile: 'custom',
@@ -935,14 +934,15 @@
     if (m.codexMicroPad.requireForeground == null) {
       m.codexMicroPad.requireForeground = true;
     }
-    // showNavigationPad (display) — alias navKeysEnabled for older configs.
+    // showNavigationPad (display) — migrate older navKeysEnabled; never keep both
+    // (Rust serde alias rejects duplicate → cmd_save 假死).
     if (m.codexMicroPad.showNavigationPad == null && m.codexMicroPad.navKeysEnabled != null) {
       m.codexMicroPad.showNavigationPad = m.codexMicroPad.navKeysEnabled !== false;
     }
     if (m.codexMicroPad.showNavigationPad == null) {
       m.codexMicroPad.showNavigationPad = true;
     }
-    m.codexMicroPad.navKeysEnabled = m.codexMicroPad.showNavigationPad !== false;
+    try { delete m.codexMicroPad.navKeysEnabled; } catch (_) { m.codexMicroPad.navKeysEnabled = undefined; }
     if (m.codexMicroPad.capturePhysicalArrows == null) {
       m.codexMicroPad.capturePhysicalArrows = false;
     }
@@ -2051,7 +2051,7 @@
   function setNavColumnShown(pad, on) {
     if (!pad) return;
     pad.showNavigationPad = !!on;
-    pad.navKeysEnabled = !!on;
+    try { delete pad.navKeysEnabled; } catch (_) { pad.navKeysEnabled = undefined; }
   }
 
   /** Shift Soft Pad cell one column left after removing the NAV rail. */
@@ -2769,9 +2769,10 @@
       '<p class="codex-pad-mgr__hint">' +
       esc(t(
         'cursorHookUsageHonesty',
-        '悬停迷你栏可看模型提示；Cursor 用量固定为「暂无官方接口」。'
+        '悬停迷你栏可看模型提示；用量请用下方「Cursor活动统计」（本地次数，非官方额度）。'
       )) +
       '</p>' +
+      renderCursorActivityConsentCard() +
       '<pre class="codex-pad-mgr__diag-pre" data-cursor-merge-preview hidden></pre>' +
       '<div class="codex-pad-mgr__claude-act-actions">' +
       '<button type="button" class="codex-micro-pad__btn" data-act="cursor-hook-redetect">' +
@@ -2779,6 +2780,34 @@
       '<button type="button" class="codex-micro-pad__btn" data-act="cursor-hook-copy">' +
       esc(t('cursorHookCopy', '复制合并预览')) + '</button>' +
       '</div></div>'
+    );
+  }
+
+  function renderCursorActivityConsentCard() {
+    return (
+      '<div class="codex-pad-mgr__claude-act" id="codexCursorActivityPad" data-cursor-activity-card="1">' +
+      '<p class="codex-pad-mgr__label">' +
+      esc(t('cursorActivityTitle', 'Cursor 本地活动统计')) + '</p>' +
+      '<p class="codex-pad-mgr__hint">' + esc(t('cursorActivityReads', '用于显示：')) + '</p>' +
+      '<ul class="codex-pad-mgr__hint">' +
+      '<li>✓ ' + esc(t('cursorActivityAllowTurns', '今日对话次数')) + '</li>' +
+      '<li>✓ ' + esc(t('cursorActivityAllowSessions', 'Agent 会话数量')) + '</li>' +
+      '<li>✓ ' + esc(t('cursorActivityAllowTime', '使用活跃时间')) + '</li>' +
+      '</ul>' +
+      '<p class="codex-pad-mgr__hint">' + esc(t('cursorActivityDenies', '不会读取：')) + '</p>' +
+      '<ul class="codex-pad-mgr__hint">' +
+      '<li>× ' + esc(t('cursorActivityDenyLogin', '登录信息')) + '</li>' +
+      '<li>× Token</li><li>× Cookie</li>' +
+      '<li>× ' + esc(t('cursorActivityDenyText', '对话内容')) + '</li>' +
+      '</ul>' +
+      '<div class="codex-pad-mgr__claude-act-actions">' +
+      '<button type="button" class="codex-micro-pad__btn is-primary" data-act="cursor-activity-enable">' +
+      esc(t('cursorActivityEnable', '启用')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn is-primary" data-act="cursor-activity-disable" hidden>' +
+      esc(t('cursorActivityDisable', '关闭')) + '</button>' +
+      '</div>' +
+      '<p class="codex-pad-mgr__hint" data-cursor-activity-status aria-live="polite"></p>' +
+      '</div>'
     );
   }
 
@@ -4717,6 +4746,45 @@
     }).catch(function () {
       toast(t('claudeCliPrefFail', '偏好切换失败'));
     });
+  }
+
+  function refreshCursorActivityPrefDom(root) {
+    root = root || document;
+    var cards = root.querySelectorAll
+      ? root.querySelectorAll('[data-cursor-activity-card], #codexCursorActivityPad, #softPadCursorActivityCard')
+      : [];
+    if (!cards.length && root.id === 'codexCursorActivityPad') cards = [root];
+    return padInvoke('cmd_cursor_activity_pref_get', {})
+      .then(function (st) {
+        var on = !!(st && (st.enabled || st.consent));
+        Array.prototype.forEach.call(cards, function (card) {
+          if (!card || !card.querySelector) return;
+          var enableBtn = card.querySelector('[data-act="cursor-activity-enable"]');
+          var disableBtn = card.querySelector('[data-act="cursor-activity-disable"]');
+          var statusEl = card.querySelector('[data-cursor-activity-status]');
+          if (enableBtn) enableBtn.hidden = !!on;
+          if (disableBtn) disableBtn.hidden = !on;
+          if (statusEl) {
+            statusEl.textContent = on
+              ? t('cursorActivityOn', '已启用 · 仅本地统计，不代表官方额度')
+              : t('cursorActivityOff', '未启用 · 不会读取本机 Cursor 使用记录');
+          }
+        });
+      })
+      .catch(function () {});
+  }
+
+  function setCursorActivityPref(enabled) {
+    return padInvoke('cmd_cursor_activity_pref_set', { enabled: !!enabled })
+      .then(function () {
+        toast(enabled
+          ? t('cursorActivityEnableOk', '已启用 Cursor 活动统计')
+          : t('cursorActivityDisableOk', '已关闭 Cursor 活动统计'));
+        return refreshCursorActivityPrefDom();
+      })
+      .catch(function () {
+        toast(t('cursorActivityPrefFail', '活动统计偏好切换失败'));
+      });
   }
 
   function copyHookDraft(m) {
@@ -8066,6 +8134,17 @@
       claudeCliPref.__softPadBound = true;
       claudeCliPref.addEventListener('click', function () { toggleClaudeCliInjectPref(m); });
     }
+    body.querySelectorAll('[data-act="cursor-activity-enable"]').forEach(function (btn) {
+      if (btn.__softPadBound) return;
+      btn.__softPadBound = true;
+      btn.addEventListener('click', function () { setCursorActivityPref(true); });
+    });
+    body.querySelectorAll('[data-act="cursor-activity-disable"]').forEach(function (btn) {
+      if (btn.__softPadBound) return;
+      btn.__softPadBound = true;
+      btn.addEventListener('click', function () { setCursorActivityPref(false); });
+    });
+    refreshCursorActivityPrefDom(body);
     body.querySelectorAll('[data-act="claude-inject"]').forEach(function (btn) {
       if (btn.__softPadBound) return;
       btn.__softPadBound = true;

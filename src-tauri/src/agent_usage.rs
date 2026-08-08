@@ -85,6 +85,15 @@ pub struct AgentUsageSnapshot {
     pub local_month_tokens: Option<u64>,
     #[serde(default)]
     pub local_today_requests: Option<u64>,
+    /// Activity Provider: local sessions touched today (not official quota).
+    #[serde(default)]
+    pub local_today_sessions: Option<u64>,
+    /// Activity Provider: crude active span sum for today (ms).
+    #[serde(default)]
+    pub local_today_active_ms: Option<u64>,
+    /// Activity Provider: yesterday turn count for day-over-day dialogue delta.
+    #[serde(default)]
+    pub local_yesterday_requests: Option<u64>,
 }
 
 /// Mask an email for Soft Pad UI. Never returns the full local-part.
@@ -114,11 +123,26 @@ pub fn snapshot(agent: AgentKind) -> AgentUsageSnapshot {
         .unwrap_or_else(|| default_snapshot(agent))
 }
 
+/// Insert / replace a usage snapshot (shell agents, providers, tests).
+pub fn put_snapshot(agent: AgentKind, snap: AgentUsageSnapshot) {
+    usage_store()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(agent, snap);
+}
+
 fn default_snapshot(agent: AgentKind) -> AgentUsageSnapshot {
     if agent == AgentKind::Cursor {
         return AgentUsageSnapshot {
             status: "unavailable".into(),
-            message: "Cursor 暂无稳定官方用量接口".into(),
+            source: crate::cursor_local_activity::SRC_CURSOR_LOCAL.into(),
+            confidence: "local_only".into(),
+            message: if crate::cursor_local_activity::consent_enabled() {
+                "Cursor 活动统计暂不可用".into()
+            } else {
+                "未启用 Cursor 活动统计".into()
+            },
+            console_url: crate::cursor_local_activity::CURSOR_USAGE_CONSOLE.into(),
             ..Default::default()
         };
     }

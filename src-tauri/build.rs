@@ -165,6 +165,8 @@ fn main() {
         "cmd_shell_agent_hook_install_confirm",
         "cmd_shell_agent_hook_uninstall",
         "cmd_claude_cli_inject_pref_set",
+        "cmd_cursor_activity_pref_get",
+        "cmd_cursor_activity_pref_set",
         "cmd_claude_cli_inject",
         "cmd_claude_cli_decide",
         "cmd_codex_pad_binding_diagnose",

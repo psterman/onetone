@@ -248,7 +248,8 @@
 
   /**
    * displayLane only (homepage / Hub summary). Not overlay dispatchLane.
-   * Auto only: waiting → foreground → fallback. User pin removed from product.
+   * Auto: waiting → foreground → fallback, except intentional Soft Pad FG
+   * (open Cursor/Claude/…) beats another agent's waiting. User pin removed.
    * Pure — does not write globals.
    */
   function resolvePrimaryLaneResult(entries, ctx) {
@@ -268,18 +269,20 @@
       return null;
     }
 
+    var fgKind = kindForAppId(ctx.foregroundAppId);
+    var hitFg = (fgKind && isHubSoftPadKind(fgKind)) ? findKind(fgKind) : null;
     var waiting = Array.isArray(ctx.waitingKinds) ? ctx.waitingKinds : [];
-    var w;
-    for (w = 0; w < waiting.length; w++) {
-      var hitW = findKind(waiting[w]);
-      if (hitW) return { entry: hitW, reason: LANE_REASONS.waiting };
+    // Intentional Soft Pad FG (open Cursor) beats another agent's waiting — mirror Rust resolver.
+    var waitingIncludesFg = !!(fgKind && waiting.indexOf(fgKind) >= 0);
+    if (!(hitFg && !waitingIncludesFg)) {
+      var w;
+      for (w = 0; w < waiting.length; w++) {
+        var hitW = findKind(waiting[w]);
+        if (hitW) return { entry: hitW, reason: LANE_REASONS.waiting };
+      }
     }
 
-    var fgKind = kindForAppId(ctx.foregroundAppId);
-    if (fgKind && isHubSoftPadKind(fgKind)) {
-      var hitFg = findKind(fgKind);
-      if (hitFg) return { entry: hitFg, reason: LANE_REASONS.foreground };
-    }
+    if (hitFg) return { entry: hitFg, reason: LANE_REASONS.foreground };
 
     return { entry: pool[0] || null, reason: pool[0] ? LANE_REASONS.fallback : LANE_REASONS.none };
   }
@@ -1069,6 +1072,21 @@
     return '窗口余' + pct + '%';
   }
 
+  function isShellUsageKind(kind) {
+    return kind === 'workbuddy' || kind === 'trae' || kind === 'qoder';
+  }
+
+  /** User-facing usage source — never leak cursor_local_activity id. */
+  function usageSourceLabel(kind, usage) {
+    if (
+      kind === 'cursor' ||
+      String((usage && usage.source) || '') === 'cursor_local_activity'
+    ) {
+      return '本地统计';
+    }
+    return String((usage && usage.source) || '').trim();
+  }
+
   function usagePropsFromAgent(kind, usage) {
     usage = usage || {};
     var status = String(usage.status || 'unavailable');
@@ -1092,7 +1110,7 @@
           var sess = usageVal(usage, 'sessionTokens', 'session_tokens');
           var aux = usageVal(usage, 'auxiliaryTokens', 'auxiliary_tokens');
           var cost = usageVal(usage, 'estimatedCostUsd', 'estimated_cost_usd');
-          if (sess != null) bits.push('本会话 ' + Math.round(Number(sess)));
+          if (sess != null) bits.push('本会话消耗 ' + Math.round(Number(sess)));
           if (aux != null) bits.push('子任务 ' + Math.round(Number(aux)));
           if (cost != null) {
             var c = Number(cost);
@@ -1108,19 +1126,73 @@
       var locM = usageVal(usage, 'localMonthTokens', 'local_month_tokens');
       if (locT != null && Number(locT) > 0) bits.push('本机今日 ' + Math.round(Number(locT)));
       else if (locM != null && Number(locM) > 0) bits.push('本机本月 ' + Math.round(Number(locM)));
+    } else if (isShellUsageKind(kind)) {
+      // Official windows / Credits caption / explicit manual — never invent %.
+      var shellMsg = String(usage.message || '').trim();
+      if (conf === 'manual_or_local_estimate') {
+        if (shellMsg) bits.push(shellMsg.split(' · ')[0]);
+        else bits.push('官方剩余请到控制台');
+      } else {
+        windows.slice(0, 2).forEach(function (w) {
+          var lab = windowQuotaLabel(w);
+          if (lab) bits.push(lab);
+        });
+        if (!bits.length && shellMsg) bits.push(shellMsg.split(' · ')[0]);
+        if (!bits.length) {
+          var remShell = usageVal(usage, 'remainingPercent', 'remaining_percent');
+          if (remShell != null) bits.push('窗口余 ' + Math.round(Number(remShell)) + '%');
+        }
+      }
+      var shellLocT = usageVal(usage, 'localTodayTokens', 'local_today_tokens');
+      if (shellLocT != null && Number(shellLocT) > 0) {
+        // Local burn only — never presented as remaining quota.
+        bits.push('今日消耗 ' + Math.round(Number(shellLocT)) + ' tok');
+      }
+      if (!bits.length && status !== 'ready') bits.push('—');
     } else if (kind === 'cursor') {
-      bits.push('用量 --');
+      var turns = usageVal(usage, 'localTodayRequests', 'local_today_requests');
+      var sess = usageVal(usage, 'localTodaySessions', 'local_today_sessions');
+      var activeMs = usageVal(usage, 'localTodayActiveMs', 'local_today_active_ms');
+      var yest = usageVal(usage, 'localYesterdayRequests', 'local_yesterday_requests');
+      var src = String(usage.source || '');
+      if (status === 'ready' && turns != null && (src === 'cursor_local_activity' || conf === 'local_only')) {
+        // Hierarchy: turns → intensity → day delta (disclaimer lives in boundary hint).
+        bits.push('今日 ' + Math.round(Number(turns)) + ' 次对话');
+        var intensity = [];
+        if (sess != null) intensity.push(Math.round(Number(sess)) + ' 个会话');
+        if (activeMs != null && Number(activeMs) > 0) {
+          intensity.push('活跃 ' + formatActiveDuration(Number(activeMs)));
+        }
+        if (intensity.length) bits.push(intensity.join(' · '));
+        if (yest != null && Number(yest) > 0) {
+          var delta = Math.round(((Number(turns) - Number(yest)) / Number(yest)) * 100);
+          var arrow = delta > 0 ? '↑' : (delta < 0 ? '↓' : '');
+          bits.push('较昨日对话 ' + arrow + Math.abs(delta) + '%');
+        }
+      } else {
+        var cmsg = String(usage.message || '').trim();
+        bits.push(cmsg || '未启用 Cursor 活动统计');
+      }
     }
     return {
       account: String(usageVal(usage, 'accountLabel', 'account_label') || '').trim(),
       plan: String(usageVal(usage, 'planType', 'plan_type') || '').trim(),
-      usageSummary: bits.length ? bits.join(' / ') : (status === 'ready' ? '--' : '—'),
+      usageSummary: bits.length ? bits.join(kind === 'cursor' ? ' · ' : ' / ') : (status === 'ready' ? '--' : '—'),
       resetCountdown: formatResetCountdown(primaryResetAt(usage)) || '—',
       usageState: status,
       confidence: conf || '',
+      sourceLabel: usageSourceLabel(kind, usage),
       consoleUrl: String(usageVal(usage, 'consoleUrl', 'console_url') || '').trim(),
       codingPlanWarning: !!(usage.codingPlanWarning || usage.coding_plan_warning)
     };
+  }
+
+  function formatActiveDuration(ms) {
+    var totalMin = Math.max(0, Math.round(Number(ms) / 60000));
+    var h = Math.floor(totalMin / 60);
+    var m = totalMin % 60;
+    if (h > 0) return h + '小时' + m + '分';
+    return m + '分';
   }
 
   function pickUsageAgentRow(snap, preferredKind) {
@@ -1297,15 +1369,21 @@
   }
 
   // Merge usage summary/reset info into status props for the hub tiles.
-  // Some UI scopes (workbuddy/trae/qoder) have no usage integration, so we only
-  // attempt to fill for codex/claude/cursor.
   function mergeUsageIntoStatusProps(props, preferredKind) {
     try {
       var kind = String(preferredKind || props && props.kind || selectedScopeId || '')
         .trim();
       if (!kind) return props;
-      // Usage integration only defined for codex/claude/cursor.
-      if (kind !== 'codex' && kind !== 'claude' && kind !== 'cursor') return props;
+      if (
+        kind !== 'codex' &&
+        kind !== 'claude' &&
+        kind !== 'cursor' &&
+        kind !== 'workbuddy' &&
+        kind !== 'trae' &&
+        kind !== 'qoder'
+      ) {
+        return props;
+      }
 
       var snap = overlayUsageCache && overlayUsageCache.snap ? overlayUsageCache.snap : null;
       var row = pickUsageAgentRow(snap, kind);
@@ -4602,9 +4680,130 @@
           t('softPadManualQuotaHint', '官方剩余请到控制台查看') + ' · ' + curl
         );
       }
+      if (String(selectedScopeId || '') === 'cursor') {
+        var src = String((usage && usage.source) || '');
+        if (src === 'cursor_local_activity' || conf === 'local_only') {
+          lines.push(
+            t(
+              'softPadCursorActivityHonesty',
+              'Cursor 个人版暂无公开用量 API · 上方次数为本地统计，不代表官方额度'
+            )
+          );
+          if (curl) {
+            lines.push(
+              t('softPadCursorOfficialUsage', '查看官方用量') + ' ↗ ' + curl
+            );
+          }
+        }
+      }
     } catch (_) {}
     hint.textContent = lines.join(' ');
     hint.hidden = false;
+    ensureCursorActivityConsentCard(panel);
+  }
+
+  function ensureCursorActivityConsentCard(panel) {
+    panel = panel || document.getElementById('settingsPanelSoftPad');
+    if (!panel) return;
+    var card = document.getElementById('softPadCursorActivityCard');
+    var scope = String(selectedScopeId || '');
+    if (scope !== 'cursor') {
+      if (card) card.hidden = true;
+      return;
+    }
+    if (!card) {
+      card = document.createElement('div');
+      card.id = 'softPadCursorActivityCard';
+      card.className = 'codex-pad-mgr__claude-act soft-pad-cursor-activity';
+      card.innerHTML =
+        '<p class="codex-pad-mgr__label">' +
+        esc(t('cursorActivityTitle', 'Cursor 本地活动统计')) +
+        '</p>' +
+        '<p class="codex-pad-mgr__hint">' +
+        esc(t('cursorActivityReads', '用于显示：')) +
+        '</p>' +
+        '<ul class="codex-pad-mgr__hint" data-cursor-activity-allow>' +
+        '<li>✓ ' + esc(t('cursorActivityAllowTurns', '今日对话次数')) + '</li>' +
+        '<li>✓ ' + esc(t('cursorActivityAllowSessions', 'Agent 会话数量')) + '</li>' +
+        '<li>✓ ' + esc(t('cursorActivityAllowTime', '使用活跃时间')) + '</li>' +
+        '</ul>' +
+        '<p class="codex-pad-mgr__hint">' +
+        esc(t('cursorActivityDenies', '不会读取：')) +
+        '</p>' +
+        '<ul class="codex-pad-mgr__hint" data-cursor-activity-deny>' +
+        '<li>× ' + esc(t('cursorActivityDenyLogin', '登录信息')) + '</li>' +
+        '<li>× Token</li>' +
+        '<li>× Cookie</li>' +
+        '<li>× ' + esc(t('cursorActivityDenyText', '对话内容')) + '</li>' +
+        '</ul>' +
+        '<div class="codex-pad-mgr__claude-act-actions">' +
+        '<button type="button" class="codex-micro-pad__btn is-primary" data-act="cursor-activity-enable">' +
+        esc(t('cursorActivityEnable', '启用')) +
+        '</button>' +
+        '<button type="button" class="codex-micro-pad__btn is-primary" data-act="cursor-activity-disable" hidden>' +
+        esc(t('cursorActivityDisable', '关闭')) +
+        '</button>' +
+        '</div>' +
+        '<p class="codex-pad-mgr__hint" data-cursor-activity-status aria-live="polite"></p>';
+      var hint = document.getElementById('softPadBoundaryHint');
+      if (hint && hint.parentNode === panel) {
+        panel.insertBefore(card, hint.nextSibling);
+      } else {
+        var status = document.getElementById('softPadStatusBar');
+        if (status) panel.insertBefore(card, status.nextSibling);
+        else panel.appendChild(card);
+      }
+      var enableBtn = card.querySelector('[data-act="cursor-activity-enable"]');
+      var disableBtn = card.querySelector('[data-act="cursor-activity-disable"]');
+      if (enableBtn) {
+        enableBtn.addEventListener('click', function () {
+          setCursorActivityPref(true);
+        });
+      }
+      if (disableBtn) {
+        disableBtn.addEventListener('click', function () {
+          setCursorActivityPref(false);
+        });
+      }
+    }
+    card.hidden = false;
+    refreshCursorActivityPrefDom(card);
+  }
+
+  function refreshCursorActivityPrefDom(card) {
+    card = card || document.getElementById('softPadCursorActivityCard');
+    if (!card) return Promise.resolve();
+    return hubInvoke('cmd_cursor_activity_pref_get', {})
+      .then(function (st) {
+        var on = !!(st && (st.enabled || st.consent));
+        var enableBtn = card.querySelector('[data-act="cursor-activity-enable"]');
+        var disableBtn = card.querySelector('[data-act="cursor-activity-disable"]');
+        var statusEl = card.querySelector('[data-cursor-activity-status]');
+        if (enableBtn) enableBtn.hidden = !!on;
+        if (disableBtn) disableBtn.hidden = !on;
+        if (statusEl) {
+          statusEl.textContent = on
+            ? t('cursorActivityOn', '已启用 · 仅本地统计，不代表官方额度')
+            : t('cursorActivityOff', '未启用 · 不会读取本机 Cursor 使用记录');
+        }
+      })
+      .catch(function () {});
+  }
+
+  function setCursorActivityPref(enabled) {
+    return hubInvoke('cmd_cursor_activity_pref_set', { enabled: !!enabled })
+      .then(function () {
+        toastPad(
+          enabled
+            ? t('cursorActivityEnableOk', '已启用 Cursor 活动统计')
+            : t('cursorActivityDisableOk', '已关闭 Cursor 活动统计')
+        );
+        refreshCursorActivityPrefDom();
+        return refreshOverlayUsageAsync({ silent: false });
+      })
+      .catch(function () {
+        toastPad(t('cursorActivityPrefFail', '活动统计偏好切换失败'));
+      });
   }
 
   function showList() { render({}); }

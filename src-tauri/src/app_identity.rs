@@ -102,7 +102,7 @@ pub fn preset_app_id_for_path(path: &str) -> Option<String> {
         let name_ok = matcher
             .process_names
             .iter()
-            .any(|name| file_name.eq_ignore_ascii_case(name));
+            .any(|name| exe_name_matches(file_name, name));
         if !name_ok {
             continue;
         }
@@ -115,6 +115,24 @@ pub fn preset_app_id_for_path(path: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// `Cursor.exe` ↔ `Cursor` (PowerShell ProcessName often omits .exe).
+fn exe_name_matches(file_name: &str, expected: &str) -> bool {
+    if file_name.eq_ignore_ascii_case(expected) {
+        return true;
+    }
+    let f = file_name.trim();
+    let e = expected.trim();
+    let f_stem = f
+        .strip_suffix(".exe")
+        .or_else(|| f.strip_suffix(".EXE"))
+        .unwrap_or(f);
+    let e_stem = e
+        .strip_suffix(".exe")
+        .or_else(|| e.strip_suffix(".EXE"))
+        .unwrap_or(e);
+    f_stem.eq_ignore_ascii_case(e_stem)
 }
 
 /// True when process AUMID / path belongs to the Store Codex package (not consumer ChatGPT).
@@ -917,6 +935,13 @@ mod tests {
                 .as_deref(),
             Some(CURSOR_APP_TARGET_ID)
         );
+    }
+
+    #[test]
+    fn exe_name_matches_cursor_stem_without_exe() {
+        assert!(exe_name_matches("Cursor", "Cursor.exe"));
+        assert!(exe_name_matches("Cursor.exe", "Cursor.exe"));
+        assert!(!exe_name_matches("Code.exe", "Cursor.exe"));
     }
 
     #[test]

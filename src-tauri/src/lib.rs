@@ -4,6 +4,12 @@ mod agent_catalog;
 mod agent_model_metadata;
 mod agent_usage;
 mod provider_usage;
+mod shell_agent_usage;
+#[cfg(windows)]
+mod cursor_local_activity;
+#[cfg(not(windows))]
+#[path = "cursor_local_activity_stub.rs"]
+mod cursor_local_activity;
 mod app_chat_workflow;
 mod app_exe_icon;
 mod app_icon;
@@ -343,6 +349,23 @@ pub fn run() {
             crate::agent_usage::start_codex_account_poll(app.handle().clone(), app_state.clone());
             crate::agent_usage::start_deepseek_balance_poll(app.handle().clone(), app_state.clone());
             crate::provider_usage::start_provider_usage_poll(app.handle().clone(), app_state.clone());
+            crate::shell_agent_usage::start_shell_agent_usage_poll(
+                app.handle().clone(),
+                app_state.clone(),
+            );
+            {
+                let enabled = app_state.cfg.lock().cursor_activity_stats_enabled;
+                crate::cursor_local_activity::set_consent_enabled(enabled);
+                app_log::log_line(
+                    &app_state,
+                    "cursor_activity",
+                    &format!("consent from config enabled={enabled}"),
+                );
+            }
+            crate::cursor_local_activity::start_cursor_activity_poll(
+                app.handle().clone(),
+                app_state.clone(),
+            );
 
             {
                 let state_for_attention = app_state.clone();
@@ -906,6 +929,8 @@ pub fn run() {
             ipc::cmd_shell_agent_hook_install_confirm,
             ipc::cmd_shell_agent_hook_uninstall,
             ipc::cmd_claude_cli_inject_pref_set,
+            ipc::cmd_cursor_activity_pref_get,
+            ipc::cmd_cursor_activity_pref_set,
             ipc::cmd_claude_cli_inject,
             ipc::cmd_claude_cli_decide,
             ipc::cmd_codex_pad_binding_diagnose,

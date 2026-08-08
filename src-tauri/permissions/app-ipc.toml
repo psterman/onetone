@@ -136,6 +136,8 @@ permissions = [
   "allow-cmd-claude-hook-install-confirm",
   "allow-cmd-claude-hook-uninstall-onetone",
   "allow-cmd-claude-cli-inject-pref-set",
+  "allow-cmd-cursor-activity-pref-get",
+  "allow-cmd-cursor-activity-pref-set",
   "allow-cmd-claude-cli-inject",
   "allow-cmd-claude-cli-decide",
   "allow-cmd-codex-pad-binding-diagnose",

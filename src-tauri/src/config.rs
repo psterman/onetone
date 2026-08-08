@@ -1886,6 +1886,9 @@ pub struct VoiceConfig {
     /// Global acoustic wake samples (not scenario-bound). Matched in idle to start dictation.
     #[serde(default, rename = "voiceWakeAcousticCommands")]
     pub voice_wake_acoustic_commands: Vec<AcousticVoiceCommand>,
+    /// Opt-in: read Cursor local activity (turns/sessions) — never auth/cookies/message text.
+    #[serde(default, rename = "cursorActivityStatsEnabled")]
+    pub cursor_activity_stats_enabled: bool,
     // --- migrate-only (read, never serialize) ---
     #[serde(default, rename = "recordKey", skip_serializing)]
     pub record_key: String,
@@ -3262,6 +3265,7 @@ impl Default for VoiceConfig {
             ime_preset_id: String::new(),
             active_scene_id: id,
             voice_wake_acoustic_commands: vec![],
+            cursor_activity_stats_enabled: false,
             record_key: String::new(),
             target_key: String::new(),
             trigger_source: None,
@@ -4338,8 +4342,23 @@ pub fn config_path() -> PathBuf {
 
 /// Apply a frontend mapping save. Voice sections always stay from `existing` because
 /// toggles are persisted only via voice IPC commands (`cmd_voice_vosk_set_enabled`, etc.).
+/// Drop `navKeysEnabled` when `showNavigationPad` is also present (same serde field via alias).
+fn strip_codex_micro_pad_nav_alias_dupes(raw: &mut serde_json::Value) {
+    let Some(mappings) = raw.get_mut("mappings").and_then(|v| v.as_array_mut()) else {
+        return;
+    };
+    for m in mappings {
+        let Some(pad) = m.get_mut("codexMicroPad").and_then(|v| v.as_object_mut()) else {
+            continue;
+        };
+        if pad.contains_key("showNavigationPad") && pad.contains_key("navKeysEnabled") {
+            pad.remove("navKeysEnabled");
+        }
+    }
+}
+
 pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceConfig> {
-    let raw: serde_json::Value = match serde_json::from_str(json) {
+    let mut raw: serde_json::Value = match serde_json::from_str(json) {
         Ok(v) => v,
         Err(e) => {
             crate::app_log::sync_emergency_line(
@@ -4349,6 +4368,9 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
             return None;
         }
     };
+    // FE historically mirrored showNavigationPad + navKeysEnabled; serde alias treats them
+    // as one field and rejects the duplicate → boot save 假死.
+    strip_codex_micro_pad_nav_alias_dupes(&mut raw);
     let mut cfg: VoiceConfig = match serde_json::from_value(raw.clone()) {
         Ok(c) => c,
         Err(e) => {
@@ -4505,6 +4527,11 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
         }
     }
     cfg.start_minimized_to_tray = existing.start_minimized_to_tray;
+    // FE may omit cursorActivityStatsEnabled; default false must not wipe opt-in.
+    if raw.get("cursorActivityStatsEnabled").is_none() {
+        cfg.cursor_activity_stats_enabled = existing.cursor_activity_stats_enabled;
+    }
+    crate::cursor_local_activity::set_consent_enabled(cfg.cursor_activity_stats_enabled);
     // Camera prefs only change via cmd_save_camera_prefs — never let a full mapping
     // save overwrite them with a stale FE snapshot (looked like "restart cleared camera").
     cfg.camera_prefs = existing.camera_prefs.clone();
@@ -4605,6 +4632,7 @@ pub fn load_config() -> VoiceConfig {
         Err(_) => VoiceConfig::default(),
     };
     cfg.migrate();
+    crate::cursor_local_activity::set_consent_enabled(cfg.cursor_activity_stats_enabled);
     cfg
 }
 
@@ -5211,6 +5239,30 @@ mod tests {
             merged.camera_prefs.presence_actions.deliberate_blink,
             "pressCtrlI"
         );
+    }
+
+    #[test]
+    fn merge_save_payload_accepts_show_navigation_and_nav_keys_alias() {
+        let existing = VoiceConfig::default();
+        let json = r#"{
+          "version":8,
+          "mappings":[{
+            "id":"m1",
+            "enabled":true,
+            "appTargetId":"cursor-chat",
+            "codexMicroPad":{
+              "enabled":true,
+              "showNavigationPad":true,
+              "navKeysEnabled":true,
+              "overlayEnabled":true,
+              "keys":[]
+            }
+          }],
+          "trash":[]
+        }"#;
+        let merged = merge_save_payload(&existing, json).expect("both nav keys must not reject");
+        let pad = merged.mappings[0].codex_micro_pad.as_ref().expect("pad");
+        assert!(pad.nav_keys_enabled);
     }
 
     #[test]
