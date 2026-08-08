@@ -13,7 +13,9 @@
       else if(ui.drawerOpen&&ui.settingsPanel==='debug'&&global.OneToneVoiceDiag&&global.OneToneVoiceDiag.getFocusMode()==='repair') h.renderTrashList();
       h.renderEditor();
       h.renderRecordCancelBar();
-      if(ui.drawerOpen&&ui.settingsPanel==='sounds') h.renderSoundSettingsPanel();
+      // Sounds panel is static settings — full i18n re-render here fights clicks (假死).
+      // Light sync only when open; full render on panel open / lang change.
+      if(ui.drawerOpen&&ui.settingsPanel==='sounds'&&h.syncSoundsSettingsUi) h.syncSoundsSettingsUi();
       if(ui.drawerOpen&&ui.settingsPanel==='debug'){
         if(global.OneToneVoiceDiag.getFocusMode()==='developer') h.renderDebugDeveloperPanel();
         else h.scheduleDebugChromeRefresh();

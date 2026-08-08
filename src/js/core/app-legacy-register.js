@@ -70,6 +70,7 @@
               renderEditor:d.renderEditor,
               renderTrashList:d.renderTrashList,
               renderSoundSettingsPanel:d.renderSoundSettingsPanel,
+              syncSoundsSettingsUi:d.syncSoundsSettingsUi,
               setRecordingAudioMuteEnabled:d.setRecordingAudioMuteEnabled,
               setRecordingAudioStrength:d.setRecordingAudioStrength,
               syncRecordingAudioUi:d.syncRecordingAudioUi,

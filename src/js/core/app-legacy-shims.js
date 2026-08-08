@@ -601,6 +601,7 @@
       renderSettingsSchemeSubnav:renderSettingsSchemeSubnav,
       renderSettingsVoiceSubnav:renderSettingsVoiceSubnav,
       renderSoundSettingsPanel:renderSoundSettingsPanel,
+      syncSoundsSettingsUi:syncSoundsSettingsUi,
       renderTestSendButton:renderTestSendButton,
       renderTrashList:renderTrashList,
       renderUpdateUi:renderUpdateUi,

@@ -33,6 +33,42 @@
     var btnCoachHud=$('btnCoachHud');
     if(btnCoachHud) btnCoachHud.onclick=hooks.toggleCoachHud;
     bindClick('btnSoundsMaster',hooks.toggleSoundsMaster);
+    var volEl=$('soundsMasterVolume');
+    if(volEl){
+      volEl.addEventListener('input',function(){
+        var prefs=global.OneToneAppThemePrefs;
+        if(prefs&&prefs.setMasterVolume) prefs.setMasterVolume(Number(volEl.value)/100);
+      });
+      volEl.addEventListener('change',function(){
+        var prefs=global.OneToneAppThemePrefs;
+        if(prefs&&prefs.setMasterVolume) prefs.setMasterVolume(Number(volEl.value)/100);
+      });
+    }
+    document.querySelectorAll('.sound-cat-policy-seg').forEach(function(seg){
+      seg.querySelectorAll('.pref-segmented-btn[data-policy]').forEach(function(btn){
+        btn.addEventListener('mousedown',function(e){ if(e.button===0) e.preventDefault(); });
+        btn.addEventListener('click',function(){
+          var cat=seg.getAttribute('data-cat');
+          var policy=btn.getAttribute('data-policy');
+          var prefs=global.OneToneAppThemePrefs;
+          if(cat&&policy&&prefs&&prefs.setSoundCategoryPolicy) prefs.setSoundCategoryPolicy(cat,policy);
+        });
+      });
+    });
+    document.querySelectorAll('.sound-cat-select').forEach(function(sel){
+      sel.onchange=function(){
+        var cat=sel.getAttribute('data-cat');
+        var prefs=global.OneToneAppThemePrefs;
+        if(cat&&prefs&&prefs.setSoundCategoryId) prefs.setSoundCategoryId(cat,sel.value);
+      };
+    });
+    document.querySelectorAll('.sound-cat-preview').forEach(function(btn){
+      btn.onclick=function(){
+        var cat=btn.getAttribute('data-cat');
+        var prefs=global.OneToneAppThemePrefs;
+        if(cat&&prefs&&prefs.previewSoundCategory) prefs.previewSoundCategory(cat);
+      };
+    });
     var btnRecordingAudioMute=$('btnRecordingAudioMute');
     if(btnRecordingAudioMute) btnRecordingAudioMute.onclick=function(e){
       if(e){ e.preventDefault(); e.stopPropagation(); }
@@ -87,6 +123,7 @@
     }
     bindClick('btnKeysOpenSoundsMore',openSoundsMore);
     bindClick('btnCameraOpenSoundsMore',openSoundsMore);
+    bindClick('btnSoftPadOpenSoundsMore',openSoundsMore);
   }
   global.OneToneAppPrefsBindings={bindEvents:bindEvents};
 })((typeof window!=='undefined')?window:globalThis);

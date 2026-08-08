@@ -309,6 +309,10 @@ fn sync_needs_input_pass_through(win: &WebviewWindow, snap: &CodexMicroOverlaySn
     }
 }
 
+pub fn soft_pad_overlay_visible() -> bool {
+    *last_visible().lock()
+}
+
 fn last_visible() -> &'static ParkingMutex<bool> {
     LAST_VISIBLE.get_or_init(|| ParkingMutex::new(false))
 }
@@ -1954,6 +1958,12 @@ pub fn note_pad_run_status(status: &str, micro_key_id: &str) {
         None
     };
     let _ = crate::pad_status::apply_inferred(status, phase, None);
+    if status == "failed" {
+        crate::agent_attention::emit_sound_event(
+            "pad.dispatch_failed",
+            &format!("pad|{}", micro_key_id.trim()),
+        );
+    }
 }
 
 #[cfg(test)]
@@ -3323,6 +3333,15 @@ fn apply_overlay_payload(
         let _ = win.set_ignore_cursor_events(true);
     }
     let _ = win.emit("codex_micro_overlay_state", payload);
+    if let Some(main) = app.get_webview_window("main") {
+        let _ = main.emit(
+            "to_js",
+            &serde_json::json!({
+                "type": "soft_pad_overlay_visibility",
+                "visible": visible,
+            }),
+        );
+    }
 }
 
 fn overlay_logical_size(minimized: bool, _joy_open: bool) -> (f64, f64) {

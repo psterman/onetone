@@ -1056,6 +1056,7 @@ pub fn handle_cancel_phrase(state: &Arc<AppState>, app: &AppHandle, phrase: &str
         None,
     );
     crate::app_log::log_line(state, "voice", &format!("cancel phrase matched: {phrase}"));
+    crate::agent_attention::emit_sound_event("voice.cancel_phrase", "voice.cancel_phrase");
     cancel_dictation_session(state, Some(app), phrase);
 }
 

@@ -111,6 +111,12 @@
           global.OneToneHabitTriggerSetup.onModeCompatSeen(msg);
         }
       }
+      if(msg.type==='soft_pad_overlay_visibility'){
+        if(global.OneToneSoundSurfaces&&global.OneToneSoundSurfaces.setOverlayVisible){
+          global.OneToneSoundSurfaces.setOverlayVisible(!!msg.visible);
+        }
+        return;
+      }
       if(msg.type==='soft_pad_decision_changed'||msg.type==='soft_pad_runtime'){
         if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.ingestSoftPadRuntimeSnapshot){
           var body=msg.softPad||msg.snapshot||msg;
@@ -176,8 +182,20 @@
         while(runtime.events.length>300) runtime.events.shift();
       }
       function afterRuntimeFields(msg){
-        if(msg.soundCue) hooks.playSoundCue(msg.soundCue);
-        else if(runtime.lastAction==='send_failed'||String(runtime.lastAction||'').indexOf('_send_failed')>=0) hooks.playSoundCue('send_fail');
+        if(msg.soundCue){
+          if(global.OneToneSoundBus&&global.OneToneSoundBus.handleRuntimeCue){
+            global.OneToneSoundBus.handleRuntimeCue(msg.soundCue);
+          }else{
+            hooks.playSoundCue(msg.soundCue);
+          }
+        }else if(runtime.lastAction==='send_failed'||String(runtime.lastAction||'').indexOf('_send_failed')>=0){
+          // Legacy fallback — prefer typed voice.send_failed via bus when present.
+          if(global.OneToneSoundBus&&global.OneToneSoundBus.notify){
+            global.OneToneSoundBus.notify('voice.send_failed',{dedupeKey:'voice.send_failed'});
+          }else{
+            hooks.playSoundCue('send_fail');
+          }
+        }
         if(hooks.isVoiceWakeRuntimeAction(runtime.lastAction)){
           return;
         }

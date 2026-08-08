@@ -98,6 +98,7 @@
       renderEditor:deps.renderEditor,
       renderRecordCancelBar:deps.renderRecordCancelBar,
       renderSoundSettingsPanel:deps.renderSoundSettingsPanel,
+      syncSoundsSettingsUi:deps.syncSoundsSettingsUi,
       renderDebugDeveloperPanel:deps.renderDebugDeveloperPanel,
       scheduleDebugChromeRefresh:deps.scheduleDebugChromeRefresh,
       renderKeyFinishFlowPanel:deps.renderKeyFinishFlowPanel,

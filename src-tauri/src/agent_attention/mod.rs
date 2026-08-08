@@ -10,7 +10,10 @@ pub use bridge::{
     raise_onetone_ask,
 };
 pub use model::{AttentionCause, AttentionPublicSnapshot, AttentionState, SignalSource};
-pub use store::{project_waiting_kinds, public_snapshot, raise_needs_input, set_recompute_hook};
+pub use store::{
+    emit_sound_event, project_waiting_kinds, public_snapshot, raise_needs_input, set_recompute_hook,
+    set_sound_hook, RaiseOutcome, MIN_AGENT_TASK_MS,
+};
 
 #[cfg(test)]
 pub use store::reset_for_test;

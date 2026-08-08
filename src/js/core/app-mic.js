@@ -446,7 +446,14 @@
       if(!micDeviceAvailable(pick)){
         micMonitorDeviceId='';
         if(micLevelUiVisible()) startMicLevelPoll();
-        if(manual&&prevId) hooks().toast(t('micOfflineHint'));
+        if(manual&&prevId){
+          hooks().toast(t('micOfflineHint'));
+          try{
+            if(global.OneToneSoundBus&&global.OneToneSoundBus.notify){
+              global.OneToneSoundBus.notify('mic.device_lost',{dedupeKey:'mic.device_lost'});
+            }
+          }catch(_){}
+        }
         return muteProbe;
       }
       return muteProbe.then(function(){
@@ -476,6 +483,11 @@
     var dev=micDevices.find(function(d){ return d.id===deviceId; });
     if(dev&&!micDeviceAvailable(dev)){
       hooks().toast(t('micOfflineHint'));
+      try{
+        if(global.OneToneSoundBus&&global.OneToneSoundBus.notify){
+          global.OneToneSoundBus.notify('mic.device_lost',{dedupeKey:'mic.device_lost'});
+        }
+      }catch(_){}
       return;
     }
     clearMicBackoff();
@@ -499,6 +511,11 @@
       enterMicBackoff();
       var detail=err&&(err.message||String(err))||'';
       hooks().toast(detail?(t('micSwitchFail')+'：'+detail):t('micSwitchFail'));
+      try{
+        if(global.OneToneSoundBus&&global.OneToneSoundBus.notify){
+          global.OneToneSoundBus.notify('mic.switch_failed',{dedupeKey:'mic.switch_failed'});
+        }
+      }catch(_){}
     });
   }
 

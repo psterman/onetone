@@ -22,6 +22,7 @@
     "test:shell-agent-usage": "node scripts/test-shell-agent-usage.mjs",
     "test:usage-display-wrap": "node scripts/test-usage-display-wrap.mjs",
     "test:cursor-activity": "node scripts/test-cursor-activity.mjs",
+    "test:sound-bus": "node scripts/test-sound-bus.mjs",
     "test:voice-open-defer": "node scripts/test-voice-open-defer-freeze.mjs",
     "test:target-key-catalog": "node scripts/verify-target-key-catalog.mjs",
     "test:voice-acoustic": "node scripts/voice-acoustic-config.test.js && node scripts/voice-acoustic-matcher.test.js && node scripts/voice-acoustic-ui.test.js",

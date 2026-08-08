@@ -1163,6 +1163,42 @@
           </section>
           <div class="soft-pad-app-switcher" id="softPadAppSwitcher" role="tablist" aria-label="应用" hidden></div>
           <p class="soft-pad-scope-hint" id="softPadScopeHint" aria-live="polite"></p>
+          <div class="sound-embed-strip" id="softPadSoundEmbed" style="margin:8px 0 12px">
+            <div class="sound-embed-strip-head">
+              <p class="sound-embed-strip-title" id="softPadSoundEmbedTitle">Agent 何时提醒</p>
+              <button type="button" class="sound-embed-more-link" id="btnSoftPadOpenSoundsMore">更多音效</button>
+            </div>
+            <p class="help" id="softPadSoundEmbedHint">何时提醒：等待 / 失败 / 完成，默认仅在相关界面不可见时</p>
+            <div class="sound-embed-slots">
+              <div class="sound-embed-slot sound-embed-slot--policy" data-cat="needAttention">
+                <span class="sound-embed-slot-lbl" id="softPadSoundNeedLbl">需要处理</span>
+                <div class="pref-segmented sound-cat-policy-seg sound-cat-policy-seg--compact" role="radiogroup" data-cat="needAttention" aria-labelledby="softPadSoundNeedLbl">
+                  <button type="button" class="pref-segmented-btn" data-policy="never">从不</button>
+                  <button type="button" class="pref-segmented-btn is-active" data-policy="when_unseen">看不见时</button>
+                  <button type="button" class="pref-segmented-btn" data-policy="always">始终</button>
+                </div>
+                <button type="button" class="sound-preview-btn sound-cat-preview" data-cat="needAttention">试听</button>
+              </div>
+              <div class="sound-embed-slot sound-embed-slot--policy" data-cat="taskFailed">
+                <span class="sound-embed-slot-lbl" id="softPadSoundFailLbl">失败</span>
+                <div class="pref-segmented sound-cat-policy-seg sound-cat-policy-seg--compact" role="radiogroup" data-cat="taskFailed" aria-labelledby="softPadSoundFailLbl">
+                  <button type="button" class="pref-segmented-btn" data-policy="never">从不</button>
+                  <button type="button" class="pref-segmented-btn is-active" data-policy="when_unseen">看不见时</button>
+                  <button type="button" class="pref-segmented-btn" data-policy="always">始终</button>
+                </div>
+                <button type="button" class="sound-preview-btn sound-cat-preview" data-cat="taskFailed">试听</button>
+              </div>
+              <div class="sound-embed-slot sound-embed-slot--policy" data-cat="taskDone">
+                <span class="sound-embed-slot-lbl" id="softPadSoundDoneLbl">任务完成</span>
+                <div class="pref-segmented sound-cat-policy-seg sound-cat-policy-seg--compact" role="radiogroup" data-cat="taskDone" aria-labelledby="softPadSoundDoneLbl">
+                  <button type="button" class="pref-segmented-btn" data-policy="never">从不</button>
+                  <button type="button" class="pref-segmented-btn is-active" data-policy="when_unseen">看不见时</button>
+                  <button type="button" class="pref-segmented-btn" data-policy="always">始终</button>
+                </div>
+                <button type="button" class="sound-preview-btn sound-cat-preview" data-cat="taskDone">试听</button>
+              </div>
+            </div>
+          </div>
           <header class="pref-page-head soft-pad-page-head sr-only">
             <div class="soft-pad-page-head-text">
               <h3 class="pref-page-title" id="settingsPanelSoftPadTitle">虚拟键盘</h3>
@@ -2246,14 +2282,21 @@
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelSounds" hidden>
-          <p class="settings-panel-desc" id="settingsPanelSoundsDesc">为录制、唤醒、发送和录音静音配置声音与音频选项</p>
-          <div id="soundsMasterRow" class="setting-row" hidden aria-hidden="true">
+          <p class="settings-panel-desc" id="settingsPanelSoundsDesc">管理何时提醒你：总静音优先生效；下方按注意力类别设置从不 / 看不见时 / 始终</p>
+          <div id="soundsMasterRow" class="setting-row">
             <div class="setting-row-main">
               <span class="setting-row-text" id="soundsMasterLabel">启用音效</span>
             </div>
             <button type="button" class="toggle-switch" id="btnSoundsMaster" role="switch" aria-checked="true"></button>
           </div>
-          <p class="help" id="soundsMasterHelp" hidden aria-hidden="true" style="margin-top:8px">关闭后所有提示音静音；各习惯仍可单独配置。</p>
+          <p class="help" id="soundsMasterHelp" style="margin-top:8px">关闭后全部静音。开启后仍可按类别决定「何时」提醒，不必改音色。</p>
+          <div class="setting-row" id="soundsVolumeRow" style="margin-top:10px">
+            <div class="setting-row-main">
+              <span class="setting-row-text" id="soundsMasterVolumeLabel">音量</span>
+              <span class="help" id="soundsMasterVolumeValue">65%</span>
+            </div>
+            <input type="range" id="soundsMasterVolume" min="0" max="100" step="5" value="65" aria-labelledby="soundsMasterVolumeLabel"/>
+          </div>
           <div class="recording-audio-card recording-audio-card--relocated" id="recordingAudioCardSoundsLink">
             <div class="sound-slot-head">
               <div>
@@ -2263,7 +2306,123 @@
               <button type="button" class="voice-mode-meta-link" id="btnRecordingAudioOpenRecognize">去语音识别</button>
             </div>
           </div>
-          <div class="sound-settings-block" id="soundSettingsBlock">
+          <div class="sound-settings-block" id="soundCategoryBlock">
+            <p class="pref-page-subtitle" id="soundCategoryGroupTitle" style="margin:12px 0 8px">何时提醒</p>
+            <div class="sound-slot sound-slot--attention" data-cat="needAttention">
+              <div class="sound-slot-head">
+                <div>
+                  <p class="sound-slot-title" id="soundCatNeedAttentionTitle">需要处理</p>
+                  <p class="sound-slot-desc" id="soundCatNeedAttentionDesc">Agent 等你确认或输入时：默认仅在你看不到相关界面时提醒。</p>
+                </div>
+                <div class="sound-slot-actions">
+                  <div class="pref-segmented sound-cat-policy-seg" role="radiogroup" data-cat="needAttention" aria-label="策略">
+                    <button type="button" class="pref-segmented-btn" data-policy="never">从不</button>
+                    <button type="button" class="pref-segmented-btn is-active" data-policy="when_unseen">看不见时</button>
+                    <button type="button" class="pref-segmented-btn" data-policy="always">始终</button>
+                  </div>
+                  <button type="button" class="sound-preview-btn sound-cat-preview" data-cat="needAttention">试听</button>
+                </div>
+              </div>
+              <details class="sound-cat-tone">
+                <summary class="sound-cat-tone-summary" data-cat="needAttention">换音色</summary>
+                <div class="sound-slot-pick sound-slot-pick--tone">
+                  <select class="sound-cat-select sr-only" data-cat="needAttention" aria-label="音色" tabindex="-1"></select>
+                </div>
+              </details>
+            </div>
+            <div class="sound-slot sound-slot--attention" data-cat="taskFailed">
+              <div class="sound-slot-head">
+                <div>
+                  <p class="sound-slot-title" id="soundCatTaskFailedTitle">失败</p>
+                  <p class="sound-slot-desc" id="soundCatTaskFailedDesc">Agent 失败，以及无屏操作失败。默认：Agent 失败仅看不见时；无屏失败始终提醒。</p>
+                </div>
+                <div class="sound-slot-actions">
+                  <div class="pref-segmented sound-cat-policy-seg" role="radiogroup" data-cat="taskFailed" aria-label="策略">
+                    <button type="button" class="pref-segmented-btn" data-policy="never">从不</button>
+                    <button type="button" class="pref-segmented-btn is-active" data-policy="when_unseen">看不见时</button>
+                    <button type="button" class="pref-segmented-btn" data-policy="always">始终</button>
+                  </div>
+                  <button type="button" class="sound-preview-btn sound-cat-preview" data-cat="taskFailed">试听</button>
+                </div>
+              </div>
+              <details class="sound-cat-tone">
+                <summary class="sound-cat-tone-summary" data-cat="taskFailed">换音色</summary>
+                <div class="sound-slot-pick sound-slot-pick--tone">
+                  <select class="sound-cat-select sr-only" data-cat="taskFailed" aria-label="音色" tabindex="-1"></select>
+                </div>
+              </details>
+            </div>
+            <div class="sound-slot sound-slot--attention" data-cat="taskDone">
+              <div class="sound-slot-head">
+                <div>
+                  <p class="sound-slot-title" id="soundCatTaskDoneTitle">任务完成</p>
+                  <p class="sound-slot-desc" id="soundCatTaskDoneDesc">Agent 回合完成：默认仅在看不见相关界面时提醒；过短任务不响。</p>
+                </div>
+                <div class="sound-slot-actions">
+                  <div class="pref-segmented sound-cat-policy-seg" role="radiogroup" data-cat="taskDone" aria-label="策略">
+                    <button type="button" class="pref-segmented-btn" data-policy="never">从不</button>
+                    <button type="button" class="pref-segmented-btn is-active" data-policy="when_unseen">看不见时</button>
+                    <button type="button" class="pref-segmented-btn" data-policy="always">始终</button>
+                  </div>
+                  <button type="button" class="sound-preview-btn sound-cat-preview" data-cat="taskDone">试听</button>
+                </div>
+              </div>
+              <details class="sound-cat-tone">
+                <summary class="sound-cat-tone-summary" data-cat="taskDone">换音色</summary>
+                <div class="sound-slot-pick sound-slot-pick--tone">
+                  <select class="sound-cat-select sr-only" data-cat="taskDone" aria-label="音色" tabindex="-1"></select>
+                </div>
+              </details>
+            </div>
+            <div class="sound-slot sound-slot--attention" data-cat="confirm">
+              <div class="sound-slot-head">
+                <div>
+                  <p class="sound-slot-title" id="soundCatConfirmTitle">交互确认</p>
+                  <p class="sound-slot-desc" id="soundCatConfirmDesc">取消语等无屏确认：默认始终提醒，确认动作已生效。</p>
+                </div>
+                <div class="sound-slot-actions">
+                  <div class="pref-segmented sound-cat-policy-seg" role="radiogroup" data-cat="confirm" aria-label="策略">
+                    <button type="button" class="pref-segmented-btn" data-policy="never">从不</button>
+                    <button type="button" class="pref-segmented-btn" data-policy="when_unseen">看不见时</button>
+                    <button type="button" class="pref-segmented-btn is-active" data-policy="always">始终</button>
+                  </div>
+                  <button type="button" class="sound-preview-btn sound-cat-preview" data-cat="confirm">试听</button>
+                </div>
+              </div>
+              <details class="sound-cat-tone">
+                <summary class="sound-cat-tone-summary" data-cat="confirm">换音色</summary>
+                <div class="sound-slot-pick sound-slot-pick--tone">
+                  <select class="sound-cat-select sr-only" data-cat="confirm" aria-label="音色" tabindex="-1"></select>
+                </div>
+              </details>
+            </div>
+            <div class="sound-slot sound-slot--attention" data-cat="deviceAlert">
+              <div class="sound-slot-head">
+                <div>
+                  <p class="sound-slot-title" id="soundCatDeviceAlertTitle">设备异常</p>
+                  <p class="sound-slot-desc" id="soundCatDeviceAlertDesc">麦克风丢失、引擎不可用等：默认仅在窗口后台时提醒。</p>
+                </div>
+                <div class="sound-slot-actions">
+                  <div class="pref-segmented sound-cat-policy-seg" role="radiogroup" data-cat="deviceAlert" aria-label="策略">
+                    <button type="button" class="pref-segmented-btn" data-policy="never">从不</button>
+                    <button type="button" class="pref-segmented-btn is-active" data-policy="when_unseen">看不见时</button>
+                    <button type="button" class="pref-segmented-btn" data-policy="always">始终</button>
+                  </div>
+                  <button type="button" class="sound-preview-btn sound-cat-preview" data-cat="deviceAlert">试听</button>
+                </div>
+              </div>
+              <details class="sound-cat-tone">
+                <summary class="sound-cat-tone-summary" data-cat="deviceAlert">换音色</summary>
+                <div class="sound-slot-pick sound-slot-pick--tone">
+                  <select class="sound-cat-select sr-only" data-cat="deviceAlert" aria-label="音色" tabindex="-1"></select>
+                </div>
+              </details>
+            </div>
+          </div>
+          <details class="sound-legacy-fold" id="soundLegacyFold">
+            <summary class="sound-legacy-fold-summary" id="soundLegacyFoldTitle">传统提示（兼容）</summary>
+            <p class="help" id="soundLegacyFoldHint" style="margin:8px 0 10px">录制、唤醒、发送等旧槽；一般不必改，需要时再展开。</p>
+            <div class="sound-settings-block" id="soundSettingsBlock">
             <div class="sound-slot" data-slot="record">
               <div class="sound-slot-head">
                 <div>
@@ -2342,7 +2501,8 @@
                 <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="cameraAction" id="soundPreviewCameraAction">试听</button>
               </div>
             </div>
-          </div>
+            </div>
+          </details>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelDebug" hidden>
           <p class="settings-panel-desc" id="settingsPanelDebugDesc" hidden></p>
@@ -4042,6 +4202,8 @@
   <script src="js/core/app-autostart.js"></script>
   <script src="js/core/app-start-minimized.js"></script>
   <script src="js/core/app-coach-hud.js"></script>
+  <script src="js/core/sound-surfaces.js"></script>
+  <script src="js/core/sound-bus.js"></script>
   <script src="js/core/app-theme-prefs.js"></script>
   <script src="js/core/app-mic.js"></script>
   <script src="js/core/app-bridge.js"></script>

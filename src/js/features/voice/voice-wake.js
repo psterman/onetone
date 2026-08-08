@@ -519,6 +519,24 @@
       degraded:!!(voskRes.degraded||sapiRes.degraded||kwsRes.degraded),
       degradedReason:String(voskRes.degradedReason||sapiRes.degradedReason||kwsRes.degradedReason||'').trim()
     };
+    try{
+      var bus=global.OneToneSoundBus;
+      if(bus&&bus.notify){
+        var issue=String(voskRes.resourceIssue||'').trim();
+        if(issue==='model_missing'&&!global.__otSoundModelMissingLatched){
+          global.__otSoundModelMissingLatched=true;
+          bus.notify('model.missing',{dedupeKey:'model.missing'});
+        }else if(issue!=='model_missing'){
+          global.__otSoundModelMissingLatched=false;
+        }
+        if(supervisor.degraded&&!supervisor.activeEngine&&!global.__otSoundEngineDegradedLatched){
+          global.__otSoundEngineDegradedLatched=true;
+          bus.notify('engine.degraded',{dedupeKey:'engine.degraded'});
+        }else if(!(supervisor.degraded&&!supervisor.activeEngine)){
+          global.__otSoundEngineDegradedLatched=false;
+        }
+      }
+    }catch(_){}
     const voskOn=!!voskRes.enabled;
     const sapiOn=!!sapiRes.enabled;
     const kwsOn=!!kwsRes.enabled;

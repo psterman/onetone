@@ -4883,6 +4883,14 @@
     ensureFloatingOverlayHidden: ensureFloatingOverlayHidden,
     ensureAppSoftPad: ensureAppSoftPad,
     isAgentPanelCurrent: isAgentPanelCurrent,
+    isOverlayVisible: function () {
+      try {
+        return !!(global.OneToneSoundSurfaces && global.OneToneSoundSurfaces.softPadOverlayVisible
+          && global.OneToneSoundSurfaces.softPadOverlayVisible());
+      } catch (_) {
+        return !!global.__otSoftPadOverlayVisible;
+      }
+    },
     isPaintBusy: function () { return paintBusy || paintReentry > 0 || !!previewTimer; },
     getView: function () { return softPadPanelId(); },
     getFace: function () { return softPadFace; },

@@ -97,7 +97,7 @@
       if(ui.drawerOpen){
         if(global.OneToneSettingsDrawer&&(global.OneToneSettingsDrawer.isKeysPanel(ui.settingsPanel)||global.OneToneSettingsDrawer.isHabitsPanel(ui.settingsPanel))) hooks().renderKeyFinishFlowPanel();
         else if(ui.settingsPanel==='debug') hooks().scheduleDebugChromeRefresh();
-        else if(ui.settingsPanel==='sounds') hooks().renderSoundSettingsPanel();
+        // Do not re-render sounds settings on runtime ticks — it resets controls mid-click.
       }else{
         hooks().renderHomeLiveZone();
       }

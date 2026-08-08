@@ -374,6 +374,22 @@ pub fn run() {
                     crate::soft_pad_runtime::request_soft_pad_recompute(&cfg);
                 });
             }
+            {
+                let app_for_sound = app.handle().clone();
+                let state_for_sound = app_state.clone();
+                crate::agent_attention::set_sound_hook(move |event_id, _dedupe| {
+                    if !state_for_sound.cfg.lock().sounds.master_enabled {
+                        return;
+                    }
+                    crate::ipc::push_runtime_via_app(
+                        &app_for_sound,
+                        &state_for_sound,
+                        event_id,
+                        "",
+                        Some(event_id),
+                    );
+                });
+            }
 
             #[cfg(windows)]
             if !safe_mode {

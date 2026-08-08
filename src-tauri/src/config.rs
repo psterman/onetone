@@ -2239,9 +2239,90 @@ impl Default for SoundSlot {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SoundCategorySlot {
+    #[serde(default = "default_sound_policy_when_unseen")]
+    pub policy: String,
+    #[serde(default)]
+    pub id: String,
+}
+
+fn default_sound_policy_when_unseen() -> String {
+    "when_unseen".into()
+}
+
+fn default_sound_policy_always() -> String {
+    "always".into()
+}
+
+fn default_master_volume() -> f32 {
+    0.65
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SoundCategories {
+    #[serde(default = "default_cat_need_attention")]
+    pub need_attention: SoundCategorySlot,
+    #[serde(default = "default_cat_task_failed")]
+    pub task_failed: SoundCategorySlot,
+    #[serde(default = "default_cat_task_done")]
+    pub task_done: SoundCategorySlot,
+    #[serde(default = "default_cat_confirm")]
+    pub confirm: SoundCategorySlot,
+    #[serde(default = "default_cat_device_alert")]
+    pub device_alert: SoundCategorySlot,
+}
+
+fn default_cat_need_attention() -> SoundCategorySlot {
+    SoundCategorySlot {
+        policy: default_sound_policy_when_unseen(),
+        id: "input-ready-soft".into(),
+    }
+}
+fn default_cat_task_failed() -> SoundCategorySlot {
+    SoundCategorySlot {
+        policy: default_sound_policy_when_unseen(),
+        id: "error-subtle".into(),
+    }
+}
+fn default_cat_task_done() -> SoundCategorySlot {
+    SoundCategorySlot {
+        policy: default_sound_policy_when_unseen(),
+        id: "send-confirm-click".into(),
+    }
+}
+fn default_cat_confirm() -> SoundCategorySlot {
+    SoundCategorySlot {
+        policy: default_sound_policy_always(),
+        id: "tiny-tick".into(),
+    }
+}
+fn default_cat_device_alert() -> SoundCategorySlot {
+    SoundCategorySlot {
+        policy: default_sound_policy_when_unseen(),
+        id: "error-subtle".into(),
+    }
+}
+
+impl Default for SoundCategories {
+    fn default() -> Self {
+        Self {
+            need_attention: default_cat_need_attention(),
+            task_failed: default_cat_task_failed(),
+            task_done: default_cat_task_done(),
+            confirm: default_cat_confirm(),
+            device_alert: default_cat_device_alert(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SoundsConfig {
     #[serde(default = "default_true", rename = "masterEnabled")]
     pub master_enabled: bool,
+    #[serde(default = "default_master_volume", rename = "masterVolume")]
+    pub master_volume: f32,
     #[serde(default = "default_sound_slot_record")]
     pub record: SoundSlot,
     #[serde(default = "default_sound_slot_voice_wake", rename = "voiceWake")]
@@ -2254,6 +2335,8 @@ pub struct SoundsConfig {
     pub send_fail: SoundSlot,
     #[serde(default = "default_sound_slot_camera_action", rename = "cameraAction")]
     pub camera_action: SoundSlot,
+    #[serde(default)]
+    pub categories: SoundCategories,
     #[serde(default = "default_false", rename = "recordingMuteEnabled")]
     pub recording_mute_enabled: bool,
     #[serde(
@@ -2308,12 +2391,14 @@ impl Default for SoundsConfig {
     fn default() -> Self {
         Self {
             master_enabled: true,
+            master_volume: default_master_volume(),
             record: default_sound_slot_record(),
             voice_wake: default_sound_slot_voice_wake(),
             key_wake: default_sound_slot_key_wake(),
             send_success: default_sound_slot_send_success(),
             send_fail: default_sound_slot_send_fail(),
             camera_action: default_sound_slot_camera_action(),
+            categories: SoundCategories::default(),
             recording_mute_enabled: false,
             recording_mute_strength: default_recording_mute_strength(),
         }
@@ -2340,6 +2425,39 @@ impl SoundsConfig {
         if self.camera_action.id.trim().is_empty() {
             self.camera_action.id = default_sound_id_camera_action();
         }
+        if !(0.0..=1.0).contains(&self.master_volume) {
+            self.master_volume = default_master_volume();
+        }
+        fn norm_policy(p: &mut String, fallback: &str) {
+            let v = p.trim().to_ascii_lowercase();
+            *p = match v.as_str() {
+                "never" | "when_unseen" | "always" => v,
+                _ => fallback.into(),
+            };
+        }
+        norm_policy(
+            &mut self.categories.need_attention.policy,
+            "when_unseen",
+        );
+        norm_policy(&mut self.categories.task_failed.policy, "when_unseen");
+        norm_policy(&mut self.categories.task_done.policy, "when_unseen");
+        norm_policy(&mut self.categories.confirm.policy, "always");
+        norm_policy(&mut self.categories.device_alert.policy, "when_unseen");
+        if self.categories.need_attention.id.trim().is_empty() {
+            self.categories.need_attention.id = "input-ready-soft".into();
+        }
+        if self.categories.task_failed.id.trim().is_empty() {
+            self.categories.task_failed.id = "error-subtle".into();
+        }
+        if self.categories.task_done.id.trim().is_empty() {
+            self.categories.task_done.id = "send-confirm-click".into();
+        }
+        if self.categories.confirm.id.trim().is_empty() {
+            self.categories.confirm.id = "tiny-tick".into();
+        }
+        if self.categories.device_alert.id.trim().is_empty() {
+            self.categories.device_alert.id = "error-subtle".into();
+        }
         if !matches!(
             self.recording_mute_strength.trim(),
             "light" | "balanced" | "strong" | "mute"
@@ -2351,6 +2469,16 @@ impl SoundsConfig {
     pub fn cue_enabled(&self, cue: &str) -> bool {
         if !self.master_enabled {
             return false;
+        }
+        // Typed attention events: FE applies when_unseen; Rust only gates master.
+        if cue.starts_with("agent.")
+            || cue.starts_with("pad.")
+            || cue.starts_with("voice.")
+            || cue.starts_with("mic.")
+            || cue.starts_with("engine.")
+            || cue.starts_with("model.")
+        {
+            return true;
         }
         match cue {
             "record" => self.record.enabled,

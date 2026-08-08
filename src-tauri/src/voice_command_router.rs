@@ -222,6 +222,8 @@ fn dispatch_wake_or_summon(
             "",
             sound_cue.as_deref(),
         );
+    } else {
+        crate::agent_attention::emit_sound_event("voice.wake_failed", "voice.wake_failed");
     }
 
     VoiceCommandRouterResult {

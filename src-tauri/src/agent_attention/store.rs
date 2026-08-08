@@ -16,12 +16,36 @@ static LAST_WAITING_SIG: Mutex<Vec<AgentKind>> = Mutex::new(Vec::new());
 static REVISION: AtomicU64 = AtomicU64::new(0);
 
 static RECOMPUTE_HOOK: Mutex<Option<Arc<dyn Fn() + Send + Sync>>> = Mutex::new(None);
+static SOUND_HOOK: Mutex<Option<Arc<dyn Fn(&str, &str) + Send + Sync>>> = Mutex::new(None);
+static WORKING_SINCE: Mutex<Option<HashMap<AgentKind, Instant>>> = Mutex::new(None);
+
+pub const MIN_AGENT_TASK_MS: u64 = 3000;
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RaiseOutcome {
+    pub accepted: bool,
+    /// NeedsInput: true only when the SignalKey was newly inserted (not a refresh).
+    pub signal_inserted: bool,
+    /// Lifecycle: true when previous state != new state.
+    pub state_changed: bool,
+    pub waiting_set_changed: bool,
+}
 
 pub fn set_recompute_hook<F>(hook: F)
 where
     F: Fn() + Send + Sync + 'static,
 {
     if let Ok(mut g) = RECOMPUTE_HOOK.lock() {
+        *g = Some(Arc::new(hook));
+    }
+}
+
+/// Emit typed sound event id + dedupe key (FE applies when_unseen / categories).
+pub fn set_sound_hook<F>(hook: F)
+where
+    F: Fn(&str, &str) + Send + Sync + 'static,
+{
+    if let Ok(mut g) = SOUND_HOOK.lock() {
         *g = Some(Arc::new(hook));
     }
 }
@@ -35,6 +59,48 @@ fn fire_recompute_hook() {
         .and_then(|g| g.as_ref().cloned());
     if let Some(hook) = hook {
         hook();
+    }
+}
+
+fn fire_sound_hook(event_id: &str, dedupe_key: &str) {
+    let hook = SOUND_HOOK
+        .lock()
+        .ok()
+        .and_then(|g| g.as_ref().cloned());
+    if let Some(hook) = hook {
+        hook(event_id, dedupe_key);
+    }
+}
+
+/// Public emit for non-attention typed events (pad fail, etc.).
+pub fn emit_sound_event(event_id: &str, dedupe_key: &str) {
+    fire_sound_hook(event_id, dedupe_key);
+}
+
+fn note_working(agent: AgentKind) {
+    if let Ok(mut g) = WORKING_SINCE.lock() {
+        g.get_or_insert_with(HashMap::new)
+            .entry(agent)
+            .or_insert_with(Instant::now);
+    }
+}
+
+fn take_task_ms(agent: AgentKind) -> u64 {
+    let since = WORKING_SINCE
+        .lock()
+        .ok()
+        .and_then(|mut g| g.as_mut().and_then(|m| m.remove(&agent)));
+    match since {
+        Some(t) => t.elapsed().as_millis() as u64,
+        None => 0,
+    }
+}
+
+fn clear_working(agent: AgentKind) {
+    if let Ok(mut g) = WORKING_SINCE.lock() {
+        if let Some(m) = g.as_mut() {
+            m.remove(&agent);
+        }
     }
 }
 
@@ -174,7 +240,7 @@ fn notify_if_waiting_changed() {
 }
 
 /// Raise or refresh a NeedsInput / lifecycle signal. Out-of-order sequences are ignored.
-pub fn raise(mut signal: AgentAttentionSignal) -> bool {
+pub fn raise(mut signal: AgentAttentionSignal) -> RaiseOutcome {
     let now = Instant::now();
     if signal.sequence == 0 {
         signal.sequence = next_seq();
@@ -183,22 +249,42 @@ pub fn raise(mut signal: AgentAttentionSignal) -> bool {
         signal.expires_at = Some(now + Duration::from_millis(NEEDS_INPUT_WATCHDOG_MS));
     }
 
-    let applied = with_store(|inner| {
+    let emit_snapshot = signal.clone();
+    let waiting_before = project_waiting_kinds().0;
+    let outcome = with_store(|inner| {
         prune_expired(inner, now);
         if signal.state == AttentionState::NeedsInput {
             if !signal.source.can_enter_waiting() {
-                // Inferred: lights only — never waiting_kinds.
+                let prev_state = inner.lifecycle.get(&signal.agent).map(|s| s.state);
+                let state_changed = prev_state != Some(signal.state);
                 inner.lifecycle.insert(signal.agent, signal);
-                return false;
+                return RaiseOutcome {
+                    accepted: true,
+                    signal_inserted: false,
+                    state_changed,
+                    waiting_set_changed: false,
+                };
             }
             let key = signal.key();
             if let Some(prev) = inner.signals.get(&key) {
                 if signal.sequence < prev.sequence {
-                    return false;
+                    return RaiseOutcome::default();
                 }
+                inner.signals.insert(key, signal);
+                return RaiseOutcome {
+                    accepted: true,
+                    signal_inserted: false,
+                    state_changed: false,
+                    waiting_set_changed: false,
+                };
             }
             inner.signals.insert(key, signal);
-            true
+            RaiseOutcome {
+                accepted: true,
+                signal_inserted: true,
+                state_changed: false,
+                waiting_set_changed: false,
+            }
         } else {
             if matches!(
                 signal.state,
@@ -213,17 +299,67 @@ pub fn raise(mut signal: AgentAttentionSignal) -> bool {
             }
             if let Some(prev) = inner.lifecycle.get(&signal.agent) {
                 if signal.sequence < prev.sequence {
-                    return false;
+                    return RaiseOutcome::default();
                 }
             }
+            let prev_state = inner.lifecycle.get(&signal.agent).map(|s| s.state);
+            let state_changed = prev_state != Some(signal.state);
+            let agent = signal.agent;
+            let new_state = signal.state;
             inner.lifecycle.insert(signal.agent, signal);
-            true
+            if new_state == AttentionState::Working && state_changed {
+                note_working(agent);
+            }
+            RaiseOutcome {
+                accepted: true,
+                signal_inserted: false,
+                state_changed,
+                waiting_set_changed: false,
+            }
         }
     });
-    if applied {
+
+    let waiting_after = project_waiting_kinds().0;
+    let outcome = RaiseOutcome {
+        waiting_set_changed: waiting_before != waiting_after,
+        ..outcome
+    };
+
+    if outcome.accepted {
         notify_if_waiting_changed();
+        maybe_emit_from_signal(&emit_snapshot, &outcome);
     }
-    applied
+    outcome
+}
+
+fn maybe_emit_from_signal(signal: &AgentAttentionSignal, outcome: &RaiseOutcome) {
+    if !outcome.accepted {
+        return;
+    }
+    let agent = signal.agent.as_str();
+    let sid = signal.session_id.as_deref().unwrap_or("");
+    let rid = signal.request_id.as_deref().unwrap_or("");
+    let dedupe = format!("{agent}|{sid}|{rid}|{}", signal.state.as_str());
+
+    match signal.state {
+        AttentionState::NeedsInput if outcome.signal_inserted => {
+            fire_sound_hook("agent.needs_input", &dedupe);
+        }
+        AttentionState::Error if outcome.state_changed => {
+            clear_working(signal.agent);
+            fire_sound_hook("agent.failed", &dedupe);
+        }
+        AttentionState::Complete if outcome.state_changed => {
+            let task_ms = take_task_ms(signal.agent);
+            if task_ms >= MIN_AGENT_TASK_MS {
+                fire_sound_hook("agent.completed", &dedupe);
+            }
+        }
+        AttentionState::Idle if outcome.state_changed => {
+            clear_working(signal.agent);
+        }
+        _ => {}
+    }
 }
 
 fn clear_matching_locked(
@@ -335,6 +471,9 @@ pub fn reset_for_test() {
     });
     if let Ok(mut g) = LAST_WAITING_SIG.lock() {
         g.clear();
+    }
+    if let Ok(mut g) = WORKING_SINCE.lock() {
+        *g = None;
     }
     REVISION.store(0, Ordering::Release);
     SEQUENCE.store(1, Ordering::Release);
@@ -478,5 +617,89 @@ mod tests {
         let (w, _) = project_waiting_kinds();
         assert_eq!(w.first().copied(), Some(AgentKind::Codex));
         assert_eq!(w.len(), 2);
+    }
+
+    #[test]
+    fn raise_needs_input_insert_vs_refresh_edge() {
+        let _g = test_lock();
+        reset_for_test();
+        let o1 = raise(AgentAttentionSignal {
+            agent: AgentKind::Claude,
+            session_id: Some("s".into()),
+            request_id: Some("r1".into()),
+            state: AttentionState::NeedsInput,
+            cause: AttentionCause::Permission,
+            source: SignalSource::OfficialHook,
+            confidence: Confidence::High,
+            sequence: 1,
+            observed_at: Instant::now(),
+            expires_at: None,
+        });
+        assert!(o1.accepted);
+        assert!(o1.signal_inserted);
+        assert!(!o1.state_changed);
+
+        let o2 = raise(AgentAttentionSignal {
+            agent: AgentKind::Claude,
+            session_id: Some("s".into()),
+            request_id: Some("r1".into()),
+            state: AttentionState::NeedsInput,
+            cause: AttentionCause::Permission,
+            source: SignalSource::OfficialHook,
+            confidence: Confidence::High,
+            sequence: 2,
+            observed_at: Instant::now(),
+            expires_at: None,
+        });
+        assert!(o2.accepted);
+        assert!(!o2.signal_inserted);
+    }
+
+    #[test]
+    fn raise_complete_requires_state_change() {
+        let _g = test_lock();
+        reset_for_test();
+        let o1 = raise(AgentAttentionSignal {
+            agent: AgentKind::Codex,
+            session_id: Some("s".into()),
+            request_id: None,
+            state: AttentionState::Working,
+            cause: AttentionCause::Lifecycle,
+            source: SignalSource::OfficialHook,
+            confidence: Confidence::High,
+            sequence: 1,
+            observed_at: Instant::now(),
+            expires_at: None,
+        });
+        assert!(o1.state_changed);
+
+        let o2 = raise(AgentAttentionSignal {
+            agent: AgentKind::Codex,
+            session_id: Some("s".into()),
+            request_id: None,
+            state: AttentionState::Complete,
+            cause: AttentionCause::Lifecycle,
+            source: SignalSource::OfficialHook,
+            confidence: Confidence::High,
+            sequence: 2,
+            observed_at: Instant::now(),
+            expires_at: None,
+        });
+        assert!(o2.state_changed);
+
+        let o3 = raise(AgentAttentionSignal {
+            agent: AgentKind::Codex,
+            session_id: Some("s".into()),
+            request_id: None,
+            state: AttentionState::Complete,
+            cause: AttentionCause::Lifecycle,
+            source: SignalSource::OfficialHook,
+            confidence: Confidence::High,
+            sequence: 3,
+            observed_at: Instant::now(),
+            expires_at: None,
+        });
+        assert!(o3.accepted);
+        assert!(!o3.state_changed);
     }
 }

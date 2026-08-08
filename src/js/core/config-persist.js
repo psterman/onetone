@@ -963,14 +963,29 @@
       })(),
       sounds:(function(){
         const s=hooks().ensureSoundsConfig();
+        var categories={};
+        try{
+          if(global.OneToneSoundBus&&global.OneToneSoundBus.ensureCategoriesConfig){
+            global.OneToneSoundBus.ensureCategoriesConfig(s);
+          }
+          var src=s.categories||{};
+          Object.keys(src).forEach(function(k){
+            categories[k]={
+              policy:String(src[k].policy||'when_unseen'),
+              id:String(src[k].id||'')
+            };
+          });
+        }catch(_){}
         return {
           masterEnabled:!!s.masterEnabled,
+          masterVolume:Number(s.masterVolume!=null?s.masterVolume:0.65),
           record:{enabled:!!s.record.enabled,id:String(s.record.id||slots.record.id)},
           voiceWake:{enabled:!!s.voiceWake.enabled,id:String(s.voiceWake.id||slots.voiceWake.id)},
           keyWake:{enabled:!!s.keyWake.enabled,id:String(s.keyWake.id||slots.keyWake.id)},
           sendSuccess:{enabled:!!s.sendSuccess.enabled,id:String(s.sendSuccess.id||slots.sendSuccess.id)},
           sendFail:{enabled:!!s.sendFail.enabled,id:String(s.sendFail.id||slots.sendFail.id)},
           cameraAction:{enabled:!!(s.cameraAction&&s.cameraAction.enabled),id:String((s.cameraAction&&s.cameraAction.id)||slots.cameraAction.id)},
+          categories:categories,
           recordingMuteEnabled:!!s.recordingMuteEnabled,
           recordingMuteStrength:String(s.recordingMuteStrength||'balanced').trim()||'balanced'
         };
