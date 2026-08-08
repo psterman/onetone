@@ -29,7 +29,7 @@ fn vosk_epoch_matches(state: &AppState, epoch: u64) -> bool {
 /// Never blocks on joining the worker — Vosk model load ignores the stop flag and a sync join
 /// freezes `record_start` IPC (UI stuck on「正在打开麦克风」).
 pub fn pause_for_external_capture(state: &AppState) -> bool {
-    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    crate::voice_bootstrap::stop_mic_monitor_and_release(state, "engine_or_device");
     let was_active = {
         let st = state.voice_vosk_state.lock().clone();
         matches!(
@@ -53,7 +53,7 @@ pub fn pause_for_external_capture(state: &AppState) -> bool {
 pub fn spawn_voice_vosk_stop(state: Arc<AppState>) {
     let epoch = next_vosk_epoch(state.as_ref());
     let _ = epoch;
-    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    crate::voice_bootstrap::stop_mic_monitor_and_release(state.as_ref(), "vosk_stop");
     *state.voice_vosk_cooldown_until.lock() = None;
     *state.voice_vosk_last_error.lock() = String::new();
     let handle = state.voice_vosk.lock().take();
@@ -74,7 +74,7 @@ pub fn spawn_voice_vosk_stop(state: Arc<AppState>) {
 /// Stop capture handle without bumping epoch (safe to call from an in-flight start worker).
 /// Never joins the worker — sync join belongs only in [`voice_vosk_stop_sync`].
 fn release_vosk_capture_handle(state: &AppState) {
-    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    crate::voice_bootstrap::stop_mic_monitor_and_release(state, "engine_or_device");
     *state.voice_vosk_cooldown_until.lock() = None;
     *state.voice_vosk_last_error.lock() = String::new();
     if let Some(handle) = state.voice_vosk.lock().take() {
@@ -88,7 +88,7 @@ fn release_vosk_capture_handle(state: &AppState) {
 pub fn voice_vosk_stop_sync(state: &AppState) {
     let _epoch = next_vosk_epoch(state);
     crate::app_log::log_line(state, "voice", "vosk stop_sync begin");
-    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    crate::voice_bootstrap::stop_mic_monitor_and_release(state, "engine_or_device");
     *state.voice_vosk_cooldown_until.lock() = None;
     *state.voice_vosk_last_error.lock() = String::new();
     if let Some(handle) = state.voice_vosk.lock().take() {

@@ -1,4 +1,4 @@
-//! Vosk offline speech worker: cpal → audio channel → recognizer loop.
+//! Vosk offline speech worker: cpal ??? audio channel ??? recognizer loop.
 #![allow(dead_code, unused_imports)]
 
 use std::collections::VecDeque;
@@ -91,7 +91,7 @@ pub fn shutdown_sync(mut handle: VoiceVoskHandle) {
             Err(_) => {
                 // Detached join continues in the helper thread; do not block supervisor.
                 crate::app_log::sync_emergency_line("rs", &format!(
-                    "[voice] vosk shutdown_sync timed out after {}ms — detaching join",
+                    "[voice] vosk shutdown_sync timed out after {}ms ??? detaching join",
                     JOIN_TIMEOUT.as_millis()
                 ));
             }
@@ -161,7 +161,7 @@ pub fn probe_vosk_resources(
     }
 }
 
-/// Parent directory where packaged / user Vosk assets live (`libvosk.dll`, models, …).
+/// Parent directory where packaged / user Vosk assets live (`libvosk.dll`, models, ???).
 pub fn vosk_resources_dir(resource_dir: Option<&Path>) -> PathBuf {
     resolve_vosk_dll_dir(resource_dir)
 }
@@ -299,7 +299,7 @@ pub fn start_voice_vosk(
     cfg: VoiceVoskConfig,
     resource_dir: Option<PathBuf>,
     grammar_phrases: Vec<String>,
-    frame_tx: Option<crossbeam_channel::Sender<Vec<f32>>>,
+    frame_tx: Option<crate::audio_frame_bus::AudioFramePublisher>,
 ) -> Result<VoiceVoskHandle, String> {
     #[cfg(not(windows))]
     {
@@ -327,7 +327,7 @@ fn start_voice_vosk_impl(
     cfg: VoiceVoskConfig,
     resource_dir: Option<PathBuf>,
     grammar_phrases: Vec<String>,
-    frame_tx: Option<crossbeam_channel::Sender<Vec<f32>>>,
+    frame_tx: Option<crate::audio_frame_bus::AudioFramePublisher>,
 ) -> Result<VoiceVoskHandle, String> {
     let probe = probe_vosk_resources(&cfg, resource_dir.as_deref());
     if !probe.dll_exists {
@@ -413,7 +413,7 @@ fn run_worker(
     model_preset: &str,
     stop: Arc<AtomicBool>,
     event_tx: Sender<VoiceVoskEvent>,
-    frame_tx: Option<crossbeam_channel::Sender<Vec<f32>>>,
+    frame_tx: Option<crate::audio_frame_bus::AudioFramePublisher>,
 ) -> Result<(), String> {
     use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
     use cpal::SampleFormat;
@@ -427,6 +427,7 @@ fn run_worker(
     let model = Model::new(model_path.display().to_string())
         .ok_or_else(|| format!("load model failed: {}", model_path.display()))?;
     let load_ms = load_start.elapsed().as_millis() as u64;
+    let _ = crate::native_dll::log_vosk_dll_forensics(&dll_dir);
     let _ = send_event_blocking(
         &event_tx,
         VoiceVoskEvent::ModelLoaded {
@@ -445,9 +446,9 @@ fn run_worker(
         if let Some(r) =
             Recognizer::new_with_grammar(&model, TARGET_SAMPLE_RATE as f32, &grammar_refs)
         {
-            (r, true, "语法限制模式".into())
+            (r, true, "???????????".into())
         } else if let Some(r) = Recognizer::new(&model, TARGET_SAMPLE_RATE as f32) {
-            (r, false, "已切换为自由识别模式（grammar 不可用）".into())
+            (r, false, "?????????????????????grammar ???????".into())
         } else {
             return Err("create recognizer failed: grammar failed; free mode also failed".into());
         }
@@ -455,7 +456,7 @@ fn run_worker(
         (
             r,
             false,
-            "自由识别模式（轻量/默认 model 目录不使用 grammar）".into(),
+            "???????????????????/??? model ?????????? grammar??".into(),
         )
     } else {
         return Err("create recognizer failed: free mode failed".into());
@@ -617,7 +618,7 @@ fn run_dual_worker(
     phrases: Vec<String>,
     stop: Arc<AtomicBool>,
     event_tx: Sender<VoiceVoskEvent>,
-    frame_tx: Option<crossbeam_channel::Sender<Vec<f32>>>,
+    frame_tx: Option<crate::audio_frame_bus::AudioFramePublisher>,
 ) -> Result<(), String> {
     use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
     use cpal::SampleFormat;
@@ -633,6 +634,7 @@ fn run_dual_worker(
     let en_model = Model::new(en_model_path.display().to_string())
         .ok_or_else(|| format!("load English model failed: {}", en_model_path.display()))?;
     let load_ms = load_start.elapsed().as_millis() as u64;
+    let _ = crate::native_dll::log_vosk_dll_forensics(&dll_dir);
     let _ = send_event_blocking(
         &event_tx,
         VoiceVoskEvent::ModelLoaded {
@@ -649,7 +651,7 @@ fn run_dual_worker(
         &event_tx,
         VoiceVoskEvent::GrammarMode {
             grammar: false,
-            note: "双模型并行 · 中英自动识别".into(),
+            note: "????????? ? ???????????????".into(),
         },
     );
 
@@ -922,7 +924,7 @@ pub fn wake_text_rejection_reason(text: &str, phrases: &[String]) -> Option<Stri
             continue;
         }
         if norm_text.contains(&norm_phrase) && !wake_fuzzy_match_allowed(text, phrase) {
-            return Some(format!("句子太长，不像唤醒词（听到「{}」）", trimmed));
+            return Some(format!("????????????????????????????{}?????", trimmed));
         }
     }
     None
@@ -1705,7 +1707,7 @@ fn try_push_audio(tx: &Sender<Vec<f32>>, chunk: Vec<f32>) {
     match tx.try_send(chunk) {
         Ok(()) => {}
         Err(TrySendError::Full(_)) => {
-            // Drop new chunk when backlog is full — keep callback lightweight.
+            // Drop new chunk when backlog is full ??? keep callback lightweight.
         }
         Err(TrySendError::Disconnected(_)) => {}
     }
@@ -1786,13 +1788,13 @@ fn emit_level_if_due_level(event_tx: &Sender<VoiceVoskEvent>, level: u32, last_a
 }
 
 #[cfg(all(windows, not(vosk_disabled)))]
-fn publish_i16_pcm_to_bus(frame_tx: &Option<crossbeam_channel::Sender<Vec<f32>>>, pcm: &[i16]) {
+fn publish_i16_pcm_to_bus(frame_tx: &Option<crate::audio_frame_bus::AudioFramePublisher>, pcm: &[i16]) {
     if let Some(tx) = frame_tx {
         let out: Vec<f32> = pcm
             .iter()
             .map(|&s| f32::from(s) / i16::MAX as f32)
             .collect();
-        let _ = tx.try_send(out);
+        let _ = tx.try_publish(out);
     }
 }
 
@@ -1874,27 +1876,27 @@ mod tests {
 
     #[test]
     fn matches_final_exact() {
-        let phrases = vec!["开始输入".into()];
-        assert_eq!(matches_final("开始输入", &phrases), Some("开始输入".into()));
+        let phrases = vec!["?????????".into()];
+        assert_eq!(matches_final("?????????", &phrases), Some("?????????".into()));
     }
 
     #[test]
     fn matches_final_contains() {
-        let phrases = vec!["开始输入".into()];
+        let phrases = vec!["?????????".into()];
         assert_eq!(
-            matches_final("请开始输入吧", &phrases),
-            Some("开始输入".into())
+            matches_final("???????????", &phrases),
+            Some("?????????".into())
         );
     }
 
     #[test]
     fn matches_final_rejects_long_unrelated_cn() {
-        let phrases = vec!["开始输入".into()];
+        let phrases = vec!["?????????".into()];
         assert_eq!(
-            matches_final("今天下午我们开始输入很多内容", &phrases),
+            matches_final("????????????????????????????", &phrases),
             None
         );
-        assert!(wake_text_rejection_reason("今天下午我们开始输入很多内容", &phrases).is_some());
+        assert!(wake_text_rejection_reason("????????????????????????????", &phrases).is_some());
     }
 
     #[test]
@@ -1919,7 +1921,7 @@ mod tests {
     fn pick_dual_partial_prefers_script() {
         let phrases = dual_test_phrases();
         assert_eq!(
-            pick_dual_partial("开始", "start", &phrases, None).as_deref(),
+            pick_dual_partial("????", "start", &phrases, None).as_deref(),
             Some("start")
         );
         assert_eq!(
@@ -1927,15 +1929,15 @@ mod tests {
             Some("startinput")
         );
         assert_eq!(
-            pick_dual_partial("开始输入", "start", &phrases, None).as_deref(),
-            Some("开始输入")
+            pick_dual_partial("?????????", "start", &phrases, None).as_deref(),
+            Some("?????????")
         );
         assert_eq!(
-            pick_dual_partial("探因铺子", "start input", &phrases, None).as_deref(),
+            pick_dual_partial("??????????", "start input", &phrases, None).as_deref(),
             Some("startinput")
         );
         assert_eq!(
-            pick_dual_partial("开始输入", "start input", &phrases, None).as_deref(),
+            pick_dual_partial("?????????", "start input", &phrases, None).as_deref(),
             Some("startinput")
         );
     }
@@ -1945,9 +1947,9 @@ mod tests {
         let phrases = dual_test_phrases();
         assert_eq!(
             resolve_dual_finalization(
-                Some("他因铺子"),
+                Some("?????????"),
                 None,
-                "探因铺子",
+                "??????????",
                 "start input",
                 &phrases,
                 None,
@@ -1963,7 +1965,7 @@ mod tests {
             resolve_dual_finalization(
                 None,
                 Some("kaisersure"),
-                "开始输入",
+                "?????????",
                 "start input",
                 &phrases,
                 None,
@@ -1977,21 +1979,21 @@ mod tests {
         let phrases = dual_test_phrases();
         assert_eq!(
             resolve_dual_finalization(
-                Some("开始听写"),
+                Some("????????"),
                 Some("start dictation"),
-                "开始听写",
+                "????????",
                 "start",
                 &phrases,
                 None,
             ),
-            DualResolution::Commit("开始听写".into())
+            DualResolution::Commit("????????".into())
         );
     }
 
     fn dual_test_phrases() -> Vec<String> {
         vec![
-            "开始听写".into(),
-            "开始输入".into(),
+            "????????".into(),
+            "?????????".into(),
             "start dictation".into(),
             "start input".into(),
         ]
@@ -2009,16 +2011,16 @@ mod tests {
 
     #[test]
     fn matches_final_rejects_garbage_cn() {
-        let phrases = vec!["start dictation".into(), "开始输入".into()];
-        assert_eq!(matches_final("他因铺子", &phrases), None);
-        assert_eq!(matches_final("探因铺子", &phrases), None);
+        let phrases = vec!["start dictation".into(), "?????????".into()];
+        assert_eq!(matches_final("?????????", &phrases), None);
+        assert_eq!(matches_final("??????????", &phrases), None);
     }
 
     #[test]
     fn matches_final_rejects_cross_script() {
-        let phrases = vec!["start dictation".into(), "开始输入".into()];
+        let phrases = vec!["start dictation".into(), "?????????".into()];
         assert_eq!(matches_final("kaisersure", &phrases), None);
-        assert_eq!(matches_final("开始输入", &phrases), Some("开始输入".into()));
+        assert_eq!(matches_final("?????????", &phrases), Some("?????????".into()));
         assert_eq!(
             matches_final("start dictation", &phrases),
             Some("start dictation".into())
@@ -2027,17 +2029,17 @@ mod tests {
 
     #[test]
     fn pick_dual_final_prefers_chinese_phrase_match() {
-        let phrases = vec!["开始输入".into(), "start dictation".into()];
-        let candidates = vec!["kaisersure".into(), "开始输入".into()];
+        let phrases = vec!["?????????".into(), "start dictation".into()];
+        let candidates = vec!["kaisersure".into(), "?????????".into()];
         assert_eq!(
             pick_dual_final(&candidates, &phrases).as_deref(),
-            Some("开始输入")
+            Some("?????????")
         );
     }
 
     #[test]
     fn pick_dual_final_prefers_phrase_match() {
-        let phrases = vec!["开始输入".into(), "start dictation".into()];
+        let phrases = vec!["?????????".into(), "start dictation".into()];
         let candidates = vec!["noise".into(), "start dictation".into()];
         assert_eq!(
             pick_dual_final(&candidates, &phrases).as_deref(),
@@ -2076,6 +2078,6 @@ mod tests {
 
     #[test]
     fn sanitize_keeps_chinese() {
-        assert_eq!(sanitize_vosk_text("开始输入").as_deref(), Some("开始输入"));
+        assert_eq!(sanitize_vosk_text("?????????").as_deref(), Some("?????????"));
     }
 }

@@ -541,7 +541,10 @@
           e.stopPropagation();
           state().selectedMappingId=item.dataset.habitSwitch;
           closeHabitSwitcher();
-          if(global.OneToneRender) global.OneToneRender.render();
+          if(global.OneToneRender){
+            if(global.OneToneRender.schedule) global.OneToneRender.schedule('habitSwitcher');
+            else global.OneToneRender.render();
+          }
           return;
         }
         if(e.target.closest('#habitSwitcherAdd')){

@@ -64,7 +64,7 @@
       var deferCam=function(){
         var clearCamTag=function(){
           try{
-            if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag) global.OneToneUiHeartbeat.clearTag();
+            if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag) global.OneToneUiHeartbeat.clearTag('bootCameraReconcile');
             else if(global.__otActivityTag==='bootCameraReconcile') global.__otActivityTag='';
           }catch(_){}
         };
@@ -1875,8 +1875,8 @@
       if(bootSettling()||mvpInitHeavyRemountBlocked()){
         scheduleDeferredMvpInitSideEffects();
         try{
-          if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag) global.OneToneUiHeartbeat.clearTag();
-          else global.__otActivityTag='';
+          if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag) global.OneToneUiHeartbeat.clearTag('applyMvpInit');
+          else if(global.__otActivityTag==='applyMvpInit') global.__otActivityTag='';
         }catch(_){}
         return;
       }
@@ -1898,15 +1898,15 @@
         runMvpInitHeavySideEffects();
       },0);
       try{
-        if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag) global.OneToneUiHeartbeat.clearTag();
-        else global.__otActivityTag='';
+        if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag) global.OneToneUiHeartbeat.clearTag('applyMvpInit');
+        else if(global.__otActivityTag==='applyMvpInit') global.__otActivityTag='';
       }catch(_){}
     }catch(err){
       console.error('applyMvpInit',err);
       pendingMvpInitMsg=msg;
       try{
-        if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag) global.OneToneUiHeartbeat.clearTag();
-        else global.__otActivityTag='';
+        if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag) global.OneToneUiHeartbeat.clearTag('applyMvpInit');
+        else if(global.__otActivityTag==='applyMvpInit') global.__otActivityTag='';
       }catch(_){}
     }
   }

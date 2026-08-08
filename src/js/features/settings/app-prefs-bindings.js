@@ -123,7 +123,6 @@
     }
     bindClick('btnKeysOpenSoundsMore',openSoundsMore);
     bindClick('btnCameraOpenSoundsMore',openSoundsMore);
-    bindClick('btnSoftPadOpenSoundsMore',openSoundsMore);
   }
   global.OneToneAppPrefsBindings={bindEvents:bindEvents};
 })((typeof window!=='undefined')?window:globalThis);

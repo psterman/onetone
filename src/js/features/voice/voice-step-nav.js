@@ -143,7 +143,7 @@
     if(!flow||flow.dataset.voiceNavBound==='1') return;
     flow.dataset.voiceNavBound='1';
     flow.addEventListener('click',function(e){
-      if(e.target.closest('button,input,select,textarea,a,summary,details,[role="switch"],.voice-sapi-preset,.voice-segment-btn,.keys-trigger-mode-seg,.voice-recognize-source-btn,.home-mini-toggle,.mic-device-card,.keys-summary-btn,.control-btn,.voice-fb-action-btn,.voice-mic-change-btn')){
+      if(e.target.closest('button,input,select,textarea,a,summary,details,[role="switch"],.voice-sapi-preset,.voice-segment-btn,.keys-trigger-mode-seg,.voice-output-mode-card,.voice-recognize-source-btn,.home-mini-toggle,.mic-device-card,.keys-summary-btn,.control-btn,.voice-fb-action-btn,.voice-mic-change-btn')){
         return;
       }
       var head=e.target.closest&&e.target.closest('.voice-step-card-head');

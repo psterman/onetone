@@ -10,7 +10,23 @@
     setInterval(function(){
       var now=Date.now();
       var lag=now-last-1000;
-      if(lag>2500) hooks().frontendLog('ui heartbeat lag '+Math.round(lag)+'ms');
+      if(lag>2500){
+        var tag='';
+        try{
+          if(global.OneToneUiHeartbeat&&typeof global.OneToneUiHeartbeat.activityTag==='function'){
+            tag=global.OneToneUiHeartbeat.activityTag()||'';
+          }else if(global.__otActivityTag){
+            tag=String(global.__otActivityTag||'');
+          }
+        }catch(_){}
+        var msg='ui heartbeat lag '+Math.round(lag)+'ms';
+        if(tag) msg+=' tag='+tag;
+        if(global.OneToneUiHeartbeat&&typeof global.OneToneUiHeartbeat.logLocalLag==='function'){
+          global.OneToneUiHeartbeat.logLocalLag(lag,tag);
+        }else{
+          hooks().frontendLog(msg);
+        }
+      }
       last=now;
     },1000);
   })();

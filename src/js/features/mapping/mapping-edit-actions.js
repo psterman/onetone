@@ -79,7 +79,10 @@
     m.enabled=target;
     // QS/habit overlay: in-memory only — backend toggle runs persist_and_rebind → mvp_init freeze.
     if(!opts.skipBackend) postMappingToggle(id,target);
-    if(!opts.skipRender) global.OneToneRender.render();
+    if(!opts.skipRender){
+      if(global.OneToneRender.schedule) global.OneToneRender.schedule('mappingToggle');
+      else global.OneToneRender.render();
+    }
   }
 
   function removeMappingSwitchKey(mappingId,idx){

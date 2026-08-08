@@ -360,7 +360,7 @@ pub fn prepare_runtime_keywords(
 pub fn start_voice_kws(
     cfg: &VoiceKwsConfig,
     resource_dir: Option<&Path>,
-    frame_tx: Option<crossbeam_channel::Sender<Vec<f32>>>,
+    frame_tx: Option<crate::audio_frame_bus::AudioFramePublisher>,
 ) -> Result<VoiceKwsHandle, String> {
     #[cfg(feature = "kws-engine")]
     {

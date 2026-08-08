@@ -1,6 +1,6 @@
 //! Acoustic command runtime: calibration record_once, suspend, status, live matching.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
@@ -10,6 +10,9 @@ use parking_lot::Mutex;
 use tauri::AppHandle;
 
 use crate::app_identity::foreground_app_target_id;
+use crate::audio_frame_bus::{
+    drain_receiver, match_worker_alive, AUDIO_FRAME_BUS_CAP, AUDIO_FRAME_SAMPLE_RATE,
+};
 use crate::config::{AcousticVoiceCommand, AcousticVoiceCommandSample, VoiceConfig};
 use crate::voice_acoustic_command::{
     build_from_samples, extract_mfcc_from_pcm_f32, extract_sample_from_pcm_manual,
@@ -38,7 +41,10 @@ struct ActiveManualRecord {
 pub struct AcousticVoiceRuntime {
     pub suspended: AtomicBool,
     pub record_in_progress: AtomicBool,
-    match_stop: AtomicBool,
+    /// Monotonic live generation; worker exits when this no longer matches `my_gen`.
+    match_generation: AtomicU64,
+    /// Per-worker stop token for the current generation (independent of shared flags).
+    match_stop_token: Mutex<Option<Arc<AtomicBool>>>,
     match_running: AtomicBool,
     match_thread: Mutex<Option<JoinHandle<()>>>,
     manual_session: Mutex<Option<ActiveManualRecord>>,
@@ -51,7 +57,8 @@ impl AcousticVoiceRuntime {
         Self {
             suspended: AtomicBool::new(false),
             record_in_progress: AtomicBool::new(false),
-            match_stop: AtomicBool::new(true),
+            match_generation: AtomicU64::new(0),
+            match_stop_token: Mutex::new(None),
             match_running: AtomicBool::new(false),
             match_thread: Mutex::new(None),
             manual_session: Mutex::new(None),
@@ -69,6 +76,10 @@ impl AcousticVoiceRuntime {
 
     pub fn is_match_running(&self) -> bool {
         self.match_running.load(Ordering::SeqCst)
+    }
+
+    pub fn match_generation(&self) -> u64 {
+        self.match_generation.load(Ordering::SeqCst)
     }
 }
 
@@ -188,7 +199,7 @@ pub fn record_session_start(
         });
     }
 
-    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    crate::voice_bootstrap::stop_mic_monitor_and_release(state, "engine_or_device");
 
     // Reuse parked lease between takes — avoids Vosk reclaiming the device.
     let lease = match take_calibration_lease(&state.acoustic_voice) {
@@ -450,7 +461,7 @@ pub fn record_once(
         .unwrap_or("")
         .to_string();
     crate::app_log::sync_emergency_line("rs", &format!("acoustic record_once begin session={session}"));
-    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    crate::voice_bootstrap::stop_mic_monitor_and_release(state, "engine_or_device");
 
     let pcm_result = {
         // MicLease Drop resumes the desired engine even on panic / early return.
@@ -706,50 +717,67 @@ pub fn start_acoustic_match_runtime(app: Option<&AppHandle>, state: &Arc<AppStat
     if state.acoustic_voice.match_running.load(Ordering::SeqCst) {
         return;
     }
+    // invalidate → stop → join → drain → new gen → start (drain again before spawn)
     stop_acoustic_match_runtime(state);
 
+    let rt = &state.acoustic_voice;
+    let my_gen = rt.match_generation.fetch_add(1, Ordering::SeqCst) + 1;
+    let stop = Arc::new(AtomicBool::new(false));
+    *rt.match_stop_token.lock() = Some(Arc::clone(&stop));
+    rt.match_running.store(true, Ordering::SeqCst);
+
+    let _ = state.audio_frame_bus.drain_max(AUDIO_FRAME_BUS_CAP);
     let frame_rx = state.audio_frame_bus.subscriber();
-    state
-        .acoustic_voice
-        .match_stop
-        .store(false, Ordering::SeqCst);
-    state
-        .acoustic_voice
-        .match_running
-        .store(true, Ordering::SeqCst);
+    let buffered_samples = state.audio_frame_bus.buffered_samples_handle();
 
     let worker_state = Arc::clone(state);
     let app_handle = app.cloned();
     let handle = std::thread::Builder::new()
         .name("acoustic-match".into())
         .spawn(move || {
-            run_acoustic_match_loop(worker_state, app_handle, frame_rx);
+            run_acoustic_match_loop(
+                worker_state,
+                app_handle,
+                frame_rx,
+                my_gen,
+                stop,
+                buffered_samples,
+            );
         });
     if let Ok(h) = handle {
-        *state.acoustic_voice.match_thread.lock() = Some(h);
+        *rt.match_thread.lock() = Some(h);
+        crate::app_log::log_line(
+            state.as_ref(),
+            "acoustic",
+            &format!(
+                "match start gen={} cap={} (assume ~20ms/chunk → ~{}ms backlog)",
+                my_gen,
+                AUDIO_FRAME_BUS_CAP,
+                AUDIO_FRAME_BUS_CAP * 20
+            ),
+        );
     } else {
-        state
-            .acoustic_voice
-            .match_running
-            .store(false, Ordering::SeqCst);
-        state
-            .acoustic_voice
-            .match_stop
-            .store(true, Ordering::SeqCst);
+        rt.match_running.store(false, Ordering::SeqCst);
+        if let Some(t) = rt.match_stop_token.lock().take() {
+            t.store(true, Ordering::SeqCst);
+        }
+        let _ = rt.match_generation.fetch_add(1, Ordering::SeqCst);
     }
 }
 
 pub fn stop_acoustic_match_runtime(state: &Arc<AppState>) {
-    state
-        .acoustic_voice
-        .match_stop
-        .store(true, Ordering::SeqCst);
-    let handle = state.acoustic_voice.match_thread.lock().take();
-    state
-        .acoustic_voice
-        .match_running
-        .store(false, Ordering::SeqCst);
+    let rt = &state.acoustic_voice;
+    // 1) Invalidate generation so detached workers never revive
+    let prev_gen = rt.match_generation.fetch_add(1, Ordering::SeqCst);
+    // 2) Stop old token
+    if let Some(token) = rt.match_stop_token.lock().take() {
+        token.store(true, Ordering::SeqCst);
+    }
+    // 3) Take handle + clear running (stop path owns this when handle is taken)
+    let handle = rt.match_thread.lock().take();
+    rt.match_running.store(false, Ordering::SeqCst);
     let Some(handle) = handle else {
+        let _ = state.audio_frame_bus.drain_max(AUDIO_FRAME_BUS_CAP);
         return;
     };
     // Never unbounded-join here: activate holds ACTIVATE_LOCK and strategy IPC used to
@@ -770,11 +798,27 @@ pub fn stop_acoustic_match_runtime(state: &Arc<AppState>) {
                 state.as_ref(),
                 "acoustic",
                 &format!(
-                    "match stop join timed out after {}ms — detaching",
-                    JOIN_TIMEOUT.as_millis()
+                    "match stop join timed out after {}ms — detaching prev_gen={}",
+                    JOIN_TIMEOUT.as_millis(),
+                    prev_gen
                 ),
             );
         }
+    }
+    // 4) Drain after old gen is invalid (≤ CAP)
+    let drained = state.audio_frame_bus.drain_max(AUDIO_FRAME_BUS_CAP);
+    if drained.messages > 0 {
+        crate::app_log::log_line(
+            state.as_ref(),
+            "acoustic",
+            &format!(
+                "match stop drain gen_after={} msgs={} samples={} ~{}ms",
+                rt.match_generation.load(Ordering::Relaxed),
+                drained.messages,
+                drained.samples,
+                drained.samples.saturating_mul(1000) / u64::from(AUDIO_FRAME_SAMPLE_RATE)
+            ),
+        );
     }
 }
 
@@ -782,24 +826,47 @@ fn run_acoustic_match_loop(
     state: Arc<AppState>,
     app: Option<AppHandle>,
     frame_rx: Receiver<Vec<f32>>,
+    my_gen: u64,
+    stop: Arc<AtomicBool>,
+    buffered_samples: Arc<std::sync::atomic::AtomicU64>,
 ) {
     let rt = &state.acoustic_voice;
     let mut pcm_buf: Vec<f32> = Vec::with_capacity(MATCH_BUFFER_MAX_SAMPLES);
     let mut in_speech = false;
     let mut silence_started: Option<Instant> = None;
     let mut last_emit_at: Option<Instant> = None;
+    let mut last_metric_log = Instant::now();
+    let mut last_dropped = state.audio_frame_bus.dropped_frames();
 
-    while !rt.match_stop.load(Ordering::Relaxed) {
+    while match_worker_alive(
+        my_gen,
+        rt.match_generation.load(Ordering::Relaxed),
+        stop.load(Ordering::Relaxed),
+    ) {
         if rt.is_suspended() || *state.paused.lock() {
-            std::thread::sleep(Duration::from_millis(80));
+            let _ = drain_receiver(&frame_rx, AUDIO_FRAME_BUS_CAP, buffered_samples.as_ref());
             pcm_buf.clear();
             in_speech = false;
             silence_started = None;
+            std::thread::sleep(Duration::from_millis(80));
             continue;
         }
 
         match frame_rx.recv_timeout(Duration::from_millis(120)) {
             Ok(chunk) => {
+                let n = chunk.len() as u64;
+                let _ = buffered_samples.fetch_update(
+                    Ordering::Relaxed,
+                    Ordering::Relaxed,
+                    |cur| Some(cur.saturating_sub(n)),
+                );
+                if !match_worker_alive(
+                    my_gen,
+                    rt.match_generation.load(Ordering::Relaxed),
+                    stop.load(Ordering::Relaxed),
+                ) {
+                    continue;
+                }
                 pcm_buf.extend_from_slice(&chunk);
                 if pcm_buf.len() > MATCH_BUFFER_MAX_SAMPLES {
                     let drop_n = pcm_buf.len() - MATCH_BUFFER_MAX_SAMPLES;
@@ -815,7 +882,14 @@ fn run_acoustic_match_loop(
                     } else if silence_started.unwrap().elapsed()
                         >= Duration::from_millis(MATCH_SILENCE_MS)
                     {
-                        try_emit_acoustic_match(&state, app.as_ref(), &pcm_buf, &mut last_emit_at);
+                        try_emit_acoustic_match(
+                            &state,
+                            app.as_ref(),
+                            &pcm_buf,
+                            &mut last_emit_at,
+                            my_gen,
+                            &stop,
+                        );
                         pcm_buf.clear();
                         in_speech = false;
                         silence_started = None;
@@ -824,6 +898,30 @@ fn run_acoustic_match_loop(
             }
             Err(_) => {}
         }
+
+        // Throttled drop/depth metrics with generation (假死对照)
+        if last_metric_log.elapsed() >= Duration::from_secs(5) {
+            last_metric_log = Instant::now();
+            let dropped = state.audio_frame_bus.dropped_frames();
+            let delta = dropped.saturating_sub(last_dropped);
+            last_dropped = dropped;
+            let buf_ms = state.audio_frame_bus.buffered_ms_estimate();
+            if delta > 0 || buf_ms > 400 {
+                crate::app_log::log_line(
+                    state.as_ref(),
+                    "acoustic",
+                    &format!(
+                        "match bus gen={} dropped_delta={} dropped_total={} buffered_ms≈{}",
+                        my_gen, delta, dropped, buf_ms
+                    ),
+                );
+            }
+        }
+    }
+
+    // Only the live generation clears running — detached ghosts must not.
+    if rt.match_generation.load(Ordering::SeqCst) == my_gen {
+        rt.match_running.store(false, Ordering::SeqCst);
     }
 }
 
@@ -840,8 +938,14 @@ fn try_emit_acoustic_match(
     app: Option<&AppHandle>,
     pcm: &[f32],
     last_emit_at: &mut Option<Instant>,
+    my_gen: u64,
+    stop: &AtomicBool,
 ) {
-    if state.acoustic_voice.match_stop.load(Ordering::Relaxed) {
+    if !match_worker_alive(
+        my_gen,
+        state.acoustic_voice.match_generation.load(Ordering::Relaxed),
+        stop.load(Ordering::Relaxed),
+    ) {
         return;
     }
     if pcm.len() < (TARGET_SAMPLE_RATE as usize * 300 / 1000) {

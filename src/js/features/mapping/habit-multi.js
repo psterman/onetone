@@ -32,7 +32,10 @@
     state().selectedMappingId=id;
     var hooks=global.__vp_mapping_list_ui_hooks__||global.__vp_mapping_list_hooks__||{};
     if(hooks.syncEditorFromSelection) hooks.syncEditorFromSelection();
-    else if(global.OneToneRender) global.OneToneRender.render();
+    else if(global.OneToneRender){
+      if(global.OneToneRender.schedule) global.OneToneRender.schedule('habitMultiSelect');
+      else global.OneToneRender.render();
+    }
   }
 
   function renderHabitMultiCards(){

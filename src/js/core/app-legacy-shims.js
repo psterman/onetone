@@ -433,7 +433,18 @@
     }
     
     function renderHeroBadges(){ return OneToneRender.renderHeroBadges(); }
-    function render(){ return OneToneRender.render(); }
+    function render(){
+      if(OneToneRender.schedule) return OneToneRender.schedule('shim');
+      return OneToneRender.render();
+    }
+    function renderNow(reason){
+      if(OneToneRender.renderNow) return OneToneRender.renderNow(reason||'shim');
+      return OneToneRender.render();
+    }
+    function scheduleRender(reason){
+      if(OneToneRender.schedule) return OneToneRender.schedule(reason||'shim');
+      return OneToneRender.render();
+    }
 
     return {
       $:$,
@@ -575,6 +586,8 @@
       refreshProcessUsage:refreshProcessUsage,
       removeDraftMapping:removeDraftMapping,
       render:render,
+      renderNow:renderNow,
+      scheduleRender:scheduleRender,
       renderAddButton:renderAddButton,
       renderDebugDeveloperPanel:renderDebugDeveloperPanel,
       renderDebugPanel:renderDebugPanel,

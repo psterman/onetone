@@ -424,7 +424,20 @@
     }
   }
 
-  function syncSoundsSettingsUi(){
+  function soundPickerPanelActive(){
+    try{
+      var ui=global.OneToneState&&global.OneToneState.ui;
+      if(!ui||!ui.drawerOpen) return false;
+      var p=String(ui.settingsPanel||'');
+      return p==='sounds'||p==='keys'||p==='camera';
+    }catch(_){
+      return false;
+    }
+  }
+
+  function syncSoundsSettingsUi(opts){
+    opts=opts||{};
+    var buildPickers=opts.buildPickers===true||(opts.buildPickers!==false&&soundPickerPanelActive());
     var sounds=ensureSoundsConfig();
     var masterBtn=$('btnSoundsMaster');
     if(masterBtn){
@@ -448,20 +461,22 @@
         toggle.setAttribute('aria-checked',on?'true':'false');
         toggle.disabled=false;
       });
-      document.querySelectorAll('.sound-slot-select[data-slot="'+key+'"]').forEach(function(select){
-        fillSoundSelectOptions(select);
-        select.value=id;
-        select.disabled=false;
-        syncSoundPicker(select);
-      });
-      // Legacy id-based selects on sounds page (keep in sync if present).
-      var legacy=$('soundSelect'+key.charAt(0).toUpperCase()+key.slice(1));
-      if(legacy){
-        fillSoundSelectOptions(legacy);
-        if(!legacy.getAttribute('data-slot')) legacy.setAttribute('data-slot',key);
-        legacy.value=id;
-        legacy.disabled=false;
-        syncSoundPicker(legacy);
+      if(buildPickers){
+        document.querySelectorAll('.sound-slot-select[data-slot="'+key+'"]').forEach(function(select){
+          fillSoundSelectOptions(select);
+          select.value=id;
+          select.disabled=false;
+          syncSoundPicker(select);
+        });
+        // Legacy id-based selects on sounds page (keep in sync if present).
+        var legacy=$('soundSelect'+key.charAt(0).toUpperCase()+key.slice(1));
+        if(legacy){
+          fillSoundSelectOptions(legacy);
+          if(!legacy.getAttribute('data-slot')) legacy.setAttribute('data-slot',key);
+          legacy.value=id;
+          legacy.disabled=false;
+          syncSoundPicker(legacy);
+        }
       }
       document.querySelectorAll('.sound-slot-preview[data-slot="'+key+'"]').forEach(function(preview){
         preview.disabled=false;
@@ -479,13 +494,15 @@
           btn.setAttribute('aria-checked',on?'true':'false');
         });
       });
-      document.querySelectorAll('.sound-cat-select[data-cat="'+key+'"]').forEach(function(select){
-        fillSoundSelectOptions(select);
-        if(select.value!==id) select.value=id;
-        var picker=select.closest('.sound-slot-picker');
-        if(picker) syncSoundPickerLabel(picker,select);
-        else syncSoundPicker(select);
-      });
+      if(buildPickers){
+        document.querySelectorAll('.sound-cat-select[data-cat="'+key+'"]').forEach(function(select){
+          fillSoundSelectOptions(select);
+          if(select.value!==id) select.value=id;
+          var picker=select.closest('.sound-slot-picker');
+          if(picker) syncSoundPickerLabel(picker,select);
+          else syncSoundPicker(select);
+        });
+      }
       var toneName=soundLabel(id)||id||'—';
       var tonePrefix=(global.OneToneI18n&&global.OneToneI18n.dict&&global.OneToneI18n.dict().soundChangeTone)||'换音色';
       var toneText=tonePrefix+' · '+toneName;
@@ -495,10 +512,35 @@
     });
     syncKeyWakeSoundToggle(!!sounds.keyWake.enabled);
     syncRecordingAudioUi();
+    syncSoftPadSoundEmbedSummary(sounds);
+  }
+
+  function policyLabel(policy,d){
+    var p=String(policy||'when_unseen');
+    if(p==='never') return d.soundPolicyNever||'从不';
+    if(p==='always') return d.soundPolicyAlways||'始终';
+    return d.soundPolicyWhenUnseen||'看不见时';
+  }
+
+  function syncSoftPadSoundEmbedSummary(soundsOpt){
+    var el=$('softPadSoundEmbedSummary');
+    if(!el) return;
+    var sounds=soundsOpt||ensureSoundsConfig();
+    var d=(global.OneToneI18n&&global.OneToneI18n.dict)?global.OneToneI18n.dict():{};
+    var cats=(sounds&&sounds.categories)||{};
+    var parts=[
+      [d.softPadSoundEmbedShortNeed||'处理',(cats.needAttention&&cats.needAttention.policy)||'when_unseen'],
+      [d.softPadSoundEmbedShortFail||'失败',(cats.taskFailed&&cats.taskFailed.policy)||'when_unseen'],
+      [d.softPadSoundEmbedShortDone||'完成',(cats.taskDone&&cats.taskDone.policy)||'when_unseen']
+    ].map(function(pair){
+      return pair[0]+'·'+policyLabel(pair[1],d);
+    });
+    var text=parts.join(' / ');
+    if(el.textContent!==text) el.textContent=text;
   }
 
   function renderSoundSettingsPanel(){
-    syncSoundsSettingsUi();
+    syncSoundsSettingsUi({buildPickers:true});
     var d=global.OneToneI18n.dict();
     var sp=$('settingsPanelSoundsDesc'); if(sp) sp.textContent=d.settingsPanelSoundsDesc;
     var nav=$('settingsNavSoundsLabel'); if(nav) nav.textContent=d.settingsNavSounds;
@@ -519,11 +561,6 @@
       ['soundCatConfirmDesc',d.soundCatConfirmDesc||'取消语等无屏确认：默认始终提醒。'],
       ['soundCatDeviceAlertTitle',d.soundCatDeviceAlertTitle||'设备异常'],
       ['soundCatDeviceAlertDesc',d.soundCatDeviceAlertDesc||'麦克风丢失、引擎不可用等：默认仅在窗口后台时提醒。'],
-      ['softPadSoundEmbedHint',d.softPadSoundEmbedHint||'何时提醒：等待 / 失败 / 完成，默认仅在相关界面不可见时'],
-      ['softPadSoundEmbedTitle',d.softPadSoundEmbedTitle||d.soundEmbedStripTitle||'Agent 何时提醒'],
-      ['softPadSoundNeedLbl',d.soundCatNeedAttentionTitle||'需要处理'],
-      ['softPadSoundFailLbl',d.soundCatTaskFailedTitle||'失败'],
-      ['softPadSoundDoneLbl',d.soundCatTaskDoneTitle||'任务完成'],
       ['soundSlotRecordTitle',d.soundSlotRecordTitle],['soundSlotRecordDesc',d.soundSlotRecordDesc],
       ['soundSlotVoiceWakeTitle',d.soundSlotVoiceWakeTitle],['soundSlotVoiceWakeDesc',d.soundSlotVoiceWakeDesc],
       ['soundSlotKeyWakeTitle',d.soundSlotKeyWakeTitle],['soundSlotKeyWakeDesc',d.soundSlotKeyWakeDesc],
@@ -534,7 +571,6 @@
       ['keysSoundRecordLbl',d.soundSlotRecordTitle],['keysSoundKeyWakeLbl',d.soundSlotKeyWakeTitle],
       ['cameraSoundActionLbl',d.soundSlotCameraActionTitle],
       ['btnKeysOpenSoundsMore',d.soundEmbedMoreSounds],['btnCameraOpenSoundsMore',d.soundEmbedMoreSounds],
-      ['btnSoftPadOpenSoundsMore',d.soundEmbedMoreSounds||'更多音效'],
       ['recordingAudioTitle',d.recordingAudioTitle],['recordingAudioDesc',d.recordingAudioDesc],
       ['recordingAudioStrengthLbl',d.recordingAudioStrengthLbl],['recordingAudioHint',d.recordingAudioHint],
       ['btnRecordingAudioStrengthLight',d.recordingMuteStrengthLight],['btnRecordingAudioStrengthBalanced',d.recordingMuteStrengthBalanced],
@@ -680,7 +716,10 @@
 
   function syncKeyWakeSettingsFromConfig(){
     ensureSoundsConfig();
-    syncSoundsSettingsUi();
+    // Only flip the keyWake toggle — full syncSoundsSettingsUi builds every sound
+    // picker on first drawer open and used to 假死 alongside voiceWake paint.
+    var sounds=state().config&&state().config.sounds;
+    syncKeyWakeSoundToggle(!!(sounds&&sounds.keyWake&&sounds.keyWake.enabled));
   }
 
   global.OneToneAppThemePrefs={
@@ -710,6 +749,7 @@
     previewSoundCategory:previewSoundCategory,
     ensureSoundsConfig:ensureSoundsConfig,
     syncSoundsSettingsUi:syncSoundsSettingsUi,
+    syncSoftPadSoundEmbedSummary:syncSoftPadSoundEmbedSummary,
     syncKeyWakeSettingsFromConfig:syncKeyWakeSettingsFromConfig
   };
 })((typeof window!=='undefined')?window:globalThis);

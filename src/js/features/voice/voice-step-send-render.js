@@ -133,12 +133,16 @@
     var key=V().resolveOutputModeKey(vm);
     var liteMode=vm.mode==='sapi'||vm.mode==='off';
     modeSeg.classList.toggle('is-lite-locked',!vm.loading&&liteMode);
-    modeSeg.querySelectorAll('.keys-trigger-mode-seg').forEach(function(btn){
+    modeSeg.querySelectorAll('[data-voice-output-mode]').forEach(function(btn){
       var segKey=btn.getAttribute('data-voice-output-mode')||'';
-      btn.classList.toggle('is-active',segKey===key);
+      var on=segKey===key;
+      btn.classList.toggle('is-active',on);
+      btn.setAttribute('aria-checked',on?'true':'false');
       btn.disabled=!!vm.loading;
       btn.hidden=false;
       btn.classList.toggle('is-mode-locked',!vm.loading&&liteMode&&segKey!=='confirm');
+      var foot=btn.querySelector('.voice-output-mode-foot');
+      if(foot) foot.textContent=on?t('voiceOutputModeActive'):t('voiceOutputModePick');
     });
   }
 

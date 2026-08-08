@@ -68,7 +68,7 @@ pub fn cmd_mic_set_default(
     let id = device_id
         .or(deviceId)
         .ok_or_else(|| "missing device id".to_string())?;
-    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    crate::voice_bootstrap::stop_mic_monitor_and_release(state.inner(), "mic_device_switch");
     std::thread::sleep(std::time::Duration::from_millis(
         crate::audio_win::MIC_MONITOR_SETTLE_MS,
     ));

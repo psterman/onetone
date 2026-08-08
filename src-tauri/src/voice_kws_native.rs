@@ -20,7 +20,7 @@ const AUDIO_CHANNEL_CAP: usize = 64;
 pub fn start_voice_kws_native(
     cfg: &VoiceKwsConfig,
     resource_dir: Option<&std::path::Path>,
-    frame_tx: Option<crossbeam_channel::Sender<Vec<f32>>>,
+    frame_tx: Option<crate::audio_frame_bus::AudioFramePublisher>,
 ) -> Result<VoiceKwsHandle, String> {
     let model_dir = resolve_kws_model_dir(cfg, resource_dir);
     let assets = discover_kws_assets(&model_dir)?;
@@ -49,7 +49,7 @@ fn run_worker(
     assets: crate::voice_kws::KwsModelAssets,
     stop: Arc<AtomicBool>,
     event_tx: Sender<VoiceKwsEvent>,
-    frame_tx: Option<crossbeam_channel::Sender<Vec<f32>>>,
+    frame_tx: Option<crate::audio_frame_bus::AudioFramePublisher>,
 ) -> Result<(), String> {
     use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
     use cpal::SampleFormat;
@@ -133,7 +133,7 @@ fn run_worker(
                     continue;
                 }
                 if let Some(tx) = &frame_tx {
-                    let _ = tx.try_send(pcm.clone());
+                    let _ = tx.try_publish(pcm.clone());
                 }
                 stream.accept_waveform(TARGET_SAMPLE_RATE as i32, &pcm);
                 decode_kws_stream(&kws, &stream, &event_tx);

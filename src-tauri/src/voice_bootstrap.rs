@@ -514,6 +514,35 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
     let kws_ready = crate::voice_kws_runtime::kws_readiness(state, &cfg, resource_dir.as_deref());
     let desired = resolve_supervisor_desired_engine(state, &cfg, resource_dir.as_deref());
     let from = observe_running_engine(state);
+    let now = onetone_logic::runtime_event::now_ms();
+    if desired != EffectiveVoiceEngine::None {
+        let prev = state.mic_owner.force_claim(
+            onetone_logic::mic_owner::MicOwner::WakeEngine,
+            reason,
+            now,
+        );
+        if !matches!(prev, onetone_logic::mic_owner::MicOwner::WakeEngine | onetone_logic::mic_owner::MicOwner::None)
+        {
+            crate::app_log::log_line(
+                state,
+                "voice",
+                &format!(
+                    "mic_owner force_claim wake_engine reason={reason} prev={} detail={}",
+                    prev.kind_label(),
+                    prev.detail()
+                ),
+            );
+        }
+    } else {
+        let _ = state.mic_owner.release(
+            &onetone_logic::mic_owner::MicOwner::WakeEngine,
+            now,
+            &format!("activate_none:{reason}"),
+        );
+        state
+            .mic_owner
+            .invalidate_level_monitor(now, &format!("activate_none:{reason}"));
+    }
     if phase_log {
         log_bootstrap_phase(
             state,
@@ -1165,6 +1194,13 @@ pub fn pause_active_engine_for_external_capture(state: &AppState, reason: &str) 
     sapi || vosk || kws
 }
 
+/// Stop level meter and invalidate its generation so late async starts cannot reopen.
+pub fn stop_mic_monitor_and_release(state: &AppState, reason: &str) {
+    let now = onetone_logic::runtime_event::now_ms();
+    state.mic_owner.invalidate_level_monitor(now, reason);
+    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+}
+
 /// RAII microphone lease. On drop/release, restores the desired wake engine (unless listen
 /// is paused or acoustic calibration is still suspended).
 pub struct MicLease {
@@ -1173,10 +1209,25 @@ pub struct MicLease {
     reason: String,
     did_pause: bool,
     released: bool,
+    owner: onetone_logic::mic_owner::MicOwner,
 }
 
 /// Acquire mic: pause active engine, wait briefly for device release.
 pub fn acquire_mic_lease(app: Option<&AppHandle>, state: &Arc<AppState>, reason: &str) -> MicLease {
+    let now = onetone_logic::runtime_event::now_ms();
+    let owner = onetone_logic::mic_owner::MicOwner::Calibration {
+        session_id: reason.to_string(),
+    };
+    let prev = state.mic_owner.force_claim(owner.clone(), reason, now);
+    crate::app_log::log_line(
+        state,
+        "voice",
+        &format!(
+            "mic_owner force_claim calibration reason={reason} prev={} prev_detail={}",
+            prev.kind_label(),
+            prev.detail()
+        ),
+    );
     let did_pause = pause_active_engine_for_external_capture(state, reason);
     if did_pause {
         // Pause is non-blocking (async engine teardown). Give WASAPI longer to free
@@ -1194,6 +1245,7 @@ pub fn acquire_mic_lease(app: Option<&AppHandle>, state: &Arc<AppState>, reason:
         reason: reason.to_string(),
         did_pause,
         released: false,
+        owner,
     }
 }
 
@@ -1208,6 +1260,20 @@ impl MicLease {
             return;
         }
         self.released = true;
+        let now = onetone_logic::runtime_event::now_ms();
+        let matched = self.state.mic_owner.release(
+            &self.owner,
+            now,
+            &format!("mic_lease_release:{}", self.reason),
+        );
+        crate::app_log::log_line(
+            &self.state,
+            "voice",
+            &format!(
+                "mic_owner release calibration reason={} matched={}",
+                self.reason, matched
+            ),
+        );
         if !self.did_pause {
             return;
         }
@@ -1256,6 +1322,7 @@ impl MicLease {
     }
 
     /// Drop lease ownership without restarting engines (park / replace).
+    /// Mic owner stays Calibration until a later release / force_claim.
     pub fn disarm(&mut self) {
         self.released = true;
     }

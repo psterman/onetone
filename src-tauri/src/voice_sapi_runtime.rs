@@ -10,7 +10,7 @@ use crate::voice_sapi::{start_voice_sapi, stop_voice_sapi, VoiceSapiEvent};
 use crate::AppState;
 
 pub fn voice_sapi_start(state: &AppState, cfg: &VoiceSapiConfig) -> Result<(), String> {
-    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    crate::voice_bootstrap::stop_mic_monitor_and_release(state, "engine_or_device");
     voice_sapi_stop(state);
 
     match start_voice_sapi(cfg.clone()) {
@@ -41,7 +41,7 @@ pub fn pause_for_external_capture(state: &AppState) -> bool {
     if state.voice_sapi.lock().is_none() {
         return false;
     }
-    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    crate::voice_bootstrap::stop_mic_monitor_and_release(state, "engine_or_device");
     voice_sapi_stop(state);
     true
 }

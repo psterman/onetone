@@ -338,7 +338,13 @@
 
     }
 
-    if(hooks().renderSoundSettingsPanel) hooks().renderSoundSettingsPanel();
+    // Light slot/toggle sync only — full renderSoundSettingsPanel builds pickers + i18n
+    // and used to 假死 when opening keys / habits refresh.
+    try{
+      if(global.OneToneAppThemePrefs&&typeof global.OneToneAppThemePrefs.syncSoundsSettingsUi==='function'){
+        global.OneToneAppThemePrefs.syncSoundsSettingsUi();
+      }
+    }catch(_){}
 
     requestAnimationFrame(function(){
 
@@ -655,6 +661,17 @@
         if(softTiles) softTiles.innerHTML='';
       }
     }
+    // Leaving voiceWake: bump openGen so in-flight chrome/heavy RAF cannot paint stale.
+    if(panelChanged&&lastPanel==='voiceWake'&&panel!=='voiceWake'){
+      if(global.OneToneVoiceWake&&typeof global.OneToneVoiceWake.bumpOpenGen==='function'){
+        try{ global.OneToneVoiceWake.bumpOpenGen(); }catch(_){}
+      }
+      if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag){
+        ['voiceOpen:enter','voiceOpen:chrome','voiceOpen:heavy','voiceOpen:modeSwitch','voiceOpen:flow'].forEach(function(tag){
+          try{ global.OneToneUiHeartbeat.clearTag(tag); }catch(_){}
+        });
+      }
+    }
 
     ui.settingsPanel=panel;
 
@@ -831,23 +848,61 @@
 
     }else if(panel==='sounds'){
 
-      hooks().renderSoundSettingsPanel();
+      // Defer like Soft Pad — sync renderSoundSettingsPanel builds every picker and
+      // used to 假死 when switching softPad/sounds/voiceWake in the same second.
+      requestAnimationFrame(function(){
+        setTimeout(function(){
+          if(normalizePanel(ui.settingsPanel)!=='sounds') return;
+          if(hooks().renderSoundSettingsPanel) hooks().renderSoundSettingsPanel();
+        },0);
+      });
 
     }else if(panel==='voiceWake'){
 
       // Two-phase defer (同 keys)：先让 drawer chrome 上屏，再跑 mode switch / 整页 flow /
       // island mounts。同步 renderVoiceModeSwitch 曾与 MediaPipe + howto 幽灵点击叠在
       // 同一帧 → WebView2 假死。
+      // voiceOpenGen + phased heartbeat tags: stale defer abort + 假死定位 (tag=voiceOpen:…).
       var voiceDeferHeavy=!!opts.deferHeavy;
       var voiceAfterHeavy=opts.afterHeavy;
       var voiceScrollTarget=opts.scrollTarget;
       var voiceSubpage=opts.voiceSubpage||'wake';
+      var voiceOpenGen=0;
+      if(global.OneToneVoiceWake&&typeof global.OneToneVoiceWake.bumpOpenGen==='function'){
+        try{ voiceOpenGen=global.OneToneVoiceWake.bumpOpenGen(); }catch(_){ voiceOpenGen=0; }
+      }
       if(global.OneToneVoiceWake&&typeof global.OneToneVoiceWake.armOpenClickGuard==='function'){
         try{ global.OneToneVoiceWake.armOpenClickGuard(450); }catch(_){}
       }
+      function voiceHbSet(tag){
+        if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.setTag){
+          try{ global.OneToneUiHeartbeat.setTag(tag); }catch(_){}
+        }
+      }
+      function voiceHbClear(tag){
+        if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag){
+          try{ global.OneToneUiHeartbeat.clearTag(tag); }catch(_){}
+        }
+      }
+      function voiceHbPhase(from,to){
+        if(from) voiceHbClear(from);
+        if(to) voiceHbSet(to);
+      }
+      function voiceOpenStale(){
+        if(normalizePanel(ui.settingsPanel)!=='voiceWake') return true;
+        if(global.OneToneVoiceWake&&typeof global.OneToneVoiceWake.isOpenGenCurrent==='function'){
+          return !global.OneToneVoiceWake.isOpenGenCurrent(voiceOpenGen);
+        }
+        return false;
+      }
+      voiceHbSet('voiceOpen:enter');
       requestAnimationFrame(function(){
         setTimeout(function(){
-          if(normalizePanel(ui.settingsPanel)!=='voiceWake') return;
+          if(voiceOpenStale()){
+            voiceHbClear('voiceOpen:enter');
+            return;
+          }
+          voiceHbPhase('voiceOpen:enter','voiceOpen:chrome');
           try{
             if(enteringVoice){
               const active=hooks().currentVoiceMode();
@@ -863,9 +918,6 @@
             if(typeof mountVoiceEngineTabs==='function') mountVoiceEngineTabs();
             var mountVoiceFlow=global.__otMountVoiceFlowChromeIsland;
             if(typeof mountVoiceFlow==='function') mountVoiceFlow();
-            var mountVoiceAcoustic=global.__otMountVoiceAcousticIslands;
-            if(typeof mountVoiceAcoustic==='function') mountVoiceAcoustic();
-            hooks().renderVoiceModeSwitch();
             if(global.OneToneVoiceSubpages&&typeof global.OneToneVoiceSubpages.setPage==='function'){
               global.OneToneVoiceSubpages.setPage(voiceSubpage,{keepScroll:true});
             }
@@ -875,15 +927,47 @@
                 try{ global.OneToneHabitChannelStatusStrip.render(); }catch(_){}
               }
             }
-            if(voiceDeferHeavy&&typeof voiceAfterHeavy==='function'){
-              try{ voiceAfterHeavy(); }
-              catch(errHeavy){ console.error('voice panel deferHeavy',errHeavy); }
-            }
-            if(voiceScrollTarget){
-              var target=$(voiceScrollTarget);
-              if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
-            }
-          }catch(err){ console.error('voice panel deferred paint',err); }
+          }catch(err){
+            console.error('voice panel deferred paint',err);
+            voiceHbClear('voiceOpen:chrome');
+          }
+          if(voiceOpenStale()){
+            voiceHbClear('voiceOpen:chrome');
+            return;
+          }
+          requestAnimationFrame(function(){
+            setTimeout(function(){
+              if(voiceOpenStale()){
+                voiceHbClear('voiceOpen:chrome');
+                return;
+              }
+              voiceHbPhase('voiceOpen:chrome','voiceOpen:heavy');
+              try{
+                var mountVoiceAcoustic=global.__otMountVoiceAcousticIslands;
+                if(typeof mountVoiceAcoustic==='function') mountVoiceAcoustic();
+                voiceHbPhase('voiceOpen:heavy','voiceOpen:modeSwitch');
+                try{
+                  hooks().renderVoiceModeSwitch();
+                }finally{
+                  voiceHbClear('voiceOpen:modeSwitch');
+                }
+                if(voiceDeferHeavy&&typeof voiceAfterHeavy==='function'){
+                  try{ voiceAfterHeavy(); }
+                  catch(errHeavy){ console.error('voice panel deferHeavy',errHeavy); }
+                }
+                if(voiceScrollTarget){
+                  var target=$(voiceScrollTarget);
+                  if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
+                }
+              }catch(err2){
+                console.error('voice panel heavy paint',err2);
+                voiceHbClear('voiceOpen:heavy');
+                voiceHbClear('voiceOpen:modeSwitch');
+              }finally{
+                voiceHbClear('voiceOpen:heavy');
+              }
+            },0);
+          });
         },0);
       });
 
@@ -1248,5 +1332,4 @@
   })();
 
 })(typeof window!=='undefined'?window:globalThis);
-
 

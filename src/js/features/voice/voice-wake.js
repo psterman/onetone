@@ -22,11 +22,22 @@
   var voiceStrategyHold=null;
   /** Ignore strategy/engine clicks shortly after opening voice panel (howto → drawer ghost click). */
   var voiceOpenClickGuardUntil=0;
+  /** Invalidate deferred voiceWake paint when panel re-opens or leaves (Soft Pad openGen pattern). */
+  var voiceOpenGen=0;
   function armOpenClickGuard(ms){
     voiceOpenClickGuardUntil=Date.now()+(Number(ms)||450);
   }
   function isOpenClickGuarded(){
     return Date.now()<voiceOpenClickGuardUntil;
+  }
+  function bumpOpenGen(){
+    voiceOpenGen=(voiceOpenGen+1)>>>0;
+    if(voiceOpenGen===0) voiceOpenGen=1;
+    return voiceOpenGen;
+  }
+  function getOpenGen(){ return voiceOpenGen; }
+  function isOpenGenCurrent(gen){
+    return gen===voiceOpenGen;
   }
   var voiceSapiTogglePending=false;
   var voiceVoskTogglePending=false;
@@ -3381,6 +3392,9 @@
     getExpandedMode:function(){ return voiceWakeExpandedMode; },
     armOpenClickGuard:armOpenClickGuard,
     isOpenClickGuarded:isOpenClickGuarded,
+    bumpOpenGen:bumpOpenGen,
+    getOpenGen:getOpenGen,
+    isOpenGenCurrent:isOpenGenCurrent,
     renderModeSwitch:renderVoiceModeSwitch,
     switchMode:switchVoiceMode,
     switchListeningStrategy:switchListeningStrategy,

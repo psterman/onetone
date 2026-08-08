@@ -1490,7 +1490,10 @@
     }
     var h=hooks();
     if(h.syncEditorFromSelection) h.syncEditorFromSelection();
-    else if(global.OneToneRender) global.OneToneRender.render();
+    else if(global.OneToneRender){
+      if(global.OneToneRender.schedule) global.OneToneRender.schedule('habitHubSelect');
+      else global.OneToneRender.render();
+    }
   }
 
   function selectedIds(){

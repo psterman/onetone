@@ -2738,8 +2738,8 @@
     renderHeroUi();
     try{
       if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag){
-        global.OneToneUiHeartbeat.clearTag();
-      }else{
+        global.OneToneUiHeartbeat.clearTag('presenceFrame');
+      }else if(global.__otActivityTag==='presenceFrame'){
         global.__otActivityTag='';
       }
     }catch(_){}

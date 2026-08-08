@@ -73,8 +73,26 @@
         return '';
       }
       global.OneToneUiHeartbeat={
+        activityTag:activityTag,
         setTag:function(tag){ try{ global.__otActivityTag=String(tag||''); }catch(_){} },
-        clearTag:function(){ try{ global.__otActivityTag=''; }catch(_){} }
+        clearTag:function(expectedTag){
+          try{
+            if(arguments.length>0){
+              if(String(global.__otActivityTag||'')!==String(expectedTag||'')) return;
+            }
+            global.__otActivityTag='';
+          }catch(_){}
+        },
+        logLocalLag:function(lagMs,tag){
+          var msg='ui heartbeat lag '+Math.round(lagMs)+'ms';
+          if(tag) msg+=' tag='+tag;
+          try{ console.warn('[onetone] '+msg); }catch(_){}
+          try{
+            if(global.OneToneAppLog&&typeof global.OneToneAppLog.frontendLog==='function'){
+              global.OneToneAppLog.frontendLog(msg);
+            }
+          }catch(_){}
+        }
       };
       setInterval(function(){
         var now=Date.now();

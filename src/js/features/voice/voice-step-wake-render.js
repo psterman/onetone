@@ -336,24 +336,57 @@
     count.textContent=String((input.value||'').length)+'/'+max;
   }
 
+  function renderHeroNarrative(vm){
+    var badge=$('voiceWakePrimaryFastBadge');
+    if(badge) badge.textContent=t('voiceWakePrimaryFastBadge');
+    var ready=$('voiceWakeHeroReady');
+    if(ready){
+      if(vm.loading){
+        ready.textContent=t('homeLiveLoading');
+        ready.classList.remove('is-on','is-off');
+      }else{
+        ready.textContent=vm.voiceOn?t('voiceWakeHeroReadyOn'):t('voiceWakeHeroReadyOff');
+        ready.classList.toggle('is-on',!!vm.voiceOn);
+        ready.classList.toggle('is-off',!vm.voiceOn);
+      }
+    }
+    var hint=$('voiceWakeDisplayHint');
+    if(hint){
+      if(vm.loading){
+        hint.textContent=t('homeLiveLoading');
+      }else{
+        var phrase=V().resolveDisplayWakePhrase(vm);
+        var display=phrase.display||phrase.zh||phrase.en||'—';
+        var scope=V().resolveScopeSummary(vm)||'—';
+        hint.textContent=String(t('voiceWakeHeroNarrative')||'')
+          .replace('{scope}',scope)
+          .replace('{phrase}',display);
+      }
+    }
+    var sandboxOpen=$('btnVoiceSandboxOpen');
+    if(sandboxOpen){
+      sandboxOpen.textContent=t('voiceSandboxOpenBtn');
+      sandboxOpen.hidden=isScenarioVoiceEdit();
+    }
+  }
+
   function renderWakePage(vm){
     renderCompactWake(vm);
     renderCustomPhrases(vm);
     renderOutputSummon(vm);
     syncWakePhraseKind();
     syncWakeInputCount();
+    renderHeroNarrative(vm);
     var title=$('voiceWakePageTitle');
     if(title) title.textContent=t('voiceWakePageTitle');
     var sub=$('voiceWakePageSub');
-    if(sub) sub.textContent='';
+    if(sub) sub.textContent=t('voiceWakePageSub');
     var actionBar=$('voiceWakeActionBar');
     if(actionBar){ actionBar.hidden=true; actionBar.setAttribute('aria-hidden','true'); }
     var globalTitle=$('voiceEditSectionPresets');
     if(globalTitle) globalTitle.textContent=t('voiceWakeGlobalTitle');
     var heroTitle=$('voiceWakeHeroTitle');
     if(heroTitle) heroTitle.textContent=t('voiceWakePrimaryLbl');
-    var displayHint=$('voiceWakeDisplayHint');
-    if(displayHint) displayHint.textContent=t('voiceWakePrimaryHint');
     var activeLbl=$('voiceWakeActiveLbl');
     if(activeLbl) activeLbl.textContent=t('voiceWakeActiveLbl');
     var presetLbl=$('voiceWakePresetPoolLbl');

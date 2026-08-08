@@ -1163,42 +1163,6 @@
           </section>
           <div class="soft-pad-app-switcher" id="softPadAppSwitcher" role="tablist" aria-label="应用" hidden></div>
           <p class="soft-pad-scope-hint" id="softPadScopeHint" aria-live="polite"></p>
-          <div class="sound-embed-strip" id="softPadSoundEmbed" style="margin:8px 0 12px">
-            <div class="sound-embed-strip-head">
-              <p class="sound-embed-strip-title" id="softPadSoundEmbedTitle">Agent 何时提醒</p>
-              <button type="button" class="sound-embed-more-link" id="btnSoftPadOpenSoundsMore">更多音效</button>
-            </div>
-            <p class="help" id="softPadSoundEmbedHint">何时提醒：等待 / 失败 / 完成，默认仅在相关界面不可见时</p>
-            <div class="sound-embed-slots">
-              <div class="sound-embed-slot sound-embed-slot--policy" data-cat="needAttention">
-                <span class="sound-embed-slot-lbl" id="softPadSoundNeedLbl">需要处理</span>
-                <div class="pref-segmented sound-cat-policy-seg sound-cat-policy-seg--compact" role="radiogroup" data-cat="needAttention" aria-labelledby="softPadSoundNeedLbl">
-                  <button type="button" class="pref-segmented-btn" data-policy="never">从不</button>
-                  <button type="button" class="pref-segmented-btn is-active" data-policy="when_unseen">看不见时</button>
-                  <button type="button" class="pref-segmented-btn" data-policy="always">始终</button>
-                </div>
-                <button type="button" class="sound-preview-btn sound-cat-preview" data-cat="needAttention">试听</button>
-              </div>
-              <div class="sound-embed-slot sound-embed-slot--policy" data-cat="taskFailed">
-                <span class="sound-embed-slot-lbl" id="softPadSoundFailLbl">失败</span>
-                <div class="pref-segmented sound-cat-policy-seg sound-cat-policy-seg--compact" role="radiogroup" data-cat="taskFailed" aria-labelledby="softPadSoundFailLbl">
-                  <button type="button" class="pref-segmented-btn" data-policy="never">从不</button>
-                  <button type="button" class="pref-segmented-btn is-active" data-policy="when_unseen">看不见时</button>
-                  <button type="button" class="pref-segmented-btn" data-policy="always">始终</button>
-                </div>
-                <button type="button" class="sound-preview-btn sound-cat-preview" data-cat="taskFailed">试听</button>
-              </div>
-              <div class="sound-embed-slot sound-embed-slot--policy" data-cat="taskDone">
-                <span class="sound-embed-slot-lbl" id="softPadSoundDoneLbl">任务完成</span>
-                <div class="pref-segmented sound-cat-policy-seg sound-cat-policy-seg--compact" role="radiogroup" data-cat="taskDone" aria-labelledby="softPadSoundDoneLbl">
-                  <button type="button" class="pref-segmented-btn" data-policy="never">从不</button>
-                  <button type="button" class="pref-segmented-btn is-active" data-policy="when_unseen">看不见时</button>
-                  <button type="button" class="pref-segmented-btn" data-policy="always">始终</button>
-                </div>
-                <button type="button" class="sound-preview-btn sound-cat-preview" data-cat="taskDone">试听</button>
-              </div>
-            </div>
-          </div>
           <header class="pref-page-head soft-pad-page-head sr-only">
             <div class="soft-pad-page-head-text">
               <h3 class="pref-page-title" id="settingsPanelSoftPadTitle">虚拟键盘</h3>
@@ -1607,7 +1571,7 @@
                 <span class="voice-status-brand-icon" aria-hidden="true">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
                 </span>
-                <span class="keys-scheme-summary-name voice-scheme-summary-name" id="voicePageBrandTitle">语音唤醒</span>
+                <span class="keys-scheme-summary-name voice-scheme-summary-name" id="voicePageBrandTitle">语音听写</span>
                 <span class="keys-scheme-summary-pill voice-scheme-summary-pill" id="voiceSummaryStatus">默认 已激活</span>
                 <span class="sr-only" id="voiceSummaryName">默认</span>
               </div>
@@ -1670,27 +1634,27 @@
               </div>
               <div class="flow-nodes-grid">
                 <div class="flow-node" data-voice-node="wake">
-                  <span class="flow-node-tag" id="voiceFlowNodeWakeTag">01 / 声源采集</span>
+                  <span class="flow-node-tag" id="voiceFlowNodeWakeTag">01 / 开启</span>
                   <button type="button" class="flow-node-btn is-active" id="voiceFlowNodeWake" role="tab" aria-selected="true" aria-labelledby="voiceFlowNodeWakeTitle" aria-controls="voiceSettingsWakeBody">
                     <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
                   </button>
-                  <h3 class="flow-node-title" id="voiceFlowNodeWakeTitle">语音唤醒</h3>
+                  <h3 class="flow-node-title" id="voiceFlowNodeWakeTitle">怎么开启打字？</h3>
                   <p class="flow-node-hint" id="voiceFlowNodeWakeHint"></p>
                 </div>
                 <div class="flow-node" data-voice-node="recognize">
-                  <span class="flow-node-tag" id="voiceFlowNodeRecognizeTag">02 / 语音识别</span>
+                  <span class="flow-node-tag" id="voiceFlowNodeRecognizeTag">02 / 结束</span>
                   <button type="button" class="flow-node-btn" id="voiceFlowNodeRecognize" role="tab" aria-selected="false" aria-labelledby="voiceFlowNodeRecognizeTitle" aria-controls="voiceSettingsRecognizeBody">
                     <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                   </button>
-                  <h3 class="flow-node-title" id="voiceFlowNodeRecognizeTitle">语音识别</h3>
+                  <h3 class="flow-node-title" id="voiceFlowNodeRecognizeTitle">说错了想结束？</h3>
                   <p class="flow-node-hint" id="voiceFlowNodeRecognizeHint"></p>
                 </div>
                 <div class="flow-node" data-voice-node="send">
-                  <span class="flow-node-tag" id="voiceFlowNodeSendTag">03 / 语音发送</span>
+                  <span class="flow-node-tag" id="voiceFlowNodeSendTag">03 / 发送</span>
                   <button type="button" class="flow-node-btn" id="voiceFlowNodeSend" role="tab" aria-selected="false" aria-labelledby="voiceFlowNodeSendTitle" aria-controls="voiceSettingsSendBody">
                     <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                   </button>
-                  <h3 class="flow-node-title" id="voiceFlowNodeSendTitle">语音发送</h3>
+                  <h3 class="flow-node-title" id="voiceFlowNodeSendTitle">说完怎么发出去？</h3>
                   <p class="flow-node-hint" id="voiceFlowNodeSendHint"></p>
                 </div>
               </div>
@@ -1701,15 +1665,15 @@
               <section class="voice-step-stack voice-settings-flow keys-workflow-grid" id="voiceSettingsFlow" aria-label="语音流程">
                   <div class="voice-flow-step habit-flow-step voice-step-card voice-settings-card keys-step-card keys-workflow-col is-clickable voice-wake-root" id="voiceSettingsWakeCard" data-voice-subpage="wake">
                     <div class="keys-step-card-head flow-step-card-head keys-workflow-col-head voice-step-card-head" role="button" tabindex="0" aria-controls="voiceSettingsWakeBody">
-                      <span class="keys-workflow-col-tag" id="voiceSubtabWakeLbl">语音唤醒</span>
+                      <span class="keys-workflow-col-tag" id="voiceSubtabWakeLbl">怎么开启打字？</span>
                       <div class="keys-workflow-col-subhead">
                         <span class="home-key-map-step-label voice-subtab-hint" id="voiceSubtabWakeHint"></span>
                       </div>
                     </div>
                     <div class="flow-step-body keys-step-body voice-wake-stack" id="voiceSettingsWakeBody" role="tabpanel" aria-labelledby="voiceFlowNodeWake">
                     <header class="voice-step-page-head sr-only" id="voiceWakePageHead">
-                      <h3 class="voice-step-page-title" id="voiceWakePageTitle">语音唤醒</h3>
-                      <p class="voice-step-page-sub" id="voiceWakePageSub"></p>
+                      <h3 class="voice-step-page-title" id="voiceWakePageTitle">怎么开启打字？</h3>
+                      <p class="voice-step-page-sub" id="voiceWakePageSub">设置唤醒口令；说出后开始听写</p>
                     </header>
                     <div class="voice-wake-action-bar" id="voiceWakeActionBar" hidden aria-hidden="true">
                       <strong class="voice-wake-action-bar-lbl" id="voiceWakeActionTitle">唤醒后</strong>
@@ -1738,7 +1702,11 @@
                     </div>
                     <div class="voice-phrase-kind-pane" id="voiceWakeKindTextPane" data-phrase-kind-pane="text" role="tabpanel" aria-labelledby="btnVoiceWakeKindText">
                     <section class="voice-wake-primary-card" id="voiceWakeHeroCard">
-                      <p class="voice-wake-primary-lbl" id="voiceWakeHeroTitle">当前主唤醒动作</p>
+                      <div class="voice-wake-primary-head">
+                        <p class="voice-wake-primary-lbl" id="voiceWakeHeroTitle">首选唤醒口令</p>
+                        <span class="voice-wake-primary-badge" id="voiceWakePrimaryFastBadge">响应最快</span>
+                      </div>
+                      <p class="voice-wake-primary-ready" id="voiceWakeHeroReady" aria-live="polite">语音已就绪 · 后台守护中</p>
                       <div class="voice-wake-primary-body">
                         <p class="voice-wake-primary-phrase voice-wake-phrase-display" id="voiceWakePhraseDisplay">
                           <span class="voice-phrase-compact-zh" id="voiceWakeCompactZh">—</span>
@@ -1746,6 +1714,7 @@
                         </p>
                         <p class="voice-wake-primary-hint" id="voiceWakeDisplayHint">说出此口令后开始听写</p>
                       </div>
+                      <button type="button" class="voice-wake-sandbox-btn" id="btnVoiceSandboxOpen">试试口令效果</button>
                       <button type="button" class="sr-only" id="btnVoiceSettingsMic" tabindex="-1" aria-hidden="true">
                         <span id="voiceSettingsMicName">默认麦克风</span>
                       </button>
@@ -1822,20 +1791,20 @@
                   <div class="keys-workflow-arrow voice-workflow-arrow" aria-hidden="true"><span class="keys-workflow-arrow-icon">→</span></div>
                   <div class="voice-flow-step habit-flow-step voice-step-card voice-settings-card keys-step-card keys-workflow-col is-clickable" id="voiceSettingsEndPhraseCard" data-voice-subpage="recognize">
                     <div class="keys-step-card-head flow-step-card-head keys-workflow-col-head voice-step-card-head" role="button" tabindex="0" aria-controls="voiceSettingsRecognizeBody">
-                      <span class="keys-workflow-col-tag" id="voiceSubtabRecognizeLbl">语音识别</span>
+                      <span class="keys-workflow-col-tag" id="voiceSubtabRecognizeLbl">说错了想结束？</span>
                       <div class="keys-workflow-col-subhead">
                         <span class="home-key-map-step-label voice-subtab-hint" id="voiceSubtabRecognizeHint"></span>
                       </div>
                     </div>
                     <div class="flow-step-body keys-step-body voice-recognize-stack" id="voiceSettingsRecognizeBody" role="tabpanel" aria-labelledby="voiceFlowNodeRecognize">
                     <header class="voice-step-page-head" id="voiceRecognizePageHead">
-                      <h3 class="voice-step-page-title" id="voiceRecognizePageTitle">语音识别</h3>
-                      <p class="voice-step-page-sub" id="voiceRecognizePageSub">配置听写中怎么停下、怎么取消</p>
+                      <h3 class="voice-step-page-title" id="voiceRecognizePageTitle">说错了想结束？</h3>
+                      <p class="voice-step-page-sub" id="voiceRecognizePageSub">取消会清空；完成会锁字并停下</p>
                     </header>
                     <div class="voice-recognize-layout voice-recognize-control-grid" id="voiceRecognizeControlGrid">
                     <div class="voice-recognize-intent-tabs" id="voiceRecognizeIntentTabs" role="tablist" aria-label="识别控制">
-                      <button type="button" class="voice-recognize-intent-tab is-on" data-recognize-intent="cancel" id="btnVoiceRecognizeIntentCancel" role="tab" aria-selected="true">取消语音</button>
-                      <button type="button" class="voice-recognize-intent-tab" data-recognize-intent="confirm" id="btnVoiceRecognizeIntentConfirm" role="tab" aria-selected="false">确认操作</button>
+                      <button type="button" class="voice-recognize-intent-tab is-on" data-recognize-intent="cancel" id="btnVoiceRecognizeIntentCancel" role="tab" aria-selected="true">打错了？取消</button>
+                      <button type="button" class="voice-recognize-intent-tab" data-recognize-intent="confirm" id="btnVoiceRecognizeIntentConfirm" role="tab" aria-selected="false">说完了？完成</button>
                     </div>
                     <div class="voice-end-detect-lite" id="voiceEndDetectLite" hidden>
                       <p class="voice-end-detect-lite-body" id="voiceEndDetectLiteBody">系统快速识别会根据停顿自动判断说话结束。需要自定义结束词，请切换到本地离线识别。</p>
@@ -2083,25 +2052,40 @@
                   <div class="keys-workflow-arrow voice-workflow-arrow" aria-hidden="true"><span class="keys-workflow-arrow-icon">→</span></div>
                   <div class="voice-flow-step habit-flow-step voice-step-card voice-settings-card keys-step-card keys-workflow-col is-clickable" id="voiceSettingsAutoCard" data-voice-subpage="send">
                     <div class="keys-step-card-head flow-step-card-head keys-workflow-col-head voice-step-card-head" role="button" tabindex="0" aria-controls="voiceSettingsSendBody">
-                      <span class="keys-workflow-col-tag" id="voiceSubtabSendLbl">语音发送</span>
+                      <span class="keys-workflow-col-tag" id="voiceSubtabSendLbl">说完怎么发出去？</span>
                       <div class="keys-workflow-col-subhead">
                         <span class="home-key-map-step-label voice-subtab-hint" id="voiceSubtabSendHint"></span>
                       </div>
                     </div>
                     <div class="flow-step-body keys-step-body" id="voiceSettingsSendBody" role="tabpanel" aria-labelledby="voiceFlowNodeSend">
                     <header class="voice-step-page-head" id="voiceSendPageHead">
-                      <h3 class="voice-step-page-title" id="voiceSendPageTitle">语音发送</h3>
-                      <p class="voice-step-page-sub" id="voiceSendPageSub">选一种方式即可；不确定就用「先确认」</p>
+                      <h3 class="voice-step-page-title" id="voiceSendPageTitle">说完怎么发出去？</h3>
+                      <p class="voice-step-page-sub" id="voiceSendPageSub">不确定就选「自己按回车」——最稳妥</p>
                     </header>
                     <div class="voice-step-page-stack voice-send-page-stack" id="voiceSendPageGrid">
                       <section class="voice-phrase-panel voice-send-mode-panel" id="voiceSendModePanel">
-                        <p class="voice-phrase-panel-title" id="voiceEditSectionSend">发送方式</p>
-                        <div class="keys-trigger-modes voice-output-modes" id="voiceOutputModeSegments" role="group" aria-label="发送方式">
-                          <button type="button" class="keys-trigger-mode-seg is-active" data-voice-output-mode="confirm" id="voiceOutputModeConfirm">先确认（推荐）</button>
-                          <button type="button" class="keys-trigger-mode-seg" data-voice-output-mode="phrase" id="voiceOutputModePhrase">说发送才发</button>
-                          <button type="button" class="keys-trigger-mode-seg" data-voice-output-mode="auto" id="voiceOutputModeAuto">自动发送</button>
+                        <p class="voice-phrase-panel-title" id="voiceEditSectionSend">请选择发送方式</p>
+                        <div class="voice-output-modes voice-output-mode-cards" id="voiceOutputModeSegments" role="radiogroup" aria-label="发送方式">
+                          <button type="button" class="voice-output-mode-card is-active is-recommended" data-voice-output-mode="confirm" id="voiceOutputModeConfirm" role="radio" aria-checked="true">
+                            <span class="voice-output-mode-tag" id="voiceOutputModeConfirmTag">最稳妥</span>
+                            <span class="voice-output-mode-title" id="voiceOutputModeConfirmTitle">你自己手动按回车</span>
+                            <span class="voice-output-mode-desc" id="voiceOutputModeConfirmDesc">文字留在输入框，你检查后再按发送键。最不容易发错。</span>
+                            <span class="voice-output-mode-foot" id="voiceOutputModeConfirmFoot">当前使用中</span>
+                          </button>
+                          <button type="button" class="voice-output-mode-card" data-voice-output-mode="phrase" id="voiceOutputModePhrase" role="radio" aria-checked="false">
+                            <span class="voice-output-mode-tag" id="voiceOutputModePhraseTag">说口令</span>
+                            <span class="voice-output-mode-title" id="voiceOutputModePhraseTitle">末尾喊「发送」才发</span>
+                            <span class="voice-output-mode-desc" id="voiceOutputModePhraseDesc">只有说出发送词才会发出去；说结束词只会停下。</span>
+                            <span class="voice-output-mode-foot" id="voiceOutputModePhraseFoot">点击切换</span>
+                          </button>
+                          <button type="button" class="voice-output-mode-card" data-voice-output-mode="auto" id="voiceOutputModeAuto" role="radio" aria-checked="false">
+                            <span class="voice-output-mode-tag" id="voiceOutputModeAutoTag">全自动</span>
+                            <span class="voice-output-mode-title" id="voiceOutputModeAutoTitle">停顿后自动发</span>
+                            <span class="voice-output-mode-desc" id="voiceOutputModeAutoDesc">说完后自己会等一会儿再帮你按发送键；也可说「发送」马上发出。</span>
+                            <span class="voice-output-mode-foot" id="voiceOutputModeAutoFoot">点击切换</span>
+                          </button>
                         </div>
-                        <p class="voice-output-hint" id="voiceOutputHint">说完后文字留在输入框，你自己按发送键。最不容易发错。</p>
+                        <p class="voice-output-hint sr-only" id="voiceOutputHint">文字留在输入框，你检查后再按发送键。最不容易发错。</p>
                         <p class="voice-output-auto-guard" id="voiceOutputAutoGuard" hidden>说结束词只会停下；自然停顿后才会自动发送。</p>
                       </section>
                       <p class="voice-send-more-cue" id="voiceSendMoreCue" hidden></p>
@@ -4146,6 +4130,28 @@
       </div>
     </div>
   </div>
+  <div class="confirm-overlay voice-sandbox-overlay" id="voiceSandboxOverlay" aria-hidden="true">
+    <div class="confirm-modal voice-sandbox-modal" role="dialog" aria-modal="true" aria-labelledby="voiceSandboxTitle" aria-describedby="voiceSandboxDesc">
+      <div class="voice-sandbox-head">
+        <h3 class="confirm-title" id="voiceSandboxTitle">口令效果试演</h3>
+        <button type="button" class="voice-sandbox-close-x" id="btnVoiceSandboxCloseX" aria-label="关闭">&times;</button>
+      </div>
+      <p class="confirm-body" id="voiceSandboxDesc">不用开麦也能点按体验取消 / 完成；需要真机时可一键模拟说话。</p>
+      <div class="voice-sandbox-box" aria-live="polite">
+        <span class="voice-sandbox-box-lbl" id="voiceSandboxBoxLbl">模拟编辑框</span>
+        <p class="voice-sandbox-text is-placeholder" id="voiceSandboxText">［等待试演…］</p>
+      </div>
+      <div class="voice-sandbox-actions" role="group" aria-label="试演动作">
+        <button type="button" class="btn secondary" id="btnVoiceSandboxSpeak" data-sandbox-act="speak">模拟说话</button>
+        <button type="button" class="btn secondary" id="btnVoiceSandboxCancel" data-sandbox-act="cancel">模拟取消</button>
+        <button type="button" class="btn secondary" id="btnVoiceSandboxConfirm" data-sandbox-act="confirm">模拟完成</button>
+        <button type="button" class="btn primary" id="btnVoiceSandboxReal" data-sandbox-act="real">真机试一次</button>
+      </div>
+      <div class="confirm-actions">
+        <button type="button" class="btn secondary" id="btnVoiceSandboxClose">关闭</button>
+      </div>
+    </div>
+  </div>
   <div class="confirm-overlay" id="confirmOverlay" aria-hidden="true">
     <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmBody">
       <h3 class="confirm-title" id="confirmTitle">确认操作</h3>
@@ -4252,6 +4258,7 @@
   <script src="js/core/habit-override-diff.js"></script>
   <script src="js/features/voice/voice-scheme-context.js"></script>
   <script src="js/features/voice/voice-scheme-name-modal.js"></script>
+  <script src="js/features/voice/voice-sandbox.js"></script>
   <script src="js/features/voice/voice-scheme-persist.js"></script>
   <script src="js/features/voice/voice-workflow-templates.js"></script>
   <script src="js/features/voice/voice-step-wake-render.js"></script>

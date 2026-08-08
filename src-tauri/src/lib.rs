@@ -194,6 +194,7 @@ pub struct AppState {
     pub runtime_status_protocol: Mutex<Option<serde_json::Value>>,
     pub acoustic_voice: voice_acoustic_runtime::AcousticVoiceRuntime,
     pub audio_frame_bus: audio_frame_bus::AudioFrameBus,
+    pub mic_owner: onetone_logic::mic_owner::MicOwnerTable,
 }
 
 pub fn graceful_exit(app: &tauri::AppHandle) {
@@ -212,7 +213,7 @@ pub fn graceful_exit(app: &tauri::AppHandle) {
 }
 
 fn shutdown_runtime(state: &Arc<AppState>) {
-    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    crate::voice_bootstrap::stop_mic_monitor_and_release(state, "engine_or_device");
     crate::voice_sapi_runtime::voice_sapi_stop(state);
     crate::voice_vosk_runtime::voice_vosk_stop(state);
     crate::voice_kws_runtime::voice_kws_stop(state);
@@ -318,6 +319,7 @@ pub fn run() {
         runtime_status_protocol: Mutex::new(None),
         acoustic_voice: voice_acoustic_runtime::AcousticVoiceRuntime::new(),
         audio_frame_bus: audio_frame_bus::AudioFrameBus::new(),
+        mic_owner: onetone_logic::mic_owner::MicOwnerTable::new(),
     });
 
     app_log::log_line(&app_state, "startup", "OneTone backend initialized");

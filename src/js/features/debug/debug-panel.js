@@ -283,6 +283,8 @@
       }
       if(global.OneToneHomeWorkbench&&typeof global.OneToneHomeWorkbench.render==='function'){
         global.OneToneHomeWorkbench.render();
+      }else if(global.OneToneRender&&typeof global.OneToneRender.schedule==='function'){
+        global.OneToneRender.schedule('debugRepaintHome');
       }else if(global.OneToneRender&&typeof global.OneToneRender.render==='function'){
         global.OneToneRender.render();
       }

@@ -126,7 +126,7 @@ pub fn spawn_voice_kws_stop(state: Arc<AppState>) {
 /// Release the default capture device for a short external recording (e.g. acoustic calibration).
 /// Uses async stop — a sync join can freeze `record_start` while the native worker winds down.
 pub fn pause_for_external_capture(state: &AppState) -> bool {
-    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    crate::voice_bootstrap::stop_mic_monitor_and_release(state, "engine_or_device");
     let was_active = {
         let st = state.voice_kws_state.lock().clone();
         matches!(
@@ -175,7 +175,7 @@ pub fn voice_kws_start(
         );
         return Ok(());
     }
-    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    crate::voice_bootstrap::stop_mic_monitor_and_release(state, "engine_or_device");
     // Do not bump epoch here — that would cancel this very start worker.
     release_kws_capture_handle(state);
     if !kws_epoch_matches(state, epoch) {

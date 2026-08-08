@@ -3643,7 +3643,15 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
             && host_ok
             && !is_overlay_session_dismissed()
     };
-    let vis_changed = *last_visible().lock() != desired_visible;
+    let vis_changed = {
+        let mut last = last_visible().lock();
+        if *last == desired_visible {
+            false
+        } else {
+            *last = desired_visible;
+            true
+        }
+    };
 
     if vis_changed {
         let raw = overlay_host_allows_show_raw();

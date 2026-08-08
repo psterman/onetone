@@ -2134,16 +2134,19 @@
   function goSoftPadFlowNode(nodeId) {
     nodeId = String(nodeId || '');
     if (nodeId === 'agent') {
+      if (softPadFace === 'agent') return;
       closeRingFloat();
       setSoftPadFace('agent');
       return;
     }
     if (nodeId === 'timeline') {
+      if (softPadFace === 'timeline') return;
       closeRingFloat();
       setSoftPadFace('timeline');
       return;
     }
     if (nodeId === 'pad') {
+      if (softPadFace === 'pad') return;
       closeRingFloat();
       setSoftPadFace('pad', { padMode: lastSoftPadPadMode || 'appear' });
     }
@@ -3434,13 +3437,16 @@
     var route = legacyViewToRoute(view);
     if (!route || !route.face) return;
     if (route.face === 'pad') {
+      var nextMode = route.mode || 'appear';
+      if (softPadFace === 'pad' && softPadPadMode === nextMode) return;
       if (softPadFace !== 'pad') {
-        setSoftPadFace('pad', Object.assign({}, openOpts, { padMode: route.mode || 'appear' }));
+        setSoftPadFace('pad', Object.assign({}, openOpts, { padMode: nextMode }));
       } else {
-        setSoftPadPadMode(route.mode || 'appear', openOpts);
+        setSoftPadPadMode(nextMode, openOpts);
       }
       return;
     }
+    if (softPadFace === route.face) return;
     setSoftPadFace(route.face, openOpts);
   }
 
@@ -4433,6 +4439,8 @@
         if (!btn) return;
         var node = btn.closest('[data-soft-pad-node]');
         if (!node) return;
+        ev.preventDefault();
+        ev.stopPropagation();
         goSoftPadFlowNode(node.getAttribute('data-soft-pad-node'));
       });
     }
@@ -4502,7 +4510,7 @@
     }
     function clearSoftPadRenderTag() {
       if (global.OneToneUiHeartbeat && global.OneToneUiHeartbeat.clearTag) {
-        try { global.OneToneUiHeartbeat.clearTag(); } catch (_) {}
+        try { global.OneToneUiHeartbeat.clearTag('softPadRender'); } catch (_) {}
       }
     }
     function softPadRenderStale() {
@@ -4679,7 +4687,8 @@
         requestOverlayUsageForScope(selectedScopeId);
         feLog('fe softPad.render chrome ' + (Date.now() - t0) + 'ms map=' + String(getSelectedMappingId() || ''));
       } finally {
-        clearSoftPadRenderTag();
+        // Keep tag briefly so post-land IPC/island work still shows in UI_HB_STALL.
+        setTimeout(clearSoftPadRenderTag, 400);
       }
     }
     keepSoftPadRenderTag = true;

@@ -212,7 +212,7 @@
           markVoiceEngineBootHandled();
         }).then(function(){
           try{
-            if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag) global.OneToneUiHeartbeat.clearTag();
+            if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag) global.OneToneUiHeartbeat.clearTag('voiceBootStrategy');
             else if(global.__otActivityTag==='voiceBootStrategy') global.__otActivityTag='';
           }catch(_){}
         });
