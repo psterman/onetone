@@ -1876,12 +1876,28 @@
   }
 
   function openHeroSettings(){
-    var vm=global.OneToneHomeV9.buildViewModel();
-    var id=vm.m&&vm.m.id?vm.m.id:null;
-    if(heroMode==='keys') openSettings({panel:'keys',focus:id});
-    else if(heroMode==='camera') openSettings({panel:'camera'});
-    else if(heroMode==='softPad') openSettings({panel:'softPad'});
-    else openSettings({panel:'voiceWake'});
+    var want=heroMode==='keys'?'keys':heroMode==='camera'?'camera':heroMode==='softPad'?'softPad':'voiceWake';
+    try{
+      if(global.OneToneIpc&&global.OneToneIpc.invoke){
+        global.OneToneIpc.invoke('cmd_app_log',{line:'fe openHeroSettings mode='+want}).catch(function(){});
+      }
+    }catch(_){}
+    var ui=global.OneToneState&&global.OneToneState.ui;
+    // Already on target panel — remounting voiceWake from orb click was empty-tag 假死.
+    if(ui&&ui.drawerOpen&&ui.settingsPanel===want){
+      return;
+    }
+    if(want==='keys'){
+      var id=null;
+      try{
+        var vm=global.OneToneHomeV9&&global.OneToneHomeV9.buildViewModel&&global.OneToneHomeV9.buildViewModel();
+        id=vm&&vm.m&&vm.m.id?vm.m.id:null;
+      }catch(_){}
+      openSettings({panel:'keys',focus:id});
+      return;
+    }
+    // voice/camera/softPad: never sync buildViewModel on the click path.
+    openSettings({panel:want});
   }
 
   function hookCameraPresence(){

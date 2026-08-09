@@ -49,14 +49,35 @@ pub fn voice_set_listening_strategy(
         cfg.normalize();
         cfg.clone()
     };
-    crate::config::save_config(&cfg_snapshot);
+    let settings_open = *state.settings_drawer_open.lock();
+    // Settings open: return before disk flush — sync save_config on every 自动/增强/省电
+    // click made the tab feel stuck (IPC waited on AV-scanned write).
+    if settings_open {
+        let snap = cfg_snapshot.clone();
+        let _ = std::thread::Builder::new()
+            .name("strategy-save".into())
+            .spawn(move || {
+                crate::config::save_config(&snap);
+            });
+    } else {
+        crate::config::save_config(&cfg_snapshot);
+    }
     crate::app_log::log_line(
         state.as_ref(),
         "voice",
         &format!("set_listening_strategy label={label} reason={reason}"),
     );
-    // Single supervisor worker — never spawn one thread per switch.
-    crate::voice_supervisor::enqueue_activate(app.clone(), Arc::clone(state), reason);
+    // While settings are open engines stay parked — only persist strategy; close unparks.
+    // Enqueue+start+re-park on 切换 was UI_HB_STALL (empty tag / Responding=false).
+    if settings_open {
+        crate::app_log::log_line(
+            state.as_ref(),
+            "voice",
+            "set_listening_strategy config-only (settings open; activate deferred to unpark)",
+        );
+    } else {
+        crate::voice_supervisor::enqueue_activate(app.clone(), Arc::clone(state), reason);
+    }
 
     let supervisor = crate::voice_bootstrap::supervisor_status_json(state);
     Ok(serde_json::json!({
@@ -64,8 +85,8 @@ pub fn voice_set_listening_strategy(
         "strategy": label,
         "engine": supervisor.get("desiredEngine").cloned().unwrap_or(serde_json::json!("none")),
         "supervisor": supervisor,
-        "activateAsync": true,
-        "activateBusy": true,
+        "activateAsync": !settings_open,
+        "activateBusy": !settings_open,
     }))
 }
 

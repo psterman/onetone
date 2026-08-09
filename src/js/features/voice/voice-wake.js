@@ -960,9 +960,17 @@
     global.OneToneVoiceEnd.syncModeUi();
     renderVoiceEngineTabs();
     renderSettingsVoiceSubnav();
-    // Debounce flow: strategy snaps on open used to schedule full flow 3× in ~3s.
-    // Also wait out open settle — flow @+320ms stacked with remount → UI_HB_STALL_5S.
-    if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+    // voiceWake park: light flow (wake phrase + rail) — full schemes remount was 假死;
+    // skipping all paint left 首选唤醒口令 as "—" and right rail dead.
+    if(ui().drawerOpen&&ui().settingsPanel==='voiceWake'){
+      clearTimeout(voiceModeFlowDebounceTimer);
+      voiceModeFlowDebounceTimer=setTimeout(function(){
+        voiceModeFlowDebounceTimer=0;
+        if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+          global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+        }
+      },40);
+    }else if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
       clearTimeout(voiceModeFlowDebounceTimer);
       var flowDelay=Math.max(320, voiceOpenFlowSettleUntil?Math.max(0,voiceOpenFlowSettleUntil-Date.now()):0);
       voiceModeFlowDebounceTimer=setTimeout(function(){
@@ -1423,6 +1431,10 @@
   /** Wait until Rust strategy activate finishes (activateBusy=false). Early IPC ok is not enough. */
   function waitForActivateIdle(seq,timeoutMs){
     timeoutMs=timeoutMs||15000;
+    // voiceWake keeps engines parked — status poll here re-created open-page 假死.
+    if(ui().drawerOpen&&ui().settingsPanel==='voiceWake'){
+      return Promise.resolve({state:'parked'});
+    }
     const t0=Date.now();
     function delay(ms){
       return new Promise(function(resolve){ setTimeout(resolve,ms); });
@@ -1488,7 +1500,8 @@
       }
       // Islands + home remount on the same tick as settle caused UI_HB gap / 未响应.
       deferStrategyUiPaint(function(){
-        if(!strategySwitchLight){
+        var onVoiceWake=ui().drawerOpen&&ui().settingsPanel==='voiceWake';
+        if(!strategySwitchLight&&!onVoiceWake){
           try{
             if(global.__otPendingIslandsRefresh){
               global.__otPendingIslandsRefresh=false;
@@ -1499,7 +1512,7 @@
           try{ global.__otPendingIslandsRefresh=false; }catch(_){}
         }
         applyHomeVoiceModeSwitchUi();
-        if(!strategySwitchLight){
+        if(!strategySwitchLight&&!onVoiceWake){
           if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
           else if(!ui().drawerOpen) hooks().renderHomeLiveZone();
         }
@@ -1659,6 +1672,11 @@
       return;
     }
     if(liteClick) noteLiteStrategyCommit();
+    // Short ghost absorb only — 700ms+ made intentional 自动/增强/省电 clicks feel stuck.
+    try{
+      voiceOpenClickGuardUntil=Math.max(voiceOpenClickGuardUntil,Date.now()+220);
+      voiceOpenLiteGuardUntil=Math.max(voiceOpenLiteGuardUntil,Date.now()+450);
+    }catch(_){}
     voiceModeSwitchSeq++;
     hooks().markVoiceEngineBootHandled();
     if(strategy==='resourceSaver') setVoiceWakeExpandedMode('kws');
@@ -1679,7 +1697,10 @@
       deferStrategyUiPaint(function(){
         applyHomeVoiceModeSwitchUi();
         try{
-          if(global.__otPendingIslandsRefresh){
+          // voiceWake park: skip islands remount on no-op strategy click.
+          if(ui().drawerOpen&&ui().settingsPanel==='voiceWake'){
+            global.__otPendingIslandsRefresh=false;
+          }else if(global.__otPendingIslandsRefresh){
             global.__otPendingIslandsRefresh=false;
             if(typeof global.OneToneIslandsRefresh==='function') global.OneToneIslandsRefresh();
           }
@@ -1886,11 +1907,9 @@
     const kwsState=(w.kws&&w.kws.state)||'';
     if(voskState==='starting'||sapiState==='starting'||kwsState==='starting') return 3000;
     if(document.hidden&&!ui().drawerOpen) return 2000;
-    // voiceWake idle: no status poll — open settle + events cover UI; 60s poll still
-    // lined up with empty-tag stalls after 省电 open.
+    // voiceWake: never status-poll — even sticky dictating FE state used to re-arm 2s
+    // polls after settings_park and UI_HB_STALL (~70s). Dictation resumes after drawer close.
     if(ui().drawerOpen&&ui().settingsPanel==='voiceWake'){
-      const endSnapWake=hooks().voiceUiSnapshot.end||{};
-      if(hooks().sessionActiveState(endSnapWake.state||'idle')) return 2000;
       return 0;
     }
     const endSnap=hooks().voiceUiSnapshot.end||{};
@@ -1930,6 +1949,9 @@
 
   function voiceStatusPollTick(){
     if(global.OneToneAppSession&&global.OneToneAppSession.isBootSettling&&global.OneToneAppSession.isBootSettling()) return;
+    // voiceWake: never status IPC — openDrawer +200ms used to stack vosk_status onto
+    // settings_park stop and leave ipc held≈165s / UI_HB_STALL_5S.
+    if(ui().drawerOpen&&ui().settingsPanel==='voiceWake') return;
     if(!voiceStatusPollNeeded()) return;
     if(voiceStatusPollInFlight) return;
     voiceStatusPollInFlight=true;

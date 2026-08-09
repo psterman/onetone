@@ -620,3 +620,12 @@ html:not([data-theme="dark"]) .voice-fb-action-btn:hover {
   }
 }
 
+/* Idle voiceWake park: kill infinite CSS pulse — GPU churn after engines parked (~16min 假死). */
+html.ot-voice-wake-park #settingsPanelVoiceWake *,
+html.ot-voice-wake-park #voiceHangLivePanel * {
+  animation: none !important;
+}
+html.ot-voice-wake-park #settingsPanelVoiceWake .voice-fb-status-pill.is-live::before {
+  animation: none !important;
+}
+

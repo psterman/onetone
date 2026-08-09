@@ -19,7 +19,7 @@ const TARGET_SAMPLE_RATE: u32 = 16_000;
 const AUDIO_CHANNEL_CAP: usize = 64;
 const EVENT_CHANNEL_CAP: usize = 64;
 const PARTIAL_MIN_INTERVAL: Duration = Duration::from_millis(200);
-const LEVEL_MIN_INTERVAL: Duration = Duration::from_millis(120);
+const LEVEL_MIN_INTERVAL: Duration = Duration::from_millis(250);
 const EN_WAKE_BUFFER_TTL: Duration = Duration::from_millis(2800);
 /// Suppress partial+final double-fire within one utterance, not across repeats.
 const WAKE_PHRASE_DEDUP_MS: u64 = 1200;
@@ -300,16 +300,17 @@ pub fn start_voice_vosk(
     resource_dir: Option<PathBuf>,
     grammar_phrases: Vec<String>,
     frame_tx: Option<crate::audio_frame_bus::AudioFramePublisher>,
+    asr_quiet: Arc<AtomicBool>,
 ) -> Result<VoiceVoskHandle, String> {
     #[cfg(not(windows))]
     {
-        let _ = (cfg, resource_dir, grammar_phrases, frame_tx);
+        let _ = (cfg, resource_dir, grammar_phrases, frame_tx, asr_quiet);
         return Err("Vosk is Windows-only".into());
     }
 
     #[cfg(all(windows, vosk_disabled))]
     {
-        let _ = (cfg, resource_dir, grammar_phrases, frame_tx);
+        let _ = (cfg, resource_dir, grammar_phrases, frame_tx, asr_quiet);
         return Err(
             "Vosk native library not linked: place libvosk.lib and libvosk.dll in src-tauri/resources/vosk/ and rebuild"
                 .into(),
@@ -318,7 +319,7 @@ pub fn start_voice_vosk(
 
     #[cfg(all(windows, not(vosk_disabled)))]
     {
-        start_voice_vosk_impl(cfg, resource_dir, grammar_phrases, frame_tx)
+        start_voice_vosk_impl(cfg, resource_dir, grammar_phrases, frame_tx, asr_quiet)
     }
 }
 
@@ -328,6 +329,7 @@ fn start_voice_vosk_impl(
     resource_dir: Option<PathBuf>,
     grammar_phrases: Vec<String>,
     frame_tx: Option<crate::audio_frame_bus::AudioFramePublisher>,
+    asr_quiet: Arc<AtomicBool>,
 ) -> Result<VoiceVoskHandle, String> {
     let probe = probe_vosk_resources(&cfg, resource_dir.as_deref());
     if !probe.dll_exists {
@@ -356,6 +358,7 @@ fn start_voice_vosk_impl(
     let event_tx_err = event_tx.clone();
     let resource_dir = resource_dir;
     let frame_tx_dual = frame_tx.clone();
+    let quiet_dual = Arc::clone(&asr_quiet);
 
     let thread = if vosk_preset_is_dual(&model_preset) {
         let cn_path = resolve_path(VOSK_CN_LIGHT_REL, resource_dir.as_deref());
@@ -371,6 +374,7 @@ fn start_voice_vosk_impl(
                     stop_thread,
                     event_tx,
                     frame_tx_dual,
+                    quiet_dual,
                 ) {
                     send_event_blocking(&event_tx_err, VoiceVoskEvent::Error(e));
                     let _ = event_tx_err.send(VoiceVoskEvent::StateChanged("error".into()));
@@ -390,6 +394,7 @@ fn start_voice_vosk_impl(
                     stop_thread,
                     event_tx,
                     frame_tx,
+                    asr_quiet,
                 ) {
                     send_event_blocking(&event_tx_err, VoiceVoskEvent::Error(e));
                     let _ = event_tx_err.send(VoiceVoskEvent::StateChanged("error".into()));
@@ -414,6 +419,7 @@ fn run_worker(
     stop: Arc<AtomicBool>,
     event_tx: Sender<VoiceVoskEvent>,
     frame_tx: Option<crate::audio_frame_bus::AudioFramePublisher>,
+    asr_quiet: Arc<AtomicBool>,
 ) -> Result<(), String> {
     use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
     use cpal::SampleFormat;
@@ -534,6 +540,10 @@ fn run_worker(
     while !stop.load(Ordering::Relaxed) {
         match audio_rx.recv_timeout(Duration::from_millis(50)) {
             Ok(chunk) => {
+                // Settings drawer: drop chunks — continuous ASR on 增强 idle UI_HB_STALL (~10min+).
+                if asr_quiet.load(Ordering::Relaxed) {
+                    continue;
+                }
                 let pcm = resampler.process_f32(&chunk);
                 if pcm.is_empty() {
                     continue;
@@ -619,6 +629,7 @@ fn run_dual_worker(
     stop: Arc<AtomicBool>,
     event_tx: Sender<VoiceVoskEvent>,
     frame_tx: Option<crate::audio_frame_bus::AudioFramePublisher>,
+    asr_quiet: Arc<AtomicBool>,
 ) -> Result<(), String> {
     use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
     use cpal::SampleFormat;
@@ -721,6 +732,10 @@ fn run_dual_worker(
     while !stop.load(Ordering::Relaxed) {
         match audio_rx.recv_timeout(Duration::from_millis(50)) {
             Ok(chunk) => {
+                // Settings drawer: drop chunks — continuous ASR on 增强 idle UI_HB_STALL (~10min+).
+                if asr_quiet.load(Ordering::Relaxed) {
+                    continue;
+                }
                 let pcm = resampler.process_f32(&chunk);
                 if pcm.is_empty() {
                     continue;
@@ -1789,13 +1804,19 @@ fn emit_level_if_due_level(event_tx: &Sender<VoiceVoskEvent>, level: u32, last_a
 
 #[cfg(all(windows, not(vosk_disabled)))]
 fn publish_i16_pcm_to_bus(frame_tx: &Option<crate::audio_frame_bus::AudioFramePublisher>, pcm: &[i16]) {
-    if let Some(tx) = frame_tx {
-        let out: Vec<f32> = pcm
-            .iter()
-            .map(|&s| f32::from(s) / i16::MAX as f32)
-            .collect();
-        let _ = tx.try_publish(out);
+    let Some(tx) = frame_tx else {
+        return;
+    };
+    // No matcher draining → bus stays full; allocating a Vec every chunk was idle CPU/GC.
+    if tx.is_full() {
+        tx.note_dropped();
+        return;
     }
+    let out: Vec<f32> = pcm
+        .iter()
+        .map(|&s| f32::from(s) / i16::MAX as f32)
+        .collect();
+    let _ = tx.try_publish(out);
 }
 
 #[cfg(all(windows, not(vosk_disabled)))]

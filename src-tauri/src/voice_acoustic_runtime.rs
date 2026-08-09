@@ -687,7 +687,9 @@ fn pcm_source_listening(state: &AppState) -> bool {
     let kws_listening = kws.as_str() == "listening";
     drop(kws);
     let cfg = state.cfg.lock().clone();
-    let kws_ready = crate::voice_kws_runtime::kws_readiness(state, &cfg, None).ready;
+    // Cached only — FS probe here used to hang the 40ms drain (AV) while callers
+    // held voice_vosk, blocking settings_park / status.
+    let kws_ready = crate::voice_kws_runtime::kws_readiness_cached(state, &cfg).ready;
     pcm_source_listening_from_states(vosk_listening, kws_listening, kws_ready)
 }
 
@@ -700,12 +702,25 @@ fn pcm_source_listening_from_states(
 }
 
 pub fn sync_acoustic_match_runtime(app: Option<&AppHandle>, state: &Arc<AppState>) {
-    let cfg = state.cfg.lock().clone();
-    let should_run = has_enabled_acoustic_commands(&cfg)
-        && pcm_source_listening(state)
-        && !state.acoustic_voice.is_suspended()
-        && !*state.paused.lock();
-
+    // Called from the 40ms voice drain loop — must be a no-op when already correct.
+    // Previously: cfg.clone() + stop()/bus drain every tick → idle UI_HB_STALL on 增强/省电.
+    let running = state.acoustic_voice.match_running.load(Ordering::SeqCst);
+    let should_run = {
+        // Settings drawer: matcher not needed while configuring; quiet PCM consumer path.
+        if *state.settings_drawer_open.lock() {
+            false
+        } else if state.acoustic_voice.is_suspended() || *state.paused.lock() {
+            false
+        } else if !pcm_source_listening(state) {
+            false
+        } else {
+            let cfg = state.cfg.lock();
+            has_enabled_acoustic_commands(&cfg)
+        }
+    };
+    if should_run == running {
+        return;
+    }
     if should_run {
         start_acoustic_match_runtime(app, state);
     } else {
@@ -777,7 +792,7 @@ pub fn stop_acoustic_match_runtime(state: &Arc<AppState>) {
     let handle = rt.match_thread.lock().take();
     rt.match_running.store(false, Ordering::SeqCst);
     let Some(handle) = handle else {
-        let _ = state.audio_frame_bus.drain_max(AUDIO_FRAME_BUS_CAP);
+        // Already stopped — do not drain the shared PCM bus every sync tick.
         return;
     };
     // Never unbounded-join here: activate holds ACTIVATE_LOCK and strategy IPC used to

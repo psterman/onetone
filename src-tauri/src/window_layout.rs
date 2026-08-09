@@ -90,10 +90,17 @@ pub fn persist_now(state: &Arc<AppState>, window: &WebviewWindow) {
 }
 
 pub fn schedule_save(state: Arc<AppState>, window: WebviewWindow) {
+    // Settings open: resize storms + disk save coincided with voiceWake idle stalls.
+    if *state.settings_drawer_open.lock() {
+        return;
+    }
     let gen = SAVE_GEN.fetch_add(1, Ordering::SeqCst) + 1;
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(Duration::from_millis(SAVE_DEBOUNCE_MS)).await;
         if SAVE_GEN.load(Ordering::SeqCst) != gen {
+            return;
+        }
+        if *state.settings_drawer_open.lock() {
             return;
         }
         persist_and_log(&state, &window, "resize");

@@ -13,6 +13,7 @@ Registry keys are **not** proof of success. A real `.dmp` file is.
 
 ```powershell
 cd scripts\hang-dumps
+.\hang-dumps.ps1 install        # 下载微软官方 ProcDump，并校验 Microsoft 数字签名
 .\hang-dumps.ps1 setup          # LocalDumps + dirs; locate ProcDump
 .\hang-dumps.ps1 verify-hang    # MUST produce a hang .dmp via hung WinForms probe
 .\hang-dumps.ps1 start          # wait for onetone.exe AppHang (−h −n 3 −s 5)
@@ -20,6 +21,24 @@ cd scripts\hang-dumps
 .\hang-dumps.ps1 stop
 .\hang-dumps.ps1 cleanup
 ```
+
+## One-pass voice settings capture
+
+Use this path when the failure is intermittent and the user will run one reproduction pass:
+
+```powershell
+cd scripts\hang-dumps
+.\hang-dumps.ps1 install        # first use only
+.\hang-dumps.ps1 arm
+# Run OneTone, open Voice settings, leave a frozen window untouched for >=20 seconds.
+.\hang-dumps.ps1 collect
+```
+
+`arm` creates an isolated `%LOCALAPPDATA%\OneTone\HangDumps\voice-<timestamp>`
+session and starts ProcDump with `-ma -h -n 3 -s 5`. `collect` stops the monitor and
+adds the runtime log, last UI stall marker, matching Windows AppHang 1002 events,
+dump hashes, and a collection summary. Do not terminate the frozen app before the
+three dumps have had time to finish.
 
 Install [Sysinternals ProcDump](https://learn.microsoft.com/en-us/sysinternals/downloads/procdump) as `scripts/hang-dumps/procdump.exe` or under `%LOCALAPPDATA%\OneTone\tools\`.
 

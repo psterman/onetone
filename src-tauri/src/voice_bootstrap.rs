@@ -15,7 +15,7 @@
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, Manager};
 
@@ -509,6 +509,16 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
     if phase_log {
         log_bootstrap_phase(state, t0, "begin", &format!("reason={reason}"));
     }
+    // Settings park owns capture. Strategy 切换 used to start vosk then re-park under
+    // ACTIVATE_LOCK (stop_sync + FE waitForActivateIdle status) → UI_HB_STALL / 未响应.
+    if reason != "force:settings_unpark" && *state.settings_drawer_open.lock() {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!("voice_bootstrap skip activate (settings open) reason={reason}"),
+        );
+        return;
+    }
     // Fresh activate retries desired engine; clear previous fallover unless reason is degrade.
     if !reason.starts_with("degrade:") {
         clear_degrade_status(state);
@@ -786,6 +796,11 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
             engine_label(desired)
         ),
     );
+    // Settings drawer owns wake lifecycle: any activate while open must re-park capture
+    // (strategy switch / force reload would otherwise leave vosk cpal running → idle 假死).
+    if reason != "force:settings_unpark" && *state.settings_drawer_open.lock() {
+        schedule_park_wake_for_settings(state);
+    }
     // Warm KWS FS probe off the IPC path so status polls never readdir under load.
     {
         let state_w = Arc::clone(state);
@@ -808,6 +823,63 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
             ),
         );
     }
+}
+
+/// Stop wake capture while settings are open (cpal/vosk idle on 增强 → UI_HB_STALL).
+/// Never call on the IPC thread — uses ACTIVATE_LOCK. Never sync-join under that lock:
+/// stop_sync + FE `voice_vosk_status` raced into held≈165s / UI_HB_STALL_5S.
+pub fn schedule_park_wake_for_settings(state: &Arc<AppState>) {
+    let state = Arc::clone(state);
+    let _ = std::thread::Builder::new()
+        .name("settings-park-voice".into())
+        .spawn(move || {
+            // Let in-flight start register a handle before we take it.
+            std::thread::sleep(Duration::from_millis(120));
+            if !*state.settings_drawer_open.lock() {
+                return;
+            }
+            {
+                let _guard = ACTIVATE_LOCK
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                if !*state.settings_drawer_open.lock() {
+                    return;
+                }
+                let from = observe_running_engine(state.as_ref());
+                crate::app_log::log_line(
+                    state.as_ref(),
+                    "voice",
+                    &format!(
+                        "voice_bootstrap park_detach reason=settings_park fromEngine={}",
+                        engine_label(from)
+                    ),
+                );
+                voice_vosk_runtime::voice_vosk_stop_detach(state.as_ref());
+                voice_sapi_runtime::voice_sapi_stop(state.as_ref());
+                voice_kws_runtime::voice_kws_stop_sync(state.as_ref());
+            }
+            // Acoustic join (≤800ms) + session reset outside ACTIVATE_LOCK.
+            crate::voice_acoustic_runtime::stop_acoustic_match_runtime(&state);
+            crate::audio_win::request_recording_audio_policy_sync(Arc::clone(&state));
+            // Drop sticky dictation so FE does not keep 2s status polls on voiceWake.
+            crate::voice_end_runtime::reset_voice_session(&state, None, "settings_park");
+        });
+}
+
+/// Resume wake after settings close.
+pub fn schedule_unpark_wake_for_settings(app: &AppHandle, state: &Arc<AppState>) {
+    let app = app.clone();
+    let state = Arc::clone(state);
+    let _ = std::thread::Builder::new()
+        .name("settings-unpark-voice".into())
+        .spawn(move || {
+            // Longer than a quick hero re-open (orb→voiceWake) so park wins the race.
+            std::thread::sleep(Duration::from_millis(400));
+            if *state.settings_drawer_open.lock() {
+                return;
+            }
+            activate_desired_engine(&app, &state, "force:settings_unpark");
+        });
 }
 
 fn schedule_acoustic_match_sync(app: Option<&AppHandle>, state: &Arc<AppState>) {

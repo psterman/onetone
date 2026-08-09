@@ -99,6 +99,16 @@ impl Default for AudioFrameBus {
 }
 
 impl AudioFramePublisher {
+    /// True when the bounded bus has no free slot (matcher not draining / backlog).
+    pub fn is_full(&self) -> bool {
+        self.tx.is_full()
+    }
+
+    /// Count a drop without allocating a frame (use when skipping publish because full).
+    pub fn note_dropped(&self) {
+        self.dropped.fetch_add(1, Ordering::Relaxed);
+    }
+
     /// Drop-new on Full. Returns whether the frame was queued.
     pub fn try_publish(&self, frames: Vec<f32>) -> bool {
         if frames.is_empty() {
@@ -207,6 +217,20 @@ mod tests {
         assert!(!match_worker_alive(3, 4, false));
         assert!(!match_worker_alive(3, 3, true));
         assert!(!match_worker_alive(0, 0, false));
+    }
+
+    #[test]
+    fn is_full_skips_without_try_send() {
+        let bus = AudioFrameBus::new();
+        let pub_ = bus.publisher();
+        for _ in 0..AUDIO_FRAME_BUS_CAP {
+            assert!(pub_.try_publish(vec![0.0; 10]));
+        }
+        assert!(pub_.is_full());
+        pub_.note_dropped();
+        assert_eq!(bus.dropped_frames(), 1);
+        assert!(!pub_.try_publish(vec![1.0; 10]));
+        assert_eq!(bus.dropped_frames(), 2);
     }
 
     #[test]

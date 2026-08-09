@@ -37,8 +37,8 @@
   var hangLongTaskBound=false;
   var hangPeaks={maxGapMs:0,maxIpcHeldMs:0,warnN:0,stallN:0,ltN:0};
   var hangEvents=[]; // sticky breadcrumbs — survive recover-to-healthy
-  var HANG_RING_MAX=120; // ~2min at 1s
-  var HANG_POLL_MS=1000;
+  var HANG_RING_MAX=60;
+  var HANG_POLL_MS=2500;
   var HANG_EVENT_MAX=10;
   var hangStallPollAt=0;
 
@@ -306,6 +306,8 @@
   }
 
   function hangDiagVisible(){
+    // voiceWake idle + open hang panel poll → UI_HB_STALL_5S (~3min empty tag).
+    if(ui().drawerOpen&&ui().settingsPanel==='voiceWake') return false;
     if(hangLiveOpen) return true;
     return !!(ui().drawerOpen&&ui().settingsPanel==='debug'&&debugFocusMode==='repair');
   }
@@ -323,17 +325,19 @@
   }
 
   function pinMainAlwaysOnTop(){
-    if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
-    global.OneToneIpc.invoke('cmd_window_set_always_on_top',{enabled:true}).catch(function(){});
+    // Intentionally no-op: alwaysOnTop + voiceWake idle previously coincided with
+    // silent UI_HB_STALL_5S (~14min, empty tag, no mouse).
   }
 
   function setHangLiveOpen(open){
+    // Refuse expand on voiceWake — poll+DOM there coincided with idle 假死.
+    if(open&&ui().drawerOpen&&ui().settingsPanel==='voiceWake') open=false;
     hangLiveOpen=!!open;
     syncHangLivePanelDom();
     if(hangLiveOpen){
       pinMainAlwaysOnTop();
       renderVoiceHangDiag();
-    }else if(!hangDiagVisible()){
+    }else{
       stopHangDiagPoll();
     }
   }
@@ -353,7 +357,8 @@
     // Mount collapsed only — expanded 1Hz poll + alwaysOnTop coincided with
     // voiceWake UI_HB_STALL_5S (~80s after open, empty tag / no ipc).
     bindHangLivePanel();
-    bindHangLongTasks();
+    // Skip longtask observer — buffered entries + DOM spikes on idle voiceWake
+    // piled onto parked-engine stalls (~16min).
     hangLiveOpen=false;
     syncHangLivePanelDom();
     stopHangDiagPoll();

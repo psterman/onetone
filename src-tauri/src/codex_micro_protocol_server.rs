@@ -550,17 +550,16 @@ fn handle_client(
 
 fn handle_app_state_get(stream: &mut TcpStream, state: Arc<AppState>) -> Result<(), String> {
     let view = codex_app_state::snapshot();
-    let lights = {
-        let cfg = state.cfg.lock();
-        codex_micro_overlay::status_lights_enabled(&cfg)
-    };
+    // Keep foreground/window inspection outside the shared config lock. In particular,
+    // active_ambient_for_soft_rgb may query a same-process HWND and synchronously wait
+    // for the UI thread, which must remain free to acquire state.cfg.
+    let cfg = state.cfg.lock().clone();
+    let lights = codex_micro_overlay::status_lights_enabled(&cfg);
     let pad = crate::pad_status::snapshot();
     let app_status = crate::pad_status::ui_status_from_pad(&pad);
     let soft_rgb = if lights {
-        let (mode, solid, opacity, preset, colors, ambient_on) = {
-            let cfg = state.cfg.lock();
-            codex_micro_overlay::active_ambient_for_soft_rgb(&cfg)
-        };
+        let (mode, solid, opacity, preset, colors, ambient_on) =
+            codex_micro_overlay::active_ambient_for_soft_rgb(&cfg);
         if !ambient_on {
             None
         } else {

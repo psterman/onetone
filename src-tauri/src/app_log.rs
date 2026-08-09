@@ -100,7 +100,7 @@ fn append_live_log(line: &str) {
 
 const NORMAL_QUEUE_CAP: usize = 2048;
 const HIGH_QUEUE_CAP: usize = 512;
-const MAX_LOG_BYTES: u64 = 32 * 1024 * 1024;
+const MAX_LOG_BYTES: u64 = 8 * 1024 * 1024;
 
 struct LogQueues {
     high: std::sync::Mutex<std::collections::VecDeque<String>>,

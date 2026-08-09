@@ -3730,22 +3730,43 @@
         if(lm&&lm.pauseInfer) lm.pauseInfer();
         if(hg&&hg.pauseInfer) hg.pauseInfer();
         if(pv&&typeof pv.pausePipeline==='function') pv.pausePipeline();
-        // video.pause()/track.disable still UI_HB_STALL'd ~3min later (ipc="").
-        // Tear down MediaStream while non-camera settings own the UI.
+        // Stop camera feature timers that keep ticking after stream teardown.
+        try{
+          if(global.OneToneCameraWorkflow&&typeof global.OneToneCameraWorkflow.onPanelHidden==='function'){
+            global.OneToneCameraWorkflow.onPanelHidden();
+          }
+        }catch(_){}
+        try{
+          if(global.OneToneCameraProGlance&&typeof global.OneToneCameraProGlance.onPanelHidden==='function'){
+            global.OneToneCameraProGlance.onPanelHidden();
+          }
+        }catch(_){}
+        // Pause only while settings own the UI. Full ensureStopped (MediaPipe stop +
+        // track.stop) stacked with softPad→voiceWake remount → empty-tag 假死; in-flight
+        // createImageBitmap now honors inferPaused so pause is enough until drawer close.
         if((wasLive||hasStream)&&!st._drawerStoppedCam){
           st._drawerStoppedCam=true;
           try{
             if(global.OneToneIpc&&global.OneToneIpc.invoke){
-              global.OneToneIpc.invoke('cmd_app_log',{line:'fe drawer stop camera wasLive='+(wasLive?1:0)+' stream='+(hasStream?1:0)}).catch(function(){});
+              global.OneToneIpc.invoke('cmd_app_log',{line:'fe drawer pause camera wasLive='+(wasLive?1:0)+' stream='+(hasStream?1:0)+' (no ensureStopped)'}).catch(function(){});
             }
           }catch(_){}
-          ensureStopped({reason:'drawer_ui_pause'});
         }
       }else{
         if(st._drawerStoppedCam){
           st._drawerStoppedCam=false;
           if(isEnabled()&&!st.manualStopped){
-            ensureRunning({reason:'drawer_ui_resume'});
+            var stillHas=false;
+            try{ stillHas=!!(pv&&typeof pv.hasMediaStream==='function'&&pv.hasMediaStream()); }catch(_){}
+            if(stillHas){
+              // Paused only — reopen without getUserMedia (was stacking with close paint).
+              if(pv&&typeof pv.resumePipeline==='function') pv.resumePipeline();
+              if(lm&&lm.resumeInfer) lm.resumeInfer();
+              if(hg&&hg.resumeInfer) hg.resumeInfer();
+              syncDetectInterval();
+            }else{
+              ensureRunning({reason:'drawer_ui_resume'});
+            }
           }
         }else if(isEnabled()&&!st.manualStopped&&!isCameraPreviewLive()){
           // Boot cam was cancelled while drawer owned UI — start once on close.

@@ -608,6 +608,9 @@
 
   function setMicLevel(level){
     micLevel=level;
+    var now=Date.now();
+    if(now-(global.__otMicOrbPaintAt||0)<250) return;
+    global.__otMicOrbPaintAt=now;
     applyMicOrbLevel(level);
   }
 
@@ -615,6 +618,7 @@
     render:render,
     syncLiveState:syncLiveState,
     syncLiveText:syncLiveText,
-    setMicLevel:setMicLevel
+    setMicLevel:setMicLevel,
+    resetDictationLive:resetDictationLive
   };
 })((typeof window!=='undefined')?window:globalThis);

@@ -458,50 +458,15 @@
     if(!ui.drawerOpen) return;
 
     if(panel==='voiceWake'){
-
-      if(hooks().voiceCaptureActive()){
-
-        hooks().stopMicLevelPoll();
-
-        hooks().stopMicMonitor();
-
-        return;
-
-      }
-
-      setTimeout(function(){
-
-        if(!ui.drawerOpen||ui.settingsPanel!=='voiceWake') return;
-
-        if(hooks().voiceCaptureActive()){
-
-          hooks().stopMicLevelPoll();
-
-          hooks().stopMicMonitor();
-
-          return;
-
-        }
-
-        hooks().loadMicDevices().then(function(){
-
-          if(ui.drawerOpen&&ui.settingsPanel==='voiceWake'&&!hooks().voiceCaptureActive()){
-
-            hooks().startMicLevelPoll();
-
-          }
-
-        });
-
-      },280);
-
-    }else{
-
-      hooks().stopMicLevelPoll();
-
-      if(!hooks().voiceCaptureActive()) hooks().stopMicMonitor();
-
+      // Events drive levels while Vosk listens; poll dual-path idle 假死'd (~14min).
+      if(hooks().stopMicLevelPoll) hooks().stopMicLevelPoll();
+      hooks().stopMicMonitor();
+      return;
     }
+
+    hooks().stopMicLevelPoll();
+
+    if(!hooks().voiceCaptureActive()) hooks().stopMicMonitor();
 
   }
 
@@ -663,6 +628,7 @@
     }
     // Leaving voiceWake: bump openGen so in-flight chrome/heavy RAF cannot paint stale.
     if(panelChanged&&lastPanel==='voiceWake'&&panel!=='voiceWake'){
+      try{ document.documentElement.classList.remove('ot-voice-wake-park'); }catch(_){}
       if(global.OneToneVoiceWake&&typeof global.OneToneVoiceWake.bumpOpenGen==='function'){
         try{ global.OneToneVoiceWake.bumpOpenGen(); }catch(_){}
       }
@@ -898,6 +864,20 @@
         return false;
       }
       voiceHbSet('voiceOpen:enter');
+      // Collapse hang live panel — open poll on this page → idle UI_HB_STALL_5S.
+      try{
+        if(global.OneToneVoiceDiag&&typeof global.OneToneVoiceDiag.setHangLiveOpen==='function'){
+          global.OneToneVoiceDiag.setHangLiveOpen(false);
+        }
+      }catch(_){}
+      try{ document.documentElement.classList.add('ot-voice-wake-park'); }catch(_){}
+      // Process usage poll is for debug panel — stop on voiceWake idle.
+      try{
+        if(hooks().clearProcessUsagePollTimer) hooks().clearProcessUsagePollTimer();
+        else if(global.OneToneAppProcessUsage&&global.OneToneAppProcessUsage.clearPollTimer){
+          global.OneToneAppProcessUsage.clearPollTimer();
+        }
+      }catch(_){}
       // #region agent log
       try{ if(global.__dbgB5) global.__dbgB5('F','settings-drawer.js:voiceWake.enter','voiceWake open enter',{gen:voiceOpenGen,enteringVoice:!!enteringVoice,subpage:voiceSubpage}); }catch(_){}
       // #endregion
@@ -925,12 +905,8 @@
               if(w.sapi) hooks().renderVoiceSapiStatus(w.sapi,{liveOnly:true});
               if(w.vosk) hooks().renderVoiceVoskStatus(w.vosk,{liveOnly:true});
             }
-            var mountVoiceStatus=global.__otMountVoiceStatusChromeIsland;
-            if(typeof mountVoiceStatus==='function') mountVoiceStatus();
-            var mountVoiceEngineTabs=global.__otMountVoiceEngineTabsIsland;
-            if(typeof mountVoiceEngineTabs==='function') mountVoiceEngineTabs();
-            var mountVoiceFlow=global.__otMountVoiceFlowChromeIsland;
-            if(typeof mountVoiceFlow==='function') mountVoiceFlow();
+            // Skip React chrome islands on open — mount+idle coincided with ~70s UI_HB_STALL
+            // after settings_park. Strategy lives in voiceConfig (boot-mounted).
             if(global.OneToneVoiceSubpages&&typeof global.OneToneVoiceSubpages.setPage==='function'){
               global.OneToneVoiceSubpages.setPage(voiceSubpage,{keepScroll:true});
             }
@@ -940,6 +916,17 @@
                 try{ global.OneToneHabitChannelStatusStrip.render(); }catch(_){}
               }
             }
+            try{
+              if(global.OneToneVoiceFeedbackRail&&global.OneToneVoiceFeedbackRail.resetDictationLive){
+                global.OneToneVoiceFeedbackRail.resetDictationLive();
+              }
+            }catch(_){}
+            // Paint wake phrase + right rail once on enter (park light path).
+            try{
+              if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+                global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+              }
+            }catch(_){}
           }catch(err){
             console.error('voice panel deferred paint',err);
             voiceHbClear('voiceOpen:chrome');
@@ -964,14 +951,7 @@
                     global.OneToneIpc.invoke('cmd_app_log',{line:'fe voiceWake heavy begin gen='+voiceOpenGen}).catch(function(){});
                   }
                 }catch(_){}
-                // Acoustic islands: push further off open — stacked with bootCam → 假死.
-                setTimeout(function(){
-                  if(voiceOpenStale()) return;
-                  try{
-                    var mountVoiceAcoustic=global.__otMountVoiceAcousticIslands;
-                    if(typeof mountVoiceAcoustic==='function') mountVoiceAcoustic();
-                  }catch(errAc){ console.error('voice acoustic mount',errAc); }
-                },1200);
+                // Skip auto acoustic islands — mount piled onto idle 增强页 (~46s 假死).
                 voiceHbPhase('voiceOpen:heavy','voiceOpen:modeSwitch');
                 try{
                   hooks().renderVoiceModeSwitch();
@@ -990,6 +970,12 @@
                   if(global.OneToneIpc&&global.OneToneIpc.invoke){
                     global.OneToneIpc.invoke('cmd_app_log',{line:'fe voiceWake heavy end gen='+voiceOpenGen}).catch(function(){});
                   }
+                }catch(_){}
+                // Clear sticky end/dictating FE snapshot so poll arm stays quiet.
+                try{
+                  var snap=hooks().voiceUiSnapshot;
+                  if(typeof snap==='function') snap=snap();
+                  if(snap&&snap.end) snap.end.state='idle';
                 }catch(_){}
               }catch(err2){
                 console.error('voice panel heavy paint',err2);
@@ -1256,7 +1242,8 @@
 
       if(hooks().loadCoachHudState) hooks().loadCoachHudState();
 
-      if(hooks().settingsPanelNeedsVoicePoll()) hooks().voiceStatusPollTick();
+      // voiceWake: skip — parks engines; status IPC raced stop and UI_HB_STALL.
+      if(hooks().settingsPanelNeedsVoicePoll()&&ui.settingsPanel!=='voiceWake') hooks().voiceStatusPollTick();
 
     },200);
 
@@ -1281,21 +1268,17 @@
 
   function closeDrawer(){
 
-    if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
-
-    // Keep camera running when enabled — do not stop on drawer close.
-    // Coordinator decides via reconcile (manual stop / master off still honored).
     try{
-      if(global.OneToneCameraPresenceActions&&global.OneToneCameraPresenceActions.setDrawerUiPaused){
-        global.OneToneCameraPresenceActions.setDrawerUiPaused(false);
-      }
-      if(global.OneToneCameraPresenceActions&&global.OneToneCameraPresenceActions.reconcileRuntime){
-        global.OneToneCameraPresenceActions.reconcileRuntime({reason:'drawer_close'});
+      if(global.OneToneIpc&&global.OneToneIpc.invoke){
+        global.OneToneIpc.invoke('cmd_app_log',{line:'fe closeDrawer panel='+String(ui.settingsPanel||'')}).catch(function(){});
       }
     }catch(_){}
 
+    if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
+
     ui.drawerOpen=false;
     setSettingsDrawerGate(false);
+    try{ document.documentElement.classList.remove('ot-voice-wake-park'); }catch(_){}
 
     lastPanel='basic';
 
@@ -1315,26 +1298,42 @@
 
     hooks().stopMicMonitor();
 
-    if(global.OneToneMappingCore&&typeof global.OneToneMappingCore.flushAllEditor==='function'){
-
-      global.OneToneMappingCore.flushAllEditor();
-
-    }
-
-    if(global.OneToneConfigPersist){
-      if(typeof global.OneToneConfigPersist.flushDeferredMvpInitSideEffects==='function'){
-        try{ global.OneToneConfigPersist.flushDeferredMvpInitSideEffects(); }catch(_){}
+    // Camera resume + mvp flush + pullBackend used to run sync on close — stacking with a
+    // immediate hero orb re-open (unpark+park+MediaPipe) → UI_HB_STALL empty tag.
+    var closeGen=(global.__otDrawerCloseGen=(global.__otDrawerCloseGen||0)+1);
+    setTimeout(function(){
+      if(closeGen!==global.__otDrawerCloseGen||ui.drawerOpen) return;
+      try{
+        if(global.OneToneCameraPresenceActions&&global.OneToneCameraPresenceActions.setDrawerUiPaused){
+          global.OneToneCameraPresenceActions.setDrawerUiPaused(false);
+        }
+        if(global.OneToneCameraPresenceActions&&global.OneToneCameraPresenceActions.reconcileRuntime){
+          global.OneToneCameraPresenceActions.reconcileRuntime({reason:'drawer_close'});
+        }
+      }catch(_){}
+    },0);
+    setTimeout(function(){
+      if(closeGen!==global.__otDrawerCloseGen||ui.drawerOpen) return;
+      try{
+        if(global.OneToneMappingCore&&typeof global.OneToneMappingCore.flushAllEditor==='function'){
+          global.OneToneMappingCore.flushAllEditor();
+        }
+      }catch(_){}
+      if(global.OneToneConfigPersist){
+        if(typeof global.OneToneConfigPersist.flushDeferredMvpInitSideEffects==='function'){
+          try{ global.OneToneConfigPersist.flushDeferredMvpInitSideEffects(); }catch(_){}
+        }
+        if(typeof global.OneToneConfigPersist.pullBackendConfig==='function'){
+          try{ global.OneToneConfigPersist.pullBackendConfig(); }catch(_){}
+        }
       }
-      if(typeof global.OneToneConfigPersist.pullBackendConfig==='function'){
-        global.OneToneConfigPersist.pullBackendConfig();
-      }
-    }
+    },120);
 
     setTimeout(function(){
 
       if(!ui.drawerOpen&&hooks().micLevelUiVisible()) hooks().syncHomeMicMonitor().catch(function(){});
 
-    },120);
+    },200);
 
   }
 

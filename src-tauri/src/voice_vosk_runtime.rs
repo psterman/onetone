@@ -155,6 +155,7 @@ pub fn voice_vosk_start(
         resource_dir,
         grammar,
         Some(state.audio_frame_bus.publisher()),
+        Arc::clone(&state.settings_asr_quiet),
     ) {
         Ok(handle) => {
             crate::app_log::log_line(
@@ -339,6 +340,11 @@ fn tick_cooldown_state(state: &AppState) {
 }
 
 fn emit_vosk_mic_level(app: &AppHandle, state: &AppState, level: u32) {
+    // Settings voiceWake already paints enough; mic_level flood → idle 假死.
+    if *state.settings_drawer_open.lock() {
+        state.mic_level.set("", level);
+        return;
+    }
     let payload = serde_json::json!({
         "type": "mic_level",
         "deviceId": "",
@@ -351,6 +357,9 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, app: &AppHandle) {
     let events: Vec<VoiceVoskEvent> = {
         let guard = state.voice_vosk.lock();
         let Some(handle) = guard.as_ref() else {
+            // Drop before acoustic sync — holding voice_vosk across sync/stop let
+            // settings_park stop_sync + status IPC wait ~165s (UI_HB_STALL).
+            drop(guard);
             tick_cooldown_state(state);
             // Only sync acoustic runtime when vosk was previously active and stopped;
             // skip during early boot when handle was never created (avoids lock
@@ -457,7 +466,21 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, app: &AppHandle) {
     }
 
     tick_cooldown_state(state);
-    crate::voice_acoustic_runtime::sync_acoustic_match_runtime(Some(app), state);
+    // Throttle acoustic sync — was every drain (~40ms) with full cfg clone.
+    {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        use std::time::{SystemTime, UNIX_EPOCH};
+        static LAST_AC_SYNC_MS: AtomicU64 = AtomicU64::new(0);
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        let prev = LAST_AC_SYNC_MS.load(Ordering::Relaxed);
+        if now.saturating_sub(prev) >= 500 {
+            LAST_AC_SYNC_MS.store(now, Ordering::Relaxed);
+            crate::voice_acoustic_runtime::sync_acoustic_match_runtime(Some(app), state);
+        }
+    }
 }
 
 fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {

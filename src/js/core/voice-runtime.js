@@ -25,13 +25,20 @@
     var active=hooks().voiceCaptureActive();
     var ui=hooks().ui();
     if(ui.drawerOpen&&ui.settingsPanel==='voiceWake'){
-      if(active){
-        // Drop exclusive monitor while Vosk holds the device; keep read-only level poll for hub/hero.
-        hooks().stopMicMonitor();
-        if(!global.OneToneAppMic.hasMicPollTimer()) hooks().startMicLevelPoll();
-      }else if(!global.OneToneAppMic.hasMicPollTimer()){
-        hooks().startMicLevelPoll();
+      // Vosk already emits mic_level to FE — polling + event paint dual-path idle 假死.
+      hooks().stopMicMonitor();
+      if(hooks().stopMicLevelPoll) hooks().stopMicLevelPoll();
+      else if(global.OneToneAppMic&&global.OneToneAppMic.stopMicLevelPoll){
+        try{ global.OneToneAppMic.stopMicLevelPoll(); }catch(_){}
       }
+      lastVoiceCaptureActive=active;
+      return;
+    }
+    if(active){
+      hooks().stopMicMonitor();
+      if(!global.OneToneAppMic.hasMicPollTimer()) hooks().startMicLevelPoll();
+    }else if(!global.OneToneAppMic.hasMicPollTimer()){
+      hooks().startMicLevelPoll();
     }
     lastVoiceCaptureActive=active;
   }

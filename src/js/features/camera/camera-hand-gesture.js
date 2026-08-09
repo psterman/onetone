@@ -417,7 +417,8 @@
       var took=nowMs()-tBitmap;
       // Slow bitmap decode → back off so the next rAF does not immediately re-enter (同 gaze).
       if(took>80) lastDetectWall=nowMs()+Math.min(took*2,600);
-      if(!running){
+      // Same as gaze: drop bitmaps after pauseInfer so settings 切换 cannot wedge WebView2.
+      if(!running||inferPaused){
         if(bitmap.close) try{ bitmap.close(); }catch(_){}
         setActivityTag('');
         return;

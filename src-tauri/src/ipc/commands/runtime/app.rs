@@ -78,13 +78,30 @@ pub fn cmd_set_settings_drawer_open(
             "workflow",
             &format!("settings drawer open={open}"),
         );
+        // Park wake ASR flag + stop capture while configuring (cpal idle → UI_HB_STALL).
+        state
+            .settings_asr_quiet
+            .store(open, std::sync::atomic::Ordering::SeqCst);
         // Opening settings: soft-dismiss float so always-on-top pad cannot cover the drawer
         // (gate alone races one tick behind FG host — feels like 假死 / 未响应).
         if open {
             let _ = crate::codex_micro_overlay::dismiss_overlay(&window.app_handle(), state.inner());
+            crate::voice_bootstrap::schedule_park_wake_for_settings(state.inner());
         } else {
             crate::codex_micro_overlay::push_state(&window.app_handle(), state.inner());
+            crate::voice_bootstrap::schedule_unpark_wake_for_settings(
+                &window.app_handle(),
+                state.inner(),
+            );
         }
+        // Off IPC thread — sync command must not join acoustic stop (≤800ms) on the pump.
+        let app2 = window.app_handle().clone();
+        let state2 = Arc::clone(state.inner());
+        let _ = std::thread::Builder::new()
+            .name("settings-acoustic-sync".into())
+            .spawn(move || {
+                crate::voice_acoustic_runtime::sync_acoustic_match_runtime(Some(&app2), &state2);
+            });
     } else if open {
         // Re-entry while already open (panel hops): keep float down.
         let _ = crate::codex_micro_overlay::dismiss_overlay(&window.app_handle(), state.inner());

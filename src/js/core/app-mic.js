@@ -99,8 +99,12 @@
   }
 
   function updateMicLevelBars(deviceId,level){
-    var targets=resolveMicLevelTargets(deviceId);
     homeMicLastLevel=Number(level)||0;
+    // Vosk Level ~120ms + voiceWake bars used to paint forever → idle UI_HB_STALL_5S (empty tag).
+    var now=Date.now();
+    if(now-(global.__otMicBarPaintAt||0)<250) return;
+    global.__otMicBarPaintAt=now;
+    var targets=resolveMicLevelTargets(deviceId);
     micWavePhase+=0.38;
     var norm=Math.max(0,Math.min(1,homeMicLastLevel/48));
     var hero=$('wbHero')||document.documentElement;

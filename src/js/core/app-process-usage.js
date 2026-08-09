@@ -114,6 +114,11 @@
     if(global.OneToneAppSession&&global.OneToneAppSession.isBootSettling&&global.OneToneAppSession.isBootSettling()){
       return Promise.resolve(null);
     }
+    try{
+      var ui=global.OneToneState&&global.OneToneState.ui;
+      // Settings non-debug: 2.5s process_usage IPC not needed (idle 假死 after engines parked).
+      if(ui&&ui.drawerOpen&&ui.settingsPanel!=='debug') return Promise.resolve(null);
+    }catch(_){}
     return hooks().vpInvokeTimeout('cmd_process_usage',{},3000).then(function(res){
       res=res||{};
       processUsageSnapshot.supported=!!res.supported||Number(res.memoryBytes)>0;

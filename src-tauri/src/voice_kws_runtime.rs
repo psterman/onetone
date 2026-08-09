@@ -342,6 +342,10 @@ pub fn spawn_voice_kws_start(
 }
 
 fn emit_kws_mic_level(app: &AppHandle, state: &AppState, level: u32) {
+    if *state.settings_drawer_open.lock() {
+        state.mic_level.set("", level);
+        return;
+    }
     let payload = serde_json::json!({
         "type": "mic_level",
         "deviceId": "",

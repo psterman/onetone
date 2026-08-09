@@ -188,6 +188,8 @@ pub struct AppState {
     pub setup_interaction_active: Mutex<bool>,
     /// Settings drawer open — Soft Pad float must stay hidden (click-through).
     pub settings_drawer_open: Mutex<bool>,
+    /// When true, wake ASR discards mic chunks (settings open). Arc so vosk worker can read lock-free.
+    pub settings_asr_quiet: Arc<AtomicBool>,
     pub process_usage_sampler: Mutex<resource_monitor::ProcessUsageSampler>,
     pub log_ring: Mutex<VecDeque<String>>,
     pub runtime_events: onetone_logic::runtime_event::RuntimeEventRing,
@@ -315,6 +317,7 @@ pub fn run() {
         trigger_verify_listen: Mutex::new(None),
         setup_interaction_active: Mutex::new(false),
         settings_drawer_open: Mutex::new(false),
+        settings_asr_quiet: Arc::new(AtomicBool::new(false)),
         process_usage_sampler: Mutex::new(resource_monitor::ProcessUsageSampler::default()),
         log_ring: Mutex::new(VecDeque::new()),
         runtime_events: onetone_logic::runtime_event::RuntimeEventRing::new(),

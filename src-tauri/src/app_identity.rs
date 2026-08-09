@@ -282,16 +282,29 @@ pub fn process_exe_name(_pid: u32) -> Option<String> {
 }
 
 #[cfg(windows)]
+const WINDOW_TEXT_TIMEOUT_MS: u32 = 200;
+
+#[cfg(windows)]
 fn window_title_for_hwnd(hwnd: winapi::shared::windef::HWND) -> String {
-    use winapi::um::winuser::GetWindowTextW;
+    use winapi::um::winuser::{SendMessageTimeoutW, SMTO_ABORTIFHUNG, SMTO_BLOCK, WM_GETTEXT};
 
     unsafe {
         let mut buf = [0u16; 512];
-        let len = GetWindowTextW(hwnd, buf.as_mut_ptr(), buf.len() as i32);
-        if len <= 0 {
+        let mut len = 0usize;
+        let delivered = SendMessageTimeoutW(
+            hwnd,
+            WM_GETTEXT,
+            buf.len(),
+            buf.as_mut_ptr() as isize,
+            SMTO_ABORTIFHUNG | SMTO_BLOCK,
+            WINDOW_TEXT_TIMEOUT_MS,
+            &mut len,
+        );
+        if delivered == 0 || len == 0 {
             return String::new();
         }
-        String::from_utf16_lossy(&buf[..len as usize])
+        let len = len.min(buf.len().saturating_sub(1));
+        String::from_utf16_lossy(&buf[..len])
     }
 }
 

@@ -11,6 +11,19 @@
     }catch(_){}
   }
   global.__dbgB5=agentDbg;
+  // Sparse voiceWake keepalive — proves idle survival without dbg flood.
+  // 3min: 60s disk append under large runtime-live.log + AV coincided with late stalls.
+  setInterval(function(){
+    try{
+      var ui=global.OneToneState&&global.OneToneState.ui;
+      if(!(ui&&ui.drawerOpen&&ui.settingsPanel==='voiceWake')) return;
+      if(!(global.OneToneIpc&&global.OneToneIpc.invoke)) return;
+      global.OneToneIpc.invoke('cmd_app_log',{
+        line:'fe voiceWake idle hb seq='+((global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.lastSeq)||0)
+          +' tag='+(global.__otActivityTag||'')
+      }).catch(function(){});
+    }catch(_){}
+  },180000);
   // #endregion
   function run(){
     var hooks=h();
@@ -21,7 +34,7 @@
     var hasBootConfig=!!(state.config&&Array.isArray(state.config.mappings)&&state.config.mappings.length);
     hooks.markBoot('script init');
     // #region agent log
-    agentDbg('E','app-boot.js:scriptInit','boot script init',{hasBootConfig:!!hasBootConfig,feBuild:'stall12'});
+    agentDbg('E','app-boot.js:scriptInit','boot script init',{hasBootConfig:!!hasBootConfig,feBuild:'stall19'});
     // #endregion
     // Soft Pad float is always-on-top; dismiss on cold start so home stays clickable
     // while FG settles (front-mode used to cover the launching window → 假死).
@@ -142,16 +155,24 @@
         }catch(_){}
         if(gap>500){
           try{ console.warn('[onetone] UI-BLOCK local gap='+gap+'ms tag='+activityTag()); }catch(_){}
+          // voiceWake: skip hang-spike DOM churn — engines parked, panel poll off.
+          var skipSpike=false;
           try{
-            if(global.OneToneVoiceDiag&&typeof global.OneToneVoiceDiag.noteHangSpike==='function'){
-              global.OneToneVoiceDiag.noteHangSpike({
-                gapMs:gap,
-                tag:activityTag(),
-                seq:seq,
-                source:'fe_hb'
-              });
-            }
+            var uiHb=global.OneToneState&&global.OneToneState.ui;
+            if(uiHb&&uiHb.drawerOpen&&uiHb.settingsPanel==='voiceWake') skipSpike=true;
           }catch(_){}
+          if(!skipSpike){
+            try{
+              if(global.OneToneVoiceDiag&&typeof global.OneToneVoiceDiag.noteHangSpike==='function'){
+                global.OneToneVoiceDiag.noteHangSpike({
+                  gapMs:gap,
+                  tag:activityTag(),
+                  seq:seq,
+                  source:'fe_hb'
+                });
+              }
+            }catch(_){}
+          }
         }
         if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
         try{

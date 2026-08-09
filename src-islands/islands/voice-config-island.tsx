@@ -38,13 +38,14 @@ function StrategySelector(): JSX.Element {
     setStrategy(vc.getListeningStrategy());
     setBusy(!!getWakeApi()?.isModeSwitchPending?.());
   });
-  // Keep island buttons in sync with legacy inFlight while activateAsync settles.
+  // Poll only while a switch is pending — idle 200ms setState on 增强页 was pure noise.
   React.useEffect(() => {
+    if (!busy) return;
     const id = window.setInterval(() => {
       setBusy(!!getWakeApi()?.isModeSwitchPending?.());
     }, 200);
     return () => window.clearInterval(id);
-  }, []);
+  }, [busy]);
 
   const apply = async (key: string): Promise<void> => {
     const wake = getWakeApi();
