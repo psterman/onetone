@@ -2,42 +2,16 @@
   'use strict';
   function h(){ return global.__vp_bootstrap_hooks__ || {}; }
   // #region agent log
+  // Console-only: cmd_app_log+fetch under voiceWake poll flooded IPC → UI_HB_STALL_5S.
   function agentDbg(hypothesisId, location, message, data){
     try{
-      var payload={sessionId:'b5f349',runId:'post-fix',hypothesisId:hypothesisId,location:location,message:message,data:data||{},timestamp:Date.now()};
-      var line='dbg-b5f349 '+JSON.stringify(payload);
-      if(global.OneToneIpc&&global.OneToneIpc.invoke) global.OneToneIpc.invoke('cmd_app_log',{line:line}).catch(function(){});
-      fetch('http://127.0.0.1:7915/ingest/0a875e0d-0640-4d58-b115-3a301bab85e8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b5f349'},body:JSON.stringify(payload)}).catch(function(){});
+      if(typeof console!=='undefined'&&console.debug){
+        console.debug('[dbg-b5]',hypothesisId,location,message,data||{});
+      }
     }catch(_){}
   }
   global.__dbgB5=agentDbg;
-  // Keepalive: sparse — every-2s cmd_app_log itself was IPC/disk pressure over ~100s.
-  // 10s still piled with voiceWake poll logs into late empty-ipc stalls (~3min); 30s is enough.
-  setInterval(function(){
-    try{
-      var ui=global.OneToneState&&global.OneToneState.ui;
-      if(!(ui&&ui.drawerOpen&&ui.settingsPanel==='voiceWake')) return;
-      agentDbg('G','app-boot.js:keepalive','fe keepalive',{
-        drawerOpen:true,
-        panel:'voiceWake',
-        tag:(global.__otActivityTag||'')+'',
-        capture:!!(global.OneToneAppMic&&global.OneToneAppMic.voiceCaptureActive&&global.OneToneAppMic.voiceCaptureActive())
-      });
-    }catch(_){}
-  },30000);
   // #endregion
-  try{
-    if(typeof PerformanceObserver==='function'){
-      var po=new PerformanceObserver(function(list){
-        list.getEntries().forEach(function(e){
-          if(e.duration>=200){
-            agentDbg('G','app-boot.js:longtask','longtask',{ms:Math.round(e.duration),name:e.name||''});
-          }
-        });
-      });
-      po.observe({entryTypes:['longtask']});
-    }
-  }catch(_){}
   function run(){
     var hooks=h();
     var state=global.OneToneState.state;
@@ -47,7 +21,7 @@
     var hasBootConfig=!!(state.config&&Array.isArray(state.config.mappings)&&state.config.mappings.length);
     hooks.markBoot('script init');
     // #region agent log
-    agentDbg('E','app-boot.js:scriptInit','boot script init',{hasBootConfig:!!hasBootConfig,feBuild:'stall9'});
+    agentDbg('E','app-boot.js:scriptInit','boot script init',{hasBootConfig:!!hasBootConfig,feBuild:'stall12'});
     // #endregion
     // Soft Pad float is always-on-top; dismiss on cold start so home stays clickable
     // while FG settles (front-mode used to cover the launching window → 假死).
@@ -117,13 +91,32 @@
         lastLocalGapMs:0,
         lastSeq:0,
         lastPingAt:lastLocal,
-        setTag:function(tag){ try{ global.__otActivityTag=String(tag||''); }catch(_){} },
+        setTag:function(tag){
+          try{ global.__otActivityTag=String(tag||''); }catch(_){}
+          // Push tag now — waiting for the 200ms HB left stalls with empty ACTIVITY_TAG.
+          try{
+            if(global.OneToneIpc&&global.OneToneIpc.invoke){
+              global.OneToneIpc.invoke('cmd_ui_heartbeat',{
+                seq:(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.lastSeq)||0,
+                activityTag:String(tag||''),
+                frontendTime:Date.now()
+              }).catch(function(){});
+            }
+          }catch(_){}
+        },
         clearTag:function(expectedTag){
           try{
             if(arguments.length>0){
               if(String(global.__otActivityTag||'')!==String(expectedTag||'')) return;
             }
             global.__otActivityTag='';
+            if(global.OneToneIpc&&global.OneToneIpc.invoke){
+              global.OneToneIpc.invoke('cmd_ui_heartbeat',{
+                seq:(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.lastSeq)||0,
+                activityTag:'',
+                frontendTime:Date.now()
+              }).catch(function(){});
+            }
           }catch(_){}
         },
         logLocalLag:function(lagMs,tag){
@@ -159,9 +152,6 @@
               });
             }
           }catch(_){}
-          // #region agent log
-          if(gap>800) agentDbg('E','app-boot.js:uiLocalGap','UI-BLOCK local gap',{gapMs:gap,tag:activityTag(),seq:seq});
-          // #endregion
         }
         if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
         try{

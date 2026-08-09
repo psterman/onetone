@@ -48,6 +48,20 @@
     }catch(_){ return false; }
   }
 
+  function cancelBootCameraSchedule(opts){
+    opts=opts||{};
+    try{
+      if(global.__otBootCamScheduleTimer){
+        clearTimeout(global.__otBootCamScheduleTimer);
+        global.__otBootCamScheduleTimer=0;
+      }
+    }catch(_){}
+    // Keep cold flag so a later flush / drawer-close can still start camera once.
+    if(opts.keepCold!==false){
+      try{ global.__otBootCameraCold=true; }catch(_){}
+    }
+  }
+
   function runMvpInitHeavySideEffects(){
     if(mvpInitHeavyRemountBlocked()){
       deferredMvpInitSideEffects=true;
@@ -74,6 +88,21 @@
           }catch(_){}
         };
         try{
+          // Boot settled +8s camDelay lined up with voiceWake open → UI_HB_STALL_5S (seq~91).
+          try{
+            var uiCam=global.OneToneState&&global.OneToneState.ui;
+            var paCam=global.OneToneCameraPresenceActions;
+            if((uiCam&&uiCam.drawerOpen&&uiCam.settingsPanel!=='camera')||(paCam&&paCam.getState&&paCam.getState().drawerUiPaused)){
+              deferredMvpInitSideEffects=true;
+              try{ global.__otBootCameraCold=true; }catch(_){}
+              try{
+                if(global.OneToneIpc&&global.OneToneIpc.invoke){
+                  global.OneToneIpc.invoke('cmd_app_log',{line:'fe bootCam defer skipped drawer'}).catch(function(){});
+                }
+              }catch(_){}
+              return;
+            }
+          }catch(_){}
           try{
             if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.setTag) global.OneToneUiHeartbeat.setTag('bootCameraReconcile');
             else global.__otActivityTag='bootCameraReconcile';
@@ -98,13 +127,8 @@
       var camDelay=0;
       try{
         if(global.__otBootCameraCold){
-          camDelay=2500;
-          // Enhanced/auto: vosk bootstrap + voiceWake open — push camera past that stack.
-          try{
-            var cfgCam=state().config||{};
-            var stratCam=String(cfgCam.voiceListeningStrategy||cfgCam.voice_listening_strategy||'').trim();
-            if(stratCam==='enhanced'||stratCam==='auto') camDelay=5000;
-          }catch(_){}
+          // Never fire mid voiceWake open — settle+8s raced openDrawer → 假死.
+          camDelay=15000;
           global.__otBootCameraCold=false;
         }
       }catch(_){}
@@ -116,8 +140,15 @@
           setTimeout(deferCam,0);
         }
       };
-      if(camDelay>0) setTimeout(scheduleCam,camDelay);
-      else scheduleCam();
+      cancelBootCameraSchedule({keepCold:false});
+      if(camDelay>0){
+        global.__otBootCamScheduleTimer=setTimeout(function(){
+          global.__otBootCamScheduleTimer=0;
+          scheduleCam();
+        },camDelay);
+      }else{
+        scheduleCam();
+      }
     }catch(_){}
     if(global.OneToneAppStartMinimized) global.OneToneAppStartMinimized.loadState();
     const scheduleBootMic=hookFn('scheduleBootMicReady');
@@ -2137,6 +2168,7 @@
     applyRawMvpInit:applyRawMvpInit,
     flushPendingMvpInit:flushPendingMvpInit,
     flushDeferredMvpInitSideEffects:flushDeferredMvpInitSideEffects,
+    cancelBootCameraSchedule:cancelBootCameraSchedule,
     pullBackendConfig:pullBackendConfig,
     startConfigSyncPoll:startConfigSyncPoll,
     requestBackendConfig:requestBackendConfig,

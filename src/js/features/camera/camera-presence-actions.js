@@ -940,10 +940,14 @@
       st._bootCamTimer=setTimeout(function bootCamDeferredTick(){
         st._bootCamTimer=null;
         if(!isEnabled()||st.manualStopped||isCameraPreviewLive()) return;
-        // Settings drawer (non-camera) owns the UI thread — do not cold-start
-        // getUserMedia under voiceWake/keys (假死). Retry after pause lifts.
+        // Settings drawer owns the UI — do NOT retry every 8s (was still UI_HB_STALL_5S
+        // ~80s after voiceWake open with empty tag). Resume path restarts camera.
         if(st.drawerUiPaused){
-          st._bootCamTimer=setTimeout(bootCamDeferredTick,8000);
+          try{
+            if(global.OneToneIpc&&global.OneToneIpc.invoke){
+              global.OneToneIpc.invoke('cmd_app_log',{line:'fe bootCam skip drawer paused'}).catch(function(){});
+            }
+          }catch(_){}
           return;
         }
         ensureRunning({reason:'boot_deferred'});
@@ -3709,6 +3713,15 @@
     var pv=global.OneToneCameraPreview;
     try{
       if(paused){
+        // Cancel deferred boot camera — 8s retry under voiceWake still 假死'd (~80s, empty tag).
+        try{
+          if(st._bootCamTimer){ clearTimeout(st._bootCamTimer); st._bootCamTimer=null; }
+        }catch(_){}
+        try{
+          if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.cancelBootCameraSchedule==='function'){
+            global.OneToneConfigPersist.cancelBootCameraSchedule();
+          }
+        }catch(_){}
         // Snapshot before pausePipeline — gate must not depend on post-pause flags.
         var wasLive=false;
         var hasStream=false;
@@ -3721,24 +3734,22 @@
         // Tear down MediaStream while non-camera settings own the UI.
         if((wasLive||hasStream)&&!st._drawerStoppedCam){
           st._drawerStoppedCam=true;
-          // #region agent log
-          try{ if(global.__dbgB5) global.__dbgB5('P','camera-presence-actions.js:setDrawerUiPaused','drawer stop camera',{reason:'drawer_ui_pause',wasLive:!!wasLive,hasStream:!!hasStream}); }catch(_){}
-          // #endregion
+          try{
+            if(global.OneToneIpc&&global.OneToneIpc.invoke){
+              global.OneToneIpc.invoke('cmd_app_log',{line:'fe drawer stop camera wasLive='+(wasLive?1:0)+' stream='+(hasStream?1:0)}).catch(function(){});
+            }
+          }catch(_){}
           ensureStopped({reason:'drawer_ui_pause'});
-        }else{
-          // #region agent log
-          try{ if(global.__dbgB5) global.__dbgB5('P','camera-presence-actions.js:setDrawerUiPaused','drawer skip camera stop',{wasLive:!!wasLive,hasStream:!!hasStream,already:!!st._drawerStoppedCam}); }catch(_){}
-          // #endregion
         }
       }else{
         if(st._drawerStoppedCam){
           st._drawerStoppedCam=false;
-          // #region agent log
-          try{ if(global.__dbgB5) global.__dbgB5('P','camera-presence-actions.js:setDrawerUiPaused','drawer resume camera',{reason:'drawer_ui_resume'}); }catch(_){}
-          // #endregion
           if(isEnabled()&&!st.manualStopped){
             ensureRunning({reason:'drawer_ui_resume'});
           }
+        }else if(isEnabled()&&!st.manualStopped&&!isCameraPreviewLive()){
+          // Boot cam was cancelled while drawer owned UI — start once on close.
+          ensureRunning({reason:'drawer_ui_resume_boot'});
         }else{
           if(pv&&typeof pv.resumePipeline==='function') pv.resumePipeline();
           if(lm&&lm.resumeInfer) lm.resumeInfer();

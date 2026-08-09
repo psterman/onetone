@@ -38,22 +38,11 @@ pub fn cmd_export_logs(
 }
 
 #[tauri::command]
-pub async fn cmd_app_log(
-    state: tauri::State<'_, Arc<AppState>>,
-    line: String,
-) -> Result<(), String> {
-    // Disk I/O off the UI thread — sync cmd_app_log flooded main and marked the window 未响应.
-    let state = Arc::clone(state.inner());
-    tauri::async_runtime::spawn_blocking(move || {
-        // #region agent log
-        if let Some(json) = line.strip_prefix("dbg-b5f349 ") {
-            crate::app_log::append_debug_session_ndjson(json);
-        }
-        // #endregion
-        crate::app_log::log_line(&state, "frontend", &line);
-    })
-    .await
-    .map_err(|e| format!("log task failed: {e}"))
+pub fn cmd_app_log(state: tauri::State<Arc<AppState>>, line: String) -> Result<(), String> {
+    // Enqueue only — never await spawn_blocking. Awaiting disk under dbg-b5f349 poll flood
+    // backlogged IPC; voiceWake poll enter then UI_HB_STALL_5S with no ipc-done.
+    crate::app_log::log_line(state.inner(), "frontend", &line);
+    Ok(())
 }
 
 /// Atomic-only UI heartbeat. No disk, no cfg/log_ring, no emit.

@@ -32,7 +32,7 @@
   var hangDiagRing=[];
   var hangDiagLastStallLoaded=false;
   var hangDiagLastStallText='';
-  var hangLiveOpen=true; // boot: expanded live panel
+  var hangLiveOpen=false; // collapsed by default — always-on 1Hz poll coincided with voiceWake 假死
   var hangLiveBound=false;
   var hangLongTaskBound=false;
   var hangPeaks={maxGapMs:0,maxIpcHeldMs:0,warnN:0,stallN:0,ltN:0};
@@ -350,12 +350,13 @@
   }
 
   function startLiveHangDiag(){
+    // Mount collapsed only — expanded 1Hz poll + alwaysOnTop coincided with
+    // voiceWake UI_HB_STALL_5S (~80s after open, empty tag / no ipc).
     bindHangLivePanel();
     bindHangLongTasks();
-    hangLiveOpen=true;
+    hangLiveOpen=false;
     syncHangLivePanelDom();
-    pinMainAlwaysOnTop();
-    renderVoiceHangDiag();
+    stopHangDiagPoll();
   }
 
   function stopHangDiagPoll(){

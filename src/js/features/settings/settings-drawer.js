@@ -921,8 +921,9 @@
               hooks().setVoiceWakeExpandedMode(active==='vosk'?'vosk':active==='sapi'?'sapi':((global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi())?'vosk':(global.OneToneVoiceWake.getExpandedMode()||'vosk')));
               global.OneToneVoiceWake.clearLiveFingerprints();
               const w=hooks().voiceUiSnapshot().wake||{};
-              if(w.sapi) hooks().renderVoiceSapiStatus(w.sapi);
-              if(w.vosk) hooks().renderVoiceVoskStatus(w.vosk);
+              // liveOnly on enter — full status remount stacked with islands → 假死.
+              if(w.sapi) hooks().renderVoiceSapiStatus(w.sapi,{liveOnly:true});
+              if(w.vosk) hooks().renderVoiceVoskStatus(w.vosk,{liveOnly:true});
             }
             var mountVoiceStatus=global.__otMountVoiceStatusChromeIsland;
             if(typeof mountVoiceStatus==='function') mountVoiceStatus();
@@ -957,23 +958,24 @@
                 return;
               }
               voiceHbPhase('voiceOpen:chrome','voiceOpen:heavy');
-              // #region agent log
-              var __heavyT0=performance.now();
-              try{ if(global.__dbgB5) global.__dbgB5('F','settings-drawer.js:voiceWake.heavyStart','heavy phase start',{gen:voiceOpenGen,hasAcoustic:typeof global.__otMountVoiceAcousticIslands==='function'}); }catch(_){}
-              // #endregion
               try{
-                var mountVoiceAcoustic=global.__otMountVoiceAcousticIslands;
-                if(typeof mountVoiceAcoustic==='function') mountVoiceAcoustic();
-                // #region agent log
-                try{ if(global.__dbgB5) global.__dbgB5('F','settings-drawer.js:voiceWake.acousticDone','acoustic islands done',{gen:voiceOpenGen,ms:Math.round(performance.now()-__heavyT0)}); }catch(_){}
-                // #endregion
+                try{
+                  if(global.OneToneIpc&&global.OneToneIpc.invoke){
+                    global.OneToneIpc.invoke('cmd_app_log',{line:'fe voiceWake heavy begin gen='+voiceOpenGen}).catch(function(){});
+                  }
+                }catch(_){}
+                // Acoustic islands: push further off open — stacked with bootCam → 假死.
+                setTimeout(function(){
+                  if(voiceOpenStale()) return;
+                  try{
+                    var mountVoiceAcoustic=global.__otMountVoiceAcousticIslands;
+                    if(typeof mountVoiceAcoustic==='function') mountVoiceAcoustic();
+                  }catch(errAc){ console.error('voice acoustic mount',errAc); }
+                },1200);
                 voiceHbPhase('voiceOpen:heavy','voiceOpen:modeSwitch');
                 try{
                   hooks().renderVoiceModeSwitch();
                 }finally{
-                  // #region agent log
-                  try{ if(global.__dbgB5) global.__dbgB5('F','settings-drawer.js:voiceWake.modeSwitchEnd','modeSwitch done',{gen:voiceOpenGen,ms:Math.round(performance.now()-__heavyT0)}); }catch(_){}
-                  // #endregion
                   voiceHbClear('voiceOpen:modeSwitch');
                 }
                 if(voiceDeferHeavy&&typeof voiceAfterHeavy==='function'){
@@ -984,6 +986,11 @@
                   var target=$(voiceScrollTarget);
                   if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
                 }
+                try{
+                  if(global.OneToneIpc&&global.OneToneIpc.invoke){
+                    global.OneToneIpc.invoke('cmd_app_log',{line:'fe voiceWake heavy end gen='+voiceOpenGen}).catch(function(){});
+                  }
+                }catch(_){}
               }catch(err2){
                 console.error('voice panel heavy paint',err2);
                 voiceHbClear('voiceOpen:heavy');
@@ -1155,6 +1162,11 @@
     opts=opts||{};
     try{
       feLog('fe openDrawer panel='+String(opts.panel||'basic')+(opts.habitWizard?' wizard=1':''));
+    }catch(_){}
+    try{
+      if(global.OneToneIpc&&global.OneToneIpc.invoke){
+        global.OneToneIpc.invoke('cmd_app_log',{line:'fe openDrawer begin panel='+String(opts.panel||'basic')}).catch(function(){});
+      }
     }catch(_){}
     // Soft Pad float is always-on-top; durable gate + soft-dismiss so left nav / drawer stay clickable.
     setSettingsDrawerGate(true);

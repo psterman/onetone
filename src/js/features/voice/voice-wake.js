@@ -656,10 +656,9 @@
     // Keep FE desiredEngine mirrors aligned with product strategy (matches Rust apply_voice_listening_strategy).
     if(strategy==='off') syncDesiredEngineConfig('none');
     else if(strategy==='enhanced') syncDesiredEngineConfig('vosk');
-    else if(strategy==='auto') syncDesiredEngineConfig('kws');
-    // resourceSaver: Rust may keep Vosk when KWS keywords_empty — do NOT force kws.enabled
-    // (that fought live vosk on every poll and stacked wake UI work).
-    else if(strategy==='resourceSaver'){
+    // auto/resourceSaver: Rust may keep Vosk when KWS keywords_empty — do NOT force kws.enabled
+    // (fought live vosk on every poll; auto switch → UI_HB_STALL_5S).
+    else if(strategy==='auto'||strategy==='resourceSaver'){
       /* strategy label only; engine flags follow supervisor status */
     }
     return true;
@@ -1473,6 +1472,7 @@
     applyListeningStrategyToConfig(strategy);
     syncVoiceStrategyTabButtons(true);
     var strategySwitchOk=false;
+    var strategySwitchLight=false;
     const finish=function(){
       voiceModeSwitchInFlight=false;
       setVoiceModeCardBusy(false);
@@ -1488,15 +1488,21 @@
       }
       // Islands + home remount on the same tick as settle caused UI_HB gap / 未响应.
       deferStrategyUiPaint(function(){
-        try{
-          if(global.__otPendingIslandsRefresh){
-            global.__otPendingIslandsRefresh=false;
-            if(typeof global.OneToneIslandsRefresh==='function') global.OneToneIslandsRefresh();
-          }
-        }catch(_){}
+        if(!strategySwitchLight){
+          try{
+            if(global.__otPendingIslandsRefresh){
+              global.__otPendingIslandsRefresh=false;
+              if(typeof global.OneToneIslandsRefresh==='function') global.OneToneIslandsRefresh();
+            }
+          }catch(_){}
+        }else{
+          try{ global.__otPendingIslandsRefresh=false; }catch(_){}
+        }
         applyHomeVoiceModeSwitchUi();
-        if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
-        else if(!ui().drawerOpen) hooks().renderHomeLiveZone();
+        if(!strategySwitchLight){
+          if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
+          else if(!ui().drawerOpen) hooks().renderHomeLiveZone();
+        }
       });
     };
     ipcWithTimeout('cmd_voice_set_listening_strategy',{strategy:String(strategy||'').trim()},12000).then(function(bundle){
@@ -1529,6 +1535,18 @@
         const voskLive=(settled&&settled.vosk)||(bundle&&bundle.voiceVosk)||null;
         const forced=Object.assign({},bundle||{},{strategy:strategy});
         if(voskLive) forced.voiceVosk=voskLive;
+        // vosk→vosk noop (auto/省电/增强 when KWS unavailable): skip syncHome/islands/pollVosk.
+        const desiredLive=String((voskLive&&voskLive.desiredEngine)||(bundle&&bundle.engine)||'').trim().toLowerCase();
+        if(voskListeningOk(voskLive)&&desiredLive==='vosk'&&(strategy==='auto'||strategy==='enhanced'||strategy==='resourceSaver')){
+          strategySwitchLight=true;
+          applyListeningStrategyToConfig(strategy);
+          setStrategyHold(strategy,8000,true);
+          if(strategy==='resourceSaver') voiceWakeExpandedMode='kws';
+          else voiceWakeExpandedMode='vosk';
+          hideVoiceSetupOverlay();
+          strategySwitchSuccessToast(strategy,toastLite);
+          return;
+        }
         const uiMode=strategy==='resourceSaver'?'kws':'vosk';
         const applied=applyDesiredEngineResult(forced,uiMode,statusOpts,syncOpts);
         applyListeningStrategyToConfig(strategy);
@@ -1868,9 +1886,13 @@
     const kwsState=(w.kws&&w.kws.state)||'';
     if(voskState==='starting'||sapiState==='starting'||kwsState==='starting') return 3000;
     if(document.hidden&&!ui().drawerOpen) return 2000;
-    // voiceWake first: dictating used to drop to 500ms×4 status IPC and 假死 after wake
-    // (resourceSaver+「开始输入」→ UI_HB_STALL_5S empty tag).
-    if(ui().drawerOpen&&ui().settingsPanel==='voiceWake') return 8000;
+    // voiceWake idle: no status poll — open settle + events cover UI; 60s poll still
+    // lined up with empty-tag stalls after 省电 open.
+    if(ui().drawerOpen&&ui().settingsPanel==='voiceWake'){
+      const endSnapWake=hooks().voiceUiSnapshot.end||{};
+      if(hooks().sessionActiveState(endSnapWake.state||'idle')) return 2000;
+      return 0;
+    }
     const endSnap=hooks().voiceUiSnapshot.end||{};
     if(hooks().sessionActiveState(endSnap.state||'idle')) return 500;
     if(!ui().drawerOpen) return 2000;
@@ -1883,10 +1905,13 @@
 
   function scheduleNextVoicePoll(){
     clearTimeout(voiceStatusPollTimer);
+    var ms=voicePollIntervalMs();
+    // Idle voiceWake returns 0 — re-arm later so dictation can pick up a cadence.
+    if(!ms||ms<0) ms=5000;
     voiceStatusPollTimer=setTimeout(function(){
-      voiceStatusPollTick();
+      if(voicePollIntervalMs()>0) voiceStatusPollTick();
       scheduleNextVoicePoll();
-    },voicePollIntervalMs());
+    },ms);
   }
 
   function voiceWakeLiveFingerprint(res){
@@ -1908,64 +1933,47 @@
     if(!voiceStatusPollNeeded()) return;
     if(voiceStatusPollInFlight) return;
     voiceStatusPollInFlight=true;
-    // #region agent log
     try{
-      if(!global.__dbgB5PollAt||Date.now()-global.__dbgB5PollAt>3000){
-        global.__dbgB5PollAt=Date.now();
-        if(global.__dbgB5) global.__dbgB5('H','voice-wake.js:voiceStatusPollTick:enter','poll tick enter',{drawerOpen:!!ui().drawerOpen,panel:ui().settingsPanel||''});
+      if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.setTag){
+        global.OneToneUiHeartbeat.setTag('voiceStatusPoll');
       }
     }catch(_){}
-    // #endregion
     const cfg=state().config||{};
     const sapiCfg=cfg.voiceSapi||cfg.voice_sapi;
     const voskCfg=cfg.voiceVosk||cfg.voice_vosk;
     const kwsCfg=cfg.voiceKws||cfg.voice_kws;
     const snap=hooks().voiceUiSnapshot.end||{};
+    const wakeSnap=hooks().voiceUiSnapshot.wake||{};
     const panel=ui().settingsPanel;
     const drawerVoice=ui().drawerOpen&&settingsPanelNeedsVoicePoll();
-    const homeVoice=true;
-    const homeEnd=true;
-    const needEnd=global.OneToneVoiceEnd.enabledInConfig()
-      ||hooks().sessionActiveState(snap.state||'idle')
-      ||(drawerVoice&&(panel==='voiceWake'||panel==='debug'))
-      ||homeEnd;
+    const endActive=hooks().sessionActiveState(snap.state||'idle');
+    const wakePanel=drawerVoice&&(panel==='voiceWake'||panel==='debug');
+    // voiceWake idle: skip end_status — was always-on with homeEnd=true and stacked IPC.
+    // Even when voiceEnd.enabledInConfig, idle voiceWake only needs vosk (or kws) status.
+    const needEnd=endActive
+      ||(drawerVoice&&panel==='debug')
+      ||!wakePanel;
     // Acoustic override may run Vosk while config still says SAPI enabled — always
     // poll every wake backend when any is on so the active card is not stuck on「已停止」.
     const anyWake=!!(sapiCfg&&sapiCfg.enabled)||!!(voskCfg&&voskCfg.enabled)||!!(kwsCfg&&kwsCfg.enabled);
     // voiceWake: skip idle backends. 4-way poll + wake 「开始输入」stacked into UI_HB_STALL_5s.
-    const wakePanel=drawerVoice&&(panel==='voiceWake'||panel==='debug');
+    const liveDesired=String(
+      (wakeSnap.vosk&&wakeSnap.vosk.desiredEngine)||(wakeSnap.kws&&wakeSnap.kws.desiredEngine)||(wakeSnap.sapi&&wakeSnap.sapi.desiredEngine)||''
+    ).trim().toLowerCase();
+    const voskLiveDesired=liveDesired==='vosk'||(!liveDesired&&!!(voskCfg&&voskCfg.enabled));
     const needSapi=!!(sapiCfg&&sapiCfg.enabled)||panel==='debug'||(anyWake&&!wakePanel);
     const needVosk=!!(voskCfg&&voskCfg.enabled)||panel==='debug'||wakePanel||(anyWake&&!wakePanel);
-    const needKws=!!(kwsCfg&&kwsCfg.enabled)||panel==='debug'||(anyWake&&!wakePanel);
-    // #region agent log
-    function __pollOne(name,need,cmd){
+    // Skip KWS status while supervisor is on Vosk (auto/省电 fallback) — dead probe still cost IPC.
+    const needKws=(!!(kwsCfg&&kwsCfg.enabled)||panel==='debug'||(anyWake&&!wakePanel))&&!(wakePanel&&voskLiveDesired);
+    function __pollOne(need,cmd){
       if(!need) return Promise.resolve(null);
-      var t0=performance.now();
-      return global.OneToneIpc.invoke(cmd,{}).then(function(res){
-        try{
-          var ms=Math.round(performance.now()-t0);
-          if(ms>=50&&ui().drawerOpen&&ui().settingsPanel==='voiceWake'&&global.__dbgB5){
-            global.__dbgB5('L4','voice-wake.js:pollOne','poll one done',{name:name,ms:ms});
-          }
-        }catch(_){}
-        return res;
-      }).catch(function(){return null;});
+      return global.OneToneIpc.invoke(cmd,{}).catch(function(){return null;});
     }
-    const pEnd=__pollOne('end',needEnd,'cmd_voice_end_status');
-    const pSapi=__pollOne('sapi',needSapi,'cmd_voice_sapi_status');
-    const pVosk=__pollOne('vosk',needVosk,'cmd_voice_vosk_status');
-    const pKws=__pollOne('kws',needKws,'cmd_voice_kws_status');
-    var __pollIpcT0=performance.now();
-    // #endregion
+    const pEnd=__pollOne(needEnd,'cmd_voice_end_status');
+    const pSapi=__pollOne(needSapi,'cmd_voice_sapi_status');
+    const pVosk=__pollOne(needVosk,'cmd_voice_vosk_status');
+    const pKws=__pollOne(needKws,'cmd_voice_kws_status');
     Promise.all([pEnd,pSapi,pVosk,pKws]).then(function(arr){
-      // #region agent log
-      try{
-        var __ipcMs=Math.round(performance.now()-__pollIpcT0);
-        if(__ipcMs>=200||(__ipcMs>=50&&ui().drawerOpen&&ui().settingsPanel==='voiceWake')){
-          if(global.__dbgB5) global.__dbgB5('H','voice-wake.js:voiceStatusPollTick:ipc','poll ipc done',{ms:__ipcMs,drawerOpen:!!ui().drawerOpen,panel:ui().settingsPanel||''});
-        }
-      }catch(_){}
-      // #endregion
       try{
         const endRes=arr[0],sapiRes=arr[1],letVoskRes=arr[2],kwsRes=arr[3];
         let voskRes=letVoskRes;
@@ -1994,9 +2002,6 @@
         // Same fp: skip even with drawer open — was re-painting voiceWake every 1.5s → 假死.
         if(wakeFp===lastVoicePollWakeFp) return;
         lastVoicePollWakeFp=wakeFp;
-        // #region agent log
-        try{ if(global.__dbgB5) global.__dbgB5('D','voice-wake.js:voiceStatusPollTick','poll scheduleVoiceUiRender',{drawerOpen:!!ui().drawerOpen,panel:ui().settingsPanel||'',hasDrawerPayload:!!ui().drawerOpen}); }catch(_){}
-        // #endregion
         hooks().scheduleVoiceUiRender(ui().drawerOpen?{sapi:sapiRes,vosk:voskRes,kws:kwsRes,end:endRes}:null);
       }catch(err){
         console.error('voiceStatusPollTick',err);
@@ -2005,6 +2010,11 @@
       console.error('voiceStatusPollTick ipc',err);
     }).finally(function(){
       voiceStatusPollInFlight=false;
+      try{
+        if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag){
+          global.OneToneUiHeartbeat.clearTag('voiceStatusPoll');
+        }
+      }catch(_){}
     });
   }
 
