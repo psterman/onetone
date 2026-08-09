@@ -174,7 +174,7 @@ try {
   console.error('[islands] basic settings mount failed, keeping legacy DOM', err);
 }
 
-// P6：挂载语音配置岛到 #voiceConfigIsland（替换 legacy 文本短语编辑器，独占其子树）
+// P6：挂载语音配置岛到 #voiceConfigIsland（策略选择 + 取消/结束词；全局唤醒文字编辑器仍由 legacy TextPane 拥有）
 function mountVoiceConfigIsland(): void {
   const host = document.getElementById('voiceConfigIsland');
   if (!host) return;

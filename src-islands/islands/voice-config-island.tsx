@@ -11,7 +11,7 @@ function toast(msg: string): void {
   else console.log('[voice-config-island]', msg);
 }
 
-type TabKey = 'wake' | 'cancel' | 'end';
+type TabKey = 'cancel' | 'end';
 
 const STRATEGIES: { key: string; label: string }[] = [
   { key: 'auto', label: '自动' },
@@ -190,7 +190,7 @@ function PhraseManager({
 }
 
 export function VoiceConfigIsland(): JSX.Element {
-  const [tab, setTab] = React.useState<TabKey>('wake');
+  const [tab, setTab] = React.useState<TabKey>('cancel');
 
   return (
     <div className="ot-voice-config">
@@ -199,27 +199,9 @@ export function VoiceConfigIsland(): JSX.Element {
       <div className="ot-vc-divider" />
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
         <TabsList>
-          <TabsTrigger value="wake">唤醒词</TabsTrigger>
           <TabsTrigger value="cancel">取消词</TabsTrigger>
           <TabsTrigger value="end">结束词</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="wake">
-          <PhraseManager
-            title="唤醒词"
-            placeholder="例如：嘿，电脑"
-            maxLength={20}
-            getList={vc.getWakePhrases}
-            onAdd={async (p) => {
-              await vc.setWakePhrases(vc.getWakePhrases().concat([p]));
-            }}
-            onRemove={async (p) => {
-              await vc.setWakePhrases(vc.getWakePhrases().filter((x) => x !== p));
-            }}
-            minOne
-            hint="说出此口令后开始听写。修改即时生效，切换引擎（SAPI/Vosk/KWS）时按当前引擎保存。"
-          />
-        </TabsContent>
 
         <TabsContent value="cancel">
           <PhraseManager

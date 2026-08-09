@@ -495,7 +495,6 @@
         else if(listen&&listen.fillInput) listen.fillInput(inputId);
       };
     }
-    bindPhraseListen('btnVoiceWakeCustomListen','voiceWakeCustomInput');
     bindPhraseListen('btnVoiceEndCustomListen','voiceEndCustomInput');
     bindPhraseListen('btnVoiceCancelCustomListen','voiceCancelCustomInput');
     bindPhraseListen('btnVoiceSendCustomListen','voiceSendCustomInput');
@@ -687,11 +686,6 @@
         },
         onRemove:function(phrase){
           if(wakeApi&&wakeApi.toggleWakePhrase) wakeApi.toggleWakePhrase(phrase,true);
-        }
-      });
-      pc.bindPhraseTags('voiceWakePhraseSuggestions',{
-        onToggle:function(phrase,active){
-          if(wakeApi&&wakeApi.toggleWakePhrase) wakeApi.toggleWakePhrase(phrase,active);
         }
       });
       pc.bindPhraseTags('voiceEndPhraseTags',{

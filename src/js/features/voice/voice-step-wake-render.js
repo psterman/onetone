@@ -133,9 +133,6 @@
     var presets=$('voiceWakePresetsPanel');
     var custom=$('voiceWakeCustomBlock');
     var wakeHost=$('voiceSettingsWakeHost');
-    var suggestions=$('voiceWakePhraseSuggestions');
-    var poolLbl=$('voiceWakePresetPoolLbl');
-    var presetSection=$('voiceWakePresetSection');
     if(stack) stack.classList.toggle('is-scenario-voice-edit',!!scenarioM);
     if(body){
       body.hidden=!scenarioM;
@@ -167,13 +164,26 @@
     }
     var collapse=$('voiceWakePresetCollapse');
     if(collapse){ collapse.hidden=true; collapse.setAttribute('aria-hidden','true'); }
-    if(suggestions){ suggestions.hidden=true; suggestions.innerHTML=''; suggestions.setAttribute('aria-hidden','true'); }
-    if(presetSection) presetSection.hidden=true;
-    if(poolLbl) poolLbl.hidden=true;
     var actionBar=$('voiceWakeActionBar');
     if(actionBar){ actionBar.hidden=true; actionBar.setAttribute('aria-hidden','true'); }
+    var appTab=$('btnVoiceWakeKindApp');
+    var appPane=$('voiceWakeKindAppPane');
     var summonBlock=$('voiceOutputSummonBlock');
+    if(appTab){
+      appTab.hidden=hideGlobal;
+      appTab.setAttribute('aria-hidden',hideGlobal?'true':'false');
+    }
+    if(appPane){
+      appPane.hidden=hideGlobal||(global.__vp_voice_wake_kind__||'text')!=='app';
+      if(hideGlobal) appPane.setAttribute('aria-hidden','true');
+    }
     if(summonBlock&&hideGlobal) summonBlock.hidden=true;
+    if(hideGlobal&&(global.__vp_voice_wake_kind__||'')==='app'){
+      global.__vp_voice_wake_kind__='text';
+      if(global.OneToneVoiceStepSend&&global.OneToneVoiceStepSend.syncPhraseKindTabs){
+        global.OneToneVoiceStepSend.syncPhraseKindTabs('voiceWakeKindTabs','text');
+      }
+    }
     if(global.OneToneHabitScenarioVoiceCommand){
       if(global.OneToneHabitScenarioVoiceCommand.bindEvents){
         global.OneToneHabitScenarioVoiceCommand.bindEvents({});
@@ -389,15 +399,8 @@
     if(heroTitle) heroTitle.textContent=t('voiceWakePrimaryLbl');
     var activeLbl=$('voiceWakeActiveLbl');
     if(activeLbl) activeLbl.textContent=t('voiceWakeActiveLbl');
-    var presetLbl=$('voiceWakePresetPoolLbl');
-    if(presetLbl) presetLbl.textContent=t('voiceWakePresetQuickLbl');
     var wakeAdd=$('btnVoiceWakeCustomAdd');
     if(wakeAdd) wakeAdd.textContent=t('voiceWakeAddBtn');
-    // P6 守卫：语音配置岛挂载后，隐藏 legacy 文本短语编辑器（保留声音录制子页），避免重复控件。岛未挂载则原样保留。
-    if(window.OneToneIslands&&window.OneToneIslands.isMounted&&window.OneToneIslands.isMounted('voiceConfig')){
-      var tp=$('voiceWakeKindTextPane'); if(tp) tp.hidden=true;
-      var cb=$('voiceWakeCustomBlock'); if(cb) cb.hidden=true;
-    }
   }
 
   global.OneToneVoiceStepWake={

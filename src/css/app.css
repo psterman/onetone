@@ -3383,7 +3383,7 @@
       display:flex;align-items:center;justify-content:space-between;gap:8px;
     }
     .habit-scenario-keys-mode-lbl,.habit-scenario-keys-field-lbl{font-size:12px;font-weight:700}
-    .habit-scenario-keys-field{display:grid;gap:6px;padding:8px;border-radius:10px;background:rgba(255,255,255,.78);border:1px solid rgba(42,156,196,.12)}
+    .habit-scenario-keys-field{display:grid;gap:6px;padding:8px;border-radius:10px;background:var(--surface-high);border:1px solid var(--outline-variant)}
     .habit-scenario-keys-field.is-disabled{opacity:.55;pointer-events:none}
     .habit-scenario-keys-field-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
     .habit-scenario-field-badge{
@@ -3408,7 +3408,7 @@
     }
     #habitScenarioVoiceBody .habit-scenario-voice-fields{display:grid;gap:10px;margin-top:4px}
     .habit-scenario-voice-fields.is-disabled{opacity:.55;pointer-events:none}
-    .habit-scenario-voice-field{display:grid;gap:8px;padding:10px;border-radius:10px;background:rgba(255,255,255,.78);border:1px solid rgba(42,156,196,.12)}
+    .habit-scenario-voice-field{display:grid;gap:8px;padding:10px;border-radius:10px;background:var(--surface-high);border:1px solid var(--outline-variant)}
     .habit-scenario-voice-field--wake,.habit-scenario-voice-field--end{gap:8px}
     .habit-scenario-voice-command-host{margin:0 0 4px}
     .habit-scenario-voice-command-wrap.is-disabled{opacity:.55;pointer-events:none}

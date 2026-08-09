@@ -8,7 +8,12 @@
   function syncPhraseKindTabs(rootId,kind){
     var root=$(rootId);
     if(!root) return;
-    kind=kind==='sound'?'sound':'text';
+    var allowed={};
+    root.querySelectorAll('[data-phrase-kind]').forEach(function(btn){
+      var k=btn.getAttribute('data-phrase-kind')||'';
+      if(k) allowed[k]=true;
+    });
+    if(!allowed[kind]) kind=allowed.text?'text':(Object.keys(allowed)[0]||'text');
     root.querySelectorAll('[data-phrase-kind]').forEach(function(btn){
       var on=(btn.getAttribute('data-phrase-kind')||'')===kind;
       btn.classList.toggle('is-on',on);

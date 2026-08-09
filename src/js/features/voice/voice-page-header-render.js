@@ -152,8 +152,10 @@
       host.setAttribute('aria-label',t(tabsLblKey)||t('voicePhraseKindTabsLbl'));
       var textBtn=host.querySelector('[data-phrase-kind="text"]');
       var soundBtn=host.querySelector('[data-phrase-kind="sound"]');
+      var appBtn=host.querySelector('[data-phrase-kind="app"]');
       if(textBtn) textBtn.textContent=t('voicePhraseKindText');
       if(soundBtn) soundBtn.textContent=t('voicePhraseKindSound');
+      if(appBtn) appBtn.textContent=t('voicePhraseKindApp');
     }
     applyPhraseKindTabLabels('voiceWakeKindTabs','voicePhraseKindTabsWakeLbl');
     applyPhraseKindTabLabels('voiceCancelKindTabs','voicePhraseKindTabsCancelLbl');
@@ -170,8 +172,6 @@
     if(wakeHeroTitle) wakeHeroTitle.textContent=t('voiceWakePrimaryLbl');
     const wakeCustomHint=$('voiceWakeCustomHint');
     if(wakeCustomHint) wakeCustomHint.textContent=t('voiceWakeCustomHint');
-    const wakePresetPoolLbl=$('voiceWakePresetPoolLbl');
-    if(wakePresetPoolLbl) wakePresetPoolLbl.textContent=t('voiceWakePresetQuickLbl')||t('voiceWakePresetPoolLbl');
     const wakeCustomInput=$('voiceWakeCustomInput');
     if(wakeCustomInput) wakeCustomInput.placeholder=t('voiceWakeCustomPlaceholder');
     const endCustomLbl=$('voiceEndCustomLbl');
@@ -182,11 +182,6 @@
     if(wakeCustomAdd) wakeCustomAdd.textContent=t('voiceWakeAddBtn')||t('voicePhraseAdd');
     const endCustomAdd=$('btnVoiceEndCustomAdd');
     if(endCustomAdd) endCustomAdd.textContent=t('voicePhraseAdd');
-    const wakeListen=$('btnVoiceWakeCustomListen');
-    if(wakeListen){
-      wakeListen.title=t('voicePhraseListenBtn');
-      wakeListen.setAttribute('aria-label',t('voicePhraseListenBtn'));
-    }
     const endListen=$('btnVoiceEndCustomListen');
     if(endListen){
       endListen.title=t('voicePhraseListenBtn');

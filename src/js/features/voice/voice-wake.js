@@ -2424,30 +2424,8 @@
     var lang=global.__vp_voice_wake_lang__||'zh';
     var active=currentWakePhraseList();
     if(mode==='vosk') active=filterWakePhrasesByLang(active,lang);
-    var catalog=wakeCatalogForLang(lang,mode);
-    var activeSet={};
-    active.forEach(function(p){ activeSet[p]=true; });
     var activeModel=active.map(function(p){ return {phrase:p,active:true}; });
     pc.renderPhraseTags('voiceWakePhraseTags',activeModel);
-    var suggestions=catalog.filter(function(p){ return !activeSet[p]; });
-    var pool=$('voiceWakePhraseSuggestions');
-    var section=$('voiceWakePresetSection');
-    var poolLbl=$('voiceWakePresetPoolLbl');
-    if(pool){
-      if(suggestions.length){
-        if(section) section.hidden=false;
-        pool.hidden=false;
-        pool.setAttribute('aria-hidden','false');
-        if(poolLbl) poolLbl.textContent=t('voiceWakePresetQuickLbl');
-        var suggestModel=suggestions.map(function(p){ return {phrase:p,active:false}; });
-        pc.renderPhraseTags('voiceWakePhraseSuggestions',suggestModel);
-      }else{
-        if(section) section.hidden=true;
-        pool.hidden=true;
-        pool.innerHTML='';
-        pool.setAttribute('aria-hidden','true');
-      }
-    }
     var collapse=$('voiceWakePresetCollapse');
     if(collapse){ collapse.hidden=true; collapse.setAttribute('aria-hidden','true'); }
     var legacy=$('voiceWakeCustomChips');

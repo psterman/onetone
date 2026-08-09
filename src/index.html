@@ -1710,6 +1710,7 @@
                       <div class="voice-phrase-kind-tabs" id="voiceWakeKindTabs" role="tablist" aria-label="唤醒怎么激活">
                         <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceWakeKindText" role="tab" aria-selected="true" aria-controls="voiceWakeKindTextPane">输入文字</button>
                         <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceWakeKindSound" role="tab" aria-selected="false" aria-controls="voiceWakeKindSoundPane">录制声音</button>
+                        <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="app" id="btnVoiceWakeKindApp" role="tab" aria-selected="false" aria-controls="voiceWakeKindAppPane">按应用</button>
                       </div>
                       <div class="flow-lang-toggle" id="voiceWakeLangToggle" role="group" aria-label="唤醒词语言" hidden>
                         <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceWakeLangZh">中</button>
@@ -1745,18 +1746,24 @@
                         <input type="text" class="voice-phrase-custom-input" id="voiceWakeCustomInput" autocomplete="off" spellcheck="false" maxlength="20" placeholder="例如：嘿，电脑" aria-labelledby="voiceWakeCustomLbl">
                         <span class="voice-wake-input-count" id="voiceWakeCustomCount" aria-hidden="true">0/20</span>
                       </div>
-                      <button type="button" class="voice-phrase-custom-listen" id="btnVoiceWakeCustomListen" title="说一句，用识别结果填入" aria-label="听写填入">🎤</button>
                       <button type="button" class="voice-phrase-custom-add voice-wake-add-btn" id="btnVoiceWakeCustomAdd">+ 添加</button>
                     </div>
                     <p class="voice-phrase-panel-hint sr-only" id="voiceWakeCustomHint">点击标签开关；× 删除自定义</p>
-                    <section class="voice-wake-preset-section" id="voiceWakePresetSection" hidden>
-                      <p class="voice-phrase-pool-label" id="voiceWakePresetPoolLbl">从系统预设极速添加</p>
-                      <div class="voice-phrase-tags voice-phrase-pool" id="voiceWakePhraseSuggestions" role="listbox" aria-labelledby="voiceWakePresetPoolLbl"></div>
-                    </section>
                     </div>
                     </div>
                     <div class="voice-phrase-kind-pane" id="voiceWakeKindSoundPane" data-phrase-kind-pane="sound" role="tabpanel" aria-labelledby="btnVoiceWakeKindSound" hidden>
                       <div id="voiceWakeAcousticHost" class="habit-scenario-voice-command-host voice-wake-acoustic-host"></div>
+                    </div>
+                    <div class="voice-phrase-kind-pane" id="voiceWakeKindAppPane" data-phrase-kind-pane="app" role="tabpanel" aria-labelledby="btnVoiceWakeKindApp" hidden>
+                      <section class="voice-output-summon-block voice-wake-summon-block voice-wake-flat" id="voiceOutputSummonBlock">
+                        <div class="voice-wake-card-titles">
+                          <p class="voice-phrase-panel-title" id="voiceOutputSummonLbl">应用唤醒语</p>
+                          <p class="voice-wake-card-sub sr-only" id="voiceOutputSummonHint"></p>
+                        </div>
+                        <p class="voice-output-summon-empty" id="voiceOutputSummonEmpty">尚未设置，请到按键页添加</p>
+                        <div class="voice-output-summon-rows" id="voiceOutputSummonChips"></div>
+                        <button type="button" class="voice-mode-meta-link" id="btnVoiceOutputSummonManage">在按键页管理</button>
+                      </section>
                     </div>
                     <p class="voice-phrase-custom-lbl sr-only" id="voiceWakeCustomLbl">自定义唤醒词</p>
                     <p class="voice-phrase-custom-lbl sr-only" id="voiceWakeCustomSummary">自定义唤醒词</p>
@@ -1792,15 +1799,6 @@
                     <p class="sr-only" id="voiceWakeCompactLbl">当前唤醒词</p>
                     <div id="voiceWakeCompact" hidden aria-hidden="true"></div>
                     </div>
-                    <section class="voice-output-summon-block voice-wake-summon-block voice-wake-flat" id="voiceOutputSummonBlock">
-                      <div class="voice-wake-card-titles">
-                        <p class="voice-phrase-panel-title" id="voiceOutputSummonLbl">应用唤醒语</p>
-                        <p class="voice-wake-card-sub sr-only" id="voiceOutputSummonHint"></p>
-                      </div>
-                      <p class="voice-output-summon-empty" id="voiceOutputSummonEmpty">尚未设置，请到按键页添加</p>
-                      <div class="voice-output-summon-rows" id="voiceOutputSummonChips"></div>
-                      <button type="button" class="voice-mode-meta-link" id="btnVoiceOutputSummonManage">在按键页管理</button>
-                    </section>
                     </div>
                   </div>
                   </div>

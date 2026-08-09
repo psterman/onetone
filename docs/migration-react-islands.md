@@ -353,7 +353,7 @@
 - `src/index.html`：`#settingsPanelVoiceWake` 内新增 `#voiceConfigIsland.ot-island` 容器。
 - legacy 守卫（全部 `if (OneToneIslands.isMounted('voiceConfig'))` 触发，岛未挂载即原样保留 legacy）：
   - `voice-phrase-custom.js` `renderPhraseTags`：加 `isInsideIsland(el)` 守卫（保护任意被岛接管的短语标签容器）。
-  - `voice-step-wake-render.js` `renderWakePage` 末：隐藏 `#voiceWakeKindTextPane` + `#voiceWakeCustomBlock`。
+  - `voice-step-wake-render.js`：全局唤醒文字编辑器由 legacy TextPane 拥有（不再因 voiceConfig 岛挂载而隐藏）；岛仅保留策略 + 取消/结束词。
   - `voice-step-recognize-render.js` `renderRecognizePage` 末：隐藏 `#voiceCancelKindTextPane`/`#voiceCancelCustomBlock`/`#voiceEndKindTextPane`/`#voiceEndCustomBlock`。
   - `voice-wake.js` `syncVoiceStrategyTabButtons`：`grid.hidden = islandOn; if(islandOn) return;`（隐藏 legacy 策略开关，保留声音录制子页）。
 - `scripts/test-voice-config.mjs`：phrase-utils 单测；`scripts/smoke-islands.mjs` 增 P6 bundle 标记与容器校验；`package.json` `test:islands` 串入新测试。
