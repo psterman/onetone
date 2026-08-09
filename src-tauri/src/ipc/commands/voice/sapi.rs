@@ -9,8 +9,21 @@ pub(super) fn app_resource_dir(app: &tauri::AppHandle) -> Option<std::path::Path
 }
 
 #[tauri::command]
-pub fn cmd_voice_sapi_status(state: tauri::State<Arc<AppState>>) -> serde_json::Value {
-    crate::voice_sapi_runtime::voice_sapi_status(&state)
+pub async fn cmd_voice_sapi_status(
+    state: tauri::State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    let state = Arc::clone(state.inner());
+    let join = tauri::async_runtime::spawn_blocking(move || {
+        crate::ui_heartbeat::note_ipc_enter("voice_sapi_status");
+        let v = crate::voice_sapi_runtime::voice_sapi_status(&state);
+        crate::ui_heartbeat::note_ipc_exit("voice_sapi_status");
+        v
+    });
+    match tokio::time::timeout(std::time::Duration::from_millis(1500), join).await {
+        Ok(Ok(v)) => Ok(v),
+        Ok(Err(e)) => Err(format!("sapi status task failed: {e}")),
+        Err(_) => Err("sapi status timeout".into()),
+    }
 }
 
 #[tauri::command]

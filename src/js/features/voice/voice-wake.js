@@ -22,17 +22,54 @@
   var voiceStrategyHold=null;
   /** Ignore strategy/engine clicks shortly after opening voice panel (howto → drawer ghost click). */
   var voiceOpenClickGuardUntil=0;
+  /** Longer window for strategy-tab (toastKind=lite) ghosts — layout settle can click for seconds. */
+  var voiceOpenLiteGuardUntil=0;
+  /** After a lite strategy apply, ignore further lite tabs (reflow under cursor @+2–3s). */
+  var voiceLiteStrategyCooldownUntil=0;
   /** Invalidate deferred voiceWake paint when panel re-opens or leaves (Soft Pad openGen pattern). */
   var voiceOpenGen=0;
+  /** Skip redundant mode-switch chrome+flow when status/render-loop re-enter with same UI state. */
+  var lastVoiceModeSwitchFp='';
+  var voiceModeFlowDebounceTimer=0;
+  /** After voiceWake open, delay full flow/status paint so it cannot stack with remount. */
+  var voiceOpenFlowSettleUntil=0;
   function armOpenClickGuard(ms){
-    voiceOpenClickGuardUntil=Date.now()+(Number(ms)||450);
+    var n=Number(ms)||450;
+    var now=Date.now();
+    voiceOpenClickGuardUntil=now+n;
+    // lite tab ghosts kept firing after 2.5s (logs: auto @+3.1s, enhanced @+5.5s).
+    voiceOpenLiteGuardUntil=now+Math.max(n,8000);
+    voiceOpenFlowSettleUntil=now+900;
+  }
+  function isOpenFlowSettling(){
+    return Date.now()<voiceOpenFlowSettleUntil;
   }
   function isOpenClickGuarded(){
     return Date.now()<voiceOpenClickGuardUntil;
   }
+  function isOpenLiteGuarded(){
+    return Date.now()<voiceOpenLiteGuardUntil;
+  }
+  function noteLiteStrategyCommit(){
+    var now=Date.now();
+    // Spaced ghosts (~2.7s) land after inFlight clears — cooldown covers that gap.
+    voiceLiteStrategyCooldownUntil=now+5000;
+    voiceOpenLiteGuardUntil=Math.max(voiceOpenLiteGuardUntil,now+2500);
+    // Do not drain a queued lite ghost after this switch finishes.
+    if(voiceModeSwitchPending&&voiceModeSwitchPending.kind==='strategy'){
+      var po=voiceModeSwitchPending.opts||{};
+      if(po.toastKind==='lite'&&!po.force) voiceModeSwitchPending=null;
+    }
+  }
+  function isLiteStrategyCooling(){
+    return Date.now()<voiceLiteStrategyCooldownUntil;
+  }
   function bumpOpenGen(){
     voiceOpenGen=(voiceOpenGen+1)>>>0;
     if(voiceOpenGen===0) voiceOpenGen=1;
+    lastVoiceModeSwitchFp='';
+    lastVoicePollWakeFp='';
+    voiceOpenFlowSettleUntil=Date.now()+900;
     return voiceOpenGen;
   }
   function getOpenGen(){ return voiceOpenGen; }
@@ -527,8 +564,10 @@
     const supervisor={
       desiredEngine:String(voskRes.desiredEngine||sapiRes.desiredEngine||kwsRes.desiredEngine||'').trim(),
       activeEngine:String(voskRes.activeEngine||sapiRes.activeEngine||kwsRes.activeEngine||'').trim(),
+      listeningStrategy:String(voskRes.listeningStrategy||sapiRes.listeningStrategy||kwsRes.listeningStrategy||'').trim(),
       degraded:!!(voskRes.degraded||sapiRes.degraded||kwsRes.degraded),
-      degradedReason:String(voskRes.degradedReason||sapiRes.degradedReason||kwsRes.degradedReason||'').trim()
+      degradedReason:String(voskRes.degradedReason||sapiRes.degradedReason||kwsRes.degradedReason||'').trim(),
+      activateBusy:!!(voskRes.activateBusy||sapiRes.activateBusy||kwsRes.activateBusy)
     };
     try{
       var bus=global.OneToneSoundBus;
@@ -617,7 +656,12 @@
     // Keep FE desiredEngine mirrors aligned with product strategy (matches Rust apply_voice_listening_strategy).
     if(strategy==='off') syncDesiredEngineConfig('none');
     else if(strategy==='enhanced') syncDesiredEngineConfig('vosk');
-    else if(strategy==='auto'||strategy==='resourceSaver') syncDesiredEngineConfig('kws');
+    else if(strategy==='auto') syncDesiredEngineConfig('kws');
+    // resourceSaver: Rust may keep Vosk when KWS keywords_empty — do NOT force kws.enabled
+    // (that fought live vosk on every poll and stacked wake UI work).
+    else if(strategy==='resourceSaver'){
+      /* strategy label only; engine flags follow supervisor status */
+    }
     return true;
   }
 
@@ -873,6 +917,9 @@
     const mode=resolveRuntimeEngine();
     const strategy=currentListeningStrategy();
     const endEnabled=global.OneToneVoiceEnd.enabledInConfig();
+    var fp=[mode,strategy,voiceModeSwitchInFlight?1:0,endEnabled?1:0,voskOnlyUi()?1:0].join('|');
+    if(fp===lastVoiceModeSwitchFp) return;
+    lastVoiceModeSwitchFp=fp;
     const sapiCard=$('btnVoiceModeSapi');
     const voskCard=$('btnVoiceModeVosk');
     const currentEl=$('voiceModeCurrent');
@@ -914,11 +961,26 @@
     global.OneToneVoiceEnd.syncModeUi();
     renderVoiceEngineTabs();
     renderSettingsVoiceSubnav();
+    // Debounce flow: strategy snaps on open used to schedule full flow 3× in ~3s.
+    // Also wait out open settle — flow @+320ms stacked with remount → UI_HB_STALL_5S.
     if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
-      global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+      clearTimeout(voiceModeFlowDebounceTimer);
+      var flowDelay=Math.max(320, voiceOpenFlowSettleUntil?Math.max(0,voiceOpenFlowSettleUntil-Date.now()):0);
+      voiceModeFlowDebounceTimer=setTimeout(function(){
+        voiceModeFlowDebounceTimer=0;
+        if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+          global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+        }
+      },flowDelay);
     }else{
       hooks().renderVoiceSettingsFlow();
     }
+    // Reflow under cursor after chrome paint — brief lite ignore (ghost tabs @+2–3s).
+    try{
+      if(ui().drawerOpen&&ui().settingsPanel==='voiceWake'){
+        voiceOpenLiteGuardUntil=Math.max(voiceOpenLiteGuardUntil,Date.now()+1200);
+      }
+    }catch(_){}
   }
 
   function applyHomeVoiceModeSwitchUi(){
@@ -1367,21 +1429,27 @@
       return new Promise(function(resolve){ setTimeout(resolve,ms); });
     }
     function tick(){
-      if(seq!==voiceModeSwitchSeq) return Promise.resolve('cancelled');
+      if(seq!==voiceModeSwitchSeq) return Promise.resolve({state:'cancelled'});
       return ipcWithTimeout('cmd_voice_vosk_status',{},4000).then(function(st){
-        if(seq!==voiceModeSwitchSeq) return 'cancelled';
+        if(seq!==voiceModeSwitchSeq) return {state:'cancelled'};
         const busy=!!(st&&(st.activateBusy===true||(st.supervisor&&st.supervisor.activateBusy===true)));
-        if(!busy) return 'idle';
-        if(Date.now()-t0>=timeoutMs) return 'timeout';
-        return delay(120).then(tick);
+        if(!busy) return {state:'idle',vosk:st||null};
+        if(Date.now()-t0>=timeoutMs) return {state:'timeout',vosk:st||null};
+        return delay(250).then(tick);
       }).catch(function(){
-        if(seq!==voiceModeSwitchSeq) return 'cancelled';
-        if(Date.now()-t0>=timeoutMs) return 'timeout';
-        return delay(200).then(tick);
+        if(seq!==voiceModeSwitchSeq) return {state:'cancelled'};
+        if(Date.now()-t0>=timeoutMs) return {state:'timeout'};
+        return delay(300).then(tick);
       });
     }
     // Let the activate thread set pending / take ACTIVATE_LOCK before first poll.
     return delay(40).then(tick);
+  }
+
+  function deferStrategyUiPaint(fn){
+    setTimeout(function(){
+      try{ fn(); }catch(_){}
+    },0);
   }
 
   function pumpListeningStrategySwitch(strategy,opts){
@@ -1395,7 +1463,9 @@
     const toastKind=(opts&&opts.toastKind)||'default';
     const toastLite=toastKind==='lite';
     const homeOnly=!ui().drawerOpen;
-    const statusOpts={liveOnly:homeOnly};
+    // Always liveOnly — full vosk/sapi remount + modeSwitch after strategy IPC was UI_HB_STALL_5S
+    // on voiceWake (runtime-live: switch enhanced → gap 5108ms seq=234, empty ipc).
+    const statusOpts={liveOnly:true};
     const syncOpts={lightOnly:true,homeOnly:homeOnly};
     voiceModeSwitchInFlight=true;
     setVoiceModeCardBusy(true);
@@ -1406,11 +1476,9 @@
     const finish=function(){
       voiceModeSwitchInFlight=false;
       setVoiceModeCardBusy(false);
-      // Flush islands refresh deferred during applyMvpInit while switch was in-flight.
       try{
-        if(global.__otPendingIslandsRefresh){
-          global.__otPendingIslandsRefresh=false;
-          if(typeof global.OneToneIslandsRefresh==='function') global.OneToneIslandsRefresh();
+        if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag){
+          global.OneToneUiHeartbeat.clearTag('voiceStrategy:'+strategy);
         }
       }catch(_){}
       if(drainVoiceModeSwitchPending()) return;
@@ -1418,9 +1486,18 @@
         applyListeningStrategyToConfig(strategy);
         setStrategyHold(strategy,5000,true);
       }
-      applyHomeVoiceModeSwitchUi();
-      if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
-      else if(!ui().drawerOpen) hooks().renderHomeLiveZone();
+      // Islands + home remount on the same tick as settle caused UI_HB gap / 未响应.
+      deferStrategyUiPaint(function(){
+        try{
+          if(global.__otPendingIslandsRefresh){
+            global.__otPendingIslandsRefresh=false;
+            if(typeof global.OneToneIslandsRefresh==='function') global.OneToneIslandsRefresh();
+          }
+        }catch(_){}
+        applyHomeVoiceModeSwitchUi();
+        if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
+        else if(!ui().drawerOpen) hooks().renderHomeLiveZone();
+      });
     };
     ipcWithTimeout('cmd_voice_set_listening_strategy',{strategy:String(strategy||'').trim()},12000).then(function(bundle){
       if(seq!==voiceModeSwitchSeq&&voiceModeSwitchPending) return;
@@ -1437,30 +1514,36 @@
       }catch(_){}
       const settle=(bundle&&bundle.activateAsync)
         // off 只需停机，不必等满 15s（否则顶栏开关会像假死）。
-        ?waitForActivateIdle(seq,strategy==='off'?3500:15000).then(function(state){
+        ?waitForActivateIdle(seq,strategy==='off'?3500:15000).then(function(settled){
           try{
             if(global.OneToneIpc&&global.OneToneIpc.invoke){
-              global.OneToneIpc.invoke('cmd_app_log',{line:'fe set_listening_strategy settled strategy='+strategy+' state='+String(state||'')}).catch(function(){});
+              global.OneToneIpc.invoke('cmd_app_log',{line:'fe set_listening_strategy settled strategy='+strategy+' state='+String((settled&&settled.state)||'')}).catch(function(){});
             }
           }catch(_){}
-          return state;
+          return settled;
         })
-        :Promise.resolve('sync');
-      return settle.then(function(){
+        :Promise.resolve({state:'sync'});
+      return settle.then(function(settled){
         if(seq!==voiceModeSwitchSeq&&voiceModeSwitchPending) return;
-        // Force the user-requested strategy onto the bundle so stale supervisor fields cannot win.
+        // Strategy IPC has no voice* status — reuse idle-poll vosk so we never invent stopped.
+        const voskLive=(settled&&settled.vosk)||(bundle&&bundle.voiceVosk)||null;
         const forced=Object.assign({},bundle||{},{strategy:strategy});
+        if(voskLive) forced.voiceVosk=voskLive;
         const uiMode=strategy==='resourceSaver'?'kws':'vosk';
         const applied=applyDesiredEngineResult(forced,uiMode,statusOpts,syncOpts);
         applyListeningStrategyToConfig(strategy);
         setStrategyHold(strategy,8000,true);
+        const snapWake=(hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake)||{};
+        const voskForHome=applied.voskRes||voskLive||snapWake.vosk||null;
+        const sapiForHome=applied.sapiRes||snapWake.sapi||null;
+        const kwsForHome=applied.kwsRes||snapWake.kws||null;
         if(strategy==='off'){
           hooks().syncHomeFromVoiceSettings(
-            applied.voskRes||{enabled:false,state:'stopped'},
-            applied.sapiRes||{enabled:false,state:'stopped'},
+            voskForHome||{enabled:false,state:'stopped'},
+            sapiForHome||{enabled:false,state:'stopped'},
             null,
             syncOpts,
-            applied.kwsRes
+            kwsForHome
           );
           scheduleVoiceToggleRefresh();
           return;
@@ -1469,41 +1552,35 @@
           voiceWakeExpandedMode='kws';
           hideVoiceSetupOverlay();
           hooks().syncHomeFromVoiceSettings(
-            applied.voskRes||{enabled:false,state:'stopped'},
-            applied.sapiRes||{enabled:false,state:'stopped'},
+            voskForHome,
+            sapiForHome,
             null,
             syncOpts,
-            applied.kwsRes
+            kwsForHome
           );
           strategySwitchSuccessToast(strategy,toastLite);
           scheduleVoiceToggleRefresh();
           return;
         }
         voiceWakeExpandedMode='vosk';
-        if(shouldShowVoskMissingPanel(applied.voskRes)){
-          handleVoskMissingAfterStrategySwitch(strategy,applied.voskRes);
+        if(shouldShowVoskMissingPanel(applied.voskRes||voskLive)){
+          handleVoskMissingAfterStrategySwitch(strategy,applied.voskRes||voskLive);
         }else{
           hideVoiceSetupOverlay();
         }
         pollVoskAfterStrategySwitch(strategy,seq);
-        return ipcWithTimeout('cmd_voice_end_status',{},8000).catch(function(){return null;}).then(function(endRes){
-          if(voiceModeSwitchPending) return;
-          if(endRes){
-            global.OneToneVoiceEnd.syncConfigFromStatus(endRes);
-            const snap=hooks().voiceUiSnapshot;
-            if(snap) snap.end=Object.assign({},snap.end||{},endRes);
-          }
-          applyListeningStrategyToConfig(strategy);
-          hooks().syncHomeFromVoiceSettings(
-            applied.voskRes||{enabled:false,state:'stopped'},
-            {enabled:false,state:'stopped'},
-            endRes,
-            syncOpts,
-            applied.kwsRes
-          );
-          strategySwitchSuccessToast(strategy,toastLite);
-          scheduleVoiceToggleRefresh();
-        });
+        // Listening strategy does not change end/dictation — skip cmd_voice_end_status
+        // (was stacking with islands refresh → UI_HB stall on 省电↔增强).
+        applyListeningStrategyToConfig(strategy);
+        hooks().syncHomeFromVoiceSettings(
+          voskForHome,
+          {enabled:false,state:'stopped'},
+          null,
+          syncOpts,
+          kwsForHome
+        );
+        strategySwitchSuccessToast(strategy,toastLite);
+        scheduleVoiceToggleRefresh();
       });
     }).catch(function(err){
       if(voiceModeSwitchPending) return;
@@ -1542,8 +1619,12 @@
     opts=opts||{};
     strategy=String(strategy||'').trim();
     if(strategy!=='auto'&&strategy!=='resourceSaver'&&strategy!=='enhanced'&&strategy!=='off') return;
-    // Homepage howto click opening the drawer must not land on strategy tabs under the cursor.
-    if(isOpenClickGuarded()&&opts.toastKind==='lite'){
+    // Homepage howto / deferred island clicks must not land on strategy tabs under the cursor.
+    var liteClick=opts.toastKind==='lite';
+    // #region agent log
+    try{ if(global.__dbgB5) global.__dbgB5('C','voice-wake.js:switchListeningStrategy','strategy switch attempt',{strategy:strategy,toastKind:opts.toastKind||'',force:!!opts.force,liteGuard:isOpenLiteGuarded()?1:0,clickGuard:isOpenClickGuarded()?1:0,inFlight:voiceModeSwitchInFlight?1:0}); }catch(_){}
+    // #endregion
+    if(!opts.force&&((liteClick&&isOpenLiteGuarded())||(!liteClick&&isOpenClickGuarded()))){
       try{
         if(global.OneToneIpc&&global.OneToneIpc.invoke){
           global.OneToneIpc.invoke('cmd_app_log',{line:'fe switchListeningStrategy ignored open-guard strategy='+strategy}).catch(function(){});
@@ -1551,6 +1632,15 @@
       }catch(_){}
       return;
     }
+    // Ghost multi-tab hits: do NOT coalesce lite into pending — drain applied the ghost
+    // right after the first switch (logs: resourceSaver→auto→enhanced, inFlight:0 each time).
+    if(liteClick&&!opts.force&&(voiceModeSwitchInFlight||isLiteStrategyCooling())){
+      // #region agent log
+      try{ if(global.__dbgB5) global.__dbgB5('C','voice-wake.js:switchListeningStrategy:drop','lite strategy dropped inFlight/cooldown',{strategy:strategy,inFlight:voiceModeSwitchInFlight?1:0,cooling:isLiteStrategyCooling()?1:0}); }catch(_){}
+      // #endregion
+      return;
+    }
+    if(liteClick) noteLiteStrategyCommit();
     voiceModeSwitchSeq++;
     hooks().markVoiceEngineBootHandled();
     if(strategy==='resourceSaver') setVoiceWakeExpandedMode('kws');
@@ -1568,22 +1658,32 @@
     }catch(_){}
     if(alreadyMatched){
       clearStrategyHold(strategy);
-      applyHomeVoiceModeSwitchUi();
+      deferStrategyUiPaint(function(){
+        applyHomeVoiceModeSwitchUi();
+        try{
+          if(global.__otPendingIslandsRefresh){
+            global.__otPendingIslandsRefresh=false;
+            if(typeof global.OneToneIslandsRefresh==='function') global.OneToneIslandsRefresh();
+          }
+        }catch(_){}
+      });
       if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.mirrorGlobalToOverride){
         global.OneToneVoiceSchemeContext.mirrorGlobalToOverride();
       }
-      try{
-        if(global.__otPendingIslandsRefresh){
-          global.__otPendingIslandsRefresh=false;
-          if(typeof global.OneToneIslandsRefresh==='function') global.OneToneIslandsRefresh();
-        }
-      }catch(_){}
       return;
     }
-    applyHomeVoiceModeSwitchUi();
+    // Lite: skip full modeSwitch paint before IPC — was stacking with sync save_config and 假死.
+    if(liteClick){
+      syncVoiceStrategyTabButtons(false);
+    }else{
+      deferStrategyUiPaint(applyHomeVoiceModeSwitchUi);
+    }
     if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.mirrorGlobalToOverride){
       global.OneToneVoiceSchemeContext.mirrorGlobalToOverride();
     }
+    try{
+      if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.setTag) global.OneToneUiHeartbeat.setTag('voiceStrategy:'+strategy);
+    }catch(_){}
     pumpListeningStrategySwitch(strategy,opts);
   }
 
@@ -1606,7 +1706,8 @@
       else hooks().toast(mode==='sapi'?t('voiceModeSwitchedLite'):t('voiceModeSwitchedPro'));
     }
     const homeOnly=!ui().drawerOpen;
-    const statusOpts={liveOnly:homeOnly};
+    // Same as strategy switch: never full remount on the click/IPC settle path.
+    const statusOpts={liveOnly:true};
     const syncOpts={lightOnly:true,homeOnly:homeOnly};
     voiceModeSwitchInFlight=true;
     setVoiceModeCardBusy(true);
@@ -1614,9 +1715,11 @@
       voiceModeSwitchInFlight=false;
       setVoiceModeCardBusy(false);
       if(drainVoiceModeSwitchPending()) return;
-      applyHomeVoiceModeSwitchUi();
-      if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
-      else if(!ui().drawerOpen) hooks().renderHomeLiveZone();
+      deferStrategyUiPaint(function(){
+        applyHomeVoiceModeSwitchUi();
+        if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
+        else if(!ui().drawerOpen) hooks().renderHomeLiveZone();
+      });
     };
     // Explicit engine pick maps to product strategy. Never map vosk → auto
     // (that was snapping 增强/省电 back to 自动).
@@ -1765,11 +1868,14 @@
     const kwsState=(w.kws&&w.kws.state)||'';
     if(voskState==='starting'||sapiState==='starting'||kwsState==='starting') return 3000;
     if(document.hidden&&!ui().drawerOpen) return 2000;
+    // voiceWake first: dictating used to drop to 500ms×4 status IPC and 假死 after wake
+    // (resourceSaver+「开始输入」→ UI_HB_STALL_5S empty tag).
+    if(ui().drawerOpen&&ui().settingsPanel==='voiceWake') return 8000;
     const endSnap=hooks().voiceUiSnapshot.end||{};
     if(hooks().sessionActiveState(endSnap.state||'idle')) return 500;
     if(!ui().drawerOpen) return 2000;
     if(ui().drawerOpen&&!settingsPanelNeedsVoicePoll()) return 2000;
-    if(ui().drawerOpen&&(ui().settingsPanel==='debug'||ui().settingsPanel==='voiceWake')) return 1500;
+    if(ui().drawerOpen&&(ui().settingsPanel==='debug')) return 1500;
     if(!ui().drawerOpen&&(voiceWakeEnabledInConfig()||global.OneToneVoiceEnd.enabledInConfig())) return 2000;
     if(runtime().paused) return 1500;
     return 1500;
@@ -1802,6 +1908,14 @@
     if(!voiceStatusPollNeeded()) return;
     if(voiceStatusPollInFlight) return;
     voiceStatusPollInFlight=true;
+    // #region agent log
+    try{
+      if(!global.__dbgB5PollAt||Date.now()-global.__dbgB5PollAt>3000){
+        global.__dbgB5PollAt=Date.now();
+        if(global.__dbgB5) global.__dbgB5('H','voice-wake.js:voiceStatusPollTick:enter','poll tick enter',{drawerOpen:!!ui().drawerOpen,panel:ui().settingsPanel||''});
+      }
+    }catch(_){}
+    // #endregion
     const cfg=state().config||{};
     const sapiCfg=cfg.voiceSapi||cfg.voice_sapi;
     const voskCfg=cfg.voiceVosk||cfg.voice_vosk;
@@ -1818,16 +1932,40 @@
     // Acoustic override may run Vosk while config still says SAPI enabled — always
     // poll every wake backend when any is on so the active card is not stuck on「已停止」.
     const anyWake=!!(sapiCfg&&sapiCfg.enabled)||!!(voskCfg&&voskCfg.enabled)||!!(kwsCfg&&kwsCfg.enabled);
-    const needSapi=anyWake||(drawerVoice&&(panel==='voiceWake'||panel==='debug'));
-    const needVosk=anyWake||(drawerVoice&&(panel==='voiceWake'||panel==='debug'));
-    const needKws=anyWake
-      ||(drawerVoice&&(panel==='voiceWake'||panel==='debug'||panel==='debug'))
-      ||voiceWakeExpandedMode==='kws';
-    const pEnd=needEnd?global.OneToneIpc.invoke('cmd_voice_end_status',{}).catch(function(){return null;}):Promise.resolve(null);
-    const pSapi=needSapi?global.OneToneIpc.invoke('cmd_voice_sapi_status',{}).catch(function(){return null;}):Promise.resolve(null);
-    const pVosk=needVosk?global.OneToneIpc.invoke('cmd_voice_vosk_status',{}).catch(function(){return null;}):Promise.resolve(null);
-    const pKws=needKws?global.OneToneIpc.invoke('cmd_voice_kws_status',{}).catch(function(){return null;}):Promise.resolve(null);
+    // voiceWake: skip idle backends. 4-way poll + wake 「开始输入」stacked into UI_HB_STALL_5s.
+    const wakePanel=drawerVoice&&(panel==='voiceWake'||panel==='debug');
+    const needSapi=!!(sapiCfg&&sapiCfg.enabled)||panel==='debug'||(anyWake&&!wakePanel);
+    const needVosk=!!(voskCfg&&voskCfg.enabled)||panel==='debug'||wakePanel||(anyWake&&!wakePanel);
+    const needKws=!!(kwsCfg&&kwsCfg.enabled)||panel==='debug'||(anyWake&&!wakePanel);
+    // #region agent log
+    function __pollOne(name,need,cmd){
+      if(!need) return Promise.resolve(null);
+      var t0=performance.now();
+      return global.OneToneIpc.invoke(cmd,{}).then(function(res){
+        try{
+          var ms=Math.round(performance.now()-t0);
+          if(ms>=50&&ui().drawerOpen&&ui().settingsPanel==='voiceWake'&&global.__dbgB5){
+            global.__dbgB5('L4','voice-wake.js:pollOne','poll one done',{name:name,ms:ms});
+          }
+        }catch(_){}
+        return res;
+      }).catch(function(){return null;});
+    }
+    const pEnd=__pollOne('end',needEnd,'cmd_voice_end_status');
+    const pSapi=__pollOne('sapi',needSapi,'cmd_voice_sapi_status');
+    const pVosk=__pollOne('vosk',needVosk,'cmd_voice_vosk_status');
+    const pKws=__pollOne('kws',needKws,'cmd_voice_kws_status');
+    var __pollIpcT0=performance.now();
+    // #endregion
     Promise.all([pEnd,pSapi,pVosk,pKws]).then(function(arr){
+      // #region agent log
+      try{
+        var __ipcMs=Math.round(performance.now()-__pollIpcT0);
+        if(__ipcMs>=200||(__ipcMs>=50&&ui().drawerOpen&&ui().settingsPanel==='voiceWake')){
+          if(global.__dbgB5) global.__dbgB5('H','voice-wake.js:voiceStatusPollTick:ipc','poll ipc done',{ms:__ipcMs,drawerOpen:!!ui().drawerOpen,panel:ui().settingsPanel||''});
+        }
+      }catch(_){}
+      // #endregion
       try{
         const endRes=arr[0],sapiRes=arr[1],letVoskRes=arr[2],kwsRes=arr[3];
         let voskRes=letVoskRes;
@@ -1853,10 +1991,12 @@
           snap.wake=mergeWakeSnapshot(sapiRes,voskRes,kwsRes);
         }
         const wakeFp=voiceWakeLiveFingerprint(sapiRes||{})+'|'+voiceWakeLiveFingerprint(voskRes||{})+'|'+(kwsRes&&[kwsRes.state,kwsRes.lastPartial,kwsRes.lastDetectedPhrase,kwsRes.lastDetectedKind,kwsRes.lastTrigger,kwsRes.lastSkip].join('|')||'')+'|'+(endRes&&endRes.state||'');
-        if(wakeFp===lastVoicePollWakeFp&&!ui().drawerOpen){
-          return;
-        }
+        // Same fp: skip even with drawer open — was re-painting voiceWake every 1.5s → 假死.
+        if(wakeFp===lastVoicePollWakeFp) return;
         lastVoicePollWakeFp=wakeFp;
+        // #region agent log
+        try{ if(global.__dbgB5) global.__dbgB5('D','voice-wake.js:voiceStatusPollTick','poll scheduleVoiceUiRender',{drawerOpen:!!ui().drawerOpen,panel:ui().settingsPanel||'',hasDrawerPayload:!!ui().drawerOpen}); }catch(_){}
+        // #endregion
         hooks().scheduleVoiceUiRender(ui().drawerOpen?{sapi:sapiRes,vosk:voskRes,kws:kwsRes,end:endRes}:null);
       }catch(err){
         console.error('voiceStatusPollTick',err);
@@ -2044,7 +2184,7 @@
       if(!bundle||bundle.ok===false){
         throw new Error((bundle&&bundle.error)||t('voiceSapiFail'));
       }
-      const applied=applyDesiredEngineResult(bundle,engine,{liveOnly:!ui().drawerOpen},{lightOnly:true,homeOnly:!ui().drawerOpen});
+      const applied=applyDesiredEngineResult(bundle,engine,{liveOnly:true},{lightOnly:true,homeOnly:!ui().drawerOpen});
       const sapiRes=applied.sapiRes||{enabled:false,state:'stopped'};
       if(!handleVoiceSapiEnableResult(sapiRes,next)) return;
       hooks().syncHomeFromVoiceSettings(
@@ -2698,7 +2838,7 @@
         throw new Error((bundle&&bundle.error)||t('voiceListeningStrategySwitchSoftFail'));
       }
       const forced=Object.assign({},bundle||{},{strategy:next?enableStrategy:'off'});
-      const applied=applyDesiredEngineResult(forced,'vosk',{liveOnly:!ui().drawerOpen},{lightOnly:true,homeOnly:!ui().drawerOpen});
+      const applied=applyDesiredEngineResult(forced,'vosk',{liveOnly:true},{lightOnly:true,homeOnly:!ui().drawerOpen});
       const voskRes=applied.voskRes||{enabled:false,state:'stopped'};
       hooks().syncHomeFromVoiceSettings(
         voskRes,
@@ -3220,7 +3360,7 @@
       if(!bundle||bundle.ok===false){
         throw new Error((bundle&&bundle.error)||t('voiceKwsFail'));
       }
-      const applied=applyDesiredEngineResult(bundle,'kws',{liveOnly:!ui().drawerOpen},{lightOnly:true,homeOnly:!ui().drawerOpen});
+      const applied=applyDesiredEngineResult(bundle,'kws',{liveOnly:true},{lightOnly:true,homeOnly:!ui().drawerOpen});
       hooks().syncHomeFromVoiceSettings(null,null,null,{lightOnly:true},applied.kwsRes);
       hooks().toast(enabled?t('voiceKwsEnabled'):t('voiceKwsDisabled'));
       return applied.kwsRes;
@@ -3392,6 +3532,9 @@
     getExpandedMode:function(){ return voiceWakeExpandedMode; },
     armOpenClickGuard:armOpenClickGuard,
     isOpenClickGuarded:isOpenClickGuarded,
+    isOpenFlowSettling:isOpenFlowSettling,
+    switchInFlight:function(){ return !!voiceModeSwitchInFlight; },
+    statusPollInFlight:function(){ return !!voiceStatusPollInFlight; },
     bumpOpenGen:bumpOpenGen,
     getOpenGen:getOpenGen,
     isOpenGenCurrent:isOpenGenCurrent,

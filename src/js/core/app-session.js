@@ -74,13 +74,37 @@
     if(strategy==='enhanced') return desired==='vosk'&&runtimeEngineBootHealthy(snapshot,'vosk');
     if(strategy==='resourceSaver'){
       if(desired==='none') return true;
-      return desired==='kws'&&runtimeEngineBootHealthy(snapshot,'kws');
+      if(desired==='kws'&&runtimeEngineBootHealthy(snapshot,'kws')) return true;
+      // Rust falls back to Vosk when KWS is not ready — treat as matched.
+      return desired==='vosk'&&runtimeEngineBootHealthy(snapshot,'vosk');
     }
     if(strategy==='auto'){
       if(desired==='kws'&&runtimeEngineBootHealthy(snapshot,'kws')) return true;
       if(desired==='vosk'&&runtimeEngineBootHealthy(snapshot,'vosk')) return true;
     }
     return false;
+  }
+
+  /** Prefer FE wake snapshot over sync cmd_request_runtime (that path 假死'd idle enhanced). */
+  function feWakeAlreadyMatchesStrategy(strategy){
+    try{
+      var snap=hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake;
+      if(!snap) return false;
+      var fake={
+        voiceVosk:snap.vosk||null,
+        voiceKws:snap.kws||null,
+        voiceSapi:snap.sapi||null,
+        voiceSupervisor:{desiredEngine:''}
+      };
+      var eng='';
+      if(snap.vosk&&runtimeEngineBootHealthy({voiceVosk:snap.vosk},'vosk')) eng='vosk';
+      else if(snap.kws&&runtimeEngineBootHealthy({voiceKws:snap.kws},'kws')) eng='kws';
+      else if(snap.sapi&&runtimeEngineBootHealthy({voiceSapi:snap.sapi},'sapi')) eng='sapi';
+      if(!eng) return false;
+      fake.voiceSupervisor.desiredEngine=eng;
+      fake.engine=eng;
+      return runtimeAlreadyMatchesStrategy(fake,strategy);
+    }catch(_){ return false; }
   }
 
   function activateVoiceBoot(cfg,which){
@@ -169,6 +193,9 @@
       if(voiceEngineBootDone||hooks().welcomeOpen()||hooks().onboardIsOpen()||!global.OneToneConfigPersist.isLoaded()) return;
       var cfg=hooks().state().config||{};
       var strategy=currentListeningStrategy(cfg);
+      // #region agent log
+      try{ if(global.__dbgB5) global.__dbgB5('A','app-session.js:deferredVoiceBoot','deferred voice engine boot fire',{strategy:strategy,drawerOpen:!!(hooks().ui()&&hooks().ui().drawerOpen)}); }catch(_){}
+      // #endregion
       if(strategy==='off'||(strategy==='resourceSaver'&&resourceSaverStaysIdle(cfg))){
         markVoiceEngineBootHandled();
         return;
@@ -180,6 +207,12 @@
       }
 
       if(strategy!=='advanced'){
+        // Bootstrap already started the engine; FE poll often already shows listening.
+        // Skip cmd_request_runtime entirely — sync snapshot used to 假死 ~5s on idle 增强.
+        if(feWakeAlreadyMatchesStrategy(strategy)){
+          markVoiceEngineBootHandled();
+          return;
+        }
         try{
           if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.setTag) global.OneToneUiHeartbeat.setTag('voiceBootStrategy');
           else global.__otActivityTag='voiceBootStrategy';
@@ -256,6 +289,9 @@
     clearTimeout(bootMicTimer);
     bootMicTimer=setTimeout(function(){
       bootMicReady=true;
+      // #region agent log
+      try{ if(global.__dbgB5) global.__dbgB5('B','app-session.js:bootMicReady','boot mic ready → maybe syncHomeMicMonitor',{drawerOpen:!!(hooks().ui()&&hooks().ui().drawerOpen),micVisible:!!(hooks().micLevelUiVisible&&hooks().micLevelUiVisible()),capture:!!(hooks().voiceCaptureActive&&hooks().voiceCaptureActive())}); }catch(_){}
+      // #endregion
       if(!hooks().ui().drawerOpen&&hooks().micLevelUiVisible()&&!hooks().voiceCaptureActive()){
         hooks().syncHomeMicMonitor().catch(function(){});
       }

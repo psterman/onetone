@@ -1,6 +1,43 @@
 (function(global){
   'use strict';
   function h(){ return global.__vp_bootstrap_hooks__ || {}; }
+  // #region agent log
+  function agentDbg(hypothesisId, location, message, data){
+    try{
+      var payload={sessionId:'b5f349',runId:'post-fix',hypothesisId:hypothesisId,location:location,message:message,data:data||{},timestamp:Date.now()};
+      var line='dbg-b5f349 '+JSON.stringify(payload);
+      if(global.OneToneIpc&&global.OneToneIpc.invoke) global.OneToneIpc.invoke('cmd_app_log',{line:line}).catch(function(){});
+      fetch('http://127.0.0.1:7915/ingest/0a875e0d-0640-4d58-b115-3a301bab85e8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b5f349'},body:JSON.stringify(payload)}).catch(function(){});
+    }catch(_){}
+  }
+  global.__dbgB5=agentDbg;
+  // Keepalive: sparse — every-2s cmd_app_log itself was IPC/disk pressure over ~100s.
+  // 10s still piled with voiceWake poll logs into late empty-ipc stalls (~3min); 30s is enough.
+  setInterval(function(){
+    try{
+      var ui=global.OneToneState&&global.OneToneState.ui;
+      if(!(ui&&ui.drawerOpen&&ui.settingsPanel==='voiceWake')) return;
+      agentDbg('G','app-boot.js:keepalive','fe keepalive',{
+        drawerOpen:true,
+        panel:'voiceWake',
+        tag:(global.__otActivityTag||'')+'',
+        capture:!!(global.OneToneAppMic&&global.OneToneAppMic.voiceCaptureActive&&global.OneToneAppMic.voiceCaptureActive())
+      });
+    }catch(_){}
+  },30000);
+  // #endregion
+  try{
+    if(typeof PerformanceObserver==='function'){
+      var po=new PerformanceObserver(function(list){
+        list.getEntries().forEach(function(e){
+          if(e.duration>=200){
+            agentDbg('G','app-boot.js:longtask','longtask',{ms:Math.round(e.duration),name:e.name||''});
+          }
+        });
+      });
+      po.observe({entryTypes:['longtask']});
+    }
+  }catch(_){}
   function run(){
     var hooks=h();
     var state=global.OneToneState.state;
@@ -9,6 +46,9 @@
     if(session&&session.markBootStarted) session.markBootStarted(8000);
     var hasBootConfig=!!(state.config&&Array.isArray(state.config.mappings)&&state.config.mappings.length);
     hooks.markBoot('script init');
+    // #region agent log
+    agentDbg('E','app-boot.js:scriptInit','boot script init',{hasBootConfig:!!hasBootConfig,feBuild:'stall9'});
+    // #endregion
     // Soft Pad float is always-on-top; dismiss on cold start so home stays clickable
     // while FG settles (front-mode used to cover the launching window → 假死).
     try{
@@ -74,6 +114,9 @@
       }
       global.OneToneUiHeartbeat={
         activityTag:activityTag,
+        lastLocalGapMs:0,
+        lastSeq:0,
+        lastPingAt:lastLocal,
         setTag:function(tag){ try{ global.__otActivityTag=String(tag||''); }catch(_){} },
         clearTag:function(expectedTag){
           try{
@@ -99,8 +142,26 @@
         var gap=now-lastLocal;
         lastLocal=now;
         seq=(seq+1)>>>0;
+        try{
+          global.OneToneUiHeartbeat.lastLocalGapMs=gap;
+          global.OneToneUiHeartbeat.lastSeq=seq;
+          global.OneToneUiHeartbeat.lastPingAt=now;
+        }catch(_){}
         if(gap>500){
           try{ console.warn('[onetone] UI-BLOCK local gap='+gap+'ms tag='+activityTag()); }catch(_){}
+          try{
+            if(global.OneToneVoiceDiag&&typeof global.OneToneVoiceDiag.noteHangSpike==='function'){
+              global.OneToneVoiceDiag.noteHangSpike({
+                gapMs:gap,
+                tag:activityTag(),
+                seq:seq,
+                source:'fe_hb'
+              });
+            }
+          }catch(_){}
+          // #region agent log
+          if(gap>800) agentDbg('E','app-boot.js:uiLocalGap','UI-BLOCK local gap',{gapMs:gap,tag:activityTag(),seq:seq});
+          // #endregion
         }
         if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
         try{
@@ -113,9 +174,19 @@
       },200);
     })();
 
+    // Expand hang live panel ASAP (before boot settle) so假死 during settle is visible.
+    try{
+      if(global.OneToneVoiceDiag&&typeof global.OneToneVoiceDiag.startLiveHangDiag==='function'){
+        global.OneToneVoiceDiag.startLiveHangDiag();
+      }
+    }catch(_){}
+
     if(session&&session.whenBootSettled){
       session.whenBootSettled(function(){
         hooks.markBoot('boot settled');
+        // #region agent log
+        agentDbg('A','app-boot.js:bootSettled','boot settled callback',{welcome:!!hooks.welcomeOpen(),onboard:!!hooks.onboardIsOpen()});
+        // #endregion
         if(!hooks.welcomeOpen()&&!hooks.onboardIsOpen()) hooks.maybeStartProcessUsagePoll();
         if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.startConfigSyncPoll==='function'){
           global.OneToneConfigPersist.startConfigSyncPoll(3000,8);
@@ -144,6 +215,16 @@
             try{ console.error('boot settled voice check',err); }catch(_){}
           }
         },400);
+        // Hang viz: expand live panel + pin main with the app body (debug假死 session).
+        setTimeout(function(){
+          try{
+            if(global.OneToneVoiceDiag&&typeof global.OneToneVoiceDiag.startLiveHangDiag==='function'){
+              global.OneToneVoiceDiag.startLiveHangDiag();
+            }
+          }catch(err){
+            try{ console.error('boot hang diag',err); }catch(_){}
+          }
+        },80);
       });
     }
     setTimeout(function(){ hooks.markBoot('requestBackendConfig begin'); hooks.requestBackendConfig(8); }, 200);

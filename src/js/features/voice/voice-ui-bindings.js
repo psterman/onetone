@@ -224,14 +224,30 @@
     function bindVoiceStrategySwitch(root){
       if(!root||root.dataset.voiceStrategyBound) return;
       root.dataset.voiceStrategyBound='1';
+      var downBtn=null;
+      var downAt=0;
+      root.addEventListener('pointerdown',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-voice-strategy-tab]');
+        downBtn=btn||null;
+        downAt=Date.now();
+      },true);
       root.addEventListener('click',function(e){
+        if(e&&e.isTrusted===false) return;
         var btn=e.target.closest&&e.target.closest('[data-voice-strategy-tab]');
         if(!btn||btn.hidden) return;
+        // Layout-under-cursor ghosts often fire click without a real press on that tab.
+        if(!downBtn||downBtn!==btn||(Date.now()-downAt)<45||(Date.now()-downAt)>2500){
+          // #region agent log
+          try{ if(global.__dbgB5) global.__dbgB5('C','voice-ui-bindings.js:strategyClick','lite strategy click rejected (no dwell)',{strategy:btn.getAttribute('data-voice-strategy-tab')||'',hasDown:!!downBtn,same:!!(downBtn===btn),dwellMs:downAt?Date.now()-downAt:-1}); }catch(_){}
+          // #endregion
+          downBtn=null;
+          return;
+        }
+        downBtn=null;
         e.preventDefault();
         e.stopPropagation();
         var strategy=btn.getAttribute('data-voice-strategy-tab');
         if(strategy!=='auto'&&strategy!=='resourceSaver'&&strategy!=='enhanced') return;
-        // Allow re-click while a previous switch drains (queued in voice-wake).
         if(global.OneToneVoiceWake&&global.OneToneVoiceWake.switchListeningStrategy){
           global.OneToneVoiceWake.switchListeningStrategy(strategy,{toastKind:'lite'});
         }

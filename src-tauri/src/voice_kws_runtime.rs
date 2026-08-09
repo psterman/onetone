@@ -68,14 +68,34 @@ pub fn kws_readiness(
     cfg: &crate::config::VoiceConfig,
     resource_dir: Option<&Path>,
 ) -> KwsReadiness {
-    let probe = probe_kws_resources(&cfg.voice_kws, resource_dir);
+    let probe = cached_kws_probe(state, &cfg.voice_kws, resource_dir, true);
+    kws_readiness_from_probe(state, cfg, &probe)
+}
+
+/// Status / supervisor hot path — never FS-probe (AV scan hung voice_*_status ~60s).
+pub fn kws_readiness_cached(
+    state: &AppState,
+    cfg: &crate::config::VoiceConfig,
+) -> KwsReadiness {
+    let probe = cached_kws_probe(state, &cfg.voice_kws, None, false);
+    kws_readiness_from_probe(state, cfg, &probe)
+}
+
+fn kws_readiness_from_probe(
+    state: &AppState,
+    cfg: &crate::config::VoiceConfig,
+    probe: &crate::voice_kws::KwsResourceProbe,
+) -> KwsReadiness {
     let build = state.voice_kws_keyword_build.lock().clone();
     let strategy = crate::scene_config::voice_listening_strategy(cfg);
     let native = !probe.stub_mode;
     let model_complete = probe.model_exists;
     let encoded_non_empty = !build.encoded.is_empty();
     let strategy_allows_kws = matches!(strategy, "auto" | "resourceSaver" | "advanced");
-    let (ready, reason) = if !strategy_allows_kws {
+    let (ready, reason) = if probe.resolved_model_path.is_empty() && !probe.model_exists && probe.stub_mode {
+        // Cache miss on hot path — not ready until ensure-probe fills cache.
+        (false, "probe_pending")
+    } else if !strategy_allows_kws {
         (false, "strategy_disallows_kws")
     } else if !native {
         (false, "stub")
@@ -94,6 +114,44 @@ pub fn kws_readiness(
         strategy_allows_kws,
         reason,
     }
+}
+
+fn pending_kws_probe(cfg: &crate::config::VoiceKwsConfig) -> crate::voice_kws::KwsResourceProbe {
+    crate::voice_kws::KwsResourceProbe {
+        model_exists: false,
+        keywords_exists: false,
+        model_path: cfg.model_path.trim().to_string(),
+        model_preset: if cfg.model_preset.trim().is_empty() {
+            "cn-light".into()
+        } else {
+            cfg.model_preset.trim().to_string()
+        },
+        resolved_model_path: String::new(),
+        // Conservative: treat as stub until a real probe lands.
+        stub_mode: true,
+    }
+}
+
+fn cached_kws_probe(
+    state: &AppState,
+    cfg: &crate::config::VoiceKwsConfig,
+    resource_dir: Option<&Path>,
+    allow_fs: bool,
+) -> crate::voice_kws::KwsResourceProbe {
+    if let Some(probe) = state.voice_kws_probe.lock().clone() {
+        return probe;
+    }
+    if !allow_fs {
+        return pending_kws_probe(cfg);
+    }
+    let probe = probe_kws_resources(cfg, resource_dir);
+    *state.voice_kws_probe.lock() = Some(probe.clone());
+    probe
+}
+
+pub fn refresh_kws_probe_cache(state: &AppState, resource_dir: Option<&Path>) {
+    let cfg = state.cfg.lock().voice_kws.clone();
+    *state.voice_kws_probe.lock() = Some(probe_kws_resources(&cfg, resource_dir));
 }
 
 fn next_kws_epoch(state: &AppState) -> u64 {
@@ -455,17 +513,19 @@ pub fn voice_kws_inject_test_detect(
 }
 
 pub fn voice_kws_status(state: &AppState, resource_dir: Option<PathBuf>) -> serde_json::Value {
-    let cfg = state.cfg.lock();
+    // Clone then drop cfg before any probe — holding cfg.lock across FS starved
+    // sync IPC (incl. cmd_ui_heartbeat / peer status cmds) when disk/AV stalled.
+    let cfg = state.cfg.lock().clone();
     let plan = crate::scene_config::kws_keyword_plan_for_cfg(
         &cfg,
         crate::scene_config::KWS_MAX_KEYWORD_ENTRIES,
     );
     let build = state.voice_kws_keyword_build.lock().clone();
-    let probe = probe_kws_resources(&cfg.voice_kws, resource_dir.as_deref());
+    let probe = cached_kws_probe(state, &cfg.voice_kws, resource_dir.as_deref(), false);
     let target_key =
         crate::voice_end_runtime::resolve_wake_target_key(&cfg, &cfg.voice_kws.target_key);
     let resource_issue = crate::voice_kws::kws_resource_issue(&probe);
-    let readiness = kws_readiness(state, &cfg, resource_dir.as_deref());
+    let readiness = kws_readiness_from_probe(state, &cfg, &probe);
     let resources_dir = crate::voice_kws::kws_resources_dir(resource_dir.as_deref());
     let download_url = crate::config::kws_model_download_url(&probe.model_preset)
         .unwrap_or("https://github.com/k2-fsa/sherpa-onnx/releases/tag/kws-models");
@@ -512,7 +572,6 @@ pub fn voice_kws_status(state: &AppState, resource_dir: Option<PathBuf>) -> serd
         "resourcesDir": resources_dir.display().to_string(),
         "modelDownloadUrl": download_url,
     });
-    drop(cfg);
     crate::voice_bootstrap::attach_supervisor_status(state, &mut value);
     value
 }

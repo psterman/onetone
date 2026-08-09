@@ -27,6 +27,393 @@
   var debugFocusMode='overview';
   var voiceDiagTab='vosk';
   var voiceDiagBound=false;
+  var hangDiagTimer=0;
+  var hangDiagInFlight=false;
+  var hangDiagRing=[];
+  var hangDiagLastStallLoaded=false;
+  var hangDiagLastStallText='';
+  var hangLiveOpen=true; // boot: expanded live panel
+  var hangLiveBound=false;
+  var hangLongTaskBound=false;
+  var hangPeaks={maxGapMs:0,maxIpcHeldMs:0,warnN:0,stallN:0,ltN:0};
+  var hangEvents=[]; // sticky breadcrumbs — survive recover-to-healthy
+  var HANG_RING_MAX=120; // ~2min at 1s
+  var HANG_POLL_MS=1000;
+  var HANG_EVENT_MAX=10;
+  var hangStallPollAt=0;
+
+  function hangClassify(){
+    var fn=global.OneToneVoiceHangClassify&&global.OneToneVoiceHangClassify.classifyHang;
+    return typeof fn==='function'?fn:function(){ return 'healthy'; };
+  }
+
+  function hangYesNo(v){ return v?t('voiceHangDiagYes'):t('voiceHangDiagNo'); }
+
+  function hangVerdictLabel(kind){
+    if(kind==='stall') return t('voiceHangDiagStall');
+    if(kind==='busy') return t('voiceHangDiagBusy');
+    if(kind==='mismatch') return t('voiceHangDiagMismatch');
+    return t('voiceHangDiagHealthy');
+  }
+
+  function hangClock(ts){
+    var d=new Date(ts||Date.now());
+    return [d.getHours(),d.getMinutes(),d.getSeconds()].map(function(n){
+      return String(n).padStart(2,'0');
+    }).join(':');
+  }
+
+  function noteHangSpike(info){
+    info=info||{};
+    var gap=Math.round(Number(info.gapMs)||0);
+    var held=Math.round(Number(info.ipcHeldMs)||0);
+    var tag=String(info.tag||'');
+    var ipc=String(info.ipc||'');
+    var src=String(info.source||'poll');
+    var kind=String(info.kind||'');
+    if(!kind){
+      if(gap>=2000||held>=2000) kind='stall';
+      else if(gap>=500||held>=500||src==='longtask') kind='warn';
+      else return;
+    }
+    if(gap>hangPeaks.maxGapMs) hangPeaks.maxGapMs=gap;
+    if(held>hangPeaks.maxIpcHeldMs) hangPeaks.maxIpcHeldMs=held;
+    if(kind==='stall') hangPeaks.stallN++;
+    else if(kind==='warn') hangPeaks.warnN++;
+    if(src==='longtask') hangPeaks.ltN++;
+
+    var line=hangClock(info.ts)+' '+kind+' gap='+gap;
+    if(held) line+=' held='+held;
+    if(ipc) line+=' ipc='+ipc;
+    if(tag) line+=' tag='+tag;
+    if(src&&src!=='poll') line+=' src='+src;
+    if(info.seq!=null) line+=' seq='+info.seq;
+    // Dedupe identical tip within 1s
+    var prev=hangEvents[0];
+    if(prev&&prev.sig===line&&(Date.now()-(prev.ts||0))<1000) return;
+    hangEvents.unshift({ts:Date.now(),sig:line,kind:kind});
+    if(hangEvents.length>HANG_EVENT_MAX) hangEvents.length=HANG_EVENT_MAX;
+
+    if(kind==='stall'){
+      hangDiagLastStallText=line;
+      var stallEl=$('voiceHangDiagLastStall');
+      if(stallEl) stallEl.textContent=hangDiagLastStallText;
+    }
+    var peakEl=$('voiceHangDiagPeak');
+    if(peakEl) peakEl.textContent=formatHangPeak();
+    var evEl=$('voiceHangDiagEvents');
+    if(evEl) evEl.textContent=formatHangEvents();
+  }
+
+  function formatHangPeak(){
+    if(!hangPeaks.maxGapMs&&!hangPeaks.maxIpcHeldMs&&!hangPeaks.warnN&&!hangPeaks.stallN){
+      return t('voiceHangDiagNone');
+    }
+    return 'maxGap='+Math.round(hangPeaks.maxGapMs)+'ms'
+      +' · maxHeld='+Math.round(hangPeaks.maxIpcHeldMs)+'ms'
+      +' · warn='+hangPeaks.warnN
+      +' · stall='+hangPeaks.stallN
+      +(hangPeaks.ltN?' · lt='+hangPeaks.ltN:'');
+  }
+
+  function formatHangEvents(){
+    if(!hangEvents.length) return t('voiceHangDiagNone');
+    return hangEvents.map(function(e){ return e.sig; }).join(' | ');
+  }
+
+  function collectHangSnap(rsHb){
+    var hb=global.OneToneUiHeartbeat||{};
+    var wake=hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake||{};
+    var end=hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.end||{};
+    var sup=wake.supervisor||{};
+    var wakeApi=global.OneToneVoiceWake||{};
+    var engineState=String(wake.state||'');
+    var active=String(sup.activeEngine||wake.engine||'').trim();
+    if(active==='vosk'&&wake.vosk&&wake.vosk.state) engineState=String(wake.vosk.state);
+    else if(active==='kws'&&wake.kws&&wake.kws.state) engineState=String(wake.kws.state);
+    else if(active==='sapi'&&wake.sapi&&wake.sapi.state) engineState=String(wake.sapi.state);
+    rsHb=rsHb||{};
+    return {
+      localGapMs:Number(hb.lastLocalGapMs)||0,
+      pingAgeMs:Number(rsHb.pingAgeMs)||0,
+      seq:Number(rsHb.seq!=null?rsHb.seq:hb.lastSeq)||0,
+      activityTag:String(rsHb.activityTag!=null?rsHb.activityTag:(typeof hb.activityTag==='function'?hb.activityTag():''))||'',
+      ipc:String(rsHb.ipc||''),
+      ipcHeldMs:Number(rsHb.ipcHeldMs)||0,
+      desiredEngine:String(sup.desiredEngine||''),
+      activeEngine:String(sup.activeEngine||''),
+      listeningStrategy:String(sup.listeningStrategy||''),
+      activateBusy:!!sup.activateBusy,
+      degradedReason:String(sup.degradedReason||''),
+      engineState:engineState,
+      endState:String(end.state||''),
+      switchInFlight:!!(typeof wakeApi.switchInFlight==='function'&&wakeApi.switchInFlight()),
+      openSettling:!!(typeof wakeApi.isOpenFlowSettling==='function'&&wakeApi.isOpenFlowSettling()),
+      pollInFlight:!!(typeof wakeApi.statusPollInFlight==='function'&&wakeApi.statusPollInFlight())
+    };
+  }
+
+  function pushHangRing(snap,kind){
+    var gap=Math.max(Number(snap.localGapMs)||0,Number(snap.pingAgeMs)||0);
+    var held=Number(snap.ipcHeldMs)||0;
+    var gapTier='ok';
+    if(gap>=2000||held>=2000) gapTier='stall';
+    else if(gap>=500||held>=500) gapTier='warn';
+    hangDiagRing.push({
+      gapTier:gapTier,
+      busy:kind==='busy'||!!snap.activateBusy||!!snap.switchInFlight?1:0
+    });
+    if(hangDiagRing.length>HANG_RING_MAX) hangDiagRing.splice(0,hangDiagRing.length-HANG_RING_MAX);
+    if(gap>=500||held>=500||kind==='stall'){
+      noteHangSpike({
+        kind:kind==='stall'||gap>=2000||held>=2000?'stall':(kind==='busy'?'warn':undefined),
+        gapMs:gap,
+        ipcHeldMs:held,
+        tag:snap.activityTag,
+        ipc:snap.ipc,
+        seq:snap.seq,
+        source:'poll'
+      });
+    }
+  }
+
+  function renderHangTimeline(){
+    var el=$('voiceHangDiagTimeline');
+    if(!el) return;
+    // Append-only: full innerHTML of 120 spans every tick contributed to voiceWake stalls.
+    var kids=el.children;
+    var have=kids?kids.length:0;
+    if(have>HANG_RING_MAX){
+      while(el.firstChild&&el.children.length>HANG_RING_MAX) el.removeChild(el.firstChild);
+      have=el.children.length;
+    }
+    for(var i=have;i<hangDiagRing.length;i++){
+      var p=hangDiagRing[i];
+      var span=document.createElement('span');
+      span.setAttribute('data-gap',p.gapTier||'ok');
+      span.setAttribute('data-busy',p.busy?1:0);
+      el.appendChild(span);
+    }
+    while(el.children.length>HANG_RING_MAX) el.removeChild(el.firstChild);
+  }
+
+  function applyHangDiagDom(snap,kind){
+    var verdict=$('voiceHangDiagVerdict');
+    if(verdict){
+      verdict.setAttribute('data-hang',kind);
+      verdict.textContent=hangVerdictLabel(kind);
+    }
+    var hbEl=$('voiceHangDiagHb');
+    if(hbEl){
+      var local=Math.round(Number(snap.localGapMs)||0);
+      var age=Math.round(Number(snap.pingAgeMs)||0);
+      var parts=['local='+local+'ms','age='+age+'ms','seq '+snap.seq];
+      if(snap.activityTag) parts.push('tag='+snap.activityTag);
+      if(snap.ipc) parts.push('ipc='+snap.ipc+(snap.ipcHeldMs?' +'+Math.round(snap.ipcHeldMs)+'ms':''));
+      hbEl.textContent=parts.join(' · ');
+    }
+    var peakEl=$('voiceHangDiagPeak');
+    if(peakEl) peakEl.textContent=formatHangPeak();
+    var evEl=$('voiceHangDiagEvents');
+    if(evEl) evEl.textContent=formatHangEvents();
+    var supEl=$('voiceHangDiagSupervisor');
+    if(supEl){
+      var line=(snap.desiredEngine||'—')+' → '+(snap.activeEngine||'—');
+      if(snap.listeningStrategy) line+=' · '+snap.listeningStrategy;
+      line+=' · busy='+hangYesNo(snap.activateBusy);
+      if(snap.degradedReason) line+=' · '+snap.degradedReason;
+      if(snap.engineState) line+=' · eng='+snap.engineState;
+      if(snap.endState) line+=' · end='+snap.endState;
+      supEl.textContent=line;
+    }
+    var gEl=$('voiceHangDiagGuards');
+    if(gEl){
+      gEl.textContent='switch='+hangYesNo(snap.switchInFlight)
+        +' · settling='+hangYesNo(snap.openSettling)
+        +' · poll='+hangYesNo(snap.pollInFlight);
+    }
+    var stallEl=$('voiceHangDiagLastStall');
+    if(stallEl) stallEl.textContent=hangDiagLastStallText||t('voiceHangDiagNone');
+    renderHangTimeline();
+  }
+
+  function ensureLastStallOnce(){
+    if(hangDiagLastStallLoaded) return;
+    hangDiagLastStallLoaded=true;
+    refreshLastStallFile(true);
+  }
+
+  function refreshLastStallFile(force){
+    var now=Date.now();
+    if(!force&&now-hangStallPollAt<4000) return;
+    hangStallPollAt=now;
+    if(!global.OneToneIpc||!global.OneToneIpc.invoke){
+      if(!hangDiagLastStallText) hangDiagLastStallText=t('voiceHangDiagNone');
+      return;
+    }
+    global.OneToneIpc.invoke('cmd_last_ui_stall',{}).then(function(s){
+      if(!s||!s.code) return; // keep sticky in-memory text after recover clears file
+      hangDiagLastStallText=String(s.code)
+        +(s.gapMs!=null?' · '+s.gapMs+'ms':'')
+        +(s.tag?' · tag='+s.tag:'')
+        +(s.seq!=null?' · seq='+s.seq:'');
+      noteHangSpike({
+        kind:'stall',
+        gapMs:s.gapMs||0,
+        tag:s.tag||'',
+        seq:s.seq,
+        source:'stall_file'
+      });
+      var stallEl=$('voiceHangDiagLastStall');
+      if(stallEl) stallEl.textContent=hangDiagLastStallText;
+    }).catch(function(){});
+  }
+
+  function bindHangLongTasks(){
+    if(hangLongTaskBound) return;
+    hangLongTaskBound=true;
+    try{
+      if(typeof PerformanceObserver==='undefined') return;
+      var po=new PerformanceObserver(function(list){
+        var entries=list.getEntries?list.getEntries():[];
+        for(var i=0;i<entries.length;i++){
+          var e=entries[i];
+          var dur=Math.round(e.duration||0);
+          if(dur<200) continue;
+          noteHangSpike({
+            kind:dur>=2000?'stall':'warn',
+            gapMs:dur,
+            tag:'longtask'+(e.name?':'+e.name:''),
+            source:'longtask'
+          });
+        }
+      });
+      po.observe({type:'longtask',buffered:true});
+    }catch(_){
+      try{
+        // Older Chromium: entryTypes form
+        var po2=new PerformanceObserver(function(list){
+          var entries=list.getEntries();
+          for(var i=0;i<entries.length;i++){
+            var dur=Math.round(entries[i].duration||0);
+            if(dur<200) continue;
+            noteHangSpike({kind:dur>=2000?'stall':'warn',gapMs:dur,tag:'longtask',source:'longtask'});
+          }
+        });
+        po2.observe({entryTypes:['longtask']});
+      }catch(__){}
+    }
+  }
+
+  function hangDiagVisible(){
+    if(hangLiveOpen) return true;
+    return !!(ui().drawerOpen&&ui().settingsPanel==='debug'&&debugFocusMode==='repair');
+  }
+
+  function syncHangLivePanelDom(){
+    var panel=$('voiceHangLivePanel');
+    if(!panel) return;
+    panel.classList.toggle('is-open',!!hangLiveOpen);
+    panel.classList.toggle('is-collapsed',!hangLiveOpen);
+    panel.hidden=false;
+    var body=$('voiceHangLiveBody');
+    if(body) body.hidden=!hangLiveOpen;
+    var btn=$('voiceHangLiveToggle');
+    if(btn) btn.textContent=hangLiveOpen?t('voiceHangDiagCollapse'):t('voiceHangDiagExpand');
+  }
+
+  function pinMainAlwaysOnTop(){
+    if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
+    global.OneToneIpc.invoke('cmd_window_set_always_on_top',{enabled:true}).catch(function(){});
+  }
+
+  function setHangLiveOpen(open){
+    hangLiveOpen=!!open;
+    syncHangLivePanelDom();
+    if(hangLiveOpen){
+      pinMainAlwaysOnTop();
+      renderVoiceHangDiag();
+    }else if(!hangDiagVisible()){
+      stopHangDiagPoll();
+    }
+  }
+
+  function bindHangLivePanel(){
+    if(hangLiveBound) return;
+    hangLiveBound=true;
+    var btn=$('voiceHangLiveToggle');
+    if(btn){
+      btn.addEventListener('click',function(){
+        setHangLiveOpen(!hangLiveOpen);
+      });
+    }
+  }
+
+  function startLiveHangDiag(){
+    bindHangLivePanel();
+    bindHangLongTasks();
+    hangLiveOpen=true;
+    syncHangLivePanelDom();
+    pinMainAlwaysOnTop();
+    renderVoiceHangDiag();
+  }
+
+  function stopHangDiagPoll(){
+    if(hangDiagTimer){
+      clearTimeout(hangDiagTimer);
+      hangDiagTimer=0;
+    }
+  }
+
+  function scheduleHangDiagPoll(){
+    stopHangDiagPoll();
+    if(!hangDiagVisible()) return;
+    hangDiagTimer=setTimeout(function(){
+      hangDiagTimer=0;
+      tickHangDiag();
+    },HANG_POLL_MS);
+  }
+
+  function tickHangDiag(){
+    if(!hangDiagVisible()){ stopHangDiagPoll(); return; }
+    if(hangDiagInFlight){ scheduleHangDiagPoll(); return; }
+    hangDiagInFlight=true;
+    ensureLastStallOnce();
+    var done=function(rsHb){
+      hangDiagInFlight=false;
+      try{
+        var snap=collectHangSnap(rsHb);
+        var kind=hangClassify()(snap);
+        pushHangRing(snap,kind);
+        applyHangDiagDom(snap,kind);
+        refreshLastStallFile(kind==='stall');
+      }catch(err){
+        try{ console.error('voice hang diag',err); }catch(_){}
+      }
+      scheduleHangDiagPoll();
+    };
+    if(!global.OneToneIpc||!global.OneToneIpc.invoke){
+      done({});
+      return;
+    }
+    global.OneToneIpc.invoke('cmd_ui_hb_snapshot',{}).then(function(rs){
+      done(rs||{});
+    }).catch(function(){
+      done({});
+    });
+  }
+
+  function renderVoiceHangDiag(){
+    if(!hangDiagVisible()){
+      stopHangDiagPoll();
+      return;
+    }
+    ensureLastStallOnce();
+    // Keep a single 500ms poll; don't re-enter on every metrics refresh.
+    if(hangDiagTimer||hangDiagInFlight) return;
+    tickHangDiag();
+  }
+
   function syncDebugFocusSections(){
     const show=ui().drawerOpen&&ui().settingsPanel==='debug';
     const map={
@@ -46,6 +433,7 @@
     if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.renderTriggerDiagBlocks){
       global.OneToneHomeWorkbench.renderTriggerDiagBlocks();
     }
+    renderVoiceHangDiag();
   }
   function setDebugFocusMode(mode){
     if(mode==='diagnostics') mode='repair';
@@ -55,6 +443,7 @@
     debugFocusMode=mode;
     syncDebugFocusSections();
     renderSettingsDebugSubnav();
+    if(mode!=='repair') stopHangDiagPoll();
     if(mode==='repair'){
       const eng=currentVoiceMode();
       if(eng==='vosk') voiceDiagTab='vosk';
@@ -409,6 +798,7 @@
   function bindEvents(){
     if(voiceDiagBound) return;
     voiceDiagBound=true;
+    bindHangLivePanel();
     var tabs=$('voiceDiagTabs');
     if(tabs){
       tabs.addEventListener('click',function(e){
@@ -428,6 +818,13 @@
     setTab:setVoiceDiagTab,
     renderMetrics:renderVoiceDiagMetrics,
     renderTabs:renderVoiceDiagTabs,
+    renderHangDiag:renderVoiceHangDiag,
+    startLiveHangDiag:startLiveHangDiag,
+    setHangLiveOpen:setHangLiveOpen,
+    isHangLiveOpen:function(){ return !!hangLiveOpen; },
+    noteHangSpike:noteHangSpike,
+    getHangPeaks:function(){ return hangPeaks; },
+    getHangEvents:function(){ return hangEvents.slice(); },
     scheduleChromeRefresh:scheduleDebugChromeRefresh,
     renderLog:renderVoiceDiagLog,
     pushLog:pushVoiceDiagLog,

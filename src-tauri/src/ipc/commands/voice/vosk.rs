@@ -5,11 +5,25 @@ use crate::AppState;
 use super::sapi::app_resource_dir;
 
 #[tauri::command]
-pub fn cmd_voice_vosk_status(
-    state: tauri::State<Arc<AppState>>,
+pub async fn cmd_voice_vosk_status(
+    state: tauri::State<'_, Arc<AppState>>,
     app: tauri::AppHandle,
-) -> serde_json::Value {
-    crate::voice_vosk_runtime::voice_vosk_status(&state, app_resource_dir(&app))
+) -> Result<serde_json::Value, String> {
+    let state = Arc::clone(state.inner());
+    let resource_dir = app_resource_dir(&app);
+    // Off UI thread + hard timeout — stuck FS/probe used to hold ipc ~60s (未响应).
+    let join = tauri::async_runtime::spawn_blocking(move || {
+        crate::ui_heartbeat::note_ipc_enter("voice_vosk_status");
+        let v = crate::voice_vosk_runtime::voice_vosk_status(&state, resource_dir);
+        crate::ui_heartbeat::note_ipc_exit("voice_vosk_status");
+        v
+    });
+    match tokio::time::timeout(std::time::Duration::from_millis(1500), join).await {
+        Ok(Ok(v)) => Ok(v),
+        Ok(Err(e)) => Err(format!("vosk status task failed: {e}")),
+        // Leave note_ipc to the still-running worker; hang panel shows truth until exit.
+        Err(_) => Err("vosk status timeout".into()),
+    }
 }
 
 #[tauri::command]

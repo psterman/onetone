@@ -202,9 +202,13 @@
 
 
 
-  function renderVoiceEndStatus(res){
+  function renderVoiceEndStatus(res,opts){
 
     if(!res) return;
+
+    opts=opts||{};
+
+    var liveOnly=!!opts.liveOnly;
 
     syncVoiceEndConfigFromStatus(res);
 
@@ -345,6 +349,8 @@
     global.OneToneVoiceDiag.updateMetric('end','audioStrength',t('recordingMuteStrength'+String(res.recordingAudioStrength||'balanced').trim().replace(/^[a-z]/,function(ch){ return ch.toUpperCase(); })),t('voiceDiagLogAudioStrength'));
 
     syncVoiceEndModeUi();
+
+    if(liveOnly) return;
 
     hooks().renderVoiceModeSwitch();
 

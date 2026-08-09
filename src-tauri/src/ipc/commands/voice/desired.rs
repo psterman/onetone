@@ -84,15 +84,17 @@ pub fn cmd_voice_set_desired_engine(
 }
 
 #[tauri::command]
-pub fn cmd_voice_set_listening_strategy(
-    state: tauri::State<Arc<AppState>>,
+pub async fn cmd_voice_set_listening_strategy(
+    state: tauri::State<'_, Arc<AppState>>,
     window: WebviewWindow,
     strategy: String,
 ) -> Result<serde_json::Value, String> {
-    voice_set_listening_strategy(
-        window.app_handle(),
-        state.inner(),
-        &strategy,
-        "set_listening_strategy",
-    )
+    // Disk save + cfg lock must not run on the UI/IPC thread — sync cmd 假死'd WebView (~5s).
+    let app = window.app_handle().clone();
+    let state = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || {
+        voice_set_listening_strategy(&app, &state, &strategy, "set_listening_strategy")
+    })
+    .await
+    .map_err(|e| format!("set_listening_strategy join: {e}"))?
 }

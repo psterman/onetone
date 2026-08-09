@@ -18,6 +18,60 @@ static LAST_FE_TIME: AtomicU64 = AtomicU64::new(0);
 static WATCHDOG_STARTED: AtomicBool = AtomicBool::new(false);
 static PROCESS_START_SECS: AtomicU64 = AtomicU64::new(0);
 static ACTIVITY_TAG: Mutex<String> = Mutex::new(String::new());
+/// Last sync IPC command name still running (status / layout save). Watchdog includes this on stall.
+static IPC_INFLIGHT: Mutex<String> = Mutex::new(String::new());
+static IPC_INFLIGHT_MS: AtomicU64 = AtomicU64::new(0);
+static IPC_INFLIGHT_DEPTH: AtomicU64 = AtomicU64::new(0);
+
+/// Mark a sync IPC / blocking path so UI_HB_STALL can name the blocker.
+pub fn note_ipc_enter(name: &str) {
+    let depth = IPC_INFLIGHT_DEPTH.fetch_add(1, Ordering::SeqCst) + 1;
+    if depth == 1 {
+        IPC_INFLIGHT_MS.store(now_ms(), Ordering::Release);
+    }
+    if let Ok(mut g) = IPC_INFLIGHT.lock() {
+        if g.is_empty() {
+            *g = name.to_string();
+        } else if !g.split('+').any(|p| p == name) {
+            g.push('+');
+            g.push_str(name);
+        }
+    }
+}
+
+pub fn note_ipc_exit(name: &str) {
+    let prev = IPC_INFLIGHT_DEPTH.fetch_sub(1, Ordering::SeqCst);
+    if prev <= 1 {
+        IPC_INFLIGHT_DEPTH.store(0, Ordering::SeqCst);
+        if let Ok(mut g) = IPC_INFLIGHT.lock() {
+            g.clear();
+        }
+        IPC_INFLIGHT_MS.store(0, Ordering::Release);
+        return;
+    }
+    if let Ok(mut g) = IPC_INFLIGHT.lock() {
+        let next = g
+            .split('+')
+            .filter(|p| *p != name && !p.is_empty())
+            .collect::<Vec<_>>()
+            .join("+");
+        *g = next;
+    }
+}
+
+pub fn ipc_inflight_snapshot() -> (String, u64) {
+    let name = IPC_INFLIGHT
+        .lock()
+        .map(|g| g.clone())
+        .unwrap_or_default();
+    let since = IPC_INFLIGHT_MS.load(Ordering::Acquire);
+    let held = if since == 0 || name.is_empty() {
+        0
+    } else {
+        now_ms().saturating_sub(since)
+    };
+    (name, held)
+}
 
 fn now_ms() -> u64 {
     SystemTime::now()
@@ -194,6 +248,29 @@ pub fn last_seq() -> u64 {
     LAST_SEQ.load(Ordering::Relaxed)
 }
 
+/// Live read-only snapshot for Debug → Repair hang viz. No disk / cfg / emit.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiHbSnapshot {
+    pub ping_age_ms: u64,
+    pub seq: u64,
+    pub activity_tag: String,
+    pub ipc: String,
+    pub ipc_held_ms: u64,
+}
+
+pub fn live_snapshot() -> UiHbSnapshot {
+    let age = last_ping_age_ms();
+    let (ipc, ipc_held_ms) = ipc_inflight_snapshot();
+    UiHbSnapshot {
+        ping_age_ms: if age == u64::MAX { 0 } else { age },
+        seq: last_seq(),
+        activity_tag: activity_tag_snapshot(),
+        ipc,
+        ipc_held_ms,
+    }
+}
+
 /// Read-only diag for voice bootstrap phase logs — Atomic + short Mutex, no disk.
 pub fn ui_hb_diag() -> String {
     let age = last_ping_age_ms();
@@ -250,10 +327,25 @@ pub fn start_watchdog() {
                             emerg_2s = true;
                             warn_500 = true;
                             let seq = LAST_SEQ.load(Ordering::Relaxed);
+                            let (ipc_name, ipc_held) = ipc_inflight_snapshot();
+                            let ipc_part = if ipc_name.is_empty() {
+                                String::new()
+                            } else {
+                                format!(" ipc={ipc_name} held={ipc_held}ms")
+                            };
                             crate::app_log::sync_emergency_line(
                                 "ui_hb",
-                                &format!("emergency gap>{age}ms (5s){tag_part} seq={seq}"),
+                                &format!("emergency gap>{age}ms (5s){tag_part}{ipc_part} seq={seq}"),
                             );
+                            // #region agent log
+                            crate::app_log::append_debug_session_ndjson(&format!(
+                                "{{\"sessionId\":\"b5f349\",\"runId\":\"post-fix\",\"hypothesisId\":\"L\",\"location\":\"ui_heartbeat.rs:stall5s\",\"message\":\"UI_HB_STALL_5S\",\"data\":{{\"gapMs\":{age},\"seq\":{seq},\"tag\":\"{}\",\"ipc\":\"{}\",\"ipcHeldMs\":{}}},\"timestamp\":{}}}",
+                                tag.replace('\\', "\\\\").replace('"', "\\\""),
+                                ipc_name.replace('\\', "\\\\").replace('"', "\\\""),
+                                ipc_held,
+                                now_ms()
+                            ));
+                            // #endregion
                             persist_stall_emergency("5s", age, &tag, seq);
                         }
                     } else if age > 2000 {
@@ -315,5 +407,16 @@ mod tests {
         assert_eq!(back.code, "UI_HB_STALL_2S");
         assert_eq!(back.gap_ms, 2100);
         assert_eq!(back.tag, "test");
+    }
+
+    #[test]
+    fn live_snapshot_is_atomics_only_shape() {
+        note_ping(42, "hangViz", 1000);
+        let snap = live_snapshot();
+        assert_eq!(snap.seq, 42);
+        assert_eq!(snap.activity_tag, "hangViz");
+        let raw = serde_json::to_value(&snap).unwrap();
+        assert!(raw.get("pingAgeMs").is_some());
+        assert!(raw.get("ipcHeldMs").is_some());
     }
 }

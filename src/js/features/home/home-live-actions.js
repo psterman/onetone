@@ -31,10 +31,10 @@
     var vw=global.OneToneVoiceWake;
     if(!vw||!vw.switchListeningStrategy) return;
     if(eng==='vosk'||eng==='sapi'||eng==='kws'){
-      vw.switchListeningStrategy('off');
+      vw.switchListeningStrategy('off',{force:true});
       return;
     }
-    vw.switchListeningStrategy(homeRestoreListeningStrategy());
+    vw.switchListeningStrategy(homeRestoreListeningStrategy(),{force:true});
   }
 
   function toggleHomeKeyEnable(){

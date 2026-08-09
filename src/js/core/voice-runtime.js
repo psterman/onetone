@@ -46,15 +46,23 @@
         var ui=hooks().ui();
         if(ui.drawerOpen){
           var panel=ui.settingsPanel;
-          if(drawerPayload){
+          // voiceWake open settle: skip status remount that stacked with chrome/heavy (stall @+0.5s).
+          var settling=panel==='voiceWake'&&global.OneToneVoiceWake&&typeof global.OneToneVoiceWake.isOpenFlowSettling==='function'&&global.OneToneVoiceWake.isOpenFlowSettling();
+          // #region agent log
+          try{ if(settling&&global.__dbgB5) global.__dbgB5('F','voice-runtime.js:scheduleVoiceUiRender','skip status during open settle',{panel:panel}); }catch(_){}
+          // #endregion
+          if(drawerPayload&&!settling){
             if((panel==='voiceWake'||panel==='debug')&&drawerPayload.sapi) hooks().renderVoiceSapiStatus(drawerPayload.sapi,{liveOnly:panel==='voiceWake'});
             if((panel==='voiceWake'||panel==='debug')&&drawerPayload.vosk) hooks().renderVoiceVoskStatus(drawerPayload.vosk,{liveOnly:panel==='voiceWake'});
             if((panel==='voiceWake'||panel==='debug')&&drawerPayload.kws&&hooks().renderVoiceKwsStatus) hooks().renderVoiceKwsStatus(drawerPayload.kws,{liveOnly:panel==='voiceWake'});
-            if((panel==='voiceWake'||panel==='debug')&&drawerPayload.end) hooks().renderVoiceEndStatus(drawerPayload.end);
+            if((panel==='voiceWake'||panel==='debug')&&drawerPayload.end){
+              // voiceWake: liveOnly — full modeSwitch+flow every 1.5s poll was the 假死 storm.
+              hooks().renderVoiceEndStatus(drawerPayload.end, panel==='voiceWake'?{liveOnly:true}:undefined);
+            }
           }
           if(panel==='voiceWake') maybeSyncMicLevelMonitor();
-          if(panel==='voiceWake') maybeRenderMappingListFromVoice();
-          if(panel==='voiceWake'&&global.OneToneVoiceFeedbackRail&&global.OneToneVoiceFeedbackRail.syncLiveText){
+          if(panel==='voiceWake'&&!settling) maybeRenderMappingListFromVoice();
+          if(panel==='voiceWake'&&!settling&&global.OneToneVoiceFeedbackRail&&global.OneToneVoiceFeedbackRail.syncLiveText){
             global.OneToneVoiceFeedbackRail.syncLiveText();
           }
           if(global.OneToneSettingsDrawer&&(global.OneToneSettingsDrawer.isKeysPanel(panel)||global.OneToneSettingsDrawer.isHabitsPanel(panel))) hooks().renderKeyFinishFlowPanel();

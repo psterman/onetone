@@ -519,16 +519,26 @@ fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
 }
 
 pub fn voice_vosk_status(state: &AppState, resource_dir: Option<PathBuf>) -> serde_json::Value {
-    let cfg = state.cfg.lock();
-    let probe = cached_vosk_probe(state, &cfg.voice_vosk, resource_dir.as_deref());
-    let target_key =
-        crate::voice_end_runtime::resolve_wake_target_key(&cfg, &cfg.voice_vosk.target_key);
+    let (voice_vosk, target_key, phrases, cooldown_ms) = {
+        let cfg = state.cfg.lock();
+        let target_key =
+            crate::voice_end_runtime::resolve_wake_target_key(&cfg, &cfg.voice_vosk.target_key);
+        let phrases = crate::voice_end_runtime::idle_wake_phrases(&cfg);
+        let voice_vosk = cfg.voice_vosk.clone();
+        let cooldown_ms = cfg.voice_vosk.cooldown_ms;
+        (voice_vosk, target_key, phrases, cooldown_ms)
+    };
+    let probe = cached_vosk_probe_opts(state, &voice_vosk, resource_dir.as_deref(), false);
     let resources_dir = crate::voice_vosk::vosk_resources_dir(resource_dir.as_deref());
     let resource_issue = crate::voice_vosk::vosk_resource_issue(&probe);
     let download_url = crate::voice_vosk::vosk_model_download_url(&probe.model_preset)
         .unwrap_or("https://alphacephei.com/vosk/models");
-    let supervisor =
-        crate::voice_bootstrap::supervisor_desired_engine(state, &cfg, resource_dir.as_deref());
+    let cfg_snap = state.cfg.lock().clone();
+    let supervisor = crate::voice_bootstrap::supervisor_desired_engine(
+        state,
+        &cfg_snap,
+        resource_dir.as_deref(),
+    );
     let vosk_enabled = supervisor == crate::scene_config::DesiredVoiceEngine::Vosk
         || state.voice_vosk.lock().is_some();
     let mut value = serde_json::json!({
@@ -540,9 +550,9 @@ pub fn voice_vosk_status(state: &AppState, resource_dir: Option<PathBuf>) -> ser
         "lastSkip": state.voice_vosk_last_skip.lock().clone(),
         "lastTrigger": state.voice_vosk_last_trigger.lock().clone(),
         "lastDetectedPhrase": state.voice_vosk_last_detected_phrase.lock().clone(),
-        "phrases": crate::voice_end_runtime::idle_wake_phrases(&cfg),
+        "phrases": phrases,
         "targetKey": target_key,
-        "cooldownMs": cfg.voice_vosk.cooldown_ms,
+        "cooldownMs": cooldown_ms,
         "modelPath": probe.model_path,
         "modelPreset": probe.model_preset,
         "resolvedModelPath": probe.resolved_model_path,
@@ -556,7 +566,6 @@ pub fn voice_vosk_status(state: &AppState, resource_dir: Option<PathBuf>) -> ser
         "resourcesDir": resources_dir.display().to_string(),
         "modelDownloadUrl": download_url,
     });
-    drop(cfg);
     crate::voice_bootstrap::attach_supervisor_status(state, &mut value);
     value
 }
@@ -566,8 +575,28 @@ fn cached_vosk_probe(
     cfg: &VoiceVoskConfig,
     resource_dir: Option<&std::path::Path>,
 ) -> VoskResourceProbe {
+    cached_vosk_probe_opts(state, cfg, resource_dir, true)
+}
+
+fn cached_vosk_probe_opts(
+    state: &AppState,
+    cfg: &VoiceVoskConfig,
+    resource_dir: Option<&std::path::Path>,
+    allow_fs: bool,
+) -> VoskResourceProbe {
     if let Some(probe) = state.voice_vosk_probe.lock().clone() {
         return probe;
+    }
+    if !allow_fs {
+        return VoskResourceProbe {
+            model_exists: false,
+            dll_exists: false,
+            lib_exists: false,
+            model_path: cfg.model_path.clone(),
+            model_preset: cfg.model_preset.clone(),
+            resolved_model_path: String::new(),
+            resolved_dll_path: String::new(),
+        };
     }
     let probe = probe_vosk_resources(cfg, resource_dir);
     *state.voice_vosk_probe.lock() = Some(probe.clone());

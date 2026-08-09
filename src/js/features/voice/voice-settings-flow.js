@@ -17,7 +17,13 @@
   function scheduleVoiceSettingsRender(){
     clearTimeout(settingsRenderTimer);
     settingsRenderTimer=setTimeout(function(){
+      // #region agent log
+      var __flowT0=performance.now();
+      // #endregion
       if(canRenderVoiceSettings()) renderVoiceSettingsFlow(false);
+      // #region agent log
+      try{ if(global.__dbgB5) global.__dbgB5('F','voice-settings-flow.js:scheduleTick','flow render done',{ms:Math.round(performance.now()-__flowT0)}); }catch(_){}
+      // #endregion
     },0);
   }
 

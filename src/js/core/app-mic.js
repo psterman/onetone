@@ -24,6 +24,7 @@
   var micUiBound=false;
   var trayMicBound=false;
   var manualOverrideUntil=0;
+  var lastQuietMicListSig='';
 
   var MIC_DEVICE_REFRESH_MS=8000;
   var MIC_MANUAL_OVERRIDE_MS=45000;
@@ -195,6 +196,9 @@
   }
 
   function micAutoRefreshAllowed(){
+    // voiceWake: loadMicDevices on open is enough. The 8s quiet cmd_mic_list was racing the
+    // WASAPI level-monitor thread and starving cmd_ui_heartbeat → UI_HB_STALL_5S (~5s, empty tag).
+    if(ui.drawerOpen&&ui.settingsPanel==='voiceWake') return false;
     return micLevelUiVisible()
       &&!voiceCaptureActive()
       &&global.OneToneMappingRecording.mode()==='none'
@@ -229,7 +233,8 @@
   }
 
   function micPollIntervalMs(){
-    if(ui.drawerOpen&&ui.settingsPanel==='voiceWake') return 400;
+    // 400ms style updates across wake card + device bars piled up after open; keep readable, less hot.
+    if(ui.drawerOpen&&ui.settingsPanel==='voiceWake') return 1500;
     // Vosk/KWS already fill MicLevelState — poll even before bootMicReady.
     if(voiceCaptureActive()) return 500;
     if(!hooks().bootMicReady()) return 0;
@@ -243,7 +248,7 @@
     if(!interval) return;
     pollMicLevel();
     micPollTimer=setInterval(pollMicLevel,interval);
-    startMicDeviceRefresh();
+    if(micAutoRefreshAllowed()) startMicDeviceRefresh();
   }
 
   function stopMicLevelPoll(){
@@ -309,9 +314,18 @@
     var prevId=activeMicId;
     micDeviceRefreshInFlight=true;
     return vpInvoke('cmd_mic_list',{}).then(function(devices){
-      replaceMicDevices(Array.isArray(devices)?devices:[]);
-      var nextId=resolveActiveMicId(micDevices,prevId);
+      var list=Array.isArray(devices)?devices:[];
+      var sig=list.map(function(d){ return String(d&&d.id||'')+'|'+(d&&d.isAvailable===false?0:1); }).join(',');
+      var nextId=resolveActiveMicId(list.filter(function(d){ return micDeviceAvailable(d); }),prevId);
+      var sameList=sig===lastQuietMicListSig;
+      var sameActive=nextId===activeMicId;
       var reconnect=nextId!==activeMicId||!micMonitorDeviceId||micMonitorDeviceId!==nextId;
+      if(sameList&&sameActive&&!reconnect){
+        clearMicBackoff();
+        return;
+      }
+      lastQuietMicListSig=sig;
+      replaceMicDevices(list);
       activeMicId=nextId;
       renderMicDevices();
       clearMicBackoff();
@@ -350,6 +364,9 @@
     var payload={};
     if(deviceId) payload.device_id=deviceId;
     if(opts.force) payload.force=true;
+    // #region agent log
+    try{ if(global.__dbgB5) global.__dbgB5('B','app-mic.js:ensureMicMonitor','mic monitor start',{want:want,force:!!opts.force,prev:micMonitorDeviceId||''}); }catch(_){}
+    // #endregion
     micMonitorDeviceId=want;
     return stopMicMonitor().then(function(){
       micMonitorDeviceId=want;
@@ -402,7 +419,27 @@
   }
 
   function renderHomeMicCurrent(){
-    hooks().renderVoiceSettingsFlow();
+    // Quiet device refresh used to call full renderVoiceSettingsFlow every 8s on voiceWake
+    // (voice off → micAutoRefreshAllowed) → UI_HB_STALL_5S with empty tag after open settled.
+    // #region agent log
+    try{
+      if(global.__dbgB5&&(!global.__dbgB5MicRenderAt||Date.now()-global.__dbgB5MicRenderAt>1500)){
+        global.__dbgB5MicRenderAt=Date.now();
+        global.__dbgB5('D','app-mic.js:renderHomeMicCurrent','renderHomeMicCurrent',{drawerOpen:!!ui.drawerOpen,panel:ui.settingsPanel||''});
+      }
+    }catch(_){}
+    // #endregion
+    if(ui.drawerOpen&&ui.settingsPanel==='voiceWake'){
+      if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.syncAsideLiveStatus){
+        try{ global.OneToneVoiceSettingsFlow.syncAsideLiveStatus(); }catch(_){}
+      }
+      return;
+    }
+    if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+      global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+      return;
+    }
+    if(hooks().renderVoiceSettingsFlow) hooks().renderVoiceSettingsFlow();
   }
 
   function startMicMonitor(deviceId){
@@ -429,6 +466,7 @@
     }).then(function(devices){
       micListLoaded=true;
       replaceMicDevices(Array.isArray(devices)?devices:[]);
+      lastQuietMicListSig=micDevices.map(function(d){ return String(d&&d.id||'')+'|'+(d&&d.isAvailable===false?0:1); }).join(',');
       clearMicBackoff();
       if(!micDevices.length){
         activeMicId='';

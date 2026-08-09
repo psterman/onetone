@@ -49,6 +49,11 @@
   }
 
   function runMvpInitHeavySideEffects(){
+    if(mvpInitHeavyRemountBlocked()){
+      deferredMvpInitSideEffects=true;
+      earlyPersistLog('mvp_init heavy run re-deferred (drawer panel)');
+      return;
+    }
     const st=state();
     const toggleBusy=voiceToggleBusy();
     const syncEditor=hookFn('syncEditorFromSelection');
@@ -94,6 +99,12 @@
       try{
         if(global.__otBootCameraCold){
           camDelay=2500;
+          // Enhanced/auto: vosk bootstrap + voiceWake open — push camera past that stack.
+          try{
+            var cfgCam=state().config||{};
+            var stratCam=String(cfgCam.voiceListeningStrategy||cfgCam.voice_listening_strategy||'').trim();
+            if(stratCam==='enhanced'||stratCam==='auto') camDelay=5000;
+          }catch(_){}
           global.__otBootCameraCold=false;
         }
       }catch(_){}
@@ -187,7 +198,23 @@
 
   function flushDeferredMvpInitSideEffects(){
     if(!deferredMvpInitSideEffects) return;
+    // voiceWake/keys/camera/softPad open: running heavy here stacks remount + camera
+    // reconcile with the open panel and 假死'd (UI_HB_STALL empty tag, ipc="").
+    // Keep the flag; closeDrawer / leaving the blocked panel will flush.
+    if(mvpInitHeavyRemountBlocked()){
+      earlyPersistLog('mvp_init heavy flush held (drawer panel)');
+      // #region agent log
+      try{
+        var p=(global.OneToneState&&global.OneToneState.ui&&global.OneToneState.ui.settingsPanel)||'';
+        if(global.__dbgB5) global.__dbgB5('M','config-persist.js:flush','flush held drawer open',{panel:p});
+      }catch(_){}
+      // #endregion
+      return;
+    }
     deferredMvpInitSideEffects=false;
+    // #region agent log
+    try{ if(global.__dbgB5) global.__dbgB5('M','config-persist.js:flush','flush running heavy',{}); }catch(_){}
+    // #endregion
     runMvpInitHeavySideEffects();
   }
 

@@ -19,7 +19,8 @@
         "minWidth": 640,
         "minHeight": 680,
         "decorations": true,
-        "transparent": false
+        "transparent": false,
+        "alwaysOnTop": true
       },
       {
         "label": "tray_menu",

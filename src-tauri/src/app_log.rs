@@ -62,6 +62,15 @@ pub fn log_line(state: &AppState, source: &str, message: &str) {
     log_line_with_priority(state, source, message, LogPriority::Normal);
 }
 
+/// Debug-mode session NDJSON mirror (CSP blocks WebView fetch to ingest :7915).
+/// Prefix from FE: `dbg-b5f349 ` + JSON object.
+pub fn append_debug_session_ndjson(json: &str) {
+    let path = PathBuf::from(r"C:\Users\Administrator\Desktop\voice-pilot\debug-b5f349.log");
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(file, "{}", json.trim_end());
+    }
+}
+
 pub fn log_line_high(state: &AppState, source: &str, message: &str) {
     log_line_with_priority(state, source, message, LogPriority::High);
 }

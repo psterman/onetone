@@ -13,6 +13,7 @@
   var stream=null;
   var devices=[];
   var previewLive=false;
+  var pipelinePaused=false;
   var starting=false;
   var bound=false;
   var metaTimer=0;
@@ -1796,7 +1797,52 @@
       video.style.filter='';
     }
     previewLive=false;
+    pipelinePaused=false;
     starting=false;
+  }
+
+  function pausePipeline(){
+    if(pipelinePaused) return;
+    pipelinePaused=true;
+    clearMetaTimer();
+    stopGazeLoop();
+    var video=$('cameraPreviewVideo');
+    if(video&&!video.paused){
+      try{ video.pause(); }catch(_){}
+    }
+    // Disable tracks — paused <video> still left late UI_HB_STALL with live stream.
+    if(stream&&stream.getVideoTracks){
+      try{
+        stream.getVideoTracks().forEach(function(tr){
+          try{ tr.enabled=false; }catch(_){}
+        });
+      }catch(_){}
+    }
+    // #region agent log
+    try{ if(global.__dbgB5) global.__dbgB5('N','camera-preview.js:pausePipeline','camera pipeline paused',{live:!!previewLive,hasStream:!!stream,tracksDisabled:true}); }catch(_){}
+    // #endregion
+  }
+
+  function resumePipeline(){
+    if(!pipelinePaused) return;
+    pipelinePaused=false;
+    if(stream&&stream.getVideoTracks){
+      try{
+        stream.getVideoTracks().forEach(function(tr){
+          try{ tr.enabled=true; }catch(_){}
+        });
+      }catch(_){}
+    }
+    var video=$('cameraPreviewVideo');
+    if(video&&previewLive&&video.paused){
+      try{
+        var p=video.play();
+        if(p&&typeof p.catch==='function') p.catch(function(){});
+      }catch(_){}
+    }
+    // #region agent log
+    try{ if(global.__dbgB5) global.__dbgB5('N','camera-preview.js:resumePipeline','camera pipeline resumed',{live:!!previewLive}); }catch(_){}
+    // #endregion
   }
 
   function stopTracks(){
@@ -2311,6 +2357,7 @@
     startPreview:startPreview,
     stop:stop,
     isRunning:function(){ return !!previewLive; },
+    hasMediaStream:function(){ return !!stream; },
     getLastError:function(){ return lastError?{code:lastError.code,message:lastError.message}:null; },
     getPreviewStatus:function(){ return previewStatus; },
     mapError:mapError,
@@ -2326,7 +2373,9 @@
     syncLiveLandmarker:syncLiveLandmarker,
     syncHandGesture:syncHandGesture,
     persistCameraPrefs:persistCameraPrefs,
-    getCaptureFpsHint:getCaptureFpsHint
+    getCaptureFpsHint:getCaptureFpsHint,
+    pausePipeline:pausePipeline,
+    resumePipeline:resumePipeline
   };
 
   if(document.readyState==='loading'){

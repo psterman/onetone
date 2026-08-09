@@ -131,11 +131,13 @@ fn resolve_strategy_engine(
                 EffectiveVoiceEngine::Vosk
             }
         }
+        // KWS not ready → keep Vosk (same as auto). Desired=none stopped listening on every
+        // 省电 click, then 增强 cold-started the model → UI_HB stall / 未响应.
         "resourceSaver" => {
             if kws_ready {
                 EffectiveVoiceEngine::Kws
             } else {
-                EffectiveVoiceEngine::None
+                EffectiveVoiceEngine::Vosk
             }
         }
         "enhanced" => EffectiveVoiceEngine::Vosk,
@@ -159,7 +161,9 @@ fn resolve_supervisor_desired_engine(
 ) -> EffectiveVoiceEngine {
     let strategy = crate::scene_config::voice_listening_strategy(cfg);
     let advanced_engine = crate::scene_config::idle_desired_voice_engine(cfg);
-    let ready = crate::voice_kws_runtime::kws_readiness(state, cfg, resource_dir);
+    // Never FS-probe here — attach_supervisor_status runs on every voice_*_status.
+    let _ = resource_dir;
+    let ready = crate::voice_kws_runtime::kws_readiness_cached(state, cfg);
     resolve_strategy_engine(strategy, ready.ready, advanced_engine)
 }
 
@@ -556,14 +560,14 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
         );
     }
     if crate::scene_config::voice_listening_strategy(&cfg) == "resourceSaver"
-        && desired == EffectiveVoiceEngine::None
+        && desired == EffectiveVoiceEngine::Vosk
         && !kws_ready.ready
     {
         crate::app_log::log_line(
             state,
             "voice",
             &format!(
-                "resourceSaver desired=none (kws not ready: {})",
+                "resourceSaver desired=vosk (kws not ready: {})",
                 kws_ready.reason
             ),
         );
@@ -709,6 +713,15 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
                 reason
             ),
         );
+        {
+            let state_w = Arc::clone(state);
+            let rd = app.path().resource_dir().ok();
+            let _ = std::thread::Builder::new()
+                .name("kws-probe-warm".into())
+                .spawn(move || {
+                    voice_kws_runtime::refresh_kws_probe_cache(state_w.as_ref(), rd.as_deref());
+                });
+        }
         if phase_log {
             log_bootstrap_phase(
                 state,
@@ -773,6 +786,16 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
             engine_label(desired)
         ),
     );
+    // Warm KWS FS probe off the IPC path so status polls never readdir under load.
+    {
+        let state_w = Arc::clone(state);
+        let rd = app.path().resource_dir().ok();
+        let _ = std::thread::Builder::new()
+            .name("kws-probe-warm".into())
+            .spawn(move || {
+                voice_kws_runtime::refresh_kws_probe_cache(state_w.as_ref(), rd.as_deref());
+            });
+    }
     if phase_log {
         log_bootstrap_phase(
             state,
@@ -1035,10 +1058,11 @@ pub fn set_degrade_status(state: &AppState, reason: &str) {
 }
 
 pub fn supervisor_status_json(state: &AppState) -> serde_json::Value {
-    let cfg = state.cfg.lock();
+    // Clone+drop before readiness: kws_readiness may FS-probe on cache miss.
+    // Holding cfg across that starved voice_sapi_status (~5s) → UI_HB_STALL_5S.
+    let cfg = state.cfg.lock().clone();
     let desired = resolve_supervisor_desired_engine(state, &cfg, None);
     let strategy = crate::scene_config::voice_listening_strategy(&cfg);
-    drop(cfg);
     let active = observe_running_engine(state);
     let degraded = *state.voice_degraded.lock();
     let degraded_reason = state.voice_degraded_reason.lock().clone();
@@ -1369,6 +1393,11 @@ pub fn apply_voice_config_change(
 ) {
     let resource_dir = app.path().resource_dir().ok();
     let resource = resource_dir.as_deref();
+    if old_cfg.voice_kws.model_path != new_cfg.voice_kws.model_path
+        || old_cfg.voice_kws.model_preset != new_cfg.voice_kws.model_preset
+    {
+        *state.voice_kws_probe.lock() = None;
+    }
     // Use supervisor resolution (KWS readiness), not idle_desired — auto and resourceSaver
     // both map to Kws in idle_desired, but auto may run Vosk while resourceSaver must stop it.
     let old_desired = resolve_supervisor_desired_engine(state, old_cfg, resource);
@@ -1536,7 +1565,7 @@ mod activate_gate_tests {
         );
         assert_eq!(
             resolve_strategy_engine("resourceSaver", false, EffectiveVoiceEngine::Vosk),
-            EffectiveVoiceEngine::None
+            EffectiveVoiceEngine::Vosk
         );
         assert_eq!(
             resolve_strategy_engine("off", true, EffectiveVoiceEngine::Vosk),

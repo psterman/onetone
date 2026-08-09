@@ -30,6 +30,22 @@
   <link rel="stylesheet" href="css/typography.css" />
 </head>
 <body>
+  <aside class="voice-hang-live is-open" id="voiceHangLivePanel" aria-label="UI hang diagnostics">
+    <div class="voice-hang-live-head">
+      <strong id="voiceHangDiagTitle" data-i18n="voiceHangDiagTitle">UI 假死</strong>
+      <button type="button" class="voice-hang-live-toggle" id="voiceHangLiveToggle" data-i18n="voiceHangDiagCollapse">收起</button>
+    </div>
+    <div class="voice-hang-live-body" id="voiceHangLiveBody">
+      <div class="voice-hang-verdict" id="voiceHangDiagVerdict" data-hang="healthy">—</div>
+      <div class="wb-diag-row"><span data-i18n="voiceHangDiagHb">心跳</span><strong id="voiceHangDiagHb">—</strong></div>
+      <div class="wb-diag-row"><span data-i18n="voiceHangDiagPeak">峰值</span><strong id="voiceHangDiagPeak">—</strong></div>
+      <div class="wb-diag-row"><span data-i18n="voiceHangDiagSupervisor">引擎督导</span><strong id="voiceHangDiagSupervisor">—</strong></div>
+      <div class="wb-diag-row"><span data-i18n="voiceHangDiagGuards">前端守卫</span><strong id="voiceHangDiagGuards">—</strong></div>
+      <div class="wb-diag-row"><span data-i18n="voiceHangDiagLastStall">上次卡顿</span><strong id="voiceHangDiagLastStall">—</strong></div>
+      <div class="wb-diag-row voice-hang-events-row"><span data-i18n="voiceHangDiagEvents">事件</span><strong id="voiceHangDiagEvents">—</strong></div>
+      <div class="voice-hang-timeline" id="voiceHangDiagTimeline" aria-hidden="true"></div>
+    </div>
+  </aside>
   <div class="app">
     <header class="app-header app-header--slim">
       <div class="app-brand">
@@ -2517,6 +2533,10 @@
                 <p class="voice-diagnostics-intro" id="voiceDiagnosticsDesc" hidden></p>
               </div>
             </div>
+            <div class="wb-diag-block" id="voiceHangDiagRepairNote">
+              <h3 class="wb-diag-block-title" data-i18n="voiceHangDiagTitle">UI 假死</h3>
+              <p class="mini" id="voiceHangDiagRepairHint" data-i18n="voiceHangDiagLiveHint">实时诊断已在主窗右上角展开，并与主窗一起全局置顶。</p>
+            </div>
             <div class="debug-trigger-diag-stack" id="debugTriggerDiagStack">
               <div class="wb-diag-block debug-trigger-block" id="debugTriggerCompatBlock">
                 <h3 class="wb-diag-block-title" id="debugTriggerCompatTitle" data-i18n="homeWbDiagCompatTitle">设备兼容性</h3>
@@ -4203,7 +4223,7 @@
   <script src="js/core/app-voice-presets.js"></script>
   <script src="js/core/scene-config.js"></script>
   <script src="js/core/habit-profile.js"></script>
-  <script src="js/core/config-persist.js?v=20260706-sync"></script>
+  <script src="js/core/config-persist.js?v=20260809-stall9"></script>
   <script src="js/core/app-text-utils.js"></script>
   <script src="js/core/app-autostart.js"></script>
   <script src="js/core/app-start-minimized.js"></script>
@@ -4211,11 +4231,11 @@
   <script src="js/core/sound-surfaces.js"></script>
   <script src="js/core/sound-bus.js"></script>
   <script src="js/core/app-theme-prefs.js"></script>
-  <script src="js/core/app-mic.js"></script>
+  <script src="js/core/app-mic.js?v=20260809-stall9"></script>
   <script src="js/core/app-bridge.js"></script>
-  <script src="js/core/app-session.js"></script>
+  <script src="js/core/app-session.js?v=20260809-stall9"></script>
   <script src="js/core/voice-ui-state.js"></script>
-  <script src="js/core/voice-runtime.js"></script>
+  <script src="js/core/voice-runtime.js?v=20260809-stall9"></script>
   <script src="js/core/app-process-usage.js"></script>
   <script src="js/core/app-key-utils.js"></script>
   <script src="js/core/app-home-lang.js"></script>
@@ -4234,6 +4254,7 @@
   <script src="js/core/app-global-error.js"></script>
   <script src="js/core/app-debug-state.js"></script>
   <script src="js/features/update/update.js"></script>
+  <script src="js/features/debug/voice-hang-classify.js"></script>
   <script src="js/features/debug/voice-diag.js"></script>
   <script src="js/features/debug/debug-panel.js"></script>
   <script src="js/features/debug/debug-about.js"></script>
@@ -4247,7 +4268,7 @@
   <script src="js/features/voice/voice-engine-readiness.js"></script>
   <script src="js/features/voice/voice-wake-presets.js"></script>
   <script src="js/features/voice/voice-wake-navigation.js"></script>
-  <script src="js/features/voice/voice-wake.js"></script>
+  <script src="js/features/voice/voice-wake.js?v=20260809-stall9"></script>
   <script src="js/features/voice/voice-home-summary.js"></script>
   <script src="js/features/input-flow-summary.js"></script>
   <script src="js/features/home/home-voice-link-map.js"></script>
@@ -4267,13 +4288,13 @@
   <script src="js/features/voice/voice-page-state.js"></script>
   <script src="js/features/voice/voice-step-nav.js"></script>
   <script src="js/features/voice/voice-feedback-rail.js"></script>
-  <script src="js/features/voice/voice-settings-flow.js"></script>
+  <script src="js/features/voice/voice-settings-flow.js?v=20260809-stall9"></script>
   <script src="js/features/voice/voice-subpages.js"></script>
   <script src="js/features/voice/voice-models-panel.js"></script>
-  <script src="js/features/voice/voice-ui-bindings.js"></script>
+  <script src="js/features/voice/voice-ui-bindings.js?v=20260809-stall9"></script>
   <script src="js/features/settings/settings-debug-hooks.js"></script>
   <script src="js/features/settings/basic-panel-ui.js"></script>
-  <script src="js/features/settings/settings-drawer.js"></script>
+  <script src="js/features/settings/settings-drawer.js?v=20260809-stall9"></script>
   <script src="js/features/settings/app-prefs-bindings.js"></script>
   <script src="js/features/settings/app-shell-bindings.js"></script>
   <script src="js/features/settings/settings-nav-bindings.js"></script>
@@ -4282,7 +4303,7 @@
   <script src="js/features/camera/gaze-karaoke-lines.js"></script>
   <script src="js/features/camera/camera-gaze-calibration.js"></script>
   <script src="js/features/camera/gaze-context-resolver.js"></script>
-  <script src="js/features/camera/camera-presence-actions.js"></script>
+  <script src="js/features/camera/camera-presence-actions.js?v=20260809-stall9"></script>
   <script src="js/features/camera/camera-gaze-monitor-topology.js"></script>
   <script src="js/features/camera/camera-gaze-monitor-assessment.js"></script>
   <script src="js/features/camera/camera-gaze-monitor-classifier.js"></script>
@@ -4290,7 +4311,7 @@
   <script src="js/features/camera/camera-snap-window.js"></script>
   <script src="js/features/camera/camera-auto-mute.js"></script>
   <script src="js/features/camera/camera-pro-glance.js"></script>
-  <script src="js/features/camera/camera-preview.js"></script>
+  <script src="js/features/camera/camera-preview.js?v=20260809-stall9"></script>
   <script src="vendor/face-mask/face-mask.js"></script>
   <script src="vendor/gpuimage-beautify/gpuimage-beautify.js"></script>
   <script src="js/features/camera/camera-video-enhancer.js"></script>
@@ -4376,7 +4397,7 @@
   <script src="js/core/app-bootstrap-hooks.js"></script>
   <script src="js/core/app-legacy-shims.js"></script>
   <script src="js/core/app-legacy-register.js"></script>
-  <script src="js/core/app-boot.js"></script>
+  <script src="js/core/app-boot.js?v=20260809-stall9"></script>
   <script src="js/core/app-bootstrap.js"></script>
   <script src="js/main-legacy.js"></script>
 

@@ -872,7 +872,9 @@
         try{ voiceOpenGen=global.OneToneVoiceWake.bumpOpenGen(); }catch(_){ voiceOpenGen=0; }
       }
       if(global.OneToneVoiceWake&&typeof global.OneToneVoiceWake.armOpenClickGuard==='function'){
-        try{ global.OneToneVoiceWake.armOpenClickGuard(450); }catch(_){}
+        // Ghost strategy-tab / presence clicks after open were flipping enhanced→auto→resourceSaver
+        // and each flip re-activated the engine (假死). Cover the deferred heavy RAF window.
+        try{ global.OneToneVoiceWake.armOpenClickGuard(2500); }catch(_){}
       }
       function voiceHbSet(tag){
         if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.setTag){
@@ -896,13 +898,23 @@
         return false;
       }
       voiceHbSet('voiceOpen:enter');
+      // #region agent log
+      try{ if(global.__dbgB5) global.__dbgB5('F','settings-drawer.js:voiceWake.enter','voiceWake open enter',{gen:voiceOpenGen,enteringVoice:!!enteringVoice,subpage:voiceSubpage}); }catch(_){}
+      // #endregion
       requestAnimationFrame(function(){
         setTimeout(function(){
           if(voiceOpenStale()){
             voiceHbClear('voiceOpen:enter');
+            // #region agent log
+            try{ if(global.__dbgB5) global.__dbgB5('F','settings-drawer.js:voiceWake.stale','stale abort before chrome',{gen:voiceOpenGen}); }catch(_){}
+            // #endregion
             return;
           }
           voiceHbPhase('voiceOpen:enter','voiceOpen:chrome');
+          // #region agent log
+          var __chromeT0=performance.now();
+          try{ if(global.__dbgB5) global.__dbgB5('F','settings-drawer.js:voiceWake.chromeStart','chrome phase start',{gen:voiceOpenGen}); }catch(_){}
+          // #endregion
           try{
             if(enteringVoice){
               const active=hooks().currentVoiceMode();
@@ -931,6 +943,9 @@
             console.error('voice panel deferred paint',err);
             voiceHbClear('voiceOpen:chrome');
           }
+          // #region agent log
+          try{ if(global.__dbgB5) global.__dbgB5('F','settings-drawer.js:voiceWake.chromeEnd','chrome phase end',{gen:voiceOpenGen,ms:Math.round(performance.now()-__chromeT0)}); }catch(_){}
+          // #endregion
           if(voiceOpenStale()){
             voiceHbClear('voiceOpen:chrome');
             return;
@@ -942,13 +957,23 @@
                 return;
               }
               voiceHbPhase('voiceOpen:chrome','voiceOpen:heavy');
+              // #region agent log
+              var __heavyT0=performance.now();
+              try{ if(global.__dbgB5) global.__dbgB5('F','settings-drawer.js:voiceWake.heavyStart','heavy phase start',{gen:voiceOpenGen,hasAcoustic:typeof global.__otMountVoiceAcousticIslands==='function'}); }catch(_){}
+              // #endregion
               try{
                 var mountVoiceAcoustic=global.__otMountVoiceAcousticIslands;
                 if(typeof mountVoiceAcoustic==='function') mountVoiceAcoustic();
+                // #region agent log
+                try{ if(global.__dbgB5) global.__dbgB5('F','settings-drawer.js:voiceWake.acousticDone','acoustic islands done',{gen:voiceOpenGen,ms:Math.round(performance.now()-__heavyT0)}); }catch(_){}
+                // #endregion
                 voiceHbPhase('voiceOpen:heavy','voiceOpen:modeSwitch');
                 try{
                   hooks().renderVoiceModeSwitch();
                 }finally{
+                  // #region agent log
+                  try{ if(global.__dbgB5) global.__dbgB5('F','settings-drawer.js:voiceWake.modeSwitchEnd','modeSwitch done',{gen:voiceOpenGen,ms:Math.round(performance.now()-__heavyT0)}); }catch(_){}
+                  // #endregion
                   voiceHbClear('voiceOpen:modeSwitch');
                 }
                 if(voiceDeferHeavy&&typeof voiceAfterHeavy==='function'){

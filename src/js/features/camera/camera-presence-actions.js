@@ -937,9 +937,15 @@
       }catch(_){}
       st.runtimeStatus='off';
       emitRuntime();
-      st._bootCamTimer=setTimeout(function(){
+      st._bootCamTimer=setTimeout(function bootCamDeferredTick(){
         st._bootCamTimer=null;
         if(!isEnabled()||st.manualStopped||isCameraPreviewLive()) return;
+        // Settings drawer (non-camera) owns the UI thread — do not cold-start
+        // getUserMedia under voiceWake/keys (假死). Retry after pause lifts.
+        if(st.drawerUiPaused){
+          st._bootCamTimer=setTimeout(bootCamDeferredTick,8000);
+          return;
+        }
         ensureRunning({reason:'boot_deferred'});
       },12000);
       return Promise.resolve({ok:true,reason:'boot_deferred'});
@@ -1678,7 +1684,7 @@
     st.lowPowerActive=false;
     try{
       if(global.OneToneVoiceWake&&global.OneToneVoiceWake.switchListeningStrategy){
-        global.OneToneVoiceWake.switchListeningStrategy('auto');
+        global.OneToneVoiceWake.switchListeningStrategy('auto',{force:true});
       }
     }catch(_){}
     toast(t('cameraPresenceLowPowerOff','已退出低消耗运行'));
@@ -1926,7 +1932,7 @@
       st.lowPowerActive=true;
       try{
         if(global.OneToneVoiceWake&&global.OneToneVoiceWake.switchListeningStrategy){
-          global.OneToneVoiceWake.switchListeningStrategy('resourceSaver');
+          global.OneToneVoiceWake.switchListeningStrategy('resourceSaver',{force:true});
         }
       }catch(_){}
       emitRuntime();
@@ -2681,6 +2687,19 @@
 
   function onFrame(point){
     if(!isEnabled()) return;
+    // Drawer remount + in-flight presence frame used to wedge WebView2 (UI_HB_STALL_5S,
+    // empty tag) right after voiceWake open — pauseInfer alone left this path live.
+    if(st.drawerUiPaused){
+      // #region agent log
+      try{
+        if(global.__dbgB5&&(!global.__dbgB5PresenceSkipAt||Date.now()-global.__dbgB5PresenceSkipAt>2000)){
+          global.__dbgB5PresenceSkipAt=Date.now();
+          global.__dbgB5('F','camera-presence-actions.js:onFrame','presence onFrame skipped drawer paused',{});
+        }
+      }catch(_){}
+      // #endregion
+      return;
+    }
     try{
       if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.setTag){
         global.OneToneUiHeartbeat.setTag('presenceFrame');
@@ -3687,14 +3706,45 @@
     st.drawerUiPaused=paused;
     var lm=global.OneToneCameraGazeLandmarker;
     var hg=global.OneToneCameraHandGesture;
+    var pv=global.OneToneCameraPreview;
     try{
       if(paused){
+        // Snapshot before pausePipeline — gate must not depend on post-pause flags.
+        var wasLive=false;
+        var hasStream=false;
+        try{ wasLive=isCameraPreviewLive(); }catch(_){}
+        try{ hasStream=!!(pv&&typeof pv.hasMediaStream==='function'&&pv.hasMediaStream()); }catch(_){}
         if(lm&&lm.pauseInfer) lm.pauseInfer();
         if(hg&&hg.pauseInfer) hg.pauseInfer();
+        if(pv&&typeof pv.pausePipeline==='function') pv.pausePipeline();
+        // video.pause()/track.disable still UI_HB_STALL'd ~3min later (ipc="").
+        // Tear down MediaStream while non-camera settings own the UI.
+        if((wasLive||hasStream)&&!st._drawerStoppedCam){
+          st._drawerStoppedCam=true;
+          // #region agent log
+          try{ if(global.__dbgB5) global.__dbgB5('P','camera-presence-actions.js:setDrawerUiPaused','drawer stop camera',{reason:'drawer_ui_pause',wasLive:!!wasLive,hasStream:!!hasStream}); }catch(_){}
+          // #endregion
+          ensureStopped({reason:'drawer_ui_pause'});
+        }else{
+          // #region agent log
+          try{ if(global.__dbgB5) global.__dbgB5('P','camera-presence-actions.js:setDrawerUiPaused','drawer skip camera stop',{wasLive:!!wasLive,hasStream:!!hasStream,already:!!st._drawerStoppedCam}); }catch(_){}
+          // #endregion
+        }
       }else{
-        if(lm&&lm.resumeInfer) lm.resumeInfer();
-        if(hg&&hg.resumeInfer) hg.resumeInfer();
-        syncDetectInterval();
+        if(st._drawerStoppedCam){
+          st._drawerStoppedCam=false;
+          // #region agent log
+          try{ if(global.__dbgB5) global.__dbgB5('P','camera-presence-actions.js:setDrawerUiPaused','drawer resume camera',{reason:'drawer_ui_resume'}); }catch(_){}
+          // #endregion
+          if(isEnabled()&&!st.manualStopped){
+            ensureRunning({reason:'drawer_ui_resume'});
+          }
+        }else{
+          if(pv&&typeof pv.resumePipeline==='function') pv.resumePipeline();
+          if(lm&&lm.resumeInfer) lm.resumeInfer();
+          if(hg&&hg.resumeInfer) hg.resumeInfer();
+          syncDetectInterval();
+        }
       }
     }catch(_){}
   }

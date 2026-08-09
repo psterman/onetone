@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use tauri::{LogicalPosition, LogicalSize, Position, Size, WebviewWindow};
 
@@ -9,7 +9,8 @@ use crate::AppState;
 
 const MIN_W: f64 = 640.0;
 const MIN_H: f64 = 680.0;
-const SAVE_DEBOUNCE_MS: u64 = 400;
+/// Maximize/restore animations emit many Moved/Resized; 400ms still wrote 3× disk mid-transition.
+const SAVE_DEBOUNCE_MS: u64 = 1500;
 /// Windows moves tray-hidden windows to about (-32000, -32000).
 const HIDDEN_POSITION_THRESHOLD: f64 = -10_000.0;
 
@@ -95,7 +96,7 @@ pub fn schedule_save(state: Arc<AppState>, window: WebviewWindow) {
         if SAVE_GEN.load(Ordering::SeqCst) != gen {
             return;
         }
-        persist_now(&state, &window);
+        persist_and_log(&state, &window, "resize");
     });
 }
 
@@ -123,26 +124,57 @@ fn capture_into(cfg: &mut VoiceConfig, window: &WebviewWindow) {
     }
 }
 
+fn layout_fingerprint(cfg: &VoiceConfig) -> (bool, bool, u32, u32, i32, i32) {
+    (
+        cfg.window_layout_seen,
+        cfg.window_maximized,
+        cfg.window_width.round() as u32,
+        cfg.window_height.round() as u32,
+        cfg.window_x.map(|v| v.round() as i32).unwrap_or(i32::MIN),
+        cfg.window_y.map(|v| v.round() as i32).unwrap_or(i32::MIN),
+    )
+}
+
 fn persist_and_log(state: &Arc<AppState>, window: &WebviewWindow, reason: &str) {
-    let snapshot = {
+    crate::ui_heartbeat::note_ipc_enter("layout_persist");
+    let t0 = Instant::now();
+    // Capture under lock, then drop before disk — save_config under cfg.lock 假死'd IPC/HB.
+    let (changed, snapshot, lock_ms) = {
+        let lock_t0 = Instant::now();
         let mut cfg = state.cfg.lock();
+        let before = layout_fingerprint(&cfg);
         capture_into(&mut cfg, window);
         cfg.window_layout_seen = true;
-        config::save_config(&cfg);
-        (
+        let after = layout_fingerprint(&cfg);
+        let changed = before != after;
+        let snap = (
             cfg.window_layout_seen,
             cfg.window_maximized,
             cfg.window_width,
             cfg.window_height,
             cfg.window_x,
             cfg.window_y,
-        )
+            if changed { Some(cfg.clone()) } else { None },
+        );
+        let lock_ms = lock_t0.elapsed().as_millis() as u64;
+        (changed, snap, lock_ms)
     };
+    let mut disk_ms = 0u64;
+    if let Some(cfg_snap) = snapshot.6 {
+        let disk_t0 = Instant::now();
+        config::save_config(&cfg_snap);
+        disk_ms = disk_t0.elapsed().as_millis() as u64;
+    }
+    let total_ms = t0.elapsed().as_millis() as u64;
+    crate::ui_heartbeat::note_ipc_exit("layout_persist");
+    if !changed {
+        return;
+    }
     crate::app_log::log_line(
         state,
         "window",
         &format!(
-            "layout saved ({reason}): maximized={} size={:.0}x{:.0} pos=({}, {})",
+            "layout saved ({reason}): maximized={} size={:.0}x{:.0} pos=({}, {}) lock={}ms disk={}ms",
             snapshot.1,
             snapshot.2,
             snapshot.3,
@@ -154,8 +186,20 @@ fn persist_and_log(state: &Arc<AppState>, window: &WebviewWindow, reason: &str) 
                 .5
                 .map(|v| format!("{v:.0}"))
                 .unwrap_or_else(|| "-".into()),
+            lock_ms,
+            disk_ms,
         ),
     );
+    // #region agent log
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    crate::app_log::append_debug_session_ndjson(&format!(
+        "{{\"sessionId\":\"b5f349\",\"runId\":\"post-fix\",\"hypothesisId\":\"L1\",\"location\":\"window_layout.rs:persist\",\"message\":\"layout persist\",\"data\":{{\"reason\":\"{reason}\",\"changed\":true,\"lockMs\":{lock_ms},\"diskMs\":{disk_ms},\"totalMs\":{total_ms},\"maximized\":{}}},\"timestamp\":{ts}}}",
+        snapshot.1
+    ));
+    // #endregion
 }
 
 #[cfg(test)]

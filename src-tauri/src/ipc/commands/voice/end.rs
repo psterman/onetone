@@ -3,8 +3,21 @@ use std::sync::Arc;
 use crate::AppState;
 
 #[tauri::command]
-pub fn cmd_voice_end_status(state: tauri::State<Arc<AppState>>) -> serde_json::Value {
-    crate::voice_end_runtime::voice_end_status(&state)
+pub async fn cmd_voice_end_status(
+    state: tauri::State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    let state = Arc::clone(state.inner());
+    let join = tauri::async_runtime::spawn_blocking(move || {
+        crate::ui_heartbeat::note_ipc_enter("voice_end_status");
+        let v = crate::voice_end_runtime::voice_end_status(&state);
+        crate::ui_heartbeat::note_ipc_exit("voice_end_status");
+        v
+    });
+    match tokio::time::timeout(std::time::Duration::from_millis(1500), join).await {
+        Ok(Ok(v)) => Ok(v),
+        Ok(Err(e)) => Err(format!("end status task failed: {e}")),
+        Err(_) => Err("end status timeout".into()),
+    }
 }
 
 #[tauri::command]

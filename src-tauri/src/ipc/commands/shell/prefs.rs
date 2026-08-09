@@ -45,6 +45,11 @@ pub async fn cmd_app_log(
     // Disk I/O off the UI thread — sync cmd_app_log flooded main and marked the window 未响应.
     let state = Arc::clone(state.inner());
     tauri::async_runtime::spawn_blocking(move || {
+        // #region agent log
+        if let Some(json) = line.strip_prefix("dbg-b5f349 ") {
+            crate::app_log::append_debug_session_ndjson(json);
+        }
+        // #endregion
         crate::app_log::log_line(&state, "frontend", &line);
     })
     .await
@@ -59,6 +64,12 @@ pub fn cmd_ui_heartbeat(seq: u64, activity_tag: Option<String>, frontend_time: O
         activity_tag.as_deref().unwrap_or(""),
         frontend_time.unwrap_or(0),
     );
+}
+
+/// Live HB / ipc-inflight snapshot for hang viz. Same constraints as heartbeat.
+#[tauri::command]
+pub fn cmd_ui_hb_snapshot() -> crate::ui_heartbeat::UiHbSnapshot {
+    crate::ui_heartbeat::live_snapshot()
 }
 
 /// Last UI stall / unclean exit for next-boot home banner (does not clear).

@@ -5,12 +5,23 @@ use tauri::Manager;
 use crate::AppState;
 
 #[tauri::command]
-pub fn cmd_voice_kws_status(
-    state: tauri::State<Arc<AppState>>,
+pub async fn cmd_voice_kws_status(
+    state: tauri::State<'_, Arc<AppState>>,
     app: tauri::AppHandle,
-) -> serde_json::Value {
+) -> Result<serde_json::Value, String> {
+    let state = Arc::clone(state.inner());
     let resource_dir = app.path().resource_dir().ok();
-    crate::voice_kws_runtime::voice_kws_status(&state, resource_dir)
+    let join = tauri::async_runtime::spawn_blocking(move || {
+        crate::ui_heartbeat::note_ipc_enter("voice_kws_status");
+        let v = crate::voice_kws_runtime::voice_kws_status(&state, resource_dir);
+        crate::ui_heartbeat::note_ipc_exit("voice_kws_status");
+        v
+    });
+    match tokio::time::timeout(std::time::Duration::from_millis(1500), join).await {
+        Ok(Ok(v)) => Ok(v),
+        Ok(Err(e)) => Err(format!("kws status task failed: {e}")),
+        Err(_) => Err("kws status timeout".into()),
+    }
 }
 
 #[tauri::command]
