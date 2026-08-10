@@ -16,6 +16,7 @@
   <title>一声 onetone</title>
   <link rel="icon" type="image/png" sizes="256x256" href="icon.png" />
   <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/habit-hub-table.css" />
   <link rel="stylesheet" href="css/home-v9.css" />
   <link rel="stylesheet" href="css/home-workbench.css" />
   <link rel="stylesheet" href="css/keys-workflow.css" />
@@ -50,7 +51,8 @@
   <div class="app">
     <header class="app-header app-header--slim">
       <div class="app-brand">
-        <img class="app-logo" src="icon.png" width="36" height="36" alt="" aria-hidden="true" decoding="async" />
+        <img class="app-logo app-logo--light" src="icon-light.png" width="36" height="36" alt="" aria-hidden="true" decoding="async" />
+        <img class="app-logo app-logo--dark" src="icon-dark.png" width="36" height="36" alt="" aria-hidden="true" decoding="async" />
         <div class="app-title-wrap">
           <h1 class="app-title" id="appTitle">一声</h1>
           <p class="app-subtitle" id="appSubtitle">言出即行 · 万象成形</p>
@@ -99,7 +101,8 @@
       <aside class="app-left-nav" id="wbLeftNav" aria-label="主导航">
               <div class="wb-nav-brand">
                 <div class="wb-nav-brand-mark" aria-hidden="true">
-                  <img src="icon.png" width="32" height="32" alt="" decoding="async" />
+                  <img class="app-logo app-logo--light" src="icon-light.png" width="32" height="32" alt="" decoding="async" />
+                  <img class="app-logo app-logo--dark" src="icon-dark.png" width="32" height="32" alt="" decoding="async" />
                 </div>
                 <div class="wb-nav-brand-text">
                   <span class="wb-nav-brand-name" id="wbNavBrandName">一声 OneTone</span>
@@ -1287,6 +1290,9 @@
                 <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelHabitsDesc">先设好大家共用的，再给某个应用开例外</p>
                 <p class="habit-hub-hint" id="habitHubAutoHint">建议先完成通用按键与语音，日常先用通用；某个应用需要不一样时再新建场景。</p>
               </div>
+              <div class="habit-hub-head-actions">
+                <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitHubHeadNew" data-habit-hub-new>+ 新建应用场景</button>
+              </div>
             </header>
             <div class="habit-hub-toolbar">
               <div class="habit-hub-toolbar-left">
@@ -1303,11 +1309,11 @@
                   </select>
                 </label>
                 <div class="habit-hub-view-toggle" role="group" aria-label="视图">
-                  <button type="button" class="habit-hub-view-btn is-active" data-habit-view="list" id="btnHabitHubViewList" aria-pressed="true" aria-label="列表视图" title="列表">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                  </button>
                   <button type="button" class="habit-hub-view-btn" data-habit-view="grid" id="btnHabitHubViewGrid" aria-pressed="false" aria-label="网格视图" title="网格">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                  </button>
+                  <button type="button" class="habit-hub-view-btn is-active" data-habit-view="table" id="btnHabitHubViewTable" aria-pressed="true" aria-label="表格视图" title="表格">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="5" x2="9" y2="19"/><line x1="15" y1="5" x2="15" y2="19"/></svg>
                   </button>
                 </div>
               </div>
@@ -1324,9 +1330,32 @@
                     <button type="button" class="habit-hub-empty-btn is-primary" id="btnHabitHubEmptyNew">+ 新建应用场景</button>
                   </div>
                 </div>
-                <div class="habit-hub-list is-list" id="habitHubList" role="list"></div>
+                <div class="habit-hub-list is-table" id="habitHubList" role="list"></div>
               </div>
             </div>
+            <div class="habit-hub-peek-backdrop" id="habitHubPeekBackdrop" hidden></div>
+            <aside class="habit-hub-side-peek is-closed" id="habitHubSidePeek" aria-hidden="true" aria-labelledby="habitHubPeekTitle">
+              <div class="habit-hub-side-peek-inner">
+                <header class="habit-hub-side-peek-head">
+                  <div class="habit-hub-side-peek-head-text">
+                    <p class="habit-hub-side-peek-kicker" id="habitHubPeekKicker">编辑应用属性</p>
+                    <h4 class="habit-hub-side-peek-title" id="habitHubPeekTitle">—</h4>
+                    <p class="habit-hub-side-peek-sub" id="habitHubPeekSub"></p>
+                  </div>
+                  <button type="button" class="habit-hub-side-peek-close" id="btnHabitHubPeekClose" aria-label="关闭">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </header>
+                <div class="habit-hub-side-peek-body" id="habitHubPeekBody"></div>
+                <footer class="habit-hub-side-peek-foot">
+                  <button type="button" class="habit-hub-side-peek-del" id="btnHabitHubPeekDelete">删除此场景</button>
+                  <div class="habit-hub-side-peek-foot-actions">
+                    <button type="button" class="habit-hub-new-btn" id="btnHabitHubPeekCancel">取消</button>
+                    <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitHubPeekSave">保存属性</button>
+                  </div>
+                </footer>
+              </div>
+            </aside>
           </div>
           <div class="habit-scenario-shell" id="habitWizardView" hidden>
             <button type="button" class="habit-detail-back" id="btnHabitWizardBack">
@@ -4362,6 +4391,7 @@
   <script src="js/features/agent/soft-pad-hub-ui.js"></script>
   <script src="js/features/agent/agent-capability-ui.js"></script>
   <script src="js/features/mapping/habit-hub.js"></script>
+  <script src="js/features/mapping/habit-hub-side-peek.js"></script>
   <script src="js/features/mapping/habit-scenario-voice-command.js"></script>
   <script src="js/features/voice/voice-wake-acoustic.js"></script>
   <script src="js/features/mapping/habit-scenario-voice-editor.js"></script>

@@ -181,6 +181,20 @@ def generate() -> None:
     generate_ico(master)
     generate_windows_export(master)
     write_png(OUT_MASTER, master)
+    # Keep muted/missing in sync with the ready tray mark (same visual weight).
+    try:
+        from PIL import ImageEnhance, ImageOps
+
+        tray32 = Image.open(ICONS_DIR / "tray-32.png").convert("RGBA")
+        muted = ImageEnhance.Color(tray32).enhance(0.15)
+        muted = ImageEnhance.Brightness(muted).enhance(0.72)
+        write_png(ICONS_DIR / "tray-32-muted.png", muted)
+        gray = ImageOps.grayscale(tray32.convert("RGB")).convert("RGBA")
+        gray.putalpha(tray32.getchannel("A"))
+        gray = ImageEnhance.Brightness(gray).enhance(0.85)
+        write_png(ICONS_DIR / "tray-32-missing.png", gray)
+    except Exception as err:
+        print(f"tray muted/missing skipped: {err}")
 
 
 if __name__ == "__main__":

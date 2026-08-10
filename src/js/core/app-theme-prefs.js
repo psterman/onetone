@@ -155,6 +155,11 @@
     applyTheme();
   }
 
+  function syncBrandLogos(){
+    var fav=document.querySelector('link[rel="icon"]');
+    if(fav) fav.setAttribute('href',theme==='dark'?'icon-dark.png':'icon-light.png');
+  }
+
   function applyTheme(){
     document.documentElement.setAttribute('data-theme',theme);
     document.querySelectorAll('[data-theme-pick]').forEach(function(btn){
@@ -163,6 +168,7 @@
     document.querySelectorAll('[data-style-pick]').forEach(function(btn){
       btn.classList.toggle('is-active',btn.getAttribute('data-style-pick')===theme);
     });
+    syncBrandLogos();
     try{ localStorage.setItem('vp_theme',theme); }catch(_){}
     try{ window.chrome?.webview?.postMessage({type:'mvp_sync_theme_backdrop',theme:theme}); }catch(_){}
     if(global.OneToneBasicPanelUi&&global.OneToneBasicPanelUi.render) global.OneToneBasicPanelUi.render();

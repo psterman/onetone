@@ -67,6 +67,30 @@ assert.ok(html.includes('habit-hub-body--full'));
 assert.ok(!html.includes('id="habitHubAside"'));
 assert.ok(i18n.includes("habitHubGlobalDefaultDesc:'平时默认使用这套动作"));
 assert.ok(!i18n.includes('动作底座'));
-assert.ok(i18n.includes("habitHubConfigChannels:'配置'"));
+assert.ok(hub.includes('function renderTableRow'));
+assert.ok(hub.includes('function matchSearchQuery'));
+assert.ok(hub.includes('habitHubFilterCustomized')||hub.includes("'customized'"));
+assert.ok(hub.includes('data-habit-peek'));
+assert.ok(hub.includes('data-habit-search'));
+
+var peek = fs.readFileSync(path.join(root, 'src/js/features/mapping/habit-hub-side-peek.js'), 'utf8');
+assert.ok(peek.includes('OneToneHabitHubSidePeek'));
+assert.ok(!/keys-capture|voiceRecognizeSourceGrid|cmd_start_record/.test(peek));
+
+var tableCss = fs.readFileSync(path.join(root, 'src/css/habit-hub-table.css'), 'utf8');
+assert.ok(tableCss.includes('.habit-hub-table'));
+assert.ok(tableCss.includes('.habit-hub-side-peek'));
+
+assert.ok(html.includes('habitHubSidePeek'));
+assert.ok(html.includes('btnHabitHubViewTable'));
+assert.ok(html.includes('btnHabitHubViewGrid'));
+assert.ok(html.includes('habit-hub-table.css'));
+assert.ok(!html.includes('btnHabitHubViewList'));
+assert.ok(!html.includes('data-habit-view="list"'));
+
+// View toggle must rebuild list model (table vs card), not only toggle CSS class.
+assert.ok(/data-habit-view[\s\S]*?scheduleHubPaint\(\)/.test(hub));
+assert.ok(hub.includes('function normalizeViewMode'));
+assert.ok(hub.includes("horizontal:false"));
 
 console.log('ok habit-hub-light-orchestrator');
