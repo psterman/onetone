@@ -1242,6 +1242,7 @@ mod tests {
                     feature_frames: frames,
                     feature_dims: ACOUSTIC_FEATURE_DIMS,
                     sample_rate: 16000,
+                    preview_pcm_b64: None,
                     quality_signals: Some(AcousticVoiceCommandQualitySignals {
                         has_speech: true,
                         too_short: false,

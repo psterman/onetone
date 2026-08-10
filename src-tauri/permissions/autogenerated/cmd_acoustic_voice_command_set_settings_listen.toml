@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-acoustic-voice-command-set-settings-listen"
+description = "Enables the cmd_acoustic_voice_command_set_settings_listen command without any pre-configured scope."
+commands.allow = ["cmd_acoustic_voice_command_set_settings_listen"]
+
+[[permission]]
+identifier = "deny-cmd-acoustic-voice-command-set-settings-listen"
+description = "Denies the cmd_acoustic_voice_command_set_settings_listen command without any pre-configured scope."
+commands.deny = ["cmd_acoustic_voice_command_set_settings_listen"]

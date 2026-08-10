@@ -442,14 +442,57 @@ pub fn record_once(
     app: Option<&AppHandle>,
     session_id: Option<&str>,
 ) -> serde_json::Value {
-    // Calibration may set suspend to quiet the runtime matcher — do not block on it here.
+    match capture_sample_once(state, app, session_id) {
+        Ok(sample) => {
+            let out = serde_json::json!({
+                "ok": true,
+                "sample": sample,
+            });
+            crate::app_log::sync_emergency_line("rs", "acoustic record_once end ok=true");
+            out
+        }
+        Err(CaptureOnceError::Busy) => {
+            crate::app_log::sync_emergency_line(
+                "rs",
+                "acoustic record_once rejected: already in progress",
+            );
+            record_error_json(RecordReason::Internal, "habitAcousticCmdUnavailable", None)
+        }
+        Err(CaptureOnceError::Capture(err)) => {
+            crate::app_log::sync_emergency_line(
+                "rs",
+                &format!(
+                    "acoustic record_once capture failed kind={:?} detail={}",
+                    err.kind, err.detail
+                ),
+            );
+            capture_error_json(&err)
+        }
+        Err(CaptureOnceError::Process(reason, debug)) => {
+            crate::app_log::sync_emergency_line("rs", "acoustic record_once end ok=false");
+            record_error_json(reason, reason.message_key(), debug)
+        }
+    }
+}
+
+enum CaptureOnceError {
+    Busy,
+    Capture(CaptureError),
+    Process(RecordReason, Option<serde_json::Value>),
+}
+
+/// Typed capture used by record_once and test_once (MicLease, no JSON round-trip).
+fn capture_sample_once(
+    state: &Arc<AppState>,
+    app: Option<&AppHandle>,
+    session_id: Option<&str>,
+) -> Result<AcousticVoiceCommandSample, CaptureOnceError> {
     if state
         .acoustic_voice
         .record_in_progress
         .swap(true, Ordering::SeqCst)
     {
-        crate::app_log::sync_emergency_line("rs", &format!("acoustic record_once rejected: already in progress"));
-        return record_error_json(RecordReason::Internal, "habitAcousticCmdUnavailable", None);
+        return Err(CaptureOnceError::Busy);
     }
     let _record_guard = RecordInProgressGuard {
         flag: &state.acoustic_voice.record_in_progress,
@@ -460,11 +503,13 @@ pub fn record_once(
         .filter(|s| !s.is_empty())
         .unwrap_or("")
         .to_string();
-    crate::app_log::sync_emergency_line("rs", &format!("acoustic record_once begin session={session}"));
+    crate::app_log::sync_emergency_line(
+        "rs",
+        &format!("acoustic capture_sample_once begin session={session}"),
+    );
     crate::voice_bootstrap::stop_mic_monitor_and_release(state, "engine_or_device");
 
     let pcm_result = {
-        // MicLease Drop resumes the desired engine even on panic / early return.
         let mut lease =
             crate::voice_bootstrap::acquire_mic_lease(app, state, "acoustic_record_once");
         let app_for_emit = app.cloned();
@@ -495,21 +540,192 @@ pub fn record_once(
 
     let pcm = match pcm_result {
         Ok(p) => p,
-        Err(err) => {
-            crate::app_log::sync_emergency_line("rs", &format!(
-                "acoustic record_once capture failed kind={:?} detail={}",
-                err.kind, err.detail
-            ));
-            return capture_error_json(&err);
+        Err(err) => return Err(CaptureOnceError::Capture(err)),
+    };
+
+    let segmenter = EnergyGateSegmenter::default();
+    match extract_sample_from_pcm_with_segmenter(&pcm, TARGET_SAMPLE_RATE, &segmenter) {
+        Ok((sample, _debug)) => Ok(sample),
+        Err(reason) => {
+            let duration_ms = ((pcm.len() as u64) * 1000 / TARGET_SAMPLE_RATE as u64) as u32;
+            let seg = segmenter.segment(&pcm, TARGET_SAMPLE_RATE);
+            let speech = seg.slice(&pcm);
+            let rms = if speech.is_empty() {
+                0.0
+            } else {
+                let sum: f32 = speech.iter().map(|s| s * s).sum();
+                (sum / speech.len() as f32).sqrt()
+            };
+            Err(CaptureOnceError::Process(
+                reason,
+                Some(serde_json::json!({
+                    "durationMs": duration_ms,
+                    "speechMs": seg.duration_ms,
+                    "rms": rms,
+                    "featureFrames": 0,
+                })),
+            ))
+        }
+    }
+}
+
+/// One-shot open-app test: global margin scoring, execute only if top hit is target scenario.
+pub fn test_once(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    scenario_id: &str,
+) -> serde_json::Value {
+    let scenario_id = scenario_id.trim();
+    if scenario_id.is_empty() {
+        return serde_json::json!({
+            "ok": false,
+            "reason": "app_target_missing",
+            "messageKey": "voiceOpenAppTestNeedRecord"
+        });
+    }
+
+    let (mapping, commands) = {
+        let cfg = state.cfg.lock();
+        let mapping = cfg.find_mapping_by_id(scenario_id).cloned();
+        let commands = collect_match_commands(&cfg, None);
+        (mapping, commands)
+    };
+
+    let Some(mapping) = mapping else {
+        return serde_json::json!({
+            "ok": false,
+            "reason": "app_target_missing",
+            "messageKey": "voiceOpenAppTestNeedRecord"
+        });
+    };
+
+    let has_cmd = mapping
+        .acoustic_voice_commands
+        .iter()
+        .any(|c| c.enabled && !c.samples.is_empty());
+    if !has_cmd {
+        return serde_json::json!({
+            "ok": false,
+            "reason": "no_speech",
+            "messageKey": "voiceOpenAppTestNeedRecord"
+        });
+    }
+
+    let summon_target = crate::config::resolve_mapping_summon_target(&mapping)
+        .unwrap_or_else(|| mapping.app_target_id.trim().to_string());
+    if summon_target.is_empty() {
+        return serde_json::json!({
+            "ok": false,
+            "reason": "app_target_missing",
+            "messageKey": "voiceOpenAppTestLaunchFailed"
+        });
+    }
+
+    let cap = crate::app_chat_workflow::app_launch_capability(&summon_target);
+    if cap == crate::app_chat_workflow::AppLaunchCapability::Missing {
+        return serde_json::json!({
+            "ok": false,
+            "reason": "app_not_launchable",
+            "capability": cap.as_str(),
+            "messageKey": "voiceOpenAppTestLaunchFailed"
+        });
+    }
+
+    let sample = match capture_sample_once(state, Some(app), Some("open_app_test")) {
+        Ok(s) => s,
+        Err(CaptureOnceError::Busy) => {
+            return serde_json::json!({
+                "ok": false,
+                "reason": "pcm_unavailable",
+                "messageKey": "habitAcousticCmdUnavailable"
+            });
+        }
+        Err(CaptureOnceError::Capture(_)) => {
+            return serde_json::json!({
+                "ok": false,
+                "reason": "pcm_unavailable",
+                "messageKey": "habitAcousticCmdNoMic"
+            });
+        }
+        Err(CaptureOnceError::Process(reason, _)) => {
+            let r = match reason {
+                RecordReason::NoSpeech | RecordReason::TooShort => "no_speech",
+                RecordReason::Timeout => "no_speech",
+                _ => "no_speech",
+            };
+            return serde_json::json!({
+                "ok": false,
+                "reason": r,
+                "messageKey": reason.message_key()
+            });
         }
     };
 
-    let out = process_pcm_buffer(&pcm);
-    crate::app_log::sync_emergency_line("rs", &format!(
-        "acoustic record_once end ok={}",
-        out.get("ok").and_then(|v| v.as_bool()).unwrap_or(false)
-    ));
-    out
+    use crate::voice_acoustic_command::{match_acoustic_commands_detailed, MatchDetail};
+    let detail =
+        match_acoustic_commands_detailed(&sample.feature, sample.feature_frames, &commands);
+    let hit = match detail {
+        MatchDetail::BelowThreshold => {
+            return serde_json::json!({
+                "ok": false,
+                "reason": "below_threshold",
+                "messageKey": "voiceOpenAppTestTimeout"
+            });
+        }
+        MatchDetail::MarginConflict { top, second } => {
+            return serde_json::json!({
+                "ok": false,
+                "reason": "conflicts_with_other_command",
+                "topScenarioId": top.scenario_id,
+                "secondScenarioId": second.scenario_id,
+                "score": top.score,
+                "messageKey": "voiceOpenAppTestTimeout"
+            });
+        }
+        MatchDetail::Hit(c) => c,
+    };
+
+    if hit.scenario_id.trim() != scenario_id {
+        return serde_json::json!({
+            "ok": false,
+            "reason": "conflicts_with_other_command",
+            "topScenarioId": hit.scenario_id,
+            "score": hit.score,
+            "messageKey": "voiceOpenAppTestTimeout"
+        });
+    }
+
+    let result = crate::voice_end_runtime::execute_acoustic_scene_command(
+        state,
+        app,
+        scenario_id,
+        &hit.command_id,
+        hit.score,
+        crate::voice_end_runtime::AcousticExecuteMode::Test,
+    );
+
+    let reason = if result.ok {
+        String::new()
+    } else if result.runtime_label.contains("not_launchable")
+        || result.runtime_label.contains("not_running")
+    {
+        "app_not_launchable".into()
+    } else if result.runtime_label.contains("target_missing") {
+        "app_target_missing".into()
+    } else {
+        "app_launch_failed".into()
+    };
+
+    serde_json::json!({
+        "ok": result.ok,
+        "reason": reason,
+        "score": hit.score,
+        "commandId": hit.command_id,
+        "scenarioId": scenario_id,
+        "runtimeLabel": result.runtime_label,
+        "capability": cap.as_str(),
+        "messageKey": if result.ok { serde_json::Value::Null } else { serde_json::json!("voiceOpenAppTestLaunchFailed") }
+    })
 }
 
 pub fn capture_error_json(err: &CaptureError) -> serde_json::Value {
@@ -641,6 +857,7 @@ pub fn build_command_json(
     app_boost: bool,
     display_text: &str,
     current_command_id: Option<&str>,
+    kind: Option<&str>,
 ) -> serde_json::Value {
     let built = build_from_samples(
         samples,
@@ -650,6 +867,7 @@ pub fn build_command_json(
             app_boost,
             display_text,
             current_command_id,
+            kind,
         },
     );
     serde_json::json!({

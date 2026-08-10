@@ -329,6 +329,38 @@
   var ACOUSTIC_MAX_FEATURE_FRAMES=200;
   var ACOUSTIC_MAX_SAMPLES_PER_COMMAND=3;
   var ACOUSTIC_MAX_COMMANDS_PER_MAPPING=1;
+  /** Match Rust ACOUSTIC_PREVIEW_MAX_BYTES: 16k mono int16 LE, max 1.2s. */
+  var ACOUSTIC_PREVIEW_MAX_BYTES=38400;
+
+  /** Same strategy as Rust normalize_preview_pcm_b64. */
+  function normalizePreviewPcmB64(raw){
+    var b64=String(raw==null?'':raw).trim();
+    if(!b64) return null;
+    if(!/^[A-Za-z0-9+/]+={0,2}$/.test(b64)) return null;
+    var bytes;
+    try{
+      if(typeof Buffer!=='undefined'){
+        bytes=Uint8Array.from(Buffer.from(b64,'base64'));
+      }else{
+        var binary=atob(b64);
+        bytes=new Uint8Array(binary.length);
+        for(var i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+      }
+    }catch(_e){
+      return null;
+    }
+    if(bytes.length<2) return null;
+    var end=bytes.length;
+    if(end%2===1) end-=1;
+    if(end>ACOUSTIC_PREVIEW_MAX_BYTES) end=ACOUSTIC_PREVIEW_MAX_BYTES;
+    if(end!==bytes.length) bytes=bytes.subarray(0,end);
+    if(typeof Buffer!=='undefined'){
+      return Buffer.from(bytes).toString('base64');
+    }
+    var s='';
+    for(var j=0;j<bytes.length;j++) s+=String.fromCharCode(bytes[j]);
+    return btoa(s);
+  }
 
   function newAcousticVoiceCommandId(){
     return 'acmd_'+Date.now()+'_'+Math.floor(Math.random()*100000);
@@ -386,6 +418,9 @@
       sampleRate:Math.round(sampleRate),
       createdAt:createdAt
     };
+    var previewRaw=raw.previewPcmB64!=null?raw.previewPcmB64:raw.preview_pcm_b64;
+    var preview=normalizePreviewPcmB64(previewRaw);
+    if(preview) sample.previewPcmB64=preview;
     var qs=normalizeAcousticQualitySignals(raw.qualitySignals);
     if(qs) sample.qualitySignals=qs;
     return sample;
@@ -2188,7 +2223,9 @@
     newAcousticVoiceCommandId:newAcousticVoiceCommandId,
     newAcousticVoiceSampleId:newAcousticVoiceSampleId,
     ACOUSTIC_FEATURE_DIMS:ACOUSTIC_FEATURE_DIMS,
-    ACOUSTIC_MAX_FEATURE_FRAMES:ACOUSTIC_MAX_FEATURE_FRAMES
+    ACOUSTIC_MAX_FEATURE_FRAMES:ACOUSTIC_MAX_FEATURE_FRAMES,
+    ACOUSTIC_PREVIEW_MAX_BYTES:ACOUSTIC_PREVIEW_MAX_BYTES,
+    normalizePreviewPcmB64:normalizePreviewPcmB64
   };
   installToJsReady();
   loadAppScenarioBackup();

@@ -147,7 +147,20 @@
       activationScope:opts.activationScope||'global',
       appBoost:opts.appBoost!==false,
       displayText:String(opts.displayText||''),
-      currentCommandId:opts.currentCommandId||null
+      currentCommandId:opts.currentCommandId||null,
+      kind:opts.kind||null
+    });
+  }
+
+  function testOnce(scenarioId){
+    return invokeTimeout('cmd_acoustic_voice_command_test_once',{
+      scenarioId:String(scenarioId||'')
+    },DEFAULT_RECORD_TIMEOUT_MS+INVOKE_BUFFER_MS+8000);
+  }
+
+  function appLaunchCapability(appTargetId){
+    return invoke('cmd_app_launch_capability',{
+      appTargetId:String(appTargetId||'')
     });
   }
 
@@ -172,6 +185,8 @@
     recordStop:recordStop,
     recordCancel:recordCancel,
     recordOnce:recordOnce,
+    testOnce:testOnce,
+    appLaunchCapability:appLaunchCapability,
     listenLevel:listenLevel,
     unlistenLevel:unlistenLevel,
     buildFromSamples:buildFromSamples,

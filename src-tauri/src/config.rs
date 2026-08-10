@@ -241,10 +241,12 @@ pub fn new_rule_id() -> String {
 }
 
 pub fn is_preset_app_id(app_id: &str) -> bool {
-    matches!(
-        app_id.trim(),
-        "cursor-chat" | "codex-chat" | "claude-code" | "minimax-chat"
-    )
+    crate::builtin_app_catalog::is_preset_app_id(app_id)
+}
+
+/// Builtin app with a chat/focus profile (may lack text-summon presets).
+pub fn is_builtin_app_id(app_id: &str) -> bool {
+    crate::builtin_app_catalog::is_builtin_app_id(app_id)
 }
 
 pub fn app_match_has_constraints(spec: &AppMatchSpec) -> bool {
@@ -626,7 +628,7 @@ pub fn resolve_mapping_summon_target(mapping: &MappingEntry) -> Option<String> {
             .iter()
             .find_map(summon_target_ref_for_rule);
     }
-    if is_preset_app_id(primary) {
+    if is_preset_app_id(primary) || is_builtin_app_id(primary) {
         return Some(primary.to_string());
     }
     if primary == "custom" {
@@ -856,6 +858,13 @@ pub struct AcousticVoiceCommandSample {
     pub feature_dims: u32,
     #[serde(rename = "sampleRate", default = "default_acoustic_sample_rate")]
     pub sample_rate: u32,
+    /// Local-only speech preview (16k mono int16 LE, base64). Cap ~1.2s; not used for matching.
+    #[serde(
+        rename = "previewPcmB64",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub preview_pcm_b64: Option<String>,
     #[serde(
         rename = "qualitySignals",
         default,
@@ -1001,8 +1010,35 @@ pub fn normalize_acoustic_voice_command_sample(
     if sample.created_at == 0 {
         sample.created_at = now_ms();
     }
+    sample.preview_pcm_b64 = normalize_preview_pcm_b64(sample.preview_pcm_b64.take());
     sample.quality_signals = normalize_acoustic_quality_signals(sample.quality_signals);
     Some(sample)
+}
+
+/// Cap local preview: 16k mono int16 LE, max 1.2s (~38400 bytes raw).
+pub const ACOUSTIC_PREVIEW_MAX_MS: u32 = 1200;
+pub const ACOUSTIC_PREVIEW_MAX_BYTES: usize = (16000 * ACOUSTIC_PREVIEW_MAX_MS as usize) / 1000 * 2;
+
+pub fn normalize_preview_pcm_b64(raw: Option<String>) -> Option<String> {
+    let b64 = raw?.trim().to_string();
+    if b64.is_empty() {
+        return None;
+    }
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    let Ok(mut bytes) = STANDARD.decode(b64.as_bytes()) else {
+        return None;
+    };
+    if bytes.len() < 2 {
+        return None;
+    }
+    // Keep even length (int16 frames).
+    if bytes.len() % 2 == 1 {
+        bytes.pop();
+    }
+    if bytes.len() > ACOUSTIC_PREVIEW_MAX_BYTES {
+        bytes.truncate(ACOUSTIC_PREVIEW_MAX_BYTES);
+    }
+    Some(STANDARD.encode(bytes))
 }
 
 /// Normalize acoustic commands for a mapping. Drops weak/invalid entries; MVP keeps one command.
@@ -3451,10 +3487,7 @@ pub fn mapping_is_complete(m: &MappingEntry) -> bool {
 }
 
 pub fn is_workflow_app_target(app_target_id: &str) -> bool {
-    matches!(
-        app_target_id.trim(),
-        "cursor-chat" | "codex-chat" | "claude-code" | "minimax-chat"
-    )
+    crate::builtin_app_catalog::is_workflow_app_target(app_target_id)
 }
 
 pub fn mapping_timing(m: &MappingEntry, cfg: &VoiceConfig) -> (u32, u32, bool, bool) {
@@ -7229,6 +7262,7 @@ mod tests {
                 feature_frames: frames,
                 feature_dims: ACOUSTIC_FEATURE_DIMS,
                 sample_rate: 16000,
+                preview_pcm_b64: None,
                 quality_signals: Some(AcousticVoiceCommandQualitySignals {
                     has_speech: true,
                     too_short: false,
@@ -7387,5 +7421,41 @@ mod tests {
         assert!(ids.contains(&"__voice_wake__"));
         assert!(ids.contains(&"__voice_end__"));
         assert!(ids.contains(&"__voice_cancel__"));
+    }
+
+    #[test]
+    fn preview_pcm_b64_normalize_vectors() {
+        use base64::{engine::general_purpose::STANDARD, Engine};
+
+        // Valid even PCM round-trip
+        let even = [0xE8_u8, 0x03, 0x30, 0xF8]; // int16 LE 1000, -2000
+        let even_b64 = STANDARD.encode(even);
+        let out = normalize_preview_pcm_b64(Some(even_b64.clone())).expect("keep");
+        assert_eq!(out, even_b64);
+
+        // Invalid / empty / too short → None
+        assert!(normalize_preview_pcm_b64(Some(String::new())).is_none());
+        assert!(normalize_preview_pcm_b64(Some("   ".into())).is_none());
+        assert!(normalize_preview_pcm_b64(Some("!!!not-base64!!!".into())).is_none());
+        assert!(normalize_preview_pcm_b64(Some(STANDARD.encode([0x01]))).is_none());
+
+        // Odd length → drop last byte
+        let odd = [1u8, 2, 3, 4, 5];
+        let odd_out = normalize_preview_pcm_b64(Some(STANDARD.encode(odd))).expect("odd");
+        assert_eq!(STANDARD.decode(odd_out.as_bytes()).unwrap().len(), 4);
+
+        // Oversize → truncate
+        let over = vec![7u8; ACOUSTIC_PREVIEW_MAX_BYTES + 100];
+        let over_out = normalize_preview_pcm_b64(Some(STANDARD.encode(&over))).expect("over");
+        assert_eq!(
+            STANDARD.decode(over_out.as_bytes()).unwrap().len(),
+            ACOUSTIC_PREVIEW_MAX_BYTES
+        );
+
+        // Sample normalize keeps preview
+        let mut sample = sample_acoustic_command("sc1", "good").samples[0].clone();
+        sample.preview_pcm_b64 = Some(even_b64.clone());
+        let kept = normalize_acoustic_voice_command_sample(sample).expect("sample");
+        assert_eq!(kept.preview_pcm_b64.as_deref(), Some(even_b64.as_str()));
     }
 }

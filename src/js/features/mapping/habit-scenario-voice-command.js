@@ -23,6 +23,7 @@
   var bound=false;
   var onChangeCb=null;
   var finishInFlight=false;
+  var inlineCtx=null; // { mappingId, hostId } — open-app card host; do not touch ui voiceEditSchemeId
 
   var DEFAULT_THRESHOLDS={
     minSpeechMs:450,
@@ -48,7 +49,7 @@
   }
 
   function buildMicBars(count){
-    count=count||16;
+    count=count||25;
     var html='';
     for(var i=0;i<count;i++) html+='<span></span>';
     return html;
@@ -66,35 +67,49 @@
   }
 
   function levelToBarScales(level,count){
-    count=count||16;
+    count=count||25;
     var norm=Math.max(0,Math.min(1,Number(level)||0));
-    if(norm<=0.02) norm=0.08+Math.sin(Date.now()/280)*0.03;
+    // Steeper gain so near/far mic changes are obvious on center bars.
+    if(norm>0.015) norm=Math.min(1,Math.pow(norm*2.35,0.72));
+    else norm=0.1;
     var out=[];
     var center=(count-1)/2;
     for(var i=0;i<count;i++){
       var dist=Math.abs(i-center)/Math.max(center,1);
-      out.push(Math.max(0.1,Math.min(1,norm*(1-dist*0.42))));
+      out.push(Math.max(0.1,Math.min(1,norm*(1-dist*0.55)*(0.82+0.18*Math.sin(i*0.9)))));
     }
     return out;
   }
 
   function durationMeterState(elapsedMs,speechMs,thresholds){
     thresholds=thresholdsFrom(thresholds);
-    var ms=Math.max(0,Number(speechMs!=null?speechMs:elapsedMs)||0);
+    var elapsed=Math.max(0,Number(elapsedMs)||0);
+    var speech=Math.max(0,Number(speechMs)||0);
+    // Fill must advance on wall clock even when VAD speechMs is still 0.
+    var ms=Math.max(speech,elapsed);
     var maxMs=thresholds.maxSpeechMs;
     var minMs=thresholds.minSpeechMs;
     var preferMs=thresholds.preferSpeechMs;
-    var pct=Math.min(100,Math.round((ms/maxMs)*100));
+    // Track spans to 3s like M3 prototype so recommend band stays mid-segment.
+    var trackMaxMs=3000;
+    var pct=Math.min(100,Math.round((ms/trackMaxMs)*100));
+    // Zone follows detected speech when present; else low while clock runs.
+    var zoneMs=speech>0?speech:0;
     var zone='idle';
-    if(ms>=minMs&&ms<=maxMs) zone='good';
-    else if(ms>maxMs) zone='warn';
-    else if(ms>0) zone='low';
+    if(zoneMs>=minMs&&zoneMs<=maxMs) zone='good';
+    else if(zoneMs>maxMs) zone='warn';
+    else if(zoneMs>0||elapsed>0) zone='low';
+    var zoneStart=Math.min(100,Math.round((minMs/trackMaxMs)*100));
+    var zoneEnd=Math.min(100,Math.round((maxMs/trackMaxMs)*100));
     return {
       ms:ms,
       pct:pct,
       zone:zone,
-      preferPct:Math.min(100,Math.round((preferMs/maxMs)*100)),
-      minPct:Math.min(100,Math.round((minMs/maxMs)*100))
+      preferPct:Math.min(100,Math.round((preferMs/trackMaxMs)*100)),
+      minPct:zoneStart,
+      maxPct:zoneEnd,
+      zoneWidth:Math.max(0,zoneEnd-zoneStart),
+      trackMaxMs:trackMaxMs
     };
   }
 
@@ -176,41 +191,24 @@
     return parts.join(t('habitAcousticCmdDebugJoin'));
   }
 
-  function renderSampleProgress(activeStep){
-    activeStep=activeStep||sampleStepIndex();
-    var html='<div class="habit-voice-cmd-steps" aria-label="'+esc(t('habitAcousticCmdRecordProgress'))+'">';
-    for(var i=1;i<=2;i++){
-      var cls='habit-voice-cmd-step';
-      if(i<activeStep) cls+=' is-done';
-      else if(i===activeStep) cls+=' is-active';
-      html+='<span class="'+cls+'"><span class="habit-voice-cmd-step-dot"></span>'
-        +'<span class="habit-voice-cmd-step-lbl">'+esc(t('habitAcousticCmdRecordStep',{n:i}))+'</span></span>';
-      if(i<2) html+='<span class="habit-voice-cmd-step-line'+(i<activeStep?' is-done':'')+'"></span>';
-    }
-    html+='</div>';
-    return html;
-  }
-
   function renderDurationMeter(ms,opts){
     opts=opts||{};
     var th=opts.thresholds||currentThresholds();
-    var st=durationMeterState(ms,ms,th);
-    var marker='';
-    if(opts.showIdeal!==false){
-      marker='<span class="habit-voice-cmd-meter-ideal" style="left:'+st.minPct+'%"></span>'
-        +'<span class="habit-voice-cmd-meter-prefer" style="left:'+st.preferPct+'%"></span>'
-        +'<span class="habit-voice-cmd-meter-max" style="left:100%"></span>';
-    }
-    return '<div class="habit-voice-cmd-meter is-'+st.zone+(opts.compact?' is-compact':'')+'">'
-      +'<div class="habit-voice-cmd-meter-track">'+marker
+    var speechMs=opts.speechMs!=null?opts.speechMs:ms;
+    var st=durationMeterState(ms,speechMs,th);
+    var zoneBand='<span class="habit-voice-cmd-meter-zone" style="left:'+st.minPct+'%;width:'+st.zoneWidth+'%"></span>';
+    var trackEndLbl=(st.trackMaxMs/1000).toFixed(st.trackMaxMs%1000?1:0)+'s';
+    // Prototype labels: 0.5s · • 推荐区域 (0.5s-2s) · 2s · 3s — zone copy stays primary, not semantic.
+    return '<div class="habit-voice-cmd-meter is-'+st.zone+(opts.compact?' is-compact':'')+(st.zone==='good'?' is-settled':'')+'">'
+      +'<div class="habit-voice-cmd-meter-track">'+zoneBand
       +'<span class="habit-voice-cmd-meter-fill" style="width:'+st.pct+'%"></span></div>'
       +'<div class="habit-voice-cmd-meter-labels">'
       +'<span>'+esc(t('habitAcousticCmdRecordZoneMin'))+'</span>'
-      +'<span>'+esc(t('habitAcousticCmdRecordZone'))+'</span>'
+      +'<span class="habit-voice-cmd-meter-zone-lbl"><span class="habit-voice-cmd-meter-dot" aria-hidden="true"></span>'
+      +esc(t('habitAcousticCmdRecordZoneRange'))+'</span>'
       +'<span>'+esc(t('habitAcousticCmdRecordZoneMax'))+'</span>'
-      +'</div>'
-      +(st.ms>0?'<p class="habit-voice-cmd-meter-val">'+esc(t('habitAcousticCmdRecordDuration',{s:(st.ms/1000).toFixed(1)}))+'</p>':'')
-      +'</div>';
+      +'<span>'+esc(trackEndLbl)+'</span>'
+      +'</div></div>';
   }
 
   function state(){ return global.OneToneState.state; }
@@ -297,7 +295,40 @@
     draft=null;
   }
 
+  function setInlineContext(opts){
+    opts=opts||{};
+    var mappingId=String(opts.mappingId||'').trim();
+    var hostId=String(opts.hostId||'').trim();
+    if(!mappingId){
+      inlineCtx=null;
+      return;
+    }
+    inlineCtx={ mappingId:mappingId, hostId:hostId };
+    // Migrate legacy open-app samples to open-app-acoustic (no wake-key fallback).
+    var m=core()&&core().byId?core().byId(mappingId):null;
+    if(m&&Array.isArray(m.acousticVoiceCommands)&&m.acousticVoiceCommands[0]){
+      var cmd=m.acousticVoiceCommands[0];
+      if(cmd&&String(cmd.kind||'')!=='open-app-acoustic'){
+        cmd.kind='open-app-acoustic';
+        persistMapping(m);
+      }
+    }
+  }
+
+  function clearInlineContext(){
+    if(inlineCtx&&draft&&draft.mappingId===inlineCtx.mappingId){
+      discardDraft();
+    }
+    inlineCtx=null;
+  }
+
   function scenarioContextId(){
+    if(inlineCtx&&inlineCtx.mappingId){
+      var inlineId=inlineCtx.mappingId;
+      var inlineM=core()&&core().byId?core().byId(inlineId):null;
+      if(inlineM&&String(inlineM.appTargetId||'').trim()) return inlineId;
+      return '';
+    }
     var id=String(ui().habitScenarioReturnId||ui().voiceEditSchemeId||'').trim();
     if(!id) return '';
     var m=core()&&core().byId?core().byId(id):null;
@@ -334,6 +365,14 @@
   }
 
   function ensureHost(){
+    if(inlineCtx&&inlineCtx.hostId){
+      var inlineHost=$(inlineCtx.hostId);
+      if(inlineHost) return inlineHost;
+      if(typeof document!=='undefined'&&document.getElementById){
+        return document.getElementById(inlineCtx.hostId);
+      }
+      return null;
+    }
     return $('habitScenarioVoiceCommandHost');
   }
 
@@ -413,11 +452,53 @@
   }
 
   function phaseChipClass(phase,metrics){
-    if(phase==='preparing'||phase==='processing') return 'is-idle';
+    if(phase==='preparing'||phase==='processing'||phase==='startingMic'||phase==='armed') return 'is-idle';
     var hint=voiceHintFromMetrics(metrics,currentThresholds());
     if(hint==='good') return 'is-good';
     if(hint==='tooQuiet'||hint==='tooLong') return 'is-warn';
     return 'is-idle';
+  }
+
+  function phaseTitleClass(phase,metrics){
+    if(phase==='processing'||phase==='armed'||phase==='startingMic') return '';
+    var hint=voiceHintFromMetrics(metrics,currentThresholds());
+    if(hint==='tooLong'||hint==='tooQuiet') return ' is-warn';
+    if(hint==='good') return ' is-success';
+    return '';
+  }
+
+  function recordCardModClass(phase,metrics){
+    if(phase==='processing') return ' is-processing';
+    if(phase!=='recording') return '';
+    var hint=voiceHintFromMetrics(metrics,currentThresholds());
+    if(hint==='tooLong') return ' is-warn-edge';
+    return ' is-recording';
+  }
+
+  function recordSubText(phase,metrics,thresholds){
+    thresholds=thresholdsFrom(thresholds);
+    if(phase==='armed') return t('habitAcousticCmdArmedSub');
+    if(phase==='startingMic') return t('habitAcousticCmdPhaseStartingMic');
+    if(phase==='processing') return t('habitAcousticCmdProcessingSub');
+    if(phase==='recording'){
+      var hint=voiceHintFromMetrics(metrics,thresholds);
+      if(hint==='tooQuiet') return t('habitAcousticCmdPhaseTooQuiet');
+      // Tip stays under title for both in-zone and too-long (M3 interactive).
+      return t('habitAcousticCmdRecordTipLive');
+    }
+    return '';
+  }
+
+  function recordChipText(phase,step,metrics){
+    step=step||sampleStepIndex();
+    if(phase==='processing') return t('habitAcousticCmdChipProcessing');
+    if(phase==='recording'){
+      var hint=voiceHintFromMetrics(metrics,currentThresholds());
+      if(hint==='tooLong') return t('habitAcousticCmdChipTooLong');
+      return t('habitAcousticCmdChipRecording');
+    }
+    if(phase==='startingMic') return t('habitAcousticCmdPhaseStartingMic');
+    return t('habitAcousticCmdPhaseChip',{n:step});
   }
 
   function renderRecordPanel(opts){
@@ -427,37 +508,52 @@
     var metrics=opts.metrics||{};
     var step=opts.step||sampleStepIndex();
     var speechMs=Number(metrics.speechMs)||0;
+    var elapsedMs=Number(metrics.elapsedMs)||speechMs;
     var actionText=opts.actionText||recordPhaseText(phase,metrics,th);
-    var chipText=opts.chipText||t('habitAcousticCmdRecordStep',{n:step});
+    var chipText=opts.chipText||recordChipText(phase,step,metrics);
+    var subText=opts.subText!=null?String(opts.subText):recordSubText(phase,metrics,th);
     var barsTone=voiceHintFromMetrics(metrics,th);
-    var barsCls='mic-level-bars habit-voice-cmd-rec-bars is-active';
-    if(barsTone==='tooQuiet') barsCls+=' is-too-quiet';
-    else if(barsTone==='good') barsCls+=' is-good';
-    else if(barsTone==='tooLong') barsCls+=' is-too-long';
-    var hintText=opts.hint?String(opts.hint):'';
-    var hintHtml='<p class="habit-voice-cmd-rec-hint" id="habitAcousticRecordHint"'
-      +(hintText?'':' hidden')+'>'+esc(hintText)+'</p>';
+    // No mic-level-bars: later global .mic-level-bars span rules crush habit bar size.
+    var barsCls='habit-voice-cmd-rec-bars is-active';
+    if(phase==='armed') barsCls+=' is-armed-idle';
+    if(phase==='startingMic') barsCls+=' is-starting';
+    if(phase==='processing') barsCls+=' is-processing-dim';
+    if(phase==='recording'){
+      if(barsTone==='tooQuiet') barsCls+=' is-too-quiet';
+      else if(barsTone==='tooLong') barsCls+=' is-too-long';
+      else if(barsTone==='good') barsCls+=' is-good';
+      else barsCls+=' is-live';
+    }
     var primary=opts.primaryAction||'';
-    return '<div class="habit-scenario-voice-field habit-scenario-voice-command is-listening" id="habitAcousticRecordPanel">'
-      +renderSampleProgress(step)
-      +'<div class="habit-voice-cmd-rec-card habit-voice-cmd-rec-panel">'
-      +'<div class="habit-voice-cmd-rec-top">'
+    var showSpinner=phase==='processing';
+    var visualInner=showSpinner
+      ?('<div class="habit-voice-cmd-rec-processing" id="habitAcousticRecordProcessing">'
+        +'<span class="habit-voice-cmd-m3-spinner" aria-hidden="true"></span>'
+        +'<span class="habit-voice-cmd-rec-processing-lbl">'+esc(t('habitAcousticCmdProcessingAi'))+'</span>'
+        +'</div>')
+      :('<span class="'+barsCls+'" id="habitAcousticRecordBars" aria-hidden="true">'
+        +buildMicBars(25)+'</span>');
+    return '<div class="habit-scenario-voice-field habit-scenario-voice-command is-listening is-m3" id="habitAcousticRecordPanel" data-ui-phase="'+esc(phase)+'">'
+      +'<div class="habit-voice-cmd-rec-card habit-voice-cmd-rec-panel'+recordCardModClass(phase,metrics)+'">'
+      +'<div class="habit-voice-cmd-rec-header">'
+      +renderAppBadge()
       +'<span class="habit-voice-cmd-chip '+phaseChipClass(phase,metrics)+'" id="habitAcousticRecordChip">'+esc(chipText)+'</span>'
-      +'<span class="habit-voice-cmd-phase" id="habitAcousticRecordPhase">'+esc(actionText)+'</span>'
       +'</div>'
-      +'<div class="habit-voice-cmd-rec-visual">'
-      +'<span class="habit-voice-cmd-rec-ring" aria-hidden="true"></span>'
-      +'<span class="'+barsCls+'" id="habitAcousticRecordBars" aria-hidden="true">'
-      +buildMicBars(16)+'</span>'
+      +'<div class="habit-voice-cmd-rec-status">'
+      +'<p class="habit-voice-cmd-phase'+phaseTitleClass(phase,metrics)+'" id="habitAcousticRecordPhase">'+esc(actionText)+'</p>'
+      +'<p class="habit-voice-cmd-rec-sub" id="habitAcousticRecordSub"'+(subText?'':' hidden')+'>'+esc(subText)+'</p>'
       +'</div>'
-      +'<div class="habit-voice-cmd-rec-meter" id="habitAcousticRecordMeterHost">'
-      +renderDurationMeter(speechMs,{thresholds:th})
+      +'<div class="habit-voice-cmd-rec-visual'+(showSpinner?' is-processing':'')+'">'
+      +visualInner
       +'</div>'
-      +hintHtml
+      +(showSpinner?'':'<div class="habit-voice-cmd-rec-meter" id="habitAcousticRecordMeterHost">'
+        +renderDurationMeter(elapsedMs,{thresholds:th,speechMs:speechMs})
+        +'</div>')
       +'</div>'
       +'<div class="habit-voice-cmd-footer">'
       +primary
-      +'<button type="button" class="habit-voice-cmd-cancel" data-voice-cmd-act="cancel">'+esc(t('habitAcousticCmdCancel'))+'</button>'
+      +'<button type="button" class="habit-voice-cmd-cancel" data-voice-cmd-act="cancel"'+(phase==='processing'?' disabled':'')+'>'
+      +esc(t('habitAcousticCmdCancel'))+'</button>'
       +'</div></div>';
   }
 
@@ -470,19 +566,17 @@
     if(phase==='armed'&&draft&&draft.inlineHint){
       actionText=t(draft.inlineHint);
     }
-    var hint='';
-    if(phase==='recording'&&(tone==='tooQuiet'||tone==='tooLong')){
-      hint=actionText;
-    }
     var primary='';
     if(phase==='armed'){
-      primary='<button type="button" class="habit-hub-new-btn is-primary is-block" data-voice-cmd-act="begin-speak">'
+      primary='<button type="button" class="habit-voice-cmd-m3-btn is-primary" data-voice-cmd-act="begin-speak">'
         +esc(t('habitAcousticCmdBeginSpeak'))+'</button>';
     }else if(phase==='startingMic'){
-      primary='<button type="button" class="habit-hub-new-btn is-primary is-block" disabled>'
+      primary='<button type="button" class="habit-voice-cmd-m3-btn is-primary" disabled>'
         +esc(t('habitAcousticCmdPhaseStartingMic'))+'</button>';
     }else if(phase==='recording'){
-      primary='<button type="button" class="habit-hub-new-btn is-primary is-block" data-voice-cmd-act="finish-speak">'
+      var btnCls='habit-voice-cmd-m3-btn is-primary';
+      if(tone==='tooLong') btnCls+=' is-warn';
+      primary='<button type="button" class="'+btnCls+'" data-voice-cmd-act="finish-speak">'
         +esc(t('habitAcousticCmdFinishSpeak'))+'</button>';
     }
     return renderRecordPanel({
@@ -490,9 +584,9 @@
       metrics:metrics,
       thresholds:th,
       step:sampleStepIndex(),
-      chipText:t('habitAcousticCmdPhaseChip',{n:sampleStepIndex()}),
+      chipText:recordChipText(phase,sampleStepIndex(),metrics),
       actionText:actionText,
-      hint:hint,
+      subText:recordSubText(phase,metrics,th),
       primaryAction:primary
     });
   }
@@ -502,10 +596,11 @@
       phase:'processing',
       metrics:{},
       step:2,
-      chipText:t('habitAcousticCmdPhaseChip',{n:2}),
-      actionText:recordPhaseText('processing'),
-      hint:'',
-      primaryAction:''
+      chipText:t('habitAcousticCmdChipProcessing'),
+      actionText:t('habitAcousticCmdPhaseProcessing'),
+      subText:t('habitAcousticCmdProcessingSub'),
+      primaryAction:'<button type="button" class="habit-voice-cmd-m3-btn is-disabled" disabled>'
+        +esc(t('habitAcousticCmdChipProcessing'))+'</button>'
     });
   }
 
@@ -514,21 +609,23 @@
     var hint=recordErrorHint(messageKey,null,debug);
     var debugLine=debugSummaryLine(debug);
     var speechMs=debug&&debug.speechMs!=null?Number(debug.speechMs):0;
-    return '<div class="habit-scenario-voice-field habit-scenario-voice-command is-error">'
-      +renderSampleProgress(sampleStepIndex())
+    return '<div class="habit-scenario-voice-field habit-scenario-voice-command is-error is-m3">'
       +'<div class="habit-voice-cmd-rec-card habit-voice-cmd-rec-panel is-error">'
-      +'<div class="habit-voice-cmd-rec-top">'
+      +'<div class="habit-voice-cmd-rec-header">'
+      +renderAppBadge()
       +'<span class="habit-voice-cmd-chip is-warn">'+esc(t('habitAcousticCmdErrChip'))+'</span>'
-      +'<span class="habit-voice-cmd-phase is-warn">'+esc(msg)+'</span>'
       +'</div>'
-      +'<p class="habit-voice-cmd-rec-hint">'+esc(hint)+'</p>'
+      +'<div class="habit-voice-cmd-rec-status">'
+      +'<p class="habit-voice-cmd-phase is-warn">'+esc(msg)+'</p>'
+      +'<p class="habit-voice-cmd-rec-sub">'+esc(hint)+'</p>'
       +(debugLine?'<p class="habit-voice-cmd-debug">'+esc(debugLine)+'</p>':'')
+      +'</div>'
       +renderDurationMeter(speechMs,{compact:true})
       +'</div>'
-      +'<div class="habit-voice-cmd-actions">'
-      +'<button type="button" class="habit-hub-new-btn is-primary" data-voice-cmd-act="record">'+esc(t('habitAcousticCmdRecordAgain'))+'</button>'
-      +'<button type="button" class="habit-hub-act is-cta" data-voice-cmd-act="change-mic">'+esc(t('habitAcousticCmdChangeMic'))+'</button>'
-      +'<button type="button" class="habit-hub-act is-cta" data-voice-cmd-act="cancel">'+esc(t('habitAcousticCmdCancel'))+'</button>'
+      +'<div class="habit-voice-cmd-footer">'
+      +'<button type="button" class="habit-voice-cmd-m3-btn is-primary" data-voice-cmd-act="record">'+esc(t('habitAcousticCmdRecordAgain'))+'</button>'
+      +'<button type="button" class="habit-voice-cmd-cancel" data-voice-cmd-act="change-mic">'+esc(t('habitAcousticCmdChangeMic'))+'</button>'
+      +'<button type="button" class="habit-voice-cmd-cancel" data-voice-cmd-act="cancel">'+esc(t('habitAcousticCmdCancel'))+'</button>'
       +'</div></div>';
   }
 
@@ -553,6 +650,7 @@
     var text=draft&&draft.pendingLabel?String(draft.pendingLabel).trim():'';
     var quality=draft&&draft.pendingQuality?recordQualityLabel(draft.pendingQuality,draft.pendingAgreement):t('habitAcousticCmdLearned');
     return '<div class="habit-scenario-voice-field habit-scenario-voice-command is-done">'
+      +renderAppBadge()
       +'<p class="habit-voice-cmd-status"><span class="habit-voice-cmd-chip is-good">'
       +esc(text||quality)+'</span></p>'
       +'<p class="habit-voice-cmd-foot">'+esc(t('habitAcousticCmdReadyHint'))+'</p>'
@@ -560,7 +658,9 @@
   }
 
   function applyBarScales(scales){
-    var wrap=$('habitAcousticRecordBars');
+    var host=ensureHost();
+    if(!host) return;
+    var wrap=host.querySelector('#habitAcousticRecordBars');
     if(!wrap) return;
     var bars=wrap.querySelectorAll('span');
     if(!bars.length) return;
@@ -575,6 +675,8 @@
   function updateRecordVis(){
     if(!draft) return;
     if(draft.state!=='recording') return;
+    var host=ensureHost();
+    if(!host) return;
     var th=currentThresholds();
     var metrics=liveLevel||{
       level:0,
@@ -582,63 +684,75 @@
       elapsedMs:recordStartedAt?Date.now()-recordStartedAt:0,
       peak:0
     };
-    if(!hasLiveLevel&&draft.uiPhase==='recording'&&recordStartedAt){
-      var elapsed=Date.now()-recordStartedAt;
-      metrics={
-        level:0.1+Math.sin(elapsed/180)*0.04,
-        speechMs:0,
-        elapsedMs:elapsed,
-        peak:0
-      };
-    }
+    // No fake sine when levels lag: keep quiet bars until live PCM arrives.
     var phase=draft.uiPhase||'armed';
-    var phaseEl=$('habitAcousticRecordPhase');
-    var hintEl=$('habitAcousticRecordHint');
-    var chipEl=$('habitAcousticRecordChip');
-    var meterFill=document.querySelector('#habitAcousticRecordPanel .habit-voice-cmd-meter-fill');
-    var meterVal=document.querySelector('#habitAcousticRecordPanel .habit-voice-cmd-meter-val');
-    var meter=document.querySelector('#habitAcousticRecordPanel .habit-voice-cmd-meter');
-    var bars=$('habitAcousticRecordBars');
+    var phaseEl=host.querySelector('#habitAcousticRecordPhase');
+    var subEl=host.querySelector('#habitAcousticRecordSub');
+    var chipEl=host.querySelector('#habitAcousticRecordChip');
+    var cardEl=host.querySelector('.habit-voice-cmd-rec-card');
+    var meterRoot=host.querySelector('#habitAcousticRecordMeterHost .habit-voice-cmd-meter');
+    var meterFill=meterRoot?meterRoot.querySelector('.habit-voice-cmd-meter-fill'):null;
+    var meterZone=meterRoot?meterRoot.querySelector('.habit-voice-cmd-meter-zone'):null;
+    var meter=meterRoot;
+    var bars=host.querySelector('#habitAcousticRecordBars');
+    // Prefer wall clock so fill keeps moving if ticks omit/lag elapsedMs.
+    if(recordStartedAt&&(phase==='recording'||phase==='startingMic')){
+      var wall=Date.now()-recordStartedAt;
+      if((Number(metrics.elapsedMs)||0)<wall){
+        metrics=Object.assign({},metrics,{elapsedMs:wall});
+      }
+    }
     var tone=voiceHintFromMetrics(metrics,th);
     var action=recordPhaseText(phase,metrics,th);
     if(phase==='armed'&&draft.inlineHint) action=t(draft.inlineHint);
-    if(phaseEl) phaseEl.textContent=action;
-    if(hintEl){
-      if(phase==='recording'&&(tone==='tooQuiet'||tone==='tooLong')){
-        hintEl.textContent=action;
-        hintEl.hidden=false;
-      }else{
-        hintEl.textContent='';
-        hintEl.hidden=true;
-      }
+    if(phaseEl){
+      phaseEl.textContent=action;
+      phaseEl.className='habit-voice-cmd-phase'+phaseTitleClass(phase,metrics);
+    }
+    if(subEl){
+      var sub=recordSubText(phase,metrics,th);
+      subEl.textContent=sub;
+      subEl.hidden=!sub;
     }
     if(chipEl&&draft.state==='recording'){
-      chipEl.textContent=t('habitAcousticCmdPhaseChip',{n:sampleStepIndex()});
+      chipEl.textContent=recordChipText(phase,sampleStepIndex(),metrics);
       chipEl.className='habit-voice-cmd-chip '+phaseChipClass(phase,metrics);
+    }
+    if(cardEl){
+      cardEl.classList.remove('is-recording','is-warn-edge','is-processing');
+      var mod=recordCardModClass(phase,metrics).trim();
+      if(mod) cardEl.classList.add(mod);
     }
     var st=durationMeterState(metrics.elapsedMs,metrics.speechMs,th);
     if(meterFill) meterFill.style.width=st.pct+'%';
-    if(meter){
-      meter.classList.remove('is-idle','is-good','is-low','is-warn');
-      meter.classList.add('is-'+st.zone);
+    if(meterZone){
+      meterZone.style.left=st.minPct+'%';
+      meterZone.style.width=st.zoneWidth+'%';
     }
-    if(meterVal){
-      if(st.ms>0) meterVal.textContent=t('habitAcousticCmdRecordDuration',{s:(st.ms/1000).toFixed(1)});
-    }else if(st.ms>0){
-      var host=$('habitAcousticRecordMeterHost');
-      if(host&&!host.querySelector('.habit-voice-cmd-meter-val')){
-        var p=document.createElement('p');
-        p.className='habit-voice-cmd-meter-val';
-        p.textContent=t('habitAcousticCmdRecordDuration',{s:(st.ms/1000).toFixed(1)});
-        host.appendChild(p);
-      }
+    if(meter){
+      meter.classList.remove('is-idle','is-good','is-low','is-warn','is-settled');
+      meter.classList.add('is-'+st.zone);
+      if(st.zone==='good') meter.classList.add('is-settled');
     }
     if(bars){
-      bars.classList.toggle('is-too-quiet',voiceHintFromMetrics(metrics,th)==='tooQuiet');
-      bars.classList.toggle('is-good',voiceHintFromMetrics(metrics,th)==='good');
-      bars.classList.toggle('is-too-long',voiceHintFromMetrics(metrics,th)==='tooLong');
+      bars.classList.toggle('is-too-quiet',tone==='tooQuiet');
+      bars.classList.toggle('is-too-long',tone==='tooLong');
+      bars.classList.toggle('is-good',tone==='good');
+      bars.classList.toggle('is-live',tone==='speaking'||tone==='waiting');
+      bars.classList.toggle('is-armed-idle',phase==='armed');
     }
-    applyBarScales(levelToBarScales(metrics.level,16));
+    var barCount=bars?bars.querySelectorAll('span').length:25;
+    var levelForBars;
+    if(hasLiveLevel){
+      levelForBars=Math.max(Number(metrics.level)||0,Number(metrics.peak)||0);
+    }else if(phase==='armed'){
+      levelForBars=0.08;
+    }else{
+      // ponytail: ceiling=no PCM yet; light breath only so the card isn't a dead line. Real ticks replace this.
+      var tSec=(Number(metrics.elapsedMs)||0)/1000;
+      levelForBars=0.16+0.1*Math.sin(tSec*3.1);
+    }
+    applyBarScales(levelToBarScales(levelForBars,barCount));
   }
 
   function startRecordVis(){
@@ -729,10 +843,45 @@
     return !!(draft&&(draft.state==='recording'||draft.state==='building'||draft.state==='label'));
   }
 
+  function isBusy(){
+    return !!(draft&&(
+      draft.state==='recording'
+      ||draft.state==='building'
+      ||draft.state==='label'
+      ||draft.state==='done'
+      ||draft.state==='error'
+    ));
+  }
+
   function isLabelEditorMounted(){
     var host=ensureHost();
     if(!host||host.hidden) return false;
     return !!host.querySelector('#habitAcousticCmdLabelInput');
+  }
+
+  function renderAppBadge(){
+    var m=currentMapping();
+    var appId=m&&String(m.appTargetId||'').trim();
+    if(!appId) return '';
+    var atp=global.OneToneAppTargetPresets;
+    var ab=global.OneToneAppBehaviorRules;
+    var name=ab&&ab.appDisplayName?ab.appDisplayName(appId,null):appId;
+    var icon='';
+    if(atp&&atp.presetById){
+      var p=atp.presetById(appId);
+      if(p){
+        icon=p.icon||'';
+        if(p.nameKey) name=t(p.nameKey)||name;
+      }
+    }
+    if(m.group||m.label) name=m.group||m.label||name;
+    var initial=(name||appId).charAt(0)||'?';
+    var iconHtml=icon
+      ?'<img class="habit-voice-cmd-app-icon" src="'+esc(icon)+'" alt="" decoding="async" />'
+      :'<span class="habit-voice-cmd-app-icon habit-voice-cmd-app-icon--fallback" aria-hidden="true">'+esc(initial)+'</span>';
+    return '<div class="habit-voice-cmd-app-badge" data-acoustic-app-badge="1">'
+      +iconHtml
+      +'<span class="habit-voice-cmd-app-name">'+esc(name)+'</span></div>';
   }
 
   function paint(){
@@ -755,8 +904,18 @@
     var cmd=primaryCommand(m);
     if(draft&&draft.mappingId===m.id){
       if(draft.state==='recording'){
+        var phase=String(draft.uiPhase||'armed');
+        var panel=host.querySelector('#habitAcousticRecordPanel');
+        if(panel&&panel.getAttribute('data-ui-phase')===phase){
+          if(phase==='recording'){
+            if(!recordVisTimer) startRecordVis();
+            else updateRecordVis();
+          }else stopRecordVis();
+          syncFeedbackRail();
+          return;
+        }
         host.innerHTML=renderRecording();
-        if(draft.uiPhase==='recording') startRecordVis();
+        if(phase==='recording') startRecordVis();
         else stopRecordVis();
         syncFeedbackRail();
         return;
@@ -1034,7 +1193,8 @@
       activationScope:pendingScope,
       appBoost:old?old.appBoost!==false:true,
       displayText:old?String(old.displayText||''):'',
-      currentCommandId:old&&old.id
+      currentCommandId:old&&old.id,
+      kind:inlineCtx?'open-app-acoustic':(old&&old.kind)||null
     }).then(function(built){
       if(!draft||draft.state!=='building') return;
       if(!built||!built.ok){
@@ -1089,6 +1249,7 @@
       cmd.displayText=label;
       if(!cmd.label||cmd.label==='我的语音命令') cmd.label=label;
     }
+    if(inlineCtx) cmd.kind='open-app-acoustic';
     cmd.updatedAt=Date.now();
     m.acousticVoiceCommands=[cmd];
     draft={
@@ -1112,6 +1273,7 @@
     cleanupRecordingSession({unsuspend:true,force:true});
     draft=null;
     paint();
+    notifyChange();
   }
 
   function openChangeMic(){
@@ -1224,6 +1386,9 @@
 
   function bindEvents(opts){
     opts=opts||{};
+    if(opts.mappingId||opts.hostId){
+      setInlineContext({ mappingId:opts.mappingId, hostId:opts.hostId });
+    }
     if(opts.onChange) onChangeCb=opts.onChange;
     if(bound) return;
     bound=true;
@@ -1232,8 +1397,17 @@
 
   function setOnChange(fn){ onChangeCb=fn; }
 
-  function render(){
+  function render(opts){
+    opts=opts||{};
+    if(opts.mappingId||opts.hostId){
+      setInlineContext({ mappingId:opts.mappingId||(inlineCtx&&inlineCtx.mappingId), hostId:opts.hostId||(inlineCtx&&inlineCtx.hostId) });
+    }
+    if(opts.onChange) onChangeCb=opts.onChange;
     paint();
+  }
+
+  function runAct(act){
+    handleAct(String(act||''));
   }
 
   function hubChipHtml(m){
@@ -1249,10 +1423,14 @@
     render:render,
     bindEvents:bindEvents,
     setOnChange:setOnChange,
+    setInlineContext:setInlineContext,
+    clearInlineContext:clearInlineContext,
+    runAct:runAct,
     discardDraft:discardDraft,
     cleanupRecordingSession:cleanupRecordingSession,
     hubChipHtml:hubChipHtml,
     isCalibrating:isCalibrating,
+    isBusy:isBusy,
     isScenarioEdit:isScenarioEdit,
     feedbackInfo:feedbackInfo,
     recordPhaseText:recordPhaseText,

@@ -344,10 +344,248 @@
     bindVoiceEngineSwitch($('voiceRecognizeSourceGrid'));
     bindVoiceStrategySwitch($('voiceSummaryEngineSwitch'));
     var btnVoiceOutputSummonManage=$('btnVoiceOutputSummonManage');
+    function refreshOpenAppCards(){
+      var wakeStep=global.OneToneVoiceStepWake;
+      var vmApi=global.OneToneVoiceSettingsViewModel;
+      if(wakeStep&&wakeStep.renderOutputSummon&&vmApi&&vmApi.build){
+        wakeStep.renderOutputSummon(vmApi.build());
+      }else if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.render){
+        global.OneToneVoiceSettingsFlow.render();
+      }
+    }
+    function ensureOpenAppMapping(appId){
+      appId=String(appId||'').trim();
+      if(!appId) return null;
+      var hub=global.OneToneHabitHub;
+      if(!hub) return null;
+      var existing=hub.findAppScenarioByAppId?hub.findAppScenarioByAppId(appId):null;
+      if(existing) return existing;
+      if(!hub.createAppScenario) return null;
+      return hub.createAppScenario(appId,{ deferPersist:true });
+    }
+    function mountOpenAppAcoustic(appId,act){
+      appId=String(appId||'').trim();
+      if(!appId) return;
+      var mapping=ensureOpenAppMapping(appId);
+      if(!mapping||!mapping.id){
+        if(global.OneToneAppToast) global.OneToneAppToast.show((t&&t('voiceOpenAppCreateFailed'))||'无法创建应用场景','error');
+        return;
+      }
+      var wakeStep=global.OneToneVoiceStepWake;
+      var hostId=wakeStep&&wakeStep.openAppHostId?wakeStep.openAppHostId(appId):('openAppAcousticHost_'+appId);
+      if(wakeStep&&wakeStep.setOpenAppExpanded) wakeStep.setOpenAppExpanded(appId);
+      refreshOpenAppCards();
+      var host=$(hostId);
+      if(host){ host.hidden=false; host.removeAttribute('hidden'); }
+      var cmd=global.OneToneHabitScenarioVoiceCommand;
+      if(!cmd) return;
+      function remountIdle(){
+        if(wakeStep&&wakeStep.getOpenAppExpanded&&wakeStep.getOpenAppExpanded()!==appId) return;
+        var h=$(hostId);
+        if(h){ h.hidden=false; h.removeAttribute('hidden'); }
+        cmd.render({ mappingId:mapping.id, hostId:hostId });
+      }
+      if(cmd.clearInlineContext) cmd.clearInlineContext();
+      cmd.bindEvents({
+        mappingId:mapping.id,
+        hostId:hostId,
+        onChange:function(){
+          var busy=cmd.isBusy?cmd.isBusy():(cmd.isCalibrating&&cmd.isCalibrating());
+          if(busy) return;
+          refreshOpenAppCards();
+          remountIdle();
+        }
+      });
+      cmd.render({ mappingId:mapping.id, hostId:hostId });
+      if(act==='record'||act==='rerecord'){
+        if(cmd.runAct) cmd.runAct(act);
+      }
+    }
+    function startOpenAppAcousticTest(mappingId){
+      mappingId=String(mappingId||'').trim();
+      if(!mappingId){
+        if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceOpenAppTestNeedRecord'),'scheme');
+        return;
+      }
+      var api=global.OneToneVoiceAcousticIpc;
+      if(!api||!api.testOnce){
+        if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceOpenAppTestNeedRecord'),'scheme');
+        return;
+      }
+      if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceOpenAppTestPrompt'),'scheme');
+      openAppTestListening=true;
+      refreshOpenAppCards();
+      api.testOnce(mappingId).then(function(res){
+        openAppTestListening=false;
+        refreshOpenAppCards();
+        res=res||{};
+        if(res.ok){
+          if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceOpenAppTestOk'),'scheme');
+          return;
+        }
+        var reason=String(res.reason||'');
+        if(reason==='app_launch_failed'||reason==='app_not_launchable'||reason==='app_target_missing'){
+          if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceOpenAppTestLaunchFailed'),'warn');
+          return;
+        }
+        if(reason==='conflicts_with_other_command'||reason==='below_threshold'||reason==='no_speech'){
+          if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceOpenAppTestTimeout'),'scheme');
+          return;
+        }
+        if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceOpenAppTestTimeout'),'scheme');
+      }).catch(function(){
+        openAppTestListening=false;
+        refreshOpenAppCards();
+        if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceOpenAppTestTimeout'),'scheme');
+      });
+    }
+    var openAppTestListening=false;
+    global.OneToneVoiceOpenAppUi={
+      isTesting:function(){ return !!openAppTestListening; }
+    };
+    var openAppReplayAudio=null;
+    function stopOpenAppReplay(){
+      if(openAppReplayAudio&&openAppReplayAudio.source){
+        try{ openAppReplayAudio.source.stop(); }catch(_e){}
+      }
+      openAppReplayAudio=null;
+    }
+    function resumeAcousticAfterReplay(){
+      var api=global.OneToneVoiceAcousticIpc;
+      if(api&&api.setSuspend){
+        return api.setSuspend(false).catch(function(){ return null; });
+      }
+      return Promise.resolve();
+    }
+    function playOpenAppAcousticPreview(mappingId){
+      mappingId=String(mappingId||'').trim();
+      if(!mappingId){
+        if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceOpenAppReplayNeedRerecord'),'scheme');
+        return;
+      }
+      if(openAppTestListening){
+        if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceOpenAppTestPrompt'),'scheme');
+        return;
+      }
+      var core=global.OneToneMappingCore;
+      var m=core&&core.byId?core.byId(mappingId):null;
+      var cmd=m&&Array.isArray(m.acousticVoiceCommands)?m.acousticVoiceCommands[0]:null;
+      var sample=cmd&&Array.isArray(cmd.samples)?cmd.samples[0]:null;
+      var b64=sample&&(sample.previewPcmB64||sample.preview_pcm_b64);
+      b64=String(b64||'').trim();
+      if(!b64){
+        if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceOpenAppReplayNeedRerecord'),'scheme');
+        return;
+      }
+      var binary;
+      try{
+        binary=atob(b64);
+      }catch(_e){
+        if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceOpenAppReplayNeedRerecord'),'scheme');
+        return;
+      }
+      var len=binary.length;
+      if(len<2){
+        if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceOpenAppReplayNeedRerecord'),'scheme');
+        return;
+      }
+      var samples=new Float32Array(Math.floor(len/2));
+      for(var i=0;i<samples.length;i++){
+        var lo=binary.charCodeAt(i*2);
+        var hi=binary.charCodeAt(i*2+1);
+        var v=(hi<<8)|lo;
+        if(v>=0x8000) v-=0x10000;
+        samples[i]=v/32768;
+      }
+      var api=global.OneToneVoiceAcousticIpc;
+      var matcher=global.OneToneVoiceAcousticMatcher;
+      if(matcher&&matcher.clearMatchWatch) matcher.clearMatchWatch();
+      stopOpenAppReplay();
+      var suspendP=api&&api.setSuspend?api.setSuspend(true):Promise.resolve();
+      suspendP.then(function(){
+        var Ctx=global.AudioContext||global.webkitAudioContext;
+        if(!Ctx){
+          resumeAcousticAfterReplay();
+          return;
+        }
+        var ctx=new Ctx();
+        var buf=ctx.createBuffer(1,samples.length,16000);
+        buf.getChannelData(0).set(samples);
+        var src=ctx.createBufferSource();
+        src.buffer=buf;
+        src.connect(ctx.destination);
+        openAppReplayAudio={ ctx:ctx, source:src };
+        var done=false;
+        function finish(){
+          if(done) return;
+          done=true;
+          openAppReplayAudio=null;
+          try{ ctx.close(); }catch(_e2){}
+          resumeAcousticAfterReplay();
+        }
+        src.onended=finish;
+        global.setTimeout(finish, Math.ceil((samples.length/16000)*1000)+800);
+        try{ src.start(0); }catch(_e3){ finish(); }
+      }).catch(function(){
+        resumeAcousticAfterReplay();
+      });
+    }
     if(btnVoiceOutputSummonManage){
       btnVoiceOutputSummonManage.onclick=function(){
         if(hooks.setSettingsPanel) hooks.setSettingsPanel('keys');
       };
+    }
+    var btnVoiceOpenAppAdd=$('btnVoiceOpenAppAdd');
+    if(btnVoiceOpenAppAdd){
+      btnVoiceOpenAppAdd.onclick=function(e){
+        e.preventDefault();
+        var rules=global.OneToneAppBehaviorRules;
+        if(!rules||!rules.openAppPicker) return;
+        rules.openAppPicker({
+          mode:'topbarMonitor',
+          onPick:function(payload){
+            payload=payload||{};
+            var appId=String(payload.presetId||payload.appId||'').trim();
+            if(!appId) return;
+            var hub=global.OneToneHabitHub;
+            if(hub&&hub.createAppScenario) hub.createAppScenario(appId);
+            refreshOpenAppCards();
+          }
+        });
+      };
+    }
+    var summonChips=$('voiceOutputSummonChips');
+    if(summonChips&&summonChips.dataset.openAppAcousticBound!=='1'){
+      summonChips.dataset.openAppAcousticBound='1';
+      summonChips.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-open-app-acoustic-act]');
+        if(!btn) return;
+        e.preventDefault();
+        var act=btn.getAttribute('data-open-app-acoustic-act')||'';
+        var appId=btn.getAttribute('data-app-id')||'';
+        var mappingId=btn.getAttribute('data-mapping-id')||'';
+        if(act==='test'){
+          if(!mappingId){
+            var hub=global.OneToneHabitHub;
+            var m=hub&&hub.findAppScenarioByAppId?hub.findAppScenarioByAppId(appId):null;
+            mappingId=m&&m.id||'';
+          }
+          startOpenAppAcousticTest(mappingId);
+          return;
+        }
+        if(act==='play'){
+          if(!mappingId){
+            var hubPlay=global.OneToneHabitHub;
+            var mPlay=hubPlay&&hubPlay.findAppScenarioByAppId?hubPlay.findAppScenarioByAppId(appId):null;
+            mappingId=mPlay&&mPlay.id||'';
+          }
+          playOpenAppAcousticPreview(mappingId);
+          return;
+        }
+        if(act==='record'||act==='rerecord'){
+          mountOpenAppAcoustic(appId,act);
+        }
+      });
     }
     var habitNote=$('voiceSendHabitNote');
     if(habitNote&&!habitNote.dataset.habitLinkBound){
@@ -549,19 +787,6 @@
     }
     bindControlAcousticTabs('voiceEndKindTabs','__vp_voice_end_kind__','end');
     bindControlAcousticTabs('voiceCancelKindTabs','__vp_voice_cancel_kind__','cancel');
-    var wakeKindHost=$('voiceWakeKindTabs');
-    if(wakeKindHost&&wakeKindHost.dataset.wakeAcousticBound!=='1'){
-      wakeKindHost.dataset.wakeAcousticBound='1';
-      wakeKindHost.addEventListener('click',function(e){
-        var btn=e.target.closest&&e.target.closest('[data-phrase-kind]');
-        if(!btn) return;
-        if((btn.getAttribute('data-phrase-kind')||'')!=='sound') return;
-        if(global.OneToneVoiceWakeAcoustic){
-          if(global.OneToneVoiceWakeAcoustic.bindEvents) global.OneToneVoiceWakeAcoustic.bindEvents();
-          if(global.OneToneVoiceWakeAcoustic.render) global.OneToneVoiceWakeAcoustic.render();
-        }
-      });
-    }
     function bindFlowLangToggle(hostId,storageKey){
       var host=$(hostId);
       if(!host) return;

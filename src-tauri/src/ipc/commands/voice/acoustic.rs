@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::config::AcousticVoiceCommandSample;
 use crate::voice_acoustic_runtime::{
     acoustic_set_suspend, acoustic_status, build_command_json, preflight_record, record_once,
-    record_session_cancel, record_session_start, record_session_stop,
+    record_session_cancel, record_session_start, record_session_stop, test_once,
 };
 use crate::AppState;
 
@@ -39,6 +39,25 @@ pub fn cmd_acoustic_voice_command_record_once(
 }
 
 #[tauri::command]
+pub fn cmd_acoustic_voice_command_test_once(
+    app: tauri::AppHandle,
+    state: tauri::State<Arc<AppState>>,
+    scenario_id: String,
+) -> serde_json::Value {
+    test_once(state.inner(), &app, &scenario_id)
+}
+
+#[tauri::command]
+pub fn cmd_app_launch_capability(app_target_id: String) -> serde_json::Value {
+    let cap = crate::app_chat_workflow::app_launch_capability(&app_target_id);
+    serde_json::json!({
+        "ok": true,
+        "appTargetId": app_target_id,
+        "capability": cap.as_str(),
+    })
+}
+
+#[tauri::command]
 pub fn cmd_acoustic_voice_command_record_start(
     app: tauri::AppHandle,
     state: tauri::State<Arc<AppState>>,
@@ -71,6 +90,7 @@ pub fn cmd_acoustic_voice_command_build_from_samples(
     app_boost: Option<bool>,
     display_text: Option<String>,
     current_command_id: Option<String>,
+    kind: Option<String>,
 ) -> serde_json::Value {
     build_command_json(
         samples,
@@ -79,5 +99,6 @@ pub fn cmd_acoustic_voice_command_build_from_samples(
         app_boost.unwrap_or(true),
         display_text.as_deref().unwrap_or(""),
         current_command_id.as_deref(),
+        kind.as_deref(),
     )
 }

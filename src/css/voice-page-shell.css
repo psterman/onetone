@@ -1906,11 +1906,72 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
 
 #settingsPanelVoiceWake.voice-page-desk .voice-wake-app-row {
   display: grid;
-  grid-template-columns: minmax(72px, 100px) 1fr;
-  gap: 8px;
-  align-items: center;
-  padding: 6px 0;
+  grid-template-columns: minmax(72px, 120px) 1fr auto;
+  gap: 8px 10px;
+  align-items: start;
+  padding: 10px 0;
   border-top: 1px solid var(--outline-variant);
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-app-row.voice-open-app-card {
+  grid-template-columns: minmax(72px, 140px) 1fr;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-open-app-status {
+  display: grid;
+  gap: 2px;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-open-app-status-line.voice-open-app-text-muted {
+  opacity: 0.72;
+  font-weight: 500;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-open-app-acoustic-line {
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-open-app-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 4px;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-open-app-acoustic-host {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-open-app-acoustic-host[hidden] {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-open-app-keys-link {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-top: 2px;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-open-app-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-top: 10px;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-input-target {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--outline-variant);
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-input-target-val {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-surface);
 }
 
 #settingsPanelVoiceWake.voice-page-desk .voice-wake-app-row:first-child {

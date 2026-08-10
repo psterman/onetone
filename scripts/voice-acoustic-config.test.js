@@ -76,4 +76,45 @@ if(!Array.isArray(normInbound.acousticVoiceCommands)&&Array.isArray(normInbound.
 normInbound.acousticVoiceCommands=P.normalizeAcousticVoiceCommands(normInbound.acousticVoiceCommands,normInbound.id);
 assert.strictEqual(normInbound.acousticVoiceCommands.length,1);
 
+assert.strictEqual(P.ACOUSTIC_PREVIEW_MAX_BYTES,38400);
+
+// Preview: camelCase round-trip
+var withPreview=sampleCmd('good');
+var pcmEven=Buffer.alloc(4);
+pcmEven.writeInt16LE(1000,0);
+pcmEven.writeInt16LE(-2000,2);
+var b64Even=pcmEven.toString('base64');
+withPreview.samples[0].previewPcmB64=b64Even;
+var nPreview=P.normalizeAcousticVoiceCommands([withPreview],'sc1');
+assert.strictEqual(nPreview[0].samples[0].previewPcmB64,b64Even);
+var serPreview=P.serializeAcousticVoiceCommands([withPreview],'sc1');
+assert.strictEqual(serPreview[0].samples[0].previewPcmB64,b64Even);
+assert.strictEqual(Object.prototype.hasOwnProperty.call(serPreview[0].samples[0],'preview_pcm_b64'),false);
+
+// Preview: snake_case input → camelCase output
+var snakePreview=sampleCmd('good');
+snakePreview.samples[0].preview_pcm_b64=b64Even;
+delete snakePreview.samples[0].previewPcmB64;
+var nSnake=P.normalizeAcousticVoiceCommands([snakePreview],'sc1');
+assert.strictEqual(nSnake[0].samples[0].previewPcmB64,b64Even);
+
+// Invalid base64 omitted; sample still kept
+var badB64=sampleCmd('good');
+badB64.samples[0].previewPcmB64='!!!not-base64!!!';
+var nBad=P.normalizeAcousticVoiceCommands([badB64],'sc1');
+assert.strictEqual(nBad.length,1);
+assert.strictEqual(nBad[0].samples[0].previewPcmB64,undefined);
+
+// Odd byte length → drop last byte
+var odd=Buffer.alloc(5);
+odd.writeUInt8(1,0); odd.writeUInt8(2,1); odd.writeUInt8(3,2); odd.writeUInt8(4,3); odd.writeUInt8(5,4);
+var nOdd=P.normalizePreviewPcmB64(odd.toString('base64'));
+assert.ok(nOdd);
+assert.strictEqual(Buffer.from(nOdd,'base64').length,4);
+
+// Oversize → truncate to ACOUSTIC_PREVIEW_MAX_BYTES
+var over=Buffer.alloc(P.ACOUSTIC_PREVIEW_MAX_BYTES+100,7);
+var nOver=P.normalizePreviewPcmB64(over.toString('base64'));
+assert.strictEqual(Buffer.from(nOver,'base64').length,P.ACOUSTIC_PREVIEW_MAX_BYTES);
+
 console.log('voice-acoustic-config.test.js: ok');

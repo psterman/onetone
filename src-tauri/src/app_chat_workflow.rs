@@ -64,7 +64,7 @@ const CURSOR_PROFILE: AppChatProfile = AppChatProfile {
     accept_click_without_uia: true,
     post_voice_key_ms: 220,
     restore_main_delay_ms: 120,
-    launch_localappdata_rel: &[],
+    launch_localappdata_rel: &["Programs\\Cursor\\Cursor.exe"],
 };
 
 const CODEX_PROFILE: AppChatProfile = AppChatProfile {
@@ -622,16 +622,7 @@ fn ensure_app_window(profile: &AppChatProfile) -> Option<(winapi::shared::windef
     if let Some(hwnd) = find_app_window(profile) {
         return Some((hwnd, false));
     }
-    if profile.launch_localappdata_rel.is_empty() {
-        return None;
-    }
-    let local = std::env::var("LOCALAPPDATA").ok()?;
-    let exe = profile
-        .launch_localappdata_rel
-        .iter()
-        .map(|rel| std::path::PathBuf::from(&local).join(rel))
-        .find(|path| path.is_file())?;
-    if !launch_gui_exe(&exe) {
+    if !try_launch_app_profile(profile) {
         return None;
     }
     for _ in 0..60 {
@@ -641,6 +632,512 @@ fn ensure_app_window(profile: &AppChatProfile) -> Option<(winapi::shared::windef
         }
     }
     None
+}
+
+/// Launch when no window exists. Prefer LocalAppData exe; Store apps use Start Menu / AUMID.
+#[cfg(windows)]
+fn try_launch_app_profile(profile: &AppChatProfile) -> bool {
+    if launch_from_localappdata(profile) {
+        return true;
+    }
+    if profile.id == CODEX_APP_TARGET_ID {
+        return launch_codex_store_app();
+    }
+    if matches!(
+        profile.id,
+        QODER_APP_TARGET_ID | WORKBUDDY_APP_TARGET_ID | TRAE_APP_TARGET_ID
+    ) {
+        return launch_from_resolved_hint(profile);
+    }
+    false
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AppLaunchCapability {
+    Launchable,
+    FocusOnly,
+    Missing,
+}
+
+impl AppLaunchCapability {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Launchable => "launchable",
+            Self::FocusOnly => "focus_only",
+            Self::Missing => "missing",
+        }
+    }
+}
+
+/// Card capability: can cold-start/focus now, focus-only when running, or no evidence.
+pub fn app_launch_capability(app_target_id: &str) -> AppLaunchCapability {
+    let id = app_target_id.trim();
+    if id.is_empty() {
+        return AppLaunchCapability::Missing;
+    }
+    #[cfg(windows)]
+    {
+        if let Some(profile) = profile_for(id) {
+            if find_app_window(profile).is_some() {
+                return AppLaunchCapability::Launchable;
+            }
+            if can_resolve_cold_start(profile) {
+                return AppLaunchCapability::Launchable;
+            }
+            return AppLaunchCapability::FocusOnly;
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = id;
+    }
+    AppLaunchCapability::Missing
+}
+
+#[cfg(windows)]
+fn can_resolve_cold_start(profile: &AppChatProfile) -> bool {
+    if !profile.launch_localappdata_rel.is_empty() {
+        if let Ok(local) = std::env::var("LOCALAPPDATA") {
+            if profile
+                .launch_localappdata_rel
+                .iter()
+                .map(|rel| std::path::PathBuf::from(&local).join(rel))
+                .any(|p| p.is_file())
+            {
+                return true;
+            }
+        }
+    }
+    if profile.id == CODEX_APP_TARGET_ID {
+        return true; // Store launch always attempted
+    }
+    resolve_launch_hint(profile).is_some()
+}
+
+fn shortcut_launch_hint_cache() -> &'static Mutex<HashMap<String, Option<std::path::PathBuf>>> {
+    static CACHE: OnceLock<Mutex<HashMap<String, Option<std::path::PathBuf>>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+#[cfg(windows)]
+fn launch_from_resolved_hint(profile: &AppChatProfile) -> bool {
+    let Some(path) = resolve_launch_hint(profile) else {
+        return false;
+    };
+    if !validate_launch_exe(&path, profile) {
+        return false;
+    }
+    launch_gui_exe(&path)
+}
+
+/// Runtime inventory only — never written into scenario config.
+#[cfg(windows)]
+fn resolve_launch_hint(profile: &AppChatProfile) -> Option<std::path::PathBuf> {
+    if let Ok(cache) = shortcut_launch_hint_cache().lock() {
+        if let Some(hit) = cache.get(profile.id) {
+            if let Some(path) = hit {
+                if validate_launch_exe(path, profile) {
+                    return Some(path.clone());
+                }
+            } else {
+                // Cached miss — still re-check running process (may have started since).
+            }
+        }
+    }
+
+    let resolved = resolve_launch_hint_uncached(profile);
+    if let Ok(mut cache) = shortcut_launch_hint_cache().lock() {
+        cache.insert(profile.id.to_string(), resolved.clone());
+    }
+    resolved
+}
+
+#[cfg(windows)]
+fn resolve_launch_hint_uncached(profile: &AppChatProfile) -> Option<std::path::PathBuf> {
+    // 1) Running process trusted full path
+    if let Some(path) = find_running_process_exe(profile) {
+        if validate_launch_exe(&path, profile) {
+            return Some(path);
+        }
+    }
+    // 2) Start Menu shortcut
+    let needles = shortcut_name_needles(profile);
+    if !needles.is_empty() {
+        let mut roots = Vec::new();
+        if let Ok(appdata) = std::env::var("APPDATA") {
+            roots.push(
+                std::path::PathBuf::from(appdata).join("Microsoft\\Windows\\Start Menu\\Programs"),
+            );
+        }
+        if let Ok(program_data) = std::env::var("ProgramData") {
+            roots.push(
+                std::path::PathBuf::from(program_data)
+                    .join("Microsoft\\Windows\\Start Menu\\Programs"),
+            );
+        }
+        for root in roots {
+            if let Some(lnk) = find_lnk_by_name(&root, &needles, 0) {
+                // Prefer launching the .lnk itself (ShellExecute resolves target).
+                return Some(lnk);
+            }
+        }
+    }
+    // 3) Uninstall DisplayIcon / InstallLocation (never UninstallString)
+    if let Some(path) = probe_uninstall_exe(profile) {
+        if validate_launch_exe(&path, profile) {
+            return Some(path);
+        }
+    }
+    // 4) Known install dirs
+    for path in known_install_exe_candidates(profile) {
+        if validate_launch_exe(&path, profile) {
+            return Some(path);
+        }
+    }
+    None
+}
+
+#[cfg(windows)]
+fn shortcut_name_needles(profile: &AppChatProfile) -> Vec<&'static str> {
+    match profile.id {
+        QODER_APP_TARGET_ID => vec!["Qoder", "qoder"],
+        WORKBUDDY_APP_TARGET_ID => vec!["WorkBuddy", "Work Buddy"],
+        TRAE_APP_TARGET_ID => vec!["Trae", "TRAE"],
+        _ => vec![],
+    }
+}
+
+#[cfg(windows)]
+fn expected_exe_names(profile: &AppChatProfile) -> &[&'static str] {
+    profile.process_names
+}
+
+#[cfg(windows)]
+fn validate_launch_exe(path: &std::path::Path, profile: &AppChatProfile) -> bool {
+    if path.extension().and_then(|e| e.to_str()).map(|e| e.eq_ignore_ascii_case("lnk"))
+        == Some(true)
+    {
+        return path.is_file();
+    }
+    if !path.is_absolute() || !path.is_file() {
+        return false;
+    }
+    let name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    expected_exe_names(profile)
+        .iter()
+        .any(|n| name == n.to_ascii_lowercase())
+}
+
+#[cfg(windows)]
+fn find_running_process_exe(profile: &AppChatProfile) -> Option<std::path::PathBuf> {
+    use winapi::um::handleapi::{CloseHandle, INVALID_HANDLE_VALUE};
+    use winapi::um::tlhelp32::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+        TH32CS_SNAPPROCESS,
+    };
+    let needles: Vec<String> = profile
+        .process_names
+        .iter()
+        .map(|n| n.to_ascii_lowercase())
+        .collect();
+    unsafe {
+        let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snap.is_null() || snap == INVALID_HANDLE_VALUE {
+            return None;
+        }
+        let mut entry: PROCESSENTRY32W = std::mem::zeroed();
+        entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+        let mut found = None;
+        if Process32FirstW(snap, &mut entry) != 0 {
+            loop {
+                let exe_name = String::from_utf16_lossy(
+                    &entry.szExeFile[..entry
+                        .szExeFile
+                        .iter()
+                        .position(|&c| c == 0)
+                        .unwrap_or(entry.szExeFile.len())],
+                );
+                if needles
+                    .iter()
+                    .any(|n| exe_name.to_ascii_lowercase() == *n)
+                {
+                    if let Some(full) = crate::app_identity::process_image_path(entry.th32ProcessID)
+                    {
+                        let path = std::path::PathBuf::from(full);
+                        if validate_launch_exe(&path, profile) {
+                            found = Some(path);
+                            break;
+                        }
+                    }
+                }
+                if Process32NextW(snap, &mut entry) == 0 {
+                    break;
+                }
+            }
+        }
+        CloseHandle(snap);
+        found
+    }
+}
+
+#[cfg(windows)]
+fn known_install_exe_candidates(profile: &AppChatProfile) -> Vec<std::path::PathBuf> {
+    let mut out = Vec::new();
+    let Ok(local) = std::env::var("LOCALAPPDATA") else {
+        return out;
+    };
+    let local = std::path::PathBuf::from(local);
+    let rels: &[&str] = match profile.id {
+        QODER_APP_TARGET_ID => &[
+            "Programs\\Qoder\\Qoder.exe",
+            "Qoder\\Qoder.exe",
+            "Programs\\Qoder\\Qoder.exe",
+        ],
+        WORKBUDDY_APP_TARGET_ID => &[
+            "Programs\\WorkBuddy\\WorkBuddy.exe",
+            "WorkBuddy\\WorkBuddy.exe",
+        ],
+        TRAE_APP_TARGET_ID => &["Programs\\Trae\\Trae.exe", "Trae\\Trae.exe"],
+        _ => &[],
+    };
+    for rel in rels {
+        out.push(local.join(rel));
+    }
+    out
+}
+
+/// Read Uninstall keys for DisplayIcon / InstallLocation — never execute UninstallString.
+#[cfg(windows)]
+fn probe_uninstall_exe(profile: &AppChatProfile) -> Option<std::path::PathBuf> {
+    let display_needles: &[&str] = match profile.id {
+        QODER_APP_TARGET_ID => &["Qoder"],
+        WORKBUDDY_APP_TARGET_ID => &["WorkBuddy"],
+        TRAE_APP_TARGET_ID => &["Trae"],
+        _ => return None,
+    };
+    let roots = [
+        r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+        r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+    ];
+    for hive in [
+        winreg::RegKey::predef(winreg::enums::HKEY_CURRENT_USER),
+        winreg::RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE),
+    ] {
+        for root in roots {
+            let Ok(key) = hive.open_subkey(root) else {
+                continue;
+            };
+            for sub_name in key.enum_keys().filter_map(|r| r.ok()) {
+                let Ok(sub) = key.open_subkey(&sub_name) else {
+                    continue;
+                };
+                let display: String = sub.get_value("DisplayName").unwrap_or_default();
+                if !display_needles
+                    .iter()
+                    .any(|n| display.to_ascii_lowercase().contains(&n.to_ascii_lowercase()))
+                {
+                    continue;
+                }
+                if let Ok(icon) = sub.get_value::<String, _>("DisplayIcon") {
+                    let cleaned = icon.split(',').next().unwrap_or("").trim().trim_matches('"');
+                    let path = std::path::PathBuf::from(cleaned);
+                    if validate_launch_exe(&path, profile) {
+                        return Some(path);
+                    }
+                }
+                if let Ok(loc) = sub.get_value::<String, _>("InstallLocation") {
+                    let loc = loc.trim().trim_matches('"');
+                    if loc.is_empty() {
+                        continue;
+                    }
+                    for exe_name in profile.process_names {
+                        let path = std::path::PathBuf::from(loc).join(exe_name);
+                        if validate_launch_exe(&path, profile) {
+                            return Some(path);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+#[cfg(windows)]
+fn launch_from_localappdata(profile: &AppChatProfile) -> bool {
+    if profile.launch_localappdata_rel.is_empty() {
+        return false;
+    }
+    let Ok(local) = std::env::var("LOCALAPPDATA") else {
+        return false;
+    };
+    let Some(exe) = profile
+        .launch_localappdata_rel
+        .iter()
+        .map(|rel| std::path::PathBuf::from(&local).join(rel))
+        .find(|path| path.is_file())
+    else {
+        return false;
+    };
+    launch_gui_exe(&exe)
+}
+
+/// Codex is a Store/AppX package — do not ShellExecute WindowsApps\...\ChatGPT.exe directly.
+#[cfg(windows)]
+fn launch_codex_store_app() -> bool {
+    if launch_start_menu_shortcut(&[
+        "Codex",
+        "OpenAI Codex",
+        "ChatGPT Codex",
+    ]) {
+        return true;
+    }
+    if let Some(aumid) = discover_codex_aumid() {
+        if launch_shell_apps_folder(&aumid) {
+            return true;
+        }
+    }
+    // Known publisher id from packaged Codex installs (version segment may vary).
+    launch_shell_apps_folder("OpenAI.Codex_2p2nqsd0c76g0!App")
+}
+
+#[cfg(windows)]
+fn launch_start_menu_shortcut(name_needles: &[&str]) -> bool {
+    let mut roots = Vec::new();
+    if let Ok(appdata) = std::env::var("APPDATA") {
+        roots.push(
+            std::path::PathBuf::from(appdata)
+                .join("Microsoft\\Windows\\Start Menu\\Programs"),
+        );
+    }
+    if let Ok(program_data) = std::env::var("ProgramData") {
+        roots.push(
+            std::path::PathBuf::from(program_data)
+                .join("Microsoft\\Windows\\Start Menu\\Programs"),
+        );
+    }
+    for root in roots {
+        if let Some(lnk) = find_lnk_by_name(&root, name_needles, 0) {
+            if launch_gui_exe(&lnk) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+#[cfg(windows)]
+fn find_lnk_by_name(
+    dir: &std::path::Path,
+    name_needles: &[&str],
+    depth: usize,
+) -> Option<std::path::PathBuf> {
+    if depth > 4 || !dir.is_dir() {
+        return None;
+    }
+    let entries = std::fs::read_dir(dir).ok()?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            if let Some(hit) = find_lnk_by_name(&path, name_needles, depth + 1) {
+                return Some(hit);
+            }
+            continue;
+        }
+        let name = path.file_name()?.to_string_lossy().to_ascii_lowercase();
+        if !name.ends_with(".lnk") {
+            continue;
+        }
+        if name_needles
+            .iter()
+            .any(|n| name.contains(&n.to_ascii_lowercase()))
+        {
+            return Some(path);
+        }
+    }
+    None
+}
+
+#[cfg(windows)]
+fn discover_codex_aumid() -> Option<String> {
+    let local = std::env::var("LOCALAPPDATA").ok()?;
+    let packages = std::path::PathBuf::from(local).join("Packages");
+    let entries = std::fs::read_dir(packages).ok()?;
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if !name.to_ascii_lowercase().starts_with("openai.codex_") {
+            continue;
+        }
+        let family = package_family_name_from_folder(&name).unwrap_or(name);
+        return Some(format!("{family}!App"));
+    }
+    None
+}
+
+/// `OpenAI.Codex_26.x_x64__publisher` → `OpenAI.Codex_publisher`
+fn package_family_name_from_folder(folder: &str) -> Option<String> {
+    let (left, publisher) = folder.rsplit_once("__")?;
+    let app_name = left.split('_').next()?;
+    if app_name.is_empty() || publisher.is_empty() {
+        return None;
+    }
+    Some(format!("{app_name}_{publisher}"))
+}
+
+#[cfg(test)]
+mod ensure_launch_tests {
+    use super::package_family_name_from_folder;
+
+    #[test]
+    fn package_family_name_from_codex_folder() {
+        assert_eq!(
+            package_family_name_from_folder(
+                "OpenAI.Codex_26.715.7063.0_x64__2p2nqsd0c76g0"
+            )
+            .as_deref(),
+            Some("OpenAI.Codex_2p2nqsd0c76g0")
+        );
+    }
+}
+
+#[cfg(windows)]
+fn launch_shell_apps_folder(aumid: &str) -> bool {
+    let aumid = aumid.trim();
+    if aumid.is_empty() {
+        return false;
+    }
+    let uri = format!("shell:AppsFolder\\{aumid}");
+    launch_shell_uri(&uri)
+}
+
+#[cfg(windows)]
+fn launch_shell_uri(uri: &str) -> bool {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+    use winapi::um::shellapi::ShellExecuteW;
+    use winapi::um::winuser::SW_SHOWDEFAULT;
+
+    fn wide(s: &str) -> Vec<u16> {
+        OsStr::new(s).encode_wide().chain(Some(0)).collect()
+    }
+
+    let file = wide(uri);
+    let op = wide("open");
+    unsafe {
+        let ret = ShellExecuteW(
+            std::ptr::null_mut(),
+            op.as_ptr(),
+            file.as_ptr(),
+            std::ptr::null(),
+            std::ptr::null(),
+            SW_SHOWDEFAULT,
+        );
+        (ret as isize) > 32
+    }
 }
 
 #[cfg(windows)]

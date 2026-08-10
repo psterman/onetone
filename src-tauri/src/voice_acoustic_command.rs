@@ -4,9 +4,10 @@
 use crate::config::{
     normalize_acoustic_voice_command_sample, AcousticVoiceCommand,
     AcousticVoiceCommandQualitySignals, AcousticVoiceCommandSample, ACOUSTIC_FEATURE_DIMS,
-    ACOUSTIC_MAX_FEATURE_FRAMES,
+    ACOUSTIC_MAX_FEATURE_FRAMES, ACOUSTIC_PREVIEW_MAX_MS,
 };
 
+use base64::{engine::general_purpose::STANDARD, Engine};
 use rustfft::{Fft, FftPlanner};
 use std::f64::consts::PI;
 use std::sync::Arc;
@@ -270,6 +271,7 @@ pub fn extract_mfcc_from_pcm_f32(
         feature_frames,
         feature_dims: ACOUSTIC_FEATURE_DIMS,
         sample_rate: SAMPLE_RATE,
+        preview_pcm_b64: encode_preview_pcm_b64(speech, sample_rate),
         quality_signals: Some(AcousticVoiceCommandQualitySignals {
             has_speech: true,
             too_short: false,
@@ -357,6 +359,7 @@ fn extract_sample_from_pcm_with_policy(
         feature_frames,
         feature_dims: ACOUSTIC_FEATURE_DIMS,
         sample_rate: SAMPLE_RATE,
+        preview_pcm_b64: encode_preview_pcm_b64(speech, sample_rate),
         quality_signals: Some(AcousticVoiceCommandQualitySignals {
             has_speech: true,
             too_short: false,
@@ -621,6 +624,8 @@ pub struct BuildFromSamplesOptions<'a> {
     pub app_boost: bool,
     pub display_text: &'a str,
     pub current_command_id: Option<&'a str>,
+    /// e.g. `open-app-acoustic` vs default `scenario-acoustic-activate`.
+    pub kind: Option<&'a str>,
 }
 
 /// Unified calibration: quality / threshold / margin decided here only.
@@ -696,6 +701,12 @@ pub fn build_from_samples(
         }
     }
 
+    let kind = match opts.kind.map(str::trim).filter(|s| !s.is_empty()) {
+        Some("open-app-acoustic") => "open-app-acoustic",
+        Some(other) => other,
+        None => "scenario-acoustic-activate",
+    };
+
     let command = AcousticVoiceCommand {
         id: opts
             .current_command_id
@@ -703,7 +714,7 @@ pub fn build_from_samples(
             .filter(|s| !s.is_empty())
             .unwrap_or_else(crate::config::new_acoustic_voice_command_id),
         version: 1,
-        kind: "scenario-acoustic-activate".into(),
+        kind: kind.into(),
         scenario_id: opts.scenario_id.trim().to_string(),
         label: "我的语音命令".into(),
         display_text: opts.display_text.trim().to_string(),
@@ -735,9 +746,31 @@ pub fn match_acoustic_commands(
     live_frames: u32,
     commands: &[AcousticVoiceCommand],
 ) -> Option<MatchCandidate> {
+    match match_acoustic_commands_detailed(live, live_frames, commands) {
+        MatchDetail::Hit(c) => Some(c),
+        _ => None,
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum MatchDetail {
+    Hit(MatchCandidate),
+    BelowThreshold,
+    MarginConflict {
+        top: MatchCandidate,
+        second: MatchCandidate,
+    },
+}
+
+/// Same scoring as production matcher, but exposes margin conflicts for test_once.
+pub fn match_acoustic_commands_detailed(
+    live: &[f32],
+    live_frames: u32,
+    commands: &[AcousticVoiceCommand],
+) -> MatchDetail {
     let dims = ACOUSTIC_FEATURE_DIMS;
     if live_frames == 0 || live.len() != live_frames as usize * dims as usize {
-        return None;
+        return MatchDetail::BelowThreshold;
     }
     let mut scored: Vec<MatchCandidate> = Vec::new();
     for cmd in commands {
@@ -766,7 +799,7 @@ pub fn match_acoustic_commands(
         }
     }
     if scored.is_empty() {
-        return None;
+        return MatchDetail::BelowThreshold;
     }
     scored.sort_by(|a, b| {
         b.score
@@ -781,10 +814,13 @@ pub fn match_acoustic_commands(
             .map(|c| c.margin)
             .unwrap_or(DEFAULT_MARGIN);
         if top.score - scored[1].score < margin {
-            return None;
+            return MatchDetail::MarginConflict {
+                top,
+                second: scored[1].clone(),
+            };
         }
     }
-    Some(top)
+    MatchDetail::Hit(top)
 }
 
 fn now_ms() -> u64 {
@@ -792,6 +828,25 @@ fn now_ms() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
         .unwrap_or(0)
+}
+
+/// Encode speech preview as 16k mono int16 LE base64, capped to ACOUSTIC_PREVIEW_MAX_MS.
+pub fn encode_preview_pcm_b64(speech: &[f32], sample_rate: u32) -> Option<String> {
+    if speech.is_empty() || sample_rate == 0 {
+        return None;
+    }
+    let max_samples = ((sample_rate as u64 * u64::from(ACOUSTIC_PREVIEW_MAX_MS)) / 1000) as usize;
+    let slice = if speech.len() > max_samples {
+        &speech[..max_samples]
+    } else {
+        speech
+    };
+    let mut bytes = Vec::with_capacity(slice.len().saturating_mul(2));
+    for &s in slice {
+        let v = (s.clamp(-1.0, 1.0) * 32767.0).round() as i16;
+        bytes.extend_from_slice(&v.to_le_bytes());
+    }
+    Some(STANDARD.encode(bytes))
 }
 
 #[cfg(test)]
@@ -850,6 +905,7 @@ mod tests {
                 app_boost: true,
                 display_text: "",
                 current_command_id: None,
+                kind: None,
             },
         );
         assert!(good.ok);
@@ -864,6 +920,7 @@ mod tests {
                 app_boost: true,
                 display_text: "",
                 current_command_id: None,
+                kind: None,
             },
         );
         assert!(!unstable.ok);
@@ -896,6 +953,42 @@ mod tests {
             "expected main phrase, got {}ms",
             seg.duration_ms
         );
+    }
+
+    #[test]
+    fn preview_pcm_b64_is_capped_to_max_ms() {
+        // 2.5s speech → preview must truncate to ≤1.2s int16 bytes
+        let pcm = sine_pcm(440.0, 2500);
+        let sample = extract_mfcc_from_pcm_f32(&pcm, SAMPLE_RATE).expect("sample");
+        let b64 = sample.preview_pcm_b64.expect("preview");
+        let bytes = STANDARD.decode(b64.as_bytes()).expect("decode");
+        let max_bytes = (SAMPLE_RATE as usize * ACOUSTIC_PREVIEW_MAX_MS as usize) / 1000 * 2;
+        assert!(
+            bytes.len() <= max_bytes,
+            "preview {} bytes exceeds max {}",
+            bytes.len(),
+            max_bytes
+        );
+        assert!(bytes.len() >= 2);
+    }
+
+    #[test]
+    fn preview_pcm_b64_roundtrip_optional_on_old_samples() {
+        let pcm = sine_pcm(520.0, 900);
+        let mut sample = extract_mfcc_from_pcm_f32(&pcm, SAMPLE_RATE).expect("sample");
+        let json = serde_json::to_value(&sample).expect("ser");
+        assert!(json.get("previewPcmB64").is_some());
+        // Old payloads without the field still deserialize.
+        let mut legacy = json.clone();
+        if let Some(obj) = legacy.as_object_mut() {
+            obj.remove("previewPcmB64");
+        }
+        let back: AcousticVoiceCommandSample =
+            serde_json::from_value(legacy).expect("deser legacy");
+        assert!(back.preview_pcm_b64.is_none());
+        sample.preview_pcm_b64 = None;
+        let kept = normalize_acoustic_voice_command_sample(sample).expect("norm");
+        assert!(kept.preview_pcm_b64.is_none());
     }
 
     #[test]

@@ -152,6 +152,8 @@ permissions = [
   "allow-cmd-acoustic-voice-command-record-stop",
   "allow-cmd-acoustic-voice-command-record-cancel",
   "allow-cmd-acoustic-voice-command-build-from-samples",
+  "allow-cmd-acoustic-voice-command-test-once",
+  "allow-cmd-app-launch-capability",
   "allow-cmd-tm-status",
   "allow-cmd-tm-set-workspace",
   "allow-cmd-tm-set-autosave",

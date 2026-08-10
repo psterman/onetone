@@ -18,6 +18,7 @@ mod app_log;
 mod audio_frame_bus;
 mod audio_win;
 mod backdrop;
+mod builtin_app_catalog;
 mod camera_capability_probe;
 mod claude_cli_session;
 mod claude_hook_setup;
@@ -965,6 +966,8 @@ pub fn run() {
             ipc::cmd_acoustic_voice_command_preflight,
             ipc::cmd_acoustic_voice_command_set_suspend,
             ipc::cmd_acoustic_voice_command_record_once,
+            ipc::cmd_acoustic_voice_command_test_once,
+            ipc::cmd_app_launch_capability,
             ipc::cmd_acoustic_voice_command_record_start,
             ipc::cmd_acoustic_voice_command_record_stop,
             ipc::cmd_acoustic_voice_command_record_cancel,

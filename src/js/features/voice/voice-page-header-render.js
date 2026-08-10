@@ -162,6 +162,14 @@
     applyPhraseKindTabLabels('voiceEndKindTabs','voicePhraseKindTabsEndLbl');
     const summonManage=$('btnVoiceOutputSummonManage');
     if(summonManage) summonManage.textContent=t('voiceOutputSummonManage');
+    const openAppAdd=$('btnVoiceOpenAppAdd');
+    if(openAppAdd) openAppAdd.textContent=t('voiceOpenAppAdd');
+    const inputTargetLbl=$('voiceWakeInputTargetLbl');
+    if(inputTargetLbl) inputTargetLbl.textContent=t('voiceWakeInputTargetLbl');
+    const summonLbl=$('voiceOutputSummonLbl');
+    if(summonLbl) summonLbl.textContent=t('voiceOutputSummonLbl');
+    const globalTitle=$('voiceEditSectionPresets');
+    if(globalTitle) globalTitle.textContent=t('voiceWakeGlobalTitle');
     const habitLink=$('btnVoiceSendHabitLink');
     if(habitLink) habitLink.textContent=t('voiceSendHabitLink');
     const wakeCustomLbl=$('voiceWakeCustomLbl');

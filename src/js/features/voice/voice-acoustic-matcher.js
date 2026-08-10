@@ -3,6 +3,7 @@
 
   var COOLDOWN_MS=1500;
   var lastTriggered=null;
+  var matchWatch=null;
 
   function collectAcousticCommands(config){
     var out=[];
@@ -28,8 +29,9 @@
     return false;
   }
 
-  function triggerMatch(payload){
+  function triggerMatch(payload,opts){
     payload=payload||{};
+    opts=opts||{};
     var scenarioId=String(payload.scenarioId||'').trim();
     if(!scenarioId) return false;
     var cmdId=String(payload.commandId||'');
@@ -45,21 +47,67 @@
       }
     }
     lastTriggered={commandId:cmdId,scenarioId:scenarioId,at:now};
-    if(global.OneToneAppToast&&payload.ok!==false){
-      var label=String(payload.appTargetId||payload.runtimeLabel||'').trim();
-      var msg=global.OneToneI18n&&global.OneToneI18n.t
-        ?global.OneToneI18n.t('habitAcousticCmdTriggered')
-        :'语音命令已触发';
-      if(label) msg+=' · '+label;
-      global.OneToneAppToast.show(msg,'scheme');
+    if(!opts.silentToast&&global.OneToneAppToast){
+      var reason=String(payload.reason||'');
+      var launchFail=payload.ok===false&&(reason==='app_launch_failed'||payload.matched===true);
+      if(launchFail){
+        global.OneToneAppToast.show(
+          (global.OneToneI18n&&global.OneToneI18n.t&&global.OneToneI18n.t('habitAcousticCmdLaunchFailed'))
+            ||'已识别口令，但找不到/无法启动应用',
+          'warn'
+        );
+      }else if(payload.ok!==false){
+        var label=String(payload.appTargetId||payload.runtimeLabel||'').trim();
+        var msg=global.OneToneI18n&&global.OneToneI18n.t
+          ?global.OneToneI18n.t('habitAcousticCmdTriggered')
+          :'语音命令已触发';
+        if(label) msg+=' · '+label;
+        global.OneToneAppToast.show(msg,'scheme');
+      }
     }
     return true;
+  }
+
+  function clearMatchWatch(){
+    if(matchWatch&&matchWatch.timer){
+      try{ clearTimeout(matchWatch.timer); }catch(_e){}
+    }
+    matchWatch=null;
+  }
+
+  function setMatchWatch(opts){
+    clearMatchWatch();
+    opts=opts||{};
+    var scenarioId=String(opts.scenarioId||'').trim();
+    if(!scenarioId) return;
+    var timeoutMs=Math.max(3000,Number(opts.timeoutMs)||12000);
+    matchWatch={
+      scenarioId:scenarioId,
+      onMatch:typeof opts.onMatch==='function'?opts.onMatch:null,
+      onTimeout:typeof opts.onTimeout==='function'?opts.onTimeout:null
+    };
+    matchWatch.timer=setTimeout(function(){
+      var cb=matchWatch&&matchWatch.onTimeout;
+      clearMatchWatch();
+      if(cb) cb();
+    },timeoutMs);
   }
 
   function onRuntimeEvent(event){
     if(!event||event.kind!=='acoustic_voice_matched') return null;
     var payload=event.payload||{};
-    return {triggered:triggerMatch(payload),payload:payload};
+    var watched=false;
+    if(matchWatch){
+      var watchId=matchWatch.scenarioId;
+      var hitId=String(payload.scenarioId||payload.scenario_id||'').trim();
+      if(watchId&&hitId===watchId){
+        var cb=matchWatch.onMatch;
+        clearMatchWatch();
+        watched=true;
+        if(cb) cb(payload);
+      }
+    }
+    return {triggered:triggerMatch(payload,{silentToast:watched}),payload:payload};
   }
 
   function resetCooldownForTests(){
@@ -70,6 +118,9 @@
     collectAcousticCommands:collectAcousticCommands,
     triggerMatch:triggerMatch,
     onRuntimeEvent:onRuntimeEvent,
+    setMatchWatch:setMatchWatch,
+    clearMatchWatch:clearMatchWatch,
+    hasMatchWatch:function(){ return !!matchWatch; },
     resetCooldownForTests:resetCooldownForTests,
     COOLDOWN_MS:COOLDOWN_MS
   };

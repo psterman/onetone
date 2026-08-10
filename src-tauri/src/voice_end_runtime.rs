@@ -593,7 +593,14 @@ pub fn handle_voice_wake_detected(
     }
 }
 
-/// Acoustic scene command hit: select scenario and open/focus the mapped app + start voice.
+/// Live match publishes `acoustic_voice_matched`; Test never touches active scenario / matched FE path.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AcousticExecuteMode {
+    Live,
+    Test,
+}
+
+/// Acoustic scene command hit: open/focus mapped app (+ optional wake-key for non-open-app kinds).
 pub fn handle_acoustic_scene_command(
     state: &Arc<AppState>,
     app: &AppHandle,
@@ -601,25 +608,45 @@ pub fn handle_acoustic_scene_command(
     command_id: &str,
     score: f64,
 ) -> VoiceWakeDispatchResult {
+    execute_acoustic_scene_command(
+        state,
+        app,
+        scenario_id,
+        command_id,
+        score,
+        AcousticExecuteMode::Live,
+    )
+}
+
+pub fn execute_acoustic_scene_command(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    scenario_id: &str,
+    command_id: &str,
+    score: f64,
+    mode: AcousticExecuteMode,
+) -> VoiceWakeDispatchResult {
     let mapping = {
         let cfg = state.cfg.lock();
         cfg.find_mapping_by_id(scenario_id).cloned()
     };
     let Some(mapping) = mapping else {
-        crate::runtime_event::publish_runtime_event(
-            Some(app),
-            state.as_ref(),
-            "acoustic",
-            "acoustic_voice_matched",
-            "acoustic match: mapping missing",
-            Some(serde_json::json!({
-                "scenarioId": scenario_id,
-                "commandId": command_id,
-                "score": score,
-                "ok": false,
-                "reason": "mapping_missing"
-            })),
-        );
+        if mode == AcousticExecuteMode::Live {
+            crate::runtime_event::publish_runtime_event(
+                Some(app),
+                state.as_ref(),
+                "acoustic",
+                "acoustic_voice_matched",
+                "acoustic match: mapping missing",
+                Some(serde_json::json!({
+                    "scenarioId": scenario_id,
+                    "commandId": command_id,
+                    "score": score,
+                    "ok": false,
+                    "reason": "mapping_missing"
+                })),
+            );
+        }
         return VoiceWakeDispatchResult {
             ok: false,
             target_key: String::new(),
@@ -629,10 +656,13 @@ pub fn handle_acoustic_scene_command(
         };
     };
 
-    {
-        let mut cfg = state.cfg.lock();
-        cfg.set_active_scenario(scenario_id);
-    }
+    let cmd_kind = mapping
+        .acoustic_voice_commands
+        .iter()
+        .find(|c| c.id == command_id)
+        .map(|c| c.kind.trim().to_string())
+        .unwrap_or_default();
+    let is_open_app = cmd_kind == "open-app-acoustic";
 
     let primary_app = mapping.app_target_id.trim().to_string();
     let summon_target = crate::config::resolve_mapping_summon_target(&mapping)
@@ -640,13 +670,54 @@ pub fn handle_acoustic_scene_command(
     let duration_ms = 280u32;
     let mut used_workflow = false;
     let mut runtime_label = String::new();
-    let mut target_key = {
+    let mut fail_reason = String::new();
+    let target_key = {
         let cfg = state.cfg.lock();
         resolve_wake_target_key(&cfg, "")
     };
 
-    if !summon_target.is_empty() {
-        if let Some(label) = try_run_summon_workflow(
+    if is_open_app && summon_target.is_empty() {
+        fail_reason = "app_target_missing".into();
+        runtime_label = "acoustic_app_target_missing".into();
+    } else if !summon_target.is_empty() {
+        let has_app_profile = crate::app_chat_workflow::profile_for(&summon_target).is_some()
+            || crate::config::summon_rule_id_from_target(&summon_target).is_some();
+        if is_open_app && has_app_profile {
+            let cap = crate::app_chat_workflow::app_launch_capability(&summon_target);
+            if cap == crate::app_chat_workflow::AppLaunchCapability::Missing {
+                fail_reason = "app_not_launchable".into();
+                runtime_label = "acoustic_app_not_launchable".into();
+            } else if cap == crate::app_chat_workflow::AppLaunchCapability::FocusOnly {
+                // Cold start unavailable — still try focus (fails if not running).
+                if let Some(label) = try_run_summon_workflow(
+                    state,
+                    app,
+                    &mapping,
+                    scenario_id,
+                    &summon_target,
+                    duration_ms,
+                ) {
+                    used_workflow = true;
+                    runtime_label = label;
+                } else {
+                    fail_reason = "app_not_launchable".into();
+                    runtime_label = "acoustic_app_not_running".into();
+                }
+            } else if let Some(label) = try_run_summon_workflow(
+                state,
+                app,
+                &mapping,
+                scenario_id,
+                &summon_target,
+                duration_ms,
+            ) {
+                used_workflow = true;
+                runtime_label = label;
+            } else {
+                fail_reason = "app_launch_failed".into();
+                runtime_label = "acoustic_app_launch_failed".into();
+            }
+        } else if let Some(label) = try_run_summon_workflow(
             state,
             app,
             &mapping,
@@ -656,16 +727,26 @@ pub fn handle_acoustic_scene_command(
         ) {
             used_workflow = true;
             runtime_label = label;
+        } else if has_app_profile {
+            fail_reason = "app_launch_failed".into();
+            runtime_label = "acoustic_app_launch_failed".into();
         }
     }
 
     let ok = if used_workflow {
         true
+    } else if is_open_app {
+        // Open-app acoustic: never wake-key fallback.
+        false
+    } else if !fail_reason.is_empty() && fail_reason == "app_launch_failed" {
+        false
     } else {
-        // No app-chat profile: fall back to wake-key / dictation entry for the active scene.
+        // Ordinary scenario-acoustic-activate: keep wake-key / dictation fallback.
         let sent = send_wake_to_target(Some(state.as_ref()), Some(app), &target_key, duration_ms);
         if sent {
-            enter_dictating(state, Some(app), scenario_id, "acoustic command");
+            if mode == AcousticExecuteMode::Live {
+                enter_dictating(state, Some(app), scenario_id, "acoustic command");
+            }
             runtime_label = format!("acoustic_key_{target_key}");
         } else {
             runtime_label = "acoustic_summon_failed".into();
@@ -673,31 +754,46 @@ pub fn handle_acoustic_scene_command(
         sent
     };
 
-    crate::runtime_event::publish_runtime_event(
-        Some(app),
-        state.as_ref(),
-        "acoustic",
-        "acoustic_voice_matched",
-        &format!(
-            "acoustic command matched -> {} (score={score:.3}, workflow={used_workflow})",
-            if summon_target.is_empty() {
-                target_key.as_str()
-            } else {
-                summon_target.as_str()
-            }
-        ),
-        Some(serde_json::json!({
-            "scenarioId": scenario_id,
-            "commandId": command_id,
-            "score": score,
-            "appTargetId": primary_app,
-            "summonTarget": summon_target,
-            "workflow": used_workflow,
-            "ok": ok,
-            "runtimeLabel": runtime_label
-        })),
-    );
-    crate::tray::refresh_menu(app);
+    if ok && mode == AcousticExecuteMode::Live {
+        let mut cfg = state.cfg.lock();
+        cfg.set_active_scenario(scenario_id);
+    }
+
+    let reason_out = if fail_reason.is_empty() {
+        String::new()
+    } else {
+        fail_reason.clone()
+    };
+
+    if mode == AcousticExecuteMode::Live {
+        crate::runtime_event::publish_runtime_event(
+            Some(app),
+            state.as_ref(),
+            "acoustic",
+            "acoustic_voice_matched",
+            &format!(
+                "acoustic command matched -> {} (score={score:.3}, workflow={used_workflow})",
+                if summon_target.is_empty() {
+                    target_key.as_str()
+                } else {
+                    summon_target.as_str()
+                }
+            ),
+            Some(serde_json::json!({
+                "scenarioId": scenario_id,
+                "commandId": command_id,
+                "score": score,
+                "appTargetId": primary_app,
+                "summonTarget": summon_target,
+                "workflow": used_workflow,
+                "matched": true,
+                "ok": ok,
+                "reason": reason_out,
+                "runtimeLabel": runtime_label
+            })),
+        );
+        crate::tray::refresh_menu(app);
+    }
 
     VoiceWakeDispatchResult {
         ok,
