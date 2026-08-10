@@ -211,6 +211,229 @@
     });
   }
 
+  /** Toggle mode-card selection (re-click clears). Pure DOM helper for tests. */
+  function selectModeCard(container, card){
+    if(!container||!card) return null;
+    if(card.classList.contains('selected')){
+      container.classList.remove('has-selection');
+      card.classList.remove('selected');
+      return null;
+    }
+    container.classList.add('has-selection');
+    var cards=container.querySelectorAll('.mode-card');
+    for(var i=0;i<cards.length;i++) cards[i].classList.remove('selected');
+    card.classList.add('selected');
+    return card.getAttribute('data-type')||null;
+  }
+
+  function qsMicSvg(size){
+    size=size||44;
+    return '<svg class="qs-mic-svg" viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>';
+  }
+
+  function qsMicIcoHtml(size){
+    return '<span class="qs-ico-mic-svg" aria-hidden="true">'+qsMicSvg(size||14)+'</span>';
+  }
+
+  function modeMatrixHtml(){
+    var agentHint='<em>'+esc(t('qsIntentAgentsDefault','已检测 6 个 agent'))+'</em>';
+    var codeLines=
+      '<div class="qs-c-sec"><span class="qs-ln">01</span> &lt;VibeApp&gt;</div>'+
+      '<div class="qs-c-em pl"><span class="qs-ln">02</span>  prompt("build dashboard")</div>'+
+      '<div class="qs-c-sky pl"><span class="qs-ln">03</span>  const app = genUI();</div>'+
+      '<div class="qs-c-pur pl"><span class="qs-ln">04</span>  renderComponent({</div>'+
+      '<div class="qs-c-amb pl"><span class="qs-ln">05</span>    theme: "cyber",</div>'+
+      '<div class="qs-c-em pl"><span class="qs-ln">06</span>    stream: true</div>'+
+      '<div class="qs-c-pur pl"><span class="qs-ln">07</span>  });</div>'+
+      '<div class="qs-c-sky pl"><span class="qs-ln">08</span>  deployLive();</div>'+
+      '<div class="qs-c-sec"><span class="qs-ln">09</span> &lt;/VibeApp&gt;<span class="qs-cursor" aria-hidden="true"></span></div>';
+    var pick=
+      '<div class="qs-veteran-pick" id="qsVeteranPick">'+
+        '<button type="button" class="habit-setup-pick-row" data-qs-panel="keys"><span><b>'+esc(t('qsPickKeys','按键'))+'</b><i>'+esc(t('qsPickKeysHint','启动键与映射'))+'</i></span><em>'+esc(t('qsPickOpen','打开'))+'</em></button>'+
+        '<button type="button" class="habit-setup-pick-row" data-qs-panel="voiceWake"><span><b>'+esc(t('qsPickVoice','语音'))+'</b><i>'+esc(t('qsPickVoiceHint','唤醒 / 结束词'))+'</i></span><em>'+esc(t('qsPickOpen','打开'))+'</em></button>'+
+        '<button type="button" class="habit-setup-pick-row" data-qs-panel="softPad"><span><b>'+esc(t('qsPickSoftPad','虚拟键盘'))+'</b><i>'+esc(t('qsPickSoftPadHint','Soft Pad 设置'))+'</i></span><em>'+esc(t('qsPickOpen','打开'))+'</em></button>'+
+        '<button type="button" class="habit-setup-pick-row" data-qs-panel="camera"><span><b>'+esc(t('qsPickCamera','摄像头'))+'</b><i>'+esc(t('qsPickCameraHint','静音 · 手势 · 隐私'))+'</i></span><em>'+esc(t('qsPickOpen','打开'))+'</em></button>'+
+      '</div>';
+    var veteranFrame1=
+      '<div class="qs-frame qs-frame--1">'+
+        '<div class="qs-frame__screen">'+
+          '<div class="qs-frame__head"><strong><i></i>FRAME #01</strong><span class="qs-frame__tag">VIBECODING</span></div>'+
+          '<div class="qs-frame__body">'+
+            '<div class="qs-frame__code"><div class="qs-frame__code-track">'+
+              '<div class="qs-c-ter">&gt; process_user_stream()</div><div class="qs-c-sky pl">execute_pipeline(step_1)</div><div class="qs-c-em pl">sync_state() <span class="qs-cursor qs-cursor--ter"></span></div>'+
+              '<div class="qs-c-ter">&gt; process_user_stream()</div><div class="qs-c-sky pl">execute_pipeline(step_1)</div><div class="qs-c-em pl">sync_state()</div>'+
+            '</div></div>'+
+            '<div class="qs-frame__live"><div class="qs-frame__live-bar"><i></i></div><div class="qs-frame__live-foot">LIVE BUILD</div></div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="qs-frame__cmd">'+qsMicIcoHtml(14)+'<span class="qs-frame__cmd-label qs-text-glow">“继续”</span></div>'+
+      '</div>';
+    return (
+      '<div class="qs-mode-matrix">'+
+        '<div class="qs-mode-matrix__head">'+
+          '<div class="qs-mode-matrix__badge"><span class="qs-mode-matrix__badge-dot" aria-hidden="true"></span>'+
+            esc(t('qsModeMatrixBadge','MODE SELECTION MATRIX'))+
+          '</div>'+
+        '</div>'+
+        '<div class="qs-mode-matrix__stage">'+
+          '<div id="qsModeCards" class="cards-container" role="listbox" aria-label="'+esc(t('qsIntentAsk','你想先让 OneTone 做什么？'))+'">'+
+
+            '<div class="mode-card" data-type="newbie" role="option" tabindex="0" aria-selected="false">'+
+              '<div class="mode-card__wash" aria-hidden="true"></div>'+
+              '<div class="mode-card__visual">'+
+                '<div class="qs-newbie-scene" aria-hidden="true">'+
+                  '<div class="qs-newbie-hero">'+
+                    '<div class="qs-newbie-rings" aria-hidden="true"><i></i><i></i><i></i></div>'+
+                    '<div class="qs-mic-core">'+
+                      '<div class="qs-mic-ico">'+qsMicSvg(40)+'</div>'+
+                      '<div class="qs-newbie-bars"><i></i><i></i><i></i></div>'+
+                    '</div>'+
+                  '</div>'+
+                  '<div class="qs-newbie-key-hint">'+esc(t('qsNewbieKeyHint','按启动键开始'))+'</div>'+
+                '</div>'+
+              '</div>'+
+              '<div class="mode-card__copy">'+
+                '<h2>'+esc(t('qsIntentBeginnerTitle','我是新手'))+'</h2>'+
+                '<p>'+esc(t('qsIntentBeginnerDesc','按一个键，快速配置基础功能，建议第一次安装时首选'))+'</p>'+
+                '<div class="qs-mode-confirm">'+
+                  '<button type="button" class="btn primary" id="qsGoBeginner">'+esc(t('qsIntentBeginnerCta','开始 3 分钟配置'))+'</button>'+
+                '</div>'+
+              '</div>'+
+              '<div class="selection-badge" aria-hidden="true">✓</div>'+
+            '</div>'+
+
+            '<div class="mode-card" data-type="vibe" role="option" tabindex="0" aria-selected="false">'+
+              '<div class="mode-card__wash" aria-hidden="true"></div>'+
+              '<div class="mode-card__visual">'+
+                '<div class="qs-monitor-wrap">'+
+                  '<div class="qs-monitor">'+
+                    '<div class="qs-monitor__bar">'+
+                      '<div class="qs-monitor__dots" aria-hidden="true"><i></i><i></i><i></i></div>'+
+                      '<div class="qs-monitor__live"><span></span>AI VIBECODING ACTIVE</div>'+
+                    '</div>'+
+                    '<div class="qs-monitor__body">'+
+                      '<div class="qs-code-stream"><div class="qs-code-stream__track">'+codeLines+codeLines+'</div></div>'+
+                      '<div class="qs-canvas">'+
+                        '<div class="qs-canvas__top"><span>CANVAS</span><i></i></div>'+
+                        '<div class="qs-canvas__mid">'+
+                          '<div class="qs-canvas__bar"><i></i></div>'+
+                          '<div class="qs-canvas__grid"><b><i></i></b><b><i></i></b></div>'+
+                        '</div>'+
+                        '<div class="qs-canvas__foot">LIVE GENERATING...</div>'+
+                      '</div>'+
+                    '</div>'+
+                  '</div>'+
+                  '<div class="qs-monitor-stand" aria-hidden="true"></div>'+
+                  '<div class="qs-monitor-base" aria-hidden="true"></div>'+
+                '</div>'+
+              '</div>'+
+              '<div class="mode-card__copy">'+
+                '<h2>'+esc(t('qsIntentVibeTitle','程序员'))+'</h2>'+
+                '<p>'+esc(t('qsIntentVibeDesc','熟练编程用户推荐，能够完整使用软件多数功能'))+'</p>'+
+                '<div class="qs-intent-tools" id="qsIntentToolsHint">'+agentHint+'</div>'+
+                '<div class="qs-mode-confirm">'+
+                  '<button type="button" class="btn secondary" id="qsGoVibe">'+esc(t('qsIntentVibeCta','配置 AI 编程'))+'</button>'+
+                '</div>'+
+              '</div>'+
+              '<div class="selection-badge" aria-hidden="true">✓</div>'+
+            '</div>'+
+
+            '<div class="mode-card" data-type="veteran" role="option" tabindex="0" aria-selected="false">'+
+              '<div class="mode-card__wash" aria-hidden="true"></div>'+
+              '<div class="mode-card__visual">'+
+                '<div class="qs-quad-viewport">'+
+                  '<div class="qs-quad-track" aria-hidden="true">'+
+                    veteranFrame1+
+                    '<div class="qs-frame qs-frame--2 qs-frame--sky">'+
+                      '<div class="qs-frame__screen">'+
+                        '<div class="qs-frame__head"><strong><i></i>FRAME #02</strong><span class="qs-frame__tag">VIBECODING</span></div>'+
+                        '<div class="qs-frame__body">'+
+                          '<div class="qs-frame__code"><div class="qs-frame__code-track">'+
+                            '<div class="qs-c-sky" style="font-weight:600">&gt; update_component_ui()</div><div class="qs-c-rose pl">target: .close-button</div>'+
+                            '<div class="qs-c-sky" style="font-weight:600">&gt; update_component_ui()</div><div class="qs-c-rose pl">target: .close-button</div>'+
+                          '</div></div>'+
+                          '<div class="qs-frame__live"><div class="qs-close-btn">✕</div></div>'+
+                        '</div>'+
+                      '</div>'+
+                      '<div class="qs-frame__cmd"><div style="display:flex;align-items:center;gap:4px">'+qsMicIcoHtml(14)+'<div class="qs-wave"><i></i><i></i><i></i></div></div><span class="qs-frame__cmd-label qs-text-glow">“调整关闭按钮”</span></div>'+
+                    '</div>'+
+                    '<div class="qs-frame qs-frame--3 qs-frame--rose">'+
+                      '<div class="qs-frame__screen">'+
+                        '<div class="qs-frame__head"><strong><i></i>FRAME #03</strong><span class="qs-frame__tag">VIBECODING</span></div>'+
+                        '<div class="qs-frame__body">'+
+                          '<div class="qs-frame__code"><div class="qs-frame__code-track">'+
+                            '<div class="qs-c-rose" style="font-weight:600;color:#fb7185">&gt; render_animation_key()</div><div class="qs-c-em pl">bezier: [0.16, 1, 0.3]</div>'+
+                            '<div class="qs-c-rose" style="font-weight:600;color:#fb7185">&gt; render_animation_key()</div><div class="qs-c-em pl">bezier: [0.16, 1, 0.3]</div>'+
+                          '</div></div>'+
+                          '<div class="qs-frame__live"><div class="qs-play-wrap"><div class="qs-play-btn">▶</div><div class="qs-play-ring"></div></div></div>'+
+                        '</div>'+
+                      '</div>'+
+                      '<div class="qs-frame__cmd">'+qsMicIcoHtml(14)+'<span class="qs-frame__cmd-label qs-text-glow">“修改动画”</span></div>'+
+                    '</div>'+
+                    '<div class="qs-frame qs-frame--4 qs-frame--em">'+
+                      '<div class="qs-frame__screen">'+
+                        '<div class="qs-frame__head"><strong><i></i>FRAME #04</strong><span class="qs-frame__tag">VIBECODING</span></div>'+
+                        '<div class="qs-frame__body">'+
+                          '<div class="qs-frame__code"><div class="qs-frame__code-track">'+
+                            '<div class="qs-c-em" style="font-weight:600;color:#34d399">&gt; dialog_ui_restructure()</div><div class="qs-c-amb pl">modal_type: "fast_vibe"</div>'+
+                            '<div class="qs-c-em" style="font-weight:600;color:#34d399">&gt; dialog_ui_restructure()</div><div class="qs-c-amb pl">modal_type: "fast_vibe"</div>'+
+                          '</div></div>'+
+                          '<div class="qs-frame__live"><div class="qs-frame__live-bar"><i></i></div></div>'+
+                        '</div>'+
+                      '</div>'+
+                      '<div class="qs-frame__cmd"><span class="qs-palm">🖐️</span>'+qsMicIcoHtml(14)+'<span class="qs-frame__cmd-label qs-text-glow">“快速修改对话框UI”</span></div>'+
+                    '</div>'+
+                    veteranFrame1+
+                  '</div>'+
+                '</div>'+
+              '</div>'+
+              '<div class="mode-card__copy">'+
+                '<h2>'+esc(t('qsIntentPickTitle','老用户'))+'</h2>'+
+                '<p>'+esc(t('qsIntentPickDesc','建议已经熟悉 OneTone，开发者快速操作通道'))+'</p>'+
+                pick+
+              '</div>'+
+              '<div class="selection-badge" aria-hidden="true">✓</div>'+
+            '</div>'+
+
+          '</div>'+
+        '</div>'+
+        '<p class="qs-mode-matrix__meta">'+esc(t('qsIntentMeta','预计 3 分钟 · 本机保存 · 可随时跳过'))+'</p>'+
+      '</div>'
+    );
+  }
+
+  function bindModeMatrix(body){
+    var container=$('qsModeCards')||(body&&body.querySelector('.cards-container'));
+    if(!container) return;
+    container.querySelectorAll('.mode-card').forEach(function(card){
+      card.onclick=function(ev){
+        if(ev.target.closest('button,[data-qs-panel]')) return;
+        var type=selectModeCard(container, card);
+        container.querySelectorAll('.mode-card').forEach(function(c){
+          c.setAttribute('aria-selected', c.classList.contains('selected')?'true':'false');
+        });
+        return type;
+      };
+      card.onkeydown=function(ev){
+        if(ev.key!=='Enter'&&ev.key!==' ') return;
+        ev.preventDefault();
+        card.click();
+      };
+    });
+    var b=$('qsGoBeginner');
+    if(b) b.onclick=function(ev){ ev.stopPropagation(); startCore('beginner'); };
+    var v=$('qsGoVibe');
+    if(v) v.onclick=function(ev){ ev.stopPropagation(); goTool(); };
+    body.querySelectorAll('[data-qs-panel]').forEach(function(el){
+      el.onclick=function(ev){
+        ev.stopPropagation();
+        var p=el.getAttribute('data-qs-panel');
+        if(p==='voiceWake') openSettingsPanel('voiceWake',{ voiceSubpage:'wake' });
+        else openSettingsPanel(p);
+      };
+    });
+  }
+
   function renderIntent(){
     route.stepId='intent';
     route.persona=null;
@@ -219,56 +442,17 @@
     showView('intent');
     var body=$('habitSetupIntentBody');
     if(!body) return;
-    var toolsHtml='<em>Qoder</em><em>Trae</em><em>Cursor</em><em>Claude</em><em>Codex</em><em>WorkBuddy</em>';
-    body.innerHTML=
-      '<p class="habit-setup-intent-ask">'+esc(t('qsIntentAsk','你想先让 OneTone 做什么？'))+'</p>'+
-      '<div class="habit-setup-intent-list">'+
-        '<div class="habit-setup-intent-card is-bright">'+
-          '<div class="habit-setup-intent-ico" aria-hidden="true">1</div>'+
-          '<div class="habit-setup-intent-copy"><strong>'+esc(t('qsIntentBeginnerTitle','刚到新手村'))+'</strong>'+
-            '<span>'+esc(t('qsIntentBeginnerDesc','按一个键，OneTone 帮你打开语音输入；说「结束听写」只结束，不自动发送。'))+'</span></div>'+
-          '<button type="button" class="btn primary habit-setup-intent-cta" id="qsGoBeginner">'+esc(t('qsIntentBeginnerCta','开始 3 分钟配置'))+'</button>'+
-        '</div>'+
-        '<div class="habit-setup-intent-card is-mid">'+
-          '<div class="habit-setup-intent-ico" aria-hidden="true">⌘</div>'+
-          '<div class="habit-setup-intent-copy"><strong>'+esc(t('qsIntentVibeTitle','我是程序员'))+'</strong>'+
-            '<span>'+esc(t('qsIntentVibeDesc','扫描本机 AI 工具，配置状态灯、迷你栏和快捷键面板。'))+'</span>'+
-            '<div class="habit-setup-intent-tools" id="qsIntentToolsHint">'+toolsHtml+'</div></div>'+
-          '<button type="button" class="btn secondary habit-setup-intent-cta" id="qsGoVibe">'+esc(t('qsIntentVibeCta','配置 AI 编程'))+'</button>'+
-        '</div>'+
-        '<div class="habit-setup-intent-card is-quiet">'+
-          '<div class="habit-setup-intent-ico" aria-hidden="true">···</div>'+
-          '<div class="habit-setup-intent-copy"><strong>'+esc(t('qsIntentPickTitle','我只想配某一项'))+'</strong>'+
-            '<span>'+esc(t('qsIntentPickDesc','只改按键、语音、虚拟键盘或摄像头。'))+'</span>'+
-            '<div class="habit-setup-pick-list">'+
-              '<button type="button" class="habit-setup-pick-row" data-qs-panel="keys"><span><b>'+esc(t('qsPickKeys','按键'))+'</b><i>'+esc(t('qsPickKeysHint','启动键与映射'))+'</i></span><em>'+esc(t('qsPickOpen','打开'))+'</em></button>'+
-              '<button type="button" class="habit-setup-pick-row" data-qs-panel="voiceWake"><span><b>'+esc(t('qsPickVoice','语音'))+'</b><i>'+esc(t('qsPickVoiceHint','唤醒 / 结束词'))+'</i></span><em>'+esc(t('qsPickOpen','打开'))+'</em></button>'+
-              '<button type="button" class="habit-setup-pick-row" data-qs-panel="softPad"><span><b>'+esc(t('qsPickSoftPad','虚拟键盘'))+'</b><i>'+esc(t('qsPickSoftPadHint','Soft Pad 设置'))+'</i></span><em>'+esc(t('qsPickOpen','打开'))+'</em></button>'+
-              '<button type="button" class="habit-setup-pick-row" data-qs-panel="camera"><span><b>'+esc(t('qsPickCamera','摄像头'))+'</b><i>'+esc(t('qsPickCameraHint','静音 · 手势 · 隐私'))+'</i></span><em>'+esc(t('qsPickOpen','打开'))+'</em></button>'+
-            '</div></div>'+
-        '</div>'+
-      '</div>'+
-      '<p class="habit-setup-intent-meta">'+esc(t('qsIntentMeta','预计 3 分钟 · 本机保存 · 可随时跳过'))+'</p>';
-    var b=$('qsGoBeginner'); if(b) b.onclick=function(){ startCore('beginner'); };
-    var v=$('qsGoVibe'); if(v) v.onclick=function(){ goTool(); };
-    body.querySelectorAll('[data-qs-panel]').forEach(function(el){
-      el.onclick=function(){
-        var p=el.getAttribute('data-qs-panel');
-        if(p==='voiceWake') openSettingsPanel('voiceWake',{ voiceSubpage:'wake' });
-        else openSettingsPanel(p);
-      };
-    });
+    body.innerHTML=modeMatrixHtml();
+    bindModeMatrix(body);
     var AI=global.OneToneAgentInstall;
     if(AI&&AI.fetchInventory){
       AI.fetchInventory().then(function(inv){
         var hint=$('qsIntentToolsHint');
         if(!hint||!inv) return;
         var high=(inv.agents||[]).filter(function(a){ return a.confidence==='high'; });
-        if(high.length===1){
-          var m=AI.meta(high[0].kind);
-          hint.innerHTML='<em class="is-hit">'+esc(t('qsIntentDetectedOne','已检测到 {name}').replace('{name}', m.label||high[0].kind))+'</em>';
-        }else if(high.length>1){
-          hint.innerHTML='<em class="is-hit">'+esc(t('qsIntentDetectedN','已检测到 {n} 个工具').replace('{n}', String(high.length)))+'</em>';
+        var n=high.length||(inv.agents||[]).length;
+        if(n>0){
+          hint.innerHTML='<em class="is-hit">'+esc(t('qsIntentAgentsN','已检测 {n} 个 agent').replace('{n}', String(n)))+'</em>';
         }
       }).catch(function(){});
     }
@@ -784,7 +968,7 @@
     route.stepId='intent';
   }
 
-  function handleEsc(){
+  function handleHeaderBack(){
     if(!openFlag) return false;
     if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.isOpen&&global.OneToneHabitTriggerSetup.isOpen()){
       var handled=global.OneToneHabitTriggerSetup.handleEsc?global.OneToneHabitTriggerSetup.handleEsc():false;
@@ -800,13 +984,24 @@
     return true;
   }
 
+  function handleEsc(){
+    return handleHeaderBack();
+  }
+
   function bindOnce(){
     if(bindOnce._done) return;
     bindOnce._done=true;
-    var closeBtn=$('btnHabitSetupHeaderClose');
-    if(closeBtn){
-      closeBtn.addEventListener('click',function(){
-        if(openFlag) close();
+    var backBtn=$('btnHabitSetupHeaderClose');
+    if(backBtn){
+      backBtn.addEventListener('click',function(){
+        if(openFlag){
+          handleHeaderBack();
+          return;
+        }
+        if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.isOpen&&global.OneToneHabitTriggerSetup.isOpen()){
+          if(global.OneToneHabitTriggerSetup.handleEsc) global.OneToneHabitTriggerSetup.handleEsc();
+          else if(global.OneToneHabitTriggerSetup.close) global.OneToneHabitTriggerSetup.close();
+        }
       });
     }
   }
@@ -815,8 +1010,10 @@
     open:open,
     close:close,
     handleEsc:handleEsc,
+    handleHeaderBack:handleHeaderBack,
     bindOnce:bindOnce,
     isOpen:function(){ return !!openFlag; },
-    getRoute:function(){ return { persona:route.persona, stepId:route.stepId, tool:route.tool }; }
+    getRoute:function(){ return { persona:route.persona, stepId:route.stepId, tool:route.tool }; },
+    selectModeCard:selectModeCard
   };
 })((typeof window!=='undefined')?window:globalThis);

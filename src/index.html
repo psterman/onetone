@@ -27,6 +27,7 @@
   <link rel="stylesheet" href="css/codex-micro-hw-tokens.css" />
   <link rel="stylesheet" href="css/codex-micro-pad.css" />
   <link rel="stylesheet" href="css/soft-pad-hub.css" />
+  <link rel="stylesheet" href="css/qs-mode-matrix.css" />
   <link rel="stylesheet" href="css/typography.css" />
 </head>
 <body>
@@ -3950,7 +3951,7 @@
     <div class="habit-setup-modal" role="dialog" aria-modal="true" aria-labelledby="habitSetupProgressLabel">
       <header class="habit-setup-header">
         <nav class="habit-setup-step-nav" id="habitSetupStepNav" role="tablist" aria-label="习惯设置步骤"></nav>
-        <button type="button" class="welcome-close habit-setup-close habit-setup-close--header" id="btnHabitSetupHeaderClose" aria-label="关闭">×</button>
+        <button type="button" class="habit-setup-back habit-setup-back--header" id="btnHabitSetupHeaderClose" aria-label="返回"><span class="habit-setup-back-ico" aria-hidden="true">←</span><span class="habit-setup-back-label" data-i18n="settingsBack">返回</span></button>
       </header>
       <div class="habit-setup-view habit-setup-screen" id="habitSetupActivationView">
         <button type="button" class="welcome-close habit-setup-close" id="btnHabitSetupActivationClose" aria-label="关闭">×</button>
@@ -4061,7 +4062,7 @@
           <button type="button" class="btn primary" id="btnHabitSetupSaveVoice" disabled>完成设置</button>
         </div>
       </div>
-      <div class="habit-setup-view habit-setup-screen" id="habitSetupIntentView" hidden>
+      <div class="habit-setup-view habit-setup-screen habit-setup-screen--matrix" id="habitSetupIntentView" hidden>
         <div class="habit-setup-screen-inner habit-setup-screen-inner--left" id="habitSetupIntentBody"></div>
       </div>
       <div class="habit-setup-view habit-setup-screen" id="habitSetupToolView" hidden>

@@ -2336,7 +2336,7 @@
     bindClick('btnHabitSetupActivationClose',close);
     bindClick('btnHabitSetupModeClose',close);
     bindClick('btnHabitSetupVoiceLessonClose',close);
-    bindClick('btnHabitSetupHeaderClose',close);
+    /* header back: owned by OneToneQuickStart.bindOnce (QS + standalone habit) */
     bindClick('btnHabitSetupRecordBack',closeSubHost);
     bindClick('btnHabitSetupImeReRecord',startImeCustomRecord);
     bindClick('btnHabitSetupNext',goNext);
