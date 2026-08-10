@@ -133,6 +133,10 @@
     qoder: 5
   };
 
+  /** Cached install inventory for Hub sort / scan UI. */
+  var hubInventoryCache = null;
+  var hubInventoryByKind = {};
+
   function isShellHookHubKind(kind) {
     return kind === 'workbuddy' || kind === 'trae' || kind === 'qoder';
   }
@@ -865,13 +869,17 @@
 
   /**
    * Scopes for top switcher: builtin apps only (Codex / Claude; no「全局」).
+   * Sorted: installed+prepared first, then installed, then uninstalled (more tools).
    */
   function listAppScopes() {
     var entries = listSoftPadSchemes();
     var byKind = {};
     entries.forEach(function (e) { byKind[e.kind] = e; });
-    return BUILTIN_SOFT_PAD_APPS.map(function (b) {
+    var scopes = BUILTIN_SOFT_PAD_APPS.map(function (b) {
       var entry = byKind[b.kind] || placeholderEntry(b.kind, b.appId);
+      var inv = hubInventoryByKind[b.kind] || null;
+      var installed = !!(inv && (inv.confidence === 'high' || inv.running));
+      var connected = !!(inv && inv.lightEnabled && entry.padEnabled);
       return {
         id: b.kind,
         kind: b.kind,
@@ -880,9 +888,19 @@
         mapping: entry.mapping,
         entry: entry,
         padEnabled: !!entry.padEnabled,
-        canPrepare: !!entry.canPrepare
+        canPrepare: !!entry.canPrepare,
+        installed: installed,
+        connected: connected,
+        inv: inv
       };
     });
+    scopes.sort(function (a, b) {
+      var ra = a.connected ? 0 : (a.installed ? 1 : 2);
+      var rb = b.connected ? 0 : (b.installed ? 1 : 2);
+      if (ra !== rb) return ra - rb;
+      return (HUB_KIND_RANK[a.kind] || 99) - (HUB_KIND_RANK[b.kind] || 99);
+    });
+    return scopes;
   }
 
   /** Aside list: builtin apps (existing or「可准备」) + Soft Pad custom habits. */
@@ -1644,8 +1662,19 @@
     var scenario = '';
     var entry = findEntry(getSelectedMappingId()) || pickGlobalEntry();
     if (entry && entry.mapping) scenario = displayTitle(entry);
+    var inv = hubInventoryByKind[String(selectedScopeId || '')] || null;
+    var statusBit = '';
+    if (inv && inv.lightEnabled) {
+      statusBit = t('softPadHintStatusLightOn', '状态灯已开');
+    } else if (inv && inv.confidence === 'high') {
+      statusBit = t('softPadHintInstalled', '本机已安装 · 待接入状态');
+    }
     var text;
-    if (scenario && scenario !== '—' && scenario !== app) {
+    if (statusBit) {
+      text = t('softPadHintCurrentTool', '当前工具：{app} · {status}')
+        .replace('{app}', app)
+        .replace('{status}', statusBit);
+    } else if (scenario && scenario !== '—' && scenario !== app) {
       text = t('softPadHintAppBound', '当前编辑 · {app} · 绑定「{scenario}」：该应用前台时的键位和状态灯')
         .replace('{app}', app)
         .replace('{scenario}', scenario);
@@ -1655,7 +1684,7 @@
     }
     var support = t(
       'softPadHubSupportRange',
-      '支持 Codex、Claude、Cursor，以及 WorkBuddy / Trae / Qoder（Shell Hook · Shortcuts）'
+      '支持 Codex、Claude、Cursor，以及 WorkBuddy / Trae / Qoder（状态连接 · Shortcuts）'
     );
     return {
       text: text,
@@ -1664,6 +1693,48 @@
       userLaneId: null,
       sig: String(text || '') + '|auto'
     };
+  }
+
+  function applyInventoryCache(inv) {
+    hubInventoryCache = inv || null;
+    hubInventoryByKind = {};
+    ((inv && inv.agents) || []).forEach(function (a) {
+      if (a && a.kind) hubInventoryByKind[a.kind] = a;
+    });
+  }
+
+  function refreshHubInventory(opts) {
+    opts = opts || {};
+    var AI = global.OneToneAgentInstall;
+    var statusEl = document.getElementById('softPadScanStatus');
+    if (!AI || !AI.fetchInventory) {
+      if (statusEl) statusEl.textContent = t('softPadScanUnavailable', '扫描不可用');
+      return Promise.resolve(null);
+    }
+    if (statusEl) statusEl.textContent = t('softPadScanning', '扫描中…');
+    return AI.fetchInventory().then(function (inv) {
+      applyInventoryCache(inv);
+      var n = inv && inv.highConfidenceCount || 0;
+      if (statusEl) {
+        statusEl.textContent = n
+          ? t('softPadScanFound', '检测到 {n} 个工具').replace('{n}', String(n))
+          : t('softPadScanNone', '未高置信检测到工具');
+      }
+      if (opts.prepareHigh) {
+        var kinds = AI.defaultSelectedKinds(inv);
+        if (kinds.length) {
+          return AI.prepareKinds(kinds, { enableNumpad: false }).then(function () {
+            render({});
+            return inv;
+          });
+        }
+      }
+      if (opts.render !== false) render({});
+      return inv;
+    }).catch(function () {
+      if (statusEl) statusEl.textContent = t('softPadScanFail', '扫描失败');
+      return null;
+    });
   }
 
   function updateScopeHint() {
@@ -4291,6 +4362,13 @@
     if (chromeBound) return;
     chromeBound = true;
     var e = els();
+    var scanBtn = document.getElementById('softPadScanBtn');
+    if (scanBtn && !scanBtn.__otScanBound) {
+      scanBtn.__otScanBound = true;
+      scanBtn.addEventListener('click', function () {
+        refreshHubInventory({ prepareHigh: true });
+      });
+    }
     // Always bind on the host — island may remount HTML, but bubble still hits #softPadAppSwitcher.
     // (React onClick on dangerouslySetInnerHTML is unreliable in WebView2.)
     ensureSwitcherClickBound();
@@ -4909,6 +4987,7 @@
     listSoftPadSchemes: listSoftPadSchemes,
     listAppScopes: listAppScopes,
     listHubEntries: listHubEntries,
+    refreshHubInventory: refreshHubInventory,
     resolveSoftPadEntry: resolveSoftPadEntry,
     adoptSoftPadSelection: adoptSoftPadSelection,
     isSoftPadSchemeEligible: isSoftPadSchemeEligible,

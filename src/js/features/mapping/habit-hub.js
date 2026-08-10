@@ -674,7 +674,7 @@
     var tip=opts.tip||label;
     var cls='habit-hub-act is-cta'+(opts.primary?' is-primary':'');
     return '<button type="button" class="'+cls+'" '+attr
-      +' data-tip="'+esc(tip)+'" aria-label="'+esc(tip)+'">'
+      +' data-ot-tip="'+esc(tip)+'" aria-label="'+esc(tip)+'">'
       +actIcon(iconPath)+'<span>'+esc(label)+'</span></button>';
   }
 
@@ -683,7 +683,7 @@
     var cls='habit-hub-act is-icon'+(opts.danger?' is-danger':'')+(opts.disabled?' is-disabled':'');
     return '<button type="button" class="'+cls+'" '+attr
       +(opts.disabled?' disabled aria-disabled="true"':'')
-      +' data-tip="'+esc(label)+'" aria-label="'+esc(label)+'">'
+      +' data-ot-tip="'+esc(label)+'" aria-label="'+esc(label)+'">'
       +actIcon(iconPath,18)+'<span class="sr-only">'+esc(label)+'</span></button>';
   }
 
@@ -757,7 +757,7 @@
       html+=ctaActBtn('data-habit-global-use="'+esc(baselineId)+'"',t('homeWbHabitBarUse'),ACT_ICON.keys,{primary:true,tip:t('homeWbHabitBarUse')});
     }
     html+='<details class="habit-hub-config-menu habit-hub-menu habit-hub-menu--global">';
-    html+='<summary class="habit-hub-act is-cta" data-tip="'+esc(t('habitHubConfigMenu','改通用'))+'" aria-label="'+esc(t('habitHubConfigMenu','改通用'))+'">'
+    html+='<summary class="habit-hub-act is-cta" data-ot-tip="'+esc(t('habitHubConfigMenu','改通用'))+'" aria-label="'+esc(t('habitHubConfigMenu','改通用'))+'">'
       +'<span>'+esc(t('habitHubConfigMenu','改通用'))+'</span></summary>';
     html+='<div class="habit-hub-more-menu-panel">';
     html+=menuItemBtn('data-habit-global-keys',t('habitHubGlobalOpenKeys','改按键'));
@@ -1214,12 +1214,12 @@
         +'</div>';
     }else if(!renaming){
       if(appScenario){
-        html+='<button type="button" class="toggle-switch habit-hub-enable-toggle'+(enOn?' is-on':'')+'" data-habit-enable="'+esc(m.id)+'" role="switch" aria-checked="'+(enOn?'true':'false')+'" title="'+esc(t('habitScenarioEnableLbl'))+'" data-tip="'+esc(t('habitScenarioEnableLbl'))+'" aria-label="'+esc(t('habitScenarioEnableLbl'))+'"></button>';
+        html+='<button type="button" class="toggle-switch habit-hub-enable-toggle'+(enOn?' is-on':'')+'" data-habit-enable="'+esc(m.id)+'" role="switch" aria-checked="'+(enOn?'true':'false')+'" data-ot-tip="'+esc(t('habitScenarioEnableLbl'))+'" aria-label="'+esc(t('habitScenarioEnableLbl'))+'"></button>';
         if(!showActive){
           html+=ctaActBtn('data-habit-scenario-use="'+esc(m.id)+'"',t('homeWbHabitBarUse','设为正在使用'),ACT_ICON.keys,{primary:true,tip:t('homeWbHabitBarUse')});
         }
         html+='<details class="habit-hub-config-menu habit-hub-menu">';
-        html+='<summary class="habit-hub-act is-cta" data-tip="'+esc(t('habitHubConfigChannels','配置'))+'" aria-label="'+esc(t('habitHubConfigChannels','配置'))+'">'
+        html+='<summary class="habit-hub-act is-cta" data-ot-tip="'+esc(t('habitHubConfigChannels','配置'))+'" aria-label="'+esc(t('habitHubConfigChannels','配置'))+'">'
           +'<span>'+esc(t('habitHubConfigChannels','配置'))+'</span></summary>';
         html+='<div class="habit-hub-more-menu-panel">';
         html+=menuItemBtn('data-habit-scenario-keys="'+esc(m.id)+'"',t('habitHubGlobalOpenKeys','改按键'));
@@ -1231,7 +1231,7 @@
         }
         html+='</div></details>';
         html+='<details class="habit-hub-more-menu habit-hub-menu">';
-        html+='<summary class="habit-hub-act is-icon" title="'+esc(t('habitHubActMore','更多'))+'" aria-label="'+esc(t('habitHubActMore','更多'))+'">'
+        html+='<summary class="habit-hub-act is-icon" data-ot-tip="'+esc(t('habitHubActMore','更多'))+'" aria-label="'+esc(t('habitHubActMore','更多'))+'">'
           +'<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>'
           +'</summary>';
         html+='<div class="habit-hub-more-menu-panel">';
@@ -1248,10 +1248,10 @@
         html+='</div></details>';
       }else{
         if(legacy){
-          html+='<button type="button" class="habit-hub-act is-primary is-cta" data-habit-migrate="'+esc(m.id)+'" title="'+esc(t('habitHubLegacyMigrate'))+'" data-tip="'+esc(t('habitHubLegacyMigrate'))+'">'+esc(t('habitHubLegacyMigrate'))+'</button>';
+          html+='<button type="button" class="habit-hub-act is-primary is-cta" data-habit-migrate="'+esc(m.id)+'" data-ot-tip="'+esc(t('habitHubLegacyMigrate'))+'" aria-label="'+esc(t('habitHubLegacyMigrate'))+'">'+esc(t('habitHubLegacyMigrate'))+'</button>';
         }
         html+='<details class="habit-hub-more-menu habit-hub-menu">';
-        html+='<summary class="habit-hub-act is-icon" title="'+esc(t('habitHubActMore','更多'))+'" aria-label="'+esc(t('habitHubActMore','更多'))+'">'
+        html+='<summary class="habit-hub-act is-icon" data-ot-tip="'+esc(t('habitHubActMore','更多'))+'" aria-label="'+esc(t('habitHubActMore','更多'))+'">'
           +'<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>'
           +'</summary>';
         html+='<div class="habit-hub-more-menu-panel">';

@@ -1,6 +1,6 @@
 //! Soft Pad Runtime Arbiter IPC — pin + snapshot + attention / Cursor gates.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State};
 
 use crate::agent_attention::{self, AttentionPublicSnapshot};
@@ -295,6 +295,133 @@ pub fn cmd_soft_pad_agent_lights_set(
         loopback_url: srv.url.clone(),
         error: loopback_error,
     })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SoftPadAgentLightsBatchItem {
+    pub agent: String,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SoftPadAgentLightsBatchResult {
+    pub ok: bool,
+    pub applied: Vec<SoftPadAgentLightsBatchItem>,
+    pub loopback_enabled: bool,
+    pub loopback_url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// Batch-set Soft Pad agent lights on one mapping — single lock, one save, one loopback start.
+#[tauri::command]
+pub fn cmd_soft_pad_agent_lights_batch_set(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    mapping_id: String,
+    agents: Vec<SoftPadAgentLightsBatchItem>,
+) -> Result<SoftPadAgentLightsBatchResult, String> {
+    let mapping_id = mapping_id.trim().to_string();
+    if mapping_id.is_empty() {
+        return Err("mapping_id_empty".into());
+    }
+    if agents.is_empty() {
+        return Err("agents_empty".into());
+    }
+
+    let mut applied = Vec::new();
+    let mut needs_loopback = false;
+    let cfg_to_save;
+    {
+        let mut cfg = state.cfg.lock();
+        let Some(mapping) = cfg.mappings.iter_mut().find(|m| m.id == mapping_id) else {
+            return Err("mapping_not_found".into());
+        };
+        let pad = mapping
+            .codex_micro_pad
+            .get_or_insert_with(crate::codex_numpad_layer::default_codex_micro_pad);
+        for item in &agents {
+            let agent = item.agent.trim().to_ascii_lowercase();
+            let enabled = item.enabled;
+            match agent.as_str() {
+                "codex" => pad.codex_status_lights_enabled = enabled,
+                "claude" => pad.claude_status_lights_enabled = enabled,
+                "cursor" => pad.cursor_status_lights_enabled = enabled,
+                "workbuddy" => pad.workbuddy_status_lights_enabled = enabled,
+                "trae" => pad.trae_status_lights_enabled = enabled,
+                "qoder" => pad.qoder_status_lights_enabled = enabled,
+                _ => return Err(format!("bad_agent:{agent}")),
+            }
+            if enabled
+                && matches!(
+                    agent.as_str(),
+                    "codex" | "workbuddy" | "trae" | "qoder"
+                )
+            {
+                needs_loopback = true;
+            }
+            applied.push(SoftPadAgentLightsBatchItem {
+                agent: agent.clone(),
+                enabled,
+            });
+        }
+        crate::codex_numpad_layer::sync_hook_cache(&cfg);
+        cfg_to_save = cfg.clone();
+    }
+
+    let mut loopback_error: Option<String> = None;
+    if needs_loopback {
+        match crate::codex_micro_protocol_server::start(app.clone(), Arc::clone(state.inner()), None)
+        {
+            Ok(_) => {}
+            Err(e) => {
+                let lower = e.to_ascii_lowercase();
+                loopback_error = Some(if lower.contains("address already in use")
+                    || lower.contains("only one usage of each socket")
+                    || lower.contains("os error 10048")
+                    || lower.contains("port_in_use")
+                {
+                    "port_in_use".into()
+                } else if e.trim().is_empty() {
+                    "bind_failed".into()
+                } else {
+                    e.clone()
+                });
+                crate::app_log::log_line(
+                    state.inner(),
+                    "config",
+                    &format!("cmd_soft_pad_agent_lights_batch_set ensure_loopback_failed: {e}"),
+                );
+            }
+        }
+    }
+
+    let srv = crate::codex_micro_protocol_server::status();
+    let state_bg = Arc::clone(state.inner());
+    let _ = std::thread::Builder::new()
+        .name("soft-pad-agent-lights-batch".into())
+        .spawn(move || {
+            crate::config::save_config(&cfg_to_save);
+            crate::codex_micro_overlay::push_state(&app, &state_bg);
+        });
+
+    Ok(SoftPadAgentLightsBatchResult {
+        ok: loopback_error.is_none(),
+        applied,
+        loopback_enabled: srv.enabled,
+        loopback_url: srv.url.clone(),
+        error: loopback_error,
+    })
+}
+
+#[tauri::command]
+pub fn cmd_agent_install_inventory(
+    state: State<'_, Arc<AppState>>,
+) -> crate::agent_install_inventory::AgentInstallInventory {
+    let cfg = state.cfg.lock().clone();
+    crate::agent_install_inventory::collect_inventory(&cfg)
 }
 
 #[tauri::command]

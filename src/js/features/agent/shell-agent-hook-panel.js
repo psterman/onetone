@@ -59,8 +59,8 @@
     var status = opts.status || lastStatusByKind[kind] || null;
     var phase = phaseOf(status);
     var path = status && status.settingsPath ? shortPath(status.settingsPath) : '';
-    var title = t('softPadShellHookTitle', 'Shell Hook');
-    var cap = t('softPadShellHookCapHint', 'Shortcuts · 主灯 · 无 Sessions/Resume');
+    var title = t('softPadShellHookTitle', '状态连接');
+    var cap = t('softPadShellHookCapHint', 'Shortcuts · 状态灯 · 无 Sessions/Resume');
     var line = '';
     var actions = '';
 

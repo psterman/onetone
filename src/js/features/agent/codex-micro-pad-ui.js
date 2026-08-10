@@ -9676,6 +9676,8 @@
     notifyLinkedUi: notifyLinkedUi,
     stopBackgroundWork: stopReadinessPoll,
     renderHardwarePad: renderHardwarePad,
+    softPadLayoutKeyMeta: softPadLayoutKeyMeta,
+    bindSoftPadPreviewCaption: bindSoftPadPreviewCaption,
     applyTriggerHeroPreview: applyTriggerHeroPreview,
     clearTriggerHeroPreview: clearTriggerHeroPreview,
     LAYOUT: LAYOUT,

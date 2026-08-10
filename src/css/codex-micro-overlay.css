@@ -207,16 +207,24 @@ body {
   z-index: 40;
   min-width: 168px;
   max-width: min(360px, calc(100vw - 16px));
-  padding: 8px 10px;
-  border-radius: 10px;
-  /* Always light tip plate — never inherit dark --overlay-ink. */
+  padding: 9px 10px;
+  border-radius: 12px;
+  /* Match main-window ot-hover-tip plate (always light ink for readable status). */
   background: rgba(255, 255, 255, 0.98);
-  border: 1px solid rgba(26, 45, 74, 0.14);
-  box-shadow: 0 8px 24px rgba(20, 36, 64, 0.18);
+  border: 1px solid rgba(42, 156, 196, 0.36);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
   color: #3a4454;
   pointer-events: none;
   font-size: 12px;
-  line-height: 1.4;
+  line-height: 1.45;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+
+.overlay-agent-tip.is-show {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .overlay-agent-tip[hidden] {
@@ -596,13 +604,27 @@ body {
   text-overflow: ellipsis;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.16s ease, transform 0.16s ease;
+  transition: opacity 0.14s ease, transform 0.14s ease;
   box-shadow: 0 6px 18px rgba(0,0,0,0.22);
 }
 
 .overlay-toast.is-show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-agent-tip,
+  .overlay-toast {
+    transition: none;
+    transform: none;
+  }
+  .overlay-agent-tip.is-show {
+    transform: none;
+  }
+  .overlay-toast.is-show {
+    transform: translateX(-50%);
+  }
 }
 
 .overlay-body .micro-hw__grid {

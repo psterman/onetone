@@ -123,6 +123,8 @@ permissions = [
   "allow-cmd-soft-pad-set-purpose",
   "allow-cmd-soft-pad-set-navigation-slots",
   "allow-cmd-soft-pad-agent-lights-set",
+  "allow-cmd-soft-pad-agent-lights-batch-set",
+  "allow-cmd-agent-install-inventory",
   "allow-cmd-soft-pad-resume-lane",
   "allow-cmd-soft-pad-inject-lane",
   "allow-cmd-codex-micro-pad-set-flags",

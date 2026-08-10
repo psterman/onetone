@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-agent-install-inventory"
+description = "Enables the cmd_agent_install_inventory command without any pre-configured scope."
+commands.allow = ["cmd_agent_install_inventory"]
+
+[[permission]]
+identifier = "deny-cmd-agent-install-inventory"
+description = "Denies the cmd_agent_install_inventory command without any pre-configured scope."
+commands.deny = ["cmd_agent_install_inventory"]

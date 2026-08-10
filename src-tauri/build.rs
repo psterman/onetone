@@ -148,6 +148,8 @@ fn main() {
         "cmd_soft_pad_set_purpose",
         "cmd_soft_pad_set_navigation_slots",
         "cmd_soft_pad_agent_lights_set",
+        "cmd_soft_pad_agent_lights_batch_set",
+        "cmd_agent_install_inventory",
         "cmd_soft_pad_resume_lane",
         "cmd_soft_pad_inject_lane",
         "cmd_codex_micro_pad_fire",

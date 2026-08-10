@@ -1179,6 +1179,10 @@
           </section>
           <div class="soft-pad-app-switcher" id="softPadAppSwitcher" role="tablist" aria-label="应用" hidden></div>
           <p class="soft-pad-scope-hint" id="softPadScopeHint" aria-live="polite"></p>
+          <div class="soft-pad-scan-bar" id="softPadScanBar">
+            <button type="button" class="btn secondary soft-pad-scan-btn" id="softPadScanBtn">扫描本机工具</button>
+            <span class="soft-pad-scan-status" id="softPadScanStatus" aria-live="polite"></span>
+          </div>
           <header class="pref-page-head soft-pad-page-head sr-only">
             <div class="soft-pad-page-head-text">
               <h3 class="pref-page-title" id="settingsPanelSoftPadTitle">虚拟键盘</h3>
@@ -4254,6 +4258,7 @@
   <script src="js/core/app-runtime-hooks.js"></script>
   <script src="js/core/error-handlers.js"></script>
   <script src="js/core/app-toast.js"></script>
+  <script src="js/core/hover-tip.js"></script>
   <script src="js/core/confirm.js"></script>
   <script src="js/core/app-global-error.js"></script>
   <script src="js/core/app-debug-state.js"></script>
@@ -4376,6 +4381,7 @@
   <script src="js/features/home/home-live-actions.js"></script>
   <script src="js/home-v9.js"></script>
   <script src="js/features/home/habit-trigger-setup.js"></script>
+  <script src="js/features/agent/agent-install-orchestrator.js"></script>
   <script src="js/features/home/quick-start-orchestrator.js"></script>
   <script src="js/shared/shell-ia-convergence.js"></script>
   <script src="js/features/home/home-workbench-compat.js"></script>

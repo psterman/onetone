@@ -630,7 +630,7 @@
       return 'Codex';
     }
 
-    var SHELL_LIGHT_AGENTS={workbuddy:1,trae:1,qoder:1};
+    var SHELL_LIGHT_AGENTS={workbuddy:1,trae:1,qoder:1}; // retained for connect CTAs / tips
 
     function compactNumber(value){
       var n=Number(value);
@@ -787,6 +787,7 @@
 
     function hideAgentTip(){
       if(!overlayAgentTip) return;
+      overlayAgentTip.classList.remove('is-show');
       overlayAgentTip.hidden=true;
       overlayAgentTip.setAttribute('aria-hidden','true');
     }
@@ -832,6 +833,7 @@
       fillAgentTipLines(lines);
       overlayAgentTip.hidden=false;
       overlayAgentTip.setAttribute('aria-hidden','false');
+      overlayAgentTip.classList.remove('is-show');
       var rect=anchor.getBoundingClientRect();
       var tipW=overlayAgentTip.offsetWidth||200;
       var tipH=overlayAgentTip.offsetHeight||80;
@@ -841,6 +843,7 @@
       if(top+tipH>window.innerHeight-8) top=Math.max(8, rect.top-tipH-6);
       overlayAgentTip.style.left=left+'px';
       overlayAgentTip.style.top=top+'px';
+      requestAnimationFrame(function(){ overlayAgentTip.classList.add('is-show'); });
     }
 
     function bindAgentTipHover(el, lines){
@@ -1256,10 +1259,8 @@
       var kind=String(el.getAttribute('data-agent')||'');
       var row=byKind[kind]||{};
       var lightsOn = !!(row.lightsEnabled || row.lights_enabled);
-      if (SHELL_LIGHT_AGENTS[kind]) {
-        el.hidden = !lightsOn;
-        if (!lightsOn) return;
-      }
+      el.hidden = !lightsOn;
+      if (!lightsOn) return;
       var state=String(row.state||'idle').trim().toLowerCase()||'idle';
       var activeState=(state==='running'||state==='needs_input'||state==='done'||state==='failed'||state==='error');
       // Fallback: when usage rail/model rows lag behind, derive Claude chip state

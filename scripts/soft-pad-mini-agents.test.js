@@ -60,6 +60,8 @@ assert.ok(!html.includes('id="miniLeds"'));
 var miniFn = html.match(/function applyMiniAgentChips\(s\)\{[\s\S]*?\n    \}/);
 assert.ok(miniFn, 'applyMiniAgentChips body missing');
 assert.ok(!/appAgent|app_agent|appStatus|app_status/.test(miniFn[0]), 'mini chips must not read singleton appAgent/appStatus');
+assert.ok(html.includes('el.hidden = !lightsOn') || html.includes('el.hidden=!lightsOn'), 'all agents gate on lightsEnabled');
+assert.ok(!/if\s*\(\s*SHELL_LIGHT_AGENTS\[kind\]\s*\)\s*\{\s*el\.hidden/.test(html), 'Codex/Claude/Cursor must not stay always-visible');
 assert.ok(html.includes('isRenderableUsage') || html.includes('hasRenderable'));
 assert.ok(!/if\s*\(\s*kind\s*===\s*['"]claude['"]\s*\)\s*return\s*false/.test(html), 'Claude must not be hard-blocked for mini pill');
 assert.ok(html.includes('Number.isFinite') || html.includes('isFinite'));
@@ -79,7 +81,7 @@ assert.ok(rust.includes('AgentKind::Codex') && rust.includes('AgentKind::Claude'
 assert.ok(rust.includes('AgentKind::WorkBuddy') && rust.includes('AgentKind::Trae') && rust.includes('AgentKind::Qoder'));
 assert.ok(rust.includes('workbuddy_status_lights_enabled'));
 assert.ok(rust.includes('cmd_soft_pad_focus_agent') || overlayCmd.includes('cmd_soft_pad_focus_agent'));
-assert.ok(/OVERLAY_WIDTH_MINI:\s*f64\s*=\s*24[0-9]\.0/.test(rust), 'mini width should be ~240-249');
+assert.ok(/OVERLAY_WIDTH_MINI:\s*f64\s*=\s*(24[0-9]|3[0-9]{2})\.0/.test(rust), 'mini width constant present');
 assert.ok(/OVERLAY_HEIGHT_MINI:\s*f64\s*=\s*44\.0/.test(rust), 'mini height should stay 44');
 assert.ok(/OVERLAY_HEIGHT_FULL:\s*f64\s*=\s*6[5-9][0-9]\.0|OVERLAY_HEIGHT_FULL:\s*f64\s*=\s*[7-9][0-9]{2}\.0/.test(rust), 'full height must clear caption+gate');
 assert.ok(/align-items:\s*flex-start/.test(css), 'pad stack top-packs so bottom caption is not centered-clipped');

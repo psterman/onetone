@@ -864,10 +864,26 @@ html[data-theme="dark"] .soft-pad-tm-detail .soft-pad-tm-safety { color: #f2c56f
   z-index: 2;
 }
 .soft-pad-scope-hint {
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   padding: 0 4px;
   font-size: var(--type-body, 13px);
   line-height: var(--type-lh-body, 1.45);
+  color: var(--on-surface-muted);
+}
+.soft-pad-scan-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 0 4px;
+}
+.soft-pad-scan-btn {
+  flex: 0 0 auto;
+  font-size: 12px;
+  padding: 6px 10px;
+}
+.soft-pad-scan-status {
+  font-size: 12px;
   color: var(--on-surface-muted);
 }
 .soft-pad-follow-chip.is-auto {

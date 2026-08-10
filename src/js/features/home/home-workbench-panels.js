@@ -128,7 +128,7 @@
         +'</div>';
     }
     // Summary card: inactive → switch hero; active → open channel settings.
-    return '<article class="wb-howto-card'+(card.active?' is-active':'')+(kind?' is-'+kind:'')+(card.empty?' is-empty':'')+'" data-wb-howto="'+esc(kind)+'" role="button" tabindex="0" aria-pressed="'+(card.active?'true':'false')+'" title="'+esc(t('homeWbHowToOpenTip','点此切换上方预览；再点打开设置'))+'">'
+    return '<article class="wb-howto-card'+(card.active?' is-active':'')+(kind?' is-'+kind:'')+(card.empty?' is-empty':'')+'" data-wb-howto="'+esc(kind)+'" role="button" tabindex="0" aria-pressed="'+(card.active?'true':'false')+'" data-ot-tip="'+esc(t('homeWbHowToOpenTip','点此切换上方预览；再点打开设置'))+'">'
       +'<div class="wb-howto-card-head">'
       +'<span class="wb-howto-card-ico" aria-hidden="true">'+icon+'</span>'
       +'<span class="wb-howto-card-title">'+esc(card.title||'')+'</span>'

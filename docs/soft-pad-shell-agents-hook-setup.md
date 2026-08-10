@@ -26,17 +26,20 @@ Hub **不会**在打开 WorkBuddy / Trae 时自动创建虚拟键盘。需：
 
 Agent / 更多 面板可开关 Codex / Claude / Cursor / WorkBuddy / Trae / Qoder 的状态灯。Shell 三端默认关闭；开启后顶栏出现对应图标，并需在下方 **接入** Shell Hook 后灯才会随生命周期变化。
 
-## Soft Pad Hub 一键接入（推荐）
+## Soft Pad Hub 接入状态（推荐）
 
 1. OneTone 运行，监听 `127.0.0.1:8796`。
-2. 打开 **虚拟键盘** → 顶栏选 WorkBuddy / Trae / Qoder（可先「准备」创建 Shortcuts pad）。
-3. 打开 **Agent** 子页，看到 **Shell Hook** 条：
+2. 打开 **虚拟键盘** → 顶栏「扫描本机工具」或点选 WorkBuddy / Trae / Qoder（可先「准备」创建 Shortcuts pad）。
+3. 打开 **Agent** 子页，看到 **状态连接** 条：
    - **尚未接入** → 点 **接入**（主路径；勿依赖「复制草案」）
    - **已接入** → **重新检测** / **撤回**
    - **探针缺失** → 异常态（不是「未配置」）；确认安装含 `agent-shell-hook-probe.js`
 4. 「复制配置草案」在 **更多…** 里，仅排障用。
 
+快速入门「配置 AI 编程」与 Hub 共用同一套扫描 / 准备 / 连接服务；真实任务灯仍须用户确认后写入状态通知配置。
+
 IPC：`cmd_shell_agent_hook_setup_status` / `install_confirm` / `uninstall`，参数 `kind` = `workbuddy` | `trae` | `qoder`。
+另：`cmd_agent_install_inventory`（只读探测）、`cmd_soft_pad_agent_lights_batch_set`（批量开灯）。
 
 自检：
 

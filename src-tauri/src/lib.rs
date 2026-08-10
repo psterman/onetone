@@ -1,6 +1,7 @@
 mod agent;
 mod agent_attention;
 mod agent_catalog;
+mod agent_install_inventory;
 mod agent_model_metadata;
 mod agent_usage;
 mod provider_usage;
@@ -919,6 +920,8 @@ pub fn run() {
             ipc::cmd_soft_pad_set_purpose,
             ipc::cmd_soft_pad_set_navigation_slots,
             ipc::cmd_soft_pad_agent_lights_set,
+            ipc::cmd_soft_pad_agent_lights_batch_set,
+            ipc::cmd_agent_install_inventory,
             ipc::cmd_soft_pad_resume_lane,
             ipc::cmd_soft_pad_inject_lane,
             ipc::cmd_tm_status,

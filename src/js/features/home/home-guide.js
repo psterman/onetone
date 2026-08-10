@@ -783,13 +783,15 @@
     if(tip) return tip;
     tip=document.createElement('div');
     tip.id='homeGuideHoverTip';
-    tip.className='home-guide-hover-tip';
+    tip.className='ot-hover-tip home-guide-hover-tip is-rich is-interactive';
+    tip.setAttribute('role','tooltip');
     tip.hidden=true;
     document.body.appendChild(tip);
     return tip;
   }
 
   function positionHomeGuideHoverTip(tip,el){
+    // Keep zoom-aware placement (UI zoom ≠ 1); shared HoverTip position is unscaled.
     const target=homeGuideVpRect(el.getBoundingClientRect());
     const vw=window.innerWidth;
     const vh=window.innerHeight;
@@ -816,6 +818,9 @@
 
   function showHomeGuideHoverTip(el){
     if(!el||!el.dataset.homeGuideBound) return;
+    if(global.OneToneHoverTip&&global.OneToneHoverTip.hide){
+      global.OneToneHoverTip.hide({ immediate:true });
+    }
     const tip=ensureHomeGuideHoverTip();
     const label=el.dataset.homeGuideLabel||homeGuideText(el);
     const detail=el.dataset.homeGuideDetail||'';
@@ -840,6 +845,9 @@
 
   function showHomeGuideIntroTip(def,anchorEl){
     if(!anchorEl) return;
+    if(global.OneToneHoverTip&&global.OneToneHoverTip.hide){
+      global.OneToneHoverTip.hide({ immediate:true });
+    }
     const tip=ensureHomeGuideHoverTip();
     const flow=(def.flowKeys||[]).map(function(key,i){
       const stepNum=i+1;
