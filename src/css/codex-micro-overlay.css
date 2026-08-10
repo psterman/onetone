@@ -1419,6 +1419,13 @@ body {
 }
 .soft-pad-agent-bar__chip[data-status="running"] .soft-pad-agent-bar__dot {
   background: #22a05a;
+  animation-name: ot-status-pulse;
+  animation-duration: var(--motion-duration-pulse, 1.8s);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+.soft-pad-agent-bar__chip[data-status="done"] .soft-pad-agent-bar__dot {
+  background: #4ade80;
 }
 .soft-pad-agent-bar__chip[data-status="failed"] .soft-pad-agent-bar__dot,
 .soft-pad-agent-bar__chip[data-status="error"] .soft-pad-agent-bar__dot {
@@ -1563,11 +1570,15 @@ body {
 }
 .overlay-mini__agent[data-status="running"] .overlay-mini__agent-dot {
   background: var(--micro-hw-status-running);
-  box-shadow: 0 0 5px var(--micro-hw-status-running);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--micro-hw-status-running) 35%, transparent);
+  animation-name: ot-status-pulse;
+  animation-duration: var(--motion-duration-pulse, 1.8s);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
 }
 .overlay-mini__agent[data-status="needs_input"] .overlay-mini__agent-dot {
   background: var(--micro-hw-status-needs-input, rgba(245,166,35,.95));
-  box-shadow: 0 0 5px var(--micro-hw-status-needs-input, rgba(245,166,35,.95));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--micro-hw-status-needs-input, rgba(245,166,35,.95)) 40%, transparent);
 }
 .overlay-mini__agent[data-status="done"] .overlay-mini__agent-dot {
   background: var(--micro-hw-status-done);
@@ -1575,7 +1586,6 @@ body {
 .overlay-mini__agent[data-status="failed"] .overlay-mini__agent-dot,
 .overlay-mini__agent[data-status="error"] .overlay-mini__agent-dot {
   background: var(--micro-hw-status-failed);
-  box-shadow: 0 0 5px var(--micro-hw-status-failed);
 }
 
 .overlay-mini__btn {

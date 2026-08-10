@@ -1,14 +1,11 @@
-"""Build light/dark OneTone squircle UI icons from Tornado-T source art.
-
-Taskbar/tray: crop to the *bright glyph* (not the dark plate), then scale up so
-the mark fills most of the tile — otherwise it looks tiny next to other apps.
-"""
+"""Build OneTone icons from Tornado-T art: strip plate, transparent canvas, max fill."""
 
 from __future__ import annotations
 
+from collections import deque
 from pathlib import Path
 
-from PIL import Image, ImageEnhance, ImageFilter, ImageOps
+from PIL import Image, ImageChops, ImageEnhance, ImageFilter, ImageOps
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC_LIGHT = ROOT / "assets" / "icons" / "onetone-logo-source-light.png"
@@ -19,14 +16,12 @@ OUT_LIGHT_WEB = ROOT / "src" / "icon-light.png"
 OUT_DARK_WEB = ROOT / "src" / "icon-dark.png"
 ICONS_DIR = ROOT / "src-tauri" / "icons"
 SIZE = 1024
-# Glyph target size inside the tile (after tight crop). Higher = larger on taskbar.
-FILL_RATIO = 0.96
-# Tiny edge inset so squircle corners don't clip the funnel tip hard.
-EDGE_INSET = 0.015
+FILL_RATIO = 0.98
+EDGE_INSET = 0.008
 SQUIRCLE_RADIUS = 208
-# Plate behind glyph — lifted from pure black so the tile still reads on dark taskbars.
-DARK_PLATE = (12, 22, 42, 255)
-LIGHT_PLATE = (255, 255, 255, 255)
+# Near-white plate threshold for edge flood (keeps interior white T).
+BG_MIN = 242
+BG_TOL = 20
 
 
 def inside_rounded_rect(x: int, y: int, w: int, h: int, r: float) -> bool:
@@ -54,8 +49,55 @@ def squircle_mask(size: int, radius: int) -> Image.Image:
     return mask
 
 
-def glyph_bbox(img: Image.Image, bg: str) -> tuple[int, int, int, int]:
-    """BBox of the logo mark only — ignore flat plate pixels."""
+def is_plate(p: tuple[int, int, int, int]) -> bool:
+    r, g, b, a = p
+    if a < 8:
+        return True
+    mx = max(r, g, b)
+    mn = min(r, g, b)
+    # Near-white plate
+    if mx >= BG_MIN and (mx - mn) <= BG_TOL:
+        return True
+    # Near-black plate
+    if mx < 28 and (mx - mn) < 18:
+        return True
+    return False
+
+
+def flood_clear_plate(img: Image.Image) -> Image.Image:
+    """Clear background plate from edges; keep interior white/blue glyph."""
+    rgba = img.convert("RGBA")
+    w, h = rgba.size
+    px = rgba.load()
+    seen = [[False] * w for _ in range(h)]
+    q: deque[tuple[int, int]] = deque()
+
+    def seed(x: int, y: int) -> None:
+        if seen[y][x] or not is_plate(px[x, y]):
+            return
+        seen[y][x] = True
+        q.append((x, y))
+
+    for x in range(w):
+        seed(x, 0)
+        seed(x, h - 1)
+    for y in range(h):
+        seed(0, y)
+        seed(w - 1, y)
+
+    while q:
+        x, y = q.popleft()
+        px[x, y] = (0, 0, 0, 0)
+        for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+            if nx < 0 or ny < 0 or nx >= w or ny >= h or seen[ny][nx]:
+                continue
+            if is_plate(px[nx, ny]):
+                seen[ny][nx] = True
+                q.append((nx, ny))
+    return rgba
+
+
+def glyph_bbox(img: Image.Image) -> tuple[int, int, int, int]:
     rgba = img.convert("RGBA")
     w, h = rgba.size
     px = rgba.load()
@@ -63,19 +105,7 @@ def glyph_bbox(img: Image.Image, bg: str) -> tuple[int, int, int, int]:
     found = False
     for y in range(h):
         for x in range(w):
-            r, g, b, a = px[x, y]
-            if a < 8:
-                continue
-            mx = max(r, g, b)
-            mn = min(r, g, b)
-            sat = mx - mn
-            if bg == "light":
-                # Keep blue/ink marks; drop near-white plate.
-                keep = (mx < 245 and sat > 12) or (sat > 28 and mx < 252)
-            else:
-                # Keep white T + blue glow; drop near-black plate.
-                keep = (mx > 48 and sat > 18) or mx > 170
-            if not keep:
+            if px[x, y][3] < 12:
                 continue
             found = True
             x0 = min(x0, x)
@@ -87,26 +117,33 @@ def glyph_bbox(img: Image.Image, bg: str) -> tuple[int, int, int, int]:
     return x0, y0, x1, y1
 
 
-def fit_on_canvas(src: Path, bg: str, fill_ratio: float = FILL_RATIO) -> Image.Image:
-    img = Image.open(src).convert("RGBA")
-    x0, y0, x1, y1 = glyph_bbox(img, bg)
-    crop = img.crop((x0, y0, x1, y1))
+def fit_glyph(
+    glyph_src: Image.Image,
+    fill_ratio: float = FILL_RATIO,
+    edge_inset: float = EDGE_INSET,
+    cover: bool = False,
+    apply_squircle: bool = True,
+) -> Image.Image:
+    x0, y0, x1, y1 = glyph_bbox(glyph_src)
+    crop = glyph_src.crop((x0, y0, x1, y1))
 
-    # Scale glyph so its longer side fills FILL_RATIO of the tile.
-    target = int(round(SIZE * fill_ratio * (1.0 - EDGE_INSET * 2)))
-    scale = target / max(crop.size)
+    target = int(round(SIZE * fill_ratio * (1.0 - edge_inset * 2)))
+    if cover:
+        scale = max(target / max(1, crop.width), target / max(1, crop.height))
+    else:
+        scale = target / max(crop.size)
     nw = max(1, int(round(crop.width * scale)))
     nh = max(1, int(round(crop.height * scale)))
     glyph = crop.resize((nw, nh), Image.Resampling.LANCZOS)
 
-    fill = LIGHT_PLATE if bg == "light" else DARK_PLATE
-    square = Image.new("RGBA", (SIZE, SIZE), fill)
+    square = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
     ox = (SIZE - nw) // 2
     oy = (SIZE - nh) // 2
     square.paste(glyph, (ox, oy), glyph)
     square = square.filter(ImageFilter.UnsharpMask(radius=0.8, percent=125, threshold=2))
-    mask = squircle_mask(SIZE, SQUIRCLE_RADIUS)
-    square.putalpha(mask)
+    if apply_squircle:
+        mask = squircle_mask(SIZE, SQUIRCLE_RADIUS)
+        square.putalpha(ImageChops.multiply(square.getchannel("A"), mask))
     return square
 
 
@@ -117,35 +154,39 @@ def write(path: Path, img: Image.Image) -> None:
 
 
 def derive_tray_variants(tray32: Image.Image) -> None:
-    """Muted / missing tray states from the ready icon (keep same visual weight)."""
     muted = ImageEnhance.Color(tray32.convert("RGBA")).enhance(0.15)
     muted = ImageEnhance.Brightness(muted).enhance(0.72)
     write(ICONS_DIR / "tray-32-muted.png", muted)
 
     gray = ImageOps.grayscale(tray32.convert("RGB")).convert("RGBA")
-    # Rebuild alpha from source so squircle stays.
     gray.putalpha(tray32.getchannel("A"))
     gray = ImageEnhance.Brightness(gray).enhance(0.85)
     write(ICONS_DIR / "tray-32-missing.png", gray)
 
 
 def main() -> None:
-    if not SRC_LIGHT.exists() or not SRC_DARK.exists():
-        raise FileNotFoundError("missing onetone-logo-source-light/dark.png")
-    light = fit_on_canvas(SRC_LIGHT, "light")
-    dark = fit_on_canvas(SRC_DARK, "dark")
-    write(OUT_LIGHT, light)
-    write(OUT_DARK, dark)
-    write(OUT_LIGHT_WEB, light.resize((256, 256), Image.Resampling.LANCZOS))
-    write(OUT_DARK_WEB, dark.resize((256, 256), Image.Resampling.LANCZOS))
-    write(ROOT / "src" / "icon.png", dark.resize((256, 256), Image.Resampling.LANCZOS))
+    if not SRC_LIGHT.exists():
+        raise FileNotFoundError(f"missing {SRC_LIGHT}")
 
-    # Tray-ready at 32: max fill + sharpen for tiny sizes.
-    tray_master = fit_on_canvas(SRC_DARK, "dark", fill_ratio=0.98)
-    tray32 = tray_master.resize((32, 32), Image.Resampling.LANCZOS)
-    tray32 = tray32.filter(ImageFilter.UnsharpMask(radius=1.0, percent=180, threshold=1))
-    write(ICONS_DIR / "tray-32.png", tray32)
-    derive_tray_variants(tray32)
+    # One master glyph: strip plate → transparent.
+    cleared = flood_clear_plate(Image.open(SRC_LIGHT))
+    write(SRC_LIGHT, cleared)
+    write(SRC_DARK, cleared)  # same art; no plate color
+
+    ui = fit_glyph(cleared, fill_ratio=FILL_RATIO, edge_inset=EDGE_INSET, cover=False)
+    write(OUT_LIGHT, ui)
+    write(OUT_DARK, ui)
+    web = ui.resize((256, 256), Image.Resampling.LANCZOS)
+    write(OUT_LIGHT_WEB, web)
+    write(OUT_DARK_WEB, web)
+    write(ROOT / "src" / "icon.png", web)
+
+    tray_master = fit_glyph(cleared, fill_ratio=1.0, edge_inset=0.0, cover=True)
+    for size, name in ((16, "tray-16.png"), (24, "tray-24.png"), (32, "tray-32.png"), (48, "tray-48.png")):
+        tray = tray_master.resize((size, size), Image.Resampling.LANCZOS)
+        tray = tray.filter(ImageFilter.UnsharpMask(radius=1.0, percent=180, threshold=1))
+        write(ICONS_DIR / name, tray)
+    derive_tray_variants(Image.open(ICONS_DIR / "tray-32.png").convert("RGBA"))
 
     print("Next: python scripts/generate_onetone_icon.py  (exe/taskbar ico)")
     print("Then rebuild the app — tray icons are include_bytes! at compile time.")

@@ -60,14 +60,16 @@ def squircle_mask(size: int, inset: int, radius: int) -> Image.Image:
 
 
 def apply_squircle_transparency(img: Image.Image) -> Image.Image:
-    """Only corner pixels outside the squircle become transparent; never flood-fill the artwork."""
+    """Corner pixels outside the squircle become transparent; preserve glyph alpha."""
+    from PIL import ImageChops
+
     size = img.size[0]
     scale = size / SIZE
     inset = max(0, int(round(SQUIRCLE_INSET * scale)))
     radius = max(1, int(round(SQUIRCLE_RADIUS * scale)))
     rgba = img.convert("RGBA")
     mask = squircle_mask(size, inset, radius)
-    rgba.putalpha(mask)
+    rgba.putalpha(ImageChops.multiply(rgba.getchannel("A"), mask))
     return rgba
 
 
@@ -110,22 +112,20 @@ def generate_bundle_pngs(master: Image.Image) -> None:
     write_png(WEB_ICON, resize_variant(master, 256))
 
 
-def _ico_bmp_payload(img: Image.Image) -> bytes:
-    """Single BMP frame payload as stored inside a .ico file."""
+def _ico_png_payload(img: Image.Image) -> bytes:
+    """Single PNG frame payload as stored inside a Vista+ .ico file (preserves alpha)."""
     import io
 
     buf = io.BytesIO()
-    img.save(buf, format="ICO", sizes=[img.size], bitmap_format="bmp")
-    data = buf.getvalue()
-    # ICONDIR (6) + one ICONDIRENTRY (16) => image data starts at offset 22
-    return data[22:]
+    img.convert("RGBA").save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
 
 
-def write_ico_bmp(path: Path, frames: list[Image.Image]) -> None:
-    """Pack BMP frames; directory order matches `frames` (largest first for Windows shell)."""
+def write_ico_png(path: Path, frames: list[Image.Image]) -> None:
+    """Pack PNG frames so Windows taskbar keeps real transparency (BMP ICO paints alpha as black)."""
     import struct
 
-    payloads = [_ico_bmp_payload(frame) for frame in frames]
+    payloads = [_ico_png_payload(frame) for frame in frames]
     count = len(payloads)
     header = struct.pack("<HHH", 0, 1, count)
     offset = 6 + 16 * count
@@ -135,6 +135,7 @@ def write_ico_bmp(path: Path, frames: list[Image.Image]) -> None:
         size = frame.size[0]
         w = size if size < 256 else 0
         h = size if size < 256 else 0
+        # PNG entries: color count 0, planes 1, bitcount 32 (common Vista+ convention)
         entries.extend(
             struct.pack("<BBBBHHII", w, h, 0, 0, 1, 32, len(payload), offset)
         )
@@ -144,12 +145,12 @@ def write_ico_bmp(path: Path, frames: list[Image.Image]) -> None:
 
 
 def generate_ico(master: Image.Image) -> None:
-    """BMP frames; 32px first for Tauri dev default_window_icon (uses ICO entry[0])."""
+    """PNG-in-ICO frames; 16px first for Tauri default_window_icon (entry[0])."""
     sizes_asc = tuple(sorted(ICO_SIZES))
     frames = [resize_variant(master, size, sharpen=size <= 48) for size in sizes_asc]
     out = ICONS_DIR / "icon.ico"
-    write_ico_bmp(out, frames)
-    print(f"Wrote {out} BMP, order: {', '.join(str(s) for s in sizes_asc)}")
+    write_ico_png(out, frames)
+    print(f"Wrote {out} PNG-in-ICO, order: {', '.join(str(s) for s in sizes_asc)}")
 
 
 def generate_windows_export(master: Image.Image) -> None:
@@ -176,25 +177,13 @@ def generate_windows_export(master: Image.Image) -> None:
 def generate() -> None:
     master = load_master()
     ICONS_DIR.mkdir(parents=True, exist_ok=True)
-    generate_tray_icons(master)
+    # Tray PNGs are owned by build_onetone_theme_icons.py (max-fill glyph).
+    # Do not overwrite them here with padded master downscales.
     generate_bundle_pngs(master)
     generate_ico(master)
     generate_windows_export(master)
     write_png(OUT_MASTER, master)
-    # Keep muted/missing in sync with the ready tray mark (same visual weight).
-    try:
-        from PIL import ImageEnhance, ImageOps
-
-        tray32 = Image.open(ICONS_DIR / "tray-32.png").convert("RGBA")
-        muted = ImageEnhance.Color(tray32).enhance(0.15)
-        muted = ImageEnhance.Brightness(muted).enhance(0.72)
-        write_png(ICONS_DIR / "tray-32-muted.png", muted)
-        gray = ImageOps.grayscale(tray32.convert("RGB")).convert("RGBA")
-        gray.putalpha(tray32.getchannel("A"))
-        gray = ImageEnhance.Brightness(gray).enhance(0.85)
-        write_png(ICONS_DIR / "tray-32-missing.png", gray)
-    except Exception as err:
-        print(f"tray muted/missing skipped: {err}")
+    print("Tray ready/muted/missing left to build_onetone_theme_icons.py")
 
 
 if __name__ == "__main__":

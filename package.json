@@ -23,6 +23,8 @@
     "test:usage-display-wrap": "node scripts/test-usage-display-wrap.mjs",
     "test:cursor-activity": "node scripts/test-cursor-activity.mjs",
     "test:sound-bus": "node scripts/test-sound-bus.mjs",
+    "test:motion": "node scripts/test-motion-once.mjs && node scripts/test-agent-status-edge.mjs && node scripts/test-panel-reveal.mjs && node scripts/test-qs-idle-motion.mjs",
+    "test:qs-idle": "node scripts/test-qs-idle-motion.mjs",
     "test:voice-open-defer": "node scripts/test-voice-open-defer-freeze.mjs",
     "test:target-key-catalog": "node scripts/verify-target-key-catalog.mjs",
     "test:voice-acoustic": "node scripts/voice-acoustic-config.test.js && node scripts/voice-acoustic-matcher.test.js && node scripts/voice-acoustic-ui.test.js",

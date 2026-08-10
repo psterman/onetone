@@ -762,3 +762,31 @@ html.habit-setup-open .habit-setup-overlay:has(#habitSetupIntentView:not([hidden
     transition-duration:.01ms!important;
   }
 }
+
+/* Motion Block: kill idle demo loops — explicit consumers only (no .mode-card *) */
+.qs-mode-matrix__badge-dot,
+.qs-mode-matrix .qs-newbie-hero,
+.qs-mode-matrix .qs-newbie-rings i,
+.qs-mode-matrix .qs-mic-ico,
+.qs-mode-matrix .qs-newbie-bars i,
+.qs-mode-matrix .qs-newbie-key-hint,
+.qs-mode-matrix .qs-monitor,
+.qs-mode-matrix .qs-monitor__live span,
+.qs-mode-matrix .qs-code-stream__track,
+.qs-mode-matrix .qs-cursor,
+.qs-mode-matrix .qs-canvas,
+.qs-mode-matrix .qs-canvas__grid b i,
+.qs-mode-matrix .qs-quad-track,
+.qs-mode-matrix .qs-frame__head strong i,
+.qs-mode-matrix .qs-frame--1 .qs-frame__code-track,
+.qs-mode-matrix .qs-frame--2 .qs-frame__code-track,
+.qs-mode-matrix .qs-frame--3 .qs-frame__code-track,
+.qs-mode-matrix .qs-frame--4 .qs-frame__code-track,
+.qs-mode-matrix .qs-frame__live,
+.qs-mode-matrix .qs-play-ring,
+.qs-mode-matrix .qs-ico-mic,
+.qs-mode-matrix .qs-text-glow,
+.qs-mode-matrix .qs-wave i,
+.qs-mode-matrix .qs-palm {
+  animation: none !important;
+}

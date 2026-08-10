@@ -628,8 +628,22 @@
       global.__otKeysTriggerConflictSync();
       return;
     }
+    var prevMsg=box.dataset.otConflictMsg||'';
+    var warmed=box.dataset.otConflictWarmed==='1';
     box.hidden=!!model.hidden;
     box.innerHTML=model.html||'';
+    if(model.hidden){
+      box.dataset.otConflictMsg='';
+      box.dataset.otConflictWarmed='1';
+      return;
+    }
+    var msg=String(model.msg||'');
+    if(warmed&&msg&&msg!==prevMsg){
+      var Motion=global.OneToneMotion;
+      if(Motion&&typeof Motion.playOnce==='function') Motion.playOnce(box,'ot-shake');
+    }
+    box.dataset.otConflictMsg=msg;
+    box.dataset.otConflictWarmed='1';
   }
 
   function saveCurrentScheme(){

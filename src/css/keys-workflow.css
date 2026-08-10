@@ -2507,6 +2507,15 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
     transition: none !important;
     transform: none !important;
   }
+  #settingsPanelKeys .keys-step-record-act .habit-rerecord-link.keys-record-btn.is-recording,
+  #settingsPanelKeys .keys-step-record-act .record-btn.keys-record-btn.is-recording {
+    animation: none !important;
+    transform: none !important;
+  }
+  #settingsPanelKeys .keys-step-record-act .habit-rerecord-link.keys-record-btn.is-recording::after,
+  #settingsPanelKeys .keys-step-record-act .record-btn.keys-record-btn.is-recording::after {
+    animation: none !important;
+  }
 }
 
 

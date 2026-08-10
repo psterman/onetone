@@ -6,10 +6,15 @@
   var lastFlowVm=null;
 
   var FLOW_NODE_IDS={
-    wake:{btn:'voiceFlowNodeWake',hint:'voiceFlowNodeWakeHint'},
-    recognize:{btn:'voiceFlowNodeRecognize',hint:'voiceFlowNodeRecognizeHint'},
-    send:{btn:'voiceFlowNodeSend',hint:'voiceFlowNodeSendHint'}
+    wake:{btn:'voiceFlowNodeWake',hint:'voiceFlowNodeWakeHint',head:'voiceSettingsWakeHead',body:'voiceSettingsWakeBody'},
+    recognize:{btn:'voiceFlowNodeRecognize',hint:'voiceFlowNodeRecognizeHint',head:'voiceSettingsRecognizeHead',body:'voiceSettingsRecognizeBody'},
+    send:{btn:'voiceFlowNodeSend',hint:'voiceFlowNodeSendHint',head:'voiceSettingsSendHead',body:'voiceSettingsSendBody'}
   };
+
+  /** @type {WeakMap<Element, { step: string, bodies: Element[] }>} */
+  var rootSync = typeof WeakMap!=='undefined' ? new WeakMap() : null;
+  /** @type {WeakMap<Element, ReturnType<typeof createCtrl>>} */
+  var bodyCtrls = typeof WeakMap!=='undefined' ? new WeakMap() : null;
 
   function flowRoot(){
     return $('voiceSettingsFlow');
@@ -19,6 +24,59 @@
     var root=flowRoot();
     if(!root) return null;
     return root.querySelector('[data-voice-subpage="'+step+'"]');
+  }
+
+  function createCtrl(body){
+    var PR=global.OneTonePanelReveal;
+    if(PR&&PR.createPanelReveal) return PR.createPanelReveal(body);
+    // Minimal fallback if panel-reveal missing.
+    return {
+      setOpenInstant:function(head,open){
+        if(!body) return;
+        body.hidden=!open;
+        if(open){ body.removeAttribute('aria-hidden'); try{body.inert=false;}catch(_){ } }
+        else { body.setAttribute('aria-hidden','true'); try{body.inert=true;}catch(_){ } }
+        if(head) head.setAttribute('aria-expanded',open?'true':'false');
+      },
+      closeInstant:function(head,focusTarget){
+        if(focusTarget&&focusTarget.focus&&body&&body.contains(global.document.activeElement)){
+          try{ focusTarget.focus(); }catch(_){}
+        }
+        this.setOpenInstant(head,false);
+      },
+      openReveal:function(head){ this.setOpenInstant(head,true); },
+      cancel:function(){}
+    };
+  }
+
+  function ctrlFor(body){
+    if(!body) return null;
+    if(bodyCtrls){
+      var existing=bodyCtrls.get(body);
+      if(existing) return existing;
+      var c=createCtrl(body);
+      bodyCtrls.set(body,c);
+      return c;
+    }
+    return createCtrl(body);
+  }
+
+  function collectBodies(){
+    var list=[];
+    STEPS.forEach(function(page){
+      var meta=FLOW_NODE_IDS[page];
+      var body=meta&&$(meta.body);
+      if(body) list.push(body);
+    });
+    return list;
+  }
+
+  function bodiesChanged(prevBodies, nextBodies){
+    if(!prevBodies||prevBodies.length!==nextBodies.length) return true;
+    for(var i=0;i<nextBodies.length;i++){
+      if(prevBodies[i]!==nextBodies[i]) return true;
+    }
+    return false;
   }
 
   function resolveStepHints(vm){
@@ -90,22 +148,54 @@
   }
 
   function syncFlowNodes(step){
-    // step cards callers pass step; page state should already match.
     var model=buildVoiceFlowChromeModel();
     if(step) model.activeStep=step;
     applyVoiceFlowChromeHost(model);
   }
 
   function syncActive(step){
+    var root=flowRoot();
+    var nextBodies=collectBodies();
+    var prev=root&&rootSync?rootSync.get(root):null;
+    var remount=!prev||bodiesChanged(prev.bodies, nextBodies);
+    var prevStep=prev?prev.step:null;
+
     STEPS.forEach(function(page){
       var card=stepCard(page);
-      if(!card) return;
+      var meta=FLOW_NODE_IDS[page];
+      if(!card||!meta) return;
       var on=page===step;
       card.classList.toggle('is-active',on);
-      card.setAttribute('aria-expanded',on?'true':'false');
-      var head=card.querySelector('.voice-step-card-head');
-      if(head) head.setAttribute('aria-selected',on?'true':'false');
+      var head=$(meta.head)||card.querySelector('.voice-step-card-head');
+      var body=$(meta.body)||card.querySelector('.flow-step-body');
+      if(head){
+        head.setAttribute('aria-expanded',on?'true':'false');
+        head.setAttribute('aria-selected',on?'true':'false');
+      }
+      if(!body) return;
+      var ctrl=ctrlFor(body);
+      if(!ctrl) return;
+
+      if(remount){
+        ctrl.setOpenInstant(head, on);
+        return;
+      }
+
+      var wasOn=page===prevStep;
+      if(on&&!wasOn){
+        ctrl.openReveal(head);
+      }else if(!on&&wasOn){
+        ctrl.closeInstant(head, head);
+      }else if(on&&body.hidden){
+        ctrl.setOpenInstant(head, true);
+      }else if(!on&&!body.hidden){
+        ctrl.setOpenInstant(head, false);
+      }
     });
+
+    if(root&&rootSync){
+      rootSync.set(root, { step:step, bodies:nextBodies });
+    }
     syncFlowNodes(step);
   }
 
@@ -143,21 +233,14 @@
     if(!flow||flow.dataset.voiceNavBound==='1') return;
     flow.dataset.voiceNavBound='1';
     flow.addEventListener('click',function(e){
-      if(e.target.closest('button,input,select,textarea,a,summary,details,[role="switch"],.voice-sapi-preset,.voice-segment-btn,.keys-trigger-mode-seg,.voice-output-mode-card,.voice-recognize-source-btn,.home-mini-toggle,.mic-device-card,.keys-summary-btn,.control-btn,.voice-fb-action-btn,.voice-mic-change-btn')){
+      if(e.target.closest('input,select,textarea,a,summary,details,[role="switch"],.voice-sapi-preset,.voice-segment-btn,.keys-trigger-mode-seg,.voice-output-mode-card,.voice-recognize-source-btn,.home-mini-toggle,.mic-device-card,.keys-summary-btn,.control-btn,.voice-fb-action-btn,.voice-mic-change-btn')){
         return;
       }
       var head=e.target.closest&&e.target.closest('.voice-step-card-head');
-      var card=head?head.closest('[data-voice-subpage]'):(e.target.closest&&e.target.closest('[data-voice-subpage]'));
-      if(!card||card.classList.contains('is-active-step')) return;
-      e.preventDefault();
-      goToStep(card.getAttribute('data-voice-subpage')||'');
-    });
-    flow.addEventListener('keydown',function(e){
-      if(e.key!=='Enter'&&e.key!==' ') return;
-      var head=e.target.closest&&e.target.closest('.voice-step-card-head');
       if(!head) return;
+      if(e.target.closest('button')&&e.target.closest('button')!==head) return;
       var card=head.closest('[data-voice-subpage]');
-      if(!card||card.classList.contains('is-active-step')) return;
+      if(!card) return;
       e.preventDefault();
       goToStep(card.getAttribute('data-voice-subpage')||'');
     });
@@ -180,7 +263,6 @@
     bind:bind,
     render:render,
     syncActive:syncActive,
-    // P6d：flow nodes / hints chrome
     buildVoiceFlowChromeModel:buildVoiceFlowChromeModel
   };
 })((typeof window!=='undefined')?window:globalThis);

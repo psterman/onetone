@@ -796,6 +796,11 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     setRecording('none');
     hooks().save();
     hooks().render();
+    try{
+      var Motion=global.OneToneMotion;
+      var trigBtn=$('btnRecordTrigger');
+      if(Motion&&Motion.playOnce&&trigBtn) Motion.playOnce(trigBtn,'ot-sparkle-once');
+    }catch(_){}
   notifyOnboardingCapture('trigger',{
       mode:'trigger',
       mappingId:m.id,
@@ -892,6 +897,11 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     hooks().resetTargetCapture();
     hooks().save();
     hooks().render();
+    try{
+      var Motion=global.OneToneMotion;
+      var tgtBtn=$('btnRecordTarget');
+      if(Motion&&Motion.playOnce&&tgtBtn) Motion.playOnce(tgtBtn,'ot-sparkle-once');
+    }catch(_){}
     notifyOnboardingCapture('target',{
       mode:'target',
       mappingId:m.id,

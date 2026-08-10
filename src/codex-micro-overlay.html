@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Codex Micro</title>
   <link rel="stylesheet" href="css/codex-micro-overlay.css" />
+  <link rel="stylesheet" href="css/motion.css" />
+  <script src="js/core/motion.js"></script>
+  <script src="js/core/agent-status-edge.js"></script>
   <script src="js/features/agent/usage-format.js"></script>
 </head>
 <body>
@@ -1254,13 +1257,50 @@
       if(!keyHoverActive) setKeyCaption('', '');
     }
 
+    // Entity-keyed status edge memory (not DOM data-status — remount-safe).
+    var agentStatusMemory = Object.create(null);
+
+    function agentSurfaceKey(el){
+      var kind=String(el&&el.getAttribute('data-agent')||'').trim()||'unknown';
+      var surface='overlay';
+      try{
+        if(el.closest&&el.closest('#overlayMini')) surface='mini';
+        else if(el.closest&&(el.closest('#padAgentBar')||el.closest('.soft-pad-agent-bar'))) surface='overlay';
+      }catch(_){}
+      return surface+':'+kind;
+    }
+
+    function applyAgentStatusEdge(el, nextState, row){
+      var Edge=window.OneToneAgentStatusEdge;
+      var key=agentSurfaceKey(el);
+      var next=Edge&&Edge.normalizeStatus?Edge.normalizeStatus(nextState):String(nextState||'idle').trim().toLowerCase()||'idle';
+      if(next==='error') next='failed';
+      var meta=Edge&&Edge.metaFromRow?Edge.metaFromRow(row):{sequence:null,timestamp:null};
+      var prev=agentStatusMemory[key]||null;
+      var decision=Edge&&Edge.decideAgentStatusEdge
+        ?Edge.decideAgentStatusEdge(prev, next, meta)
+        :{accepted:true,stateChanged:!!(prev&&prev.warmed&&prev.status!==next),nextMemory:{status:next,sequence:meta.sequence,timestamp:meta.timestamp,warmed:true}};
+      if(decision.accepted&&decision.nextMemory){
+        agentStatusMemory[key]=decision.nextMemory;
+      }
+      return decision;
+    }
+
+    function playAgentChipEdge(el, state){
+      var Motion=window.OneToneMotion;
+      if(!Motion||typeof Motion.playOnce!=='function'||!el) return;
+      var target=el.querySelector('.overlay-mini__agent-dot, .soft-pad-agent-bar__dot')||el;
+      var next=String(state||'').trim().toLowerCase();
+      if(next==='error') next='failed';
+      if(next==='done'||next==='needs_input') Motion.playOnce(target,'ot-sparkle-once');
+      else if(next==='failed') Motion.playOnce(target,'ot-shake');
+    }
+
     function applyAgentChipEl(el,s,byKind,focus){
       if(!el) return;
       var kind=String(el.getAttribute('data-agent')||'');
       var row=byKind[kind]||{};
       var lightsOn = !!(row.lightsEnabled || row.lights_enabled);
-      el.hidden = !lightsOn;
-      if (!lightsOn) return;
       var state=String(row.state||'idle').trim().toLowerCase()||'idle';
       var activeState=(state==='running'||state==='needs_input'||state==='done'||state==='failed'||state==='error');
       // Fallback: when usage rail/model rows lag behind, derive Claude chip state
@@ -1277,30 +1317,45 @@
           state='needs_input';
         }
       }
-      var model=String(row.model||'').trim();
-      var confidence=String(row.modelConfidence||row.model_confidence||'').trim();
+      // Always sync focus chrome first (not derived from stale row state).
+      el.classList.toggle('is-usage-focus', kind===focus);
+      el.setAttribute('aria-pressed', kind===focus?'true':'false');
+
+      var decision=applyAgentStatusEdge(el, state, row);
+      var Edge=window.OneToneAgentStatusEdge;
+      var plan=Edge&&Edge.planAgentChipProjection
+        ?Edge.planAgentChipProjection({
+          accepted:!(decision&&decision.accepted===false),
+          stateChanged:!!(decision&&decision.stateChanged),
+          lightsOn:lightsOn
+        })
+        :{
+          applyRow:!(decision&&decision.accepted===false),
+          hidden:(decision&&decision.accepted===false)?null:!lightsOn,
+          applyStatusTip:!(decision&&decision.accepted===false)&&lightsOn,
+          playEdge:!(decision&&decision.accepted===false)&&lightsOn&&!!(decision&&decision.stateChanged)
+        };
+      if(!plan.applyRow) return;
+      if(plan.hidden!=null) el.hidden=!!plan.hidden;
+      if(!plan.applyStatusTip) return;
+
       var usage=row.usage||{};
       var label=agentLabel(kind)+'：'+lightStatusLabel(state);
       var tipLines=agentChipTipLines(kind,row,usage,state,s);
       if(kind==='cursor'){
         var built=cursorChipTipText(row,usage,state);
         el.setAttribute('data-status', state);
-        el.classList.toggle('is-usage-focus', kind===focus);
-        el.setAttribute('aria-pressed', kind===focus?'true':'false');
         el.setAttribute('aria-label', built.aria);
         el.removeAttribute('title');
         bindAgentTipHover(el, tipLines);
-        return;
+      }else{
+        var line2=tipLines[1]||'';
+        el.setAttribute('data-status', state);
+        el.setAttribute('aria-label', label+'，'+line2);
+        el.removeAttribute('title');
+        bindAgentTipHover(el, tipLines);
       }
-      var line2=tipLines[1]||'';
-      var tip=tipLines.join('\n');
-      if(tip.length>140) tip=tip.slice(0,137)+'…';
-      el.setAttribute('data-status', state);
-      el.classList.toggle('is-usage-focus', kind===focus);
-      el.setAttribute('aria-pressed', kind===focus?'true':'false');
-      el.setAttribute('aria-label', label+'，'+line2);
-      el.removeAttribute('title');
-      bindAgentTipHover(el, tipLines);
+      if(plan.playEdge) playAgentChipEdge(el, state);
     }
 
     function applyMiniAgentChips(s){

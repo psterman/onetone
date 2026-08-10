@@ -37,7 +37,7 @@ html[data-theme="dark"] .flow-nodes-path-base {
 
 .flow-nodes-path {
   stroke-dasharray: 8 4;
-  animation: flow-desk-dash var(--motion-flow-dash, 1.5s) linear infinite;
+  /* Motion PR3: static dashed path — no infinite dash crawl */
 }
 
 @keyframes flow-desk-dash {

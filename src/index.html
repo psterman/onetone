@@ -30,6 +30,7 @@
   <link rel="stylesheet" href="css/soft-pad-hub.css" />
   <link rel="stylesheet" href="css/qs-mode-matrix.css" />
   <link rel="stylesheet" href="css/typography.css" />
+  <link rel="stylesheet" href="css/motion.css" />
 </head>
 <body>
   <aside class="voice-hang-live is-open" id="voiceHangLivePanel" aria-label="UI hang diagnostics">
@@ -1714,13 +1715,13 @@
               <div id="voiceConfigIsland" class="ot-island"></div>
               <section class="voice-step-stack voice-settings-flow keys-workflow-grid" id="voiceSettingsFlow" aria-label="语音流程">
                   <div class="voice-flow-step habit-flow-step voice-step-card voice-settings-card keys-step-card keys-workflow-col is-clickable voice-wake-root" id="voiceSettingsWakeCard" data-voice-subpage="wake">
-                    <div class="keys-step-card-head flow-step-card-head keys-workflow-col-head voice-step-card-head" role="button" tabindex="0" aria-controls="voiceSettingsWakeBody">
+                    <button type="button" class="keys-step-card-head flow-step-card-head keys-workflow-col-head voice-step-card-head" id="voiceSettingsWakeHead" aria-expanded="true" aria-controls="voiceSettingsWakeBody">
                       <span class="keys-workflow-col-tag" id="voiceSubtabWakeLbl">怎么开启打字？</span>
                       <div class="keys-workflow-col-subhead">
                         <span class="home-key-map-step-label voice-subtab-hint" id="voiceSubtabWakeHint"></span>
                       </div>
-                    </div>
-                    <div class="flow-step-body keys-step-body voice-wake-stack" id="voiceSettingsWakeBody" role="tabpanel" aria-labelledby="voiceFlowNodeWake">
+                    </button>
+                    <div class="flow-step-body keys-step-body voice-wake-stack" id="voiceSettingsWakeBody" role="region" aria-labelledby="voiceSettingsWakeHead">
                     <header class="voice-step-page-head sr-only" id="voiceWakePageHead">
                       <h3 class="voice-step-page-title" id="voiceWakePageTitle">怎么开启打字？</h3>
                       <p class="voice-step-page-sub" id="voiceWakePageSub">设置唤醒口令；说出后开始听写</p>
@@ -1844,13 +1845,13 @@
                   </div>
                   <div class="keys-workflow-arrow voice-workflow-arrow" aria-hidden="true"><span class="keys-workflow-arrow-icon">→</span></div>
                   <div class="voice-flow-step habit-flow-step voice-step-card voice-settings-card keys-step-card keys-workflow-col is-clickable" id="voiceSettingsEndPhraseCard" data-voice-subpage="recognize">
-                    <div class="keys-step-card-head flow-step-card-head keys-workflow-col-head voice-step-card-head" role="button" tabindex="0" aria-controls="voiceSettingsRecognizeBody">
+                    <button type="button" class="keys-step-card-head flow-step-card-head keys-workflow-col-head voice-step-card-head" id="voiceSettingsRecognizeHead" aria-expanded="false" aria-controls="voiceSettingsRecognizeBody">
                       <span class="keys-workflow-col-tag" id="voiceSubtabRecognizeLbl">说错了想结束？</span>
                       <div class="keys-workflow-col-subhead">
                         <span class="home-key-map-step-label voice-subtab-hint" id="voiceSubtabRecognizeHint"></span>
                       </div>
-                    </div>
-                    <div class="flow-step-body keys-step-body voice-recognize-stack" id="voiceSettingsRecognizeBody" role="tabpanel" aria-labelledby="voiceFlowNodeRecognize">
+                    </button>
+                    <div class="flow-step-body keys-step-body voice-recognize-stack" id="voiceSettingsRecognizeBody" role="region" aria-labelledby="voiceSettingsRecognizeHead">
                     <header class="voice-step-page-head" id="voiceRecognizePageHead">
                       <h3 class="voice-step-page-title" id="voiceRecognizePageTitle">说错了想结束？</h3>
                       <p class="voice-step-page-sub" id="voiceRecognizePageSub">取消会清空；完成会锁字并停下</p>
@@ -2105,13 +2106,13 @@
                   </div>
                   <div class="keys-workflow-arrow voice-workflow-arrow" aria-hidden="true"><span class="keys-workflow-arrow-icon">→</span></div>
                   <div class="voice-flow-step habit-flow-step voice-step-card voice-settings-card keys-step-card keys-workflow-col is-clickable" id="voiceSettingsAutoCard" data-voice-subpage="send">
-                    <div class="keys-step-card-head flow-step-card-head keys-workflow-col-head voice-step-card-head" role="button" tabindex="0" aria-controls="voiceSettingsSendBody">
+                    <button type="button" class="keys-step-card-head flow-step-card-head keys-workflow-col-head voice-step-card-head" id="voiceSettingsSendHead" aria-expanded="false" aria-controls="voiceSettingsSendBody">
                       <span class="keys-workflow-col-tag" id="voiceSubtabSendLbl">说完怎么发出去？</span>
                       <div class="keys-workflow-col-subhead">
                         <span class="home-key-map-step-label voice-subtab-hint" id="voiceSubtabSendHint"></span>
                       </div>
-                    </div>
-                    <div class="flow-step-body keys-step-body" id="voiceSettingsSendBody" role="tabpanel" aria-labelledby="voiceFlowNodeSend">
+                    </button>
+                    <div class="flow-step-body keys-step-body" id="voiceSettingsSendBody" role="region" aria-labelledby="voiceSettingsSendHead">
                     <header class="voice-step-page-head" id="voiceSendPageHead">
                       <h3 class="voice-step-page-title" id="voiceSendPageTitle">说完怎么发出去？</h3>
                       <p class="voice-step-page-sub" id="voiceSendPageSub">不确定就选「自己按回车」——最稳妥</p>
@@ -4252,6 +4253,9 @@
   <script src="js/onboarding.js"></script>
   <script src="js/phrase-practice.js"></script>
   <script src="js/core/dom.js"></script>
+  <script src="js/core/motion.js"></script>
+  <script src="js/core/agent-status-edge.js"></script>
+  <script src="js/core/panel-reveal.js"></script>
   <script src="js/core/state.js"></script>
   <script src="js/core/i18n.js?v=20260705-icons"></script>
   <script src="js/voice-model-labels.js"></script>

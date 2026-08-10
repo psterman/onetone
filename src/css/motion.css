@@ -1,0 +1,100 @@
+/* OneTone shared motion tokens + one-shot utilities.
+   Loaded by index.html AND codex-micro-overlay.html (after business CSS).
+   Do NOT retarget app.css --dur-* / --motion-pulse here. */
+
+/* --- Token segment --- */
+:root {
+  --motion-duration-enter: 200ms;
+  --motion-duration-status: 120ms; /* sparkle / done one-shots only */
+  --motion-duration-shake: 260ms;
+  --motion-duration-pulse: 1.8s;
+  --motion-ease-spring: cubic-bezier(0.22, 1.2, 0.36, 1);
+  --motion-enter-y: 8px;
+}
+
+/* Mirror constants in src/js/core/motion.js FALLBACK_MS — keep in sync */
+
+/* --- Keyframes + utility segment --- */
+@keyframes ot-status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@keyframes ot-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+}
+
+@keyframes ot-sparkle-once {
+  0% { transform: scale(1); opacity: 1; }
+  40% { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes ot-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-enter-y));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ot-status-pulse {
+  animation-name: ot-status-pulse;
+  animation-duration: var(--motion-duration-pulse);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.ot-shake {
+  animation-name: ot-shake;
+  animation-duration: var(--motion-duration-shake);
+  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
+}
+
+.ot-sparkle-once {
+  animation-name: ot-sparkle-once;
+  animation-duration: var(--motion-duration-status);
+  animation-timing-function: var(--motion-ease-spring);
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
+}
+
+.ot-enter {
+  animation-name: ot-enter;
+  animation-duration: var(--motion-duration-enter);
+  animation-timing-function: var(--motion-ease-spring);
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
+}
+
+.ot-press:active {
+  transform: scale(0.97);
+  transition-property: transform;
+  transition-duration: var(--dur-press, 120ms);
+  transition-timing-function: cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ot-enter,
+  .ot-shake,
+  .ot-sparkle-once,
+  .ot-press,
+  .ot-status-pulse,
+  .ot-sparkle-once::before,
+  .ot-sparkle-once::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .ot-press:active {
+    transform: none !important;
+  }
+}

@@ -192,6 +192,10 @@ fn main() {
     println!("cargo:rerun-if-changed=../src/index.html");
     println!("cargo:rerun-if-changed=../src/codex-micro-overlay.html");
     println!("cargo:rerun-if-changed=../src/css/codex-micro-overlay.css");
+    println!("cargo:rerun-if-changed=../src/css/motion.css");
+    println!("cargo:rerun-if-changed=../src/js/core/motion.js");
+    println!("cargo:rerun-if-changed=../src/js/core/agent-status-edge.js");
+    println!("cargo:rerun-if-changed=../src/js/core/panel-reveal.js");
 
     tauri_build::try_build(
         tauri_build::Attributes::new()

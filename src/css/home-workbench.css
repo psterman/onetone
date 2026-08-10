@@ -1525,12 +1525,16 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
 }
 
 .wb-hero.is-mode-voice.is-live .wb-hero-wave span {
-  animation: wb-slow-harmonic 2.2s ease-in-out infinite;
+  /* Motion PR3: single soft pulse on live only — no multi-bar harmonic */
+  animation: none;
+  opacity: calc(0.4 + var(--wb-mic-level, 0.2) * 0.6);
+  transform: scaleY(calc(0.55 + var(--wb-mic-level, 0.2) * 0.7));
 }
 
 .wb-hero.is-mode-keys.is-live .wb-hero-wave span,
 .wb-hero.is-mode-keys:has(.wb-hero-orb:hover) .wb-hero-wave span {
-  animation: wb-keyboard-dot-pulse 2s ease-in-out infinite;
+  animation: none;
+  opacity: 0.55;
 }
 
 /* 摄像头模式：柔和青系波纹 */
@@ -1546,8 +1550,9 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
 
 .wb-hero.is-mode-camera.is-live .wb-hero-wave span,
 .wb-hero.is-mode-camera:has(.wb-hero-orb:hover) .wb-hero-wave span {
-  animation: wb-slow-harmonic 2.4s ease-in-out infinite;
+  animation: none;
   background: color-mix(in srgb, var(--wb-cyan) 70%, #14b8a6);
+  opacity: calc(0.35 + var(--wb-mic-level, 0.15) * 0.5);
 }
 
 .wb-hero-wave span:nth-child(1)  { animation-delay: 0.10s; }
@@ -1599,7 +1604,8 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
 }
 
 .wb-hero.is-live .wb-hero-ripple {
-  animation: wb-elegant-ripple 3s infinite cubic-bezier(0.16, 1, 0.3, 1);
+  animation: none;
+  opacity: 0.35;
 }
 
 @keyframes wb-elegant-ripple {
