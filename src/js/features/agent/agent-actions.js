@@ -1,11 +1,13 @@
 /**
- * AgentAction catalog (mirrors Rust). Architecture only — not shown as jargon in UI.
- * User-facing copy uses capability labels (召唤 Codex / 开始说话 / …).
+ * AgentAction helpers + Soft Pad slots.
+ * Semantic dotted catalog / aliases / feature gates: Rust is source of truth
+ * (`cmd_semantic_action_catalog`). This file keeps slot templates + legacy ACTION
+ * rows for bindings until edit surfaces write dotted ids; hydrate via fetchSemanticCatalog().
  *
  * Display groups:
  * - essentialSlots (5): UI「常用」展示分组
  * - globalSafeSlots (3): 全局默认 enabled（防误触）
- * 场景内再启用完整 5 项 essentials。
+ * 场景内再启用完整 5 项 essentials.
  */
 (function (global) {
   'use strict';
@@ -319,6 +321,97 @@
     });
   }
 
+  /** Cached Rust catalog (source of truth). Null until hydrate. */
+  var _semanticCatalog = null;
+
+  var ALIAS_TO_CANONICAL = {
+    startDictation: 'input.start',
+    cancel: 'input.cancel',
+    openAgent: 'agent.focus',
+    focusComposer: 'agent.focus'
+  };
+
+  function resolveCanonicalActionId(raw, sendMode) {
+    var id = String(raw || '').trim();
+    if (id === 'stopOrSendDictation') {
+      return String(sendMode || '').toLowerCase() === 'auto' ? 'input.send' : 'input.commit';
+    }
+    return ALIAS_TO_CANONICAL[id] || id;
+  }
+
+  function hydrateSemanticCatalog(dto) {
+    if (!dto || typeof dto !== 'object') return null;
+    _semanticCatalog = dto;
+    return dto;
+  }
+
+  function fetchSemanticCatalog() {
+    var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
+    if (!invoke) return Promise.resolve(_semanticCatalog);
+    return Promise.resolve(invoke('cmd_semantic_action_catalog'))
+      .then(function (dto) {
+        return hydrateSemanticCatalog(dto);
+      })
+      .catch(function () {
+        return _semanticCatalog;
+      });
+  }
+
+  function semanticCatalog() {
+    return _semanticCatalog;
+  }
+
+  function featureDynamicContextActions() {
+    return !!(
+      _semanticCatalog && _semanticCatalog.featureDynamicContextActions
+    );
+  }
+
+  function featureActionPickerUi() {
+    return !!(_semanticCatalog && _semanticCatalog.featureActionPickerUi);
+  }
+
+  function routeSemanticAction(opts) {
+    opts = opts || {};
+    var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
+    if (!invoke) {
+      return Promise.resolve({
+        status: 'failed',
+        reasonCode: 'no_invoke',
+        actionId: opts.actionId || ''
+      });
+    }
+    return Promise.resolve(
+      invoke('cmd_semantic_action_route', {
+        actionId: opts.actionId,
+        sourceChannel: opts.sourceChannel || 'key',
+        mappingId: opts.mappingId || null,
+        providerId: opts.providerId != null ? opts.providerId : null,
+        confirmationId: opts.confirmationId || null,
+        slotId: opts.slotId || null,
+        args: opts.args || null
+      })
+    ).catch(function (err) {
+      return {
+        status: 'failed',
+        reasonCode: 'input_failed',
+        detail: err && err.message ? err.message : String(err || 'invoke_failed'),
+        actionId: opts.actionId || ''
+      };
+    });
+  }
+
+  // Boot: pull Rust catalog when IPC is ready (non-blocking).
+  try {
+    if (global.document && global.document.addEventListener) {
+      global.document.addEventListener('DOMContentLoaded', function () {
+        fetchSemanticCatalog();
+      });
+    } else {
+      fetchSemanticCatalog();
+    }
+  } catch (_) {}
+
   global.OneToneAgentActions = {
     TEMPLATE_ID: TEMPLATE_ID,
     PROVIDER_ID: PROVIDER_ID,
@@ -348,6 +441,13 @@
     insertTextForSlot: insertTextForSlot,
     slotSubForDisplay: slotSubForDisplay,
     displayActionForSlot: displayActionForSlot,
-    execute: execute
+    execute: execute,
+    resolveCanonicalActionId: resolveCanonicalActionId,
+    fetchSemanticCatalog: fetchSemanticCatalog,
+    hydrateSemanticCatalog: hydrateSemanticCatalog,
+    semanticCatalog: semanticCatalog,
+    featureDynamicContextActions: featureDynamicContextActions,
+    featureActionPickerUi: featureActionPickerUi,
+    routeSemanticAction: routeSemanticAction
   };
 })(typeof window !== 'undefined' ? window : globalThis);

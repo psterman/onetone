@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-semantic-action-options"
+description = "Enables the cmd_semantic_action_options command without any pre-configured scope."
+commands.allow = ["cmd_semantic_action_options"]
+
+[[permission]]
+identifier = "deny-cmd-semantic-action-options"
+description = "Denies the cmd_semantic_action_options command without any pre-configured scope."
+commands.deny = ["cmd_semantic_action_options"]

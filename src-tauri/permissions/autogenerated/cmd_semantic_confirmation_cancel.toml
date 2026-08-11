@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-semantic-confirmation-cancel"
+description = "Enables the cmd_semantic_confirmation_cancel command without any pre-configured scope."
+commands.allow = ["cmd_semantic_confirmation_cancel"]
+
+[[permission]]
+identifier = "deny-cmd-semantic-confirmation-cancel"
+description = "Denies the cmd_semantic_confirmation_cancel command without any pre-configured scope."
+commands.deny = ["cmd_semantic_confirmation_cancel"]

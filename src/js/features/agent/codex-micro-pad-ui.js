@@ -5593,7 +5593,10 @@
     softPadPreviewMapping = m;
     ensureSoftPadPreviewDelegate(host);
     if (!handoff) host.hidden = false;
-    if (!opts.forceFull && remountSoftPadPreviewShell(host, m)) return;
+    if (!opts.forceFull && remountSoftPadPreviewShell(host, m)) {
+      applySoftPadPendingNav(m);
+      return;
+    }
     var skin = canonicalizePadSkin(pad && pad.skin);
     host.innerHTML =
       '<div class="codex-micro-pad soft-pad-preview" data-pad-skin="' + esc(skin) + '">' +
@@ -5619,14 +5622,75 @@
       ? (softPadLayoutFocusKeyId || (editDraft && editDraft.microKeyId) || '')
       : '');
     bindSoftPadPreviewCaption(host);
+    applySoftPadPendingNav(m);
   }
 
   function softPadPanelChanged(m, opts) {
     if (opts && typeof opts.onChanged === 'function') {
       try { opts.onChanged(m, opts.panel || null, opts); } catch (_) {}
+      applySoftPadPendingNav(m);
       return;
     }
     notifyLinkedUi(m);
+    applySoftPadPendingNav(m);
+  }
+
+  function applySoftPadPendingNav(m) {
+    var nav = global.OneToneActionNav;
+    if (!nav || !nav.peekPendingNav || !nav.consumePendingNav) return;
+    var pending = nav.peekPendingNav();
+    if (!pending || pending.channel !== 'softPad') return;
+    if (m && m.id && pending.mappingId && pending.mappingId !== m.id) return;
+    pending = nav.consumePendingNav();
+    if (!pending || !pending.actionId) return;
+    var mapping = m;
+    if (!mapping || mapping.id !== pending.mappingId) {
+      var st = global.OneToneState || {};
+      var cfg = st.cfg || st.config;
+      var list = (cfg && cfg.mappings) || [];
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].id === pending.mappingId) {
+          mapping = list[i];
+          break;
+        }
+      }
+    }
+    if (!mapping) return;
+    setTimeout(function () {
+      var keyId = (pending.bindingRef && String(pending.bindingRef).indexOf('semantic:') !== 0)
+        ? pending.bindingRef
+        : 'F1';
+      // Prefill: open keycap editor if possible; else open shared picker.
+      if (typeof openEditKeycap === 'function') {
+        openEditKeycap(mapping, keyId, { mode: softPadPreviewOnLayout() ? 'inline' : 'modal' });
+      }
+      if (global.OneToneSemanticActionPicker) {
+        global.OneToneSemanticActionPicker.open({
+          mappingId: mapping.id,
+          channel: 'softPad',
+          placement: 'softPad',
+          currentActionId: pending.actionId,
+          onSelect: function (sel) {
+            if (!sel || !sel.actionId) return;
+            var adapters = global.OneToneActionBindingAdapters;
+            if (adapters && adapters.softPad) {
+              adapters.softPad
+                .upsert(mapping.id, sel.actionId, { microKeyId: keyId }, null)
+                .then(function (res) {
+                  if (editDraft) {
+                    editDraft.slotId = (res && res.slotId) ||
+                      ('semantic:softPad:' + sel.actionId);
+                    commitEditKeycapDraft({ keepOpen: true, quiet: true });
+                  }
+                })
+                .catch(function (err) {
+                  toast(String(err && err.message ? err.message : err));
+                });
+            }
+          }
+        });
+      }
+    }, 0);
   }
 
   /** Layout subpage — tools idle + inline editor host; no profile/enhance UI. */
@@ -8816,6 +8880,51 @@
     if (!host || !editDraft) return;
     host.innerHTML = '';
     if (slotSel) slotSel.innerHTML = '';
+    var A = global.OneToneAgentActions;
+    if (A && A.featureActionPickerUi && A.featureActionPickerUi() && global.OneToneSemanticActionPicker) {
+      var pickBtn = document.createElement('button');
+      pickBtn.type = 'button';
+      pickBtn.className = 'micro-hw-modal__cap-card micro-hw-modal__cap-card--sap';
+      pickBtn.textContent = t('codexMicroPickSemantic', '从语义目录选择…');
+      pickBtn.addEventListener('click', function () {
+        global.OneToneSemanticActionPicker.open({
+          mappingId: m && m.id,
+          channel: 'softPad',
+          placement: 'softPad',
+          onSelect: function (sel) {
+            if (!sel || !sel.actionId) return;
+            var adapters = global.OneToneActionBindingAdapters;
+            var microKeyId = editDraft && editDraft.microKeyId;
+            function applySlot(sid) {
+              editDraft.slotId = sid;
+              maybeAutoSuggestIcon();
+              syncHiddenSlotSelect();
+              renderCapabilityList(m);
+              commitEditKeycapDraft({ keepOpen: true, quiet: true });
+            }
+            if (adapters && adapters.softPad && adapters.softPad.upsert) {
+              adapters.softPad
+                .upsert(m.id, sel.actionId, { microKeyId: microKeyId || '' }, null)
+                .then(function (res) {
+                  applySlot((res && res.slotId) || (global.OneToneSemanticActionStore
+                    ? global.OneToneSemanticActionStore.semanticSlotId('softPad', sel.actionId)
+                    : 'semantic:softPad:' + sel.actionId));
+                })
+                .catch(function (err) {
+                  toast(String(err && err.message ? err.message : err));
+                });
+              return;
+            }
+            var sid =
+              (global.OneToneSemanticActionStore &&
+                global.OneToneSemanticActionStore.semanticSlotId('softPad', sel.actionId)) ||
+              ('semantic:softPad:' + sel.actionId);
+            applySlot(sid);
+          }
+        });
+      });
+      host.appendChild(pickBtn);
+    }
     var opts = allSlotOptions(m).concat([{ id: '', label: '' }]);
     opts.forEach(function (o) {
       var id = String(o.id || '');

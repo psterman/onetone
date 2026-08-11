@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-action-binding-views"
+description = "Enables the cmd_action_binding_views command without any pre-configured scope."
+commands.allow = ["cmd_action_binding_views"]
+
+[[permission]]
+identifier = "deny-cmd-action-binding-views"
+description = "Denies the cmd_action_binding_views command without any pre-configured scope."
+commands.deny = ["cmd_action_binding_views"]

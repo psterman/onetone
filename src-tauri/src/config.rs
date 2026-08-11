@@ -1487,7 +1487,7 @@ pub struct AgentBinding {
     pub slot_id: String,
     #[serde(default)]
     pub action_id: String,
-    /// "key" | "voice" | "camera"
+    /// "key" | "voice" | "camera" | "softPad"
     #[serde(default)]
     pub trigger_type: String,
     /// Chord, phrase, or camera bind key (e.g. deliberateBlink).

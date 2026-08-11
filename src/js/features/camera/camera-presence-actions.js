@@ -342,11 +342,25 @@
 
   function normalizeAction(v){
     var s=String(v||'none').trim();
-    // #4b Send Guard：视觉绑定永不接受 send-class 动作。
-    if(isSendClassAction(s)) return 'none';
-    if(isAgentActionToken(s)){
-      var id=s.slice(6).trim();
-      if(isSendClassAction('agent:'+id)) return 'none';
+    // Legacy Send Guard only — bare send/submit/stopOrSend*. Formal catalogue IDs go to Options+Route.
+    if(isLegacySendToken(s)) return 'none';
+    if(isAgentActionToken(s)||isDottedSemanticId(s)){
+      var id=isAgentActionToken(s)?s.slice(6).trim():s;
+      if(isLegacySendToken(id)||isLegacySendToken('agent:'+id)) return 'none';
+      var store=global.OneToneSemanticActionStore;
+      var dotted=id.indexOf('.')>=0;
+      if(dotted){
+        // Fail closed without catalog hydrate for formal catalogue ids.
+        if(!store||!store.catalog||!store.catalog()) return 'none';
+        if(store.isSemanticBindableOnChannel&&store.isSemanticBindableOnChannel(id,'camera')){
+          return isAgentActionToken(s)?('agent:'+id):id;
+        }
+        return 'none';
+      }
+      // Legacy non-dotted agent: handler ids (cancel, startDictation, …).
+      if(store&&store.catalog&&store.catalog()&&store.isSemanticBindableOnChannel&&store.isSemanticBindableOnChannel(id,'camera')){
+        return 'agent:'+id;
+      }
       var A=global.OneToneAgentActions;
       if(A&&A.actionById&&A.actionById(id)) return 'agent:'+id;
       return 'none';
@@ -354,16 +368,29 @@
     return ACTIONS[s]?s:'none';
   }
 
-  /** #4b：产品态 Send Guard（pendingAction 延后执行 ≠ 发送确认）。 */
-  function isSendClassAction(action){
+  function isDottedSemanticId(action){
+    var s=String(action||'');
+    return s.indexOf('.')>0&&s.indexOf('agent:')!==0&&!ACTIONS[s];
+  }
+
+  /** Legacy Send Guard: bare tokens only. Formal input.send / agent.approve are NOT here. */
+  function isLegacySendToken(action){
     var s=String(action||'').trim().toLowerCase();
     if(!s||s==='none') return false;
     if(s==='send'||s==='submit'||s==='stoporsend'||s==='stoporsenddictation') return true;
     if(s.indexOf('agent:')===0){
       var id=s.slice(6);
-      return id==='stoporsenddictation'||id==='send'||id==='submit'||id.indexOf('send')>=0;
+      // Only legacy handler ids — not dotted catalogue.
+      return id==='stoporsenddictation'||id==='send'||id==='submit'||id==='stoporsend';
     }
-    return s.indexOf('send')>=0||s.indexOf('submit')>=0;
+    // Bare aliases without dots
+    if(s.indexOf('.')>=0) return false;
+    return s==='send'||s==='submit'||s==='stoporsend'||s==='stoporsenddictation';
+  }
+
+  /** @deprecated name kept for tests/UI — now legacy-only. */
+  function isSendClassAction(action){
+    return isLegacySendToken(action);
   }
 
   function buildCameraSendGuardModel(){
@@ -737,6 +764,74 @@
     m.cameraOverride=isEmptyCameraOverride(ov)?null:ov;
     scheduleScenarioCameraSave();
     return true;
+  }
+
+  function mappingByIdForCamera(mappingId){
+    var id=String(mappingId||'').trim();
+    if(!id||!coreApi()||!coreApi().byId) return null;
+    return coreApi().byId(id);
+  }
+
+  function applyCameraOverridePatchToMapping(m,partial){
+    if(!m) return false;
+    var base=basePresencePrefs();
+    var ov=m.cameraOverride&&typeof m.cameraOverride==='object'?Object.assign({},m.cameraOverride):{};
+    ['onAway','onReturn','shakeHead','deliberateBlink','openPalm','okHand','fist','wave'].forEach(function(k){
+      if(partial[k]===undefined) return;
+      var v=normalizeAction(partial[k]);
+      if(v===base[k]) delete ov[k];
+      else ov[k]=v;
+    });
+    if(partial.triggers&&typeof partial.triggers==='object'){
+      var baseTr=base.triggers||{};
+      var ovTr=ov.triggers&&typeof ov.triggers==='object'?Object.assign({},ov.triggers):{};
+      ['away','shake','blink','openPalm','okHand','fist','wave'].forEach(function(k){
+        if(partial.triggers[k]===undefined) return;
+        var v=!!partial.triggers[k];
+        if(v===!!baseTr[k]) delete ovTr[k];
+        else ovTr[k]=v;
+      });
+      if(Object.keys(ovTr).length) ov.triggers=ovTr;
+      else delete ov.triggers;
+    }
+    m.cameraOverride=isEmptyCameraOverride(ov)?null:ov;
+    return true;
+  }
+
+  /** Preset-safe: write mapping.cameraOverride only — never global cameraPrefs. */
+  function persistBindActionMappingScoped(mappingId,bindKey,actionToken){
+    var key=String(bindKey||'').trim();
+    if(!key||BIND_KEYS.indexOf(key)<0) return Promise.reject(new Error('bad_bind_key'));
+    if(isLegacySendToken(actionToken)) return Promise.reject(new Error('send_guard'));
+    var m=mappingByIdForCamera(mappingId);
+    if(!m) return Promise.reject(new Error('no_mapping'));
+    var raw=String(actionToken||'').trim();
+    var actionId=raw.indexOf('agent:')===0?raw.slice(6):raw;
+    var store=global.OneToneSemanticActionStore;
+    var finish=function(action){
+      var patch={};
+      patch[key]=action;
+      if(!applyCameraOverridePatchToMapping(m,patch)){
+        return Promise.reject(new Error('camera_override_failed'));
+      }
+      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync){
+        return global.OneToneConfigPersist.saveAsync().then(function(){ return action; });
+      }
+      return Promise.resolve(action);
+    };
+    if(ACTIONS[raw]||raw==='none'){
+      return finish(normalizeAction(raw));
+    }
+    if(!store||!store.assertBindable){
+      return Promise.reject(new Error('options_unavailable'));
+    }
+    return store.assertBindable(mappingId,'camera',actionId).then(function(res){
+      if(!res||!res.ok) return Promise.reject(new Error((res&&res.reason)||'not_bindable'));
+      var action=normalizeAction(raw.indexOf('agent:')===0?raw:('agent:'+actionId));
+      if(action==='none') action=normalizeAction(actionId);
+      if(action==='none') return Promise.reject(new Error('normalize_rejected'));
+      return finish(action);
+    });
   }
 
   function isCameraPreviewLive(){
@@ -1644,14 +1739,64 @@
       return ['none','resumeVoice','privacyScreen'];
     }
     var base=['none','pressEsc','pressCtrlI','privacyScreen','pauseVoice','resumeVoice','lowPowerMode'];
+    var store=global.OneToneSemanticActionStore;
     var A=global.OneToneAgentActions;
-    if(A&&A.cameraRecommendedActionIds){
+    // Prefer semantic catalog for camera-bindable ids (incl. pendingConfirmation actions).
+    if(store&&store.catalog){
+      var cat=store.catalog();
+      var entries=cat&&cat.entries?cat.entries:[];
+      for(var i=0;i<entries.length;i++){
+        var e=entries[i];
+        if(!e||!e.implemented) continue;
+        if(e.channels&&e.channels.indexOf('camera')<0) continue;
+        if(isLegacySendToken(e.id)||isLegacySendToken('agent:'+e.id)) continue;
+        var tok=A&&A.agentActionToken?A.agentActionToken(e.id):('agent:'+e.id);
+        if(base.indexOf(tok)<0) base.push(tok);
+        if(base.indexOf(e.id)<0) base.push(e.id);
+      }
+    }else if(A&&A.cameraRecommendedActionIds){
       var ids=A.cameraRecommendedActionIds();
-      for(var i=0;i<ids.length;i++){
-        base.push(A.agentActionToken(ids[i]));
+      for(var j=0;j<ids.length;j++){
+        base.push(A.agentActionToken(ids[j]));
       }
     }
     return base;
+  }
+
+  /** Persist one bind-key action via existing override / prefs path. Options-authoritative. */
+  function persistBindAction(mappingId,bindKey,actionToken){
+    var key=String(bindKey||'').trim();
+    if(!key||BIND_KEYS.indexOf(key)<0) return Promise.reject(new Error('bad_bind_key'));
+    if(isLegacySendToken(actionToken)) return Promise.reject(new Error('send_guard'));
+    var raw=String(actionToken||'').trim();
+    var actionId=raw.indexOf('agent:')===0?raw.slice(6):raw;
+    var store=global.OneToneSemanticActionStore;
+    var finish=function(action){
+      var st0=global.OneToneState;
+      var prev=st0?st0.selectedMappingId:null;
+      if(st0&&mappingId) st0.selectedMappingId=mappingId;
+      try{
+        var patch={};
+        patch[key]=action;
+        persistPresencePrefs(patch);
+      }finally{
+        if(st0&&prev!=null) st0.selectedMappingId=prev;
+      }
+      return action;
+    };
+    if(ACTIONS[raw]||raw==='none'){
+      return Promise.resolve(finish(normalizeAction(raw)));
+    }
+    if(!store||!store.assertBindable){
+      return Promise.reject(new Error('options_unavailable'));
+    }
+    return store.assertBindable(mappingId, 'camera', actionId).then(function(res){
+      if(!res||!res.ok) return Promise.reject(new Error((res&&res.reason)||'not_bindable'));
+      var action=normalizeAction(raw.indexOf('agent:')===0?raw:('agent:'+actionId));
+      if(action==='none') action=normalizeAction(actionId);
+      if(action==='none') return Promise.reject(new Error('normalize_rejected'));
+      return finish(action);
+    });
   }
 
   function isActionAllowedForKey(key,action){
@@ -1895,16 +2040,56 @@
     st.lastSkipReason='';
     st.pendingPreviewLine='';
 
-    if(isAgentActionToken(action)){
+    var semanticId=null;
+    if(isAgentActionToken(action)) semanticId=action.slice(6);
+    else if(isDottedSemanticId(action)) semanticId=action;
+    if(semanticId){
       var A=global.OneToneAgentActions;
-      if(!A||!A.execute) return Promise.resolve({ok:false,reason:'unsupported_action'});
+      if(!A) return Promise.resolve({ok:false,reason:'unsupported_action'});
       var mappingId='';
       try{
         var ui=global.OneToneState&&global.OneToneState.ui;
         mappingId=String((ui&&ui.habitScenarioReturnId)||'');
+        if(!mappingId&&global.OneToneState&&global.OneToneState.state){
+          mappingId=String(global.OneToneState.state.selectedMappingId||'');
+        }
       }catch(_){}
+      var routeFn=A.routeSemanticAction;
+      if(typeof routeFn==='function'){
+        return routeFn({
+          actionId:semanticId,
+          sourceChannel:'camera',
+          mappingId:mappingId||null
+        }).then(function(res){
+          res=res&&typeof res==='object'?res:{status:'failed',reasonCode:'input_failed'};
+          var status=String(res.status||'');
+          if(status==='pendingConfirmation'){
+            toast(t('cameraNeedOtherEntry','需其他入口确认后执行'));
+            return {
+              ok:false,
+              reason:res.reasonCode||'camera_requires_confirmation',
+              visionOutcome:'pendingConfirm',
+              confirmationId:res.confirmationId||null,
+              actionId:res.actionId||semanticId,
+              injectedEnter:false
+            };
+          }
+          return {
+            ok:status==='executed',
+            reason:res.reasonCode||null,
+            detail:res.detail||null,
+            status:status,
+            actionId:res.actionId||semanticId,
+            injectedEnter:false
+          };
+        }).catch(function(err){
+          logPresence('agent route fail '+action+' '+(err&&err.message?err.message:String(err||'')));
+          return {ok:false,reason:'invoke_failed',detail:err&&err.message?err.message:String(err||'')};
+        });
+      }
+      if(!A.execute) return Promise.resolve({ok:false,reason:'unsupported_action'});
       return A.execute({
-        actionId:action.slice(6),
+        actionId:semanticId,
         mappingId:mappingId||null
       }).then(function(res){
         return res&&typeof res==='object'?res:{ok:false,reason:'input_failed'};
@@ -1986,10 +2171,10 @@
 
   function dispatchAction(action,source,opts){
     opts=opts||{};
-    // #4b：视觉路径禁止 send-class（normalize 也会压成 none）。
-    if(isSendClassAction(action)){
+    // Legacy bare send tokens only — formal catalogue goes through Route.
+    if(isLegacySendToken(action)){
       toast(t('cameraProSendGuardRuleShort','不允许单视觉直送'));
-      logPresence('block send-class '+String(source||'')+' action='+String(action||''));
+      logPresence('block legacy-send '+String(source||'')+' action='+String(action||''));
       return Promise.resolve({ok:false,reason:'send_guard',visionOutcome:'pendingConfirm'});
     }
     action=normalizeAction(action);
@@ -3002,6 +3187,58 @@
       }
     }
     if(String(sel.value)!==String(cur)) sel.value=cur;
+    // Shared Action Picker entry (gated).
+    var A=global.OneToneAgentActions;
+    if(A&&A.featureActionPickerUi&&A.featureActionPickerUi()){
+      var pick=row.querySelector('.camera-sap-pick');
+      if(!pick){
+        pick=document.createElement('button');
+        pick.type='button';
+        pick.className='camera-sap-pick';
+        pick.textContent=t('cameraPickSemantic','选择语义动作…');
+        row.appendChild(pick);
+      }
+      pick.onclick=function(){
+        var mid=(global.OneToneState&&global.OneToneState.selectedMappingId)||'';
+        if(!global.OneToneSemanticActionPicker) return;
+        global.OneToneSemanticActionPicker.open({
+          mappingId:mid,
+          channel:'camera',
+          placement:'camera',
+          currentActionId:cur.indexOf('agent:')===0?cur.slice(6):(cur.indexOf('.')>0?cur:cur),
+          onSelect:function(sel){
+            if(!sel||!sel.actionId) return;
+            var token=(A.agentActionToken?A.agentActionToken(sel.actionId):('agent:'+sel.actionId));
+            var adapters=global.OneToneActionBindingAdapters;
+            var after=function(saved){
+              var finalTok=saved||token;
+              selEl=row.querySelector('select.camera-action-select');
+              if(selEl){
+                var found=false;
+                for(var oi=0;oi<selEl.options.length;oi++){
+                  if(selEl.options[oi].value===finalTok||selEl.options[oi].value===sel.actionId){found=true;break;}
+                }
+                if(!found){
+                  var o=document.createElement('option');
+                  o.value=finalTok;
+                  o.textContent=sel.actionId;
+                  selEl.appendChild(o);
+                }
+                selEl.value=finalTok;
+              }
+              ensureActionSelect(key,finalTok);
+            };
+            if(adapters&&adapters.camera&&adapters.camera.upsert){
+              adapters.camera.upsert(mid,sel.actionId,{bindKey:key,actionToken:token},key)
+                .then(after)
+                .catch(function(){ after(token); });
+            }else{
+              persistBindAction(mid,key,token).then(after);
+            }
+          }
+        });
+      };
+    }
   }
 
   /** Keep tile helper for hidden legacy bind list; primary UI uses select. */
@@ -3419,8 +3656,51 @@
       if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.syncInactiveHint){
         try{ global.OneToneCameraWorkflow.syncInactiveHint(); }catch(_){}
       }
+      applyCameraPendingNav();
     }finally{
       st.uiSyncing=false;
+    }
+  }
+
+  function applyCameraPendingNav(){
+    var nav=global.OneToneActionNav;
+    if(!nav||!nav.peekPendingNav||!nav.consumePendingNav) return;
+    var pending=nav.peekPendingNav();
+    if(!pending||pending.channel!=='camera') return;
+    var mid=(global.OneToneState&&global.OneToneState.selectedMappingId)||'';
+    if(pending.mappingId&&mid&&pending.mappingId!==mid) return;
+    pending=nav.consumePendingNav();
+    if(!pending) return;
+    var bindKey=pending.bindingRef||'shakeHead';
+    if(BIND_KEYS.indexOf(bindKey)<0) bindKey='shakeHead';
+    // Focus the bind row + open picker prefilled.
+    var row=document.querySelector('[data-camera-bind-key="'+bindKey+'"]');
+    if(row&&row.scrollIntoView){
+      try{ row.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(_){}
+    }
+    if(pending.actionId&&global.OneToneSemanticActionPicker){
+      var A=global.OneToneAgentActions;
+      setTimeout(function(){
+        global.OneToneSemanticActionPicker.open({
+          mappingId:mid||pending.mappingId,
+          channel:'camera',
+          placement:'camera',
+          currentActionId:pending.actionId,
+          onSelect:function(sel){
+            if(!sel||!sel.actionId) return;
+            var token=(A&&A.agentActionToken)?A.agentActionToken(sel.actionId):('agent:'+sel.actionId);
+            var adapters=global.OneToneActionBindingAdapters;
+            if(adapters&&adapters.camera){
+              adapters.camera.upsert(mid||pending.mappingId,sel.actionId,{bindKey:bindKey,actionToken:token},bindKey)
+                .then(function(){ ensureActionSelect(bindKey,token); });
+            }else{
+              persistBindAction(mid||pending.mappingId,bindKey,token).then(function(){
+                ensureActionSelect(bindKey,token);
+              });
+            }
+          }
+        });
+      },0);
     }
   }
 
@@ -3844,13 +4124,9 @@
     syncBlinkBaselineUi:syncBlinkBaselineUi,
     setOnStateChange:function(fn){ st.onStateChange=typeof fn==='function'?fn:null; },
     allowedActionsForBindKey:allowedActionsForBindKey,
-    /** Test / debug only — mutate runtime presence for gate checks. */
-    _testSetPresence:function(v){ st.presence=String(v||'unknown'); },
-    _testSetPausedByPresence:function(on){
-      st.pausedByPresence=!!on;
-      st.wasPausedBeforeAway=false;
-    },
-    _testSetLastKeyAt:function(ms){ st.lastKeyAt=Number(ms)||0; },
+    persistBindAction:persistBindAction,
+    persistBindActionMappingScoped:persistBindActionMappingScoped,
+    normalizeAction:normalizeAction,
     MID_RISK_DELAY_MS:MID_RISK_DELAY_MS,
     DEFAULT_AWAY_MS:DEFAULT_AWAY_MS,
     DEFAULT_PRESENT_MS:DEFAULT_PRESENT_MS,
@@ -3862,6 +4138,34 @@
     DETECT_AWAY_MS:DETECT_AWAY_MS,
     DETECT_HOME_MS:DETECT_HOME_MS
   };
+
+  // E2E/test helpers — hidden in production until the E2E flag is explicitly enabled.
+  function attachE2eHelpers(){
+    var api=global.OneToneCameraPresenceActions;
+    if(!api||api._testSetPresence) return;
+    api._testSetPresence=function(v){ st.presence=String(v||'unknown'); };
+    api._testSetPausedByPresence=function(on){
+      st.pausedByPresence=!!on;
+      st.wasPausedBeforeAway=false;
+    };
+    api._testSetLastKeyAt=function(ms){ st.lastKeyAt=Number(ms)||0; };
+  }
+  if (global.__ONETONE_E2E__ === true) {
+    attachE2eHelpers();
+  } else {
+    try{
+      var e2eValue=global.__ONETONE_E2E__;
+      Object.defineProperty(global,'__ONETONE_E2E__',{
+        configurable:true,
+        enumerable:true,
+        get:function(){ return e2eValue; },
+        set:function(v){
+          e2eValue=v;
+          if(v===true) attachE2eHelpers();
+        }
+      });
+    }catch(_){}
+  }
 
   if(document.readyState==='loading'){
     document.addEventListener('DOMContentLoaded',init);

@@ -178,7 +178,7 @@ const ACTIONS: &[AgentActionDef] = &[
             en: "Open and focus the Codex composer",
         },
         risk_level: RiskLevel::Safe,
-        allowed_triggers: &["key", "voice", "camera"],
+        allowed_triggers: &["key", "voice", "camera", "softPad"],
         default_execution_mode: ExecutionMode::Execute,
         default_voice_phrases: LocalizedText {
             zh: "打开 Codex",
@@ -199,7 +199,7 @@ const ACTIONS: &[AgentActionDef] = &[
             en: "Focus the Codex composer without starting voice",
         },
         risk_level: RiskLevel::Safe,
-        allowed_triggers: &["key", "voice", "camera"],
+        allowed_triggers: &["key", "voice", "camera", "softPad"],
         default_execution_mode: ExecutionMode::Execute,
         default_voice_phrases: LocalizedText {
             zh: "聚焦输入框",
@@ -220,7 +220,7 @@ const ACTIONS: &[AgentActionDef] = &[
             en: "Send Codex Start dictation shortcut Ctrl+Shift+D",
         },
         risk_level: RiskLevel::Confirm,
-        allowed_triggers: &["key", "voice", "camera"],
+        allowed_triggers: &["key", "voice", "camera", "softPad"],
         default_execution_mode: ExecutionMode::Execute,
         default_voice_phrases: LocalizedText {
             zh: "开始说话",
@@ -241,7 +241,7 @@ const ACTIONS: &[AgentActionDef] = &[
             en: "Stop or send dictation using current finish policy",
         },
         risk_level: RiskLevel::Confirm,
-        allowed_triggers: &["key", "voice", "camera"],
+        allowed_triggers: &["key", "voice", "camera", "softPad"],
         default_execution_mode: ExecutionMode::Execute,
         default_voice_phrases: LocalizedText {
             zh: "结束输入",
@@ -262,7 +262,7 @@ const ACTIONS: &[AgentActionDef] = &[
             en: "Send Escape to cancel",
         },
         risk_level: RiskLevel::Safe,
-        allowed_triggers: &["key", "voice", "camera"],
+        allowed_triggers: &["key", "voice", "camera", "softPad"],
         default_execution_mode: ExecutionMode::Execute,
         default_voice_phrases: LocalizedText {
             zh: "取消",
@@ -283,7 +283,7 @@ const ACTIONS: &[AgentActionDef] = &[
             en: "Start a new chat context",
         },
         risk_level: RiskLevel::Confirm,
-        allowed_triggers: &["key", "voice", "camera"],
+        allowed_triggers: &["key", "voice", "camera", "softPad"],
         default_execution_mode: ExecutionMode::Execute,
         default_voice_phrases: LocalizedText {
             zh: "新建对话",
@@ -367,7 +367,7 @@ const ACTIONS: &[AgentActionDef] = &[
             en: "Open the command palette",
         },
         risk_level: RiskLevel::Safe,
-        allowed_triggers: &["key", "voice", "camera"],
+        allowed_triggers: &["key", "voice", "camera", "softPad"],
         default_execution_mode: ExecutionMode::Execute,
         default_voice_phrases: LocalizedText {
             zh: "打开命令菜单",
@@ -598,7 +598,7 @@ const ACTIONS: &[AgentActionDef] = &[
             en: "Insert /status into the composer (no Enter)",
         },
         risk_level: RiskLevel::Safe,
-        allowed_triggers: &["key", "voice", "camera"],
+        allowed_triggers: &["key", "voice", "camera", "softPad"],
         default_execution_mode: ExecutionMode::InsertOnly,
         default_voice_phrases: LocalizedText {
             zh: "查看状态",

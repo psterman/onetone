@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use tauri::{Emitter, Manager};
 
-use crate::agent::{execute_agent_action, AgentExecuteRequest};
 use crate::app_chat_workflow;
 use crate::app_identity;
 use crate::config::{
@@ -132,23 +131,25 @@ fn try_dispatch_app_scenario_agent(
         ))
     };
     let (provider_id, action_id, slot_id, execution_mode, activation_scope) = plan?;
-    let result = execute_agent_action(
+    let _ = (execution_mode, activation_scope, provider_id);
+    // Build a minimal binding view for unified router ingress.
+    let binding = crate::config::AgentBinding {
+        slot_id: slot_id.clone(),
+        action_id: action_id.clone(),
+        trigger_type: "key".into(),
+        trigger_binding: String::new(),
+        enabled: true,
+        execution_mode: None,
+        activation_scope: String::new(),
+    };
+    let result = crate::agent::dispatch::dispatch_semantic_binding(
         state,
         window,
-        AgentExecuteRequest {
-            provider_id,
-            action_id,
-            mapping_id: Some(app_mapping_id.to_string()),
-            slot_id: if slot_id.is_empty() {
-                None
-            } else {
-                Some(slot_id)
-            },
-            execution_mode,
-            activation_scope,
-        },
+        app_mapping_id,
+        &binding,
+        crate::agent::ActionChannel::Key,
     );
-    Some(result.ok)
+    Some(result.ok.unwrap_or(result.status == "executed"))
 }
 
 fn dispatch_app_workflow(

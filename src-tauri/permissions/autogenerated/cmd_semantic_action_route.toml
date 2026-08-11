@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-semantic-action-route"
+description = "Enables the cmd_semantic_action_route command without any pre-configured scope."
+commands.allow = ["cmd_semantic_action_route"]
+
+[[permission]]
+identifier = "deny-cmd-semantic-action-route"
+description = "Denies the cmd_semantic_action_route command without any pre-configured scope."
+commands.deny = ["cmd_semantic_action_route"]

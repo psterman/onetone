@@ -154,8 +154,17 @@ pub fn ingest_codex_app_server_event(event: &str, session_id: &str, request_id: 
         clear(AgentKind::Codex, session, request);
         return;
     }
-    if lower.contains("approval")
-        || lower.contains("requestuserinput")
+    if lower.contains("approval") {
+        raise_needs_input(
+            AgentKind::Codex,
+            session,
+            request,
+            AttentionCause::Permission,
+            SignalSource::AppServer,
+        );
+        return;
+    }
+    if lower.contains("requestuserinput")
         || lower.contains("request_user_input")
         || lower == "needs_input"
     {

@@ -76,6 +76,7 @@ fn build_from_samples_returns_command() {
             app_boost: true,
             display_text: "",
             current_command_id: None,
+            kind: None,
         },
     );
     assert!(built.ok, "{:?}", built.message_key);

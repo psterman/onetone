@@ -23,7 +23,7 @@ pub struct ProviderActionOutcome {
 }
 
 impl ProviderActionOutcome {
-    fn ok_mode(mode: ExecutionMode) -> Self {
+    pub fn ok_mode(mode: ExecutionMode) -> Self {
         Self {
             ok: true,
             reason: None,
@@ -32,7 +32,7 @@ impl ProviderActionOutcome {
         }
     }
 
-    fn err(reason: &str, detail: impl Into<Option<String>>, mode: ExecutionMode) -> Self {
+    pub fn err(reason: &str, detail: impl Into<Option<String>>, mode: ExecutionMode) -> Self {
         Self {
             ok: false,
             reason: Some(reason.to_string()),
@@ -106,16 +106,24 @@ impl CodexProviderAdapter {
         }
 
         match action_id {
-            "openAgent" | "focusComposer" => Self::focus_only(state, window, duration_ms, mode),
+            "openAgent" | "focusComposer" | "agent.focus" => {
+                Self::focus_only(state, window, duration_ms, mode)
+            }
             "claudeModel" => Self::claude_model(state, window, duration_ms, mode),
-            "startDictation" => {
+            "startDictation" | "input.start" => {
                 // Hold-to-talk via press_chord(Ctrl+Shift+D). Do NOT pulse focus_then_hotkey —
                 // Soft Pad tap + SendInput echo + FG thrash caused 循环假死风暴.
                 Self::start_dictation(state, window, mapping_id, duration_ms, mode)
             }
             "stopOrSendDictation" => Self::stop_or_send(state, window, mode),
-            "cancel" => Self::send_hotkey("Esc", duration_ms, mode),
-            "newThread" => Self::focus_then_hotkey(state, window, "Ctrl+N", duration_ms, mode),
+            // Explicit input.commit / input.send must go through Layer1 native (Never/Force).
+            // Do not accept them here — would reintroduce AutoConfig confusion.
+            "cancel" | "input.cancel" | "agent.interrupt" | "agent.reject" => {
+                Self::send_hotkey("Esc", duration_ms, mode)
+            }
+            "newThread" | "session.new" => {
+                Self::focus_then_hotkey(state, window, "Ctrl+N", duration_ms, mode)
+            }
             "undo" => Self::focus_then_hotkey(state, window, "Ctrl+Z", duration_ms, mode),
             "quickSearch" => Self::focus_then_hotkey(state, window, "Ctrl+F", duration_ms, mode),
             "quickChat" => Self::focus_then_hotkey(state, window, "Ctrl+Alt+N", duration_ms, mode),
@@ -141,16 +149,22 @@ impl CodexProviderAdapter {
                 Self::focus_then_hotkey(state, window, "Ctrl+L", duration_ms, mode)
             }
             "status"
+            | "agent.status"
             | "plan"
             | "review"
             | "permissions"
             | "switchAgent"
             | "switchModel"
             | "appsOrPlugins" => {
+                let slash_id = if action_id == "agent.status" {
+                    "status"
+                } else {
+                    action_id
+                };
                 let text = slot_id
                     .and_then(slot_by_id)
                     .and_then(|s| s.insert_text)
-                    .or_else(|| default_slash(action_id))
+                    .or_else(|| default_slash(slash_id))
                     .unwrap_or("");
                 Self::insert_slash(state, window, text, duration_ms, mode)
             }

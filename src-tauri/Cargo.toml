@@ -20,6 +20,8 @@ default = ["vosk-engine", "kws-engine"]
 vosk-engine = ["dep:vosk"]
 # Experimental sherpa-onnx keyword spotting (requires KWS model under resources/kws/).
 kws-engine = ["dep:sherpa-onnx"]
+# B-final acceptance E2E runner — never included in production/release builds.
+bfinal_e2e = []
 
 [dependencies]
 tauri = { version = "2", features = ["tray-icon"] }

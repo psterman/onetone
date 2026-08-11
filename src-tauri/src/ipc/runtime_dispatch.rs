@@ -470,27 +470,23 @@ fn execute_agent_binding(
     state: &Arc<AppState>,
     window: &tauri::WebviewWindow,
     mapping_id: &str,
-    provider_id: &str,
+    _provider_id: &str,
     action_id: &str,
     slot_id: &str,
-    execution_mode: Option<String>,
-    activation_scope: Option<String>,
+    _execution_mode: Option<String>,
+    _activation_scope: Option<String>,
 ) {
-    let _ = crate::agent::execute_agent_action(
+    let _ = crate::agent::dispatch::dispatch_semantic_action_ids(
         state,
         window,
-        crate::agent::AgentExecuteRequest {
-            provider_id: provider_id.to_string(),
-            action_id: action_id.to_string(),
-            mapping_id: Some(mapping_id.to_string()),
-            slot_id: if slot_id.is_empty() {
-                None
-            } else {
-                Some(slot_id.to_string())
-            },
-            execution_mode,
-            activation_scope,
+        mapping_id,
+        action_id,
+        if slot_id.is_empty() {
+            None
+        } else {
+            Some(slot_id)
         },
+        crate::agent::ActionChannel::SoftPad,
     );
 }
 

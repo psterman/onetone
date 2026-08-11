@@ -6,8 +6,12 @@ use serde::Deserialize;
 use tauri::WebviewWindow;
 
 use crate::agent::actions::{action_by_id, ActivationScope, ExecutionMode};
-use crate::agent::providers::CodexProviderAdapter;
-use crate::agent::templates::{slot_by_id, CODEX_PROVIDER_ID};
+use crate::agent::providers::{
+    ClaudeProviderAdapter, CodexProviderAdapter, CursorProviderAdapter,
+};
+use crate::agent::templates::{
+    slot_by_id, CLAUDE_PROVIDER_ID, CODEX_PROVIDER_ID, CURSOR_PROVIDER_ID,
+};
 use crate::AppState;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -138,15 +142,31 @@ pub fn execute_agent_action(
                 resolved_mode,
                 resolved_scope,
             );
-            AgentExecuteResult {
-                ok: out.ok,
-                provider_id,
-                action_id,
-                slot_id,
-                reason: out.reason,
-                detail: out.detail,
-                execution_mode: Some(out.execution_mode),
-            }
+            map_provider_out(provider_id, action_id, slot_id, out)
+        }
+        id if id == CLAUDE_PROVIDER_ID => {
+            let out = ClaudeProviderAdapter::execute(
+                state,
+                window,
+                &action_id,
+                slot_id.as_deref(),
+                req.mapping_id.as_deref(),
+                resolved_mode,
+                resolved_scope,
+            );
+            map_provider_out(provider_id, action_id, slot_id, out)
+        }
+        id if id == CURSOR_PROVIDER_ID => {
+            let out = CursorProviderAdapter::execute(
+                state,
+                window,
+                &action_id,
+                slot_id.as_deref(),
+                req.mapping_id.as_deref(),
+                resolved_mode,
+                resolved_scope,
+            );
+            map_provider_out(provider_id, action_id, slot_id, out)
         }
         _ => AgentExecuteResult::fail(
             &provider_id,
@@ -156,6 +176,23 @@ pub fn execute_agent_action(
             Some(format!("unknown provider {provider_id}")),
             resolved_mode.map(|m| m.as_str().to_string()),
         ),
+    }
+}
+
+fn map_provider_out(
+    provider_id: String,
+    action_id: String,
+    slot_id: Option<String>,
+    out: crate::agent::providers::ProviderActionOutcome,
+) -> AgentExecuteResult {
+    AgentExecuteResult {
+        ok: out.ok,
+        provider_id,
+        action_id,
+        slot_id,
+        reason: out.reason,
+        detail: out.detail,
+        execution_mode: Some(out.execution_mode),
     }
 }
 

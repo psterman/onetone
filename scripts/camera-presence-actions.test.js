@@ -23,6 +23,7 @@ global.document={
   }
 };
 global.window=global;
+global.__ONETONE_E2E__=true; // must be set before require so conditional exports are included
 global.performance={now:function(){ return Date.now(); }};
 global.OneToneDom={$:function(){ return null; }};
 global.OneToneState={state:{config:{cameraPrefs:{presenceActions:{enabled:false}}}},ui:{},runtime:{paused:false}};
@@ -401,6 +402,42 @@ Api.dispatchAction('send','blink').then(function(r){
     'agent:openAgent',
     'blocked gate falls through to cameraPrefs'
   );
+
+  // B-final: dotted semantic ids survive normalize; Camera may bind send (Pending).
+  // Legacy Send Guard still blocks bare send/submit/stopOrSend*.
+  global.OneToneSemanticActionStore={
+    entryMeta:function(id){
+      var rows={
+        'input.cancel':{id:'input.cancel',implemented:true,channels:['camera','key'],requiresSecondChannelFrom:[]},
+        'input.send':{id:'input.send',implemented:true,channels:['key','camera'],requiresSecondChannelFrom:['camera']}
+      };
+      return rows[id]||null;
+    },
+    isSemanticBindableOnChannel:function(id,ch){
+      var m=this.entryMeta(id);
+      if(!m||!m.implemented) return false;
+      return m.channels.indexOf(ch)>=0;
+    },
+    catalog:function(){
+      return {entries:[
+        {id:'input.cancel',implemented:true,channels:['camera','key'],requiresSecondChannelFrom:[]},
+        {id:'input.send',implemented:true,channels:['key','camera'],requiresSecondChannelFrom:['camera']}
+      ]};
+    }
+  };
+  assert.equal(typeof Api.normalizeAction,'function');
+  assert.strictEqual(Api.normalizeAction('agent:input.cancel'),'agent:input.cancel');
+  assert.strictEqual(Api.normalizeAction('input.cancel'),'input.cancel');
+  assert.strictEqual(Api.normalizeAction('agent:input.send'),'agent:input.send');
+  assert.strictEqual(Api.normalizeAction('input.send'),'input.send');
+  assert.strictEqual(Api.normalizeAction('send'),'none','legacy bare send still none');
+  assert.ok(!Api.isSendClassAction('input.send'));
+  assert.ok(Api.isSendClassAction('send'));
+  var allowed=Api.allowedActionsForBindKey('shakeHead');
+  assert.ok(allowed.indexOf('agent:input.cancel')>=0||allowed.indexOf('input.cancel')>=0,
+    'shakeHead allows catalog camera cancel');
+  assert.ok(allowed.indexOf('agent:input.send')>=0||allowed.indexOf('input.send')>=0,
+    'shakeHead allows catalog camera send (pendingConfirmation)');
 
   assert.ok(!listeners.DOMContentLoaded||listeners.DOMContentLoaded.length===1,
     'module may register init listener but tests do not fire it');

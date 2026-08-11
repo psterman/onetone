@@ -905,8 +905,30 @@
               if(w.sapi) hooks().renderVoiceSapiStatus(w.sapi,{liveOnly:true});
               if(w.vosk) hooks().renderVoiceVoskStatus(w.vosk,{liveOnly:true});
             }
-            // Skip React chrome islands on open — mount+idle coincided with ~70s UI_HB_STALL
+            // Skip sync React chrome islands on open — mount+idle coincided with ~70s UI_HB_STALL
             // after settings_park. Strategy lives in voiceConfig (boot-mounted).
+            // Delayed mount (P6b/c/d) after park settles — required drawer wire for island tests.
+            setTimeout(function () {
+              if (voiceOpenStale()) return;
+              try {
+                var mountStatus = global.__otMountVoiceStatusChromeIsland;
+                if (typeof mountStatus === 'function') mountStatus();
+              } catch (e1) {
+                console.error('voice status chrome island mount', e1);
+              }
+              try {
+                var mountTabs = global.__otMountVoiceEngineTabsIsland;
+                if (typeof mountTabs === 'function') mountTabs();
+              } catch (e2) {
+                console.error('voice engine tabs island mount', e2);
+              }
+              try {
+                var mountFlow = global.__otMountVoiceFlowChromeIsland;
+                if (typeof mountFlow === 'function') mountFlow();
+              } catch (e3) {
+                console.error('voice flow chrome island mount', e3);
+              }
+            }, 800);
             if(global.OneToneVoiceSubpages&&typeof global.OneToneVoiceSubpages.setPage==='function'){
               global.OneToneVoiceSubpages.setPage(voiceSubpage,{keepScroll:true});
             }
@@ -951,7 +973,16 @@
                     global.OneToneIpc.invoke('cmd_app_log',{line:'fe voiceWake heavy begin gen='+voiceOpenGen}).catch(function(){});
                   }
                 }catch(_){}
-                // Skip auto acoustic islands — mount piled onto idle 增强页 (~46s 假死).
+                // Acoustic islands: delay past heavy open path (sync mount ~46s stall on 增强页).
+                setTimeout(function () {
+                  if (voiceOpenStale()) return;
+                  try {
+                    var mountAcoustic = global.__otMountVoiceAcousticIslands;
+                    if (typeof mountAcoustic === 'function') mountAcoustic();
+                  } catch (errAc) {
+                    console.error('voice acoustic island mount', errAc);
+                  }
+                }, 1200);
                 voiceHbPhase('voiceOpen:heavy','voiceOpen:modeSwitch');
                 try{
                   hooks().renderVoiceModeSwitch();

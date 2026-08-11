@@ -292,7 +292,7 @@ fn try_dispatch_agent_voice(
     matched_phrase: &str,
 ) -> Option<VoiceWakeDispatchResult> {
     let window = crate::ipc::get_main_window(app)?;
-    let (mapping_id, action_id, slot_id, provider_id, execution_mode, activation_scope) = {
+    let (mapping_id, action_id, slot_id, _provider_id, _execution_mode, _activation_scope) = {
         let cfg = state.cfg.lock();
         let mut found = None;
         for m in cfg.mappings.iter().filter(|m| m.enabled) {
@@ -315,38 +315,24 @@ fn try_dispatch_agent_voice(
         }
         found?
     };
-    let result = crate::agent::execute_agent_action(
+    let result = crate::agent::dispatch::dispatch_semantic_action_ids(
         state,
         &window,
-        crate::agent::AgentExecuteRequest {
-            provider_id: provider_id.clone(),
-            action_id: action_id.clone(),
-            mapping_id: Some(mapping_id.clone()),
-            slot_id: if slot_id.is_empty() {
-                None
-            } else {
-                Some(slot_id.clone())
-            },
-            execution_mode,
-            activation_scope: if activation_scope.is_empty() {
-                None
-            } else {
-                Some(activation_scope)
-            },
+        &mapping_id,
+        &action_id,
+        if slot_id.is_empty() {
+            None
+        } else {
+            Some(slot_id.as_str())
         },
+        crate::agent::ActionChannel::Voice,
     );
     Some(VoiceWakeDispatchResult {
-        ok: result.ok,
-        target_key: action_id,
+        ok: result.ok.unwrap_or(result.status == "executed"),
+        target_key: matched_phrase.to_string(),
         mapping_id,
         used_summon_workflow: false,
-        runtime_label: if result.ok {
-            format!("agent_action:{provider_id}")
-        } else {
-            result
-                .reason
-                .unwrap_or_else(|| "agent_action_failed".into())
-        },
+        runtime_label: format!("semantic:{}", action_id),
     })
 }
 
@@ -1234,6 +1220,16 @@ pub enum CommitPolicy {
     Force,
     Never,
     AutoConfig,
+}
+
+/// Finish active dictation with an explicit commit policy (semantic Layer1 entry).
+pub fn finish_dictation_with_policy(
+    state: &Arc<AppState>,
+    app: Option<&AppHandle>,
+    phrase: &str,
+    policy: CommitPolicy,
+) {
+    finish_dictation_session(state, app, phrase, policy, false);
 }
 
 fn finish_dictation_session(

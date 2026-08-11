@@ -2,6 +2,7 @@
 
 pub mod bridge;
 pub mod model;
+pub mod needs_input_kind;
 pub mod store;
 
 pub use bridge::{
@@ -10,10 +11,10 @@ pub use bridge::{
     raise_onetone_ask,
 };
 pub use model::{AttentionCause, AttentionPublicSnapshot, AttentionState, SignalSource};
-pub use store::{
-    emit_sound_event, project_waiting_kinds, public_snapshot, raise_needs_input, set_recompute_hook,
-    set_sound_hook, RaiseOutcome, MIN_AGENT_TASK_MS,
+pub use needs_input_kind::{
+    kind_from_attention_cause, project_needs_input_kind, NeedsInputKind, NeedsInputKindSnapshot,
 };
-
-#[cfg(test)]
-pub use store::reset_for_test;
+pub use store::{
+    emit_sound_event, project_waiting_kinds, public_snapshot, raise_needs_input, reset_for_test,
+    set_recompute_hook, set_sound_hook, test_lock, RaiseOutcome, MIN_AGENT_TASK_MS,
+};

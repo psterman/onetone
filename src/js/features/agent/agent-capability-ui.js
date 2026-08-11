@@ -516,8 +516,15 @@
     html += '<div class="codex-cap-block" role="region" aria-label="' + esc(title) + '">';
     html += '<div class="codex-cap-head">';
     html += '<span class="codex-cap-label">' + esc(title) + '</span>';
+    if (A && A.featureActionPickerUi && A.featureActionPickerUi()) {
+      html +=
+        '<button type="button" class="codex-cap-sap" data-sap-channel="key">' +
+        esc(t('codexPickSemantic', '选择语义动作…')) +
+        '</button>';
+    }
     html += '<span class="codex-cap-hint">' + esc(hint) + '</span>';
     html += '</div>';
+    html += renderSemanticPresetsStrip(m);
     html += renderCapCards(m, slotsByIds(primaryIds), 'keys');
     if (phase === 'target') {
       html += '<details class="codex-cap-all">';
@@ -533,6 +540,191 @@
     host.hidden = false;
     bindHost(host, m, 'keys');
     applyRecognitionOverlay();
+    var sap = host.querySelector('[data-sap-channel="key"]');
+    if (sap && global.OneToneSemanticActionPicker) {
+      sap.addEventListener('click', function () {
+        openKeySemanticPicker(m, host);
+      });
+    }
+    bindSemanticPresetButtons(host, m);
+    applyPendingNavHighlight(m, 'key', host);
+  }
+
+  function renderSemanticPresetsStrip(m) {
+    var P = global.OneToneSemanticPresets;
+    if (!P || !P.list || !m) return '';
+    var list = P.list();
+    if (!list.length) return '';
+    var html =
+      '<div class="codex-cap-presets" role="group" aria-label="' +
+      esc(t('semanticPresetsTitle', '一键预设')) +
+      '">';
+    html +=
+      '<div class="codex-cap-presets-label">' +
+      esc(t('semanticPresetsTitle', '一键预设')) +
+      '</div>';
+    for (var i = 0; i < list.length; i++) {
+      var p = list[i];
+      html +=
+        '<button type="button" class="codex-cap-preset-btn" data-semantic-preset="' +
+        esc(p.id) +
+        '" title="' +
+        esc(p.descZh || p.descEn || '') +
+        '">' +
+        esc(p.nameZh || p.nameEn || p.id) +
+        '</button>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function bindSemanticPresetButtons(host, m) {
+    if (!host || !m) return;
+    var P = global.OneToneSemanticPresets;
+    if (!P || !P.preview || !P.apply) return;
+    var buttons = host.querySelectorAll('[data-semantic-preset]');
+    for (var i = 0; i < buttons.length; i++) {
+      (function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.getAttribute('data-semantic-preset');
+          P.preview(m.id, id)
+            .then(function (plan) {
+              var lines = [];
+              var applyN = 0;
+              var skipN = 0;
+              var needsKeyN = 0;
+              var overwriteN = 0;
+              (plan.items || []).forEach(function (it) {
+                if (it.status === 'skip') {
+                  skipN++;
+                  lines.push(
+                    '跳过 ' +
+                      it.channel +
+                      ' · ' +
+                      it.actionId +
+                      (it.reason ? ' (' + it.reason + ')' : '')
+                  );
+                } else if (it.status === 'needs_key') {
+                  needsKeyN++;
+                  lines.push(
+                    '需选键位 ' + it.channel + ' · ' + it.actionId + '（不会写入）'
+                  );
+                } else {
+                  applyN++;
+                  if (it.willOverwrite) overwriteN++;
+                  lines.push(
+                    (it.willOverwrite ? '覆盖 ' : '新增 ') +
+                      it.channel +
+                      ' · ' +
+                      it.actionId
+                  );
+                }
+              });
+              var msg =
+                (plan.preset.nameZh || plan.preset.id) +
+                '\n\n将写入 ' +
+                applyN +
+                ' 项' +
+                (overwriteN ? '（其中覆盖 ' + overwriteN + '）' : '') +
+                (needsKeyN ? '，' + needsKeyN + ' 项需选择 Soft Pad 键位（不会自动写入）' : '') +
+                (skipN ? '，跳过 ' + skipN + ' 项（Provider 不支持）' : '') +
+                '\n\n' +
+                lines.join('\n') +
+                '\n\n确认应用？失败将自动恢复。';
+              if (!global.confirm(msg)) return null;
+              return P.apply(m.id, id, { confirmed: true });
+            })
+            .then(function (res) {
+              if (!res) return;
+              var skipMsg = (res.skipped || [])
+                .map(function (s) {
+                  return s.actionId + '@' + s.channel;
+                })
+                .join(', ');
+              var needsKeyN = (res.needsKey || []).length;
+              var msg = '预设已应用';
+              if (needsKeyN) {
+                msg += '，' + needsKeyN + ' 项待选择 Soft Pad 键位';
+              }
+              if (skipMsg) {
+                msg += '（跳过: ' + skipMsg + '）';
+              }
+              toast(msg);
+              try {
+                renderKeysPanel(host, m, 'target');
+              } catch (_) {}
+            })
+            .catch(function (err) {
+              toast('预设失败: ' + (err && err.message ? err.message : err));
+            });
+        });
+      })(buttons[i]);
+    }
+  }
+
+  function openKeySemanticPicker(m, host, prefillActionId) {
+    var nav = global.OneToneActionNav && global.OneToneActionNav.peekPendingNav
+      ? global.OneToneActionNav.peekPendingNav()
+      : null;
+    var current =
+      prefillActionId ||
+      (nav && nav.channel === 'key' && nav.actionId ? nav.actionId : undefined);
+    global.OneToneSemanticActionPicker.open({
+      mappingId: m.id,
+      channel: 'key',
+      placement: 'key',
+      currentActionId: current,
+      onSelect: function (sel) {
+        if (!sel || !sel.actionId) return;
+        var store = global.OneToneSemanticActionStore;
+        var sid = store
+          ? store.semanticSlotId('key', sel.actionId)
+          : 'semantic:key:' + sel.actionId;
+        // Record chord first — no empty binding.
+        var rec = global.OneToneMappingRecording;
+        if (!rec || !rec.startAgentBinding) {
+          var chord = window.prompt(t('codexKeyChordPrompt', '输入快捷键（如 Ctrl+Shift+D）'), '');
+          if (!chord) return;
+          var adapters = global.OneToneActionBindingAdapters;
+          if (adapters && adapters.key) {
+            adapters.key.upsert(m.id, sel.actionId, chord, sid).then(function () {
+              remountKeysHosts(m);
+            });
+          }
+          return;
+        }
+        toast(t('agentCapRecording', '按下快捷键…'));
+        rec.startAgentBinding(m.id, {
+          onDone: function (chord) {
+            var next = String(chord || '').trim();
+            if (!next) return;
+            var adapters = global.OneToneActionBindingAdapters;
+            if (adapters && adapters.key) {
+              adapters.key.upsert(m.id, sel.actionId, next, sid).then(function () {
+                toast(t('codexCapCustomSaved', '已更新快捷键') + ' · ' + next);
+                remountKeysHosts(m);
+              }).catch(function (err) {
+                toast(String(err && err.message ? err.message : err));
+              });
+            }
+          },
+          onCancel: function () {}
+        });
+      }
+    });
+  }
+
+  function applyPendingNavHighlight(m, channel, host) {
+    var nav = global.OneToneActionNav;
+    if (!nav || !nav.consumePendingNav) return;
+    var pending = nav.peekPendingNav && nav.peekPendingNav();
+    if (!pending || pending.channel !== channel || pending.mappingId !== m.id) return;
+    pending = nav.consumePendingNav();
+    if (!pending || !pending.actionId || !global.OneToneSemanticActionPicker) return;
+    setTimeout(function () {
+      if (channel === 'key') openKeySemanticPicker(m, host, pending.actionId);
+      else if (channel === 'voice') openVoiceSemanticPicker(m, host, pending.actionId);
+    }, 0);
   }
 
   function renderVoiceStrip(host, m) {
@@ -542,6 +734,12 @@
     html += '<div class="codex-cap-block" role="region" aria-label="' + esc(t('codexStripVoice', '能力口令')) + '">';
     html += '<div class="codex-cap-head">';
     html += '<span class="codex-cap-label">' + esc(t('codexStripVoice', '能力口令')) + '</span>';
+    if (A && A.featureActionPickerUi && A.featureActionPickerUi()) {
+      html +=
+        '<button type="button" class="codex-cap-sap" data-sap-channel="voice">' +
+        esc(t('codexPickSemantic', '选择语义动作…')) +
+        '</button>';
+    }
     html += '<span class="codex-cap-hint">' + esc(T.hasCodexPack(m)
       ? t('codexCapVoiceReady', '常用能力已准备好 · 可改口令')
       : t('codexCapNeedSeed', '正在准备常用能力…')) + '</span>';
@@ -556,6 +754,39 @@
     host.innerHTML = html;
     host.hidden = false;
     bindHost(host, m, 'voice');
+    var sap = host.querySelector('[data-sap-channel="voice"]');
+    if (sap && global.OneToneSemanticActionPicker) {
+      sap.addEventListener('click', function () {
+        openVoiceSemanticPicker(m, host);
+      });
+    }
+    applyPendingNavHighlight(m, 'voice', host);
+  }
+
+  function openVoiceSemanticPicker(m, host, prefillActionId) {
+    var nav = global.OneToneActionNav && global.OneToneActionNav.peekPendingNav
+      ? global.OneToneActionNav.peekPendingNav()
+      : null;
+    var prefill =
+      prefillActionId ||
+      (nav && nav.channel === 'voice' && nav.actionId ? nav.actionId : undefined);
+    global.OneToneSemanticActionPicker.open({
+      mappingId: m.id,
+      channel: 'voice',
+      placement: 'voice',
+      currentActionId: prefill,
+      onSelect: function (sel) {
+        if (!sel || !sel.actionId) return;
+        var phrase = window.prompt(t('codexVoicePhrasePrompt', '触发口令'), '');
+        if (!phrase) return;
+        var adapters = global.OneToneActionBindingAdapters;
+        if (adapters && adapters.voice) {
+          adapters.voice.upsert(m.id, sel.actionId, phrase, null).then(function () {
+            renderVoiceStrip(host, m);
+          });
+        }
+      }
+    });
   }
 
   function bindHost(host, m, mode) {
@@ -771,6 +1002,36 @@
     return host;
   }
 
+  /** Slim Key strip: shared Picker only (capability cards replaced by Soft Pad jump). */
+  function renderKeysSapStrip(host, m) {
+    if (!host || !m) return;
+    var A = global.OneToneAgentActions;
+    var showPicker = A && A.featureActionPickerUi && A.featureActionPickerUi();
+    if (!showPicker) {
+      hideHost(host);
+      return;
+    }
+    var html = '';
+    html += '<div class="codex-cap-block" role="region" aria-label="' + esc(t('codexCapTargetTitle', '能力快捷键')) + '">';
+    html += '<div class="codex-cap-head">';
+    html += '<span class="codex-cap-label">' + esc(t('codexCapTargetTitle', '能力快捷键')) + '</span>';
+    html +=
+      '<button type="button" class="codex-cap-sap" data-sap-channel="key">' +
+      esc(t('codexPickSemantic', '选择语义动作…')) +
+      '</button>';
+    html += '<span class="codex-cap-hint">' + esc(t('codexCapEditHint', '点按加载推荐键 · 长按录制自定义 · 每个能力需不同按键')) + '</span>';
+    html += '</div></div>';
+    host.innerHTML = html;
+    host.hidden = false;
+    var sap = host.querySelector('[data-sap-channel="key"]');
+    if (sap && global.OneToneSemanticActionPicker) {
+      sap.addEventListener('click', function () {
+        openKeySemanticPicker(m, host);
+      });
+    }
+    applyPendingNavHighlight(m, 'key', host);
+  }
+
   function remountKeysHosts(m) {
     var step = activeKeysStep();
     var targetRow = document.getElementById('habitKeyMapRowTarget');
@@ -801,9 +1062,13 @@
     }
     var T = global.OneToneAgentScenarioTemplate;
     if (T && T.fillEmptyKeyDefaults) T.fillEmptyKeyDefaults(m);
-    // Micro 硬件盘替代能力快捷键卡片；始终隐藏卡片宿主。
-    hideHost(targetHost);
+    // Soft Pad jump owns the pad UI; Key shared Picker lives on targetHost.
     hideHost(finishHost);
+    if (step === 'target' || step === 'trigger') {
+      renderKeysSapStrip(targetHost, m);
+    } else {
+      hideHost(targetHost);
+    }
     if (global.OneToneCodexMicroPadUi && global.OneToneCodexMicroPadUi.ensureHosts) {
       global.OneToneCodexMicroPadUi.ensureHosts(step, m);
     }

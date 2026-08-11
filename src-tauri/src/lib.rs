@@ -19,6 +19,8 @@ mod app_log;
 mod audio_frame_bus;
 mod audio_win;
 mod backdrop;
+#[cfg(feature = "bfinal_e2e")]
+mod bfinal_e2e;
 mod builtin_app_catalog;
 mod camera_capability_probe;
 mod claude_cli_session;
@@ -87,6 +89,40 @@ mod voice_vosk_runtime;
 mod vosk_model_download;
 mod webview_camera_permission;
 mod window_layout;
+
+/// Public façade for semantic action catalog / route / binding projection (integration tests + IPC).
+pub mod semantic_action {
+    pub use crate::agent::binding_view::{
+        project_action_bindings_for_mapping, project_all_action_bindings, ActionBindingView,
+    };
+    pub use crate::agent::layer1_native::{
+        commit_policy_for_raw_action, resolve_input_start_target_from_parts, InputStartTarget,
+    };
+    pub use crate::agent::options::{semantic_action_options, semantic_slot_id};
+    pub use crate::agent::pending_confirm::{
+        cancel as cancel_pending, insert_pending, list_public as list_pending_public, peek_public,
+        reset_for_test as reset_pending_for_test, take_unique_match, take_valid,
+        take_valid_if_action_matches, test_lock as pending_test_lock, PENDING_TTL_SECS,
+    };
+    pub use crate::agent::route::camera_pending_eligible;
+    pub use crate::agent::context_risk::context_risk_gate;
+    pub use crate::agent::semantic::{
+        all_semantic_metas, camera_may_execute_directly, channel_allowed, public_catalog_dto,
+        resolve_canonical_action_id, route_disposition, semantic_meta_by_id, ActionChannel,
+        FinishPolicy, RouteDisposition, ALL_CHANNELS, FEATURE_ACTION_PICKER_UI,
+        FEATURE_DYNAMIC_CONTEXT_ACTIONS, LAYER1_ACTION_IDS, LAYER2_CORE_ACTION_IDS,
+    };
+    pub use crate::agent_attention::{
+        kind_from_attention_cause, project_needs_input_kind, raise_needs_input, reset_for_test,
+        test_lock, AttentionCause, NeedsInputKind, SignalSource,
+    };
+    pub use crate::agent_attention::bridge::ingest_codex_app_server_event;
+    pub use crate::config::{
+        AgentBinding, CameraOverride, CodexMicroPadConfig, CodexMicroPadKeyRoute, VoiceConfig,
+    };
+    pub use crate::soft_pad_runtime::AgentKind;
+    pub use crate::voice_end_runtime::CommitPolicy;
+}
 
 #[cfg(target_os = "windows")]
 mod hotkey_win;
@@ -420,6 +456,8 @@ pub fn run() {
                 "startup",
                 "webview camera permission hook installed",
             );
+            #[cfg(feature = "bfinal_e2e")]
+            bfinal_e2e::maybe_spawn(app.handle().clone(), app_state.clone(), window.clone());
 
             if let Err(err) = app_icon::apply_window_icon(&window) {
                 app_log::log_line(&app_state, "startup", &format!("window icon: {err}"));
@@ -810,6 +848,13 @@ pub fn run() {
             ipc::cmd_physical_trigger,
             ipc::cmd_test_send,
             ipc::cmd_agent_action_execute,
+            ipc::cmd_semantic_action_catalog,
+            ipc::cmd_semantic_action_route,
+            ipc::cmd_semantic_action_options,
+            ipc::cmd_semantic_pending_snapshot,
+            ipc::cmd_semantic_confirmation_cancel,
+            ipc::cmd_action_binding_views,
+            ipc::cmd_needs_input_kind,
             ipc::cmd_mapping_toggle,
             ipc::cmd_mapping_delete,
             ipc::cmd_mapping_duplicate,

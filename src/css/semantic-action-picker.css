@@ -1,0 +1,121 @@
+/* Shared semantic action picker — matches OneTone template-pick language */
+.semantic-action-picker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  background: rgba(12, 14, 18, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.semantic-action-picker-overlay[hidden] {
+  display: none !important;
+}
+.semantic-action-picker-modal {
+  width: min(520px, 100%);
+  max-height: min(72vh, 640px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel, #fff);
+  color: var(--text, #1a1a1a);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.sap-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 8px;
+}
+.sap-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.sap-sub {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+.sap-close {
+  border: 0;
+  background: transparent;
+  font-size: 1.4rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.sap-toolbar {
+  padding: 0 16px 8px;
+}
+.sap-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+.sap-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 16px 8px;
+}
+.sap-cat {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: transparent;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.sap-cat.is-active {
+  background: rgba(0, 0, 0, 0.08);
+  font-weight: 600;
+}
+.sap-list {
+  overflow: auto;
+  padding: 0 8px 12px;
+  flex: 1;
+}
+.sap-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 10px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.sap-item:hover,
+.sap-item:focus {
+  background: rgba(0, 0, 0, 0.05);
+}
+.sap-item.is-current {
+  outline: 1px solid rgba(0, 0, 0, 0.2);
+}
+.sap-item-label {
+  font-weight: 500;
+  flex: 1;
+}
+.sap-item-risk {
+  font-size: 0.7rem;
+  opacity: 0.65;
+  text-transform: uppercase;
+}
+.sap-warn {
+  flex-basis: 100%;
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+.sap-empty {
+  padding: 24px;
+  text-align: center;
+  opacity: 0.7;
+}

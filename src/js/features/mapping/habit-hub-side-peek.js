@@ -183,6 +183,25 @@
     if(title) title.textContent=hubName(m);
     if(sub) sub.textContent=t('habitPeekSub');
     renderProps(m);
+    var actionsBtn=$('habitPeekActionsBtn');
+    if(!actionsBtn){
+      var body=$('habitHubPeekBody');
+      if(body){
+        actionsBtn=document.createElement('button');
+        actionsBtn.type='button';
+        actionsBtn.id='habitPeekActionsBtn';
+        actionsBtn.className='habit-peek-actions-btn';
+        actionsBtn.textContent=t('habitPeekActions','动作与入口');
+        body.insertBefore(actionsBtn, body.firstChild);
+      }
+    }
+    if(actionsBtn){
+      actionsBtn.onclick=function(){
+        close();
+        if(global.OneToneState) global.OneToneState.selectedMappingId=m.id;
+        if(global.OneToneHabitActionsDetail) global.OneToneHabitActionsDetail.open(m.id);
+      };
+    }
   }
 
   function showShell(on){

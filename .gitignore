@@ -26,6 +26,7 @@ voice_input_settings.json
 logs/*.log
 logs/*.json
 logs/*.jsonl
+logs/b-acceptance/
 
 # 本地 AI agent / skills 安装产物
 .agents/

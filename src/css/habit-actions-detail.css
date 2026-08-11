@@ -1,0 +1,52 @@
+.habit-actions-detail {
+  padding: 16px 20px 24px;
+  max-width: 720px;
+}
+.had-header {
+  margin-bottom: 16px;
+}
+.had-back {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 8px;
+  opacity: 0.8;
+}
+.had-title {
+  margin: 0;
+  font-size: 1.25rem;
+}
+.had-sub {
+  margin: 6px 0 0;
+  opacity: 0.7;
+  font-size: 0.9rem;
+}
+.had-row {
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.had-row-title {
+  font-weight: 560;
+  margin-bottom: 8px;
+}
+.had-chip {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: transparent;
+  border-radius: 999px;
+  padding: 4px 10px;
+  margin: 0 6px 6px 0;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.had-add {
+  margin-top: 16px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: transparent;
+  cursor: pointer;
+}
+.had-empty {
+  opacity: 0.7;
+}

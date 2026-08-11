@@ -1,0 +1,49 @@
+.wb-context-actions {
+  margin: 8px 0 4px;
+  max-width: 100%;
+}
+.wb-context-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.wb-context-btn {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: transparent;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.wb-pending-card {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(180, 120, 40, 0.35);
+  background: rgba(255, 196, 80, 0.12);
+}
+.wb-pending-title {
+  margin: 0;
+  font-weight: 600;
+}
+.wb-pending-detail,
+.wb-pending-hint {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+.wb-pending-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.wb-pending-confirm,
+.wb-pending-reject {
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: transparent;
+}
+.wb-pending-confirm {
+  font-weight: 600;
+}

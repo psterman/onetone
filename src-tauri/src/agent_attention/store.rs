@@ -455,15 +455,12 @@ pub fn primary_state_for(agent: AgentKind) -> Option<AttentionState> {
     })
 }
 
-#[cfg(test)]
 static TEST_LOCK: Mutex<()> = Mutex::new(());
 
-#[cfg(test)]
 pub fn test_lock() -> std::sync::MutexGuard<'static, ()> {
     TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-#[cfg(test)]
 pub fn reset_for_test() {
     with_store(|inner| {
         inner.signals.clear();
