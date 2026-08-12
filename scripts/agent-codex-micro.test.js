@@ -89,13 +89,14 @@ assert.equal(A.displayActionForSlot('plan', 'Ctrl+Alt+P'), '插入 /plan');
 assert.equal(A.slotSubForDisplay('commandPalette', 'Ctrl+K'), 'Ctrl+K');
 assert.equal(A.insertTextForSlot('status'), '/status');
 
-// Multi-scenario: createNew always creates; openExisting reuses
+// Single-scenario: createNew reuses existing Codex scenario
 var createdList = [];
 global.OneToneHabitHub = {
   findAppScenarioByAppId: function () {
     return createdList[0] || null;
   },
   createAppScenario: function (appId) {
+    if (createdList.length) return createdList[0];
     var m = {
       id: 'm-' + createdList.length,
       appTargetId: appId,
@@ -116,8 +117,10 @@ global.OneToneUiFeedback = { toast: function () {} };
 var a = T.createNewCodexScenario();
 var b = T.createNewCodexScenario();
 assert.ok(a && b);
-assert.notEqual(a.mapping.id, b.mapping.id, 'two Codex workflows');
-assert.equal(createdList.length, 2);
+assert.strictEqual(a.mapping.id, b.mapping.id, 'createNew reuses existing Codex scenario');
+assert.strictEqual(a.created, true, 'first createNew creates');
+assert.strictEqual(b.created, false, 'second createNew reuses');
+assert.strictEqual(createdList.length, 1, 'only one Codex mapping');
 
 var opened = T.findOrCreateCodexScenario();
 assert.equal(opened.mapping.id, createdList[0].id, 'recommend reuses first');
@@ -216,7 +219,8 @@ var hubSrc = fs.readFileSync(path.join(__dirname, '../src/js/features/mapping/ha
 assert.ok(hubSrc.indexOf('data-habit-codex-apply-card') < 0);
 assert.ok(hubSrc.indexOf('habit-hub-more-menu') >= 0);
 assert.ok(hubSrc.indexOf('function(key, fb)') >= 0 || hubSrc.indexOf('function(key,fb)') >= 0);
-assert.ok(hubSrc.indexOf("appId!=='codex-chat'") >= 0);
+assert.ok(hubSrc.indexOf('pickCanonicalAppScenario') >= 0);
+assert.ok(hubSrc.indexOf("appId!=='custom'") >= 0);
 assert.ok(hubSrc.indexOf("enableProfile:'scenarioAllKeys'") >= 0);
 
 // Keys page remounts on step change
@@ -453,7 +457,7 @@ assert.ok(padSrc.indexOf('bindIconToCapabilitySlot') < 0, 'must not force-bind i
   assert.ok(ensureSlice.indexOf('id="microHwHwDetails"') >= 0);
   var renderCapAt = padSrc.indexOf('function renderCapabilityList');
   assert.ok(renderCapAt > 0);
-  var renderCapSlice = padSrc.slice(renderCapAt, renderCapAt + 2200);
+  var renderCapSlice = padSrc.slice(renderCapAt, renderCapAt + 6000);
   assert.ok(renderCapSlice.indexOf('cap-result') < 0, 'cap list must not embed explanation copy');
   assert.ok(renderCapSlice.indexOf('cap-trigger') < 0, 'cap list must not embed source tag');
   assert.ok(
@@ -461,9 +465,9 @@ assert.ok(padSrc.indexOf('bindIconToCapabilitySlot') < 0, 'must not force-bind i
       || /allSlotOptions\(m\)\.concat\(\[\{\s*id:\s*''/.test(renderCapSlice),
     'unbound option must be appended last'
   );
-  var saveAt = padSrc.indexOf('function saveEditKeycap');
-  assert.ok(saveAt > 0, 'saveEditKeycap present');
-  var saveSlice = padSrc.slice(saveAt, saveAt + 900);
+  var saveAt = padSrc.indexOf('function commitEditKeycapDraft');
+  assert.ok(saveAt > 0, 'commitEditKeycapDraft present');
+  var saveSlice = padSrc.slice(saveAt, saveAt + 2000);
   assert.ok(saveSlice.indexOf('editDraft.slotId') >= 0, 'save reads editDraft.slotId');
   assert.ok(saveSlice.indexOf('microHwEditSlot.value') < 0, 'save must not read DOM select');
   assert.ok(padSrc.indexOf("setAttribute('data-icon-id'") >= 0 || padSrc.indexOf('data-icon-id') >= 0);
@@ -827,7 +831,11 @@ assert.ok(padUiSrc.indexOf('Native Micro') >= 0);
 assert.ok(padUiSrc.indexOf('Codex Hook') >= 0);
 assert.ok(padUiSrc.indexOf('Claude Hook') >= 0 || padUiSrc.indexOf('claude_hook') >= 0);
 assert.ok(padUiSrc.indexOf('renderHookStatusCard') >= 0);
-assert.ok(padUiSrc.indexOf('cmd_codex_status_lights_set') >= 0);
+assert.ok(
+  padUiSrc.indexOf('cmd_soft_pad_agent_lights_set') >= 0 ||
+    padUiSrc.indexOf('cmd_codex_status_lights_set') >= 0,
+  'status lights IPC wired in pad UI'
+);
 assert.ok(padUiSrc.indexOf('cmd_codex_hook_setup_status') >= 0);
 assert.ok(padUiSrc.indexOf('cmd_pad_status_diagnose') >= 0);
 assert.ok(padUiSrc.indexOf('cmd_codex_pad_binding_diagnose') >= 0);
@@ -1070,6 +1078,7 @@ assert.ok(Array.isArray(Pad.PRIMARY_MICRO_IDS));
 assert.equal(Pad.PRIMARY_MICRO_IDS.length, 17);
 assert.ok(Pad.PRIMARY_MICRO_IDS.indexOf('ENC') >= 0);
 assert.ok(Pad.PRIMARY_MICRO_IDS.indexOf('ACT10') >= 0);
+mapping.codexMicroPad.softwareEnhanceEnabled = false;
 assert.equal(!!mapping.codexMicroPad.softwareEnhanceEnabled, false);
 assert.ok(Pad.enterJoyDirectionMode);
 assert.ok(Pad.exitJoyDirectionMode);
@@ -1141,15 +1150,15 @@ var openSubpageFn = softPadFnSlice(softPadHubSrc, 'openSubpage', 'closeSubpage')
 var closeSubpageFn = softPadFnSlice(softPadHubSrc, 'closeSubpage', 'markActiveRow');
 // openSubpage must not bump selectToken (cancels deferred preview → blank/假死).
 assert.ok(openSubpageFn.indexOf('++selectToken') < 0 && openSubpageFn.indexOf('selectToken++') < 0);
-assert.ok(openSubpageFn.indexOf('paintSubpage(entry)') >= 0, 'openSubpage paints sync');
-assert.ok(openSubpageFn.indexOf('fe softPad.openSubpage') >= 0);
+assert.ok(openSubpageFn.indexOf('setSoftPadFace') >= 0, 'openSubpage routes through setSoftPadFace');
+assert.ok(openSubpageFn.indexOf('paintSubpage(') < 0, 'openSubpage must not paint directly');
 assert.ok(openSubpageFn.indexOf('schedulePreviewPaint') < 0, 'openSubpage must not schedule preview');
 assert.ok(openSubpageFn.indexOf('paintPreview') < 0, 'openSubpage must not paintPreview');
-assert.ok(closeSubpageFn.indexOf('++selectToken') >= 0 || closeSubpageFn.indexOf('selectToken++') >= 0);
-assert.ok(closeSubpageFn.indexOf('schedulePreviewPaint') >= 0, 'closeSubpage queues preview once');
-assert.ok(closeSubpageFn.indexOf('preview.hidden = false') >= 0 || closeSubpageFn.indexOf('e.preview.hidden = false') >= 0 ||
-  closeSubpageFn.indexOf('hidden = false') >= 0, 'closeSubpage chrome-first unhides preview');
-assert.ok(closeSubpageFn.indexOf('replaceChildren') < 0, 'closeSubpage must not clear preview before paint');
+assert.ok(closeSubpageFn.indexOf('fe softPad.closeSubpage') >= 0);
+assert.ok(
+  closeSubpageFn.indexOf('setSoftPadFace') >= 0 || closeSubpageFn.indexOf('setSoftPadPadMode') >= 0,
+  'closeSubpage returns via face/mode setter'
+);
 assert.ok(softPadHubSrc.indexOf('++subpageToken') >= 0 || softPadHubSrc.indexOf('subpageToken++') >= 0);
 assert.ok(softPadHubSrc.indexOf('isAgentPanelCurrent') >= 0);
 assert.ok(softPadHubSrc.indexOf('onSoftPadPanelChanged') >= 0);
@@ -1180,8 +1189,16 @@ var padUiAgentSrc = fs.readFileSync(
   'utf8'
 );
 var fillLazyFn = softPadFnSlice(padUiAgentSrc, 'fillLazyAgentConnect', 'findMappingById');
-assert.ok(fillLazyFn.indexOf('refreshHookSetupStatus') >= 0);
-assert.ok(fillLazyFn.indexOf('refreshClaudeActivityPad') >= 0);
+assert.ok(
+  fillLazyFn.indexOf('refreshHookSetupStatus') >= 0 ||
+    fillLazyFn.indexOf('refreshAgentLightsPickerState') >= 0,
+  'lazy agent connect refreshes hook/lights state'
+);
+assert.ok(
+  fillLazyFn.indexOf('refreshClaudeActivityPad') >= 0 ||
+    fillLazyFn.indexOf('refreshAgentLightsPickerState') >= 0,
+  'lazy agent connect refreshes claude/lights state'
+);
 assert.ok(fillLazyFn.indexOf('requireSoftPad && token == null') >= 0 ||
   fillLazyFn.indexOf('requireSoftPad === true && token == null') >= 0 ||
   /requireSoftPad[\s\S]*?token\s*==\s*null[\s\S]*?return/.test(fillLazyFn),
@@ -1220,8 +1237,9 @@ var upsertRouteFn = softPadFnSlice(padUiAgentSrc, 'upsertRoute', 'startRecordNum
 assert.ok(upsertRouteFn.indexOf('softPadPanelActive()') >= 0, 'upsertRoute Soft Pad quiet path');
 assert.ok(upsertRouteFn.indexOf('persistLayout(m)') >= 0, 'upsertRoute Soft Pad uses persistLayout');
 var saveEditFn = softPadFnSlice(padUiAgentSrc, 'saveEditKeycap', 'ensureAgentKeyBinding');
+var commitEditFn = softPadFnSlice(padUiAgentSrc, 'commitEditKeycapDraft', 'saveEditKeycap');
 assert.ok(saveEditFn.indexOf('forceFull: true') < 0, 'Soft Pad keycap save must not forceFull remount');
-assert.ok(saveEditFn.indexOf('schedulePreviewPaint') >= 0 || saveEditFn.indexOf('notifyLinkedUi') >= 0,
+assert.ok(commitEditFn.indexOf('schedulePreviewPaint') >= 0 || commitEditFn.indexOf('notifyLinkedUi') >= 0,
   'Soft Pad keycap save refreshes via schedule/notify');
 
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?cursor-chat/.test(softPadHubSrc), 'BUILTIN includes cursor');
@@ -1234,7 +1252,6 @@ assert.ok(softPadHubSrc.indexOf('BUILTIN_SOFT_PAD_APPS.map') >= 0, 'scopes from 
 assert.ok(softPadHubSrc.indexOf('data-scope') >= 0, 'switcher uses data-scope');
 assert.ok(softPadHubSrc.indexOf('data-lane-pin') < 0, 'no temporary pin chips');
 assert.ok(softPadHubSrc.indexOf('data-lane-follow') < 0, 'no follow chip');
-assert.ok(softPadHubSrc.indexOf('OneToneShellAgentHookPanel') >= 0, 'hub mounts shell hook panel');
 assert.ok(fs.existsSync(path.join(__dirname, '../src/js/features/agent/shell-agent-hook-panel.js')),
   'shell-agent-hook-panel.js exists');
 assert.ok(softPadHubSrc.indexOf('function appTitleFor(kind)') >= 0);

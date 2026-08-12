@@ -21,7 +21,9 @@
   var viewsCache = [];
   /** SoftPad BindingViews for the scoped app mapping (may differ from selected/global). */
   var softPadViewsCache = [];
+  var softPadViewsMappingId = '';
   var bindableByAction = {};
+  var bindableMappingId = '';
   var bound = false;
   var renderToken = 0;
   /** When editing global baseline: appTargetId chosen for SoftPad proxy (e.g. codex-chat). */
@@ -313,6 +315,16 @@
       return scopeFromMapping(scenarios[0], base);
     }
 
+    // ponytail: canonical pick — preset apps should have at most one enabled scenario after reconcile
+    var hubCanon = global.OneToneHabitHub;
+    var canonical =
+      hubCanon && hubCanon.pickCanonicalAppScenario
+        ? hubCanon.pickCanonicalAppScenario(scenarios)
+        : null;
+    if (canonical) {
+      return scopeFromMapping(canonical, base);
+    }
+
     var enabled = [];
     var i;
     for (i = 0; i < scenarios.length; i++) {
@@ -321,7 +333,7 @@
     if (enabled.length === 1) {
       return scopeFromMapping(enabled[0], base);
     }
-    // Multiple enabled, or all disabled (>0 scenarios) → user must pick.
+    // Legacy fallback only — normal data should not reach ambiguous after reconcile.
     return {
       scopeKind: def ? def.kind : scopeApp,
       sourceMappingId: '',
@@ -339,6 +351,35 @@
     var ctx = resolveSoftPadScope();
     if (!ctx || !ctx.targetMappingId) return null;
     return mappingById(ctx.targetMappingId);
+  }
+
+  function softPadWorkMappingId() {
+    var ctx = resolveSoftPadScope();
+    return ctx && ctx.targetMappingId ? String(ctx.targetMappingId) : '';
+  }
+
+  function softPadAuthorityReady(mappingId) {
+    var mid = String(mappingId || '').trim();
+    if (!mid) return false;
+    return softPadViewsMappingId === mid && bindableMappingId === mid;
+  }
+
+  function softPadAuthorityPending(mappingId) {
+    var mid = String(mappingId || '').trim();
+    if (!mid) return false;
+    return !softPadAuthorityReady(mid);
+  }
+
+  function canRecordSoftPadSelection(ctx) {
+    var mid = String((ctx && ctx.targetMappingId) || '');
+    return !!(
+      selection &&
+      selection.sourceChannel === 'softPad' &&
+      selection.mappingId === mid &&
+      softPadAuthorityReady(mid) &&
+      bindableMappingId === mid &&
+      bindableByAction[selection.actionId] === true
+    );
   }
 
   function setSoftPadScopeAppId(appId, opts) {
@@ -617,8 +658,11 @@
     return null;
   }
 
-  function softPadViewsForResolve() {
-    var rows = softPadViewsCache && softPadViewsCache.length ? softPadViewsCache : viewsCache;
+  function softPadViewsForResolve(mappingId) {
+    var mid = String(mappingId || softPadWorkMappingId() || '').trim();
+    var rows = [];
+    if (mid && softPadViewsMappingId === mid) rows = softPadViewsCache;
+    else if (mid && selectedMappingId() === mid) rows = viewsCache;
     return (rows || []).filter(function (v) {
       return viewChannel(v) === 'softPad' && v.enabled !== false;
     });
@@ -658,7 +702,9 @@
     if (!mid || mid === 'ENC' || mid === 'JOY' || /^NAV_/.test(mid)) return null;
     if (/^NPAD_/.test(mid) || /^NUM_/.test(mid)) return null;
 
-    var views = softPadViewsForResolve();
+    var workMid = String((m && m.id) || '').trim();
+    if (!(opts && opts.skipBindable) && softPadAuthorityPending(workMid)) return null;
+    var views = softPadViewsForResolve(workMid);
     var v = null;
     var i;
     for (i = 0; i < views.length; i++) {
@@ -1473,10 +1519,6 @@
           ) +
           '</button>';
       }
-      html +=
-        '<button type="button" class="keys-channel-item-link" data-softpad-scope-clear="1">' +
-        esc(t('keysSoftPadScopePickOther', '选择其他应用')) +
-        '</button>';
       html += '</aside>';
       return html;
     }
@@ -1535,9 +1577,11 @@
         )
       ) +
       '</p>' +
-      '<button type="button" class="keys-channel-go-softpad" data-softpad-record="1">' +
-      esc(t('keysSoftPadCapRecord', '录制识别键')) +
-      '</button>';
+      (canRecordSoftPadSelection(ctx)
+        ? '<button type="button" class="keys-channel-go-softpad" data-softpad-record="1">' +
+          esc(t('keysSoftPadCapRecord', '录制识别键')) +
+          '</button>'
+        : '');
     html += '</aside>';
     return html;
   }
@@ -1701,15 +1745,32 @@
     return en + ' · ' + pad;
   }
 
+  function scenarioDisplayName(m) {
+    if (!m) return '';
+    if (global.OneToneHabitProfile && global.OneToneHabitProfile.habitDisplayName) {
+      try {
+        var title = String(global.OneToneHabitProfile.habitDisplayName(m) || '').trim();
+        if (title && title !== '—') return title;
+      } catch (_) {}
+    }
+    return String(m.group || m.label || m.name || m.id || '').trim();
+  }
+
   function renderSoftPadSecondaryHtml(workMid, workM, bridges, footer, ctx) {
     var html = '<div class="keys-softpad-secondary">';
+    if (softPadAuthorityPending(workMid)) {
+      html +=
+        '<p class="keys-channel-empty">' +
+        esc(t('keysSoftPadCapLoading', '正在加载此场景的可绑定键位…')) +
+        '</p>';
+    }
     var migratable = countMigratableSoftPadKeys(workM);
-    if (!migratable) {
+    if (!softPadAuthorityPending(workMid) && !migratable) {
       html +=
         '<p class="keys-channel-empty">' +
         esc(emptyCopy('softPad')) +
         '</p>';
-    } else if (ctx && ctx.globalProxy && ctx.title) {
+    } else if (!softPadAuthorityPending(workMid) && ctx && ctx.globalProxy && ctx.title) {
       html +=
         '<p class="keys-softpad-scope-hint">' +
         esc(
@@ -1797,27 +1858,26 @@
         esc(
           t(
             'keysSoftPadScopeAmbiguous',
-            '该应用有多个场景，请选择'
+            '此应用有多个 SoftPad 场景，请选择要加载的场景'
           )
         ) +
         '</p>' +
         '<div class="keys-softpad-scope-scenarios">';
       (ctx.scenarios || []).forEach(function (sc) {
         if (!sc || !sc.id) return;
-        var label =
-          String(sc.name || sc.id) + ' · ' + scenarioStatusLabel(sc);
         html +=
-          '<button type="button" class="keys-channel-item-link" data-softpad-scope-mapping="' +
+          '<button type="button" class="keys-softpad-scenario-option" data-softpad-scope-mapping="' +
           esc(String(sc.id)) +
           '">' +
-          esc(label) +
+          '<span class="keys-softpad-scenario-option__name">' +
+          esc(scenarioDisplayName(sc)) +
+          '</span>' +
+          '<span class="keys-softpad-scenario-option__status">' +
+          esc(scenarioStatusLabel(sc)) +
+          '</span>' +
           '</button>';
       });
-      html +=
-        '</div>' +
-        '<button type="button" class="keys-channel-item-link" data-softpad-scope-clear="1">' +
-        esc(t('keysSoftPadScopePickOther', '选择其他应用')) +
-        '</button>';
+      html += '</div>';
       panel.innerHTML = html;
       syncSoftPadTargetChrome(true);
       return;
@@ -2128,6 +2188,7 @@
 
   function setActiveTab(ch, opts) {
     if (TABS.indexOf(ch) < 0) return;
+    opts = opts || {};
     var prev = activeTab;
     activeTab = ch;
     if (ch === 'ime' && selection) {
@@ -2138,6 +2199,7 @@
         } catch (_) {}
       }
     }
+    var scopeBefore = softPadScopeAppId;
     if (ch === 'softPad' && isGlobalKeysEditContext()) {
       ensureSoftPadScopeSession();
       maybeAutoPreselectSoftPadScope();
@@ -2145,7 +2207,16 @@
     } else {
       syncSoftPadTargetChrome(false);
     }
-    if (!(opts && opts.skipRender) || prev !== ch) renderPanelOnly();
+    if (!(opts && opts.skipRender) || prev !== ch) {
+      if (
+        ch === 'softPad' &&
+        isGlobalKeysEditContext() &&
+        (prev !== 'softPad' || scopeBefore !== softPadScopeAppId)
+      ) {
+        return refresh();
+      }
+      renderPanelOnly();
+    }
   }
 
   function onSoftPadKeyClick(keyEl, ev) {
@@ -2181,7 +2252,7 @@
     }
 
     var iconEl = keyEl.querySelector && keyEl.querySelector('.micro-hw__icon');
-    var iconHtml = iconEl ? String(iconEl.innerHTML || '') : '';
+    var iconHtml = iconEl ? String(iconEl.outerHTML || '') : '';
     var forceRecord = !!(ev && (ev.altKey || ev.shiftKey));
     setSelection({
       mappingId: mid,
@@ -2300,6 +2371,9 @@
     var mid = snap.mappingId;
     var m = mappingById(mid);
     if (!m || !snap.actionId) return Promise.resolve(false);
+    if (snap.sourceChannel === 'softPad' && !canRecordSoftPadSelection({ targetMappingId: mid })) {
+      return Promise.resolve(false);
+    }
     if (bindableByAction[snap.actionId] === false) {
       toast(channelOnlyLabel(snap.sourceChannel));
       return Promise.resolve(false);
@@ -2533,10 +2607,19 @@
     );
   }
 
+  /** ponytail: IPC/options failure — unblock pick UI; upsert may still fail closed later */
+  function failOpenSoftPadAuthority(mappingId) {
+    var mid = String(mappingId || '').trim();
+    if (!mid) return;
+    softPadViewsMappingId = mid;
+    bindableMappingId = mid;
+  }
+
   function loadBindableMap(mappingId, actionIds) {
     var store = global.OneToneSemanticActionStore;
     if (!store || !store.fetchOptions) {
       bindableByAction = {};
+      bindableMappingId = String(mappingId || '').trim();
       actionIds.forEach(function (id) {
         bindableByAction[id] = true;
       });
@@ -2562,6 +2645,7 @@
           }
         });
         bindableByAction = map;
+        bindableMappingId = String(mappingId || '').trim();
         return map;
       });
     });
@@ -2587,61 +2671,86 @@
     }
     var store = global.OneToneSemanticActionStore;
     var token = ++renderToken;
+    var softCtx = resolveSoftPadScope();
+    var softMid = softCtx && softCtx.targetMappingId ? String(softCtx.targetMappingId) : '';
+    var optionsMid = softMid || mid;
+    if (activeTab === 'softPad') {
+      softPadViewsCache = [];
+      softPadViewsMappingId = '';
+      bindableByAction = {};
+      bindableMappingId = '';
+      renderPanelOnly();
+      applyHero();
+    }
     if (!store || !store.bindingViews) {
       viewsCache = [];
       softPadViewsCache = [];
+      softPadViewsMappingId = '';
+      bindableByAction = {};
+      bindableMappingId = '';
       renderPanelOnly();
       applyHero();
       return Promise.resolve();
     }
-    var softCtx = resolveSoftPadScope();
-    var softMid = softCtx && softCtx.sourceMappingId ? String(softCtx.sourceMappingId) : '';
-    var optionsMid =
-      softCtx && softCtx.targetMappingId ? String(softCtx.targetMappingId) : mid;
 
-    return store.bindingViews(mid).then(function (rows) {
+    function finishRefreshRender() {
       if (token !== renderToken) return;
-      viewsCache = Array.isArray(rows) ? rows : [];
-      var softViewsP =
-        softMid && softMid !== mid
-          ? store.bindingViews(softMid)
-          : Promise.resolve(softMid ? viewsCache : []);
-      return softViewsP.then(function (softRows) {
+      renderPanelOnly();
+      applyHero();
+    }
+
+    function handleRefreshFailure(err) {
+      if (token !== renderToken) return;
+      try {
+        console.warn('[keys-channel] refresh failed:', err);
+      } catch (_) {}
+      failOpenSoftPadAuthority(optionsMid);
+      finishRefreshRender();
+    }
+
+    return store
+      .bindingViews(mid)
+      .then(function (rows) {
         if (token !== renderToken) return;
-        softPadViewsCache = Array.isArray(softRows) ? softRows : [];
-        var ids = [];
-        CHANNEL_TABS.forEach(function (ch) {
-          filteredViews(ch).forEach(function (v) {
+        viewsCache = Array.isArray(rows) ? rows : [];
+        var softViewsP =
+          softMid && softMid !== mid
+            ? store.bindingViews(softMid)
+            : Promise.resolve(softMid ? viewsCache : []);
+        return softViewsP.then(function (softRows) {
+          if (token !== renderToken) return;
+          softPadViewsCache = Array.isArray(softRows) ? softRows : [];
+          softPadViewsMappingId = softMid;
+          var ids = [];
+          CHANNEL_TABS.forEach(function (ch) {
+            filteredViews(ch).forEach(function (v) {
+              var id = viewActionId(v);
+              if (id && ids.indexOf(id) < 0) ids.push(id);
+            });
+          });
+          softPadViewsForResolve().forEach(function (v) {
             var id = viewActionId(v);
             if (id && ids.indexOf(id) < 0) ids.push(id);
           });
-        });
-        softPadViewsForResolve().forEach(function (v) {
-          var id = viewActionId(v);
-          if (id && ids.indexOf(id) < 0) ids.push(id);
-        });
-        var mapM = softPadWorkMapping() || mappingById(mid);
-        if (mapM && mapM.codexMicroPad && Array.isArray(mapM.codexMicroPad.keys)) {
-          mapM.codexMicroPad.keys.forEach(function (k) {
-            if (!k || !k.microKeyId) return;
-            var peeked = resolveMigratableAction(mapM, k.microKeyId, { skipBindable: true });
-            if (peeked && peeked.actionId && ids.indexOf(peeked.actionId) < 0) {
-              ids.push(peeked.actionId);
-            }
-          });
-        }
-        [VOICE_LIFECYCLE_IDS.start, VOICE_LIFECYCLE_IDS.cancel, 'app.open', 'app.shortcut'].forEach(
-          function (id) {
-            if (ids.indexOf(id) < 0) ids.push(id);
+          var mapM = softPadWorkMapping() || mappingById(mid);
+          if (mapM && mapM.codexMicroPad && Array.isArray(mapM.codexMicroPad.keys)) {
+            mapM.codexMicroPad.keys.forEach(function (k) {
+              if (!k || !k.microKeyId) return;
+              var peeked = resolveMigratableAction(mapM, k.microKeyId, { skipBindable: true });
+              if (peeked && peeked.actionId && ids.indexOf(peeked.actionId) < 0) {
+                ids.push(peeked.actionId);
+              }
+            });
           }
-        );
-        return loadBindableMap(optionsMid, ids).then(function () {
-          if (token !== renderToken) return;
-          renderPanelOnly();
-          applyHero();
+          [VOICE_LIFECYCLE_IDS.start, VOICE_LIFECYCLE_IDS.cancel, 'app.open', 'app.shortcut'].forEach(
+            function (id) {
+              if (ids.indexOf(id) < 0) ids.push(id);
+            }
+          );
+          return loadBindableMap(optionsMid, ids).then(finishRefreshRender);
         });
-      });
-    });
+      })
+      .catch(handleRefreshFailure);
   }
 
   function bindOnce() {
@@ -2695,13 +2804,6 @@
         if (recordSoft && panel.contains(recordSoft)) {
           ev.preventDefault();
           recordSelected();
-          return;
-        }
-        var scopeClear =
-          ev.target && ev.target.closest ? ev.target.closest('[data-softpad-scope-clear]') : null;
-        if (scopeClear && panel.contains(scopeClear)) {
-          ev.preventDefault();
-          setSoftPadScopeAppId('', { refresh: true });
           return;
         }
         var scopeChange =

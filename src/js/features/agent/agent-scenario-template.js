@@ -58,13 +58,9 @@
     return m ? { mapping: m, created: true } : null;
   }
 
-  /** Always create a new Codex workflow mapping (multi-scenario support). */
+  /** Reuse existing Codex scenario when present (one preset app → one scenario). */
   function createNewCodexScenario() {
-    var A = agent();
-    var H = hub();
-    if (!A || !H || !H.createAppScenario) return null;
-    var m = H.createAppScenario(A.APP_TARGET_ID, { reuseExisting: false });
-    return m ? { mapping: m, created: true } : null;
+    return findOrCreateCodexScenario();
   }
 
   /**

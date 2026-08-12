@@ -1993,6 +1993,12 @@
           earlyPersistLog('applyMvpInit skip heavy side effects (post-save echo)');
           return;
         }
+        try{
+          var habitHub=global.OneToneHabitHub;
+          if(habitHub&&habitHub.reconcileDuplicatePresetScenarios){
+            habitHub.reconcileDuplicatePresetScenarios();
+          }
+        }catch(_){}
         runMvpInitHeavySideEffects();
       },0);
       try{

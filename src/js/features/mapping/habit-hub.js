@@ -1943,7 +1943,7 @@
     return n;
   }
 
-  /** Unique display group for multi-workflow apps (Codex). First stays base name; next get · 2, · 3… */
+  /** Unique display group for legacy Codex copies; new preset scenarios use defaultScenarioName only. */
   function uniqueScenarioName(appId,exceptMappingId){
     var base=defaultScenarioName(appId);
     var n=countAppScenarios(appId,exceptMappingId);
@@ -1951,20 +1951,134 @@
     return base+' · '+(n+1);
   }
 
-  function findAppScenarioByAppId(appId,exceptMappingId){
+  function presetAppTargetIds(){
+    var atp=global.OneToneAppTargetPresets;
+    if(!atp||!Array.isArray(atp.presets)) return [];
+    return atp.presets.map(function(p){ return String(p&&p.id||'').trim(); }).filter(Boolean);
+  }
+
+  /** Tiered preference: enabled → pad.on → overlay → order → id */
+  function scenarioBetter(a,b){
+    if(!b) return true;
+    if(!a) return false;
+    var aEn=a.enabled!==false?1:0;
+    var bEn=b.enabled!==false?1:0;
+    if(aEn!==bEn) return aEn>bEn;
+    var aPad=a.codexMicroPad&&a.codexMicroPad.enabled?1:0;
+    var bPad=b.codexMicroPad&&b.codexMicroPad.enabled?1:0;
+    if(aPad!==bPad) return aPad>bPad;
+    var aOv=a.codexMicroPad&&a.codexMicroPad.overlayEnabled?1:0;
+    var bOv=b.codexMicroPad&&b.codexMicroPad.overlayEnabled?1:0;
+    if(aOv!==bOv) return aOv>bOv;
+    var aOrd=Number(a.order)||0;
+    var bOrd=Number(b.order)||0;
+    if(aOrd!==bOrd) return aOrd<bOrd;
+    return String(a.id||'')<String(b.id||'');
+  }
+
+  function listAppScenarios(appId,exceptMappingId){
     appId=String(appId||'').trim();
-    // All custom picks share appTargetId "custom"; uniqueness is by process identity, not this id.
-    if(!appId||appId==='custom'||!core()) return null;
     exceptMappingId=String(exceptMappingId||'').trim();
+    if(!appId||appId==='custom'||!core()) return [];
     var cfg=state().config||{};
     var list=Array.isArray(cfg.mappings)?cfg.mappings:[];
+    var out=[];
     for(var i=0;i<list.length;i++){
       var m=list[i];
       if(!m||!isAppScenario(m)) continue;
       if(exceptMappingId&&m.id===exceptMappingId) continue;
-      if(String(m.appTargetId||'')===appId) return m;
+      if(String(m.appTargetId||'')===appId) out.push(m);
     }
-    return null;
+    return out;
+  }
+
+  function pickCanonicalAppScenario(candidates){
+    if(!candidates||!candidates.length) return null;
+    var best=candidates[0];
+    for(var i=1;i<candidates.length;i++){
+      if(scenarioBetter(candidates[i],best)) best=candidates[i];
+    }
+    return best;
+  }
+
+  function findAppScenarioByAppId(appId,exceptMappingId){
+    appId=String(appId||'').trim();
+    if(!appId||appId==='custom'||!core()) return null;
+    return pickCanonicalAppScenario(listAppScenarios(appId,exceptMappingId));
+  }
+
+  var reconcilePresetDone=false;
+  var reconcileToastShown=false;
+
+  /** One-shot idempotent merge of duplicate preset app scenarios (not in render). */
+  function reconcileDuplicatePresetScenarios(opts){
+    opts=opts||{};
+    if(reconcilePresetDone&&!opts.force) return { changed:false };
+    if(!core()) return { changed:false };
+    core().ensureConfig&&core().ensureConfig();
+    var cfg=state().config;
+    if(!cfg||!Array.isArray(cfg.mappings)) return { changed:false };
+    var changed=false;
+    var mergedApps=[];
+    var presetIds=presetAppTargetIds();
+    for(var pi=0;pi<presetIds.length;pi++){
+      var appId=presetIds[pi];
+      var candidates=listAppScenarios(appId);
+      if(candidates.length<=1) continue;
+      var winner=pickCanonicalAppScenario(candidates);
+      if(!winner) continue;
+      mergedApps.push(appDisplayName(appId)||appId);
+      for(var li=0;li<candidates.length;li++){
+        var m=candidates[li];
+        if(m.id===winner.id) continue;
+        if(m.enabled!==false){
+          m.enabled=false;
+          changed=true;
+        }
+        if(String(state().selectedMappingId||'')===String(m.id)){
+          state().selectedMappingId=winner.id;
+          changed=true;
+        }
+        if(String(cfg.activeSceneId||'')===String(m.id)){
+          cfg.activeSceneId=winner.id;
+          changed=true;
+        }
+      }
+    }
+    reconcilePresetDone=true;
+    if(changed){
+      if(!opts.skipPersist){
+        if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
+        else if(hooks().save) hooks().save();
+      }
+      if(!opts.skipToast&&!reconcileToastShown&&mergedApps.length){
+        reconcileToastShown=true;
+        var mergeMsg=t(
+          'habitHubDuplicateMerged',
+          '检测到多个 {app} 场景，已统一当前使用场景，其余配置已停用并保留。'
+        ).replace('{app}',mergedApps.join('、'));
+        if(global.OneToneAppToast) global.OneToneAppToast.show(mergeMsg,'scheme');
+        else if(global.OneToneUiFeedback&&global.OneToneUiFeedback.toast) global.OneToneUiFeedback.toast(mergeMsg);
+      }
+    }
+    return { changed:changed, mergedApps:mergedApps };
+  }
+
+  function disableSiblingPresetScenarios(exceptM){
+    if(!exceptM) return false;
+    var appId=String(exceptM.appTargetId||'').trim();
+    if(!appId||appId==='custom') return false;
+    var siblings=listAppScenarios(appId);
+    var disabledOthers=false;
+    for(var i=0;i<siblings.length;i++){
+      var sib=siblings[i];
+      if(sib.id===exceptM.id) continue;
+      if(sib.enabled!==false){
+        sib.enabled=false;
+        disabledOthers=true;
+      }
+    }
+    return disabledOthers;
   }
 
   function findAppScenarioForIdentity(identity,exceptMappingId){
@@ -2141,25 +2255,18 @@
     if(!appId||!core()) return null;
     core().ensureConfig&&core().ensureConfig();
     var cfg=state().config;
-    // Preset apps: one scenario per app — except Codex, which allows multiple workflows.
-    // Custom: unlimited. opts.reuseExisting=true keeps recommend-entry singleton behavior.
-    if(appId!=='custom'&&appId!=='codex-chat'){
-      var existing=findAppScenarioByAppId(appId);
-      if(existing&&!opts.migrateFrom){
+    // Preset apps: one scenario per appTargetId. Custom: unlimited (by process identity).
+    if(appId!=='custom'){
+      var existingPreset=findAppScenarioByAppId(appId);
+      if(existingPreset){
         ui().habitHubCreating=false;
         if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubAppScenarioExists'),'scheme');
+        if(appId==='codex-chat'){
+          var Texist=global.OneToneAgentScenarioTemplate;
+          if(Texist&&Texist.ensurePackForMapping) Texist.ensurePackForMapping(existingPreset,{persist:true});
+        }
         render();
-        return existing;
-      }
-    }
-    if(appId==='codex-chat'&&opts.reuseExisting){
-      var existingCodex=findAppScenarioByAppId(appId);
-      if(existingCodex&&!opts.migrateFrom){
-        var Texist=global.OneToneAgentScenarioTemplate;
-        if(Texist&&Texist.ensurePackForMapping) Texist.ensurePackForMapping(existingCodex,{persist:true});
-        ui().habitHubCreating=false;
-        render();
-        return existingCodex;
+        return existingPreset;
       }
     }
     var prevSelected=String(state().selectedMappingId||'');
@@ -2167,7 +2274,7 @@
     var m={
       id:id,
       label:'',
-      group:appId==='codex-chat'?uniqueScenarioName(appId):defaultScenarioName(appId),
+      group:defaultScenarioName(appId),
       triggerKey:'',
       targetKey:'',
       enabled:true,
@@ -2324,7 +2431,7 @@
       if(!id) return;
       var name=appDisplayName(id);
       var icon=p.icon?'<img class="habit-wizard-app-icon" src="'+esc(p.icon)+'" alt="" decoding="async" />':'';
-      var exists=id!=='codex-chat'&&!!findAppScenarioByAppId(id);
+      var exists=!!findAppScenarioByAppId(id);
       html+='<button type="button" class="habit-wizard-app-card'+(exists?' is-exists':'')+'" data-habit-create-app="'+esc(id)+'" role="listitem"'
         +(exists?' title="'+esc(t('habitHubAppScenarioExists'))+'"':'')+'>'
         +icon+'<span class="habit-wizard-app-name">'+esc(name)+'</span></button>';
@@ -2778,6 +2885,17 @@
           var enableM=core()&&core().byId?core().byId(enableId):null;
           if(enableM){
             enableM.enabled=!enableM.enabled;
+            if(enableM.enabled){
+              var switched=disableSiblingPresetScenarios(enableM);
+              if(switched){
+                var appIdEn=String(enableM.appTargetId||'').trim();
+                var switchMsg=t(
+                  'habitHubScenarioSwitched',
+                  '已切换为 {app} 当前场景'
+                ).replace('{app}',appDisplayName(appIdEn)||appIdEn||'—');
+                if(global.OneToneAppToast) global.OneToneAppToast.show(switchMsg,'scheme');
+              }
+            }
             var cfgEn=state().config||{};
             if(!enableM.enabled&&String(cfgEn.activeSceneId||'')===String(enableM.id)){
               var baseFall=globalBaselineMapping();
@@ -2959,6 +3077,10 @@
     createAppScenario:createAppScenario,
     findAppScenarioByAppId:findAppScenarioByAppId,
     findAppScenarioForIdentity:findAppScenarioForIdentity,
+    listAppScenarios:listAppScenarios,
+    pickCanonicalAppScenario:pickCanonicalAppScenario,
+    scenarioBetter:scenarioBetter,
+    reconcileDuplicatePresetScenarios:reconcileDuplicatePresetScenarios,
     countAppScenarios:countAppScenarios,
     uniqueScenarioName:uniqueScenarioName,
     startInlineCreate:startInlineCreate,

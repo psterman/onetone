@@ -204,8 +204,8 @@
     if(!src) return;
     var appId=String(src.appTargetId||'').trim();
     var hub=global.OneToneHabitHub;
-    // Non-Codex preset apps: one scenario per app — block copy.
-    if(appId&&appId!=='custom'&&appId!=='codex-chat'){
+    // Non-custom preset apps: one scenario per app — block copy.
+    if(appId&&appId!=='custom'){
       if(global.OneToneAppToast&&global.OneToneI18n){
         global.OneToneAppToast.show(global.OneToneI18n.t('habitHubDupBlocked')||global.OneToneI18n.t('habitHubAppScenarioExists'),'scheme');
       }

@@ -885,9 +885,15 @@ return Promise.resolve()
       'state() reads inner OneToneState.state'
     );
     assert.ok(pickerSrc.indexOf('function config()') >= 0, 'config() helper present');
+    assert.ok(pickerSrc.indexOf('softPadViewsMappingId') >= 0, 'softPad cache keyed by mapping');
+    assert.ok(pickerSrc.indexOf('bindableMappingId') >= 0, 'bindable cache keyed by mapping');
     assert.ok(
       pickerSrc.indexOf('return global.OneToneState || {}') < 0,
       'no outer OneToneState fallback'
+    );
+    assert.ok(
+      pickerSrc.indexOf('data-softpad-scope-clear') < 0,
+      'no choose-other-app CTA remains in picker'
     );
     // prepareSoftPadScopeScenario may call ensurePad on a resolved mapping; pick render must not.
     var renderSlice = pickerSrc.slice(
@@ -1206,7 +1212,8 @@ return Promise.resolve()
           return null;
         },
         querySelector: function () {
-          return { innerHTML: '<svg data-icon="' + microId + '"></svg>' };
+          var wrapper = '<span class="micro-hw__icon"><svg data-icon="' + microId + '"></svg></span>';
+          return { innerHTML: '<svg data-icon="' + microId + '"></svg>', outerHTML: wrapper };
         },
         closest: function (sel) {
           if (String(sel).indexOf('data-micro-key') >= 0 || String(sel).indexOf('micro-hw__key') >= 0) {
@@ -1225,6 +1232,16 @@ return Promise.resolve()
       panelClickListeners.forEach(function (fn) {
         fn(ev);
       });
+    }
+
+    function deferred() {
+      var resolve;
+      var reject;
+      var promise = new Promise(function (res, rej) {
+        resolve = res;
+        reject = rej;
+      });
+      return { promise: promise, resolve: resolve, reject: reject };
     }
 
     // previewPadClone must not mutate mapping / must not call ensurePad
@@ -1473,6 +1490,27 @@ return Promise.resolve()
                 'more apps appear in same chip grid'
               );
 
+              // voice → softPad tab switch must refresh authority (not stick on loading)
+              P2.resetSoftPadScopeSession();
+              P2.setActiveTab('voice');
+              return P2.refresh()
+                .then(function () {
+                  assert.strictEqual(P2.getSoftPadScopeAppId(), '', 'voice refresh leaves scope empty');
+                  return P2.setActiveTab('softPad');
+                })
+                .then(function () {
+                  assert.ok(P2.getSoftPadScopeAppId(), 'softPad tab auto-preselects app scope');
+                  assert.ok(
+                    panelHtml.indexOf('正在加载此场景的可绑定键位') < 0,
+                    'voice→softPad tab must not stick on loading copy'
+                  );
+                  assert.ok(
+                    P2.resolveMigratableAction(codexMap, 'AG00'),
+                    'authority ready after voice→softPad tab switch'
+                  );
+                })
+                .then(function () {
+
               // Fresh session: enter SoftPad → default scope + keyboard
               P2.resetSoftPadScopeSession();
               P2.setActiveTab('softPad');
@@ -1486,6 +1524,121 @@ return Promise.resolve()
                 panelHtml.indexOf('keys-softpad-stage') >= 0,
                 'pad+cap stage layout'
               );
+
+              // P0: first frame shows real pad, but async authority gates clicks by targetMappingId
+              var codexAsyncMap = {
+                id: 'm-codex-async',
+                appTargetId: 'codex-chat',
+                agentBindings: [],
+                codexMicroPad: {
+                  enabled: true,
+                  keys: [{ microKeyId: 'AG04', slotId: 'commandPalette', enabled: true }]
+                }
+              };
+              var cursorAsyncMap = {
+                id: 'm-cursor-async',
+                appTargetId: 'cursor-chat',
+                agentBindings: [],
+                codexMicroPad: {
+                  enabled: true,
+                  keys: [{ microKeyId: 'AG05', slotId: 'cancel', enabled: true }]
+                }
+              };
+              var codexViews = deferred();
+              var codexOpts = deferred();
+              var cursorViews = deferred();
+              var cursorOpts = deferred();
+              var baseBindingViews = sb2.window.OneToneSemanticActionStore.bindingViews;
+              var baseFetchOptions = sb2.window.OneToneSemanticActionStore.fetchOptions;
+              sb2.window.OneToneState.state.config.mappings = [
+                globalMap,
+                codexAsyncMap,
+                cursorAsyncMap
+              ];
+              sb2.window.OneToneSemanticActionStore.bindingViews = function (mappingId) {
+                if (mappingId === 'm-global') return Promise.resolve([]);
+                if (mappingId === 'm-codex-async') return codexViews.promise;
+                if (mappingId === 'm-cursor-async') return cursorViews.promise;
+                return Promise.resolve([]);
+              };
+              sb2.window.OneToneSemanticActionStore.fetchOptions = function (mappingId) {
+                if (mappingId === 'm-codex-async') return codexOpts.promise;
+                if (mappingId === 'm-cursor-async') return cursorOpts.promise;
+                return Promise.resolve([]);
+              };
+              P2.resetSoftPadScopeSession();
+              P2.setSoftPadScopeAppId('codex-chat', {
+                skipRender: true,
+                skipHero: true,
+                skipClear: true
+              });
+              var codexPendingRefresh = P2.refresh();
+              assert.ok(
+                panelHtml.indexOf('keysSoftPadPickHost') >= 0,
+                'first frame renders real pad before authority data'
+              );
+              assert.ok(panelHtml.indexOf('is-preview-only') < 0, 'first frame is not preview shell');
+              assert.strictEqual(
+                P2.resolveMigratableAction(codexAsyncMap, 'AG04'),
+                null,
+                'pending authority keeps first-frame key non-bindable'
+              );
+
+              P2.setSoftPadScopeAppId('cursor-chat', {
+                skipRender: true,
+                skipHero: true,
+                skipClear: true
+              });
+              var cursorPendingRefresh = P2.refresh();
+              codexViews.resolve([
+                {
+                  mappingId: 'm-codex-async',
+                  actionId: 'app.shortcut',
+                  channel: 'softPad',
+                  bindingRef: 'AG04',
+                  trigger: 'AG04',
+                  enabled: true
+                }
+              ]);
+              codexOpts.resolve([{ actionId: 'app.shortcut', bindable: true }]);
+              return Promise.resolve()
+                .then(function () {
+                  assert.strictEqual(
+                    P2.resolveMigratableAction(cursorAsyncMap, 'AG04'),
+                    null,
+                    'late codex response does not leak into cursor scope'
+                  );
+                  cursorViews.resolve([
+                    {
+                      mappingId: 'm-cursor-async',
+                      actionId: 'input.cancel',
+                      channel: 'softPad',
+                      bindingRef: 'AG05',
+                      trigger: 'AG05',
+                      enabled: true
+                    }
+                  ]);
+                  cursorOpts.resolve([{ actionId: 'input.cancel', bindable: true }]);
+                  return Promise.all([codexPendingRefresh, cursorPendingRefresh]);
+                })
+                .then(function () {
+                  var raceScope = P2.resolveSoftPadScope();
+                  assert.strictEqual(raceScope.targetMappingId, 'm-cursor-async');
+                  assert.ok(
+                    P2.resolveMigratableAction(cursorAsyncMap, 'AG05'),
+                    'cursor authority enables only current mapping keys'
+                  );
+                  assert.strictEqual(
+                    P2.resolveMigratableAction(cursorAsyncMap, 'AG04'),
+                    null,
+                    'old codex key stays unavailable in cursor scope'
+                  );
+                  sb2.window.OneToneSemanticActionStore.bindingViews = baseBindingViews;
+                  sb2.window.OneToneSemanticActionStore.fetchOptions = baseFetchOptions;
+                  sb2.window.OneToneState.state.config.mappings = [globalMap, codexMap];
+                  sb2.window.OneToneState.state.selectedMappingId = 'm-global';
+                })
+                .then(function () {
 
               P2.setSoftPadScopeAppId('codex-chat', { refresh: false, skipRender: true });
               return P2.refresh().then(function () {
@@ -1652,7 +1805,29 @@ return Promise.resolve()
                         'm-cursor-scene'
                       );
 
-                      // P0: multi-scenario same appTargetId (both enabled) → ambiguous
+                      // P0: multi-scenario same appTargetId → canonical pick (not ambiguous)
+                      function pickCanonStub(candidates) {
+                        if (!candidates || !candidates.length) return null;
+                        var best = candidates[0];
+                        for (var ci = 1; ci < candidates.length; ci++) {
+                          var c = candidates[ci];
+                          var aEn = best.enabled !== false ? 1 : 0;
+                          var cEn = c.enabled !== false ? 1 : 0;
+                          if (cEn > aEn) {
+                            best = c;
+                            continue;
+                          }
+                          if (cEn < aEn) continue;
+                          var aPad = best.codexMicroPad && best.codexMicroPad.enabled ? 1 : 0;
+                          var cPad = c.codexMicroPad && c.codexMicroPad.enabled ? 1 : 0;
+                          if (cPad > aPad) {
+                            best = c;
+                            continue;
+                          }
+                          if (String(c.id) < String(best.id)) best = c;
+                        }
+                        return best;
+                      }
                       var traeA = {
                         id: 'm-trae-a',
                         name: 'Trae A',
@@ -1673,16 +1848,25 @@ return Promise.resolve()
                         traeA,
                         traeB
                       ];
+                      sb2.window.OneToneHabitHub = {
+                        pickCanonicalAppScenario: pickCanonStub,
+                        findAppScenarioByAppId: function (appId) {
+                          var list = sb2.window.OneToneState.state.config.mappings.filter(function (m) {
+                            return m && String(m.appTargetId || '') === appId;
+                          });
+                          return pickCanonStub(list);
+                        }
+                      };
                       P2.resetSoftPadScopeSession();
                       P2.setSoftPadScopeAppId('trae-chat', {
                         skipRender: true,
                         skipHero: true,
                         skipClear: true
                       });
-                      var amb = P2.resolveSoftPadScope();
-                      assert.ok(amb && amb.ambiguous, 'multi scenario ambiguous');
-                      assert.strictEqual(amb.targetMappingId, '');
-                      assert.strictEqual(amb.missingScenario, false);
+                      var canon = P2.resolveSoftPadScope();
+                      assert.ok(canon && !canon.ambiguous, 'multi scenario uses canonical not ambiguous');
+                      assert.strictEqual(canon.targetMappingId, 'm-trae-a');
+                      assert.strictEqual(canon.missingScenario, false);
 
                       // P0: missing scenario fail-closed + read-only SoftPad preview
                       P2.setSoftPadScopeAppId('workbuddy-chat', {
@@ -1961,12 +2145,196 @@ return Promise.resolve()
                             assert.strictEqual(bareScope.sourceMappingId, 'm-cursor-bare');
                             assert.strictEqual(bareScope.targetMappingId, '');
                             assert.strictEqual(bareScope.missingScenario, true);
+
+                            // P0: canRecordSoftPadSelection gating assertions
+                            // ── iconHtml from click contains .micro-hw__icon wrapper ──
+                            sb2.window.OneToneState.state.selectedMappingId = 'm-global';
+                            sb2.window.OneToneState.state.config.mappings = [globalMap, codexMap];
+                            P2.resetSoftPadScopeSession();
+                            P2.setSoftPadScopeAppId('codex-chat', {
+                              skipRender: true,
+                              skipHero: true,
+                              skipClear: true
+                            });
+                            return P2.refresh().then(function () {
+                              P2.setActiveTab('softPad');
+                              // Click a key — iconHtml must now carry the .micro-hw__icon wrapper
+                              fireSoftPadKeyClick('AG00');
+                              var clickSel = P2.getSelection();
+                              assert.ok(clickSel, 'click produced selection');
+                              assert.ok(
+                                clickSel.iconHtml && clickSel.iconHtml.indexOf('micro-hw__icon') >= 0,
+                                'iconHtml contains .micro-hw__icon wrapper after outerHTML change'
+                              );
+                              P2.clearSelection({ skipRender: true, skipHero: true });
+
+                              // ── authority pending → no record button ──
+                              // Use a mappingId that was never loaded — authority caches are keyed
+                              // to 'm-codex-scene', so 'm-NEVER-LOADED' is always pending.
+                              P2.setSelection({
+                                mappingId: 'm-NEVER-LOADED',
+                                sourceChannel: 'softPad',
+                                sourceBindingRef: 'AG00',
+                                actionId: 'app.shortcut',
+                                keyBindingRef: '',
+                                iconHtml: '<span class="micro-hw__icon"><svg></svg></span>'
+                              });
+                              assert.ok(
+                                panelHtml.indexOf('data-softpad-record') < 0,
+                                'no record button when authority pending'
+                              );
+                              P2.clearSelection({ skipRender: true, skipHero: true });
+
+                              // ── authority ready + bindable===true → button appears ──
+                              P2.setSoftPadScopeAppId('codex-chat', {
+                                skipRender: true,
+                                skipHero: true,
+                                skipClear: true
+                              });
+                              return P2.refresh().then(function () {
+                                P2.setActiveTab('softPad');
+                                // authority now ready for 'm-codex-scene', fetchOptions returns bindable:true
+                                P2.setSelection({
+                                  mappingId: 'm-codex-scene',
+                                  sourceChannel: 'softPad',
+                                  sourceBindingRef: 'AG00',
+                                  actionId: 'app.shortcut',
+                                  keyBindingRef: '',
+                                  iconHtml: '<span class="micro-hw__icon"><svg></svg></span>'
+                                });
+                                assert.ok(
+                                  panelHtml.indexOf('data-softpad-record') >= 0,
+                                  'record button shown when authority ready and bindable===true'
+                                );
+
+                                // ── authority ready + bindable===false/undefined → no button ──
+                                // Stub both fetchOptions and optionFor to prevent the catalog fallback
+                                // from overriding false with true.
+                                var savedFetch = sb2.window.OneToneSemanticActionStore.fetchOptions;
+                                var savedOptionFor = sb2.window.OneToneSemanticActionStore.optionFor;
+                                sb2.window.OneToneSemanticActionStore.optionFor = function () { return null; };
+                                sb2.window.OneToneSemanticActionStore.fetchOptions = function () {
+                                  return Promise.resolve([
+                                    { actionId: 'app.shortcut', bindable: false }
+                                  ]);
+                                };
+                                return P2.refresh().then(function () {
+                                  P2.setActiveTab('softPad');
+                                  P2.setSelection({
+                                    mappingId: 'm-codex-scene',
+                                    sourceChannel: 'softPad',
+                                    sourceBindingRef: 'AG00',
+                                    actionId: 'app.shortcut',
+                                    keyBindingRef: '',
+                                    iconHtml: '<span class="micro-hw__icon"><svg></svg></span>'
+                                  });
+                                  assert.ok(
+                                    panelHtml.indexOf('data-softpad-record') < 0,
+                                    'no record button when bindable===false'
+                                  );
+
+                                  // ── authority ready + bindable===undefined → no button ──
+                                  sb2.window.OneToneSemanticActionStore.fetchOptions = function () {
+                                    return Promise.resolve([]); // app.shortcut absent → map[id]=false
+                                  };
+                                  return P2.refresh().then(function () {
+                                    P2.setActiveTab('softPad');
+                                    P2.setSelection({
+                                      mappingId: 'm-codex-scene',
+                                      sourceChannel: 'softPad',
+                                      sourceBindingRef: 'AG00',
+                                      actionId: 'app.shortcut',
+                                      keyBindingRef: '',
+                                      iconHtml: '<span class="micro-hw__icon"><svg></svg></span>'
+                                    });
+                                    assert.ok(
+                                      panelHtml.indexOf('data-softpad-record') < 0,
+                                      'no record button when bindable===undefined'
+                                    );
+
+                                    sb2.window.OneToneSemanticActionStore.fetchOptions = savedFetch;
+                                    sb2.window.OneToneSemanticActionStore.optionFor = savedOptionFor;
+
+                                    // ── recordSelected() blocked in three illegal states ──
+                                    return P2.refresh().then(function () {
+                                      P2.setActiveTab('softPad');
+                                      var recordCalls = 0;
+                                      var savedStart = sb2.window.OneToneMappingRecording.startAgentBinding;
+                                      sb2.window.OneToneMappingRecording.startAgentBinding = function () {
+                                        recordCalls++;
+                                        return Promise.resolve(true);
+                                      };
+
+                                      // (1) authority pending: use a mappingId that was never loaded
+                                      // softPadViewsMappingId and bindableMappingId are 'm-codex-scene',
+                                      // so any other id is "pending" from canRecordSoftPadSelection's POV.
+                                      P2.setSelection({
+                                        mappingId: 'm-NEVER-LOADED',
+                                        sourceChannel: 'softPad',
+                                        sourceBindingRef: 'AG00',
+                                        actionId: 'app.shortcut',
+                                        keyBindingRef: '',
+                                        iconHtml: ''
+                                      });
+                                      return P2.recordSelected().then(function (r1) {
+                                        assert.strictEqual(r1, false, 'recordSelected blocked when authority pending');
+                                        assert.strictEqual(recordCalls, 0, 'startAgentBinding not called (pending)');
+
+                                        // (2) mapping mismatch: authority is for 'm-codex-scene' but selection says different id
+                                        P2.setSoftPadScopeAppId('codex-chat', { skipRender: true, skipHero: true, skipClear: true });
+                                        return P2.refresh().then(function () {
+                                          P2.setSelection({
+                                            mappingId: 'm-OTHER',
+                                            sourceChannel: 'softPad',
+                                            sourceBindingRef: 'AG00',
+                                            actionId: 'app.shortcut',
+                                            keyBindingRef: '',
+                                            iconHtml: ''
+                                          });
+                                          return P2.recordSelected().then(function (r2) {
+                                            assert.strictEqual(r2, false, 'recordSelected blocked when mappingId mismatches');
+                                            assert.strictEqual(recordCalls, 0, 'startAgentBinding not called (mismatch)');
+
+                                            // (3) not bindable: bindable===false
+                                            var savedFetch2 = sb2.window.OneToneSemanticActionStore.fetchOptions;
+                                            var savedOptionFor2 = sb2.window.OneToneSemanticActionStore.optionFor;
+                                            sb2.window.OneToneSemanticActionStore.optionFor = function () { return null; };
+                                            sb2.window.OneToneSemanticActionStore.fetchOptions = function () {
+                                              return Promise.resolve([{ actionId: 'app.shortcut', bindable: false }]);
+                                            };
+                                            return P2.refresh().then(function () {
+                                              P2.setSelection({
+                                                mappingId: 'm-codex-scene',
+                                                sourceChannel: 'softPad',
+                                                sourceBindingRef: 'AG00',
+                                                actionId: 'app.shortcut',
+                                                keyBindingRef: '',
+                                                iconHtml: ''
+                                              });
+                                              return P2.recordSelected().then(function (r3) {
+                                                assert.strictEqual(r3, false, 'recordSelected blocked when not bindable');
+                                                assert.strictEqual(recordCalls, 0, 'startAgentBinding never called');
+                                                sb2.window.OneToneMappingRecording.startAgentBinding = savedStart;
+                                                sb2.window.OneToneSemanticActionStore.fetchOptions = savedFetch2;
+                                                sb2.window.OneToneSemanticActionStore.optionFor = savedOptionFor2;
+                                              });
+                                            });
+                                          });
+                                        });
+                                      });
+                                    });
+                                  });
+                                });
+                              });
+                            });
                           });
                         });
                       });
                     });
+                    });
                   });
                 });
+              });
               });
             });
           });

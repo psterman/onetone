@@ -688,6 +688,15 @@
   height: 28px;
 }
 
+#settingsPanelKeys .keys-softpad-cap-icon > .micro-hw__icon,
+.keys-target-action-icon > .micro-hw__icon {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+}
+
 #settingsPanelKeys .keys-softpad-secondary {
   display: flex;
   flex-direction: column;
@@ -854,6 +863,34 @@
 #settingsPanelKeys .keys-channel-item-link:focus-visible {
   outline: none;
   opacity: 0.85;
+}
+
+#settingsPanelKeys .keys-softpad-scenario-option {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--outline-variant, #c4c6d0) 55%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+#settingsPanelKeys .keys-softpad-scenario-option:hover,
+#settingsPanelKeys .keys-softpad-scenario-option:focus-visible {
+  background: color-mix(in srgb, var(--primary-strong) 6%, transparent);
+  outline: none;
+}
+#settingsPanelKeys .keys-softpad-scenario-option__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+#settingsPanelKeys .keys-softpad-scenario-option__status {
+  font-size: 11px;
+  color: var(--on-surface-variant);
 }
 
 #settingsPanelKeys .keys-channel-add-shortcut {
