@@ -648,7 +648,7 @@
     if(!Array.isArray(list)) return [];
     return list.map(function(b){
       if(!b||typeof b!=='object') return null;
-      return {
+      var row={
         slotId:String(b.slotId!=null?b.slotId:(b.slot_id||'')),
         actionId:String(b.actionId!=null?b.actionId:(b.action_id||'')),
         triggerType:String(b.triggerType!=null?b.triggerType:(b.trigger_type||'')),
@@ -657,6 +657,11 @@
         executionMode:b.executionMode!=null?String(b.executionMode):(b.execution_mode!=null?String(b.execution_mode):null),
         activationScope:String(b.activationScope!=null?b.activationScope:(b.activation_scope||'foregroundApp'))
       };
+      var inst=b.actionInstanceId!=null?b.actionInstanceId:b.action_instance_id;
+      if(inst!=null&&String(inst).trim()) row.actionInstanceId=String(inst).trim();
+      var args=b.actionArgs!=null?b.actionArgs:b.action_args;
+      if(args!=null&&typeof args==='object') row.actionArgs=args;
+      return row;
     }).filter(Boolean);
   }
 

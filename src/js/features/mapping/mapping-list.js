@@ -204,6 +204,32 @@
         :(trigRaw?hooks().friendlyKeyName(trigRaw):'');
       triggerLabel=triggerLabel||d.triggerPlaceholder;
     }
+    var picker=global.OneToneKeysChannelCommandPicker;
+    var hero=picker&&typeof picker.heroModel==='function'?picker.heroModel():null;
+    if(hero&&hero.active&&recMode!=='trigger'){
+      if(recMode==='target'||recMode==='agentBinding'){
+        // Keep live recording preview on the hero while capturing a key chord.
+        var live=tgt?hooks().friendlyKeyName(tgt):(hero.targetLabel||'');
+        return {
+          triggerLabel:triggerLabel,
+          targetLabel:live,
+          triggerRaw:trigRaw,
+          targetRaw:tgt||hero.chord||'',
+          triggerEmpty:!trigRaw,
+          targetEmpty:!tgt&&!!hero.targetEmpty,
+          sig:String(triggerLabel)+'\0'+String(live)+'\0'+String(trigRaw)+'\0'+String(tgt||hero.actionId||'')+'\0'+String(recMode)+'\0action-hero'
+        };
+      }
+      return {
+        triggerLabel:triggerLabel,
+        targetLabel:hero.targetLabel||'',
+        triggerRaw:trigRaw,
+        targetRaw:hero.chord||('action:'+String(hero.actionId||'')),
+        triggerEmpty:!trigRaw,
+        targetEmpty:!!hero.targetEmpty,
+        sig:String(triggerLabel)+'\0'+String(hero.targetLabel||'')+'\0'+String(trigRaw)+'\0'+String(hero.actionId||'')+'\0'+String(hero.chord||'')+'\0action-hero'
+      };
+    }
     var targetLabel=tgt?hooks().friendlyKeyName(tgt):d.targetPlaceholder;
     return {
       triggerLabel:triggerLabel,
@@ -289,6 +315,9 @@
     applyKeysDisplayChromeHost(buildKeysDisplayChromeModel());
     if(global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.applyRecognitionOverlay){
       global.OneToneAgentCapabilityUi.applyRecognitionOverlay();
+    }
+    if(global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.refresh){
+      try{ global.OneToneKeysChannelCommandPicker.refresh(); }catch(_){}
     }
     if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.applyTriggerHeroPreview){
       global.OneToneCodexMicroPadUi.applyTriggerHeroPreview(m);

@@ -421,6 +421,7 @@ fn route_semantic_action_inner(
             &raw_action,
             &canonical,
             mapping_id.as_deref(),
+            req.args.as_ref(),
         );
         return map_layer_outcome(out, &canonical, channel.as_str(), mapping_id, &provider_str);
     }

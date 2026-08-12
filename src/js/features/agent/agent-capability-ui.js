@@ -11,9 +11,28 @@
 
   var TARGET_SLOT_IDS = ['summonCodex', 'pushToTalk', 'commandPalette', 'status', 'plan'];
   var FINISH_SLOT_IDS = ['cancel', 'stopOrSend'];
-  /** Currently selected capability shown on the recognition keycap. */
-  var selectedSlotId = '';
   var multiKeyTipShown = false;
+
+  function channelPicker() {
+    return global.OneToneKeysChannelCommandPicker || null;
+  }
+
+  /** Single selection truth: channel picker owns Hero pick state. */
+  function getSelectedSlotId() {
+    var P = channelPicker();
+    return P && P.selectedSlotId ? String(P.selectedSlotId() || '') : '';
+  }
+
+  function setSelectedSlotId(slotId, mappingId) {
+    var P = channelPicker();
+    if (!P) return;
+    var sid = String(slotId || '').trim();
+    if (!sid) {
+      if (P.clearSelection) P.clearSelection({ skipHero: true });
+      return;
+    }
+    if (P.selectFromSlotId) P.selectFromSlotId(mappingId || '', sid);
+  }
 
   var SLOT_ICONS = {
     summonCodex: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M5 19h14"/></svg>',
@@ -97,11 +116,14 @@
    * @returns {string} raw chord or ''
    */
   function ensureDefaultSelection(m) {
-    if (!m || selectedSlotId) return;
-    selectedSlotId = 'pushToTalk';
+    var P = channelPicker();
+    if (!m || !P) return;
+    if (P.hasSelection && P.hasSelection()) return;
+    // Prefer softPad tab listing; do not auto-write bindings.
+    if (P.setActiveTab) P.setActiveTab('softPad');
   }
 
-  /** Hide IME / global voice chrome; show Codex-specific labels per step. */
+  /** Hide IME tab on Codex recognition; keep channel picker visible. */
   function applyCodexStepChrome(step, m) {
     var imeBlock = document.getElementById('habitFlowImeBlock');
     var voiceSummary = document.getElementById('keysCaptureVoiceSummary');
@@ -112,12 +134,15 @@
     var onCodex = !!(m && global.OneToneAgentScenarioTemplate
       && global.OneToneAgentScenarioTemplate.isCodexScenario
       && global.OneToneAgentScenarioTemplate.isCodexScenario(m));
+    if (imeBlock) imeBlock.hidden = false;
+    var P = channelPicker();
+    if (P && P.setCodexImeTabHidden) {
+      P.setCodexImeTabHidden(!!(onCodex && (step === 'target' || step === 'finish')));
+    }
     if (!onCodex) {
-      if (imeBlock) imeBlock.hidden = false;
       if (voiceSummary) voiceSummary.classList.remove('sr-only');
       return;
     }
-    if (imeBlock) imeBlock.hidden = step === 'target' || step === 'finish';
     if (voiceSummary) voiceSummary.classList.add('sr-only');
     if (trigLbl) trigLbl.textContent = t('keysFlowNodeTriggerTitle', '触发');
     if (tgtLbl) tgtLbl.textContent = t('codexMicroPadTitle', '小键盘');
@@ -154,7 +179,8 @@
       cm = activeCodexMapping();
     }
     if (!cm) return '';
-    if (selectedSlotId) return chordForSlot(cm, selectedSlotId);
+    var sid = getSelectedSlotId();
+    if (sid) return chordForSlot(cm, sid);
     var pt = chordForSlot(cm, 'pushToTalk');
     if (pt) return pt;
     for (var i = 0; i < TARGET_SLOT_IDS.length; i++) {
@@ -301,23 +327,36 @@
   }
 
   /**
-   * Show selected capability shortcut on step-02 keycap + flow hint (not IME targetKey).
-   * @returns {boolean} true if capability overlay active
+   * Show selected capability / channel-picker action on step-02 keycap (not IME targetKey).
+   * @returns {boolean} true if overlay active
    */
   function applyRecognitionOverlay() {
+    var P = channelPicker();
+    if (P && P.hasSelection && P.hasSelection() && P.applyHero) {
+      return !!P.applyHero();
+    }
     var m = activeCodexMapping();
     var targetDisp = document.getElementById('targetDisplay');
     var hint = document.getElementById('keysTargetKeycapHint');
     var host = document.getElementById('habitKeyMapCellTarget');
+    var badge = document.getElementById('keysTargetModeBadge');
     var onCodexTarget = !!(m && activeKeysStep() === 'target');
     if (!onCodexTarget) {
       if (targetDisp) targetDisp.classList.remove('is-codex-cap-edit');
       if (host) host.classList.remove('is-codex-cap-edit');
+      if (badge) {
+        badge.textContent = t('keysHeroModeIme', '输入法识别键');
+        badge.classList.remove('is-action');
+      }
       return false;
     }
     syncStepTargetDisplays(m);
     if (targetDisp) targetDisp.classList.add('is-codex-cap-edit');
     if (host) host.classList.add('is-codex-cap-edit');
+    if (badge) {
+      badge.textContent = t('keysHeroModeAction', '动作快捷键');
+      badge.classList.add('is-action');
+    }
     if (hint) {
       hint.textContent = t(
         'codexStepRecognitionKeycapHint',
@@ -357,31 +396,40 @@
   }
 
   function clearSelection() {
-    selectedSlotId = '';
+    var P = channelPicker();
+    if (P && P.clearSelection) P.clearSelection({ skipHero: true, skipRender: true });
     var targetDisp = document.getElementById('targetDisplay');
     var host = document.getElementById('habitKeyMapCellTarget');
+    var badge = document.getElementById('keysTargetModeBadge');
     if (targetDisp) targetDisp.classList.remove('is-codex-cap-edit');
     if (host) host.classList.remove('is-codex-cap-edit');
+    if (badge) {
+      badge.textContent = t('keysHeroModeIme', '输入法识别键');
+      badge.classList.remove('is-action');
+    }
     notifyMicroPad(codexScenarioMapping(), '');
   }
 
   function hasSelectedSlot() {
-    return !!selectedSlotId && !!codexScenarioMapping();
-  }
-
-  function getSelectedSlotId() {
-    return selectedSlotId || '';
+    var P = channelPicker();
+    if (P && P.hasSelection && P.hasSelection()) return true;
+    return !!getSelectedSlotId() && !!codexScenarioMapping();
   }
 
   function recordSelectedSlot() {
+    var P = channelPicker();
+    if (P && P.hasSelection && P.hasSelection() && P.recordSelected) {
+      P.recordSelected();
+      return true;
+    }
     var m = codexScenarioMapping();
     if (!m) return false;
-    var slotId = selectedSlotId;
+    var slotId = getSelectedSlotId();
     if (!slotId) {
       slotId = TARGET_SLOT_IDS.indexOf('pushToTalk') >= 0 ? 'pushToTalk' : TARGET_SLOT_IDS[0];
     }
     if (!slotId) return false;
-    selectedSlotId = slotId;
+    setSelectedSlotId(slotId, m.id);
     applyRecognitionOverlay();
     var chip = document.querySelector('[data-codex-chip-key="' + slotId + '"]');
     startRecord(m, slotId, chip);
@@ -487,7 +535,7 @@
       html += '<button type="button" class="codex-cap-item'
         + (bound ? ' is-bound' : '')
         + (bound && enabled ? ' is-active' : '')
-        + (triggerType === 'key' && selectedSlotId === s.slotId ? ' is-selected' : '')
+        + (triggerType === 'key' && getSelectedSlotId() === s.slotId ? ' is-selected' : '')
         + (microBadge ? ' has-micro-pad' : '')
         + '" role="listitem" '
         + attr + '="' + esc(s.slotId) + '" title="' + esc(name + (value ? ' · ' + value : '') + (microBadge ? ' · ' + microBadge : '')) + '">'
@@ -847,17 +895,18 @@
   }
 
   /**
-   * Click: load this capability's key onto the recognition keycap.
+   * Click: load this capability onto the recognition keycap (selection only).
    * Does not overwrite IME targetKey. Alt/Shift+click → record custom key.
+   * Legacy Codex may still seed a recommended chord when empty — channel picker path does not.
    */
   function selectCapabilityForKeycap(m, slotId, forceRecord) {
     if (forceRecord) {
-      selectedSlotId = slotId;
+      setSelectedSlotId(slotId, m && m.id);
       var chip0 = document.querySelector('[data-codex-chip-key="' + slotId + '"]');
       startRecord(m, slotId, chip0);
       return;
     }
-    if (selectedSlotId === slotId) {
+    if (getSelectedSlotId() === slotId) {
       clearSelection();
       remountKeysHosts(m);
       if (global.OneToneMappingList && global.OneToneMappingList.renderEditor) {
@@ -869,20 +918,14 @@
       return;
     }
 
-    var def = recommendedKey(slotId);
-    var b = ensureBinding(m, slotId, 'key');
-    var had = String(b.triggerBinding || '').trim();
-    if (!had) {
-      var conflictNew = findChordConflict(m, def, slotId);
-      if (conflictNew) {
-        conflictToast(conflictNew, def);
-        return;
-      }
-      b.triggerBinding = def;
+    var b = bindingFor(m, slotId, 'key');
+    var had = b ? String(b.triggerBinding || '').trim() : '';
+    // Codex legacy seed only when binding already exists in template fill; do not invent here
+    // unless fillEmptyKeyDefaults already created the row — still avoid writing new defaults on browse.
+    if (b && !had) {
+      // Show "needs key" via selection; recording writes through startRecord → ensureBinding.
     }
-    b.enabled = true;
-    selectedSlotId = slotId;
-    persist();
+    setSelectedSlotId(slotId, m && m.id);
     notifyMicroPad(m, slotId);
     remountKeysHosts(m);
     applyRecognitionOverlay();
@@ -892,10 +935,10 @@
       global.OneToneKeysPanelUi.render();
     }
 
-    var chord = String(b.triggerBinding || '').trim();
+    var chord = had;
     toast(t('codexCapLoadedToKeycap', '已加载到识别键')
       + ' · ' + slotLabel(slotId)
-      + (chord ? ' · ' + friendlyChord(chord) : ''));
+      + (chord ? ' · ' + friendlyChord(chord) : ' · ' + t('keysHeroActionNeedsKey', '待设置快捷键')));
     if (!multiKeyTipShown) {
       multiKeyTipShown = true;
       setTimeout(function () {
@@ -909,7 +952,7 @@
     var rec = global.OneToneMappingRecording;
     var sub = btn && btn.querySelector && btn.querySelector('.codex-cap-sub');
     function setSub(text) { if (sub) sub.textContent = text; }
-    selectedSlotId = slotId;
+    setSelectedSlotId(slotId, m && m.id);
     notifyMicroPad(m, slotId);
     applyRecognitionOverlay();
     if (!rec || !rec.startAgentBinding) {
@@ -977,7 +1020,7 @@
     }
     b.triggerBinding = trimmed;
     b.enabled = !!b.triggerBinding;
-    selectedSlotId = slotId;
+    setSelectedSlotId(slotId, m && m.id);
     persist();
     toast(t('codexCapCustomSaved', '已更新快捷键')
       + (b.triggerBinding ? ' · ' + friendlyChord(b.triggerBinding) : ''));
@@ -1081,6 +1124,9 @@
       clearSelection();
     }
     applyCodexStepChrome(step, m);
+    if (global.OneToneKeysChannelCommandPicker && global.OneToneKeysChannelCommandPicker.refresh) {
+      try { global.OneToneKeysChannelCommandPicker.refresh(); } catch (_) {}
+    }
   }
 
   function mountKeys() {
@@ -1147,12 +1193,16 @@
     applyCodexStepChrome: applyCodexStepChrome,
     isCodexKeysEditing: function () { return !!activeCodexMapping(); },
     findChordConflict: findChordConflict,
+    conflictToast: conflictToast,
     TARGET_SLOT_IDS: TARGET_SLOT_IDS,
     FINISH_SLOT_IDS: FINISH_SLOT_IDS
   };
 
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.addEventListener('DOMContentLoaded', function () {
+      if (global.OneToneKeysChannelCommandPicker && global.OneToneKeysChannelCommandPicker.init) {
+        try { global.OneToneKeysChannelCommandPicker.init(); } catch (_) {}
+      }
       setTimeout(refresh, 800);
     });
   }

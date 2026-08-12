@@ -1396,6 +1396,8 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![AgentBinding {
+            action_instance_id: String::new(),
+            action_args: None,
                 slot_id: "pushToTalk".into(),
                 action_id: "startDictation".into(),
                 trigger_type: "key".into(),

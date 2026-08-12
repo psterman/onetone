@@ -55,8 +55,10 @@ fn route_disposition(meta: &SemanticActionMeta, channel: ActionChannel) -> Route
 存储仍分散（`agentBindings` / `cameraOverride` / `codexMicroPad`）。只读投影：
 
 ```text
-ActionBindingView { mappingId, actionId, channel, trigger, enabled, risk, availability, sourceStorage }
+ActionBindingView { mappingId, actionId, channel, bindingRef, trigger, enabled, risk, availability, sourceStorage }
 ```
+
+`bindingRef` 稳定标识源入口：`agentBindings` → `slotId`；Camera → 手势名（如 `shakeHead`）；Soft Pad → `microKeyId`。
 
 编辑认 **`selectedMappingId`**，不得误用 `activeSceneId`。前端绑定以 Options `bindable` 为准（Catalog 仅展示）；未 hydrate **fail closed**。
 
@@ -75,9 +77,27 @@ Legacy Send Guard 仅拦裸 `send` / `submit` / `stopOrSend*`；正式 catalogue
 
 ## Binding 身份
 
-- 每 `mappingId + actionId + channel` 最多一个主绑定
-- 新 `slotId` = `semantic:<channel>:<actionId>`；`bindingRef` = `slotId`
-- Soft Pad 多键可指向同一 semantic slot
+- **单例动作**（`app.open`、既有 `input.*` 等）：每 `mappingId + channel + actionId` 最多一条主绑定；`actionInstanceId` 可空（视同 actionId）
+- **多实例动作**（`app.shortcut`）：每 `mappingId + channel + actionInstanceId` 唯一；跨通道可复用同一 `actionInstanceId` + 相同 `actionArgs`，仅 `slotId` 不同
+- 新单例 `slotId` = `semantic:<channel>:<actionId>`；多实例 = `semantic:<channel>:app.shortcut:<suffix>`；`bindingRef` = `slotId`
+- Soft Pad 多键可指向同一 semantic slot（单例）
+- `actionArgs`：JSON object（如 `app.shortcut` 的 `{ "chord": "Ctrl+K" }`）；由 `dispatch_semantic_binding` 传入 `SemanticActionRequest.args`
+
+## `app.open` / `app.shortcut`
+
+| actionId | 含义 | V1 channels | risk | cardinality |
+|----------|------|-------------|------|-------------|
+| `app.open` | 仅打开/聚焦习惯声明的 `appTargetId` | key, voice, softPad | safe | single |
+| `app.shortcut` | 前台已是目标应用时发送 `args.chord` | key, softPad | confirm | multiple |
+
+禁止：从前端传入 EXE/Shell/进程名/临时 appTargetId。V1 `app.shortcut` **不**自动切前台后再发键。
+
+执行：
+
+- `app.open` → `open_or_focus_target`（ensure window + focus；**不**进 composer / 听写 / hold）
+- `app.shortcut` → 校验 `args.chord` → FG == mapping.appTargetId → 非 OneTone 自身 → `send_chord`；否则 `invalid_action_args` / `target_not_foreground` / `inject_self_fg`
+
+语音「打开应用」声学配置可只读投影到按键页语音 subtab（`sourceKind: open-app-acoustic`），迁移仅 `key.upsert(app.open)`，不复制样本、不改语音配置。
 
 ## Catalogue
 

@@ -729,16 +729,16 @@
               <button type="button" class="habit-scenario-context-banner-back is-primary" id="btnHabitScenarioContextBackKeys"></button>
             </div>
           </div>
-          <div class="page-status-bar keys-page-status-bar" id="keysWorkflowTabsBar">
+          <div class="page-status-bar keys-page-status-bar keys-unified-status" id="keysWorkflowTabsBar">
             <div class="page-status-bar-main keys-scheme-status-main">
               <div class="keys-scheme-summary-title-row">
                 <span class="keys-scheme-summary-name" id="keysSummaryName">—</span>
                 <span class="keys-scheme-summary-pill" id="keysSummaryStatus">—</span>
               </div>
-              <div class="keys-scheme-summary-meta">
+              <div class="keys-scheme-summary-meta" id="keysSummaryMeta">
                 <span class="keys-scheme-summary-item"><span class="keys-scheme-summary-lbl" id="keysSummaryTriggerLbl">触发键</span><span class="keys-scheme-summary-val" id="keysSummaryTrigger">—</span></span>
-                <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
-                <span class="keys-scheme-summary-item"><span class="keys-scheme-summary-lbl" id="keysSummaryScopeLbl">生效范围</span><span class="keys-scheme-summary-val" id="keysSummaryScope">—</span></span>
+                <span class="keys-scheme-summary-divider keys-summary-scope-divider" aria-hidden="true"></span>
+                <span class="keys-scheme-summary-item keys-summary-scope-item" id="keysSummaryScopeItem"><span class="keys-scheme-summary-lbl" id="keysSummaryScopeLbl">生效范围</span><span class="keys-scheme-summary-val" id="keysSummaryScope">—</span></span>
               </div>
             </div>
             <div class="page-status-bar-actions keys-scheme-status-actions">
@@ -746,6 +746,26 @@
               <button type="button" class="page-status-btn is-primary" id="btnKeysSave" disabled>保存</button>
               <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="btnKeysMappingEnable" role="switch" aria-checked="false" aria-labelledby="keysSummaryStatus"></button>
               <button type="button" class="page-status-btn" id="btnKeysSchemeAdd">+ 新建</button>
+            </div>
+            <!-- Survives KeysStatus island mount (island only replaces main/actions). -->
+            <div class="keys-unified-extras" id="keysUnifiedExtras">
+              <span class="keys-unified-role-badge" id="keysUnifiedRoleBadge" hidden></span>
+              <div class="keys-unified-habit-line" id="keysUnifiedHabitLine" hidden>
+                <span class="keys-unified-habit-part" id="keysUnifiedEditing"></span>
+                <span class="keys-unified-sep" aria-hidden="true">·</span>
+                <span class="keys-unified-habit-part is-muted" id="keysUnifiedActive"></span>
+              </div>
+              <p class="keys-unified-hint" id="keysUnifiedHint" hidden></p>
+              <button type="button" class="habit-channel-status-strip-btn keys-unified-activate" id="keysUnifiedActivate" data-strip-activate hidden></button>
+              <div class="keys-unified-apps keys-app-binding-strip voice-app-scope-dock" id="keysAppBindingStrip" hidden>
+                <span class="keys-unified-apps-lbl" id="keysAppScopeTitle">生效范围</span>
+                <span class="keys-app-binding-lbl sr-only" id="keysAppBindingLbl">在哪些程序中生效</span>
+                <div class="keys-app-chips-wrap flow-scope-bar-wrap" id="keysAppContextStripWrap" hidden>
+                  <div class="keys-app-chips flow-scope-bar" id="keysAppContextStrip" role="radiogroup" aria-labelledby="keysAppContextStripLbl"></div>
+                  <button type="button" class="keys-app-chip keys-app-chip--add flow-scope-bar-add" id="btnKeysAppChipAdd">+ 添加应用</button>
+                  <span class="sr-only" id="keysAppContextStripLbl">预览应用上下文</span>
+                </div>
+              </div>
             </div>
             <span class="sr-only" id="keysWorkflowTabsLbl">正在编辑的习惯</span>
             <div class="keys-workflow-tabs sr-only" id="keysWorkflowTabs" role="tablist" aria-labelledby="keysWorkflowTabsLbl" hidden></div>
@@ -880,11 +900,22 @@
                       <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="habitKeyMapCellTarget" role="button" tabindex="0" aria-label="点击修改快捷键" title=""></div>
                       <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTarget"></div>
                     </div>
+                    <p class="keys-keycap-mode" id="keysTargetModeBadge" data-i18n="keysHeroModeIme">输入法识别键</p>
                     <p class="keys-keycap-hint" id="keysTargetKeycapHint">点击录制语音快捷键</p>
                     </div>
                     <div class="habit-flow-ime-block keys-capture-ime-block keys-workflow-footer-zone" id="habitFlowImeBlock">
-                      <p class="habit-flow-subsection-title" id="imePresetHintMapping">输入方式</p>
-                      <div class="ime-preset-strip" id="imePresetStripMapping" data-ime-context="mapping"></div>
+                      <div class="keys-channel-picker" id="keysChannelPicker">
+                        <div class="keys-channel-subtabs" id="keysChannelSubtabs" role="tablist" aria-label="识别通道">
+                          <button type="button" class="keys-channel-subtab" role="tab" id="keysChannelTabVoice" data-channel="voice" aria-selected="false" data-i18n="keysChannelTabVoice">语音命令</button>
+                          <button type="button" class="keys-channel-subtab" role="tab" id="keysChannelTabSoftPad" data-channel="softPad" aria-selected="false" data-i18n="keysChannelTabSoftPad">虚拟键盘</button>
+                          <button type="button" class="keys-channel-subtab" role="tab" id="keysChannelTabCamera" data-channel="camera" aria-selected="false" data-i18n="keysChannelTabCamera">摄像头操作</button>
+                          <button type="button" class="keys-channel-subtab is-active" role="tab" id="keysChannelTabIme" data-channel="ime" aria-selected="true" data-i18n="keysChannelTabIme">输入方式</button>
+                        </div>
+                        <div class="keys-channel-panel" id="keysChannelPanel" role="tabpanel" aria-labelledby="keysChannelTabIme" hidden></div>
+                        <div class="keys-ime-strip-wrap" id="keysImeStripWrap" role="tabpanel" aria-labelledby="keysChannelTabIme">
+                          <div class="ime-preset-strip" id="imePresetStripMapping" data-ime-context="mapping"></div>
+                        </div>
+                      </div>
                     </div>
                     <div class="keys-ime-pill sr-only" id="keysImePill" aria-hidden="true" hidden>
                       <svg class="keys-ime-pill-mic" id="keysImePillMic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
@@ -930,26 +961,6 @@
                 </div>
                 </div>
                 </div>
-                <div class="sound-embed-strip" id="keysSoundEmbed">
-                  <div class="sound-embed-strip-head">
-                    <p class="sound-embed-strip-title" id="keysSoundEmbedTitle">提示音</p>
-                    <button type="button" class="sound-embed-more-link" id="btnKeysOpenSoundsMore">更多音效</button>
-                  </div>
-                  <div class="sound-embed-slots">
-                    <div class="sound-embed-slot" data-slot="record">
-                      <span class="sound-embed-slot-lbl" id="keysSoundRecordLbl">录制按键</span>
-                      <button type="button" class="toggle-switch sound-slot-toggle" data-slot="record" role="switch" aria-checked="true" aria-labelledby="keysSoundRecordLbl"></button>
-                      <select class="sound-slot-select" data-slot="record" aria-labelledby="keysSoundRecordLbl"></select>
-                      <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="record">试听</button>
-                    </div>
-                    <div class="sound-embed-slot" data-slot="keyWake">
-                      <span class="sound-embed-slot-lbl" id="keysSoundKeyWakeLbl">按键激活提示音</span>
-                      <button type="button" class="toggle-switch sound-slot-toggle" data-slot="keyWake" role="switch" aria-checked="false" aria-labelledby="keysSoundKeyWakeLbl"></button>
-                      <select class="sound-slot-select" data-slot="keyWake" aria-labelledby="keysSoundKeyWakeLbl"></select>
-                      <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="keyWake">试听</button>
-                    </div>
-                  </div>
-                </div>
                 <footer class="habit-key-mapping-foot keys-page-tip-bar">
                   <p class="habit-key-mapping-tip" id="habitKeyMappingTip">提示：先设置 1 → 2 → 3，再按需配置 4 / 5 和高级选项</p>
                   <button type="button" class="habit-key-mapping-tutorial" id="btnHabitFlowTutorial">查看使用教程</button>
@@ -983,6 +994,7 @@
                     <div class="habit-basic-key-display display empty" id="targetDisplay">
                       <img class="target-ime-badge" id="targetImeIconMapping" alt="" decoding="async" hidden>
                       <span class="app-target-card-badge" id="targetAppBadgeMapping" hidden aria-hidden="true"></span>
+                      <span class="keys-target-action-icon" id="keysTargetActionIconHost" hidden aria-hidden="true"></span>
                       <span class="display-value" id="targetView">未设置</span>
                     </div>
                     <button class="habit-rerecord-link record-btn" id="btnRecordTarget" type="button">
@@ -1075,19 +1087,6 @@
           </div>
           <div class="keys-page-foot">
             <button type="button" class="btn-test-send keys-page-test" id="btnTestSend" disabled>请先录好语音快捷键</button>
-          </div>
-          <div class="keys-app-binding-strip voice-app-scope-dock keys-app-scope-dock" id="keysAppBindingStrip" hidden>
-            <div class="voice-app-scope-head">
-              <div class="voice-app-scope-head-text">
-                <h4 class="voice-app-scope-title" id="keysAppScopeTitle">生效应用</h4>
-              </div>
-            </div>
-            <span class="keys-app-binding-lbl sr-only" id="keysAppBindingLbl">在哪些程序中生效</span>
-            <div class="keys-app-chips-wrap flow-scope-bar-wrap" id="keysAppContextStripWrap" hidden>
-              <div class="keys-app-chips flow-scope-bar" id="keysAppContextStrip" role="radiogroup" aria-labelledby="keysAppContextStripLbl"></div>
-              <button type="button" class="keys-app-chip keys-app-chip--add flow-scope-bar-add" id="btnKeysAppChipAdd">+ 添加应用</button>
-              <span class="sr-only" id="keysAppContextStripLbl">预览应用上下文</span>
-            </div>
           </div>
         </section>
         <section class="settings-panel drawer-section soft-pad-page" id="settingsPanelSoftPad" hidden>
@@ -2348,6 +2347,35 @@
               <button type="button" class="voice-mode-meta-link" id="btnRecordingAudioOpenRecognize">去语音识别</button>
             </div>
           </div>
+          <div class="sound-settings-block" id="soundKeyCueBlock">
+            <p class="pref-page-subtitle" id="soundKeyCueGroupTitle" style="margin:12px 0 8px">提示音</p>
+            <div class="sound-slot" data-slot="record">
+              <div class="sound-slot-head">
+                <div>
+                  <p class="sound-slot-title" id="soundSlotRecordTitle">录制按键</p>
+                  <p class="sound-slot-desc" id="soundSlotRecordDesc">录制启动键或快捷键时，检测到按键的反馈音。</p>
+                </div>
+                <button type="button" class="toggle-switch sound-slot-toggle" data-slot="record" role="switch" aria-checked="true" aria-labelledby="soundSlotRecordTitle"></button>
+              </div>
+              <div class="sound-slot-pick">
+                <select class="sound-slot-select" data-slot="record" id="soundSelectRecord" aria-labelledby="soundSlotRecordTitle"></select>
+                <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="record" id="soundPreviewRecord">试听</button>
+              </div>
+            </div>
+            <div class="sound-slot" data-slot="keyWake">
+              <div class="sound-slot-head">
+                <div>
+                  <p class="sound-slot-title" id="soundSlotKeyWakeTitle">按键激活提示音</p>
+                  <p class="sound-slot-desc" id="soundSlotKeyWakeDesc">按启动键唤起语音输入时播放。</p>
+                </div>
+                <button type="button" class="toggle-switch sound-slot-toggle" data-slot="keyWake" role="switch" aria-checked="false" aria-labelledby="soundSlotKeyWakeTitle"></button>
+              </div>
+              <div class="sound-slot-pick">
+                <select class="sound-slot-select" data-slot="keyWake" id="soundSelectKeyWake" aria-labelledby="soundSlotKeyWakeTitle"></select>
+                <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="keyWake" id="soundPreviewKeyWake">试听</button>
+              </div>
+            </div>
+          </div>
           <div class="sound-settings-block" id="soundCategoryBlock">
             <p class="pref-page-subtitle" id="soundCategoryGroupTitle" style="margin:12px 0 8px">何时提醒</p>
             <div class="sound-slot sound-slot--attention" data-cat="needAttention">
@@ -2463,21 +2491,8 @@
           </div>
           <details class="sound-legacy-fold" id="soundLegacyFold">
             <summary class="sound-legacy-fold-summary" id="soundLegacyFoldTitle">传统提示（兼容）</summary>
-            <p class="help" id="soundLegacyFoldHint" style="margin:8px 0 10px">录制、唤醒、发送等旧槽；一般不必改，需要时再展开。</p>
+            <p class="help" id="soundLegacyFoldHint" style="margin:8px 0 10px">语音唤醒、发送结果等旧槽；一般不必改，需要时再展开。</p>
             <div class="sound-settings-block" id="soundSettingsBlock">
-            <div class="sound-slot" data-slot="record">
-              <div class="sound-slot-head">
-                <div>
-                  <p class="sound-slot-title" id="soundSlotRecordTitle">录制按键</p>
-                  <p class="sound-slot-desc" id="soundSlotRecordDesc">录制启动键或快捷键时，检测到按键的反馈音。</p>
-                </div>
-                <button type="button" class="toggle-switch sound-slot-toggle" data-slot="record" role="switch" aria-checked="true"></button>
-              </div>
-              <div class="sound-slot-pick">
-                <select class="sound-slot-select" data-slot="record" id="soundSelectRecord" aria-labelledby="soundSlotRecordTitle"></select>
-                <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="record" id="soundPreviewRecord">试听</button>
-              </div>
-            </div>
             <div class="sound-slot" data-slot="voiceWake">
               <div class="sound-slot-head">
                 <div>
@@ -2489,19 +2504,6 @@
               <div class="sound-slot-pick">
                 <select class="sound-slot-select" data-slot="voiceWake" id="soundSelectVoiceWake" aria-labelledby="soundSlotVoiceWakeTitle"></select>
                 <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="voiceWake" id="soundPreviewVoiceWake">试听</button>
-              </div>
-            </div>
-            <div class="sound-slot" data-slot="keyWake">
-              <div class="sound-slot-head">
-                <div>
-                  <p class="sound-slot-title" id="soundSlotKeyWakeTitle">按键激活提示音</p>
-                  <p class="sound-slot-desc" id="soundSlotKeyWakeDesc">按启动键唤起语音输入时播放。</p>
-                </div>
-                <button type="button" class="toggle-switch sound-slot-toggle" data-slot="keyWake" role="switch" aria-checked="false"></button>
-              </div>
-              <div class="sound-slot-pick">
-                <select class="sound-slot-select" data-slot="keyWake" id="soundSelectKeyWake" aria-labelledby="soundSlotKeyWakeTitle"></select>
-                <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="keyWake" id="soundPreviewKeyWake">试听</button>
               </div>
             </div>
             <div class="sound-slot" data-slot="sendSuccess">
@@ -4392,6 +4394,7 @@
   <script src="js/features/agent/agent-actions.js"></script>
   <script src="js/features/agent/semantic-action-store.js"></script>
   <script src="js/features/agent/action-binding-adapters.js"></script>
+  <script src="js/features/mapping/keys-channel-command-picker.js"></script>
   <script src="js/features/agent/semantic-action-presets.js"></script>
   <script src="js/features/agent/action-nav.js"></script>
   <script src="js/features/agent/semantic-action-picker.js"></script>

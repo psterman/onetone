@@ -214,36 +214,91 @@
     return edTrig!==savedTrig||edTgt!==savedTgt;
   }
 
-  function scopeSummaryText(m){
-    if(!m) return '—';
-    var ctx=appScenarioContextMapping();
-    if(ctx&&m.id===ctx.id){
-      var rulesCtx=appRules();
-      var appOnly=String(m.appTargetId||'').trim();
-      if(appOnly&&rulesCtx&&rulesCtx.appDisplayName) return rulesCtx.appDisplayName(appOnly);
-    }
+  function scopeSummaryEntries(m){
+    if(!m) return [];
     var rules=appRules();
+    var ctx=appScenarioContextMapping();
+    var out=[];
+    var seen={};
+    function pushApp(appId,label){
+      appId=String(appId||'').trim();
+      label=String(label||'').trim();
+      if(!appId&&!label) return;
+      var key=appId||('n:'+label);
+      if(seen[key]) return;
+      seen[key]=true;
+      out.push({
+        id:appId,
+        name:label||(rules&&rules.appDisplayName?rules.appDisplayName(appId):appId),
+        icon:appId?presetIcon(appId):''
+      });
+    }
+    if(ctx&&m.id===ctx.id){
+      var appOnly=String(m.appTargetId||'').trim();
+      if(appOnly){
+        pushApp(appOnly,rules&&rules.appDisplayName?rules.appDisplayName(appOnly):appOnly);
+        return out;
+      }
+    }
     var primary=String(m.appTargetId||'').trim();
-    var names=[];
-    if(primary&&rules&&rules.appDisplayName) names.push(rules.appDisplayName(primary));
+    if(primary) pushApp(primary,rules&&rules.appDisplayName?rules.appDisplayName(primary):primary);
     var presets=rules&&rules.behaviorPresets?rules.behaviorPresets:[];
     presets.forEach(function(p){
       if(!p||!p.id||p.id===primary) return;
       var hasRule=Array.isArray(m.appBehaviorRules)&&m.appBehaviorRules.some(function(r){ return r&&r.appId===p.id; });
-      if(hasRule&&rules&&rules.appDisplayName) names.push(rules.appDisplayName(p.id));
+      if(hasRule) pushApp(p.id,rules&&rules.appDisplayName?rules.appDisplayName(p.id):p.id);
     });
     if(rules&&rules.customRulesForMapping){
       rules.customRulesForMapping(m).forEach(function(rule){
+        if(!rule) return;
         var label=rules.ruleDisplayName?rules.ruleDisplayName(rule):'';
-        if(label&&names.indexOf(label)<0) names.push(label);
+        var rid=String(rule.ruleId||rule.appId||'').trim();
+        pushApp(rid,label||rid);
       });
     }
-    if(!names.length){
-      if(primary&&rules&&rules.appDisplayName) return rules.appDisplayName(primary);
-      return t('keysSummaryScopeAll');
-    }
+    return out;
+  }
+
+  function scopeSummaryText(m){
+    var entries=scopeSummaryEntries(m);
+    if(!entries.length) return t('keysSummaryScopeAll');
+    var names=entries.map(function(e){ return e.name; });
     if(names.length>3) return names.slice(0,3).join(' / ')+'…';
     return names.join(' / ');
+  }
+
+  function scopeSummaryHtml(m){
+    var entries=scopeSummaryEntries(m);
+    if(!entries.length){
+      return '<span class="keys-scope-icon-chip keys-scope-icon-chip--none">'+esc(t('keysSummaryScopeAll'))+'</span>';
+    }
+    var more=entries.length>3;
+    var show=more?entries.slice(0,3):entries;
+    var html=show.map(function(e){
+      var icon=e.icon
+        ?('<img class="keys-scope-icon" src="'+esc(e.icon)+'" alt="" decoding="async" />')
+        :(e.name?('<span class="keys-scope-icon keys-scope-icon--fallback" aria-hidden="true">'+esc(String(e.name).charAt(0))+'</span>'):'');
+      return '<span class="keys-scope-icon-chip" title="'+esc(e.name)+'">'+icon+'<span class="keys-scope-icon-name">'+esc(e.name)+'</span></span>';
+    }).join('<span class="keys-scope-sep" aria-hidden="true">/</span>');
+    if(more) html+='<span class="keys-scope-more" aria-hidden="true">…</span>';
+    return html;
+  }
+
+  function paintScopeSummary(scopeVal,m,opts){
+    opts=opts||{};
+    if(!scopeVal) return;
+    var capUi=global.OneToneAgentCapabilityUi;
+    var codexCtx=opts.codexCtx!=null?opts.codexCtx:(capUi&&capUi.isCodexKeysEditing&&capUi.isCodexKeysEditing());
+    if(codexCtx&&capUi&&capUi.pushToTalkDisplay){
+      var talkKey=capUi.pushToTalkDisplay(m);
+      scopeVal.classList.remove('has-icons');
+      scopeVal.textContent=talkKey
+        ?(t('codexSummaryTalkKey','说话键')+' '+talkKey)
+        :scopeSummaryText(m);
+      return;
+    }
+    scopeVal.classList.add('has-icons');
+    scopeVal.innerHTML=scopeSummaryHtml(m);
   }
 
   function schemeStatusTag(m){
@@ -306,14 +361,24 @@
       }
     }
     var scopeVal='—';
+    var scopeApps=[];
+    var scopeIcons=false;
+    var chipsOn=false;
     if(m){
+      chipsOn=!shouldHideAppBindingStrip(m)&&!!(core().isSaved&&core().isSaved(m));
       if(codexCtx&&capUi&&capUi.pushToTalkDisplay){
         var talkKey=capUi.pushToTalkDisplay(m);
         scopeVal=talkKey
           ?(t('codexSummaryTalkKey','说话键')+' '+talkKey)
           :scopeSummaryText(m);
+        if(!talkKey){
+          scopeApps=scopeSummaryEntries(m);
+          scopeIcons=true;
+        }
       }else{
         scopeVal=scopeSummaryText(m);
+        scopeApps=scopeSummaryEntries(m);
+        scopeIcons=true;
       }
     }
     var tgt=m?(core().editorTarget?core().editorTarget(m):((m.targetKey||'').trim())):'';
@@ -329,6 +394,10 @@
       triggerVal:m?(trigLabel||(trig?friendlyKey(trig):t('keysStatusUnset'))):'—',
       scopeLbl:t('keysSummaryScopeLbl'),
       scopeVal:scopeVal,
+      scopeApps:scopeApps,
+      scopeIcons:scopeIcons,
+      // Interactive chips already show 生效范围 — don't duplicate icon pills above.
+      scopeHidden:!!chipsOn,
       saveLabel:t('keysSave'),
       testLabel:t('keysTestOnce'),
       addLabel:'+ '+t('addKeysDraft'),
@@ -396,7 +465,7 @@
       if(nameEl) nameEl.textContent='—';
       if(statusEl){ statusEl.textContent='—'; statusEl.className='keys-scheme-summary-pill'; }
       if(trigVal) trigVal.textContent='—';
-      if(scopeVal) scopeVal.textContent='—';
+      if(scopeVal){ scopeVal.classList.remove('has-icons'); scopeVal.textContent='—'; }
       if(saveBtn) saveBtn.disabled=true;
       if(testBtn) testBtn.disabled=true;
       if(keycapHost) keycapHost.removeAttribute('title');
@@ -445,16 +514,12 @@
       statusEl.className=pillCls;
     }
     if(trigVal) trigVal.textContent=trigLabel||(trig?friendlyKey(trig):t('keysStatusUnset'));
-    if(scopeVal){
-      if(codexCtx&&capUi&&capUi.pushToTalkDisplay){
-        var talkKey=capUi.pushToTalkDisplay(m);
-        scopeVal.textContent=talkKey
-          ?(t('codexSummaryTalkKey','说话键')+' '+talkKey)
-          :scopeSummaryText(m);
-      }else{
-        scopeVal.textContent=scopeSummaryText(m);
-      }
-    }
+    var chipsOn=!shouldHideAppBindingStrip(m)&&!!(core().isSaved&&core().isSaved(m));
+    var scopeItemEl=$('keysSummaryScopeItem');
+    var scopeDividerEl=document.querySelector('#keysWorkflowTabsBar .keys-summary-scope-divider, #keysSummaryMeta .keys-summary-scope-divider');
+    if(scopeItemEl) scopeItemEl.hidden=!!chipsOn;
+    if(scopeDividerEl) scopeDividerEl.hidden=!!chipsOn;
+    if(!chipsOn) paintScopeSummary(scopeVal,m,{codexCtx:codexCtx});
     if(saveBtn){
       saveBtn.disabled=!dirty;
       saveBtn.hidden=!!codexCtx;
@@ -834,9 +899,16 @@
     var strip=$('keysAppContextStrip');
     var wrap=$('keysAppContextStripWrap');
     var bindingStrip=$('keysAppBindingStrip');
+    var scopeItem=$('keysSummaryScopeItem');
+    var scopeDivider=document.querySelector('#keysSummaryMeta .keys-summary-scope-divider');
+    var bar=$('keysWorkflowTabsBar');
     if(!strip||!wrap) return;
     wrap.hidden=!!model.hidden;
     if(bindingStrip) bindingStrip.hidden=!!model.hidden;
+    if(bar) bar.classList.toggle('has-app-chips',!model.hidden);
+    // Chips own "生效应用" — hide the duplicate text scope when chips are visible.
+    if(scopeItem) scopeItem.hidden=!model.hidden;
+    if(scopeDivider) scopeDivider.hidden=!model.hidden;
     if(model.hidden) return;
     strip.innerHTML=model.html||'';
     var rulesApi=appRules();
@@ -848,6 +920,8 @@
     var addBtn=$('btnKeysAppChipAdd');
     if(bindingLbl) bindingLbl.textContent=t('keysAppBindingLbl');
     if(addBtn) addBtn.textContent=t('keysAppChipAdd');
+    var scopeTitle=$('keysAppScopeTitle');
+    if(scopeTitle) scopeTitle.textContent=t('keysSummaryScopeLbl')||t('keysAppScopeTitle')||'生效范围';
     applyKeysAppContextStripHost(buildKeysAppContextStripModel());
   }
 
@@ -1383,7 +1457,7 @@
       ['keysFlowNodeTriggerTitle','keysColTrigger'],
       ['keysFlowNodeTargetTitle','keysColCapture'],
       ['keysFlowNodeFinishTitle','keysColAction'],
-      ['keysAppScopeTitle','keysAppScopeTitle'],
+      ['keysAppScopeTitle','keysSummaryScopeLbl'],
       ['keysAppScopeDesc','keysAppScopeDesc']
     ];
     colLbls.forEach(function(pair){
@@ -1402,8 +1476,17 @@
     renderTriggerModeSegments(m);
     renderTriggerConflict(m);
     renderSchemeSummary(m);
+    if(global.OneToneHabitChannelStatusStrip){
+      if(global.OneToneHabitChannelStatusStrip.bindOnce) global.OneToneHabitChannelStatusStrip.bindOnce();
+      if(global.OneToneHabitChannelStatusStrip.render){
+        try{ global.OneToneHabitChannelStatusStrip.render(); }catch(_){}
+      }
+    }
     syncRecordButtons();
     if(global.OneToneImePresets) global.OneToneImePresets.refresh('mapping');
+    if(global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.refresh){
+      try{ global.OneToneKeysChannelCommandPicker.refresh(); }catch(_){}
+    }
     renderRecordingFeedback();
     if(global.OneToneMappingCore&&global.OneToneMappingCore.renderConflictBanner){
       global.OneToneMappingCore.renderConflictBanner();

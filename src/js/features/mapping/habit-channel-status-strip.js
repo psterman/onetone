@@ -8,7 +8,7 @@
   };
 
   var PANEL_HOSTS=[
-    {panel:'keys',panelId:'settingsPanelKeys',stripId:'habitChannelStatusStripKeys',beforeId:'habitScenarioContextBannerKeys'},
+    {panel:'keys',panelId:'settingsPanelKeys',stripId:'habitChannelStatusStripKeys',beforeId:'habitScenarioContextBannerKeys',unified:true},
     {panel:'voice',panelId:'settingsPanelVoiceWake',stripId:'habitChannelStatusStripVoice',beforeId:'habitScenarioContextBannerVoice'},
     {panel:'camera',panelId:'settingsPanelCamera',stripId:'habitChannelStatusStripCamera',beforeId:'habitScenarioContextBannerCamera'},
     {panel:'softPad',panelId:'settingsPanelSoftPad',stripId:'habitChannelStatusStripSoftPad',beforeId:'softPadStatusBar'}
@@ -68,7 +68,10 @@
         return tpl.replace('{name}',active.name||'—');
       }
     }
-    return t('habitChannelStripHint')||'';
+    if(editing.id&&active.id&&editing.id!==active.id){
+      return t('habitChannelStripHint')||'编辑不会立即切换正在使用；点「设为正在使用」后才生效。';
+    }
+    return '';
   }
 
   function resolveEditing(channel){
@@ -109,6 +112,7 @@
   }
 
   function ensureStrip(spec){
+    if(spec.unified) return null;
     var panel=$(spec.panelId);
     if(!panel) return null;
     var el=$(spec.stripId);
@@ -136,11 +140,75 @@
     return el;
   }
 
+  function paintKeysUnified(editing,active){
+    var roleBadge=$('keysUnifiedRoleBadge');
+    var line=$('keysUnifiedHabitLine');
+    var editingEl=$('keysUnifiedEditing');
+    var activeEl=$('keysUnifiedActive');
+    var hintEl=$('keysUnifiedHint');
+    var btn=$('keysUnifiedActivate');
+    var same=!!(editing.id&&active.id&&editing.id===active.id);
+    var bothUnset=!editing.id&&!active.id;
+    var hint=resolveHint(editing,active,'keys');
+    var btnLbl=t('habitChannelStripSetActive')||t('homeWbHabitBarUse')||'设为正在使用';
+
+    if(roleBadge){
+      if(same){
+        roleBadge.hidden=false;
+        roleBadge.textContent=t('keysUnifiedRoleSame')||'编辑且正在使用';
+      }else if(bothUnset||(!editing.id&&!active.id)){
+        roleBadge.hidden=true;
+        roleBadge.textContent='';
+      }else{
+        roleBadge.hidden=true;
+        roleBadge.textContent='';
+      }
+    }
+
+    if(line&&editingEl&&activeEl){
+      // Title already shows the habit being edited — only show the split line when they differ.
+      if(!same&&(editing.id||active.id)&&(editing.id!==active.id||editing.name!==active.name)){
+        line.hidden=false;
+        editingEl.textContent=(t('habitChannelStripEditing')||'正在编辑：{name}').replace('{name}',editing.name||'—');
+        activeEl.textContent=(t('habitChannelStripActive')||'正在使用：{name}').replace('{name}',active.name||'—');
+      }else{
+        line.hidden=true;
+        editingEl.textContent='';
+        activeEl.textContent='';
+      }
+    }
+
+    if(hintEl){
+      if(hint){
+        hintEl.hidden=false;
+        hintEl.textContent=hint;
+      }else{
+        hintEl.hidden=true;
+        hintEl.textContent='';
+      }
+    }
+
+    if(btn){
+      btn.textContent=btnLbl;
+      var show=!!(editing.canActivate&&editing.id&&editing.id!==active.id);
+      btn.hidden=!show;
+      btn.setAttribute('data-mapping-id',editing.id||'');
+    }
+
+    // Remove legacy standalone strip if an older session created it.
+    var legacy=$('habitChannelStatusStripKeys');
+    if(legacy) legacy.hidden=true;
+  }
+
   function paintStrip(spec){
-    var el=ensureStrip(spec);
-    if(!el) return;
     var editing=resolveEditing(spec.panel);
     var active=resolveActive();
+    if(spec.unified){
+      paintKeysUnified(editing,active);
+      return;
+    }
+    var el=ensureStrip(spec);
+    if(!el) return;
     var editingTpl=t('habitChannelStripEditing')||'正在编辑：{name}';
     var activeTpl=t('habitChannelStripActive')||'正在使用：{name}';
     var hint=resolveHint(editing,active,spec.panel);

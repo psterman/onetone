@@ -100,6 +100,8 @@ fn projects_four_storages_including_camera_local() {
     if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == mid) {
         m.agent_bindings = vec![
             AgentBinding {
+            action_instance_id: String::new(),
+            action_args: None,
                 slot_id: "pushToTalk".into(),
                 action_id: "startDictation".into(),
                 trigger_type: "key".into(),
@@ -109,6 +111,8 @@ fn projects_four_storages_including_camera_local() {
                 activation_scope: "global".into(),
             },
             AgentBinding {
+            action_instance_id: String::new(),
+            action_args: None,
                 slot_id: "cancel".into(),
                 action_id: "cancel".into(),
                 trigger_type: "voice".into(),
@@ -136,27 +140,43 @@ fn projects_four_storages_including_camera_local() {
     }
     let views = project_action_bindings_for_mapping(&cfg, &mid);
     assert!(
-        views.iter().any(|v| v.source_storage == "agentBindings" && v.channel == "key"),
-        "{views:?}"
-    );
-    assert!(
-        views.iter().any(|v| v.source_storage == "agentBindings" && v.channel == "voice"),
+        views.iter().any(|v| {
+            v.source_storage == "agentBindings"
+                && v.channel == "key"
+                && v.binding_ref == "pushToTalk"
+        }),
         "{views:?}"
     );
     assert!(
         views.iter().any(|v| {
-            v.source_storage == "cameraOverride" && v.action_id == "camera.local.pressEsc"
+            v.source_storage == "agentBindings"
+                && v.channel == "voice"
+                && !v.binding_ref.is_empty()
+        }),
+        "{views:?}"
+    );
+    assert!(
+        views.iter().any(|v| {
+            v.source_storage == "cameraOverride"
+                && v.action_id == "camera.local.pressEsc"
+                && v.binding_ref == "shakeHead"
         }),
         "missing local camera token: {views:?}"
     );
     assert!(
         views.iter().any(|v| {
-            v.source_storage == "cameraOverride" && v.action_id == "input.start"
+            v.source_storage == "cameraOverride"
+                && v.action_id == "input.start"
+                && v.binding_ref == "deliberateBlink"
         }),
         "{views:?}"
     );
     assert!(
-        views.iter().any(|v| v.source_storage == "codexMicroPad" && v.channel == "softPad"),
+        views.iter().any(|v| {
+            v.source_storage == "codexMicroPad"
+                && v.channel == "softPad"
+                && v.binding_ref == "D1"
+        }),
         "{views:?}"
     );
 }
@@ -307,6 +327,36 @@ fn catalog_b0_meta_fields_stable() {
     let overlay = dto.entries.iter().find(|e| e.id == "overlay.toggle").unwrap();
     assert_eq!(overlay.provider_scope, "none");
     assert_eq!(overlay.category, "system");
+}
+
+#[test]
+fn app_open_and_shortcut_catalogue_contract() {
+    let open = semantic_meta_by_id("app.open").expect("app.open");
+    assert!(open.implemented);
+    assert_eq!(open.executor, "onetoneRuntime");
+    assert_eq!(open.provider_scope, "currentTarget");
+    assert_eq!(open.category.as_str(), "system");
+    assert!(channel_allowed(open, ActionChannel::Key));
+    assert!(channel_allowed(open, ActionChannel::Voice));
+    assert!(channel_allowed(open, ActionChannel::SoftPad));
+    assert!(!channel_allowed(open, ActionChannel::Camera));
+
+    let shortcut = semantic_meta_by_id("app.shortcut").expect("app.shortcut");
+    assert!(shortcut.implemented);
+    assert_eq!(shortcut.executor, "onetoneRuntime");
+    assert!(channel_allowed(shortcut, ActionChannel::Key));
+    assert!(channel_allowed(shortcut, ActionChannel::SoftPad));
+    assert!(!channel_allowed(shortcut, ActionChannel::Voice));
+    assert!(!channel_allowed(shortcut, ActionChannel::Camera));
+
+    let dto = public_catalog_dto();
+    let open_e = dto.entries.iter().find(|e| e.id == "app.open").unwrap();
+    assert_eq!(open_e.risk, "safe");
+    let short_e = dto.entries.iter().find(|e| e.id == "app.shortcut").unwrap();
+    assert_eq!(short_e.risk, "confirm");
+    assert!(!short_e.channels.iter().any(|c| c == "voice" || c == "camera"));
+    assert!(LAYER1_ACTION_IDS.contains(&"app.open"));
+    assert!(LAYER1_ACTION_IDS.contains(&"app.shortcut"));
 }
 
 #[test]

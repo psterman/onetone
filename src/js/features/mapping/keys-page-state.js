@@ -78,6 +78,9 @@
     if(changed&&global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.mountKeys){
       try{ global.OneToneAgentCapabilityUi.mountKeys(); }catch(_){}
     }
+    if(changed&&global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.onStepChange){
+      try{ global.OneToneKeysChannelCommandPicker.onStepChange(step); }catch(_){}
+    }
     var capUi=global.OneToneAgentCapabilityUi;
     if(capUi&&capUi.applyCodexStepChrome&&capUi.isCodexKeysEditing&&capUi.isCodexKeysEditing()){
       var core=global.OneToneMappingCore;

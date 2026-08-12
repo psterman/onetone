@@ -141,6 +141,7 @@ pub fn execute_layer1(
     raw_action_id: &str,
     canonical: &str,
     mapping_id: Option<&str>,
+    args: Option<&serde_json::Value>,
 ) -> Layer1Outcome {
     match canonical {
         "input.start" => execute_start(state, window, mapping_id),
@@ -153,8 +154,110 @@ pub fn execute_layer1(
         "onetone.resume" => execute_onetone_resume(state, window),
         "overlay.toggle" => execute_overlay_toggle(state, window),
         "status.read" => execute_status_read(state),
+        "app.open" => execute_app_open(state, window, mapping_id),
+        "app.shortcut" => execute_app_shortcut(state, mapping_id, args),
         _ => Layer1Outcome::err("not_implemented", Some(format!("no layer1 handler for {canonical}"))),
     }
+}
+
+fn execute_app_open(
+    state: &Arc<AppState>,
+    window: &WebviewWindow,
+    mapping_id: Option<&str>,
+) -> Layer1Outcome {
+    let Some(mid) = mapping_id.map(str::trim).filter(|s| !s.is_empty()) else {
+        return Layer1Outcome::err("no_mapping", Some("app.open needs mappingId".into()));
+    };
+    match crate::app_chat_workflow::open_or_focus_target(state, window, mid) {
+        Ok(detail) => Layer1Outcome::ok_detail(format!("app.open {detail}")),
+        Err((reason, err)) => {
+            let code = match err {
+                crate::app_chat_workflow::AppChatWorkflowError::NotFound => {
+                    if reason == "no_app_target" || reason == "no_mapping" {
+                        reason.clone()
+                    } else {
+                        "unavailable".to_string()
+                    }
+                }
+                crate::app_chat_workflow::AppChatWorkflowError::FocusFailed => {
+                    "focus_failed".to_string()
+                }
+                crate::app_chat_workflow::AppChatWorkflowError::InputNotFound => {
+                    "unavailable".to_string()
+                }
+                crate::app_chat_workflow::AppChatWorkflowError::VoiceFailed => "failed".to_string(),
+            };
+            Layer1Outcome::err(&code, Some(reason))
+        }
+    }
+}
+
+fn parse_shortcut_chord(args: Option<&serde_json::Value>) -> Result<String, Layer1Outcome> {
+    let Some(args) = args else {
+        return Err(Layer1Outcome::err(
+            "invalid_action_args",
+            Some("app.shortcut needs args.chord".into()),
+        ));
+    };
+    let chord = args
+        .get("chord")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string);
+    let Some(chord) = chord else {
+        return Err(Layer1Outcome::err(
+            "invalid_action_args",
+            Some("app.shortcut needs args.chord".into()),
+        ));
+    };
+    if chord_looks_dangerous(&chord) {
+        return Err(Layer1Outcome::err(
+            "invalid_action_args",
+            Some(format!("dangerous chord refused: {chord}")),
+        ));
+    }
+    if crate::key_chord::parse_chord(&chord).is_err() {
+        return Err(Layer1Outcome::err(
+            "invalid_action_args",
+            Some(format!("unparseable chord: {chord}")),
+        ));
+    }
+    Ok(chord)
+}
+
+fn chord_looks_dangerous(chord: &str) -> bool {
+    let n = chord.replace(' ', "").to_ascii_lowercase();
+    n.contains("ctrl+alt+del")
+        || n.contains("ctrl+alt+delete")
+        || n == "win+l"
+        || n == "lwin+l"
+        || n == "rwin+l"
+        || n.contains("alt+f4")
+}
+
+fn execute_app_shortcut(
+    state: &Arc<AppState>,
+    mapping_id: Option<&str>,
+    args: Option<&serde_json::Value>,
+) -> Layer1Outcome {
+    let chord = match parse_shortcut_chord(args) {
+        Ok(c) => c,
+        Err(e) => return e,
+    };
+    // FG must already match; do not open/focus first.
+    let app_target = match ensure_mapping_foreground(state, mapping_id) {
+        Ok(t) => t,
+        Err(e) => return e,
+    };
+    let duration = state.cfg.lock().key_press_duration_ms;
+    if !crate::keyboard::send_chord(&chord, duration) {
+        return Layer1Outcome::err(
+            "send_failed",
+            Some(format!("failed to send chord {chord} to {app_target}")),
+        );
+    }
+    Layer1Outcome::ok_detail(format!("app.shortcut {chord} → {app_target}"))
 }
 
 fn execute_start(
@@ -545,5 +648,21 @@ mod tests {
             commit_policy_for_raw_action("input.send", "input.send"),
             Some(CommitPolicy::Force)
         );
+    }
+
+    #[test]
+    fn app_shortcut_args_require_chord() {
+        assert!(parse_shortcut_chord(None).is_err());
+        assert!(parse_shortcut_chord(Some(&serde_json::json!({}))).is_err());
+        assert!(parse_shortcut_chord(Some(&serde_json::json!({"chord":""}))).is_err());
+        assert!(parse_shortcut_chord(Some(&serde_json::json!({"chord":"Ctrl+Alt+Del"}))).is_err());
+        let ok = parse_shortcut_chord(Some(&serde_json::json!({"chord":"Ctrl+K"}))).unwrap();
+        assert_eq!(ok, "Ctrl+K");
+    }
+
+    #[test]
+    fn app_open_and_shortcut_are_layer1() {
+        assert!(is_layer1_native("app.open"));
+        assert!(is_layer1_native("app.shortcut"));
     }
 }

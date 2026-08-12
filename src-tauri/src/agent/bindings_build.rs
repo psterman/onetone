@@ -59,6 +59,8 @@ pub fn build_codex_micro_13_bindings(locale: &str) -> Vec<AgentBinding> {
             .unwrap_or("")
             .to_string();
         out.push(AgentBinding {
+            action_instance_id: String::new(),
+            action_args: None,
             slot_id: slot.slot_id.into(),
             action_id: slot.action_id.into(),
             trigger_type: "key".into(),
@@ -68,6 +70,8 @@ pub fn build_codex_micro_13_bindings(locale: &str) -> Vec<AgentBinding> {
             activation_scope: slot.activation_scope.as_str().into(),
         });
         out.push(AgentBinding {
+            action_instance_id: String::new(),
+            action_args: None,
             slot_id: slot.slot_id.into(),
             action_id: slot.action_id.into(),
             trigger_type: "voice".into(),

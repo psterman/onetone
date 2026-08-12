@@ -401,6 +401,82 @@ pub fn focus_composer_only(
     Err(AppChatWorkflowError::NotFound)
 }
 
+/// Open / focus the habit's declared app target only — no composer focus, no voice.
+#[cfg(windows)]
+pub fn open_or_focus_target(
+    state: &Arc<AppState>,
+    window: &WebviewWindow,
+    mapping_id: &str,
+) -> Result<String, (String, AppChatWorkflowError)> {
+    let (app_target_id, custom_rule) = {
+        let cfg = state.cfg.lock();
+        let mapping = cfg.find_mapping_by_id(mapping_id).ok_or((
+            "no_mapping".to_string(),
+            AppChatWorkflowError::NotFound,
+        ))?;
+        let tid = mapping.app_target_id.trim().to_string();
+        if tid.is_empty() {
+            return Err(("no_app_target".to_string(), AppChatWorkflowError::NotFound));
+        }
+        let rule = mapping
+            .app_behavior_rules
+            .iter()
+            .find(|r| {
+                r.app_id.trim() == tid
+                    || r.rule_id.trim() == tid
+                    || (!crate::config::is_builtin_app_id(&tid)
+                        && (r.app_id.trim() == tid || r.rule_id.trim() == tid))
+            })
+            .cloned();
+        (tid, rule)
+    };
+
+    let app = window.app_handle();
+    let _hide_guard = MainWindowHideGuard::maybe_hide(&app);
+
+    if let Some(profile) = profile_for(&app_target_id) {
+        let (hwnd, freshly_launched) =
+            ensure_app_window(profile).ok_or((profile.error_prefix.to_string(), AppChatWorkflowError::NotFound))?;
+        if freshly_launched {
+            std::thread::sleep(Duration::from_millis(1200));
+        }
+        if !crate::keyboard::focus_window(hwnd) {
+            return Err((profile.error_prefix.to_string(), AppChatWorkflowError::FocusFailed));
+        }
+        return Ok(format!("{}_open", profile.error_prefix));
+    }
+
+    if let Some(rule) = custom_rule {
+        let (hwnd, freshly_launched) = ensure_custom_rule_window(&rule).ok_or((
+            "custom".to_string(),
+            AppChatWorkflowError::NotFound,
+        ))?;
+        if freshly_launched {
+            std::thread::sleep(Duration::from_millis(1200));
+        }
+        if !crate::keyboard::focus_window(hwnd) {
+            return Err(("custom".to_string(), AppChatWorkflowError::FocusFailed));
+        }
+        let label = rule
+            .display_name
+            .as_deref()
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or("custom");
+        return Ok(format!("{label}_open"));
+    }
+
+    Err(("unknown_app_target".to_string(), AppChatWorkflowError::NotFound))
+}
+
+#[cfg(not(windows))]
+pub fn open_or_focus_target(
+    _state: &Arc<AppState>,
+    _window: &WebviewWindow,
+    _mapping_id: &str,
+) -> Result<String, (String, AppChatWorkflowError)> {
+    Err(("unavailable".to_string(), AppChatWorkflowError::NotFound))
+}
+
 /// IPC-safe focus for overlay / virtual-pad hold-to-talk — no UIA, no launch polling.
 #[cfg(windows)]
 pub fn quick_focus_app_target_for_hold(app_target_id: &str) -> bool {

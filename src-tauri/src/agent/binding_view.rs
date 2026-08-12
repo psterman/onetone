@@ -13,6 +13,8 @@ pub struct ActionBindingView {
     pub mapping_id: String,
     pub action_id: String,
     pub channel: String,
+    /// Stable entry id: agentBindings.slotId | camera gesture | softPad microKeyId.
+    pub binding_ref: String,
     pub trigger: String,
     pub enabled: bool,
     pub risk: String,
@@ -67,6 +69,7 @@ fn push_camera_gesture(
         mapping_id: mapping_id.to_string(),
         action_id: action_id.clone(),
         channel: ActionChannel::Camera.as_str().to_string(),
+        binding_ref: gesture.to_string(),
         trigger: gesture.to_string(),
         enabled,
         risk: risk_for(&action_id),
@@ -183,6 +186,7 @@ fn project_mapping(
             mapping_id: mapping_id.clone(),
             action_id: action_id.clone(),
             channel: channel.as_str().to_string(),
+            binding_ref: b.slot_id.clone(),
             trigger: b.trigger_binding.clone(),
             enabled: b.enabled,
             risk: risk_for(&action_id),
@@ -223,6 +227,7 @@ fn project_mapping(
                     mapping_id: mapping_id.clone(),
                     action_id: action_id.clone(),
                     channel: ActionChannel::SoftPad.as_str().to_string(),
+                    binding_ref: key.micro_key_id.clone(),
                     trigger: key.micro_key_id.clone(),
                     enabled: key.enabled && binding.map(|b| b.enabled).unwrap_or(true),
                     risk: risk_for(&action_id),
@@ -267,6 +272,8 @@ mod tests {
         let mid = cfg.mappings[0].id.clone();
         if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == mid) {
             m.agent_bindings = vec![AgentBinding {
+            action_instance_id: String::new(),
+            action_args: None,
                 slot_id: "pushToTalk".into(),
                 action_id: "startDictation".into(),
                 trigger_type: "key".into(),
@@ -291,6 +298,7 @@ mod tests {
             views.iter().any(|v| {
                 v.action_id == "input.start"
                     && v.channel == "key"
+                    && v.binding_ref == "pushToTalk"
                     && v.source_storage == "agentBindings"
             }),
             "{views:?}"
@@ -299,6 +307,7 @@ mod tests {
             views.iter().any(|v| {
                 v.action_id == "input.start"
                     && v.channel == "softPad"
+                    && v.binding_ref == "D1"
                     && v.source_storage == "codexMicroPad"
             }),
             "{views:?}"

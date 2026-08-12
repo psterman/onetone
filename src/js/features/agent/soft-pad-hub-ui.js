@@ -333,6 +333,20 @@
     cache.foregroundObservedAt = cache.foregroundAppId ? Date.now() : null;
   }
 
+  /**
+   * Read-only fresh Soft Pad lane foreground appTargetId (TTL).
+   * Does not follow live window or resolvePrimaryLaneResult fallbacks.
+   */
+  function getFreshForegroundAppId() {
+    var cache = laneCache();
+    if (!evidenceFresh(cache.foregroundObservedAt, LANE_FG_TTL_MS)) return '';
+    var fg = String(cache.foregroundAppId || '').trim();
+    if (!fg) return '';
+    var low = fg.toLowerCase();
+    if (low === 'onetone' || low.indexOf('onetone') >= 0) return '';
+    return fg;
+  }
+
   /** waitingKinds = needs_input only — do not push running/working here. */
   function noteLaneWaitingKinds(kinds) {
     var cache = laneCache();
@@ -710,12 +724,51 @@
     return true;
   }
 
+  function softPadRuntimeFlags(m) {
+    var pad = m && m.codexMicroPad;
+    var mappingEnabled = !!(m && m.enabled !== false);
+    var padConfigured = !!pad;
+    var padSwitchOn = !!(pad && pad.enabled);
+    return {
+      mappingEnabled: mappingEnabled,
+      padConfigured: padConfigured,
+      padSwitchOn: padSwitchOn,
+      padEnabled: mappingEnabled && padSwitchOn
+    };
+  }
+
+  /**
+   * Tiered scheme preference (no additive score — order cannot invert priority).
+   * Returns true if `a` should replace `b` as the kind winner.
+   */
+  function schemeBetter(a, b) {
+    if (!b) return true;
+    if (!a) return false;
+    var ma = a.mapping;
+    var mb = b.mapping;
+    var aEn = ma && ma.enabled !== false ? 1 : 0;
+    var bEn = mb && mb.enabled !== false ? 1 : 0;
+    if (aEn !== bEn) return aEn > bEn;
+    var aPad = ma && ma.codexMicroPad && ma.codexMicroPad.enabled ? 1 : 0;
+    var bPad = mb && mb.codexMicroPad && mb.codexMicroPad.enabled ? 1 : 0;
+    if (aPad !== bPad) return aPad > bPad;
+    var aOv = ma && ma.codexMicroPad && ma.codexMicroPad.overlayEnabled ? 1 : 0;
+    var bOv = mb && mb.codexMicroPad && mb.codexMicroPad.overlayEnabled ? 1 : 0;
+    if (aOv !== bOv) return aOv > bOv;
+    var aOrd = Number(ma && ma.order) || 0;
+    var bOrd = Number(mb && mb.order) || 0;
+    if (aOrd !== bOrd) return aOrd < bOrd;
+    return String((ma && ma.id) || '') < String((mb && mb.id) || '');
+  }
+
+  /** @deprecated use schemeBetter — kept for any external peek */
   function schemeRank(entry) {
+    // Approximate ordinal for debug only; do not use for selection.
     var pad = entry.mapping && entry.mapping.codexMicroPad;
     var score = 0;
+    if (entry.mapping && entry.mapping.enabled !== false) score += 10000;
     if (pad && pad.enabled) score += 100;
     if (pad && pad.overlayEnabled) score += 10;
-    if (entry.mapping && entry.mapping.enabled) score += 1;
     score -= Number(entry.mapping && entry.mapping.order) || 0;
     return score;
   }
@@ -731,10 +784,10 @@
       if (!isSoftPadSchemeEligible(m)) return;
       var kind = kindForAppId(m.appTargetId) || 'soft';
       var pad = m.codexMicroPad;
-      var enabled = !!(pad && pad.enabled);
+      var flags = softPadRuntimeFlags(m);
       if (!isHubSoftPadKind(kind)) {
-        // Custom Soft Pad habits: only show when pad is on.
-        if (!pad || !enabled) return;
+        // Custom Soft Pad habits: only show when pad switch is on (configured).
+        if (!flags.padSwitchOn) return;
         var softTitle = '';
         if (global.OneToneHabitProfile && global.OneToneHabitProfile.habitDisplayName) {
           softTitle = global.OneToneHabitProfile.habitDisplayName(m);
@@ -744,9 +797,12 @@
           mapping: m,
           kind: 'soft',
           appId: String(m.appTargetId || ''),
-          padEnabled: true,
-          canEnable: false,
-          canPrepare: false,
+          mappingEnabled: flags.mappingEnabled,
+          padConfigured: flags.padConfigured,
+          padSwitchOn: flags.padSwitchOn,
+          padEnabled: flags.padEnabled,
+          canEnable: flags.mappingEnabled && flags.padConfigured && !flags.padSwitchOn,
+          canPrepare: !flags.padConfigured,
           title: softTitle,
           presentation: (pad && pad.presentation === 'mini') ? 'mini' : 'full'
         });
@@ -756,14 +812,17 @@
         mapping: m,
         kind: kind,
         appId: String(m.appTargetId || ''),
-        padEnabled: enabled,
-        canEnable: !!pad && !enabled,
-        canPrepare: !pad,
+        mappingEnabled: flags.mappingEnabled,
+        padConfigured: flags.padConfigured,
+        padSwitchOn: flags.padSwitchOn,
+        padEnabled: flags.padEnabled,
+        canEnable: flags.mappingEnabled && flags.padConfigured && !flags.padSwitchOn,
+        canPrepare: !flags.padConfigured,
         title: appTitleFor(kind),
         presentation: (pad && pad.presentation === 'mini') ? 'mini' : 'full'
       };
       var prev = byKind[kind];
-      if (!prev || schemeRank(entry) > schemeRank(prev)) {
+      if (!prev || schemeBetter(entry, prev)) {
         byKind[kind] = entry;
       }
     });
@@ -1373,6 +1432,18 @@
     return !!(hasMapping(entry) && entry.mapping.codexMicroPad);
   }
 
+  function applyRuntimeFlagsToEntry(entry) {
+    if (!entry) return entry;
+    var flags = softPadRuntimeFlags(entry.mapping);
+    entry.mappingEnabled = flags.mappingEnabled;
+    entry.padConfigured = flags.padConfigured;
+    entry.padSwitchOn = flags.padSwitchOn;
+    entry.padEnabled = flags.padEnabled;
+    entry.canEnable = flags.mappingEnabled && flags.padConfigured && !flags.padSwitchOn;
+    entry.canPrepare = !flags.padConfigured;
+    return entry;
+  }
+
   function ensureSoftPadConfig(entry, opts) {
     opts = opts || {};
     if (!hasMapping(entry)) return false;
@@ -1381,7 +1452,7 @@
     if (!Pad || typeof Pad.ensurePad !== 'function') return false;
     try {
       Pad.ensurePad(entry.mapping, { persist: opts.persist !== false });
-      entry.padEnabled = !!(entry.mapping.codexMicroPad && entry.mapping.codexMicroPad.enabled);
+      applyRuntimeFlagsToEntry(entry);
       entry.presentation = entry.mapping.codexMicroPad && entry.mapping.codexMicroPad.presentation === 'mini'
         ? 'mini'
         : 'full';
@@ -2859,7 +2930,7 @@
     var entry = findEntry(getSelectedMappingId());
     if (entry && m && m.codexMicroPad) {
       entry.mapping = m;
-      entry.padEnabled = !!m.codexMicroPad.enabled;
+      applyRuntimeFlagsToEntry(entry);
       entry.presentation = m.codexMicroPad.presentation === 'mini' ? 'mini' : 'full';
       entry.title = appTitleFor(entry.kind);
     }
@@ -4233,8 +4304,7 @@
 
   function applyEnabledUi(entry) {
     if (!entry) return;
-    entry.padEnabled = !!(entry.mapping && entry.mapping.codexMicroPad &&
-      entry.mapping.codexMicroPad.enabled);
+    applyRuntimeFlagsToEntry(entry);
     pruneInvalidUserLanePin(listSoftPadSchemes());
     updateStatusBar(entry);
     patchSchemeRowEnable(entry);
@@ -4985,6 +5055,8 @@
     setSoftPadFace: setSoftPadFace,
     setSoftPadPadMode: setSoftPadPadMode,
     listSoftPadSchemes: listSoftPadSchemes,
+    schemeBetter: schemeBetter,
+    softPadRuntimeFlags: softPadRuntimeFlags,
     listAppScopes: listAppScopes,
     listHubEntries: listHubEntries,
     refreshHubInventory: refreshHubInventory,
@@ -4995,6 +5067,7 @@
     resolvePrimaryLaneResult: resolvePrimaryLaneResult,
     laneContextFromRuntime: laneContextFromRuntime,
     noteLaneForeground: noteLaneForeground,
+    getFreshForegroundAppId: getFreshForegroundAppId,
     noteLaneWaitingKinds: noteLaneWaitingKinds,
     publishSoftPadLaneSnapshot: publishSoftPadLaneSnapshot,
     formatDisplayLaneReason: formatDisplayLaneReason,

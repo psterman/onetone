@@ -260,10 +260,17 @@
 
   function focusMapping(id){
     if(!id) return;
+    var prev=state().selectedMappingId;
     hooks().flushAllEditorToMappings();
     state().selectedMappingId=id;
+    if(prev!==id&&global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.clearSelection){
+      try{ global.OneToneKeysChannelCommandPicker.clearSelection({ skipHero:true, skipRender:true }); }catch(_){}
+    }
     hooks().syncEditorFromSelection();
     hooks().render();
+    if(global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.refresh){
+      try{ global.OneToneKeysChannelCommandPicker.refresh(); }catch(_){}
+    }
     const row=document.querySelector('.map-row[data-id="'+id+'"]');
     if(row) row.scrollIntoView({block:'nearest',behavior:'smooth'});
   }

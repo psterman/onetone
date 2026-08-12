@@ -236,6 +236,9 @@
   }
 
   function applyMappingTarget(combo, presetId){
+    if(global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.clearSelection){
+      global.OneToneKeysChannelCommandPicker.clearSelection({skipRender:true,skipHero:true});
+    }
     if(global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.clearSelection){
       global.OneToneAgentCapabilityUi.clearSelection();
     }

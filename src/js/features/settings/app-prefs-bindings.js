@@ -121,7 +121,6 @@
       }
       if(hooks.openSettings) hooks.openSettings({panel:'sounds'});
     }
-    bindClick('btnKeysOpenSoundsMore',openSoundsMore);
     bindClick('btnCameraOpenSoundsMore',openSoundsMore);
   }
   global.OneToneAppPrefsBindings={bindEvents:bindEvents};

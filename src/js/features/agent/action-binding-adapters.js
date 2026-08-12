@@ -1,6 +1,7 @@
 /**
  * Channel binding adapters — write via existing save paths only.
- * bindingRef === slotId (semantic:<channel>:<actionId> for new rows).
+ * bindingRef === slotId (semantic:<channel>:<actionId> for singleton;
+ * semantic:<channel>:app.shortcut:<suffix> for multi-instance).
  */
 (function (global) {
   'use strict';
@@ -32,21 +33,51 @@
     return String(actionId || '').trim();
   }
 
-  function slotIdFor(channel, actionId, existing) {
+  function isMultiInstance(actionId) {
+    return canonical(actionId) === 'app.shortcut';
+  }
+
+  function normalizeOpts(bindingRefOrOpts, maybeOpts) {
+    if (maybeOpts && typeof maybeOpts === 'object') return maybeOpts;
+    if (bindingRefOrOpts && typeof bindingRefOrOpts === 'object' && !Array.isArray(bindingRefOrOpts)) {
+      return bindingRefOrOpts;
+    }
+    return {};
+  }
+
+  function bindingRefFrom(bindingRefOrOpts, opts) {
+    if (typeof bindingRefOrOpts === 'string') return bindingRefOrOpts;
+    return (opts && opts.bindingRef) || '';
+  }
+
+  function slotIdFor(channel, actionId, existing, actionInstanceId) {
     if (existing && existing.slotId) return existing.slotId;
+    var dotted = canonical(actionId);
+    if (isMultiInstance(dotted) && actionInstanceId) {
+      var suffix = String(actionInstanceId)
+        .replace(/^app\.shortcut:/, '')
+        .replace(/^app-shortcut:/, '');
+      return 'semantic:' + channel + ':' + dotted + ':' + suffix;
+    }
     var store = global.OneToneSemanticActionStore;
     return store
       ? store.semanticSlotId(channel, actionId)
-      : 'semantic:' + channel + ':' + actionId;
+      : 'semantic:' + channel + ':' + dotted;
   }
 
-  function findPrimaryBinding(m, channel, actionId) {
+  function findPrimaryBinding(m, channel, actionId, actionInstanceId) {
     if (!m || !m.agentBindings) return null;
     var dotted = canonical(actionId);
+    var wantInst = String(actionInstanceId || '').trim();
     for (var i = 0; i < m.agentBindings.length; i++) {
       var b = m.agentBindings[i];
       if (String(b.triggerType || '') !== channel) continue;
-      if (canonical(b.actionId) === dotted) return b;
+      if (canonical(b.actionId) !== dotted) continue;
+      if (isMultiInstance(dotted)) {
+        if (wantInst && String(b.actionInstanceId || '') === wantInst) return b;
+        continue;
+      }
+      return b;
     }
     return null;
   }
@@ -64,6 +95,75 @@
     });
   }
 
+  function upsertAgentBinding(channel, mappingId, actionId, trigger, bindingRefOrOpts, maybeOpts) {
+    var opts = normalizeOpts(bindingRefOrOpts, maybeOpts);
+    var bindingRef = bindingRefFrom(bindingRefOrOpts, opts);
+    return withBindable(channel, mappingId, actionId, function () {
+      var m = mappingById(mappingId);
+      if (!m) return Promise.reject(new Error('no_mapping'));
+      if (channel === 'key' && !trigger) return Promise.reject(new Error('no_trigger'));
+      m.agentBindings = m.agentBindings || [];
+      var dotted = canonical(actionId);
+      var multi = isMultiInstance(dotted);
+      var instanceId = String(
+        (opts && opts.actionInstanceId) ||
+          (bindingRef &&
+            m.agentBindings.find(function (b) {
+              return b.slotId === bindingRef;
+            }) &&
+            m.agentBindings.find(function (b) {
+              return b.slotId === bindingRef;
+            }).actionInstanceId) ||
+          ''
+      ).trim();
+      if (multi && !instanceId) {
+        instanceId = 'app-shortcut:' + Date.now().toString(36);
+      }
+      if (!multi && dotted === 'app.open' && !instanceId) {
+        instanceId = 'app-open:' + mappingId;
+      }
+      var existing =
+        (bindingRef &&
+          m.agentBindings.find(function (b) {
+            return b.slotId === bindingRef;
+          })) ||
+        findPrimaryBinding(m, channel, actionId, multi ? instanceId : '');
+      var sid = slotIdFor(channel, actionId, existing, instanceId);
+      var actionArgs =
+        opts && Object.prototype.hasOwnProperty.call(opts, 'actionArgs')
+          ? opts.actionArgs
+          : existing
+            ? existing.actionArgs
+            : null;
+      if (existing) {
+        existing.actionId = actionId;
+        if (trigger != null && trigger !== '') existing.triggerBinding = trigger;
+        existing.triggerType = channel;
+        existing.slotId = existing.slotId || sid;
+        existing.enabled = true;
+        if (instanceId) existing.actionInstanceId = instanceId;
+        if (actionArgs != null) existing.actionArgs = actionArgs;
+      } else if (!multi && findPrimaryBinding(m, channel, actionId, '')) {
+        return Promise.reject(new Error('duplicate_primary_binding'));
+      } else if (multi && findPrimaryBinding(m, channel, actionId, instanceId)) {
+        return Promise.reject(new Error('duplicate_primary_binding'));
+      } else {
+        var row = {
+          slotId: sid,
+          actionId: actionId,
+          triggerType: channel,
+          triggerBinding: trigger || '',
+          enabled: true,
+          activationScope: 'global'
+        };
+        if (instanceId) row.actionInstanceId = instanceId;
+        if (actionArgs != null) row.actionArgs = actionArgs;
+        m.agentBindings.push(row);
+      }
+      return persist();
+    });
+  }
+
   var keyAdapter = {
     channel: 'key',
     list: function (mappingId) {
@@ -73,39 +173,8 @@
         return b.triggerType === 'key';
       });
     },
-    upsert: function (mappingId, actionId, trigger, bindingRef) {
-      return withBindable('key', mappingId, actionId, function () {
-        var m = mappingById(mappingId);
-        if (!m) return Promise.reject(new Error('no_mapping'));
-        if (!trigger) return Promise.reject(new Error('no_trigger'));
-        m.agentBindings = m.agentBindings || [];
-        var existing =
-          (bindingRef &&
-            m.agentBindings.find(function (b) {
-              return b.slotId === bindingRef;
-            })) ||
-          findPrimaryBinding(m, 'key', actionId);
-        var sid = slotIdFor('key', actionId, existing);
-        if (existing) {
-          existing.actionId = actionId;
-          existing.triggerBinding = trigger;
-          existing.triggerType = 'key';
-          existing.slotId = existing.slotId || sid;
-          existing.enabled = true;
-        } else if (findPrimaryBinding(m, 'key', actionId)) {
-          return Promise.reject(new Error('duplicate_primary_binding'));
-        } else {
-          m.agentBindings.push({
-            slotId: sid,
-            actionId: actionId,
-            triggerType: 'key',
-            triggerBinding: trigger,
-            enabled: true,
-            activationScope: 'global'
-          });
-        }
-        return persist();
-      });
+    upsert: function (mappingId, actionId, trigger, bindingRefOrOpts, maybeOpts) {
+      return upsertAgentBinding('key', mappingId, actionId, trigger, bindingRefOrOpts, maybeOpts);
     },
     describeTrigger: function (b) {
       return (b && b.triggerBinding) || '';
@@ -120,7 +189,8 @@
         });
       }
     },
-    findPrimaryBinding: findPrimaryBinding
+    findPrimaryBinding: findPrimaryBinding,
+    isMultiInstance: isMultiInstance
   };
 
   var voiceAdapter = {
@@ -132,39 +202,8 @@
         return b.triggerType === 'voice';
       });
     },
-    upsert: function (mappingId, actionId, trigger, bindingRef) {
-      return withBindable('voice', mappingId, actionId, function () {
-        var m = mappingById(mappingId);
-        if (!m) return Promise.reject(new Error('no_mapping'));
-        if (!trigger) return Promise.reject(new Error('no_trigger'));
-        m.agentBindings = m.agentBindings || [];
-        var existing =
-          (bindingRef &&
-            m.agentBindings.find(function (b) {
-              return b.slotId === bindingRef;
-            })) ||
-          findPrimaryBinding(m, 'voice', actionId);
-        var sid = slotIdFor('voice', actionId, existing);
-        if (existing) {
-          existing.actionId = actionId;
-          existing.triggerBinding = trigger;
-          existing.triggerType = 'voice';
-          existing.slotId = existing.slotId || sid;
-          existing.enabled = true;
-        } else if (findPrimaryBinding(m, 'voice', actionId)) {
-          return Promise.reject(new Error('duplicate_primary_binding'));
-        } else {
-          m.agentBindings.push({
-            slotId: sid,
-            actionId: actionId,
-            triggerType: 'voice',
-            triggerBinding: trigger,
-            enabled: true,
-            activationScope: 'global'
-          });
-        }
-        return persist();
-      });
+    upsert: function (mappingId, actionId, trigger, bindingRefOrOpts, maybeOpts) {
+      return upsertAgentBinding('voice', mappingId, actionId, trigger, bindingRefOrOpts, maybeOpts);
     },
     describeTrigger: function (b) {
       return (b && b.triggerBinding) || '';
@@ -243,41 +282,60 @@
         return b.triggerType === 'softPad';
       });
     },
-    upsert: function (mappingId, actionId, trigger, bindingRef) {
+    upsert: function (mappingId, actionId, trigger, bindingRefOrOpts, maybeOpts) {
+      var opts = normalizeOpts(bindingRefOrOpts, maybeOpts);
+      var bindingRef = bindingRefFrom(bindingRefOrOpts, opts);
+      var microKey =
+        (trigger && typeof trigger === 'object' && trigger.microKeyId) ||
+        (typeof trigger === 'string' ? trigger : '');
       return withBindable('softPad', mappingId, actionId, function () {
         var m = mappingById(mappingId);
         if (!m) return Promise.reject(new Error('no_mapping'));
         m.agentBindings = m.agentBindings || [];
+        var dotted = canonical(actionId);
+        var multi = isMultiInstance(dotted);
+        var instanceId = String((opts && opts.actionInstanceId) || '').trim();
+        if (multi && !instanceId) {
+          instanceId = 'app-shortcut:' + Date.now().toString(36);
+        }
         var existing =
           (bindingRef &&
             m.agentBindings.find(function (b) {
               return b.slotId === bindingRef;
             })) ||
           null;
-        var primary = findPrimaryBinding(m, 'softPad', actionId);
-        if (existing && primary && existing.slotId !== primary.slotId) {
+        var primary = findPrimaryBinding(m, 'softPad', actionId, multi ? instanceId : '');
+        if (!multi && existing && primary && existing.slotId !== primary.slotId) {
           return Promise.reject(new Error('duplicate_primary_binding'));
         }
         if (!existing) existing = primary;
-        var sid = slotIdFor('softPad', actionId, existing);
-        var microKey =
-          (trigger && typeof trigger === 'object' && trigger.microKeyId) ||
-          (typeof trigger === 'string' ? trigger : '');
+        var sid = slotIdFor('softPad', actionId, existing, instanceId);
+        var actionArgs =
+          opts && Object.prototype.hasOwnProperty.call(opts, 'actionArgs')
+            ? opts.actionArgs
+            : existing
+              ? existing.actionArgs
+              : null;
         if (existing) {
           existing.actionId = actionId;
           existing.triggerType = 'softPad';
           existing.slotId = existing.slotId || sid;
           existing.enabled = true;
           if (microKey) existing.triggerBinding = microKey;
+          if (instanceId) existing.actionInstanceId = instanceId;
+          if (actionArgs != null) existing.actionArgs = actionArgs;
         } else {
-          m.agentBindings.push({
+          var row = {
             slotId: sid,
             actionId: actionId,
             triggerType: 'softPad',
             triggerBinding: microKey || '',
             enabled: true,
             activationScope: 'global'
-          });
+          };
+          if (instanceId) row.actionInstanceId = instanceId;
+          if (actionArgs != null) row.actionArgs = actionArgs;
+          m.agentBindings.push(row);
         }
         return persist().then(function () {
           return { slotId: sid };
@@ -308,6 +366,7 @@
       return this[ch] || null;
     },
     findPrimaryBinding: findPrimaryBinding,
+    isMultiInstance: isMultiInstance,
     canonical: canonical
   };
 })(typeof window !== 'undefined' ? window : globalThis);

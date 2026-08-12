@@ -324,15 +324,21 @@ function mountKeysStatusIsland(): void {
   const bar = document.getElementById('keysWorkflowTabsBar');
   if (!bar || OneToneIslands.isMounted('keysStatus')) return;
 
-  bar.querySelector('.page-status-bar-main')?.remove();
-  bar.querySelector('.page-status-bar-actions')?.remove();
+  // Keep #keysUnifiedExtras (habit role / app chips) — only replace main + actions.
+  bar.querySelector(':scope > .page-status-bar-main')?.remove();
+  bar.querySelector(':scope > .page-status-bar-actions')?.remove();
 
   let host = document.getElementById('keysStatus');
   if (!host) {
     host = document.createElement('div');
     host.id = 'keysStatus';
     host.className = 'ot-island keys-status-island-host';
-    bar.insertBefore(host, bar.firstChild);
+    const extras = document.getElementById('keysUnifiedExtras');
+    if (extras && extras.parentNode === bar) {
+      bar.insertBefore(host, extras);
+    } else {
+      bar.insertBefore(host, bar.firstChild);
+    }
   }
 
   OneToneIslands.mountIsland('keysStatus', KeysStatusBarIsland, {}, {

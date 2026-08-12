@@ -14,6 +14,7 @@ var contract = fs.readFileSync(
   'utf8'
 );
 assert.ok(contract.indexOf('ActionBindingView') >= 0);
+assert.ok(contract.indexOf('bindingRef') >= 0);
 assert.ok(contract.indexOf('pendingConfirmation') >= 0);
 assert.ok(contract.indexOf('stopOrSendDictation') >= 0);
 assert.ok(contract.indexOf('FEATURE_DYNAMIC_CONTEXT_ACTIONS') >= 0);
@@ -27,6 +28,10 @@ assert.ok(
     contract.indexOf('无生产者') >= 0
 );
 assert.ok(contract.indexOf('providerScope') >= 0 || contract.indexOf('currentTarget') >= 0);
+assert.ok(contract.indexOf('app.open') >= 0);
+assert.ok(contract.indexOf('app.shortcut') >= 0);
+assert.ok(contract.indexOf('actionInstanceId') >= 0 || contract.indexOf('action_instance_id') >= 0);
+assert.ok(contract.indexOf('open_or_focus_target') >= 0 || contract.indexOf('open/focus') >= 0 || contract.indexOf('打开/聚焦') >= 0);
 assert.ok(contract.indexOf('requiresSecondChannelFrom') >= 0);
 assert.ok(contract.indexOf('RouteDisposition') >= 0);
 assert.ok(contract.indexOf('bindable') >= 0);

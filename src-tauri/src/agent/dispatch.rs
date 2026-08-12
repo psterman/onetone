@@ -36,7 +36,7 @@ pub fn dispatch_semantic_binding(
             } else {
                 Some(binding.slot_id.clone())
             },
-            args: None,
+            args: binding.action_args.clone(),
         },
     )
 }

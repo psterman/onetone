@@ -4093,6 +4093,8 @@ mod tests {
         });
         mapping.agent_bindings = vec![
             AgentBinding {
+            action_instance_id: String::new(),
+            action_args: None,
                 slot_id: "plan".into(),
                 action_id: "plan".into(),
                 trigger_type: "key".into(),
@@ -4102,6 +4104,8 @@ mod tests {
                 activation_scope: "foregroundApp".into(),
             },
             AgentBinding {
+            action_instance_id: String::new(),
+            action_args: None,
                 slot_id: "commandPalette".into(),
                 action_id: "commandPalette".into(),
                 trigger_type: "key".into(),

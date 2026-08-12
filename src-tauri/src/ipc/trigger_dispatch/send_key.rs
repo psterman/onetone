@@ -134,6 +134,8 @@ fn try_dispatch_app_scenario_agent(
     let _ = (execution_mode, activation_scope, provider_id);
     // Build a minimal binding view for unified router ingress.
     let binding = crate::config::AgentBinding {
+            action_instance_id: String::new(),
+            action_args: None,
         slot_id: slot_id.clone(),
         action_id: action_id.clone(),
         trigger_type: "key".into(),

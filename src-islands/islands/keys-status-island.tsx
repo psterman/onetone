@@ -6,6 +6,12 @@
 import * as React from 'react';
 import { useIslandRefresh } from '../island-runtime';
 
+interface ScopeApp {
+  id?: string;
+  name: string;
+  icon?: string;
+}
+
 interface KeysStatusProps {
   name: string;
   status: string;
@@ -14,6 +20,9 @@ interface KeysStatusProps {
   triggerVal: string;
   scopeLbl: string;
   scopeVal: string;
+  scopeApps?: ScopeApp[];
+  scopeIcons?: boolean;
+  scopeHidden?: boolean;
   saveLabel: string;
   testLabel: string;
   addLabel: string;
@@ -47,6 +56,9 @@ const EMPTY: KeysStatusProps = {
   triggerVal: '—',
   scopeLbl: '',
   scopeVal: '—',
+  scopeApps: [],
+  scopeIcons: false,
+  scopeHidden: false,
   saveLabel: '',
   testLabel: '',
   addLabel: '',
@@ -60,6 +72,48 @@ const EMPTY: KeysStatusProps = {
 
 function readProps(): KeysStatusProps {
   return w().__otKeysStatusRead?.() ?? EMPTY;
+}
+
+function ScopeIcons({
+  apps,
+  fallback,
+}: {
+  apps: ScopeApp[];
+  fallback: string;
+}): JSX.Element {
+  if (!apps.length) {
+    return <span className="keys-scope-icon-chip keys-scope-icon-chip--none">{fallback}</span>;
+  }
+  const more = apps.length > 3;
+  const show = more ? apps.slice(0, 3) : apps;
+  return (
+    <>
+      {show.map((app, i) => (
+        <React.Fragment key={(app.id || app.name || 'app') + String(i)}>
+          {i > 0 ? (
+            <span className="keys-scope-sep" aria-hidden="true">
+              /
+            </span>
+          ) : null}
+          <span className="keys-scope-icon-chip" title={app.name}>
+            {app.icon ? (
+              <img className="keys-scope-icon" src={app.icon} alt="" decoding="async" />
+            ) : (
+              <span className="keys-scope-icon keys-scope-icon--fallback" aria-hidden="true">
+                {(app.name || '?').charAt(0)}
+              </span>
+            )}
+            <span className="keys-scope-icon-name">{app.name}</span>
+          </span>
+        </React.Fragment>
+      ))}
+      {more ? (
+        <span className="keys-scope-more" aria-hidden="true">
+          …
+        </span>
+      ) : null}
+    </>
+  );
 }
 
 export function KeysStatusBarIsland(): JSX.Element {
@@ -103,6 +157,9 @@ export function KeysStatusBarIsland(): JSX.Element {
     triggerVal,
     scopeLbl,
     scopeVal,
+    scopeApps,
+    scopeIcons,
+    scopeHidden,
     saveLabel,
     testLabel,
     addLabel,
@@ -112,6 +169,10 @@ export function KeysStatusBarIsland(): JSX.Element {
     mappingEnabled,
     toggleDisabled,
   } = props;
+
+  const apps = Array.isArray(scopeApps) ? scopeApps : [];
+  const showIcons = !!scopeIcons;
+  const showScope = !scopeHidden;
 
   return (
     <>
@@ -136,15 +197,24 @@ export function KeysStatusBarIsland(): JSX.Element {
               {triggerVal}
             </span>
           </span>
-          <span className="keys-scheme-summary-divider" aria-hidden="true" />
-          <span className="keys-scheme-summary-item">
-            <span className="keys-scheme-summary-lbl" id="keysSummaryScopeLbl">
-              {scopeLbl}
-            </span>
-            <span className="keys-scheme-summary-val" id="keysSummaryScope">
-              {scopeVal}
-            </span>
-          </span>
+          {showScope ? (
+            <>
+              <span className="keys-scheme-summary-divider" aria-hidden="true" />
+              <span className="keys-scheme-summary-item keys-summary-scope-item" id="keysSummaryScopeItem">
+                <span className="keys-scheme-summary-lbl" id="keysSummaryScopeLbl">
+                  {scopeLbl}
+                </span>
+                <span
+                  className={['keys-scheme-summary-val', showIcons ? 'has-icons' : '']
+                    .filter(Boolean)
+                    .join(' ')}
+                  id="keysSummaryScope"
+                >
+                  {showIcons ? <ScopeIcons apps={apps} fallback={scopeVal || '—'} /> : scopeVal}
+                </span>
+              </span>
+            </>
+          ) : null}
         </div>
       </div>
       <div className="page-status-bar-actions keys-scheme-status-actions">

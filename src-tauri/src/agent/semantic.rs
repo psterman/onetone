@@ -77,6 +77,8 @@ pub const LAYER1_ACTION_IDS: &[&str] = &[
     "onetone.resume",
     "overlay.toggle",
     "status.read",
+    "app.open",
+    "app.shortcut",
 ];
 
 pub const LAYER2_CORE_ACTION_IDS: &[&str] = &[
@@ -261,6 +263,8 @@ const ALL_FOUR: &[ActionChannel] = &[
 ];
 
 const VOICE_PAD: &[ActionChannel] = &[ActionChannel::Voice, ActionChannel::SoftPad];
+
+const KEY_SOFTPAD: &[ActionChannel] = &[ActionChannel::Key, ActionChannel::SoftPad];
 
 const SEMANTIC_META: &[SemanticActionMeta] = &[
     SemanticActionMeta {
@@ -556,6 +560,34 @@ const SEMANTIC_META: &[SemanticActionMeta] = &[
         available_when: AW_ANY_V1,
         requires_second_channel_from: REQ_NONE,
         provider_scope: "providerAdapter",
+    },
+    SemanticActionMeta {
+        id: "app.open",
+        layer: ActionLayer::OneToneBase,
+        category: ActionCategory::System,
+        label_zh: "打开应用",
+        label_en: "Open app",
+        risk: RiskLevel::Safe,
+        channels: KEY_VOICE_PAD,
+        implemented: true,
+        executor: "onetoneRuntime",
+        available_when: AW_ANY_V1,
+        requires_second_channel_from: REQ_NONE,
+        provider_scope: "currentTarget",
+    },
+    SemanticActionMeta {
+        id: "app.shortcut",
+        layer: ActionLayer::OneToneBase,
+        category: ActionCategory::System,
+        label_zh: "应用快捷键",
+        label_en: "App shortcut",
+        risk: RiskLevel::Confirm,
+        channels: KEY_SOFTPAD,
+        implemented: true,
+        executor: "onetoneRuntime",
+        available_when: AW_ANY_V1,
+        requires_second_channel_from: REQ_NONE,
+        provider_scope: "currentTarget",
     },
 ];
 

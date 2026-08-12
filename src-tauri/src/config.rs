@@ -1480,13 +1480,19 @@ impl Default for CodexMicroPadKeyRoute {
 }
 
 /// Binding from a physical key, voice phrase, or camera gesture to an AgentAction slot.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentBinding {
     #[serde(default)]
     pub slot_id: String,
     #[serde(default)]
     pub action_id: String,
+    /// Distinguishes multi-instance actions (e.g. app.shortcut). Empty = singleton by actionId.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub action_instance_id: String,
+    /// Action parameters (e.g. `{ "chord": "Ctrl+K" }` for app.shortcut).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub action_args: Option<serde_json::Value>,
     /// "key" | "voice" | "camera" | "softPad"
     #[serde(default)]
     pub trigger_type: String,
@@ -1507,6 +1513,8 @@ impl Default for AgentBinding {
         Self {
             slot_id: String::new(),
             action_id: String::new(),
+            action_instance_id: String::new(),
+            action_args: None,
             trigger_type: String::new(),
             trigger_binding: String::new(),
             enabled: true,
@@ -5940,6 +5948,8 @@ mod tests {
         m.trigger_key.clear();
         m.source_key = "PageDown".into();
         m.agent_bindings.push(AgentBinding {
+            action_instance_id: String::new(),
+            action_args: None,
             slot_id: "pushToTalk".into(),
             action_id: "startDictation".into(),
             trigger_type: "key".into(),
@@ -5959,6 +5969,8 @@ mod tests {
         m.trigger_key.clear();
         m.source_key = "PageDown".into();
         m.agent_bindings.push(AgentBinding {
+            action_instance_id: String::new(),
+            action_args: None,
             slot_id: "stopOrSend".into(),
             action_id: "stopOrSendDictation".into(),
             trigger_type: "key".into(),
@@ -5968,6 +5980,8 @@ mod tests {
             activation_scope: "foregroundApp".into(),
         });
         m.agent_bindings.push(AgentBinding {
+            action_instance_id: String::new(),
+            action_args: None,
             slot_id: "cancel".into(),
             action_id: "cancel".into(),
             trigger_type: "key".into(),
@@ -5985,6 +5999,8 @@ mod tests {
             ("pushToTalk", "Ctrl+Shift+D"),
         ] {
             m.agent_bindings.push(AgentBinding {
+            action_instance_id: String::new(),
+            action_args: None,
                 slot_id: slot.into(),
                 action_id: slot.into(),
                 trigger_type: "key".into(),
@@ -6319,6 +6335,8 @@ mod tests {
         existing.mappings[0].agent_template_id = "codex-micro-13".into();
         existing.mappings[0].agent_provider_id = "codex".into();
         existing.mappings[0].agent_bindings = vec![AgentBinding {
+            action_instance_id: String::new(),
+            action_args: None,
             slot_id: "cancel".into(),
             action_id: "cancel".into(),
             trigger_type: "key".into(),
@@ -6787,6 +6805,8 @@ mod tests {
             agent_template_id: "codex-micro-13".into(),
             agent_provider_id: "codex".into(),
             agent_bindings: vec![AgentBinding {
+            action_instance_id: String::new(),
+            action_args: None,
                 slot_id: "pushToTalk".into(),
                 action_id: "startDictation".into(),
                 trigger_type: "key".into(),

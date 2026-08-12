@@ -642,6 +642,10 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
   }
 
   function startTargetRecord(pinnedMappingId){
+    var picker=global.OneToneKeysChannelCommandPicker;
+    if(picker&&picker.hasSelection&&picker.hasSelection()&&picker.recordSelected){
+      return Promise.resolve(picker.recordSelected()).then(function(){ return true; });
+    }
     var capUi=global.OneToneAgentCapabilityUi;
     if(capUi&&capUi.activeCodexMapping&&capUi.activeCodexMapping()){
       if(capUi.recordSelectedSlot) capUi.recordSelectedSlot();
