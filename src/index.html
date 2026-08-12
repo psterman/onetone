@@ -30,28 +30,13 @@
   <link rel="stylesheet" href="css/soft-pad-hub.css" />
   <link rel="stylesheet" href="css/semantic-action-picker.css" />
   <link rel="stylesheet" href="css/habit-actions-detail.css" />
+  <link rel="stylesheet" href="css/habit-workspace.css" />
   <link rel="stylesheet" href="css/home-context-actions.css" />
   <link rel="stylesheet" href="css/qs-mode-matrix.css" />
   <link rel="stylesheet" href="css/typography.css" />
   <link rel="stylesheet" href="css/motion.css" />
 </head>
 <body>
-  <aside class="voice-hang-live is-open" id="voiceHangLivePanel" aria-label="UI hang diagnostics">
-    <div class="voice-hang-live-head">
-      <strong id="voiceHangDiagTitle" data-i18n="voiceHangDiagTitle">UI 假死</strong>
-      <button type="button" class="voice-hang-live-toggle" id="voiceHangLiveToggle" data-i18n="voiceHangDiagCollapse">收起</button>
-    </div>
-    <div class="voice-hang-live-body" id="voiceHangLiveBody">
-      <div class="voice-hang-verdict" id="voiceHangDiagVerdict" data-hang="healthy">—</div>
-      <div class="wb-diag-row"><span data-i18n="voiceHangDiagHb">心跳</span><strong id="voiceHangDiagHb">—</strong></div>
-      <div class="wb-diag-row"><span data-i18n="voiceHangDiagPeak">峰值</span><strong id="voiceHangDiagPeak">—</strong></div>
-      <div class="wb-diag-row"><span data-i18n="voiceHangDiagSupervisor">引擎督导</span><strong id="voiceHangDiagSupervisor">—</strong></div>
-      <div class="wb-diag-row"><span data-i18n="voiceHangDiagGuards">前端守卫</span><strong id="voiceHangDiagGuards">—</strong></div>
-      <div class="wb-diag-row"><span data-i18n="voiceHangDiagLastStall">上次卡顿</span><strong id="voiceHangDiagLastStall">—</strong></div>
-      <div class="wb-diag-row voice-hang-events-row"><span data-i18n="voiceHangDiagEvents">事件</span><strong id="voiceHangDiagEvents">—</strong></div>
-      <div class="voice-hang-timeline" id="voiceHangDiagTimeline" aria-hidden="true"></div>
-    </div>
-  </aside>
   <div class="app">
     <header class="app-header app-header--slim">
       <div class="app-brand">
@@ -2577,9 +2562,19 @@
                 <p class="voice-diagnostics-intro" id="voiceDiagnosticsDesc" hidden></p>
               </div>
             </div>
-            <div class="wb-diag-block" id="voiceHangDiagRepairNote">
+            <div class="wb-diag-block voice-hang-diag-block" id="voiceHangDiagRepairNote" aria-label="UI hang diagnostics">
               <h3 class="wb-diag-block-title" data-i18n="voiceHangDiagTitle">UI 假死</h3>
-              <p class="mini" id="voiceHangDiagRepairHint" data-i18n="voiceHangDiagLiveHint">实时诊断已在主窗右上角展开，并与主窗一起全局置顶。</p>
+              <p class="mini" id="voiceHangDiagRepairHint" data-i18n="voiceHangDiagLiveHint">进入本页后自动刷新；离开状态与维护后停止轮询，避免影响日常使用。</p>
+              <div class="voice-hang-diag-body" id="voiceHangDiagBody">
+                <div class="voice-hang-verdict" id="voiceHangDiagVerdict" data-hang="healthy">—</div>
+                <div class="wb-diag-row"><span data-i18n="voiceHangDiagHb">心跳</span><strong id="voiceHangDiagHb">—</strong></div>
+                <div class="wb-diag-row"><span data-i18n="voiceHangDiagPeak">峰值</span><strong id="voiceHangDiagPeak">—</strong></div>
+                <div class="wb-diag-row"><span data-i18n="voiceHangDiagSupervisor">引擎督导</span><strong id="voiceHangDiagSupervisor">—</strong></div>
+                <div class="wb-diag-row"><span data-i18n="voiceHangDiagGuards">前端守卫</span><strong id="voiceHangDiagGuards">—</strong></div>
+                <div class="wb-diag-row"><span data-i18n="voiceHangDiagLastStall">上次卡顿</span><strong id="voiceHangDiagLastStall">—</strong></div>
+                <div class="wb-diag-row voice-hang-events-row"><span data-i18n="voiceHangDiagEvents">事件</span><strong id="voiceHangDiagEvents">—</strong></div>
+                <div class="voice-hang-timeline" id="voiceHangDiagTimeline" aria-hidden="true"></div>
+              </div>
             </div>
             <div class="debug-trigger-diag-stack" id="debugTriggerDiagStack">
               <div class="wb-diag-block debug-trigger-block" id="debugTriggerCompatBlock">
@@ -4262,6 +4257,7 @@
   <script src="js/core/agent-status-edge.js"></script>
   <script src="js/core/panel-reveal.js"></script>
   <script src="js/core/state.js"></script>
+  <script src="js/core/habit-experience-prefs.js"></script>
   <script src="js/core/i18n.js?v=20260705-icons"></script>
   <script src="js/voice-model-labels.js"></script>
   <script src="js/core/ipc.js"></script>
@@ -4409,6 +4405,7 @@
   <script src="js/features/agent/soft-pad-hub-ui.js"></script>
   <script src="js/features/agent/agent-capability-ui.js"></script>
   <script src="js/features/mapping/habit-hub.js"></script>
+  <script src="js/features/mapping/habit-workspace.js"></script>
   <script src="js/features/mapping/habit-hub-side-peek.js"></script>
   <script src="js/features/mapping/habit-scenario-voice-command.js"></script>
   <script src="js/features/voice/voice-wake-acoustic.js"></script>

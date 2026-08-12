@@ -19,6 +19,7 @@
     "test:home-habit-channels": "node scripts/test-home-habit-channel-pills.mjs",
     "test:habit-ia-copy": "node scripts/test-habit-ia-universal-copy.mjs",
     "test:habit-hub-slim": "node scripts/habit-hub-light-orchestrator.test.js && node scripts/test-habit-hub-menu-behavior.mjs",
+    "test:habit-workspace": "node scripts/test-habit-workspace.mjs && node scripts/habit-override-diff.test.js",
     "test:deepseek-usage": "node scripts/test-deepseek-usage.mjs",
     "test:provider-usage": "node scripts/test-provider-usage.mjs",
     "test:shell-agent-usage": "node scripts/test-shell-agent-usage.mjs",

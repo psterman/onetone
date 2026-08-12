@@ -190,6 +190,15 @@
 
   function startCore(persona){
     route.persona=persona;
+    var experiencePrefs=global.OneToneHabitExperiencePrefs;
+    if(experiencePrefs){
+      if(persona==='vibe'){
+        experiencePrefs.setMode('programmer');
+        experiencePrefs.markProgrammerIntroSeen();
+      }else if(persona==='beginner'){
+        experiencePrefs.setMode('quick');
+      }
+    }
     route.stepId='core';
     showView('none');
     hideAllViews();

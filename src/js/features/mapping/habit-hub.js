@@ -1630,6 +1630,9 @@
     renderList();
     renderFilters();
     applyShellVisibility();
+    if(global.OneToneHabitWorkspace&&global.OneToneHabitWorkspace.render){
+      global.OneToneHabitWorkspace.render();
+    }
     syncCameraWaveRails($('habitHubList'));
     try{
       if(global.OneToneIpc&&global.OneToneIpc.invoke){
@@ -1683,6 +1686,14 @@
     ui().habitView='hub';
     if(global.OneToneSettingsDrawer){
       global.OneToneSettingsDrawer.setPanel('habits');
+      if(global.OneToneHabitWorkspace&&global.OneToneHabitWorkspace.render){
+        global.OneToneHabitWorkspace.render();
+        if(ui().habitWorkspaceReturnContext&&global.OneToneHabitWorkspace.restoreReturnContext){
+          var returnContext=ui().habitWorkspaceReturnContext;
+          ui().habitWorkspaceReturnContext=null;
+          global.OneToneHabitWorkspace.restoreReturnContext(returnContext);
+        }
+      }
       return;
     }
     applyShellVisibility();

@@ -182,6 +182,8 @@ mod tests {
             trigger_key: "AutoTrigger".into(),
             target_key: "F2".into(),
             enabled,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order,
             trigger_mode: TriggerMode::Tap,
             trigger_source: None,

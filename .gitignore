@@ -23,10 +23,23 @@ __pycache__/
 settings.json
 voice_input_settings.json
 *.log
-logs/*.log
-logs/*.json
-logs/*.jsonl
-logs/b-acceptance/
+logs/
+src-tauri/logs/
+
+# Playwright CLI 本地审计快照（page yml / screenshot）
+.playwright-cli/
+
+# 本地 agent 审计 scratch
+.jez/
+
+# Agent 会话记忆（本地）
+.workbuddy/
+
+# Agent controller 临时 submodule 检出
+.agentcontroller-tmp/
+
+# 设计稿目录内 ephemeral 审计产出（已提交的 HTML 原型保留）
+design-mock/habit-*
 
 # 本地 AI agent / skills 安装产物
 .agents/

@@ -619,6 +619,8 @@ mod attention_feed_tests {
             trigger_key: "F1".into(),
             target_key: "RAlt".into(),
             enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order,
             trigger_mode: TriggerMode::Tap,
             trigger_source: None,

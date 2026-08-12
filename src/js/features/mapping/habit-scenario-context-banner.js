@@ -285,6 +285,8 @@
   }
 
   function returnToHabitHub(){
+    var returnContext=ui().habitWorkspaceReturnContext||null;
+    var restoredByHub=false;
     ui().habitHubEditReturn=false;
     ui().habitScenarioReturnId=null;
     ui().habitScenarioReturnPanel=null;
@@ -296,10 +298,15 @@
       }
     }catch(_){}
     if(global.OneToneHabitHub&&global.OneToneHabitHub.showHub){
+      restoredByHub=true;
       global.OneToneHabitHub.showHub();
     }else{
       ui().habitView='hub';
       if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('habits');
+    }
+    if(!restoredByHub&&returnContext&&global.OneToneHabitWorkspace&&global.OneToneHabitWorkspace.restoreReturnContext){
+      global.OneToneHabitWorkspace.restoreReturnContext(returnContext);
+      ui().habitWorkspaceReturnContext=null;
     }
     // Banner hide after hub chrome paints — avoid stacking with hub HTML build.
     if(typeof requestAnimationFrame==='function'){

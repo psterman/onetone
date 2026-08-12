@@ -186,6 +186,8 @@ mod tests {
             trigger_key: "Volume_Down".into(),
             target_key: "LAlt".into(),
             enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order: 0,
             trigger_mode: TriggerMode::Tap,
             trigger_source: None,

@@ -81,7 +81,7 @@ assert.strictEqual(preview.saveKind,'overrides');
 assert.strictEqual(preview.canSave,true);
 assert.ok(preview.keysOverrideCount>=1);
 assert.ok(preview.voiceOverrideCount>=1);
-assert.strictEqual(preview.statusChips.length,5);
+assert.strictEqual(preview.statusChips.length,6);
 
 var previewLabels={
   chipAppSelected:'App·{app}',chipAppMissing:'No app',chipNameOk:'Name ok',chipNameMissing:'Name missing',

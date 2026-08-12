@@ -32,8 +32,6 @@
   var hangDiagRing=[];
   var hangDiagLastStallLoaded=false;
   var hangDiagLastStallText='';
-  var hangLiveOpen=false; // collapsed by default — always-on 1Hz poll coincided with voiceWake 假死
-  var hangLiveBound=false;
   var hangLongTaskBound=false;
   var hangPeaks={maxGapMs:0,maxIpcHeldMs:0,warnN:0,stallN:0,ltN:0};
   var hangEvents=[]; // sticky breadcrumbs — survive recover-to-healthy
@@ -306,61 +304,18 @@
   }
 
   function hangDiagVisible(){
-    // voiceWake idle + open hang panel poll → UI_HB_STALL_5S (~3min empty tag).
+    // Poll only while 状态与维护 → 诊断 repair tab is open (no global overlay).
     if(ui().drawerOpen&&ui().settingsPanel==='voiceWake') return false;
-    if(hangLiveOpen) return true;
     return !!(ui().drawerOpen&&ui().settingsPanel==='debug'&&debugFocusMode==='repair');
   }
 
-  function syncHangLivePanelDom(){
-    var panel=$('voiceHangLivePanel');
-    if(!panel) return;
-    panel.classList.toggle('is-open',!!hangLiveOpen);
-    panel.classList.toggle('is-collapsed',!hangLiveOpen);
-    panel.hidden=false;
-    var body=$('voiceHangLiveBody');
-    if(body) body.hidden=!hangLiveOpen;
-    var btn=$('voiceHangLiveToggle');
-    if(btn) btn.textContent=hangLiveOpen?t('voiceHangDiagCollapse'):t('voiceHangDiagExpand');
-  }
-
-  function pinMainAlwaysOnTop(){
-    // Intentionally no-op: alwaysOnTop + voiceWake idle previously coincided with
-    // silent UI_HB_STALL_5S (~14min, empty tag, no mouse).
-  }
-
   function setHangLiveOpen(open){
-    // Refuse expand on voiceWake — poll+DOM there coincided with idle 假死.
-    if(open&&ui().drawerOpen&&ui().settingsPanel==='voiceWake') open=false;
-    hangLiveOpen=!!open;
-    syncHangLivePanelDom();
-    if(hangLiveOpen){
-      pinMainAlwaysOnTop();
-      renderVoiceHangDiag();
-    }else{
-      stopHangDiagPoll();
-    }
-  }
-
-  function bindHangLivePanel(){
-    if(hangLiveBound) return;
-    hangLiveBound=true;
-    var btn=$('voiceHangLiveToggle');
-    if(btn){
-      btn.addEventListener('click',function(){
-        setHangLiveOpen(!hangLiveOpen);
-      });
-    }
+    // Legacy no-op — hang diag lives in settings repair panel only.
+    if(!open) stopHangDiagPoll();
   }
 
   function startLiveHangDiag(){
-    // Mount collapsed only — expanded 1Hz poll + alwaysOnTop coincided with
-    // voiceWake UI_HB_STALL_5S (~80s after open, empty tag / no ipc).
-    bindHangLivePanel();
-    // Skip longtask observer — buffered entries + DOM spikes on idle voiceWake
-    // piled onto parked-engine stalls (~16min).
-    hangLiveOpen=false;
-    syncHangLivePanelDom();
+    // Boot hook: do not start background poll until user opens repair diagnostics.
     stopHangDiagPoll();
   }
 
@@ -804,7 +759,6 @@
   function bindEvents(){
     if(voiceDiagBound) return;
     voiceDiagBound=true;
-    bindHangLivePanel();
     var tabs=$('voiceDiagTabs');
     if(tabs){
       tabs.addEventListener('click',function(e){
@@ -827,7 +781,7 @@
     renderHangDiag:renderVoiceHangDiag,
     startLiveHangDiag:startLiveHangDiag,
     setHangLiveOpen:setHangLiveOpen,
-    isHangLiveOpen:function(){ return !!hangLiveOpen; },
+    isHangLiveOpen:function(){ return hangDiagVisible(); },
     noteHangSpike:noteHangSpike,
     getHangPeaks:function(){ return hangPeaks; },
     getHangEvents:function(){ return hangEvents.slice(); },

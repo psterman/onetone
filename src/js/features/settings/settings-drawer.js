@@ -193,6 +193,24 @@
       return;
     }
 
+    if(focus==='softPadLayout'||focus==='softPadDisplay'||focus==='softPadStatus'){
+      setSettingsPanel('softPad');
+      setTimeout(function(){
+        var flowId=focus==='softPadStatus'?'softPadFlowNodeAgent':'softPadFlowNodePad';
+        var flowBtn=document.getElementById(flowId);
+        if(flowBtn&&typeof flowBtn.click==='function') flowBtn.click();
+        if(focus!=='softPadStatus'){
+          var mode=focus==='softPadLayout'?'keys':'appear';
+          var tab=document.querySelector('[data-pad-mode="'+mode+'"]');
+          if(tab&&typeof tab.click==='function') tab.click();
+        }
+        scrollSettingsToTarget(focus==='softPadStatus'
+          ?['softPadFaceAgent','softPadStatusBar']
+          :['softPadSubpageHost','softPadPreviewHost']);
+      },0);
+      return;
+    }
+
     if(focus==='recordingAudio'){
       if(ui.settingsPanel!=='voiceWake') setSettingsPanel('voiceWake');
       if(global.OneToneVoicePageState&&global.OneToneVoicePageState.setStep){
@@ -1399,4 +1417,3 @@
   })();
 
 })(typeof window!=='undefined'?window:globalThis);
-

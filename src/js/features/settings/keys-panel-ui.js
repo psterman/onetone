@@ -323,6 +323,7 @@
 
   function buildKeysStatusProps(m){
     var snap=recordingUiSnapshot();
+    var rec=global.OneToneMappingRecording;
     var recMode=snap.mode;
     var recording=snap.recording;
     var capUi=global.OneToneAgentCapabilityUi;

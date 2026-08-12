@@ -62,11 +62,12 @@ assert.ok(/pub async fn cmd_voice_end_status/.test(end) && /spawn_blocking/.test
 
 const diag = read('src/js/features/debug/voice-diag.js');
 assert.ok(/Append-only/.test(diag) || /appendChild/.test(diag), 'hang timeline append-only');
-assert.ok(/hangLiveOpen=false/.test(diag), 'hang live panel collapsed by default');
-assert.ok(/Mount collapsed only/.test(diag), 'startLiveHangDiag stays collapsed');
-assert.ok(/Intentionally no-op/.test(diag), 'hang panel does not pin alwaysOnTop');
+assert.ok(/voiceHangDiagRepairNote/.test(read('src/index.html')), 'hang diag in repair panel');
+assert.ok(/Poll only while/.test(diag), 'hang diag only on repair tab');
+assert.ok(/Boot hook: do not start background poll/.test(diag), 'startLiveHangDiag idle until repair');
+assert.ok(/Legacy no-op/.test(diag), 'setHangLiveOpen legacy no-op');
 assert.ok(/HANG_POLL_MS=2500/.test(diag), 'hang poll slower');
-assert.ok(/voiceWake idle \+ open hang panel/.test(diag)||/Refuse expand on voiceWake/.test(diag),
+assert.ok(/voiceWake/.test(diag)&&/return false/.test(diag),
   'hang diag disabled on voiceWake');
 
 const mic = read('src/js/core/app-mic.js');

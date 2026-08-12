@@ -77,6 +77,8 @@ pub fn cmd_mapping_duplicate(
                 trigger_key: src.trigger_key,
                 target_key: src.target_key,
                 enabled: false,
+                key_mode_enabled: src.key_mode_enabled,
+                voice_mode_enabled: src.voice_mode_enabled,
                 order,
                 trigger_mode: src.trigger_mode,
                 trigger_source: src.trigger_source,

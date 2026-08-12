@@ -1189,6 +1189,10 @@ pub struct MappingEntry {
     pub target_key: String,
     #[serde(default)]
     pub enabled: bool,
+    #[serde(rename = "keyModeEnabled", default = "default_true")]
+    pub key_mode_enabled: bool,
+    #[serde(rename = "voiceModeEnabled", default = "default_true")]
+    pub voice_mode_enabled: bool,
     #[serde(default)]
     pub order: u32,
     #[serde(rename = "triggerMode", default)]
@@ -3380,6 +3384,8 @@ impl Default for VoiceConfig {
                 trigger_key: "AutoTrigger".into(),
                 target_key: "RAlt".into(),
                 enabled: true,
+                key_mode_enabled: true,
+                voice_mode_enabled: true,
                 order: 0,
                 trigger_mode: TriggerMode::Tap,
                 trigger_source: None,
@@ -3769,6 +3775,8 @@ impl VoiceConfig {
                 trigger_key: trigger,
                 target_key: target,
                 enabled: true,
+                key_mode_enabled: true,
+                voice_mode_enabled: true,
                 order: 0,
                 trigger_mode: TriggerMode::Tap,
                 trigger_source: self.trigger_source.clone(),
@@ -5804,6 +5812,8 @@ mod tests {
             trigger_key: "Volume_Down".into(),
             target_key: "F2".into(),
             enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order: 1,
             trigger_mode: TriggerMode::Tap,
             trigger_source: None,
@@ -5847,6 +5857,8 @@ mod tests {
             trigger_key: "AutoTrigger".into(),
             target_key: "F2".into(),
             enabled: false,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order: 1,
             trigger_mode: TriggerMode::Tap,
             trigger_source: None,
@@ -5889,6 +5901,8 @@ mod tests {
             trigger_key: String::new(),
             target_key: String::new(),
             enabled: false,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order: 1,
             trigger_mode: TriggerMode::Tap,
             trigger_source: None,
@@ -6058,6 +6072,8 @@ mod tests {
             trigger_key: "AutoTrigger".into(),
             target_key: "F2".into(),
             enabled: false,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order: 1,
             trigger_mode: TriggerMode::Tap,
             trigger_source: None,
@@ -6102,6 +6118,8 @@ mod tests {
             trigger_key: "AutoTrigger".into(),
             target_key: "RAlt".into(),
             enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order: 0,
             trigger_mode: TriggerMode::Tap,
             source_key: String::new(),
@@ -6157,6 +6175,8 @@ mod tests {
             trigger_key: String::new(),
             target_key: "RAlt".into(),
             enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order: 0,
             trigger_mode: TriggerMode::Tap,
             trigger_source: None,
@@ -6203,6 +6223,8 @@ mod tests {
             trigger_key: "AutoTrigger".into(),
             target_key: "F2".into(),
             enabled: false,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order: 1,
             trigger_mode: TriggerMode::Tap,
             trigger_source: None,
@@ -6248,6 +6270,8 @@ mod tests {
             trigger_key: "F1".into(),
             target_key: "F2".into(),
             enabled: false,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order: 1,
             trigger_mode: TriggerMode::Tap,
             trigger_source: None,
@@ -6289,6 +6313,8 @@ mod tests {
             trigger_key: "AutoTrigger".into(),
             target_key: "RAlt".into(),
             enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order: 0,
             trigger_mode: TriggerMode::Tap,
             trigger_source: None,
@@ -6485,6 +6511,8 @@ mod tests {
             trigger_key: "Gamepad_A".into(),
             target_key: "F2".into(),
             enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order: 0,
             trigger_mode: TriggerMode::Tap,
             trigger_source: None,
@@ -6529,6 +6557,8 @@ mod tests {
             trigger_key: "Gamepad_A".into(),
             target_key: "F3".into(),
             enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order: 1,
             trigger_mode: TriggerMode::Tap,
             trigger_source: None,
@@ -6716,6 +6746,8 @@ mod tests {
             trigger_key: "PageDown".into(),
             target_key: "Ctrl+Shift+D".into(),
             enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order: 1,
             trigger_mode: TriggerMode::LongPress,
             trigger_source: None,
@@ -6781,6 +6813,8 @@ mod tests {
             trigger_key: String::new(),
             target_key: String::new(),
             enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order: 1,
             trigger_mode: TriggerMode::Tap,
             trigger_source: None,
@@ -7312,6 +7346,8 @@ mod tests {
             trigger_key: String::new(),
             target_key: "RAlt".into(),
             enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order: 0,
             trigger_mode: TriggerMode::Tap,
             trigger_source: None,
@@ -7479,3 +7515,17 @@ mod tests {
         assert_eq!(kept.preview_pcm_b64.as_deref(), Some(even_b64.as_str()));
     }
 }
+    #[test]
+    fn mapping_channel_mode_flags_default_true_and_round_trip() {
+        let legacy: MappingEntry = serde_json::from_str(r#"{"id":"legacy"}"#).expect("legacy mapping");
+        assert!(legacy.key_mode_enabled);
+        assert!(legacy.voice_mode_enabled);
+
+        let edited: MappingEntry = serde_json::from_str(
+            r#"{"id":"edited","keyModeEnabled":false,"voiceModeEnabled":false}"#,
+        )
+        .expect("edited mapping");
+        let json = serde_json::to_value(&edited).expect("serialize mapping");
+        assert_eq!(json["keyModeEnabled"], false);
+        assert_eq!(json["voiceModeEnabled"], false);
+    }

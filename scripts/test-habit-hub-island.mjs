@@ -118,7 +118,7 @@ const item = {
 const card = Hub.cardView(item, { horizontal: true });
 check('cardView 返回 HTML 字符串', typeof card === 'string' && card.length > 0);
 check('含 data-habit-card', card.includes('data-habit-card="m1"'));
-check('含 data-habit-open', card.includes('data-habit-open="m1"'));
+check('应用场景卡使用快速属性入口', card.includes('data-habit-peek="m1"'));
 check('普通模式无复选框', !card.includes('data-habit-select="m1"'));
 check('含 data-habit-enable', card.includes('data-habit-enable="m1"'));
 check('通道门在配置菜单', card.includes('habit-hub-config-menu') && card.includes('data-habit-scenario-keys="m1"'));
@@ -143,14 +143,14 @@ uiState.habitHubConfirmDelId = '';
 const model = Hub.buildHabitHubListModel();
 check('buildHabitHubListModel 返回 blocks', Array.isArray(model.blocks) && model.blocks.length > 0);
 check('含 section-global', model.blocks.some((b) => b.id === 'section-global'));
-check('含 section-app 与 card 块', model.blocks.some((b) => b.id === 'section-app' && b.innerBlocks?.some((ib) => ib.id === 'card-m1')));
+check('含 section-app 与 table 块', model.blocks.some((b) => b.id === 'section-app' && b.innerBlocks?.some((ib) => ib.id === 'table-wrap')));
 
 console.log('[habit-hub-island] 岛守卫:');
 globalThis.OneToneIslands = { isMounted: () => false };
 const listEl = globalThis.OneToneDom.$('habitHubList');
 listEl._innerWrites = 0;
 Hub.render();
-check('岛未挂载时 legacy innerHTML 渲染', listEl._innerWrites >= 1 && listEl._inner.includes('data-habit-card="m1"'));
+check('岛未挂载时 legacy innerHTML 渲染', listEl._innerWrites >= 1 && listEl._inner.includes('data-habit-table-row="m1"'));
 
 globalThis.OneToneIslands = { isMounted: (id) => id === 'habitHubList' };
 let syncCalled = 0;

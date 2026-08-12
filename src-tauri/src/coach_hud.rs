@@ -400,6 +400,8 @@ mod tests {
             trigger_key: trigger.into(),
             target_key: target.into(),
             enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
             order: 0,
             trigger_mode: TriggerMode::Tap,
             trigger_source: None,

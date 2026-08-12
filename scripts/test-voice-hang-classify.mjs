@@ -26,10 +26,10 @@ assert.equal(classifyHang({ desiredEngine: 'vosk', activeEngine: 'sapi', activat
 assert.equal(classifyHang({ localGapMs: 500, desiredEngine: 'vosk', activeEngine: 'sapi' }), 'mismatch');
 
 const html = readFileSync(join(root, 'src/index.html'), 'utf8');
-assert.ok(html.includes('id="voiceHangLivePanel"'), 'live hang panel in body');
+assert.ok(html.includes('id="voiceHangDiagRepairNote"'), 'hang diag block in repair panel');
+assert.ok(html.includes('id="voiceHangDiagVerdict"'), 'hang verdict in repair panel');
+assert.ok(!html.includes('id="voiceHangLivePanel"'), 'no global hang overlay');
 assert.ok(html.includes('voice-hang-classify.js'), 'classify script loaded');
-assert.ok(html.includes('id="voiceHangDiagBlock"') === false || html.includes('voiceHangLivePanel'),
-  'live panel present');
 
 const diag = readFileSync(join(root, 'src/js/features/debug/voice-diag.js'), 'utf8');
 assert.ok(/renderVoiceHangDiag/.test(diag), 'renderVoiceHangDiag present');
@@ -37,7 +37,7 @@ assert.ok(/cmd_ui_hb_snapshot/.test(diag), 'uses hb snapshot IPC');
 assert.ok(/noteHangSpike/.test(diag), 'noteHangSpike');
 assert.ok(/voiceHangDiagPeak/.test(html)||/voiceHangDiagPeak/.test(diag), 'peak row');
 assert.ok(/longtask/.test(diag), 'longtask observer');
-assert.ok(/formatHangEvents|hangEvents/.test(diag), 'event breadcrumb');
+assert.ok(/Legacy no-op/.test(diag), 'setHangLiveOpen is legacy no-op');
 
 const boot = readFileSync(join(root, 'src/js/core/app-boot.js'), 'utf8');
 assert.ok(/startLiveHangDiag/.test(boot), 'boot starts live hang diag');
