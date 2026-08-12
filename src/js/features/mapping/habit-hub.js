@@ -2700,6 +2700,10 @@
           return;
         }
         var channel=e.target.closest&&e.target.closest('[data-habit-channel]');
+        // Workspace channel tabs share this attr but only switch in-page — do not open editors.
+        if(channel&&e.target.closest&&e.target.closest('#habitWorkspace,.habit-workspace')){
+          return;
+        }
         if(channel&&!(e.target.closest&&e.target.closest('.habit-hub-act'))){
           e.preventDefault();
           channel.classList.add('is-pressed');

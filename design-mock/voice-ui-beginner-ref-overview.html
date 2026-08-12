@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>OneTone · 小白版 UI 改版总览 · 联动展示</title>
+<style>
+  :root{
+    --bg:#faf9f5; --panel:#fff; --border:#e8e5dc; --muted:#7c7a72; --text:#2a2926;
+    --primary:#2a9cc4; --primary-soft:rgba(42,156,196,.10);
+    --good:#22c55e; --good-soft:rgba(34,197,94,.10);
+    --warm:#f59e0b;
+    --ink-1:#1f1d1a; --ink-2:#5a5750;
+    --shadow:0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:14px;line-height:1.5;}
+  header{
+    background:#fff;border-bottom:1px solid var(--border);
+    padding:20px 32px;
+  }
+  header h1{margin:0 0 6px;font-size:20px;letter-spacing:-.01em;}
+  header .sub{color:var(--muted);font-size:13px;}
+
+  /* Tab 切换器 */
+  .seg{
+    display:inline-flex;background:#fff;border:1px solid var(--border);
+    border-radius:10px;padding:3px;margin:18px 32px 0;
+  }
+  .seg a{
+    padding:8px 16px;border-radius:7px;text-decoration:none;
+    color:var(--ink-2);font-size:12px;font-weight:600;
+  }
+  .seg a.on{background:var(--primary);color:#fff;}
+
+  .container{padding:24px 32px 48px;max-width:1280px;margin:0 auto;}
+
+  .frame-wrap{
+    border:1px solid var(--border);border-radius:14px;overflow:hidden;
+    background:#fff;box-shadow:0 4px 16px rgba(0,0,0,.05);
+    margin-bottom:32px;
+  }
+  .frame-wrap .bar{
+    background:#e9e7e0;padding:10px 14px;font-size:12px;color:var(--ink-2);
+    display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);
+  }
+  .frame-wrap .bar .name{font-weight:700;color:var(--ink-1);}
+  .frame-wrap .bar .path{font-family:ui-monospace,monospace;font-size:11px;background:#fff;padding:2px 8px;border-radius:4px;border:1px solid var(--border);}
+  .frame-wrap .bar .tag{
+    margin-left:auto;padding:2px 10px;border-radius:999px;font-size:10px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.04em;
+  }
+  .frame-wrap .bar .tag.beginner{background:#dcfce7;color:#15803d;}
+  .frame-wrap .bar .tag.architect{background:var(--primary-soft);color:var(--primary);}
+  .frame-wrap iframe{width:100%;border:0;display:block;background:#fff;}
+
+  .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;}
+  @media (max-width:1100px){.compare-grid{grid-template-columns:1fr;}}
+
+  .label{display:inline-block;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  .label.b{background:#dcfce7;color:#15803d;}
+  .label.a{background:#fef3c7;color:#b45309;}
+  h2{margin:0 0 8px;font-size:20px;letter-spacing:-.01em;}
+  .lead{color:var(--muted);font-size:13px;margin-bottom:18px;max-width:780px;}
+
+  /* 关键差异卡片 */
+  .key-changes{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:16px 0 32px;
+  }
+  @media (max-width:880px){.key-changes{grid-template-columns:1fr;}}
+  .kc{
+    background:#fff;border:1px solid var(--border);border-radius:12px;
+    padding:18px 20px;box-shadow:var(--shadow);
+  }
+  .kc .q{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+  .kc .a{font-size:15px;font-weight:800;margin-bottom:8px;line-height:1.4;}
+  .kc .before{color:#b91c1c;text-decoration:line-through;font-size:12px;margin-bottom:6px;}
+  .kc .after{color:#15803d;font-size:12px;}
+
+  /* 联动示意图 */
+  .flow{
+    background:#fff;border:1px solid var(--border);border-radius:14px;
+    padding:24px;margin-top:24px;
+  }
+  .flow h3{margin:0 0 14px;font-size:15px;}
+  .flow .stages{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;align-items:center;}
+  @media (max-width:880px){.flow .stages{grid-template-columns:1fr 1fr;}}
+  .stage{
+    background:#fafaf6;border:1px solid var(--border);border-radius:10px;
+    padding:12px 14px;text-align:center;
+  }
+  .stage .ic{font-size:24px;margin-bottom:6px;}
+  .stage .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+  .stage .desc{font-size:12px;font-weight:700;margin-top:2px;}
+  .stage.highlight{background:var(--primary-soft);border-color:rgba(42,156,196,.4);}
+  .stage.highlight .desc{color:var(--primary);}
+  .flow .arr{text-align:center;color:var(--muted);font-size:18px;}
+
+  footer{padding:32px;text-align:center;color:var(--muted);font-size:12px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>OneTone · 语音版块 UI 改版 · 小白视角</h1>
+  <div class="sub">用户只需解决 3 件事:这是什么 · 我能干什么 · 干了以后怎么样 · 其他都藏起来</div>
+</header>
+
+<div class="seg">
+  <a class="on" href="#beginner">👤 小白视角(本次推荐)</a>
+  <a href="#architect">🛠️ 架构师视角(上一版)</a>
+</div>
+
+<div class="container" id="beginner">
+
+  <h2>设计原则</h2>
+  <p class="lead">把"工程师视角"全部下沉到高级菜单,主界面只回答小白用户的 3 个问题。所有调参、6 主题网格、模型管理、声学口令都隐藏到 `···` 菜单里。</p>
+
+  <div class="key-changes">
+    <div class="kc">
+      <div class="q">① 这是什么</div>
+      <div class="a">"按一下 · 说话 · 自动上屏"</div>
+      <div class="before">- 一堆状态徽章 + pills + 波形 + 习惯</div>
+      <div class="after">+ 一行大字 + 1 个蓝色大按钮</div>
+    </div>
+    <div class="kc">
+      <div class="q">② 我能干什么</div>
+      <div class="a">"4 个常见场景卡"</div>
+      <div class="before">- 6 主题网格 + 引擎选择 + 阈值调节</div>
+      <div class="after">+ 写邮件 / 跟 AI 说 / 走路记笔记 / 说完就发</div>
+    </div>
+    <div class="kc">
+      <div class="q">③ 干了以后怎么样</div>
+      <div class="a">"实时时间线 + 4 个数字"</div>
+      <div class="before">- 进度条 + busy state + 错误堆栈</div>
+      <div class="after">+ 这次说的话 / 节省时间 / 准确率 / 上次成功</div>
+    </div>
+  </div>
+
+  <div class="frame-wrap">
+    <div class="bar">
+      <span class="name">小白视角 · 主界面</span>
+      <span class="path">design-mock/voice-ui-beginner-1-hero.html</span>
+      <span class="tag beginner">小白版</span>
+    </div>
+    <iframe src="voice-ui-beginner-1-hero.html" style="height:780px;"></iframe>
+  </div>
+
+  <h2>联动说明 · 5 步走完一次完整流程</h2>
+  <p class="lead">小白用户从打开 OneTone → 按键 → 说话 → 出结果 → 看效果,全程不超过 5 步,每步都有视觉反馈。</p>
+
+  <div class="flow">
+    <h3>典型流程:在 Cursor 里跟 Claude 说话</h3>
+    <div class="stages">
+      <div class="stage">
+        <div class="ic">1️⃣</div>
+        <div class="lbl">Step 1</div>
+        <div class="desc">看到主界面</div>
+      </div>
+      <div class="stage highlight">
+        <div class="ic">2️⃣</div>
+        <div class="lbl">Step 2</div>
+        <div class="desc">按 F8(大蓝按钮)</div>
+      </div>
+      <div class="stage highlight">
+        <div class="ic">3️⃣</div>
+        <div class="lbl">Step 3</div>
+        <div class="desc">对着麦克风说</div>
+      </div>
+      <div class="stage highlight">
+        <div class="ic">4️⃣</div>
+        <div class="lbl">Step 4</div>
+        <div class="desc">"发送"两个字</div>
+      </div>
+      <div class="stage">
+        <div class="ic">5️⃣</div>
+        <div class="lbl">Step 5</div>
+        <div class="desc">看"干了以后怎么样"标签页</div>
+      </div>
+    </div>
+    <p style="margin:14px 0 0;font-size:12px;color:var(--muted);">
+      ↑ 1️⃣ 和 5️⃣ 在主界面(可见)· 2️⃣ 3️⃣ 4️⃣ 是一次操作(连按带说,3 秒搞定)· 用户全程不需要进 settings
+    </p>
+  </div>
+
+  <h2 style="margin-top:32px;">藏起来的东西 · 在哪儿找</h2>
+  <p class="lead">所有"上一版架构师视角"的元素,都收到主界面右上角的 <code>···</code> 菜单里,需要的人能找到,不需要的人永远看不到。</p>
+
+  <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+    <thead style="background:#f4f1ea;">
+      <tr>
+        <th style="text-align:left;padding:10px 14px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;">藏起来的内容</th>
+        <th style="text-align:left;padding:10px 14px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;">藏在哪儿</th>
+        <th style="text-align:left;padding:10px 14px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;">小白什么时候会用到</th>
+      </tr>
+    </thead>
+    <tbody style="font-size:12px;">
+      <tr style="border-top:1px solid var(--border);"><td style="padding:10px 14px;">语音控制台(6 主题网格)</td><td style="padding:10px 14px;color:var(--primary);font-weight:600;">··· → 语音控制台</td><td style="padding:10px 14px;color:var(--ink-2);">想换引擎、调麦克风、关掉离席检测</td></tr>
+      <tr style="border-top:1px solid var(--border);"><td style="padding:10px 14px;">Settings 语音设置(模型/样本/阈值)</td><td style="padding:10px 14px;color:var(--primary);font-weight:600;">··· → 设置 → 语音</td><td style="padding:10px 14px;color:var(--ink-2);">想下载新模型、录新样本</td></tr>
+      <tr style="border-top:1px solid var(--border);"><td style="padding:10px 14px;">状态徽章 / 调试日志 / 冷却时间</td><td style="padding:10px 14px;color:var(--primary);font-weight:600;">··· → 诊断</td><td style="padding:10px 14px;color:var(--ink-2);">怀疑出问题了,想看为什么</td></tr>
+      <tr style="border-top:1px solid var(--border);"><td style="padding:10px 14px;">习惯 / 场景管理</td><td style="padding:10px 14px;color:var(--primary);font-weight:600;">··· → 习惯</td><td style="padding:10px 14px;color:var(--ink-2);">想给不同应用(邮件/聊天)配不同设置</td></tr>
+      <tr style="border-top:1px solid var(--border);"><td style="padding:10px 14px;">摄像头 / 美颜 / 离席检测</td><td style="padding:10px 14px;color:var(--primary);font-weight:600;">··· → 高级 → 摄像头</td><td style="padding:10px 14px;color:var(--ink-2);">想用离席自动静音</td></tr>
+    </tbody>
+  </table>
+
+</div>
+
+<div class="container" id="architect" style="display:none;">
+
+  <h2>架构师视角 · 上一版(供参考)</h2>
+  <p class="lead">上一版三张图保留在这里,作为"高级用户"想深入时的入口。本次推荐小白版,但不丢架构师版。</p>
+
+  <div class="frame-wrap">
+    <div class="bar">
+      <span class="name">架构师视角 · 改版总览</span>
+      <span class="path">design-mock/voice-ui-proto-overview.html</span>
+      <span class="tag architect">架构师版</span>
+    </div>
+    <iframe src="voice-ui-proto-overview.html" style="height:1200px;"></iframe>
+  </div>
+
+</div>
+
+<footer>
+  配色:米色 #faf9f5 + 青蓝 #2a9cc4 · 沿用 docs/ui-voice-settings-redesign-diagram.html 风格
+</footer>
+
+<script>
+  // Tab 切换
+  document.querySelectorAll('.seg a').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      document.querySelectorAll('.seg a').forEach(x => x.classList.remove('on'));
+      a.classList.add('on');
+      const target = a.getAttribute('href').slice(1);
+      document.getElementById('beginner').style.display = target === 'beginner' ? '' : 'none';
+      document.getElementById('architect').style.display = target === 'architect' ? '' : 'none';
+      window.scrollTo(0, 0);
+    });
+  });
+</script>
+</body>
+</html>

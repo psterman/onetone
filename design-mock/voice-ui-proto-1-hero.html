@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>OneTone · 改版后 Hero 工作台原型</title>
+<style>
+  :root{
+    --bg:#f4f3ef; --panel:#fff; --border:#d8d5cc; --muted:#7c7a72; --text:#2a2926;
+    --primary:#2a9cc4; --primary-soft:rgba(42,156,196,.10);
+    --good:#22c55e; --good-soft:rgba(34,197,94,.12);
+    --warn:#f59e0b; --bad:#ef4444;
+    --ink-1:#1f1d1a; --ink-2:#5a5750;
+    --shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:14px;line-height:1.5;}
+  .stage{min-height:100vh;display:grid;grid-template-rows:auto 1fr;}
+  /* 顶部 title bar (模拟 Tauri 窗口) */
+  .titlebar{
+    height:32px;background:#e9e7e0;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;padding:0 12px;gap:8px;font-size:12px;color:var(--ink-2);
+  }
+  .titlebar .dot{width:10px;height:10px;border-radius:50%;background:#d0cdc4;}
+  .titlebar .dot.r{background:#e57373;}.titlebar .dot.y{background:#f0c674;}.titlebar .dot.g{background:#9bc97e;}
+  .titlebar .ttl{margin-left:8px;font-weight:600;}
+  .appbar{
+    height:48px;background:#fff;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;padding:0 20px;gap:14px;
+  }
+  .appbar .logo{font-weight:800;letter-spacing:-.02em;}
+  .appbar nav{display:flex;gap:4px;margin-left:18px;}
+  .appbar nav a{padding:6px 12px;border-radius:8px;color:var(--ink-2);text-decoration:none;font-size:13px;}
+  .appbar nav a.on{background:var(--primary-soft);color:var(--primary);font-weight:700;}
+  .appbar .spacer{flex:1;}
+  .appbar .tray{font-size:12px;color:var(--ink-2);display:flex;align-items:center;gap:8px;}
+
+  /* 主舞台 */
+  .main{padding:24px 32px 48px;display:grid;gap:24px;max-width:1180px;margin:0 auto;width:100%;}
+
+  /* Hero 工作台(改版后) */
+  .hero{
+    background:linear-gradient(180deg,#ffffff 0%,#fbfaf6 100%);
+    border:1px solid var(--border);border-radius:18px;
+    padding:22px 24px 26px;box-shadow:var(--shadow);
+    display:grid;gap:18px;position:relative;overflow:hidden;
+  }
+  .hero::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(ellipse at top, rgba(42,156,196,.07), transparent 60%);
+  }
+  .hero-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:relative;}
+  .status-badge{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:6px 12px;border-radius:999px;
+    background:var(--good-soft);border:1px solid rgba(34,197,94,.3);
+    font-size:12px;font-weight:600;color:#15803d;
+  }
+  .status-badge.idle{background:rgba(124,122,114,.08);border-color:var(--border);color:var(--ink-2);}
+  .status-badge .pulse{
+    width:8px;height:8px;border-radius:50%;background:var(--good);
+    box-shadow:0 0 0 0 rgba(34,197,94,.6);
+    animation:pulse 1.6s infinite;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(34,197,94,.5);}
+    70%{box-shadow:0 0 0 8px rgba(34,197,94,0);}
+    100%{box-shadow:0 0 0 0 rgba(34,197,94,0);}
+  }
+  .status-pill{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:4px 10px;border-radius:8px;
+    background:#f4f1ea;border:1px solid var(--border);
+    font-size:12px;color:var(--ink-2);
+  }
+  .status-pill .k{color:var(--muted);} .status-pill .v{color:var(--ink-1);font-weight:600;}
+
+  /* 中心舞台 */
+  .stage-center{position:relative;display:grid;place-items:center;padding:6px 0 8px;}
+  .wave-l,.wave-r{position:absolute;top:50%;transform:translateY(-50%);
+    display:flex;align-items:center;gap:4px;}
+  .wave-l{left:6%;}.wave-r{right:6%;transform:translateY(-50%) scaleX(-1);}
+  .bar{width:4px;background:linear-gradient(180deg,rgba(42,156,196,.0),rgba(42,156,196,.7),rgba(42,156,196,.0));
+    border-radius:4px;}
+  .wave-l .bar,.wave-r .bar{animation:wave 1.2s ease-in-out infinite;}
+  .bar:nth-child(1){height:12px;animation-delay:0s;}
+  .bar:nth-child(2){height:22px;animation-delay:.1s;}
+  .bar:nth-child(3){height:32px;animation-delay:.2s;}
+  .bar:nth-child(4){height:46px;animation-delay:.3s;}
+  .bar:nth-child(5){height:64px;animation-delay:.4s;}
+  .bar:nth-child(6){height:46px;animation-delay:.5s;}
+  .bar:nth-child(7){height:32px;animation-delay:.6s;}
+  .bar:nth-child(8){height:22px;animation-delay:.7s;}
+  .bar:nth-child(9){height:12px;animation-delay:.8s;}
+  @keyframes wave{0%,100%{opacity:.4;transform:scaleY(.7);}50%{opacity:1;transform:scaleY(1);}}
+
+  .orb-wrap{position:relative;width:160px;height:160px;display:grid;place-items:center;}
+  .orb-ring{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(42,156,196,.2);}
+  .orb-ring.mid{inset:14px;border-color:rgba(42,156,196,.3);}
+  .orb-ring.in{inset:30px;border:2px solid rgba(42,156,196,.5);}
+  .orb{
+    width:88px;height:88px;border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, #5dc1e3, #2a9cc4 60%, #1d7494);
+    box-shadow:0 10px 24px rgba(42,156,196,.35), inset 0 -6px 12px rgba(0,0,0,.15);
+    display:grid;place-items:center;color:#fff;
+  }
+  .orb svg{width:38px;height:38px;}
+  .orb-label{
+    position:absolute;bottom:-26px;left:50%;transform:translateX(-50%);
+    font-size:11px;color:var(--ink-2);white-space:nowrap;
+  }
+
+  /* 听写文字 */
+  .dictation{
+    background:#fff;border:1px solid var(--border);border-radius:14px;
+    padding:14px 18px;min-height:64px;
+    font-size:15px;line-height:1.55;color:var(--ink-1);
+  }
+  .dictation .empty{color:var(--muted);font-size:13px;}
+  .dictation .cursor{display:inline-block;width:2px;height:1em;background:var(--primary);margin-left:2px;animation:blink 1s steps(2) infinite;vertical-align:-2px;}
+  @keyframes blink{50%{opacity:0;}}
+
+  /* 主操作 */
+  .actions{display:flex;align-items:center;gap:10px;}
+  .btn{
+    appearance:none;border:1px solid var(--border);background:#fff;color:var(--ink-1);
+    padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .btn:hover{background:#faf8f2;}
+  .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .btn.primary:hover{background:#238eb3;}
+  .btn .kbd{font-size:11px;background:rgba(255,255,255,.2);padding:1px 6px;border-radius:4px;font-family:ui-monospace,monospace;}
+  .btn:not(.primary) .kbd{background:#f4f1ea;color:var(--ink-2);}
+
+  /* 场景 chip 行 */
+  .scenes{
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    padding-top:6px;border-top:1px dashed var(--border);
+  }
+  .scenes .lbl{font-size:11px;color:var(--muted);margin-right:4px;text-transform:uppercase;letter-spacing:.06em;}
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:6px 12px;border-radius:999px;
+    background:#fff;border:1px solid var(--border);font-size:12px;color:var(--ink-2);
+    cursor:pointer;
+  }
+  .chip.on{background:var(--primary-soft);border-color:rgba(42,156,196,.4);color:var(--primary);font-weight:700;}
+  .chip:hover:not(.on){background:#faf8f2;}
+  .chip .ico{width:14px;height:14px;border-radius:3px;background:currentColor;opacity:.6;}
+
+  /* 浮窗提示(说明用) */
+  .annot{
+    position:absolute;background:#1f1d1a;color:#fff;font-size:11px;line-height:1.4;
+    padding:6px 10px;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.2);
+    pointer-events:none;max-width:200px;
+  }
+  .annot::after{content:"";position:absolute;width:8px;height:8px;background:#1f1d1a;transform:rotate(45deg);}
+  .annot-row{justify-content:space-between;}
+  .annot-1{top:18px;right:24px;}
+  .annot-1::after{right:80px;top:-4px;}
+  .annot-2{top:30%;right:-180px;}
+  .annot-2::after{right:auto;left:-4px;top:50%;transform:translateY(-50%) rotate(45deg);}
+
+  /* 标签 */
+  .label-row{display:flex;align-items:center;gap:8px;margin:4px 0 -2px;}
+  .label-row .tag{
+    font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;
+    background:#dcfce7;color:#15803d;text-transform:uppercase;letter-spacing:.05em;
+  }
+  .label-row .tag.before{background:#fee2e2;color:#b91c1c;}
+  .label-row .tag.after{background:#dcfce7;color:#15803d;}
+  .label-row .title{font-size:16px;font-weight:800;}
+
+  /* 元数据 */
+  .meta{font-size:11px;color:var(--muted);margin-top:-12px;}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="titlebar">
+    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+    <span class="ttl">OneTone</span>
+  </div>
+  <div class="appbar">
+    <div class="logo">一声</div>
+    <nav>
+      <a class="on">工作台</a>
+      <a>习惯</a>
+      <a>设置</a>
+    </nav>
+    <div class="spacer"></div>
+    <div class="tray">● 待命 · 暂停听写 · 开机自启 ✓</div>
+  </div>
+
+  <div class="main">
+
+    <div class="label-row">
+      <span class="tag after">改版后</span>
+      <span class="title">Hero 工作台 · 主舞台</span>
+    </div>
+    <div class="meta">vp9HeroLive 整块删除 / homeAdvanced 兼容层删除 / 状态徽章上移 / 场景 chip 内联</div>
+
+    <section class="hero">
+      <!-- 状态总览(新) -->
+      <div class="hero-row" style="position:relative;">
+        <span class="status-badge"><span class="pulse"></span>听写中 · 录音进行中</span>
+        <span class="status-pill"><span class="k">引擎</span><span class="v">Vosk · 中文小模型</span></span>
+        <span class="status-pill"><span class="k">麦克风</span><span class="v">Blue Yeti · 增益 60%</span></span>
+        <span class="status-pill"><span class="k">本轮</span><span class="v">00:42 · 287 字</span></span>
+        <div class="annot annot-1">↑ 状态从 pills 合并,一眼能看清"现在在什么状态"</div>
+      </div>
+
+      <!-- 中心圆 + 波形 -->
+      <div class="stage-center">
+        <div class="wave-l">
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+        </div>
+        <div class="orb-wrap">
+          <div class="orb-ring"></div>
+          <div class="orb-ring mid"></div>
+          <div class="orb-ring in"></div>
+          <div class="orb">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="2" width="6" height="12" rx="3"/>
+              <path d="M5 10v2a7 7 0 0 0 14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+            </svg>
+          </div>
+          <div class="orb-label">点击 / 空格 = 结束说话</div>
+        </div>
+        <div class="wave-r">
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+        </div>
+      </div>
+
+      <!-- 听写文字 -->
+      <div class="dictation">
+        <div class="empty">你说的话会显示在这里</div>
+        <div style="color:var(--ink-1);">今天先把 OneTone 的语音控制台改版方案,过一遍团队<span class="cursor"></span></div>
+      </div>
+
+      <!-- 主操作 -->
+      <div class="actions" style="position:relative;">
+        <button class="btn primary">结束说话 <span class="kbd">Space</span></button>
+        <button class="btn">暂停听写</button>
+        <button class="btn">切换目标 ▾</button>
+        <button class="btn">语音控制台 ▸</button>
+        <div class="annot annot-2">↑ 4 个动作取代 v9 的"vp-actions"5 按钮(测试发送/切换/设置都迁走了)</div>
+      </div>
+
+      <!-- 场景 chip -->
+      <div class="scenes">
+        <span class="lbl">当前习惯</span>
+        <span class="chip on"><span class="ico"></span>默认 · Typeless</span>
+        <span class="chip"><span class="ico"></span>邮件 · 智谱</span>
+        <span class="chip"><span class="ico"></span>笔记 · 讯飞</span>
+        <span class="chip"><span class="ico"></span>会议 · 闪电说</span>
+        <span class="chip" style="border-style:dashed;color:var(--muted);">+ 新建</span>
+      </div>
+    </section>
+
+  </div>
+</div>
+</body>
+</html>

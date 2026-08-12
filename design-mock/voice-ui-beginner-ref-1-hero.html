@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>OneTone · 小白版 Hero</title>
+<style>
+  :root{
+    --bg:#faf9f5; --panel:#fff; --border:#e8e5dc; --muted:#7c7a72; --text:#2a2926;
+    --primary:#2a9cc4; --primary-soft:rgba(42,156,196,.10);
+    --good:#22c55e; --good-soft:rgba(34,197,94,.10);
+    --warm:#f59e0b; --warm-soft:rgba(245,158,11,.08);
+    --ink-1:#1f1d1a; --ink-2:#5a5750;
+    --shadow:0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:14px;line-height:1.5;}
+  .stage{min-height:100vh;display:grid;grid-template-rows:auto 1fr;}
+  .titlebar{height:32px;background:#e9e7e0;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;padding:0 12px;gap:8px;font-size:12px;color:var(--ink-2);}
+  .titlebar .dot{width:10px;height:10px;border-radius:50%;background:#d0cdc4;}
+  .titlebar .dot.r{background:#e57373;}.titlebar .dot.y{background:#f0c674;}.titlebar .dot.g{background:#9bc97e;}
+  .titlebar .ttl{margin-left:8px;font-weight:600;}
+  .appbar{height:48px;background:#fff;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;padding:0 20px;gap:14px;}
+  .appbar .logo{font-weight:800;letter-spacing:-.02em;}
+  .appbar .spacer{flex:1;}
+  .appbar .tray{font-size:12px;color:var(--ink-2);display:flex;align-items:center;gap:8px;}
+
+  .main{padding:32px;display:grid;gap:24px;max-width:1080px;margin:0 auto;width:100%;}
+
+  /* 大问题(这是什么) */
+  .what{
+    background:linear-gradient(180deg,#fff 0%,#fbfaf6 100%);
+    border:1px solid var(--border);border-radius:18px;
+    padding:28px 32px;box-shadow:var(--shadow);
+    display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;
+  }
+  .what h1{margin:0 0 6px;font-size:24px;letter-spacing:-.01em;}
+  .what .lede{color:var(--ink-2);font-size:14px;margin:0;max-width:540px;}
+  .what .pill-row{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap;}
+  .what .pill{
+    font-size:11px;padding:4px 10px;border-radius:999px;
+    background:#f4f1ea;color:var(--ink-2);
+  }
+  .what .bigbtn{
+    background:var(--primary);color:#fff;padding:14px 24px;border-radius:12px;
+    font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;
+    box-shadow:0 6px 14px rgba(42,156,196,.25);
+  }
+  .what .bigbtn .kbd{font-size:11px;background:rgba(255,255,255,.22);padding:2px 8px;border-radius:5px;font-family:ui-monospace,monospace;}
+
+  /* 三个 tab(我能干什么 / 干了以后怎么样 / 这是什么) */
+  .tabs{
+    background:#fff;border:1px solid var(--border);border-radius:18px;
+    overflow:hidden;box-shadow:var(--shadow);
+  }
+  .tab-bar{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--border);}
+  .tab-bar a{
+    padding:14px 18px;text-align:center;text-decoration:none;
+    color:var(--ink-2);font-size:13px;font-weight:700;
+    border-bottom:3px solid transparent;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+  }
+  .tab-bar a.on{color:var(--primary);border-bottom-color:var(--primary);background:var(--primary-soft);}
+  .tab-bar a .ic{font-size:16px;}
+
+  .tab-body{padding:28px 32px;}
+
+  /* Tab 1: 我能干什么 */
+  .do-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .do{
+    border:1px solid var(--border);border-radius:12px;padding:18px 20px;
+    display:grid;gap:8px;background:#fff;
+  }
+  .do .ic-big{
+    width:40px;height:40px;border-radius:10px;
+    background:var(--primary-soft);color:var(--primary);
+    display:grid;place-items:center;font-size:20px;font-weight:800;
+  }
+  .do h3{margin:0;font-size:15px;font-weight:800;}
+  .do p{margin:0;color:var(--ink-2);font-size:13px;}
+  .do .how{
+    margin-top:4px;padding:8px 10px;background:#f4f1ea;border-radius:8px;
+    font-size:12px;color:var(--ink-1);font-family:ui-monospace,monospace;
+    display:flex;align-items:center;gap:8px;
+  }
+  .do .how .kbd{background:#fff;padding:1px 6px;border-radius:3px;border:1px solid var(--border);font-size:10px;}
+
+  /* Tab 2: 干了以后怎么样 */
+  .log{
+    background:#1f1d1a;color:#e5e3dc;border-radius:12px;padding:18px 20px;
+    font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.7;
+  }
+  .log .row{display:grid;grid-template-columns:60px 80px 1fr;gap:10px;align-items:start;padding:2px 0;}
+  .log .ts{color:#6b9ac4;}
+  .log .tag{font-weight:700;}
+  .log .ok{color:#86efac;}.log .warn{color:#fbbf24;}.log .err{color:#fca5a5;}.log .info{color:#93c5fd;}
+  .log .arrow{color:#6b9ac4;}
+
+  .summary{
+    margin-top:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
+  }
+  .stat{background:#fafaf6;border:1px solid var(--border);border-radius:10px;padding:12px 14px;}
+  .stat .v{font-size:22px;font-weight:800;color:var(--ink-1);font-variant-numeric:tabular-nums;}
+  .stat .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:2px;}
+
+  /* Tab 3: 这是什么 */
+  .explain{display:grid;gap:14px;max-width:720px;}
+  .explain .row2{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;}
+  .explain .step{
+    width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;
+    display:grid;place-items:center;font-weight:800;font-size:13px;flex-shrink:0;
+  }
+  .explain h4{margin:0 0 4px;font-size:14px;font-weight:800;}
+  .explain p{margin:0;color:var(--ink-2);font-size:13px;}
+
+  /* 全屏联动小窗提示 */
+  .floating-note{
+    position:fixed;bottom:24px;right:24px;
+    background:#fff;border:1px solid var(--border);border-radius:10px;
+    padding:10px 14px;font-size:11px;color:var(--muted);
+    box-shadow:0 4px 12px rgba(0,0,0,.08);
+    display:flex;align-items:center;gap:8px;
+  }
+  .floating-note code{background:#f4f1ea;padding:1px 6px;border-radius:3px;color:var(--ink-1);font-family:ui-monospace,monospace;}
+
+  /* footer */
+  footer{padding:24px;text-align:center;color:var(--muted);font-size:11px;}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="titlebar">
+    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+    <span class="ttl">OneTone</span>
+  </div>
+  <div class="appbar">
+    <div class="logo">一声</div>
+    <div class="spacer"></div>
+    <div class="tray">● 待命中</div>
+  </div>
+
+  <div class="main">
+
+    <!-- 这是什么(大字答案) -->
+    <section class="what">
+      <div>
+        <h1>按一下 · 说话 · 自动上屏</h1>
+        <p class="lede">OneTone 帮你把"按一个键"和"对着麦克风说话"连起来。说啥就出啥,不需要再点别的按钮。</p>
+        <div class="pill-row">
+          <span class="pill">✓ 不用切换窗口</span>
+          <span class="pill">✓ 不用记快捷键</span>
+          <span class="pill">✓ 说完自动发出去</span>
+        </div>
+      </div>
+      <div class="bigbtn">
+        按 <span class="kbd">F8</span> 开始
+      </div>
+    </section>
+
+    <!-- 三个 Tab -->
+    <section class="tabs">
+      <div class="tab-bar">
+        <a class="on"><span class="ic">🎤</span>我能干什么</a>
+        <a><span class="ic">📊</span>干了以后怎么样</a>
+        <a><span class="ic">💡</span>这是什么</a>
+      </div>
+
+      <div class="tab-body">
+        <!-- Tab 1 内容:我能干什么(默认) -->
+        <div class="do-grid">
+          <div class="do">
+            <div class="ic-big">A</div>
+            <h3>写邮件时,直接说</h3>
+            <p>在邮箱网页里,按住一个键 → 说话 → 说完松开。文字直接出现在光标处。</p>
+            <div class="how"><span class="kbd">F8</span> 按住 → 说话 → 松开</div>
+          </div>
+          <div class="do">
+            <div class="ic-big">B</div>
+            <h3>想跟 AI 助手说话</h3>
+            <p>在 Cursor / Claude Code / Codex 里,按一下 → 说"帮我写个排序" → 自动发送。</p>
+            <div class="how"><span class="kbd">F9</span> 按一下 → 说话 → 自动发</div>
+          </div>
+          <div class="do">
+            <div class="ic-big">C</div>
+            <h3>边走路边记笔记</h3>
+            <p>离开工位,声音照样能转文字。说完自动保存,不用停下来按保存。</p>
+            <div class="how"><span class="kbd">F8</span> 长按 5 秒 → 离开 → 说话</div>
+          </div>
+          <div class="do">
+            <div class="ic-big">D</div>
+            <h3>说完就发出去</h3>
+            <p>不用自己按回车。说"发送"两个字,OneTone 帮你按回车。</p>
+            <div class="how">"帮我整理一下" + "发送" → 自动 Enter</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 底部:小贴士(隐藏的,后面再展开) -->
+    <div class="floating-note">
+      💡 想改快捷键、麦克风、识别引擎?点右上角 <code>···</code> 菜单
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

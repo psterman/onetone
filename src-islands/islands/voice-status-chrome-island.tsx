@@ -16,6 +16,8 @@ const EMPTY: VoiceStatusChromeModel = {
   schemeName: '—',
   statusText: '—',
   statusCls: 'keys-scheme-summary-pill voice-scheme-summary-pill',
+  activeHintText: '',
+  activeHintHidden: true,
   engineLbl: '',
   engineVal: '—',
   scopeLbl: '',

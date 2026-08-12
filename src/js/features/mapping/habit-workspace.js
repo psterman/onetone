@@ -56,6 +56,29 @@
     var hp=global.OneToneHabitProfile;
     return hp&&hp.habitDisplayName?hp.habitDisplayName(m):(String(m&&m.group||m&&m.label||m&&m.id||'—'));
   }
+  function appIconHtml(m){
+    var appId=String(m&&m.appTargetId||'').trim();
+    var name=appName(m);
+    var presets=global.OneToneAppTargetPresets;
+    if(appId&&presets&&presets.presetById){
+      var preset=presets.presetById(appId);
+      if(preset&&preset.icon){
+        return '<img class="habit-ws-app-icon habit-ws-app-icon--img" src="'+esc(preset.icon)+'" alt="" decoding="async" />';
+      }
+    }
+    var rulesApi=global.OneToneAppBehaviorRules;
+    var customs=rulesApi&&rulesApi.customRulesForMapping?rulesApi.customRulesForMapping(m):[];
+    var rule=customs&&customs[0];
+    if(rule){
+      var url=String(rule.iconDataUrl||'').trim();
+      if(!url&&rulesApi.ruleIconDataUrl) url=String(rulesApi.ruleIconDataUrl(rule)||'').trim();
+      if(url){
+        return '<img class="habit-ws-app-icon habit-ws-app-icon--img" src="'+esc(url)+'" alt="" decoding="async" />';
+      }
+    }
+    var letter=!appId?'∞':(String(name||'').trim()[0]||'?').toUpperCase();
+    return '<span class="habit-ws-app-icon" aria-hidden="true">'+esc(letter)+'</span>';
+  }
   function mappings(){ return arr(cfg().mappings).filter(function(m){ return m&&m.id; }); }
   function byId(id){ return mappings().find(function(m){ return String(m.id)===String(id); })||null; }
   function isApp(m){ return !!(diff().isAppScenarioMapping&&diff().isAppScenarioMapping(m)); }
@@ -229,13 +252,26 @@
     var list=model.mappings.filter(function(m){ return !query||(appName(m)+' '+sceneName(m)).toLowerCase().indexOf(query)>=0; });
     return '<aside class="habit-ws-apps"><label class="habit-ws-search"><span aria-hidden="true">⌕</span><input type="search" data-habit-search value="'+esc(ui().habitWorkspaceSearch||'')+'" placeholder="'+esc(c('search'))+'" aria-label="'+esc(c('search'))+'"></label><div class="habit-ws-app-list" role="listbox">'+list.map(function(m){
       var selected=m.id===model.mapping.id;
-      return '<button type="button" class="habit-ws-app'+(selected?' is-selected':'')+'" data-habit-mapping="'+esc(m.id)+'" role="option" aria-selected="'+(selected?'true':'false')+'"><span class="habit-ws-app-icon" aria-hidden="true">'+esc((appName(m).trim()[0]||'∞').toUpperCase())+'</span><span class="habit-ws-app-copy"><strong>'+esc(appName(m))+'</strong><small>'+esc(sceneName(m))+'</small></span><span class="habit-ws-app-state '+(m.enabled===false?'is-off':'')+'">'+esc(m.enabled===false?c('disabled'):c('enabled'))+'</span></button>';
+      return '<button type="button" class="habit-ws-app'+(selected?' is-selected':'')+'" data-habit-mapping="'+esc(m.id)+'" role="option" aria-selected="'+(selected?'true':'false')+'">'+appIconHtml(m)+'<span class="habit-ws-app-copy"><strong>'+esc(appName(m))+'</strong><small>'+esc(sceneName(m))+'</small></span><span class="habit-ws-app-state '+(m.enabled===false?'is-off':'')+'">'+esc(m.enabled===false?c('disabled'):c('enabled'))+'</span></button>';
     }).join('')+'</div><button type="button" class="habit-ws-add" data-habit-add>'+esc(c('addApp'))+'</button></aside>';
+  }
+  function sceneTabsHtml(model){
+    var d=model.detail;
+    return '<div class="habit-ws-itembar"><div class="habit-ws-scene-tabs" role="tablist" aria-label="'+esc(c('scene'))+'"><span class="habit-ws-scene-label">'+esc(c('scene'))+'</span>'+model.items.map(function(item){
+      var selected=item.id===model.item.id;
+      return '<button type="button" role="tab" aria-selected="'+(selected?'true':'false')+'" class="habit-ws-scene-tab'+(selected?' is-selected':'')+'" data-habit-item="'+esc(item.id)+'">'+esc(itemLabel(item))+'</button>';
+    }).join('')+'</div><span class="habit-ws-source is-'+esc(d.source.id)+'">'+esc(d.source.label)+'</span></div>';
+  }
+  function channelIconSvg(ch){
+    if(ch==='voice') return '<svg class="habit-ws-channel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>';
+    if(ch==='camera') return '<svg class="habit-ws-channel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>';
+    if(ch==='softPad') return '<svg class="habit-ws-channel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/></svg>';
+    return '<svg class="habit-ws-channel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>';
   }
   function channelTabsHtml(model){
     return '<div class="habit-ws-channels" role="tablist">'+CHANNELS.map(function(ch){
       var meta=model.channels[ch],selected=ch===model.channel;
-      return '<button type="button" role="tab" aria-selected="'+(selected?'true':'false')+'" class="habit-ws-channel'+(selected?' is-selected':'')+'" data-habit-channel="'+ch+'"><span>'+esc(c('channels')[ch])+'</span><small><i class="'+(meta.enabled?'is-on':'is-off')+'"></i>'+esc(meta.enabled?c('enabled'):c('disabled'))+(meta.count?' · '+esc(String(meta.count)): '')+'</small></button>';
+      return '<button type="button" role="tab" aria-selected="'+(selected?'true':'false')+'" class="habit-ws-channel'+(selected?' is-selected':'')+'" data-habit-channel="'+ch+'">'+channelIconSvg(ch)+'<span class="habit-ws-channel-copy"><span>'+esc(c('channels')[ch])+'</span><small><i class="'+(meta.enabled?'is-on':'is-off')+'"></i>'+esc(meta.enabled?c('enabled'):c('disabled'))+(meta.count?' · '+esc(String(meta.count)): '')+'</small></span></button>';
     }).join('')+'</div>';
   }
   function modeHtml(mode){
@@ -247,7 +283,7 @@
   }
   function quickHtml(model){
     var d=model.detail;
-    return '<div class="habit-ws-current-head"><div><span>'+esc(c('currentApp'))+'</span><h4>'+esc(appName(model.mapping))+'</h4><p>'+esc(sceneName(model.mapping))+'</p></div><span class="habit-ws-live '+(model.mapping.id===cfg().activeSceneId?'is-active':'')+'">'+esc(model.mapping.id===cfg().activeSceneId?c('activeHabit'):c('notActive'))+'</span></div>'+channelTabsHtml(model)+'<div class="habit-ws-itembar"><label>'+esc(c('scene'))+'<select data-habit-item>'+model.items.map(function(item){ return '<option value="'+esc(item.id)+'"'+(item.id===model.item.id?' selected':'')+'>'+esc(itemLabel(item))+'</option>'; }).join('')+'</select></label><span class="habit-ws-source is-'+esc(d.source.id)+'">'+esc(d.source.label)+'</span></div><section class="habit-ws-answer" aria-labelledby="habitWsAnswerTitle"><div class="habit-ws-answer-title"><span>'+esc(c('channels')[model.channel])+'</span><h4 id="habitWsAnswerTitle">'+esc(itemLabel(model.item))+'</h4></div><dl><div><dt><b>1</b>'+esc(c('when'))+'</dt><dd>'+esc(d.when)+'</dd></div><div><dt><b>2</b>'+esc(c('what'))+'</dt><dd>'+esc(d.what)+'</dd></div><div><dt><b>3</b>'+esc(c('status'))+'</dt><dd><span class="habit-ws-status '+(d.enabled?'is-on':'is-off')+'"><i></i>'+esc(d.enabled?c('enabled'):c('disabled'))+'</span></dd></div></dl><div class="habit-ws-answer-actions"><button type="button" class="habit-ws-fine" data-habit-fine>'+esc(d.count?fmt(c('fine'),{n:d.count}):c('fineZero'))+' →</button><button type="button" class="habit-ws-change" data-habit-edit data-channel="'+esc(model.channel)+'" data-focus="'+esc(d.focus)+'">'+esc(c('change'))+'</button></div></section>';
+    return '<div class="habit-ws-current-head"><div><span>'+esc(c('currentApp'))+'</span><h4>'+esc(appName(model.mapping))+'</h4><p>'+esc(sceneName(model.mapping))+'</p></div><span class="habit-ws-live '+(model.mapping.id===cfg().activeSceneId?'is-active':'')+'">'+esc(model.mapping.id===cfg().activeSceneId?c('activeHabit'):c('notActive'))+'</span></div>'+channelTabsHtml(model)+sceneTabsHtml(model)+'<section class="habit-ws-answer" aria-labelledby="habitWsAnswerTitle"><div class="habit-ws-answer-title"><span>'+esc(c('channels')[model.channel])+'</span><h4 id="habitWsAnswerTitle">'+esc(itemLabel(model.item))+'</h4></div><dl><div><dt><b>1</b>'+esc(c('when'))+'</dt><dd>'+esc(d.when)+'</dd></div><div><dt><b>2</b>'+esc(c('what'))+'</dt><dd>'+esc(d.what)+'</dd></div><div><dt><b>3</b>'+esc(c('status'))+'</dt><dd><span class="habit-ws-status '+(d.enabled?'is-on':'is-off')+'"><i></i>'+esc(d.enabled?c('enabled'):c('disabled'))+'</span></dd></div></dl><div class="habit-ws-answer-actions"><button type="button" class="habit-ws-fine" data-habit-fine>'+esc(d.count?fmt(c('fine'),{n:d.count}):c('fineZero'))+' →</button><button type="button" class="habit-ws-change" data-habit-edit data-channel="'+esc(model.channel)+'" data-focus="'+esc(d.focus)+'">'+esc(c('change'))+'</button></div></section>';
   }
   function programHtml(model){
     var d=quickDetail(model.mapping,model.channel,defaultItem(model.channel));
@@ -301,15 +337,13 @@
       if(target.hasAttribute('data-habit-mode')){ switchMode(target.getAttribute('data-habit-mode')); return; }
       if(target.hasAttribute('data-habit-intro-cancel')){ ui().habitProgrammerIntroOpen=false; render(); return; }
       if(target.hasAttribute('data-habit-intro-continue')){ if(prefs()) prefs().markProgrammerIntroSeen(); switchMode('programmer',true); return; }
-      if(target.hasAttribute('data-habit-mapping')){ state().selectedMappingId=target.getAttribute('data-habit-mapping'); render(); return; }
-      if(target.hasAttribute('data-habit-channel')){ ui().habitWorkspaceChannel=target.getAttribute('data-habit-channel'); ui().habitWorkspaceItemId=defaultItem(ui().habitWorkspaceChannel); render(); return; }
+      if(target.hasAttribute('data-habit-mapping')){ event.stopPropagation(); state().selectedMappingId=target.getAttribute('data-habit-mapping'); render(); return; }
+      if(target.hasAttribute('data-habit-channel')){ event.stopPropagation(); ui().habitWorkspaceChannel=target.getAttribute('data-habit-channel'); ui().habitWorkspaceItemId=defaultItem(ui().habitWorkspaceChannel); render(); return; }
+      if(target.hasAttribute('data-habit-item')){ event.stopPropagation(); ui().habitWorkspaceItemId=target.getAttribute('data-habit-item'); render(); return; }
       if(target.hasAttribute('data-habit-section')){ ui().habitProgramSection=target.getAttribute('data-habit-section'); render(); return; }
       if(target.hasAttribute('data-habit-edit')){ openEditor(target.getAttribute('data-channel'),target.getAttribute('data-focus')); return; }
       if(target.hasAttribute('data-habit-fine')){ switchMode('programmer'); return; }
       if(target.hasAttribute('data-habit-add')){ var btn=document.getElementById('btnHabitHubHeadNew'); if(btn) btn.click(); }
-    });
-    host.addEventListener('change',function(event){
-      if(event.target&&event.target.hasAttribute('data-habit-item')){ ui().habitWorkspaceItemId=event.target.value; render(); }
     });
     host.addEventListener('keydown',function(event){
       var modeButton=event.target.closest&&event.target.closest('[data-habit-mode]');

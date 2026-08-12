@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<title>OneTone · Hero ③ 发送 · 改造方案</title>
+<style>
+:root{
+  --bg:#F5F5F7; --surface:#FFFFFF; --surface-soft:#F0F0F2;
+  --border:#E5E5E5; --border-strong:#C4C4C4;
+  --primary:#00658F; --primary-strong:#004C6C; --primary-soft:#E0F1FA;
+  --text:#1A1A1A; --text-muted:#666; --text-faint:#999;
+  --success:#16A34A; --success-soft:#DCFCE7;
+  --warn:#F59E0B; --warn-soft:#FEF3C7;
+  --error:#BA1A1A; --error-soft:#FEE2E2;
+  --r-card:20px; --r-row:14px; --r-pill:999px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:'Outfit','Inter',system-ui,-apple-system,'PingFang SC','Microsoft YaHei UI',sans-serif;
+  line-height:1.55;-webkit-font-smoothing:antialiased;}
+.page{max-width:1280px;margin:0 auto;padding:32px 24px 64px;}
+
+.topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding-bottom:16px;border-bottom:1px solid var(--border);margin-bottom:20px;}
+.brand{font:600 15px/22px 'Outfit';letter-spacing:-.01em;}
+.dot-sep{color:var(--text-faint);}
+.chip{display:inline-flex;align-items:center;gap:6px;font:500 12px/16px 'Outfit';
+  padding:5px 12px;border-radius:var(--r-pill);background:var(--success-soft);color:#15803D;}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:currentColor;}
+.topbar .spacer{flex:1;}
+.btn{border:1px solid var(--border-strong);background:transparent;color:var(--text-muted);
+  padding:5px 12px;border-radius:8px;font:500 12px/16px 'Outfit';cursor:pointer;font-family:inherit;}
+
+.stage-tag{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:6px 14px;border-radius:var(--r-pill);
+  background:var(--primary-soft);color:var(--primary);
+  font:600 12px/16px 'Outfit';
+  margin-bottom:12px;
+}
+.stage-tag .num{width:20px;height:20px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:11px;}
+h1{margin:0 0 6px;font:700 22px/30px 'Outfit';letter-spacing:-.01em;}
+.lead{color:var(--text-muted);font-size:13px;margin-bottom:20px;max-width:780px;}
+
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+@media (max-width:1100px){.compare{grid-template-columns:1fr;}}
+.col h3{margin:0 0 10px;font:700 13px/18px 'Outfit';}
+.tag{display:inline-block;padding:2px 8px;border-radius:var(--r-pill);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-left:6px;}
+.tag.before{background:#FEE2E2;color:#B91C1C;}
+.tag.after{background:#DCFCE7;color:#15803D;}
+
+.mock{border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden;background:var(--surface);
+  box-shadow:0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);}
+.mock-bar{background:var(--surface-soft);padding:8px 12px;font-size:11px;color:var(--text-muted);
+  display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);}
+.mock-bar .d{width:10px;height:10px;border-radius:50%;}
+.mock-bar .d.r{background:#E57373;}.mock-bar .d.y{background:#F0C674;}.mock-bar .d.g{background:#9BC97E;}
+.mock-body{padding:18px;}
+
+/* 改造前 */
+.messy-hero{background:#F9F8F4;border:1px dashed var(--border);border-radius:var(--r-card);
+  padding:18px;display:grid;gap:14px;min-height:520px;}
+.messy-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.messy-row .k{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;width:90px;}
+.messy-row .v{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.messy-pill{font-size:11px;padding:3px 8px;border-radius:var(--r-pill);background:#fff;border:1px solid var(--border);color:var(--text-muted);}
+.messy-pill.live{background:var(--primary-soft);color:var(--primary);border-color:rgba(0,101,143,.3);}
+.messy-pill.warn{background:var(--warn-soft);color:#92400E;border-color:#FCD34D;}
+.messy-warn{background:#FEF3C7;border:1px solid #FCD34D;color:#92400E;padding:6px 10px;border-radius:8px;font-size:11px;display:flex;gap:6px;}
+.messy-strike{text-decoration:line-through;color:#B91C1C;opacity:.6;}
+.messy-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border-strong);background:#fff;color:var(--text-muted);}
+
+/* 改造后 */
+.clean{
+  background:linear-gradient(180deg,#fff,#FAFCFE);
+  border:1px solid var(--border);border-radius:var(--r-card);
+  padding:24px;display:grid;gap:18px;
+}
+.q-title{font:700 16px/24px 'Outfit';letter-spacing:-.01em;}
+.q-sub{color:var(--text-muted);font-size:12.5px;margin-top:2px;}
+
+/* 文字预览(模拟光标处的输入框) */
+.preview-box{
+  background:#fff;border:1.5px solid rgba(0,101,143,.35);border-radius:10px;
+  padding:12px 14px;font-size:13.5px;line-height:1.6;color:var(--text);
+  position:relative;
+}
+.preview-box .target-app{
+  position:absolute;top:-9px;left:14px;background:#fff;padding:0 8px;
+  font-size:10.5px;color:var(--text-muted);font-weight:600;display:flex;align-items:center;gap:6px;
+}
+.preview-box .target-app .dot{width:6px;height:6px;border-radius:50%;background:var(--primary);}
+.preview-box .cursor{display:inline-block;width:2px;height:1em;background:var(--primary);margin-left:2px;animation:blink 1s steps(2) infinite;vertical-align:-2px;}
+@keyframes blink{50%{opacity:0;}}
+
+/* 4 选 1 动作 */
+.actions{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
+}
+.action{
+  background:#fff;border:1.5px solid var(--border);border-radius:var(--r-row);
+  padding:14px 12px;display:grid;gap:6px;cursor:pointer;transition:all .15s;
+  text-align:left;
+}
+.action:hover{border-color:rgba(0,101,143,.3);}
+.action.recommend{background:var(--primary-soft);border-color:rgba(0,101,143,.4);}
+.action .head{display:flex;align-items:center;gap:8px;}
+.action .ic{width:28px;height:28px;border-radius:8px;background:var(--surface-soft);color:var(--text-muted);
+  display:grid;place-items:center;font-size:14px;}
+.action.recommend .ic{background:var(--primary);color:#fff;}
+.action .title{font-size:13px;font-weight:800;}
+.action .desc{font-size:11px;color:var(--text-muted);line-height:1.4;}
+.action .trigger{margin-top:auto;font-size:10.5px;color:var(--text-faint);
+  display:flex;align-items:center;gap:4px;}
+.action .trigger .kbd{font-family:ui-monospace,monospace;background:var(--surface-soft);
+  padding:1px 6px;border-radius:3px;color:var(--text-muted);font-size:10px;}
+
+.smart-card{
+  background:#fff;border:1px solid var(--border);border-radius:var(--r-row);
+  padding:14px;display:grid;gap:10px;
+}
+.smart-head{display:flex;align-items:center;gap:10px;}
+.smart-orb{width:40px;height:40px;border-radius:10px;background:var(--primary-soft);
+  color:var(--primary);display:grid;place-items:center;font-size:18px;}
+.smart-info .k{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;}
+.smart-info .v{font-size:13.5px;font-weight:800;}
+.smart-info .sub{font-size:11.5px;color:var(--text-muted);margin-top:2px;}
+
+.path-mini{
+  display:flex;align-items:center;gap:6px;padding:10px 12px;
+  background:var(--surface-soft);border-radius:8px;font-size:11.5px;
+}
+.path-mini .step{
+  display:inline-flex;align-items:center;gap:4px;
+  background:#fff;padding:3px 8px;border-radius:6px;border:1px solid var(--border);
+}
+.path-mini .arr{color:var(--text-faint);}
+.path-mini .highlight{background:var(--success-soft);border-color:rgba(22,163,74,.3);color:#15803D;font-weight:700;}
+
+.preset-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.preset{
+  background:var(--surface-soft);border-radius:8px;padding:8px 10px;
+  font-size:11px;display:grid;gap:2px;cursor:pointer;
+}
+.preset:hover{background:#fff;border:1px solid var(--border);}
+.preset.on{background:var(--primary-soft);border:1px solid rgba(0,101,143,.3);}
+.preset .k{color:var(--text-muted);font-size:10px;}
+.preset .v{font-weight:700;}
+
+.action.is-deferred{opacity:.55;border-style:dashed;}
+.action .badge-defer{
+  font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+  color:#92400E;background:var(--warn-soft);padding:2px 6px;border-radius:999px;width:fit-content;
+}
+.smart-card.is-deferred{opacity:.55;border-style:dashed;}
+.bind-note{
+  font-size:11px;color:var(--text-muted);padding:8px 10px;border-radius:8px;
+  background:rgba(0,101,143,.05);border:1px solid rgba(0,101,143,.15);
+}
+
+footer{padding:24px;text-align:center;color:var(--text-faint);font-size:11px;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="topbar">
+    <div class="brand">OneTone</div>
+    <span class="dot-sep">/</span>
+    <span class="chip"><span class="dot"></span>v19 · 中性工作台</span>
+    <span class="dot-sep">/</span>
+    <span style="font-size:12px;color:var(--text-muted);">语音版块改造 · 三 hero 方案</span>
+    <div class="spacer"></div>
+    <button class="btn">← Hero ②</button>
+    <button class="btn">全部方案 →</button>
+  </div>
+
+  <span class="stage-tag"><span class="num">3</span>03 / 发送 · 说完了怎么发出去</span>
+  <h1>Hero ③ 发送 · 说完了怎么发出去</h1>
+  <p class="lead">说完后文字已在光标处。P0（UI 重组）显式化既有 <code>send_mode</code>：完成输入 / 发送 Enter。<strong>复制、触发 agent、窗口智能推荐属能力增量轨，另排期</strong>。</p>
+
+  <div class="compare">
+
+    <!-- 改造前 -->
+    <div class="col">
+      <h3>改造前 <span class="tag before">只能"自动"</span></h3>
+      <div class="mock">
+        <div class="mock-bar">
+          <span class="d r"></span><span class="d y"></span><span class="d g"></span>
+          send_guard · voice_end_runtime.send_mode · scene_config.voiceOverride · 4 处分散
+        </div>
+        <div class="mock-body">
+          <div class="messy-hero">
+            <div class="messy-warn">⚠ 只有一个 "send_mode" 开关,用户没法在每次说话后选择"复制 vs 发送 vs 提交"</div>
+
+            <div class="messy-row">
+              <div class="k">文字落点</div>
+              <div class="v">
+                <span class="messy-pill">光标处(默认)</span>
+                <span class="messy-pill">剪贴板</span>
+              </div>
+            </div>
+            <div class="messy-row">
+              <div class="k">发送模式</div>
+              <div class="v">
+                <span class="messy-pill live">自动发送 Enter</span>
+                <span class="messy-pill">不发送</span>
+                <span class="messy-pill">phrase / auto</span>
+              </div>
+            </div>
+            <div class="messy-row">
+              <div class="k">agent 触发</div>
+              <div class="v">
+                <span class="messy-pill warn">未明示 · 走 scene_config.voiceOverride</span>
+              </div>
+            </div>
+            <div class="messy-row">
+              <div class="k">vp9 tray</div>
+              <div class="v">
+                <span class="messy-pill messy-strike">vp9PillFinish 说完后: —</span>
+                <span class="messy-pill messy-strike">vp9BtnTestSend</span>
+              </div>
+            </div>
+            <div class="messy-row">
+              <div class="k">homeAdvanced</div>
+              <div class="v">
+                <span class="messy-pill messy-strike">homeKeyMapFinish 说完后</span>
+                <span class="messy-pill messy-strike">homeKeyMapArrowFinishText</span>
+              </div>
+            </div>
+            <div class="messy-warn">⚠ 想"复制"得去 settings 改 send_mode = none · 想"触发 agent"压根没入口</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 改造后 -->
+    <div class="col">
+      <h3>改造后 <span class="tag after">4 选 1 + 智能推荐</span></h3>
+      <div class="mock">
+        <div class="mock-bar">
+          <span class="d r"></span><span class="d y"></span><span class="d g"></span>
+          Hero ③ 新增 · 复用 send_guard + voice_end_runtime · 暴露 4 选 1 UI
+        </div>
+        <div class="mock-body">
+          <div class="clean">
+
+            <!-- 文字预览 -->
+            <div>
+              <div class="q-title">说完后,文字已经在这里</div>
+              <div class="q-sub">基于当前窗口识别 · 下一步你选</div>
+            </div>
+            <div class="preview-box">
+              <div class="target-app"><span class="dot"></span>Cursor · chat 输入框</div>
+              帮我整理一下 OneTone 的语音控制台改版方案,核心是把"开始 - 结束 - 发送"三段链路显式化<span class="cursor"></span>
+            </div>
+
+            <!-- P0：既有 send_mode；增量动作虚线标注 -->
+            <div>
+              <div class="q-title">下一步怎么走？</div>
+              <div class="q-sub">实线 = P0 UI 重组（既有 send_mode）· 虚线 = 能力增量另排期</div>
+            </div>
+            <div class="actions">
+              <button class="action">
+                <div class="head"><div class="ic">↵</div><div class="title">完成输入</div></div>
+                <div class="desc">文字上屏,啥也不做。适合:写文档 / 长文本。</div>
+                <div class="trigger"><span class="kbd">send_mode=none</span></div>
+              </button>
+              <button class="action recommend">
+                <div class="head"><div class="ic">⏎</div><div class="title">发送 / Enter</div></div>
+                <div class="desc">按 Enter。适合:AI chat / 搜索框 / 表单。</div>
+                <div class="trigger"><span class="kbd">send_mode=auto</span></div>
+              </button>
+              <button class="action is-deferred" type="button" disabled>
+                <span class="badge-defer">能力增量</span>
+                <div class="head"><div class="ic">⧉</div><div class="title">复制到剪贴板</div></div>
+                <div class="desc">不上屏,只复制。另排期，非 P0。</div>
+              </button>
+              <button class="action is-deferred" type="button" disabled>
+                <span class="badge-defer">能力增量</span>
+                <div class="head"><div class="ic">⚡</div><div class="title">触发 agent</div></div>
+                <div class="desc">给 SoftPad 当前 agent。另排期；不串进语音因果链。</div>
+              </button>
+            </div>
+
+            <!-- 智能推荐：能力增量 -->
+            <div class="smart-card is-deferred">
+              <div class="smart-head">
+                <div class="smart-orb">🧠</div>
+                <div class="smart-info" style="flex:1;">
+                  <div class="k">能力增量 · 窗口智能推荐（另排期）</div>
+                  <div class="v">P0 不实现 · 默认沿用习惯内 send_mode</div>
+                  <div class="sub">落地后再接 window_layout / foreground_evidence</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 习惯：编辑 vs 使用 -->
+            <div>
+              <div class="q-title">习惯联动（钉死绑定）</div>
+            </div>
+            <div class="preset-row">
+              <div class="preset on">
+                <div class="k">设置页 · 正在编辑</div>
+                <div class="v">selectedMappingId</div>
+              </div>
+              <div class="preset">
+                <div class="k">首页 · 正在使用</div>
+                <div class="v">activeSceneId · 只读投影</div>
+              </div>
+              <div class="preset">
+                <div class="k">可不同</div>
+                <div class="v">编辑 ≠ 使用</div>
+              </div>
+            </div>
+
+            <div class="bind-note">
+              <strong>首页</strong>只投影当前正在使用习惯的「发送」摘要；点卡打开设置页再改 <code>selectedMappingId</code> 对应配置。勿在首页再造可编辑双 hero。
+            </div>
+
+            <div class="annot">↑ P0：显式化 none/auto · 能力增量：复制 / agent / 智能推荐另排 · 设置可写 / 首页只读</div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>

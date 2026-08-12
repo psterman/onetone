@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>OneTone · 语音版块 UI 改版方案 · 3 张原型对比</title>
+<style>
+  :root{
+    --bg:#f4f3ef; --panel:#fff; --border:#d8d5cc; --muted:#7c7a72; --text:#2a2926;
+    --primary:#2a9cc4; --primary-soft:rgba(42,156,196,.10);
+    --ink-1:#1f1d1a; --ink-2:#5a5750;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:14px;line-height:1.5;}
+  header{
+    background:#fff;border-bottom:1px solid var(--border);
+    padding:18px 32px;position:sticky;top:0;z-index:10;
+  }
+  header h1{margin:0 0 4px;font-size:18px;letter-spacing:-.01em;}
+  header .sub{color:var(--muted);font-size:12px;}
+  nav.tabs{
+    display:flex;gap:0;background:#fff;border-bottom:1px solid var(--border);
+    padding:0 32px;position:sticky;top:64px;z-index:9;
+  }
+  nav.tabs a{
+    padding:10px 16px;text-decoration:none;color:var(--ink-2);
+    border-bottom:2px solid transparent;font-size:13px;font-weight:600;
+  }
+  nav.tabs a.on{color:var(--primary);border-bottom-color:var(--primary);}
+
+  section{padding:32px;max-width:1400px;margin:0 auto;}
+  section h2{margin:0 0 8px;font-size:20px;letter-spacing:-.01em;}
+  section .lead{color:var(--muted);font-size:13px;margin-bottom:24px;max-width:780px;}
+
+  .frame-wrap{
+    border:1px solid var(--border);border-radius:14px;overflow:hidden;
+    background:#fff;box-shadow:0 4px 16px rgba(0,0,0,.06);
+    margin-bottom:24px;
+  }
+  .frame-wrap .bar{
+    background:#e9e7e0;padding:8px 12px;font-size:11px;color:var(--ink-2);
+    display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);
+  }
+  .frame-wrap .bar .name{font-weight:600;color:var(--ink-1);}
+  .frame-wrap .bar .path{font-family:ui-monospace,monospace;font-size:10px;background:#fff;padding:1px 6px;border-radius:3px;border:1px solid var(--border);}
+  .frame-wrap iframe{width:100%;border:0;display:block;background:#fff;}
+
+  .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;}
+  @media (max-width:1100px){.compare-grid{grid-template-columns:1fr;}}
+
+  .before-tag,.after-tag{
+    display:inline-block;padding:3px 10px;border-radius:999px;
+    font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;
+  }
+  .before-tag{background:#fee2e2;color:#b91c1c;}
+  .after-tag{background:#dcfce7;color:#15803d;}
+
+  .diff-list{
+    display:grid;gap:8px;margin-top:16px;
+  }
+  .diff{
+    display:grid;grid-template-columns:18px 1fr;gap:10px;align-items:start;
+    padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:8px;
+    font-size:12px;
+  }
+  .diff .ic{font-size:14px;line-height:1.4;}
+  .diff.add{border-left:3px solid var(--good);background:#f0fdf4;}
+  .diff.del{border-left:3px solid var(--bad);background:#fef2f2;text-decoration:line-through;opacity:.75;}
+  .diff.mv{border-left:3px solid var(--primary);background:var(--primary-soft);}
+
+  footer{padding:32px;text-align:center;color:var(--muted);font-size:12px;}
+
+  /* 顶部 TOC */
+  .toc{position:fixed;right:24px;top:120px;background:#fff;border:1px solid var(--border);
+    border-radius:10px;padding:8px 0;font-size:12px;z-index:20;box-shadow:0 4px 12px rgba(0,0,0,.05);
+    max-width:180px;}
+  .toc a{display:block;padding:6px 14px;color:var(--ink-2);text-decoration:none;border-left:2px solid transparent;}
+  .toc a:hover{background:#faf8f2;}
+  .toc a.on{border-left-color:var(--primary);color:var(--primary);font-weight:700;background:var(--primary-soft);}
+  @media (max-width: 1100px){.toc{display:none;}}
+</style>
+</head>
+<body>
+<header>
+  <h1>OneTone · 语音版块 UI 改版方案</h1>
+  <div class="sub">3 张原型图 · 配色沿用 docs/ui-voice-settings-redesign-diagram.html 的米色 + 青蓝主色 · 1280px 宽</div>
+</header>
+
+<nav class="tabs">
+  <a href="#hero" class="on">① Hero 工作台</a>
+  <a href="#console">② 语音控制台</a>
+  <a href="#settings">③ Settings 瘦身</a>
+  <a href="#diff">改动总览</a>
+</nav>
+
+<aside class="toc">
+  <a href="#hero" class="on">① Hero 工作台</a>
+  <a href="#console">② 语音控制台</a>
+  <a href="#settings">③ Settings 瘦身</a>
+  <a href="#diff">改动总览</a>
+</aside>
+
+<section id="hero">
+  <span class="after-tag">改版后</span>
+  <h2>① Hero 工作台 · 主舞台</h2>
+  <p class="lead">删掉 vp9HeroLive 整块 + 删 homeAdvanced 兼容层 · 状态徽章上移 · 场景 chip 内联 · 4 个动作取代 5 按钮</p>
+
+  <div class="frame-wrap">
+    <div class="bar">
+      <span class="name">改版后</span>
+      <span class="path">design-mock/voice-ui-proto-1-hero.html</span>
+    </div>
+    <iframe src="voice-ui-proto-1-hero.html" style="height:780px;"></iframe>
+  </div>
+</section>
+
+<section id="console">
+  <span class="after-tag">新增</span>
+  <h2>② 语音控制台 · 6 主题网格</h2>
+  <p class="lead">从 settings 子页面提到 home 一级 section · 6 个主题,每格自包含、可独立操作 · 摄像头 / 美颜 / 离席检测进高级</p>
+
+  <div class="frame-wrap">
+    <div class="bar">
+      <span class="name">改版后</span>
+      <span class="path">design-mock/voice-ui-proto-2-console.html</span>
+    </div>
+    <iframe src="voice-ui-proto-2-console.html" style="height:1080px;"></iframe>
+  </div>
+</section>
+
+<section id="settings">
+  <span class="after-tag">改版后</span>
+  <h2>③ Settings · 语音设置(瘦身)</h2>
+  <p class="lead">只放"需要离开主页才能改的、需要重启引擎的"项 · 顶部小提示引导用户去新的控制台</p>
+
+  <div class="frame-wrap">
+    <div class="bar">
+      <span class="name">改版后</span>
+      <span class="path">design-mock/voice-ui-proto-3-settings.html</span>
+    </div>
+    <iframe src="voice-ui-proto-3-settings.html" style="height:1200px;"></iframe>
+  </div>
+</section>
+
+<section id="diff">
+  <h2>改动总览 · 3 张图背后要改什么</h2>
+  <p class="lead">对照 src/index.html 的现状,这次的清理 + 重组 = 信息架构升级,不动后端逻辑</p>
+
+  <h3 style="margin:24px 0 8px;">① Hero 工作台</h3>
+  <div class="diff-list">
+    <div class="diff del"><span class="ic">✕</span>删除 src/index.html:270-344 vp9HeroLive 整块(vp-actions / vp-tray / vp-habits)</div>
+    <div class="diff del"><span class="ic">✕</span>删除 src/index.html:367-459 homeAdvanced 兼容层(homeLivePanelKey / homeLivePanelVoice)</div>
+    <div class="diff add"><span class="ic">+</span>新增 wbTriggerHead 状态徽章行(4 个 status-pill 替代散落的 vp9PillXxx)</div>
+    <div class="diff mv"><span class="ic">→</span>vp-habits 习惯列表 → 提升为 hero 底部的 scenes chip 行</div>
+    <div class="diff add"><span class="ic">+</span>主操作 4 按钮(开始/暂停/切换目标/语音控制台),替代 5 按钮</div>
+  </div>
+
+  <h3 style="margin:24px 0 8px;">② 语音控制台(新增)</h3>
+  <div class="diff-list">
+    <div class="diff add"><span class="ic">+</span>新增 section,挂 home 一级导航("语音控制台"tab)</div>
+    <div class="diff add"><span class="ic">+</span>6 个主题卡片:① 引擎 ② 麦克风 ③ 唤醒方式 ④ 结束动作 ⑤ 离席/回席 ⑥ 调试</div>
+    <div class="diff mv"><span class="ic">→</span>从 settingsDrawer 里迁:引擎选择 / 麦克风切换 / 唤醒词 / 结束动作 / 离席阈值</div>
+    <div class="diff add"><span class="ic">+</span>每张卡底部"隐私分级"小标签(本地/不上传/默认关)</div>
+    <div class="diff mv"><span class="ic">→</span>摄像头 / 美颜 / Hello 独占 → 全部进 ⑥ 调试 · 高级</div>
+  </div>
+
+  <h3 style="margin:24px 0 8px;">③ Settings · 语音设置(瘦身)</h3>
+  <div class="diff-list">
+    <div class="diff del"><span class="ic">✕</span>删除:基础引擎选择 / 麦克风切换 / 唤醒词编辑 / 结束动作(已迁控制台)</div>
+    <div class="diff add"><span class="ic">+</span>保留:① 引擎模型(下载/切换)② 声学口令(录音样本管理)③ 高级(冷却/阈值/重置)</div>
+    <div class="diff add"><span class="ic">+</span>顶部 info-banner:"日常调整请去语音控制台"</div>
+  </div>
+
+  <h3 style="margin:24px 0 8px;">顺手清理(可选)</h3>
+  <div class="diff-list">
+    <div class="diff mv"><span class="ic">→</span>design-mockup-v2.html ~ v15-light.html 19 个旧设计稿,git mv 到 design-mock/archive/</div>
+    <div class="diff del"><span class="ic">✕</span>删 design-brainstorm-3-*.html(2 个 brainstorm 草稿,已过时)</div>
+    <div class="diff mv"><span class="ic">→</span>留 design-mock/home-redesign-v19-m3core.html + voice-settings-redesign.html 作为参考</div>
+  </div>
+</section>
+
+<footer>
+  配色:米色 #f4f3ef + 青蓝 #2a9cc4 · 沿用 docs/ui-voice-settings-redesign-diagram.html 风格 · 1280px 宽基准
+</footer>
+
+<script>
+  // Tab + TOC 同步高亮
+  const tabs = document.querySelectorAll('nav.tabs a, .toc a');
+  const sections = ['hero','console','settings','diff'].map(id => document.getElementById(id));
+  function sync(){
+    let cur = 'hero';
+    for(const s of sections){
+      if(s && s.getBoundingClientRect().top < 120) cur = s.id;
+    }
+    tabs.forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + cur));
+  }
+  window.addEventListener('scroll', sync, {passive:true});
+  sync();
+</script>
+</body>
+</html>

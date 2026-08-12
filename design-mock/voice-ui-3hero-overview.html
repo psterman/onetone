@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<title>OneTone · 语音版块三 hero 改造方案 · 总览联动</title>
+<style>
+:root{
+  --bg:#F5F5F7; --surface:#FFFFFF; --surface-soft:#F0F0F2;
+  --border:#E5E5E5; --border-strong:#C4C4C4;
+  --primary:#00658F; --primary-strong:#004C6C; --primary-soft:#E0F1FA;
+  --text:#1A1A1A; --text-muted:#666; --text-faint:#999;
+  --success:#16A34A; --success-soft:#DCFCE7;
+  --r-card:20px; --r-row:14px; --r-pill:999px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:'Outfit','Inter',system-ui,-apple-system,'PingFang SC','Microsoft YaHei UI',sans-serif;
+  line-height:1.55;-webkit-font-smoothing:antialiased;}
+
+header{background:#fff;border-bottom:1px solid var(--border);padding:24px 32px;}
+header h1{margin:0 0 6px;font:700 22px/30px 'Outfit';letter-spacing:-.01em;}
+header .sub{color:var(--text-muted);font-size:13px;}
+
+.container{padding:32px;max-width:1280px;margin:0 auto;}
+
+/* 三 hero 联动总图 */
+.flow-3{display:grid;grid-template-columns:1fr 60px 1fr 60px 1fr;gap:12px;align-items:stretch;margin:24px 0 32px;}
+@media (max-width:1100px){.flow-3{grid-template-columns:1fr;}}
+.hero-card{
+  background:#fff;border:1px solid var(--border);border-radius:var(--r-card);
+  padding:20px;display:grid;gap:12px;box-shadow:0 1px 2px rgba(0,0,0,.03);
+  position:relative;overflow:hidden;
+}
+.hero-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--primary);}
+.hero-card.h1::before{background:#00658F;}
+.hero-card.h2::before{background:#F59E0B;}
+.hero-card.h3::before{background:#16A34A;}
+.hero-card .head{display:flex;align-items:center;gap:10px;}
+.hero-card .num{
+  width:36px;height:36px;border-radius:10px;
+  background:var(--primary);color:#fff;display:grid;place-items:center;
+  font:700 14px/18px 'Outfit';
+}
+.hero-card.h1 .num{background:#00658F;}
+.hero-card.h2 .num{background:#F59E0B;}
+.hero-card.h3 .num{background:#16A34A;}
+.hero-card .step{font:700 12px/16px 'Outfit';text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);}
+.hero-card .title{font:700 16px/22px 'Outfit';letter-spacing:-.01em;}
+.hero-card .q{font:500 12.5px/18px 'Outfit';color:var(--text-muted);}
+
+.hero-card ul{margin:6px 0 0;padding:0;list-style:none;display:grid;gap:5px;}
+.hero-card li{font-size:12px;padding-left:16px;position:relative;color:var(--text);}
+.hero-card li::before{content:"·";position:absolute;left:6px;color:var(--primary);font-weight:800;}
+
+.arrow{color:var(--text-faint);font-size:32px;display:grid;place-items:center;}
+
+/* iframe 嵌入区 */
+.section{margin:32px 0;}
+.section h2{margin:0 0 6px;font:700 18px/24px 'Outfit';letter-spacing:-.01em;}
+.section .desc{color:var(--text-muted);font-size:13px;margin-bottom:14px;}
+
+.frame-wrap{
+  border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden;
+  background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.04);
+  margin-bottom:18px;
+}
+.frame-wrap .bar{
+  background:var(--surface-soft);padding:10px 14px;font-size:12px;color:var(--text-muted);
+  display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);
+}
+.frame-wrap .bar .name{font-weight:700;color:var(--text);}
+.frame-wrap .bar .path{font:500 11px/14px ui-monospace,monospace;background:#fff;padding:2px 8px;border-radius:4px;border:1px solid var(--border);}
+.frame-wrap .bar .tag{
+  margin-left:auto;padding:2px 10px;border-radius:var(--r-pill);font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.04em;
+}
+.tag.h1{background:#E0F1FA;color:#00658F;}
+.tag.h2{background:#FEF3C7;color:#92400E;}
+.tag.h3{background:#DCFCE7;color:#15803D;}
+.frame-wrap iframe{width:100%;border:0;display:block;background:#fff;}
+
+/* 责任矩阵 */
+.matrix{
+  background:#fff;border:1px solid var(--border);border-radius:var(--r-card);
+  padding:20px;margin:24px 0;
+}
+.matrix h3{margin:0 0 14px;font:700 15px/20px 'Outfit';}
+table.matrix-tbl{width:100%;border-collapse:collapse;font-size:12.5px;}
+table.matrix-tbl th, table.matrix-tbl td{
+  text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);
+  vertical-align:top;
+}
+table.matrix-tbl th{background:var(--surface-soft);font:600 11px/14px 'Outfit';text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);}
+table.matrix-tbl td.k{font-weight:700;width:160px;}
+table.matrix-tbl tr:last-child td{border-bottom:none;}
+.dot-h{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:-1px;}
+.dot-h1{background:#00658F;}.dot-h2{background:#F59E0B;}.dot-h3{background:#16A34A;}
+.dot-h-mix{background:linear-gradient(90deg,#00658F 33%,#F59E0B 33% 66%,#16A34A 66%);}
+
+footer{padding:24px;text-align:center;color:var(--text-faint);font-size:11px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>OneTone · 语音版块三 hero 改造方案</h1>
+  <div class="sub">基于三阶段框架：开启（怎么开始打字）→ 结束（说错了想结束）→ 发送（说完了怎么发出去）。三 hero 各管一段语音会话时间轴；摄像头 / SoftPad 是并列通道，不串进开启因果链。</div>
+</header>
+
+<div class="container">
+
+  <!-- 联动总图 -->
+  <div class="flow-3">
+    <div class="hero-card h1">
+      <div class="head">
+        <div class="num">01</div>
+        <div>
+          <div class="step">开启</div>
+          <div class="title">怎么开始打字</div>
+        </div>
+      </div>
+      <div class="q">从"按一个键/说一个词"到"进入听写"之间发生什么（仅语音因果链）</div>
+      <ul>
+        <li>唤醒词确认(按 F8 / 说"开始输入")</li>
+        <li>（可选）前台目标 — 打开 / 聚焦应用窗口</li>
+        <li>（可选）激活键 — 发送输入法激活键</li>
+        <li>进入听写（麦克风开路）</li>
+        <li>旁链：摄像头 / SoftPad → 跳转对应通道，不阻塞开启</li>
+      </ul>
+    </div>
+    <div class="arrow">→</div>
+    <div class="hero-card h2">
+      <div class="head">
+        <div class="num">02</div>
+        <div>
+          <div class="step">结束</div>
+          <div class="title">说错了想结束</div>
+        </div>
+      </div>
+      <div class="q">正在说话过程中,随时能"停",并保留 / 取消（UI 重组轨）</div>
+      <ul>
+        <li>自动结束(静音 / VAD 阈值)</li>
+        <li>手动结束(说"结束"词)</li>
+        <li>取消丢弃(说"取消"词)</li>
+        <li>实时显示本轮时长 / 字数 / 静音倒计时</li>
+        <li>能力增量轨：触发后 2s 撤销窗口（另排期，非 P0）</li>
+      </ul>
+    </div>
+    <div class="arrow">→</div>
+    <div class="hero-card h3">
+      <div class="head">
+        <div class="num">03</div>
+        <div>
+          <div class="step">发送</div>
+          <div class="title">说完了怎么发出去</div>
+        </div>
+      </div>
+      <div class="q">文字已经在光标处；P0 显式化既有 send_mode，增量动作另排期</div>
+      <ul>
+        <li>完成输入(只上屏,啥也不做) — 既有 send_mode=none</li>
+        <li>发送 / Enter — 既有 send_mode=auto</li>
+        <li>能力增量：复制到剪贴板（另排期）</li>
+        <li>能力增量：触发 agent / SoftPad（另排期）</li>
+        <li>能力增量：窗口智能推荐（另排期）</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 三张 hero 图 -->
+  <div class="section">
+    <h2>三张改造图 · 详情</h2>
+    <div class="desc">每张图都左现状右改造后,直接对比</div>
+
+    <div class="frame-wrap">
+      <div class="bar">
+        <span class="name">Hero ① 开启</span>
+        <span class="path">design-mock/voice-ui-3hero-1-start.html</span>
+        <span class="tag h1">01 开启</span>
+      </div>
+      <iframe src="voice-ui-3hero-1-start.html" style="height:880px;"></iframe>
+    </div>
+
+    <div class="frame-wrap">
+      <div class="bar">
+        <span class="name">Hero ② 结束</span>
+        <span class="path">design-mock/voice-ui-3hero-2-end.html</span>
+        <span class="tag h2">02 结束</span>
+      </div>
+      <iframe src="voice-ui-3hero-2-end.html" style="height:900px;"></iframe>
+    </div>
+
+    <div class="frame-wrap">
+      <div class="bar">
+        <span class="name">Hero ③ 发送</span>
+        <span class="path">design-mock/voice-ui-3hero-3-send.html</span>
+        <span class="tag h3">03 发送</span>
+      </div>
+      <iframe src="voice-ui-3hero-3-send.html" style="height:980px;"></iframe>
+    </div>
+  </div>
+
+  <!-- 责任矩阵 -->
+  <div class="matrix">
+    <h3>责任矩阵 · 3 hero × 现有 UI 元素</h3>
+    <table class="matrix-tbl">
+      <thead>
+        <tr>
+          <th>元素</th>
+          <th>改造前在哪</th>
+          <th>改造后归哪个 hero</th>
+          <th>后端复用</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="k">唤醒词 / 唤醒键</td>
+          <td>wbLivePreviewStatus / vp9PillTarget / homeKeyMapTrigger</td>
+          <td><span class="dot-h dot-h1"></span>Hero ① 开启</td>
+          <td>voice_kws_runtime · voice_acoustic_runtime</td>
+        </tr>
+        <tr>
+          <td class="k">应用打开 / 目标窗口</td>
+          <td>vp9PillTarget · homeKeyMapTarget</td>
+          <td><span class="dot-h dot-h1"></span>Hero ① 开启</td>
+          <td>agent.binding_view · scene_config.voiceOverride.targetKey</td>
+        </tr>
+        <tr>
+          <td class="k">激活输入法 / 激活键</td>
+          <td>vp9PillTarget · homeKeyMapTarget</td>
+          <td><span class="dot-h dot-h1"></span>Hero ① 开启</td>
+          <td>send_guard · trigger_dispatch.send_key</td>
+        </tr>
+        <tr>
+          <td class="k">摄像头 / 离席</td>
+          <td>camera-pro-glance.js · homeVoiceSimpleCard</td>
+          <td>旁链 · 摄像头通道（不进 Hero① 因果链）</td>
+          <td>camera_capability_probe · webview_camera_permission</td>
+        </tr>
+        <tr>
+          <td class="k">SoftPad / 6 agent</td>
+          <td>codex_micro_overlay · soft_pad_runtime</td>
+          <td>旁链 · Soft Pad 通道（不进 Hero① 因果链）</td>
+          <td>soft_pad_runtime · pad_status</td>
+        </tr>
+        <tr>
+          <td class="k">结束方式(自动/手动/取消)</td>
+          <td>vp9PillFinish · homeKeyMapFinish · voice_end_runtime</td>
+          <td><span class="dot-h dot-h2"></span>Hero ② 结束</td>
+          <td>voice_end_runtime (64KB) · voice_acoustic_runtime</td>
+        </tr>
+        <tr>
+          <td class="k">实时倒计时 / 字数 / 时长</td>
+          <td>无 · 后端 session_state 算</td>
+          <td><span class="dot-h dot-h2"></span>Hero ② 结束 (新 UI)</td>
+          <td>voice_end_runtime.session_state</td>
+        </tr>
+        <tr>
+          <td class="k">撤销兜底(2s 窗口)</td>
+          <td>无</td>
+          <td><span class="dot-h dot-h2"></span>Hero ② · <strong>能力增量轨</strong>（非 P0 UI）</td>
+          <td>time_machine.session_snapshot (已有)</td>
+        </tr>
+        <tr>
+          <td class="k">完成输入 / 不发送</td>
+          <td>send_mode=none</td>
+          <td><span class="dot-h dot-h3"></span>Hero ③ 发送 · UI 重组（既有）</td>
+          <td>voice_end_runtime.send_mode</td>
+        </tr>
+        <tr>
+          <td class="k">发送 / Enter</td>
+          <td>send_mode=auto · vp9BtnTestSend</td>
+          <td><span class="dot-h dot-h3"></span>Hero ③ 发送 · UI 重组（既有默认）</td>
+          <td>send_guard · send_key</td>
+        </tr>
+        <tr>
+          <td class="k">复制到剪贴板</td>
+          <td>无 · 只能 send_mode=none 间接实现</td>
+          <td><span class="dot-h dot-h3"></span>Hero ③ · <strong>能力增量轨</strong></td>
+          <td>enigo · clipboard (新增 ~50 行)</td>
+        </tr>
+        <tr>
+          <td class="k">触发 agent</td>
+          <td>无 UI · 走 soft_pad 隐式</td>
+          <td><span class="dot-h dot-h3"></span>Hero ③ · <strong>能力增量轨</strong></td>
+          <td>soft_pad_runtime.dispatch</td>
+        </tr>
+        <tr>
+          <td class="k">智能推荐(基于窗口)</td>
+          <td>无</td>
+          <td><span class="dot-h dot-h3"></span>Hero ③ · <strong>能力增量轨</strong></td>
+          <td>window_layout · foreground_evidence (新规则)</td>
+        </tr>
+        <tr>
+          <td class="k">习惯联动</td>
+          <td>vp-habits · scene_config.activeSceneId</td>
+          <td><span class="dot-h dot-h-mix"></span>设置页可写绑 <code>selectedMappingId</code>；首页只读投影绑 <code>activeSceneId</code></td>
+          <td>scene_config · habit_profile</td>
+        </tr>
+        <tr>
+          <td class="k">vp9HeroLive(整个块)</td>
+          <td>src/index.html 首页 legacy</td>
+          <td>删除 · 内容分发：设置三 hero 配置 / 首页三步摘要投影</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td class="k">homeAdvanced 兼容层</td>
+          <td>src/index.html 首页 legacy</td>
+          <td>删除 · 同上，避免首页再造可编辑双 hero</td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>绑定与页面职责（钉死）</h2>
+    <div class="desc">避免「通用 / 习惯 / 通道」交叉混乱；与 HABIT_UNIFIED_CONTRACT 五词对齐</div>
+    <table class="matrix-tbl">
+      <thead>
+        <tr><th>表面</th><th>绑定</th><th>可写？</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="k">设置 → 语音（三 hero）</td>
+          <td><code>selectedMappingId</code></td>
+          <td>可写配置</td>
+          <td>正在<strong>编辑</strong>某习惯 / 应用场景的语音通道；可与正在使用不同</td>
+        </tr>
+        <tr>
+          <td class="k">首页 · 语音摘要</td>
+          <td><code>activeSceneId</code></td>
+          <td>只读投影</td>
+          <td>正在<strong>使用</strong>习惯的开启/结束/发送摘要；点卡进设置编辑，不在首页改写</td>
+        </tr>
+        <tr>
+          <td class="k">摄像头 / Soft Pad</td>
+          <td>各自通道页</td>
+          <td>各通道内</td>
+          <td>并列能力；Hero① 仅旁链跳转，不进入语音因果链</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>实现优先级</h2>
+    <div class="desc">拆成两条轨：UI 重组（不动后端语义）与能力增量（新功能另验收）</div>
+    <table class="matrix-tbl">
+      <thead>
+        <tr><th>轨</th><th>排期</th><th>范围</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="k">UI 重组 · P0</td>
+          <td>第一周</td>
+          <td>Hero① 开启壳：唤醒→可选目标→可选激活键→进入听写；摄像头/SoftPad 旁链；合并状态徽章</td>
+        </tr>
+        <tr>
+          <td class="k">UI 重组 · P0</td>
+          <td>第一周</td>
+          <td>Hero② 结束壳：复用 voice_end_runtime 自动/结束词/取消 + 时长/字数/静音倒计时展示</td>
+        </tr>
+        <tr>
+          <td class="k">UI 重组 · P0</td>
+          <td>第一周</td>
+          <td>Hero③ 发送壳：显式化既有 send_mode（完成输入 / 发送 Enter）；删除 vp9HeroLive + homeAdvanced</td>
+        </tr>
+        <tr>
+          <td class="k">UI 重组 · P1</td>
+          <td>第二周</td>
+          <td>设置页三 hero 绑 selectedMappingId；首页 howto 语音卡只读投影 activeSceneId；习惯切换节流刷新投影</td>
+        </tr>
+        <tr>
+          <td class="k">能力增量 · 另排</td>
+          <td>P2+</td>
+          <td>2s 撤销窗口 · 剪贴板发送 · 触发 SoftPad agent · 窗口智能推荐 — 各独立验收，不进「只重组 UI」承诺</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<footer>
+  配色:沿用 home-redesign-v19-m3core 的 M3 蓝主色 #00658F + 阶段色(蓝/橙/绿) · 落地时改用产品 --primary token · 1080px 基准<br>
+  评估修正（2026-08-13）：Hero① 收窄因果链 · 编辑/使用绑定钉死 · UI 重组轨与能力增量轨拆分 · 首页只投影
+</footer>
+
+</body>
+</html>

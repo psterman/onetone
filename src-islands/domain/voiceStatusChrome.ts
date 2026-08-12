@@ -6,6 +6,8 @@ export interface VoiceStatusChromeModel {
   schemeName: string;
   statusText: string;
   statusCls: string;
+  activeHintText: string;
+  activeHintHidden: boolean;
   engineLbl: string;
   engineVal: string;
   scopeLbl: string;
@@ -28,6 +30,8 @@ const EMPTY: VoiceStatusChromeModel = {
   schemeName: '—',
   statusText: '—',
   statusCls: 'keys-scheme-summary-pill voice-scheme-summary-pill',
+  activeHintText: '',
+  activeHintHidden: true,
   engineLbl: '',
   engineVal: '—',
   scopeLbl: '',
@@ -82,6 +86,11 @@ export function applyVoiceStatusChromeHosts(model: VoiceStatusChromeModel): void
   if (schemeName) schemeName.textContent = model.schemeName || '';
   if (statusEl) {
     statusEl.className = model.statusCls || 'keys-scheme-summary-pill voice-scheme-summary-pill';
+  }
+  const activeHint = document.getElementById('voiceActiveHint');
+  if (activeHint) {
+    activeHint.textContent = model.activeHintText || '';
+    activeHint.hidden = !!model.activeHintHidden;
   }
   if (engineLbl) engineLbl.textContent = model.engineLbl || '';
   if (engineVal) engineVal.textContent = model.engineVal || '—';

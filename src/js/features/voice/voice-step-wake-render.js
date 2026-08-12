@@ -164,8 +164,6 @@
     }
     var collapse=$('voiceWakePresetCollapse');
     if(collapse){ collapse.hidden=true; collapse.setAttribute('aria-hidden','true'); }
-    var actionBar=$('voiceWakeActionBar');
-    if(actionBar){ actionBar.hidden=true; actionBar.setAttribute('aria-hidden','true'); }
     var appTab=$('btnVoiceWakeKindApp');
     var appPane=$('voiceWakeKindAppPane');
     var summonBlock=$('voiceOutputSummonBlock');
@@ -605,8 +603,6 @@
     if(title) title.textContent=t('voiceWakePageTitle');
     var sub=$('voiceWakePageSub');
     if(sub) sub.textContent=t('voiceWakePageSub');
-    var actionBar=$('voiceWakeActionBar');
-    if(actionBar){ actionBar.hidden=true; actionBar.setAttribute('aria-hidden','true'); }
     var globalTitle=$('voiceEditSectionPresets');
     if(globalTitle) globalTitle.textContent=t('voiceWakeGlobalTitle');
     var heroTitle=$('voiceWakeHeroTitle');

@@ -75,12 +75,13 @@
     setTimeout(function(){
       var panel=document.getElementById('settingsPanelSoftPad')||document.querySelector('[data-settings-panel="softPad"]');
       if(!panel) return;
+      var backLabel=(global.OneToneApp&&global.OneToneApp.t)?global.OneToneApp.t('habitHubContextBack'):'返回我的习惯';
       var banner=document.getElementById('habitSoftPadEditContext');
       if(!banner){
         banner=document.createElement('div');
         banner.id='habitSoftPadEditContext';
         banner.className='habit-edit-context-inline';
-        banner.innerHTML='<span></span><button type="button">返回我的习惯</button>';
+        banner.innerHTML='<span></span><button type="button"></button>';
         panel.insertBefore(banner,panel.firstChild);
         banner.querySelector('button').addEventListener('click',function(){
           if(global.OneToneHabitScenarioContextBanner&&global.OneToneHabitScenarioContextBanner.returnToHabitHub){
@@ -90,6 +91,7 @@
       }
       banner.hidden=false;
       banner.querySelector('span').textContent='正在编辑：'+mappingName(mappingId)+' · Soft Pad';
+      banner.querySelector('button').textContent=backLabel;
     },0);
   }
 

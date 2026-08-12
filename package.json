@@ -29,6 +29,7 @@
     "test:motion": "node scripts/test-motion-once.mjs && node scripts/test-agent-status-edge.mjs && node scripts/test-panel-reveal.mjs && node scripts/test-qs-idle-motion.mjs",
     "test:qs-idle": "node scripts/test-qs-idle-motion.mjs",
     "test:voice-open-defer": "node scripts/test-voice-open-defer-freeze.mjs",
+    "test:voice-p0-leak": "node scripts/test-voice-p0-leak.mjs",
     "test:target-key-catalog": "node scripts/verify-target-key-catalog.mjs",
     "test:voice-acoustic": "node scripts/voice-acoustic-config.test.js && node scripts/voice-acoustic-matcher.test.js && node scripts/voice-acoustic-ui.test.js",
     "test:voice-acoustic:rust": "cargo test --test voice_acoustic_command --manifest-path src-tauri/Cargo.toml -- --nocapture",

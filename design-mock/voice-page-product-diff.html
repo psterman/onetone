@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<title>OneTone · 语音页 P0 改动 · 修改前后对比</title>
+<style>
+:root{
+  --bg:#F5F5F7; --surface:#FFFFFF; --surface-soft:#F0F0F2;
+  --border:#E5E5E5; --border-strong:#C4C4C4;
+  --primary:#00658F; --primary-strong:#004C6C; --primary-soft:#E0F1FA;
+  --text:#1A1A1A; --text-muted:#666; --text-faint:#999;
+  --success:#16A34A; --success-soft:#DCFCE7;
+  --warn:#F59E0B; --warn-soft:#FEF3C7;
+  --error:#BA1A1A; --error-soft:#FEE2E2;
+  --r-card:16px; --r-row:10px; --r-pill:999px;
+  --shadow:0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:'Outfit','Inter',system-ui,-apple-system,'PingFang SC','Microsoft YaHei UI',sans-serif;
+  line-height:1.55;-webkit-font-smoothing:antialiased;}
+header{background:#fff;border-bottom:1px solid var(--border);padding:20px 32px;}
+header h1{margin:0 0 4px;font:700 18px/24px 'Outfit';letter-spacing:-.01em;}
+header .sub{color:var(--text-muted);font-size:12.5px;}
+
+.container{padding:24px 32px 56px;max-width:1280px;margin:0 auto;}
+
+/* 段标题 */
+.sec{margin:0 0 10px;font:700 14px/20px 'Outfit';display:flex;align-items:center;gap:8px;}
+.sec .n{width:24px;height:24px;border-radius:6px;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800;}
+.sec .name{margin-left:2px;}
+.sec .scope{margin-left:auto;font:500 11px/16px 'Outfit';color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;}
+
+.desc{color:var(--text-muted);font-size:12.5px;margin:0 0 14px;max-width:780px;}
+
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:36px;align-items:start;}
+@media (max-width:1100px){.compare{grid-template-columns:1fr;}}
+.col h3{margin:0 0 10px;font:700 13px/18px 'Outfit';display:flex;align-items:center;gap:8px;}
+.col h3 .name{font-weight:700;}
+.tag{display:inline-block;padding:2px 8px;border-radius:var(--r-pill);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+.tag.before{background:#FEE2E2;color:#B91C1C;}
+.tag.after{background:#DCFCE7;color:#15803D;}
+.tag.warn{background:var(--warn-soft);color:#92400E;}
+.tag.info{background:var(--primary-soft);color:var(--primary);}
+
+/* 模拟窗口(沿用 index.html 真实 DOM 结构) */
+.mock{border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden;background:var(--surface);
+  box-shadow:var(--shadow);}
+.mock-bar{background:var(--surface-soft);padding:8px 12px;font-size:11px;color:var(--text-muted);
+  display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);}
+.mock-bar .d{width:9px;height:9px;border-radius:50%;}
+.mock-bar .d.r{background:#E57373;}.mock-bar .d.y{background:#F0C674;}.mock-bar .d.g{background:#9BC97E;}
+.mock-bar .path{font:500 10.5px/14px ui-monospace,monospace;background:#fff;padding:2px 7px;border-radius:4px;border:1px solid var(--border);color:var(--text);}
+.mock-body{padding:14px;}
+
+/* page-status-bar(顶栏)— 真实 DOM 复刻 */
+.page-status-bar{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 12px;border-radius:8px;
+  background:#fafafa;border:1px solid var(--border);
+  font-size:12px;flex-wrap:wrap;
+}
+.page-status-bar .psb-main{display:flex;align-items:center;gap:8px;flex:1;min-width:0;}
+.page-status-bar .brand-icon{width:18px;height:18px;color:var(--primary);}
+.page-status-bar .brand-name{font-weight:800;letter-spacing:-.01em;}
+.page-status-bar .pill{font-size:10.5px;padding:2px 8px;border-radius:var(--r-pill);background:var(--success-soft);color:#15803D;font-weight:700;}
+.page-status-bar .actions{display:flex;align-items:center;gap:8px;}
+.page-status-bar .actions button{
+  font:600 12px/16px 'Outfit';padding:5px 12px;border-radius:7px;
+  border:1px solid var(--border-strong);background:#fff;color:var(--text-muted);cursor:pointer;
+}
+.page-status-bar .actions button.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
+
+/* 新增的 editing/active 状态行 */
+.status-2row{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  margin-top:6px;padding:6px 10px;border-radius:6px;
+  background:#fafaf6;border:1px dashed var(--border);
+  font-size:11.5px;color:var(--text-muted);
+}
+.status-2row .editing{color:var(--text);font-weight:700;}
+.status-2row .active{color:#15803D;font-weight:700;}
+.status-2row .sep{opacity:.4;}
+.status-2row .hint{margin-left:auto;display:flex;align-items:center;gap:4px;color:var(--warn);}
+
+/* 三步时间轴(沿用 voice-step-nav.js 现有结构) */
+.flow-nodes{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+  padding:10px 0;
+  position:relative;
+}
+.flow-nodes::before{
+  content:"";position:absolute;left:5%;right:5%;top:30px;height:2px;
+  background:linear-gradient(90deg,rgba(79,172,254,.7),rgba(42,156,196,.9),rgba(245,158,11,.7));
+  z-index:0;
+}
+.flow-node{position:relative;z-index:1;text-align:center;}
+.flow-node-tag{display:block;font-size:10px;color:var(--text-muted);font-weight:700;letter-spacing:.05em;margin-bottom:4px;}
+.flow-node-btn{
+  width:46px;height:46px;border-radius:50%;
+  background:#fff;border:2px solid var(--border);
+  display:grid;place-items:center;margin:0 auto;
+  color:var(--text-muted);
+}
+.flow-node-btn.on{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 0 0 4px var(--primary-soft);}
+.flow-node-btn svg{width:22px;height:22px;}
+.flow-node-title{margin:6px 0 0;font-size:11.5px;font-weight:700;}
+.flow-node-hint{margin:2px 0 0;font-size:10.5px;color:var(--text-muted);line-height:1.3;}
+
+/* 开启条的 action bar(关键改动) */
+.voice-wake-action-bar{
+  background:#fafaf6;border:1px solid var(--border);border-radius:8px;
+  padding:8px 12px;font-size:12px;color:var(--text);
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+}
+.voice-wake-action-bar .lbl{font-weight:800;}
+.voice-wake-action-bar .steps{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.voice-wake-action-bar .steps span{font-size:12px;}
+.voice-wake-action-bar .steps .arr{color:var(--text-faint);}
+.voice-wake-action-bar .steps .leak{color:#B91C1C;background:#FEE2E2;padding:1px 6px;border-radius:4px;}
+
+.voice-wake-action-bar.after{
+  background:var(--success-soft);border-color:rgba(22,163,74,.25);
+}
+.voice-wake-action-bar.after .lbl{color:#15803D;}
+
+/* 旁链(新增) */
+.sidelink{
+  display:flex;align-items:center;gap:8px;
+  font-size:11.5px;color:var(--text-muted);
+  padding:6px 0 0;border-top:1px dashed var(--border);margin-top:10px;
+}
+.sidelink a{color:var(--primary);text-decoration:none;font-weight:600;}
+.sidelink .sep{color:var(--text-faint);}
+
+/* 03 发送区(保持 confirm|phrase|auto 三卡) */
+.send-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;}
+.send-card{
+  background:#fff;border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;font-size:12px;
+}
+.send-card.on{background:var(--primary-soft);border-color:rgba(0,101,143,.4);}
+.send-card .k{font-weight:800;display:flex;align-items:center;gap:6px;}
+.send-card .desc{color:var(--text-muted);font-size:11px;margin-top:4px;line-height:1.4;}
+.send-card .lock{margin-top:4px;display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--text-faint);}
+
+/* 02 结束区(简要示意) */
+.end-card{
+  background:#fff;border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;font-size:12px;
+  display:grid;gap:6px;
+}
+.end-card .k{font-weight:800;}
+.end-card .row{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);}
+.end-card .row .v{margin-left:auto;color:var(--text);font-weight:700;}
+
+/* 变更说明表 */
+.delta{
+  background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;
+  margin-top:6px;
+}
+.delta .row{
+  display:grid;grid-template-columns:24px 1fr;gap:10px;
+  padding:10px 12px;border-bottom:1px solid var(--border);
+  font-size:12px;
+}
+.delta .row:last-child{border-bottom:none;}
+.delta .row .ic{font-size:13px;line-height:1.5;}
+.delta .row.add{background:var(--success-soft);}
+.delta .row.add .ic{color:#15803D;}
+.delta .row.del{background:var(--error-soft);}
+.delta .row.del .ic{color:#B91C1C;}
+.delta .row.mv{background:var(--primary-soft);}
+.delta .row.mv .ic{color:var(--primary);}
+.delta .row .k{font-weight:700;}
+.delta .row .v{color:var(--text-muted);}
+.delta code{font:500 11px/14px ui-monospace,monospace;background:#fff;padding:1px 5px;border-radius:3px;border:1px solid var(--border);color:var(--text);}
+
+/* 静态自检提示 */
+.guard{
+  background:#fffbeb;border:1px solid #FCD34D;color:#92400E;border-radius:8px;
+  padding:10px 12px;font-size:12px;display:grid;gap:6px;margin-top:10px;
+}
+.guard .k{font-weight:800;display:flex;align-items:center;gap:6px;}
+.guard .row{font:500 11px/16px ui-monospace,monospace;background:#fff;padding:4px 8px;border-radius:4px;border:1px solid #FCD34D;color:#7C2D12;}
+
+footer{padding:24px;text-align:center;color:var(--text-faint);font-size:11px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>OneTone · 语音页 P0 改动 · 修改前后</h1>
+  <div class="sub">只动产品语音页 #settingsPanelVoiceWake 与首页只读投影 · 不重做三步壳 · 不改 design-mock · 不加撤销/复制/agent/智能推荐</div>
+</header>
+
+<div class="container">
+
+  <!-- ===== ① 收窄开启因果链 · 去掉「不自动发送」 ===== -->
+  <div class="sec"><span class="n">1</span><span class="name">开启条收窄 · 去掉「不自动发送」泄漏</span>
+    <span class="scope">P0 · 1 天</span>
+  </div>
+  <p class="desc">「不自动发送」属于 03 发送,不该出现在 01 开启条。改后开启条只保留:切到目标应用 → 进入听写。摄像头/SoftPad 不进因果箭头,只作旁链跳转。</p>
+
+  <div class="compare">
+    <div class="col">
+      <h3><span class="name">修改前</span><span class="tag before">3 步泄漏</span></h3>
+      <div class="mock">
+        <div class="mock-bar">
+          <span class="d r"></span><span class="d y"></span><span class="d g"></span>
+          <span class="path">#voiceWakeActionBar @ index.html:1716-1725</span>
+        </div>
+        <div class="mock-body">
+          <div class="voice-wake-action-bar">
+            <strong class="lbl">唤醒后</strong>
+            <div class="steps">
+              <span id="voiceWakeActionApp">切到目标应用</span>
+              <span class="arr">→</span>
+              <span id="voiceWakeActionDictate">进入听写</span>
+              <span class="arr">→</span>
+              <span id="voiceWakeActionNoSend" class="leak">不自动发送</span>
+            </div>
+          </div>
+          <div class="guard">
+            <div class="k">⚠ 边界泄漏</div>
+            <div>开启条带「不自动发送」—— 03 发送区的内容混进 01 开启。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h3><span class="name">修改后</span><span class="tag after">精简 + 旁链</span></h3>
+      <div class="mock">
+        <div class="mock-bar">
+          <span class="d r"></span><span class="d y"></span><span class="d g"></span>
+          <span class="path">#voiceWakeActionBar(去掉 #voiceWakeActionNoSend)</span>
+        </div>
+        <div class="mock-body">
+          <div class="voice-wake-action-bar after">
+            <strong class="lbl">唤醒后</strong>
+            <div class="steps">
+              <span>切到目标应用</span>
+              <span class="arr">→</span>
+              <span>进入听写</span>
+            </div>
+          </div>
+          <div class="sidelink">
+            摄像头 / 虚拟键盘 不是开启因果的一部分 ·
+            <a>→ 去摄像头</a>
+            <span class="sep">·</span>
+            <a>→ 去虚拟键盘</a>
+          </div>
+          <div class="delta">
+            <div class="row del"><span class="ic">✕</span><div><span class="k">DOM 移除</span> · <code>#voiceWakeActionNoSend</code> 节点 + 对应箭头 <code>.voice-wake-action-arrow</code></div></div>
+            <div class="row del"><span class="ic">✕</span><div><span class="k">i18n 停用</span> · <code>voiceWakeActionNoSend</code> 不再挂在开启条</div></div>
+            <div class="row add"><span class="ic">+</span><div><span class="k">旁链</span> · 摄像头 / SoftPad 改为文字跳转,不在因果箭头内</div></div>
+            <div class="row mv"><span class="ic">→</span><div><span class="k">精简</span> · <code>voice-step-wake-render.js</code> / <code>voice-page-header-render.js</code> 中 action bar 填充</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ② 编辑 vs 使用 · 状态对照行 ===== -->
+  <div class="sec"><span class="n">2</span><span class="name">编辑 vs 使用 · 状态对照行</span>
+    <span class="scope">P0 · 1 天</span>
+  </div>
+  <p class="desc">顶栏 <code>page-status-bar</code> 一带,加一行轻量对照,沿用已有 i18n 键(<code>habitChannelStripEditing</code> / <code>habitChannelStripActive</code> / <code>habitChannelStripHint</code>)。仅当 <code>selectedMappingId !== activeSceneId</code> 时才显示「正在使用」一行,避免冗余。</p>
+
+  <div class="compare">
+    <div class="col">
+      <h3><span class="name">修改前</span><span class="tag before">看不出在改谁</span></h3>
+      <div class="mock">
+        <div class="mock-bar">
+          <span class="d r"></span><span class="d y"></span><span class="d g"></span>
+          <span class="path">#voiceWorkflowTabsBar @ index.html:1606</span>
+        </div>
+        <div class="mock-body">
+          <div class="page-status-bar">
+            <div class="psb-main">
+              <span class="brand-name">语音听写</span>
+              <span class="pill">默认 · 已激活</span>
+            </div>
+            <div class="actions">
+              <button class="primary">保存到正在编辑的习惯</button>
+              <button>+ 新建</button>
+            </div>
+          </div>
+          <div class="guard">
+            <div class="k">⚠ 用户在改「邮件」,但「默认」仍在用</div>
+            <div>保存按钮文案写了"正在编辑",但没人知道现在到底在用哪个</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h3><span class="name">修改后</span><span class="tag after">编辑 / 使用 双显</span></h3>
+      <div class="mock">
+        <div class="mock-bar">
+          <span class="d r"></span><span class="d y"></span><span class="d g"></span>
+          <span class="path">page-status-bar + status-2row(在 #voiceWorkflowTabsBar 内)</span>
+        </div>
+        <div class="mock-body">
+          <div class="page-status-bar">
+            <div class="psb-main">
+              <span class="brand-name">语音听写</span>
+              <span class="pill">默认 · 已激活</span>
+            </div>
+            <div class="actions">
+              <button class="primary">保存到正在编辑的习惯</button>
+              <button>+ 新建</button>
+            </div>
+          </div>
+          <!-- 新增的对照行 -->
+          <div class="status-2row">
+            <span class="editing">● 正在编辑:邮件</span>
+            <span class="sep">·</span>
+            <span class="active">● 正在使用:默认</span>
+            <span class="hint">⚠ 编辑不会切换正在使用</span>
+          </div>
+          <div class="delta">
+            <div class="row add"><span class="ic">+</span><div><span class="k">DOM 新增</span> · <code>.status-2row</code> 挂在 <code>#voiceWorkflowTabsBar</code> 内,不动现有结构</div></div>
+            <div class="row add"><span class="ic">+</span><div><span class="k">i18n 复用</span> · <code>habitChannelStripEditing</code> / <code>habitChannelStripActive</code> / <code>habitChannelStripHint</code> 都已在 i18n.js:2153 存在,无需新增键</div></div>
+            <div class="row mv"><span class="ic">→</span><div><span class="k">渲染落点</span> · <code>voice-page-header-render.js</code>(已渲染 scheme 标题,加一行对照)</div></div>
+            <div class="row add"><span class="ic">+</span><div><span class="k">条件显示</span> · <code>selectedMappingId === activeSceneId</code> 时只显示编辑行,避免冗余</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ③ 不做能力增量(明确说明)===== -->
+  <div class="sec"><span class="n">3</span><span class="name">本迭代不做 · 发送区保持 confirm / phrase / auto</span>
+    <span class="scope">非目标</span>
+  </div>
+  <p class="desc">明确不做 4 项能力增量。发送区形态不动,保持现有三卡。</p>
+
+  <div class="mock">
+    <div class="mock-bar">
+      <span class="d r"></span><span class="d y"></span><span class="d g"></span>
+      <span class="path">#voiceSettingsSendBody · 现有三卡保持</span>
+    </div>
+    <div class="mock-body">
+      <div class="send-cards">
+        <div class="send-card">
+          <div class="k">⏎ confirm</div>
+          <div class="desc">弹出确认框,点头才发送</div>
+          <div class="lock">🔒 保持</div>
+        </div>
+        <div class="send-card on">
+          <div class="k">📝 phrase</div>
+          <div class="desc">说「发送」才上屏 + Enter</div>
+          <div class="lock">🔒 保持</div>
+        </div>
+        <div class="send-card">
+          <div class="k">⏩ auto</div>
+          <div class="desc">说完直接 Enter</div>
+          <div class="lock">🔒 保持</div>
+        </div>
+      </div>
+      <div class="guard" style="background:#F0F9FF;border-color:#7DD3FC;color:#075985;">
+        <div class="k">⛔ 本次不实现</div>
+        <div>2s 撤销 · 剪贴板发送 · 触发 SoftPad agent · 窗口智能推荐</div>
+        <div style="margin-top:4px;">→ 这些在 3hero-overview 里有设计稿,留作下一迭代</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ④ 首页只读投影 ===== -->
+  <div class="sec"><span class="n">4</span><span class="name">首页只投影 · 不恢复可写三 hero</span>
+    <span class="scope">P0 · 0.5 天</span>
+  </div>
+  <p class="desc">首页 howto 语音卡继续只读 <code>activeSceneId</code> 投影,点开设置时把 <code>selectedMappingId</code> 设为当前正在使用 id。vp9HeroLive / homeAdvanced 可编辑面不恢复。</p>
+
+  <div class="compare">
+    <div class="col">
+      <h3><span class="name">修改前</span><span class="tag before">首页可写三 hero</span></h3>
+      <div class="mock">
+        <div class="mock-bar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="path">home-workbench-panels.js · vp9HeroLive / homeAdvanced</span></div>
+        <div class="mock-body" style="font-size:12px;">
+          <div style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:10px;color:#92400E;">
+            ⚠ 首页有可写的三 hero 区域,跟设置页重复,且状态不一致
+          </div>
+          <ul style="margin-top:10px;padding-left:18px;color:var(--text-muted);font-size:12px;">
+            <li>vp9HeroLive · <code>vp-actions</code> 5 按钮(结束/测试发送/切换目标/语音设置)</li>
+            <li>homeAdvanced 兼容层 · <code>homeLivePanelKey</code> + <code>homeLivePanelVoice</code></li>
+            <li>wbTriggerCard 主舞台</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h3><span class="name">修改后</span><span class="tag after">首页只读</span></h3>
+      <div class="mock">
+        <div class="mock-bar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="path">howto 语音卡 · 只读 activeSceneId</span></div>
+        <div class="mock-body" style="font-size:12px;">
+          <!-- howto 语音卡(只读) -->
+          <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px;">
+            <div style="font-weight:800;font-size:13px;">语音 · 当前习惯:默认</div>
+            <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">
+              唤醒后:切到目标应用 → 进入听写<br>
+              结束后:phrase · 说「发送」上屏
+            </div>
+            <button style="margin-top:8px;background:var(--primary);color:#fff;border:0;padding:6px 12px;border-radius:6px;font-size:11.5px;cursor:pointer;">
+              点开设置 →
+            </button>
+          </div>
+          <div class="delta">
+            <div class="row mv"><span class="ic">→</span><div><span class="k">点击行为</span> · 打开设置时 <code>selectedMappingId = activeSceneId</code>(便于"改正在用的")</div></div>
+            <div class="row del"><span class="ic">✕</span><div><span class="k">不恢复</span> · <code>vp9HeroLive</code> / <code>homeAdvanced</code> 可编辑面继续不出现</div></div>
+            <div class="row add"><span class="ic">+</span><div><span class="k">继续只读</span> · howto 语音卡只投影 <code>activeSceneId</code></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ⑤ 静态自检 ===== -->
+  <div class="sec"><span class="n">5</span><span class="name">静态自检 · scripts/test-voice-page-ia-guard.mjs</span>
+    <span class="scope">P0 · 0.5 天</span>
+  </div>
+  <p class="desc">新增小脚本(或扩现有 <code>test-voice-3hero-mock-ia.mjs</code>),CI 跑过则守住 3 条不变量。</p>
+
+  <div class="mock">
+    <div class="mock-bar">
+      <span class="d r"></span><span class="d y"></span><span class="d g"></span>
+      <span class="path">scripts/test-voice-page-ia-guard.mjs</span>
+    </div>
+    <div class="mock-body">
+      <div class="guard" style="background:#F0FDF4;border-color:#86EFAC;color:#166534;">
+        <div class="k">✓ 静态守卫(3 条不变量)</div>
+        <div class="row">① #voiceWakeActionBar 不得含「不自动发送」 / send_mode 文案</div>
+        <div class="row">② #voiceSettingsWakeBody 不得出现 SoftPad / 摄像头 因果步骤节点</div>
+        <div class="row">③ #voiceSettingsSendBody 仍只含 confirm|phrase|auto 三卡</div>
+      </div>
+      <div class="delta">
+        <div class="row add"><span class="ic">+</span><div><span class="k">新文件</span> · <code>scripts/test-voice-page-ia-guard.mjs</code>(或扩现有 <code>test-voice-3hero-mock-ia.mjs</code>)</div></div>
+        <div class="row add"><span class="ic">+</span><div><span class="k">检查方式</span> · 静态扫 <code>src/index.html</code> + <code>src/js/core/i18n.js</code> 字符串,符合 not 模式则 exit 0,否则 1</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 完整三步时间轴在新结构下的样子 ===== -->
+  <div class="sec" style="margin-top:36px;"><span class="n">📋</span><span class="name">完整效果 · 设置语音页(P0 改后)</span>
+    <span class="scope">总览</span>
+  </div>
+
+  <div class="mock">
+    <div class="mock-bar">
+      <span class="d r"></span><span class="d y"></span><span class="d g"></span>
+      <span class="path">#settingsPanelVoiceWake · 改后</span>
+    </div>
+    <div class="mock-body">
+
+      <!-- 1. 顶栏 + 新增对照行 -->
+      <div class="page-status-bar">
+        <div class="psb-main">
+          <span class="brand-name">语音听写</span>
+          <span class="pill">默认 · 已激活</span>
+        </div>
+        <div class="actions">
+          <button class="primary">保存到正在编辑的习惯</button>
+          <button>+ 新建</button>
+        </div>
+      </div>
+      <div class="status-2row">
+        <span class="editing">● 正在编辑:邮件</span>
+        <span class="sep">·</span>
+        <span class="active">● 正在使用:默认</span>
+        <span class="hint">⚠ 编辑不会切换正在使用</span>
+      </div>
+
+      <!-- 2. 三步时间轴(沿用现有) -->
+      <div class="flow-nodes" style="margin-top:14px;">
+        <div class="flow-node">
+          <span class="flow-node-tag">01 / 开启</span>
+          <div class="flow-node-btn on">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+          </div>
+          <div class="flow-node-title">怎么开启打字?</div>
+          <div class="flow-node-hint">唤醒后 → 进入听写</div>
+        </div>
+        <div class="flow-node">
+          <span class="flow-node-tag">02 / 结束</span>
+          <div class="flow-node-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div class="flow-node-title">说错了想结束?</div>
+          <div class="flow-node-hint">自动 / 手动 / 取消</div>
+        </div>
+        <div class="flow-node">
+          <span class="flow-node-tag">03 / 发送</span>
+          <div class="flow-node-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </div>
+          <div class="flow-node-title">说完怎么发出去?</div>
+          <div class="flow-node-hint">confirm / phrase / auto</div>
+        </div>
+      </div>
+
+      <!-- 3. 01 开启条(精简 + 旁链) -->
+      <div class="voice-wake-action-bar after" style="margin-top:8px;">
+        <strong class="lbl">唤醒后</strong>
+        <div class="steps">
+          <span>切到目标应用</span>
+          <span class="arr">→</span>
+          <span>进入听写</span>
+        </div>
+      </div>
+      <div class="sidelink">
+        摄像头 / 虚拟键盘 不是开启因果的一部分 ·
+        <a>→ 去摄像头</a>
+        <span class="sep">·</span>
+        <a>→ 去虚拟键盘</a>
+      </div>
+
+      <!-- 4. 02 结束区(简要) -->
+      <div class="end-card" style="margin-top:10px;">
+        <div class="k">02 结束 · 怎么停</div>
+        <div class="row"><span>自动结束</span><span class="v">静音 1.5s</span></div>
+        <div class="row"><span>结束词</span><span class="v">「结束输入」/「完」/「send」</span></div>
+        <div class="row"><span>取消词</span><span class="v">「取消」/「丢掉」/「esc」</span></div>
+      </div>
+
+      <!-- 5. 03 发送区(保持三卡) -->
+      <div style="margin-top:10px;font-size:12px;font-weight:800;">03 发送 · 怎么发出去</div>
+      <div class="send-cards">
+        <div class="send-card"><div class="k">⏎ confirm</div><div class="desc">弹确认框,点头才发</div></div>
+        <div class="send-card on"><div class="k">📝 phrase</div><div class="desc">说「发送」上屏 + Enter</div></div>
+        <div class="send-card"><div class="k">⏩ auto</div><div class="desc">说完直接 Enter</div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== 责任 / 文件落点 ===== -->
+  <div class="sec" style="margin-top:36px;"><span class="n">📂</span><span class="name">文件落点</span>
+    <span class="scope">P0 总计 ~3 天</span>
+  </div>
+  <table class="delta" style="width:100%;border-collapse:collapse;">
+    <thead style="background:var(--surface-soft);">
+      <tr style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;">
+        <th style="text-align:left;padding:8px 12px;">文件</th>
+        <th style="text-align:left;padding:8px 12px;">动作</th>
+        <th style="text-align:left;padding:8px 12px;">对应 P0 改动</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-top:1px solid var(--border);">
+        <td style="padding:8px 12px;font:500 11px/14px ui-monospace,monospace;color:var(--text);">src/index.html</td>
+        <td style="padding:8px 12px;font-size:12px;">移除 #voiceWakeActionNoSend 节点 + 旁链文字 + .status-2row 节点</td>
+        <td style="padding:8px 12px;font-size:12px;color:var(--text-muted);">① + ②</td>
+      </tr>
+      <tr style="border-top:1px solid var(--border);">
+        <td style="padding:8px 12px;font:500 11px/14px ui-monospace,monospace;color:var(--text);">src/js/features/voice/voice-step-wake-render.js</td>
+        <td style="padding:8px 12px;font-size:12px;">action bar 填充改为只含 2 步</td>
+        <td style="padding:8px 12px;font-size:12px;color:var(--text-muted);">①</td>
+      </tr>
+      <tr style="border-top:1px solid var(--border);">
+        <td style="padding:8px 12px;font:500 11px/14px ui-monospace,monospace;color:var(--text);">src/js/features/voice/voice-page-header-render.js</td>
+        <td style="padding:8px 12px;font-size:12px;">+ editing/active 对照行渲染</td>
+        <td style="padding:8px 12px;font-size:12px;color:var(--text-muted);">②</td>
+      </tr>
+      <tr style="border-top:1px solid var(--border);">
+        <td style="padding:8px 12px;font:500 11px/14px ui-monospace,monospace;color:var(--text);">src/js/core/i18n.js</td>
+        <td style="padding:8px 12px;font-size:12px;">voiceWakeActionNoSend 键改旁注 / 停用;habitChannelStrip* 复用</td>
+        <td style="padding:8px 12px;font-size:12px;color:var(--text-muted);">① + ②</td>
+      </tr>
+      <tr style="border-top:1px solid var(--border);">
+        <td style="padding:8px 12px;font:500 11px/14px ui-monospace,monospace;color:var(--text);">src/js/features/home/home-workbench-panels.js</td>
+        <td style="padding:8px 12px;font-size:12px;">点开设置 → selectedMappingId = activeSceneId</td>
+        <td style="padding:8px 12px;font-size:12px;color:var(--text-muted);">④</td>
+      </tr>
+      <tr style="border-top:1px solid var(--border);">
+        <td style="padding:8px 12px;font:500 11px/14px ui-monospace,monospace;color:var(--text);">scripts/test-voice-page-ia-guard.mjs</td>
+        <td style="padding:8px 12px;font-size:12px;">新增 3 条不变量静态守卫</td>
+        <td style="padding:8px 12px;font-size:12px;color:var(--text-muted);">⑤</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- 非目标 -->
+  <div class="guard" style="background:#FEF2F2;border-color:#FCA5A5;color:#7F1D1D;margin-top:24px;">
+    <div class="k">⛔ 非目标 · 本次不动</div>
+    <div>design-mock/ · 三步导航 flow-nodes 重做 · 撤销 / 复制 / agent / 智能推荐 · 习惯 Hub app-first 大重构</div>
+  </div>
+
+</div>
+
+<footer>
+  修改前后对比页 · 严格按 P0 5 点改 · 不动后端 · 不动 design-mock
+</footer>
+
+</body>
+</html>

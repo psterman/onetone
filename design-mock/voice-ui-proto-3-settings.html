@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>OneTone · 改版后 语音设置(Settings 瘦身版)原型</title>
+<style>
+  :root{
+    --bg:#f4f3ef; --panel:#fff; --border:#d8d5cc; --muted:#7c7a72; --text:#2a2926;
+    --primary:#2a9cc4; --primary-soft:rgba(42,156,196,.10);
+    --good:#22c55e; --warn:#f59e0b; --bad:#ef4444;
+    --ink-1:#1f1d1a; --ink-2:#5a5750;
+    --shadow:0 1px 2px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:14px;line-height:1.5;}
+  .stage{min-height:100vh;display:grid;grid-template-rows:auto 1fr;}
+  .titlebar{height:32px;background:#e9e7e0;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;padding:0 12px;gap:8px;font-size:12px;color:var(--ink-2);}
+  .titlebar .dot{width:10px;height:10px;border-radius:50%;background:#d0cdc4;}
+  .titlebar .dot.r{background:#e57373;}.titlebar .dot.y{background:#f0c674;}.titlebar .dot.g{background:#9bc97e;}
+  .titlebar .ttl{margin-left:8px;font-weight:600;}
+
+  /* Settings 抽屉布局 */
+  .settings{display:grid;grid-template-columns:240px 1fr;height:calc(100vh - 32px);}
+  .side{background:#e9e7e0;border-right:1px solid var(--border);padding:18px 12px;display:grid;align-content:start;gap:2px;}
+  .side h4{margin:0 0 8px 8px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+  .side a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--ink-2);text-decoration:none;font-size:13px;}
+  .side a:hover{background:rgba(0,0,0,.04);}
+  .side a.on{background:var(--primary-soft);color:var(--primary);font-weight:700;}
+  .side a .ico{width:18px;height:18px;border-radius:5px;background:currentColor;opacity:.35;}
+  .side .sep{height:1px;background:var(--border);margin:8px 4px;}
+
+  .content{padding:24px 32px;overflow-y:auto;max-width:920px;}
+
+  /* 顶部面包屑 / 提示 */
+  .crumbs{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+  .crumbs .sep{opacity:.4;}
+
+  .head{display:flex;align-items:baseline;gap:12px;margin-bottom:8px;}
+  .head h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.01em;}
+  .head .desc{color:var(--muted);font-size:13px;}
+
+  .info-banner{
+    background:#fffbeb;border:1px solid #fcd34d;color:#92400e;
+    padding:10px 14px;border-radius:10px;font-size:13px;margin:12px 0 24px;
+    display:flex;align-items:flex-start;gap:10px;
+  }
+  .info-banner .ic{font-size:16px;line-height:1;}
+
+  /* 分组卡片 */
+  .group{
+    background:#fff;border:1px solid var(--border);border-radius:14px;
+    margin-bottom:18px;overflow:hidden;
+  }
+  .group-head{
+    padding:14px 20px;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:10px;background:#fafaf6;
+  }
+  .group-head h2{margin:0;font-size:14px;font-weight:800;letter-spacing:-.005em;}
+  .group-head .sub{font-size:11px;color:var(--muted);}
+  .group-body{padding:6px 0;}
+
+  .item{
+    display:grid;grid-template-columns:200px 1fr auto;align-items:center;gap:18px;
+    padding:14px 20px;border-bottom:1px solid #f0eee7;
+  }
+  .item:last-child{border-bottom:none;}
+  .item .k{font-size:13px;font-weight:600;color:var(--ink-1);}
+  .item .desc{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4;}
+  .item .v{display:flex;align-items:center;gap:8px;}
+
+  .select{
+    appearance:none;background:#fff;border:1px solid var(--border);
+    padding:6px 28px 6px 12px;border-radius:8px;font-size:13px;color:var(--ink-1);
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c7a72' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat:no-repeat;background-position:right 8px center;background-size:14px;
+    min-width:240px;
+  }
+  .btn{
+    appearance:none;border:1px solid var(--border);background:#fff;color:var(--ink-1);
+    padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
+  }
+  .btn:hover{background:#faf8f2;}
+  .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .btn.danger{color:#b91c1c;border-color:#fca5a5;}
+  .btn.danger:hover{background:#fef2f2;}
+
+  /* 录音样本卡 */
+  .samples{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .sample{
+    display:flex;align-items:center;gap:8px;
+    padding:6px 10px;border-radius:8px;
+    background:#f4f1ea;border:1px solid var(--border);
+    font-size:12px;color:var(--ink-1);
+  }
+  .sample .play{width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:9px;cursor:pointer;}
+  .sample .del{color:var(--muted);cursor:pointer;}
+
+  /* slider */
+  .slider{display:flex;align-items:center;gap:10px;}
+  .slider input{flex:1;accent-color:var(--primary);}
+  .slider .v{font-size:12px;color:var(--ink-2);min-width:48px;text-align:right;font-variant-numeric:tabular-nums;}
+
+  /* 调试日志区 */
+  .log{
+    background:#1f1d1a;color:#e5e3dc;border-radius:8px;padding:12px 14px;
+    font-family:ui-monospace,monospace;font-size:11px;line-height:1.6;max-height:160px;overflow:auto;
+  }
+  .log .ts{color:#6b9ac4;}.log .ok{color:#86efac;}.log .warn{color:#fbbf24;}.log .err{color:#fca5a5;}
+
+  .annot{
+    position:relative;margin:8px 0 0;padding:8px 12px;border-radius:8px;
+    background:rgba(42,156,196,.08);border:1px dashed rgba(42,156,196,.3);
+    color:#1d7494;font-size:11px;
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="titlebar">
+    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+    <span class="ttl">OneTone · 设置</span>
+  </div>
+  <div class="settings">
+    <aside class="side">
+      <h4>基础</h4>
+      <a><span class="ico"></span>常规</a>
+      <a><span class="ico"></span>开机自启</a>
+      <a><span class="ico"></span>托盘</a>
+      <div class="sep"></div>
+      <h4>语音</h4>
+      <a class="on"><span class="ico"></span>语音设置</a>
+      <a><span class="ico"></span>声学命令</a>
+      <a><span class="ico"></span>输入习惯</a>
+      <div class="sep"></div>
+      <h4>AI 工具</h4>
+      <a><span class="ico"></span>Codex 状态条</a>
+      <a><span class="ico"></span>AI 额度</a>
+      <div class="sep"></div>
+      <h4>高级</h4>
+      <a><span class="ico"></span>诊断</a>
+      <a><span class="ico"></span>关于</a>
+    </aside>
+
+    <div class="content">
+      <div class="crumbs">设置 <span class="sep">›</span> 语音 <span class="sep">›</span> 语音设置</div>
+      <div class="head">
+        <h1>语音设置</h1>
+        <span class="desc">高级参数 · 改动需重启引擎</span>
+      </div>
+
+      <div class="info-banner">
+        <span class="ic">💡</span>
+        <div>
+          <strong>日常调整请去「语音控制台」</strong> · 这里只放需要重启引擎的项(模型、声学样本、阈值)。
+        </div>
+      </div>
+
+      <!-- ① 引擎模型 -->
+      <div class="group">
+        <div class="group-head">
+          <h2>① 引擎模型</h2>
+          <span class="sub">· 切换需重启监听</span>
+        </div>
+        <div class="group-body">
+          <div class="item">
+            <div>
+              <div class="k">Vosk 模型</div>
+              <div class="desc">离线中文识别,占用 ~200 MB</div>
+            </div>
+            <div class="v">
+              <select class="select">
+                <option>vosk-model-small-cn-0.22.zip</option>
+                <option>vosk-model-cn-0.22.zip</option>
+              </select>
+            </div>
+            <button class="btn">下载</button>
+          </div>
+          <div class="item">
+            <div>
+              <div class="k">sherpa-onnx KWS</div>
+              <div class="desc">唤醒词专用,占用 ~30 MB</div>
+            </div>
+            <div class="v">
+              <select class="select">
+                <option>sherpa-onnx-kws-zh-1.13.4</option>
+              </select>
+            </div>
+            <button class="btn">下载</button>
+          </div>
+          <div class="item">
+            <div>
+              <div class="k">模型位置</div>
+              <div class="desc">%APPDATA%\onetone\models\</div>
+            </div>
+            <div></div>
+            <button class="btn">打开文件夹</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ② 声学口令 -->
+      <div class="group">
+        <div class="group-head">
+          <h2>② 声学口令</h2>
+          <span class="sub">· 本地匹配,不上传</span>
+        </div>
+        <div class="group-body">
+          <div class="item">
+            <div>
+              <div class="k">唤醒词样本</div>
+              <div class="desc">3 条已录制 · 越多样本识别越准</div>
+            </div>
+            <div class="v">
+              <div class="samples">
+                <span class="sample"><span class="play">▶</span>sample-01.wav<span class="del">✕</span></span>
+                <span class="sample"><span class="play">▶</span>sample-02.wav<span class="del">✕</span></span>
+                <span class="sample"><span class="play">▶</span>sample-03.wav<span class="del">✕</span></span>
+              </div>
+            </div>
+            <button class="btn primary">+ 录新样本</button>
+          </div>
+          <div class="item">
+            <div>
+              <div class="k">结束词样本</div>
+              <div class="desc">2 条已录制</div>
+            </div>
+            <div class="v">
+              <div class="samples">
+                <span class="sample"><span class="play">▶</span>end-01.wav<span class="del">✕</span></span>
+                <span class="sample"><span class="play">▶</span>end-02.wav<span class="del">✕</span></span>
+              </div>
+            </div>
+            <button class="btn primary">+ 录新样本</button>
+          </div>
+          <div class="item">
+            <div>
+              <div class="k">取消词样本</div>
+              <div class="desc">1 条已录制</div>
+            </div>
+            <div class="v">
+              <div class="samples">
+                <span class="sample"><span class="play">▶</span>cancel-01.wav<span class="del">✕</span></span>
+              </div>
+            </div>
+            <button class="btn primary">+ 录新样本</button>
+          </div>
+          <div class="item">
+            <div>
+              <div class="k">声学灵敏度</div>
+              <div class="desc">越低越宽松(易误触发),越高越严格</div>
+            </div>
+            <div class="v" style="grid-column:2/4;min-width:280px;">
+              <div class="slider" style="width:100%;">
+                <input type="range" min="0" max="100" value="65">
+                <span class="v">0.65</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ③ 高级 -->
+      <div class="group">
+        <div class="group-head">
+          <h2>③ 高级</h2>
+          <span class="sub">· 改完需重启引擎</span>
+        </div>
+        <div class="group-body">
+          <div class="item">
+            <div>
+              <div class="k">引擎切换冷却</div>
+              <div class="desc">切换识别引擎后多久允许再次切换</div>
+            </div>
+            <div class="v" style="grid-column:2/4;">
+              <div class="slider" style="width:100%;"><input type="range" min="100" max="3000" value="500"><span class="v">500 ms</span></div>
+            </div>
+          </div>
+          <div class="item">
+            <div>
+              <div class="k">声学命令超时</div>
+              <div class="desc">多久没说话判定为放弃</div>
+            </div>
+            <div class="v" style="grid-column:2/4;">
+              <div class="slider" style="width:100%;"><input type="range" min="500" max="5000" value="2000"><span class="v">2.0 s</span></div>
+            </div>
+          </div>
+          <div class="item">
+            <div>
+              <div class="k">置信度阈值</div>
+              <div class="desc">SAPI 0.55 · KWS 0.40 · Vosk 0.30</div>
+            </div>
+            <div class="v" style="grid-column:2/4;">
+              <div class="slider" style="width:100%;"><input type="range" min="20" max="90" value="55"><span class="v">0.55</span></div>
+            </div>
+          </div>
+          <div class="item">
+            <div>
+              <div class="k">调试日志</div>
+              <div class="desc">开启后写入 %APPDATA%\onetone\logs\</div>
+            </div>
+            <div class="v">
+              <select class="select"><option>关闭</option><option>错误 + 警告</option><option>全部</option></select>
+            </div>
+            <button class="btn">导出</button>
+          </div>
+          <div class="item">
+            <div>
+              <div class="k">重置</div>
+              <div class="desc">清空所有语音相关配置(不影响习惯和触发源)</div>
+            </div>
+            <div></div>
+            <button class="btn danger">重置语音配置</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="annot">
+        ↑ 这里只放需要 <strong>重启引擎</strong> 的项 · 日常 1-2 步内能改的,都去「语音控制台」改
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<title>OneTone · Hero ① 开启 · 改造方案</title>
+<style>
+:root{
+  --bg:#F5F5F7; --surface:#FFFFFF; --surface-soft:#F0F0F2;
+  --border:#E5E5E5; --border-strong:#C4C4C4;
+  --primary:#00658F; --primary-strong:#004C6C; --primary-soft:#E0F1FA;
+  --text:#1A1A1A; --text-muted:#666; --text-faint:#999;
+  --success:#16A34A; --success-soft:#DCFCE7;
+  --warn:#F59E0B; --warn-soft:#FEF3C7;
+  --error:#BA1A1A;
+  --r-card:20px; --r-row:14px; --r-pill:999px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:'Outfit','Inter',system-ui,-apple-system,'PingFang SC','Microsoft YaHei UI',sans-serif;
+  line-height:1.55;-webkit-font-smoothing:antialiased;}
+.page{max-width:1280px;margin:0 auto;padding:32px 24px 64px;}
+
+/* topbar */
+.topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding-bottom:16px;border-bottom:1px solid var(--border);margin-bottom:20px;}
+.brand{font:600 15px/22px 'Outfit';letter-spacing:-.01em;}
+.dot-sep{color:var(--text-faint);}
+.chip{display:inline-flex;align-items:center;gap:6px;font:500 12px/16px 'Outfit';
+  padding:5px 12px;border-radius:var(--r-pill);background:var(--success-soft);color:#15803D;}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:currentColor;}
+.topbar .spacer{flex:1;}
+.btn{border:1px solid var(--border-strong);background:transparent;color:var(--text-muted);
+  padding:5px 12px;border-radius:8px;font:500 12px/16px 'Outfit';cursor:pointer;}
+
+/* 阶段徽章 */
+.stage-tag{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:6px 14px;border-radius:var(--r-pill);
+  background:var(--primary-soft);color:var(--primary);
+  font:600 12px/16px 'Outfit';
+  margin-bottom:12px;
+}
+.stage-tag .num{width:20px;height:20px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:11px;}
+h1{margin:0 0 6px;font:700 22px/30px 'Outfit';letter-spacing:-.01em;}
+.lead{color:var(--text-muted);font-size:13px;margin-bottom:20px;max-width:780px;}
+
+/* 对照 */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+@media (max-width:1100px){.compare{grid-template-columns:1fr;}}
+.col h3{margin:0 0 10px;font:700 13px/18px 'Outfit';}
+.tag{display:inline-block;padding:2px 8px;border-radius:var(--r-pill);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-left:6px;}
+.tag.before{background:#FEE2E2;color:#B91C1C;}
+.tag.after{background:#DCFCE7;color:#15803D;}
+
+/* 模拟窗口 */
+.mock{border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden;background:var(--surface);
+  box-shadow:0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);}
+.mock-bar{background:var(--surface-soft);padding:8px 12px;font-size:11px;color:var(--text-muted);
+  display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);}
+.mock-bar .d{width:10px;height:10px;border-radius:50%;}
+.mock-bar .d.r{background:#E57373;}.mock-bar .d.y{background:#F0C674;}.mock-bar .d.g{background:#9BC97E;}
+.mock-body{padding:18px;}
+
+/* 改造前 hero ① 模拟(对照 wb-hero + homeAdvanced + vp9 混杂态) */
+.messy-hero{background:#F9F8F4;border:1px dashed var(--border);border-radius:var(--r-card);
+  padding:18px;display:grid;gap:14px;min-height:520px;}
+.messy-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.messy-row .k{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;width:70px;}
+.messy-row .v{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.messy-pill{font-size:11px;padding:3px 8px;border-radius:var(--r-pill);background:#fff;border:1px solid var(--border);color:var(--text-muted);}
+.messy-pill.live{background:var(--primary-soft);color:var(--primary);border-color:rgba(0,101,143,.3);}
+.messy-orb{width:60px;height:60px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#5dc1e3,#00658F);color:#fff;display:grid;place-items:center;font-size:18px;margin:0 auto;}
+.messy-warn{background:#FEF3C7;border:1px solid #FCD34D;color:#92400E;padding:6px 10px;border-radius:8px;font-size:11px;display:flex;gap:6px;}
+.messy-strike{text-decoration:line-through;color:#B91C1C;opacity:.6;}
+.messy-box{background:#fff;border:1px solid var(--border);border-radius:var(--r-row);padding:10px 12px;}
+.messy-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border-strong);background:#fff;color:var(--text-muted);}
+
+/* 改造后 hero ① */
+.clean{
+  background:linear-gradient(180deg,#fff,#FAFCFE);
+  border:1px solid var(--border);border-radius:var(--r-card);
+  padding:24px;display:grid;gap:18px;
+  box-shadow:0 1px 2px rgba(0,0,0,.03);
+}
+.q-title{font:700 16px/24px 'Outfit';letter-spacing:-.01em;}
+.q-sub{color:var(--text-muted);font-size:12.5px;margin-top:2px;}
+
+.path-row{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
+  padding:14px;background:#FAFBFC;border:1px solid var(--border);border-radius:var(--r-row);
+  align-items:stretch;
+}
+.side-links{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  padding:10px 12px;border-radius:var(--r-row);border:1px dashed var(--border);
+  background:var(--surface-soft);
+}
+.side-links .lbl{font-size:11px;font-weight:700;color:var(--text-muted);margin-right:4px;}
+.side-links a,.side-links .link{
+  font-size:11.5px;font-weight:700;color:var(--primary);text-decoration:none;
+  padding:4px 10px;border-radius:var(--r-pill);background:#fff;border:1px solid rgba(0,101,143,.25);
+  cursor:pointer;
+}
+.side-links .note{font-size:10.5px;color:var(--text-faint);flex:1 1 100%;margin-top:2px;}
+.bind-note{
+  font-size:11px;color:var(--text-muted);padding:8px 10px;border-radius:8px;
+  background:rgba(0,101,143,.05);border:1px solid rgba(0,101,143,.15);
+}
+.path-step{
+  background:#fff;border:1px solid var(--border);border-radius:10px;
+  padding:10px 12px;display:grid;gap:4px;position:relative;
+  min-height:78px;
+}
+.path-step .n{font-size:10px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.04em;}
+.path-step .lbl{font-size:12px;font-weight:700;}
+.path-step .sub{font-size:10.5px;color:var(--text-muted);line-height:1.35;}
+.path-step .pick{
+  margin-top:auto;display:inline-flex;align-items:center;gap:4px;
+  font-size:10.5px;padding:2px 7px;border-radius:var(--r-pill);
+  background:var(--primary-soft);color:var(--primary);font-weight:700;
+}
+.path-arrow{position:absolute;right:-9px;top:50%;transform:translateY(-50%);
+  width:18px;height:18px;background:var(--primary);color:#fff;border-radius:50%;
+  display:grid;place-items:center;font-size:10px;z-index:1;}
+
+.wake-row{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;
+  padding:12px 14px;background:#fff;border:1px solid var(--border);border-radius:var(--r-row);}
+.wake-orb{width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#5dc1e3,#00658F);
+  color:#fff;display:grid;place-items:center;flex-shrink:0;}
+.wake-info .k{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;}
+.wake-info .v{font-size:14px;font-weight:800;}
+.wake-info .sub{font-size:11.5px;color:var(--text-muted);margin-top:2px;}
+.wake-info .alt{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
+.wake-info .alt .chip2{font-size:11px;padding:2px 8px;border-radius:var(--r-pill);background:var(--surface-soft);color:var(--text-muted);border:1px solid var(--border);}
+
+.cta-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.cta{
+  background:var(--primary);color:#fff;padding:10px 18px;border-radius:10px;
+  font:600 13px/16px 'Outfit';display:flex;align-items:center;gap:8px;
+  box-shadow:0 4px 10px rgba(0,101,143,.2);
+}
+.cta.secondary{background:#fff;color:var(--text-muted);border:1px solid var(--border-strong);box-shadow:none;}
+.cta .kbd{font:600 11px/14px ui-monospace,monospace;background:rgba(255,255,255,.18);padding:2px 7px;border-radius:4px;}
+.cta.secondary .kbd{background:var(--surface-soft);color:var(--text-muted);}
+
+/* 标注 */
+.annot{margin-top:8px;padding:8px 12px;border-radius:8px;
+  background:rgba(0,101,143,.06);border:1px dashed rgba(0,101,143,.3);
+  color:var(--primary-strong);font-size:11.5px;}
+
+footer{padding:24px;text-align:center;color:var(--text-faint);font-size:11px;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="topbar">
+    <div class="brand">OneTone</div>
+    <span class="dot-sep">/</span>
+    <span class="chip"><span class="dot"></span>v19 · 中性工作台</span>
+    <span class="dot-sep">/</span>
+    <span style="font-size:12px;color:var(--text-muted);">语音版块改造 · 三 hero 方案</span>
+    <div class="spacer"></div>
+    <button class="btn">← Hero ②</button>
+    <button class="btn">Hero ② →</button>
+  </div>
+
+  <span class="stage-tag"><span class="num">1</span>01 / 开启 · 怎么开始打字</span>
+  <h1>Hero ① 开启 · 怎么开始打字</h1>
+  <p class="lead">从「按一个键 / 说一个词」到「进入听写」的<strong>语音会话因果链</strong>：唤醒 →（可选）前台目标 →（可选）激活键 → 进入听写。摄像头与 SoftPad 是并列通道，只作旁链入口，不串进开启步骤。</p>
+
+  <div class="compare">
+
+    <!-- 改造前 -->
+    <div class="col">
+      <h3>改造前 <span class="tag before">3 hero 混杂</span></h3>
+      <div class="mock">
+        <div class="mock-bar">
+          <span class="d r"></span><span class="d y"></span><span class="d g"></span>
+          src/index.html:171-218 wbTriggerCard (主) + 270-344 vp9HeroLive (旧) + 367-459 homeAdvanced (兼容)
+        </div>
+        <div class="mock-body">
+          <div class="messy-hero">
+            <div class="messy-warn">⚠ 三个 hero 并存,内容互相覆盖,状态不一致</div>
+            <div class="messy-row">
+              <div class="k">状态</div>
+              <div class="v">
+                <span class="messy-pill live">● 待命</span>
+                <span class="messy-pill">目标: —</span>
+                <span class="messy-pill">习惯: —</span>
+                <span class="messy-pill">说完后: —</span>
+              </div>
+            </div>
+            <div class="messy-row">
+              <div class="k">波形</div>
+              <div class="v"><div class="messy-orb">🎤</div></div>
+            </div>
+            <div class="messy-row">
+              <div class="k">操作</div>
+              <div class="v">
+                <button class="messy-btn">结束说话</button>
+                <button class="messy-btn">测试发送</button>
+                <button class="messy-btn">切换目标</button>
+                <button class="messy-btn">语音设置</button>
+                <button class="messy-btn">展开设置与习惯配置</button>
+              </div>
+            </div>
+            <div class="messy-row">
+              <div class="k">vp9 旧</div>
+              <div class="v">
+                <span class="messy-pill messy-strike">按键唤起: —</span>
+                <span class="messy-pill messy-strike">语音唤起: —</span>
+                <span class="messy-pill messy-strike">识别引擎: —</span>
+                <span class="messy-pill messy-strike">麦克风: —</span>
+              </div>
+            </div>
+            <div class="messy-row">
+              <div class="k">老兼容</div>
+              <div class="v">
+                <span class="messy-pill messy-strike">未设置</span>
+                <span class="messy-pill messy-strike">未设置</span>
+                <span class="messy-pill messy-strike">未设置</span>
+              </div>
+            </div>
+            <div class="messy-warn">⚠ vp9 旧版 + homeAdvanced 兼容层,占着 DOM 但视觉上是死代码</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 改造后 -->
+    <div class="col">
+      <h3>改造后 <span class="tag after">单一链路展示</span></h3>
+      <div class="mock">
+        <div class="mock-bar">
+          <span class="d r"></span><span class="d y"></span><span class="d g"></span>
+          Hero ① 保留 wbTriggerCard,合并显示开启链路
+        </div>
+        <div class="mock-body">
+          <div class="clean">
+
+            <!-- 状态徽章:单一 -->
+            <div class="wake-row">
+              <div class="wake-orb">🎤</div>
+              <div class="wake-info">
+                <div class="k">当前唤醒方式</div>
+                <div class="v">按住 <span style="font-family:ui-monospace,monospace;background:#fff;padding:2px 8px;border-radius:6px;border:1px solid var(--border);">F8</span> · 或说「开始输入」</div>
+                <div class="alt">
+                  <span class="chip2">备用词:「嗨打字」</span>
+                  <span class="chip2">备用词:「hey」</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4 步因果链（仅语音会话） -->
+            <div>
+              <div class="q-title">唤醒后会发生什么（语音因果链）</div>
+              <div class="q-sub">只含开启听写所需步骤；摄像头 / SoftPad 不在此链</div>
+            </div>
+            <div class="path-row">
+              <div class="path-step">
+                <div class="n">① 唤醒</div>
+                <div class="lbl">按 F8 / 说词</div>
+                <div class="sub">OneTone 收到触发</div>
+                <span class="pick">已配对</span>
+              </div>
+              <div class="path-step" style="position:relative;">
+                <div class="n">② 前台目标</div>
+                <div class="lbl">目标: Cursor</div>
+                <div class="sub">可选 · 拉前台</div>
+                <span class="pick">已配对</span>
+                <div class="path-arrow">→</div>
+              </div>
+              <div class="path-step" style="position:relative;">
+                <div class="n">③ 激活键</div>
+                <div class="lbl">Typeless 听写</div>
+                <div class="sub">可选 · 发 F9</div>
+                <span class="pick">已配对</span>
+                <div class="path-arrow">→</div>
+              </div>
+              <div class="path-step">
+                <div class="n">④ 进入听写</div>
+                <div class="lbl">麦克风开路</div>
+                <div class="sub">开始上屏文字</div>
+                <span class="pick">就绪</span>
+              </div>
+            </div>
+
+            <div class="side-links">
+              <span class="lbl">相关能力（并列通道，非本步）</span>
+              <span class="link">摄像头 · 离席保护 →</span>
+              <span class="link">Soft Pad · Agent 键位 →</span>
+              <span class="note">入口跳到对应通道页；不阻塞、不串进「开始打字」因果链</span>
+            </div>
+
+            <div class="bind-note">
+              <strong>绑定：</strong>设置页可写 → <code>selectedMappingId</code>（正在编辑）；首页只读投影 → <code>activeSceneId</code>（正在使用）。二者可不同。
+            </div>
+
+            <!-- 主操作 -->
+            <div>
+              <div class="q-title">开始一次听写</div>
+            </div>
+            <div class="cta-row">
+              <button class="cta">按 F8 开始说话 <span class="kbd">F8</span></button>
+              <button class="cta secondary">换唤醒方式</button>
+              <button class="cta secondary">改目标 / 激活键</button>
+            </div>
+
+            <div class="annot">↑ 本 hero 只回答「怎么开始打字」· 因果链止于进入听写 · 摄像头/SoftPad 仅旁链 · 设置页编辑 ≠ 首页运行投影</div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>
