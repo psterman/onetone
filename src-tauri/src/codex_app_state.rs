@@ -115,6 +115,13 @@ pub fn map_event_to_status(event: &str) -> Option<&'static str> {
     }
 }
 
+fn map_hook_event_to_status(source: &str, event: &str) -> Option<&'static str> {
+    if source == "cursor_hook" {
+        return crate::pad_status::map_cursor_event_to_state(event);
+    }
+    map_event_to_status(event)
+}
+
 fn looks_like_micro_action(value: &serde_json::Value) -> bool {
     let Some(obj) = value.as_object() else {
         return false;
@@ -185,7 +192,7 @@ fn apply_payload_at(store: &mut CodexAppStateStore, payload: &CodexAppStatePaylo
         store.turn_id = payload.turn_id.trim().to_string();
     }
 
-    if let Some(status) = map_event_to_status(event) {
+    if let Some(status) = map_hook_event_to_status(source, event) {
         store.status = status.to_string();
         if status == "done" {
             store.pending_idle_at_ms = now.saturating_add(IDLE_AFTER_DONE_MS);

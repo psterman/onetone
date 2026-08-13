@@ -802,7 +802,7 @@
       mappings:[{id:id,label:'AutoTrigger → '+labelSuffix,group:'通用设置',triggerKey:'AutoTrigger',targetKey:targetKey,enabled:true,order:0,triggerMode:'tap',intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,switchKeys:[],nativeKeyRestore:false,appTargetId:'',imePresetId:'',voiceOverride:null}],
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
-      debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,followForegroundAppScenario:false,startMinimizedToTray:false,
+      debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,followForegroundAppScenario:false,softPadForceOpen:false,startMinimizedToTray:false,
       cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,smartPointer:null,snapWindow:null,autoMute:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none',awayMs:3000,presentMs:1000},videoEnhancement:{enabled:false,look:'off',faceMask:'off',preset:'natural',beautyEnabled:false,whiten:0,smooth:0,rosy:0,slim:0,beauty:18,brightness:0,contrast:8,saturation:6,sharpen:8,denoise:8,lowLight:0,antiFlicker:'auto',displayFrameRate:0}},
       sounds:hooks().defaultSoundsConfig(),
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
@@ -860,6 +860,7 @@
     if(st.config.keyWakeSoundEnabled===undefined) st.config.keyWakeSoundEnabled=false;
     if(st.config.coachHudEnabled===undefined) st.config.coachHudEnabled=false;
     if(st.config.followForegroundAppScenario===undefined) st.config.followForegroundAppScenario=false;
+    if(st.config.softPadForceOpen===undefined) st.config.softPadForceOpen=false;
     if(st.config.startMinimizedToTray===undefined) st.config.startMinimizedToTray=false;
     if(!st.config.cameraPrefs||typeof st.config.cameraPrefs!=='object'){
       // Before backend hydrate, do not invent defaults onto config — a later
@@ -989,6 +990,7 @@
       keyWakeSoundEnabled:!!(st.config.sounds&&st.config.sounds.keyWake&&st.config.sounds.keyWake.enabled),
       coachHudEnabled:!!st.config.coachHudEnabled,
       followForegroundAppScenario:!!st.config.followForegroundAppScenario,
+      softPadForceOpen:!!st.config.softPadForceOpen,
       startMinimizedToTray:!!st.config.startMinimizedToTray,
       cameraPrefs:(function(){
         var p=st.config.cameraPrefs||{};

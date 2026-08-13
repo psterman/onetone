@@ -5,12 +5,13 @@
 (function (global) {
   'use strict';
 
-  var KINDS = ['codex', 'claude', 'cursor', 'workbuddy', 'trae', 'qoder'];
+  var KINDS = ['codex', 'claude', 'cursor', 'minimax', 'workbuddy', 'trae', 'qoder'];
 
   var KIND_META = {
     codex: { appId: 'codex-chat', label: 'Codex', icon: 'icons/app-target/codex.png' },
     claude: { appId: 'claude-code', label: 'Claude', icon: 'icons/app-target/claude.png' },
     cursor: { appId: 'cursor-chat', label: 'Cursor', icon: 'icons/app-target/cursor.png' },
+    minimax: { appId: 'minimax-chat', label: 'MiniMax', icon: 'icons/app-target/minimaxcode.png' },
     workbuddy: { appId: 'workbuddy-chat', label: 'WorkBuddy', icon: 'icons/app-target/workbuddy.png' },
     trae: { appId: 'trae-chat', label: 'Trae', icon: 'icons/app-target/trae.png' },
     qoder: { appId: 'qoder-chat', label: 'Qoder', icon: 'icons/app-target/qoder.png' }
@@ -62,7 +63,7 @@
         highConfidenceCount: Number(res && (res.highConfidenceCount != null ? res.highConfidenceCount : res.high_confidence_count)) || 0
       };
     }).catch(function () {
-      // Capability / offline: still show six tools for manual pick.
+      // Capability / offline: still show builtin tools for manual pick.
       return emptyInventory();
     });
   }
@@ -259,6 +260,121 @@
     return phase === 'connected' || phase === 'ok' || phase === 'ready';
   }
 
+  function logSeed(line) {
+    try { console.warn(line); } catch (_) {}
+    try {
+      invoke('cmd_app_log', { line: String(line || '') }).catch(function () {});
+    } catch (_) {}
+  }
+
+  /** High-confidence / running / desktop MiniMax — same bar as prepareHigh selection. */
+  function isMinimaxDetected(row) {
+    if (!row || String(row.kind || '').toLowerCase() !== 'minimax') return false;
+    if (row.running) return true;
+    if (String(row.confidence || '') === 'high') return true;
+    var presence = String(row.presence || '');
+    return presence === 'desktop' || presence === 'cli' || presence === 'package';
+  }
+
+  /**
+   * Seed minimax-chat mapping when MiniMax Code is detected.
+   * Pad stays off (enabled:false); skip if mapping already exists. Failures are silent + log.
+   */
+  function seedMinimaxMappingIfDetected(inventory) {
+    try {
+      var agents = (inventory && inventory.agents) || [];
+      var row = null;
+      for (var i = 0; i < agents.length; i++) {
+        if (isMinimaxDetected(agents[i])) {
+          row = agents[i];
+          break;
+        }
+      }
+      if (!row) {
+        return Promise.resolve({ ok: true, seeded: false, reason: 'not_detected' });
+      }
+      if (findMappingForKind('minimax')) {
+        return Promise.resolve({ ok: true, seeded: false, reason: 'exists' });
+      }
+
+      var Hub = global.OneToneSoftPadHub;
+      if (!Hub || !Hub.ensureAppSoftPad) {
+        logSeed('[agent-install] minimax seed skipped: hub_unavailable');
+        return Promise.resolve({ ok: false, seeded: false, reason: 'hub_unavailable' });
+      }
+
+      var st = global.OneToneState && global.OneToneState.state;
+      var prevSelected = st && st.selectedMappingId;
+      var prevActiveScene = st && st.config && st.config.activeSceneId;
+
+      var m = Hub.ensureAppSoftPad('minimax-chat', 'minimax', { enable: false });
+      if (!m) {
+        logSeed('[agent-install] minimax seed failed: ensure_failed');
+        return Promise.resolve({ ok: false, seeded: false, reason: 'ensure_failed' });
+      }
+      if (!m.codexMicroPad) {
+        var Pad = global.OneToneCodexMicroPadUi;
+        if (Pad && Pad.ensurePad) Pad.ensurePad(m, { persist: false });
+      }
+      if (m.codexMicroPad) {
+        m.codexMicroPad.enabled = false;
+        if (m.codexMicroPad.overlayEnabled == null) m.codexMicroPad.overlayEnabled = true;
+        if (!m.codexMicroPad.presentation) m.codexMicroPad.presentation = 'mini';
+      }
+
+      var persist = global.OneToneConfigPersist;
+      var saveP = persist && persist.saveAsync
+        ? persist.saveAsync()
+        : Promise.resolve();
+
+      return saveP.then(function () {
+        if (st) {
+          if (prevSelected) st.selectedMappingId = prevSelected;
+          if (st.config && prevActiveScene != null) st.config.activeSceneId = prevActiveScene;
+        }
+        return { ok: true, seeded: true, mappingId: m.id, reason: 'seeded' };
+      }).catch(function (err) {
+        logSeed('[agent-install] minimax seed persist failed: ' + String(err && err.message || err || ''));
+        return { ok: false, seeded: false, reason: 'persist_failed' };
+      });
+    } catch (err) {
+      logSeed('[agent-install] minimax seed error: ' + String(err && err.message || err || ''));
+      return Promise.resolve({ ok: false, seeded: false, reason: 'exception' });
+    }
+  }
+
+  /** Boot / Hub: fetch inventory then seed MiniMax when detected. Never throws. */
+  function autoSeedDetectedAgents() {
+    return fetchInventory().then(function (inv) {
+      return seedMinimaxMappingIfDetected(inv).then(function (res) {
+        return { inventory: inv, minimax: res };
+      });
+    }).catch(function (err) {
+      logSeed('[agent-install] autoSeedDetectedAgents failed: ' + String(err && err.message || err || ''));
+      return { inventory: null, minimax: { ok: false, seeded: false, reason: 'fetch_failed' } };
+    });
+  }
+
+  /** Lazy seed — never on boot-settled (sync inventory EnumWindows 假死's UI). */
+  function scheduleBootAutoSeed() {
+    if (scheduleBootAutoSeed._scheduled) return;
+    scheduleBootAutoSeed._scheduled = true;
+    // Intentionally no-op at script load. Call autoSeedDetectedAgents from Soft Pad
+    // first open / scan (see soft-pad-hub refreshHubInventory prepareHigh).
+  }
+
+  /** Soft Pad Hub / scan: seed MiniMax if detected. Idle-deferred; no sync Hub.render. */
+  function maybeAutoSeedAfterInventory(inv) {
+    try {
+      return seedMinimaxMappingIfDetected(inv || null).then(function (res) {
+        return res;
+      });
+    } catch (err) {
+      logSeed('[agent-install] maybeAutoSeedAfterInventory: ' + String(err && err.message || err || ''));
+      return Promise.resolve({ ok: false, seeded: false, reason: 'exception' });
+    }
+  }
+
   global.OneToneAgentInstall = {
     KINDS: KINDS,
     KIND_META: KIND_META,
@@ -269,6 +385,10 @@
     evidenceLabel: evidenceLabel,
     sortAgentsForUi: sortAgentsForUi,
     prepareKinds: prepareKinds,
+    seedMinimaxMappingIfDetected: seedMinimaxMappingIfDetected,
+    autoSeedDetectedAgents: autoSeedDetectedAgents,
+    maybeAutoSeedAfterInventory: maybeAutoSeedAfterInventory,
+    isMinimaxDetected: isMinimaxDetected,
     connectKind: connectKind,
     connectStatus: connectStatus,
     phaseConnected: phaseConnected,

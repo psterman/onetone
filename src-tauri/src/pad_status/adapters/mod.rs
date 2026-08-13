@@ -1,4 +1,5 @@
 pub mod claude;
+pub mod cursor;
 pub mod codex;
 pub mod hid;
 pub mod shell_agent;

@@ -114,11 +114,12 @@
     'qoder-chat': 'qoder'
   };
 
-  /** Soft Pad Hub apps — Shell Hook Shortcuts kinds included. MiniMax stays out. */
+  /** Soft Pad Hub apps — Shell Hook Shortcuts + MiniMax provider. */
   var BUILTIN_SOFT_PAD_APPS = [
     { kind: 'codex', appId: 'codex-chat' },
     { kind: 'claude', appId: 'claude-code' },
     { kind: 'cursor', appId: 'cursor-chat' },
+    { kind: 'minimax', appId: 'minimax-chat' },
     { kind: 'workbuddy', appId: 'workbuddy-chat' },
     { kind: 'trae', appId: 'trae-chat' },
     { kind: 'qoder', appId: 'qoder-chat' }
@@ -128,9 +129,10 @@
     codex: 0,
     claude: 1,
     cursor: 2,
-    workbuddy: 3,
-    trae: 4,
-    qoder: 5
+    minimax: 3,
+    workbuddy: 4,
+    trae: 5,
+    qoder: 6
   };
 
   /** Cached install inventory for Hub sort / scan UI. */
@@ -216,7 +218,7 @@
 
   /** Builtin Soft Pad kinds shown in hub UI. */
   function isHubSoftPadKind(kind) {
-    return !!appIdForKind(kind) && kind !== 'minimax';
+    return !!appIdForKind(kind);
   }
 
   function appTitleFor(kind) {
@@ -882,6 +884,12 @@
 
     var existing = H.findAppScenarioByAppId(appId);
     if (existing) {
+      if (appId === 'cursor-chat' || appId === 'workbuddy-chat' || appId === 'trae-chat' || appId === 'qoder-chat') {
+        var Tcur = global.OneToneAgentScenarioTemplate;
+        if (Tcur && Tcur.ensurePackForMapping) {
+          Tcur.ensurePackForMapping(existing, { persist: true });
+        }
+      }
       if (Pad && Pad.ensurePad) Pad.ensurePad(existing, { persist: false });
       return existing;
     }
@@ -1184,9 +1192,12 @@
     var windows = Array.isArray(usage.windows) ? usage.windows : [];
     var conf = String(usage.confidence || usageVal(usage, 'confidence', 'confidence') || '');
     var bits = [];
-    if (kind === 'codex' || kind === 'claude') {
+    if (kind === 'codex' || kind === 'claude' || kind === 'minimax') {
       var src = String(usage.source || '');
-      if (kind === 'claude' && (src === 'deepseek_balance' || src === 'kimi_balance' || conf === 'manual_or_local_estimate')) {
+      // Balance/manual only — minimax_remains must fall through to 5h/weekly windows.
+      var balanceOnly = (kind === 'claude' && (src === 'deepseek_balance' || src === 'kimi_balance' || conf === 'manual_or_local_estimate'))
+        || (kind === 'minimax' && (src === 'minimax_balance' || src === 'minimax_manual' || conf === 'manual_or_local_estimate'));
+      if (balanceOnly) {
         var balMsg = String(usage.message || '').trim();
         if (balMsg) bits.push(balMsg.split(' · ')[0]);
       }
@@ -1209,8 +1220,12 @@
           }
           if (!bits.length) bits.push(conf === 'manual_or_local_estimate' ? '官方剩余请到控制台' : '用量 --');
         } else {
+          // codex + minimax: remainingPercent; never invent Claude OTel session burn for MiniMax
           var remaining = usageVal(usage, 'remainingPercent', 'remaining_percent');
           if (remaining != null) bits.push('窗口余 ' + Math.round(Number(remaining)) + '%');
+          if (kind === 'minimax' && !bits.length) {
+            bits.push(t('softPadMinimaxOfficialUsage', '官方剩余请到控制台'));
+          }
         }
       }
       var locT = usageVal(usage, 'localTodayTokens', 'local_today_tokens');
@@ -1355,7 +1370,7 @@
   /** Never call get_state on the Soft Pad open/remount turn — defer like settings-drawer. */
   function requestOverlayUsageForScope(scopeId) {
     var kind = String(scopeId || selectedScopeId || '');
-    if (kind !== 'codex' && kind !== 'claude' && kind !== 'cursor') return;
+    if (kind !== 'codex' && kind !== 'claude' && kind !== 'cursor' && kind !== 'minimax') return;
     if (!isSoftPadPageVisible()) return;
     ensureOverlayUsagePolling();
     // Scope switch: reuse cache immediately, then one deferred refresh.
@@ -1481,6 +1496,7 @@
         kind !== 'codex' &&
         kind !== 'claude' &&
         kind !== 'cursor' &&
+        kind !== 'minimax' &&
         kind !== 'workbuddy' &&
         kind !== 'trae' &&
         kind !== 'qoder'
@@ -1621,6 +1637,16 @@
     if (e.keysMeta) e.keysMeta.textContent = props.keys;
     if (e.tm) e.tm.textContent = props.restorePoint || '—';
     if (e.resetMeta) e.resetMeta.textContent = props.resetCountdown || '—';
+    var mmScope = String(selectedScopeId || '') === 'minimax';
+    if (e.usageMeta) {
+      e.usageMeta.style.cursor = mmScope ? 'pointer' : '';
+      e.usageMeta.title = mmScope
+        ? t('softPadMinimaxUsageClick', '点击填写 Coding Plan Key，或查看套餐')
+        : '';
+    }
+    if (e.resetMeta) {
+      e.resetMeta.style.cursor = mmScope ? 'pointer' : '';
+    }
     if (e.enable) {
       e.enable.disabled = !props.hasMapping;
       e.enable.classList.toggle('is-on', !!props.padEnabled);
@@ -1729,14 +1755,17 @@
   }
 
   function buildSoftPadScopeHintModel() {
-    var app = appTitleFor(selectedScopeId || 'codex');
+    var entry = findEntry(getSelectedMappingId()) || pickGlobalEntry() || resolveSoftPadEntry();
+    var scopeKind = (entry && entry.kind) || selectedScopeId || 'codex';
+    var app = appTitleFor(scopeKind);
     var scenario = '';
-    var entry = findEntry(getSelectedMappingId()) || pickGlobalEntry();
     if (entry && entry.mapping) scenario = displayTitle(entry);
-    var inv = hubInventoryByKind[String(selectedScopeId || '')] || null;
+    var inv = hubInventoryByKind[String(scopeKind || '')] || null;
     var statusBit = '';
     if (inv && inv.lightEnabled) {
       statusBit = t('softPadHintStatusLightOn', '状态灯已开');
+    } else if (entry && entry.padEnabled && String(scopeKind || '') === 'minimax') {
+      statusBit = t('softPadHintMinimaxPadOn', 'Soft Pad 已开 · 顶栏应显示 MiniMax');
     } else if (inv && inv.confidence === 'high') {
       statusBit = t('softPadHintInstalled', '本机已安装 · 待接入状态');
     }
@@ -1755,7 +1784,7 @@
     }
     var support = t(
       'softPadHubSupportRange',
-      '支持 Codex、Claude、Cursor，以及 WorkBuddy / Trae / Qoder（状态连接 · Shortcuts）'
+      '支持 Codex、Claude、Cursor、MiniMax，以及 WorkBuddy / Trae / Qoder（状态连接 · Shortcuts）'
     );
     return {
       text: text,
@@ -1791,17 +1820,25 @@
           ? t('softPadScanFound', '检测到 {n} 个工具').replace('{n}', String(n))
           : t('softPadScanNone', '未高置信检测到工具');
       }
-      if (opts.prepareHigh) {
-        var kinds = AI.defaultSelectedKinds(inv);
-        if (kinds.length) {
-          return AI.prepareKinds(kinds, { enableNumpad: false }).then(function () {
-            render({});
-            return inv;
-          });
-        }
+      // Idle seed after Soft Pad opens — never on app boot (inventory EnumWindows 假死).
+      var seedP = Promise.resolve();
+      if (AI.maybeAutoSeedAfterInventory && !refreshHubInventory._seededOnce) {
+        refreshHubInventory._seededOnce = true;
+        seedP = AI.maybeAutoSeedAfterInventory(inv).catch(function () { return null; });
       }
-      if (opts.render !== false) render({});
-      return inv;
+      return seedP.then(function () {
+        if (opts.prepareHigh) {
+          var kinds = AI.defaultSelectedKinds(inv);
+          if (kinds.length) {
+            return AI.prepareKinds(kinds, { enableNumpad: false }).then(function () {
+              render({});
+              return inv;
+            });
+          }
+        }
+        if (opts.render !== false) render({});
+        return inv;
+      });
     }).catch(function () {
       if (statusEl) statusEl.textContent = t('softPadScanFail', '扫描失败');
       return null;
@@ -1965,7 +2002,7 @@
   function emptyCreateCtaHtml() {
     return '<p class="soft-pad-empty__title">' + esc(t('softPadEmptyTitle', '还没有可配置的应用场景')) + '</p>' +
       '<p class="soft-pad-empty__desc">' +
-      esc(t('softPadBoundaryHint', '虚拟键盘只绑定 Agent 应用场景（Codex / Claude / Cursor / WorkBuddy / Trae / Qoder；MiniMax 不进 Hub）。先创建应用场景，再配置虚拟键盘。')) +
+      esc(t('softPadBoundaryHint', '虚拟键盘只绑定 Agent 应用场景（Codex / Claude / Cursor / MiniMax / WorkBuddy / Trae / Qoder）。先创建应用场景，再配置虚拟键盘。')) +
       '</p>' +
       '<div class="soft-pad-empty__actions">' +
       '<button type="button" class="codex-micro-pad__btn codex-micro-pad__btn--primary" data-soft-pad-create-kind="codex">' +
@@ -2039,7 +2076,7 @@
     if (mode === 'empty') {
       emptyHidden = false;
       emptyTitle = t('softPadEmptyTitle', '还没有可配置的应用场景');
-      emptyDesc = t('softPadBoundaryHint', '虚拟键盘只绑定 Agent 应用场景（Codex / Claude / Cursor / WorkBuddy / Trae / Qoder；MiniMax 不进 Hub）。先创建应用场景，再配置虚拟键盘。');
+      emptyDesc = t('softPadBoundaryHint', '虚拟键盘只绑定 Agent 应用场景（Codex / Claude / Cursor / MiniMax / WorkBuddy / Trae / Qoder）。先创建应用场景，再配置虚拟键盘。');
       emptyHtml = emptyCreateCtaHtml();
     } else if (mode === 'prepare') {
       emptyHidden = false;
@@ -4548,6 +4585,18 @@
             return;
           }
         }
+        var usageHit = ev.target.closest && ev.target.closest('#softPadSummaryUsage, #softPadSummaryReset');
+        if (usageHit && String(selectedScopeId || '') === 'minimax') {
+          ev.preventDefault();
+          var keyInput = document.querySelector('#softPadMinimaxKeyInput');
+          if (keyInput) {
+            keyInput.focus();
+            try { keyInput.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+          } else {
+            openMinimaxCodingConsole();
+          }
+          return;
+        }
         var btn = ev.target.closest && ev.target.closest('[data-cockpit-action]');
         if (!btn || btn.disabled) return;
         ev.preventDefault();
@@ -4704,6 +4753,15 @@
     }
     ensureSwitcherClickBound();
     bindChrome();
+    // Deferred inventory (after Soft Pad paints) — never block first paint / boot.
+    if (!refreshHubInventory._openedOnce) {
+      refreshHubInventory._openedOnce = true;
+      setTimeout(function () {
+        try {
+          refreshHubInventory({ render: false });
+        } catch (_) {}
+      }, 2500);
+    }
     // Drop any legacy Soft Pad pin so runtime stays Auto.
     clearUserLanePin();
     // Drop any leftover timeline desk from a previous TM visit.
@@ -4911,6 +4969,142 @@
     hint.textContent = lines.join(' ');
     hint.hidden = false;
     ensureCursorActivityConsentCard(panel);
+    ensureMinimaxCodingKeyCard(panel);
+  }
+
+  function ensureMinimaxCodingKeyCard(panel) {
+    panel = panel || document.getElementById('settingsPanelSoftPad');
+    if (!panel) return;
+    var card = document.getElementById('softPadMinimaxKeyCard');
+    var scope = String(selectedScopeId || '');
+    if (scope !== 'minimax') {
+      if (card) card.hidden = true;
+      return;
+    }
+    if (!card) {
+      card = document.createElement('div');
+      card.id = 'softPadMinimaxKeyCard';
+      card.className = 'codex-pad-mgr__claude-act soft-pad-minimax-key';
+      card.innerHTML =
+        '<p class="codex-pad-mgr__label">' +
+        esc(t('softPadMinimaxKeyTitle', 'MiniMax Coding Plan Key')) +
+        '</p>' +
+        '<p class="codex-pad-mgr__hint">' +
+        esc(t('softPadMinimaxKeyHint', '填写后 Soft Pad 长期显示 5h 余量与倒计时。套餐 key 勿用于 curl/批量探测。')) +
+        '</p>' +
+        '<label class="codex-pad-mgr__hint" for="softPadMinimaxKeyInput">' +
+        esc(t('softPadMinimaxKeyLabel', 'API Key')) +
+        '</label>' +
+        '<input id="softPadMinimaxKeyInput" class="soft-pad-minimax-key__input" type="password" autocomplete="off" spellcheck="false" placeholder="sk-…" />' +
+        '<div class="codex-pad-mgr__claude-act-actions">' +
+        '<button type="button" class="codex-micro-pad__btn is-primary" data-act="minimax-key-save">' +
+        esc(t('softPadMinimaxKeySave', '保存并加载 5h')) +
+        '</button>' +
+        '<button type="button" class="codex-micro-pad__btn" data-act="minimax-key-clear">' +
+        esc(t('softPadMinimaxKeyClear', '清除')) +
+        '</button>' +
+        '<button type="button" class="codex-micro-pad__btn" data-act="minimax-key-console">' +
+        esc(t('softPadMinimaxKeyConsole', '套餐详情')) +
+        '</button>' +
+        '</div>' +
+        '<p class="codex-pad-mgr__hint" data-minimax-key-status aria-live="polite"></p>';
+      var hint = document.getElementById('softPadBoundaryHint');
+      if (hint && hint.parentNode === panel) {
+        panel.insertBefore(card, hint.nextSibling);
+      } else {
+        var status = document.getElementById('softPadStatusBar');
+        if (status) panel.insertBefore(card, status.nextSibling);
+        else panel.appendChild(card);
+      }
+      var saveBtn = card.querySelector('[data-act="minimax-key-save"]');
+      var clearBtn = card.querySelector('[data-act="minimax-key-clear"]');
+      var consoleBtn = card.querySelector('[data-act="minimax-key-console"]');
+      var input = card.querySelector('#softPadMinimaxKeyInput');
+      if (saveBtn) {
+        saveBtn.addEventListener('click', function () {
+          var v = input ? String(input.value || '').trim() : '';
+          if (!v) {
+            toastPad(t('softPadMinimaxKeyEmpty', '请先粘贴 Coding Plan API Key'));
+            return;
+          }
+          setMinimaxCodingKey(v);
+        });
+      }
+      if (clearBtn) {
+        clearBtn.addEventListener('click', function () {
+          setMinimaxCodingKey('');
+        });
+      }
+      if (consoleBtn) {
+        consoleBtn.addEventListener('click', function () {
+          openMinimaxCodingConsole();
+        });
+      }
+      if (input) {
+        input.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter') {
+            ev.preventDefault();
+            if (saveBtn) saveBtn.click();
+          }
+        });
+      }
+    }
+    card.hidden = false;
+    refreshMinimaxCodingKeyDom(card);
+  }
+
+  function openMinimaxCodingConsole(url) {
+    var u = String(url || 'https://platform.minimaxi.com/').trim();
+    if (!u) u = 'https://platform.minimaxi.com/';
+    return hubInvoke('cmd_open_url', { url: u }).catch(function () {
+      toastPad(t('softPadMinimaxConsoleFail', '无法打开套餐控制台'));
+    });
+  }
+
+  function refreshMinimaxCodingKeyDom(card) {
+    card = card || document.getElementById('softPadMinimaxKeyCard');
+    if (!card) return Promise.resolve();
+    return hubInvoke('cmd_minimax_coding_key_get', {})
+      .then(function (st) {
+        var statusEl = card.querySelector('[data-minimax-key-status]');
+        var clearBtn = card.querySelector('[data-act="minimax-key-clear"]');
+        var on = !!(st && st.configured);
+        if (clearBtn) clearBtn.hidden = !on;
+        if (statusEl) {
+          statusEl.textContent = on
+            ? t('softPadMinimaxKeySaved', '已保存 {masked} · 正在加载 5h 余量').replace(
+                '{masked}',
+                String((st && st.masked) || '••••')
+              )
+            : t('softPadMinimaxKeyMissing', '未配置 · 保存 Key 后可显示 5h 余量与倒计时');
+        }
+        if (st && st.consoleUrl) card.__consoleUrl = String(st.consoleUrl);
+      })
+      .catch(function () {});
+  }
+
+  function setMinimaxCodingKey(key) {
+    return hubInvoke('cmd_minimax_coding_key_set', { key: String(key || '') })
+      .then(function (st) {
+        var card = document.getElementById('softPadMinimaxKeyCard');
+        var input = card && card.querySelector('#softPadMinimaxKeyInput');
+        if (input) input.value = '';
+        toastPad(
+          st && st.configured
+            ? t('softPadMinimaxKeyOk', '已保存 · 正在同步 5h 余量')
+            : t('softPadMinimaxKeyCleared', '已清除 MiniMax Coding Plan Key')
+        );
+        refreshMinimaxCodingKeyDom(card);
+        return refreshOverlayUsageAsync({ silent: false });
+      })
+      .catch(function (err) {
+        var msg = String((err && (err.message || err)) || err || '');
+        toastPad(
+          /invalid_minimax_coding_key/.test(msg)
+            ? t('softPadMinimaxKeyInvalid', 'Key 无效（需 Coding Plan API Key，不是登录 JWT）')
+            : t('softPadMinimaxKeyFail', '保存失败')
+        );
+      });
   }
 
   function ensureCursorActivityConsentCard(panel) {

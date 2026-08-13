@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>Keycap Dock — 拟物控件 demo</title>
+  <link rel="stylesheet" href="keycap-dock.css" />
+  <style>
+    body {
+      font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #f6f7fb;
+      margin: 0;
+      padding: 48px 24px;
+      color: #1f2937;
+    }
+    h1 { font-size: 18px; font-weight: 600; margin: 0 0 6px; }
+    p.lead { margin: 0 0 32px; color: #6b7280; font-size: 13px; }
+
+    .stage {
+      max-width: 720px;
+      margin: 0 auto;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 0;
+      border-bottom: 1px dashed #eef0f4;
+    }
+    .row:last-of-type { border-bottom: 0; }
+    .row-label { font-size: 14px; color: #1f2937; }
+    .row-sub { font-size: 12px; color: #6b7280; margin-top: 2px; }
+
+    .event-log {
+      margin-top: 28px;
+      padding: 12px 14px;
+      background: #0f172a;
+      color: #cbd5e1;
+      border-radius: 10px;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      max-height: 160px;
+      overflow: auto;
+    }
+    .event-log .ts { color: #64748b; }
+    .event-log .key { color: #93c5fd; }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <h1>触发键 · dock 拟物控件</h1>
+    <p class="lead">点键帽 → 在原地弹出 dock → 选大类 → 选具体键。改即所见,无 section、无 intent。</p>
+
+    <div class="row">
+      <div>
+        <div class="row-label">按哪个键</div>
+        <div class="row-sub">当前选中会立刻生效,点键帽可换</div>
+      </div>
+      <div id="keycap-host"></div>
+    </div>
+
+    <div class="row">
+      <div>
+        <div class="row-label">备用(独立实例)</div>
+        <div class="row-sub">演示多个控件并存,各自管自己状态</div>
+      </div>
+      <div id="keycap-host-2"></div>
+    </div>
+
+    <pre class="event-log" id="log"></pre>
+  </div>
+
+  <script src="keycap-dock.js"></script>
+  <script>
+    var logEl = document.getElementById('log');
+    function log(msg) {
+      var line = document.createElement('div');
+      var ts = new Date().toLocaleTimeString();
+      line.innerHTML = '<span class="ts">' + ts + '</span>  ' + msg;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    // 实例 1:默认 RAlt
+    var k1 = createKeycapDock({
+      current: 'RAlt',
+      onChange: function (key) { log('实例 1 改为 <span class="key">' + key + '</span>'); }
+    });
+    document.getElementById('keycap-host').appendChild(k1);
+    log('实例 1 初始化,默认 <span class="key">RAlt</span>');
+
+    // 实例 2:无默认(显示「选键」)
+    var k2 = createKeycapDock({
+      onChange: function (key) { log('实例 2 改为 <span class="key">' + key + '</span>'); }
+    });
+    document.getElementById('keycap-host-2').appendChild(k2);
+    log('实例 2 初始化,未选');
+  </script>
+</body>
+</html>

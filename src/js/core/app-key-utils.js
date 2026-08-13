@@ -80,10 +80,15 @@
   }
 
   function isLeftMouseToken(v){
+    // Primary mouse buttons — blocked as triggers (L/R/M). Side X1/X2 stay allowed.
     var raw=String(v||'').trim().toLowerCase();
     if(!raw) return false;
     if(raw==='lbutton'||raw==='mouse_left'||raw==='mouseleft'||raw==='mouse left') return true;
     if(raw==='leftmousebutton'||raw==='left mouse button') return true;
+    if(raw==='rbutton'||raw==='mouse_right'||raw==='mouseright'||raw==='mouse right') return true;
+    if(raw==='rightmousebutton'||raw==='right mouse button') return true;
+    if(raw==='mbutton'||raw==='mouse_middle'||raw==='mousemiddle'||raw==='mouse middle') return true;
+    if(raw==='middlemousebutton'||raw==='middle mouse button') return true;
     return false;
   }
 

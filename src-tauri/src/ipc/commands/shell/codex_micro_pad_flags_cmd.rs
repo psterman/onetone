@@ -209,6 +209,50 @@ pub fn cmd_codex_micro_pad_set_skin(
     Ok(())
 }
 
+/// Home「强制打开 Soft Pad」: quiet flag + ensure overlay mapping + push overlay.
+/// Full `cmd_save` alone never picked a Soft Pad while OneTone was FG (Codex-only fallback).
+#[tauri::command]
+pub fn cmd_soft_pad_force_open(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    enabled: bool,
+) -> Result<serde_json::Value, String> {
+    let cfg_to_save;
+    let ensured;
+    {
+        let mut cfg = state.cfg.lock();
+        cfg.soft_pad_force_open = enabled;
+        if enabled {
+            codex_micro_overlay::clear_overlay_session_dismissed();
+            ensured = codex_micro_overlay::ensure_force_soft_pad_ready(&mut cfg);
+        } else {
+            ensured = true;
+        }
+        codex_numpad_layer::sync_hook_cache(&cfg);
+        cfg_to_save = cfg.clone();
+    }
+
+    crate::app_log::log_line(
+        state.inner(),
+        "config",
+        &format!("cmd_soft_pad_force_open enabled={enabled} ensured={ensured}"),
+    );
+
+    let state_bg = Arc::clone(state.inner());
+    let _ = std::thread::Builder::new()
+        .name("soft-pad-force-open".into())
+        .spawn(move || {
+            config::save_config(&cfg_to_save);
+            codex_micro_overlay::push_state(&app, &state_bg);
+        });
+
+    Ok(serde_json::json!({
+        "ok": true,
+        "forceOpen": enabled,
+        "ensured": ensured,
+    }))
+}
+
 #[cfg(test)]
 mod skin_ipc_tests {
     use crate::codex_micro_overlay::normalize_skin;

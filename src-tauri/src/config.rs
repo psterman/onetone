@@ -1320,6 +1320,9 @@ pub struct CodexMicroPadConfig {
     /// Soft Pad top-bar Qoder status dot (shell hook lifecycle).
     #[serde(default)]
     pub qoder_status_lights_enabled: bool,
+    /// Soft Pad top-bar MiniMax status / usage dot.
+    #[serde(default)]
+    pub minimax_status_lights_enabled: bool,
     /// Ambient bezel: `"status"` (follow pad status palette) | `"solid"` (fixed color).
     #[serde(default = "default_ambient_mode")]
     pub ambient_mode: String,
@@ -1378,6 +1381,7 @@ impl Default for CodexMicroPadConfig {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: default_ambient_mode(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: default_ambient_opacity(),
@@ -1907,6 +1911,10 @@ pub struct VoiceConfig {
     /// (keys + auto `activeSceneId` follow on the FE). Default false = stay on global / manual in-use.
     #[serde(default, rename = "followForegroundAppScenario")]
     pub follow_foreground_app_scenario: bool,
+    /// Home debug switch: keep Soft Pad overlay visible even when OneTone is FG /
+    /// target app is not. Still gated by settings/setup/recording overlays.
+    #[serde(default, rename = "softPadForceOpen")]
+    pub soft_pad_force_open: bool,
     #[serde(default, rename = "cameraPrefs")]
     pub camera_prefs: CameraPrefs,
     #[serde(default, rename = "sounds")]
@@ -2926,20 +2934,34 @@ pub fn canonical_trigger(key: &str) -> String {
 
 pub fn is_allowed_trigger(key: &str) -> bool {
     let canonical = canonical_trigger(key);
-    !canonical.trim().is_empty() && !contains_left_mouse_token(&canonical)
+    !canonical.trim().is_empty() && !contains_blocked_mouse_token(&canonical)
 }
 
+/// Primary mouse buttons must not be voice/IME triggers (context menu, drag, click UI).
+/// Side buttons X1/X2 stay allowed. Name kept historically as left-only.
 pub fn contains_left_mouse_token(key: &str) -> bool {
+    contains_blocked_mouse_token(key)
+}
+
+pub fn contains_blocked_mouse_token(key: &str) -> bool {
     key.split('+').any(|part| {
         matches!(
             canonical_trigger(part.trim()).as_str(),
-            "LButton" | "Mouse_Left" | "MouseLeft"
+            "LButton"
+                | "Mouse_Left"
+                | "MouseLeft"
+                | "RButton"
+                | "Mouse_Right"
+                | "MouseRight"
+                | "MButton"
+                | "Mouse_Middle"
+                | "MouseMiddle"
         )
     })
 }
 
 pub fn is_allowed_target_shortcut(key: &str) -> bool {
-    !key.trim().is_empty() && !contains_left_mouse_token(key)
+    !key.trim().is_empty() && !contains_blocked_mouse_token(key)
 }
 
 pub fn physical_bindings(trigger_key: &str) -> Vec<String> {
@@ -3431,6 +3453,7 @@ impl Default for VoiceConfig {
             key_wake_sound_enabled: false,
             coach_hud_enabled: false,
             follow_foreground_app_scenario: false,
+            soft_pad_force_open: false,
             camera_prefs: CameraPrefs::default(),
             sounds: SoundsConfig::default(),
             start_minimized_to_tray: false,
@@ -6059,6 +6082,44 @@ mod tests {
         assert_eq!(bindings, vec!["PageDown".to_string()]);
         cfg.normalize();
         assert_eq!(cfg.mappings[0].trigger_key, "PageDown");
+    }
+
+    #[test]
+    fn primary_mouse_buttons_blocked_as_triggers() {
+        assert!(!is_allowed_trigger("LButton"));
+        assert!(!is_allowed_trigger("RButton"));
+        assert!(!is_allowed_trigger("MButton"));
+        assert!(is_allowed_trigger("XButton1"));
+        assert!(is_allowed_trigger("XButton2"));
+    }
+
+    #[test]
+    fn mapping_physical_bindings_drops_rbutton_raw_falls_back_to_trigger() {
+        // Real bug: HID pedal mapping stored RButton in triggerSource; right-drag
+        // long-press fired target RAlt. Blocked mouse tokens must fall through.
+        let mut m = VoiceConfig::default().mappings.remove(0);
+        m.id = "rbutton-bug".into();
+        m.trigger_key = "HID_R03_80".into();
+        m.source_key = "HID_R03_80".into();
+        m.target_key = "RAlt".into();
+        m.enabled = true;
+        m.trigger_source = Some(TriggerSource {
+            id: "source_peripheral_mixed".into(),
+            mode: "long_press".into(),
+            raw_events: vec![RawEvent {
+                device: "keyboard".into(),
+                key: "RButton".into(),
+                code: "RButton".into(),
+                event_type: "keydown".into(),
+                hotkey: "RButton".into(),
+                label: "RButton".into(),
+                ..Default::default()
+            }],
+            ..Default::default()
+        });
+        let bindings = mapping_physical_bindings(&m);
+        assert_eq!(bindings, vec!["HID_R03_80".to_string()]);
+        assert!(!bindings.iter().any(|b| b.eq_ignore_ascii_case("RButton")));
     }
 
     #[test]

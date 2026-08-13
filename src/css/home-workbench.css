@@ -240,8 +240,45 @@ html[data-theme="dark"] .wb-sidebar-status {
   flex: 1;
 }
 
-.wb-home-quickstart {
+.wb-home-sidebar-foot {
   margin-top: auto;
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.wb-home-force-softpad {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  background: var(--surface-high);
+}
+
+.wb-home-force-softpad-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.wb-home-force-softpad-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--on-surface);
+  line-height: 1.25;
+}
+
+.wb-home-force-softpad-hint {
+  font-size: 10px;
+  color: var(--on-surface-muted);
+  line-height: 1.3;
+}
+
+.wb-home-quickstart {
   width: 100%;
   min-height: 38px;
   padding: 0 16px;
@@ -370,6 +407,7 @@ html[data-theme="dark"] .wb-sidebar-status {
   border-color: color-mix(in srgb, var(--primary, #2a9cc4) 45%, var(--outline-variant));
 }
 
+.app.is-settings .wb-home-sidebar-foot,
 .app.is-settings .wb-home-quickstart {
   display: none !important;
 }

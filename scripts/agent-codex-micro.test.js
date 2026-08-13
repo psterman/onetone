@@ -646,6 +646,12 @@ assert.ok(overlayHtml.indexOf('data-act="drag"') < 0);
 assert.ok(overlayHtml.indexOf('cmd_codex_micro_overlay_start_drag') >= 0);
 assert.ok(overlayHtml.indexOf('isDragBlocked') >= 0);
 assert.ok(overlayHtml.indexOf('cmd_codex_micro_overlay_set_minimized') >= 0);
+assert.ok(
+  /sync_minimized_for_mapping|resolve_minimized_on_mapping_change|expand_sticky_across_same_mapping/.test(
+    fs.readFileSync(path.join(__dirname, '../src-tauri/src/codex_micro_overlay.rs'), 'utf8')
+  ),
+  'mini expand sticky across snapshots'
+);
 assert.ok(overlayHtml.indexOf('data-act="lights"') < 0);
 assert.ok(overlayHtml.indexOf('info.runStatus') >= 0);
 assert.ok(overlayHtml.indexOf('data-status-source') >= 0);
@@ -1243,7 +1249,7 @@ assert.ok(commitEditFn.indexOf('schedulePreviewPaint') >= 0 || commitEditFn.inde
   'Soft Pad keycap save refreshes via schedule/notify');
 
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?cursor-chat/.test(softPadHubSrc), 'BUILTIN includes cursor');
-assert.ok(!/BUILTIN_SOFT_PAD_APPS[\s\S]*?minimax-chat/.test(softPadHubSrc), 'BUILTIN excludes minimax');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?minimax-chat/.test(softPadHubSrc), 'BUILTIN includes minimax');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?workbuddy-chat/.test(softPadHubSrc), 'BUILTIN includes workbuddy');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-chat/.test(softPadHubSrc), 'BUILTIN includes trae');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?qoder-chat/.test(softPadHubSrc), 'BUILTIN includes qoder');

@@ -123,6 +123,18 @@ pub fn descriptor(kind: AgentKind) -> AgentDescriptor {
             capabilities: cursor_capabilities(),
             default_face_id: "cursor-chord-v1",
         },
+        AgentKind::MiniMax => AgentDescriptor {
+            kind,
+            app_target_id: "minimax-chat",
+            windows_process_hints: &[
+                "MiniMax Code.exe",
+                "MiniMax Code Desktop.exe",
+                "MiniMax-Code.exe",
+            ],
+            macos_bundle_ids: &[],
+            capabilities: cursor_capabilities(),
+            default_face_id: "minimax-chord-v1",
+        },
         AgentKind::CopilotCli => AgentDescriptor {
             kind,
             app_target_id: "copilot-cli",
@@ -221,6 +233,24 @@ pub fn pad_face(face_id: &str) -> Option<PadFace> {
             face_id: "cursor-chord-v1",
             version: 1,
             agent_kind: AgentKind::Cursor,
+            required: AgentCapabilities {
+                can_focus: true,
+                can_send_chord: true,
+                can_observe_lifecycle: false,
+                can_observe_needs_input: false,
+                can_observe_session_lanes: false,
+                can_focus_live_session: false,
+                can_resume_session: false,
+                can_open_exact_app_conversation: false,
+                can_multi_agent_lights: false,
+                can_invoke_internal_actions: false,
+                official_hid: false,
+            },
+        }),
+        "minimax-chord-v1" => Some(PadFace {
+            face_id: "minimax-chord-v1",
+            version: 1,
+            agent_kind: AgentKind::MiniMax,
             required: AgentCapabilities {
                 can_focus: true,
                 can_send_chord: true,

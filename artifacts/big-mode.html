@@ -1,0 +1,1055 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>Voice-Pilot · 三档模式 demo</title>
+  <style>
+    :root {
+      --bg: #f5f3ef; --card: #fff; --line: #e7e3da; --line2: #f4f0e8;
+      --text: #1a1a1a; --sub: #5a5a5a; --sub2: #8a8a8a;
+      --accent: #ff6b35; --accent2: #ffa552;
+      --green: #22c55e; --green-bg: #dcfce7;
+      --amber: #f59e0b; --amber-bg: #fef3c7;
+      --red: #ef4444; --red-bg: #fee2e2;
+      --blue: #3b82f6; --blue-bg: #dbeafe;
+      --purple: #8b5cf6; --purple-bg: #ede9fe;
+      --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+      --shadow-lg: 0 4px 12px rgba(0,0,0,0.10), 0 24px 48px rgba(0,0,0,0.10);
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg); color: var(--text);
+      font-size: 16px; line-height: 1.5; min-height: 100vh;
+      margin: 0;
+    }
+
+    /* ── 顶栏 ── */
+    .topbar { display: flex; align-items: center; gap: 16px; padding: 20px 32px 0; }
+    .topbar h1 { font-size: 22px; font-weight: 700; margin: 0; }
+    .topbar h1 .logo {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, #ff6b35 0%, #ffa552 100%);
+      display: inline-flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 20px; margin-right: 8px;
+      box-shadow: 0 4px 10px rgba(255,107,53,0.30);
+    }
+    .topbar .right { margin-left: auto; display: flex; gap: 8px; }
+    .ask-pill {
+      padding: 10px 16px; border-radius: 999px;
+      background: var(--card); border: 1px solid var(--line);
+      font-size: 13px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .ask-pill.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; border: 0;
+      box-shadow: 0 3px 8px rgba(255,107,53,0.30);
+    }
+
+    /* ── 模式 tab ── */
+    .mode-tabs {
+      display: flex; gap: 4px;
+      padding: 16px 32px 0;
+      border-bottom: 1px solid var(--line);
+      background: var(--bg);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .mode-tab {
+      padding: 12px 20px; border-radius: 10px 10px 0 0;
+      background: transparent; border: 0;
+      font: 600 14px/1 inherit; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 8px;
+      color: var(--sub);
+      transition: all 150ms;
+      position: relative; bottom: -1px;
+    }
+    .mode-tab:hover { color: var(--text); }
+    .mode-tab.is-active {
+      background: var(--card);
+      color: var(--text);
+      box-shadow: var(--shadow);
+    }
+    .mode-tab.is-active::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: -1px;
+      height: 2px; background: var(--accent);
+    }
+    .mode-tab .badge {
+      background: var(--green); color: #fff;
+      font-size: 10px; padding: 1px 6px; border-radius: 999px; font-weight: 700;
+    }
+
+    /* ── 共享布局 ── */
+    .layout { display: none; padding: 24px 32px 80px; }
+    .layout.is-active { display: grid; }
+    .layout.novice { grid-template-columns: 240px 1fr; gap: 20px; }
+    .layout.quick { grid-template-columns: 240px 1fr; gap: 20px; }
+    .layout.pro { grid-template-columns: 1fr; gap: 16px; }
+
+    /* ── 左侧 app 列表(共享) ── */
+    .app-list {
+      background: var(--card); border-radius: 16px;
+      padding: 12px; box-shadow: var(--shadow);
+      max-height: calc(100vh - 180px); overflow-y: auto;
+      position: sticky; top: 100px;
+    }
+    .app-list .search {
+      padding: 8px 12px; border-radius: 10px;
+      background: var(--line2); font-size: 13px;
+      color: var(--sub); margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .app-list .item {
+      padding: 10px 12px; border-radius: 10px;
+      cursor: pointer; user-select: none;
+      display: flex; align-items: center; gap: 10px;
+      transition: all 150ms;
+      margin-bottom: 2px;
+    }
+    .app-list .item:hover { background: var(--line2); }
+    .app-list .item.is-active { background: #fff5ed; }
+    .app-list .item .ico {
+      width: 32px; height: 32px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; color: #fff; flex-shrink: 0;
+    }
+    .app-list .item .meta { flex: 1; min-width: 0; }
+    .app-list .item .name { font-size: 13px; font-weight: 600; }
+    .app-list .item .sub { font-size: 11px; color: var(--sub); }
+    .app-list .item .status {
+      font-size: 10px; padding: 2px 8px; border-radius: 999px;
+      font-weight: 700; flex-shrink: 0;
+    }
+    .app-list .item .status.is-on { background: var(--green-bg); color: var(--green); }
+    .app-list .item .status.is-off { background: var(--line2); color: var(--sub); }
+    .app-list .item.is-active .name { color: var(--accent); }
+    .app-list .add {
+      padding: 10px 12px; border-radius: 10px;
+      border: 1px dashed var(--line);
+      text-align: center; font-size: 13px; color: var(--sub);
+      cursor: pointer; margin-top: 4px;
+    }
+    .app-list .add:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── 主区 ── */
+    .main { min-width: 0; }
+    .main-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .main-head .app-title { font-size: 22px; font-weight: 700; }
+    .main-head .app-sub { font-size: 13px; color: var(--sub); }
+    .main-head .right { margin-left: auto; }
+
+    /* ── 4 维度 tab(共享) ── */
+    .dim-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+    .dim-tab {
+      padding: 10px 16px; border-radius: 12px;
+      background: var(--card); border: 1px solid var(--line);
+      font: 600 13px/1 inherit; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 8px;
+      transition: all 150ms;
+    }
+    .dim-tab:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+    .dim-tab.is-active { background: var(--text); color: #fff; border-color: var(--text); }
+    .dim-tab .cnt { font-size: 11px; padding: 2px 7px; border-radius: 999px; background: var(--line2); color: var(--sub); }
+    .dim-tab.is-active .cnt { background: rgba(255,255,255,0.20); color: #fff; }
+
+    /* ── 场景 chip(共享) ── */
+    .scene-chips { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; }
+    .scene-chips .lbl { font-size: 12px; color: var(--sub); font-weight: 600; margin-right: 4px; }
+    .scene-chip {
+      padding: 7px 14px; border-radius: 999px;
+      background: var(--card); border: 1px solid var(--line);
+      font-size: 13px; cursor: pointer; font-weight: 500;
+      transition: all 150ms;
+    }
+    .scene-chip:hover { border-color: var(--accent); color: var(--accent); }
+    .scene-chip.is-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .scene-chip .cnt { font-size: 11px; padding: 1px 6px; border-radius: 999px; background: var(--line2); color: var(--sub); margin-left: 4px; }
+    .scene-chip.is-active .cnt { background: rgba(255,255,255,0.25); color: #fff; }
+
+    /* ════════ 小白模式:大卡 ════════ */
+    .habits-big { display: flex; flex-direction: column; gap: 12px; }
+    .h-card {
+      background: var(--card); border: 2px solid transparent;
+      border-radius: 20px; padding: 20px 24px;
+      box-shadow: var(--shadow);
+      display: grid; grid-template-columns: 56px 1fr auto; gap: 20px;
+      align-items: center;
+      transition: all 220ms cubic-bezier(.2,.8,.2,1);
+      animation: cardIn 0.4s cubic-bezier(.2,.8,.2,1) backwards;
+    }
+    .h-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .h-card.is-paused { background: linear-gradient(180deg, #fff 0%, #fffbeb 100%); }
+    .h-card.is-deleting { animation: del 0.3s ease forwards; }
+    @keyframes del {
+      to { opacity: 0; transform: translateX(40px) scale(0.95); max-height: 0; padding: 0; margin: 0; }
+    }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .h-illus {
+      width: 56px; height: 56px; border-radius: 16px;
+      background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; line-height: 1;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.08));
+    }
+    .h-illus.dim-voice { background: linear-gradient(135deg, #ede9fe 0%, #c4b5fd 100%); }
+    .h-illus.dim-cam { background: linear-gradient(135deg, #dbeafe 0%, #93c5fd 100%); }
+    .h-illus.dim-softpad { background: linear-gradient(135deg, #d1fae5 0%, #6ee7b7 100%); }
+
+    .h-info .title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+    .h-info .title { font-size: 17px; font-weight: 700; }
+    .h-info .status-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--green); box-shadow: 0 0 0 4px var(--green-bg);
+      cursor: pointer; transition: all 200ms;
+    }
+    .h-info .status-dot:hover { transform: scale(1.2); }
+    .h-card.is-paused .h-info .status-dot { background: var(--amber); box-shadow: 0 0 0 4px var(--amber-bg); }
+    .h-info .when { font-size: 12px; color: var(--sub); }
+    .h-info .edit-all {
+      width: 26px; height: 26px; border-radius: 8px;
+      background: transparent; border: 0; cursor: pointer;
+      color: var(--sub); font-size: 13px;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: all 150ms;
+    }
+    .h-info .edit-all:hover { background: var(--line2); color: var(--accent); }
+
+    .h-info .story { font-size: 14px; line-height: 1.7; }
+    .h-info .chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 6px;
+      font-weight: 600; font-size: 13px; margin: 0 2px;
+      cursor: pointer; transition: all 150ms;
+    }
+    .h-info .chip.app-tag { background: var(--line2); }
+    .h-info .chip.app-tag:hover { background: #d6d0c2; }
+    .h-info .chip.key {
+      background: #1a1a1a; color: #fff;
+      font: 700 12px/1.3 ui-monospace, monospace;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15); padding: 3px 10px;
+    }
+    .h-info .chip.key:hover { background: var(--accent); }
+    .h-info .chip.action { background: var(--purple-bg); color: var(--purple); }
+    .h-info .chip.trigger { background: var(--green-bg); color: var(--green); }
+    .h-info .chip.trigger.is-manual { background: var(--blue-bg); color: var(--blue); }
+    .h-info .chip:hover { filter: brightness(0.95); }
+
+    .h-right { display: flex; flex-direction: column; gap: 6px; }
+    .hbtn {
+      padding: 11px 20px; border-radius: 12px; border: 0;
+      font: 600 13px/1 inherit; cursor: pointer;
+      transition: all 150ms; min-width: 110px;
+      display: inline-flex; align-items: center; gap: 6px; justify-content: center;
+    }
+    .hbtn.primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; box-shadow: 0 3px 8px rgba(255,107,53,0.25); }
+    .hbtn.primary:hover { transform: translateY(-1px); }
+    .hbtn.ghost { background: transparent; color: var(--sub); }
+    .hbtn.ghost:hover { color: var(--red); background: var(--red-bg); }
+    .h-card .add-inline {
+      background: transparent; border: 2px dashed var(--line);
+      border-radius: 20px; padding: 18px; text-align: center;
+      color: var(--sub); cursor: pointer; font-size: 14px;
+      transition: all 150px;
+    }
+    .h-card .add-inline:hover { border-color: var(--accent); color: var(--accent); }
+    .empty {
+      background: var(--card); border-radius: 20px; padding: 60px 20px;
+      text-align: center; color: var(--sub); font-size: 14px;
+    }
+
+    /* ════════ 快速设置:3 列 IDE ════════ */
+    .quick-habit {
+      background: var(--card); border-radius: 16px;
+      padding: 20px 24px; box-shadow: var(--shadow);
+      margin-bottom: 12px;
+      animation: cardIn 0.4s cubic-bezier(.2,.8,.2,1) backwards;
+    }
+    .quick-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line2); }
+    .quick-head .scene-tag {
+      padding: 4px 10px; border-radius: 6px;
+      background: var(--line2); font-size: 12px; font-weight: 600;
+    }
+    .quick-head .title { font-size: 16px; font-weight: 700; }
+    .quick-head .when { font-size: 12px; color: var(--sub); margin-left: auto; }
+    .quick-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 12px; }
+    .quick-col {
+      padding: 14px 16px; border-radius: 10px;
+      background: var(--line2);
+    }
+    .quick-col .num { font-size: 11px; color: var(--sub); font-weight: 700; margin-bottom: 6px; }
+    .quick-col .lbl { font-size: 11px; color: var(--sub); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .quick-col .val { font-size: 14px; font-weight: 600; }
+    .quick-col .val.code { font: 600 13px/1.4 ui-monospace, monospace; }
+    .quick-foot { display: flex; align-items: center; gap: 12px; }
+    .quick-foot .extra { font-size: 12px; color: var(--blue); cursor: pointer; }
+    .quick-foot .extra:hover { text-decoration: underline; }
+    .quick-foot .right { margin-left: auto; }
+    .quick-foot .hbtn { min-width: 80px; padding: 9px 18px; }
+
+    /* ════════ 程序员模式:JSON / raw ════════ */
+    .pro-table {
+      background: #1a1a1a; color: #d4d4d8;
+      border-radius: 16px; padding: 20px;
+      font: 13px/1.6 "SF Mono", ui-monospace, monospace;
+      overflow-x: auto; white-space: pre;
+    }
+    .pro-table .k { color: #93c5fd; }
+    .pro-table .s { color: #86efac; }
+    .pro-table .n { color: #fbbf24; }
+    .pro-table .b { color: #f472b6; }
+    .pro-meta {
+      background: var(--card); border-radius: 16px; padding: 20px 24px;
+      box-shadow: var(--shadow); margin-bottom: 16px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .pro-meta .cnt { font-size: 13px; color: var(--sub); }
+    .pro-meta .right { margin-left: auto; }
+
+    /* ── Popover(沿用) ── */
+    .popover-bg { position: fixed; inset: 0; z-index: 80; background: transparent; }
+    .popover {
+      position: absolute; z-index: 90;
+      background: var(--card); border-radius: 16px;
+      box-shadow: var(--shadow-lg);
+      padding: 16px; min-width: 280px;
+      animation: popIn 0.18s cubic-bezier(.2,.8,.2,1);
+    }
+    @keyframes popIn { from { opacity: 0; transform: scale(0.95) translateY(-4px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    .popover h4 { margin: 0 0 10px; font-size: 13px; color: var(--sub); font-weight: 600; }
+    .keyrec .display {
+      font: 700 22px/1 ui-monospace, monospace;
+      padding: 18px; min-height: 60px; background: #1a1a1a; color: #fff;
+      border-radius: 12px; margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;
+    }
+    .keyrec .display .chip { background: var(--accent); padding: 4px 12px; border-radius: 6px; }
+    .keyrec .display .placeholder { color: #888; font-size: 14px; font-weight: 400; }
+    .keyrec .rec-btn { width: 100%; padding: 12px; border-radius: 10px; background: var(--accent); color: #fff; border: 0; font: 600 14px/1 inherit; cursor: pointer; }
+    .keyrec .rec-btn.is-recording { background: var(--red); animation: recPulse 1.4s ease infinite; }
+    @keyframes recPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); } 50% { box-shadow: 0 0 0 10px rgba(239,68,68,0); } }
+    .keyrec .hint { font-size: 12px; color: var(--sub); margin-top: 8px; text-align: center; }
+    .keyrec .actions { display: flex; gap: 8px; margin-top: 10px; }
+    .keyrec .actions button { flex: 1; padding: 8px; border-radius: 8px; background: var(--line2); border: 0; cursor: pointer; font: 600 13px/1 inherit; }
+    .popover-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .popover-grid .opt {
+      padding: 12px 8px; border-radius: 10px; border: 2px solid var(--line);
+      background: var(--card); cursor: pointer; text-align: center; transition: all 150ms;
+    }
+    .popover-grid .opt:hover { border-color: var(--accent); }
+    .popover-grid .opt.is-picked { border-color: var(--accent); background: #fff5ed; }
+    .popover-grid .opt .em { font-size: 22px; display: block; margin-bottom: 4px; }
+    .popover-grid .opt .nm { font-size: 12px; font-weight: 600; }
+    .popover-list { display: flex; flex-direction: column; gap: 6px; }
+    .popover-list .opt {
+      padding: 10px 14px; border-radius: 10px; border: 2px solid var(--line);
+      background: var(--card); cursor: pointer;
+      display: flex; align-items: center; gap: 12px; transition: all 150ms;
+    }
+    .popover-list .opt:hover { border-color: var(--accent); }
+    .popover-list .opt.is-picked { border-color: var(--accent); background: #fff5ed; }
+    .popover-list .opt .em { font-size: 22px; }
+    .popover-list .opt .nm { font-size: 14px; font-weight: 600; }
+    .popover-list .opt .ds { font-size: 12px; color: var(--sub); }
+    .popover-list .opt .radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); margin-left: auto; flex-shrink: 0; }
+    .popover-list .opt.is-picked .radio { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 0%, var(--accent) 35%, #fff 36%); }
+
+    /* ── 4 步面板(沿用) ── */
+    .edit-panel {
+      position: fixed; inset: 0; z-index: 90;
+      background: var(--bg); transform: translateY(100%);
+      transition: transform 400ms cubic-bezier(.2,.8,.2,1); overflow-y: auto;
+    }
+    .edit-panel.is-open { transform: translateY(0); }
+    .edit-shell { max-width: 720px; margin: 0 auto; padding: 32px 40px 60px; }
+    .edit-head { display: flex; align-items: center; gap: 14px; padding-bottom: 28px; margin-bottom: 32px; border-bottom: 1px solid var(--line); }
+    .edit-head .back { width: 40px; height: 40px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); cursor: pointer; font-size: 18px; }
+    .edit-head .title { font-size: 22px; font-weight: 700; }
+    .edit-head .sub { font-size: 13px; color: var(--sub); margin-top: 2px; }
+    .steps-dots { display: flex; gap: 8px; margin-left: auto; }
+    .steps-dots .dot { width: 32px; height: 6px; border-radius: 3px; background: var(--line); }
+    .steps-dots .dot.is-done { background: var(--green); }
+    .steps-dots .dot.is-active { background: var(--accent); }
+    .edit-step { display: none; }
+    .edit-step.is-active { display: block; animation: stepIn 0.35s ease; }
+    @keyframes stepIn { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+    .edit-step h2 { font-size: 28px; font-weight: 700; margin: 0 0 6px; }
+    .edit-step .lead { font-size: 15px; color: var(--sub); margin: 0 0 28px; }
+    .edit-foot { display: flex; gap: 12px; margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--line); }
+    .edit-foot .ebtn { flex: 1; padding: 16px; border-radius: 14px; border: 0; font: 600 15px/1 inherit; cursor: pointer; }
+    .edit-foot .ebtn.primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
+    .edit-foot .ebtn.secondary { background: var(--card); border: 1px solid var(--line); }
+
+    /* ── 试一下 overlay(沿用) ── */
+    .demo-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(15,15,15,0.92); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 300ms; }
+    .demo-overlay.is-open { opacity: 1; pointer-events: auto; }
+    .demo-stage { width: 90%; max-width: 900px; background: #fff; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.30); overflow: hidden; transform: scale(0.95); transition: transform 400ms cubic-bezier(.2,.8,.2,1); }
+    .demo-overlay.is-open .demo-stage { transform: scale(1); }
+    .demo-chrome { background: #f1f3f4; padding: 10px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #e0e0e0; }
+    .demo-chrome .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .demo-chrome .url { flex: 1; height: 24px; border-radius: 12px; background: #fff; border: 1px solid #e0e0e0; padding: 0 12px; font: 13px/24px ui-monospace, monospace; color: #5a5a5a; }
+    .demo-body { padding: 40px; min-height: 260px; }
+    .demo-text { font: 15px/1.9 ui-monospace, "SF Mono", monospace; color: #1a1a1a; white-space: pre-wrap; }
+    .demo-text .cursor { display: inline-block; width: 2px; height: 1.2em; background: var(--accent); margin-left: 2px; vertical-align: text-bottom; animation: blink 1s step-end infinite; }
+    @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+    .demo-text .fly-in { display: block; animation: fly 0.6s cubic-bezier(.2,.8,.2,1) backwards; }
+    @keyframes fly { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .demo-close { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.20); color: #fff; border: 0; cursor: pointer; font-size: 18px; }
+    .demo-progress { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
+    .demo-progress .step { width: 60px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.20); }
+    .demo-progress .step.is-done { background: var(--accent); }
+    .demo-progress .step.is-active { background: rgba(255,107,53,0.60); }
+
+    /* ── toast ── */
+    .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1a1a1a; color: #fff; padding: 12px 24px; border-radius: 12px; font-size: 14px; opacity: 0; pointer-events: none; transition: all 300ms cubic-bezier(.2,.8,.2,1); z-index: 200; }
+    .toast.is-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1><span class="logo">🎙</span>Voice-Pilot</h1>
+    <div class="right">
+      <button class="ask-pill">💬 问点什么</button>
+      <button class="ask-pill">🎬 看看怎么用</button>
+      <button class="ask-pill primary">⚡ 试一下</button>
+    </div>
+  </div>
+
+  <div class="mode-tabs">
+    <button class="mode-tab is-active" data-tab="novice">🌱 小白模式 <span class="badge">新</span></button>
+    <button class="mode-tab" data-tab="quick">⚡ 快速设置</button>
+    <button class="mode-tab" data-tab="pro">🛠 程序员模式</button>
+  </div>
+
+  <!-- 小白模式 -->
+  <div class="layout novice is-active" id="layout-novice">
+    <aside class="app-list" id="app-list-novice"></aside>
+    <main class="main">
+      <div class="main-head">
+        <div>
+          <div class="app-title" id="novice-app-title">Chrome</div>
+          <div class="app-sub" id="novice-app-sub">Chrome 场景</div>
+        </div>
+      </div>
+      <div class="dim-tabs" id="novice-dim-tabs"></div>
+      <div class="scene-chips" id="novice-scene-chips"></div>
+      <div class="habits-big" id="novice-habits"></div>
+    </main>
+  </div>
+
+  <!-- 快速设置 -->
+  <div class="layout quick" id="layout-quick">
+    <aside class="app-list" id="app-list-quick"></aside>
+    <main class="main">
+      <div class="main-head">
+        <div>
+          <div class="app-title" id="quick-app-title">Chrome</div>
+          <div class="app-sub" id="quick-app-sub">Chrome 场景</div>
+        </div>
+      </div>
+      <div class="dim-tabs" id="quick-dim-tabs"></div>
+      <div class="scene-chips" id="quick-scene-chips"></div>
+      <div id="quick-habits"></div>
+    </main>
+  </div>
+
+  <!-- 程序员模式 -->
+  <div class="layout pro" id="layout-pro">
+    <div class="pro-meta">
+      <div>
+        <div class="app-title" id="pro-app-title">Chrome</div>
+        <div class="app-sub">所有维度的 raw event,JSON 视图</div>
+      </div>
+      <div class="right cnt" id="pro-cnt"></div>
+    </div>
+    <div class="pro-table" id="pro-table"></div>
+  </div>
+
+  <!-- 试一下 overlay -->
+  <div class="demo-overlay" id="demo">
+    <button class="demo-close" onclick="closeDemo()">✕</button>
+    <div class="demo-stage">
+      <div class="demo-chrome">
+        <span class="dot" style="background:#ff5f57"></span>
+        <span class="dot" style="background:#febc2e"></span>
+        <span class="dot" style="background:#28c840"></span>
+        <span class="url" id="demo-url">chrome://...</span>
+      </div>
+      <div class="demo-body"><div class="demo-text" id="demo-text"></div></div>
+    </div>
+    <div class="demo-progress" id="demo-progress"></div>
+  </div>
+
+  <!-- 4 步 -->
+  <div class="edit-panel" id="edit">
+    <div class="edit-shell">
+      <div class="edit-head">
+        <button class="back" onclick="closeEdit()">←</button>
+        <div>
+          <div class="title" id="edit-title">加一个新习惯</div>
+          <div class="sub" id="edit-sub">4 步搞定</div>
+        </div>
+        <div class="steps-dots" id="edit-dots"></div>
+      </div>
+      <div class="edit-step is-active" data-step="1">
+        <h2>在哪个 app 用?</h2><p class="lead">先选 app 上下文。</p>
+        <div class="popover-grid" id="edit-apps" style="max-width:540px"></div>
+      </div>
+      <div class="edit-step" data-step="2">
+        <h2>按哪个键 / 手势触发?</h2><p class="lead">按一下就录。</p>
+        <div class="keyrec" style="max-width:480px;margin:0 auto;">
+          <div class="display" id="key-display" style="margin-bottom:12px"><span class="placeholder">还没按</span></div>
+          <button class="rec-btn" id="rec-btn" onclick="toggleRec()">● 开始录制</button>
+          <div class="hint" id="rec-hint">点按钮后,按键盘上任意组合</div>
+        </div>
+      </div>
+      <div class="edit-step" data-step="3">
+        <h2>触发后做什么?</h2><p class="lead">选一个动作类型。</p>
+        <div class="popover-list" id="edit-actions" style="max-width:540px"></div>
+      </div>
+      <div class="edit-step" data-step="4">
+        <h2>什么时候完成?</h2><p class="lead">录完直接发,还是要确认。</p>
+        <div class="popover-list" id="edit-triggers" style="max-width:540px"></div>
+      </div>
+      <div class="edit-foot">
+        <button class="ebtn secondary" id="prev-btn" onclick="prevStep()">← 上一步</button>
+        <button class="ebtn primary" id="next-btn" onclick="nextStep()">下一步 →</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ── 数据 ──
+    const APPS_META = {
+      Chrome: { emoji: '🌐', name: 'Chrome', color: '#3b82f6', scene: 'Chrome 场景' },
+      VSCode: { emoji: '🖥', name: 'VSCode', color: '#007acc', scene: 'VSCode 场景' },
+      Notion: { emoji: '📄', name: 'Notion', color: '#0a0a0a', scene: 'Notion 场景' },
+      Zoom:   { emoji: '📹', name: 'Zoom',   color: '#2d8cff', scene: 'Zoom 场景' },
+      '*':    { emoji: '🌍', name: '全局',   color: '#64748b', scene: '全局场景' }
+    };
+    const APPS_ORDER = ['Chrome', 'VSCode', 'Notion', 'Zoom', '*'];
+    const DIMS = [
+      { id: 'key',     em: '⌨', name: '按键',     color: '#1a1a1a' },
+      { id: 'voice',   em: '🎙', name: '语音',     color: '#8b5cf6' },
+      { id: 'cam',     em: '📷', name: '摄像头',   color: '#3b82f6' },
+      { id: 'softpad', em: '⌘', name: 'Soft Pad', color: '#10b981' }
+    ];
+    const SCENES = [
+      { id: 'begin',  name: '启动输入' },
+      { id: 'end',    name: '结束与取消' },
+      { id: 'general',name: '通用' }
+    ];
+    const DIM_EMOJI = { key: '⌨', voice: '🎙', cam: '📷', softpad: '⌘' };
+    const DIM_LABEL = { key: '按键', voice: '语音', cam: '摄像头', softpad: 'Soft Pad' };
+
+    const HABITS = [
+      { id: 1, app: 'Chrome', dim: 'key', scene: 'begin', title: 'Chrome 写代码', emoji: '👨‍💻',
+        story: '在 <span class="chip app-tag">🌐 Chrome</span> 按 <span class="chip key">RAlt</span>,<span class="chip action">🎙 说一句话</span>,<span class="chip trigger">⚡ 录完自动完成</span>。',
+        status: 'on', lastMod: '3 天前',
+        rawEvent: 'HID_R03_R0 · double', keyDesc: 'RAlt (500ms hold)',
+        key: 'RAlt', action: 'voice', finish: 'auto', holdMs: 500,
+        demo: [
+          { type: 'cursor', text: 'function handleUser() {\n  return user.name;\n}' },
+          { type: 'fly', text: '\n💬 你刚说的:\n"加一段注释,说这是处理用户名的函数"' }
+        ] },
+      { id: 2, app: 'Chrome', dim: 'key', scene: 'end', title: 'Chrome 结束录音', emoji: '✋',
+        story: '在 <span class="chip app-tag">🌐 Chrome</span> 按 <span class="chip key">RShift</span>,<span class="chip action">⏹ 结束录音</span>。',
+        status: 'on', lastMod: '3 天前',
+        rawEvent: 'HID_R03_R1 · single', keyDesc: 'RShift',
+        key: 'RShift', action: 'end_voice', finish: 'auto', holdMs: 0,
+        demo: [{ type: 'cursor', text: '🎙 录音中...' }, { type: 'fly', text: '\n⏹ 已结束,文字已发到光标处' }] },
+      { id: 3, app: 'Chrome', dim: 'voice', scene: 'begin', title: 'Chrome 语音唤醒', emoji: '🗣',
+        story: '在 <span class="chip app-tag">🌐 Chrome</span> 听到"嘿 小航",自动开始录音。',
+        status: 'on', lastMod: '5 天前',
+        rawEvent: 'wake_word · "嘿小航"', keyDesc: 'wake_word',
+        key: 'wake', action: 'voice', finish: 'auto', holdMs: 0,
+        demo: [{ type: 'cursor', text: '🔇 等待唤醒...' }, { type: 'fly', text: '\n🗣 "嘿小航"\n🎙 开始录音' }] },
+      { id: 4, app: 'VSCode', dim: 'key', scene: 'begin', title: 'VSCode 写代码', emoji: '💻',
+        story: '在 <span class="chip app-tag">🖥 VSCode</span> 选中代码后,按 <span class="chip key">Ctrl+Shift+R</span>,<span class="chip action">🤖 让 agent 处理</span>。',
+        status: 'on', lastMod: '1 周前',
+        rawEvent: 'HID_KBD · Ctrl+Shift+R', keyDesc: 'Ctrl+Shift+R',
+        key: 'Ctrl+Shift+R', action: 'agent', finish: 'auto', holdMs: 0,
+        demo: [{ type: 'cursor', text: 'const [a, b] = useState(0);' }, { type: 'fly', text: '\n\n🤖 agent 解释:\n这是一对 state 值和 setter。' }] },
+      { id: 5, app: 'VSCode', dim: 'softpad', scene: 'begin', title: 'VSCode 软键盘', emoji: '⌘',
+        story: '在 <span class="chip app-tag">🖥 VSCode</span> 弹出 softpad 软键盘,语音选字符。',
+        status: 'on', lastMod: '2 周前',
+        rawEvent: 'softpad.show · window=VSCode', keyDesc: 'softpad',
+        key: 'softpad', action: 'softpad', finish: 'manual', holdMs: 0,
+        demo: [] },
+      { id: 6, app: 'Notion', dim: 'key', scene: 'begin', title: 'Notion 写文档', emoji: '📝',
+        story: '在 <span class="chip app-tag">📄 Notion</span> 按 <span class="chip key">F6</span>,<span class="chip action">🤖 让 agent 处理</span>。',
+        status: 'on', lastMod: '昨天',
+        rawEvent: 'HID_KBD · F6', keyDesc: 'F6',
+        key: 'F6', action: 'agent', finish: 'auto', holdMs: 0,
+        demo: [] },
+      { id: 7, app: 'Zoom', dim: 'voice', scene: 'begin', title: 'Zoom 会议转写', emoji: '🎤',
+        story: '在 <span class="chip app-tag">📹 Zoom</span> 开会时,<span class="chip action">📝 实时转写</span>对方说话。',
+        status: 'on', lastMod: '4 天前',
+        rawEvent: 'audio.capture · source=meeting', keyDesc: 'auto',
+        key: 'auto', action: 'transcribe', finish: 'auto', holdMs: 0,
+        demo: [] },
+      { id: 8, app: '*', dim: 'cam', scene: 'general', title: '离开座位(全局)', emoji: '🚶',
+        story: '在摄像头前 <span class="chip key">👋 挥手</span> 就暂停所有录音。',
+        status: 'on', lastMod: '今天',
+        rawEvent: 'cam.detect · gesture=wave', keyDesc: 'wave',
+        key: 'wave', action: 'pause', finish: 'auto', holdMs: 0,
+        demo: [{ type: 'cursor', text: '🎙 正在录音...' }, { type: 'fly', text: '\n\n👋 检测到挥手\n⏸ 所有录音已暂停' }] }
+    ];
+    const ACTION_LABELS = {
+      voice:     { em: '🎙', nm: '说一句话' },
+      agent:     { em: '🤖', nm: '让 agent 处理' },
+      softpad:   { em: '⌘', nm: '弹软键盘' },
+      transcribe:{ em: '📝', nm: '实时转写' },
+      pause:     { em: '⏸', nm: '暂停/恢复' },
+      end_voice: { em: '⏹', nm: '结束录音' }
+    };
+    const TRIGGER_LABELS = {
+      auto:   { em: '⚡', nm: '录完自动完成' },
+      manual: { em: '👆', nm: '弹确认再完成' }
+    };
+
+    // ── 状态 ──
+    const state = { tab: 'novice', app: 'Chrome', dim: 'key', scene: 'begin' };
+    let nextId = HABITS.length + 1;
+    let editStep = 1, pickedApp = null, pickedKey = null, pickedAction = null, pickedTrigger = null, isRecording = false;
+    let popoverEl = null, popoverBgEl = null, popoverOpenFor = null;
+    let editEditMode = false, editEditId = null;
+
+    // ── Tab 切换 ──
+    document.querySelectorAll('.mode-tab').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('.mode-tab').forEach(b => b.classList.remove('is-active'));
+        document.querySelectorAll('.layout').forEach(l => l.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        state.tab = btn.dataset.tab;
+        document.getElementById('layout-' + state.tab).classList.add('is-active');
+        renderAll();
+      };
+    });
+
+    // ── 渲染入口 ──
+    function renderAll() {
+      if (state.tab === 'novice') renderNovice();
+      else if (state.tab === 'quick') renderQuick();
+      else renderPro();
+    }
+
+    // ── 共享:app 列表 ──
+    function renderAppList(targetId) {
+      const wrap = document.getElementById(targetId);
+      const counts = {};
+      HABITS.forEach(h => { counts[h.app] = (counts[h.app] || 0) + 1; });
+      wrap.innerHTML = `
+        <div class="search">🔍 搜索应用或场景...</div>
+        ${APPS_ORDER.map(app => {
+          const c = counts[app] || 0;
+          const m = APPS_META[app];
+          const on = HABITS.some(h => h.app === app && h.status === 'on');
+          return `<div class="item ${app === state.app ? 'is-active' : ''}" onclick="selectApp('${app}')">
+            <div class="ico" style="background:${m.color}">${m.emoji}</div>
+            <div class="meta">
+              <div class="name">${m.name}</div>
+              <div class="sub">${m.scene} · ${c}</div>
+            </div>
+            <span class="status ${on ? 'is-on' : 'is-off'}">${on ? '已启用' : '已关闭'}</span>
+          </div>`;
+        }).join('')}
+        <div class="add" onclick="openEdit()">+ 新建应用场景</div>
+      `;
+    }
+    function selectApp(app) {
+      state.app = app;
+      renderAll();
+    }
+
+    // ── 共享:dim tabs ──
+    function renderDimTabs(targetId) {
+      const wrap = document.getElementById(targetId);
+      wrap.innerHTML = DIMS.map(d => {
+        const cnt = HABITS.filter(h => h.app === state.app && h.dim === d.id).length;
+        return `<button class="dim-tab ${d.id === state.dim ? 'is-active' : ''}" onclick="selectDim('${d.id}')">
+          <span>${d.em}</span> ${d.name} <span class="cnt">${cnt}</span>
+        </button>`;
+      }).join('');
+    }
+    function selectDim(dim) { state.dim = dim; renderAll(); }
+
+    // ── 共享:scene chips ──
+    function renderSceneChips(targetId) {
+      const wrap = document.getElementById(targetId);
+      wrap.innerHTML = `<span class="lbl">使用场景</span>` + SCENES.map(s => {
+        const cnt = HABITS.filter(h => h.app === state.app && h.dim === state.dim && h.scene === s.id).length;
+        return `<button class="scene-chip ${s.id === state.scene ? 'is-active' : ''}" onclick="selectScene('${s.id}')">
+          ${s.name} <span class="cnt">${cnt}</span>
+        </button>`;
+      }).join('');
+    }
+    function selectScene(s) { state.scene = s; renderAll(); }
+
+    // ── 过滤 ──
+    function filtered() {
+      return HABITS.filter(h => h.app === state.app && h.dim === state.dim && h.scene === state.scene);
+    }
+
+    // ════════ 小白模式 ════════
+    function renderNovice() {
+      document.getElementById('novice-app-title').textContent = APPS_META[state.app].name;
+      document.getElementById('novice-app-sub').textContent = APPS_META[state.app].scene;
+      renderAppList('app-list-novice');
+      renderDimTabs('novice-dim-tabs');
+      renderSceneChips('novice-scene-chips');
+      const list = filtered();
+      const wrap = document.getElementById('novice-habits');
+      if (list.length === 0) {
+        wrap.innerHTML = `<div class="empty">这一类还没有习惯,点右下角 + 加一个</div>`;
+        return;
+      }
+      wrap.innerHTML = list.map((h, i) => `
+        <div class="h-card ${h.status === 'paused' ? 'is-paused' : ''}" id="hc-${h.id}" style="animation-delay:${i * 60}ms">
+          <div class="h-illus dim-${h.dim}">${h.emoji}</div>
+          <div class="h-info">
+            <div class="title-row">
+              <div class="title">${h.title}</div>
+              <div class="status-dot" onclick="toggleStatus(${h.id})" title="点一下切换"></div>
+              <span class="when">${h.status === 'paused' ? '已暂停' : '运行中'} · 上次改 ${h.lastMod}</span>
+              <button class="edit-all" onclick="openEditFor(${h.id})" title="完整改">⋯</button>
+            </div>
+            <div class="story">${h.story}</div>
+          </div>
+          <div class="h-right">
+            <button class="hbtn primary" onclick="openDemo(${h.id})">▶ 试一下</button>
+            <button class="hbtn ghost" onclick="deleteHabit(${h.id})">🗑 删掉</button>
+          </div>
+        </div>
+      `).join('') + `<div class="add-inline" onclick="openEdit()">＋ 在这里加一个</div>`;
+    }
+
+    // ════════ 快速设置 ════════
+    function renderQuick() {
+      document.getElementById('quick-app-title').textContent = APPS_META[state.app].name;
+      document.getElementById('quick-app-sub').textContent = APPS_META[state.app].scene;
+      renderAppList('app-list-quick');
+      renderDimTabs('quick-dim-tabs');
+      renderSceneChips('quick-scene-chips');
+      const list = filtered();
+      const wrap = document.getElementById('quick-habits');
+      if (list.length === 0) {
+        wrap.innerHTML = `<div class="empty">这一类还没有习惯</div>`;
+        return;
+      }
+      wrap.innerHTML = list.map((h, i) => {
+        const al = ACTION_LABELS[h.action] || { em: '⚡', nm: h.action };
+        const tl = TRIGGER_LABELS[h.finish] || { em: '⚡', nm: h.finish };
+        return `<div class="quick-habit" style="animation-delay:${i * 60}ms">
+          <div class="quick-head">
+            <span class="scene-tag">${SCENES.find(s => s.id === h.scene)?.name || h.scene}</span>
+            <span class="title">${h.title}</span>
+            <span class="when">${h.status === 'paused' ? '⏸ 已暂停' : '● 运行中'} · 上次改 ${h.lastMod}</span>
+          </div>
+          <div class="quick-cols">
+            <div class="quick-col">
+              <div class="num">1</div>
+              <div class="lbl">什么时候触发</div>
+              <div class="val code">${h.rawEvent}</div>
+            </div>
+            <div class="quick-col">
+              <div class="num">2</div>
+              <div class="lbl">会发生什么</div>
+              <div class="val">${al.em} ${al.nm} → ${h.keyDesc || h.key}</div>
+            </div>
+            <div class="quick-col">
+              <div class="num">3</div>
+              <div class="lbl">当前是否启用</div>
+              <div class="val" style="color:${h.status === 'paused' ? 'var(--amber)' : 'var(--green)'}">${h.status === 'paused' ? '⏸ 已暂停' : '● 已启用'}</div>
+            </div>
+          </div>
+          <div class="quick-foot">
+            <span class="extra">包含 2 项精细设置 →</span>
+            <span style="color:var(--sub);font-size:12px;">${tl.em} ${tl.nm}</span>
+            <div class="right">
+              <button class="hbtn ghost" onclick="toggleStatus(${h.id})">${h.status === 'paused' ? '启用' : '暂停'}</button>
+              <button class="hbtn primary" onclick="openEditFor(${h.id})">修改</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ════════ 程序员模式 ════════
+    function renderPro() {
+      const appHabits = HABITS.filter(h => h.app === state.app);
+      document.getElementById('pro-app-title').textContent = APPS_META[state.app].name;
+      document.getElementById('pro-cnt').textContent = appHabits.length + ' 个 raw event';
+      const json = JSON.stringify(appHabits.map(h => ({
+        id: h.id, app: h.app, dim: h.dim, scene: h.scene, status: h.status,
+        raw: h.rawEvent, key: h.key, action: h.action, finish: h.finish,
+        holdMs: h.holdMs || 0, lastMod: h.lastMod
+      })), null, 2);
+      const colored = json
+        .replace(/"([^"]+)":/g, '<span class="k">"$1"</span>:')
+        .replace(/: "([^"]+)"/g, ': <span class="s">"$1"</span>')
+        .replace(/: (true|false)/g, ': <span class="b">$1</span>')
+        .replace(/: (\d+)/g, ': <span class="n">$1</span>');
+      document.getElementById('pro-table').innerHTML = colored;
+    }
+
+    // ── inline 编辑(沿用 v3) ──
+    function toggleStatus(id) {
+      const h = HABITS.find(x => x.id === id);
+      if (!h) return;
+      h.status = h.status === 'paused' ? 'on' : 'paused';
+      renderAll();
+      showToast(h.status === 'paused' ? '⏸ 已暂停' : '▶ 已启用');
+    }
+    function deleteHabit(id) {
+      const el = document.getElementById('hc-' + id);
+      if (el) el.classList.add('is-deleting');
+      setTimeout(() => {
+        const i = HABITS.findIndex(x => x.id === id);
+        if (i >= 0) HABITS.splice(i, 1);
+        renderAll();
+        showToast('🗑 已删掉');
+      }, 280);
+    }
+
+    // ── Popover 系统(简化版) ──
+    function closePopover() {
+      if (popoverEl) popoverEl.remove(), popoverEl = null;
+      if (popoverBgEl) popoverBgEl.remove(), popoverBgEl = null;
+      if (isRecording) { isRecording = false; document.removeEventListener('keydown', onRecKey); }
+      popoverOpenFor = null;
+    }
+    function openPopover(html, anchor, w) {
+      closePopover();
+      const r = anchor.getBoundingClientRect();
+      popoverBgEl = document.createElement('div');
+      popoverBgEl.className = 'popover-bg';
+      popoverBgEl.onclick = closePopover;
+      document.body.appendChild(popoverBgEl);
+      popoverEl = document.createElement('div');
+      popoverEl.className = 'popover';
+      popoverEl.style.minWidth = (w || 280) + 'px';
+      popoverEl.innerHTML = html;
+      popoverEl.onclick = e => e.stopPropagation();
+      document.body.appendChild(popoverEl);
+      const pr = popoverEl.getBoundingClientRect();
+      const pw = pr.width || (w || 280), ph = pr.height || 200;
+      let top = r.bottom + 8, left = r.left;
+      if (top + ph > window.innerHeight - 10) top = r.top - ph - 8;
+      if (left + pw > window.innerWidth - 10) left = window.innerWidth - pw - 10;
+      if (left < 10) left = 10;
+      popoverEl.style.top = top + 'px';
+      popoverEl.style.left = left + 'px';
+    }
+
+    // popover 委托(因为小白卡片的 chip 是动态渲染)
+    document.addEventListener('click', e => {
+      const c = e.target.closest('.chip');
+      if (!c) return;
+      const card = c.closest('.h-card');
+      if (!card) return;
+      const id = parseInt(card.id.replace('hc-', ''));
+      if (c.classList.contains('app-tag')) openAppPop(e, c, id);
+      else if (c.classList.contains('key')) openKeyPop(e, c, id);
+      else if (c.classList.contains('action')) openActionPop(e, c, id);
+      else if (c.classList.contains('trigger')) openTriggerPop(e, c, id);
+    });
+
+    function openAppPop(e, anchor, id) {
+      const h = HABITS.find(x => x.id === id);
+      const html = `<h4>改 app 上下文</h4><div class="popover-grid">${APPS_ORDER.map(a =>
+        `<div class="opt ${a === h.app ? 'is-picked' : ''}" onclick="setApp(${id},'${a}')">
+          <span class="em">${APPS_META[a].emoji}</span><span class="nm">${APPS_META[a].name}</span>
+        </div>`).join('')}</div>`;
+      openPopover(html, anchor, 320);
+    }
+    function setApp(id, app) {
+      HABITS.find(x => x.id === id).app = app;
+      closePopover(); renderAll(); showToast('✓ app 已改');
+    }
+    function openKeyPop(e, anchor, id) {
+      const h = HABITS.find(x => x.id === id);
+      const isWave = h.key === 'wave';
+      const html = `<h4>改按键 / 手势</h4>
+        <div class="keyrec">
+          <div class="display">${isWave ? '<span class="chip">👋 挥手</span>' : h.key.split('+').map(k => `<span class="chip">${k}</span>`).join('')}</div>
+          <button class="rec-btn" onclick="startRec(${id})">● 重新录</button>
+          <div class="hint">点按钮后按键盘,或选下方手势</div>
+          <div class="actions"><button onclick="setKey(${id},'wave')">👋 挥手</button><button onclick="setKey(${id},'')">🗑 清除</button></div>
+        </div>`;
+      openPopover(html, anchor, 380);
+    }
+    function startRec(id) { popoverOpenFor = id; isRecording = true; document.addEventListener('keydown', onRecKey); }
+    function setKey(id, key) { HABITS.find(x => x.id === id).key = key; closePopover(); renderAll(); showToast('✓ 按键已改'); }
+    function onRecKey(e) {
+      if (e.key === 'Escape') { isRecording = false; document.removeEventListener('keydown', onRecKey); return; }
+      e.preventDefault();
+      const parts = []; if (e.ctrlKey) parts.push('Ctrl'); if (e.shiftKey) parts.push('Shift'); if (e.altKey) parts.push('Alt');
+      let k = e.key; if (k === ' ') k = 'Space'; else if (k.length === 1) k = k.toUpperCase();
+      if (!['Control','Shift','Alt','Meta'].includes(e.key)) { parts.push(k); setKey(popoverOpenFor, parts.join('+')); }
+    }
+    function openActionPop(e, anchor, id) {
+      const h = HABITS.find(x => x.id === id);
+      const html = `<h4>改动作</h4><div class="popover-grid" style="grid-template-columns:repeat(2,1fr);">${Object.entries(ACTION_LABELS).map(([k, v]) =>
+        `<div class="opt ${k === h.action ? 'is-picked' : ''}" onclick="setAction(${id},'${k}')">
+          <span class="em">${v.em}</span><span class="nm">${v.nm}</span>
+        </div>`).join('')}</div>`;
+      openPopover(html, anchor, 360);
+    }
+    function setAction(id, a) { HABITS.find(x => x.id === id).action = a; closePopover(); renderAll(); showToast('✓ 动作已改'); }
+    function openTriggerPop(e, anchor, id) {
+      const h = HABITS.find(x => x.id === id);
+      const html = `<h4>改触发方式</h4><div class="popover-list">${Object.entries(TRIGGER_LABELS).map(([k, v]) =>
+        `<div class="opt ${k === h.finish ? 'is-picked' : ''}" onclick="setTrigger(${id},'${k}')">
+          <span class="em">${v.em}</span><div><div class="nm">${v.nm}</div><div class="ds">${v.em === '⚡' ? '录完直接发' : '弹确认再发'}</div></div>
+          <div class="radio"></div>
+        </div>`).join('')}</div>`;
+      openPopover(html, anchor, 360);
+    }
+    function setTrigger(id, t) { HABITS.find(x => x.id === id).finish = t; closePopover(); renderAll(); showToast('✓ 触发已改'); }
+
+    // ── 试一下 ──
+    function openDemo(id) {
+      const h = HABITS.find(x => x.id === id);
+      if (!h || !h.demo || h.demo.length === 0) { showToast('这个习惯没做演示'); return; }
+      document.getElementById('demo').classList.add('is-open');
+      document.getElementById('demo-url').textContent = h.app === '*' ? 'voice-pilot 桌面端' : h.app + ' — active';
+      const prog = document.getElementById('demo-progress');
+      prog.innerHTML = h.demo.map(() => '<div class="step"></div>').join('');
+      const textEl = document.getElementById('demo-text');
+      textEl.innerHTML = '';
+      let i = 0;
+      function play() {
+        if (i >= h.demo.length) { setTimeout(closeDemo, 1500); return; }
+        prog.querySelectorAll('.step').forEach((d, j) => { d.classList.remove('is-done', 'is-active'); if (j < i) d.classList.add('is-done'); if (j === i) d.classList.add('is-active'); });
+        const s = h.demo[i];
+        if (s.type === 'cursor') {
+          const c = document.createElement('span'); c.className = 'cursor'; textEl.appendChild(c);
+          let k = 0;
+          function tc() {
+            if (k >= s.text.length) { i++; setTimeout(play, 500); return; }
+            const ch = s.text[k];
+            if (ch === '\n') c.before(document.createElement('br')); else c.before(document.createTextNode(ch));
+            k++; setTimeout(tc, 35);
+          }
+          tc();
+        } else if (s.type === 'fly') {
+          const sp = document.createElement('span'); sp.className = 'fly-in'; sp.style.whiteSpace = 'pre-wrap'; sp.textContent = s.text; textEl.appendChild(sp);
+          i++; setTimeout(play, 1200);
+        }
+      }
+      play();
+    }
+    function closeDemo() {
+      document.getElementById('demo').classList.remove('is-open');
+      document.getElementById('demo-text').innerHTML = '';
+    }
+
+    // ── 4 步 ──
+    function openEdit() {
+      editEditMode = false; editEditId = null;
+      editStep = 1; pickedApp = state.app; pickedKey = null; pickedAction = null; pickedTrigger = null;
+      document.getElementById('edit-title').textContent = '加一个新习惯';
+      document.getElementById('edit-sub').textContent = '4 步搞定';
+      renderEditSteps();
+      document.getElementById('edit').classList.add('is-open');
+    }
+    function openEditFor(id) {
+      const h = HABITS.find(x => x.id === id);
+      editEditMode = true; editEditId = id;
+      editStep = 1; pickedApp = h.app; pickedKey = h.key; pickedAction = h.action; pickedTrigger = h.finish;
+      document.getElementById('edit-title').textContent = '改「' + h.title + '」';
+      document.getElementById('edit-sub').textContent = '原来的设置,想动哪个就动哪个';
+      renderEditSteps();
+      document.getElementById('edit').classList.add('is-open');
+    }
+    function closeEdit() {
+      document.getElementById('edit').classList.remove('is-open');
+      if (isRecording) { isRecording = false; document.removeEventListener('keydown', onEditRecKey); }
+    }
+    function renderEditSteps() {
+      document.getElementById('edit-apps').innerHTML = APPS_ORDER.map(a => `<div class="opt ${a === pickedApp ? 'is-picked' : ''}" onclick="pickApp('${a}')"><span class="em">${APPS_META[a].emoji}</span><span class="nm">${APPS_META[a].name}</span></div>`).join('');
+      const kd = document.getElementById('key-display');
+      kd.innerHTML = pickedKey ? (pickedKey === 'wave' ? '<span class="chip">👋 挥手</span>' : pickedKey.split('+').map(k => '<span class="chip">' + k + '</span>').join('')) : '<span class="placeholder">还没按</span>';
+      document.getElementById('edit-actions').innerHTML = Object.entries(ACTION_LABELS).map(([k, v]) => `<div class="opt ${k === pickedAction ? 'is-picked' : ''}" onclick="pickAction('${k}')"><span class="em">${v.em}</span><div><div class="nm">${v.nm}</div></div><div class="radio"></div></div>`).join('');
+      document.getElementById('edit-triggers').innerHTML = Object.entries(TRIGGER_LABELS).map(([k, v]) => `<div class="opt ${k === pickedTrigger ? 'is-picked' : ''}" onclick="pickTrigger('${k}')"><span class="em">${v.em}</span><div><div class="nm">${v.nm}</div></div><div class="radio"></div></div>`).join('');
+      const dots = document.getElementById('edit-dots');
+      dots.innerHTML = '';
+      for (let i = 1; i <= 4; i++) {
+        const d = document.createElement('div'); d.className = 'dot';
+        if (i < editStep) d.classList.add('is-done');
+        if (i === editStep) d.classList.add('is-active');
+        dots.appendChild(d);
+      }
+      document.querySelectorAll('.edit-step').forEach(el => { el.classList.remove('is-active'); if (parseInt(el.dataset.step) === editStep) el.classList.add('is-active'); });
+      document.getElementById('next-btn').textContent = editStep === 4 ? '✓ 完成' : '下一步 →';
+      document.getElementById('prev-btn').style.visibility = editStep === 1 ? 'hidden' : 'visible';
+    }
+    function pickApp(a) { pickedApp = a; renderEditSteps(); }
+    function pickAction(a) { pickedAction = a; renderEditSteps(); }
+    function pickTrigger(t) { pickedTrigger = t; renderEditSteps(); }
+    function nextStep() {
+      if (editStep === 1 && !pickedApp) { showToast('先选 app'); return; }
+      if (editStep === 2 && !pickedKey) { showToast('先录按键'); return; }
+      if (editStep === 3 && !pickedAction) { showToast('先选动作'); return; }
+      if (editStep < 4) { editStep++; renderEditSteps(); }
+      else saveEdit();
+    }
+    function prevStep() { if (editStep > 1) { editStep--; renderEditSteps(); } }
+    function saveEdit() {
+      if (editEditMode && editEditId) {
+        const h = HABITS.find(x => x.id === editEditId);
+        h.app = pickedApp; h.key = pickedKey; h.action = pickedAction; h.finish = pickedTrigger;
+        h.lastMod = '刚刚';
+        showToast('✓ 已保存');
+      } else {
+        const newH = {
+          id: nextId++,
+          app: pickedApp, dim: 'key', scene: 'begin',
+          title: APPS_META[pickedApp].name + ' 新习惯',
+          emoji: APPS_META[pickedApp].emoji,
+          story: '在 ' + APPS_META[pickedApp].name + ' 按 ' + pickedKey + ' 后' + (ACTION_LABELS[pickedAction]?.nm || pickedAction),
+          status: 'on', lastMod: '刚刚',
+          key: pickedKey, action: pickedAction, finish: pickedTrigger, holdMs: 0,
+          rawEvent: 'HID_KBD · ' + pickedKey, keyDesc: pickedKey,
+          demo: []
+        };
+        HABITS.push(newH);
+        showToast('✓ 新习惯已加');
+      }
+      closeEdit();
+      renderAll();
+    }
+    function toggleRec() {
+      isRecording = !isRecording;
+      const btn = document.getElementById('rec-btn');
+      if (isRecording) { btn.classList.add('is-recording'); btn.textContent = '● 录制中... (Esc)'; document.addEventListener('keydown', onEditRecKey); }
+      else { btn.classList.remove('is-recording'); btn.textContent = '● 开始录制'; document.removeEventListener('keydown', onEditRecKey); }
+    }
+    function onEditRecKey(e) {
+      if (e.key === 'Escape') { toggleRec(); return; }
+      e.preventDefault();
+      const parts = []; if (e.ctrlKey) parts.push('Ctrl'); if (e.shiftKey) parts.push('Shift'); if (e.altKey) parts.push('Alt');
+      let k = e.key; if (k === ' ') k = 'Space'; else if (k.length === 1) k = k.toUpperCase();
+      if (!['Control','Shift','Alt','Meta'].includes(e.key)) { parts.push(k); pickedKey = parts.join('+'); renderEditSteps(); toggleRec(); }
+    }
+
+    // ── toast ──
+    let toastTimer = null;
+    function showToast(t) {
+      const el = document.getElementById('toast');
+      el.textContent = t; el.classList.add('is-show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('is-show'), 1800);
+    }
+
+    // ── 初始化 ──
+    renderAll();
+  </script>
+</body>
+</html>

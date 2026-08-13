@@ -6,9 +6,15 @@ use std::sync::{Mutex, OnceLock};
 
 use serde::Serialize;
 
-use crate::agent::bindings_build::build_codex_micro_13_bindings;
-use crate::agent::templates::{CODEX_MICRO_13_TEMPLATE_ID, CODEX_PROVIDER_ID};
-use crate::app_chat_workflow::CODEX_APP_TARGET_ID;
+use crate::agent::bindings_build::{build_scenario_bindings, build_codex_micro_13_bindings};
+use crate::agent::templates::{
+    CODEX_MICRO_13_TEMPLATE_ID, CODEX_PROVIDER_ID, CURSOR_PROVIDER_ID,
+    QODER_PROVIDER_ID, TRAE_PROVIDER_ID, WORKBUDDY_PROVIDER_ID,
+};
+use crate::app_chat_workflow::{
+    CODEX_APP_TARGET_ID, CURSOR_APP_TARGET_ID, QODER_APP_TARGET_ID, TRAE_APP_TARGET_ID,
+    WORKBUDDY_APP_TARGET_ID,
+};
 use crate::config::{
     agent_key_binding_for_slot, CodexMicroPadConfig, CodexMicroPadKeyRoute, MappingEntry, VoiceConfig,
 };
@@ -476,8 +482,16 @@ fn is_codex_scenario(m: &MappingEntry) -> bool {
         || m.agent_template_id.trim() == CODEX_MICRO_13_TEMPLATE_ID
 }
 
+fn is_vscode_lineage_scenario(m: &MappingEntry) -> bool {
+    crate::agent::bindings_build::is_vscode_lineage_app(m.app_target_id.trim())
+}
+
+fn is_soft_pad_scenario(m: &MappingEntry) -> bool {
+    is_codex_scenario(m) || is_vscode_lineage_scenario(m)
+}
+
 fn needs_auto_ready(m: &MappingEntry) -> bool {
-    if !m.enabled || !is_codex_scenario(m) {
+    if !m.enabled || !is_soft_pad_scenario(m) {
         return false;
     }
     if m.agent_bindings.is_empty() {
@@ -580,7 +594,8 @@ fn heal_slot_key_bindings(m: &mut MappingEntry, slot_id: &str, locale: &str) -> 
         return false;
     }
     let mut changed = false;
-    let seed_key = build_codex_micro_13_bindings(locale).into_iter().find(|s| {
+    let seeds = build_scenario_bindings(locale, m.app_target_id.trim());
+    let seed_key = seeds.into_iter().find(|s| {
         s.slot_id == slot_id && s.trigger_type.eq_ignore_ascii_case("key")
     });
     if let Some(seed) = seed_key {
@@ -604,7 +619,7 @@ fn heal_slot_key_bindings(m: &mut MappingEntry, slot_id: &str, locale: &str) -> 
         }
     }
     if agent_key_binding_for_slot(m, slot_id).is_none() {
-        for seed in build_codex_micro_13_bindings(locale) {
+        for seed in build_scenario_bindings(locale, m.app_target_id.trim()) {
             if agent_key_binding_for_slot(m, &seed.slot_id).is_none() {
                 m.agent_bindings.push(seed);
                 changed = true;
@@ -624,7 +639,7 @@ pub fn try_heal_micro_route(state: &crate::AppState, micro_key_id: &str, locale:
     {
         let mut cfg = state.cfg.lock();
         for m in cfg.mappings.iter_mut() {
-            if !m.enabled || !is_codex_scenario(m) {
+            if !m.enabled || !is_soft_pad_scenario(m) {
                 continue;
             }
             if seed_codex_scenario_meta(m) {
@@ -826,6 +841,56 @@ fn seed_codex_scenario_meta(m: &mut MappingEntry) -> bool {
     changed
 }
 
+fn seed_cursor_scenario_meta(m: &mut MappingEntry) -> bool {
+    let mut changed = false;
+    if m.app_target_id.trim().is_empty() {
+        m.app_target_id = CURSOR_APP_TARGET_ID.into();
+        changed = true;
+    }
+    if m.agent_template_id.trim().is_empty() {
+        m.agent_template_id = CODEX_MICRO_13_TEMPLATE_ID.into();
+        changed = true;
+    }
+    if m.agent_provider_id.trim().is_empty() {
+        m.agent_provider_id = CURSOR_PROVIDER_ID.into();
+        changed = true;
+    }
+    changed
+}
+
+fn seed_scenario_meta(m: &mut MappingEntry) -> bool {
+    let app = m.app_target_id.trim();
+    if app == CURSOR_APP_TARGET_ID {
+        seed_cursor_scenario_meta(m)
+    } else if app == WORKBUDDY_APP_TARGET_ID
+        || app == TRAE_APP_TARGET_ID
+        || app == QODER_APP_TARGET_ID
+    {
+        seed_shell_scenario_meta(m)
+    } else {
+        seed_codex_scenario_meta(m)
+    }
+}
+
+fn seed_shell_scenario_meta(m: &mut MappingEntry) -> bool {
+    let mut changed = false;
+    if m.agent_template_id.trim().is_empty() {
+        m.agent_template_id = CODEX_MICRO_13_TEMPLATE_ID.into();
+        changed = true;
+    }
+    if m.agent_provider_id.trim().is_empty() {
+        m.agent_provider_id = match m.app_target_id.trim() {
+            WORKBUDDY_APP_TARGET_ID => WORKBUDDY_PROVIDER_ID,
+            TRAE_APP_TARGET_ID => TRAE_PROVIDER_ID,
+            QODER_APP_TARGET_ID => QODER_PROVIDER_ID,
+            _ => WORKBUDDY_PROVIDER_ID,
+        }
+        .into();
+        changed = true;
+    }
+    changed
+}
+
 /// Out-of-box: seed Codex Micro pad + bindings when a Codex scenario exists but was never wired.
 pub fn ensure_codex_pad_ready(cfg: &mut VoiceConfig, locale: &str) -> CodexPadEnsureResult {
     let mut changed = false;
@@ -837,11 +902,11 @@ pub fn ensure_codex_pad_ready(cfg: &mut VoiceConfig, locale: &str) -> CodexPadEn
         if !needs_auto_ready(m) {
             continue;
         }
-        if seed_codex_scenario_meta(m) {
+        if seed_scenario_meta(m) {
             changed = true;
         }
         if m.agent_bindings.is_empty() {
-            m.agent_bindings = build_codex_micro_13_bindings(locale);
+            m.agent_bindings = build_scenario_bindings(locale, m.app_target_id.trim());
             touched_bindings = Some(m.agent_bindings.clone());
             changed = true;
         } else if m
@@ -849,7 +914,7 @@ pub fn ensure_codex_pad_ready(cfg: &mut VoiceConfig, locale: &str) -> CodexPadEn
             .as_ref()
             .is_some_and(|pad| pad_routes_need_heal(m, pad))
         {
-            let seeds = build_codex_micro_13_bindings(locale);
+            let seeds = build_scenario_bindings(locale, m.app_target_id.trim());
             for seed in seeds {
                 if agent_key_binding_for_slot(m, &seed.slot_id).is_none() {
                     m.agent_bindings.push(seed);
@@ -1043,6 +1108,7 @@ pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
         workbuddy_status_lights_enabled: false,
         trae_status_lights_enabled: false,
         qoder_status_lights_enabled: false,
+        minimax_status_lights_enabled: false,
         ambient_mode: "status".into(),
         ambient_solid_rgb: String::new(),
         ambient_opacity: 100,

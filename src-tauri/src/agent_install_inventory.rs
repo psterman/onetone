@@ -7,10 +7,40 @@ use std::path::{Path, PathBuf};
 use crate::app_chat_workflow::{app_launch_capability, AppLaunchCapability};
 use crate::app_identity::{
     is_claude_cli_exe, list_running_apps, CODEX_APP_TARGET_ID, CURSOR_APP_TARGET_ID,
-    QODER_APP_TARGET_ID, TRAE_APP_TARGET_ID, WORKBUDDY_APP_TARGET_ID,
+    MINIMAX_APP_TARGET_ID, QODER_APP_TARGET_ID, TRAE_APP_TARGET_ID, WORKBUDDY_APP_TARGET_ID,
 };
 use crate::config::VoiceConfig;
 use crate::soft_pad_runtime::AgentKind;
+
+/// Same process-name whitelist as `app_identity` MiniMax matcher — inventory-side only.
+const MINIMAX_PROCESS_NAMES: &[&str] = &[
+    "MiniMax Code.exe",
+    "MiniMax Code Desktop.exe",
+    "MiniMax-Code.exe",
+];
+
+fn exe_name_matches_whitelist(file_name: &str, expected: &str) -> bool {
+    if file_name.eq_ignore_ascii_case(expected) {
+        return true;
+    }
+    let f = file_name.trim();
+    let e = expected.trim();
+    let f_stem = f
+        .strip_suffix(".exe")
+        .or_else(|| f.strip_suffix(".EXE"))
+        .unwrap_or(f);
+    let e_stem = e
+        .strip_suffix(".exe")
+        .or_else(|| e.strip_suffix(".EXE"))
+        .unwrap_or(e);
+    f_stem.eq_ignore_ascii_case(e_stem)
+}
+
+fn is_minimax_process_exe(exe_name: &str) -> bool {
+    MINIMAX_PROCESS_NAMES
+        .iter()
+        .any(|n| exe_name_matches_whitelist(exe_name, n))
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -46,16 +76,23 @@ const KINDS: &[AgentKind] = &[
     AgentKind::Codex,
     AgentKind::Claude,
     AgentKind::Cursor,
+    AgentKind::MiniMax,
     AgentKind::WorkBuddy,
     AgentKind::Trae,
     AgentKind::Qoder,
 ];
 
 pub fn collect_inventory(cfg: &VoiceConfig) -> AgentInstallInventory {
-    let running_ids = running_preset_ids();
+    // One process/window scan only — a second EnumWindows on the IPC thread 假死's the UI.
+    let running = list_running_apps();
+    let running_ids: Vec<String> = running
+        .iter()
+        .filter_map(|a| a.matched_preset_app_id.clone())
+        .collect();
+    let minimax_exe_running = running.iter().any(|a| is_minimax_process_exe(&a.exe_name));
     let mut agents = Vec::with_capacity(KINDS.len());
     for kind in KINDS {
-        agents.push(probe_kind(*kind, &running_ids, cfg));
+        agents.push(probe_kind(*kind, &running_ids, minimax_exe_running, cfg));
     }
     let high_confidence_count = agents
         .iter()
@@ -67,17 +104,20 @@ pub fn collect_inventory(cfg: &VoiceConfig) -> AgentInstallInventory {
     }
 }
 
-fn running_preset_ids() -> Vec<String> {
-    list_running_apps()
-        .into_iter()
-        .filter_map(|a| a.matched_preset_app_id)
-        .collect()
-}
-
-fn probe_kind(kind: AgentKind, running_ids: &[String], cfg: &VoiceConfig) -> AgentInstallRow {
+fn probe_kind(
+    kind: AgentKind,
+    running_ids: &[String],
+    minimax_exe_running: bool,
+    cfg: &VoiceConfig,
+) -> AgentInstallRow {
     let app_id = kind.app_target_id().to_string();
     let mut evidence = Vec::new();
-    let running = running_ids.iter().any(|id| id == &app_id);
+    // Preset match via app_identity; MiniMax also accepts process-name whitelist hits
+    // when path markers miss (do not invent non-whitelist processes).
+    let mut running = running_ids.iter().any(|id| id == &app_id);
+    if !running && kind == AgentKind::MiniMax {
+        running = minimax_exe_running;
+    }
     if running {
         evidence.push(AgentInstallEvidence {
             kind: "running".into(),
@@ -89,6 +129,7 @@ fn probe_kind(kind: AgentKind, running_ids: &[String], cfg: &VoiceConfig) -> Age
         AgentKind::Cursor => probe_cursor(&mut evidence),
         AgentKind::Codex => probe_codex(&mut evidence),
         AgentKind::Claude => probe_claude(&mut evidence),
+        AgentKind::MiniMax => probe_minimax(&mut evidence),
         AgentKind::WorkBuddy => probe_shell(
             &mut evidence,
             WORKBUDDY_APP_TARGET_ID,
@@ -137,6 +178,37 @@ fn probe_cursor(evidence: &mut Vec<AgentInstallEvidence>) {
     }
     if matches!(
         app_launch_capability(CURSOR_APP_TARGET_ID),
+        AppLaunchCapability::Launchable
+    ) && !evidence.iter().any(|e| e.kind == "desktop")
+    {
+        evidence.push(AgentInstallEvidence {
+            kind: "desktop".into(),
+            detail: "launchable".into(),
+        });
+    }
+}
+
+fn probe_minimax(evidence: &mut Vec<AgentInstallEvidence>) {
+    if let Ok(local) = std::env::var("LOCALAPPDATA") {
+        let base = PathBuf::from(&local).join("Programs");
+        for rel in [
+            "MiniMax Code\\MiniMax Code.exe",
+            "MiniMax\\MiniMax Code.exe",
+            "MiniMax\\MiniMax Code Desktop.exe",
+            "MiniMax\\MiniMax-Code.exe",
+        ] {
+            let exe = base.join(rel);
+            if exe.is_file() {
+                evidence.push(AgentInstallEvidence {
+                    kind: "desktop".into(),
+                    detail: exe.display().to_string(),
+                });
+                break;
+            }
+        }
+    }
+    if matches!(
+        app_launch_capability(MINIMAX_APP_TARGET_ID),
         AppLaunchCapability::Launchable
     ) && !evidence.iter().any(|e| e.kind == "desktop")
     {
@@ -261,6 +333,7 @@ fn mapping_flags(cfg: &VoiceConfig, kind: AgentKind) -> (bool, bool) {
             AgentKind::WorkBuddy => pad.workbuddy_status_lights_enabled,
             AgentKind::Trae => pad.trae_status_lights_enabled,
             AgentKind::Qoder => pad.qoder_status_lights_enabled,
+            AgentKind::MiniMax => pad.minimax_status_lights_enabled,
             AgentKind::CopilotCli => false,
         };
         if on {
@@ -454,5 +527,16 @@ mod tests {
         use crate::app_identity::is_codex_cli_exe;
         assert!(is_codex_cli_exe("codex.exe"));
         assert!(!is_codex_cli_exe("ChatGPT.exe"));
+    }
+
+    #[test]
+    fn minimax_process_whitelist_only() {
+        assert!(is_minimax_process_exe("MiniMax Code.exe"));
+        assert!(is_minimax_process_exe("MiniMax Code Desktop.exe"));
+        assert!(is_minimax_process_exe("MiniMax-Code.exe"));
+        assert!(is_minimax_process_exe("minimax code")); // stem match
+        assert!(!is_minimax_process_exe("Cursor.exe"));
+        assert!(!is_minimax_process_exe("MiniMax Helper.exe"));
+        assert!(!is_minimax_process_exe("ChatGPT.exe"));
     }
 }

@@ -93,6 +93,26 @@
     focusBrowserAddressBar: 1
   };
 
+  /** Cursor / WorkBuddy / Trae / Qoder — App-aligned one-press slots only. */
+  var CURSOR_SOFT_PAD_SLOT_IDS = {
+    summonCodex: 1,
+    commandPalette: 1,
+    newThread: 1,
+    quickChat: 1,
+    quickSearch: 1,
+    pushToTalk: 1,
+    stopOrSend: 1,
+    cancel: 1,
+    undo: 1,
+    toggleSidebar: 1,
+    openSettings: 1,
+    navBack: 1,
+    navForward: 1,
+    openTerminal: 1,
+    newBrowserTab: 1
+  };
+  var VSCODE_SOFT_PAD_SLOT_IDS = CURSOR_SOFT_PAD_SLOT_IDS;
+
   /** Default keycap icon when a capability is selected (beginner auto-suggest). */
   var SLOT_DEFAULT_ICON = {
     summonCodex: 'focus',
@@ -203,6 +223,7 @@
     { id: 'terminal', label: 'TERM' },
     { id: 'agent', label: 'AGENT' },
     { id: 'claude', label: 'CLAUDE' },
+    { id: 'cursor', label: 'CURSOR' },
     { id: 'model', label: 'MODEL' },
     { id: 'undo', label: 'UNDO' },
     { id: 'search', label: 'FIND' },
@@ -243,6 +264,7 @@
     terminal: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10l3 2-3 2M12 14h5"/></svg>',
     agent: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 5v2M12 17v2M5 12h2M17 12h2"/></svg>',
     claude: '<svg viewBox="0 0 24 24"><path d="M12 3l2.2 6.2L21 12l-6.8 2.8L12 21l-2.2-6.2L3 12l6.8-2.8z"/></svg>',
+    cursor: '<svg viewBox="0 0 24 24"><path d="M5 3l14 9-6.2 1.4L16 21l-3.2-1.8L10 14 5 3z"/></svg>',
     model: '<svg viewBox="0 0 24 24"><path d="M4 7h16v10H4z"/><path d="M8 7V5h8v2M8 17v2h8v-2"/><path d="M9 11h6M9 14h4"/></svg>',
     undo: '<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a5 5 0 010 10h-1"/></svg>',
     search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg>',
@@ -674,8 +696,12 @@
     return en ? (cell.uiLabelEn || cell.uiLabelZh) : (cell.uiLabelZh || cell.uiLabelEn);
   }
 
-  function slotLabel(slotId) {
+  function slotLabel(slotId, m) {
     var A = agent();
+    if (A && A.labelForSlotForMapping && m) {
+      var mapped = A.labelForSlotForMapping(m, slotId);
+      if (mapped) return mapped;
+    }
     if (!A || !slotId) return slotId || '';
     var s = A.slotById ? A.slotById(slotId) : null;
     if (!s) return slotId;
@@ -692,6 +718,7 @@
       }
     }
     var A = agent();
+    if (A && A.defaultKeyForMapping) return A.defaultKeyForMapping(m, slotId);
     return A && A.defaultKeyForSlot ? A.defaultKeyForSlot(slotId) : '';
   }
 
@@ -903,6 +930,7 @@
         workbuddyStatusLightsEnabled: false,
         traeStatusLightsEnabled: false,
         qoderStatusLightsEnabled: false,
+        minimaxStatusLightsEnabled: false,
         ambientMode: 'status',
         ambientSolidRgb: '#7c3aed',
         ambientOpacity: 100,
@@ -916,7 +944,17 @@
       };
       if (m.id) padHealDone[String(m.id)] = true;
       if (opts.persist !== false) persist();
+      migrateMinimaxTopbarHabitToAgentLight(m, m.codexMicroPad);
       return m.codexMicroPad;
+    }
+    if (m.codexMicroPad) {
+      if (m.codexMicroPad.minimaxStatusLightsEnabled == null) {
+        m.codexMicroPad.minimaxStatusLightsEnabled = false;
+      }
+      if (!Array.isArray(m.codexMicroPad.topbarHabitIds)) {
+        m.codexMicroPad.topbarHabitIds = [];
+      }
+      migrateMinimaxTopbarHabitToAgentLight(m, m.codexMicroPad);
     }
     if (!opts.force && m.id && padHealDone[String(m.id)]) {
       return m.codexMicroPad;
@@ -964,6 +1002,9 @@
     if (m.codexMicroPad.qoderStatusLightsEnabled == null) {
       m.codexMicroPad.qoderStatusLightsEnabled = false;
     }
+    if (m.codexMicroPad.minimaxStatusLightsEnabled == null) {
+      m.codexMicroPad.minimaxStatusLightsEnabled = false;
+    }
     if (m.codexMicroPad.ambientMode !== 'solid' && m.codexMicroPad.ambientMode !== 'status') {
       m.codexMicroPad.ambientMode = 'status';
     }
@@ -980,6 +1021,9 @@
     if (!Array.isArray(m.codexMicroPad.topbarHabitIds)) {
       m.codexMicroPad.topbarHabitIds = [];
     }
+    // MiniMax used to only land in topbarHabitIds (habit slot). Live overlay only
+    // renders agent chips — migrate habit → minimaxStatusLightsEnabled.
+    migrateMinimaxTopbarHabitToAgentLight(m, m.codexMicroPad);
     if (!m.codexMicroPad.presentation ||
         (m.codexMicroPad.presentation !== 'full' && m.codexMicroPad.presentation !== 'mini')) {
       m.codexMicroPad.presentation = 'full';
@@ -1486,6 +1530,15 @@
     return String((m && m.appTargetId) || '').trim() === 'codex-chat';
   }
 
+  function isCursorSoftPadMapping(m) {
+    return String((m && m.appTargetId) || '').trim() === 'cursor-chat';
+  }
+
+  function isVscodeSoftPadMapping(m) {
+    var app = String((m && m.appTargetId) || '').trim();
+    return app === 'cursor-chat' || app === 'workbuddy-chat' || app === 'trae-chat' || app === 'qoder-chat';
+  }
+
   function isSoftPadInsertOnlySlot(slotId) {
     var A = agent();
     if (!A || !A.slotById || !A.actionById) return false;
@@ -1499,13 +1552,18 @@
     var A = agent();
     if (!A || !A.SLOTS) return [];
     var codexOnly = isCodexSoftPadMapping(m);
+    var vscodeOnly = isVscodeSoftPadMapping(m);
     return A.SLOTS.filter(function (s) {
       // Soft Pad (Codex + Claude): never offer insertOnly slash as one-press keys.
       if (isSoftPadInsertOnlySlot(s.slotId)) return false;
       if (codexOnly) return !!CODEX_SOFT_PAD_SLOT_IDS[String(s.slotId || '').trim()];
+      if (vscodeOnly) return !!VSCODE_SOFT_PAD_SLOT_IDS[String(s.slotId || '').trim()];
       return true;
     }).map(function (s) {
-      var label = lang().indexOf('en') === 0 ? s.labelEn : s.labelZh;
+      var label = (A.labelForSlotForMapping
+        ? A.labelForSlotForMapping(m, s.slotId)
+        : (lang().indexOf('en') === 0 ? s.labelEn : s.labelZh)) ||
+        (lang().indexOf('en') === 0 ? s.labelEn : s.labelZh);
       var tip = slotEffectTip(s.slotId, label, m);
       return { id: s.slotId, label: label, tip: tip };
     });
@@ -1514,7 +1572,7 @@
   /** Hover / option tip: what this capability does when the key fires. */
   function slotEffectTip(slotId, label, m) {
     var A = agent();
-    var name = label || slotLabel(slotId) || String(slotId || '');
+    var name = label || slotLabel(slotId, m) || String(slotId || '');
     if (!slotId) {
       return lang().indexOf('en') === 0
         ? 'No capability — key will not run an action'
@@ -1531,7 +1589,8 @@
       if (m) chord = friendlyChord(chordForSlot(m, slotId));
       else if (editDraft && editDraft.mapping) chord = friendlyChord(chordForSlot(editDraft.mapping, slotId));
     } catch (_) {}
-    if (!chord && A && A.defaultKeyForSlot) chord = friendlyChord(A.defaultKeyForSlot(slotId));
+    if (!chord && A && A.defaultKeyForMapping) chord = friendlyChord(A.defaultKeyForMapping(m, slotId));
+    else if (!chord && A && A.defaultKeyForSlot) chord = friendlyChord(A.defaultKeyForSlot(slotId));
     if (chord) {
       return lang().indexOf('en') === 0
         ? (name + ' — sends shortcut ' + chord)
@@ -1543,6 +1602,11 @@
         : (name + ' — OneTone 聚焦操作');
     }
     if (String(slotId) === 'pushToTalk') {
+      if (isVscodeSoftPadMapping(m)) {
+        return lang().indexOf('en') === 0
+          ? (name + ' — OneTone voice hold')
+          : (name + ' — OneTone 按住说话');
+      }
       return lang().indexOf('en') === 0
         ? (name + ' — Codex Start dictation (Ctrl+Shift+D)')
         : (name + ' — Codex 开始听写（Ctrl+Shift+D）');
@@ -1558,12 +1622,34 @@
   }
 
   /** Source tag for Zone 2 — honest origin, never “official Micro”. */
-  function slotSourceTag(slotId) {
+  function slotSourceTag(slotId, m) {
     var en = lang().indexOf('en') === 0;
     var id = String(slotId || '').trim();
     if (!id) return '';
     if (id === 'summonCodex') {
       return en ? 'OneTone focus' : 'OneTone 聚焦操作';
+    }
+    if (isVscodeSoftPadMapping(m)) {
+      var app = String((m && m.appTargetId) || '').trim();
+      var brand =
+        app === 'cursor-chat' ? (en ? 'Cursor shortcut' : 'Cursor 快捷键')
+        : app === 'trae-chat' ? (en ? 'Trae shortcut' : 'Trae 快捷键')
+        : app === 'qoder-chat' ? (en ? 'Qoder shortcut' : 'Qoder 快捷键')
+        : app === 'workbuddy-chat' ? (en ? 'WorkBuddy shortcut' : 'WorkBuddy 快捷键')
+        : (en ? 'IDE shortcut' : 'IDE 快捷键');
+      if (id === 'pushToTalk') {
+        return en ? 'OneTone voice' : 'OneTone 语音';
+      }
+      if (id === 'cancel' && app === 'cursor-chat') {
+        return en ? 'Cursor cancel generation' : 'Cursor 取消生成';
+      }
+      if (id === 'commandPalette' || id === 'newThread' || id === 'quickChat' || id === 'quickSearch'
+        || id === 'undo' || id === 'toggleSidebar' || id === 'openSettings'
+        || id === 'navBack' || id === 'navForward'
+        || id === 'openTerminal' || id === 'newBrowserTab' || id === 'cancel' || id === 'stopOrSend') {
+        return brand;
+      }
+      return en ? 'Soft Pad action' : 'Soft Pad 动作';
     }
     if (id === 'pushToTalk') {
       return en ? 'Codex desktop shortcut' : 'Codex 桌面快捷键';
@@ -1604,6 +1690,7 @@
     browserPlus: { zh: '新标签', en: 'New tab' },
     agent: { zh: '助手', en: 'Agent' },
     claude: { zh: 'Claude', en: 'Claude' },
+    cursor: { zh: 'Cursor', en: 'Cursor' },
     model: { zh: '模型', en: 'Model' },
     undo: { zh: '撤销', en: 'Undo' },
     search: { zh: '搜索', en: 'Search' },
@@ -1634,9 +1721,20 @@
       : ('外观：' + name);
   }
 
-  function capabilityCardCopy(slotId) {
+  function capabilityCardCopy(slotId, m) {
     var en = lang().indexOf('en') === 0;
     var id = String(slotId || '').trim();
+    m = m || (editDraft && editDraft.mapping) || null;
+
+    if (isVscodeSoftPadMapping(m) && id) {
+      var title = slotLabel(id, m);
+      return {
+        title: title,
+        result: slotEffectTip(id, title, m),
+        source: slotSourceTag(id, m)
+      };
+    }
+
     var cards = {
       commandPalette: {
         titleZh: '打开命令菜单', titleEn: 'Open command menu',
@@ -1776,7 +1874,7 @@
     return {
       title: title,
       result: slotEffectTip(id, title, editDraft && editDraft.mapping),
-      source: slotSourceTag(id)
+      source: slotSourceTag(id, editDraft && editDraft.mapping)
     };
   }
 
@@ -1835,8 +1933,8 @@
 
   function showCapabilityEffectTip() {
     if (!editDraft) return;
-    var copy = capabilityCardCopy(editDraft.slotId);
-    var source = copy.source || slotSourceTag(editDraft.slotId);
+    var copy = capabilityCardCopy(editDraft.slotId, editDraft.mapping);
+    var source = copy.source || slotSourceTag(editDraft.slotId, editDraft.mapping);
     var text = editDraft.slotId
       ? (copy.result + (source ? (' · ' + source) : ''))
       : copy.result;
@@ -2838,11 +2936,16 @@
     if (P && P.presetById) {
       var appId = agent === 'codex' ? 'codex-chat'
         : agent === 'claude' ? 'claude-code'
-          : agent === 'cursor' ? 'cursor'
-            : agent;
+          : agent === 'cursor' ? 'cursor-chat'
+            : agent === 'minimax' ? 'minimax-chat'
+              : agent === 'workbuddy' ? 'workbuddy-chat'
+                : agent === 'trae' ? 'trae-chat'
+                  : agent === 'qoder' ? 'qoder-chat'
+                    : agent;
       var preset = P.presetById(appId);
       if (preset && preset.icon) return String(preset.icon);
     }
+    if (agent === 'minimax') return 'icons/app-target/minimaxcode.png';
     return 'icons/app-target/' + agent + '.png';
   }
 
@@ -2851,6 +2954,7 @@
     { agent: 'codex', label: 'Codex', connectKind: 'codex' },
     { agent: 'claude', label: 'Claude', connectKind: 'claude' },
     { agent: 'cursor', label: 'Cursor', connectKind: 'cursor' },
+    { agent: 'minimax', label: 'MiniMax', connectKind: 'minimax' },
     { agent: 'workbuddy', label: 'WorkBuddy', connectKind: 'shell' },
     { agent: 'trae', label: 'Trae', connectKind: 'shell' },
     { agent: 'qoder', label: 'Qoder', connectKind: 'shell' }
@@ -2863,6 +2967,7 @@
     if (!pad) return false;
     if (agent === 'claude') return !!pad.claudeStatusLightsEnabled;
     if (agent === 'cursor') return !!pad.cursorStatusLightsEnabled;
+    if (agent === 'minimax') return !!pad.minimaxStatusLightsEnabled;
     if (agent === 'workbuddy') return !!pad.workbuddyStatusLightsEnabled;
     if (agent === 'trae') return !!pad.traeStatusLightsEnabled;
     if (agent === 'qoder') return !!pad.qoderStatusLightsEnabled;
@@ -2873,6 +2978,7 @@
     if (!pad) return;
     if (agent === 'claude') pad.claudeStatusLightsEnabled = !!enabled;
     else if (agent === 'cursor') pad.cursorStatusLightsEnabled = !!enabled;
+    else if (agent === 'minimax') pad.minimaxStatusLightsEnabled = !!enabled;
     else if (agent === 'workbuddy') pad.workbuddyStatusLightsEnabled = !!enabled;
     else if (agent === 'trae') pad.traeStatusLightsEnabled = !!enabled;
     else if (agent === 'qoder') pad.qoderStatusLightsEnabled = !!enabled;
@@ -2902,6 +3008,40 @@
 
   function topbarHabitIdsOnPad(pad) {
     return Array.isArray(pad && pad.topbarHabitIds) ? pad.topbarHabitIds.map(String) : [];
+  }
+
+  /** Habit-slot MiniMax → real agent light (overlay has no habit chips). Once per mapping. */
+  var minimaxTopbarMigrateDone = Object.create(null);
+  function migrateMinimaxTopbarHabitToAgentLight(m, pad) {
+    if (!m || !pad) return;
+    var mid = m.id ? String(m.id) : '';
+    if (mid && minimaxTopbarMigrateDone[mid]) return;
+    var st = global.OneToneState && global.OneToneState.state;
+    var maps = (st && st.config && st.config.mappings) || [];
+    var byId = {};
+    maps.forEach(function (row) {
+      if (row && row.id) byId[String(row.id)] = row;
+    });
+    var habitIds = topbarHabitIdsOnPad(pad);
+    var kept = [];
+    var saw = false;
+    habitIds.forEach(function (hid) {
+      var row = byId[String(hid)];
+      if (row && String(row.appTargetId || '') === 'minimax-chat') {
+        saw = true;
+        return;
+      }
+      kept.push(String(hid));
+    });
+    var isMinimaxMap = String(m.appTargetId || '') === 'minimax-chat';
+    if (saw) {
+      pad.topbarHabitIds = kept;
+      pad.minimaxStatusLightsEnabled = true;
+    } else if (isMinimaxMap && pad.enabled && !pad.minimaxStatusLightsEnabled) {
+      // Soft Pad on for MiniMax scene → show Mn chip without extra click.
+      pad.minimaxStatusLightsEnabled = true;
+    }
+    if (mid) minimaxTopbarMigrateDone[mid] = true;
   }
 
   function listSoftPadHabitCandidates() {
@@ -8928,7 +9068,7 @@
     var opts = allSlotOptions(m).concat([{ id: '', label: '' }]);
     opts.forEach(function (o) {
       var id = String(o.id || '');
-      var copy = capabilityCardCopy(id);
+      var copy = capabilityCardCopy(id, m);
       var iconId = iconIdForCapabilitySlot(id);
       var btn = document.createElement('button');
       btn.type = 'button';
@@ -9801,6 +9941,8 @@
     softLikelyNoNumpad: softLikelyNoNumpad,
     renderNavArrowDemoHtml: renderNavArrowDemoHtml,
     CODEX_SOFT_PAD_SLOT_IDS: CODEX_SOFT_PAD_SLOT_IDS,
+    CURSOR_SOFT_PAD_SLOT_IDS: CURSOR_SOFT_PAD_SLOT_IDS,
+    VSCODE_SOFT_PAD_SLOT_IDS: VSCODE_SOFT_PAD_SLOT_IDS,
     SLOT_DEFAULT_ICON: SLOT_DEFAULT_ICON,
     allSlotOptions: allSlotOptions,
     slotEffectTip: slotEffectTip,

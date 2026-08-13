@@ -35,7 +35,7 @@ assert.ok(/isBaselineScene\(a\)\?0:1/.test(panels), 'baseline chip sorts first')
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?workbuddy-chat/.test(hub), 'Hub includes WorkBuddy');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-chat/.test(hub), 'Hub includes Trae');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?qoder-chat/.test(hub), 'Hub includes Qoder');
-assert.ok(!/BUILTIN_SOFT_PAD_APPS[\s\S]*?minimax-chat/.test(hub), 'MiniMax not in Hub BUILTIN');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?minimax-chat/.test(hub), 'Hub includes MiniMax');
 
 assert.ok(
   /softPadTopbarMonitorLead[\s\S]{0,220}?不是钉主控/.test(padUi) ||
@@ -49,10 +49,10 @@ assert.ok(
 );
 
 assert.ok(
-  /Hub 主列表[\s\S]{0,120}?WorkBuddy[\s\S]{0,80}?Trae[\s\S]{0,80}?Qoder/.test(contract),
-  'contract Hub list includes six agents'
+  /Hub 主列表[\s\S]{0,160}?MiniMax[\s\S]{0,80}?WorkBuddy[\s\S]{0,80}?Trae[\s\S]{0,80}?Qoder/.test(contract),
+  'contract Hub list includes MiniMax + shell agents'
 );
-assert.ok(/MiniMax 不进 Hub/.test(contract), 'contract excludes MiniMax from Hub');
+assert.ok(!/MiniMax 不进 Hub/.test(contract), 'contract no longer excludes MiniMax from Hub');
 assert.ok(/不是.*钉主控|观察 \/ 跳转/.test(contract), 'contract topbar is observe/jump');
 assert.ok(/不要.*说 baseline mapping 存了 `cameraPrefs`/.test(contract), 'contract cameraPrefs not on baseline');
 

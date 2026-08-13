@@ -19,12 +19,10 @@ var overlayCmd = fs.readFileSync(
 );
 var docs = fs.readFileSync(path.join(root, 'docs/pad-status-core.md'), 'utf8');
 
-// Cursor hook → Attention only; never writes PadStatus AG host.
+// Cursor hook → PadStatus State Core (status host + ambient).
 assert.ok(
-  /if source == "cursor_hook" \{[\s\S]*?ingest_cursor_hook_event[\s\S]*?return snapshot\(\);/.test(
-    padStatus
-  ),
-  'cursor_hook must early-return after Attention ingest'
+  /if source == "cursor_hook" \{[\s\S]*?ingest_cursor_payload/.test(padStatus),
+  'cursor_hook must update PadStatus State Core'
 );
 
 // Cursor never owns AG session navigation.

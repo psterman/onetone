@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-soft-pad-force-open"
+description = "Enables the cmd_soft_pad_force_open command without any pre-configured scope."
+commands.allow = ["cmd_soft_pad_force_open"]
+
+[[permission]]
+identifier = "deny-cmd-soft-pad-force-open"
+description = "Denies the cmd_soft_pad_force_open command without any pre-configured scope."
+commands.deny = ["cmd_soft_pad_force_open"]

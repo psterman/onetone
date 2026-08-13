@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>Voice-Pilot · Settings · AI 三轴演示</title>
+  <link rel="stylesheet" href="keycap-dock.css" />
+  <style>
+    :root {
+      --bg: #f5f6fa;
+      --card: #ffffff;
+      --line: #e4e6eb;
+      --text: #0f172a;
+      --sub: #64748b;
+      --accent: #1d4ed8;
+      --accent-bg: #eff6ff;
+      --green: #16a34a;
+      --green-bg: #f0fdf4;
+      --amber: #d97706;
+      --red: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    .shell { max-width: 1280px; margin: 0 auto; padding: 16px; }
+
+    /* ─── 顶栏 ─── */
+    .topbar {
+      display: flex; align-items: center; gap: 16px;
+      padding: 8px 4px 12px; border-bottom: 1px solid var(--line);
+    }
+    .topbar h1 {
+      font-size: 14px; font-weight: 600; margin: 0; letter-spacing: 0.02em;
+    }
+    .topbar h1 .glyph { color: var(--accent); margin-right: 6px; }
+    .topbar .right { margin-left: auto; font-size: 12px; color: var(--sub); }
+
+    /* ─── Tabs ─── */
+    .tabs {
+      display: flex; gap: 2px; padding: 12px 0 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .tab {
+      appearance: none; border: 0; background: transparent;
+      padding: 10px 14px; font: 500 13px/1 inherit; color: var(--sub);
+      cursor: pointer; border-radius: 8px 8px 0 0;
+      border-bottom: 2px solid transparent;
+    }
+    .tab:hover { color: var(--text); background: rgba(0,0,0,0.02); }
+    .tab.is-active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+    .tab .count {
+      display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+      background: var(--line); color: var(--sub); font-size: 11px; line-height: 1.4;
+    }
+    .tab.is-active .count { background: var(--accent-bg); color: var(--accent); }
+
+    .panel { padding: 16px 0; }
+
+    /* ─── Context tab (树 + 编辑器) ─── */
+    .context-grid {
+      display: grid; grid-template-columns: 260px 1fr; gap: 16px;
+    }
+    .tree {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      padding: 8px; max-height: 70vh; overflow: auto;
+    }
+    .tree h3 {
+      font-size: 11px; font-weight: 600; color: var(--sub);
+      margin: 8px 8px 4px; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .tree-item {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px;
+    }
+    .tree-item:hover { background: rgba(0,0,0,0.04); }
+    .tree-item.is-active { background: var(--accent-bg); color: var(--accent); font-weight: 500; }
+    .tree-item .icon { font-size: 12px; opacity: 0.7; }
+    .tree-item .meta { margin-left: auto; font-size: 10px; color: var(--sub); }
+    .tree-group { margin-left: 12px; }
+
+    /* ─── Habit 编辑器 ─── */
+    .editor {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      padding: 20px;
+    }
+    .editor-head {
+      display: flex; align-items: baseline; gap: 12px;
+      padding-bottom: 14px; border-bottom: 1px solid var(--line);
+    }
+    .editor-head .ref { font: 600 18px/1.1 ui-monospace, "SF Mono", Menlo, monospace; color: var(--accent); }
+    .editor-head .desc { color: var(--sub); font-size: 13px; }
+    .editor-head .status {
+      margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 999px; background: var(--green-bg);
+      color: var(--green); font-size: 12px; font-weight: 500;
+    }
+    .editor-head .status.is-paused { background: #fef3c7; color: var(--amber); }
+    .editor-head .status::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+    }
+
+    .editor-body { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding-top: 16px; }
+
+    .commands-col h4, .rule-col h4 {
+      font-size: 11px; font-weight: 600; color: var(--sub);
+      text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 10px;
+    }
+    .commands-col h4::before { content: '/ '; color: var(--accent); }
+    .rule-col h4::before { content: '@ '; color: var(--accent); }
+
+    .command-row {
+      display: grid; grid-template-columns: 110px 1fr;
+      align-items: center; gap: 12px; padding: 12px 0;
+      border-bottom: 1px dashed var(--line);
+    }
+    .command-row:last-child { border-bottom: 0; }
+    .command-row .lbl { font-size: 13px; color: var(--text); }
+    .command-row .ctrl { display: flex; align-items: center; }
+
+    /* 简单 keycap 拟物 */
+    .keycap {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 64px; height: 44px; padding: 0 14px;
+      border: 1px solid #cbd5e1; border-radius: 8px;
+      background: linear-gradient(180deg, #fff 0%, #f1f5f9 100%);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.9),
+        0 1px 0 rgba(15,23,42,0.08);
+      font: 600 14px/1 inherit; cursor: pointer; user-select: none;
+    }
+    .keycap:hover { border-color: #94a3b8; }
+    .keycap.is-set { border-color: var(--accent); color: var(--accent); }
+
+    /* 信封 */
+    .envelope {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 14px; border-radius: 8px; border: 1px solid var(--line);
+      background: #fff; cursor: pointer; font-size: 13px; user-select: none;
+    }
+    .envelope .ico { font-size: 18px; }
+    .envelope.is-on { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+    .envelope.is-off { background: #f8fafc; color: var(--sub); }
+
+    /* app icon picker */
+    .app-icons { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .app-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line);
+      background: #fff; font-size: 12px;
+    }
+    .app-pill .dot { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); }
+    .app-pill .x { color: var(--sub); cursor: pointer; padding: 0 2px; }
+    .app-pill .x:hover { color: var(--red); }
+    .app-add {
+      width: 28px; height: 28px; border-radius: 50%; border: 1px dashed var(--line);
+      background: #fff; color: var(--sub); cursor: pointer; font-size: 16px;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .app-add:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* 旋钮 */
+    .knob {
+      display: inline-flex; align-items: center; gap: 10px;
+      font: 500 12px/1 ui-monospace, monospace;
+    }
+    .knob-dial {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: conic-gradient(var(--accent) 0 50%, var(--line) 50% 100%);
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .knob-dial::after {
+      content: ''; width: 16px; height: 16px; border-radius: 50%;
+      background: #fff; border: 2px solid var(--line);
+    }
+    .knob input[type=range] { width: 120px; }
+
+    /* 手势 */
+    .gesture-row { display: flex; gap: 8px; }
+    .gesture {
+      width: 56px; height: 56px; border-radius: 12px; border: 1px solid var(--line);
+      background: #f8fafc; display: inline-flex; align-items: center; justify-content: center;
+      font-size: 24px; cursor: pointer; opacity: 0.5;
+    }
+    .gesture:hover { opacity: 0.8; }
+    .gesture.is-on { opacity: 1; background: var(--accent-bg); border-color: var(--accent); }
+
+    /* rule */
+    .rule-textarea {
+      width: 100%; min-height: 180px;
+      padding: 12px; border: 1px solid var(--line); border-radius: 8px;
+      background: #fafbfc; font: 13px/1.6 ui-monospace, "SF Mono", Menlo, monospace;
+      color: var(--text); resize: vertical;
+    }
+    .rule-textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; background: #fff; }
+    .rule-hint { font-size: 11px; color: var(--sub); margin-top: 6px; }
+
+    /* ─── Providers tab ─── */
+    .provider-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;
+    }
+    .provider-card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      padding: 16px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .provider-card .name { font: 600 14px/1.2; display: flex; align-items: center; gap: 8px; }
+    .provider-card .name .badge { width: 28px; height: 28px; border-radius: 8px; background: var(--accent-bg); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; font-size: 14px; }
+    .provider-card .status { font-size: 12px; color: var(--sub); }
+    .provider-card .status .ok { color: var(--green); }
+    .provider-card .status .warn { color: var(--amber); }
+    .provider-card .status .err { color: var(--red); }
+    .provider-card .row { display: flex; justify-content: space-between; align-items: center; padding-top: 4px; }
+    .provider-card .row .label { font-size: 12px; color: var(--sub); }
+    .provider-card .row .val { font-size: 12px; font-weight: 500; }
+    .provider-card .actions { display: flex; gap: 6px; padding-top: 8px; border-top: 1px dashed var(--line); }
+    .btn {
+      appearance: none; border: 1px solid var(--line); background: #fff;
+      padding: 5px 10px; border-radius: 6px; font: 500 12px/1 inherit; cursor: pointer;
+    }
+    .btn:hover { border-color: #94a3b8; }
+    .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn.primary:hover { background: #1e40af; }
+    .btn.ghost { background: transparent; border: 0; color: var(--accent); }
+
+    /* ─── Commands tab ─── */
+    .cmd-list { display: grid; gap: 8px; }
+    .cmd-row {
+      background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+      padding: 12px 16px; display: flex; align-items: center; gap: 16px;
+    }
+    .cmd-row .name { font: 600 13px/1 ui-monospace, monospace; color: var(--accent); min-width: 140px; }
+    .cmd-row .desc { color: var(--sub); font-size: 13px; }
+    .cmd-row .count { margin-left: auto; font-size: 11px; color: var(--sub); }
+
+    /* ─── Rules tab ─── */
+    .rules-list { display: grid; gap: 8px; }
+    .rule-item {
+      background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+      padding: 12px 16px; display: flex; align-items: center; gap: 12px;
+    }
+    .rule-item .ref { font: 600 12px/1 ui-monospace, monospace; color: var(--accent); }
+    .rule-item .body { color: var(--text); font-size: 13px; flex: 1; }
+    .rule-item .when { font-size: 11px; color: var(--sub); }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="topbar">
+      <h1><span class="glyph">⌘</span>Voice-Pilot · 设置</h1>
+      <div class="right">demo · 演示用数据</div>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <button class="tab is-active" data-tab="context"><span>Context</span><span class="count" id="cnt-habits">5</span></button>
+      <button class="tab" data-tab="providers"><span>Providers</span><span class="count">7</span></button>
+      <button class="tab" data-tab="commands"><span>Commands</span><span class="count">5</span></button>
+      <button class="tab" data-tab="rules"><span>Rules</span><span class="count" id="cnt-rules">5</span></button>
+    </div>
+
+    <div class="panel" id="panel-context">
+      <div class="context-grid">
+        <aside class="tree" id="tree"></aside>
+        <main class="editor" id="editor"></main>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-providers" hidden>
+      <div class="provider-grid" id="provider-grid"></div>
+    </div>
+
+    <div class="panel" id="panel-commands" hidden>
+      <div class="cmd-list" id="cmd-list"></div>
+    </div>
+
+    <div class="panel" id="panel-rules" hidden>
+      <div class="rules-list" id="rules-list"></div>
+    </div>
+  </div>
+
+  <script src="keycap-dock.js"></script>
+  <script>
+    // ── 演示数据 ──
+    const HABITS = [
+      {
+        ref: '@Chrome.写代码',
+        desc: 'Chrome 写作模式下按 RAlt 触发',
+        status: 'running',
+        rule: '在 Chrome 写代码时,按 RAlt 开始录音,完成后自动发给光标位置。\n长按 500ms 才触发,松开立即停止录音。',
+        commands: {
+          key:    { label: '/键',     value: 'RAlt',     kind: 'key' },
+          app:    { label: '/app',    value: ['Chrome'],  kind: 'apps' },
+          finish: { label: '/发送',   value: 'auto',     kind: 'finish' },
+          hold:   { label: '/时长',   value: 500,        kind: 'ms' },
+          cam:    { label: '/摄像头', value: 'wave',     kind: 'cam' }
+        }
+      },
+      {
+        ref: '@Chrome.调试',
+        desc: 'F5 在控制台打开命令面板',
+        status: 'ready',
+        rule: '在 Chrome 调试时按 F5,弹出命令菜单显示所有 agent 状态。',
+        commands: {
+          key:    { label: '/键',     value: 'F5',       kind: 'key' },
+          app:    { label: '/app',    value: ['Chrome'],  kind: 'apps' },
+          finish: { label: '/发送',   value: 'auto',     kind: 'finish' },
+          hold:   { label: '/时长',   value: 0,          kind: 'ms' },
+          cam:    { label: '/摄像头', value: null,       kind: 'cam' }
+        }
+      },
+      {
+        ref: '@VSCode.写代码',
+        desc: 'Ctrl+Shift+R 解释选中代码',
+        status: 'ready',
+        rule: '在 VSCode 写代码时按 Ctrl+Shift+R,让 agent 解释选中的代码块。',
+        commands: {
+          key:    { label: '/键',     value: 'Ctrl+Shift+R', kind: 'key' },
+          app:    { label: '/app',    value: ['VSCode'],     kind: 'apps' },
+          finish: { label: '/发送',   value: 'auto',         kind: 'finish' },
+          hold:   { label: '/时长',   value: 0,              kind: 'ms' },
+          cam:    { label: '/摄像头', value: null,           kind: 'cam' }
+        }
+      },
+      {
+        ref: '@VSCode.调试',
+        desc: 'F8 下断点 + 提示',
+        status: 'paused',
+        rule: '在 VSCode 调试模式下按 F8,下断点并语音播报当前堆栈。',
+        commands: {
+          key:    { label: '/键',     value: 'F8',       kind: 'key' },
+          app:    { label: '/app',    value: ['VSCode'],  kind: 'apps' },
+          finish: { label: '/发送',   value: 'manual',   kind: 'finish' },
+          hold:   { label: '/时长',   value: 0,          kind: 'ms' },
+          cam:    { label: '/摄像头', value: null,       kind: 'cam' }
+        }
+      },
+      {
+        ref: '@全局.离开座位',
+        desc: '摄像头挥手自动暂停',
+        status: 'ready',
+        rule: '离开座位时,摄像头挥手 → 暂停所有 agent 的录音;回到座位后自动恢复。',
+        commands: {
+          key:    { label: '/键',     value: null,       kind: 'key' },
+          app:    { label: '/app',    value: ['*'],       kind: 'apps' },
+          finish: { label: '/发送',   value: 'auto',     kind: 'finish' },
+          hold:   { label: '/时长',   value: 0,          kind: 'ms' },
+          cam:    { label: '/摄像头', value: 'wave',     kind: 'cam' }
+        }
+      }
+    ];
+
+    const PROVIDERS = [
+      { name: 'Codex',        icon: 'C',  status: 'ok',  detail: '已登录 · 已装状态灯',  meta: 'OpenAI 协议' },
+      { name: 'Claude',       icon: 'Cl', status: 'ok',  detail: 'OTel metrics · ready',  meta: 'Anthropic 协议' },
+      { name: 'Cursor',       icon: 'Cu', status: 'ok',  detail: '本地活动统计 · ready',   meta: '无 API Key' },
+      { name: 'MiniMax',      icon: 'Mx', status: 'warn',detail: '无 Coding Plan Key',      meta: 'Coding Plan required' },
+      { name: 'WorkBuddy',    icon: 'Wb', status: 'ok',  detail: '已装 · 状态灯 ready',    meta: 'Shell Hook' },
+      { name: 'Trae',         icon: 'Tr', status: 'ok',  detail: '已装 · 状态灯 ready',    meta: 'Shell Hook' },
+      { name: 'Qoder',        icon: 'Qd', status: 'ok',  detail: '已装 · 状态灯 ready',    meta: 'Shell Hook' }
+    ];
+
+    const COMMANDS = [
+      { name: '/键',     desc: '触发键 / 键组合',          count: 4 },
+      { name: '/语音',   desc: '唤醒词 / 短语',             count: 1 },
+      { name: '/摄像头', desc: '手势 · 离开 · 眨眼',        count: 1 },
+      { name: '/SoftPad', desc: '键帽布局 / 状态灯',         count: 0 },
+      { name: '/组合',   desc: '长按 · 双击 · 多键',        count: 0 }
+    ];
+
+    // ── 状态 ──
+    let activeRef = HABITS[0].ref;
+    let activeTab = 'context';
+
+    // ── 树 ──
+    function renderTree() {
+      const tree = document.getElementById('tree');
+      const groups = {};
+      HABITS.forEach(h => {
+        const m = h.ref.match(/^@([^.]+)(?:\.(.+))?$/);
+        if (!m) return;
+        const [_, app, scene] = m;
+        const key = scene ? `${app}.${scene}` : app;
+        if (!groups[app]) groups[app] = { app, scenes: [] };
+        if (scene) groups[app].scenes.push({ ref: h.ref, status: h.status });
+      });
+      let html = '<h3>Apps</h3>';
+      Object.values(groups).forEach(g => {
+        const active = activeRef.startsWith(`@${g.app}.`) || activeRef === `@${g.app}`;
+        html += `<div class="tree-item ${active ? 'is-active' : ''}" data-ref="@${g.app}"><span class="icon">▣</span><span>@${g.app}</span><span class="meta">${g.scenes.length || ''}</span></div>`;
+        if (g.scenes.length) {
+          html += '<div class="tree-group">';
+          g.scenes.forEach(s => {
+            const ok = s.status === 'ready' || s.status === 'running';
+            const dot = s.status === 'running' ? '●' : (s.status === 'paused' ? '○' : '·');
+            html += `<div class="tree-item ${activeRef === s.ref ? 'is-active' : ''}" data-ref="${s.ref}"><span class="icon">${dot}</span><span>${s.ref.split('.').slice(1).join('.')}</span></div>`;
+          });
+          html += '</div>';
+        }
+      });
+      html += '<h3 style="margin-top:14px">Global</h3>';
+      HABITS.filter(h => h.ref.includes('全局')).forEach(h => {
+        html += `<div class="tree-item ${activeRef === h.ref ? 'is-active' : ''}" data-ref="${h.ref}"><span class="icon">●</span><span>${h.ref.replace('@', '')}</span></div>`;
+      });
+      tree.innerHTML = html;
+      tree.querySelectorAll('.tree-item').forEach(el => {
+        el.addEventListener('click', () => {
+          activeRef = el.dataset.ref;
+          renderTree(); renderEditor();
+        });
+      });
+    }
+
+    // ── 编辑器 ──
+    function renderEditor() {
+      const h = HABITS.find(x => x.ref === activeRef) || HABITS[0];
+      const statusCls = h.status === 'paused' ? 'is-paused' : '';
+      const statusLbl = h.status === 'running' ? '运行中' : (h.status === 'paused' ? '已暂停' : '已开启');
+
+      const keyCtrl = h.commands.key.value
+        ? `<span class="keycap is-set" id="ed-key">${h.commands.key.value}</span>`
+        : `<span class="keycap" id="ed-key">未设</span>`;
+
+      const appsHtml = h.commands.app.value.map(name => {
+        const colors = { Chrome: '#3b82f6', VSCode: '#1d4ed8', '*': '#64748b' };
+        return `<span class="app-pill"><span class="dot" style="background:${colors[name] || '#94a3b8'}"></span>${name === '*' ? '全部' : name}<span class="x">×</span></span>`;
+      }).join('') + `<span class="app-add" id="ed-app-add">+</span>`;
+
+      const finishCtrl = h.commands.finish.value === 'auto'
+        ? `<span class="envelope is-on" id="ed-finish"><span class="ico">✉</span>自动发送</span>`
+        : `<span class="envelope is-off" id="ed-finish"><span class="ico">✉</span>保留等确认</span>`;
+
+      const ms = h.commands.hold.value;
+      const knobPct = Math.min(100, Math.round(ms / 20));
+      const knobHtml = `<div class="knob"><span class="knob-dial" style="background:conic-gradient(var(--accent) 0 ${knobPct}%, var(--line) ${knobPct}% 100%)"></span><input type="range" min="0" max="2000" step="50" value="${ms}" id="ed-hold"><span id="ed-hold-val">${ms}ms</span></div>`;
+
+      const camVal = h.commands.cam.value;
+      const gestures = [
+        { id: 'wave', label: '👋' },
+        { id: 'fist', label: '✊' },
+        { id: 'blink', label: '😉' },
+        { id: 'away', label: '🚶' }
+      ];
+      const camHtml = `<div class="gesture-row">` + gestures.map(g =>
+        `<span class="gesture ${camVal === g.id ? 'is-on' : ''}" data-gesture="${g.id}">${g.label}</span>`
+      ).join('') + `</div>`;
+
+      document.getElementById('editor').innerHTML = `
+        <div class="editor-head">
+          <span class="ref">${h.ref}</span>
+          <span class="desc">${h.desc}</span>
+          <span class="status ${statusCls}">${statusLbl}</span>
+        </div>
+        <div class="editor-body">
+          <div class="commands-col">
+            <h4>Commands</h4>
+            <div class="command-row"><span class="lbl">${h.commands.key.label}</span><span class="ctrl">${keyCtrl}</span></div>
+            <div class="command-row"><span class="lbl">${h.commands.app.label}</span><span class="ctrl">${appsHtml}</span></div>
+            <div class="command-row"><span class="lbl">${h.commands.finish.label}</span><span class="ctrl">${finishCtrl}</span></div>
+            <div class="command-row"><span class="lbl">${h.commands.hold.label}</span><span class="ctrl">${knobHtml}</span></div>
+            <div class="command-row"><span class="lbl">${h.commands.cam.label}</span><span class="ctrl">${camHtml}</span></div>
+          </div>
+          <div class="rule-col">
+            <h4>Rule · 自然语言</h4>
+            <textarea class="rule-textarea" id="ed-rule">${h.rule}</textarea>
+            <p class="rule-hint">改完失焦即保存 · 也可点 Commands 里的控件直接改值,这里会自动同步</p>
+          </div>
+        </div>
+      `;
+
+      bindEditorEvents(h);
+    }
+
+    function bindEditorEvents(h) {
+      // 键:点开 dock
+      const keyEl = document.getElementById('ed-key');
+      if (keyEl) {
+        keyEl.addEventListener('click', e => {
+          e.stopPropagation();
+          const root = document.createElement('div');
+          root.style.position = 'fixed'; root.style.top = '0'; root.style.left = '0';
+          root.style.width = '100%'; root.style.height = '100%';
+          root.style.zIndex = '9999';
+          root.style.background = 'rgba(0,0,0,0.2)';
+          root.style.display = 'flex'; root.style.alignItems = 'center'; root.style.justifyContent = 'center';
+          const panel = document.createElement('div');
+          panel.style.background = '#fff'; panel.style.borderRadius = '12px';
+          panel.style.padding = '8px';
+          root.appendChild(panel);
+          const dock = createKeycapDock({
+            current: h.commands.key.value || '',
+            onChange: (newKey) => {
+              h.commands.key.value = newKey;
+              if (root.parentNode) document.body.removeChild(root);
+              h.rule = syncRuleFromCommands(h);
+              renderEditor();
+            }
+          });
+          panel.appendChild(dock);
+          root.addEventListener('click', ev => {
+            if (ev.target === root && root.parentNode) document.body.removeChild(root);
+          });
+          document.body.appendChild(root);
+        });
+      }
+
+      // 时长:滑块
+      const hold = document.getElementById('ed-hold');
+      const holdVal = document.getElementById('ed-hold-val');
+      if (hold) {
+        hold.addEventListener('input', () => {
+          holdVal.textContent = hold.value + 'ms';
+          h.commands.hold.value = Number(hold.value);
+          // 旋钮跟着转
+          const dial = document.querySelector('.knob-dial');
+          if (dial) {
+            const pct = Math.min(100, Math.round(hold.value / 20));
+            dial.style.background = `conic-gradient(var(--accent) 0 ${pct}%, var(--line) ${pct}% 100%)`;
+          }
+          h.rule = syncRuleFromCommands(h);
+        });
+        hold.addEventListener('change', () => { renderEditor(); });
+      }
+
+      // 信封:切自动/手动
+      const fin = document.getElementById('ed-finish');
+      if (fin) {
+        fin.addEventListener('click', () => {
+          h.commands.finish.value = h.commands.finish.value === 'auto' ? 'manual' : 'auto';
+          renderEditor();
+        });
+      }
+
+      // 摄像头手势
+      document.querySelectorAll('.gesture').forEach(el => {
+        el.addEventListener('click', () => {
+          h.commands.cam.value = h.commands.cam.value === el.dataset.gesture ? null : el.dataset.gesture;
+          renderEditor();
+        });
+      });
+
+      // app 加号
+      const add = document.getElementById('ed-app-add');
+      if (add) {
+        add.addEventListener('click', () => {
+          const others = ['Chrome', 'VSCode', 'Edge', 'Terminal'].filter(n => !h.commands.app.value.includes(n));
+          if (!others.length) return;
+          h.commands.app.value.push(others[0]);
+          h.rule = syncRuleFromCommands(h);
+          renderEditor();
+        });
+      }
+      document.querySelectorAll('.app-pill .x').forEach(el => {
+        el.addEventListener('click', () => {
+          const idx = Array.from(el.parentNode.parentNode.children).indexOf(el.parentNode);
+          h.commands.app.value = h.commands.app.value.filter((_, i) => i !== idx - 1);  // 去掉 +
+          if (!h.commands.app.value.length) h.commands.app.value = ['Chrome'];
+          h.rule = syncRuleFromCommands(h);
+          renderEditor();
+        });
+      });
+
+      // rule textarea
+      const ta = document.getElementById('ed-rule');
+      if (ta) {
+        ta.addEventListener('change', () => { h.rule = ta.value; });
+      }
+    }
+
+    function syncRuleFromCommands(h) {
+      const parts = [];
+      parts.push(`在 ${h.commands.app.value.map(a => a === '*' ? '所有应用' : a).join('、')} 时`);
+      if (h.commands.key.value) {
+        const hold = h.commands.hold.value;
+        parts.push(`按 ${h.commands.key.value}${hold > 0 ? `(长按 ${hold}ms)` : ''} ${h.commands.finish.value === 'auto' ? '自动触发,录完自动发送' : '触发并保留录音等确认'}`);
+      } else if (h.commands.cam.value) {
+        parts.push(`摄像头检测到 ${h.commands.cam.value} 动作,自动触发`);
+      }
+      return parts.join(',') + '。';
+    }
+
+    // ── Providers tab ──
+    function renderProviders() {
+      const grid = document.getElementById('provider-grid');
+      grid.innerHTML = PROVIDERS.map(p => {
+        const cls = p.status === 'ok' ? 'ok' : (p.status === 'warn' ? 'warn' : 'err');
+        const txt = p.status === 'ok' ? '● ready' : (p.status === 'warn' ? '● 需 Key' : '● 离线');
+        return `<div class="provider-card">
+          <div class="name"><span class="badge">${p.icon}</span>${p.name}</div>
+          <div class="status"><span class="${cls}">${txt}</span> · ${p.detail}</div>
+          <div class="row"><span class="label">协议</span><span class="val">${p.meta}</span></div>
+          <div class="actions">
+            <button class="btn">详情</button>
+            ${p.status === 'warn' ? '<button class="btn primary">填 Key</button>' : '<button class="btn">设置</button>'}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Commands tab ──
+    function renderCommands() {
+      const list = document.getElementById('cmd-list');
+      list.innerHTML = COMMANDS.map(c =>
+        `<div class="cmd-row"><span class="name">${c.name}</span><span class="desc">${c.desc}</span><span class="count">${c.count} 个 habit 在用</span></div>`
+      ).join('');
+    }
+
+    // ── Rules tab ──
+    function renderRules() {
+      const list = document.getElementById('rules-list');
+      list.innerHTML = HABITS.map(h =>
+        `<div class="rule-item"><span class="ref">${h.ref}</span><span class="body">${h.rule.split('\n')[0]}</span><span class="when">${h.status}</span></div>`
+      ).join('');
+    }
+
+    // ── Tabs ──
+    document.getElementById('tabs').addEventListener('click', e => {
+      const btn = e.target.closest('.tab');
+      if (!btn) return;
+      activeTab = btn.dataset.tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('is-active', t.dataset.tab === activeTab));
+      ['context', 'providers', 'commands', 'rules'].forEach(p => {
+        document.getElementById('panel-' + p).hidden = (p !== activeTab);
+      });
+    });
+
+    // ── 启动 ──
+    document.getElementById('cnt-habits').textContent = HABITS.length;
+    document.getElementById('cnt-rules').textContent = HABITS.length;
+    renderTree();
+    renderEditor();
+    renderProviders();
+    renderCommands();
+    renderRules();
+  </script>
+</body>
+</html>

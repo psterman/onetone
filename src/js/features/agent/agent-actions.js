@@ -127,9 +127,150 @@
     appsOrPlugins: 'Ctrl+Alt+A'
   };
 
+  /** Editor chords shared by VS Code forks (Cursor / Trae / Qoder). Not WorkBuddy desktop. */
+  var VSCODE_EDITOR_KEY_BY_SLOT = {
+    summonCodex: '',
+    pushToTalk: '',
+    stopOrSend: 'Enter',
+    cancel: 'Escape',
+    newThread: 'Ctrl+N',
+    undo: 'Ctrl+Z',
+    quickSearch: 'Ctrl+F',
+    quickChat: '',
+    commandPalette: 'Ctrl+Shift+P',
+    openReviewTab: '',
+    toggleReviewPanel: '',
+    toggleSidebar: 'Ctrl+B',
+    openSettings: 'Ctrl+,',
+    navBack: 'Alt+Left',
+    navForward: 'Alt+Right',
+    openTerminal: 'Ctrl+`',
+    toggleBrowserPanel: '',
+    newBrowserTab: 'Ctrl+T',
+    focusBrowserAddressBar: '',
+    status: '',
+    plan: '',
+    review: '',
+    permissions: '',
+    switchAgent: '',
+    claudeModel: '',
+    switchModel: '',
+    appsOrPlugins: ''
+  };
+
+  /** Cursor IDE: Agent `Ctrl+I`, cancel generation. */
+  var CURSOR_DEFAULT_KEY_BY_SLOT = Object.assign({}, VSCODE_EDITOR_KEY_BY_SLOT, {
+    cancel: 'Ctrl+Shift+Backspace',
+    quickChat: 'Ctrl+I'
+  });
+
+  /** Trae IDE: side chat is Ctrl+U, inline is Ctrl+I. Pad quickChat → side chat. */
+  var TRAE_DEFAULT_KEY_BY_SLOT = Object.assign({}, VSCODE_EDITOR_KEY_BY_SLOT, {
+    quickChat: 'Ctrl+U'
+  });
+
+  /** Qoder IDE: chat panel Ctrl+L; reject-all Ctrl+Backspace. */
+  var QODER_DEFAULT_KEY_BY_SLOT = Object.assign({}, VSCODE_EDITOR_KEY_BY_SLOT, {
+    quickChat: 'Ctrl+L',
+    cancel: 'Ctrl+Backspace'
+  });
+
+  /**
+   * WorkBuddy desktop client (WorkBuddy.exe), not CodeBuddy IDE.
+   * Wake is Ctrl+Space (global — do not inject from pad). New task Ctrl+N. Send Enter.
+   */
+  var WORKBUDDY_DEFAULT_KEY_BY_SLOT = {
+    summonCodex: '',
+    pushToTalk: '',
+    stopOrSend: 'Enter',
+    cancel: 'Escape',
+    newThread: 'Ctrl+N',
+    undo: 'Ctrl+Z',
+    quickSearch: '',
+    quickChat: '',
+    commandPalette: '',
+    openReviewTab: '',
+    toggleReviewPanel: '',
+    toggleSidebar: '',
+    openSettings: '',
+    navBack: '',
+    navForward: '',
+    openTerminal: '',
+    toggleBrowserPanel: '',
+    newBrowserTab: '',
+    focusBrowserAddressBar: '',
+    status: '',
+    plan: '',
+    review: '',
+    permissions: '',
+    switchAgent: '',
+    claudeModel: '',
+    switchModel: '',
+    appsOrPlugins: ''
+  };
+
+  var VSCODE_DEFAULT_KEY_BY_SLOT = VSCODE_EDITOR_KEY_BY_SLOT;
+
+  /** One-release generic dump (quickChat Ctrl+L for all forks). Heal toward per-client maps. */
+  var STALE_GENERIC_VSCODE_KEY_BY_SLOT = Object.assign({}, VSCODE_EDITOR_KEY_BY_SLOT, {
+    quickChat: 'Ctrl+L'
+  });
+
+  /** Shared Soft Pad pack path — chords are per-app, not this set. */
+  var VSCODE_LINEAGE_APP_IDS = {
+    'cursor-chat': 1,
+    'workbuddy-chat': 1,
+    'trae-chat': 1,
+    'qoder-chat': 1
+  };
+
+  var PROVIDER_BY_APP = {
+    'codex-chat': 'codex',
+    'cursor-chat': 'cursor',
+    'workbuddy-chat': 'workbuddy',
+    'trae-chat': 'trae',
+    'qoder-chat': 'qoder',
+    'claude-code': 'claude',
+    'minimax-chat': 'minimax'
+  };
+
+  function isVscodeLineageApp(appId) {
+    return !!VSCODE_LINEAGE_APP_IDS[String(appId || '').trim()];
+  }
+
+  function providerIdForApp(appId) {
+    return PROVIDER_BY_APP[String(appId || '').trim()] || '';
+  }
+
   function defaultKeyForSlot(slotId) {
     var id = String(slotId || '').trim();
     return DEFAULT_KEY_BY_SLOT[id] || '';
+  }
+
+  function defaultCursorKeyForSlot(slotId) {
+    var id = String(slotId || '').trim();
+    return CURSOR_DEFAULT_KEY_BY_SLOT[id] || '';
+  }
+
+  function defaultVscodeKeyForSlot(slotId) {
+    var id = String(slotId || '').trim();
+    return VSCODE_EDITOR_KEY_BY_SLOT[id] || '';
+  }
+
+  function defaultKeyMapForApp(appId) {
+    var app = String(appId || '').trim();
+    if (app === 'cursor-chat') return CURSOR_DEFAULT_KEY_BY_SLOT;
+    if (app === 'trae-chat') return TRAE_DEFAULT_KEY_BY_SLOT;
+    if (app === 'qoder-chat') return QODER_DEFAULT_KEY_BY_SLOT;
+    if (app === 'workbuddy-chat') return WORKBUDDY_DEFAULT_KEY_BY_SLOT;
+    if (app === 'codex-chat') return DEFAULT_KEY_BY_SLOT;
+    return null;
+  }
+
+  function defaultKeyForMapping(m, slotId) {
+    var map = defaultKeyMapForApp((m && m.appTargetId) || '');
+    if (map) return map[String(slotId || '').trim()] || '';
+    return defaultKeyForSlot(slotId);
   }
 
   function actionById(id) {
@@ -180,6 +321,26 @@
     return isEnLocale() ? slot.labelEn : slot.labelZh;
   }
 
+  function labelForSlotForMapping(m, slotId) {
+    var app = String((m && m.appTargetId) || '').trim();
+    var id = String(slotId || '').trim();
+    var names = {
+      'cursor-chat': { zh: 'Cursor', en: 'Cursor' },
+      'workbuddy-chat': { zh: 'WorkBuddy', en: 'WorkBuddy' },
+      'trae-chat': { zh: 'Trae', en: 'Trae' },
+      'qoder-chat': { zh: 'Qoder', en: 'Qoder' }
+    };
+    var name = names[app];
+    if (name) {
+      if (id === 'summonCodex') return isEnLocale() ? ('Focus ' + name.en) : ('聚焦 ' + name.zh);
+      if (id === 'pushToTalk') return isEnLocale() ? 'Voice input' : '语音输入';
+      if (id === 'cancel' && app === 'cursor-chat') {
+        return isEnLocale() ? 'Cancel generation' : '取消生成';
+      }
+    }
+    return labelForSlot(slotById(id));
+  }
+
   /**
    * @param {'globalSafe'|'scenarioEssentials'|'scenarioAllKeys'} profile
    * @param {'key'|'voice'} [triggerType]
@@ -215,6 +376,68 @@
         actionId: s.actionId,
         triggerType: 'key',
         triggerBinding: defaultKeyForSlot(s.slotId),
+        enabled: slotEnabledByProfile(s.slotId, profile, 'key'),
+        executionMode: mode,
+        activationScope: scope
+      });
+      out.push({
+        slotId: s.slotId,
+        actionId: s.actionId,
+        triggerType: 'voice',
+        triggerBinding: phraseForAction(s.actionId),
+        enabled: slotEnabledByProfile(s.slotId, profile, 'voice'),
+        executionMode: mode,
+        activationScope: scope
+      });
+    }
+    return out;
+  }
+
+  function buildCursorChordBindings(opts) {
+    opts = opts || {};
+    var profile = opts.enableProfile || 'scenarioEssentials';
+    var out = [];
+    for (var i = 0; i < SLOTS.length; i++) {
+      var s = SLOTS[i];
+      var a = actionById(s.actionId);
+      var scope = a ? a.scope : 'foregroundApp';
+      var mode = a ? a.mode : 'execute';
+      out.push({
+        slotId: s.slotId,
+        actionId: s.actionId,
+        triggerType: 'key',
+        triggerBinding: defaultCursorKeyForSlot(s.slotId),
+        enabled: slotEnabledByProfile(s.slotId, profile, 'key'),
+        executionMode: mode,
+        activationScope: scope
+      });
+      out.push({
+        slotId: s.slotId,
+        actionId: s.actionId,
+        triggerType: 'voice',
+        triggerBinding: phraseForAction(s.actionId),
+        enabled: slotEnabledByProfile(s.slotId, profile, 'voice'),
+        executionMode: mode,
+        activationScope: scope
+      });
+    }
+    return out;
+  }
+
+  function buildScenarioBindings(m, opts) {
+    opts = opts || {};
+    var profile = opts.enableProfile || 'scenarioEssentials';
+    var out = [];
+    for (var i = 0; i < SLOTS.length; i++) {
+      var s = SLOTS[i];
+      var a = actionById(s.actionId);
+      var scope = a ? a.scope : 'foregroundApp';
+      var mode = a ? a.mode : 'execute';
+      out.push({
+        slotId: s.slotId,
+        actionId: s.actionId,
+        triggerType: 'key',
+        triggerBinding: defaultKeyForMapping(m, s.slotId),
         enabled: slotEnabledByProfile(s.slotId, profile, 'key'),
         executionMode: mode,
         activationScope: scope
@@ -430,13 +653,28 @@
     globalSafeSlots: globalSafeSlots,
     allSlots: allSlots,
     buildCodexMicro13Bindings: buildCodexMicro13Bindings,
+    buildCursorChordBindings: buildCursorChordBindings,
+    buildScenarioBindings: buildScenarioBindings,
     defaultKeyForSlot: defaultKeyForSlot,
+    defaultCursorKeyForSlot: defaultCursorKeyForSlot,
+    defaultVscodeKeyForSlot: defaultVscodeKeyForSlot,
+    defaultKeyForMapping: defaultKeyForMapping,
+    isVscodeLineageApp: isVscodeLineageApp,
+    providerIdForApp: providerIdForApp,
     DEFAULT_KEY_BY_SLOT: DEFAULT_KEY_BY_SLOT,
+    CURSOR_DEFAULT_KEY_BY_SLOT: CURSOR_DEFAULT_KEY_BY_SLOT,
+    VSCODE_DEFAULT_KEY_BY_SLOT: VSCODE_DEFAULT_KEY_BY_SLOT,
+    STALE_GENERIC_VSCODE_KEY_BY_SLOT: STALE_GENERIC_VSCODE_KEY_BY_SLOT,
+    TRAE_DEFAULT_KEY_BY_SLOT: TRAE_DEFAULT_KEY_BY_SLOT,
+    QODER_DEFAULT_KEY_BY_SLOT: QODER_DEFAULT_KEY_BY_SLOT,
+    WORKBUDDY_DEFAULT_KEY_BY_SLOT: WORKBUDDY_DEFAULT_KEY_BY_SLOT,
+    defaultKeyMapForApp: defaultKeyMapForApp,
     cameraRecommendedActionIds: cameraRecommendedActionIds,
     cameraRecommendedPresencePatch: cameraRecommendedPresencePatch,
     agentActionToken: agentActionToken,
     parseAgentActionToken: parseAgentActionToken,
     labelForSlot: labelForSlot,
+    labelForSlotForMapping: labelForSlotForMapping,
     phraseForAction: phraseForAction,
     insertTextForSlot: insertTextForSlot,
     slotSubForDisplay: slotSubForDisplay,

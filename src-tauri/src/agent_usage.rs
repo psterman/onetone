@@ -131,6 +131,16 @@ pub fn put_snapshot(agent: AgentKind, snap: AgentUsageSnapshot) {
         .insert(agent, snap);
 }
 
+/// Put usage + sync connector health (MiniMax side-channel / Soft Pad).
+pub fn put_usage_snapshot(agent: AgentKind, snap: AgentUsageSnapshot) {
+    let has_windows = snap.windows.iter().any(|w| {
+        w.remaining_percent
+            .is_some_and(|p| p.is_finite() && (0.0..=100.0).contains(&p))
+    });
+    put_snapshot(agent, snap.clone());
+    sync_usage_health(agent, &snap, has_windows);
+}
+
 fn default_snapshot(agent: AgentKind) -> AgentUsageSnapshot {
     if agent == AgentKind::Cursor {
         return AgentUsageSnapshot {
@@ -1216,7 +1226,7 @@ fn apply_deepseek_usage_snap(ds: &DeepSeekBalanceState, now: u64) {
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .insert(AgentKind::Claude, snap.clone());
-    sync_claude_usage_health(&snap, false);
+    sync_usage_health(AgentKind::Claude, &snap, false);
 }
 
 fn compose_claude_snapshot() {
@@ -1249,10 +1259,19 @@ fn compose_claude_snapshot() {
     // Multi-provider adapter (Ark / GLM / Kimi / MiniMax / bailian / mimo).
     let pv = crate::provider_usage::active_view();
     if pv.detected {
+        let target = if pv.provider.eq_ignore_ascii_case("minimax")
+            || pv.source.starts_with("minimax")
+        {
+            AgentKind::MiniMax
+        } else {
+            AgentKind::Claude
+        };
         let otel = claude_otel_state()
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .clone();
+        // MiniMax Soft Pad: windows / balance only — never Claude OTel session burn.
+        let use_otel = target == AgentKind::Claude;
         let mut snap = AgentUsageSnapshot {
             source: pv.source.clone(),
             status: if pv.status.is_empty() {
@@ -1260,9 +1279,9 @@ fn compose_claude_snapshot() {
             } else {
                 pv.status.clone()
             },
-            session_tokens: otel.session_tokens,
-            auxiliary_tokens: otel.auxiliary_tokens,
-            estimated_cost_usd: otel.estimated_cost_usd,
+            session_tokens: if use_otel { otel.session_tokens } else { None },
+            auxiliary_tokens: if use_otel { otel.auxiliary_tokens } else { None },
+            estimated_cost_usd: if use_otel { otel.estimated_cost_usd } else { None },
             windows: pv.windows.clone(),
             account_type: pv.provider.clone(),
             account_label: pv.account_label.clone(),
@@ -1283,15 +1302,26 @@ fn compose_claude_snapshot() {
             ..Default::default()
         };
         apply_compat_scalars(&mut snap);
-        usage_store()
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .insert(AgentKind::Claude, snap.clone());
+        {
+            let mut guard = usage_store().lock().unwrap_or_else(|e| e.into_inner());
+            // Drop legacy MiniMax rows that used to land in the Claude bucket.
+            if target == AgentKind::MiniMax {
+                if guard
+                    .get(&AgentKind::Claude)
+                    .is_some_and(|s| s.source.starts_with("minimax"))
+                {
+                    guard.remove(&AgentKind::Claude);
+                }
+            }
+            // Keep AgentKind::MiniMax when Claude settings point elsewhere (DeepSeek / Ark…).
+            // Soft Pad MiniMax uses a side-channel refresh.
+            guard.insert(target, snap.clone());
+        }
         let has_windows = snap.windows.iter().any(|w| {
             w.remaining_percent
                 .is_some_and(|p| p.is_finite() && (0.0..=100.0).contains(&p))
         });
-        sync_claude_usage_health(&snap, has_windows);
+        sync_usage_health(target, &snap, has_windows);
         return;
     }
 
@@ -1392,17 +1422,19 @@ fn compose_claude_snapshot() {
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .insert(AgentKind::Claude, snap.clone());
-    sync_claude_usage_health(&snap, has_windows);
+    sync_usage_health(AgentKind::Claude, &snap, has_windows);
 }
 
-fn sync_claude_usage_health(snap: &AgentUsageSnapshot, has_windows: bool) {
+fn sync_usage_health(agent: AgentKind, snap: &AgentUsageSnapshot, has_windows: bool) {
     use crate::connector_health::{upsert, CapabilityKind, HealthState, ValueState};
     let has_deepseek = snap.source == "deepseek_balance"
         && (!snap.account_label.is_empty() || snap.last_success_at > 0);
     let has_value = has_windows
         || has_deepseek
         || snap.session_tokens.is_some()
-        || snap.estimated_cost_usd.is_some();
+        || snap.estimated_cost_usd.is_some()
+        || (!snap.windows.is_empty() && snap.source.starts_with("minimax"))
+        || (snap.source.starts_with("minimax") && (!snap.message.is_empty() || snap.last_success_at > 0));
     let value_state = if has_value {
         ValueState::Present
     } else {
@@ -1422,7 +1454,15 @@ fn sync_claude_usage_health(snap: &AgentUsageSnapshot, has_windows: bool) {
         }
     };
     let channel = if has_windows {
-        "claude_statusline"
+        if agent == AgentKind::MiniMax {
+            if snap.source.is_empty() {
+                "minimax_remains"
+            } else {
+                snap.source.as_str()
+            }
+        } else {
+            "claude_statusline"
+        }
     } else if snap.source == "deepseek_balance" {
         "deepseek_balance"
     } else if !snap.source.is_empty()
@@ -1438,7 +1478,7 @@ fn sync_claude_usage_health(snap: &AgentUsageSnapshot, has_windows: bool) {
         "claude_otel"
     };
     upsert(
-        AgentKind::Claude,
+        agent,
         CapabilityKind::Usage,
         state,
         value_state,
@@ -1556,7 +1596,7 @@ pub fn ingest_claude_provider_view(view: &crate::provider_usage::ProviderUsageVi
 
 pub fn clear_claude_provider_view() {
     let mut guard = usage_store().lock().unwrap_or_else(|e| e.into_inner());
-    let drop_it = guard
+    let drop_claude = guard
         .get(&AgentKind::Claude)
         .map(|s| {
             let src = s.source.as_str();
@@ -1568,9 +1608,11 @@ pub fn clear_claude_provider_view() {
                 || src.starts_with("mimo")
         })
         .unwrap_or(false);
-    if drop_it {
+    if drop_claude {
         guard.remove(&AgentKind::Claude);
     }
+    // Do NOT clear AgentKind::MiniMax here — Claude settings often point at DeepSeek while
+    // Soft Pad MiniMax still needs its own side-channel remains/manual row.
     drop(guard);
     compose_claude_snapshot();
 }
@@ -1690,7 +1732,7 @@ pub fn mark_claude_usage_waiting(message: &str) {
                 .lock()
                 .unwrap_or_else(|e| e.into_inner())
                 .insert(AgentKind::Claude, snap.clone());
-            sync_claude_usage_health(&snap, false);
+            sync_usage_health(AgentKind::Claude, &snap, false);
         }
     }
 }

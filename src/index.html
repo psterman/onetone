@@ -142,7 +142,16 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                 <span data-i18n="homeWbNavRuntime">状态与维护</span>
               </button>
-              <button type="button" class="wb-home-quickstart" id="wbBtnTestSend" data-i18n="homeWbQuickStart">快速入门</button>
+              <div class="wb-home-sidebar-foot">
+                <div class="wb-home-force-softpad" id="wbForceSoftPadRow">
+                  <div class="wb-home-force-softpad-copy">
+                    <span class="wb-home-force-softpad-label" data-i18n="homeWbForceSoftPadLabel">强制打开 Soft Pad</span>
+                    <span class="wb-home-force-softpad-hint" id="wbForceSoftPadHint" data-i18n="homeWbForceSoftPadHint">忽略前台条件，保持浮窗可见</span>
+                  </div>
+                  <button type="button" class="toggle-switch" id="wbForceSoftPadToggle" role="switch" aria-checked="false" data-i18n-aria="homeWbForceSoftPadLabel"></button>
+                </div>
+                <button type="button" class="wb-home-quickstart" id="wbBtnTestSend" data-i18n="homeWbQuickStart">快速入门</button>
+              </div>
               <section class="global-mic-hub" id="globalMicHub" aria-live="polite">
                 <div class="global-mic-hub-main">
                   <span class="global-mic-hub-dot" aria-hidden="true"></span>

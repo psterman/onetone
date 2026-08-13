@@ -17,4 +17,7 @@ permissions = [
   "allow-cmd-soft-pad-set-navigation-slots",
   "allow-cmd-cursor-activity-pref-get",
   "allow-cmd-cursor-activity-pref-set",
+  "allow-cmd-minimax-coding-key-get",
+  "allow-cmd-minimax-coding-key-set",
+  "allow-cmd-open-url",
 ]

@@ -997,9 +997,268 @@ pub fn start_provider_usage_poll(app: AppHandle, state: std::sync::Arc<crate::Ap
         .name("provider-usage".into())
         .spawn(move || loop {
             refresh_once();
+            // Soft Pad MiniMax must not depend on Claude settings pointing at MiniMax
+            // (this machine often uses DeepSeek there).
+            refresh_minimax_side_channel();
             crate::codex_micro_overlay::request_overlay_push(&app, state.as_ref(), false);
             std::thread::sleep(Duration::from_secs(REFRESH_SECS));
         });
+}
+
+fn is_plausible_minimax_api_key(key: &str) -> bool {
+    let k = key.trim();
+    k.len() >= 20
+        && !k.eq_ignore_ascii_case("sk-xxx")
+        && !k.contains(' ')
+        && !k.starts_with("eyJ") // JWT is login cookie, not Coding Plan key
+}
+
+/// Soft Pad–saved Coding Plan key (not Claude settings / MiniMax Code JWT).
+fn onetone_minimax_key_path() -> PathBuf {
+    data_root::effective_data_root().join("minimax-coding-api-key.txt")
+}
+
+pub fn read_stored_minimax_coding_key() -> Option<String> {
+    let raw = std::fs::read_to_string(onetone_minimax_key_path()).ok()?;
+    let k = raw.lines().next()?.trim().to_string();
+    if is_plausible_minimax_api_key(&k) {
+        Some(k)
+    } else {
+        None
+    }
+}
+
+pub fn masked_stored_minimax_coding_key() -> Option<String> {
+    let k = read_stored_minimax_coding_key()?;
+    if k.len() <= 8 {
+        return Some("••••".into());
+    }
+    Some(format!("{}…{}", &k[..4], &k[k.len() - 4..]))
+}
+
+pub fn set_stored_minimax_coding_key(key: &str) -> Result<(), String> {
+    let k = key.trim();
+    let path = onetone_minimax_key_path();
+    if k.is_empty() {
+        let _ = std::fs::remove_file(&path);
+        return Ok(());
+    }
+    if !is_plausible_minimax_api_key(k) {
+        return Err("invalid_minimax_coding_key".into());
+    }
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    std::fs::write(&path, format!("{k}\n")).map_err(|e| e.to_string())
+}
+
+/// Persist key (or clear), bust MiniMax usage cache, and refresh 5h windows.
+pub fn apply_minimax_coding_key(key: &str) -> Result<(), String> {
+    use crate::soft_pad_runtime::AgentKind;
+    set_stored_minimax_coding_key(key)?;
+    let mut snap = agent_usage::snapshot(AgentKind::MiniMax);
+    snap.last_success_at = 0;
+    snap.status = "waiting".into();
+    snap.message = "同步 Coding Plan…".into();
+    agent_usage::put_usage_snapshot(AgentKind::MiniMax, snap);
+    refresh_minimax_side_channel();
+    Ok(())
+}
+
+fn read_minimax_api_key_from_yaml(raw: &str) -> Option<String> {
+    for line in raw.lines() {
+        let t = line.trim();
+        let Some(rest) = t
+            .strip_prefix("apiKey:")
+            .or_else(|| t.strip_prefix("api_key:"))
+            .or_else(|| t.strip_prefix("MINIMAX_API_KEY:"))
+        else {
+            continue;
+        };
+        let k = rest
+            .trim()
+            .trim_matches('"')
+            .trim_matches('\'')
+            .trim();
+        if is_plausible_minimax_api_key(k) {
+            return Some(k.to_string());
+        }
+    }
+    None
+}
+
+fn minimax_config_yaml_paths() -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    if let Ok(home) = std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")) {
+        out.push(PathBuf::from(&home).join(".minimax").join("config.yaml"));
+        out.push(
+            PathBuf::from(&home)
+                .join(".minimax")
+                .join("agents")
+                .join("coder")
+                .join("config.yaml"),
+        );
+    }
+    out
+}
+
+fn minimax_desktop_logged_in() -> bool {
+    let candidates = [
+        std::env::var("APPDATA")
+            .ok()
+            .map(|p| PathBuf::from(p).join("MiniMax").join("minimax-agent-cn-config.json")),
+        std::env::var("USERPROFILE")
+            .ok()
+            .map(|p| PathBuf::from(p).join(".minimax").join("local-runtime.auth.json")),
+        std::env::var("HOME")
+            .ok()
+            .map(|p| PathBuf::from(p).join(".minimax").join("local-runtime.auth.json")),
+    ];
+    for path in candidates.into_iter().flatten() {
+        let Ok(raw) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        let Ok(v) = serde_json::from_str::<Value>(&raw) else {
+            continue;
+        };
+        let token = v
+            .pointer("/tokens/accessToken")
+            .or_else(|| v.pointer("/auth/accessToken"))
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .trim();
+        if token.len() >= 20 {
+            return true;
+        }
+    }
+    false
+}
+
+/// Discover MiniMax Coding Plan API key outside (or in) Claude settings.
+fn discover_minimax_coding_key() -> Option<(String, String)> {
+    // Soft Pad / OneTone-saved key wins — independent of Claude DeepSeek settings.
+    if let Some(k) = read_stored_minimax_coding_key() {
+        return Some((k, "https://api.minimaxi.com".into()));
+    }
+    if let Some((base, key)) = read_base_key() {
+        if detect_provider_from_base(&base) == ProviderId::MiniMax && is_plausible_minimax_api_key(&key)
+        {
+            return Some((key, base));
+        }
+    }
+    for env_key in ["MINIMAX_API_KEY", "MINIMAX_CODING_API_KEY", "MINIMAX_AUTH_TOKEN"] {
+        if let Ok(k) = std::env::var(env_key) {
+            if is_plausible_minimax_api_key(&k) {
+                return Some((k, "https://api.minimaxi.com".into()));
+            }
+        }
+    }
+    for path in minimax_config_yaml_paths() {
+        if let Ok(raw) = std::fs::read_to_string(path) {
+            if let Some(k) = read_minimax_api_key_from_yaml(&raw) {
+                return Some((k, "https://api.minimaxi.com".into()));
+            }
+        }
+    }
+    None
+}
+
+/// Soft Pad MiniMax usage, independent of Claude `ANTHROPIC_BASE_URL` (often DeepSeek).
+pub fn refresh_minimax_side_channel() {
+    if !agent_usage::usage_env_enabled() {
+        return;
+    }
+    use crate::soft_pad_runtime::AgentKind;
+
+    let existing = agent_usage::snapshot(AgentKind::MiniMax);
+    if existing.status == "ready"
+        && (existing.source == "minimax_remains" || existing.source.starts_with("minimax_remains"))
+        && existing.last_success_at > 0
+        && now_ms().saturating_sub(existing.last_success_at) < 4 * 60 * 1000
+    {
+        return;
+    }
+
+    // Claude settings already MiniMax — refresh_once owns the official view.
+    let av = active_view();
+    if av.detected && av.provider.eq_ignore_ascii_case("minimax") && av.status == "ready" {
+        return;
+    }
+
+    if let Some((key, base)) = discover_minimax_coding_key() {
+        let (t, m, r) = local_totals_for_provider("minimax");
+        let mut snap = agent_usage::AgentUsageSnapshot {
+            source: "minimax_remains".into(),
+            account_type: "minimax".into(),
+            account_label: ProviderId::MiniMax.account_label().into(),
+            plan_type: "Coding Plan".into(),
+            console_url: ProviderId::MiniMax.console_url().into(),
+            coding_plan_warning: true,
+            local_today_tokens: if t > 0 { Some(t) } else { None },
+            local_month_tokens: if m > 0 { Some(m) } else { None },
+            local_today_requests: if r > 0 { Some(r) } else { None },
+            updated_at: now_ms(),
+            ..Default::default()
+        };
+        match fetch_minimax(&key, &base) {
+            Ok(windows) => {
+                snap.windows = windows;
+                snap.status = "ready".into();
+                snap.confidence = "official".into();
+                snap.message = "MiniMax Coding Plan".into();
+                snap.last_success_at = now_ms();
+            }
+            Err(e) => {
+                if existing.last_success_at > 0 && !existing.windows.is_empty() {
+                    snap = existing;
+                    snap.status = "stale".into();
+                    snap.confidence = "stale".into();
+                    snap.message = format!(
+                        "{}（刷新失败：{}）",
+                        snap.message,
+                        e.chars().take(80).collect::<String>()
+                    );
+                    snap.updated_at = now_ms();
+                } else {
+                    snap.source = "minimax_error".into();
+                    snap.status = "waiting".into();
+                    snap.confidence = "local_only".into();
+                    snap.message =
+                        format!("额度未同步：{}", e.chars().take(100).collect::<String>());
+                }
+            }
+        }
+        agent_usage::put_usage_snapshot(AgentKind::MiniMax, snap);
+        return;
+    }
+
+    if minimax_desktop_logged_in() {
+        let (t, m, r) = local_totals_for_provider("minimax");
+        let local_bit = match (t, m) {
+            (tt, mm) if tt > 0 || mm > 0 => format!("本机今日 {tt} tok · 本月 {mm} tok"),
+            _ => "本机暂无记录".into(),
+        };
+        let snap = agent_usage::AgentUsageSnapshot {
+            source: "minimax_manual".into(),
+            status: "ready".into(),
+            confidence: "manual_or_local_estimate".into(),
+            account_type: "minimax".into(),
+            account_label: ProviderId::MiniMax.account_label().into(),
+            plan_type: "Token Plan".into(),
+            console_url: ProviderId::MiniMax.console_url().into(),
+            coding_plan_warning: true,
+            message: format!(
+                "点击填写 Key · 未配置 Coding Plan API Key · 官方剩余请到控制台 · {local_bit}"
+            ),
+            local_today_tokens: if t > 0 { Some(t) } else { None },
+            local_month_tokens: if m > 0 { Some(m) } else { None },
+            local_today_requests: if r > 0 { Some(r) } else { None },
+            updated_at: now_ms(),
+            last_success_at: now_ms(),
+            ..Default::default()
+        };
+        agent_usage::put_usage_snapshot(AgentKind::MiniMax, snap);
+    }
 }
 
 #[cfg(test)]
@@ -1090,5 +1349,23 @@ mod tests {
             detect_provider_from_base("https://api.anthropic.com"),
             ProviderId::Unknown
         );
+    }
+
+    #[test]
+    fn minimax_yaml_key_skips_placeholder_and_jwt() {
+        assert!(read_minimax_api_key_from_yaml("apiKey: sk-xxx").is_none());
+        assert!(read_minimax_api_key_from_yaml(
+            "apiKey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abc.def"
+        )
+        .is_none());
+        let k = read_minimax_api_key_from_yaml(
+            "provider:\n  minimax:\n    apiKey: sk-abcdefghijklmnopqrstuvwxyz012345\n",
+        )
+        .expect("real key");
+        assert!(k.starts_with("sk-abcdef"));
+        assert!(!is_plausible_minimax_api_key("sk-xxx"));
+        assert!(is_plausible_minimax_api_key(
+            "sk-abcdefghijklmnopqrstuvwxyz012345"
+        ));
     }
 }

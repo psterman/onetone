@@ -69,7 +69,38 @@
    */
   function ensurePackForMapping(m, opts) {
     opts = opts || {};
-    if (!m || !isCodexScenario(m)) return m;
+    if (!m) return m;
+    if (isCursorScenario(m)) {
+      if (hasCursorPack(m) && !opts.force) {
+        if (fillEmptyKeyDefaults(m) && opts.persist !== false) persist();
+        return m;
+      }
+      return applyCursorPackToMapping(m, {
+        channels: ['keys', 'voice', 'camera'],
+        essentialsOnly: false,
+        reset: !hasCursorPack(m),
+        cameraTarget: 'override',
+        enableProfile: 'scenarioAllKeys',
+        setAppTarget: true,
+        persist: opts.persist !== false
+      });
+    }
+    if (isVscodeLineageScenario(m)) {
+      if (hasVscodePack(m) && !opts.force) {
+        if (fillEmptyKeyDefaults(m) && opts.persist !== false) persist();
+        return m;
+      }
+      return applyVscodePackToMapping(m, {
+        channels: ['keys', 'voice', 'camera'],
+        essentialsOnly: false,
+        reset: !hasVscodePack(m),
+        cameraTarget: 'override',
+        enableProfile: 'scenarioAllKeys',
+        setAppTarget: true,
+        persist: opts.persist !== false
+      });
+    }
+    if (!isCodexScenario(m)) return m;
     if (hasCodexPack(m) && !opts.force) {
       if (fillEmptyKeyDefaults(m) && opts.persist !== false) persist();
       return m;
@@ -90,24 +121,94 @@
     var A = agent();
     if (!A || !m || !Array.isArray(m.agentBindings)) return false;
     var changed = false;
+    var app = String(m.appTargetId || '').trim();
+    var provider = A.providerIdForApp ? A.providerIdForApp(app) : '';
+    if (provider && !String(m.agentProviderId || '').trim()) {
+      m.agentProviderId = provider;
+    }
     for (var i = 0; i < m.agentBindings.length; i++) {
       var b = m.agentBindings[i];
       if (!b || b.triggerType !== 'key') continue;
       if (String(b.triggerBinding || '').trim()) continue;
-      var def = A.defaultKeyForSlot ? A.defaultKeyForSlot(b.slotId) : '';
+      var def = A.defaultKeyForMapping
+        ? A.defaultKeyForMapping(m, b.slotId)
+        : (A.defaultKeyForSlot ? A.defaultKeyForSlot(b.slotId) : '');
       if (!def) continue;
       b.triggerBinding = def;
       changed = true;
     }
+    if (isVscodeLineageScenario(m) && realignAppBindingsFromStaleDefaults(m)) changed = true;
+    return changed;
+  }
+
+  function realignCursorBindingsFromCodexDefaults(m) {
+    return realignAppBindingsFromStaleDefaults(m);
+  }
+
+  function realignVscodeBindingsFromCodexDefaults(m) {
+    return realignAppBindingsFromStaleDefaults(m);
+  }
+
+  function realignAppBindingsFromStaleDefaults(m) {
+    var A = agent();
+    if (!A || !m || !Array.isArray(m.agentBindings)) return false;
+    var target = (A.defaultKeyMapForApp && A.defaultKeyMapForApp(m.appTargetId)) || {};
+    var staleMaps = [
+      A.DEFAULT_KEY_BY_SLOT || {},
+      A.VSCODE_DEFAULT_KEY_BY_SLOT || {},
+      A.STALE_GENERIC_VSCODE_KEY_BY_SLOT || { quickChat: 'Ctrl+L' },
+      A.CURSOR_DEFAULT_KEY_BY_SLOT || {},
+      A.TRAE_DEFAULT_KEY_BY_SLOT || {},
+      A.QODER_DEFAULT_KEY_BY_SLOT || {},
+      A.WORKBUDDY_DEFAULT_KEY_BY_SLOT || {}
+    ];
+    var changed = false;
+    m.agentBindings.forEach(function (b) {
+      if (!b || b.triggerType !== 'key') return;
+      var sid = String(b.slotId || '').trim();
+      var cur = String(b.triggerBinding || '').trim();
+      var next = String(target[sid] || '').trim();
+      if (cur === next) return;
+      var stale = staleMaps.some(function (map) {
+        return String(map[sid] || '').trim() === cur && cur !== '';
+      });
+      if (!stale) return;
+      b.triggerBinding = next;
+      changed = true;
+    });
     return changed;
   }
 
   function isCodexScenario(m) {
     if (!m) return false;
+    if (isVscodeLineageScenario(m)) return false;
     var A = agent();
     if (!A) return false;
     return String(m.appTargetId || '') === A.APP_TARGET_ID
       || String(m.agentTemplateId || '') === A.TEMPLATE_ID;
+  }
+
+  function isCursorScenario(m) {
+    return !!(m && String(m.appTargetId || '') === 'cursor-chat');
+  }
+
+  function isVscodeLineageScenario(m) {
+    var A = agent();
+    var app = String((m && m.appTargetId) || '').trim();
+    if (A && A.isVscodeLineageApp) return A.isVscodeLineageApp(app);
+    return app === 'cursor-chat' || app === 'workbuddy-chat' || app === 'trae-chat' || app === 'qoder-chat';
+  }
+
+  function hasVscodePack(m) {
+    return !!(m && isVscodeLineageScenario(m)
+      && String(m.agentTemplateId || '') === (agent() && agent().TEMPLATE_ID)
+      && Array.isArray(m.agentBindings) && m.agentBindings.length);
+  }
+
+  function hasCursorPack(m) {
+    return !!(m && isCursorScenario(m)
+      && String(m.agentTemplateId || '') === (agent() && agent().TEMPLATE_ID)
+      && Array.isArray(m.agentBindings) && m.agentBindings.length);
   }
 
   function hasCodexPack(m) {
@@ -149,13 +250,18 @@
     var wantVoice = channels.indexOf('voice') >= 0;
     if (!wantKeys && !wantVoice) return;
 
+    var app = String(m.appTargetId || '').trim();
     m.agentTemplateId = A.TEMPLATE_ID;
-    m.agentProviderId = A.PROVIDER_ID;
+    var provider = (A.providerIdForApp && A.providerIdForApp(app)) || '';
+    if (provider) m.agentProviderId = provider;
+    else if (!String(m.agentProviderId || '').trim()) m.agentProviderId = A.PROVIDER_ID;
     if (isCodexScenario(m) || opts.setAppTarget) {
       m.appTargetId = m.appTargetId || A.APP_TARGET_ID;
     }
 
-    var fresh = A.buildCodexMicro13Bindings({ enableProfile: profile });
+    var fresh = A.buildScenarioBindings
+      ? A.buildScenarioBindings(m, { enableProfile: profile })
+      : A.buildCodexMicro13Bindings({ enableProfile: profile });
     if (!wantKeys) fresh = fresh.filter(function (b) { return b.triggerType !== 'key'; });
     if (!wantVoice) fresh = fresh.filter(function (b) { return b.triggerType !== 'voice'; });
 
@@ -260,6 +366,26 @@
     m.cameraOverride = applyCameraPatch(ov, patch, reset);
   }
 
+  function applyCursorPackToMapping(m, opts) {
+    opts = opts || {};
+    var A = agent();
+    if (!A || !m) return null;
+    m.appTargetId = m.appTargetId || 'cursor-chat';
+    m.agentProviderId = m.agentProviderId || 'cursor';
+    return applyCodexPackToMapping(m, opts);
+  }
+
+  function applyVscodePackToMapping(m, opts) {
+    opts = opts || {};
+    var A = agent();
+    if (!A || !m) return null;
+    var app = String(m.appTargetId || '').trim();
+    if (A.providerIdForApp) {
+      m.agentProviderId = m.agentProviderId || A.providerIdForApp(app) || m.agentProviderId;
+    }
+    return applyCodexPackToMapping(m, opts);
+  }
+
   /**
    * Unique write API for Codex pack.
    * @param {object|null} m mapping (required for keys/voice/override camera)
@@ -299,10 +425,10 @@
       });
     }
 
-    if (m && global.OneToneAppBehaviorRules && isCodexScenario(m)) {
+    if (m && global.OneToneAppBehaviorRules && (isCodexScenario(m) || isVscodeLineageScenario(m))) {
       if (global.OneToneAppBehaviorRules.ensureRules) global.OneToneAppBehaviorRules.ensureRules(m);
       if (global.OneToneAppBehaviorRules.ensurePrimaryAppRule) {
-        global.OneToneAppBehaviorRules.ensurePrimaryAppRule(m, A.APP_TARGET_ID);
+        global.OneToneAppBehaviorRules.ensurePrimaryAppRule(m, m.appTargetId || A.APP_TARGET_ID);
       }
     }
 
@@ -385,13 +511,20 @@
 
   global.OneToneAgentScenarioTemplate = {
     applyCodexPackToMapping: applyCodexPackToMapping,
+    applyCursorPackToMapping: applyCursorPackToMapping,
+    applyVscodePackToMapping: applyVscodePackToMapping,
     applyCodexMicro13: applyCodexMicro13,
     findOrCreateCodexScenario: findOrCreateCodexScenario,
     findExistingCodexScenario: findExistingCodexScenario,
     createNewCodexScenario: createNewCodexScenario,
     ensurePackForMapping: ensurePackForMapping,
     fillEmptyKeyDefaults: fillEmptyKeyDefaults,
+    realignCursorBindingsFromCodexDefaults: realignCursorBindingsFromCodexDefaults,
     isCodexScenario: isCodexScenario,
+    isCursorScenario: isCursorScenario,
+    isVscodeLineageScenario: isVscodeLineageScenario,
+    hasCursorPack: hasCursorPack,
+    hasVscodePack: hasVscodePack,
     hasCodexPack: hasCodexPack,
     syncAgentVoiceCommands: syncAgentVoiceCommands
   };

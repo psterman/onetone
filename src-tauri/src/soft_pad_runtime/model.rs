@@ -9,6 +9,8 @@ pub enum AgentKind {
     Codex,
     Claude,
     Cursor,
+    /// MiniMax Code desktop — Soft Pad + provider usage (not Claude OTel).
+    MiniMax,
     /// GitHub Copilot CLI (desktop wait signals only; Cloud Agent excluded from Soft Pad).
     CopilotCli,
     /// Tencent WorkBuddy / CodeBuddy — shell hooks (lifecycle + needs_input; no Claude resume).
@@ -25,6 +27,7 @@ impl AgentKind {
             AgentKind::Codex => "codex",
             AgentKind::Claude => "claude",
             AgentKind::Cursor => "cursor",
+            AgentKind::MiniMax => "minimax",
             AgentKind::CopilotCli => "copilotCli",
             AgentKind::WorkBuddy => "workbuddy",
             AgentKind::Trae => "trae",
@@ -37,6 +40,7 @@ impl AgentKind {
             "codex-chat" => Some(AgentKind::Codex),
             "claude-code" => Some(AgentKind::Claude),
             "cursor-chat" => Some(AgentKind::Cursor),
+            "minimax-chat" => Some(AgentKind::MiniMax),
             "copilot-cli" => Some(AgentKind::CopilotCli),
             "workbuddy-chat" | "codebuddy-chat" => Some(AgentKind::WorkBuddy),
             "trae-chat" => Some(AgentKind::Trae),
@@ -50,6 +54,7 @@ impl AgentKind {
             "codex" => Some(AgentKind::Codex),
             "claude" => Some(AgentKind::Claude),
             "cursor" => Some(AgentKind::Cursor),
+            "minimax" => Some(AgentKind::MiniMax),
             "copilotCli" | "copilot_cli" | "copilot-cli" => Some(AgentKind::CopilotCli),
             "workbuddy" | "codebuddy" => Some(AgentKind::WorkBuddy),
             "trae" => Some(AgentKind::Trae),
@@ -63,6 +68,7 @@ impl AgentKind {
             AgentKind::Codex => "codex-chat",
             AgentKind::Claude => "claude-code",
             AgentKind::Cursor => "cursor-chat",
+            AgentKind::MiniMax => "minimax-chat",
             AgentKind::CopilotCli => "copilot-cli",
             AgentKind::WorkBuddy => "workbuddy-chat",
             AgentKind::Trae => "trae-chat",

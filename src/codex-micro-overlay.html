@@ -9,6 +9,7 @@
   <script src="js/core/motion.js"></script>
   <script src="js/core/agent-status-edge.js"></script>
   <script src="js/features/agent/usage-format.js"></script>
+  <script src="js/features/agent/soft-pad-agent-bar-rank.js"></script>
 </head>
 <body>
   <div class="root">
@@ -27,6 +28,10 @@
             <img src="icons/app-target/cursor.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
           </span>
+          <span class="overlay-mini__agent" role="listitem" data-agent="minimax" data-status="idle" aria-label="MiniMax：空闲" hidden>
+            <img src="icons/app-target/minimaxcode.png" alt="" aria-hidden="true">
+            <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
+          </span>
           <span class="overlay-mini__agent" role="listitem" data-agent="workbuddy" data-status="idle" aria-label="WorkBuddy：空闲" hidden>
             <img src="icons/app-target/workbuddy.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
@@ -39,6 +44,7 @@
             <img src="icons/app-target/qoder.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
           </span>
+          <button type="button" class="overlay-mini__more" id="miniAgentMore" data-act="agent-more-mini" hidden title="展开查看更多 Agent" aria-label="更多 Agent">+0</button>
         </div>
         <span class="overlay-mini__usage" id="miniUsagePill" hidden aria-live="polite"></span>
         <button type="button" class="overlay-mini__btn overlay-mini__btn--expand" data-act="expand" title="展开" aria-label="展开浮窗">
@@ -73,6 +79,10 @@
                     <img src="icons/app-target/cursor.png" alt="" aria-hidden="true">
                     <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
                   </button>
+                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="minimax" data-status="idle" aria-pressed="false" aria-label="MiniMax" title="MiniMax" hidden>
+                    <img src="icons/app-target/minimaxcode.png" alt="" aria-hidden="true">
+                    <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
+                  </button>
                   <button type="button" class="soft-pad-agent-bar__chip" data-agent="workbuddy" data-status="idle" aria-pressed="false" aria-label="WorkBuddy" title="WorkBuddy" hidden>
                     <img src="icons/app-target/workbuddy.png" alt="" aria-hidden="true">
                     <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
@@ -85,14 +95,26 @@
                     <img src="icons/app-target/qoder.png" alt="" aria-hidden="true">
                     <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
                   </button>
+                  <button type="button" class="soft-pad-agent-bar__more" id="padAgentBarMore" data-act="agent-more" hidden aria-expanded="false" aria-haspopup="true" aria-controls="padAgentBarOverflow" title="更多 Agent" aria-label="更多 Agent">+0</button>
+                  <div class="soft-pad-agent-bar__overflow" id="padAgentBarOverflow" hidden role="menu" aria-label="更多 Agent"></div>
                 </div>
                 <div class="micro-hw__grid" id="grid"></div>
                 <div class="status-chip" id="statusChip" data-status="idle" aria-hidden="true"></div>
               </div>
             </div>
-            <div class="overlay-key-caption" id="overlayKeyCaption" aria-live="polite">
+            <button type="button" class="overlay-key-caption is-clickable" id="overlayKeyCaption" aria-live="polite" data-act="usage-caption">
               <span class="overlay-key-caption__name" data-cap-name>悬停按键查看名称</span>
               <span class="overlay-key-caption__chord" data-cap-chord></span>
+            </button>
+            <div class="overlay-minimax-key" id="overlayMinimaxKey" hidden>
+              <p class="overlay-minimax-key__hint">粘贴 MiniMax Coding Plan API Key（不是登录 JWT）</p>
+              <input id="overlayMinimaxKeyInput" class="overlay-minimax-key__input" type="password" autocomplete="off" spellcheck="false" placeholder="sk-…" />
+              <div class="overlay-minimax-key__actions">
+                <button type="button" class="overlay-minimax-key__btn is-primary" data-act="mm-key-save">保存并加载 5h</button>
+                <button type="button" class="overlay-minimax-key__btn" data-act="mm-key-console">套餐详情</button>
+                <button type="button" class="overlay-minimax-key__btn" data-act="mm-key-cancel">取消</button>
+              </div>
+              <p class="overlay-minimax-key__status" data-mm-key-status aria-live="polite"></p>
             </div>
             <button type="button" class="overlay-nav-cta" id="overlayNavCta" hidden>
               <span class="overlay-nav-cta__label" data-nav-cta-label>AG 当前为动作键</span>
@@ -245,6 +267,13 @@
       invalid_phase:'无效操作',
       numpad_mode:'请先打开模式开关 · 切换到虚拟键盘模式'
     };
+    function reasonHint(reason){
+      if(reason==='not_foreground'){
+        var kind=String(lastSnap&&(lastSnap.appAgent||lastSnap.app_agent)||'').trim().toLowerCase();
+        return '请切换到 '+agentLabel(kind||'codex')+' 桌面版窗口';
+      }
+      return REASON_HINT[reason]||'';
+    }
     var boundKeys={};
     var PAD_SKINS=['default','glass-light','hybrid-pro','vibe-light','vibe-dark'];
     function normalizeOverlaySkin(raw){
@@ -265,7 +294,12 @@
     var grid=document.getElementById('grid');
     var overlayToast=document.getElementById('overlayToast');
     var miniAgents=document.getElementById('miniAgents');
+    var miniAgentMore=document.getElementById('miniAgentMore');
     var padAgentBar=document.getElementById('padAgentBar');
+    var padAgentBarMore=document.getElementById('padAgentBarMore');
+    var padAgentBarOverflow=document.getElementById('padAgentBarOverflow');
+    var agentBarRecency={};
+    var agentBarOverflowOpen=false;
     var miniUsagePill=document.getElementById('miniUsagePill');
     var statusChip=document.getElementById('statusChip');
     var overlayAppMeta=document.getElementById('overlayAppMeta');
@@ -610,12 +644,16 @@
       return detail?'额度未同步（可装 Hook / statusline）':'额度未同步';
     }
 
-    /** Balance / manual caption on Claude row — not a % window. */
+    /** Balance / manual caption — not a % window.
+     *  minimax_remains has official 5h/weekly windows — never treat as balance-only. */
     function providerBalanceCaption(usage){
       usage=usage||{};
       var src=String(usage.source||'');
       var conf=String(usage.confidence||'');
-      if(src==='deepseek_balance'||src==='kimi_balance'||conf==='manual_or_local_estimate'){
+      var balanceOnly=src==='deepseek_balance'||src==='kimi_balance'
+        ||src==='minimax_balance'||src==='minimax_manual'
+        ||conf==='manual_or_local_estimate';
+      if(balanceOnly){
         var msg=String(usage.message||'').trim();
         if(msg) return msg.split(' · ')[0];
         return String(usageValue(usage,'accountLabel','account_label')||'').trim();
@@ -627,6 +665,7 @@
     function agentLabel(kind){
       if(kind==='claude') return 'Claude';
       if(kind==='cursor') return 'Cursor';
+      if(kind==='minimax') return 'MiniMax';
       if(kind==='workbuddy') return 'WorkBuddy';
       if(kind==='trae') return 'Trae';
       if(kind==='qoder') return 'Qoder';
@@ -908,7 +947,7 @@
         return cmsg;
       }
       if(status==='disabled') return detail?'用量已关闭':'已关闭';
-      var balCap=kind==='claude'?providerBalanceCaption(usage):'';
+      var balCap=(kind==='claude'||kind==='minimax')?providerBalanceCaption(usage):'';
       if(balCap){
         var locBits=[];
         var lt=usageValue(usage,'localTodayTokens','local_today_tokens');
@@ -919,7 +958,7 @@
       }
       var windows=Array.isArray(usage.windows)?usage.windows:[];
       var bits=[];
-      if(kind==='codex'||kind==='claude'){
+      if(kind==='codex'||kind==='claude'||kind==='minimax'){
         windows.slice(0,2).forEach(function(w){
           // Each window shows its own reset (do not share primary countdown with 7d).
           var lab=windowLabel(w,true);
@@ -932,6 +971,7 @@
             if(otel.length) bits=otel;
             else return claudeFallbackCaption(row,snap,!!detail);
           } else {
+            // codex + minimax: remainingPercent; never Claude OTel on MiniMax
             var remaining=usageValue(usage,'remainingPercent','remaining_percent');
             if(remaining!=null){
               var base='窗口余 '+Math.round(Number(remaining))+'%';
@@ -1024,6 +1064,7 @@
       if(kind==='codex') return 'C';
       if(kind==='claude') return 'Cl';
       if(kind==='cursor') return 'Cu';
+      if(kind==='minimax') return 'Mn';
       if(kind==='workbuddy') return 'Wb';
       if(kind==='trae') return 'Tr';
       if(kind==='qoder') return 'Qd';
@@ -1046,16 +1087,16 @@
       var status=String(usage.status||'');
       if(kind==='cursor') return isCursorActivityUsage(usage);
       if(status==='disabled'||status==='unavailable') return false;
-      if(kind==='claude'&&providerBalanceCaption(usage)){
+      if((kind==='claude'||kind==='minimax')&&providerBalanceCaption(usage)){
         return status==='ready'||status==='stale'||status==='waiting';
       }
-      if(kind==='claude'&&String(usage.confidence||'')==='manual_or_local_estimate'){
+      if((kind==='claude'||kind==='minimax')&&String(usage.confidence||'')==='manual_or_local_estimate'){
         return status==='ready'||status==='stale'||status==='waiting';
       }
       if(isShellUsageKind(kind)&&(shellUsageCaption(usage)||String(usage.confidence||'')==='manual_or_local_estimate')){
         return status==='ready'||status==='stale'||status==='waiting';
       }
-      // Claude OTel session burn — auxiliary only; never invent remaining %.
+      // Claude OTel session burn — auxiliary only; never invent remaining %; never on MiniMax.
       if(kind==='claude'&&claudeOtelBits(usage,false).length){
         return status==='ready'||status==='stale'||status==='waiting';
       }
@@ -1076,6 +1117,27 @@
       return false;
     }
 
+    /** MiniMax mini pill — windows / balance; never Claude OTel. */
+    function minimaxMiniText(usage){
+      usage=usage||{};
+      var bal=providerBalanceCaption(usage);
+      if(bal) return bal.replace(/^MiniMax\s+/,'');
+      if(String(usage.confidence||'')==='manual_or_local_estimate'){
+        var loc=usageValue(usage,'localTodayTokens','local_today_tokens');
+        if(loc!=null&&Number(loc)>0) return '本机今日 '+Math.round(Number(loc));
+        return 'Mn · 需 Key 看 5h/倒计时';
+      }
+      var windows=Array.isArray(usage.windows)?usage.windows:[];
+      var pw=windows.find(function(w){ return String(w.kind||'')==='primary'; })||windows[0];
+      if(pw){
+        var lab=windowLabel(pw,false);
+        if(lab) return 'Mn · '+lab;
+      }
+      var rem=usageValue(usage,'remainingPercent','remaining_percent');
+      if(rem!=null) return 'Mn · '+Math.round(Number(rem))+'%';
+      return '';
+    }
+
     function miniUsageText(kind,usage){
       usage=usage||{};
       if(!isRenderableUsage(kind,usage)) return '';
@@ -1084,6 +1146,7 @@
         if(turns==null) return '';
         return 'Cu · '+Math.round(Number(turns))+'次';
       }
+      if(kind==='minimax') return minimaxMiniText(usage);
       var bal=kind==='claude'?providerBalanceCaption(usage):(isShellUsageKind(kind)?shellUsageCaption(usage):'');
       if(bal){
         return bal.replace(/^(DeepSeek|Kimi)\s+/,'');
@@ -1121,6 +1184,8 @@
         return isRenderableUsage(kind,(byKind[kind]||{}).usage||{});
       }
       if(usageFocusPinned&&focusedUsageAgent&&hasRenderable(focusedUsageAgent)) return focusedUsageAgent;
+      var fg=String(s&&(s.foregroundAgent||s.foreground_agent)||'').trim().toLowerCase();
+      if(fg&&hasRenderable(fg)) return fg;
       var app=String(s&&(s.appAgent||s.app_agent)||'').trim().toLowerCase();
       if(app&&hasRenderable(app)) return app;
       var active=['needs_input','running'];
@@ -1140,7 +1205,7 @@
     }
 
     function isUsageFocusKind(kind){
-      return kind==='codex'||kind==='claude'||kind==='cursor'||
+      return kind==='codex'||kind==='claude'||kind==='cursor'||kind==='minimax'||
         kind==='workbuddy'||kind==='trae'||kind==='qoder';
     }
 
@@ -1148,6 +1213,8 @@
       if(usageFocusPinned&&isUsageFocusKind(focusedUsageAgent)){
         return focusedUsageAgent;
       }
+      var fg=String(s&&(s.foregroundAgent||s.foreground_agent)||'').trim().toLowerCase();
+      if(isUsageFocusKind(fg)) return fg;
       var app=String(s&&(s.appAgent||s.app_agent)||'').trim().toLowerCase();
       if(isUsageFocusKind(app)) return app;
       var auto=pickMiniUsageKind(s);
@@ -1159,7 +1226,7 @@
       usage=usage||{};
       var lines=[];
       // Prefer official balance / windows over OTel「本会话」(Soft Pad caption + tooltip).
-      var balCap=kind==='claude'?providerBalanceCaption(usage):(isShellUsageKind(kind)?shellUsageCaption(usage):'');
+      var balCap=(kind==='claude'||kind==='minimax')?providerBalanceCaption(usage):(isShellUsageKind(kind)?shellUsageCaption(usage):'');
       if(balCap){
         lines.push(balCap);
         return lines;
@@ -1172,7 +1239,7 @@
       if(!lines.length&&kind==='claude'){
         claudeOtelBits(usage,true).forEach(function(b){ lines.push(b); });
       }
-      if(!lines.length&&kind==='codex'){
+      if(!lines.length&&(kind==='codex'||kind==='minimax')){
         var remaining=usageValue(usage,'remainingPercent','remaining_percent');
         if(remaining!=null){
           var base='窗口余 '+Math.round(Number(remaining))+'%';
@@ -1219,6 +1286,10 @@
       var tipLines;
       if(kind==='cursor'){
         tipLines=cursorChipTipText(row,row.usage||{},String(row.state||'idle')).lines;
+      } else if(kind==='minimax'){
+        tipLines=['MiniMax · 需 Key 看 5h/倒计时'];
+        var mmSum=usageSummary(kind,row.usage||{},true,row,s);
+        if(mmSum) tipLines=[agentLabel(kind)+' · '+mmSum];
       } else {
         tipLines=[
           agentLabel(kind)+' · '+usageSummary(kind,row.usage||{},true,row,s)
@@ -1294,6 +1365,16 @@
       if(next==='error') next='failed';
       if(next==='done'||next==='needs_input') Motion.playOnce(target,'ot-sparkle-once');
       else if(next==='failed') Motion.playOnce(target,'ot-shake');
+      // Expand bar: ~300ms chip flash when a run finishes.
+      if(next==='done'&&el.classList&&el.classList.contains('soft-pad-agent-bar__chip')){
+        el.classList.remove('is-status-flash');
+        void el.offsetWidth;
+        el.classList.add('is-status-flash');
+        clearTimeout(el.__statusFlashTimer);
+        el.__statusFlashTimer=setTimeout(function(){
+          el.classList.remove('is-status-flash');
+        }, 320);
+      }
     }
 
     function applyAgentChipEl(el,s,byKind,focus){
@@ -1358,7 +1439,13 @@
       if(plan.playEdge) playAgentChipEdge(el, state);
     }
 
+    function noteForegroundRecency(s){
+      var fg=String(s&&(s.foregroundAgent||s.foreground_agent)||'').trim().toLowerCase();
+      if(fg) touchAgentBarRecency(fg);
+    }
+
     function applyMiniAgentChips(s){
+      noteForegroundRecency(s);
       var rows=Array.isArray(s&&s.agents)?s.agents:[];
       var byKind={};
       rows.forEach(function(row){
@@ -1366,17 +1453,113 @@
         if(kind) byKind[kind]=row;
       });
       var focus=resolveUsageFocus(s);
-      if(miniAgents){
-        miniAgents.querySelectorAll('[data-agent]').forEach(function(el){
-          applyAgentChipEl(el,s,byKind,focus);
-        });
-      }
-      if(padAgentBar){
-        padAgentBar.querySelectorAll('[data-agent]').forEach(function(el){
-          applyAgentChipEl(el,s,byKind,focus);
-        });
-      }
+      layoutMiniAgentBar(s, byKind, focus);
+      layoutPadAgentBar(s, byKind, focus);
       applyUsageCaptionIdle(s);
+    }
+
+    function touchAgentBarRecency(kind){
+      kind=String(kind||'').trim();
+      if(!kind) return;
+      agentBarRecency[kind]=Date.now();
+    }
+
+    function setAgentBarOverflowOpen(open){
+      agentBarOverflowOpen=!!open;
+      if(padAgentBarOverflow) padAgentBarOverflow.hidden=!agentBarOverflowOpen;
+      if(padAgentBarMore){
+        padAgentBarMore.setAttribute('aria-expanded', agentBarOverflowOpen?'true':'false');
+      }
+      if(padAgentBar) padAgentBar.classList.toggle('is-overflow-open', agentBarOverflowOpen);
+      var face=padAgentBar&&padAgentBar.closest&&padAgentBar.closest('.micro-hw__face');
+      if(face) face.classList.toggle('is-agent-overflow-open', agentBarOverflowOpen);
+    }
+
+    function rankAgentBarKinds(s, byKind, focus, opts){
+      var Rank=window.OneToneSoftPadAgentBarRank;
+      if(Rank&&Rank.rankPadAgentBarKinds){
+        return Rank.rankPadAgentBarKinds(s, byKind, focus, agentBarRecency, opts);
+      }
+      return { top: [], rest: [] };
+    }
+
+    function reorderChipsBeforeAnchor(root, chipSel, top, rest, anchor){
+      if(!root) return { chips: [], byEl: {}, topSet: {}, restSet: {} };
+      var topSet={};
+      (top||[]).forEach(function(k){ topSet[k]=1; });
+      var restSet={};
+      (rest||[]).forEach(function(k){ restSet[k]=1; });
+      var chips=[];
+      root.querySelectorAll(chipSel).forEach(function(el){ chips.push(el); });
+      var byEl={};
+      chips.forEach(function(el){
+        byEl[String(el.getAttribute('data-agent')||'')]=el;
+      });
+      (top||[]).forEach(function(k){
+        if(byEl[k]&&anchor) root.insertBefore(byEl[k], anchor);
+        else if(byEl[k]) root.appendChild(byEl[k]);
+      });
+      (rest||[]).forEach(function(k){
+        if(byEl[k]&&anchor) root.insertBefore(byEl[k], anchor);
+        else if(byEl[k]) root.appendChild(byEl[k]);
+      });
+      chips.forEach(function(el){
+        var k=String(el.getAttribute('data-agent')||'');
+        if(topSet[k]||restSet[k]) return;
+        if(anchor) root.insertBefore(el, anchor);
+      });
+      return { chips: chips, byEl: byEl, topSet: topSet, restSet: restSet };
+    }
+
+    function layoutMiniAgentBar(s, byKind, focus){
+      if(!miniAgents) return;
+      var Rank=window.OneToneSoftPadAgentBarRank;
+      var ranked=rankAgentBarKinds(s, byKind, focus, {
+        visibleMax: (Rank&&Rank.VISIBLE_PAD)||7
+      });
+      var top=ranked.top||[];
+      var laid=reorderChipsBeforeAnchor(
+        miniAgents,
+        '.overlay-mini__agent[data-agent]',
+        top,
+        [],
+        miniAgentMore||null
+      );
+      laid.chips.forEach(function(el){
+        var k=String(el.getAttribute('data-agent')||'');
+        applyAgentChipEl(el, s, byKind, focus);
+        el.hidden=!laid.topSet[k];
+      });
+      if(miniAgentMore) miniAgentMore.hidden=true;
+    }
+
+    function layoutPadAgentBar(s, byKind, focus){
+      if(!padAgentBar) return;
+      var Rank=window.OneToneSoftPadAgentBarRank;
+      var ranked=rankAgentBarKinds(s, byKind, focus, {
+        visibleMax: (Rank&&Rank.VISIBLE_PAD)||7
+      });
+      var top=ranked.top||[];
+      var anchor=padAgentBarMore||padAgentBarOverflow||null;
+      var laid=reorderChipsBeforeAnchor(
+        padAgentBar,
+        '.soft-pad-agent-bar__chip[data-agent]',
+        top,
+        [],
+        anchor
+      );
+
+      laid.chips.forEach(function(el){
+        var k=String(el.getAttribute('data-agent')||'');
+        applyAgentChipEl(el, s, byKind, focus);
+        el.hidden=!laid.topSet[k];
+      });
+
+      if(padAgentBarMore) padAgentBarMore.hidden=true;
+      if(padAgentBarOverflow){
+        padAgentBarOverflow.innerHTML='';
+        setAgentBarOverflowOpen(false);
+      }
     }
 
     function formatAgeMs(ageMs){
@@ -1516,7 +1699,17 @@
       backendAppLightsOn=appOn;
       backendAppStatus=appSt;
       var padSt=effectivePadStatus();
-      var light=appOn ? (appSt||'idle') : padSt;
+      var Rank=window.OneToneSoftPadAgentBarRank;
+      var byKind={};
+      (Array.isArray(s&&s.agents)?s.agents:[]).forEach(function(row){
+        var kind=String(row&&row.kind||'').trim();
+        if(kind) byKind[kind]=row;
+      });
+      var fromAgents=Rank&&Rank.padLightFromRanked
+        ? Rank.padLightFromRanked(s, byKind, resolveUsageFocus(s), agentBarRecency)
+        : '';
+      // Chips are per-agent; singleton appStatus stays idle when another agent is live.
+      var light=fromAgents || (appOn && appSt && appSt!=='idle' ? appSt : padSt);
       wrap.setAttribute('data-light', light);
 
       // Soft RGB Output Adapter: color only from snapshot.rgb (Rust), never FE palette.
@@ -1730,7 +1923,7 @@
             holdSuppressCancel=false;
           }
           setLocalStatus('failed', id);
-          setFootHint(REASON_HINT[reason]||DEFAULT_FOOT);
+          setFootHint(reasonHint(reason)||DEFAULT_FOOT);
         }
         return res;
       }).catch(function(){
@@ -2215,7 +2408,13 @@
     }
 
     function isDragBlocked(target){
-      return !!(target && target.closest && target.closest('[data-micro-key],[data-act],button,a,input,select,textarea'));
+      return !!(target && target.closest && target.closest(
+        '[data-micro-key],[data-act],button,a,input,select,textarea,' +
+        '#overlayKeyCaption,#overlayMinimaxKey,.overlay-key-caption,.overlay-minimax-key,' +
+        '.overlay-nav-cta,.overlay-light-gate,#miniUsagePill,' +
+        '#padAgentBarMore,#padAgentBarOverflow,.soft-pad-agent-bar__more,.soft-pad-agent-bar__overflow,' +
+        '#miniAgentMore,.overlay-mini__more'
+      ));
     }
 
     wrap.addEventListener('pointerdown',function(e){
@@ -2253,6 +2452,9 @@
     });
 
     document.querySelectorAll('[data-act="expand"]').forEach(function(btn){
+      btn.addEventListener('pointerdown',function(e){
+        e.stopPropagation();
+      });
       btn.addEventListener('click',function(e){
         e.preventDefault(); e.stopPropagation();
         hideAgentTip();
@@ -2272,9 +2474,11 @@
 
     function setUsageFocusFromUi(kind){
       kind=String(kind||'').trim();
-      if(kind!=='codex'&&kind!=='claude'&&kind!=='cursor'&&kind!=='workbuddy'&&kind!=='trae'&&kind!=='qoder') return;
+      if(kind!=='codex'&&kind!=='claude'&&kind!=='cursor'&&kind!=='minimax'&&kind!=='workbuddy'&&kind!=='trae'&&kind!=='qoder') return;
+      touchAgentBarRecency(kind);
       // Shell hook apps have no usage pill in the mini overlay; we only need to focus the target app.
       if(kind==='workbuddy'||kind==='trae'||kind==='qoder'){
+        applyMiniAgentChips(lastSnap||{});
         invoke('cmd_soft_pad_focus_agent',{kind:kind}).catch(function(){});
         return;
       }
@@ -2288,7 +2492,7 @@
     function bindAgentFocusClicks(root){
       if(!root||root.__agentFocusBound) return;
       root.__agentFocusBound=true;
-      root.querySelectorAll('[data-agent]').forEach(function(el){
+      root.querySelectorAll('.soft-pad-agent-bar__chip[data-agent], .overlay-mini__agent[data-agent]').forEach(function(el){
         el.setAttribute('tabindex','0');
         if(el.tagName!=='BUTTON') el.setAttribute('role','button');
         el.addEventListener('click',function(e){
@@ -2306,6 +2510,42 @@
     }
     bindAgentFocusClicks(miniAgents);
     bindAgentFocusClicks(padAgentBar);
+
+    if(padAgentBarMore){
+      padAgentBarMore.addEventListener('pointerdown',function(e){ e.stopPropagation(); });
+      padAgentBarMore.addEventListener('click',function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        if(padAgentBarMore.hidden) return;
+        setAgentBarOverflowOpen(!agentBarOverflowOpen);
+      });
+    }
+    if(padAgentBarOverflow){
+      padAgentBarOverflow.addEventListener('pointerdown',function(e){ e.stopPropagation(); });
+    }
+    if(miniAgentMore){
+      miniAgentMore.addEventListener('pointerdown',function(e){ e.stopPropagation(); });
+      miniAgentMore.addEventListener('click',function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        if(miniAgentMore.hidden) return;
+        // Mini window is ~44px tall — popover won't fit; expand Soft Pad instead.
+        localMinimized=false;
+        applyLocalStatusDom();
+        invoke('cmd_codex_micro_overlay_set_minimized',{minimized:false}).catch(function(){});
+      });
+    }
+    document.addEventListener('click',function(e){
+      if(!agentBarOverflowOpen) return;
+      var t=e.target;
+      if(t&&t.closest&&(t.closest('#padAgentBarMore')||t.closest('#padAgentBarOverflow'))) return;
+      setAgentBarOverflowOpen(false);
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='Escape'&&agentBarOverflowOpen){
+        setAgentBarOverflowOpen(false);
+      }
+    });
 
     function bootstrapOverlayState(){
       // Seed chrome from last known mode immediately (before IPC).
@@ -2354,12 +2594,132 @@
     function captionWantsEnable(text){
       return /点击启用/.test(String(text||''))||/未启用/.test(String(text||''));
     }
+    function captionWantsMinimaxKey(text){
+      return /点击填写 Key|需 Key|未配置 Coding Plan|官方剩余请到控制台/.test(String(text||''));
+    }
+    function focusUsageIsMinimax(){
+      try{
+        var focus=resolveUsageFocus(lastSnap||{});
+        if(focus==='minimax') return true;
+      }catch(_){}
+      return /MiniMax/.test(String(usageCaptionIdle||''));
+    }
+    // WebView2 has no window.prompt — use in-overlay form.
+    function setMinimaxKeyPanel(open){
+      var panel=document.getElementById('overlayMinimaxKey');
+      if(!panel) return;
+      panel.hidden=!open;
+      if(open){
+        var input=document.getElementById('overlayMinimaxKeyInput');
+        var st=panel.querySelector('[data-mm-key-status]');
+        if(st) st.textContent='';
+        if(input){
+          input.value='';
+          setTimeout(function(){ try{ input.focus(); input.select(); }catch(_){} }, 0);
+        }
+      }
+    }
+    function saveMinimaxKeyFromOverlay(key){
+      var panel=document.getElementById('overlayMinimaxKey');
+      var st=panel&&panel.querySelector('[data-mm-key-status]');
+      var k=String(key||'').trim();
+      if(!k){
+        if(st) st.textContent='请先粘贴 Key，或点「套餐详情」';
+        return Promise.resolve();
+      }
+      if(st) st.textContent='保存中…';
+      return invoke('cmd_minimax_coding_key_set',{key:k})
+        .then(function(){
+          setMinimaxKeyPanel(false);
+          return invoke('cmd_codex_micro_overlay_get_state',{});
+        })
+        .then(function(s){ if(s) render(s); })
+        .catch(function(err){
+          var msg=String((err&&(err.message||err))||err||'');
+          if(st){
+            if(/invalid_minimax_coding_key/.test(msg)){
+              st.textContent='Key 无效：请用 Coding Plan API Key（不是登录 JWT）';
+            } else if(/not allowed|Forbidden|denied|permission/i.test(msg)){
+              st.textContent='权限未放行 · 请重启 OneTone 后再试';
+            } else {
+              st.textContent='保存失败'+(msg?(' · '+msg.slice(0,80)):'');
+            }
+          }
+        });
+    }
+    function configureMinimaxKeyFromOverlay(){
+      setMinimaxKeyPanel(true);
+      return Promise.resolve();
+    }
+    (function bindMinimaxKeyPanel(){
+      var panel=document.getElementById('overlayMinimaxKey');
+      if(!panel||panel.__bound) return;
+      panel.__bound=true;
+      var input=document.getElementById('overlayMinimaxKeyInput');
+      var saveBtn=panel.querySelector('[data-act="mm-key-save"]');
+      var consoleBtn=panel.querySelector('[data-act="mm-key-console"]');
+      var cancelBtn=panel.querySelector('[data-act="mm-key-cancel"]');
+      if(saveBtn){
+        saveBtn.addEventListener('click',function(ev){
+          ev.preventDefault();
+          ev.stopPropagation();
+          saveMinimaxKeyFromOverlay(input&&input.value);
+        });
+      }
+      if(consoleBtn){
+        consoleBtn.addEventListener('click',function(ev){
+          ev.preventDefault();
+          ev.stopPropagation();
+          invoke('cmd_open_url',{url:'https://platform.minimaxi.com/'}).catch(function(){});
+        });
+      }
+      if(cancelBtn){
+        cancelBtn.addEventListener('click',function(ev){
+          ev.preventDefault();
+          ev.stopPropagation();
+          setMinimaxKeyPanel(false);
+        });
+      }
+      if(input){
+        input.addEventListener('keydown',function(ev){
+          if(ev.key==='Enter'){
+            ev.preventDefault();
+            saveMinimaxKeyFromOverlay(input.value);
+          } else if(ev.key==='Escape'){
+            ev.preventDefault();
+            setMinimaxKeyPanel(false);
+          }
+        });
+        input.addEventListener('click',function(ev){ ev.stopPropagation(); });
+      }
+    })();
     var capEl=document.getElementById('overlayKeyCaption');
     if(capEl){
-      capEl.style.cursor='pointer';
-      capEl.addEventListener('click',function(){
-        if(captionWantsEnable(usageCaptionIdle)) enableCursorActivityFromOverlay();
+      capEl.classList.add('is-clickable');
+      capEl.addEventListener('pointerdown',function(e){
+        // Never start Soft Pad window-drag from the usage caption.
+        e.stopPropagation();
       });
+      capEl.addEventListener('click',function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        if(captionWantsEnable(usageCaptionIdle)){
+          enableCursorActivityFromOverlay();
+          return;
+        }
+        if(captionWantsMinimaxKey(usageCaptionIdle)||focusUsageIsMinimax()){
+          configureMinimaxKeyFromOverlay();
+          return;
+        }
+        // Fallback: still open MiniMax key panel / console when caption names MiniMax.
+        if(/MiniMax/.test(String(usageCaptionIdle||''))){
+          configureMinimaxKeyFromOverlay();
+        }
+      });
+    }
+    var mmPanelEl=document.getElementById('overlayMinimaxKey');
+    if(mmPanelEl){
+      mmPanelEl.addEventListener('pointerdown',function(e){ e.stopPropagation(); });
     }
     if(miniUsagePill){
       miniUsagePill.style.cursor='pointer';
@@ -2368,6 +2728,10 @@
         var tipJoin=Array.isArray(miniUsagePill.__tipLines)?miniUsagePill.__tipLines.join(' '):'';
         if(captionWantsEnable(t)||captionWantsEnable(tipJoin)||captionWantsEnable(usageCaptionIdle)){
           enableCursorActivityFromOverlay();
+        } else if(focusUsageIsMinimax()||captionWantsMinimaxKey(usageCaptionIdle)){
+          if(captionWantsMinimaxKey(t)||captionWantsMinimaxKey(tipJoin)||captionWantsMinimaxKey(usageCaptionIdle)||focusUsageIsMinimax()){
+            configureMinimaxKeyFromOverlay();
+          }
         }
       });
     }

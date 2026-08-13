@@ -214,7 +214,7 @@ pub fn cmd_soft_pad_agent_lights_set(
     }
     if !matches!(
         agent.as_str(),
-        "codex" | "claude" | "cursor" | "workbuddy" | "trae" | "qoder"
+        "codex" | "claude" | "cursor" | "minimax" | "workbuddy" | "trae" | "qoder"
     ) {
         return Err("bad_agent".into());
     }
@@ -232,6 +232,7 @@ pub fn cmd_soft_pad_agent_lights_set(
             "codex" => pad.codex_status_lights_enabled = enabled,
             "claude" => pad.claude_status_lights_enabled = enabled,
             "cursor" => pad.cursor_status_lights_enabled = enabled,
+            "minimax" => pad.minimax_status_lights_enabled = enabled,
             "workbuddy" => pad.workbuddy_status_lights_enabled = enabled,
             "trae" => pad.trae_status_lights_enabled = enabled,
             "qoder" => pad.qoder_status_lights_enabled = enabled,
@@ -244,7 +245,7 @@ pub fn cmd_soft_pad_agent_lights_set(
     let needs_loopback = enabled
         && matches!(
             agent.as_str(),
-            "codex" | "workbuddy" | "trae" | "qoder"
+            "codex" | "cursor" | "workbuddy" | "trae" | "qoder"
         );
     let mut loopback_error: Option<String> = None;
     if needs_loopback {
@@ -349,6 +350,7 @@ pub fn cmd_soft_pad_agent_lights_batch_set(
                 "codex" => pad.codex_status_lights_enabled = enabled,
                 "claude" => pad.claude_status_lights_enabled = enabled,
                 "cursor" => pad.cursor_status_lights_enabled = enabled,
+                "minimax" => pad.minimax_status_lights_enabled = enabled,
                 "workbuddy" => pad.workbuddy_status_lights_enabled = enabled,
                 "trae" => pad.trae_status_lights_enabled = enabled,
                 "qoder" => pad.qoder_status_lights_enabled = enabled,
@@ -357,7 +359,7 @@ pub fn cmd_soft_pad_agent_lights_batch_set(
             if enabled
                 && matches!(
                     agent.as_str(),
-                    "codex" | "workbuddy" | "trae" | "qoder"
+                    "codex" | "cursor" | "workbuddy" | "trae" | "qoder"
                 )
             {
                 needs_loopback = true;

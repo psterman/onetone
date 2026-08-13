@@ -2272,7 +2272,7 @@
       if(existingPreset){
         ui().habitHubCreating=false;
         if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubAppScenarioExists'),'scheme');
-        if(appId==='codex-chat'){
+        if(appId==='codex-chat'||appId==='cursor-chat'||appId==='workbuddy-chat'||appId==='trae-chat'||appId==='qoder-chat'){
           var Texist=global.OneToneAgentScenarioTemplate;
           if(Texist&&Texist.ensurePackForMapping) Texist.ensurePackForMapping(existingPreset,{persist:true});
         }
@@ -2317,6 +2317,32 @@
       var Tseed=global.OneToneAgentScenarioTemplate;
       if(Tseed&&Tseed.applyCodexPackToMapping){
         Tseed.applyCodexPackToMapping(m,{
+          channels:['keys','voice','camera'],
+          essentialsOnly:false,
+          reset:true,
+          cameraTarget:'override',
+          enableProfile:'scenarioAllKeys',
+          setAppTarget:true,
+          persist:false
+        });
+      }
+    } else if(appId==='cursor-chat'){
+      var Tcseed=global.OneToneAgentScenarioTemplate;
+      if(Tcseed&&Tcseed.applyCursorPackToMapping){
+        Tcseed.applyCursorPackToMapping(m,{
+          channels:['keys','voice','camera'],
+          essentialsOnly:false,
+          reset:true,
+          cameraTarget:'override',
+          enableProfile:'scenarioAllKeys',
+          setAppTarget:true,
+          persist:false
+        });
+      }
+    } else if(appId==='workbuddy-chat'||appId==='trae-chat'||appId==='qoder-chat'){
+      var Tvseed=global.OneToneAgentScenarioTemplate;
+      if(Tvseed&&Tvseed.applyVscodePackToMapping){
+        Tvseed.applyVscodePackToMapping(m,{
           channels:['keys','voice','camera'],
           essentialsOnly:false,
           reset:true,

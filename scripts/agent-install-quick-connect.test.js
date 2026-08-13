@@ -48,7 +48,15 @@ assert.ok(css.includes('--surface-2'), 'surface-2 token defined');
 assert.ok(padUi.includes('softPadLayoutKeyMeta: softPadLayoutKeyMeta'), 'key meta exported');
 assert.ok(padUi.includes('bindSoftPadPreviewCaption: bindSoftPadPreviewCaption'), 'caption binder exported');
 
-assert.ok(overlay.includes('el.hidden = !lightsOn') || overlay.includes('el.hidden=!lightsOn'));
+assert.ok(
+  overlay.includes('el.hidden=!!plan.hidden') ||
+    overlay.includes('el.hidden = !!plan.hidden') ||
+    overlay.includes('el.hidden = !lightsOn') ||
+    overlay.includes('el.hidden=!lightsOn'),
+  'chip visibility gated by lights/plan'
+);
+assert.ok(orch.includes("'minimax'") || orch.includes('"minimax"') || /KINDS\s*=\s*\[[^\]]*minimax/.test(orch), 'orchestrator includes minimax');
+assert.ok(inv.includes('AgentKind::MiniMax') || inv.includes('probe_minimax'), 'inventory probes MiniMax');
 assert.ok(!/if\s*\(\s*SHELL_LIGHT_AGENTS\[kind\]\s*\)\s*\{\s*el\.hidden/.test(overlay));
 
 assert.ok(hub.includes('refreshHubInventory'));
@@ -66,7 +74,15 @@ assert.ok(fs.readFileSync(path.join(root, 'src-tauri/permissions/app-ipc.toml'),
   .includes('allow-cmd-agent-install-inventory'), 'inventory IPC must be in app-ipc capability');
 assert.ok(fs.readFileSync(path.join(root, 'src-tauri/permissions/app-ipc.toml'), 'utf8')
   .includes('allow-cmd-soft-pad-agent-lights-batch-set'), 'lights batch IPC must be in app-ipc capability');
-assert.ok(orch.includes('emptyInventory'), 'soft-fail empty inventory');
+assert.ok(orch.includes('maybeAutoSeedAfterInventory'), 'lazy seed after Soft Pad inventory');
+assert.ok(!/whenBootSettled\(run\)/.test(orch) || /never on boot-settled|Intentionally no-op/.test(orch), 'no boot-settled inventory seed');
+assert.ok(orch.includes('seedMinimaxMappingIfDetected'), 'minimax mapping seed helper');
+assert.ok(orch.includes('autoSeedDetectedAgents'), 'boot auto-seed entry');
+assert.ok(orch.includes("ensureAppSoftPad('minimax-chat'") || orch.includes('ensureAppSoftPad("minimax-chat"') || orch.includes("ensureAppSoftPad('minimax-chat', 'minimax'"), 'seeds via Hub ensureAppSoftPad');
+assert.ok(orch.includes('enable: false') || orch.includes('enable:false'), 'pad stays off on seed');
+assert.ok(inv.includes('MINIMAX_PROCESS_NAMES') || inv.includes('is_minimax_process_exe'), 'inventory MiniMax process whitelist');
+assert.ok(inv.includes('MiniMax Code Desktop.exe') && inv.includes('MiniMax-Code.exe'), 'whitelist covers desktop variants');
+assert.ok(inv.includes('minimax_exe_running') || inv.includes('is_minimax_process_exe'), 'running detect by process name');
 
 assert.ok(qs.includes('selectedKinds'));
 assert.ok(qs.includes('qs-ai-mini__agent'));

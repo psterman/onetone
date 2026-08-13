@@ -84,8 +84,12 @@ const CODEX_PROFILE: AppChatProfile = AppChatProfile {
 const MINIMAX_PROFILE: AppChatProfile = AppChatProfile {
     id: MINIMAX_APP_TARGET_ID,
     error_prefix: "minimax",
-    process_names: &["MiniMax Code.exe"],
-    path_marker: Some("MiniMax Code"),
+    process_names: &[
+        "MiniMax Code.exe",
+        "MiniMax Code Desktop.exe",
+        "MiniMax-Code.exe",
+    ],
+    path_marker: Some("MiniMax"),
     open_key: None,
     composer_anchor: (0.50, 0.91),
     accept_click_without_uia: true,

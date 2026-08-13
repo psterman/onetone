@@ -106,6 +106,79 @@ fn read_codex_config_model_label() -> Option<String> {
     parse_codex_config_model_label(&contents)
 }
 
+fn minimax_config_yaml_path() -> PathBuf {
+    #[cfg(test)]
+    if let Some(p) = minimax_config_override().lock().unwrap().clone() {
+        return p;
+    }
+    if let Ok(home) = std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")) {
+        return PathBuf::from(home).join(".minimax").join("config.yaml");
+    }
+    PathBuf::from(".minimax").join("config.yaml")
+}
+
+#[cfg(test)]
+fn minimax_config_override() -> &'static Mutex<Option<PathBuf>> {
+    static OVR: OnceLock<Mutex<Option<PathBuf>>> = OnceLock::new();
+    OVR.get_or_init(|| Mutex::new(None))
+}
+
+#[cfg(test)]
+pub fn set_minimax_config_path_override_for_test(path: Option<PathBuf>) {
+    *minimax_config_override().lock().unwrap() = path;
+}
+
+fn normalize_minimax_model_label(raw: &str) -> String {
+    let s = raw.trim();
+    if s.is_empty() {
+        return String::new();
+    }
+    s.rsplit_once('/')
+        .map(|(_, id)| id.trim().to_string())
+        .filter(|id| !id.is_empty())
+        .unwrap_or_else(|| s.to_string())
+}
+
+/// MiniMax Code / Mavis: `defaultModel` in ~/.minimax/config.yaml (e.g. minimax/MiniMax-M3).
+pub fn parse_minimax_config_model_label(contents: &str) -> Option<String> {
+    let mut default_model: Option<String> = None;
+    let mut nexus_model_id: Option<String> = None;
+    for line in contents.lines() {
+        let t = line.trim();
+        if t.is_empty() || t.starts_with('#') {
+            continue;
+        }
+        if let Some(rest) = t.strip_prefix("defaultModel:") {
+            let v = rest
+                .trim()
+                .trim_matches('"')
+                .trim_matches('\'')
+                .trim();
+            if !v.is_empty() {
+                default_model = Some(normalize_minimax_model_label(v));
+            }
+            continue;
+        }
+        if let Some(rest) = t.strip_prefix("modelID:") {
+            let v = rest
+                .trim()
+                .trim_matches('"')
+                .trim_matches('\'')
+                .trim();
+            if !v.is_empty() {
+                nexus_model_id = Some(v.to_string());
+            }
+        }
+    }
+    default_model.or(nexus_model_id)
+}
+
+fn read_minimax_config_model_label() -> Option<String> {
+    let path = minimax_config_yaml_path();
+    let contents = std::fs::read_to_string(path).ok()?;
+    parse_minimax_config_model_label(&contents)
+}
+
 pub fn ingest_hook_model(
     agent: AgentKind,
     event: &str,
@@ -136,6 +209,7 @@ pub fn ingest_hook_model(
         // Cursor may report the router rather than its resolved model.
         AgentKind::Cursor if raw.eq_ignore_ascii_case("default") => ("Auto".into(), "low"),
         AgentKind::Cursor => (raw.to_string(), "medium"),
+        AgentKind::MiniMax => (raw.to_string(), "low"),
         AgentKind::CopilotCli => return,
         AgentKind::WorkBuddy | AgentKind::Trae | AgentKind::Qoder => (raw.to_string(), "low"),
     };
@@ -242,6 +316,13 @@ pub fn snapshot(agent: AgentKind) -> AgentModelMetadata {
             meta.confidence = "settings".into();
         }
     }
+    // MiniMax has no hook model channel yet; ~/.minimax/config.yaml defaultModel matches the IDE.
+    if agent == AgentKind::MiniMax && meta.model.trim().is_empty() {
+        if let Some(label) = read_minimax_config_model_label() {
+            meta.model = label;
+            meta.confidence = "settings".into();
+        }
+    }
     meta
 }
 
@@ -250,6 +331,7 @@ pub fn reset_for_test() {
     store().lock().unwrap_or_else(|e| e.into_inner()).clear();
     set_codex_config_path_override_for_test(None);
     set_claude_settings_path_override_for_test(None);
+    set_minimax_config_path_override_for_test(None);
 }
 
 #[cfg(test)]
@@ -348,6 +430,34 @@ model = "ignored-in-table"
         assert_eq!(got.confidence, "medium");
         let _ = std::fs::remove_dir_all(&dir);
         reset_for_test();
+    }
+
+    #[test]
+    fn minimax_snapshot_falls_back_to_config_default_model() {
+        reset_for_test();
+        let dir = std::env::temp_dir().join(format!(
+            "onetone-minimax-model-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let cfg = dir.join("config.yaml");
+        std::fs::write(&cfg, "defaultModel: minimax/MiniMax-M3\n").unwrap();
+        set_minimax_config_path_override_for_test(Some(cfg));
+        let got = snapshot(AgentKind::MiniMax);
+        assert_eq!(got.model, "MiniMax-M3");
+        assert_eq!(got.confidence, "settings");
+        let _ = std::fs::remove_dir_all(&dir);
+        reset_for_test();
+    }
+
+    #[test]
+    fn parses_minimax_config_model_strips_provider_prefix() {
+        assert_eq!(
+            parse_minimax_config_model_label("defaultModel: minimax/MiniMax-M2.7-highspeed\n")
+                .as_deref(),
+            Some("MiniMax-M2.7-highspeed")
+        );
     }
 
     #[test]

@@ -140,6 +140,7 @@ fn pad_for_diagnose(cfg: &crate::config::VoiceConfig) -> CodexMicroPadConfig {
         workbuddy_status_lights_enabled: false,
         trae_status_lights_enabled: false,
         qoder_status_lights_enabled: false,
+        minimax_status_lights_enabled: false,
         ambient_mode: "status".into(),
         ambient_solid_rgb: String::new(),
         ambient_opacity: 100,
@@ -785,6 +786,33 @@ pub fn cmd_cursor_activity_pref_set(
 }
 
 #[tauri::command]
+pub fn cmd_minimax_coding_key_get() -> Result<serde_json::Value, String> {
+    let masked = crate::provider_usage::masked_stored_minimax_coding_key();
+    Ok(serde_json::json!({
+        "configured": masked.is_some(),
+        "masked": masked.unwrap_or_default(),
+        "consoleUrl": crate::provider_usage::ProviderId::MiniMax.console_url(),
+    }))
+}
+
+/// Save or clear Soft Pad MiniMax Coding Plan API key, then refresh 5h windows.
+#[tauri::command]
+pub fn cmd_minimax_coding_key_set(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    key: String,
+) -> Result<serde_json::Value, String> {
+    crate::provider_usage::apply_minimax_coding_key(&key)?;
+    crate::codex_micro_overlay::request_overlay_push(&app, state.inner().as_ref(), false);
+    let masked = crate::provider_usage::masked_stored_minimax_coding_key();
+    Ok(serde_json::json!({
+        "ok": true,
+        "configured": masked.is_some(),
+        "masked": masked.unwrap_or_default(),
+    }))
+}
+
+#[tauri::command]
 pub fn cmd_claude_cli_inject_pref_set(
     state: State<'_, Arc<AppState>>,
     mapping_id: String,
@@ -863,6 +891,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -945,6 +974,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,

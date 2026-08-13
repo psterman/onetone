@@ -62,8 +62,12 @@ const PRESET_MATCHERS: &[PresetMatcher] = &[
     },
     PresetMatcher {
         id: MINIMAX_APP_TARGET_ID,
-        process_names: &["MiniMax Code.exe"],
-        path_markers: Some(&["MiniMax Code"]),
+        process_names: &[
+            "MiniMax Code.exe",
+            "MiniMax Code Desktop.exe",
+            "MiniMax-Code.exe",
+        ],
+        path_markers: Some(&["MiniMax"]),
     },
     PresetMatcher {
         id: CLAUDE_CODE_APP_TARGET_ID,
@@ -998,6 +1002,28 @@ mod tests {
                 r"C:\Program Files\WindowsApps\OpenAI.ChatGPT_1.0.0.0_x64__xxxxx\app\ChatGPT.exe"
             ),
             None
+        );
+    }
+
+    #[test]
+    fn preset_path_matches_minimax_variants() {
+        assert_eq!(
+            preset_app_id_for_path(
+                r"C:\Users\me\AppData\Local\Programs\MiniMax Code\MiniMax Code.exe"
+            )
+            .as_deref(),
+            Some(MINIMAX_APP_TARGET_ID)
+        );
+        assert_eq!(
+            preset_app_id_for_path(
+                r"C:\Users\me\AppData\Local\Programs\MiniMax\MiniMax Code Desktop.exe"
+            )
+            .as_deref(),
+            Some(MINIMAX_APP_TARGET_ID)
+        );
+        assert_eq!(
+            preset_app_id_for_path(r"D:\Apps\MiniMax\MiniMax-Code.exe").as_deref(),
+            Some(MINIMAX_APP_TARGET_ID)
         );
     }
 

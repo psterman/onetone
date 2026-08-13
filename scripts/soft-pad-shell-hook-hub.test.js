@@ -22,15 +22,15 @@ var runtimeCmd = fs.readFileSync(
 );
 
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?cursor-chat/.test(hubSrc), 'BUILTIN includes cursor');
-assert.ok(!/BUILTIN_SOFT_PAD_APPS[\s\S]*?minimax-chat/.test(hubSrc), 'BUILTIN excludes minimax');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?minimax-chat/.test(hubSrc), 'BUILTIN includes minimax');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?workbuddy-chat/.test(hubSrc), 'BUILTIN includes workbuddy');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-chat/.test(hubSrc), 'BUILTIN includes trae');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?qoder-chat/.test(hubSrc), 'BUILTIN includes qoder');
 assert.ok(hubSrc.indexOf('HUB_KIND_RANK') >= 0, 'hub kind rank');
 assert.ok(
-  /workbuddy:\s*3[\s\S]*?trae:\s*4[\s\S]*?qoder:\s*5/.test(hubSrc) ||
-    hubSrc.indexOf('workbuddy: 3') >= 0,
-  'order after cursor: workbuddy → trae → qoder'
+  /minimax:\s*3[\s\S]*?workbuddy:\s*4[\s\S]*?trae:\s*5[\s\S]*?qoder:\s*6/.test(hubSrc) ||
+    hubSrc.indexOf('minimax: 3') >= 0,
+  'order after cursor: minimax → workbuddy → trae → qoder'
 );
 assert.ok(hubSrc.indexOf('BUILTIN_SOFT_PAD_APPS.map') >= 0, 'scopes from BUILTIN map');
 assert.ok(hubSrc.indexOf('data-scope') >= 0, 'switcher uses data-scope');

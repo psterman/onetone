@@ -46,6 +46,9 @@ const OVERLAY_HIDE_GRACE_MS: u64 = 500;
 /// (status, micro_key_id, since)
 static PAD_RUN_STATUS: OnceLock<ParkingMutex<(String, String, Instant)>> = OnceLock::new();
 static OVERLAY_MINIMIZED: OnceLock<ParkingMutex<bool>> = OnceLock::new();
+/// Mapping id whose `presentation` was last synced into `OVERLAY_MINIMIZED`.
+/// Re-sync only on mapping switch — never every snapshot (that fights expand/minimize).
+static OVERLAY_PRESENTATION_MAPPING_ID: OnceLock<ParkingMutex<String>> = OnceLock::new();
 static OVERLAY_USER_POSITIONED: OnceLock<ParkingMutex<bool>> = OnceLock::new();
 static OVERLAY_USER_POSITION: OnceLock<ParkingMutex<Option<(i32, i32)>>> = OnceLock::new();
 /// Last applied (minimized, logical_w, logical_h). Width must participate so mini widen
@@ -130,7 +133,8 @@ fn last_pass_resync() -> &'static ParkingMutex<Option<Instant>> {
 fn hook_needs_input_hold() -> bool {
     match crate::codex_app_state::fresh_signal() {
         Some((source, status)) => {
-            status == "needs_input" && (source == "codex_hook" || source == "codex_app")
+            status == "needs_input"
+                && (source == "codex_hook" || source == "codex_app" || source == "cursor_hook")
         }
         None => false,
     }
@@ -327,6 +331,37 @@ fn hide_grace_since() -> &'static ParkingMutex<Option<Instant>> {
 
 fn overlay_minimized() -> &'static ParkingMutex<bool> {
     OVERLAY_MINIMIZED.get_or_init(|| ParkingMutex::new(false))
+}
+
+fn overlay_presentation_mapping_id() -> &'static ParkingMutex<String> {
+    OVERLAY_PRESENTATION_MAPPING_ID.get_or_init(|| ParkingMutex::new(String::new()))
+}
+
+/// Runtime mini/full: keep user expand/minimize across snapshot ticks.
+/// Sync from pad.presentation only when the active overlay mapping changes.
+fn resolve_minimized_on_mapping_change(
+    mapping_id: &str,
+    pad_is_mini: bool,
+    last_mapping_id: &mut String,
+    runtime_minimized: &mut bool,
+) -> bool {
+    if last_mapping_id.as_str() != mapping_id {
+        last_mapping_id.clear();
+        last_mapping_id.push_str(mapping_id);
+        *runtime_minimized = pad_is_mini;
+    }
+    *runtime_minimized
+}
+
+fn sync_minimized_for_mapping(mapping_id: &str, pad: &CodexMicroPadConfig) -> bool {
+    let mut runtime = overlay_minimized().lock();
+    let mut last_mid = overlay_presentation_mapping_id().lock();
+    resolve_minimized_on_mapping_change(
+        mapping_id,
+        presentation_is_mini(pad),
+        &mut last_mid,
+        &mut runtime,
+    )
 }
 
 fn overlay_user_positioned() -> &'static ParkingMutex<bool> {
@@ -528,6 +563,9 @@ pub struct CodexMicroOverlaySnapshot {
     pub app_confidence: String,
     /// State Core agent id when known: codex | claude (v2 meta).
     pub app_agent: String,
+    /// Windows FG preset agent kind (codex | claude | minimax | …) for chip sort / focus.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub foreground_agent: String,
     /// Short human message from State Core (optional).
     pub app_message: String,
     /// State Core task / turn id (optional).
@@ -1173,15 +1211,20 @@ pub fn refocus_overlay(app: &AppHandle) {
 #[cfg(not(windows))]
 pub fn refocus_overlay(_app: &AppHandle) {}
 
-/// True when any Codex mapping has `codexStatusLightsEnabled` (status-bridge switch).
+/// True when any Soft Pad mapping has agent status-lights enabled (Codex / Claude / Cursor / …).
 pub fn status_lights_enabled(cfg: &VoiceConfig) -> bool {
-    cfg.mappings.iter().any(|m| {
-        m.app_target_id.trim() == CODEX_APP_TARGET_ID
-            && m.codex_micro_pad
-                .as_ref()
-                .map(|p| p.codex_status_lights_enabled)
-                .unwrap_or(false)
-    })
+    use crate::soft_pad_runtime::AgentKind;
+    [
+        AgentKind::Codex,
+        AgentKind::Claude,
+        AgentKind::Cursor,
+        AgentKind::WorkBuddy,
+        AgentKind::Trae,
+        AgentKind::Qoder,
+        AgentKind::MiniMax,
+    ]
+    .iter()
+    .any(|kind| agent_status_light_enabled(cfg, *kind))
 }
 
 /// Ambient mode + solid hex + opacity + palette for Soft RGB protocol (from active overlay pad).
@@ -1223,6 +1266,8 @@ pub fn active_ambient_for_soft_rgb(
 /// Prefers FG Soft Pad agent mapping, then Applied lane, then Codex.
 /// FG-first: opening Cursor/Claude/Codex must show that agent's mini even if
 /// Applied still lags on another agent's waiting.
+/// When `soft_pad_force_open`, fall back to any Soft Pad agent with overlay
+/// (OneTone home FG otherwise yields None and force appears broken).
 fn active_codex_mapping_with_overlay(
     cfg: &VoiceConfig,
 ) -> Option<(&MappingEntry, &CodexMicroPadConfig)> {
@@ -1262,7 +1307,94 @@ fn active_codex_mapping_with_overlay(
             }
         }
     }
+
+    if cfg.soft_pad_force_open {
+        return force_soft_pad_overlay_candidate(cfg);
+    }
     None
+}
+
+/// Any Soft Pad agent mapping with overlay — prefer pad.enabled.
+fn force_soft_pad_overlay_candidate(
+    cfg: &VoiceConfig,
+) -> Option<(&MappingEntry, &CodexMicroPadConfig)> {
+    let mut fallback: Option<(&MappingEntry, &CodexMicroPadConfig)> = None;
+    for m in &cfg.mappings {
+        if !m.enabled {
+            continue;
+        }
+        if crate::soft_pad_runtime::AgentKind::from_app_target(m.app_target_id.trim()).is_none() {
+            continue;
+        }
+        let Some(pad) = m.codex_micro_pad.as_ref() else {
+            continue;
+        };
+        if !pad.overlay_enabled {
+            continue;
+        }
+        if pad.enabled {
+            return Some((m, pad));
+        }
+        if fallback.is_none() {
+            fallback = Some((m, pad));
+        }
+    }
+    fallback
+}
+
+/// Home force-open: turn on overlay for a Soft Pad agent mapping (prefer pad on).
+/// Returns true when an overlay-capable Soft Pad mapping exists afterward.
+pub fn ensure_force_soft_pad_ready(cfg: &mut VoiceConfig) -> bool {
+    if force_soft_pad_overlay_candidate(cfg).is_some() {
+        return true;
+    }
+
+    // Prefer already-enabled Soft Pad (pad switch on) — just flip overlay.
+    for m in cfg.mappings.iter_mut() {
+        if !m.enabled {
+            continue;
+        }
+        if crate::soft_pad_runtime::AgentKind::from_app_target(m.app_target_id.trim()).is_none() {
+            continue;
+        }
+        if let Some(pad) = m.codex_micro_pad.as_mut() {
+            if pad.enabled {
+                pad.overlay_enabled = true;
+                return true;
+            }
+        }
+    }
+
+    // Any Soft Pad agent scenario: enable pad + overlay.
+    for m in cfg.mappings.iter_mut() {
+        if !m.enabled {
+            continue;
+        }
+        if crate::soft_pad_runtime::AgentKind::from_app_target(m.app_target_id.trim()).is_none() {
+            continue;
+        }
+        let pad = m
+            .codex_micro_pad
+            .get_or_insert_with(crate::codex_numpad_layer::default_codex_micro_pad);
+        pad.enabled = true;
+        pad.overlay_enabled = true;
+        return true;
+    }
+
+    // Last resort: heal Codex Soft Pad then force overlay on.
+    let _ = crate::codex_numpad_layer::ensure_codex_pad_ready(cfg, "zh-CN");
+    for m in cfg.mappings.iter_mut() {
+        if !m.enabled || m.app_target_id.trim() != CODEX_APP_TARGET_ID {
+            continue;
+        }
+        let pad = m
+            .codex_micro_pad
+            .get_or_insert_with(crate::codex_numpad_layer::default_codex_micro_pad);
+        pad.enabled = true;
+        pad.overlay_enabled = true;
+        return true;
+    }
+    false
 }
 
 fn route_for_micro<'a>(
@@ -1393,6 +1525,13 @@ fn build_ag_light_gates(
         || app_last_source.contains("claude_hook")
         || app_last_source.contains("claude_app");
     let applied_claude = applied_agent.eq_ignore_ascii_case("claude");
+    let mapping_claude = mapping
+        .map(|m| AgentKind::from_app_target(m.app_target_id.trim()) == Some(AgentKind::Claude))
+        .unwrap_or(false);
+    // Claude-only checklist — hide on MiniMax/Codex Soft Pad (was showing「6 项未过」).
+    if !claude_live && !applied_claude && !mapping_claude {
+        return Vec::new();
+    }
     let status = app_status.trim();
     // After OneTone restart, pad sticky may be empty while LaneStore / activity still prove Claude.
     let lane_n_preview = crate::agent_lane::store::public_lanes_for_page(AgentKind::Claude).len();
@@ -2043,6 +2182,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         app_task_id,
         app_session_id,
     ) = app_fields_from_pad_core();
+    let foreground_agent = foreground_agent_kind();
     let vendor_rgb = vendor.rgb.as_ref().map(|c| CodexMicroOverlayRgb {
         r: c.r,
         g: c.g,
@@ -2110,6 +2250,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -2205,6 +2346,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             app_state_enabled,
             app_confidence,
             app_agent,
+            foreground_agent: foreground_agent.clone(),
             app_message,
             app_task_id,
             app_session_id,
@@ -2219,12 +2361,8 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     };
 
     let mut status_light_micro_key_id = resolve_status_light_micro_key_id(pad);
-    // Config presentation is source of truth; keep runtime minimized aligned (restart / mapping switch).
-    let minimized = {
-        let want = presentation_is_mini(pad);
-        *overlay_minimized().lock() = want;
-        want
-    };
+    // Runtime expand/minimize is sticky; pad.presentation only seeds on mapping switch.
+    let minimized = sync_minimized_for_mapping(&mapping.id, pad);
     let applied_kind = crate::soft_pad_runtime::applied_lane()
         .map(|(k, mid)| {
             if mid == mapping.id {
@@ -2535,7 +2673,10 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     let readiness = crate::codex_numpad_layer::readiness_snapshot(cfg);
     // "保持在最前" (require_foreground=false): stay visible while Soft Pad is enabled,
     // except over OneTone (main or focus-steal race). Still not "hijack any app" for key dispatch.
-    let host_ok = if !pad.require_foreground {
+    // Home `softPadForceOpen` bypasses FG / OneTone-main host gates (settings drawer still gated).
+    let host_ok = if cfg.soft_pad_force_open {
+        true
+    } else if !pad.require_foreground {
         if crate::app_identity::foreground_is_self() {
             // Never treat OneTone process as "other app" for keep-on-top.
             // Overlay self-FG while settings are open is forced off in build_snapshot gate.
@@ -2571,7 +2712,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     } else {
         show
     };
-    let session_ok = !is_overlay_session_dismissed();
+    let session_ok = cfg.soft_pad_force_open || !is_overlay_session_dismissed();
     let ag_light_gates = build_ag_light_gates(
         cfg,
         Some(mapping),
@@ -2631,6 +2772,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         app_state_enabled,
         app_confidence,
         app_agent,
+        foreground_agent,
         app_message,
         app_task_id,
         app_session_id,
@@ -2838,6 +2980,13 @@ fn resolve_cell_run_status(
     ("idle".into(), "fallback".into(), String::new())
 }
 
+fn foreground_agent_kind() -> String {
+    crate::app_identity::foreground_effective_app_target_id()
+        .and_then(|id| crate::soft_pad_runtime::AgentKind::from_app_target(id.trim()))
+        .map(|k| k.as_str().to_string())
+        .unwrap_or_default()
+}
+
 fn app_fields_from_pad_core() -> (
     String,
     String,
@@ -2887,6 +3036,7 @@ fn agent_status_light_enabled(cfg: &VoiceConfig, kind: crate::soft_pad_runtime::
             AgentKind::WorkBuddy => pad.workbuddy_status_lights_enabled,
             AgentKind::Trae => pad.trae_status_lights_enabled,
             AgentKind::Qoder => pad.qoder_status_lights_enabled,
+            AgentKind::MiniMax => pad.minimax_status_lights_enabled,
             AgentKind::CopilotCli => false,
         }
     })
@@ -2901,6 +3051,7 @@ fn agent_chip_snapshots(cfg: &VoiceConfig) -> Vec<CodexMicroAgentSnapshot> {
         AgentKind::Codex,
         AgentKind::Claude,
         AgentKind::Cursor,
+        AgentKind::MiniMax,
         AgentKind::WorkBuddy,
         AgentKind::Trae,
         AgentKind::Qoder,
@@ -3543,8 +3694,14 @@ pub fn dismiss_overlay(app: &AppHandle, state: &AppState) -> bool {
 pub fn maybe_tick(app: &AppHandle, state: &AppState) {
     let was_fg = *last_foreground_codex().lock();
     let gate_reason = overlay_runtime_gate_reason(state);
-    let host_ok = gate_reason.is_none() && overlay_should_be_visible_host();
+    let force_open = state.cfg.lock().soft_pad_force_open;
+    // Home force-open bypasses OneTone-main / FG host latch; settings/setup/recording still gate.
+    let host_ok = gate_reason.is_none() && (force_open || overlay_should_be_visible_host());
     let is_fg = *last_foreground_codex().lock();
+
+    if force_open && is_overlay_session_dismissed() && gate_reason.is_none() {
+        *overlay_session_dismissed().lock() = false;
+    }
 
     // Claude FG: nudge DeepSeek cash-balance refresh (5min poll alone is too cold for Soft Pad).
     if claude_is_foreground() {
@@ -3592,8 +3749,8 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
         {
             *overlay_session_dismissed().lock() = false;
         }
-        // Only auto-ensure Codex pad when Codex itself is FG (not Cursor/Claude host latch).
-        let result = if codex_is_foreground() {
+        // Auto-ensure Soft Pad routes/bindings when a supported agent (Codex/Cursor/…) is FG.
+        let result = if soft_pad_agent_is_foreground() {
             let mut cfg = state.cfg.lock();
             let blocker = crate::codex_numpad_layer::readiness_snapshot(&cfg).blocker;
             let should_ensure = !was_fg || blocker == "no_routes" || blocker == "no_mapping";
@@ -3639,9 +3796,10 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
 
     let desired_visible = {
         let cfg = state.cfg.lock();
+        let force = cfg.soft_pad_force_open;
         active_codex_mapping_with_overlay(&cfg).is_some()
             && host_ok
-            && !is_overlay_session_dismissed()
+            && (force || !is_overlay_session_dismissed())
     };
     let vis_changed = {
         let mut last = last_visible().lock();
@@ -3719,6 +3877,32 @@ mod tests {
             overlay_runtime_gate_reason_flags(false, false, false, false),
             None
         );
+    }
+
+    #[test]
+    fn force_open_picks_non_codex_soft_pad_when_onetone_fg() {
+        let _iso = isolate_status_globals();
+        test_clear_fg_overrides();
+        // OneTone FG: normal picker returns None without Codex overlay.
+        let mut pad = crate::codex_numpad_layer::default_codex_micro_pad();
+        pad.enabled = true;
+        pad.overlay_enabled = false;
+        let mut m = codex_mapping(pad);
+        m.id = "minimax-map".into();
+        m.app_target_id = "minimax-chat".into();
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![m];
+        cfg.soft_pad_force_open = false;
+        assert!(active_codex_mapping_with_overlay(&cfg).is_none());
+
+        assert!(ensure_force_soft_pad_ready(&mut cfg));
+        cfg.soft_pad_force_open = true;
+        let picked = active_codex_mapping_with_overlay(&cfg).expect("force picks Soft Pad");
+        assert_eq!(picked.0.app_target_id, "minimax-chat");
+        assert!(picked.1.overlay_enabled);
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert!(snap.visible, "force open must show Soft Pad without agent FG");
+        test_clear_fg_overrides();
     }
 
     #[test]
@@ -3812,6 +3996,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -3907,6 +4092,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -4008,6 +4194,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -4052,6 +4239,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -4171,6 +4359,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -4229,6 +4418,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -4285,6 +4475,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -4344,6 +4535,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -4397,6 +4589,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -4461,6 +4654,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -4519,6 +4713,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -4612,6 +4807,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -4716,6 +4912,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -4816,6 +5013,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -4855,6 +5053,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -4930,6 +5129,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -4990,6 +5190,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -5063,6 +5264,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -5130,6 +5332,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -5162,6 +5365,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -5222,6 +5426,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -5277,6 +5482,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -5331,6 +5537,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -5379,6 +5586,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -5436,6 +5644,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -5483,6 +5692,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -5536,6 +5746,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -5578,6 +5789,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -5654,6 +5866,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -5851,6 +6064,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -5900,6 +6114,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -5946,6 +6161,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -5990,6 +6206,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -6042,6 +6259,7 @@ mod tests {
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
+            minimax_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -6189,5 +6407,20 @@ mod tests {
         assert_eq!(agents[2].kind, "cursor");
         assert_eq!(agents[2].model, "Auto");
         assert_eq!(agents[2].model_confidence, "low");
+    }
+
+    #[test]
+    fn expand_sticky_across_same_mapping_snapshots() {
+        let mut last = String::new();
+        let mut runtime = true; // currently mini
+        // First see mapping A with presentation mini → stay mini
+        assert!(resolve_minimized_on_mapping_change("A", true, &mut last, &mut runtime));
+        // User expands (runtime false); same mapping still presentation mini must NOT force back
+        runtime = false;
+        assert!(!resolve_minimized_on_mapping_change("A", true, &mut last, &mut runtime));
+        // Switch to mapping B that prefers mini → re-seed
+        assert!(resolve_minimized_on_mapping_change("B", true, &mut last, &mut runtime));
+        // Switch to mapping C that prefers full → expand
+        assert!(!resolve_minimized_on_mapping_change("C", false, &mut last, &mut runtime));
     }
 }

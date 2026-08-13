@@ -14,7 +14,7 @@ var overlayCmd = fs.readFileSync(
 );
 var fmt = require(path.join(root, 'src/js/features/agent/usage-format.js'));
 
-['codex', 'claude', 'cursor', 'workbuddy', 'trae', 'qoder'].forEach(function (kind) {
+['codex', 'claude', 'cursor', 'minimax', 'workbuddy', 'trae', 'qoder'].forEach(function (kind) {
   assert.ok(html.includes('data-agent="' + kind + '"'), 'missing agent chip: ' + kind);
 });
 assert.ok(html.includes('id="padAgentBar"') || html.includes('soft-pad-agent-bar'));
@@ -60,7 +60,12 @@ assert.ok(!html.includes('id="miniLeds"'));
 var miniFn = html.match(/function applyMiniAgentChips\(s\)\{[\s\S]*?\n    \}/);
 assert.ok(miniFn, 'applyMiniAgentChips body missing');
 assert.ok(!/appAgent|app_agent|appStatus|app_status/.test(miniFn[0]), 'mini chips must not read singleton appAgent/appStatus');
-assert.ok(html.includes('el.hidden = !lightsOn') || html.includes('el.hidden=!lightsOn'), 'all agents gate on lightsEnabled');
+assert.ok(
+  html.includes('el.hidden = !lightsOn') ||
+    html.includes('el.hidden=!lightsOn') ||
+    (html.includes('lightsOn') && html.includes('plan.hidden') && html.includes('lightsEnabled')),
+  'all agents gate on lightsEnabled'
+);
 assert.ok(!/if\s*\(\s*SHELL_LIGHT_AGENTS\[kind\]\s*\)\s*\{\s*el\.hidden/.test(html), 'Codex/Claude/Cursor must not stay always-visible');
 assert.ok(html.includes('isRenderableUsage') || html.includes('hasRenderable'));
 assert.ok(!/if\s*\(\s*kind\s*===\s*['"]claude['"]\s*\)\s*return\s*false/.test(html), 'Claude must not be hard-blocked for mini pill');
@@ -88,11 +93,97 @@ assert.ok(/align-items:\s*flex-start/.test(css), 'pad stack top-packs so bottom 
 assert.ok(/providerBalanceCaption\(usage\)/.test(html) && /usageCaptionText/.test(html), 'caption path present');
 assert.ok(/balCap=kind==='claude'\?providerBalanceCaption/.test(html) || /Prefer official balance/.test(html), 'caption prefers DeepSeek balance over OTel');
 assert.ok(overlayCmd.includes('cmd_soft_pad_focus_agent'));
+assert.ok(overlayCmd.includes('MINIMAX_APP_TARGET_ID'));
+assert.ok(rust.includes('foreground_agent'));
+assert.ok(rust.includes('parse_minimax_config_model_label') || fs.readFileSync(path.join(root, 'src-tauri/src/agent_model_metadata.rs'), 'utf8').includes('parse_minimax_config_model_label'));
 assert.ok(overlayCmd.includes('CLAUDE_CODE_APP_TARGET_ID'));
 assert.ok(overlayCmd.includes('CURSOR_APP_TARGET_ID'));
 assert.ok(overlayCmd.includes('focus_composer_only'));
 
 assert.strictEqual(fmt.formatResetCountdown(Math.floor(Date.now() / 1000) - 10), '待刷新');
 assert.ok(/^2h/.test(fmt.formatResetCountdown(Math.floor(Date.now() / 1000) + 2 * 3600 + 90)));
+
+assert.ok(html.includes('soft-pad-agent-bar-rank.js'));
+assert.ok(html.includes('id="padAgentBarMore"'));
+assert.ok(html.includes('id="padAgentBarOverflow"'));
+assert.ok(html.includes('id="miniAgentMore"'));
+assert.ok(html.includes('function layoutPadAgentBar'));
+assert.ok(html.includes('function layoutMiniAgentBar'));
+assert.ok(html.includes('function touchAgentBarRecency'));
+assert.ok(html.includes('noteForegroundRecency') || html.includes('foregroundAgent'));
+assert.ok(html.includes('setAgentBarOverflowOpen'));
+assert.ok(html.includes('miniAgentMore.hidden=true') || html.includes('padAgentBarMore.hidden=true'));
+assert.ok(
+  /display:\s*flex/.test(css.match(/\.soft-pad-agent-bar\s*\{[^}]+\}/)[0]) &&
+    /flex-wrap:\s*nowrap/.test(css.match(/\.soft-pad-agent-bar\s*\{[^}]+\}/)[0]),
+  'expand agent bar is a single nowrap row'
+);
+assert.ok(
+  /flex:\s*1\s+1\s+0/.test(css) &&
+    /aspect-ratio:\s*1\s*\/\s*1/.test(css) &&
+    /max-width:\s*34px/.test(css),
+  'expand chips adaptively fill one row as squares'
+);
+assert.ok(!/grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/.test(css), 'agent bar must not stretch chips with 1fr');
+assert.ok(!/grid-template-columns:\s*repeat\(4,\s*34px\)/.test(css), 'agent bar is no longer 2×4 grid');
+assert.ok(/\.soft-pad-agent-bar__more[\s,{]/.test(css) && css.includes('display: none !important'));
+assert.ok(/width:\s*6px/.test(css) && /height:\s*6px/.test(css), 'status dot 6px');
+assert.ok(css.includes('soft-pad-chip-status-flash') || css.includes('is-status-flash'));
+assert.ok(css.includes('overlay-mini__more'));
+
+var rank = require(path.join(root, 'src/js/features/agent/soft-pad-agent-bar-rank.js'));
+function lit(kind, state, updated) {
+  return { lightsEnabled: true, state: state || 'idle', updatedAt: updated || 0 };
+}
+var byKind = {
+  codex: lit('codex', 'idle', 1),
+  claude: lit('claude', 'needs_input', 1),
+  cursor: lit('cursor', 'running', 1),
+  minimax: lit('minimax', 'idle', 1),
+  workbuddy: lit('workbuddy', 'idle', 1),
+  trae: lit('trae', 'idle', 1),
+  qoder: lit('qoder', 'idle', 1)
+};
+var r1 = rank.rankPadAgentBarKinds({}, byKind, 'codex', {});
+assert.strictEqual(r1.top[0], 'claude', 'needs_input outranks');
+assert.strictEqual(r1.top[1], 'cursor', 'running next');
+assert.ok(r1.top.indexOf('codex') >= 0, 'focus boost keeps codex in top');
+assert.strictEqual(r1.top.length, 7, 'show all eligible up to 7, no fold');
+assert.deepStrictEqual(r1.rest, []);
+
+var r2 = rank.rankPadAgentBarKinds({}, byKind, 'minimax', {});
+assert.ok(r2.top.indexOf('minimax') >= 0, 'focus kind boosted into top');
+assert.strictEqual(r2.top[0], 'claude');
+
+var r3 = rank.rankPadAgentBarKinds(
+  {},
+  { codex: lit('codex'), claude: { lightsEnabled: false, state: 'running' } },
+  '',
+  {}
+);
+assert.deepStrictEqual(r3.top, ['codex']);
+assert.deepStrictEqual(r3.rest, []);
+
+assert.strictEqual(rank.VISIBLE_PAD, 7);
+assert.strictEqual(
+  rank.padLightFromRanked({}, byKind, 'codex', {}),
+  'needs_input',
+  'pad aura follows top ranked live agent, not idle singleton'
+);
+assert.strictEqual(
+  rank.padLightFromRanked({}, { codex: lit('codex', 'idle') }, '', {}),
+  '',
+  'all-idle chips leave pad light to pad/app fallback'
+);
+assert.ok(html.includes('padLightFromRanked') || html.includes('fromAgents'));
+
+var idleAll = {
+  codex: lit('codex', 'idle', 1),
+  claude: lit('claude', 'idle', 2),
+  cursor: lit('cursor', 'idle', 3),
+  minimax: lit('minimax', 'idle', 4)
+};
+var rFg = rank.rankPadAgentBarKinds({ foregroundAgent: 'minimax' }, idleAll, '', {});
+assert.strictEqual(rFg.top[0], 'minimax', 'FG minimax ranks first among idle agents');
 
 console.log('soft-pad mini agent tests passed');

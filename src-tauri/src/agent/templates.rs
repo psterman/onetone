@@ -6,6 +6,9 @@ pub const CODEX_MICRO_13_TEMPLATE_ID: &str = "codex-micro-13";
 pub const CODEX_PROVIDER_ID: &str = "codex";
 pub const CLAUDE_PROVIDER_ID: &str = "claude";
 pub const CURSOR_PROVIDER_ID: &str = "cursor";
+pub const WORKBUDDY_PROVIDER_ID: &str = "workbuddy";
+pub const TRAE_PROVIDER_ID: &str = "trae";
+pub const QODER_PROVIDER_ID: &str = "qoder";
 
 /// Newbie essentials — enabled by default after apply (3–5 items).
 pub const ESSENTIAL_SLOT_IDS: &[&str] = &[

@@ -10,6 +10,7 @@ mod log;
 mod model;
 mod store;
 
+pub use adapters::cursor::map_cursor_event_to_state;
 pub use adapters::claude::{
     ingest_claude_event, ingest_claude_payload, ingest_claude_payload_at,
     map_claude_event_to_state, ClaudeHookPayload,
@@ -60,8 +61,7 @@ pub fn ingest_codex_payload(payload: &CodexAppStatePayload) -> PadStatus {
     }
 
     if source == "cursor_hook" {
-        crate::agent_attention::ingest_cursor_hook_event(&payload.event, &payload.session_id);
-        return snapshot();
+        return adapters::cursor::ingest_cursor_payload(payload);
     }
 
     if source == "claude_hook" || source == "claude_app" {
