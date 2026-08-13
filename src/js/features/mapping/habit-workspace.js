@@ -23,12 +23,21 @@
   function ui(){ return global.OneToneState&&global.OneToneState.ui||{}; }
   function cfg(){ return state().config||{}; }
   function prefs(){ return global.OneToneHabitExperiencePrefs; }
+  function shared(){ return global.OneToneHabitShared; }
+  function novice(){ return global.OneToneHabitNoviceMode; }
   function diff(){ return global.OneToneHabitOverrideDiff||{}; }
   function lang(){
     var value=global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():document.documentElement.lang;
     return String(value||'zh').toLowerCase().indexOf('en')===0?'en':'zh';
   }
   function c(key){ return COPY[lang()][key]; }
+  function t(key,fb){
+    try{
+      var v=global.OneToneI18n&&global.OneToneI18n.t?global.OneToneI18n.t(key):key;
+      if(v&&v!==key) return v;
+    }catch(_){}
+    return fb!=null?fb:key;
+  }
   function esc(value){ return String(value==null?'':value).replace(/[&<>'"]/g,function(ch){ return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]; }); }
   function fmt(text,values){
     return String(text||'').replace(/\{(\w+)\}/g,function(_,key){ return values&&values[key]!=null?String(values[key]):''; });
@@ -226,7 +235,7 @@
       var d=quickDetail(m,ch,first.id);
       q[ch]={enabled:d.enabled,count:d.count||0,source:d.source};
     });
-    return {empty:false,mapping:m,mappings:mappings(),channel:channel,items:items,item:item,detail:detail,channels:q,groups:programmerGroups(m),mode:ui().habitExperienceMode||prefs()&&prefs().getMode()||'quick'};
+    return {empty:false,mapping:m,mappings:mappings(),channel:channel,items:items,item:item,detail:detail,channels:q,groups:programmerGroups(m),mode:ui().habitExperienceMode||prefs()&&prefs().getMode()||'novice'};
   }
 
   function ensureShell(){
@@ -248,6 +257,7 @@
     return host;
   }
   function appListHtml(model){
+    if(shared()&&shared().appListHtml) return shared().appListHtml(model,{variant:'ws'});
     var query=String(ui().habitWorkspaceSearch||'').trim().toLowerCase();
     var list=model.mappings.filter(function(m){ return !query||(appName(m)+' '+sceneName(m)).toLowerCase().indexOf(query)>=0; });
     return '<aside class="habit-ws-apps"><label class="habit-ws-search"><span aria-hidden="true">⌕</span><input type="search" data-habit-search value="'+esc(ui().habitWorkspaceSearch||'')+'" placeholder="'+esc(c('search'))+'" aria-label="'+esc(c('search'))+'"></label><div class="habit-ws-app-list" role="listbox">'+list.map(function(m){
@@ -275,7 +285,10 @@
     }).join('')+'</div>';
   }
   function modeHtml(mode){
-    return '<div class="habit-ws-modebar"><div class="pref-segmented habit-ws-modes" role="tablist" aria-label="Habit view"><button type="button" role="tab" aria-selected="'+(mode==='quick'?'true':'false')+'" class="pref-segmented-btn'+(mode==='quick'?' is-active':'')+'" data-habit-mode="quick">'+esc(c('quick'))+' <em>'+esc(c('recommended'))+'</em></button><button type="button" role="tab" aria-selected="'+(mode==='programmer'?'true':'false')+'" class="pref-segmented-btn'+(mode==='programmer'?' is-active':'')+'" data-habit-mode="programmer">'+esc(c('programmer'))+'</button></div>'+(mode==='programmer'?'<button type="button" class="habit-ws-back-quick" data-habit-mode="quick">← '+esc(c('backQuick'))+'</button>':'')+'</div>';
+    var noviceLbl=t('habitDisplayModeNovice','\uD83C\uDF31 小白模式');
+    var quickLbl=t('habitDisplayModeQuick','\u26A1 快速设置');
+    var proLbl=t('habitDisplayModePro','\uD83D\uDEE0 程序员模式');
+    return '<div class="habit-ws-modebar"><div class="pref-segmented habit-ws-modes" role="tablist" aria-label="Habit view"><button type="button" role="tab" aria-selected="'+(mode==='novice'?'true':'false')+'" class="pref-segmented-btn'+(mode==='novice'?' is-active':'')+'" data-habit-mode="novice">'+esc(noviceLbl)+' <span class="badge-new">'+esc(t('habitDisplayModeNew','新'))+'</span></button><button type="button" role="tab" aria-selected="'+(mode==='quick'?'true':'false')+'" class="pref-segmented-btn'+(mode==='quick'?' is-active':'')+'" data-habit-mode="quick">'+esc(quickLbl)+(mode==='quick'?' <em>'+esc(c('recommended'))+'</em>':'')+'</button><button type="button" role="tab" aria-selected="'+(mode==='programmer'?'true':'false')+'" class="pref-segmented-btn'+(mode==='programmer'?' is-active':'')+'" data-habit-mode="programmer">'+esc(proLbl)+'</button></div>'+(mode==='programmer'?'<button type="button" class="habit-ws-back-quick" data-habit-mode="quick">\u2190 '+esc(c('backQuick'))+'</button>':'')+'</div>';
   }
   function introHtml(){
     if(!ui().habitProgrammerIntroOpen) return '';
@@ -294,20 +307,59 @@
       return '<section class="habit-ws-group'+(expanded?' is-open':'')+'"><button type="button" class="habit-ws-group-head" data-habit-section="'+section+'" aria-expanded="'+(expanded?'true':'false')+'"><span><b>'+String(SECTIONS.indexOf(section)+1).padStart(2,'0')+'</b>'+esc(c(section))+'</span><small>'+rows.length+' '+(lang()==='en'?'items':'项')+'</small><i aria-hidden="true">⌄</i></button>'+(expanded?'<div class="habit-ws-rows"><div class="habit-ws-row-head"><span></span><span>'+esc(c('current'))+'</span><span>'+esc(c('source'))+'</span><span></span></div>'+rows.map(function(row){ return '<div class="habit-ws-row"><strong>'+esc(row.label)+'</strong><span>'+esc(row.value)+'</span><span class="habit-ws-source is-'+esc(row.source.id)+'">'+esc(row.source.label)+'</span><button type="button" data-habit-edit data-channel="'+esc(row.channel)+'" data-focus="'+esc(row.focus)+'">'+esc(c('edit'))+'</button></div>'; }).join('')+'</div>':'')+'</section>';
     }).join('')+'</div>';
   }
+  function captureWorkspaceScroll(){
+    var root=document.getElementById('habitWorkspace');
+    var main=root&&root.querySelector?root.querySelector('.habit-ws-main, .habit-novice-main'):null;
+    if(!main) main=document.querySelector('#habitWorkspace .habit-ws-main,#habitWorkspace .habit-novice-main');
+    if(main) ui().habitWorkspaceScrollTop=main.scrollTop||0;
+    var active=document.activeElement;
+    if(active&&active.matches&&active.matches('[data-habit-mode],[data-habit-mapping],[data-habit-channel],[data-habit-novice-dim]')){
+      if(active.hasAttribute('data-habit-mode')) ui().habitWorkspaceFocusSelector='[data-habit-mode="'+active.getAttribute('data-habit-mode')+'"]';
+      else if(active.hasAttribute('data-habit-mapping')) ui().habitWorkspaceFocusSelector='[data-habit-mapping="'+active.getAttribute('data-habit-mapping')+'"]';
+      else if(active.hasAttribute('data-habit-channel')) ui().habitWorkspaceFocusSelector='[data-habit-channel="'+active.getAttribute('data-habit-channel')+'"]';
+      else if(active.hasAttribute('data-habit-novice-dim')) ui().habitWorkspaceFocusSelector='[data-habit-novice-dim="'+active.getAttribute('data-habit-novice-dim')+'"]';
+    }
+  }
+  function restoreWorkspaceScroll(host){
+    setTimeout(function(){
+      var main=host&&host.querySelector('.habit-ws-main, .habit-novice-main');
+      if(main&&Number.isFinite(Number(ui().habitWorkspaceScrollTop))) main.scrollTop=Number(ui().habitWorkspaceScrollTop)||0;
+      var sel=String(ui().habitWorkspaceFocusSelector||'').trim();
+      if(sel){
+        var focus=host&&host.querySelector(sel);
+        if(focus) focus.focus();
+      }
+    },0);
+  }
   function render(){
     var host=ensureShell();
     if(!host) return;
     bindEvents(host);
-    if(!ui().habitExperienceMode) ui().habitExperienceMode=prefs()?prefs().getMode():'quick';
+    captureWorkspaceScroll();
+    if(!ui().habitExperienceMode) ui().habitExperienceMode=prefs()?prefs().getMode():'novice';
+    if(!ui().habitNoviceDim) ui().habitNoviceDim='key';
+    if(!ui().habitNoviceScene) ui().habitNoviceScene='begin';
     var model=buildWorkspaceModel();
     if(model.empty){
       host.innerHTML=modeHtml(ui().habitExperienceMode)+introHtml()+'<div class="habit-ws-empty"><strong>'+esc(c('noHabit'))+'</strong><p>'+esc(c('noHabitDesc'))+'</p><button type="button" data-habit-add>'+esc(c('addApp'))+'</button></div>';
+      restoreWorkspaceScroll(host);
       return;
     }
-    host.innerHTML=modeHtml(model.mode)+introHtml()+'<div class="habit-ws-layout">'+appListHtml(model)+'<main class="habit-ws-main">'+(model.mode==='programmer'?programHtml(model):quickHtml(model))+'</main></div>';
+    var body='';
+    if(model.mode==='novice'&&novice()&&novice().layoutHtml){
+      body=novice().layoutHtml(model);
+      if(novice().bindEvents) novice().bindEvents(host,function(){ render(); });
+    }else if(model.mode==='programmer'){
+      body='<div class="habit-ws-layout">'+appListHtml(model)+'<main class="habit-ws-main">'+programHtml(model)+'</main></div>';
+    }else{
+      body='<div class="habit-ws-layout">'+appListHtml(model)+'<main class="habit-ws-main">'+quickHtml(model)+'</main></div>';
+    }
+    host.innerHTML=modeHtml(model.mode)+introHtml()+body;
+    restoreWorkspaceScroll(host);
   }
   function switchMode(mode,force){
-    mode=mode==='programmer'?'programmer':'quick';
+    captureWorkspaceScroll();
+    mode=mode==='programmer'?'programmer':mode==='quick'?'quick':'novice';
     if(mode==='programmer'&&!force&&prefs()&&!prefs().hasSeenProgrammerIntro()){
       ui().habitProgrammerIntroOpen=true;
       render();
@@ -349,7 +401,12 @@
       var modeButton=event.target.closest&&event.target.closest('[data-habit-mode]');
       if(!modeButton||(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')) return;
       event.preventDefault();
-      var next=modeButton.parentElement&&modeButton.parentElement.querySelector(event.key==='ArrowRight'?'[data-habit-mode="programmer"]':'[data-habit-mode="quick"]');
+      var modes=['novice','quick','programmer'];
+      var current=modeButton.getAttribute('data-habit-mode')||'novice';
+      var idx=modes.indexOf(current);
+      if(idx<0) idx=0;
+      var nextIdx=event.key==='ArrowRight'?(idx+1)%modes.length:(idx+modes.length-1)%modes.length;
+      var next=modeButton.parentElement&&modeButton.parentElement.querySelector('[data-habit-mode="'+modes[nextIdx]+'"]');
       if(next){ next.focus(); next.click(); }
     });
     host.addEventListener('input',function(event){
@@ -368,7 +425,7 @@
   function restoreReturnContext(context){
     if(!context||!context.mappingId) return;
     state().selectedMappingId=context.mappingId;
-    ui().habitExperienceMode=context.mode==='programmer'?'programmer':'quick';
+    ui().habitExperienceMode=context.mode==='programmer'?'programmer':context.mode==='quick'?'quick':'novice';
     ui().habitWorkspaceChannel=CHANNELS.indexOf(context.channel)>=0?context.channel:'key';
     ui().habitWorkspaceItemId=context.itemId||defaultItem(ui().habitWorkspaceChannel);
     ui().habitProgramSection=SECTIONS.indexOf(context.sectionId)>=0?context.sectionId:'scope';

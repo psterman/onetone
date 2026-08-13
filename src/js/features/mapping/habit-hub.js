@@ -34,6 +34,10 @@
     return global.OneToneHabitProfile;
   }
 
+  function shared(){
+    return global.OneToneHabitShared;
+  }
+
   function habitName(m){
     if(hp()&&hp().habitDisplayName) return hp().habitDisplayName(m);
     if(!m) return '—';
@@ -221,6 +225,7 @@
   }
 
   function formatRelativeTime(ts){
+    if(shared()&&shared().formatRelativeTime) return shared().formatRelativeTime(ts);
     if(!ts) return '';
     var diff=Date.now()-Number(ts);
     if(diff<60000) return t('habitHubUpdatedJustNow');
@@ -1815,6 +1820,10 @@
   }
 
   function deleteHabit(id){
+    if(global.OneToneHabitShared&&global.OneToneHabitShared.deleteMapping){
+      global.OneToneHabitShared.deleteMapping(id);
+      return;
+    }
     deleteHabits([id]);
   }
 

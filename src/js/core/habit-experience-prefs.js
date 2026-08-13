@@ -12,11 +12,15 @@
     var s=storage();
     var value='';
     try{ value=s?String(s.getItem(MODE_KEY)||''):''; }catch(_){}
-    return value==='programmer'?'programmer':'quick';
+    if(value==='programmer') return 'programmer';
+    if(value==='quick') return 'quick';
+    if(value==='novice') return 'novice';
+    if(!value) return 'novice';
+    return 'quick';
   }
 
   function setMode(mode){
-    var next=mode==='programmer'?'programmer':'quick';
+    var next=mode==='programmer'?'programmer':mode==='quick'?'quick':'novice';
     var s=storage();
     try{ if(s) s.setItem(MODE_KEY,next); }catch(_){}
     return next;
