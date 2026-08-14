@@ -1498,6 +1498,7 @@
     var html='<button type="button" class="app-picker-item" role="option"';
     if(opts.presetId) html+=' data-pick-preset="'+esc(opts.presetId)+'"';
     if(opts.habitId) html+=' data-pick-habit="'+esc(opts.habitId)+'"';
+    if(opts.quotaId) html+=' data-pick-quota="'+esc(opts.quotaId)+'"';
     if(opts.pickIndex!=null) html+=' data-pick-running="'+opts.pickIndex+'"';
     html+='>';
     if(opts.icon){
@@ -1514,7 +1515,7 @@
   var pickerRunningCache=[];
   var pickerForegroundIdentity=null;
   var pickerCreateMappingId='';
-  var pickerSession={ mode:null, onPick:null, habitItems:null };
+  var pickerSession={ mode:null, onPick:null, habitItems:null, lightItems:null, quotaItems:null };
 
   function setPickerCreateTarget(mappingId){
     pickerCreateMappingId=String(mappingId||'').trim();
@@ -1525,7 +1526,7 @@
   }
 
   function clearPickerSession(){
-    pickerSession={ mode:null, onPick:null, habitItems:null };
+    pickerSession={ mode:null, onPick:null, habitItems:null, lightItems:null, quotaItems:null };
   }
 
   function isTopbarMonitorPicker(){
@@ -1875,9 +1876,11 @@
       ? tf('softPadTopbarPickerTitle','添加到顶栏监视')
       : t('appPickerTitle');
     if(desc) desc.textContent=topbar
-      ? tf('softPadTopbarPickerDesc','选择要监视并快速跳转的应用；按当前习惯分别保存，不改生效应用')
+      ? tf('softPadTopbarPickerDesc','状态灯：已接生命周期的客户端/CLI。额度候补：填 API key 后进迷你栏用量 pill。')
       : t('appPickerDesc');
-    if(presetsLbl) presetsLbl.textContent=t('appPickerPresets');
+    if(presetsLbl) presetsLbl.textContent=topbar
+      ? tf('softPadTopbarPickerLights','状态灯（客户端 / CLI）')
+      : t('appPickerPresets');
     if(runningLbl) runningLbl.textContent=topbar
       ? tf('softPadTopbarPickerHabits','习惯与正在运行')
       : t('appPickerRunning');
@@ -1885,23 +1888,46 @@
     populateAppPickerForeground();
     if(!presetsHost||!runningHost) return;
     var presetHtml='';
-    var presetList=BEHAVIOR_PRESETS;
-    if(topbar && global.OneToneAppTargetPresets && Array.isArray(global.OneToneAppTargetPresets.presets)){
-      presetList=global.OneToneAppTargetPresets.presets.filter(function(p){
-        return p && p.id && p.id!=='minimax-chat';
+    var lightItems=topbar && Array.isArray(pickerSession.lightItems) ? pickerSession.lightItems : null;
+    if(lightItems){
+      presetHtml=lightItems.map(function(item){
+        return renderAppPickerItem({
+          presetId:item.id,
+          name:item.name||item.id,
+          meta:item.meta||tf('softPadTopbarPickerPresetMeta','加入顶栏监视'),
+          icon:item.icon||iconForApp(item.id)
+        });
+      }).join('');
+    }else{
+      var presetList=BEHAVIOR_PRESETS;
+      presetList.forEach(function(p){
+        presetHtml+=renderAppPickerItem({
+          presetId:p.id,
+          name:appDisplayName(p.id),
+          meta:t(p.noteKey||'habitAppRulesPickApp'),
+          icon:iconForApp(p.id)
+        });
       });
     }
-    presetList.forEach(function(p){
-      presetHtml+=renderAppPickerItem({
-        presetId:p.id,
-        name:appDisplayName(p.id),
-        meta:topbar
-          ? tf('softPadTopbarPickerPresetMeta','加入顶栏监视')
-          : t(p.noteKey||'habitAppRulesPickApp'),
-        icon:iconForApp(p.id)
-      });
-    });
     presetsHost.innerHTML=presetHtml;
+    var quotaLbl=$('appPickerQuotaLbl');
+    var quotaHost=$('appPickerQuota');
+    var quotaItems=topbar && Array.isArray(pickerSession.quotaItems) ? pickerSession.quotaItems : [];
+    if(quotaLbl){
+      quotaLbl.hidden=!quotaItems.length;
+      quotaLbl.textContent=tf('softPadTopbarPickerQuota','API 额度候补');
+    }
+    if(quotaHost){
+      quotaHost.hidden=!quotaItems.length;
+      quotaHost.innerHTML=quotaItems.map(function(q){
+        return renderAppPickerItem({
+          quotaId:q.id,
+          name:q.name||q.id,
+          meta:q.meta||tf('softPadTopbarPickerQuotaMeta','填 key 后进用量 pill'),
+          icon:q.icon||''
+        });
+      }).join('');
+    }
     var habitHtml='';
     if(topbar && Array.isArray(pickerSession.habitItems)){
       habitHtml=pickerSession.habitItems.map(function(h){
@@ -1968,6 +1994,8 @@
     pickerSession.mode=opts.mode||null;
     pickerSession.onPick=typeof opts.onPick==='function'?opts.onPick:null;
     pickerSession.habitItems=Array.isArray(opts.habitItems)?opts.habitItems:null;
+    pickerSession.lightItems=Array.isArray(opts.lightItems)?opts.lightItems:null;
+    pickerSession.quotaItems=Array.isArray(opts.quotaItems)?opts.quotaItems:null;
     if(opts.mappingId && !isTopbarMonitorPicker()) setPickerCreateTarget(opts.mappingId);
     bindAppPickerEvents();
     var overlay=$('appPickerOverlay');
@@ -1984,6 +2012,13 @@
   }
 
   function handleAppPickerClick(e){
+    var quotaBtn=e.target.closest&&e.target.closest('[data-pick-quota]');
+    if(quotaBtn){
+      e.preventDefault();
+      if(!isTopbarMonitorPicker()) return;
+      finishTopbarPick({ type:'quota', provider:quotaBtn.getAttribute('data-pick-quota')||'' });
+      return;
+    }
     var habitBtn=e.target.closest&&e.target.closest('[data-pick-habit]');
     if(habitBtn){
       e.preventDefault();

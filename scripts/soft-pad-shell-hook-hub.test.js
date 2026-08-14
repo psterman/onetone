@@ -105,13 +105,95 @@ assert.ok(
 );
 
 assert.ok(padUiSrc.indexOf('workbuddyStatusLightsEnabled') >= 0, 'pad ui shell light flags');
-assert.ok(padUiSrc.indexOf('AGENT_LIGHT_SPECS') >= 0, 'six agent light rows');
+assert.ok(padUiSrc.indexOf('AGENT_LIGHT_SPECS') >= 0, 'agent light rows');
 assert.ok(padUiSrc.indexOf("agent: 'workbuddy'") >= 0);
+assert.ok(padUiSrc.indexOf("agent: 'copilotCli'") >= 0, 'topbar includes copilotCli');
+assert.ok(padUiSrc.indexOf("agent: 'gemini'") >= 0, 'topbar includes gemini');
+assert.ok(padUiSrc.indexOf('copilotStatusLightsEnabled') >= 0, 'copilot light flag');
+assert.ok(padUiSrc.indexOf('geminiStatusLightsEnabled') >= 0, 'gemini light flag');
+assert.ok(padUiSrc.indexOf('clineStatusLightsEnabled') >= 0, 'cline light flag');
+assert.ok(padUiSrc.indexOf('opencodeStatusLightsEnabled') >= 0, 'opencode light flag');
+assert.ok(padUiSrc.indexOf('aiderStatusLightsEnabled') >= 0, 'aider light flag');
+assert.ok(padUiSrc.indexOf("agent: 'cline'") >= 0, 'topbar includes cline');
+assert.ok(padUiSrc.indexOf("agent: 'opencode'") >= 0, 'topbar includes opencode');
+assert.ok(padUiSrc.indexOf('Aider（仅完成）') >= 0, 'aider done-only label');
 assert.ok(padUiSrc.indexOf('cmd_shell_agent_hook_install_confirm') >= 0, 'shell connect CTA');
 assert.ok(overlayHtml.indexOf('data-agent="workbuddy"') >= 0, 'overlay workbuddy chip');
 assert.ok(overlayHtml.indexOf('data-agent="trae"') >= 0, 'overlay trae chip');
 assert.ok(overlayHtml.indexOf('data-agent="qoder"') >= 0, 'overlay qoder chip');
-assert.ok(runtimeCmd.indexOf('"workbuddy" | "trae" | "qoder"') >= 0, 'ipc accepts shell agents');
+assert.ok(overlayHtml.indexOf('data-agent="copilotCli"') >= 0, 'overlay copilot chip');
+assert.ok(overlayHtml.indexOf('data-agent="gemini"') >= 0, 'overlay gemini chip');
+assert.ok(overlayHtml.indexOf('data-agent="cline"') >= 0, 'overlay cline chip');
+assert.ok(overlayHtml.indexOf('data-agent="opencode"') >= 0, 'overlay opencode chip');
+assert.ok(overlayHtml.indexOf('data-agent="aider"') >= 0, 'overlay aider chip');
+assert.ok(runtimeCmd.indexOf('copilot_status_lights_enabled') >= 0, 'ipc persists copilot lights');
+assert.ok(runtimeCmd.indexOf('gemini_status_lights_enabled') >= 0, 'ipc persists gemini lights');
+assert.ok(runtimeCmd.indexOf('cline_status_lights_enabled') >= 0, 'ipc persists cline lights');
+assert.ok(runtimeCmd.indexOf('opencode_status_lights_enabled') >= 0, 'ipc persists opencode lights');
+assert.ok(runtimeCmd.indexOf('aider_status_lights_enabled') >= 0, 'ipc persists aider lights');
 assert.ok(runtimeCmd.indexOf('workbuddy_status_lights_enabled') >= 0, 'ipc persists shell lights');
+
+assert.ok(presetsSrc.indexOf("'copilot-cli'") >= 0, 'preset copilot-cli');
+assert.ok(presetsSrc.indexOf("'gemini-cli'") >= 0, 'preset gemini-cli');
+assert.ok(presetsSrc.indexOf("'cline-chat'") >= 0, 'preset cline-chat');
+assert.ok(presetsSrc.indexOf("'opencode-chat'") >= 0, 'preset opencode-chat');
+assert.ok(presetsSrc.indexOf("'aider-chat'") >= 0, 'preset aider-chat');
+assert.ok(presetsSrc.indexOf('icons/app-target/copilot.png') >= 0);
+assert.ok(presetsSrc.indexOf('icons/app-target/gemini.png') >= 0);
+assert.ok(fs.existsSync(path.join(root, 'src/icons/app-target/copilot.png')), 'copilot.png');
+assert.ok(fs.existsSync(path.join(root, 'src/icons/app-target/gemini.png')), 'gemini.png');
+var copilotSvg = fs.readFileSync(path.join(root, 'src/icons/app-target/copilot.svg'), 'utf8');
+var geminiSvg = fs.readFileSync(path.join(root, 'src/icons/app-target/gemini.svg'), 'utf8');
+assert.ok(copilotSvg.indexOf('<text') < 0 && copilotSvg.toLowerCase().indexOf('>cp<') < 0,
+  'copilot.svg is a helmet mark, not Cp initials');
+assert.ok(geminiSvg.indexOf('<text') < 0 && !/>G<\/text>/.test(geminiSvg),
+  'gemini.svg is a sparkle, not G initials');
+['cline', 'opencode', 'aider'].forEach(function (stem) {
+  assert.ok(fs.existsSync(path.join(root, 'src/icons/app-target/' + stem + '.png')), stem + '.png');
+  var svg = fs.readFileSync(path.join(root, 'src/icons/app-target/' + stem + '.svg'), 'utf8');
+  assert.ok(svg.indexOf('<text') < 0, stem + '.svg is a mark, not initials');
+});
+assert.ok(!/WORKFLOW_APP_TARGET_IDS[\s\S]*?copilot-cli/.test(presetsSrc.split('var PRESETS')[0]),
+  'copilot-cli not a workflow keyboard target');
+assert.ok(!/WORKFLOW_APP_TARGET_IDS[\s\S]*?gemini-cli/.test(presetsSrc.split('var PRESETS')[0]),
+  'gemini-cli not a workflow keyboard target');
+assert.ok(!/WORKFLOW_APP_TARGET_IDS[\s\S]*?cline-chat/.test(presetsSrc.split('var PRESETS')[0]),
+  'cline-chat not a workflow keyboard target');
+assert.ok(!/WORKFLOW_APP_TARGET_IDS[\s\S]*?opencode-chat/.test(presetsSrc.split('var PRESETS')[0]),
+  'opencode-chat not a workflow keyboard target');
+assert.ok(!/WORKFLOW_APP_TARGET_IDS[\s\S]*?aider-chat/.test(presetsSrc.split('var PRESETS')[0]),
+  'aider-chat not a workflow keyboard target');
+
+var pickerSrc = fs.readFileSync(path.join(root, 'src/js/features/mapping/app-behavior-rules.js'), 'utf8');
+assert.ok(pickerSrc.indexOf("p.id!=='minimax-chat'") < 0, 'topbar picker no longer hides MiniMax');
+assert.ok(hubSrc.indexOf("'copilot-cli': 'copilotCli'") >= 0 || hubSrc.indexOf('"copilot-cli": "copilotCli"') >= 0
+  || hubSrc.indexOf("'copilot-cli': 'copilotCli'") >= 0, 'hub kindForAppId copilot-cli');
+assert.ok(hubSrc.indexOf("'gemini-cli': 'gemini'") >= 0, 'hub kindForAppId gemini-cli');
+assert.ok(hubSrc.indexOf("'cline-chat': 'cline'") >= 0, 'hub kindForAppId cline-chat');
+assert.ok(hubSrc.indexOf("'opencode-chat': 'opencode'") >= 0, 'hub kindForAppId opencode-chat');
+assert.ok(hubSrc.indexOf("'aider-chat': 'aider'") >= 0, 'hub kindForAppId aider-chat');
+assert.ok(!/BUILTIN_SOFT_PAD_APPS[\s\S]*?copilot-cli/.test(hubSrc), 'BUILTIN omits copilot keyboard scope');
+assert.ok(!/BUILTIN_SOFT_PAD_APPS[\s\S]*?gemini-cli/.test(hubSrc), 'BUILTIN omits gemini keyboard scope');
+assert.ok(!/BUILTIN_SOFT_PAD_APPS[\s\S]*?cline-chat/.test(hubSrc), 'BUILTIN omits cline keyboard scope');
+
+assert.ok(padUiSrc.indexOf('TOPBAR_QUOTA_CANDIDATES') >= 0, 'quota backup candidates');
+assert.ok(padUiSrc.indexOf("provider: 'openrouter'") >= 0, 'quota openrouter');
+assert.ok(padUiSrc.indexOf("provider: 'deepseek'") >= 0, 'quota deepseek');
+assert.ok(padUiSrc.indexOf("provider: 'kimi'") >= 0, 'quota kimi');
+assert.ok(padUiSrc.indexOf("provider: 'siliconflow'") >= 0, 'quota siliconflow');
+assert.ok(padUiSrc.indexOf("type === 'quota'") >= 0 || padUiSrc.indexOf("pick.type === 'quota'") >= 0, 'quota pick handler');
+assert.ok(padUiSrc.indexOf('cmd_soft_pad_provider_key_set') >= 0, 'quota key set');
+assert.ok(pickerSrc.indexOf('data-pick-quota') >= 0, 'picker quota items');
+assert.ok(pickerSrc.indexOf('softPadTopbarPickerQuota') >= 0, 'picker quota section label');
+assert.ok(pickerSrc.indexOf('softPadTopbarPickerLights') >= 0, 'picker lights section label');
+assert.ok(pickerSrc.indexOf('pickerSession.lightItems') >= 0, 'topbar picker uses lightItems');
+assert.ok(padUiSrc.indexOf('lightItems: topbarLightPickerItems') >= 0, 'pad ui passes light candidates');
+assert.ok(padUiSrc.indexOf('function topbarLightPickerItems') >= 0, 'light items from TOPBAR_LIGHT_CANDIDATES');
+assert.ok(padUiSrc.indexOf('agentLightIconSrc(c.agent)') >= 0, 'light picker icons from agentLightIconSrc');
+assert.ok(indexHtml.indexOf('appPickerQuota') >= 0, 'quota picker host');
+assert.ok(presetsSrc.indexOf("id: 'openrouter'") < 0 && presetsSrc.indexOf("id: 'deepseek'") < 0,
+  'quota providers not mixed into workflow presets');
+assert.ok(!/WORKFLOW_APP_TARGET_IDS[\s\S]*?openrouter/.test(presetsSrc.split('var PRESETS')[0]),
+  'openrouter not a workflow keyboard target');
 
 console.log('soft-pad-shell-hook-hub tests passed');

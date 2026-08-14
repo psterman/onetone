@@ -152,6 +152,8 @@ permissions = [
   "allow-cmd-cursor-activity-pref-set",
   "allow-cmd-minimax-coding-key-get",
   "allow-cmd-minimax-coding-key-set",
+  "allow-cmd-soft-pad-provider-key-get",
+  "allow-cmd-soft-pad-provider-key-set",
   "allow-cmd-claude-cli-inject",
   "allow-cmd-claude-cli-decide",
   "allow-cmd-codex-pad-binding-diagnose",

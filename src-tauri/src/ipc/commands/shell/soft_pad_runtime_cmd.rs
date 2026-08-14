@@ -214,7 +214,25 @@ pub fn cmd_soft_pad_agent_lights_set(
     }
     if !matches!(
         agent.as_str(),
-        "codex" | "claude" | "cursor" | "minimax" | "workbuddy" | "trae" | "qoder"
+        "codex"
+            | "claude"
+            | "cursor"
+            | "minimax"
+            | "workbuddy"
+            | "trae"
+            | "qoder"
+            | "copilotcli"
+            | "copilot_cli"
+            | "copilot-cli"
+            | "gemini"
+            | "gemini-cli"
+            | "gemini_cli"
+            | "cline"
+            | "cline-chat"
+            | "opencode"
+            | "opencode-chat"
+            | "aider"
+            | "aider-chat"
     ) {
         return Err("bad_agent".into());
     }
@@ -236,6 +254,13 @@ pub fn cmd_soft_pad_agent_lights_set(
             "workbuddy" => pad.workbuddy_status_lights_enabled = enabled,
             "trae" => pad.trae_status_lights_enabled = enabled,
             "qoder" => pad.qoder_status_lights_enabled = enabled,
+            "copilotcli" | "copilot_cli" | "copilot-cli" => {
+                pad.copilot_status_lights_enabled = enabled
+            }
+            "gemini" | "gemini-cli" | "gemini_cli" => pad.gemini_status_lights_enabled = enabled,
+            "cline" | "cline-chat" => pad.cline_status_lights_enabled = enabled,
+            "opencode" | "opencode-chat" => pad.opencode_status_lights_enabled = enabled,
+            "aider" | "aider-chat" => pad.aider_status_lights_enabled = enabled,
             _ => {}
         }
         crate::codex_numpad_layer::sync_hook_cache(&cfg);
@@ -245,7 +270,23 @@ pub fn cmd_soft_pad_agent_lights_set(
     let needs_loopback = enabled
         && matches!(
             agent.as_str(),
-            "codex" | "cursor" | "workbuddy" | "trae" | "qoder"
+            "codex"
+                | "cursor"
+                | "workbuddy"
+                | "trae"
+                | "qoder"
+                | "copilotcli"
+                | "copilot_cli"
+                | "copilot-cli"
+                | "gemini"
+                | "gemini-cli"
+                | "gemini_cli"
+                | "cline"
+                | "cline-chat"
+                | "opencode"
+                | "opencode-chat"
+                | "aider"
+                | "aider-chat"
         );
     let mut loopback_error: Option<String> = None;
     if needs_loopback {
@@ -354,12 +395,37 @@ pub fn cmd_soft_pad_agent_lights_batch_set(
                 "workbuddy" => pad.workbuddy_status_lights_enabled = enabled,
                 "trae" => pad.trae_status_lights_enabled = enabled,
                 "qoder" => pad.qoder_status_lights_enabled = enabled,
+                "copilotcli" | "copilot_cli" | "copilot-cli" => {
+                    pad.copilot_status_lights_enabled = enabled
+                }
+                "gemini" | "gemini-cli" | "gemini_cli" => {
+                    pad.gemini_status_lights_enabled = enabled
+                }
+                "cline" | "cline-chat" => pad.cline_status_lights_enabled = enabled,
+                "opencode" | "opencode-chat" => pad.opencode_status_lights_enabled = enabled,
+                "aider" | "aider-chat" => pad.aider_status_lights_enabled = enabled,
                 _ => return Err(format!("bad_agent:{agent}")),
             }
             if enabled
                 && matches!(
                     agent.as_str(),
-                    "codex" | "cursor" | "workbuddy" | "trae" | "qoder"
+                    "codex"
+                        | "cursor"
+                        | "workbuddy"
+                        | "trae"
+                        | "qoder"
+                        | "copilotcli"
+                        | "copilot_cli"
+                        | "copilot-cli"
+                        | "gemini"
+                        | "gemini-cli"
+                        | "gemini_cli"
+                        | "cline"
+                        | "cline-chat"
+                        | "opencode"
+                        | "opencode-chat"
+                        | "aider"
+                        | "aider-chat"
                 )
             {
                 needs_loopback = true;

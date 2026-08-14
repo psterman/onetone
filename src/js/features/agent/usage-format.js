@@ -72,10 +72,84 @@
     return cd ? base + ' · ' + cd + '重置' : base;
   }
 
+  var FRESH_STALE_MS = 5 * 60 * 1000;
+
+  /**
+   * Mini freshness dot from providerQuotasUpdatedAt (ms; <1e12 treated as sec).
+   * @returns {{ ageMs: number, stale: boolean, title: string, mins: number }}
+   */
+  function quotasFreshnessAge(updatedAt, nowMs) {
+    var now = nowMs != null && isFinite(Number(nowMs)) ? Number(nowMs) : Date.now();
+    var at = Number(updatedAt);
+    if (!isFinite(at) || at <= 0) {
+      return { ageMs: 0, stale: false, title: '', mins: 0 };
+    }
+    if (at < 1e12) at *= 1000;
+    var ageMs = Math.max(0, now - at);
+    var mins = Math.floor(ageMs / 60000);
+    var title =
+      mins < 1 ? 'Updated just now' : 'Updated ' + mins + 'm ago';
+    return {
+      ageMs: ageMs,
+      stale: ageMs > FRESH_STALE_MS,
+      title: title,
+      mins: mins
+    };
+  }
+
+  function quotaIconGlyph(icon) {
+    var i = String(icon || '').trim().toLowerCase();
+    if (i === 'ok') return '✓';
+    if (i === 'warn') return '⚠';
+    return '✗';
+  }
+
+  /**
+   * Dropdown rows for providerQuotas. Partial failure keeps successful rows.
+   * @param {Array} rows SoftPadQuotaRow[]
+   * @returns {Array<{ provider, label, status, icon, glyph, caption, message }>}
+   */
+  function providerQuotaDropdownRows(rows) {
+    if (!Array.isArray(rows)) return [];
+    return rows
+      .filter(function (r) {
+        return r && (r.provider || r.label || r.caption);
+      })
+      .map(function (r) {
+        return {
+          provider: String(r.provider || ''),
+          label: String(r.label || r.provider || ''),
+          status: String(r.status || ''),
+          icon: String(r.icon || ''),
+          glyph: quotaIconGlyph(r.icon),
+          caption: String(r.caption || ''),
+          message: String(r.message || '')
+        };
+      });
+  }
+
+  /** First ok caption for chill pill, else ''. */
+  function firstOkQuotaCaption(rows) {
+    if (!Array.isArray(rows)) return '';
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (!r) continue;
+      if (String(r.status || '').toLowerCase() === 'ok' && r.caption) {
+        return String(r.caption);
+      }
+    }
+    return '';
+  }
+
   var api = {
     formatResetCountdown: formatResetCountdown,
     primaryResetAt: primaryResetAt,
-    windowQuotaLabel: windowQuotaLabel
+    windowQuotaLabel: windowQuotaLabel,
+    FRESH_STALE_MS: FRESH_STALE_MS,
+    quotasFreshnessAge: quotasFreshnessAge,
+    quotaIconGlyph: quotaIconGlyph,
+    providerQuotaDropdownRows: providerQuotaDropdownRows,
+    firstOkQuotaCaption: firstOkQuotaCaption
   };
 
   if (typeof module !== 'undefined' && module.exports) {

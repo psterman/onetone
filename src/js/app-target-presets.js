@@ -74,6 +74,51 @@
       icon: 'icons/app-target/qoder.png',
       badge: 'Qd',
       badgeEn: 'Qd'
+    },
+    {
+      id: 'copilot-cli',
+      nameKey: 'appTargetCopilotCli',
+      descKey: 'appTargetCopilotCliDesc',
+      targetKey: '',
+      icon: 'icons/app-target/copilot.png',
+      badge: 'Cp',
+      badgeEn: 'Cp'
+    },
+    {
+      id: 'gemini-cli',
+      nameKey: 'appTargetGeminiCli',
+      descKey: 'appTargetGeminiCliDesc',
+      targetKey: '',
+      icon: 'icons/app-target/gemini.png',
+      badge: 'Gm',
+      badgeEn: 'Gm'
+    },
+    {
+      id: 'cline-chat',
+      nameKey: 'appTargetCline',
+      descKey: 'appTargetClineDesc',
+      targetKey: '',
+      icon: 'icons/app-target/cline.png',
+      badge: 'Cl',
+      badgeEn: 'Cl'
+    },
+    {
+      id: 'opencode-chat',
+      nameKey: 'appTargetOpenCode',
+      descKey: 'appTargetOpenCodeDesc',
+      targetKey: '',
+      icon: 'icons/app-target/opencode.png',
+      badge: 'Oc',
+      badgeEn: 'Oc'
+    },
+    {
+      id: 'aider-chat',
+      nameKey: 'appTargetAider',
+      descKey: 'appTargetAiderDesc',
+      targetKey: '',
+      icon: 'icons/app-target/aider.png',
+      badge: 'Ad',
+      badgeEn: 'Ad'
     }
   ];
 

@@ -1323,6 +1323,21 @@ pub struct CodexMicroPadConfig {
     /// Soft Pad top-bar MiniMax status / usage dot.
     #[serde(default)]
     pub minimax_status_lights_enabled: bool,
+    /// Soft Pad top-bar Copilot CLI status dot (shell hook lifecycle).
+    #[serde(default)]
+    pub copilot_status_lights_enabled: bool,
+    /// Soft Pad top-bar Gemini CLI status dot (shell hook lifecycle).
+    #[serde(default)]
+    pub gemini_status_lights_enabled: bool,
+    /// Soft Pad top-bar Cline status dot (file hooks).
+    #[serde(default)]
+    pub cline_status_lights_enabled: bool,
+    /// Soft Pad top-bar OpenCode status dot (plugin).
+    #[serde(default)]
+    pub opencode_status_lights_enabled: bool,
+    /// Soft Pad top-bar Aider status dot (done-only notifications-command).
+    #[serde(default)]
+    pub aider_status_lights_enabled: bool,
     /// Ambient bezel: `"status"` (follow pad status palette) | `"solid"` (fixed color).
     #[serde(default = "default_ambient_mode")]
     pub ambient_mode: String,
@@ -1382,6 +1397,11 @@ impl Default for CodexMicroPadConfig {
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
+            copilot_status_lights_enabled: false,
+            gemini_status_lights_enabled: false,
+            cline_status_lights_enabled: false,
+            opencode_status_lights_enabled: false,
+            aider_status_lights_enabled: false,
             ambient_mode: default_ambient_mode(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: default_ambient_opacity(),

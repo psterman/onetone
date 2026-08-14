@@ -14,7 +14,7 @@ var overlayCmd = fs.readFileSync(
 );
 var fmt = require(path.join(root, 'src/js/features/agent/usage-format.js'));
 
-['codex', 'claude', 'cursor', 'minimax', 'workbuddy', 'trae', 'qoder'].forEach(function (kind) {
+['codex', 'claude', 'cursor', 'copilotCli', 'gemini', 'minimax', 'workbuddy', 'trae', 'qoder', 'cline', 'opencode', 'aider'].forEach(function (kind) {
   assert.ok(html.includes('data-agent="' + kind + '"'), 'missing agent chip: ' + kind);
 });
 assert.ok(html.includes('id="padAgentBar"') || html.includes('soft-pad-agent-bar'));
@@ -26,8 +26,7 @@ assert.ok(html.includes('usage-format.js'));
 assert.ok(html.includes('OneToneUsageFormat') || html.includes('formatResetCountdown'));
 assert.ok(html.includes('id="miniUsagePill"'));
 assert.ok(html.includes('usageSummary(kind,usage'));
-assert.ok(html.includes('row.modelConfidence||row.model_confidence') || html.includes('modelConfidence'));
-assert.ok(html.includes('模型 --') || html.includes("'模型 --'"));
+assert.ok(html.includes('pinUsageFocusOnHover') && html.includes('chipFocusActionLine'), 'hover pin + short focus tip');
 assert.ok(!html.includes('id="overlayUsageRail"'), 'usage rail must be removed');
 assert.ok(!html.includes('data-usage-tab='), 'usage tabs must be removed');
 assert.ok(!html.includes('function applyUsageRail'), 'applyUsageRail must be removed');
@@ -112,7 +111,15 @@ assert.ok(html.includes('function layoutMiniAgentBar'));
 assert.ok(html.includes('function touchAgentBarRecency'));
 assert.ok(html.includes('noteForegroundRecency') || html.includes('foregroundAgent'));
 assert.ok(html.includes('setAgentBarOverflowOpen'));
-assert.ok(html.includes('miniAgentMore.hidden=true') || html.includes('padAgentBarMore.hidden=true'));
+assert.ok(html.includes('padAgentBarMore.hidden=true'), 'expand pad still hides +N chrome');
+assert.ok(
+  html.includes('miniAgentMore.hidden=false') || /rest\.length/.test(html),
+  'mini +N uses Rank rest length'
+);
+assert.ok(html.includes('id="miniUsageFresh"'), 'freshness dot');
+assert.ok(html.includes('id="miniQuotaDropdown"'), 'quota dropdown');
+assert.ok(html.includes('quota_menu') || html.includes('providerQuotas'), 'multi-provider pill path');
+assert.ok(html.includes('data-placeholder'), 'placeholder chips for copilot/gemini');
 assert.ok(
   /display:\s*flex/.test(css.match(/\.soft-pad-agent-bar\s*\{[^}]+\}/)[0]) &&
     /flex-wrap:\s*nowrap/.test(css.match(/\.soft-pad-agent-bar\s*\{[^}]+\}/)[0]),
@@ -130,6 +137,10 @@ assert.ok(/\.soft-pad-agent-bar__more[\s,{]/.test(css) && css.includes('display:
 assert.ok(/width:\s*6px/.test(css) && /height:\s*6px/.test(css), 'status dot 6px');
 assert.ok(css.includes('soft-pad-chip-status-flash') || css.includes('is-status-flash'));
 assert.ok(css.includes('overlay-mini__more'));
+assert.ok(css.includes('overlay-mini__fresh') && css.includes('is-stale'), 'freshness styles');
+assert.ok(css.includes('overlay-mini__quota-dd'), 'quota dropdown styles');
+assert.ok(css.includes('data-placeholder') || css.includes('[data-placeholder="1"]'), 'placeholder chip styles');
+assert.ok(!/\.overlay-mini__more\s*\{\s*display:\s*none\s*!important/.test(css), 'mini +N must be visible when unhidden');
 
 var rank = require(path.join(root, 'src/js/features/agent/soft-pad-agent-bar-rank.js'));
 function lit(kind, state, updated) {
@@ -148,8 +159,14 @@ var r1 = rank.rankPadAgentBarKinds({}, byKind, 'codex', {});
 assert.strictEqual(r1.top[0], 'claude', 'needs_input outranks');
 assert.strictEqual(r1.top[1], 'cursor', 'running next');
 assert.ok(r1.top.indexOf('codex') >= 0, 'focus boost keeps codex in top');
-assert.strictEqual(r1.top.length, 7, 'show all eligible up to 7, no fold');
-assert.deepStrictEqual(r1.rest, []);
+assert.strictEqual(r1.top.length, 6, 'VISIBLE_PAD=6');
+assert.strictEqual(r1.rest.length, 1, 'fold remainder into rest for +N');
+assert.deepStrictEqual(
+  rank.CATALOG.slice(0, 5),
+  ['codex', 'claude', 'cursor', 'copilotCli', 'gemini'],
+  'catalog order includes copilotCli + gemini'
+);
+assert.ok(rank.CATALOG.indexOf('cline') >= 0 && rank.CATALOG.indexOf('aider') >= 0, 'catalog includes cline/opencode/aider');
 
 var r2 = rank.rankPadAgentBarKinds({}, byKind, 'minimax', {});
 assert.ok(r2.top.indexOf('minimax') >= 0, 'focus kind boosted into top');
@@ -164,7 +181,9 @@ var r3 = rank.rankPadAgentBarKinds(
 assert.deepStrictEqual(r3.top, ['codex']);
 assert.deepStrictEqual(r3.rest, []);
 
-assert.strictEqual(rank.VISIBLE_PAD, 7);
+assert.strictEqual(rank.VISIBLE_PAD, 6);
+var merged = rank.mergePlaceholderKinds(r3, {}, 6);
+assert.deepStrictEqual(merged.top, r3.top, 'no grey placeholders when PLACEHOLDER_KINDS empty');
 assert.strictEqual(
   rank.padLightFromRanked({}, byKind, 'codex', {}),
   'needs_input',
@@ -185,5 +204,60 @@ var idleAll = {
 };
 var rFg = rank.rankPadAgentBarKinds({ foregroundAgent: 'minimax' }, idleAll, '', {});
 assert.strictEqual(rFg.top[0], 'minimax', 'FG minimax ranks first among idle agents');
+
+// Partial-failure dropdown keeps ok + warn rows
+var partial = fmt.providerQuotaDropdownRows([
+  { provider: 'or', status: 'warn', icon: 'warn', caption: 'OpenRouter · 429' },
+  { provider: 'ds', status: 'warn', icon: 'warn', caption: 'DeepSeek · 429' },
+  { provider: 'kimi', status: 'offline', icon: 'err', caption: 'Kimi · offline' },
+  { provider: 'sf', status: 'ok', icon: 'ok', caption: 'SiliconFlow · 余 $1' }
+]);
+assert.strictEqual(partial.filter(function (r) { return r.icon === 'ok'; }).length, 1, 'keeps ok row');
+assert.strictEqual(partial.filter(function (r) { return r.icon === 'warn'; }).length, 2, 'keeps warn rows');
+assert.ok(partial.some(function (r) { return r.icon === 'err' || r.status === 'offline'; }), 'offline still listed');
+assert.strictEqual(
+  fmt.firstOkQuotaCaption([
+    { provider: 'or', status: 'warn', icon: 'warn', caption: 'OpenRouter · 429' },
+    { provider: 'ds', status: 'warn', icon: 'warn', caption: 'DeepSeek · 429' },
+    { provider: 'kimi', status: 'offline', icon: 'err', caption: 'Kimi · offline' },
+    { provider: 'sf', status: 'ok', icon: 'ok', caption: 'SiliconFlow · 余 $1' }
+  ]),
+  'SiliconFlow · 余 $1'
+);
+assert.strictEqual(fmt.quotaIconGlyph('ok'), '✓');
+assert.strictEqual(fmt.quotaIconGlyph('warn'), '⚠');
+assert.strictEqual(fmt.quotaIconGlyph('err'), '✗');
+
+var now = Date.now();
+var freshOk = fmt.quotasFreshnessAge(now - 60 * 1000, now);
+assert.strictEqual(freshOk.stale, false);
+assert.ok(/Updated/.test(freshOk.title));
+var freshStale = fmt.quotasFreshnessAge(now - 6 * 60 * 1000, now);
+assert.strictEqual(freshStale.stale, true);
+assert.strictEqual(freshStale.mins, 6);
+assert.strictEqual(freshStale.title, 'Updated 6m ago');
+
+// Vibecoding mini bar: focus ACL + actionable tip + pill refresh
+var overlayIpc = fs.readFileSync(
+  path.join(root, 'src-tauri/permissions/codex-micro-overlay-ipc.toml'),
+  'utf8'
+);
+assert.ok(overlayIpc.includes('allow-cmd-soft-pad-focus-session'), 'overlay ACL must allow focus_session');
+assert.ok(overlayIpc.includes('allow-cmd-codex-micro-overlay-refresh-usage'), 'overlay ACL must allow usage refresh');
+assert.ok(html.includes('cmd_soft_pad_focus_session'), 'mini must call focus_session');
+assert.ok(html.includes('chipFocusActionLine') || html.includes('点击聚焦'), 'tip action line');
+assert.ok(html.includes('本轮失败（不是未接 Hook）') || html.includes('chipFailureHonestyLine'), 'failed tip honesty');
+assert.ok(html.includes('cmd_codex_micro_overlay_refresh_usage'), 'pill refresh IPC');
+assert.ok(html.includes('refreshUsageFromOverlay') && html.includes('data-pill-action'), 'pill action wiring');
+assert.ok(html.includes('未能聚焦'), 'focus failure toast');
+assert.ok(rust.includes('pub agents: Vec<CodexMicroAgentSnapshot>'), 'agents snapshot');
+assert.ok(overlayCmd.includes('cmd_codex_micro_overlay_refresh_usage'), 'refresh command registered');
+assert.ok(css.includes('pointer-events: none') && css.includes('.overlay-agent-tip'), 'tip ignores pointer');
+
+var guide = fs.readFileSync(path.join(root, 'docs/soft-pad-mini-ui-guidelines.md'), 'utf8');
+assert.ok(guide.includes('overlayAgentTip') && (guide.includes('点击聚焦') || guide.includes('点击跳转')), 'guidelines match tip contract');
+assert.ok(guide.includes('cmd_codex_micro_overlay_refresh_usage'), 'guidelines mention pill refresh');
+assert.ok(guide.includes('pinUsageFocusOnHover') || guide.includes('禁止盖条'), 'guidelines ban covering strip');
+assert.ok(guide.includes('VISIBLE_PAD') && guide.includes('providerQuotas') && guide.includes('Updated Xm ago'), 'Slice D appendix');
 
 console.log('soft-pad mini agent tests passed');

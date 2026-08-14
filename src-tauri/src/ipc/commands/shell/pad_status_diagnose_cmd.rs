@@ -98,7 +98,7 @@ pub struct PadStatusDiagnoseView {
     pub claude_cli_latch: crate::claude_cli_session::ClaudeCliSessionLatch,
     pub claude_cli_can_inject: crate::claude_cli_session::ClaudeCliCanInject,
     pub claude_pending_approval: crate::claude_cli_session::ClaudePendingApproval,
-    /// Soft Pad Arbiter waiting feed (AgentAttentionStore projection — not PadStatus sticky).
+    /// Soft Pad Arbiter waiting feed (AgentAttentionStore projection ? not PadStatus sticky).
     pub attention: crate::agent_attention::AttentionPublicSnapshot,
     pub cursor_capabilities: crate::agent_catalog::AgentCapabilities,
 }
@@ -141,6 +141,11 @@ fn pad_for_diagnose(cfg: &crate::config::VoiceConfig) -> CodexMicroPadConfig {
         trae_status_lights_enabled: false,
         qoder_status_lights_enabled: false,
         minimax_status_lights_enabled: false,
+        copilot_status_lights_enabled: false,
+        gemini_status_lights_enabled: false,
+        cline_status_lights_enabled: false,
+        opencode_status_lights_enabled: false,
+        aider_status_lights_enabled: false,
         ambient_mode: "status".into(),
         ambient_solid_rgb: String::new(),
         ambient_opacity: 100,
@@ -230,7 +235,7 @@ fn build_claude_diagnose(
         });
         waiting
             .first()
-            .map(|l| format!("{} 等待确认", short_agent_type(&l.agent_type)))
+            .map(|l| format!("{} ????", short_agent_type(&l.agent_type)))
             .unwrap_or_default()
     } else {
         String::new()
@@ -311,7 +316,7 @@ pub fn compute_claude_hook_phase(
         Some(age) if age <= PHASE_STALE_MS => "stale",
         Some(_) => "offline",
         None => {
-            // probe exists ≠ hooks configured; waiting only when script present and no event/log
+            // probe exists ? hooks configured; waiting only when script present and no event/log
             if probe_exists && !probe_log_exists {
                 "waiting"
             } else {
@@ -336,9 +341,9 @@ fn build_claude_issues(
     if !probe_exists {
         out.push(ClaudeActivityIssue {
             severity: "error".into(),
-            title: "缺少 Claude Hook 探针".into(),
-            reason: "scripts/claude-hook-probe.js 不存在。".into(),
-            action: "确认仓库完整，或从 scripts/claude-hooks.example.json 配置 Claude Code hooks。"
+            title: "?? Claude Hook ??".into(),
+            reason: "scripts/claude-hook-probe.js ????".into(),
+            action: "????????? scripts/claude-hooks.example.json ?? Claude Code hooks?"
                 .into(),
             related: "scripts/claude-hook-probe.js".into(),
         });
@@ -346,80 +351,80 @@ fn build_claude_issues(
     if phase == "offline" && probe_exists {
         out.push(ClaudeActivityIssue {
             severity: "error".into(),
-            title: "未收到 Claude Hook".into(),
+            title: "??? Claude Hook".into(),
             reason: if probe_log_exists {
-                "有 probe 日志，但 OneTone 近 5 分钟未成功接收 claude_hook。".into()
+                "? probe ???? OneTone ? 5 ??????? claude_hook?".into()
             } else {
-                "过去 5 分钟没有 claude_hook 事件，也没有 probe 日志。".into()
+                "?? 5 ???? claude_hook ?????? probe ???".into()
             },
-            action: "在 Soft Pad「Claude Activity 接入」预览并确认安装，或打开 Claude CLI 发一句 prompt。"
+            action: "? Soft Pad?Claude Activity ?????????????? Claude CLI ??? prompt?"
                 .into(),
-            related: "scripts/claude-hooks.example.json · /api/codex-app/state".into(),
+            related: "scripts/claude-hooks.example.json ? /api/codex-app/state".into(),
         });
     }
     if phase == "waiting" {
         out.push(ClaudeActivityIssue {
             severity: "warn".into(),
-            title: "等待事件".into(),
-            reason: "Hook 可能已写入，但尚未收到 claude_hook。".into(),
-            action: "打开 Claude Code 发一句 prompt；或在接入面板点「重新检测」。"
+            title: "????".into(),
+            reason: "Hook ??????????? claude_hook?".into(),
+            action: "?? Claude Code ??? prompt???????????????"
                 .into(),
-            related: "scripts/claude-hook-probe.js · SessionStart".into(),
+            related: "scripts/claude-hook-probe.js ? SessionStart".into(),
         });
     }
     if phase == "stale" {
         out.push(ClaudeActivityIssue {
             severity: "warn".into(),
-            title: "Claude Hook 已过期".into(),
-            reason: "超过 30 秒未收到新的 claude_hook。".into(),
-            action: "在 Claude Code 再触发一次 prompt / PermissionRequest。".into(),
+            title: "Claude Hook ???".into(),
+            reason: "?? 30 ?????? claude_hook?".into(),
+            action: "? Claude Code ????? prompt / PermissionRequest?".into(),
             related: "claude_hook".into(),
         });
     }
     if probe_log_exists && !endpoint_recent && phase != "connected" {
         out.push(ClaudeActivityIssue {
             severity: "info".into(),
-            title: "Probe 日志 ≠ Endpoint 成功".into(),
-            reason: "claude-hook-probe.jsonl 存在，但不代表 /api/codex-app/state 近期入站成功。"
+            title: "Probe ?? ? Endpoint ??".into(),
+            reason: "claude-hook-probe.jsonl ??????? /api/codex-app/state ???????"
                 .into(),
-            action: "确认 OneTone 在跑且状态灯/Labs listener 可用。".into(),
+            action: "?? OneTone ??????/Labs listener ???".into(),
             related: "logs/claude-hook-probe.jsonl".into(),
         });
     }
     if pad_mode != "codex" {
         out.push(ClaudeActivityIssue {
             severity: "info".into(),
-            title: "Soft Pad 在数字键模式".into(),
-            reason: "当前 padMode=numpad，主盘 AG/ACT 布局不显示。".into(),
-            action: "切换到 Codex 场景模式以查看 AG/ACT 活动灯。".into(),
+            title: "Soft Pad ??????".into(),
+            reason: "?? padMode=numpad??? AG/ACT ??????".into(),
+            action: "??? Codex ??????? AG/ACT ????".into(),
             related: "padMode".into(),
         });
     }
     if !status_lights {
         out.push(ClaudeActivityIssue {
             severity: "info".into(),
-            title: "状态灯已关闭".into(),
-            reason: "Hook 仍可写入 Core；overlay 不吃 Codex status 上灯。Claude Activity 诊断仍可读。"
+            title: "??????".into(),
+            reason: "Hook ???? Core?overlay ?? Codex status ???Claude Activity ??????"
                 .into(),
-            action: "需要 Soft Pad 状态灯时在管理页打开「Codex 状态灯」。".into(),
+            action: "?? Soft Pad ???????????Codex ?????".into(),
             related: "codexStatusLightsEnabled".into(),
         });
     }
     if native_conn == "fallback" {
         out.push(ClaudeActivityIssue {
             severity: "info".into(),
-            title: "Native Micro 为 fallback".into(),
-            reason: "只影响 Micro thstatus，不影响 Claude Hook。".into(),
-            action: "无需为 Claude Activity 处理；真 Micro 设备另查协议。".into(),
+            title: "Native Micro ? fallback".into(),
+            reason: "??? Micro thstatus???? Claude Hook?".into(),
+            action: "??? Claude Activity ???? Micro ???????".into(),
             related: "v.oai.thstatus".into(),
         });
     }
     if overflow_count > 0 {
         out.push(ClaudeActivityIssue {
             severity: "warn".into(),
-            title: "Claude 活动灯 overflow".into(),
-            reason: format!("有 {overflow_count} 个 agent 未上盘（AG 池满或不占 ACT/NAV）。"),
-            action: "等待完成释放宿主，或调整 status 宿主；高级可用 agentLightId（无设置 UI）。"
+            title: "Claude ??? overflow".into(),
+            reason: format!("? {overflow_count} ? agent ????AG ????? ACT/NAV??"),
+            action: "???????????? status ??????? agentLightId???? UI??"
                 .into(),
             related: "agentLightsOverflowItems".into(),
         });
@@ -428,8 +433,8 @@ fn build_claude_issues(
         out.push(ClaudeActivityIssue {
             severity: "info".into(),
             title: waiting_hint.to_string(),
-            reason: "Claude needs_input；主 context idle 时 ACT08/ACT12 有视觉提示。".into(),
-            action: "在 Claude 确认/拒绝，或点 Soft Pad ACT12/ACT08。".into(),
+            reason: "Claude needs_input?? context idle ? ACT08/ACT12 ??????".into(),
+            action: "? Claude ??/????? Soft Pad ACT12/ACT08?".into(),
             related: "claudeWaitingHint".into(),
         });
     }
@@ -557,7 +562,7 @@ fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
-/// Diagnostic inject: claude_hook only — never thstatus / Soft RGB driver.
+/// Diagnostic inject: claude_hook only ? never thstatus / Soft RGB driver.
 #[tauri::command]
 pub fn cmd_claude_activity_inject(preset: String) -> Result<String, String> {
     let preset = preset.trim();
@@ -737,21 +742,36 @@ pub fn cmd_claude_hook_uninstall_onetone() -> crate::claude_hook_setup::ClaudeHo
 pub fn cmd_shell_agent_hook_setup_status(
     kind: String,
 ) -> Result<crate::shell_agent_hook_setup::ShellHookSetupStatus, String> {
-    crate::shell_agent_hook_setup::setup_status(kind.trim())
+    match kind.trim().to_ascii_lowercase().as_str() {
+        "cline" | "cline-chat" => crate::cline_hook_setup::setup_status(),
+        "opencode" | "opencode-chat" | "open-code" => crate::opencode_hook_setup::setup_status(),
+        "aider" | "aider-chat" => crate::aider_hook_setup::setup_status(),
+        _ => crate::shell_agent_hook_setup::setup_status(kind.trim()),
+    }
 }
 
 #[tauri::command]
 pub fn cmd_shell_agent_hook_install_confirm(
     kind: String,
 ) -> crate::shell_agent_hook_setup::ShellHookWriteResult {
-    crate::shell_agent_hook_setup::install_confirm(kind.trim())
+    match kind.trim().to_ascii_lowercase().as_str() {
+        "cline" | "cline-chat" => crate::cline_hook_setup::install_confirm(),
+        "opencode" | "opencode-chat" | "open-code" => crate::opencode_hook_setup::install_confirm(),
+        "aider" | "aider-chat" => crate::aider_hook_setup::install_confirm(),
+        _ => crate::shell_agent_hook_setup::install_confirm(kind.trim()),
+    }
 }
 
 #[tauri::command]
 pub fn cmd_shell_agent_hook_uninstall(
     kind: String,
 ) -> crate::shell_agent_hook_setup::ShellHookWriteResult {
-    crate::shell_agent_hook_setup::uninstall(kind.trim())
+    match kind.trim().to_ascii_lowercase().as_str() {
+        "cline" | "cline-chat" => crate::cline_hook_setup::uninstall(),
+        "opencode" | "opencode-chat" | "open-code" => crate::opencode_hook_setup::uninstall(),
+        "aider" | "aider-chat" => crate::aider_hook_setup::uninstall(),
+        _ => crate::shell_agent_hook_setup::uninstall(kind.trim()),
+    }
 }
 
 #[tauri::command]
@@ -813,6 +833,43 @@ pub fn cmd_minimax_coding_key_set(
 }
 
 #[tauri::command]
+pub fn cmd_soft_pad_provider_key_get(provider: String) -> Result<serde_json::Value, String> {
+    let p = crate::soft_pad_quota::SoftPadQuotaProvider::from_str(&provider)
+        .ok_or_else(|| format!("bad_provider:{provider}"))?;
+    let masked = crate::soft_pad_quota::masked_stored_key(p);
+    Ok(serde_json::json!({
+        "provider": p.as_str(),
+        "configured": masked.is_some(),
+        "masked": masked.unwrap_or_default(),
+        "consoleUrl": p.console_url(),
+    }))
+}
+
+/// Save or clear Soft Pad multi-provider API key, then async-verify + refresh quota cache.
+///
+/// TODO(post-p2): migrate to OS keyring or single encrypted blob at
+/// {data_root}/keys.bin with machine-id derived key.
+#[tauri::command]
+pub fn cmd_soft_pad_provider_key_set(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    provider: String,
+    key: String,
+) -> Result<serde_json::Value, String> {
+    let p = crate::soft_pad_quota::SoftPadQuotaProvider::from_str(&provider)
+        .ok_or_else(|| format!("bad_provider:{provider}"))?;
+    crate::soft_pad_quota::apply_provider_key(p, &key)?;
+    crate::codex_micro_overlay::request_overlay_push(&app, state.inner().as_ref(), false);
+    let masked = crate::soft_pad_quota::masked_stored_key(p);
+    Ok(serde_json::json!({
+        "ok": true,
+        "provider": p.as_str(),
+        "configured": masked.is_some(),
+        "masked": masked.unwrap_or_default(),
+    }))
+}
+
+#[tauri::command]
 pub fn cmd_claude_cli_inject_pref_set(
     state: State<'_, Arc<AppState>>,
     mapping_id: String,
@@ -838,9 +895,9 @@ pub fn cmd_claude_cli_inject_pref_set(
         "ok": true,
         "enabled": enabled,
         "label": if enabled {
-            "允许高置信时启用"
+            "????????"
         } else {
-            "已关闭（不会键注入）"
+            "??????????"
         }
     }))
 }
@@ -892,6 +949,11 @@ mod tests {
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
+            copilot_status_lights_enabled: false,
+            gemini_status_lights_enabled: false,
+            cline_status_lights_enabled: false,
+            opencode_status_lights_enabled: false,
+            aider_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -975,6 +1037,11 @@ mod tests {
             trae_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
+            copilot_status_lights_enabled: false,
+            gemini_status_lights_enabled: false,
+            cline_status_lights_enabled: false,
+            opencode_status_lights_enabled: false,
+            aider_status_lights_enabled: false,
             ambient_mode: "status".into(),
             ambient_solid_rgb: String::new(),
             ambient_opacity: 100,
@@ -990,7 +1057,7 @@ mod tests {
             keys: vec![],
         };
         let (_l, _o, _c, hint) = build_claude_diagnose(&pad, 10, true);
-        assert_eq!(hint, "reviewer 等待确认");
+        assert_eq!(hint, "reviewer ????");
         let (_l2, _o2, _c2, hint2) = build_claude_diagnose(&pad, 10, false);
         assert!(hint2.is_empty());
     }
@@ -1115,6 +1182,11 @@ pub fn cmd_pad_status_clear_errors(
         AgentKind::Codex,
         AgentKind::Claude,
         AgentKind::Cursor,
+        AgentKind::CopilotCli,
+        AgentKind::Gemini,
+        AgentKind::Cline,
+        AgentKind::OpenCode,
+        AgentKind::Aider,
         AgentKind::WorkBuddy,
         AgentKind::Trae,
         AgentKind::Qoder,

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Soft Pad multi-provider quota**: Soft-Pad-saved keys for OpenRouter / DeepSeek / Kimi / SiliconFlow (`soft_pad_quota`); TTL 60s cache + 429 cooldown + parallel refresh; async verify on key set; mini pill multi-provider dropdown + freshness dot
+- **Copilot CLI Soft Pad hooks**: `copilot_cli_hook` via shared shell probe/installer; chip + lights toggle; setup doc
+- **Gemini CLI Soft Pad hooks** (Phase 3): `AgentKind::Gemini` / `gemini_hook`; BeforeTool/AfterTool/AfterAgent normalized; CLI-only (IDE mid-session must be measured — see setup doc)
+- **Mini bar**: VISIBLE_PAD=6 with `+N` fold; catalog includes Copilot/Gemini (grey placeholders until lights on)
 - **Usage scenes (config v6)**: `activeSceneId` as runtime truth; sparse per-scene `voiceOverride` for voice shortcut, wake phrases, and end phrases
 - **Settings → Usage scenes**: four tabs (Keys / Voice / Target / Advanced), effective preview, **Set as current scene** vs browse-only selection
 - **Settings → Global voice**: global engine/mic/phrases unchanged; scene bottom bar links here for device troubleshooting
@@ -30,6 +34,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Physical trigger toggles dictation off when already dictating (second press ends session)
+
+### Soft Pad limitations (this pass)
+
+- Provider API keys stay plaintext under `{data_root}/<provider>-api-key.txt` until post-P2 keyring migration
+- Gemini Soft Pad lights are **CLI-only**; IDE mid-session must be measured (see `docs/gemini-hook-onetone-setup.md`)
+- P1/P2 (Aider, OpenCode, Tongyi capture, admin-key Anthropic/OpenAI, ambient aggregate, session persist) not in this pass
 
 ## [1.0.0] - 2026-07-01
 

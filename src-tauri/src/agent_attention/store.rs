@@ -194,11 +194,14 @@ fn signal_allows_waiting(s: &AgentAttentionSignal) -> bool {
         AgentKind::Claude
         | AgentKind::Codex
         | AgentKind::CopilotCli
+        | AgentKind::Gemini
         | AgentKind::WorkBuddy
         | AgentKind::Trae
-        | AgentKind::Qoder => true,
+        | AgentKind::Qoder
+        | AgentKind::Cline
+        | AgentKind::OpenCode => true,
+        AgentKind::Aider => s.source == SignalSource::OneToneAsk,
         AgentKind::Cursor | AgentKind::MiniMax => {
-            // Official Cursor waiting only when gated open; OneTone ask always allowed.
             s.source == SignalSource::OneToneAsk
                 || crate::agent_catalog::cursor_can_observe_needs_input()
         }
@@ -210,9 +213,13 @@ fn agent_allows_waiting_row(agent: AgentKind, source: SignalSource) -> bool {
         AgentKind::Claude
         | AgentKind::Codex
         | AgentKind::CopilotCli
+        | AgentKind::Gemini
         | AgentKind::WorkBuddy
         | AgentKind::Trae
-        | AgentKind::Qoder => true,
+        | AgentKind::Qoder
+        | AgentKind::Cline
+        | AgentKind::OpenCode => true,
+        AgentKind::Aider => source == SignalSource::OneToneAsk,
         AgentKind::Cursor | AgentKind::MiniMax => {
             source == SignalSource::OneToneAsk
                 || crate::agent_catalog::cursor_can_observe_needs_input()

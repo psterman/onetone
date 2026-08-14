@@ -5,6 +5,7 @@ mod agent_install_inventory;
 mod agent_model_metadata;
 mod agent_usage;
 mod provider_usage;
+mod soft_pad_quota;
 mod shell_agent_usage;
 #[cfg(windows)]
 mod cursor_local_activity;
@@ -25,6 +26,11 @@ mod builtin_app_catalog;
 mod camera_capability_probe;
 mod claude_cli_session;
 mod claude_hook_setup;
+mod copilot_cli_hook_setup;
+mod gemini_hook_setup;
+mod cline_hook_setup;
+mod opencode_hook_setup;
+mod aider_hook_setup;
 mod coach_hud;
 mod codex_app_state;
 mod codex_micro_overlay;
@@ -947,6 +953,7 @@ pub fn run() {
             ipc::cmd_mic_get_mute,
             ipc::cmd_mic_set_mute,
             ipc::cmd_codex_micro_overlay_get_state,
+            ipc::cmd_codex_micro_overlay_refresh_usage,
             ipc::cmd_codex_micro_protocol_inject,
             ipc::cmd_codex_micro_protocol_server_start,
             ipc::cmd_codex_micro_protocol_server_stop,
@@ -1015,6 +1022,8 @@ pub fn run() {
             ipc::cmd_cursor_activity_pref_set,
             ipc::cmd_minimax_coding_key_get,
             ipc::cmd_minimax_coding_key_set,
+            ipc::cmd_soft_pad_provider_key_get,
+            ipc::cmd_soft_pad_provider_key_set,
             ipc::cmd_claude_cli_inject,
             ipc::cmd_claude_cli_decide,
             ipc::cmd_codex_pad_binding_diagnose,

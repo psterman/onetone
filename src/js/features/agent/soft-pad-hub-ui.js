@@ -109,9 +109,14 @@
     'claude-code': 'claude',
     'cursor-chat': 'cursor',
     'minimax-chat': 'minimax',
+    'copilot-cli': 'copilotCli',
+    'gemini-cli': 'gemini',
     'workbuddy-chat': 'workbuddy',
     'trae-chat': 'trae',
-    'qoder-chat': 'qoder'
+    'qoder-chat': 'qoder',
+    'cline-chat': 'cline',
+    'opencode-chat': 'opencode',
+    'aider-chat': 'aider'
   };
 
   /** Soft Pad Hub apps — Shell Hook Shortcuts + MiniMax provider. */

@@ -1,5 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="8" fill="#1F6FEB"/>
-  <path d="M10 12h12v2H10v-2Zm0 4h12v2H10v-2Zm0 4h8v2h-8v-2Z" fill="#fff"/>
-  <circle cx="22" cy="20" r="3" fill="#58A6FF"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" role="img" aria-label="GitHub Copilot CLI">
+  <title>GitHub Copilot CLI</title>
+  <rect width="32" height="32" rx="8" fill="#0D1117"/>
+  <ellipse cx="16" cy="17.5" rx="8" ry="8.5" fill="#fff"/>
+  <ellipse cx="9.5" cy="10.5" rx="3.5" ry="3.5" fill="#fff"/>
+  <ellipse cx="22.5" cy="10.5" rx="3.5" ry="3.5" fill="#fff"/>
+  <rect x="10" y="15" width="12" height="5" rx="2.5" fill="#0D1117"/>
 </svg>

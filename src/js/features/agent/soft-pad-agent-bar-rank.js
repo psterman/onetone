@@ -2,7 +2,7 @@
  * Soft Pad agent bar rank: active-first, then recent idle.
  * Pure — no DOM.
  *
- * Mini + expand: show all eligible in one row (cap 7). No fold/+N.
+ * Mini: show VISIBLE_PAD chips; fold remainder with +N when rest nonempty.
  */
 (function (root) {
   'use strict';
@@ -11,14 +11,22 @@
     'codex',
     'claude',
     'cursor',
+    'copilotCli',
+    'gemini',
     'minimax',
     'workbuddy',
     'trae',
-    'qoder'
+    'qoder',
+    'cline',
+    'opencode',
+    'aider'
   ];
 
-  /** Hard cap — catalog size; never fold below this. */
-  var VISIBLE_PAD = 7;
+  /** Grey placeholders until lights land (B/C). */
+  var PLACEHOLDER_KINDS = [];
+
+  /** Mini visible chip cap; fold with +N when rest nonempty. */
+  var VISIBLE_PAD = 6;
 
   function catalogIndex(kind) {
     var i = CATALOG.indexOf(String(kind || ''));
@@ -75,6 +83,10 @@
   function isEligible(row) {
     if (!row) return false;
     return !!(row.lightsEnabled || row.lights_enabled);
+  }
+
+  function isPlaceholderKind(kind) {
+    return PLACEHOLDER_KINDS.indexOf(String(kind || '')) >= 0;
   }
 
   function updatedAt(row) {
@@ -147,6 +159,37 @@
     };
   }
 
+  /**
+   * Merge grey placeholders (missing from byKind / not lit) into top/rest.
+   * Fill remaining top slots first; overflow to rest (+N).
+   */
+  function mergePlaceholderKinds(ranked, byKind, visibleMax) {
+    ranked = ranked || { top: [], rest: [] };
+    byKind = byKind || {};
+    visibleMax =
+      visibleMax != null && isFinite(Number(visibleMax))
+        ? Math.max(0, Math.floor(Number(visibleMax)))
+        : VISIBLE_PAD;
+    var top = (ranked.top || []).slice();
+    var rest = (ranked.rest || []).slice();
+    var seen = {};
+    top.forEach(function (k) {
+      seen[k] = 1;
+    });
+    rest.forEach(function (k) {
+      seen[k] = 1;
+    });
+    PLACEHOLDER_KINDS.forEach(function (kind) {
+      if (seen[kind]) return;
+      var row = byKind[kind];
+      if (isEligible(row)) return;
+      if (top.length < visibleMax) top.push(kind);
+      else rest.push(kind);
+      seen[kind] = 1;
+    });
+    return { top: top, rest: rest };
+  }
+
   /** Perimeter aura: first non-idle among ranked chips, else ''. */
   function padLightFromRanked(snap, byKind, focus, recencyMap) {
     var ranked = rankPadAgentBarKinds(snap, byKind, focus, recencyMap, {
@@ -171,12 +214,15 @@
 
   var api = {
     CATALOG: CATALOG,
+    PLACEHOLDER_KINDS: PLACEHOLDER_KINDS,
     VISIBLE_PAD: VISIBLE_PAD,
     rankPadAgentBarKinds: rankPadAgentBarKinds,
+    mergePlaceholderKinds: mergePlaceholderKinds,
     padLightFromRanked: padLightFromRanked,
     normalizeState: normalizeState,
     isLiveActive: isLiveActive,
-    isEligible: isEligible
+    isEligible: isEligible,
+    isPlaceholderKind: isPlaceholderKind
   };
 
   if (typeof module !== 'undefined' && module.exports) {

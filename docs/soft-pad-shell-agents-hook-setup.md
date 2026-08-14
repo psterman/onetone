@@ -67,9 +67,10 @@ node scripts/agent-shell-hook-probe.test.js
 
 ### Qoder
 
-- 目标：`~/.qoder/settings.json` 的 `hooks`
+- 目标：`~/.qoder/settings.json` 的 `hooks`；**Qoder CN / 通义 Agent IDE** 同步写入 `~/.qoder-cn/settings.json`（同一事件映射；uninstall 双路径清理）。
 - 示例：[`scripts/qoder-hooks.example.json`](../scripts/qoder-hooks.example.json)
 - `--source qoder`
+- **通义灵码 VS Code 补全插件**（行内补全，无 Agent 回合）**不进顶栏状态灯**。
 
 | Event（归一后） | Soft Pad |
 |-----------------|----------|

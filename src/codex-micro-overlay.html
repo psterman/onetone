@@ -28,6 +28,14 @@
             <img src="icons/app-target/cursor.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
           </span>
+          <span class="overlay-mini__agent" role="listitem" data-agent="copilotCli" data-status="idle" data-placeholder="1" aria-label="Copilot：占位" hidden>
+            <img src="icons/app-target/copilot.png" alt="" aria-hidden="true">
+            <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
+          </span>
+          <span class="overlay-mini__agent" role="listitem" data-agent="gemini" data-status="idle" data-placeholder="1" aria-label="Gemini：占位" hidden>
+            <img src="icons/app-target/gemini.png" alt="" aria-hidden="true">
+            <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
+          </span>
           <span class="overlay-mini__agent" role="listitem" data-agent="minimax" data-status="idle" aria-label="MiniMax：空闲" hidden>
             <img src="icons/app-target/minimaxcode.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
@@ -44,9 +52,25 @@
             <img src="icons/app-target/qoder.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
           </span>
+          <span class="overlay-mini__agent" role="listitem" data-agent="cline" data-status="idle" data-placeholder="1" aria-label="Cline：占位" hidden>
+            <img src="icons/app-target/cline.png" alt="" aria-hidden="true">
+            <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
+          </span>
+          <span class="overlay-mini__agent" role="listitem" data-agent="opencode" data-status="idle" data-placeholder="1" aria-label="OpenCode：占位" hidden>
+            <img src="icons/app-target/opencode.png" alt="" aria-hidden="true">
+            <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
+          </span>
+          <span class="overlay-mini__agent" role="listitem" data-agent="aider" data-status="idle" data-placeholder="1" aria-label="Aider：占位" hidden>
+            <img src="icons/app-target/aider.png" alt="" aria-hidden="true">
+            <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
+          </span>
           <button type="button" class="overlay-mini__more" id="miniAgentMore" data-act="agent-more-mini" hidden title="展开查看更多 Agent" aria-label="更多 Agent">+0</button>
         </div>
-        <span class="overlay-mini__usage" id="miniUsagePill" hidden aria-live="polite"></span>
+        <span class="overlay-mini__usage-cluster">
+          <span class="overlay-mini__usage" id="miniUsagePill" hidden aria-live="polite"></span>
+          <span class="overlay-mini__fresh" id="miniUsageFresh" hidden aria-hidden="true">●</span>
+          <div class="overlay-mini__quota-dd" id="miniQuotaDropdown" hidden role="menu" aria-label="Provider 用量"></div>
+        </span>
         <button type="button" class="overlay-mini__btn overlay-mini__btn--expand" data-act="expand" title="展开" aria-label="展开浮窗">
           <span class="overlay-mini__switch" aria-hidden="true">
             <span class="overlay-mini__switch-track"></span>
@@ -79,6 +103,14 @@
                     <img src="icons/app-target/cursor.png" alt="" aria-hidden="true">
                     <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
                   </button>
+                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="copilotCli" data-status="idle" data-placeholder="1" aria-pressed="false" aria-label="Copilot" title="Copilot" hidden>
+                    <img src="icons/app-target/copilot.png" alt="" aria-hidden="true">
+                    <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="gemini" data-status="idle" data-placeholder="1" aria-pressed="false" aria-label="Gemini" title="Gemini" hidden>
+                    <img src="icons/app-target/gemini.png" alt="" aria-hidden="true">
+                    <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
+                  </button>
                   <button type="button" class="soft-pad-agent-bar__chip" data-agent="minimax" data-status="idle" aria-pressed="false" aria-label="MiniMax" title="MiniMax" hidden>
                     <img src="icons/app-target/minimaxcode.png" alt="" aria-hidden="true">
                     <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
@@ -93,6 +125,18 @@
                   </button>
                   <button type="button" class="soft-pad-agent-bar__chip" data-agent="qoder" data-status="idle" aria-pressed="false" aria-label="Qoder" title="Qoder" hidden>
                     <img src="icons/app-target/qoder.png" alt="" aria-hidden="true">
+                    <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="cline" data-status="idle" data-placeholder="1" aria-pressed="false" aria-label="Cline" title="Cline" hidden>
+                    <img src="icons/app-target/cline.png" alt="" aria-hidden="true">
+                    <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="opencode" data-status="idle" data-placeholder="1" aria-pressed="false" aria-label="OpenCode" title="OpenCode" hidden>
+                    <img src="icons/app-target/opencode.png" alt="" aria-hidden="true">
+                    <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="aider" data-status="idle" data-placeholder="1" aria-pressed="false" aria-label="Aider" title="Aider（仅完成）" hidden>
+                    <img src="icons/app-target/aider.png" alt="" aria-hidden="true">
                     <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
                   </button>
                   <button type="button" class="soft-pad-agent-bar__more" id="padAgentBarMore" data-act="agent-more" hidden aria-expanded="false" aria-haspopup="true" aria-controls="padAgentBarOverflow" title="更多 Agent" aria-label="更多 Agent">+0</button>
@@ -135,12 +179,13 @@
           <div class="overlay-app-meta__task" id="overlayAppMetaTask" hidden></div>
         </div>
         <div class="overlay-toast" id="overlayToast" aria-live="polite"></div>
-        <div class="overlay-agent-tip" id="overlayAgentTip" hidden aria-hidden="true">
-          <div class="overlay-agent-tip__status" data-tip-status></div>
-          <div class="overlay-agent-tip__model" data-tip-model hidden></div>
-          <div class="overlay-agent-tip__intensity" data-tip-intensity hidden></div>
-          <div class="overlay-agent-tip__foot" data-tip-foot></div>
-        </div>
+      </div>
+      <!-- Tip lives on .wrap (not .overlay-full) so mini mode can show it; full tip also escapes display:none. -->
+      <div class="overlay-agent-tip" id="overlayAgentTip" hidden aria-hidden="true">
+        <div class="overlay-agent-tip__status" data-tip-status></div>
+        <div class="overlay-agent-tip__model" data-tip-model hidden></div>
+        <div class="overlay-agent-tip__intensity" data-tip-intensity hidden></div>
+        <div class="overlay-agent-tip__foot" data-tip-foot></div>
       </div>
     </div>
   </div>
@@ -291,6 +336,7 @@
       }
     }
     var wrap=document.getElementById('wrap');
+    var overlayMini=document.getElementById('overlayMini');
     var grid=document.getElementById('grid');
     var overlayToast=document.getElementById('overlayToast');
     var miniAgents=document.getElementById('miniAgents');
@@ -301,6 +347,9 @@
     var agentBarRecency={};
     var agentBarOverflowOpen=false;
     var miniUsagePill=document.getElementById('miniUsagePill');
+    var miniUsageFresh=document.getElementById('miniUsageFresh');
+    var miniQuotaDropdown=document.getElementById('miniQuotaDropdown');
+    var miniQuotaOpen=false;
     var statusChip=document.getElementById('statusChip');
     var overlayAppMeta=document.getElementById('overlayAppMeta');
     var overlayAppMetaRow=document.getElementById('overlayAppMetaRow');
@@ -332,6 +381,8 @@
     var padMode='codex';
     var focusedUsageAgent='';
     var usageFocusPinned=false;
+    /** Mini hover preview of chill pill — must not pin, rank, or jump. */
+    var hoverUsageKind='';
     try{
       var savedFocus=localStorage.getItem('onetoneFocusedUsageAgent');
       if(savedFocus==='codex'||savedFocus==='claude'||savedFocus==='cursor') focusedUsageAgent=savedFocus;
@@ -625,8 +676,18 @@
       if(st==='needs_input') return '等待输入';
       if(st==='running') return '执行中';
       if(st==='done') return '完成';
-      if(st==='failed') return '失败';
+      if(st==='failed'||st==='error') return '失败';
       return '空闲';
+    }
+
+    function chipFocusActionLine(kind){
+      return '悬停预览用量 · 点击跳转 '+agentLabel(kind);
+    }
+
+    function chipFailureHonestyLine(state){
+      var st=String(state||'').trim().toLowerCase();
+      if(st==='failed'||st==='error') return '本轮失败（不是未接 Hook）';
+      return '';
     }
 
     /** Claude when rate-limit/OTel absent — prefer live agent / pad state over barren copy. */
@@ -665,6 +726,8 @@
     function agentLabel(kind){
       if(kind==='claude') return 'Claude';
       if(kind==='cursor') return 'Cursor';
+      if(kind==='copilotCli'||kind==='copilot') return 'Copilot';
+      if(kind==='gemini') return 'Gemini';
       if(kind==='minimax') return 'MiniMax';
       if(kind==='workbuddy') return 'WorkBuddy';
       if(kind==='trae') return 'Trae';
@@ -786,9 +849,7 @@
     }
 
     /**
-     * Cursor Activity Provider chip tip.
-     * Hierarchy: status → optional model → intensity → 本地统计 · freshness.
-     * Never 「模型 --」; never bare cursor_local_activity.
+     * Chip tip: status + action only. Model/quota live on chill pill — avoid duplicate dump.
      */
     function cursorChipTipText(row,usage,state){
       row=row||{};
@@ -796,33 +857,11 @@
       var lines=[];
       var label=agentLabel('cursor')+'：'+lightStatusLabel(state);
       lines.push(label);
-      var model=String(row.model||'').trim();
-      if(model){
-        lines.push(model==='Auto'?model+'（自动路由）':model);
-      }
-      if(isCursorActivityUsage(usage)){
-        var intensity=cursorActivityIntensityBits(usage);
-        if(intensity.length){
-          // Two visual rows so ·-joined CJK doesn't mid-word wrap in the tip.
-          lines.push(intensity[0]);
-          if(intensity.length>1) lines.push(intensity.slice(1).join(' · '));
-        }
-      } else {
-        var cmsg=String(usage.message||'').trim();
-        if(/未启用/.test(cmsg)||!cmsg) lines.push('点击启用 Cursor 活动统计');
-        else lines.push(cmsg);
-      }
-      var fresh=freshnessLabel(usage,row.health);
-      var status=String(usage.status||'');
-      if(status==='stale'){
-        lines.push('数据陈旧'+(fresh?' · 上次成功 '+fresh:''));
-      } else {
-        lines.push(usageSourceLabel('cursor',usage)+(fresh?' · '+fresh:''));
-      }
+      var fail=chipFailureHonestyLine(state);
+      if(fail) lines.push(fail);
+      lines.push(chipFocusActionLine('cursor'));
       var tip=lines.join('\n');
-      var aria=label;
-      if(lines.length>1) aria+=('，'+lines[1]);
-      return { tip: tip, aria: aria, lines: lines };
+      return { tip: tip, aria: label+'，'+chipFocusActionLine('cursor'), lines: lines };
     }
 
     var overlayAgentTip=document.getElementById('overlayAgentTip');
@@ -857,7 +896,6 @@
         if(footEl) footEl.textContent=lines[2]||'';
         return;
       }
-      // 4+: status · model · intensity(+extras) · foot
       if(modelEl){
         modelEl.textContent=lines[1]||'';
         modelEl.hidden=!lines[1];
@@ -870,8 +908,35 @@
       if(footEl) footEl.textContent=lines[lines.length-1]||'';
     }
 
+    /** Mini hover: preview this agent's chill. Never rank/reorder/jump. */
+    function pinUsageFocusOnHover(kind){
+      kind=String(kind||'').trim();
+      if(!isUsageFocusKind(kind)) return;
+      if(hoverUsageKind===kind) return;
+      hoverUsageKind=kind;
+      applyMiniUsagePill(lastSnap||{});
+    }
+
+    function clearHoverUsagePreview(){
+      if(!hoverUsageKind) return;
+      hoverUsageKind='';
+      applyMiniUsagePill(lastSnap||{});
+    }
+
     function showAgentTip(anchor, lines){
-      if(!overlayAgentTip||!anchor) return;
+      lines=Array.isArray(lines)?lines.filter(Boolean):[];
+      if(!anchor||!lines.length) return;
+      // Mini ~44px: no covering strip (flicker). Short native title only; chill shows usage.
+      if(localMinimized){
+        if(overlayAgentTip){
+          overlayAgentTip.hidden=true;
+          overlayAgentTip.classList.remove('is-show');
+        }
+        anchor.setAttribute('title', lines.join('\n'));
+        return;
+      }
+      anchor.removeAttribute('title');
+      if(!overlayAgentTip) return;
       fillAgentTipLines(lines);
       overlayAgentTip.hidden=false;
       overlayAgentTip.setAttribute('aria-hidden','false');
@@ -894,42 +959,42 @@
       if(el.__tipBound) return;
       el.__tipBound=true;
       el.addEventListener('pointerenter',function(){
+        var kind=String(el.getAttribute('data-agent')||'').trim();
+        var isMiniChip=!!(el.classList&&el.classList.contains('overlay-mini__agent'));
+        if(localMinimized&&isMiniChip&&kind&&el.getAttribute('data-placeholder')!=='1'){
+          pinUsageFocusOnHover(kind);
+        }
         showAgentTip(el, el.__tipLines||[]);
       });
-      el.addEventListener('pointerleave',hideAgentTip);
+      el.addEventListener('pointerleave',function(){
+        var isMiniChip=!!(el.classList&&el.classList.contains('overlay-mini__agent'));
+        if(isMiniChip) clearHoverUsagePreview();
+        hideAgentTip();
+      });
       el.addEventListener('focus',function(){
+        var kind=String(el.getAttribute('data-agent')||'').trim();
+        var isMiniChip=!!(el.classList&&el.classList.contains('overlay-mini__agent'));
+        if(localMinimized&&isMiniChip&&kind&&el.getAttribute('data-placeholder')!=='1'){
+          pinUsageFocusOnHover(kind);
+        }
         showAgentTip(el, el.__tipLines||[]);
       });
-      el.addEventListener('blur',hideAgentTip);
+      el.addEventListener('blur',function(){
+        var isMiniChip=!!(el.classList&&el.classList.contains('overlay-mini__agent'));
+        if(isMiniChip) clearHoverUsagePreview();
+        hideAgentTip();
+      });
     }
 
     function agentChipTipLines(kind,row,usage,state,s){
       if(kind==='cursor'){
         return cursorChipTipText(row,usage,state).lines||[];
       }
-      var label=agentLabel(kind)+'：'+lightStatusLabel(state);
-      var model=String(row&&row.model||'').trim();
-      var confidence=String(row&&(row.modelConfidence||row.model_confidence)||'').trim();
-      var line2='';
-      if(model){
-        line2=model;
-        if(kind==='claude'&&confidence==='low') line2+='（会话开始值）';
-      } else {
-        line2='模型 --';
-      }
-      if(kind!=='claude'||isRenderableUsage(kind,usage)||claudeOtelBits(usage,false).length){
-        var usageShort=usageSummary(kind,usage,false,row,s);
-        if(usageShort) line2+=' · '+usageShort;
-      }
-      var hasClaudeData=kind==='claude'&&(isRenderableUsage(kind,usage)||claudeOtelBits(usage,false).length);
-      var fresh=kind==='claude'&&!hasClaudeData?'':freshnessLabel(usage,row&&row.health);
-      var src=usageSourceLabel(kind,usage);
-      if(kind==='claude'&&!hasClaudeData) src='—';
-      var line3=(src||'—')+(fresh?' · '+fresh:'');
-      if((kind!=='claude'||hasClaudeData)&&String(usage.status||'')==='stale'){
-        line3='数据陈旧'+(fresh?' · 上次成功 '+fresh:'');
-      }
-      return [label, line2, line3];
+      var lines=[agentLabel(kind)+'：'+lightStatusLabel(state)];
+      var fail=chipFailureHonestyLine(state);
+      if(fail) lines.push(fail);
+      lines.push(chipFocusActionLine(kind));
+      return lines;
     }
 
     function usageSummary(kind,usage,detail,row,snap){
@@ -1183,6 +1248,7 @@
       function hasRenderable(kind){
         return isRenderableUsage(kind,(byKind[kind]||{}).usage||{});
       }
+      if(hoverUsageKind&&isUsageFocusKind(hoverUsageKind)) return hoverUsageKind;
       if(usageFocusPinned&&focusedUsageAgent&&hasRenderable(focusedUsageAgent)) return focusedUsageAgent;
       var fg=String(s&&(s.foregroundAgent||s.foreground_agent)||'').trim().toLowerCase();
       if(fg&&hasRenderable(fg)) return fg;
@@ -1266,17 +1332,91 @@
       return lines.length?lines[0]:'';
     }
 
+    function snapshotProviderQuotas(s){
+      var rows=s&&(s.providerQuotas||s.provider_quotas);
+      return Array.isArray(rows)?rows:[];
+    }
+
+    function setMiniQuotaOpen(open){
+      miniQuotaOpen=!!open;
+      if(miniQuotaDropdown) miniQuotaDropdown.hidden=!miniQuotaOpen;
+      if(miniUsagePill) miniUsagePill.setAttribute('aria-expanded', miniQuotaOpen?'true':'false');
+      if(overlayMini) overlayMini.classList.toggle('is-quota-open', miniQuotaOpen);
+      if(wrap) wrap.classList.toggle('is-quota-open', miniQuotaOpen);
+    }
+
+    function renderMiniQuotaDropdown(rows){
+      if(!miniQuotaDropdown) return;
+      var shaped=usageFmt.providerQuotaDropdownRows
+        ?usageFmt.providerQuotaDropdownRows(rows)
+        :[];
+      if(!shaped.length){
+        miniQuotaDropdown.innerHTML='';
+        setMiniQuotaOpen(false);
+        return;
+      }
+      miniQuotaDropdown.innerHTML=shaped.map(function(r){
+        var cap=String(r.caption||r.message||r.label||'').replace(/</g,'&lt;');
+        var glyph=String(r.glyph||'✗');
+        return '<div class="overlay-mini__quota-dd-row" role="menuitem" data-status="'+String(r.status||'').replace(/"/g,'')+'">'
+          +'<span class="overlay-mini__quota-dd-icon" aria-hidden="true">'+glyph+'</span>'
+          +'<span class="overlay-mini__quota-dd-cap">'+cap+'</span>'
+          +'</div>';
+      }).join('');
+    }
+
+    function applyMiniUsageFresh(s){
+      if(!miniUsageFresh) return;
+      var quotas=snapshotProviderQuotas(s);
+      if(!quotas.length){
+        miniUsageFresh.hidden=true;
+        miniUsageFresh.removeAttribute('title');
+        miniUsageFresh.classList.remove('is-stale');
+        return;
+      }
+      var updatedAt=s&&(s.providerQuotasUpdatedAt!=null?s.providerQuotasUpdatedAt:s.provider_quotas_updated_at);
+      var fresh=usageFmt.quotasFreshnessAge
+        ?usageFmt.quotasFreshnessAge(updatedAt)
+        :{ stale:false, title:'' };
+      miniUsageFresh.hidden=false;
+      miniUsageFresh.classList.toggle('is-stale', !!fresh.stale);
+      if(fresh.title) miniUsageFresh.setAttribute('title', fresh.title);
+      else miniUsageFresh.removeAttribute('title');
+    }
+
     function applyMiniUsagePill(s){
       if(!miniUsagePill) return;
+      var quotas=snapshotProviderQuotas(s);
+      applyMiniUsageFresh(s);
+      if(quotas.length && !hoverUsageKind){
+        var okCap=usageFmt.firstOkQuotaCaption?usageFmt.firstOkQuotaCaption(quotas):'';
+        var text=okCap||'用量 ▾';
+        miniUsagePill.hidden=false;
+        miniUsagePill.textContent=text;
+        miniUsagePill.removeAttribute('data-agent');
+        miniUsagePill.setAttribute('data-pill-action', 'quota_menu');
+        miniUsagePill.setAttribute('aria-haspopup', 'menu');
+        miniUsagePill.style.cursor='pointer';
+        renderMiniQuotaDropdown(quotas);
+        bindAgentTipHover(miniUsagePill, ['多 Provider 用量', '点击展开']);
+        return;
+      }
+      setMiniQuotaOpen(false);
+      if(miniQuotaDropdown) miniQuotaDropdown.innerHTML='';
+      miniUsagePill.removeAttribute('aria-haspopup');
+      miniUsagePill.removeAttribute('aria-expanded');
       var kind=pickMiniUsageKind(s);
       var rows=Array.isArray(s&&s.agents)?s.agents:[];
       var row=rows.find(function(r){ return String(r&&r.kind||'')===kind; })||{};
-      var text=kind?miniUsageText(kind,row.usage||{}):'';
+      var usage=row.usage||{};
+      var text=kind?miniUsageText(kind,usage):'';
       if(!text){
         miniUsagePill.hidden=true;
         miniUsagePill.textContent='';
         miniUsagePill.removeAttribute('title');
         miniUsagePill.removeAttribute('data-agent');
+        miniUsagePill.removeAttribute('data-pill-action');
+        miniUsagePill.style.cursor='default';
         return;
       }
       miniUsagePill.hidden=false;
@@ -1284,17 +1424,31 @@
       miniUsagePill.setAttribute('data-agent', kind);
       miniUsagePill.removeAttribute('title');
       var tipLines;
+      var wantsEnable=kind==='cursor'&&!isCursorActivityUsage(usage)&&(/未启用/.test(String(usage.message||''))||!String(usage.message||'').trim());
+      var wantsMinimaxKey=kind==='minimax'&&captionWantsMinimaxKey(text);
+      // Chill tip: source honesty + action only (no focus / no duplicate status dump).
       if(kind==='cursor'){
-        tipLines=cursorChipTipText(row,row.usage||{},String(row.state||'idle')).lines;
+        if(wantsEnable){
+          tipLines=['本地活动 · 非官方额度','点击启用统计'];
+        } else if(isCursorActivityUsage(usage)){
+          tipLines=['本地活动 · 非官方额度','点击刷新用量'];
+        } else {
+          tipLines=[String(usage.message||'').trim()||'Cursor 用量','点击刷新用量'];
+        }
       } else if(kind==='minimax'){
-        tipLines=['MiniMax · 需 Key 看 5h/倒计时'];
-        var mmSum=usageSummary(kind,row.usage||{},true,row,s);
-        if(mmSum) tipLines=[agentLabel(kind)+' · '+mmSum];
+        tipLines=[
+          wantsMinimaxKey?'MiniMax · 需 Coding Plan Key':'MiniMax Coding Plan',
+          wantsMinimaxKey?'点击配置 Coding Key':'点击刷新用量'
+        ];
       } else {
         tipLines=[
-          agentLabel(kind)+' · '+usageSummary(kind,row.usage||{},true,row,s)
+          usageSourceLabel(kind,usage)+' · 额度看本 pill',
+          '点击刷新用量'
         ];
       }
+      var action=wantsEnable?'enable_cursor':(wantsMinimaxKey?'minimax_key':'refresh');
+      miniUsagePill.setAttribute('data-pill-action', action);
+      miniUsagePill.style.cursor='pointer';
       bindAgentTipHover(miniUsagePill, tipLines);
     }
 
@@ -1380,8 +1534,24 @@
     function applyAgentChipEl(el,s,byKind,focus){
       if(!el) return;
       var kind=String(el.getAttribute('data-agent')||'');
+      var Rank=window.OneToneSoftPadAgentBarRank;
       var row=byKind[kind]||{};
       var lightsOn = !!(row.lightsEnabled || row.lights_enabled);
+      var asPlaceholder = !lightsOn && Rank && Rank.isPlaceholderKind && Rank.isPlaceholderKind(kind);
+      if(asPlaceholder){
+        el.setAttribute('data-placeholder', '1');
+        el.setAttribute('data-status', 'idle');
+        el.classList.remove('is-usage-focus');
+        el.classList.remove('is-status-flash');
+        el.removeAttribute('data-lane-id');
+        el.removeAttribute('data-session-id');
+        el.setAttribute('aria-pressed', 'false');
+        el.setAttribute('aria-label', agentLabel(kind)+'：占位');
+        el.removeAttribute('title');
+        el.__tipLines=null;
+        return;
+      }
+      el.removeAttribute('data-placeholder');
       var state=String(row.state||'idle').trim().toLowerCase()||'idle';
       var activeState=(state==='running'||state==='needs_input'||state==='done'||state==='failed'||state==='error');
       // Fallback: when usage rail/model rows lag behind, derive Claude chip state
@@ -1418,6 +1588,12 @@
         };
       if(!plan.applyRow) return;
       if(plan.hidden!=null) el.hidden=!!plan.hidden;
+      var laneId=String(row.laneId||row.lane_id||'').trim();
+      var sessionId=String(row.sessionId||row.session_id||'').trim();
+      if(laneId) el.setAttribute('data-lane-id', laneId);
+      else el.removeAttribute('data-lane-id');
+      if(sessionId) el.setAttribute('data-session-id', sessionId);
+      else el.removeAttribute('data-session-id');
       if(!plan.applyStatusTip) return;
 
       var usage=row.usage||{};
@@ -1514,15 +1690,18 @@
     function layoutMiniAgentBar(s, byKind, focus){
       if(!miniAgents) return;
       var Rank=window.OneToneSoftPadAgentBarRank;
-      var ranked=rankAgentBarKinds(s, byKind, focus, {
-        visibleMax: (Rank&&Rank.VISIBLE_PAD)||7
-      });
+      var visibleMax=(Rank&&Rank.VISIBLE_PAD)||6;
+      var ranked=rankAgentBarKinds(s, byKind, focus, { visibleMax: visibleMax });
+      if(Rank&&Rank.mergePlaceholderKinds){
+        ranked=Rank.mergePlaceholderKinds(ranked, byKind, visibleMax);
+      }
       var top=ranked.top||[];
+      var rest=ranked.rest||[];
       var laid=reorderChipsBeforeAnchor(
         miniAgents,
         '.overlay-mini__agent[data-agent]',
         top,
-        [],
+        rest,
         miniAgentMore||null
       );
       laid.chips.forEach(function(el){
@@ -1530,29 +1709,44 @@
         applyAgentChipEl(el, s, byKind, focus);
         el.hidden=!laid.topSet[k];
       });
-      if(miniAgentMore) miniAgentMore.hidden=true;
+      if(miniAgentMore){
+        var n=rest.length;
+        if(n>0){
+          miniAgentMore.hidden=false;
+          miniAgentMore.textContent='+'+n;
+          miniAgentMore.setAttribute('aria-label', '还有 '+n+' 个 Agent');
+          miniAgentMore.title='展开查看更多 Agent（+'+n+'）';
+        } else {
+          miniAgentMore.hidden=true;
+          miniAgentMore.textContent='+0';
+        }
+      }
     }
 
     function layoutPadAgentBar(s, byKind, focus){
       if(!padAgentBar) return;
       var Rank=window.OneToneSoftPadAgentBarRank;
-      var ranked=rankAgentBarKinds(s, byKind, focus, {
-        visibleMax: (Rank&&Rank.VISIBLE_PAD)||7
-      });
+      var visibleMax=(Rank&&Rank.VISIBLE_PAD)||6;
+      var ranked=rankAgentBarKinds(s, byKind, focus, { visibleMax: visibleMax });
+      if(Rank&&Rank.mergePlaceholderKinds){
+        ranked=Rank.mergePlaceholderKinds(ranked, byKind, visibleMax);
+      }
       var top=ranked.top||[];
+      var rest=ranked.rest||[];
       var anchor=padAgentBarMore||padAgentBarOverflow||null;
       var laid=reorderChipsBeforeAnchor(
         padAgentBar,
         '.soft-pad-agent-bar__chip[data-agent]',
         top,
-        [],
+        rest,
         anchor
       );
 
       laid.chips.forEach(function(el){
         var k=String(el.getAttribute('data-agent')||'');
         applyAgentChipEl(el, s, byKind, focus);
-        el.hidden=!laid.topSet[k];
+        // Expand pad shows all ranked chips in one row (top+rest); +N stays CSS-hidden.
+        el.hidden=!(laid.topSet[k]||laid.restSet[k]);
       });
 
       if(padAgentBarMore) padAgentBarMore.hidden=true;
@@ -1665,7 +1859,7 @@
       overlayAppMeta.setAttribute('data-light', light);
       overlayAppMeta.setAttribute('data-confidence', confidence||'');
       overlayAppMeta.setAttribute('data-enabled', '1');
-      wrap.classList.toggle('is-pass-through', light==='needs_input' && enabled);
+      wrap.classList.toggle('is-pass-through', light==='needs_input' && enabled && !localMinimized);
       if(statusChip){
         statusChip.setAttribute('data-status', light);
         statusChip.setAttribute('data-light', light);
@@ -2482,7 +2676,9 @@
       return !!(target && target.closest && target.closest(
         '[data-micro-key],[data-act],button,a,input,select,textarea,' +
         '#overlayKeyCaption,#overlayMinimaxKey,.overlay-key-caption,.overlay-minimax-key,' +
-        '.overlay-nav-cta,.overlay-light-gate,#miniUsagePill,' +
+        '.overlay-nav-cta,.overlay-light-gate,#miniUsagePill,#miniUsageFresh,#miniQuotaDropdown,' +
+        '.overlay-mini__agent,.overlay-mini__usage,.overlay-mini__usage-cluster,.overlay-mini__fresh,.overlay-mini__quota-dd,' +
+        '.soft-pad-agent-bar__chip,[data-agent],' +
         '#padAgentBarMore,#padAgentBarOverflow,.soft-pad-agent-bar__more,.soft-pad-agent-bar__overflow,' +
         '#miniAgentMore,.overlay-mini__more'
       ));
@@ -2557,12 +2753,21 @@
           laneId:laneId||null,
           sessionId:sessionId||null,
           clickKind:clickKind
+        }).then(function(r){
+          if(r&&r.ok===false){
+            return invoke('cmd_soft_pad_focus_agent',{kind:kind}).then(function(){}, function(){
+              toast('未能聚焦 '+agentLabel(kind));
+            });
+          }
         }).catch(function(){
-          invoke('cmd_soft_pad_focus_agent',{kind:kind}).catch(function(){});
+          invoke('cmd_soft_pad_focus_agent',{kind:kind}).catch(function(){
+            toast('未能聚焦 '+agentLabel(kind));
+          });
         });
       }
       if(kind==='workbuddy'||kind==='trae'||kind==='qoder'){
         applyMiniAgentChips(lastSnap||{});
+        toast('跳转 '+agentLabel(kind));
         focusSession();
         return;
       }
@@ -2570,6 +2775,7 @@
       var s=lastSnap||{};
       applyMiniAgentChips(s);
       applyMiniUsagePill(s);
+      toast('跳转 '+agentLabel(kind));
       focusSession();
     }
 
@@ -2582,6 +2788,7 @@
         el.addEventListener('click',function(e){
           e.preventDefault();
           e.stopPropagation();
+          if(el.getAttribute('data-placeholder')==='1') return;
           setUsageFocusFromUi(el.getAttribute('data-agent'),{
             laneId:el.getAttribute('data-lane-id')||'',
             sessionId:el.getAttribute('data-session-id')||'',
@@ -2591,6 +2798,7 @@
         el.addEventListener('keydown',function(e){
           if(e.key==='Enter'||e.key===' '){
             e.preventDefault();
+            if(el.getAttribute('data-placeholder')==='1') return;
             setUsageFocusFromUi(el.getAttribute('data-agent'),{
               laneId:el.getAttribute('data-lane-id')||'',
               sessionId:el.getAttribute('data-session-id')||'',
@@ -2628,14 +2836,22 @@
       });
     }
     document.addEventListener('click',function(e){
-      if(!agentBarOverflowOpen) return;
       var t=e.target;
-      if(t&&t.closest&&(t.closest('#padAgentBarMore')||t.closest('#padAgentBarOverflow'))) return;
-      setAgentBarOverflowOpen(false);
+      if(agentBarOverflowOpen){
+        if(!(t&&t.closest&&(t.closest('#padAgentBarMore')||t.closest('#padAgentBarOverflow')))){
+          setAgentBarOverflowOpen(false);
+        }
+      }
+      if(miniQuotaOpen){
+        if(!(t&&t.closest&&(t.closest('#miniUsagePill')||t.closest('#miniQuotaDropdown')||t.closest('#miniUsageFresh')))){
+          setMiniQuotaOpen(false);
+        }
+      }
     });
     document.addEventListener('keydown',function(e){
-      if(e.key==='Escape'&&agentBarOverflowOpen){
-        setAgentBarOverflowOpen(false);
+      if(e.key==='Escape'){
+        if(agentBarOverflowOpen) setAgentBarOverflowOpen(false);
+        if(miniQuotaOpen) setMiniQuotaOpen(false);
       }
     });
 
@@ -2676,6 +2892,28 @@
     function pull(){
       if(holdLockId||localPadStatus==='listening') return;
       invoke('cmd_codex_micro_overlay_get_state',{}).then(function(s){ render(s); }).catch(function(){});
+    }
+    function refreshUsageFromOverlay(kind){
+      kind=String(kind||'').trim();
+      if(!kind) return Promise.resolve();
+      return invoke('cmd_codex_micro_overlay_refresh_usage',{kind:kind})
+        .then(function(s){
+          if(s) render(s);
+          else return pull();
+          var src=kind==='cursor'?'本地活动':agentLabel(kind);
+          toast('已刷新 · '+src);
+          if(miniUsagePill&&!miniUsagePill.hidden){
+            var tip=Array.isArray(miniUsagePill.__tipLines)?miniUsagePill.__tipLines.slice():[];
+            if(tip.length){
+              tip[tip.length-1]='已刷新 · '+src;
+              showAgentTip(miniUsagePill, tip);
+            }
+          }
+        })
+        .catch(function(){
+          pull();
+          toast('刷新失败');
+        });
     }
     function enableCursorActivityFromOverlay(){
       return invoke('cmd_cursor_activity_pref_set',{enabled:true})
@@ -2814,18 +3052,34 @@
       mmPanelEl.addEventListener('pointerdown',function(e){ e.stopPropagation(); });
     }
     if(miniUsagePill){
-      miniUsagePill.style.cursor='pointer';
-      miniUsagePill.addEventListener('click',function(){
+      miniUsagePill.addEventListener('click',function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        var action=String(miniUsagePill.getAttribute('data-pill-action')||'');
+        var kind=String(miniUsagePill.getAttribute('data-agent')||'').trim();
         var t=String(miniUsagePill.textContent||'');
         var tipJoin=Array.isArray(miniUsagePill.__tipLines)?miniUsagePill.__tipLines.join(' '):'';
-        if(captionWantsEnable(t)||captionWantsEnable(tipJoin)||captionWantsEnable(usageCaptionIdle)){
+        if(action==='quota_menu'){
+          setMiniQuotaOpen(!miniQuotaOpen);
+          return;
+        }
+        if(action==='enable_cursor'||captionWantsEnable(t)||captionWantsEnable(tipJoin)){
           enableCursorActivityFromOverlay();
-        } else if(focusUsageIsMinimax()||captionWantsMinimaxKey(usageCaptionIdle)){
-          if(captionWantsMinimaxKey(t)||captionWantsMinimaxKey(tipJoin)||captionWantsMinimaxKey(usageCaptionIdle)||focusUsageIsMinimax()){
-            configureMinimaxKeyFromOverlay();
-          }
+          return;
+        }
+        if(action==='minimax_key'||captionWantsMinimaxKey(t)||captionWantsMinimaxKey(tipJoin)){
+          configureMinimaxKeyFromOverlay();
+          return;
+        }
+        if(action==='refresh'&&kind){
+          refreshUsageFromOverlay(kind);
+          return;
         }
       });
+    }
+    if(miniQuotaDropdown){
+      miniQuotaDropdown.addEventListener('pointerdown',function(e){ e.stopPropagation(); });
+      miniQuotaDropdown.addEventListener('click',function(e){ e.stopPropagation(); });
     }
     setInterval(pull, 1500);
     setInterval(pullAppLightHttp, 500);

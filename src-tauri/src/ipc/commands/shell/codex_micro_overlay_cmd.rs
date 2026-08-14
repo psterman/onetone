@@ -12,6 +12,43 @@ pub fn cmd_codex_micro_overlay_get_state(
     codex_micro_overlay::build_snapshot(state.inner())
 }
 
+/// One-shot usage refresh for mini pill click (Cursor / provider / shell). Codex/Claude
+/// rely on existing pollers; still push + return fresh snapshot.
+#[tauri::command]
+pub fn cmd_codex_micro_overlay_refresh_usage(
+    app: AppHandle,
+    state: tauri::State<Arc<AppState>>,
+    kind: String,
+) -> CodexMicroOverlaySnapshot {
+    let k = kind.trim().to_ascii_lowercase();
+    match k.as_str() {
+        "cursor" => {
+            crate::cursor_local_activity::refresh_once();
+        }
+        "minimax" | "workbuddy" | "trae" | "qoder" => {
+            if k == "minimax" {
+                crate::provider_usage::refresh_minimax_side_channel();
+            }
+            crate::provider_usage::refresh_once();
+            crate::shell_agent_usage::refresh_once();
+        }
+        "claude" => {
+            crate::provider_usage::refresh_once();
+            crate::agent_usage::kick_deepseek_balance_refresh();
+            crate::soft_pad_quota::kick_refresh_all();
+        }
+        "codex" => {
+            // Account poller owns Codex; nudge overlay only.
+        }
+        "openrouter" | "deepseek" | "kimi" | "siliconflow" | "quota" | "" => {
+            crate::soft_pad_quota::refresh_all_configured();
+        }
+        _ => {}
+    }
+    codex_micro_overlay::request_overlay_push(&app, state.inner().as_ref(), false);
+    codex_micro_overlay::build_snapshot(state.inner())
+}
+
 /// Labs / acceptance only: inject a Codex Micro RPC JSON object without HID.
 /// This proves the OneTone protocol -> overlay light path before a real bridge exists.
 #[tauri::command]

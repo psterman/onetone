@@ -11,14 +11,22 @@ pub enum AgentKind {
     Cursor,
     /// MiniMax Code desktop — Soft Pad + provider usage (not Claude OTel).
     MiniMax,
-    /// GitHub Copilot CLI (desktop wait signals only; Cloud Agent excluded from Soft Pad).
+    /// GitHub Copilot CLI — shell hooks (lifecycle + needs_input; no multi-lights).
     CopilotCli,
+    /// Google Gemini CLI — shell hooks (CLI only; IDE mid-session measured separately).
+    Gemini,
     /// Tencent WorkBuddy / CodeBuddy — shell hooks (lifecycle + needs_input; no Claude resume).
     WorkBuddy,
     /// ByteDance Trae IDE — shell hooks.
     Trae,
     /// Alibaba Qoder IDE/CLI — shell hooks.
     Qoder,
+    /// Cline — file hooks (`.cline/hooks` / Documents/Cline/Hooks); no virtual keyboard.
+    Cline,
+    /// OpenCode — TypeScript plugin (not settings.json hooks).
+    OpenCode,
+    /// Aider — `--notifications-command` done-only (no running / needs_input).
+    Aider,
 }
 
 impl AgentKind {
@@ -29,9 +37,13 @@ impl AgentKind {
             AgentKind::Cursor => "cursor",
             AgentKind::MiniMax => "minimax",
             AgentKind::CopilotCli => "copilotCli",
+            AgentKind::Gemini => "gemini",
             AgentKind::WorkBuddy => "workbuddy",
             AgentKind::Trae => "trae",
             AgentKind::Qoder => "qoder",
+            AgentKind::Cline => "cline",
+            AgentKind::OpenCode => "opencode",
+            AgentKind::Aider => "aider",
         }
     }
 
@@ -42,9 +54,13 @@ impl AgentKind {
             "cursor-chat" => Some(AgentKind::Cursor),
             "minimax-chat" => Some(AgentKind::MiniMax),
             "copilot-cli" => Some(AgentKind::CopilotCli),
+            "gemini-cli" => Some(AgentKind::Gemini),
             "workbuddy-chat" | "codebuddy-chat" => Some(AgentKind::WorkBuddy),
             "trae-chat" => Some(AgentKind::Trae),
             "qoder-chat" => Some(AgentKind::Qoder),
+            "cline-chat" => Some(AgentKind::Cline),
+            "opencode-chat" => Some(AgentKind::OpenCode),
+            "aider-chat" => Some(AgentKind::Aider),
             _ => None,
         }
     }
@@ -55,10 +71,14 @@ impl AgentKind {
             "claude" => Some(AgentKind::Claude),
             "cursor" => Some(AgentKind::Cursor),
             "minimax" => Some(AgentKind::MiniMax),
-            "copilotCli" | "copilot_cli" | "copilot-cli" => Some(AgentKind::CopilotCli),
+            "copilotCli" | "copilotcli" | "copilot_cli" | "copilot-cli" => Some(AgentKind::CopilotCli),
+            "gemini" | "gemini-cli" | "gemini_cli" => Some(AgentKind::Gemini),
             "workbuddy" | "codebuddy" => Some(AgentKind::WorkBuddy),
             "trae" => Some(AgentKind::Trae),
             "qoder" => Some(AgentKind::Qoder),
+            "cline" | "cline-chat" | "cline_cli" => Some(AgentKind::Cline),
+            "opencode" | "opencode-chat" | "open-code" => Some(AgentKind::OpenCode),
+            "aider" | "aider-chat" => Some(AgentKind::Aider),
             _ => None,
         }
     }
@@ -70,17 +90,28 @@ impl AgentKind {
             AgentKind::Cursor => "cursor-chat",
             AgentKind::MiniMax => "minimax-chat",
             AgentKind::CopilotCli => "copilot-cli",
+            AgentKind::Gemini => "gemini-cli",
             AgentKind::WorkBuddy => "workbuddy-chat",
             AgentKind::Trae => "trae-chat",
             AgentKind::Qoder => "qoder-chat",
+            AgentKind::Cline => "cline-chat",
+            AgentKind::OpenCode => "opencode-chat",
+            AgentKind::Aider => "aider-chat",
         }
     }
 
-    /// Soft Pad shell-hook agents (WorkBuddy / Trae / Qoder).
+    /// Soft Pad shell-hook / plugin / notify agents (POST 8796).
     pub fn is_shell_hook_agent(self) -> bool {
         matches!(
             self,
-            AgentKind::WorkBuddy | AgentKind::Trae | AgentKind::Qoder
+            AgentKind::WorkBuddy
+                | AgentKind::Trae
+                | AgentKind::Qoder
+                | AgentKind::CopilotCli
+                | AgentKind::Gemini
+                | AgentKind::Cline
+                | AgentKind::OpenCode
+                | AgentKind::Aider
         )
     }
 }

@@ -1,4 +1,4 @@
-//! Soft Pad shell-agent hook install for WorkBuddy / Trae / Qoder.
+//! Soft Pad shell-agent hook install for WorkBuddy / Trae / Qoder / Copilot CLI / Gemini.
 //! Value-tree merge only — never string-splice. Uninstall removes only
 //! commands marked with the profile `--onetone-hook-id`.
 
@@ -64,11 +64,42 @@ pub const QODER: ShellHookProfile = ShellHookProfile {
     ],
 };
 
+pub const COPILOT: ShellHookProfile = ShellHookProfile {
+    kind: AgentKind::CopilotCli,
+    hook_id: "copilot-cli-activity-v1",
+    source_arg: "copilot_cli",
+    hooks_at_root: false,
+    events: &[
+        ("UserPromptSubmit", 5),
+        ("PreToolUse", 5),
+        ("PostToolUse", 5),
+        ("PermissionRequest", 5),
+        ("Stop", 5),
+        ("StopFailure", 5),
+    ],
+};
+
+/// Official Gemini CLI event names; probe normalizes BeforeTool/AfterTool/AfterAgent.
+pub const GEMINI: ShellHookProfile = ShellHookProfile {
+    kind: AgentKind::Gemini,
+    hook_id: "gemini-activity-v1",
+    source_arg: "gemini",
+    hooks_at_root: false,
+    events: &[
+        ("SessionStart", 5),
+        ("BeforeTool", 5),
+        ("AfterTool", 5),
+        ("AfterAgent", 5),
+    ],
+};
+
 pub fn profile_for_kind(kind: AgentKind) -> Option<&'static ShellHookProfile> {
     match kind {
         AgentKind::WorkBuddy => Some(&WORKBUDDY),
         AgentKind::Trae => Some(&TRAE),
         AgentKind::Qoder => Some(&QODER),
+        AgentKind::CopilotCli => Some(&COPILOT),
+        AgentKind::Gemini => Some(&GEMINI),
         _ => None,
     }
 }
@@ -86,8 +117,18 @@ pub fn settings_path(profile: &ShellHookProfile) -> PathBuf {
         AgentKind::WorkBuddy => home.join(".codebuddy").join("settings.json"),
         AgentKind::Trae => home.join(".trae").join("hooks.json"),
         AgentKind::Qoder => home.join(".qoder").join("settings.json"),
+        AgentKind::CopilotCli => home.join(".copilot").join("settings.json"),
+        AgentKind::Gemini => home.join(".gemini").join("settings.json"),
         _ => home.join(".onetone-unknown").join("hooks.json"),
     }
+}
+
+pub fn qoder_cn_settings_path() -> PathBuf {
+    let home = std::env::var_os("USERPROFILE")
+        .or_else(|| std::env::var_os("HOME"))
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."));
+    home.join(".qoder-cn").join("settings.json")
 }
 
 pub fn probe_absolute_path() -> PathBuf {
@@ -336,6 +377,77 @@ fn backup_path_for(settings: &Path) -> PathBuf {
     ))
 }
 
+fn file_has_hook_id(path: &Path, profile: &ShellHookProfile) -> bool {
+    let Ok(raw) = fs::read_to_string(path) else {
+        return false;
+    };
+    let Ok(root) = serde_json::from_str::<Value>(&raw) else {
+        return false;
+    };
+    let hooks = if profile.hooks_at_root {
+        root.as_object()
+    } else {
+        root.get("hooks").and_then(|h| h.as_object())
+    };
+    hooks
+        .map(|h| h.values().any(|ev| event_has_hook_id(ev, profile.hook_id)))
+        .unwrap_or(false)
+}
+
+fn write_merged_hooks(
+    profile: &ShellHookProfile,
+    settings: &Path,
+    probe_abs: &str,
+) -> Result<MergeStats, String> {
+    if let Some(parent) = settings.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let mut root = if settings.is_file() {
+        match fs::read_to_string(settings)
+            .ok()
+            .and_then(|s| serde_json::from_str(&s).ok())
+        {
+            Some(v) => v,
+            None => return Err("settings_parse_failed".into()),
+        }
+    } else if profile.hooks_at_root {
+        json!({})
+    } else {
+        json!({ "hooks": {} })
+    };
+    if settings.is_file() {
+        let b = backup_path_for(settings);
+        let _ = fs::copy(settings, &b);
+    }
+    let stats = merge_hooks(profile, &mut root, probe_abs);
+    fs::write(
+        settings,
+        serde_json::to_string_pretty(&root).unwrap_or_else(|_| "{}".into()),
+    )
+    .map_err(|e| format!("write_failed:{e}"))?;
+    Ok(stats)
+}
+
+fn uninstall_hooks_file(profile: &ShellHookProfile, settings: &Path) -> usize {
+    if !settings.is_file() {
+        return 0;
+    }
+    let Ok(raw) = fs::read_to_string(settings) else {
+        return 0;
+    };
+    let Ok(mut root) = serde_json::from_str::<Value>(&raw) else {
+        return 0;
+    };
+    let removed = uninstall_hooks(profile, &mut root);
+    if removed > 0 {
+        let _ = fs::write(
+            settings,
+            serde_json::to_string_pretty(&root).unwrap_or_else(|_| "{}".into()),
+        );
+    }
+    removed
+}
+
 pub fn setup_status(kind_str: &str) -> Result<ShellHookSetupStatus, String> {
     let profile = profile_from_str(kind_str).ok_or_else(|| "bad_kind".to_string())?;
     let settings = settings_path(profile);
@@ -364,11 +476,19 @@ pub fn setup_status(kind_str: &str) -> Result<ShellHookSetupStatus, String> {
     } else {
         (true, false)
     };
+    let configured = if profile.kind == AgentKind::Qoder {
+        configured || file_has_hook_id(&qoder_cn_settings_path(), profile)
+    } else {
+        configured
+    };
     let mut draft = if profile.hooks_at_root {
         json!({})
     } else {
         json!({ "hooks": {} })
     };
+    if profile.kind == AgentKind::Qoder {
+        draft["qoderCnSettingsPath"] = json!(qoder_cn_settings_path().display().to_string());
+    }
     let _ = merge_hooks(profile, &mut draft, &probe_abs);
     Ok(ShellHookSetupStatus {
         kind: profile.kind.as_str().into(),
@@ -442,14 +562,20 @@ pub fn install_confirm(kind_str: &str) -> ShellHookWriteResult {
         &settings,
         serde_json::to_string_pretty(&root).unwrap_or_else(|_| "{}".into()),
     ) {
-        Ok(()) => ShellHookWriteResult {
+        Ok(()) => {
+            if profile.kind == AgentKind::Qoder {
+                let cn = qoder_cn_settings_path();
+                let _ = write_merged_hooks(profile, &cn, &probe_abs);
+            }
+            ShellHookWriteResult {
             ok: true,
             message: "installed".into(),
             backup_path: backup,
             added: stats.added,
             refreshed: stats.refreshed,
             removed: 0,
-        },
+        }
+        }
         Err(e) => ShellHookWriteResult {
             ok: false,
             message: format!("write_failed:{e}"),
@@ -473,14 +599,23 @@ pub fn uninstall(kind_str: &str) -> ShellHookWriteResult {
         };
     };
     let settings = settings_path(profile);
+    let cn_extra = if profile.kind == AgentKind::Qoder {
+        uninstall_hooks_file(profile, &qoder_cn_settings_path())
+    } else {
+        0
+    };
     if !settings.is_file() {
         return ShellHookWriteResult {
             ok: true,
-            message: "nothing_to_uninstall".into(),
+            message: if cn_extra > 0 {
+                "uninstalled".into()
+            } else {
+                "nothing_to_uninstall".into()
+            },
             backup_path: String::new(),
             added: vec![],
             refreshed: vec![],
-            removed: 0,
+            removed: cn_extra,
         };
     }
     let Ok(raw) = fs::read_to_string(&settings) else {
@@ -516,7 +651,7 @@ pub fn uninstall(kind_str: &str) -> ShellHookWriteResult {
             backup_path: backup.display().to_string(),
             added: vec![],
             refreshed: vec![],
-            removed,
+            removed: removed + cn_extra,
         },
         Err(e) => ShellHookWriteResult {
             ok: false,
@@ -604,6 +739,18 @@ mod tests {
         assert_eq!(profile_from_str("codebuddy").unwrap().source_arg, "workbuddy");
         assert_eq!(profile_from_str("trae").unwrap().hooks_at_root, true);
         assert_eq!(profile_from_str("qoder").unwrap().kind, AgentKind::Qoder);
+        assert_eq!(
+            profile_from_str("copilotCli").unwrap().hook_id,
+            "copilot-cli-activity-v1"
+        );
+        assert_eq!(profile_from_str("copilot_cli").unwrap().source_arg, "copilot_cli");
+        assert_eq!(profile_from_str("gemini").unwrap().hook_id, "gemini-activity-v1");
+        assert_eq!(profile_from_str("gemini").unwrap().source_arg, "gemini");
+        assert!(profile_from_str("gemini")
+            .unwrap()
+            .events
+            .iter()
+            .any(|(e, _)| *e == "BeforeTool"));
         assert!(profile_from_str("claude").is_none());
     }
 }

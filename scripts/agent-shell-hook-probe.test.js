@@ -22,8 +22,20 @@ assert.strictEqual(
   }),
   'PermissionRequest'
 );
+assert.strictEqual(probe.normalizeEvent({ hook_event_name: 'BeforeTool' }), 'PreToolUse');
+assert.strictEqual(probe.normalizeEvent({ hook_event_name: 'BeforeAgent' }), 'UserPromptSubmit');
+assert.strictEqual(probe.normalizeEvent({ hook_event_name: 'AfterTool' }), 'PostToolUse');
+assert.strictEqual(probe.normalizeEvent({ hook_event_name: 'AfterAgent' }), 'Stop');
+assert.strictEqual(probe.normalizeEvent({ hook_event_name: 'TaskComplete' }), 'Stop');
+assert.strictEqual(
+  probe.normalizeEvent({ hook_event_name: 'TaskCancel' }),
+  'StopFailure'
+);
+assert.strictEqual(probe.normalizeEvent({ hook_event_name: 'TaskError' }), 'StopFailure');
+assert.ok(probe.ALLOWED.copilot_cli && probe.ALLOWED.gemini, 'ALLOWED includes copilot_cli + gemini');
+assert.ok(probe.ALLOWED.cline && probe.ALLOWED.aider, 'ALLOWED includes cline + aider');
 
-var kinds = ['workbuddy', 'trae', 'qoder'];
+var kinds = ['workbuddy', 'trae', 'qoder', 'copilot_cli', 'gemini', 'cline', 'aider'];
 kinds.forEach(function (kind) {
   var fields = probe.extractSafeFields({
     hook_event_name: 'Stop',

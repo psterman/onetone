@@ -1,0 +1,52 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/gemini-hook-probe.js\" --onetone-hook-id gemini-activity-v1 --source gemini",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "BeforeTool": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/gemini-hook-probe.js\" --onetone-hook-id gemini-activity-v1 --source gemini",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/gemini-hook-probe.js\" --onetone-hook-id gemini-activity-v1 --source gemini",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "AfterAgent": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/gemini-hook-probe.js\" --onetone-hook-id gemini-activity-v1 --source gemini",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

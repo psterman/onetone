@@ -931,6 +931,11 @@
         traeStatusLightsEnabled: false,
         qoderStatusLightsEnabled: false,
         minimaxStatusLightsEnabled: false,
+        copilotStatusLightsEnabled: false,
+        geminiStatusLightsEnabled: false,
+        clineStatusLightsEnabled: false,
+        opencodeStatusLightsEnabled: false,
+        aiderStatusLightsEnabled: false,
         ambientMode: 'status',
         ambientSolidRgb: '#7c3aed',
         ambientOpacity: 100,
@@ -1004,6 +1009,21 @@
     }
     if (m.codexMicroPad.minimaxStatusLightsEnabled == null) {
       m.codexMicroPad.minimaxStatusLightsEnabled = false;
+    }
+    if (m.codexMicroPad.copilotStatusLightsEnabled == null) {
+      m.codexMicroPad.copilotStatusLightsEnabled = false;
+    }
+    if (m.codexMicroPad.geminiStatusLightsEnabled == null) {
+      m.codexMicroPad.geminiStatusLightsEnabled = false;
+    }
+    if (m.codexMicroPad.clineStatusLightsEnabled == null) {
+      m.codexMicroPad.clineStatusLightsEnabled = false;
+    }
+    if (m.codexMicroPad.opencodeStatusLightsEnabled == null) {
+      m.codexMicroPad.opencodeStatusLightsEnabled = false;
+    }
+    if (m.codexMicroPad.aiderStatusLightsEnabled == null) {
+      m.codexMicroPad.aiderStatusLightsEnabled = false;
     }
     if (m.codexMicroPad.ambientMode !== 'solid' && m.codexMicroPad.ambientMode !== 'status') {
       m.codexMicroPad.ambientMode = 'status';
@@ -2929,6 +2949,13 @@
 
   function agentLightIconSrc(agent) {
     agent = String(agent || '').toLowerCase();
+    if (agent === 'copilotcli' || agent === 'copilot') {
+      return 'icons/app-target/copilot.png';
+    }
+    if (agent === 'gemini') return 'icons/app-target/gemini.png';
+    if (agent === 'cline') return 'icons/app-target/cline.png';
+    if (agent === 'opencode') return 'icons/app-target/opencode.png';
+    if (agent === 'aider') return 'icons/app-target/aider.png';
     try {
       var Hub = global.OneToneSoftPadHub;
       if (Hub && typeof Hub.iconForKind === 'function') {
@@ -2941,11 +2968,16 @@
       var appId = agent === 'codex' ? 'codex-chat'
         : agent === 'claude' ? 'claude-code'
           : agent === 'cursor' ? 'cursor-chat'
-            : agent === 'minimax' ? 'minimax-chat'
-              : agent === 'workbuddy' ? 'workbuddy-chat'
-                : agent === 'trae' ? 'trae-chat'
-                  : agent === 'qoder' ? 'qoder-chat'
-                    : agent;
+            : agent === 'copilotcli' || agent === 'copilot' ? 'copilot-cli'
+              : agent === 'gemini' ? 'gemini-cli'
+                : agent === 'cline' ? 'cline-chat'
+                  : agent === 'opencode' ? 'opencode-chat'
+                    : agent === 'aider' ? 'aider-chat'
+                      : agent === 'minimax' ? 'minimax-chat'
+                  : agent === 'workbuddy' ? 'workbuddy-chat'
+                    : agent === 'trae' ? 'trae-chat'
+                      : agent === 'qoder' ? 'qoder-chat'
+                        : agent;
       var preset = P.presetById(appId);
       if (preset && preset.icon) return String(preset.icon);
     }
@@ -2958,23 +2990,52 @@
     { agent: 'codex', label: 'Codex', connectKind: 'codex' },
     { agent: 'claude', label: 'Claude', connectKind: 'claude' },
     { agent: 'cursor', label: 'Cursor', connectKind: 'cursor' },
+    { agent: 'copilotCli', label: 'Copilot', connectKind: 'shell' },
+    { agent: 'gemini', label: 'Gemini', connectKind: 'shell' },
     { agent: 'minimax', label: 'MiniMax', connectKind: 'minimax' },
     { agent: 'workbuddy', label: 'WorkBuddy', connectKind: 'shell' },
     { agent: 'trae', label: 'Trae', connectKind: 'shell' },
-    { agent: 'qoder', label: 'Qoder', connectKind: 'shell' }
+    { agent: 'qoder', label: 'Qoder', connectKind: 'shell' },
+    { agent: 'cline', label: 'Cline', connectKind: 'shell' },
+    { agent: 'opencode', label: 'OpenCode', connectKind: 'shell' },
+    { agent: 'aider', label: 'Aider（仅完成）', connectKind: 'shell' }
   ];
   var AGENT_LIGHT_SPECS = TOPBAR_LIGHT_CANDIDATES;
 
-  var SHELL_HOOK_LIGHT_AGENTS = { workbuddy: true, trae: true, qoder: true };
+  /** P0 Soft Pad quota providers — not Agent lights; mini pill lists saved keys. */
+  var TOPBAR_QUOTA_CANDIDATES = [
+    { provider: 'openrouter', label: 'OpenRouter', icon: 'icons/provider/openrouter.png' },
+    { provider: 'deepseek', label: 'DeepSeek', icon: 'icons/app-target/deepseek.svg' },
+    { provider: 'kimi', label: 'Kimi', icon: 'icons/provider/kimi.png' },
+    { provider: 'siliconflow', label: 'SiliconFlow', icon: 'icons/provider/siliconflow.png' }
+  ];
+  var pendingQuotaKeyProvider = '';
+
+  var SHELL_HOOK_LIGHT_AGENTS = {
+    workbuddy: true,
+    trae: true,
+    qoder: true,
+    copilotCli: true,
+    copilotcli: true,
+    gemini: true,
+    cline: true,
+    opencode: true,
+    aider: true
+  };
 
   function agentLightEnabledOnPad(pad, agent) {
     if (!pad) return false;
     if (agent === 'claude') return !!pad.claudeStatusLightsEnabled;
     if (agent === 'cursor') return !!pad.cursorStatusLightsEnabled;
+    if (agent === 'copilotCli' || agent === 'copilotcli') return !!pad.copilotStatusLightsEnabled;
+    if (agent === 'gemini') return !!pad.geminiStatusLightsEnabled;
     if (agent === 'minimax') return !!pad.minimaxStatusLightsEnabled;
     if (agent === 'workbuddy') return !!pad.workbuddyStatusLightsEnabled;
     if (agent === 'trae') return !!pad.traeStatusLightsEnabled;
     if (agent === 'qoder') return !!pad.qoderStatusLightsEnabled;
+    if (agent === 'cline') return !!pad.clineStatusLightsEnabled;
+    if (agent === 'opencode') return !!pad.opencodeStatusLightsEnabled;
+    if (agent === 'aider') return !!pad.aiderStatusLightsEnabled;
     return !!pad.codexStatusLightsEnabled;
   }
 
@@ -2982,10 +3043,15 @@
     if (!pad) return;
     if (agent === 'claude') pad.claudeStatusLightsEnabled = !!enabled;
     else if (agent === 'cursor') pad.cursorStatusLightsEnabled = !!enabled;
+    else if (agent === 'copilotCli' || agent === 'copilotcli') pad.copilotStatusLightsEnabled = !!enabled;
+    else if (agent === 'gemini') pad.geminiStatusLightsEnabled = !!enabled;
     else if (agent === 'minimax') pad.minimaxStatusLightsEnabled = !!enabled;
     else if (agent === 'workbuddy') pad.workbuddyStatusLightsEnabled = !!enabled;
     else if (agent === 'trae') pad.traeStatusLightsEnabled = !!enabled;
     else if (agent === 'qoder') pad.qoderStatusLightsEnabled = !!enabled;
+    else if (agent === 'cline') pad.clineStatusLightsEnabled = !!enabled;
+    else if (agent === 'opencode') pad.opencodeStatusLightsEnabled = !!enabled;
+    else if (agent === 'aider') pad.aiderStatusLightsEnabled = !!enabled;
     else pad.codexStatusLightsEnabled = !!enabled;
   }
 
@@ -3150,6 +3216,41 @@
     );
   }
 
+  function renderTopbarQuotaActiveChip(spec, masked) {
+    return (
+      '<div class="soft-pad-topbar-light-active" data-topbar-quota="' + esc(spec.provider) +
+      '" role="listitem">' +
+      '<span class="soft-pad-topbar-light-active__jump">' +
+      '<span class="soft-pad-agent-light-row__chip" data-status="idle">' +
+      '<img src="' + esc(spec.icon) + '" alt="" width="16" height="16" decoding="async" aria-hidden="true">' +
+      '</span>' +
+      '<span class="soft-pad-topbar-light-active__name">' + esc(spec.label) +
+      (masked ? ' · ' + esc(masked) : '') + '</span></span>' +
+      '<button type="button" class="soft-pad-topbar-light-active__remove" data-act="topbar-quota-remove" ' +
+      'data-provider="' + esc(spec.provider) + '" aria-label="' + esc(t('softPadTopbarRemove', '移除')) +
+      '">×</button></div>'
+    );
+  }
+
+  function renderQuotaKeyCardHtml() {
+    var spec = quotaCandidate(pendingQuotaKeyProvider);
+    if (!spec) return '';
+    return (
+      '<div class="codex-pad-mgr__claude-act soft-pad-minimax-key" data-quota-key-card="1">' +
+      '<p class="codex-pad-mgr__label">' + esc(spec.label) + ' API Key</p>' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t('softPadQuotaKeyHint', '粘贴 API Key 后，迷你栏用量 pill 会列出该候补（不是登录 token）。')) +
+      '</p>' +
+      '<input class="soft-pad-minimax-key__input" data-quota-key-input type="password" autocomplete="off" spellcheck="false" placeholder="sk-…" />' +
+      '<div class="codex-pad-mgr__claude-act-actions">' +
+      '<button type="button" class="codex-micro-pad__btn is-primary" data-act="quota-key-save">' +
+      esc(t('softPadQuotaKeySave', '保存并监视额度')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="quota-key-cancel">' +
+      esc(t('softPadQuotaKeyCancel', '取消')) + '</button></div>' +
+      '<p class="codex-pad-mgr__hint is-error" data-quota-key-status hidden></p></div>'
+    );
+  }
+
   function agentFromPresetAppId(appId) {
     appId = String(appId || '').trim();
     var Hub = global.OneToneSoftPadHub;
@@ -3160,9 +3261,15 @@
     if (appId === 'codex-chat') return 'codex';
     if (appId === 'claude-code') return 'claude';
     if (appId === 'cursor-chat') return 'cursor';
+    if (appId === 'copilot-cli') return 'copilotCli';
+    if (appId === 'gemini-cli') return 'gemini';
+    if (appId === 'minimax-chat') return 'minimax';
     if (appId === 'workbuddy-chat') return 'workbuddy';
     if (appId === 'trae-chat') return 'trae';
     if (appId === 'qoder-chat') return 'qoder';
+    if (appId === 'cline-chat') return 'cline';
+    if (appId === 'opencode-chat') return 'opencode';
+    if (appId === 'aider-chat') return 'aider';
     return '';
   }
 
@@ -3196,20 +3303,96 @@
     return null;
   }
 
+  function appIdForAgent(agent) {
+    agent = String(agent || '').trim();
+    if (agent === 'codex') return 'codex-chat';
+    if (agent === 'claude') return 'claude-code';
+    if (agent === 'cursor') return 'cursor-chat';
+    if (agent === 'copilotCli' || agent === 'copilotcli' || agent === 'copilot') return 'copilot-cli';
+    if (agent === 'gemini') return 'gemini-cli';
+    if (agent === 'minimax') return 'minimax-chat';
+    if (agent === 'workbuddy') return 'workbuddy-chat';
+    if (agent === 'trae') return 'trae-chat';
+    if (agent === 'qoder') return 'qoder-chat';
+    if (agent === 'cline') return 'cline-chat';
+    if (agent === 'opencode') return 'opencode-chat';
+    if (agent === 'aider') return 'aider-chat';
+    return '';
+  }
+
+  function topbarLightPickerItems(pad) {
+    return TOPBAR_LIGHT_CANDIDATES.filter(function (c) {
+      return !agentLightEnabledOnPad(pad, c.agent);
+    }).map(function (c) {
+      return {
+        id: appIdForAgent(c.agent),
+        name: c.label,
+        icon: agentLightIconSrc(c.agent),
+        meta: t('softPadTopbarPickerPresetMeta', '加入顶栏监视')
+      };
+    }).filter(function (item) { return !!item.id; });
+  }
+
   function openTopbarMonitorPicker(body, m, pad) {
     var Rules = global.OneToneAppBehaviorRules;
     if (!Rules || !Rules.openAppPicker) return;
     Rules.openAppPicker({
       mode: 'topbarMonitor',
       habitItems: topbarHabitPickerItems(pad),
+      lightItems: topbarLightPickerItems(pad),
+      quotaItems: TOPBAR_QUOTA_CANDIDATES.map(function (c) {
+        return {
+          id: c.provider,
+          name: c.label,
+          icon: c.icon,
+          meta: t('softPadTopbarPickerQuotaMeta', '填 key 后进用量 pill')
+        };
+      }),
       onPick: function (pick) {
         applyTopbarMonitorPick(body, m, pad, pick || {});
       }
     });
   }
 
+  function quotaCandidate(provider) {
+    provider = String(provider || '').trim().toLowerCase();
+    var i;
+    for (i = 0; i < TOPBAR_QUOTA_CANDIDATES.length; i++) {
+      if (TOPBAR_QUOTA_CANDIDATES[i].provider === provider) return TOPBAR_QUOTA_CANDIDATES[i];
+    }
+    return null;
+  }
+
+  function padQuotaInvoke(cmd, args) {
+    var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
+    if (!invoke) return Promise.reject(new Error('no_ipc'));
+    return Promise.resolve(invoke(cmd, args || {}));
+  }
+
+  function applyTopbarQuotaPick(body, m, pad, provider) {
+    var spec = quotaCandidate(provider);
+    if (!spec) return;
+    padQuotaInvoke('cmd_soft_pad_provider_key_get', { provider: spec.provider }).then(function (res) {
+      if (res && res.configured) {
+        toast(t('softPadQuotaAlready', '{name} 已在用量 pill').replace('{name}', spec.label));
+        pendingQuotaKeyProvider = '';
+        patchTopbarLightsPanel(body, m, pad);
+        return;
+      }
+      pendingQuotaKeyProvider = spec.provider;
+      patchTopbarLightsPanel(body, m, pad);
+    }).catch(function () {
+      pendingQuotaKeyProvider = spec.provider;
+      patchTopbarLightsPanel(body, m, pad);
+    });
+  }
+
   function applyTopbarMonitorPick(body, m, pad, pick) {
     if (!m || !pad || !pick) return;
+    if (pick.type === 'quota' && pick.provider) {
+      applyTopbarQuotaPick(body, m, pad, pick.provider);
+      return;
+    }
     if (pick.type === 'habit' && pick.habitId) {
       var ids = topbarHabitIdsOnPad(pad);
       if (ids.indexOf(String(pick.habitId)) < 0) ids.push(String(pick.habitId));
@@ -3275,6 +3458,11 @@
         '跨应用显示忙闲；点条目可跳转习惯。只读观察，不是钉主控（主控始终 Auto）。切换「通用」习惯不会关掉 Soft Pad 键位。')) +
       '</p>' +
       '<div class="soft-pad-topbar-light-active-list" role="list" aria-live="polite">' + activeHtml + '</div>' +
+      '<p class="codex-pad-mgr__label" data-topbar-quota-lbl' +
+      (pendingQuotaKeyProvider ? '' : ' hidden') + '>' +
+      esc(t('softPadTopbarQuotaLbl', 'API 额度候补')) + '</p>' +
+      '<div class="soft-pad-topbar-light-active-list" data-topbar-quota-list role="list"></div>' +
+      renderQuotaKeyCardHtml() +
       addHtml +
       '<p class="codex-pad-mgr__hint soft-pad-agent-light-legend">' +
       esc(t('softPadAgentLightsLegend',
@@ -7372,11 +7560,85 @@
         patchTopbarLightsPanel(body, m, pad);
       });
     });
+    var quotaSave = body.querySelector('[data-act="quota-key-save"]');
+    if (quotaSave && !quotaSave.__topbarBound) {
+      quotaSave.__topbarBound = true;
+      quotaSave.addEventListener('click', function () {
+        var spec = quotaCandidate(pendingQuotaKeyProvider);
+        var input = body.querySelector('[data-quota-key-input]');
+        var statusEl = body.querySelector('[data-quota-key-status]');
+        var v = input ? String(input.value || '').trim() : '';
+        if (!spec || !v) {
+          toast(t('softPadQuotaKeyEmpty', '请先粘贴 API Key'));
+          return;
+        }
+        padQuotaInvoke('cmd_soft_pad_provider_key_set', { provider: spec.provider, key: v }).then(function () {
+          pendingQuotaKeyProvider = '';
+          toast(t('softPadQuotaSaved', '{name} 已加入用量 pill').replace('{name}', spec.label));
+          patchTopbarLightsPanel(body, m, pad);
+        }).catch(function (err) {
+          var msg = String(err && err.message || err || '');
+          if (statusEl) {
+            statusEl.hidden = false;
+            statusEl.textContent = /invalid_/.test(msg)
+              ? t('softPadQuotaInvalid', 'key 无效')
+              : msg;
+          }
+          toast(t('softPadQuotaInvalid', 'key 无效'));
+        });
+      });
+    }
+    var quotaCancel = body.querySelector('[data-act="quota-key-cancel"]');
+    if (quotaCancel && !quotaCancel.__topbarBound) {
+      quotaCancel.__topbarBound = true;
+      quotaCancel.addEventListener('click', function () {
+        pendingQuotaKeyProvider = '';
+        patchTopbarLightsPanel(body, m, pad);
+      });
+    }
     body.querySelectorAll('[data-act="topbar-jump"]').forEach(function (btn) {
       if (btn.__topbarBound) return;
       btn.__topbarBound = true;
       btn.addEventListener('click', function () {
         jumpToTopbarTarget(btn.getAttribute('data-agent'), btn.getAttribute('data-habit-id'));
+      });
+    });
+    fillTopbarQuotaChips(body, m, pad);
+  }
+
+  function fillTopbarQuotaChips(body, m, pad) {
+    var host = body && body.querySelector('[data-topbar-quota-list]');
+    var lbl = body && body.querySelector('[data-topbar-quota-lbl]');
+    if (!host) return;
+    var gets = TOPBAR_QUOTA_CANDIDATES.map(function (c) {
+      return padQuotaInvoke('cmd_soft_pad_provider_key_get', { provider: c.provider }).then(function (res) {
+        return { spec: c, res: res || {} };
+      }).catch(function () {
+        return { spec: c, res: {} };
+      });
+    });
+    Promise.all(gets).then(function (rows) {
+      var html = rows.filter(function (row) {
+        return row.res && row.res.configured;
+      }).map(function (row) {
+        return renderTopbarQuotaActiveChip(row.spec, row.res.masked || '');
+      }).join('');
+      host.innerHTML = html;
+      if (lbl) lbl.hidden = !html && !pendingQuotaKeyProvider;
+      host.querySelectorAll('[data-act="topbar-quota-remove"]').forEach(function (btn) {
+        if (btn.__topbarBound) return;
+        btn.__topbarBound = true;
+        btn.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          var provider = btn.getAttribute('data-provider') || '';
+          if (!provider) return;
+          padQuotaInvoke('cmd_soft_pad_provider_key_set', { provider: provider, key: '' }).then(function () {
+            pendingQuotaKeyProvider = '';
+            patchTopbarLightsPanel(body, m, pad);
+          }).catch(function (err) {
+            toast(String(err && err.message || err || 'quota_clear_failed'));
+          });
+        });
       });
     });
   }
@@ -9965,6 +10227,7 @@
     resolveLightsPanelMode: resolveLightsPanelMode,
     syncStatusLightsPreviewChrome: syncStatusLightsPreviewChrome,
     TOPBAR_LIGHT_CANDIDATES: TOPBAR_LIGHT_CANDIDATES,
+    TOPBAR_QUOTA_CANDIDATES: TOPBAR_QUOTA_CANDIDATES,
     resolveSoftPadSubpagePaintHost: resolveSoftPadSubpagePaintHost,
     mirrorSoftPadSubpageChrome: mirrorSoftPadSubpageChrome,
     resolveSoftPadShowMode: resolveSoftPadShowMode,

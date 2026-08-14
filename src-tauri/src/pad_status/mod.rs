@@ -48,6 +48,11 @@ pub fn ingest_codex_payload(payload: &CodexAppStatePayload) -> PadStatus {
         "workbuddy_hook" => Some(crate::soft_pad_runtime::AgentKind::WorkBuddy),
         "trae_hook" => Some(crate::soft_pad_runtime::AgentKind::Trae),
         "qoder_hook" => Some(crate::soft_pad_runtime::AgentKind::Qoder),
+        "copilot_cli_hook" => Some(crate::soft_pad_runtime::AgentKind::CopilotCli),
+        "gemini_hook" => Some(crate::soft_pad_runtime::AgentKind::Gemini),
+        "cline_hook" => Some(crate::soft_pad_runtime::AgentKind::Cline),
+        "opencode_hook" => Some(crate::soft_pad_runtime::AgentKind::OpenCode),
+        "aider_hook" => Some(crate::soft_pad_runtime::AgentKind::Aider),
         _ => None,
     };
     if let Some(agent) = agent {

@@ -111,8 +111,9 @@ Probe 约束：fail-open、退出码 0、不写 prompt/回复正文、只保留�
 
 ### Qoder
 
-- Config：`~/.qoder/settings.json` hooks；插件 `hooks/hooks.json`。
+- Config：`~/.qoder/settings.json` hooks；**Qoder CN / 通义 Agent IDE** 同构路径 `~/.qoder-cn/settings.json`（installer 双写；uninstall 同步清理）。
 - IDE 五事件：UserPromptSubmit、PreToolUse、PostToolUse、PostToolUseFailure、Stop。
+- **通义灵码 VS Code 补全插件**（行内补全）不是 Agent 回合 → **不进顶栏状态灯**。
 - `AgentKind::Qoder` / `qoder_hook` / probe + installer。
 - CLI `/statusline`：**不做** Soft Pad 主灯；用量旁路可另开（仿 `claude-statusline-probe.js`），非本阶段必需。
 
@@ -120,29 +121,35 @@ Probe 约束：fail-open、退出码 0、不写 prompt/回复正文、只保留�
 
 ---
 
-## Phase 3 — Antigravity CLI
+## Phase 3 — Gemini CLI（原 Antigravity）
 
-- Config（实测路径）：`~/.gemini/config/hooks.json`；工作区 `.agents/hooks.json`。
-- `AgentKind::Antigravity` / `antigravity_hook`。
-- **先只承诺 CLI**；IDE mid-session hooks 有社区「注册但不触发」报告，验收写明「IDE 另验」。
-- Schema 接近 Claude nested hooks；probe 可 fork Claude，注意顶层 hook 分组名。
-- Installer 只写 OneTone marker 条目，不整文件覆盖。
+**状态：已落地（CLI）。** Wire：`AgentKind::Gemini` / `gemini` / `gemini-cli` / `gemini_hook`。
+
+- Config：`~/.gemini/settings.json` 的 `hooks`（官方）；工作区 `.gemini/settings.json` 亦可。
+- Probe：[`scripts/gemini-hook-probe.js`](../scripts/gemini-hook-probe.js) + shared shell probe；事件名 `BeforeTool`/`AfterTool`/`AfterAgent` 归一化为 Claude 映射。
+- Installer：`shell_agent_hook_setup::GEMINI`（marker `gemini-activity-v1`）；薄封装 `gemini_hook_setup.rs`。
+- Doc：[`gemini-hook-onetone-setup.md`](gemini-hook-onetone-setup.md) — **仅承诺 CLI**；IDE mid-session 须实测，若不触发则文档写明「实测不触发，等 Google 修」。
 
 ---
 
 ## Phase 4 — OpenCode（TypeScript 插件，非 settings.json）
 
+**状态：已落地。** 见 [`opencode-hook-onetone-setup.md`](opencode-hook-onetone-setup.md)。
+
 - **不**做 shell `*-hook-probe.js` 安装进 settings。
-- 新包或仓库内模块：`scripts/opencode-onetone-plugin/`（或 `packages/opencode-onetone`），导出 OpenCode Plugin：
-  - `tool.execute.before` → running
-  - `tool.execute.after` → running（或保持）
-  - `event`：`session.idle` / `session.status` → done / offline
-  - `permission.ask`（若有）→ needs_input
-- 插件内 `http.request` / `fetch` POST 到 `127.0.0.1:8796`，`source: opencode_hook`。
-- `AgentKind::OpenCode`；文档说明用户在 `opencode.json` / `tui.json` 的 `plugin` 数组加入路径或包名。
+- 模块：[`scripts/opencode-onetone-plugin/`](../scripts/opencode-onetone-plugin/)（`tool.execute.*` / `permission.ask` / `session.idle` → POST `opencode_hook`）。
+- `AgentKind::OpenCode`；installer 合并 `opencode.json` 的 `plugin` 数组。
 - TUI statusline **不是** Soft Pad 数据通道，勿接错。
 
 ---
+
+## Cline / Aider（补充）
+
+| Agent | 通道 | 文档 |
+|-------|------|------|
+| Cline | 文件 hooks `.cline/hooks/*.cmd` | [`cline-hook-onetone-setup.md`](cline-hook-onetone-setup.md) |
+| Aider | `notifications-command` done-only | [`aider-hook-onetone-setup.md`](aider-hook-onetone-setup.md) |
+
 
 ## 公共改动清单（每加一个 AgentKind）
 

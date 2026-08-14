@@ -5,7 +5,7 @@
  * Shared Soft Pad probe for WorkBuddy / Trae / Qoder shell hooks.
  * Fail-open, stdout empty. No Claude approval polling.
  *
- * Usage: node agent-shell-hook-probe.js --source workbuddy|trae|qoder [--onetone-hook-id …]
+ * Usage: node agent-shell-hook-probe.js --source workbuddy|trae|qoder|copilot_cli|gemini|cline|aider [--event …] [--onetone-hook-id …]
  */
 
 var fs = require('fs');
@@ -16,10 +16,18 @@ var REPO_ROOT = path.resolve(__dirname, '..');
 var LOG_DIR = path.join(REPO_ROOT, 'logs');
 var DEFAULT_URL = 'http://127.0.0.1:8796/api/codex-app/state';
 var POST_TIMEOUT_MS = 1500;
-var ALLOWED = { workbuddy: true, trae: true, qoder: true };
+var ALLOWED = {
+  workbuddy: true,
+  trae: true,
+  qoder: true,
+  copilot_cli: true,
+  gemini: true,
+  cline: true,
+  aider: true
+};
 
 function parseArgs(argv) {
-  var out = { source: '', hookId: '' };
+  var out = { source: '', hookId: '', event: '' };
   for (var i = 2; i < argv.length; i++) {
     var a = argv[i];
     if (a === '--source' && argv[i + 1]) {
@@ -32,6 +40,10 @@ function parseArgs(argv) {
       out.hookId = String(argv[++i]).trim();
     } else if (a.indexOf('--onetone-hook-id=') === 0) {
       out.hookId = a.slice('--onetone-hook-id='.length).trim();
+    } else if (a === '--event' && argv[i + 1]) {
+      out.event = String(argv[++i]).trim();
+    } else if (a.indexOf('--event=') === 0) {
+      out.event = a.slice('--event='.length).trim();
     }
   }
   return out;
@@ -71,6 +83,8 @@ function firstScalar(obj, keys) {
 /**
  * Normalize client events to Claude-like names for Soft Pad ingest.
  * Notification + permission_prompt → PermissionRequest.
+ * Gemini: BeforeTool/AfterTool/AfterAgent → PreToolUse/PostToolUse/Stop.
+ * Cline: TaskComplete/TaskCancel/TaskError → Stop/StopFailure.
  */
 function normalizeEvent(raw) {
   var obj = raw && typeof raw === 'object' ? raw : {};
@@ -86,7 +100,19 @@ function normalizeEvent(raw) {
     return 'PermissionRequest';
   }
   if (event === 'hookEventName') return firstScalar(obj, ['hook_event_name']);
+  if (event === 'BeforeTool') return 'PreToolUse';
+  if (event === 'BeforeAgent') return 'UserPromptSubmit';
+  if (event === 'AfterTool') return 'PostToolUse';
+  if (event === 'AfterAgent') return 'Stop';
+  if (event === 'TaskComplete') return 'Stop';
+  if (event === 'TaskCancel' || event === 'TaskError') return 'StopFailure';
   return event;
+}
+
+function eventFromArgv() {
+  var args = parseArgs(process.argv);
+  if (args.event) return args.event;
+  return '';
 }
 
 function extractSafeFields(raw) {
@@ -224,6 +250,10 @@ async function run(opts) {
   }
 
   var fields = extractSafeFields(parsed);
+  if (!fields.hook_event_name) {
+    var evArg = eventFromArgv();
+    if (evArg) fields.hook_event_name = normalizeEvent({ hook_event_name: evArg });
+  }
   try {
     appendJsonl(Object.assign({ source_kind: kind }, fields), jsonlPath);
   } catch (err) {

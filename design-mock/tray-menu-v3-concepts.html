@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>托盘菜单重构 · 三个原型对照</title>
+  <style>
+    :root{
+      --bg:#f5f7fa;
+      --surface:#ffffff;
+      --surface-2:#f4f9fc;
+      --primary:#2a9cc4;
+      --primary-soft:#e6f7fc;
+      --on-surface:#152238;
+      --on-surface-muted:#5a7086;
+      --on-surface-soft:#8a98a8;
+      --outline-variant:rgba(26,45,74,.10);
+      --outline:rgba(26,45,74,.16);
+      --danger:#dc2626;
+      --danger-soft:rgba(220,38,38,.08);
+      --green:#2e7d4f;
+      --green-soft:rgba(46,125,79,.10);
+      --orange:#b9530a;
+      --orange-soft:rgba(185,83,10,.10);
+      --purple:#6d4ab0;
+      --purple-soft:rgba(109,74,176,.10);
+      --yellow:#b45309;
+      --yellow-soft:rgba(245,166,35,.16);
+      --radius:12px;
+      --radius-row:8px;
+      --shadow:0 10px 28px rgba(26,45,74,.18);
+      --shadow-soft:0 4px 12px rgba(26,45,74,.08);
+      font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--on-surface)}
+    body{padding:32px 24px 64px}
+    h1{font-size:22px;margin:0 0 4px}
+    .lede{color:var(--on-surface-muted);font-size:13px;margin:0 0 28px;max-width:880px;line-height:1.55}
+
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;max-width:1280px;margin:0 auto}
+    .col{display:flex;flex-direction:column;gap:14px}
+    .col-head{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+    .col-head .tag{
+      font-size:10px;font-weight:700;letter-spacing:.05em;padding:2px 8px;border-radius:4px;
+      background:var(--primary-soft);color:var(--primary);text-transform:uppercase;
+    }
+    .col-head h2{font-size:15px;margin:0;font-weight:700}
+    .col-head .sub{font-size:11px;color:var(--on-surface-muted);margin-left:auto}
+
+    /* ===== Menu chrome (shared) ===== */
+    .menu-shell{
+      width:296px;background:var(--surface);
+      border:1px solid var(--outline-variant);border-radius:var(--radius);
+      box-shadow:var(--shadow);padding:6px;color:var(--on-surface);
+      font-size:13px;
+    }
+    .menu-frame{
+      background:linear-gradient(180deg,#e8eef3 0%,#d3dde6 100%);
+      border-radius:14px;padding:14px 12px;
+      display:flex;justify-content:center;align-items:flex-start;
+      min-height:200px;
+    }
+
+    /* shared tokens inside menu */
+    .ico{width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;color:var(--primary);flex-shrink:0}
+    .ico svg{display:block;width:16px;height:16px}
+    .ico.muted{color:var(--on-surface-soft)}
+    .ico.green{color:var(--green)}
+    .ico.danger{color:var(--danger)}
+    .ico.orange{color:var(--orange)}
+
+    .pulse{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px var(--green-soft);flex-shrink:0}
+    .pulse.is-listening{background:#00a3ff;box-shadow:0 0 0 4px rgba(0,163,255,.18)}
+    .pulse.is-needs{background:#f5a623;box-shadow:0 0 0 4px var(--yellow-soft)}
+    .pulse.is-paused{background:var(--orange);box-shadow:0 0 0 4px var(--orange-soft)}
+    .pulse.is-error{background:var(--danger);box-shadow:0 0 0 4px rgba(220,38,38,.14)}
+
+    .chip{
+      font-size:10px;padding:2px 7px;border-radius:4px;
+      background:var(--green-soft);color:var(--green);font-weight:600;letter-spacing:.02em;flex-shrink:0;
+    }
+    .chip.paused{background:var(--orange-soft);color:var(--orange)}
+    .chip.needs{background:var(--yellow-soft);color:var(--yellow)}
+    .chip.error{background:var(--danger-soft);color:var(--danger)}
+    .chip.neutral{background:rgba(26,45,74,.06);color:var(--on-surface-muted)}
+
+    .row{
+      display:flex;align-items:center;gap:10px;width:100%;
+      padding:7px 10px;border-radius:var(--radius-row);
+      color:var(--on-surface);font-size:13px;line-height:1.2;
+    }
+    .row .label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .row .right{font-size:11px;color:var(--on-surface-muted);display:flex;align-items:center;gap:4px;flex-shrink:0;max-width:55%}
+    .row .right .val{color:var(--on-surface);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px}
+    .row .right .chev{color:var(--on-surface-soft);font-size:9px}
+    .row .right .hotkey{
+      font-family:ui-monospace,"SF Mono",Consolas,monospace;
+      font-size:10px;color:var(--on-surface-soft);
+      padding:1px 5px;border-radius:3px;background:rgba(26,45,74,.06);
+    }
+    .row.hover{background:var(--primary-soft)}
+    .row.danger{color:var(--danger)}
+    .row.danger .ico{color:var(--danger)}
+    .sep{height:1px;margin:4px 8px;background:var(--outline-variant)}
+    .subhead{padding:2px 10px;font-size:10px;font-weight:700;color:var(--on-surface-muted);letter-spacing:.05em;text-transform:uppercase}
+
+    /* ===== Annotation column ===== */
+    .notes{
+      background:var(--surface);border:1px solid var(--outline-variant);
+      border-radius:12px;padding:14px;font-size:12px;line-height:1.6;
+    }
+    .notes h3{margin:0 0 8px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px}
+    .notes h3 .dot{width:6px;height:6px;border-radius:50%;background:var(--primary)}
+    .notes h3 .dot.a{background:#2a9cc4}
+    .notes h3 .dot.b{background:#7a5af8}
+    .notes h3 .dot.c{background:#22a06b}
+    .notes ul{margin:0;padding-left:18px}
+    .notes li{margin-bottom:4px;color:var(--on-surface)}
+    .notes li code{
+      font-family:ui-monospace,"SF Mono",Consolas,monospace;
+      font-size:11px;background:rgba(26,45,74,.06);padding:1px 4px;border-radius:3px;color:var(--on-surface);
+    }
+    .notes .arch{
+      margin-top:10px;padding:8px;background:#f8fafc;border-radius:6px;
+      font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:10.5px;line-height:1.5;
+      color:#334155;border:1px dashed var(--outline-variant);white-space:pre;overflow-x:auto;
+    }
+    .notes .verdict{
+      margin-top:10px;padding:8px 10px;background:var(--primary-soft);border-radius:6px;
+      font-size:11.5px;color:#0e5a78;line-height:1.5;
+    }
+
+    /* ============== VERSION A: Status Dashboard ============== */
+    .v-a .status-hero{
+      margin:4px;padding:11px 12px 9px;
+      background:linear-gradient(135deg,#fff 0%,var(--primary-soft) 100%);
+      border:1px solid var(--outline-variant);border-radius:10px;
+    }
+    .v-a .status-hero .top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+    .v-a .status-hero .title{font-size:13px;font-weight:700;flex:1;min-width:0}
+    .v-a .status-hero .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px}
+    .v-a .status-hero .field{display:flex;flex-direction:column;gap:1px;min-width:0}
+    .v-a .status-hero .field .k{font-size:9.5px;color:var(--on-surface-muted);font-weight:500;letter-spacing:.04em}
+    .v-a .status-hero .field .v{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .v-a .action-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:2px 6px}
+    .v-a .action-btn{
+      display:flex;align-items:center;gap:8px;padding:10px 11px;
+      background:rgba(42,156,196,.06);border:1px solid transparent;
+      border-radius:8px;cursor:pointer;transition:background .14s;
+    }
+    .v-a .action-btn:hover{background:var(--primary-soft);border-color:var(--primary-soft)}
+    .v-a .action-btn .ico{width:18px;height:18px}
+    .v-a .action-btn .ico svg{width:18px;height:18px}
+    .v-a .action-btn .lbl{font-size:12.5px;font-weight:600;flex:1}
+    .v-a .action-btn .hk{font-size:9.5px;color:var(--on-surface-soft);font-family:ui-monospace,monospace;opacity:0;transition:opacity .14s}
+    .v-a .action-btn:hover .hk{opacity:1}
+    .v-a .action-btn.primary{background:linear-gradient(135deg,var(--primary) 0%,#1e87ad 100%);color:#fff}
+    .v-a .action-btn.primary .ico{color:#fff}
+    .v-a .action-btn.primary .lbl{color:#fff}
+    .v-a .action-btn.primary .hk{color:rgba(255,255,255,.7)}
+    .v-a .action-btn.primary:hover{filter:brightness(1.05)}
+    .v-a .nav-row .right .val::after{
+      content:'';display:inline-block;width:6px;height:6px;border-radius:50%;
+      background:var(--orange);margin-left:6px;vertical-align:middle;
+    }
+    .v-a .footer-row{display:flex;align-items:center;justify-content:space-between;padding:4px 10px 6px}
+    .v-a .footer-row .mini{display:flex;align-items:center;gap:5px;color:var(--on-surface-muted);font-size:11px;cursor:pointer;padding:3px 6px;border-radius:5px}
+    .v-a .footer-row .mini:hover{background:rgba(26,45,74,.05)}
+    .v-a .footer-row .mini .ico{width:13px;height:13px;color:var(--on-surface-muted)}
+    .v-a .footer-row .mini .ico svg{width:13px;height:13px}
+    .v-a .footer-row .quit:hover{background:var(--danger-soft);color:var(--danger)}
+    .v-a .footer-row .quit:hover .ico{color:var(--danger)}
+
+    /* ============== VERSION B: Compact Power-User ============== */
+    .v-b .status-pill{
+      display:flex;align-items:center;gap:8px;
+      margin:4px 4px 2px;padding:7px 11px;
+      background:var(--primary-soft);border-radius:8px;
+    }
+    .v-b .status-pill .ttl{font-size:12.5px;font-weight:700;flex:1}
+    .v-b .row.compact{padding:5px 10px}
+    .v-b .row .right .inline-switch{
+      display:inline-flex;align-items:center;gap:3px;font-size:11px;
+    }
+    .v-b .row .right .inline-switch .arr{
+      width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;
+      color:var(--on-surface-soft);border-radius:3px;
+    }
+    .v-b .row .right .inline-switch .arr:hover{background:rgba(26,45,74,.08);color:var(--on-surface)}
+    .v-b .row .right .inline-switch .v{font-weight:600;color:var(--on-surface);min-width:46px;text-align:center}
+    .v-b .footer{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:4px 10px 5px;margin-top:2px;border-top:1px solid var(--outline-variant);
+    }
+    .v-b .footer .left{display:flex;align-items:center;gap:10px}
+    .v-b .footer .mini-link{display:flex;align-items:center;gap:4px;color:var(--on-surface-muted);font-size:10.5px;cursor:pointer;padding:2px 5px;border-radius:4px}
+    .v-b .footer .mini-link:hover{background:rgba(26,45,74,.05);color:var(--on-surface)}
+    .v-b .footer .ver{font-size:9.5px;color:var(--on-surface-soft);font-family:ui-monospace,monospace}
+    .v-b .footer .mini-link.quit:hover{background:var(--danger-soft);color:var(--danger)}
+
+    /* ============== VERSION C: Sectioned Adaptive ============== */
+    .v-c .section{margin:3px 4px;border:1px solid var(--outline-variant);border-radius:9px;overflow:hidden;background:var(--surface)}
+    .v-c .section-head{
+      display:flex;align-items:center;gap:7px;padding:7px 10px;cursor:pointer;
+      background:rgba(26,45,74,.02);
+    }
+    .v-c .section-head:hover{background:rgba(26,45,74,.05)}
+    .v-c .section-head .chev{font-size:9px;color:var(--on-surface-soft);transition:transform .15s}
+    .v-c .section.expanded .section-head .chev{transform:rotate(90deg)}
+    .v-c .section-head .ttl{font-size:12px;font-weight:700;flex:1}
+    .v-c .section-head .summary{font-size:10.5px;color:var(--on-surface-muted);font-weight:500}
+    .v-c .section-body{padding:5px 5px 7px;background:var(--surface)}
+    .v-c .section.collapsed .section-body{display:none}
+    .v-c .mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:0 4px 3px}
+    .v-c .mini-btn{
+      display:flex;align-items:center;gap:7px;padding:7px 9px;
+      background:rgba(42,156,196,.05);border-radius:6px;font-size:11.5px;font-weight:600;
+    }
+    .v-c .mini-btn.primary{background:linear-gradient(135deg,var(--primary) 0%,#1e87ad 100%);color:#fff}
+    .v-c .mini-btn.primary .ico{color:#fff}
+    .v-c .mini-btn .ico{width:14px;height:14px}
+    .v-c .mini-btn .ico svg{width:14px;height:14px}
+    .v-c .agent-bar{
+      margin:4px 6px 6px;padding:6px 9px;background:rgba(0,163,255,.06);border-radius:6px;
+      display:flex;align-items:center;gap:8px;font-size:11px;
+    }
+    .v-c .agent-bar .track{flex:1;height:4px;background:rgba(0,163,255,.15);border-radius:2px;overflow:hidden;position:relative}
+    .v-c .agent-bar .track::after{content:'';position:absolute;left:0;top:0;bottom:0;width:62%;background:var(--primary);border-radius:2px}
+    .v-c .agent-bar .lbl{font-weight:600;color:#0e7490}
+    .v-c .agent-bar .pct{font-family:ui-monospace,monospace;font-size:10px;color:#0e7490;font-weight:700}
+
+    /* ====== Side note callouts on mockup ====== */
+    .callout{
+      position:absolute;background:#fff;border:1px solid var(--outline-variant);
+      border-radius:6px;padding:5px 8px;font-size:10.5px;color:var(--on-surface);
+      box-shadow:var(--shadow-soft);max-width:140px;line-height:1.4;
+    }
+    .callout::before{content:'';position:absolute;width:8px;height:8px;background:#fff;border-left:1px solid var(--outline-variant);border-bottom:1px solid var(--outline-variant);transform:rotate(45deg)}
+    .callout .em{color:var(--primary);font-weight:700}
+    .callout .ar{color:var(--orange);font-weight:700}
+
+    .menu-frame{position:relative}
+  </style>
+</head>
+<body>
+
+  <h1>托盘菜单重构 · 三个原型对照</h1>
+  <p class="lede">
+    三个版本共用同一套后端数据契约（paused / triggerKey / engine / mic / agent / schemes / modes），
+    但 UI 信息架构和前端组件模型不同。<b>红色点</b> = 行为 / 状态信号点，<b>蓝色文字</b> = 架构改动关键词。
+  </p>
+
+  <div class="grid">
+
+    <!-- ====================== VERSION A ====================== -->
+    <div class="col">
+      <div class="col-head">
+        <span class="tag">A</span>
+        <h2>状态仪表盘</h2>
+        <span class="sub">Status Dashboard</span>
+      </div>
+
+      <div class="menu-frame">
+        <div class="menu-shell v-a">
+          <!-- HERO STATUS CARD -->
+          <div class="status-hero">
+            <div class="top">
+              <span class="pulse is-listening"></span>
+              <span class="title">监听中 · 双击触发</span>
+              <span class="chip">已就绪</span>
+            </div>
+            <div class="field-grid">
+              <div class="field"><span class="k">触发键</span><span class="v">HID_R03 80</span></div>
+              <div class="field"><span class="k">触发方式</span><span class="v">双击</span></div>
+              <div class="field"><span class="k">引擎</span><span class="v">Vosk</span></div>
+              <div class="field"><span class="k">麦克风</span><span class="v">默认 · 开麦中</span></div>
+            </div>
+          </div>
+
+          <div class="sep"></div>
+
+          <!-- 2x2 ACTION GRID -->
+          <div class="action-grid">
+            <div class="action-btn primary">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></span>
+              <span class="lbl">暂停监听</span>
+              <span class="hk">⌥⇧P</span>
+            </div>
+            <div class="action-btn">
+              <span class="ico green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+              <span class="lbl">测试一次</span>
+              <span class="hk">⌥⇧T</span>
+            </div>
+            <div class="action-btn">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4"/></svg></span>
+              <span class="lbl">静音麦克风</span>
+              <span class="hk">⌥⇧M</span>
+            </div>
+            <div class="action-btn">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2v4h4"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M7 22v-4H3"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg></span>
+              <span class="lbl">切下一习惯</span>
+              <span class="hk">⌥⇧L</span>
+            </div>
+          </div>
+
+          <div class="sep"></div>
+
+          <!-- NAV ROWS WITH CHANGED INDICATOR -->
+          <div class="row nav-row" style="padding:5px 10px">
+            <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg></span>
+            <span class="label">当前习惯</span>
+            <span class="right"><span class="val">HID_R03_80 - RAlt</span><span class="chev">▸</span></span>
+          </div>
+          <div class="row" style="padding:5px 10px">
+            <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h14"/></svg></span>
+            <span class="label">触发方式</span>
+            <span class="right"><span class="val">双击</span><span class="chev">▸</span></span>
+          </div>
+
+          <div class="sep"></div>
+
+          <!-- COMPACT FOOTER -->
+          <div class="footer-row">
+            <div style="display:flex;gap:2px">
+              <span class="mini"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></span>设置</span>
+              <span class="mini"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M9 5V3h6v2"/></svg></span>主窗口</span>
+            </div>
+            <span class="mini quit">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></span>
+              退出
+            </span>
+          </div>
+        </div>
+
+        <div class="callout" style="top:14px;right:-148px">
+          <span class="em">2×2 动作网格</span><br/>
+          暂停/测试/静音/切习惯 —— vibecoder 最高频 4 个动作，一眼可达
+        </div>
+        <div class="callout" style="top:212px;right:-148px">
+          <span class="ar">橙色点</span> = 习惯已变更未生效，点击进入二级
+        </div>
+      </div>
+
+      <div class="notes">
+        <h3><span class="dot a"></span>架构改动</h3>
+        <ul>
+          <li>拆 <code>tray_menu_init_json</code> → 4 个 <code>assemble_*</code> 函数；顶层 JSON 变 <code>{status, actions, context, system}</code></li>
+          <li>前端用 Web Components：<code>&lt;tray-status-card&gt;</code> / <code>&lt;tray-action-grid&gt;</code> / <code>&lt;tray-nav-row&gt;</code></li>
+          <li><code>tray-mic-poll</code> 改为事件驱动 + 60s 心跳；patch 只发变更 segment</li>
+          <li>新增 <code>tray_events</code> 模块 publish 状态变化（<code>mic_changed</code> / <code>scheme_changed</code>）</li>
+        </ul>
+        <div class="arch">tray_events::publish(MicChanged)
+  → tray::refresh_segment("mic")
+  → menu_win.eval("__tray_patch_seg__('mic',{...})")
+  → &lt;tray-status-card&gt;.mic = {...}</div>
+        <div class="verdict"><b>推荐场景：</b>多 IDE 多 Agent 切换频繁的重度用户；<br/>刚装看的"产品感"最强。<b>改动量：中</b>。</div>
+      </div>
+    </div>
+
+    <!-- ====================== VERSION B ====================== -->
+    <div class="col">
+      <div class="col-head">
+        <span class="tag">B</span>
+        <h2>紧凑单列</h2>
+        <span class="sub">Compact Power-User</span>
+      </div>
+
+      <div class="menu-frame">
+        <div class="menu-shell v-b">
+          <!-- COMPACT STATUS PILL -->
+          <div class="status-pill">
+            <span class="pulse is-listening"></span>
+            <span class="ttl">监听中 · 双击 · Vosk</span>
+            <span class="chip">已就绪</span>
+          </div>
+
+          <div style="height:3px"></div>
+
+          <div class="row compact">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M9 5V3h6v2"/></svg></span>
+            <span class="label">打开主窗口</span>
+            <span class="right"><span class="hotkey">Ctrl+M</span></span>
+          </div>
+          <div class="row compact hover">
+            <span class="ico green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+            <span class="label">测试一次触发</span>
+            <span class="right"><span class="hotkey">Shift+F10</span></span>
+          </div>
+          <div class="row compact">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></span>
+            <span class="label">暂停监听</span>
+            <span class="right"><span class="hotkey">Alt+Shift+P</span></span>
+          </div>
+          <div class="row compact">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4"/></svg></span>
+            <span class="label">静音麦克风</span>
+            <span class="right"><span class="hotkey">Alt+Shift+M</span></span>
+          </div>
+          <div class="row compact">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2v4h4"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M7 22v-4H3"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg></span>
+            <span class="label">轮换到下一习惯</span>
+            <span class="right"><span class="hotkey">Alt+L</span></span>
+          </div>
+
+          <div class="sep"></div>
+
+          <div class="row compact">
+            <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg></span>
+            <span class="label">当前习惯</span>
+            <span class="right">
+              <span class="inline-switch">
+                <span class="arr">‹</span>
+                <span class="v">RAIt</span>
+                <span class="arr">›</span>
+              </span>
+            </span>
+          </div>
+          <div class="row compact">
+            <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h14"/></svg></span>
+            <span class="label">触发方式</span>
+            <span class="right">
+              <span class="inline-switch">
+                <span class="arr">‹</span>
+                <span class="v">双击</span>
+                <span class="arr">›</span>
+              </span>
+            </span>
+          </div>
+
+          <div class="footer">
+            <div class="left">
+              <span class="mini-link"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2"/></svg>设置</span>
+              <span class="mini-link"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 12h6M12 9v6"/></svg>添加</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="mini-link quit"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/></svg>退出</span>
+              <span class="ver">v0.4.2</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout" style="top:8px;right:-152px">
+          <span class="em">36px 状态 pill</span> 替代原 110px 状态卡<br/>总高从 410px 压到 320px
+        </div>
+        <div class="callout" style="top:230px;right:-152px">
+          <span class="em">‹ ›</span> inline 切换器 —— 不再跳二级页
+        </div>
+      </div>
+
+      <div class="notes">
+        <h3><span class="dot b"></span>架构改动</h3>
+        <ul>
+          <li>后端字段归一化为 <code>items: MenuItem[]</code>，<code>MenuItem = {id, icon, label, value?, action?, payload?, hotkey?, danger?}</code></li>
+          <li>删掉 <code>renderSchemes</code> / <code>renderModes</code> 三个 render 函数 —— 全部走单 <code>&lt;tray-row&gt;</code></li>
+          <li>inline 切换器状态 = 哪个 item <code>expanded</code>，不切 view</li>
+          <li>引入 <code>tray_menu.schema.ts</code>（specta/ts-rs）前后端共享类型</li>
+          <li>poll 保留 2s 但 payload 走 <b>JSON diff</b>，前端只 patch 变更的 DOM 节点</li>
+        </ul>
+        <div class="arch">#[derive(Serialize, Deserialize)]
+struct MenuItem {
+  id: String, icon: IconId,
+  label: String, value: Option&lt;String&gt;,
+  action: Option&lt;String&gt;,
+  payload: Option&lt;Json&gt;,
+  hotkey: Option&lt;String&gt;,
+  danger: bool,
+}</div>
+        <div class="verdict"><b>推荐场景：</b>v1 重构首选；键盘流 / 极简主义；<br/>改动最小、风险最低。<b>改动量：小</b>。</div>
+      </div>
+    </div>
+
+    <!-- ====================== VERSION C ====================== -->
+    <div class="col">
+      <div class="col-head">
+        <span class="tag">C</span>
+        <h2>分区可折叠</h2>
+        <span class="sub">Sectioned & Adaptive</span>
+      </div>
+
+      <div class="menu-frame">
+        <div class="menu-shell v-c" style="padding:4px">
+
+          <!-- SECTION 1: STATUS (always expanded) -->
+          <div class="section expanded">
+            <div class="section-head">
+              <span class="chev">▸</span>
+              <span class="ttl">状态</span>
+              <span class="summary">监听中 · 双击</span>
+            </div>
+            <div class="section-body">
+              <div class="row" style="padding:4px 8px">
+                <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="8" cy="12" r="1.5" fill="currentColor"/><circle cx="16" cy="12" r="1.5" fill="currentColor"/></svg></span>
+                <span class="label" style="font-size:11.5px">触发键</span>
+                <span class="right"><span class="val" style="font-size:11.5px">HID_R03 80</span></span>
+              </div>
+              <div class="row" style="padding:4px 8px">
+                <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></span>
+                <span class="label" style="font-size:11.5px">麦克风</span>
+                <span class="right"><span class="val" style="font-size:11.5px">默认 · 开麦中</span></span>
+              </div>
+              <div class="agent-bar">
+                <span class="lbl">Cursor</span>
+                <span class="track"></span>
+                <span class="pct">62%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION 2: ACTIONS (always expanded) -->
+          <div class="section expanded">
+            <div class="section-head">
+              <span class="chev">▸</span>
+              <span class="ttl">控制</span>
+              <span class="summary">3 个快捷动作</span>
+            </div>
+            <div class="section-body">
+              <div class="mini-grid">
+                <div class="mini-btn primary">
+                  <span class="ico"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></span>
+                  暂停
+                </div>
+                <div class="mini-btn">
+                  <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+                  测试
+                </div>
+                <div class="mini-btn">
+                  <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg></span>
+                  静音
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION 3: CONTEXT (collapsed) -->
+          <div class="section collapsed">
+            <div class="section-head">
+              <span class="chev">▸</span>
+              <span class="ttl">上下文</span>
+              <span class="summary">RAIt · 双击 · Vosk</span>
+            </div>
+          </div>
+
+          <!-- SECTION 4: SYSTEM (collapsed) -->
+          <div class="section collapsed">
+            <div class="section-head">
+              <span class="chev">▸</span>
+              <span class="ttl">系统</span>
+              <span class="summary">设置 · 退出 · v0.4.2</span>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="callout" style="top:6px;right:-156px">
+          <span class="em">4 个 section</span>，每个 section = 标题行 + 折叠内容<br/>摘要灰字 = section 当前状态
+        </div>
+        <div class="callout" style="top:172px;right:-156px">
+          折叠状态记忆 localStorage<br/>下次打开保持你的偏好
+        </div>
+      </div>
+
+      <div class="notes">
+        <h3><span class="dot c"></span>架构改动</h3>
+        <ul>
+          <li>后端 <code>tray_menu_init_json</code> 拆为 <code>tray_menu_state</code>（只发状态）和 <code>tray_menu_structure</code>（注册制）</li>
+          <li>新增 <code>tray_section_registry</code>：<code>register(SectionId::Status, render_fn)</code>，添加新能力只需注册一个 section</li>
+          <li>前端完全组件化：<code>&lt;tray-section-status&gt;</code> / <code>&lt;tray-section-actions&gt;</code> / <code>&lt;tray-section-context&gt;</code> / <code>&lt;tray-section-system&gt;</code></li>
+          <li>通讯用 <code>Event&lt;T&gt;</code> 推送（复用 <code>runtime_status_protocol</code> 模式），只发变更，不再 <code>__tray_init__</code> 全量</li>
+          <li>mac 的 <b>Agent 进度条</b>作为 <code>Status</code> section 子项横条，可选关</li>
+        </ul>
+        <div class="arch">tray_section_registry
+  .register("status",   StatusSection)
+  .register("actions",  ActionsSection)
+  .register("context",  ContextSection)
+  .register("system",   SystemSection);
+
+Section {
+  id, title, summary,
+  render: Box&lt;dyn Fn(&State) -&gt; View&gt;,
+  collapsible: bool, default_open: bool,
+}</div>
+        <div class="verdict"><b>推荐场景：</b>产品稳定后，往 tray 堆更多能力<br/>（项目救急 / Agent 切换 / 统计入口）。<b>改动量：大</b>。</div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

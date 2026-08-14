@@ -210,7 +210,8 @@ pub fn ingest_hook_model(
         AgentKind::Cursor if raw.eq_ignore_ascii_case("default") => ("Auto".into(), "low"),
         AgentKind::Cursor => (raw.to_string(), "medium"),
         AgentKind::MiniMax => (raw.to_string(), "low"),
-        AgentKind::CopilotCli => return,
+        AgentKind::CopilotCli | AgentKind::Gemini => return,
+        AgentKind::Cline | AgentKind::OpenCode | AgentKind::Aider => return,
         AgentKind::WorkBuddy | AgentKind::Trae | AgentKind::Qoder => (raw.to_string(), "low"),
     };
     let mut g = store().lock().unwrap_or_else(|e| e.into_inner());

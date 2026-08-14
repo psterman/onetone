@@ -146,9 +146,10 @@ fn probe_kind(
             &mut evidence,
             QODER_APP_TARGET_ID,
             &["Qoder", "QoderCN"],
-            &[".qoder/settings.json"],
+            &[".qoder/settings.json", ".qoder-cn/settings.json"],
         ),
-        AgentKind::CopilotCli => {}
+        AgentKind::CopilotCli | AgentKind::Gemini | AgentKind::Cline | AgentKind::OpenCode
+        | AgentKind::Aider => {}
     }
 
     let (presence, confidence) = classify_evidence(&evidence, running);
@@ -334,7 +335,11 @@ fn mapping_flags(cfg: &VoiceConfig, kind: AgentKind) -> (bool, bool) {
             AgentKind::Trae => pad.trae_status_lights_enabled,
             AgentKind::Qoder => pad.qoder_status_lights_enabled,
             AgentKind::MiniMax => pad.minimax_status_lights_enabled,
-            AgentKind::CopilotCli => false,
+            AgentKind::CopilotCli => pad.copilot_status_lights_enabled,
+            AgentKind::Gemini => pad.gemini_status_lights_enabled,
+            AgentKind::Cline => pad.cline_status_lights_enabled,
+            AgentKind::OpenCode => pad.opencode_status_lights_enabled,
+            AgentKind::Aider => pad.aider_status_lights_enabled,
         };
         if on {
             light = true;
