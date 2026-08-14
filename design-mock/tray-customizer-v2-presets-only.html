@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>托盘定制 · Presets Only 预览</title>
+  <style>
+    :root{
+      --bg:#eef2f7;--surface:#fff;--surface-2:#f8fafc;--primary:#2a9cc4;--primary-soft:#e6f7fc;--primary-deep:#1e87ad;
+      --on-surface:#152238;--on-surface-muted:#5a7086;--outline:rgba(26,45,74,.12);
+      --green:#2e7d4f;--green-soft:rgba(46,125,79,.10);--blue:#00a3ff;--blue-soft:rgba(0,163,255,.10);
+      --purple:#6d4ab0;--purple-soft:rgba(109,74,176,.10);--orange:#b9530a;--radius:12px;--shadow:0 10px 28px rgba(26,45,74,.14);
+      font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;padding:32px;background:var(--bg);color:var(--on-surface);display:flex;flex-direction:column;align-items:center;gap:16px}
+    h1{font-size:18px;margin:0;font-weight:800}
+    .sub{font-size:12px;color:var(--on-surface-muted);margin:0}
+    .page{width:720px;background:var(--surface);border:1px solid var(--outline);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+    .top{padding:10px 14px;background:var(--surface-2);border-bottom:1px solid var(--outline);display:flex;align-items:center;justify-content:space-between}
+    .top .bc{font-size:11px;color:var(--on-surface-muted)}.top .bc b{color:var(--on-surface)}
+    .flow{display:flex;border-bottom:1px solid var(--outline)}
+    .node{flex:1;padding:8px;text-align:center;font-size:10px;border-right:1px solid var(--outline)}
+    .node.on{background:var(--primary-soft);border-bottom:2px solid var(--primary);font-weight:700}
+    .body{display:grid;grid-template-columns:1fr 280px;min-height:420px}
+    .preview{background:#1a2332;padding:16px;display:flex;flex-direction:column;align-items:center;gap:10px}
+    .preview .lbl{font-size:10px;color:#94a3b8;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+    .tray{width:316px;background:#fff;border-radius:12px;padding:5px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+    .hero{margin:4px;padding:10px 12px;background:linear-gradient(135deg,#fff,var(--blue-soft));border:1px solid var(--outline);border-radius:10px;display:flex;gap:8px;align-items:center}
+    .hero .ttl{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:6px}
+    .pulse{width:8px;height:8px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+    .chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+    .chip{font-size:9.5px;padding:1.5px 6px;border-radius:4px;font-weight:600}
+    .chip.b{background:var(--blue-soft);color:#0e7490}.chip.g{background:var(--green-soft);color:var(--green)}
+    .chip.p{background:var(--purple-soft);color:var(--purple)}.chip.a{background:rgba(42,156,196,.15);color:#0e7490;border:1px solid rgba(42,156,196,.35)}
+    .act{padding:8px 10px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--primary-deep));color:#fff;font-size:10px;font-weight:700}
+    .ev{margin:4px 6px;padding:8px 10px;background:var(--surface-2);border:1px solid var(--outline);border-radius:9px;font-size:11px}
+    .ev .h{font-size:9px;color:var(--on-surface-muted);margin-bottom:3px}
+    .ok{font-size:9px;background:var(--green-soft);color:var(--green);padding:1px 5px;border-radius:3px;font-weight:700}
+    .sec{font-size:9px;font-weight:700;color:var(--on-surface-muted);padding:6px 12px 2px;text-transform:uppercase;letter-spacing:.06em}
+    .row{display:flex;gap:8px;padding:6px 10px;margin:0 4px;font-size:12px;align-items:center}
+    .row .m{font-size:10px;color:var(--on-surface-muted)}
+    .mic{margin:4px;padding:6px 10px;background:var(--primary-soft);border-radius:7px;display:flex;font-size:12px;font-weight:700}
+    .ft{padding:5px 8px;border-top:1px solid var(--outline);font-size:10px;color:var(--on-surface-muted);display:flex;justify-content:space-between;margin-top:4px}
+    .panel{padding:14px;border-left:1px solid var(--outline);background:var(--surface-2);display:flex;flex-direction:column;gap:12px}
+    .panel h2{font-size:13px;margin:0;font-weight:800}
+    .panel .hint{font-size:10.5px;color:var(--on-surface-muted);line-height:1.5;margin:0}
+    .presets{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+    .preset{padding:8px 10px;border:1.5px solid var(--outline);border-radius:8px;background:#fff;cursor:pointer;font-size:11px}
+    .preset.on{border-color:var(--primary);background:var(--primary-soft);box-shadow:0 0 0 2px rgba(42,156,196,.2)}
+    .preset b{display:block;font-size:11.5px;margin-bottom:2px}
+    .preset span{font-size:9.5px;color:var(--on-surface-muted)}
+    .grp{background:#fff;border:1px solid var(--outline);border-radius:9px;padding:10px}
+    .grp h3{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--on-surface-muted);margin:0 0 8px}
+    .grp label{display:flex;align-items:center;gap:6px;font-size:11px;margin:5px 0}
+    .save{margin-top:auto;padding:10px;background:linear-gradient(135deg,var(--primary),var(--primary-deep));color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer}
+    .note{font-size:10px;color:var(--on-surface-muted);text-align:center;line-height:1.4}
+  </style>
+</head>
+<body>
+  <h1>托盘菜单定制 · 无 Visual / JSON</h1>
+  <p class="sub">仅 Presets + 内容开关 · 左侧实时预览 · 保存后下次打开托盘生效</p>
+  <div class="page">
+    <div class="top">
+      <div class="bc">虚拟键盘 › <b>托盘菜单定制</b></div>
+      <div style="font-size:10px;color:var(--orange);font-weight:600">未保存</div>
+    </div>
+    <div class="flow">
+      <div class="node">Soft Pad</div>
+      <div class="node">状态灯</div>
+      <div class="node on">托盘定制</div>
+    </div>
+    <div class="body">
+      <div class="preview">
+        <div class="lbl">实时预览</div>
+        <div class="tray">
+          <div class="hero">
+            <div style="flex:1">
+              <div class="ttl"><span class="pulse"></span>监听中</div>
+              <div class="chips">
+                <span class="chip b">语音</span><span class="chip g">按键</span><span class="chip p">Soft Pad</span>
+                <span class="chip a">Codex · 运行中</span>
+              </div>
+            </div>
+            <div class="act">暂停</div>
+          </div>
+          <div class="ev"><div class="h">刚才 · 2s 前 · 语音</div>"打开 main.rs" <span class="ok">已发送</span></div>
+          <div class="sec">通道</div>
+          <div class="row"><div>🎤 语音</div><div class="m" style="margin-left:auto">Vosk · 已就绪</div></div>
+          <div class="row"><div>⌨ 按键</div><div class="m" style="margin-left:auto">右 Alt · 智能连按</div></div>
+          <div class="row"><div>▦ Soft Pad</div><div class="m" style="margin-left:auto">浮层可见</div></div>
+          <div class="mic"><span>🎤 麦克风 · 开</span></div>
+          <div class="ft"><span>主窗口 · 设置 · 诊断</span><span>退出</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>预设</h2>
+        <p class="hint">选一个顺手的布局；下面可微调显示项。</p>
+        <div class="presets">
+          <div class="preset on"><b>默认</b><span>全段 · 4 通道</span></div>
+          <div class="preset"><b>极简</b><span>Hero+事件+Mic</span></div>
+          <div class="preset"><b>力量</b><span>紧凑 · 强调 outcome</span></div>
+          <div class="preset"><b>演示</b><span>录屏 · 大字号</span></div>
+        </div>
+        <div class="grp">
+          <h3>显示项</h3>
+          <label><input type="checkbox" checked/> Hero 状态 + Agent</label>
+          <label><input type="checkbox" checked/> 最近事件</label>
+          <label><input type="checkbox" checked/> 通道行</label>
+          <label><input type="checkbox" checked/> 麦克风</label>
+          <label><input type="checkbox"/> 摄像头</label>
+          <label><input type="checkbox" checked/> Footer 深链</label>
+        </div>
+        <button class="save">保存</button>
+        <p class="note">无主题/JSON 编辑<br/>改动 · 下次打开托盘生效</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

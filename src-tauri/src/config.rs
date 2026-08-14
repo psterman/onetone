@@ -3614,6 +3614,24 @@ pub fn effective_mapping_for_trigger(
     effective
 }
 
+/// Universal / baseline habit row (keys + voice + optional Soft Pad fallback overlay).
+/// Mirrors JS `findGlobalBaselineMapping` — not an app-scenario mapping.
+pub fn find_global_baseline_mapping<'a>(cfg: &'a VoiceConfig) -> Option<&'a MappingEntry> {
+    fn is_baseline(m: &MappingEntry) -> bool {
+        m.id != crate::codex_numpad_layer::SOFT_PAD_GLOBAL_MAPPING_ID
+            && !is_app_scenario_mapping(m)
+    }
+    let active = cfg.active_scene_id.trim();
+    if !active.is_empty() {
+        if let Some(m) = cfg.mappings.iter().find(|m| m.id == active) {
+            if is_baseline(m) {
+                return Some(m);
+            }
+        }
+    }
+    cfg.mappings.iter().find(|m| is_baseline(m))
+}
+
 /// Dedicated app scenario (Codex / custom bind) — not a global row with preset finish chips.
 pub fn is_app_scenario_mapping(m: &MappingEntry) -> bool {
     if !m.app_target_id.trim().is_empty() {

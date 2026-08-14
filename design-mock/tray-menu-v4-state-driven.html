@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>托盘菜单重构 v4 · 全局解耦 + 优先级驱动</title>
+  <style>
+    :root{
+      --bg:#f5f7fa;
+      --surface:#ffffff;
+      --surface-2:#f8fafc;
+      --surface-3:#eef2f7;
+      --primary:#2a9cc4;
+      --primary-soft:#e6f7fc;
+      --primary-deep:#1e87ad;
+      --on-surface:#152238;
+      --on-surface-muted:#5a7086;
+      --on-surface-soft:#8a98a8;
+      --outline-variant:rgba(26,45,74,.10);
+      --outline:rgba(26,45,74,.16);
+      --danger:#dc2626;
+      --danger-soft:rgba(220,38,38,.08);
+      --green:#2e7d4f;
+      --green-soft:rgba(46,125,79,.10);
+      --orange:#b9530a;
+      --orange-soft:rgba(185,83,10,.10);
+      --yellow:#b45309;
+      --yellow-soft:rgba(245,166,35,.16);
+      --purple:#6d4ab0;
+      --purple-soft:rgba(109,74,176,.10);
+      --blue:#00a3ff;
+      --blue-soft:rgba(0,163,255,.10);
+      --radius:12px;
+      --radius-row:8px;
+      --radius-tile:10px;
+      --shadow:0 10px 28px rgba(26,45,74,.18);
+      --shadow-soft:0 4px 12px rgba(26,45,74,.08);
+      font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--on-surface)}
+    body{padding:32px 24px 80px}
+
+    h1{font-size:22px;margin:0 0 4px}
+    .lede{color:var(--on-surface-muted);font-size:13px;margin:0 0 24px;max-width:1180px;line-height:1.6}
+
+    /* ===== Audit block ===== */
+    .audit{
+      max-width:1280px;margin:0 auto 32px;
+      background:var(--surface);border:1px solid var(--outline-variant);border-radius:14px;
+      padding:18px 20px;
+    }
+    .audit h2{font-size:14px;margin:0 0 4px;font-weight:700;display:flex;align-items:center;gap:8px}
+    .audit h2 .pill{font-size:9.5px;background:var(--primary-soft);color:var(--primary);padding:2px 6px;border-radius:4px;letter-spacing:.05em}
+    .audit .desc{color:var(--on-surface-muted);font-size:12px;margin:0 0 14px;line-height:1.55}
+    .audit-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+    .page-card{
+      background:var(--surface-2);border:1px solid var(--outline-variant);border-radius:8px;
+      padding:10px 12px;font-size:11.5px;
+    }
+    .page-card .ph{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-weight:700;color:var(--on-surface)}
+    .page-card .ph .dot{width:6px;height:6px;border-radius:50%;background:var(--primary)}
+    .page-card .ph .dot.dim{background:var(--on-surface-soft)}
+    .page-card .ph .dot.red{background:var(--danger)}
+    .page-card .ph .dot.purple{background:var(--purple)}
+    .page-card .ph .dot.green{background:var(--green)}
+    .page-card ul{margin:0;padding-left:14px;color:var(--on-surface-muted);line-height:1.5}
+    .page-card ul li code{
+      font-family:ui-monospace,monospace;font-size:10.5px;
+      background:rgba(26,45,74,.05);padding:0 3px;border-radius:2px;color:var(--on-surface);
+    }
+    .page-card.core li::marker{color:var(--primary)}
+
+    .matrix{
+      width:100%;border-collapse:collapse;font-size:11.5px;margin-top:6px
+    }
+    .matrix th, .matrix td{
+      padding:7px 9px;text-align:left;border-bottom:1px solid var(--outline-variant)
+    }
+    .matrix th{font-weight:700;color:var(--on-surface-muted);background:var(--surface-2);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em}
+    .matrix td .bar{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:2px;vertical-align:middle}
+    .matrix .tier-1{background:var(--green)}
+    .matrix .tier-2{background:var(--blue)}
+    .matrix .tier-3{background:var(--orange)}
+    .matrix .drop{color:var(--danger);text-decoration:line-through;text-decoration-color:rgba(220,38,38,.4);opacity:.7}
+    .matrix .why{color:var(--on-surface-muted);font-size:10.5px}
+    .matrix .pos{font-family:ui-monospace,monospace;font-size:10.5px;color:var(--primary)}
+
+    /* ===== Three variants ===== */
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;max-width:1280px;margin:0 auto}
+    .col{display:flex;flex-direction:column;gap:14px}
+    .col-head{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+    .col-head .tag{
+      font-size:10px;font-weight:700;letter-spacing:.05em;padding:2px 8px;border-radius:4px;
+      background:var(--primary-soft);color:var(--primary);text-transform:uppercase;
+    }
+    .col-head h2{font-size:15px;margin:0;font-weight:700}
+    .col-head .sub{font-size:11px;color:var(--on-surface-muted);margin-left:auto}
+    .col-thesis{font-size:11.5px;color:var(--on-surface-muted);line-height:1.55;padding:0 4px 4px}
+
+    /* shared menu chrome */
+    .menu-shell{
+      width:308px;background:var(--surface);
+      border:1px solid var(--outline-variant);border-radius:var(--radius);
+      box-shadow:var(--shadow);padding:6px;color:var(--on-surface);font-size:13px;
+    }
+    .menu-frame{
+      background:linear-gradient(180deg,#e8eef3 0%,#d3dde6 100%);
+      border-radius:14px;padding:14px 12px;
+      display:flex;justify-content:center;align-items:flex-start;
+      min-height:200px;
+    }
+    .ico{width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;color:var(--primary);flex-shrink:0}
+    .ico svg{display:block;width:14px;height:14px}
+    .ico.muted{color:var(--on-surface-soft)}
+    .ico.green{color:var(--green)}
+    .ico.danger{color:var(--danger)}
+    .ico.orange{color:var(--orange)}
+    .ico.purple{color:var(--purple)}
+    .ico.blue{color:var(--blue)}
+    .sep{height:1px;margin:4px 8px;background:var(--outline-variant)}
+    .row{
+      display:flex;align-items:center;gap:9px;width:100%;
+      padding:6px 10px;border-radius:var(--radius-row);
+      color:var(--on-surface);font-size:12.5px;line-height:1.2;
+    }
+    .row .lbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .row .right{font-size:11px;color:var(--on-surface-muted);display:flex;align-items:center;gap:4px;flex-shrink:0;max-width:55%}
+    .row .right .val{color:var(--on-surface);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px}
+    .row.hover{background:var(--primary-soft)}
+    .row.danger{color:var(--danger)}
+    .pulse{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px var(--green-soft);flex-shrink:0}
+    .pulse.listening{background:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+    .pulse.needs{background:#f5a623;box-shadow:0 0 0 3px var(--yellow-soft)}
+    .pulse.paused{background:var(--orange);box-shadow:0 0 0 3px var(--orange-soft)}
+    .pulse.error{background:var(--danger);box-shadow:0 0 0 3px var(--danger-soft)}
+    .pulse.idle{background:var(--green);box-shadow:0 0 0 3px var(--green-soft)}
+    .chip{font-size:9.5px;padding:1px 6px;border-radius:4px;background:var(--green-soft);color:var(--green);font-weight:600;letter-spacing:.02em;flex-shrink:0}
+    .chip.paused{background:var(--orange-soft);color:var(--orange)}
+    .chip.needs{background:var(--yellow-soft);color:var(--yellow)}
+    .chip.error{background:var(--danger-soft);color:var(--danger)}
+    .chip.neutral{background:rgba(26,45,74,.06);color:var(--on-surface-muted)}
+    .chip.blue{background:var(--blue-soft);color:#0e7490}
+    .chip.purple{background:var(--purple-soft);color:var(--purple)}
+    .footer-bar{
+      display:flex;align-items:center;justify-content:space-between;gap:6px;
+      padding:6px 6px 2px;
+    }
+    .mini-link{
+      display:flex;align-items:center;gap:4px;color:var(--on-surface-muted);
+      font-size:11px;cursor:pointer;padding:4px 6px;border-radius:5px;
+    }
+    .mini-link:hover{background:rgba(26,45,74,.05);color:var(--on-surface)}
+    .mini-link.danger:hover{background:var(--danger-soft);color:var(--danger)}
+    .mini-link .ico{width:12px;height:12px;color:currentColor}
+    .mini-link .ico svg{width:12px;height:12px}
+    .data-feed{
+      background:var(--surface-2);border:1px solid var(--outline-variant);border-radius:8px;
+      padding:8px 10px;font-family:ui-monospace,"SF Mono",Consolas,monospace;
+      font-size:10.5px;line-height:1.55;color:#334155;
+    }
+    .data-feed .k{color:var(--primary);font-weight:700}
+    .data-feed .s{color:#0e7490}
+    .data-feed .n{color:#7c3aed}
+    .data-feed .b{color:#475569;font-weight:700}
+    .data-feed .c{color:#94a3b8;font-style:italic}
+
+    /* ============ VARIANT 1: NOW ============ */
+    .v1 .now-hero{
+      margin:4px;padding:12px 14px;
+      background:linear-gradient(135deg,#fff 0%,var(--blue-soft) 100%);
+      border:1px solid var(--outline-variant);border-radius:11px;
+      text-align:center;
+    }
+    .v1 .now-hero .q{font-size:10.5px;color:var(--on-surface-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
+    .v1 .now-hero .a{font-size:18px;font-weight:800;line-height:1.15;letter-spacing:-.01em}
+    .v1 .now-hero .a .em{color:var(--primary)}
+    .v1 .now-hero .a .ok{color:var(--green)}
+    .v1 .now-hero .a .warn{color:var(--orange)}
+    .v1 .now-hero .a .err{color:var(--danger)}
+    .v1 .now-hero .sub{font-size:11px;color:var(--on-surface-muted);margin-top:4px;display:flex;justify-content:center;align-items:center;gap:6px}
+    .v1 .now-toggles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;padding:3px 6px}
+    .v1 .now-toggles .tb{
+      display:flex;flex-direction:column;align-items:center;gap:3px;
+      padding:8px 6px;border-radius:8px;cursor:pointer;
+      background:rgba(42,156,196,.06);border:1px solid transparent;
+    }
+    .v1 .now-toggles .tb:hover{background:var(--primary-soft);border-color:var(--primary-soft)}
+    .v1 .now-toggles .tb.on{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-deep) 100%);color:#fff}
+    .v1 .now-toggles .tb.on .ico{color:#fff}
+    .v1 .now-toggles .tb.off-mic{background:rgba(220,38,38,.08);color:var(--danger)}
+    .v1 .now-toggles .tb.off-mic .ico{color:var(--danger)}
+    .v1 .now-toggles .tb .ico{width:18px;height:18px}
+    .v1 .now-toggles .tb .ico svg{width:18px;height:18px}
+    .v1 .now-toggles .tb .lbl{font-size:10.5px;font-weight:600}
+    .v1 .channel-strip{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:3px 6px;
+    }
+    .v1 .ch-tile{
+      display:flex;flex-direction:column;align-items:center;gap:3px;
+      padding:7px 4px;border-radius:7px;background:var(--surface-2);
+      border:1px solid var(--outline-variant);font-size:10.5px;
+    }
+    .v1 .ch-tile .ico{width:16px;height:16px}
+    .v1 .ch-tile .ico svg{width:16px;height:16px}
+    .v1 .ch-tile .name{font-weight:600;color:var(--on-surface)}
+    .v1 .ch-tile .stat{font-size:9.5px;color:var(--on-surface-muted);display:flex;align-items:center;gap:3px}
+    .v1 .ch-tile .stat .pulse{width:5px;height:5px;box-shadow:0 0 0 2px transparent}
+    .v1 .feed-collapsed{
+      display:flex;align-items:center;gap:6px;padding:5px 10px;
+      font-size:10.5px;color:var(--on-surface-muted);cursor:pointer;
+    }
+    .v1 .feed-collapsed:hover{color:var(--on-surface)}
+    .v1 .feed-collapsed .chev{font-size:8px}
+    .v1 .feed-collapsed .last{font-family:ui-monospace,monospace;color:var(--on-surface);font-weight:600}
+
+    /* ============ VARIANT 2: STACK ============ */
+    .v2 .state-strip{
+      display:flex;align-items:center;gap:6px;padding:5px 10px;
+      margin:3px 4px;background:var(--surface-2);border-radius:6px;
+      font-size:11px;border:1px solid var(--outline-variant);
+    }
+    .v2 .state-strip .pulse{box-shadow:0 0 0 2px transparent}
+    .v2 .state-strip .msg{font-weight:700;flex:1}
+    .v2 .channel-row{
+      display:flex;align-items:center;gap:9px;
+      padding:7px 10px;margin:0 4px;border-radius:8px;cursor:pointer;
+    }
+    .v2 .channel-row:hover{background:var(--primary-soft)}
+    .v2 .channel-row .icowrap{
+      width:26px;height:26px;border-radius:7px;background:var(--primary-soft);
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    }
+    .v2 .channel-row .icowrap .ico{width:14px;height:14px;color:var(--primary)}
+    .v2 .channel-row .icowrap .ico svg{width:14px;height:14px}
+    .v2 .channel-row .icowrap.voice{background:var(--blue-soft)}
+    .v2 .channel-row .icowrap.voice .ico{color:var(--blue)}
+    .v2 .channel-row .icowrap.keys{background:var(--primary-soft)}
+    .v2 .channel-row .icowrap.softpad{background:var(--purple-soft)}
+    .v2 .channel-row .icowrap.softpad .ico{color:var(--purple)}
+    .v2 .channel-row .icowrap.camera{background:var(--orange-soft)}
+    .v2 .channel-row .icowrap.camera .ico{color:var(--orange)}
+    .v2 .channel-row .body{flex:1;min-width:0}
+    .v2 .channel-row .name{font-size:12.5px;font-weight:700;color:var(--on-surface);line-height:1.1}
+    .v2 .channel-row .meta{font-size:10.5px;color:var(--on-surface-muted);margin-top:1px;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .v2 .channel-row .quick{
+      flex-shrink:0;font-size:10px;padding:3px 7px;border-radius:5px;
+      background:var(--primary-soft);color:var(--primary);font-weight:700;cursor:pointer;
+    }
+    .v2 .channel-row .quick:hover{background:var(--primary);color:#fff}
+    .v2 .channel-row .quick.off{background:rgba(26,45,74,.06);color:var(--on-surface-muted)}
+    .v2 .channel-row .quick.off:hover{background:var(--on-surface-muted);color:#fff}
+    .v2 .channel-row .stat-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+    .v2 .channel-row .stat-dot.on{background:var(--green)}
+    .v2 .channel-row .stat-dot.off{background:var(--on-surface-soft)}
+    .v2 .channel-row .stat-dot.err{background:var(--danger)}
+    .v2 .footer-actions{
+      display:flex;gap:4px;padding:5px 6px 3px;
+    }
+    .v2 .footer-actions .abtn{
+      flex:1;display:flex;align-items:center;justify-content:center;gap:4px;
+      padding:5px 8px;border-radius:6px;font-size:10.5px;font-weight:600;cursor:pointer;
+      background:var(--surface-2);color:var(--on-surface);
+    }
+    .v2 .footer-actions .abtn:hover{background:var(--primary-soft);color:var(--primary)}
+    .v2 .footer-actions .abtn.mic{background:var(--primary-soft);color:var(--primary)}
+    .v2 .footer-actions .abtn.mic.muted{background:var(--danger-soft);color:var(--danger)}
+    .v2 .footer-actions .abtn .ico{width:12px;height:12px}
+    .v2 .footer-actions .abtn .ico svg{width:12px;height:12px}
+
+    /* ============ VARIANT 3: FEED ============ */
+    .v3 .top-pill{
+      display:flex;align-items:center;gap:6px;padding:5px 10px;
+      margin:4px;background:var(--surface-2);border-radius:6px;
+      font-size:11px;font-weight:600;
+    }
+    .v3 .top-pill .pulse{box-shadow:0 0 0 2px transparent}
+    .v3 .top-pill .msg{flex:1}
+    .v3 .feed{display:flex;flex-direction:column;gap:1px;padding:4px 8px}
+    .v3 .feed-item{
+      display:flex;align-items:flex-start;gap:8px;padding:5px 0;
+      border-bottom:1px dashed var(--outline-variant);
+    }
+    .v3 .feed-item:last-child{border-bottom:none}
+    .v3 .feed-item .t{
+      font-family:ui-monospace,monospace;font-size:9.5px;color:var(--on-surface-soft);
+      flex-shrink:0;width:42px;padding-top:1px;
+    }
+    .v3 .feed-item .ic{
+      width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;
+      flex-shrink:0;
+    }
+    .v3 .feed-item .ic.voice{background:var(--blue-soft)}
+    .v3 .feed-item .ic.voice .ico{color:var(--blue)}
+    .v3 .feed-item .ic.keys{background:var(--primary-soft)}
+    .v3 .feed-item .ic.softpad{background:var(--purple-soft)}
+    .v3 .feed-item .ic.softpad .ico{color:var(--purple)}
+    .v3 .feed-item .ic.camera{background:var(--orange-soft)}
+    .v3 .feed-item .ic.camera .ico{color:var(--orange)}
+    .v3 .feed-item .ic.system{background:var(--surface-3)}
+    .v3 .feed-item .ic .ico{width:11px;height:11px}
+    .v3 .feed-item .ic .ico svg{width:11px;height:11px}
+    .v3 .feed-item .body{flex:1;min-width:0;font-size:11px;line-height:1.35}
+    .v3 .feed-item .body .head{font-weight:600;color:var(--on-surface)}
+    .v3 .feed-item .body .desc{color:var(--on-surface-muted);font-size:10px;margin-top:1px}
+    .v3 .feed-item .body .ok{color:var(--green);font-weight:600}
+    .v3 .feed-item .body .err{color:var(--danger);font-weight:600}
+    .v3 .pill-row{display:flex;gap:3px;padding:4px 8px}
+    .v3 .pill-row .p{
+      flex:1;display:flex;align-items:center;justify-content:center;gap:4px;
+      padding:4px 6px;border-radius:5px;font-size:10px;font-weight:600;
+      background:var(--surface-2);color:var(--on-surface-muted);cursor:pointer;
+    }
+    .v3 .pill-row .p.on{background:var(--primary-soft);color:var(--primary)}
+    .v3 .pill-row .p.on .pulse{box-shadow:0 0 0 2px transparent}
+    .v3 .pill-row .p.err{background:var(--danger-soft);color:var(--danger)}
+    .v3 .pill-row .p .pulse{width:5px;height:5px}
+    .v3 .quick-bar{
+      display:flex;gap:4px;padding:3px 6px 2px;
+    }
+    .v3 .quick-bar .qb{
+      flex:1;display:flex;align-items:center;justify-content:center;gap:4px;
+      padding:5px 6px;border-radius:6px;font-size:10.5px;font-weight:600;cursor:pointer;
+    }
+    .v3 .quick-bar .qb.mic{background:var(--primary-soft);color:var(--primary)}
+    .v3 .quick-bar .qb.mic.muted{background:var(--danger-soft);color:var(--danger)}
+    .v3 .quick-bar .qb.pause{background:var(--orange-soft);color:var(--orange)}
+    .v3 .quick-bar .qb.main{background:var(--surface-2);color:var(--on-surface-muted)}
+  </style>
+</head>
+<body>
+
+  <h1>托盘菜单重构 v4 · 全局解耦 + 优先级驱动</h1>
+  <p class="lede">
+    上一版我被"现有菜单能塞什么"困住了。重新出发：先做 <b>8 页内容审计</b> → 列出 <b>数据 × 用户关注度矩阵</b> → 再设计 3 个原型。
+    3 个原型共用同一份 <code>TrayState</code> 数据源，但<b>信息架构完全不同</b>：① 此刻能否用 ② 4 通道骨架 ③ 最近活动流。
+  </p>
+
+  <!-- ============ AUDIT ============ -->
+  <section class="audit">
+    <h2>① 8 页内容审计 <span class="pill">从页面 → 数据</span></h2>
+    <p class="desc">
+      把 8 个一级页面（首页 / 习惯 / 语音 / 按键 / SoftPad / 摄像头 / 设置 / 诊断）所有展示的数据点列出来，
+      标蓝的 = 会被吸入 tray；标灰的 = 仅在主页内消化。
+    </p>
+    <div class="audit-grid">
+      <div class="page-card">
+        <div class="ph"><span class="dot"></span>首页 home</div>
+        <ul class="core">
+          <li>实时听写文字</li>
+          <li><code>voice orb</code> 状态</li>
+          <li>4 通道摘要（v/k/s/c）</li>
+          <li><code>globalMicHub</code> 麦状态</li>
+        </ul>
+        <ul>
+          <li style="opacity:.5">习惯 rail</li>
+          <li style="opacity:.5">stats / pills</li>
+        </ul>
+      </div>
+      <div class="page-card">
+        <div class="ph"><span class="dot dim"></span>习惯 schemes <span style="color:var(--danger);font-size:9px;margin-left:4px">DROP</span></div>
+        <ul>
+          <li>习惯列表</li>
+          <li>当前激活</li>
+          <li style="opacity:.5;text-decoration:line-through">自动匹配开关</li>
+        </ul>
+        <div style="font-size:10px;color:var(--danger);margin-top:4px">用户已确认：<b>由前台 app 自动匹配，tray 不显示</b></div>
+      </div>
+      <div class="page-card">
+        <div class="ph"><span class="dot blue"></span>语音 voice</div>
+        <ul class="core">
+          <li>唤醒词 <code>wake_word</code></li>
+          <li>引擎 <code>engine: vosk/sapi/kws</code></li>
+          <li>引擎健康 <code>engine_state</code></li>
+          <li style="opacity:.5">识别 / 发送 step 详情</li>
+        </ul>
+      </div>
+      <div class="page-card">
+        <div class="ph"><span class="dot"></span>按键 keys</div>
+        <ul class="core">
+          <li>最后触发键 <code>last_trigger</code></li>
+          <li>触发方式 <code>tap/double/hold</code></li>
+          <li>HID 设备 <code>hid_device</code></li>
+          <li style="opacity:.5">按键绑定表</li>
+        </ul>
+      </div>
+      <div class="page-card">
+        <div class="ph"><span class="dot purple"></span>SoftPad</div>
+        <ul class="core">
+          <li>可见性 <code>visible</code></li>
+          <li>模式 <code>auto/force/hidden</code></li>
+          <li style="opacity:.5">按键映射</li>
+        </ul>
+      </div>
+      <div class="page-card">
+        <div class="ph"><span class="dot"></span>摄像头 camera</div>
+        <ul class="core">
+          <li>运行中 <code>running</code></li>
+          <li>隐私 <code>privacy_ok</code></li>
+          <li>当前模式</li>
+          <li style="opacity:.5">手势 / 视线 / 美颜</li>
+        </ul>
+      </div>
+      <div class="page-card">
+        <div class="ph"><span class="dot green"></span>设置 general</div>
+        <ul class="core">
+          <li>开机自启 <code>autostart</code></li>
+          <li style="opacity:.5">声音、主题、托盘等</li>
+        </ul>
+      </div>
+      <div class="page-card">
+        <div class="ph"><span class="dot red"></span>诊断 runtime</div>
+        <ul class="core">
+          <li>最近错误 <code>last_error</code></li>
+          <li style="opacity:.5">完整日志 / 引擎检查</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Priority matrix -->
+    <h2 style="margin-top:18px">② 数据 × 用户关注度矩阵 <span class="pill">从数据 → 优先级</span></h2>
+    <p class="desc">每个数据点按"用户每次打开 menu 会不会关心"打分。5=几乎每次；1=故障时。</p>
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th style="width:30%">数据</th>
+          <th style="width:14%">关注度</th>
+          <th style="width:18%">来源页</th>
+          <th style="width:14%">频次</th>
+          <th style="width:24%">为什么</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>全局状态 (listening/paused/error)</td>
+            <td><span class="bar tier-1"></span><span class="bar tier-1"></span><span class="bar tier-1"></span><span class="bar tier-1"></span><span class="bar tier-1"></span></td>
+            <td>home · runtime</td><td>每次</td>
+            <td class="why">vibecoder 点开 menu 第一问 = "能不能用？"</td></tr>
+        <tr><td>麦克风静音 (privacy)</td>
+            <td><span class="bar tier-1"></span><span class="bar tier-1"></span><span class="bar tier-1"></span><span class="bar tier-1"></span><span class="bar tier-1"></span></td>
+            <td>home (mic hub)</td><td>每次</td>
+            <td class="why">vibecoder 进入会议 / 通话 = 唯一要切的</td></tr>
+        <tr><td>全局暂停 / 恢复</td>
+            <td><span class="bar tier-1"></span><span class="bar tier-1"></span><span class="bar tier-1"></span><span class="bar tier-1"></span><span class="bar tier-1"></span></td>
+            <td>home</td><td>经常</td>
+            <td class="why">演示 / 共享屏幕 / 不想被听到</td></tr>
+        <tr><td>4 通道状态 (voice/keys/softPad/camera)</td>
+            <td><span class="bar tier-1"></span><span class="bar tier-1"></span><span class="bar tier-1"></span><span class="bar tier-1"></span></td>
+            <td>home · voice · keys · softPad · camera</td><td>经常</td>
+            <td class="why">跨 IDE / Agent 切换时知道"哪个输入是活的"</td></tr>
+        <tr><td>最近 1 条事件 (last_event)</td>
+            <td><span class="bar tier-1"></span><span class="bar tier-1"></span><span class="bar tier-1"></span></td>
+            <td>home · runtime</td><td>经常</td>
+            <td class="why">"刚才那句有没有被听到？" — 排错起点</td></tr>
+        <tr><td>打开主窗口</td>
+            <td><span class="bar tier-1"></span><span class="bar tier-1"></span><span class="bar tier-1"></span></td>
+            <td>—</td><td>经常</td>
+            <td class="why">tray = 主页的入口，deep link 是它的核心动作</td></tr>
+        <tr><td>引擎状态 (Vosk 加载完没)</td>
+            <td><span class="bar tier-2"></span><span class="bar tier-2"></span></td>
+            <td>voice · runtime</td><td>故障时</td>
+            <td class="why">唤醒失败 90% 来自这里</td></tr>
+        <tr><td>SoftPad 模式 (auto/force)</td>
+            <td><span class="bar tier-2"></span><span class="bar tier-2"></span></td>
+            <td>softPad</td><td>偶尔</td>
+            <td class="why">"软键盘为什么没出来"</td></tr>
+        <tr><td>摄像头隐私状态</td>
+            <td><span class="bar tier-2"></span><span class="bar tier-2"></span></td>
+            <td>camera</td><td>偶尔</td>
+            <td class="why">摄像头被禁用时（被其它 app 占用）要知道</td></tr>
+        <tr><td>自启 / 声音 / 主题</td>
+            <td><span class="bar tier-3"></span><span class="bar tier-3"></span></td>
+            <td>general · sounds</td><td>极少</td>
+            <td class="why">首次设置时用一次</td></tr>
+        <tr><td class="drop">当前习惯 / 自动匹配</td>
+            <td>—</td>
+            <td>schemes</td><td>—</td>
+            <td class="why" style="color:var(--danger)"><b>DROP</b>：前台 app 自动匹配，tray 不显示</td></tr>
+        <tr><td class="drop">测试一次触发</td>
+            <td>—</td>
+            <td>—</td><td>—</td>
+            <td class="why" style="color:var(--danger)"><b>DROP</b>：测试由 voice/keys 自然触发，菜单里独立测试多余</td></tr>
+        <tr><td class="drop">完整诊断日志</td>
+            <td>—</td>
+            <td>runtime</td><td>—</td>
+            <td class="why" style="color:var(--danger)"><b>DEEP-LINK</b>：跳到主页 → 诊断 tab</td></tr>
+        <tr><td class="drop">8 个 tab 的完整配置</td>
+            <td>—</td>
+            <td>all</td><td>—</td>
+            <td class="why" style="color:var(--danger)"><b>DEEP-LINK</b>：tray 只放 deep link 入口</td></tr>
+        <tr><td>退出</td>
+            <td><span class="bar tier-3"></span></td>
+            <td>—</td><td>极低</td>
+            <td class="why">极少用，但必须可触达（角落小图标）</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ THREE PROTOTYPES ============ -->
+  <div class="grid">
+
+    <!-- ====================== V1: NOW ====================== -->
+    <div class="col">
+      <div class="col-head">
+        <span class="tag">V1</span>
+        <h2>此刻</h2>
+        <span class="sub">Now</span>
+      </div>
+      <p class="col-thesis">
+        一进 menu，<b>一行大字回答"现在能用吗"</b>。所有 toggle / 状态都从这一行的语义派生。
+        适合 vibecoder 早上开机第一眼判断"这玩意儿在跑没"。
+      </p>
+
+      <div class="menu-frame">
+        <div class="menu-shell v1">
+          <!-- HERO: one-line answer -->
+          <div class="now-hero">
+            <div class="q">现在能用吗</div>
+            <div class="a ok">能 · <span class="em">语音 + 软键盘</span> 监听中</div>
+            <div class="sub">
+              <span class="pulse listening"></span>
+              <span>麦克风开 · 引擎 Vosk</span>
+              <span style="color:var(--on-surface-soft)">·</span>
+              <span style="color:var(--on-surface-soft)">2s 前</span>
+            </div>
+          </div>
+
+          <div class="sep"></div>
+
+          <!-- 3 primary toggles -->
+          <div class="now-toggles">
+            <div class="tb on">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></span>
+              <span class="lbl">运行中</span>
+            </div>
+            <div class="tb">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></span>
+              <span class="lbl">麦开</span>
+            </div>
+            <div class="tb">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="8" cy="12" r="1.5" fill="currentColor"/><circle cx="16" cy="12" r="1.5" fill="currentColor"/></svg></span>
+              <span class="lbl">按键</span>
+            </div>
+          </div>
+
+          <div class="sep"></div>
+
+          <!-- 4 channels as compact tiles -->
+          <div class="channel-strip">
+            <div class="ch-tile">
+              <span class="ico blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></span>
+              <span class="name">语音</span>
+              <span class="stat"><span class="pulse listening"></span>Vosk</span>
+            </div>
+            <div class="ch-tile">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="8" cy="12" r="1.5" fill="currentColor"/><circle cx="16" cy="12" r="1.5" fill="currentColor"/></svg></span>
+              <span class="name">按键</span>
+              <span class="stat"><span class="pulse idle"></span>双击</span>
+            </div>
+            <div class="ch-tile">
+              <span class="ico purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="8" cy="7" r="1" fill="currentColor"/><circle cx="12" cy="7" r="1" fill="currentColor"/><circle cx="16" cy="7" r="1" fill="currentColor"/></svg></span>
+              <span class="name">软键</span>
+              <span class="stat"><span class="pulse idle"></span>自动</span>
+            </div>
+            <div class="ch-tile">
+              <span class="ico orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span>
+              <span class="name">摄像</span>
+              <span class="stat" style="color:var(--on-surface-soft)"><span class="pulse" style="background:var(--on-surface-soft);box-shadow:none"></span>关</span>
+            </div>
+          </div>
+
+          <div class="sep"></div>
+
+          <!-- collapsed last event -->
+          <div class="feed-collapsed">
+            <span class="chev">▸</span>
+            <span>最近</span>
+            <span class="last">"打开 main.rs"</span>
+            <span style="color:var(--on-surface-soft)">· 4s 前</span>
+          </div>
+
+          <div class="footer-bar">
+            <div style="display:flex;gap:2px">
+              <span class="mini-link"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M9 5V3h6v2"/></svg></span>主窗口</span>
+              <span class="mini-link"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33"/></svg></span>设置</span>
+            </div>
+            <span class="mini-link danger"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/></svg></span>退出</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="data-feed"><span class="b">tray_state</span>.<span class="k">answer</span>: <span class="s">"能"</span>
+<span class="b">tray_state</span>.<span class="k">active_channels</span>: [<span class="n">voice</span>, <span class="n">softPad</span>]
+<span class="b">tray_state</span>.<span class="k">mic</span>: {<span class="k">muted</span>: <span class="s">false</span>, <span class="k">device</span>: <span class="s">"默认"</span>}
+<span class="b">tray_state</span>.<span class="k">channels</span>.<span class="n">voice</span>.<span class="k">state</span>: <span class="s">"listening"</span>
+<span class="b">tray_state</span>.<span class="k">channels</span>.<span class="n">voice</span>.<span class="k">engine</span>: <span class="s">"vosk"</span>
+<span class="b">tray_state</span>.<span class="k">last_event</span>: {<span class="k">channel</span>: <span class="n">voice</span>, <span class="k">text</span>: <span class="s">"打开 main.rs"</span>, <span class="k">t</span>: <span class="n">-4s</span>}</div>
+
+      <div class="data-feed" style="background:#fff;border-style:solid">
+        <b>架构要点</b><br/>
+        • <code>derive_tray_answer(state) → "能/暂停/出错"</code>：<br/>
+        &nbsp;&nbsp;这是新模块——把多源状态聚合成一句人话<br/>
+        • 4 通道 = <code>ChannelTile[]</code>，每 tile 只读 3 个字段<br/>
+        • hero 答案变化时整个 menu 重绘；toggle / 通道状态走局部 patch
+      </div>
+    </div>
+
+    <!-- ====================== V2: STACK ====================== -->
+    <div class="col">
+      <div class="col-head">
+        <span class="tag">V2</span>
+        <h2>通道</h2>
+        <span class="sub">Stack</span>
+      </div>
+      <p class="col-thesis">
+        4 通道是 voice-pilot 的<b>输入根</b>，把它们做成骨架。每个通道 = 状态点 + 一个 quick action
+        （在 tray 内可做的那一个；详细配置 deep link 到主页对应 tab）。
+      </p>
+
+      <div class="menu-frame">
+        <div class="menu-shell v2">
+          <!-- minimal global state -->
+          <div class="state-strip">
+            <span class="pulse listening"></span>
+            <span class="msg">监听中</span>
+            <span class="chip blue">Voice</span>
+            <span class="chip purple">SoftPad</span>
+          </div>
+
+          <div style="height:3px"></div>
+
+          <!-- 4 channel rows -->
+          <div class="channel-row">
+            <div class="icowrap voice">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></span>
+            </div>
+            <div class="body">
+              <div class="name">语音</div>
+              <div class="meta">Vosk · 唤醒词"嘿 声声"</div>
+            </div>
+            <span class="quick off">停用</span>
+          </div>
+          <div class="channel-row">
+            <div class="icowrap keys">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="8" cy="12" r="1.5" fill="currentColor"/><circle cx="16" cy="12" r="1.5" fill="currentColor"/></svg></span>
+            </div>
+            <div class="body">
+              <div class="name">按键</div>
+              <div class="meta">HID_R03 80 · 双击 · 3s 前触发</div>
+            </div>
+            <span class="quick">按键设置</span>
+          </div>
+          <div class="channel-row">
+            <div class="icowrap softpad">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="8" cy="7" r="1" fill="currentColor"/><circle cx="12" cy="7" r="1" fill="currentColor"/><circle cx="16" cy="7" r="1" fill="currentColor"/></svg></span>
+            </div>
+            <div class="body">
+              <div class="name">虚拟键盘</div>
+              <div class="meta">自动 · 当前未弹出</div>
+            </div>
+            <span class="quick">显示</span>
+          </div>
+          <div class="channel-row">
+            <div class="icowrap camera">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span>
+            </div>
+            <div class="body">
+              <div class="name">摄像头</div>
+              <div class="meta" style="color:var(--on-surface-soft)">未启用 · 隐私：允许</div>
+            </div>
+            <span class="quick">启用</span>
+          </div>
+
+          <div class="sep"></div>
+
+          <!-- 3 footer action buttons (mic / pause / main) -->
+          <div class="footer-actions">
+            <div class="abtn mic">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg></span>
+              麦开
+            </div>
+            <div class="abtn">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></span>
+              暂停
+            </div>
+            <div class="abtn">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/></svg></span>
+              主窗口
+            </div>
+          </div>
+          <div class="footer-bar" style="padding-top:0">
+            <span class="mini-link" style="font-size:10px;padding:2px 6px">诊断</span>
+            <span class="mini-link danger" style="font-size:10px;padding:2px 6px"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/></svg></span>退出</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="data-feed"><span class="b">tray_state</span>.<span class="k">global</span>.<span class="k">mode</span>: <span class="s">"listening"</span>
+<span class="b">tray_state</span>.<span class="k">channels</span>: [
+  {<span class="k">id</span>: <span class="n">"voice"</span>, <span class="k">enabled</span>: <span class="n">true</span>, <span class="k">engine</span>: <span class="s">"vosk"</span>, <span class="k">wake</span>: <span class="s">"嘿 声声"</span>, <span class="k">quick</span>: <span class="s">"disable"</span>},
+  {<span class="k">id</span>: <span class="n">"keys"</span>, <span class="k">enabled</span>: <span class="n">true</span>, <span class="k">device</span>: <span class="s">"HID_R03 80"</span>, <span class="k">mode</span>: <span class="s">"double"</span>, <span class="k">last</span>: <span class="n">-3s</span>, <span class="k">deep_link</span>: <span class="s">"settings/keys"</span>},
+  {<span class="k">id</span>: <span class="n">"softPad"</span>, <span class="k">enabled</span>: <span class="n">true</span>, <span class="k">mode</span>: <span class="s">"auto"</span>, <span class="k">visible</span>: <span class="n">false</span>, <span class="k">quick</span>: <span class="s">"show"</span>},
+  {<span class="k">id</span>: <span class="n">"camera"</span>, <span class="k">enabled</span>: <span class="n">false</span>, <span class="k">running</span>: <span class="n">false</span>, <span class="k">privacy</span>: <span class="s">"ok"</span>, <span class="k">deep_link</span>: <span class="s">"settings/camera"</span>},
+]</div>
+
+      <div class="data-feed" style="background:#fff;border-style:solid">
+        <b>架构要点</b><br/>
+        • <code>Channel</code> 是 first-class：id/icon/state/quick/deep_link<br/>
+        • quick action = tray 内能直接做的（如停用语音、显示软键盘）<br/>
+        • deep link = 必须去主页做的（如改按键绑定）<br/>
+        • 每个 channel 是独立订阅单元，状态变化只 patch 自己那一行
+      </div>
+    </div>
+
+    <!-- ====================== V3: FEED ====================== -->
+    <div class="col">
+      <div class="col-head">
+        <span class="tag">V3</span>
+        <h2>活动</h2>
+        <span class="sub">Feed</span>
+      </div>
+      <p class="col-thesis">
+        vibecoder 编码时最常问"刚才那句被听到没 / 按下去没 / 软键盘出没出来"。
+        把 <b>最近 5 条事件</b>做成主区域，状态和通道 pill 收成次要。
+      </p>
+
+      <div class="menu-frame">
+        <div class="menu-shell v3">
+          <!-- compact state pill -->
+          <div class="top-pill">
+            <span class="pulse listening"></span>
+            <span class="msg">监听中</span>
+            <span class="chip blue">麦克风开</span>
+          </div>
+
+          <div class="sep"></div>
+
+          <!-- activity feed -->
+          <div class="feed">
+            <div class="feed-item">
+              <span class="t">2s 前</span>
+              <div class="ic voice">
+                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg></span>
+              </div>
+              <div class="body">
+                <div class="head">"打开 main.rs"</div>
+                <div class="desc">语音识别 · <span class="ok">已发送</span> · 12 字</div>
+              </div>
+            </div>
+            <div class="feed-item">
+              <span class="t">17s</span>
+              <div class="ic keys">
+                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2"/></svg></span>
+              </div>
+              <div class="body">
+                <div class="head">HID_R03 80 · 双击</div>
+                <div class="desc">按键触发 · 发送给 Cursor</div>
+              </div>
+            </div>
+            <div class="feed-item">
+              <span class="t">1m</span>
+              <div class="ic softpad">
+                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/></svg></span>
+              </div>
+              <div class="body">
+                <div class="head">虚拟键盘弹出</div>
+                <div class="desc">SoftPad · 自动模式 · VS Code 焦点</div>
+              </div>
+            </div>
+            <div class="feed-item">
+              <span class="t">3m</span>
+              <div class="ic system">
+                <span class="ico" style="color:var(--on-surface-soft)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg></span>
+              </div>
+              <div class="body">
+                <div class="head">唤醒词命中</div>
+                <div class="desc">"嘿 声声" · 引擎 Vosk · <span class="ok">已就绪</span></div>
+              </div>
+            </div>
+            <div class="feed-item">
+              <span class="t">5m</span>
+              <div class="ic voice">
+                <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg></span>
+              </div>
+              <div class="body">
+                <div class="head">"再写一个测试"</div>
+                <div class="desc">语音识别 · <span style="color:var(--danger);font-weight:600">未发送</span> · 引擎超时</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sep"></div>
+
+          <!-- 4 channel pills -->
+          <div class="pill-row">
+            <div class="p on"><span class="pulse listening"></span>语音</div>
+            <div class="p on"><span class="pulse idle"></span>按键</div>
+            <div class="p"><span class="pulse" style="background:var(--on-surface-soft);box-shadow:none"></span>软键</div>
+            <div class="p"><span class="pulse" style="background:var(--on-surface-soft);box-shadow:none"></span>摄像</div>
+          </div>
+
+          <!-- quick action bar -->
+          <div class="quick-bar">
+            <div class="qb mic">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>
+              麦开
+            </div>
+            <div class="qb pause">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+              暂停
+            </div>
+            <div class="qb main">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="14" rx="2"/></svg>
+              主窗口
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="data-feed"><span class="b">tray_state</span>.<span class="k">activity</span>: [
+  {<span class="k">t</span>: <span class="n">-2s</span>, <span class="k">ch</span>: <span class="n">voice</span>, <span class="k">text</span>: <span class="s">"打开 main.rs"</span>, <span class="k">status</span>: <span class="s">"ok"</span>},
+  {<span class="k">t</span>: <span class="n">-17s</span>, <span class="k">ch</span>: <span class="n">keys</span>, <span class="k">text</span>: <span class="s">"HID 双击"</span>, <span class="k">status</span>: <span class="s">"ok"</span>},
+  {<span class="k">t</span>: <span class="n">-1m</span>, <span class="k">ch</span>: <span class="n">softPad</span>, <span class="k">text</span>: <span class="s">"软键盘弹出"</span>, <span class="k">status</span>: <span class="s">"ok"</span>},
+  {<span class="k">t</span>: <span class="n">-3m</span>, <span class="k">ch</span>: <span class="n">voice</span>, <span class="k">text</span>: <span class="s">"唤醒词命中"</span>, <span class="k">status</span>: <span class="s">"ok"</span>},
+  {<span class="k">t</span>: <span class="n">-5m</span>, <span class="k">ch</span>: <span class="n">voice</span>, <span class="k">text</span>: <span class="s">"再写一个测试"</span>, <span class="k">status</span>: <span class="s">"fail"</span>},
+]</div>
+
+      <div class="data-feed" style="background:#fff;border-style:solid">
+        <b>架构要点</b><br/>
+        • <code>ActivityBus</code> 已经在 home 有类似实现，复用<br/>
+        • 每条事件带 <code>channel + status + text + t</code><br/>
+        • <b>失败事件高亮</b>（红字），引导用户去诊断<br/>
+        • 通道 pill 只做 "活跃状态" 信号，不承担配置
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClipSharp · 四合一卡扣卷笔刀 · 产品原型与商业规格</title>
+<style>
+  :root {
+    --bg: #fafaf7;
+    --bg-soft: #f1f0ea;
+    --ink: #1a1a1a;
+    --ink-soft: #555;
+    --line: #e6e3da;
+    --accent: #4a9d7c;
+    --accent-soft: #c5e5d4;
+    --warn: #c45f3a;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
+    --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+    --mono: "SF Mono", "JetBrains Mono", Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Layout */
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
+  section { padding: 80px 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; }
+
+  /* Typography */
+  h1, h2, h3, h4 { font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+  h1 { font-size: 56px; line-height: 1.1; }
+  h2 { font-size: 36px; margin-bottom: 16px; }
+  h3 { font-size: 22px; margin-bottom: 12px; }
+  h4 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); margin-bottom: 8px; }
+  p { margin: 0 0 12px; color: var(--ink-soft); }
+  code { font-family: var(--mono); background: var(--bg-soft); padding: 2px 6px; border-radius: 4px; font-size: 0.92em; }
+  a { color: var(--accent); }
+
+  /* Hero */
+  .hero {
+    padding: 64px 0 32px;
+    background: linear-gradient(180deg, #f5f4ee 0%, #fafaf7 100%);
+  }
+  .hero .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+  .hero-meta { display: flex; gap: 12px; margin-bottom: 20px; }
+  .pill { display: inline-block; padding: 5px 12px; background: var(--ink); color: #fff; border-radius: 999px; font-size: 12px; letter-spacing: 0.05em; }
+  .pill.outline { background: transparent; color: var(--ink); border: 1px solid var(--ink); }
+  .hero-sub { font-size: 18px; color: var(--ink-soft); margin: 16px 0 24px; max-width: 480px; }
+  .hero-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 28px; }
+  .stat { padding: 14px 16px; background: #fff; border-radius: var(--radius); border: 1px solid var(--line); }
+  .stat-num { font-size: 22px; font-weight: 600; color: var(--accent); }
+  .stat-label { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+  .hero-image {
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    background: #fff;
+  }
+  .hero-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* Section heading */
+  .sec-head { margin-bottom: 40px; max-width: 720px; }
+  .sec-head h2 { margin-bottom: 8px; }
+  .sec-head p { font-size: 16px; }
+
+  /* Feature grid */
+  .feat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .feat {
+    padding: 24px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .feat:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+  .feat-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    background: var(--accent-soft);
+    margin-bottom: 16px;
+  }
+  .feat-tag { font-size: 11px; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+  .feat h3 { font-size: 18px; margin-bottom: 8px; }
+  .feat p { font-size: 14px; margin: 0; }
+
+  /* Image showcase */
+  .showcase { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  .showcase-main {
+    grid-row: span 2;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: #fff;
+    box-shadow: var(--shadow);
+  }
+  .showcase-main img { width: 100%; height: 100%; object-fit: cover; }
+  .showcase-sub { aspect-ratio: 4 / 3; border-radius: var(--radius); overflow: hidden; background: #fff; box-shadow: var(--shadow); }
+  .showcase-sub img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* Specs table */
+  .specs {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  }
+  .spec-block { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; }
+  .spec-block h3 { font-size: 16px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  table.spec { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.spec td { padding: 8px 0; vertical-align: top; }
+  table.spec td:first-child { color: var(--ink-soft); width: 55%; }
+  table.spec td:last-child { font-weight: 500; text-align: right; font-family: var(--mono); font-size: 13px; }
+
+  /* Color matrix */
+  .color-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  .color-card { aspect-ratio: 1; border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; justify-content: space-between; font-size: 13px; color: #fff; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+  .color-card::before { content: ""; position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,.18); }
+  .color-card .name { font-weight: 600; }
+  .color-card .sku { opacity: .7; font-size: 11px; font-family: var(--mono); }
+  .c1 { background: linear-gradient(135deg, #a8d8c1, #5fb39a); }
+  .c2 { background: linear-gradient(135deg, #f4b5a8, #e87a6a); }
+  .c3 { background: linear-gradient(135deg, #3a3a3a, #1a1a1a); }
+  .c4 { background: linear-gradient(135deg, #b5d8e8, #6a9fd8); }
+  .c5 { background: linear-gradient(135deg, #d8b5e8, #b58fd8); }
+  .c6 { background: linear-gradient(135deg, #f0ead8, #d8c8a8); color: #5a4a2a; }
+
+  /* Image grid */
+  .img-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .img-card { aspect-ratio: 16 / 9; border-radius: var(--radius); overflow: hidden; background: #fff; box-shadow: var(--shadow); }
+  .img-card img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* Cost breakdown */
+  .cost-row { display: flex; align-items: baseline; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed var(--line); }
+  .cost-row:last-child { border-bottom: 0; }
+  .cost-row .label { color: var(--ink-soft); }
+  .cost-row .value { font-family: var(--mono); font-size: 15px; font-weight: 600; }
+  .cost-row.total { padding-top: 16px; border-top: 2px solid var(--ink); border-bottom: 0; }
+  .cost-row.total .value { color: var(--accent); font-size: 22px; }
+
+  /* Pricing tiers */
+  .price-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .price-card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+  .price-card.featured { border-color: var(--accent); border-width: 2px; }
+  .price-channel { font-size: 12px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .price-num { font-size: 24px; font-weight: 600; }
+  .price-num small { font-size: 13px; color: var(--ink-soft); font-weight: 400; }
+  .price-retail { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-soft); }
+  .price-retail b { color: var(--ink); font-family: var(--mono); }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before { content: ""; position: absolute; left: 7px; top: 4px; bottom: 4px; width: 2px; background: var(--line); }
+  .tl-item { position: relative; padding-bottom: 24px; }
+  .tl-item::before { content: ""; position: absolute; left: -24px; top: 6px; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid var(--accent); }
+  .tl-item.major::before { background: var(--accent); }
+  .tl-time { font-size: 12px; color: var(--ink-soft); font-family: var(--mono); margin-bottom: 2px; }
+  .tl-title { font-weight: 600; }
+  .tl-desc { font-size: 14px; color: var(--ink-soft); margin-top: 2px; }
+
+  /* Footer */
+  footer { padding: 48px 0; border-top: 1px solid var(--line); text-align: center; color: var(--ink-soft); font-size: 13px; }
+  footer p { margin: 4px 0; }
+
+  /* TOC */
+  .toc { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 24px; }
+  .toc a { color: var(--ink-soft); text-decoration: none; font-size: 14px; }
+  .toc a:hover { color: var(--accent); }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .hero .wrap, .showcase, .specs, .img-grid { grid-template-columns: 1fr; }
+    .showcase-main { grid-row: auto; }
+    .feat-grid, .color-grid, .price-grid { grid-template-columns: repeat(2, 1fr); }
+    h1 { font-size: 40px; }
+    h2 { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============== HERO ============== -->
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <div class="hero-meta">
+        <span class="pill">v1.0 · 2026-08-14</span>
+        <span class="pill outline">工业设计 + 商业规格</span>
+      </div>
+      <h1>ClipSharp</h1>
+      <p class="hero-sub">一款可卡扣在铅笔上的四合一卷笔刀：<b>卡扣固定 + 桌面停靠 + 卷削 + 橡皮擦</b>。让卷笔刀从"放在笔筒里的工具"变成"长在铅笔上的附件"。</p>
+      <div class="hero-stats">
+        <div class="stat"><div class="stat-num">58 × 26 × 21</div><div class="stat-label">mm 整机尺寸</div></div>
+        <div class="stat"><div class="stat-num">18 g</div><div class="stat-label">净重（≈ 一节 AA 电池）</div></div>
+        <div class="stat"><div class="stat-num">¥6.25</div><div class="stat-label">完全制造成本</div></div>
+        <div class="stat"><div class="stat-num">¥29-39</div><div class="stat-label">建议零售价</div></div>
+        <div class="stat"><div class="stat-num">10,000 次</div><div class="stat-label">卡扣寿命</div></div>
+        <div class="stat"><div class="stat-num">500 次</div><div class="stat-label">刀片削尖寿命</div></div>
+      </div>
+      <nav class="toc">
+        <a href="#concept">产品概念</a>
+        <a href="#modules">四大模块</a>
+        <a href="#id">ID 设计</a>
+        <a href="#colors">颜色矩阵</a>
+        <a href="#dims">尺寸规格</a>
+        <a href="#cost">成本结构</a>
+        <a href="#production">生产工艺</a>
+        <a href="#launch">上市节奏</a>
+      </nav>
+    </div>
+    <div class="hero-image">
+      <img src="prototypes/01-main-render.png" alt="ClipSharp 主图">
+    </div>
+  </div>
+</header>
+
+<!-- ============== 1. CONCEPT ============== -->
+<section id="concept">
+  <div class="wrap">
+    <div class="sec-head">
+      <h4>01 · 核心设计理念</h4>
+      <h2>把"卷笔刀"重新定义成"铅笔的一部分"</h2>
+      <p>把"卷削 + 卡扣 + 停靠 + 橡皮"四个原本分散的桌面功能压缩到 58 × 26 × 21 mm 的笔形块状结构里。铅笔"戴"上它之后——不丢、立得住、不脏、随时擦。</p>
+    </div>
+    <div class="showcase">
+      <div class="showcase-main">
+        <img src="prototypes/03-lifestyle-scene.png" alt="使用场景：铅笔站立在桌面">
+      </div>
+      <div class="showcase-sub">
+        <img src="prototypes/04-dimensions-blueprint.png" alt="尺寸工程图">
+      </div>
+      <div class="showcase-sub">
+        <img src="prototypes/02-exploded-view.png" alt="爆炸图">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== 2. MODULES ============== -->
+<section id="modules">
+  <div class="wrap">
+    <div class="sec-head">
+      <h4>02 · 四大功能模块</h4>
+      <h2>一物四用，每一个都是真需求</h2>
+      <p>不是噱头堆叠，而是把"卷笔刀"用户旅程里的四个真实痛点整合到一个紧凑结构中。</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat">
+        <div class="feat-icon">📎</div>
+        <div class="feat-tag">模块 A · Attach</div>
+        <h3>卡扣固定</h3>
+        <p>侧面弹簧夹适配 7.0-8.5 mm 铅笔，1.0 N 夹持力既不滑落也不卡死。10,000 次夹持寿命。</p>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">⚓</div>
+        <div class="feat-tag">模块 B · Dock</div>
+        <h3>桌面停靠</h3>
+        <p>SUS304 不锈钢 8 g 加权底座，重心 9.5 mm。8° 倾倒临界角度，振动桌面不倒。</p>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">✏️</div>
+        <div class="feat-tag">模块 C · Sharpen</div>
+        <h3>高效卷削</h3>
+        <p>SK5 合金钢螺旋刀片 23° 削尖角，500 次寿命。透明 PC 屑盒 8 ml，可视化容量。</p>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">⌫</div>
+        <div class="feat-tag">模块 D · Erase</div>
+        <h3>弹出橡皮</h3>
+        <p>底部侧推式棘轮，1.5 mm 步进。φ12 mm 高级橡皮，200 次擦除寿命。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== 3. ID DESIGN ============== -->
+<section id="id">
+  <div class="wrap">
+    <div class="sec-head">
+      <h4>03 · 工业设计语言</h4>
+      <h2>现代极简 · 工具的克制美学</h2>
+      <p>圆角矩形块状主体，58 × 26 × 21 mm。R3 mm 外轮廓圆角保证触感柔和，深灰金属 + 彩色塑料的混搭是桌面上一抹亮色。</p>
+    </div>
+    <div class="img-grid">
+      <div class="img-card">
+        <img src="prototypes/05-color-variants.png" alt="6 种颜色矩阵">
+      </div>
+      <div class="img-card">
+        <img src="prototypes/02-exploded-view.png" alt="6 大部件爆炸图">
+      </div>
+    </div>
+    <div style="margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; color: var(--ink-soft); font-size: 14px;">
+      <div><b style="color:var(--ink)">形态：</b>圆角矩形 cuboid + 上窄下宽裙边底座</div>
+      <div><b style="color:var(--ink)">表面：</b>细磨砂哑光（不沾指纹）+ 金属拉丝</div>
+      <div><b style="color:var(--ink)">识别：</b>深灰 PANTONE 426C 统一功能件</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== 4. COLORS ============== -->
+<section id="colors">
+  <div class="wrap">
+    <div class="sec-head">
+      <h4>04 · 颜色 SKU 矩阵</h4>
+      <h2>6 种颜色，覆盖学生到商务全人群</h2>
+      <p>建议首批上 3 色（薄荷绿/哑光黑/樱花粉），验证市场后再补全 SKU。</p>
+    </div>
+    <div class="color-grid">
+      <div class="color-card c1"><div><div class="sku">SKU 01</div><div class="name">薄荷绿 Mint</div></div><div>主推色 · 治愈系</div></div>
+      <div class="color-card c2"><div><div class="sku">SKU 02</div><div class="name">樱花粉 Coral</div></div><div>女性办公</div></div>
+      <div class="color-card c3"><div><div class="sku">SKU 03</div><div class="name">哑光黑 Black</div></div><div>商务 · 男性</div></div>
+      <div class="color-card c4"><div><div class="sku">SKU 04</div><div class="name">天空蓝 Sky</div></div><div>中性 · 学生</div></div>
+      <div class="color-card c5"><div><div class="sku">SKU 05</div><div class="name">薰衣草紫</div></div><div>女性学生</div></div>
+      <div class="color-card c6"><div><div class="sku">SKU 06</div><div class="name">米白 Cream</div></div><div>极简 · 礼品</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== 5. DIMENSIONS ============== -->
+<section id="dims">
+  <div class="wrap">
+    <div class="sec-head">
+      <h4>05 · 尺寸规格与工程参数</h4>
+      <h2>每一个尺寸都经过计算</h2>
+      <p>完整尺寸表见 <a href="docs/02-dimensions-specs.md">docs/02-dimensions-specs.md</a>（PDF 工艺 4 大模块 14 个分项）。</p>
+    </div>
+    <div class="specs">
+      <div class="spec-block">
+        <h3>整机外廓</h3>
+        <table class="spec">
+          <tr><td>总长 L</td><td>58.0 ± 0.2 mm</td></tr>
+          <tr><td>总宽 W</td><td>26.0 ± 0.2 mm</td></tr>
+          <tr><td>总高 H</td><td>21.0 ± 0.2 mm</td></tr>
+          <tr><td>净重</td><td>18.0 ± 1.5 g</td></tr>
+          <tr><td>金属底座配重</td><td>8.0 g（SUS304）</td></tr>
+          <tr><td>塑料件总重</td><td>7.5 g（ABS）</td></tr>
+        </table>
+      </div>
+      <div class="spec-block">
+        <h3>关键功能</h3>
+        <table class="spec">
+          <tr><td>卷削孔径</td><td>8.0 mm</td></tr>
+          <tr><td>削尖斜角</td><td>23°</td></tr>
+          <tr><td>卡扣开口</td><td>8.2 mm</td></tr>
+          <tr><td>夹持力</td><td>1.0 N ± 0.3</td></tr>
+          <tr><td>底座面积</td><td>30 × 28 mm</td></tr>
+          <tr><td>橡皮直径</td><td>12.0 mm</td></tr>
+          <tr><td>屑盒容量</td><td>8.0 ml</td></tr>
+        </table>
+      </div>
+      <div class="spec-block">
+        <h3>性能指标</h3>
+        <table class="spec">
+          <tr><td>卡扣寿命</td><td>≥ 10,000 次</td></tr>
+          <tr><td>刀片削尖寿命</td><td>≥ 500 次</td></tr>
+          <tr><td>橡皮擦寿命</td><td>≥ 200 次</td></tr>
+          <tr><td>倾倒临界角</td><td>≥ 8°</td></tr>
+          <tr><td>跌落</td><td>1.2 m 水泥地不裂</td></tr>
+          <tr><td>工作温度</td><td>-10°C ~ +50°C</td></tr>
+        </table>
+      </div>
+      <div class="spec-block">
+        <h3>包装规格</h3>
+        <table class="spec">
+          <tr><td>单品彩盒</td><td>90 × 60 × 30 mm</td></tr>
+          <tr><td>12 只内盒</td><td>195 × 130 × 95 mm</td></tr>
+          <tr><td>60 只外箱</td><td>480 × 400 × 220 mm</td></tr>
+          <tr><td>单品毛重</td><td>32 g</td></tr>
+          <tr><td>60 箱外箱毛重</td><td>2.4 kg</td></tr>
+          <tr><td>60 箱/托盘</td><td>1.2 × 0.8 × 1.6 m</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== 6. COST ============== -->
+<section id="cost">
+  <div class="wrap">
+    <div class="sec-head">
+      <h4>06 · 成本结构</h4>
+      <h2>单件完全成本 ¥6.25，建议零售 ¥29-39</h2>
+      <p>详细 BOM + 制造成本 + 渠道出厂价见 <a href="docs/03-production-params.md">docs/03-production-params.md</a>。</p>
+    </div>
+    <div class="specs">
+      <div class="spec-block">
+        <h3>单件制造成本拆解</h3>
+        <div class="cost-row"><span class="label">ABS 塑料件（5 件）</span><span class="value">¥1.20</span></div>
+        <div class="cost-row"><span class="label">PC 屑盒</span><span class="value">¥0.30</span></div>
+        <div class="cost-row"><span class="label">金属底座 SUS304</span><span class="value">¥0.50</span></div>
+        <div class="cost-row"><span class="label">弹簧 + 销轴</span><span class="value">¥0.15</span></div>
+        <div class="cost-row"><span class="label">刀片 SK5 合金钢</span><span class="value">¥0.20</span></div>
+        <div class="cost-row"><span class="label">橡皮（外购定制）</span><span class="value">¥0.30</span></div>
+        <div class="cost-row"><span class="label">其他辅料（硅胶/螺钉）</span><span class="value">¥0.10</span></div>
+        <div class="cost-row"><span class="label">物料合计</span><span class="value">¥2.75</span></div>
+        <div class="cost-row"><span class="label">注塑 + 冲压 + 表面处理</span><span class="value">¥1.20</span></div>
+        <div class="cost-row"><span class="label">装配人工 + 检测 + 包装</span><span class="value">¥0.80</span></div>
+        <div class="cost-row"><span class="label">管理/水电/良率损耗</span><span class="value">¥0.65</span></div>
+        <div class="cost-row"><span class="label">运输 + 关税（如出口）</span><span class="value">¥0.85</span></div>
+        <div class="cost-row total"><span class="label">完全成本（FOB 港口）</span><span class="value">¥6.25</span></div>
+      </div>
+      <div class="spec-block">
+        <h3>渠道价格建议</h3>
+        <p style="font-size:13px; color:var(--ink-soft)">量产 6 万只 / 月，毛利 60-70% 是健康状态。</p>
+        <div class="price-grid" style="grid-template-columns:1fr 1fr;">
+          <div class="price-card">
+            <div class="price-channel">OEM 代工</div>
+            <div class="price-num">¥7.5<small> / 只</small></div>
+            <div class="price-retail">出厂价（不直接面对消费者）</div>
+          </div>
+          <div class="price-card">
+            <div class="price-channel">国内经销</div>
+            <div class="price-num">¥12<small> / 只</small></div>
+            <div class="price-retail">终端 <b>¥19-29</b></div>
+          </div>
+          <div class="price-card featured">
+            <div class="price-channel">电商直销（推荐）</div>
+            <div class="price-num">¥18<small> / 只</small></div>
+            <div class="price-retail">终端 <b>¥29-39</b></div>
+          </div>
+          <div class="price-card">
+            <div class="price-channel">文创礼品</div>
+            <div class="price-num">¥25<small> / 只</small></div>
+            <div class="price-retail">终端 <b>¥49-79</b></div>
+          </div>
+        </div>
+        <p style="margin-top:16px; font-size:13px; color:var(--ink-soft)">💡 跨境电商：出厂 $3.5，零售 $9.99-14.99，海外文具溢价空间大。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== 7. PRODUCTION ============== -->
+<section id="production">
+  <div class="wrap">
+    <div class="sec-head">
+      <h4>07 · 商业生产参数</h4>
+      <h2>从模具到认证：可执行的商业路径</h2>
+      <p>模具投入 45-65 万元，试模交期 60-75 天，量产爬坡 3 个月可达 95% 良率。</p>
+    </div>
+    <div class="specs">
+      <div class="spec-block">
+        <h3>模具清单（一次性投入）</h3>
+        <table class="spec">
+          <tr><td>主体双色模</td><td>¥18-25 万</td></tr>
+          <tr><td>上盖 + 推杆 + 刀架</td><td>¥12-16 万</td></tr>
+          <tr><td>PC 屑盒高光模</td><td>¥8-12 万</td></tr>
+          <tr><td>底座冲压 + 弹簧成形</td><td>¥3-5 万</td></tr>
+          <tr><td>销轴 + 螺钉模</td><td>¥1-2 万</td></tr>
+          <tr><td><b>模具总计</b></td><td><b>¥45-65 万</b></td></tr>
+          <tr><td>首批试模交期</td><td>60-75 天</td></tr>
+          <tr><td>认证（CE/REACH/RoHS 等）</td><td>¥3-6 万</td></tr>
+        </table>
+      </div>
+      <div class="spec-block">
+        <h3>产能与节拍</h3>
+        <table class="spec">
+          <tr><td>单线月产能（26 天）</td><td>6.2 万只</td></tr>
+          <tr><td>注塑节拍</td><td>28 s / 件</td></tr>
+          <tr><td>装配节拍（瓶颈）</td><td>35 s / 件</td></tr>
+          <tr><td>爬坡良率</td><td>75% → 88% → 95% → 97%</td></tr>
+          <tr><td>满产时间</td><td>M+6 起</td></tr>
+          <tr><td>单线设备投资</td><td>约 30-40 万元</td></tr>
+          <tr><td>推荐产线数（初期）</td><td>2 条 = 月 12 万只</td></tr>
+        </table>
+      </div>
+      <div class="spec-block">
+        <h3>关键工艺</h3>
+        <p style="font-size:14px;">主体 ABS 注塑（双色）→ 屑盒 PC 注塑（需退火）→ 底座 SUS304 冷冲压 + 拉丝阳极 → 弹簧回火 + 疲劳测试 → 刀片 SK5 冲压 + 热处理 + 镀铬 → 装配（卡扣铆接、底座超声焊接、橡皮压入）</p>
+        <p style="font-size:13px; color:var(--ink-soft)">刀片硬度 HRC 58-60；底座焊接强度 ≥ 30 N 拉脱力；卡扣 10,000 次循环不失效。</p>
+      </div>
+      <div class="spec-block">
+        <h3>认证清单</h3>
+        <p style="font-size:14px;"><b>内销：</b>GB 21027-2007 学生用品、REACH SVHC、6P 邻苯测试</p>
+        <p style="font-size:14px;"><b>欧盟：</b>EN 71-1/2/3、REACH、RoHS 2.0、CE 自我声明</p>
+        <p style="font-size:14px;"><b>美国：</b>ASTM F963、CPSIA、Prop 65、FDA 食品接触豁免（橡皮组件）</p>
+        <p style="font-size:13px; color:var(--ink-soft)">包装需含 3 岁以下警示（Contains small parts）。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== 8. LAUNCH TIMELINE ============== -->
+<section id="launch">
+  <div class="wrap">
+    <div class="sec-head">
+      <h4>08 · 上市节奏</h4>
+      <h2>从设计冻结到上市，9 个月</h2>
+      <p>建议 M0 工业设计冻结，M+9 上市首月销售复盘。</p>
+    </div>
+    <div class="timeline">
+      <div class="tl-item major"><div class="tl-time">M0</div><div class="tl-title">工业设计 + 结构设计冻结</div><div class="tl-desc">完成 CMF、结构、出图冻结</div></div>
+      <div class="tl-item"><div class="tl-time">M+1</div><div class="tl-title">模具开发启动</div><div class="tl-desc">9 套模具下单，30/40/30 付款</div></div>
+      <div class="tl-item"><div class="tl-time">M+3</div><div class="tl-title">T0 试产（500-1000 只）</div><div class="tl-desc">首批样件内部测评</div></div>
+      <div class="tl-item"><div class="tl-time">M+4</div><div class="tl-title">T1 试产（5000 只）+ 认证送检</div><div class="tl-desc">CE / REACH / RoHS 报告</div></div>
+      <div class="tl-item"><div class="tl-time">M+5</div><div class="tl-title">反馈修改 + 量产模具优化</div><div class="tl-desc">根据 T1 试产问题调整</div></div>
+      <div class="tl-item major"><div class="tl-time">M+6</div><div class="tl-title">量产启动 + 电商预售</div><div class="tl-desc">小红书 / 抖音种草，3 色先行</div></div>
+      <div class="tl-item major"><div class="tl-time">M+7</div><div class="tl-title">正式上市 + 线下铺货</div><div class="tl-desc">文具店 / 书店 / 商超</div></div>
+      <div class="tl-item"><div class="tl-time">M+9</div><div class="tl-title">首波销售复盘 + v1.1 改良</div><div class="tl-desc">补全 6 色 SKU + 海外众筹</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== FOOTER ============== -->
+<footer>
+  <div class="wrap">
+    <p><b>ClipSharp · 四合一卡扣卷笔刀</b> · 产品原型与商业规格 v1.0</p>
+    <p>设计稿：5 张 AI 渲染 + 4 份规格文档 + 1 份商业生产参数 + 1 份可视化展示页</p>
+    <p style="margin-top:12px;">所有图片为 AI 概念渲染，实际开模前需做手板验证。</p>
+  </div>
+</footer>
+
+</body>
+</html>

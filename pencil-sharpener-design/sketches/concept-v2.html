@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClipSharp V2 · 双连接模块化笔伴侣 · 深化简图</title>
+<style>
+  :root {
+    --bg: #fafaf7; --line: #d8d4c8; --ink: #1a1a1a; --ink-soft: #555;
+    --accent: #4a9d7c; --warn: #c45f3a; --highlight: #ffe9b8; --soft: #f5f3eb;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.6; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 40px 28px; }
+  header { margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 32px; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 { font-size: 24px; margin: 48px 0 8px; padding-top: 24px; border-top: 1px solid var(--line); }
+  h2:first-of-type { border-top: 0; padding-top: 0; }
+  h3 { font-size: 17px; margin: 24px 0 10px; }
+  p { color: var(--ink-soft); margin: 4px 0 12px; }
+  .meta { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-top: 12px; flex-wrap: wrap; }
+  .meta span { padding: 3px 10px; background: #fff; border: 1px solid var(--line); border-radius: 4px; }
+
+  .concept { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 24px; margin: 16px 0; }
+  .concept-title { font-size: 13px; color: var(--warn); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+  .concept-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .concept-grid h4 { font-size: 14px; margin: 0 0 6px; }
+  .concept-grid p { font-size: 14px; margin: 0; }
+
+  .sketch-block { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 24px; margin: 16px 0; }
+  .sketch-block h3 { margin-top: 0; }
+  .sketch-block .caption { font-size: 13px; color: var(--ink-soft); margin: 8px 0 0; }
+  .sketch { background: #fcfaf5; border: 1px dashed var(--line); border-radius: 8px; padding: 16px; margin: 12px 0; display: flex; justify-content: center; }
+  .sketch svg { max-width: 100%; height: auto; }
+
+  .sketch-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* scene grid */
+  .scenes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .scene { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .scene .num { font-family: "SF Mono", monospace; font-size: 12px; color: var(--accent); font-weight: 600; }
+  .scene h4 { font-size: 14px; margin: 4px 0 6px; }
+  .scene p { font-size: 13px; margin: 0; }
+  .scene svg { width: 100%; height: auto; margin-bottom: 10px; }
+
+  /* specs table */
+  table.specs { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  table.specs th, table.specs td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--line); }
+  table.specs th { background: var(--soft); font-weight: 600; }
+  table.specs td:first-child { color: var(--ink-soft); width: 30%; }
+  table.specs td:not(:first-child) { font-family: "SF Mono", monospace; }
+
+  .compare { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .compare .item { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .compare .item.best { border-color: var(--accent); border-width: 2px; }
+  .compare .item h4 { font-size: 14px; margin: 0 0 4px; }
+  .compare .item .v { font-size: 24px; font-weight: 600; font-family: "SF Mono", monospace; }
+  .compare .item.best .v { color: var(--accent); }
+  .compare .item .sub { font-size: 12px; color: var(--ink-soft); }
+
+  footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); text-align: center; font-size: 13px; color: var(--ink-soft); }
+  .next { background: linear-gradient(135deg, #fff8e5 0%, #fff 100%); border: 1px solid var(--warn); border-radius: 12px; padding: 20px; margin: 24px 0; }
+  .next h3 { margin: 0 0 8px; color: var(--warn); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>ClipSharp V2 · 双连接模块化笔伴侣</h1>
+  <p>方案 3 优化版：<b>卡扣 + 磁吸双连接</b>，每段既能卡笔又能磁吸。体积再缩 20%，5 种使用模式。</p>
+  <div class="meta">
+    <span>合并后长 128 mm</span>
+    <span>单段 ≤ 68 mm</span>
+    <span>直径 ⌀13 mm</span>
+    <span>N52 钕磁吸</span>
+    <span>弹簧卡扣 1.0 N</span>
+  </div>
+</header>
+
+<!-- ============ 核心设计思路 ============ -->
+<div class="concept">
+  <div class="concept-title">核心设计：双连接 × 两段独立</div>
+  <div class="concept-grid">
+    <div>
+      <h4>🔗 卡扣（物理固定）</h4>
+      <p>每段侧面有弹簧夹臂，可卡住 ⌀7-8.5 mm 铅笔。1.0 N 夹持力，10,000 次寿命。</p>
+    </div>
+    <div>
+      <h4>🧲 磁吸（快速对接）</h4>
+      <p>每段两端都有 N52 钕磁铁。两段可吸合，也可各自吸金属面（文具盒、冰箱、金属书脊）。</p>
+    </div>
+    <div>
+      <h4>📐 段 A 卷削段（68 mm）</h4>
+      <p>顶部卷削孔 + 透明屑盒 + 侧面卡扣 + 底端磁吸。可独立卷削、独立卡笔、独立磁吸。</p>
+    </div>
+    <div>
+      <h4>✏️ 段 B 擦子段（60 mm）</h4>
+      <p>顶端磁吸 + 内部棘轮推杆 + 侧面卡扣 + 底端橡皮擦。完全对称结构，使用更灵活。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1. 整体三视图 ============ -->
+<h2>1. 整体形态 · 三视图</h2>
+
+<div class="sketch-row">
+  <div class="sketch-block">
+    <h3>合并态（吸合后 = 笔形）</h3>
+    <div class="sketch">
+      <svg viewBox="0 0 480 180" width="480" height="180" xmlns="http://www.w3.org/2000/svg">
+        <g stroke="#1a1a1a" stroke-width="1.5" fill="none">
+          <!-- 主体（两段合并：圆柱形） -->
+          <rect x="60" y="60" width="170" height="60" fill="#fcfaf5" rx="4"/>
+          <rect x="230" y="60" width="180" height="60" fill="#e5f0ea" rx="4"/>
+          <!-- 段 A 顶（卷削头） -->
+          <circle cx="60" cy="90" r="6" fill="#1a1a1a"/>
+          <text x="60" y="94" font-size="7" text-anchor="middle" fill="#fff" font-family="monospace">刀</text>
+          <!-- 段 B 底（橡皮擦） -->
+          <rect x="402" y="78" width="8" height="24" fill="#fff"/>
+          <text x="406" y="95" font-size="7" text-anchor="middle" font-family="monospace">擦</text>
+          <!-- 磁吸对位标记 -->
+          <line x1="230" y1="60" x2="230" y2="120" stroke="#c45f3a" stroke-dasharray="3 2"/>
+          <text x="230" y="50" font-size="9" text-anchor="middle" fill="#c45f3a">磁吸对位</text>
+          <!-- 段 A 卡扣 -->
+          <path d="M 130 60 L 130 42 L 145 38 L 160 42 L 160 60" fill="#c5e5d4"/>
+          <text x="145" y="32" font-size="9" text-anchor="middle">卡扣 A</text>
+          <!-- 段 B 卡扣 -->
+          <path d="M 300 60 L 300 42 L 315 38 L 330 42 L 330 60" fill="#c5e5d4"/>
+          <text x="315" y="32" font-size="9" text-anchor="middle">卡扣 B</text>
+
+          <!-- 总长 -->
+          <line x1="60" y1="145" x2="410" y2="145" stroke="#c45f3a"/>
+          <line x1="60" y1="140" x2="60" y2="150" stroke="#c45f3a"/>
+          <line x1="410" y1="140" x2="410" y2="150" stroke="#c45f3a"/>
+          <text x="235" y="160" font-size="11" text-anchor="middle" fill="#c45f3a" font-family="monospace">128 mm (合并)</text>
+
+          <!-- 直径 -->
+          <line x1="455" y1="60" x2="455" y2="120" stroke="#4a9d7c"/>
+          <text x="465" y="93" font-size="11" fill="#4a9d7c" font-family="monospace">⌀13</text>
+        </g>
+      </svg>
+    </div>
+    <p class="caption">合并后总长 128 mm × ⌀13 mm，比标准铅笔（175 mm）短 27%，能塞进任意笔袋。</p>
+  </div>
+
+  <div class="sketch-block">
+    <h3>拆分态（两段独立）</h3>
+    <div class="sketch">
+      <svg viewBox="0 0 480 200" width="480" height="200" xmlns="http://www.w3.org/2000/svg">
+        <g stroke="#1a1a1a" stroke-width="1.5" fill="none">
+          <!-- 段 A -->
+          <rect x="60" y="40" width="170" height="50" fill="#fcfaf5" rx="4"/>
+          <text x="145" y="70" font-size="11" text-anchor="middle" font-weight="600">段 A · 卷削</text>
+          <circle cx="60" cy="65" r="5" fill="#1a1a1a"/>
+          <!-- 段 A 两端磁吸 -->
+          <rect x="55" y="55" width="6" height="20" fill="#999"/>
+          <rect x="225" y="55" width="6" height="20" fill="#999"/>
+          <path d="M 130 40 L 130 25 L 145 22 L 160 25 L 160 40" fill="#c5e5d4"/>
+          <text x="145" y="15" font-size="9" text-anchor="middle">卡扣</text>
+          <line x1="60" y1="110" x2="230" y2="110" stroke="#c45f3a"/>
+          <text x="145" y="125" font-size="11" text-anchor="middle" fill="#c45f3a" font-family="monospace">68 mm</text>
+
+          <!-- 段 B -->
+          <rect x="280" y="40" width="150" height="50" fill="#e5f0ea" rx="4"/>
+          <text x="355" y="70" font-size="11" text-anchor="middle" font-weight="600">段 B · 擦子</text>
+          <rect x="427" y="55" width="6" height="20" fill="#fff"/>
+          <!-- 段 B 两端磁吸 -->
+          <rect x="275" y="55" width="6" height="20" fill="#999"/>
+          <rect x="427" y="55" width="6" height="20" fill="#999"/>
+          <path d="M 345 40 L 345 25 L 358 22 L 371 25 L 371 40" fill="#c5e5d4"/>
+          <text x="358" y="15" font-size="9" text-anchor="middle">卡扣</text>
+          <line x1="280" y1="110" x2="430" y2="110" stroke="#c45f3a"/>
+          <text x="355" y="125" font-size="11" text-anchor="middle" fill="#c45f3a" font-family="monospace">60 mm</text>
+
+          <!-- 标注 -->
+          <text x="60" y="155" font-size="10" fill="#555">● 段 A 两端各 1 颗磁吸</text>
+          <text x="60" y="170" font-size="10" fill="#555">● 段 B 两端各 1 颗磁吸</text>
+          <text x="60" y="185" font-size="10" fill="#555">● 段 A/B 各 1 个侧面卡扣</text>
+        </g>
+      </svg>
+    </div>
+    <p class="caption">每段两端各嵌 1 颗 N52 钕磁铁，吸力 ≥ 1.5 N，可独立吸合 / 吸金属面。</p>
+  </div>
+</div>
+
+<!-- ============ 2. 段 A 详细分解 ============ -->
+<h2>2. 段 A · 卷削段 详细分解</h2>
+
+<div class="sketch-block">
+  <h3>段 A 内部结构（从顶到底）</h3>
+  <div class="sketch">
+    <svg viewBox="0 0 720 220" width="720" height="220" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="#1a1a1a" stroke-width="1.4" fill="#fcfaf5">
+        <!-- 1. 顶盖（卷削头 ABS） -->
+        <rect x="20" y="70" width="50" height="70" rx="4"/>
+        <text x="45" y="110" font-size="10" text-anchor="middle" font-weight="600">顶盖</text>
+        <circle cx="45" cy="90" r="4" fill="#1a1a1a"/>
+
+        <!-- 2. 刀片（SK5 合金钢） -->
+        <path d="M 80 75 L 130 75 L 140 85 L 140 125 L 130 135 L 80 135 Z"/>
+        <text x="110" y="110" font-size="9" text-anchor="middle">合金刀片</text>
+
+        <!-- 3. 屑盒（透明 PC 4ml） -->
+        <rect x="150" y="70" width="100" height="70" fill="#e8f0e8"/>
+        <text x="200" y="110" font-size="10" text-anchor="middle">透明屑盒 4ml</text>
+
+        <!-- 4. 主体 ABS -->
+        <rect x="260" y="70" width="180" height="70" rx="4"/>
+        <text x="350" y="100" font-size="11" text-anchor="middle" font-weight="600">主体 ABS</text>
+        <text x="350" y="118" font-size="9" text-anchor="middle" fill="#555">（含磁吸腔 + 卡扣座）</text>
+        <!-- 卡扣 -->
+        <path d="M 340 70 L 340 50 L 360 45 L 380 50 L 380 70" fill="#c5e5d4"/>
+        <text x="360" y="38" font-size="9" text-anchor="middle">弹簧卡扣</text>
+
+        <!-- 5. 磁吸 1（N52 ⌀10×1.5） -->
+        <circle cx="465" cy="105" r="10" fill="#444"/>
+        <text x="465" y="108" font-size="8" text-anchor="middle" fill="#fff" font-family="monospace">N52</text>
+        <text x="465" y="135" font-size="9" text-anchor="middle" fill="#555">磁吸 1</text>
+
+        <!-- 6. 尾盖（金属配重 + 磁吸 2） -->
+        <rect x="500" y="70" width="50" height="70" fill="#e0e0e0" rx="4"/>
+        <text x="525" y="100" font-size="9" text-anchor="middle" font-weight="600">金属</text>
+        <text x="525" y="115" font-size="9" text-anchor="middle">尾盖</text>
+        <circle cx="525" cy="105" r="6" fill="#444"/>
+        <text x="525" y="108" font-size="6" text-anchor="middle" fill="#fff" font-family="monospace">N52</text>
+
+        <!-- 7. 硅胶垫（防滑底） -->
+        <rect x="560" y="130" width="50" height="10" fill="#999"/>
+
+        <!-- 长度标注 -->
+        <line x1="20" y1="165" x2="610" y2="165" stroke="#c45f3a"/>
+        <line x1="20" y1="160" x2="20" y2="170" stroke="#c45f3a"/>
+        <line x1="610" y1="160" x2="610" y2="170" stroke="#c45f3a"/>
+        <text x="315" y="180" font-size="11" text-anchor="middle" fill="#c45f3a" font-family="monospace">段 A 总长 68 mm</text>
+
+        <!-- 段长细分 -->
+        <line x1="20" y1="195" x2="70" y2="195" stroke="#4a9d7c"/>
+        <text x="45" y="210" font-size="8" text-anchor="middle" fill="#4a9d7c" font-family="monospace">8</text>
+        <line x1="70" y1="195" x2="140" y2="195" stroke="#4a9d7c"/>
+        <text x="105" y="210" font-size="8" text-anchor="middle" fill="#4a9d7c" font-family="monospace">12</text>
+        <line x1="140" y1="195" x2="250" y2="195" stroke="#4a9d7c"/>
+        <text x="195" y="210" font-size="8" text-anchor="middle" fill="#4a9d7c" font-family="monospace">22</text>
+        <line x1="250" y1="195" x2="440" y2="195" stroke="#4a9d7c"/>
+        <text x="345" y="210" font-size="8" text-anchor="middle" fill="#4a9d7c" font-family="monospace">38</text>
+        <line x1="440" y1="195" x2="550" y2="195" stroke="#4a9d7c"/>
+        <text x="495" y="210" font-size="8" text-anchor="middle" fill="#4a9d7c" font-family="monospace">22</text>
+      </g>
+    </svg>
+  </div>
+  <p class="caption">段 A = 顶盖 8 + 刀片 12 + 屑盒 22 + 主体 38 + 磁吸 1 + 金属尾盖 22 = 68 mm。金属尾盖内嵌第 2 颗磁吸，既可吸合段 B 又可单独磁吸在金属面上。</p>
+</div>
+
+<!-- ============ 3. 段 B 详细分解 ============ -->
+<h2>3. 段 B · 擦子段 详细分解</h2>
+
+<div class="sketch-block">
+  <h3>段 B 内部结构（与段 A 镜像对称）</h3>
+  <div class="sketch">
+    <svg viewBox="0 0 720 220" width="720" height="220" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="#1a1a1a" stroke-width="1.4" fill="#e5f0ea">
+        <!-- 1. 顶端磁吸盖（含磁吸 1） -->
+        <rect x="20" y="70" width="50" height="70" rx="4" fill="#e0e0e0"/>
+        <text x="45" y="100" font-size="9" text-anchor="middle" font-weight="600">磁吸</text>
+        <text x="45" y="115" font-size="9" text-anchor="middle">端盖</text>
+        <circle cx="45" cy="105" r="6" fill="#444"/>
+        <text x="45" y="108" font-size="6" text-anchor="middle" fill="#fff" font-family="monospace">N52</text>
+
+        <!-- 2. 主体 ABS（卡扣座 + 推杆轨道） -->
+        <rect x="80" y="70" width="200" height="70" rx="4"/>
+        <text x="180" y="100" font-size="11" text-anchor="middle" font-weight="600">主体 ABS</text>
+        <text x="180" y="118" font-size="9" text-anchor="middle" fill="#555">（含推杆 + 棘轮）</text>
+        <!-- 卡扣 -->
+        <path d="M 165 70 L 165 50 L 185 45 L 205 50 L 205 70" fill="#c5e5d4"/>
+        <text x="185" y="38" font-size="9" text-anchor="middle">弹簧卡扣</text>
+
+        <!-- 3. 推杆（ABS + 棘轮） -->
+        <rect x="290" y="80" width="80" height="50"/>
+        <text x="330" y="110" font-size="9" text-anchor="middle">推杆 + 棘轮</text>
+
+        <!-- 4. 橡皮擦 ⌀11 mm -->
+        <rect x="380" y="82" width="50" height="46" fill="#fff"/>
+        <text x="405" y="108" font-size="9" text-anchor="middle">⌀11</text>
+        <text x="405" y="120" font-size="8" text-anchor="middle">橡皮擦</text>
+
+        <!-- 5. 底盖（透明观察窗 + 磁吸 2） -->
+        <rect x="440" y="70" width="50" height="70" rx="4"/>
+        <text x="465" y="100" font-size="9" text-anchor="middle" font-weight="600">底盖</text>
+        <text x="465" y="115" font-size="8" text-anchor="middle">可换擦</text>
+        <circle cx="465" cy="135" r="10" fill="#444"/>
+        <text x="465" y="138" font-size="8" text-anchor="middle" fill="#fff" font-family="monospace">N52</text>
+
+        <!-- 长度标注 -->
+        <line x1="20" y1="165" x2="490" y2="165" stroke="#c45f3a"/>
+        <line x1="20" y1="160" x2="20" y2="170" stroke="#c45f3a"/>
+        <line x1="490" y1="160" x2="490" y2="170" stroke="#c45f3a"/>
+        <text x="255" y="180" font-size="11" text-anchor="middle" fill="#c45f3a" font-family="monospace">段 B 总长 60 mm</text>
+
+        <!-- 段长细分 -->
+        <line x1="20" y1="195" x2="70" y2="195" stroke="#4a9d7c"/>
+        <text x="45" y="210" font-size="8" text-anchor="middle" fill="#4a9d7c" font-family="monospace">8</text>
+        <line x1="70" y1="195" x2="280" y2="195" stroke="#4a9d7c"/>
+        <text x="175" y="210" font-size="8" text-anchor="middle" fill="#4a9d7c" font-family="monospace">34</text>
+        <line x1="280" y1="195" x2="370" y2="195" stroke="#4a9d7c"/>
+        <text x="325" y="210" font-size="8" text-anchor="middle" fill="#4a9d7c" font-family="monospace">14</text>
+        <line x1="370" y1="195" x2="430" y2="195" stroke="#4a9d7c"/>
+        <text x="400" y="210" font-size="8" text-anchor="middle" fill="#4a9d7c" font-family="monospace">8</text>
+        <line x1="430" y1="195" x2="490" y2="195" stroke="#4a9d7c"/>
+        <text x="460" y="210" font-size="8" text-anchor="middle" fill="#4a9d7c" font-family="monospace">10</text>
+      </g>
+    </svg>
+  </div>
+  <p class="caption">段 B = 磁吸端盖 8 + 主体 34 + 推杆 14 + 橡皮擦 8 + 底盖 10 = 60 mm。底盖内嵌第 2 颗磁吸（朝下），可让段 B 倒立吸附在金属面顶端。</p>
+</div>
+
+<!-- ============ 4. 5 种使用模式 ============ -->
+<h2>4. 五种使用模式</h2>
+
+<div class="scenes">
+  <!-- 模式 1: 合并塞笔袋 -->
+  <div class="scene">
+    <svg viewBox="0 0 240 120" width="240" height="120" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="#1a1a1a" stroke-width="1.4" fill="none">
+        <!-- 笔袋轮廓 -->
+        <path d="M 20 30 L 220 30 L 220 80 L 20 80 Z" fill="#f5e6d3"/>
+        <line x1="20" y1="35" x2="220" y2="35" stroke-dasharray="2 2"/>
+        <text x="120" y="105" font-size="9" text-anchor="middle" fill="#999" font-family="monospace">笔袋（内径 18×180）</text>
+        <!-- 合并的笔伴侣 -->
+        <rect x="55" y="42" width="60" height="20" fill="#fcfaf5" rx="3"/>
+        <rect x="115" y="42" width="65" height="20" fill="#e5f0ea" rx="3"/>
+        <line x1="115" y1="42" x2="115" y2="62" stroke="#c45f3a" stroke-dasharray="2 2"/>
+        <circle cx="55" cy="52" r="2" fill="#1a1a1a"/>
+        <text x="120" y="56" font-size="7" text-anchor="middle">合并 = 128mm</text>
+      </g>
+    </svg>
+    <div class="num">模式 01</div>
+    <h4>合并塞笔袋</h4>
+    <p>两段磁吸合成为 128mm 笔形，比铅笔还短 47mm，轻松塞进标准笔袋内袋。</p>
+  </div>
+
+  <!-- 模式 2: 卡在铅笔上 -->
+  <div class="scene">
+    <svg viewBox="0 0 240 120" width="240" height="120" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="#1a1a1a" stroke-width="1.4" fill="none">
+        <!-- 铅笔 -->
+        <rect x="40" y="50" width="160" height="14" fill="#f7d794"/>
+        <polygon points="200,50 215,57 200,64" fill="#d4b896"/>
+        <line x1="40" y1="50" x2="40" y2="64" stroke="#d4b896"/>
+        <!-- 卷削段卡在铅笔上 -->
+        <rect x="100" y="35" width="45" height="44" fill="#fcfaf5" rx="3"/>
+        <circle cx="100" cy="57" r="3" fill="#1a1a1a"/>
+        <text x="123" y="60" font-size="8" text-anchor="middle">卷削段</text>
+        <text x="120" y="100" font-size="9" text-anchor="middle" fill="#555">卷削段卡在普通铅笔上</text>
+      </g>
+    </svg>
+    <div class="num">模式 02</div>
+    <h4>卡在铅笔上（卷削段）</h4>
+    <p>段 A 卡在普通铅笔上，铅笔+卷削刀=一支"加粗笔"，削铅笔时握感更好。</p>
+  </div>
+
+  <!-- 模式 3: 擦子段卡笔 -->
+  <div class="scene">
+    <svg viewBox="0 0 240 120" width="240" height="120" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="#1a1a1a" stroke-width="1.4" fill="none">
+        <!-- 铅笔 -->
+        <rect x="40" y="50" width="160" height="14" fill="#f7d794"/>
+        <polygon points="200,50 215,57 200,64" fill="#d4b896"/>
+        <!-- 擦子段卡在铅笔顶端 -->
+        <rect x="120" y="35" width="40" height="44" fill="#e5f0ea" rx="3"/>
+        <rect x="158" y="48" width="6" height="14" fill="#fff"/>
+        <text x="140" y="100" font-size="9" text-anchor="middle" fill="#555">擦子段卡在铅笔顶端</text>
+      </g>
+    </svg>
+    <div class="num">模式 03</div>
+    <h4>卡在铅笔上（擦子段）</h4>
+    <p>段 B 卡在铅笔尾端 = 尾部永久橡皮，铅笔用完直接转过来擦，不用换工具。</p>
+  </div>
+
+  <!-- 模式 4: 磁吸在金属面 -->
+  <div class="scene">
+    <svg viewBox="0 0 240 120" width="240" height="120" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="#1a1a1a" stroke-width="1.4" fill="none">
+        <!-- 金属面（冰箱） -->
+        <rect x="20" y="10" width="200" height="100" fill="#d0d0d0"/>
+        <text x="120" y="22" font-size="8" text-anchor="middle" fill="#666">金属表面</text>
+        <!-- 两段独立磁吸 -->
+        <rect x="55" y="40" width="40" height="18" fill="#fcfaf5" rx="2"/>
+        <text x="75" y="52" font-size="7" text-anchor="middle">卷削</text>
+        <rect x="140" y="40" width="40" height="18" fill="#e5f0ea" rx="2"/>
+        <text x="160" y="52" font-size="7" text-anchor="middle">擦子</text>
+        <!-- 磁吸引力线 -->
+        <line x1="75" y1="58" x2="75" y2="68" stroke="#c45f3a" stroke-dasharray="2 2"/>
+        <line x1="160" y1="58" x2="160" y2="68" stroke="#c45f3a" stroke-dasharray="2 2"/>
+      </g>
+    </svg>
+    <div class="num">模式 04</div>
+    <h4>磁吸在金属面</h4>
+    <p>两段独立磁吸在冰箱 / 金属文具盒 / 笔记本金属封面，成为桌面装饰工具。</p>
+  </div>
+
+  <!-- 模式 5: 拆分使用 -->
+  <div class="scene">
+    <svg viewBox="0 0 240 120" width="240" height="120" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="#1a1a1a" stroke-width="1.4" fill="none">
+        <!-- 一段在手里擦 -->
+        <rect x="30" y="50" width="40" height="18" fill="#e5f0ea" rx="2"/>
+        <rect x="68" y="55" width="6" height="8" fill="#fff"/>
+        <text x="50" y="42" font-size="8" text-anchor="middle">手</text>
+        <line x1="40" y1="68" x2="68" y2="78" stroke-dasharray="2 2"/>
+        <line x1="55" y1="68" x2="78" y2="80" stroke-dasharray="2 2"/>
+        <!-- 另一段在桌面 -->
+        <rect x="130" y="70" width="50" height="18" fill="#fcfaf5" rx="2"/>
+        <text x="155" y="105" font-size="8" text-anchor="middle" fill="#555">独立使用擦子段</text>
+      </g>
+    </svg>
+    <div class="num">模式 05</div>
+    <h4>拆分独立使用</h4>
+    <p>擦子段拆下当独立橡皮擦，卷削段留桌面当卷笔刀，互不干扰。</p>
+  </div>
+
+  <!-- 模式 6: 组合加长 -->
+  <div class="scene">
+    <svg viewBox="0 0 240 120" width="240" height="120" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="#1a1a1a" stroke-width="1.4" fill="none">
+        <!-- 铅笔+卷削段+擦子段 = 加长 -->
+        <rect x="20" y="55" width="120" height="12" fill="#f7d794"/>
+        <polygon points="140,55 152,61 140,67" fill="#d4b896"/>
+        <rect x="152" y="46" width="32" height="30" fill="#fcfaf5" rx="2"/>
+        <rect x="184" y="46" width="28" height="30" fill="#e5f0ea" rx="2"/>
+        <text x="120" y="100" font-size="9" text-anchor="middle" fill="#555">铅笔+卷削段+擦子段 = 305mm 加长笔</text>
+      </g>
+    </svg>
+    <div class="num">模式 06</div>
+    <h4>组合成加长笔</h4>
+    <p>铅笔 + 卷削段 + 擦子段 = 305mm 加长笔（额外奖励模式），可作为画架画笔。</p>
+  </div>
+</div>
+
+<!-- ============ 5. 关键尺寸 ============ -->
+<h2>5. 关键尺寸表</h2>
+
+<div class="sketch-block">
+  <h3>整机尺寸</h3>
+  <table class="specs">
+    <thead><tr><th>项目</th><th>段 A（卷削）</th><th>段 B（擦子）</th><th>合并态</th></tr></thead>
+    <tbody>
+      <tr><td>总长</td><td>68 mm</td><td>60 mm</td><td>128 mm</td></tr>
+      <tr><td>直径</td><td>⌀13 mm</td><td>⌀13 mm</td><td>⌀13 mm</td></tr>
+      <tr><td>净重</td><td>~14 g</td><td>~12 g</td><td>~26 g</td></tr>
+      <tr><td>卡扣位置（距顶）</td><td>18 mm</td><td>20 mm</td><td>—</td></tr>
+      <tr><td>磁吸位置</td><td>顶端 + 底端</td><td>顶端 + 底端</td><td>对接位</td></tr>
+      <tr><td>适配铅笔直径</td><td>7.0–8.5 mm</td><td>7.0–8.5 mm</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <h3>卡扣 + 磁吸双连接</h3>
+  <table class="specs">
+    <thead><tr><th>项目</th><th>卡扣</th><th>磁吸</th></tr></thead>
+    <tbody>
+      <tr><td>结构</td><td>SUS304 弹簧 + POM 夹臂</td><td>N52 钕铁 ⌀10 × 1.5 mm</td></tr>
+      <tr><td>固定力</td><td>1.0 N ± 0.3 N（夹持铅笔）</td><td>≥ 1.5 N（吸合） / ≥ 2.0 N（垂直吸金属面）</td></tr>
+      <tr><td>寿命</td><td>10,000 次循环</td><td>磁吸永久，镀层防锈 5 年</td></tr>
+      <tr><td>优势</td><td>强固定、抗振动、不脱落</td><td>快速对接、单手操作、吸金属面</td></tr>
+      <tr><td>弱点</td><td>需双手对准</td><td>强振动可能脱离（磁吸备份）</td></tr>
+    </tbody>
+  </table>
+
+  <h3>成本增量（对比 V1 块状设计）</h3>
+  <table class="specs">
+    <thead><tr><th>项目</th><th>V1 块状</th><th>V2 双连接</th><th>增量</th></tr></thead>
+    <tbody>
+      <tr><td>单件物料成本</td><td>¥2.75</td><td>¥3.45</td><td>+¥0.70</td></tr>
+      <tr><td>磁吸件 ×4</td><td>—</td><td>¥0.40</td><td>+¥0.40</td></tr>
+      <tr><td>卡扣 ×2</td><td>¥0.15（单）</td><td>¥0.30（双）</td><td>+¥0.15</td></tr>
+      <tr><td>加工费</td><td>¥2.00</td><td>¥2.40</td><td>+¥0.40</td></tr>
+      <tr><td>完全成本</td><td>¥6.25</td><td>¥7.85</td><td>+¥1.60</td></tr>
+      <tr><td>模具增量</td><td>—</td><td>+¥10 万（卡扣×2 模 + 磁吸嵌件模）</td><td>—</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ============ 6. 与 V1 对比 ============ -->
+<h2>6. 对比 V1 块状设计</h2>
+
+<div class="compare">
+  <div class="item">
+    <h4>V1 块状设计</h4>
+    <div class="v">58 × 26 × 21</div>
+    <div class="sub">mm · 不能进笔袋</div>
+  </div>
+  <div class="item best">
+    <h4>V2 双连接笔伴侣 ⭐</h4>
+    <div class="v">128 × ⌀13</div>
+    <div class="sub">mm · 合并态 · 能进笔袋</div>
+  </div>
+  <div class="item">
+    <h4>对比标准铅笔</h4>
+    <div class="v">175 × ⌀7.5</div>
+    <div class="sub">mm · V2 比铅笔短 27%</div>
+  </div>
+</div>
+
+<!-- ============ 下一步 ============ -->
+<div class="next">
+  <h3>👇 看完简图后告诉我</h3>
+  <p><b>1. 尺寸是否合适？</b> 128mm 合并 / 68+60mm 拆分，⌀13mm 直径——能进笔袋吗？还想要更小？</p>
+  <p><b>2. 6 种使用模式对吗？</b> 合并塞袋 / 卡笔 / 磁吸 / 拆分 / 加长 — 还想要其他模式？</p>
+  <p><b>3. 卡扣和磁吸的位置 / 数量合理吗？</b> 每段两端磁吸 + 1 个卡扣，加密还是减少？</p>
+  <p>确认后我立刻出：3D 渲染（多角度真实图） + 详细工程尺寸表（精度 ±0.05mm） + 商业生产参数更新 + HTML 主页更新。</p>
+</div>
+
+<footer>
+  <p>ClipSharp V2 深化简图 · v1.0 · 2026-08-14</p>
+  <p>基于方案 3（磁吸分体）优化，加入弹簧卡扣 → 双连接系统</p>
+</footer>
+
+</div>
+</body>
+</html>

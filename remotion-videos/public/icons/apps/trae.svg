@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" role="img" aria-label="Trae">
+  <title>Trae</title>
+  <rect width="32" height="32" rx="8" fill="#0A0B0D"/>
+  <path fill="#32F08C" fill-rule="evenodd" d="M8 7.5A1.5 1.5 0 0 1 9.5 6h13A1.5 1.5 0 0 1 24 7.5v13.8c0 .55-.45 1-1 1h-3.2l-2.3 2.3V22.3H9.5a1.5 1.5 0 0 1-1.5-1.5V7.5Zm1.5 1v12.3h11V8.5H9.5Z"/>
+  <path fill="#32F08C" d="M12.2 13.6 13.8 12l1.6 1.6-1.6 1.6-1.6-1.6Zm6.8 0 1.6-1.6 1.6 1.6-1.6 1.6-1.6-1.6Z"/>
+</svg>

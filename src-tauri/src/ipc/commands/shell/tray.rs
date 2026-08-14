@@ -5,9 +5,14 @@ use tauri::Emitter;
 use crate::AppState;
 
 #[tauri::command]
-pub fn cmd_tray_menu_ready(state: tauri::State<Arc<AppState>>, window: tauri::WebviewWindow) {
-    let json = crate::tray::tray_menu_init_json(state.inner());
-    window.eval(&format!("window.__tray_init__({json})")).ok();
+pub fn cmd_tray_menu_ready(state: tauri::State<Arc<AppState>>) -> String {
+    crate::tray::tray_menu_state_json(state.inner())
+}
+
+#[tauri::command]
+pub fn cmd_tray_subscribe_segment(window: tauri::WebviewWindow, segment: String) -> Result<(), String> {
+    crate::tray_state::subscribe_segment(window.label().to_string(), segment);
+    Ok(())
 }
 
 #[tauri::command]

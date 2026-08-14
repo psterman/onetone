@@ -46,6 +46,7 @@ pub fn publish_runtime_event_with_log(
             "event": event,
         });
         let _ = emit_to_main_if_available(app, Some(state), emit_payload);
+        crate::tray_state::on_runtime_event_published(app, state, kind);
     }
 }
 

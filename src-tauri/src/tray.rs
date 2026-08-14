@@ -106,10 +106,10 @@ fn start_tray_mic_poll(app: AppHandle) {
         .spawn(move || {
             // Defer first paint off tray setup — sync WASAPI enum on the UI thread used to 假死 launch.
             std::thread::sleep(std::time::Duration::from_millis(900));
-            refresh_tray_visual_from_poll(&app, true);
+            refresh_tray_icon_from_poll(&app, true);
             loop {
-                std::thread::sleep(std::time::Duration::from_secs(2));
-                refresh_tray_visual_from_poll(&app, false);
+                std::thread::sleep(std::time::Duration::from_secs(60));
+                refresh_tray_icon_from_poll(&app, false);
             }
         })
         .ok();
@@ -138,8 +138,23 @@ fn refresh_tray_visual_on_main(app: &AppHandle) {
         let (mic_key, agent_light) = resolve_tray_icon_inputs(state.inner());
         let _ = update_tray_icon_if_needed(app, mic_key, &agent_light);
         refresh_tray_tooltip(app, state.inner());
-        refresh_menu_data(app);
     }
+}
+
+/// Background poll: icon + tooltip only — mic segment patches are event-driven.
+fn refresh_tray_icon_from_poll(app: &AppHandle, force: bool) {
+    let app = app.clone();
+    let _ = app.clone().run_on_main_thread(move || {
+        if !force && visual_debounce_active() {
+            return;
+        }
+        mark_visual_refresh();
+        if let Some(state) = app.try_state::<Arc<AppState>>() {
+            let (mic_key, agent_light) = resolve_tray_icon_inputs(state.inner());
+            let _ = update_tray_icon_if_needed(&app, mic_key, &agent_light);
+            refresh_tray_tooltip(&app, state.inner());
+        }
+    });
 }
 
 pub fn refresh_tray_visual_forced(app: &AppHandle) {
@@ -149,6 +164,9 @@ pub fn refresh_tray_visual_forced(app: &AppHandle) {
 pub fn after_mic_state_changed(app: &AppHandle, st: &MicMuteState) {
     refresh_tray_visual_forced(app);
     notify_main_mic_state(app, st);
+    if let Some(state) = app.try_state::<Arc<AppState>>() {
+        crate::tray_state::emit_tray_segment(app, state.inner(), "mic");
+    }
 }
 
 /// Sync tray hover text with listen / voice / mic state.
@@ -209,19 +227,22 @@ pub fn refresh_menu(app: &AppHandle) {
 }
 
 pub fn refresh_menu_data(app: &AppHandle) {
-    let Some(menu_win) = app.get_webview_window(TRAY_MENU_LABEL) else {
-        return;
-    };
-    if !menu_win.is_visible().unwrap_or(false) {
-        return;
-    }
     let Some(state) = app.try_state::<Arc<AppState>>() else {
         return;
     };
-    let json = tray_menu_init_json(state.inner());
-    let _ = menu_win.eval(&format!("window.__tray_patch__({json});"));
+    crate::tray_state::emit_tray_segments(
+        app,
+        state.inner(),
+        &["global", "mic", "channels", "event"],
+    );
 }
 
+pub fn tray_menu_state_json(state: &AppState) -> String {
+    serde_json::to_string(&crate::tray_state::assemble_tray_state(state))
+        .unwrap_or_else(|_| "{}".into())
+}
+
+#[allow(dead_code)]
 pub fn tray_menu_init_json(state: &AppState) -> String {
     let cfg = state.cfg.lock().clone();
     let paused = *state.paused.lock();
@@ -443,6 +464,14 @@ pub fn handle_tray_action(
             }
         }
         "quit" => exit_app(app),
+        "deep_link" => {
+            let href = payload
+                .as_ref()
+                .and_then(|p| p.get("href"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            show_main_window_with_deep_link(app, href);
+        }
         _ => {}
     }
 }
@@ -469,32 +498,37 @@ fn open_tray_menu(menu_win: &WebviewWindow, state: &AppState, cursor_x: i32, cur
         return;
     }
 
-    let json = tray_menu_init_json(state);
-    let script = format!("window.__tray_init__({json});");
+    let script = "window.__tray_ready__ && window.__tray_ready__();".to_string();
     if menu_win.eval(&script).is_err() {
         let win = menu_win.clone();
-        let json_retry = json.clone();
         std::thread::spawn(move || {
             std::thread::sleep(std::time::Duration::from_millis(80));
-            let _ = win.eval(&format!("window.__tray_init__({json_retry});"));
+            let _ = win.eval("window.__tray_ready__ && window.__tray_ready__();");
         });
     }
 }
 
-fn estimate_menu_size(state: &AppState) -> (f64, f64) {
-    let cfg = state.cfg.lock();
-    let scheme_count = cfg
-        .mappings
+fn estimate_menu_size(_state: &AppState) -> (f64, f64) {
+    let cfg = crate::tray_customization::load();
+    let mut h = 280.0;
+    if cfg.show_event {
+        h += 72.0;
+    }
+    let show = &cfg.show_in_tray;
+    let visible_channels = [show.voice, show.keys, show.soft_pad, show.camera]
         .iter()
-        .filter(|m| mapping_is_complete(m))
+        .filter(|&&on| on)
         .count();
-    let can_cycle = scheme_count > 1;
-    let main_rows = 9 + usize::from(can_cycle);
-    let scheme_rows = 3 + scheme_count.max(1) + usize::from(can_cycle) + 1;
-    let mode_rows = 7;
-    let item_rows = main_rows.max(scheme_rows).max(mode_rows);
-    let height = 16.0 + 12.0 + 88.0 + item_rows as f64 * 34.0 + 44.0 + 16.0;
-    (328.0, height)
+    if visible_channels > 0 {
+        h += 28.0;
+        h += visible_channels as f64 * 44.0;
+    }
+    if visible_channels > 0 || cfg.show_event {
+        h += 8.0;
+    }
+    h += 44.0;
+    h += 36.0;
+    (316.0, h.clamp(380.0, 520.0))
 }
 
 fn hide_tray_menu(app: &AppHandle) {
@@ -507,6 +541,10 @@ fn hide_tray_menu(app: &AppHandle) {
 }
 
 fn show_main_window(app: &AppHandle) {
+    show_main_window_with_deep_link(app, "main:home");
+}
+
+fn show_main_window_with_deep_link(app: &AppHandle, href: &str) {
     if let Some(window) = app.get_webview_window("main") {
         crate::window_layout::ensure_on_screen(&window);
         let _ = window.show();
@@ -515,6 +553,11 @@ fn show_main_window(app: &AppHandle) {
         if let Some(state) = app.try_state::<Arc<AppState>>() {
             crate::app_log::log_line(state.inner(), "window", "main window shown");
         }
+        let tab = href.strip_prefix("main:").unwrap_or("home");
+        let script = format!(
+            "window.dispatchEvent(new CustomEvent('tray-deep-link',{{detail:{{href:{href:?},tab:{tab:?}}}}}));"
+        );
+        let _ = window.eval(&script);
     }
 }
 

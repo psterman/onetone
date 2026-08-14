@@ -201,6 +201,11 @@
   }
 
   function paintStrip(spec){
+    if(spec.panel==='softPad'){
+      var legacy=document.getElementById('habitChannelStatusStripSoftPad');
+      if(legacy) legacy.remove();
+      return;
+    }
     var editing=resolveEditing(spec.panel);
     var active=resolveActive();
     if(spec.unified){
@@ -217,9 +222,24 @@
     var activeEl=el.querySelector('[data-strip-active]');
     var hintEl=el.querySelector('[data-strip-hint]');
     var btn=el.querySelector('[data-strip-activate]');
-    if(editingEl) editingEl.textContent=editingTpl.replace('{name}',editing.name||'—');
-    if(activeEl) activeEl.textContent=activeTpl.replace('{name}',active.name||'—');
-    if(hintEl) hintEl.textContent=hint;
+    var same=!!(editing.id&&active.id&&editing.id===active.id);
+    if(spec.panel==='softPad'&&same){
+      var sameLbl=(t('keysUnifiedRoleSame')||'编辑且正在使用')+'：'+(editing.name||'—');
+      if(editingEl) editingEl.textContent=sameLbl;
+      if(activeEl){ activeEl.textContent=''; activeEl.hidden=true; }
+    }else{
+      if(editingEl){ editingEl.textContent=editingTpl.replace('{name}',editing.name||'—'); editingEl.hidden=false; }
+      if(activeEl){ activeEl.textContent=activeTpl.replace('{name}',active.name||'—'); activeEl.hidden=false; }
+    }
+    if(hintEl){
+      if(hint){
+        hintEl.hidden=false;
+        hintEl.textContent=hint;
+      }else{
+        hintEl.hidden=true;
+        hintEl.textContent='';
+      }
+    }
     if(btn){
       btn.textContent=btnLbl;
       var show=!!(editing.canActivate&&editing.id&&editing.id!==active.id);

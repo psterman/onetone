@@ -705,6 +705,27 @@
     return global.OneToneHomeScheme?global.OneToneHomeScheme.shortName(m):'—';
   }
 
+  function findBaselineMapping(){
+    var cfg=global.OneToneState&&global.OneToneState.state?global.OneToneState.state.config:null;
+    var diff=global.OneToneHabitOverrideDiff;
+    if(diff&&diff.findGlobalBaselineMapping){
+      return diff.findGlobalBaselineMapping(cfg||{},global.OneToneMappingCore);
+    }
+    return null;
+  }
+
+  function baselineOverlayFlyoutPills(m){
+    var pad=m&&m.codexMicroPad;
+    var on=!!(pad&&pad.overlayEnabled);
+    function pill(label){
+      return '<span class="wb-scene-summary-pill">'+esc(label)+'</span>';
+    }
+    return '<span class="wb-scene-summary-pills" aria-hidden="true">'
+      +pill(on?t('homeWbHabitChPadOn','Soft Pad·开'):t('homeWbHabitChPadOff','Soft Pad·关'))
+      +pill(t('homeWbChipGlobalOverlay','仅状态条'))
+      +'</span>';
+  }
+
   function isBaselineScene(m){
     var cfg=global.OneToneState&&global.OneToneState.state?global.OneToneState.state.config:null;
     var diff=global.OneToneHabitOverrideDiff;
@@ -778,9 +799,20 @@
 
   function chipFlyoutContent(id){
     id=String(id||'').trim();
-    if(!id||!global.OneToneMappingCore||!global.OneToneMappingCore.byId) return null;
+    if(!id) return null;
+    if(!global.OneToneMappingCore||!global.OneToneMappingCore.byId) return null;
     var m=global.OneToneMappingCore.byId(id);
     if(!m) return null;
+    if(isBaselineScene(m)){
+      return {
+        id:String(m.id),
+        name:sceneHabitName(m),
+        pair:t('softPadHintGlobal','未匹配 Agent 时显示迷你条；实体键保持原样。匹配到应用后使用对应键位。'),
+        pillsHtml:baselineOverlayFlyoutPills(m),
+        active:String(m.id)===String(activeSceneId()||''),
+        configureSoftPadOverlay:true
+      };
+    }
     return {
       id:String(m.id),
       name:sceneHabitName(m),
@@ -813,7 +845,10 @@
     var activeDot=active
       ?'<span class="wb-scene-chip-dot" title="'+esc(t('homeWbHabitActive'))+'"></span>'
       :'';
-    return '<button type="button" class="wb-scene-chip'+(active?' is-active':'')+'"'
+    var extraCls='';
+    if(isBaselineScene(m)) extraCls+=' wb-scene-chip--universal';
+    else if(!m.enabled) extraCls+=' is-dim';
+    return '<button type="button" class="wb-scene-chip'+(active?' is-active':'')+extraCls+'"'
       +' data-wb-scenario-id="'+esc(m.id)+'"'
       +' data-wb-chip-id="'+esc(m.id)+'"'
       +' aria-pressed="'+(active?'true':'false')+'"'
@@ -833,19 +868,35 @@
     // Never prune+persist on paint — omitting stubs without trash fights Rust merge_save
     // and loops save/mvp_init until the UI freezes. Display filter below is enough.
     var activeId=activeSceneId();
+    var baseline=findBaselineMapping();
+    var baselineId=baseline?String(baseline.id||''):'';
     var items=sortedMappings().filter(function(m){
-      if(!m||!m.enabled) return false;
+      if(!m) return false;
+      if(baselineId&&String(m.id||'')===baselineId) return true;
+      if(!m.enabled) return false;
       if(rules&&rules.isIncompleteCustomStub&&rules.isIncompleteCustomStub(m)) return false;
       return true;
     });
-    // Baseline first so 「通用」anchors the chip rail for beginners.
     items.sort(function(a,b){
       var ab=isBaselineScene(a)?0:1;
       var bb=isBaselineScene(b)?0:1;
       if(ab!==bb) return ab-bb;
       return (a.order||0)-(b.order||0);
     });
-    items=items.slice(0,8);
+    var pinned=[];
+    var seen={};
+    function pin(m){
+      if(!m||!m.id||seen[m.id]) return;
+      seen[m.id]=true;
+      pinned.push(m);
+    }
+    pin(baseline);
+    items.forEach(function(m){
+      if(seen[m.id]) return;
+      seen[m.id]=true;
+      pinned.push(m);
+    });
+    items=pinned.slice(0,10);
     var active=null;
     for(var i=0;i<items.length;i++){
       if(items[i].id===activeId){ active=items[i]; break; }

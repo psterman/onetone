@@ -32,7 +32,6 @@ import { MappingListIsland } from './islands/mapping-list-island';
 import { WbCommandIsland } from './islands/wb-command-island';
 import { SoftPadStatusBarIsland } from './islands/soft-pad-status-island';
 import { KeysStatusBarIsland } from './islands/keys-status-island';
-import { HabitHubListIsland } from './islands/habit-hub-list-island';
 import {
   HabitHubEmptyIsland,
   HabitHubGuideIsland,
@@ -347,18 +346,6 @@ function mountKeysStatusIsland(): void {
 }
 (window as unknown as { __otMountKeysStatusIsland?: () => void }).__otMountKeysStatusIsland =
   mountKeysStatusIsland;
-
-// P12：挂载习惯列表岛（延迟到习惯面板首次打开；避免 boot 清空 hidden DOM）
-function mountHabitHubListIsland(): void {
-  const host = document.getElementById('habitHubList');
-  if (!host || OneToneIslands.isMounted('habitHubList')) return;
-  host.innerHTML = '';
-  OneToneIslands.mountIsland('habitHubList', HabitHubListIsland, {}, {
-    onRefresh: () => ({}) as Record<string, unknown>,
-  });
-}
-(window as unknown as { __otMountHabitHubListIsland?: () => void }).__otMountHabitHubListIsland =
-  mountHabitHubListIsland;
 
 // P13：挂载习惯 Hub 壳层岛（guide / empty / sort；延迟到习惯面板首次打开）
 function mountHabitHubChromeIsland(): void {

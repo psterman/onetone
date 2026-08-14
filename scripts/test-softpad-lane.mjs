@@ -115,7 +115,7 @@ assert.equal(Hub.getCachedSoftPadRuntime().snap.applied.laneKind, 'claude');
 
 const panels = readFileSync(join(root, 'src/js/features/home/home-workbench-panels.js'), 'utf8');
 assert.match(panels, /softPadSnapshotFromApplied|getCachedSoftPadRuntime/);
-assert.match(panels, /homeWbSoftPadConfirming|正在确认 Soft Pad 状态/);
+assert.match(panels, /homeWbSoftPadControlConfirming|正在确认当前控制/);
 
 const i18n = readFileSync(join(root, 'src/js/core/i18n.js'), 'utf8');
 assert.match(i18n, /homeWbSoftPadCurrentControl:'当前控制：\{name\}'/);

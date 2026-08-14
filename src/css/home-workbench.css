@@ -3525,6 +3525,18 @@ html[data-theme="dark"] .wb-pipeline-node-val.is-finish { color: #a78bfa; }
   background: color-mix(in srgb, var(--primary-soft) 35%, var(--surface-high));
 }
 
+.wb-scene-chip.is-dim {
+  opacity: 0.72;
+}
+
+.wb-scene-chip .wb-scene-card-ico--global svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  margin: 5px auto;
+  color: var(--primary);
+}
+
 .wb-scene-chip--new {
   border-style: dashed;
   background: var(--surface-soft);

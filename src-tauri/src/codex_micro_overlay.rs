@@ -1308,6 +1308,10 @@ fn active_codex_mapping_with_overlay(
         }
     }
 
+    if let Some(hit) = crate::codex_numpad_layer::baseline_fallback_overlay_candidate(cfg) {
+        return Some(hit);
+    }
+
     for m in &cfg.mappings {
         if !m.enabled || m.app_target_id.trim() != CODEX_APP_TARGET_ID {
             continue;
@@ -3481,6 +3485,7 @@ pub fn note_micro_key(micro_key_id: &str, key_down: bool) {
 
 pub fn push_state(app: &AppHandle, state: &AppState) {
     request_overlay_push(app, state, true);
+    crate::tray_state::emit_tray_segment(app, state, "channels");
 }
 
 /// Status-only refresh ? skip reposition/resize (hold-to-talk must not thrash overlay layout).
@@ -3506,12 +3511,15 @@ fn apply_overlay_payload(
     }
     cache_overlay_hwnd_from_window(&win);
     let already_visible = win.is_visible().unwrap_or(false);
-    if visible && reposition {
+    if visible {
+        // Status-only pushes still reconcile mini↔full outer size (mapping presentation
+        // can flip while visible; skipping resize left a 680px window around a 44px bar).
         let _ = apply_overlay_geometry(&win, payload);
-        let _ = win.set_always_on_top(true);
-        let _ = win.set_skip_taskbar(true);
-        // Already-on Soft Pad: geometry only — re-show causes FG flash on mapping switch.
-        if !already_visible {
+        if reposition {
+            let _ = win.set_always_on_top(true);
+            let _ = win.set_skip_taskbar(true);
+            // Already-on Soft Pad: geometry only — re-show causes FG flash on mapping switch.
+            if !already_visible {
             #[cfg(windows)]
             {
                 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
@@ -3530,6 +3538,7 @@ fn apply_overlay_payload(
             #[cfg(not(windows))]
             {
                 let _ = win.show();
+            }
             }
         }
     } else if !visible {

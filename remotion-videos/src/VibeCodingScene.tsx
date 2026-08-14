@@ -364,7 +364,7 @@ const chaosApps = [
   { name: "Cursor", color: "#0A0A0A", icon: "icons/apps/cursor.svg", left: "13%", top: "84%", rot: 6 },
   { name: "DeepSeek", color: "#4D6BFE", icon: "icons/apps/deepseek.svg", left: "85%", top: "84%", rot: -5 },
   { name: "压缩包", color: "#F7B500", icon: "icons/apps/zip.svg", left: "54%", top: "15%", rot: 11 },
-  { name: "TRAE", color: "#3B82F6", icon: "icons/apps/ttrae.svg", left: "39%", top: "39%", rot: -7 },
+  { name: "TRAE", color: "#32F08C", icon: "icons/apps/trae.svg", left: "39%", top: "39%", rot: -7 },
 ];
 
 // 单个应用窗口（品牌图标 + 名称，高辨识度）

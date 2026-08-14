@@ -1110,7 +1110,7 @@
                   <span class="keys-scheme-summary-val" id="softPadSummaryKeys">—</span>
                 </span>
                 <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
-                <span class="keys-scheme-summary-item">
+                <span class="keys-scheme-summary-item is-hidden" id="softPadSummaryTmWrap" hidden aria-hidden="true">
                   <span class="keys-scheme-summary-lbl" id="softPadSummaryTmLbl">恢复点</span>
                   <span class="keys-scheme-summary-val" id="softPadSummaryTm">即将接入</span>
                 </span>
@@ -1135,7 +1135,7 @@
             <div class="page-status-bar-actions keys-scheme-status-actions">
               <button type="button" class="page-status-btn" id="btnSoftPadTestFg" data-cockpit-action="test-fg">测试前台</button>
               <button type="button" class="page-status-btn" id="btnSoftPadEditKeys" data-cockpit-action="edit-keys">编辑键位</button>
-              <button type="button" class="page-status-btn" id="btnSoftPadTimeline" data-cockpit-action="open-timeline">打开时间线</button>
+              <button type="button" class="page-status-btn" id="btnSoftPadTrayCustomize" data-cockpit-action="open-tray">打开托盘菜单</button>
               <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="softPadSummaryEnable" role="switch" aria-checked="false" aria-labelledby="settingsPanelSoftPadTitle"></button>
             </div>
           </div>
@@ -1170,7 +1170,15 @@
                 <h3 class="flow-node-title" id="softPadFlowNodeAgentTitle">状态灯</h3>
                 <p class="flow-node-hint" id="softPadFlowNodeAgentHint">看 AI 忙不忙</p>
               </div>
-              <div class="flow-node" data-soft-pad-node="timeline">
+              <div class="flow-node" data-soft-pad-node="tray">
+                <span class="flow-node-tag" id="softPadFlowNodeTrayTag">托盘</span>
+                <button type="button" class="flow-node-btn" id="softPadFlowNodeTray" role="tab" aria-selected="false" aria-labelledby="softPadFlowNodeTrayTitle" aria-controls="softPadFaceTray">
+                  <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M9 5V3h6v2"/><path d="M8 12h8"/></svg>
+                </button>
+                <h3 class="flow-node-title" id="softPadFlowNodeTrayTitle">托盘菜单</h3>
+                <p class="flow-node-hint" id="softPadFlowNodeTrayHint">四通道状态与控制</p>
+              </div>
+              <div class="flow-node is-hidden" data-soft-pad-node="timeline" hidden aria-hidden="true">
                 <span class="flow-node-tag" id="softPadFlowNodeTimelineTag">项目胶囊</span>
                 <button type="button" class="flow-node-btn" id="softPadFlowNodeTimeline" role="tab" aria-selected="false" aria-labelledby="softPadFlowNodeTimelineTitle" aria-controls="softPadFaceTimeline">
                   <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="7" width="19" height="10" rx="5"/><path d="M12 7v10"/><circle cx="7.5" cy="12" r="1.35" fill="currentColor" stroke="none"/><path d="M15.2 9.8a2.6 2.6 0 11-1.1 3.4"/><path d="M14.2 9.2l1.2.2.2 1.2"/></svg>
@@ -1180,12 +1188,18 @@
               </div>
             </div>
           </section>
-          <div class="soft-pad-app-switcher" id="softPadAppSwitcher" role="tablist" aria-label="应用" hidden></div>
-          <p class="soft-pad-scope-hint" id="softPadScopeHint" aria-live="polite"></p>
-          <div class="soft-pad-scan-bar" id="softPadScanBar">
-            <button type="button" class="btn secondary soft-pad-scan-btn" id="softPadScanBtn">扫描本机工具</button>
-            <span class="soft-pad-scan-status" id="softPadScanStatus" aria-live="polite"></span>
+          <div class="soft-pad-settings-preview-banner" id="softPadSettingsPreviewBanner" role="note" aria-labelledby="softPadSettingsPreviewBannerTitle">
+            <span class="soft-pad-settings-preview-banner__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7z"/><circle cx="12" cy="12" r="3"/></svg>
+            </span>
+            <div class="soft-pad-settings-preview-banner__text">
+              <p class="soft-pad-settings-preview-banner__title" id="softPadSettingsPreviewBannerTitle">设置中预览</p>
+              <p class="soft-pad-settings-preview-banner__body" id="softPadSettingsPreviewBannerBody">悬浮 Soft Pad 在设置时会自动隐藏，避免挡住界面。右侧改动会同步到左侧预览；关闭设置并在 Agent 前台可看到真实浮窗。</p>
+            </div>
           </div>
+          <div class="soft-pad-app-switcher" id="softPadAppSwitcher" role="tablist" aria-label="应用"></div>
+          <p class="soft-pad-scope-hint" id="softPadScopeHint" aria-live="polite" hidden></p>
+          <span class="sr-only" id="softPadScanStatus" aria-live="polite"></span>
           <header class="pref-page-head soft-pad-page-head sr-only">
             <div class="soft-pad-page-head-text">
               <h3 class="pref-page-title" id="settingsPanelSoftPadTitle">虚拟键盘</h3>
@@ -1229,7 +1243,103 @@
                     <div class="codex-pad-mgr soft-pad-subpage-body" id="softPadAgentBody"></div>
                   </aside>
                 </div>
-                <!-- C3 Timeline face: left Soft Pad + right node detail + bottom date rail -->
+                <!-- C3 Tray face: preview left + channel subtabs right -->
+                <div class="soft-pad-face-root soft-pad-face-tray" id="softPadFaceTray" data-face="tray" hidden>
+                  <div class="soft-pad-face-tray__preview" id="softPadTrayPreviewHost">
+                    <div class="soft-pad-tray-preview-lbl">托盘菜单预览</div>
+                    <div class="soft-pad-tray-menu-shell" id="softPadTrayPreviewShell">
+                      <div class="soft-pad-tray-hero" data-tray-seg="hero">
+                        <div class="soft-pad-tray-hero__main">
+                          <div class="soft-pad-tray-hero__title"><span class="soft-pad-tray-pulse" id="softPadTrayHeroPulse"></span><span id="softPadTrayHeroText">监听中</span></div>
+                          <div class="soft-pad-tray-hero__chips" id="softPadTrayHeroChips" aria-hidden="true"></div>
+                        </div>
+                        <button type="button" class="soft-pad-tray-hero__act" id="softPadTrayHeroPause">暂停</button>
+                      </div>
+                      <div class="soft-pad-tray-event" data-tray-seg="event" id="softPadTrayEventCard">
+                        <div class="soft-pad-tray-event__head">最近事件</div>
+                        <div class="soft-pad-tray-event__body" id="softPadTrayEventBody">—</div>
+                      </div>
+                      <div class="soft-pad-tray-sec-head" data-tray-seg="channels-head">通道</div>
+                      <div class="soft-pad-tray-ch-row" data-tray-seg="channels" data-tray-ch="voice"><span>语音</span><span class="meta" id="softPadTrayMetaVoice">—</span></div>
+                      <div class="soft-pad-tray-ch-row" data-tray-seg="channels" data-tray-ch="keys"><span>按键</span><span class="meta" id="softPadTrayMetaKeys">—</span></div>
+                      <div class="soft-pad-tray-ch-row" data-tray-seg="channels" data-tray-ch="softPad"><span>Soft Pad</span><span class="meta" id="softPadTrayMetaPad">—</span></div>
+                      <div class="soft-pad-tray-ch-row" data-tray-seg="channels" data-tray-ch="camera"><span>摄像头</span><span class="meta" id="softPadTrayMetaCamera">—</span></div>
+                      <div class="soft-pad-tray-mic-row" data-tray-seg="mic"><span id="softPadTrayMicLabel">麦克风</span><button type="button" class="soft-pad-tray-mini-toggle" id="softPadTrayMicToggle" role="switch" aria-checked="true"></button></div>
+                    </div>
+                  </div>
+                  <aside class="soft-pad-face-tray__inspector" id="softPadTrayInspector">
+                    <header class="soft-pad-tray-inspector-head">
+                      <h2 class="soft-pad-tray-inspector-title">通道状态与控制</h2>
+                    </header>
+                    <div class="soft-pad-tray-layout-row">
+                      <label class="soft-pad-tray-layout-chk is-locked"><input type="checkbox" checked disabled/> Hero</label>
+                      <label class="soft-pad-tray-layout-chk"><input type="checkbox" id="softPadTrayChkEvent" checked/> 最近事件</label>
+                      <div class="soft-pad-tray-layout-mic">
+                        <span>麦克风 · <span id="softPadTrayInsMicStatus">—</span></span>
+                        <button type="button" class="soft-pad-tray-mini-toggle" id="softPadTrayInsMicToggle" role="switch" aria-checked="true" aria-label="麦克风静音"></button>
+                      </div>
+                    </div>
+                    <div class="soft-pad-tray-channels-wrap">
+                      <div class="soft-pad-tray-ch-subtabs" role="tablist" aria-label="四通道">
+                        <button type="button" class="soft-pad-tray-ch-subtab is-active" role="tab" data-ch-tab="voice" id="softPadTrayTabVoice" aria-selected="true"><span class="soft-pad-tray-ch-subtab__ic">🎤</span><span class="soft-pad-tray-ch-subtab__lbl">语音</span><span class="soft-pad-tray-ch-subtab__dot run" id="softPadTrayDotVoice"></span></button>
+                        <button type="button" class="soft-pad-tray-ch-subtab" role="tab" data-ch-tab="keys" id="softPadTrayTabKeys" aria-selected="false"><span class="soft-pad-tray-ch-subtab__ic">⌨</span><span class="soft-pad-tray-ch-subtab__lbl">按键</span><span class="soft-pad-tray-ch-subtab__dot on" id="softPadTrayDotKeys"></span></button>
+                        <button type="button" class="soft-pad-tray-ch-subtab" role="tab" data-ch-tab="softPad" id="softPadTrayTabSoftPad" aria-selected="false"><span class="soft-pad-tray-ch-subtab__lbl">Pad</span><span class="soft-pad-tray-ch-subtab__dot off" id="softPadTrayDotSoftPad"></span></button>
+                        <button type="button" class="soft-pad-tray-ch-subtab is-off" role="tab" data-ch-tab="camera" id="softPadTrayTabCamera" aria-selected="false"><span class="soft-pad-tray-ch-subtab__ic">📷</span><span class="soft-pad-tray-ch-subtab__lbl">摄像头</span><span class="soft-pad-tray-ch-subtab__dot off" id="softPadTrayDotCamera"></span></button>
+                      </div>
+                      <div class="soft-pad-tray-ch-panels">
+                        <article class="soft-pad-tray-ch-card" data-soft-pad-tray-panel="voice" id="softPadTrayCardVoice">
+                          <div class="soft-pad-tray-ch-card__head"><b>语音</b><span class="soft-pad-tray-st-pill run" id="softPadTrayPillVoice">—</span><label class="soft-pad-tray-show-tray"><input type="checkbox" id="softPadTrayShowVoice" checked/> 托盘显示</label></div>
+                          <div class="soft-pad-tray-ch-stats">
+                            <div class="stat"><span class="k">引擎</span><span class="v" id="softPadTrayStatVoiceEngine">—</span></div>
+                            <div class="stat"><span class="k">唤醒词</span><span class="v" id="softPadTrayStatVoiceWake">—</span></div>
+                            <div class="stat"><span class="k">最近事件</span><span class="v" id="softPadTrayStatVoiceEvent">—</span></div>
+                            <div class="stat"><span class="k">错误</span><span class="v" id="softPadTrayStatVoiceErr">—</span></div>
+                          </div>
+                          <div class="soft-pad-tray-ch-switches">
+                            <div class="soft-pad-tray-sw-row"><span>启用语音引擎</span><button type="button" class="soft-pad-tray-mini-toggle" id="softPadTraySwVoiceEngine" role="switch" aria-checked="true"></button></div>
+                            <div class="soft-pad-tray-sw-row"><span>结束短语检测</span><button type="button" class="soft-pad-tray-mini-toggle" id="softPadTraySwVoiceEnd" role="switch" aria-checked="true"></button></div>
+                          </div>
+                        </article>
+                        <article class="soft-pad-tray-ch-card" data-soft-pad-tray-panel="keys" id="softPadTrayCardKeys" hidden>
+                          <div class="soft-pad-tray-ch-card__head"><b>按键</b><span class="soft-pad-tray-st-pill on" id="softPadTrayPillKeys">—</span><label class="soft-pad-tray-show-tray"><input type="checkbox" id="softPadTrayShowKeys" checked/> 托盘显示</label></div>
+                          <div class="soft-pad-tray-ch-stats">
+                            <div class="stat"><span class="k">触发键</span><span class="v" id="softPadTrayStatKeysKey">—</span></div>
+                            <div class="stat"><span class="k">触发方式</span><span class="v" id="softPadTrayStatKeysMode">—</span></div>
+                            <div class="stat"><span class="k">当前习惯</span><span class="v" id="softPadTrayStatKeysHabit">—</span></div>
+                            <div class="stat"><span class="k">上次触发</span><span class="v" id="softPadTrayStatKeysLast">—</span></div>
+                          </div>
+                        </article>
+                        <article class="soft-pad-tray-ch-card" data-soft-pad-tray-panel="softPad" id="softPadTrayCardPad" hidden>
+                          <div class="soft-pad-tray-ch-card__head"><b>Soft Pad</b><span class="soft-pad-tray-st-pill off" id="softPadTrayPillPad">—</span><label class="soft-pad-tray-show-tray"><input type="checkbox" id="softPadTrayShowSoftPad" checked/> 托盘显示</label></div>
+                          <div class="soft-pad-tray-ch-stats">
+                            <div class="stat"><span class="k">键位</span><span class="v" id="softPadTrayStatPadKeys">—</span></div>
+                            <div class="stat"><span class="k">绑定 Agent</span><span class="v" id="softPadTrayStatPadAgent">—</span></div>
+                            <div class="stat"><span class="k">浮层</span><span class="v" id="softPadTrayStatPadOverlay">—</span></div>
+                            <div class="stat"><span class="k">前台</span><span class="v" id="softPadTrayStatPadFg">—</span></div>
+                          </div>
+                          <div class="soft-pad-tray-ch-switches">
+                            <div class="soft-pad-tray-sw-row"><span>启用 Soft Pad</span><button type="button" class="soft-pad-tray-mini-toggle" id="softPadTraySwPadEnabled" role="switch" aria-checked="false"></button></div>
+                            <div class="soft-pad-tray-sw-row"><span>显示浮层</span><button type="button" class="soft-pad-tray-mini-toggle" id="softPadTraySwPadOverlay" role="switch" aria-checked="true"></button></div>
+                          </div>
+                        </article>
+                        <article class="soft-pad-tray-ch-card is-off" data-soft-pad-tray-panel="camera" id="softPadTrayCardCamera" hidden>
+                          <div class="soft-pad-tray-ch-card__head"><b>摄像头</b><span class="soft-pad-tray-st-pill off" id="softPadTrayPillCamera">—</span><label class="soft-pad-tray-show-tray"><input type="checkbox" id="softPadTrayShowCamera"/> 托盘显示</label></div>
+                          <div class="soft-pad-tray-ch-stats">
+                            <div class="stat"><span class="k">设备</span><span class="v" id="softPadTrayStatCamDev">—</span></div>
+                            <div class="stat"><span class="k">Presence</span><span class="v" id="softPadTrayStatCamPresence">—</span></div>
+                            <div class="stat"><span class="k">自动静音</span><span class="v" id="softPadTrayStatCamAutoMute">—</span></div>
+                            <div class="stat"><span class="k">权限</span><span class="v" id="softPadTrayStatCamPerm">—</span></div>
+                          </div>
+                          <div class="soft-pad-tray-ch-switches">
+                            <div class="soft-pad-tray-sw-row"><span>启用摄像头通道</span><button type="button" class="soft-pad-tray-mini-toggle" id="softPadTraySwCamEnabled" role="switch" aria-checked="false"></button></div>
+                            <div class="soft-pad-tray-sw-row"><span>Presence 动作</span><button type="button" class="soft-pad-tray-mini-toggle" id="softPadTraySwCamPresence" role="switch" aria-checked="false"></button></div>
+                          </div>
+                        </article>
+                      </div>
+                    </div>
+                  </aside>
+                </div>
+                <!-- C3 Timeline face (legacy, hidden from flow) -->
                 <div class="soft-pad-face-root soft-pad-face-timeline" id="softPadFaceTimeline" data-face="timeline" hidden>
                   <div class="soft-pad-face-tm__preview soft-pad-preview-host" id="softPadTmPreviewHost"></div>
                   <aside class="soft-pad-face-tm__detail" id="softPadTmDetailHost" aria-live="polite"></aside>
@@ -4403,6 +4513,7 @@
   <script src="js/features/home/home-context-actions-ui.js"></script>
   <script src="js/features/agent/agent-scenario-template.js"></script>
   <script src="js/features/agent/codex-micro-pad-ui.js"></script>
+  <script src="js/features/agent/soft-pad-tray-ui.js"></script>
   <script src="js/features/agent/soft-pad-time-machine-ui.js"></script>
   <script src="js/features/agent/usage-format.js"></script>
   <script src="js/features/agent/shell-agent-hook-panel.js"></script>

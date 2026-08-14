@@ -35,10 +35,10 @@
 
   // Soft Pad C IA: face = page route; padMode = pad-face local tabs only.
   // softPadView removed — use softPadPanelId() / getView() for legacy panel ids.
-  var softPadFace = 'pad'; // pad | agent | timeline
+  var softPadFace = 'pad'; // pad | agent | tray | timeline
   var softPadPadMode = 'appear'; // appear | keys | look | purpose
   var lastSoftPadPadMode = 'appear';
-  var VALID_SOFT_PAD_FACES = { pad: 1, agent: 1, timeline: 1 };
+  var VALID_SOFT_PAD_FACES = { pad: 1, agent: 1, tray: 1, timeline: 1 };
   var VALID_SOFT_PAD_PAD_MODES = { appear: 1, keys: 1, look: 1, purpose: 1 };
   var PAD_MODE_TO_PANEL = { appear: 'runtime', keys: 'layout', look: 'presentation', purpose: 'purpose' };
   var PANEL_TO_PAD_MODE = { runtime: 'appear', layout: 'keys', presentation: 'look', purpose: 'purpose' };
@@ -101,6 +101,86 @@
     // Call sites may run before ui.drawerOpen flips — force=settings/panel always dismisses.
     if (reason !== 'settings' && reason !== 'panel' && reason !== 'render' && !floatingOverlayBlocked()) return;
     dismissSoftPadOverlay(reason || 'settings');
+  }
+
+  /** Universal baseline Soft Pad fallback — overlay on baseline mapping, not a separate row. */
+  var SOFT_PAD_UNIVERSAL_KIND = 'universal';
+  var LEGACY_SOFT_PAD_GLOBAL_ID = 'soft-pad-global';
+
+  function findBaselineMapping() {
+    var cfg = global.OneToneState && global.OneToneState.state && global.OneToneState.state.config;
+    var diff = global.OneToneHabitOverrideDiff;
+    if (diff && diff.findGlobalBaselineMapping) {
+      return diff.findGlobalBaselineMapping(cfg || {}, global.OneToneMappingCore);
+    }
+    return null;
+  }
+
+  function isLegacyGlobalSoftPadMapping(m) {
+    return !!(m && String(m.id || '') === LEGACY_SOFT_PAD_GLOBAL_ID);
+  }
+
+  function defaultBaselineSoftPadOverlay() {
+    return {
+      enabled: false,
+      overlayEnabled: true,
+      requireForeground: false,
+      requireNumLockOff: false,
+      showNavigationPad: false,
+      navKeysEnabled: false,
+      capturePhysicalArrows: false,
+      presentation: 'mini',
+      skin: 'default',
+      layoutProfile: 'custom',
+      purpose: 'shortcuts',
+      softwareEnhanceEnabled: false,
+      keys: [],
+      codexStatusLightsEnabled: true,
+      claudeStatusLightsEnabled: true,
+      cursorStatusLightsEnabled: true,
+      minimaxStatusLightsEnabled: true,
+      workbuddyStatusLightsEnabled: true,
+      traeStatusLightsEnabled: true,
+      qoderStatusLightsEnabled: true,
+      copilotStatusLightsEnabled: true,
+      geminiStatusLightsEnabled: true,
+      clineStatusLightsEnabled: true,
+      opencodeStatusLightsEnabled: true,
+      aiderStatusLightsEnabled: true,
+      ambientEnabled: true,
+      ambientMode: 'status',
+      ambientOpacity: 100,
+      keyLightPreset: 'default'
+    };
+  }
+
+  /** Ensure universal baseline carries overlay-only Soft Pad config (keys stay native). */
+  function ensureBaselineSoftPadOverlay(opts) {
+    opts = opts || {};
+    var m = findBaselineMapping();
+    if (!m) return null;
+    if (!m.codexMicroPad) m.codexMicroPad = defaultBaselineSoftPadOverlay();
+    return m;
+  }
+
+  function universalSoftPadSchemeEntry() {
+    var m = ensureBaselineSoftPadOverlay({ persist: false });
+    if (!m) return null;
+    var pad = m.codexMicroPad;
+    var flags = softPadRuntimeFlags(m);
+    return {
+      mapping: m,
+      kind: SOFT_PAD_UNIVERSAL_KIND,
+      appId: '',
+      mappingEnabled: flags.mappingEnabled,
+      padConfigured: flags.padConfigured,
+      padSwitchOn: flags.padSwitchOn,
+      padEnabled: flags.padEnabled,
+      canEnable: false,
+      canPrepare: false,
+      title: t('softPadScopeUniversal', '通用'),
+      presentation: (pad && pad.presentation === 'full') ? 'full' : 'mini'
+    };
   }
 
   /** Agent Soft Pad app targets (extensible for future apps). */
@@ -182,8 +262,16 @@
     return '';
   }
 
+  function kindForMapping(m) {
+    var baseline = findBaselineMapping();
+    if (baseline && m && m.id === baseline.id) return SOFT_PAD_UNIVERSAL_KIND;
+    if (isLegacyGlobalSoftPadMapping(m)) return '';
+    return kindForAppId(m && m.appTargetId) || 'soft';
+  }
+
   function appIdForKind(kind) {
     kind = String(kind || '');
+    if (kind === SOFT_PAD_UNIVERSAL_KIND) return '';
     for (var i = 0; i < BUILTIN_SOFT_PAD_APPS.length; i++) {
       if (BUILTIN_SOFT_PAD_APPS[i].kind === kind) return BUILTIN_SOFT_PAD_APPS[i].appId;
     }
@@ -199,10 +287,18 @@
   }
 
   function iconForKind(kind) {
+    if (kind === SOFT_PAD_UNIVERSAL_KIND) return '';
     return iconForAppId(appIdForKind(kind));
   }
 
   function iconHtml(kind, cls) {
+    if (kind === SOFT_PAD_UNIVERSAL_KIND) {
+      return '<span class="' + esc(cls || 'soft-pad-app-icon') + ' soft-pad-app-chip-icon--universal" aria-hidden="true">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/>' +
+        '<path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/>' +
+        '</svg></span>';
+    }
     var src = iconForKind(kind);
     if (!src) return '';
     return '<img class="' + esc(cls || 'soft-pad-app-icon') + '" src="' + esc(src) +
@@ -216,6 +312,9 @@
    */
   function isSoftPadSchemeEligible(m) {
     if (!m || !m.id) return false;
+    if (isLegacyGlobalSoftPadMapping(m)) return false;
+    var baseline = findBaselineMapping();
+    if (baseline && m.id === baseline.id) return true;
     var pad = m.codexMicroPad;
     if (pad && pad.enabled === true) return true;
     return !!kindForAppId(m.appTargetId);
@@ -223,10 +322,12 @@
 
   /** Builtin Soft Pad kinds shown in hub UI. */
   function isHubSoftPadKind(kind) {
+    if (kind === SOFT_PAD_UNIVERSAL_KIND) return true;
     return !!appIdForKind(kind);
   }
 
   function appTitleFor(kind) {
+    if (kind === SOFT_PAD_UNIVERSAL_KIND) return t('softPadScopeUniversal', '通用');
     if (kind === 'claude') return t('softPadHubKindClaude', 'Claude');
     if (kind === 'codex') return t('softPadHubKindCodex', 'Codex');
     if (kind === 'cursor') return t('softPadHubKindCursor', 'Cursor');
@@ -237,7 +338,7 @@
     return t('softPadHubKindSoft', 'Soft Pad');
   }
 
-  /** Default Hub tab when opening Soft Pad (may be Codex placeholder — UI only). */
+  /** Default Hub tab — agent apps first; universal fallback is secondary. */
   function pickHubDefaultScopeId(entries) {
     entries = entries || listSoftPadSchemes();
     var i;
@@ -259,7 +360,7 @@
     for (i = 0; i < entries.length; i++) {
       if (entries[i].kind === scopeId) return entries[i];
     }
-    return pickGlobalEntry(entries) || entries[0] || null;
+    return pickUniversalEntry(entries) || entries[0] || null;
   }
 
   // Deprecated alias — Hub UI only. Do not use for primary lane / homepage.
@@ -788,8 +889,9 @@
     var byKind = {};
     var softExtras = [];
     mappings().forEach(function (m) {
+      if (isLegacyGlobalSoftPadMapping(m)) return;
       if (!isSoftPadSchemeEligible(m)) return;
-      var kind = kindForAppId(m.appTargetId) || 'soft';
+      var kind = kindForMapping(m);
       var pad = m.codexMicroPad;
       var flags = softPadRuntimeFlags(m);
       if (!isHubSoftPadKind(kind)) {
@@ -843,21 +945,23 @@
     softExtras.sort(function (a, b) {
       return String(a.title).localeCompare(String(b.title));
     });
-    return out.concat(softExtras);
+    var universalEntry = universalSoftPadSchemeEntry();
+    var merged = out.concat(softExtras);
+    return universalEntry ? [universalEntry].concat(merged) : merged;
   }
 
   function listHubEntries() {
     return listSoftPadSchemes();
   }
 
-  /** Default Soft Pad layer for「全局」— prefer enabled, else first. */
-  function pickGlobalEntry(entries) {
+  /** Universal baseline Soft Pad fallback entry. */
+  function pickUniversalEntry(entries) {
     entries = entries || listSoftPadSchemes();
     var i;
     for (i = 0; i < entries.length; i++) {
-      if (entries[i].padEnabled) return entries[i];
+      if (entries[i].kind === SOFT_PAD_UNIVERSAL_KIND) return entries[i];
     }
-    return entries[0] || null;
+    return null;
   }
 
   function placeholderEntry(kind, appId) {
@@ -940,13 +1044,28 @@
   }
 
   /**
-   * Scopes for top switcher: builtin apps only (Codex / Claude; no「全局」).
-   * Sorted: installed+prepared first, then installed, then uninstalled (more tools).
+   * Scopes for top switcher: universal baseline fallback + builtin Agent apps.
    */
   function listAppScopes() {
+    ensureBaselineSoftPadOverlay({ persist: false });
     var entries = listSoftPadSchemes();
     var byKind = {};
     entries.forEach(function (e) { byKind[e.kind] = e; });
+    var universalEntry = byKind[SOFT_PAD_UNIVERSAL_KIND] || universalSoftPadSchemeEntry();
+    var universalScope = universalEntry ? {
+      id: SOFT_PAD_UNIVERSAL_KIND,
+      kind: SOFT_PAD_UNIVERSAL_KIND,
+      appId: '',
+      title: universalEntry.title,
+      mapping: universalEntry.mapping,
+      entry: universalEntry,
+      padEnabled: !!universalEntry.padEnabled,
+      canPrepare: false,
+      installed: true,
+      connected: !!(universalEntry.mapping && universalEntry.mapping.codexMicroPad &&
+        universalEntry.mapping.codexMicroPad.overlayEnabled),
+      inv: null
+    } : null;
     var scopes = BUILTIN_SOFT_PAD_APPS.map(function (b) {
       var entry = byKind[b.kind] || placeholderEntry(b.kind, b.appId);
       var inv = hubInventoryByKind[b.kind] || null;
@@ -972,7 +1091,7 @@
       if (ra !== rb) return ra - rb;
       return (HUB_KIND_RANK[a.kind] || 99) - (HUB_KIND_RANK[b.kind] || 99);
     });
-    return scopes;
+    return universalScope ? [universalScope].concat(scopes) : scopes;
   }
 
   /** Aside list: builtin apps (existing or「可准备」) + Soft Pad custom habits. */
@@ -1040,6 +1159,7 @@
       agentBody: document.getElementById('softPadAgentBody'),
       facePad: document.getElementById('softPadFacePad'),
       faceAgent: document.getElementById('softPadFaceAgent'),
+      faceTray: document.getElementById('softPadFaceTray'),
       faceTimeline: document.getElementById('softPadFaceTimeline'),
       padTabs: document.getElementById('softPadPadTabs'),
       tmPreview: document.getElementById('softPadTmPreviewHost'),
@@ -1083,6 +1203,7 @@
 
   function softPadPanelId() {
     if (softPadFace === 'agent') return 'agent';
+    if (softPadFace === 'tray') return 'tray';
     if (softPadFace === 'timeline') return 'timeline';
     return PAD_MODE_TO_PANEL[softPadPadMode] || 'runtime';
   }
@@ -1092,6 +1213,7 @@
     view = String(view || '');
     if (view === 'advanced') view = 'agent';
     if (view === 'agent') return { face: 'agent', mode: null };
+    if (view === 'tray') return { face: 'tray', mode: null };
     if (view === 'timeline') return { face: 'timeline', mode: null };
     if (view === 'purpose') return { face: 'pad', mode: 'purpose' };
     if (PANEL_TO_PAD_MODE[view]) return { face: 'pad', mode: PANEL_TO_PAD_MODE[view] };
@@ -1103,6 +1225,7 @@
   function previewHostForFace(face) {
     face = face || softPadFace;
     if (face === 'agent') return document.getElementById('softPadAgentPreviewHost');
+    if (face === 'tray') return document.getElementById('softPadTrayPreviewHost');
     if (face === 'timeline') return document.getElementById('softPadTmPreviewHost');
     return document.getElementById('softPadPreviewHost');
   }
@@ -1118,12 +1241,24 @@
   function syncPadTabs() {
     var e = els();
     if (!e.padTabs) return;
+    var isUniversal = String(selectedScopeId || '') === SOFT_PAD_UNIVERSAL_KIND;
     e.padTabs.querySelectorAll('[data-pad-mode]').forEach(function (btn) {
-      var on = softPadFace === 'pad' && btn.getAttribute('data-pad-mode') === softPadPadMode;
+      var mode = btn.getAttribute('data-pad-mode') || '';
+      if (isUniversal && mode === 'keys') {
+        btn.hidden = true;
+        btn.setAttribute('aria-hidden', 'true');
+        return;
+      }
+      btn.hidden = false;
+      btn.removeAttribute('aria-hidden');
+      var on = softPadFace === 'pad' && mode === softPadPadMode;
       btn.classList.toggle('is-active', on);
       btn.setAttribute('aria-selected', on ? 'true' : 'false');
     });
     e.padTabs.setAttribute('data-pad-mode', softPadPadMode);
+    if (isUniversal && softPadPadMode === 'keys') {
+      setSoftPadPadMode('appear');
+    }
   }
 
   function resetSoftPadRouteToPadAppear() {
@@ -1644,12 +1779,12 @@
     if (e.resetMeta) e.resetMeta.textContent = props.resetCountdown || '—';
     var mmScope = String(selectedScopeId || '') === 'minimax';
     if (e.usageMeta) {
-      e.usageMeta.style.cursor = mmScope ? 'pointer' : '';
+      if (e.usageMeta.style) e.usageMeta.style.cursor = mmScope ? 'pointer' : '';
       e.usageMeta.title = mmScope
         ? t('softPadMinimaxUsageClick', '点击填写 Coding Plan Key，或查看套餐')
         : '';
     }
-    if (e.resetMeta) {
+    if (e.resetMeta && e.resetMeta.style) {
       e.resetMeta.style.cursor = mmScope ? 'pointer' : '';
     }
     if (e.enable) {
@@ -1743,8 +1878,11 @@
       }
       return;
     }
+    if (action === 'open-tray') {
+      setSoftPadFace('tray');
+      return;
+    }
     if (action === 'open-timeline') {
-      setSoftPadFace('timeline');
       return;
     }
     if (action === 'take-snapshot') {
@@ -1760,8 +1898,21 @@
   }
 
   function buildSoftPadScopeHintModel() {
-    var entry = findEntry(getSelectedMappingId()) || pickGlobalEntry() || resolveSoftPadEntry();
+    var entry = findEntry(getSelectedMappingId()) || pickUniversalEntry() || resolveSoftPadEntry();
     var scopeKind = (entry && entry.kind) || selectedScopeId || 'codex';
+    if (scopeKind === SOFT_PAD_UNIVERSAL_KIND) {
+      var universalText = t(
+        'softPadHintGlobal',
+        '未匹配 Agent 时显示迷你条；实体键保持原样。匹配到应用后使用对应键位。'
+      );
+      return {
+        text: universalText,
+        supportRange: '',
+        followMode: 'auto',
+        userLaneId: null,
+        sig: universalText + '|universal'
+      };
+    }
     var app = appTitleFor(scopeKind);
     var scenario = '';
     if (entry && entry.mapping) scenario = displayTitle(entry);
@@ -1808,19 +1959,39 @@
     });
   }
 
+  function scheduleAutoHubScan() {
+    if (!isSoftPadPageVisible()) {
+      refreshHubInventory._autoScanDone = false;
+      return;
+    }
+    if (refreshHubInventory._autoScanDone || refreshHubInventory._autoScanPending) return;
+    refreshHubInventory._autoScanPending = true;
+    clearTimeout(refreshHubInventory._autoT);
+    refreshHubInventory._autoT = setTimeout(function () {
+      refreshHubInventory._autoScanPending = false;
+      if (!isSoftPadPageVisible()) return;
+      refreshHubInventory._autoScanDone = true;
+      try {
+        refreshHubInventory({ silent: true, render: false });
+      } catch (_) {}
+    }, 2500);
+  }
+
   function refreshHubInventory(opts) {
     opts = opts || {};
+    if (refreshHubInventory._inFlight) return refreshHubInventory._inFlight;
     var AI = global.OneToneAgentInstall;
     var statusEl = document.getElementById('softPadScanStatus');
+    var silent = !!opts.silent;
     if (!AI || !AI.fetchInventory) {
-      if (statusEl) statusEl.textContent = t('softPadScanUnavailable', '扫描不可用');
+      if (!silent && statusEl) statusEl.textContent = t('softPadScanUnavailable', '扫描不可用');
       return Promise.resolve(null);
     }
-    if (statusEl) statusEl.textContent = t('softPadScanning', '扫描中…');
-    return AI.fetchInventory().then(function (inv) {
+    if (!silent && statusEl) statusEl.textContent = t('softPadScanning', '扫描中…');
+    refreshHubInventory._inFlight = AI.fetchInventory().then(function (inv) {
       applyInventoryCache(inv);
-      var n = inv && inv.highConfidenceCount || 0;
-      if (statusEl) {
+      if (!silent && statusEl) {
+        var n = inv && inv.highConfidenceCount || 0;
         statusEl.textContent = n
           ? t('softPadScanFound', '检测到 {n} 个工具').replace('{n}', String(n))
           : t('softPadScanNone', '未高置信检测到工具');
@@ -1836,7 +2007,7 @@
           var kinds = AI.defaultSelectedKinds(inv);
           if (kinds.length) {
             return AI.prepareKinds(kinds, { enableNumpad: false }).then(function () {
-              render({});
+              if (opts.render !== false) render({});
               return inv;
             });
           }
@@ -1845,21 +2016,35 @@
         return inv;
       });
     }).catch(function () {
-      if (statusEl) statusEl.textContent = t('softPadScanFail', '扫描失败');
+      if (!silent && statusEl) statusEl.textContent = t('softPadScanFail', '扫描失败');
       return null;
+    }).then(function (res) {
+      refreshHubInventory._inFlight = null;
+      return res;
     });
+    return refreshHubInventory._inFlight;
   }
 
   function updateScopeHint() {
     var e = els();
     if (!e.hint) return;
+    if (softPadFace === 'tray') {
+      e.hint.textContent = '';
+      e.hint.hidden = true;
+      updateStatusBar(findEntry(getSelectedMappingId()));
+      return;
+    }
     if (global.__otSoftPadScopeHintMounted && typeof global.__otSoftPadScopeHintSync === 'function') {
       global.__otSoftPadScopeHintSync();
+      var liveText = String(e.hint.textContent || '').trim();
+      e.hint.hidden = !liveText;
       updateStatusBar(findEntry(getSelectedMappingId()));
       return;
     }
     var model = buildSoftPadScopeHintModel();
-    e.hint.textContent = model.text || '';
+    var text = String(model.text || '').trim();
+    e.hint.textContent = text;
+    e.hint.hidden = !text;
     updateStatusBar(findEntry(getSelectedMappingId()));
   }
 
@@ -2301,6 +2486,7 @@
     var agentHint = document.getElementById('softPadFlowNodeAgentHint');
     var padHint = document.getElementById('softPadFlowNodePadHint');
     var tmHint = document.getElementById('softPadFlowNodeTimelineHint');
+    var trayHint = document.getElementById('softPadFlowNodeTrayHint');
     // Status lights = glanceable busy/idle — not scheme/management copy.
     if (agentHint) {
       agentHint.textContent = t('softPadFlowAgentHint', '看 AI 忙不忙');
@@ -2309,6 +2495,9 @@
       padHint.textContent = entry
         ? (statusLabel(entry) + ' · ' + hero.keys)
         : t('softPadFlowPadHint', '改键位 · 何时显示');
+    }
+    if (trayHint) {
+      trayHint.textContent = t('softPadFlowTrayHint', '预览 · 显示项');
     }
     if (tmHint) {
       tmHint.textContent = hero.restorePoint || t('softPadFlowTimelineHint', '只保护已接入项目');
@@ -2323,10 +2512,13 @@
       setSoftPadFace('agent');
       return;
     }
-    if (nodeId === 'timeline') {
-      if (softPadFace === 'timeline') return;
+    if (nodeId === 'tray') {
+      if (softPadFace === 'tray') return;
       closeRingFloat();
-      setSoftPadFace('timeline');
+      setSoftPadFace('tray');
+      return;
+    }
+    if (nodeId === 'timeline') {
       return;
     }
     if (nodeId === 'pad') {
@@ -2478,15 +2670,7 @@
       return;
     }
     if (act === 'tm-open' || act === 'tm-bind') {
-      closeRingFloat();
-      if (act === 'tm-bind') {
-        var tm = global.OneToneSoftPadTimeMachine;
-        if (tm && tm.openDesk) {
-          var bound = tm.resolveBoundWorkspace ? tm.resolveBoundWorkspace() : '';
-          tm.openDesk(bound ? { workspace: bound } : {});
-        }
-      }
-      setSoftPadFace('timeline', { fromUser: true });
+      return;
     }
   }
 
@@ -2817,16 +3001,41 @@
     }
   }
 
+  function syncSettingsPreviewBanner(face) {
+    var banner = document.getElementById('softPadSettingsPreviewBanner');
+    if (!banner) return;
+    var titleEl = document.getElementById('softPadSettingsPreviewBannerTitle');
+    var bodyEl = document.getElementById('softPadSettingsPreviewBannerBody');
+    if (titleEl) {
+      titleEl.textContent = t('softPadSettingsPreviewBannerTitle', '设置中预览');
+    }
+    if (bodyEl) {
+      bodyEl.textContent = t(
+        'softPadSettingsPreviewBannerBody',
+        '悬浮 Soft Pad 在设置时会自动隐藏。「全局」在未匹配 Agent 时显示迷你条且不占用实体键；匹配后使用对应应用的键位。右侧改动同步到左侧预览。'
+      );
+    }
+    banner.hidden = face === 'tray' || face === 'timeline';
+    var previewLbl = t('softPadSettingsPreviewBannerTitle', '设置中预览');
+    ['softPadPreviewHost', 'softPadAgentPreviewHost'].forEach(function (id) {
+      var host = document.getElementById(id);
+      if (host) host.setAttribute('data-preview-label', previewLbl);
+    });
+  }
+
   /** Face-mutex chrome: exactly one of pad / agent / timeline face roots. */
   function syncFaceChrome(entry) {
     var e = els();
     var face = softPadFace;
+    syncSettingsPreviewBanner(face);
     if (e.stage) {
       e.stage.setAttribute('data-soft-pad-face', face);
       e.stage.removeAttribute('data-soft-pad-stage');
       e.stage.classList.remove('is-tm-desk');
       e.stage.classList.remove('is-preview-collapsed');
     }
+    var panel = document.getElementById('settingsPanelSoftPad');
+    if (panel) panel.setAttribute('data-soft-pad-face', face);
     function showFace(el, on) {
       if (!el) return;
       if (on) el.removeAttribute('hidden');
@@ -2834,10 +3043,11 @@
     }
     showFace(e.facePad, face === 'pad');
     showFace(e.faceAgent, face === 'agent');
+    showFace(e.faceTray, face === 'tray');
     showFace(e.faceTimeline, face === 'timeline');
 
     var tm = global.OneToneSoftPadTimeMachine;
-    if (face !== 'timeline' && tm && tm.closeDesk) {
+    if (face !== 'timeline' && face !== 'tray' && tm && tm.closeDesk) {
       try { tm.closeDesk(); } catch (_) {}
     }
 
@@ -2907,6 +3117,16 @@
       }
     } else if (global.__otSoftPadFuncTilesMounted && typeof global.__otSoftPadFuncTilesSync === 'function') {
       renderFuncTiles(null);
+    }
+    updateScopeHint();
+    pruneSoftPadPanelChrome();
+    var cursorCard = document.getElementById('softPadCursorActivityCard');
+    if (cursorCard && String(selectedScopeId || '') === 'cursor') {
+      refreshCursorActivityPrefDom(cursorCard);
+    }
+    var minimaxCard = document.getElementById('softPadMinimaxKeyCard');
+    if (minimaxCard && String(selectedScopeId || '') === 'minimax') {
+      refreshMinimaxCodingKeyDom(minimaxCard);
     }
   }
 
@@ -3523,13 +3743,18 @@
     if (!VALID_SOFT_PAD_FACES[face]) return;
     var prevFace = softPadFace;
     var entry = resolveSoftPadEntry();
-    if (face !== 'timeline' && !hasMapping(entry) && opts.allowEmpty !== true) {
+    if (prevFace === 'tray' && face !== 'tray') {
+      var trayUiLeave = global.OneToneSoftPadTrayUi;
+      if (trayUiLeave && trayUiLeave.onFaceLeave) try { trayUiLeave.onFaceLeave(); } catch (_) {}
+    }
+
+    if (face !== 'timeline' && face !== 'tray' && !hasMapping(entry) && opts.allowEmpty !== true) {
       var scopeKind = String(selectedScopeId || '').trim();
       if (isHubSoftPadKind(scopeKind)) {
         var prepared = prepareAppFromUi(appIdForKind(scopeKind), scopeKind);
         if (prepared) entry = resolveSoftPadEntry();
       }
-      if (!hasMapping(entry) && face !== 'timeline') {
+      if (!hasMapping(entry) && face !== 'timeline' && face !== 'tray') {
         feLog('fe softPad.setSoftPadFace skip-no-map ' + face);
         syncFaceChrome(entry);
         return;
@@ -3553,6 +3778,12 @@
     } catch (_) {}
     closeRingFloat();
     syncFaceChrome(entry);
+    if (face === 'tray') {
+      dismissSoftPadOverlay('tray');
+      var trayUi = global.OneToneSoftPadTrayUi;
+      if (trayUi && trayUi.onFaceEnter) try { trayUi.onFaceEnter(); } catch (_) {}
+      return;
+    }
     if (face === 'timeline') {
       dismissSoftPadOverlay('timeline');
       writeSoftPadTimelinePanel(null);
@@ -3705,7 +3936,7 @@
       return { id: scope.id, html: appSwitcherChipView(scope) };
     });
     return {
-      switcherHidden: true,
+      switcherHidden: false,
       switcherLabel: t('softPadAppSwitcherAria', '应用虚拟键盘'),
       switcherChips: chips,
       schemeTitle: t('softPadSchemeTitle', '选应用'),
@@ -3727,9 +3958,21 @@
   function renderAppSwitcher() {
     var e = els();
     if (!e.switcher) return;
-    // Pad-centric: APP directory moved to status-bar「绑定 · App」; keep host for refs.
-    e.switcher.hidden = true;
-    e.switcher.innerHTML = '';
+    var model = buildSoftPadWorkflowModel();
+    if (global.__otSoftPadWorkflowMounted && typeof global.__otSoftPadWorkflowSync === 'function') {
+      e.switcher.hidden = model.switcherHidden;
+      global.__otSoftPadWorkflowSync();
+      syncBindAppControl();
+      return;
+    }
+    e.switcher.hidden = model.switcherHidden;
+    if (model.switcherHidden) {
+      e.switcher.innerHTML = '';
+    } else {
+      e.switcher.innerHTML = '<div class="soft-pad-app-switcher__chips" role="tablist">' +
+        model.switcherChips.map(function (c) { return c.html; }).join('') +
+        '</div>';
+    }
     syncBindAppControl();
   }
 
@@ -4107,7 +4350,7 @@
 
     if (opts.scopeId) {
       selectedScopeId = String(opts.scopeId);
-    } else if (opts.fromList || !selectedScopeId || selectedScopeId === 'global') {
+    } else if (opts.fromList || !selectedScopeId) {
       selectedScopeId = entry.kind;
     }
 
@@ -4758,15 +5001,7 @@
     }
     ensureSwitcherClickBound();
     bindChrome();
-    // Deferred inventory (after Soft Pad paints) — never block first paint / boot.
-    if (!refreshHubInventory._openedOnce) {
-      refreshHubInventory._openedOnce = true;
-      setTimeout(function () {
-        try {
-          refreshHubInventory({ render: false });
-        } catch (_) {}
-      }, 2500);
-    }
+    scheduleAutoHubScan();
     // Drop any legacy Soft Pad pin so runtime stays Auto.
     clearUserLanePin();
     // Drop any leftover timeline desk from a previous TM visit.
@@ -4774,6 +5009,7 @@
       var tmReset = global.OneToneSoftPadTimeMachine;
       if (tmReset && tmReset.closeDesk) tmReset.closeDesk();
     } catch (_) {}
+    ensureBaselineSoftPadOverlay({ persist: true });
     var e = els();
     applySoftPadEnsureCtaHost(buildSoftPadEnsureCtaModel());
     var entries = listSoftPadSchemes();
@@ -4782,7 +5018,6 @@
     updateScopeHint();
 
     if (opts.scopeId) selectedScopeId = String(opts.scopeId);
-    if (selectedScopeId === 'global') selectedScopeId = 'codex';
     if (opts.mappingId) {
       setSelectedMappingId(String(opts.mappingId));
       var mapped = findEntry(getSelectedMappingId());
@@ -4912,67 +5147,17 @@
     }
   }
 
+  function pruneSoftPadPanelChrome() {
+    ['softPadBoundaryHint', 'habitChannelStatusStripSoftPad'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.remove();
+    });
+  }
+
   function ensureSoftPadBoundaryHint() {
     var panel = document.getElementById('settingsPanelSoftPad');
     if (!panel) return;
-    var hint = document.getElementById('softPadBoundaryHint');
-    if (!hint) {
-      hint = document.createElement('p');
-      hint.id = 'softPadBoundaryHint';
-      hint.className = 'soft-pad-boundary-hint';
-      hint.setAttribute('role', 'note');
-      var status = document.getElementById('softPadStatusBar');
-      var strip = document.getElementById('habitChannelStatusStripSoftPad');
-      var anchor = status || panel.firstChild;
-      if (strip && strip.nextSibling) panel.insertBefore(hint, strip.nextSibling);
-      else if (status) panel.insertBefore(hint, status);
-      else panel.insertBefore(hint, anchor);
-    }
-    // Fixed one-liner: Soft Pad Auto ≠ 「正在使用」habit switch.
-    var lines = [
-      t(
-        'softPadAutoVsActiveHint',
-        '键位跟随前台 Agent（Auto），与「正在使用」习惯不是同一个开关。'
-      )
-    ];
-    try {
-      var snap = overlayUsageCache && overlayUsageCache.snap;
-      var row = pickUsageAgentRow(snap, selectedScopeId || 'claude');
-      var usage = row && (row.usage || {});
-      if (usage && (usage.codingPlanWarning || usage.coding_plan_warning)) {
-        lines.push(
-          t(
-            'softPadCodingPlanProbeWarn',
-            'Coding Plan 套餐 key 勿用于 curl/批量等非编程工具探测，以免封禁或额外扣费。'
-          )
-        );
-      }
-      var conf = String((usage && (usage.confidence || '')) || '');
-      var curl = String((usage && (usage.consoleUrl || usage.console_url)) || '').trim();
-      if (conf === 'manual_or_local_estimate' && curl) {
-        lines.push(
-          t('softPadManualQuotaHint', '官方剩余请到控制台查看') + ' · ' + curl
-        );
-      }
-      if (String(selectedScopeId || '') === 'cursor') {
-        var src = String((usage && usage.source) || '');
-        if (src === 'cursor_local_activity' || conf === 'local_only') {
-          lines.push(
-            t(
-              'softPadCursorActivityHonesty',
-              'Cursor 个人版暂无公开用量 API · 上方次数为本地统计，不代表官方额度'
-            )
-          );
-          if (curl) {
-            lines.push(
-              t('softPadCursorOfficialUsage', '查看官方用量') + ' ↗ ' + curl
-            );
-          }
-        }
-      }
-    } catch (_) {}
-    hint.textContent = lines.join(' ');
-    hint.hidden = false;
+    pruneSoftPadPanelChrome();
     ensureCursorActivityConsentCard(panel);
     ensureMinimaxCodingKeyCard(panel);
   }
@@ -5054,7 +5239,6 @@
         });
       }
     }
-    card.hidden = false;
     refreshMinimaxCodingKeyDom(card);
   }
 
@@ -5084,6 +5268,7 @@
             : t('softPadMinimaxKeyMissing', '未配置 · 保存 Key 后可显示 5h 余量与倒计时');
         }
         if (st && st.consoleUrl) card.__consoleUrl = String(st.consoleUrl);
+        card.hidden = on || softPadFace === 'tray';
       })
       .catch(function () {});
   }
@@ -5176,8 +5361,15 @@
         });
       }
     }
-    card.hidden = false;
     refreshCursorActivityPrefDom(card);
+  }
+
+  function cursorActivityIntroSeen() {
+    try { return localStorage.getItem('softPadCursorActivityIntroSeen') === '1'; } catch (_) { return false; }
+  }
+
+  function markCursorActivityIntroSeen() {
+    try { localStorage.setItem('softPadCursorActivityIntroSeen', '1'); } catch (_) {}
   }
 
   function refreshCursorActivityPrefDom(card) {
@@ -5196,6 +5388,8 @@
             ? t('cursorActivityOn', '已启用 · 仅本地统计，不代表官方额度')
             : t('cursorActivityOff', '未启用 · 不会读取本机 Cursor 使用记录');
         }
+        var show = !on && !cursorActivityIntroSeen() && softPadFace !== 'tray';
+        card.hidden = !show;
       })
       .catch(function () {});
   }
@@ -5203,6 +5397,7 @@
   function setCursorActivityPref(enabled) {
     return hubInvoke('cmd_cursor_activity_pref_set', { enabled: !!enabled })
       .then(function () {
+        markCursorActivityIntroSeen();
         toastPad(
           enabled
             ? t('cursorActivityEnableOk', '已启用 Cursor 活动统计')
@@ -5228,6 +5423,12 @@
     selectScheme: selectScheme,
     selectScope: selectScope,
     getSelectedScopeId: function () { return selectedScopeId; },
+    isUniversalSoftPadScope: function () { return String(selectedScopeId || '') === SOFT_PAD_UNIVERSAL_KIND; },
+    ensureBaselineSoftPadOverlay: ensureBaselineSoftPadOverlay,
+    /** @deprecated merged into universal baseline */
+    isGlobalSoftPadScope: function () { return String(selectedScopeId || '') === SOFT_PAD_UNIVERSAL_KIND; },
+    /** @deprecated use ensureBaselineSoftPadOverlay */
+    ensureGlobalSoftPad: ensureBaselineSoftPadOverlay,
     iconForKind: iconForKind,
     previewHostForFace: previewHostForFace,
     resolveSoftPadEntry: resolveSoftPadEntry,

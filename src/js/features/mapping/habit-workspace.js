@@ -252,8 +252,10 @@
     }
     var oldToolbar=hub.querySelector('.habit-hub-toolbar');
     var oldBody=hub.querySelector('.habit-hub-body');
+    var oldList=document.getElementById('habitHubList');
     if(oldToolbar) oldToolbar.hidden=true;
     if(oldBody) oldBody.hidden=true;
+    if(oldList) oldList.hidden=true;
     return host;
   }
   function appListHtml(model){
@@ -339,6 +341,13 @@
     if(!ui().habitExperienceMode) ui().habitExperienceMode=prefs()?prefs().getMode():'novice';
     if(!ui().habitNoviceDim) ui().habitNoviceDim='key';
     if(!ui().habitNoviceScene) ui().habitNoviceScene='begin';
+    if(ui().habitHubCreating){
+      var hub=global.OneToneHabitHub;
+      var createHtml=hub&&hub.inlineCreateHtml?hub.inlineCreateHtml():'';
+      host.innerHTML=modeHtml(ui().habitExperienceMode||'novice')+'<div class="habit-ws-create">'+createHtml+'</div>';
+      restoreWorkspaceScroll(host);
+      return;
+    }
     var model=buildWorkspaceModel();
     if(model.empty){
       host.innerHTML=modeHtml(ui().habitExperienceMode)+introHtml()+'<div class="habit-ws-empty"><strong>'+esc(c('noHabit'))+'</strong><p>'+esc(c('noHabitDesc'))+'</p><button type="button" data-habit-add>'+esc(c('addApp'))+'</button></div>';
@@ -389,13 +398,29 @@
       if(target.hasAttribute('data-habit-mode')){ switchMode(target.getAttribute('data-habit-mode')); return; }
       if(target.hasAttribute('data-habit-intro-cancel')){ ui().habitProgrammerIntroOpen=false; render(); return; }
       if(target.hasAttribute('data-habit-intro-continue')){ if(prefs()) prefs().markProgrammerIntroSeen(); switchMode('programmer',true); return; }
-      if(target.hasAttribute('data-habit-mapping')){ event.stopPropagation(); state().selectedMappingId=target.getAttribute('data-habit-mapping'); render(); return; }
+      if(target.hasAttribute('data-habit-mapping')){
+        event.stopPropagation();
+        if(ui().habitHubBatchMode||(Array.isArray(ui().habitHubSelectedIds)&&ui().habitHubSelectedIds.length)){
+          return;
+        }
+        state().selectedMappingId=target.getAttribute('data-habit-mapping');
+        render();
+        return;
+      }
       if(target.hasAttribute('data-habit-channel')){ event.stopPropagation(); ui().habitWorkspaceChannel=target.getAttribute('data-habit-channel'); ui().habitWorkspaceItemId=defaultItem(ui().habitWorkspaceChannel); render(); return; }
       if(target.hasAttribute('data-habit-item')){ event.stopPropagation(); ui().habitWorkspaceItemId=target.getAttribute('data-habit-item'); render(); return; }
       if(target.hasAttribute('data-habit-section')){ ui().habitProgramSection=target.getAttribute('data-habit-section'); render(); return; }
       if(target.hasAttribute('data-habit-edit')){ openEditor(target.getAttribute('data-channel'),target.getAttribute('data-focus')); return; }
       if(target.hasAttribute('data-habit-fine')){ switchMode('programmer'); return; }
-      if(target.hasAttribute('data-habit-add')){ var btn=document.getElementById('btnHabitHubHeadNew'); if(btn) btn.click(); }
+      if(target.hasAttribute('data-habit-add')){
+        var hub=global.OneToneHabitHub;
+        if(hub&&hub.startInlineCreate) hub.startInlineCreate();
+        else{
+          var btn=document.getElementById('btnHabitHubHeadNew');
+          if(btn) btn.click();
+        }
+        return;
+      }
     });
     host.addEventListener('keydown',function(event){
       var modeButton=event.target.closest&&event.target.closest('[data-habit-mode]');

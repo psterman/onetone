@@ -821,8 +821,6 @@
         setTimeout(function(){
           if(!isHabitsPanel()) return;
           try{
-            var mountHabits=global.__otMountHabitHubListIsland;
-            if(typeof mountHabits==='function') mountHabits();
             var mountHubChrome=global.__otMountHabitHubChromeIsland;
             if(typeof mountHubChrome==='function') mountHubChrome();
           }catch(err){ console.error('habit hub island mount',err); }

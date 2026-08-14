@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>虚拟键盘 · Soft Pad Hub（完整 HTML 映射）</title>
+  <link rel="stylesheet" href="../src/css/flow-desk.css" />
+  <style>
+    :root{
+      --surface:#fff;--surface-high:#f8fafc;--surface-soft:#f1f5f9;
+      --primary:#2a9cc4;--primary-strong:#1e87ad;
+      --on-surface:#152238;--on-surface-muted:#5a7086;
+      --outline-variant:rgba(26,45,74,.12);
+      --font-mono:ui-monospace,"SF Mono",Consolas,monospace;
+      --tray-density:1;--tray-font-scale:1;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:#eef2f7;color:var(--on-surface);font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif}
+    body{padding:16px}
+    .demo-shell{max-width:980px;margin:0 auto;background:var(--surface);border:1px solid var(--outline-variant);border-radius:14px;overflow:hidden;box-shadow:0 10px 28px rgba(26,45,74,.12)}
+    .demo-note{padding:10px 14px;background:#fff7ed;border-bottom:1px solid #fed7aa;font-size:11px;line-height:1.5;color:#9a3412}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+
+    /* === mapped from index.html #settingsPanelSoftPad + soft-pad-hub.css (subset) === */
+    .soft-pad-page{padding:0}
+    .page-status-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid var(--outline-variant);background:var(--surface-high)}
+    .keys-scheme-summary-title-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+    .keys-scheme-summary-name{font-size:16px;font-weight:800}
+    .keys-scheme-summary-pill{font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--surface-soft);color:var(--on-surface-muted);border:1px solid var(--outline-variant)}
+    .keys-scheme-summary-pill.is-off{color:var(--on-surface-muted)}
+    .soft-pad-bind-app{position:relative;display:inline-flex;margin-left:4px}
+    .soft-pad-bind-app__btn{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--outline-variant);background:rgba(248,250,252,.85);font:700 12px inherit;padding:4px 10px;border-radius:999px;cursor:pointer}
+    .soft-pad-bind-app__menu{position:absolute;top:calc(100% + 6px);left:0;z-index:30;min-width:148px;padding:4px;border-radius:10px;border:1px solid var(--outline-variant);background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.16);display:grid;gap:2px}
+    .soft-pad-bind-app__menu[hidden]{display:none!important}
+    .soft-pad-bind-app__opt{border:0;background:transparent;text-align:left;font:600 12px inherit;padding:8px 10px;border-radius:8px;cursor:pointer;width:100%}
+    .soft-pad-bind-app__opt.is-active,.soft-pad-bind-app__opt:hover{background:rgba(42,156,196,.14);color:var(--primary-strong)}
+    .keys-scheme-summary-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px}
+    .keys-scheme-summary-item{display:inline-flex;align-items:baseline;gap:5px}
+    .keys-scheme-summary-lbl{color:var(--on-surface-muted);font-weight:600}
+    .keys-scheme-summary-val{font-weight:700}
+    .keys-scheme-summary-divider{width:1px;height:12px;background:var(--outline-variant)}
+    .keys-scheme-summary-meta.is-hidden{display:none}
+    .page-status-bar-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+    .page-status-btn{border:1px solid var(--outline-variant);background:#fff;border-radius:8px;padding:6px 10px;font:600 11px inherit;cursor:pointer;color:var(--on-surface)}
+    .page-status-btn:hover{border-color:rgba(42,156,196,.45)}
+    .toggle-switch{width:40px;height:22px;border-radius:999px;background:#cbd5e1;border:none;cursor:pointer;position:relative}
+    .toggle-switch[aria-checked="true"]{background:var(--primary)}
+    .toggle-switch::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .18s;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+    .toggle-switch[aria-checked="true"]::after{left:20px}
+
+    .soft-pad-flow-nodes{margin:0;padding:8px 14px 10px;position:relative}
+    .flow-nodes-track{position:absolute;left:14px;right:14px;top:52px;height:8px;pointer-events:none;color:rgba(26,45,74,.12)}
+    .flow-nodes-svg{width:100%;height:8px;display:block}
+    .flow-node[data-soft-pad-node="pad"] .flow-node-tag{--flow-node-tag-border:rgba(94,200,232,.28);--flow-node-tag-bg:rgba(94,200,232,.1);--flow-node-tag-color:#1e87ad}
+    .flow-node[data-soft-pad-node="agent"] .flow-node-tag{--flow-node-tag-border:rgba(139,92,246,.28);--flow-node-tag-bg:rgba(139,92,246,.1);--flow-node-tag-color:#6d28d9}
+    .flow-node[data-soft-pad-node="tray"] .flow-node-tag{--flow-node-tag-border:rgba(42,156,196,.35);--flow-node-tag-bg:rgba(42,156,196,.12);--flow-node-tag-color:#0e7490}
+    .flow-node[data-soft-pad-node="tray"] .flow-node-btn.is-active{border-color:rgba(42,156,196,.55);box-shadow:0 0 0 3px rgba(42,156,196,.18);color:#0e7490}
+
+    .soft-pad-scan-bar{display:flex;align-items:center;gap:10px;padding:0 14px 10px}
+    .soft-pad-scan-btn{border:1px solid rgba(42,156,196,.35);background:rgba(42,156,196,.08);color:var(--primary-strong);font:700 12px inherit;padding:8px 14px;border-radius:8px;cursor:pointer}
+    .soft-pad-scan-status{font-size:11px;color:var(--on-surface-muted)}
+
+    .soft-pad-page-body{padding:0 14px 16px}
+    .soft-pad-hub-stage{min-height:480px}
+    .soft-pad-face-root[hidden]{display:none!important}
+
+    /* C1 pad face */
+    .soft-pad-face-pad{display:grid;grid-template-columns:minmax(300px,1fr) minmax(0,1.1fr);gap:12px 18px;align-items:stretch}
+    .soft-pad-preview-host{border:1px solid var(--outline-variant);border-radius:14px;background:linear-gradient(180deg,#f8fafc,#eef2f7);padding:14px;min-height:420px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+    .codex-micro-pad{width:100%;max-width:280px;background:#fff;border:1px solid var(--outline-variant);border-radius:12px;padding:10px;box-shadow:0 4px 16px rgba(26,45,74,.08)}
+    .codex-micro-pad__head{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:700;color:var(--on-surface-muted);margin-bottom:8px}
+    .micro-hw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+    .micro-hw-key{aspect-ratio:1;border:1px solid var(--outline-variant);border-radius:8px;background:var(--surface-high);font:700 13px var(--font-mono);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s,border-color .12s}
+    .micro-hw-key:hover{border-color:var(--primary);background:var(--primary-soft)}
+    .micro-hw-key.is-lit{border-color:var(--primary);background:rgba(42,156,196,.12)}
+    .micro-hw-key.wide{grid-column:span 2}
+    .soft-pad-preview__hint{margin-top:10px;font-size:10px;color:var(--on-surface-muted);text-align:center;line-height:1.45}
+    .soft-pad-detail{border:1px solid var(--outline-variant);border-radius:14px;background:#fff;display:flex;flex-direction:column;min-height:420px;overflow:hidden}
+    .soft-pad-pad-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px 0}
+    .soft-pad-pad-tab{border:1px solid var(--outline-variant);background:transparent;color:var(--on-surface-muted);font:700 12px inherit;padding:6px 12px;border-radius:999px;cursor:pointer}
+    .soft-pad-pad-tab.is-active{color:var(--primary-strong);background:rgba(42,156,196,.14);border-color:rgba(42,156,196,.4)}
+    .soft-pad-detail-panel{flex:1;padding:12px 14px 14px;overflow:auto}
+    .pad-panel-block{display:none}.pad-panel-block.is-active{display:block}
+    .pad-panel-block h4{margin:0 0 8px;font-size:13px}
+    .pad-panel-block p{margin:0 0 10px;font-size:11px;color:var(--on-surface-muted);line-height:1.5}
+    .field-row{margin-bottom:10px}
+    .field-row label{display:block;font-size:10px;font-weight:700;color:var(--on-surface-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+    .field-row select,.field-row input[type="range"]{width:100%;font:inherit;padding:6px 8px;border:1px solid var(--outline-variant);border-radius:8px}
+    .chip-list{display:flex;flex-wrap:wrap;gap:6px}
+    .chip-btn{border:1px solid var(--outline-variant);background:var(--surface-high);padding:5px 10px;border-radius:999px;font:600 11px inherit;cursor:pointer}
+    .chip-btn.is-on{background:rgba(42,156,196,.14);border-color:rgba(42,156,196,.4);color:var(--primary-strong)}
+
+    /* C2 agent face */
+    .soft-pad-face-agent{display:grid;grid-template-columns:minmax(240px,.34fr) minmax(0,.66fr);gap:12px 16px}
+    .agent-preview-wrap{position:relative}
+    .agent-topbar-light{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(15,23,42,.75);color:#fff;font-size:10px;font-weight:700}
+    .agent-topbar-light .dot{width:8px;height:8px;border-radius:50%;background:#00a3ff;box-shadow:0 0 8px rgba(0,163,255,.6)}
+    .agent-panel-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--outline-variant)}
+    .agent-panel-head h4{margin:0;font-size:12px}
+    .agent-legend{display:flex;flex-wrap:wrap;gap:6px;font-size:9px;color:var(--on-surface-muted);padding:8px 12px;border-bottom:1px solid var(--outline-variant)}
+    .agent-legend span{display:inline-flex;align-items:center;gap:4px}
+    .agent-legend i{width:7px;height:7px;border-radius:50%;display:inline-block}
+    .agent-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--outline-variant)}
+    .agent-row:last-child{border-bottom:none}
+    .agent-row .name{flex:1;font-size:12px;font-weight:700}
+    .agent-row .sub{font-size:10px;color:var(--on-surface-muted)}
+    .agent-row .st{font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,163,255,.12);color:#0e7490}
+    .agent-row .hook{font-size:10px;color:var(--primary-strong);cursor:pointer;border:none;background:none;font-weight:600}
+
+    /* C3 tray face (replaces timeline) */
+    .soft-pad-face-tray{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,380px);gap:0;min-height:520px;border:1px solid var(--outline-variant);border-radius:14px;overflow:hidden}
+    .tray-preview-pane{background:#1a2332;padding:18px 16px;display:flex;flex-direction:column;align-items:center;gap:10px}
+    .tray-preview-pane .lbl{font-size:10px;color:#94a3b8;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+    .tray-inspector{padding:12px 14px;background:var(--surface-high);border-left:1px solid var(--outline-variant);display:flex;flex-direction:column;gap:10px;overflow-y:auto;max-height:560px}
+    .btn-save{padding:10px;border:none;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--primary-strong));color:#fff;font:700 12px inherit;cursor:pointer;flex:1}
+    .actions{display:flex;gap:6px}
+    .btn-ghost{padding:8px;border:1px solid var(--outline-variant);border-radius:8px;background:#fff;font:600 11px inherit;cursor:pointer;color:var(--on-surface-muted)}
+    .dirty-badge{font-size:10px;font-weight:700;color:#b9530a}.dirty-badge.saved{color:#2e7d4f}
+
+    /* channel control cards */
+    .ch-card{border:1px solid var(--outline-variant);border-radius:10px;background:#fff;padding:10px 10px 8px;margin-bottom:8px}
+    .ch-card.is-off{opacity:.55}
+    .ch-card-head{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px}
+    .ch-card-ic{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+    .ch-card-ic.voice{background:rgba(0,163,255,.12)}.ch-card-ic.keys{background:rgba(42,156,196,.12)}
+    .ch-card-ic.softpad{background:rgba(109,74,176,.12)}.ch-card-ic.camera{background:rgba(185,83,10,.12)}
+    .ch-card-title{flex:1;min-width:0}
+    .ch-card-title b{display:block;font-size:12px;margin-bottom:3px}
+    .st-pill{display:inline-block;font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px}
+    .st-pill.on{background:rgba(46,125,79,.12);color:#2e7d4f}
+    .st-pill.off{background:rgba(148,163,184,.15);color:#64748b}
+    .st-pill.run{background:rgba(0,163,255,.12);color:#0e7490}
+    .st-pill.err{background:rgba(220,38,38,.1);color:#dc2626}
+    .show-tray{font-size:9px;color:var(--on-surface-muted);display:flex;align-items:center;gap:4px;white-space:nowrap;cursor:pointer}
+    .ch-stats{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-bottom:8px;padding:6px 8px;background:var(--surface-high);border-radius:7px}
+    .ch-stats .stat{font-size:10px;line-height:1.35}
+    .ch-stats .k{display:block;color:var(--on-surface-muted);font-size:9px;font-weight:600;margin-bottom:1px}
+    .ch-stats .v{font-weight:700;color:var(--on-surface)}
+    .ch-switches{border-top:1px solid var(--outline-variant);padding-top:6px}
+    .sw-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;font-size:11px;font-weight:600}
+    .sw-row span{color:var(--on-surface)}
+    .mini-toggle{position:relative;width:34px;height:18px;border-radius:999px;border:none;background:#cbd5e1;cursor:pointer;flex-shrink:0;padding:0}
+    .mini-toggle[aria-checked="true"]{background:var(--primary)}
+    .mini-toggle::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+    .mini-toggle[aria-checked="true"]::after{left:18px}
+    .seg-mini{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:#fff;border:1px solid var(--outline-variant);border-radius:8px;margin-bottom:6px;font-size:11px;font-weight:600}
+    .seg-mini.locked{opacity:.55}
+    .seg-mini label{display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600}
+    .seg-mini.locked label{cursor:not-allowed}
+
+    /* tray channel subtabs */
+    .tray-channels-wrap{display:flex;flex-direction:column;gap:8px;min-width:0}
+    .tray-ch-subtabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+    .tray-ch-subtab{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 4px 6px;border-radius:9px;border:1px solid var(--outline-variant);background:#fff;color:var(--on-surface-muted);font:700 10px inherit;cursor:pointer;min-width:0;position:relative}
+    .tray-ch-subtab:hover{border-color:rgba(42,156,196,.35);color:var(--on-surface)}
+    .tray-ch-subtab.is-active{color:var(--primary-strong);background:rgba(42,156,196,.12);border-color:rgba(42,156,196,.4);box-shadow:0 0 0 1px rgba(42,156,196,.12)}
+    .tray-ch-subtab.is-off:not(.is-active){opacity:.65}
+    .tray-ch-subtab__ic{font-size:13px;line-height:1}
+    .tray-ch-subtab__lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+    .tray-ch-subtab__dot{width:5px;height:5px;border-radius:50%;background:#94a3b8;flex-shrink:0}
+    .tray-ch-subtab__dot.run{background:#00a3ff}
+    .tray-ch-subtab__dot.on{background:#2e7d4f}
+    .tray-ch-subtab__dot.off{background:#cbd5e1}
+    .tray-ch-subtab__dot.err{background:#dc2626}
+    .tray-ch-panels{min-width:0}
+    .tray-ch-panels .ch-card{margin-bottom:0}
+    .tray-ch-panels .ch-card[hidden]{display:none!important}
+
+    /* tray menu shell (from tray-menu.html) */
+    .menu-shell{width:316px;background:#fff;border:1px solid rgba(26,45,74,.1);border-radius:12px;padding:5px;font-size:calc(13px * var(--tray-font-scale));box-shadow:0 10px 28px rgba(0,0,0,.35);transform:scale(calc(.9 + .1 * var(--tray-density)));transform-origin:top center}
+    .menu-shell[data-hide-event="true"] [data-seg="event"]{display:none!important}
+    .menu-shell[data-hide-channels="true"] [data-seg="channels"],.menu-shell[data-hide-channels="true"] [data-seg="channels-head"]{display:none!important}
+    .menu-shell[data-hide-mic="true"] [data-seg="mic"]{display:none!important}
+    .menu-shell[data-hide-footer="true"] [data-seg="footer"]{display:none!important}
+    .status-hero{margin:4px;padding:11px 12px;background:linear-gradient(135deg,#fff,rgba(0,163,255,.1));border:1px solid var(--outline-variant);border-radius:10px;display:flex;gap:10px;align-items:center}
+    .status-hero .ttl{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:7px}
+    .pulse{width:8px;height:8px;border-radius:50%;background:#00a3ff;box-shadow:0 0 0 3px rgba(0,163,255,.2);animation:tp 2s ease-in-out infinite}
+    @keyframes tp{0%,100%{box-shadow:0 0 0 3px rgba(0,163,255,.18)}50%{box-shadow:0 0 0 5px rgba(0,163,255,.32)}}
+    .chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+    .chip{font-size:9.5px;padding:1.5px 6px;border-radius:4px;font-weight:600}
+    .chip.b{background:rgba(0,163,255,.1);color:#0e7490}.chip.g{background:rgba(46,125,79,.1);color:#2e7d4f}.chip.p{background:rgba(109,74,176,.1);color:#6d4ab0}.chip.a{background:rgba(42,156,196,.15);color:#0e7490}
+    .hero-act{padding:8px 10px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--primary-strong));color:#fff;font-size:10px;font-weight:700;border:none}
+    .event-card{margin:4px 6px;padding:9px 11px;background:#f8fafc;border:1px solid var(--outline-variant);border-radius:9px;font-size:11px}
+    .sec-head{font-size:10px;font-weight:700;color:var(--on-surface-muted);padding:7px 12px 3px;text-transform:uppercase;letter-spacing:.06em}
+    .ch-row{display:flex;gap:9px;padding:7px 10px;margin:0 4px;font-size:12px;align-items:center}
+    .ch-row .meta{margin-left:auto;font-size:10px;color:var(--on-surface-muted)}
+    .mic-row{margin:4px;padding:7px 10px;background:rgba(42,156,196,.1);border-radius:7px;display:flex;align-items:center;font-size:12px;font-weight:700}
+    .mic-row .tog{margin-left:auto;width:34px;height:18px;border-radius:10px;background:var(--primary);position:relative;cursor:pointer;border:none;padding:0}
+    .mic-row .tog[aria-checked="false"]{background:#cbd5e1}
+    .mic-row .tog::after{content:'';position:absolute;top:2px;left:18px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .15s}
+    .mic-row .tog[aria-checked="false"]::after{left:2px}
+    .tray-ft{display:flex;justify-content:space-between;padding:5px 8px;border-top:1px solid var(--outline-variant);font-size:10px;color:var(--on-surface-muted);margin-top:4px}
+    .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:#152238;color:#fff;padding:10px 16px;border-radius:8px;font-size:12px;font-weight:600;opacity:0;transition:.25s;z-index:99}
+    .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+    @media(max-width:860px){.soft-pad-face-pad,.soft-pad-face-agent,.soft-pad-face-tray{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+
+<div class="demo-shell">
+  <div class="demo-note">
+    完整 HTML 映射 <code>#settingsPanelSoftPad</code>：Face1 小键盘 · Face2 状态灯 · Face3 <b>托盘菜单定制</b>（四通道状态卡片 + 核心开关，无深链跳转）。
+  </div>
+
+  <!-- ========== index.html #settingsPanelSoftPad ========== -->
+  <section class="settings-panel drawer-section soft-pad-page" id="settingsPanelSoftPad">
+
+    <div class="page-status-bar soft-pad-status-bar" id="softPadStatusBar">
+      <div class="page-status-bar-main keys-scheme-status-main">
+        <div class="keys-scheme-summary-title-row">
+          <span class="keys-scheme-summary-name" id="softPadSummaryName">Codex 场景</span>
+          <span class="keys-scheme-summary-pill is-off" id="softPadSummaryStatus">未启用</span>
+          <div class="soft-pad-bind-app" id="softPadBindApp">
+            <button type="button" class="soft-pad-bind-app__btn" id="softPadBindAppBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="softPadBindAppMenu">
+              <span class="soft-pad-bind-app__lbl" id="softPadBindAppLbl">绑定 · Codex</span>
+              <span class="soft-pad-bind-app__chev" aria-hidden="true">▾</span>
+            </button>
+            <div class="soft-pad-bind-app__menu" id="softPadBindAppMenu" role="listbox" hidden>
+              <button type="button" class="soft-pad-bind-app__opt is-active" data-app="Codex">Codex</button>
+              <button type="button" class="soft-pad-bind-app__opt" data-app="Claude">Claude</button>
+              <button type="button" class="soft-pad-bind-app__opt" data-app="Cursor">Cursor</button>
+              <button type="button" class="soft-pad-bind-app__opt" data-app="Trae">Trae</button>
+            </div>
+          </div>
+        </div>
+        <div class="keys-scheme-summary-meta">
+          <span class="keys-scheme-summary-item">
+            <span class="keys-scheme-summary-lbl" id="softPadSummaryAgentLbl">状态灯</span>
+            <span class="keys-scheme-summary-val" id="softPadSummaryAgent">Codex · 运行中</span>
+          </span>
+          <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
+          <span class="keys-scheme-summary-item">
+            <span class="keys-scheme-summary-lbl" id="softPadSummaryKeysLbl">键位</span>
+            <span class="keys-scheme-summary-val" id="softPadSummaryKeys">21 个</span>
+          </span>
+          <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
+          <span class="keys-scheme-summary-item is-hidden" id="softPadSummaryTmWrap">
+            <span class="keys-scheme-summary-lbl" id="softPadSummaryTmLbl">恢复点</span>
+            <span class="keys-scheme-summary-val" id="softPadSummaryTm">已隐藏</span>
+          </span>
+        </div>
+        <div class="keys-scheme-summary-meta soft-pad-status-usage-meta">
+          <span class="keys-scheme-summary-item">
+            <span class="keys-scheme-summary-lbl" id="softPadSummaryAccountLbl">账号</span>
+            <span class="keys-scheme-summary-val" id="softPadSummaryAccount">—</span>
+          </span>
+          <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
+          <span class="keys-scheme-summary-item">
+            <span class="keys-scheme-summary-lbl" id="softPadSummaryUsageLbl">额度</span>
+            <span class="keys-scheme-summary-val" id="softPadSummaryUsage">—</span>
+          </span>
+        </div>
+      </div>
+      <div class="page-status-bar-actions keys-scheme-status-actions">
+        <button type="button" class="page-status-btn" id="btnSoftPadTestFg" data-cockpit-action="test-fg">测试前台</button>
+        <button type="button" class="page-status-btn" id="btnSoftPadEditKeys" data-cockpit-action="edit-keys">编辑键位</button>
+        <button type="button" class="page-status-btn" id="btnSoftPadTrayCustomize" data-cockpit-action="open-tray-customize">打开托盘定制</button>
+        <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="softPadSummaryEnable" role="switch" aria-checked="false" aria-labelledby="settingsPanelSoftPadTitle"></button>
+      </div>
+    </div>
+
+    <section class="flow-nodes soft-pad-flow-nodes" id="softPadFlowNodes" role="tablist" aria-label="虚拟键盘流程导航">
+      <div class="flow-nodes-track" aria-hidden="true">
+        <svg class="flow-nodes-svg" viewBox="0 0 1000 8" fill="none" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="softPadFlowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="rgba(79,172,254,.85)"/>
+              <stop offset="50%" stop-color="rgba(42,156,196,.95)"/>
+              <stop offset="100%" stop-color="rgba(42,156,196,.85)"/>
+            </linearGradient>
+          </defs>
+          <path class="flow-nodes-path-base" d="M 0,4 Q 250,-5 500,4 T 1000,4" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+          <path class="flow-nodes-path" d="M 0,4 Q 250,-5 500,4 T 1000,4" stroke="url(#softPadFlowGrad)" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="flow-nodes-grid">
+        <div class="flow-node" data-soft-pad-node="pad">
+          <span class="flow-node-tag" id="softPadFlowNodePadTag">Soft Pad</span>
+          <button type="button" class="flow-node-btn is-active" id="softPadFlowNodePad" role="tab" aria-selected="true" aria-controls="softPadFacePad">
+            <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><rect x="6.2" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="10.3" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="14.4" y="6.2" width="3.4" height="3.4" rx=".7"/></svg>
+          </button>
+          <h3 class="flow-node-title" id="softPadFlowNodePadTitle">Soft Pad</h3>
+          <p class="flow-node-hint" id="softPadFlowNodePadHint">未启用 · 21 个</p>
+        </div>
+        <div class="flow-node" data-soft-pad-node="agent">
+          <span class="flow-node-tag" id="softPadFlowNodeAgentTag">状态灯</span>
+          <button type="button" class="flow-node-btn" id="softPadFlowNodeAgent" role="tab" aria-selected="false" aria-controls="softPadFaceAgent">
+            <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="9" y="2.5" width="6" height="15" rx="3"/><circle cx="12" cy="6.5" r="1.35" fill="currentColor" stroke="none"/></svg>
+          </button>
+          <h3 class="flow-node-title" id="softPadFlowNodeAgentTitle">状态灯</h3>
+          <p class="flow-node-hint" id="softPadFlowNodeAgentHint">看 AI 忙不忙</p>
+        </div>
+        <div class="flow-node" data-soft-pad-node="tray">
+          <span class="flow-node-tag" id="softPadFlowNodeTrayTag">托盘</span>
+          <button type="button" class="flow-node-btn" id="softPadFlowNodeTray" role="tab" aria-selected="false" aria-controls="softPadFaceTray">
+            <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M9 5V3h6v2"/><path d="M8 12h8"/></svg>
+          </button>
+          <h3 class="flow-node-title" id="softPadFlowNodeTrayTitle">托盘菜单定制</h3>
+          <p class="flow-node-hint" id="softPadFlowNodeTrayHint">预览 · 显示项</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="soft-pad-scan-bar" id="softPadScanBar">
+      <button type="button" class="btn secondary soft-pad-scan-btn" id="softPadScanBtn">扫描本机工具</button>
+      <span class="soft-pad-scan-status" id="softPadScanStatus" aria-live="polite"></span>
+    </div>
+
+    <header class="pref-page-head soft-pad-page-head sr-only">
+      <h3 class="pref-page-title" id="settingsPanelSoftPadTitle">虚拟键盘</h3>
+      <p class="pref-page-subtitle" id="settingsPanelSoftPadDesc">管理 Soft Pad 的外观、出现时机与应用内行为</p>
+    </header>
+
+    <div class="keys-page-body soft-pad-page-body" id="softPadPageBody">
+      <div class="keys-page-main soft-pad-page-main">
+        <div class="soft-pad-hub-stage" id="softPadHubStage" data-soft-pad-face="pad" role="tabpanel">
+
+          <!-- ===== Face 1: Pad ===== -->
+          <div class="soft-pad-face-root soft-pad-face-pad" id="softPadFacePad" data-face="pad">
+            <div class="soft-pad-face-pad__preview soft-pad-preview-host" id="softPadPreviewHost">
+              <div class="codex-micro-pad soft-pad-preview" id="softPadPreviewPad">
+                <div class="codex-micro-pad__head"><span>小键盘</span><span id="padPreviewStatus">已关闭</span></div>
+                <div class="micro-hw-grid" id="microHwGrid"></div>
+              </div>
+              <p class="soft-pad-preview__hint" id="softPadPreviewHint">悬停或点按键查看名称 · 点按键可去「改按键」编辑</p>
+            </div>
+            <aside class="soft-pad-face-pad__panel soft-pad-detail" id="softPadSubpageHost">
+              <div class="soft-pad-pad-tabs" id="softPadPadTabs" role="tablist">
+                <button type="button" class="soft-pad-pad-tab is-active" role="tab" data-pad-mode="appear" id="softPadPadTabAppear">出现</button>
+                <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="keys" id="softPadPadTabKeys">键位</button>
+                <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="look" id="softPadPadTabLook">外观</button>
+                <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="purpose" id="softPadPadTabPurpose">用途</button>
+              </div>
+              <div class="soft-pad-detail-panel" id="softPadDetailPanel">
+                <div class="pad-panel-block is-active" data-pad-panel="appear">
+                  <h4>何时显示 Soft Pad</h4>
+                  <p>前台应用匹配绑定场景时自动浮层；也可强制保持可见（调试）。</p>
+                  <div class="field-row"><label>出现策略</label>
+                    <select id="padAppearStrategy"><option>仅目标 App 前台</option><option>OneTone 后台时也显示</option><option>始终显示（调试）</option></select>
+                  </div>
+                  <div class="field-row"><label>Num Lock</label>
+                    <select><option>要求 NumLock 关闭</option><option>不检查</option></select>
+                  </div>
+                </div>
+                <div class="pad-panel-block" data-pad-panel="keys">
+                  <h4>键位布局</h4>
+                  <p>当前习惯 <b id="padKeysMappingLabel">Codex 场景</b> · 共 <b>21</b> 个绑定键。</p>
+                  <div class="chip-list">
+                    <button type="button" class="chip-btn is-on">标准 3×4</button>
+                    <button type="button" class="chip-btn">导航区</button>
+                    <button type="button" class="chip-btn">Encoder</button>
+                  </div>
+                  <p style="margin-top:12px;font-size:10px;color:var(--on-surface-muted)">点击左侧预览键位 → 跳转键位编辑器（产品内 <code>openEditKeycap</code>）</p>
+                </div>
+                <div class="pad-panel-block" data-pad-panel="look">
+                  <h4>外观</h4>
+                  <div class="field-row"><label>屏幕透明度</label><input type="range" min="40" max="100" value="88" id="padOpacity" /></div>
+                  <div class="field-row"><label>布局皮肤</label>
+                    <select><option>标准</option><option>紧凑</option><option>高对比</option></select>
+                  </div>
+                </div>
+                <div class="pad-panel-block" data-pad-panel="purpose">
+                  <h4>用途 · AG 键</h4>
+                  <div class="chip-list">
+                    <button type="button" class="chip-btn is-on">Shortcuts</button>
+                    <button type="button" class="chip-btn">Sessions</button>
+                  </div>
+                  <p style="margin-top:10px">Micro 键用途与 Agent 会话 lane 绑定，不影响托盘菜单定制。</p>
+                </div>
+              </div>
+            </aside>
+          </div>
+
+          <!-- ===== Face 2: Agent / 状态灯 ===== -->
+          <div class="soft-pad-face-root soft-pad-face-agent" id="softPadFaceAgent" data-face="agent" hidden>
+            <div class="soft-pad-face-agent__preview soft-pad-preview-host agent-preview-wrap" id="softPadAgentPreviewHost">
+              <div class="agent-topbar-light" id="agentTopbarPreview"><span class="dot"></span><span id="agentTopbarLabel">Codex · 运行中</span></div>
+              <div class="codex-micro-pad soft-pad-preview" style="margin-top:36px;opacity:.85">
+                <div class="codex-micro-pad__head"><span>Topbar 预览</span><span>状态灯</span></div>
+                <div class="micro-hw-grid" style="opacity:.5">
+                  <div class="micro-hw-key">7</div><div class="micro-hw-key">8</div><div class="micro-hw-key">9</div>
+                  <div class="micro-hw-key">4</div><div class="micro-hw-key">5</div><div class="micro-hw-key">6</div>
+                  <div class="micro-hw-key">1</div><div class="micro-hw-key">2</div><div class="micro-hw-key">3</div>
+                </div>
+              </div>
+            </div>
+            <aside class="soft-pad-face-agent__panel soft-pad-detail" id="softPadAgentPanelHost">
+              <div class="agent-panel-head"><h4 id="softPadAgentPanelTitle">状态灯 · Codex</h4><span style="font-size:10px;color:var(--on-surface-muted)">绑定应用：<b id="agentScopeLabel">Codex</b></span></div>
+              <div class="agent-legend">
+                <span><i style="background:#94a3b8"></i>空闲</span>
+                <span><i style="background:#00a3ff"></i>忙</span>
+                <span><i style="background:#f59e0b"></i>等你</span>
+                <span><i style="background:#22c55e"></i>完成</span>
+                <span><i style="background:#ef4444"></i>失败</span>
+              </div>
+              <div class="codex-pad-mgr soft-pad-subpage-body" id="softPadAgentBody">
+                <div class="agent-row"><div><div class="name">Codex</div><div class="sub">Hook 已连接</div></div><span class="st">运行中</span><button type="button" class="hook">诊断</button></div>
+                <div class="agent-row"><div><div class="name">Claude Code</div><div class="sub">未安装 hook</div></div><span class="st" style="background:rgba(148,163,184,.15);color:#64748b">空闲</span><button type="button" class="hook">连接</button></div>
+                <div class="agent-row"><div><div class="name">Cursor</div><div class="sub">Hook 已连接</div></div><span class="st" style="background:rgba(34,197,94,.12);color:#15803d">完成</span><button type="button" class="hook">诊断</button></div>
+                <div class="agent-row"><div><div class="name">OpenCode</div><div class="sub">Plugin 未启用</div></div><span class="st" style="background:rgba(148,163,184,.15);color:#64748b">空闲</span><button type="button" class="hook">连接</button></div>
+              </div>
+            </aside>
+          </div>
+
+          <!-- ===== Face 3: Tray customize (replaces timeline) ===== -->
+          <div class="soft-pad-face-root soft-pad-face-tray" id="softPadFaceTray" data-face="tray" hidden>
+            <div class="tray-preview-pane">
+              <div class="lbl">实时预览 · 系统托盘菜单</div>
+              <div class="menu-shell" id="trayPreviewShell">
+                <div data-seg="hero" class="status-hero">
+                  <div style="flex:1">
+                    <div class="ttl" id="trayHeroTitle"><span class="pulse" id="trayHeroPulse"></span><span id="trayHeroText">监听中</span></div>
+                    <div class="chips" id="trayHeroChips">
+                      <span class="chip b" data-hero-ch="voice">语音</span><span class="chip g" data-hero-ch="keys">按键</span><span class="chip p" data-hero-ch="softPad">Soft Pad</span>
+                      <span class="chip a" id="trayAgentChip">Codex · 运行中</span>
+                    </div>
+                  </div>
+                  <button type="button" class="hero-act" id="trayHeroPause">暂停</button>
+                </div>
+                <div data-seg="event" class="event-card" id="trayEventCard">
+                  <div style="font-size:10px;color:var(--on-surface-muted);margin-bottom:4px" id="trayEventHead">刚才 · 2s 前 · 语音</div>
+                  <div id="trayEventBody">"打开 main.rs" <span style="font-size:9px;background:rgba(46,125,79,.1);color:#2e7d4f;padding:1px 5px;border-radius:3px;font-weight:700">已发送</span></div>
+                </div>
+                <div data-seg="channels-head" class="sec-head">通道</div>
+                <div data-seg="channels" data-ch="voice" class="ch-row"><span>🎤 语音</span><span class="meta" id="trayChVoiceMeta">Vosk · 已就绪</span></div>
+                <div data-seg="channels" data-ch="keys" class="ch-row"><span>⌨ 按键</span><span class="meta" id="trayChKeysMeta">右 Alt · 智能连按</span></div>
+                <div data-seg="channels" data-ch="softPad" class="ch-row"><span>▦ Soft Pad</span><span class="meta" id="trayChPadMeta">浮层可见</span></div>
+                <div data-seg="channels" data-ch="camera" class="ch-row"><span>📷 摄像头</span><span class="meta" id="trayChCamMeta">(未接入)</span></div>
+                <div data-seg="mic" class="mic-row"><span id="trayMicLabel">🎤 麦克风 · 开 · 默认</span><span class="tog" id="trayMicToggle" role="switch" aria-checked="true" tabindex="0"></span></div>
+                <div data-seg="footer" class="tray-ft"><span id="trayGlobalHint">全局 · 已暂停可用</span></div>
+              </div>
+            </div>
+            <aside class="tray-inspector" id="softPadTrayInspector">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+                <h2 style="margin:0;font-size:13px;font-weight:800">通道状态与控制</h2>
+                <span class="dirty-badge" id="trayDirtyBadge">未保存</span>
+              </div>
+              <p style="margin:0;font-size:10px;color:var(--on-surface-muted);line-height:1.45;flex-shrink:0">四通道横向 subtab · 关键数据与核心开关 · 「托盘显示」控制左侧预览。</p>
+
+              <div class="seg-mini locked"><label><input type="checkbox" checked disabled/> Hero · 监听状态 + Agent</label></div>
+              <div class="seg-mini"><label><input type="checkbox" id="chkTrayEvent" checked/> 最近事件卡</label></div>
+              <div class="seg-mini locked" id="trayMicSeg">
+                <span>麦克风 · <span id="insMicStatus">开 · 默认</span></span>
+                <button type="button" class="mini-toggle" id="insMicToggle" role="switch" aria-checked="true" aria-label="系统麦克风静音"></button>
+              </div>
+
+              <div class="tray-channels-wrap" id="trayChannelsWrap">
+                <div class="tray-ch-subtabs" id="trayChSubtabs" role="tablist" aria-label="四通道">
+                  <button type="button" class="tray-ch-subtab is-active" role="tab" data-ch-tab="voice" id="tabChVoice" aria-selected="true" aria-controls="cardVoice">
+                    <span class="tray-ch-subtab__ic">🎤</span>
+                    <span class="tray-ch-subtab__lbl">语音</span>
+                    <span class="tray-ch-subtab__dot run" id="tabDotVoice"></span>
+                  </button>
+                  <button type="button" class="tray-ch-subtab" role="tab" data-ch-tab="keys" id="tabChKeys" aria-selected="false" aria-controls="cardKeys">
+                    <span class="tray-ch-subtab__ic">⌨</span>
+                    <span class="tray-ch-subtab__lbl">按键</span>
+                    <span class="tray-ch-subtab__dot on" id="tabDotKeys"></span>
+                  </button>
+                  <button type="button" class="tray-ch-subtab" role="tab" data-ch-tab="softPad" id="tabChSoftPad" aria-selected="false" aria-controls="cardSoftPad">
+                    <span class="tray-ch-subtab__ic">▦</span>
+                    <span class="tray-ch-subtab__lbl">Pad</span>
+                    <span class="tray-ch-subtab__dot off" id="tabDotSoftPad"></span>
+                  </button>
+                  <button type="button" class="tray-ch-subtab is-off" role="tab" data-ch-tab="camera" id="tabChCamera" aria-selected="false" aria-controls="cardCamera">
+                    <span class="tray-ch-subtab__ic">📷</span>
+                    <span class="tray-ch-subtab__lbl">摄像头</span>
+                    <span class="tray-ch-subtab__dot off" id="tabDotCamera"></span>
+                  </button>
+                </div>
+                <div class="tray-ch-panels" id="trayChPanels">
+
+                <div class="ch-card" data-channel="voice" data-ch-panel="voice" id="cardVoice" role="tabpanel" aria-labelledby="tabChVoice">
+                  <div class="ch-card-head">
+                    <span class="ch-card-ic voice">🎤</span>
+                    <div class="ch-card-title"><b>语音</b><span class="st-pill run" id="voiceStatePill">监听中</span></div>
+                    <label class="show-tray"><input type="checkbox" id="showTrayVoice" checked/> 托盘显示</label>
+                  </div>
+                  <div class="ch-stats">
+                    <div class="stat"><span class="k">引擎</span><span class="v" id="voiceStatEngine">Vosk</span></div>
+                    <div class="stat"><span class="k">唤醒词</span><span class="v" id="voiceStatWake">嘿 声声</span></div>
+                    <div class="stat"><span class="k">最近事件</span><span class="v" id="voiceStatEvent">2s 前 · 已发送</span></div>
+                    <div class="stat"><span class="k">错误</span><span class="v" id="voiceStatErr">无</span></div>
+                  </div>
+                  <div class="ch-switches">
+                    <div class="sw-row"><span>启用语音引擎</span><button type="button" class="mini-toggle" id="swVoiceEngine" role="switch" aria-checked="true"></button></div>
+                    <div class="sw-row"><span>结束短语检测</span><button type="button" class="mini-toggle" id="swVoiceEnd" role="switch" aria-checked="true"></button></div>
+                  </div>
+                </div>
+
+                <div class="ch-card" data-channel="keys" data-ch-panel="keys" id="cardKeys" role="tabpanel" aria-labelledby="tabChKeys" hidden>
+                  <div class="ch-card-head">
+                    <span class="ch-card-ic keys">⌨</span>
+                    <div class="ch-card-title"><b>按键</b><span class="st-pill on" id="keysStatePill">就绪</span></div>
+                    <label class="show-tray"><input type="checkbox" id="showTrayKeys" checked/> 托盘显示</label>
+                  </div>
+                  <div class="ch-stats">
+                    <div class="stat"><span class="k">触发键</span><span class="v" id="keysStatKey">右 Alt</span></div>
+                    <div class="stat"><span class="k">触发方式</span><span class="v" id="keysStatMode">智能连按</span></div>
+                    <div class="stat"><span class="k">当前习惯</span><span class="v" id="keysStatHabit">Codex 场景</span></div>
+                    <div class="stat"><span class="k">上次触发</span><span class="v" id="keysStatLast">8s 前</span></div>
+                  </div>
+                  <div class="ch-switches">
+                    <div class="sw-row"><span>启用按键通道</span><button type="button" class="mini-toggle" id="swKeysEnabled" role="switch" aria-checked="true"></button></div>
+                    <div class="sw-row"><span>当前习惯启用</span><button type="button" class="mini-toggle" id="swKeysHabit" role="switch" aria-checked="true"></button></div>
+                  </div>
+                </div>
+
+                <div class="ch-card" data-channel="softPad" data-ch-panel="softPad" id="cardSoftPad" role="tabpanel" aria-labelledby="tabChSoftPad" hidden>
+                  <div class="ch-card-head">
+                    <span class="ch-card-ic softpad">▦</span>
+                    <div class="ch-card-title"><b>Soft Pad</b><span class="st-pill run" id="padStatePill">浮层可见</span></div>
+                    <label class="show-tray"><input type="checkbox" id="showTraySoftPad" checked/> 托盘显示</label>
+                  </div>
+                  <div class="ch-stats">
+                    <div class="stat"><span class="k">键位</span><span class="v" id="padStatKeys">21 个</span></div>
+                    <div class="stat"><span class="k">绑定 Agent</span><span class="v" id="padStatAgent">Codex</span></div>
+                    <div class="stat"><span class="k">浮层</span><span class="v" id="padStatOverlay">可见</span></div>
+                    <div class="stat"><span class="k">前台</span><span class="v" id="padStatFg">Codex.exe</span></div>
+                  </div>
+                  <div class="ch-switches">
+                    <div class="sw-row"><span>启用 Soft Pad</span><button type="button" class="mini-toggle" id="swPadEnabled" role="switch" aria-checked="false"></button></div>
+                    <div class="sw-row"><span>显示浮层</span><button type="button" class="mini-toggle" id="swPadOverlay" role="switch" aria-checked="true"></button></div>
+                  </div>
+                </div>
+
+                <div class="ch-card is-off" data-channel="camera" data-ch-panel="camera" id="cardCamera" role="tabpanel" aria-labelledby="tabChCamera" hidden>
+                  <div class="ch-card-head">
+                    <span class="ch-card-ic camera">📷</span>
+                    <div class="ch-card-title"><b>摄像头</b><span class="st-pill off" id="camStatePill">未接入</span></div>
+                    <label class="show-tray"><input type="checkbox" id="showTrayCamera"/> 托盘显示</label>
+                  </div>
+                  <div class="ch-stats">
+                    <div class="stat"><span class="k">设备</span><span class="v" id="camStatDev">—</span></div>
+                    <div class="stat"><span class="k">Presence</span><span class="v" id="camStatPresence">关</span></div>
+                    <div class="stat"><span class="k">自动静音</span><span class="v" id="camStatMute">关</span></div>
+                    <div class="stat"><span class="k">权限</span><span class="v" id="camStatPerm">未授权</span></div>
+                  </div>
+                  <div class="ch-switches">
+                    <div class="sw-row"><span>启用摄像头通道</span><button type="button" class="mini-toggle" id="swCamEnabled" role="switch" aria-checked="false"></button></div>
+                    <div class="sw-row"><span>Presence 动作</span><button type="button" class="mini-toggle" id="swCamPresence" role="switch" aria-checked="false"></button></div>
+                  </div>
+                </div>
+                </div>
+              </div>
+
+              <div class="actions" style="flex-shrink:0;margin-top:4px">
+                <button type="button" class="btn-save" id="btnTraySave">保存布局与通道状态</button>
+                <button type="button" class="btn-ghost" id="btnTrayReset">恢复默认预设</button>
+              </div>
+            </aside>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var STORAGE='onetone_tray_customization_v1';
+  var DEFAULT_RT={
+    voice:{engineOn:true,endPhraseOn:true,engine:'Vosk',wake:'嘿 声声',event:'2s 前 · 已发送',err:'无'},
+    keys:{enabled:true,habitOn:true,triggerKey:'右 Alt',mode:'智能连按',habit:'Codex 场景',last:'8s 前'},
+    softPad:{enabled:false,overlayOn:true,keyCount:21,agent:'Codex',fg:'Codex.exe'},
+    camera:{enabled:false,presenceOn:false,device:'—',perm:'未授权',autoMute:false},
+    mic:{muted:false,device:'默认'},
+    globalPaused:false
+  };
+  var DEFAULT_LAYOUT={event:true,showInTray:{voice:true,keys:true,softPad:true,camera:false},density:1};
+  var trayDirty=false;
+  var rt=cloneRt(DEFAULT_RT);
+  var layout=cloneLayout(DEFAULT_LAYOUT);
+  var activeChTab='voice';
+
+  function setChTab(id){
+    activeChTab=id;
+    document.querySelectorAll('.tray-ch-subtab').forEach(function(tab){
+      var on=tab.getAttribute('data-ch-tab')===id;
+      tab.classList.toggle('is-active',on);
+      tab.setAttribute('aria-selected',on?'true':'false');
+    });
+    document.querySelectorAll('[data-ch-panel]').forEach(function(panel){
+      panel.hidden=panel.getAttribute('data-ch-panel')!==id;
+    });
+  }
+  document.querySelectorAll('.tray-ch-subtab').forEach(function(tab){
+    tab.addEventListener('click',function(){setChTab(tab.getAttribute('data-ch-tab'));});
+  });
+
+  function cloneRt(o){return JSON.parse(JSON.stringify(o));}
+  function cloneLayout(o){return JSON.parse(JSON.stringify(o));}
+  function mergeRt(base,over){var r=cloneRt(base);if(!over)return r;Object.keys(over).forEach(function(k){r[k]=Object.assign({},r[k]||{},over[k]);});return r;}
+  function mergeLayout(base,over){var r=cloneLayout(base);if(!over)return r;if(over.showInTray)r.showInTray=Object.assign({},r.showInTray,over.showInTray);if(over.event!==undefined)r.event=over.event;if(over.density!==undefined)r.density=over.density;return r;}
+
+  function setMiniToggle(el,on){if(el)el.setAttribute('aria-checked',on?'true':'false');}
+  function readMiniToggle(el){return el&&el.getAttribute('aria-checked')==='true';}
+  function wireMiniToggle(id,cb){
+    var el=document.getElementById(id);
+    if(!el)return;
+    el.addEventListener('click',function(){
+      var on=!readMiniToggle(el);
+      setMiniToggle(el,on);
+      if(cb)cb(on);
+      onTrayChange();
+    });
+  }
+
+  /* --- micro pad grid --- */
+  var KEYS=[
+    {k:'7',l:'提交'},{k:'8',l:'上一条'},{k:'9',l:'下一条'},
+    {k:'4',l:'左'},{k:'5',l:'确认'},{k:'6',l:'右'},
+    {k:'1',l:'撤销'},{k:'2',l:'0'},{k:'3',l:'重做'},
+    {k:'⌫',l:'退格',wide:false},{k:'⏻',l:'电源'},{k:'↵',l:'发送'}
+  ];
+  var grid=document.getElementById('microHwGrid');
+  KEYS.forEach(function(item){
+    var b=document.createElement('button');
+    b.type='button';b.className='micro-hw-key'+(item.wide===false?'':'');
+    b.textContent=item.k;
+    b.title=item.l;
+    b.addEventListener('mouseenter',function(){document.getElementById('softPadPreviewHint').textContent='键位：'+item.l+' ('+item.k+')';});
+    b.addEventListener('click',function(){
+      grid.querySelectorAll('.micro-hw-key').forEach(function(x){x.classList.remove('is-lit');});
+      b.classList.add('is-lit');
+      setPadMode('keys');
+      toast('选中键位 '+item.k+' · 可在「键位」面板编辑');
+    });
+    grid.appendChild(b);
+  });
+
+  /* --- face switch (maps setSoftPadFace) --- */
+  var faces={pad:document.getElementById('softPadFacePad'),agent:document.getElementById('softPadFaceAgent'),tray:document.getElementById('softPadFaceTray')};
+  var flowBtns=document.querySelectorAll('.flow-node-btn');
+  function setFace(name){
+    Object.keys(faces).forEach(function(k){faces[k].hidden=(k!==name);});
+    flowBtns.forEach(function(btn){
+      var node=btn.closest('.flow-node');
+      var on=node&&node.getAttribute('data-soft-pad-node')===name;
+      btn.classList.toggle('is-active',on);
+      btn.setAttribute('aria-selected',on?'true':'false');
+    });
+    document.getElementById('softPadHubStage').setAttribute('data-soft-pad-face',name);
+  }
+  document.querySelectorAll('[data-soft-pad-node]').forEach(function(node){
+    var btn=node.querySelector('.flow-node-btn');
+    if(btn) btn.addEventListener('click',function(){setFace(node.getAttribute('data-soft-pad-node'));});
+  });
+  document.getElementById('btnSoftPadTrayCustomize').addEventListener('click',function(){setFace('tray');});
+  document.getElementById('btnSoftPadEditKeys').addEventListener('click',function(){setFace('pad');setPadMode('keys');});
+
+  /* --- pad mode tabs --- */
+  function setPadMode(mode){
+    document.querySelectorAll('.soft-pad-pad-tab').forEach(function(t){
+      t.classList.toggle('is-active',t.getAttribute('data-pad-mode')===mode);
+    });
+    document.querySelectorAll('.pad-panel-block').forEach(function(p){
+      p.classList.toggle('is-active',p.getAttribute('data-pad-panel')===mode);
+    });
+  }
+  document.querySelectorAll('.soft-pad-pad-tab').forEach(function(tab){
+    tab.addEventListener('click',function(){setPadMode(tab.getAttribute('data-pad-mode'));});
+  });
+  document.querySelectorAll('.chip-btn').forEach(function(c){
+    c.addEventListener('click',function(){
+      var list=c.parentElement;
+      if(list&&list.classList.contains('chip-list')){
+        list.querySelectorAll('.chip-btn').forEach(function(x){x.classList.remove('is-on');});
+        c.classList.add('is-on');
+      }
+    });
+  });
+
+  /* --- bind app dropdown --- */
+  var bindBtn=document.getElementById('softPadBindAppBtn');
+  var bindMenu=document.getElementById('softPadBindAppMenu');
+  bindBtn.addEventListener('click',function(){
+    var open=bindMenu.hasAttribute('hidden');
+    bindMenu.hidden=!open;
+    bindBtn.setAttribute('aria-expanded',open?'true':'false');
+  });
+  bindMenu.querySelectorAll('.soft-pad-bind-app__opt').forEach(function(opt){
+    opt.addEventListener('click',function(){
+      var app=opt.getAttribute('data-app');
+      document.getElementById('softPadBindAppLbl').textContent='绑定 · '+app;
+      document.getElementById('softPadSummaryName').textContent=app+' 场景';
+      document.getElementById('padKeysMappingLabel').textContent=app+' 场景';
+      document.getElementById('agentScopeLabel').textContent=app;
+      document.getElementById('softPadAgentPanelTitle').textContent='状态灯 · '+app;
+      document.getElementById('agentTopbarLabel').textContent=app+' · 运行中';
+      document.getElementById('trayAgentChip').textContent=app+' · 运行中';
+      rt.softPad.agent=app;
+      rt.softPad.fg=app+'.exe';
+      rt.keys.habit=app+' 场景';
+      document.getElementById('padStatAgent').textContent=app;
+      document.getElementById('padStatFg').textContent=app+'.exe';
+      document.getElementById('keysStatHabit').textContent=app+' 场景';
+      syncPreviewFromState();
+      bindMenu.querySelectorAll('.soft-pad-bind-app__opt').forEach(function(o){o.classList.toggle('is-active',o===opt);});
+      bindMenu.hidden=true;
+      bindBtn.setAttribute('aria-expanded','false');
+    });
+  });
+  document.addEventListener('click',function(e){
+    if(!document.getElementById('softPadBindApp').contains(e.target)){
+      bindMenu.hidden=true;bindBtn.setAttribute('aria-expanded','false');
+    }
+  });
+
+  /* --- enable toggle --- */
+  var enableBtn=document.getElementById('softPadSummaryEnable');
+  enableBtn.addEventListener('click',function(){
+    var on=enableBtn.getAttribute('aria-checked')!=='true';
+    enableBtn.setAttribute('aria-checked',on?'true':'false');
+    var pill=document.getElementById('softPadSummaryStatus');
+    pill.textContent=on?'已启用':'未启用';
+    pill.classList.toggle('is-off',!on);
+    document.getElementById('padPreviewStatus').textContent=on?'已启用':'已关闭';
+    document.getElementById('softPadFlowNodePadHint').textContent=(on?'已启用':'未启用')+' · 21 个';
+    rt.softPad.enabled=on;
+    setMiniToggle(document.getElementById('swPadEnabled'),on);
+    onTrayChange();
+  });
+
+  /* --- scan --- */
+  document.getElementById('softPadScanBtn').addEventListener('click',function(){
+    var st=document.getElementById('softPadScanStatus');
+    st.textContent='扫描中…';
+    setTimeout(function(){st.textContent='检测到 6 个工具 · Codex / Claude / Cursor / Trae / OpenCode / Aider';toast('扫描完成');},800);
+  });
+
+  document.getElementById('btnSoftPadTestFg').addEventListener('click',function(){toast('前台探测：当前 Codex.exe');});
+
+  /* --- tray customizer --- */
+  function toast(msg){
+    var el=document.getElementById('toast');
+    el.textContent=msg;el.classList.add('show');
+    clearTimeout(toast._t);toast._t=setTimeout(function(){el.classList.remove('show');},2200);
+  }
+
+  function readRuntimeFromUI(){
+    rt.voice.engineOn=readMiniToggle(document.getElementById('swVoiceEngine'));
+    rt.voice.endPhraseOn=readMiniToggle(document.getElementById('swVoiceEnd'));
+    rt.keys.enabled=readMiniToggle(document.getElementById('swKeysEnabled'));
+    rt.keys.habitOn=readMiniToggle(document.getElementById('swKeysHabit'));
+    rt.softPad.enabled=readMiniToggle(document.getElementById('swPadEnabled'));
+    rt.softPad.overlayOn=readMiniToggle(document.getElementById('swPadOverlay'));
+    rt.camera.enabled=readMiniToggle(document.getElementById('swCamEnabled'));
+    rt.camera.presenceOn=readMiniToggle(document.getElementById('swCamPresence'));
+    rt.mic.muted=!readMiniToggle(document.getElementById('insMicToggle'));
+    layout.event=document.getElementById('chkTrayEvent').checked;
+    layout.showInTray.voice=document.getElementById('showTrayVoice').checked;
+    layout.showInTray.keys=document.getElementById('showTrayKeys').checked;
+    layout.showInTray.softPad=document.getElementById('showTraySoftPad').checked;
+    layout.showInTray.camera=document.getElementById('showTrayCamera').checked;
+  }
+
+  function applyRuntimeToUI(){
+    setMiniToggle(document.getElementById('swVoiceEngine'),rt.voice.engineOn);
+    setMiniToggle(document.getElementById('swVoiceEnd'),rt.voice.endPhraseOn);
+    setMiniToggle(document.getElementById('swKeysEnabled'),rt.keys.enabled);
+    setMiniToggle(document.getElementById('swKeysHabit'),rt.keys.habitOn);
+    setMiniToggle(document.getElementById('swPadEnabled'),rt.softPad.enabled);
+    setMiniToggle(document.getElementById('swPadOverlay'),rt.softPad.overlayOn);
+    setMiniToggle(document.getElementById('swCamEnabled'),rt.camera.enabled);
+    setMiniToggle(document.getElementById('swCamPresence'),rt.camera.presenceOn);
+    setMiniToggle(document.getElementById('insMicToggle'),!rt.mic.muted);
+    setMiniToggle(document.getElementById('trayMicToggle'),!rt.mic.muted);
+    document.getElementById('chkTrayEvent').checked=layout.event;
+    document.getElementById('showTrayVoice').checked=layout.showInTray.voice;
+    document.getElementById('showTrayKeys').checked=layout.showInTray.keys;
+    document.getElementById('showTraySoftPad').checked=layout.showInTray.softPad;
+    document.getElementById('showTrayCamera').checked=layout.showInTray.camera;
+    document.getElementById('voiceStatEngine').textContent=rt.voice.engine;
+    document.getElementById('voiceStatWake').textContent=rt.voice.wake;
+    document.getElementById('voiceStatEvent').textContent=rt.voice.event;
+    document.getElementById('voiceStatErr').textContent=rt.voice.err;
+    document.getElementById('keysStatKey').textContent=rt.keys.triggerKey;
+    document.getElementById('keysStatMode').textContent=rt.keys.mode;
+    document.getElementById('keysStatHabit').textContent=rt.keys.habit;
+    document.getElementById('keysStatLast').textContent=rt.keys.last;
+    document.getElementById('padStatKeys').textContent=rt.softPad.keyCount+' 个';
+    document.getElementById('padStatAgent').textContent=rt.softPad.agent;
+    document.getElementById('padStatFg').textContent=rt.softPad.fg;
+    document.getElementById('camStatDev').textContent=rt.camera.device;
+    document.getElementById('camStatPerm').textContent=rt.camera.perm;
+    document.getElementById('camStatMute').textContent=rt.camera.autoMute?'开':'关';
+    document.getElementById('camStatPresence').textContent=rt.camera.presenceOn?'开':'关';
+    document.getElementById('padStatOverlay').textContent=rt.softPad.overlayOn?'可见':'隐藏';
+    document.getElementById('insMicStatus').textContent=(rt.mic.muted?'关':'开')+' · '+rt.mic.device;
+    enableBtn.setAttribute('aria-checked',rt.softPad.enabled?'true':'false');
+    document.getElementById('softPadSummaryStatus').textContent=rt.softPad.enabled?'已启用':'未启用';
+    document.getElementById('softPadSummaryStatus').classList.toggle('is-off',!rt.softPad.enabled);
+    document.getElementById('trayHeroPause').textContent=rt.globalPaused?'恢复':'暂停';
+    updateChannelPills();
+    updateCardDim();
+  }
+
+  function setPill(id,text,cls){
+    var el=document.getElementById(id);
+    el.textContent=text;
+    el.className='st-pill '+cls;
+  }
+  function setTabDot(id,cls){
+    var el=document.getElementById(id);
+    if(el)el.className='tray-ch-subtab__dot '+cls;
+  }
+  function updateChannelPills(){
+    var vCls,vTxt;
+    if(!rt.voice.engineOn){vTxt='已关闭';vCls='off';}
+    else if(rt.voice.err&&rt.voice.err!=='无'){vTxt='异常';vCls='err';}
+    else{vTxt=rt.globalPaused?'待命':'监听中';vCls=rt.globalPaused?'off':'run';}
+    setPill('voiceStatePill',vTxt,vCls);setTabDot('tabDotVoice',vCls);
+
+    var kCls,kTxt;
+    if(!rt.keys.enabled){kTxt='已关闭';kCls='off';}
+    else if(!rt.keys.habitOn){kTxt='习惯关';kCls='off';}
+    else{kTxt='就绪';kCls='on';}
+    setPill('keysStatePill',kTxt,kCls);setTabDot('tabDotKeys',kCls);
+
+    var pCls,pTxt;
+    if(!rt.softPad.enabled){pTxt='未启用';pCls='off';}
+    else if(rt.softPad.overlayOn){pTxt='浮层可见';pCls='run';}
+    else{pTxt='已启用';pCls='on';}
+    setPill('padStatePill',pTxt,pCls);setTabDot('tabDotSoftPad',pCls);
+
+    var cCls,cTxt;
+    if(!rt.camera.enabled){cTxt='未接入';cCls='off';}
+    else{cTxt=rt.camera.presenceOn?'Presence 开':'已启用';cCls='on';}
+    setPill('camStatePill',cTxt,cCls);setTabDot('tabDotCamera',cCls);
+  }
+  function updateCardDim(){
+    document.getElementById('cardVoice').classList.toggle('is-off',!rt.voice.engineOn);
+    document.getElementById('cardKeys').classList.toggle('is-off',!rt.keys.enabled);
+    document.getElementById('cardSoftPad').classList.toggle('is-off',!rt.softPad.enabled);
+    document.getElementById('cardCamera').classList.toggle('is-off',!rt.camera.enabled);
+    document.getElementById('tabChVoice').classList.toggle('is-off',!rt.voice.engineOn);
+    document.getElementById('tabChKeys').classList.toggle('is-off',!rt.keys.enabled);
+    document.getElementById('tabChSoftPad').classList.toggle('is-off',!rt.softPad.enabled);
+    document.getElementById('tabChCamera').classList.toggle('is-off',!rt.camera.enabled);
+  }
+
+  function syncPreviewFromState(){
+    var shell=document.getElementById('trayPreviewShell');
+    shell.dataset.hideEvent=layout.event?'false':'true';
+    var anyCh=layout.showInTray.voice||layout.showInTray.keys||layout.showInTray.softPad||layout.showInTray.camera;
+    shell.dataset.hideChannels=anyCh?'false':'true';
+    shell.querySelectorAll('[data-seg="channels"][data-ch]').forEach(function(row){
+      var id=row.getAttribute('data-ch');
+      row.style.display=layout.showInTray[id]?'flex':'none';
+    });
+    document.documentElement.style.setProperty('--tray-density',String(layout.density||1));
+
+    var voiceMeta=rt.voice.engine+' · '+(rt.voice.engineOn?'已就绪':'已关闭');
+    document.getElementById('trayChVoiceMeta').textContent=voiceMeta;
+    document.getElementById('trayChKeysMeta').textContent=rt.keys.enabled?(rt.keys.triggerKey+' · '+rt.keys.mode):'已关闭';
+    document.getElementById('trayChPadMeta').textContent=!rt.softPad.enabled?'未启用':(rt.softPad.overlayOn?'浮层可见':'已启用');
+    document.getElementById('trayChCamMeta').textContent=rt.camera.enabled?(rt.camera.device==='—'?'已启用':'已启用 · '+rt.camera.device):'(未接入)';
+
+    var heroText=rt.globalPaused?'已暂停':(rt.voice.engineOn?'监听中':'待命');
+    document.getElementById('trayHeroText').textContent=heroText;
+    document.getElementById('trayHeroPulse').style.display=(rt.voice.engineOn&&!rt.globalPaused)?'inline-block':'none';
+
+    shell.querySelectorAll('[data-hero-ch]').forEach(function(chip){
+      var ch=chip.getAttribute('data-hero-ch');
+      var on=ch==='voice'?rt.voice.engineOn:ch==='keys'?rt.keys.enabled:ch==='softPad'?rt.softPad.enabled:rt.camera.enabled;
+      chip.style.display=on?'inline-block':'none';
+    });
+
+    var micLbl=(rt.mic.muted?'关':'开')+' · '+rt.mic.device;
+    document.getElementById('trayMicLabel').textContent='🎤 麦克风 · '+micLbl;
+    document.getElementById('trayGlobalHint').textContent=rt.globalPaused?'全局 · 已暂停':'全局 · 监听中';
+    document.getElementById('trayEventHead').textContent='刚才 · '+rt.voice.event.split(' · ')[0]+' · 语音';
+  }
+
+  function trayCfg(){
+    readRuntimeFromUI();
+    return{layout:cloneLayout(layout),runtime:cloneRt(rt),density:layout.density};
+  }
+  function onTrayChange(){
+    readRuntimeFromUI();
+    applyRuntimeToUI();
+    syncPreviewFromState();
+    markTrayDirty(true);
+  }
+  function resetTrayDefaults(){
+    layout=cloneLayout(DEFAULT_LAYOUT);
+    rt=cloneRt(DEFAULT_RT);
+    applyRuntimeToUI();
+    syncPreviewFromState();
+    document.getElementById('trayHeroPause').textContent='暂停';
+  }
+  function markTrayDirty(v){
+    trayDirty=!!v;
+    var b=document.getElementById('trayDirtyBadge');
+    b.textContent=trayDirty?'未保存':'已保存';
+    b.classList.toggle('saved',!trayDirty);
+  }
+
+  wireMiniToggle('swVoiceEngine',function(on){rt.voice.engineOn=on;});
+  wireMiniToggle('swVoiceEnd',function(on){rt.voice.endPhraseOn=on;});
+  wireMiniToggle('swKeysEnabled',function(on){rt.keys.enabled=on;});
+  wireMiniToggle('swKeysHabit',function(on){rt.keys.habitOn=on;});
+  wireMiniToggle('swPadEnabled',function(on){
+    rt.softPad.enabled=on;
+    enableBtn.setAttribute('aria-checked',on?'true':'false');
+    document.getElementById('softPadSummaryStatus').textContent=on?'已启用':'未启用';
+    document.getElementById('softPadSummaryStatus').classList.toggle('is-off',!on);
+  });
+  wireMiniToggle('swPadOverlay',function(on){rt.softPad.overlayOn=on;});
+  wireMiniToggle('swCamEnabled',function(on){rt.camera.enabled=on;if(on&&rt.camera.device==='—'){rt.camera.device='待选择';document.getElementById('camStatDev').textContent='待选择';}});
+  wireMiniToggle('swCamPresence',function(on){rt.camera.presenceOn=on;});
+  function setMicMuted(muted){
+    rt.mic.muted=muted;
+    setMiniToggle(document.getElementById('insMicToggle'),!muted);
+    setMiniToggle(document.getElementById('trayMicToggle'),!muted);
+    document.getElementById('insMicStatus').textContent=(muted?'关':'开')+' · '+rt.mic.device;
+    onTrayChange();
+  }
+  document.getElementById('insMicToggle').addEventListener('click',function(){setMicMuted(!rt.mic.muted);});
+  document.getElementById('trayMicToggle').addEventListener('click',function(){setMicMuted(!rt.mic.muted);});
+  document.getElementById('trayHeroPause').addEventListener('click',function(){
+    rt.globalPaused=!rt.globalPaused;
+    document.getElementById('trayHeroPause').textContent=rt.globalPaused?'恢复':'暂停';
+    onTrayChange();
+    toast(rt.globalPaused?'已暂停全局监听':'已恢复监听');
+  });
+
+  ['chkTrayEvent','showTrayVoice','showTrayKeys','showTraySoftPad','showTrayCamera'].forEach(function(id){
+    document.getElementById(id).addEventListener('change',onTrayChange);
+  });
+
+  document.getElementById('btnTraySave').addEventListener('click',function(){
+    try{localStorage.setItem(STORAGE,JSON.stringify(trayCfg()));}catch(e){}
+    markTrayDirty(false);toast('已保存 · 布局与通道状态');
+  });
+  document.getElementById('btnTrayReset').addEventListener('click',function(){
+    resetTrayDefaults();
+    try{localStorage.setItem(STORAGE,JSON.stringify(trayCfg()));}catch(e){}
+    markTrayDirty(false);toast('已恢复默认');
+  });
+
+  try{
+    var saved=localStorage.getItem(STORAGE);
+    if(saved){
+      var c=JSON.parse(saved);
+      if(c.sections&&!c.layout){
+        layout.event=!!c.sections.event;
+        if(c.channels)layout.showInTray={voice:!!c.channels.voice,keys:!!c.channels.keys,softPad:!!c.channels.softPad,camera:!!c.channels.camera};
+        if(c.density!==undefined)layout.density=c.density;
+      }else{
+        if(c.layout)layout=mergeLayout(DEFAULT_LAYOUT,c.layout);
+        if(c.runtime)rt=mergeRt(DEFAULT_RT,c.runtime);
+        if(c.density!==undefined)layout.density=c.density;
+      }
+      applyRuntimeToUI();syncPreviewFromState();
+      document.getElementById('trayHeroPause').textContent=rt.globalPaused?'恢复':'暂停';
+      markTrayDirty(false);
+    }else resetTrayDefaults();
+  }catch(e){resetTrayDefaults();}
+  setChTab(activeChTab);
+
+  window.OneToneSoftPadHubDemo={setFace:setFace,setPadMode:setPadMode,trayCfg:trayCfg,runtime:function(){return rt},layout:function(){return layout},setChTab:setChTab};
+})();
+</script>
+</body>
+</html>

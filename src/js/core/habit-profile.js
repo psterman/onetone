@@ -173,7 +173,9 @@
   function projectAll(cfg){
     cfg=cfg||{};
     if(!Array.isArray(cfg.mappings)) return [];
-    return cfg.mappings.map(function(m){ return project(m,cfg); }).filter(Boolean).sort(function(a,b){
+    return cfg.mappings.filter(function(m){
+      return m && String(m.id||'') !== 'soft-pad-global';
+    }).map(function(m){ return project(m,cfg); }).filter(Boolean).sort(function(a,b){
       return (a.order||0)-(b.order||0);
     });
   }

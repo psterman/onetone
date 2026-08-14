@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Camera 下拉 × 跨通道联动 UI 设计</title>
+  <style>
+    :root{
+      --bg:#f5f7fa;
+      --surface:#ffffff;
+      --surface-2:#f8fafc;
+      --primary:#2a9cc4;
+      --primary-soft:#e6f7fc;
+      --primary-deep:#1e87ad;
+      --on-surface:#152238;
+      --on-surface-muted:#5a7086;
+      --on-surface-soft:#8a98a8;
+      --outline-variant:rgba(26,45,74,.10);
+      --danger:#dc2626;
+      --danger-soft:rgba(220,38,38,.08);
+      --green:#2e7d4f;
+      --green-soft:rgba(46,125,79,.10);
+      --orange:#b9530a;
+      --orange-soft:rgba(185,83,10,.10);
+      --yellow:#b45309;
+      --yellow-soft:rgba(245,166,35,.16);
+      --purple:#6d4ab0;
+      --purple-soft:rgba(109,74,176,.10);
+      --blue:#00a3ff;
+      --blue-soft:rgba(0,163,255,.10);
+      --radius:10px;
+      --radius-row:6px;
+      --shadow:0 4px 14px rgba(26,45,74,.08);
+      --shadow-soft:0 2px 6px rgba(26,45,74,.05);
+      font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--on-surface)}
+    body{padding:28px 22px 80px}
+    h1{font-size:22px;margin:0 0 4px}
+    .lede{color:var(--on-surface-muted);font-size:13px;margin:0 0 22px;max-width:1480px;line-height:1.6}
+    h2{font-size:14px;margin:0 0 4px;font-weight:700}
+    h2 .tag{font-size:10px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:3px;background:var(--primary-soft);color:var(--primary);text-transform:uppercase;margin-left:6px;vertical-align:middle}
+    h2 .tag.warn{background:var(--yellow-soft);color:var(--yellow)}
+    h2 .tag.ok{background:var(--green-soft);color:var(--green)}
+
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:1480px;margin:0 auto}
+    .col{display:flex;flex-direction:column;gap:12px}
+    .col-head{display:flex;align-items:baseline;gap:8px;padding:0 2px}
+    .col-head .label{font-size:11px;color:var(--on-surface-muted);font-weight:600}
+
+    /* camera rule row (current) */
+    .rule{
+      background:#fff;border:1px solid var(--outline-variant);border-radius:10px;
+      padding:10px 12px;
+    }
+    .rule-head{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+    .rule-head .ttl{font-size:13px;font-weight:700;flex:1}
+    .rule-head .toggle{width:30px;height:16px;border-radius:8px;background:rgba(26,45,74,.18);position:relative;flex-shrink:0}
+    .rule-head .toggle::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:left .15s}
+    .rule-head .toggle.on{background:var(--green)}
+    .rule-head .toggle.on::after{left:16px}
+    .rule-desc{font-size:11px;color:var(--on-surface-muted);line-height:1.4;margin-bottom:8px}
+    .field-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+    .field-row label{font-size:11px;color:var(--on-surface-muted);font-weight:600;width:54px;flex-shrink:0}
+    .field-row select{
+      flex:1;font:inherit;font-size:12px;padding:5px 8px;border:1px solid var(--outline-variant);border-radius:6px;
+      background:#fff;color:var(--on-surface);
+    }
+
+    /* CURRENT: flat select with title tooltip */
+    .current-select{
+      width:100%;font:inherit;font-size:12px;padding:5px 8px;border:1px solid var(--outline-variant);
+      border-radius:6px;background:#fff;color:var(--on-surface);
+    }
+    .current-summary{font-size:10.5px;color:var(--on-surface-muted);padding:2px 0 0}
+    .current-summary b{color:var(--on-surface)}
+
+    /* PROPOSED: select + cross-channel hint chip + help line */
+    .prop-wrap{display:flex;flex-direction:column;gap:5px}
+    .prop-select{
+      width:100%;font:inherit;font-size:12px;padding:5px 8px;border:1.5px solid var(--primary-soft);
+      border-radius:6px;background:#fff;color:var(--on-surface);
+    }
+    .prop-select:focus{outline:none;border-color:var(--primary)}
+    .prop-hints{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-height:18px}
+    .hint-chip{
+      display:inline-flex;align-items:center;gap:3px;
+      font-size:10.5px;padding:1.5px 7px;border-radius:3.5px;background:var(--primary-soft);color:var(--primary);
+      font-weight:600;
+    }
+    .hint-chip .ico{width:10px;height:10px}
+    .hint-chip .ico svg{width:10px;height:10px}
+    .hint-chip.warn{background:var(--yellow-soft);color:var(--yellow)}
+    .hint-chip.danger{background:var(--danger-soft);color:var(--danger)}
+    .hint-chip.muted{background:rgba(26,45,74,.05);color:var(--on-surface-muted);font-weight:500}
+    .prop-help{font-size:10.5px;color:var(--on-surface-muted);line-height:1.45}
+    .prop-help b{color:var(--on-surface);font-weight:600}
+    .prop-help .link{color:var(--primary);font-weight:600;cursor:pointer}
+
+    /* edge case: pending action */
+    .pending-tag{
+      display:inline-flex;align-items:center;gap:2px;
+      font-size:9.5px;padding:1px 5px;border-radius:3px;
+      background:var(--yellow-soft);color:var(--yellow);font-weight:700;
+      margin-left:4px;
+    }
+    .pending-tag::before{content:'⚠';font-size:10px}
+
+    /* section banner (above each comparison block) */
+    .section-title{
+      font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;
+      padding:10px 14px;background:#fff;border:1px solid var(--outline-variant);border-radius:10px;
+    }
+    .section-title .num{
+      width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;
+      display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;
+    }
+    .section-title .sub{font-size:11px;color:var(--on-surface-muted);font-weight:500;margin-left:auto}
+
+    /* optgroup-style group headers (rendered as visual labels) */
+    .group-banner{
+      display:flex;align-items:center;gap:5px;padding:7px 12px 4px;background:linear-gradient(180deg,#f8fafc,#fff);
+      font-size:10px;font-weight:700;color:var(--on-surface-muted);text-transform:uppercase;letter-spacing:.05em;
+      border-bottom:1px solid var(--outline-variant);
+    }
+    .group-banner .ico{width:11px;height:11px}
+    .group-banner .ico svg{width:11px;height:11px}
+    .group-banner .count{font-size:9px;background:rgba(26,45,74,.06);color:var(--on-surface-muted);padding:1px 5px;border-radius:3px;font-weight:600;margin-left:auto}
+    .group-banner.cam .ico{color:var(--orange)}
+    .group-banner.rec .ico{color:var(--blue)}
+    .group-banner.all .ico{color:var(--purple)}
+
+    /* mockup selector with grouped options - shown as expanded list */
+    .select-mock{
+      background:#fff;border:1.5px solid var(--primary-soft);border-radius:6px;overflow:hidden;
+    }
+    .select-mock .sel-row{
+      padding:7px 11px;font-size:12px;display:flex;align-items:center;gap:6px;
+      border-bottom:1px solid var(--outline-variant);
+    }
+    .select-mock .sel-row:hover{background:var(--surface-2)}
+    .select-mock .sel-row.is-selected{background:var(--primary-soft);font-weight:600}
+    .select-mock .sel-row .ch{color:var(--on-surface-muted);font-size:11px}
+    .select-mock .sel-row .x{color:var(--on-surface-soft);font-size:9px;margin-left:auto}
+
+    /* optgroup label inside select (using visual rendering) */
+    .group-divider{
+      padding:5px 11px;font-size:10px;font-weight:700;color:var(--on-surface-muted);
+      text-transform:uppercase;letter-spacing:.04em;background:#f8fafc;display:flex;align-items:center;gap:4px;
+    }
+    .group-divider.cam{color:var(--orange)}
+    .group-divider.rec{color:var(--blue)}
+    .group-divider.all{color:var(--purple)}
+
+    /* ===== Evaluation table ===== */
+    .eval-tbl{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:8px}
+    .eval-tbl th,.eval-tbl td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--outline-variant);vertical-align:top}
+    .eval-tbl th{background:var(--surface-2);font-weight:700;color:var(--on-surface-muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em}
+    .eval-tbl .ok{color:var(--green);font-weight:600}
+    .eval-tbl .concern{color:var(--orange);font-weight:600}
+    .eval-tbl .ask{color:var(--purple);font-weight:600}
+
+    /* edge case container */
+    .edge{
+      background:#fff;border:1px solid var(--outline-variant);border-radius:10px;padding:12px 14px;
+      display:grid;grid-template-columns:140px 1fr;gap:14px;align-items:flex-start;
+    }
+    .edge .scen{
+      font-size:11px;font-weight:700;color:var(--on-surface-muted);text-transform:uppercase;letter-spacing:.04em;
+      padding-top:4px;
+    }
+    .edge .scen .badge{font-size:9px;background:var(--yellow-soft);color:var(--yellow);padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px;letter-spacing:0;text-transform:none}
+    .edge .body{font-size:12px;line-height:1.55}
+    .edge .body b{color:var(--on-surface)}
+    .edge .body .delta{font-family:ui-monospace,monospace;font-size:11px;color:var(--primary);background:var(--primary-soft);padding:1px 5px;border-radius:3px}
+
+    /* accept criteria */
+    .accept{background:#fff;border:1px solid var(--outline-variant);border-radius:10px;padding:14px 16px;margin-top:8px}
+    .accept ul{margin:6px 0 0;padding-left:18px;line-height:1.6}
+    .accept li{font-size:12px;margin-bottom:3px}
+    .accept li b{color:var(--on-surface)}
+  </style>
+</head>
+<body>
+
+  <h1>Camera 下拉 × 跨通道联动 · UI 设计</h1>
+  <p class="lede">
+    方案评估 → 现行 vs 提议对比 → 边缘场景 → 实施 3 阶段。<b>核心 UI 决策：</b>
+    用原生 <code>&lt;select&gt;</code> + <code>&lt;optgroup&gt;</code> 做 3 组，跨通道提示用 <b>select 下方的独立 hint chip</b>（非 hover 主路径），
+    hover 时再用 <code>title</code> 兜底。
+  </p>
+
+  <!-- ============ EVALUATION ============ -->
+  <section style="max-width:1480px;margin:0 auto 24px">
+    <div class="accept">
+      <h2>方案评估 <span class="tag ok">总体通过</span></h2>
+      <table class="eval-tbl">
+        <thead>
+          <tr><th style="width:18%">维度</th><th>评价</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>架构解耦</td><td><span class="ok">✓ 正确</span> 4 通道独立存 + 运行时按 actionId 路由；Camera 不指向 Key binding slotId，避免循环引用。</td></tr>
+          <tr><td>Hybrid UX</td><td><span class="ok">✓ 正确</span> "配置独立 + UI 提示联动"是 VS Code settings.json 套路，最干净。</td></tr>
+          <tr><td>3 组下拉分级</td><td><span class="concern">⚠ 调整</span> 组 1 内部其实是两类（纯本机 vs 按键注入），建议拆 2 个子组。</td></tr>
+          <tr><td>Phase 节奏</td><td><span class="ok">✓ 正确</span> 1→2→3 渐进，每步独立 review。</td></tr>
+          <tr><td>运行时不变</td><td><span class="ok">✓ 正确</span> 路由不变（route_semantic_action 已统一），UI 改动不回归。</td></tr>
+          <tr><td>不做什么清单</td><td><span class="ok">✓ 必要</span> 4 条禁令避免 90% 过度设计（linkedBindingId / mega 下拉 / Camera 选 Key 绑定）。</td></tr>
+          <tr><td>pressCtrlI 动态标签</td><td><span class="ask">? 边界</span> resolveVoiceActivateKey() 在无 voice 习惯时返回什么？UI 要不要降级显示？</td></tr>
+          <tr><td>跨通道提示可见性</td><td><span class="ask">? 触屏</span> title=tooltip 在触屏不可用，select 下方需要独立 chip。</td></tr>
+          <tr><td>Pending 机制可见性</td><td><span class="ask">? 显式化</span> input.send / agent.approve 的 requiresSecondChannelFrom 用户感知不到，需要"需确认"标识。</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ CURRENT vs PROPOSED ============ -->
+  <div class="grid">
+
+    <!-- ===== CURRENT ===== -->
+    <div class="col">
+      <div class="section-title">
+        <span class="num">现</span>
+        <span>现行 UI · 扁平下拉 + title tooltip</span>
+        <span class="sub">camera-presence-actions.js 现有实现</span>
+      </div>
+
+      <div class="rule">
+        <div class="rule-head">
+          <span class="ttl">故意眨眼确认</span>
+          <span class="toggle on"></span>
+        </div>
+        <div class="rule-desc">闭眼 1 秒后识别为"故意眨眼"，触发下列动作</div>
+        <div class="field-row">
+          <label>动作</label>
+          <select class="current-select" title="语义：agent:cancel · Layer 1 等价：input.cancel · 触发器：deliberateBlink">
+            <option>— 不执行动作 —</option>
+            <option selected>语音取消 (Esc)</option>
+            <option>语音输入法激活 (右 Alt)</option>
+            <option>软件低消耗运行</option>
+            <option>应用内遮罩</option>
+            <option>暂停语音</option>
+            <option>恢复语音</option>
+            <option>开始听写 (input.start)</option>
+            <option>聚焦 Agent (agent.focus)</option>
+            <option>批准 (agent.approve)</option>
+          </select>
+        </div>
+        <div class="current-summary">已绑定：<b>语音取消 (Esc)</b> · 用户感知不到按 Esc / 语音也能取消</div>
+      </div>
+
+      <div class="rule">
+        <div class="rule-head">
+          <span class="ttl">离席</span>
+          <span class="toggle on"></span>
+        </div>
+        <div class="rule-desc">离开座位 N 秒后执行</div>
+        <div class="field-row">
+          <label>动作</label>
+          <select class="current-select">
+            <option>— 不执行动作 —</option>
+            <option selected>暂停语音</option>
+            <option>软件低消耗运行</option>
+            <option>应用内遮罩</option>
+          </select>
+        </div>
+        <div class="current-summary">已绑定：<b>暂停语音</b></div>
+      </div>
+
+      <div style="font-size:11px;color:var(--danger);background:var(--danger-soft);padding:8px 10px;border-radius:6px;line-height:1.5">
+        <b>问题：</b>用户看到 9 个扁平选项，不知道哪些"纯 Camera"、哪些是"按 Layer 1 等价"。<br/>
+        选项旁有 title 但触屏不可见。Camera 与 Key 都取消时，<b>用户不知道这是同一件事</b>。
+      </div>
+    </div>
+
+    <!-- ===== PROPOSED ===== -->
+    <div class="col">
+      <div class="section-title">
+        <span class="num" style="background:var(--green)">议</span>
+        <span>提议 UI · 3 组下拉 + hint chip + help</span>
+        <span class="sub">按你的纪律：动 select + 加 chip，不重写组件</span>
+      </div>
+
+      <div class="rule">
+        <div class="rule-head">
+          <span class="ttl">故意眨眼确认</span>
+          <span class="toggle on"></span>
+        </div>
+        <div class="rule-desc">闭眼 1 秒后识别为"故意眨眼"，触发下列动作</div>
+        <div class="prop-wrap">
+          <!-- 选中的下拉 + 模拟的 optgroup 结构 -->
+          <div class="select-mock" style="margin-bottom:0">
+            <div class="group-divider cam">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+              摄像头本机（4 项）
+            </div>
+            <div class="sel-row" style="font-size:11.5px;color:var(--on-surface-muted)">— 不执行动作 —</div>
+            <div class="sel-row" style="font-size:11.5px;color:var(--on-surface-muted)">应用内遮罩</div>
+            <div class="sel-row" style="font-size:11.5px;color:var(--on-surface-muted)">软件低消耗运行</div>
+            <div class="sel-row" style="font-size:11.5px;color:var(--on-surface-muted)">暂停语音</div>
+            <div class="sel-row" style="font-size:11.5px;color:var(--on-surface-muted)">恢复语音</div>
+
+            <div class="group-divider cam">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
+              按键注入（2 项）
+            </div>
+            <div class="sel-row is-selected">
+              <span>语音取消（发送 Esc）</span>
+              <span class="ch">≈ input.cancel</span>
+              <span class="x">▾</span>
+            </div>
+            <div class="sel-row" style="font-size:11.5px;color:var(--on-surface-muted)">语音输入法激活（发送 <b style="color:var(--orange)">右 Alt</b>）</div>
+
+            <div class="group-divider rec">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2l3 6 6 .9-4.5 4.3 1 6.3-5.5-2.9-5.5 2.9 1-6.3L3 8.9 9 8z"/></svg>
+              推荐语义动作（按当前习惯置顶）
+            </div>
+            <div class="sel-row" style="font-size:11.5px">开始听写 <span class="ch">· input.start</span></div>
+            <div class="sel-row" style="font-size:11.5px">聚焦 Agent <span class="ch">· agent.focus</span></div>
+            <div class="sel-row" style="font-size:11.5px">批准 <span class="ch">· agent.approve</span><span class="pending-tag">需确认</span></div>
+
+            <div class="group-divider all">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h13M3 12h13M3 18h13"/><circle cx="18" cy="6" r="1.5" fill="currentColor"/><circle cx="18" cy="12" r="1.5" fill="currentColor"/><circle cx="18" cy="18" r="1.5" fill="currentColor"/></svg>
+              全部可绑语义动作
+            </div>
+            <div class="sel-row" style="font-size:11.5px;color:var(--on-surface-soft)">应用切换（input.switch）</div>
+            <div class="sel-row" style="font-size:11.5px;color:var(--on-surface-soft)">… 共 18 项</div>
+          </div>
+          <!-- hint chip 区 -->
+          <div class="prop-hints">
+            <span class="hint-chip">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg></span>
+              ≈ 按键 Esc
+            </span>
+            <span class="hint-chip">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 9a3 3 0 0 1 6 0M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg></span>
+              ≈ 语音"取消"
+            </span>
+            <span class="hint-chip muted">选这个会和上面触发同一件事</span>
+          </div>
+          <div class="prop-help">
+            选 <b>语音取消（发送 Esc）</b> = 走 <code>input.cancel</code> Layer 1 路由。
+            同一动作可由按键或语音触发，不会重复执行。
+            <span class="link">查看全部入口 →</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="rule">
+        <div class="rule-head">
+          <span class="ttl">离席</span>
+          <span class="toggle on"></span>
+        </div>
+        <div class="rule-desc">离开座位 N 秒后执行</div>
+        <div class="prop-wrap">
+          <select class="prop-select">
+            <option>暂停语音（≈ onetone.pause）</option>
+          </select>
+          <div class="prop-hints">
+            <span class="hint-chip muted">仅本机 · 无跨通道等价</span>
+          </div>
+          <div class="prop-help">
+            <b>暂停语音</b> 只在 Camera 触发；Key/Voice/SoftPad 不会触发同一动作。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ EDGE CASES ============ -->
+  <section style="max-width:1480px;margin:28px auto 0">
+    <div class="section-title">
+      <span class="num" style="background:var(--yellow);color:#fff">!</span>
+      <span>3 个边缘场景的 UI 表现</span>
+      <span class="sub">决定 Phase 2 的 hint 格式</span>
+    </div>
+  </section>
+
+  <div class="grid" style="margin-top:12px">
+
+    <!-- EDGE 1: pending -->
+    <div class="edge">
+      <div class="scen">场景 1 <span class="badge">Pending</span></div>
+      <div class="body">
+        <b>用户选 agent.approve（需第二通道确认）</b><br/><br/>
+        <div class="prop-wrap" style="max-width:280px">
+          <select class="prop-select">
+            <option>批准 (agent.approve) · ⚠需确认</option>
+          </select>
+          <div class="prop-hints">
+            <span class="hint-chip warn">⚠ Camera 不能单独执行</span>
+            <span class="hint-chip">按键已绑 input.start</span>
+          </div>
+          <div class="prop-help">
+            <b>批准</b> 走 <code>requiresSecondChannelFrom: camera → Pending</code>。
+            眨眼发起后必须按 <b>按键 / 语音</b> 才会真正执行。
+            <span class="link">查看机制 →</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EDGE 2: no voice habit -->
+    <div class="edge">
+      <div class="scen">场景 2 <span class="badge">无 voice</span></div>
+      <div class="body">
+        <b>当前无 voice 习惯 · pressCtrlI 显示降级</b><br/><br/>
+        <div class="prop-wrap" style="max-width:280px">
+          <select class="prop-select">
+            <option>语音输入法激活（未配置）</option>
+          </select>
+          <div class="prop-hints">
+            <span class="hint-chip danger">⚠ 当前习惯未配 IME 激活键</span>
+          </div>
+          <div class="prop-help">
+            <code>resolveVoiceActivateKey()</code> 返回 <code>null</code>。
+            <b>去语音设置</b> 配置激活键，或选 <span class="delta">input.start</span> 走 Layer 1。
+            <span class="link">去设置 →</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EDGE 3: onAway forbidden -->
+    <div class="edge">
+      <div class="scen">场景 3 <span class="badge">onAway</span></div>
+      <div class="body">
+        <b>离席触发 · 隐藏按键注入子组</b><br/><br/>
+        <div class="prop-wrap" style="max-width:280px">
+          <select class="prop-select">
+            <option>暂停语音</option>
+          </select>
+          <div class="prop-hints">
+            <span class="hint-chip muted">离席时不允许发键（按 Esc / IME 激活）</span>
+          </div>
+          <div class="prop-help">
+            onAway / onReturn 在 <code>allowedActionsForBindKey</code> 里已禁按键类。
+            离席时人已不在座位，<b>不应触发按键注入</b>，避免误操作。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ACCEPTANCE ============ -->
+  <section style="max-width:1480px;margin:28px auto 0">
+    <div class="accept">
+      <h2>验收标准 <span class="tag warn">UI 视角</span></h2>
+      <ul>
+        <li><b>3 组无重复：</b>每个 Camera 触发块下拉的 option 集合 = <code>(组 1 专用 ∩ bindKey 白名单)</code> + <code>(组 2 推荐 ∩ bindKey 白名单)</code> + <code>(组 3 全部 ∩ bindKey 白名单)</code>，三组之间不出现同名 option</li>
+        <li><b>触屏可见：</b>选中 <code>input.cancel</code> 后，若 Key 已绑 Esc，<b>select 下方 chip 必现</b>（不依赖 hover）</li>
+        <li><b>onAway 禁按键：</b>下拉里看不到 pressEsc / pressCtrlI；如用户在 Voice 习惯里改过 IME 激活键，重渲后 onAway 下拉仍干净</li>
+        <li><b>Pending 显式：</b>input.send / agent.approve 的 option label 末尾 <code>· ⚠需确认</code>，hint chip 红色</li>
+        <li><b>pressCtrlI 动态：</b>label 显示实际按键名（如"右 Alt"），无配置时降级为"（未配置）"并加红色 hint</li>
+        <li><b>帮助行：</b>选中后 select 下方出现 1-2 行小字解释（Layer 1 等价 / Camera-only / Pending）</li>
+        <li><b>Phase 3 deep link：</b>帮助行末尾 "查看全部入口 →" 跳到 <code>habitView=actions&actionId=xxx</code></li>
+        <li><b>运行时回归：</b>选 input.cancel / agent:cancel / pressEsc 三种写法，运行时行为一致（都走 route_semantic_action → input.cancel）</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ IMPLEMENTATION NOTES ============ -->
+  <section style="max-width:1480px;margin:28px auto 0">
+    <div class="accept" style="background:linear-gradient(180deg,#f8fafc,#fff)">
+      <h2>3 阶段实施（一次一步）</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:8px">
+        <div style="background:#fff;border:1px solid var(--outline-variant);border-radius:8px;padding:10px 12px">
+          <div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Phase 1 · 分组 + 标签</div>
+          <div style="font-size:11.5px;line-height:1.55">
+            <code>buildActionOpts()</code> 重构为 <code>buildGroupedOpts(key)</code> 返回 <code>3 × Array</code>。<br/>
+            <code>appendCameraActionOption</code> 拆为 <code>appendGroupedOptions(sel, key, grouped)</code>。<br/>
+            actionLabel 扩展 pressCtrlI / pending 标签。
+          </div>
+          <div style="font-size:10.5px;font-family:ui-monospace,monospace;color:var(--on-surface-soft);margin-top:6px">
+            commit: camera-actions: phase 1 - grouped options
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid var(--outline-variant);border-radius:8px;padding:10px 12px">
+          <div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Phase 2 · 跨通道 hint</div>
+          <div style="font-size:11.5px;line-height:1.55">
+            新增 <code>crossChannelHints(mappingId, canonicalActionId)</code>。<br/>
+            调 <code>binding_view.rs</code> 投影，filter channel !== 'camera'。<br/>
+            select 下方 <code>.prop-hints</code> 区域挂载 hint chip。<br/>
+            推荐组置顶去重。
+          </div>
+          <div style="font-size:10.5px;font-family:ui-monospace,monospace;color:var(--on-surface-soft);margin-top:6px">
+            commit: camera-actions: phase 2 - cross-channel hint
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid var(--outline-variant);border-radius:8px;padding:10px 12px">
+          <div style="font-size:11px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Phase 3 · Workspace 闭环</div>
+          <div style="font-size:11.5px;line-height:1.55">
+            help 行加 <code>查看全部入口 →</code>。<br/>
+            Novice 模式卡点摄像头 chip 时，顶部显示该手势已选动作 + 其他通道 chip。<br/>
+            复用 <code>habit-actions-detail.js</code>。
+          </div>
+          <div style="font-size:10.5px;font-family:ui-monospace,monospace;color:var(--on-surface-soft);margin-top:6px">
+            commit: camera-actions: phase 3 - workspace deep link
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</body>
+</html>

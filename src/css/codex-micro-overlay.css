@@ -41,9 +41,22 @@ body {
 /* Mini bar window is only ~48px tall — root padding must collapse or buttons spill out. */
 .root:has(.wrap.is-minimized) {
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
 }
 .root.is-mini-host {
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.wrap.is-minimized {
+  height: auto;
+  flex: 0 0 auto;
 }
 
 .wrap {
@@ -1711,7 +1724,9 @@ button.overlay-key-caption:focus-visible {
   align-items: center;
   gap: 5px;
   width: 100%;
-  height: 100%;
+  height: auto;
+  max-height: 44px;
+  flex: 0 0 auto;
   min-height: 0;
   padding: 6px;
   border-radius: 16px;

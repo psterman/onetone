@@ -22,6 +22,76 @@ use crate::config::{
 const EVENT_PREFIX: &str = "codexNumpad:";
 const MICRO_EVENT_PREFIX: &str = "codexMicroKey:";
 
+/// Reserved mapping id — overlay-only fallback when no Agent app is matched.
+pub const SOFT_PAD_GLOBAL_MAPPING_ID: &str = "soft-pad-global";
+
+pub fn is_soft_pad_global_mapping(m: &MappingEntry) -> bool {
+    m.id == SOFT_PAD_GLOBAL_MAPPING_ID
+}
+
+/// Global Soft Pad: mini overlay + status lights; `enabled=false` keeps physical keys native.
+pub fn default_global_soft_pad() -> CodexMicroPadConfig {
+    CodexMicroPadConfig {
+        enabled: false,
+        require_foreground: false,
+        overlay_enabled: true,
+        nav_keys_enabled: false,
+        capture_physical_arrows: false,
+        presentation: "mini".into(),
+        software_enhance_enabled: false,
+        codex_status_lights_enabled: true,
+        claude_status_lights_enabled: true,
+        cursor_status_lights_enabled: true,
+        workbuddy_status_lights_enabled: true,
+        trae_status_lights_enabled: true,
+        qoder_status_lights_enabled: true,
+        minimax_status_lights_enabled: true,
+        copilot_status_lights_enabled: true,
+        gemini_status_lights_enabled: true,
+        cline_status_lights_enabled: true,
+        opencode_status_lights_enabled: true,
+        aider_status_lights_enabled: true,
+        keys: Vec::new(),
+        ..default_codex_micro_pad()
+    }
+}
+
+/// Legacy reserved mapping — migrated into universal baseline on FE load.
+pub fn global_soft_pad_overlay_candidate(
+    cfg: &VoiceConfig,
+) -> Option<(&MappingEntry, &CodexMicroPadConfig)> {
+    for m in &cfg.mappings {
+        if !m.enabled || !is_soft_pad_global_mapping(m) {
+            continue;
+        }
+        if let Some(pad) = m.codex_micro_pad.as_ref() {
+            if pad.overlay_enabled {
+                return Some((m, pad));
+            }
+        }
+    }
+    None
+}
+
+/// No agent FG / Applied lane: universal baseline `codex_micro_pad.overlay_enabled`.
+pub fn baseline_fallback_overlay_candidate(
+    cfg: &VoiceConfig,
+) -> Option<(&MappingEntry, &CodexMicroPadConfig)> {
+    if let Some(hit) = global_soft_pad_overlay_candidate(cfg) {
+        return Some(hit);
+    }
+    let m = crate::config::find_global_baseline_mapping(cfg)?;
+    if !m.enabled {
+        return None;
+    }
+    let pad = m.codex_micro_pad.as_ref()?;
+    if pad.overlay_enabled {
+        Some((m, pad))
+    } else {
+        None
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NumpadSourceKey {
     pub scan: u16,

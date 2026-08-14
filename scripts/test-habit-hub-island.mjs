@@ -1,4 +1,4 @@
-// P12 单测：habit-hub.js 的 cardView 契约 + renderList 岛守卫
+// 单测：habit-hub.js 的 cardView 契约 + workspace 轻量刷新
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -145,21 +145,20 @@ check('buildHabitHubListModel 返回 blocks', Array.isArray(model.blocks) && mod
 check('含 section-global', model.blocks.some((b) => b.id === 'section-global'));
 check('含 section-app 与 table 块', model.blocks.some((b) => b.id === 'section-app' && b.innerBlocks?.some((ib) => ib.id === 'table-wrap')));
 
-console.log('[habit-hub-island] 岛守卫:');
+console.log('[habit-hub-island] workspace 刷新:');
+let workspacePaint = 0;
+globalThis.OneToneHabitWorkspace = { render: () => { workspacePaint++; } };
+globalThis.requestAnimationFrame = (fn) => { fn(); };
+const origSetTimeout = globalThis.setTimeout;
+globalThis.setTimeout = (fn) => { fn(); return 0; };
+Hub.scheduleHubPaint();
+globalThis.setTimeout = origSetTimeout;
+check('scheduleHubPaint 委托 Workspace.render', workspacePaint >= 1);
+
 globalThis.OneToneIslands = { isMounted: () => false };
 const listEl = globalThis.OneToneDom.$('habitHubList');
-listEl._innerWrites = 0;
 Hub.render();
-check('岛未挂载时 legacy innerHTML 渲染', listEl._innerWrites >= 1 && listEl._inner.includes('data-habit-table-row="m1"'));
-
-globalThis.OneToneIslands = { isMounted: (id) => id === 'habitHubList' };
-let syncCalled = 0;
-globalThis.__otHabitHubListSync = () => { syncCalled++; };
-listEl._innerWrites = 0;
-Hub.render();
-check('岛挂载时 legacy 不再 innerHTML 重建', listEl._innerWrites === 0);
-check('岛挂载时改调 __otHabitHubListSync', syncCalled >= 1);
-check('empty.hidden 仍由 legacy 维护', globalThis.OneToneDom.$('habitHubEmpty').hidden === true);
+check('render 隐藏 legacy #habitHubList', listEl.hidden === true);
 
 globalThis.__otHabitHubChromeMounted = false;
 globalThis.__otHabitHubChromeSync = undefined;

@@ -321,6 +321,37 @@
     return cards;
   }
 
+  function wsSelectedIds(){
+    if(!Array.isArray(ui().habitHubSelectedIds)) ui().habitHubSelectedIds=[];
+    return ui().habitHubSelectedIds;
+  }
+  function wsBatchMode(){
+    return !!ui().habitHubBatchMode||wsSelectedIds().length>0;
+  }
+  function wsIsSelected(id){
+    id=String(id||'').trim();
+    return id&&wsSelectedIds().indexOf(id)>=0;
+  }
+  function wsSelectionBar(totalCount){
+    var n=wsSelectedIds().length;
+    if(!n) return '';
+    var html='<div class="habit-hub-selection-bar habit-ws-selection-bar" role="status">';
+    html+='<span class="habit-hub-selection-count">'+esc(fmt(t('habitHubSelectedCount','已选 {n} 个'),{n:n}))+'</span>';
+    if(ui().habitHubBatchConfirm){
+      html+='<span class="habit-hub-selection-ask">'+esc(fmt(t('habitHubBatchDeleteConfirm','确认删除选中的 {n} 个场景？'),{n:n}))+'</span>';
+      html+='<button type="button" class="habit-hub-act is-cta is-danger" data-habit-batch-del-confirm>'+esc(t('habitHubBatchDeleteDo','确认删除'))+'</button>';
+      html+='<button type="button" class="habit-hub-act is-cta" data-habit-batch-del-cancel>'+esc(t('habitScenarioCancel','取消'))+'</button>';
+    }else{
+      html+='<button type="button" class="habit-hub-act is-cta is-danger" data-habit-batch-del>'+esc(t('habitHubBatchDelete','批量删除'))+'</button>';
+      if(totalCount>n){
+        html+='<button type="button" class="habit-hub-act is-cta" data-habit-select-all>'+esc(t('habitHubSelectAll','全选'))+'</button>';
+      }
+      html+='<button type="button" class="habit-hub-act is-cta" data-habit-clear-sel>'+esc(t('habitHubClearSelection','取消选择'))+'</button>';
+    }
+    html+='</div>';
+    return html;
+  }
+
   function appListHtml(model,opts){
     opts=opts||{};
     var variant=opts.variant||'ws';
@@ -330,10 +361,24 @@
       return !query||(appName(m)+' '+sceneName(m)).toLowerCase().indexOf(query)>=0;
     });
     var selectedId=model&&model.mapping?model.mapping.id:null;
-    return '<aside class="'+esc(asideClass)+'"><label class="habit-ws-search"><span aria-hidden="true">\u2315</span><input type="search" data-habit-search value="'+esc(opts.searchQuery!=null?opts.searchQuery:ui().habitWorkspaceSearch||'')+'" placeholder="'+esc(c('search'))+'" aria-label="'+esc(c('search'))+'"></label><div class="habit-ws-app-list" role="listbox">'+list.map(function(m){
+    var batchOn=wsBatchMode();
+    var batchBtn='<button type="button" class="habit-ws-batch-toggle'+(batchOn?' is-active':'')+'" data-habit-batch-toggle aria-pressed="'+(batchOn?'true':'false')+'">'+esc(batchOn?t('habitHubBatchDone','完成批量'):t('habitHubBatchManage','批量管理'))+'</button>';
+    var listHtml=list.map(function(m){
       var selected=m.id===selectedId;
-      return '<button type="button" class="habit-ws-app'+(selected?' is-selected':'')+'" data-habit-mapping="'+esc(m.id)+'" role="option" aria-selected="'+(selected?'true':'false')+'">'+appIconHtml(m)+'<span class="habit-ws-app-copy"><strong>'+esc(appName(m))+'</strong><small>'+esc(sceneName(m))+'</small></span><span class="habit-ws-app-state '+(m.enabled===false?'is-off':'')+'">'+esc(m.enabled===false?c('disabled'):c('enabled'))+'</span></button>';
-    }).join('')+'</div><button type="button" class="habit-ws-add" data-habit-add>'+esc(c('addApp'))+'</button></aside>';
+      var checked=wsIsSelected(m.id);
+      var checkHtml='';
+      if(batchOn){
+        checkHtml='<label class="habit-ws-app-check"><input type="checkbox" data-habit-select="'+esc(m.id)+'"'+(checked?' checked':'')+' /><span class="sr-only">'+esc(t('habitHubSelectScenario','选择此场景'))+'</span></label>';
+      }
+      var stateHtml=batchOn?'':('<span class="habit-ws-app-state '+(m.enabled===false?'is-off':'')+'">'+esc(m.enabled===false?c('disabled'):c('enabled'))+'</span>');
+      var rowCls='habit-ws-app'+(selected&&!batchOn?' is-selected':'')+(checked?' is-batch-selected':'')+(batchOn?' is-batch-mode':'');
+      var inner=appIconHtml(m)+'<span class="habit-ws-app-copy"><strong>'+esc(appName(m))+'</strong><small>'+esc(sceneName(m))+'</small></span>'+stateHtml;
+      if(batchOn){
+        return '<div class="habit-ws-app-row is-batch-mode">'+checkHtml+'<button type="button" class="'+rowCls+'" data-habit-mapping="'+esc(m.id)+'" role="option" aria-selected="'+(selected&&!batchOn?'true':'false')+'">'+inner+'</button></div>';
+      }
+      return '<button type="button" class="'+rowCls+'" data-habit-mapping="'+esc(m.id)+'" role="option" aria-selected="'+(selected?'true':'false')+'">'+inner+'</button>';
+    }).join('');
+    return '<aside class="'+esc(asideClass)+'"><div class="habit-ws-sidebar-head"><label class="habit-ws-search"><span aria-hidden="true">\u2315</span><input type="search" data-habit-search value="'+esc(opts.searchQuery!=null?opts.searchQuery:ui().habitWorkspaceSearch||'')+'" placeholder="'+esc(c('search'))+'" aria-label="'+esc(c('search'))+'"></label>'+batchBtn+'</div>'+wsSelectionBar(list.length)+'<div class="habit-ws-app-list" role="listbox">'+listHtml+'</div><button type="button" class="habit-ws-add" data-habit-add>'+esc(c('addApp'))+'</button></aside>';
   }
 
   function deleteMapping(id){

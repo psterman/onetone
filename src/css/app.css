@@ -3995,6 +3995,9 @@
     .habit-hub-inline-create-grid{display:flex;flex-wrap:wrap;gap:8px}
     .habit-hub-inline-create .habit-wizard-app-card{min-width:112px}
     .habit-hub-inline-create .habit-wizard-app-card.is-exists{opacity:.72}
+    .habit-hub-create-channels{margin:2px 0 0}
+    .habit-hub-inline-create-channel-hint{margin:0;font-size:11px;line-height:1.45;color:var(--on-surface-muted)}
+    .habit-ws-create .habit-hub-inline-create{margin:12px 0 0;border-color:var(--outline-variant)}
 #settingsPanelKeys.is-scenario-config .keys-scheme-status-actions #btnKeysSchemeAdd,
 #settingsPanelVoiceWake.is-scenario-config .voice-scheme-status-actions #btnVoiceSchemeAdd{display:none}
 

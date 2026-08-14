@@ -933,6 +933,45 @@
       st.config.mappings.forEach(ensureExtras);
       (st.config.trash||[]).forEach(ensureExtras);
     }
+    migrateSoftPadGlobalIntoBaseline(st.config);
+  }
+
+  /** Merge legacy soft-pad-global row into universal baseline; overlay runtime reads baseline. */
+  function migrateSoftPadGlobalIntoBaseline(cfg){
+    if(!cfg||!Array.isArray(cfg.mappings)) return;
+    var legacy=null;
+    var i;
+    for(i=0;i<cfg.mappings.length;i++){
+      if(cfg.mappings[i]&&String(cfg.mappings[i].id||'')==='soft-pad-global'){
+        legacy=cfg.mappings[i];
+        break;
+      }
+    }
+    if(!legacy) return;
+    var diff=global.OneToneHabitOverrideDiff;
+    var baseline=diff&&diff.findGlobalBaselineMapping
+      ?diff.findGlobalBaselineMapping(cfg,global.OneToneMappingCore)
+      :cfg.mappings[0];
+    if(!baseline) return;
+    if(legacy.codexMicroPad){
+      if(!baseline.codexMicroPad){
+        baseline.codexMicroPad=legacy.codexMicroPad;
+      }else{
+        var gp=legacy.codexMicroPad;
+        var bp=baseline.codexMicroPad;
+        if(gp.overlayEnabled) bp.overlayEnabled=true;
+        if(gp.presentation&&!bp.presentation) bp.presentation=gp.presentation;
+        if(gp.ambientMode&&!bp.ambientMode) bp.ambientMode=gp.ambientMode;
+        if(gp.ambientEnabled!=null&&bp.ambientEnabled==null) bp.ambientEnabled=gp.ambientEnabled;
+        if(gp.enabled===false) bp.enabled=false;
+      }
+    }
+    cfg.mappings=cfg.mappings.filter(function(m){
+      return String(m&&m.id||'')!=='soft-pad-global';
+    });
+    if(String(cfg.activeSceneId||'')==='soft-pad-global'){
+      cfg.activeSceneId=String(baseline.id||'');
+    }
   }
 
   function normalizeSaveSource(source){

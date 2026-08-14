@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>托盘菜单 Hub 重构 · 修改预期原型</title>
+  <style>
+    :root{
+      --bg:#eef2f7;--surface:#fff;--surface-2:#f8fafc;--surface-3:#eef2f7;
+      --primary:#2a9cc4;--primary-soft:#e6f7fc;--primary-deep:#1e87ad;
+      --on-surface:#152238;--on-surface-muted:#5a7086;--on-surface-soft:#8a98a8;
+      --outline:rgba(26,45,74,.12);--danger:#dc2626;--danger-soft:rgba(220,38,38,.08);
+      --green:#2e7d4f;--green-soft:rgba(46,125,79,.10);--orange:#b9530a;--orange-soft:rgba(185,83,10,.10);
+      --blue:#00a3ff;--blue-soft:rgba(0,163,255,.10);--purple:#6d4ab0;--purple-soft:rgba(109,74,176,.10);
+      --yellow:#b45309;--yellow-soft:rgba(245,166,35,.16);
+      --radius:12px;--shadow:0 10px 28px rgba(26,45,74,.14);
+      font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;padding:28px 20px 60px;background:var(--bg);color:var(--on-surface)}
+    h1{font-size:22px;margin:0 0 6px}
+    .lede{color:var(--on-surface-muted);font-size:13px;line-height:1.6;max-width:960px;margin:0 0 28px}
+    .tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;margin-right:6px;vertical-align:middle}
+    .tag.old{background:rgba(26,45,74,.08);color:var(--on-surface-muted)}
+    .tag.new{background:linear-gradient(135deg,var(--primary),var(--primary-deep));color:#fff}
+    .tag.hide{background:var(--danger-soft);color:var(--danger)}
+
+    /* flow diagram */
+    .flow-diagram{max-width:1100px;margin:0 auto 36px;background:var(--surface);border:1px solid var(--outline);border-radius:14px;padding:20px 22px}
+    .flow-diagram h2{font-size:15px;margin:0 0 14px}
+    .flow-row{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+    .flow-box{padding:10px 16px;border-radius:10px;border:1.5px solid var(--outline);background:var(--surface-2);font-size:12px;font-weight:600;text-align:center;min-width:100px}
+    .flow-box.highlight{border-color:var(--primary);background:var(--primary-soft);color:#0e7490}
+    .flow-box.removed{border-color:var(--danger);background:var(--danger-soft);color:var(--danger);text-decoration:line-through;opacity:.75}
+    .flow-box.added{border-color:var(--primary);background:linear-gradient(135deg,var(--primary-soft),#fff);box-shadow:0 0 0 2px rgba(42,156,196,.25)}
+    .flow-arrow{color:var(--on-surface-soft);font-size:18px}
+    .flow-caption{text-align:center;font-size:11px;color:var(--on-surface-muted);margin-top:8px}
+
+    /* compare grid */
+    .compare{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:1200px;margin:0 auto 36px}
+    @media(max-width:900px){.compare{grid-template-columns:1fr}}
+    .col-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+    .col-head h2{font-size:15px;margin:0}
+    .frame{background:linear-gradient(180deg,#e8eef3,#d3dde6);border-radius:14px;padding:14px;display:flex;justify-content:center;align-items:flex-start;min-height:200px}
+    .frame.new-frame{border:1.5px dashed rgba(42,156,196,.45);background:linear-gradient(135deg,#e8eff5,#d3dde6)}
+
+    /* soft pad page mock */
+    .sp-page{width:100%;max-width:520px;background:var(--surface);border:1px solid var(--outline);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+    .sp-bar{padding:8px 12px;background:var(--surface-2);border-bottom:1px solid var(--outline);font-size:10.5px;display:flex;flex-wrap:wrap;gap:6px 12px;color:var(--on-surface-muted)}
+    .sp-bar b{color:var(--on-surface)}
+    .sp-flow{display:flex;border-bottom:1px solid var(--outline)}
+    .sp-node{flex:1;padding:10px 8px;text-align:center;border-right:1px solid var(--outline);cursor:default}
+    .sp-node:last-child{border-right:none}
+    .sp-node.active{background:var(--primary-soft);border-bottom:2px solid var(--primary)}
+    .sp-node.removed{opacity:.4;background:#fafafa}
+    .sp-node .ico{font-size:16px;margin-bottom:2px}
+    .sp-node .t{font-size:11px;font-weight:700}
+    .sp-node .h{font-size:9px;color:var(--on-surface-muted);margin-top:2px}
+    .sp-scan{margin:8px 10px;padding:8px 12px;background:var(--primary-soft);border-radius:8px;font-size:11px;font-weight:600;color:var(--primary-deep);text-align:center}
+    .sp-body{padding:12px;min-height:180px}
+    .sp-body h3{font-size:12px;margin:0 0 8px;color:var(--on-surface-muted)}
+    .tm-card{background:var(--surface-2);border:1px solid var(--outline);border-radius:10px;padding:12px;font-size:11px}
+    .tm-btn{display:block;width:100%;margin-top:10px;padding:10px;background:linear-gradient(135deg,var(--primary),var(--primary-deep));color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px}
+    .cust-layout{display:grid;grid-template-columns:1fr 1fr;gap:10px;height:100%}
+    .cust-preview{background:#1a2332;border-radius:10px;padding:12px;display:flex;justify-content:center;align-items:flex-start;min-height:200px}
+    .cust-inspector{background:var(--surface-2);border:1px solid var(--outline);border-radius:10px;padding:10px;font-size:10px}
+    .cust-inspector .grp{margin-bottom:8px;padding:8px;background:#fff;border-radius:6px;border:1px solid var(--outline)}
+    .cust-inspector .grp h4{margin:0 0 6px;font-size:9px;text-transform:uppercase;color:var(--on-surface-muted);letter-spacing:.05em}
+    .cust-inspector label{display:flex;align-items:center;gap:6px;margin:4px 0;font-size:10.5px}
+    .cust-tabs{display:flex;gap:4px;margin-bottom:8px}
+    .cust-tabs span{padding:4px 10px;border-radius:6px;font-size:10px;font-weight:600;background:var(--surface-3);color:var(--on-surface-muted)}
+    .cust-tabs span.on{background:var(--primary);color:#fff}
+
+    /* tray popup mock */
+    .tray{width:316px;background:#fff;border:1px solid var(--outline);border-radius:12px;box-shadow:var(--shadow);padding:5px;font-size:13px;color:var(--on-surface)}
+    .tray-hero{margin:4px;padding:11px 12px 9px;background:linear-gradient(135deg,#fff,var(--blue-soft));border:1px solid var(--outline);border-radius:10px;display:flex;gap:10px;align-items:center}
+    .tray-hero .left{flex:1}
+    .tray-hero .ttl{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:7px}
+    .pulse{width:8px;height:8px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+    .chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+    .chip{font-size:9.5px;padding:1.5px 6px;border-radius:4px;font-weight:600}
+    .chip.b{background:var(--blue-soft);color:#0e7490}
+    .chip.g{background:var(--green-soft);color:var(--green)}
+    .chip.p{background:var(--purple-soft);color:var(--purple)}
+    .chip.agent{background:rgba(42,156,196,.18);color:#0e7490;border:1px dashed rgba(42,156,196,.4)}
+    .chip.agent.running{background:var(--blue-soft);border-style:solid}
+    .chip.agent.new-highlight{box-shadow:0 0 0 2px var(--primary);animation:blink 1.5s ease infinite}
+    @keyframes blink{0%,100%{box-shadow:0 0 0 2px rgba(42,156,196,.3)}50%{box-shadow:0 0 0 4px rgba(42,156,196,.6)}}
+    .tray-act{flex-shrink:0;padding:8px 11px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--primary-deep));color:#fff;font-size:10.5px;font-weight:700;text-align:center}
+    .tray-ev{margin:4px 6px;padding:9px 11px;background:var(--surface-2);border:1px solid var(--outline);border-radius:9px;font-size:11px}
+    .tray-ev .head{font-size:10px;color:var(--on-surface-muted);margin-bottom:4px}
+    .tray-ev .txt{font-family:ui-monospace,monospace;font-weight:600;display:flex;align-items:center;gap:6px}
+    .outcome{font-size:10px;font-weight:700;padding:1.5px 6px;border-radius:3px;background:var(--green-soft);color:var(--green)}
+    .sec-head{font-size:10px;font-weight:700;color:var(--on-surface-muted);padding:7px 12px 3px;text-transform:uppercase;letter-spacing:.06em}
+    .ch-row{display:flex;align-items:center;gap:9px;padding:7px 10px;margin:0 4px;border-radius:7px;font-size:12.5px}
+    .ch-row .meta{font-size:10.5px;color:var(--on-surface-muted)}
+    .ch-ico{width:24px;height:24px;border-radius:6px;background:var(--blue-soft);display:flex;align-items:center;justify-content:center;font-size:12px}
+    .mic-row{margin:4px;padding:7px 10px;border-radius:7px;background:var(--primary-soft);display:flex;align-items:center;gap:9px;font-size:12.5px;font-weight:700}
+    .toggle{width:34px;height:18px;border-radius:10px;background:var(--primary);margin-left:auto;position:relative}
+    .toggle::after{content:'';position:absolute;top:2px;left:18px;width:14px;height:14px;border-radius:50%;background:#fff}
+    .tray-ft{display:flex;justify-content:space-between;padding:5px 8px;border-top:1px solid var(--outline);margin-top:4px;font-size:10.5px;color:var(--on-surface-muted)}
+    .callout{max-width:1200px;margin:0 auto 24px;padding:12px 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;font-size:12px;line-height:1.55}
+    .callout b{color:var(--orange)}
+    .legend{max-width:1200px;margin:0 auto;display:flex;flex-wrap:wrap;gap:12px 24px;font-size:11px;color:var(--on-surface-muted)}
+    .legend span{display:flex;align-items:center;gap:6px}
+    .legend .dot{width:10px;height:10px;border-radius:50%}
+    .legend .dot.add{background:var(--primary)}
+    .legend .dot.hide{background:var(--danger)}
+    .legend .dot.keep{background:var(--green)}
+    .anno{font-size:10px;color:var(--primary);font-weight:600;margin-top:8px;text-align:center}
+  </style>
+</head>
+<body>
+
+  <h1>托盘菜单 Hub 重构 · 修改预期原型</h1>
+  <p class="lede">
+    用 <b>系统托盘弹窗</b> 取代「虚拟键盘页里的时间胶囊」心智；Soft Pad 第 3 个 flow-node 改为 <b>托盘菜单定制</b>。
+    时间胶囊 <span class="tag hide">暂隐藏</span>，Rust 后端保留。下面三图：架构变化 → Soft Pad 页对比 → 托盘弹窗对比。
+  </p>
+
+  <!-- Architecture -->
+  <section class="flow-diagram">
+    <h2>① 架构变化（一页看懂）</h2>
+    <div class="flow-row">
+      <div class="flow-box">Home 工作台<br/><small>摘要</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-box highlight">Soft Pad 设置页<br/><small>3 个 flow-node</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-box added">系统托盘弹窗<br/><small>实时状态面板</small></div>
+    </div>
+    <div class="flow-row">
+      <div class="flow-box">Face 1<br/>小键盘</div>
+      <span class="flow-arrow">·</span>
+      <div class="flow-box">Face 2<br/>状态灯</div>
+      <span class="flow-arrow">·</span>
+      <div class="flow-box removed">Face 3<br/>时间胶囊</div>
+      <span class="flow-arrow">⇒</span>
+      <div class="flow-box added">Face 3<br/>托盘定制</div>
+    </div>
+    <p class="flow-caption">
+      定制器改 <code>tray_customization.json</code> → 下次打开托盘生效 · 习惯/键位逻辑不变
+    </p>
+  </section>
+
+  <div class="callout">
+    <b>Vibecoder 托盘只回答 4 个问题：</b>
+    ① 现在能不能用？ ② AI 忙不忙？（新增 Agent pill）
+    ③ 上一句发出去没？ ④ 哪条通道要修？ — 不做习惯轮换、测试触发、时间胶囊、完整设置。
+  </div>
+
+  <!-- Soft Pad page compare -->
+  <div class="compare">
+    <div>
+      <div class="col-head"><span class="tag old">改前</span><h2>Soft Pad 页 · 第 3 tab = 时间胶囊</h2></div>
+      <div class="frame">
+        <div class="sp-page">
+          <div class="sp-bar">
+            <span>绑定 · <b>Codex</b></span>
+            <span>键位 · <b>21 个</b></span>
+            <span>恢复点 · <b>自动 · 15m</b></span>
+          </div>
+          <div class="sp-flow">
+            <div class="sp-node"><div class="ico">⌨</div><div class="t">Soft Pad</div><div class="h">未启用</div></div>
+            <div class="sp-node"><div class="ico">💡</div><div class="t">状态灯</div><div class="h">看 AI 忙不忙</div></div>
+            <div class="sp-node active removed"><div class="ico">∞</div><div class="t">项目时间胶囊</div><div class="h">自动 · 15m</div></div>
+          </div>
+          <div class="sp-scan">扫描本机工具</div>
+          <div class="sp-body">
+            <h3>Face 3 · 项目时间胶囊</h3>
+            <div class="tm-card">
+              <div style="color:var(--orange);font-weight:700;margin-bottom:4px">现在 · 当前项目</div>
+              有文件变化后会自动存一份。这里只保护这个项目文件夹。
+              <button class="tm-btn">先存一份现在</button>
+              <div style="margin-top:10px;font-size:10px;color:var(--on-surface-muted)">timeline · restore · 绑到 Soft Pad 场景</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="anno">时间胶囊与「虚拟键盘」心智不聚集 → 下线 UI</p>
+    </div>
+
+    <div>
+      <div class="col-head"><span class="tag new">改后</span><h2>Soft Pad 页 · 第 3 tab = 托盘菜单定制</h2></div>
+      <div class="frame new-frame">
+        <div class="sp-page">
+          <div class="sp-bar">
+            <span>绑定 · <b>Codex</b></span>
+            <span>键位 · <b>21 个</b></span>
+            <span style="text-decoration:line-through;opacity:.5">恢复点 · 自动 · 15m</span>
+          </div>
+          <div class="sp-flow">
+            <div class="sp-node"><div class="ico">⌨</div><div class="t">Soft Pad</div><div class="h">未启用</div></div>
+            <div class="sp-node"><div class="ico">💡</div><div class="t">状态灯</div><div class="h">看 AI 忙不忙</div></div>
+            <div class="sp-node active"><div class="ico">🎛</div><div class="t">托盘菜单定制</div><div class="h">预览 · 样式 · 显示项</div></div>
+          </div>
+          <div class="sp-scan">扫描本机工具</div>
+          <div class="sp-body">
+            <div class="cust-tabs">
+              <span class="on">Visual</span><span>JSON</span><span>Presets</span>
+            </div>
+            <div class="cust-layout">
+              <div class="cust-preview">
+                <div class="tray" style="transform:scale(.92);transform-origin:top center">
+                  <div class="tray-hero" style="padding:8px 10px">
+                    <div class="left">
+                      <div class="ttl"><span class="pulse"></span>监听中</div>
+                      <div class="chips"><span class="chip b">语音</span><span class="chip agent running">Codex · 运行中</span></div>
+                    </div>
+                    <div class="tray-act">暂停</div>
+                  </div>
+                  <div style="height:40px;background:var(--surface-2);margin:4px 6px;border-radius:6px;font-size:9px;color:var(--on-surface-muted);display:flex;align-items:center;justify-content:center">← 实时预览</div>
+                </div>
+              </div>
+              <div class="cust-inspector">
+                <div class="grp"><h4>内容</h4>
+                  <label><input type="checkbox" checked/> Hero 状态</label>
+                  <label><input type="checkbox" checked/> 最近事件</label>
+                  <label><input type="checkbox" checked/> 通道行</label>
+                  <label><input type="checkbox" checked/> 麦克风</label>
+                  <label><input type="checkbox"/> 隐藏 camera</label>
+                </div>
+                <div class="grp"><h4>样式</h4>
+                  <label>Accent · 默认蓝</label>
+                  <label>Density · Cozy</label>
+                </div>
+                <div style="margin-top:8px;padding:6px 10px;background:var(--primary);color:#fff;border-radius:6px;text-align:center;font-weight:700;font-size:11px">保存 · 下次打开托盘生效</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="anno">左预览 + 右 Inspector · Visual / JSON / Presets 三 tab</p>
+    </div>
+  </div>
+
+  <!-- Tray popup compare -->
+  <div class="compare">
+    <div>
+      <div class="col-head"><span class="tag old">改前 · Tray V5</span><h2>托盘弹窗（已实现）</h2></div>
+      <div class="frame">
+        <div class="tray">
+          <div class="tray-hero">
+            <div class="left">
+              <div class="ttl"><span class="pulse"></span>监听中</div>
+              <div class="chips">
+                <span class="chip b">语音</span>
+                <span class="chip g">按键</span>
+                <span class="chip p">Soft Pad</span>
+              </div>
+            </div>
+            <div class="tray-act">暂停</div>
+          </div>
+          <div class="tray-ev">
+            <div class="head">刚才 · 2s 前 · 语音</div>
+            <div class="txt">"打开 main.rs" <span class="outcome">已发送</span></div>
+          </div>
+          <div class="sec-head">通道</div>
+          <div class="ch-row"><div class="ch-ico">🎤</div><div><div>语音</div><div class="meta">Vosk · 已就绪</div></div></div>
+          <div class="ch-row"><div class="ch-ico" style="background:var(--primary-soft)">⌨</div><div><div>按键</div><div class="meta">右 Alt · 智能连按</div></div></div>
+          <div class="ch-row"><div class="ch-ico" style="background:var(--purple-soft)">▦</div><div><div>Soft Pad</div><div class="meta">已启用</div></div></div>
+          <div class="ch-row"><div class="ch-ico" style="background:var(--orange-soft)">📷</div><div><div>摄像头</div><div class="meta">(未接入)</div></div></div>
+          <div class="mic-row"><span>🎤</span> 麦克风 · 开 · 默认 <div class="toggle"></div></div>
+          <div class="tray-ft"><span>主窗口 · 设置 · 诊断</span><span>退出</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="col-head"><span class="tag new">改后 · +定制 +Agent</span><h2>托盘弹窗（目标态）</h2></div>
+      <div class="frame new-frame">
+        <div class="tray">
+          <div class="tray-hero">
+            <div class="left">
+              <div class="ttl"><span class="pulse"></span>监听中</div>
+              <div class="chips">
+                <span class="chip b">语音</span>
+                <span class="chip g">按键</span>
+                <span class="chip p">Soft Pad</span>
+                <span class="chip agent running new-highlight">Codex · 运行中</span>
+              </div>
+            </div>
+            <div class="tray-act">暂停</div>
+          </div>
+          <div class="tray-ev">
+            <div class="head">刚才 · 2s 前 · 按键</div>
+            <div class="txt">INPUT_CAPTURED → send <span class="outcome">已发送</span></div>
+          </div>
+          <div class="sec-head">通道 · 顺序/可见性可定制</div>
+          <div class="ch-row"><div class="ch-ico">🎤</div><div><div>语音</div><div class="meta">Vosk · 已就绪 · 嘿声声</div></div></div>
+          <div class="ch-row"><div class="ch-ico" style="background:var(--primary-soft)">⌨</div><div><div>按键</div><div class="meta">右 Alt · 智能连按</div></div></div>
+          <div class="ch-row"><div class="ch-ico" style="background:var(--purple-soft)">▦</div><div><div>Soft Pad</div><div class="meta">Codex · 浮层可见</div></div></div>
+          <div class="ch-row" style="opacity:.35"><div class="ch-ico" style="background:var(--orange-soft)">📷</div><div><div>摄像头</div><div class="meta">定制器已隐藏此行</div></div></div>
+          <div class="mic-row"><span>🎤</span> 麦克风 · 开 · 默认 <div class="toggle"></div></div>
+          <div class="tray-ft"><span>主窗口 · 设置 · 诊断</span><span>退出</span></div>
+        </div>
+      </div>
+      <p class="anno">高亮 = 新增 Agent pill · 虚线 camera = 定制器可隐藏</p>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><span class="dot keep"></span> 保留（Face 1 小键盘 · Face 2 状态灯 · 扫描工具）</span>
+    <span><span class="dot add"></span> 新增（Agent pill · 托盘定制器 · customization JSON）</span>
+    <span><span class="dot hide"></span> 暂隐藏（时间胶囊 UI · cockpit 恢复点字段）</span>
+  </div>
+
+</body>
+</html>

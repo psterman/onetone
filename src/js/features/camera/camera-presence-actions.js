@@ -3127,6 +3127,7 @@
   function actionLabel(value){
     var cur=normalizeAction(value);
     if(cur==='pressCtrlI') return voiceActivateActionLabel();
+    if(cur==='none') return t('cameraPresenceActionNoneAlt','不执行动作');
     var allOpts=buildActionOpts();
     for(var i=0;i<allOpts.length;i++){
       if(allOpts[i][0]===cur){
@@ -3134,7 +3135,41 @@
         return allOpts[i][2]||cur;
       }
     }
-    return t('cameraPresenceActionNone','无动作');
+    var store=global.OneToneSemanticActionStore;
+    var A=global.OneToneAgentActions;
+    var id=cur.indexOf('agent:')===0?cur.slice(6):cur;
+    if(store&&store.entryMeta){
+      var meta=store.entryMeta(id);
+      if(meta){
+        var en=global.OneToneI18n&&global.OneToneI18n.getLang&&String(global.OneToneI18n.getLang()).toLowerCase().indexOf('en')===0;
+        return en?(meta.labelEn||meta.labelZh||id):(meta.labelZh||meta.labelEn||id);
+      }
+    }
+    if(A&&A.actionById){
+      var def=A.actionById(id);
+      if(def) return A.labelForSlot?A.labelForSlot({labelZh:def.labelZh,labelEn:def.labelEn}):def.labelZh;
+    }
+    return id||cur;
+  }
+
+  function appendCameraActionOption(sel,key,token){
+    token=normalizeAction(token);
+    for(var oi=0;oi<sel.options.length;oi++){
+      if(sel.options[oi].value===token) return;
+    }
+    var option=document.createElement('option');
+    option.value=token;
+    option.textContent=actionLabel(token);
+    var tileHint=actionTileHint(key,token);
+    var blockHint=actionBlockedReason(key,token);
+    var titleParts=[];
+    if(token==='pressCtrlI'){
+      titleParts.push(t('cameraPresenceActionCtrlIHint','发送当前习惯/语音设置中的输入法激活键'));
+    }
+    if(tileHint) titleParts.push(tileHint);
+    if(blockHint&&token!=='none'&&token!=='pressCtrlI') titleParts.push(blockHint);
+    if(titleParts.length) option.title=titleParts.join(' · ');
+    sel.appendChild(option);
   }
 
   function ensureActionSelect(key,value){
@@ -3172,6 +3207,9 @@
         if(titleParts.length) option.title=titleParts.join(' · ');
         sel.appendChild(option);
       }
+      for(var ai=0;ai<allowed.length;ai++){
+        appendCameraActionOption(sel,key,allowed[ai]);
+      }
     }else{
       var opts=sel.options;
       for(var j=0;j<opts.length;j++){
@@ -3187,58 +3225,8 @@
       }
     }
     if(String(sel.value)!==String(cur)) sel.value=cur;
-    // Shared Action Picker entry (gated).
-    var A=global.OneToneAgentActions;
-    if(A&&A.featureActionPickerUi&&A.featureActionPickerUi()){
-      var pick=row.querySelector('.camera-sap-pick');
-      if(!pick){
-        pick=document.createElement('button');
-        pick.type='button';
-        pick.className='camera-sap-pick';
-        pick.textContent=t('cameraPickSemantic','选择语义动作…');
-        row.appendChild(pick);
-      }
-      pick.onclick=function(){
-        var mid=(global.OneToneState&&global.OneToneState.selectedMappingId)||'';
-        if(!global.OneToneSemanticActionPicker) return;
-        global.OneToneSemanticActionPicker.open({
-          mappingId:mid,
-          channel:'camera',
-          placement:'camera',
-          currentActionId:cur.indexOf('agent:')===0?cur.slice(6):(cur.indexOf('.')>0?cur:cur),
-          onSelect:function(sel){
-            if(!sel||!sel.actionId) return;
-            var token=(A.agentActionToken?A.agentActionToken(sel.actionId):('agent:'+sel.actionId));
-            var adapters=global.OneToneActionBindingAdapters;
-            var after=function(saved){
-              var finalTok=saved||token;
-              selEl=row.querySelector('select.camera-action-select');
-              if(selEl){
-                var found=false;
-                for(var oi=0;oi<selEl.options.length;oi++){
-                  if(selEl.options[oi].value===finalTok||selEl.options[oi].value===sel.actionId){found=true;break;}
-                }
-                if(!found){
-                  var o=document.createElement('option');
-                  o.value=finalTok;
-                  o.textContent=sel.actionId;
-                  selEl.appendChild(o);
-                }
-                selEl.value=finalTok;
-              }
-              ensureActionSelect(key,finalTok);
-            };
-            if(adapters&&adapters.camera&&adapters.camera.upsert){
-              adapters.camera.upsert(mid,sel.actionId,{bindKey:key,actionToken:token},key)
-                .then(after)
-                .catch(function(){ after(token); });
-            }else{
-              persistBindAction(mid,key,token).then(after);
-            }
-          }
-        });
-      };
-    }
+    var stalePick=row.querySelector('.camera-sap-pick');
+    if(stalePick) stalePick.remove();
   }
 
   /** Keep tile helper for hidden legacy bind list; primary UI uses select. */

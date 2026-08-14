@@ -1227,6 +1227,12 @@
     return false;
   }
 
+  function openUniversalSoftPadSettings(){
+    openSettings({panel:'softPad',focus:'softPadDisplay'});
+    var hub=global.OneToneSoftPadHub;
+    if(hub&&hub.selectScope) hub.selectScope('universal',{rebuildList:true});
+  }
+
   function openHabitsHubForMapping(id){
     id=String(id||'').trim();
     if(!id){
@@ -1457,7 +1463,18 @@
       useBtn.setAttribute('data-wb-scenario-use',model.id);
       useBtn.hidden=!!model.active;
     }
-    if(hubBtn) hubBtn.setAttribute('data-wb-habit-open-hub',model.id);
+    if(hubBtn){
+      if(model.configureSoftPadOverlay){
+        hubBtn.setAttribute('data-wb-soft-pad-universal','');
+        hubBtn.removeAttribute('data-wb-habit-open-hub');
+      }else{
+        hubBtn.setAttribute('data-wb-habit-open-hub',model.id);
+        hubBtn.removeAttribute('data-wb-soft-pad-universal');
+      }
+      hubBtn.textContent=model.configureSoftPadOverlay
+        ?t('homeWbChipGlobalConfigure','配置 Soft Pad')
+        :t('homeWbHabitOpenHub','查看全部');
+    }
     fly.hidden=false;
     var cr=chip.getBoundingClientRect();
     var rr=rail.getBoundingClientRect();
@@ -1535,6 +1552,14 @@
         hideChipFlyout(true);
         return;
       }
+      var softPadUniversal=e.target.closest&&e.target.closest('[data-wb-soft-pad-universal]');
+      if(softPadUniversal){
+        e.preventDefault();
+        e.stopPropagation();
+        hideChipFlyout(true);
+        openUniversalSoftPadSettings();
+        return;
+      }
       var openHub=e.target.closest&&e.target.closest('[data-wb-habit-open-hub]');
       if(openHub){
         e.preventDefault();
@@ -1561,8 +1586,9 @@
       }
       var scenario=e.target.closest&&e.target.closest('[data-wb-scenario-id]');
       if(scenario){
+        var scenarioId=scenario.getAttribute('data-wb-scenario-id')||'';
         // Chip click defaults to set in-use (not edit). Full data lives in habits hub.
-        selectWorkbenchMapping(scenario.getAttribute('data-wb-scenario-id')||'');
+        selectWorkbenchMapping(scenarioId);
         hideChipFlyout(true);
         return;
       }

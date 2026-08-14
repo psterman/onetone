@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>托盘定制器 v2 · 3 个核心元素的 3 种排法</title>
+  <style>
+    :root{
+      --bg:#f5f7fa;
+      --surface:#ffffff;
+      --surface-2:#f8fafc;
+      --surface-3:#eef2f7;
+      --primary:#2a9cc4;
+      --primary-soft:#e6f7fc;
+      --primary-deep:#1e87ad;
+      --on-surface:#152238;
+      --on-surface-muted:#5a7086;
+      --on-surface-soft:#8a98a8;
+      --outline-variant:rgba(26,45,74,.10);
+      --danger:#dc2626;
+      --danger-soft:rgba(220,38,38,.08);
+      --green:#2e7d4f;
+      --green-soft:rgba(46,125,79,.10);
+      --orange:#b9530a;
+      --orange-soft:rgba(185,83,10,.10);
+      --purple:#6d4ab0;
+      --purple-soft:rgba(109,74,176,.10);
+      --blue:#00a3ff;
+      --blue-soft:rgba(0,163,255,.10);
+      --radius:12px;
+      --radius-row:8px;
+      --shadow:0 10px 28px rgba(26,45,74,.18);
+      --shadow-soft:0 4px 12px rgba(26,45,74,.08);
+      font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+
+      /* shared tray tokens (will be tweaked per-preset by JS in real impl) */
+      --tray-accent:#2a9cc4;
+      --tray-accent-deep:#1e87ad;
+      --tray-accent-soft:#e6f7fc;
+      --tray-density:1;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--on-surface)}
+    body{padding:32px 24px 80px}
+    h1{font-size:22px;margin:0 0 4px}
+    .lede{color:var(--on-surface-muted);font-size:13px;margin:0 0 20px;max-width:1480px;line-height:1.6}
+
+    /* 3-up layout */
+    .protos{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:1480px;margin:0 auto}
+    .proto{display:flex;flex-direction:column;gap:10px}
+    .proto-head{display:flex;align-items:baseline;gap:10px;margin-bottom:2px}
+    .proto-head .tag{font-size:10px;font-weight:700;letter-spacing:.05em;padding:2px 8px;border-radius:4px;background:var(--primary-soft);color:var(--primary);text-transform:uppercase}
+    .proto-head h2{font-size:14px;margin:0;font-weight:700}
+    .proto-head .sub{font-size:10.5px;color:var(--on-surface-muted);margin-left:auto}
+    .proto-thesis{font-size:11px;color:var(--on-surface-muted);line-height:1.55;padding:0 2px}
+
+    /* page frame for each prototype */
+    .page{
+      background:#fff;border:1px solid var(--outline-variant);border-radius:11px;overflow:hidden;
+      box-shadow:var(--shadow);flex:1;
+      display:flex;flex-direction:column;
+    }
+    .page-chrome{
+      display:flex;align-items:center;gap:8px;padding:9px 14px;
+      background:linear-gradient(180deg,#fafbfd,#fff);
+      border-bottom:1px solid var(--outline-variant);
+    }
+    .page-title{font-size:12.5px;font-weight:700;flex:1}
+    .page-title .crumb{color:var(--on-surface-muted);font-weight:500}
+    .page-actions{display:flex;gap:4px;align-items:center}
+    .pg-btn{
+      display:flex;align-items:center;gap:3px;font-size:10.5px;font-weight:600;
+      padding:4px 8px;border-radius:5px;cursor:pointer;
+      background:var(--surface-2);color:var(--on-surface-muted);
+    }
+    .pg-btn .ico{width:11px;height:11px;color:currentColor}
+    .pg-btn .ico svg{width:11px;height:11px}
+    .pg-btn:hover{background:var(--primary-soft);color:var(--primary)}
+    .pg-btn.primary{background:var(--primary);color:#fff}
+    .pg-btn.primary:hover{background:var(--primary-deep)}
+    .pg-btn.adv{color:var(--on-surface-soft);font-size:10px}
+
+    /* common: tray */
+    .tray{
+      width:296px;background:#fff;border:1px solid var(--outline-variant);
+      box-shadow:0 6px 18px rgba(26,45,74,.12);
+      padding:5px;color:var(--on-surface);font-size:13px;
+    }
+    .tray .hero{
+      margin:3px;padding:11px 11px 9px;
+      background:linear-gradient(135deg,#fff 0%,var(--tray-accent-soft) 100%);
+      border:1px solid var(--outline-variant);border-radius:10px;
+      display:flex;align-items:center;gap:9px;
+    }
+    .tray .hero .left{flex:1;min-width:0}
+    .tray .hero .top{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+    .tray .hero .pulse{width:8px;height:8px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 3px var(--blue-soft);flex-shrink:0}
+    .tray .hero .ttl{font-size:14px;font-weight:800;letter-spacing:-.01em}
+    .tray .hero .chips{display:flex;gap:4px;flex-wrap:wrap}
+    .tray .hero .chip{font-size:9px;padding:1.5px 5px;border-radius:3.5px;font-weight:600;background:var(--tray-accent-soft);color:var(--tray-accent)}
+    .tray .hero .chip.g{background:var(--green-soft);color:var(--green)}
+    .tray .hero .chip.p{background:var(--purple-soft);color:var(--purple)}
+    .tray .hero .act{
+      flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:1px;
+      padding:7px 10px;border-radius:7px;cursor:pointer;
+      background:linear-gradient(135deg,var(--tray-accent),var(--tray-accent-deep));color:#fff;
+      font-size:10px;font-weight:700;
+    }
+    .tray .hero .act svg{width:13px;height:13px;fill:currentColor}
+    .tray .event{
+      margin:3px 5px;padding:7px 10px;
+      background:var(--surface-2);border:1px solid var(--outline-variant);border-radius:7px;
+    }
+    .tray .event .h{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--on-surface-muted);margin-bottom:2px}
+    .tray .event .t{font-size:12px;font-weight:600;display:flex;align-items:center;gap:5px}
+    .tray .event .t .ic{width:16px;height:16px;border-radius:4.5px;background:var(--blue-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .tray .event .t .ic svg{width:9px;height:9px;stroke:var(--blue);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+    .tray .event .t .txt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,monospace;font-size:11.5px}
+    .tray .event .t .oc{font-size:9.5px;font-weight:700;padding:1.5px 6px;border-radius:3px;background:var(--green-soft);color:var(--green)}
+    .tray .sec-h{display:flex;align-items:center;gap:5px;padding:5px 10px 2px;font-size:9.5px;font-weight:700;color:var(--on-surface-muted);text-transform:uppercase;letter-spacing:.05em}
+    .tray .sec-h .d{width:3px;height:3px;border-radius:50%;background:var(--on-surface-soft)}
+    .tray .ch-row{display:flex;align-items:center;gap:8px;padding:6px 9px;margin:0 3px;border-radius:6px}
+    .tray .ch-row .iw{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .tray .ch-row .iw svg{width:13px;height:13px;fill:none;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+    .tray .ch-row .iw.voice{background:var(--blue-soft)}.tray .ch-row .iw.voice svg{stroke:var(--blue)}
+    .tray .ch-row .iw.keys{background:var(--tray-accent-soft)}.tray .ch-row .iw.keys svg{stroke:var(--tray-accent)}
+    .tray .ch-row .iw.softpad{background:var(--purple-soft)}.tray .ch-row .iw.softpad svg{stroke:var(--purple)}
+    .tray .ch-row .iw.camera{background:var(--orange-soft)}.tray .ch-row .iw.camera svg{stroke:var(--orange)}
+    .tray .ch-row .b{flex:1;min-width:0}
+    .tray .ch-row .n{font-size:12px;font-weight:700;display:flex;align-items:center;gap:4px}
+    .tray .ch-row .n .p{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 0 2px var(--green-soft);flex-shrink:0}
+    .tray .ch-row .n .p.off{background:var(--on-surface-soft);box-shadow:none}
+    .tray .ch-row .m{font-size:10px;color:var(--on-surface-muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .tray .mic-r{display:flex;align-items:center;gap:8px;padding:6px 9px;margin:0 3px;border-radius:6px;background:var(--tray-accent-soft)}
+    .tray .mic-r .iw{width:22px;height:22px;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .tray .mic-r .iw svg{width:13px;height:13px;fill:none;stroke:var(--tray-accent);stroke-width:2.1;stroke-linecap:round}
+    .tray .mic-r .b{flex:1;min-width:0}
+    .tray .mic-r .n{font-size:12px;font-weight:700}
+    .tray .mic-r .m{font-size:10px;color:var(--on-surface-muted);margin-top:1px}
+    .tray .mic-r .tg{flex-shrink:0;width:30px;height:16px;border-radius:8px;background:var(--tray-accent);position:relative}
+    .tray .mic-r .tg::after{content:'';position:absolute;top:2px;left:16px;width:12px;height:12px;border-radius:50%;background:#fff}
+    .tray .sep{height:1px;margin:3px 6px;background:var(--outline-variant)}
+    .tray .ft{display:flex;align-items:center;justify-content:space-between;padding:5px 8px 3px;border-top:1px solid var(--outline-variant);margin-top:3px}
+    .tray .ft .l{display:flex;gap:6px}
+    .tray .ft .fl{font-size:10px;color:var(--on-surface-muted);display:flex;align-items:center;gap:2px;padding:2px 4px;border-radius:3px}
+    .tray .ft .fl.primary{color:var(--tray-accent);font-weight:600}
+    .tray .ft .q{opacity:.4;font-size:11px}
+
+    /* common: 4 channel switch card (used in P1 and P2) */
+    .sw-card{
+      display:flex;align-items:center;gap:10px;padding:9px 11px;
+      background:#fff;border:1px solid var(--outline-variant);border-radius:8px;
+    }
+    .sw-card .ic{
+      width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    }
+    .sw-card .ic svg{width:15px;height:15px;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+    .sw-card .ic.voice{background:var(--blue-soft)}.sw-card .ic.voice svg{stroke:var(--blue)}
+    .sw-card .ic.keys{background:var(--primary-soft)}.sw-card .ic.keys svg{stroke:var(--primary)}
+    .sw-card .ic.softpad{background:var(--purple-soft)}.sw-card .ic.softpad svg{stroke:var(--purple)}
+    .sw-card .ic.camera{background:var(--orange-soft)}.sw-card .ic.camera svg{stroke:var(--orange)}
+    .sw-card .b{flex:1;min-width:0}
+    .sw-card .n{font-size:12px;font-weight:700;display:flex;align-items:center;gap:4px}
+    .sw-card .n .p{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 0 1.5px var(--green-soft)}
+    .sw-card .n .p.off{background:var(--on-surface-soft);box-shadow:none}
+    .sw-card .m{font-size:10px;color:var(--on-surface-muted);line-height:1.2;margin-top:1px}
+    .sw-card .sw{
+      flex-shrink:0;width:36px;height:20px;border-radius:11px;
+      background:var(--primary);position:relative;cursor:pointer;
+      transition:background .15s;
+    }
+    .sw-card .sw::after{
+      content:'';position:absolute;top:2px;left:18px;width:16px;height:16px;border-radius:50%;background:#fff;
+      box-shadow:0 1px 2px rgba(0,0,0,.2);transition:left .15s;
+    }
+    .sw-card.is-off .sw{background:rgba(26,45,74,.18)}
+    .sw-card.is-off .sw::after{left:2px}
+    .sw-card.is-off .n{color:var(--on-surface-muted)}
+    .sw-card.is-off .n .p{box-shadow:none;background:var(--on-surface-soft)}
+
+    /* common: real-time data card */
+    .rt-card{
+      background:#fff;border:1px solid var(--outline-variant);border-radius:8px;
+      padding:9px 11px;display:flex;flex-direction:column;gap:4px;
+    }
+    .rt-card .lbl{font-size:9.5px;font-weight:700;color:var(--on-surface-muted);text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:4px}
+    .rt-card .lbl .ic{width:11px;height:11px;color:currentColor}
+    .rt-card .lbl .ic svg{width:11px;height:11px}
+    .rt-card .val{font-size:12.5px;font-weight:600;color:var(--on-surface);display:flex;align-items:center;gap:6px;line-height:1.2}
+    .rt-card .val .sub{font-size:10.5px;font-weight:500;color:var(--on-surface-muted)}
+    .rt-card .meter{
+      height:5px;background:rgba(26,45,74,.06);border-radius:3px;overflow:hidden;position:relative;
+    }
+    .rt-card .meter .bar{
+      position:absolute;top:0;bottom:0;left:0;
+      background:linear-gradient(90deg,var(--green),var(--blue));
+      border-radius:3px;
+    }
+
+    /* preset thumbnails (bottom strip shared) */
+    .presets-row{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 14px 12px;
+      background:var(--surface-2);border-top:1px solid var(--outline-variant);
+    }
+    .preset-card{
+      padding:7px 9px;border-radius:6px;background:#fff;border:1px solid var(--outline-variant);cursor:pointer;
+      display:flex;flex-direction:column;gap:3px;position:relative;
+    }
+    .preset-card.is-active{border-color:var(--primary);background:var(--primary-soft)}
+    .preset-card .nm{font-size:11px;font-weight:700;display:flex;align-items:center;gap:4px}
+    .preset-card .nm .badge{font-size:8.5px;color:var(--primary);background:#fff;padding:0 4px;border-radius:2px;margin-left:auto;font-weight:600}
+    .preset-card .desc{font-size:9.5px;color:var(--on-surface-muted);line-height:1.3}
+    .preset-card .mini{display:flex;gap:2px;height:14px;align-items:flex-end;margin-top:1px}
+    .preset-card .mini i{display:block;width:5px;background:var(--primary-soft);border-radius:1px}
+    .preset-card .mini i:nth-child(1){height:40%}
+    .preset-card .mini i:nth-child(2){height:60%}
+    .preset-card .mini i:nth-child(3){height:80%}
+    .preset-card .mini i:nth-child(4){height:50%}
+    .preset-card .mini i:nth-child(5){height:30%}
+    .preset-card.is-active .mini i{background:var(--primary)}
+
+    /* ============ PROTOTYPE 1: CONTROL TOWER (3 columns) ============ */
+    .p1-body{display:grid;grid-template-columns:170px 1fr 220px;gap:10px;padding:12px;background:#f1f5f9;flex:1;min-height:480px}
+    .p1-col{display:flex;flex-direction:column;gap:8px}
+    .p1-col-title{font-size:9.5px;font-weight:700;color:var(--on-surface-muted);text-transform:uppercase;letter-spacing:.06em;padding:0 2px}
+    .p1-center{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:6px;gap:8px}
+    .p1-device{
+      background:#1c1f24;border-radius:18px;padding:7px;box-shadow:0 8px 20px rgba(26,45,74,.18);
+    }
+    .p1-screen{background:#fff;border-radius:11px;overflow:hidden}
+
+    /* ============ PROTOTYPE 2: COCKPIT (50/50) ============ */
+    .p2-body{display:grid;grid-template-columns:1fr 1fr;flex:1;min-height:480px;background:#f1f5f9}
+    .p2-left{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:16px 12px 12px;gap:10px;border-right:1px solid var(--outline-variant)}
+    .p2-right{display:flex;flex-direction:column;padding:12px;gap:10px;background:#fafbfd}
+    .p2-section{display:flex;flex-direction:column;gap:7px}
+    .p2-section-title{font-size:9.5px;font-weight:700;color:var(--on-surface-muted);text-transform:uppercase;letter-spacing:.06em;padding:0 2px;display:flex;align-items:center;gap:4px}
+    .p2-section-title .pulse{width:5px;height:5px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 2px var(--blue-soft)}
+    .p2-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+    .p2-rt{display:flex;flex-direction:column;gap:5px}
+
+    /* ============ PROTOTYPE 3: FULL PREVIEW (strips) ============ */
+    .p3-body{display:flex;flex-direction:column;flex:1;min-height:480px;background:#f1f5f9;padding:12px;gap:10px}
+    .p3-strip-channels{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+    .p3-center{display:flex;justify-content:center;padding:6px 0 4px}
+    .p3-strip-rt{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+
+    /* small caption / labels for each proto */
+    .caption{font-size:10.5px;color:var(--on-surface-muted);text-align:center;font-style:italic;margin-top:6px}
+
+    /* big callout for the 3 elements in each proto */
+    .legend{display:flex;gap:8px;padding:8px 12px;background:#f8fafc;border-bottom:1px solid var(--outline-variant);font-size:10.5px;align-items:center;flex-wrap:wrap}
+    .legend .leg{display:flex;align-items:center;gap:3px;color:var(--on-surface-muted);font-weight:600}
+    .legend .leg .dot{width:8px;height:8px;border-radius:50%}
+    .legend .leg.ele1 .dot{background:var(--blue)}
+    .legend .leg.ele2 .dot{background:var(--primary)}
+    .legend .leg.ele3 .dot{background:var(--green)}
+
+    /* annotations under each */
+    .annot{font-size:11px;color:var(--on-surface-muted);line-height:1.55;padding:6px 4px 0}
+    .annot b{color:var(--on-surface)}
+  </style>
+</head>
+<body>
+
+  <h1>托盘定制器 v2 · 3 个核心元素的 3 种排法</h1>
+  <p class="lede">
+    上版"settings 列表 + 勾选框"被砍掉。重新解耦成 <b>3 个真核心元素</b>：① 托盘预览 ② 4 通道快捷开关 ③ 核心即时数据。
+    这 3 个元素在 3 个原型里**位置不同**，但**集合不变**。其他细节（主题色 / 密度 / 高级选项）走"高级"弹层，不进主页面。
+  </p>
+
+  <div class="protos">
+
+    <!-- ========== P1 · CONTROL TOWER ========== -->
+    <div class="proto">
+      <div class="proto-head">
+        <span class="tag">P1</span>
+        <h2>控制塔</h2>
+        <span class="sub">Control Tower</span>
+      </div>
+      <p class="proto-thesis"><b>3 列等权</b>：左 4 通道 / 中 预览 / 右 数据。像 NASA 控制台，扫一眼就到位。</p>
+
+      <div class="page">
+        <div class="page-chrome">
+          <div class="page-title"><span class="crumb">虚拟键盘 › </span>托盘定制</div>
+          <div class="page-actions">
+            <span class="pg-btn adv">⚙ 高级</span>
+          </div>
+        </div>
+        <div class="legend">
+          <span class="leg ele1"><span class="dot"></span>4 通道</span>
+          <span class="leg ele2"><span class="dot"></span>托盘预览</span>
+          <span class="leg ele3"><span class="dot"></span>即时数据</span>
+        </div>
+
+        <div class="p1-body">
+          <!-- LEFT: 4 channels -->
+          <div class="p1-col">
+            <div class="p1-col-title">4 通道</div>
+            <div class="sw-card">
+              <div class="ic voice"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></div>
+              <div class="b"><div class="n">语音<span class="p"></span></div><div class="m">Vosk</div></div>
+              <div class="sw"></div>
+            </div>
+            <div class="sw-card">
+              <div class="ic keys"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="8" cy="12" r="1.5" fill="currentColor"/><circle cx="16" cy="12" r="1.5" fill="currentColor"/></svg></div>
+              <div class="b"><div class="n">按键<span class="p"></span></div><div class="m">双击</div></div>
+              <div class="sw"></div>
+            </div>
+            <div class="sw-card">
+              <div class="ic softpad"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="8" cy="7" r="1" fill="currentColor"/><circle cx="12" cy="7" r="1" fill="currentColor"/><circle cx="16" cy="7" r="1" fill="currentColor"/></svg></div>
+              <div class="b"><div class="n">软键<span class="p"></span></div><div class="m">自动</div></div>
+              <div class="sw"></div>
+            </div>
+            <div class="sw-card is-off">
+              <div class="ic camera"><svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+              <div class="b"><div class="n">摄像<span class="p off"></span></div><div class="m">关</div></div>
+              <div class="sw"></div>
+            </div>
+          </div>
+
+          <!-- CENTER: tray preview -->
+          <div class="p1-center">
+            <div class="p1-device"><div class="p1-screen">
+              <div class="tray">
+                <div class="hero">
+                  <div class="left">
+                    <div class="top"><span class="pulse"></span><span class="ttl">监听中</span></div>
+                    <div class="chips"><span class="chip">语音</span><span class="chip g">按键</span><span class="chip p">软键</span></div>
+                  </div>
+                  <div class="act"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>暂停</div>
+                </div>
+                <div class="event">
+                  <div class="h">刚才 2s 前 · 语音</div>
+                  <div class="t"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></span><span class="txt">"打开 main.rs"</span><span class="oc">已发送</span></div>
+                </div>
+                <div class="sec-h"><span class="d"></span>通道</div>
+                <div class="ch-row">
+                  <div class="iw voice"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></div>
+                  <div class="b"><div class="n">语音<span class="p"></span></div><div class="m">Vosk · 已就绪</div></div>
+                </div>
+                <div class="ch-row">
+                  <div class="iw keys"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="8" cy="12" r="1.5" fill="currentColor"/><circle cx="16" cy="12" r="1.5" fill="currentColor"/></svg></div>
+                  <div class="b"><div class="n">按键<span class="p"></span></div><div class="m">双击 · 3s 前</div></div>
+                </div>
+                <div class="ch-row">
+                  <div class="iw softpad"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="8" cy="7" r="1" fill="currentColor"/></svg></div>
+                  <div class="b"><div class="n">软键<span class="p off"></span></div><div class="m">自动 · 隐藏</div></div>
+                </div>
+                <div class="sep"></div>
+                <div class="mic-r">
+                  <div class="iw"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4"/></svg></div>
+                  <div class="b"><div class="n">麦克风</div><div class="m">开 · 默认</div></div>
+                  <div class="tg"></div>
+                </div>
+                <div class="ft">
+                  <div class="l"><span class="fl primary">主窗口</span><span class="fl">设置</span><span class="fl">诊断</span></div>
+                  <span class="q">⏻</span>
+                </div>
+              </div>
+            </div></div>
+            <div class="caption">实时刻画，tray 改了这里立即变</div>
+          </div>
+
+          <!-- RIGHT: real-time data -->
+          <div class="p1-col">
+            <div class="p1-col-title">即时数据</div>
+            <div class="rt-card">
+              <div class="lbl"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4"/></svg></span>麦克风</div>
+              <div class="meter"><div class="bar" style="width:62%"></div></div>
+              <div class="val">开 <span class="sub">· 默认设备</span></div>
+            </div>
+            <div class="rt-card">
+              <div class="lbl"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg></span>当前应用</div>
+              <div class="val">VS Code <span class="sub">· coding 习惯</span></div>
+            </div>
+            <div class="rt-card">
+              <div class="lbl"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>最近事件</div>
+              <div class="val">"打开 main.rs" <span class="sub" style="color:var(--green);font-weight:700">✓</span></div>
+              <div class="val" style="font-size:10.5px;font-weight:500;color:var(--on-surface-soft)">2s 前 · 语音</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="presets-row">
+          <div class="preset-card is-active"><div class="nm">默认 <span class="badge">ON</span></div><div class="desc">V5 完整版</div><div class="mini"><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="preset-card"><div class="nm">极简</div><div class="desc">只显示状态 + 麦静音</div><div class="mini"><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="preset-card"><div class="nm">力量</div><div class="desc">完整 + 历史 5 条</div><div class="mini"><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="preset-card"><div class="nm">演示</div><div class="desc">大字号高对比</div><div class="mini"><i></i><i></i><i></i><i></i><i></i></div></div>
+        </div>
+      </div>
+
+      <div class="annot">
+        <b>什么时候选 P1：</b>专业感最强，眼睛要扫的"目标"是固定的（看左 / 看中 / 看右，习惯后不用找）。<br/>
+        <b>代价：</b>竖向空间紧张，4 个通道在 480px 高度里要紧凑。数据卡也只有 3 个槽位，再多就要往下挤。
+      </div>
+    </div>
+
+    <!-- ========== P2 · COCKPIT (50/50) ========== -->
+    <div class="proto">
+      <div class="proto-head">
+        <span class="tag">P2</span>
+        <h2>驾驶舱</h2>
+        <span class="sub">Cockpit</span>
+      </div>
+      <p class="proto-thesis"><b>50/50 分屏</b>：左预览 / 右"控制室"（4 通道 + 数据 + 操作）。每寸屏幕都有归属。</p>
+
+      <div class="page">
+        <div class="page-chrome">
+          <div class="page-title"><span class="crumb">虚拟键盘 › </span>托盘定制</div>
+          <div class="page-actions">
+            <span class="pg-btn adv">⚙ 高级</span>
+          </div>
+        </div>
+        <div class="legend">
+          <span class="leg ele2"><span class="dot"></span>托盘预览（左半）</span>
+          <span class="leg ele1"><span class="dot"></span>4 通道（右上）</span>
+          <span class="leg ele3"><span class="dot"></span>即时数据（右下）</span>
+        </div>
+
+        <div class="p2-body">
+          <!-- LEFT: tray preview -->
+          <div class="p2-left">
+            <div class="p1-device" style="background:#1c1f24;border-radius:18px;padding:7px"><div class="p1-screen">
+              <div class="tray">
+                <div class="hero">
+                  <div class="left">
+                    <div class="top"><span class="pulse"></span><span class="ttl">监听中</span></div>
+                    <div class="chips"><span class="chip">语音</span><span class="chip g">按键</span><span class="chip p">软键</span></div>
+                  </div>
+                  <div class="act"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>暂停</div>
+                </div>
+                <div class="event">
+                  <div class="h">刚才 2s 前 · 语音</div>
+                  <div class="t"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></span><span class="txt">"打开 main.rs"</span><span class="oc">已发送</span></div>
+                </div>
+                <div class="sec-h"><span class="d"></span>通道</div>
+                <div class="ch-row">
+                  <div class="iw voice"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></div>
+                  <div class="b"><div class="n">语音<span class="p"></span></div><div class="m">Vosk · 已就绪</div></div>
+                </div>
+                <div class="ch-row">
+                  <div class="iw keys"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/></svg></div>
+                  <div class="b"><div class="n">按键<span class="p"></span></div><div class="m">双击 · 3s 前</div></div>
+                </div>
+                <div class="ch-row">
+                  <div class="iw softpad"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/></svg></div>
+                  <div class="b"><div class="n">软键<span class="p off"></span></div><div class="m">自动 · 隐藏</div></div>
+                </div>
+                <div class="sep"></div>
+                <div class="mic-r">
+                  <div class="iw"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4"/></svg></div>
+                  <div class="b"><div class="n">麦克风</div><div class="m">开 · 默认</div></div>
+                  <div class="tg"></div>
+                </div>
+                <div class="ft">
+                  <div class="l"><span class="fl primary">主窗口</span><span class="fl">设置</span><span class="fl">诊断</span></div>
+                  <span class="q">⏻</span>
+                </div>
+              </div>
+            </div></div>
+            <div class="caption" style="margin-top:8px">左侧永远显示托盘</div>
+          </div>
+
+          <!-- RIGHT: control room -->
+          <div class="p2-right">
+            <div class="p2-section">
+              <div class="p2-section-title"><span class="pulse"></span>4 通道</div>
+              <div class="p2-grid">
+                <div class="sw-card">
+                  <div class="ic voice"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg></div>
+                  <div class="b"><div class="n">语音<span class="p"></span></div><div class="m">Vosk</div></div>
+                  <div class="sw"></div>
+                </div>
+                <div class="sw-card">
+                  <div class="ic keys"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/></svg></div>
+                  <div class="b"><div class="n">按键<span class="p"></span></div><div class="m">双击</div></div>
+                  <div class="sw"></div>
+                </div>
+                <div class="sw-card">
+                  <div class="ic softpad"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/></svg></div>
+                  <div class="b"><div class="n">软键<span class="p"></span></div><div class="m">自动</div></div>
+                  <div class="sw"></div>
+                </div>
+                <div class="sw-card is-off">
+                  <div class="ic camera"><svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+                  <div class="b"><div class="n">摄像<span class="p off"></span></div><div class="m">关</div></div>
+                  <div class="sw"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="p2-section">
+              <div class="p2-section-title">即时数据</div>
+              <div class="p2-rt">
+                <div class="rt-card">
+                  <div class="lbl"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></span>麦克风</div>
+                  <div class="meter"><div class="bar" style="width:62%"></div></div>
+                  <div class="val">开 <span class="sub">· 默认</span></div>
+                </div>
+                <div class="rt-card">
+                  <div class="lbl"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg></span>当前应用</div>
+                  <div class="val">VS Code <span class="sub">· coding 习惯</span></div>
+                </div>
+                <div class="rt-card">
+                  <div class="lbl"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>最近事件</div>
+                  <div class="val">"打开 main.rs" <span class="sub" style="color:var(--green);font-weight:700">✓</span></div>
+                  <div class="val" style="font-size:10.5px;font-weight:500;color:var(--on-surface-soft)">2s 前 · 语音</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="p2-section" style="margin-top:auto;padding-top:8px;border-top:1px dashed var(--outline-variant)">
+              <div class="p2-section-title">快捷操作</div>
+              <div style="display:flex;gap:5px;flex-wrap:wrap">
+                <span class="pg-btn"><span class="ico"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></span>暂停</span>
+                <span class="pg-btn"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg></span>麦静音</span>
+                <span class="pg-btn primary"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.7 3L21 8"/></svg></span>另存预设</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="presets-row">
+          <div class="preset-card is-active"><div class="nm">默认 <span class="badge">ON</span></div><div class="desc">V5 完整版</div><div class="mini"><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="preset-card"><div class="nm">极简</div><div class="desc">只显示状态 + 麦静音</div><div class="mini"><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="preset-card"><div class="nm">力量</div><div class="desc">完整 + 历史 5 条</div><div class="mini"><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="preset-card"><div class="nm">演示</div><div class="desc">大字号高对比</div><div class="mini"><i></i><i></i><i></i><i></i><i></i></div></div>
+        </div>
+      </div>
+
+      <div class="annot">
+        <b>什么时候选 P2：</b>扫视路径短（左看 tray，右上点开关，右下看数据），每个元素都有"自己的位置"，几乎不用扫。<br/>
+        <b>代价：</b>tray 缩到 ~280px，里面塞 4 通道 + 事件 + 麦 + footer 略挤；适合 1280px 以上的窗口。
+      </div>
+    </div>
+
+    <!-- ========== P3 · FULL PREVIEW ========== -->
+    <div class="proto">
+      <div class="proto-head">
+        <span class="tag">P3</span>
+        <h2>全屏预览</h2>
+        <span class="sub">Full Preview</span>
+      </div>
+      <p class="proto-thesis"><b>3 横条</b>：上 4 通道 / 中 tray / 下 数据。tray 主角，频道和数据是配角。</p>
+
+      <div class="page">
+        <div class="page-chrome">
+          <div class="page-title"><span class="crumb">虚拟键盘 › </span>托盘定制</div>
+          <div class="page-actions">
+            <span class="pg-btn adv">⚙ 高级</span>
+          </div>
+        </div>
+        <div class="legend">
+          <span class="leg ele1"><span class="dot"></span>4 通道（顶条）</span>
+          <span class="leg ele2"><span class="dot"></span>托盘预览（中）</span>
+          <span class="leg ele3"><span class="dot"></span>即时数据（底条）</span>
+        </div>
+
+        <div class="p3-body">
+          <!-- TOP: 4 channels strip -->
+          <div class="p3-strip-channels">
+            <div class="sw-card">
+              <div class="ic voice"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></div>
+              <div class="b"><div class="n">语音<span class="p"></span></div><div class="m">Vosk</div></div>
+              <div class="sw"></div>
+            </div>
+            <div class="sw-card">
+              <div class="ic keys"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="8" cy="12" r="1.5" fill="currentColor"/><circle cx="16" cy="12" r="1.5" fill="currentColor"/></svg></div>
+              <div class="b"><div class="n">按键<span class="p"></span></div><div class="m">双击</div></div>
+              <div class="sw"></div>
+            </div>
+            <div class="sw-card">
+              <div class="ic softpad"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="8" cy="7" r="1" fill="currentColor"/><circle cx="12" cy="7" r="1" fill="currentColor"/><circle cx="16" cy="7" r="1" fill="currentColor"/></svg></div>
+              <div class="b"><div class="n">软键<span class="p"></span></div><div class="m">自动</div></div>
+              <div class="sw"></div>
+            </div>
+            <div class="sw-card is-off">
+              <div class="ic camera"><svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+              <div class="b"><div class="n">摄像<span class="p off"></span></div><div class="m">关</div></div>
+              <div class="sw"></div>
+            </div>
+          </div>
+
+          <!-- CENTER: tray large -->
+          <div class="p3-center">
+            <div class="p1-device" style="background:#1c1f24;border-radius:18px;padding:7px"><div class="p1-screen">
+              <div class="tray" style="width:330px">
+                <div class="hero">
+                  <div class="left">
+                    <div class="top"><span class="pulse"></span><span class="ttl">监听中</span></div>
+                    <div class="chips"><span class="chip">语音</span><span class="chip g">按键</span><span class="chip p">软键</span></div>
+                  </div>
+                  <div class="act"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>暂停</div>
+                </div>
+                <div class="event">
+                  <div class="h">刚才 2s 前 · 语音</div>
+                  <div class="t"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></span><span class="txt">"打开 main.rs"</span><span class="oc">已发送</span></div>
+                </div>
+                <div class="sec-h"><span class="d"></span>通道</div>
+                <div class="ch-row">
+                  <div class="iw voice"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg></div>
+                  <div class="b"><div class="n">语音<span class="p"></span></div><div class="m">Vosk · 已就绪</div></div>
+                </div>
+                <div class="ch-row">
+                  <div class="iw keys"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/></svg></div>
+                  <div class="b"><div class="n">按键<span class="p"></span></div><div class="m">双击 · 3s 前</div></div>
+                </div>
+                <div class="ch-row">
+                  <div class="iw softpad"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/></svg></div>
+                  <div class="b"><div class="n">软键<span class="p off"></span></div><div class="m">自动 · 隐藏</div></div>
+                </div>
+                <div class="sep"></div>
+                <div class="mic-r">
+                  <div class="iw"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4"/></svg></div>
+                  <div class="b"><div class="n">麦克风</div><div class="m">开 · 默认</div></div>
+                  <div class="tg"></div>
+                </div>
+                <div class="ft">
+                  <div class="l"><span class="fl primary">主窗口</span><span class="fl">设置</span><span class="fl">诊断</span></div>
+                  <span class="q">⏻</span>
+                </div>
+              </div>
+            </div></div>
+          </div>
+
+          <!-- BOTTOM: real-time data strip -->
+          <div class="p3-strip-rt">
+            <div class="rt-card">
+              <div class="lbl"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4"/></svg></span>麦克风</div>
+              <div class="meter"><div class="bar" style="width:62%"></div></div>
+              <div class="val">开 <span class="sub">· 默认设备</span></div>
+            </div>
+            <div class="rt-card">
+              <div class="lbl"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg></span>当前应用</div>
+              <div class="val">VS Code <span class="sub">· coding 习惯</span></div>
+            </div>
+            <div class="rt-card">
+              <div class="lbl"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>最近事件</div>
+              <div class="val">"打开 main.rs" <span class="sub" style="color:var(--green);font-weight:700">✓</span></div>
+              <div class="val" style="font-size:10.5px;font-weight:500;color:var(--on-surface-soft)">2s 前 · 语音</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="presets-row">
+          <div class="preset-card is-active"><div class="nm">默认 <span class="badge">ON</span></div><div class="desc">V5 完整版</div><div class="mini"><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="preset-card"><div class="nm">极简</div><div class="desc">只显示状态 + 麦静音</div><div class="mini"><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="preset-card"><div class="nm">力量</div><div class="desc">完整 + 历史 5 条</div><div class="mini"><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="preset-card"><div class="nm">演示</div><div class="desc">大字号高对比</div><div class="mini"><i></i><i></i><i></i><i></i><i></i></div></div>
+        </div>
+      </div>
+
+      <div class="annot">
+        <b>什么时候选 P3：</b>tray 是绝对主角，4 通道是工具条，数据是辅助条。像 macOS 控制中心的"大预览 + 小控件"。<br/>
+        <b>代价：</b>3 横条之间扫视距离远（鼠标要从上到下走 480px）；适合窗口高度 ≥ 700px。
+      </div>
+    </div>
+
+  </div>
+
+  <h1 style="margin-top:48px">架构与决策</h1>
+  <p class="lede" style="max-width:1480px">
+    3 个原型**功能完全一致**，只有 3 个元素的位置不同。生产实现里这是 1 套代码 + 3 个 layout class（<code>.p1-body / .p2-body / .p3-body</code>）。
+    选哪个根据：窗口大小、用户首选分辨率、是否要兼顾窄屏。
+  </p>
+
+  <div style="max-width:1480px;margin:0 auto;background:#fff;border:1px solid var(--outline-variant);border-radius:14px;padding:20px 22px">
+    <h2 style="margin:0 0 12px">数据契约（3 个原型共享）</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:8px">
+      <div style="background:var(--surface-2);border:1px solid var(--outline-variant);border-radius:9px;padding:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--on-surface-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">① 托盘预览</div>
+        <div style="font-family:ui-monospace,monospace;font-size:10.5px;line-height:1.6;color:#334155">
+          <span style="color:var(--blue)">preview</span>: TrayState<br/>
+          &nbsp;&nbsp;.{ global, mic, channels[], event }<br/>
+          <span style="color:#94a3b8">// 来自 V5 改造后的状态模型</span>
+        </div>
+      </div>
+      <div style="background:var(--surface-2);border:1px solid var(--outline-variant);border-radius:9px;padding:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--on-surface-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">② 4 通道</div>
+        <div style="font-family:ui-monospace,monospace;font-size:10.5px;line-height:1.6;color:#334155">
+          <span style="color:var(--primary)">channels</span>: Channel[4]<br/>
+          &nbsp;&nbsp;.{ id, enabled, state, meta }<br/>
+          <span style="color:#94a3b8">// 点开关 = 切 enabled,</span><br/>
+          <span style="color:#94a3b8">// 立即改 TrayState 然后回灌</span>
+        </div>
+      </div>
+      <div style="background:var(--surface-2);border:1px solid var(--outline-variant);border-radius:9px;padding:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--on-surface-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">③ 即时数据</div>
+        <div style="font-family:ui-monospace,monospace;font-size:10.5px;line-height:1.6;color:#334155">
+          <span style="color:var(--green)">live</span>: {<br/>
+          &nbsp;&nbsp;mic_level: u8,<br/>
+          &nbsp;&nbsp;current_app: string,<br/>
+          &nbsp;&nbsp;habit: string,<br/>
+          &nbsp;&nbsp;last_event: LastEvent<br/>
+          }<br/>
+          <span style="color:#94a3b8">// 1s 节流推送</span>
+        </div>
+      </div>
+    </div>
+
+    <h2 style="margin:24px 0 12px">3 个原型的取舍</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">
+      <thead>
+        <tr style="background:var(--surface-2)">
+          <th style="padding:9px 10px;text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--on-surface-muted);border-bottom:1px solid var(--outline-variant)">维度</th>
+          <th style="padding:9px 10px;text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--blue);border-bottom:1px solid var(--outline-variant)">P1 控制塔</th>
+          <th style="padding:9px 10px;text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--primary);border-bottom:1px solid var(--outline-variant)">P2 驾驶舱 ⭐ 推荐</th>
+          <th style="padding:9px 10px;text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--green);border-bottom:1px solid var(--outline-variant)">P3 全屏预览</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant)">扫视路径</td>
+            <td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant)">左→中→右（3 跳）</td>
+            <td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant);font-weight:600">左 / 右上 / 右下（2 跳）</td>
+            <td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant)">上→中→下（3 跳）</td></tr>
+        <tr><td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant)">tray 视觉占比</td>
+            <td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant)">~45%</td>
+            <td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant)">~38%</td>
+            <td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant);font-weight:600">~58%</td></tr>
+        <tr><td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant)">4 通道物理感</td>
+            <td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant)">最强（独占一列）</td>
+            <td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant)">强（2×2 网格）</td>
+            <td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant)">中（横条压缩）</td></tr>
+        <tr><td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant)">窄屏适配</td>
+            <td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant);color:var(--orange)">差（170px 列卡）</td>
+            <td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant)">中</td>
+            <td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant);color:var(--orange)">差（高度 ≥ 700px）</td></tr>
+        <tr><td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant)">vibecoder 5 秒可用？</td>
+            <td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant)">✅</td>
+            <td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant);font-weight:600">✅✅</td>
+            <td style="padding:9px 10px;border-bottom:1px solid var(--outline-variant)">✅</td></tr>
+        <tr><td style="padding:9px 10px">推荐场景</td>
+            <td style="padding:9px 10px">专业 / 调试模式</td>
+            <td style="padding:9px 10px"><b>日常定制 / 默认布局</b></td>
+            <td style="padding:9px 10px">演示 / 录视频</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>

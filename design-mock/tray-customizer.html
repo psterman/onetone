@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>虚拟键盘 · 第 3 hero 重构 · 托盘菜单定制器</title>
+  <style>
+    :root{
+      --bg:#f5f7fa;
+      --surface:#ffffff;
+      --surface-2:#f8fafc;
+      --surface-3:#eef2f7;
+      --primary:#2a9cc4;
+      --primary-soft:#e6f7fc;
+      --primary-deep:#1e87ad;
+      --on-surface:#152238;
+      --on-surface-muted:#5a7086;
+      --on-surface-soft:#8a98a8;
+      --outline-variant:rgba(26,45,74,.10);
+      --outline:rgba(26,45,74,.16);
+      --danger:#dc2626;
+      --danger-soft:rgba(220,38,38,.08);
+      --green:#2e7d4f;
+      --green-soft:rgba(46,125,79,.10);
+      --orange:#b9530a;
+      --orange-soft:rgba(185,83,10,.10);
+      --yellow:#b45309;
+      --yellow-soft:rgba(245,166,35,.16);
+      --purple:#6d4ab0;
+      --purple-soft:rgba(109,74,176,.10);
+      --blue:#00a3ff;
+      --blue-soft:rgba(0,163,255,.10);
+      --radius:12px;
+      --radius-row:8px;
+      --shadow:0 10px 28px rgba(26,45,74,.18);
+      --shadow-soft:0 4px 12px rgba(26,45,74,.08);
+      font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+
+      /* === Editable tokens (driven by customization in preview pane) === */
+      --tray-accent:#2a9cc4;
+      --tray-accent-deep:#1e87ad;
+      --tray-accent-soft:#e6f7fc;
+      --tray-density:1;     /* 1=cozy, 0.85=compact */
+      --tray-icon-stroke:1.8;
+      --tray-bg:#ffffff;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--on-surface)}
+    body{padding:32px 24px 80px}
+    h1{font-size:22px;margin:0 0 6px}
+    h2{font-size:15px;margin:0 0 4px;font-weight:700}
+    h3{font-size:13px;margin:0 0 6px;font-weight:700;display:flex;align-items:center;gap:6px}
+    .lede{color:var(--on-surface-muted);font-size:13px;margin:0 0 24px;max-width:1280px;line-height:1.6}
+    .section{max-width:1280px;margin:0 auto 36px;background:var(--surface);border:1px solid var(--outline-variant);border-radius:14px;padding:20px 22px}
+    .section h2{margin-bottom:6px}
+    .section .sub{color:var(--on-surface-muted);font-size:12.5px;margin:0 0 16px;line-height:1.55}
+    .sep{height:1px;background:var(--outline-variant);margin:14px 0}
+
+    /* ====== Cases ====== */
+    .case-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px}
+    .case{background:var(--surface-2);border:1px solid var(--outline-variant);border-radius:9px;padding:11px 13px}
+    .case .nm{font-weight:700;font-size:12.5px;margin-bottom:3px;display:flex;align-items:center;gap:5px}
+    .case .nm .src{font-size:9.5px;color:var(--on-surface-soft);font-weight:500;background:rgba(26,45,74,.06);padding:1px 5px;border-radius:3px;margin-left:auto}
+    .case .take{color:var(--on-surface-muted);font-size:11.5px;line-height:1.5}
+    .case .take b{color:var(--primary)}
+
+    /* ====== Boundary table ====== */
+    .boundary{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+    .boundary th, .boundary td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--outline-variant);vertical-align:top}
+    .boundary th{background:var(--surface-2);font-weight:700;color:var(--on-surface-muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em}
+    .boundary td.tag{font-weight:600;width:14%;color:var(--on-surface)}
+    .boundary td.who{width:14%;font-family:ui-monospace,monospace;font-size:10.5px}
+    .boundary td.who.cfg{color:var(--primary)}
+    .boundary td.who.cust{color:var(--purple)}
+
+    /* ====== Customizer page (main prototype) ====== */
+    .page-mock{
+      margin-top:14px;border:1px solid var(--outline-variant);border-radius:11px;overflow:hidden;background:#fff;
+      box-shadow:var(--shadow);
+    }
+    /* page chrome: top bar with breadcrumb + tabs */
+    .page-mock .chrome-top{
+      display:flex;align-items:center;gap:10px;padding:11px 16px;
+      border-bottom:1px solid var(--outline-variant);
+      background:linear-gradient(180deg,#fafbfd,#fff);
+    }
+    .page-mock .bc{font-size:12px;color:var(--on-surface-muted);display:flex;align-items:center;gap:6px}
+    .page-mock .bc b{color:var(--on-surface);font-weight:600}
+    .page-mock .bc .sep-c{color:var(--on-surface-soft)}
+    .page-mock .tabs{margin-left:auto;display:flex;background:var(--surface-2);padding:3px;border-radius:7px;gap:2px}
+    .page-mock .tab{padding:5px 12px;border-radius:5px;font-size:11.5px;font-weight:600;color:var(--on-surface-muted);cursor:pointer;display:flex;align-items:center;gap:5px}
+    .page-mock .tab.is-active{background:#fff;color:var(--on-surface);box-shadow:0 1px 2px rgba(26,45,74,.08)}
+    .page-mock .tab .ico{width:12px;height:12px}
+    .page-mock .tab .ico svg{width:12px;height:12px}
+    .page-mock .header-tip{padding:9px 16px;font-size:11.5px;color:var(--on-surface-muted);background:var(--surface-2);border-bottom:1px solid var(--outline-variant)}
+    .page-mock .header-tip b{color:var(--on-surface)}
+
+    /* main 2-col */
+    .page-mock .body{display:grid;grid-template-columns:380px 1fr;min-height:560px}
+    /* left: preview frame */
+    .preview-pane{
+      background:linear-gradient(180deg,#e9eef4,#dde5ee);
+      border-right:1px solid var(--outline-variant);
+      padding:18px 18px 22px;display:flex;flex-direction:column;align-items:center;gap:10px;
+    }
+    .device-label{font-size:10.5px;color:var(--on-surface-muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+    .device-frame{
+      background:#1c1f24;border-radius:18px;padding:8px;
+      box-shadow:0 8px 20px rgba(26,45,74,.2), inset 0 0 0 1px rgba(255,255,255,.05);
+    }
+    .device-screen{
+      width:200px;background:var(--tray-bg);border-radius:11px;overflow:hidden;
+      box-shadow:0 0 0 1px rgba(255,255,255,.05);
+      /* density scaling */
+    }
+    .device-meta{display:flex;gap:8px;font-size:10px;color:var(--on-surface-muted);font-family:ui-monospace,monospace}
+    .device-meta .dot{width:6px;height:6px;border-radius:50%;background:var(--green);align-self:center;box-shadow:0 0 0 2px var(--green-soft)}
+    .device-meta .dot.warn{background:var(--orange);box-shadow:0 0 0 2px var(--orange-soft)}
+
+    /* right: inspector */
+    .inspector{padding:16px 18px;overflow:auto;background:#fff}
+    .insp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .insp-head .ttl{font-size:13px;font-weight:700}
+    .insp-head .dirty{font-size:10px;color:var(--orange);font-weight:600;display:flex;align-items:center;gap:4px}
+    .insp-head .dirty .dot{width:5px;height:5px;border-radius:50%;background:var(--orange)}
+    .insp-section{margin-bottom:14px;background:var(--surface-2);border:1px solid var(--outline-variant);border-radius:9px;padding:10px 12px}
+    .insp-section h4{font-size:11px;margin:0 0 8px;font-weight:700;color:var(--on-surface-muted);text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:5px}
+    .insp-section h4 .ico{width:11px;height:11px;color:currentColor}
+    .insp-section h4 .ico svg{width:11px;height:11px}
+    .insp-row{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-bottom:6px}
+    .insp-row.full{grid-template-columns:1fr}
+    .field{display:flex;flex-direction:column;gap:2px}
+    .field label{font-size:10.5px;color:var(--on-surface-muted);font-weight:500;display:flex;align-items:center;gap:3px}
+    .field select, .field input[type="text"]{
+      font:inherit;font-size:11.5px;padding:5px 8px;border:1px solid var(--outline-variant);border-radius:5px;
+      background:#fff;color:var(--on-surface);
+    }
+    .field select:focus, .field input:focus{outline:none;border-color:var(--primary)}
+    .swatches{display:flex;gap:4px}
+    .swatch{width:18px;height:18px;border-radius:4px;cursor:pointer;border:1.5px solid transparent;transition:transform .1s}
+    .swatch:hover{transform:scale(1.1)}
+    .swatch.is-active{border-color:var(--on-surface);box-shadow:0 0 0 2px #fff inset}
+    .radio-group{display:flex;gap:5px}
+    .radio-opt{
+      flex:1;font-size:11px;padding:4px 8px;border-radius:5px;text-align:center;cursor:pointer;
+      background:#fff;border:1px solid var(--outline-variant);color:var(--on-surface-muted);font-weight:600;
+    }
+    .radio-opt.is-active{background:var(--primary-soft);color:var(--primary);border-color:var(--primary-soft)}
+    .check-list{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px}
+    .check-list .ck{display:flex;align-items:center;gap:5px;font-size:11.5px;cursor:pointer;user-select:none}
+    .check-list .ck input{margin:0;accent-color:var(--primary);width:12px;height:12px}
+    .check-list .ck.is-dim{opacity:.5;cursor:not-allowed}
+    .check-list .ck.is-dim input{cursor:not-allowed}
+    .check-list .ck.is-dim .lock{font-size:9px;color:var(--danger);font-weight:700;margin-left:auto}
+
+    .insp-footer{
+      display:flex;align-items:center;gap:6px;padding-top:8px;border-top:1px solid var(--outline-variant);margin-top:6px;
+    }
+    .btn{padding:6px 12px;border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--outline-variant);background:#fff;color:var(--on-surface);display:inline-flex;align-items:center;gap:4px}
+    .btn:hover{background:var(--surface-2)}
+    .btn .ico{width:12px;height:12px}
+    .btn .ico svg{width:12px;height:12px}
+    .btn.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+    .btn.primary:hover{background:var(--primary-deep)}
+    .btn.ghost{background:transparent;border-color:transparent;color:var(--on-surface-muted)}
+    .btn.ghost:hover{background:var(--surface-2);color:var(--on-surface)}
+    .btn.danger{color:var(--danger);border-color:var(--danger-soft)}
+    .btn.danger:hover{background:var(--danger-soft)}
+
+    /* ====== TRAY MOCK inside device frame (the customizable tray) ====== */
+    .tray{
+      width:200px;background:var(--tray-bg);
+      border:1px solid var(--outline-variant);
+      box-shadow:0 6px 18px rgba(26,45,74,.15);
+      padding:calc(5px * var(--tray-density));
+      color:var(--on-surface);
+      font-size:calc(13px * var(--tray-density));
+    }
+    .tray .status-hero{
+      padding:calc(10px * var(--tray-density)) calc(11px * var(--tray-density)) calc(8px * var(--tray-density));
+      background:linear-gradient(135deg,#fff 0%,var(--tray-accent-soft) 100%);
+      border:1px solid var(--outline-variant);border-radius:calc(10px * var(--tray-density));
+      display:flex;align-items:center;gap:calc(8px * var(--tray-density));margin:calc(3px * var(--tray-density));
+    }
+    .tray .status-hero .left{flex:1;min-width:0}
+    .tray .status-hero .top{display:flex;align-items:center;gap:5px;margin-bottom:3px}
+    .tray .status-hero .pulse{width:6px;height:6px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 2.5px var(--blue-soft);flex-shrink:0}
+    .tray .status-hero .ttl{font-size:calc(13.5px * var(--tray-density));font-weight:800;letter-spacing:-.01em;line-height:1.05}
+    .tray .status-hero .chips{display:flex;gap:3px;flex-wrap:wrap}
+    .tray .status-hero .chip{font-size:8.5px;padding:1px 4.5px;border-radius:3px;font-weight:600;background:var(--tray-accent-soft);color:var(--tray-accent)}
+    .tray .status-hero .chip.g{background:var(--green-soft);color:var(--green)}
+    .tray .status-hero .chip.p{background:var(--purple-soft);color:var(--purple)}
+    .tray .status-hero .action{
+      flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:1px;
+      padding:6px 8px;border-radius:6px;
+      background:linear-gradient(135deg,var(--tray-accent),var(--tray-accent-deep));color:#fff;
+      font-size:9px;font-weight:700;
+    }
+    .tray .status-hero .action svg{width:11px;height:11px;fill:currentColor}
+
+    .tray .event-card{
+      margin:calc(3px * var(--tray-density)) calc(5px * var(--tray-density));
+      padding:calc(7px * var(--tray-density)) calc(9px * var(--tray-density));
+      background:var(--surface-2);border:1px solid var(--outline-variant);border-radius:calc(7px * var(--tray-density));
+    }
+    .tray .event-card .h{display:flex;align-items:center;gap:4px;font-size:8.5px;color:var(--on-surface-muted)}
+    .tray .event-card .t{font-size:calc(11px * var(--tray-density));font-weight:600;display:flex;align-items:center;gap:4px;margin-top:2px}
+    .tray .event-card .t .ic{width:13px;height:13px;border-radius:3.5px;background:var(--blue-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .tray .event-card .t .ic svg{width:8px;height:8px;stroke:var(--blue);fill:none;stroke-width:2.4}
+    .tray .event-card .t .txt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,monospace;font-size:10.5px}
+    .tray .event-card .t .oc{font-size:8.5px;font-weight:700;padding:1px 4.5px;border-radius:3px;background:var(--green-soft);color:var(--green)}
+
+    .tray .sec-h{display:flex;align-items:center;gap:4px;padding:5px 9px 2px;font-size:8.5px;font-weight:700;color:var(--on-surface-muted);text-transform:uppercase;letter-spacing:.05em}
+    .tray .sec-h .d{width:3px;height:3px;border-radius:50%;background:var(--on-surface-soft)}
+
+    .tray .ch-row{display:flex;align-items:center;gap:6px;padding:5px 7px;margin:0 3px;border-radius:5px}
+    .tray .ch-row .iw{width:17px;height:17px;border-radius:4.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .tray .ch-row .iw svg{width:9px;height:9px;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+    .tray .ch-row .iw.voice{background:var(--blue-soft)}.tray .ch-row .iw.voice svg{stroke:var(--blue)}
+    .tray .ch-row .iw.keys{background:var(--tray-accent-soft)}.tray .ch-row .iw.keys svg{stroke:var(--tray-accent)}
+    .tray .ch-row .iw.softpad{background:var(--purple-soft)}.tray .ch-row .iw.softpad svg{stroke:var(--purple)}
+    .tray .ch-row .iw.camera{background:var(--orange-soft)}.tray .ch-row .iw.camera svg{stroke:var(--orange)}
+    .tray .ch-row .b{flex:1;min-width:0}
+    .tray .ch-row .n{font-size:calc(11.5px * var(--tray-density));font-weight:700;display:flex;align-items:center;gap:3px}
+    .tray .ch-row .n .p{width:4px;height:4px;border-radius:50%;background:var(--green);box-shadow:0 0 0 1.5px var(--green-soft);flex-shrink:0}
+    .tray .ch-row .n .p.off{background:var(--on-surface-soft);box-shadow:none}
+    .tray .ch-row .m{font-size:9px;color:var(--on-surface-muted);line-height:1.1;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .tray .ch-row .cv{font-size:8px;color:var(--on-surface-soft);flex-shrink:0}
+
+    .tray .mic-r{display:flex;align-items:center;gap:6px;padding:5px 7px;margin:0 3px;border-radius:5px;background:var(--tray-accent-soft)}
+    .tray .mic-r .iw{width:17px;height:17px;border-radius:4.5px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .tray .mic-r .iw svg{width:9px;height:9px;fill:none;stroke:var(--tray-accent);stroke-width:2.2;stroke-linecap:round}
+    .tray .mic-r .b{flex:1;min-width:0}
+    .tray .mic-r .n{font-size:calc(11.5px * var(--tray-density));font-weight:700}
+    .tray .mic-r .m{font-size:9px;color:var(--on-surface-muted);line-height:1.1;margin-top:1px}
+    .tray .mic-r .tg{flex-shrink:0;width:24px;height:13px;border-radius:7px;background:var(--tray-accent);position:relative}
+    .tray .mic-r .tg::after{content:'';position:absolute;top:1.5px;left:13px;width:10px;height:10px;border-radius:50%;background:#fff}
+
+    .tray .sep{height:1px;margin:3px 6px;background:var(--outline-variant)}
+    .tray .ft{display:flex;align-items:center;justify-content:space-between;padding:4px 6px 2px;border-top:1px solid var(--outline-variant);margin-top:3px}
+    .tray .ft .l{display:flex;gap:5px}
+    .tray .ft .fl{font-size:9px;color:var(--on-surface-muted);display:flex;align-items:center;gap:2px;padding:2px 4px;border-radius:3px;cursor:pointer}
+    .tray .ft .fl.primary{color:var(--tray-accent);font-weight:600}
+    .tray .ft .q{opacity:.45;cursor:pointer}
+
+    /* When customization hides a section */
+    .tray[data-hide-event="true"] .event-card{display:none}
+    .tray[data-hide-mic="true"] .mic-r{display:none}
+    .tray[data-hide-channels="true"] .ch-rows{display:none}
+
+    /* Preset cards */
+    .presets{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:10px}
+    .preset{
+      border:1px solid var(--outline-variant);border-radius:10px;padding:12px;
+      background:var(--surface-2);position:relative;cursor:pointer;
+    }
+    .preset:hover{box-shadow:var(--shadow-soft)}
+    .preset.is-active{border-color:var(--primary);background:var(--primary-soft)}
+    .preset .nm{font-weight:700;font-size:12.5px;display:flex;align-items:center;gap:5px;margin-bottom:3px}
+    .preset .nm .badge{font-size:9px;background:rgba(255,255,255,.7);color:var(--on-surface-muted);padding:1px 5px;border-radius:3px;font-weight:600;margin-left:auto}
+    .preset .desc{font-size:11px;color:var(--on-surface-muted);line-height:1.5;margin-bottom:8px}
+    .preset .mini-tray{
+      height:84px;background:#fff;border:1px solid var(--outline-variant);border-radius:6px;
+      padding:4px;display:flex;flex-direction:column;gap:2px;overflow:hidden;
+    }
+    .preset .mini-tray .m1{height:6px;background:linear-gradient(90deg,var(--primary-soft),transparent);border-radius:2px}
+    .preset .mini-tray .m2{height:4px;background:var(--surface-3);border-radius:2px;width:80%}
+    .preset .mini-tray .m3{height:4px;background:var(--surface-3);border-radius:2px;width:60%}
+    .preset .mini-tray .m4{height:4px;background:var(--surface-3);border-radius:2px;width:40%}
+    .preset .mini-tray .m5{height:6px;background:linear-gradient(90deg,var(--primary-soft),transparent);border-radius:2px;width:50%}
+
+    /* data model block */
+    .data-model{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
+    .code{background:#0f172a;color:#cbd5e1;padding:12px 14px;border-radius:9px;font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:11px;line-height:1.55;overflow-x:auto;border:1px solid rgba(255,255,255,.05)}
+    .code .k{color:#7dd3fc}
+    .code .s{color:#86efac}
+    .code .n{color:#c4b5fd}
+    .code .c{color:#64748b;font-style:italic}
+    .code .b{color:#fbbf24;font-weight:700}
+    .code .t{color:#f472b6}
+
+    /* small steps */
+    .steps{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+    .step{display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:var(--surface-2);border:1px solid var(--outline-variant);border-radius:7px}
+    .step .n{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px}
+    .step .body{flex:1;font-size:11.5px;line-height:1.5}
+    .step .body b{font-size:12px}
+    .step .body .delta{color:var(--primary);font-family:ui-monospace,monospace;font-size:10.5px}
+
+    /* dark theme variant demo */
+    .device-frame.dark .device-screen{--tray-bg:#1c2433}
+    .device-frame.dark .tray{color:#e8f0f8}
+    .device-frame.dark .tray .status-hero{background:linear-gradient(135deg,#1c2433,#102a3d)!important;border-color:rgba(255,255,255,.08)}
+    .device-frame.dark .tray .status-hero .ttl{color:#fff}
+    .device-frame.dark .tray .event-card{background:#243044;border-color:rgba(255,255,255,.08)}
+    .device-frame.dark .tray .ch-row .m{color:#94a3b8}
+    .device-frame.dark .tray .mic-r{background:rgba(42,156,196,.16)}
+    .device-frame.dark .tray .mic-r .m{color:#cbd5e1}
+    .device-frame.dark .tray .ft{border-color:rgba(255,255,255,.08)}
+    .device-frame.dark .tray .ft .fl{color:#94a3b8}
+  </style>
+</head>
+<body>
+
+  <h1>虚拟键盘 · 第 3 hero 重构 · 托盘菜单定制器</h1>
+  <p class="lede">
+    把"项目时间胶囊"换成"<b>托盘菜单定制</b>"，解决两个问题：① 时间胶囊和别的"项目"心智离得远，在虚拟键盘页不聚集 ② vibecoder 用户缺一个"把托盘调成自己顺手的样子"的可视化入口。
+    下面分 4 块：行业参照 → 与习惯的边界 → 定制器页面原型 → 数据模型与实施。
+  </p>
+
+  <!-- ============ 1. Industry cases ============ -->
+  <section class="section">
+    <h2>① 行业案例 · 借鉴什么</h2>
+    <p class="sub">不照搬，挑出对"小面板 + 实时预览"这种场景最有效的 5 个模式。</p>
+    <div class="case-grid">
+      <div class="case">
+        <div class="nm">VS Code Settings <span class="src">Form + JSON</span></div>
+        <div class="take"><b>Form/JSON 双视图双向绑定</b>，初学者用表单，Pro 直接改 JSON。我们 1:1 抄：默认 Visual Tab，Pro 切 JSON Tab。</div>
+      </div>
+      <div class="case">
+        <div class="nm">Raycast <span class="src">Preset + Live Preview</span></div>
+        <div class="take"><b>内置 preset 一键切换 + 改动立即反映到命令面板</b>。我们给 4 个内置 preset（默认/极简/力量/演示），每个 preset 切换后托盘立即变样。</div>
+      </div>
+      <div class="case">
+        <div class="nm">Apple 控制中心 <span class="src">Edit Mode</span></div>
+        <div class="take">长按进入编辑模式，<b>可增删/排序控件</b>。我们不做"增控件"（section 数量固定），只做"显示/隐藏 + 顺序"——拖动 section 头部即可重排。</div>
+      </div>
+      <div class="case">
+        <div class="nm">Figma Variables <span class="src">Token 引用</span></div>
+        <div class="take">样式不硬编码，<b>全部走 design token</b>。我们 1:1 抄：托盘所有颜色/圆角/字号都是 CSS var，定制器改的是 var 赋值，不动结构。</div>
+      </div>
+      <div class="case">
+        <div class="nm">Linear <span class="src">后台保存</span></div>
+        <div class="take"><b>设置改动不打断当前工作流</b>。定制器改动保存到磁盘，<b>下次打开托盘才生效</b>，避免用户在编码时被弹窗抢焦点。</div>
+      </div>
+      <div class="case">
+        <div class="nm">Stream Deck <span class="src">网格编辑</span></div>
+        <div class="take">每格 1 动作的网格化编辑。<b>不取</b>——我们的 section 数量固定（5 段），网格化反而冗余。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 2. Boundary with habits ============ -->
+  <section class="section">
+    <h2>② 与习惯的边界 · 不重叠在哪</h2>
+    <p class="sub">定制器和习惯是两个正交面：<b>习惯管"什么时候用什么 voice/keys"</b>（行为 / when+which），<b>定制器管"托盘长什么样、显示什么"</b>（呈现 / what+how）。下表给个判定表。</p>
+    <table class="boundary">
+      <thead>
+        <tr><th>用户问题</th><th>归谁管</th><th>落在哪</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>我在 VS Code 里按 F1 应该用什么 voice 命令？</td><td class="who cfg">习惯 schemes</td><td>习惯配置 / 自动匹配规则</td></tr>
+        <tr><td>我录的按键 HID_R03 80 怎么改成"按住说话"？</td><td class="who cfg">习惯 schemes</td><td>按键配置 / 触发方式</td></tr>
+        <tr><td>托盘里要不要显示"摄像头通道"这一行？</td><td class="who cust">定制器</td><td>Content → Channel rows → camera ☑</td></tr>
+        <tr><td>托盘字号太小看不清怎么办？</td><td class="who cust">定制器</td><td>Style → Density → Compact / Cozy</td></tr>
+        <tr><td>托盘打开时第一眼想看"现在能用吗"还是"刚才那句有没有发出去"？</td><td class="who cust">定制器</td><td>Content → 显示顺序（拖动 section 头）</td></tr>
+        <tr><td>当 trigger 失败时托盘要不要高亮？</td><td class="who cust">定制器</td><td>Effects → Outcome chip 颜色</td></tr>
+        <tr><td>某个 channel 我从来不用，能不能完全关掉？</td><td class="who cfg">习惯 schemes</td><td>习惯配置（关掉这个 channel 在该习惯里的启用）</td></tr>
+        <tr><td>托盘的"暂停"按钮我能不能隐藏？</td><td class="who cust"><b>不能</b></td><td style="color:var(--danger)">核心安全项，所有定制器都不能 disable</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ 3. The customizer page mock ============ -->
+  <section class="section">
+    <h2>③ 定制器页面（替换时间胶囊后的样子）</h2>
+    <p class="sub">
+      在 soft pad 页面点第 3 个 flow-node（原来是"项目时间胶囊"，现在叫"托盘定制"）就看到这个页面。
+      <b>左：实时预览</b>（手机框 + 200px 托盘 mock，改任何属性这里立即变）。
+      <b>右：属性 inspector</b>，4 个分组（样式 / 内容 / 效果 / 能力）。
+    </p>
+
+    <div class="page-mock">
+      <!-- chrome top -->
+      <div class="chrome-top">
+        <div class="bc">
+          <span>虚拟键盘</span>
+          <span class="sep-c">›</span>
+          <b>托盘菜单定制</b>
+        </div>
+        <div class="tabs">
+          <span class="tab is-active">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+            Visual
+          </span>
+          <span class="tab">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg></span>
+            JSON
+          </span>
+          <span class="tab">
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span>
+            Presets
+          </span>
+        </div>
+      </div>
+
+      <div class="header-tip">
+        <b>实时预览</b> · 改动只影响下次打开托盘时 · 不会打断你当前编码 · 当前改动 <span style="color:var(--orange);font-weight:600">未保存</span>
+      </div>
+
+      <div class="body">
+        <!-- LEFT: preview frame -->
+        <div class="preview-pane">
+          <div class="device-label">托盘预览 · 200 × auto</div>
+          <div class="device-frame" id="deviceFrame">
+            <div class="device-screen">
+              <div class="tray" id="trayPreview" data-hide-event="false" data-hide-mic="false" data-hide-channels="false">
+                <div class="status-hero">
+                  <div class="left">
+                    <div class="top">
+                      <span class="pulse"></span>
+                      <span class="ttl">监听中</span>
+                    </div>
+                    <div class="chips">
+                      <span class="chip">语音</span>
+                      <span class="chip g">按键</span>
+                      <span class="chip p">软键</span>
+                    </div>
+                  </div>
+                  <div class="action">
+                    <svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+                    暂停
+                  </div>
+                </div>
+                <div class="event-card">
+                  <div class="h"><span>刚才</span><span style="color:var(--on-surface-soft)">2s 前</span><span style="color:var(--on-surface-soft)">· 语音</span></div>
+                  <div class="t">
+                    <span class="ic"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></span>
+                    <span class="txt">"打开 main.rs"</span>
+                    <span class="oc">已发送</span>
+                  </div>
+                </div>
+                <div class="sec-h"><span class="d"></span><span>通道</span></div>
+                <div class="ch-rows">
+                  <div class="ch-row">
+                    <div class="iw voice"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></div>
+                    <div class="b">
+                      <div class="n">语音 <span class="p"></span></div>
+                      <div class="m">Vosk · 已就绪</div>
+                    </div>
+                    <span class="cv">▸</span>
+                  </div>
+                  <div class="ch-row">
+                    <div class="iw keys"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="8" cy="12" r="1.5" fill="currentColor"/><circle cx="16" cy="12" r="1.5" fill="currentColor"/></svg></div>
+                    <div class="b">
+                      <div class="n">按键 <span class="p"></span></div>
+                      <div class="m">双击 · 3s 前</div>
+                    </div>
+                    <span class="cv">▸</span>
+                  </div>
+                  <div class="ch-row">
+                    <div class="iw softpad"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="8" cy="7" r="1" fill="currentColor"/><circle cx="12" cy="7" r="1" fill="currentColor"/><circle cx="16" cy="7" r="1" fill="currentColor"/></svg></div>
+                    <div class="b">
+                      <div class="n">软键 <span class="p off"></span></div>
+                      <div class="m">自动 · 隐藏</div>
+                    </div>
+                    <span class="cv">▸</span>
+                  </div>
+                  <div class="ch-row">
+                    <div class="iw camera"><svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+                    <div class="b">
+                      <div class="n">摄像 <span class="p off"></span></div>
+                      <div class="m">关 · 隐私允许</div>
+                    </div>
+                    <span class="cv">▸</span>
+                  </div>
+                </div>
+                <div class="sep"></div>
+                <div class="mic-r">
+                  <div class="iw"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4"/></svg></div>
+                  <div class="b">
+                    <div class="n">麦克风</div>
+                    <div class="m">开 · 默认</div>
+                  </div>
+                  <div class="tg"></div>
+                </div>
+                <div class="ft">
+                  <div class="l">
+                    <span class="fl primary">主窗口</span>
+                    <span class="fl">设置</span>
+                    <span class="fl">诊断</span>
+                  </div>
+                  <span class="q">⏻</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="device-meta">
+            <span class="dot"></span>
+            <span>已应用 4 处 · 自动保存到 <code style="background:rgba(26,45,74,.06);padding:1px 4px;border-radius:3px">tray_customization.json</code></span>
+          </div>
+        </div>
+
+        <!-- RIGHT: inspector -->
+        <div class="inspector">
+          <div class="insp-head">
+            <span class="ttl">属性</span>
+            <span class="dirty"><span class="dot"></span>未保存</span>
+          </div>
+
+          <!-- STYLE -->
+          <div class="insp-section">
+            <h4>样式 · Style</h4>
+            <div class="insp-row">
+              <div class="field">
+                <label>主题</label>
+                <select id="theme">
+                  <option value="auto">跟随系统</option>
+                  <option value="light">浅色</option>
+                  <option value="dark">深色</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>主色</label>
+                <div class="swatches" id="swatches">
+                  <span class="swatch is-active" style="background:#2a9cc4" data-color="#2a9cc4,#1e87ad,#e6f7fc" data-name="cyan"></span>
+                  <span class="swatch" style="background:#6d4ab0" data-color="#6d4ab0,#553c8a,#ede9fe" data-name="purple"></span>
+                  <span class="swatch" style="background:#2e7d4f" data-color="#2e7d4f,#1f5d39,#dcfce7" data-name="green"></span>
+                  <span class="swatch" style="background:#b9530a" data-color="#b9530a,#8c3f08,#fed7aa" data-name="orange"></span>
+                  <span class="swatch" style="background:#dc2626" data-color="#dc2626,#991b1b,#fecaca" data-name="red"></span>
+                  <span class="swatch" style="background:#5a7086" data-color="#5a7086,#3d4d5e,#e2e8f0" data-name="slate"></span>
+                </div>
+              </div>
+            </div>
+            <div class="insp-row">
+              <div class="field">
+                <label>密度</label>
+                <div class="radio-group">
+                  <span class="radio-opt is-active" data-density="1">Cozy</span>
+                  <span class="radio-opt" data-density="0.85">Compact</span>
+                </div>
+              </div>
+              <div class="field">
+                <label>图标风格</label>
+                <select>
+                  <option>Outline（细线）</option>
+                  <option>Filled（实心）</option>
+                  <option>Minimal（极简）</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- CONTENT -->
+          <div class="insp-section">
+            <h4>内容 · Content</h4>
+            <div class="field full" style="margin-bottom:8px">
+              <label style="font-size:11px;color:var(--on-surface);font-weight:600">显示哪些段（可拖动排序）</label>
+              <div class="check-list" style="grid-template-columns:1fr 1fr">
+                <label class="ck"><input type="checkbox" checked>Hero 状态</label>
+                <label class="ck"><input type="checkbox" checked id="hideEvent">最近事件</label>
+                <label class="ck"><input type="checkbox" checked>4 通道</label>
+                <label class="ck"><input type="checkbox" checked id="hideMic">麦克风行</label>
+              </div>
+            </div>
+            <div class="field full" style="margin-bottom:8px">
+              <label style="font-size:11px;color:var(--on-surface);font-weight:600">通道行</label>
+              <div class="check-list">
+                <label class="ck"><input type="checkbox" checked>语音</label>
+                <label class="ck"><input type="checkbox" checked>按键</label>
+                <label class="ck"><input type="checkbox" checked>软键盘</label>
+                <label class="ck"><input type="checkbox">摄像头</label>
+              </div>
+            </div>
+            <div class="field full">
+              <label style="font-size:11px;color:var(--on-surface);font-weight:600">深链入口</label>
+              <div class="check-list" style="grid-template-columns:1fr 1fr 1fr">
+                <label class="ck"><input type="checkbox" checked>主窗口</label>
+                <label class="ck"><input type="checkbox" checked>设置</label>
+                <label class="ck"><input type="checkbox" checked>诊断</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- EFFECTS -->
+          <div class="insp-section">
+            <h4>效果 · Effects</h4>
+            <div class="check-list" style="grid-template-columns:1fr 1fr">
+              <label class="ck"><input type="checkbox" checked>Hero 呼吸灯动画</label>
+              <label class="ck"><input type="checkbox" checked>通道状态点闪烁</label>
+              <label class="ck"><input type="checkbox" checked>Outcome chip（已发送/未发送）</label>
+              <label class="ck"><input type="checkbox">声音反馈（toggle 时）</label>
+            </div>
+            <div class="field" style="margin-top:8px">
+              <label>事件卡自动收起时机</label>
+              <select>
+                <option>永不自收起</option>
+                <option>5s 后</option>
+                <option>15s 后</option>
+                <option selected>下次事件触发时</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- CAPABILITIES -->
+          <div class="insp-section">
+            <h4>能力 · Capabilities</h4>
+            <div class="check-list" style="grid-template-columns:1fr 1fr">
+              <label class="ck"><input type="checkbox" checked>全局暂停按钮</label>
+              <label class="ck"><input type="checkbox" checked>深链 chevron</label>
+              <label class="ck"><input type="checkbox" checked>通道状态显示</label>
+              <label class="ck"><input type="checkbox">事件历史（5 条）</label>
+            </div>
+            <div class="insp-section" style="background:#fff7ed;border-color:#fed7aa;margin-top:10px;padding:7px 10px">
+              <div style="font-size:10.5px;color:#9a3412;line-height:1.5">
+                <b>🔒 以下项不可关闭</b>（核心安全功能）：暂停 / 继续按钮 · 退出入口 · 麦克风行 · Hero 状态。
+              </div>
+            </div>
+          </div>
+
+          <!-- footer actions -->
+          <div class="insp-footer">
+            <button class="btn ghost">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.7 3L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.7-3L3 16"/><path d="M3 21v-5h5"/></svg></span>
+              恢复默认
+            </button>
+            <button class="btn">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span>
+              另存为预设
+            </button>
+            <button class="btn primary" style="margin-left:auto">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span>
+              保存到托盘
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 4. Presets ============ -->
+  <section class="section">
+    <h2>④ 4 个内置预设</h2>
+    <p class="sub">用户切到 Presets Tab 能看到。每个预设就是一份命名的 <code>TrayCustomization</code>。</p>
+    <div class="presets">
+      <div class="preset is-active">
+        <div class="nm">默认 Default <span class="badge">当前</span></div>
+        <div class="desc">V5 完整版：状态+事件+4通道+麦+深链。适合大多数 vibecoder。</div>
+        <div class="mini-tray">
+          <div class="m1" style="width:100%"></div>
+          <div class="m2"></div><div class="m3"></div><div class="m4"></div>
+          <div class="m5" style="width:50%"></div>
+        </div>
+      </div>
+      <div class="preset">
+        <div class="nm">极简 Minimal</div>
+        <div class="desc">只显示 Hero 状态 + 麦静音。屏幕小、临时会议时用。</div>
+        <div class="mini-tray">
+          <div class="m1" style="width:60%"></div>
+          <div class="m2" style="width:40%"></div>
+        </div>
+      </div>
+      <div class="preset">
+        <div class="nm">力量 Power-User</div>
+        <div class="desc">完整 + 引擎健康 + 事件历史 5 条。调试 / 排查问题时用。</div>
+        <div class="mini-tray">
+          <div class="m1" style="width:100%"></div>
+          <div class="m2"></div><div class="m3"></div><div class="m4"></div>
+          <div class="m2"></div><div class="m3"></div><div class="m4"></div>
+          <div class="m5" style="width:80%"></div>
+        </div>
+      </div>
+      <div class="preset">
+        <div class="nm">演示 Demo</div>
+        <div class="desc">大字号、高对比度，演示 / 录视频时用。强制浅色 + 圆角放大。</div>
+        <div class="mini-tray" style="gap:4px">
+          <div class="m1" style="width:100%;height:10px"></div>
+          <div class="m2" style="width:90%;height:6px"></div>
+          <div class="m2" style="width:70%;height:6px"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 5. Data model + integration ============ -->
+  <section class="section">
+    <h2>⑤ 数据模型 + 与 V5 托盘的集成</h2>
+    <p class="sub">Rust 端独立 struct，TS 端 specta 生成；托盘 CSS 全部走 var，定制器只赋值不动结构。</p>
+    <div class="data-model">
+      <div>
+        <div style="font-size:11px;color:var(--on-surface-muted);font-weight:700;margin-bottom:4px">Rust · tray_customization.rs</div>
+<div class="code"><span class="c">// 与 V5 tray_state.rs 同目录</span>
+<span class="b">#[derive(Serialize, Deserialize, Clone, Debug)]</span>
+<span class="b">#[serde(rename_all = <span class="s">"camelCase"</span>)]</span>
+<span class="b">pub struct</span> <span class="t">TrayCustomization</span> {
+    <span class="b">pub</span> <span class="k">version</span>: <span class="t">u32</span>,                    <span class="c">// schema version</span>
+    <span class="b">pub</span> <span class="k">active_preset</span>: <span class="t">Option</span>&lt;<span class="t">String</span>&gt;,  <span class="c">// "default"/"minimal"/"power"/"demo"/用户自定义</span>
+    <span class="b">pub</span> <span class="k">style</span>: <span class="t">StyleConfig</span>,
+    <span class="b">pub</span> <span class="k">content</span>: <span class="t">ContentConfig</span>,
+    <span class="b">pub</span> <span class="k">effects</span>: <span class="t">EffectsConfig</span>,
+    <span class="b">pub</span> <span class="k">capabilities</span>: <span class="t">CapabilitiesConfig</span>,
+}
+
+<span class="b">pub struct</span> <span class="t">StyleConfig</span> {
+    <span class="b">pub</span> <span class="k">theme</span>: <span class="t">String</span>,                  <span class="c">// "auto"|"light"|"dark"</span>
+    <span class="b">pub</span> <span class="k">accent</span>: <span class="t">String</span>,                 <span class="c">// "cyan"|"purple"|"green"|"orange"|"red"|"slate"|"custom"</span>
+    <span class="b">pub</span> <span class="k">accent_hex</span>: <span class="t">Option</span>&lt;<span class="t">String</span>&gt;,  <span class="c">// 当 accent=custom 时</span>
+    <span class="b">pub</span> <span class="k">density</span>: <span class="t">String</span>,                <span class="c">// "compact"|"cozy"</span>
+    <span class="b">pub</span> <span class="k">icon_set</span>: <span class="t">String</span>,               <span class="c">// "outline"|"filled"|"minimal"</span>
+}
+
+<span class="b">pub struct</span> <span class="t">ContentConfig</span> {
+    <span class="b">pub</span> <span class="k">visible_sections</span>: <span class="t">Vec</span>&lt;<span class="t">String</span>&gt;,    <span class="c">// ["hero","event","channels","mic","footer"] 拖动排序</span>
+    <span class="b">pub</span> <span class="k">visible_channels</span>: <span class="t">Vec</span>&lt;<span class="t">String</span>&gt;,  <span class="c">// ["voice","keys","softPad","camera"]</span>
+    <span class="b">pub</span> <span class="k">visible_deep_links</span>: <span class="t">Vec</span>&lt;<span class="t">String</span>&gt;,<span class="c">// ["main","settings","diagnostic"]</span>
+}
+
+<span class="b">pub struct</span> <span class="t">EffectsConfig</span> {
+    <span class="b">pub</span> <span class="k">pulse_animation</span>: <span class="t">bool</span>,
+    <span class="b">pub</span> <span class="k">outcome_chip</span>: <span class="t">bool</span>,
+    <span class="b">pub</span> <span class="k">sound_on_toggle</span>: <span class="t">bool</span>,
+    <span class="b">pub</span> <span class="k">event_auto_collapse</span>: <span class="t">String</span>,  <span class="c">// "never"|"5s"|"15s"|"on_next"</span>
+}
+
+<span class="b">pub struct</span> <span class="t">CapabilitiesConfig</span> {
+    <span class="b">pub</span> <span class="k">global_pause_button</span>: <span class="t">bool</span>,      <span class="c">// 默认 true，UI 不让关</span>
+    <span class="b">pub</span> <span class="k">deep_link_chevron</span>: <span class="t">bool</span>,
+    <span class="b">pub</span> <span class="k">channel_state_display</span>: <span class="t">bool</span>,
+    <span class="b">pub</span> <span class="k">event_history_size</span>: <span class="t">u8</span>,        <span class="c">// 0=关, 1=最近1条, 5=5条</span>
+}
+
+<span class="c">// 加载与持久化</span>
+<span class="b">pub fn</span> load() -&gt; <span class="t">TrayCustomization</span>     <span class="c">// 从 data_dir/tray_customization.json 读</span>
+<span class="b">pub fn</span> save(cfg: <span class="t">&amp;TrayCustomization</span>)      <span class="c">// 写回</span>
+
+<span class="c">// 应用到托盘 CSS</span>
+<span class="b">pub fn</span> render_css_vars(c: <span class="t">&amp;TrayCustomization</span>) -&gt; <span class="t">String</span> {
+    <span class="c">// 返回 "--tray-accent: #2a9cc4; --tray-density: 0.85; ..."</span>
+}
+
+<span class="c">// 4 个内置 preset</span>
+<span class="b">pub const</span> PRESETS: <span class="t">&amp;[</span>(<span class="t">&amp;str</span>, <span class="t">TrayCustomization</span>)<span class="t">]</span> = &amp;[
+    (<span class="s">"default"</span>, ...),
+    (<span class="s">"minimal"</span>, ...),
+    (<span class="s">"power"</span>,   ...),
+    (<span class="s">"demo"</span>,    ...),
+];
+</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--on-surface-muted);font-weight:700;margin-bottom:4px">TS · tray-customization.ts (specta 生成)</div>
+<div class="code"><span class="c">// specta 自动从 Rust 生成</span>
+<span class="b">export interface</span> <span class="t">TrayCustomization</span> {
+  <span class="k">version</span>: <span class="t">number</span>;
+  <span class="k">activePreset</span>: <span class="t">string</span> | <span class="t">null</span>;
+  <span class="k">style</span>: {
+    <span class="k">theme</span>: <span class="s">'auto'</span> | <span class="s">'light'</span> | <span class="s">'dark'</span>;
+    <span class="k">accent</span>: <span class="s">'cyan'</span> | <span class="s">'purple'</span> | <span class="s">'green'</span> | <span class="s">'orange'</span> | <span class="s">'red'</span> | <span class="s">'slate'</span> | <span class="s">'custom'</span>;
+    <span class="k">accentHex</span>?: <span class="t">string</span>;
+    <span class="k">density</span>: <span class="s">'compact'</span> | <span class="s">'cozy'</span>;
+    <span class="k">iconSet</span>: <span class="s">'outline'</span> | <span class="s">'filled'</span> | <span class="s">'minimal'</span>;
+  };
+  <span class="k">content</span>: {
+    <span class="k">visibleSections</span>: <span class="t">string</span>[];
+    <span class="k">visibleChannels</span>: <span class="t">string</span>[];
+    <span class="k">visibleDeepLinks</span>: <span class="t">string</span>[];
+  };
+  <span class="k">effects</span>: {
+    <span class="k">pulseAnimation</span>: <span class="t">boolean</span>;
+    <span class="k">outcomeChip</span>: <span class="t">boolean</span>;
+    <span class="k">soundOnToggle</span>: <span class="t">boolean</span>;
+    <span class="k">eventAutoCollapse</span>: <span class="s">'never'</span> | <span class="s">'5s'</span> | <span class="s">'15s'</span> | <span class="s">'on_next'</span>;
+  };
+  <span class="k">capabilities</span>: {
+    <span class="k">globalPauseButton</span>: <span class="t">boolean</span>;     <span class="c">// UI 锁住不让关</span>
+    <span class="k">deepLinkChevron</span>: <span class="t">boolean</span>;
+    <span class="k">channelStateDisplay</span>: <span class="t">boolean</span>;
+    <span class="k">eventHistorySize</span>: <span class="t">number</span>;          <span class="c">// 0/1/5</span>
+  };
+}
+
+<span class="c">// 渲染：把 customization 注入到 tray 根元素</span>
+<span class="b">function</span> applyCustomization(
+  trayEl: <span class="t">HTMLElement</span>,
+  c: <span class="t">TrayCustomization</span>
+) {
+  trayEl.style.setProperty(<span class="s">'--tray-accent'</span>,       accentColor(c));
+  trayEl.style.setProperty(<span class="s">'--tray-accent-deep'</span>,  accentDeep(c));
+  trayEl.style.setProperty(<span class="s">'--tray-accent-soft'</span>,  accentSoft(c));
+  trayEl.style.setProperty(<span class="s">'--tray-density'</span>,     densityValue(c));
+  trayEl.dataset.hideEvent     = <span class="t">String</span>(!c.content.visibleSections.includes(<span class="s">'event'</span>));
+  trayEl.dataset.hideMic       = <span class="t">String</span>(!c.content.visibleSections.includes(<span class="s">'mic'</span>));
+  trayEl.dataset.hideChannels  = <span class="t">String</span>(!c.content.visibleSections.includes(<span class="s">'channels'</span>));
+  trayEl.dataset.theme         = c.style.theme;
+  <span class="c">// 节流写入避免拖动时 jank</span>
+}
+</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 6. Steps ============ -->
+  <section class="section">
+    <h2>⑥ 实施步骤（按你的纪律：一次一步、独立 commit）</h2>
+    <p class="sub">每步 0 风险，单独 commit + 跑一遍 + review。前 2 步是地基，独立成立；后 4 步逐步接入 V5。</p>
+    <div class="steps">
+      <div class="step">
+        <span class="n">1</span>
+        <div class="body">
+          <b>TrayCustomization 数据结构</b><br/>
+          新建 <code>src-tauri/src/tray_customization.rs</code>，定义 <code>TrayCustomization / StyleConfig / ContentConfig / EffectsConfig / CapabilitiesConfig</code>。<br/>
+          加 <code>load() / save()</code> 走 <code>data_dir/tray_customization.json</code>。4 个内置 preset 写死在 <code>PRESETS</code> 常量里。<br/>
+          <span class="delta">commit: tray-custom: step 1 - data model + preset constants + load/save</span>
+        </div>
+      </div>
+      <div class="step">
+        <span class="n">2</span>
+        <div class="body">
+          <b>render_css_vars 注入器</b><br/>
+          <code>render_css_vars(&cfg) -&gt; String</code> 把 customization 转成 <code>--tray-accent: #...; --tray-density: 0.85; ...</code>。<br/>
+          写一个单元测试覆盖 4 个 preset 的渲染输出。<br/>
+          <span class="delta">commit: tray-custom: step 2 - css-vars renderer + 4 preset tests</span>
+        </div>
+      </div>
+      <div class="step">
+        <span class="n">3</span>
+        <div class="body">
+          <b>tray-menu.html 接入 V5 + customization</b><br/>
+          V5 重构那 6 步里的 Step 4（前端组件化）此时合并进行：组件的根节点接 <code>applyCustomization(el, cfg)</code>。<br/>
+          旧字段删除干净，customization 写死的 <code>"default"</code> preset 先用着，UI 还在旧地方。<br/>
+          <span class="delta">commit: tray-v5: step 4+tray-custom: step 3 - HTML refactor wired to customization</span>
+        </div>
+      </div>
+      <div class="step">
+        <span class="n">4</span>
+        <div class="body">
+          <b>soft-pad-flow-nodes 第 3 个换名 + 加 hero 区</b><br/>
+          把 <code>data-soft-pad-node="timeline"</code> 改成 <code>"trayCustomize"</code>，对应 <code>soft-pad-face-tray</code> 新 div。<br/>
+          旧的 <code>softPadFlowNodeTimelineTitle</code> 文本改"托盘菜单定制"。<br/>
+          时间胶囊相关 JS / CSS 暂不删（保留深链回退）。<br/>
+          <span class="delta">commit: soft-pad: step 4 - 3rd flow-node swapped to tray customizer shell</span>
+        </div>
+      </div>
+      <div class="step">
+        <span class="n">5</span>
+        <div class="body">
+          <b>定制器页面 UI（Visual / JSON / Presets 三 tab）</b><br/>
+          新建 <code>src/js/features/softpad/tray-customizer.js</code>：3 个 tab + 表单 + live preview。<br/>
+          左侧 preview = 真实 tray-menu.html iframe + postMessage 同步 customization。<br/>
+          JSON tab 用 CodeMirror 5 轻量（项目已有依赖的话）或纯 textarea + JSON.parse 校验。<br/>
+          <span class="delta">commit: tray-custom: step 5 - 3-tab customizer page wired to live preview</span>
+        </div>
+      </div>
+      <div class="step">
+        <span class="n">6</span>
+        <div class="body">
+          <b>保存路径 + 时间胶囊彻底下线</b><br/>
+          定制器"保存"按钮 → <code>cmd_tray_customization_save</code> → Rust 写盘 + <code>tray::refresh_customization</code>。<br/>
+          验证：保存后关闭 tray → 重新打开，customization 已生效。<br/>
+          时间胶囊相关 DOM / JS / 资源（<code>soft-pad-time-machine-ui.js</code> 等）从 import 列表删除。<br/>
+          <span class="delta">commit: tray-custom: step 6 - save IPC + retire time capsule</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // Tiny live-preview wiring (purely for the prototype demo)
+    const root = document.documentElement;
+    const swatches = document.querySelectorAll('.swatch');
+    swatches.forEach(sw => {
+      sw.addEventListener('click', () => {
+        swatches.forEach(s => s.classList.remove('is-active'));
+        sw.classList.add('is-active');
+        const [a, ad, as] = sw.dataset.color.split(',');
+        root.style.setProperty('--tray-accent', a);
+        root.style.setProperty('--tray-accent-deep', ad);
+        root.style.setProperty('--tray-accent-soft', as);
+      });
+    });
+    document.querySelectorAll('.radio-opt').forEach(r => {
+      r.addEventListener('click', () => {
+        r.parentNode.querySelectorAll('.radio-opt').forEach(x => x.classList.remove('is-active'));
+        r.classList.add('is-active');
+        root.style.setProperty('--tray-density', r.dataset.density);
+      });
+    });
+    const themeEl = document.getElementById('theme');
+    themeEl.addEventListener('change', () => {
+      const frame = document.getElementById('deviceFrame');
+      frame.classList.toggle('dark', themeEl.value === 'dark');
+    });
+    document.getElementById('hideEvent').addEventListener('change', e => {
+      document.getElementById('trayPreview').dataset.hideEvent = String(!e.target.checked);
+    });
+    document.getElementById('hideMic').addEventListener('change', e => {
+      document.getElementById('trayPreview').dataset.hideMic = String(!e.target.checked);
+    });
+  </script>
+
+</body>
+</html>

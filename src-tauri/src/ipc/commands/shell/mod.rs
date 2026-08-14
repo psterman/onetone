@@ -11,6 +11,7 @@ mod pad_status_diagnose_cmd;
 mod codex_pad_binding_diagnose_cmd;
 mod prefs;
 mod tray;
+mod tray_customization_cmd;
 mod update;
 mod window;
 
@@ -27,5 +28,6 @@ pub use pad_status_diagnose_cmd::*;
 pub use codex_pad_binding_diagnose_cmd::*;
 pub use prefs::*;
 pub use tray::*;
+pub use tray_customization_cmd::*;
 pub use update::*;
 pub use window::*;
