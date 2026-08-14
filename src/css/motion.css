@@ -52,6 +52,18 @@
   animation-iteration-count: infinite;
 }
 
+@keyframes ot-status-pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.ot-status-pulse-slow {
+  animation-name: ot-status-pulse-slow;
+  animation-duration: 3s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
 .ot-shake {
   animation-name: ot-shake;
   animation-duration: var(--motion-duration-shake);

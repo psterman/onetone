@@ -439,6 +439,38 @@ pub fn public_snapshot() -> AttentionPublicSnapshot {
 }
 
 /// Primary attention state for an agent (NeedsInput preferred, else lifecycle).
+/// Session id from NeedsInput/Error Attention observed within `within_ms` (wall clock via Instant age).
+pub fn recent_attention_session(agent: AgentKind, within_ms: u64) -> Option<String> {
+    let now = Instant::now();
+    let window = Duration::from_millis(within_ms);
+    with_store(|inner| {
+        prune_expired(inner, now);
+        let mut best: Option<(Instant, String)> = None;
+        for s in inner.signals.values().chain(inner.lifecycle.values()) {
+            if s.agent != agent {
+                continue;
+            }
+            if !matches!(s.state, AttentionState::NeedsInput | AttentionState::Error) {
+                continue;
+            }
+            let Some(sid) = s.session_id.as_ref().map(|x| x.trim()).filter(|x| !x.is_empty()) else {
+                continue;
+            };
+            if now.saturating_duration_since(s.observed_at) > window {
+                continue;
+            }
+            match &best {
+                None => best = Some((s.observed_at, sid.to_string())),
+                Some((t, _)) if s.observed_at >= *t => {
+                    best = Some((s.observed_at, sid.to_string()));
+                }
+                _ => {}
+            }
+        }
+        best.map(|(_, sid)| sid)
+    })
+}
+
 pub fn primary_state_for(agent: AgentKind) -> Option<AttentionState> {
     let now = Instant::now();
     with_store(|inner| {

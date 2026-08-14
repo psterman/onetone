@@ -39,13 +39,15 @@ Loopback（Labs / 状态灯开启时 ensure）监听 `127.0.0.1:8796`：
 
 产品开关字段：`codexMicroPad.codexStatusLightsEnabled`（独立语义，不是键位映射）。
 
-## 手动配置 Hooks（不要自动写）
+## 手动配置 Hooks（推荐先 inspect，再一键或手写）
 
 示例：[`scripts/codex-hooks.example.json`](../scripts/codex-hooks.example.json)
 
 - Codex 0.142：根对象**只能**有 `"hooks"`；不能有 `description`
-- 把 `REPO_ROOT` 换成仓库绝对路径（Windows 用正斜杠），或直接用 Pad 面板「复制 Hook 配置」
-- 本仓库脚本**不会**静默改你的 `~/.codex`
+- Soft Pad Hub：**复制 Hook 配置** 或 **一键安装 hooks**（备份 `hooks.json.onetone-backup-*` 后 merge）
+- `cmd_codex_hook_setup_status.inspectFiles` 会列出 Codex 实际相关路径（`~/.codex/hooks.json`、`config.toml` hooks 开关）
+- 安装后仍须：在 `~/.codex/config.toml` 的 `[features]` 下设 `hooks = true`，并用 **Codex CLI** `/hooks` → Trust
+- 不会静默覆盖你的非 OneTone 段以外的自定义（merge 按事件键写入探针）
 
 覆盖事件：`SessionStart`、`UserPromptSubmit`、`PermissionRequest`、`Stop`、`SubagentStart`、`SubagentStop`。
 

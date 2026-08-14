@@ -2675,10 +2675,14 @@
       '<div class="codex-pad-mgr__hook-actions">' +
       '<button type="button" class="codex-micro-pad__btn" data-act="hook-copy">' +
       esc(t('codexMicroPadHookCopy', '复制 Hook 配置')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn is-primary" data-act="hook-install">' +
+      esc(t('codexMicroPadHookInstall', '一键安装 hooks')) + '</button>' +
       '<button type="button" class="codex-micro-pad__btn" data-act="hook-docs">' +
       esc(t('codexMicroPadHookDocs', '打开说明')) + '</button>' +
       '<button type="button" class="codex-micro-pad__btn" data-act="hook-refresh">' +
       esc(t('codexMicroPadHookRefresh', '刷新状态')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="clear-errors">' +
+      esc(t('codexMicroPadClearErrors', '清除红灯')) + '</button>' +
       '</div>' +
       (includeDiag ? renderPadDiagDetails() : '') +
       '<p class="codex-pad-mgr__hint is-error" data-hook-error hidden></p>' +
@@ -4953,6 +4957,43 @@
       } catch (e) {
         toast(t('codexMicroPadHookCopyFail', '无法生成 Hook 配置'));
       }
+    });
+  }
+
+  function installCodexHooks(m) {
+    return refreshHookSetupStatus(m).then(function (st) {
+      if (st && st.canInstall === false) {
+        toast(t('codexMicroPadHookInstallNoProbe', '找不到探针脚本，无法安装'));
+        return;
+      }
+      var files = (st && st.inspectFiles) || [];
+      var summary = files.map(function (f) {
+        return (f.role || '') + ': ' + (f.exists ? 'ok' : 'missing') + ' — ' + (f.detail || '');
+      }).join('\n');
+      if (summary) console.info('[codex-hooks inspect]\n' + summary);
+      return padInvoke('cmd_codex_hook_install_confirm').then(function (r) {
+        if (r && r.ok) {
+          toast(t('codexMicroPadHookInstalled', '已写入 ~/.codex/hooks.json（请在 Codex /hooks 信任）'));
+          return refreshHookSetupStatus(m);
+        }
+        toast(t('codexMicroPadHookInstallFail', '安装失败') + ': ' + ((r && r.message) || ''));
+      });
+    }).catch(function (e) {
+      toast(t('codexMicroPadHookInstallFail', '安装失败') + ': ' + String(e || ''));
+    });
+  }
+
+  function clearPadErrors(opts) {
+    opts = opts || {};
+    return padInvoke('cmd_pad_status_clear_errors', {
+      sessionId: opts.sessionId || null,
+      laneId: opts.laneId || null
+    }).then(function (r) {
+      toast(t('codexMicroPadErrorsCleared', '已清除红灯'));
+      refreshPadDiagnose();
+      return r;
+    }).catch(function () {
+      toast(t('codexMicroPadClearErrorsFail', '清除失败'));
     });
   }
 
@@ -8243,6 +8284,16 @@
     if (hookCopyBtn && !hookCopyBtn.__softPadBound) {
       hookCopyBtn.__softPadBound = true;
       hookCopyBtn.addEventListener('click', function () { copyHookDraft(m); });
+    }
+    var hookInstallBtn = body.querySelector('[data-act="hook-install"]');
+    if (hookInstallBtn && !hookInstallBtn.__softPadBound) {
+      hookInstallBtn.__softPadBound = true;
+      hookInstallBtn.addEventListener('click', function () { installCodexHooks(m); });
+    }
+    var clearErrorsBtn = body.querySelector('[data-act="clear-errors"]');
+    if (clearErrorsBtn && !clearErrorsBtn.__softPadBound) {
+      clearErrorsBtn.__softPadBound = true;
+      clearErrorsBtn.addEventListener('click', function () { clearPadErrors({}); });
     }
     var hookDocsBtn = body.querySelector('[data-act="hook-docs"]');
     if (hookDocsBtn && !hookDocsBtn.__softPadBound) {

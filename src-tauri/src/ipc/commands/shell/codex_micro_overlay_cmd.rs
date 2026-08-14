@@ -154,3 +154,80 @@ pub async fn cmd_soft_pad_focus_agent(app: AppHandle, kind: String) -> Result<se
         Err(err) => Err(err.reason("soft_pad_focus")),
     }
 }
+
+/// Chip / status host / Soft RGB → focus exact session (lane), else fallback app.
+#[tauri::command]
+pub async fn cmd_soft_pad_focus_session(
+    app: AppHandle,
+    kind: String,
+    lane_id: Option<String>,
+    session_id: Option<String>,
+    click_kind: Option<String>,
+) -> Result<serde_json::Value, String> {
+    use crate::agent_lane::{
+        focus_session, FocusClickKind, FocusTargetHint,
+    };
+    use crate::soft_pad_runtime::AgentKind;
+
+    let kind_l = kind.trim().to_ascii_lowercase();
+    let agent = AgentKind::from_kind_str(&kind_l).ok_or_else(|| "unknown_agent".to_string())?;
+    let click = match click_kind
+        .as_deref()
+        .unwrap_or("chip")
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "status_host" | "status-host" => FocusClickKind::StatusHost,
+        "soft_rgb" | "soft-rgb" | "rgb" => FocusClickKind::SoftRgb,
+        _ => FocusClickKind::Chip,
+    };
+    let hint = FocusTargetHint {
+        lane_id,
+        session_id,
+    };
+    let app2 = app.clone();
+    let kind_owned = kind_l.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let r = focus_session(agent, hint, click);
+        if r.result == "fallback_app" {
+            let target = match kind_owned.as_str() {
+                "codex" => crate::app_chat_workflow::CODEX_APP_TARGET_ID,
+                "claude" => crate::app_chat_workflow::CLAUDE_CODE_APP_TARGET_ID,
+                "cursor" => crate::app_chat_workflow::CURSOR_APP_TARGET_ID,
+                "minimax" => crate::app_chat_workflow::MINIMAX_APP_TARGET_ID,
+                "workbuddy" => crate::app_chat_workflow::WORKBUDDY_APP_TARGET_ID,
+                "trae" => crate::app_chat_workflow::TRAE_APP_TARGET_ID,
+                "qoder" => crate::app_chat_workflow::QODER_APP_TARGET_ID,
+                _ => "",
+            };
+            if !target.is_empty() {
+                let _ = crate::app_chat_workflow::focus_composer_only(&app2, target, 800);
+            }
+        }
+        r
+    })
+    .await
+    .map_err(|e| format!("focus_session_join:{e}"))?;
+
+    Ok(serde_json::json!({
+        "ok": result.ok,
+        "result": result.result,
+        "laneId": result.lane_id,
+        "detail": result.detail,
+        "clickKind": result.click_kind,
+    }))
+}
+
+/// Status-host key gate for overlay (idle pass / running swallow / attention intercept).
+#[tauri::command]
+pub fn cmd_soft_pad_status_host_gate(app_status: String) -> serde_json::Value {
+    use crate::agent_lane::{status_host_click_gate, StatusHostClickGate};
+    let gate = status_host_click_gate(&app_status);
+    let action = match gate {
+        StatusHostClickGate::PassThrough => "pass",
+        StatusHostClickGate::Swallow => "swallow",
+        StatusHostClickGate::InterceptFocus => "intercept",
+    };
+    serde_json::json!({ "action": action, "appStatus": app_status })
+}

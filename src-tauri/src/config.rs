@@ -1915,6 +1915,18 @@ pub struct VoiceConfig {
     /// target app is not. Still gated by settings/setup/recording overlays.
     #[serde(default, rename = "softPadForceOpen")]
     pub soft_pad_force_open: bool,
+    /// Phase 1: chip/status/RGB click → focus session (not only app).
+    #[serde(default = "default_true", rename = "softPadFocusSessionEnabled")]
+    pub soft_pad_focus_session_enabled: bool,
+    /// Phase 2a: Soft RGB aggregates across lanes (error veto + rank).
+    #[serde(default = "default_true", rename = "softPadRgbAggregateEnabled")]
+    pub soft_pad_rgb_aggregate_enabled: bool,
+    /// Phase 2b: persist LaneStore to soft-pad-sessions.json.
+    #[serde(default = "default_true", rename = "softPadSessionPersistEnabled")]
+    pub soft_pad_session_persist_enabled: bool,
+    /// Soft Pad waiting/error OS notifications (Hub preference).
+    #[serde(default, rename = "softPadStatusNotifyEnabled")]
+    pub soft_pad_status_notify_enabled: bool,
     #[serde(default, rename = "cameraPrefs")]
     pub camera_prefs: CameraPrefs,
     #[serde(default, rename = "sounds")]
@@ -3454,6 +3466,10 @@ impl Default for VoiceConfig {
             coach_hud_enabled: false,
             follow_foreground_app_scenario: false,
             soft_pad_force_open: false,
+            soft_pad_focus_session_enabled: true,
+            soft_pad_rgb_aggregate_enabled: true,
+            soft_pad_session_persist_enabled: true,
+            soft_pad_status_notify_enabled: false,
             camera_prefs: CameraPrefs::default(),
             sounds: SoundsConfig::default(),
             start_minimized_to_tray: false,

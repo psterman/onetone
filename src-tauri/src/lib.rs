@@ -278,6 +278,8 @@ pub fn run() {
     let mut initial = load_config();
     app_log::early_line("startup", "config loaded");
     initial.migrate();
+    crate::agent_lane::sync_flags_from_config(&initial);
+    crate::agent_lane::persist::hydrate_on_boot();
     let safe_mode = std::env::var("ONETONE_SAFE_MODE").ok().as_deref() == Some("1");
     app_log::early_line("startup", "building app state");
 
@@ -958,6 +960,8 @@ pub fn run() {
             ipc::cmd_codex_micro_overlay_toggle_pad_mode,
             ipc::cmd_codex_micro_overlay_toggle_joy_panel,
             ipc::cmd_soft_pad_focus_agent,
+            ipc::cmd_soft_pad_focus_session,
+            ipc::cmd_soft_pad_status_host_gate,
             ipc::cmd_codex_micro_pad_fire,
             ipc::cmd_soft_pad_runtime_snapshot,
             ipc::cmd_soft_pad_set_follow,
@@ -995,7 +999,9 @@ pub fn run() {
             ipc::cmd_codex_micro_pad_get_readiness,
             ipc::cmd_codex_status_lights_set,
             ipc::cmd_codex_hook_setup_status,
+            ipc::cmd_codex_hook_install_confirm,
             ipc::cmd_pad_status_diagnose,
+            ipc::cmd_pad_status_clear_errors,
             ipc::cmd_claude_activity_inject,
             ipc::cmd_claude_activity_clear,
             ipc::cmd_claude_hook_setup_status,

@@ -2,10 +2,13 @@
 //! Runtime only: does not write session assignments into mapping.
 
 pub mod app_server_bridge;
+pub mod cwd_focus;
 pub mod dispatch_lane;
+pub mod focus_session;
 pub mod model;
 pub mod nav;
 pub mod page;
+pub mod persist;
 pub mod slots;
 pub mod store;
 
@@ -13,6 +16,11 @@ pub use dispatch_lane::{
     begin_lane_press_lease, end_lane_press_lease, lookup_lane_ticket_by_micro,
     lookup_lane_ticket_by_physical, navigate_lane, physical_lane_micro_key,
     LaneDispatchTicket,
+};
+pub use focus_session::{
+    ambient_ui_status, focus_session, focus_session_enabled, kpi_snapshot, resolve_focus_target,
+    status_host_click_gate, sync_flags_from_config, FocusClickKind, FocusSessionResult,
+    FocusTargetHint, StatusHostClickGate,
 };
 pub use model::{
     AgentLane, LaneKey, LaneState, NavigationCapabilities, NavigationTarget, PageKey,

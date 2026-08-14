@@ -556,6 +556,12 @@ pub struct CodexMicroOverlaySnapshot {
     pub app_last_source: String,
     pub app_last_seen_at: u64,
     pub app_status: String,
+    /// Soft RGB / chassis data-light aggregate (error veto + cross-lane rank). Status host still uses app_status.
+    #[serde(default)]
+    pub ambient_status: String,
+    /// breathing | slow | flash | empty — Soft RGB / overlay pulse hint.
+    #[serde(default)]
+    pub rgb_pulse: String,
     pub app_age_ms: u64,
     /// Mirror of `codexMicroPad.codexStatusLightsEnabled` on the active Codex mapping.
     pub app_state_enabled: bool,
@@ -2182,6 +2188,22 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         app_task_id,
         app_session_id,
     ) = app_fields_from_pad_core();
+    let ambient_status = {
+        use crate::soft_pad_runtime::AgentKind;
+        let kinds: Vec<AgentKind> = [
+            AgentKind::Codex,
+            AgentKind::Claude,
+            AgentKind::Cursor,
+            AgentKind::WorkBuddy,
+            AgentKind::Trae,
+            AgentKind::Qoder,
+            AgentKind::MiniMax,
+        ]
+        .into_iter()
+        .filter(|k| agent_status_light_enabled(cfg, *k))
+        .collect();
+        crate::agent_lane::ambient_ui_status(&app_status, &kinds)
+    };
     let foreground_agent = foreground_agent_kind();
     let vendor_rgb = vendor.rgb.as_ref().map(|c| CodexMicroOverlayRgb {
         r: c.r,
@@ -2212,7 +2234,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             });
     let rgb = resolve_overlay_rgb(
         app_state_enabled,
-        &app_status,
+        &ambient_status,
         &pad_status,
         vendor_rgb,
         &ambient_mode,
@@ -2341,7 +2363,9 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             app_last_event,
             app_last_source,
             app_last_seen_at,
-            app_status,
+            app_status: app_status.clone(),
+            ambient_status: ambient_status.clone(),
+            rgb_pulse: rgb_pulse_for(&ambient_status),
             app_age_ms,
             app_state_enabled,
             app_confidence,
@@ -2767,7 +2791,9 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         app_last_event,
         app_last_source,
         app_last_seen_at,
-        app_status,
+        app_status: app_status.clone(),
+        ambient_status: ambient_status.clone(),
+        rgb_pulse: rgb_pulse_for(&ambient_status),
         app_age_ms,
         app_state_enabled,
         app_confidence,
@@ -2985,6 +3011,15 @@ fn foreground_agent_kind() -> String {
         .and_then(|id| crate::soft_pad_runtime::AgentKind::from_app_target(id.trim()))
         .map(|k| k.as_str().to_string())
         .unwrap_or_default()
+}
+
+fn rgb_pulse_for(status: &str) -> String {
+    match status.trim() {
+        "running" | "working" | "listening" => "breathing".into(),
+        "needs_input" => "slow".into(),
+        "error" | "failed" => "flash".into(),
+        _ => String::new(),
+    }
 }
 
 fn app_fields_from_pad_core() -> (

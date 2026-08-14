@@ -1696,6 +1696,7 @@
     function applyPadLightGlow(s){
       var appOn=!!(s&&(s.appStateEnabled||s.app_state_enabled));
       var appSt=String(s&&(s.appStatus||s.app_status)||'').trim()||'idle';
+      var ambient=String(s&&(s.ambientStatus||s.ambient_status)||'').trim();
       backendAppLightsOn=appOn;
       backendAppStatus=appSt;
       var padSt=effectivePadStatus();
@@ -1708,9 +1709,14 @@
       var fromAgents=Rank&&Rank.padLightFromRanked
         ? Rank.padLightFromRanked(s, byKind, resolveUsageFocus(s), agentBarRecency)
         : '';
-      // Chips are per-agent; singleton appStatus stays idle when another agent is live.
-      var light=fromAgents || (appOn && appSt && appSt!=='idle' ? appSt : padSt);
+      // Soft RGB / chassis prefer ambient aggregate; chips still inform when richer.
+      var light=fromAgents || (ambient&&ambient!=='idle' ? ambient : (appOn && appSt && appSt!=='idle' ? appSt : padSt));
       wrap.setAttribute('data-light', light);
+      maybeNotifyAttention(light);
+      var pulse=String(s&&(s.rgbPulse||s.rgb_pulse)||'').trim();
+      wrap.classList.toggle('ot-status-pulse', pulse==='breathing');
+      wrap.classList.toggle('ot-status-pulse-slow', pulse==='slow');
+      wrap.classList.toggle('is-status-flash', pulse==='flash');
 
       // Soft RGB Output Adapter: color only from snapshot.rgb (Rust), never FE palette.
       var rgb=null;
@@ -1718,10 +1724,27 @@
       if(!rgb){
         wrap.classList.remove('has-rgb-glow');
         wrap.style.removeProperty('--overlay-rgb-glow');
+        wrap.removeAttribute('role');
+        wrap.removeAttribute('tabindex');
         return;
       }
       wrap.classList.add('has-rgb-glow');
       wrap.style.setProperty('--overlay-rgb-glow', 'rgba('+rgb.r+','+rgb.g+','+rgb.b+',0.42)');
+      wrap.setAttribute('role','button');
+      wrap.setAttribute('tabindex','0');
+      if(!wrap.__softRgbFocusBound){
+        wrap.__softRgbFocusBound=true;
+        wrap.addEventListener('click',function(e){
+          if(e.target&&e.target.closest&&e.target.closest('[data-micro-key],button,a,input')) return;
+          if(!wrap.classList.contains('has-rgb-glow')) return;
+          var snap=lastSnap||{};
+          var kind=String(snap.appAgent||snap.app_agent||snap.appliedAgent||snap.applied_agent||resolveUsageFocus(snap)||'codex').trim()||'codex';
+          setUsageFocusFromUi(kind,{
+            sessionId:String(snap.appSessionId||snap.app_session_id||'').trim(),
+            clickKind:'soft_rgb'
+          });
+        });
+      }
     }
 
     function syncEncSwitchDom(){
@@ -2013,6 +2036,32 @@
         if(id==='ENC'){ bindEnc(el); return; }
         el.addEventListener('pointerdown',function(e){
           if(e.button!=null&&e.button!==0) return;
+          var snap=lastSnap||{};
+          var statusHost=String(snap.statusLightMicroKeyId||snap.status_light_micro_key_id||'').trim();
+          if(statusHost&&id===statusHost){
+            var appSt=String(snap.appStatus||snap.app_status||'idle').trim();
+            // Status-host gate: idle/offline pass; running swallow; needs_input/error/done intercept.
+            if(appSt==='running'||appSt==='listening'||appSt==='working'){
+              e.preventDefault();
+              e.stopPropagation();
+              el.classList.add('is-pressed');
+              setTimeout(function(){ el.classList.remove('is-pressed'); }, 80);
+              return;
+            }
+            if(appSt==='needs_input'||appSt==='error'||appSt==='failed'||appSt==='done'){
+              e.preventDefault();
+              e.stopPropagation();
+              var kind=String(snap.appAgent||snap.app_agent||snap.appliedAgent||snap.applied_agent||'codex').trim()||'codex';
+              setUsageFocusFromUi(kind,{
+                sessionId:String(snap.appSessionId||snap.app_session_id||'').trim(),
+                clickKind:'status_host'
+              });
+              el.classList.add('is-pressed','is-active');
+              setTimeout(function(){ el.classList.remove('is-pressed','is-active'); }, 120);
+              return;
+            }
+            // idle/offline → fall through to original binding
+          }
           var numpadTap=isNumpadKeyId(id);
           if(!padEnabled && !numpadTap){
             // Still flash so user sees the key reacted, then toast.
@@ -2139,6 +2188,28 @@
     }
 
     var lastSnap={};
+    var lastNotifiedLight='';
+
+    function maybeNotifyAttention(light){
+      light=String(light||'').trim();
+      if(light!=='needs_input'&&light!=='error'&&light!=='failed') return;
+      if(light===lastNotifiedLight) return;
+      lastNotifiedLight=light;
+      if(document.visibilityState==='visible'&&document.hasFocus()) return;
+      try{
+        if(!window.Notification) return;
+        if(Notification.permission==='granted'){
+          new Notification(light==='needs_input'?'Soft Pad：需要你确认':'Soft Pad：会话出错',{silent:true});
+        }else if(Notification.permission==='default'){
+          // Preference-driven request happens in Hub; never silent-request on boot.
+          toast(light==='needs_input'?'有会话在等你确认':'有会话出错');
+        }else{
+          toast(light==='needs_input'?'有会话在等你确认':'有会话出错');
+        }
+      }catch(_){
+        toast(light==='needs_input'?'有会话在等你确认':'有会话出错');
+      }
+    }
     var APP_STATE_URL='http://127.0.0.1:8796/api/codex-app/state';
 
     function mergeAppLightIntoSnap(base, j){
@@ -2472,21 +2543,34 @@
       });
     }
 
-    function setUsageFocusFromUi(kind){
+    function setUsageFocusFromUi(kind, opts){
       kind=String(kind||'').trim();
+      opts=opts||{};
       if(kind!=='codex'&&kind!=='claude'&&kind!=='cursor'&&kind!=='minimax'&&kind!=='workbuddy'&&kind!=='trae'&&kind!=='qoder') return;
       touchAgentBarRecency(kind);
-      // Shell hook apps have no usage pill in the mini overlay; we only need to focus the target app.
+      var laneId=opts.laneId||'';
+      var sessionId=opts.sessionId||'';
+      var clickKind=opts.clickKind||'chip';
+      function focusSession(){
+        invoke('cmd_soft_pad_focus_session',{
+          kind:kind,
+          laneId:laneId||null,
+          sessionId:sessionId||null,
+          clickKind:clickKind
+        }).catch(function(){
+          invoke('cmd_soft_pad_focus_agent',{kind:kind}).catch(function(){});
+        });
+      }
       if(kind==='workbuddy'||kind==='trae'||kind==='qoder'){
         applyMiniAgentChips(lastSnap||{});
-        invoke('cmd_soft_pad_focus_agent',{kind:kind}).catch(function(){});
+        focusSession();
         return;
       }
       persistUsageFocus(kind, true);
       var s=lastSnap||{};
       applyMiniAgentChips(s);
       applyMiniUsagePill(s);
-      invoke('cmd_soft_pad_focus_agent',{kind:kind}).catch(function(){});
+      focusSession();
     }
 
     function bindAgentFocusClicks(root){
@@ -2498,12 +2582,20 @@
         el.addEventListener('click',function(e){
           e.preventDefault();
           e.stopPropagation();
-          setUsageFocusFromUi(el.getAttribute('data-agent'));
+          setUsageFocusFromUi(el.getAttribute('data-agent'),{
+            laneId:el.getAttribute('data-lane-id')||'',
+            sessionId:el.getAttribute('data-session-id')||'',
+            clickKind:'chip'
+          });
         });
         el.addEventListener('keydown',function(e){
           if(e.key==='Enter'||e.key===' '){
             e.preventDefault();
-            setUsageFocusFromUi(el.getAttribute('data-agent'));
+            setUsageFocusFromUi(el.getAttribute('data-agent'),{
+              laneId:el.getAttribute('data-lane-id')||'',
+              sessionId:el.getAttribute('data-session-id')||'',
+              clickKind:'chip'
+            });
           }
         });
       });

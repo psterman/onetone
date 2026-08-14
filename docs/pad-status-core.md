@@ -129,7 +129,43 @@ OneTone Soft Pad 使用桌面快捷键、聚焦和语音工作流近似部分 Co
 - 关灯后 Overlay 不吃 hook 上灯。
 - 诊断回放不得把 Claude 标成 Codex Hook。
 
+## Soft RGB 聚合契约
+
+| 输出 | 跟谁 |
+|------|------|
+| Codex status host **单键** | 主 `PadStatus`（`app_status`） |
+| Soft RGB / overlay 底光 `ambient_status` | 跨 enabled-agent LaneStore + PadStatus **聚合** |
+| Claude 多灯 / sessions 槽 | 各自 store；**不**驱动 Soft RGB |
+
+聚合硬约束：
+
+1. 任一 lane 或 PadStatus 为 `error`/`failed` → **一票否决**，ambient=`error`
+2. 跨 agent 用全局 rank：`error=4 > needs_input=3 > running=2 > done=1 > idle/offline=0`（agent 间无优先）
+3. 同 rank → 取最近 `updatedAt`
+4. Feature flag：`softPadRgbAggregateEnabled`（默认 true）
+
+## Attention → Focus Session
+
+- IPC：`cmd_soft_pad_focus_session`；chip / status host（`needs_input|error|done`）/ Soft RGB 点击走会话回跳
+- `resolve_focus_target`：近 5s Attention → 显式 laneId → sessionId → 最高 rank lane → fallback app
+- Status host：`idle/offline` 不拦截原绑定；`running` 吞点击；注意力态拦截回跳
+- Codex focus：cwd 必填优先；hwnd 仅 hint；失败则 `resume` 起 CLI
+- Flags：`softPadFocusSessionEnabled` / `softPadSessionPersistEnabled`
+- KPI：`focus_session_click_total` / `focus_session_result_total`（diagnose / clear_errors 返回）
+
+## Session 落盘
+
+- 文件：config 旁 `soft-pad-sessions.json`（+ `.bak`）；debounce 1s；tmp→rename
+- Hydrate：**cold**（sticky 黄/红不假亮；hwnd 清零）；须新事件续命
+- GC：启动 + 每 1h；>24h 删
+
+## Codex hooks 一键安装
+
+- `cmd_codex_hook_setup_status.inspectFiles` 列出 `~/.codex/hooks.json` + `config.toml` hooks 开关
+- `cmd_codex_hook_install_confirm`：bak → merge draft → 原子写；之后仍须 Codex CLI `/hooks` Trust
+
 ## 相关
 
 - Hook 配置：[codex-hook-onetone-setup.md](./codex-hook-onetone-setup.md)
 - 止损边界：[codex-micro-bridge-stoploss-report.md](./codex-micro-bridge-stoploss-report.md)
+- CLI：`node scripts/onetone-lights.mjs status|focus|clear|doctor`

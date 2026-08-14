@@ -189,6 +189,8 @@ pub fn ingest_lane_event(ev: LaneIngest) -> Option<String> {
     g.lanes.insert(lane_id.clone(), entry);
 
     settle_ttl(&mut g.lanes, at);
+    drop(g);
+    super::persist::on_lane_changed();
     Some(lane_id)
 }
 
@@ -274,6 +276,47 @@ pub fn get_lane(lane_id: &str) -> Option<AgentLane> {
         .lanes
         .get(lane_id)
         .cloned()
+}
+
+pub fn remove_lane(lane_id: &str) {
+    store()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .lanes
+        .remove(lane_id);
+}
+
+/// Update hwnd hint (transient — re-resolve before focus).
+pub fn patch_lane_hwnd(lane_id: &str, hwnd: u64) {
+    let mut g = store().lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(lane) = g.lanes.get_mut(lane_id) {
+        lane.navigation.terminal_hwnd = hwnd;
+        lane.updated_at = now_ms();
+    }
+}
+
+/// Snapshot all lanes for persist (clone).
+pub fn all_lanes_snapshot() -> Vec<AgentLane> {
+    let now = now_ms();
+    let mut g = store().lock().unwrap_or_else(|e| e.into_inner());
+    settle_ttl(&mut g.lanes, now);
+    g.lanes.values().cloned().collect()
+}
+
+/// Restore a cold lane without treating it as live sticky attention.
+pub fn restore_lane_cold(lane: AgentLane) {
+    let mut g = store().lock().unwrap_or_else(|e| e.into_inner());
+    let mut lane = lane;
+    // Cold restore: demote attention states; hwnd is hint only (cleared).
+    lane.navigation.terminal_hwnd = 0;
+    if matches!(
+        lane.state,
+        LaneState::NeedsInput | LaneState::ErrorUnread | LaneState::Working
+    ) {
+        lane.state = LaneState::Idle;
+        lane.source = format!("cold:{}", lane.source);
+    }
+    g.lanes.insert(lane.lane_id.clone(), lane);
 }
 
 #[cfg(test)]

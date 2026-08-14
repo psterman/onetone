@@ -1031,3 +1031,116 @@ mod tests {
         assert!(pad_status::claude_lights::snapshot_active(now).is_empty());
     }
 }
+
+/// Clear error/failed lamps. Optional sessionId / laneId for per-session clear.
+#[tauri::command]
+pub fn cmd_pad_status_clear_errors(
+    session_id: Option<String>,
+    lane_id: Option<String>,
+) -> serde_json::Value {
+    use crate::agent_lane::model::LaneState;
+    use crate::agent_lane::store::{all_lanes_snapshot, ingest_lane_event, LaneIngest};
+    use crate::pad_status::{
+        apply_candidate, snapshot, Confidence, PadSource, PadState, PadStatusCandidate,
+    };
+    use crate::soft_pad_runtime::AgentKind;
+
+    let sid = session_id
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+    let lid = lane_id
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
+    let mut cleared_lanes = 0u32;
+    for lane in all_lanes_snapshot() {
+        if !matches!(lane.state, LaneState::ErrorUnread) {
+            continue;
+        }
+        if let Some(ref want) = lid {
+            if &lane.lane_id != want {
+                continue;
+            }
+        }
+        if let Some(ref want) = sid {
+            if &lane.key.session_id != want {
+                continue;
+            }
+        }
+        let _ = ingest_lane_event(LaneIngest {
+            provider: lane.key.provider,
+            workspace_id: lane.key.workspace_id.clone(),
+            session_id: lane.key.session_id.clone(),
+            subagent_id: None,
+            title: lane.title.clone(),
+            event: "idle".into(),
+            source: "clear_errors".into(),
+            cwd: lane.navigation.cwd.clone(),
+            host_pid: lane.navigation.host_pid,
+            terminal_hwnd: 0,
+            sequence: None,
+            at: None,
+        });
+        cleared_lanes += 1;
+    }
+
+    let pad = snapshot();
+    let pad_is_error = matches!(
+        PadState::parse(&pad.state).unwrap_or(PadState::Idle),
+        PadState::Error
+    );
+    let pad_session_ok = sid
+        .as_ref()
+        .map(|s| pad.session_id.as_deref() == Some(s.as_str()) || s.is_empty())
+        .unwrap_or(true);
+    let mut cleared_pad = false;
+    if pad_is_error && pad_session_ok && lid.is_none() {
+        let mut next = pad.clone();
+        next.state = PadState::Idle.as_str().into();
+        next.message = Some("cleared".into());
+        next.source = PadSource::Native.as_str().into();
+        next.confidence = Confidence::High.as_str().into();
+        let _ = apply_candidate(PadStatusCandidate {
+            raw_tag: "clear_errors".into(),
+            status: next,
+        });
+        cleared_pad = true;
+    }
+
+    // Clear attention Error lifecycle rows for matching agents
+    let mut cleared_attention = 0u32;
+    for kind in [
+        AgentKind::Codex,
+        AgentKind::Claude,
+        AgentKind::Cursor,
+        AgentKind::WorkBuddy,
+        AgentKind::Trae,
+        AgentKind::Qoder,
+        AgentKind::MiniMax,
+    ] {
+        cleared_attention += crate::agent_attention::store::clear(
+            kind,
+            sid.as_deref(),
+            None,
+        ) as u32;
+        // Also force idle lifecycle when clearing all
+        if sid.is_none() && lid.is_none() {
+            crate::agent_attention::store::raise_lifecycle(
+                kind,
+                None,
+                crate::agent_attention::model::AttentionState::Idle,
+                crate::agent_attention::model::SignalSource::OneToneAsk,
+            );
+        }
+    }
+
+    serde_json::json!({
+        "ok": true,
+        "clearedLanes": cleared_lanes,
+        "clearedPad": cleared_pad,
+        "clearedAttention": cleared_attention,
+        "focusKpi": crate::agent_lane::kpi_snapshot(),
+    })
+}

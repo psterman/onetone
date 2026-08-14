@@ -27,10 +27,10 @@ pub use adapters::soft_rgb::{
 pub use arbiter::{propose, ProposeResult};
 pub use claude_lights::{short_agent_type, ClaudeAgentLightState, CLAUDE_MAIN_KEY};
 pub use log::{log_path, tail_events, PadStatusLogRow};
-pub use model::{Confidence, PadSource, PadState, PadStatus, PAD_SOURCE_RANK};
+pub use model::{Confidence, PadSource, PadState, PadStatus, PadStatusCandidate, PAD_SOURCE_RANK};
 pub use store::{
-    apply_inferred, apply_native_slot, current, fresh_signal, fresh_signal_at, snapshot,
-    snapshot_at,
+    apply_candidate, apply_inferred, apply_native_slot, current, fresh_signal, fresh_signal_at,
+    snapshot, snapshot_at,
 };
 
 #[cfg(test)]

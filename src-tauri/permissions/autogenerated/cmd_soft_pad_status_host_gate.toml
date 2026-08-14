@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-soft-pad-status-host-gate"
+description = "Enables the cmd_soft_pad_status_host_gate command without any pre-configured scope."
+commands.allow = ["cmd_soft_pad_status_host_gate"]
+
+[[permission]]
+identifier = "deny-cmd-soft-pad-status-host-gate"
+description = "Denies the cmd_soft_pad_status_host_gate command without any pre-configured scope."
+commands.deny = ["cmd_soft_pad_status_host_gate"]

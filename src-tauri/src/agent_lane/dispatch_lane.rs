@@ -136,12 +136,23 @@ pub fn navigate_lane(ticket: &LaneDispatchTicket) -> NavigateLaneResult {
         };
     };
     select_lane(ticket.lane_kind, &ticket.mapping_id, &ticket.lane_id);
-    let caps = lane.caps();
+    // Re-resolve hwnd via cwd before trusting stored hint.
+    let mut hwnd = lane.navigation.terminal_hwnd;
+    if !lane.navigation.cwd.is_empty() {
+        if let Some(found) = super::cwd_focus::find_hwnd_for_cwd(&lane.navigation.cwd) {
+            hwnd = found;
+            super::store::patch_lane_hwnd(&ticket.lane_id, found);
+        }
+    }
+    let caps = {
+        let mut live_lane = lane.clone();
+        live_lane.navigation.terminal_hwnd = hwnd;
+        live_lane.caps()
+    };
     if caps.can_focus_live {
         #[cfg(windows)]
         {
-            if lane.navigation.terminal_hwnd != 0 {
-                let hwnd = lane.navigation.terminal_hwnd as isize;
+            if hwnd != 0 {
                 let focused = crate::keyboard::focus_window(hwnd as winapi::shared::windef::HWND);
                 if focused {
                     acknowledge_lane(&ticket.lane_id);
@@ -150,7 +161,11 @@ pub fn navigate_lane(ticket: &LaneDispatchTicket) -> NavigateLaneResult {
                     ok: focused,
                     action: "focus_live".into(),
                     lane_id: ticket.lane_id.clone(),
-                    detail: if focused { "hwnd".into() } else { "focus_failed".into() },
+                    detail: if focused {
+                        "hwnd".into()
+                    } else {
+                        "focus_failed".into()
+                    },
                 };
             }
         }
