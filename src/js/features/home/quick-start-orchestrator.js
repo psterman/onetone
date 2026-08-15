@@ -279,11 +279,6 @@
       '</div>';
     return (
       '<div class="qs-mode-matrix">'+
-        '<div class="qs-mode-matrix__head">'+
-          '<div class="qs-mode-matrix__badge"><span class="qs-mode-matrix__badge-dot" aria-hidden="true"></span>'+
-            esc(t('qsModeMatrixBadge','MODE SELECTION MATRIX'))+
-          '</div>'+
-        '</div>'+
         '<div class="qs-mode-matrix__stage">'+
           '<div id="qsModeCards" class="cards-container" role="listbox" aria-label="'+esc(t('qsIntentAsk','你想先让 OneTone 做什么？'))+'">'+
 
@@ -371,8 +366,8 @@
                         '<div class="qs-frame__head"><strong><i></i>FRAME #03</strong><span class="qs-frame__tag">VIBECODING</span></div>'+
                         '<div class="qs-frame__body">'+
                           '<div class="qs-frame__code"><div class="qs-frame__code-track">'+
-                            '<div class="qs-c-rose" style="font-weight:600;color:#fb7185">&gt; render_animation_key()</div><div class="qs-c-em pl">bezier: [0.16, 1, 0.3]</div>'+
-                            '<div class="qs-c-rose" style="font-weight:600;color:#fb7185">&gt; render_animation_key()</div><div class="qs-c-em pl">bezier: [0.16, 1, 0.3]</div>'+
+                            '<div class="qs-c-rose" style="font-weight:600">&gt; render_animation_key()</div><div class="qs-c-em pl">bezier: [0.16, 1, 0.3]</div>'+
+                            '<div class="qs-c-rose" style="font-weight:600">&gt; render_animation_key()</div><div class="qs-c-em pl">bezier: [0.16, 1, 0.3]</div>'+
                           '</div></div>'+
                           '<div class="qs-frame__live"><div class="qs-play-wrap"><div class="qs-play-btn">▶</div><div class="qs-play-ring"></div></div></div>'+
                         '</div>'+
@@ -384,8 +379,8 @@
                         '<div class="qs-frame__head"><strong><i></i>FRAME #04</strong><span class="qs-frame__tag">VIBECODING</span></div>'+
                         '<div class="qs-frame__body">'+
                           '<div class="qs-frame__code"><div class="qs-frame__code-track">'+
-                            '<div class="qs-c-em" style="font-weight:600;color:#34d399">&gt; dialog_ui_restructure()</div><div class="qs-c-amb pl">modal_type: "fast_vibe"</div>'+
-                            '<div class="qs-c-em" style="font-weight:600;color:#34d399">&gt; dialog_ui_restructure()</div><div class="qs-c-amb pl">modal_type: "fast_vibe"</div>'+
+                            '<div class="qs-c-em" style="font-weight:600">&gt; dialog_ui_restructure()</div><div class="qs-c-amb pl">modal_type: "fast_vibe"</div>'+
+                            '<div class="qs-c-em" style="font-weight:600">&gt; dialog_ui_restructure()</div><div class="qs-c-amb pl">modal_type: "fast_vibe"</div>'+
                           '</div></div>'+
                           '<div class="qs-frame__live"><div class="qs-frame__live-bar"><i></i></div></div>'+
                         '</div>'+
@@ -406,7 +401,6 @@
 
           '</div>'+
         '</div>'+
-        '<p class="qs-mode-matrix__meta">'+esc(t('qsIntentMeta','预计 3 分钟 · 本机保存 · 可随时跳过'))+'</p>'+
       '</div>'
     );
   }

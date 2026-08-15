@@ -9,7 +9,7 @@ Out-of-scope loops found while editing are recorded here — do not expand the P
 | Soft Pad agent bar running dot | Soft Pad overlay | `running` | yes (pulse only) | PR2 done |
 | Keys recording ring | Keys | Recording | yes (while recording) | PR2 done |
 | `.wb-hero.is-live` waves / ripple | Home | business live | level-driven, no loop | PR3 done |
-| QS mode matrix idle demos | Quick Start | visible card | no | PR3 done |
+| QS mode matrix demos | Quick Start | hover or selected card | yes (gated) | Apple audit |
 | `.flow-desk` dash path | Keys/Voice desk | always | no (static) | PR3 done |
 | Soft Pad hub show-scenes | Soft Pad settings | scene visible | no | PR3 done |
 | template-pick idle key/wave | Keys template | unselected | no; selected plays once | PR3 done |
