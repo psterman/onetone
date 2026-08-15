@@ -16,7 +16,10 @@ use sha2::{Digest, Sha512};
 use std::fs;
 use std::path::PathBuf;
 
-const USAGE_URL: &str = "https://api.trae.cn/trae/api/v2/pay/ide_user_ent_usage";
+// ROW/SG accounts auth against growsg-normal / api-sg-central; CN uses api.trae.cn.
+// Prefer auth.host + v1 — hardcoding api.trae.cn yields HTTP 401 code 4014 for international JWT.
+const USAGE_PATH_V1: &str = "/trae/api/v1/pay/ide_user_ent_usage";
+const USAGE_PATH_V2: &str = "/trae/api/v2/pay/ide_user_ent_usage";
 const STORAGE_KEY: &str = "iCubeAuthInfo://icube.cloudide";
 const MAX_STORAGE_BYTES: u64 = 4 * 1024 * 1024;
 
@@ -66,17 +69,79 @@ fn trae_roots() -> Vec<PathBuf> {
 }
 
 fn find_storage() -> Option<PathBuf> {
-    trae_roots().into_iter().find_map(|root| {
+    // Newest login wins when both Trae Work (SOLO) and Trae Code are installed.
+    let mut best: Option<(std::time::SystemTime, PathBuf)> = None;
+    for root in trae_roots() {
         let p = root
             .join("User")
             .join("globalStorage")
             .join("storage.json");
-        if p.is_file() {
-            Some(p)
-        } else {
-            None
+        let Ok(meta) = fs::metadata(&p) else {
+            continue;
+        };
+        if !meta.is_file() || meta.len() > MAX_STORAGE_BYTES {
+            continue;
         }
-    })
+        let Ok(raw) = fs::read(&p) else {
+            continue;
+        };
+        let Ok(storage) = serde_json::from_slice::<Value>(&raw) else {
+            continue;
+        };
+        if !storage.get(STORAGE_KEY).and_then(Value::as_str).is_some_and(|s| !s.is_empty()) {
+            continue;
+        }
+        let mtime = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+        if best.as_ref().is_none_or(|(t, _)| mtime > *t) {
+            best = Some((mtime, p));
+        }
+    }
+    best.map(|(_, p)| p)
+}
+
+fn trim_host(host: &str) -> Option<String> {
+    let h = host.trim().trim_end_matches('/');
+    if h.is_empty() {
+        return None;
+    }
+    if h.starts_with("http://") || h.starts_with("https://") {
+        Some(h.to_string())
+    } else {
+        Some(format!("https://{h}"))
+    }
+}
+
+fn region_is_cn(auth: &Value) -> bool {
+    auth.pointer("/userRegion/region")
+        .and_then(Value::as_str)
+        .or_else(|| auth.pointer("/account/storeRegion").and_then(Value::as_str))
+        .or_else(|| auth.get("userRegion").and_then(Value::as_str))
+        .is_some_and(|r| r.eq_ignore_ascii_case("CN") || r.eq_ignore_ascii_case("CN_NORTH"))
+}
+
+fn usage_urls(auth: &Value) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut push = |base: &str| {
+        let base = base.trim_end_matches('/');
+        for path in [USAGE_PATH_V1, USAGE_PATH_V2] {
+            let url = format!("{base}{path}");
+            if !out.iter().any(|u| u == &url) {
+                out.push(url);
+            }
+        }
+    };
+    if let Some(host) = auth.get("host").and_then(Value::as_str).and_then(trim_host) {
+        push(&host);
+    }
+    if region_is_cn(auth) {
+        push("https://api.trae.cn");
+    } else {
+        push("https://api-sg-central.trae.ai");
+        push("https://api-us-east.trae.ai");
+        // Last resort for mixed installs — may 401 for ROW tokens.
+        push("https://api.trae.cn");
+    }
+    out
 }
 
 fn derive_key_iv(random_key: &[u8], private: bool) -> ([u8; 16], [u8; 16]) {
@@ -215,6 +280,10 @@ pub fn parse_trae_entitlement(value: &Value) -> Result<AgentUsageSnapshot, Strin
         return Err("TRAE quota request rejected".into());
     }
     let payload = response_payload(value);
+    let dollar_billing = payload
+        .get("is_dollar_usage_billing")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
     let packs = payload
         .get("user_entitlement_pack_list")
         .and_then(Value::as_array)
@@ -297,11 +366,44 @@ pub fn parse_trae_entitlement(value: &Value) -> Result<AgentUsageSnapshot, Strin
         }
     }
 
+    // Dollar Usage (international Free/Pro): Basic Usage gates Agent requests.
+    // Legacy CN request-count: prefer fast requests; basic_usage_limit=1 is often a stub.
+    let prefer_fast =
+        !dollar_billing && fast_total > 0.0 && (!has_credit_quota || basic_total <= 1.0);
+
     let (remaining, unit, rem_pct, message) = if unlimited_current_credits {
         (0.0, "unlimited", None, "企业额度不限".to_string())
     } else if has_current_credit_quota {
         let rem = current_credit_remaining;
         (rem, "credits", None, credits_message(rem, "Credits"))
+    } else if dollar_billing && has_credit_quota {
+        let rem = (basic_total - basic_used).max(0.0);
+        let pct = if basic_total > 0.0 {
+            Some((rem / basic_total * 100.0).clamp(0.0, 100.0))
+        } else {
+            Some(0.0)
+        };
+        let msg = if rem <= 0.0 && basic_total > 0.0 {
+            "Basic Usage 已用尽".to_string()
+        } else if basic_total <= 1.0 {
+            "Basic Usage 可用".to_string()
+        } else {
+            format!(
+                "Basic Usage {} / {}",
+                rem.round() as i64,
+                basic_total.round() as i64
+            )
+        };
+        (rem, "credits", pct, msg)
+    } else if prefer_fast {
+        let rem = (fast_total - fast_used).max(0.0);
+        let pct = Some((rem / fast_total * 100.0).clamp(0.0, 100.0));
+        let msg = format!(
+            "速通请求 {} / {}",
+            rem.round() as i64,
+            fast_total.round() as i64
+        );
+        (rem, "requests", pct, msg)
     } else if has_credit_quota {
         let rem = (basic_total - basic_used).max(0.0);
         let pct = if basic_total > 0.0 {
@@ -362,13 +464,26 @@ pub fn parse_trae_entitlement(value: &Value) -> Result<AgentUsageSnapshot, Strin
 fn fetch_official() -> Result<AgentUsageSnapshot, String> {
     let auth = load_auth()?;
     let token = auth_token(&auth).ok_or_else(|| "请登录 Trae 查看额度".to_string())?;
-    let text = http_post_json_auth_header(
-        USAGE_URL,
-        &format!("Cloud-IDE-JWT {token}"),
-        &serde_json::json!({ "require_usage": true }),
-    )?;
-    let v: Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
-    parse_trae_entitlement(&v)
+    let authz = format!("Cloud-IDE-JWT {token}");
+    let body = serde_json::json!({ "require_usage": true });
+    let urls = usage_urls(&auth);
+    if urls.is_empty() {
+        return Err("TRAE quota host unknown".into());
+    }
+    let mut last_err = String::from("TRAE quota request failed");
+    for url in urls {
+        match http_post_json_auth_header(&url, &authz, &body) {
+            Ok(text) => {
+                let v: Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+                return parse_trae_entitlement(&v);
+            }
+            Err(e) => {
+                // Try next host on auth/region mismatch; keep last error for UX.
+                last_err = e;
+            }
+        }
+    }
+    Err(last_err)
 }
 
 pub fn refresh() {
@@ -400,15 +515,110 @@ pub fn refresh() {
                 agent_usage::put_snapshot(AgentKind::TraeCode, stale);
                 return;
             }
-            let msg = if e.contains("请登录") || e.contains("not installed") || e.contains("Sign")
+            // Surface real failure when possible; login copy only for auth-shaped errors.
+            let msg = if e.contains("4014") || e.contains("401 Unauthorized") {
+                "Trae 额度鉴权失败，请重新登录 Trae".to_string()
+            } else if e.contains("请登录")
+                || e.contains("not installed")
+                || e.contains("Sign")
+                || e.contains("login")
+                || e.contains("credential")
+                || e.contains("JWT")
+                || e.contains("token")
             {
-                "请登录 Trae 查看额度"
+                "请登录 Trae 查看额度".to_string()
+            } else if e.len() <= 80 {
+                e
             } else {
-                "请登录 Trae 查看额度"
+                format!("{}…", e.chars().take(72).collect::<String>())
             };
-            let manual = manual_snap(SRC_TRAE_MANUAL, "Trae", TRAE_CONSOLE, msg);
+            let manual = manual_snap(SRC_TRAE_MANUAL, "Trae", TRAE_CONSOLE, &msg);
             agent_usage::put_snapshot(AgentKind::Trae, manual.clone());
             agent_usage::put_snapshot(AgentKind::TraeCode, manual);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn parse_fast_request_quota() {
+        let v = json!({
+            "code": 0,
+            "user_entitlement_pack_list": [{
+                "entitlement_base_info": {
+                    "product_type": 4,
+                    "quota": { "premium_model_fast_request_limit": 1000 }
+                },
+                "usage": { "premium_model_fast_amount": 275 }
+            }]
+        });
+        let snap = parse_trae_entitlement(&v).expect("parse");
+        assert_eq!(snap.status, "ready");
+        assert!(snap.message.contains("速通请求"), "{}", snap.message);
+        assert!(snap.remaining_percent.is_some());
+    }
+
+    #[test]
+    fn parse_free_row_prefers_fast_over_stub_basic() {
+        // Legacy request-count billing (not dollar): stub basic_usage=1 should not win.
+        let v = json!({
+            "is_dollar_usage_billing": false,
+            "user_entitlement_pack_list": [{
+                "entitlement_base_info": {
+                    "product_type": 0,
+                    "quota": {
+                        "basic_usage_limit": 1,
+                        "premium_model_fast_request_limit": 10
+                    }
+                },
+                "usage": {
+                    "basic_usage_amount": 1,
+                    "premium_model_fast_amount": 0
+                }
+            }]
+        });
+        let snap = parse_trae_entitlement(&v).expect("parse");
+        assert!(snap.message.contains("速通请求 10 / 10"), "{}", snap.message);
+    }
+
+    #[test]
+    fn parse_dollar_billing_exhausted_basic() {
+        let v = json!({
+            "is_dollar_usage_billing": true,
+            "user_entitlement_pack_list": [{
+                "entitlement_base_info": {
+                    "product_type": 0,
+                    "quota": {
+                        "basic_usage_limit": 1,
+                        "premium_model_fast_request_limit": 10
+                    }
+                },
+                "usage": {
+                    "basic_usage_amount": 1,
+                    "premium_model_fast_amount": 0
+                }
+            }]
+        });
+        let snap = parse_trae_entitlement(&v).expect("parse");
+        assert_eq!(snap.message, "Basic Usage 已用尽");
+        assert_eq!(snap.remaining_percent, Some(0.0));
+    }
+
+    #[test]
+    fn usage_urls_prefer_auth_host_v1() {
+        let auth = json!({
+            "host": "https://growsg-normal.trae.ai",
+            "userRegion": { "region": "SG" }
+        });
+        let urls = usage_urls(&auth);
+        assert_eq!(
+            urls.first().map(String::as_str),
+            Some("https://growsg-normal.trae.ai/trae/api/v1/pay/ide_user_ent_usage")
+        );
+        assert!(urls.iter().any(|u| u.contains("api-sg-central.trae.ai")));
     }
 }

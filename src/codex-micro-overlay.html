@@ -1072,6 +1072,7 @@
 
     function usageSummary(kind,usage,detail,row,snap){
       usage=usage||{};
+      kind=canonAgentKind(kind);
       var status=String(usage.status||'unavailable');
       if(kind==='cursor'){
         if(isCursorActivityUsage(usage)){
@@ -1094,6 +1095,26 @@
         if(status==='stale') return base+(detail?' · 数据陈旧':' · 陈旧');
         return base;
       }
+      // WorkBuddy / Trae Work / Trae Code / Qoder — official message is the caption.
+      if(isShellUsageKind(kind)){
+        var shellCap=shellUsageCaption(usage,!!detail)||String(usage.message||'').trim();
+        if(shellCap){
+          if(status==='stale') return shellCap+(detail?' · 数据陈旧':' · 陈旧');
+          if(status==='waiting') return shellCap;
+          if(status==='ready') return shellCap;
+          return shellCap;
+        }
+        var shellRem=usageValue(usage,'remainingPercent','remaining_percent');
+        if(shellRem!=null&&(status==='ready'||status==='stale'||status==='waiting')){
+          var shellBase='余 '+Math.round(Number(shellRem))+'%';
+          if(status==='stale') return shellBase+(detail?' · 数据陈旧':' · 陈旧');
+          return shellBase;
+        }
+        if(status!=='ready'&&status!=='stale'&&status!=='waiting'){
+          return detail?(friendlyUsageMessage(usage.message)||'用量数据未连接'):'未连接';
+        }
+        return detail?'用量数据未返回':'--';
+      }
       var windows=Array.isArray(usage.windows)?usage.windows:[];
       var bits=[];
       if(kind==='codex'||kind==='claude'||kind==='minimax'){
@@ -1112,12 +1133,12 @@
             // codex + minimax: remainingPercent; never Claude OTel on MiniMax
             var remaining=usageValue(usage,'remainingPercent','remaining_percent');
             if(remaining!=null){
-              var base='窗口余 '+Math.round(Number(remaining))+'%';
+              var baseC='窗口余 '+Math.round(Number(remaining))+'%';
               if(detail){
                 var cd=formatResetCountdown(usageValue(usage,'resetsAt','resets_at'));
-                if(cd) base+=' · '+cd+'重置';
+                if(cd) baseC+=' · '+cd+'重置';
               }
-              bits.push(base);
+              bits.push(baseC);
             }
           }
         }
@@ -1210,13 +1231,18 @@
       return String(kind||'?').slice(0,1).toUpperCase();
     }
 
-    function shellUsageCaption(usage){
+    function shellUsageCaption(usage,detail){
       usage=usage||{};
       var src=String(usage.source||'');
       var conf=String(usage.confidence||'');
       if(conf==='manual_or_local_estimate'||/qoder_|workbuddy_|trae_/.test(src)){
         var msg=String(usage.message||'').trim();
-        if(msg) return msg.split(' · ')[0];
+        if(!msg) return '';
+        // Compact: membership + package bits; detail keeps dosage_notify / extras.
+        if(detail) return msg;
+        var parts=msg.split(' · ').filter(Boolean);
+        if(parts.length<=2) return parts.join(' · ');
+        return parts.slice(0,2).join(' · ');
       }
       return '';
     }
