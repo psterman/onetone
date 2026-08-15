@@ -139,8 +139,8 @@
                     <img src="icons/app-target/aider.png" alt="" aria-hidden="true">
                     <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
                   </button>
-                  <button type="button" class="soft-pad-agent-bar__more" id="padAgentBarMore" data-act="agent-more" hidden aria-expanded="false" aria-haspopup="true" aria-controls="padAgentBarOverflow" title="更多 Agent" aria-label="更多 Agent">+0</button>
-                  <div class="soft-pad-agent-bar__overflow" id="padAgentBarOverflow" hidden role="menu" aria-label="更多 Agent"></div>
+                  <button type="button" class="soft-pad-agent-bar__more" id="padAgentBarMore" data-act="agent-more" hidden aria-expanded="false" title="更多 Agent" aria-label="更多 Agent">+0</button>
+                  <div class="soft-pad-agent-bar__overflow" id="padAgentBarOverflow" hidden aria-hidden="true"></div>
                 </div>
                 <div class="micro-hw__grid" id="grid"></div>
                 <div class="status-chip" id="statusChip" data-status="idle" aria-hidden="true"></div>
@@ -164,6 +164,10 @@
               <span class="overlay-nav-cta__label" data-nav-cta-label>AG 当前为动作键</span>
               <span class="overlay-nav-cta__action" data-nav-cta-action>启用 4 个会话导航灯</span>
             </button>
+            <div class="overlay-app-meta" id="overlayAppMeta" hidden aria-live="polite">
+              <div class="overlay-app-meta__row" id="overlayAppMetaRow"></div>
+              <div class="overlay-app-meta__task" id="overlayAppMetaTask" hidden></div>
+            </div>
             <details class="overlay-light-gate" id="overlayLightGate" hidden>
               <summary class="overlay-light-gate__sum">
                 <span data-gate-sum>灯路诊断</span>
@@ -173,10 +177,6 @@
               <p class="overlay-light-gate__hint" data-gate-hint></p>
             </details>
           </div>
-        </div>
-        <div class="overlay-app-meta" id="overlayAppMeta" hidden aria-live="polite">
-          <div class="overlay-app-meta__row" id="overlayAppMetaRow"></div>
-          <div class="overlay-app-meta__task" id="overlayAppMetaTask" hidden></div>
         </div>
         <div class="overlay-toast" id="overlayToast" aria-live="polite"></div>
       </div>
@@ -345,7 +345,7 @@
     var padAgentBarMore=document.getElementById('padAgentBarMore');
     var padAgentBarOverflow=document.getElementById('padAgentBarOverflow');
     var agentBarRecency={};
-    var agentBarOverflowOpen=false;
+    var agentBarExpanded=false;
     var miniUsagePill=document.getElementById('miniUsagePill');
     var miniUsageFresh=document.getElementById('miniUsageFresh');
     var miniQuotaDropdown=document.getElementById('miniQuotaDropdown');
@@ -496,7 +496,7 @@
 
     var GATE_FIX={
       hook:'等 Claude Hook 上报状态（执行中/等待输入）',
-      applied:'点顶栏 Claude 图标，或把 Soft Pad Applied 切到 Claude',
+      applied:'点顶栏 Claude 图标，把 Soft Pad Applied 切到 Claude',
       purpose:'点上方「启用会话导航灯」两下确认',
       nav_slots:'点上方 CTA，或到 Soft Pad 设置里开会话导航',
       lanes:'在终端里开 Claude 会话（SessionStart）',
@@ -504,28 +504,47 @@
       status_host:'状态宿主键无亮灯时检查 Hook 与 Applied'
     };
 
+    /** Prefer the actionable bottleneck (Applied first) over a misleading hook row. */
+    function pickLightGateFail(fail, snap){
+      if(!fail||!fail.length) return null;
+      var applied=String(snap&&(snap.appliedAgent||snap.applied_agent)||'').toLowerCase();
+      var claudeLive=String(snap&&(snap.appAgent||snap.app_agent)||'').toLowerCase()==='claude'
+        || String(snap&&(snap.appLastSource||snap.app_last_source)||'').toLowerCase().indexOf('claude')>=0;
+      if(applied!=='claude'){
+        var appliedFail=fail.find(function(g){ return g&&g.id==='applied'; });
+        if(appliedFail) return appliedFail;
+      }
+      if(!claudeLive){
+        var nonHook=fail.find(function(g){ return g&&g.id!=='hook'; });
+        if(nonHook) return nonHook;
+      }
+      return fail[0];
+    }
+
     function applyLightGate(s){
       if(!overlayLightGate||!overlayLightGateList) return;
       var gates=Array.isArray(s&&s.agLightGates)?s.agLightGates
         :(Array.isArray(s&&s.ag_light_gates)?s.ag_light_gates:[]);
       var claudeLive=String(s&&(s.appAgent||s.app_agent)||'').toLowerCase()==='claude'
-        || String(s&&(s.appLastSource||s.app_last_source)||'').indexOf('claude')>=0;
+        || String(s&&(s.appLastSource||s.app_last_source)||'').toLowerCase().indexOf('claude')>=0;
+      var applied=String(s&&(s.appliedAgent||s.applied_agent)||'').toLowerCase();
       var ctaVisible=overlayNavCta&&!overlayNavCta.hidden;
-      if(!gates.length&&!claudeLive&&!ctaVisible){
+      // Match Rust: Claude checklist only when Claude is live / Applied / CTA onboarding.
+      if(!gates.length&&!claudeLive&&applied!=='claude'&&!ctaVisible){
         overlayLightGate.hidden=true;
         return;
       }
       // Fallback when older binary has no agLightGates — derive from snapshot.
       if(!gates.length){
         var purpose=String(s&&s.purpose||'shortcuts').toLowerCase();
-        var applied=String(s&&(s.appliedAgent||s.applied_agent)||'').toLowerCase();
         var navSlots=Array.isArray(s&&s.navigationSlots)?s.navigationSlots
           :(Array.isArray(s&&s.navigation_slots)?s.navigation_slots:[]);
         var cells=Array.isArray(s&&s.cells)?s.cells:[];
         var laneCells=cells.filter(function(c){ return String(c.laneId||c.lane_id||'').trim(); });
-        var status=String(s&&(s.appStatus||s.app_status)||'');
+        var status=String(s&&(s.appStatus||s.app_status)||'').trim();
+        var hookOk=claudeLive&&!!status&&status!=='idle';
         gates=[
-          {id:'hook',ok:claudeLive&&status&&status!=='idle',label:'Claude Hook 有状态',detail:status||'—'},
+          {id:'hook',ok:hookOk,label:'Claude Hook 有状态',detail:hookOk?(status||'—'):(claudeLive?'空闲':'未收到 Claude Hook（当前主状态可能来自其他 Agent）')},
           {id:'applied',ok:applied==='claude',label:'Applied Soft Pad = Claude',detail:applied?('当前 Applied='+applied):'无 Applied'},
           {id:'purpose',ok:purpose==='sessions',label:'purpose = sessions',detail:'purpose='+purpose},
           {id:'nav_slots',ok:navSlots.length>0,label:'导航槽 AG00–03',detail:navSlots.length?navSlots.join(','):'[]'},
@@ -533,19 +552,21 @@
         ];
       }
       var fail=gates.filter(function(g){ return !g.ok; });
+      var bottleneck=pickLightGateFail(fail, s);
       var sum=overlayLightGate.querySelector('[data-gate-sum]');
       var failEl=overlayLightGate.querySelector('[data-gate-fail]');
       var hint=overlayLightGate.querySelector('[data-gate-hint]');
       overlayLightGate.hidden=false;
       if(fail.length){
         // Keep collapsed by default — forcing open used to clip the Soft Pad in the fixed window.
-        if(sum) sum.textContent='灯路诊断 · 堵塞在第 '+(gates.findIndex(function(g){return !g.ok;})+1)+' 步';
+        var step=bottleneck?gates.findIndex(function(g){return g&&g.id===bottleneck.id;}):gates.findIndex(function(g){return !g.ok;});
+        if(sum) sum.textContent='灯路诊断 · 堵塞在第 '+(step>=0?step+1:1)+' 步';
         if(failEl){
           failEl.hidden=false;
           failEl.textContent=fail.length+' 项未过';
         }
         if(hint){
-          var first=fail[0];
+          var first=bottleneck||fail[0];
           hint.textContent='下一步：'+(GATE_FIX[first.id]||first.detail||first.label);
         }
       }else{
@@ -1519,15 +1540,18 @@
       if(next==='error') next='failed';
       if(next==='done'||next==='needs_input') Motion.playOnce(target,'ot-sparkle-once');
       else if(next==='failed') Motion.playOnce(target,'ot-shake');
-      // Expand bar: ~300ms chip flash when a run finishes.
-      if(next==='done'&&el.classList&&el.classList.contains('soft-pad-agent-bar__chip')){
+      // Pad + mini: brief chip flash when a run finishes.
+      if(next==='done'&&el.classList&&(
+        el.classList.contains('soft-pad-agent-bar__chip')||
+        el.classList.contains('overlay-mini__agent')
+      )){
         el.classList.remove('is-status-flash');
         void el.offsetWidth;
         el.classList.add('is-status-flash');
         clearTimeout(el.__statusFlashTimer);
         el.__statusFlashTimer=setTimeout(function(){
           el.classList.remove('is-status-flash');
-        }, 320);
+        }, 560);
       }
     }
 
@@ -1640,15 +1664,27 @@
       agentBarRecency[kind]=Date.now();
     }
 
-    function setAgentBarOverflowOpen(open){
-      agentBarOverflowOpen=!!open;
-      if(padAgentBarOverflow) padAgentBarOverflow.hidden=!agentBarOverflowOpen;
+    function setAgentBarExpanded(open){
+      agentBarExpanded=!!open;
+      if(padAgentBar) padAgentBar.classList.toggle('is-expanded', agentBarExpanded);
       if(padAgentBarMore){
-        padAgentBarMore.setAttribute('aria-expanded', agentBarOverflowOpen?'true':'false');
+        padAgentBarMore.setAttribute('aria-expanded', agentBarExpanded?'true':'false');
       }
-      if(padAgentBar) padAgentBar.classList.toggle('is-overflow-open', agentBarOverflowOpen);
+      if(padAgentBarOverflow){
+        padAgentBarOverflow.innerHTML='';
+        padAgentBarOverflow.hidden=true;
+      }
       var face=padAgentBar&&padAgentBar.closest&&padAgentBar.closest('.micro-hw__face');
-      if(face) face.classList.toggle('is-agent-overflow-open', agentBarOverflowOpen);
+      if(face){
+        face.classList.toggle('is-agent-bar-expanded', agentBarExpanded);
+        face.classList.remove('is-agent-overflow-open');
+      }
+      if(padAgentBar) padAgentBar.classList.remove('is-overflow-open');
+    }
+
+    /** @deprecated name kept for callers; maps to inline two-row expand. */
+    function setAgentBarOverflowOpen(open){
+      setAgentBarExpanded(open);
     }
 
     function rankAgentBarKinds(s, byKind, focus, opts){
@@ -1741,18 +1777,39 @@
         rest,
         anchor
       );
-
+      var expanded=agentBarExpanded&&rest.length>0;
+      if(agentBarExpanded&&!rest.length){
+        setAgentBarExpanded(false);
+        expanded=false;
+      }
       laid.chips.forEach(function(el){
         var k=String(el.getAttribute('data-agent')||'');
         applyAgentChipEl(el, s, byKind, focus);
-        // Expand pad shows all ranked chips in one row (top+rest); +N stays CSS-hidden.
-        el.hidden=!(laid.topSet[k]||laid.restSet[k]);
+        el.hidden=expanded?!(laid.topSet[k]||laid.restSet[k]):!laid.topSet[k];
       });
 
-      if(padAgentBarMore) padAgentBarMore.hidden=true;
+      if(padAgentBarMore){
+        var n=rest.length;
+        if(n>0){
+          padAgentBarMore.hidden=false;
+          if(expanded){
+            padAgentBarMore.textContent='收起';
+            padAgentBarMore.setAttribute('aria-label', '收起 Agent 列表');
+            padAgentBarMore.title='收起';
+          } else {
+            padAgentBarMore.textContent='+'+n;
+            padAgentBarMore.setAttribute('aria-label', '展开查看更多 Agent（+'+n+'）');
+            padAgentBarMore.title='展开为两排查看（+'+n+'）';
+          }
+          padAgentBarMore.setAttribute('aria-expanded', expanded?'true':'false');
+        } else {
+          padAgentBarMore.hidden=true;
+          padAgentBarMore.textContent='+0';
+        }
+      }
       if(padAgentBarOverflow){
         padAgentBarOverflow.innerHTML='';
-        setAgentBarOverflowOpen(false);
+        padAgentBarOverflow.hidden=true;
       }
     }
 
@@ -1907,10 +1964,8 @@
       var light=fromAgents || (ambient&&ambient!=='idle' ? ambient : (appOn && appSt && appSt!=='idle' ? appSt : padSt));
       wrap.setAttribute('data-light', light);
       maybeNotifyAttention(light);
-      var pulse=String(s&&(s.rgbPulse||s.rgb_pulse)||'').trim();
-      wrap.classList.toggle('ot-status-pulse', pulse==='breathing');
-      wrap.classList.toggle('ot-status-pulse-slow', pulse==='slow');
-      wrap.classList.toggle('is-status-flash', pulse==='flash');
+      // Soft Pad chassis stays static — breathing/flash lives on agent chips only.
+      wrap.classList.remove('ot-status-pulse', 'ot-status-pulse-slow', 'is-status-flash');
 
       // Soft RGB Output Adapter: color only from snapshot.rgb (Rust), never FE palette.
       var rgb=null;
@@ -2811,13 +2866,25 @@
     bindAgentFocusClicks(miniAgents);
     bindAgentFocusClicks(padAgentBar);
 
+    function relayoutPadAgentBarFromSnap(){
+      try{
+        var snap=lastSnap||{};
+        var byKind={};
+        (Array.isArray(snap.agents)?snap.agents:[]).forEach(function(row){
+          var kind=String(row&&row.kind||'').trim();
+          if(kind) byKind[kind]=row;
+        });
+        layoutPadAgentBar(snap, byKind, resolveUsageFocus(snap));
+      }catch(_){}
+    }
     if(padAgentBarMore){
       padAgentBarMore.addEventListener('pointerdown',function(e){ e.stopPropagation(); });
       padAgentBarMore.addEventListener('click',function(e){
         e.preventDefault();
         e.stopPropagation();
         if(padAgentBarMore.hidden) return;
-        setAgentBarOverflowOpen(!agentBarOverflowOpen);
+        setAgentBarExpanded(!agentBarExpanded);
+        relayoutPadAgentBarFromSnap();
       });
     }
     if(padAgentBarOverflow){
@@ -2829,7 +2896,7 @@
         e.preventDefault();
         e.stopPropagation();
         if(miniAgentMore.hidden) return;
-        // Mini window is ~44px tall — popover won't fit; expand Soft Pad instead.
+        // Mini window is ~44px tall — two rows won't fit; expand Soft Pad instead.
         localMinimized=false;
         applyLocalStatusDom();
         invoke('cmd_codex_micro_overlay_set_minimized',{minimized:false}).catch(function(){});
@@ -2837,9 +2904,10 @@
     }
     document.addEventListener('click',function(e){
       var t=e.target;
-      if(agentBarOverflowOpen){
-        if(!(t&&t.closest&&(t.closest('#padAgentBarMore')||t.closest('#padAgentBarOverflow')))){
-          setAgentBarOverflowOpen(false);
+      if(agentBarExpanded){
+        if(!(t&&t.closest&&t.closest('#padAgentBar'))){
+          setAgentBarExpanded(false);
+          relayoutPadAgentBarFromSnap();
         }
       }
       if(miniQuotaOpen){
@@ -2850,7 +2918,10 @@
     });
     document.addEventListener('keydown',function(e){
       if(e.key==='Escape'){
-        if(agentBarOverflowOpen) setAgentBarOverflowOpen(false);
+        if(agentBarExpanded){
+          setAgentBarExpanded(false);
+          relayoutPadAgentBarFromSnap();
+        }
         if(miniQuotaOpen) setMiniQuotaOpen(false);
       }
     });

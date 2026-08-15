@@ -83,7 +83,7 @@
 
 ## 附录 · Slice D（+N / 多 Provider pill / 新鲜度）
 
-- **VISIBLE_PAD = 6**：mini 一行最多 6 个 lit chip；`rest` 非空时显示 `#miniAgentMore`（`+N`），点击展开 Soft Pad（44px 高放不下 overflow）。
+- **VISIBLE_PAD = 6**：mini 一行最多 6 个 lit chip；`rest` 非空时显示 `#miniAgentMore`（`+N`），点击展开 Soft Pad（44px 高放不下两排）。展开 Soft Pad 的 `#padAgentBar` 默认同样只显示 6 个；`#padAgentBarMore` 展开为两排，再点「收起」。运行中 chip 放大并呼吸；完成有 flash + 绿环。Soft Pad 大盘（`#wrap`）不跟 `rgbPulse` 呼吸。
 - **Catalog 顺序**：`codex → claude → cursor → copilotCli → gemini → minimax → workbuddy → trae → qoder`。
 - **占位 chip**：`copilotCli` / `gemini` 在 `agents[]` 未 lit 时以 `data-placeholder=1` + `data-status=idle` 灰色禁用出现（等 B/C 接灯）；颜色仍只跟 `data-status`，不发明品牌色。
 - **多 Provider pill**：snapshot 有 `providerQuotas[]` 时，pill 文案取首个 `status=ok` 的 `caption`，否则 `用量 ▾`；点击打开紧凑下拉（`icon` → ✓/⚠/✗ + caption）。部分失败也必须保留成功行。无 `providerQuotas` 时保持单 Agent 用量 / 刷新行为。

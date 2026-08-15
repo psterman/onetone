@@ -17,7 +17,14 @@ var fmt = require(path.join(root, 'src/js/features/agent/usage-format.js'));
 ['codex', 'claude', 'cursor', 'copilotCli', 'gemini', 'minimax', 'workbuddy', 'trae', 'qoder', 'cline', 'opencode', 'aider'].forEach(function (kind) {
   assert.ok(html.includes('data-agent="' + kind + '"'), 'missing agent chip: ' + kind);
 });
-assert.ok(html.includes('id="padAgentBar"') || html.includes('soft-pad-agent-bar'));
+assert.ok(html.includes('id="overlayAppMeta"') && html.includes('id="overlayLightGate"'));
+assert.ok(
+  html.indexOf('id="overlayAppMeta"') < html.indexOf('id="overlayLightGate"') &&
+    html.indexOf('id="overlayLightGate"') < html.indexOf('id="overlayToast"'),
+  'app-meta must sit above light-gate in pad stack (no overlay occlusion)'
+);
+assert.ok(html.includes('function pickLightGateFail'), 'bottleneck prefers Applied over misleading hook');
+assert.ok(html.includes('未收到 Claude Hook') || html.includes('pickLightGateFail'), 'hook detail honest when not Claude');
 assert.ok(html.includes('function applyMiniAgentChips'));
 assert.ok(html.includes('function applyMiniUsagePill'));
 assert.ok(html.includes('function pickMiniUsageKind'));
@@ -110,8 +117,17 @@ assert.ok(html.includes('function layoutPadAgentBar'));
 assert.ok(html.includes('function layoutMiniAgentBar'));
 assert.ok(html.includes('function touchAgentBarRecency'));
 assert.ok(html.includes('noteForegroundRecency') || html.includes('foregroundAgent'));
-assert.ok(html.includes('setAgentBarOverflowOpen'));
-assert.ok(html.includes('padAgentBarMore.hidden=true'), 'expand pad still hides +N chrome');
+assert.ok(html.includes('setAgentBarExpanded') || html.includes('setAgentBarOverflowOpen'));
+assert.ok(html.includes('is-expanded') || html.includes('agentBarExpanded'), 'pad bar two-row expand');
+assert.ok(
+  /el\.hidden=expanded\?/.test(html) || /el\.hidden=expanded \?/.test(html) || html.includes('laid.topSet[k]'),
+  'pad folds to top6 unless expanded'
+);
+assert.ok(!html.includes('padAgentBarMore.hidden=true;\n        setAgentBarOverflowOpen'), 'pad no longer force-hides +N');
+assert.ok(
+  html.includes("padAgentBarMore.textContent='收起'") || html.includes('padAgentBarMore.textContent="收起"'),
+  'expanded pad shows 收起'
+);
 assert.ok(
   html.includes('miniAgentMore.hidden=false') || /rest\.length/.test(html),
   'mini +N uses Rank rest length'
@@ -123,8 +139,9 @@ assert.ok(html.includes('data-placeholder'), 'placeholder chips for copilot/gemi
 assert.ok(
   /display:\s*flex/.test(css.match(/\.soft-pad-agent-bar\s*\{[^}]+\}/)[0]) &&
     /flex-wrap:\s*nowrap/.test(css.match(/\.soft-pad-agent-bar\s*\{[^}]+\}/)[0]),
-  'expand agent bar is a single nowrap row'
+  'collapsed agent bar is a single nowrap row'
 );
+assert.ok(/\.soft-pad-agent-bar\.is-expanded\s*\{[^}]*flex-wrap:\s*wrap/.test(css), 'expanded agent bar wraps to two rows');
 assert.ok(
   /flex:\s*1\s+1\s+0/.test(css) &&
     /aspect-ratio:\s*1\s*\/\s*1/.test(css) &&
@@ -133,9 +150,22 @@ assert.ok(
 );
 assert.ok(!/grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/.test(css), 'agent bar must not stretch chips with 1fr');
 assert.ok(!/grid-template-columns:\s*repeat\(4,\s*34px\)/.test(css), 'agent bar is no longer 2×4 grid');
-assert.ok(/\.soft-pad-agent-bar__more[\s,{]/.test(css) && css.includes('display: none !important'));
+assert.ok(/\.soft-pad-agent-bar__more[\s,{]/.test(css));
+assert.ok(!/\.soft-pad-agent-bar__more,\s*\n?\.soft-pad-agent-bar__overflow\s*\{\s*display:\s*none\s*!important/.test(css), 'pad +N must be visible when unhidden');
 assert.ok(/width:\s*6px/.test(css) && /height:\s*6px/.test(css), 'status dot 6px');
 assert.ok(css.includes('soft-pad-chip-status-flash') || css.includes('is-status-flash'));
+assert.ok(css.includes('soft-pad-chip-breathe') && css.includes('soft-pad-mini-agent-breathe'), 'running chip breathe');
+assert.ok(/\.soft-pad-agent-bar__chip\[data-status="running"\]\s*\{[^}]*scale\(1\.18\)/.test(css), 'running chip larger');
+assert.ok(/\.overlay-mini__agent\[data-status="running"\]\s*\{/.test(css), 'mini running style');
+assert.ok(/\.soft-pad-agent-bar__chip\[data-status="done"\]\s*\{/.test(css), 'done lasting ring on pad');
+assert.ok(/\.overlay-mini__agent\[data-status="done"\]\s*\{/.test(css), 'done lasting ring on mini');
+assert.ok(html.includes("el.classList.contains('overlay-mini__agent')"), 'done flash applies to mini');
+assert.ok(
+  html.includes("wrap.classList.remove('ot-status-pulse'") ||
+    html.includes('wrap.classList.remove("ot-status-pulse"'),
+  'chassis must not breathe from rgbPulse'
+);
+assert.ok(!/wrap\.classList\.toggle\('ot-status-pulse'/.test(html), 'no wrap breathing toggle');
 assert.ok(css.includes('overlay-mini__more'));
 assert.ok(css.includes('overlay-mini__fresh') && css.includes('is-stale'), 'freshness styles');
 assert.ok(css.includes('overlay-mini__quota-dd'), 'quota dropdown styles');

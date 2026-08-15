@@ -298,86 +298,107 @@ html[data-theme="dark"] .wb-sidebar-status {
   color: #fff;
 }
 
-.global-mic-hub {
+.wb-hero-mic {
   display: grid;
   gap: 8px;
-  margin: 12px 0 0;
-  padding: 10px;
-  border: 1px solid var(--outline-variant);
-  border-radius: 8px;
-  background: var(--surface-high);
-  color: var(--on-surface);
+  width: min(100%, 420px);
+  margin: 4px auto 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 70%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
 }
 
-.global-mic-hub-main {
+.wb-hero-mic-status {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-width: 0;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  margin: 0;
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
 }
 
-.global-mic-hub-dot {
-  width: 8px;
-  height: 8px;
+.wb-hero-mic-status:hover {
+  opacity: 0.92;
+}
+
+.wb-hero-mic-status:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.wb-hero-mic-dot {
+  width: 9px;
+  height: 9px;
   flex: 0 0 auto;
   border-radius: 50%;
   background: #94a3b8;
   box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.18);
 }
 
-.global-mic-hub.is-ready .global-mic-hub-dot {
+.wb-hero-mic.is-ready .wb-hero-mic-dot {
   background: #22c55e;
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
 }
 
-.global-mic-hub.is-muted .global-mic-hub-dot {
+.wb-hero-mic.is-muted .wb-hero-mic-dot {
   background: #f59e0b;
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.22);
+  animation: wb-pulse 1.4s ease-in-out infinite;
 }
 
-.global-mic-hub.is-missing .global-mic-hub-dot {
+.wb-hero-mic.is-missing .wb-hero-mic-dot {
   background: #ef4444;
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
 }
 
-.global-mic-hub.is-recovering .global-mic-hub-dot {
+.wb-hero-mic.is-recovering .wb-hero-mic-dot,
+.wb-hero-mic.is-checking .wb-hero-mic-dot {
   background: var(--primary, #2a9cc4);
   animation: wb-pulse 1.4s ease-in-out infinite;
 }
 
-.global-mic-hub.is-checking .global-mic-hub-dot {
-  background: var(--on-surface-muted, #94a3b8);
-  animation: wb-pulse 1.4s ease-in-out infinite;
+.wb-hero-mic.is-muted {
+  border-color: color-mix(in srgb, #f59e0b 45%, var(--outline-variant));
+  background: color-mix(in srgb, #f59e0b 8%, var(--surface));
 }
 
-.global-mic-hub-copy {
+.wb-hero-mic-copy {
   display: grid;
   gap: 1px;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
-.global-mic-hub-copy strong {
+.wb-hero-mic-copy strong {
   font-size: 12px;
+  font-weight: 700;
   line-height: 1.2;
 }
 
-.global-mic-hub-copy span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.wb-hero-mic-copy em {
   font-size: 10px;
-  font-weight: 600;
-  color: var(--on-surface-muted);
+  font-style: normal;
+  font-weight: 650;
+  color: color-mix(in srgb, #f59e0b 70%, var(--on-surface));
 }
 
-.mic-level-bars.mic-level-bars--global {
+.mic-level-bars.mic-level-bars--hero {
   display: flex;
   align-items: center;
   gap: 2px;
   height: 18px;
+  flex: 0 0 auto;
 }
 
-.mic-level-bars.mic-level-bars--global span {
+.mic-level-bars.mic-level-bars--hero span {
   width: 3px;
   height: 14px;
   border-radius: 999px;
@@ -386,25 +407,47 @@ html[data-theme="dark"] .wb-sidebar-status {
   transform: scaleY(0.15);
 }
 
-.global-mic-hub-actions {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 4px;
+.wb-hero-mic.is-muted .mic-level-bars--hero span {
+  background: color-mix(in srgb, #f59e0b 45%, var(--outline-variant));
+  opacity: 0.55;
 }
 
-.global-mic-hub-btn {
-  min-height: 26px;
+.wb-hero-mic-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 2px;
+  border-top: 1px dashed color-mix(in srgb, var(--outline-variant) 80%, transparent);
+}
+
+.wb-hero-mic-chip {
+  max-width: 100%;
+  min-height: 28px;
+  padding: 0 12px;
   border: 1px solid var(--outline-variant);
-  border-radius: 6px;
+  border-radius: 999px;
   background: var(--surface);
   color: inherit;
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.global-mic-hub-btn:hover {
+.wb-hero-mic-chip:hover {
   border-color: color-mix(in srgb, var(--primary, #2a9cc4) 45%, var(--outline-variant));
+}
+
+.wb-hero-mic-chip.is-on {
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 55%, var(--outline-variant));
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 12%, var(--surface));
+  color: var(--primary, #2a9cc4);
+}
+
+.wb-hero-mic-chip.is-blocked {
+  opacity: 0.55;
 }
 
 .app.is-settings .wb-home-sidebar-foot,

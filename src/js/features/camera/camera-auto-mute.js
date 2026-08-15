@@ -267,6 +267,45 @@
     return !!(getSettings().enabled);
   }
 
+  function isCameraLiveForAutoMute(){
+    try{
+      var preview=global.OneToneCameraPreview;
+      if(preview&&typeof preview.isRunning==='function'&&preview.isRunning()) return true;
+      if(preview&&typeof preview.hasMediaStream==='function'&&preview.hasMediaStream()) return true;
+    }catch(_){}
+    return false;
+  }
+
+  function toastAutoMuteCameraGate(){
+    var msg=t('cameraAutoMuteNeedCameraOn','请先开启摄像头后再启用自动静音');
+    try{
+      if(global.OneToneApp&&typeof global.OneToneApp.toast==='function'){
+        global.OneToneApp.toast(msg);
+        return;
+      }
+    }catch(_){}
+    try{
+      var hooks=global.__vp_app_mic_hooks__;
+      if(hooks&&hooks.toast) hooks.toast(msg);
+    }catch(_){}
+  }
+
+  /** If Auto Mute is on but camera is missing/off, force disabled. Returns true when gated. */
+  function ensureAutoMuteCameraGate(opts){
+    opts=opts||{};
+    var settings=getSettings();
+    if(!settings.enabled) return false;
+    if(isCameraLiveForAutoMute()) return false;
+    writeSettings(Object.assign({},settings,{enabled:false}));
+    if(rt.mutedByUs){
+      setMicMute(false).then(function(){ rt.mutedByUs=false; }).catch(function(){});
+    }
+    if(opts.toast!==false) toastAutoMuteCameraGate();
+    syncUi();
+    notifyPreviewLandmarker();
+    return true;
+  }
+
   function onGazeFrame(point, now){
     now=now!=null?now:Date.now();
     var settings=getSettings();
@@ -527,6 +566,12 @@
     if(tog){
       tog.addEventListener('click',function(){
         var next=!getSettings().enabled;
+        if(next&&!isCameraLiveForAutoMute()){
+          toastAutoMuteCameraGate();
+          writeSettings(Object.assign({},getSettings(),{enabled:false}));
+          syncUi();
+          return;
+        }
         writeSettings(Object.assign({},getSettings(),{enabled:next}));
         if(!next&&rt.mutedByUs){
           setMicMute(false).then(function(){ rt.mutedByUs=false; });
@@ -587,6 +632,7 @@
   function onPanelVisible(){
     rt.panelVisible=true;
     bindUi();
+    ensureAutoMuteCameraGate({toast:false});
     syncUi();
     if(isWanted()){
       startStatusPoll();
@@ -624,6 +670,8 @@
     effectiveThresholdCm:effectiveThresholdCm,
     getSettings:getSettings,
     writeSettings:writeSettings,
+    isCameraLiveForAutoMute:isCameraLiveForAutoMute,
+    ensureAutoMuteCameraGate:ensureAutoMuteCameraGate,
     onGazeFrame:onGazeFrame,
     isWanted:isWanted,
     syncUi:syncUi,

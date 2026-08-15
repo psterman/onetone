@@ -121,10 +121,8 @@ fn snap_with_proto(
 }
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
-    let Some(win) = app.get_webview_window(COACH_HUD_LABEL) else {
-        return Ok(());
-    };
-    configure_coach_hud_window(&win)?;
+    // coach_hud is lazy-created on first visible push_state.
+    let _ = app;
     Ok(())
 }
 
@@ -282,11 +280,21 @@ fn active_mapping_keys(cfg: &VoiceConfig) -> (String, String) {
 
 pub fn push_state(app: &AppHandle, state: &AppState) {
     let snapshot = build_snapshot(state);
-    let Some(_win) = app.get_webview_window(COACH_HUD_LABEL) else {
-        return;
-    };
-
     let visible = snapshot.visible;
+    if visible {
+        let Ok((win, created)) =
+            crate::overlay_window::ensure_overlay_window(app, crate::overlay_window::COACH_HUD)
+        else {
+            return;
+        };
+        if created {
+            let _ = configure_coach_hud_window(&win);
+        }
+    } else if app.get_webview_window(COACH_HUD_LABEL).is_none() {
+        // Never created and not visible — nothing to hide/emit.
+        return;
+    }
+
     let payload = snapshot;
     let app_clone = app.clone();
 

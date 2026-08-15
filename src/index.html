@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="css/keys-workflow.css" />
   <link rel="stylesheet" href="css/flow-desk.css" />
   <link rel="stylesheet" href="css/camera-workflow.css" />
+  <link rel="stylesheet" href="css/camera-action-picker.css" />
   <link rel="stylesheet" href="css/voice-workflow.css" />
   <link rel="stylesheet" href="css/voice-page-shell.css" />
   <link rel="stylesheet" href="css/voice-feedback-rail.css" />
@@ -154,22 +155,6 @@
                 </div>
                 <button type="button" class="wb-home-quickstart" id="wbBtnTestSend" data-i18n="homeWbQuickStart">快速入门</button>
               </div>
-              <section class="global-mic-hub" id="globalMicHub" aria-live="polite">
-                <div class="global-mic-hub-main">
-                  <span class="global-mic-hub-dot" aria-hidden="true"></span>
-                  <div class="global-mic-hub-copy">
-                    <!-- 状态/设备/静音按钮由 OneToneAppMic 动态写入；禁止 data-i18n，避免 applyLang 扫成「不可用」假象 -->
-                    <strong id="globalMicHubStatus">麦克风可用</strong>
-                    <span id="globalMicHubDevice">—</span>
-                  </div>
-                </div>
-                <span class="mic-level-bars mic-level-bars--global" id="globalMicHubBars" aria-hidden="true"></span>
-                <div class="global-mic-hub-actions">
-                  <button type="button" class="global-mic-hub-btn" id="globalMicHubToggle" data-mic-ui-action="toggle">静音</button>
-                  <button type="button" class="global-mic-hub-btn" id="globalMicHubPick" data-mic-ui-action="pick" data-i18n="micUiPick">换麦克风</button>
-                  <button type="button" class="global-mic-hub-btn" id="globalMicHubAutoMute" data-mic-ui-action="automute" data-i18n="micUiAutoMute">自动静音</button>
-                </div>
-              </section>
       </aside>
       <div class="app-content-column" id="appContentColumn">
       <div class="editor-zone">
@@ -223,6 +208,20 @@
                               <span style="--h:3"></span><span style="--h:2"></span><span style="--h:1.5"></span><span style="--h:1"></span><span style="--h:1"></span>
                             </div>
                           </div>
+                          <section class="wb-hero-mic" id="wbHeroMic" aria-live="polite">
+                            <button type="button" class="wb-hero-mic-status" id="wbHeroMicToggle" data-mic-ui-action="toggle">
+                              <span class="wb-hero-mic-dot" aria-hidden="true"></span>
+                              <span class="wb-hero-mic-copy">
+                                <strong id="wbHeroMicStatus">麦克风可用</strong>
+                                <em id="wbHeroMicGuide" hidden></em>
+                              </span>
+                              <span class="mic-level-bars mic-level-bars--hero" id="wbHeroMicBars" aria-hidden="true"></span>
+                            </button>
+                            <div class="wb-hero-mic-chips">
+                              <button type="button" class="wb-hero-mic-chip" id="wbHeroMicDevice" data-mic-ui-action="pick" title="换麦克风">—</button>
+                              <button type="button" class="wb-hero-mic-chip" id="wbHeroMicAutoMute" data-mic-ui-action="automute" data-i18n="micUiAutoMute">自动静音</button>
+                            </div>
+                          </section>
                           <div class="wb-hero-pills" id="wbHeroPills" role="list"></div>
                           <div class="wb-hero-footer">
                             <div class="wb-hero-stats" id="wbHeroStats"></div>
@@ -2940,7 +2939,11 @@
                           </div>
                         </div>
                         <p class="camera-bind-summary" id="cameraTriggerSummaryAway" hidden>尚未绑定结果</p>
-                        <select class="camera-action-select" data-camera-action-for="onAway" aria-label="离席动作"></select>
+                        <div class="camera-action-control">
+                          <button type="button" class="camera-action-trigger" data-camera-action-trigger="onAway" aria-haspopup="dialog" aria-expanded="false" aria-controls="cameraActionPickerOverlay" aria-label="离席动作"></button>
+                          <button type="button" class="camera-action-trigger-clear" aria-label="清除动作" title="× 清除">×</button>
+                          <select class="camera-action-select" data-camera-action-for="onAway" aria-hidden="true" tabindex="-1"></select>
+                        </div>
                         <div class="camera-rule-row-extra camera-presence-duration-row" data-camera-duration-key="awayMs">
                           <label class="camera-presence-duration-lbl" for="cameraAwayDurationSelect" data-i18n="cameraPresenceAwayDurationLbl">判定时长</label>
                           <select class="camera-presence-duration-select" id="cameraAwayDurationSelect" data-presence-duration="awayMs" aria-label="离席判定时长"></select>
@@ -2955,7 +2958,11 @@
                           </div>
                         </div>
                         <p class="camera-bind-summary" id="cameraTriggerSummaryReturn" hidden>尚未绑定结果</p>
-                        <select class="camera-action-select" data-camera-action-for="onReturn" aria-label="回席动作"></select>
+                        <div class="camera-action-control">
+                          <button type="button" class="camera-action-trigger" data-camera-action-trigger="onReturn" aria-haspopup="dialog" aria-expanded="false" aria-controls="cameraActionPickerOverlay" aria-label="回席动作"></button>
+                          <button type="button" class="camera-action-trigger-clear" aria-label="清除动作" title="× 清除">×</button>
+                          <select class="camera-action-select" data-camera-action-for="onReturn" aria-hidden="true" tabindex="-1"></select>
+                        </div>
                         <div class="camera-rule-row-extra camera-presence-duration-row" data-camera-duration-key="presentMs">
                           <label class="camera-presence-duration-lbl" for="cameraReturnDurationSelect" data-i18n="cameraPresenceReturnDurationLbl">回席判定时长</label>
                           <select class="camera-presence-duration-select" id="cameraReturnDurationSelect" data-presence-duration="presentMs" aria-label="回席判定时长"></select>
@@ -2970,7 +2977,11 @@
                           </div>
                         </div>
                         <p class="camera-bind-summary" id="cameraTriggerSummaryShake" hidden>尚未绑定结果</p>
-                        <select class="camera-action-select" data-camera-action-for="shakeHead" aria-label="摇头动作"></select>
+                        <div class="camera-action-control">
+                          <button type="button" class="camera-action-trigger" data-camera-action-trigger="shakeHead" aria-haspopup="dialog" aria-expanded="false" aria-controls="cameraActionPickerOverlay" aria-label="摇头动作"></button>
+                          <button type="button" class="camera-action-trigger-clear" aria-label="清除动作" title="× 清除">×</button>
+                          <select class="camera-action-select" data-camera-action-for="shakeHead" aria-hidden="true" tabindex="-1"></select>
+                        </div>
                         <div class="camera-rule-row-extra camera-presence-duration-row" data-camera-shake-how="1">
                           <label class="camera-presence-duration-lbl" for="cameraShakeHowSelect" data-i18n="cameraShakeHowLbl">摇头速度</label>
                           <select class="camera-presence-duration-select" id="cameraShakeHowSelect" data-presence-shake-how="1" aria-label="摇头速度"></select>
@@ -2989,7 +3000,11 @@
                           </div>
                         </div>
                         <p class="camera-bind-summary" id="cameraTriggerSummaryBlink" hidden>尚未绑定结果</p>
-                        <select class="camera-action-select" data-camera-action-for="deliberateBlink" aria-label="故意眨眼动作"></select>
+                        <div class="camera-action-control">
+                          <button type="button" class="camera-action-trigger" data-camera-action-trigger="deliberateBlink" aria-haspopup="dialog" aria-expanded="false" aria-controls="cameraActionPickerOverlay" aria-label="故意眨眼动作"></button>
+                          <button type="button" class="camera-action-trigger-clear" aria-label="清除动作" title="× 清除">×</button>
+                          <select class="camera-action-select" data-camera-action-for="deliberateBlink" aria-hidden="true" tabindex="-1"></select>
+                        </div>
                         <div class="camera-rule-row-extra camera-presence-duration-row" data-camera-blink-close-sec="1">
                           <label class="camera-presence-duration-lbl" for="cameraBlinkCloseSecSelect" data-i18n="cameraBlinkCloseHowLbl">闭眼多久</label>
                           <select class="camera-presence-duration-select" id="cameraBlinkCloseSecSelect" data-presence-blink-close-sec="1" aria-label="闭眼多久"></select>
@@ -3444,7 +3459,11 @@
                             </div>
                           </div>
                           <p class="camera-bind-summary" id="cameraTriggerSummaryOpenPalm" hidden>尚未绑定结果</p>
-                          <select class="camera-action-select" data-camera-action-for="openPalm" aria-label="五指张开动作"></select>
+                          <div class="camera-action-control">
+                            <button type="button" class="camera-action-trigger" data-camera-action-trigger="openPalm" aria-haspopup="dialog" aria-expanded="false" aria-controls="cameraActionPickerOverlay" aria-label="五指张开动作"></button>
+                            <button type="button" class="camera-action-trigger-clear" aria-label="清除动作" title="× 清除">×</button>
+                            <select class="camera-action-select" data-camera-action-for="openPalm" aria-hidden="true" tabindex="-1"></select>
+                          </div>
                         </div>
                         <div class="camera-rule-row" data-camera-card="okHand" data-camera-trigger="okHand" data-camera-bind-key="okHand" id="cameraBindRowOkHand">
                           <div class="camera-rule-row-main">
@@ -3455,7 +3474,11 @@
                             </div>
                           </div>
                           <p class="camera-bind-summary" id="cameraTriggerSummaryOkHand" hidden>尚未绑定结果</p>
-                          <select class="camera-action-select" data-camera-action-for="okHand" aria-label="OK 动作"></select>
+                          <div class="camera-action-control">
+                            <button type="button" class="camera-action-trigger" data-camera-action-trigger="okHand" aria-haspopup="dialog" aria-expanded="false" aria-controls="cameraActionPickerOverlay" aria-label="OK 动作"></button>
+                            <button type="button" class="camera-action-trigger-clear" aria-label="清除动作" title="× 清除">×</button>
+                            <select class="camera-action-select" data-camera-action-for="okHand" aria-hidden="true" tabindex="-1"></select>
+                          </div>
                         </div>
                         <div class="camera-rule-row" data-camera-card="fist" data-camera-trigger="fist" data-camera-bind-key="fist" id="cameraBindRowFist">
                           <div class="camera-rule-row-main">
@@ -3466,7 +3489,11 @@
                             </div>
                           </div>
                           <p class="camera-bind-summary" id="cameraTriggerSummaryFist" hidden>尚未绑定结果</p>
-                          <select class="camera-action-select" data-camera-action-for="fist" aria-label="握拳动作"></select>
+                          <div class="camera-action-control">
+                            <button type="button" class="camera-action-trigger" data-camera-action-trigger="fist" aria-haspopup="dialog" aria-expanded="false" aria-controls="cameraActionPickerOverlay" aria-label="握拳动作"></button>
+                            <button type="button" class="camera-action-trigger-clear" aria-label="清除动作" title="× 清除">×</button>
+                            <select class="camera-action-select" data-camera-action-for="fist" aria-hidden="true" tabindex="-1"></select>
+                          </div>
                         </div>
                         <div class="camera-rule-row" data-camera-card="wave" data-camera-trigger="wave" data-camera-bind-key="wave" id="cameraBindRowWave">
                           <div class="camera-rule-row-main">
@@ -3477,7 +3504,11 @@
                             </div>
                           </div>
                           <p class="camera-bind-summary" id="cameraTriggerSummaryWave" hidden>尚未绑定结果</p>
-                          <select class="camera-action-select" data-camera-action-for="wave" aria-label="挥手动作"></select>
+                          <div class="camera-action-control">
+                            <button type="button" class="camera-action-trigger" data-camera-action-trigger="wave" aria-haspopup="dialog" aria-expanded="false" aria-controls="cameraActionPickerOverlay" aria-label="挥手动作"></button>
+                            <button type="button" class="camera-action-trigger-clear" aria-label="清除动作" title="× 清除">×</button>
+                            <select class="camera-action-select" data-camera-action-for="wave" aria-hidden="true" tabindex="-1"></select>
+                          </div>
                         </div>
                       </div>
                     </section>
@@ -4461,7 +4492,8 @@
   <script src="js/features/camera/gaze-karaoke-lines.js"></script>
   <script src="js/features/camera/camera-gaze-calibration.js"></script>
   <script src="js/features/camera/gaze-context-resolver.js"></script>
-  <script src="js/features/camera/camera-presence-actions.js?v=20260809-stall9"></script>
+  <script src="js/features/camera/camera-action-picker.js?v=20260815-cap4"></script>
+  <script src="js/features/camera/camera-presence-actions.js?v=20260815-cap3"></script>
   <script src="js/features/camera/camera-gaze-monitor-topology.js"></script>
   <script src="js/features/camera/camera-gaze-monitor-assessment.js"></script>
   <script src="js/features/camera/camera-gaze-monitor-classifier.js"></script>

@@ -34,6 +34,7 @@ mod aider_hook_setup;
 mod coach_hud;
 mod codex_app_state;
 mod codex_micro_overlay;
+mod overlay_window;
 mod codex_micro_protocol_server;
 mod codex_micro_vendor;
 mod codex_numpad_layer;

@@ -2,7 +2,8 @@
  * Soft Pad agent bar rank: active-first, then recent idle.
  * Pure — no DOM.
  *
- * Mini: show VISIBLE_PAD chips; fold remainder with +N when rest nonempty.
+ * Pad + Mini: show VISIBLE_PAD chips; fold remainder with +N when rest nonempty.
+ * Pad expands in-place to two rows; Mini +N opens the full Soft Pad.
  */
 (function (root) {
   'use strict';

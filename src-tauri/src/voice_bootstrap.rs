@@ -1454,7 +1454,37 @@ pub fn bootstrap_voice_engines(app: &AppHandle, state: &Arc<AppState>, safe_mode
         log_bootstrap_phase(state, t0, "end", "total_ms=0 action=safe_mode");
         return;
     }
-    activate_desired_engine(app, state, "bootstrap");
+    // Memory: do not activate (no Vosk Model::new / sherpa KeywordSpotter on cold start).
+    // FE deferred boot / strategy IPC / listen resume call activate_desired_engine.
+    crate::app_log::log_line(
+        state,
+        "voice",
+        "voice bootstrap deferred model load (await strategy/listen)",
+    );
+    crate::runtime_event::publish_runtime_event(
+        Some(app),
+        state.as_ref(),
+        "voice",
+        crate::runtime_event::kind::VOICE_BOOTSTRAP,
+        "voice bootstrap deferred model load",
+        Some(serde_json::json!({
+            "source": "voice_bootstrap",
+            "desiredEngine": "none",
+            "fromEngine": "none",
+            "toEngine": "none",
+            "reason": "deferred_model_load",
+            "fingerprintChanged": false,
+        })),
+    );
+    log_bootstrap_phase(
+        state,
+        t0,
+        "end",
+        &format!(
+            "total_ms={} action=deferred_model_load",
+            t0.elapsed().as_millis()
+        ),
+    );
 }
 
 pub fn apply_voice_config_change(

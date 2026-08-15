@@ -1,0 +1,19 @@
+OneTone memory baseline (pre-P0)
+Measured: 2026-08-15T07:44:41+08:00
+Exe: target-release-live/release/onetone.exe
+
+PROCESS_COUNT=12
+RENDERER_COUNT=4
+RENDERER_WS_SUM_MB=516.3
+HOST_PRIV_MB=904.5
+HOST_WS_MB=181.6
+TREE_WS_MB=1320.5
+TREE_PRIV_MB=2122.6
+
+Per-process:
+  host             WS=181.6 Priv=904.5
+  browser          WS=168.3 Priv=74.9
+  crashpad         WS=11.9  Priv=2.7
+  gpu-process      WS=252.9 Priv=658.3
+  utility x4       (network/storage/other)
+  renderer x4      WS=297.3+72.4+61.4+85.2 (=516.3)

@@ -4,6 +4,7 @@
   "windows": ["main", "tray_menu"],
   "permissions": [
     "core:default",
+    "core:webview:allow-create-webview-window",
     "app-ipc",
     "autostart:allow-enable",
     "autostart:allow-disable",

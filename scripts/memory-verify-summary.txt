@@ -1,0 +1,8 @@
+﻿P0 verify (cold, overlays not opened):
+  RENDERER_COUNT=1 (was 4)
+  RENDERER_WS_SUM_MB~65 (was 516)
+  PROCESS_COUNT=7 (was 12)
+  HOST_PRIV_MB~13 before model load (was 904)
+
+P1 idle: HOST_PRIV << 400, no Vosk/sherpa-scale heap at idle
+P1 enable-listen gate: scripts/test-enable-listen-deferred-boot.mjs PASS

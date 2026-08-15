@@ -179,18 +179,29 @@
   }
 
   function scheduleDeferredVoiceEngineBoot(){
-    if(voiceEngineBootDone||voiceEngineBootTimer||hooks().welcomeOpen()||hooks().onboardIsOpen()) return;
+    if(voiceEngineBootDone||voiceEngineBootTimer) return;
+    // Welcome/onboard: keep retrying — Rust no longer preloads models on cold start.
+    if(hooks().welcomeOpen()||hooks().onboardIsOpen()){
+      voiceEngineBootTimer=setTimeout(function(){
+        voiceEngineBootTimer=0;
+        scheduleDeferredVoiceEngineBoot();
+      },2000);
+      return;
+    }
     var cfgEarly=hooks().state().config||{};
     var strategyEarly=currentListeningStrategy(cfgEarly);
-    // off / empty-KWS resourceSaver: Rust voice_bootstrap already settled on desired=none.
-    // A settle+10s cmd_request_runtime + renderHomeLiveZone used to restart the mic and 假死 ~5s.
+    // off / empty-KWS resourceSaver: stay idle (no model load).
     if(strategyEarly==='off'||(strategyEarly==='resourceSaver'&&resourceSaverStaysIdle(cfgEarly))){
       markVoiceEngineBootHandled();
       return;
     }
     voiceEngineBootTimer=setTimeout(function(){
       voiceEngineBootTimer=0;
-      if(voiceEngineBootDone||hooks().welcomeOpen()||hooks().onboardIsOpen()||!global.OneToneConfigPersist.isLoaded()) return;
+      if(voiceEngineBootDone) return;
+      if(hooks().welcomeOpen()||hooks().onboardIsOpen()||!global.OneToneConfigPersist.isLoaded()){
+        scheduleDeferredVoiceEngineBoot();
+        return;
+      }
       var cfg=hooks().state().config||{};
       var strategy=currentListeningStrategy(cfg);
       // #region agent log
@@ -202,13 +213,13 @@
       }
 
       if(!global.OneToneIpc||!global.OneToneIpc.invoke){
-        markVoiceEngineBootHandled();
+        scheduleDeferredVoiceEngineBoot();
         return;
       }
 
       if(strategy!=='advanced'){
-        // Bootstrap already started the engine; FE poll often already shows listening.
-        // Skip cmd_request_runtime entirely — sync snapshot used to 假死 ~5s on idle 增强.
+        // Only skip IPC when an engine is already healthy for this strategy.
+        // After deferred Rust bootstrap, FE must call activate — do not assume cold start loaded models.
         if(feWakeAlreadyMatchesStrategy(strategy)){
           markVoiceEngineBootHandled();
           return;
@@ -217,29 +228,22 @@
           if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.setTag) global.OneToneUiHeartbeat.setTag('voiceBootStrategy');
           else global.__otActivityTag='voiceBootStrategy';
         }catch(_){}
-        global.OneToneIpc.invoke('cmd_request_runtime',{}).catch(function(){ return null; }).then(function(snapshot){
-          if(runtimeAlreadyMatchesStrategy(snapshot,strategy)){
-            markVoiceEngineBootHandled();
-            // Already correct — do not remount home live / mic (that path 假死'd after boot settled).
-            return null;
+        // Prefer strategy set (activates) over request_runtime-only when idle after deferred bootstrap.
+        global.OneToneIpc.invoke('cmd_voice_set_listening_strategy',{strategy:strategy}).then(function(bundle){
+          if(bundle){
+            var voskRes=(bundle&&bundle.voiceVosk)||{enabled:false,state:'stopped'};
+            var sapiRes=(bundle&&bundle.voiceSapi)||{enabled:false,state:'stopped'};
+            var kwsRes=(bundle&&bundle.voiceKws)||{enabled:false,state:'stopped'};
+            if(hooks().renderVoiceVoskStatus) hooks().renderVoiceVoskStatus(voskRes);
+            if(hooks().renderVoiceSapiStatus) hooks().renderVoiceSapiStatus(sapiRes);
+            if(hooks().renderVoiceKwsStatus) hooks().renderVoiceKwsStatus(kwsRes);
+            hooks().syncHomeFromVoiceSettings(voskRes,sapiRes,null,{homeOnly:true,lightOnly:true},kwsRes);
           }
-          return global.OneToneIpc.invoke('cmd_voice_set_listening_strategy',{strategy:strategy}).then(function(bundle){
-            if(bundle){
-              var voskRes=(bundle&&bundle.voiceVosk)||{enabled:false,state:'stopped'};
-              var sapiRes=(bundle&&bundle.voiceSapi)||{enabled:false,state:'stopped'};
-              var kwsRes=(bundle&&bundle.voiceKws)||{enabled:false,state:'stopped'};
-              if(hooks().renderVoiceVoskStatus) hooks().renderVoiceVoskStatus(voskRes);
-              if(hooks().renderVoiceSapiStatus) hooks().renderVoiceSapiStatus(sapiRes);
-              if(hooks().renderVoiceKwsStatus) hooks().renderVoiceKwsStatus(kwsRes);
-              hooks().syncHomeFromVoiceSettings(voskRes,sapiRes,null,{homeOnly:true,lightOnly:true},kwsRes);
-            }
-            markVoiceEngineBootHandled();
-            // Defer paint — sync renderHomeLiveZone stacked with mic start 假死'd WebView2.
-            setTimeout(function(){
-              try{ hooks().renderHomeLiveZone&&hooks().renderHomeLiveZone(); }catch(_){}
-            },0);
-            return null;
-          });
+          markVoiceEngineBootHandled();
+          setTimeout(function(){
+            try{ hooks().renderHomeLiveZone&&hooks().renderHomeLiveZone(); }catch(_){}
+          },0);
+          return null;
         }).catch(function(err){
           console.error('voice boot strategy',err);
           markVoiceEngineBootHandled();

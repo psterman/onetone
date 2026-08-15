@@ -1,0 +1,17 @@
+﻿AT=2026-08-15T08:05:46.0559833+08:00
+PROCESS_COUNT=7
+RENDERER_COUNT=1
+RENDERER_WS_SUM_MB=65.5
+HOST_PRIV_MB=13.7
+HOST_WS_MB=45.1
+TREE_WS_MB=412.5
+TREE_PRIV_MB=208.6
+
+"Pid","Type","WS_MB","Priv_MB"
+"15960","host","45.1","13.7"
+"4520","browser","138.8","51"
+"20044","crashpad-handler","11.5","2.8"
+"26772","gpu-process","94.1","89.9"
+"5284","utility","36.7","12"
+"7844","utility","20.8","9.2"
+"23824","renderer","65.5","30"

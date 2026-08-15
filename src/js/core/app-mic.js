@@ -88,8 +88,8 @@
     if(practiceMic) pushTarget(practiceMic);
     var homeMic=$('wbHomeMicLevel');
     if(homeMic) pushTarget(homeMic);
-    var globalHub=$('globalMicHub');
-    if(globalHub) pushTarget(globalHub);
+    var heroMic=$('wbHeroMic');
+    if(heroMic) pushTarget(heroMic);
     var snapCheck=$('cameraSnapMicCheck');
     if(snapCheck) pushTarget(snapCheck);
     return targets;
@@ -192,7 +192,7 @@
 
   function micLevelUiVisible(){
     if(ui.drawerOpen&&ui.settingsPanel==='voiceWake') return true;
-    if($('globalMicHub')) return true;
+    if($('wbHeroMic')) return true;
     var snapPanel=$('cameraProSubSnap');
     if(snapPanel&&!snapPanel.hidden) return true;
     if(onboardingMicContextOpen()) return true;
@@ -683,6 +683,11 @@
 
   function openAutoMute(){
     try{
+      var am=global.OneToneCameraAutoMute;
+      if(am&&typeof am.ensureAutoMuteCameraGate==='function'){
+        // No camera / camera off → keep Auto Mute disabled by default.
+        am.ensureAutoMuteCameraGate({toast:true});
+      }
       var drawer=global.OneToneSettingsDrawer;
       if(drawer&&drawer.open) drawer.open({panel:'camera'});
       else if(hooks().openSettings) hooks().openSettings({panel:'camera'});
@@ -691,6 +696,11 @@
           global.OneToneCameraWorkflow.activateTab('pro');
           global.OneToneCameraWorkflow.activateProSubtab('automute');
         }
+        if(am&&typeof am.ensureAutoMuteCameraGate==='function'){
+          am.ensureAutoMuteCameraGate({toast:false});
+        }
+        if(am&&typeof am.syncUi==='function') am.syncUi();
+        try{ renderHeroMicStrip(); }catch(_){}
       },0);
     }catch(_){}
   }
@@ -722,32 +732,63 @@
     refreshMicUiState().catch(function(){});
   }
 
-  function renderGlobalMicHub(){
-    var hub=$('globalMicHub');
+  function renderHeroMicStrip(){
+    var hub=$('wbHeroMic');
     if(!hub) return;
     bindMicUi();
     armMicMuteProbe();
     var st=getMicUiState();
-    ensureLevelBars(hub,'mic-level-bars--global',8);
+    ensureLevelBars(hub,'mic-level-bars--hero',8);
     updateMicLevelBars(st.deviceId||activeMicId||'',homeMicLastLevel);
     setSurfaceStateClass(hub,st);
-    var status=$('globalMicHubStatus');
+    var status=$('wbHeroMicStatus');
     if(status) status.textContent=st.label;
-    var device=$('globalMicHubDevice');
-    if(device) device.textContent=st.deviceName||t('micUiDeviceMissing');
-    var toggle=$('globalMicHubToggle');
+    var guide=$('wbHeroMicGuide');
+    if(guide){
+      var showGuide=st.key==='muted'&&st.muteKnown&&st.canToggleMute;
+      guide.hidden=!showGuide;
+      guide.textContent=showGuide?t('micUiTapToUnmute'):'';
+    }
+    var toggle=$('wbHeroMicToggle');
     if(toggle){
       toggle.disabled=!st.canToggleMute;
       if(st.muteKnown){
         toggle.setAttribute('aria-pressed',st.muted?'true':'false');
-        toggle.textContent=st.muted?t('micUiUnmute'):t('micUiMute');
+        toggle.setAttribute('aria-label',st.muted?t('micUiUnmute'):t('micUiMute'));
       }else{
         toggle.removeAttribute('aria-pressed');
-        toggle.textContent=t('micUiMuteChecking');
+        toggle.setAttribute('aria-label',t('micUiMuteChecking'));
       }
+    }
+    var device=$('wbHeroMicDevice');
+    if(device){
+      device.textContent=st.deviceName||t('micUiDeviceMissing');
+      device.title=t('micUiPick');
+    }
+    var autoMute=$('wbHeroMicAutoMute');
+    if(autoMute){
+      var on=false;
+      var blocked=false;
+      try{
+        var am=global.OneToneCameraAutoMute;
+        var settings=am&&typeof am.getSettings==='function'?am.getSettings():null;
+        on=!!(settings&&settings.enabled);
+        blocked=!(am&&typeof am.isCameraLiveForAutoMute==='function'&&am.isCameraLiveForAutoMute());
+        if(on&&blocked&&typeof am.ensureAutoMuteCameraGate==='function'){
+          am.ensureAutoMuteCameraGate({toast:false});
+          on=false;
+        }
+      }catch(_){}
+      autoMute.classList.toggle('is-on',on);
+      autoMute.classList.toggle('is-blocked',blocked&&!on);
+      autoMute.setAttribute('aria-pressed',on?'true':'false');
     }
     hub.title=(st.deviceName||'')+' · '+st.label;
     if(micLevelUiVisible()&&!micPollTimer) startMicLevelPoll();
+  }
+
+  function renderGlobalMicHub(){
+    renderHeroMicStrip();
   }
 
   function renderSnapMicCheck(){

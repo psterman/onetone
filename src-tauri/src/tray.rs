@@ -49,18 +49,7 @@ pub fn setup(app: &AppHandle, state: Arc<AppState>) -> tauri::Result<()> {
     // Drop any stale tray with the same id (force-killed previous process left a ghost icon).
     let _ = app.remove_tray_by_id(TRAY_ID);
 
-    if let Some(menu_win) = app.get_webview_window(TRAY_MENU_LABEL) {
-        configure_tray_menu_window(&menu_win)?;
-        let app_for_blur = app.clone();
-        menu_win.on_window_event(move |event| {
-            if let tauri::WindowEvent::Focused(false) = event {
-                if blur_guard_active() {
-                    return;
-                }
-                hide_tray_menu(&app_for_blur);
-            }
-        });
-    }
+    // tray_menu is lazy-created on first right-click (see show_tray_menu).
 
     let icon = tray_icon()?;
 
@@ -481,9 +470,30 @@ fn exit_app(app: &AppHandle) {
 }
 
 fn show_tray_menu(app: &AppHandle) {
-    let Some(menu_win) = app.get_webview_window(TRAY_MENU_LABEL) else {
+    let Ok((menu_win, created)) =
+        crate::overlay_window::ensure_overlay_window(app, crate::overlay_window::TRAY_MENU)
+    else {
         return;
     };
+    if created {
+        let _ = configure_tray_menu_window(&menu_win);
+        let app_for_blur = app.clone();
+        menu_win.on_window_event(move |event| {
+            if let tauri::WindowEvent::Focused(false) = event {
+                if blur_guard_active() {
+                    return;
+                }
+                hide_tray_menu(&app_for_blur);
+            }
+        });
+        // First create: wait for HTML to bind, then present (avoid blocking tray callback).
+        let app_retry = app.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(150));
+            show_tray_menu(&app_retry);
+        });
+        return;
+    }
     let Some(state) = app.try_state::<Arc<AppState>>() else {
         return;
     };

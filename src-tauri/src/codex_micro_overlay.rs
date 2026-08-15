@@ -791,16 +791,15 @@ const OVERLAY_CELLS: &[OverlayCellDef] = &[
 ];
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
-    let Some(win) = app.get_webview_window(CODEX_MICRO_OVERLAY_LABEL) else {
-        crate::app_log::sync_emergency_line(
-            "codex_overlay",
-            "codex_micro_overlay: window label missing ? overlay will not show",
-        );
-        return Ok(());
-    };
+    // Window is lazy-created on first visible apply_overlay_payload.
     bump_window_generation();
     ensure_overlay_scheduler();
-    cache_overlay_hwnd_from_window(&win);
+    let _ = app;
+    Ok(())
+}
+
+fn configure_codex_overlay_window(win: &WebviewWindow) -> tauri::Result<()> {
+    cache_overlay_hwnd_from_window(win);
     win.set_background_color(Some(tauri::webview::Color(0, 0, 0, 0)))?;
     let _ = win.set_shadow(false);
     let _ = win.set_always_on_top(true);
@@ -3503,12 +3502,36 @@ fn apply_overlay_payload(
         return;
     }
     let visible = payload.visible;
+    if visible {
+        match crate::overlay_window::ensure_overlay_window(
+            app,
+            crate::overlay_window::CODEX_MICRO_OVERLAY,
+        ) {
+            Ok((_win, created)) => {
+                if created {
+                    // Invalidate concurrent scheduler jobs that raced without a window.
+                    bump_window_generation();
+                    if let Some(win) = app.get_webview_window(CODEX_MICRO_OVERLAY_LABEL) {
+                        let _ = configure_codex_overlay_window(&win);
+                    }
+                    // Allow overlay HTML to bind listeners before first emit.
+                    std::thread::sleep(std::time::Duration::from_millis(150));
+                }
+            }
+            Err(err) => {
+                crate::app_log::sync_emergency_line(
+                    "codex_overlay",
+                    &format!("codex_micro_overlay: lazy create failed: {err}"),
+                );
+                return;
+            }
+        }
+    }
     let Some(win) = app.get_webview_window(CODEX_MICRO_OVERLAY_LABEL) else {
         return;
     };
-    if gen != window_generation() {
-        return;
-    }
+    // After lazy create we bumped generation; still apply *this* payload (it caused create).
+    // Stale concurrent jobs already returned at the top check.
     cache_overlay_hwnd_from_window(&win);
     let already_visible = win.is_visible().unwrap_or(false);
     if visible {
