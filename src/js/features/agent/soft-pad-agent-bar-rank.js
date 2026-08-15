@@ -1,9 +1,9 @@
 /**
- * Soft Pad agent bar rank: active-first, then recent idle.
+ * Soft Pad agent bar rank: stable order + foreground pin only.
  * Pure — no DOM.
  *
  * Pad + Mini: show VISIBLE_PAD chips; fold remainder with +N when rest nonempty.
- * Pad expands in-place to two rows; Mini +N opens the full Soft Pad.
+ * Other chips keep sticky relative order — do not reshuffle on running/done/recency.
  */
 (function (root) {
   'use strict';
@@ -29,6 +29,9 @@
 
   /** Mini visible chip cap; fold with +N when rest nonempty. */
   var VISIBLE_PAD = 6;
+
+  /** Sticky relative order of eligible kinds (FG is pinned only in the display list). */
+  var stickyOrder = [];
 
   function catalogIndex(kind) {
     var i = CATALOG.indexOf(String(kind || ''));
@@ -74,14 +77,6 @@
     return state === 'needs_input' || state === 'running';
   }
 
-  function stateRank(state) {
-    // Row1 prefers live-active; then terminal; idle last (recency breaks ties).
-    if (state === 'needs_input') return 0;
-    if (state === 'running') return 1;
-    if (state === 'done' || state === 'failed') return 2;
-    return 3;
-  }
-
   function isEligible(row) {
     if (!row) return false;
     return !!(row.lightsEnabled || row.lights_enabled);
@@ -91,31 +86,34 @@
     return PLACEHOLDER_KINDS.indexOf(String(kind || '')) >= 0;
   }
 
-  function updatedAt(row) {
-    var n = Number(
-      row && (row.updatedAt != null ? row.updatedAt : row.updated_at)
-    );
-    return isFinite(n) ? n : 0;
+  function resetStickyOrder() {
+    stickyOrder = [];
   }
 
-  /**
-   * @param {object} snap overlay snapshot
-   * @param {object} byKind kind → agent row
-   * @param {string} focus usage focus kind
-   * @param {object} recencyMap kind → ms timestamp
-   * @param {{ visibleMax?: number }} [opts]
-   * @returns {{ top: string[], rest: string[] }}
-   */
-  function rankPadAgentBarKinds(snap, byKind, focus, recencyMap, opts) {
-    byKind = byKind || {};
-    recencyMap = recencyMap || {};
-    opts = opts || {};
-    var visibleMax =
-      opts.visibleMax != null && isFinite(Number(opts.visibleMax))
-        ? Math.max(0, Math.floor(Number(opts.visibleMax)))
-        : VISIBLE_PAD;
-    focus = String(focus || '').trim().toLowerCase();
-    var fg = String(
+  function syncSticky(eligible) {
+    var elig = {};
+    (eligible || []).forEach(function (k) {
+      elig[k] = 1;
+    });
+    stickyOrder = stickyOrder.filter(function (k) {
+      return !!elig[k];
+    });
+    var seen = {};
+    stickyOrder.forEach(function (k) {
+      seen[k] = 1;
+    });
+    var newcomers = (eligible || []).filter(function (k) {
+      return !seen[k];
+    });
+    newcomers.sort(function (a, b) {
+      return catalogIndex(a) - catalogIndex(b);
+    });
+    stickyOrder = stickyOrder.concat(newcomers);
+    return stickyOrder.slice();
+  }
+
+  function resolveForeground(snap) {
+    return String(
       (snap &&
         (snap.foregroundAgent ||
           snap.foreground_agent ||
@@ -127,6 +125,23 @@
     )
       .trim()
       .toLowerCase();
+  }
+
+  /**
+   * @param {object} snap overlay snapshot
+   * @param {object} byKind kind → agent row
+   * @param {string} _focus unused (kept for call-site compat; FG only)
+   * @param {object} _recencyMap unused (kept for call-site compat)
+   * @param {{ visibleMax?: number, sticky?: string[] }} [opts]
+   * @returns {{ top: string[], rest: string[] }}
+   */
+  function rankPadAgentBarKinds(snap, byKind, _focus, _recencyMap, opts) {
+    byKind = byKind || {};
+    opts = opts || {};
+    var visibleMax =
+      opts.visibleMax != null && isFinite(Number(opts.visibleMax))
+        ? Math.max(0, Math.floor(Number(opts.visibleMax)))
+        : VISIBLE_PAD;
 
     var eligible = [];
     CATALOG.forEach(function (kind) {
@@ -135,30 +150,33 @@
       eligible.push(kind);
     });
 
-    eligible.sort(function (a, b) {
-      var ra = byKind[a] || {};
-      var rb = byKind[b] || {};
-      var sa = normalizeState(ra, a, snap);
-      var sb = normalizeState(rb, b, snap);
-      var d = stateRank(sa) - stateRank(sb);
-      if (d) return d;
-      if (a === focus && b !== focus) return -1;
-      if (b === focus && a !== focus) return 1;
-      if (a === fg && b !== fg) return -1;
-      if (b === fg && a !== fg) return 1;
-      var ta = Number(recencyMap[a]) || 0;
-      var tb = Number(recencyMap[b]) || 0;
-      if (tb !== ta) return tb - ta;
-      var ua = updatedAt(ra);
-      var ub = updatedAt(rb);
-      if (ub !== ua) return ub - ua;
-      return catalogIndex(a) - catalogIndex(b);
-    });
+    // Tests / callers may pass an explicit sticky seed once.
+    if (Array.isArray(opts.sticky) && opts.sticky.length && stickyOrder.length === 0) {
+      stickyOrder = opts.sticky.slice();
+    }
+
+    var base = syncSticky(eligible);
+    var fg = resolveForeground(snap);
+    var order = base.slice();
+    if (fg && eligHas(eligible, fg)) {
+      order = [fg].concat(
+        order.filter(function (k) {
+          return k !== fg;
+        })
+      );
+    }
 
     return {
-      top: eligible.slice(0, visibleMax),
-      rest: eligible.slice(visibleMax)
+      top: order.slice(0, visibleMax),
+      rest: order.slice(visibleMax)
     };
+  }
+
+  function eligHas(eligible, kind) {
+    for (var i = 0; i < eligible.length; i++) {
+      if (eligible[i] === kind) return true;
+    }
+    return false;
   }
 
   /**
@@ -224,7 +242,11 @@
     normalizeState: normalizeState,
     isLiveActive: isLiveActive,
     isEligible: isEligible,
-    isPlaceholderKind: isPlaceholderKind
+    isPlaceholderKind: isPlaceholderKind,
+    resetStickyOrder: resetStickyOrder,
+    getStickyOrder: function () {
+      return stickyOrder.slice();
+    }
   };
 
   if (typeof module !== 'undefined' && module.exports) {

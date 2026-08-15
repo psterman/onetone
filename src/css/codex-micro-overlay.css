@@ -1605,12 +1605,13 @@ button.overlay-key-caption:focus-visible {
 
 .soft-pad-agent-bar__more {
   flex: 0 0 auto;
-  min-width: 28px;
-  max-width: 40px;
+  min-width: 22px;
+  max-width: 28px;
+  width: 26px;
   height: auto;
   aspect-ratio: 1 / 1;
   margin: 0;
-  padding: 0 4px;
+  padding: 0;
   border: 1px solid rgba(92, 105, 122, 0.2);
   border-radius: 10px;
   box-sizing: border-box;
@@ -1625,11 +1626,20 @@ button.overlay-key-caption:focus-visible {
   cursor: pointer;
 }
 
+/* Keep +N / collapse control chip-sized — never a full text row that wraps alone. */
 .soft-pad-agent-bar.is-expanded .soft-pad-agent-bar__more {
-  flex: 0 0 calc((100% - 30px) / 6);
-  max-width: 40px;
-  min-width: 28px;
-  font-size: 9px;
+  flex: 0 0 auto;
+  width: 26px;
+  min-width: 22px;
+  max-width: 28px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.soft-pad-agent-bar__more[data-collapse="1"] {
+  color: #64748b;
+  font-size: 11px;
 }
 
 .soft-pad-agent-bar__more:hover {

@@ -191,9 +191,13 @@ assert.ok(
 );
 assert.ok(!html.includes('padAgentBarMore.hidden=true;\n        setAgentBarOverflowOpen'), 'pad no longer force-hides +N');
 assert.ok(
-  html.includes("padAgentBarMore.textContent='收起'") || html.includes('padAgentBarMore.textContent="收起"'),
-  'expanded pad shows 收起'
+  html.includes("padAgentBarMore.textContent='⌃'") ||
+    html.includes('padAgentBarMore.textContent="⌃"') ||
+    /data-collapse/.test(html),
+  'expanded pad uses compact collapse control (not full-row 收起)'
 );
+assert.ok(!/padAgentBarMore\.textContent=['"]收起['"]/.test(html), 'no full-width 收起 label on more button');
+
 assert.ok(
   html.includes('miniAgentMore.hidden=false') || /rest\.length/.test(html),
   'mini +N uses Rank rest length'
@@ -242,6 +246,7 @@ var rank = require(path.join(root, 'src/js/features/agent/soft-pad-agent-bar-ran
 function lit(kind, state, updated) {
   return { lightsEnabled: true, state: state || 'idle', updatedAt: updated || 0 };
 }
+rank.resetStickyOrder();
 var byKind = {
   codex: lit('codex', 'idle', 1),
   claude: lit('claude', 'needs_input', 1),
@@ -252,11 +257,13 @@ var byKind = {
   qoder: lit('qoder', 'idle', 1)
 };
 var r1 = rank.rankPadAgentBarKinds({}, byKind, 'codex', {});
-assert.strictEqual(r1.top[0], 'claude', 'needs_input outranks');
-assert.strictEqual(r1.top[1], 'cursor', 'running next');
-assert.ok(r1.top.indexOf('codex') >= 0, 'focus boost keeps codex in top');
+assert.deepStrictEqual(
+  r1.top,
+  ['codex', 'claude', 'cursor', 'minimax', 'workbuddy', 'trae'],
+  'stable catalog order — no state/focus reshuffle'
+);
+assert.deepStrictEqual(r1.rest, ['qoder'], 'fold remainder into rest for +N');
 assert.strictEqual(r1.top.length, 6, 'VISIBLE_PAD=6');
-assert.strictEqual(r1.rest.length, 1, 'fold remainder into rest for +N');
 assert.deepStrictEqual(
   rank.CATALOG.slice(0, 5),
   ['codex', 'claude', 'cursor', 'copilotCli', 'gemini'],
@@ -264,10 +271,18 @@ assert.deepStrictEqual(
 );
 assert.ok(rank.CATALOG.indexOf('cline') >= 0 && rank.CATALOG.indexOf('aider') >= 0, 'catalog includes cline/opencode/aider');
 
-var r2 = rank.rankPadAgentBarKinds({}, byKind, 'minimax', {});
-assert.ok(r2.top.indexOf('minimax') >= 0, 'focus kind boosted into top');
-assert.strictEqual(r2.top[0], 'claude');
+rank.resetStickyOrder();
+var r2a = rank.rankPadAgentBarKinds({}, byKind, 'minimax', {});
+var r2b = rank.rankPadAgentBarKinds(
+  {},
+  Object.assign({}, byKind, { claude: lit('claude', 'idle', 9), cursor: lit('cursor', 'done', 9) }),
+  'minimax',
+  { claude: Date.now(), cursor: Date.now() }
+);
+assert.deepStrictEqual(r2a.top, r2b.top, 'state/recency must not reshuffle sticky order');
+assert.deepStrictEqual(r2a.rest, r2b.rest, 'rest stays sticky too');
 
+rank.resetStickyOrder();
 var r3 = rank.rankPadAgentBarKinds(
   {},
   { codex: lit('codex'), claude: { lightsEnabled: false, state: 'running' } },
@@ -292,10 +307,12 @@ assert.ok(
     rank.PLACEHOLDER_KINDS.indexOf('qoder') >= 0,
   'PLACEHOLDER_KINDS exports Hook shell agents'
 );
+
+rank.resetStickyOrder();
 assert.strictEqual(
   rank.padLightFromRanked({}, byKind, 'codex', {}),
   'needs_input',
-  'pad aura follows top ranked live agent, not idle singleton'
+  'pad aura still finds live agent in sticky top (claude), without promoting it'
 );
 assert.strictEqual(
   rank.padLightFromRanked({}, { codex: lit('codex', 'idle') }, '', {}),
@@ -304,6 +321,7 @@ assert.strictEqual(
 );
 assert.ok(html.includes('padLightFromRanked') || html.includes('fromAgents'));
 
+rank.resetStickyOrder();
 var idleAll = {
   codex: lit('codex', 'idle', 1),
   claude: lit('claude', 'idle', 2),
@@ -312,6 +330,24 @@ var idleAll = {
 };
 var rFg = rank.rankPadAgentBarKinds({ foregroundAgent: 'minimax' }, idleAll, '', {});
 assert.strictEqual(rFg.top[0], 'minimax', 'FG minimax ranks first among idle agents');
+assert.deepStrictEqual(
+  rFg.top.slice(1),
+  ['codex', 'claude', 'cursor'],
+  'non-FG keep sticky relative order'
+);
+var rFg2 = rank.rankPadAgentBarKinds({ foregroundAgent: 'codex' }, idleAll, '', {});
+assert.strictEqual(rFg2.top[0], 'codex', 'new FG pins to front');
+assert.deepStrictEqual(
+  rFg2.top.slice(1),
+  ['claude', 'cursor', 'minimax'],
+  'sticky relative order preserved when FG changes'
+);
+var rNoFg = rank.rankPadAgentBarKinds({}, idleAll, '', {});
+assert.deepStrictEqual(
+  rNoFg.top,
+  ['codex', 'claude', 'cursor', 'minimax'],
+  'without FG, restore sticky base order'
+);
 
 // Partial-failure dropdown keeps ok + warn rows
 var partial = fmt.providerQuotaDropdownRows([

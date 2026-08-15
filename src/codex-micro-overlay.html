@@ -1912,18 +1912,22 @@
         if(n>0){
           padAgentBarMore.hidden=false;
           if(expanded){
-            padAgentBarMore.textContent='收起';
+            // Same footprint as +N — full-width「收起」chip used to wrap onto its own empty row.
+            padAgentBarMore.textContent='⌃';
             padAgentBarMore.setAttribute('aria-label', '收起 Agent 列表');
             padAgentBarMore.title='收起';
+            padAgentBarMore.setAttribute('data-collapse', '1');
           } else {
             padAgentBarMore.textContent='+'+n;
             padAgentBarMore.setAttribute('aria-label', '展开查看更多 Agent（+'+n+'）');
             padAgentBarMore.title='展开为两排查看（+'+n+'）';
+            padAgentBarMore.removeAttribute('data-collapse');
           }
           padAgentBarMore.setAttribute('aria-expanded', expanded?'true':'false');
         } else {
           padAgentBarMore.hidden=true;
           padAgentBarMore.textContent='+0';
+          padAgentBarMore.removeAttribute('data-collapse');
         }
       }
       if(padAgentBarOverflow){
