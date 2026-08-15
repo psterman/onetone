@@ -17,6 +17,7 @@
     'minimax',
     'workbuddy',
     'trae',
+    'traeCode',
     'qoder',
     'cline',
     'opencode',
@@ -24,7 +25,7 @@
   ];
 
   /** Grey placeholders until lights land (B/C). */
-  var PLACEHOLDER_KINDS = ['workbuddy', 'trae', 'qoder'];
+  var PLACEHOLDER_KINDS = ['workbuddy', 'traeCode', 'qoder'];
 
   /** Mini visible chip cap; fold with +N when rest nonempty. */
   var VISIBLE_PAD = 6;

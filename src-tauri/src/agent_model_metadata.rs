@@ -212,7 +212,9 @@ pub fn ingest_hook_model(
         AgentKind::MiniMax => (raw.to_string(), "low"),
         AgentKind::CopilotCli | AgentKind::Gemini => return,
         AgentKind::Cline | AgentKind::OpenCode | AgentKind::Aider => return,
-        AgentKind::WorkBuddy | AgentKind::Trae | AgentKind::Qoder => (raw.to_string(), "low"),
+        AgentKind::WorkBuddy | AgentKind::Trae | AgentKind::TraeCode | AgentKind::Qoder => {
+            (raw.to_string(), "low")
+        }
     };
     let mut g = store().lock().unwrap_or_else(|e| e.into_inner());
     g.insert(

@@ -73,7 +73,8 @@ const PRESETS = new Set([
   'claude-code',
   'minimax-chat',
   'workbuddy-chat',
-  'trae-chat',
+  'trae-work',
+  'trae-code',
   'qoder-chat'
 ]);
 
@@ -273,7 +274,10 @@ function presetPathMatch(path) {
   }
   if (file.toLowerCase() === 'trae solo.exe' &&
       (pathHasMarker(path, 'Trae') || pathHasMarker(path, 'TRAE SOLO'))) {
-    return 'trae-chat';
+    return 'trae-work';
+  }
+  if (file.toLowerCase() === 'trae.exe' && pathHasMarker(path, 'Trae')) {
+    return 'trae-code';
   }
   return '';
 }
@@ -282,8 +286,12 @@ assert(
   'preset: WorkBuddy desktop path'
 );
 assert(
-  presetPathMatch('D:\\TRAE SOLO\\TRAE SOLO.exe') === 'trae-chat',
-  'preset: Trae SOLO path'
+  presetPathMatch('D:\\TRAE SOLO\\TRAE SOLO.exe') === 'trae-work',
+  'preset: Trae SOLO / Work path'
+);
+assert(
+  presetPathMatch('C:\\Users\\me\\AppData\\Local\\Programs\\Trae\\Trae.exe') === 'trae-code',
+  'preset: Trae Code path'
 );
 
 if (failed) {

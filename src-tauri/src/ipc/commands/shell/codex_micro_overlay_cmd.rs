@@ -176,6 +176,9 @@ pub async fn cmd_soft_pad_focus_agent(app: AppHandle, kind: String) -> Result<se
         "minimax" => MINIMAX_APP_TARGET_ID,
         "workbuddy" => WORKBUDDY_APP_TARGET_ID,
         "trae" => TRAE_APP_TARGET_ID,
+        "traecode" | "trae_code" | "trae-code" => {
+            crate::app_chat_workflow::TRAE_CODE_APP_TARGET_ID
+        }
         "qoder" => QODER_APP_TARGET_ID,
         _ => return Err("unknown_agent".into()),
     };
@@ -235,6 +238,9 @@ pub async fn cmd_soft_pad_focus_session(
                 "minimax" => crate::app_chat_workflow::MINIMAX_APP_TARGET_ID,
                 "workbuddy" => crate::app_chat_workflow::WORKBUDDY_APP_TARGET_ID,
                 "trae" => crate::app_chat_workflow::TRAE_APP_TARGET_ID,
+                "traecode" | "trae_code" | "trae-code" => {
+                    crate::app_chat_workflow::TRAE_CODE_APP_TARGET_ID
+                }
                 "qoder" => crate::app_chat_workflow::QODER_APP_TARGET_ID,
                 _ => "",
             };

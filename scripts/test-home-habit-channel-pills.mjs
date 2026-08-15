@@ -33,7 +33,8 @@ assert.ok(panels.includes("t('homeWbChipUniversal'"), 'baseline chip short name 
 assert.ok(/isBaselineScene\(a\)\?0:1/.test(panels), 'baseline chip sorts first');
 
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?workbuddy-chat/.test(hub), 'Hub includes WorkBuddy');
-assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-chat/.test(hub), 'Hub includes Trae');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-work/.test(hub), 'Hub includes Trae Work');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-code/.test(hub), 'Hub includes Trae Code');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?qoder-chat/.test(hub), 'Hub includes Qoder');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?minimax-chat/.test(hub), 'Hub includes MiniMax');
 

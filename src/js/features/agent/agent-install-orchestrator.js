@@ -5,7 +5,7 @@
 (function (global) {
   'use strict';
 
-  var KINDS = ['codex', 'claude', 'cursor', 'minimax', 'workbuddy', 'trae', 'qoder'];
+  var KINDS = ['codex', 'claude', 'cursor', 'minimax', 'workbuddy', 'trae', 'traeCode', 'qoder'];
 
   var KIND_META = {
     codex: { appId: 'codex-chat', label: 'Codex', icon: 'icons/app-target/codex.png' },
@@ -13,7 +13,9 @@
     cursor: { appId: 'cursor-chat', label: 'Cursor', icon: 'icons/app-target/cursor.png' },
     minimax: { appId: 'minimax-chat', label: 'MiniMax', icon: 'icons/app-target/minimaxcode.png' },
     workbuddy: { appId: 'workbuddy-chat', label: 'WorkBuddy', icon: 'icons/app-target/workbuddy.png' },
-    trae: { appId: 'trae-chat', label: 'Trae', icon: 'icons/app-target/trae.png' },
+    trae: { appId: 'trae-work', label: 'Trae Work', icon: 'icons/app-target/trae.png' },
+    traecode: { appId: 'trae-code', label: 'Trae Code', icon: 'icons/app-target/trae-code.png' },
+    traeCode: { appId: 'trae-code', label: 'Trae Code', icon: 'icons/app-target/trae-code.png' },
     qoder: { appId: 'qoder-chat', label: 'Qoder', icon: 'icons/app-target/qoder.png' }
   };
 
@@ -122,7 +124,14 @@
   function prepareKinds(kinds, opts) {
     opts = opts || {};
     var enableNumpad = !!opts.enableNumpad;
-    kinds = (kinds || []).map(function (k) { return String(k || '').toLowerCase(); }).filter(function (k) {
+    kinds = (kinds || []).map(function (k) {
+      k = String(k || '').trim();
+      if (!k) return '';
+      if (KIND_META[k]) return k;
+      var low = k.toLowerCase();
+      if (low === 'traecode') return 'traeCode';
+      return low;
+    }).filter(function (k) {
       return !!KIND_META[k];
     });
     if (!kinds.length) return Promise.reject(new Error('no_kinds'));
@@ -228,8 +237,11 @@
 
   function connectKind(kind) {
     kind = String(kind || '').toLowerCase();
-    if (kind === 'qoder' || kind === 'trae' || kind === 'workbuddy') {
-      return invoke('cmd_shell_agent_hook_install_confirm', { kind: kind });
+    // Trae Work (trae) is SOLO / local activity — Hook install only for Trae Code.
+    if (kind === 'qoder' || kind === 'traecode' || kind === 'workbuddy') {
+      return invoke('cmd_shell_agent_hook_install_confirm', {
+        kind: kind === 'traecode' ? 'traeCode' : kind
+      });
     }
     if (kind === 'claude') {
       return invoke('cmd_claude_hook_install_confirm');
@@ -240,8 +252,10 @@
 
   function connectStatus(kind) {
     kind = String(kind || '').toLowerCase();
-    if (kind === 'qoder' || kind === 'trae' || kind === 'workbuddy') {
-      return invoke('cmd_shell_agent_hook_setup_status', { kind: kind });
+    if (kind === 'qoder' || kind === 'traecode' || kind === 'workbuddy') {
+      return invoke('cmd_shell_agent_hook_setup_status', {
+        kind: kind === 'traecode' ? 'traeCode' : kind
+      });
     }
     if (kind === 'claude') {
       return invoke('cmd_claude_hook_setup_status');

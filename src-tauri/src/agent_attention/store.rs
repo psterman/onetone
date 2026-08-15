@@ -197,6 +197,7 @@ fn signal_allows_waiting(s: &AgentAttentionSignal) -> bool {
         | AgentKind::Gemini
         | AgentKind::WorkBuddy
         | AgentKind::Trae
+        | AgentKind::TraeCode
         | AgentKind::Qoder
         | AgentKind::Cline
         | AgentKind::OpenCode => true,
@@ -216,6 +217,7 @@ fn agent_allows_waiting_row(agent: AgentKind, source: SignalSource) -> bool {
         | AgentKind::Gemini
         | AgentKind::WorkBuddy
         | AgentKind::Trae
+        | AgentKind::TraeCode
         | AgentKind::Qoder
         | AgentKind::Cline
         | AgentKind::OpenCode => true,

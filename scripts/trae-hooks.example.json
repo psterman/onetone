@@ -1,74 +1,77 @@
 {
-  "SessionStart": [
-    {
-      "matcher": "",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id trae-activity-v1 --source trae",
-          "timeout": 5
-        }
-      ]
-    }
-  ],
-  "UserPromptSubmit": [
-    {
-      "matcher": "",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id trae-activity-v1 --source trae",
-          "timeout": 5
-        }
-      ]
-    }
-  ],
-  "PreToolUse": [
-    {
-      "matcher": "*",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id trae-activity-v1 --source trae",
-          "timeout": 5
-        }
-      ]
-    }
-  ],
-  "PostToolUse": [
-    {
-      "matcher": "*",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id trae-activity-v1 --source trae",
-          "timeout": 5
-        }
-      ]
-    }
-  ],
-  "Stop": [
-    {
-      "matcher": "",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id trae-activity-v1 --source trae",
-          "timeout": 5
-        }
-      ]
-    }
-  ],
-  "Notification": [
-    {
-      "matcher": "",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id trae-activity-v1 --source trae",
-          "timeout": 5
-        }
-      ]
-    }
-  ]
+  "version": 1,
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id trae-activity-v1 --source trae_code",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id trae-activity-v1 --source trae_code",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id trae-activity-v1 --source trae_code",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id trae-activity-v1 --source trae_code",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id trae-activity-v1 --source trae_code",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/agent-shell-hook-probe.js\" --onetone-hook-id trae-activity-v1 --source trae_code",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
 }

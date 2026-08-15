@@ -952,9 +952,37 @@ fn cursor_is_foreground() -> bool {
     false
 }
 
-/// Soft Pad agent app currently in foreground (Codex / Claude / Cursor).
+/// Soft Pad agent app currently in foreground (any Soft Pad AgentKind host).
 pub fn soft_pad_agent_is_foreground() -> bool {
-    codex_is_foreground() || claude_is_foreground() || cursor_is_foreground()
+    // Codex/Claude keep test FG overrides via helpers; Cursor uses effective FG.
+    if codex_is_foreground() || claude_is_foreground() || cursor_is_foreground() {
+        return true;
+    }
+    #[cfg(windows)]
+    {
+        use crate::soft_pad_runtime::AgentKind;
+        crate::app_identity::foreground_effective_app_target_id().is_some_and(|id| {
+            matches!(
+                AgentKind::from_app_target(id.trim()),
+                Some(
+                    AgentKind::MiniMax
+                        | AgentKind::WorkBuddy
+                        | AgentKind::Trae
+                        | AgentKind::TraeCode
+                        | AgentKind::Qoder
+                        | AgentKind::CopilotCli
+                        | AgentKind::Gemini
+                        | AgentKind::Cline
+                        | AgentKind::OpenCode
+                        | AgentKind::Aider
+                )
+            )
+        })
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
 }
 
 /// Inject legality: Applied Soft Pad target owns FG and OneTone does not.
@@ -1061,6 +1089,19 @@ pub fn overlay_visible_reason() -> String {
     }
     if claude_activity_hold() {
         return "claude_activity".into();
+    }
+    #[cfg(windows)]
+    if let Some(id) = crate::app_identity::foreground_effective_app_target_id() {
+        if let Some(kind) = crate::soft_pad_runtime::AgentKind::from_app_target(id.trim()) {
+            if !matches!(
+                kind,
+                crate::soft_pad_runtime::AgentKind::Codex
+                    | crate::soft_pad_runtime::AgentKind::Claude
+                    | crate::soft_pad_runtime::AgentKind::Cursor
+            ) {
+                return format!("{}_foreground", kind.as_str());
+            }
+        }
     }
     "hidden".into()
 }
@@ -1242,6 +1283,7 @@ pub fn status_lights_enabled(cfg: &VoiceConfig) -> bool {
         AgentKind::Aider,
         AgentKind::WorkBuddy,
         AgentKind::Trae,
+        AgentKind::TraeCode,
         AgentKind::Qoder,
         AgentKind::MiniMax,
     ]
@@ -2222,6 +2264,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             AgentKind::Aider,
             AgentKind::WorkBuddy,
             AgentKind::Trae,
+            AgentKind::TraeCode,
             AgentKind::Qoder,
             AgentKind::MiniMax,
         ]
@@ -2297,6 +2340,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -3089,29 +3133,16 @@ fn app_fields_from_pad_core() -> (
     )
 }
 
-/// MiniMax has no hook lifecycle — infer Working while MiniMax Code.exe is alive.
-/// Soft Pad often steals FG while the user checks lamps, so FG-only would stay idle.
+/// MiniMax has no lifecycle hooks — never invent Working from process.
+/// Clear any leftover inferred Working so the chip stays a steady quota lamp.
 fn sync_minimax_inferred_lifecycle(cfg: &VoiceConfig) {
     use crate::agent_attention::store::{self, raise_lifecycle};
     use crate::agent_attention::{AttentionState, SignalSource};
     use crate::soft_pad_runtime::AgentKind;
 
-    let lights = agent_status_light_enabled(cfg, AgentKind::MiniMax);
-    let want = lights && crate::app_identity::minimax_code_process_running();
+    let _ = cfg; // lights gate unused — no process→running impersonation
     let prev = store::primary_state_for(AgentKind::MiniMax);
     let prev_src = store::lifecycle_source_for(AgentKind::MiniMax);
-    if want {
-        if matches!(prev, Some(AttentionState::NeedsInput) | Some(AttentionState::Working)) {
-            return;
-        }
-        raise_lifecycle(
-            AgentKind::MiniMax,
-            None,
-            AttentionState::Working,
-            SignalSource::Inferred,
-        );
-        return;
-    }
     if prev == Some(AttentionState::Working) && prev_src == Some(SignalSource::Inferred) {
         raise_lifecycle(
             AgentKind::MiniMax,
@@ -3134,6 +3165,7 @@ fn agent_status_light_enabled(cfg: &VoiceConfig, kind: crate::soft_pad_runtime::
             AgentKind::Cursor => pad.cursor_status_lights_enabled,
             AgentKind::WorkBuddy => pad.workbuddy_status_lights_enabled,
             AgentKind::Trae => pad.trae_status_lights_enabled,
+            AgentKind::TraeCode => pad.trae_code_status_lights_enabled,
             AgentKind::Qoder => pad.qoder_status_lights_enabled,
             AgentKind::MiniMax => pad.minimax_status_lights_enabled,
             AgentKind::CopilotCli => pad.copilot_status_lights_enabled,
@@ -3164,6 +3196,7 @@ fn agent_chip_snapshots(cfg: &VoiceConfig) -> Vec<CodexMicroAgentSnapshot> {
         AgentKind::MiniMax,
         AgentKind::WorkBuddy,
         AgentKind::Trae,
+        AgentKind::TraeCode,
         AgentKind::Qoder,
     ]
         .into_iter()
@@ -3180,7 +3213,17 @@ fn agent_chip_snapshots(cfg: &VoiceConfig) -> Vec<CodexMicroAgentSnapshot> {
                 Some(AttentionState::Error) => "failed",
                 Some(AttentionState::Idle) | None => "idle",
             };
-            let state = if kind == AgentKind::Claude {
+            let state = if kind == AgentKind::MiniMax {
+                // Quota lamp only — never report running/done from process guess.
+                "idle"
+            } else if matches!(kind, AgentKind::WorkBuddy | AgentKind::Qoder) {
+                // Hook-only motion lamp — process/mtime must not impersonate Cursor running.
+                // Trae Work + Trae Code use Cursor-style inferred activity (OfficialHook still wins).
+                match crate::agent_attention::store::lifecycle_source_for(kind) {
+                    Some(crate::agent_attention::SignalSource::OfficialHook) => raw_state,
+                    _ => "idle",
+                }
+            } else if kind == AgentKind::Claude {
                 // For Claude: show real state when hook is live (pad_status has a recent
                 // entry for claude_hook or claude_app), even if the lights toggle is off.
                 let pad = crate::pad_status::snapshot();
@@ -3211,9 +3254,10 @@ fn agent_chip_snapshots(cfg: &VoiceConfig) -> Vec<CodexMicroAgentSnapshot> {
                 .max(metadata.updated_at)
                 .max(usage.updated_at);
             let hook_configured = match kind {
-                AgentKind::WorkBuddy | AgentKind::Trae | AgentKind::Qoder => {
+                AgentKind::WorkBuddy | AgentKind::TraeCode | AgentKind::Qoder => {
                     crate::pad_status::shell_hook_configured(kind)
                 }
+                AgentKind::Trae => crate::pad_status::shell_hook_configured(kind),
                 _ => None,
             };
             CodexMicroAgentSnapshot {
@@ -4154,6 +4198,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -4255,6 +4300,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -4362,6 +4408,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -4412,6 +4459,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -4537,6 +4585,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -4601,6 +4650,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -4663,6 +4713,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -4728,6 +4779,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -4787,6 +4839,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -4857,6 +4910,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -4921,6 +4975,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -5020,6 +5075,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -5130,6 +5186,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -5236,6 +5293,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -5281,6 +5339,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -5362,6 +5421,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -5428,6 +5488,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -5507,6 +5568,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -5580,6 +5642,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -5618,6 +5681,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -5684,6 +5748,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -5745,6 +5810,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -5805,6 +5871,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -5859,6 +5926,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -5922,6 +5990,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -5975,6 +6044,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -6034,6 +6104,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -6082,6 +6153,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -6164,6 +6236,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -6367,6 +6440,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -6422,6 +6496,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -6474,6 +6549,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -6524,6 +6600,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
@@ -6582,6 +6659,7 @@ mod tests {
             cursor_status_lights_enabled: false,
             workbuddy_status_lights_enabled: false,
             trae_status_lights_enabled: false,
+            trae_code_status_lights_enabled: false,
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,

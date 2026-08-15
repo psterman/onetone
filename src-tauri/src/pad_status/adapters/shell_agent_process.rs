@@ -2,6 +2,10 @@
 //!
 //! Does **not** extend PadState. Writes attention `Inferred` Working/Idle only.
 //! Hook `OfficialHook` / NeedsInput always win.
+//!
+//! Trae Solo: Cursor-style local activity (process + Solo/ModularData mtime).
+//! TraeCode/IDE hooks still publish OfficialHook when present.
+//! WorkBuddy / Qoder: Hook-only motion (no mtime fake Working).
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -12,7 +16,7 @@ use crate::agent_attention::store::{self, raise_lifecycle};
 use crate::agent_attention::{AttentionState, SignalSource};
 use crate::app_identity::{
     process_running_by_exe, preset_process_names, QODER_APP_TARGET_ID, TRAE_APP_TARGET_ID,
-    WORKBUDDY_APP_TARGET_ID,
+    TRAE_CODE_APP_TARGET_ID, WORKBUDDY_APP_TARGET_ID,
 };
 use crate::pad_status::SHELL_AGENT_MTIME_BUSY_MS;
 use crate::shell_agent_hook_setup;
@@ -21,6 +25,8 @@ use crate::AppState;
 
 const PROCESS_POLL_SECS: u64 = 3;
 const CONFIGURED_REFRESH_SECS: u64 = 30;
+/// Trae Solo agent turns can gap >60s between tool writes; keep lamp sticky longer.
+const TRAE_SOLO_MTIME_BUSY_MS: u64 = 180_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum InferredBusy {
@@ -37,6 +43,7 @@ struct ConfiguredCache {
     refreshed_at: Option<Instant>,
     workbuddy: Option<bool>,
     trae: Option<bool>,
+    trae_code: Option<bool>,
     qoder: Option<bool>,
     force_refresh: bool,
 }
@@ -76,6 +83,7 @@ pub fn hook_configured(kind: AgentKind) -> Option<bool> {
     match kind {
         AgentKind::WorkBuddy => g.workbuddy,
         AgentKind::Trae => g.trae,
+        AgentKind::TraeCode => g.trae_code,
         AgentKind::Qoder => g.qoder,
         _ => None,
     }
@@ -86,36 +94,110 @@ pub fn infer_busy_from_mtime_age(age_ms: u64) -> bool {
     age_ms < SHELL_AGENT_MTIME_BUSY_MS
 }
 
-fn shell_kinds() -> [AgentKind; 3] {
-    [AgentKind::WorkBuddy, AgentKind::Trae, AgentKind::Qoder]
+fn infer_busy_from_mtime_age_for(kind: AgentKind, age_ms: u64) -> bool {
+    let window = if kind == AgentKind::Trae {
+        TRAE_SOLO_MTIME_BUSY_MS
+    } else {
+        SHELL_AGENT_MTIME_BUSY_MS
+    };
+    age_ms < window
+}
+
+fn shell_kinds() -> [AgentKind; 4] {
+    [
+        AgentKind::WorkBuddy,
+        AgentKind::Trae,
+        AgentKind::TraeCode,
+        AgentKind::Qoder,
+    ]
 }
 
 fn exe_names_for(kind: AgentKind) -> &'static [&'static str] {
     let id = match kind {
         AgentKind::WorkBuddy => WORKBUDDY_APP_TARGET_ID,
         AgentKind::Trae => TRAE_APP_TARGET_ID,
+        AgentKind::TraeCode => TRAE_CODE_APP_TARGET_ID,
         AgentKind::Qoder => QODER_APP_TARGET_ID,
         _ => return &[],
     };
     preset_process_names(id).unwrap_or(&[])
 }
 
-fn mtime_roots(kind: AgentKind) -> Vec<PathBuf> {
-    let Some(profile) = shell_agent_hook_setup::profile_for_kind(kind) else {
-        return Vec::new();
-    };
-    let settings = shell_agent_hook_setup::settings_path(profile);
+fn trae_solo_activity_roots() -> Vec<PathBuf> {
     let mut roots = Vec::new();
-    if let Some(parent) = settings.parent() {
-        roots.push(parent.to_path_buf());
+    if let Ok(appdata) = std::env::var("APPDATA") {
+        let base = PathBuf::from(appdata);
+        for name in ["TRAE SOLO", "TRAE SOLO CN", "TraeWork", "Trae Work"] {
+            let root = base.join(name);
+            roots.push(root.join("logs"));
+            roots.push(root.join("ModularData").join("ai-agent"));
+            roots.push(
+                root.join("User")
+                    .join("globalStorage")
+                    .join("state.vscdb"),
+            );
+        }
     }
-    roots.push(settings);
-    if kind == AgentKind::Qoder {
-        let cn = shell_agent_hook_setup::qoder_cn_settings_path();
-        if let Some(parent) = cn.parent() {
+    if let Some(home) = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")) {
+        let home = PathBuf::from(home);
+        for dir in [".trae", ".trae-cn"] {
+            let base = home.join(dir);
+            for sub in ["work", "memory", "attachments", "assistant"] {
+                roots.push(base.join(sub));
+            }
+        }
+    }
+    roots
+}
+
+fn trae_code_activity_roots() -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+    if let Ok(appdata) = std::env::var("APPDATA") {
+        let base = PathBuf::from(appdata);
+        // IDE / TraeCode — exclude SOLO Work trees.
+        for name in ["Trae", "Trae CN", "Trae IDE"] {
+            let root = base.join(name);
+            roots.push(root.join("logs"));
+            roots.push(root.join("ModularData").join("ai-agent"));
+            roots.push(
+                root.join("User")
+                    .join("globalStorage")
+                    .join("state.vscdb"),
+            );
+        }
+    }
+    roots
+}
+
+fn mtime_roots(kind: AgentKind) -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+    if let Some(profile) = shell_agent_hook_setup::profile_for_kind(kind) {
+        let settings = shell_agent_hook_setup::settings_path(profile);
+        if let Some(parent) = settings.parent() {
             roots.push(parent.to_path_buf());
         }
-        roots.push(cn);
+        roots.push(settings);
+        if kind == AgentKind::Qoder {
+            let cn = shell_agent_hook_setup::qoder_cn_settings_path();
+            if let Some(parent) = cn.parent() {
+                roots.push(parent.to_path_buf());
+            }
+            roots.push(cn);
+        }
+        if kind == AgentKind::TraeCode {
+            let cn = shell_agent_hook_setup::trae_cn_hooks_path();
+            if let Some(parent) = cn.parent() {
+                roots.push(parent.to_path_buf());
+            }
+            roots.push(cn);
+        }
+    }
+    if kind == AgentKind::Trae {
+        // Solo / TraeWork — Cursor-style local activity.
+        roots.extend(trae_solo_activity_roots());
+    }
+    if kind == AgentKind::TraeCode {
+        roots.extend(trae_code_activity_roots());
     }
     roots
 }
@@ -167,7 +249,7 @@ fn infer_state(kind: AgentKind) -> InferredBusy {
     // Process alive — only then touch the filesystem.
     let roots = mtime_roots(kind);
     match newest_mtime_age_ms(&roots) {
-        Some(age) if infer_busy_from_mtime_age(age) => InferredBusy::Working,
+        Some(age) if infer_busy_from_mtime_age_for(kind, age) => InferredBusy::Working,
         _ => InferredBusy::Quiet,
     }
 }
@@ -191,6 +273,14 @@ fn apply_inferred(kind: AgentKind, busy: InferredBusy) {
     }
     match busy {
         InferredBusy::Working => {
+            // WorkBuddy / Qoder: no realtime motion lamp from process/mtime chatter.
+            // Trae Work + Trae Code: Cursor-style inferred Working (OfficialHook still wins above).
+            if matches!(kind, AgentKind::WorkBuddy | AgentKind::Qoder) {
+                if prev == Some(AttentionState::Working) && prev_src == Some(SignalSource::Inferred) {
+                    raise_lifecycle(kind, None, AttentionState::Idle, SignalSource::Inferred);
+                }
+                return;
+            }
             if prev == Some(AttentionState::Working) && prev_src == Some(SignalSource::Inferred) {
                 return;
             }
@@ -222,9 +312,14 @@ fn refresh_configured_if_due(force: bool) {
     }
     g.force_refresh = false;
     for kind in shell_kinds() {
-        let configured = shell_agent_hook_setup::setup_status(kind.as_str())
-            .map(|s| s.onetone_configured)
-            .unwrap_or(false);
+        let configured = if kind == AgentKind::Trae {
+            // Solo: inferred activity only — no OfficialHook profile.
+            false
+        } else {
+            shell_agent_hook_setup::setup_status(kind.as_str())
+                .map(|s| s.onetone_configured)
+                .unwrap_or(false)
+        };
         match kind {
             AgentKind::WorkBuddy => g.workbuddy = Some(configured),
             AgentKind::Trae => g.trae = Some(configured),
@@ -232,6 +327,11 @@ fn refresh_configured_if_due(force: bool) {
             _ => {}
         }
     }
+    g.trae_code = Some(
+        shell_agent_hook_setup::setup_status(AgentKind::TraeCode.as_str())
+            .map(|s| s.onetone_configured)
+            .unwrap_or(false),
+    );
     g.refreshed_at = Some(Instant::now());
 }
 
@@ -357,5 +457,34 @@ mod tests {
         assert!(infer_busy_from_mtime_age(SHELL_AGENT_MTIME_BUSY_MS - 1));
         assert!(!infer_busy_from_mtime_age(SHELL_AGENT_MTIME_BUSY_MS));
         assert!(!infer_busy_from_mtime_age(SHELL_AGENT_MTIME_BUSY_MS + 5_000));
+    }
+
+    #[test]
+    fn workbuddy_never_raises_inferred_working() {
+        // Guard: WorkBuddy/Qoder stay Hook-only; Trae Work + Trae Code may publish Inferred Working.
+        let src = include_str!("shell_agent_process.rs");
+        assert!(
+            src.contains("matches!(kind, AgentKind::WorkBuddy | AgentKind::Qoder)"),
+            "WorkBuddy/Qoder must not publish Inferred Working"
+        );
+        assert!(
+            src.contains("trae_solo_activity_roots") && src.contains("trae_code_activity_roots"),
+            "Trae Work + Trae Code watch client activity trees"
+        );
+        let apply = src
+            .split("fn apply_inferred")
+            .nth(1)
+            .unwrap_or("")
+            .split("fn refresh_configured_if_due")
+            .next()
+            .unwrap_or("");
+        assert!(
+            apply.contains("AgentKind::WorkBuddy | AgentKind::Qoder"),
+            "apply_inferred still blocks WorkBuddy/Qoder"
+        );
+        assert!(
+            !apply.contains("AgentKind::WorkBuddy | AgentKind::TraeCode | AgentKind::Qoder"),
+            "TraeCode no longer Hook-only for inferred Working"
+        );
     }
 }

@@ -1251,7 +1251,8 @@ assert.ok(commitEditFn.indexOf('schedulePreviewPaint') >= 0 || commitEditFn.inde
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?cursor-chat/.test(softPadHubSrc), 'BUILTIN includes cursor');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?minimax-chat/.test(softPadHubSrc), 'BUILTIN includes minimax');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?workbuddy-chat/.test(softPadHubSrc), 'BUILTIN includes workbuddy');
-assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-chat/.test(softPadHubSrc), 'BUILTIN includes trae');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-work/.test(softPadHubSrc), 'BUILTIN includes trae-work');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-code/.test(softPadHubSrc), 'BUILTIN includes trae-code');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?qoder-chat/.test(softPadHubSrc), 'BUILTIN includes qoder');
 assert.ok(padUiAgentSrc.indexOf("agent: 'copilotCli'") >= 0, 'topbar candidates include copilotCli');
 assert.ok(padUiAgentSrc.indexOf("agent: 'gemini'") >= 0, 'topbar candidates include gemini');

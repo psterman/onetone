@@ -14,7 +14,7 @@ var overlayCmd = fs.readFileSync(
 );
 var fmt = require(path.join(root, 'src/js/features/agent/usage-format.js'));
 
-['codex', 'claude', 'cursor', 'copilotCli', 'gemini', 'minimax', 'workbuddy', 'trae', 'qoder', 'cline', 'opencode', 'aider'].forEach(function (kind) {
+['codex', 'claude', 'cursor', 'copilotCli', 'gemini', 'minimax', 'workbuddy', 'trae', 'traeCode', 'qoder', 'cline', 'opencode', 'aider'].forEach(function (kind) {
   assert.ok(html.includes('data-agent="' + kind + '"'), 'missing agent chip: ' + kind);
 });
 assert.ok(html.includes('id="overlayAppMeta"') && html.includes('id="overlayLightGate"'));
@@ -101,8 +101,20 @@ assert.ok(rust.includes('AgentKind::WorkBuddy') && rust.includes('AgentKind::Tra
 assert.ok(rust.includes('workbuddy_status_lights_enabled'));
 assert.ok(
   rust.includes('sync_minimax_inferred_lifecycle') &&
-    rust.includes('minimax_code_process_running'),
-  'MiniMax status light infers running from process when hooks absent'
+    rust.includes('Quota lamp only') &&
+    !/want = lights && crate::app_identity::minimax_code_process_running/.test(rust),
+  'MiniMax stays idle quota lamp — no process→running impersonation'
+);
+assert.ok(
+  /WorkBuddy \| AgentKind::Qoder[\s\S]{0,80}OfficialHook/.test(rust) ||
+    /else if matches!\(kind, AgentKind::WorkBuddy \| AgentKind::Qoder\)/.test(rust),
+  'WorkBuddy/Qoder motion lamp gated on OfficialHook'
+);
+assert.ok(
+  !/else if matches!\(kind, AgentKind::WorkBuddy \| AgentKind::TraeCode \| AgentKind::Qoder\)/.test(
+    rust
+  ),
+  'TraeCode no longer OfficialHook-only for motion lamp'
 );
 assert.ok(
   rust.includes('last_mapping_id.is_empty()') ||
@@ -130,12 +142,12 @@ assert.ok(
 );
 var rankJs = fs.readFileSync(path.join(root, 'src/js/features/agent/soft-pad-agent-bar-rank.js'), 'utf8');
 assert.ok(
-  /PLACEHOLDER_KINDS\s*=\s*\[[^\]]*workbuddy[^\]]*trae[^\]]*qoder/.test(rankJs) ||
+  /PLACEHOLDER_KINDS\s*=\s*\[[^\]]*workbuddy[^\]]*traeCode[^\]]*qoder/.test(rankJs) ||
     (rankJs.includes("'workbuddy'") &&
-      rankJs.includes("'trae'") &&
+      rankJs.includes("'traeCode'") &&
       rankJs.includes("'qoder'") &&
       rankJs.includes('PLACEHOLDER_KINDS')),
-  'PLACEHOLDER_KINDS includes shell three'
+  'PLACEHOLDER_KINDS includes Hook shell agents (not Trae Work)'
 );
 assert.ok(html.includes('cmd_soft_pad_open_shell_hook'), 'placeholder click opens shell hook panel');
 assert.ok(
@@ -269,16 +281,16 @@ assert.strictEqual(rank.VISIBLE_PAD, 6);
 var merged = rank.mergePlaceholderKinds(r3, {}, 6);
 assert.deepStrictEqual(
   merged.top,
-  ['codex', 'workbuddy', 'trae', 'qoder'],
-  'shell PLACEHOLDER_KINDS fill remaining top slots'
+  ['codex', 'workbuddy', 'traeCode', 'qoder'],
+  'shell PLACEHOLDER_KINDS fill remaining top slots (Trae Code Hook CTA, not Trae Work)'
 );
 assert.deepStrictEqual(merged.rest, [], 'placeholders fit in VISIBLE_PAD');
 assert.ok(
   Array.isArray(rank.PLACEHOLDER_KINDS) &&
     rank.PLACEHOLDER_KINDS.indexOf('workbuddy') >= 0 &&
-    rank.PLACEHOLDER_KINDS.indexOf('trae') >= 0 &&
+    rank.PLACEHOLDER_KINDS.indexOf('traeCode') >= 0 &&
     rank.PLACEHOLDER_KINDS.indexOf('qoder') >= 0,
-  'PLACEHOLDER_KINDS exports shell three'
+  'PLACEHOLDER_KINDS exports Hook shell agents'
 );
 assert.strictEqual(
   rank.padLightFromRanked({}, byKind, 'codex', {}),

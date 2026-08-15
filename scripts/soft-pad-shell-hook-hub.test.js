@@ -24,13 +24,14 @@ var runtimeCmd = fs.readFileSync(
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?cursor-chat/.test(hubSrc), 'BUILTIN includes cursor');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?minimax-chat/.test(hubSrc), 'BUILTIN includes minimax');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?workbuddy-chat/.test(hubSrc), 'BUILTIN includes workbuddy');
-assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-chat/.test(hubSrc), 'BUILTIN includes trae');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-work/.test(hubSrc), 'BUILTIN includes trae-work');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-code/.test(hubSrc), 'BUILTIN includes trae-code');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?qoder-chat/.test(hubSrc), 'BUILTIN includes qoder');
 assert.ok(hubSrc.indexOf('HUB_KIND_RANK') >= 0, 'hub kind rank');
 assert.ok(
-  /minimax:\s*3[\s\S]*?workbuddy:\s*4[\s\S]*?trae:\s*5[\s\S]*?qoder:\s*6/.test(hubSrc) ||
+  /minimax:\s*3[\s\S]*?workbuddy:\s*4[\s\S]*?trae:\s*5[\s\S]*?traeCode:\s*6[\s\S]*?qoder:\s*7/.test(hubSrc) ||
     hubSrc.indexOf('minimax: 3') >= 0,
-  'order after cursor: minimax → workbuddy → trae → qoder'
+  'order after cursor: minimax → workbuddy → trae → traeCode → qoder'
 );
 assert.ok(hubSrc.indexOf('BUILTIN_SOFT_PAD_APPS.map') >= 0, 'scopes from BUILTIN map');
 assert.ok(hubSrc.indexOf('data-scope') >= 0, 'switcher uses data-scope');
@@ -87,10 +88,13 @@ assert.ok(panelSrc.indexOf('softPadShellHookMore') >= 0);
 assert.ok(panelSrc.indexOf('renderShellAgentHookPanel') >= 0);
 
 assert.ok(presetsSrc.indexOf("'workbuddy-chat'") >= 0);
-assert.ok(presetsSrc.indexOf("'trae-chat'") >= 0);
+assert.ok(presetsSrc.indexOf("'trae-work'") >= 0);
+assert.ok(presetsSrc.indexOf("'trae-code'") >= 0);
+assert.ok(presetsSrc.indexOf("'trae-chat'") >= 0, 'legacy trae-chat alias kept');
 assert.ok(presetsSrc.indexOf("'qoder-chat'") >= 0);
 assert.ok(presetsSrc.indexOf('icons/app-target/workbuddy.png') >= 0);
 assert.ok(presetsSrc.indexOf('icons/app-target/trae.png') >= 0);
+assert.ok(presetsSrc.indexOf('icons/app-target/trae-code.png') >= 0);
 assert.ok(presetsSrc.indexOf('icons/app-target/qoder.png') >= 0);
 
 ['workbuddy', 'trae', 'qoder'].forEach(function (id) {
@@ -119,7 +123,11 @@ assert.ok(padUiSrc.indexOf("agent: 'opencode'") >= 0, 'topbar includes opencode'
 assert.ok(padUiSrc.indexOf('Aider（仅完成）') >= 0, 'aider done-only label');
 assert.ok(padUiSrc.indexOf('cmd_shell_agent_hook_install_confirm') >= 0, 'shell connect CTA');
 assert.ok(overlayHtml.indexOf('data-agent="workbuddy"') >= 0, 'overlay workbuddy chip');
-assert.ok(overlayHtml.indexOf('data-agent="trae"') >= 0, 'overlay trae chip');
+assert.ok(overlayHtml.indexOf('data-agent="trae"') >= 0, 'overlay trae Work chip');
+assert.ok(overlayHtml.indexOf('data-agent="traeCode"') >= 0, 'overlay trae Code chip');
+assert.ok(panelSrc.indexOf('traecode: true') >= 0 || panelSrc.indexOf('traecode:true') >= 0, 'Hook panel allows traeCode');
+assert.ok(!/SHELL_KINDS\s*=\s*\{[^}]*\btrae:\s*true/.test(panelSrc), 'Hook panel does not install for Trae Work');
+assert.ok(fs.existsSync(path.join(root, 'src/icons/app-target/trae-code.png')), 'trae-code.png');
 assert.ok(overlayHtml.indexOf('data-agent="qoder"') >= 0, 'overlay qoder chip');
 assert.ok(overlayHtml.indexOf('data-agent="copilotCli"') >= 0, 'overlay copilot chip');
 assert.ok(overlayHtml.indexOf('data-agent="gemini"') >= 0, 'overlay gemini chip');

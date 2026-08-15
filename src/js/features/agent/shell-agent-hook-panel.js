@@ -1,12 +1,13 @@
 /**
- * Soft Pad Shell Hook panel — WorkBuddy / Trae / Qoder.
+ * Soft Pad Shell Hook panel — WorkBuddy / Trae Code / Qoder.
+ * Trae Work (SOLO) has no Hook install CTA.
  * Main path: detect → install → refresh. Copy draft is under More…
  * Does not clone Claude Activity.
  */
 (function (global) {
   'use strict';
 
-  var SHELL_KINDS = { workbuddy: true, trae: true, qoder: true };
+  var SHELL_KINDS = { workbuddy: true, traecode: true, qoder: true };
   var lastStatusByKind = {};
 
   function t(key, fallback) {

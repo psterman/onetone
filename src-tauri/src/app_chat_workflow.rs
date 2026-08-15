@@ -31,7 +31,11 @@ pub const CURSOR_APP_TARGET_ID: &str = "cursor-chat";
 pub const CODEX_APP_TARGET_ID: &str = "codex-chat";
 pub const MINIMAX_APP_TARGET_ID: &str = "minimax-chat";
 pub const WORKBUDDY_APP_TARGET_ID: &str = "workbuddy-chat";
-pub const TRAE_APP_TARGET_ID: &str = "trae-chat";
+/// Trae Work (TRAE SOLO). Legacy Soft Pad mappings may still use `trae-chat`.
+pub const TRAE_APP_TARGET_ID: &str = "trae-work";
+pub const TRAE_CHAT_LEGACY_APP_TARGET_ID: &str = "trae-chat";
+/// Trae Code (Trae IDE).
+pub const TRAE_CODE_APP_TARGET_ID: &str = "trae-code";
 pub const QODER_APP_TARGET_ID: &str = "qoder-chat";
 
 #[derive(Debug, Clone, Copy)]
@@ -128,8 +132,25 @@ const WORKBUDDY_PROFILE: AppChatProfile = AppChatProfile {
 const TRAE_PROFILE: AppChatProfile = AppChatProfile {
     id: TRAE_APP_TARGET_ID,
     error_prefix: "trae",
-    process_names: &["Trae.exe", "trae.exe", "TRAE SOLO.exe"],
-    // Shell hook apps are identified by process name; avoid over-strict path markers here.
+    process_names: &[
+        "TRAE SOLO.exe",
+        "TraeWork.exe",
+        "Trae Work.exe",
+        "TRAE Work.exe",
+    ],
+    path_marker: None,
+    open_key: None,
+    composer_anchor: (0.50, 0.91),
+    accept_click_without_uia: true,
+    post_voice_key_ms: 420,
+    restore_main_delay_ms: 360,
+    launch_localappdata_rel: &[],
+};
+
+const TRAE_CODE_PROFILE: AppChatProfile = AppChatProfile {
+    id: TRAE_CODE_APP_TARGET_ID,
+    error_prefix: "trae_code",
+    process_names: &["Trae.exe", "trae.exe"],
     path_marker: None,
     open_key: None,
     composer_anchor: (0.50, 0.91),
@@ -159,7 +180,8 @@ pub fn profile_for(app_target_id: &str) -> Option<&'static AppChatProfile> {
         MINIMAX_APP_TARGET_ID => Some(&MINIMAX_PROFILE),
         CLAUDE_CODE_APP_TARGET_ID => Some(&CLAUDE_PROFILE),
         WORKBUDDY_APP_TARGET_ID => Some(&WORKBUDDY_PROFILE),
-        TRAE_APP_TARGET_ID => Some(&TRAE_PROFILE),
+        TRAE_APP_TARGET_ID | TRAE_CHAT_LEGACY_APP_TARGET_ID => Some(&TRAE_PROFILE),
+        TRAE_CODE_APP_TARGET_ID => Some(&TRAE_CODE_PROFILE),
         QODER_APP_TARGET_ID => Some(&QODER_PROFILE),
         _ => None,
     }
@@ -725,7 +747,11 @@ fn try_launch_app_profile(profile: &AppChatProfile) -> bool {
     }
     if matches!(
         profile.id,
-        QODER_APP_TARGET_ID | WORKBUDDY_APP_TARGET_ID | TRAE_APP_TARGET_ID
+        QODER_APP_TARGET_ID
+            | WORKBUDDY_APP_TARGET_ID
+            | TRAE_APP_TARGET_ID
+            | TRAE_CHAT_LEGACY_APP_TARGET_ID
+            | TRAE_CODE_APP_TARGET_ID
     ) {
         return launch_from_resolved_hint(profile);
     }
@@ -882,7 +908,8 @@ fn shortcut_name_needles(profile: &AppChatProfile) -> Vec<&'static str> {
     match profile.id {
         QODER_APP_TARGET_ID => vec!["Qoder", "qoder"],
         WORKBUDDY_APP_TARGET_ID => vec!["WorkBuddy", "Work Buddy"],
-        TRAE_APP_TARGET_ID => vec!["Trae", "TRAE"],
+        TRAE_APP_TARGET_ID | TRAE_CHAT_LEGACY_APP_TARGET_ID => vec!["TRAE SOLO", "Trae Solo"],
+        TRAE_CODE_APP_TARGET_ID => vec!["Trae", "TRAE"],
         _ => vec![],
     }
 }
@@ -981,7 +1008,11 @@ fn known_install_exe_candidates(profile: &AppChatProfile) -> Vec<std::path::Path
             "Programs\\WorkBuddy\\WorkBuddy.exe",
             "WorkBuddy\\WorkBuddy.exe",
         ],
-        TRAE_APP_TARGET_ID => &["Programs\\Trae\\Trae.exe", "Trae\\Trae.exe"],
+        TRAE_APP_TARGET_ID | TRAE_CHAT_LEGACY_APP_TARGET_ID => &[
+            "Programs\\TRAE SOLO\\TRAE SOLO.exe",
+            "TRAE SOLO\\TRAE SOLO.exe",
+        ],
+        TRAE_CODE_APP_TARGET_ID => &["Programs\\Trae\\Trae.exe", "Trae\\Trae.exe"],
         _ => &[],
     };
     for rel in rels {
@@ -996,7 +1027,8 @@ fn probe_uninstall_exe(profile: &AppChatProfile) -> Option<std::path::PathBuf> {
     let display_needles: &[&str] = match profile.id {
         QODER_APP_TARGET_ID => &["Qoder"],
         WORKBUDDY_APP_TARGET_ID => &["WorkBuddy"],
-        TRAE_APP_TARGET_ID => &["Trae"],
+        TRAE_APP_TARGET_ID | TRAE_CHAT_LEGACY_APP_TARGET_ID => &["TRAE SOLO", "Trae Solo"],
+        TRAE_CODE_APP_TARGET_ID => &["Trae"],
         _ => return None,
     };
     let roots = [

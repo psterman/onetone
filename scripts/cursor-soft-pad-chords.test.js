@@ -65,7 +65,11 @@ assert.strictEqual(
 assert.ok(padSrc.includes('function capabilityCardCopy(slotId, m)'), 'capabilityCardCopy takes mapping');
 assert.ok(padSrc.includes('isVscodeSoftPadMapping(m) && id'), 'VS Code lineage uses dynamic tip copy');
 assert.ok(padSrc.includes('Cursor 快捷键') || padSrc.includes('Cursor shortcut'));
-assert.ok(padSrc.includes('Trae 快捷键') || padSrc.includes('Trae shortcut'));
+assert.ok(
+  padSrc.includes('Trae Work 快捷键') || padSrc.includes('Trae Work shortcut') ||
+    padSrc.includes('Trae Code 快捷键') || padSrc.includes('Trae Code shortcut') ||
+    padSrc.includes('Trae 快捷键') || padSrc.includes('Trae shortcut')
+);
 assert.ok(padSrc.includes('Qoder 快捷键') || padSrc.includes('Qoder shortcut'));
 assert.ok(padSrc.includes('WorkBuddy 快捷键') || padSrc.includes('WorkBuddy shortcut'));
 assert.ok(padSrc.includes('defaultKeyForMapping'));
@@ -78,6 +82,14 @@ assert.strictEqual(
 assert.strictEqual(
   sandbox.OneToneAgentActions.defaultKeyForMapping({ appTargetId: 'workbuddy-chat' }, 'newThread'),
   'Ctrl+N'
+);
+assert.strictEqual(
+  sandbox.OneToneAgentActions.defaultKeyForMapping({ appTargetId: 'trae-work' }, 'quickChat'),
+  'Ctrl+U'
+);
+assert.strictEqual(
+  sandbox.OneToneAgentActions.defaultKeyForMapping({ appTargetId: 'trae-code' }, 'quickChat'),
+  'Ctrl+U'
 );
 assert.strictEqual(
   sandbox.OneToneAgentActions.defaultKeyForMapping({ appTargetId: 'trae-chat' }, 'quickChat'),
@@ -119,7 +131,7 @@ assert.strictEqual(
 assert.strictEqual(wb.agentProviderId, 'workbuddy');
 
 var trae = {
-  appTargetId: 'trae-chat',
+  appTargetId: 'trae-work',
   agentTemplateId: 'codex-micro-13',
   agentBindings: [
     { slotId: 'quickChat', triggerType: 'key', triggerBinding: 'Ctrl+L', enabled: true }
@@ -128,6 +140,19 @@ var trae = {
 assert.ok(sandbox.OneToneAgentScenarioTemplate.fillEmptyKeyDefaults(trae));
 assert.strictEqual(
   trae.agentBindings.find(function (b) { return b.slotId === 'quickChat'; }).triggerBinding,
+  'Ctrl+U'
+);
+
+var traeCode = {
+  appTargetId: 'trae-code',
+  agentTemplateId: 'codex-micro-13',
+  agentBindings: [
+    { slotId: 'quickChat', triggerType: 'key', triggerBinding: 'Ctrl+L', enabled: true }
+  ]
+};
+assert.ok(sandbox.OneToneAgentScenarioTemplate.fillEmptyKeyDefaults(traeCode));
+assert.strictEqual(
+  traeCode.agentBindings.find(function (b) { return b.slotId === 'quickChat'; }).triggerBinding,
   'Ctrl+U'
 );
 

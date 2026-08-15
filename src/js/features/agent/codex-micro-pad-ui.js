@@ -929,6 +929,7 @@
         cursorStatusLightsEnabled: false,
         workbuddyStatusLightsEnabled: true,
         traeStatusLightsEnabled: true,
+        traeCodeStatusLightsEnabled: true,
         qoderStatusLightsEnabled: true,
         minimaxStatusLightsEnabled: false,
         copilotStatusLightsEnabled: false,
@@ -1003,6 +1004,9 @@
     }
     if (m.codexMicroPad.traeStatusLightsEnabled == null) {
       m.codexMicroPad.traeStatusLightsEnabled = true;
+    }
+    if (m.codexMicroPad.traeCodeStatusLightsEnabled == null) {
+      m.codexMicroPad.traeCodeStatusLightsEnabled = true;
     }
     if (m.codexMicroPad.qoderStatusLightsEnabled == null) {
       m.codexMicroPad.qoderStatusLightsEnabled = true;
@@ -1556,7 +1560,8 @@
 
   function isVscodeSoftPadMapping(m) {
     var app = String((m && m.appTargetId) || '').trim();
-    return app === 'cursor-chat' || app === 'workbuddy-chat' || app === 'trae-chat' || app === 'qoder-chat';
+    return app === 'cursor-chat' || app === 'workbuddy-chat' ||
+      app === 'trae-work' || app === 'trae-chat' || app === 'trae-code' || app === 'qoder-chat';
   }
 
   function isSoftPadInsertOnlySlot(slotId) {
@@ -1653,7 +1658,8 @@
       var app = String((m && m.appTargetId) || '').trim();
       var brand =
         app === 'cursor-chat' ? (en ? 'Cursor shortcut' : 'Cursor 快捷键')
-        : app === 'trae-chat' ? (en ? 'Trae shortcut' : 'Trae 快捷键')
+        : (app === 'trae-work' || app === 'trae-chat') ? (en ? 'Trae Work shortcut' : 'Trae Work 快捷键')
+        : app === 'trae-code' ? (en ? 'Trae Code shortcut' : 'Trae Code 快捷键')
         : app === 'qoder-chat' ? (en ? 'Qoder shortcut' : 'Qoder 快捷键')
         : app === 'workbuddy-chat' ? (en ? 'WorkBuddy shortcut' : 'WorkBuddy 快捷键')
         : (en ? 'IDE shortcut' : 'IDE 快捷键');
@@ -2975,8 +2981,9 @@
                     : agent === 'aider' ? 'aider-chat'
                       : agent === 'minimax' ? 'minimax-chat'
                   : agent === 'workbuddy' ? 'workbuddy-chat'
-                    : agent === 'trae' ? 'trae-chat'
-                      : agent === 'qoder' ? 'qoder-chat'
+                    : agent === 'trae' ? 'trae-work'
+                      : agent === 'traeCode' || agent === 'traecode' ? 'trae-code'
+                        : agent === 'qoder' ? 'qoder-chat'
                         : agent;
       var preset = P.presetById(appId);
       if (preset && preset.icon) return String(preset.icon);
@@ -2994,7 +3001,8 @@
     { agent: 'gemini', label: 'Gemini', connectKind: 'shell' },
     { agent: 'minimax', label: 'MiniMax', connectKind: 'minimax' },
     { agent: 'workbuddy', label: 'WorkBuddy', connectKind: 'shell' },
-    { agent: 'trae', label: 'Trae', connectKind: 'shell' },
+    { agent: 'trae', label: 'Trae Work', connectKind: 'solo' },
+    { agent: 'traeCode', label: 'Trae Code', connectKind: 'shell' },
     { agent: 'qoder', label: 'Qoder', connectKind: 'shell' },
     { agent: 'cline', label: 'Cline', connectKind: 'shell' },
     { agent: 'opencode', label: 'OpenCode', connectKind: 'shell' },
@@ -3013,7 +3021,8 @@
 
   var SHELL_HOOK_LIGHT_AGENTS = {
     workbuddy: true,
-    trae: true,
+    traeCode: true,
+    traecode: true,
     qoder: true,
     copilotCli: true,
     copilotcli: true,
@@ -3032,6 +3041,7 @@
     if (agent === 'minimax') return !!pad.minimaxStatusLightsEnabled;
     if (agent === 'workbuddy') return !!pad.workbuddyStatusLightsEnabled;
     if (agent === 'trae') return !!pad.traeStatusLightsEnabled;
+    if (agent === 'traeCode' || agent === 'traecode') return !!pad.traeCodeStatusLightsEnabled;
     if (agent === 'qoder') return !!pad.qoderStatusLightsEnabled;
     if (agent === 'cline') return !!pad.clineStatusLightsEnabled;
     if (agent === 'opencode') return !!pad.opencodeStatusLightsEnabled;
@@ -3048,6 +3058,7 @@
     else if (agent === 'minimax') pad.minimaxStatusLightsEnabled = !!enabled;
     else if (agent === 'workbuddy') pad.workbuddyStatusLightsEnabled = !!enabled;
     else if (agent === 'trae') pad.traeStatusLightsEnabled = !!enabled;
+    else if (agent === 'traeCode' || agent === 'traecode') pad.traeCodeStatusLightsEnabled = !!enabled;
     else if (agent === 'qoder') pad.qoderStatusLightsEnabled = !!enabled;
     else if (agent === 'cline') pad.clineStatusLightsEnabled = !!enabled;
     else if (agent === 'opencode') pad.opencodeStatusLightsEnabled = !!enabled;
@@ -3265,7 +3276,8 @@
     if (appId === 'gemini-cli') return 'gemini';
     if (appId === 'minimax-chat') return 'minimax';
     if (appId === 'workbuddy-chat') return 'workbuddy';
-    if (appId === 'trae-chat') return 'trae';
+    if (appId === 'trae-work' || appId === 'trae-chat') return 'trae';
+    if (appId === 'trae-code') return 'traeCode';
     if (appId === 'qoder-chat') return 'qoder';
     if (appId === 'cline-chat') return 'cline';
     if (appId === 'opencode-chat') return 'opencode';
@@ -3312,7 +3324,8 @@
     if (agent === 'gemini') return 'gemini-cli';
     if (agent === 'minimax') return 'minimax-chat';
     if (agent === 'workbuddy') return 'workbuddy-chat';
-    if (agent === 'trae') return 'trae-chat';
+    if (agent === 'trae') return 'trae-work';
+    if (agent === 'traeCode' || agent === 'traecode') return 'trae-code';
     if (agent === 'qoder') return 'qoder-chat';
     if (agent === 'cline') return 'cline-chat';
     if (agent === 'opencode') return 'opencode-chat';
@@ -3470,7 +3483,7 @@
       '</p>' +
       '<p class="codex-pad-mgr__hint soft-pad-agent-light-matrix">' +
       esc(t('softPadAgentLightsMatrix',
-        '精度：Cursor/Claude/Codex/MiniMax 高（Hook/活动）；WorkBuddy/Trae/Qoder 中（进程+mtime，Hook 补全）；Cline/OpenCode/Aider 中（仅 Hook）。Shell 三端需装 Hook 才完整，未装显示未配置。')) +
+        '精度：Cursor/Claude/Codex 高（Hook/活动）；Trae Work 高（本地活跃度）；WorkBuddy/Trae Code/Qoder 高（仅 Hook，禁止进程假闪）；MiniMax 常亮额度灯（无运动）；Cline/OpenCode/Aider 中（仅 Hook）。')) +
       '</p>' +
       '<p class="codex-pad-mgr__hint is-error" data-topbar-lights-error hidden></p>' +
       '</article>'
@@ -3572,7 +3585,7 @@
       '</p>' +
       '<p class="codex-pad-mgr__hint soft-pad-agent-light-matrix">' +
       esc(t('softPadAgentLightsMatrix',
-        '精度：Cursor/Claude/Codex/MiniMax 高（Hook/活动）；WorkBuddy/Trae/Qoder 中（进程+mtime，Hook 补全）；Cline/OpenCode/Aider 中（仅 Hook）。Shell 三端需装 Hook 才完整，未装显示未配置。')) +
+        '精度：Cursor/Claude/Codex 高（Hook/活动）；Trae Work 高（本地活跃度）；WorkBuddy/Trae Code/Qoder 高（仅 Hook，禁止进程假闪）；MiniMax 常亮额度灯（无运动）；Cline/OpenCode/Aider 中（仅 Hook）。')) +
       '</p>' +
       '<p class="codex-pad-mgr__hint" data-agent-lights-empty' + (anyOn ? ' hidden' : '') + '>' +
       esc(t('softPadAgentLightsEmpty',
@@ -3812,7 +3825,7 @@
     }
   }
 
-  var agentLightsHookCache = { claude: null, cursor: null, workbuddy: null, trae: null, qoder: null };
+  var agentLightsHookCache = { claude: null, cursor: null, workbuddy: null, traeCode: null, qoder: null };
 
   function shellHookConnectNeeded(kind, st) {
     kind = String(kind || '').toLowerCase();
@@ -3843,6 +3856,8 @@
       var claude = agentLightsHookCache.claude || {};
       var cursor = agentLightsHookCache.cursor || {};
       function stateFor(kind) {
+        kind = String(kind || '');
+        var kindLow = kind.toLowerCase();
         if (!agentLightEnabledOnPad(pad, kind)) return 'idle';
         var rows = attn.rows || attn.agents || [];
         var i;
@@ -3850,7 +3865,7 @@
           var r = rows[i];
           if (!r) continue;
           var a = String(r.agent || r.kind || '').toLowerCase();
-          if (a === kind) {
+          if (a === kindLow || a === kind) {
             var st = String(r.state || r.status || 'idle').toLowerCase();
             if (st === 'working') return 'running';
             if (st === 'needs_input' || st === 'needsinput') return 'needs_input';
@@ -3890,19 +3905,18 @@
         t('softPadCursorConnect', '复制 Cursor Hook 配置')
       );
       paintTopbarPreviewChipStatus(root, 'cursor', stateFor('cursor'));
-      ['workbuddy', 'trae', 'qoder'].forEach(function (kind) {
+      ['workbuddy', 'traeCode', 'qoder'].forEach(function (kind) {
         var st = agentLightsHookCache[kind] || {};
         var known = !!agentLightsHookCache[kind];
         var need = known && shellHookConnectNeeded(kind, st);
-        var label = kind === 'workbuddy'
-          ? t('softPadShellHookInstall', '接入')
-          : kind === 'trae'
-            ? t('softPadShellHookInstall', '接入')
-            : t('softPadShellHookInstall', '接入');
+        var label = t('softPadShellHookInstall', '接入');
         paintAgentLightRowStatus(root, kind, stateFor(kind), need, label);
         paintTopbarPreviewChipStatus(root, kind, stateFor(kind));
         patchStatusLightsConnectRow(root, kind, need, label);
       });
+      paintAgentLightRowStatus(root, 'trae', stateFor('trae'), false, '');
+      paintTopbarPreviewChipStatus(root, 'trae', stateFor('trae'));
+      patchStatusLightsConnectRow(root, 'trae', false, '');
       patchStatusLightsConnectRow(root, 'codex', false, '');
       patchStatusLightsConnectRow(
         root,
@@ -6855,13 +6869,15 @@
       else if (tid.indexOf('codex') >= 0) kind = 'codex';
       else if (tid.indexOf('cursor') >= 0) kind = 'cursor';
       else if (tid.indexOf('workbuddy') >= 0 || tid.indexOf('codebuddy') >= 0) kind = 'workbuddy';
+      else if (tid.indexOf('trae-code') >= 0) kind = 'traeCode';
       else if (tid.indexOf('trae') >= 0) kind = 'trae';
       else if (tid.indexOf('qoder') >= 0) kind = 'qoder';
     }
     if (kind === 'claude') return 'preset-claude';
     if (kind === 'codex') return 'preset-codex';
     if (kind === 'cursor') return 'preset-cursor';
-    if (kind === 'workbuddy' || kind === 'trae' || kind === 'qoder') return 'preset-shell';
+    var kLow = String(kind || '').toLowerCase();
+    if (kLow === 'workbuddy' || kLow === 'traecode' || kLow === 'qoder') return 'preset-shell';
     return 'custom';
   }
 
@@ -6902,7 +6918,8 @@
     if (agent === 'codex') return t('softPadHubKindCodex', 'Codex');
     if (agent === 'cursor') return t('softPadHubKindCursor', 'Cursor');
     if (agent === 'workbuddy') return t('softPadHubKindWorkBuddy', 'WorkBuddy');
-    if (agent === 'trae') return t('softPadHubKindTrae', 'Trae');
+    if (agent === 'trae') return t('softPadHubKindTraeWork', 'Trae Work');
+    if (agent === 'traeCode' || agent === 'traecode') return t('softPadHubKindTraeCode', 'Trae Code');
     if (agent === 'qoder') return t('softPadHubKindQoder', 'Qoder');
     if (m && m.name) return String(m.name);
     return t('softPadHubKindSoft', '我的应用');

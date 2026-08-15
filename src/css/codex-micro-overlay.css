@@ -1662,8 +1662,12 @@ button.overlay-key-caption:focus-visible {
   border-color: rgba(1, 200, 134, 0.28);
 }
 .soft-pad-agent-bar__chip[data-agent="trae"] {
-  background: linear-gradient(180deg, #ffffff 0%, #eef2ff 55%, #dbe4ff 100%);
-  border-color: rgba(59, 130, 246, 0.28);
+  background: linear-gradient(180deg, #ffffff 0%, #f3f4f6 55%, #e5e7eb 100%);
+  border-color: rgba(100, 116, 139, 0.28);
+}
+.soft-pad-agent-bar__chip[data-agent="traeCode"] {
+  background: linear-gradient(180deg, #ffffff 0%, #ecfdf5 55%, #bbf7d0 100%);
+  border-color: rgba(16, 185, 129, 0.32);
 }
 .soft-pad-agent-bar__chip[data-agent="qoder"] {
   background: linear-gradient(180deg, #ffffff 0%, #f3efff 55%, #e4dbff 100%);
@@ -1746,6 +1750,22 @@ button.overlay-key-caption:focus-visible {
 .soft-pad-agent-bar__chip[data-status="failed"] .soft-pad-agent-bar__dot,
 .soft-pad-agent-bar__chip[data-status="error"] .soft-pad-agent-bar__dot {
   background: #e11d48;
+}
+
+/* MiniMax: quota lamp only — steady on, never breathe/pulse like Cursor lifecycle. */
+.soft-pad-agent-bar__chip[data-agent="minimax"]:not([data-placeholder="1"]) .soft-pad-agent-bar__dot,
+.overlay-mini__agent[data-agent="minimax"]:not([data-placeholder="1"]) .overlay-mini__agent-dot {
+  background: #22a05a;
+  box-shadow: 0 0 0 1px color-mix(in srgb, #22a05a 35%, transparent);
+  animation: none !important;
+}
+.soft-pad-agent-bar__chip[data-agent="minimax"][data-status="running"],
+.overlay-mini__agent[data-agent="minimax"][data-status="running"],
+.soft-pad-agent-bar__chip[data-agent="minimax"].is-status-flash,
+.overlay-mini__agent[data-agent="minimax"].is-status-flash {
+  transform: none;
+  animation: none !important;
+  border-color: rgba(120, 136, 156, 0.28);
 }
 
 .soft-pad-agent-bar__chip[data-agent="codex"].is-usage-focus {

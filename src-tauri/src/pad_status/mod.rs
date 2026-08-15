@@ -50,7 +50,7 @@ pub fn ingest_codex_payload(payload: &CodexAppStatePayload) -> PadStatus {
         "claude_hook" | "claude_app" => Some(crate::soft_pad_runtime::AgentKind::Claude),
         "cursor_hook" => Some(crate::soft_pad_runtime::AgentKind::Cursor),
         "workbuddy_hook" => Some(crate::soft_pad_runtime::AgentKind::WorkBuddy),
-        "trae_hook" => Some(crate::soft_pad_runtime::AgentKind::Trae),
+        "trae_code_hook" | "trae_hook" => Some(crate::soft_pad_runtime::AgentKind::TraeCode),
         "qoder_hook" => Some(crate::soft_pad_runtime::AgentKind::Qoder),
         "copilot_cli_hook" => Some(crate::soft_pad_runtime::AgentKind::CopilotCli),
         "gemini_hook" => Some(crate::soft_pad_runtime::AgentKind::Gemini),

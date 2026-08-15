@@ -99,6 +99,16 @@ fn normalize_source(raw: &str) -> Option<&'static str> {
         "claude_hook" => Some("claude_hook"),
         "claude_app" => Some("claude_app"),
         "cursor_hook" => Some("cursor_hook"),
+        // Soft Pad shell agents (POST 8796 → pad_status OfficialHook)
+        "workbuddy_hook" => Some("workbuddy_hook"),
+        // Canonical Trae Code; legacy `trae_hook` still accepted.
+        "trae_code_hook" | "trae_hook" => Some("trae_hook"),
+        "qoder_hook" => Some("qoder_hook"),
+        "copilot_cli_hook" => Some("copilot_cli_hook"),
+        "gemini_hook" => Some("gemini_hook"),
+        "cline_hook" => Some("cline_hook"),
+        "opencode_hook" => Some("opencode_hook"),
+        "aider_hook" => Some("aider_hook"),
         _ => None,
     }
 }
@@ -445,6 +455,10 @@ mod tests {
         assert_eq!(normalize_source("codex_app"), Some("codex_app"));
         assert_eq!(normalize_source("claude_hook"), Some("claude_hook"));
         assert_eq!(normalize_source("cursor_hook"), Some("cursor_hook"));
+        assert_eq!(normalize_source("workbuddy_hook"), Some("workbuddy_hook"));
+        assert_eq!(normalize_source("trae_hook"), Some("trae_hook"));
+        assert_eq!(normalize_source("trae_code_hook"), Some("trae_hook"));
+        assert_eq!(normalize_source("qoder_hook"), Some("qoder_hook"));
         assert_eq!(normalize_source("native_micro"), None);
         assert_eq!(normalize_source("native"), None);
     }

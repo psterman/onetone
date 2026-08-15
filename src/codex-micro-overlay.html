@@ -44,8 +44,12 @@
             <img src="icons/app-target/workbuddy.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
           </span>
-          <span class="overlay-mini__agent" role="listitem" data-agent="trae" data-status="idle" aria-label="Trae：空闲" hidden>
+          <span class="overlay-mini__agent" role="listitem" data-agent="trae" data-status="idle" aria-label="Trae Work：空闲" hidden>
             <img src="icons/app-target/trae.png" alt="" aria-hidden="true">
+            <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
+          </span>
+          <span class="overlay-mini__agent" role="listitem" data-agent="traeCode" data-status="idle" aria-label="Trae Code：空闲" hidden>
+            <img src="icons/app-target/trae-code.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
           </span>
           <span class="overlay-mini__agent" role="listitem" data-agent="qoder" data-status="idle" aria-label="Qoder：空闲" hidden>
@@ -119,8 +123,12 @@
                     <img src="icons/app-target/workbuddy.png" alt="" aria-hidden="true">
                     <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
                   </button>
-                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="trae" data-status="idle" aria-pressed="false" aria-label="Trae" title="Trae" hidden>
+                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="trae" data-status="idle" aria-pressed="false" aria-label="Trae Work" title="Trae Work" hidden>
                     <img src="icons/app-target/trae.png" alt="" aria-hidden="true">
+                    <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="traeCode" data-status="idle" aria-pressed="false" aria-label="Trae Code" title="Trae Code" hidden>
+                    <img src="icons/app-target/trae-code.png" alt="" aria-hidden="true">
                     <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
                   </button>
                   <button type="button" class="soft-pad-agent-bar__chip" data-agent="qoder" data-status="idle" aria-pressed="false" aria-label="Qoder" title="Qoder" hidden>
@@ -748,14 +756,15 @@
     function deepseekBalanceCaption(usage){ return providerBalanceCaption(usage); }
 
     function agentLabel(kind){
-      kind=String(kind||'').trim();
+      kind=canonAgentKind(kind);
       if(kind==='claude') return 'Claude';
       if(kind==='cursor') return 'Cursor';
-      if(kind==='copilotCli'||kind==='copilot') return 'Copilot';
+      if(kind==='copilotCli') return 'Copilot';
       if(kind==='gemini') return 'Gemini';
       if(kind==='minimax') return 'MiniMax';
       if(kind==='workbuddy') return 'WorkBuddy';
-      if(kind==='trae') return 'Trae';
+      if(kind==='trae') return 'Trae Work';
+      if(kind==='traeCode') return 'Trae Code';
       if(kind==='qoder') return 'Qoder';
       if(kind==='cline') return 'Cline';
       if(kind==='opencode') return 'OpenCode';
@@ -764,7 +773,18 @@
       return kind||'Codex';
     }
 
-    var SHELL_LIGHT_AGENTS={workbuddy:1,trae:1,qoder:1}; // retained for connect CTAs / tips
+    /** Keep camelCase Soft Pad kinds stable (traeCode / copilotCli). */
+    function canonAgentKind(kind){
+      var k=String(kind||'').trim();
+      if(!k) return '';
+      var low=k.toLowerCase();
+      if(low==='traecode'||low==='trae_code'||low==='trae-code') return 'traeCode';
+      if(low==='copilotcli'||low==='copilot_cli'||low==='copilot-cli'||low==='copilot') return 'copilotCli';
+      if(low==='trae'||low==='trae-work'||low==='trae_work'||low==='trae-solo') return 'trae';
+      return low;
+    }
+
+    var SHELL_LIGHT_AGENTS={workbuddy:1,traeCode:1,traecode:1,qoder:1}; // Hook CTAs — not Trae Work
 
     function compactNumber(value){
       var n=Number(value);
@@ -1175,7 +1195,7 @@
     }
 
     function isShellUsageKind(kind){
-      return kind==='workbuddy'||kind==='trae'||kind==='qoder';
+      return kind==='workbuddy'||kind==='trae'||kind==='traeCode'||kind==='traecode'||kind==='qoder';
     }
 
     function miniUsageAbbrev(kind){
@@ -1184,7 +1204,8 @@
       if(kind==='cursor') return 'Cu';
       if(kind==='minimax') return 'Mn';
       if(kind==='workbuddy') return 'Wb';
-      if(kind==='trae') return 'Tr';
+      if(kind==='trae') return 'Tw';
+      if(kind==='traeCode'||kind==='traecode') return 'Tc';
       if(kind==='qoder') return 'Qd';
       return String(kind||'?').slice(0,1).toUpperCase();
     }
@@ -1295,53 +1316,54 @@
       var rows=Array.isArray(s&&s.agents)?s.agents:[];
       var byKind={};
       rows.forEach(function(row){
-        var kind=String(row&&row.kind||'').trim();
+        var kind=canonAgentKind(row&&row.kind);
         if(kind) byKind[kind]=row;
       });
       function hasRenderable(kind){
-        return isRenderableUsage(kind,(byKind[kind]||{}).usage||{});
+        return isRenderableUsage(canonAgentKind(kind),(byKind[canonAgentKind(kind)]||{}).usage||{});
       }
       // Hover preview wins even when that agent has no renderable usage yet.
-      if(hoverUsageKind) return hoverUsageKind;
-      if(usageFocusPinned&&focusedUsageAgent&&hasRenderable(focusedUsageAgent)) return focusedUsageAgent;
-      var fg=String(s&&(s.foregroundAgent||s.foreground_agent)||'').trim().toLowerCase();
+      if(hoverUsageKind) return canonAgentKind(hoverUsageKind);
+      if(usageFocusPinned&&focusedUsageAgent&&hasRenderable(focusedUsageAgent)) return canonAgentKind(focusedUsageAgent);
+      var fg=canonAgentKind(s&&(s.foregroundAgent||s.foreground_agent));
       if(fg&&hasRenderable(fg)) return fg;
-      var app=String(s&&(s.appAgent||s.app_agent)||'').trim().toLowerCase();
+      var app=canonAgentKind(s&&(s.appAgent||s.app_agent));
       if(app&&hasRenderable(app)) return app;
       var active=['needs_input','running'];
       for(var i=0;i<rows.length;i++){
         var st=String(rows[i]&&rows[i].state||'').trim();
-        var k=String(rows[i]&&rows[i].kind||'').trim();
+        var k=canonAgentKind(rows[i]&&rows[i].kind);
         if(active.indexOf(st)>=0&&hasRenderable(k)) return k;
       }
       if(hasRenderable('codex')) return 'codex';
       if(hasRenderable('claude')) return 'claude';
       if(hasRenderable('cursor')) return 'cursor';
       for(var n=0;n<rows.length;n++){
-        var kk=String(rows[n]&&rows[n].kind||'').trim();
+        var kk=canonAgentKind(rows[n]&&rows[n].kind);
         if(kk&&hasRenderable(kk)) return kk;
       }
       return '';
     }
 
     function isUsageFocusKind(kind){
+      kind=canonAgentKind(kind);
       return kind==='codex'||kind==='claude'||kind==='cursor'||kind==='minimax'||
-        kind==='workbuddy'||kind==='trae'||kind==='qoder'||
+        kind==='workbuddy'||kind==='trae'||kind==='traeCode'||kind==='qoder'||
         kind==='cline'||kind==='opencode'||kind==='aider'||kind==='copilotCli'||kind==='gemini';
     }
 
     function resolveUsageFocus(s){
-      if(hoverUsageKind) return hoverUsageKind;
+      if(hoverUsageKind) return canonAgentKind(hoverUsageKind);
       if(usageFocusPinned&&isUsageFocusKind(focusedUsageAgent)){
-        return focusedUsageAgent;
+        return canonAgentKind(focusedUsageAgent);
       }
-      var fg=String(s&&(s.foregroundAgent||s.foreground_agent)||'').trim().toLowerCase();
+      var fg=canonAgentKind(s&&(s.foregroundAgent||s.foreground_agent));
       if(isUsageFocusKind(fg)) return fg;
-      var app=String(s&&(s.appAgent||s.app_agent)||'').trim().toLowerCase();
+      var app=canonAgentKind(s&&(s.appAgent||s.app_agent));
       if(isUsageFocusKind(app)) return app;
       var auto=pickMiniUsageKind(s);
       if(auto) return auto;
-      return focusedUsageAgent||'codex';
+      return canonAgentKind(focusedUsageAgent)||'codex';
     }
 
     function usageLineBits(kind,usage,row,snap){
@@ -1570,6 +1592,8 @@
     function playAgentChipEdge(el, state){
       var Motion=window.OneToneMotion;
       if(!Motion||typeof Motion.playOnce!=='function'||!el) return;
+      // MiniMax: quota lamp only — no lifecycle sparkle/flash.
+      if(String(el.getAttribute('data-agent')||'')==='minimax') return;
       var target=el.querySelector('.overlay-mini__agent-dot, .soft-pad-agent-bar__dot')||el;
       var next=String(state||'').trim().toLowerCase();
       if(next==='error') next='failed';
@@ -1592,14 +1616,19 @@
 
     function applyAgentChipEl(el,s,byKind,focus){
       if(!el) return;
-      var kind=String(el.getAttribute('data-agent')||'');
+      var kind=canonAgentKind(el.getAttribute('data-agent'));
       var Rank=window.OneToneSoftPadAgentBarRank;
       var row=byKind[kind]||{};
       var lightsOn = !!(row.lightsEnabled || row.lights_enabled);
       var hookCfg=row.hookConfigured;
       if(hookCfg===undefined) hookCfg=row.hook_configured;
-      var shellUnconfigured=(kind==='workbuddy'||kind==='trae'||kind==='qoder')&&hookCfg===false;
-      var asPlaceholder = shellUnconfigured || (!lightsOn && Rank && Rank.isPlaceholderKind && Rank.isPlaceholderKind(kind));
+      var shellUnconfigured=(kind==='workbuddy'||kind==='traeCode'||kind==='qoder')&&hookCfg===false;
+      // Placeholder only when lights are off. Hook missing must not freeze the lamp
+      // at idle — process/mtime inference can still show running.
+      var asPlaceholder = !lightsOn && Rank && Rank.isPlaceholderKind && Rank.isPlaceholderKind(kind);
+      if(shellUnconfigured && !lightsOn){
+        asPlaceholder = true;
+      }
       if(asPlaceholder){
         el.setAttribute('data-placeholder', '1');
         el.setAttribute('data-status', 'idle');
@@ -1609,13 +1638,21 @@
         el.removeAttribute('data-session-id');
         el.setAttribute('aria-pressed', 'false');
         el.hidden=false;
-        el.setAttribute('aria-label', agentLabel(kind)+'：未配置 Hook');
-        el.setAttribute('title', '未配置 Hook · 点击去 Soft Pad 安装');
+        if(kind==='trae'){
+          el.setAttribute('aria-label', agentLabel(kind)+'：空闲');
+          el.setAttribute('title', 'Trae Work · 本地活跃度（SOLO）');
+        }else{
+          el.setAttribute('aria-label', agentLabel(kind)+'：未配置 Hook');
+          el.setAttribute('title', '未配置 Hook · 点击去 Soft Pad 安装');
+        }
         el.__tipLines=null;
         return;
       }
       el.removeAttribute('data-placeholder');
       var state=String(row.state||'idle').trim().toLowerCase()||'idle';
+      // MiniMax: no lifecycle motion — keep steady idle (quota).
+      // WorkBuddy: Hook-driven status only (Rust already gates inferred); do not force idle here.
+      if(kind==='minimax') state='idle';
       var activeState=(state==='running'||state==='needs_input'||state==='done'||state==='failed'||state==='error');
       // Fallback: when usage rail/model rows lag behind, derive Claude chip state
       // from app-state / hook source so the lamp still reflects live CLI progress.
@@ -1660,8 +1697,19 @@
       if(!plan.applyStatusTip) return;
 
       var usage=row.usage||{};
-      var label=agentLabel(kind)+'：'+lightStatusLabel(state);
+      var label=kind==='minimax'
+        ?(agentLabel(kind)+'：额度')
+        :(agentLabel(kind)+'：'+lightStatusLabel(state));
       var tipLines=agentChipTipLines(kind,row,usage,state,s);
+      if(shellUnconfigured){
+        tipLines=(tipLines||[]).concat(['未装 Hook · 点图标去 Soft Pad 安装后才有执行中/完成灯']);
+      }else if(kind==='trae'&&state==='idle'){
+        tipLines=(tipLines||[]).concat(['Trae Work：本地活跃度推断（SOLO / Cursor 模式）']);
+      }else if((kind==='traeCode'||kind==='traecode')&&state==='idle'){
+        tipLines=(tipLines||[]).concat(['Trae Code：执行灯靠 Hook（Trae IDE Settings）']);
+      }else if(kind==='qoder'&&state==='idle'){
+        tipLines=(tipLines||[]).concat(['执行灯靠 Hook：打开 Qoder 跑一轮任务才会闪']);
+      }
       if(kind==='cursor'){
         var built=cursorChipTipText(row,usage,state);
         el.setAttribute('data-status', state);
@@ -1679,7 +1727,7 @@
     }
 
     function noteForegroundRecency(s){
-      var fg=String(s&&(s.foregroundAgent||s.foreground_agent)||'').trim().toLowerCase();
+      var fg=canonAgentKind(s&&(s.foregroundAgent||s.foreground_agent));
       if(fg) touchAgentBarRecency(fg);
     }
 
@@ -1688,7 +1736,7 @@
       var rows=Array.isArray(s&&s.agents)?s.agents:[];
       var byKind={};
       rows.forEach(function(row){
-        var kind=String(row&&row.kind||'').trim();
+        var kind=canonAgentKind(row&&row.kind);
         if(kind) byKind[kind]=row;
       });
       var focus=resolveUsageFocus(s);
@@ -1698,7 +1746,7 @@
     }
 
     function touchAgentBarRecency(kind){
-      kind=String(kind||'').trim();
+      kind=canonAgentKind(kind);
       if(!kind) return;
       agentBarRecency[kind]=Date.now();
     }
@@ -2834,9 +2882,9 @@
     }
 
     function setUsageFocusFromUi(kind, opts){
-      kind=String(kind||'').trim();
+      kind=canonAgentKind(kind);
       opts=opts||{};
-      if(kind!=='codex'&&kind!=='claude'&&kind!=='cursor'&&kind!=='minimax'&&kind!=='workbuddy'&&kind!=='trae'&&kind!=='qoder') return;
+      if(kind!=='codex'&&kind!=='claude'&&kind!=='cursor'&&kind!=='minimax'&&kind!=='workbuddy'&&kind!=='trae'&&kind!=='traeCode'&&kind!=='qoder') return;
       touchAgentBarRecency(kind);
       var laneId=opts.laneId||'';
       var sessionId=opts.sessionId||'';
@@ -2859,7 +2907,7 @@
           });
         });
       }
-      if(kind==='workbuddy'||kind==='trae'||kind==='qoder'){
+      if(kind==='workbuddy'||kind==='trae'||kind==='traeCode'||kind==='qoder'){
         applyMiniAgentChips(lastSnap||{});
         toast('跳转 '+agentLabel(kind));
         focusSession();
@@ -2884,9 +2932,9 @@
           e.stopPropagation();
           if(el.getAttribute('data-placeholder')==='1'){
             var pk=String(el.getAttribute('data-agent')||'');
-            if(pk==='workbuddy'||pk==='trae'||pk==='qoder'){
+            if(pk==='workbuddy'||pk==='traeCode'||pk==='traecode'||pk==='qoder'){
               toast('打开 Soft Pad 接入 '+agentLabel(pk));
-              invoke('cmd_soft_pad_open_shell_hook',{kind:pk}).catch(function(){});
+              invoke('cmd_soft_pad_open_shell_hook',{kind:pk==='traecode'?'traeCode':pk}).catch(function(){});
             }
             return;
           }
@@ -2901,8 +2949,8 @@
             e.preventDefault();
             if(el.getAttribute('data-placeholder')==='1'){
               var pk=String(el.getAttribute('data-agent')||'');
-              if(pk==='workbuddy'||pk==='trae'||pk==='qoder'){
-                invoke('cmd_soft_pad_open_shell_hook',{kind:pk}).catch(function(){});
+              if(pk==='workbuddy'||pk==='traeCode'||pk==='traecode'||pk==='qoder'){
+                invoke('cmd_soft_pad_open_shell_hook',{kind:pk==='traecode'?'traeCode':pk}).catch(function(){});
               }
               return;
             }

@@ -253,6 +253,9 @@ pub fn cmd_soft_pad_agent_lights_set(
             "minimax" => pad.minimax_status_lights_enabled = enabled,
             "workbuddy" => pad.workbuddy_status_lights_enabled = enabled,
             "trae" => pad.trae_status_lights_enabled = enabled,
+            "traecode" | "trae_code" | "trae-code" => {
+                pad.trae_code_status_lights_enabled = enabled
+            }
             "qoder" => pad.qoder_status_lights_enabled = enabled,
             "copilotcli" | "copilot_cli" | "copilot-cli" => {
                 pad.copilot_status_lights_enabled = enabled
@@ -274,6 +277,9 @@ pub fn cmd_soft_pad_agent_lights_set(
                 | "cursor"
                 | "workbuddy"
                 | "trae"
+                | "traecode"
+                | "trae_code"
+                | "trae-code"
                 | "qoder"
                 | "copilotcli"
                 | "copilot_cli"
@@ -394,6 +400,9 @@ pub fn cmd_soft_pad_agent_lights_batch_set(
                 "minimax" => pad.minimax_status_lights_enabled = enabled,
                 "workbuddy" => pad.workbuddy_status_lights_enabled = enabled,
                 "trae" => pad.trae_status_lights_enabled = enabled,
+                "traecode" | "trae_code" | "trae-code" => {
+                    pad.trae_code_status_lights_enabled = enabled
+                }
                 "qoder" => pad.qoder_status_lights_enabled = enabled,
                 "copilotcli" | "copilot_cli" | "copilot-cli" => {
                     pad.copilot_status_lights_enabled = enabled
@@ -413,6 +422,9 @@ pub fn cmd_soft_pad_agent_lights_batch_set(
                         | "cursor"
                         | "workbuddy"
                         | "trae"
+                        | "traecode"
+                        | "trae_code"
+                        | "trae-code"
                         | "qoder"
                         | "copilotcli"
                         | "copilot_cli"

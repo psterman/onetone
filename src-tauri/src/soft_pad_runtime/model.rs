@@ -17,8 +17,10 @@ pub enum AgentKind {
     Gemini,
     /// Tencent WorkBuddy / CodeBuddy — shell hooks (lifecycle + needs_input; no Claude resume).
     WorkBuddy,
-    /// ByteDance Trae IDE — shell hooks.
+    /// ByteDance Trae Work (TRAE SOLO) — local activity lamps (no Settings>Hooks UI).
     Trae,
+    /// ByteDance Trae Code (Trae IDE / TraeCode) — OfficialHook status lamps.
+    TraeCode,
     /// Alibaba Qoder IDE/CLI — shell hooks.
     Qoder,
     /// Cline — file hooks (`.cline/hooks` / Documents/Cline/Hooks); no virtual keyboard.
@@ -40,6 +42,7 @@ impl AgentKind {
             AgentKind::Gemini => "gemini",
             AgentKind::WorkBuddy => "workbuddy",
             AgentKind::Trae => "trae",
+            AgentKind::TraeCode => "traeCode",
             AgentKind::Qoder => "qoder",
             AgentKind::Cline => "cline",
             AgentKind::OpenCode => "opencode",
@@ -56,7 +59,8 @@ impl AgentKind {
             "copilot-cli" => Some(AgentKind::CopilotCli),
             "gemini-cli" => Some(AgentKind::Gemini),
             "workbuddy-chat" | "codebuddy-chat" => Some(AgentKind::WorkBuddy),
-            "trae-chat" => Some(AgentKind::Trae),
+            "trae-work" | "trae-chat" | "trae-solo" => Some(AgentKind::Trae),
+            "trae-code" => Some(AgentKind::TraeCode),
             "qoder-chat" => Some(AgentKind::Qoder),
             "cline-chat" => Some(AgentKind::Cline),
             "opencode-chat" => Some(AgentKind::OpenCode),
@@ -74,7 +78,8 @@ impl AgentKind {
             "copilotCli" | "copilotcli" | "copilot_cli" | "copilot-cli" => Some(AgentKind::CopilotCli),
             "gemini" | "gemini-cli" | "gemini_cli" => Some(AgentKind::Gemini),
             "workbuddy" | "codebuddy" => Some(AgentKind::WorkBuddy),
-            "trae" => Some(AgentKind::Trae),
+            "trae" | "trae-work" | "trae_work" | "trae-solo" => Some(AgentKind::Trae),
+            "traeCode" | "traecode" | "trae-code" | "trae_code" => Some(AgentKind::TraeCode),
             "qoder" => Some(AgentKind::Qoder),
             "cline" | "cline-chat" | "cline_cli" => Some(AgentKind::Cline),
             "opencode" | "opencode-chat" | "open-code" => Some(AgentKind::OpenCode),
@@ -92,7 +97,8 @@ impl AgentKind {
             AgentKind::CopilotCli => "copilot-cli",
             AgentKind::Gemini => "gemini-cli",
             AgentKind::WorkBuddy => "workbuddy-chat",
-            AgentKind::Trae => "trae-chat",
+            AgentKind::Trae => "trae-work",
+            AgentKind::TraeCode => "trae-code",
             AgentKind::Qoder => "qoder-chat",
             AgentKind::Cline => "cline-chat",
             AgentKind::OpenCode => "opencode-chat",
@@ -106,6 +112,7 @@ impl AgentKind {
             self,
             AgentKind::WorkBuddy
                 | AgentKind::Trae
+                | AgentKind::TraeCode
                 | AgentKind::Qoder
                 | AgentKind::CopilotCli
                 | AgentKind::Gemini

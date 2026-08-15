@@ -141,6 +141,7 @@
       minimaxStatusLightsEnabled: true,
       workbuddyStatusLightsEnabled: true,
       traeStatusLightsEnabled: true,
+      traeCodeStatusLightsEnabled: true,
       qoderStatusLightsEnabled: true,
       copilotStatusLightsEnabled: true,
       geminiStatusLightsEnabled: true,
@@ -192,7 +193,9 @@
     'copilot-cli': 'copilotCli',
     'gemini-cli': 'gemini',
     'workbuddy-chat': 'workbuddy',
-    'trae-chat': 'trae',
+    'trae-work': 'trae',
+    'trae-chat': 'trae', // legacy → Trae Work
+    'trae-code': 'traeCode',
     'qoder-chat': 'qoder',
     'cline-chat': 'cline',
     'opencode-chat': 'opencode',
@@ -206,7 +209,8 @@
     { kind: 'cursor', appId: 'cursor-chat' },
     { kind: 'minimax', appId: 'minimax-chat' },
     { kind: 'workbuddy', appId: 'workbuddy-chat' },
-    { kind: 'trae', appId: 'trae-chat' },
+    { kind: 'trae', appId: 'trae-work' },
+    { kind: 'traeCode', appId: 'trae-code' },
     { kind: 'qoder', appId: 'qoder-chat' }
   ];
 
@@ -217,7 +221,8 @@
     minimax: 3,
     workbuddy: 4,
     trae: 5,
-    qoder: 6
+    traeCode: 6,
+    qoder: 7
   };
 
   /** Cached install inventory for Hub sort / scan UI. */
@@ -225,7 +230,8 @@
   var hubInventoryByKind = {};
 
   function isShellHookHubKind(kind) {
-    return kind === 'workbuddy' || kind === 'trae' || kind === 'qoder';
+    var k = String(kind || '').toLowerCase();
+    return k === 'workbuddy' || k === 'traecode' || k === 'qoder';
   }
 
   function t(key, fallback) {
@@ -332,7 +338,10 @@
     if (kind === 'codex') return t('softPadHubKindCodex', 'Codex');
     if (kind === 'cursor') return t('softPadHubKindCursor', 'Cursor');
     if (kind === 'workbuddy') return t('softPadHubKindWorkBuddy', 'WorkBuddy');
-    if (kind === 'trae') return t('softPadHubKindTrae', 'Trae');
+    if (kind === 'trae') return t('softPadHubKindTraeWork', 'Trae Work');
+    if (kind === 'traeCode' || String(kind || '').toLowerCase() === 'traecode') {
+      return t('softPadHubKindTraeCode', 'Trae Code');
+    }
     if (kind === 'qoder') return t('softPadHubKindQoder', 'Qoder');
     if (kind === 'minimax') return t('softPadHubKindMinimax', 'MiniMax');
     return t('softPadHubKindSoft', 'Soft Pad');
@@ -993,7 +1002,9 @@
 
     var existing = H.findAppScenarioByAppId(appId);
     if (existing) {
-      if (appId === 'cursor-chat' || appId === 'workbuddy-chat' || appId === 'trae-chat' || appId === 'qoder-chat') {
+      if (appId === 'cursor-chat' || appId === 'workbuddy-chat' ||
+          appId === 'trae-work' || appId === 'trae-chat' || appId === 'trae-code' ||
+          appId === 'qoder-chat') {
         var Tcur = global.OneToneAgentScenarioTemplate;
         if (Tcur && Tcur.ensurePackForMapping) {
           Tcur.ensurePackForMapping(existing, { persist: true });
@@ -1312,7 +1323,8 @@
   }
 
   function isShellUsageKind(kind) {
-    return kind === 'workbuddy' || kind === 'trae' || kind === 'qoder';
+    var k = String(kind || '').toLowerCase();
+    return k === 'workbuddy' || k === 'trae' || k === 'traecode' || k === 'qoder';
   }
 
   /** User-facing usage source — never leak cursor_local_activity id. */
@@ -1639,6 +1651,8 @@
         kind !== 'minimax' &&
         kind !== 'workbuddy' &&
         kind !== 'trae' &&
+        kind !== 'traeCode' &&
+        String(kind || '').toLowerCase() !== 'traecode' &&
         kind !== 'qoder'
       ) {
         return props;
@@ -1940,7 +1954,7 @@
     }
     var support = t(
       'softPadHubSupportRange',
-      '支持 Codex、Claude、Cursor、MiniMax，以及 WorkBuddy / Trae / Qoder（状态连接 · Shortcuts）'
+      '支持 Codex、Claude、Cursor、MiniMax，以及 WorkBuddy / Trae Work / Trae Code / Qoder（状态连接 · Shortcuts）'
     );
     return {
       text: text,
@@ -2192,7 +2206,7 @@
   function emptyCreateCtaHtml() {
     return '<p class="soft-pad-empty__title">' + esc(t('softPadEmptyTitle', '还没有可配置的应用场景')) + '</p>' +
       '<p class="soft-pad-empty__desc">' +
-      esc(t('softPadBoundaryHint', '虚拟键盘只绑定 Agent 应用场景（Codex / Claude / Cursor / MiniMax / WorkBuddy / Trae / Qoder）。先创建应用场景，再配置虚拟键盘。')) +
+      esc(t('softPadBoundaryHint', '虚拟键盘只绑定 Agent 应用场景（Codex / Claude / Cursor / MiniMax / WorkBuddy / Trae Work / Trae Code / Qoder）。先创建应用场景，再配置虚拟键盘。')) +
       '</p>' +
       '<div class="soft-pad-empty__actions">' +
       '<button type="button" class="codex-micro-pad__btn codex-micro-pad__btn--primary" data-soft-pad-create-kind="codex">' +
@@ -2266,7 +2280,7 @@
     if (mode === 'empty') {
       emptyHidden = false;
       emptyTitle = t('softPadEmptyTitle', '还没有可配置的应用场景');
-      emptyDesc = t('softPadBoundaryHint', '虚拟键盘只绑定 Agent 应用场景（Codex / Claude / Cursor / MiniMax / WorkBuddy / Trae / Qoder）。先创建应用场景，再配置虚拟键盘。');
+      emptyDesc = t('softPadBoundaryHint', '虚拟键盘只绑定 Agent 应用场景（Codex / Claude / Cursor / MiniMax / WorkBuddy / Trae Work / Trae Code / Qoder）。先创建应用场景，再配置虚拟键盘。');
       emptyHtml = emptyCreateCtaHtml();
     } else if (mode === 'prepare') {
       emptyHidden = false;
@@ -3950,7 +3964,7 @@
         : t('softPadHubEmptyTitle', '还没有可管理的虚拟键盘'),
       supportRange: t(
         'softPadHubSupportRange',
-        '支持 Codex、Claude、Cursor，以及 WorkBuddy / Trae / Qoder（Shell Hook · Shortcuts）'
+        '支持 Codex、Claude、Cursor，以及 WorkBuddy / Trae Work / Trae Code / Qoder（Shell Hook · Shortcuts）'
       ),
     };
   }
@@ -4436,8 +4450,12 @@
   }
 
   function openShellHookConnect(kind) {
-    kind = String(kind || '').trim().toLowerCase();
-    if (kind !== 'workbuddy' && kind !== 'trae' && kind !== 'qoder') return;
+    kind = String(kind || '').trim();
+    var low = kind.toLowerCase();
+    if (low === 'traecode') kind = 'traeCode';
+    else kind = low;
+    // Trae Work (trae) is SOLO — Hook connect only for Trae Code / WorkBuddy / Qoder.
+    if (kind !== 'workbuddy' && kind !== 'traeCode' && kind !== 'qoder') return;
     selectScope(kind, { fromUser: true, rebuildList: true, forceRemount: true });
     setSoftPadFace('agent', { fromUser: true });
   }

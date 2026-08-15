@@ -29,6 +29,8 @@ pub const WORKBUDDY: ShellHookProfile = ShellHookProfile {
     events: &[
         ("SessionStart", 5),
         ("UserPromptSubmit", 5),
+        ("PreToolUse", 5),
+        ("PostToolUse", 5),
         ("PermissionRequest", 5),
         ("Stop", 5),
         ("StopFailure", 5),
@@ -36,17 +38,18 @@ pub const WORKBUDDY: ShellHookProfile = ShellHookProfile {
 };
 
 pub const TRAE: ShellHookProfile = ShellHookProfile {
-    kind: AgentKind::Trae,
+    kind: AgentKind::TraeCode,
     hook_id: "trae-activity-v1",
-    source_arg: "trae",
-    hooks_at_root: true,
+    source_arg: "trae_code",
+    // Trae Code / IDE docs: { "version": 1, "hooks": { "<Event>": [...] } } — not events at root.
+    hooks_at_root: false,
     events: &[
-        ("SessionStart", 5),
-        ("UserPromptSubmit", 5),
-        ("PreToolUse", 5),
-        ("PostToolUse", 5),
-        ("Stop", 5),
-        ("Notification", 5),
+        ("SessionStart", 30),
+        ("UserPromptSubmit", 30),
+        ("PreToolUse", 30),
+        ("PostToolUse", 30),
+        ("Stop", 30),
+        ("Notification", 30),
     ],
 };
 
@@ -96,7 +99,7 @@ pub const GEMINI: ShellHookProfile = ShellHookProfile {
 pub fn profile_for_kind(kind: AgentKind) -> Option<&'static ShellHookProfile> {
     match kind {
         AgentKind::WorkBuddy => Some(&WORKBUDDY),
-        AgentKind::Trae => Some(&TRAE),
+        AgentKind::TraeCode => Some(&TRAE),
         AgentKind::Qoder => Some(&QODER),
         AgentKind::CopilotCli => Some(&COPILOT),
         AgentKind::Gemini => Some(&GEMINI),
@@ -109,13 +112,10 @@ pub fn profile_from_str(s: &str) -> Option<&'static ShellHookProfile> {
 }
 
 pub fn settings_path(profile: &ShellHookProfile) -> PathBuf {
-    let home = std::env::var_os("USERPROFILE")
-        .or_else(|| std::env::var_os("HOME"))
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."));
+    let home = home_dir();
     match profile.kind {
-        AgentKind::WorkBuddy => home.join(".codebuddy").join("settings.json"),
-        AgentKind::Trae => home.join(".trae").join("hooks.json"),
+        AgentKind::WorkBuddy => resolve_workbuddy_settings_path(),
+        AgentKind::TraeCode => resolve_trae_hooks_path(),
         AgentKind::Qoder => home.join(".qoder").join("settings.json"),
         AgentKind::CopilotCli => home.join(".copilot").join("settings.json"),
         AgentKind::Gemini => home.join(".gemini").join("settings.json"),
@@ -123,12 +123,67 @@ pub fn settings_path(profile: &ShellHookProfile) -> PathBuf {
     }
 }
 
-pub fn qoder_cn_settings_path() -> PathBuf {
-    let home = std::env::var_os("USERPROFILE")
+fn home_dir() -> PathBuf {
+    std::env::var_os("USERPROFILE")
         .or_else(|| std::env::var_os("HOME"))
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."));
-    home.join(".qoder-cn").join("settings.json")
+        .unwrap_or_else(|| PathBuf::from("."))
+}
+
+/// WorkBuddy desktop generations (community clawd / WorkBuddy AI):
+/// 1) `~/.workbuddy-ai/settings.json` (current)
+/// 2) `~/.workbuddy/settings.json` (legacy — still what this Windows build uses)
+/// 3) `~/.codebuddy/settings.json` (mis-wired historical OneTone path — detect/clean only)
+pub fn workbuddy_settings_candidates() -> Vec<PathBuf> {
+    let home = home_dir();
+    vec![
+        home.join(".workbuddy-ai").join("settings.json"),
+        home.join(".workbuddy").join("settings.json"),
+        home.join(".codebuddy").join("settings.json"),
+    ]
+}
+
+/// Prefer workbuddy-ai when that generation exists; else legacy settings file.
+/// Never choose `.codebuddy` as the write target (CodeBuddy CLI ≠ WorkBuddy desktop).
+pub fn resolve_workbuddy_settings_path() -> PathBuf {
+    let home = home_dir();
+    let current = home.join(".workbuddy-ai").join("settings.json");
+    let current_dir = home.join(".workbuddy-ai");
+    if current.is_file() || current_dir.is_dir() {
+        return current;
+    }
+    let legacy = home.join(".workbuddy").join("settings.json");
+    if legacy.is_file() {
+        return legacy;
+    }
+    current
+}
+
+/// Trae global hooks: CN docs use `~/.trae-cn/hooks.json`; intl `~/.trae/hooks.json`.
+pub fn trae_hooks_candidates() -> Vec<PathBuf> {
+    let home = home_dir();
+    vec![
+        home.join(".trae-cn").join("hooks.json"),
+        home.join(".trae").join("hooks.json"),
+    ]
+}
+
+pub fn resolve_trae_hooks_path() -> PathBuf {
+    let home = home_dir();
+    let cn = home.join(".trae-cn").join("hooks.json");
+    let cn_dir = home.join(".trae-cn");
+    if cn.is_file() || cn_dir.is_dir() {
+        return cn;
+    }
+    home.join(".trae").join("hooks.json")
+}
+
+pub fn trae_cn_hooks_path() -> PathBuf {
+    home_dir().join(".trae-cn").join("hooks.json")
+}
+
+pub fn qoder_cn_settings_path() -> PathBuf {
+    home_dir().join(".qoder-cn").join("settings.json")
 }
 
 pub fn probe_absolute_path() -> PathBuf {
@@ -194,6 +249,46 @@ fn hooks_object_mut<'a>(root: &'a mut Value, at_root: bool) -> Option<&'a mut Ma
         obj.insert("hooks".into(), json!({}));
     }
     obj.get_mut("hooks")?.as_object_mut()
+}
+
+/// Older OneTone builds wrote Trae events at the JSON root. Official format nests under `hooks`.
+fn migrate_trae_legacy_root(root: &mut Value) {
+    let Some(obj) = root.as_object_mut() else {
+        return;
+    };
+    if !obj.contains_key("version") {
+        obj.insert("version".into(), json!(1));
+    }
+    const LEGACY: &[&str] = &[
+        "SessionStart",
+        "UserPromptSubmit",
+        "PreToolUse",
+        "PostToolUse",
+        "Stop",
+        "Notification",
+    ];
+    let mut moved = serde_json::Map::new();
+    for name in LEGACY {
+        if let Some(v) = obj.remove(*name) {
+            moved.insert((*name).to_string(), v);
+        }
+    }
+    if moved.is_empty() {
+        if !obj.contains_key("hooks") {
+            obj.insert("hooks".into(), json!({}));
+        }
+        return;
+    }
+    let hooks = obj
+        .entry("hooks")
+        .or_insert_with(|| json!({}))
+        .as_object_mut();
+    let Some(hooks) = hooks else {
+        return;
+    };
+    for (k, v) in moved {
+        hooks.entry(k).or_insert(v);
+    }
 }
 
 fn event_has_hook_id(event_val: &Value, hook_id: &str) -> bool {
@@ -381,9 +476,12 @@ fn file_has_hook_id(path: &Path, profile: &ShellHookProfile) -> bool {
     let Ok(raw) = fs::read_to_string(path) else {
         return false;
     };
-    let Ok(root) = serde_json::from_str::<Value>(&raw) else {
+    let Ok(mut root) = serde_json::from_str::<Value>(&raw) else {
         return false;
     };
+    if profile.kind == AgentKind::TraeCode {
+        migrate_trae_legacy_root(&mut root);
+    }
     let hooks = if profile.hooks_at_root {
         root.as_object()
     } else {
@@ -415,6 +513,9 @@ fn write_merged_hooks(
     } else {
         json!({ "hooks": {} })
     };
+    if profile.kind == AgentKind::TraeCode {
+        migrate_trae_legacy_root(&mut root);
+    }
     if settings.is_file() {
         let b = backup_path_for(settings);
         let _ = fs::copy(settings, &b);
@@ -476,7 +577,15 @@ pub fn setup_status(kind_str: &str) -> Result<ShellHookSetupStatus, String> {
     } else {
         (true, false)
     };
-    let configured = if profile.kind == AgentKind::Qoder {
+    let configured = if profile.kind == AgentKind::WorkBuddy {
+        workbuddy_settings_candidates()
+            .iter()
+            .any(|p| file_has_hook_id(p, profile))
+    } else if profile.kind == AgentKind::TraeCode {
+        trae_hooks_candidates()
+            .iter()
+            .any(|p| file_has_hook_id(p, profile))
+    } else if profile.kind == AgentKind::Qoder {
         configured || file_has_hook_id(&qoder_cn_settings_path(), profile)
     } else {
         configured
@@ -488,6 +597,10 @@ pub fn setup_status(kind_str: &str) -> Result<ShellHookSetupStatus, String> {
     };
     if profile.kind == AgentKind::Qoder {
         draft["qoderCnSettingsPath"] = json!(qoder_cn_settings_path().display().to_string());
+    }
+    if profile.kind == AgentKind::TraeCode {
+        draft["traeCnHooksPath"] = json!(trae_cn_hooks_path().display().to_string());
+        migrate_trae_legacy_root(&mut draft);
     }
     let _ = merge_hooks(profile, &mut draft, &probe_abs);
     Ok(ShellHookSetupStatus {
@@ -550,6 +663,9 @@ pub fn install_confirm(kind_str: &str) -> ShellHookWriteResult {
     } else {
         json!({ "hooks": {} })
     };
+    if profile.kind == AgentKind::TraeCode {
+        migrate_trae_legacy_root(&mut root);
+    }
     let backup = if settings.is_file() {
         let b = backup_path_for(&settings);
         let _ = fs::copy(&settings, &b);
@@ -566,6 +682,20 @@ pub fn install_confirm(kind_str: &str) -> ShellHookWriteResult {
             if profile.kind == AgentKind::Qoder {
                 let cn = qoder_cn_settings_path();
                 let _ = write_merged_hooks(profile, &cn, &probe_abs);
+            }
+            if profile.kind == AgentKind::TraeCode {
+                // Always mirror into ~/.trae-cn (CN TraeCode path) even if the dir
+                // did not exist yet — SOLO uses ~/.trae, IDE docs use ~/.trae-cn.
+                let _ = write_merged_hooks(profile, &trae_cn_hooks_path(), &probe_abs);
+            }
+            if profile.kind == AgentKind::WorkBuddy {
+                // Drop OneTone hooks from inactive generations (.codebuddy mis-wire, other WB root).
+                for other in workbuddy_settings_candidates() {
+                    if other == settings {
+                        continue;
+                    }
+                    let _ = uninstall_hooks_file(profile, &other);
+                }
             }
             ShellHookWriteResult {
             ok: true,
@@ -599,15 +729,31 @@ pub fn uninstall(kind_str: &str) -> ShellHookWriteResult {
         };
     };
     let settings = settings_path(profile);
-    let cn_extra = if profile.kind == AgentKind::Qoder {
+    let mut extra_removed = if profile.kind == AgentKind::Qoder {
         uninstall_hooks_file(profile, &qoder_cn_settings_path())
     } else {
         0
     };
+    if profile.kind == AgentKind::TraeCode {
+        for other in trae_hooks_candidates() {
+            if other == settings {
+                continue;
+            }
+            extra_removed += uninstall_hooks_file(profile, &other);
+        }
+    }
+    if profile.kind == AgentKind::WorkBuddy {
+        for other in workbuddy_settings_candidates() {
+            if other == settings {
+                continue;
+            }
+            extra_removed += uninstall_hooks_file(profile, &other);
+        }
+    }
     if !settings.is_file() {
         return ShellHookWriteResult {
             ok: true,
-            message: if cn_extra > 0 {
+            message: if extra_removed > 0 {
                 "uninstalled".into()
             } else {
                 "nothing_to_uninstall".into()
@@ -615,7 +761,7 @@ pub fn uninstall(kind_str: &str) -> ShellHookWriteResult {
             backup_path: String::new(),
             added: vec![],
             refreshed: vec![],
-            removed: cn_extra,
+            removed: extra_removed,
         };
     }
     let Ok(raw) = fs::read_to_string(&settings) else {
@@ -651,7 +797,7 @@ pub fn uninstall(kind_str: &str) -> ShellHookWriteResult {
             backup_path: backup.display().to_string(),
             added: vec![],
             refreshed: vec![],
-            removed: removed + cn_extra,
+            removed: removed + extra_removed,
         },
         Err(e) => ShellHookWriteResult {
             ok: false,
@@ -723,21 +869,78 @@ mod tests {
     }
 
     #[test]
-    fn merge_trae_at_root() {
+    fn merge_trae_under_hooks_wrapper() {
         let mut root = json!({});
+        migrate_trae_legacy_root(&mut root);
         let s = merge_hooks(&TRAE, &mut root, "/tmp/agent-shell-hook-probe.js");
         assert!(s.added.contains(&"Notification".into()));
-        assert!(root.get("hooks").is_none());
-        assert!(root.get("Stop").is_some());
+        assert_eq!(root.get("version").and_then(|v| v.as_u64()), Some(1));
+        assert!(root.get("Stop").is_none());
+        assert!(root
+            .pointer("/hooks/Stop")
+            .and_then(|v| v.as_array())
+            .is_some());
         let removed = uninstall_hooks(&TRAE, &mut root);
         assert!(removed > 0);
+    }
+
+    #[test]
+    fn migrate_trae_moves_legacy_root_events() {
+        let mut root = json!({
+            "SessionStart": [{ "hooks": [{ "command": "echo legacy" }] }],
+            "Stop": [{ "hooks": [{ "command": "echo stop" }] }]
+        });
+        migrate_trae_legacy_root(&mut root);
+        assert!(root.get("SessionStart").is_none());
+        assert_eq!(
+            root.pointer("/hooks/SessionStart/0/hooks/0/command")
+                .and_then(|v| v.as_str()),
+            Some("echo legacy")
+        );
+    }
+
+    #[test]
+    fn trae_hooks_prefer_cn_when_present_else_intl() {
+        let p = resolve_trae_hooks_path();
+        let s = p.to_string_lossy().replace('\\', "/");
+        assert!(
+            s.ends_with(".trae-cn/hooks.json") || s.ends_with(".trae/hooks.json"),
+            "expected trae-cn or trae hooks.json: {s}"
+        );
+        let cands = trae_hooks_candidates();
+        assert_eq!(cands.len(), 2);
+        assert!(cands[0].to_string_lossy().contains("trae-cn"));
+        assert!(cands[1].to_string_lossy().contains(".trae"));
+    }
+
+    #[test]
+    fn workbuddy_settings_prefer_legacy_file_over_codebuddy() {
+        // Pure path logic: resolve never returns .codebuddy as primary.
+        let p = resolve_workbuddy_settings_path();
+        let s = p.to_string_lossy().replace('\\', "/");
+        assert!(
+            !s.ends_with(".codebuddy/settings.json"),
+            "WorkBuddy must not write CodeBuddy CLI path: {s}"
+        );
+        assert!(
+            s.ends_with(".workbuddy-ai/settings.json") || s.ends_with(".workbuddy/settings.json"),
+            "expected workbuddy-ai or workbuddy settings: {s}"
+        );
+        let cands = workbuddy_settings_candidates();
+        assert_eq!(cands.len(), 3);
+        assert!(cands[0].to_string_lossy().contains("workbuddy-ai"));
+        assert!(cands[1].to_string_lossy().contains(".workbuddy"));
+        assert!(cands[2].to_string_lossy().contains(".codebuddy"));
     }
 
     #[test]
     fn profiles_resolve() {
         assert_eq!(profile_from_str("workbuddy").unwrap().hook_id, "workbuddy-activity-v1");
         assert_eq!(profile_from_str("codebuddy").unwrap().source_arg, "workbuddy");
-        assert_eq!(profile_from_str("trae").unwrap().hooks_at_root, true);
+        assert_eq!(profile_from_str("traeCode").unwrap().hooks_at_root, false);
+        assert_eq!(profile_from_str("traeCode").unwrap().source_arg, "trae_code");
+        assert_eq!(profile_from_str("traeCode").unwrap().kind, AgentKind::TraeCode);
+        assert!(profile_from_str("trae").is_none());
         assert_eq!(profile_from_str("qoder").unwrap().kind, AgentKind::Qoder);
         assert_eq!(
             profile_from_str("copilotCli").unwrap().hook_id,

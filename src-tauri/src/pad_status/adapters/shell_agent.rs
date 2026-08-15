@@ -14,7 +14,7 @@ use crate::soft_pad_runtime::AgentKind;
 pub fn agent_kind_from_hook_source(source: &str) -> Option<AgentKind> {
     match source.trim() {
         "workbuddy_hook" => Some(AgentKind::WorkBuddy),
-        "trae_hook" => Some(AgentKind::Trae),
+        "trae_code_hook" | "trae_hook" => Some(AgentKind::TraeCode),
         "qoder_hook" => Some(AgentKind::Qoder),
         "copilot_cli_hook" => Some(AgentKind::CopilotCli),
         "gemini_hook" => Some(AgentKind::Gemini),
@@ -197,7 +197,7 @@ mod tests {
             2000,
         );
         assert_eq!(pad.state, "needs_input");
-        assert_eq!(pad.agent.as_deref(), Some("trae"));
+        assert_eq!(pad.agent.as_deref(), Some("traeCode"));
     }
 
     #[test]

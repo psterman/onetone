@@ -51,7 +51,14 @@ fn trae_roots() -> Vec<PathBuf> {
     let mut out = Vec::new();
     if let Ok(appdata) = std::env::var("APPDATA") {
         let base = PathBuf::from(appdata);
-        for name in ["TRAE SOLO CN", "Trae CN", "Trae"] {
+        // TRAE SOLO first — most users on Soft Pad are Solo; then IDE / CN variants.
+        for name in [
+            "TRAE SOLO",
+            "TRAE SOLO CN",
+            "Trae CN",
+            "Trae",
+            "Trae IDE",
+        ] {
             out.push(base.join(name));
         }
     }
@@ -366,7 +373,11 @@ fn fetch_official() -> Result<AgentUsageSnapshot, String> {
 
 pub fn refresh() {
     match fetch_official() {
-        Ok(snap) => agent_usage::put_snapshot(AgentKind::Trae, snap),
+        Ok(snap) => {
+            // Same entitlement API for Work + Code Soft Pad chips.
+            agent_usage::put_snapshot(AgentKind::Trae, snap.clone());
+            agent_usage::put_snapshot(AgentKind::TraeCode, snap);
+        }
         Err(e) => {
             let prev = agent_usage::snapshot(AgentKind::Trae);
             if prev.source == SRC_TRAE_ENTITLEMENT
@@ -385,7 +396,8 @@ pub fn refresh() {
                         stale.message.clone()
                     }
                 );
-                agent_usage::put_snapshot(AgentKind::Trae, stale);
+                agent_usage::put_snapshot(AgentKind::Trae, stale.clone());
+                agent_usage::put_snapshot(AgentKind::TraeCode, stale);
                 return;
             }
             let msg = if e.contains("请登录") || e.contains("not installed") || e.contains("Sign")
@@ -394,10 +406,9 @@ pub fn refresh() {
             } else {
                 "请登录 Trae 查看额度"
             };
-            agent_usage::put_snapshot(
-                AgentKind::Trae,
-                manual_snap(SRC_TRAE_MANUAL, "Trae", TRAE_CONSOLE, msg),
-            );
+            let manual = manual_snap(SRC_TRAE_MANUAL, "Trae", TRAE_CONSOLE, msg);
+            agent_usage::put_snapshot(AgentKind::Trae, manual.clone());
+            agent_usage::put_snapshot(AgentKind::TraeCode, manual);
         }
     }
 }

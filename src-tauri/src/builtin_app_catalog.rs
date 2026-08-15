@@ -67,7 +67,15 @@ const CATALOG: &[BuiltinAppEntry] = &[
         workflow_target: false,
     },
     BuiltinAppEntry {
-        id: "trae-chat",
+        id: "trae-work",
+        builtin: true,
+        focus_supported: true,
+        launch_strategy: LaunchStrategy::Shortcut,
+        text_summon_preset: false,
+        workflow_target: false,
+    },
+    BuiltinAppEntry {
+        id: "trae-code",
         builtin: true,
         focus_supported: true,
         launch_strategy: LaunchStrategy::Shortcut,
@@ -89,6 +97,8 @@ pub fn entry_for(app_id: &str) -> Option<&'static BuiltinAppEntry> {
     if id.is_empty() {
         return None;
     }
+    // Legacy Soft Pad mappings used trae-chat for Trae Work (SOLO).
+    let id = if id == "trae-chat" { "trae-work" } else { id };
     CATALOG.iter().find(|e| e.id == id)
 }
 

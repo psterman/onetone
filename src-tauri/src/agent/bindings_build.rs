@@ -110,6 +110,8 @@ pub fn is_vscode_lineage_app(app_target_id: &str) -> bool {
         crate::app_chat_workflow::CURSOR_APP_TARGET_ID
             | crate::app_chat_workflow::WORKBUDDY_APP_TARGET_ID
             | crate::app_chat_workflow::TRAE_APP_TARGET_ID
+            | crate::app_chat_workflow::TRAE_CHAT_LEGACY_APP_TARGET_ID
+            | crate::app_chat_workflow::TRAE_CODE_APP_TARGET_ID
             | crate::app_chat_workflow::QODER_APP_TARGET_ID
     )
 }
@@ -118,7 +120,10 @@ pub fn default_key_for_scenario(app_target_id: &str, slot_id: &str) -> &'static 
     let app = app_target_id.trim();
     if app == crate::app_chat_workflow::CURSOR_APP_TARGET_ID {
         default_cursor_key_for_slot(slot_id)
-    } else if app == crate::app_chat_workflow::TRAE_APP_TARGET_ID {
+    } else if app == crate::app_chat_workflow::TRAE_APP_TARGET_ID
+        || app == crate::app_chat_workflow::TRAE_CHAT_LEGACY_APP_TARGET_ID
+        || app == crate::app_chat_workflow::TRAE_CODE_APP_TARGET_ID
+    {
         default_trae_key_for_slot(slot_id)
     } else if app == crate::app_chat_workflow::QODER_APP_TARGET_ID {
         default_qoder_key_for_slot(slot_id)
@@ -187,7 +192,10 @@ pub fn build_scenario_bindings(locale: &str, app_target_id: &str) -> Vec<AgentBi
     let app = app_target_id.trim();
     if app == crate::app_chat_workflow::CURSOR_APP_TARGET_ID {
         build_cursor_chord_bindings(locale)
-    } else if app == crate::app_chat_workflow::TRAE_APP_TARGET_ID {
+    } else if app == crate::app_chat_workflow::TRAE_APP_TARGET_ID
+        || app == crate::app_chat_workflow::TRAE_CHAT_LEGACY_APP_TARGET_ID
+        || app == crate::app_chat_workflow::TRAE_CODE_APP_TARGET_ID
+    {
         build_chord_bindings(locale, default_trae_key_for_slot)
     } else if app == crate::app_chat_workflow::QODER_APP_TARGET_ID {
         build_chord_bindings(locale, default_qoder_key_for_slot)
@@ -329,6 +337,14 @@ mod tests {
             "Ctrl+N"
         );
         assert_eq!(
+            default_key_for_scenario("trae-work", "quickChat"),
+            "Ctrl+U"
+        );
+        assert_eq!(
+            default_key_for_scenario("trae-code", "quickChat"),
+            "Ctrl+U"
+        );
+        assert_eq!(
             default_key_for_scenario("trae-chat", "quickChat"),
             "Ctrl+U"
         );
@@ -343,7 +359,7 @@ mod tests {
         assert!(build_vscode_chord_bindings("zh-CN").iter().any(|b| {
             b.trigger_type == "key" && b.slot_id == "quickChat" && b.trigger_binding.is_empty()
         }));
-        assert!(build_scenario_bindings("zh-CN", "trae-chat")
+        assert!(build_scenario_bindings("zh-CN", "trae-work")
             .iter()
             .any(|b| {
                 b.trigger_type == "key" && b.slot_id == "quickChat" && b.trigger_binding == "Ctrl+U"

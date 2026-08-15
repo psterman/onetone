@@ -7,7 +7,8 @@ use std::path::{Path, PathBuf};
 use crate::app_chat_workflow::{app_launch_capability, AppLaunchCapability};
 use crate::app_identity::{
     is_claude_cli_exe, list_running_apps, CODEX_APP_TARGET_ID, CURSOR_APP_TARGET_ID,
-    MINIMAX_APP_TARGET_ID, QODER_APP_TARGET_ID, TRAE_APP_TARGET_ID, WORKBUDDY_APP_TARGET_ID,
+    MINIMAX_APP_TARGET_ID, QODER_APP_TARGET_ID, TRAE_APP_TARGET_ID, TRAE_CODE_APP_TARGET_ID,
+    WORKBUDDY_APP_TARGET_ID,
 };
 use crate::config::VoiceConfig;
 use crate::soft_pad_runtime::AgentKind;
@@ -79,6 +80,7 @@ const KINDS: &[AgentKind] = &[
     AgentKind::MiniMax,
     AgentKind::WorkBuddy,
     AgentKind::Trae,
+    AgentKind::TraeCode,
     AgentKind::Qoder,
 ];
 
@@ -139,8 +141,14 @@ fn probe_kind(
         AgentKind::Trae => probe_shell(
             &mut evidence,
             TRAE_APP_TARGET_ID,
+            &["TRAE SOLO"],
+            &[],
+        ),
+        AgentKind::TraeCode => probe_shell(
+            &mut evidence,
+            TRAE_CODE_APP_TARGET_ID,
             &["Trae"],
-            &[".trae/hooks.json"],
+            &[".trae/hooks.json", ".trae-cn/hooks.json"],
         ),
         AgentKind::Qoder => probe_shell(
             &mut evidence,
@@ -333,6 +341,7 @@ fn mapping_flags(cfg: &VoiceConfig, kind: AgentKind) -> (bool, bool) {
             AgentKind::Cursor => pad.cursor_status_lights_enabled,
             AgentKind::WorkBuddy => pad.workbuddy_status_lights_enabled,
             AgentKind::Trae => pad.trae_status_lights_enabled,
+            AgentKind::TraeCode => pad.trae_code_status_lights_enabled,
             AgentKind::Qoder => pad.qoder_status_lights_enabled,
             AgentKind::MiniMax => pad.minimax_status_lights_enabled,
             AgentKind::CopilotCli => pad.copilot_status_lights_enabled,

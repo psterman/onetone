@@ -173,11 +173,24 @@ pub fn descriptor(kind: AgentKind) -> AgentDescriptor {
         },
         AgentKind::Trae => AgentDescriptor {
             kind,
-            app_target_id: "trae-chat",
-            windows_process_hints: &["Trae.exe", "trae.exe", "TRAE SOLO.exe"],
+            app_target_id: "trae-work",
+            windows_process_hints: &[
+                "TRAE SOLO.exe",
+                "TraeWork.exe",
+                "Trae Work.exe",
+                "TRAE Work.exe",
+            ],
             macos_bundle_ids: &[],
             capabilities: shell_hook_capabilities(),
             default_face_id: "trae-chord-v1",
+        },
+        AgentKind::TraeCode => AgentDescriptor {
+            kind,
+            app_target_id: "trae-code",
+            windows_process_hints: &["Trae.exe", "trae.exe"],
+            macos_bundle_ids: &[],
+            capabilities: shell_hook_capabilities(),
+            default_face_id: "trae-code-chord-v1",
         },
         AgentKind::Qoder => AgentDescriptor {
             kind,
@@ -343,6 +356,12 @@ pub fn pad_face(face_id: &str) -> Option<PadFace> {
             face_id: "trae-chord-v1",
             version: 1,
             agent_kind: AgentKind::Trae,
+            required: shell_hook_capabilities(),
+        }),
+        "trae-code-chord-v1" => Some(PadFace {
+            face_id: "trae-code-chord-v1",
+            version: 1,
+            agent_kind: AgentKind::TraeCode,
             required: shell_hook_capabilities(),
         }),
         "qoder-chord-v1" => Some(PadFace {

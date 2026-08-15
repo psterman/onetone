@@ -220,7 +220,9 @@
   var VSCODE_LINEAGE_APP_IDS = {
     'cursor-chat': 1,
     'workbuddy-chat': 1,
+    'trae-work': 1,
     'trae-chat': 1,
+    'trae-code': 1,
     'qoder-chat': 1
   };
 
@@ -228,7 +230,9 @@
     'codex-chat': 'codex',
     'cursor-chat': 'cursor',
     'workbuddy-chat': 'workbuddy',
+    'trae-work': 'trae',
     'trae-chat': 'trae',
+    'trae-code': 'traeCode',
     'qoder-chat': 'qoder',
     'claude-code': 'claude',
     'minimax-chat': 'minimax'
@@ -260,7 +264,7 @@
   function defaultKeyMapForApp(appId) {
     var app = String(appId || '').trim();
     if (app === 'cursor-chat') return CURSOR_DEFAULT_KEY_BY_SLOT;
-    if (app === 'trae-chat') return TRAE_DEFAULT_KEY_BY_SLOT;
+    if (app === 'trae-work' || app === 'trae-chat' || app === 'trae-code') return TRAE_DEFAULT_KEY_BY_SLOT;
     if (app === 'qoder-chat') return QODER_DEFAULT_KEY_BY_SLOT;
     if (app === 'workbuddy-chat') return WORKBUDDY_DEFAULT_KEY_BY_SLOT;
     if (app === 'codex-chat') return DEFAULT_KEY_BY_SLOT;
@@ -327,7 +331,9 @@
     var names = {
       'cursor-chat': { zh: 'Cursor', en: 'Cursor' },
       'workbuddy-chat': { zh: 'WorkBuddy', en: 'WorkBuddy' },
-      'trae-chat': { zh: 'Trae', en: 'Trae' },
+      'trae-work': { zh: 'Trae Work', en: 'Trae Work' },
+      'trae-chat': { zh: 'Trae Work', en: 'Trae Work' },
+      'trae-code': { zh: 'Trae Code', en: 'Trae Code' },
       'qoder-chat': { zh: 'Qoder', en: 'Qoder' }
     };
     var name = names[app];

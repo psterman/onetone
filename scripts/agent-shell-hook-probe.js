@@ -5,7 +5,7 @@
  * Shared Soft Pad probe for WorkBuddy / Trae / Qoder shell hooks.
  * Fail-open, stdout empty. No Claude approval polling.
  *
- * Usage: node agent-shell-hook-probe.js --source workbuddy|trae|qoder|copilot_cli|gemini|cline|aider [--event …] [--onetone-hook-id …]
+ * Usage: node agent-shell-hook-probe.js --source workbuddy|trae_code|qoder|copilot_cli|gemini|cline|aider [--event …] [--onetone-hook-id …]
  */
 
 var fs = require('fs');
@@ -18,7 +18,8 @@ var DEFAULT_URL = 'http://127.0.0.1:8796/api/codex-app/state';
 var POST_TIMEOUT_MS = 1500;
 var ALLOWED = {
   workbuddy: true,
-  trae: true,
+  trae_code: true,
+  trae: true, // legacy alias → posts trae_hook
   qoder: true,
   copilot_cli: true,
   gemini: true,
@@ -131,8 +132,15 @@ function extractSafeFields(raw) {
 }
 
 function buildPostBody(kind, fields) {
+  // Trae Code prefers trae_code_hook; legacy --source trae still posts trae_hook.
+  var source =
+    kind === 'trae_code'
+      ? 'trae_code_hook'
+      : kind === 'trae'
+        ? 'trae_hook'
+        : kind + '_hook';
   return {
-    source: kind + '_hook',
+    source: source,
     event: fields.hook_event_name || '',
     sessionId: fields.session_id || '',
     turnId: fields.turn_id || '',

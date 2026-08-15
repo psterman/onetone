@@ -7,7 +7,9 @@
     'claude-code': true,
     'minimax-chat': true,
     'workbuddy-chat': true,
-    'trae-chat': true,
+    'trae-work': true,
+    'trae-chat': true, // legacy alias → Trae Work
+    'trae-code': true,
     'qoder-chat': true
   };
 
@@ -58,13 +60,22 @@
       badgeEn: 'Wb'
     },
     {
-      id: 'trae-chat',
-      nameKey: 'appTargetTrae',
-      descKey: 'appTargetTraeDesc',
+      id: 'trae-work',
+      nameKey: 'appTargetTraeWork',
+      descKey: 'appTargetTraeWorkDesc',
       targetKey: '',
       icon: 'icons/app-target/trae.png',
-      badge: 'Tr',
-      badgeEn: 'Tr'
+      badge: 'Tw',
+      badgeEn: 'Tw'
+    },
+    {
+      id: 'trae-code',
+      nameKey: 'appTargetTraeCode',
+      descKey: 'appTargetTraeCodeDesc',
+      targetKey: '',
+      icon: 'icons/app-target/trae-code.png',
+      badge: 'Tc',
+      badgeEn: 'Tc'
     },
     {
       id: 'qoder-chat',
@@ -158,6 +169,8 @@
   function presetById(id){
     id = String(id || '').trim();
     if(!id) return null;
+    // Legacy Soft Pad mappings used trae-chat for Trae Work (SOLO).
+    if(id === 'trae-chat') id = 'trae-work';
     for(var i = 0; i < PRESETS.length; i++){
       if(PRESETS[i].id === id) return PRESETS[i];
     }

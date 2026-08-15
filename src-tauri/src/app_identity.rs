@@ -9,7 +9,11 @@ pub const CODEX_APP_TARGET_ID: &str = "codex-chat";
 pub const MINIMAX_APP_TARGET_ID: &str = "minimax-chat";
 pub const CLAUDE_CODE_APP_TARGET_ID: &str = "claude-code";
 pub const WORKBUDDY_APP_TARGET_ID: &str = "workbuddy-chat";
-pub const TRAE_APP_TARGET_ID: &str = "trae-chat";
+/// Trae Work (TRAE SOLO). Legacy mappings may still use `trae-chat`.
+pub const TRAE_APP_TARGET_ID: &str = "trae-work";
+pub const TRAE_CHAT_LEGACY_APP_TARGET_ID: &str = "trae-chat";
+/// Trae Code (Trae IDE / TraeCode).
+pub const TRAE_CODE_APP_TARGET_ID: &str = "trae-code";
 pub const QODER_APP_TARGET_ID: &str = "qoder-chat";
 
 /// ponytail: Toolhelp process-tree walk is O(processes); overlay ticks every 250ms.
@@ -79,10 +83,21 @@ const PRESET_MATCHERS: &[PresetMatcher] = &[
         process_names: &["WorkBuddy.exe", "CodeBuddy.exe", "codebuddy.exe"],
         path_markers: Some(&["WorkBuddy", "CodeBuddy"]),
     },
+    // SOLO / TraeWork before IDE so path marker "Trae" cannot swallow Work installs.
     PresetMatcher {
         id: TRAE_APP_TARGET_ID,
-        process_names: &["Trae.exe", "trae.exe", "TRAE SOLO.exe"],
-        path_markers: Some(&["Trae", "TRAE SOLO"]),
+        process_names: &[
+            "TRAE SOLO.exe",
+            "TraeWork.exe",
+            "Trae Work.exe",
+            "TRAE Work.exe",
+        ],
+        path_markers: Some(&["TRAE SOLO", "TraeWork", "Trae Work"]),
+    },
+    PresetMatcher {
+        id: TRAE_CODE_APP_TARGET_ID,
+        process_names: &["Trae.exe", "trae.exe"],
+        path_markers: Some(&["Trae"]),
     },
     PresetMatcher {
         id: QODER_APP_TARGET_ID,
@@ -1071,6 +1086,19 @@ mod tests {
     fn preset_path_matches_trae_solo_install() {
         assert_eq!(
             preset_app_id_for_path(r"D:\TRAE SOLO\TRAE SOLO.exe").as_deref(),
+            Some(TRAE_APP_TARGET_ID)
+        );
+    }
+
+    #[test]
+    fn preset_path_matches_trae_code_install() {
+        assert_eq!(
+            preset_app_id_for_path(r"C:\Users\me\AppData\Local\Programs\Trae\Trae.exe").as_deref(),
+            Some(TRAE_CODE_APP_TARGET_ID)
+        );
+        // After SOLO matcher exists, plain Trae.exe must map to trae-code — not trae-work.
+        assert_ne!(
+            preset_app_id_for_path(r"D:\Trae\Trae.exe").as_deref(),
             Some(TRAE_APP_TARGET_ID)
         );
     }

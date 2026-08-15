@@ -1147,62 +1147,17 @@
     return !!(cfg&&cfg.followForegroundAppScenario);
   }
 
-  function isForceSoftPadOpen(){
+  // Home no longer exposes force Soft Pad; clear leftover config so overlay follows FG again.
+  function clearLegacyForceSoftPadOpen(){
     var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
-    return !!(cfg&&cfg.softPadForceOpen);
-  }
-
-  function resolveForceSoftPadMapping(){
-    var hub=global.OneToneSoftPadHub;
-    var Pad=global.OneToneCodexMicroPadUi;
-    if(hub&&typeof hub.resolveSoftPadEntry==='function'){
-      var entry=hub.resolveSoftPadEntry();
-      if(entry&&entry.mapping) return entry.mapping;
-    }
-    var schemes=hub&&typeof hub.listSoftPadSchemes==='function'?hub.listSoftPadSchemes():[];
-    var i;
-    for(i=0;i<schemes.length;i++){
-      if(schemes[i]&&schemes[i].padEnabled&&schemes[i].mapping) return schemes[i].mapping;
-    }
-    for(i=0;i<schemes.length;i++){
-      if(schemes[i]&&schemes[i].mapping) return schemes[i].mapping;
-    }
-    if(hub&&typeof hub.ensureAppSoftPad==='function'){
-      return hub.ensureAppSoftPad('codex-chat','codex',{enable:true})||null;
-    }
-    if(Pad&&typeof Pad.listPadMappings==='function'){
-      var pads=Pad.listPadMappings()||[];
-      return pads[0]||null;
-    }
-    return null;
-  }
-
-  function ensureForceSoftPadReady(){
-    var m=resolveForceSoftPadMapping();
-    if(!m) return null;
-    var Pad=global.OneToneCodexMicroPadUi;
-    if(Pad&&typeof Pad.ensurePad==='function') Pad.ensurePad(m,{persist:false});
-    if(!m.codexMicroPad) return null;
-    if(Pad&&typeof Pad.applySoftPadShowMode==='function'){
-      // Force-open needs enabled+overlay; keep requireForeground as-is — cfg.softPadForceOpen bypasses FG.
-      var mode=Pad.resolveSoftPadShowMode?Pad.resolveSoftPadShowMode(m.codexMicroPad):'';
-      if(mode==='hidden') Pad.applySoftPadShowMode(m,'follow');
-    }else{
-      m.codexMicroPad.enabled=true;
-      m.codexMicroPad.overlayEnabled=true;
-      var invoke=global.__vp_invoke__||(global.OneToneIpc&&global.OneToneIpc.invoke);
-      if(invoke){
-        invoke('cmd_codex_micro_pad_set_flags',{
-          mappingId:String(m.id),
-          enabled:true,
-          requireNumLockOff:!!m.codexMicroPad.requireNumLockOff,
-          overlayEnabled:true,
-          requireForeground:m.codexMicroPad.requireForeground!==false,
-          navKeysEnabled:m.codexMicroPad.showNavigationPad!==false&&m.codexMicroPad.navKeysEnabled!==false
-        }).catch(function(){});
-      }
-    }
-    return m;
+    var was=!!(cfg&&cfg.softPadForceOpen);
+    if(cfg) cfg.softPadForceOpen=false;
+    if(!was) return;
+    var invoke=global.__vp_invoke__||(global.OneToneIpc&&global.OneToneIpc.invoke);
+    if(invoke) invoke('cmd_soft_pad_force_open',{enabled:false}).catch(function(){});
+    var persist=global.OneToneConfigPersist;
+    if(persist&&persist.saveAsync) persist.saveAsync({source:'clearForceSoftPad'});
+    else if(persist&&persist.save) persist.save();
   }
 
   function isSelfFgIdentity(identity){
@@ -1357,78 +1312,6 @@
     }
     if(on) startFollowFgPoll();
     else stopFollowFgPoll();
-  }
-
-  function refreshForceSoftPadToggle(){
-    var btn=$('wbForceSoftPadToggle');
-    if(!btn) return;
-    var on=isForceSoftPadOpen();
-    var wantChecked=on?'true':'false';
-    var hintText=on
-      ?t('homeWbForceSoftPadOnHint','已强制显示；设置抽屉打开时仍会隐藏')
-      :t('homeWbForceSoftPadHint','忽略前台条件，保持浮窗可见');
-    var labelText=t('homeWbForceSoftPadLabel','强制打开 Soft Pad');
-    if(btn.getAttribute('aria-checked')===wantChecked
-      && btn.classList.contains('is-on')===on){
-      var hintElFast=$('wbForceSoftPadHint');
-      if(hintElFast&&hintElFast.textContent===hintText) return;
-    }
-    btn.classList.toggle('is-on',on);
-    btn.setAttribute('aria-checked',wantChecked);
-    var label=document.querySelector('.wb-home-force-softpad-label');
-    if(label&&label.textContent!==labelText) label.textContent=labelText;
-    var hintEl=$('wbForceSoftPadHint');
-    if(hintEl&&hintEl.textContent!==hintText) hintEl.textContent=hintText;
-    var row=$('wbForceSoftPadRow');
-    if(row&&row.title!==hintText) row.title=hintText;
-  }
-
-  function setForceSoftPadOpen(on){
-    var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
-    if(!cfg) return;
-    on=!!on;
-    var prev=!!cfg.softPadForceOpen;
-    cfg.softPadForceOpen=on;
-    refreshForceSoftPadToggle();
-
-    var invoke=global.__vp_invoke__||(global.OneToneIpc&&global.OneToneIpc.invoke);
-    if(!invoke){
-      // No backend: still keep FE flag; Soft Pad cannot float without IPC.
-      if(on&&!ensureForceSoftPadReady()){
-        cfg.softPadForceOpen=prev;
-        refreshForceSoftPadToggle();
-        var toast0=global.OneToneToast;
-        if(toast0&&toast0.show){
-          try{ toast0.show(t('homeWbForceSoftPadNeedPad','先准备一个 Soft Pad 应用场景')); }catch(_){}
-        }
-      }
-      return;
-    }
-
-    // Quiet IPC: set force flag + ensure overlay mapping + push_state (not full cmd_save).
-    invoke('cmd_soft_pad_force_open',{enabled:on}).then(function(res){
-      var ensured=!(res&&res.ensured===false);
-      if(on&&!ensured){
-        cfg.softPadForceOpen=false;
-        refreshForceSoftPadToggle();
-        var toast=global.OneToneToast;
-        if(toast&&toast.show){
-          try{ toast.show(t('homeWbForceSoftPadNeedPad','先准备一个 Soft Pad 应用场景')); }catch(_){}
-        }
-        return;
-      }
-      cfg.softPadForceOpen=on;
-      refreshForceSoftPadToggle();
-      // Keep FE Soft Pad schemes in sync when Rust flipped overlay on.
-      if(on) ensureForceSoftPadReady();
-    }).catch(function(){
-      cfg.softPadForceOpen=prev;
-      refreshForceSoftPadToggle();
-      var toast=global.OneToneToast;
-      if(toast&&toast.show){
-        try{ toast.show(t('homeWbForceSoftPadNeedPad','先准备一个 Soft Pad 应用场景')); }catch(_){}
-      }
-    });
   }
 
   function setFollowFgEnabled(on){
@@ -1954,7 +1837,6 @@
       global.OneToneHomeWorkbenchPanels.renderAll(vm);
     }
     refreshFollowFgToggle();
-    refreshForceSoftPadToggle();
     if(global.OneToneState&&global.OneToneState.ui){
       var ui=global.OneToneState.ui;
       if(ui.drawerOpen&&ui.settingsPanel==='debug'&&global.OneToneVoiceDiag&&global.OneToneVoiceDiag.getFocusMode()==='repair'){
@@ -2017,7 +1899,7 @@
     bindPanelActions();
     hookCameraPresence();
     refreshFollowFgToggle();
-    refreshForceSoftPadToggle();
+    clearLegacyForceSoftPadOpen();
     fetchLastUiStallOnce();
     if(global.OneToneAppSession&&global.OneToneAppSession.whenBootSettled){
       global.OneToneAppSession.whenBootSettled(fetchLastUiStallOnce);
@@ -2074,16 +1956,6 @@
         }
       };
     }
-    var forceSoftPadBtn=$('wbForceSoftPadToggle');
-    if(forceSoftPadBtn&&!forceSoftPadBtn._wbForceBound){
-      forceSoftPadBtn._wbForceBound=true;
-      forceSoftPadBtn.addEventListener('click',function(e){
-        e.preventDefault();
-        e.stopPropagation();
-        setForceSoftPadOpen(!isForceSoftPadOpen());
-      });
-    }
-    refreshForceSoftPadToggle();
     var editBtn=$('wbTriggerEdit');
     if(editBtn){
       editBtn.onclick=function(){
@@ -2193,7 +2065,6 @@
     var manage=$('wbHabitManage');
     if(manage) manage.textContent=t('homeWbHabitManage','管理');
     refreshFollowFgToggle();
-    refreshForceSoftPadToggle();
     var searchInput=$('wbCommandSearchInput');
     if(searchInput) searchInput.placeholder=t('homeWbCmdSearchPlaceholder');
     renderQuickActions();
