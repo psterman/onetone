@@ -139,6 +139,101 @@ fn exe_name_matches(file_name: &str, expected: &str) -> bool {
     f_stem.eq_ignore_ascii_case(e_stem)
 }
 
+/// ponytail: Toolhelp is O(processes); Soft Pad / MiniMax poll often.
+/// Cache by exe-name list (750ms). Ceiling: stale open/closed across TTL.
+const PROCESS_EXE_CACHE_TTL: Duration = Duration::from_millis(750);
+
+/// Toolhelp-only process presence (any of `exe_names`). No EnumWindows.
+pub fn process_running_by_exe(exe_names: &[&str]) -> bool {
+    if exe_names.is_empty() {
+        return false;
+    }
+    #[cfg(windows)]
+    {
+        let key: String = exe_names
+            .iter()
+            .map(|s| s.to_ascii_lowercase())
+            .collect::<Vec<_>>()
+            .join("|");
+        static CACHE: OnceLock<Mutex<(String, Instant, bool)>> = OnceLock::new();
+        let cell = CACHE.get_or_init(|| {
+            Mutex::new((
+                String::new(),
+                Instant::now() - Duration::from_secs(10),
+                false,
+            ))
+        });
+        if let Ok(mut g) = cell.lock() {
+            if g.0 == key && g.1.elapsed() < PROCESS_EXE_CACHE_TTL {
+                return g.2;
+            }
+            let hit = process_running_by_exe_uncached(exe_names);
+            *g = (key, Instant::now(), hit);
+            return hit;
+        }
+        process_running_by_exe_uncached(exe_names)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = exe_names;
+        false
+    }
+}
+
+#[cfg(windows)]
+fn process_running_by_exe_uncached(exe_names: &[&str]) -> bool {
+    use winapi::um::handleapi::CloseHandle;
+    use winapi::um::tlhelp32::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+        TH32CS_SNAPPROCESS,
+    };
+
+    unsafe {
+        let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snap.is_null() || snap == winapi::um::handleapi::INVALID_HANDLE_VALUE {
+            return false;
+        }
+        let mut pe: PROCESSENTRY32W = std::mem::zeroed();
+        pe.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+        let mut hit = false;
+        if Process32FirstW(snap, &mut pe) != 0 {
+            loop {
+                let name = String::from_utf16_lossy(
+                    &pe.szExeFile[..pe
+                        .szExeFile
+                        .iter()
+                        .position(|&c| c == 0)
+                        .unwrap_or(pe.szExeFile.len())],
+                );
+                if exe_names.iter().any(|n| exe_name_matches(&name, n)) {
+                    hit = true;
+                    break;
+                }
+                if Process32NextW(snap, &mut pe) == 0 {
+                    break;
+                }
+            }
+        }
+        CloseHandle(snap);
+        hit
+    }
+}
+
+/// Process names registered for a Soft Pad preset app target (`minimax-chat`, …).
+pub fn preset_process_names(app_target_id: &str) -> Option<&'static [&'static str]> {
+    let id = app_target_id.trim();
+    PRESET_MATCHERS
+        .iter()
+        .find(|m| m.id == id)
+        .map(|m| m.process_names)
+}
+
+/// MiniMax has no lifecycle hooks; Soft Pad lamps use process presence via shared helper.
+pub fn minimax_code_process_running() -> bool {
+    let names = preset_process_names(MINIMAX_APP_TARGET_ID).unwrap_or(&[]);
+    process_running_by_exe(names)
+}
+
 /// True when process AUMID / path belongs to the Store Codex package (not consumer ChatGPT).
 fn looks_like_codex_package(path: Option<&str>, aumid: Option<&str>) -> bool {
     if path.is_some_and(|p| path_has_marker(p, "OpenAI.ChatGPT") && !path_has_marker(p, "OpenAI.Codex"))
@@ -1025,6 +1120,18 @@ mod tests {
             preset_app_id_for_path(r"D:\Apps\MiniMax\MiniMax-Code.exe").as_deref(),
             Some(MINIMAX_APP_TARGET_ID)
         );
+        assert_eq!(
+            preset_app_id_for_path(r"D:\minimax\MiniMax Code\MiniMax Code.exe").as_deref(),
+            Some(MINIMAX_APP_TARGET_ID)
+        );
+    }
+
+    #[test]
+    fn minimax_code_process_probe_is_cheap_bool() {
+        // Smoke: must not panic; value mirrors whether MiniMax Code is open on this machine.
+        let _ = minimax_code_process_running();
+        let again = minimax_code_process_running();
+        let _ = again;
     }
 
     #[test]

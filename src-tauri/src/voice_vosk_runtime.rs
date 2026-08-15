@@ -551,7 +551,10 @@ pub fn voice_vosk_status(state: &AppState, resource_dir: Option<PathBuf>) -> ser
         let cooldown_ms = cfg.voice_vosk.cooldown_ms;
         (voice_vosk, target_key, phrases, cooldown_ms)
     };
-    let probe = cached_vosk_probe_opts(state, &voice_vosk, resource_dir.as_deref(), false);
+    // Must allow FS: empty-cache + allow_fs=false invented dll_exists=false → FE
+    // showed「本地识别组件缺失」every poll even when libvosk.dll was on disk.
+    // Probe is a few Path::is_file checks; not the stop_sync stall path.
+    let probe = cached_vosk_probe_opts(state, &voice_vosk, resource_dir.as_deref(), true);
     let resources_dir = crate::voice_vosk::vosk_resources_dir(resource_dir.as_deref());
     let resource_issue = crate::voice_vosk::vosk_resource_issue(&probe);
     let download_url = crate::voice_vosk::vosk_model_download_url(&probe.model_preset)
@@ -610,17 +613,9 @@ fn cached_vosk_probe_opts(
     if let Some(probe) = state.voice_vosk_probe.lock().clone() {
         return probe;
     }
-    if !allow_fs {
-        return VoskResourceProbe {
-            model_exists: false,
-            dll_exists: false,
-            lib_exists: false,
-            model_path: cfg.model_path.clone(),
-            model_preset: cfg.model_preset.clone(),
-            resolved_model_path: String::new(),
-            resolved_dll_path: String::new(),
-        };
-    }
+    // allow_fs=false used to return dll_exists=false (unprobed) → FE 「组件缺失」spam.
+    // Always probe when cache empty; is_file checks are cheap.
+    let _ = allow_fs;
     let probe = probe_vosk_resources(cfg, resource_dir);
     *state.voice_vosk_probe.lock() = Some(probe.clone());
     probe

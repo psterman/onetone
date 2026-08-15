@@ -494,6 +494,10 @@ pub fn primary_state_for(agent: AgentKind) -> Option<AttentionState> {
     })
 }
 
+pub fn lifecycle_source_for(agent: AgentKind) -> Option<crate::agent_attention::SignalSource> {
+    with_store(|inner| inner.lifecycle.get(&agent).map(|s| s.source))
+}
+
 static TEST_LOCK: Mutex<()> = Mutex::new(());
 
 pub fn test_lock() -> std::sync::MutexGuard<'static, ()> {
@@ -737,5 +741,35 @@ mod tests {
         });
         assert!(o3.accepted);
         assert!(!o3.state_changed);
+    }
+
+    #[test]
+    fn lifecycle_source_tracks_inferred_minimax() {
+        let _g = test_lock();
+        reset_for_test();
+        raise_lifecycle(
+            AgentKind::MiniMax,
+            None,
+            AttentionState::Working,
+            SignalSource::Inferred,
+        );
+        assert_eq!(
+            primary_state_for(AgentKind::MiniMax),
+            Some(AttentionState::Working)
+        );
+        assert_eq!(
+            lifecycle_source_for(AgentKind::MiniMax),
+            Some(SignalSource::Inferred)
+        );
+        raise_lifecycle(
+            AgentKind::MiniMax,
+            None,
+            AttentionState::Idle,
+            SignalSource::Inferred,
+        );
+        assert_eq!(
+            primary_state_for(AgentKind::MiniMax),
+            Some(AttentionState::Idle)
+        );
     }
 }

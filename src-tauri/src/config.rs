@@ -1312,13 +1312,13 @@ pub struct CodexMicroPadConfig {
     #[serde(default)]
     pub cursor_status_lights_enabled: bool,
     /// Soft Pad top-bar WorkBuddy status dot (shell hook lifecycle).
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub workbuddy_status_lights_enabled: bool,
     /// Soft Pad top-bar Trae status dot (shell hook lifecycle).
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub trae_status_lights_enabled: bool,
     /// Soft Pad top-bar Qoder status dot (shell hook lifecycle).
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub qoder_status_lights_enabled: bool,
     /// Soft Pad top-bar MiniMax status / usage dot.
     #[serde(default)]
@@ -1393,9 +1393,9 @@ impl Default for CodexMicroPadConfig {
             codex_status_lights_enabled: false,
             claude_status_lights_enabled: false,
             cursor_status_lights_enabled: false,
-            workbuddy_status_lights_enabled: false,
-            trae_status_lights_enabled: false,
-            qoder_status_lights_enabled: false,
+            workbuddy_status_lights_enabled: true,
+            trae_status_lights_enabled: true,
+            qoder_status_lights_enabled: true,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
             gemini_status_lights_enabled: false,

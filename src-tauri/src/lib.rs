@@ -423,6 +423,10 @@ pub fn run() {
                 app.handle().clone(),
                 app_state.clone(),
             );
+            crate::pad_status::start_shell_agent_process_poll(
+                app.handle().clone(),
+                app_state.clone(),
+            );
 
             {
                 let state_for_attention = app_state.clone();
@@ -1005,6 +1009,7 @@ pub fn run() {
             ipc::cmd_onetone_attention_clear,
             ipc::cmd_codex_micro_pad_set_flags,
             ipc::cmd_soft_pad_force_open,
+            ipc::cmd_soft_pad_open_shell_hook,
             ipc::cmd_codex_micro_pad_set_layout,
             ipc::cmd_codex_micro_pad_set_presentation,
             ipc::cmd_codex_micro_pad_set_skin,

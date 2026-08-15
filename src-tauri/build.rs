@@ -166,6 +166,7 @@ fn main() {
         "cmd_codex_micro_pad_fire",
         "cmd_codex_micro_pad_set_flags",
         "cmd_soft_pad_force_open",
+        "cmd_soft_pad_open_shell_hook",
         "cmd_codex_micro_pad_ensure_ready",
         "cmd_codex_micro_pad_get_readiness",
         "cmd_codex_status_lights_set",
@@ -246,7 +247,8 @@ fn link_vosk_if_present() {
 }
 
 /// Windows loads link-time DLL dependencies from the exe directory before main().
-/// Copy Vosk + MinGW runtime DLLs next to onetone.exe (target/debug|release) only.
+/// Copy Vosk + MinGW runtime DLLs next to onetone.exe (target/debug|release) **and**
+/// into `resources/vosk/` (same layout as models / resolve_vosk_dll_dir candidates).
 /// Do not copy into deps/ — test harness binaries live there and must not pick up MinGW DLLs.
 fn copy_vosk_runtime_dlls(vosk_dir: &Path, manifest_dir: &Path) {
     let dll_src = vosk_dir.join("libvosk.dll");
@@ -267,15 +269,20 @@ fn copy_vosk_runtime_dlls(vosk_dir: &Path, manifest_dir: &Path) {
         .map(PathBuf::from)
         .unwrap_or_else(|_| manifest_dir.join("target"));
     let exe_dir = target_dir.join(&profile);
+    let resource_vosk_dir = exe_dir.join("resources").join("vosk");
 
     let mut copied = 0usize;
-    if fs::create_dir_all(&exe_dir).is_ok() {
+    let dest_dirs = [exe_dir.clone(), resource_vosk_dir];
+    for dest_dir in &dest_dirs {
+        if fs::create_dir_all(dest_dir).is_err() {
+            continue;
+        }
         for name in VOSK_RUNTIME_DLLS {
             let src = vosk_dir.join(name);
             if !src.is_file() {
                 continue;
             }
-            let dst = exe_dir.join(name);
+            let dst = dest_dir.join(name);
             match fs::copy(&src, &dst) {
                 Ok(_) => copied += 1,
                 Err(e) => {
@@ -290,7 +297,7 @@ fn copy_vosk_runtime_dlls(vosk_dir: &Path, manifest_dir: &Path) {
 
     if copied > 0 {
         println!(
-            "cargo:warning=Vosk: copied {copied} runtime DLL(s) to {}",
+            "cargo:warning=Vosk: copied {copied} runtime DLL slot(s) under {}",
             exe_dir.display()
         );
     }

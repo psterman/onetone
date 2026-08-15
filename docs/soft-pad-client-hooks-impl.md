@@ -28,15 +28,17 @@ Probe 约束：fail-open、退出码 0、不写 prompt/回复正文、只保留�
 
 ---
 
-## Phase 0 — MiniMax（明确不做）
+## Phase 0 — MiniMax（生命周期无官方 Hook）
 
 | 项 | 决定 |
 |----|------|
 | 官方 `mmx-cli` | 多模态 skill，挂在其他 Agent 上；**不**发 Soft Pad 生命周期 |
-| `minimax-chat` app target | 保持语音/映射 preset；**不**加 `AgentKind` |
+| Soft Pad `AgentKind::MiniMax` | **有**：额度侧信道 + 顶栏灯；生命周期暂用「MiniMax Code.exe 在跑 → running」推断（看 Soft Pad 时 FG 不是 MiniMax） |
 | 社区 MiniMax-CLI | 仅当产品明确点名时再开任务 |
 
-用 MiniMax 模型时，Soft Pad 状态来自承载客户端（Claude / OpenCode / …），不单独接 MiniMax。
+额度来自 Coding Plan Key；状态灯在进程存活时显示 running，退出后回 idle。有官方 Hook 后再换真生命周期。
+
+用 MiniMax **模型**挂在其他客户端时，Soft Pad 状态仍来自承载客户端（Claude / OpenCode / …）。
 
 ---
 

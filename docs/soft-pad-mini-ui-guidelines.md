@@ -10,8 +10,8 @@
 
 - Agent 按固定顺序排列（启用灯的才显示）；位置不随状态跳动。
 - 图标回答“是谁”，右下状态点回答“现在怎样”；**chill pill** 回答“用量/额度”。
-- **全屏悬停**：`#overlayAgentTip`（挂在 `.wrap`，不在 `.overlay-full`）——短 tip：状态 ·（失败诚实）·「悬停预览用量 · 点击跳转 …」。模型/额度不进 tip，看 chill。
-- **迷你悬停**：禁止盖条。`pinUsageFocusOnHover` **只**改 chill 预览（`hoverUsageKind`），**禁止** `touchAgentBarRecency` / 重排 chip / persist pin / 抢前台。图标固定 `22×22`，focus 用 inset outline，不得外扩描边。
+- **全屏悬停**：`#overlayAgentTip`——状态 · 短用量摘要 ·「点击跳转 …」；同时 `pinUsageFocusOnHover` 把底栏 caption 切到该 Agent（离开恢复）。
+- **迷你悬停**：禁止盖条 tip。`pinUsageFocusOnHover` **只**改 chill 预览（`hoverUsageKind`），**禁止** `touchAgentBarRecency` / 重排 chip / persist pin / 抢前台。图标固定 `22×22`，focus 用 inset outline，不得外扩描边。
 - **迷你模式点击**：chip 必须加入 drag 屏蔽；`needs_input` 穿透不得关掉迷你栏命中（Rust `!minimized` + FE/CSS）。
 - **点击 chip**：pin + `cmd_soft_pad_focus_session` → 失败再 `focus_agent`；toast「跳转 Agent」；失败「未能聚焦」。
 - **点击 chill pill**：只启用统计 / 配 MiniMax Key / `cmd_codex_micro_overlay_refresh_usage`；**禁止** focus_session。
@@ -50,7 +50,7 @@
 - 状态点：主体 `6px`，加 `1.5px` 外圈。
 - 三图标间距：`2px`；控件组间距：`5px`。
 - 用量 pill：`min-width 64px` / `max-width 96px`，文案如 `Cu · 83次`。
-- 展开按钮 `30px`，关闭按钮 `24px`。
+- 展开按钮 `30px`（四角展开图标，**禁止**做成开关外观），关闭按钮 `24px`。
 
 如果新增内容导致拥挤，优先放入 tooltip 或 full overlay；不要继续缩小图标和点击目标。
 

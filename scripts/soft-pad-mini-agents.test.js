@@ -59,10 +59,18 @@ var padUi = fs.readFileSync(path.join(root, 'src/js/features/agent/codex-micro-p
 assert.ok(padUi.includes('cmd_cursor_hook_setup_status'));
 assert.ok(padUi.includes('AGENT_LIGHT_SPECS') || padUi.includes("renderAgentLightRow('cursor'"));
 assert.ok(padUi.includes('workbuddyStatusLightsEnabled'));
+assert.ok(
+  /workbuddyStatusLightsEnabled:\s*true/.test(padUi) &&
+    /traeStatusLightsEnabled:\s*true/.test(padUi) &&
+    /qoderStatusLightsEnabled:\s*true/.test(padUi),
+  'Shell three status lights default on in ensurePad'
+);
 assert.ok(padUi.includes("agent === 'cursor'") || padUi.includes('softPadCursorConnect'));
 assert.ok(!html.includes('模型未知'));
 assert.ok(!html.includes('账户余额'));
 assert.ok(!html.includes('id="miniLeds"'));
+assert.ok(html.includes('overlay-mini__expand-icon'), 'mini expand uses expand icon');
+assert.ok(!html.includes('overlay-mini__switch'), 'mini expand must not look like a power switch');
 var miniFn = html.match(/function applyMiniAgentChips\(s\)\{[\s\S]*?\n    \}/);
 assert.ok(miniFn, 'applyMiniAgentChips body missing');
 assert.ok(!/appAgent|app_agent|appStatus|app_status/.test(miniFn[0]), 'mini chips must not read singleton appAgent/appStatus');
@@ -91,6 +99,52 @@ assert.ok(rust.includes('headline_label') || rust.includes('headline_for_agent')
 assert.ok(rust.includes('AgentKind::Codex') && rust.includes('AgentKind::Claude') && rust.includes('AgentKind::Cursor'));
 assert.ok(rust.includes('AgentKind::WorkBuddy') && rust.includes('AgentKind::Trae') && rust.includes('AgentKind::Qoder'));
 assert.ok(rust.includes('workbuddy_status_lights_enabled'));
+assert.ok(
+  rust.includes('sync_minimax_inferred_lifecycle') &&
+    rust.includes('minimax_code_process_running'),
+  'MiniMax status light infers running from process when hooks absent'
+);
+assert.ok(
+  rust.includes('last_mapping_id.is_empty()') ||
+    /if last_mapping_id\.is_empty\(\)/.test(rust),
+  'expand/minimize sticky across Soft Pad mapping FG switches'
+);
+assert.ok(
+  rust.includes('sync_shell_inferred_lifecycle'),
+  'overlay tick syncs shell inferred lifecycle'
+);
+assert.ok(rust.includes('hook_configured'), 'overlay snapshot exposes hook_configured');
+var shellProc = fs.readFileSync(
+  path.join(root, 'src-tauri/src/pad_status/adapters/shell_agent_process.rs'),
+  'utf8'
+);
+var padStore = fs.readFileSync(path.join(root, 'src-tauri/src/pad_status/store.rs'), 'utf8');
+var appId = fs.readFileSync(path.join(root, 'src-tauri/src/app_identity.rs'), 'utf8');
+assert.ok(
+  shellProc.includes('infer_busy_from_mtime_age') &&
+    padStore.includes('SHELL_AGENT_MTIME_BUSY_MS') &&
+    padStore.includes('60_000') &&
+    appId.includes('process_running_by_exe') &&
+    shellProc.includes('process_running_by_exe'),
+  'Shell three process+mtime fallback'
+);
+var rankJs = fs.readFileSync(path.join(root, 'src/js/features/agent/soft-pad-agent-bar-rank.js'), 'utf8');
+assert.ok(
+  /PLACEHOLDER_KINDS\s*=\s*\[[^\]]*workbuddy[^\]]*trae[^\]]*qoder/.test(rankJs) ||
+    (rankJs.includes("'workbuddy'") &&
+      rankJs.includes("'trae'") &&
+      rankJs.includes("'qoder'") &&
+      rankJs.includes('PLACEHOLDER_KINDS')),
+  'PLACEHOLDER_KINDS includes shell three'
+);
+assert.ok(html.includes('cmd_soft_pad_open_shell_hook'), 'placeholder click opens shell hook panel');
+assert.ok(
+  padUi.includes('softPadAgentLightsMatrix') || padUi.includes('进程+mtime'),
+  'Soft Pad agent lights help matrix'
+);
+var docs = fs.readFileSync(path.join(root, 'docs/soft-pad-shell-agents-hook-setup.md'), 'utf8');
+assert.ok(docs.includes('Process Fallback') || docs.includes('进程不在'), 'docs honest Hook 2-state + fallback');
+assert.ok(docs.includes('60s') || docs.includes('60 s'), 'docs mention 60s mtime busy window');
 assert.ok(rust.includes('cmd_soft_pad_focus_agent') || overlayCmd.includes('cmd_soft_pad_focus_agent'));
 assert.ok(/OVERLAY_WIDTH_MINI:\s*f64\s*=\s*(24[0-9]|3[0-9]{2})\.0/.test(rust), 'mini width constant present');
 assert.ok(/OVERLAY_HEIGHT_MINI:\s*f64\s*=\s*44\.0/.test(rust), 'mini height should stay 44');
@@ -213,7 +267,19 @@ assert.deepStrictEqual(r3.rest, []);
 
 assert.strictEqual(rank.VISIBLE_PAD, 6);
 var merged = rank.mergePlaceholderKinds(r3, {}, 6);
-assert.deepStrictEqual(merged.top, r3.top, 'no grey placeholders when PLACEHOLDER_KINDS empty');
+assert.deepStrictEqual(
+  merged.top,
+  ['codex', 'workbuddy', 'trae', 'qoder'],
+  'shell PLACEHOLDER_KINDS fill remaining top slots'
+);
+assert.deepStrictEqual(merged.rest, [], 'placeholders fit in VISIBLE_PAD');
+assert.ok(
+  Array.isArray(rank.PLACEHOLDER_KINDS) &&
+    rank.PLACEHOLDER_KINDS.indexOf('workbuddy') >= 0 &&
+    rank.PLACEHOLDER_KINDS.indexOf('trae') >= 0 &&
+    rank.PLACEHOLDER_KINDS.indexOf('qoder') >= 0,
+  'PLACEHOLDER_KINDS exports shell three'
+);
 assert.strictEqual(
   rank.padLightFromRanked({}, byKind, 'codex', {}),
   'needs_input',
@@ -289,5 +355,10 @@ assert.ok(guide.includes('overlayAgentTip') && (guide.includes('点击聚焦') |
 assert.ok(guide.includes('cmd_codex_micro_overlay_refresh_usage'), 'guidelines mention pill refresh');
 assert.ok(guide.includes('pinUsageFocusOnHover') || guide.includes('禁止盖条'), 'guidelines ban covering strip');
 assert.ok(guide.includes('VISIBLE_PAD') && guide.includes('providerQuotas') && guide.includes('Updated Xm ago'), 'Slice D appendix');
+assert.ok(html.includes("kind==='opencode'") && html.includes("return 'OpenCode'"), 'opencode must not fall through to Codex label');
+assert.ok(html.includes("kind==='cline'") && html.includes("return 'Cline'"), 'cline label');
+assert.ok(html.includes("kind==='aider'") && html.includes("return 'Aider'"), 'aider label');
+assert.ok(html.includes('usageSummary(kind,usage||{},true') || html.includes("usageSummary(kind,usage||{},true"), 'pad tip includes usage basics');
+assert.ok(/pinUsageFocusOnHover\(kind\)/.test(html) && /isPadChip/.test(html), 'full Soft Pad hover also previews bottom caption');
 
 console.log('soft-pad mini agent tests passed');

@@ -7,6 +7,10 @@ use super::model::{
     Confidence, PadSource, PadState, PadStatus, PadStatusCandidate,
 };
 
+/// Busy if shell-agent tree mtime newer than this.
+/// AI agent output can be slow (long LLM streams / large commits often 1–2 min between writes).
+pub const SHELL_AGENT_MTIME_BUSY_MS: u64 = 60_000;
+
 fn store() -> &'static Mutex<PadStatus> {
     static STORE: OnceLock<Mutex<PadStatus>> = OnceLock::new();
     STORE.get_or_init(|| Mutex::new(PadStatus::default()))

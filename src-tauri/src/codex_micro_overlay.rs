@@ -337,18 +337,22 @@ fn overlay_presentation_mapping_id() -> &'static ParkingMutex<String> {
     OVERLAY_PRESENTATION_MAPPING_ID.get_or_init(|| ParkingMutex::new(String::new()))
 }
 
-/// Runtime mini/full: keep user expand/minimize across snapshot ticks.
-/// Sync from pad.presentation only when the active overlay mapping changes.
+/// Runtime mini/full: keep user expand/minimize across snapshot ticks **and** Soft Pad
+/// mapping / FG switches. `pad.presentation` only seeds the first attach — otherwise
+/// focusing MiniMax (presentation still mini) collapsed a user-expanded pad into a
+/// ~44px window while chrome briefly stayed full (−/×), which looked like a broken strip.
 fn resolve_minimized_on_mapping_change(
     mapping_id: &str,
     pad_is_mini: bool,
     last_mapping_id: &mut String,
     runtime_minimized: &mut bool,
 ) -> bool {
-    if last_mapping_id.as_str() != mapping_id {
-        last_mapping_id.clear();
+    if last_mapping_id.is_empty() {
         last_mapping_id.push_str(mapping_id);
         *runtime_minimized = pad_is_mini;
+    } else if last_mapping_id.as_str() != mapping_id {
+        last_mapping_id.clear();
+        last_mapping_id.push_str(mapping_id);
     }
     *runtime_minimized
 }
@@ -356,12 +360,17 @@ fn resolve_minimized_on_mapping_change(
 fn sync_minimized_for_mapping(mapping_id: &str, pad: &CodexMicroPadConfig) -> bool {
     let mut runtime = overlay_minimized().lock();
     let mut last_mid = overlay_presentation_mapping_id().lock();
-    resolve_minimized_on_mapping_change(
+    let before = last_mid.clone();
+    let out = resolve_minimized_on_mapping_change(
         mapping_id,
         presentation_is_mini(pad),
         &mut last_mid,
         &mut runtime,
-    )
+    );
+    if before.as_str() != last_mid.as_str() {
+        crate::pad_status::invalidate_hook_configured_cache();
+    }
+    out
 }
 
 fn overlay_user_positioned() -> &'static ParkingMutex<bool> {
@@ -617,6 +626,9 @@ pub struct CodexMicroAgentSnapshot {
     pub updated_at: u64,
     /// User toggle for this agent row (shell kinds hidden in overlay when false).
     pub lights_enabled: bool,
+    /// Shell three: Soft Pad Hook installed (`onetoneConfigured`). None = N/A.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hook_configured: Option<bool>,
 }
 
 /// Unhosted Claude agent when AG pool is exhausted.
@@ -2196,6 +2208,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         app_task_id,
         app_session_id,
     ) = app_fields_from_pad_core();
+    sync_minimax_inferred_lifecycle(cfg);
     let ambient_status = {
         use crate::soft_pad_runtime::AgentKind;
         let kinds: Vec<AgentKind> = [
@@ -3076,6 +3089,39 @@ fn app_fields_from_pad_core() -> (
     )
 }
 
+/// MiniMax has no hook lifecycle — infer Working while MiniMax Code.exe is alive.
+/// Soft Pad often steals FG while the user checks lamps, so FG-only would stay idle.
+fn sync_minimax_inferred_lifecycle(cfg: &VoiceConfig) {
+    use crate::agent_attention::store::{self, raise_lifecycle};
+    use crate::agent_attention::{AttentionState, SignalSource};
+    use crate::soft_pad_runtime::AgentKind;
+
+    let lights = agent_status_light_enabled(cfg, AgentKind::MiniMax);
+    let want = lights && crate::app_identity::minimax_code_process_running();
+    let prev = store::primary_state_for(AgentKind::MiniMax);
+    let prev_src = store::lifecycle_source_for(AgentKind::MiniMax);
+    if want {
+        if matches!(prev, Some(AttentionState::NeedsInput) | Some(AttentionState::Working)) {
+            return;
+        }
+        raise_lifecycle(
+            AgentKind::MiniMax,
+            None,
+            AttentionState::Working,
+            SignalSource::Inferred,
+        );
+        return;
+    }
+    if prev == Some(AttentionState::Working) && prev_src == Some(SignalSource::Inferred) {
+        raise_lifecycle(
+            AgentKind::MiniMax,
+            None,
+            AttentionState::Idle,
+            SignalSource::Inferred,
+        );
+    }
+}
+
 fn agent_status_light_enabled(cfg: &VoiceConfig, kind: crate::soft_pad_runtime::AgentKind) -> bool {
     use crate::soft_pad_runtime::AgentKind;
     cfg.mappings.iter().any(|m| {
@@ -3103,6 +3149,8 @@ fn agent_chip_snapshots(cfg: &VoiceConfig) -> Vec<CodexMicroAgentSnapshot> {
     use crate::agent_attention::AttentionState;
     use crate::soft_pad_runtime::AgentKind;
 
+    sync_minimax_inferred_lifecycle(cfg);
+    crate::pad_status::sync_shell_inferred_lifecycle();
     let public = crate::agent_attention::public_snapshot();
     [
         AgentKind::Codex,
@@ -3162,6 +3210,12 @@ fn agent_chip_snapshots(cfg: &VoiceConfig) -> Vec<CodexMicroAgentSnapshot> {
                 .unwrap_or(0)
                 .max(metadata.updated_at)
                 .max(usage.updated_at);
+            let hook_configured = match kind {
+                AgentKind::WorkBuddy | AgentKind::Trae | AgentKind::Qoder => {
+                    crate::pad_status::shell_hook_configured(kind)
+                }
+                _ => None,
+            };
             CodexMicroAgentSnapshot {
                 kind: kind.as_str().to_string(),
                 state: state.to_string(),
@@ -3173,6 +3227,7 @@ fn agent_chip_snapshots(cfg: &VoiceConfig) -> Vec<CodexMicroAgentSnapshot> {
                 headline_label: headline_label.to_string(),
                 updated_at,
                 lights_enabled: lights_on,
+                hook_configured,
             }
         })
         .collect()
@@ -3615,16 +3670,29 @@ fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnaps
         if let Some((x, y)) = *overlay_user_position().lock() {
             let _ = win.set_position(Position::Physical(PhysicalPosition::new(x, y)));
         }
+        let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
+    } else if prev.map(|(m, _, _)| m) != Some(minimized) {
+        // mini↔full: keep the pad's visual anchor instead of jumping left/right.
+        resize_overlay_anchored(win, logical_w, logical_h);
     } else {
         position_overlay(win);
+        let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
     }
-    let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-    *overlay_last_geom().lock() = Some(want);
+    // Only cache when outer roughly matches — failed/async set_size must retry next tick.
+    let outer_after = win.outer_size().ok().map(|s| (s.width, s.height));
+    let ok = match outer_after {
+        Some((w, h)) => w.abs_diff(target_w) <= 48 && h.abs_diff(target_h) <= 48,
+        None => true,
+    };
+    if ok {
+        *overlay_last_geom().lock() = Some(want);
+    } else {
+        *overlay_last_geom().lock() = None;
+    }
     true
 }
 
-/// Keep the main keyboard's screen position stable while width changes (minimize path helpers).
-#[allow(dead_code)]
+/// Keep the main keyboard's screen position stable while width changes.
 fn resize_overlay_anchored(win: &WebviewWindow, logical_w: f64, logical_h: f64) {
     let scale = win.scale_factor().unwrap_or(1.0);
     let target_w = (logical_w * scale).round() as i32;
@@ -6674,14 +6742,17 @@ mod tests {
     fn expand_sticky_across_same_mapping_snapshots() {
         let mut last = String::new();
         let mut runtime = true; // currently mini
-        // First see mapping A with presentation mini → stay mini
+        // First attach: seed from presentation mini
         assert!(resolve_minimized_on_mapping_change("A", true, &mut last, &mut runtime));
         // User expands (runtime false); same mapping still presentation mini must NOT force back
         runtime = false;
         assert!(!resolve_minimized_on_mapping_change("A", true, &mut last, &mut runtime));
-        // Switch to mapping B that prefers mini → re-seed
-        assert!(resolve_minimized_on_mapping_change("B", true, &mut last, &mut runtime));
-        // Switch to mapping C that prefers full → expand
+        // Switch to MiniMax (or any) mapping that still prefers mini — keep user expand
+        assert!(!resolve_minimized_on_mapping_change("B", true, &mut last, &mut runtime));
+        // Switch again; presentation full must not fight sticky expand either
         assert!(!resolve_minimized_on_mapping_change("C", false, &mut last, &mut runtime));
+        // User minimizes; sticky across further mapping switches
+        runtime = true;
+        assert!(resolve_minimized_on_mapping_change("A", false, &mut last, &mut runtime));
     }
 }

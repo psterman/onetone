@@ -253,6 +253,36 @@ pub fn cmd_soft_pad_force_open(
     }))
 }
 
+/// Overlay placeholder chip → open Soft Pad Agent face + shell hook connect for `kind`.
+#[tauri::command]
+pub fn cmd_soft_pad_open_shell_hook(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    kind: String,
+) -> Result<(), String> {
+    use tauri::{Emitter, Manager};
+    let kind = kind.trim().to_ascii_lowercase();
+    if !matches!(kind.as_str(), "workbuddy" | "trae" | "qoder") {
+        return Err("unsupported shell agent".into());
+    }
+    {
+        let mut cfg = state.cfg.lock();
+        cfg.soft_pad_force_open = true;
+        codex_micro_overlay::clear_overlay_session_dismissed();
+        let _ = codex_micro_overlay::ensure_force_soft_pad_ready(&mut cfg);
+    }
+    if let Some(main) = app.get_webview_window("main") {
+        let _ = main.emit(
+            "to_js",
+            &serde_json::json!({
+                "type": "soft_pad_open_shell_hook",
+                "kind": kind,
+            }),
+        );
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod skin_ipc_tests {
     use crate::codex_micro_overlay::normalize_skin;

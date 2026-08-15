@@ -26,6 +26,25 @@ var sandbox = { window: {}, console: console };
 vm.runInNewContext(modelSrc, sandbox);
 var model = sandbox.window.OneToneHomeContextActionsModel;
 assert.ok(model);
+assert.ok(Array.isArray(model.SUGGEST.none) && model.SUGGEST.none.length === 0, 'idle home must not push Soft Pad agent jumps');
+assert.ok(model.SUGGEST.dictating.indexOf('input.send') >= 0);
+assert.ok(model.SUGGEST.waitingApproval.indexOf('agent.approve') >= 0);
+
+var idleBuilt = model.buildHomeContextActions({
+  needsInputKind: 'none',
+  catalogEntries: [
+    { id: 'input.start', implemented: true, labelZh: '开始听写', labelEn: 'Start', risk: 'confirm' },
+    { id: 'agent.focus', implemented: true, labelZh: '回到当前 Agent', labelEn: 'Focus', risk: 'safe' },
+    { id: 'session.new', implemented: true, labelZh: '新建任务', labelEn: 'New', risk: 'safe' }
+  ],
+  options: [
+    { actionId: 'input.start', bindable: true, executableNow: true },
+    { actionId: 'agent.focus', bindable: true, executableNow: true },
+    { actionId: 'session.new', bindable: true, executableNow: true }
+  ],
+  pending: null
+});
+assert.strictEqual(idleBuilt.actions.length, 0, 'idle home strip stays empty');
 
 var built = model.buildHomeContextActions({
   needsInputKind: 'dictating',

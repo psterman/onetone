@@ -29,6 +29,7 @@ pub mod kind {
     pub const INPUT_CAPTURED: &str = "input_captured";
     pub const INPUT_IGNORED: &str = "input_ignored";
     pub const INPUT_PARSE_MISS: &str = "input_parse_miss";
+    pub const SHELL_AGENT_STATE_CHANGED: &str = "shell_agent_state_changed";
 }
 
 #[derive(Debug, Clone, serde::Serialize)]

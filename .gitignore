@@ -7,9 +7,13 @@ src/assets/islands/
 # Rust / Tauri — Cargo 默认 target 与自定义 --target-dir（如 target-release-live、target-codex-check）
 src-tauri/target*/
 target/
+/target-*/
 dist/
 build/
 src-tauri/gen/
+
+# remotion-videos 里本地 agent 装的 skills（常是坏 junction，污染 git status）
+remotion-videos/.claude/
 
 # 误在 src-tauri/ 下再套一层工程/target（错误 cwd 或 --target-dir）
 src-tauri/src-tauri/

@@ -324,6 +324,9 @@ pub fn channel_id_from_kind(source: &str, kind_str: &str) -> Option<&'static str
     {
         return Some("keys");
     }
+    if source == "shell_agent" || kind_str == kind::SHELL_AGENT_STATE_CHANGED {
+        return Some("softPad");
+    }
     None
 }
 

@@ -705,6 +705,41 @@
     }catch(_){}
   }
 
+  /** Home: toggle in place; Alt/Shift opens camera settings (avoid leaving home by default). */
+  function toggleAutoMuteFromHero(e){
+    e=e||{};
+    if(e.altKey||e.shiftKey){
+      openAutoMute();
+      return;
+    }
+    try{
+      var am=global.OneToneCameraAutoMute;
+      if(!am||typeof am.getSettings!=='function'||typeof am.writeSettings!=='function'){
+        openAutoMute();
+        return;
+      }
+      if(typeof am.isCameraLiveForAutoMute==='function'&&!am.isCameraLiveForAutoMute()){
+        if(typeof am.ensureAutoMuteCameraGate==='function') am.ensureAutoMuteCameraGate({toast:true});
+        else{
+          var msg=t('cameraAutoMuteNeedCameraOn');
+          try{ if(global.OneToneApp&&global.OneToneApp.toast) global.OneToneApp.toast(msg); }catch(_){}
+        }
+        try{ renderHeroMicStrip(); }catch(_){}
+        return;
+      }
+      var settings=am.getSettings()||{};
+      var next=!settings.enabled;
+      am.writeSettings(Object.assign({},settings,{enabled:next}));
+      if(!next&&typeof am.ensureAutoMuteCameraGate==='function'){
+        // no-op; keep disabled cleanly
+      }
+      if(typeof am.syncUi==='function') am.syncUi();
+      try{ renderHeroMicStrip(); }catch(_){}
+    }catch(_){
+      openAutoMute();
+    }
+  }
+
   function ensureLevelBars(el,cls,count){
     if(!el) return;
     var bars=el.querySelector('.'+cls);
@@ -782,6 +817,7 @@
       autoMute.classList.toggle('is-on',on);
       autoMute.classList.toggle('is-blocked',blocked&&!on);
       autoMute.setAttribute('aria-pressed',on?'true':'false');
+      autoMute.title=t('micUiAutoMuteTip');
     }
     hub.title=(st.deviceName||'')+' · '+st.label;
     if(micLevelUiVisible()&&!micPollTimer) startMicLevelPoll();
@@ -859,6 +895,9 @@
         e.preventDefault();
         openMicPicker();
       }else if(act==='automute'){
+        e.preventDefault();
+        toggleAutoMuteFromHero(e);
+      }else if(act==='automute-settings'){
         e.preventDefault();
         openAutoMute();
       }else if(act==='refresh'){

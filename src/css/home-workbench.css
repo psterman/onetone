@@ -304,9 +304,15 @@ html[data-theme="dark"] .wb-sidebar-status {
   width: min(100%, 420px);
   margin: 4px auto 0;
   padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--outline-variant) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 55%, transparent);
   border-radius: 16px;
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  background: color-mix(in srgb, var(--surface-high, var(--surface)) 92%, transparent);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.wb-hero-mic.is-muted {
+  border-color: color-mix(in srgb, #f59e0b 28%, var(--outline-variant));
+  background: color-mix(in srgb, #f59e0b 5%, var(--surface-high, var(--surface)));
 }
 
 .wb-hero-mic-status {
@@ -363,11 +369,6 @@ html[data-theme="dark"] .wb-sidebar-status {
 .wb-hero-mic.is-checking .wb-hero-mic-dot {
   background: var(--primary, #2a9cc4);
   animation: wb-pulse 1.4s ease-in-out infinite;
-}
-
-.wb-hero-mic.is-muted {
-  border-color: color-mix(in srgb, #f59e0b 45%, var(--outline-variant));
-  background: color-mix(in srgb, #f59e0b 8%, var(--surface));
 }
 
 .wb-hero-mic-copy {

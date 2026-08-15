@@ -28,8 +28,8 @@ const autoMuteJs = readFileSync(join(root, 'src/js/features/camera/camera-auto-m
 assert.ok(/ensureAutoMuteCameraGate/.test(autoMuteJs), 'camera gate for auto-mute present');
 assert.ok(/isCameraLiveForAutoMute/.test(autoMuteJs), 'live-camera check present');
 assert.ok(/next&&!isCameraLiveForAutoMute/.test(autoMuteJs), 'enable toggle blocked without camera');
-assert.ok(/ensureAutoMuteCameraGate/.test(micJs), 'hero openAutoMute applies camera gate');
-assert.ok(/cameraAutoMuteNeedCameraOn/.test(i18n), 'need-camera i18n present');
+assert.ok(/toggleAutoMuteFromHero/.test(micJs), 'home auto-mute toggles in place');
+assert.ok(/micUiAutoMuteTip/.test(i18n), 'auto-mute tip i18n present');
 assert.ok(/\.wb-hero-mic\s*\{[\s\S]*?border-radius:\s*16px/.test(css), 'hero mic is one card surface');
 
 console.log('ok: hero mic strip');

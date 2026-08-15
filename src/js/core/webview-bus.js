@@ -117,6 +117,17 @@
         }
         return;
       }
+      if(msg.type==='soft_pad_open_shell_hook'){
+        try{
+          if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.setPanel){
+            global.OneToneSettingsDrawer.setPanel('softPad');
+          }
+          if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.openShellHookConnect){
+            global.OneToneSoftPadHub.openShellHookConnect(msg.kind);
+          }
+        }catch(_){}
+        return;
+      }
       if(msg.type==='soft_pad_decision_changed'||msg.type==='soft_pad_runtime'){
         if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.ingestSoftPadRuntimeSnapshot){
           var body=msg.softPad||msg.snapshot||msg;

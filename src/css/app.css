@@ -8400,25 +8400,29 @@
       box-shadow:0 12px 28px rgba(0,0,0,.4);
     }
     html[data-theme="dark"] .toast-type-lite{box-shadow:0 6px 18px rgba(0,0,0,.28)}
+    /* Non-blocking corner tip — never cover the whole UI. */
     .voice-setup-overlay{
-      position:fixed;inset:0;z-index:13000;display:flex;align-items:center;justify-content:center;
-      padding:20px;background:rgba(15,23,42,.48);backdrop-filter:blur(2px);
-      pointer-events:auto;
+      position:fixed;inset:auto 16px 16px auto;z-index:12000;
+      display:flex;align-items:flex-end;justify-content:flex-end;
+      padding:0;background:transparent;backdrop-filter:none;
+      pointer-events:none;max-width:min(92vw,360px);
     }
     .voice-setup-overlay[hidden]{display:none!important}
     .voice-setup-overlay-card{
-      width:min(92vw,420px);padding:20px 18px 16px;border-radius:14px;
-      background:var(--surface-high,#fff);border:1px solid rgba(245,158,11,.35);
-      box-shadow:0 18px 48px rgba(0,0,0,.28);display:grid;gap:10px;
+      width:100%;padding:14px 14px 12px;border-radius:14px;
+      background:var(--surface-high,#fff);border:1px solid rgba(245,158,11,.4);
+      box-shadow:0 12px 32px rgba(15,23,42,.18);display:grid;gap:8px;
       pointer-events:auto;
     }
-    .voice-setup-overlay-title{margin:0;font-size:16px;font-weight:800;color:#9a3412}
-    .voice-setup-overlay-msg{margin:0;font-size:13px;line-height:1.5;color:var(--on-surface-muted,#57534e)}
+    .voice-setup-overlay-title{margin:0;font-size:13px;font-weight:800;color:#9a3412}
+    .voice-setup-overlay-msg{margin:0;font-size:12px;line-height:1.45;color:var(--on-surface-muted,#57534e)}
     .voice-setup-overlay-progress{margin-top:2px}
-    .voice-setup-overlay-status{margin:0;font-size:12px;color:#9a3412}
-    .voice-setup-overlay-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+    .voice-setup-overlay-status{margin:0;font-size:11px;color:#9a3412}
+    .voice-setup-overlay-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+    .voice-setup-overlay-actions .btn{font-size:12px;padding:6px 10px;min-height:30px}
     html[data-theme="dark"] .voice-setup-overlay-card{
       background:var(--surface-high,#1e293b);border-color:rgba(251,191,36,.28);
+      box-shadow:0 12px 32px rgba(0,0,0,.4);
     }
     html[data-theme="dark"] .voice-setup-overlay-title,
     html[data-theme="dark"] .voice-setup-overlay-status{color:#fdba74}

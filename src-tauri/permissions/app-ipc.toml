@@ -136,6 +136,7 @@ permissions = [
   "allow-cmd-soft-pad-inject-lane",
   "allow-cmd-codex-micro-pad-set-flags",
   "allow-cmd-soft-pad-force-open",
+  "allow-cmd-soft-pad-open-shell-hook",
   "allow-cmd-codex-micro-pad-ensure-ready",
   "allow-cmd-codex-micro-pad-get-readiness",
   "allow-cmd-codex-status-lights-set",

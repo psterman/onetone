@@ -71,11 +71,11 @@
           <span class="overlay-mini__fresh" id="miniUsageFresh" hidden aria-hidden="true">●</span>
           <div class="overlay-mini__quota-dd" id="miniQuotaDropdown" hidden role="menu" aria-label="Provider 用量"></div>
         </span>
-        <button type="button" class="overlay-mini__btn overlay-mini__btn--expand" data-act="expand" title="展开" aria-label="展开浮窗">
-          <span class="overlay-mini__switch" aria-hidden="true">
-            <span class="overlay-mini__switch-track"></span>
-            <span class="overlay-mini__switch-thumb"></span>
-          </span>
+        <button type="button" class="overlay-mini__btn overlay-mini__btn--expand" data-act="expand" title="展开 Soft Pad" aria-label="展开 Soft Pad">
+          <svg class="overlay-mini__expand-icon" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+            <path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+              d="M2 4.5V2h2.5M8.5 2H11v2.5M11 8.5V11H8.5M4.5 11H2V8.5"/>
+          </svg>
         </button>
         <button type="button" class="overlay-mini__btn" data-act="close" title="关闭" aria-label="关闭">×</button>
       </div>
@@ -702,7 +702,10 @@
     }
 
     function chipFocusActionLine(kind){
-      return '悬停预览用量 · 点击跳转 '+agentLabel(kind);
+      var name=agentLabel(kind);
+      // Mini: hover previews chill; full Soft Pad tip is already the hover surface.
+      if(localMinimized) return '悬停预览用量 · 点击跳转 '+name;
+      return '点击跳转 '+name;
     }
 
     function chipFailureHonestyLine(state){
@@ -745,6 +748,7 @@
     function deepseekBalanceCaption(usage){ return providerBalanceCaption(usage); }
 
     function agentLabel(kind){
+      kind=String(kind||'').trim();
       if(kind==='claude') return 'Claude';
       if(kind==='cursor') return 'Cursor';
       if(kind==='copilotCli'||kind==='copilot') return 'Copilot';
@@ -753,7 +757,11 @@
       if(kind==='workbuddy') return 'WorkBuddy';
       if(kind==='trae') return 'Trae';
       if(kind==='qoder') return 'Qoder';
-      return 'Codex';
+      if(kind==='cline') return 'Cline';
+      if(kind==='opencode') return 'OpenCode';
+      if(kind==='aider') return 'Aider';
+      if(kind==='codex') return 'Codex';
+      return kind||'Codex';
     }
 
     var SHELL_LIGHT_AGENTS={workbuddy:1,trae:1,qoder:1}; // retained for connect CTAs / tips
@@ -870,7 +878,9 @@
     }
 
     /**
-     * Chip tip: status + action only. Model/quota live on chill pill — avoid duplicate dump.
+     * Chip tip: status + short usage basics + action.
+     * Full Soft Pad used to dump all quota on the bottom caption only and never
+     * previewed the hovered agent there — tip felt empty.
      */
     function cursorChipTipText(row,usage,state){
       row=row||{};
@@ -880,6 +890,8 @@
       lines.push(label);
       var fail=chipFailureHonestyLine(state);
       if(fail) lines.push(fail);
+      var summary=usageSummary('cursor',usage,true,row,null);
+      if(summary) lines.push(summary);
       lines.push(chipFocusActionLine('cursor'));
       var tip=lines.join('\n');
       return { tip: tip, aria: label+'，'+chipFocusActionLine('cursor'), lines: lines };
@@ -929,19 +941,21 @@
       if(footEl) footEl.textContent=lines[lines.length-1]||'';
     }
 
-    /** Mini hover: preview this agent's chill. Never rank/reorder/jump. */
+    /** Hover preview: swap chill / bottom caption to this agent. Never rank/reorder/jump. */
     function pinUsageFocusOnHover(kind){
       kind=String(kind||'').trim();
-      if(!isUsageFocusKind(kind)) return;
+      if(!kind) return;
       if(hoverUsageKind===kind) return;
       hoverUsageKind=kind;
       applyMiniUsagePill(lastSnap||{});
+      if(!localMinimized) applyUsageCaptionIdle(lastSnap||{});
     }
 
     function clearHoverUsagePreview(){
       if(!hoverUsageKind) return;
       hoverUsageKind='';
       applyMiniUsagePill(lastSnap||{});
+      if(!localMinimized) applyUsageCaptionIdle(lastSnap||{});
     }
 
     function showAgentTip(anchor, lines){
@@ -982,27 +996,38 @@
       el.addEventListener('pointerenter',function(){
         var kind=String(el.getAttribute('data-agent')||'').trim();
         var isMiniChip=!!(el.classList&&el.classList.contains('overlay-mini__agent'));
-        if(localMinimized&&isMiniChip&&kind&&el.getAttribute('data-placeholder')!=='1'){
+        var isPadChip=!!(el.classList&&el.classList.contains('soft-pad-agent-bar__chip'));
+        if(kind&&el.getAttribute('data-placeholder')!=='1'&&(isMiniChip||isPadChip)){
           pinUsageFocusOnHover(kind);
+        }
+        if(kind&&el.getAttribute('data-placeholder')!=='1'){
+          var row=(lastSnap&&Array.isArray(lastSnap.agents)?lastSnap.agents:[]).find(function(r){
+            return String(r&&r.kind||'')===kind;
+          })||{};
+          var st=String(el.getAttribute('data-status')||row.state||'idle');
+          el.__tipLines=agentChipTipLines(kind,row,row.usage||{},st,lastSnap||{});
         }
         showAgentTip(el, el.__tipLines||[]);
       });
       el.addEventListener('pointerleave',function(){
         var isMiniChip=!!(el.classList&&el.classList.contains('overlay-mini__agent'));
-        if(isMiniChip) clearHoverUsagePreview();
+        var isPadChip=!!(el.classList&&el.classList.contains('soft-pad-agent-bar__chip'));
+        if(isMiniChip||isPadChip) clearHoverUsagePreview();
         hideAgentTip();
       });
       el.addEventListener('focus',function(){
         var kind=String(el.getAttribute('data-agent')||'').trim();
         var isMiniChip=!!(el.classList&&el.classList.contains('overlay-mini__agent'));
-        if(localMinimized&&isMiniChip&&kind&&el.getAttribute('data-placeholder')!=='1'){
+        var isPadChip=!!(el.classList&&el.classList.contains('soft-pad-agent-bar__chip'));
+        if(kind&&el.getAttribute('data-placeholder')!=='1'&&(isMiniChip||isPadChip)){
           pinUsageFocusOnHover(kind);
         }
         showAgentTip(el, el.__tipLines||[]);
       });
       el.addEventListener('blur',function(){
         var isMiniChip=!!(el.classList&&el.classList.contains('overlay-mini__agent'));
-        if(isMiniChip) clearHoverUsagePreview();
+        var isPadChip=!!(el.classList&&el.classList.contains('soft-pad-agent-bar__chip'));
+        if(isMiniChip||isPadChip) clearHoverUsagePreview();
         hideAgentTip();
       });
     }
@@ -1014,6 +1039,13 @@
       var lines=[agentLabel(kind)+'：'+lightStatusLabel(state)];
       var fail=chipFailureHonestyLine(state);
       if(fail) lines.push(fail);
+      var summary=usageSummary(kind,usage||{},true,row,s);
+      if(summary){
+        lines.push(summary);
+      }else{
+        var bits=usageLineBits(kind,usage||{},row,s);
+        if(bits.length) lines.push(bits.slice(0,2).join(' · '));
+      }
       lines.push(chipFocusActionLine(kind));
       return lines;
     }
@@ -1269,7 +1301,8 @@
       function hasRenderable(kind){
         return isRenderableUsage(kind,(byKind[kind]||{}).usage||{});
       }
-      if(hoverUsageKind&&isUsageFocusKind(hoverUsageKind)) return hoverUsageKind;
+      // Hover preview wins even when that agent has no renderable usage yet.
+      if(hoverUsageKind) return hoverUsageKind;
       if(usageFocusPinned&&focusedUsageAgent&&hasRenderable(focusedUsageAgent)) return focusedUsageAgent;
       var fg=String(s&&(s.foregroundAgent||s.foreground_agent)||'').trim().toLowerCase();
       if(fg&&hasRenderable(fg)) return fg;
@@ -1293,10 +1326,12 @@
 
     function isUsageFocusKind(kind){
       return kind==='codex'||kind==='claude'||kind==='cursor'||kind==='minimax'||
-        kind==='workbuddy'||kind==='trae'||kind==='qoder';
+        kind==='workbuddy'||kind==='trae'||kind==='qoder'||
+        kind==='cline'||kind==='opencode'||kind==='aider'||kind==='copilotCli'||kind==='gemini';
     }
 
     function resolveUsageFocus(s){
+      if(hoverUsageKind) return hoverUsageKind;
       if(usageFocusPinned&&isUsageFocusKind(focusedUsageAgent)){
         return focusedUsageAgent;
       }
@@ -1561,7 +1596,10 @@
       var Rank=window.OneToneSoftPadAgentBarRank;
       var row=byKind[kind]||{};
       var lightsOn = !!(row.lightsEnabled || row.lights_enabled);
-      var asPlaceholder = !lightsOn && Rank && Rank.isPlaceholderKind && Rank.isPlaceholderKind(kind);
+      var hookCfg=row.hookConfigured;
+      if(hookCfg===undefined) hookCfg=row.hook_configured;
+      var shellUnconfigured=(kind==='workbuddy'||kind==='trae'||kind==='qoder')&&hookCfg===false;
+      var asPlaceholder = shellUnconfigured || (!lightsOn && Rank && Rank.isPlaceholderKind && Rank.isPlaceholderKind(kind));
       if(asPlaceholder){
         el.setAttribute('data-placeholder', '1');
         el.setAttribute('data-status', 'idle');
@@ -1570,8 +1608,9 @@
         el.removeAttribute('data-lane-id');
         el.removeAttribute('data-session-id');
         el.setAttribute('aria-pressed', 'false');
-        el.setAttribute('aria-label', agentLabel(kind)+'：占位');
-        el.removeAttribute('title');
+        el.hidden=false;
+        el.setAttribute('aria-label', agentLabel(kind)+'：未配置 Hook');
+        el.setAttribute('title', '未配置 Hook · 点击去 Soft Pad 安装');
         el.__tipLines=null;
         return;
       }
@@ -2843,7 +2882,14 @@
         el.addEventListener('click',function(e){
           e.preventDefault();
           e.stopPropagation();
-          if(el.getAttribute('data-placeholder')==='1') return;
+          if(el.getAttribute('data-placeholder')==='1'){
+            var pk=String(el.getAttribute('data-agent')||'');
+            if(pk==='workbuddy'||pk==='trae'||pk==='qoder'){
+              toast('打开 Soft Pad 接入 '+agentLabel(pk));
+              invoke('cmd_soft_pad_open_shell_hook',{kind:pk}).catch(function(){});
+            }
+            return;
+          }
           setUsageFocusFromUi(el.getAttribute('data-agent'),{
             laneId:el.getAttribute('data-lane-id')||'',
             sessionId:el.getAttribute('data-session-id')||'',
@@ -2853,7 +2899,13 @@
         el.addEventListener('keydown',function(e){
           if(e.key==='Enter'||e.key===' '){
             e.preventDefault();
-            if(el.getAttribute('data-placeholder')==='1') return;
+            if(el.getAttribute('data-placeholder')==='1'){
+              var pk=String(el.getAttribute('data-agent')||'');
+              if(pk==='workbuddy'||pk==='trae'||pk==='qoder'){
+                invoke('cmd_soft_pad_open_shell_hook',{kind:pk}).catch(function(){});
+              }
+              return;
+            }
             setUsageFocusFromUi(el.getAttribute('data-agent'),{
               laneId:el.getAttribute('data-lane-id')||'',
               sessionId:el.getAttribute('data-session-id')||'',

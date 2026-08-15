@@ -927,9 +927,9 @@
         codexStatusLightsEnabled: false,
         claudeStatusLightsEnabled: false,
         cursorStatusLightsEnabled: false,
-        workbuddyStatusLightsEnabled: false,
-        traeStatusLightsEnabled: false,
-        qoderStatusLightsEnabled: false,
+        workbuddyStatusLightsEnabled: true,
+        traeStatusLightsEnabled: true,
+        qoderStatusLightsEnabled: true,
         minimaxStatusLightsEnabled: false,
         copilotStatusLightsEnabled: false,
         geminiStatusLightsEnabled: false,
@@ -999,13 +999,13 @@
       m.codexMicroPad.cursorStatusLightsEnabled = false;
     }
     if (m.codexMicroPad.workbuddyStatusLightsEnabled == null) {
-      m.codexMicroPad.workbuddyStatusLightsEnabled = false;
+      m.codexMicroPad.workbuddyStatusLightsEnabled = true;
     }
     if (m.codexMicroPad.traeStatusLightsEnabled == null) {
-      m.codexMicroPad.traeStatusLightsEnabled = false;
+      m.codexMicroPad.traeStatusLightsEnabled = true;
     }
     if (m.codexMicroPad.qoderStatusLightsEnabled == null) {
-      m.codexMicroPad.qoderStatusLightsEnabled = false;
+      m.codexMicroPad.qoderStatusLightsEnabled = true;
     }
     if (m.codexMicroPad.minimaxStatusLightsEnabled == null) {
       m.codexMicroPad.minimaxStatusLightsEnabled = false;
@@ -3468,6 +3468,10 @@
       esc(t('softPadAgentLightsLegend',
         '灰=空闲 · 蓝=忙 · 琥珀=等你 · 绿=完成 · 红=失败')) +
       '</p>' +
+      '<p class="codex-pad-mgr__hint soft-pad-agent-light-matrix">' +
+      esc(t('softPadAgentLightsMatrix',
+        '精度：Cursor/Claude/Codex/MiniMax 高（Hook/活动）；WorkBuddy/Trae/Qoder 中（进程+mtime，Hook 补全）；Cline/OpenCode/Aider 中（仅 Hook）。Shell 三端需装 Hook 才完整，未装显示未配置。')) +
+      '</p>' +
       '<p class="codex-pad-mgr__hint is-error" data-topbar-lights-error hidden></p>' +
       '</article>'
     );
@@ -3565,6 +3569,10 @@
       '<p class="codex-pad-mgr__hint soft-pad-agent-light-legend">' +
       esc(t('softPadAgentLightsLegend',
         '灰=空闲 · 蓝=忙 · 琥珀=等你 · 绿=完成 · 红=失败')) +
+      '</p>' +
+      '<p class="codex-pad-mgr__hint soft-pad-agent-light-matrix">' +
+      esc(t('softPadAgentLightsMatrix',
+        '精度：Cursor/Claude/Codex/MiniMax 高（Hook/活动）；WorkBuddy/Trae/Qoder 中（进程+mtime，Hook 补全）；Cline/OpenCode/Aider 中（仅 Hook）。Shell 三端需装 Hook 才完整，未装显示未配置。')) +
       '</p>' +
       '<p class="codex-pad-mgr__hint" data-agent-lights-empty' + (anyOn ? ' hidden' : '') + '>' +
       esc(t('softPadAgentLightsEmpty',

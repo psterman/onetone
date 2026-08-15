@@ -1186,8 +1186,8 @@
       overlay=document.createElement('div');
       overlay.id='voiceSetupOverlay';
       overlay.className='voice-setup-overlay';
-      overlay.setAttribute('role','dialog');
-      overlay.setAttribute('aria-modal','true');
+      overlay.setAttribute('role','status');
+      overlay.setAttribute('aria-live','polite');
       overlay.innerHTML=
         '<div class="voice-setup-overlay-card">'+
           '<p class="voice-setup-overlay-title" id="voiceSetupOverlayTitle"></p>'+
@@ -1204,13 +1204,19 @@
     }else if(overlay.parentNode!==document.body){
       document.body.appendChild(overlay);
     }
-    overlay.style.zIndex='13000';
+    overlay.removeAttribute('aria-modal');
+    overlay.setAttribute('role','status');
+    overlay.setAttribute('aria-live','polite');
+    // Corner tip styles live in CSS — do not force fullscreen via inline styles.
+    overlay.style.removeProperty('inset');
+    overlay.style.removeProperty('background');
+    overlay.style.zIndex='12000';
     overlay.style.position='fixed';
     return overlay;
   }
 
   function ensureVoiceSetupSticky(){
-    // Sticky bar removed — single overlay dialog only.
+    // Sticky bar removed — single corner tip only.
     var bar=document.getElementById('voiceSetupSticky');
     if(bar&&bar.parentNode) bar.parentNode.removeChild(bar);
     return null;
@@ -1234,6 +1240,7 @@
     const overlay=ensureVoiceSetupOverlay();
     overlay.hidden=false;
     overlay.removeAttribute('hidden');
+    // Flex only on the tip host — never a full-screen blocker.
     overlay.style.setProperty('display','flex','important');
   }
 

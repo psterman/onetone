@@ -24,7 +24,18 @@ Hub **不会**在打开 WorkBuddy / Trae 时自动创建虚拟键盘。需：
 
 ## 顶栏状态灯（6 盏）
 
-Agent / 更多 面板可开关 Codex / Claude / Cursor / WorkBuddy / Trae / Qoder 的状态灯。Shell 三端默认关闭；开启后顶栏出现对应图标，并需在下方 **接入** Shell Hook 后灯才会随生命周期变化。
+Agent / 更多 面板可开关 Codex / Claude / Cursor / WorkBuddy / Trae / Qoder 的状态灯。Shell 三端（WorkBuddy / Trae / Qoder）默认开启；顶栏出现对应图标，并需在下方 **接入** Shell Hook 后灯才会随生命周期变化。
+
+### Hook 精度（诚实口径）
+
+```text
+Hook schema 与 Claude 同构（running / needs_input / done / error）
+但 WorkBuddy / Trae / Qoder 当前实现主要发 SessionStart / End
+→ 仅 Hook：灯实际仍是「在跑 / 不在跑」2 态
+→ 加 Process Fallback 后：在跑·工作中 / 在跑·静默 / 进程不在
+```
+
+进程探测：约 3s；配置目录 mtime 忙阈值 **60s**（长输出可能更慢）；未装 Hook 时顶栏显示「未配置」placeholder，可点进 Soft Pad 接入。
 
 ## Soft Pad Hub 接入状态（推荐）
 

@@ -20,6 +20,10 @@ pub use adapters::codex::{
 };
 pub use adapters::hid::{plan_from_pad as plan_hid_output, HidOutputIntent};
 pub use adapters::shell_agent::{agent_kind_from_hook_source, ingest_shell_agent_payload};
+pub use adapters::shell_agent_process::{
+    hook_configured as shell_hook_configured, invalidate_hook_configured_cache,
+    start_shell_agent_process_poll, sync_shell_inferred_lifecycle,
+};
 pub use adapters::soft_rgb::{
     apply_rgb_opacity, parse_hex_rgb, rgb_for_ambient, rgb_for_ambient_full, rgb_for_pad,
     rgb_for_pad_ambient, rgb_for_ui_status, rgb_for_ui_status_with_palette, ui_status_from_pad,
@@ -30,7 +34,7 @@ pub use log::{log_path, tail_events, PadStatusLogRow};
 pub use model::{Confidence, PadSource, PadState, PadStatus, PadStatusCandidate, PAD_SOURCE_RANK};
 pub use store::{
     apply_candidate, apply_inferred, apply_native_slot, current, fresh_signal, fresh_signal_at,
-    snapshot, snapshot_at,
+    snapshot, snapshot_at, SHELL_AGENT_MTIME_BUSY_MS,
 };
 
 #[cfg(test)]

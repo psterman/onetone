@@ -4435,6 +4435,13 @@
     requestOverlayUsageForScope(selectedScopeId);
   }
 
+  function openShellHookConnect(kind) {
+    kind = String(kind || '').trim().toLowerCase();
+    if (kind !== 'workbuddy' && kind !== 'trae' && kind !== 'qoder') return;
+    selectScope(kind, { fromUser: true, rebuildList: true, forceRemount: true });
+    setSoftPadFace('agent', { fromUser: true });
+  }
+
   function renderSchemeRow(entry) {
     var hasMap = !!(entry.mapping && entry.mapping.id);
     var active = false;
@@ -5486,6 +5493,7 @@
     getCachedSoftPadRuntime: getCachedSoftPadRuntime,
     LANE_FG_TTL_MS: LANE_FG_TTL_MS,
     LANE_WAIT_TTL_MS: LANE_WAIT_TTL_MS,
+    openShellHookConnect: openShellHookConnect,
     pickHubDefaultScopeId: pickHubDefaultScopeId,
     pickHubDefaultEntry: pickHubDefaultEntry,
     // P10: exposed for React island toggle delegation
