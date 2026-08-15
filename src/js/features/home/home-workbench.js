@@ -198,6 +198,7 @@
     if(!action) return '';
     if(action.type==='dismissLastStall') return t('homeWbAlertLastStallDismiss','知道了');
     if(action.type==='resumeListening') return t('homeWbAlertActionResume');
+    if(action.type==='enableAutoListening') return t('homeWbAlertActionEnableAuto');
     if(action.type==='openSettings'){
       if(action.panel==='voiceWake') return t('homeWbAlertActionVoice');
       if(action.panel==='keys') return t('homeWbAlertActionKeys');
@@ -214,6 +215,16 @@
     }
     if(action.type==='resumeListening'){
       if(global.OneToneIpc) global.OneToneIpc.invoke('cmd_resume',{}).catch(function(){});
+      return;
+    }
+    if(action.type==='enableAutoListening'){
+      var wake=global.OneToneVoiceWake;
+      if(wake&&typeof wake.switchListeningStrategy==='function'){
+        Promise.resolve(wake.switchListeningStrategy('auto',{ force:true }))
+          .catch(function(){});
+      }else if(global.OneToneIpc){
+        global.OneToneIpc.invoke('cmd_voice_set_listening_strategy',{ strategy:'auto' }).catch(function(){});
+      }
       return;
     }
     if(action.type==='openSettings'){
@@ -578,6 +589,56 @@
     }
   }
 
+  function syncHeroMicCard(projection){
+    var engineBtn=$('wbHeroMicEngine');
+    var engineLbl=$('wbHeroMicEngineLabel');
+    var listenBtn=$('wbBtnListenToggle');
+    var listenLbl=$('wbBtnListenToggleLabel');
+    var mode=projection&&projection.mode?projection.mode:heroMode;
+    var inVoiceOrKeys=mode==='voice'||mode==='keys';
+    var pills=(projection&&projection.pills)||[];
+    var vm=projection&&projection._vm?projection._vm:{};
+    var paused=!!(vm.runtime&&vm.runtime.paused);
+    var engine=null;
+    var micFull='';
+    pills.forEach(function(pill){
+      if(!pill) return;
+      if(pill.id==='mic') micFull=String(pill.label||'');
+      if(pill.id==='engine'||pill.id==='engine-off') engine=pill;
+    });
+    if(engineBtn){
+      if(!inVoiceOrKeys||!engine){
+        engineBtn.hidden=true;
+      }else{
+        engineBtn.hidden=false;
+        var engOk=(engine.tone||'').indexOf('is-ok')>=0;
+        var engOff=engine.id==='engine-off'||(engine.tone||'').indexOf('is-muted')>=0;
+        engineBtn.classList.toggle('is-warn',!engOk&&!engOff);
+        engineBtn.classList.toggle('is-off',!!engOff);
+        if(engineLbl) engineLbl.textContent=engine.label||'—';
+        var tip=engine.label||'';
+        if(micFull) tip=String(engine.label)+' · '+micFull;
+        engineBtn.title=tip+' · '+t('homeWbFlowCtaVoice','打开语音设置');
+      }
+    }
+    if(listenBtn){
+      if(!inVoiceOrKeys){
+        listenBtn.hidden=true;
+      }else{
+        listenBtn.hidden=false;
+        listenBtn.classList.toggle('is-paused',paused);
+        listenBtn.setAttribute('aria-pressed',paused?'true':'false');
+        var tipText=paused?t('homeWbListenResumeTip'):t('homeWbListenPauseTip');
+        if(global.OneToneHoverTip&&global.OneToneHoverTip.setText){
+          global.OneToneHoverTip.setText(listenBtn, tipText);
+        }else{
+          listenBtn.setAttribute('data-ot-tip', tipText);
+        }
+        if(listenLbl) listenLbl.textContent=paused?t('homeWbListenResume'):t('homeWbListenPause');
+      }
+    }
+  }
+
   function renderHeroPills(projection,stats){
     var host=$('wbHeroPills');
     if(!host) return;
@@ -587,6 +648,7 @@
     var vm=projection&&projection._vm?projection._vm:{};
 
     if(mode==='camera'||mode==='softPad'){
+      syncHeroMicCard(projection);
       var statusPill=null;
       var ctaPill=null;
       pills.forEach(function(pill){
@@ -606,43 +668,24 @@
         html+='<button type="button" class="wb-hero-pill wb-hero-pill-listen is-solo" id="'+ctaId+'" title="'+esc(ctaPill.label)+'">'
           +'<span>'+esc(ctaPill.label)+'</span></button>';
       }
+      host.hidden=!html;
       host.innerHTML=html;
       return;
     }
 
-    var paused=!!(vm.runtime&&vm.runtime.paused);
-    var micFull='';
-    pills.forEach(function(pill){
-      if(pill&&pill.id==='mic') micFull=String(pill.label||'');
-    });
+    // voice / keys: engine + listen live inside #wbHeroMic card
+    syncHeroMicCard(projection);
     pills.forEach(function(pill){
       if(!pill) return;
-      if(pill.id==='engine'||pill.id==='engine-off'){
-        var tip=pill.label;
-        if(micFull) tip=String(pill.label)+' · '+micFull;
-        if(pill.id==='engine'){
-          var engOk=(pill.tone||'').indexOf('is-ok')>=0;
-          html+='<span class="wb-hero-pill is-engine'+(engOk?' is-ok':' is-warn')+'" role="listitem" title="'+esc(tip)+'">'
-            +'<span class="wb-hero-pill-dot '+(engOk?'is-ok':'is-warn')+'" aria-hidden="true"></span>'
-            +'<span>'+esc(pill.label)+'</span></span>';
-        }else{
-          html+='<span class="wb-hero-pill is-muted" role="listitem" title="'+esc(tip)+'"><span>'+esc(pill.label)+'</span></span>';
-        }
-        return;
-      }
+      if(pill.id==='engine'||pill.id==='engine-off'||pill.id==='mic') return;
+      if(pill.action==='listen-toggle') return;
       if(pill.id==='trigger-key'){
         html+=pillHtml(pill.label,'is-key','');
-        return;
       }
-      if(pill.action==='listen-toggle'){
-        html+='<button type="button" class="wb-hero-pill wb-hero-pill-listen is-solo'+(paused?' is-paused':'')+'" id="wbBtnListenToggle" aria-pressed="'+(paused?'true':'false')+'" data-ot-tip="'+esc(paused?t('homeWbListenResumeTip'):t('homeWbListenPauseTip'))+'">'
-          +'<span id="wbBtnListenToggleLabel">'+esc(pill.label)+'</span></button>';
-        return;
-      }
-      if(pill.id==='mic') return; // device name lives on engine pill title
     });
 
     if(stats&&stats.latency&&stats.latency!=='—') html+=pillHtml(stats.latency,'is-latency','');
+    host.hidden=!html;
     host.innerHTML=html;
   }
 
@@ -942,8 +985,21 @@
     liveEl.removeAttribute('data-ot-tip');
     if(vm.live&&vm.live.placeholder){
       var hintKey=vm.live.hintKey||'homeWbLiveIdleHint';
+      var hintAction=vm.live.hintAction||null;
       liveEl.classList.add('is-placeholder');
-      liveEl.innerHTML='<div class="vp-empty">'+esc(t(hintKey))+'</div>';
+      var emptyHtml='<div class="vp-empty">'+esc(t(hintKey))+'</div>';
+      if(hintAction&&(hintAction.type==='resumeListening'||hintAction.type==='enableAutoListening')){
+        emptyHtml=
+          '<div class="vp-empty vp-empty--cta">'
+          +'<p class="vp-empty-text">'+esc(t(hintKey))+'</p>'
+          +'<button type="button" class="wb-live-fix-btn" data-wb-live-fix="1">'
+          +esc(alertActionLabel(hintAction))
+          +'</button></div>';
+        liveEl._liveHintAction=hintAction;
+      }else{
+        liveEl._liveHintAction=null;
+      }
+      liveEl.innerHTML=emptyHtml;
       return;
     }
     liveEl.classList.remove('is-placeholder');
@@ -1592,12 +1648,12 @@
         hideChipFlyout(true);
         return;
       }
-      var micBtn=e.target.closest&&e.target.closest('#wbVoiceChangeMic,.wb-hero-pill-mic-btn');
+      var micBtn=e.target.closest&&e.target.closest('#wbVoiceChangeMic,.wb-hero-pill-mic-btn,#wbHeroMicEngine');
       if(micBtn){
-        openSettings({panel:'voiceWake',focus:'mic'});
+        openSettings({panel:'voiceWake',focus:micBtn.id==='wbHeroMicEngine'?null:'mic'});
         return;
       }
-      var listenBtn=e.target.closest&&e.target.closest('#wbBtnListenToggle,.wb-hero-pill-listen');
+      var listenBtn=e.target.closest&&e.target.closest('#wbBtnListenToggle,.wb-hero-pill-listen,.wb-hero-mic-listen');
       if(listenBtn){
         if(listenBtn.id==='wbBtnCameraOpen'||listenBtn.closest('#wbBtnCameraOpen')){
           openSettings({panel:'camera'});
@@ -2044,6 +2100,17 @@
         var btn=e.target.closest&&e.target.closest('[data-wb-alert-action]');
         if(!btn) return;
         handleAlertAction(alertsHost._lastAlertAction);
+      });
+    }
+    var liveHost=$('wbLiveText');
+    if(liveHost&&!liveHost._wbLiveFixBound){
+      liveHost._wbLiveFixBound=true;
+      liveHost.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-wb-live-fix]');
+        if(!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        handleAlertAction(liveHost._liveHintAction);
       });
     }
     var probeBtn=$('debugDiagProbeBtn');

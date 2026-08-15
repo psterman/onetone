@@ -6,14 +6,14 @@
 
   /**
    * Home suggests next-step actions only.
-   * Idle (`none`): empty — voice readiness lives in hero mic/pills; Soft Pad owns agent jumps.
-   * Agent/dictation states: keep confirm/interrupt/focus where they belong.
+   * Idle (`none`) / agentRunning: empty — Soft Pad owns agent jumps & lights.
+   * Waiting / dictation: keep approve/reject/send where they belong.
    */
   var SUGGEST = {
     none: [],
     waitingText: ['agent.focus', 'agent.reject'],
     waitingApproval: ['agent.approve', 'agent.reject', 'agent.focus'],
-    agentRunning: ['agent.interrupt', 'agent.status', 'agent.focus'],
+    agentRunning: [],
     dictating: ['input.send', 'input.commit', 'input.cancel']
   };
 

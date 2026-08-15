@@ -209,17 +209,22 @@
                             </div>
                           </div>
                           <section class="wb-hero-mic" id="wbHeroMic" aria-live="polite">
-                            <button type="button" class="wb-hero-mic-status" id="wbHeroMicToggle" data-mic-ui-action="toggle">
-                              <span class="wb-hero-mic-dot" aria-hidden="true"></span>
-                              <span class="wb-hero-mic-copy">
-                                <strong id="wbHeroMicStatus">麦克风可用</strong>
-                                <em id="wbHeroMicGuide" hidden></em>
-                              </span>
-                              <span class="mic-level-bars mic-level-bars--hero" id="wbHeroMicBars" aria-hidden="true"></span>
-                            </button>
-                            <div class="wb-hero-mic-chips">
-                              <button type="button" class="wb-hero-mic-chip" id="wbHeroMicDevice" data-mic-ui-action="pick" title="换麦克风">—</button>
-                              <button type="button" class="wb-hero-mic-chip" id="wbHeroMicAutoMute" data-mic-ui-action="automute" data-i18n="micUiAutoMute">自动静音</button>
+                            <div class="wb-hero-mic-main">
+                              <button type="button" class="wb-hero-mic-status" id="wbHeroMicToggle" data-mic-ui-action="toggle">
+                                <span class="wb-hero-mic-dot" aria-hidden="true"></span>
+                                <span class="wb-hero-mic-copy">
+                                  <strong id="wbHeroMicStatus">麦克风可用</strong>
+                                  <em id="wbHeroMicGuide" hidden></em>
+                                </span>
+                                <span class="mic-level-bars mic-level-bars--hero" id="wbHeroMicBars" aria-hidden="true"></span>
+                              </button>
+                              <button type="button" class="wb-hero-mic-engine" id="wbHeroMicEngine" hidden title="">
+                                <span class="wb-hero-mic-engine-dot" aria-hidden="true"></span>
+                                <span id="wbHeroMicEngineLabel">—</span>
+                              </button>
+                              <button type="button" class="wb-hero-mic-listen" id="wbBtnListenToggle" hidden aria-pressed="false" data-ot-tip="">
+                                <span id="wbBtnListenToggleLabel">暂停</span>
+                              </button>
                             </div>
                           </section>
                           <div class="wb-hero-pills" id="wbHeroPills" role="list"></div>

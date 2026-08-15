@@ -786,7 +786,7 @@
     }
     var toggle=$('wbHeroMicToggle');
     if(toggle){
-      toggle.disabled=!st.canToggleMute;
+      toggle.disabled=!st.canToggleMute&&!st.canPickDevice;
       if(st.muteKnown){
         toggle.setAttribute('aria-pressed',st.muted?'true':'false');
         toggle.setAttribute('aria-label',st.muted?t('micUiUnmute'):t('micUiMute'));
@@ -794,30 +794,8 @@
         toggle.removeAttribute('aria-pressed');
         toggle.setAttribute('aria-label',t('micUiMuteChecking'));
       }
-    }
-    var device=$('wbHeroMicDevice');
-    if(device){
-      device.textContent=st.deviceName||t('micUiDeviceMissing');
-      device.title=t('micUiPick');
-    }
-    var autoMute=$('wbHeroMicAutoMute');
-    if(autoMute){
-      var on=false;
-      var blocked=false;
-      try{
-        var am=global.OneToneCameraAutoMute;
-        var settings=am&&typeof am.getSettings==='function'?am.getSettings():null;
-        on=!!(settings&&settings.enabled);
-        blocked=!(am&&typeof am.isCameraLiveForAutoMute==='function'&&am.isCameraLiveForAutoMute());
-        if(on&&blocked&&typeof am.ensureAutoMuteCameraGate==='function'){
-          am.ensureAutoMuteCameraGate({toast:false});
-          on=false;
-        }
-      }catch(_){}
-      autoMute.classList.toggle('is-on',on);
-      autoMute.classList.toggle('is-blocked',blocked&&!on);
-      autoMute.setAttribute('aria-pressed',on?'true':'false');
-      autoMute.title=t('micUiAutoMuteTip');
+      // Device name lives in title — status label stays 「麦克风可用」, not a device pill.
+      toggle.title=(st.deviceName||t('micUiDeviceMissing'))+' · '+t('micUiStatusTip');
     }
     hub.title=(st.deviceName||'')+' · '+st.label;
     if(micLevelUiVisible()&&!micPollTimer) startMicLevelPoll();
@@ -888,6 +866,11 @@
       var act=target.getAttribute('data-mic-ui-action');
       if(act==='toggle'){
         e.preventDefault();
+        // Alt/Shift → change mic (replaces the old device pill).
+        if(e.altKey||e.shiftKey){
+          openMicPicker();
+          return;
+        }
         var st=getMicUiState();
         if(!st.muteKnown||!st.canToggleMute) return;
         setMicUiMuted(!st.muted,{source:'manual'}).catch(function(){});

@@ -34,6 +34,28 @@ test('paused alone', function(){
   assert(r&&r.kind==='paused');
 });
 
+test('paused beats engine_off', function(){
+  var input=baseInput();
+  input.paused=true;
+  input.summary.engine='off';
+  assert(pick(input).kind==='paused');
+  assert(pick(input).action.type==='resumeListening');
+});
+
+test('engine_off offers enableAutoListening', function(){
+  var input=baseInput();
+  input.summary.engine='off';
+  var r=pick(input);
+  assert(r&&r.kind==='engine_off');
+  assert(r.action&&r.action.type==='enableAutoListening');
+});
+
+test('engine missing treated as off', function(){
+  var input=baseInput();
+  input.summary.engine='';
+  assert(pick(input).kind==='engine_off');
+});
+
 test('paused beats send_failed', function(){
   var input=baseInput();
   input.paused=true;

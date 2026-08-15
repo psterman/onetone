@@ -70,6 +70,15 @@
       };
     }
 
+    var eng=input.summary&&String(input.summary.engine||'');
+    if(eng==='off'||!eng){
+      return {
+        kind:'engine_off',
+        textKey:'homeWbAlertEngineOff',
+        action:{ type:'enableAutoListening' }
+      };
+    }
+
     if(isRecognitionError(input.summary, input.homeStatusMode)){
       return {
         kind:'recognition_error',

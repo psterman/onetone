@@ -430,6 +430,7 @@
       );
     }
     var paused = !!(vm && vm.runtime && vm.runtime.paused);
+    var eng = vm && vm.summary && vm.summary.engine;
     var dictating =
       (vm && vm.vpState === 'DICTATING') || !!(vm && vm.summary && vm.summary.dictating);
     var listening =
@@ -438,6 +439,7 @@
         (vm && vm.summary && vm.summary.statusMode === 'listening') ||
         (vm && vm.vpState === 'LISTENING'));
     if (paused) return t('homeWbLivePreviewPaused');
+    if (!eng || eng === 'off') return t('homeWbLivePreviewOff');
     if (listening) return t('homeWbLivePreviewListening');
     return t('homeWbLivePreviewStandby');
   }

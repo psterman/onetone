@@ -27,6 +27,8 @@ vm.runInNewContext(modelSrc, sandbox);
 var model = sandbox.window.OneToneHomeContextActionsModel;
 assert.ok(model);
 assert.ok(Array.isArray(model.SUGGEST.none) && model.SUGGEST.none.length === 0, 'idle home must not push Soft Pad agent jumps');
+assert.ok(Array.isArray(model.SUGGEST.agentRunning) && model.SUGGEST.agentRunning.length === 0,
+  'agentRunning home strip empty — Soft Pad owns interrupt/status/focus');
 assert.ok(model.SUGGEST.dictating.indexOf('input.send') >= 0);
 assert.ok(model.SUGGEST.waitingApproval.indexOf('agent.approve') >= 0);
 

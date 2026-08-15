@@ -535,10 +535,27 @@
     if(hs.triggerLabel&&hs.keyActive){
       return { finalized:'', pending:'', placeholder:true, trigger:hs.triggerLabel, hintKey:'' };
     }
+    var paused=!!(global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.runtime
+      &&global.OneToneState.state.runtime.paused);
+    // One blocker at a time: pause must not also preach "go enable Auto".
+    if(paused){
+      return {
+        finalized:'',
+        pending:'',
+        placeholder:true,
+        trigger:'',
+        hintKey:'homeWbLivePausedHint',
+        hintAction:{ type:'resumeListening' }
+      };
+    }
     var hintKey='';
+    var hintAction=null;
     if(eng==='kws') hintKey='homeWbLiveKwsNoSttHint';
-    else if(eng==='off'||!eng) hintKey='homeWbLiveEngineOffHint';
-    return { finalized:'', pending:'', placeholder:true, trigger:'', hintKey:hintKey };
+    else if(eng==='off'||!eng){
+      hintKey='homeWbLiveEngineOffHint';
+      hintAction={ type:'enableAutoListening' };
+    }
+    return { finalized:'', pending:'', placeholder:true, trigger:'', hintKey:hintKey, hintAction:hintAction };
   }
 
   function buildViewModel(){
