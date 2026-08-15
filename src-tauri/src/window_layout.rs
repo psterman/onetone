@@ -166,47 +166,48 @@ fn persist_and_log(state: &Arc<AppState>, window: &WebviewWindow, reason: &str) 
         let lock_ms = lock_t0.elapsed().as_millis() as u64;
         (changed, snap, lock_ms)
     };
-    let mut disk_ms = 0u64;
-    if let Some(cfg_snap) = snapshot.6 {
-        let disk_t0 = Instant::now();
-        config::save_config(&cfg_snap);
-        disk_ms = disk_t0.elapsed().as_millis() as u64;
-    }
-    let total_ms = t0.elapsed().as_millis() as u64;
+    // Exit HB scope before disk — sync save_config here held layout_persist 4s+ and
+    // showed as UI 假死 (Responding=false) while the window recovered after write.
     crate::ui_heartbeat::note_ipc_exit("layout_persist");
+    let capture_ms = t0.elapsed().as_millis() as u64;
     if !changed {
         return;
     }
-    crate::app_log::log_line(
-        state,
-        "window",
-        &format!(
-            "layout saved ({reason}): maximized={} size={:.0}x{:.0} pos=({}, {}) lock={}ms disk={}ms",
-            snapshot.1,
-            snapshot.2,
-            snapshot.3,
-            snapshot
-                .4
-                .map(|v| format!("{v:.0}"))
-                .unwrap_or_else(|| "-".into()),
-            snapshot
-                .5
-                .map(|v| format!("{v:.0}"))
-                .unwrap_or_else(|| "-".into()),
-            lock_ms,
-            disk_ms,
-        ),
-    );
-    // #region agent log
-    let ts = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis())
-        .unwrap_or(0);
-    crate::app_log::append_debug_session_ndjson(&format!(
-        "{{\"sessionId\":\"b5f349\",\"runId\":\"post-fix\",\"hypothesisId\":\"L1\",\"location\":\"window_layout.rs:persist\",\"message\":\"layout persist\",\"data\":{{\"reason\":\"{reason}\",\"changed\":true,\"lockMs\":{lock_ms},\"diskMs\":{disk_ms},\"totalMs\":{total_ms},\"maximized\":{}}},\"timestamp\":{ts}}}",
-        snapshot.1
-    ));
-    // #endregion
+    let Some(cfg_snap) = snapshot.6 else {
+        return;
+    };
+    let state_log = Arc::clone(state);
+    let reason = reason.to_string();
+    let maximized = snapshot.1;
+    let w = snapshot.2;
+    let h = snapshot.3;
+    let x = snapshot.4;
+    let y = snapshot.5;
+    let _ = std::thread::Builder::new()
+        .name("layout-persist".into())
+        .spawn(move || {
+            let disk_t0 = Instant::now();
+            config::save_config(&cfg_snap);
+            let disk_ms = disk_t0.elapsed().as_millis() as u64;
+            crate::app_log::log_line(
+                &state_log,
+                "window",
+                &format!(
+                    "layout saved ({reason}): maximized={maximized} size={w:.0}x{h:.0} pos=({}, {}) lock={lock_ms}ms capture={capture_ms}ms disk={disk_ms}ms",
+                    x.map(|v| format!("{v:.0}"))
+                        .unwrap_or_else(|| "-".into()),
+                    y.map(|v| format!("{v:.0}"))
+                        .unwrap_or_else(|| "-".into()),
+                ),
+            );
+            let ts = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis())
+                .unwrap_or(0);
+            crate::app_log::append_debug_session_ndjson(&format!(
+                "{{\"sessionId\":\"b5f349\",\"runId\":\"post-fix\",\"hypothesisId\":\"L1\",\"location\":\"window_layout.rs:persist\",\"message\":\"layout persist\",\"data\":{{\"reason\":\"{reason}\",\"changed\":true,\"lockMs\":{lock_ms},\"captureMs\":{capture_ms},\"diskMs\":{disk_ms},\"maximized\":{maximized}}},\"timestamp\":{ts}}}"
+            ));
+        });
 }
 
 #[cfg(test)]

@@ -1099,6 +1099,12 @@
       if(isShellUsageKind(kind)){
         var shellCap=shellUsageCaption(usage,!!detail)||String(usage.message||'').trim();
         if(shellCap){
+          if(detail){
+            var lt=usageValue(usage,'localTodayTokens','local_today_tokens');
+            if(lt!=null&&Number(lt)>0) shellCap+=' · 本机今日 '+Math.round(Number(lt));
+            var lm=usageValue(usage,'localMonthTokens','local_month_tokens');
+            if(lm!=null&&Number(lm)>0) shellCap+=' · 本机本月 '+Math.round(Number(lm));
+          }
           if(status==='stale') return shellCap+(detail?' · 数据陈旧':' · 陈旧');
           if(status==='waiting') return shellCap;
           if(status==='ready') return shellCap;

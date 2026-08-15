@@ -6,7 +6,7 @@
    * Not screen gaze. Runtime loads only vendor/mediapipe (no CDN).
    */
 
-  var DETECT_INTERVAL_MS=100;
+  var DETECT_INTERVAL_MS=200; // was 100; createImageBitmap@10fps still wedges WebView2 (ui_hb cameraDetect 15s+)
   var detectIntervalMs=DETECT_INTERVAL_MS;
   var DETECT_TIMEOUT_MS=2500;
   var VENDOR_BASE='vendor/mediapipe';

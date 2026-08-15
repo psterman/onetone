@@ -48,20 +48,30 @@ pub fn parse_qoder_local_session(
         None
     };
 
-    let plan = user_plan
+    let plan_raw = user_plan
         .and_then(|p| p.get("plan_tier_name").and_then(|x| x.as_str()))
         .or_else(|| user_info.and_then(|u| u.get("userTag").and_then(|x| x.as_str())))
-        .unwrap_or("")
-        .to_string();
+        .unwrap_or("");
+    let plan = friendly_qoder_plan(plan_raw);
+    let name = user_info
+        .and_then(|u| u.get("name").and_then(|x| x.as_str()))
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
     let email = user_info
         .and_then(|u| u.get("email").and_then(|x| x.as_str()))
         .unwrap_or("");
-    let account = agent_usage::mask_email(email);
-    let account = if account.is_empty() {
-        "Qoder".into()
-    } else {
-        account
-    };
+    let account = name
+        .map(str::to_string)
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            let masked = agent_usage::mask_email(email);
+            if masked.is_empty() {
+                None
+            } else {
+                Some(masked)
+            }
+        })
+        .unwrap_or_else(|| "Qoder".into());
 
     let addon = number(
         credit_usage
@@ -78,7 +88,12 @@ pub fn parse_qoder_local_session(
             user_plan
                 .and_then(|p| p.get("end_date").and_then(number))
                 .map(|n| n as u64)
-        });
+        })
+        .filter(|&ms| ms > 1_000_000_000_000 && ms < 4_102_444_800_000);
+    let started_at = user_plan
+        .and_then(|p| number(p.get("start_date").unwrap_or(&Value::Null)))
+        .map(|n| n as u64)
+        .filter(|&ms| ms > 1_000_000_000_000 && ms < 4_102_444_800_000);
 
     let mut windows = Vec::new();
     if let Some(pct) = rem_pct {
@@ -86,11 +101,13 @@ pub fn parse_qoder_local_session(
             "plan_credits",
             "primary",
             pct,
-            resets_at.filter(|&ms| ms > 1_000_000_000_000 && ms < 4_102_444_800_000),
+            resets_at,
         ));
     }
 
-    let message = human_qoder_message(used, total, rem, unit, addon, resets_at);
+    let message = human_qoder_message(
+        &plan, used, total, rem, unit, addon, resets_at, started_at, exceeded,
+    );
 
     let now = now_ms();
     Ok(AgentUsageSnapshot {
@@ -108,25 +125,51 @@ pub fn parse_qoder_local_session(
             .and_then(|x| x.as_str())
             .unwrap_or(QODER_CONSOLE)
             .into(),
-        resets_at: resets_at.filter(|&ms| ms > 1_000_000_000_000 && ms < 4_102_444_800_000),
+        resets_at,
         updated_at: now,
         last_success_at: now,
         ..Default::default()
     })
 }
 
+fn friendly_qoder_plan(raw: &str) -> String {
+    let t = raw.trim();
+    if t.is_empty() {
+        return String::new();
+    }
+    let lower = t.to_ascii_lowercase();
+    if lower == "free" || lower.contains("free") {
+        "免费".into()
+    } else if lower == "pro" || lower.contains("pro") {
+        "Pro".into()
+    } else if lower.contains("team") || lower.contains("org") {
+        "团队".into()
+    } else if lower.contains("enterprise") {
+        "企业".into()
+    } else {
+        t.to_string()
+    }
+}
+
 fn human_qoder_message(
+    plan: &str,
     used: Option<f64>,
     total: Option<f64>,
     rem: f64,
     unit: &str,
     addon: Option<f64>,
     resets_at: Option<u64>,
+    started_at: Option<u64>,
+    exceeded: bool,
 ) -> String {
     let mut bits = Vec::new();
-    if let (Some(u), Some(t)) = (used, total.filter(|t| *t > 0.0)) {
+    if !plan.is_empty() {
+        bits.push(plan.to_string());
+    }
+    // Always keep numeric plan bucket when present (incl. 0/0) — tip was too thin on Free exhausted.
+    if let (Some(u), Some(t)) = (used, total) {
         bits.push(format!("套餐额度 {} / {}", fmt_cred(u), fmt_cred(t)));
-    } else {
+    } else if !(exceeded && rem <= 0.0) {
         bits.push(credits_message(
             rem,
             if unit.eq_ignore_ascii_case("credits") {
@@ -136,12 +179,20 @@ fn human_qoder_message(
             },
         ));
     }
+    if exceeded && rem <= 0.0 {
+        bits.push("已用尽".into());
+    }
     if let Some(a) = addon.filter(|a| *a > 0.0) {
         bits.push(format!("额外购买 {}", fmt_cred(a)));
     }
     if let Some(ms) = resets_at {
         if let Some(label) = format_reset_ymd(ms) {
             bits.push(format!("下次恢复 {label}"));
+        }
+    }
+    if let Some(ms) = started_at {
+        if let Some(label) = format_reset_ymd(ms) {
+            bits.push(format!("开通自{label}"));
         }
     }
     bits.join(" · ")
@@ -197,12 +248,15 @@ pub fn parse_qoder_openapi_quota(raw: &str) -> Result<AgentUsageSnapshot, String
         .and_then(parse_rfc3339_approx_ms);
 
     let message = human_qoder_message(
+        "团队",
         Some(plan_used),
         Some(plan_limit),
         rem,
         unit,
         addon,
         resets_at,
+        None,
+        rem <= 0.0 && limit > 0.0,
     );
 
     let now = now_ms();
@@ -218,7 +272,7 @@ pub fn parse_qoder_openapi_quota(raw: &str) -> Result<AgentUsageSnapshot, String
             rem_pct,
             resets_at,
         )],
-        plan_type: "Teams".into(),
+        plan_type: "团队".into(),
         account_type: "qoder".into(),
         account_label: "Qoder Teams".into(),
         console_url: QODER_CONSOLE.into(),
@@ -346,4 +400,66 @@ pub fn refresh(local: (Option<u64>, Option<u64>)) {
     };
     attach_local(&mut snap, local.0, local.1);
     agent_usage::put_snapshot(crate::soft_pad_runtime::AgentKind::Qoder, snap);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn local_free_exhausted_tip() {
+        let credit = json!({
+            "isQuotaExceeded": true,
+            "expiresAt": 253402214400000u64,
+            "userQuota": {
+                "total": 0,
+                "used": 0,
+                "remaining": 0,
+                "unit": "credits"
+            }
+        });
+        let user = json!({
+            "name": "pster man",
+            "email": "psterman@gmail.com",
+            "userTag": "Free",
+            "isQuotaExceeded": true
+        });
+        let plan = json!({
+            "plan_tier_name": "Free",
+            "start_date": 1758509111407u64,
+            "end_date": 0
+        });
+        let snap = parse_qoder_local_session(&credit, Some(&user), Some(&plan)).expect("parse");
+        assert_eq!(snap.plan_type, "免费");
+        assert_eq!(snap.account_label, "pster man");
+        assert_eq!(snap.message, "免费 · 套餐额度 0 / 0 · 已用尽 · 开通自2025年9月22日");
+        assert!(snap.resets_at.is_none(), "sentinel expiresAt must not surface");
+    }
+
+    #[test]
+    fn local_pro_with_addon_and_reset() {
+        let credit = json!({
+            "isQuotaExceeded": false,
+            "expiresAt": 1_788_192_000_000u64,
+            "userQuota": {
+                "total": 1000,
+                "used": 250,
+                "remaining": 750,
+                "unit": "credits"
+            },
+            "addonQuota": { "remaining": 40 }
+        });
+        let user = json!({ "userTag": "Pro", "email": "a@b.com" });
+        let snap = parse_qoder_local_session(&credit, Some(&user), None).expect("parse");
+        assert_eq!(snap.plan_type, "Pro");
+        assert!(
+            snap.message.starts_with("Pro · 套餐额度 250 / 1000"),
+            "{}",
+            snap.message
+        );
+        assert!(snap.message.contains("额外购买 40"), "{}", snap.message);
+        assert!(snap.message.contains("下次恢复"), "{}", snap.message);
+        assert!(!snap.message.contains("已用尽"), "{}", snap.message);
+    }
 }

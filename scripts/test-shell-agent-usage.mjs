@@ -46,6 +46,9 @@ assert.ok(/fn parse_qoder_openapi_quota/.test(su), 'qoder openapi parser');
 assert.ok(/qoder_local_session/.test(su) && /qoder_openapi/.test(su), 'qoder sources');
 assert.ok(/套餐额度/.test(su) && /额外购买/.test(su), 'qoder Plan/Add-on UX copy');
 assert.ok(/下次恢复/.test(su), 'qoder reset copy');
+assert.ok(/额度已用尽|已用尽/.test(su) && /friendly_qoder_plan/.test(su), 'qoder membership + exhausted tip');
+assert.ok(/开通自/.test(su), 'qoder plan start tip');
+assert.ok(/本机今日/.test(overlay) && /localTodayTokens/.test(overlay), 'shell tip local burn');
 assert.ok(/api\.qoder\.com/.test(su), 'qoder openapi host');
 
 // WorkBuddy

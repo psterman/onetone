@@ -132,6 +132,7 @@ assert.ok(/force:settings_unpark/.test(boot), 'settings close unparks wake');
 
 const layout = read('src-tauri/src/window_layout.rs');
 assert.ok(/Settings open: resize storms/.test(layout), 'layout save skipped while settings open');
+assert.ok(/layout-persist/.test(layout) && /note_ipc_exit\("layout_persist"\)/.test(layout), 'layout disk off HB/IPC path');
 
 assert.ok(/ot-voice-wake-park/.test(drawer), 'voiceWake adds idle park CSS class');
 assert.ok(/Skip React chrome islands on open/.test(drawer), 'voiceWake skips React chrome islands');
