@@ -285,37 +285,50 @@
       text-align: center;
     }
 
-    /* Device art (simplified icons via ::before / ::after) */
-    .device--ring   .device__art::before { content: ""; width: 38px; height: 42px; border-radius: 50% 50% 50% 50% / 45% 45% 55% 55%; background: #fff; border: 2px solid var(--outline); }
-    .device--mouse  .device__art::before { content: ""; width: 30px; height: 48px; border-radius: 16px 16px 12px 12px; background: #fff; border: 2px solid var(--outline); }
-    .device--remote .device__art::before { content: ""; width: 22px; height: 50px; border-radius: 6px; background: #fff; border: 2px solid var(--outline); }
-    .device--gamepad .device__art::before { content: ""; width: 60px; height: 26px; border-radius: 14px; background: #fff; border: 2px solid var(--outline); }
+    /* Device art (inline SVG, v11) */
+    .device__art { display: flex; align-items: center; justify-content: center; }
+    .device__art svg { display: block; width: 100%; height: 100%; }
+    .device__art svg * { transition: opacity .3s var(--htv-ease), fill .3s var(--htv-ease); }
 
     .device__key {
-      position: absolute;
-      width: 12px; height: 12px;
-      border-radius: 50%;
-      background: var(--primary-soft);
-      border: 1.5px solid var(--primary);
-      z-index: 2;
+      fill: var(--primary-soft);
+      stroke: var(--primary);
+      stroke-width: 1.5;
     }
-    .device--ring   .device__key { top: 30%; right: 22%; }
-    .device--mouse  .device__key { top: 28%; left: 4%; width: 10px; height: 10px; }
-    .device--remote .device__key { top: 24%; left: 50%; transform: translateX(-50%); width: 10px; height: 10px; }
-    .device--gamepad .device__key { top: 50%; left: 30%; transform: translateY(-50%); }
+    .device.is-active .device__key {
+      fill: var(--primary);
+      stroke: var(--primary);
+      animation: keyPulse 1.4s ease-in-out infinite;
+    }
+    .device__key.key-secondary {
+      opacity: 0;
+    }
+    .device.is-active .device__key.key-secondary {
+      opacity: 1;
+      animation-delay: .3s;
+    }
+    @keyframes keyPulse {
+      0%, 100% { transform-origin: center; transform: scale(1); }
+      50%      { transform-origin: center; transform: scale(1.18); }
+    }
+    .device__key { transform-origin: center; transform-box: fill-box; }
 
     .device__ripple {
-      position: absolute;
-      border-radius: 50%;
-      border: 2px solid var(--primary);
+      fill: none;
+      stroke: var(--primary);
+      stroke-width: 1.5;
       opacity: 0;
-      pointer-events: none;
-      z-index: 1;
+      transform-origin: center;
+      transform-box: fill-box;
     }
-    .device--ring   .device__ripple { width: 22px; height: 22px; top: 25%; right: 17%; }
-    .device--mouse  .device__ripple { width: 18px; height: 18px; top: 24%; left: 0%; }
-    .device--remote .device__ripple { width: 18px; height: 18px; top: 19%; left: 50%; transform: translateX(-50%); }
-    .device--gamepad .device__ripple { width: 20px; height: 20px; top: 45%; left: 25%; }
+    .device.is-active .device__ripple {
+      animation: ringExpand 1.4s ease-out infinite;
+    }
+    @keyframes ringExpand {
+      0%   { opacity: 0; transform: scale(.8); }
+      30%  { opacity: .7; }
+      100% { opacity: 0; transform: scale(3); }
+    }
 
     /* Devices cycle: 6s loop, 4 devices 1.5s each */
     .scene--extra.is-active .device[data-d="0"] { animation: devCycle 6s var(--htv-ease) infinite 0s; }
@@ -344,47 +357,17 @@
       28%, 100% { background: transparent; transform: scale(1); }
     }
     @keyframes devKey {
-      0%, 4%   { transform: scale(1) translateX(0); }
-      8%       { transform: scale(1.25) translateX(0); }
-      14%      { transform: scale(.8) translateX(0); }
-      22%      { transform: scale(1) translateX(0); }
-      30%, 100% { transform: scale(1) translateX(0); }
-    }
-    .device--remote .device__key,
-    .device--gamepad .device__key {
-      animation-name: devKeyT !important;
-    }
-    @keyframes devKeyT {
-      0%, 4%   { transform: scale(1) translate(-50%, 0); }
-      8%       { transform: scale(1.25) translate(-50%, 0); }
-      14%      { transform: scale(.8) translate(-50%, 0); }
-      22%      { transform: scale(1) translate(-50%, 0); }
-      30%, 100% { transform: scale(1) translate(-50%, 0); }
-    }
-    .device--gamepad .device__key {
-      animation-name: devKeyG !important;
-    }
-    @keyframes devKeyG {
-      0%, 4%   { transform: scale(1) translate(0, -50%); }
-      8%       { transform: scale(1.25) translate(0, -50%); }
-      14%      { transform: scale(.8) translate(0, -50%); }
-      22%      { transform: scale(1) translate(0, -50%); }
-      30%, 100% { transform: scale(1) translate(0, -50%); }
+      0%, 4%   { transform: scale(1); }
+      8%       { transform: scale(1.25); }
+      14%      { transform: scale(.8); }
+      22%      { transform: scale(1); }
+      30%, 100% { transform: scale(1); }
     }
     @keyframes devRipple {
-      0%, 4%   { opacity: 0; transform: scale(.6) translateX(0); }
-      10%      { opacity: .9; transform: scale(.8) translateX(0); }
-      24%      { opacity: 0; transform: scale(2) translateX(0); }
-      100%     { opacity: 0; transform: scale(2) translateX(0); }
-    }
-    .device--remote .device__ripple {
-      animation-name: devRippleT !important;
-    }
-    @keyframes devRippleT {
-      0%, 4%   { opacity: 0; transform: scale(.6) translate(-50%, 0); }
-      10%      { opacity: .9; transform: scale(.8) translate(-50%, 0); }
-      24%      { opacity: 0; transform: scale(2) translate(-50%, 0); }
-      100%     { opacity: 0; transform: scale(2) translate(-50%, 0); }
+      0%, 4%   { opacity: 0; transform: scale(.6); }
+      10%      { opacity: .9; transform: scale(.8); }
+      24%      { opacity: 0; transform: scale(2); }
+      100%     { opacity: 0; transform: scale(2); }
     }
 
     /* === Footer buttons === */
@@ -545,38 +528,75 @@
       <!-- Scene B: Devices -->
       <div class="scene scene--extra" data-scene="extra" role="tabpanel" aria-label="外设场景">
         <div class="devices" aria-hidden="true">
-          <div class="device device--ring" data-d="0">
+          <div class="device device--tourbox" data-d="0">
             <div class="device__art">
-              <span class="device__key"></span>
-              <span class="device__ripple"></span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="5.5" width="20" height="13" rx="2.2"/>
+                <line x1="2.5" y1="7" x2="21.5" y2="7" stroke-width="0.6" opacity=".3"/>
+                <circle cx="6.2" cy="12.5" r="2.6"/>
+                <line x1="6.2" y1="9.9" x2="6.2" y2="10.7" stroke-width="0.8" opacity=".55"/>
+                <circle cx="18.2" cy="10.8" r="1.6"/>
+                <circle cx="18.2" cy="10.8" r="0.5" fill="currentColor" stroke="none" opacity=".5"/>
+                <circle cx="10.8" cy="10" r="0.7" fill="currentColor" stroke="none" opacity=".4"/>
+                <circle cx="12.7" cy="10" r="0.7" fill="currentColor" stroke="none" opacity=".4"/>
+                <circle cx="14.6" cy="10" r="0.7" fill="currentColor" stroke="none" opacity=".4"/>
+                <circle cx="10.8" cy="14.8" r="0.7" fill="currentColor" stroke="none" opacity=".4"/>
+                <circle cx="12.7" cy="14.8" r="0.7" fill="currentColor" stroke="none" opacity=".4"/>
+                <circle cx="14.6" cy="14.8" r="0.7" fill="currentColor" stroke="none" opacity=".4"/>
+                <circle class="device__key" cx="6.2" cy="12.5" r="2.6" fill="currentColor" stroke="none" opacity="0"/>
+                <circle class="device__ripple" cx="6.2" cy="12.5" r="3.3"/>
+              </svg>
             </div>
-            <div class="device__name">戒指</div>
+            <div class="device__name">TourBox</div>
           </div>
           <div class="device device--mouse" data-d="1">
             <div class="device__art">
-              <span class="device__key"></span>
-              <span class="device__ripple"></span>
+              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 14 Q20 8 32 8 Q44 8 44 14 L46 36 Q46 52 32 56 Q18 52 18 36 Z"/>
+                <line x1="32" y1="10" x2="32" y2="32" stroke-width="1.5"/>
+                <rect x="30" y="20" width="4" height="7" rx="2" stroke-width="1.5"/>
+                <line x1="18" y1="32" x2="20" y2="32" stroke-width="1.5" opacity=".5"/>
+                <line x1="18" y1="38" x2="20" y2="38" stroke-width="1.5" opacity=".5"/>
+                <circle class="device__key" cx="16" cy="36" r="2.4"/>
+                <circle class="device__ripple" cx="16" cy="36" r="3"/>
+              </svg>
             </div>
             <div class="device__name">鼠标侧键</div>
           </div>
           <div class="device device--remote" data-d="2">
             <div class="device__art">
-              <span class="device__key"></span>
-              <span class="device__ripple"></span>
+              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="22" y="6" width="20" height="52" rx="10"/>
+                <rect x="28" y="10" width="8" height="2" rx="1" fill="currentColor" opacity=".3"/>
+                <circle cx="32" cy="18" r="2" stroke-width="1.5" opacity=".7"/>
+                <circle cx="32" cy="26" r="2" stroke-width="1.5" opacity=".7"/>
+                <circle cx="32" cy="38" r="4" stroke-width="1.5"/>
+                <circle cx="32" cy="38" r="1.5" fill="currentColor" opacity=".5"/>
+                <circle class="device__key" cx="32" cy="50" r="3.5"/>
+                <circle class="device__ripple" cx="32" cy="50" r="3.5"/>
+              </svg>
             </div>
             <div class="device__name">媒体遥控器</div>
           </div>
           <div class="device device--gamepad" data-d="3">
             <div class="device__art">
-              <span class="device__key"></span>
-              <span class="device__ripple"></span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="6" x2="10" y1="11" y2="11"/>
+                <line x1="8" x2="8" y1="9" y2="13"/>
+                <line x1="15" x2="15.01" y1="12" y2="12"/>
+                <line x1="18" x2="18.01" y1="10" y2="10"/>
+                <path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/>
+                <circle class="device__key" cx="15" cy="12" r="1.1" fill="currentColor" stroke="none" opacity="0"/>
+                <circle class="device__key key-secondary" cx="18" cy="10" r="1.1" fill="currentColor" stroke="none" opacity="0"/>
+                <circle class="device__ripple" cx="15" cy="12" r="1.5"/>
+              </svg>
             </div>
             <div class="device__name">小手柄</div>
           </div>
         </div>
         <div class="feedback" data-feedback>
           <span class="feedback__pulse"></span>
-          <span class="feedback__text" data-feedback-text>戒指按键可触发</span>
+          <span class="feedback__text" data-feedback-text>TourBox 可触发</span>
           <span class="feedback__wave" aria-hidden="true">
             <i></i><i></i><i></i><i></i><i></i>
           </span>
@@ -604,7 +624,7 @@
       var primaryBtn = document.querySelector('[data-action="keep"]');
       var secondaryBtn = document.querySelector('[data-action="extra"]');
       var feedbackText = document.querySelector('[data-scene="extra"] [data-feedback-text]');
-      var deviceNames = ['戒指', '鼠标侧键', '媒体遥控器', '小手柄'];
+      var deviceNames = ['TourBox', '鼠标侧键', '媒体遥控器', '小手柄'];
 
       function switchScene(name){
         tabs.forEach(function(t){

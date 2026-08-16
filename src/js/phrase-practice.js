@@ -356,24 +356,40 @@
 
   function renderEmbeddedShell(mount){
     if(!mount) return;
+    // QS practice stage already has title/desc chrome — skip duplicate long hint there.
+    var onQsStage = !!(mount.id === 'habitSetupVoicePracticeMount' ||
+      (mount.closest && mount.closest('#habitSetupVoicePracticeStage')));
+    var hintStr = state.hintText;
+    if(!hintStr && !onQsStage){
+      hintStr = t(isTranscriptMode()
+        ? (isCancelMode() ? 'phrasePracticeHintCancel' : 'phrasePracticeHintEnd')
+        : 'phrasePracticeHint');
+    }
+    var hintHtml = hintStr
+      ? '<p class="phrase-practice-hint phrase-practice-hint--embed" data-phrase-practice-hint>'+escapeHtml(hintStr)+'</p>'
+      : '';
     mount.innerHTML =
       '<div class="phrase-practice-embedded">'+
-        '<p class="phrase-practice-hint" data-phrase-practice-hint></p>'+
-        '<div class="phrase-practice-preview-label" data-phrase-practice-preview-label></div>'+
-        '<div class="phrase-practice-phrase" data-phrase-practice-phrase></div>'+
-        '<p class="phrase-practice-heard habit-setup-voice-preview" data-phrase-practice-heard></p>'+
-        '<div class="phrase-practice-chip-row" data-phrase-practice-chips></div>'+
+        hintHtml+
+        '<div class="phrase-practice-section phrase-practice-section--say">'+
+          '<p class="phrase-practice-section-label" data-phrase-practice-say-label></p>'+
+          '<div class="phrase-practice-phrase" data-phrase-practice-phrase></div>'+
+        '</div>'+
+        '<div class="phrase-practice-section phrase-practice-section--hear">'+
+          '<div class="phrase-practice-preview-label" data-phrase-practice-preview-label></div>'+
+          '<p class="phrase-practice-heard habit-setup-voice-preview" data-phrase-practice-heard></p>'+
+        '</div>'+
+        '<div class="phrase-practice-section phrase-practice-section--alts">'+
+          '<p class="phrase-practice-section-label" data-phrase-practice-alts-label></p>'+
+          '<div class="phrase-practice-chip-row" data-phrase-practice-chips></div>'+
+        '</div>'+
       '</div>';
+    var sayLbl = mount.querySelector('[data-phrase-practice-say-label]');
+    if(sayLbl) sayLbl.textContent = t('phrasePracticeSayLabel');
+    var altsLbl = mount.querySelector('[data-phrase-practice-alts-label]');
+    if(altsLbl) altsLbl.textContent = t('phrasePracticeAltsLabel');
     var previewLbl = mount.querySelector('[data-phrase-practice-preview-label]');
     if(previewLbl) previewLbl.textContent = t('phrasePracticeLivePreview');
-    var hint = mount.querySelector('[data-phrase-practice-hint]');
-    if(hint){
-      if(state.hintText){
-        hint.textContent = state.hintText;
-      }else{
-        hint.textContent = t(isTranscriptMode() ? (isCancelMode() ? 'phrasePracticeHintCancel' : 'phrasePracticeHintEnd') : 'phrasePracticeHint');
-      }
-    }
     renderChips(mount.querySelector('[data-phrase-practice-chips]'));
   }
 
@@ -565,10 +581,11 @@
       var mount = typeof state.mountEl === 'string' ? $(String(state.mountEl).replace(/^#/,'')) : state.mountEl;
       if(mount){
         var eh = mount.querySelector('[data-phrase-practice-hint]');
-        if(eh){
-          if(state.hintText) eh.textContent = state.hintText;
-          else eh.textContent = t(isCancelMode() ? 'phrasePracticeHintCancel' : (isEndMode() ? 'phrasePracticeHintEnd' : 'phrasePracticeHint'));
-        }
+        if(eh && state.hintText) eh.textContent = state.hintText;
+        var sayL = mount.querySelector('[data-phrase-practice-say-label]');
+        if(sayL) sayL.textContent = t('phrasePracticeSayLabel');
+        var altsL = mount.querySelector('[data-phrase-practice-alts-label]');
+        if(altsL) altsL.textContent = t('phrasePracticeAltsLabel');
         var pl = mount.querySelector('[data-phrase-practice-preview-label]');
         if(pl) pl.textContent = t('phrasePracticeLivePreview');
       }

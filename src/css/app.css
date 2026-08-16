@@ -4842,7 +4842,7 @@
     #habitSetupVoiceLessonView.habit-setup-screen,
     #habitSetupVoiceLessonView.habit-setup-view{
       position:absolute;inset:0;top:72px;bottom:0;height:auto;width:100%;max-width:none;
-      margin:0;padding:8px 28px 0;overflow:hidden;
+      margin:0;padding:20px 28px 0;overflow:hidden;
       display:flex;flex-direction:column;align-items:center;min-height:0
     }
     #habitSetupTriggerView .habit-setup-badge,
@@ -4851,10 +4851,13 @@
     #habitSetupVoiceLessonView .habit-setup-badge,
     #habitSetupVoiceLessonView .habit-setup-title,
     #habitSetupVoiceLessonView .habit-setup-desc{flex:0 0 auto}
-    #habitSetupVoiceLessonView .habit-setup-badge{margin:0 0 6px}
-    #habitSetupVoiceLessonView .habit-setup-title{margin:0 0 6px;font-size:24px;line-height:1.25}
+    #habitSetupVoiceLessonView .habit-setup-badge{margin:0 0 10px}
+    #habitSetupVoiceLessonView .habit-setup-title{margin:0 0 10px;font-size:24px;line-height:1.25}
     #habitSetupVoiceLessonView .habit-setup-desc{
-      margin:0 auto 16px;max-width:540px;font-size:13px;line-height:1.55
+      margin:0 auto 8px;max-width:480px;font-size:13px;line-height:1.6
+    }
+    #habitSetupVoiceLessonView > .habit-setup-actions--footer{
+      margin-top:auto;padding-top:16px;padding-bottom:18px;flex:0 0 auto
     }
     #habitSetupVoiceLessonView:has(#habitSetupVoiceMicGate:not([hidden])) .habit-setup-actions--footer .btn.primary{
       display:none
@@ -5012,55 +5015,35 @@
       50%{transform:scaleY(1.2)}
     }
     .habit-setup-trigger-devices{
-      display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;padding:4px 0;flex:1 1 auto;
+      display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:8px 0;flex:1 1 auto;
       align-content:center
     }
     .habit-setup-trigger-device{
-      display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px 4px;
-      border-radius:14px;background:transparent;transition:all .3s var(--htv-ease);position:relative
+      display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 4px;
+      border-radius:14px;background:transparent;transition:all .3s var(--htv-ease);position:relative;
+      color:var(--on-surface-muted)
     }
     .habit-setup-trigger-device__art{
-      width:100%;max-width:118px;aspect-ratio:1;
-      background:linear-gradient(180deg,#f7fafc 0%,#eef5f9 100%);
-      border:1px solid var(--outline-variant);border-radius:16px;position:relative;
+      width:100%;max-width:96px;aspect-ratio:1;
+      background:linear-gradient(180deg,#f5f9fb 0%,#eaf2f6 100%);
+      border:1px solid var(--outline-variant);border-radius:14px;position:relative;
       display:flex;align-items:center;justify-content:center;
       box-shadow:inset 0 1px 0 rgba(255,255,255,.7)
     }
+    .habit-setup-trigger-device__art svg{display:block;width:100%;height:100%}
+    .habit-setup-trigger-device__art svg *{transition:opacity .3s var(--htv-ease),fill .3s var(--htv-ease)}
     .habit-setup-trigger-device__name{
-      font-size:12px;font-weight:700;color:var(--on-surface-muted);text-align:center;line-height:1.3
-    }
-    .habit-setup-trigger-device--ring .habit-setup-trigger-device__art::before{
-      content:"";width:42px;height:46px;border-radius:50% 50% 50% 50%/45% 45% 55% 55%;
-      background:#fff;border:2px solid var(--outline, rgba(42,156,196,.24))
-    }
-    .habit-setup-trigger-device--mouse .habit-setup-trigger-device__art::before{
-      content:"";width:32px;height:52px;border-radius:16px 16px 12px 12px;
-      background:#fff;border:2px solid var(--outline, rgba(42,156,196,.24))
-    }
-    .habit-setup-trigger-device--remote .habit-setup-trigger-device__art::before{
-      content:"";width:24px;height:54px;border-radius:7px;
-      background:#fff;border:2px solid var(--outline, rgba(42,156,196,.24))
-    }
-    .habit-setup-trigger-device--gamepad .habit-setup-trigger-device__art::before{
-      content:"";width:64px;height:28px;border-radius:14px;
-      background:#fff;border:2px solid var(--outline, rgba(42,156,196,.24))
+      font-size:11px;font-weight:700;color:var(--on-surface-muted);text-align:center;line-height:1.3
     }
     .habit-setup-trigger-device__key{
-      position:absolute;width:12px;height:12px;border-radius:50%;
-      background:var(--primary-soft);border:1.5px solid var(--primary);z-index:2
+      fill:var(--primary-soft);stroke:var(--primary);stroke-width:1.5;
+      transform-origin:center;transform-box:fill-box
     }
-    .habit-setup-trigger-device--ring .habit-setup-trigger-device__key{top:30%;right:22%}
-    .habit-setup-trigger-device--mouse .habit-setup-trigger-device__key{top:28%;left:6%;width:10px;height:10px}
-    .habit-setup-trigger-device--remote .habit-setup-trigger-device__key{top:24%;left:50%;transform:translateX(-50%);width:10px;height:10px}
-    .habit-setup-trigger-device--gamepad .habit-setup-trigger-device__key{top:50%;left:30%;transform:translateY(-50%)}
+    .habit-setup-trigger-device__key--secondary{opacity:0}
     .habit-setup-trigger-device__ripple{
-      position:absolute;border-radius:50%;border:2px solid var(--primary);
-      opacity:0;pointer-events:none;z-index:1
+      fill:none;stroke:var(--primary);stroke-width:1.5;opacity:0;
+      transform-origin:center;transform-box:fill-box
     }
-    .habit-setup-trigger-device--ring .habit-setup-trigger-device__ripple{width:22px;height:22px;top:25%;right:17%}
-    .habit-setup-trigger-device--mouse .habit-setup-trigger-device__ripple{width:18px;height:18px;top:24%;left:2%}
-    .habit-setup-trigger-device--remote .habit-setup-trigger-device__ripple{width:18px;height:18px;top:19%;left:50%;transform:translateX(-50%)}
-    .habit-setup-trigger-device--gamepad .habit-setup-trigger-device__ripple{width:20px;height:20px;top:45%;left:25%}
     .habit-setup-trigger-col:hover .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="0"],
     .habit-setup-trigger-col.is-hot .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="0"]{animation:htvDevCycle 6s var(--htv-ease) infinite 0s}
     .habit-setup-trigger-col:hover .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="1"],
@@ -5074,15 +5057,15 @@
     .habit-setup-trigger-col:hover .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="1"] .habit-setup-trigger-device__key,
     .habit-setup-trigger-col.is-hot .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="1"] .habit-setup-trigger-device__key{animation:htvDevKey 6s var(--htv-ease) infinite 1.5s}
     .habit-setup-trigger-col:hover .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="2"] .habit-setup-trigger-device__key,
-    .habit-setup-trigger-col.is-hot .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="2"] .habit-setup-trigger-device__key{animation:htvDevKeyT 6s var(--htv-ease) infinite 3s}
+    .habit-setup-trigger-col.is-hot .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="2"] .habit-setup-trigger-device__key{animation:htvDevKey 6s var(--htv-ease) infinite 3s}
     .habit-setup-trigger-col:hover .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="3"] .habit-setup-trigger-device__key,
-    .habit-setup-trigger-col.is-hot .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="3"] .habit-setup-trigger-device__key{animation:htvDevKeyG 6s var(--htv-ease) infinite 4.5s}
+    .habit-setup-trigger-col.is-hot .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="3"] .habit-setup-trigger-device__key{animation:htvDevKey 6s var(--htv-ease) infinite 4.5s}
     .habit-setup-trigger-col:hover .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="0"] .habit-setup-trigger-device__ripple,
     .habit-setup-trigger-col.is-hot .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="0"] .habit-setup-trigger-device__ripple{animation:htvDevRipple 6s var(--htv-ease) infinite 0s}
     .habit-setup-trigger-col:hover .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="1"] .habit-setup-trigger-device__ripple,
     .habit-setup-trigger-col.is-hot .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="1"] .habit-setup-trigger-device__ripple{animation:htvDevRipple 6s var(--htv-ease) infinite 1.5s}
     .habit-setup-trigger-col:hover .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="2"] .habit-setup-trigger-device__ripple,
-    .habit-setup-trigger-col.is-hot .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="2"] .habit-setup-trigger-device__ripple{animation:htvDevRippleT 6s var(--htv-ease) infinite 3s}
+    .habit-setup-trigger-col.is-hot .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="2"] .habit-setup-trigger-device__ripple{animation:htvDevRipple 6s var(--htv-ease) infinite 3s}
     .habit-setup-trigger-col:hover .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="3"] .habit-setup-trigger-device__ripple,
     .habit-setup-trigger-col.is-hot .habit-setup-trigger-scene--extra .habit-setup-trigger-device[data-d="3"] .habit-setup-trigger-device__ripple{animation:htvDevRipple 6s var(--htv-ease) infinite 4.5s}
     @keyframes htvDevCycle{
@@ -5091,37 +5074,17 @@
       28%,100%{background:transparent;transform:scale(1)}
     }
     @keyframes htvDevKey{
-      0%,4%{transform:scale(1)}
-      8%{transform:scale(1.25)}
-      14%{transform:scale(.8)}
-      22%{transform:scale(1)}
-      30%,100%{transform:scale(1)}
-    }
-    @keyframes htvDevKeyT{
-      0%,4%{transform:scale(1) translate(-50%,0)}
-      8%{transform:scale(1.25) translate(-50%,0)}
-      14%{transform:scale(.8) translate(-50%,0)}
-      22%{transform:scale(1) translate(-50%,0)}
-      30%,100%{transform:scale(1) translate(-50%,0)}
-    }
-    @keyframes htvDevKeyG{
-      0%,4%{transform:scale(1) translate(0,-50%)}
-      8%{transform:scale(1.25) translate(0,-50%)}
-      14%{transform:scale(.8) translate(0,-50%)}
-      22%{transform:scale(1) translate(0,-50%)}
-      30%,100%{transform:scale(1) translate(0,-50%)}
+      0%,4%{transform:scale(1);opacity:1}
+      8%{transform:scale(1.25);opacity:1}
+      14%{transform:scale(.8);opacity:1}
+      22%{transform:scale(1);opacity:1}
+      30%,100%{transform:scale(1);opacity:1}
     }
     @keyframes htvDevRipple{
       0%,4%{opacity:0;transform:scale(.6)}
       10%{opacity:.9;transform:scale(.8)}
       24%{opacity:0;transform:scale(2)}
       100%{opacity:0;transform:scale(2)}
-    }
-    @keyframes htvDevRippleT{
-      0%,4%{opacity:0;transform:scale(.6) translate(-50%,0)}
-      10%{opacity:.9;transform:scale(.8) translate(-50%,0)}
-      24%{opacity:0;transform:scale(2) translate(-50%,0)}
-      100%{opacity:0;transform:scale(2) translate(-50%,0)}
     }
     .habit-setup-trigger-pick{
       width:100%;min-height:48px;padding:12px 14px;border-radius:16px;font-weight:800;font-size:14px;
@@ -5157,7 +5120,8 @@
     @media (max-width:720px){
       .habit-setup-trigger-parallel{grid-template-columns:1fr;gap:22px}
       .habit-setup-trigger-kbd__key{height:24px;font-size:9px}
-      .habit-setup-trigger-device__art{max-width:96px}
+      .habit-setup-trigger-device__art{max-width:72px}
+      .habit-setup-trigger-devices{gap:6px}
     }
     @media (prefers-reduced-motion:reduce){
       .habit-setup-trigger-col:hover .habit-setup-trigger-kbd__key,
@@ -5597,92 +5561,250 @@
       .habit-setup-test-grid,.habit-setup-voice-lessons,
       .habit-setup-voice-lessons--parallel{grid-template-columns:1fr}
     }
+    .habit-setup-voice-lessons{
+      display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 16px;width:100%
+    }
+    .habit-setup-voice-lessons[hidden]{display:none!important}
     .habit-setup-voice-lessons--parallel{
-      grid-template-columns:1fr 1fr;gap:20px;max-width:min(960px,100%);margin-left:auto;margin-right:auto
+      --qs-voice-demo-cycle:5s;
+      --qs-voice-demo-offset:2.5s;
+      --qs-voice-demo-ease:cubic-bezier(0.22, 1, 0.36, 1);
+      display:grid;grid-template-columns:minmax(0,1fr);
+      gap:20px;width:100%;max-width:min(420px,100%);
+      margin:auto;padding:24px 0 12px;align-content:center;justify-items:stretch;flex:1;min-height:0
     }
     .habit-setup-voice-lesson-card{
       position:relative;border:1px solid var(--outline-variant);border-radius:18px;padding:14px 12px;background:var(--surface-high);
-      text-align:left;cursor:pointer;transition:border-color var(--dur-fast),box-shadow var(--dur-fast),transform var(--dur-fast),filter .25s ease,opacity .25s ease
+      text-align:left;cursor:pointer;transition:border-color var(--dur-fast),box-shadow var(--dur-fast),transform var(--dur-fast),filter .25s ease,opacity .25s ease,background .25s ease
     }
     .habit-setup-voice-lesson-card:hover{transform:translateY(-1px);border-color:rgba(42,156,196,.4)}
     .habit-setup-voice-lesson-card.is-active{
       border-color:var(--primary);box-shadow:0 0 0 3px rgba(42,156,196,.14);background:var(--primary-soft)
     }
     .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card{
-      padding:18px 16px;border-width:1.5px
+      width:100%;min-width:0;box-sizing:border-box;
+      padding:22px 22px 18px;border-width:1.5px;min-height:168px;
+      display:flex;flex-direction:column;gap:0;
+      --accent:var(--primary);--accent-strong:var(--primary-strong);--accent-soft:var(--primary-soft)
     }
-    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-dim{
-      filter:grayscale(1);opacity:.48
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end{
+      --accent:var(--primary);--accent-strong:var(--primary-strong);--accent-soft:var(--primary-soft)
     }
-    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-dim .habit-setup-voice-mini span{
-      animation-play-state:paused!important
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-hot,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end.is-hot{
+      border-color:var(--accent);box-shadow:0 0 0 3px rgba(42,156,196,.14);background:var(--accent-soft)
     }
-    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-locked{
-      cursor:not-allowed
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-demo-shake{
+      animation:qsVoiceDemoCardShake .35s var(--qs-voice-demo-ease)
     }
-    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-dim:hover{
-      transform:none;border-color:var(--outline-variant)
+    @keyframes qsVoiceDemoCardShake{
+      0%,100%{transform:translateX(0)}
+      20%{transform:translateX(-2px)}
+      40%{transform:translateX(2px)}
+      60%{transform:translateX(-1px)}
+      80%{transform:translateX(1px)}
+    }
+    .habit-setup-voice-demo-head{
+      display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px
+    }
+    .habit-setup-voice-demo-title{
+      font-size:16px;font-weight:800;color:var(--indigo);letter-spacing:-.005em
+    }
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-demo-hit .habit-setup-voice-demo-title{
+      color:var(--accent-strong)
+    }
+    .habit-setup-voice-demo-status{
+      flex:0 0 auto;font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;
+      background:var(--surface-2, #f0f7fb);color:var(--on-surface-muted);letter-spacing:.02em;
+      transition:background .25s var(--qs-voice-demo-ease),color .25s var(--qs-voice-demo-ease)
+    }
+    .habit-setup-voice-demo-status::before{
+      content:"";display:inline-block;width:5px;height:5px;border-radius:50%;
+      background:currentColor;margin-right:5px;vertical-align:middle
+    }
+    .habit-setup-voice-demo-status[data-state="listening"]::before,
+    .habit-setup-voice-demo-status[data-state="speaking"]::before,
+    .habit-setup-voice-demo-status[data-state="recognizing"]::before{
+      background:var(--accent);animation:qsVoiceDemoDotPulse 1s ease-in-out infinite
+    }
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-demo-hit .habit-setup-voice-demo-status{
+      background:var(--accent);color:#fff
+    }
+    .habit-setup-voice-demo-status[data-state="done"]::before{background:#fff;animation:none}
+    @keyframes qsVoiceDemoDotPulse{
+      0%,100%{opacity:1;transform:scale(1)}
+      50%{opacity:.5;transform:scale(.7)}
+    }
+    .habit-setup-voice-demo-stage{
+      position:relative;flex:1;min-height:96px;display:flex;align-items:center;justify-content:center;
+      gap:14px;margin-bottom:12px
+    }
+    .habit-setup-voice-demo-bars{
+      display:flex;align-items:center;gap:5px;height:56px
+    }
+    .habit-setup-voice-demo-bar{
+      display:block;width:4px;height:0;border-radius:999px;background:var(--accent);opacity:0;
+      animation:qsVoiceDemoBarStage var(--qs-voice-demo-cycle) cubic-bezier(.4,0,.2,1) infinite;
+      animation-play-state:paused
+    }
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-hot .habit-setup-voice-demo-bar{
+      animation-play-state:running
+    }
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake .habit-setup-voice-demo-bar{animation-delay:0s}
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end .habit-setup-voice-demo-bar{animation-delay:var(--qs-voice-demo-offset)}
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake .habit-setup-voice-demo-bar:nth-child(1){animation-delay:0s}
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake .habit-setup-voice-demo-bar:nth-child(2){animation-delay:-.08s}
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake .habit-setup-voice-demo-bar:nth-child(3){animation-delay:-.16s}
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake .habit-setup-voice-demo-bar:nth-child(4){animation-delay:-.24s}
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end .habit-setup-voice-demo-bar:nth-child(1){animation-delay:var(--qs-voice-demo-offset)}
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end .habit-setup-voice-demo-bar:nth-child(2){animation-delay:calc(var(--qs-voice-demo-offset) - .08s)}
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end .habit-setup-voice-demo-bar:nth-child(3){animation-delay:calc(var(--qs-voice-demo-offset) - .16s)}
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end .habit-setup-voice-demo-bar:nth-child(4){animation-delay:calc(var(--qs-voice-demo-offset) - .24s)}
+    @keyframes qsVoiceDemoBarStage{
+      0%,6%{height:0;opacity:0}
+      10%{height:32px;opacity:1}
+      14%{height:16px;opacity:1}
+      18%{height:28px;opacity:1}
+      22%{height:12px;opacity:1}
+      26%{height:10px;opacity:.7}
+      30%{height:18px;opacity:.85}
+      34%{height:10px;opacity:.7}
+      38%{height:16px;opacity:.85}
+      44%,76%{height:14px;opacity:.55}
+      80%,100%{height:0;opacity:0}
+    }
+    .habit-setup-voice-demo-mic-wrap{
+      position:relative;width:84px;height:84px;display:flex;align-items:center;justify-content:center
+    }
+    .habit-setup-voice-demo-mic-ring{
+      position:absolute;inset:0;border-radius:50%;background:var(--accent);opacity:0;
+      transition:opacity .3s cubic-bezier(.4,0,.2,1)
+    }
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-listening .habit-setup-voice-demo-mic-ring,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-recognizing .habit-setup-voice-demo-mic-ring,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake.is-demo-hit .habit-setup-voice-demo-mic-ring,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end:not(.is-listening):not(.is-recognizing):not(.is-demo-hit) .habit-setup-voice-demo-mic-ring{
+      opacity:.12
+    }
+    .habit-setup-voice-demo-mic-inner{
+      position:relative;z-index:2;width:60px;height:60px;border-radius:50%;background:#fff;
+      border:1.5px solid var(--outline-variant);display:flex;align-items:center;justify-content:center;
+      transition:background .35s cubic-bezier(.4,0,.2,1),border-color .35s cubic-bezier(.4,0,.2,1),transform .4s cubic-bezier(.34,1.56,.64,1)
+    }
+    .habit-setup-voice-demo-mic-svg{display:block}
+    .habit-setup-voice-demo-mic .mic-body,
+    .habit-setup-voice-demo-mic .mic-arc,
+    .habit-setup-voice-demo-mic .mic-stem,
+    .habit-setup-voice-demo-mic .mic-base{
+      stroke:var(--on-surface-muted);stroke-width:1.5;stroke-linecap:round;fill:none;
+      transition:stroke .35s cubic-bezier(.4,0,.2,1)
+    }
+    /* wake: off → on */
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake.is-listening .habit-setup-voice-demo-mic-inner,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake.is-recognizing .habit-setup-voice-demo-mic-inner{
+      border-color:var(--accent)
+    }
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake.is-demo-hit .habit-setup-voice-demo-mic-inner{
+      background:var(--accent);border-color:var(--accent);transform:scale(1.05)
+    }
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake.is-listening .mic-body,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake.is-listening .mic-arc,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake.is-listening .mic-stem,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake.is-listening .mic-base,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake.is-recognizing .mic-body,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake.is-recognizing .mic-arc,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake.is-recognizing .mic-stem,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake.is-recognizing .mic-base{
+      stroke:var(--accent)
+    }
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake.is-demo-hit .mic-body,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake.is-demo-hit .mic-arc,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake.is-demo-hit .mic-stem,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake.is-demo-hit .mic-base{
+      stroke:#fff
+    }
+    /* end: on → off (default lit) */
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end:not(.is-listening):not(.is-recognizing):not(.is-demo-hit) .habit-setup-voice-demo-mic-inner{
+      background:var(--accent);border-color:var(--accent)
+    }
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end:not(.is-listening):not(.is-recognizing):not(.is-demo-hit) .mic-body,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end:not(.is-listening):not(.is-recognizing):not(.is-demo-hit) .mic-arc,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end:not(.is-listening):not(.is-recognizing):not(.is-demo-hit) .mic-stem,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end:not(.is-listening):not(.is-recognizing):not(.is-demo-hit) .mic-base{
+      stroke:#fff
+    }
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end.is-listening .habit-setup-voice-demo-mic-inner,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end.is-recognizing .habit-setup-voice-demo-mic-inner,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end.is-demo-hit .habit-setup-voice-demo-mic-inner{
+      background:#fff;border-color:var(--outline-variant);transform:scale(1)
+    }
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end.is-listening .mic-body,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end.is-listening .mic-arc,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end.is-listening .mic-stem,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end.is-listening .mic-base,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end.is-recognizing .mic-body,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end.is-recognizing .mic-arc,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end.is-recognizing .mic-stem,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end.is-recognizing .mic-base,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end.is-demo-hit .mic-body,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end.is-demo-hit .mic-arc,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end.is-demo-hit .mic-stem,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end.is-demo-hit .mic-base{
+      stroke:var(--on-surface-muted)
+    }
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-listening .habit-setup-voice-demo-mic-inner,
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-recognizing .habit-setup-voice-demo-mic-inner{
+      animation:qsVoiceDemoMicPress .45s cubic-bezier(.34,1.56,.64,1)
+    }
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-demo-hit .habit-setup-voice-demo-mic-inner{
+      animation:none
+    }
+    @keyframes qsVoiceDemoMicPress{
+      0%{transform:scale(1)}
+      30%{transform:scale(.92)}
+      65%{transform:scale(1.1)}
+      100%{transform:scale(1)}
+    }
+    .habit-setup-voice-demo-desc{
+      display:block;font-size:13px;line-height:1.5;color:var(--on-surface-muted);text-align:center;
+      opacity:.78;transition:opacity .25s ease,color .25s ease,font-weight .25s ease
+    }
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-hot .habit-setup-voice-demo-desc{
+      opacity:1;color:var(--accent-strong);font-weight:600
+    }
+    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-demo-hit .habit-setup-voice-demo-desc{
+      color:var(--accent-strong);font-weight:600
+    }
+    @media (prefers-reduced-motion:reduce){
+      .habit-setup-voice-lessons--parallel .habit-setup-voice-demo-bar,
+      .habit-setup-voice-lessons--parallel .habit-setup-voice-demo-mic-inner,
+      .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-demo-shake{
+        animation:none!important
+      }
+      .habit-setup-voice-lessons--parallel .habit-setup-voice-demo-bar{
+        opacity:1;height:18px
+      }
+      .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-wake.is-demo-hit .habit-setup-voice-demo-mic-ring,
+      .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card.is-end:not(.is-demo-hit) .habit-setup-voice-demo-mic-ring{
+        opacity:.12
+      }
     }
     .habit-setup-voice-lesson-card.is-done{border-color:rgba(34,197,94,.45)}
     .habit-setup-voice-lesson-card b{display:block;margin-bottom:4px;font-size:14px;color:var(--indigo)}
-    .habit-setup-voice-lessons--parallel .habit-setup-voice-lesson-card b{font-size:15px}
-    .habit-setup-voice-lesson-card span{display:block;font-size:12px;line-height:1.5;color:var(--on-surface-muted)}
+    .habit-setup-voice-lesson-card > span:not([class]){
+      display:block;font-size:12px;line-height:1.5;color:var(--on-surface-muted)
+    }
     .habit-setup-voice-mini{
       display:flex;align-items:flex-end;justify-content:center;gap:5px;
       height:42px;margin:2px 0 10px;padding:8px 10px;border-radius:12px;background:var(--surface-2)
-    }
-    .habit-setup-voice-lessons--parallel .habit-setup-voice-mini{
-      height:52px;gap:6px;margin-bottom:12px;background:#fff
     }
     .habit-setup-voice-mini span{
       display:block;width:8px;border-radius:999px;background:var(--primary);
       height:12px;animation:habitSetupVoiceBars 1.2s ease-in-out infinite
     }
-    .habit-setup-voice-lessons--parallel .habit-setup-voice-mini span{width:9px}
     .habit-setup-voice-mini span:nth-child(2){animation-delay:.18s}
     .habit-setup-voice-mini span:nth-child(3){animation-delay:.36s}
     .habit-setup-voice-mini span:nth-child(4){animation-delay:.48s}
-    .habit-setup-voice-mini--end span{background:#22c55e}
-    .habit-setup-voice-mini--cancel{
-      align-items:center;justify-content:center;gap:8px
-    }
-    .habit-setup-voice-mini--cancel span{
-      width:4px;height:20px;animation:none;background:#ef4444
-    }
-    .habit-setup-voice-mini--cancel span:first-child{transform:rotate(45deg)}
-    .habit-setup-voice-mini--cancel span:last-child{transform:rotate(-45deg)}
-    @keyframes habitSetupVoiceBars{
-      0%,100%{height:10px;opacity:.55}
-      50%{height:26px;opacity:1}
-    }
-    .habit-setup-voice-lesson-done{
-      position:absolute;top:10px;right:10px;padding:2px 8px;border-radius:999px;
-      background:rgba(34,197,94,.12);color:#16a34a;font-size:10px;font-weight:800
-    }
-    .habit-setup-voice-lesson-demo{
-      width:100%;margin:0 0 16px;padding:16px;border-radius:18px;border:1px dashed var(--outline-variant);background:var(--surface-high)
-    }
-    .habit-setup-voice-lesson-card{
-      position:relative;border:1px solid var(--outline-variant);border-radius:18px;padding:14px 12px;background:var(--surface-high);
-      text-align:left;cursor:pointer;transition:border-color var(--dur-fast),box-shadow var(--dur-fast),transform var(--dur-fast)
-    }
-    .habit-setup-voice-lesson-card:hover{transform:translateY(-1px);border-color:rgba(42,156,196,.4)}
-    .habit-setup-voice-lesson-card.is-active{
-      border-color:var(--primary);box-shadow:0 0 0 3px rgba(42,156,196,.14);background:var(--primary-soft)
-    }
-    .habit-setup-voice-lesson-card.is-done{border-color:rgba(34,197,94,.45)}
-    .habit-setup-voice-lesson-card b{display:block;margin-bottom:4px;font-size:14px;color:var(--indigo)}
-    .habit-setup-voice-lesson-card span{display:block;font-size:12px;line-height:1.5;color:var(--on-surface-muted)}
-    .habit-setup-voice-mini{
-      display:flex;align-items:flex-end;justify-content:center;gap:5px;
-      height:42px;margin:2px 0 10px;padding:8px 10px;border-radius:12px;background:var(--surface-2)
-    }
-    .habit-setup-voice-mini span{
-      display:block;width:8px;border-radius:999px;background:var(--primary);
-      height:12px;animation:habitSetupVoiceBars 1.2s ease-in-out infinite
-    }
-    .habit-setup-voice-mini span:nth-child(2){animation-delay:.18s}
-    .habit-setup-voice-mini span:nth-child(3){animation-delay:.36s}
     .habit-setup-voice-mini--end span{background:#22c55e}
     .habit-setup-voice-mini--cancel{
       align-items:center;justify-content:center;gap:8px
@@ -5785,7 +5907,10 @@
       border:2px solid #22c55e;border-top:0;border-left:0;transform:rotate(40deg)
     }
     .habit-setup-voice-practice-mount{width:100%;margin-top:4px}
-    .habit-setup-voice-practice-mark{margin-top:8px}
+    .habit-setup-voice-practice-mark{
+      margin-top:22px;width:100%;max-width:100%;
+      font-weight:600;opacity:.88
+    }
     @keyframes vpStageBreathe{
       0%,100%{box-shadow:0 0 0 0 rgba(42,156,196,.18)}
       50%{box-shadow:0 0 0 6px rgba(42,156,196,.1)}
@@ -5835,9 +5960,43 @@
       background:var(--primary-soft);color:var(--primary-strong)
     }
     .phrase-practice-preview-label{
-      margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--primary-strong)
+      margin:0;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--on-surface-muted)
     }
-    .phrase-practice-embedded .habit-setup-voice-preview{font-size:15px}
+    .phrase-practice-embedded{
+      display:flex;flex-direction:column;gap:16px;width:100%
+    }
+    .phrase-practice-section{
+      display:flex;flex-direction:column;gap:6px;width:100%
+    }
+    .phrase-practice-section-label{
+      margin:0;font-size:11px;font-weight:800;letter-spacing:.04em;
+      text-transform:uppercase;color:var(--on-surface-muted);text-align:center
+    }
+    .phrase-practice-hint--embed{
+      margin:0;font-size:12px;line-height:1.5;color:var(--on-surface-muted);text-align:center
+    }
+    .phrase-practice-embedded .phrase-practice-phrase{
+      font-size:22px;margin-bottom:0
+    }
+    .phrase-practice-embedded .habit-setup-voice-preview,
+    .phrase-practice-embedded .phrase-practice-heard{
+      min-height:34px;padding:8px 12px;margin:0;border-radius:10px;
+      background:transparent;border:1px solid var(--outline-variant);
+      font-size:13px;font-weight:600;color:var(--on-surface-muted);text-align:center
+    }
+    .phrase-practice-embedded .habit-setup-voice-preview.is-live,
+    .phrase-practice-embedded .phrase-practice-heard.is-live{
+      background:color-mix(in srgb,var(--primary) 6%,transparent);
+      border-color:color-mix(in srgb,var(--primary) 40%,transparent);
+      color:var(--primary-strong);font-weight:700
+    }
+    .phrase-practice-embedded .phrase-practice-chip-row{margin-bottom:0;gap:6px}
+    .phrase-practice-embedded .phrase-practice-chip{
+      height:26px;padding:0 10px;font-size:11px;font-weight:600
+    }
+    .phrase-practice-embedded .phrase-practice-chip.is-active{
+      box-shadow:none;background:color-mix(in srgb,var(--primary) 10%,var(--surface-high))
+    }
     .habit-setup-voice-scene--end .habit-setup-voice-bubble.is-user{
       background:rgba(34,197,94,.12);color:#15803d
     }
@@ -5853,8 +6012,9 @@
       display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;background:var(--primary-soft);font-size:13px;font-weight:700;color:var(--primary-strong)
     }
     @media (max-width:720px){
-      .habit-setup-test-grid,.habit-setup-voice-lessons[hidden]{display:none!important}
-    .habit-setup-voice-lessons{grid-template-columns:1fr}
+      .habit-setup-voice-lessons[hidden]{display:none!important}
+      .habit-setup-voice-lessons,
+      .habit-setup-voice-lessons--parallel{grid-template-columns:1fr}
     }
     @media (max-width:720px){
       .habit-setup-header{padding:14px 48px 10px}
@@ -7171,7 +7331,6 @@
     .phrase-practice-selected-note{margin:0 0 10px;font-size:11px;line-height:1.5;color:var(--primary-strong);text-align:center;font-weight:700}
     .phrase-practice-actions{display:flex;justify-content:flex-end}
     .phrase-practice-actions .welcome-btn.primary{min-width:108px}
-    .phrase-practice-embedded .phrase-practice-phrase{font-size:20px}
     .replay-link{
       border:none;background:transparent;color:var(--primary);font:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:0;
     }

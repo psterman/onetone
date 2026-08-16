@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="utf-8">
-  <title>先激活，再说结束 — 语音关键词动画 Preview</title>
+  <title>先激活，再说结束 — 麦克风开关动画 Preview v6</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
     :root {
@@ -16,12 +16,11 @@
       --surface-soft: #f0f7fb;
       --outline-variant: rgba(26,45,74,.10);
       --shadow-card: 0 14px 34px rgba(26,45,74,.07);
-      --success: #22c55e;
-      --success-strong: #16a34a;
-      --success-soft: #e7f8ee;
       --htv-ease: cubic-bezier(0.22, 1, 0.36, 1);
-      --cycle: 5s;        /* 每卡一轮 5s */
-      --offset: 2.5s;     /* 右卡错峰 2.5s */
+      --bounce:   cubic-bezier(.34, 1.56, .64, 1);
+      --soft:     cubic-bezier(.4, 0, .2, 1);
+      --cycle: 5s;
+      --offset: 2.5s;
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; }
@@ -40,7 +39,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 16px;
+      gap: 14px;
     }
     .badge {
       display: inline-block;
@@ -50,7 +49,6 @@
       border-radius: 999px;
       background: var(--primary-soft);
       color: var(--primary-strong);
-      letter-spacing: .02em;
     }
     h1.title {
       margin: 6px 0 4px;
@@ -60,7 +58,7 @@
       letter-spacing: -.01em;
     }
     p.desc {
-      margin: 0 0 8px;
+      margin: 0 0 4px;
       font-size: 13px;
       line-height: 1.6;
       color: var(--on-surface-muted);
@@ -72,243 +70,241 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 14px;
-      margin: 12px 0 8px;
+      margin: 8px 0;
     }
+
     /* === Card === */
     .card {
       position: relative;
       background: var(--surface-high);
       border: 1.5px solid var(--outline-variant);
-      border-radius: 18px;
-      padding: 16px 16px 14px;
-      min-height: 156px;
+      border-radius: 24px;
+      padding: 22px 22px 18px;
+      min-height: 280px;
       box-shadow: var(--shadow-card);
       overflow: hidden;
-      transition: border-color .3s var(--htv-ease), background .3s var(--htv-ease);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
     }
-    .card.is-wake  { --accent: var(--primary); --accent-strong: var(--primary-strong); --accent-soft: var(--primary-soft); }
-    .card.is-end   { --accent: var(--success); --accent-strong: var(--success-strong); --accent-soft: var(--success-soft); }
+    .card.is-wake  { --accent: var(--primary); }
+    .card.is-end   { --accent: var(--primary); }
 
-    /* 整卡 active 高亮 (识别成功) */
-    .card.is-active {
-      border-color: var(--accent);
-      background: var(--accent-soft);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), var(--shadow-card);
-    }
-    .card.is-active .card__title { color: var(--accent-strong); }
-
-    /* 整卡震动一下 (识别瞬间) */
-    .card.is-shake { animation: cardShake .35s var(--htv-ease); }
-    @keyframes cardShake {
-      0%, 100% { transform: translateX(0); }
-      20% { transform: translateX(-2px); }
-      40% { transform: translateX(2px); }
-      60% { transform: translateX(-1px); }
-      80% { transform: translateX(1px); }
-    }
-
+    /* Head */
     .card__head {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 12px;
     }
-    .card__title {
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--indigo);
-      letter-spacing: -.005em;
-    }
+    .card__title { font-size: 15px; font-weight: 800; color: var(--indigo); }
     .card__status {
-      font-size: 10px;
-      font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: var(--surface-soft);
-      color: var(--on-surface-muted);
+      font-size: 10px; font-weight: 700;
+      padding: 3px 8px; border-radius: 999px;
+      background: var(--surface-soft); color: var(--on-surface-muted);
       letter-spacing: .02em;
-      transition: all .25s var(--htv-ease);
-    }
-    .card.is-active .card__status {
-      background: var(--accent);
-      color: #fff;
+      transition: all .3s var(--soft);
     }
     .card__status::before {
-      content: "";
-      display: inline-block;
-      width: 5px; height: 5px;
-      border-radius: 50%;
-      background: currentColor;
-      margin-right: 5px;
-      vertical-align: middle;
+      content: ""; display: inline-block;
+      width: 5px; height: 5px; border-radius: 50%;
+      background: currentColor; margin-right: 5px; vertical-align: middle;
     }
-    .card__status[data-state="listening"]::before {
-      background: var(--accent);
+    .card.is-listening .card__status,
+    .card.is-recognizing .card__status {
+      background: var(--primary-soft); color: var(--primary-strong);
+    }
+    .card.is-listening .card__status::before,
+    .card.is-recognizing .card__status::before {
       animation: dotPulse 1s ease-in-out infinite;
     }
-    .card__status[data-state="recognizing"]::before { background: var(--accent); animation: dotPulse .5s ease-in-out infinite; }
-    .card__status[data-state="done"]::before { background: #fff; }
+    .card.is-recognizing .card__status::before { animation-duration: .5s; }
+    .card.is-active .card__status {
+      background: var(--primary); color: #fff;
+    }
     @keyframes dotPulse {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: .5; transform: scale(.7); }
     }
 
-    .card__wave {
+    /* Stage */
+    .card__stage {
       position: relative;
-      height: 56px;
+      flex: 1;
+      min-height: 160px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      padding: 6px 8px;
-      background: var(--surface-soft);
-      border-radius: 14px;
-      margin-bottom: 10px;
-      transition: background .3s var(--htv-ease);
+      gap: 14px;
     }
-    .card.is-active .card__wave { background: rgba(255,255,255,.6); }
-    .card__bar {
-      display: block;
-      width: 8px;
-      height: 10px;
-      border-radius: 999px;
-      background: var(--accent);
-      opacity: .35;
-      transform-origin: 50% 100%;
-    }
-    /* 关键词气泡 */
-    .card__bubble {
-      position: absolute;
-      top: -10px;
-      left: 50%;
-      transform: translateX(-50%) translateY(4px);
-      background: var(--accent);
-      color: #fff;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 4px 10px;
-      border-radius: 999px;
-      opacity: 0;
-      white-space: nowrap;
-      box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent);
-      transition: opacity .2s var(--htv-ease), transform .2s var(--htv-ease);
-    }
-    .card.is-speaking .card__bubble { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    /* 中央打勾 */
-    .card__check {
+    /* 麦克风 + 容器（不再用大光晕） */
+    .card__mic-wrap {
+      position: relative;
+      width: 84px; height: 84px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    /* 极淡背景圆 — 只在 listening/recognizing/active 时显示，颜色是 accent 12% */
+    .card__mic-ring {
       position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%) scale(.4);
-      width: 36px; height: 36px;
+      inset: 0;
       border-radius: 50%;
       background: var(--accent);
-      color: #fff;
+      opacity: 0;
+      transition: opacity .3s var(--soft);
+    }
+    .card.is-listening .card__mic-ring,
+    .card.is-recognizing .card__mic-ring,
+    .card.is-active .card__mic-ring {
+      opacity: .12;
+    }
+    /* 内圈填充 — listening 时淡 cyan，active 时实心 cyan */
+    .card__mic-inner {
+      position: relative;
+      z-index: 2;
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      background: #fff;
+      border: 1.5px solid var(--outline-variant);
+      display: flex; align-items: center; justify-content: center;
+      transition: background .35s var(--soft), border-color .35s var(--soft), transform .4s var(--bounce);
+    }
+    /* ===== 左卡：关 → 开 ===== */
+    .card.is-wake.is-listening .card__mic-inner { border-color: var(--accent); }
+    .card.is-wake.is-recognizing .card__mic-inner { border-color: var(--accent); }
+    .card.is-wake.is-active .card__mic-inner {
+      background: var(--accent);
+      border-color: var(--accent);
+      transform: scale(1.05);
+    }
+    /* ===== 右卡：默认（听写中）= 工作中 = 开 ===== */
+    .card.is-end .card__mic-ring { opacity: .12; }
+    .card.is-end .card__mic-inner {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .card.is-end .mic-body, .card.is-end .mic-arc,
+    .card.is-end .mic-stem, .card.is-end .mic-base {
+      stroke: #fff;
+    }
+    /* 右卡：listening / recognizing / active = 关闭中 / 已结束 = 关 */
+    .card.is-end.is-listening .card__mic-ring,
+    .card.is-end.is-recognizing .card__mic-ring,
+    .card.is-end.is-active .card__mic-ring { opacity: 0; }
+    .card.is-end.is-listening .card__mic-inner,
+    .card.is-end.is-recognizing .card__mic-inner,
+    .card.is-end.is-active .card__mic-inner {
+      background: #fff;
+      border-color: var(--outline-variant);
+      transform: scale(1);
+    }
+    .card.is-end.is-listening .mic-body, .card.is-end.is-listening .mic-arc,
+    .card.is-end.is-listening .mic-stem, .card.is-end.is-listening .mic-base,
+    .card.is-end.is-recognizing .mic-body, .card.is-end.is-recognizing .mic-arc,
+    .card.is-end.is-recognizing .mic-stem, .card.is-end.is-recognizing .mic-base,
+    .card.is-end.is-active .mic-body, .card.is-end.is-active .mic-arc,
+    .card.is-end.is-active .mic-stem, .card.is-end.is-active .mic-base {
+      stroke: var(--on-surface-muted);
+    }
+    /* 按下→弹起（仅 listening/recognizing 一帧） */
+    .card.is-listening .card__mic-inner,
+    .card.is-recognizing .card__mic-inner {
+      animation: micPress .45s var(--bounce);
+    }
+    .card.is-active .card__mic-inner { animation: none; }
+    @keyframes micPress {
+      0%   { transform: scale(1); }
+      30%  { transform: scale(.92); }
+      65%  { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+
+    /* mic parts */
+    .card__mic-inner svg { display: block; }
+    .mic-body, .mic-arc, .mic-stem, .mic-base {
+      stroke: var(--on-surface-muted);
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      fill: none;
+      transition: stroke .35s var(--soft);
+    }
+    .card.is-listening .mic-body,
+    .card.is-listening .mic-arc,
+    .card.is-listening .mic-stem,
+    .card.is-listening .mic-base,
+    .card.is-recognizing .mic-body,
+    .card.is-recognizing .mic-arc,
+    .card.is-recognizing .mic-stem,
+    .card.is-recognizing .mic-base {
+      stroke: var(--accent);
+    }
+    .card.is-wake.is-listening .mic-body, .card.is-wake.is-listening .mic-arc,
+    .card.is-wake.is-listening .mic-stem, .card.is-wake.is-listening .mic-base,
+    .card.is-wake.is-recognizing .mic-body, .card.is-wake.is-recognizing .mic-arc,
+    .card.is-wake.is-recognizing .mic-stem, .card.is-wake.is-recognizing .mic-base {
+      stroke: var(--accent);
+    }
+    .card.is-wake.is-active .mic-body,
+    .card.is-wake.is-active .mic-arc,
+    .card.is-wake.is-active .mic-stem,
+    .card.is-wake.is-active .mic-base {
+      stroke: #fff;
+    }
+
+    /* 波形柱 — 单边 4 根，靠近 mic */
+    .card__bars {
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      font-weight: 800;
-      opacity: 0;
-      box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 40%, transparent);
-      transition: opacity .25s var(--htv-ease), transform .35s cubic-bezier(.34,1.56,.64,1);
+      gap: 5px;
+      height: 56px;
     }
-    .card.is-active .card__check { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-    .card__check::after {
-      content: "";
-      width: 12px; height: 7px;
-      border-left: 2.5px solid #fff;
-      border-bottom: 2.5px solid #fff;
-      transform: rotate(-45deg) translate(1px, -2px);
+    .card__bar {
+      display: block;
+      width: 4px;
+      height: 0;
+      border-radius: 999px;
+      background: var(--accent);
+      opacity: 0;
+    }
+    .card__bar { animation: barStage var(--cycle) var(--soft) infinite; }
+    .card.is-wake  .card__bar { animation-delay: 0s; }
+    .card.is-end   .card__bar { animation-delay: var(--offset); }
+    .card__bar:nth-child(1) { animation-delay: 0s; }
+    .card.is-end .card__bar:nth-child(1) { animation-delay: var(--offset); }
+    .card__bar:nth-child(2) { animation-delay: -.08s; }
+    .card.is-end .card__bar:nth-child(2) { animation-delay: calc(var(--offset) - .08s); }
+    .card__bar:nth-child(3) { animation-delay: -.16s; }
+    .card.is-end .card__bar:nth-child(3) { animation-delay: calc(var(--offset) - .16s); }
+    .card__bar:nth-child(4) { animation-delay: -.24s; }
+    .card.is-end .card__bar:nth-child(4) { animation-delay: calc(var(--offset) - .24s); }
+
+    @keyframes barStage {
+      0%, 6%   { height: 0;   opacity: 0; }
+      10%      { height: 32px; opacity: 1; }
+      14%      { height: 16px; opacity: 1; }
+      18%      { height: 28px; opacity: 1; }
+      22%      { height: 12px; opacity: 1; }
+      26%      { height: 10px; opacity: .7; }
+      30%      { height: 18px; opacity: .85; }
+      34%      { height: 10px; opacity: .7; }
+      38%      { height: 16px; opacity: .85; }
+      44%, 76% { height: 14px; opacity: .55; }
+      80%      { height: 0; opacity: 0; }
+      100%     { height: 0; opacity: 0; }
     }
 
     .card__desc {
       font-size: 12px;
       color: var(--on-surface-muted);
       line-height: 1.5;
+      text-align: center;
+      max-width: 280px;
+      margin: 0 auto;
+      transition: color .3s var(--soft);
     }
-    .card.is-active .card__desc { color: var(--accent-strong); }
-
-    /* === 动画 keyframes === */
-    /* 阶段 1 (0-10%): 待听 — 1 根柱呼吸 */
-    /* 阶段 2 (10-26%): 听到说话 — 4 根柱大跳 */
-    /* 阶段 3 (26-40%): 识别中 — 4 根柱快速小幅 */
-    /* 阶段 4 (40-55%): 识别成功 — 卡变 active + 勾 + 文字 */
-    /* 阶段 5 (55-80%): 维持 — 2 根慢速 */
-    /* 阶段 6 (80-100%): 回落 — 重置 */
-    .card__bar { animation: barStage var(--cycle) var(--htv-ease) infinite; }
-    .card.is-wake  .card__bar { animation-delay: 0s; }
-    .card.is-end   .card__bar { animation-delay: var(--offset); }
-
-    /* 4 根柱的错峰 */
-    .card__bar:nth-child(1) { animation-delay: 0s; }
-    .card.is-end .card__bar:nth-child(1) { animation-delay: var(--offset); }
-    .card__bar:nth-child(2) { animation-delay: -.05s; }
-    .card.is-end .card__bar:nth-child(2) { animation-delay: calc(var(--offset) - .05s); }
-    .card__bar:nth-child(3) { animation-delay: -.1s; }
-    .card.is-end .card__bar:nth-child(3) { animation-delay: calc(var(--offset) - .1s); }
-    .card__bar:nth-child(4) { animation-delay: -.15s; }
-    .card.is-end .card__bar:nth-child(4) { animation-delay: calc(var(--offset) - .15s); }
-
-    @keyframes barStage {
-      0%, 6%   { height: 10px; opacity: .35; }
-      10%      { height: 36px; opacity: 1; }
-      14%      { height: 22px; opacity: 1; }
-      18%      { height: 32px; opacity: 1; }
-      22%      { height: 18px; opacity: 1; }
-      26%      { height: 14px; opacity: .7; }
-      30%      { height: 20px; opacity: .9; }
-      34%      { height: 12px; opacity: .8; }
-      38%      { height: 18px; opacity: .9; }
-      42%      { height: 14px; opacity: .6; }
-      46%, 80% { height: 16px; opacity: .5; }
-      85%      { height: 12px; opacity: .35; }
-      100%     { height: 10px; opacity: .35; }
-    }
-
-    /* 阶段控制：卡 active 状态切换 */
-    .card.is-wake  { animation: wakeState  var(--cycle) var(--htv-ease) infinite; }
-    .card.is-end   { animation: endState   var(--cycle) var(--htv-ease) infinite var(--offset); }
-    @keyframes wakeState {
-      0%, 40%  { /* not active */ }
-      42%, 78% { /* active: applied via class toggle in JS */ }
-    }
-    @keyframes endState {
-      0%, 40%  {}
-      42%, 78% {}
-    }
-
-    /* 气泡动画：听到瞬间出现 + 淡出 */
-    .card.is-wake  .card__bubble { animation: bubbleWake  var(--cycle) var(--htv-ease) infinite; }
-    .card.is-end   .card__bubble { animation: bubbleEnd   var(--cycle) var(--htv-ease) infinite var(--offset); }
-    @keyframes bubbleWake {
-      0%, 6%   { opacity: 0; transform: translateX(-50%) translateY(4px); }
-      10%, 24% { opacity: 1; transform: translateX(-50%) translateY(0); }
-      30%, 100% { opacity: 0; transform: translateX(-50%) translateY(-2px); }
-    }
-    @keyframes bubbleEnd {
-      0%, 6%   { opacity: 0; transform: translateX(-50%) translateY(4px); }
-      10%, 24% { opacity: 1; transform: translateX(-50%) translateY(0); }
-      30%, 100% { opacity: 0; transform: translateX(-50%) translateY(-2px); }
-    }
-
-    /* 状态文字：等听 / 听写中 / 识别中 / 已激活/已结束 */
-    .card__status {
-      animation: statusState var(--cycle) var(--htv-ease) infinite;
-    }
-    .card.is-end .card__status { animation-delay: var(--offset); }
-    @keyframes statusState {
-      0%, 6%   { /* 待听 */ }
-      10%, 24% { /* 听写中 */ }
-      26%, 38% { /* 识别中 */ }
-      42%, 100% { /* 已识别 */ }
-    }
-
-    /* 状态文字由 JS 按时间窗口切换 */
+    .card.is-active .card__desc { color: var(--primary-strong); font-weight: 600; }
 
     .legend {
-      margin-top: 6px;
+      margin-top: 4px;
       padding: 8px 12px;
       background: var(--surface-soft);
       border-radius: 12px;
@@ -316,16 +312,22 @@
       color: var(--on-surface-muted);
       line-height: 1.55;
       text-align: center;
-      max-width: 640px;
+      max-width: 720px;
     }
     .legend strong { color: var(--primary-strong); }
+    .legend code {
+      background: #fff;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: ui-monospace, "JetBrains Mono", Consolas, monospace;
+      font-size: 10px;
+      color: var(--primary-strong);
+    }
 
-    /* reduced motion */
     @media (prefers-reduced-motion: reduce) {
-      .card, .card__bar, .card__bubble, .card__status, .card__check, .card.is-shake { animation: none !important; }
-      .card.is-wake  { background: var(--primary-soft); border-color: var(--primary); }
-      .card.is-end   { background: var(--success-soft); border-color: var(--success); }
-      .card__check { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      .card__mic-inner, .card__bar, .card__mic-ring { animation: none !important; }
+      .card__bar { opacity: 1; height: 18px; }
+      .card.is-active .card__mic-ring { opacity: .12; }
     }
   </style>
 </head>
@@ -336,102 +338,126 @@
     <p class="desc">点左侧开始练激活；完成后再点右侧练结束。一次只练一个。可在语音设置里自行修改唤醒词和结束词。</p>
 
     <div class="cards">
-      <!-- 左卡：激活 -->
+      <!-- 左卡：开始（关 → 开） -->
       <div class="card is-wake" id="cardWake" data-card="wake">
         <div class="card__head">
           <div class="card__title">语音激活</div>
-          <div class="card__status" data-status="待听">待听</div>
+          <div class="card__status" data-status>未激活</div>
         </div>
-        <div class="card__wave" aria-hidden="true">
-          <span class="card__bubble">「开始听写」</span>
-          <span class="card__bar"></span>
-          <span class="card__bar"></span>
-          <span class="card__bar"></span>
-          <span class="card__bar"></span>
-          <span class="card__check" aria-hidden="true"></span>
+        <div class="card__stage">
+          <div class="card__bars">
+            <span class="card__bar"></span>
+            <span class="card__bar"></span>
+            <span class="card__bar"></span>
+            <span class="card__bar"></span>
+          </div>
+          <div class="card__mic-wrap">
+            <span class="card__mic-ring"></span>
+            <div class="card__mic-inner" data-mic>
+              <svg viewBox="0 0 24 24" width="28" height="28">
+                <rect class="mic-body" x="9" y="2" width="6" height="12" rx="3"/>
+                <path class="mic-arc" d="M5 11a7 7 0 0 0 14 0"/>
+                <line class="mic-stem" x1="12" y1="18" x2="12" y2="22"/>
+                <line class="mic-base" x1="8" y1="22" x2="16" y2="22"/>
+              </svg>
+            </div>
+          </div>
         </div>
-        <div class="card__desc">说出激活词，开始听写</div>
+        <div class="card__desc">说出激活词，麦克风打开开始听写</div>
       </div>
 
-      <!-- 右卡：结束 -->
+      <!-- 右卡：结束（开 → 关） -->
       <div class="card is-end" id="cardEnd" data-card="end">
         <div class="card__head">
           <div class="card__title">语音结束</div>
-          <div class="card__status" data-status="待听">待听</div>
+          <div class="card__status" data-status>听写中</div>
         </div>
-        <div class="card__wave" aria-hidden="true">
-          <span class="card__bubble">「结束听写」</span>
-          <span class="card__bar"></span>
-          <span class="card__bar"></span>
-          <span class="card__bar"></span>
-          <span class="card__bar"></span>
-          <span class="card__check" aria-hidden="true"></span>
+        <div class="card__stage">
+          <div class="card__bars">
+            <span class="card__bar"></span>
+            <span class="card__bar"></span>
+            <span class="card__bar"></span>
+            <span class="card__bar"></span>
+          </div>
+          <div class="card__mic-wrap">
+            <span class="card__mic-ring"></span>
+            <div class="card__mic-inner" data-mic>
+              <svg viewBox="0 0 24 24" width="28" height="28">
+                <rect class="mic-body" x="9" y="2" width="6" height="12" rx="3"/>
+                <path class="mic-arc" d="M5 11a7 7 0 0 0 14 0"/>
+                <line class="mic-stem" x1="12" y1="18" x2="12" y2="22"/>
+                <line class="mic-base" x1="8" y1="22" x2="16" y2="22"/>
+              </svg>
+            </div>
+          </div>
         </div>
-        <div class="card__desc">听写开始后结束，不自动发送</div>
+        <div class="card__desc">说结束词，麦克风关闭停止听写</div>
       </div>
     </div>
 
-    <p class="legend">每卡 <strong>5s</strong> 一轮（待听 → 听到 → 识别 → 成功 → 回落），左右两卡错峰 <strong>2.5s</strong>，完整循环内可同时看到「激活 + 结束」两个动作。</p>
+    <p class="legend">
+      <strong>左卡</strong>：<code>关</code> → 按下 → <code>开</code>：mic 圆从灰描边 → cyan 实心，柱从 0 弹起<br>
+      <strong>右卡</strong>：<code>开</code> → 按下 → <code>关</code>：mic 圆从 cyan 实心 → 灰描边，柱从高归 0<br>
+      单色 <code>#2a9cc4</code>，无渐变光晕。开关心智：mic 圆"按亮/按灭"。
+    </p>
   </div>
 
   <script>
     (function(){
       'use strict';
       var cards = [
-        { el: document.getElementById('cardWake'), statusEl: null, offset: 0,    successText: '已激活', pending: '待听', listening: '听写中…', recognizing: '识别中…' },
-        { el: document.getElementById('cardEnd'),  statusEl: null, offset: 2.5,  successText: '已结束', pending: '待听', listening: '听写中…', recognizing: '识别中…' }
+        { el: document.getElementById('cardWake'), offset: 0,
+          pending: '未激活', listening: '打开中…', recognizing: '识别中…', success: '已激活',
+          mode: 'open' },
+        { el: document.getElementById('cardEnd'),  offset: 2.5,
+          pending: '听写中', listening: '关闭中…', recognizing: '识别中…', success: '已结束',
+          mode: 'close' }
       ];
       cards.forEach(function(c){
         c.statusEl = c.el.querySelector('[data-status]');
+        c.statusEl.textContent = c.pending;
       });
-      var CYCLE = 5000;
+      var CYCLE = 5;
 
       function setState(c, state, text){
-        c.el.classList.remove('is-active', 'is-speaking', 'is-shake');
-        if (state === 'speaking') c.el.classList.add('is-speaking');
-        if (state === 'active') {
-          c.el.classList.add('is-active', 'is-shake');
-          // trigger reflow then remove shake to allow re-trigger next time
-          setTimeout(function(){ c.el.classList.remove('is-shake'); }, 360);
-        }
+        c.el.classList.remove('is-active', 'is-listening', 'is-recognizing');
+        if (state === 'listening')   c.el.classList.add('is-listening');
+        if (state === 'recognizing') c.el.classList.add('is-recognizing');
+        if (state === 'active')      c.el.classList.add('is-active');
         c.statusEl.textContent = text;
-        c.statusEl.setAttribute('data-state', state === 'active' ? 'done' : state);
       }
 
       function tick(){
-        var t = Date.now();
+        var t = Date.now() / 1000;
         cards.forEach(function(c){
-          var p = ((t / 1000) + c.offset) % (CYCLE / 1000);  // 0..5
-          // Stages (in seconds, 0..5):
-          // 0.0-0.5:   pending
-          // 0.5-1.3:   speaking (heard voice)
-          // 1.3-2.0:   recognizing
-          // 2.0-4.0:   active (success)
-          // 4.0-5.0:   pending (reset)
-          if (p < 0.5) {
-            if (c.el.classList.contains('is-active')) setState(c, 'pending', c.pending);
-            else setState(c, 'pending', c.pending);
-          } else if (p < 1.3) {
-            if (!c.el.classList.contains('is-speaking')) setState(c, 'speaking', c.listening);
-          } else if (p < 2.0) {
-            if (!c.el.classList.contains('is-speaking')) setState(c, 'speaking', c.recognizing);
-            else setState(c, 'speaking', c.recognizing);
-          } else if (p < 4.0) {
-            if (!c.el.classList.contains('is-active')) setState(c, 'active', c.successText);
+          var p = (t + c.offset) % CYCLE;
+          if (c.mode === 'open') {
+            if (p < 0.4)      setState(c, 'pending', c.pending);
+            else if (p < 0.9)  setState(c, 'listening', c.listening);
+            else if (p < 1.3)  setState(c, 'recognizing', c.recognizing);
+            else if (p < 4.8) {
+              if (!c.el.classList.contains('is-active')) setState(c, 'active', c.success);
+            } else {
+              if (c.el.classList.contains('is-active')) setState(c, 'pending', c.pending);
+            }
           } else {
-            if (c.el.classList.contains('is-active')) setState(c, 'pending', c.pending);
+            if (p < 1.8) {
+              setState(c, 'pending', c.pending);
+            } else if (p < 2.3) {
+              setState(c, 'listening', c.listening);
+            } else if (p < 2.8) {
+              setState(c, 'recognizing', c.recognizing);
+            } else {
+              if (!c.el.classList.contains('is-active')) setState(c, 'active', c.success);
+            }
           }
         });
         requestAnimationFrame(tick);
       }
 
-      // Click handlers — manual trigger
       cards.forEach(function(c){
         c.el.addEventListener('click', function(){
-          // restart this card's cycle by toggling
-          var now = Date.now();
-          // force active state immediately
-          setState(c, 'active', c.successText);
+          setState(c, 'active', c.success);
         });
       });
 

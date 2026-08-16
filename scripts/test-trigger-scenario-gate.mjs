@@ -25,6 +25,15 @@ assert.ok(js.includes('function syncGateKeepKeyboard'), 'syncGateKeepKeyboard');
 assert.ok(js.includes('gateDemoActivationCombo'), 'uses activation combo');
 assert.ok(js.includes('activationTargetKey'), 'reads prior IME key');
 
+assert.ok(html.includes('habit-setup-trigger-device--tourbox'), 'TourBox device');
+assert.ok(html.includes('habit-setup-trigger-device__key'), 'SVG device key');
+assert.ok(html.includes('viewBox="0 0 24 24"'), 'device SVG art');
+assert.ok(!html.includes('habit-setup-trigger-device--ring'), 'old ring art removed');
+assert.ok(i18n.includes("habitSetupTriggerDevRing:'TourBox'"), 'TourBox label');
+assert.ok(css.includes('transform-box:fill-box'), 'SVG key transform box');
+assert.ok(!css.includes('habit-setup-trigger-device--ring .habit-setup-trigger-device__art::before'), 'no CSS shape art');
+assert.ok(!css.includes('htvDevKeyT'), 'no translate keyframes for absolute keys');
+
 assert.ok(css.includes('.habit-setup-trigger-parallel'), 'parallel styles');
 assert.ok(css.includes('.habit-setup-trigger-pick'), 'equal pick button styles');
 assert.ok(css.includes('htvKbdPress'), 'kbd press');

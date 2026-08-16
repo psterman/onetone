@@ -50,6 +50,8 @@ const wakeBind = js.slice(js.indexOf('function bindVoicePracticeStageListening')
 const wakeBindBody = wakeBind.slice(0, wakeBind.indexOf('function bindVoicePracticeEndModal'));
 assert.ok(!wakeBindBody.includes('onHeardChange'), 'wake bind does not write ASR into box');
 assert.ok(wakeBindBody.includes('embedded:true'), 'wake stays embedded on stage');
+assert.ok(wakeBindBody.includes("hintText:''") || wakeBindBody.includes('hintText:""'), 'wake embed skips duplicate hint');
+assert.ok(js.includes('field.hidden=true') && js.includes("bindVoicePracticeStageListening('wake')"), 'wake hides IME field');
 
 const markFn = js.slice(js.indexOf('function markVoicePracticeStageDoneManual'));
 const markBody = markFn.slice(0, markFn.indexOf('var triggerTestListener'));
@@ -108,6 +110,20 @@ assert.ok(wakeJs.includes('practiceOpen'), 'practice forces backend status probe
 
 const phraseJs = readFileSync(join(root, 'src/js/phrase-practice.js'), 'utf8');
 assert.ok(phraseJs.includes('nudgePracticeVoicePoll'), 'phrase practice nudges voice poll');
+assert.ok(phraseJs.includes('phrase-practice-section--say'), 'embedded say section');
+assert.ok(phraseJs.includes('phrase-practice-section--hear'), 'embedded hear section');
+assert.ok(phraseJs.includes('phrase-practice-section--alts'), 'embedded alts section');
+const hearBlock = phraseJs.slice(phraseJs.indexOf('phrase-practice-section--hear'));
+const hearHead = hearBlock.slice(0, hearBlock.indexOf('phrase-practice-section--alts'));
+assert.ok(hearHead.includes('data-phrase-practice-preview-label'), 'preview-label lives in hear section');
+assert.ok(!hearHead.includes('data-phrase-practice-phrase'), 'phrase hero not inside hear section');
+
+assert.ok(i18n.includes('phrasePracticeSayLabel'), 'say label i18n');
+assert.ok(i18n.includes('phrasePracticeAltsLabel'), 'alts label i18n');
+assert.ok(i18n.includes("'请说'") || i18n.includes('请说'), 'zh say label');
+assert.ok(css.includes('.phrase-practice-section--say') || css.includes('.phrase-practice-section'), 'section CSS');
+assert.ok(css.includes('.phrase-practice-embedded .habit-setup-voice-preview'), 'embedded heard quieter than hero');
+assert.ok(css.includes('.habit-setup-voice-practice-mark'), 'mark button spacing rule');
 
 const sapiRt = readFileSync(join(root, 'src-tauri/src/voice_sapi_runtime.rs'), 'utf8');
 assert.ok(

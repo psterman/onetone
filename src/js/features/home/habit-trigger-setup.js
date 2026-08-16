@@ -276,6 +276,7 @@
     var success=$('habitSetupVoicePracticeSuccess');
     voicePracticeInputUserEdited=false;
     if(field){
+      field.hidden=false;
       field.classList.remove('is-dictating','is-success');
     }
     if(input){
@@ -352,7 +353,7 @@
     if(!mount||!global.OneTonePhrasePractice||!global.OneTonePhrasePractice.open) return;
     var phrases=getWakePhrases();
     var options=WAKE_PRESET_OPTIONS.slice();
-    var hint=t('qsVoicePracticeHintWake')||t('phrasePracticeHint');
+    // Stage title/desc already explain; skip duplicate long hint in embed.
     global.OneTonePhrasePractice.open({
       embedded:true,
       mount:'#habitSetupVoicePracticeMount',
@@ -360,7 +361,7 @@
       phrases:phrases,
       phraseOptions:options,
       multiSelect:false,
-      hintText:hint,
+      hintText:'',
       onMatch:function(){
         onVoicePracticeWakeMatched();
       },
@@ -400,11 +401,11 @@
   function qsVoiceDualPanelGuideText(){
     var wakeDone=!!(setupState&&setupState.voiceLessons&&setupState.voiceLessons.wake);
     var endDone=!!(setupState&&setupState.voiceLessons&&setupState.voiceLessons.end);
-    if(wakeDone&&!endDone){
-      return t('qsVoicePanelGuideAfterWake')||t('qsVoicePanelGuide');
-    }
     if(wakeDone&&endDone){
       return t('qsVoicePanelGuideAllDone')||t('qsVoicePanelGuide');
+    }
+    if(wakeDone||endDone){
+      return t('qsVoicePanelGuidePartial')||t('qsVoicePanelGuide');
     }
     return t('qsVoicePanelGuide');
   }
@@ -428,6 +429,7 @@
     clearVoicePracticeMount();
     var field=$('habitSetupVoicePracticeField');
     if(field){
+      field.hidden=false;
       field.classList.remove('is-dictating');
       field.classList.add('is-success');
     }
@@ -500,16 +502,12 @@
   function enterVoicePracticeStage(lessonId){
     if(!setupState||setupState.page!==4||!setupState.qsMode) return;
     if(setupState.voiceMicGate!=='ready') return;
+    stopQsVoiceDemoTick();
     notifySetupInteractionActive(true);
     setVoicePracticeHoldFg(true);
     lessonId=String(lessonId||'').trim();
     if(lessonId!=='wake'&&lessonId!=='end') lessonId=qsNextVoiceLessonId()||'wake';
-    if(lessonId==='end'&&!(setupState.voiceLessons&&setupState.voiceLessons.wake)){
-      if(global.OneToneApp&&global.OneToneApp.toast){
-        global.OneToneApp.toast(t('qsVoiceEndLockedHint'));
-      }
-      lessonId='wake';
-    }
+    // Free pick: either card may open practice without wake-first lock.
     clearVoicePracticeStageTimer();
     stopVoicePracticeDictationAnim();
     clearVoiceLessonPractice();
@@ -535,13 +533,17 @@
     if($('habitSetupVoicePracticeFieldLbl')) $('habitSetupVoicePracticeFieldLbl').textContent=t('qsVoicePracticeFieldLbl');
     if($('btnHabitSetupVoicePracticeBack')) $('btnHabitSetupVoicePracticeBack').textContent=t('qsVoicePracticeBack');
     if($('btnHabitSetupVoicePracticeMarkDone')) $('btnHabitSetupVoicePracticeMarkDone').textContent=t('habitSetupVoiceLessonMarkDone');
+    var field=$('habitSetupVoicePracticeField');
     if(startEnd){
+      if(field) field.hidden=false;
       showVoicePracticeCoach(t('qsVoicePracticeCoachEndOnly'));
       startVoicePracticeLiveDictation({clear:true});
       activateVoicePracticeIme();
       voicePracticeEndArmedAt=Date.now()+800;
       bindVoicePracticeEndModal();
     }else{
+      // Wake listen: IME box stays hidden; PhrasePractice mount is the sole mid-stack.
+      if(field) field.hidden=true;
       voicePracticeEndArmedAt=0;
       bindVoicePracticeStageListening('wake');
     }
@@ -1881,6 +1883,7 @@
     var micGate=setupState.voiceMicGate||'pending';
 
     if(micGate==='pending'||micGate==='blocked'){
+      stopQsVoiceDemoTick();
       showVoiceMicGateUi(micGate);
       if(micGate==='blocked') scheduleVoiceMicSoftSkip();
       renderWizardFooters();
@@ -1894,6 +1897,7 @@
       var panelQs=$('habitSetupVoiceStep4Panel');
       if(panelQs) panelQs.hidden=true;
       if(voicePracticeStagePhase!=='idle'){
+        stopQsVoiceDemoTick();
         renderWizardFooters();
         return;
       }
@@ -1906,32 +1910,50 @@
         hostQs.className='habit-setup-voice-lessons habit-setup-voice-lessons--parallel';
         var wakeDone=!!(setupState.voiceLessons&&setupState.voiceLessons.wake);
         var endDone=!!(setupState.voiceLessons&&setupState.voiceLessons.end);
-        var active=setupState.activeVoiceLesson||qsNextVoiceLessonId()||'wake';
-        if(active==='end'&&!wakeDone) active='wake';
+        var micSvg=
+          '<svg class="habit-setup-voice-demo-mic-svg" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">'
+            +'<rect class="mic-body" x="9" y="2" width="6" height="12" rx="3"/>'
+            +'<path class="mic-arc" d="M5 11a7 7 0 0 0 14 0"/>'
+            +'<line class="mic-stem" x1="12" y1="18" x2="12" y2="22"/>'
+            +'<line class="mic-base" x1="8" y1="22" x2="16" y2="22"/>'
+          +'</svg>';
         var cards=[
           { id:'wake', title:t('habitSetupVoiceLessonWakeTitle'), desc:t('qsVoiceWakeLessonDesc')||t('habitSetupVoiceLessonWakeDesc'), done:wakeDone },
           { id:'end', title:t('habitSetupVoiceLessonEndTitle'), desc:t('qsVoiceEndLessonDesc')||t('habitSetupVoiceLessonEndDesc'), done:endDone }
         ];
         hostQs.innerHTML=cards.map(function(item){
-          var sel=item.id===active;
-          var dim=!sel;
-          var locked=item.id==='end'&&!wakeDone;
-          var demo=item.id==='wake'
-            ?'<div class="habit-setup-voice-mini habit-setup-voice-mini--wake" aria-hidden="true"><span></span><span></span><span></span><span></span></div>'
-            :'<div class="habit-setup-voice-mini habit-setup-voice-mini--end" aria-hidden="true"><span></span><span></span><span></span><span></span></div>';
+          var accent=item.id==='end'?' is-end':' is-wake';
+          var pendingLbl=qsVoiceDemoPendingText(item.id);
+          var demo=
+            '<div class="habit-setup-voice-demo-head">'
+              +'<div class="habit-setup-voice-demo-title">'+esc(item.title)+'</div>'
+              +'<div class="habit-setup-voice-demo-status" data-status="pending">'+esc(pendingLbl)+'</div>'
+            +'</div>'
+            +'<div class="habit-setup-voice-demo-stage" aria-hidden="true">'
+              +'<div class="habit-setup-voice-demo-bars">'
+                +'<span class="habit-setup-voice-demo-bar"></span>'
+                +'<span class="habit-setup-voice-demo-bar"></span>'
+                +'<span class="habit-setup-voice-demo-bar"></span>'
+                +'<span class="habit-setup-voice-demo-bar"></span>'
+              +'</div>'
+              +'<div class="habit-setup-voice-demo-mic-wrap">'
+                +'<span class="habit-setup-voice-demo-mic-ring"></span>'
+                +'<div class="habit-setup-voice-demo-mic-inner habit-setup-voice-demo-mic">'+micSvg+'</div>'
+              +'</div>'
+            +'</div>'
+            +'<span class="habit-setup-voice-demo-desc">'+esc(item.desc)+'</span>';
           return '<button type="button" class="habit-setup-voice-lesson-card'
-            +(sel?' is-active':'')
-            +(dim?' is-dim':'')
-            +(locked?' is-locked':'')
+            +accent
             +(item.done?' is-done':'')+'"'
             +' data-voice-lesson="'+esc(item.id)+'"'
-            +' aria-pressed="'+(sel?'true':'false')+'"'
-            +(locked?' aria-disabled="true"':'')+'>'
+            +' aria-pressed="false">'
             +demo
             +(item.done?'<span class="habit-setup-voice-lesson-done">'+esc(t('habitSetupVoiceLessonDone'))+'</span>':'')
-            +'<b>'+esc(item.title)+'</b><span>'+esc(item.desc)+'</span></button>';
+            +'</button>';
         }).join('');
-        // QS: stay on dual panels until user taps a column (practice stage).
+        bindQsVoiceDemoHover(hostQs);
+        startQsVoiceDemoTick();
+        // QS: stay on dual panels until user taps a card (practice stage).
       }
       renderWizardFooters();
       return;
@@ -1982,27 +2004,163 @@
     renderWizardFooters();
   }
 
+  var qsVoiceDemoRaf=0;
+  var QS_VOICE_DEMO_CYCLE_MS=5000;
+  var qsVoiceDemoHoverBound=false;
+
+  function qsVoiceDemoPendingText(id){
+    return id==='end'
+      ?(t('qsVoiceDemoStatusEndPending')||'听写中')
+      :(t('qsVoiceDemoStatusWakePending')||'未激活');
+  }
+
+  function qsVoiceDemoListeningText(id){
+    return id==='end'
+      ?(t('qsVoiceDemoStatusEndListening')||'关闭中…')
+      :(t('qsVoiceDemoStatusWakeListening')||'打开中…');
+  }
+
+  function resetQsVoiceDemoCardRest(card){
+    if(!card) return;
+    var id=String(card.getAttribute('data-voice-lesson')||'');
+    card.classList.remove('is-listening','is-recognizing','is-speaking','is-demo-hit','is-demo-shake');
+    card.removeAttribute('data-demo-phase');
+    var st=card.querySelector('.habit-setup-voice-demo-status');
+    if(st){
+      st.textContent=qsVoiceDemoPendingText(id);
+      st.setAttribute('data-state','pending');
+    }
+  }
+
+  function bindQsVoiceDemoHover(host){
+    if(!host||qsVoiceDemoHoverBound) return;
+    qsVoiceDemoHoverBound=true;
+    host.addEventListener('pointerover',function(e){
+      var card=e.target&&e.target.closest?e.target.closest('[data-voice-lesson]'):null;
+      if(!card||!host.contains(card)) return;
+      var cards=host.querySelectorAll('[data-voice-lesson]');
+      for(var i=0;i<cards.length;i++){
+        var on=cards[i]===card;
+        if(on){
+          if(!cards[i].classList.contains('is-hot')){
+            cards[i].classList.add('is-hot');
+            cards[i].removeAttribute('data-demo-phase');
+          }
+        }else if(cards[i].classList.contains('is-hot')){
+          cards[i].classList.remove('is-hot');
+          resetQsVoiceDemoCardRest(cards[i]);
+        }
+      }
+    });
+    host.addEventListener('pointerleave',function(){
+      var cards=host.querySelectorAll('[data-voice-lesson]');
+      for(var i=0;i<cards.length;i++){
+        if(cards[i].classList.contains('is-hot')){
+          cards[i].classList.remove('is-hot');
+          resetQsVoiceDemoCardRest(cards[i]);
+        }
+      }
+    });
+  }
+
+  function stopQsVoiceDemoTick(){
+    if(qsVoiceDemoRaf){
+      cancelAnimationFrame(qsVoiceDemoRaf);
+      qsVoiceDemoRaf=0;
+    }
+  }
+
+  function setQsVoiceDemoCardState(card,state,text){
+    if(!card) return;
+    var statusEl=card.querySelector('.habit-setup-voice-demo-status');
+    card.classList.remove('is-listening','is-recognizing','is-speaking','is-demo-hit','is-demo-shake');
+    if(state==='listening') card.classList.add('is-listening');
+    if(state==='recognizing') card.classList.add('is-recognizing');
+    if(state==='active'){
+      card.classList.add('is-demo-hit','is-demo-shake');
+      setTimeout(function(){ card.classList.remove('is-demo-shake'); },360);
+    }
+    if(statusEl){
+      statusEl.textContent=text;
+      statusEl.setAttribute('data-state',state==='active'?'done':state);
+    }
+  }
+
+  function qsVoiceDemoTickFrame(){
+    qsVoiceDemoRaf=0;
+    if(!setupState||!setupState.qsMode||setupState.page!==4||voicePracticeStagePhase!=='idle'){
+      stopQsVoiceDemoTick();
+      return;
+    }
+    var host=$('habitSetupVoiceLessons');
+    if(!host||!host.classList.contains('habit-setup-voice-lessons--parallel')||host.hidden){
+      stopQsVoiceDemoTick();
+      return;
+    }
+    var tNow=Date.now();
+    var cards=host.querySelectorAll('[data-voice-lesson]');
+    for(var i=0;i<cards.length;i++){
+      var card=cards[i];
+      var id=String(card.getAttribute('data-voice-lesson')||'');
+      if(!card.classList.contains('is-hot')){
+        if(card.classList.contains('is-listening')||card.classList.contains('is-recognizing')||card.classList.contains('is-demo-hit')){
+          resetQsVoiceDemoCardRest(card);
+        }
+        continue;
+      }
+      var offsetSec=id==='end'?2.5:0;
+      var p=((tNow/1000)+offsetSec)%(QS_VOICE_DEMO_CYCLE_MS/1000);
+      var successText=id==='end'
+        ?(t('qsVoiceDemoStatusEndDone')||'已结束')
+        :(t('qsVoiceDemoStatusWakeDone')||'已激活');
+      var pendingText=qsVoiceDemoPendingText(id);
+      var listeningText=qsVoiceDemoListeningText(id);
+      var recognizingText=t('qsVoiceDemoStatusRecognizing')||'识别中…';
+      var next='pending';
+      var nextText=pendingText;
+      // Match voice-activate-end-preview.html: wake opens early; end stays "on" longer then closes.
+      if(id==='end'){
+        if(p<1.8){ next='pending'; nextText=pendingText; }
+        else if(p<2.3){ next='listening'; nextText=listeningText; }
+        else if(p<2.8){ next='recognizing'; nextText=recognizingText; }
+        else{ next='active'; nextText=successText; }
+      }else{
+        if(p<0.4){ next='pending'; nextText=pendingText; }
+        else if(p<0.9){ next='listening'; nextText=listeningText; }
+        else if(p<1.3){ next='recognizing'; nextText=recognizingText; }
+        else if(p<4.8){ next='active'; nextText=successText; }
+        else{ next='pending'; nextText=pendingText; }
+      }
+      if(card.getAttribute('data-demo-phase')!==next){
+        card.setAttribute('data-demo-phase',next);
+        setQsVoiceDemoCardState(card,next,nextText);
+      }
+    }
+    qsVoiceDemoRaf=requestAnimationFrame(qsVoiceDemoTickFrame);
+  }
+
+  function startQsVoiceDemoTick(){
+    stopQsVoiceDemoTick();
+    if(!setupState||!setupState.qsMode||setupState.page!==4||voicePracticeStagePhase!=='idle') return;
+    qsVoiceDemoRaf=requestAnimationFrame(qsVoiceDemoTickFrame);
+  }
+
   function syncQsVoicePanels(){
     if(!setupState||!setupState.qsMode||setupState.page!==4) return;
     var host=$('habitSetupVoiceLessons');
     if(!host||!host.classList.contains('habit-setup-voice-lessons--parallel')) return;
-    var wakeDone=!!(setupState.voiceLessons&&setupState.voiceLessons.wake);
-    var active=setupState.activeVoiceLesson||qsNextVoiceLessonId()||'wake';
-    if(active==='end'&&!wakeDone) active='wake';
     var cards=host.querySelectorAll('[data-voice-lesson]');
     for(var i=0;i<cards.length;i++){
       var id=String(cards[i].getAttribute('data-voice-lesson')||'');
-      var sel=id===active;
-      var locked=id==='end'&&!wakeDone;
       var done=!!(setupState.voiceLessons&&setupState.voiceLessons[id]);
-      cards[i].classList.toggle('is-active',sel);
-      cards[i].classList.toggle('is-dim',!sel);
-      cards[i].classList.toggle('is-locked',locked);
       cards[i].classList.toggle('is-done',done);
-      cards[i].setAttribute('aria-pressed',sel?'true':'false');
-      if(locked) cards[i].setAttribute('aria-disabled','true');
-      else cards[i].removeAttribute('aria-disabled');
+      cards[i].classList.remove('is-dim','is-locked','is-active');
+      cards[i].setAttribute('aria-pressed','false');
+      cards[i].removeAttribute('aria-disabled');
+      if(!cards[i].classList.contains('is-hot')) resetQsVoiceDemoCardRest(cards[i]);
     }
+    bindQsVoiceDemoHover(host);
+    startQsVoiceDemoTick();
   }
 
   function openVoiceLesson(lessonId){
