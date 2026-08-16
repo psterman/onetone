@@ -56,6 +56,16 @@ assert.ok(
   'agent chip uses primary-strong'
 );
 
+assert.ok(
+  /\.mode-card__copy h2\{[^}]*margin\s*:\s*0/s.test(css) &&
+    /\.mode-card__copy p\{[^}]*margin\s*:\s*0\.75rem/s.test(css),
+  'title→body Apple gap (0.75rem)'
+);
+
+assert.ok(/qs-pick-row__ico/.test(css), 'veteran pick icon tile');
+assert.ok(/qs-pick-row__go/.test(css), 'veteran pick chevron');
+assert.ok(/qs-pick-row:hover \.qs-pick-row__go/.test(css), 'chevron hover motion');
+
 assert.ok(/prefers-reduced-motion:reduce/.test(css), 'reduced-motion kept');
 
 console.log('test-qs-idle-motion: ok (apple remediation)');

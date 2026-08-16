@@ -21,6 +21,8 @@ assert.ok(orch.includes("classList.remove('has-selection')") || orch.includes('c
 assert.ok(orch.includes("id=\"qsGoBeginner\"") || orch.includes("id='qsGoBeginner'"), 'beginner confirm CTA');
 assert.ok(orch.includes("id=\"qsGoVibe\"") || orch.includes("id='qsGoVibe'"), 'vibe confirm CTA');
 assert.ok(orch.includes('qsVeteranPick') && orch.includes('data-qs-panel'), 'veteran pick rows');
+assert.ok(orch.includes('qsPickIcon') && orch.includes('qs-pick-row__ico'), 'veteran pick icons');
+assert.ok(css.includes('qs-pick-row__ico'), 'pick icon tile CSS');
 assert.ok(orch.includes("startCore('beginner')"), 'beginner path wired');
 assert.ok(orch.includes('goTool()'), 'vibe path wired');
 assert.ok(orch.includes('openSettingsPanel'), 'pick opens settings');

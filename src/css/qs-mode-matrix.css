@@ -236,34 +236,61 @@ html[data-theme="dark"] .qs-mode-matrix .mode-card{
 }
 .qs-mode-matrix .mode-card__copy{
   position:relative;z-index:20;
-  padding:16px 22px 18px;
+  /* Apple: breathing room around the type block; hierarchy via space + size */
+  padding:1.35rem 1.5rem 1.25rem;
   text-align:center;
   flex:0 0 auto;
   display:flex;
   flex-direction:column;
   align-items:center;
+  gap:0;
   width:100%;
   box-sizing:border-box;
-  min-height:9.75rem;
+  min-height:11.5rem;
 }
 .qs-mode-matrix .mode-card__copy h2{
-  margin:0 0 8px;font-size:24px;font-weight:700;color:var(--qs-m3-on);
-  letter-spacing:-.02em;transition:color .2s;
-  width:100%;line-height:1.25;min-height:1.25em;
+  margin:0;
+  width:100%;
+  font-size:1.375rem; /* 22px — presence without shouting */
+  font-weight:700;
+  color:var(--qs-m3-on);
+  letter-spacing:-.021em;
+  line-height:1.2;
+  min-height:1.2em;
+  transition:color .2s;
 }
 .qs-mode-matrix .mode-card.selected .mode-card__copy h2{color:var(--primary-strong, var(--primary))}
 .qs-mode-matrix .mode-card__copy p{
-  margin:0;font-size:13px;line-height:1.5;color:var(--qs-m3-muted);
-  max-width:17.5rem;width:100%;margin-inline:auto;
-  min-height:calc(1.5em * 3);
+  /* Title → supporting: clear group gap (was 8px — too tight for 22px title) */
+  margin:0.75rem 0 0;
+  font-size:0.8125rem; /* 13px */
+  font-weight:500;
+  line-height:1.47;
+  letter-spacing:-.006em;
+  color:var(--qs-m3-muted);
+  max-width:18rem;
+  width:100%;
+  margin-inline:auto;
+  min-height:calc(1.47em * 2);
   flex:0 0 auto;
 }
+/* Body → chip / CTA: same rhythm on all three cards */
+.qs-mode-matrix .mode-card__copy .qs-intent-tools,
+.qs-mode-matrix .mode-card__copy .qs-mode-confirm,
+.qs-mode-matrix .mode-card__copy .qs-veteran-pick{
+  margin-top:1rem;
+  width:100%;
+}
 .qs-mode-matrix .mode-card__copy .qs-intent-tools{
-  margin-top:8px;min-height:22px;width:100%;
+  min-height:1.375rem;
   display:flex;justify-content:center;align-items:center;
 }
+/* Non-vibe cards reserve the chip row so titles stay optically aligned */
 .qs-mode-matrix .mode-card:not([data-type="vibe"]) .mode-card__copy p{
-  margin-bottom:calc(8px + 22px);
+  margin-bottom:calc(1rem + 1.375rem);
+}
+.qs-mode-matrix .mode-card[data-type="vibe"] .mode-card__copy .qs-mode-confirm{
+  margin-top:0.75rem;
 }
 
 .qs-mode-matrix .selection-badge{
@@ -279,39 +306,147 @@ html[data-theme="dark"] .qs-mode-matrix .mode-card{
 
 .qs-mode-matrix .qs-mode-confirm{
   display:none;
-  margin-top:14px;
   width:100%;
 }
 .qs-mode-matrix .mode-card.selected .qs-mode-confirm{display:block}
+.qs-mode-matrix .qs-veteran-pick{
+  display:none;
+  margin-top:0.25rem;
+  text-align:left;
+  width:100%;
+}
+.qs-mode-matrix .mode-card.selected .qs-veteran-pick{
+  display:grid;
+  gap:8px;
+}
+.qs-mode-matrix .mode-card.selected .qs-pick-row{
+  animation:qs-pick-in .32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.qs-mode-matrix .mode-card.selected .qs-pick-row:nth-child(1){animation-delay:.02s}
+.qs-mode-matrix .mode-card.selected .qs-pick-row:nth-child(2){animation-delay:.06s}
+.qs-mode-matrix .mode-card.selected .qs-pick-row:nth-child(3){animation-delay:.1s}
+.qs-mode-matrix .mode-card.selected .qs-pick-row:nth-child(4){animation-delay:.14s}
+@keyframes qs-pick-in{
+  from{opacity:0;transform:translateY(6px)}
+  to{opacity:1;transform:translateY(0)}
+}
+/* Apple Settings-style rows: icon tile + title/hint + chevron */
+.qs-mode-matrix .qs-veteran-pick .qs-pick-row,
+.qs-mode-matrix .qs-veteran-pick .habit-setup-pick-row{
+  pointer-events:auto;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid color-mix(in srgb, var(--primary) 22%, var(--qs-m3-outline));
+  background:#fff;
+  color:var(--qs-m3-on);
+  cursor:pointer;
+  font:inherit;
+  text-align:left;
+  box-shadow:0 1px 2px color-mix(in srgb, var(--on-surface) 5%, transparent);
+  transition:
+    transform .14s ease,
+    border-color .18s ease,
+    background .18s ease,
+    box-shadow .18s ease;
+}
+html[data-theme="dark"] .qs-mode-matrix .qs-veteran-pick .qs-pick-row,
+html[data-theme="dark"] .qs-mode-matrix .qs-veteran-pick .habit-setup-pick-row{
+  background:var(--surface-high);
+}
+.qs-mode-matrix .qs-veteran-pick .qs-pick-row:hover,
+.qs-mode-matrix .qs-veteran-pick .habit-setup-pick-row:hover{
+  border-color:color-mix(in srgb, var(--primary) 48%, var(--qs-m3-outline));
+  background:var(--primary-soft, #e6f7fc);
+  box-shadow:0 4px 12px color-mix(in srgb, var(--primary) 14%, transparent);
+  transform:translateY(-1px);
+}
+.qs-mode-matrix .qs-veteran-pick .qs-pick-row:active,
+.qs-mode-matrix .qs-veteran-pick .habit-setup-pick-row:active{
+  transform:scale(0.985);
+  transition-duration:.08s;
+}
+.qs-mode-matrix .qs-pick-row__ico{
+  flex:0 0 auto;
+  width:34px;height:34px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--primary-soft, #e6f7fc);
+  color:var(--primary-strong, var(--primary));
+  border:1px solid color-mix(in srgb, var(--primary) 28%, transparent);
+  transition:transform .18s ease, background .18s ease, color .18s ease;
+}
+.qs-mode-matrix .qs-pick-row:hover .qs-pick-row__ico{
+  transform:scale(1.06);
+  background:color-mix(in srgb, var(--primary) 18%, #fff);
+  color:var(--primary);
+}
+.qs-mode-matrix .qs-pick-row__txt{
+  flex:1 1 auto;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:0.28rem; /* title ↔ hint — was 1px */
+}
+.qs-mode-matrix .qs-pick-row__txt b{
+  font-size:13px;font-weight:700;letter-spacing:-.01em;line-height:1.2;
+}
+.qs-mode-matrix .qs-pick-row__txt i{
+  font-style:normal;font-size:11px;font-weight:500;line-height:1.35;
+  color:var(--qs-m3-muted);
+}
+.qs-mode-matrix .qs-pick-row__go{
+  flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--primary-strong, var(--primary));
+  opacity:.72;
+  transition:transform .18s ease, opacity .18s ease;
+}
+.qs-mode-matrix .qs-pick-row:hover .qs-pick-row__go{
+  opacity:1;
+  transform:translateX(3px);
+}
+/* CTA: match pick-row visual language with trailing chevron */
 .qs-mode-matrix .qs-mode-confirm .btn{
   width:100%;
   pointer-events:auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  background:var(--primary);
+  color:var(--on-primary, #fff);
+  border-color:var(--primary);
+  box-shadow:0 6px 16px color-mix(in srgb, var(--primary) 28%, transparent);
+  transition:transform .14s ease, background .18s ease, box-shadow .18s ease;
 }
-.qs-mode-matrix .qs-veteran-pick{
-  display:none;
-  margin-top:12px;
-  text-align:left;
+.qs-mode-matrix .qs-mode-confirm .btn::after{
+  content:'';
+  width:7px;height:7px;
+  border-right:2px solid currentColor;
+  border-bottom:2px solid currentColor;
+  transform:rotate(-45deg);
+  opacity:.9;
+  transition:transform .18s ease;
 }
-.qs-mode-matrix .mode-card.selected .qs-veteran-pick{display:grid;gap:6px}
-.qs-mode-matrix .qs-veteran-pick .habit-setup-pick-row{
-  pointer-events:auto;
-  display:flex;align-items:center;justify-content:space-between;
-  gap:8px;width:100%;
-  padding:8px 10px;border-radius:12px;
-  border:1px solid color-mix(in srgb, var(--primary) 28%, var(--qs-m3-outline));
-  background:color-mix(in srgb, var(--surface) 88%, transparent);
-  color:var(--qs-m3-on);cursor:pointer;
-  font:inherit;text-align:left;
+.qs-mode-matrix .qs-mode-confirm .btn:hover:not(:disabled)::after{
+  transform:rotate(-45deg) translate(1px, 1px);
 }
-.qs-mode-matrix .qs-veteran-pick .habit-setup-pick-row:hover{
-  border-color:color-mix(in srgb, var(--primary) 50%, transparent);
-  background:color-mix(in srgb, var(--primary) 8%, var(--surface));
+.qs-mode-matrix .qs-mode-confirm .btn:hover:not(:disabled),
+.qs-mode-matrix .qs-mode-confirm .btn.primary:hover:not(:disabled),
+.qs-mode-matrix .qs-mode-confirm .btn.secondary:hover:not(:disabled){
+  background:var(--primary-strong, var(--primary));
+  color:var(--on-primary, #fff);
+  border-color:var(--primary-strong, var(--primary));
+  filter:none;
+  box-shadow:0 8px 20px color-mix(in srgb, var(--primary) 34%, transparent);
+  transform:translateY(-1px);
 }
-.qs-mode-matrix .qs-veteran-pick .habit-setup-pick-row span{display:flex;flex-direction:column;gap:1px;min-width:0}
-.qs-mode-matrix .qs-veteran-pick .habit-setup-pick-row b{font-size:12px;font-weight:700}
-.qs-mode-matrix .qs-veteran-pick .habit-setup-pick-row i{font-style:normal;font-size:10px;color:var(--qs-m3-muted)}
-.qs-mode-matrix .qs-veteran-pick .habit-setup-pick-row em{font-style:normal;font-size:11px;color:var(--primary-strong)}
-
+.qs-mode-matrix .qs-mode-confirm .btn:active:not(:disabled){
+  transform:scale(0.985);
+}
 .qs-mode-matrix .qs-intent-tools{
   display:flex;gap:4px;flex-wrap:wrap;justify-content:center;align-items:center;
 }

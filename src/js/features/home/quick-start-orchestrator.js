@@ -244,6 +244,23 @@
     return '<span class="qs-ico-mic-svg" aria-hidden="true">'+qsMicSvg(size||14)+'</span>';
   }
 
+  /** Leading icons for veteran pick rows — same stroke language as matrix demos. */
+  function qsPickIcon(kind){
+    var common='viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+    if(kind==='keys') return '<svg '+common+'><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M7 17h10"/></svg>';
+    if(kind==='voice') return '<svg '+common+'><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>';
+    if(kind==='softPad') return '<svg '+common+'><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/></svg>';
+    return '<svg '+common+'><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>';
+  }
+
+  function qsPickRow(panel, iconKind, titleKey, titleFb, hintKey, hintFb){
+    return '<button type="button" class="qs-pick-row habit-setup-pick-row" data-qs-panel="'+esc(panel)+'">'+
+      '<span class="qs-pick-row__ico" aria-hidden="true">'+qsPickIcon(iconKind)+'</span>'+
+      '<span class="qs-pick-row__txt"><b>'+esc(t(titleKey, titleFb))+'</b><i>'+esc(t(hintKey, hintFb))+'</i></span>'+
+      '<span class="qs-pick-row__go" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>'+
+    '</button>';
+  }
+
   function modeMatrixHtml(){
     var agentHint='<em>'+esc(t('qsIntentAgentsDefault','已检测 6 个 agent'))+'</em>';
     var codeLines=
@@ -258,10 +275,10 @@
       '<div class="qs-c-sec"><span class="qs-ln">09</span> &lt;/VibeApp&gt;<span class="qs-cursor" aria-hidden="true"></span></div>';
     var pick=
       '<div class="qs-veteran-pick" id="qsVeteranPick">'+
-        '<button type="button" class="habit-setup-pick-row" data-qs-panel="keys"><span><b>'+esc(t('qsPickKeys','按键'))+'</b><i>'+esc(t('qsPickKeysHint','启动键与映射'))+'</i></span><em>'+esc(t('qsPickOpen','打开'))+'</em></button>'+
-        '<button type="button" class="habit-setup-pick-row" data-qs-panel="voiceWake"><span><b>'+esc(t('qsPickVoice','语音'))+'</b><i>'+esc(t('qsPickVoiceHint','唤醒 / 结束词'))+'</i></span><em>'+esc(t('qsPickOpen','打开'))+'</em></button>'+
-        '<button type="button" class="habit-setup-pick-row" data-qs-panel="softPad"><span><b>'+esc(t('qsPickSoftPad','虚拟键盘'))+'</b><i>'+esc(t('qsPickSoftPadHint','Soft Pad 设置'))+'</i></span><em>'+esc(t('qsPickOpen','打开'))+'</em></button>'+
-        '<button type="button" class="habit-setup-pick-row" data-qs-panel="camera"><span><b>'+esc(t('qsPickCamera','摄像头'))+'</b><i>'+esc(t('qsPickCameraHint','静音 · 手势 · 隐私'))+'</i></span><em>'+esc(t('qsPickOpen','打开'))+'</em></button>'+
+        qsPickRow('keys','keys','qsPickKeys','按键','qsPickKeysHint','启动键与映射')+
+        qsPickRow('voiceWake','voice','qsPickVoice','语音','qsPickVoiceHint','唤醒 / 结束词')+
+        qsPickRow('softPad','softPad','qsPickSoftPad','虚拟键盘','qsPickSoftPadHint','Soft Pad 设置')+
+        qsPickRow('camera','camera','qsPickCamera','摄像头','qsPickCameraHint','静音 · 手势 · 隐私')+
       '</div>';
     var veteranFrame1=
       '<div class="qs-frame qs-frame--1">'+
@@ -298,7 +315,7 @@
               '</div>'+
               '<div class="mode-card__copy">'+
                 '<h2>'+esc(t('qsIntentBeginnerTitle','我是新手'))+'</h2>'+
-                '<p>'+esc(t('qsIntentBeginnerDesc','按一个键，快速配置基础功能，建议第一次安装时首选'))+'</p>'+
+                '<p>'+esc(t('qsIntentBeginnerDesc','快速设置快捷键，定制您的专属 vibecoding 方案'))+'</p>'+
                 '<div class="qs-mode-confirm">'+
                   '<button type="button" class="btn primary" id="qsGoBeginner">'+esc(t('qsIntentBeginnerCta','开始 3 分钟配置'))+'</button>'+
                 '</div>'+
@@ -333,10 +350,10 @@
               '</div>'+
               '<div class="mode-card__copy">'+
                 '<h2>'+esc(t('qsIntentVibeTitle','程序员'))+'</h2>'+
-                '<p>'+esc(t('qsIntentVibeDesc','熟练编程用户推荐，能够完整使用软件多数功能'))+'</p>'+
+                '<p>'+esc(t('qsIntentVibeDesc','完整配置您的键盘、麦克风、摄像头，助力编程'))+'</p>'+
                 '<div class="qs-intent-tools" id="qsIntentToolsHint">'+agentHint+'</div>'+
                 '<div class="qs-mode-confirm">'+
-                  '<button type="button" class="btn secondary" id="qsGoVibe">'+esc(t('qsIntentVibeCta','配置 AI 编程'))+'</button>'+
+                  '<button type="button" class="btn primary" id="qsGoVibe">'+esc(t('qsIntentVibeCta','开始修改'))+'</button>'+
                 '</div>'+
               '</div>'+
               '<div class="selection-badge" aria-hidden="true">✓</div>'+
