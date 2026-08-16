@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <title>未检测到麦克风 — 呼吸感提示</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root {
+      --primary: #2a9cc4;
+      --primary-strong: #1f8fb8;
+      --primary-soft: #e6f7fc;
+      --indigo: #1a2d4a;
+      --on-surface: #152238;
+      --on-surface-muted: #7892a8;
+      --outline: rgba(26,45,74,.10);
+      --radius-pill: 999px;
+
+      --htv-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --bounce: cubic-bezier(.34, 1.56, .64, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--on-surface);
+      background: linear-gradient(180deg, #eaf3f8 0%, #f5fafc 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+    }
+
+    .stage {
+      width: min(360px, 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 28px;
+    }
+
+    /* === 中央 mic 呼吸区 === */
+    .breath {
+      position: relative;
+      width: 160px;
+      height: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: rise 1.2s var(--htv-ease) both;
+    }
+    /* 2 个缓慢扩张的环（背景，提示"搜索过"） */
+    .breath__ring {
+      position: absolute;
+      inset: 0;
+      border: 1.5px solid var(--primary);
+      border-radius: 50%;
+      opacity: 0;
+      animation: ring 4.5s var(--htv-ease) infinite;
+    }
+    .breath__ring:nth-child(1) { animation-delay: 0s; }
+    .breath__ring:nth-child(2) { animation-delay: 2.25s; }
+    @keyframes ring {
+      0%   { transform: scale(.35); opacity: 0; }
+      18%  { opacity: .22; }
+      100% { transform: scale(1);   opacity: 0; }
+    }
+
+    /* 中心 mic 圆 + 内部 mic 图标（持续呼吸） */
+    .breath__core {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: linear-gradient(180deg, #f6fbfd 0%, #eaf4f8 100%);
+      border: 1px solid var(--outline);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 2;
+      animation: coreBreathe 4s var(--htv-ease) infinite;
+    }
+    @keyframes coreBreathe {
+      0%, 100% { transform: scale(1); box-shadow: 0 6px 20px rgba(26,45,74,.05); }
+      50%      { transform: scale(1.04); box-shadow: 0 10px 28px rgba(42,156,196,.18); }
+    }
+    .breath__core svg {
+      color: var(--on-surface-muted);
+      opacity: .5;
+      animation: coreIcon 4s var(--htv-ease) infinite;
+    }
+    @keyframes coreIcon {
+      0%, 100% { opacity: .4; }
+      50%      { opacity: .65; }
+    }
+
+    /* === 文案 === */
+    .copy {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      animation: rise 1.2s var(--htv-ease) both .15s;
+    }
+    .copy__title {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--indigo);
+      letter-spacing: -.005em;
+      margin: 0;
+    }
+    .copy__sub {
+      font-size: 12.5px;
+      color: var(--on-surface-muted);
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    /* === CTA === */
+    .cta {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      animation: rise 1.2s var(--htv-ease) both .3s;
+    }
+    .btn {
+      appearance: none;
+      border: 0;
+      background: var(--primary);
+      color: #fff;
+      padding: 13px 36px;
+      border-radius: var(--radius-pill);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(42,156,196,.28);
+      transition: transform .25s var(--bounce), box-shadow .25s var(--htv-ease), background .2s var(--htv-ease);
+    }
+    .btn:hover  { background: var(--primary-strong); box-shadow: 0 10px 26px rgba(42,156,196,.36); }
+    .btn:active { transform: scale(.97); }
+    .link {
+      font-size: 12px;
+      color: var(--on-surface-muted);
+      text-decoration: none;
+      padding: 4px 8px;
+      transition: color .2s var(--htv-ease);
+    }
+    .link:hover { color: var(--primary); }
+
+    /* === 入场 === */
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .breath, .copy, .cta, .breath__ring, .breath__core, .breath__core svg {
+        animation: none !important;
+      }
+      .breath__ring { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+
+    <!-- 中央呼吸区：mic + 两道缓慢扩张的环 -->
+    <div class="breath" aria-hidden="true">
+      <div class="breath__ring"></div>
+      <div class="breath__ring"></div>
+      <div class="breath__core">
+        <svg width="32" height="42" viewBox="0 0 24 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="8" y="3" width="8" height="14" rx="4"/>
+          <path d="M4 14a8 8 0 0 0 16 0"/>
+          <line x1="12" y1="22" x2="12" y2="28"/>
+          <line x1="8" y1="28" x2="16" y2="28"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="copy">
+      <p class="copy__title">没找到麦克风</p>
+      <p class="copy__sub">用键盘和按键路径就好，语音激活可以稍后再接。</p>
+    </div>
+
+    <div class="cta">
+      <button class="btn" type="button">继续</button>
+      <a class="link" href="#">如何接入麦克风？</a>
+    </div>
+  </div>
+</body>
+</html>

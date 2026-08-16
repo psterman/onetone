@@ -246,6 +246,9 @@ html[data-theme="dark"] .qs-mode-matrix .mode-card{
   gap:0;
   width:100%;
   box-sizing:border-box;
+  min-height:7.5rem;
+}
+.qs-mode-matrix .mode-card[data-type="veteran"] .mode-card__copy{
   min-height:11.5rem;
 }
 .qs-mode-matrix .mode-card__copy h2{
@@ -276,7 +279,6 @@ html[data-theme="dark"] .qs-mode-matrix .mode-card{
 }
 /* Body → chip / CTA: same rhythm on all three cards */
 .qs-mode-matrix .mode-card__copy .qs-intent-tools,
-.qs-mode-matrix .mode-card__copy .qs-mode-confirm,
 .qs-mode-matrix .mode-card__copy .qs-veteran-pick{
   margin-top:1rem;
   width:100%;
@@ -284,13 +286,6 @@ html[data-theme="dark"] .qs-mode-matrix .mode-card{
 .qs-mode-matrix .mode-card__copy .qs-intent-tools{
   min-height:1.375rem;
   display:flex;justify-content:center;align-items:center;
-}
-/* Non-vibe cards reserve the chip row so titles stay optically aligned */
-.qs-mode-matrix .mode-card:not([data-type="vibe"]) .mode-card__copy p{
-  margin-bottom:calc(1rem + 1.375rem);
-}
-.qs-mode-matrix .mode-card[data-type="vibe"] .mode-card__copy .qs-mode-confirm{
-  margin-top:0.75rem;
 }
 
 .qs-mode-matrix .selection-badge{
@@ -302,30 +297,26 @@ html[data-theme="dark"] .qs-mode-matrix .mode-card{
   opacity:0;transform:scale(.85);
   transition:opacity .2s ease,transform .2s ease;
 }
-.qs-mode-matrix .mode-card.selected .selection-badge{opacity:1;transform:scale(1)}
+.qs-mode-matrix .mode-card:hover .selection-badge,
+.qs-mode-matrix .mode-card:focus-visible .selection-badge{opacity:1;transform:scale(1)}
 
-.qs-mode-matrix .qs-mode-confirm{
-  display:none;
-  width:100%;
-}
-.qs-mode-matrix .mode-card.selected .qs-mode-confirm{display:block}
 .qs-mode-matrix .qs-veteran-pick{
   display:none;
   margin-top:0.25rem;
   text-align:left;
   width:100%;
 }
-.qs-mode-matrix .mode-card.selected .qs-veteran-pick{
+.qs-mode-matrix .mode-card[data-type="veteran"]:is(:hover, :focus-within) .qs-veteran-pick{
   display:grid;
   gap:8px;
 }
-.qs-mode-matrix .mode-card.selected .qs-pick-row{
+.qs-mode-matrix .mode-card[data-type="veteran"]:is(:hover, :focus-within) .qs-pick-row{
   animation:qs-pick-in .32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.qs-mode-matrix .mode-card.selected .qs-pick-row:nth-child(1){animation-delay:.02s}
-.qs-mode-matrix .mode-card.selected .qs-pick-row:nth-child(2){animation-delay:.06s}
-.qs-mode-matrix .mode-card.selected .qs-pick-row:nth-child(3){animation-delay:.1s}
-.qs-mode-matrix .mode-card.selected .qs-pick-row:nth-child(4){animation-delay:.14s}
+.qs-mode-matrix .mode-card[data-type="veteran"]:is(:hover, :focus-within) .qs-pick-row:nth-child(1){animation-delay:.02s}
+.qs-mode-matrix .mode-card[data-type="veteran"]:is(:hover, :focus-within) .qs-pick-row:nth-child(2){animation-delay:.06s}
+.qs-mode-matrix .mode-card[data-type="veteran"]:is(:hover, :focus-within) .qs-pick-row:nth-child(3){animation-delay:.1s}
+.qs-mode-matrix .mode-card[data-type="veteran"]:is(:hover, :focus-within) .qs-pick-row:nth-child(4){animation-delay:.14s}
 @keyframes qs-pick-in{
   from{opacity:0;transform:translateY(6px)}
   to{opacity:1;transform:translateY(0)}
@@ -407,45 +398,6 @@ html[data-theme="dark"] .qs-mode-matrix .qs-veteran-pick .habit-setup-pick-row{
 .qs-mode-matrix .qs-pick-row:hover .qs-pick-row__go{
   opacity:1;
   transform:translateX(3px);
-}
-/* CTA: match pick-row visual language with trailing chevron */
-.qs-mode-matrix .qs-mode-confirm .btn{
-  width:100%;
-  pointer-events:auto;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-  background:var(--primary);
-  color:var(--on-primary, #fff);
-  border-color:var(--primary);
-  box-shadow:0 6px 16px color-mix(in srgb, var(--primary) 28%, transparent);
-  transition:transform .14s ease, background .18s ease, box-shadow .18s ease;
-}
-.qs-mode-matrix .qs-mode-confirm .btn::after{
-  content:'';
-  width:7px;height:7px;
-  border-right:2px solid currentColor;
-  border-bottom:2px solid currentColor;
-  transform:rotate(-45deg);
-  opacity:.9;
-  transition:transform .18s ease;
-}
-.qs-mode-matrix .qs-mode-confirm .btn:hover:not(:disabled)::after{
-  transform:rotate(-45deg) translate(1px, 1px);
-}
-.qs-mode-matrix .qs-mode-confirm .btn:hover:not(:disabled),
-.qs-mode-matrix .qs-mode-confirm .btn.primary:hover:not(:disabled),
-.qs-mode-matrix .qs-mode-confirm .btn.secondary:hover:not(:disabled){
-  background:var(--primary-strong, var(--primary));
-  color:var(--on-primary, #fff);
-  border-color:var(--primary-strong, var(--primary));
-  filter:none;
-  box-shadow:0 8px 20px color-mix(in srgb, var(--primary) 34%, transparent);
-  transform:translateY(-1px);
-}
-.qs-mode-matrix .qs-mode-confirm .btn:active:not(:disabled){
-  transform:scale(0.985);
 }
 .qs-mode-matrix .qs-intent-tools{
   display:flex;gap:4px;flex-wrap:wrap;justify-content:center;align-items:center;

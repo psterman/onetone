@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <title>按键绑定 — Apple Design Animation Preview</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root {
+      --primary: #2a9cc4;
+      --primary-strong: #1f8fb8;
+      --primary-soft: #e6f7fc;
+      --primary-soft-2: #d3eef6;
+      --indigo: #1a2d4a;
+      --on-surface: #152238;
+      --on-surface-muted: #5a7086;
+      --surface: rgba(255,255,255,.85);
+      --surface-high: rgba(255,255,255,.97);
+      --surface-soft: #f0f7fb;
+      --outline: rgba(26,45,74,.12);
+      --outline-variant: rgba(26,45,74,.10);
+      --shadow-card: 0 14px 34px rgba(26,45,74,.07);
+      --shadow-button: 0 10px 22px rgba(42,156,196,.20);
+      --radius-card: 28px;
+      --radius-inner: 20px;
+      --radius-pill: 999px;
+
+      /* Apple spring */
+      --apple-spring-damp: 0.82;
+      --apple-spring-resp: 0.38;
+
+      --htv-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --bounce: cubic-bezier(.34, 1.56, .64, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--on-surface);
+      background: linear-gradient(180deg, #eaf3f8 0%, #f5fafc 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .stage {
+      width: min(640px, 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .badge {
+      display: inline-block;
+      align-self: center;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary-strong);
+    }
+    h1.title {
+      margin: 0 0 4px;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--indigo);
+      text-align: center;
+      letter-spacing: -.01em;
+    }
+    p.desc {
+      margin: 0 0 8px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--on-surface-muted);
+      max-width: 540px;
+      text-align: center;
+      align-self: center;
+    }
+    .back {
+      align-self: flex-start;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary);
+      text-decoration: none;
+      padding: 4px 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .back:hover { text-decoration: underline; }
+
+    /* === Binding card === */
+    .bind-card {
+      background: var(--primary-soft);
+      border-radius: var(--radius-card);
+      padding: 28px 20px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 10px 28px rgba(42,156,196,.10);
+      position: relative;
+      overflow: hidden;
+    }
+    .bind-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 0%, rgba(42,156,196,.12), transparent 60%);
+      pointer-events: none;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      position: relative;
+    }
+
+    /* 左侧 HID 键 pill（"等待按下"态） */
+    .pill {
+      background: #fff;
+      border: 1.5px solid var(--outline);
+      border-radius: var(--radius-pill);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--primary-strong);
+      letter-spacing: .02em;
+      position: relative;
+      transition: transform .35s var(--bounce),
+                  background .3s var(--htv-ease),
+                  box-shadow .3s var(--htv-ease),
+                  border-color .3s var(--htv-ease);
+      box-shadow: 0 4px 12px rgba(26,45,74,.06);
+    }
+    .pill.hid-pill.is-pressed {
+      transform: scale(.96);
+      background: var(--primary-soft-2);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(42,156,196,.18), 0 6px 20px rgba(42,156,196,.32);
+    }
+    .pill.icon-pill {
+      color: var(--on-surface);
+      gap: 10px;
+    }
+    .pill__dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+      flex-shrink: 0;
+      position: relative;
+    }
+    .pill__dot::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: dotPulse 1.6s var(--htv-ease) infinite;
+    }
+    @keyframes dotPulse {
+      0%   { transform: scale(1); opacity: .6; }
+      50%  { transform: scale(2.4); opacity: 0; }
+      100% { transform: scale(2.4); opacity: 0; }
+    }
+    .pill__icon {
+      width: 18px;
+      height: 18px;
+      color: var(--primary);
+    }
+
+    /* 中间 arrow（动画 dash 向右） */
+    .arrow {
+      width: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+    }
+    .arrow__line {
+      width: 100%;
+      height: 2px;
+      background: var(--primary);
+      position: relative;
+      overflow: hidden;
+      border-radius: 2px;
+    }
+    .arrow__line::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, #fff 50%, transparent);
+      animation: arrowFlow 1.6s var(--htv-ease) infinite;
+    }
+    @keyframes arrowFlow {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    .arrow__head {
+      width: 0;
+      height: 0;
+      border-left: 6px solid var(--primary);
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+      margin-left: -2px;
+    }
+
+    /* 启动键 / 语音快捷键 label */
+    .flow__label {
+      font-size: 12px;
+      color: var(--on-surface-muted);
+      text-align: center;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    /* 主键成功态：右侧 pill 填充 */
+    .pill.icon-pill.is-bound {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      box-shadow: 0 6px 20px rgba(42,156,196,.32);
+    }
+    .pill.icon-pill.is-bound .pill__icon { color: #fff; }
+
+    .bind-note {
+      font-size: 12px;
+      color: var(--on-surface-muted);
+      text-align: center;
+      margin: 6px 0 0;
+    }
+    .bind-note b { color: var(--primary-strong); }
+
+    /* === 换一个新键 secondary button === */
+    .btn-secondary {
+      width: 100%;
+      background: #fff;
+      border: 1.5px solid var(--primary);
+      color: var(--primary-strong);
+      border-radius: var(--radius-pill);
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .25s var(--bounce), background .2s var(--htv-ease);
+    }
+    .btn-secondary:hover { background: var(--primary-soft); }
+    .btn-secondary:active { transform: scale(.98); }
+
+    /* === 验证 card === */
+    .verify-card {
+      background: #fff;
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--radius-card);
+      padding: 18px 20px;
+      box-shadow: 0 4px 12px rgba(26,45,74,.04);
+    }
+    .verify-card__title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--indigo);
+      margin: 0 0 10px;
+    }
+    .verify-card__body {
+      background: var(--primary-soft);
+      border-radius: var(--radius-inner);
+      padding: 10px 14px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--on-surface);
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .verify-card__body .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--primary);
+      margin-top: 6px;
+      flex-shrink: 0;
+      box-shadow: 0 0 0 0 rgba(42,156,196,.5);
+      animation: verifyPulse 1.4s var(--htv-ease) infinite;
+    }
+    @keyframes verifyPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(42,156,196,.5); }
+      50%      { box-shadow: 0 0 0 5px rgba(42,156,196,0); }
+    }
+    .verify-card__body b { color: var(--primary-strong); }
+    .verify-card__action {
+      margin-top: 12px;
+      width: 100%;
+      background: #fff;
+      border: 1px solid var(--outline);
+      color: var(--on-surface);
+      border-radius: var(--radius-pill);
+      padding: 11px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .25s var(--bounce), background .2s var(--htv-ease), border-color .2s var(--htv-ease);
+    }
+    .verify-card__action:hover { background: var(--surface-soft); border-color: var(--primary-soft-2); }
+    .verify-card__action:active { transform: scale(.98); }
+
+    /* === Stagger entrance === */
+    .stagger {
+      animation: rise .55s var(--htv-ease) both;
+    }
+    .stagger.s1 { animation-delay: 0s; }
+    .stagger.s2 { animation-delay: .08s; }
+    .stagger.s3 { animation-delay: .16s; }
+    .stagger.s4 { animation-delay: .24s; }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* === Footer note === */
+    .hint {
+      font-size: 11px;
+      color: var(--on-surface-muted);
+      text-align: center;
+      margin: 8px 0 0;
+      line-height: 1.6;
+    }
+
+    /* === Press simulation: triggered by JS class toggle === */
+    .press-flash {
+      animation: pressGlow .6s var(--htv-ease);
+    }
+    @keyframes pressGlow {
+      0%   { transform: scale(1); }
+      30%  { transform: scale(.94); }
+      100% { transform: scale(1); }
+    }
+
+    /* === Bound success flash on right pill === */
+    .bound-flash {
+      animation: boundGlow .7s var(--htv-ease);
+    }
+    @keyframes boundGlow {
+      0%   { box-shadow: 0 4px 12px rgba(26,45,74,.06); }
+      50%  { box-shadow: 0 0 0 6px rgba(42,156,196,.32), 0 10px 28px rgba(42,156,196,.42); }
+      100% { box-shadow: 0 6px 20px rgba(42,156,196,.32); }
+    }
+
+    /* === reduced motion === */
+    @media (prefers-reduced-motion: reduce) {
+      .stagger, .press-flash, .bound-flash, .pill__dot::after, .arrow__line::after, .verify-card__body .dot {
+        animation: none !important;
+      }
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      align-self: center;
+      margin-top: 8px;
+    }
+    .ctl {
+      background: #fff;
+      border: 1px solid var(--outline);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--on-surface-muted);
+      cursor: pointer;
+    }
+    .ctl:hover { background: var(--primary-soft); color: var(--primary-strong); border-color: var(--primary-soft-2); }
+  </style>
+</head>
+<body>
+  <div class="stage">
+
+    <a class="back stagger s1" href="#">← 返回重选</a>
+
+    <span class="badge stagger s1">小提醒</span>
+    <h1 class="title stagger s1">平时用键盘就可以吗？</h1>
+    <p class="desc stagger s1">多数人选「可以」。只有想用遥控器、小手柄之类的额外按键时，再设一下就好。</p>
+
+    <!-- 绑定主卡 -->
+    <div class="bind-card stagger s2">
+      <div class="flow">
+        <!-- 左侧 HID 键 pill -->
+        <div>
+          <div class="pill hid-pill" id="hidPill">
+            <span class="pill__dot"></span>
+            <span id="hidLabel">HID 键 R03-80</span>
+          </div>
+          <div class="flow__label">启动键</div>
+        </div>
+
+        <!-- 中间 arrow -->
+        <div class="arrow">
+          <div class="arrow__line"></div>
+          <div class="arrow__head"></div>
+        </div>
+
+        <!-- 右侧 语音快捷键 pill -->
+        <div>
+          <div class="pill icon-pill" id="voicePill">
+            <svg class="pill__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="9" y="3" width="6" height="12" rx="3"/>
+              <path d="M5 11a7 7 0 0 0 14 0"/>
+              <line x1="12" y1="18" x2="12" y2="22"/>
+            </svg>
+            <span>语音快捷键</span>
+          </div>
+          <div class="flow__label">语音输入</div>
+        </div>
+      </div>
+
+      <p class="bind-note">已保存上次录制结果；如需更换可点「<b>换一个键</b>」重设。</p>
+    </div>
+
+    <button class="btn-secondary stagger s3" id="changeKey">换一个键</button>
+
+    <!-- 验证 card -->
+    <div class="verify-card stagger s4">
+      <p class="verify-card__title">绑定验证</p>
+      <div class="verify-card__body">
+        <span class="dot"></span>
+        <span>按下 <b>HID 键 R03-80</b>，验证 OneTone 是否会发送 <b>语音快捷键</b> 并唤起语音输入。</span>
+      </div>
+      <button class="verify-card__action" id="reverify">重新验证</button>
+    </div>
+
+    <p class="hint stagger s4">点击「<b>重新验证</b>」可模拟一次按键事件，查看绑定反馈。</p>
+
+    <!-- demo controls -->
+    <div class="controls">
+      <button class="ctl" id="simPress">模拟按下 HID 键</button>
+      <button class="ctl" id="reset">重置</button>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      'use strict';
+      var hidPill = document.getElementById('hidPill');
+      var voicePill = document.getElementById('voicePill');
+      var hidLabel = document.getElementById('hidLabel');
+      var simBtn = document.getElementById('simPress');
+      var resetBtn = document.getElementById('reset');
+      var reverify = document.getElementById('reverify');
+
+      function pressHID() {
+        // Phase 1: HID pill press feedback
+        hidPill.classList.remove('is-pressed');
+        void hidPill.offsetWidth; // restart animation
+        hidPill.classList.add('is-pressed', 'press-flash');
+        setTimeout(function(){
+          hidPill.classList.remove('is-pressed', 'press-flash');
+        }, 220);
+
+        // Phase 2: after a short delay, right pill "binds"
+        setTimeout(function(){
+          voicePill.classList.add('is-bound', 'bound-flash');
+          setTimeout(function(){
+            voicePill.classList.remove('bound-flash');
+          }, 700);
+        }, 280);
+      }
+
+      simBtn.addEventListener('click', pressHID);
+      reverify.addEventListener('click', pressHID);
+
+      resetBtn.addEventListener('click', function(){
+        voicePill.classList.remove('is-bound');
+        hidLabel.textContent = 'HID 键 R03-80';
+      });
+    })();
+  </script>
+</body>
+</html>

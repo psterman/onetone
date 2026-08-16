@@ -186,6 +186,7 @@
       bumpMaxReached(3);
       renderTriggerKeyboard();
       renderTriggerTestPanels();
+      flashTriggerBindingDemo();
     };
     if(global.OneToneApp&&global.OneToneApp.on){
       global.OneToneApp.on('trigger_test_fired',triggerTestListener);
@@ -1486,6 +1487,25 @@
     renderWizardFooters();
   }
 
+  function flashTriggerBindingDemo(){
+    var hid=$('habitSetupBindHidPill');
+    var voice=$('habitSetupBindVoicePill');
+    if(hid){
+      hid.classList.remove('is-pressed','is-press-flash');
+      void hid.offsetWidth;
+      hid.classList.add('is-pressed','is-press-flash');
+      setTimeout(function(){
+        hid.classList.remove('is-pressed','is-press-flash');
+      },220);
+    }
+    if(voice){
+      setTimeout(function(){
+        voice.classList.add('is-bound','is-bound-flash');
+        setTimeout(function(){ voice.classList.remove('is-bound-flash'); },700);
+      },280);
+    }
+  }
+
   function renderTriggerStage(){
     if(!setupState) return;
     var m=mappingById(setupState.mappingId);
@@ -1495,25 +1515,43 @@
     var imePreset=step2ImePreset();
     var recording=isTriggerRecordingActive();
     var status=$('habitSetupTriggerStatus');
+    var stage=status&&status.closest?status.closest('.habit-setup-stage'):null;
+    if(stage) stage.classList.toggle('is-binding',!!preview);
     if(status){
       status.classList.toggle('is-binding',!!preview);
       if(preview){
-        status.innerHTML='<span class="habit-setup-status-dot '+(setupState.triggerTestPassed?'is-ok':'is-info')+'" aria-hidden="true"></span>'
-          +'<div class="habit-setup-binding-hero">'
-          +  '<div class="habit-setup-binding-key">'+esc(triggerKey)+'</div>'
-          +  '<div class="habit-setup-binding-key-label">'+esc(t('triggerTitle'))+'</div>'
-          +'</div>'
-          +'<span class="habit-setup-binding-arrow" aria-hidden="true">→</span>'
-          +'<div class="habit-setup-binding-hero">'
-          +  '<div class="habit-setup-binding-ime">'
-          +    (imePreset&&imePreset.icon
-                ?('<img class="habit-setup-binding-ime-icon" src="'+esc(imePreset.icon)+'" alt="" decoding="async" />')
-                :'<span class="habit-setup-binding-ime-fallback" aria-hidden="true">⌨</span>')
-          +    '<span class="habit-setup-binding-key">'+esc(imeKey)+'</span>'
+        var voiceIcon=imePreset&&imePreset.icon
+          ?('<img class="habit-setup-bind-pill__ime" src="'+esc(imePreset.icon)+'" alt="" decoding="async" />')
+          :('<svg class="habit-setup-bind-pill__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+            +'<rect x="9" y="3" width="6" height="12" rx="3"/>'
+            +'<path d="M5 11a7 7 0 0 0 14 0"/>'
+            +'<line x1="12" y1="18" x2="12" y2="22"/>'
+            +'</svg>');
+        var boundCls=setupState.triggerTestPassed?' is-bound':'';
+        status.innerHTML=
+          '<div class="habit-setup-bind-card">'
+          +  '<div class="habit-setup-bind-flow">'
+          +    '<div class="habit-setup-bind-col">'
+          +      '<div class="habit-setup-bind-pill habit-setup-bind-pill--hid" id="habitSetupBindHidPill">'
+          +        '<span class="habit-setup-bind-pill__dot" aria-hidden="true"></span>'
+          +        '<span class="habit-setup-bind-pill__text">'+esc(triggerKey)+'</span>'
+          +      '</div>'
+          +      '<div class="habit-setup-bind-flow__label">'+esc(t('triggerTitle'))+'</div>'
+          +    '</div>'
+          +    '<div class="habit-setup-bind-arrow" aria-hidden="true">'
+          +      '<div class="habit-setup-bind-arrow__line"></div>'
+          +      '<div class="habit-setup-bind-arrow__head"></div>'
+          +    '</div>'
+          +    '<div class="habit-setup-bind-col">'
+          +      '<div class="habit-setup-bind-pill habit-setup-bind-pill--voice'+boundCls+'" id="habitSetupBindVoicePill">'
+          +        voiceIcon
+          +        '<span class="habit-setup-bind-pill__text">'+esc(imeKey)+'</span>'
+          +      '</div>'
+          +      '<div class="habit-setup-bind-flow__label">'+esc(t('targetTitle'))+'</div>'
+          +    '</div>'
           +  '</div>'
-          +  '<div class="habit-setup-binding-key-label">'+esc(t('targetTitle'))+'</div>'
-          +'</div>'
-          +'<div class="habit-setup-binding-note">'+esc(t('habitSetupTriggerKeepOrRerecord'))+'</div>';
+          +  '<p class="habit-setup-bind-note">'+esc(t('habitSetupTriggerKeepOrRerecord'))+'</p>'
+          +'</div>';
       }else if(recording){
         status.innerHTML='<span class="habit-setup-status-dot is-wait" aria-hidden="true"></span>'
           +esc(t('onboardRecordListeningTrigger'));
@@ -1529,7 +1567,9 @@
         :(preview?t('btnRerecordTrigger'):t('habitSetupTriggerStartRecord'));
       startBtn.className=recording
         ?'btn secondary habit-setup-test-retry record-btn is-recording'
-        :'btn secondary habit-setup-test-retry record-btn';
+        :(preview
+          ?'btn habit-setup-bind-change record-btn'
+          :'btn secondary habit-setup-test-retry record-btn');
       startBtn.hidden=false;
     }
   }
@@ -1765,26 +1805,19 @@
     var gate=$('habitSetupVoiceMicGate');
     if(gate) gate.hidden=false;
     hideVoicePracticeSurfaces();
-    if($('habitSetupVoiceLessonBadge')) $('habitSetupVoiceLessonBadge').textContent=t('habitSetupVoiceMicGateBadge');
-    if($('habitSetupVoiceLessonTitle')) $('habitSetupVoiceLessonTitle').textContent=
-      mode==='pending'?t('habitSetupVoiceMicGateChecking'):t('habitSetupVoiceMicGateTitle');
-    if($('habitSetupVoiceLessonDesc')){
-      $('habitSetupVoiceLessonDesc').textContent=mode==='pending'
-        ?t('habitSetupVoiceMicGateCheckingDesc')
-        :t('habitSetupVoiceMicGateDesc');
-    }
     var soft=$('habitSetupVoiceMicSoft');
     if(soft) soft.classList.toggle('is-checking',mode==='pending');
-    var status=$('habitSetupVoiceMicSoftStatus');
-    if(status){
-      status.textContent=mode==='pending'
+    var title=$('habitSetupVoiceMicCopyTitle');
+    var sub=$('habitSetupVoiceMicCopySub');
+    if(title){
+      title.textContent=mode==='pending'
         ?t('habitSetupVoiceMicGateChecking')
-        :t('habitSetupVoiceMicSoftStatus');
+        :t('habitSetupVoiceMicGateTitle');
     }
-    var progress=$('habitSetupVoiceMicSoftProgress');
-    if(progress){
-      progress.hidden=mode==='pending';
-      progress.classList.toggle('is-running',mode==='blocked');
+    if(sub){
+      sub.textContent=mode==='pending'
+        ?t('habitSetupVoiceMicGateCheckingDesc')
+        :t('habitSetupVoiceMicGateDesc');
     }
     var cont=$('btnHabitSetupVoiceMicContinue');
     if(cont){
@@ -1792,11 +1825,11 @@
       cont.disabled=mode==='pending';
       cont.hidden=mode==='pending';
     }
-    var recheck=$('btnHabitSetupVoiceMicRecheck');
-    if(recheck){
-      recheck.textContent=t('habitSetupVoiceMicRecheck');
-      recheck.disabled=mode==='pending';
-      recheck.hidden=mode==='pending';
+    var help=$('btnHabitSetupVoiceMicRecheck');
+    if(help){
+      help.textContent=t('habitSetupVoiceMicHelpLink')||t('habitSetupVoiceMicRecheck');
+      help.disabled=mode==='pending';
+      help.hidden=false;
     }
   }
 
@@ -1804,8 +1837,6 @@
     clearVoiceMicSoftSkipTimer();
     var gate=$('habitSetupVoiceMicGate');
     if(gate) gate.hidden=true;
-    var progress=$('habitSetupVoiceMicSoftProgress');
-    if(progress) progress.classList.remove('is-running');
     var lessonsHost=$('habitSetupVoiceLessons');
     if(lessonsHost) lessonsHost.hidden=false;
   }
@@ -1871,6 +1902,10 @@
   function chooseVoiceMicRecheck(){
     if(!setupState||setupState.page!==4) return;
     clearVoiceMicSoftSkipTimer();
+    // Help link: short tip, then re-probe (stay in QS — don't yank settings drawer).
+    if(global.OneToneApp&&typeof global.OneToneApp.toast==='function'){
+      global.OneToneApp.toast(t('habitSetupVoiceMicHelpTip')||t('habitSetupVoiceMicStillEmpty'));
+    }
     ensureVoiceMicGate({force:true,toastOnFail:true});
   }
 

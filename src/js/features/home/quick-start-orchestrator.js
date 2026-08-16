@@ -188,6 +188,7 @@
       var payload={ panel:panel };
       if(opts.voiceSubpage) payload.voiceSubpage=opts.voiceSubpage;
       if(opts.focus) payload.focus=opts.focus;
+      if(opts.debugMode) payload.debugMode=opts.debugMode;
       drawer.open(payload);
     }
   }
@@ -224,21 +225,6 @@
     });
   }
 
-  /** Toggle mode-card selection (re-click clears). Pure DOM helper for tests. */
-  function selectModeCard(container, card){
-    if(!container||!card) return null;
-    if(card.classList.contains('selected')){
-      container.classList.remove('has-selection');
-      card.classList.remove('selected');
-      return null;
-    }
-    container.classList.add('has-selection');
-    var cards=container.querySelectorAll('.mode-card');
-    for(var i=0;i<cards.length;i++) cards[i].classList.remove('selected');
-    card.classList.add('selected');
-    return card.getAttribute('data-type')||null;
-  }
-
   function qsMicSvg(size){
     size=size||44;
     return '<svg class="qs-mic-svg" viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>';
@@ -248,17 +234,17 @@
     return '<span class="qs-ico-mic-svg" aria-hidden="true">'+qsMicSvg(size||14)+'</span>';
   }
 
-  /** Leading icons for veteran pick rows — same stroke language as matrix demos. */
+  /** Leading icons for maintenance pick rows — same stroke language as matrix demos. */
   function qsPickIcon(kind){
     var common='viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
-    if(kind==='keys') return '<svg '+common+'><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M7 17h10"/></svg>';
-    if(kind==='voice') return '<svg '+common+'><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>';
-    if(kind==='softPad') return '<svg '+common+'><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/></svg>';
-    return '<svg '+common+'><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>';
+    if(kind==='status') return '<svg '+common+'><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>';
+    if(kind==='repair') return '<svg '+common+'><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>';
+    if(kind==='maint') return '<svg '+common+'><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
+    return '<svg '+common+'><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>';
   }
 
-  function qsPickRow(panel, iconKind, titleKey, titleFb, hintKey, hintFb){
-    return '<button type="button" class="qs-pick-row habit-setup-pick-row" data-qs-panel="'+esc(panel)+'">'+
+  function qsMaintRow(debugMode, iconKind, titleKey, titleFb, hintKey, hintFb){
+    return '<button type="button" class="qs-pick-row habit-setup-pick-row" data-qs-debug="'+esc(debugMode)+'">'+
       '<span class="qs-pick-row__ico" aria-hidden="true">'+qsPickIcon(iconKind)+'</span>'+
       '<span class="qs-pick-row__txt"><b>'+esc(t(titleKey, titleFb))+'</b><i>'+esc(t(hintKey, hintFb))+'</i></span>'+
       '<span class="qs-pick-row__go" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>'+
@@ -279,10 +265,10 @@
       '<div class="qs-c-sec"><span class="qs-ln">09</span> &lt;/VibeApp&gt;<span class="qs-cursor" aria-hidden="true"></span></div>';
     var pick=
       '<div class="qs-veteran-pick" id="qsVeteranPick">'+
-        qsPickRow('keys','keys','qsPickKeys','按键','qsPickKeysHint','启动键与映射')+
-        qsPickRow('voiceWake','voice','qsPickVoice','语音','qsPickVoiceHint','唤醒 / 结束词')+
-        qsPickRow('softPad','softPad','qsPickSoftPad','虚拟键盘','qsPickSoftPadHint','Soft Pad 设置')+
-        qsPickRow('camera','camera','qsPickCamera','摄像头','qsPickCameraHint','静音 · 手势 · 隐私')+
+        qsMaintRow('overview','status','debugFocusOverview','状态','debugFocusOverviewStatus','当前是否正常')+
+        qsMaintRow('repair','repair','debugFocusRepair','诊断','debugFocusRepairStatus','识别链路排查')+
+        qsMaintRow('developer','maint','debugFocusDeveloper','维护','debugFocusDeveloperStatus','备份与日志')+
+        qsMaintRow('developer','log','homeWbNavLog','查看日志','qsMaintLogHint','导出与排查记录')+
       '</div>';
     var veteranFrame1=
       '<div class="qs-frame qs-frame--1">'+
@@ -320,9 +306,6 @@
               '<div class="mode-card__copy">'+
                 '<h2>'+esc(t('qsIntentBeginnerTitle','我是新手'))+'</h2>'+
                 '<p>'+esc(t('qsIntentBeginnerDesc','快速设置快捷键，定制您的专属 vibecoding 方案'))+'</p>'+
-                '<div class="qs-mode-confirm">'+
-                  '<button type="button" class="btn primary" id="qsGoBeginner">'+esc(t('qsIntentBeginnerCta','开始 3 分钟配置'))+'</button>'+
-                '</div>'+
               '</div>'+
               '<div class="selection-badge" aria-hidden="true">✓</div>'+
             '</div>'+
@@ -356,9 +339,6 @@
                 '<h2>'+esc(t('qsIntentVibeTitle','程序员'))+'</h2>'+
                 '<p>'+esc(t('qsIntentVibeDesc','完整配置您的键盘、麦克风、摄像头，助力编程'))+'</p>'+
                 '<div class="qs-intent-tools" id="qsIntentToolsHint">'+agentHint+'</div>'+
-                '<div class="qs-mode-confirm">'+
-                  '<button type="button" class="btn primary" id="qsGoVibe">'+esc(t('qsIntentVibeCta','开始修改'))+'</button>'+
-                '</div>'+
               '</div>'+
               '<div class="selection-badge" aria-hidden="true">✓</div>'+
             '</div>'+
@@ -413,8 +393,8 @@
                 '</div>'+
               '</div>'+
               '<div class="mode-card__copy">'+
-                '<h2>'+esc(t('qsIntentPickTitle','老用户'))+'</h2>'+
-                '<p>'+esc(t('qsIntentPickDesc','建议已经熟悉 OneTone，开发者快速操作通道'))+'</p>'+
+                '<h2>'+esc(t('qsIntentPickTitle','后台维护'))+'</h2>'+
+                '<p>'+esc(t('qsIntentPickDesc','查看运行状态、诊断与备份维护。'))+'</p>'+
                 pick+
               '</div>'+
               '<div class="selection-badge" aria-hidden="true">✓</div>'+
@@ -431,29 +411,24 @@
     if(!container) return;
     container.querySelectorAll('.mode-card').forEach(function(card){
       card.onclick=function(ev){
-        if(ev.target.closest('button,[data-qs-panel]')) return;
-        var type=selectModeCard(container, card);
-        container.querySelectorAll('.mode-card').forEach(function(c){
-          c.setAttribute('aria-selected', c.classList.contains('selected')?'true':'false');
-        });
-        return type;
+        if(ev.target.closest('button,[data-qs-debug]')) return;
+        var type=card.getAttribute('data-type');
+        if(type==='newbie'){ startCore('beginner'); return; }
+        if(type==='vibe'){ goTool(); return; }
+        if(type==='veteran'){ openSettingsPanel('debug',{ debugMode:'overview' }); }
       };
       card.onkeydown=function(ev){
         if(ev.key!=='Enter'&&ev.key!==' ') return;
+        if(ev.target.closest('button,[data-qs-debug]')) return;
         ev.preventDefault();
         card.click();
       };
     });
-    var b=$('qsGoBeginner');
-    if(b) b.onclick=function(ev){ ev.stopPropagation(); startCore('beginner'); };
-    var v=$('qsGoVibe');
-    if(v) v.onclick=function(ev){ ev.stopPropagation(); goTool(); };
-    body.querySelectorAll('[data-qs-panel]').forEach(function(el){
+    body.querySelectorAll('[data-qs-debug]').forEach(function(el){
       el.onclick=function(ev){
         ev.stopPropagation();
-        var p=el.getAttribute('data-qs-panel');
-        if(p==='voiceWake') openSettingsPanel('voiceWake',{ voiceSubpage:'wake' });
-        else openSettingsPanel(p);
+        var mode=el.getAttribute('data-qs-debug')||'overview';
+        openSettingsPanel('debug',{ debugMode:mode });
       };
     });
   }
@@ -1037,7 +1012,6 @@
     handleHeaderBack:handleHeaderBack,
     bindOnce:bindOnce,
     isOpen:function(){ return !!openFlag; },
-    getRoute:function(){ return { persona:route.persona, stepId:route.stepId, tool:route.tool }; },
-    selectModeCard:selectModeCard
+    getRoute:function(){ return { persona:route.persona, stepId:route.stepId, tool:route.tool }; }
   };
 })((typeof window!=='undefined')?window:globalThis);

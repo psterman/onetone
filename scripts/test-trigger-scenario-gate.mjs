@@ -34,6 +34,15 @@ assert.ok(css.includes('transform-box:fill-box'), 'SVG key transform box');
 assert.ok(!css.includes('habit-setup-trigger-device--ring .habit-setup-trigger-device__art::before'), 'no CSS shape art');
 assert.ok(!css.includes('htvDevKeyT'), 'no translate keyframes for absolute keys');
 
+assert.ok(js.includes('habit-setup-bind-card'), 'bind card markup');
+assert.ok(js.includes('habit-setup-bind-pill--hid'), 'hid pill');
+assert.ok(js.includes('habit-setup-bind-arrow__line'), 'flow arrow');
+assert.ok(js.includes('function flashTriggerBindingDemo'), 'verify flash helper');
+assert.ok(css.includes('.habit-setup-bind-card'), 'bind card css');
+assert.ok(css.includes('habitSetupBindArrowFlow'), 'arrow flow animation');
+assert.ok(css.includes('.habit-setup-stage.is-binding'), 'stage soft bind surface');
+assert.ok(!css.includes('.habit-setup-binding-hero{'), 'old binding hero removed');
+
 assert.ok(css.includes('.habit-setup-trigger-parallel'), 'parallel styles');
 assert.ok(css.includes('.habit-setup-trigger-pick'), 'equal pick button styles');
 assert.ok(css.includes('htvKbdPress'), 'kbd press');
