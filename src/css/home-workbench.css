@@ -690,6 +690,188 @@ html[data-theme="dark"] .wb-dot-grid {
   gap: 12px;
 }
 
+/* Habit + channels bound group (hero stays independent above) */
+.wb-context-bound {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--outline-variant));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary) 8%, var(--surface-high)) 0%,
+    color-mix(in srgb, var(--primary) 4%, var(--surface)) 55%,
+    color-mix(in srgb, var(--primary) 6%, var(--surface-high)) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 10px 24px color-mix(in srgb, var(--on-surface) 5%, transparent);
+  overflow: hidden;
+}
+.wb-context-bound::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(
+    180deg,
+    var(--primary),
+    color-mix(in srgb, var(--primary) 40%, var(--on-surface-muted))
+  );
+  opacity: 0.9;
+  pointer-events: none;
+}
+html[data-theme="dark"] .wb-context-bound {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary) 12%, var(--surface-high)) 0%,
+    color-mix(in srgb, var(--primary) 6%, var(--surface)) 100%
+  );
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+.wb-context-bound-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 12px 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--primary) 12%, transparent);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.18));
+}
+html[data-theme="dark"] .wb-context-bound-head {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent);
+}
+.wb-context-bound-head-copy {
+  min-width: 0;
+}
+.wb-context-bound-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.wb-context-bound-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--on-surface);
+  letter-spacing: -0.01em;
+}
+.wb-context-bound-scene {
+  display: inline-flex;
+  align-items: center;
+  max-width: 12rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #1a2d4a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html[data-theme="dark"] .wb-context-bound-scene {
+  background: color-mix(in srgb, var(--primary) 28%, #0f172a);
+}
+.wb-context-bound-scene[hidden] {
+  display: none !important;
+}
+.wb-context-bound-sub {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--on-surface-muted);
+}
+.wb-context-bound-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px 14px 16px;
+}
+.wb-context-bound .wb-scene-rail {
+  gap: 10px;
+}
+.wb-context-bound .wb-scene-rail-head {
+  gap: 0;
+}
+.wb-context-bound .wb-scene-rail-follow {
+  background: color-mix(in srgb, var(--surface-high) 88%, transparent);
+}
+.wb-context-bound-bridge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary-strong, var(--primary));
+}
+.wb-context-bound-bridge::before,
+.wb-context-bound-bridge::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--primary) 35%, var(--outline-variant)),
+    transparent
+  );
+}
+.wb-context-bound-bridge span {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-high) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--outline-variant));
+  white-space: nowrap;
+}
+.wb-context-bound .wb-howto {
+  gap: 0;
+}
+.wb-context-bound .wb-howto-card {
+  gap: 8px;
+  padding: 12px;
+  border-radius: 14px;
+  min-height: 0;
+}
+.wb-context-bound .wb-howto-card-art {
+  transform: scale(0.85);
+  transform-origin: right center;
+  opacity: 0.85;
+}
+.wb-context-bound .wb-howto-card-habit {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--primary-strong, var(--primary));
+  background: var(--primary-soft, #e6f7fc);
+  border-radius: 6px;
+  padding: 2px 5px;
+  max-width: 4.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html[data-theme="dark"] .wb-context-bound .wb-howto-card-habit {
+  background: color-mix(in srgb, var(--primary) 18%, var(--surface-high));
+}
+.wb-context-bound .wb-howto-card-head {
+  padding-right: 3.2rem;
+}
+.wb-context-bound .wb-howto-card-value {
+  font-size: 15px;
+}
+
 .wb-howto-head {
   display: none;
 }

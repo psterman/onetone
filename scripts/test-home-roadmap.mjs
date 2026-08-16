@@ -226,10 +226,22 @@ const htmlHome = readFileSync(join(root, 'src/index.html'), 'utf8');
 check('hero softPad 由 howto 切换', htmlHome.includes('id="wbHowTo"') && !htmlHome.includes('wb-hero-modes') && !htmlHome.includes('id="wbHeroModeSoftPad"'));
 check('hero 无重复模式条', !htmlHome.includes('data-wb-hero-mode=') && wb.includes('syncHowToActive') && !wb.includes('function syncHeroModeTabs'));
 check('index 挂载 hero-mode-model', htmlHome.includes('home-hero-mode-model.js'));
+check('习惯与通道同组绑定', htmlHome.includes('id="wbContextBound"') && htmlHome.includes('wb-context-bound'));
+check('习惯在通道之上', (() => {
+  const rail = htmlHome.indexOf('id="wbSceneRail"');
+  const howto = htmlHome.indexOf('id="wbHowTo"');
+  const bound = htmlHome.indexOf('id="wbContextBound"');
+  return bound >= 0 && rail > bound && howto > rail;
+})());
+check('bound 组头场景 pill', htmlHome.includes('id="wbContextBoundScene"'));
+
+const homeCss = readFileSync(join(root, 'src/css/home-workbench.css'), 'utf8');
+check('bound 组样式', homeCss.includes('.wb-context-bound') && homeCss.includes('.wb-context-bound-bridge') && homeCss.includes('.wb-howto-card-habit'));
 
 const panels = readFileSync(join(root, 'src/js/features/home/home-workbench-panels.js'), 'utf8');
 check('howto 只吃 projection', panels.includes('projection.howtoCards') && panels.includes('禁止在此再采集'));
 check('inactive howto 无 meta', panels.includes('card.active?1:0'));
+check('bound 同步当前习惯短名', panels.includes('wbContextBoundScene') && panels.includes('habitShort'));
 check('panels 导出 softPadHowToSnapshot', panels.includes('softPadHowToSnapshot:softPadHowToSnapshot'));
 check('panels 导出 collectHowToSurfaceBits', panels.includes('collectHowToSurfaceBits:collectHowToSurfaceBits'));
 check('softPad snapshot 走 resolvePrimaryLane', (() => {

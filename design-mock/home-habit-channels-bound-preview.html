@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <title>首页原型 — 习惯与通道视觉绑定</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root {
+      --primary: #2a9cc4;
+      --primary-strong: #1f8fb8;
+      --primary-soft: #e6f7fc;
+      --indigo: #1a2d4a;
+      --on: #152238;
+      --muted: #7892a8;
+      --outline: rgba(26,45,74,.10);
+      --surface: #fff;
+      --bg: #eef3f7;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--on);
+      background:
+        radial-gradient(900px 420px at 68% -8%, rgba(42,156,196,.13), transparent 58%),
+        linear-gradient(180deg, #e8f1f6 0%, var(--bg) 42%, #f4f8fb 100%);
+      min-height: 100vh;
+      padding: 28px 20px 48px;
+    }
+
+    .proto-head {
+      width: min(1120px, 100%);
+      margin: 0 auto 18px;
+    }
+    .proto-head h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--indigo);
+      letter-spacing: -.02em;
+    }
+    .proto-head p {
+      margin: 6px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+      max-width: 44rem;
+    }
+
+    .shell {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      min-height: 740px;
+      border-radius: 20px;
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--outline);
+      box-shadow: 0 24px 60px rgba(26,45,74,.10);
+    }
+
+    .nav {
+      background: linear-gradient(180deg, #152238 0%, #1a2d4a 100%);
+      color: rgba(255,255,255,.72);
+      padding: 22px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .nav-brand {
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+      margin: 0 8px 18px;
+    }
+    .nav-brand small {
+      display: block;
+      margin-top: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255,255,255,.45);
+    }
+    .nav button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .nav button.is-on {
+      background: rgba(42,156,196,.22);
+      color: #fff;
+    }
+    .nav .qs {
+      margin-top: auto;
+      background: var(--primary);
+      color: #fff;
+      text-align: center;
+      border-radius: 999px;
+      font-weight: 700;
+      padding: 11px 12px;
+    }
+
+    .main {
+      background: #f3f6f9;
+      padding: 18px 20px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    /* ===== Hero (independent) ===== */
+    .hero {
+      background: linear-gradient(180deg, #f7fbfd 0%, #eef5f9 100%);
+      border: 1px solid var(--outline);
+      border-radius: 18px;
+      padding: 16px 20px 14px;
+      text-align: center;
+      animation: rise .7s var(--ease) both;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--primary-strong);
+      margin: 0 0 10px;
+    }
+    .eyebrow i {
+      width: 16px; height: 16px;
+      border-radius: 999px;
+      background: var(--primary);
+      color: #fff;
+      font-style: normal;
+      font-size: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .hero-alert {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 8px;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+    .hero-alert .btn {
+      appearance: none;
+      border: 0;
+      background: var(--primary);
+      color: #fff;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 7px 14px;
+      border-radius: 999px;
+      box-shadow: 0 6px 14px rgba(42,156,196,.28);
+      cursor: pointer;
+    }
+    .orb-wrap {
+      width: 100px; height: 100px;
+      margin: 4px auto 10px;
+      position: relative;
+      display: grid;
+      place-items: center;
+    }
+    .orb-wrap::before,
+    .orb-wrap::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 1.5px solid var(--primary);
+      opacity: 0;
+      animation: ring 3.6s var(--ease) infinite;
+    }
+    .orb-wrap::after { animation-delay: 1.8s; }
+    @keyframes ring {
+      0% { transform: scale(.55); opacity: 0; }
+      20% { opacity: .25; }
+      100% { transform: scale(1.15); opacity: 0; }
+    }
+    .orb {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #5ec4e6, var(--primary) 55%, var(--primary-strong));
+      box-shadow: 0 10px 24px rgba(42,156,196,.35);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      position: relative;
+      z-index: 1;
+    }
+    .orb svg { width: 28px; height: 28px; }
+    .hero-foot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .mic-ok {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      color: #1a7a52;
+    }
+    .mic-ok i {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34,197,94,.2);
+    }
+    .pause {
+      appearance: none;
+      border: 0;
+      background: var(--primary);
+      color: #fff;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
+    /* ===== Bound group: habit + channels ===== */
+    .bound {
+      --bound-accent: var(--primary);
+      background: linear-gradient(180deg, #eaf5fa 0%, #e4eef5 55%, #e8f0f5 100%);
+      border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--outline));
+      border-radius: 18px;
+      padding: 0;
+      overflow: hidden;
+      box-shadow:
+        0 1px 0 rgba(255,255,255,.65) inset,
+        0 12px 28px rgba(26,45,74,.06);
+      animation: rise .7s var(--ease) .1s both;
+      position: relative;
+    }
+    /* left accent rail — visual “same group” cue */
+    .bound::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 14px; bottom: 14px;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 40%, #94a3b8));
+      opacity: .9;
+    }
+
+    .bound-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px 12px 18px;
+      border-bottom: 1px solid color-mix(in srgb, var(--primary) 12%, transparent);
+      background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.22));
+    }
+    .bound-head-copy {
+      min-width: 0;
+    }
+    .bound-head .eyebrow { margin-bottom: 6px; }
+    .bound-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--indigo);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .bound-title .scene {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px 3px 4px;
+      border-radius: 999px;
+      background: #1a2d4a;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .bound-title .scene b {
+      width: 18px; height: 18px;
+      border-radius: 5px;
+      background: #fff;
+      color: var(--indigo);
+      display: grid;
+      place-items: center;
+      font-size: 10px;
+    }
+    .bound-sub {
+      margin: 6px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .bound-head .manage {
+      appearance: none;
+      border: 1px solid var(--outline);
+      background: #fff;
+      color: var(--muted);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 7px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    .bound-body {
+      padding: 12px 14px 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .follow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: rgba(255,255,255,.78);
+      border: 1px solid var(--outline);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+    .follow strong {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--indigo);
+    }
+    .follow span {
+      font-size: 11.5px;
+      color: var(--muted);
+    }
+    .switch {
+      width: 40px; height: 24px;
+      border-radius: 999px;
+      background: var(--primary);
+      position: relative;
+      flex: 0 0 auto;
+    }
+    .switch::after {
+      content: '';
+      position: absolute;
+      top: 3px; left: 19px;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,.15);
+    }
+
+    .habit-row {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding: 2px 2px 4px;
+    }
+    .habit {
+      flex: 0 0 auto;
+      width: 68px;
+      text-align: center;
+      cursor: pointer;
+    }
+    .habit .ico {
+      width: 48px; height: 48px;
+      margin: 0 auto 5px;
+      border-radius: 13px;
+      background: #fff;
+      border: 1.5px solid var(--outline);
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--indigo);
+      position: relative;
+      transition: border-color .2s var(--ease), box-shadow .2s var(--ease), transform .15s var(--ease);
+    }
+    .habit:hover .ico { transform: translateY(-1px); }
+    .habit.is-on .ico {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(42,156,196,.2);
+    }
+    .habit.is-on .ico::after {
+      content: '';
+      position: absolute;
+      top: -3px; right: -3px;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--primary);
+      border: 2px solid #fff;
+    }
+    .habit em {
+      font-style: normal;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .habit.is-on em { color: var(--indigo); font-weight: 700; }
+
+    /* bridge label between habit and channels */
+    .bridge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 2px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .bridge::before,
+    .bridge::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary) 35%, var(--outline)), transparent);
+    }
+    .bridge span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.85);
+      border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--outline));
+      color: var(--primary-strong);
+      white-space: nowrap;
+    }
+
+    .ch-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .ch {
+      background: #fff;
+      border: 1px solid var(--outline);
+      border-radius: 14px;
+      padding: 12px 11px 11px;
+      min-height: 102px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      cursor: pointer;
+      position: relative;
+      transition: border-color .2s var(--ease), box-shadow .2s var(--ease), transform .15s var(--ease);
+    }
+    .ch:hover {
+      border-color: color-mix(in srgb, var(--primary) 42%, var(--outline));
+      box-shadow: 0 8px 16px rgba(26,45,74,.07);
+      transform: translateY(-1px);
+    }
+    .ch.is-hot {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent);
+      background: linear-gradient(180deg, #f7fcfe, #fff);
+    }
+    /* tiny habit chip on each card — same context, not a second picker */
+    .ch-habit {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .02em;
+      color: var(--primary-strong);
+      background: var(--primary-soft);
+      border-radius: 6px;
+      padding: 2px 5px;
+      opacity: .85;
+    }
+    .ch-kicker {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      padding-right: 36px;
+    }
+    .ch-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--indigo);
+      letter-spacing: -.01em;
+    }
+    .ch-status {
+      margin-top: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      padding-top: 6px;
+    }
+    .ch-status .ok,
+    .ch-status .warn {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+    }
+    .ch-status .ok { background: #22c55e; }
+    .ch-status .warn { background: #f59e0b; }
+
+    .bound-foot {
+      margin: 0;
+      padding: 0 4px;
+      font-size: 11.5px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .notes {
+      width: min(1120px, 100%);
+      margin: 16px auto 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .notes article {
+      background: rgba(255,255,255,.75);
+      border: 1px solid var(--outline);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .notes h3 {
+      margin: 0 0 6px;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--indigo);
+    }
+    .notes p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      .nav { display: none; }
+      .ch-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .notes { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .hero, .bound, .orb-wrap::before, .orb-wrap::after { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="proto-head">
+    <h1>首页原型 · 习惯与四通道视觉绑定</h1>
+    <p>英雄区仍独立。下方合成一组「当前习惯 → 其下四通道」：同一底色、左侧色条、组头场景名、桥接标签；通道卡角标只提示归属，不重复选习惯。</p>
+  </header>
+
+  <div class="shell" role="img" aria-label="习惯与通道绑定原型">
+    <aside class="nav" aria-hidden="true">
+      <div class="nav-brand">一声 OneTone<small>言出即行，万象成形</small></div>
+      <button class="is-on" type="button">首页</button>
+      <button type="button">我的习惯</button>
+      <button type="button">按键设置</button>
+      <button type="button">虚拟键盘</button>
+      <button type="button">语音设置</button>
+      <button type="button">摄像头</button>
+      <button type="button">通用设置</button>
+      <button type="button">声音与反馈</button>
+      <button class="qs" type="button">快速入门</button>
+    </aside>
+
+    <main class="main">
+      <!-- 独立：现场状态 -->
+      <section class="hero" aria-label="现场状态">
+        <div class="eyebrow"><i>1</i>现场状态 · 独立</div>
+        <div class="hero-alert">
+          <span>当前习惯未开启语音监听</span>
+          <button class="btn" type="button">开启自动</button>
+        </div>
+        <div class="orb-wrap">
+          <div class="orb" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </div>
+        </div>
+        <div class="hero-foot">
+          <span class="mic-ok"><i></i>麦克风可用</span>
+          <span>语音拨开</span>
+          <button class="pause" type="button">暂停</button>
+        </div>
+      </section>
+
+      <!-- 绑定组：习惯 + 通道 -->
+      <section class="bound" aria-label="当前习惯与触发通道">
+        <header class="bound-head">
+          <div class="bound-head-copy">
+            <div class="eyebrow"><i>2</i>配置语境 · 同组绑定</div>
+            <h2 class="bound-title">
+              当前习惯
+              <span class="scene"><b>C</b>Cursor</span>
+            </h2>
+            <p class="bound-sub">切换习惯时，下方四通道状态一起跟着变。</p>
+          </div>
+          <button class="manage" type="button">管理</button>
+        </header>
+
+        <div class="bound-body">
+          <div class="follow">
+            <div>
+              <strong>自动切换习惯（推荐）</strong>
+              <span>根据前台应用使用对应习惯</span>
+            </div>
+            <div class="switch" aria-hidden="true"></div>
+          </div>
+
+          <div class="habit-row" role="list">
+            <div class="habit" role="listitem"><div class="ico">通</div><em>通用</em></div>
+            <div class="habit" role="listitem"><div class="ico">Q</div><em>Qoder</em></div>
+            <div class="habit is-on" role="listitem"><div class="ico">C</div><em>Cursor</em></div>
+            <div class="habit" role="listitem"><div class="ico">T</div><em>Trae</em></div>
+            <div class="habit" role="listitem"><div class="ico">+</div><em>自定义</em></div>
+          </div>
+
+          <div class="bridge" aria-hidden="true">
+            <span>↓ 此习惯下的唤起方式</span>
+          </div>
+
+          <div class="ch-grid">
+            <article class="ch is-hot">
+              <span class="ch-habit">Cursor</span>
+              <div class="ch-kicker">说话触发</div>
+              <h3 class="ch-title">开始输入</h3>
+              <div class="ch-status"><i class="ok"></i>麦克风可用</div>
+            </article>
+            <article class="ch">
+              <span class="ch-habit">Cursor</span>
+              <div class="ch-kicker">按键触发</div>
+              <h3 class="ch-title">右 Alt</h3>
+              <div class="ch-status"><i class="ok"></i>已绑定</div>
+            </article>
+            <article class="ch">
+              <span class="ch-habit">Cursor</span>
+              <div class="ch-kicker">屏幕按钮</div>
+              <h3 class="ch-title">Soft Pad</h3>
+              <div class="ch-status"><i class="ok"></i>运行中</div>
+            </article>
+            <article class="ch">
+              <span class="ch-habit">Cursor</span>
+              <div class="ch-kicker">摄像头</div>
+              <h3 class="ch-title">4 项手势</h3>
+              <div class="ch-status"><i class="warn"></i>可点开改</div>
+            </article>
+          </div>
+
+          <p class="bound-foot">同一容器、同一场景名、同一套通道状态。点通道进设置；点习惯只换上下文，不拆成两块页面。</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="notes">
+    <article>
+      <h3>绑什么</h3>
+      <p>底色、左边线、组头「Cursor」、桥接文案、通道角标 — 告诉用户「这些通道属于上面这个习惯」。</p>
+    </article>
+    <article>
+      <h3>不绑什么</h3>
+      <p>不把习惯选择塞进每张通道卡；英雄区开停/听写仍独立，避免和配置语境抢第一视线。</p>
+    </article>
+    <article>
+      <h3>交互预期</h3>
+      <p>切习惯 → 四通道状态刷新；点通道 → 打开对应设置；「管理」→ 习惯完整页。</p>
+    </article>
+  </div>
+</body>
+</html>

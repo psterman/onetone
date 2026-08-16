@@ -128,7 +128,11 @@
         +'</div>';
     }
     // Summary card: inactive → switch hero; active → open channel settings.
+    var habitChip=card.habitShort
+      ?'<span class="wb-howto-card-habit">'+esc(card.habitShort)+'</span>'
+      :'';
     return '<article class="wb-howto-card'+(card.active?' is-active':'')+(kind?' is-'+kind:'')+(card.empty?' is-empty':'')+'" data-wb-howto="'+esc(kind)+'" role="button" tabindex="0" aria-pressed="'+(card.active?'true':'false')+'" data-ot-tip="'+esc(t('homeWbHowToOpenTip','点此切换上方预览；再点打开设置'))+'">'
+      +habitChip
       +'<div class="wb-howto-card-head">'
       +'<span class="wb-howto-card-ico" aria-hidden="true">'+icon+'</span>'
       +'<span class="wb-howto-card-title">'+esc(card.title||'')+'</span>'
@@ -284,6 +288,14 @@
     // 只吃 projection；禁止在此再采集 Camera/SoftPad 快照
     if(!projection||!Array.isArray(projection.howtoCards)) return;
     var cards=projection.howtoCards;
+    var activeMap=null;
+    try{
+      var mid=activeSceneId();
+      if(mid&&global.OneToneMappingCore&&global.OneToneMappingCore.byId){
+        activeMap=global.OneToneMappingCore.byId(mid);
+      }
+    }catch(_){}
+    var habitShort=activeMap?sceneChipShortName(activeMap):'';
     var keyIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>';
     var voiceIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>';
     var camIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -307,7 +319,9 @@
         icon=camIcon;
         art='<span class="wb-howto-cam-dot'+(card.cameraRunning?' is-on':(card.cameraEnabled?' is-configured':''))+'" aria-hidden="true"></span>';
       }
-      html+=howToSummaryCardHtml(card,icon,art);
+      var painted=Object.assign({},card);
+      if(habitShort) painted.habitShort=habitShort;
+      html+=howToSummaryCardHtml(painted,icon,art);
     });
     html+='</div>';
     host.innerHTML=html;
@@ -932,6 +946,19 @@
       manage.textContent=t('homeWbHabitManage','管理');
       manage.setAttribute('data-wb-habit-open-hub',active&&active.id?String(active.id):'');
     }
+    var boundScene=$('wbContextBoundScene');
+    if(boundScene){
+      var shortName=active?sceneChipShortName(active):'';
+      if(shortName){
+        boundScene.hidden=false;
+        boundScene.textContent=shortName;
+      }else{
+        boundScene.hidden=true;
+        boundScene.textContent='—';
+      }
+    }
+    var boundTitle=$('wbContextBoundTitle');
+    if(boundTitle) boundTitle.textContent=t('homeWbContextBoundTitle','当前习惯');
     if(rules&&rules.prefetchMappingRuleIcons){
       items.forEach(function(m){ rules.prefetchMappingRuleIcons(m); });
     }

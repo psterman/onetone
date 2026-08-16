@@ -2060,8 +2060,12 @@
       (global.OneToneState&&global.OneToneState.runtime&&global.OneToneState.runtime.paused)
         ?t('homeWbListenResume')
         :t('homeWbListenPause'));
-    var sceneTitle=document.querySelector('#wbSceneRail .wb-scene-rail-title');
-    if(sceneTitle) sceneTitle.textContent=t('homeWbSceneRailTitle');
+    var boundTitle=$('wbContextBoundTitle');
+    if(boundTitle) boundTitle.textContent=t('homeWbContextBoundTitle','当前习惯');
+    var boundSub=document.querySelector('#wbContextBound .wb-context-bound-sub');
+    if(boundSub) boundSub.textContent=t('homeWbContextBoundSub','切换习惯时，下方四通道状态一起跟着变。');
+    var boundBridge=document.querySelector('#wbContextBound .wb-context-bound-bridge span');
+    if(boundBridge) boundBridge.textContent=t('homeWbContextBoundBridge','此习惯下的唤起方式');
     var manage=$('wbHabitManage');
     if(manage) manage.textContent=t('homeWbHabitManage','管理');
     refreshFollowFgToggle();

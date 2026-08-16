@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <title>首页分区原型 — 状态 → 习惯 → 通道</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root {
+      --primary: #2a9cc4;
+      --primary-strong: #1f8fb8;
+      --primary-soft: #e6f7fc;
+      --indigo: #1a2d4a;
+      --on: #152238;
+      --muted: #7892a8;
+      --outline: rgba(26,45,74,.10);
+      --surface: #fff;
+      --bg: #eef3f7;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --nav: #1a2d4a;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--on);
+      background:
+        radial-gradient(900px 420px at 70% -10%, rgba(42,156,196,.12), transparent 60%),
+        linear-gradient(180deg, #e8f1f6 0%, var(--bg) 40%, #f4f8fb 100%);
+      min-height: 100vh;
+      padding: 28px 20px 48px;
+    }
+
+    .proto-head {
+      width: min(1120px, 100%);
+      margin: 0 auto 18px;
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .proto-head h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--indigo);
+      letter-spacing: -.02em;
+    }
+    .proto-head p {
+      margin: 6px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+      max-width: 42rem;
+    }
+    .legend {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .legend span {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.75);
+      border: 1px solid var(--outline);
+      color: var(--muted);
+    }
+    .legend span em {
+      font-style: normal;
+      color: var(--primary-strong);
+      margin-right: 4px;
+    }
+
+    .shell {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 0;
+      min-height: 720px;
+      border-radius: 20px;
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--outline);
+      box-shadow: 0 24px 60px rgba(26,45,74,.10);
+    }
+
+    /* left nav stub */
+    .nav {
+      background: linear-gradient(180deg, #152238 0%, #1a2d4a 100%);
+      color: rgba(255,255,255,.72);
+      padding: 22px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .nav-brand {
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+      margin: 0 8px 18px;
+      letter-spacing: -.01em;
+    }
+    .nav-brand small {
+      display: block;
+      margin-top: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255,255,255,.45);
+    }
+    .nav button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: default;
+    }
+    .nav button.is-on {
+      background: rgba(42,156,196,.22);
+      color: #fff;
+    }
+    .nav .qs {
+      margin-top: auto;
+      background: var(--primary);
+      color: #fff;
+      text-align: center;
+      border-radius: 999px;
+      font-weight: 700;
+      padding: 11px 12px;
+    }
+
+    .main {
+      background: #f3f6f9;
+      padding: 18px 20px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .row-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--primary-strong);
+      margin: 0 0 8px 2px;
+    }
+    .row-tag i {
+      width: 16px; height: 16px;
+      border-radius: 999px;
+      background: var(--primary);
+      color: #fff;
+      font-style: normal;
+      font-size: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ===== ROW 1: Hero status ===== */
+    .hero {
+      background: linear-gradient(180deg, #f7fbfd 0%, #eef5f9 100%);
+      border: 1px solid var(--outline);
+      border-radius: 18px;
+      padding: 18px 20px 16px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      animation: rise .7s var(--ease) both;
+    }
+    .hero-alert {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 10px;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+    .hero-alert .btn {
+      appearance: none;
+      border: 0;
+      background: var(--primary);
+      color: #fff;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 7px 14px;
+      border-radius: 999px;
+      box-shadow: 0 6px 14px rgba(42,156,196,.28);
+      cursor: pointer;
+    }
+    .scene-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 auto 14px;
+      padding: 6px 14px 6px 8px;
+      border-radius: 999px;
+      background: #1a2d4a;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .scene-pill img, .scene-pill .dot {
+      width: 18px; height: 18px;
+      border-radius: 5px;
+      background: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 10px;
+      color: var(--indigo);
+      font-weight: 800;
+    }
+    .orb-wrap {
+      width: 120px; height: 120px;
+      margin: 0 auto 12px;
+      position: relative;
+      display: grid;
+      place-items: center;
+    }
+    .orb-wrap::before,
+    .orb-wrap::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 1.5px solid var(--primary);
+      opacity: 0;
+      animation: ring 3.6s var(--ease) infinite;
+    }
+    .orb-wrap::after { animation-delay: 1.8s; }
+    @keyframes ring {
+      0% { transform: scale(.55); opacity: 0; }
+      20% { opacity: .25; }
+      100% { transform: scale(1.15); opacity: 0; }
+    }
+    .orb {
+      width: 84px; height: 84px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #5ec4e6, var(--primary) 55%, var(--primary-strong));
+      box-shadow: 0 12px 28px rgba(42,156,196,.35);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      position: relative;
+      z-index: 1;
+    }
+    .orb svg { width: 34px; height: 34px; }
+    .hero-foot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .mic-ok {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      color: #1a7a52;
+    }
+    .mic-ok i {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34,197,94,.2);
+    }
+    .pause {
+      appearance: none;
+      border: 0;
+      background: var(--primary);
+      color: #fff;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
+    /* ===== ROW 2: Habits (moved up) ===== */
+    .habits {
+      background: linear-gradient(180deg, #eaf4f9 0%, #e3eef5 100%);
+      border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--outline));
+      border-radius: 16px;
+      padding: 12px 14px 14px;
+      animation: rise .7s var(--ease) .08s both;
+    }
+    .habits-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .habits-top h2 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--indigo);
+    }
+    .habits-top .manage {
+      appearance: none;
+      border: 1px solid var(--outline);
+      background: #fff;
+      color: var(--muted);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .follow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: rgba(255,255,255,.72);
+      border: 1px solid var(--outline);
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+    }
+    .follow strong {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--indigo);
+    }
+    .follow span {
+      font-size: 11.5px;
+      color: var(--muted);
+    }
+    .switch {
+      width: 40px; height: 24px;
+      border-radius: 999px;
+      background: var(--primary);
+      position: relative;
+      flex: 0 0 auto;
+    }
+    .switch::after {
+      content: '';
+      position: absolute;
+      top: 3px; left: 19px;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,.15);
+    }
+    .habit-row {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+    .habit {
+      flex: 0 0 auto;
+      width: 72px;
+      text-align: center;
+      cursor: pointer;
+    }
+    .habit .ico {
+      width: 52px; height: 52px;
+      margin: 0 auto 6px;
+      border-radius: 14px;
+      background: #fff;
+      border: 1.5px solid var(--outline);
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--indigo);
+      position: relative;
+      transition: border-color .2s var(--ease), box-shadow .2s var(--ease);
+    }
+    .habit.is-on .ico {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(42,156,196,.18);
+    }
+    .habit.is-on .ico::after {
+      content: '';
+      position: absolute;
+      top: -3px; right: -3px;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--primary);
+      border: 2px solid #fff;
+    }
+    .habit em {
+      font-style: normal;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .habit.is-on em { color: var(--indigo); font-weight: 700; }
+    .habits-tip {
+      margin: 10px 2px 0;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    /* ===== ROW 3: Light channels ===== */
+    .channels {
+      animation: rise .7s var(--ease) .16s both;
+    }
+    .ch-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .ch {
+      background: #fff;
+      border: 1px solid var(--outline);
+      border-radius: 14px;
+      padding: 14px 12px 12px;
+      min-height: 108px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      cursor: pointer;
+      transition: border-color .2s var(--ease), box-shadow .2s var(--ease), transform .15s var(--ease);
+    }
+    .ch:hover {
+      border-color: color-mix(in srgb, var(--primary) 40%, var(--outline));
+      box-shadow: 0 8px 18px rgba(26,45,74,.06);
+      transform: translateY(-1px);
+    }
+    .ch.is-hot {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent);
+      background: linear-gradient(180deg, #f7fcfe, #fff);
+    }
+    .ch-kicker {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .ch-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--indigo);
+      letter-spacing: -.01em;
+    }
+    .ch-status {
+      margin-top: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--muted);
+      padding-top: 4px;
+    }
+    .ch-status .ok {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+    }
+    .ch-status .warn {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #f59e0b;
+    }
+    .ch-note {
+      margin: 10px 2px 0;
+      font-size: 11.5px;
+      color: var(--muted);
+    }
+
+    .compare {
+      width: min(1120px, 100%);
+      margin: 18px auto 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .compare article {
+      background: rgba(255,255,255,.72);
+      border: 1px solid var(--outline);
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+    .compare h3 {
+      margin: 0 0 8px;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--indigo);
+    }
+    .compare ol {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .compare .new h3 { color: var(--primary-strong); }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      .nav { display: none; }
+      .ch-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .compare { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hero, .habits, .channels, .orb-wrap::before, .orb-wrap::after { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="proto-head">
+    <div>
+      <h1>首页分区原型 · 状态 → 习惯 → 通道</h1>
+      <p>相对现状：习惯条上移贴在英雄区下方；四通道改成「名称 + 一行状态」，细节进设置。英雄区仍占第一视觉。</p>
+    </div>
+    <div class="legend" aria-hidden="true">
+      <span><em>①</em>现场状态</span>
+      <span><em>②</em>当前习惯</span>
+      <span><em>③</em>轻量通道</span>
+    </div>
+  </header>
+
+  <div class="shell" role="img" aria-label="首页三行分区原型示意">
+    <aside class="nav" aria-hidden="true">
+      <div class="nav-brand">一声 OneTone<small>言出即行，万象成形</small></div>
+      <button class="is-on" type="button">首页</button>
+      <button type="button">我的习惯</button>
+      <button type="button">按键设置</button>
+      <button type="button">虚拟键盘</button>
+      <button type="button">语音设置</button>
+      <button type="button">摄像头</button>
+      <button type="button">通用设置</button>
+      <button type="button">声音与反馈</button>
+      <button class="qs" type="button">快速入门</button>
+    </aside>
+
+    <main class="main">
+      <!-- ① 状态 -->
+      <section class="hero" aria-label="现场状态">
+        <div class="row-tag"><i>1</i>现场状态 · 能不能用</div>
+        <div class="hero-alert">
+          <span>当前习惯未开启语音监听。点「开启自动」即可现场打开</span>
+          <button class="btn" type="button">开启自动</button>
+        </div>
+        <div class="scene-pill"><span class="dot">C</span>Cursor 场景</div>
+        <div class="orb-wrap">
+          <div class="orb" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </div>
+        </div>
+        <div class="hero-foot">
+          <span class="mic-ok"><i></i>麦克风可用</span>
+          <span>语音拨开</span>
+          <button class="pause" type="button">暂停</button>
+        </div>
+      </section>
+
+      <!-- ② 习惯（上移） -->
+      <section class="habits" aria-label="当前习惯">
+        <div class="row-tag"><i>2</i>当前习惯 · 对谁生效（上移）</div>
+        <div class="habits-top">
+          <h2>我的习惯</h2>
+          <button class="manage" type="button">管理</button>
+        </div>
+        <div class="follow">
+          <div>
+            <strong>自动切换习惯（推荐）</strong>
+            <span>根据前台应用使用对应习惯</span>
+          </div>
+          <div class="switch" aria-hidden="true"></div>
+        </div>
+        <div class="habit-row">
+          <div class="habit is-on"><div class="ico">通</div><em>通用</em></div>
+          <div class="habit"><div class="ico">Q</div><em>Qoder</em></div>
+          <div class="habit"><div class="ico">W</div><em>WorkBuddy</em></div>
+          <div class="habit"><div class="ico">T</div><em>Trae</em></div>
+          <div class="habit"><div class="ico">+</div><em>自定义</em></div>
+        </div>
+        <p class="habits-tip">先锁定场景，再看下方通道；开启自动切换后，离开首页会继续跟随前台。</p>
+      </section>
+
+      <!-- ③ 轻量通道 -->
+      <section class="channels" aria-label="触发通道">
+        <div class="row-tag"><i>3</i>触发通道 · 怎么唤起（变轻）</div>
+        <div class="ch-grid">
+          <article class="ch is-hot">
+            <div class="ch-kicker">说话触发</div>
+            <h3 class="ch-title">开始输入</h3>
+            <div class="ch-status"><i class="ok"></i>麦克风 · USB AUDIO</div>
+          </article>
+          <article class="ch">
+            <div class="ch-kicker">按键触发</div>
+            <h3 class="ch-title">右 Alt</h3>
+            <div class="ch-status"><i class="ok"></i>HID 已绑定</div>
+          </article>
+          <article class="ch">
+            <div class="ch-kicker">屏幕按钮</div>
+            <h3 class="ch-title">Soft Pad</h3>
+            <div class="ch-status"><i class="ok"></i>运行中 · Agent</div>
+          </article>
+          <article class="ch">
+            <div class="ch-kicker">摄像头确认</div>
+            <h3 class="ch-title">4 项手势</h3>
+            <div class="ch-status"><i class="warn"></i>已绑定 · 可点开改</div>
+          </article>
+        </div>
+        <p class="ch-note">每卡只留名称 + 一行状态；HID 码 / 手势细则点进设置再看，避免和上方 orb 抢注意力。</p>
+      </section>
+    </main>
+  </div>
+
+  <div class="compare">
+    <article>
+      <h3>现在</h3>
+      <ol>
+        <li>状态（英雄区）</li>
+        <li>四通道（信息重）</li>
+        <li>习惯（决定上下文，却在最底）</li>
+      </ol>
+    </article>
+    <article class="new">
+      <h3>建议</h3>
+      <ol>
+        <li>状态（英雄区，保留）</li>
+        <li>习惯（上移，先锁定场景）</li>
+        <li>四通道（降密度，一眼通不通）</li>
+      </ol>
+    </article>
+  </div>
+</body>
+</html>
