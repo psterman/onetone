@@ -464,7 +464,7 @@
         ?t('homeWbSoftPadControlConfirming','正在确认当前控制')
         :(control.agentName?softPadControlAutoLbl(control.agentName):t('homeWbSoftPadControlNone','暂无')));
     var controlLine=t('homeWbSoftPadControlLine','当前控制：{state}').replace('{state}',controlLbl);
-    var followHint=t('homeWbSoftPadFollowHint','运行时自动跟随 Agent');
+    var followHint=t('homeWbSoftPadFollowHint','Agent 进程在跑或切到前台时自动显示');
     var value=configLine+' · '+controlLine;
     return Object.assign({},control,{
       configKind:cfgLayer.configKind,

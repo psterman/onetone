@@ -26,6 +26,8 @@ Agent Hook / Plugin → probe → POST 127.0.0.1:8796/api/codex-app/state
 
 Probe 约束：fail-open、退出码 0、不写 prompt/回复正文、只保留安全字段（event / session / cwd / model / ts）。
 
+**Codex Desktop（无 Hook 时）**：应用内扫 `~/.codex/session_index.jsonl` + 活跃 `sessions/**/rollout-*.jsonl` → `source=codex_app`（PadSource::App）。**禁止** thstatus / 伪装 native。Hook 在时仍按 Native > Hook > App 仲裁。
+
 ---
 
 ## Phase 0 — MiniMax（生命周期无官方 Hook）

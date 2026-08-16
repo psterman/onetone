@@ -6,6 +6,10 @@ use std::time::Instant;
 
 /// Crash-insurance TTL for NeedsInput when no precise clear arrives.
 pub const NEEDS_INPUT_WATCHDOG_MS: u64 = 5 * 60 * 1000;
+/// Soft Pad chip: keep Complete visible briefly then drop lifecycle.
+pub const COMPLETE_TTL_MS: u64 = 4_000;
+/// Error banner linger (slightly longer than Complete).
+pub const ERROR_TTL_MS: u64 = 8_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

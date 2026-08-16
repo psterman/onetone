@@ -50,6 +50,7 @@ pub fn install_events() -> &'static [(&'static str, u64)] {
         ("SessionStart", 5),
         ("UserPromptSubmit", 5),
         ("PermissionRequest", 60),
+        ("Notification", 60),
         ("Stop", 5),
         ("StopFailure", 5),
         ("SubagentStart", 5),

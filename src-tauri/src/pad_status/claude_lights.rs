@@ -145,7 +145,7 @@ fn ui_state_from_event(event: &str) -> Option<&'static str> {
         "SubagentStart" => Some("running"),
         "SubagentStop" => Some("done"),
         "UserPromptSubmit" | "PreToolUse" | "PostToolUse" | "PostToolBatch" => Some("running"),
-        "PermissionRequest" | "Elicitation" => Some("needs_input"),
+        "PermissionRequest" | "Elicitation" | "Notification" => Some("needs_input"),
         "Stop" | "TaskCompleted" => Some("done"),
         "StopFailure" | "PostToolUseFailure" => Some("failed"),
         // SessionStart/End: bump activity only (Soft Pad near-window) — never insert a light.

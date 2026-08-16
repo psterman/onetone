@@ -108,6 +108,8 @@ Claude 用量双通道：`ClaudeStatusLineState`（额度窗口）与 `ClaudeOte
 - 后端 countdown timer（overlay 已 ~1.5s 刷新）
 - statusLine 包装用户自定义 command；转发 `context_window` / statusLine `cost`
 
+改为：statusLine 已转发 `context_window.used_percentage` → Soft Pad chip `contextUsedPercent`（50% warn / 80% critical），与额度 usage stale **语义分离**。
+
 ## Phase 2（现在不实现）
 
 PATH probe + 超时 + max stdout + 严格 JSON；只合并空字段；Codex 外部 CLI；Claude session/$ 仍仅 OTel；缺工具静默 skip。

@@ -15,7 +15,7 @@ use crate::pad_status::store;
 pub fn map_claude_event_to_state(event: &str) -> Option<&'static str> {
     match event.trim() {
         "UserPromptSubmit" | "PreToolUse" | "PostToolUse" | "PostToolBatch" => Some("running"),
-        "PermissionRequest" | "Elicitation" => Some("needs_input"),
+        "PermissionRequest" | "Elicitation" | "Notification" => Some("needs_input"),
         "Stop" | "TaskCompleted" => Some("done"),
         "StopFailure" | "PostToolUseFailure" => Some("error"),
         // Session* never touch primary PadStatus (near-window bump only for SessionStart).
@@ -256,7 +256,7 @@ pub fn ingest_claude_payload_at(payload: &ClaudeHookPayload, now: u64) -> PadSta
         payload.turn_id.trim(),
         src_label,
     );
-    if matches!(event, "PermissionRequest" | "Elicitation") {
+    if matches!(event, "PermissionRequest" | "Elicitation" | "Notification") {
         crate::claude_cli_session::note_permission_request(
             incoming_session,
             payload.turn_id.trim(),
@@ -275,6 +275,7 @@ mod tests {
     fn maps_core_claude_events() {
         assert_eq!(map_claude_event_to_state("UserPromptSubmit"), Some("running"));
         assert_eq!(map_claude_event_to_state("PermissionRequest"), Some("needs_input"));
+        assert_eq!(map_claude_event_to_state("Notification"), Some("needs_input"));
         assert_eq!(map_claude_event_to_state("Stop"), Some("done"));
         assert_eq!(map_claude_event_to_state("StopFailure"), Some("error"));
         assert_eq!(map_claude_event_to_state("SubagentStart"), None);

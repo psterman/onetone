@@ -430,6 +430,7 @@ pub fn run() {
                 app.handle().clone(),
                 app_state.clone(),
             );
+            crate::pad_status::start_codex_session_scan_poll();
 
             {
                 let state_for_attention = app_state.clone();

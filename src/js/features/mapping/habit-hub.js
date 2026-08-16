@@ -2310,13 +2310,42 @@
       var existingPreset=findAppScenarioByAppId(appId);
       if(existingPreset){
         ui().habitHubCreating=false;
-        if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubAppScenarioExists'),'scheme');
+        // Home rail hides enabled===false. Re-selecting Cursor/Codex must revive a
+        // reconcile-disabled winner so it shows after save/restart.
+        var revived=existingPreset.enabled===false;
+        if(revived) existingPreset.enabled=true;
+        disableSiblingPresetScenarios(existingPreset);
+        if(global.OneToneAppToast){
+          global.OneToneAppToast.show(
+            revived
+              ?t('habitHubAppScenarioReenabled','已恢复该应用场景，可在首页切换使用')
+              :t('habitHubAppScenarioExists'),
+            'scheme'
+          );
+        }
         if(appId==='codex-chat'||appId==='cursor-chat'||appId==='workbuddy-chat'||appId==='trae-chat'||appId==='qoder-chat'){
           var Texist=global.OneToneAgentScenarioTemplate;
           if(Texist&&Texist.ensurePackForMapping) Texist.ensurePackForMapping(existingPreset,{persist:true});
         }
-        openCreatedScenarioChannel(existingPreset);
-        render();
+        touchUpdated(existingPreset);
+        var reuseSave=global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync;
+        var reuseDone=function(ok){
+          render();
+          if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.forceHomeRender){
+            try{ global.OneToneHomeWorkbench.forceHomeRender(); }catch(_){}
+          }
+          if(ok===false&&global.OneToneAppToast){
+            global.OneToneAppToast.show(t('habitScenarioSaveFailed'),'scheme');
+            return;
+          }
+          openCreatedScenarioChannel(existingPreset);
+        };
+        if(reuseSave) reuseSave({source:'mapping'}).then(reuseDone).catch(function(){ reuseDone(false); });
+        else{
+          if(hooks().save) hooks().save();
+          else if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
+          reuseDone(true);
+        }
         return existingPreset;
       }
     }
@@ -2425,6 +2454,9 @@
     var saveFn=global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync;
     var done=function(ok){
       render();
+      if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.forceHomeRender){
+        try{ global.OneToneHomeWorkbench.forceHomeRender(); }catch(_){}
+      }
       if(ok===false){
         if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitScenarioSaveFailed'),'scheme');
         return;

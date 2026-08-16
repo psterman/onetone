@@ -94,6 +94,9 @@ pub struct AgentUsageSnapshot {
     /// Activity Provider: yesterday turn count for day-over-day dialogue delta.
     #[serde(default)]
     pub local_yesterday_requests: Option<u64>,
+    /// Context window fill % from statusLine (not rate-limit remaining). None = unknown.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_used_percent: Option<f64>,
 }
 
 /// Mask an email for Soft Pad UI. Never returns the full local-part.
@@ -588,6 +591,8 @@ struct ClaudeStatusLineState {
     observed_at: u64,
     /// True when the latest payload had an explicit rate_limits object (even if empty).
     saw_rate_limits: bool,
+    /// Context window used % (independent of rate-limit windows).
+    context_used_percent: Option<f64>,
 }
 
 fn otel_series() -> &'static Mutex<HashMap<OtelSeriesKey, OtelSeriesValue>> {
@@ -800,6 +805,15 @@ pub fn ingest_claude_statusline_json(raw: &str) -> Result<usize, &'static str> {
     let rate = root.get("rate_limits").or_else(|| root.get("rateLimits"));
     let saw_rate_limits = rate.map(|v| v.is_object()).unwrap_or(false);
 
+    let context_pct = root
+        .get("context_window")
+        .or_else(|| root.get("contextWindow"))
+        .and_then(|cw| {
+            as_f64(cw.get("used_percentage"))
+                .or_else(|| as_f64(cw.get("usedPercentage")))
+        })
+        .filter(|p| p.is_finite() && (0.0..=100.0).contains(p));
+
     let mut windows = Vec::new();
     let mut accepted = 0usize;
     if let Some(rate) = rate.filter(|v| v.is_object()) {
@@ -838,6 +852,7 @@ pub fn ingest_claude_statusline_json(raw: &str) -> Result<usize, &'static str> {
                 && session_id != sl.session_id
             {
                 sl.windows.clear();
+                sl.context_used_percent = None;
             }
             sl.windows = windows;
             sl.saw_rate_limits = true;
@@ -848,12 +863,16 @@ pub fn ingest_claude_statusline_json(raw: &str) -> Result<usize, &'static str> {
             if !model_id.is_empty() {
                 sl.model_id = model_id.clone();
             }
+            if context_pct.is_some() {
+                sl.context_used_percent = context_pct;
+            }
         } else if accepted == 0 && !session_id.is_empty() && sl.session_id != session_id {
             // Session id only, no rate_limits — clear stale other-session windows.
             sl.windows.clear();
             sl.session_id = session_id.clone();
             sl.observed_at = now;
             sl.saw_rate_limits = false;
+            sl.context_used_percent = context_pct;
             if !model_id.is_empty() {
                 sl.model_id = model_id.clone();
             }
@@ -864,7 +883,14 @@ pub fn ingest_claude_statusline_json(raw: &str) -> Result<usize, &'static str> {
             if !model_id.is_empty() {
                 sl.model_id = model_id.clone();
             }
+            if context_pct.is_some() {
+                sl.context_used_percent = context_pct;
+                sl.observed_at = now;
+            }
         }
+    }
+    if context_pct.is_some() {
+        accepted = accepted.saturating_add(1);
     }
     if !model_id.is_empty() {
         crate::agent_model_metadata::ingest_statusline_model(&session_id, &model_id, now);
@@ -1355,8 +1381,11 @@ fn compose_claude_snapshot() {
     let has_otel = otel.session_tokens.is_some()
         || otel.auxiliary_tokens.is_some()
         || otel.estimated_cost_usd.is_some();
+    let has_context = sl
+        .context_used_percent
+        .is_some_and(|p| p.is_finite() && (0.0..=100.0).contains(&p));
 
-    if !has_windows && !has_otel && otel.observed_at == 0 && sl.observed_at == 0 {
+    if !has_windows && !has_otel && !has_context && otel.observed_at == 0 && sl.observed_at == 0 {
         return;
     }
 
@@ -1368,6 +1397,15 @@ fn compose_claude_snapshot() {
         }
     } else if has_otel {
         (if otel.stale { "stale" } else { "ready" }, Vec::new())
+    } else if has_context {
+        (
+            if sl_age <= STATUSLINE_READY_MS {
+                "ready"
+            } else {
+                "stale"
+            },
+            Vec::new(),
+        )
     } else if sl.observed_at > 0 || otel.observed_at > 0 {
         ("waiting", Vec::new())
     } else {
@@ -1415,6 +1453,7 @@ fn compose_claude_snapshot() {
         updated_at,
         last_success_at,
         message,
+        context_used_percent: sl.context_used_percent,
         ..Default::default()
     };
     apply_compat_scalars(&mut snap);

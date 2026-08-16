@@ -64,6 +64,19 @@ function extractSafeFields(raw) {
   if (out.turn_id == null && obj.turnId != null) out.turn_id = obj.turnId;
   if (out.agent_id == null && obj.agentId != null) out.agent_id = obj.agentId;
   if (out.hook_event_name == null && obj.event != null) out.hook_event_name = obj.event;
+  // Notification + permission → PermissionRequest (Soft Pad NeedsInput).
+  var ev = String(out.hook_event_name || '');
+  var ntype = String(
+    obj.notification_type || obj.notificationType || obj.message || ''
+  );
+  if (
+    (ev === 'Notification' || ev.toLowerCase() === 'notification') &&
+    (/permission/i.test(ntype) ||
+      ntype === 'permission_prompt' ||
+      /permission/i.test(String(obj.message || '')))
+  ) {
+    out.hook_event_name = 'PermissionRequest';
+  }
   return out;
 }
 

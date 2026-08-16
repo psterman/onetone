@@ -20,6 +20,19 @@
 - mini 宽约 `320 × 44`（6 chip + `Cu · N次`）；用量 pill `min-width: 64px`，不要再挤成 `C.`。
 - `PadStatus` 仍只控制主灯与主控，不用来复制三个 Agent 状态。
 
+## 三层信号（勿混灯）
+
+| 层 | 字段 / 来源 | 用户看到 |
+|---|---|---|
+| **PadStatus** | 任务态 running / done / idle / failed | 主色点（执行中 / 完成 / 空闲 / 失败） |
+| **AgentAttention** | NeedsInput 优先；lifecycle Working/Complete/Error | 琥珀色等待；完成/失败短 TTL 后回落 |
+| **signalHealth** | `fresh` / `stale` / `unconfigured` / `corrupt` | 灰黄角标「信号过期/未验证」；**不**改成假 idle |
+
+- `needs_input` 仍压过任务色；假 idle 只在 `signalHealth=fresh` 且无等待时成立。
+- **显示门控**：内置 Agent 桌面进程在跑（Cursor / Codex / Claude / MiniMax / 壳三端等）或切到其前台 → Soft Pad 显示；OneTone 主界面仍隐藏。
+- Codex Desktop：**不**走 thstatus；应用内扫 `~/.codex/session_index.jsonl` + rollout → `source=codex_app`（低于 Native/Hook）。
+- Context%：statusLine `context_window.used_percentage` → chip `data-context-warn`（≥50 warn / ≥80 critical）；**不**复用额度 usage 的 stale。
+
 ## 状态词与颜色
 
 | 数据值 | 用户看到 | 颜色语义 |

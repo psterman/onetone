@@ -1901,6 +1901,32 @@ button.overlay-key-caption:focus-visible {
   pointer-events: none;
 }
 
+/* Trust badge — not task state. Grey-yellow when signal is stale/corrupt. */
+.overlay-mini__agent[data-signal-health="stale"] .overlay-mini__agent-dot,
+.overlay-mini__agent[data-signal-health="corrupt"] .overlay-mini__agent-dot,
+.soft-pad-agent-bar__chip[data-signal-health="stale"] .soft-pad-agent-bar__dot,
+.soft-pad-agent-bar__chip[data-signal-health="corrupt"] .soft-pad-agent-bar__dot {
+  background: #c4a35a !important;
+  box-shadow: 0 0 0 1px rgba(196, 163, 90, 0.55);
+  animation: none !important;
+}
+.overlay-mini__agent[data-signal-health="unconfigured"]:not([data-placeholder="1"]),
+.soft-pad-agent-bar__chip[data-signal-health="unconfigured"]:not([data-placeholder="1"]) {
+  opacity: 0.72;
+}
+
+/* Context fill warn — independent of rate-limit usage stale. */
+.overlay-mini__agent[data-context-warn="warn"] .overlay-mini__agent-dot,
+.soft-pad-agent-bar__chip[data-context-warn="warn"] .soft-pad-agent-bar__dot {
+  outline: 1px solid rgba(212, 168, 75, 0.9);
+  outline-offset: 1px;
+}
+.overlay-mini__agent[data-context-warn="critical"] .overlay-mini__agent-dot,
+.soft-pad-agent-bar__chip[data-context-warn="critical"] .soft-pad-agent-bar__dot {
+  outline: 2px solid rgba(200, 80, 70, 0.95);
+  outline-offset: 1px;
+}
+
 .overlay-mini__usage-cluster {
   position: relative;
   flex: 0 0 auto;

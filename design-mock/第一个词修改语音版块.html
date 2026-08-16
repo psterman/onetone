@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能语音听写助手 - 极简流式配置中心</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#090d16',
+                        cardbg: '#111827',
+                        cardborder: '#1f293d',
+                        brand: {
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                        }
+                    },
+                    animation: {
+                        'pulse-glow': 'pulseGlow 2s infinite ease-in-out',
+                        'flow-line': 'flowLine 3s linear infinite'
+                    },
+                    keyframes: {
+                        pulseGlow: {
+                            '0%, 100%': { opacity: '0.4', transform: 'scale(1)' },
+                            '50%': { opacity: '0.8', transform: 'scale(1.05)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background-color: #080c18;
+            color: #f1f5f9;
+            user-select: none;
+        }
+
+        /* 极简自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #080c18;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+
+        /* Hero 节点与卡片光效 */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(30, 41, 59, 0.8);
+        }
+
+        .hero-step-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .hero-step-card.active {
+            border-color: rgba(56, 189, 248, 0.8);
+            background: rgba(14, 165, 233, 0.08);
+            box-shadow: 0 0 25px rgba(14, 165, 233, 0.15);
+        }
+
+        /* 标签动画与悬浮 */
+        .tag-chip {
+            transition: all 0.2s ease;
+        }
+        .tag-chip:hover {
+            transform: translateY(-1px);
+        }
+
+        /* 渐变文本 */
+        .text-gradient {
+            background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between antialiased selection:bg-sky-500 selection:text-white px-4 py-5 md:px-8 max-w-7xl mx-auto">
+
+    <!-- 1. 顶部 Header 上下文与模式指示 -->
+    <header class="w-full pb-4 border-b border-slate-800/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="space-y-1">
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                    <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
+                    正在编辑: 全局通用
+                </span>
+                <span class="text-xs text-slate-400">|</span>
+                <span class="text-xs text-slate-300">正在使用: <strong class="text-sky-300 font-medium" id="active-scene-name">Cursor 场景</strong></span>
+            </div>
+            <p class="text-xs text-slate-400">自定义语音词与指令触发映射（未单独覆盖的场景将自动继承全局设定）</p>
+        </div>
+
+        <!-- 场景快速切换 Tab -->
+        <div class="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-xs">
+            <button onclick="switchScene('Cursor 场景', this)" class="scene-tab-btn px-3 py-1.5 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/30 font-medium transition">Cursor</button>
+            <button onclick="switchScene('VS Code 场景', this)" class="scene-tab-btn px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition">VS Code</button>
+            <button onclick="switchScene('Codex 场景', this)" class="scene-tab-btn px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition">Codex</button>
+            <button onclick="switchScene('Claude Code 场景', this)" class="scene-tab-btn px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition">Claude</button>
+        </div>
+    </header>
+
+    <!-- 2. 核心 Hero 3 步导航流程区域 (保持 Hero 区域并做高质感整合) -->
+    <section class="w-full my-6">
+        <div class="flex items-center justify-between mb-3 px-1">
+            <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                语音控制三阶执行链
+            </h2>
+            <!-- 性能模式切换 -->
+            <div class="flex items-center bg-slate-900/90 rounded-lg border border-slate-800 p-0.5 text-xs">
+                <button onclick="setPowerMode('auto')" id="mode-auto" class="px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 transition">自动</button>
+                <button onclick="setPowerMode('saver')" id="mode-saver" class="px-2.5 py-1 rounded-md bg-sky-500 text-white font-medium shadow-sm transition">省电</button>
+                <button onclick="setPowerMode('boost')" id="mode-boost" class="px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 transition">增强</button>
+            </div>
+        </div>
+
+        <!-- Hero 3大模块导航卡片 Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 relative">
+            
+            <!-- 01 语音唤醒 Step Hero Card -->
+            <div onclick="switchHeroModule(1)" id="hero-card-1" class="hero-step-card active glass-panel rounded-2xl p-4 cursor-pointer flex items-center gap-4 border">
+                <div class="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center shrink-0">
+                    <svg class="w-6 h-6 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                </div>
+                <div class="flex-grow min-w-0">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-mono font-bold text-sky-400 tracking-wider uppercase">01 / 声源采集</span>
+                        <span class="text-[10px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 font-semibold">北极星</span>
+                    </div>
+                    <div class="text-base font-bold text-slate-100 truncate mt-0.5">语音唤醒</div>
+                    <div class="text-xs text-slate-400 truncate mt-0.5" id="hero-sub-1">当前主词：开始输入</div>
+                </div>
+            </div>
+
+            <!-- 02 语音识别 Step Hero Card -->
+            <div onclick="switchHeroModule(2)" id="hero-card-2" class="hero-step-card glass-panel rounded-2xl p-4 cursor-pointer flex items-center gap-4 border">
+                <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center shrink-0">
+                    <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                </div>
+                <div class="flex-grow min-w-0">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-mono font-bold text-indigo-400 tracking-wider uppercase">02 / 语音识别</span>
+                        <span class="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-semibold">双平行北极星</span>
+                    </div>
+                    <div class="text-base font-bold text-slate-100 truncate mt-0.5">语音识别与动作</div>
+                    <div class="text-xs text-slate-400 truncate mt-0.5" id="hero-sub-2">已配置 取消词(3) · 确认词(2)</div>
+                </div>
+            </div>
+
+            <!-- 03 语音发送 Step Hero Card -->
+            <div onclick="switchHeroModule(3)" id="hero-card-3" class="hero-step-card glass-panel rounded-2xl p-4 cursor-pointer flex items-center gap-4 border">
+                <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                    <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                </div>
+                <div class="flex-grow min-w-0">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-mono font-bold text-emerald-400 tracking-wider uppercase">03 / 语音发送</span>
+                        <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-semibold">3项决策</span>
+                    </div>
+                    <div class="text-base font-bold text-slate-100 truncate mt-0.5">语音发送方式</div>
+                    <div class="text-xs text-slate-400 truncate mt-0.5" id="hero-sub-3">当前：先确认模式 (手动发送)</div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- 3. 主板块 1：【语音唤醒】管理（围绕激活关键词管理这颗北极星） -->
+    <main id="module-panel-1" class="w-full flex-grow space-y-5">
+        <div class="glass-panel rounded-2xl p-6 border border-slate-800 space-y-6">
+            
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
+                        唤醒激活关键词管理
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-1">说出任意已启用的唤醒短语，即可瞬间激活软件听写状态。</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="testWakeupAudio()" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-sky-300 font-medium transition flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                        麦克风唤醒测试
+                    </button>
+                </div>
+            </div>
+
+            <!-- 当前主唤醒动作 Highlight Banner Card -->
+            <div class="bg-slate-900/90 border border-sky-500/30 rounded-xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-sky-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                
+                <div>
+                    <span class="text-[11px] font-medium text-sky-400 uppercase tracking-wider block mb-1">当前首选主唤醒词</span>
+                    <div class="text-2xl font-black text-slate-100 tracking-wide flex items-center gap-3">
+                        <span id="primary-wakeup-text">开始输入</span>
+                        <span class="text-xs font-normal px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">已就绪</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-1">口令生效环境：<span class="text-slate-300 font-medium">全局系统 + Cursor 专用快捷映射</span></p>
+                </div>
+
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <div class="text-xs text-slate-400 hidden lg:block text-right">
+                        <div>已捕获唤醒频次: <strong class="text-sky-300 font-mono">142 次</strong></div>
+                        <div class="text-[10px] text-slate-500 mt-0.5">识别准确率 99.2%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 已启用的唤醒短语 Tag 词库 -->
+            <div class="space-y-3">
+                <label class="text-xs font-semibold text-slate-300 block">已启用的唤醒短语 Tag 库 (点击可切换为首选词)</label>
+                <div id="wakeup-tags-container" class="flex flex-wrap gap-2 min-h-[42px] p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <!-- JS 动态渲染唤醒词 Tags -->
+                </div>
+            </div>
+
+            <!-- 添加新唤醒词输入区域 -->
+            <div class="space-y-3 pt-2">
+                <label class="text-xs font-semibold text-slate-300 block">添加自定义唤醒词短语</label>
+                <div class="flex items-center gap-2">
+                    <div class="relative flex-grow">
+                        <input type="text" id="input-new-wakeup" placeholder="例如：嘿，电脑 / 开始听写 / 打开输入法" class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500 transition">
+                        <span class="absolute right-3 top-2.5 text-[10px] text-slate-500 font-mono">最长 12 字</span>
+                    </div>
+                    <button onclick="addWakeupTagFromInput()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 text-xs font-semibold text-white shadow-md shadow-sky-500/20 transition active:scale-95 shrink-0 flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                        添加词汇
+                    </button>
+                </div>
+
+                <!-- 推荐预设唤醒词快捷点击添加 -->
+                <div class="flex items-center gap-2 pt-1">
+                    <span class="text-[11px] text-slate-500">常用预设快捷添加:</span>
+                    <div class="flex flex-wrap gap-1.5">
+                        <button onclick="addPresetWakeup('开启语音')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 transition">+ 开启语音</button>
+                        <button onclick="addPresetWakeup('准备听写')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 transition">+ 准备听写</button>
+                        <button onclick="addPresetWakeup('小助手打字')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 transition">+ 小助手打字</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- 4. 主板块 2：【语音识别】管理（双平行北极星：取消语音 + 确认操作） -->
+    <main id="module-panel-2" class="w-full flex-grow space-y-5 hidden">
+        
+        <!-- 双平行北极星 2 栏并列布局 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+            <!-- 平行北极星 1: 取消语音词管理 -->
+            <div class="glass-panel rounded-2xl p-6 border border-slate-800 space-y-4 flex flex-col justify-between">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full bg-rose-500/20 border border-rose-500 flex items-center justify-center text-[9px] text-rose-400 font-bold">✕</div>
+                            <h3 class="text-sm font-bold text-slate-100">【取消语音】关键词管理</h3>
+                        </div>
+                        <span class="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">平行北极星 1</span>
+                    </div>
+
+                    <p class="text-xs text-slate-400">听写过程中说出此类词汇，系统将<strong class="text-slate-200">立即丢弃本轮录入的全部文字</strong>并清空输入框。</p>
+
+                    <!-- 取消词 Tag 列表 -->
+                    <div class="space-y-2">
+                        <span class="text-[11px] text-slate-400 font-medium">当前设定的取消词:</span>
+                        <div id="cancel-tags-container" class="flex flex-wrap gap-2 min-h-[40px] p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
+                            <!-- Dynamic tags -->
+                        </div>
+                    </div>
+
+                    <!-- 添加取消词 -->
+                    <div class="flex gap-2 pt-1">
+                        <input type="text" id="input-new-cancel" placeholder="例如: 不要了 / 撤掉" class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-rose-500 transition">
+                        <button onclick="addCancelTag()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-rose-300 font-medium shrink-0 border border-slate-700 transition">添加取消词</button>
+                    </div>
+                </div>
+
+                <div class="text-[11px] text-slate-500 border-t border-slate-800/60 pt-3">
+                    💡 提示：建议选择日常说话不常用的词（如“取消输入”、“清空重来”），避免误触发。
+                </div>
+            </div>
+
+            <!-- 平行北极星 2: 确认操作词管理 -->
+            <div class="glass-panel rounded-2xl p-6 border border-slate-800 space-y-4 flex flex-col justify-between">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full bg-emerald-500/20 border border-emerald-500 flex items-center justify-center text-[9px] text-emerald-400 font-bold">✓</div>
+                            <h3 class="text-sm font-bold text-slate-100">【确认操作】关键词管理</h3>
+                        </div>
+                        <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">平行北极星 2</span>
+                    </div>
+
+                    <p class="text-xs text-slate-400">听写完成时说出此类词汇，系统将<strong class="text-slate-200">锁定当前文字并结束识别</strong>。</p>
+
+                    <!-- 确认词 Tag 列表 -->
+                    <div class="space-y-2">
+                        <span class="text-[11px] text-slate-400 font-medium">当前设定的确认词:</span>
+                        <div id="confirm-tags-container" class="flex flex-wrap gap-2 min-h-[40px] p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
+                            <!-- Dynamic tags -->
+                        </div>
+                    </div>
+
+                    <!-- 添加确认词 -->
+                    <div class="flex gap-2 pt-1">
+                        <input type="text" id="input-new-confirm" placeholder="例如: 好了 / 确认完毕" class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
+                        <button onclick="addConfirmTag()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-emerald-300 font-medium shrink-0 border border-slate-700 transition">添加确认词</button>
+                    </div>
+                </div>
+
+                <div class="text-[11px] text-slate-500 border-t border-slate-800/60 pt-3">
+                    💡 提示：使用如“完毕”、“输入完成”可以非常自然地完成整段长文本输入。
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 辅助设置项：录音期间静音系统扬声器（优雅防回音收纳栏） -->
+        <div class="glass-panel rounded-xl p-4 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-slate-200">录音期间自动降低/静音系统扬声器</div>
+                    <div class="text-[11px] text-slate-400">开启后可有效避免扬声器播放的声音再次被麦克风录入造成二次误识别。</div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4 w-full sm:w-auto justify-end">
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="toggle-mute-speaker" checked class="sr-only peer">
+                    <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div>
+                </label>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 5. 主板块 3：【语音发送】管理（围绕 3 个平行北极星发送任务） -->
+    <main id="module-panel-3" class="w-full flex-grow space-y-5 hidden">
+        <div class="glass-panel rounded-2xl p-6 border border-slate-800 space-y-6">
+            
+            <div>
+                <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                    语音发送决策模式
+                </h3>
+                <p class="text-xs text-slate-400 mt-1">请选择最符合你当前工作习惯的文字发送机制（随时可切换）：</p>
+            </div>
+
+            <!-- 三大平行北极星任务 Segmented Single Selection Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                <!-- 模式 1: 先确认模式 (推荐) -->
+                <div onclick="selectSendMode('manual')" id="send-card-manual" class="border-2 border-emerald-500/80 bg-emerald-500/10 rounded-2xl p-5 cursor-pointer transition relative group flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-mono font-bold text-emerald-400">模式 01</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold">推荐 · 最稳妥</span>
+                        </div>
+                        <div class="text-base font-bold text-slate-100">先确认 (不直接发送)</div>
+                        <p class="text-xs text-slate-300 leading-relaxed">说完后文字留在输入框中，由你自己检查后手动敲击键盘 Enter 键发送。</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-emerald-400">
+                        <span class="font-medium">当前选中</span>
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                    </div>
+                </div>
+
+                <!-- 模式 2: 说发送词才发送 -->
+                <div onclick="selectSendMode('word')" id="send-card-word" class="border border-slate-800 bg-slate-900/50 hover:border-slate-700 rounded-2xl p-5 cursor-pointer transition relative group flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-mono font-bold text-slate-400">模式 02</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-normal">指定口令</span>
+                        </div>
+                        <div class="text-base font-bold text-slate-100">说发送词后发送</div>
+                        <p class="text-xs text-slate-400 leading-relaxed">在话语末尾追加说出指定的“发送词”（如说出“发送”），系统自动回车发送。</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
+                        <span>点击切换</span>
+                        <span class="w-4 h-4 rounded-full border border-slate-700"></span>
+                    </div>
+                </div>
+
+                <!-- 模式 3: 停顿自动发送 -->
+                <div onclick="selectSendMode('auto')" id="send-card-auto" class="border border-slate-800 bg-slate-900/50 hover:border-slate-700 rounded-2xl p-5 cursor-pointer transition relative group flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-mono font-bold text-slate-400">模式 03</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-normal">全自动极速</span>
+                        </div>
+                        <div class="text-base font-bold text-slate-100">停顿后自动发送</div>
+                        <p class="text-xs text-slate-400 leading-relaxed">检测到说话停止并静音持续达到设定时间（如 1.5 秒）后，无需多言直接自动发送。</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
+                        <span>点击切换</span>
+                        <span class="w-4 h-4 rounded-full border border-slate-700"></span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 选中的发送模式专属联动配置 Sub-Panel -->
+            <div id="send-mode-subpanel" class="bg-slate-950/80 border border-slate-800 rounded-xl p-5 space-y-4">
+                <!-- JS 动态渲染各模式专属的调节面板 -->
+            </div>
+
+        </div>
+    </main>
+
+    <!-- 6. 页脚与状态指示 -->
+    <footer class="w-full pt-6 border-t border-slate-800/60 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+        <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span>引擎状态: 引擎在线 · 本地低延迟识别中</span>
+        </div>
+        <div>智能语音听写重构中心 v4.0</div>
+    </footer>
+
+    <!-- Toast 微提示 -->
+    <div id="toast-notify" class="fixed bottom-6 right-6 transform translate-y-20 opacity-0 bg-slate-900 border border-slate-700 text-slate-100 text-xs px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 z-50 flex items-center gap-2.5">
+        <span class="w-2 h-2 rounded-full bg-sky-400 animate-ping"></span>
+        <span id="toast-text">设置已更新</span>
+    </div>
+
+    <script>
+        // 全局核心状态数据
+        let currentModule = 1;
+        let currentScene = 'Cursor 场景';
+        let currentSendMode = 'manual'; // 'manual', 'word', 'auto'
+        
+        let wakeupTags = ['开始输入', '开始听写', '打开听写', '语音输入', '开启输入'];
+        let cancelTags = ['取消输入', '不要了', '撤掉'];
+        let confirmTags = ['确认输入', '好了', '输入完毕'];
+        let sendWordTags = ['发送', '提交', '发送出去', 'OK发送'];
+
+        let autoSendDelayMs = 1500;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            renderWakeupTags();
+            renderCancelTags();
+            renderConfirmTags();
+            renderSendSubpanel();
+        });
+
+        // 1. 切换 Hero 模块导航 (01, 02, 03)
+        function switchHeroModule(moduleNum) {
+            currentModule = moduleNum;
+
+            // 更新 Hero 卡片高亮样式
+            [1, 2, 3].forEach(n => {
+                const card = document.getElementById(`hero-card-${n}`);
+                const panel = document.getElementById(`module-panel-${n}`);
+                if (n === moduleNum) {
+                    card.classList.add('active');
+                    panel.classList.remove('hidden');
+                } else {
+                    card.classList.remove('active');
+                    panel.classList.add('hidden');
+                }
+            });
+
+            showToast(`已切换至【0${moduleNum} ${moduleNum===1?'语音唤醒':moduleNum===2?'语音识别':'语音发送'}】板块`);
+        }
+
+        // 2. 场景切换
+        function switchScene(sceneName, btnEl) {
+            currentScene = sceneName;
+            document.getElementById('active-scene-name').textContent = sceneName;
+            
+            document.querySelectorAll('.scene-tab-btn').forEach(btn => {
+                btn.className = 'scene-tab-btn px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition';
+            });
+            btnEl.className = 'scene-tab-btn px-3 py-1.5 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/30 font-medium transition';
+
+            showToast(`已切换绑定场景为: ${sceneName}`);
+        }
+
+        // 3. 性能模式切换
+        function setPowerMode(mode) {
+            ['auto', 'saver', 'boost'].forEach(m => {
+                const el = document.getElementById(`mode-${m}`);
+                if (m === mode) {
+                    el.className = 'px-2.5 py-1 rounded-md bg-sky-500 text-white font-medium shadow-sm transition';
+                } else {
+                    el.className = 'px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 transition';
+                }
+            });
+            showToast(`已开启 [${mode === 'auto'?'自动模式':mode === 'saver'?'省电模式':'增强模式'}]`);
+        }
+
+        /* --- 模块 01：语音唤醒 (唤醒词管理) 逻辑 --- */
+        function renderWakeupTags() {
+            const container = document.getElementById('wakeup-tags-container');
+            container.innerHTML = '';
+
+            wakeupTags.forEach((tag, idx) => {
+                const isPrimary = (idx === 0);
+                const tagEl = document.createElement('div');
+                tagEl.className = `tag-chip inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition ${
+                    isPrimary 
+                    ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40' 
+                    : 'bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-700'
+                }`;
+                
+                tagEl.innerHTML = `
+                    <span onclick="setPrimaryWakeup('${tag}')">${tag} ${isPrimary ? '🔑 (首选)' : ''}</span>
+                    <button onclick="deleteWakeupTag(${idx})" class="text-slate-500 hover:text-rose-400 ml-1 font-bold">&times;</button>
+                `;
+                container.appendChild(tagEl);
+            });
+
+            // 更新 Hero 区域及 Banner
+            document.getElementById('primary-wakeup-text').textContent = wakeupTags[0] || '尚未设置';
+            document.getElementById('hero-sub-1').textContent = `当前主词：${wakeupTags[0] || '无'}`;
+        }
+
+        function setPrimaryWakeup(tag) {
+            const index = wakeupTags.indexOf(tag);
+            if (index > 0) {
+                wakeupTags.splice(index, 1);
+                wakeupTags.unshift(tag);
+                renderWakeupTags();
+                showToast(`首选唤醒词已置换为: "${tag}"`);
+            }
+        }
+
+        function addWakeupTagFromInput() {
+            const input = document.getElementById('input-new-wakeup');
+            const val = input.value.trim();
+            if (val) {
+                if (!wakeupTags.includes(val)) {
+                    wakeupTags.push(val);
+                    renderWakeupTags();
+                    input.value = '';
+                    showToast(`已添加唤醒短语: "${val}"`);
+                } else {
+                    showToast('该唤醒短语已存在');
+                }
+            }
+        }
+
+        function addPresetWakeup(val) {
+            if (!wakeupTags.includes(val)) {
+                wakeupTags.push(val);
+                renderWakeupTags();
+                showToast(`已快捷添加: "${val}"`);
+            }
+        }
+
+        function deleteWakeupTag(idx) {
+            if (wakeupTags.length <= 1) {
+                showToast('至少需保留一个唤醒短语！');
+                return;
+            }
+            const removed = wakeupTags.splice(idx, 1);
+            renderWakeupTags();
+            showToast(`已删除: "${removed[0]}"`);
+        }
+
+        function testWakeupAudio() {
+            showToast(`🎤 请对着麦克风说出："${wakeupTags[0] || '开始输入'}" 进行模拟测试...`);
+        }
+
+
+        /* --- 模块 02：语音识别 (取消词/确认词) 逻辑 --- */
+        function renderCancelTags() {
+            const container = document.getElementById('cancel-tags-container');
+            container.innerHTML = '';
+            cancelTags.forEach((tag, idx) => {
+                const el = document.createElement('div');
+                el.className = 'tag-chip inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-rose-500/10 text-rose-300 border border-rose-500/20';
+                el.innerHTML = `
+                    <span>${tag}</span>
+                    <button onclick="deleteCancelTag(${idx})" class="text-rose-400/60 hover:text-rose-300 font-bold">&times;</button>
+                `;
+                container.appendChild(el);
+            });
+            updateHeroSub2();
+        }
+
+        function addCancelTag() {
+            const input = document.getElementById('input-new-cancel');
+            const val = input.value.trim();
+            if (val && !cancelTags.includes(val)) {
+                cancelTags.push(val);
+                renderCancelTags();
+                input.value = '';
+                showToast(`已添加取消词: "${val}"`);
+            }
+        }
+
+        function deleteCancelTag(idx) {
+            cancelTags.splice(idx, 1);
+            renderCancelTags();
+            showToast('已移除该取消词');
+        }
+
+        function renderConfirmTags() {
+            const container = document.getElementById('confirm-tags-container');
+            container.innerHTML = '';
+            confirmTags.forEach((tag, idx) => {
+                const el = document.createElement('div');
+                el.className = 'tag-chip inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20';
+                el.innerHTML = `
+                    <span>${tag}</span>
+                    <button onclick="deleteConfirmTag(${idx})" class="text-emerald-400/60 hover:text-emerald-300 font-bold">&times;</button>
+                `;
+                container.appendChild(el);
+            });
+            updateHeroSub2();
+        }
+
+        function addConfirmTag() {
+            const input = document.getElementById('input-new-confirm');
+            const val = input.value.trim();
+            if (val && !confirmTags.includes(val)) {
+                confirmTags.push(val);
+                renderConfirmTags();
+                input.value = '';
+                showToast(`已添加确认词: "${val}"`);
+            }
+        }
+
+        function deleteConfirmTag(idx) {
+            confirmTags.splice(idx, 1);
+            renderConfirmTags();
+            showToast('已移除该确认词');
+        }
+
+        function updateHeroSub2() {
+            document.getElementById('hero-sub-2').textContent = `取消词(${cancelTags.length}) · 确认词(${confirmTags.length})`;
+        }
+
+
+        /* --- 模块 03：语音发送 (3大决策模式) 逻辑 --- */
+        function selectSendMode(mode) {
+            currentSendMode = mode;
+
+            // UI 选择卡片高亮联动
+            const cards = {
+                manual: document.getElementById('send-card-manual'),
+                word: document.getElementById('send-card-word'),
+                auto: document.getElementById('send-card-auto')
+            };
+
+            Object.keys(cards).forEach(m => {
+                const el = cards[m];
+                if (m === mode) {
+                    el.className = 'border-2 border-emerald-500/80 bg-emerald-500/10 rounded-2xl p-5 cursor-pointer transition relative group flex flex-col justify-between';
+                    el.querySelector('.border-t').className = 'mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-emerald-400';
+                    el.querySelector('.border-t').innerHTML = '<span>当前选中</span><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>';
+                } else {
+                    el.className = 'border border-slate-800 bg-slate-900/50 hover:border-slate-700 rounded-2xl p-5 cursor-pointer transition relative group flex flex-col justify-between';
+                    el.querySelector('.border-t').className = 'mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500';
+                    el.querySelector('.border-t').innerHTML = '<span>点击切换</span><span class="w-4 h-4 rounded-full border border-slate-700"></span>';
+                }
+            });
+
+            renderSendSubpanel();
+            
+            const modeNames = { manual: '先确认 (手动发送)', word: '说发送词后发送', auto: '停顿后自动发送' };
+            document.getElementById('hero-sub-3').textContent = `当前：${modeNames[mode]}`;
+            showToast(`已将发送模式切换为: ${modeNames[mode]}`);
+        }
+
+        function renderSendSubpanel() {
+            const panel = document.getElementById('send-mode-subpanel');
+            
+            if (currentSendMode === 'manual') {
+                panel.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
+                        <div class="text-xs text-slate-300">
+                            <strong>模式生效中：</strong> 说话识别完毕后，文字会自动留在焦点输入框中，无需担心误发。你可以放心补充、编辑或直接敲 Enter 键发送。
+                        </div>
+                    </div>
+                `;
+            } else if (currentSendMode === 'word') {
+                panel.innerHTML = `
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-200">管理“发送”触发口令词</span>
+                            <span class="text-[10px] text-slate-400">在话语末尾追加以下词汇即触发回车</span>
+                        </div>
+                        <div id="sendword-tags-container" class="flex flex-wrap gap-2">
+                            ${sendWordTags.map((tag, i) => `
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                                    ${tag}
+                                    <button onclick="deleteSendWord(${i})" class="text-emerald-400/60 hover:text-emerald-200 font-bold">&times;</button>
+                                </span>
+                            `).join('')}
+                        </div>
+                        <div class="flex gap-2 pt-1">
+                            <input type="text" id="input-new-sendword" placeholder="例如: 发送出去 / 提交" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+                            <button onclick="addSendWord()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-xs font-medium text-white rounded-xl shrink-0 transition">添加发送词</button>
+                        </div>
+                    </div>
+                `;
+            } else if (currentSendMode === 'auto') {
+                panel.innerHTML = `
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-200">停顿判定触发时长调节</span>
+                            <span class="text-xs font-mono text-emerald-400 font-bold" id="delay-label">${autoSendDelayMs} ms (${(autoSendDelayMs/1000).toFixed(1)}秒)</span>
+                        </div>
+                        <input type="range" min="600" max="3000" step="100" value="${autoSendDelayMs}" oninput="updateAutoDelay(this.value)" class="w-full accent-emerald-500 cursor-pointer">
+                        <div class="flex justify-between text-[10px] text-slate-500">
+                            <span>600ms (极速)</span>
+                            <span>1500ms (适中推荐)</span>
+                            <span>3000ms (从容慢速)</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function addSendWord() {
+            const input = document.getElementById('input-new-sendword');
+            const val = input ? input.value.trim() : '';
+            if (val && !sendWordTags.includes(val)) {
+                sendWordTags.push(val);
+                renderSendSubpanel();
+                showToast(`已添加发送词: "${val}"`);
+            }
+        }
+
+        function deleteSendWord(idx) {
+            sendWordTags.splice(idx, 1);
+            renderSendSubpanel();
+            showToast('已移除该发送词');
+        }
+
+        function updateAutoDelay(val) {
+            autoSendDelayMs = parseInt(val);
+            const label = document.getElementById('delay-label');
+            if (label) label.textContent = `${autoSendDelayMs} ms (${(autoSendDelayMs/1000).toFixed(1)}秒)`;
+        }
+
+        // Toast 动画组件
+        function showToast(msg) {
+            const toast = document.getElementById('toast-notify');
+            const text = document.getElementById('toast-text');
+            text.textContent = msg;
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2200);
+        }
+    </script>
+</body>
+</html>

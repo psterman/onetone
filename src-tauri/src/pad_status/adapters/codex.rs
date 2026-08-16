@@ -112,11 +112,23 @@ pub fn ingest_codex_app_payload_at(payload: &CodexAppStatePayload, now: u64) -> 
     };
     let winner = store::apply_candidate_at(cand, now).winner;
     // Dual-write AttentionStore for Soft Pad waiting_kinds (not PadStatus 24h sticky).
-    let is_app_server = payload.source.trim() == "codex_app_server"
-        || payload.source.trim() == "app_server";
-    if is_app_server {
+    let src = payload.source.trim();
+    let is_app_server = src == "codex_app_server" || src == "app_server";
+    // Disk session scan (`codex_app`): AppServer lifecycle only — never OfficialHook.
+    if is_app_server || src == "codex_app" {
+        let attn_event = if src == "codex_app" {
+            match event {
+                "UserPromptSubmit" | "PreToolUse" | "PostToolUse" | "PostToolBatch" => "working",
+                "Stop" | "TaskCompleted" | "TaskComplete" => "done",
+                "StopFailure" | "PostToolUseFailure" => "failed",
+                "SessionStart" | "SessionEnd" => "idle",
+                other => other,
+            }
+        } else {
+            event
+        };
         crate::agent_attention::ingest_codex_app_server_event(
-            event,
+            attn_event,
             incoming_session,
             payload.turn_id.trim(),
         );

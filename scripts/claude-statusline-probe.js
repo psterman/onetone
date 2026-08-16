@@ -80,6 +80,14 @@ function extractStatusLineBody(raw) {
     if (seven) limits.seven_day = seven;
     out.rate_limits = limits;
   }
+
+  var cw = obj.context_window || obj.contextWindow;
+  if (cw && typeof cw === 'object' && !Array.isArray(cw)) {
+    var pct = cw.used_percentage != null ? cw.used_percentage : cw.usedPercentage;
+    if (pct != null && pct !== '' && isFinite(Number(pct))) {
+      out.context_window = { used_percentage: Number(pct) };
+    }
+  }
   return out;
 }
 

@@ -18,6 +18,9 @@ pub use adapters::claude::{
 pub use adapters::codex::{
     ingest_codex_app_payload, ingest_codex_app_payload_at, map_codex_event_to_state,
 };
+pub use adapters::codex_session_scan::{
+    session_scan_corrupt, start_codex_session_scan_poll,
+};
 pub use adapters::hid::{plan_from_pad as plan_hid_output, HidOutputIntent};
 pub use adapters::shell_agent::{agent_kind_from_hook_source, ingest_shell_agent_payload};
 pub use adapters::shell_agent_process::{
@@ -28,7 +31,7 @@ pub use adapters::soft_rgb::{
     apply_rgb_opacity, parse_hex_rgb, rgb_for_ambient, rgb_for_ambient_full, rgb_for_pad,
     rgb_for_pad_ambient, rgb_for_ui_status, rgb_for_ui_status_with_palette, ui_status_from_pad,
 };
-pub use arbiter::{propose, ProposeResult};
+pub use arbiter::{propose, ProposeResult, DONE_SETTLE_MS, STALE_MS};
 pub use claude_lights::{short_agent_type, ClaudeAgentLightState, CLAUDE_MAIN_KEY};
 pub use log::{log_path, tail_events, PadStatusLogRow};
 pub use model::{Confidence, PadSource, PadState, PadStatus, PadStatusCandidate, PAD_SOURCE_RANK};

@@ -45,9 +45,10 @@ pub fn ingest_lifecycle_hook_event(
 
     if matches!(
         ev,
-        "PermissionRequest" | "permission_prompt" | "agent_needs_input"
+        "PermissionRequest" | "permission_prompt" | "agent_needs_input" | "Notification"
     ) || lower == "permission_prompt"
         || lower == "agent_needs_input"
+        || lower == "notification"
     {
         raise_needs_input(agent, session, request, AttentionCause::Permission, source);
         return;
@@ -307,6 +308,31 @@ mod tests {
     }
 
     #[test]
+    fn claude_stop_without_ids_keeps_needs_input() {
+        let _g = test_lock();
+        reset_for_test();
+        ingest_claude_hook_event("PermissionRequest", "s1", "t1", "claude_hook");
+        ingest_claude_hook_event("Stop", "", "", "claude_hook");
+        assert_eq!(project_waiting_kinds().0, vec![AgentKind::Claude]);
+        assert_eq!(
+            primary_state_for(AgentKind::Claude),
+            Some(AttentionState::NeedsInput)
+        );
+    }
+
+    #[test]
+    fn claude_notification_maps_to_needs_input() {
+        let _g = test_lock();
+        reset_for_test();
+        ingest_claude_hook_event("Notification", "s1", "t1", "claude_hook");
+        assert_eq!(project_waiting_kinds().0, vec![AgentKind::Claude]);
+        assert_eq!(
+            primary_state_for(AgentKind::Claude),
+            Some(AttentionState::NeedsInput)
+        );
+    }
+
+    #[test]
     fn codex_hook_permission() {
         let _g = test_lock();
         reset_for_test();
@@ -314,6 +340,19 @@ mod tests {
         assert_eq!(project_waiting_kinds().0, vec![AgentKind::Codex]);
         ingest_codex_hook_event("Stop", "sess", "turn");
         assert!(project_waiting_kinds().0.is_empty());
+    }
+
+    #[test]
+    fn codex_stop_without_ids_keeps_needs_input() {
+        let _g = test_lock();
+        reset_for_test();
+        ingest_codex_hook_event("PermissionRequest", "sess", "turn");
+        ingest_codex_hook_event("Stop", "", "");
+        assert_eq!(project_waiting_kinds().0, vec![AgentKind::Codex]);
+        assert_eq!(
+            primary_state_for(AgentKind::Codex),
+            Some(AttentionState::NeedsInput)
+        );
     }
 
     #[test]

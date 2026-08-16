@@ -177,8 +177,12 @@ fn find_lane_by_session(kind: AgentKind, session_id: &str) -> Option<AgentLane> 
 fn highest_priority_lane(kind: AgentKind) -> Option<AgentLane> {
     let mut lanes = public_lanes_for_page(kind);
     lanes.sort_by(|a, b| {
-        lane_state_rank(b.state)
-            .cmp(&lane_state_rank(a.state))
+        // Prefer lanes with a still-live terminal HWND (higher focus hit rate).
+        let live_b = b.caps().can_focus_live as u8;
+        let live_a = a.caps().can_focus_live as u8;
+        live_b
+            .cmp(&live_a)
+            .then_with(|| lane_state_rank(b.state).cmp(&lane_state_rank(a.state)))
             .then_with(|| b.updated_at.cmp(&a.updated_at))
     });
     lanes.into_iter().next()
@@ -290,9 +294,12 @@ pub fn focus_session(
         };
     };
 
-    // Enrich focus: try cwd window match before navigate
+    // Enrich focus: prefer live stored hwnd, else cwd → HWND (shell processes first).
     if let Some(lane) = get_lane(&ticket.lane_id) {
-        if !lane.navigation.cwd.is_empty() {
+        let stored = lane.navigation.terminal_hwnd;
+        if stored != 0 && crate::agent_lane::model::live_window_exists(stored) {
+            // Keep stored live hwnd — navigate_lane will focus it.
+        } else if !lane.navigation.cwd.is_empty() {
             if let Some(hwnd) = super::cwd_focus::find_hwnd_for_cwd(&lane.navigation.cwd) {
                 super::store::patch_lane_hwnd(&ticket.lane_id, hwnd);
             }
@@ -312,6 +319,19 @@ pub fn focus_session(
     }
     if nav.action == "resume_available" || (nav.action == "focus_live" && !nav.ok) {
         let (ok, detail) = resume_for_lane(&ticket.lane_id, kind);
+        let detail = if ok {
+            detail
+        } else {
+            format!(
+                "focus_miss:{} resume:{}",
+                if nav.detail.is_empty() {
+                    "no_hwnd"
+                } else {
+                    nav.detail.as_str()
+                },
+                detail
+            )
+        };
         note_result(if ok { "resume" } else { "none" });
         return FocusSessionResult {
             ok,

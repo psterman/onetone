@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能语音听写助手 - Material 暗色重构版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        // Material Design 3 Dark Theme Colors
+                        m3: {
+                            bg: '#111318',
+                            surface: '#191c22',
+                            surfaceHigh: '#232730',
+                            surfaceContainer: '#2c303b',
+                            outline: 'rgba(255, 255, 255, 0.08)',
+                            primary: '#a8c7fa',
+                            primaryContainer: '#004a77',
+                            onPrimaryContainer: '#c2e7ff',
+                            emerald: '#82dba3',
+                            emeraldContainer: '#0f5231',
+                            rose: '#ffb4ab',
+                            roseContainer: '#690005',
+                            textPrimary: '#e2e2e9',
+                            textSecondary: '#c4c6d0',
+                            textMuted: '#8e9099'
+                        }
+                    },
+                    borderRadius: {
+                        '3xl': '24px',
+                        '4xl': '32px'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', 'Noto Sans SC', system-ui, sans-serif;
+            background-color: #111318;
+            color: #e2e2e9;
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Material 3 滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111318;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2c303b;
+            border-radius: 99px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3f4453;
+        }
+
+        /* Material 呼吸状态灯 */
+        .status-beacon {
+            box-shadow: 0 0 12px rgba(130, 219, 163, 0.4);
+        }
+
+        /* Material Step Tab Active */
+        .step-tab-btn.active {
+            background-color: #2c303b;
+            color: #a8c7fa;
+            border-color: #a8c7fa;
+        }
+
+        /* 标签动画与微交互 */
+        .m3-chip {
+            transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+        }
+        .m3-chip:hover {
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between antialiased px-4 py-6 md:px-8 max-w-6xl mx-auto">
+
+    <header class="w-full space-y-4">
+        <!-- 顶部导航栏 (App Bar) -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-m3-outline">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-m3-surfaceHigh flex items-center justify-center border border-m3-outline text-m3-primary">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold text-m3-textPrimary tracking-tight">语音听写助手 · 设置中心</h1>
+                    <p class="text-xs text-m3-textMuted">不用记复杂按键，用大白话口令就能控制电脑打字</p>
+                </div>
+            </div>
+
+            <!-- 当前绑定场景切换 (Material Segmented Button) -->
+            <div class="flex items-center gap-1 bg-m3-surface p-1 rounded-2xl border border-m3-outline text-xs self-start sm:self-auto">
+                <span class="px-2.5 text-[11px] text-m3-textMuted font-medium">应用环境:</span>
+                <button onclick="switchScene('Cursor 编译器', this)" class="scene-tab-btn px-3 py-1.5 rounded-xl bg-m3-primaryContainer text-m3-onPrimaryContainer font-medium transition">Cursor</button>
+                <button onclick="switchScene('VS Code', this)" class="scene-tab-btn px-3 py-1.5 rounded-xl text-m3-textSecondary hover:text-m3-textPrimary transition">VS Code</button>
+                <button onclick="switchScene('全局通用', this)" class="scene-tab-btn px-3 py-1.5 rounded-xl text-m3-textSecondary hover:text-m3-textPrimary transition">全局通用</button>
+            </div>
+        </div>
+
+        <!-- 顶部 Hero 状态灯与极简指示牌卡片 -->
+        <div class="bg-m3-surface border border-m3-outline rounded-3xl p-5 md:p-6 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            
+            <div class="space-y-2 max-w-xl">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-m3-emeraldContainer/40 border border-m3-emerald/30 text-m3-emerald text-xs font-medium">
+                    <span class="w-2 h-2 rounded-full bg-m3-emerald status-beacon animate-pulse"></span>
+                    <span id="hero-status-text">语音引擎准备就绪 · 正在后台守护中</span>
+                </div>
+                <h2 class="text-xl font-bold text-m3-textPrimary tracking-tight">
+                    当前环境：<span id="active-scene-title" class="text-m3-primary">Cursor 编译器</span>
+                </h2>
+                <p class="text-xs text-m3-textSecondary leading-relaxed">
+                    在软件中只需说出 <strong class="text-m3-primary font-bold underline underline-offset-4" id="hero-primary-wakeup-text">"开始打字"</strong> 即可激活麦克风，说话内容将实时转化为文字输入。
+                </p>
+            </div>
+
+            <!-- 右侧：小白体验演练按钮 & 场景模式 -->
+            <div class="flex flex-col sm:flex-row md:flex-col lg:flex-row items-stretch md:items-end gap-3 w-full md:w-auto shrink-0 border-t md:border-t-0 border-m3-outline pt-4 md:pt-0">
+                <button onclick="openSandboxModal()" class="px-4 py-2.5 rounded-2xl bg-m3-primary text-slate-950 font-semibold text-xs flex items-center justify-center gap-2 shadow-md hover:opacity-90 active:scale-95 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    试试口令效果 (试演演练)
+                </button>
+            </div>
+
+        </div>
+    </header>
+
+    <nav class="w-full my-6">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-m3-textMuted tracking-wider uppercase">按小白逻辑的 3 步极简设置</span>
+            <span class="text-[11px] text-m3-textMuted">修改后自动保存生效</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button onclick="switchStep(1)" id="step-tab-1" class="step-tab-btn active text-left p-4 rounded-2xl bg-m3-surface border border-m3-outline transition relative">
+                <div class="text-[10px] font-bold text-m3-primary uppercase mb-1">步骤 01</div>
+                <div class="text-sm font-bold text-m3-textPrimary">1. 怎么开启打字？</div>
+                <div class="text-xs text-m3-textMuted mt-1 truncate" id="step-desc-1">设置唤醒词口令</div>
+            </button>
+
+            <button onclick="switchStep(2)" id="step-tab-2" class="step-tab-btn text-left p-4 rounded-2xl bg-m3-surface border border-m3-outline transition relative">
+                <div class="text-[10px] font-bold text-m3-textMuted uppercase mb-1">步骤 02</div>
+                <div class="text-sm font-bold text-m3-textPrimary">2. 说错了/想结束？</div>
+                <div class="text-xs text-m3-textMuted mt-1 truncate" id="step-desc-2">设置“撤销”与“完成”词</div>
+            </button>
+
+            <button onclick="switchStep(3)" id="step-tab-3" class="step-tab-btn text-left p-4 rounded-2xl bg-m3-surface border border-m3-outline transition relative">
+                <div class="text-[10px] font-bold text-m3-textMuted uppercase mb-1">步骤 03</div>
+                <div class="text-sm font-bold text-m3-textPrimary">3. 说完后怎么发出去？</div>
+                <div class="text-xs text-m3-textMuted mt-1 truncate" id="step-desc-3">选择发送逻辑</div>
+            </button>
+        </div>
+    </nav>
+
+    <main id="step-panel-1" class="w-full flex-grow">
+        <div class="bg-m3-surface border border-m3-outline rounded-3xl p-6 space-y-6">
+            
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-m3-outline">
+                <div>
+                    <h3 class="text-base font-bold text-m3-textPrimary flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-m3-primary"></span>
+                        设置“开启打字”口令
+                    </h3>
+                    <p class="text-xs text-m3-textMuted mt-1">当您对着麦克风喊出以下任何一个词时，软件就会立刻开始听写打字。</p>
+                </div>
+            </div>
+
+            <!-- 当前首选词 -->
+            <div class="bg-m3-surfaceHigh rounded-2xl p-4 border border-m3-outline flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <span class="text-[11px] text-m3-textMuted block">默认首选唤醒口令：</span>
+                    <div class="text-xl font-bold text-m3-primary mt-0.5 flex items-center gap-2">
+                        <span id="primary-tag-display">开始打字</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-m3-primaryContainer text-m3-onPrimaryContainer font-medium">响应最快</span>
+                    </div>
+                </div>
+                <p class="text-xs text-m3-textMuted">提示：点击下方词库里的任何一个词，即可置顶为首选口令。</p>
+            </div>
+
+            <!-- 词库展示 -->
+            <div class="space-y-3">
+                <label class="text-xs font-medium text-m3-textSecondary block">已设置的开启口令词库：</label>
+                <div id="wakeup-chips-container" class="flex flex-wrap gap-2.5 p-3 rounded-2xl bg-m3-bg border border-m3-outline min-h-[50px]">
+                    <!-- JS 动态渲染 -->
+                </div>
+            </div>
+
+            <!-- 添加新口令 -->
+            <div class="space-y-3 pt-2">
+                <label class="text-xs font-medium text-m3-textSecondary block">添加您习惯说的新口令：</label>
+                <div class="flex gap-2">
+                    <input type="text" id="input-wakeup-word" placeholder="例如：嘿电脑、打开输入法、准备打字" class="w-full bg-m3-bg border border-m3-outline rounded-2xl px-4 py-2.5 text-xs text-m3-textPrimary placeholder:text-m3-textMuted focus:outline-none focus:border-m3-primary transition">
+                    <button onclick="addWakeupWord()" class="px-5 py-2.5 rounded-2xl bg-m3-surfaceContainer hover:bg-m3-surfaceHigh border border-m3-outline text-xs font-semibold text-m3-textPrimary shrink-0 transition active:scale-95">
+                        + 添加口令
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <main id="step-panel-2" class="w-full flex-grow hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+            <!-- 撤销/取消口令 -->
+            <div class="bg-m3-surface border border-m3-outline rounded-3xl p-6 space-y-4 flex flex-col justify-between">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-m3-outline">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-m3-rose flex items-center justify-center text-[8px] font-bold text-slate-950">✕</span>
+                            <h3 class="text-sm font-bold text-m3-textPrimary">打错了？说“取消口令”</h3>
+                        </div>
+                    </div>
+                    <p class="text-xs text-m3-textMuted leading-relaxed">
+                        听写过程中如果说错了，只需说出以下词，软件将<strong class="text-m3-rose font-medium">瞬间清空刚才打出的那句话</strong>。
+                    </p>
+
+                    <div id="cancel-chips-container" class="flex flex-wrap gap-2 p-3 rounded-2xl bg-m3-bg border border-m3-outline min-h-[48px]">
+                        <!-- JS 渲染 -->
+                    </div>
+
+                    <div class="flex gap-2">
+                        <input type="text" id="input-cancel-word" placeholder="例如：不要了、清空" class="w-full bg-m3-bg border border-m3-outline rounded-2xl px-3 py-2 text-xs text-m3-textPrimary placeholder:text-m3-textMuted focus:outline-none focus:border-m3-rose">
+                        <button onclick="addCancelWord()" class="px-4 py-2 rounded-2xl bg-m3-surfaceContainer border border-m3-outline text-xs text-m3-rose font-medium shrink-0">添加</button>
+                    </div>
+                </div>
+                <p class="text-[11px] text-m3-textMuted pt-2 border-t border-m3-outline">建议选择平时说话不常出现的词（如“撤销打字”）。</p>
+            </div>
+
+            <!-- 完成/确认口令 -->
+            <div class="bg-m3-surface border border-m3-outline rounded-3xl p-6 space-y-4 flex flex-col justify-between">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-m3-outline">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-m3-emerald flex items-center justify-center text-[8px] font-bold text-slate-950">✓</span>
+                            <h3 class="text-sm font-bold text-m3-textPrimary">说完话？说“完成口令”</h3>
+                        </div>
+                    </div>
+                    <p class="text-xs text-m3-textMuted leading-relaxed">
+                        当一整段话讲完后，说出以下词，软件将<strong class="text-m3-emerald font-medium">锁住文字并结束识别</strong>。
+                    </p>
+
+                    <div id="confirm-chips-container" class="flex flex-wrap gap-2 p-3 rounded-2xl bg-m3-bg border border-m3-outline min-h-[48px]">
+                        <!-- JS 渲染 -->
+                    </div>
+
+                    <div class="flex gap-2">
+                        <input type="text" id="input-confirm-word" placeholder="例如：输入完毕、好了" class="w-full bg-m3-bg border border-m3-outline rounded-2xl px-3 py-2 text-xs text-m3-textPrimary placeholder:text-m3-textMuted focus:outline-none focus:border-m3-emerald">
+                        <button onclick="addConfirmWord()" class="px-4 py-2 rounded-2xl bg-m3-surfaceContainer border border-m3-outline text-xs text-m3-emerald font-medium shrink-0">添加</button>
+                    </div>
+                </div>
+                <p class="text-[11px] text-m3-textMuted pt-2 border-t border-m3-outline">常用推荐：“好了”、“输入完毕”。</p>
+            </div>
+
+        </div>
+    </main>
+
+    <main id="step-panel-3" class="w-full flex-grow hidden">
+        <div class="bg-m3-surface border border-m3-outline rounded-3xl p-6 space-y-6">
+            
+            <div>
+                <h3 class="text-base font-bold text-m3-textPrimary">请选择最符合您习惯的“发送方式”：</h3>
+                <p class="text-xs text-m3-textMuted mt-1">小白推荐选择“1. 我自己手动按 Enter 键”，避免说一半被误发送。</p>
+            </div>
+
+            <!-- 单选三大选项卡 (Material Card Radio Group) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                <!-- 模式 1: 手动模式 -->
+                <div onclick="selectSendMode('manual')" id="mode-card-manual" class="border-2 border-m3-emerald bg-m3-emeraldContainer/20 rounded-3xl p-5 cursor-pointer transition flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-bold text-m3-emerald uppercase">方式 1 · 最稳妥</span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-m3-emerald"></span>
+                        </div>
+                        <div class="text-sm font-bold text-m3-textPrimary">你自己手动按回车</div>
+                        <p class="text-xs text-m3-textMuted leading-relaxed">文字会留在聊天框里，由你自己检查无误后，手动敲键盘 Enter 发送。</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-m3-outline text-xs text-m3-emerald font-medium flex items-center justify-between">
+                        <span>当前使用中</span>
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                    </div>
+                </div>
+
+                <!-- 模式 2: 口令发送 -->
+                <div onclick="selectSendMode('word')" id="mode-card-word" class="border border-m3-outline bg-m3-surfaceContainer rounded-3xl p-5 cursor-pointer hover:border-m3-textMuted transition flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-bold text-m3-textMuted uppercase">方式 2 · 说口令</span>
+                        </div>
+                        <div class="text-sm font-bold text-m3-textPrimary">末尾喊“发送”才发</div>
+                        <p class="text-xs text-m3-textMuted leading-relaxed">在话语最后追加喊出指定词（例如说出“请帮我写代码，发送”），系统自动帮你按回车。</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-m3-outline text-xs text-m3-textMuted flex items-center justify-between">
+                        <span>点击切换</span>
+                    </div>
+                </div>
+
+                <!-- 模式 3: 停顿发送 -->
+                <div onclick="selectSendMode('auto')" id="mode-card-auto" class="border border-m3-outline bg-m3-surfaceContainer rounded-3xl p-5 cursor-pointer hover:border-m3-textMuted transition flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-bold text-m3-textMuted uppercase">方式 3 · 全自动</span>
+                        </div>
+                        <div class="text-sm font-bold text-m3-textPrimary">停顿 1.5 秒自动发</div>
+                        <p class="text-xs text-m3-textMuted leading-relaxed">检测到你说话停下来超过设定秒数（例如 1.5 秒），不用多说直接自动帮你按回车。</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-m3-outline text-xs text-m3-textMuted flex items-center justify-between">
+                        <span>点击切换</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 动态微调面板 -->
+            <div id="send-mode-subpanel" class="bg-m3-bg border border-m3-outline rounded-2xl p-4">
+                <!-- JS 动态渲染 -->
+            </div>
+
+        </div>
+    </main>
+
+    <div id="sandbox-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center px-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="bg-m3-surface border border-m3-outline rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-2xl relative">
+            
+            <div class="flex items-center justify-between pb-3 border-b border-m3-outline">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-m3-emerald animate-pulse"></span>
+                    <h3 class="text-base font-bold text-m3-textPrimary">口令效果模拟演练沙盒</h3>
+                </div>
+                <button onclick="closeSandboxModal()" class="text-m3-textMuted hover:text-m3-textPrimary text-lg font-bold">&times;</button>
+            </div>
+
+            <p class="text-xs text-m3-textMuted">不用开启真实麦克风，点击下方模拟快捷口令，即可亲自体验“取消”、“确认”、“发送”是如何工作的：</p>
+
+            <!-- 模拟输入框 -->
+            <div class="space-y-2">
+                <label class="text-[11px] font-medium text-m3-textSecondary block">模拟目标编辑框：</label>
+                <div id="simulated-input-box" class="min-h-[70px] bg-m3-bg border border-m3-outline rounded-2xl p-3 text-xs text-m3-textPrimary flex items-center">
+                    <span id="simulated-text" class="text-m3-textMuted">［等待模拟测试...］</span>
+                </div>
+            </div>
+
+            <!-- 点击测试按钮组 -->
+            <div class="space-y-2 pt-1">
+                <span class="text-[11px] text-m3-textMuted block">点按模拟您对麦克风说话：</span>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="simSpeak('帮我用 Python 写一个快排')" class="px-3 py-1.5 rounded-xl bg-m3-surfaceHigh border border-m3-outline text-xs text-m3-primary hover:bg-m3-surfaceContainer transition">🗣️ 说话: "帮我写代码"</button>
+                    <button onclick="simSpeak('撤销输入')" class="px-3 py-1.5 rounded-xl bg-m3-roseContainer/40 border border-m3-rose/30 text-xs text-m3-rose hover:bg-m3-roseContainer transition">❌ 喊口令: "撤销输入"</button>
+                    <button onclick="simSpeak('好了')" class="px-3 py-1.5 rounded-xl bg-m3-emeraldContainer/40 border border-m3-emerald/30 text-xs text-m3-emerald hover:bg-m3-emeraldContainer transition">✅ 喊口令: "好了"</button>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-m3-outline flex justify-end">
+                <button onclick="closeSandboxModal()" class="px-5 py-2 rounded-xl bg-m3-surfaceContainer hover:bg-m3-surfaceHigh border border-m3-outline text-xs text-m3-textPrimary">关闭演练</button>
+            </div>
+
+        </div>
+    </div>
+
+    <footer class="w-full pt-6 mt-6 border-t border-m3-outline flex flex-col sm:flex-row items-center justify-between text-xs text-m3-textMuted gap-2">
+        <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-m3-emerald"></span>
+            <span>引擎状态: 运行正常 · 低延迟本地服务</span>
+        </div>
+        <div>Material 暗色极简重构 v5.0</div>
+    </footer>
+
+    <!-- Toast 提示消息 -->
+    <div id="toast-notify" class="fixed bottom-6 right-6 transform translate-y-20 opacity-0 bg-m3-surfaceHigh border border-m3-outline text-m3-textPrimary text-xs px-4 py-3 rounded-2xl shadow-2xl transition-all duration-300 z-50 flex items-center gap-2.5">
+        <span class="w-2 h-2 rounded-full bg-m3-primary animate-ping"></span>
+        <span id="toast-text">修改已自动保存</span>
+    </div>
+
+    <script>
+        // 核心数据模型
+        let currentStep = 1;
+        let currentScene = 'Cursor 编译器';
+        let currentSendMode = 'manual';
+
+        let wakeupWords = ['开始打字', '开始输入', '准备听写', '打开语音'];
+        let cancelWords = ['撤销输入', '不要了', '重新来'];
+        let confirmWords = ['输入完毕', '好了', '确定'];
+        let sendWords = ['发送', '提交'];
+
+        let autoSendDelayMs = 1500;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderWakeupChips();
+            renderCancelChips();
+            renderConfirmChips();
+            renderSendSubpanel();
+        });
+
+        // 步骤 Tab 切换
+        function switchStep(stepNum) {
+            currentStep = stepNum;
+
+            [1, 2, 3].forEach(n => {
+                const tab = document.getElementById(`step-tab-${n}`);
+                const panel = document.getElementById(`step-panel-${n}`);
+                if (n === stepNum) {
+                    tab.className = 'step-tab-btn active text-left p-4 rounded-2xl bg-m3-surfaceContainer border border-m3-primary text-m3-primary transition relative';
+                    panel.classList.remove('hidden');
+                } else {
+                    tab.className = 'step-tab-btn text-left p-4 rounded-2xl bg-m3-surface border border-m3-outline text-m3-textMuted hover:border-m3-textMuted transition relative';
+                    panel.classList.add('hidden');
+                }
+            });
+
+            showToast(`已切换至【步骤 0${stepNum}】面板`);
+        }
+
+        // 场景切换
+        function switchScene(sceneName, btnEl) {
+            currentScene = sceneName;
+            document.getElementById('active-scene-title').textContent = sceneName;
+            
+            document.querySelectorAll('.scene-tab-btn').forEach(btn => {
+                btn.className = 'scene-tab-btn px-3 py-1.5 rounded-xl text-m3-textSecondary hover:text-m3-textPrimary transition';
+            });
+            btnEl.className = 'scene-tab-btn px-3 py-1.5 rounded-xl bg-m3-primaryContainer text-m3-onPrimaryContainer font-medium transition';
+
+            showToast(`已绑定应用环境：${sceneName}`);
+        }
+
+        /* --- 1. 开启口令管理 --- */
+        function renderWakeupChips() {
+            const container = document.getElementById('wakeup-chips-container');
+            container.innerHTML = '';
+
+            wakeupWords.forEach((word, idx) => {
+                const isPrimary = (idx === 0);
+                const chip = document.createElement('div');
+                chip.className = `m3-chip inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium cursor-pointer transition ${
+                    isPrimary 
+                    ? 'bg-m3-primaryContainer text-m3-onPrimaryContainer border border-m3-primary/40' 
+                    : 'bg-m3-surfaceContainer text-m3-textSecondary border border-m3-outline hover:text-m3-textPrimary'
+                }`;
+                chip.innerHTML = `
+                    <span onclick="setPrimaryWakeup('${word}')">${word} ${isPrimary ? '🔑 (首选)' : ''}</span>
+                    <button onclick="deleteWakeupWord(${idx})" class="ml-1 text-m3-textMuted hover:text-m3-rose font-bold">&times;</button>
+                `;
+                container.appendChild(chip);
+            });
+
+            const primaryText = wakeupWords[0] || '未设置';
+            document.getElementById('primary-tag-display').textContent = primaryText;
+            document.getElementById('hero-primary-wakeup-text').textContent = `"${primaryText}"`;
+            document.getElementById('step-desc-1').textContent = `默认口令: ${primaryText}`;
+        }
+
+        function setPrimaryWakeup(word) {
+            const index = wakeupWords.indexOf(word);
+            if (index > 0) {
+                wakeupWords.splice(index, 1);
+                wakeupWords.unshift(word);
+                renderWakeupChips();
+                showToast(`已将 "${word}" 设为默认首选口令`);
+            }
+        }
+
+        function addWakeupWord() {
+            const input = document.getElementById('input-wakeup-word');
+            const val = input.value.trim();
+            if (val && !wakeupWords.includes(val)) {
+                wakeupWords.push(val);
+                renderWakeupChips();
+                input.value = '';
+                showToast(`已添加开启口令: "${val}"`);
+            }
+        }
+
+        function deleteWakeupWord(idx) {
+            if (wakeupWords.length <= 1) {
+                showToast('请至少保留一个开启打字口令！');
+                return;
+            }
+            wakeupWords.splice(idx, 1);
+            renderWakeupChips();
+            showToast('已删除该口令');
+        }
+
+        /* --- 2. 撤销与完成口令管理 --- */
+        function renderCancelChips() {
+            const container = document.getElementById('cancel-chips-container');
+            container.innerHTML = '';
+            cancelWords.forEach((word, idx) => {
+                const chip = document.createElement('div');
+                chip.className = 'm3-chip inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs bg-m3-roseContainer/30 text-m3-rose border border-m3-rose/30';
+                chip.innerHTML = `
+                    <span>${word}</span>
+                    <button onclick="deleteCancelWord(${idx})" class="text-m3-rose/70 hover:text-m3-rose font-bold">&times;</button>
+                `;
+                container.appendChild(chip);
+            });
+            updateStep2Sub();
+        }
+
+        function addCancelWord() {
+            const input = document.getElementById('input-cancel-word');
+            const val = input.value.trim();
+            if (val && !cancelWords.includes(val)) {
+                cancelWords.push(val);
+                renderCancelChips();
+                input.value = '';
+                showToast(`已添加撤销词: "${val}"`);
+            }
+        }
+
+        function deleteCancelWord(idx) {
+            cancelWords.splice(idx, 1);
+            renderCancelChips();
+        }
+
+        function renderConfirmChips() {
+            const container = document.getElementById('confirm-chips-container');
+            container.innerHTML = '';
+            confirmWords.forEach((word, idx) => {
+                const chip = document.createElement('div');
+                chip.className = 'm3-chip inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs bg-m3-emeraldContainer/30 text-m3-emerald border border-m3-emerald/30';
+                chip.innerHTML = `
+                    <span>${word}</span>
+                    <button onclick="deleteConfirmWord(${idx})" class="text-m3-emerald/70 hover:text-m3-emerald font-bold">&times;</button>
+                `;
+                container.appendChild(chip);
+            });
+            updateStep2Sub();
+        }
+
+        function addConfirmWord() {
+            const input = document.getElementById('input-confirm-word');
+            const val = input.value.trim();
+            if (val && !confirmWords.includes(val)) {
+                confirmWords.push(val);
+                renderConfirmChips();
+                input.value = '';
+                showToast(`已添加完成词: "${val}"`);
+            }
+        }
+
+        function deleteConfirmWord(idx) {
+            confirmWords.splice(idx, 1);
+            renderConfirmChips();
+        }
+
+        function updateStep2Sub() {
+            document.getElementById('step-desc-2').textContent = `已设 ${cancelWords.length} 个撤销词 / ${confirmWords.length} 个完成词`;
+        }
+
+        /* --- 3. 发送方式管理 --- */
+        function selectSendMode(mode) {
+            currentSendMode = mode;
+
+            const cards = {
+                manual: document.getElementById('mode-card-manual'),
+                word: document.getElementById('mode-card-word'),
+                auto: document.getElementById('mode-card-auto')
+            };
+
+            Object.keys(cards).forEach(m => {
+                const el = cards[m];
+                if (m === mode) {
+                    el.className = 'border-2 border-m3-emerald bg-m3-emeraldContainer/20 rounded-3xl p-5 cursor-pointer transition flex flex-col justify-between';
+                    el.querySelector('.border-t').className = 'mt-4 pt-3 border-t border-m3-outline text-xs text-m3-emerald font-medium flex items-center justify-between';
+                    el.querySelector('.border-t').innerHTML = '<span>当前使用中</span><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>';
+                } else {
+                    el.className = 'border border-m3-outline bg-m3-surfaceContainer rounded-3xl p-5 cursor-pointer hover:border-m3-textMuted transition flex flex-col justify-between';
+                    el.querySelector('.border-t').className = 'mt-4 pt-3 border-t border-m3-outline text-xs text-m3-textMuted flex items-center justify-between';
+                    el.querySelector('.border-t').innerHTML = '<span>点击切换</span>';
+                }
+            });
+
+            renderSendSubpanel();
+
+            const labels = { manual: '手动 Enter 键', word: '喊发送口令', auto: '停顿自动发送' };
+            document.getElementById('step-desc-3').textContent = `已选: ${labels[mode]}`;
+            showToast(`已将发送方式切换为：${labels[mode]}`);
+        }
+
+        function renderSendSubpanel() {
+            const panel = document.getElementById('send-mode-subpanel');
+            if (currentSendMode === 'manual') {
+                panel.innerHTML = `
+                    <div class="text-xs text-m3-textSecondary flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-m3-emerald"></span>
+                        <span><strong>最稳妥模式：</strong> 话音识别完后文字留在输入框，您可以慢慢修改，确认后手动敲键盘 Enter 键发送。</span>
+                    </div>
+                `;
+            } else if (currentSendMode === 'word') {
+                panel.innerHTML = `
+                    <div class="space-y-3">
+                        <span class="text-xs font-bold text-m3-textPrimary block">“发送口令”词库设置：</span>
+                        <div class="flex flex-wrap gap-2">
+                            ${sendWords.map((w, idx) => `
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs bg-m3-emeraldContainer/30 text-m3-emerald border border-m3-emerald/30">
+                                    ${w}
+                                    <button onclick="deleteSendWord(${idx})" class="font-bold">&times;</button>
+                                </span>
+                            `).join('')}
+                        </div>
+                        <div class="flex gap-2">
+                            <input type="text" id="input-send-word" placeholder="添加发送口令（例如: 提交、发送出去）" class="w-full bg-m3-bg border border-m3-outline rounded-xl px-3 py-1.5 text-xs text-m3-textPrimary">
+                            <button onclick="addSendWord()" class="px-3 py-1.5 bg-m3-surfaceHigh border border-m3-outline text-xs text-m3-textPrimary rounded-xl shrink-0">添加</button>
+                        </div>
+                    </div>
+                `;
+            } else if (currentSendMode === 'auto') {
+                panel.innerHTML = `
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-bold text-m3-textPrimary">停顿时间调节：</span>
+                            <span class="text-m3-emerald font-bold" id="delay-label">${autoSendDelayMs} 毫秒 (${(autoSendDelayMs/1000).toFixed(1)} 秒)</span>
+                        </div>
+                        <input type="range" min="600" max="3000" step="100" value="${autoSendDelayMs}" oninput="updateAutoDelay(this.value)" class="w-full accent-m3-emerald cursor-pointer">
+                        <div class="flex justify-between text-[10px] text-m3-textMuted">
+                            <span>600毫秒 (快)</span>
+                            <span>1500毫秒 (适中推荐)</span>
+                            <span>3000毫秒 (慢)</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function addSendWord() {
+            const input = document.getElementById('input-send-word');
+            const val = input ? input.value.trim() : '';
+            if (val && !sendWords.includes(val)) {
+                sendWords.push(val);
+                renderSendSubpanel();
+                showToast(`已添加发送口令: "${val}"`);
+            }
+        }
+
+        function deleteSendWord(idx) {
+            sendWords.splice(idx, 1);
+            renderSendSubpanel();
+        }
+
+        function updateAutoDelay(val) {
+            autoSendDelayMs = parseInt(val);
+            const label = document.getElementById('delay-label');
+            if (label) label.textContent = `${autoSendDelayMs} 毫秒 (${(autoSendDelayMs/1000).toFixed(1)} 秒)`;
+        }
+
+        /* --- 沙盒演练模块 --- */
+        function openSandboxModal() {
+            const modal = document.getElementById('sandbox-modal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.classList.add('opacity-100');
+        }
+
+        function closeSandboxModal() {
+            const modal = document.getElementById('sandbox-modal');
+            modal.classList.remove('opacity-100');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function simSpeak(text) {
+            const box = document.getElementById('simulated-text');
+            if (text === '撤销输入') {
+                box.innerHTML = '<span class="text-m3-rose font-medium">✨ 触发口令 [撤销输入]：文本已全选清空！</span>';
+            } else if (text === '好了') {
+                box.innerHTML = `<span class="text-m3-emerald font-medium">🔒 触发口令 [好了]：锁定完成，已成功打出：“${box.textContent.replace(/^.*“|”.*$/g, '') || '帮我用 Python 写一个快排'}”</span>`;
+            } else {
+                box.textContent = `“${text}”`;
+            }
+        }
+
+        // Toast 消息
+        function showToast(msg) {
+            const toast = document.getElementById('toast-notify');
+            const text = document.getElementById('toast-text');
+            text.textContent = msg;
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

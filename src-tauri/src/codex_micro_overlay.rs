@@ -629,6 +629,9 @@ pub struct CodexMicroAgentSnapshot {
     /// Shell three: Soft Pad Hook installed (`onetoneConfigured`). None = N/A.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hook_configured: Option<bool>,
+    /// Signal trust — not task state. fresh | stale | unconfigured | corrupt
+    #[serde(default)]
+    pub signal_health: String,
 }
 
 /// Unhosted Claude agent when AG pool is exhausted.
@@ -1103,6 +1106,9 @@ pub fn overlay_visible_reason() -> String {
             }
         }
     }
+    if crate::app_identity::soft_pad_agent_process_running() {
+        return "agent_process".into();
+    }
     "hidden".into()
 }
 
@@ -1145,7 +1151,11 @@ fn overlay_host_allows_show_raw() -> bool {
     // Overlay self-FG alone never authorizes show over OneTone settings — only after a
     // real agent/hold show, and never while the main process holds a settings gate
     // (gated in build_snapshot / maybe_tick via settings_drawer_open).
-    if soft_pad_agent_is_foreground() || hook_needs_input_hold() || claude_activity_hold() {
+    if soft_pad_agent_is_foreground()
+        || hook_needs_input_hold()
+        || claude_activity_hold()
+        || crate::app_identity::soft_pad_agent_process_running()
+    {
         note_agent_show_reason();
         return true;
     }
@@ -3260,6 +3270,7 @@ fn agent_chip_snapshots(cfg: &VoiceConfig) -> Vec<CodexMicroAgentSnapshot> {
                 AgentKind::Trae => crate::pad_status::shell_hook_configured(kind),
                 _ => None,
             };
+            let signal_health = compute_signal_health(kind, hook_configured.as_ref(), state);
             CodexMicroAgentSnapshot {
                 kind: kind.as_str().to_string(),
                 state: state.to_string(),
@@ -3272,9 +3283,56 @@ fn agent_chip_snapshots(cfg: &VoiceConfig) -> Vec<CodexMicroAgentSnapshot> {
                 updated_at,
                 lights_enabled: lights_on,
                 hook_configured,
+                signal_health: signal_health.to_string(),
             }
         })
         .collect()
+}
+
+fn compute_signal_health(
+    kind: crate::soft_pad_runtime::AgentKind,
+    hook_configured: Option<&bool>,
+    chip_state: &str,
+) -> &'static str {
+    use crate::pad_status::STALE_MS;
+    use crate::soft_pad_runtime::AgentKind;
+
+    if matches!(
+        kind,
+        AgentKind::WorkBuddy | AgentKind::Trae | AgentKind::TraeCode | AgentKind::Qoder
+    ) && hook_configured == Some(&false)
+    {
+        return "unconfigured";
+    }
+    if kind == AgentKind::Codex && crate::pad_status::session_scan_corrupt() {
+        return "corrupt";
+    }
+    // Active waiting/running is inherently fresh.
+    if matches!(chip_state, "needs_input" | "running") {
+        return "fresh";
+    }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    let pad = crate::pad_status::snapshot();
+    let pad_for_agent = pad
+        .agent
+        .as_deref()
+        .map(|a| a.eq_ignore_ascii_case(kind.as_str()))
+        .unwrap_or(false);
+    if pad_for_agent && pad.updated_at > 0 {
+        let age = now.saturating_sub(pad.updated_at);
+        if age > STALE_MS {
+            return "stale";
+        }
+    }
+    if let Some(age) = crate::agent_attention::store::lifecycle_age_ms(kind) {
+        if age > STALE_MS {
+            return "stale";
+        }
+    }
+    "fresh"
 }
 
 /// Soft RGB Output Adapter: status-lights ? Core UI status; else local pad run, then vendor rgbcfg.
@@ -3942,21 +4000,25 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
         }
     }
 
-    if is_fg {
-        // Soft Pad agent returned to FG — clear soft dismiss so the pad can show again.
+    let agent_process = crate::app_identity::soft_pad_agent_process_running();
+    if is_fg || agent_process {
+        // Soft Pad agent returned to FG / process started — clear soft dismiss so the pad can show.
         // Never clear while settings/setup/recording gates are active (float would cover UI).
-        // Clear whenever agent is FG (not only rising edge): latch can stick if was_fg desyncs.
         if is_overlay_session_dismissed()
-            && soft_pad_agent_is_foreground()
+            && (soft_pad_agent_is_foreground() || agent_process)
             && gate_reason.is_none()
         {
             *overlay_session_dismissed().lock() = false;
         }
-        // Auto-ensure Soft Pad routes/bindings when a supported agent (Codex/Cursor/…) is FG.
-        let result = if soft_pad_agent_is_foreground() {
+        // Auto-ensure Soft Pad routes when a supported agent is FG or its process is running.
+        let result = if soft_pad_agent_is_foreground() || agent_process {
             let mut cfg = state.cfg.lock();
             let blocker = crate::codex_numpad_layer::readiness_snapshot(&cfg).blocker;
-            let should_ensure = !was_fg || blocker == "no_routes" || blocker == "no_mapping";
+            let needs_mapping = blocker == "no_routes" || blocker == "no_mapping";
+            // FG rising edge, or process-only when mapping missing (do not re-ensure every tick
+            // while Cursor/Codex stay resident in the background).
+            let should_ensure = needs_mapping
+                || (soft_pad_agent_is_foreground() && !was_fg);
             // Note: "pad_off" is intentional numpad mode ? do not auto-re-enable.
             if !should_ensure {
                 None

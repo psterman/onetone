@@ -15,12 +15,12 @@ var body = probe.extractStatusLineBody({
     seven_day: { used_percentage: 41, resets_at: 1700600000 }
   }
 });
-assert.deepStrictEqual(Object.keys(body).sort(), ['model', 'rate_limits', 'session_id']);
+assert.deepStrictEqual(Object.keys(body).sort(), ['context_window', 'model', 'rate_limits', 'session_id']);
 assert.strictEqual(body.session_id, 's1');
 assert.deepStrictEqual(body.model, { id: 'claude-opus' });
 assert.strictEqual(body.rate_limits.five_hour.used_percentage, 24);
+assert.strictEqual(body.context_window.used_percentage, 40);
 assert.ok(!('cost' in body));
-assert.ok(!('context_window' in body));
 assert.ok(!('cwd' in body));
 
 assert.strictEqual(probe.pickRateWindow(null), null);

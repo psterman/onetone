@@ -2,7 +2,8 @@
 
 use super::model::{
     AgentAttentionSignal, AttentionCause, AttentionPublicRow, AttentionPublicSnapshot,
-    AttentionState, Confidence, SignalKey, SignalSource, NEEDS_INPUT_WATCHDOG_MS,
+    AttentionState, Confidence, SignalKey, SignalSource, COMPLETE_TTL_MS, ERROR_TTL_MS,
+    NEEDS_INPUT_WATCHDOG_MS,
 };
 use crate::soft_pad_runtime::AgentKind;
 use std::collections::HashMap;
@@ -146,12 +147,17 @@ fn next_seq() -> u64 {
 }
 
 fn prune_expired(inner: &mut AttentionStoreInner, now: Instant) -> bool {
-    let before = inner.signals.len();
+    let before_sig = inner.signals.len();
     inner.signals.retain(|_, s| match s.expires_at {
         Some(exp) => exp > now,
         None => true,
     });
-    before != inner.signals.len()
+    let before_life = inner.lifecycle.len();
+    inner.lifecycle.retain(|_, s| match s.expires_at {
+        Some(exp) => exp > now,
+        None => true,
+    });
+    before_sig != inner.signals.len() || before_life != inner.lifecycle.len()
 }
 
 /// Project waiting agents: NeedsInput + source eligible, earliest-first by observed_at.
@@ -379,6 +385,10 @@ fn clear_matching_locked(
 ) -> usize {
     let sess = session_id.map(str::trim).filter(|s| !s.is_empty());
     let req = request_id.map(str::trim).filter(|s| !s.is_empty());
+    // No session/request → no-op. Degraded Stop must not wipe all waiting for the agent.
+    if sess.is_none() && req.is_none() {
+        return 0;
+    }
     let before = inner.signals.len();
     inner.signals.retain(|k, s| {
         if s.agent != agent {
@@ -390,13 +400,12 @@ fn clear_matching_locked(
         if let Some(sid) = sess {
             return k.session_id != sid;
         }
-        // Degraded Stop: clear all NeedsInput for agent.
-        false
+        true
     });
     before.saturating_sub(inner.signals.len())
 }
 
-/// Clear NeedsInput by request_id (preferred), else session, else all for agent.
+/// Clear NeedsInput by request_id (preferred) or session. Empty ids → no-op.
 pub fn clear(
     agent: AgentKind,
     session_id: Option<&str>,
@@ -500,6 +509,17 @@ pub fn lifecycle_source_for(agent: AgentKind) -> Option<crate::agent_attention::
     with_store(|inner| inner.lifecycle.get(&agent).map(|s| s.source))
 }
 
+/// Age of lifecycle signal in ms (for signalHealth stale); None if no lifecycle row.
+pub fn lifecycle_age_ms(agent: AgentKind) -> Option<u64> {
+    let now = Instant::now();
+    with_store(|inner| {
+        prune_expired(inner, now);
+        inner.lifecycle.get(&agent).map(|s| {
+            now.saturating_duration_since(s.observed_at).as_millis() as u64
+        })
+    })
+}
+
 static TEST_LOCK: Mutex<()> = Mutex::new(());
 
 pub fn test_lock() -> std::sync::MutexGuard<'static, ()> {
@@ -557,6 +577,11 @@ pub fn raise_lifecycle(
     source: SignalSource,
 ) {
     let now = Instant::now();
+    let expires_at = match state {
+        AttentionState::Complete => Some(now + Duration::from_millis(COMPLETE_TTL_MS)),
+        AttentionState::Error => Some(now + Duration::from_millis(ERROR_TTL_MS)),
+        _ => None,
+    };
     raise(AgentAttentionSignal {
         agent,
         session_id: session_id
@@ -570,7 +595,7 @@ pub fn raise_lifecycle(
         confidence: Confidence::High,
         sequence: next_seq(),
         observed_at: now,
-        expires_at: None,
+        expires_at,
     });
 }
 
@@ -594,6 +619,53 @@ mod tests {
         clear(AgentKind::Claude, Some("s1"), Some("r1"));
         let (w2, _) = project_waiting_kinds();
         assert!(w2.is_empty());
+    }
+
+    #[test]
+    fn clear_without_session_or_request_is_noop() {
+        let _g = test_lock();
+        reset_for_test();
+        raise_needs_input(
+            AgentKind::Claude,
+            Some("s1"),
+            Some("r1"),
+            AttentionCause::Permission,
+            SignalSource::OfficialHook,
+        );
+        assert_eq!(clear(AgentKind::Claude, None, None), 0);
+        assert_eq!(
+            primary_state_for(AgentKind::Claude),
+            Some(AttentionState::NeedsInput)
+        );
+        raise_lifecycle(
+            AgentKind::Claude,
+            None,
+            AttentionState::Complete,
+            SignalSource::OfficialHook,
+        );
+        assert_eq!(
+            primary_state_for(AgentKind::Claude),
+            Some(AttentionState::NeedsInput),
+            "Complete without session must not clear waiting"
+        );
+    }
+
+    #[test]
+    fn clear_same_session_removes_needs_input() {
+        let _g = test_lock();
+        reset_for_test();
+        raise_needs_input(
+            AgentKind::Codex,
+            Some("sess"),
+            Some("turn"),
+            AttentionCause::Permission,
+            SignalSource::OfficialHook,
+        );
+        assert_eq!(clear(AgentKind::Codex, Some("sess"), None), 1);
+        assert_ne!(
+            primary_state_for(AgentKind::Codex),
+            Some(AttentionState::NeedsInput)
+        );
     }
 
     #[test]

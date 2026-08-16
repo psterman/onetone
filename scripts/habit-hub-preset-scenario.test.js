@@ -136,6 +136,9 @@ sb.global.OneToneMappingCore = {
     }
     return null;
   },
+  sorted: function () {
+    return mappings.slice();
+  },
   newMappingId: function () {
     return 'm-new-' + mappings.length;
   },
@@ -199,6 +202,13 @@ assert.strictEqual(created.id, 'm-codex-winner', 'second create returns existing
 assert.strictEqual(mappings.filter(function (m) {
   return m.appTargetId === 'codex-chat';
 }).length, 2, 'no third codex mapping added');
+
+// Disabled canonical must revive on create — home rail filters enabled===false.
+mappings[1].enabled = false;
+var revived = H.createAppScenario('codex-chat');
+assert.strictEqual(revived.id, 'm-codex-winner', 'create returns disabled canonical');
+assert.strictEqual(revived.enabled, true, 'create re-enables disabled preset scenario');
+assert.strictEqual(mappings[0].enabled, false, 'sibling stays disabled after revive');
 
 assert.strictEqual(H.listAppScenarios('custom').length, 0, 'custom excluded from preset list helper');
 assert.strictEqual(

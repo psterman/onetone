@@ -1664,6 +1664,7 @@
       if(asPlaceholder){
         el.setAttribute('data-placeholder', '1');
         el.setAttribute('data-status', 'idle');
+        el.setAttribute('data-signal-health', 'unconfigured');
         el.classList.remove('is-usage-focus');
         el.classList.remove('is-status-flash');
         el.removeAttribute('data-lane-id');
@@ -1681,6 +1682,18 @@
         return;
       }
       el.removeAttribute('data-placeholder');
+      var signalHealth=String(row.signalHealth||row.signal_health||'fresh').trim().toLowerCase()||'fresh';
+      if(shellUnconfigured) signalHealth='unconfigured';
+      el.setAttribute('data-signal-health', signalHealth);
+      var ctxPct=row.usage&&(row.usage.contextUsedPercent!=null?row.usage.contextUsedPercent:row.usage.context_used_percent);
+      ctxPct=Number(ctxPct);
+      var ctxWarn='';
+      if(Number.isFinite(ctxPct)){
+        if(ctxPct>=80) ctxWarn='critical';
+        else if(ctxPct>=50) ctxWarn='warn';
+      }
+      if(ctxWarn) el.setAttribute('data-context-warn', ctxWarn);
+      else el.removeAttribute('data-context-warn');
       var state=String(row.state||'idle').trim().toLowerCase()||'idle';
       // MiniMax: no lifecycle motion — keep steady idle (quota).
       // WorkBuddy: Hook-driven status only (Rust already gates inferred); do not force idle here.
@@ -1735,6 +1748,14 @@
       var tipLines=agentChipTipLines(kind,row,usage,state,s);
       if(shellUnconfigured){
         tipLines=(tipLines||[]).concat(['未装 Hook · 点图标去 Soft Pad 安装后才有执行中/完成灯']);
+      }else if(signalHealth==='stale'){
+        tipLines=(tipLines||[]).concat(['信号过期 · 状态未验证，勿当正常空闲']);
+      }else if(signalHealth==='corrupt'){
+        tipLines=(tipLines||[]).concat(['信号损坏 · 本地 session 日志无法解析']);
+      }else if(ctxWarn==='critical'){
+        tipLines=(tipLines||[]).concat(['上下文约 '+Math.round(ctxPct)+'% · 建议压缩/新开会话']);
+      }else if(ctxWarn==='warn'){
+        tipLines=(tipLines||[]).concat(['上下文约 '+Math.round(ctxPct)+'% · 将满']);
       }else if(kind==='trae'&&state==='idle'){
         tipLines=(tipLines||[]).concat(['Trae Work：本地活跃度推断（SOLO / Cursor 模式）']);
       }else if((kind==='traeCode'||kind==='traecode')&&state==='idle'){

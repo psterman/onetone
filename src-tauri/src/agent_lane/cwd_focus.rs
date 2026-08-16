@@ -50,19 +50,35 @@ fn find_hwnd_for_cwd_windows(cwd: &str) -> Option<u64> {
 
     struct Ctx {
         target: String,
-        found: u64,
+        best_hwnd: u64,
+        best_score: i32,
+    }
+
+    fn shell_score(image: &str) -> i32 {
+        let n = image.to_ascii_lowercase();
+        if n.contains("windowsterminal")
+            || n.contains("wt.exe")
+            || n.contains("powershell")
+            || n.contains("pwsh")
+            || n.contains("cmd.exe")
+            || n.contains("wezterm")
+            || n.contains("alacritty")
+            || n.contains("windows terminal")
+        {
+            10
+        } else if n.contains("code") || n.contains("cursor") || n.contains("claude") {
+            4
+        } else {
+            1
+        }
     }
 
     unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
         let ctx = &mut *(lparam as *mut Ctx);
-        if ctx.found != 0 {
-            return TRUE;
-        }
         if IsWindowVisible(hwnd) == 0 {
             return TRUE;
         }
         let mut title = [0u16; 4];
-        // Skip untitled empty chrome unless it has a title (cheap filter)
         let _ = GetWindowTextW(hwnd, title.as_mut_ptr(), 4);
 
         let mut pid: DWORD = 0;
@@ -71,11 +87,16 @@ fn find_hwnd_for_cwd_windows(cwd: &str) -> Option<u64> {
             return TRUE;
         }
         if let Some(proc_cwd) = process_cwd(pid) {
-            if normalize_path(&proc_cwd) == ctx.target
-                || Path::new(&normalize_path(&proc_cwd)).starts_with(Path::new(&ctx.target))
-                || Path::new(&ctx.target).starts_with(Path::new(&normalize_path(&proc_cwd)))
-            {
-                ctx.found = hwnd as usize as u64;
+            let norm = normalize_path(&proc_cwd);
+            let path_ok = norm == ctx.target
+                || Path::new(&norm).starts_with(Path::new(&ctx.target))
+                || Path::new(&ctx.target).starts_with(Path::new(&norm));
+            if path_ok {
+                let score = shell_score(&proc_cwd);
+                if score > ctx.best_score {
+                    ctx.best_score = score;
+                    ctx.best_hwnd = hwnd as usize as u64;
+                }
             }
         }
         let _ = OsString::from_wide(&[]);
@@ -84,13 +105,14 @@ fn find_hwnd_for_cwd_windows(cwd: &str) -> Option<u64> {
 
     let mut ctx = Ctx {
         target,
-        found: 0,
+        best_hwnd: 0,
+        best_score: 0,
     };
     unsafe {
         EnumWindows(Some(enum_proc), &mut ctx as *mut Ctx as LPARAM);
     }
-    if ctx.found != 0 {
-        Some(ctx.found)
+    if ctx.best_hwnd != 0 {
+        Some(ctx.best_hwnd)
     } else {
         None
     }

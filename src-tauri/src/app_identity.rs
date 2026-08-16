@@ -249,6 +249,47 @@ pub fn minimax_code_process_running() -> bool {
     process_running_by_exe(names)
 }
 
+/// Soft Pad desktop hosts whose process presence should show Soft Pad (not FG-only).
+/// Includes ChatGPT.exe (Store Codex UI). Consumer ChatGPT may false-positive — acceptable.
+const SOFT_PAD_HOST_PROCESS_TARGETS: &[&str] = &[
+    CURSOR_APP_TARGET_ID,
+    CODEX_APP_TARGET_ID,
+    CLAUDE_CODE_APP_TARGET_ID,
+    MINIMAX_APP_TARGET_ID,
+    WORKBUDDY_APP_TARGET_ID,
+    TRAE_APP_TARGET_ID,
+    TRAE_CODE_APP_TARGET_ID,
+    QODER_APP_TARGET_ID,
+];
+
+/// True when any built-in Soft Pad agent desktop process is running.
+/// Host gate uses this so Soft Pad starts with the agent app, not only when it is FG.
+pub fn soft_pad_agent_process_running() -> bool {
+    #[cfg(windows)]
+    {
+        // Flatten once; process_running_by_exe already caches by name-key (~750ms).
+        static NAMES: OnceLock<Vec<&'static str>> = OnceLock::new();
+        let names = NAMES.get_or_init(|| {
+            let mut out: Vec<&'static str> = Vec::with_capacity(24);
+            for id in SOFT_PAD_HOST_PROCESS_TARGETS {
+                if let Some(list) = preset_process_names(id) {
+                    for n in list {
+                        if !out.iter().any(|e| exe_name_matches(e, n)) {
+                            out.push(*n);
+                        }
+                    }
+                }
+            }
+            out
+        });
+        process_running_by_exe(names.as_slice())
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
 /// True when process AUMID / path belongs to the Store Codex package (not consumer ChatGPT).
 fn looks_like_codex_package(path: Option<&str>, aumid: Option<&str>) -> bool {
     if path.is_some_and(|p| path_has_marker(p, "OpenAI.ChatGPT") && !path_has_marker(p, "OpenAI.Codex"))
@@ -1065,10 +1106,14 @@ mod tests {
     }
 
     #[test]
-    fn exe_name_matches_cursor_stem_without_exe() {
-        assert!(exe_name_matches("Cursor", "Cursor.exe"));
-        assert!(exe_name_matches("Cursor.exe", "Cursor.exe"));
-        assert!(!exe_name_matches("Code.exe", "Cursor.exe"));
+    fn soft_pad_host_process_targets_cover_cursor_codex_claude() {
+        let names = SOFT_PAD_HOST_PROCESS_TARGETS
+            .iter()
+            .flat_map(|id| preset_process_names(id).into_iter().flatten().copied())
+            .collect::<Vec<_>>();
+        assert!(names.iter().any(|n| exe_name_matches(n, "Cursor.exe")));
+        assert!(names.iter().any(|n| exe_name_matches(n, "Codex.exe")));
+        assert!(names.iter().any(|n| exe_name_matches(n, "Claude Code.exe")));
     }
 
     #[test]
