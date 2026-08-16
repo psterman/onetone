@@ -4161,28 +4161,152 @@
       </div>
       <div class="habit-setup-view habit-setup-screen" id="habitSetupTriggerView" hidden>
         <button type="button" class="welcome-close habit-setup-close" id="btnHabitSetupClose" aria-label="关闭">×</button>
-        <div class="habit-setup-badge" id="habitSetupTriggerBadge">🧪 现场测试</div>
-        <h3 class="habit-setup-title" id="habitSetupTriggerTitle">试试 OneTone 能不能用</h3>
-        <p class="habit-setup-desc" id="habitSetupTriggerDesc">先录启动键，再分别测试按键响应和语音唤起是否正常。</p>
-        <div class="habit-setup-trigger-body" id="habitSetupTriggerBody">
-          <div class="habit-setup-stage">
-            <p class="habit-setup-status" id="habitSetupTriggerStatus"></p>
-            <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupTriggerStartRecord">开始录制启动键</button>
+        <div class="habit-setup-badge" id="habitSetupTriggerBadge">小提醒</div>
+        <h3 class="habit-setup-title" id="habitSetupTriggerTitle">平时用键盘就可以吗？</h3>
+        <p class="habit-setup-desc" id="habitSetupTriggerDesc">多数人选「可以」。只有想用遥控器、小手柄之类的额外按键时，再设一下就好。</p>
+
+        <div class="habit-setup-trigger-gate" id="habitSetupTriggerGate">
+          <div class="habit-setup-trigger-parallel" id="habitSetupTriggerParallel">
+            <div class="habit-setup-trigger-col" data-scene="keep">
+              <div class="habit-setup-trigger-scene habit-setup-trigger-scene--keep is-active" id="habitSetupTriggerSceneKeep" data-scene="keep" aria-label="键盘场景">
+                <div class="habit-setup-trigger-kbd" id="habitSetupTriggerKbd" aria-hidden="true">
+                  <div class="habit-setup-trigger-kbd__row">
+                    <span class="habit-setup-trigger-kbd__key is-fn" data-vk="Esc">ESC</span>
+                    <span class="habit-setup-trigger-kbd__key is-fn" style="flex:0.6 1 0"></span>
+                    <span class="habit-setup-trigger-kbd__key is-fn" data-vk="F1">F1</span>
+                    <span class="habit-setup-trigger-kbd__key is-fn" data-vk="F2">F2</span>
+                    <span class="habit-setup-trigger-kbd__key is-fn" data-vk="F3">F3</span>
+                    <span class="habit-setup-trigger-kbd__key is-fn" data-vk="F4">F4</span>
+                    <span class="habit-setup-trigger-kbd__key is-fn" data-vk="F5">F5</span>
+                    <span class="habit-setup-trigger-kbd__key is-fn" data-vk="F6">F6</span>
+                    <span class="habit-setup-trigger-kbd__key is-fn" data-vk="F7">F7</span>
+                    <span class="habit-setup-trigger-kbd__key is-fn" data-vk="F8">F8</span>
+                    <span class="habit-setup-trigger-kbd__key is-fn" data-vk="F9">F9</span>
+                    <span class="habit-setup-trigger-kbd__key is-fn" data-vk="F10">F10</span>
+                    <span class="habit-setup-trigger-kbd__key is-fn" data-vk="F11">F11</span>
+                    <span class="habit-setup-trigger-kbd__key is-fn" data-vk="F12">F12</span>
+                  </div>
+                  <div class="habit-setup-trigger-kbd__row">
+                    <span class="habit-setup-trigger-kbd__key" data-vk="`">`</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="1">1</span><span class="habit-setup-trigger-kbd__key" data-vk="2">2</span><span class="habit-setup-trigger-kbd__key" data-vk="3">3</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="4">4</span><span class="habit-setup-trigger-kbd__key" data-vk="5">5</span><span class="habit-setup-trigger-kbd__key" data-vk="6">6</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="7">7</span><span class="habit-setup-trigger-kbd__key" data-vk="8">8</span><span class="habit-setup-trigger-kbd__key" data-vk="9">9</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="0">0</span><span class="habit-setup-trigger-kbd__key" data-vk="-">-</span><span class="habit-setup-trigger-kbd__key" data-vk="=">=</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="Backspace">⌫</span>
+                  </div>
+                  <div class="habit-setup-trigger-kbd__row">
+                    <span class="habit-setup-trigger-kbd__key" data-vk="Tab">⇥</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="Q">Q</span><span class="habit-setup-trigger-kbd__key" data-vk="W">W</span><span class="habit-setup-trigger-kbd__key" data-vk="E">E</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="R">R</span><span class="habit-setup-trigger-kbd__key" data-vk="T">T</span><span class="habit-setup-trigger-kbd__key" data-vk="Y">Y</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="U">U</span><span class="habit-setup-trigger-kbd__key" data-vk="I">I</span><span class="habit-setup-trigger-kbd__key" data-vk="O">O</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="P">P</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="[">[</span><span class="habit-setup-trigger-kbd__key" data-vk="]">]</span><span class="habit-setup-trigger-kbd__key" data-vk="\">\</span>
+                  </div>
+                  <div class="habit-setup-trigger-kbd__row">
+                    <span class="habit-setup-trigger-kbd__key" data-vk="CapsLock">⇪</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="A">A</span><span class="habit-setup-trigger-kbd__key" data-vk="S">S</span><span class="habit-setup-trigger-kbd__key" data-vk="D">D</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="F">F</span><span class="habit-setup-trigger-kbd__key" data-vk="G">G</span><span class="habit-setup-trigger-kbd__key" data-vk="H">H</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="J">J</span><span class="habit-setup-trigger-kbd__key" data-vk="K">K</span><span class="habit-setup-trigger-kbd__key" data-vk="L">L</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk=";">;</span><span class="habit-setup-trigger-kbd__key" data-vk="'">'</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="Enter">↵</span>
+                  </div>
+                  <div class="habit-setup-trigger-kbd__row">
+                    <span class="habit-setup-trigger-kbd__key" data-vk="LShift">⇧</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="Z">Z</span><span class="habit-setup-trigger-kbd__key" data-vk="X">X</span><span class="habit-setup-trigger-kbd__key" data-vk="C">C</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="V">V</span><span class="habit-setup-trigger-kbd__key" data-vk="B">B</span><span class="habit-setup-trigger-kbd__key" data-vk="N">N</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="M">M</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk=",">,</span><span class="habit-setup-trigger-kbd__key" data-vk=".">.</span><span class="habit-setup-trigger-kbd__key" data-vk="/">/</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="RShift">⇧</span>
+                  </div>
+                  <div class="habit-setup-trigger-kbd__row">
+                    <span class="habit-setup-trigger-kbd__key" data-vk="LCtrl">Ctrl</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="LWin">⊞</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="LAlt">Alt</span>
+                    <span class="habit-setup-trigger-kbd__key is-space" data-vk="Space">Space</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="RAlt">Alt</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="RWin">⊞</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="AppsKey">▤</span>
+                    <span class="habit-setup-trigger-kbd__key" data-vk="RCtrl">Ctrl</span>
+                  </div>
+                </div>
+                <div class="habit-setup-trigger-feedback" id="habitSetupTriggerFbKeep">
+                  <span class="habit-setup-trigger-feedback__pulse"></span>
+                  <span class="habit-setup-trigger-feedback__text" id="habitSetupTriggerFbKeepText">按住启动键说话中</span>
+                  <span class="habit-setup-trigger-feedback__wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+                </div>
+              </div>
+              <button type="button" class="btn habit-setup-trigger-pick" id="btnHabitSetupTriggerKeep">可以，用现在的键盘</button>
+            </div>
+
+            <div class="habit-setup-trigger-col" data-scene="extra">
+              <div class="habit-setup-trigger-scene habit-setup-trigger-scene--extra is-active" id="habitSetupTriggerSceneExtra" data-scene="extra" aria-label="外设场景">
+                <div class="habit-setup-trigger-devices" aria-hidden="true">
+                  <div class="habit-setup-trigger-device habit-setup-trigger-device--ring" data-d="0">
+                    <div class="habit-setup-trigger-device__art">
+                      <span class="habit-setup-trigger-device__key"></span>
+                      <span class="habit-setup-trigger-device__ripple"></span>
+                    </div>
+                    <div class="habit-setup-trigger-device__name" id="habitSetupTriggerDev0">戒指</div>
+                  </div>
+                  <div class="habit-setup-trigger-device habit-setup-trigger-device--mouse" data-d="1">
+                    <div class="habit-setup-trigger-device__art">
+                      <span class="habit-setup-trigger-device__key"></span>
+                      <span class="habit-setup-trigger-device__ripple"></span>
+                    </div>
+                    <div class="habit-setup-trigger-device__name" id="habitSetupTriggerDev1">鼠标侧键</div>
+                  </div>
+                  <div class="habit-setup-trigger-device habit-setup-trigger-device--remote" data-d="2">
+                    <div class="habit-setup-trigger-device__art">
+                      <span class="habit-setup-trigger-device__key"></span>
+                      <span class="habit-setup-trigger-device__ripple"></span>
+                    </div>
+                    <div class="habit-setup-trigger-device__name" id="habitSetupTriggerDev2">媒体遥控器</div>
+                  </div>
+                  <div class="habit-setup-trigger-device habit-setup-trigger-device--gamepad" data-d="3">
+                    <div class="habit-setup-trigger-device__art">
+                      <span class="habit-setup-trigger-device__key"></span>
+                      <span class="habit-setup-trigger-device__ripple"></span>
+                    </div>
+                    <div class="habit-setup-trigger-device__name" id="habitSetupTriggerDev3">小手柄</div>
+                  </div>
+                </div>
+                <div class="habit-setup-trigger-feedback" id="habitSetupTriggerFbExtra">
+                  <span class="habit-setup-trigger-feedback__pulse"></span>
+                  <span class="habit-setup-trigger-feedback__text" id="habitSetupTriggerFbExtraText">戒指按键可触发</span>
+                  <span class="habit-setup-trigger-feedback__wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+                </div>
+              </div>
+              <button type="button" class="btn habit-setup-trigger-pick" id="btnHabitSetupTriggerNeedExtra">我想另设一个按键</button>
+            </div>
           </div>
-          <div class="habit-setup-test-grid" id="habitSetupTestGrid">
-            <section class="habit-setup-test-panel" id="habitSetupKeyTestPanel">
-              <h4 class="habit-setup-test-panel-title" id="habitSetupKeyTestTitle">按键测试</h4>
-              <p class="habit-setup-status" id="habitSetupKeyTestStatus"></p>
-              <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupKeyTestRetry">重新测试</button>
-            </section>
-            <section class="habit-setup-test-panel" id="habitSetupVoiceTestPanel2">
-              <h4 class="habit-setup-test-panel-title" id="habitSetupVoiceTestTitle2">语音测试</h4>
-              <p class="habit-setup-desc" id="habitSetupVoiceTestDesc2"></p>
-              <div id="habitSetupStep2VoiceHost"></div>
-              <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupVoiceTestRetry">重新测试</button>
-            </section>
+
+          <p class="habit-setup-trigger-gate-note" id="habitSetupTriggerGateNote">拿不准？点左边就行，以后还能改。</p>
+          <p class="habit-setup-trigger-gate-later" id="habitSetupTriggerGateLater">以后想加遥控器之类的，去「按键设置」或再走一遍快速入门就行。</p>
+        </div>
+
+        <div class="habit-setup-trigger-config" id="habitSetupTriggerConfig" hidden>
+          <button type="button" class="habit-setup-trigger-back-gate" id="btnHabitSetupTriggerBackToGate">← 返回重新选</button>
+          <div class="habit-setup-trigger-body" id="habitSetupTriggerBody">
+            <div class="habit-setup-stage">
+              <p class="habit-setup-status" id="habitSetupTriggerStatus"></p>
+              <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupTriggerStartRecord">开始录制启动键</button>
+            </div>
+            <div class="habit-setup-test-grid" id="habitSetupTestGrid">
+              <section class="habit-setup-test-panel" id="habitSetupKeyTestPanel">
+                <h4 class="habit-setup-test-panel-title" id="habitSetupKeyTestTitle">按键测试</h4>
+                <p class="habit-setup-status" id="habitSetupKeyTestStatus"></p>
+                <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupKeyTestRetry">重新测试</button>
+              </section>
+              <section class="habit-setup-test-panel" id="habitSetupVoiceTestPanel2">
+                <h4 class="habit-setup-test-panel-title" id="habitSetupVoiceTestTitle2">语音测试</h4>
+                <p class="habit-setup-desc" id="habitSetupVoiceTestDesc2"></p>
+                <div id="habitSetupStep2VoiceHost"></div>
+                <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupVoiceTestRetry">重新测试</button>
+              </section>
+            </div>
           </div>
         </div>
+
         <div class="habit-setup-actions habit-setup-actions--footer habit-setup-activation-dock" id="habitSetupTriggerDock">
           <button type="button" class="btn secondary" id="btnHabitSetupBackToActivationFromTrigger">上一步</button>
           <button type="button" class="btn primary" id="btnHabitSetupNextTrigger" disabled>下一步</button>
@@ -4213,6 +4337,26 @@
         <div class="habit-setup-badge" id="habitSetupVoiceLessonBadge">🎙 语音操作教学</div>
         <h3 class="habit-setup-title" id="habitSetupVoiceLessonTitle">学会三种语音操作</h3>
         <p class="habit-setup-desc" id="habitSetupVoiceLessonDesc">跟读并完成演示，确认你能用语音控制 OneTone。</p>
+
+        <div class="habit-setup-voice-mic-gate" id="habitSetupVoiceMicGate" hidden>
+          <div class="habit-setup-voice-mic-soft" id="habitSetupVoiceMicSoft">
+            <div class="habit-setup-voice-mic-soft-art" aria-hidden="true">
+              <div class="habit-setup-voice-mic-icon">
+                <span class="habit-setup-voice-mic-icon__head"></span>
+                <span class="habit-setup-voice-mic-icon__stand"></span>
+                <span class="habit-setup-voice-mic-icon__base"></span>
+                <span class="habit-setup-voice-mic-icon__slash"></span>
+              </div>
+            </div>
+            <p class="habit-setup-voice-mic-soft-status" id="habitSetupVoiceMicSoftStatus">即将继续…</p>
+            <div class="habit-setup-voice-mic-soft-progress" id="habitSetupVoiceMicSoftProgress" aria-hidden="true">
+              <span class="habit-setup-voice-mic-soft-progress__bar"></span>
+            </div>
+            <button type="button" class="btn primary habit-setup-voice-mic-continue" id="btnHabitSetupVoiceMicContinue">继续</button>
+            <button type="button" class="habit-setup-voice-mic-recheck-link" id="btnHabitSetupVoiceMicRecheck">我已接好麦克风</button>
+          </div>
+        </div>
+
         <div class="habit-setup-test-panel" id="habitSetupVoiceEasterPrompt">
           <p class="habit-setup-desc" id="habitSetupVoiceEasterPromptDesc">彩蛋：要不要试试语音激活输入方案？</p>
           <div class="habit-setup-record-actions">
@@ -4228,6 +4372,29 @@
         </section>
         <div class="habit-setup-voice-lessons" id="habitSetupVoiceLessons" role="listbox" aria-label="语音教学"></div>
         <div class="habit-setup-voice-lesson-demo" id="habitSetupVoiceLessonDemoHost" hidden></div>
+
+        <div class="habit-setup-voice-practice-stage" id="habitSetupVoicePracticeStage" hidden>
+          <button type="button" class="habit-setup-voice-practice-back" id="btnHabitSetupVoicePracticeBack">← 返回</button>
+          <div class="habit-setup-voice-practice-stage-inner">
+            <div class="habit-setup-badge" id="habitSetupVoicePracticeBadge">语音测试</div>
+            <h3 class="habit-setup-title" id="habitSetupVoicePracticeTitle">对着输入框说</h3>
+            <p class="habit-setup-desc" id="habitSetupVoicePracticeDesc">先说激活词开始听写，听写开始后请主动说结束词完成。</p>
+            <div class="habit-setup-voice-practice-coach" id="habitSetupVoicePracticeCoach" hidden role="status" aria-live="polite"></div>
+            <label class="habit-setup-voice-practice-field" id="habitSetupVoicePracticeField">
+              <span class="habit-setup-voice-practice-field-lbl" id="habitSetupVoicePracticeFieldLbl">练习输入框</span>
+              <textarea class="habit-setup-voice-practice-input" id="habitSetupVoicePracticeInput" rows="4" placeholder="系统语音输入法转化的文字会出现在这里…"></textarea>
+              <span class="habit-setup-voice-practice-caret" aria-hidden="true"></span>
+              <span class="habit-setup-voice-practice-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+            </label>
+            <div class="habit-setup-voice-practice-success" id="habitSetupVoicePracticeSuccess" hidden>
+              <span class="habit-setup-voice-practice-success-check" aria-hidden="true"></span>
+              <span id="habitSetupVoicePracticeSuccessText">已完成这次语音输入</span>
+            </div>
+            <div id="habitSetupVoicePracticeMount" class="habit-setup-voice-practice-mount"></div>
+            <button type="button" class="btn ghost habit-setup-voice-practice-mark" id="btnHabitSetupVoicePracticeMarkDone">标记为已完成</button>
+          </div>
+        </div>
+
         <div class="habit-setup-actions habit-setup-actions--footer">
           <button type="button" class="btn secondary" id="btnHabitSetupBackFromVoiceLesson">上一步</button>
           <button type="button" class="btn primary" id="btnHabitSetupSaveVoice" disabled>完成设置</button>

@@ -6,12 +6,43 @@
   function notifySetupInteractionActive(active){
     try{
       if(global.OneToneIpc&&global.OneToneIpc.invoke){
-        global.OneToneIpc.invoke('cmd_set_setup_interaction_active',{active:!!active}).catch(function(){});
+        global.OneToneIpc.invoke('cmd_set_setup_interaction_active',{active:!!active}).then(function(){
+          if(global.OneToneApp&&global.OneToneApp.pushLog){
+            global.OneToneApp.pushLog('[setup] interaction active='+(active?'1':'0'));
+          }
+        }).catch(function(err){
+          if(global.OneToneApp&&global.OneToneApp.pushLog){
+            global.OneToneApp.pushLog('[setup] set_setup_interaction_active failed: '+String(err&&err.message||err));
+          }
+        });
+      }
+    }catch(_){}
+  }
+
+  function setVoicePracticeHoldFg(on){
+    try{
+      if(global.OneToneIpc&&global.OneToneIpc.invoke){
+        global.OneToneIpc.invoke('cmd_voice_set_practice_hold_fg',{enabled:!!on}).catch(function(err){
+          if(global.OneToneApp&&global.OneToneApp.pushLog){
+            global.OneToneApp.pushLog('[setup] practice_hold_fg failed: '+String(err&&err.message||err));
+          }
+        });
       }
     }catch(_){}
   }
   var bound=false;
   var pollTimer=0;
+  var gateDeviceFbTimer=0;
+  var gateDeviceFbIdx=-1;
+  var voiceMicSoftSkipTimer=0;
+  var VOICE_MIC_SOFT_SKIP_MS=1400;
+  var voicePracticeStageTimer=0;
+  var voicePracticeStagePhase='idle';
+  var voicePracticeDictationTimer=0;
+  var voicePracticeEndArmedAt=0;
+  var voicePracticeInputUserEdited=false;
+  var voicePracticeInputBound=false;
+  var GATE_DEVICE_KEYS=['habitSetupTriggerDevRing','habitSetupTriggerDevMouse','habitSetupTriggerDevRemote','habitSetupTriggerDevPad'];
   var mappingPausedForSetup=false;
   var mappingEnabledBeforePause=null;
   var WAKE_PRESET_OPTIONS=['开始输入','开始听写','打开听写','语音输入','开启输入'];
@@ -188,11 +219,354 @@
     if(global.OneTonePhrasePractice&&global.OneTonePhrasePractice.isOpen&&global.OneTonePhrasePractice.isOpen()){
       global.OneTonePhrasePractice.close({silent:true});
     }
+    if(voicePracticeDictationTimer){
+      clearInterval(voicePracticeDictationTimer);
+      voicePracticeDictationTimer=0;
+    }
     var host=$('habitSetupVoiceLessonDemoHost');
     if(host){
       host.innerHTML='';
       host.hidden=true;
     }
+    var mount=$('habitSetupVoicePracticeMount');
+    if(mount) mount.innerHTML='';
+  }
+
+  function clearVoicePracticeStageTimer(){
+    if(voicePracticeStageTimer){
+      clearTimeout(voicePracticeStageTimer);
+      voicePracticeStageTimer=0;
+    }
+  }
+
+  function setVoicePracticeStageChrome(on){
+    var view=$('habitSetupVoiceLessonView');
+    if(view) view.classList.toggle('is-practice-stage',!!on);
+    var stage=$('habitSetupVoicePracticeStage');
+    if(stage) stage.hidden=!on;
+    var lessons=$('habitSetupVoiceLessons');
+    if(lessons) lessons.hidden=!!on;
+    var demo=$('habitSetupVoiceLessonDemoHost');
+    if(demo&&on){ demo.hidden=true; demo.innerHTML=''; }
+    var badge=$('habitSetupVoiceLessonBadge');
+    var title=$('habitSetupVoiceLessonTitle');
+    var desc=$('habitSetupVoiceLessonDesc');
+    if(badge) badge.hidden=!!on;
+    if(title) title.hidden=!!on;
+    if(desc) desc.hidden=!!on;
+    var foot=view?view.querySelector('.habit-setup-actions--footer'):null;
+    if(foot) foot.hidden=!!on;
+  }
+
+  function ensureVoicePracticeInputBound(){
+    if(voicePracticeInputBound) return;
+    var input=$('habitSetupVoicePracticeInput');
+    if(!input) return;
+    voicePracticeInputBound=true;
+    input.addEventListener('input',function(){
+      voicePracticeInputUserEdited=true;
+      stopVoicePracticeDictationAnim();
+    });
+  }
+
+  function resetVoicePracticeStageUi(){
+    var field=$('habitSetupVoicePracticeField');
+    var input=$('habitSetupVoicePracticeInput');
+    var coach=$('habitSetupVoicePracticeCoach');
+    var success=$('habitSetupVoicePracticeSuccess');
+    voicePracticeInputUserEdited=false;
+    if(field){
+      field.classList.remove('is-dictating','is-success');
+    }
+    if(input){
+      input.value='';
+      input.placeholder=t('qsVoicePracticeInputPlaceholder');
+    }
+    if(coach){
+      coach.hidden=true;
+      coach.textContent='';
+      coach.classList.remove('is-in');
+    }
+    if(success) success.hidden=true;
+  }
+
+  function stopVoicePracticeDictationAnim(){
+    if(voicePracticeDictationTimer){
+      clearInterval(voicePracticeDictationTimer);
+      voicePracticeDictationTimer=0;
+    }
+  }
+
+  // Keep practice field focused for system IME; do not write ASR into the box.
+  function startVoicePracticeLiveDictation(opts){
+    opts=opts||{};
+    stopVoicePracticeDictationAnim();
+    ensureVoicePracticeInputBound();
+    var input=$('habitSetupVoicePracticeInput');
+    var field=$('habitSetupVoicePracticeField');
+    if(field) field.classList.add('is-dictating');
+    if(input){
+      if(opts.clear!==false&&!voicePracticeInputUserEdited) input.value='';
+      try{ input.focus(); }catch(_){}
+    }
+    voicePracticeDictationTimer=setInterval(function(){
+      if(voicePracticeStagePhase!=='dictating'&&voicePracticeStagePhase!=='listeningEnd'){
+        stopVoicePracticeDictationAnim();
+      }
+    },800);
+  }
+
+  function activateVoicePracticeIme(){
+    var input=$('habitSetupVoicePracticeInput');
+    if(input){
+      try{ input.focus(); }catch(_){}
+    }
+    if(!(global.OneToneIpc&&typeof global.OneToneIpc.invoke==='function')) return;
+    global.OneToneIpc.invoke('cmd_voice_practice_activate_ime',{}).catch(function(err){
+      try{ console.warn('[practice] activate_ime', err); }catch(_){}
+    });
+  }
+
+  function showVoicePracticeCoach(msg){
+    var coach=$('habitSetupVoicePracticeCoach');
+    if(!coach) return;
+    coach.hidden=false;
+    coach.textContent=msg;
+    coach.classList.remove('is-in');
+    void coach.offsetWidth;
+    coach.classList.add('is-in');
+  }
+
+  function clearVoicePracticeMount(){
+    var mount=$('habitSetupVoicePracticeMount');
+    if(mount) mount.innerHTML='';
+  }
+
+  // Wake only: embedded PhrasePractice on the stage (ASR preview stays in mount, not the IME box).
+  function bindVoicePracticeStageListening(mode){
+    if(mode==='end'){
+      bindVoicePracticeEndModal();
+      return;
+    }
+    var mount=$('habitSetupVoicePracticeMount');
+    if(!mount||!global.OneTonePhrasePractice||!global.OneTonePhrasePractice.open) return;
+    var phrases=getWakePhrases();
+    var options=WAKE_PRESET_OPTIONS.slice();
+    var hint=t('qsVoicePracticeHintWake')||t('phrasePracticeHint');
+    global.OneTonePhrasePractice.open({
+      embedded:true,
+      mount:'#habitSetupVoicePracticeMount',
+      mode:'wake',
+      phrases:phrases,
+      phraseOptions:options,
+      multiSelect:false,
+      hintText:hint,
+      onMatch:function(){
+        onVoicePracticeWakeMatched();
+      },
+      onSkip:function(){
+        /* stay on stage unless user hits back — skip is unused in embedded shell */
+      }
+    });
+  }
+
+  // End passphrase: modal only when user enters the end lesson (not after wake).
+  function bindVoicePracticeEndModal(){
+    if(!global.OneTonePhrasePractice||!global.OneTonePhrasePractice.open) return;
+    clearVoicePracticeMount();
+    var phrases=getVoiceEndPhrases();
+    var options=getVoiceEndPhrases();
+    var hint=t('qsVoicePracticeHintEnd')||t('phrasePracticeHintEnd');
+    global.OneTonePhrasePractice.open({
+      embedded:false,
+      mode:'end',
+      phrases:phrases,
+      phraseOptions:options,
+      multiSelect:false,
+      hintText:hint,
+      onMatch:function(){
+        if(Date.now()<voicePracticeEndArmedAt){
+          bindVoicePracticeEndModal();
+          return;
+        }
+        onVoicePracticeEndMatched();
+      },
+      onSkip:function(){
+        /* stay on end stage; user can mark done or back out */
+      }
+    });
+  }
+
+  function qsVoiceDualPanelGuideText(){
+    var wakeDone=!!(setupState&&setupState.voiceLessons&&setupState.voiceLessons.wake);
+    var endDone=!!(setupState&&setupState.voiceLessons&&setupState.voiceLessons.end);
+    if(wakeDone&&!endDone){
+      return t('qsVoicePanelGuideAfterWake')||t('qsVoicePanelGuide');
+    }
+    if(wakeDone&&endDone){
+      return t('qsVoicePanelGuideAllDone')||t('qsVoicePanelGuide');
+    }
+    return t('qsVoicePanelGuide');
+  }
+
+  function onVoicePracticeWakeMatched(){
+    if(!setupState||setupState.page!==4) return;
+    if(voicePracticeStagePhase!=='listeningWake') return;
+    notifySetupInteractionActive(true);
+    if(!setupState.voiceLessons) setupState.voiceLessons={wake:false,end:false,cancel:false};
+    setupState.voiceLessons.wake=true;
+    setupState.activeVoiceLesson='end';
+    // Verify IME activate on this page, then return to dual panels — do not open end modal.
+    voicePracticeInputUserEdited=false;
+    startVoicePracticeLiveDictation({clear:true});
+    activateVoicePracticeIme();
+    voicePracticeStagePhase='success';
+    stopVoicePracticeDictationAnim();
+    if(global.OneTonePhrasePractice&&global.OneTonePhrasePractice.close){
+      global.OneTonePhrasePractice.close({silent:true});
+    }
+    clearVoicePracticeMount();
+    var field=$('habitSetupVoicePracticeField');
+    if(field){
+      field.classList.remove('is-dictating');
+      field.classList.add('is-success');
+    }
+    showVoicePracticeCoach(t('qsVoicePracticeCoachWakeDone'));
+    if($('habitSetupVoicePracticeTitle')) $('habitSetupVoicePracticeTitle').textContent=t('qsVoicePracticeTitleWakeDone');
+    if($('habitSetupVoicePracticeDesc')) $('habitSetupVoicePracticeDesc').textContent=t('qsVoicePracticeDescWakeDone');
+    var success=$('habitSetupVoicePracticeSuccess');
+    var successText=$('habitSetupVoicePracticeSuccessText');
+    if(successText) successText.textContent=t('qsVoicePracticeWakeSuccess');
+    if(success) success.hidden=false;
+    if(global.OneToneApp&&global.OneToneApp.toast){
+      global.OneToneApp.toast(t('qsVoicePracticeWakeSuccessToast'));
+    }
+    clearVoicePracticeStageTimer();
+    voicePracticeStageTimer=setTimeout(function(){
+      voicePracticeStageTimer=0;
+      exitVoicePracticeStage({keepLessons:true});
+    },1200);
+    renderWizardFooters();
+  }
+
+  function onVoicePracticeEndMatched(){
+    if(!setupState||setupState.page!==4) return;
+    if(voicePracticeStagePhase!=='listeningEnd'&&voicePracticeStagePhase!=='dictating') return;
+    voicePracticeStagePhase='success';
+    stopVoicePracticeDictationAnim();
+    if(!setupState.voiceLessons) setupState.voiceLessons={wake:false,end:false,cancel:false};
+    // Only mark end when user intentionally practiced the end lesson.
+    setupState.voiceLessons.end=true;
+    var field=$('habitSetupVoicePracticeField');
+    if(field){
+      field.classList.remove('is-dictating');
+      field.classList.add('is-success');
+    }
+    var coach=$('habitSetupVoicePracticeCoach');
+    if(coach) coach.hidden=true;
+    var success=$('habitSetupVoicePracticeSuccess');
+    var successText=$('habitSetupVoicePracticeSuccessText');
+    if(successText) successText.textContent=t('qsVoicePracticeSuccess');
+    if(success) success.hidden=false;
+    if(global.OneTonePhrasePractice&&global.OneTonePhrasePractice.close){
+      global.OneTonePhrasePractice.close({silent:true});
+    }
+    clearVoicePracticeStageTimer();
+    voicePracticeStageTimer=setTimeout(function(){
+      voicePracticeStageTimer=0;
+      exitVoicePracticeStage({keepLessons:true});
+    },1100);
+    renderWizardFooters();
+  }
+
+  function exitVoicePracticeStage(opts){
+    opts=opts||{};
+    setVoicePracticeHoldFg(false);
+    clearVoicePracticeStageTimer();
+    stopVoicePracticeDictationAnim();
+    clearVoiceLessonPractice();
+    voicePracticeStagePhase='idle';
+    resetVoicePracticeStageUi();
+    setVoicePracticeStageChrome(false);
+    if(setupState){
+      if(!opts.keepLessons){
+        /* leave lesson flags as-is when cancelled mid-way */
+      }
+      setupState.activeVoiceLesson=qsNextVoiceLessonId()||'';
+    }
+    renderVoiceLessonPage();
+  }
+
+  function enterVoicePracticeStage(lessonId){
+    if(!setupState||setupState.page!==4||!setupState.qsMode) return;
+    if(setupState.voiceMicGate!=='ready') return;
+    notifySetupInteractionActive(true);
+    setVoicePracticeHoldFg(true);
+    lessonId=String(lessonId||'').trim();
+    if(lessonId!=='wake'&&lessonId!=='end') lessonId=qsNextVoiceLessonId()||'wake';
+    if(lessonId==='end'&&!(setupState.voiceLessons&&setupState.voiceLessons.wake)){
+      if(global.OneToneApp&&global.OneToneApp.toast){
+        global.OneToneApp.toast(t('qsVoiceEndLockedHint'));
+      }
+      lessonId='wake';
+    }
+    clearVoicePracticeStageTimer();
+    stopVoicePracticeDictationAnim();
+    clearVoiceLessonPractice();
+    setupState.activeVoiceLesson=lessonId;
+    syncQsVoicePanels();
+    resetVoicePracticeStageUi();
+    ensureVoicePracticeInputBound();
+    setVoicePracticeStageChrome(true);
+
+    var startEnd=lessonId==='end';
+    voicePracticeStagePhase=startEnd?'listeningEnd':'listeningWake';
+    if($('habitSetupVoicePracticeBadge')) $('habitSetupVoicePracticeBadge').textContent=t('habitSetupStepVoiceFlow')||t('habitSetupStepVoiceEnd');
+    if($('habitSetupVoicePracticeTitle')){
+      $('habitSetupVoicePracticeTitle').textContent=startEnd
+        ?t('qsVoicePracticeTitleEnd')
+        :t('qsVoicePracticeTitleWake');
+    }
+    if($('habitSetupVoicePracticeDesc')){
+      $('habitSetupVoicePracticeDesc').textContent=startEnd
+        ?t('qsVoicePracticeDescEnd')
+        :t('qsVoicePracticeDescWake');
+    }
+    if($('habitSetupVoicePracticeFieldLbl')) $('habitSetupVoicePracticeFieldLbl').textContent=t('qsVoicePracticeFieldLbl');
+    if($('btnHabitSetupVoicePracticeBack')) $('btnHabitSetupVoicePracticeBack').textContent=t('qsVoicePracticeBack');
+    if($('btnHabitSetupVoicePracticeMarkDone')) $('btnHabitSetupVoicePracticeMarkDone').textContent=t('habitSetupVoiceLessonMarkDone');
+    if(startEnd){
+      showVoicePracticeCoach(t('qsVoicePracticeCoachEndOnly'));
+      startVoicePracticeLiveDictation({clear:true});
+      activateVoicePracticeIme();
+      voicePracticeEndArmedAt=Date.now()+800;
+      bindVoicePracticeEndModal();
+    }else{
+      voicePracticeEndArmedAt=0;
+      bindVoicePracticeStageListening('wake');
+    }
+    renderWizardFooters();
+  }
+
+  function markVoicePracticeStageDoneManual(){
+    if(!setupState||setupState.page!==4) return;
+    if(!setupState.voiceLessons) setupState.voiceLessons={wake:false,end:false,cancel:false};
+    // Manual mark only completes the current lesson — never auto-chain wake→end.
+    if(voicePracticeStagePhase==='listeningWake'){
+      setupState.voiceLessons.wake=true;
+      setupState.activeVoiceLesson='end';
+      if(global.OneToneApp&&global.OneToneApp.toast){
+        global.OneToneApp.toast(t('qsVoicePracticeWakeSuccessToast'));
+      }
+      exitVoicePracticeStage({keepLessons:true});
+      return;
+    }
+    if(voicePracticeStagePhase==='listeningEnd'||voicePracticeStagePhase==='dictating'){
+      setupState.voiceLessons.end=true;
+      exitVoicePracticeStage({keepLessons:true});
+      return;
+    }
+    exitVoicePracticeStage({keepLessons:true});
   }
   var triggerTestListener=null;
   var triggerTestTimeout=0;
@@ -736,9 +1110,9 @@
     if(step===setupState.page) return true;
     if(step===1) return true;
     if(step===2) return activationStepReady();
-    if(step===3) return hasRecordedTrigger();
+    if(step===3) return hasRecordedTrigger()||triggerKeptExisting();
     if(step===4){
-      if(setupState.qsMode) return hasRecordedTrigger();
+      if(setupState.qsMode) return hasRecordedTrigger()||triggerKeptExisting();
       return !!setupState.modeSaved;
     }
     return false;
@@ -753,12 +1127,13 @@
       clearVoiceLessonPractice();
       closeSubHost();
       setupState.page=2;
+      setupState.triggerScenario='undecided';
       renderPage();
       ensureTriggerPageReady();
       return;
     }
     if(setupState.page===2){
-      if(!hasRecordedTrigger()) return;
+      if(!triggerStepReady()) return;
       if(setupState.qsMode){
         // Avoid activateScene + full home refresh on the click path — that froze the UI ("未响应").
         clearEmbeddedTriggerTest();
@@ -848,10 +1223,179 @@
     return !!triggerPreview(m);
   }
 
+  function triggerKeptExisting(){
+    return !!(setupState&&setupState.triggerScenario==='keep_existing');
+  }
+
   function triggerStepReady(){
     if(!setupState) return false;
+    if(setupState.triggerScenario==='keep_existing') return true;
+    if(setupState.triggerScenario!=='need_extra') return false;
     if(setupState.triggerTestPassed) return true;
     return hasRecordedTrigger();
+  }
+
+  function stopGateDeviceFeedback(){
+    if(gateDeviceFbTimer){
+      clearInterval(gateDeviceFbTimer);
+      gateDeviceFbTimer=0;
+    }
+    gateDeviceFbIdx=-1;
+  }
+
+  function gateDemoActivationCombo(){
+    var key=String(activationTargetKey()||step2ImeActivationKey()||'').trim();
+    return key||'LAlt';
+  }
+
+  function normalizeGateVkToken(tok){
+    tok=String(tok||'').trim();
+    if(!tok) return '';
+    var alias={
+      Esc:'Esc', Escape:'Esc', Space:'Space', Enter:'Enter', Tab:'Tab',
+      Backspace:'Backspace', CapsLock:'CapsLock', Caps:'CapsLock',
+      Ctrl:'LCtrl', Control:'LCtrl', LControl:'LCtrl', RControl:'RCtrl',
+      Shift:'LShift', LShift:'LShift', RShift:'RShift',
+      Alt:'LAlt', LAlt:'LAlt', RAlt:'RAlt',
+      Win:'LWin', LWin:'LWin', RWin:'RWin', Meta:'LWin',
+      AppsKey:'AppsKey', Menu:'AppsKey',
+      'Left Alt':'LAlt', 'Right Alt':'RAlt', 'Left Ctrl':'LCtrl', 'Right Ctrl':'RCtrl',
+      'Left Shift':'LShift', 'Right Shift':'RShift', 'Left Win':'LWin', 'Right Win':'RWin'
+    };
+    if(alias[tok]) return alias[tok];
+    if(/^[a-z]$/i.test(tok)) return tok.toUpperCase();
+    if(/^[0-9]$/.test(tok)) return tok;
+    if(/^F([1-9]|1[0-2])$/i.test(tok)) return tok.toUpperCase();
+    return tok;
+  }
+
+  function syncGateKeepKeyboard(){
+    var kbd=$('habitSetupTriggerKbd');
+    if(!kbd) return;
+    var combo=gateDemoActivationCombo();
+    var parts=combo.split('+').map(normalizeGateVkToken).filter(Boolean);
+    if(!parts.length) parts=['LAlt'];
+    var keys=kbd.querySelectorAll('.habit-setup-trigger-kbd__key[data-vk]');
+    for(var i=0;i<keys.length;i++){
+      keys[i].classList.remove('is-active','is-cand');
+      var oldRipple=keys[i].querySelector('.habit-setup-trigger-kbd__ripple');
+      if(oldRipple) oldRipple.parentNode.removeChild(oldRipple);
+    }
+    function findVk(vk){
+      if(!vk) return null;
+      return kbd.querySelector('.habit-setup-trigger-kbd__key[data-vk="'+vk+'"]');
+    }
+    var primary=parts[parts.length-1];
+    var mods=parts.slice(0,-1);
+    for(var mi=0;mi<mods.length;mi++){
+      var modEl=findVk(mods[mi]);
+      if(modEl) modEl.classList.add('is-cand');
+    }
+    var main=findVk(primary);
+    if(!main&&primary==='LCtrl') main=findVk('RCtrl');
+    if(!main&&primary==='LAlt') main=findVk('RAlt');
+    if(!main&&primary==='LShift') main=findVk('RShift');
+    if(!main&&primary==='LWin') main=findVk('RWin');
+    if(main){
+      main.classList.add('is-active');
+      var ripple=document.createElement('span');
+      ripple.className='habit-setup-trigger-kbd__ripple';
+      main.appendChild(ripple);
+    }
+    var fb=$('habitSetupTriggerFbKeepText');
+    if(fb){
+      fb.textContent=t('habitSetupTriggerFbKeep').replace('{key}',friendlyKey(combo)||combo);
+    }
+  }
+
+  function updateGateDeviceFeedbackText(){
+    var el=$('habitSetupTriggerFbExtraText');
+    if(!el) return;
+    var idx=gateDeviceFbIdx>=0?gateDeviceFbIdx:0;
+    var name=t(GATE_DEVICE_KEYS[idx]||GATE_DEVICE_KEYS[0]);
+    el.textContent=t('habitSetupTriggerFbDevice').replace('{name}',name);
+  }
+
+  function startGateDeviceFeedback(){
+    stopGateDeviceFeedback();
+    gateDeviceFbIdx=0;
+    updateGateDeviceFeedbackText();
+    gateDeviceFbTimer=setInterval(function(){
+      if(!setupState||setupState.page!==2||setupState.triggerScenario==='need_extra'){
+        stopGateDeviceFeedback();
+        return;
+      }
+      // Only cycle device demo while the extra column is hovered.
+      var extraCol=document.querySelector('.habit-setup-trigger-col[data-scene="extra"]');
+      if(!extraCol||!extraCol.classList.contains('is-hot')) return;
+      var idx=Math.floor((Date.now()/1000)%6/1.5)%4;
+      if(idx===gateDeviceFbIdx) return;
+      gateDeviceFbIdx=idx;
+      updateGateDeviceFeedbackText();
+    },200);
+  }
+
+  function setTriggerGateColHot(col,on){
+    if(!col) return;
+    var parallel=$('habitSetupTriggerParallel');
+    if(on&&parallel){
+      var cols=parallel.querySelectorAll('.habit-setup-trigger-col');
+      for(var i=0;i<cols.length;i++){
+        if(cols[i]!==col) cols[i].classList.remove('is-hot');
+      }
+    }
+    col.classList.toggle('is-hot',!!on);
+  }
+
+  function renderTriggerScenarioGate(){
+    if(!setupState) return;
+    var gate=$('habitSetupTriggerGate');
+    var config=$('habitSetupTriggerConfig');
+    var needExtra=setupState.triggerScenario==='need_extra';
+    if(gate) gate.hidden=!!needExtra;
+    if(config) config.hidden=!needExtra;
+    if(needExtra||setupState.page!==2){
+      stopGateDeviceFeedback();
+      return;
+    }
+    syncGateKeepKeyboard();
+    if(!gateDeviceFbTimer) startGateDeviceFeedback();
+  }
+
+  function chooseTriggerKeepExisting(){
+    if(!setupState||setupState.page!==2) return;
+    setupState.triggerScenario='keep_existing';
+    stopGateDeviceFeedback();
+    clearEmbeddedTriggerTest();
+    var m=mappingById(setupState.mappingId);
+    if(m&&String(m.triggerKey||'').trim()){
+      setupState.triggerCaptured=true;
+    }
+    renderTriggerScenarioGate();
+    renderWizardFooters();
+    goNext();
+  }
+
+  function chooseTriggerNeedExtra(){
+    if(!setupState||setupState.page!==2) return;
+    setupState.triggerScenario='need_extra';
+    stopGateDeviceFeedback();
+    var m=mappingById(setupState.mappingId);
+    if(m&&String(m.triggerKey||'').trim()){
+      setupState.triggerCaptured=true;
+    }
+    renderTriggerScenarioGate();
+    ensureTriggerPageReady();
+    renderWizardFooters();
+  }
+
+  function backToTriggerGate(){
+    if(!setupState||setupState.page!==2) return;
+    clearEmbeddedTriggerTest();
+    setupState.triggerScenario='undecided';
+    setupState.triggerTestPassed=false;
+    renderTriggerScenarioGate();
+    renderWizardFooters();
   }
 
   function setFooterBtn(btn, enabled, label){
@@ -894,9 +1438,13 @@
 
   function ensureTriggerPageReady(){
     if(!setupState) return;
+    if(!setupState.triggerScenario) setupState.triggerScenario='undecided';
     pauseMappingForSetup();
-    renderTriggerStage();
-    renderTriggerTestPanels();
+    renderTriggerScenarioGate();
+    if(setupState.triggerScenario==='need_extra'){
+      renderTriggerStage();
+      renderTriggerTestPanels();
+    }
   }
 
   function goToStep(step){
@@ -906,12 +1454,29 @@
     if(step!==2) clearEmbeddedTriggerTest();
     if(step!==2) clearStep2VoicePractice();
     if(step!==4) clearVoiceLessonPractice();
+    if(step!==4) clearVoiceMicSoftSkipTimer();
+    if(step!==4){
+      setVoicePracticeHoldFg(false);
+      clearVoicePracticeStageTimer();
+      stopVoicePracticeDictationAnim();
+      voicePracticeStagePhase='idle';
+      setVoicePracticeStageChrome(false);
+      resetVoicePracticeStageUi();
+    }
     closeSubHost();
     setupState.page=step;
     renderPage();
     if(step===2) ensureTriggerPageReady();
     if(step===3&&!setupState.qsMode) startModeCompatProbe();
-    if(step===4) renderVoiceLessonPage();
+    if(step===4){
+      clearVoicePracticeStageTimer();
+      stopVoicePracticeDictationAnim();
+      voicePracticeStagePhase='idle';
+      setVoicePracticeStageChrome(false);
+      resetVoicePracticeStageUi();
+      setupState.voiceMicGate='pending';
+      ensureVoiceMicGate({force:true});
+    }
   }
 
   function renderStepProgress(){
@@ -1143,52 +1708,230 @@
     return '';
   }
 
+  function hasAvailableMic(){
+    var api=global.OneToneAppMic;
+    if(!api||typeof api.devices!=='function') return false;
+    var list=api.devices();
+    return Array.isArray(list)&&list.length>0;
+  }
+
+  function probeVoiceMic(){
+    var api=global.OneToneAppMic;
+    var invoke=global.OneToneIpc&&typeof global.OneToneIpc.invoke==='function'
+      ?global.OneToneIpc.invoke
+      :null;
+    var listP=(!api||typeof api.loadMicDevices!=='function')
+      ?Promise.resolve(false)
+      :api.loadMicDevices({manual:true}).then(function(){
+        if(api.getMicUiState){
+          var st=api.getMicUiState();
+          if(st&&st.key==='missing') return false;
+          if(st&&st.available===false) return false;
+        }
+        return hasAvailableMic();
+      }).catch(function(){ return false; });
+    var pfP=!invoke
+      ?Promise.resolve(null)
+      :invoke('cmd_acoustic_voice_command_preflight',{}).then(function(r){
+        if(!r||typeof r!=='object') return null;
+        if(r.hasDefaultInput===false) return false;
+        if(r.messageKey==='habitAcousticCmdNoMic') return false;
+        if(r.hasDefaultInput===true) return true;
+        return null;
+      }).catch(function(){ return null; });
+    return Promise.all([listP,pfP]).then(function(pair){
+      var listOk=!!pair[0];
+      var pf=pair[1];
+      if(pf===false) return false;
+      return listOk;
+    });
+  }
+
+  function hideVoicePracticeSurfaces(){
+    var prompt=$('habitSetupVoiceEasterPrompt');
+    var lessonsHost=$('habitSetupVoiceLessons');
+    var demoHost=$('habitSetupVoiceLessonDemoHost');
+    var panel=$('habitSetupVoiceStep4Panel');
+    if(prompt) prompt.hidden=true;
+    if(lessonsHost){ lessonsHost.innerHTML=''; lessonsHost.hidden=true; }
+    if(demoHost){ demoHost.innerHTML=''; demoHost.hidden=true; }
+    if(panel) panel.hidden=true;
+    clearVoiceLessonPractice();
+  }
+
+  function showVoiceMicGateUi(mode){
+    var gate=$('habitSetupVoiceMicGate');
+    if(gate) gate.hidden=false;
+    hideVoicePracticeSurfaces();
+    if($('habitSetupVoiceLessonBadge')) $('habitSetupVoiceLessonBadge').textContent=t('habitSetupVoiceMicGateBadge');
+    if($('habitSetupVoiceLessonTitle')) $('habitSetupVoiceLessonTitle').textContent=
+      mode==='pending'?t('habitSetupVoiceMicGateChecking'):t('habitSetupVoiceMicGateTitle');
+    if($('habitSetupVoiceLessonDesc')){
+      $('habitSetupVoiceLessonDesc').textContent=mode==='pending'
+        ?t('habitSetupVoiceMicGateCheckingDesc')
+        :t('habitSetupVoiceMicGateDesc');
+    }
+    var soft=$('habitSetupVoiceMicSoft');
+    if(soft) soft.classList.toggle('is-checking',mode==='pending');
+    var status=$('habitSetupVoiceMicSoftStatus');
+    if(status){
+      status.textContent=mode==='pending'
+        ?t('habitSetupVoiceMicGateChecking')
+        :t('habitSetupVoiceMicSoftStatus');
+    }
+    var progress=$('habitSetupVoiceMicSoftProgress');
+    if(progress){
+      progress.hidden=mode==='pending';
+      progress.classList.toggle('is-running',mode==='blocked');
+    }
+    var cont=$('btnHabitSetupVoiceMicContinue');
+    if(cont){
+      cont.textContent=t('habitSetupVoiceMicContinue');
+      cont.disabled=mode==='pending';
+      cont.hidden=mode==='pending';
+    }
+    var recheck=$('btnHabitSetupVoiceMicRecheck');
+    if(recheck){
+      recheck.textContent=t('habitSetupVoiceMicRecheck');
+      recheck.disabled=mode==='pending';
+      recheck.hidden=mode==='pending';
+    }
+  }
+
+  function hideVoiceMicGate(){
+    clearVoiceMicSoftSkipTimer();
+    var gate=$('habitSetupVoiceMicGate');
+    if(gate) gate.hidden=true;
+    var progress=$('habitSetupVoiceMicSoftProgress');
+    if(progress) progress.classList.remove('is-running');
+    var lessonsHost=$('habitSetupVoiceLessons');
+    if(lessonsHost) lessonsHost.hidden=false;
+  }
+
+  function markVoiceLessonsSkippedDone(){
+    if(!setupState) return;
+    if(!setupState.voiceLessons) setupState.voiceLessons={wake:false,end:false,cancel:false};
+    setupState.voiceLessons.wake=true;
+    setupState.voiceLessons.end=true;
+    setupState.voiceLessons.cancel=true;
+    setupState.activeVoiceLesson='';
+  }
+
+  function clearVoiceMicSoftSkipTimer(){
+    if(voiceMicSoftSkipTimer){
+      clearTimeout(voiceMicSoftSkipTimer);
+      voiceMicSoftSkipTimer=0;
+    }
+  }
+
+  function scheduleVoiceMicSoftSkip(){
+    clearVoiceMicSoftSkipTimer();
+    if(!setupState||setupState.page!==4||setupState.voiceMicGate!=='blocked') return;
+    voiceMicSoftSkipTimer=setTimeout(function(){
+      voiceMicSoftSkipTimer=0;
+      finishVoiceMicSoftSkip();
+    },VOICE_MIC_SOFT_SKIP_MS);
+  }
+
+  function finishVoiceMicSoftSkip(){
+    if(!setupState||setupState.page!==4) return;
+    if(setupState.voiceMicGate==='skipped'||setupState.voiceMicGate==='ready') return;
+    clearVoiceMicSoftSkipTimer();
+    setupState.voiceMicGate='skipped';
+    markVoiceLessonsSkippedDone();
+    hideVoiceMicGate();
+    saveVoiceLesson();
+  }
+
+  function ensureVoiceMicGate(opts){
+    opts=opts||{};
+    if(!setupState||setupState.page!==4) return;
+    var force=!!opts.force;
+    if(!force&&(setupState.voiceMicGate==='ready'||setupState.voiceMicGate==='skipped')){
+      renderVoiceLessonPage();
+      return;
+    }
+    clearVoiceMicSoftSkipTimer();
+    setupState.voiceMicGate='pending';
+    showVoiceMicGateUi('pending');
+    renderWizardFooters();
+    probeVoiceMic().then(function(ok){
+      if(!setupState||setupState.page!==4) return;
+      if(setupState.voiceMicGate==='skipped') return;
+      setupState.voiceMicGate=ok?'ready':'blocked';
+      if(!ok&&opts.toastOnFail&&global.OneToneApp&&global.OneToneApp.toast){
+        global.OneToneApp.toast(t('habitSetupVoiceMicStillEmpty')||t('micEmpty'));
+      }
+      renderVoiceLessonPage();
+    });
+  }
+
+  function chooseVoiceMicRecheck(){
+    if(!setupState||setupState.page!==4) return;
+    clearVoiceMicSoftSkipTimer();
+    ensureVoiceMicGate({force:true,toastOnFail:true});
+  }
+
   function renderVoiceLessonPage(){
     if(!setupState||setupState.page!==4) return;
     var prompt=$('habitSetupVoiceEasterPrompt');
     var lessonsHost=$('habitSetupVoiceLessons');
     var demoHost=$('habitSetupVoiceLessonDemoHost');
     var qs=!!setupState.qsMode;
+    var micGate=setupState.voiceMicGate||'pending';
+
+    if(micGate==='pending'||micGate==='blocked'){
+      showVoiceMicGateUi(micGate);
+      if(micGate==='blocked') scheduleVoiceMicSoftSkip();
+      renderWizardFooters();
+      return;
+    }
+    hideVoiceMicGate();
 
     if(qs){
       setupState.voiceEasterEnabled=true;
       if(prompt) prompt.hidden=true;
       var panelQs=$('habitSetupVoiceStep4Panel');
       if(panelQs) panelQs.hidden=true;
+      if(voicePracticeStagePhase!=='idle'){
+        renderWizardFooters();
+        return;
+      }
+      setVoicePracticeStageChrome(false);
       if($('habitSetupVoiceLessonBadge')) $('habitSetupVoiceLessonBadge').textContent=t('habitSetupStepVoiceFlow')||t('habitSetupStepVoiceEnd');
       if($('habitSetupVoiceLessonTitle')) $('habitSetupVoiceLessonTitle').textContent=t('qsVoiceEndTitle');
-      if($('habitSetupVoiceLessonDesc')) $('habitSetupVoiceLessonDesc').textContent=t('qsVoiceEndDesc');
+      if($('habitSetupVoiceLessonDesc')) $('habitSetupVoiceLessonDesc').textContent=qsVoiceDualPanelGuideText();
       var hostQs=$('habitSetupVoiceLessons');
       if(hostQs){
+        hostQs.className='habit-setup-voice-lessons habit-setup-voice-lessons--parallel';
         var wakeDone=!!(setupState.voiceLessons&&setupState.voiceLessons.wake);
         var endDone=!!(setupState.voiceLessons&&setupState.voiceLessons.end);
         var active=setupState.activeVoiceLesson||qsNextVoiceLessonId()||'wake';
+        if(active==='end'&&!wakeDone) active='wake';
         var cards=[
           { id:'wake', title:t('habitSetupVoiceLessonWakeTitle'), desc:t('qsVoiceWakeLessonDesc')||t('habitSetupVoiceLessonWakeDesc'), done:wakeDone },
           { id:'end', title:t('habitSetupVoiceLessonEndTitle'), desc:t('qsVoiceEndLessonDesc')||t('habitSetupVoiceLessonEndDesc'), done:endDone }
         ];
         hostQs.innerHTML=cards.map(function(item){
           var sel=item.id===active;
+          var dim=!sel;
+          var locked=item.id==='end'&&!wakeDone;
           var demo=item.id==='wake'
-            ?'<div class="habit-setup-voice-mini habit-setup-voice-mini--wake" aria-hidden="true"><span></span><span></span><span></span></div>'
-            :'<div class="habit-setup-voice-mini habit-setup-voice-mini--end" aria-hidden="true"><span></span><span></span><span></span></div>';
-          return '<button type="button" class="habit-setup-voice-lesson-card'+(sel?' is-active':'')+(item.done?' is-done':'')+'"'
-            +' data-voice-lesson="'+esc(item.id)+'" aria-pressed="'+(sel?'true':'false')+'">'
+            ?'<div class="habit-setup-voice-mini habit-setup-voice-mini--wake" aria-hidden="true"><span></span><span></span><span></span><span></span></div>'
+            :'<div class="habit-setup-voice-mini habit-setup-voice-mini--end" aria-hidden="true"><span></span><span></span><span></span><span></span></div>';
+          return '<button type="button" class="habit-setup-voice-lesson-card'
+            +(sel?' is-active':'')
+            +(dim?' is-dim':'')
+            +(locked?' is-locked':'')
+            +(item.done?' is-done':'')+'"'
+            +' data-voice-lesson="'+esc(item.id)+'"'
+            +' aria-pressed="'+(sel?'true':'false')+'"'
+            +(locked?' aria-disabled="true"':'')+'>'
             +demo
             +(item.done?'<span class="habit-setup-voice-lesson-done">'+esc(t('habitSetupVoiceLessonDone'))+'</span>':'')
             +'<b>'+esc(item.title)+'</b><span>'+esc(item.desc)+'</span></button>';
         }).join('');
-        var nextId=qsNextVoiceLessonId();
-        if(nextId&&(!demoHost||demoHost.hidden||!String(demoHost.innerHTML||'').trim())){
-          setTimeout(function(){
-            if(!setupState||setupState.page!==4||!setupState.qsMode) return;
-            var still=qsNextVoiceLessonId();
-            if(!still) return;
-            var host=$('habitSetupVoiceLessonDemoHost');
-            if(host&&!host.hidden&&String(host.innerHTML||'').trim()) return;
-            openVoiceLesson(still);
-          },0);
-        }
+        // QS: stay on dual panels until user taps a column (practice stage).
       }
       renderWizardFooters();
       return;
@@ -1212,6 +1955,7 @@
     renderStep4VoicePanel();
     var host=$('habitSetupVoiceLessons');
     if(!host) return;
+    host.className='habit-setup-voice-lessons';
     var lessons=[
       { id:'wake', title:t('habitSetupVoiceLessonWakeTitle'), desc:t('habitSetupVoiceLessonWakeDesc') },
       { id:'end', title:t('habitSetupVoiceLessonEndTitle'), desc:t('habitSetupVoiceLessonEndDesc') },
@@ -1238,20 +1982,41 @@
     renderWizardFooters();
   }
 
+  function syncQsVoicePanels(){
+    if(!setupState||!setupState.qsMode||setupState.page!==4) return;
+    var host=$('habitSetupVoiceLessons');
+    if(!host||!host.classList.contains('habit-setup-voice-lessons--parallel')) return;
+    var wakeDone=!!(setupState.voiceLessons&&setupState.voiceLessons.wake);
+    var active=setupState.activeVoiceLesson||qsNextVoiceLessonId()||'wake';
+    if(active==='end'&&!wakeDone) active='wake';
+    var cards=host.querySelectorAll('[data-voice-lesson]');
+    for(var i=0;i<cards.length;i++){
+      var id=String(cards[i].getAttribute('data-voice-lesson')||'');
+      var sel=id===active;
+      var locked=id==='end'&&!wakeDone;
+      var done=!!(setupState.voiceLessons&&setupState.voiceLessons[id]);
+      cards[i].classList.toggle('is-active',sel);
+      cards[i].classList.toggle('is-dim',!sel);
+      cards[i].classList.toggle('is-locked',locked);
+      cards[i].classList.toggle('is-done',done);
+      cards[i].setAttribute('aria-pressed',sel?'true':'false');
+      if(locked) cards[i].setAttribute('aria-disabled','true');
+      else cards[i].removeAttribute('aria-disabled');
+    }
+  }
+
   function openVoiceLesson(lessonId){
     if(!setupState) return;
+    if(setupState.voiceMicGate!=='ready') return;
     if(!setupState.voiceEasterEnabled&&!setupState.qsMode) return;
     if(setupState.qsMode){
-      lessonId=String(lessonId||'').trim();
-      if(lessonId!=='wake'&&lessonId!=='end') lessonId=qsNextVoiceLessonId()||'wake';
-      // End only makes sense after activate in QS.
-      if(lessonId==='end'&&!(setupState.voiceLessons&&setupState.voiceLessons.wake)){
-        lessonId='wake';
-      }
+      enterVoicePracticeStage(lessonId);
+      return;
     }
     lessonId=String(lessonId||'').trim();
     if(!lessonId) return;
     setupState.activeVoiceLesson=lessonId;
+    syncQsVoicePanels();
     clearVoiceLessonPractice();
     var demoHost=$('habitSetupVoiceLessonDemoHost');
     if(!demoHost) return;
@@ -1723,6 +2488,17 @@
     if($('habitSetupTriggerBadge')) $('habitSetupTriggerBadge').textContent=t('habitSetupTriggerTestBadge');
     if($('habitSetupTriggerTitle')) $('habitSetupTriggerTitle').textContent=t('habitSetupTriggerTestTitle');
     if($('habitSetupTriggerDesc')) $('habitSetupTriggerDesc').textContent=t('habitSetupTriggerTestDesc');
+    if($('habitSetupTriggerGateNote')) $('habitSetupTriggerGateNote').textContent=t('habitSetupTriggerGateNote');
+    if($('habitSetupTriggerGateLater')) $('habitSetupTriggerGateLater').textContent=t('habitSetupTriggerGateLater');
+    if($('btnHabitSetupTriggerKeep')) $('btnHabitSetupTriggerKeep').textContent=t('habitSetupTriggerKeep');
+    if($('btnHabitSetupTriggerNeedExtra')) $('btnHabitSetupTriggerNeedExtra').textContent=t('habitSetupTriggerNeedExtra');
+    if($('btnHabitSetupTriggerBackToGate')) $('btnHabitSetupTriggerBackToGate').textContent=t('habitSetupTriggerBackToGate');
+    if($('habitSetupTriggerFbKeepText')) syncGateKeepKeyboard();
+    if($('habitSetupTriggerDev0')) $('habitSetupTriggerDev0').textContent=t('habitSetupTriggerDevRing');
+    if($('habitSetupTriggerDev1')) $('habitSetupTriggerDev1').textContent=t('habitSetupTriggerDevMouse');
+    if($('habitSetupTriggerDev2')) $('habitSetupTriggerDev2').textContent=t('habitSetupTriggerDevRemote');
+    if($('habitSetupTriggerDev3')) $('habitSetupTriggerDev3').textContent=t('habitSetupTriggerDevPad');
+    updateGateDeviceFeedbackText();
     if($('habitSetupKeyTestTitle')) $('habitSetupKeyTestTitle').textContent=t('habitSetupKeyTestTitle');
     if($('habitSetupActivationBadge')) $('habitSetupActivationBadge').textContent=t('habitSetupActivationBadge');
     if($('habitSetupActivationTitle')) $('habitSetupActivationTitle').textContent=t('habitSetupActivationTitle');
@@ -1734,9 +2510,14 @@
     if($('btnHabitSetupSave')) $('btnHabitSetupSave').textContent=t('habitSetupNext');
     if($('btnHabitSetupRecordBack')) $('btnHabitSetupRecordBack').textContent=t('habitSetupSubBack');
     renderStepProgress();
-    if(setupState.page===2||!setupState.qsMode){
-      renderTriggerKeyboard();
-      renderTriggerTestPanels();
+    if(setupState.page===2){
+      renderTriggerScenarioGate();
+      if(setupState.triggerScenario==='need_extra'){
+        renderTriggerKeyboard();
+        renderTriggerTestPanels();
+      }
+    }else if(!setupState.qsMode&&(setupState.page===3||setupState.page===4)){
+      /* non-QS later pages: no trigger paint */
     }
     if(setupState.page===1||!setupState.qsMode) renderImeStep();
     if(!setupState.qsMode) renderModeSection();
@@ -2076,12 +2857,17 @@
 
   function closeQuiet(){
     notifySetupInteractionActive(false);
+    setVoicePracticeHoldFg(false);
     clearPoll();
     clearTargetHook();
     clearEmbeddedTriggerTest();
     stopModeCompatProbe();
     clearStep2VoicePractice();
     clearVoiceLessonPractice();
+    clearVoiceMicSoftSkipTimer();
+    clearVoicePracticeStageTimer();
+    stopVoicePracticeDictationAnim();
+    voicePracticeStagePhase='idle';
     closeWakePractice();
     resumeMappingAfterSetup();
     overlayStack=[];
@@ -2106,6 +2892,7 @@
   function close(){
     notifySetupInteractionActive(false);
     clearPoll();
+    stopGateDeviceFeedback();
     clearTargetHook();
     clearEmbeddedTriggerTest();
     stopModeCompatProbe();
@@ -2251,7 +3038,9 @@
       recordConfirmPending:false,
       voiceLessons:qsMode?{wake:false,end:false,cancel:true}:{wake:false,end:false,cancel:false},
       activeVoiceLesson:'',
+      voiceMicGate:'pending',
       qsMode:qsMode,
+      triggerScenario:'undecided',
       qsPersona:opts.persona||null,
       qsTool:opts.tool||'',
       qsOnComplete:typeof opts.onComplete==='function'?opts.onComplete:null,
@@ -2341,6 +3130,20 @@
     bindClick('btnHabitSetupImeReRecord',startImeCustomRecord);
     bindClick('btnHabitSetupNext',goNext);
     bindClick('btnHabitSetupNextTrigger',goNext);
+    bindClick('btnHabitSetupTriggerKeep',chooseTriggerKeepExisting);
+    bindClick('btnHabitSetupTriggerNeedExtra',chooseTriggerNeedExtra);
+    bindClick('btnHabitSetupTriggerBackToGate',backToTriggerGate);
+    var parallel=$('habitSetupTriggerParallel');
+    if(parallel&&!parallel._htvHoverBound){
+      parallel._htvHoverBound=true;
+      var cols=parallel.querySelectorAll('.habit-setup-trigger-col');
+      for(var ci=0;ci<cols.length;ci++){
+        (function(col){
+          col.addEventListener('pointerenter',function(){ setTriggerGateColHot(col,true); });
+          col.addEventListener('pointerleave',function(){ setTriggerGateColHot(col,false); });
+        })(cols[ci]);
+      }
+    }
     bindClick('btnHabitSetupTriggerStartRecord',function(){
       if(!setupState) return;
       startTriggerRecording();
@@ -2359,6 +3162,10 @@
     });
     bindClick('btnHabitSetupSave',saveMode);
     bindClick('btnHabitSetupSaveVoice',saveVoiceLesson);
+    bindClick('btnHabitSetupVoiceMicContinue',finishVoiceMicSoftSkip);
+    bindClick('btnHabitSetupVoiceMicRecheck',chooseVoiceMicRecheck);
+    bindClick('btnHabitSetupVoicePracticeBack',function(){ exitVoicePracticeStage(); });
+    bindClick('btnHabitSetupVoicePracticeMarkDone',markVoicePracticeStageDoneManual);
     bindClick('btnHabitSetupVoiceEasterTry',function(){
       if(!setupState) return;
       setupState.voiceEasterEnabled=true;

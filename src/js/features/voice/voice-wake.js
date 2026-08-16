@@ -1897,17 +1897,28 @@
     return p==='voiceWake'||p==='debug';
   }
 
+  function practicePhraseOpen(){
+    try{
+      return !!(global.OneTonePhrasePractice&&global.OneTonePhrasePractice.isOpen&&global.OneTonePhrasePractice.isOpen());
+    }catch(_){
+      return false;
+    }
+  }
+
   function voiceStatusPollNeeded(){
     if(hooks().welcomeOpen()) return false;
     const snap=hooks().voiceUiSnapshot.end||{};
     return voiceWakeEnabledInConfig()
       ||global.OneToneVoiceEnd.enabledInConfig()
       ||hooks().sessionActiveState(snap.state||'idle')
-      ||settingsPanelNeedsVoicePoll();
+      ||settingsPanelNeedsVoicePoll()
+      ||practicePhraseOpen();
   }
 
   function voicePollIntervalMs(){
     if(!voiceStatusPollNeeded()) return 2500;
+    // QS / habit practice stage: keep ASR snapshot fresh for PhrasePractice preview + match.
+    if(practicePhraseOpen()) return 500;
     const w=hooks().voiceUiSnapshot.wake||{};
     const voskState=(w.vosk&&w.vosk.state)||'';
     const sapiState=(w.sapi&&w.sapi.state)||'';
@@ -1927,6 +1938,11 @@
     if(!ui().drawerOpen&&(voiceWakeEnabledInConfig()||global.OneToneVoiceEnd.enabledInConfig())) return 2000;
     if(runtime().paused) return 1500;
     return 1500;
+  }
+
+  function nudgeVoiceStatusPoll(){
+    try{ voiceStatusPollTick(); }catch(_){}
+    try{ scheduleNextVoicePoll(); }catch(_){}
   }
 
   function scheduleNextVoicePoll(){
@@ -1985,15 +2001,17 @@
     // Acoustic override may run Vosk while config still says SAPI enabled — always
     // poll every wake backend when any is on so the active card is not stuck on「已停止」.
     const anyWake=!!(sapiCfg&&sapiCfg.enabled)||!!(voskCfg&&voskCfg.enabled)||!!(kwsCfg&&kwsCfg.enabled);
+    const practiceOpen=practicePhraseOpen();
     // voiceWake: skip idle backends. 4-way poll + wake 「开始输入」stacked into UI_HB_STALL_5s.
     const liveDesired=String(
       (wakeSnap.vosk&&wakeSnap.vosk.desiredEngine)||(wakeSnap.kws&&wakeSnap.kws.desiredEngine)||(wakeSnap.sapi&&wakeSnap.sapi.desiredEngine)||''
     ).trim().toLowerCase();
     const voskLiveDesired=liveDesired==='vosk'||(!liveDesired&&!!(voskCfg&&voskCfg.enabled));
-    const needSapi=!!(sapiCfg&&sapiCfg.enabled)||panel==='debug'||(anyWake&&!wakePanel);
-    const needVosk=!!(voskCfg&&voskCfg.enabled)||panel==='debug'||wakePanel||(anyWake&&!wakePanel);
+    // Practice stage: always probe wake backends so PhrasePractice preview is not stuck on「正在听...」.
+    const needSapi=!!(sapiCfg&&sapiCfg.enabled)||panel==='debug'||(anyWake&&!wakePanel)||practiceOpen;
+    const needVosk=!!(voskCfg&&voskCfg.enabled)||panel==='debug'||wakePanel||(anyWake&&!wakePanel)||practiceOpen;
     // Skip KWS status while supervisor is on Vosk (auto/省电 fallback) — dead probe still cost IPC.
-    const needKws=(!!(kwsCfg&&kwsCfg.enabled)||panel==='debug'||(anyWake&&!wakePanel))&&!(wakePanel&&voskLiveDesired);
+    const needKws=(!!(kwsCfg&&kwsCfg.enabled)||panel==='debug'||(anyWake&&!wakePanel)||practiceOpen)&&!(wakePanel&&voskLiveDesired);
     function __pollOne(need,cmd){
       if(!need) return Promise.resolve(null);
       return global.OneToneIpc.invoke(cmd,{}).catch(function(){return null;});
@@ -3566,6 +3584,7 @@
     enabledInConfig:voiceWakeEnabledInConfig,
     pollNeeded:voiceStatusPollNeeded,
     pollTick:voiceStatusPollTick,
+    nudgePoll:nudgeVoiceStatusPoll,
     startPoll:startVoiceStatusPoll,
     liveFingerprint:voiceWakeLiveFingerprint,
     refreshDrawerMic:refreshDrawerMicAfterVoiceToggle,

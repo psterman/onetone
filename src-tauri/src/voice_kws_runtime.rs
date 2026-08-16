@@ -437,6 +437,20 @@ fn process_kws_detected(
         &format!("kws detected: phrase={phrase} kind={}", kind.as_str()),
     );
 
+    if *state.paused.lock() {
+        *state.voice_kws_last_skip.lock() = "监听已暂停，请先在上方点「恢复」。".into();
+        *state.voice_kws_last_trigger.lock() = String::new();
+        return;
+    }
+    if state
+        .voice_practice_hold_fg
+        .load(std::sync::atomic::Ordering::SeqCst)
+    {
+        *state.voice_kws_last_skip.lock() = "语音练习台中，仅本页听写测试。".into();
+        *state.voice_kws_last_trigger.lock() = String::new();
+        return;
+    }
+
     // Cooldown stays in runtime (M2); start gap before business dispatch for wake/summon.
     if matches!(kind, VoiceKeywordKind::Wake | VoiceKeywordKind::Summon) {
         let cooldown_ms = state.cfg.lock().voice_kws.cooldown_ms;

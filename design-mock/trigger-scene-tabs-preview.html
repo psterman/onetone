@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <title>快速入门 — 按键场景 Tab 切换 Preview</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    /* === Theme tokens (与 src/css/app.css 核心对齐) === */
+    :root {
+      --primary: #2a9cc4;
+      --primary-strong: #1f8fb8;
+      --primary-soft: #e6f7fc;
+      --indigo: #1a2d4a;
+      --on-surface: #152238;
+      --on-surface-muted: #5a7086;
+      --surface: rgba(255,255,255,.9);
+      --surface-high: rgba(255,255,255,.97);
+      --surface-soft: #f0f7fb;
+      --outline: rgba(42,156,196,.24);
+      --outline-variant: rgba(26,45,74,.10);
+      --shadow-card: 0 14px 34px rgba(26,45,74,.07);
+      --shadow-button: 0 10px 22px rgba(42,156,196,.20);
+      --radius-card: 28px;
+      --htv-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--on-surface);
+      background: linear-gradient(180deg, #eaf3f8 0%, #f5fafc 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    /* === Card === */
+    .card {
+      width: min(640px, 100%);
+      background: var(--surface-high);
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-card);
+      padding: 32px 28px 24px;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary-strong);
+      letter-spacing: .02em;
+    }
+
+    h1.title {
+      margin: 14px 0 6px;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--indigo);
+      letter-spacing: -.01em;
+    }
+    p.desc {
+      margin: 0 0 18px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--on-surface-muted);
+    }
+
+    /* === Tabs === */
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 4px;
+      background: var(--surface-soft);
+      border: 1px solid var(--outline-variant);
+      border-radius: 18px;
+      margin-bottom: 14px;
+    }
+    .tab {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      padding: 10px 12px;
+      border-radius: 14px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--on-surface-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all .25s var(--htv-ease);
+    }
+    .tab.is-active {
+      background: #fff;
+      color: var(--primary-strong);
+      box-shadow: 0 2px 8px rgba(42,156,196,.18);
+    }
+    .tab__icon { font-size: 15px; line-height: 1; }
+
+    /* === Stage === */
+    .stage {
+      position: relative;
+      width: 100%;
+      min-height: 280px;
+      margin: 4px 0 8px;
+    }
+    .scene {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s var(--htv-ease);
+    }
+    .scene.is-active { opacity: 1; pointer-events: auto; }
+
+    /* === Keyboard scene === */
+    .kbd {
+      background: linear-gradient(180deg, #f5f9fb 0%, #eaf2f6 100%);
+      border: 1px solid var(--outline-variant);
+      border-radius: 18px;
+      padding: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+    }
+    .kbd__row { display: flex; gap: 4px; justify-content: center; }
+    .kbd__key {
+      flex: 1 1 0;
+      min-width: 0;
+      height: 22px;
+      border-radius: 5px;
+      background: #fff;
+      border: 1px solid var(--outline-variant);
+      box-shadow: 0 1px 0 rgba(0,0,0,.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8.5px;
+      font-weight: 600;
+      color: var(--on-surface-muted);
+      position: relative;
+      overflow: hidden;
+    }
+    .kbd__key.is-space { flex: 5 1 0; max-width: 180px; }
+    .kbd__key.is-cand { background: var(--primary-soft); border-color: rgba(42,156,196,.4); color: var(--primary-strong); }
+    .kbd__key.is-active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .kbd__ripple {
+      position: absolute;
+      inset: 0;
+      border-radius: 5px;
+      border: 2px solid var(--primary);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .feedback {
+      margin-top: 10px;
+      padding: 10px 14px;
+      background: #fff;
+      border: 1px solid var(--outline);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      box-shadow: 0 4px 12px rgba(42,156,196,.08);
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    .feedback__pulse {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 0 0 rgba(42,156,196,.5);
+    }
+    .feedback.is-shown .feedback__pulse { animation: pulse 1.2s var(--htv-ease) infinite; }
+    .feedback__text {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--indigo);
+    }
+    .feedback__wave {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 14px;
+      margin-left: auto;
+    }
+    .feedback__wave i {
+      width: 2px;
+      background: var(--primary);
+      border-radius: 1px;
+      display: block;
+    }
+    .feedback__wave i:nth-child(1) { height: 6px; animation: wave 1s ease-in-out infinite .0s; }
+    .feedback__wave i:nth-child(2) { height: 10px; animation: wave 1s ease-in-out infinite .1s; }
+    .feedback__wave i:nth-child(3) { height: 14px; animation: wave 1s ease-in-out infinite .2s; }
+    .feedback__wave i:nth-child(4) { height: 10px; animation: wave 1s ease-in-out infinite .3s; }
+    .feedback__wave i:nth-child(5) { height: 6px; animation: wave 1s ease-in-out infinite .4s; }
+
+    /* Keyboard animations (4.5s loop) */
+    .scene--keep.is-active .kbd__key.is-cand.is-fn  { animation: kbdBreath 1.6s var(--htv-ease) infinite -1.0s; }
+    .scene--keep.is-active .kbd__key.is-cand.is-caps{ animation: kbdBreath 1.6s var(--htv-ease) infinite -0.5s; }
+    .scene--keep.is-active .kbd__key.is-cand.is-ralt { animation: kbdBreath 1.6s var(--htv-ease) infinite  0s; }
+    .scene--keep.is-active .kbd__key.is-active { animation: kbdPress 4.5s var(--htv-ease) infinite; }
+    .scene--keep.is-active .kbd__key.is-active .kbd__ripple { animation: kbdRipple 4.5s var(--htv-ease) infinite; }
+    .scene--keep.is-active .feedback { animation: feedbackToggle 4.5s var(--htv-ease) infinite; }
+
+    @keyframes kbdBreath {
+      0%, 100% { transform: scale(1); opacity: .6; }
+      50% { transform: scale(1.04); opacity: 1; }
+    }
+    @keyframes kbdPress {
+      0%, 10% { transform: scale(1); }
+      16% { transform: scale(1.06); }
+      22% { transform: translateY(2px) scale(.93); }
+      32% { transform: translateY(0) scale(1.02); }
+      40%, 100% { transform: scale(1); }
+    }
+    @keyframes kbdRipple {
+      0%, 16% { opacity: 0; transform: scale(.6); }
+      22% { opacity: .8; transform: scale(.9); }
+      40% { opacity: 0; transform: scale(1.8); }
+      100% { opacity: 0; transform: scale(1.8); }
+    }
+    @keyframes feedbackToggle {
+      0%, 16% { opacity: 0; transform: translateY(4px); }
+      24%, 65% { opacity: 1; transform: translateY(0); }
+      78%, 100% { opacity: 0; transform: translateY(-2px); }
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(42,156,196,.5); }
+      50% { box-shadow: 0 0 0 6px rgba(42,156,196,0); }
+    }
+    @keyframes wave {
+      0%, 100% { transform: scaleY(.5); }
+      50% { transform: scaleY(1.2); }
+    }
+
+    /* === Devices scene === */
+    .devices {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      padding: 14px 4px;
+    }
+    .device {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 4px;
+      border-radius: 14px;
+      background: transparent;
+      transition: all .3s var(--htv-ease);
+      position: relative;
+    }
+    .device__art {
+      width: 100%;
+      max-width: 96px;
+      aspect-ratio: 1;
+      background: linear-gradient(180deg, #f5f9fb 0%, #eaf2f6 100%);
+      border: 1px solid var(--outline-variant);
+      border-radius: 14px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+    }
+    .device__name {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--on-surface-muted);
+      text-align: center;
+    }
+
+    /* Device art (simplified icons via ::before / ::after) */
+    .device--ring   .device__art::before { content: ""; width: 38px; height: 42px; border-radius: 50% 50% 50% 50% / 45% 45% 55% 55%; background: #fff; border: 2px solid var(--outline); }
+    .device--mouse  .device__art::before { content: ""; width: 30px; height: 48px; border-radius: 16px 16px 12px 12px; background: #fff; border: 2px solid var(--outline); }
+    .device--remote .device__art::before { content: ""; width: 22px; height: 50px; border-radius: 6px; background: #fff; border: 2px solid var(--outline); }
+    .device--gamepad .device__art::before { content: ""; width: 60px; height: 26px; border-radius: 14px; background: #fff; border: 2px solid var(--outline); }
+
+    .device__key {
+      position: absolute;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: var(--primary-soft);
+      border: 1.5px solid var(--primary);
+      z-index: 2;
+    }
+    .device--ring   .device__key { top: 30%; right: 22%; }
+    .device--mouse  .device__key { top: 28%; left: 4%; width: 10px; height: 10px; }
+    .device--remote .device__key { top: 24%; left: 50%; transform: translateX(-50%); width: 10px; height: 10px; }
+    .device--gamepad .device__key { top: 50%; left: 30%; transform: translateY(-50%); }
+
+    .device__ripple {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid var(--primary);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .device--ring   .device__ripple { width: 22px; height: 22px; top: 25%; right: 17%; }
+    .device--mouse  .device__ripple { width: 18px; height: 18px; top: 24%; left: 0%; }
+    .device--remote .device__ripple { width: 18px; height: 18px; top: 19%; left: 50%; transform: translateX(-50%); }
+    .device--gamepad .device__ripple { width: 20px; height: 20px; top: 45%; left: 25%; }
+
+    /* Devices cycle: 6s loop, 4 devices 1.5s each */
+    .scene--extra.is-active .device[data-d="0"] { animation: devCycle 6s var(--htv-ease) infinite 0s; }
+    .scene--extra.is-active .device[data-d="1"] { animation: devCycle 6s var(--htv-ease) infinite 1.5s; }
+    .scene--extra.is-active .device[data-d="2"] { animation: devCycle 6s var(--htv-ease) infinite 3s; }
+    .scene--extra.is-active .device[data-d="3"] { animation: devCycle 6s var(--htv-ease) infinite 4.5s; }
+    .scene--extra.is-active .device[data-d="0"] .device__key,
+    .scene--extra.is-active .device[data-d="1"] .device__key,
+    .scene--extra.is-active .device[data-d="2"] .device__key,
+    .scene--extra.is-active .device[data-d="3"] .device__key {
+      animation: devKey 6s var(--htv-ease) infinite;
+    }
+    .scene--extra.is-active .device[data-d="0"] .device__key { animation-delay: 0s; }
+    .scene--extra.is-active .device[data-d="1"] .device__key { animation-delay: 1.5s; }
+    .scene--extra.is-active .device[data-d="2"] .device__key { animation-delay: 3s; }
+    .scene--extra.is-active .device[data-d="3"] .device__key { animation-delay: 4.5s; }
+    .scene--extra.is-active .device[data-d="0"] .device__ripple { animation: devRipple 6s var(--htv-ease) infinite 0s; }
+    .scene--extra.is-active .device[data-d="1"] .device__ripple { animation: devRipple 6s var(--htv-ease) infinite 1.5s; }
+    .scene--extra.is-active .device[data-d="2"] .device__ripple { animation: devRipple 6s var(--htv-ease) infinite 3s; }
+    .scene--extra.is-active .device[data-d="3"] .device__ripple { animation: devRipple 6s var(--htv-ease) infinite 4.5s; }
+    .scene--extra.is-active .feedback { animation: feedbackToggle 6s var(--htv-ease) infinite; }
+
+    @keyframes devCycle {
+      0%, 4%   { background: transparent; transform: scale(1); }
+      8%, 18%  { background: var(--primary-soft); transform: scale(1.04); }
+      28%, 100% { background: transparent; transform: scale(1); }
+    }
+    @keyframes devKey {
+      0%, 4%   { transform: scale(1) translateX(0); }
+      8%       { transform: scale(1.25) translateX(0); }
+      14%      { transform: scale(.8) translateX(0); }
+      22%      { transform: scale(1) translateX(0); }
+      30%, 100% { transform: scale(1) translateX(0); }
+    }
+    .device--remote .device__key,
+    .device--gamepad .device__key {
+      animation-name: devKeyT !important;
+    }
+    @keyframes devKeyT {
+      0%, 4%   { transform: scale(1) translate(-50%, 0); }
+      8%       { transform: scale(1.25) translate(-50%, 0); }
+      14%      { transform: scale(.8) translate(-50%, 0); }
+      22%      { transform: scale(1) translate(-50%, 0); }
+      30%, 100% { transform: scale(1) translate(-50%, 0); }
+    }
+    .device--gamepad .device__key {
+      animation-name: devKeyG !important;
+    }
+    @keyframes devKeyG {
+      0%, 4%   { transform: scale(1) translate(0, -50%); }
+      8%       { transform: scale(1.25) translate(0, -50%); }
+      14%      { transform: scale(.8) translate(0, -50%); }
+      22%      { transform: scale(1) translate(0, -50%); }
+      30%, 100% { transform: scale(1) translate(0, -50%); }
+    }
+    @keyframes devRipple {
+      0%, 4%   { opacity: 0; transform: scale(.6) translateX(0); }
+      10%      { opacity: .9; transform: scale(.8) translateX(0); }
+      24%      { opacity: 0; transform: scale(2) translateX(0); }
+      100%     { opacity: 0; transform: scale(2) translateX(0); }
+    }
+    .device--remote .device__ripple {
+      animation-name: devRippleT !important;
+    }
+    @keyframes devRippleT {
+      0%, 4%   { opacity: 0; transform: scale(.6) translate(-50%, 0); }
+      10%      { opacity: .9; transform: scale(.8) translate(-50%, 0); }
+      24%      { opacity: 0; transform: scale(2) translate(-50%, 0); }
+      100%     { opacity: 0; transform: scale(2) translate(-50%, 0); }
+    }
+
+    /* === Footer buttons === */
+    .actions { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+    .btn {
+      width: 100%;
+      min-height: 48px;
+      padding: 12px 20px;
+      border-radius: 16px;
+      font: inherit;
+      font-weight: 800;
+      font-size: 14px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all .2s var(--htv-ease);
+    }
+    .btn.primary {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: var(--shadow-button);
+    }
+    .btn.primary:hover { background: var(--primary-strong); }
+    .btn.secondary {
+      background: #fff;
+      color: var(--indigo);
+      border-color: var(--outline);
+    }
+    .btn.secondary:hover { border-color: var(--primary); color: var(--primary-strong); }
+    .btn.primary.is-recommended { animation: btnGlow 1.6s var(--htv-ease) infinite; }
+    @keyframes btnGlow {
+      0%, 100% { box-shadow: 0 10px 22px rgba(42,156,196,.20); }
+      50%      { box-shadow: 0 14px 30px rgba(42,156,196,.38); }
+    }
+    .meta {
+      text-align: center;
+      font-size: 11px;
+      color: var(--on-surface-muted);
+      opacity: .8;
+      margin: 12px 0 0;
+    }
+    .legend {
+      margin-top: 12px;
+      padding: 8px 12px;
+      background: var(--surface-soft);
+      border-radius: 12px;
+      font-size: 11px;
+      color: var(--on-surface-muted);
+      line-height: 1.55;
+      text-align: center;
+    }
+    .legend strong { color: var(--primary-strong); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .scene.is-active *,
+      .scene.is-active .feedback__wave i,
+      .scene.is-active .feedback__pulse,
+      .btn.primary.is-recommended { animation: none !important; }
+      .scene--keep.is-active .kbd__key.is-active,
+      .scene--extra.is-active .device[data-d="0"] { background: var(--primary-soft); }
+      .scene--extra.is-active .device[data-d="0"] .device__art { border-color: var(--primary); }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="badge">小提醒</span>
+    <h1 class="title">平时用键盘就可以吗？</h1>
+    <p class="desc">多数人选「可以」。只有想用遥控器、小手柄之类的额外按键时，再设一下就好。</p>
+
+    <!-- Tabs -->
+    <div class="tabs" role="tablist" aria-label="选择按键方式">
+      <button type="button" class="tab is-active" data-scene="keep" role="tab" aria-selected="true">
+        <span class="tab__icon">⌨️</span>
+        <span>用现在的键盘</span>
+      </button>
+      <button type="button" class="tab" data-scene="extra" role="tab" aria-selected="false">
+        <span class="tab__icon">🎮</span>
+        <span>加个外设</span>
+      </button>
+    </div>
+
+    <!-- Stage -->
+    <div class="stage">
+      <!-- Scene A: Keyboard -->
+      <div class="scene scene--keep is-active" data-scene="keep" role="tabpanel" aria-label="键盘场景">
+        <div class="kbd" aria-hidden="true">
+          <div class="kbd__row">
+            <span class="kbd__key is-fn">ESC</span>
+            <span class="kbd__key is-fn" style="flex:0.6 1 0"></span>
+            <span class="kbd__key is-cand is-fn">F1</span>
+            <span class="kbd__key is-fn">F2</span>
+            <span class="kbd__key is-fn">F3</span>
+            <span class="kbd__key is-fn">F4</span>
+            <span class="kbd__key is-fn">F5</span>
+            <span class="kbd__key is-fn">F6</span>
+            <span class="kbd__key is-fn">F7</span>
+            <span class="kbd__key is-fn">F8</span>
+            <span class="kbd__key is-fn">F9</span>
+            <span class="kbd__key is-fn">F10</span>
+            <span class="kbd__key is-fn">F11</span>
+            <span class="kbd__key is-fn">F12</span>
+          </div>
+          <div class="kbd__row">
+            <span class="kbd__key">`</span>
+            <span class="kbd__key">1</span><span class="kbd__key">2</span><span class="kbd__key">3</span>
+            <span class="kbd__key">4</span><span class="kbd__key">5</span><span class="kbd__key">6</span>
+            <span class="kbd__key">7</span><span class="kbd__key">8</span><span class="kbd__key">9</span>
+            <span class="kbd__key">0</span><span class="kbd__key">-</span><span class="kbd__key">=</span>
+            <span class="kbd__key">⌫</span>
+          </div>
+          <div class="kbd__row">
+            <span class="kbd__key">⇥</span>
+            <span class="kbd__key">Q</span><span class="kbd__key">W</span><span class="kbd__key">E</span>
+            <span class="kbd__key">R</span><span class="kbd__key">T</span><span class="kbd__key">Y</span>
+            <span class="kbd__key">U</span><span class="kbd__key">I</span><span class="kbd__key">O</span>
+            <span class="kbd__key">P</span>
+            <span class="kbd__key">[</span><span class="kbd__key">]</span><span class="kbd__key">\</span>
+          </div>
+          <div class="kbd__row">
+            <span class="kbd__key is-cand is-caps">⇪</span>
+            <span class="kbd__key">A</span><span class="kbd__key">S</span><span class="kbd__key">D</span>
+            <span class="kbd__key">F</span><span class="kbd__key">G</span><span class="kbd__key">H</span>
+            <span class="kbd__key">J</span><span class="kbd__key">K</span><span class="kbd__key">L</span>
+            <span class="kbd__key">;</span><span class="kbd__key">'</span>
+            <span class="kbd__key">↵</span>
+          </div>
+          <div class="kbd__row">
+            <span class="kbd__key">⇧</span>
+            <span class="kbd__key">Z</span><span class="kbd__key">X</span><span class="kbd__key">C</span>
+            <span class="kbd__key">V</span><span class="kbd__key">B</span><span class="kbd__key">N</span>
+            <span class="kbd__key">M</span>
+            <span class="kbd__key">,</span><span class="kbd__key">.</span><span class="kbd__key">/</span>
+            <span class="kbd__key">⇧</span>
+          </div>
+          <div class="kbd__row">
+            <span class="kbd__key">Ctrl</span>
+            <span class="kbd__key">⊞</span>
+            <span class="kbd__key">Alt</span>
+            <span class="kbd__key is-space">Space</span>
+            <span class="kbd__key is-cand is-ralt is-active">
+              Alt
+              <span class="kbd__ripple"></span>
+            </span>
+            <span class="kbd__key">⊞</span>
+            <span class="kbd__key">▤</span>
+            <span class="kbd__key">Ctrl</span>
+          </div>
+        </div>
+        <div class="feedback" data-feedback>
+          <span class="feedback__pulse"></span>
+          <span class="feedback__text" data-feedback-text>按住右 Alt 说话中</span>
+          <span class="feedback__wave" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i>
+          </span>
+        </div>
+      </div>
+
+      <!-- Scene B: Devices -->
+      <div class="scene scene--extra" data-scene="extra" role="tabpanel" aria-label="外设场景">
+        <div class="devices" aria-hidden="true">
+          <div class="device device--ring" data-d="0">
+            <div class="device__art">
+              <span class="device__key"></span>
+              <span class="device__ripple"></span>
+            </div>
+            <div class="device__name">戒指</div>
+          </div>
+          <div class="device device--mouse" data-d="1">
+            <div class="device__art">
+              <span class="device__key"></span>
+              <span class="device__ripple"></span>
+            </div>
+            <div class="device__name">鼠标侧键</div>
+          </div>
+          <div class="device device--remote" data-d="2">
+            <div class="device__art">
+              <span class="device__key"></span>
+              <span class="device__ripple"></span>
+            </div>
+            <div class="device__name">媒体遥控器</div>
+          </div>
+          <div class="device device--gamepad" data-d="3">
+            <div class="device__art">
+              <span class="device__key"></span>
+              <span class="device__ripple"></span>
+            </div>
+            <div class="device__name">小手柄</div>
+          </div>
+        </div>
+        <div class="feedback" data-feedback>
+          <span class="feedback__pulse"></span>
+          <span class="feedback__text" data-feedback-text>戒指按键可触发</span>
+          <span class="feedback__wave" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <p class="meta">拿不准？选上面那个就行，以后还能改。</p>
+
+    <div class="actions">
+      <button type="button" class="btn primary is-recommended" data-action="keep">可以，用现在的键盘</button>
+      <button type="button" class="btn secondary" data-action="extra">我想另设一个按键</button>
+    </div>
+
+    <p class="meta">以后想加遥控器之类的，去「按键设置」或再走一遍快速入门就行。</p>
+
+    <p class="legend">点 <strong>Tab</strong> 或下方按钮可切换场景。键盘场景 4.5s 一轮，外设场景 6s 一轮。</p>
+  </div>
+
+  <script>
+    (function(){
+      'use strict';
+      var tabs = document.querySelectorAll('.tab');
+      var scenes = document.querySelectorAll('.scene');
+      var primaryBtn = document.querySelector('[data-action="keep"]');
+      var secondaryBtn = document.querySelector('[data-action="extra"]');
+      var feedbackText = document.querySelector('[data-scene="extra"] [data-feedback-text]');
+      var deviceNames = ['戒指', '鼠标侧键', '媒体遥控器', '小手柄'];
+
+      function switchScene(name){
+        tabs.forEach(function(t){
+          var on = t.dataset.scene === name;
+          t.classList.toggle('is-active', on);
+          t.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        scenes.forEach(function(s){
+          var on = s.dataset.scene === name;
+          s.classList.remove('is-active');
+          void s.offsetWidth;
+          if (on) s.classList.add('is-active');
+        });
+        primaryBtn.classList.toggle('is-recommended', name === 'keep');
+      }
+
+      tabs.forEach(function(t){
+        t.addEventListener('click', function(){ switchScene(t.dataset.scene); });
+      });
+      primaryBtn.addEventListener('click', function(){ switchScene('keep'); });
+      secondaryBtn.addEventListener('click', function(){ switchScene('extra'); });
+
+      // Sync feedback text with current device in extra scene
+      var lastShown = -1;
+      setInterval(function(){
+        var extra = document.querySelector('.scene--extra.is-active');
+        if (!extra) return;
+        var t = (Date.now() / 1000) % 6;
+        var idx = Math.floor(t / 1.5) % 4;
+        if (idx !== lastShown) {
+          feedbackText.textContent = deviceNames[idx] + ' 按键可触发';
+          lastShown = idx;
+        }
+      }, 200);
+    })();
+  </script>
+</body>
+</html>

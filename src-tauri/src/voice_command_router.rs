@@ -193,6 +193,14 @@ fn dispatch_wake_or_summon(
     if *state.paused.lock() {
         return skip("监听已暂停，请先在上方点「恢复」。".into());
     }
+    // QS / habit setup practice: keep ASR for on-screen matching, never fire IME hotkeys
+    // (Win+H etc. steals focus and feels like the wizard "exited").
+    if state
+        .voice_practice_hold_fg
+        .load(std::sync::atomic::Ordering::SeqCst)
+    {
+        return skip("语音练习台中，仅本页听写测试，不发送快捷键。".into());
+    }
 
     // Key-gap cooldown is checked/started by the runtime before calling the router.
     // Router still blocks on the shared send channel.

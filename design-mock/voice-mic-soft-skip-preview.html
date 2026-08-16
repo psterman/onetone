@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <title>快速入门 — 无麦自然跳过 Preview</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root {
+      --primary: #2a9cc4;
+      --primary-strong: #1f8fb8;
+      --primary-soft: #e6f7fc;
+      --indigo: #1a2d4a;
+      --on-surface: #152238;
+      --on-surface-muted: #5a7086;
+      --outline-variant: rgba(26,45,74,.10);
+      --vmg-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--on-surface);
+      background: linear-gradient(180deg, #eaf3f8 0%, #f5fafc 100%);
+      display: flex; justify-content: center; padding: 36px 20px;
+    }
+    .card {
+      width: min(720px, 100%); background: #fff; border-radius: 28px;
+      border: 1px solid var(--outline-variant); padding: 28px 32px 24px;
+      box-shadow: 0 14px 34px rgba(26,45,74,.07);
+      display: flex; flex-direction: column; align-items: center; min-height: 560px;
+    }
+    .badge {
+      display: inline-flex; padding: 6px 12px; border-radius: 999px;
+      background: var(--primary-soft); color: var(--primary-strong);
+      font-size: 12px; font-weight: 800; margin-bottom: 6px;
+    }
+    .title { margin: 0 0 6px; font-size: 24px; font-weight: 900; color: var(--indigo); text-align: center; }
+    .desc {
+      margin: 0 auto 20px; max-width: 420px; font-size: 13px; line-height: 1.55;
+      color: var(--on-surface-muted); text-align: center;
+    }
+    .soft { width: min(520px, 100%); display: flex; flex-direction: column; align-items: center; gap: 14px; flex: 1; justify-content: center; }
+    .art {
+      width: min(280px, 100%); min-height: 120px; border-radius: 18px;
+      background: linear-gradient(180deg,#f7fafc 0%,#eef5f9 100%);
+      border: 1px solid var(--outline-variant);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .mic { width: 56px; height: 72px; position: relative; display: flex; flex-direction: column; align-items: center; }
+    .mic-head { width: 28px; height: 36px; border-radius: 14px; background: var(--primary-soft); border: 2px solid var(--primary); }
+    .mic-stand { width: 18px; height: 14px; border: 2px solid var(--primary); border-top: 0; border-radius: 0 0 12px 12px; margin-top: -2px; }
+    .mic-base { width: 28px; height: 3px; border-radius: 2px; background: var(--primary); margin-top: 4px; }
+    .mic-slash { position: absolute; left: 50%; top: 8px; width: 3px; height: 56px; border-radius: 2px; background: #e11d48; transform: translateX(-50%) rotate(28deg); }
+    .status { margin: 0; font-size: 13px; font-weight: 700; color: var(--on-surface-muted); }
+    .progress { width: min(220px, 70%); height: 4px; border-radius: 999px; background: rgba(42,156,196,.12); overflow: hidden; }
+    .progress span { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--primary); animation: bar 1.4s linear forwards; }
+    .continue {
+      min-width: 220px; min-height: 48px; margin-top: 4px; border-radius: 16px; font-weight: 800; font-size: 14px;
+      border: 0; background: var(--primary); color: #fff; cursor: pointer;
+      box-shadow: 0 8px 18px rgba(42,156,196,.25);
+    }
+    .continue:hover { background: var(--primary-strong); }
+    .link {
+      margin: 0; padding: 0; border: 0; background: transparent; cursor: pointer;
+      font-size: 12px; font-weight: 700; color: var(--primary-strong);
+    }
+    .link:hover { text-decoration: underline; }
+    .foot { margin-top: auto; padding-top: 18px; width: 100%; display: flex; }
+    .foot .btn {
+      flex: 1; min-height: 48px; border-radius: 16px; font-weight: 800;
+      border: 1px solid var(--outline-variant); background: #fff; cursor: pointer;
+    }
+    .done {
+      display: none; margin-top: 18px; padding: 12px 16px; border-radius: 14px;
+      background: var(--primary-soft); color: var(--primary-strong); font-size: 13px; font-weight: 700;
+    }
+    .card.is-done .done { display: block; }
+    .card.is-done .soft { opacity: .45; pointer-events: none; }
+    @keyframes bar { from { width: 0; } to { width: 100%; } }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="badge">小提醒</div>
+    <h1 class="title">暂时跳过语音测试</h1>
+    <p class="desc">这台电脑暂时没有可用麦克风，语音练习先跳过，其它设置不受影响。</p>
+    <div class="soft">
+      <div class="art" aria-hidden="true">
+        <div class="mic">
+          <span class="mic-head"></span>
+          <span class="mic-stand"></span>
+          <span class="mic-base"></span>
+          <span class="mic-slash"></span>
+        </div>
+      </div>
+      <p class="status" id="status">即将继续…</p>
+      <div class="progress" id="progress"><span></span></div>
+      <button type="button" class="continue" id="btnContinue">继续</button>
+      <button type="button" class="link" id="btnRecheck">我已接好麦克风</button>
+    </div>
+    <div class="done" id="done">已跳过语音测试 → 进入完成页（原型演示）</div>
+    <div class="foot"><button type="button" class="btn">上一步</button></div>
+  </div>
+  <script>
+    var card = document.getElementById('card');
+    var timer = setTimeout(goNext, 1400);
+    function goNext() {
+      clearTimeout(timer);
+      card.classList.add('is-done');
+      document.getElementById('status').textContent = '已继续';
+    }
+    document.getElementById('btnContinue').onclick = goNext;
+    document.getElementById('btnRecheck').onclick = function () {
+      clearTimeout(timer);
+      document.getElementById('status').textContent = '仍未检测到麦克风（原型）';
+      var bar = document.querySelector('#progress span');
+      bar.style.animation = 'none';
+      void bar.offsetWidth;
+      bar.style.animation = 'bar 1.4s linear forwards';
+      timer = setTimeout(goNext, 1400);
+    };
+  </script>
+</body>
+</html>

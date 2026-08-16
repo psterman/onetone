@@ -57,6 +57,58 @@ pub fn cmd_set_setup_interaction_active(
     }
 }
 
+/// Practice stage only: block *external* wake inject (`send_wake_to_target`) while on-stage.
+/// Local IME activate still goes through `cmd_voice_practice_activate_ime`.
+#[tauri::command]
+pub fn cmd_voice_set_practice_hold_fg(
+    state: tauri::State<Arc<AppState>>,
+    enabled: bool,
+) {
+    use std::sync::atomic::Ordering;
+    let prev = state
+        .voice_practice_hold_fg
+        .swap(enabled, Ordering::SeqCst);
+    if prev != enabled {
+        crate::app_log::log_line(
+            &state,
+            "voice",
+            &format!("practice_hold_fg={enabled}"),
+        );
+    }
+}
+
+/// Practice stage: focus stays on OneTone; send configured IME chord into this window.
+#[tauri::command]
+pub fn cmd_voice_practice_activate_ime(
+    state: tauri::State<Arc<AppState>>,
+    app: tauri::AppHandle,
+) -> serde_json::Value {
+    use std::sync::atomic::Ordering;
+    if !state.voice_practice_hold_fg.load(Ordering::SeqCst) {
+        return serde_json::json!({
+            "ok": false,
+            "reason": "not_in_practice",
+        });
+    }
+    let (target_key, duration_ms) = {
+        let cfg = state.cfg.lock();
+        // Prefer the IME / voice-engine shortcut (Win+H, RAlt, …), not app-scenario chords.
+        let key = crate::voice_end_runtime::resolve_voice_input_target_key(&cfg)
+            .unwrap_or_else(|| crate::voice_end_runtime::resolve_wake_target_key(&cfg, ""));
+        (key, cfg.key_press_duration_ms)
+    };
+    let ok = crate::voice_end_runtime::send_wake_to_practice(
+        Some(state.inner()),
+        Some(&app),
+        &target_key,
+        duration_ms,
+    );
+    serde_json::json!({
+        "ok": ok,
+        "targetKey": target_key,
+    })
+}
+
 #[tauri::command]
 pub fn cmd_set_settings_drawer_open(
     state: tauri::State<Arc<AppState>>,

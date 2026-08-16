@@ -244,6 +244,22 @@ pub fn send_wake_to_target(
     target_key: &str,
     duration_ms: u32,
 ) -> bool {
+    use std::sync::atomic::Ordering;
+
+    // Practice stage only: keep OneTone foreground and let FE show ASR in the box.
+    // Do not block voice wake elsewhere (dual-panel / normal use).
+    if let Some(s) = state {
+        if s.voice_practice_hold_fg.load(Ordering::SeqCst) {
+            crate::app_log::log_line(
+                s,
+                "send",
+                &format!("send_wake skipped practice_hold_fg key={target_key}"),
+            );
+            let _ = app;
+            return false;
+        }
+    }
+
     // Prefer last tracked external window. Never hide the main window as a
     // fallback — hide/show during Quick Start / settings freezes WebView2 and
     // can leave a blank chrome (seen as「未响应」when verifying RAlt etc.).
@@ -272,6 +288,32 @@ pub fn send_wake_to_target(
     let sent = crate::keyboard::send_chord(target_key, duration_ms);
     if sent {
         if let Some(s) = state {
+            mark_voice_wake_key_sent(s);
+        }
+    }
+    sent
+}
+
+/// Practice stage only: send configured IME chord into OneTone itself.
+/// Does not steal external focus; allows `foreground_is_self` (unlike `send_wake_to_target`).
+pub fn send_wake_to_practice(
+    state: Option<&AppState>,
+    app: Option<&AppHandle>,
+    target_key: &str,
+    duration_ms: u32,
+) -> bool {
+    let _ = app;
+    let sent = crate::keyboard::send_chord(target_key, duration_ms);
+    if let Some(s) = state {
+        crate::app_log::log_line(
+            s,
+            "send",
+            &format!(
+                "send_wake practice_local key={target_key} ok={}",
+                sent
+            ),
+        );
+        if sent {
             mark_voice_wake_key_sent(s);
         }
     }
@@ -379,6 +421,24 @@ pub fn handle_voice_wake_detected(
     duration_ms: u32,
     engine: &str,
 ) -> VoiceWakeDispatchResult {
+    use std::sync::atomic::Ordering;
+    // Practice stage: ASR still runs for on-screen dictation; skip summon / IME inject.
+    if state.voice_practice_hold_fg.load(Ordering::SeqCst) {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!("wake skipped practice_hold_fg engine={engine} phrase={matched_phrase}"),
+        );
+        let _ = (app, duration_ms);
+        return VoiceWakeDispatchResult {
+            ok: false,
+            target_key: String::new(),
+            mapping_id: String::new(),
+            used_summon_workflow: false,
+            runtime_label: "practice_hold_fg".into(),
+        };
+    }
+
     // Codex Micro / agent capability voice phrases ? unified execute (not summon workflow).
     if let Some(result) = try_dispatch_agent_voice(state, app, matched_phrase) {
         return result;
@@ -948,6 +1008,13 @@ fn send_mode_allows_phrase(mode: &str) -> bool {
 }
 
 pub fn try_match_session_phrase_on_final(state: &Arc<AppState>, app: &AppHandle, text: &str) {
+    // Practice stage: FE handles end phrases; do not commit a real dictation session.
+    if state
+        .voice_practice_hold_fg
+        .load(std::sync::atomic::Ordering::SeqCst)
+    {
+        return;
+    }
     if !should_match_end_phrase(state) {
         // Help diagnose ???heard ????????? but IME did not stop???: transcript UI can show
         // lastFinal while session is still idle (e.g. camera test_send without enter).

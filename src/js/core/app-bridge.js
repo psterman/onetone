@@ -165,29 +165,47 @@
         return key;
       },
       getWakeHeardRaw:function(){
-        var w=hooks().voiceUiSnapshot().wake||{};
-        if(w.engine==='vosk'){
-          var vosk=w.vosk||{};
-          return vosk.lastDetectedPhrase||vosk.lastFinal||vosk.lastPartial||'';
-        }
-        var sapi=w.sapi||{};
-        return sapi.lastHeard||'';
+        return this.getPracticeHeardRaw('wake');
       },
       getPracticeHeardRaw:function(mode){
         var w=hooks().voiceUiSnapshot().wake||{};
         var transcriptMode=mode==='end'||mode==='cancel';
-        if(w.engine==='vosk'){
-          var vosk=w.vosk||{};
-          if(transcriptMode){
-            return String(vosk.lastPartial||vosk.lastFinal||'').trim();
-          }
+        function fromVosk(vosk){
+          vosk=vosk||{};
+          if(transcriptMode) return String(vosk.lastPartial||vosk.lastFinal||'').trim();
           return String(vosk.lastDetectedPhrase||vosk.lastFinal||vosk.lastPartial||'').trim();
         }
-        var sapi=w.sapi||{};
-        return String(sapi.lastHeard||'').trim();
+        function fromKws(kws){
+          kws=kws||{};
+          if(transcriptMode) return String(kws.lastPartial||kws.lastDetectedPhrase||'').trim();
+          return String(kws.lastDetectedPhrase||kws.lastPartial||'').trim();
+        }
+        function fromSapi(sapi){
+          return String((sapi||{}).lastHeard||'').replace(/（还在听…）\s*$/,'').replace(/\s*\(listening…\)\s*$/i,'').trim();
+        }
+        var primary='';
+        if(w.engine==='vosk') primary=fromVosk(w.vosk);
+        else if(w.engine==='kws') primary=fromKws(w.kws);
+        else if(w.engine==='sapi') primary=fromSapi(w.sapi);
+        if(primary) return primary;
+        // Engine label can lag during QS; take any live stream so preview is not stuck.
+        return fromVosk(w.vosk)||fromKws(w.kws)||fromSapi(w.sapi)||'';
       },
       enableVoiceWakeForPractice:function(){
-        if(hooks().homeVoiceEngineOn()!=='off') return Promise.resolve(true);
+        var eng=hooks().homeVoiceEngineOn();
+        var wake=(hooks().voiceUiSnapshot()||{}).wake||{};
+        var st='';
+        if(eng==='vosk') st=String((wake.vosk&&wake.vosk.state)||'');
+        else if(eng==='sapi') st=String((wake.sapi&&wake.sapi.state)||'');
+        else if(eng==='kws') st=String((wake.kws&&wake.kws.state)||'');
+        var dead=eng==='off'||!st||st==='stopped'||st==='error'||st==='off'||st==='none';
+        if(!dead){
+          try{
+            if(global.OneToneVoiceWake&&global.OneToneVoiceWake.nudgePoll) global.OneToneVoiceWake.nudgePoll();
+            else if(global.OneToneVoiceWake&&global.OneToneVoiceWake.pollTick) global.OneToneVoiceWake.pollTick();
+          }catch(_){}
+          return Promise.resolve(true);
+        }
         hooks().markVoiceEngineBootHandled();
         hooks().setVoiceEngineBootDone(true);
         hooks().clearVoiceEngineBootTimer();
@@ -202,6 +220,10 @@
           hooks().syncHomeFromVoiceSettings(voskRes,sapiRes,null,{lightOnly:true},kwsRes);
           hooks().renderHomeLiveZone();
           hooks().renderHome();
+          try{
+            if(global.OneToneVoiceWake&&global.OneToneVoiceWake.nudgePoll) global.OneToneVoiceWake.nudgePoll();
+            else if(global.OneToneVoiceWake&&global.OneToneVoiceWake.pollTick) global.OneToneVoiceWake.pollTick();
+          }catch(_){}
           return hooks().homeVoiceEngineOn()!=='off';
         });
       },
@@ -213,10 +235,7 @@
           tasks.push(hooks().vpInvoke('cmd_voice_end_set_enabled',{enabled:true}).catch(function(){ return null; }));
         }
         return Promise.all(tasks).then(function(){
-          if(hooks().homeVoiceEngineOn()==='off'){
-            return self.enableVoiceWakeForPractice();
-          }
-          return true;
+          return self.enableVoiceWakeForPractice();
         });
       },
       openPhrasePractice:function(opts){

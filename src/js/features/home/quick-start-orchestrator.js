@@ -44,7 +44,11 @@
   function notifySetupInteractionActive(active){
     try{
       if(global.OneToneIpc&&global.OneToneIpc.invoke){
-        global.OneToneIpc.invoke('cmd_set_setup_interaction_active',{active:!!active}).catch(function(){});
+        global.OneToneIpc.invoke('cmd_set_setup_interaction_active',{active:!!active}).catch(function(err){
+          if(global.OneToneApp&&global.OneToneApp.pushLog){
+            global.OneToneApp.pushLog('[qs] set_setup_interaction_active failed: '+String(err&&err.message||err));
+          }
+        });
       }
     }catch(_){}
   }

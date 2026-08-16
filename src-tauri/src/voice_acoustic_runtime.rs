@@ -1243,6 +1243,12 @@ fn try_emit_acoustic_match(
     );
 
     if hit.scenario_id == "__voice_wake__" {
+        if state
+            .voice_practice_hold_fg
+            .load(std::sync::atomic::Ordering::SeqCst)
+        {
+            return;
+        }
         if let Some(app) = app {
             let phrase = commands
                 .iter()

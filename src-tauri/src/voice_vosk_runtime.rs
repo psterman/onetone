@@ -494,6 +494,15 @@ fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
         *state.voice_vosk_last_trigger.lock() = String::new();
         return;
     }
+    if state
+        .voice_practice_hold_fg
+        .load(std::sync::atomic::Ordering::SeqCst)
+    {
+        // Keep lastDetectedPhrase for PhrasePractice; do not inject IME / steal focus.
+        *state.voice_vosk_last_skip.lock() = "语音练习台中，仅本页听写测试。".into();
+        *state.voice_vosk_last_trigger.lock() = String::new();
+        return;
+    }
 
     if let Some(remain_ms) =
         crate::voice_end_runtime::wake_key_cooldown_remaining_ms(state, cooldown_ms)

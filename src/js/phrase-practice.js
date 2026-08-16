@@ -377,10 +377,21 @@
     renderChips(mount.querySelector('[data-phrase-practice-chips]'));
   }
 
+  function nudgePracticeVoicePoll(){
+    try{
+      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.nudgePoll){
+        global.OneToneVoiceWake.nudgePoll();
+      }else if(global.OneToneVoiceWake&&global.OneToneVoiceWake.pollTick){
+        global.OneToneVoiceWake.pollTick();
+      }
+    }catch(_){}
+  }
+
   function bootEmbeddedPractice(){
     var a = app();
     if(a && a.enableVoicePractice){
       a.enableVoicePractice({mode:state.mode}).then(function(){
+        nudgePracticeVoicePoll();
         var mic = global.OneToneAppMic;
         if(mic && mic.loadMicDevices){
           return mic.loadMicDevices({manual:true}).catch(function(){}).then(startTimers);
@@ -391,6 +402,7 @@
     }
     if(a && a.enableVoiceWakeForPractice){
       a.enableVoiceWakeForPractice().then(function(){
+        nudgePracticeVoicePoll();
         var mic = global.OneToneAppMic;
         if(mic && mic.loadMicDevices){
           return mic.loadMicDevices({manual:true}).catch(function(){}).then(startTimers);
@@ -477,6 +489,7 @@
     var a = app();
     if(a && a.enableVoicePractice){
       a.enableVoicePractice({mode:state.mode}).then(function(){
+        nudgePracticeVoicePoll();
         var mic = global.OneToneAppMic;
         if(mic && mic.loadMicDevices){
           return mic.loadMicDevices({manual:true}).catch(function(){}).then(bootPracticeUi);
@@ -487,6 +500,7 @@
     }
     if(a && a.enableVoiceWakeForPractice){
       a.enableVoiceWakeForPractice().then(function(){
+        nudgePracticeVoicePoll();
         var mic = global.OneToneAppMic;
         if(mic && mic.loadMicDevices){
           return mic.loadMicDevices({manual:true}).catch(function(){}).then(bootPracticeUi);

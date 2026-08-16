@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <title>快速入门 — 语音练习台 Preview</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root {
+      --primary: #2a9cc4; --primary-strong: #1f8fb8; --primary-soft: #e6f7fc;
+      --indigo: #1a2d4a; --on-surface-muted: #5a7086; --outline-variant: rgba(26,45,74,.10);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #152238; background: linear-gradient(180deg, #eaf3f8, #f5fafc);
+      display: flex; justify-content: center; padding: 28px 16px;
+    }
+    .shell {
+      width: min(720px, 100%); min-height: 640px; background: #fff; border-radius: 28px;
+      border: 1px solid var(--outline-variant); padding: 24px; position: relative; overflow: hidden;
+      box-shadow: 0 14px 34px rgba(26,45,74,.07);
+    }
+    .badge { display: inline-flex; padding: 6px 12px; border-radius: 999px; background: var(--primary-soft); color: var(--primary-strong); font-size: 12px; font-weight: 800; }
+    .title { margin: 8px 0 6px; font-size: 24px; font-weight: 900; color: var(--indigo); }
+    .desc { margin: 0 0 16px; font-size: 13px; color: var(--on-surface-muted); line-height: 1.55; }
+    .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .panel {
+      border: 1.5px solid var(--outline-variant); border-radius: 18px; padding: 16px; cursor: pointer; text-align: left; background: #f7fafc;
+    }
+    .panel.is-active { border-color: var(--primary); background: var(--primary-soft); }
+    .panel.is-dim { filter: grayscale(1); opacity: .48; }
+    .panel b { display: block; margin-top: 8px; }
+    .panel p { margin: 4px 0 0; font-size: 12px; color: var(--on-surface-muted); }
+    .wave { display: flex; gap: 5px; height: 36px; align-items: flex-end; }
+    .wave i { width: 8px; border-radius: 999px; background: var(--primary); animation: bars 1s ease-in-out infinite; }
+    .wave i:nth-child(2) { animation-delay: .15s; } .wave i:nth-child(3) { animation-delay: .3s; }
+    .panel.is-dim .wave i { animation-play-state: paused; background: #9aa; }
+    .stage {
+      display: none; position: absolute; inset: 0; padding: 20px; background: #fff; flex-direction: column; align-items: center;
+    }
+    .shell.is-stage .dual { display: none; }
+    .shell.is-stage .stage { display: flex; }
+    .back { align-self: flex-start; border: 0; background: transparent; color: var(--primary-strong); font-weight: 700; cursor: pointer; margin-bottom: 8px; }
+    .coach {
+      width: min(520px, 100%); padding: 12px 14px; border-radius: 14px; background: var(--primary-soft);
+      color: var(--primary-strong); font-weight: 800; font-size: 13px; text-align: center; margin: 8px 0;
+      opacity: 0; transform: translateY(8px); transition: .28s ease;
+    }
+    .coach.in { opacity: 1; transform: none; }
+    .field { width: min(520px, 100%); position: relative; }
+    .field label { display: block; font-size: 12px; font-weight: 800; color: var(--on-surface-muted); margin-bottom: 6px; }
+    textarea {
+      width: 100%; min-height: 120px; border-radius: 16px; border: 1.5px solid var(--outline-variant);
+      padding: 16px; font-size: 16px; font-weight: 700; resize: none;
+    }
+    .field.dictating textarea { border-color: var(--primary); background: var(--primary-soft); animation: breathe 1.6s ease-in-out infinite; }
+    .field.ok textarea { border-color: #22c55e; background: rgba(34,197,94,.08); animation: none; }
+    .success {
+      display: none; margin-top: 12px; padding: 12px 16px; border-radius: 14px; background: rgba(34,197,94,.1);
+      color: #16a34a; font-weight: 800;
+    }
+    .success.show { display: block; animation: pop .35s ease; }
+    .actions { margin-top: 16px; display: flex; gap: 10px; }
+    .btn { min-height: 44px; padding: 0 18px; border-radius: 14px; border: 1px solid var(--outline-variant); background: #fff; font-weight: 800; cursor: pointer; }
+    .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    @keyframes bars { 0%,100%{height:10px} 50%{height:28px} }
+    @keyframes breathe { 0%,100%{box-shadow:0 0 0 0 rgba(42,156,196,.18)} 50%{box-shadow:0 0 0 6px rgba(42,156,196,.1)} }
+    @keyframes pop { from{opacity:0;transform:scale(.96)} to{opacity:1;transform:none} }
+  </style>
+</head>
+<body>
+  <div class="shell" id="shell">
+    <div class="dual" id="dual">
+      <div class="badge">语音测试</div>
+      <h1 class="title">先激活，再说结束</h1>
+      <p class="desc">点左侧开始练激活；完成后再点右侧练结束。一次只练一个。</p>
+      <div class="panels">
+        <button type="button" class="panel is-active" id="wakePanel">
+          <div class="wave" aria-hidden="true"><i></i><i></i><i></i></div>
+          <b>语音激活</b><p>说出激活词，开始听写</p>
+        </button>
+        <button type="button" class="panel is-dim" id="endPanel">
+          <div class="wave" aria-hidden="true"><i></i><i></i><i></i></div>
+          <b>语音结束</b><p>听写开始后结束，不自动发送</p>
+        </button>
+      </div>
+    </div>
+    <div class="stage" id="stage">
+      <button type="button" class="back" id="btnBack">← 返回</button>
+      <div class="badge">语音测试</div>
+      <h2 class="title" id="stageTitle">对着输入框说激活词</h2>
+      <p class="desc" id="stageDesc">先说激活词开始听写。成功后请对着麦克风说话，文字会出现在上方输入框；再说结束词完成。</p>
+      <div class="coach" id="coach"></div>
+      <div class="field" id="field">
+        <label>练习输入框</label>
+        <textarea id="input" placeholder="对着麦克风说话，识别文字会出现在这里…"></textarea>
+      </div>
+      <div class="success" id="success">已完成这次语音输入</div>
+      <div class="actions">
+        <button type="button" class="btn" id="simWake">模拟识别「开始输入」</button>
+        <button type="button" class="btn" id="simSpeak" hidden>模拟麦克风转写</button>
+        <button type="button" class="btn primary" id="simEnd" hidden>模拟识别「结束输入」</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    var shell = document.getElementById('shell');
+    var field = document.getElementById('field');
+    var input = document.getElementById('input');
+    var coach = document.getElementById('coach');
+    var success = document.getElementById('success');
+    var phase = 'idle';
+    var timer = 0;
+    function openStage() {
+      shell.classList.add('is-stage');
+      phase = 'listeningWake';
+      success.classList.remove('show');
+      field.className = 'field';
+      input.value = '';
+      coach.className = 'coach';
+      coach.textContent = '';
+      document.getElementById('simWake').hidden = false;
+      document.getElementById('simSpeak').hidden = true;
+      document.getElementById('simEnd').hidden = true;
+      document.getElementById('stageTitle').textContent = '对着输入框说激活词';
+      document.getElementById('stageDesc').textContent = '先说激活词开始听写。成功后请对着麦克风说话，文字会出现在上方输入框；再说结束词完成。';
+    }
+    function onWake() {
+      phase = 'listeningEnd';
+      field.classList.add('dictating');
+      input.value = '';
+      coach.textContent = '听写已开始：请对着麦克风说话，文字写入输入框；说完后请主动说结束词';
+      coach.classList.add('in');
+      document.getElementById('stageTitle').textContent = '听写已开始';
+      document.getElementById('simWake').hidden = true;
+      document.getElementById('simSpeak').hidden = false;
+      document.getElementById('simEnd').hidden = false;
+    }
+    function onSpeak() {
+      // Prototype: pretend live ASR landed in the box (real app uses mic partial/final).
+      input.value = (input.value ? input.value + ' ' : '') + '今天开会改到三点';
+      input.focus();
+    }
+    function onEnd() {
+      clearInterval(timer);
+      phase = 'success';
+      field.classList.remove('dictating');
+      field.classList.add('ok');
+      coach.className = 'coach';
+      success.classList.add('show');
+      setTimeout(function () {
+        shell.classList.remove('is-stage');
+        document.getElementById('wakePanel').classList.add('is-dim');
+        document.getElementById('wakePanel').classList.remove('is-active');
+        document.getElementById('endPanel').classList.add('is-active');
+        document.getElementById('endPanel').classList.remove('is-dim');
+      }, 1100);
+    }
+    document.getElementById('wakePanel').onclick = openStage;
+    document.getElementById('endPanel').onclick = function () {
+      alert('请先完成左侧「语音激活」（原型）');
+    };
+    document.getElementById('btnBack').onclick = function () {
+      clearInterval(timer);
+      shell.classList.remove('is-stage');
+    };
+    document.getElementById('simWake').onclick = onWake;
+    document.getElementById('simSpeak').onclick = onSpeak;
+    document.getElementById('simEnd').onclick = onEnd;
+  </script>
+</body>
+</html>

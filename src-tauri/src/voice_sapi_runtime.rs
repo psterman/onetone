@@ -172,6 +172,16 @@ fn process_detected(
         *state.voice_sapi_last_trigger.lock() = String::new();
         return;
     }
+    if state
+        .voice_practice_hold_fg
+        .load(std::sync::atomic::Ordering::SeqCst)
+    {
+        // Feed PhrasePractice; FE activates IME via cmd_voice_practice_activate_ime.
+        *state.voice_sapi_last_heard.lock() = phrase.to_string();
+        *state.voice_sapi_last_skip.lock() = "语音练习台中，仅本页听写测试。".into();
+        *state.voice_sapi_last_trigger.lock() = String::new();
+        return;
+    }
 
     if let Some(remain_ms) =
         crate::voice_end_runtime::wake_key_cooldown_remaining_ms(state, cooldown_ms)

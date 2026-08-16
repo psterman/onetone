@@ -1280,6 +1280,14 @@ pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWin
         try_dispatch_codex_micro_key(state, window, raw);
         return;
     }
+    // Practice stage: do not run OneTone key-wake (e.g. RAlt → 按键模式).
+    // Voice phrase → cmd_voice_practice_activate_ime injects the IME chord instead.
+    if state
+        .voice_practice_hold_fg
+        .load(std::sync::atomic::Ordering::SeqCst)
+    {
+        return;
+    }
     if *state.paused.lock() || *state.recording.lock() {
         return;
     }

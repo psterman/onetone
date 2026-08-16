@@ -233,6 +233,8 @@ pub struct AppState {
     pub trigger_compat_probe: Mutex<Option<ipc::TriggerCompatProbeSession>>,
     pub trigger_verify_listen: Mutex<Option<ipc::TriggerVerifyListenSession>>,
     pub setup_interaction_active: Mutex<bool>,
+    /// QS voice practice stage: never steal focus / never fire IME wake chords.
+    pub voice_practice_hold_fg: AtomicBool,
     /// Settings drawer open — Soft Pad float must stay hidden (click-through).
     pub settings_drawer_open: Mutex<bool>,
     /// When true, wake ASR discards mic chunks (settings open). Arc so vosk worker can read lock-free.
@@ -365,6 +367,7 @@ pub fn run() {
         trigger_compat_probe: Mutex::new(None),
         trigger_verify_listen: Mutex::new(None),
         setup_interaction_active: Mutex::new(false),
+        voice_practice_hold_fg: AtomicBool::new(false),
         settings_drawer_open: Mutex::new(false),
         settings_asr_quiet: Arc::new(AtomicBool::new(false)),
         process_usage_sampler: Mutex::new(resource_monitor::ProcessUsageSampler::default()),
@@ -857,6 +860,8 @@ pub fn run() {
             ipc::cmd_running_apps,
             ipc::cmd_app_icon,
             ipc::cmd_set_setup_interaction_active,
+            ipc::cmd_voice_set_practice_hold_fg,
+            ipc::cmd_voice_practice_activate_ime,
             ipc::cmd_set_settings_drawer_open,
             ipc::cmd_capture_source,
             ipc::cmd_frontend_keydown,

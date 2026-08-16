@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-voice-practice-activate-ime"
+description = "Enables the cmd_voice_practice_activate_ime command without any pre-configured scope."
+commands.allow = ["cmd_voice_practice_activate_ime"]
+
+[[permission]]
+identifier = "deny-cmd-voice-practice-activate-ime"
+description = "Denies the cmd_voice_practice_activate_ime command without any pre-configured scope."
+commands.deny = ["cmd_voice_practice_activate_ime"]
