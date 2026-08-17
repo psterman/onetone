@@ -143,10 +143,10 @@ fn layout_fingerprint(cfg: &VoiceConfig) -> (bool, bool, u32, u32, i32, i32) {
 }
 
 fn persist_and_log(state: &Arc<AppState>, window: &WebviewWindow, reason: &str) {
-    crate::ui_heartbeat::note_ipc_enter("layout_persist");
     let t0 = Instant::now();
     // Capture under lock, then drop before disk — save_config under cfg.lock 假死'd IPC/HB.
     let (changed, snapshot, lock_ms) = {
+        let _ipc = crate::ui_heartbeat::IpcInflightGuard::enter("layout_persist");
         let lock_t0 = Instant::now();
         let mut cfg = state.cfg.lock();
         let before = layout_fingerprint(&cfg);
@@ -166,9 +166,6 @@ fn persist_and_log(state: &Arc<AppState>, window: &WebviewWindow, reason: &str) 
         let lock_ms = lock_t0.elapsed().as_millis() as u64;
         (changed, snap, lock_ms)
     };
-    // Exit HB scope before disk — sync save_config here held layout_persist 4s+ and
-    // showed as UI 假死 (Responding=false) while the window recovered after write.
-    crate::ui_heartbeat::note_ipc_exit("layout_persist");
     let capture_ms = t0.elapsed().as_millis() as u64;
     if !changed {
         return;

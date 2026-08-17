@@ -43,7 +43,7 @@ pub fn cmd_codex_micro_pad_ensure_ready(
     state: State<'_, Arc<AppState>>,
     locale: Option<String>,
 ) -> serde_json::Value {
-    let result = {
+    let (result, ensure_cursor_keys, cfg_to_save) = {
         let mut cfg = state.cfg.lock();
         let loc = locale
             .as_deref()
@@ -51,12 +51,32 @@ pub fn cmd_codex_micro_pad_ensure_ready(
             .unwrap_or_else(|| locale_from_cfg(&cfg))
             .to_string();
         let result = codex_numpad_layer::ensure_codex_pad_ready(&mut cfg, &loc);
-        if result.changed {
-            config::save_config(&cfg);
+        let ensure_cursor_keys = result.changed
+            && result.mapping_id.as_ref().is_some_and(|mid| {
+                cfg.mappings.iter().any(|m| {
+                    m.id == *mid
+                        && m.app_target_id.trim()
+                            == crate::app_chat_workflow::CURSOR_APP_TARGET_ID
+                })
+            });
+        let cfg_to_save = if result.changed {
             codex_numpad_layer::sync_hook_cache(&cfg);
-        }
-        result
+            Some(cfg.clone())
+        } else {
+            None
+        };
+        (result, ensure_cursor_keys, cfg_to_save)
     };
+    if let Some(snap) = cfg_to_save {
+        let _ = std::thread::Builder::new()
+            .name("codex-pad-ensure-ipc-save".into())
+            .spawn(move || {
+                config::save_config(&snap);
+            });
+    }
+    if ensure_cursor_keys {
+        crate::cursor_keybindings_setup::ensure_composer_mode_keybindings_quiet();
+    }
     apply_ensure_result(state.inner(), &app, result.clone());
     serde_json::to_value(result).unwrap_or_else(|_| serde_json::json!({ "changed": false }))
 }

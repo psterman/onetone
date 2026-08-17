@@ -2,6 +2,8 @@
   'use strict';
 
   var selectedScopeId = 'codex';
+  /** Dedup Hub → overlay pin IPC (selectScheme can fire often during paint). */
+  var softPadPinnedMappingId = '';
   /** Temporary display pin mirror; authoritative pin lives in Rust after IPC. */
   var userLaneId = null;
   var softPadRuntimeCache = {
@@ -4368,6 +4370,19 @@
       selectedScopeId = entry.kind;
     }
 
+    // Pin overlay Soft Pad to this Hub mapping (same tid may have several).
+    // Fire-and-forget; never block Soft Pad paint on IPC.
+    try {
+      var pinInvoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
+      if (pinInvoke && entry.mapping && entry.mapping.id) {
+        var pinId = String(entry.mapping.id);
+        if (softPadPinnedMappingId !== pinId) {
+          softPadPinnedMappingId = pinId;
+          pinInvoke('cmd_soft_pad_pin_mapping', { mappingId: pinId }).catch(function () {});
+        }
+      }
+    } catch (_) {}
+
     if (opts.resetView !== false) {
       // Stay on Time Machine unless caller forces another Soft Pad tile.
       if (softPadFace === 'timeline' && !(opts.forceView && opts.forceView !== 'timeline')) {
@@ -5448,6 +5463,7 @@
     selectScheme: selectScheme,
     selectScope: selectScope,
     getSelectedScopeId: function () { return selectedScopeId; },
+    appTitleFor: appTitleFor,
     isUniversalSoftPadScope: function () { return String(selectedScopeId || '') === SOFT_PAD_UNIVERSAL_KIND; },
     ensureBaselineSoftPadOverlay: ensureBaselineSoftPadOverlay,
     /** @deprecated merged into universal baseline */

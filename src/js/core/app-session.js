@@ -286,7 +286,7 @@
         console.error('voice boot status check',err);
         markVoiceEngineBootHandled();
       });
-    },10000);
+    },2500);
   }
 
   function scheduleBootMicReady(){
@@ -333,6 +333,14 @@
     bootSettleUntil=Date.now()+delay;
     clearTimeout(bootSettleTimer);
     bootSettleTimer=setTimeout(markBootSettled,delay);
+  }
+
+  /** cmd_ready already has config — do not sit on the 8s watchdog. */
+  function noteBackendConfigReady(){
+    if(!uiBootstrapping&&!(bootSettleUntil>0&&Date.now()<bootSettleUntil)) return;
+    bootSettleUntil=Date.now()+400;
+    clearTimeout(bootSettleTimer);
+    bootSettleTimer=setTimeout(markBootSettled,400);
   }
 
   function runBootSettledCallbacks(){
@@ -383,6 +391,7 @@
     isBootSettling:isBootSettling,
     markBootStarted:markBootStarted,
     markBootSettled:markBootSettled,
+    noteBackendConfigReady:noteBackendConfigReady,
     whenBootSettled:whenBootSettled,
     setLangBootstrapPending:function(v){ langBootstrapPending=!!v; },
     langBootstrapPending:function(){ return langBootstrapPending; }

@@ -1018,6 +1018,7 @@ pub fn run() {
             ipc::cmd_soft_pad_force_open,
             ipc::cmd_soft_pad_open_shell_hook,
             ipc::cmd_codex_micro_pad_set_layout,
+            ipc::cmd_soft_pad_pin_mapping,
             ipc::cmd_codex_micro_pad_set_presentation,
             ipc::cmd_codex_micro_pad_set_skin,
             ipc::cmd_codex_micro_pad_ensure_ready,

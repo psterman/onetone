@@ -29,10 +29,8 @@ pub async fn cmd_request_runtime(
     let state_arc = Arc::clone(state.inner());
     let app_clone = app.clone();
     let join = tauri::async_runtime::spawn_blocking(move || {
-        crate::ui_heartbeat::note_ipc_enter("request_runtime");
-        let snapshot = build_runtime_snapshot(&app_clone, &state_arc);
-        crate::ui_heartbeat::note_ipc_exit("request_runtime");
-        snapshot
+        let _ipc = crate::ui_heartbeat::IpcInflightGuard::enter("request_runtime");
+        build_runtime_snapshot(&app_clone, &state_arc)
     });
     let snapshot = match tokio::time::timeout(std::time::Duration::from_millis(2000), join).await {
         Ok(Ok(v)) => v,

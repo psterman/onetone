@@ -168,6 +168,8 @@ fn main() {
         "cmd_soft_pad_inject_lane",
         "cmd_codex_micro_pad_fire",
         "cmd_codex_micro_pad_set_flags",
+        "cmd_codex_micro_pad_set_layout",
+        "cmd_soft_pad_pin_mapping",
         "cmd_soft_pad_force_open",
         "cmd_soft_pad_open_shell_hook",
         "cmd_codex_micro_pad_ensure_ready",

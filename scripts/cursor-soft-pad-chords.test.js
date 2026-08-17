@@ -44,6 +44,15 @@ assert.strictEqual(
     padSrc.indexOf('function syncCursorSoftPadDisplay') >= 0,
     'Cursor Soft Pad settings sync Plan/Agent with overlay'
   );
+assert.ok(
+  padSrc.includes('function isSoftPadLeftoverIcon') &&
+    padSrc.includes('isSoftPadLeftoverIcon(cur, microKeyId, slotId)'),
+  'Plan/Agent icons replace leftover palette/fork'
+);
+assert.ok(
+  !/LEGACY_MISLEADING_ICONS\s*=\s*\{[\s\S]*?\bagent:\s*1/.test(padSrc),
+  'agent icon is a real Cursor Soft Pad glyph, not legacy misleading'
+);
 assert.strictEqual(
   sandbox.OneToneAgentActions.labelForSlotForMapping({ appTargetId: 'cursor-chat' }, 'switchAgent'),
   'Agent 模式'
@@ -92,6 +101,82 @@ assert.ok(
   /CURSOR_SOFT_PAD_SLOT_IDS\s*=\s*\{[\s\S]*?\bplan:\s*1[\s\S]*?\bswitchAgent:\s*1/.test(padSrc),
   'Cursor Soft Pad picker allowlists plan + switchAgent'
 );
+assert.ok(
+  !/CURSOR_SOFT_PAD_SLOT_IDS\s*=\s*\{[\s\S]*?\bappsOrPlugins\s*:/.test(padSrc),
+  'Cursor Soft Pad never allowlists appsOrPlugins'
+);
+assert.ok(
+  padSrc.includes('!CURSOR_SOFT_PAD_SLOT_IDS[slot]') ||
+    padSrc.includes('CURSOR_SOFT_PAD_SLOT_IDS[slot]'),
+  'syncCursorSoftPadDisplay strips illegal Cursor slots'
+);
+assert.ok(
+  padSrc.includes('persistLayoutNow') && padSrc.includes('{ immediate: true }'),
+  'commitEditKeycap flushes layout immediately'
+);
+assert.ok(
+  padSrc.includes('ensureAgentKeyBinding(m, slotId)') &&
+    padSrc.indexOf('ensureAgentKeyBinding(m, slotId)') <
+      padSrc.indexOf('upsertRoute(m, pad, editDraft.microKeyId'),
+  'commitEditKeycap binds before route upsert'
+);
+assert.ok(
+  padSrc.includes('applyEnsurePayloadToMapping(m, res)'),
+  'persistLayout applies set_layout return payload'
+);
+
+var flagsSrc = fs.readFileSync(
+  path.join(root, 'src-tauri/src/ipc/commands/shell/codex_micro_pad_flags_cmd.rs'),
+  'utf8'
+);
+assert.ok(
+  flagsSrc.includes('CodexMicroPadSetLayoutResult') &&
+    flagsSrc.includes('pad.keys.iter_mut().find') &&
+    flagsSrc.includes('note_soft_pad_surface_for_mapping'),
+  'set_layout returns pad+bindings, upserts keys, pins mappingId'
+);
+assert.ok(flagsSrc.includes('cmd_soft_pad_pin_mapping'), 'Hub can pin Soft Pad mapping');
+
+var appIpc = fs.readFileSync(
+  path.join(root, 'src-tauri/permissions/app-ipc.toml'),
+  'utf8'
+);
+assert.ok(
+  appIpc.includes('allow-cmd-codex-micro-pad-set-layout'),
+  'set_layout must be in app-ipc or quiet persist is denied'
+);
+assert.ok(
+  appIpc.includes('allow-cmd-soft-pad-pin-mapping'),
+  'pin mapping must be in app-ipc'
+);
+var buildSrc = fs.readFileSync(path.join(root, 'src-tauri/build.rs'), 'utf8');
+assert.ok(
+  buildSrc.includes('"cmd_codex_micro_pad_set_layout"') &&
+    buildSrc.includes('"cmd_soft_pad_pin_mapping"'),
+  'build.rs ACL COMMANDS includes set_layout + pin_mapping'
+);
+
+var overlaySrc = fs.readFileSync(
+  path.join(root, 'src-tauri/src/codex_micro_overlay.rs'),
+  'utf8'
+);
+assert.ok(
+  overlaySrc.includes('sticky_mapping_id_for_tid') &&
+    overlaySrc.includes('note_soft_pad_surface_for_mapping'),
+  'overlay prefers sticky mappingId under same tid'
+);
+
+var layerSrc = fs.readFileSync(
+  path.join(root, 'src-tauri/src/codex_numpad_layer.rs'),
+  'utf8'
+);
+assert.ok(
+  layerSrc.includes('cursor_soft_pad_slot_allowed') &&
+    layerSrc.includes('heal_cursor_illegal_soft_pad_slots') &&
+    layerSrc.includes('heal_cursor_pad_for_save'),
+  'Cursor save heal allowlists Soft Pad slots and strips illegal ones'
+);
+
 assert.ok(
   padSrc.includes('composerMode hotkeys') || padSrc.includes('Ctrl+Alt+Shift+P'),
   'Cursor plan/agent treated as one-press hotkeys in picker'

@@ -39,6 +39,24 @@ pub fn note_ipc_enter(name: &str) {
     }
 }
 
+/// Drop-safe pair for `note_ipc_enter` — timeout/panic must still clear inflight.
+pub struct IpcInflightGuard {
+    name: &'static str,
+}
+
+impl IpcInflightGuard {
+    pub fn enter(name: &'static str) -> Self {
+        note_ipc_enter(name);
+        Self { name }
+    }
+}
+
+impl Drop for IpcInflightGuard {
+    fn drop(&mut self) {
+        note_ipc_exit(self.name);
+    }
+}
+
 pub fn note_ipc_exit(name: &str) {
     let prev = IPC_INFLIGHT_DEPTH.fetch_sub(1, Ordering::SeqCst);
     if prev <= 1 {

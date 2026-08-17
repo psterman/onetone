@@ -1270,6 +1270,71 @@ html[data-theme="dark"] .soft-pad-face-tm__detail {
   max-width: min(100%, 380px);
   flex: 0 0 auto;
 }
+.soft-pad-preview-host .micro-hw__face-top {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
+  margin-bottom: 8px;
+  box-sizing: border-box;
+}
+.soft-pad-preview-host .micro-hw__face-title {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  color: rgba(26, 45, 74, 0.78);
+  text-transform: none;
+}
+.soft-pad-preview-host .soft-pad-agent-bar--face {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  pointer-events: none;
+}
+.soft-pad-preview-host .soft-pad-agent-bar--face .soft-pad-agent-bar__chip--preview {
+  position: relative;
+  width: 32px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  border: 1px solid rgba(92, 105, 122, 0.16);
+  background: linear-gradient(180deg, #fff 0%, #f2f5f8 100%);
+}
+.soft-pad-preview-host .soft-pad-agent-bar--face .soft-pad-agent-bar__chip--preview img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+.soft-pad-preview-host .soft-pad-agent-bar--face .soft-pad-agent-bar__chip--preview.is-focused {
+  border-color: rgba(42, 156, 196, 0.55);
+  box-shadow: 0 0 0 2px rgba(62, 184, 220, 0.22);
+}
+.soft-pad-preview-host .soft-pad-agent-bar--face .soft-pad-agent-bar__dot {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.55);
+}
+html[data-theme="dark"] .soft-pad-preview-host .micro-hw__face-title {
+  color: rgba(226, 232, 240, 0.82);
+}
+html[data-theme="dark"] .soft-pad-preview-host .soft-pad-agent-bar--face {
+  background: rgba(15, 23, 42, 0.35);
+  border-color: rgba(148, 163, 184, 0.18);
+}
 .soft-pad-face-pad .soft-pad-preview-host .micro-hw-wrap,
 #softPadPreviewHost .micro-hw-wrap {
   width: min(100%, 380px) !important;

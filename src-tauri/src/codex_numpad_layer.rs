@@ -591,14 +591,17 @@ fn pad_routes_need_heal(m: &MappingEntry, pad: &CodexMicroPadConfig) -> bool {
             return true;
         }
         if pad.keys.iter().any(|route| {
+            let slot = route.slot_id.trim();
+            let icon = route.ui_icon_id.trim();
+            let mid = route.micro_key_id.trim();
+            // Icon leftovers heal on set_layout / explicit ensure — not overlay ticks
+            // (need_heal here + save_config under cfg.lock 假死).
             route.key_role == Some(crate::soft_pad_purpose::SoftPadKeyRole::AgentLane)
-                || (route.micro_key_id.trim().starts_with("AG")
-                    && matches!(
-                        route.ui_icon_id.trim(),
-                        "agent" | "lane" | "claude"
-                    ))
-                || (matches!(route.micro_key_id.trim(), "PLUS" | "DOT")
-                    && route.slot_id.trim().is_empty())
+                // Session-lane leftover icons — not Plan/Agent mode capability glyphs.
+                || (mid.starts_with("AG")
+                    && matches!(icon, "agent" | "lane" | "claude")
+                    && !matches!(slot, "plan" | "switchAgent"))
+                || (matches!(mid, "PLUS" | "DOT") && slot.is_empty())
         }) {
             return true;
         }
@@ -769,14 +772,6 @@ fn heal_slot_key_bindings(m: &mut MappingEntry, slot_id: &str, locale: &str) -> 
             }
         }
     }
-    if agent_key_binding_for_slot(m, slot_id).is_none() {
-        for seed in build_scenario_bindings(locale, m.app_target_id.trim()) {
-            if agent_key_binding_for_slot(m, &seed.slot_id).is_none() {
-                m.agent_bindings.push(seed);
-                changed = true;
-            }
-        }
-    }
     changed
 }
 
@@ -786,6 +781,161 @@ pub(crate) fn heal_cursor_plan_chord_if_legacy(m: &mut MappingEntry) -> bool {
         return false;
     }
     heal_slot_key_bindings(m, "plan", "zh-CN")
+}
+
+/// Align with FE `CURSOR_SOFT_PAD_SLOT_IDS` — Codex slash insertOnly never on Cursor Soft Pad.
+fn cursor_soft_pad_slot_allowed(slot_id: &str) -> bool {
+    matches!(
+        slot_id.trim(),
+        "summonCodex"
+            | "commandPalette"
+            | "newThread"
+            | "quickChat"
+            | "quickSearch"
+            | "pushToTalk"
+            | "stopOrSend"
+            | "cancel"
+            | "undo"
+            | "toggleSidebar"
+            | "openSettings"
+            | "navBack"
+            | "navForward"
+            | "openTerminal"
+            | "newBrowserTab"
+            | "plan"
+            | "switchAgent"
+    )
+}
+
+/// Icon left over from a previous Soft Pad binding (safe to auto-replace for plan/agent).
+pub(crate) fn soft_pad_icon_is_leftover(icon: &str, micro_key_id: &str, slot_id: &str) -> bool {
+    let icon = icon.trim();
+    if icon.is_empty() || matches!(icon, "plus" | "dot" | "empty") {
+        return true;
+    }
+    let slot = slot_id.trim();
+    let want = match slot {
+        "plan" => "plan",
+        "switchAgent" => "agent",
+        _ => "",
+    };
+    if !want.is_empty() && icon == want {
+        return false;
+    }
+    let stock = match micro_key_id.trim() {
+        "ACT06" => "fast",
+        "ACT07" => "palette",
+        "ACT08" => "reject",
+        "ACT09" => "fork",
+        "UNDO" => "undo",
+        "SEARCH" => "search",
+        "ACT10" => "mic",
+        "ACT12" => "send",
+        "PLUS" => "plus",
+        "DOT" => "dot",
+        "ENC" => "power",
+        "AG00" => "palette",
+        "AG01" => "fork",
+        "AG02" => "fast",
+        "AG03" => "search",
+        "AG04" => "send",
+        "AG05" => "reject",
+        _ => "",
+    };
+    if !stock.is_empty() && icon == stock {
+        return true;
+    }
+    matches!(
+        icon,
+        "palette"
+            | "fork"
+            | "fast"
+            | "search"
+            | "send"
+            | "reject"
+            | "mic"
+            | "undo"
+            | "power"
+            | "lane"
+            | "claude"
+            | "codex"
+            | "focus"
+            | "folder"
+            | "status"
+            | "terminal"
+            | "browser"
+            | "browserPlus"
+            | "review"
+            | "plan"
+            | "agent"
+            | "model"
+    )
+}
+
+/// Strip Codex-only insert routes (e.g. appsOrPlugins) left on Cursor Soft Pad keys.
+fn heal_cursor_illegal_soft_pad_slots(m: &mut MappingEntry) -> bool {
+    if m.app_target_id.trim() != crate::app_chat_workflow::CURSOR_APP_TARGET_ID {
+        return false;
+    }
+    let Some(pad) = m.codex_micro_pad.as_mut() else {
+        return false;
+    };
+    let mut changed = false;
+    for route in &mut pad.keys {
+        let slot = route.slot_id.trim();
+        if slot.is_empty() || cursor_soft_pad_slot_allowed(slot) {
+            continue;
+        }
+        route.slot_id.clear();
+        route.enabled = false;
+        // Stock icon for the physical key — avoid leftover slash/capability glyphs.
+        let id = route.micro_key_id.trim();
+        let stock = match id {
+            "PLUS" => "plus",
+            "DOT" => "dot",
+            "ENC" => "power",
+            "ACT06" => "fast",
+            "ACT07" => "palette",
+            "ACT08" => "reject",
+            "ACT09" => "fork",
+            "UNDO" => "undo",
+            "SEARCH" => "search",
+            "ACT10" => "mic",
+            "ACT12" => "send",
+            _ if id.starts_with("AG") => "palette",
+            _ => "",
+        };
+        if !stock.is_empty() && route.ui_icon_id.trim() != stock {
+            route.ui_icon_id = stock.into();
+        }
+        changed = true;
+    }
+    changed
+}
+
+/// Quiet set_layout / ensure: AG chrome + illegal slot strip + Plan chord migrate.
+pub(crate) fn heal_cursor_pad_for_save(m: &mut MappingEntry, locale: &str) -> bool {
+    if m.app_target_id.trim() != crate::app_chat_workflow::CURSOR_APP_TARGET_ID {
+        return false;
+    }
+    let mut changed = false;
+    if heal_cursor_illegal_soft_pad_slots(m) {
+        changed = true;
+    }
+    if heal_cursor_pad_ag_chrome(m) {
+        changed = true;
+    }
+    if heal_cursor_plan_chord_if_legacy(m) {
+        changed = true;
+    }
+    // Only Plan/Agent chords here — do not rebuild scenario bindings for every
+    // pad slot on each quiet save (that 假死'd the Soft Pad keys page).
+    for slot in ["plan", "switchAgent"] {
+        if heal_slot_key_bindings(m, slot, locale) {
+            changed = true;
+        }
+    }
+    changed
 }
 
 /// Patch missing/disabled pad route + agent key binding (in-memory + hook cache).
@@ -1147,23 +1297,13 @@ pub fn ensure_codex_pad_ready_for(
             touched_pad = Some(pad.clone());
         }
         touched_mapping_id = Some(m.id.clone());
-        if heal_cursor_pad_ag_chrome(m) {
+        if heal_cursor_pad_for_save(m, locale) {
             changed = true;
             touched_pad = m.codex_micro_pad.clone();
-            // PLUS/DOT may have gained plan/switchAgent — fill key bindings.
-            for slot in ["plan", "switchAgent"] {
-                if heal_slot_key_bindings(m, slot, locale) {
-                    changed = true;
-                    touched_bindings = Some(m.agent_bindings.clone());
-                }
-            }
-        } else if heal_cursor_plan_chord_if_legacy(m) {
-            changed = true;
             touched_bindings = Some(m.agent_bindings.clone());
         }
-        if m.app_target_id.trim() == crate::app_chat_workflow::CURSOR_APP_TARGET_ID {
-            crate::cursor_keybindings_setup::ensure_composer_mode_keybindings_quiet();
-        }
+        // Never call ensure_composer_mode_keybindings_quiet here — it does disk IO and
+        // callers hold `cfg` (overlay tick / IPC). Cursor keybindings.json lock → 假死.
         break;
     }
 
@@ -1432,14 +1572,28 @@ fn heal_cursor_pad_ag_chrome(m: &mut MappingEntry) -> bool {
         if id == "PLUS" && route.slot_id.trim().is_empty() {
             route.slot_id = "plan".into();
             route.ui_icon_id = "plan".into();
+            if !route.enabled {
+                route.enabled = true;
+            }
             changed = true;
         } else if id == "DOT" && route.slot_id.trim().is_empty() {
             route.slot_id = "switchAgent".into();
             route.ui_icon_id = "agent".into();
+            if !route.enabled {
+                route.enabled = true;
+            }
             changed = true;
         }
         let icon = route.ui_icon_id.trim();
-        if matches!(icon, "agent" | "lane" | "claude" | "") && id.starts_with("AG") {
+        let slot = route.slot_id.trim();
+        // Plan / Agent mode: replace leftover palette/fork from the previous binding.
+        if matches!(slot, "plan" | "switchAgent") {
+            let want = if slot == "plan" { "plan" } else { "agent" };
+            if soft_pad_icon_is_leftover(icon, id, slot) && icon != want {
+                route.ui_icon_id = want.into();
+                changed = true;
+            }
+        } else if matches!(icon, "agent" | "lane" | "claude" | "") && id.starts_with("AG") {
             let stock = match id {
                 "AG00" => "palette",
                 "AG01" => "fork",
@@ -1773,6 +1927,74 @@ mod tests {
     }
 
     #[test]
+    fn heal_slot_key_bindings_does_not_repush_scenario_pack() {
+        use crate::config::{AgentBinding, MappingEntry, TriggerMode};
+
+        let mut m = MappingEntry {
+            id: "cursor-heal-once".into(),
+            label: String::new(),
+            group: "默认".into(),
+            app_target_id: CURSOR_APP_TARGET_ID.into(),
+            trigger_key: "F1".into(),
+            target_key: "RAlt".into(),
+            enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
+            order: 0,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: 500,
+            double_click_ms: 400,
+            ime_preset_id: String::new(),
+            app_behavior_rules: vec![],
+            voice_override: None,
+            camera_override: None,
+            voice_commands: vec![],
+            acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: CURSOR_PROVIDER_ID.into(),
+            agent_bindings: vec![
+                AgentBinding {
+                    slot_id: "plan".into(),
+                    action_id: "composerModePlan".into(),
+                    trigger_type: "key".into(),
+                    trigger_binding: String::new(),
+                    enabled: true,
+                    ..AgentBinding::default()
+                },
+                AgentBinding {
+                    slot_id: "summonCodex".into(),
+                    action_id: "openAgent".into(),
+                    trigger_type: "key".into(),
+                    trigger_binding: String::new(),
+                    enabled: true,
+                    ..AgentBinding::default()
+                },
+            ],
+            codex_micro_pad: Some(default_codex_micro_pad()),
+            time_machine_workspace: String::new(),
+        };
+        let before = m.agent_bindings.len();
+        let _ = heal_slot_key_bindings(&mut m, "plan", "zh-CN");
+        let mid = m.agent_bindings.len();
+        let _ = heal_slot_key_bindings(&mut m, "plan", "zh-CN");
+        assert_eq!(m.agent_bindings.len(), mid);
+        assert!(
+            mid <= before + 1,
+            "heal dumped scenario pack: {before} -> {mid}"
+        );
+    }
+
+    #[test]
     fn heal_codex_pad_bindings_fixes_empty_chord_and_enc_scan() {
         use crate::config::{MappingEntry, TriggerMode};
 
@@ -1907,6 +2129,62 @@ mod tests {
         assert_eq!(plus.slot_id, "plan");
         assert_eq!(dot.slot_id, "switchAgent");
         assert!(!heal_cursor_pad_ag_chrome(&mut m));
+    }
+
+    #[test]
+    fn heal_cursor_pad_strips_apps_or_plugins() {
+        use crate::app_chat_workflow::CURSOR_APP_TARGET_ID;
+        use crate::config::{MappingEntry, TriggerMode};
+
+        let mut pad = default_codex_micro_pad();
+        pad.enabled = true;
+        pad.overlay_enabled = true;
+        if let Some(k) = pad.keys.iter_mut().find(|k| k.micro_key_id == "AG00") {
+            k.slot_id = "appsOrPlugins".into();
+            k.enabled = true;
+            k.ui_icon_id = "apps".into();
+        }
+        let mut m = MappingEntry {
+            id: "cursor-apps".into(),
+            label: String::new(),
+            group: "默认".into(),
+            app_target_id: CURSOR_APP_TARGET_ID.into(),
+            trigger_key: "F1".into(),
+            target_key: "RAlt".into(),
+            enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
+            order: 0,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: 500,
+            double_click_ms: 400,
+            ime_preset_id: String::new(),
+            app_behavior_rules: vec![],
+            voice_override: None,
+            camera_override: None,
+            voice_commands: vec![],
+            acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
+            codex_micro_pad: Some(pad),
+            time_machine_workspace: String::new(),
+        };
+        assert!(heal_cursor_pad_for_save(&mut m, "zh-CN"));
+        let pad = m.codex_micro_pad.as_ref().unwrap();
+        let ag00 = pad.keys.iter().find(|k| k.micro_key_id == "AG00").unwrap();
+        assert!(ag00.slot_id.trim().is_empty() || cursor_soft_pad_slot_allowed(&ag00.slot_id));
+        assert_ne!(ag00.slot_id, "appsOrPlugins");
     }
 
     #[test]

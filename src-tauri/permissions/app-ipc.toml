@@ -138,6 +138,8 @@ permissions = [
   "allow-cmd-soft-pad-resume-lane",
   "allow-cmd-soft-pad-inject-lane",
   "allow-cmd-codex-micro-pad-set-flags",
+  "allow-cmd-codex-micro-pad-set-layout",
+  "allow-cmd-soft-pad-pin-mapping",
   "allow-cmd-soft-pad-force-open",
   "allow-cmd-soft-pad-open-shell-hook",
   "allow-cmd-codex-micro-pad-ensure-ready",

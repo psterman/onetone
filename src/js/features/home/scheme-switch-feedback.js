@@ -89,10 +89,12 @@
     }else{
       notifyIfBackground(msg);
     }
-    // Defer voice remount — sync loadSapi/Vosk on switch fought home paint (假死).
-    requestAnimationFrame(function(){
-      try{ refreshVoiceAfterSceneSwitch(); }catch(_){}
-    });
+    // Home: skip voice status IPC + settings remount. Drawer still needs it.
+    if(drawerOpen){
+      requestAnimationFrame(function(){
+        try{ refreshVoiceAfterSceneSwitch(); }catch(_){}
+      });
+    }
   }
 
   function refreshVoiceAfterSceneSwitch(){

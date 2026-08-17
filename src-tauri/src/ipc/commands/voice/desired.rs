@@ -50,18 +50,13 @@ pub fn voice_set_listening_strategy(
         cfg.clone()
     };
     let settings_open = *state.settings_drawer_open.lock();
-    // Settings open: return before disk flush — sync save_config on every 自动/增强/省电
-    // click made the tab feel stuck (IPC waited on AV-scanned write).
-    if settings_open {
-        let snap = cfg_snapshot.clone();
-        let _ = std::thread::Builder::new()
-            .name("strategy-save".into())
-            .spawn(move || {
-                crate::config::save_config(&snap);
-            });
-    } else {
-        crate::config::save_config(&cfg_snapshot);
-    }
+    // Always save off-thread. Homepage「开启自动」used to sync pretty-print a bloated
+    // settings.json on the blocking worker and 假死 the UI (layout_persist convoy).
+    let _ = std::thread::Builder::new()
+        .name("strategy-save".into())
+        .spawn(move || {
+            crate::config::save_config(&cfg_snapshot);
+        });
     crate::app_log::log_line(
         state.as_ref(),
         "voice",

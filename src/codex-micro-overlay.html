@@ -2537,7 +2537,7 @@
       // changing uiIconId on a stale client cache.
       var parts=(s.cells||[]).map(function(c){
         if(!c||!c.microKeyId) return '';
-        return c.microKeyId+':'+(c.bound?1:0)+':'+(c.uiIconId||'')+':'+(c.sourceKind||'')+':'+(c.keyRole||'action');
+        return c.microKeyId+':'+(c.bound?1:0)+':'+(c.uiIconId||'')+':'+(c.slotId||c.slot_id||'')+':'+(c.sourceKind||'')+':'+(c.keyRole||'action');
       });
       var mode=String(s.padMode||'')==='numpad'?'numpad':(s.enabled===false?'numpad':'codex');
       var navOn=s.showNavigationPad!==false && s.show_navigation_pad!==false
@@ -2823,11 +2823,13 @@
         if(isNp || isNav) bound=true;
         boundKeys[cell.id]=bound;
         var iconId=info.uiIconId||cell.icon||'empty';
-        // Cursor Soft Pad: AG keys are normal shortcuts — never Codex session AG chrome.
-        if(noAgChrome && cell.id && cell.id.indexOf('AG')===0){
-          iconId=cursorAgIcon[cell.id]||'palette';
-        } else if(noAgChrome && (iconId==='agent'||iconId==='lane'||iconId==='claude')){
-          iconId=cursorAgIcon[cell.id]||'palette';
+        // Cursor: strip leftover Codex session-lane glyphs only. Never clobber
+        // Plan/Agent (or any real shortcut icon) — that made overlay ≠ 设置页.
+        var slot=String(info.slotId||info.slot_id||'').trim();
+        var keepCap=slot==='plan'||slot==='switchAgent';
+        if(noAgChrome && !keepCap && (iconId==='agent'||iconId==='lane'||iconId==='claude')){
+          if(cell.id && cell.id.indexOf('AG')===0) iconId=cursorAgIcon[cell.id]||'palette';
+          else iconId=cell.icon||'empty';
         }
         var keyRole=String(info.keyRole||'action');
         if(noAgChrome) keyRole='action';

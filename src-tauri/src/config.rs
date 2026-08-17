@@ -1,6 +1,6 @@
 use notify::{Event, EventKind, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
@@ -3760,6 +3760,40 @@ pub fn agent_key_binding_for_slot<'a>(
     })
 }
 
+fn agent_binding_keep_score(b: &AgentBinding) -> u8 {
+    (u8::from(!b.trigger_binding.trim().is_empty()) << 1) | u8::from(b.enabled)
+}
+
+/// Collapse duplicated `(slotId, triggerType)` rows. Soft Pad heal used to re-push the
+/// whole scenario pack when a slot had an empty chord — Cursor hit 200k rows / 37MB
+/// and `save_config` / layout persist 假死'd the homepage.
+pub fn compact_duplicate_agent_bindings(bindings: &mut Vec<AgentBinding>) -> bool {
+    let n = bindings.len();
+    if n <= 1 {
+        return false;
+    }
+    let mut best: HashMap<(String, String), usize> = HashMap::new();
+    let mut keep: Vec<AgentBinding> = Vec::with_capacity(n.min(64));
+    for b in bindings.drain(..) {
+        let key = (
+            b.slot_id.trim().to_ascii_lowercase(),
+            b.trigger_type.trim().to_ascii_lowercase(),
+        );
+        let score = agent_binding_keep_score(&b);
+        if let Some(&idx) = best.get(&key) {
+            if score >= agent_binding_keep_score(&keep[idx]) {
+                keep[idx] = b;
+            }
+        } else {
+            best.insert(key, keep.len());
+            keep.push(b);
+        }
+    }
+    let changed = keep.len() != n;
+    *bindings = keep;
+    changed
+}
+
 impl VoiceConfig {
     pub fn migrate(&mut self) {
         if self.version >= 8 && !self.mappings.is_empty() {
@@ -4165,6 +4199,7 @@ impl VoiceConfig {
             if m.enter_delay_ms < 1000 {
                 m.enter_delay_ms = self.enter_delay_ms;
             }
+            compact_duplicate_agent_bindings(&mut m.agent_bindings);
             if let Some(pad) = m.codex_micro_pad.as_mut() {
                 crate::codex_numpad_layer::heal_stock_mic_on_numpad0(pad);
                 if let Some(kind) = crate::agent_catalog::kind_from_mapping(
@@ -4889,7 +4924,14 @@ pub fn load_config() -> VoiceConfig {
         Ok(raw) => serde_json::from_str::<VoiceConfig>(&raw).unwrap_or_default(),
         Err(_) => VoiceConfig::default(),
     };
+    let bloated = cfg
+        .mappings
+        .iter()
+        .any(|m| m.agent_bindings.len() > 512);
     cfg.migrate();
+    if bloated {
+        save_config(&cfg);
+    }
     crate::cursor_local_activity::set_consent_enabled(cfg.cursor_activity_stats_enabled);
     cfg
 }
@@ -5253,6 +5295,40 @@ mod tests {
         )
         .unwrap();
         assert!(!should_show_main_on_startup(&cfg));
+    }
+
+    #[test]
+    fn compact_duplicate_agent_bindings_keeps_chord_not_empties() {
+        let empty = || AgentBinding {
+            slot_id: "summonCodex".into(),
+            trigger_type: "key".into(),
+            trigger_binding: String::new(),
+            enabled: true,
+            ..AgentBinding::default()
+        };
+        let mut rows = vec![empty(), empty(), empty()];
+        rows.push(AgentBinding {
+            slot_id: "summonCodex".into(),
+            trigger_type: "key".into(),
+            trigger_binding: "Ctrl+Shift+P".into(),
+            enabled: true,
+            ..AgentBinding::default()
+        });
+        rows.push(empty());
+        rows.push(AgentBinding {
+            slot_id: "plan".into(),
+            trigger_type: "voice".into(),
+            trigger_binding: "计划模式".into(),
+            enabled: true,
+            ..AgentBinding::default()
+        });
+        assert!(compact_duplicate_agent_bindings(&mut rows));
+        assert_eq!(rows.len(), 2);
+        let key = rows
+            .iter()
+            .find(|b| b.slot_id == "summonCodex" && b.trigger_type == "key")
+            .unwrap();
+        assert_eq!(key.trigger_binding, "Ctrl+Shift+P");
     }
 
     #[test]

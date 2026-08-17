@@ -128,7 +128,7 @@
       try{
         if(global.__otBootCameraCold){
           // Never fire mid voiceWake open — settle+8s raced openDrawer → 假死.
-          camDelay=15000;
+          camDelay=4000;
           global.__otBootCameraCold=false;
         }
       }catch(_){}
@@ -1873,11 +1873,9 @@
         if(remote.useCount!=null) local.useCount=remote.useCount;
         else if(remote.use_count!=null) local.useCount=remote.use_count;
       });
-    }else if(toId){
-      (st.config.mappings||[]).forEach(function(mapping){
-        mapping.enabled=(String(mapping.id)===toId);
-      });
     }
+    // No inbound mappings: only activeSceneId. Do not exclusive-enable — Rust
+    // select_scheme does not flip mapping.enabled, and that rewrite fought the rail.
     earlyPersistLog('applySchemeSwitchedRuntime to='+toId+
       ' maps='+(st.config.mappings?st.config.mappings.length:0)+
       ' edit='+String(st.selectedMappingId==null?'null':st.selectedMappingId));
@@ -2013,6 +2011,16 @@
         ' appRemembered='+Object.keys(lastKnownAppScenarios).length);
       if(bootSettling()||mvpInitHeavyRemountBlocked()){
         scheduleDeferredMvpInitSideEffects();
+        try{
+          var session=global.OneToneAppSession;
+          if(session&&typeof session.noteBackendConfigReady==='function') session.noteBackendConfigReady();
+        }catch(_){}
+        var paintHome=hookFn('renderHome');
+        if(paintHome){
+          requestAnimationFrame(function(){
+            try{ paintHome(); }catch(_){}
+          });
+        }
         try{
           if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag) global.OneToneUiHeartbeat.clearTag('applyMvpInit');
           else if(global.__otActivityTag==='applyMvpInit') global.__otActivityTag='';

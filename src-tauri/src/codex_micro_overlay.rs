@@ -463,6 +463,9 @@ pub struct CodexMicroOverlayCell {
     pub sub: String,
     pub ui_icon_id: String,
     pub kind: String,
+    /// Bound capability slot (plan / switchAgent / commandPalette / …).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub slot_id: String,
     /// primary | screen | advanced | none ? honest brightness for overlay.
     pub source_kind: String,
     /// idle | running | listening | needs_input | done | failed
@@ -1400,24 +1403,56 @@ pub fn active_ambient_for_soft_rgb(
 }
 
 /// Last Soft Pad agent that owned a real app FG (not OneTone / Soft Pad overlay).
+/// Third field pins Hub/set_layout mappingId so overlay matches the edited Soft Pad.
 /// Soft Pad overlay clicks must not fall back to Codex Soft Pad while Cursor is the work surface.
-fn last_soft_pad_surface() -> &'static ParkingMutex<Option<(String, crate::soft_pad_runtime::AgentKind)>> {
-    static SLOT: OnceLock<ParkingMutex<Option<(String, crate::soft_pad_runtime::AgentKind)>>> =
-        OnceLock::new();
+fn last_soft_pad_surface(
+) -> &'static ParkingMutex<Option<(String, crate::soft_pad_runtime::AgentKind, Option<String>)>> {
+    static SLOT: OnceLock<
+        ParkingMutex<Option<(String, crate::soft_pad_runtime::AgentKind, Option<String>)>>,
+    > = OnceLock::new();
     SLOT.get_or_init(|| ParkingMutex::new(None))
 }
 
-fn note_soft_pad_surface(tid: &str, kind: crate::soft_pad_runtime::AgentKind) {
+fn note_soft_pad_surface(
+    tid: &str,
+    kind: crate::soft_pad_runtime::AgentKind,
+    mapping_id: Option<&str>,
+) {
     let tid = tid.trim();
     if tid.is_empty() {
         return;
     }
-    *last_soft_pad_surface().lock() = Some((tid.to_string(), kind));
+    let explicit = mapping_id
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
+    let mut slot = last_soft_pad_surface().lock();
+    let mid = match explicit {
+        Some(m) => Some(m),
+        None => match &*slot {
+            // FG refresh without mid: keep Hub-pinned mapping for the same app.
+            Some((prev_tid, _, prev_mid)) if prev_tid == tid => prev_mid.clone(),
+            _ => None,
+        },
+    };
+    *slot = Some((tid.to_string(), kind, mid));
 }
 
 /// Chip / focus Soft Pad agent: sticky Soft Pad surface so overlay FG keeps Cursor Soft Pad.
 pub fn note_soft_pad_surface_for_agent(kind: crate::soft_pad_runtime::AgentKind) {
-    note_soft_pad_surface(kind.app_target_id(), kind);
+    note_soft_pad_surface(kind.app_target_id(), kind, None);
+}
+
+/// Hub scheme select / quiet set_layout: pin exact mapping under the Soft Pad agent.
+pub fn note_soft_pad_surface_for_mapping(
+    mapping_id: &str,
+    kind: crate::soft_pad_runtime::AgentKind,
+) {
+    let mid = mapping_id.trim();
+    if mid.is_empty() {
+        return;
+    }
+    note_soft_pad_surface(kind.app_target_id(), kind, Some(mid));
 }
 
 /// Soft Pad surface owner: live Soft Pad agent FG, else sticky last Soft Pad agent.
@@ -1427,12 +1462,29 @@ fn soft_pad_surface_owner() -> Option<(String, crate::soft_pad_runtime::AgentKin
     if !crate::app_identity::foreground_is_self() {
         if let Some(tid) = crate::app_identity::foreground_effective_app_target_id() {
             if let Some(kind) = crate::soft_pad_runtime::AgentKind::from_app_target(tid.trim()) {
-                note_soft_pad_surface(&tid, kind);
+                note_soft_pad_surface(&tid, kind, None);
                 return Some((tid, kind));
             }
         }
     }
-    last_soft_pad_surface().lock().clone()
+    last_soft_pad_surface()
+        .lock()
+        .as_ref()
+        .map(|(tid, kind, _)| (tid.clone(), *kind))
+}
+
+fn sticky_mapping_id_for_tid(tid: &str) -> Option<String> {
+    let tid = tid.trim();
+    last_soft_pad_surface()
+        .lock()
+        .as_ref()
+        .and_then(|(t, _, mid)| {
+            if t.trim() == tid {
+                mid.clone()
+            } else {
+                None
+            }
+        })
 }
 
 fn mapping_for_soft_pad_target<'a>(
@@ -1440,6 +1492,16 @@ fn mapping_for_soft_pad_target<'a>(
     tid: &str,
 ) -> Option<(&'a MappingEntry, &'a CodexMicroPadConfig)> {
     let tid = tid.trim();
+    // Prefer Hub/set_layout pinned mappingId when it still matches this app target.
+    if let Some(mid) = sticky_mapping_id_for_tid(tid) {
+        if let Some(m) = cfg.mappings.iter().find(|m| {
+            m.enabled && m.id == mid && m.app_target_id.trim() == tid
+        }) {
+            if let Some(pad) = m.codex_micro_pad.as_ref() {
+                return Some((m, pad));
+            }
+        }
+    }
     let mut fallback: Option<(&MappingEntry, &CodexMicroPadConfig)> = None;
     for m in &cfg.mappings {
         if !m.enabled || m.app_target_id.trim() != tid {
@@ -2846,12 +2908,26 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         if nav_lane {
             ui_icon_id = "lane".into();
         }
-        // Cursor Soft Pad: strip Codex session-lane icons on AG* only.
-        // PLUS/DOT Plan/Agent use intentional `plan` / `agent` icons — do not rewrite.
-        if applied_kind == Some(crate::soft_pad_runtime::AgentKind::Cursor)
+        let route_slot = route.map(|r| r.slot_id.trim()).unwrap_or("");
+        // Plan/Agent capability glyphs — replace leftover palette/fork from prior slots.
+        if matches!(route_slot, "plan" | "switchAgent") {
+            let want = if route_slot == "plan" {
+                "plan"
+            } else {
+                "agent"
+            };
+            if crate::codex_numpad_layer::soft_pad_icon_is_leftover(
+                &ui_icon_id,
+                def.micro_key_id,
+                route_slot,
+            ) {
+                ui_icon_id = want.into();
+            }
+        } else if applied_kind == Some(crate::soft_pad_runtime::AgentKind::Cursor)
             && def.micro_key_id.starts_with("AG")
             && matches!(ui_icon_id.as_str(), "agent" | "lane" | "claude" | "")
         {
+            // Cursor Soft Pad: strip Codex session-lane icons on AG* only (not Plan/Agent slots).
             ui_icon_id = match def.micro_key_id {
                 "AG01" => "fork".into(),
                 "AG00" => "palette".into(),
@@ -2987,6 +3063,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             sub,
             ui_icon_id,
             kind: cell_kind,
+            slot_id: route_slot.to_string(),
             source_kind,
             run_status: out_run,
             status_source: out_src,
@@ -3213,6 +3290,7 @@ fn build_protocol_status_cells(
                 sub: context_hint.clone(),
                 ui_icon_id: def.default_icon.to_string(),
                 kind: def.kind.to_string(),
+                slot_id: String::new(),
                 source_kind: "none".into(),
                 run_status,
                 status_source,
@@ -4302,7 +4380,11 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
     }
     if is_fg || agent_process || agent_fg {
         // Auto-ensure Soft Pad routes when a supported agent is FG or its process is running.
-        let result = if agent_fg || agent_process {
+        // Skip while OneTone itself is FG (home / settings): Cursor.exe alive used to
+        // take cfg.lock every 250ms for readiness+heal, which 假死'd the homepage.
+        let result = if (agent_fg || agent_process)
+            && !crate::app_identity::foreground_is_self()
+        {
             let mut cfg = state.cfg.lock();
             let blocker = crate::codex_numpad_layer::readiness_snapshot(&cfg).blocker;
             let needs_mapping = blocker == "no_routes" || blocker == "no_mapping";
@@ -4331,9 +4413,31 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
                     "zh-CN",
                     prefer,
                 );
-                if result.changed {
-                    crate::config::save_config(&cfg);
+                let ensure_cursor_keys = result.changed
+                    && result.mapping_id.as_ref().is_some_and(|mid| {
+                        cfg.mappings.iter().any(|m| {
+                            m.id == *mid
+                                && m.app_target_id.trim()
+                                    == crate::app_chat_workflow::CURSOR_APP_TARGET_ID
+                        })
+                    });
+                let cfg_to_save = if result.changed {
                     crate::codex_numpad_layer::sync_hook_cache(&cfg);
+                    Some(cfg.clone())
+                } else {
+                    None
+                };
+                drop(cfg);
+                // Never save_config under cfg.lock — pretty-print + bak 假死 IPC/HB.
+                if let Some(snap) = cfg_to_save {
+                    let _ = std::thread::Builder::new()
+                        .name("codex-pad-ensure-save".into())
+                        .spawn(move || {
+                            crate::config::save_config(&snap);
+                        });
+                }
+                if ensure_cursor_keys {
+                    crate::cursor_keybindings_setup::ensure_composer_mode_keybindings_quiet();
                 }
                 Some(result)
             }
@@ -5188,6 +5292,40 @@ mod tests {
         assert_eq!(plan.label, "Plan 模式");
         assert_eq!(plan.sub, "Ctrl+Alt+Shift+P");
         assert_ne!(plan.label, "总开关");
+    }
+
+    #[test]
+    fn sticky_mapping_id_prefers_pinned_cursor_mapping() {
+        let _iso = isolate_status_globals();
+        use crate::app_chat_workflow::CURSOR_APP_TARGET_ID;
+
+        let mut pad_a = crate::codex_numpad_layer::default_codex_micro_pad();
+        pad_a.enabled = true;
+        pad_a.overlay_enabled = true;
+        let mut pad_b = crate::codex_numpad_layer::default_codex_micro_pad();
+        pad_b.enabled = true;
+        pad_b.overlay_enabled = true;
+
+        let mut a = codex_mapping(pad_a);
+        a.id = "cursor-a".into();
+        a.app_target_id = CURSOR_APP_TARGET_ID.into();
+
+        let mut b = codex_mapping(pad_b);
+        b.id = "cursor-b".into();
+        b.app_target_id = CURSOR_APP_TARGET_ID.into();
+
+        let mut cfg = VoiceConfig::default();
+        cfg.soft_pad_force_open = true;
+        cfg.mappings = vec![a, b];
+        test_set_foreground_latch(true);
+        // Without pin, first overlay_enabled cursor wins (cursor-a).
+        note_soft_pad_surface_for_agent(crate::soft_pad_runtime::AgentKind::Cursor);
+        let snap_first = build_snapshot_from_cfg(&cfg);
+        assert_eq!(snap_first.mapping_id, "cursor-a");
+        // Pin Hub selection → overlay must follow cursor-b.
+        note_soft_pad_surface_for_mapping("cursor-b", crate::soft_pad_runtime::AgentKind::Cursor);
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert_eq!(snap.mapping_id, "cursor-b");
     }
 
     #[test]

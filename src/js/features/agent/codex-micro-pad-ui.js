@@ -182,11 +182,11 @@
     NAV_RIGHT: { zh: '右方向键', en: 'Arrow Right' }
   };
 
-  /** Legacy stock icons that looked like capabilities — treat as untouched for auto-correct. */
+  /** Legacy stock icons that looked like capabilities — treat as untouched for auto-correct.
+   * Do NOT include `agent` / `plan` — those are Cursor Soft Pad capability glyphs. */
   var LEGACY_MISLEADING_ICONS = {
     claude: 1,
     status: 1,
-    agent: 1,
     model: 1
   };
 
@@ -551,16 +551,13 @@
   /** Layout profile / enhance / routes — quiet IPC; full cmd_save 假死'd Soft Pad「高级」. */
   var layoutPersistTimer = 0;
   var layoutPersistPending = null;
-  function persistLayout(m) {
-    var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
+
+  function buildLayoutPersistArgs(m) {
     var pad = m && m.codexMicroPad;
-    if (!invoke || !m || !m.id || !pad) {
-      // Soft Pad open: never fall back to full buildSavePayload.
-      return;
-    }
+    if (!m || !m.id || !pad) return null;
     var profile = String(pad.layoutProfile || 'custom');
     if (LAYOUT_PROFILES.indexOf(profile) < 0 && profile !== 'custom') profile = 'custom';
-    layoutPersistPending = {
+    return {
       mappingId: String(m.id),
       layoutProfile: profile,
       softwareEnhanceEnabled: !!pad.softwareEnhanceEnabled,
@@ -572,11 +569,10 @@
           slotId: String(k.slotId || ''),
           uiIconId: String(k.uiIconId || ''),
           enabled: k.enabled !== false,
-          advanced: !!k.advanced
+          advanced: !!k.advanced,
+          lightRgb: String(k.lightRgb || k.light_rgb || '')
         };
       }),
-      // Keycap edits seed agentBindings in FE; quiet layout must persist them or Soft Pad
-      // heal/apply can desync and stop auto-showing the Cursor surface.
       agentBindings: Array.isArray(m.agentBindings)
         ? m.agentBindings.map(function (b) {
           return {
@@ -593,21 +589,47 @@
         })
         : undefined
     };
-    if (layoutPersistTimer) clearTimeout(layoutPersistTimer);
-    layoutPersistTimer = setTimeout(function () {
+  }
+
+  function persistLayout(m, opts) {
+    opts = opts || {};
+    var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
+    var args = buildLayoutPersistArgs(m);
+    if (!invoke || !args) {
+      // Soft Pad open: never fall back to full buildSavePayload.
+      return Promise.resolve(null);
+    }
+    layoutPersistPending = args;
+    function flush() {
       layoutPersistTimer = 0;
-      var args = layoutPersistPending;
+      var payload = layoutPersistPending;
       layoutPersistPending = null;
-      if (!args) return;
-      invoke('cmd_codex_micro_pad_set_layout', args).catch(function (err) {
+      if (!payload) return Promise.resolve(null);
+      return invoke('cmd_codex_micro_pad_set_layout', payload).then(function (res) {
+        if (res) applyEnsurePayloadToMapping(m, res);
+        return res;
+      }).catch(function (err) {
         try {
           padInvoke('cmd_app_log', {
             line: 'fe persistLayout fail ' + (err && err.message ? err.message : 'unknown')
           });
         } catch (_) {}
         // Do NOT fall back to full persist()/cmd_save — quiet IPC is required.
+        return null;
       });
-    }, 120);
+    }
+    if (opts.immediate) {
+      if (layoutPersistTimer) clearTimeout(layoutPersistTimer);
+      layoutPersistTimer = 0;
+      return flush();
+    }
+    if (layoutPersistTimer) clearTimeout(layoutPersistTimer);
+    layoutPersistTimer = setTimeout(function () { flush(); }, 120);
+    return Promise.resolve(null);
+  }
+
+  function persistLayoutNow(m) {
+    return persistLayout(m, { immediate: true });
   }
 
   function padInvoke(cmd, args) {
@@ -628,7 +650,7 @@
         m.codexMicroPad.skin = canonicalizePadSkin(m.codexMicroPad.skin);
       }
     }
-    if (payload.agentBindings && payload.agentBindings.length) {
+    if (Array.isArray(payload.agentBindings)) {
       m.agentBindings = payload.agentBindings;
     }
   }
@@ -813,16 +835,28 @@
     return ICON_SVG[id] || ICON_SVG.empty;
   }
 
+  /** True when icon is empty/stock/prior-capability leftover (safe to auto-replace for plan/agent). */
+  function isSoftPadLeftoverIcon(iconId, microKeyId, exceptSlot) {
+    var cur = String(iconId || '').trim();
+    if (!cur || cur === 'empty' || cur === 'plus' || cur === 'dot') return true;
+    var stock = DEFAULT_ICON_BY_MICRO[microKeyId] || '';
+    if (stock && cur === stock) return true;
+    var except = String(exceptSlot || '').trim();
+    for (var k in SLOT_DEFAULT_ICON) {
+      if (!Object.prototype.hasOwnProperty.call(SLOT_DEFAULT_ICON, k)) continue;
+      if (except && k === except) continue;
+      if (SLOT_DEFAULT_ICON[k] === cur) return true;
+    }
+    return !!LEGACY_MISLEADING_ICONS[cur];
+  }
+
   function resolveIconId(route, microKeyId) {
     var slotId = route && route.slotId ? String(route.slotId).trim() : '';
     var cur = route && route.uiIconId ? String(route.uiIconId).trim() : '';
-    // Cursor Plan/Agent on PLUS/DOT: prefer capability icons over leftover plus/dot stock.
+    // Cursor Plan/Agent: never keep leftover palette/fork/etc. from the previous binding.
     if (slotId === 'plan' || slotId === 'switchAgent') {
       var slotIcon = SLOT_DEFAULT_ICON[slotId] || '';
-      var stock = DEFAULT_ICON_BY_MICRO[microKeyId] || '';
-      if (slotIcon && (!cur || cur === stock || cur === 'plus' || cur === 'dot' || cur === 'empty')) {
-        return slotIcon;
-      }
+      if (slotIcon) return slotIcon;
     }
     if (cur) return cur;
     return DEFAULT_ICON_BY_MICRO[microKeyId] || 'empty';
@@ -990,6 +1024,13 @@
         if (!k) continue;
         var id = String(k.microKeyId || '');
         var slot = String(k.slotId || '').trim();
+        // Drop Codex insertOnly leftovers (appsOrPlugins / review / …).
+        if (slot && !CURSOR_SOFT_PAD_SLOT_IDS[slot]) {
+          k.slotId = '';
+          k.enabled = false;
+          slot = '';
+          changed = true;
+        }
         if (id === 'PLUS' && !slot) {
           k.slotId = 'plan';
           k.enabled = true;
@@ -1004,8 +1045,7 @@
         if (slot === 'plan' || slot === 'switchAgent') {
           var want = SLOT_DEFAULT_ICON[slot] || '';
           var cur = String(k.uiIconId || '').trim();
-          var stock = DEFAULT_ICON_BY_MICRO[id] || '';
-          if (want && (!cur || cur === stock || cur === 'plus' || cur === 'dot' || cur === 'empty')) {
+          if (want && cur !== want && isSoftPadLeftoverIcon(cur, id, slot)) {
             k.uiIconId = want;
             changed = true;
           }
@@ -2108,6 +2148,20 @@
     var slotDefaultIcon = iconIdForCapabilitySlot(initialSlot);
     var routeIcon = String((route && route.uiIconId) || '').trim();
     var defIcon = String((def && def.uiIconId) || '').trim();
+    var microId = String((route && route.microKeyId) || (def && def.microKeyId) || '');
+    // Rebinding to Plan/Agent left palette/fork on the key — treat as untouched.
+    if (
+      slotDefaultIcon &&
+      routeIcon &&
+      routeIcon !== slotDefaultIcon &&
+      isSoftPadLeftoverIcon(routeIcon, microId, initialSlot)
+    ) {
+      return {
+        uiIconId: slotDefaultIcon,
+        iconTouched: false,
+        slotDefaultIcon: slotDefaultIcon
+      };
+    }
     return {
       uiIconId: routeIcon || defIcon || slotDefaultIcon,
       iconTouched: !!routeIcon && routeIcon !== slotDefaultIcon,
@@ -2220,6 +2274,9 @@
       '<div class="micro-hw' + sizeCls + compactCls + (codexOn ? '' : ' is-mode-numpad') +
       '" data-pad-skin="' + esc(skin) + '">' +
       '<div class="micro-hw__face">' +
+      ((mode === 'softPad' || mode === 'preview')
+        ? renderPadFaceTopChrome(m, pad, opts)
+        : '') +
       '<div class="micro-hw__grid' +
       (codexOn
         ? (navKeysOn(pad) ? '' : ' micro-hw__grid--no-nav')
@@ -3126,6 +3183,81 @@
     return '';
   }
 
+  /** Scope / app label for Soft Pad settings preview chrome (通用 · Cursor …). */
+  function softPadPreviewMainTitle(m) {
+    try {
+      var Hub = global.OneToneSoftPadHub;
+      if (Hub && typeof Hub.getSelectedScopeId === 'function' &&
+          typeof Hub.appTitleFor === 'function') {
+        return Hub.appTitleFor(Hub.getSelectedScopeId());
+      }
+    } catch (_) {}
+    var app = String((m && m.appTargetId) || '').trim();
+    if (!app) return t('softPadScopeUniversal', '通用');
+    try {
+      var Hub2 = global.OneToneSoftPadHub;
+      if (Hub2 && Hub2.kindForAppId && Hub2.appTitleFor) {
+        return Hub2.appTitleFor(Hub2.kindForAppId(app) || app);
+      }
+    } catch (_2) {}
+    return t('codexMicroPadTitle', '小键盘');
+  }
+
+  function buildTopbarPreviewChipsHtml(pad, opts) {
+    opts = opts || {};
+    var focus = String(opts.focusAgent || hubSelectedScopeKind() || '').toLowerCase();
+    var focusMap = '';
+    try {
+      var Hub = global.OneToneSoftPadHub;
+      if (Hub && Hub.resolveSoftPadEntry) {
+        var entry = Hub.resolveSoftPadEntry();
+        if (entry && entry.mapping) focusMap = String(entry.mapping.id);
+      }
+    } catch (_) {}
+    var enabled = TOPBAR_LIGHT_CANDIDATES.filter(function (c) {
+      return agentLightEnabledOnPad(pad, c.agent);
+    });
+    var habitIds = topbarHabitIdsOnPad(pad);
+    return enabled.map(function (c) {
+      var focused = focus && c.agent === focus;
+      return (
+        '<button type="button" class="soft-pad-agent-bar__chip soft-pad-agent-bar__chip--preview' +
+        (focused ? ' is-focused' : '') + '" ' +
+        'data-act="topbar-jump" data-agent="' + esc(c.agent) + '" data-status="idle"' +
+        (focused ? ' aria-current="true"' : '') + '>' +
+        '<img src="' + esc(agentLightIconSrc(c.agent)) + '" alt="" decoding="async" aria-hidden="true">' +
+        '<i class="soft-pad-agent-bar__dot" aria-hidden="true"></i></button>'
+      );
+    }).concat(habitIds.map(function (hid) {
+      var focused = focusMap && String(hid) === focusMap;
+      return (
+        '<button type="button" class="soft-pad-agent-bar__chip soft-pad-agent-bar__chip--preview' +
+        (focused ? ' is-focused' : '') + '" ' +
+        'data-act="topbar-jump" data-habit-id="' + esc(hid) + '" data-status="idle"' +
+        (focused ? ' aria-current="true"' : '') + '>' +
+        '<img src="' + esc(habitIconForMappingId(hid)) + '" alt="" decoding="async" aria-hidden="true">' +
+        '<i class="soft-pad-agent-bar__dot" aria-hidden="true"></i></button>'
+      );
+    })).join('');
+  }
+
+  /** In-face chrome: scope title + optional status-light strip (matches live overlay). */
+  function renderPadFaceTopChrome(m, pad, opts) {
+    opts = opts || {};
+    var title = softPadPreviewMainTitle(m);
+    var chips = buildTopbarPreviewChipsHtml(pad, opts);
+    var bar = chips
+      ? ('<div class="soft-pad-agent-bar soft-pad-agent-bar--preview soft-pad-agent-bar--face" role="presentation">' +
+        chips + '</div>')
+      : '';
+    return (
+      '<div class="micro-hw__face-top">' +
+      '<span class="micro-hw__face-title">' + esc(title) + '</span>' +
+      bar +
+      '</div>'
+    );
+  }
+
   function agentLightIconSrc(agent) {
     agent = String(agent || '').toLowerCase();
     if (agent === 'copilotcli' || agent === 'copilot') {
@@ -3674,31 +3806,7 @@
         if (entry && entry.mapping) focusMap = String(entry.mapping.id);
       }
     } catch (_) {}
-    var enabled = TOPBAR_LIGHT_CANDIDATES.filter(function (c) {
-      return agentLightEnabledOnPad(pad, c.agent);
-    });
-    var habitIds = topbarHabitIdsOnPad(pad);
-    var chips = enabled.map(function (c) {
-      var focused = focus && c.agent === focus;
-      return (
-        '<button type="button" class="soft-pad-agent-bar__chip soft-pad-agent-bar__chip--preview' +
-        (focused ? ' is-focused' : '') + '" ' +
-        'data-act="topbar-jump" data-agent="' + esc(c.agent) + '" data-status="idle"' +
-        (focused ? ' aria-current="true"' : '') + '>' +
-        '<img src="' + esc(agentLightIconSrc(c.agent)) + '" alt="" decoding="async" aria-hidden="true">' +
-        '<i class="soft-pad-agent-bar__dot" aria-hidden="true"></i></button>'
-      );
-    }).concat(habitIds.map(function (hid) {
-      var focused = focusMap && String(hid) === focusMap;
-      return (
-        '<button type="button" class="soft-pad-agent-bar__chip soft-pad-agent-bar__chip--preview' +
-        (focused ? ' is-focused' : '') + '" ' +
-        'data-act="topbar-jump" data-habit-id="' + esc(hid) + '" data-status="idle"' +
-        (focused ? ' aria-current="true"' : '') + '>' +
-        '<img src="' + esc(habitIconForMappingId(hid)) + '" alt="" decoding="async" aria-hidden="true">' +
-        '<i class="soft-pad-agent-bar__dot" aria-hidden="true"></i></button>'
-      );
-    })).join('');
+    var chips = buildTopbarPreviewChipsHtml(pad, { focusAgent: focus, focusMap: focusMap });
     return (
       '<div class="soft-pad-lights-topbar-preview" data-lights-topbar-preview="1">' +
       '<p class="soft-pad-lights-topbar-preview__label">' +
@@ -6089,6 +6197,8 @@
     if (!oldWrap || !oldWrap.parentNode) return false;
     var n = countBound(pad);
     var on = !!pad.enabled;
+    var titleEl = root.querySelector('.codex-micro-pad__title');
+    if (titleEl) titleEl.textContent = softPadPreviewMainTitle(m);
     var statusEl = root.querySelector('.codex-micro-pad__status');
     if (statusEl) {
       statusEl.textContent = on
@@ -6165,7 +6275,7 @@
     host.innerHTML =
       '<div class="codex-micro-pad soft-pad-preview" data-pad-skin="' + esc(skin) + '">' +
       '<div class="codex-micro-pad__head">' +
-      '<p class="codex-micro-pad__title">' + esc(t('codexMicroPadTitle', '虚拟键盘')) + '</p>' +
+      '<p class="codex-micro-pad__title">' + esc(softPadPreviewMainTitle(m)) + '</p>' +
       '<span class="codex-micro-pad__status">' +
       esc(on
         ? t('codexMicroPadStatusOn', '已开启 · 已绑定 {n} 个键').replace('{n}', String(n))
@@ -9303,7 +9413,7 @@
     host.innerHTML =
       '<div class="codex-micro-pad">' +
       '<div class="codex-micro-pad__head">' +
-      '<p class="codex-micro-pad__title">' + esc(t('codexMicroPadTitle', '小键盘')) + '</p>' +
+      '<p class="codex-micro-pad__title">' + esc(softPadPreviewMainTitle(m)) + '</p>' +
       '<span class="codex-micro-pad__status">' +
       esc(on
         ? t('codexMicroPadStatusOn', '已开启 · 已绑定 {n} 个键').replace('{n}', String(n))
@@ -9989,25 +10099,33 @@
     var suggest = AGENT_NUMPAD_SUGGEST[editDraft.microKeyId];
     var navKey = isNavMicroKey(editDraft.microKeyId);
     var scan = (editDraft.microKeyId === 'ENC' || navKey) ? 0 : (editDraft.sourceScan || 0);
+    // Seed binding before route persist so quiet IPC never races an empty chord.
+    if (slotId) ensureAgentKeyBinding(m, slotId);
+    var saveIcon = editDraft.uiIconId;
+    if (
+      (slotId === 'plan' || slotId === 'switchAgent') &&
+      isSoftPadLeftoverIcon(saveIcon, keyId, slotId)
+    ) {
+      saveIcon = SLOT_DEFAULT_ICON[slotId] || saveIcon;
+    }
     upsertRoute(m, pad, editDraft.microKeyId, {
-      uiIconId: editDraft.uiIconId,
+      uiIconId: saveIcon,
       lightRgb: editDraft.lightRgb != null ? String(editDraft.lightRgb || '') : undefined,
       slotId: slotId,
       enabled: !!slotId,
       sourceScan: scan,
       sourceExtended: (editDraft.microKeyId === 'ENC' || navKey) ? false : editDraft.sourceExtended,
       advanced: navKey ? true : undefined
-    });
+    }, { skipPersist: true });
     pad.layoutProfile = 'custom';
     if (pad.softwareEnhanceEnabled == null) pad.softwareEnhanceEnabled = true;
-    if (slotId) ensureAgentKeyBinding(m, slotId);
     if (slotId && !scan && suggest && editDraft.microKeyId !== 'ENC' && !navKey) {
       upsertRoute(m, pad, editDraft.microKeyId, {
         sourceScan: suggest.sourceScan,
         sourceExtended: !!suggest.sourceExtended
-      });
+      }, { skipPersist: true });
     }
-    persistLayout(m);
+    persistLayoutNow(m);
     if (typeof onSaved === 'function') {
       try { onSaved(m); } catch (_) {}
     }
@@ -10062,8 +10180,8 @@
       if (!String(found.triggerBinding || '').trim() && chord) {
         found.triggerBinding = chord;
       }
-      // Cursor Plan / Agent mode are hotkeys, not slash insert.
-      if (isCursorSoftPadMapping(m) && (id === 'plan' || id === 'switchAgent')) {
+      // Cursor Soft Pad keys are hotkeys, never Codex slash insertOnly.
+      if (isCursorSoftPadMapping(m)) {
         found.executionMode = 'execute';
       }
       // Migrate legacy Cursor Plan chord off Ctrl+Alt+P (screenshot conflict).
@@ -10082,7 +10200,7 @@
       var act = A.actionById(slot.actionId);
       if (act && act.mode) mode = String(act.mode);
     }
-    if (isCursorSoftPadMapping(m) && (id === 'plan' || id === 'switchAgent')) {
+    if (isCursorSoftPadMapping(m)) {
       mode = 'execute';
     }
     m.agentBindings.push({
@@ -10096,7 +10214,8 @@
     });
   }
 
-  function upsertRoute(m, pad, microKeyId, patch) {
+  function upsertRoute(m, pad, microKeyId, patch, opts) {
+    opts = opts || {};
     if (!pad.keys) pad.keys = [];
     var route = routeForMicroKey(pad, microKeyId);
     if (!route) {
@@ -10136,6 +10255,7 @@
       }
     }
     if (!route.uiIconId) route.uiIconId = DEFAULT_ICON_BY_MICRO[microKeyId] || '';
+    if (opts.skipPersist) return;
     // Soft Pad: quiet layout IPC (includes keys). Modal/manager keeps full persist().
     if (softPadPanelActive()) persistLayout(m);
     else persist();

@@ -1193,6 +1193,10 @@
 
   function syncFollowForegroundApp(){
     if(!isFollowFgEnabled()) return;
+    try{
+      if(global.OneToneAppSession&&global.OneToneAppSession.isBootSettling
+        &&global.OneToneAppSession.isBootSettling()) return;
+    }catch(_){}
     if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
     global.OneToneIpc.invoke('cmd_foreground_app',{}).then(function(res){
       if(!isFollowFgEnabled()) return;
@@ -1212,8 +1216,21 @@
 
   function startFollowFgPoll(){
     if(followFgPollTimer) return;
-    syncFollowForegroundApp();
     followFgPollTimer=setInterval(syncFollowForegroundApp,2000);
+    // Boot FG is still the launcher / Cursor — immediate sync chained scheme
+    // switches and kept the homepage reshuffling for seconds.
+    try{
+      if(global.OneToneAppSession&&global.OneToneAppSession.isBootSettling
+        &&global.OneToneAppSession.isBootSettling()){
+        if(global.OneToneAppSession.whenBootSettled){
+          global.OneToneAppSession.whenBootSettled(function(){
+            setTimeout(syncFollowForegroundApp,800);
+          });
+        }
+        return;
+      }
+    }catch(_){}
+    syncFollowForegroundApp();
   }
 
   function stopFollowFgPoll(){
