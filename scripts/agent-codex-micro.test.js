@@ -810,6 +810,9 @@ assert.ok(padUiSrc.indexOf('skipEnsure: true') >= 0);
 assert.ok(padUiSrc.indexOf('cmd_codex_micro_pad_set_flags') >= 0);
 assert.ok(padUiSrc.indexOf('cmd_codex_micro_pad_set_layout') >= 0, 'layout profile uses quiet IPC');
 assert.ok(padUiSrc.indexOf('function persistLayout') >= 0);
+assert.ok(padUiSrc.indexOf('agentBindings:') >= 0, 'persistLayout quiet-saves agentBindings with keycap edits');
+assert.ok(padUiSrc.indexOf('findMappingById(mid)') >= 0, 'onPadReady applies ensure payload by mappingId');
+assert.ok(padUiSrc.indexOf('defaultKeyForMapping(m, id)') >= 0, 'ensureAgentKeyBinding uses app-aware defaults');
 assert.ok(padUiSrc.indexOf('remountLayout: false') >= 0, 'profile switch must not remount layout panel');
 assert.ok(padUiSrc.indexOf('data-pad-enhance-wrap') >= 0);
 assert.ok(padUiSrc.indexOf('patchSoftPadLayoutProfileUi') >= 0);
@@ -820,6 +823,19 @@ var flagsCmdRs = fs.readFileSync(
 );
 assert.ok(flagsCmdRs.indexOf('cmd_codex_micro_pad_set_layout') >= 0);
 assert.ok(flagsCmdRs.indexOf('skip mvp_init/voice') >= 0);
+assert.ok(flagsCmdRs.indexOf('agent_bindings') >= 0, 'set_layout accepts agent_bindings');
+assert.ok(flagsCmdRs.indexOf('Upsert only') >= 0, 'set_layout merges agent_bindings');
+var overlayRs = fs.readFileSync(
+  path.join(__dirname, '../src-tauri/src/codex_micro_overlay.rs'),
+  'utf8'
+);
+assert.ok(overlayRs.indexOf('fn overlay_slot_caption') >= 0, 'overlay captions prefer slot names');
+assert.ok(overlayRs.indexOf('"Plan 模式"') >= 0, 'Cursor plan caption is Plan 模式');
+assert.ok(overlayRs.indexOf('label_zh: "总开关"') >= 0, 'ENC keeps 总开关');
+assert.ok(
+  (overlayRs.match(/label_zh: "总开关"/g) || []).length === 1,
+  'only ENC uses 总开关 label_zh'
+);
 var applyLayoutFn = (function () {
   var start = padUiSrc.indexOf('function applyLayoutProfile');
   var end = padUiSrc.indexOf('function exportLayoutJson');

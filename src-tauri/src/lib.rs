@@ -42,6 +42,7 @@ mod codex_pad_binding_diagnose;
 mod config;
 mod connector_health;
 mod cursor_hook_setup;
+mod cursor_keybindings_setup;
 mod shell_agent_hook_setup;
 mod cursor_workflow;
 mod data_root;

@@ -162,8 +162,13 @@ pub fn cmd_codex_micro_overlay_toggle_joy_panel(
 }
 
 /// Soft Pad agent chip: focus / open Codex, Claude Code, or Cursor composer.
+/// Soft Pad agent chip: focus / open Codex, Claude Code, or Cursor composer.
 #[tauri::command]
-pub async fn cmd_soft_pad_focus_agent(app: AppHandle, kind: String) -> Result<serde_json::Value, String> {
+pub async fn cmd_soft_pad_focus_agent(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    kind: String,
+) -> Result<serde_json::Value, String> {
     use crate::app_chat_workflow::{
         self, CLAUDE_CODE_APP_TARGET_ID, CODEX_APP_TARGET_ID, CURSOR_APP_TARGET_ID,
         MINIMAX_APP_TARGET_ID, QODER_APP_TARGET_ID, TRAE_APP_TARGET_ID, WORKBUDDY_APP_TARGET_ID,
@@ -190,7 +195,18 @@ pub async fn cmd_soft_pad_focus_agent(app: AppHandle, kind: String) -> Result<se
     .await
     .map_err(|e| format!("soft_pad_focus_join:{e}"))?;
     match result {
-        Ok(()) => Ok(serde_json::json!({ "ok": true, "appTargetId": target, "kind": kind })),
+        Ok(()) => {
+            if let Some(agent) = crate::soft_pad_runtime::AgentKind::from_kind_str(&kind) {
+                crate::soft_pad_runtime::set_follow_pin(Some(agent));
+                crate::codex_micro_overlay::note_soft_pad_surface_for_agent(agent);
+                {
+                    let cfg = state.cfg.lock();
+                    crate::soft_pad_runtime::request_soft_pad_recompute(&cfg);
+                }
+                crate::codex_micro_overlay::push_overlay_status(&app, state.inner());
+            }
+            Ok(serde_json::json!({ "ok": true, "appTargetId": target, "kind": kind }))
+        }
         Err(err) => Err(err.reason("soft_pad_focus")),
     }
 }

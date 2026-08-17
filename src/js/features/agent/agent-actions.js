@@ -158,10 +158,15 @@
     appsOrPlugins: ''
   };
 
-  /** Cursor IDE: Agent `Ctrl+I`, cancel generation. */
+  /** Cursor IDE: Agent `Ctrl+I`, cancel generation.
+   * Soft Pad mic: Cursor native Voice Mode (Ctrl+Shift+Space). */
   var CURSOR_DEFAULT_KEY_BY_SLOT = Object.assign({}, VSCODE_EDITOR_KEY_BY_SLOT, {
     cancel: 'Ctrl+Shift+Backspace',
-    quickChat: 'Ctrl+I'
+    quickChat: 'Ctrl+I',
+    pushToTalk: 'Ctrl+Shift+Space',
+    // Avoid Ctrl+Alt+P — clashes with screenshot / pin tools.
+    plan: 'Ctrl+Alt+Shift+P',
+    switchAgent: 'Ctrl+Alt+.'
   });
 
   /** Trae IDE: side chat is Ctrl+U, inline is Ctrl+I. Pad quickChat → side chat. */
@@ -342,6 +347,12 @@
       if (id === 'pushToTalk') return isEnLocale() ? 'Voice input' : '语音输入';
       if (id === 'cancel' && app === 'cursor-chat') {
         return isEnLocale() ? 'Cancel generation' : '取消生成';
+      }
+      if (id === 'plan' && app === 'cursor-chat') {
+        return isEnLocale() ? 'Plan mode' : 'Plan 模式';
+      }
+      if (id === 'switchAgent' && app === 'cursor-chat') {
+        return isEnLocale() ? 'Agent mode' : 'Agent 模式';
       }
     }
     return labelForSlot(slotById(id));

@@ -29,14 +29,18 @@ pub fn cmd_soft_pad_runtime_snapshot(state: State<'_, Arc<AppState>>) -> SoftPad
     get_public_snapshot()
 }
 
-/// Soft Pad follow pin removed from product — always clear and recompute as Auto.
+/// Soft Pad chip follow: pin Soft Pad Applied to this agent (Auto when None).
 #[tauri::command]
 pub fn cmd_soft_pad_set_follow(
     state: State<'_, Arc<AppState>>,
     lane: Option<String>,
 ) -> SoftPadPublicSnapshot {
-    let _ = lane;
-    set_follow_pin(None);
+    let kind = lane
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .and_then(AgentKind::from_kind_str);
+    set_follow_pin(kind);
     {
         let cfg = state.cfg.lock();
         request_soft_pad_recompute(&cfg);

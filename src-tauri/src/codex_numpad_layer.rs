@@ -586,11 +586,65 @@ fn needs_auto_ready(m: &MappingEntry) -> bool {
 }
 
 fn pad_routes_need_heal(m: &MappingEntry, pad: &CodexMicroPadConfig) -> bool {
+    if m.app_target_id.trim() == crate::app_chat_workflow::CURSOR_APP_TARGET_ID {
+        if pad.purpose.is_sessions() {
+            return true;
+        }
+        if pad.keys.iter().any(|route| {
+            route.key_role == Some(crate::soft_pad_purpose::SoftPadKeyRole::AgentLane)
+                || (route.micro_key_id.trim().starts_with("AG")
+                    && matches!(
+                        route.ui_icon_id.trim(),
+                        "agent" | "lane" | "claude"
+                    ))
+                || (matches!(route.micro_key_id.trim(), "PLUS" | "DOT")
+                    && route.slot_id.trim().is_empty())
+        }) {
+            return true;
+        }
+        // Legacy Plan chord Ctrl+Alt+P → migrate to Ctrl+Alt+Shift+P.
+        if m.agent_bindings.iter().any(|b| {
+            b.slot_id.trim().eq_ignore_ascii_case("plan")
+                && b.trigger_type.eq_ignore_ascii_case("key")
+                && crate::key_chord::chords_equivalent(b.trigger_binding.trim(), "Ctrl+Alt+P")
+        }) {
+            return true;
+        }
+    }
     pad.keys.iter().any(|route| {
-        route.enabled
-            && !route.slot_id.trim().is_empty()
-            && agent_key_binding_for_slot(m, &route.slot_id).is_none()
+        if !route.enabled {
+            return false;
+        }
+        let slot = route.slot_id.trim();
+        if slot.is_empty() {
+            return false;
+        }
+        match agent_key_binding_for_slot(m, slot) {
+            None => !crate::agent::bindings_build::default_key_for_scenario(
+                m.app_target_id.trim(),
+                slot,
+            )
+            .is_empty(),
+            Some(b) => {
+                let chord = b.trigger_binding.trim();
+                if chord.is_empty() {
+                    return !crate::agent::bindings_build::default_key_for_scenario(
+                        m.app_target_id.trim(),
+                        slot,
+                    )
+                    .is_empty();
+                }
+                // Cursor Soft Pad once shipped Codex Ctrl+Shift+D as mic — rewrite to Voice Mode.
+                cursor_push_to_talk_needs_rewrite(m, slot, chord)
+            }
+        }
     })
+}
+
+fn cursor_push_to_talk_needs_rewrite(m: &MappingEntry, slot: &str, chord: &str) -> bool {
+    m.app_target_id.trim() == crate::app_chat_workflow::CURSOR_APP_TARGET_ID
+        && slot.eq_ignore_ascii_case("pushToTalk")
+        && crate::key_chord::chords_equivalent(chord, "Ctrl+Shift+D")
 }
 
 /// True when pad route + agent key binding exist (same gate as hook merge / fire).
@@ -603,10 +657,16 @@ pub fn micro_key_routable(mapping: &MappingEntry, pad: &CodexMicroPadConfig, mic
     else {
         return false;
     };
-    if route.slot_id.trim().is_empty() {
+    let slot = route.slot_id.trim();
+    if slot.is_empty() {
         return false;
     }
-    agent_key_binding_for_slot(mapping, &route.slot_id).is_some()
+    if agent_key_binding_for_slot(mapping, slot).is_some() {
+        return true;
+    }
+    // Match Hub preview: scenario default chord counts as bound (Cursor Soft Pad presets).
+    !crate::agent::bindings_build::default_key_for_scenario(mapping.app_target_id.trim(), slot)
+        .is_empty()
 }
 
 fn default_route_for_micro_key(micro_key_id: &str) -> Option<CodexMicroPadKeyRoute> {
@@ -665,7 +725,8 @@ fn heal_slot_key_bindings(m: &mut MappingEntry, slot_id: &str, locale: &str) -> 
         return false;
     }
     let mut changed = false;
-    let seeds = build_scenario_bindings(locale, m.app_target_id.trim());
+    let app_tid = m.app_target_id.trim().to_string();
+    let seeds = build_scenario_bindings(locale, &app_tid);
     let seed_key = seeds.into_iter().find(|s| {
         s.slot_id == slot_id && s.trigger_type.eq_ignore_ascii_case("key")
     });
@@ -679,6 +740,25 @@ fn heal_slot_key_bindings(m: &mut MappingEntry, slot_id: &str, locale: &str) -> 
                     changed = true;
                 }
                 if existing.trigger_binding.trim().is_empty() {
+                    existing.trigger_binding = seed.trigger_binding;
+                    changed = true;
+                } else if app_tid == crate::app_chat_workflow::CURSOR_APP_TARGET_ID
+                    && slot_id.eq_ignore_ascii_case("pushToTalk")
+                    && crate::key_chord::chords_equivalent(
+                        existing.trigger_binding.trim(),
+                        "Ctrl+Shift+D",
+                    )
+                {
+                    existing.trigger_binding = seed.trigger_binding;
+                    changed = true;
+                } else if app_tid == crate::app_chat_workflow::CURSOR_APP_TARGET_ID
+                    && slot_id.eq_ignore_ascii_case("plan")
+                    && crate::key_chord::chords_equivalent(
+                        existing.trigger_binding.trim(),
+                        "Ctrl+Alt+P",
+                    )
+                {
+                    // Migrate off screenshot / pin collision chord.
                     existing.trigger_binding = seed.trigger_binding;
                     changed = true;
                 }
@@ -698,6 +778,14 @@ fn heal_slot_key_bindings(m: &mut MappingEntry, slot_id: &str, locale: &str) -> 
         }
     }
     changed
+}
+
+/// Quiet layout save: migrate Cursor Plan off legacy Ctrl+Alt+P when present.
+pub(crate) fn heal_cursor_plan_chord_if_legacy(m: &mut MappingEntry) -> bool {
+    if m.app_target_id.trim() != crate::app_chat_workflow::CURSOR_APP_TARGET_ID {
+        return false;
+    }
+    heal_slot_key_bindings(m, "plan", "zh-CN")
 }
 
 /// Patch missing/disabled pad route + agent key binding (in-memory + hook cache).
@@ -962,14 +1050,47 @@ fn seed_shell_scenario_meta(m: &mut MappingEntry) -> bool {
     changed
 }
 
+/// True when pad routes exist but key bindings are missing or have empty chords while
+/// the scenario ships a default (e.g. Cursor pushToTalk after VS Code lineage seed).
+pub fn mapping_pad_routes_need_heal(m: &MappingEntry) -> bool {
+    m.codex_micro_pad
+        .as_ref()
+        .is_some_and(|pad| pad_routes_need_heal(m, pad))
+}
+
 /// Out-of-box: seed Codex Micro pad + bindings when a Codex scenario exists but was never wired.
 pub fn ensure_codex_pad_ready(cfg: &mut VoiceConfig, locale: &str) -> CodexPadEnsureResult {
+    ensure_codex_pad_ready_for(cfg, locale, None)
+}
+
+/// Prefer `app_target_id` when set (FG Soft Pad agent) so Cursor heal does not lose to Codex order.
+pub fn ensure_codex_pad_ready_for(
+    cfg: &mut VoiceConfig,
+    locale: &str,
+    prefer_app_target: Option<&str>,
+) -> CodexPadEnsureResult {
     let mut changed = false;
     let mut touched_mapping_id: Option<String> = None;
     let mut touched_pad: Option<CodexMicroPadConfig> = None;
     let mut touched_bindings: Option<Vec<crate::config::AgentBinding>> = None;
 
-    for m in cfg.mappings.iter_mut() {
+    let prefer = prefer_app_target.map(str::trim).filter(|s| !s.is_empty());
+    let mut indices: Vec<usize> = cfg
+        .mappings
+        .iter()
+        .enumerate()
+        .filter(|(_, m)| needs_auto_ready(m))
+        .map(|(i, _)| i)
+        .collect();
+    if let Some(tid) = prefer {
+        indices.sort_by_key(|&i| {
+            let m = &cfg.mappings[i];
+            u8::from(m.app_target_id.trim() != tid)
+        });
+    }
+
+    for idx in indices {
+        let m = &mut cfg.mappings[idx];
         if !needs_auto_ready(m) {
             continue;
         }
@@ -985,10 +1106,19 @@ pub fn ensure_codex_pad_ready(cfg: &mut VoiceConfig, locale: &str) -> CodexPadEn
             .as_ref()
             .is_some_and(|pad| pad_routes_need_heal(m, pad))
         {
-            let seeds = build_scenario_bindings(locale, m.app_target_id.trim());
-            for seed in seeds {
-                if agent_key_binding_for_slot(m, &seed.slot_id).is_none() {
-                    m.agent_bindings.push(seed);
+            let slots: Vec<String> = m
+                .codex_micro_pad
+                .as_ref()
+                .map(|pad| {
+                    pad.keys
+                        .iter()
+                        .filter(|k| k.enabled && !k.slot_id.trim().is_empty())
+                        .map(|k| k.slot_id.trim().to_string())
+                        .collect()
+                })
+                .unwrap_or_default();
+            for slot in slots {
+                if heal_slot_key_bindings(m, &slot, locale) {
                     changed = true;
                 }
             }
@@ -996,26 +1126,44 @@ pub fn ensure_codex_pad_ready(cfg: &mut VoiceConfig, locale: &str) -> CodexPadEn
                 touched_bindings = Some(m.agent_bindings.clone());
             }
         }
-        let pad = m
-            .codex_micro_pad
-            .get_or_insert_with(default_codex_micro_pad);
-        // Do not force pad.enabled=true — numpad mode is a user choice.
-        // Do not force overlay_enabled=true — "不显示浮窗" is a durable setting.
-        if pad.layout_profile.trim().is_empty() {
-            pad.layout_profile = "standard".into();
-            changed = true;
-        }
-        pad.software_enhance_enabled = false;
-        if pad.keys.is_empty() {
-            pad.keys = default_codex_micro_pad_routes();
-            changed = true;
-        }
-        if heal_stock_mic_on_numpad0(pad) {
-            changed = true;
+        {
+            let pad = m
+                .codex_micro_pad
+                .get_or_insert_with(default_codex_micro_pad);
+            // Do not force pad.enabled=true — numpad mode is a user choice.
+            // Do not force overlay_enabled=true — "不显示浮窗" is a durable setting.
+            if pad.layout_profile.trim().is_empty() {
+                pad.layout_profile = "standard".into();
+                changed = true;
+            }
+            pad.software_enhance_enabled = false;
+            if pad.keys.is_empty() {
+                pad.keys = default_codex_micro_pad_routes();
+                changed = true;
+            }
+            if heal_stock_mic_on_numpad0(pad) {
+                changed = true;
+            }
+            touched_pad = Some(pad.clone());
         }
         touched_mapping_id = Some(m.id.clone());
-        touched_pad = Some(pad.clone());
-        // First matching Codex scenario only — same as overlay / hook merge priority.
+        if heal_cursor_pad_ag_chrome(m) {
+            changed = true;
+            touched_pad = m.codex_micro_pad.clone();
+            // PLUS/DOT may have gained plan/switchAgent — fill key bindings.
+            for slot in ["plan", "switchAgent"] {
+                if heal_slot_key_bindings(m, slot, locale) {
+                    changed = true;
+                    touched_bindings = Some(m.agent_bindings.clone());
+                }
+            }
+        } else if heal_cursor_plan_chord_if_legacy(m) {
+            changed = true;
+            touched_bindings = Some(m.agent_bindings.clone());
+        }
+        if m.app_target_id.trim() == crate::app_chat_workflow::CURSOR_APP_TARGET_ID {
+            crate::cursor_keybindings_setup::ensure_composer_mode_keybindings_quiet();
+        }
         break;
     }
 
@@ -1259,6 +1407,55 @@ pub fn heal_stock_mic_on_numpad0(pad: &mut CodexMicroPadConfig) -> bool {
         return true;
     }
     false
+}
+
+/// Cursor Soft Pad: strip Codex session-lane chrome; seed PLUS/DOT → plan / Agent mode.
+fn heal_cursor_pad_ag_chrome(m: &mut MappingEntry) -> bool {
+    if m.app_target_id.trim() != crate::app_chat_workflow::CURSOR_APP_TARGET_ID {
+        return false;
+    }
+    let Some(pad) = m.codex_micro_pad.as_mut() else {
+        return false;
+    };
+    let mut changed = false;
+    if pad.purpose.is_sessions() {
+        pad.purpose = crate::soft_pad_purpose::SoftPadPurpose::Shortcuts;
+        changed = true;
+    }
+    for route in &mut pad.keys {
+        if route.key_role == Some(crate::soft_pad_purpose::SoftPadKeyRole::AgentLane) {
+            route.key_role = Some(crate::soft_pad_purpose::SoftPadKeyRole::Action);
+            changed = true;
+        }
+        let id = route.micro_key_id.trim();
+        // Empty PLUS/DOT → Cursor Plan / Agent mode (composerMode.* via keybindings + chord).
+        if id == "PLUS" && route.slot_id.trim().is_empty() {
+            route.slot_id = "plan".into();
+            route.ui_icon_id = "plan".into();
+            changed = true;
+        } else if id == "DOT" && route.slot_id.trim().is_empty() {
+            route.slot_id = "switchAgent".into();
+            route.ui_icon_id = "agent".into();
+            changed = true;
+        }
+        let icon = route.ui_icon_id.trim();
+        if matches!(icon, "agent" | "lane" | "claude" | "") && id.starts_with("AG") {
+            let stock = match id {
+                "AG00" => "palette",
+                "AG01" => "fork",
+                "AG02" => "fast",
+                "AG03" => "search",
+                "AG04" => "send",
+                "AG05" => "reject",
+                _ => "palette",
+            };
+            if icon != stock {
+                route.ui_icon_id = stock.into();
+                changed = true;
+            }
+        }
+    }
+    changed
 }
 
 fn route(micro_key_id: &str, scan: u16, extended: bool, slot_id: &str) -> CodexMicroPadKeyRoute {
@@ -1653,6 +1850,231 @@ mod tests {
             .unwrap();
         assert_eq!(enc.source_scan, 0);
         assert!(agent_key_binding_for_slot(&cfg.mappings[0], "pushToTalk").is_some());
+    }
+
+    #[test]
+    fn heal_cursor_pad_seeds_plus_dot_plan_agent() {
+        use crate::app_chat_workflow::CURSOR_APP_TARGET_ID;
+        use crate::config::{MappingEntry, TriggerMode};
+
+        let mut pad = default_codex_micro_pad();
+        pad.enabled = true;
+        pad.overlay_enabled = true;
+        assert!(pad
+            .keys
+            .iter()
+            .any(|k| k.micro_key_id == "PLUS" && k.slot_id.is_empty()));
+        let mut m = MappingEntry {
+            id: "cursor-mode".into(),
+            label: String::new(),
+            group: "默认".into(),
+            app_target_id: CURSOR_APP_TARGET_ID.into(),
+            trigger_key: "F1".into(),
+            target_key: "RAlt".into(),
+            enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
+            order: 0,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: 500,
+            double_click_ms: 400,
+            ime_preset_id: String::new(),
+            app_behavior_rules: vec![],
+            voice_override: None,
+            camera_override: None,
+            voice_commands: vec![],
+            acoustic_voice_commands: vec![],
+            agent_template_id: "codex-micro-13".into(),
+            agent_provider_id: String::new(),
+            agent_bindings: crate::agent::bindings_build::build_cursor_chord_bindings("zh-CN"),
+            codex_micro_pad: Some(pad),
+            time_machine_workspace: String::new(),
+        };
+        assert!(heal_cursor_pad_ag_chrome(&mut m));
+        let pad = m.codex_micro_pad.as_ref().unwrap();
+        let plus = pad.keys.iter().find(|k| k.micro_key_id == "PLUS").unwrap();
+        let dot = pad.keys.iter().find(|k| k.micro_key_id == "DOT").unwrap();
+        assert_eq!(plus.slot_id, "plan");
+        assert_eq!(dot.slot_id, "switchAgent");
+        assert!(!heal_cursor_pad_ag_chrome(&mut m));
+    }
+
+    #[test]
+    fn ensure_codex_pad_ready_heals_cursor_empty_push_to_talk() {
+        use crate::app_chat_workflow::CURSOR_APP_TARGET_ID;
+        use crate::config::{AgentBinding, MappingEntry, TriggerMode};
+
+        let mut pad = default_codex_micro_pad();
+        pad.enabled = true;
+        pad.overlay_enabled = true;
+        let mut cfg = VoiceConfig {
+            mappings: vec![
+                MappingEntry {
+                    id: "codex-first".into(),
+                    label: String::new(),
+                    group: "默认".into(),
+                    app_target_id: CODEX_APP_TARGET_ID.into(),
+                    trigger_key: "F1".into(),
+                    target_key: "RAlt".into(),
+                    enabled: true,
+                    key_mode_enabled: true,
+                    voice_mode_enabled: true,
+                    order: 0,
+                    trigger_mode: TriggerMode::Tap,
+                    trigger_source: None,
+                    source_key: String::new(),
+                    source_time: String::new(),
+                    interval_ms: 1200,
+                    enter_delay_ms: 5000,
+                    cancel_enabled: true,
+                    auto_enter_enabled: true,
+                    switch_keys: vec![],
+                    native_key_restore: false,
+                    trigger_device: String::new(),
+                    long_press_ms: 500,
+                    double_click_ms: 400,
+                    ime_preset_id: String::new(),
+                    app_behavior_rules: vec![],
+                    voice_override: None,
+                    camera_override: None,
+                    voice_commands: vec![],
+                    acoustic_voice_commands: vec![],
+                    agent_template_id: String::new(),
+                    agent_provider_id: String::new(),
+                    agent_bindings: build_codex_micro_13_bindings("zh-CN"),
+                    codex_micro_pad: Some(default_codex_micro_pad()),
+                    time_machine_workspace: String::new(),
+                },
+                MappingEntry {
+                    id: "cursor-soft-pad".into(),
+                    label: String::new(),
+                    group: "默认".into(),
+                    app_target_id: CURSOR_APP_TARGET_ID.into(),
+                    trigger_key: "F2".into(),
+                    target_key: "RAlt".into(),
+                    enabled: true,
+                    key_mode_enabled: true,
+                    voice_mode_enabled: true,
+                    order: 1,
+                    trigger_mode: TriggerMode::Tap,
+                    trigger_source: None,
+                    source_key: String::new(),
+                    source_time: String::new(),
+                    interval_ms: 1200,
+                    enter_delay_ms: 5000,
+                    cancel_enabled: true,
+                    auto_enter_enabled: true,
+                    switch_keys: vec![],
+                    native_key_restore: false,
+                    trigger_device: String::new(),
+                    long_press_ms: 500,
+                    double_click_ms: 400,
+                    ime_preset_id: String::new(),
+                    app_behavior_rules: vec![],
+                    voice_override: None,
+                    camera_override: None,
+                    voice_commands: vec![],
+                    acoustic_voice_commands: vec![],
+                    agent_template_id: String::new(),
+                    agent_provider_id: String::new(),
+                    agent_bindings: vec![AgentBinding {
+                        action_instance_id: String::new(),
+                        action_args: None,
+                        slot_id: "pushToTalk".into(),
+                        action_id: "startDictation".into(),
+                        trigger_type: "key".into(),
+                        trigger_binding: String::new(),
+                        enabled: true,
+                        execution_mode: None,
+                        activation_scope: "global".into(),
+                    }],
+                    codex_micro_pad: Some(pad),
+                    time_machine_workspace: String::new(),
+                },
+            ],
+            ..VoiceConfig::default()
+        };
+        assert!(mapping_pad_routes_need_heal(&cfg.mappings[1]));
+        let result = ensure_codex_pad_ready_for(&mut cfg, "zh-CN", Some(CURSOR_APP_TARGET_ID));
+        assert!(result.changed);
+        assert_eq!(result.mapping_id.as_deref(), Some("cursor-soft-pad"));
+        let ptt = agent_key_binding_for_slot(&cfg.mappings[1], "pushToTalk").unwrap();
+        assert_eq!(ptt.trigger_binding, "Ctrl+Shift+Space");
+        assert!(micro_key_routable(&cfg.mappings[1], cfg.mappings[1].codex_micro_pad.as_ref().unwrap(), "ACT10"));
+    }
+
+    #[test]
+    fn ensure_codex_pad_ready_rewrites_cursor_codex_mic_chord() {
+        use crate::app_chat_workflow::CURSOR_APP_TARGET_ID;
+        use crate::config::{AgentBinding, MappingEntry, TriggerMode};
+
+        let mut pad = default_codex_micro_pad();
+        pad.enabled = true;
+        pad.overlay_enabled = true;
+        let mut cfg = VoiceConfig {
+            mappings: vec![MappingEntry {
+                id: "cursor-soft-pad".into(),
+                label: String::new(),
+                group: "默认".into(),
+                app_target_id: CURSOR_APP_TARGET_ID.into(),
+                trigger_key: "F2".into(),
+                target_key: "RAlt".into(),
+                enabled: true,
+                key_mode_enabled: true,
+                voice_mode_enabled: true,
+                order: 1,
+                trigger_mode: TriggerMode::Tap,
+                trigger_source: None,
+                source_key: String::new(),
+                source_time: String::new(),
+                interval_ms: 1200,
+                enter_delay_ms: 5000,
+                cancel_enabled: true,
+                auto_enter_enabled: true,
+                switch_keys: vec![],
+                native_key_restore: false,
+                trigger_device: String::new(),
+                long_press_ms: 500,
+                double_click_ms: 400,
+                ime_preset_id: String::new(),
+                app_behavior_rules: vec![],
+                voice_override: None,
+                camera_override: None,
+                voice_commands: vec![],
+                acoustic_voice_commands: vec![],
+                agent_template_id: String::new(),
+                agent_provider_id: String::new(),
+                agent_bindings: vec![AgentBinding {
+                    action_instance_id: String::new(),
+                    action_args: None,
+                    slot_id: "pushToTalk".into(),
+                    action_id: "startDictation".into(),
+                    trigger_type: "key".into(),
+                    trigger_binding: "Ctrl+Shift+D".into(),
+                    enabled: true,
+                    execution_mode: None,
+                    activation_scope: "global".into(),
+                }],
+                codex_micro_pad: Some(pad),
+                time_machine_workspace: String::new(),
+            }],
+            ..VoiceConfig::default()
+        };
+        assert!(mapping_pad_routes_need_heal(&cfg.mappings[0]));
+        let result = ensure_codex_pad_ready_for(&mut cfg, "zh-CN", Some(CURSOR_APP_TARGET_ID));
+        assert!(result.changed);
+        let ptt = agent_key_binding_for_slot(&cfg.mappings[0], "pushToTalk").unwrap();
+        assert_eq!(ptt.trigger_binding, "Ctrl+Shift+Space");
     }
 
     #[test]

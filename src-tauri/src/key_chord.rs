@@ -182,10 +182,17 @@ pub fn chord_token_matches(stored: &str, pressed: &str) -> bool {
     }
 }
 
-/// Codex / app-native push-to-talk chord — must reach the foreground app physically;
-/// OneTone only synthesizes it from a separate trigger (e.g. PageDown long-press).
+/// App-native push-to-talk chords — must reach the foreground app physically;
+/// OneTone only synthesizes them from a separate trigger (e.g. PageDown long-press).
+/// Codex Start Dictation: Ctrl+Shift+D (hold). Cursor Voice Mode: Ctrl+Shift+Space (toggle).
 pub fn is_hold_to_talk_chord(combo: &str) -> bool {
-    chords_equivalent("Ctrl+Shift+D", combo.trim())
+    let c = combo.trim();
+    chords_equivalent("Ctrl+Shift+D", c) || is_toggle_voice_chord(c)
+}
+
+/// Cursor native Voice Mode — fires as a toggle pulse, not a held modifier chord.
+pub fn is_toggle_voice_chord(combo: &str) -> bool {
+    chords_equivalent("Ctrl+Shift+Space", combo.trim())
 }
 
 /// Bare typing / dialog keys that must reach the focused app.
@@ -253,6 +260,7 @@ pub fn is_app_synthesize_target_chord(combo: &str) -> bool {
         "Ctrl+L",
         "Ctrl+Alt+S",
         "Ctrl+Alt+P",
+        "Ctrl+Alt+Shift+P",
         "Ctrl+Alt+R",
         "Ctrl+Alt+,",
         "Ctrl+Alt+.",

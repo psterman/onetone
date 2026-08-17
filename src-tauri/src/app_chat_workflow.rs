@@ -356,6 +356,27 @@ pub fn run_hold_voice_foreground(
         return Ok(format!("{prefix}_hold_toggle"));
     }
 
+    // Native hold-to-talk: inject the app's own voice chord (do not OneTone-dictate).
+    // Codex: Ctrl+Shift+D. Cursor: Ctrl+Shift+Space (Voice Mode).
+    let native_app_ptt = crate::key_chord::is_hold_to_talk_chord(voice_key)
+        && (profile.id == CODEX_APP_TARGET_ID || profile.id == CURSOR_APP_TARGET_ID);
+    if native_app_ptt {
+        if !crate::voice_end_runtime::begin_hold_voice_chord(state.as_ref(), voice_key) {
+            crate::app_log::log_line(
+                state.as_ref(),
+                "hold",
+                &format!("{prefix} hold press failed key={voice_key}"),
+            );
+            return Err((prefix.to_string(), AppChatWorkflowError::VoiceFailed));
+        }
+        crate::app_log::log_line(
+            state.as_ref(),
+            "hold",
+            &format!("{prefix} hold start native key={voice_key} mapping={mapping_id}"),
+        );
+        return Ok(format!("{prefix}_hold_start_native"));
+    }
+
     if !crate::voice_end_runtime::begin_hold_voice_chord(state.as_ref(), voice_key) {
         crate::app_log::log_line(
             state.as_ref(),
@@ -363,17 +384,6 @@ pub fn run_hold_voice_foreground(
             &format!("{prefix} hold press failed key={voice_key}"),
         );
         return Err((prefix.to_string(), AppChatWorkflowError::VoiceFailed));
-    }
-
-    // Codex native Start Dictation (Ctrl+Shift+D): press the chord only.
-    // Entering OneTone `dictating` shows coach HUD / end-phrase ASR and competes for the mic.
-    if crate::key_chord::is_hold_to_talk_chord(voice_key) {
-        crate::app_log::log_line(
-            state.as_ref(),
-            "hold",
-            &format!("{prefix} hold start native key={voice_key} mapping={mapping_id}"),
-        );
-        return Ok(format!("{prefix}_hold_start_native"));
     }
 
     if crate::voice_end_runtime::can_enter_dictating(&state.cfg.lock()) {

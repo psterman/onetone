@@ -79,6 +79,7 @@ pub fn cmd_codex_micro_pad_set_layout(
     layout_profile: String,
     software_enhance_enabled: bool,
     keys: Vec<config::CodexMicroPadKeyRoute>,
+    agent_bindings: Option<Vec<config::AgentBinding>>,
 ) -> Result<(), String> {
     let mapping_id = mapping_id.trim().to_string();
     if mapping_id.is_empty() {
@@ -98,11 +99,13 @@ pub fn cmd_codex_micro_pad_set_layout(
     let enhance = software_enhance_enabled;
 
     let cfg_to_save;
+    let pin_kind;
     {
         let mut cfg = state.cfg.lock();
         let Some(mapping) = cfg.mappings.iter_mut().find(|m| m.id == mapping_id) else {
             return Err("mapping_not_found".into());
         };
+        pin_kind = crate::soft_pad_runtime::AgentKind::from_app_target(mapping.app_target_id.trim());
         let pad = mapping
             .codex_micro_pad
             .get_or_insert_with(codex_numpad_layer::default_codex_micro_pad);
@@ -111,8 +114,38 @@ pub fn cmd_codex_micro_pad_set_layout(
         if !keys.is_empty() {
             pad.keys = keys;
         }
+        // Quiet-save agentBindings with keycap edits so Plan/etc. chords survive Soft Pad open.
+        // Upsert only — never replace the whole vector (FE may send a partial list).
+        if let Some(bindings) = agent_bindings {
+            for incoming in bindings {
+                let slot = incoming.slot_id.trim().to_string();
+                let tt = incoming.trigger_type.trim().to_string();
+                if slot.is_empty() || tt.is_empty() {
+                    continue;
+                }
+                if let Some(existing) = mapping.agent_bindings.iter_mut().find(|b| {
+                    b.slot_id.trim() == slot && b.trigger_type.eq_ignore_ascii_case(&tt)
+                }) {
+                    *existing = incoming;
+                } else {
+                    mapping.agent_bindings.push(incoming);
+                }
+            }
+        }
+        if mapping.app_target_id.trim() == crate::app_chat_workflow::CURSOR_APP_TARGET_ID {
+            // Migrate legacy Ctrl+Alt+P Plan chords when saving Cursor Soft Pad layout.
+            let _ = codex_numpad_layer::heal_cursor_plan_chord_if_legacy(mapping);
+            crate::cursor_keybindings_setup::ensure_composer_mode_keybindings_quiet();
+        }
         codex_numpad_layer::sync_hook_cache(&cfg);
         cfg_to_save = cfg.clone();
+    }
+
+    // Soft Pad overlay follows sticky surface — pin to the mapping just edited so
+    // Plan/Agent keycap saves show up on the floating pad immediately.
+    if let Some(kind) = pin_kind {
+        codex_micro_overlay::clear_overlay_session_dismissed();
+        codex_micro_overlay::note_soft_pad_surface_for_agent(kind);
     }
 
     crate::app_log::log_line(

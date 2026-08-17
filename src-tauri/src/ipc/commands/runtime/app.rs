@@ -140,6 +140,9 @@ pub fn cmd_set_settings_drawer_open(
             let _ = crate::codex_micro_overlay::dismiss_overlay(&window.app_handle(), state.inner());
             crate::voice_bootstrap::schedule_park_wake_for_settings(state.inner());
         } else {
+            // Symmetric with open→dismiss: closing settings must clear the session latch
+            // or Soft Pad stays hidden until process restart when Cursor FG clear races fail.
+            crate::codex_micro_overlay::clear_overlay_session_dismissed();
             crate::codex_micro_overlay::push_state(&window.app_handle(), state.inner());
             crate::voice_bootstrap::schedule_unpark_wake_for_settings(
                 &window.app_handle(),

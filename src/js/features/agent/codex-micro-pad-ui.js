@@ -93,8 +93,28 @@
     focusBrowserAddressBar: 1
   };
 
-  /** Cursor / WorkBuddy / Trae / Qoder — App-aligned one-press slots only. */
+  /** Cursor Soft Pad openEditKeycap: App chords + Plan/Agent mode. */
   var CURSOR_SOFT_PAD_SLOT_IDS = {
+    summonCodex: 1,
+    commandPalette: 1,
+    newThread: 1,
+    quickChat: 1,
+    quickSearch: 1,
+    pushToTalk: 1,
+    stopOrSend: 1,
+    cancel: 1,
+    undo: 1,
+    toggleSidebar: 1,
+    openSettings: 1,
+    navBack: 1,
+    navForward: 1,
+    openTerminal: 1,
+    newBrowserTab: 1,
+    plan: 1,
+    switchAgent: 1
+  };
+  /** WorkBuddy / Trae / Qoder — no Plan/Agent composer modes. */
+  var VSCODE_SOFT_PAD_SLOT_IDS = {
     summonCodex: 1,
     commandPalette: 1,
     newThread: 1,
@@ -111,7 +131,6 @@
     openTerminal: 1,
     newBrowserTab: 1
   };
-  var VSCODE_SOFT_PAD_SLOT_IDS = CURSOR_SOFT_PAD_SLOT_IDS;
 
   /** Default keycap icon when a capability is selected (beginner auto-suggest). */
   var SLOT_DEFAULT_ICON = {
@@ -133,7 +152,9 @@
     openTerminal: 'terminal',
     toggleBrowserPanel: 'browser',
     newBrowserTab: 'browserPlus',
-    focusBrowserAddressBar: 'search'
+    focusBrowserAddressBar: 'search',
+    plan: 'plan',
+    switchAgent: 'agent'
   };
 
   /** Human physical key names for edit subtitle (not capability labels, not AG ids). */
@@ -553,7 +574,24 @@
           enabled: k.enabled !== false,
           advanced: !!k.advanced
         };
-      })
+      }),
+      // Keycap edits seed agentBindings in FE; quiet layout must persist them or Soft Pad
+      // heal/apply can desync and stop auto-showing the Cursor surface.
+      agentBindings: Array.isArray(m.agentBindings)
+        ? m.agentBindings.map(function (b) {
+          return {
+            slotId: String(b.slotId || ''),
+            actionId: String(b.actionId || ''),
+            actionInstanceId: String(b.actionInstanceId || ''),
+            actionArgs: b.actionArgs != null ? b.actionArgs : undefined,
+            triggerType: String(b.triggerType || ''),
+            triggerBinding: String(b.triggerBinding || ''),
+            enabled: b.enabled !== false,
+            executionMode: b.executionMode != null ? String(b.executionMode) : undefined,
+            activationScope: String(b.activationScope || 'foregroundApp')
+          };
+        })
+        : undefined
     };
     if (layoutPersistTimer) clearTimeout(layoutPersistTimer);
     layoutPersistTimer = setTimeout(function () {
@@ -580,6 +618,8 @@
 
   function applyEnsurePayloadToMapping(m, payload) {
     if (!m || !payload) return;
+    var mid = String(payload.mappingId || payload.mapping_id || '').trim();
+    if (mid && String(m.id || '') !== mid) return;
     if (payload.codexMicroPad) {
       var prevSkin = m.codexMicroPad && m.codexMicroPad.skin;
       m.codexMicroPad = payload.codexMicroPad;
@@ -714,7 +754,19 @@
     for (var i = 0; i < m.agentBindings.length; i++) {
       var b = m.agentBindings[i];
       if (b && b.slotId === slotId && b.triggerType === 'key') {
-        return String(b.triggerBinding || '').trim();
+        var raw = String(b.triggerBinding || '').trim();
+        // Cursor Plan: treat empty / legacy Ctrl+Alt+P as the current default chord.
+        if (
+          isCursorSoftPadMapping(m) &&
+          String(slotId) === 'plan' &&
+          (!raw || raw.replace(/\s+/g, '').toLowerCase() === 'ctrl+alt+p')
+        ) {
+          var Aheal = agent();
+          if (Aheal && Aheal.defaultKeyForMapping) {
+            return Aheal.defaultKeyForMapping(m, slotId) || raw;
+          }
+        }
+        return raw;
       }
     }
     var A = agent();
@@ -722,19 +774,33 @@
     return A && A.defaultKeyForSlot ? A.defaultKeyForSlot(slotId) : '';
   }
 
-  /** Display subtitle: insertOnly →「插入 /xxx」; else friendly chord. chordForSlot unchanged. */
+  /**
+   * Soft Pad caption (settings + preview): match floating overlay.
+   * Cursor Plan/Agent → name + chord; Codex insertOnly → name +「插入 /x」.
+   */
+  function softPadKeyCaption(m, slotId, fallbackName) {
+    var id = String(slotId || '').trim();
+    var name = slotLabel(id, m) || fallbackName || id;
+    var chord = friendlyChord(chordForSlot(m, id));
+    if (id && isSoftPadInsertOnlySlot(id, m)) {
+      var A = agent();
+      var ins = A && A.insertTextForSlot ? A.insertTextForSlot(id) : '';
+      if (ins) {
+        chord = (lang().toLowerCase().indexOf('en') === 0 ? 'Insert ' : '插入 ') + ins;
+      }
+    }
+    return { name: name, chord: chord };
+  }
+
+  /** Display subtitle: insertOnly →「插入 /xxx」; else friendly chord. */
   function slotSubForDisplay(m, slotId) {
-    var A = agent();
-    var chord = friendlyChord(chordForSlot(m, slotId));
-    if (A && A.slotSubForDisplay) return A.slotSubForDisplay(slotId, chord);
-    return chord;
+    return softPadKeyCaption(m, slotId).chord;
   }
 
   function displayActionForSlot(m, slotId) {
-    var A = agent();
-    var chord = friendlyChord(chordForSlot(m, slotId));
-    if (A && A.displayActionForSlot) return A.displayActionForSlot(slotId, chord);
-    return chord || slotLabel(slotId);
+    var cap = softPadKeyCaption(m, slotId);
+    if (isSoftPadInsertOnlySlot(slotId, m) && cap.chord) return cap.chord;
+    return cap.chord || cap.name;
   }
 
   function friendlyChord(raw) {
@@ -748,7 +814,17 @@
   }
 
   function resolveIconId(route, microKeyId) {
-    if (route && route.uiIconId) return route.uiIconId;
+    var slotId = route && route.slotId ? String(route.slotId).trim() : '';
+    var cur = route && route.uiIconId ? String(route.uiIconId).trim() : '';
+    // Cursor Plan/Agent on PLUS/DOT: prefer capability icons over leftover plus/dot stock.
+    if (slotId === 'plan' || slotId === 'switchAgent') {
+      var slotIcon = SLOT_DEFAULT_ICON[slotId] || '';
+      var stock = DEFAULT_ICON_BY_MICRO[microKeyId] || '';
+      if (slotIcon && (!cur || cur === stock || cur === 'plus' || cur === 'dot' || cur === 'empty')) {
+        return slotIcon;
+      }
+    }
+    if (cur) return cur;
     return DEFAULT_ICON_BY_MICRO[microKeyId] || 'empty';
   }
 
@@ -903,6 +979,103 @@
     return changed;
   }
 
+  /** Keep Cursor Soft Pad settings preview in sync with floating overlay (Plan/Agent). */
+  function syncCursorSoftPadDisplay(m) {
+    if (!isCursorSoftPadMapping(m)) return false;
+    var changed = false;
+    var pad = m.codexMicroPad;
+    if (pad && Array.isArray(pad.keys)) {
+      for (var i = 0; i < pad.keys.length; i++) {
+        var k = pad.keys[i];
+        if (!k) continue;
+        var id = String(k.microKeyId || '');
+        var slot = String(k.slotId || '').trim();
+        if (id === 'PLUS' && !slot) {
+          k.slotId = 'plan';
+          k.enabled = true;
+          slot = 'plan';
+          changed = true;
+        } else if (id === 'DOT' && !slot) {
+          k.slotId = 'switchAgent';
+          k.enabled = true;
+          slot = 'switchAgent';
+          changed = true;
+        }
+        if (slot === 'plan' || slot === 'switchAgent') {
+          var want = SLOT_DEFAULT_ICON[slot] || '';
+          var cur = String(k.uiIconId || '').trim();
+          var stock = DEFAULT_ICON_BY_MICRO[id] || '';
+          if (want && (!cur || cur === stock || cur === 'plus' || cur === 'dot' || cur === 'empty')) {
+            k.uiIconId = want;
+            changed = true;
+          }
+        }
+      }
+    }
+    if (!Array.isArray(m.agentBindings)) m.agentBindings = [];
+    var A = agent();
+    var planChord = A && A.defaultKeyForMapping
+      ? A.defaultKeyForMapping(m, 'plan')
+      : 'Ctrl+Alt+Shift+P';
+    var agentChord = A && A.defaultKeyForMapping
+      ? A.defaultKeyForMapping(m, 'switchAgent')
+      : 'Ctrl+Alt+.';
+    var sawPlan = false;
+    var sawAgent = false;
+    for (var j = 0; j < m.agentBindings.length; j++) {
+      var b = m.agentBindings[j];
+      if (!b || String(b.triggerType || '') !== 'key') continue;
+      var sid = String(b.slotId || '').trim();
+      if (sid === 'plan') {
+        sawPlan = true;
+        var pt = String(b.triggerBinding || '').replace(/\s+/g, '').toLowerCase();
+        if (!pt || pt === 'ctrl+alt+p') {
+          b.triggerBinding = planChord;
+          changed = true;
+        }
+        if (String(b.executionMode || '') === 'insertOnly') {
+          b.executionMode = 'execute';
+          changed = true;
+        }
+      } else if (sid === 'switchAgent') {
+        sawAgent = true;
+        if (!String(b.triggerBinding || '').trim() && agentChord) {
+          b.triggerBinding = agentChord;
+          changed = true;
+        }
+        if (String(b.executionMode || '') === 'insertOnly') {
+          b.executionMode = 'execute';
+          changed = true;
+        }
+      }
+    }
+    if (!sawPlan && planChord) {
+      m.agentBindings.push({
+        slotId: 'plan',
+        actionId: 'plan',
+        triggerType: 'key',
+        triggerBinding: planChord,
+        enabled: true,
+        executionMode: 'execute',
+        activationScope: 'foregroundApp'
+      });
+      changed = true;
+    }
+    if (!sawAgent && agentChord) {
+      m.agentBindings.push({
+        slotId: 'switchAgent',
+        actionId: 'switchAgent',
+        triggerType: 'key',
+        triggerBinding: agentChord,
+        enabled: true,
+        executionMode: 'execute',
+        activationScope: 'foregroundApp'
+      });
+      changed = true;
+    }
+    return changed;
+  }
+
   /** Session heal cache — avoid JSON.stringify+migrate on every Soft Pad scheme click (假死风暴). */
   var padHealDone = Object.create(null);
 
@@ -963,6 +1136,7 @@
       migrateMinimaxTopbarHabitToAgentLight(m, m.codexMicroPad);
     }
     if (!opts.force && m.id && padHealDone[String(m.id)]) {
+      syncCursorSoftPadDisplay(m);
       return m.codexMicroPad;
     }
     if (!Array.isArray(m.codexMicroPad.keys)) m.codexMicroPad.keys = [];
@@ -1067,6 +1241,7 @@
     });
     healEncScreenOnly(m.codexMicroPad);
     protectPrimaryLayout(m.codexMicroPad);
+    syncCursorSoftPadDisplay(m);
     // Heal-only scan moves: persist quietly later via normal save — never block hub open.
     if (before !== JSON.stringify(m.codexMicroPad.keys) && opts.persist === true) persist();
     if (m.id) padHealDone[String(m.id)] = true;
@@ -1564,10 +1739,15 @@
       app === 'trae-work' || app === 'trae-chat' || app === 'trae-code' || app === 'qoder-chat';
   }
 
-  function isSoftPadInsertOnlySlot(slotId) {
+  function isSoftPadInsertOnlySlot(slotId, m) {
+    var id = String(slotId || '').trim();
+    // Cursor: plan / switchAgent are composerMode hotkeys (Ctrl+Alt+Shift+P / Ctrl+Alt+.), not slash insert.
+    if (isCursorSoftPadMapping(m) && (id === 'plan' || id === 'switchAgent')) {
+      return false;
+    }
     var A = agent();
     if (!A || !A.slotById || !A.actionById) return false;
-    var s = A.slotById(slotId);
+    var s = A.slotById(id);
     if (!s) return false;
     var a = A.actionById(s.actionId);
     return !!(a && String(a.mode || '') === 'insertOnly');
@@ -1577,12 +1757,15 @@
     var A = agent();
     if (!A || !A.SLOTS) return [];
     var codexOnly = isCodexSoftPadMapping(m);
+    var cursorOnly = isCursorSoftPadMapping(m);
     var vscodeOnly = isVscodeSoftPadMapping(m);
     return A.SLOTS.filter(function (s) {
-      // Soft Pad (Codex + Claude): never offer insertOnly slash as one-press keys.
-      if (isSoftPadInsertOnlySlot(s.slotId)) return false;
-      if (codexOnly) return !!CODEX_SOFT_PAD_SLOT_IDS[String(s.slotId || '').trim()];
-      if (vscodeOnly) return !!VSCODE_SOFT_PAD_SLOT_IDS[String(s.slotId || '').trim()];
+      var id = String(s.slotId || '').trim();
+      // Soft Pad: never offer insertOnly slash as one-press keys (Cursor plan/agent excepted).
+      if (isSoftPadInsertOnlySlot(id, m)) return false;
+      if (codexOnly) return !!CODEX_SOFT_PAD_SLOT_IDS[id];
+      if (cursorOnly) return !!CURSOR_SOFT_PAD_SLOT_IDS[id];
+      if (vscodeOnly) return !!VSCODE_SOFT_PAD_SLOT_IDS[id];
       return true;
     }).map(function (s) {
       var label = (A.labelForSlotForMapping
@@ -1604,7 +1787,7 @@
         : '未绑定能力 — 按键不会执行动作';
     }
     // Soft Pad never advertises insert-only slash (one-press only).
-    if (isSoftPadInsertOnlySlot(slotId)) {
+    if (isSoftPadInsertOnlySlot(slotId, m)) {
       return lang().indexOf('en') === 0
         ? (name + ' — not available as a one-press Soft Pad action')
         : (name + ' — 不可作为 Soft Pad 一键动作');
@@ -2083,14 +2266,9 @@
       var tipName = cellLabel(cell);
       var tipChord = '';
       if (bound && route && route.slotId) {
-        tipChord = friendlyChord(chordForSlot(m, route.slotId));
-        var tipIns = '';
-        var tipA = agent();
-        if (tipA && tipA.insertTextForSlot) {
-          var tipInsert = tipA.insertTextForSlot(route.slotId);
-          if (tipInsert) tipIns = (lang().toLowerCase().indexOf('en') === 0 ? 'Insert ' : '插入 ') + tipInsert;
-        }
-        tipName = tipIns || slotLabel(route.slotId) || tipName;
+        var tipCap = softPadKeyCaption(m, route.slotId, tipName);
+        tipName = tipCap.name;
+        tipChord = tipCap.chord;
       }
       if (cell.microKeyId === 'ENC') {
         tipName = codexOn
@@ -2110,14 +2288,9 @@
             ? friendlyChord(chordForSlot(m, route.slotId))
             : t('codexMicroPadNavDefault', '默认注入方向键');
       } else if (!isNp && bound && route && route.slotId) {
-          var insertCap = '';
-          var A = agent();
-          if (A && A.insertTextForSlot) {
-            var ins = A.insertTextForSlot(route.slotId);
-            if (ins) insertCap = (lang().toLowerCase().indexOf('en') === 0 ? 'Insert ' : '插入 ') + ins;
-          }
-          metaName = insertCap || slotLabel(route.slotId) || cellLabel(cell);
-          metaChord = friendlyChord(chordForSlot(m, route.slotId));
+          var metaCap = softPadKeyCaption(m, route.slotId, cellLabel(cell));
+          metaName = metaCap.name;
+          metaChord = metaCap.chord;
           if (cell.microKeyId === 'ACT10' && route && Number(route.sourceScan) > 0) {
             var numLbl = scanLabel(route.sourceScan, route.sourceExtended);
             metaChord = numLbl + (metaChord ? ' · ' + metaChord : '');
@@ -6150,14 +6323,9 @@
         ? slotEffectTip(route.slotId, slotLabel(route.slotId), m)
         : t('softPadLayoutNavEffect', '未绑定时注入系统方向键。');
     } else if (route && route.enabled && route.slotId) {
-      var insertCap = '';
-      var A = agent();
-      if (A && A.insertTextForSlot) {
-        var ins = A.insertTextForSlot(route.slotId);
-        if (ins) insertCap = (lang().toLowerCase().indexOf('en') === 0 ? 'Insert ' : '插入 ') + ins;
-      }
-      name = insertCap || slotLabel(route.slotId) || name;
-      chord = friendlyChord(chordForSlot(m, route.slotId));
+      var layoutCap = softPadKeyCaption(m, route.slotId, name);
+      name = layoutCap.name;
+      chord = layoutCap.chord;
       effect = slotEffectTip(route.slotId, name, m);
     } else {
       chord = t('codexMicroPadUnbound', '未配置');
@@ -9877,7 +10045,9 @@
     var slot = A.slotById(id);
     if (!slot) return;
     if (!Array.isArray(m.agentBindings)) m.agentBindings = [];
-    var chord = A.defaultKeyForSlot ? A.defaultKeyForSlot(id) : '';
+    var chord = A.defaultKeyForMapping
+      ? A.defaultKeyForMapping(m, id)
+      : (A.defaultKeyForSlot ? A.defaultKeyForSlot(id) : '');
     var found = null;
     for (var i = 0; i < m.agentBindings.length; i++) {
       var b = m.agentBindings[i];
@@ -9892,7 +10062,28 @@
       if (!String(found.triggerBinding || '').trim() && chord) {
         found.triggerBinding = chord;
       }
+      // Cursor Plan / Agent mode are hotkeys, not slash insert.
+      if (isCursorSoftPadMapping(m) && (id === 'plan' || id === 'switchAgent')) {
+        found.executionMode = 'execute';
+      }
+      // Migrate legacy Cursor Plan chord off Ctrl+Alt+P (screenshot conflict).
+      if (
+        isCursorSoftPadMapping(m) &&
+        id === 'plan' &&
+        chord &&
+        String(found.triggerBinding || '').replace(/\s+/g, '').toLowerCase() === 'ctrl+alt+p'
+      ) {
+        found.triggerBinding = chord;
+      }
       return;
+    }
+    var mode = 'execute';
+    if (A.actionById) {
+      var act = A.actionById(slot.actionId);
+      if (act && act.mode) mode = String(act.mode);
+    }
+    if (isCursorSoftPadMapping(m) && (id === 'plan' || id === 'switchAgent')) {
+      mode = 'execute';
     }
     m.agentBindings.push({
       slotId: id,
@@ -9900,7 +10091,7 @@
       triggerType: 'key',
       triggerBinding: chord,
       enabled: true,
-      executionMode: 'execute',
+      executionMode: mode,
       activationScope: 'foregroundApp'
     });
   }
@@ -10175,8 +10366,17 @@
 
   function onPadReady(payload) {
     var Cap = global.OneToneAgentCapabilityUi;
-    var m = Cap && Cap.activeCodexMapping ? Cap.activeCodexMapping() : null;
-    if (payload && m) applyEnsurePayloadToMapping(m, payload);
+    var mid = payload && (payload.mappingId || payload.mapping_id);
+    var m = mid ? findMappingById(mid) : null;
+    if (!m && Cap && Cap.activeCodexMapping) m = Cap.activeCodexMapping();
+    // Only apply ensure payload onto the mapping it healed — Cursor heal must not
+    // overwrite Codex FE pad (that desync stopped Soft Pad auto-show after Plan edits).
+    if (payload && m) {
+      var payloadMid = String(mid || '').trim();
+      if (!payloadMid || String(m.id) === payloadMid) {
+        applyEnsurePayloadToMapping(m, payload);
+      }
+    }
     if (payload && payload.readiness) lastReadiness = payload.readiness;
     var host = document.getElementById('codexMicroPadHostTarget');
     if (host && m && !host.hidden) {

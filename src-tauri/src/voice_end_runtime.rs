@@ -92,6 +92,13 @@ pub fn resolve_voice_key_for_mapping(
             }
         }
         if is_app_scenario_mapping(m) {
+            let d = crate::agent::bindings_build::default_key_for_scenario(
+                m.app_target_id.trim(),
+                "pushToTalk",
+            );
+            if !d.is_empty() {
+                return Some(d.to_string());
+            }
             let target = canonical_trigger(m.target_key.trim());
             if !target.is_empty() {
                 return Some(target);
@@ -216,6 +223,21 @@ pub fn begin_hold_voice_chord(state: &AppState, chord: &str) -> bool {
             return false;
         }
     }
+    // Cursor Voice Mode is a toggle (one pulse). Holding modifiers does nothing useful,
+    // and leaving held_voice_chord set swallows the user's next Ctrl+Shift+Space
+    // (cannot turn voice off from the keyboard).
+    if crate::key_chord::is_toggle_voice_chord(chord) {
+        if !crate::keyboard::send_chord(chord, 45) {
+            return false;
+        }
+        mark_voice_wake_key_sent(state);
+        crate::app_log::log_line(
+            state,
+            "hold",
+            &format!("toggle voice pulse key={}", chord.trim()),
+        );
+        return true;
+    }
     if !crate::keyboard::press_chord(chord) {
         return false;
     }
@@ -229,6 +251,11 @@ pub fn end_hold_voice_chord(state: &AppState) -> bool {
     let Some(chord) = clear_held_voice_chord(state) else {
         return false;
     };
+    // Toggle chords are never left "held" — release is a no-op inject.
+    if crate::key_chord::is_toggle_voice_chord(&chord) {
+        mark_voice_wake_key_sent(state);
+        return true;
+    }
     let ok = crate::keyboard::release_chord(&chord);
     // Arm cooldown so a focus-flicker re-press cannot immediately restart.
     mark_voice_wake_key_sent(state);
@@ -1706,6 +1733,7 @@ mod tests {
     fn hold_to_talk_voice_key_matches_side_modifiers() {
         assert!(is_hold_to_talk_voice_key("Ctrl+Shift+D"));
         assert!(is_hold_to_talk_voice_key("LCtrl+LShift+D"));
+        assert!(is_hold_to_talk_voice_key("Ctrl+Shift+Space"));
         assert!(!is_hold_to_talk_voice_key("Ctrl+Alt+C"));
     }
 

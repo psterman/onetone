@@ -243,23 +243,23 @@
                           <button type="button" class="wb-scene-rail-manage" id="wbHabitManage" data-wb-habit-open-hub="" data-i18n="homeWbHabitManage">管理</button>
                         </header>
                         <div class="wb-context-bound-body">
-                          <section class="wb-scene-rail" id="wbSceneRail" aria-label="习惯">
-                            <div class="wb-scene-rail-head">
-                              <div class="wb-scene-rail-follow-block">
-                                <div class="wb-scene-rail-follow" title="根据前台应用使用对应习惯">
-                                  <div class="wb-scene-rail-follow-copy">
-                                    <span class="wb-scene-rail-follow-label" data-i18n="homeWbFollowFgLabel">自动切换习惯（推荐）</span>
-                                    <span class="wb-scene-rail-follow-hint" id="wbFollowFgHint" data-i18n="homeWbFollowFgHint">根据前台应用使用对应习惯</span>
-                                  </div>
-                                  <button type="button" class="toggle-switch" id="wbFollowFgToggle" role="switch" aria-checked="false" data-i18n-aria="homeWbFollowFgLabel"></button>
-                                </div>
+                      <section class="wb-scene-rail" id="wbSceneRail" aria-label="习惯">
+                        <div class="wb-scene-rail-head">
+                          <div class="wb-scene-rail-follow-block">
+                            <div class="wb-scene-rail-follow" title="根据前台应用使用对应习惯">
+                              <div class="wb-scene-rail-follow-copy">
+                                <span class="wb-scene-rail-follow-label" data-i18n="homeWbFollowFgLabel">自动切换习惯（推荐）</span>
+                                <span class="wb-scene-rail-follow-hint" id="wbFollowFgHint" data-i18n="homeWbFollowFgHint">根据前台应用使用对应习惯</span>
                               </div>
+                              <button type="button" class="toggle-switch" id="wbFollowFgToggle" role="switch" aria-checked="false" data-i18n-aria="homeWbFollowFgLabel"></button>
                             </div>
-                            <div class="wb-scene-rail-body" id="wbScenarioPanel"></div>
-                          </section>
+                          </div>
+                        </div>
+                        <div class="wb-scene-rail-body" id="wbScenarioPanel"></div>
+                      </section>
                           <div class="wb-context-bound-bridge" aria-hidden="true">
                             <span data-i18n="homeWbContextBoundBridge">此习惯下的唤起方式</span>
-                          </div>
+                  </div>
                           <section class="wb-howto" id="wbHowTo" aria-label="上方习惯下的四个通道：说话、按键、屏幕按钮与摄像头；点卡切换上方预览，再点打开设置"></section>
                         </div>
                       </section>
@@ -1204,7 +1204,7 @@
             <div class="soft-pad-settings-preview-banner__text">
               <p class="soft-pad-settings-preview-banner__title" id="softPadSettingsPreviewBannerTitle">设置中预览</p>
               <p class="soft-pad-settings-preview-banner__body" id="softPadSettingsPreviewBannerBody">悬浮 Soft Pad 在设置时会自动隐藏，避免挡住界面。右侧改动会同步到左侧预览；关闭设置并在 Agent 前台可看到真实浮窗。</p>
-            </div>
+          </div>
           </div>
           <div class="soft-pad-app-switcher" id="softPadAppSwitcher" role="tablist" aria-label="应用"></div>
           <p class="soft-pad-scope-hint" id="softPadScopeHint" aria-live="polite" hidden></p>
@@ -4335,25 +4335,25 @@
 
         <div class="habit-setup-trigger-config" id="habitSetupTriggerConfig" hidden>
           <button type="button" class="habit-setup-trigger-back-gate" id="btnHabitSetupTriggerBackToGate">← 返回重新选</button>
-          <div class="habit-setup-trigger-body" id="habitSetupTriggerBody">
-            <div class="habit-setup-stage">
-              <p class="habit-setup-status" id="habitSetupTriggerStatus"></p>
-              <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupTriggerStartRecord">开始录制启动键</button>
-            </div>
-            <div class="habit-setup-test-grid" id="habitSetupTestGrid">
-              <section class="habit-setup-test-panel" id="habitSetupKeyTestPanel">
-                <h4 class="habit-setup-test-panel-title" id="habitSetupKeyTestTitle">按键测试</h4>
-                <p class="habit-setup-status" id="habitSetupKeyTestStatus"></p>
-                <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupKeyTestRetry">重新测试</button>
-              </section>
-              <section class="habit-setup-test-panel" id="habitSetupVoiceTestPanel2">
-                <h4 class="habit-setup-test-panel-title" id="habitSetupVoiceTestTitle2">语音测试</h4>
-                <p class="habit-setup-desc" id="habitSetupVoiceTestDesc2"></p>
-                <div id="habitSetupStep2VoiceHost"></div>
-                <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupVoiceTestRetry">重新测试</button>
-              </section>
-            </div>
+        <div class="habit-setup-trigger-body" id="habitSetupTriggerBody">
+          <div class="habit-setup-stage">
+            <p class="habit-setup-status" id="habitSetupTriggerStatus"></p>
+            <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupTriggerStartRecord">开始录制启动键</button>
           </div>
+          <div class="habit-setup-test-grid" id="habitSetupTestGrid">
+            <section class="habit-setup-test-panel" id="habitSetupKeyTestPanel">
+              <h4 class="habit-setup-test-panel-title" id="habitSetupKeyTestTitle">按键测试</h4>
+              <p class="habit-setup-status" id="habitSetupKeyTestStatus"></p>
+              <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupKeyTestRetry">重新测试</button>
+            </section>
+            <section class="habit-setup-test-panel" id="habitSetupVoiceTestPanel2">
+              <h4 class="habit-setup-test-panel-title" id="habitSetupVoiceTestTitle2">语音测试</h4>
+              <p class="habit-setup-desc" id="habitSetupVoiceTestDesc2"></p>
+              <div id="habitSetupStep2VoiceHost"></div>
+              <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupVoiceTestRetry">重新测试</button>
+            </section>
+          </div>
+        </div>
         </div>
 
         <div class="habit-setup-actions habit-setup-actions--footer habit-setup-activation-dock" id="habitSetupTriggerDock">

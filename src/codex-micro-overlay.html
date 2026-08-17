@@ -209,8 +209,8 @@
       {id:'ACT07',kind:'command',row:1,col:4,icon:'palette'},
       {id:'ACT08',kind:'command',row:1,col:5,icon:'reject'},
       {id:'NAV_UP',kind:'nav',row:2,col:1,icon:'navUp'},
-      {id:'AG00',kind:'agent',row:2,col:2,ag:0,icon:'agent'},
-      {id:'AG01',kind:'agent',row:2,col:3,ag:1,icon:'claude'},
+      {id:'AG00',kind:'agent',row:2,col:2,ag:0,icon:'palette'},
+      {id:'AG01',kind:'agent',row:2,col:3,ag:1,icon:'fork'},
       {id:'AG02',kind:'agent',row:2,col:4,ag:2,icon:'model'},
       {id:'PLUS',kind:'command',row:2,col:5,rowSpan:2,icon:'plus'},
       {id:'NAV_LEFT',kind:'nav',row:3,col:1,icon:'navLeft'},
@@ -233,8 +233,8 @@
       {id:'ACT06',kind:'command',row:1,col:2,icon:'fast'},
       {id:'ACT07',kind:'command',row:1,col:3,icon:'palette'},
       {id:'ACT08',kind:'command',row:1,col:4,icon:'reject'},
-      {id:'AG00',kind:'agent',row:2,col:1,ag:0,icon:'agent'},
-      {id:'AG01',kind:'agent',row:2,col:2,ag:1,icon:'claude'},
+      {id:'AG00',kind:'agent',row:2,col:1,ag:0,icon:'palette'},
+      {id:'AG01',kind:'agent',row:2,col:2,ag:1,icon:'fork'},
       {id:'AG02',kind:'agent',row:2,col:3,ag:2,icon:'model'},
       {id:'PLUS',kind:'command',row:2,col:4,rowSpan:2,icon:'plus'},
       {id:'AG03',kind:'agent',row:3,col:1,ag:3,icon:'folder'},
@@ -318,7 +318,8 @@
       hold_failed:'无法启动听写（请确认 Codex 已打开）',
       invalid_key:'无效按键',
       invalid_phase:'无效操作',
-      numpad_mode:'请先打开模式开关 · 切换到虚拟键盘模式'
+      numpad_mode:'请先打开模式开关 · 切换到虚拟键盘模式',
+      no_applied_lane:'当前 Soft Pad 未接入按键路由（请确认 Cursor Soft Pad 已启用）'
     };
     function reasonHint(reason){
       if(reason==='not_foreground'){
@@ -458,6 +459,16 @@
 
     function applyNavCta(s){
       if(!overlayNavCta) return;
+      // Cursor has no session/thread slots — never show Codex/Claude nav CTA in Cursor context.
+      var applied=String(s&&(s.appliedAgent||s.applied_agent)||'').toLowerCase();
+      var appAgent=String(s&&(s.appAgent||s.app_agent)||'').toLowerCase();
+      var fg=String(s&&(s.foregroundAgent||s.foreground_agent)||'').toLowerCase();
+      if(applied==='cursor'||appAgent==='cursor'||fg==='cursor'){
+        overlayNavCta.hidden=true;
+        navCtaArmedUntil=0;
+        overlayNavCta.classList.remove('is-armed');
+        return;
+      }
       var mid=String(s&&(s.navCtaMappingId||s.nav_cta_mapping_id)||'').trim();
       var agent=String(s&&(s.navCtaAgent||s.nav_cta_agent)||'').toLowerCase();
       var slots=Array.isArray(s&&s.navCtaSlots)?s.navCtaSlots
@@ -465,7 +476,7 @@
       // Fallback for older snapshots: current applied mapping only.
       if(!mid||!slots.length){
         var purpose=String(s&&(s.purpose)||'shortcuts').toLowerCase()==='sessions'?'sessions':'shortcuts';
-        agent=String(s&&(s.appliedAgent||s.applied_agent)||'').toLowerCase();
+        agent=applied;
         mid=String(s&&(s.mappingId||s.mapping_id)||'').trim();
         var navSlots=Array.isArray(s&&s.navigationSlots)?s.navigationSlots
           :(Array.isArray(s&&s.navigation_slots)?s.navigation_slots:[]);
@@ -2535,32 +2546,53 @@
       if(mode==='numpad') cols=4;
       var purpose=String(s.purpose||'shortcuts');
       var ag=String(s.agSurface||s.ag_surface||'');
-      return [!!s.softwareEnhanceEnabled,mode,navOn?1:0,cols,purpose,ag,parts.join('|')].join(';');
+      var applied=String(s.appliedAgent||s.applied_agent||'').toLowerCase();
+      var fg=String(s.foregroundAgent||s.foreground_agent||'').toLowerCase();
+      return [!!s.softwareEnhanceEnabled,mode,navOn?1:0,cols,purpose,ag,applied,fg,parts.join('|')].join(';');
     }
 
     function patchGridRunStates(map,active){
       if(!grid) return;
+      var appliedAgent=String((lastSnap&&(lastSnap.appliedAgent||lastSnap.applied_agent))||'').toLowerCase();
+      var fgAgent=String((lastSnap&&(lastSnap.foregroundAgent||lastSnap.foreground_agent))||'').toLowerCase();
+      var surfaceAgent=String((lastSnap&&(lastSnap.surfaceAgent||lastSnap.surface_agent))||appliedAgent||fgAgent||'').toLowerCase();
+      var noAgChrome=surfaceAgent==='cursor'||appliedAgent==='cursor'||fgAgent==='cursor';
       grid.querySelectorAll('[data-micro-key]').forEach(function(el){
         var id=el.getAttribute('data-micro-key');
         var info=map[id]||{};
         var backendRun=String(info.runStatus||'idle');
         var src=String(info.statusSource||'inferred');
         var keyRole=String(info.keyRole||'action');
+        if(noAgChrome) keyRole='action';
+        if(noAgChrome && id && id.indexOf('AG')===0){
+          backendRun='idle';
+          src='inferred';
+        }
         var isNav=isNavKeyId(id);
         var isNp=isNumpadKeyId(id);
-        // Session lanes / status host may lack chord binding but must stay lit.
-        var bound=isNp||isNav||!!info.bound||keyRole==='agentLane';
+        var bound=isNp||isNav||!!info.bound;
         el.setAttribute('data-backend-run',backendRun);
         el.setAttribute('data-run-status',mergeRunStatus(id,backendRun));
         el.setAttribute('data-status-source',src);
         el.setAttribute('data-key-role',keyRole);
-        el.classList.toggle('micro-hw__key--lane', keyRole==='agentLane');
+        el.classList.remove('micro-hw__key--lane');
         el.classList.toggle('is-bound', bound);
         el.classList.toggle('is-route-disabled', !bound && id!=='ENC');
-        if(info.laneId) el.setAttribute('data-lane-id',String(info.laneId));
-        else el.removeAttribute('data-lane-id');
-        if(info.subagentCount) el.setAttribute('data-subagent-count',String(info.subagentCount));
-        else el.removeAttribute('data-subagent-count');
+        if(noAgChrome){
+          el.classList.remove('micro-hw__key--agent');
+          el.classList.add('micro-hw__key--command');
+          el.removeAttribute('data-ag');
+          el.removeAttribute('data-lane-id');
+          el.removeAttribute('data-subagent-count');
+          el.removeAttribute('title');
+        }
+        if(!noAgChrome){
+          if(info.laneId) el.setAttribute('data-lane-id',String(info.laneId));
+          else el.removeAttribute('data-lane-id');
+          if(info.subagentCount) el.setAttribute('data-subagent-count',String(info.subagentCount));
+          else el.removeAttribute('data-subagent-count');
+          el.classList.toggle('micro-hw__key--lane', keyRole==='agentLane');
+        }
         var rank=String(info.contextRank||'').trim();
         el.classList.toggle('is-context-emphasize',rank==='emphasize');
         el.classList.toggle('is-context-dim',rank==='dim');
@@ -2656,12 +2688,27 @@
         rootEl.setAttribute('data-navigation-slots', navSlots.join(','));
         rootEl.setAttribute('data-navigation-overflow', String(navOverflow));
         if(s.appliedAgent) rootEl.setAttribute('data-applied-agent', String(s.appliedAgent));
+        else rootEl.removeAttribute('data-applied-agent');
+        var fgA=String(s.foregroundAgent||s.foreground_agent||'').trim();
+        if(fgA) rootEl.setAttribute('data-foreground-agent', fgA);
+        else rootEl.removeAttribute('data-foreground-agent');
+        var surfaceA=String(s.appliedAgent||s.applied_agent||fgA||'').trim().toLowerCase();
+        if(surfaceA) rootEl.setAttribute('data-surface-agent', surfaceA);
+        else rootEl.removeAttribute('data-surface-agent');
       }
       wrap.setAttribute('data-purpose', purpose);
       wrap.setAttribute('data-ag-surface', agSurface);
       wrap.setAttribute('data-multi-agent-lights', multiLights?'true':'false');
       wrap.setAttribute('data-navigation-slots', navSlots.join(','));
       wrap.setAttribute('data-navigation-overflow', String(navOverflow));
+      if(s.appliedAgent) wrap.setAttribute('data-applied-agent', String(s.appliedAgent));
+      else wrap.removeAttribute('data-applied-agent');
+      var fgWrap=String(s.foregroundAgent||s.foreground_agent||'').trim();
+      if(fgWrap) wrap.setAttribute('data-foreground-agent', fgWrap);
+      else wrap.removeAttribute('data-foreground-agent');
+      var surfaceWrap=String(s.appliedAgent||s.applied_agent||fgWrap||'').trim().toLowerCase();
+      if(surfaceWrap) wrap.setAttribute('data-surface-agent', surfaceWrap);
+      else wrap.removeAttribute('data-surface-agent');
       applyNavCta(s);
       applyLightGate(s);
       var hw=wrap.querySelector('.micro-hw');
@@ -2763,6 +2810,11 @@
       }
       lastGridSig=sig;
       boundKeys={};
+      var appliedAgent=String(s.appliedAgent||s.applied_agent||'').toLowerCase();
+      var fgAgent=String(s.foregroundAgent||s.foreground_agent||'').toLowerCase();
+      var surfaceAgent=String(s.surfaceAgent||s.surface_agent||appliedAgent||fgAgent||'').toLowerCase();
+      var noAgChrome=surfaceAgent==='cursor'||appliedAgent==='cursor'||fgAgent==='cursor';
+      var cursorAgIcon={AG00:'palette',AG01:'fork',AG02:'fast',AG03:'search',AG04:'send',AG05:'reject'};
       grid.innerHTML=activeLayout().map(function(cell){
         var info=map[cell.id]||{};
         var isNav=isNavKeyId(cell.id);
@@ -2771,15 +2823,24 @@
         if(isNp || isNav) bound=true;
         boundKeys[cell.id]=bound;
         var iconId=info.uiIconId||cell.icon||'empty';
+        // Cursor Soft Pad: AG keys are normal shortcuts — never Codex session AG chrome.
+        if(noAgChrome && cell.id && cell.id.indexOf('AG')===0){
+          iconId=cursorAgIcon[cell.id]||'palette';
+        } else if(noAgChrome && (iconId==='agent'||iconId==='lane'||iconId==='claude')){
+          iconId=cursorAgIcon[cell.id]||'palette';
+        }
         var keyRole=String(info.keyRole||'action');
+        if(noAgChrome) keyRole='action';
         var kind=String(info.sourceKind||'none');
         var backendRun=String(info.runStatus||'idle');
+        if(noAgChrome && cell.id && cell.id.indexOf('AG')===0) backendRun='idle';
         var runSt=mergeRunStatus(cell.id, backendRun);
+        if(noAgChrome && cell.id && cell.id.indexOf('AG')===0) runSt='idle';
         var statusSrc=String(info.statusSource||'inferred');
-        // agentLane has no chord — still show lamp (do not grey via is-route-disabled).
-        if(keyRole==='agentLane') bound=true;
-        var cls='micro-hw__key micro-hw__key--'+cell.kind + sourceClass(kind, cell.id);
-        if(keyRole==='agentLane') cls+=' micro-hw__key--lane';
+        if(noAgChrome) statusSrc='inferred';
+        var visualKind=(noAgChrome && (cell.kind==='agent'||String(info.kind||'')==='agent'))?'command':(noAgChrome? (cell.kind==='agent'?'command':cell.kind) : cell.kind);
+        if(noAgChrome && cell.kind==='agent') visualKind='command';
+        var cls='micro-hw__key micro-hw__key--'+visualKind + sourceClass(kind, cell.id);
         if(cell.span===2) cls+=' micro-hw__key--span2';
         if(cell.rowSpan===2) cls+=' micro-hw__key--rowspan2';
         if(isNp || isNav || bound) cls+=' is-bound';
@@ -2793,7 +2854,7 @@
         if(ctxRank==='emphasize') cls+=' is-context-emphasize';
         else if(ctxRank==='dim') cls+=' is-context-dim';
         var ctxHint=String(info.contextHint||'').trim();
-        var agAttr=cell.ag!=null ? ' data-ag="'+cell.ag+'"' : '';
+        var agAttr='';
         var style='grid-row:'+cell.row+(cell.rowSpan?' / span '+cell.rowSpan:'')
           +';grid-column:'+cell.col+(cell.span?' / span '+cell.span:'')+';';
         var tag=cell.kind==='placeholder'?'div':'button';
@@ -2818,12 +2879,10 @@
         } else if(isNav){
           metaName=({NAV_UP:'上',NAV_DOWN:'下',NAV_LEFT:'左',NAV_RIGHT:'右'})[cell.id]||cell.id;
           metaChord=joyArrowsLive?'方向键已接入':'';
-        } else if(keyRole==='agentLane'){
-          metaName=String(info.label||'').trim()||cell.id;
-          metaChord=String(info.sub||'').trim()||'会话槽 · 灯=状态';
         } else {
           metaName=String(info.label||'').trim();
           metaChord=String(info.sub||'').trim();
+          if(noAgChrome && (metaChord==='会话槽'||metaChord.indexOf('会话槽')===0)) metaChord='';
         }
         var npAriaMap={'/':'除','*':'乘','-':'减','+':'加','.':'小数点','↵':'回车'};
         var aria=cell.id==='ENC'
@@ -2831,26 +2890,26 @@
           : (isNav
             ? metaName
             : (isNp ? (npAriaMap[cell.label]||String(cell.label||cell.id)) : ([metaName, metaChord].filter(Boolean).join(' · ') || cell.id)));
-        if(cell.ag!=null && statusSrc){
+        if(!noAgChrome && cell.ag!=null && statusSrc){
           aria+=(aria?' · ':'')+statusSourceLabel(statusSrc);
         }
         var actTitle='';
         if(isNav){
           if(joyContextHint) actTitle=joyContextHint;
           else if(joyArrowsLive) actTitle='主键盘方向键已接入';
-        } else if(keyRole==='agentLane'){
+        } else if(!noAgChrome && keyRole==='agentLane'){
           actTitle='会话槽：查看状态、聚焦终端或恢复线程；不保证打开 App 内侧栏对话';
         } else if(cell.id.indexOf('ACT')===0){
           if(ctxHint) actTitle=ctxHint;
-          else if(cell.id==='ACT10') actTitle='按住说话';
+          else if(cell.id==='ACT10'){
+            actTitle=noAgChrome?'点击开关语音输入':'按住说话';
+          }
         }
         var encAttrs=cell.id==='ENC'
           ? ' data-act="pad-mode" role="switch" aria-checked="'+(padEnabled?'true':'false')+'"'
           : '';
         return '<'+tag+type+encAttrs+' class="'+cls+'" data-micro-key="'+cell.id+'"'+agAttr
           +' data-key-role="'+escHtml(keyRole)+'"'
-          +(info.laneId?' data-lane-id="'+escHtml(String(info.laneId))+'"':'')
-          +(info.subagentCount?' data-subagent-count="'+escHtml(String(info.subagentCount))+'"':'')
           +' data-run-status="'+runSt+'" data-backend-run="'+backendRun+'" data-status-source="'+escHtml(statusSrc)+'" data-source-kind="'+kind+'"'
           +(ctxHint?' data-context-hint="'+escHtml(ctxHint)+'"':'')
           +(metaName?' data-cap-name="'+escHtml(metaName)+'"':'')
@@ -2947,6 +3006,7 @@
       var sessionId=opts.sessionId||'';
       var clickKind=opts.clickKind||'chip';
       function focusSession(){
+        invoke('cmd_soft_pad_set_follow',{lane:kind}).catch(function(){});
         invoke('cmd_soft_pad_focus_session',{
           kind:kind,
           laneId:laneId||null,

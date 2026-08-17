@@ -9,6 +9,17 @@
 3. 重载 Cursor 窗口或新开会话。
 4. 提交一次 prompt；Soft Pad 的 Cursor chip 应从灰色变为蓝色，完成后变为绿色。
 
+## Plan / Agent 模式快捷键（Soft Pad）
+
+OneTone 在 Cursor Soft Pad 就绪时会**合并**写入 `%APPDATA%\Cursor\User\keybindings.json`（按 command 幂等覆盖，不整文件清空）：
+
+| Soft Pad 槽位 | Cursor 命令 | 默认键 |
+|---|---|---|
+| `plan`（默认 PLUS） | `composerMode.plan` | `Ctrl+Alt+Shift+P` |
+| `switchAgent`（默认 DOT） | `composerMode.agent` | `Ctrl+Alt+.` |
+
+下次 Soft Pad ensure 会把这两条 command 的键拉回上表默认。可先 `Ctrl+I` 打开 Composer，再按 Soft Pad 对应键切换模式。
+
 仓库的 `.cursor/` 默认被忽略，因此示例文件放在 `scripts/` 下，避免误提交个人 Cursor 配置。本地工作区已经可以直接使用 `.cursor/hooks.json`。
 
 ## 事件映射

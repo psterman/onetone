@@ -21,8 +21,32 @@ vm.createContext(sandbox);
 vm.runInContext(actionsSrc, sandbox);
 assert.ok(sandbox.OneToneAgentActions, 'agent actions loaded');
 assert.strictEqual(
-  sandbox.OneToneAgentActions.defaultKeyForMapping({ appTargetId: 'cursor-chat' }, 'commandPalette'),
-  'Ctrl+Shift+P'
+  sandbox.OneToneAgentActions.defaultKeyForMapping({ appTargetId: 'cursor-chat' }, 'quickChat'),
+  'Ctrl+I'
+);
+assert.strictEqual(
+  sandbox.OneToneAgentActions.defaultKeyForMapping({ appTargetId: 'cursor-chat' }, 'plan'),
+  'Ctrl+Alt+Shift+P'
+);
+assert.strictEqual(
+  sandbox.OneToneAgentActions.defaultKeyForMapping({ appTargetId: 'cursor-chat' }, 'switchAgent'),
+  'Ctrl+Alt+.'
+);
+  assert.strictEqual(
+    sandbox.OneToneAgentActions.labelForSlotForMapping({ appTargetId: 'cursor-chat' }, 'plan'),
+    'Plan 模式'
+  );
+  assert.ok(
+    padSrc.indexOf('function softPadKeyCaption') >= 0,
+    'settings caption helper matches overlay Plan mode'
+  );
+  assert.ok(
+    padSrc.indexOf('function syncCursorSoftPadDisplay') >= 0,
+    'Cursor Soft Pad settings sync Plan/Agent with overlay'
+  );
+assert.strictEqual(
+  sandbox.OneToneAgentActions.labelForSlotForMapping({ appTargetId: 'cursor-chat' }, 'switchAgent'),
+  'Agent 模式'
 );
 assert.strictEqual(
   sandbox.OneToneAgentActions.defaultKeyForMapping({ appTargetId: 'codex-chat' }, 'commandPalette'),
@@ -64,6 +88,19 @@ assert.strictEqual(
 
 assert.ok(padSrc.includes('function capabilityCardCopy(slotId, m)'), 'capabilityCardCopy takes mapping');
 assert.ok(padSrc.includes('isVscodeSoftPadMapping(m) && id'), 'VS Code lineage uses dynamic tip copy');
+assert.ok(
+  /CURSOR_SOFT_PAD_SLOT_IDS\s*=\s*\{[\s\S]*?\bplan:\s*1[\s\S]*?\bswitchAgent:\s*1/.test(padSrc),
+  'Cursor Soft Pad picker allowlists plan + switchAgent'
+);
+assert.ok(
+  padSrc.includes('composerMode hotkeys') || padSrc.includes('Ctrl+Alt+Shift+P'),
+  'Cursor plan/agent treated as one-press hotkeys in picker'
+);
+assert.ok(
+  /var VSCODE_SOFT_PAD_SLOT_IDS\s*=\s*\{/.test(padSrc) &&
+    !/var VSCODE_SOFT_PAD_SLOT_IDS\s*=\s*CURSOR_SOFT_PAD_SLOT_IDS/.test(padSrc),
+  'VS Code lineage allowlist is separate from Cursor (no Plan/Agent on Trae/Qoder)'
+);
 assert.ok(padSrc.includes('Cursor 快捷键') || padSrc.includes('Cursor shortcut'));
 assert.ok(
   padSrc.includes('Trae Work 快捷键') || padSrc.includes('Trae Work shortcut') ||

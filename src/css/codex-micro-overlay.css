@@ -832,6 +832,45 @@ button.overlay-key-caption:focus-visible {
   backdrop-filter: blur(7px);
 }
 
+/* Cursor Soft Pad: AG keys are shortcuts, not session lamps — kill permanent green/orange halos. */
+.wrap[data-applied-agent="cursor"] .micro-hw__key--agent::before,
+html[data-applied-agent="cursor"] .micro-hw__key--agent::before,
+.wrap[data-foreground-agent="cursor"] .micro-hw__key--agent::before,
+html[data-foreground-agent="cursor"] .micro-hw__key--agent::before,
+.wrap[data-surface-agent="cursor"] .micro-hw__key--agent::before,
+html[data-surface-agent="cursor"] .micro-hw__key--agent::before {
+  display: none !important;
+  opacity: 0 !important;
+  content: none !important;
+}
+.wrap[data-applied-agent="cursor"] .micro-hw__key--lane::after,
+html[data-applied-agent="cursor"] .micro-hw__key--lane::after,
+.wrap[data-foreground-agent="cursor"] .micro-hw__key--lane::after,
+html[data-foreground-agent="cursor"] .micro-hw__key--lane::after,
+.wrap[data-surface-agent="cursor"] .micro-hw__key--lane::after,
+html[data-surface-agent="cursor"] .micro-hw__key--lane::after,
+.wrap[data-surface-agent="cursor"] .micro-hw__key[data-ag]::after,
+html[data-surface-agent="cursor"] .micro-hw__key[data-ag]::after {
+  display: none !important;
+  content: none !important;
+  opacity: 0 !important;
+}
+.wrap[data-applied-agent="cursor"] .micro-hw__key--agent,
+html[data-applied-agent="cursor"] .micro-hw__key--agent,
+.wrap[data-foreground-agent="cursor"] .micro-hw__key--agent,
+html[data-foreground-agent="cursor"] .micro-hw__key--agent,
+.wrap[data-surface-agent="cursor"] .micro-hw__key--agent,
+html[data-surface-agent="cursor"] .micro-hw__key--agent,
+.wrap[data-surface-agent="cursor"] .micro-hw__key--lane,
+html[data-surface-agent="cursor"] .micro-hw__key--lane {
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(226, 232, 240, 0.88));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 2px 5px rgba(28, 36, 47, 0.1);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
 .micro-hw__key--agent::before {
   content: "";
   position: absolute;

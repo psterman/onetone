@@ -30,6 +30,7 @@
 
 - `needs_input` 仍压过任务色；假 idle 只在 `signalHealth=fresh` 且无等待时成立。
 - **显示门控**：内置 Agent 桌面进程在跑（Cursor / Codex / Claude / MiniMax / 壳三端等）或切到其前台 → Soft Pad 显示；OneTone 主界面仍隐藏。
+- **Cursor Plan/Agent**：Soft Pad 会合并写入 Cursor `keybindings.json` 的 `composerMode.plan` / `composerMode.agent`（默认 `Ctrl+Alt+Shift+P` / `Ctrl+Alt+.`），并接到 Soft Pad `plan` / `switchAgent`（默认 PLUS / DOT）。避免 `Ctrl+Alt+P`（易与截图/置顶冲突）。
 - Codex Desktop：**不**走 thstatus；应用内扫 `~/.codex/session_index.jsonl` + rollout → `source=codex_app`（低于 Native/Hook）。
 - Context%：statusLine `context_window.used_percentage` → chip `data-context-warn`（≥50 warn / ≥80 critical）；**不**复用额度 usage 的 stale。
 

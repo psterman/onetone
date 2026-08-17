@@ -535,9 +535,60 @@ fn build_agent_routes_for_candidate(
             continue;
         }
         let Some(binding) = agent_key_binding_for_slot(m, &route.slot_id) else {
+            let fallback = crate::agent::bindings_build::default_key_for_scenario(
+                m.app_target_id.trim(),
+                route.slot_id.trim(),
+            );
+            if fallback.is_empty() {
+                continue;
+            }
+            let provider = if m.agent_provider_id.trim().is_empty() {
+                "codex".to_string()
+            } else {
+                m.agent_provider_id.clone()
+            };
+            let action_id = crate::agent::templates::slot_by_id(route.slot_id.trim())
+                .map(|s| s.action_id.to_string())
+                .unwrap_or_default();
+            let is_hold = action_id == "startDictation"
+                || route.slot_id.eq_ignore_ascii_case("pushToTalk");
+            let snapshot = CodexNumpadRouteSnapshot {
+                mapping_id: m.id.clone(),
+                slot_id: route.slot_id.clone(),
+                action_id,
+                provider_id: provider,
+                trigger_binding: fallback.to_string(),
+                micro_key_id: route.micro_key_id.clone(),
+                is_hold,
+            };
+            if route.source_scan > 0 {
+                let source = NumpadSourceKey {
+                    scan: route.source_scan,
+                    extended: route.source_extended,
+                };
+                routes.insert(source.id(), snapshot.clone());
+            }
+            if !route.micro_key_id.trim().is_empty() {
+                by_micro.insert(route.micro_key_id.clone(), snapshot);
+            }
             continue;
         };
-        if binding.trigger_binding.trim().is_empty() || !binding.enabled {
+        if !binding.enabled {
+            continue;
+        }
+        let trigger = {
+            let saved = binding.trigger_binding.trim();
+            if !saved.is_empty() {
+                saved.to_string()
+            } else {
+                crate::agent::bindings_build::default_key_for_scenario(
+                    m.app_target_id.trim(),
+                    route.slot_id.trim(),
+                )
+                .to_string()
+            }
+        };
+        if trigger.is_empty() {
             continue;
         }
         let provider = if m.agent_provider_id.trim().is_empty() {
@@ -552,7 +603,7 @@ fn build_agent_routes_for_candidate(
             slot_id: binding.slot_id.clone(),
             action_id: binding.action_id.clone(),
             provider_id: provider,
-            trigger_binding: binding.trigger_binding.clone(),
+            trigger_binding: trigger,
             micro_key_id: route.micro_key_id.clone(),
             is_hold,
         };
