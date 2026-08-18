@@ -101,6 +101,7 @@ permissions = [
   "allow-cmd-coach-hud-get-state",
   "allow-cmd-coach-hud-dismiss",
   "allow-cmd-coach-hud-set-enabled",
+  "allow-cmd-coach-hud-flash-success",
   "allow-cmd-gaze-list-monitors",
   "allow-cmd-gaze-get-cursor-position",
   "allow-cmd-gaze-move-cursor-to-monitor",

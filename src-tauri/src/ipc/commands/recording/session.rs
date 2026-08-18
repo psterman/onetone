@@ -22,9 +22,11 @@ pub fn cmd_start_recording(
         mode: record_mode,
     });
     *state.recording.lock() = true;
+    crate::voice_end_runtime::arm_external_voice_send_suppression(state.inner(), 1500);
     *state.record_hw_pending.lock() = None;
     *state.record_started_at.lock() = Some(Instant::now());
     state.record_gesture.lock().reset();
+    crate::ipc::recording::clear_record_guard(state.inner());
     if let Some(ref mgr) = *state.hotkey_mgr.lock() {
         mgr.start_recording();
     }

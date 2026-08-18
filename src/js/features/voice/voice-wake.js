@@ -659,7 +659,7 @@
     // auto/resourceSaver: Rust may keep Vosk when KWS keywords_empty — do NOT force kws.enabled
     // (fought live vosk on every poll; auto switch → UI_HB_STALL_5S).
     else if(strategy==='auto'||strategy==='resourceSaver'){
-      /* strategy label only; engine flags follow supervisor status */
+      syncDesiredEngineConfig('kws');
     }
     return true;
   }
@@ -1533,6 +1533,15 @@
         throw new Error((bundle&&bundle.error)||t('voiceListeningStrategySwitchSoftFail'));
       }
       strategySwitchOk=true;
+      try{
+        var desiredEng=String((bundle&&bundle.engine)||(bundle&&bundle.supervisor&&bundle.supervisor.desiredEngine)||'').trim().toLowerCase();
+        if(desiredEng==='vosk'||desiredEng==='kws'||desiredEng==='sapi'){
+          applySupervisorEngineToConfig(desiredEng);
+        }
+      }catch(_e){}
+      if(!bundle.activateAsync&&strategy!=='off'){
+        ipcWithTimeout('cmd_voice_wake_phrase_test_begin',{},5000).catch(function(){});
+      }
       try{
         if(global.OneToneIpc&&global.OneToneIpc.invoke){
           global.OneToneIpc.invoke('cmd_app_log',{line:'fe set_listening_strategy ok strategy='+strategy+' bundle='+String((bundle&&bundle.strategy)||'')+' activateAsync='+(bundle&&bundle.activateAsync?1:0)}).catch(function(){});

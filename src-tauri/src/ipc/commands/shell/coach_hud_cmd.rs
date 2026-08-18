@@ -38,3 +38,8 @@ pub fn cmd_coach_hud_set_enabled(
     coach_hud::push_state(&app, state.inner());
     serde_json::json!({ "ok": true, "enabled": enabled })
 }
+
+#[tauri::command]
+pub fn cmd_coach_hud_flash_success(state: tauri::State<Arc<AppState>>, app: AppHandle) {
+    coach_hud::flash_success(&app, state.inner());
+}

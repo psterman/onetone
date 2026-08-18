@@ -241,6 +241,14 @@
   }
 
   function setVoicePracticeStageChrome(on){
+    if(standalonePracticeOpen){
+      var stageOnly=$('habitSetupVoicePracticeStage');
+      if(stageOnly){
+        stageOnly.hidden=!on;
+        stageOnly.classList.toggle('is-global-overlay',!!on);
+      }
+      return;
+    }
     var view=$('habitSetupVoiceLessonView');
     if(view) view.classList.toggle('is-practice-stage',!!on);
     var stage=$('habitSetupVoicePracticeStage');
@@ -484,6 +492,10 @@
 
   function exitVoicePracticeStage(opts){
     opts=opts||{};
+    if(standalonePracticeOpen){
+      exitStandaloneQsVoicePractice(opts);
+      return;
+    }
     setVoicePracticeHoldFg(false);
     clearVoicePracticeStageTimer();
     stopVoicePracticeDictationAnim();
@@ -498,6 +510,66 @@
       setupState.activeVoiceLesson=qsNextVoiceLessonId()||'';
     }
     renderVoiceLessonPage();
+  }
+
+  function exitStandaloneQsVoicePractice(opts){
+    opts=opts||{};
+    standalonePracticeOpen=false;
+    standalonePracticeOnSuccess=null;
+    setVoicePracticeHoldFg(false);
+    notifySetupInteractionActive(false);
+    clearVoicePracticeStageTimer();
+    stopVoicePracticeDictationAnim();
+    clearVoiceLessonPractice();
+    voicePracticeStagePhase='idle';
+    resetVoicePracticeStageUi();
+    setVoicePracticeStageChrome(false);
+    var mark=$('btnHabitSetupVoicePracticeMarkDone');
+    if(mark) mark.hidden=false;
+  }
+
+  function openStandaloneQsVoicePractice(opts){
+    opts=opts||{};
+    if(standalonePracticeOpen) return;
+    standalonePracticeOpen=true;
+    standalonePracticeOnSuccess=typeof opts.onSuccess==='function'?opts.onSuccess:null;
+    notifySetupInteractionActive(true);
+    setVoicePracticeHoldFg(true);
+    clearVoicePracticeStageTimer();
+    stopVoicePracticeDictationAnim();
+    clearVoiceLessonPractice();
+    resetVoicePracticeStageUi();
+    ensureVoicePracticeInputBound();
+    setVoicePracticeStageChrome(true);
+    voicePracticeStagePhase='dictating';
+    if($('habitSetupVoicePracticeBadge')) $('habitSetupVoicePracticeBadge').textContent=t('voiceTab2PracticeBadge','试说');
+    if($('habitSetupVoicePracticeTitle')) $('habitSetupVoicePracticeTitle').textContent=t('voiceTab2PracticeTitle','按住试说');
+    if($('habitSetupVoicePracticeDesc')) $('habitSetupVoicePracticeDesc').textContent=t('voiceTab2PracticeDesc','请用系统语音输入法往下方练习框说话');
+    if($('habitSetupVoicePracticeFieldLbl')) $('habitSetupVoicePracticeFieldLbl').textContent=t('qsVoicePracticeFieldLbl');
+    if($('btnHabitSetupVoicePracticeBack')) $('btnHabitSetupVoicePracticeBack').textContent=t('qsVoicePracticeBack');
+    var mark=$('btnHabitSetupVoicePracticeMarkDone');
+    if(mark) mark.hidden=true;
+    var field=$('habitSetupVoicePracticeField');
+    if(field) field.hidden=false;
+    showVoicePracticeCoach(t('voiceTab2PracticeCoach','已激活本页语音输入法，请对着练习框说话'));
+    startVoicePracticeLiveDictation({clear:true});
+    activateVoicePracticeIme();
+    var input=$('habitSetupVoicePracticeInput');
+    if(input&&!input.dataset.tab2Bound){
+      input.dataset.tab2Bound='1';
+      input.addEventListener('input',function(){
+        if(!standalonePracticeOpen) return;
+        if(String(input.value||'').trim().length>0){
+          if(standalonePracticeOnSuccess){
+            try{ standalonePracticeOnSuccess(); }catch(_){}
+            standalonePracticeOnSuccess=null;
+          }
+          if(global.OneToneVoiceTab2Mvp&&global.OneToneVoiceTab2Mvp.clearLastFailureHint){
+            global.OneToneVoiceTab2Mvp.clearLastFailureHint();
+          }
+        }
+      });
+    }
   }
 
   function enterVoicePracticeStage(lessonId){
@@ -575,6 +647,8 @@
   var triggerTestTimeout=0;
   var triggerVerifyBackendActive=false;
   var step2VoicePracticeOpen=false;
+  var standalonePracticeOpen=false;
+  var standalonePracticeOnSuccess=null;
   var setupState=null;
   var overlayStack=[];
 
@@ -793,6 +867,12 @@
     if(!st||!st.config) return null;
     var cfg=st.config;
     cfg.mappings=Array.isArray(cfg.mappings)?cfg.mappings:[];
+    var diff=global.OneToneHabitOverrideDiff;
+    var core=global.OneToneMappingCore;
+    if(diff&&diff.ensureGlobalBaselineMapping){
+      var ensured=diff.ensureGlobalBaselineMapping(cfg,core);
+      if(ensured&&ensured.mapping) return ensured.mapping;
+    }
     if(cfg.mappings.length){
       var activeId=String(cfg.activeSceneId||'').trim();
       var active=activeId?cfg.mappings.find(function(x){ return x&&x.id===activeId; }):null;
@@ -3113,6 +3193,10 @@
   }
 
   function handleEsc(){
+    if(standalonePracticeOpen){
+      exitStandaloneQsVoicePractice();
+      return true;
+    }
     if(!setupState) return false;
     var top=overlayStack.length?overlayStack[overlayStack.length-1]:null;
     if(top==='confirm'){
@@ -3419,6 +3503,9 @@
     onTriggerCaptured:onTriggerCaptured,
     onModeCompatResult:onModeCompatResult,
     onModeCompatSeen:onModeCompatSeen,
-    isOpen:function(){ return !!setupState; }
+    isOpen:function(){ return !!setupState; },
+    openStandaloneQsVoicePractice:openStandaloneQsVoicePractice,
+    closeStandaloneQsVoicePractice:exitStandaloneQsVoicePractice,
+    isStandalonePracticeOpen:function(){ return standalonePracticeOpen; }
   };
 })((typeof window!=='undefined')?window:globalThis);

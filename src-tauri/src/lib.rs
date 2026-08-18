@@ -167,6 +167,9 @@ pub struct AppState {
     pub record_started_at: Mutex<Option<std::time::Instant>>,
     /// After volume/peripheral trigger capture, ignore stray modifier keys briefly.
     pub record_guard_until: Mutex<Option<std::time::Instant>>,
+    /// Suppress secondary automation key injection (presence/test-send) during
+    /// recording or app-targeted workflow dispatch windows.
+    pub external_voice_send_suppressed_until: Mutex<Option<std::time::Instant>>,
     pub paused: Mutex<bool>,
     pub mic_monitor: Mutex<Option<MicMonitorHandle>>,
     pub mic_level: Arc<MicLevelState>,
@@ -304,6 +307,7 @@ pub fn run() {
         record_hw_pending: Mutex::new(None),
         record_started_at: Mutex::new(None),
         record_guard_until: Mutex::new(None),
+        external_voice_send_suppressed_until: Mutex::new(None),
         paused: Mutex::new(false),
         mic_monitor: Mutex::new(None),
         mic_level: Arc::new(MicLevelState::new()),
@@ -727,10 +731,31 @@ pub fn run() {
                         }
                     }
 
-                    let key_name = {
+                    let (key_name, mouse_pendings) = {
                         let mgr_opt = state2.hotkey_mgr.lock();
-                        mgr_opt.as_ref().and_then(|mgr| mgr.try_recv())
+                        let key = mgr_opt.as_ref().and_then(|mgr| mgr.try_recv());
+                        // Drain any mouse side-button events that the WH_MOUSE_LL hook
+                        // captured into a fallback buffer because the recording sender
+                        // was momentarily not visible from inside the hook (race window
+                        // around Cmd::StartRecording / Cmd::StopRecording transitions).
+                        let pendings = if *state2.recording.lock() {
+                            crate::hotkey_win::drain_pending_recording_mouse()
+                        } else {
+                            Vec::new()
+                        };
+                        (key, pendings)
                     };
+
+                    // Replay any buffered mouse side-button captures into the live
+                    // recording sender so they reach handle_hardware_record_key on
+                    // the next loop iteration.
+                    if !mouse_pendings.is_empty() {
+                        if let Some(sender) = crate::hotkey_win::recording_sender_clone() {
+                            for name in mouse_pendings {
+                                let _ = sender.send(name);
+                            }
+                        }
+                    }
 
                     let Some(key_name) = key_name else {
                         continue;
@@ -742,6 +767,37 @@ pub fn run() {
                             && now.duration_since(at) < Duration::from_millis(DEDUP_MS)
                         {
                             continue;
+                        }
+                    }
+                    // Bluetooth media-key dedup: when the keyboard_proc bridge
+                    // sends a "Volume_Up" (or "Volume_Down") for an injected
+                    // VK_RMENU, the raw_input path may dispatch the original
+                    // "RAlt" a few microseconds later. Both refer to the same
+                    // physical keypress and the user only intended to record
+                    // one of them — drop the trailing RAlt so the user does
+                    // not see "AutoTrigger + 右 Alt 等待组合键" in the same
+                    // recording session.
+                    if *state2.recording.lock() && key_name == "RAlt" {
+                        if let (Some(prev), Some(at)) = (&last_key, last_at) {
+                            if matches!(
+                                prev.as_str(),
+                                "Volume_Up"
+                                    | "Volume_Down"
+                                    | "Volume_Mute"
+                                    | "XButton1"
+                                    | "XButton2"
+                                    | "Browser_Back"
+                                    | "Browser_Forward"
+                            ) && now.duration_since(at)
+                                < Duration::from_millis(crate::gesture_timing::RECORD_GUARD_COOLDOWN_MS)
+                            {
+                                app_log::log_line(
+                                    &state2,
+                                    "record",
+                                    &format!("drop trailing RAlt after peripheral {prev}"),
+                                );
+                                continue;
+                            }
                         }
                     }
                     last_key = Some(key_name.clone());
@@ -963,6 +1019,7 @@ pub fn run() {
             ipc::cmd_coach_hud_get_state,
             ipc::cmd_coach_hud_dismiss,
             ipc::cmd_coach_hud_set_enabled,
+            ipc::cmd_coach_hud_flash_success,
             ipc::cmd_gaze_list_monitors,
             ipc::cmd_gaze_get_cursor_position,
             ipc::cmd_gaze_move_cursor_to_monitor,

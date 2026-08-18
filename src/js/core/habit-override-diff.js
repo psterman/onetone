@@ -165,7 +165,8 @@
     cfg=cfg||{};
     var mappings=Array.isArray(cfg.mappings)?cfg.mappings:[];
     function isBaseline(m){
-      return !!m&&!isAppScenarioMapping(m);
+      // Keep aligned with Rust find_global_baseline_mapping (exclude soft-pad-global row).
+      return !!m&&String(m.id||'')!=='soft-pad-global'&&!isAppScenarioMapping(m);
     }
     var activeId=String(cfg.activeSceneId||'').trim();
     if(activeId&&mappingCore&&mappingCore.byId){
@@ -175,7 +176,45 @@
     for(var i=0;i<mappings.length;i++){
       if(isBaseline(mappings[i])) return mappings[i];
     }
-    return mappings[0]||null;
+    return null;
+  }
+
+  function ensureGlobalBaselineMapping(cfg,mappingCore){
+    cfg=cfg||{};
+    if(!Array.isArray(cfg.mappings)) cfg.mappings=[];
+    var existing=findGlobalBaselineMapping(cfg,mappingCore);
+    if(existing) return {mapping:existing,created:false};
+    var voiceKey='';
+    try{
+      var sc=global.OneToneSceneConfig;
+      if(sc&&sc.globalVoiceTargetKey) voiceKey=String(sc.globalVoiceTargetKey(cfg)||'').trim();
+    }catch(_){}
+    var core=mappingCore||global.OneToneMappingCore;
+    var id=core&&core.newMappingId?core.newMappingId():('m-'+Date.now()+'-'+Math.random().toString(36).slice(2,7));
+    var m={
+      id:id,
+      label:'',
+      group:'通用设置',
+      triggerKey:'',
+      targetKey:voiceKey,
+      enabled:true,
+      order:0,
+      triggerMode:'tap',
+      intervalMs:cfg.intervalMs||1200,
+      enterDelayMs:cfg.enterDelayMs||5000,
+      cancelEnabled:cfg.cancelEnabled!==false,
+      autoEnterEnabled:cfg.autoEnterEnabled!==false,
+      switchKeys:[],
+      nativeKeyRestore:false,
+      imePresetId:'',
+      appTargetId:'',
+      appBehaviorRules:[]
+    };
+    for(var i=0;i<cfg.mappings.length;i++){
+      if(cfg.mappings[i]) cfg.mappings[i].order=(cfg.mappings[i].order||0)+1;
+    }
+    cfg.mappings.unshift(m);
+    return {mapping:m,created:true};
   }
 
   function getGlobalKeyBaseline(cfg, mappingCore){
@@ -544,6 +583,7 @@
     getGlobalVoiceBaseline:getGlobalVoiceBaseline,
     getGlobalKeyBaseline:getGlobalKeyBaseline,
     findGlobalBaselineMapping:findGlobalBaselineMapping,
+    ensureGlobalBaselineMapping:ensureGlobalBaselineMapping,
     isAppScenarioMapping:isAppScenarioMapping,
     isGlobalBaselineMapping:isGlobalBaselineMapping,
     getKeysAccessState:getKeysAccessState,

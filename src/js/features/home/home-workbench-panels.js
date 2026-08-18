@@ -722,6 +722,15 @@
   function findBaselineMapping(){
     var cfg=global.OneToneState&&global.OneToneState.state?global.OneToneState.state.config:null;
     var diff=global.OneToneHabitOverrideDiff;
+    if(diff&&diff.ensureGlobalBaselineMapping){
+      var ensured=diff.ensureGlobalBaselineMapping(cfg||{},global.OneToneMappingCore);
+      if(ensured&&ensured.created){
+        var persist=global.OneToneConfigPersist;
+        if(persist&&persist.saveAsync) persist.saveAsync({source:'ensureBaseline'});
+        else if(persist&&persist.save) persist.save();
+      }
+      return ensured&&ensured.mapping?ensured.mapping:null;
+    }
     if(diff&&diff.findGlobalBaselineMapping){
       return diff.findGlobalBaselineMapping(cfg||{},global.OneToneMappingCore);
     }

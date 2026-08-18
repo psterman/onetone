@@ -119,6 +119,46 @@ pub(super) fn is_spurious_trigger_capture(key: &str) -> bool {
     parts.iter().all(|part| is_modifier_token(part))
 }
 
+fn is_ghost_media_modifier(part: &str) -> bool {
+    is_modifier_token(part)
+        || matches!(
+            part,
+            "Ctrl" | "Control" | "Shift" | "Alt" | "Win" | "Meta"
+        )
+}
+
+pub(super) fn recognition_key_echo(target_key: &str, key: &str) -> bool {
+    let tgt = crate::config::canonical_trigger(target_key.trim());
+    let k = crate::config::canonical_trigger(key);
+    !tgt.is_empty() && k == tgt
+}
+
+pub(super) fn is_recognition_key_echo(state: &AppState, mapping_id: &str, key: &str) -> bool {
+    let cfg = state.cfg.lock();
+    let Some(m) = cfg.find_mapping_by_id(mapping_id) else {
+        return false;
+    };
+    recognition_key_echo(&m.target_key, key)
+}
+
+/// Some media dongles emit modifier+Space ghosts alongside consumer volume usages.
+pub(super) fn is_ghost_media_keyboard_combo(key: &str) -> bool {
+    let parts: Vec<String> = key
+        .split('+')
+        .map(|s| normalize_hardware_key(s.trim()))
+        .filter(|s| !s.is_empty())
+        .collect();
+    if parts.len() < 3 {
+        return false;
+    }
+    let non_mod: Vec<String> = parts
+        .iter()
+        .filter(|part| !is_ghost_media_modifier(part))
+        .cloned()
+        .collect();
+    non_mod.len() == 1 && non_mod[0] == "Space"
+}
+
 pub(super) fn sanitize_trigger_capture(key: &str) -> String {
     let parts: Vec<String> = key
         .split('+')
@@ -175,6 +215,52 @@ pub(super) fn is_mouse_button(key: &str) -> bool {
     )
 }
 
+/// Clicks that start recording (UI button) — suppress to avoid capturing the click itself.
+pub(super) fn is_record_start_suppressed_mouse(key: &str) -> bool {
+    matches!(key, "LButton" | "RButton" | "MButton")
+}
+
 pub(super) fn uses_gesture_trigger_recording(state: &AppState, key: &str) -> bool {
+    if is_peripheral_trigger_key(key) || is_volume_hotkey(key) {
+        return false;
+    }
     state.record_hw_pending.lock().is_none() && !is_modifier_token(key)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn side_buttons_not_record_start_suppressed() {
+        assert!(!is_record_start_suppressed_mouse("XButton1"));
+        assert!(!is_record_start_suppressed_mouse("XButton2"));
+        assert!(is_record_start_suppressed_mouse("LButton"));
+    }
+
+    #[test]
+    fn ghost_media_combo_is_modifiers_plus_space() {
+        assert!(is_ghost_media_keyboard_combo("LCtrl+LShift+Space"));
+        assert!(is_ghost_media_keyboard_combo("Ctrl+Shift+Space"));
+        assert!(is_ghost_media_keyboard_combo("Control+Shift+Space"));
+        assert!(!is_ghost_media_keyboard_combo("LCtrl+Space"));
+        assert!(!is_ghost_media_keyboard_combo("Space"));
+    }
+
+    #[test]
+    fn duplicate_ctrl_aliases_are_spurious_trigger() {
+        assert!(is_spurious_trigger_capture("Ctrl+LCtrl"));
+        assert!(is_spurious_trigger_capture("Ctrl+Control"));
+        assert!(is_spurious_trigger_capture("LCtrl+Ctrl"));
+        assert!(!is_spurious_trigger_capture("RAlt"));
+        assert!(!is_spurious_trigger_capture("Volume_Down"));
+    }
+
+    #[test]
+    fn recognition_key_echo_detects_target_match() {
+        assert!(recognition_key_echo("RAlt", "RAlt"));
+        assert!(recognition_key_echo("RAlt", "AltRight"));
+        assert!(!recognition_key_echo("RAlt", "Volume_Up"));
+        assert!(!recognition_key_echo("", "RAlt"));
+    }
 }

@@ -1625,6 +1625,17 @@
         }
       }catch(_){}
     }
+    try{
+      var api=diff();
+      if(api&&api.ensureGlobalBaselineMapping){
+        var ensured=api.ensureGlobalBaselineMapping(state().config||{},core());
+        if(ensured&&ensured.created){
+          var persist=global.OneToneConfigPersist;
+          if(persist&&persist.saveAsync) persist.saveAsync({source:'ensureBaseline'});
+          else if(persist&&persist.save) persist.save();
+        }
+      }
+    }catch(_){}
     var t0=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
     renderLabels();
     renderList();

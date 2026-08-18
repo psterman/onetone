@@ -42,15 +42,38 @@
     };
   }
 
+  function collapseTriggerAlias(part){
+    var alias={
+      Control:'LCtrl',Ctrl:'LCtrl',LCtrl:'LCtrl',RCtrl:'RCtrl',
+      ControlLeft:'LCtrl',LControl:'LCtrl',ControlRight:'RCtrl',RControl:'RCtrl',
+      Shift:'LShift',LShift:'LShift',RShift:'RShift',ShiftLeft:'LShift',ShiftRight:'RShift',
+      Alt:'LAlt',LAlt:'LAlt',RAlt:'RAlt',AltLeft:'LAlt',AltRight:'RAlt',LMenu:'LAlt',RMenu:'RAlt',
+      Win:'LWin',LWin:'LWin',RWin:'RWin',Meta:'LWin',MetaLeft:'LWin',MetaRight:'RWin'
+    };
+    return alias[part]||part;
+  }
+
   function normalizeTriggerKey(key){
     if(!key) return 'AutoTrigger';
-    var v=String(key);
-    if(v.includes('+')) return v;
+    var v=String(key).trim();
+    if(v.indexOf('+')>=0){
+      var out=[];
+      v.split('+').forEach(function(p){
+        var n=collapseTriggerAlias(String(p||'').trim());
+        if(n&&out.indexOf(n)<0) out.push(n);
+      });
+      if(out.length===1) v=out[0];
+      else if(out.length>1) return out.join('+');
+    }
     if(/^Audio_?Volume/i.test(v)||/^Volume/i.test(v)) return 'AutoTrigger';
     if(v==='AudioVolumeUp'||v==='VolumeUp'||v==='Volume_Up'||v==='Audio_Volume_Up') return 'AutoTrigger';
     if(v==='AudioVolumeDown'||v==='VolumeDown'||v==='Volume_Down'||v==='Audio_Volume_Down') return 'AutoTrigger';
     if(v==='AudioVolumeMute'||v==='VolumeMute'||v==='Volume_Mute'||v==='Audio_Volume_Mute') return 'AutoTrigger';
-    return v;
+    if(v==='AltRight'||v==='RMenu') return 'RAlt';
+    if(v==='AltLeft'||v==='LMenu') return 'LAlt';
+    if(v==='ControlRight'||v==='RControl') return 'RCtrl';
+    if(v==='ControlLeft'||v==='LControl'||v==='Control'||v==='Ctrl') return 'LCtrl';
+    return collapseTriggerAlias(v);
   }
 
   function normalizeMediaTargetKey(code, key){

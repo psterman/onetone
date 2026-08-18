@@ -76,6 +76,7 @@
     if(m&&core()){
       trig=triggerHintLabel(m);
       tgt=friendlyKey(codexTargetHintKey(m));
+      if(mode==='trigger'&&tgt) tgt=t('keysHeroModeIme','输入法识别键')+' · '+tgt;
     }
     if(m&&global.OneToneSceneFlowSummary){
       var preview=global.OneToneAppBehaviorRules?global.OneToneAppBehaviorRules.getActiveAppContextId():'';

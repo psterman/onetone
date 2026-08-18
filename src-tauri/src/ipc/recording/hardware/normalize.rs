@@ -7,7 +7,7 @@ pub(crate) fn normalize_hardware_key(key: &str) -> String {
         "AudioVolumeMute" | "VolumeMute" | "Audio_Volume_Mute" => "Volume_Mute".into(),
         "RControl" => "RCtrl".into(),
         "LControl" | "ControlLeft" => "LCtrl".into(),
-        "Control" => "LCtrl".into(),
+        "Control" | "Ctrl" => "LCtrl".into(),
         "LShift" | "ShiftLeft" => "LShift".into(),
         "RShift" | "ShiftRight" => "RShift".into(),
         "Shift" => "LShift".into(),
@@ -16,6 +16,8 @@ pub(crate) fn normalize_hardware_key(key: &str) -> String {
         "Alt" => "LAlt".into(),
         "LWin" | "MetaLeft" => "LWin".into(),
         "RWin" | "MetaRight" => "RWin".into(),
+        "Browser_Back" => "XButton1".into(),
+        "Browser_Forward" => "XButton2".into(),
         other => other.to_string(),
     }
 }

@@ -8,8 +8,18 @@
     var ui=global.OneToneState.ui;
     var runtime=global.OneToneState.runtime;
     var t=h.t;
+    function recMode(){
+      var recState=global.OneToneMappingRecording;
+      return recState&&typeof recState.mode==='function'?recState.mode():'none';
+    }
+    function probeWv(kind, key, note){
+      if(recMode()==='none') return;
+      var probe=global.OneToneRecordProbe;
+      if(probe&&probe.push) probe.push('wv', kind, key, note);
+    }
     document.addEventListener('keydown',function(e){
       var rec=recordingInput();
+      if(!e.repeat) probeWv('keydown', e.key||'', e.code||'');
       if(e.key==='Escape'){
         var habitSetupOpen=$('habitSetupOverlay')&&$('habitSetupOverlay').classList.contains('open');
         if(habitSetupOpen&&global.OneToneQuickStart&&global.OneToneQuickStart.isOpen&&global.OneToneQuickStart.isOpen()
@@ -53,12 +63,28 @@
       h.pushLog(new Date().toLocaleTimeString()+' key='+h.lastKeyDebug().key+' code='+h.lastKeyDebug().code);
       if(rec&&rec.handleKeyDown) rec.handleKeyDown(e);
     },true);
-    document.addEventListener('mousedown',function(e){
+    function routeSideMouse(e){
       var rec=recordingInput();
-      if(rec&&rec.handleMouseDown) rec.handleMouseDown(e);
-    },true);
+      probeWv(e.type||'mouse', 'button'+(e.button!=null?e.button:'?'), e.pointerType||'');
+      if(!rec||!rec.handleMouseDown) return;
+      rec.handleMouseDown(e);
+    }
+    document.addEventListener('mousedown',routeSideMouse,true);
+    // WebView2 often skips mousedown for X1/X2; auxclick/pointerdown/up still fire.
+    // XButton2 is Browser Forward — preventDefault so history navigation cannot eat it.
+    function routeSideButton(e){
+      if(e.button!==3&&e.button!==4) return;
+      e.preventDefault();
+      e.stopPropagation();
+      routeSideMouse(e);
+    }
+    document.addEventListener('auxclick',routeSideButton,true);
+    document.addEventListener('pointerdown',routeSideButton,true);
+    document.addEventListener('mouseup',routeSideButton,true);
+    document.addEventListener('pointerup',routeSideButton,true);
     document.addEventListener('keyup',function(e){
       var rec=recordingInput();
+      probeWv('keyup', e.key||'', e.code||'');
       if(rec&&rec.handleKeyUp) rec.handleKeyUp(e);
     },true);
   }

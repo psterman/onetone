@@ -434,7 +434,7 @@ pub fn handle_tray_action(
         }
         "test_trigger" => {
             let mapping_id = tray_active_mapping_id(state);
-            let _ = ipc::perform_test_send(state, app, mapping_id, None);
+            let _ = ipc::perform_test_send(state, app, None, mapping_id, None, false);
         }
         "mic_toggle" => {
             #[cfg(windows)]

@@ -3189,4 +3189,48 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   }
 }
 
+.record-probe-panel{
+  margin:0 0 12px;
+  padding:10px 12px;
+  border:1px solid rgba(42,156,196,.28);
+  border-radius:10px;
+  background:rgba(15,23,32,.04);
+  font-size:12px;
+}
+.record-probe-panel.is-live{
+  border-color:#2a9cc4;
+  box-shadow:0 0 0 1px rgba(42,156,196,.2);
+}
+.record-probe-head{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.record-probe-status{ color:#2a9cc4; font-weight:600; }
+.record-probe-actions{ margin-left:auto; display:flex; gap:6px; }
+.record-probe-btn{
+  border:1px solid rgba(42,156,196,.35);
+  background:#fff;
+  border-radius:6px;
+  padding:2px 8px;
+  cursor:pointer;
+}
+.record-probe-hint{ margin:6px 0 8px; color:#667; }
+.record-probe-log{
+  max-height:160px;
+  overflow:auto;
+  margin:0;
+  padding:0;
+  list-style:none;
+  font-family:ui-monospace,Consolas,monospace;
+  line-height:1.45;
+}
+.record-probe-line{ display:grid; grid-template-columns:92px 44px 1fr 1fr; gap:6px; }
+.record-probe-line .t{ color:#889; }
+.record-probe-line.is-drop .k,
+.record-probe-line.is-drop .n{ color:#b42318; }
+.record-probe-line.is-commit .k{ color:#027a48; font-weight:600; }
+.record-probe-line.is-recv .k{ color:#175cd3; }
+
 

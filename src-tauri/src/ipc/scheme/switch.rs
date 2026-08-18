@@ -26,6 +26,12 @@ pub fn handle_scheme_cycle(state: &Arc<AppState>, app: &AppHandle) {
 
 pub fn handle_scheme_select(state: &Arc<AppState>, app: &AppHandle, mapping_id: &str) {
     if *state.recording.lock() {
+        let payload = serde_json::json!({
+            "type": "mvp_scheme_select_blocked",
+            "reason": "recording",
+            "mappingId": mapping_id,
+        });
+        emit_to_main_if_available(app, Some(state), payload);
         return;
     }
     let old_cfg = state.cfg.lock().clone();

@@ -350,6 +350,15 @@ impl GestureTracker {
         let dispatch = event.dispatch_name();
         match mapping.trigger_mode {
             TriggerMode::LongPress => {
+                // Volume / side buttons are pulse-only — waiting for keyup never fires.
+                if crate::config::is_volume_hotkey(&event.key)
+                    || matches!(
+                        crate::config::canonical_trigger(&event.key).as_str(),
+                        "XButton1" | "XButton2"
+                    )
+                {
+                    return Some(dispatch);
+                }
                 let threshold = clamp_long_press_ms(mapping.long_press_ms);
                 self.long_press.insert(
                     lk,
@@ -647,6 +656,20 @@ mod tests {
         let event = parse_physical_event(&wire);
         assert_eq!(event.key, "Gamepad_A");
         assert_eq!(event.device.as_deref(), Some("xinput:0"));
+    }
+
+    #[test]
+    fn longpress_volume_fires_on_keydown() {
+        let mut m = VoiceConfig::default().mappings[0].clone();
+        m.trigger_mode = TriggerMode::LongPress;
+        let mut g = GestureTracker::new();
+        let ev = PhysicalKeyEvent {
+            is_keyup: false,
+            device: None,
+            key: "Volume_Up".into(),
+        };
+        let fired = g.on_keydown(&ev, &m, Instant::now());
+        assert_eq!(fired.as_deref(), Some("Volume_Up"));
     }
 
     #[test]

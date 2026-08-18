@@ -1,4 +1,4 @@
-﻿(function(global){
+(function(global){
   'use strict';
   var OneToneMappingCore=global.OneToneMappingCore;
   var OneToneI18n=global.OneToneI18n;
@@ -6,7 +6,8 @@
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
   function hooks(){ return global.__vp_mapping_recording_hooks__ || {}; }
-var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,mappingWasEnabled:null,nativeRestoreSnapshot:null, schemeSwitchSnapshot:'',captureGen:0,suppressAutoEnableOnce:false,beforeFinishTargetHook:null,agentBindingCapture:null,previewKey:'' };
+  function recordingInput(){ return global.OneToneMappingRecordingInput; }
+var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,mappingWasEnabled:null,nativeRestoreSnapshot:null, schemeSwitchSnapshot:'',captureGen:0,suppressAutoEnableOnce:false,beforeFinishTargetHook:null,agentBindingCapture:null,previewKey:'',peripheralFinishing:false };
   function acousticCalibrating(){
     var wake=global.OneToneVoiceWakeAcoustic;
     var control=global.OneToneVoiceControlAcoustic;
@@ -110,6 +111,9 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     rec.previewKey='';
     const draftId=state.selectedMappingId;
     clearRecTimer();
+    if(recordingInput()&&recordingInput().clearReconcileWatchdog){
+      recordingInput().clearReconcileWatchdog();
+    }
     if(rec.mode==='schemeSwitch'){
       rec.mode='none';
       hooks().ensureConfig();
@@ -460,6 +464,18 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       if(triggerState) triggerState.textContent='';
       if(targetState) targetState.textContent='';
     }
+    if(!opts.silent){
+      var probe=global.OneToneRecordProbe;
+      if(probe){
+        if(mode!=='none'){
+          probe.clear();
+          probe.setRecording(true, mode);
+          probe.push('ui','start',mode, rec.mappingId||'');
+        }else{
+          probe.setRecording(false);
+        }
+      }
+    }
     if(opts.silent||hooks().uiBootstrapping()) return;
     hooks().updatePrimaryCTA();
     hooks().renderHeroBadges();
@@ -580,6 +596,9 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     setRecording('none');
     restoreMappingEnabledAfterRecordCancel(m);
     renderRecordCancelBar();
+    if(recordingInput()&&recordingInput().clearReconcileWatchdog){
+      recordingInput().clearReconcileWatchdog();
+    }
     hooks().pushLog(t('logTriggerDone')+hooks().friendlyKeyName(k));
     if(cap.onDone) cap.onDone(k);
     void invokeStopRecording();
@@ -745,10 +764,10 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
   function isHardwareDelegatedTriggerKey(key,code){
     const k=String(key||'');
     const c=String(code||'');
-    const blob=(k+' '+c).toLowerCase();
+    const blob=(k+' '+c).toLowerCase().replace(/_/g,'');
     return blob.indexOf('volume')>=0||blob.indexOf('audiovolume')>=0
-      ||blob.indexOf('media_')>=0||blob.indexOf('browser_')>=0
-      ||blob.indexOf('launch_')>=0||/^f1[3-9]$|^f2[0-4]$/.test(blob.replace(/\s/g,''));
+      ||blob.indexOf('media')>=0||blob.indexOf('browser')>=0
+      ||blob.indexOf('launch')>=0||/^f1[3-9]$|^f2[0-4]$/.test(blob.replace(/\s/g,''));
   }
 
   function shortcutRejectedToast(key){
@@ -760,16 +779,43 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     }
   }
 
-  function finishTriggerCapture(key, source, sourceKey, sourceTime){
+  function isBackendOwnedHardwareTrigger(key){
+    const k=String(key||'').trim();
+    if(!k) return false;
+    const physical=hooks().normalizeMediaTargetKey(k,k)||k;
+    if(k==='AutoTrigger'||physical==='AutoTrigger') return true;
+    if(k==='XButton1'||k==='XButton2'||physical==='XButton1'||physical==='XButton2') return true;
+    if(k==='Browser_Back'||k==='Browser_Forward'||physical==='Browser_Back'||physical==='Browser_Forward') return true;
+    const vol=/^Volume_(Up|Down|Mute)$|^AudioVolume(Up|Down|Mute)?$/i;
+    return vol.test(k)||vol.test(physical);
+  }
+
+  function finishTriggerCapture(key, source, sourceKey, sourceTime, opts){
     if(rec.mode!=='trigger') return false;
+    const backendCommitted=!!(opts&&opts.backendCommitted);
+    if(recordingInput()&&recordingInput().clearReconcileWatchdog){
+      recordingInput().clearReconcileWatchdog();
+    }
     const rawKey=String(key||'').trim();
     const rawSourceKey=String(sourceKey||'').trim();
-    const k=hooks().normalizeTriggerKey(key);
+    var k=hooks().normalizeTriggerKey(key);
+    // BT volume often arrives as RAlt while 02 识别 is also RAlt. Recording
+    // trigger must not silently echo-reject — fold to AutoTrigger instead.
+    if(k==='RAlt'){
+      k='AutoTrigger';
+    }
     if(hooks().shouldIgnoreTriggerLeftClickCapture(rawKey||k,rawSourceKey||rawKey||k,source)) return false;
+    const m=OneToneMappingCore.recording()||OneToneMappingCore.byId(rec.mappingId)||OneToneMappingCore.selected();
+    if(m){
+      const tgt=hooks().normalizeTriggerKey(OneToneMappingCore.editorTarget(m)||m.targetKey||'');
+      if(tgt&&k&&tgt===k){
+        hooks().toast(t('recordTriggerMatchesTarget','这是「语音快捷键」，不能用作触发键。请按鼠标侧键或蓝牙音量键，或先在右侧修改识别键。'));
+        return false;
+      }
+    }
     if(!hooks().isAllowedTriggerKey(rawKey||k)){ shortcutRejectedToast(rawKey||k); return false; }
     if(rawSourceKey&&!hooks().isAllowedTriggerKey(rawSourceKey)){ shortcutRejectedToast(rawSourceKey); return false; }
     if(!hooks().isAllowedTriggerKey(k)){ shortcutRejectedToast(k); return false; }
-    const m=OneToneMappingCore.recording();
     if(!m) return false;
     var capUi=global.OneToneAgentCapabilityUi;
     if(capUi&&capUi.isCodexKeysEditing&&capUi.isCodexKeysEditing()&&capUi.findChordConflict){
@@ -798,8 +844,11 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     clearRecordMappingGuard();
     clearRecTimer();
     setRecording('none');
-    hooks().save();
+    if(!backendCommitted) hooks().save();
     hooks().render();
+    if(global.OneToneVoiceTab2Mvp&&global.OneToneVoiceTab2Mvp.renderHero){
+      global.OneToneVoiceTab2Mvp.renderHero();
+    }
     try{
       var Motion=global.OneToneMotion;
       var trigBtn=$('btnRecordTrigger');
@@ -821,7 +870,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
   }else{
     hooks().maybeEnableMappingAfterComplete(m);
   }
-    void invokeStopRecording();
+    if(!backendCommitted) void invokeStopRecording();
     return true;
   }
 
@@ -835,16 +884,34 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     const physical=hooks().normalizeMediaTargetKey(k,k)||k;
     if(k.startsWith('Gamepad_')||k.startsWith('HID_')) return true;
     if(physical.startsWith('Gamepad_')||physical.startsWith('HID_')) return true;
+    if(/^VK_[0-9A-Fa-f]{2}$/.test(k)||/^VK_[0-9A-Fa-f]{2}$/.test(physical)) return true;
     return k==='Volume_Up' || k==='Volume_Down' || k==='Volume_Mute'
       || k==='AudioVolumeUp' || k==='AudioVolumeDown' || k==='AudioVolumeMute'
+      || k==='AudioVolume_Up' || k==='AudioVolume_Down' || k==='AudioVolume_Mute'
       || k==='VolumeUp' || k==='VolumeDown' || k==='VolumeMute'
       || physical==='Volume_Up' || physical==='Volume_Down' || physical==='Volume_Mute'
+      || k==='XButton1' || k==='XButton2'
+      || k==='BrowserBack' || k==='BrowserForward' || k==='BrowserRefresh'
       || k==='Media_Next' || k==='Media_Prev' || k==='Media_Play_Pause' || k==='Media_Stop'
       || k==='Browser_Back' || k==='Browser_Forward' || k==='Browser_Refresh'
       || k==='Launch_Mail' || k==='Launch_App1' || k==='Launch_App2';
   }
 
+  function resolveHardwareTriggerFromSeen(seen){
+    const raw=String(seen||'').trim();
+    if(!raw) return '';
+    if(isHardwareCaptureToken(raw)) return hooks().normalizeMediaTargetKey(raw,raw)||raw;
+    if(raw.indexOf('+')<0) return '';
+    const parts=raw.split('+').map(function(p){ return p.trim(); }).filter(Boolean);
+    for(let i=parts.length-1;i>=0;i--){
+      const p=parts[i];
+      if(isHardwareCaptureToken(p)) return hooks().normalizeMediaTargetKey(p,p)||p;
+    }
+    return '';
+  }
+
   function finishDetectedHardwareTriggerCapture(key, device){
+    if(rec.peripheralFinishing) return;
     const raw=String(key||'').trim();
     const physical=hooks().normalizeMediaTargetKey(raw,raw)||raw;
     if(!physical) return;
@@ -856,10 +923,16 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       shortcutRejectedToast(physical);
       return;
     }
-    hooks().armTriggerPeripheralGuard(450);
-    const source=hooks().buildPeripheralTriggerSource(physical, device);
-    const display=(physical==='Volume_Up'||physical==='Volume_Down'||physical==='Volume_Mute')?'AutoTrigger':physical;
-    finishTriggerCapture(display, source, physical, String(Date.now()));
+    rec.peripheralFinishing=true;
+    try{
+      if(global.OneToneRecordProbe) global.OneToneRecordProbe.push('fe','finish',physical, device||'');
+      hooks().armTriggerPeripheralGuard(450);
+      const source=hooks().buildPeripheralTriggerSource(physical, device);
+      const display=(physical==='Volume_Up'||physical==='Volume_Down'||physical==='Volume_Mute')?'AutoTrigger':physical;
+      finishTriggerCapture(display, source, physical, String(Date.now()));
+    }finally{
+      rec.peripheralFinishing=false;
+    }
   }
 
   function rejectTargetCapture(){
@@ -996,6 +1069,8 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     previewCaptureKey:previewCaptureKey,
     isHardwareDelegatedTriggerKey:isHardwareDelegatedTriggerKey,
     isHardwareCaptureToken:isHardwareCaptureToken,
+    isBackendOwnedHardwareTrigger:isBackendOwnedHardwareTrigger,
+    resolveHardwareTriggerFromSeen:resolveHardwareTriggerFromSeen,
     finishTrigger:finishTriggerCapture,
     finishAgentBinding:commitAgentBindingCapture,
     finishFrontendTrigger:finishFrontendTriggerCapture,

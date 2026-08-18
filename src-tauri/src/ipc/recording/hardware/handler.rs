@@ -5,16 +5,16 @@ use tauri::Emitter;
 use crate::config::{is_peripheral_trigger_key, is_volume_hotkey};
 use crate::gesture_timing::RECORD_MOUSE_SUPPRESS_MS;
 use crate::ipc::recording::gesture::{
-    collect_pressed_side_modifiers, handle_record_gesture_event, is_modifier_token,
-    is_mouse_button, is_spurious_target_capture, is_spurious_trigger_capture,
-    uses_gesture_trigger_recording,
+    collect_pressed_side_modifiers, handle_record_gesture_event, is_ghost_media_keyboard_combo,
+    is_modifier_token, is_record_start_suppressed_mouse, is_spurious_target_capture,
+    is_spurious_trigger_capture, uses_gesture_trigger_recording,
 };
 use crate::ipc::recording::RecordMode;
 use crate::press_gesture::{parse_physical_event, RecordedGesture};
 use crate::AppState;
 
 use super::finish::finish_hardware_capture;
-use super::guard::{arm_record_guard, emit_record_seen, record_guard_active};
+use super::guard::{arm_record_guard, emit_record_probe, emit_record_seen, record_guard_active};
 use super::normalize::{
     build_hardware_record_chord, is_recordable_target_hotkey, normalize_hardware_key,
 };
@@ -35,10 +35,12 @@ fn record_report_hex(key: &str, device: Option<&str>) -> Option<String> {
 
 pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindow, key_name: &str) {
     if !*state.recording.lock() {
+        emit_record_probe(window, "drop", key_name, "not_recording");
         return;
     }
     let target = state.recording_target.lock().clone();
     let Some(target) = target else {
+        emit_record_probe(window, "drop", key_name, "no_target");
         return;
     };
     let event = parse_physical_event(key_name);
@@ -47,8 +49,14 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
     let is_keyup = event.is_keyup;
     let normalized = normalize_hardware_key(&event.key);
     let device = event.device.as_deref();
+    emit_record_probe(
+        window,
+        "recv",
+        &normalized,
+        if is_keyup { "keyup" } else { "keydown" },
+    );
 
-    if is_trigger && is_mouse_button(&normalized) {
+    if is_trigger && is_record_start_suppressed_mouse(&normalized) {
         let ignore = state
             .record_started_at
             .lock()
@@ -56,6 +64,7 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
             .map(|t| t.elapsed() < Duration::from_millis(RECORD_MOUSE_SUPPRESS_MS))
             .unwrap_or(true);
         if ignore {
+            emit_record_probe(window, "drop", &normalized, "record_start_mouse_suppress");
             return;
         }
     }
@@ -68,7 +77,8 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
     );
 
     if is_trigger && record_guard_active(state) {
-        if is_modifier_token(&normalized) && !is_volume_hotkey(&normalized) {
+        if !(is_volume_hotkey(&normalized) || is_peripheral_trigger_key(&normalized)) {
+            emit_record_probe(window, "drop", &normalized, "record_guard");
             return;
         }
     }
@@ -99,28 +109,19 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
             return;
         }
         if is_trigger && uses_gesture_trigger_recording(state, &normalized) {
+            if is_ghost_media_keyboard_combo(&build_hardware_record_chord(&normalized)) {
+                state.record_gesture.lock().reset();
+                return;
+            }
             handle_record_gesture_event(state, window, &normalized, device, true);
         }
         return;
     }
 
-    if is_trigger
-        && uses_gesture_trigger_recording(state, &normalized)
-        && (is_peripheral_trigger_key(&normalized)
-            || is_volume_hotkey(&normalized)
-            || is_mouse_button(&normalized)
-            || !is_spurious_trigger_capture(&normalized))
-    {
-        if handle_record_gesture_event(state, window, &normalized, device, false) {
-            if is_peripheral_trigger_key(&normalized) || is_volume_hotkey(&normalized) {
-                arm_record_guard(state);
-            }
-            return;
-        }
-    }
-
+    // Pulse peripherals (volume, side buttons) finish on keydown — they often lack keyup.
     if is_trigger && (is_peripheral_trigger_key(&normalized) || is_volume_hotkey(&normalized)) {
         *state.record_hw_pending.lock() = None;
+        emit_record_probe(window, "finish", &normalized, "pulse_peripheral");
         finish_hardware_capture(
             state,
             window,
@@ -128,8 +129,23 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
             device,
             Some(RecordedGesture::Tap),
         );
-        arm_record_guard(state);
         return;
+    }
+
+    // Dongle ghost Ctrl+Shift+Space must not TAP-finish before Volume_* arrives.
+    if is_trigger && is_ghost_media_keyboard_combo(&build_hardware_record_chord(&normalized)) {
+        emit_record_probe(window, "drop", &normalized, "ghost_media_combo");
+        state.record_gesture.lock().reset();
+        return;
+    }
+
+    if is_trigger
+        && uses_gesture_trigger_recording(state, &normalized)
+        && !is_spurious_trigger_capture(&normalized)
+    {
+        if handle_record_gesture_event(state, window, &normalized, device, false) {
+            return;
+        }
     }
 
     if is_trigger && !is_modifier_token(&normalized) && !is_spurious_trigger_capture(&normalized) {
@@ -163,6 +179,11 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
         return;
     }
     if is_trigger && is_spurious_trigger_capture(&combo) {
+        emit_record_probe(window, "drop", &combo, "spurious_combo");
+        return;
+    }
+    if is_trigger && is_ghost_media_keyboard_combo(&combo) {
+        emit_record_probe(window, "drop", &combo, "ghost_combo");
         return;
     }
     if is_target && is_spurious_target_capture(&combo) {

@@ -305,6 +305,30 @@ fn execute_start(
         );
     };
     let duration = state.cfg.lock().key_press_duration_ms;
+    // Cursor: do not open Cursor Composer workflow (it would hardcode Cursor native voice mode).
+    // Instead: focus composer only, then send the user's configured IME/voice input chord.
+    if app_target == crate::app_chat_workflow::CURSOR_APP_TARGET_ID {
+        let voice_key = crate::voice_end_runtime::resolve_voice_input_target_key(&state.cfg.lock());
+        let Some(voice_key) = voice_key.filter(|s| !s.trim().is_empty()) else {
+            return Layer1Outcome::err(
+                "voice_key_unset",
+                Some("cursor input.start needs configured voice input target key".into()),
+            );
+        };
+        crate::voice_end_runtime::arm_external_voice_send_suppression(state.as_ref(), 3500);
+        let _ = crate::app_chat_workflow::focus_composer_only(
+            &window.app_handle(),
+            crate::app_chat_workflow::CURSOR_APP_TARGET_ID,
+            duration,
+        );
+        if !crate::keyboard::send_chord(&voice_key, duration) {
+            return Layer1Outcome::err(
+                "send_failed",
+                Some(format!("failed to send cursor voice chord {voice_key}")),
+            );
+        }
+        return Layer1Outcome::ok_detail(format!("input.start cursor voice {voice_key}"));
+    }
     match crate::app_chat_workflow::run_for_target_id(
         state,
         window,

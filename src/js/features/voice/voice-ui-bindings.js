@@ -653,6 +653,9 @@
         }
       });
     }
+    if(global.OneToneVoiceTab2Mvp&&global.OneToneVoiceTab2Mvp.bindOnce){
+      global.OneToneVoiceTab2Mvp.bindOnce();
+    }
     var habitNote=$('voiceSendHabitNote');
     if(habitNote&&!habitNote.dataset.habitLinkBound){
       habitNote.dataset.habitLinkBound='1';

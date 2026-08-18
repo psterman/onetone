@@ -10,11 +10,11 @@ use crate::ipc::recording::apply::{
     apply_trigger_capture, enable_mapping_if_complete, normalize_record_key,
 };
 use crate::ipc::recording::gesture::{
-    gesture_mode_label, is_spurious_trigger_capture, sanitize_trigger_capture,
+    gesture_mode_label, is_recognition_key_echo, is_spurious_trigger_capture, sanitize_trigger_capture,
 };
 use crate::ipc::recording::RecordMode;
 
-use super::guard::clear_record_guard;
+use super::guard::{arm_record_guard, clear_record_guard, emit_record_probe};
 
 pub(crate) fn finish_hardware_capture(
     state: &AppState,
@@ -40,6 +40,27 @@ pub(crate) fn finish_hardware_capture(
     };
 
     if (is_trigger || is_agent_binding) && is_spurious_trigger_capture(&key) {
+        emit_record_probe(window, "drop", &key, "spurious_trigger_capture");
+        let ack = serde_json::json!({
+            "type": "mvp_record_rejected",
+            "reason": "spurious_trigger_capture",
+            "key": key,
+            "mappingId": target.mapping_id,
+            "mode": if is_agent_binding { "agentBinding" } else { "trigger" },
+        });
+        window.emit("to_js", &ack).ok();
+        return;
+    }
+
+    if is_trigger && is_recognition_key_echo(state, &target.mapping_id, &key) {
+        emit_record_probe(window, "drop", &key, "recognition_key_echo");
+        let ack = serde_json::json!({
+            "type": "mvp_record_echo",
+            "key": key,
+            "mappingId": target.mapping_id,
+            "mode": "trigger",
+        });
+        window.emit("to_js", &ack).ok();
         return;
     }
 
@@ -61,6 +82,17 @@ pub(crate) fn finish_hardware_capture(
             return;
         }
     }
+
+    // First commit wins; a concurrent frontend finish clears recording first.
+    if !*state.recording.lock() {
+        emit_record_probe(window, "drop", &key, "already_idle");
+        return;
+    }
+    *state.recording.lock() = false;
+    *state.recording_target.lock() = None;
+    *state.record_hw_pending.lock() = None;
+    *state.record_started_at.lock() = None;
+    clear_record_guard(state);
 
     if is_trigger {
         {
@@ -93,11 +125,6 @@ pub(crate) fn finish_hardware_capture(
         enable_mapping_if_complete(&mut cfg, &target.mapping_id);
     }
 
-    *state.recording.lock() = false;
-    *state.recording_target.lock() = None;
-    *state.record_hw_pending.lock() = None;
-    *state.record_started_at.lock() = None;
-    clear_record_guard(state);
     if let Some(ref mgr) = *state.hotkey_mgr.lock() {
         mgr.stop_recording();
     }
@@ -176,6 +203,10 @@ pub(crate) fn finish_hardware_capture(
         "mode": mode,
     });
     window.emit("to_js", &ack).ok();
+    emit_record_probe(window, "commit", &display_key, mode);
+    if is_trigger || is_agent_binding {
+        arm_record_guard(state);
+    }
     crate::tray::refresh_tray_visual_forced(window.app_handle());
 }
 

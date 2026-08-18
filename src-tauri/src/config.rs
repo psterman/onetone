@@ -2956,7 +2956,9 @@ pub fn new_mapping_id() -> String {
 pub fn canonical_trigger(key: &str) -> String {
     match key.trim() {
         "AltRight" | "RMenu" => "RAlt".into(),
+        "AltLeft" | "LMenu" => "LAlt".into(),
         "ControlRight" | "RControl" => "RCtrl".into(),
+        "ControlLeft" | "LControl" | "Control" | "Ctrl" => "LCtrl".into(),
         "AudioVolumeUp" | "VolumeUp" | "Volume_Up" | "Audio_Volume_Up" => "Volume_Up".into(),
         "AudioVolumeDown" | "VolumeDown" | "Volume_Down" | "Audio_Volume_Down" => {
             "Volume_Down".into()
@@ -3712,6 +3714,22 @@ pub fn find_app_scenario_for_foreground<'a>(
     if !cfg.follow_foreground_app_scenario {
         return None;
     }
+    pick_app_scenario_for_identity(cfg, identity)
+}
+
+/// Cursor/Codex scene for the focused app — used when a global trigger fires.
+/// Independent of `follow_foreground_app_scenario` (that flag only shadows trigger matching).
+pub fn find_app_scenario_for_dispatch<'a>(
+    cfg: &'a VoiceConfig,
+    identity: &crate::app_identity::AppIdentity,
+) -> Option<&'a MappingEntry> {
+    pick_app_scenario_for_identity(cfg, identity)
+}
+
+fn pick_app_scenario_for_identity<'a>(
+    cfg: &'a VoiceConfig,
+    identity: &crate::app_identity::AppIdentity,
+) -> Option<&'a MappingEntry> {
     cfg.active_mappings()
         .into_iter()
         .filter(|m| is_app_scenario_mapping(m) && mapping_matches_foreground_identity(m, identity))
@@ -3726,12 +3744,45 @@ pub fn find_app_scenario_for_foreground<'a>(
         })
 }
 
+const WORKFLOW_DISPATCH_PREFER: &[&str] = &[
+    "cursor-chat",
+    "codex-chat",
+    "claude-code",
+    "qoder-chat",
+    "minimax-chat",
+    "workbuddy-chat",
+    "trae-work",
+    "trae-code",
+];
+
+/// Best configured Agent workflow scene when foreground does not match (global trigger → Cursor).
+pub fn find_preferred_workflow_scenario_for_dispatch<'a>(
+    cfg: &'a VoiceConfig,
+) -> Option<&'a MappingEntry> {
+    for app_id in WORKFLOW_DISPATCH_PREFER {
+        if !is_workflow_app_target(app_id) {
+            continue;
+        }
+        if let Some(m) = cfg.active_mappings().into_iter().find(|m| {
+            is_app_scenario_mapping(m) && m.app_target_id.trim() == *app_id
+        }) {
+            return Some(m);
+        }
+    }
+    None
+}
+
 /// When a global trigger mapping fires, resolve workflow app from foreground + behavior rules.
+/// Returns None when the mapping has a native target key — that key should just be sent as-is.
 pub fn resolve_foreground_workflow_target(
     mapping: &MappingEntry,
     identity: &crate::app_identity::AppIdentity,
 ) -> Option<String> {
     if is_app_scenario_mapping(mapping) {
+        return None;
+    }
+    // Native-key mappings (e.g. RAlt → system IME) should just send their key, not open Composer.
+    if !mapping.target_key.trim().is_empty() {
         return None;
     }
     let preset = identity.matched_preset_app_id.as_deref()?.trim();
@@ -6932,7 +6983,7 @@ mod tests {
     fn mapping_shadowed_when_dedicated_app_scenario_owns_foreground() {
         let mut cfg = VoiceConfig::default();
         cfg.mappings[0].trigger_key = "Ctrl+Shift+D".into();
-        cfg.mappings[0].target_key = "RAlt".into();
+        // target_key is empty: this mapping exists purely to route to the workflow.
         cfg.mappings[0].app_behavior_rules = vec![test_rule("codex-chat", "confirm")];
         cfg.mappings.push(MappingEntry {
             id: "codex-scene".into(),
@@ -7057,6 +7108,51 @@ mod tests {
         assert_eq!(workflow, "codex-chat");
         cfg.follow_foreground_app_scenario = false;
         assert!(find_app_scenario_for_foreground(&cfg, &fg).is_none());
+        let dispatch_hit = find_app_scenario_for_dispatch(&cfg, &fg).expect("dispatch still finds scene");
+        assert_eq!(dispatch_hit.id, "codex-scene");
+    }
+
+    #[test]
+    fn find_preferred_workflow_scenario_prefers_cursor() {
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings.push(MappingEntry {
+            id: "cursor-scene".into(),
+            label: String::new(),
+            group: "Cursor".into(),
+            trigger_key: String::new(),
+            target_key: String::new(),
+            enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
+            order: 2,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: default_long_press_ms(),
+            double_click_ms: default_double_click_ms(),
+            ime_preset_id: String::new(),
+            app_target_id: "cursor-chat".into(),
+            app_behavior_rules: vec![],
+            voice_override: None,
+            camera_override: None,
+            voice_commands: vec![],
+            acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
+            codex_micro_pad: None,
+            time_machine_workspace: String::new(),
+        });
+        let hit = find_preferred_workflow_scenario_for_dispatch(&cfg).expect("cursor scene");
+        assert_eq!(hit.id, "cursor-scene");
     }
 
     #[test]

@@ -133,7 +133,7 @@ fn configure_coach_hud_window(win: &WebviewWindow) -> tauri::Result<()> {
 }
 
 pub fn flash_success(app: &AppHandle, state: &AppState) {
-    *SUCCESS_UNTIL.lock() = Some(Instant::now() + Duration::from_millis(850));
+    *SUCCESS_UNTIL.lock() = Some(Instant::now() + Duration::from_millis(1600));
     push_state(app, state);
 }
 

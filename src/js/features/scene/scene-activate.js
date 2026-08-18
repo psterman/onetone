@@ -54,6 +54,20 @@
     return pendingSwitchSource||'manual';
   }
 
+  function scheduleManualSwitchPaint(){
+    requestAnimationFrame(function(){
+      try{
+        if(global.OneToneHomeWorkbenchPanels&&global.OneToneHomeWorkbenchPanels.renderScenarioPanel){
+          global.OneToneHomeWorkbenchPanels.renderScenarioPanel();
+        }
+        if(global.OneToneHomeWorkbench){
+          if(global.OneToneHomeWorkbench.forceHomeRender) global.OneToneHomeWorkbench.forceHomeRender();
+          if(global.OneToneHomeWorkbench.render) global.OneToneHomeWorkbench.render();
+        }
+      }catch(_){}
+    });
+  }
+
   function activateScene(id,opts){
     if(!id) return;
     var cfg=state().config;
@@ -69,7 +83,15 @@
     }else if(src==='foreground'){
       if(manualScenePinId&&isBaselineMappingId(manualScenePinId)) return;
     }
-    if(activeSceneId()===id) return;
+    if(activeSceneId()===id){
+      if(src==='manual'){
+        scheduleManualSwitchPaint();
+        try{
+          global.chrome&&global.chrome.webview&&global.chrome.webview.postMessage({type:'mvp_scheme_select',mappingId:id});
+        }catch(_){}
+      }
+      return;
+    }
     var core=global.OneToneMappingCore;
     var m=core&&core.byId?core.byId(id):null;
     var rules=global.OneToneAppBehaviorRules;
@@ -96,6 +118,7 @@
     if(global.OneToneHabitChannelStatusStrip&&global.OneToneHabitChannelStatusStrip.render){
       try{ global.OneToneHabitChannelStatusStrip.render(); }catch(_){}
     }
+    if(src==='manual') scheduleManualSwitchPaint();
   }
 
   global.OneToneSceneActivate={

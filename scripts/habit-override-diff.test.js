@@ -145,6 +145,22 @@ assert.strictEqual(Diff.isAppScenarioMapping({appTargetId:'',appBehaviorRules:[]
 assert.strictEqual(Diff.isGlobalBaselineMapping({id:'global-1'},cfg,mockCore),true);
 assert.strictEqual(Diff.isGlobalBaselineMapping({id:'app-1',appTargetId:'cursor'},cfg,mockCore),false);
 
+var appOnlyCfg={
+  mappings:[
+    {id:'app-1',triggerKey:'F8',targetKey:'',appTargetId:'cursor-chat',appBehaviorRules:[]},
+    {id:'app-2',triggerKey:'F9',targetKey:'',appTargetId:'qoder-chat',appBehaviorRules:[]}
+  ],
+  activeSceneId:'app-1'
+};
+assert.strictEqual(Diff.findGlobalBaselineMapping(appOnlyCfg,mockCore),null);
+var ensured=Diff.ensureGlobalBaselineMapping(appOnlyCfg,mockCore);
+assert.ok(ensured.created);
+assert.ok(ensured.mapping);
+assert.strictEqual(ensured.mapping.appTargetId,'');
+assert.strictEqual(ensured.mapping.group,'通用设置');
+assert.strictEqual(Diff.findGlobalBaselineMapping(appOnlyCfg,mockCore).id,ensured.mapping.id);
+assert.strictEqual(Diff.ensureGlobalBaselineMapping(appOnlyCfg,mockCore).created,false);
+
 var keysAccess=Diff.getKeysAccessState({triggerKey:'F8',targetKey:'',keyModeEnabled:true},cfg,mockCore);
 assert.strictEqual(keysAccess.status,'overridden');
 

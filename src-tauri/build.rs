@@ -125,6 +125,7 @@ fn main() {
         "cmd_coach_hud_get_state",
         "cmd_coach_hud_dismiss",
         "cmd_coach_hud_set_enabled",
+        "cmd_coach_hud_flash_success",
         "cmd_gaze_list_monitors",
         "cmd_gaze_get_cursor_position",
         "cmd_gaze_move_cursor_to_monitor",

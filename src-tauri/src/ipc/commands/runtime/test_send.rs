@@ -8,9 +8,18 @@ use crate::AppState;
 pub fn perform_test_send(
     state: &Arc<AppState>,
     app: &tauri::AppHandle,
+    window: Option<&tauri::WebviewWindow>,
     mapping_id: Option<String>,
     target_key: Option<String>,
+    agent_workflow: bool,
 ) -> serde_json::Value {
+    if crate::voice_end_runtime::external_voice_send_suppressed(state) {
+        return serde_json::json!({
+            "type": "mvp_test_sent",
+            "ok": false,
+            "reason": "suppressed",
+        });
+    }
     if *state.paused.lock() {
         return serde_json::json!({
             "type": "mvp_test_sent",
@@ -24,6 +33,61 @@ pub fn perform_test_send(
             "ok": false,
             "reason": "recording",
         });
+    }
+
+    if agent_workflow {
+        if let (Some(win), Some(ref id)) = (window, mapping_id.as_ref()) {
+            let (app_target_id, duration_ms, mapping_label) = {
+                let cfg = state.cfg.lock();
+                let duration_ms = cfg.key_press_duration_ms;
+                let mut mapping_label = String::new();
+                let app_target = cfg
+                    .find_mapping_by_id(id)
+                    .map(|m| {
+                        mapping_label = m.display_label();
+                        m.app_target_id.trim().to_string()
+                    })
+                    .unwrap_or_default();
+                (app_target, duration_ms, mapping_label)
+            };
+            if !app_target_id.is_empty()
+                && crate::app_chat_workflow::profile_for(&app_target_id).is_some()
+            {
+                match crate::app_chat_workflow::run_for_target_id(
+                    state,
+                    win,
+                    id,
+                    &app_target_id,
+                    duration_ms,
+                ) {
+                    Ok(label) => {
+                        if let Some(kind) =
+                            crate::soft_pad_runtime::AgentKind::from_app_target(&app_target_id)
+                        {
+                            crate::codex_micro_overlay::note_soft_pad_surface_for_mapping(id, kind);
+                            crate::codex_micro_overlay::push_state(app, state.as_ref());
+                        }
+                        crate::coach_hud::flash_success(app, state.as_ref());
+                        return serde_json::json!({
+                            "type": "mvp_test_sent",
+                            "ok": true,
+                            "reason": "sent",
+                            "key": label,
+                            "mappingLabel": mapping_label,
+                        });
+                    }
+                    Err((prefix, err)) => {
+                        let reason = err.reason(&prefix);
+                        return serde_json::json!({
+                            "type": "mvp_test_sent",
+                            "ok": false,
+                            "reason": reason,
+                            "mappingLabel": mapping_label,
+                        });
+                    }
+                }
+            }
+        }
     }
 
     let (key, duration_ms, mapping_label) = {
@@ -169,6 +233,14 @@ pub fn cmd_test_send(
     window: tauri::WebviewWindow,
     mapping_id: Option<String>,
     target_key: Option<String>,
+    agent_workflow: Option<bool>,
 ) -> serde_json::Value {
-    perform_test_send(state.inner(), &window.app_handle(), mapping_id, target_key)
+    perform_test_send(
+        state.inner(),
+        &window.app_handle(),
+        Some(&window),
+        mapping_id,
+        target_key,
+        agent_workflow.unwrap_or(false),
+    )
 }

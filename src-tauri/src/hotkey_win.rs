@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Mutex, OnceLock};
 use std::thread;
@@ -10,7 +11,9 @@ macro_rules! w {
     }};
 }
 
-use crate::config::{bindings_need_mouse_hook, SCHEME_CYCLE_MARKER, SCHEME_SELECT_PREFIX};
+use crate::config::{
+    bindings_need_mouse_hook, is_volume_hotkey, SCHEME_CYCLE_MARKER, SCHEME_SELECT_PREFIX,
+};
 use crate::device_identity;
 use crate::input_ext::InputExtensionBus;
 use crate::input_obs::{InputDebugMeta, InputObsEvent};
@@ -34,7 +37,7 @@ use winapi::um::winuser::{
     RAWINPUTDEVICE, RIDEV_INPUTSINK, RIDI_DEVICENAME, RID_INPUT, RIM_TYPEHID, RIM_TYPEKEYBOARD,
     RI_KEY_BREAK, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_APPCOMMAND, WM_DESTROY, WM_HOTKEY, WM_INPUT,
     WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDOWN, WM_MBUTTONDOWN, WM_RBUTTONDOWN, WM_SYSKEYDOWN,
-    WM_SYSKEYUP, WM_XBUTTONDOWN, WNDCLASSEXW,
+    WM_SYSKEYUP, WM_XBUTTONDOWN, WM_XBUTTONUP, WNDCLASSEXW,
 };
 
 struct WndCtx {
@@ -49,6 +52,9 @@ const SCHEME_SWITCH_HOTKEY_ID: u32 = 0x7FFF;
 const SCHEME_SELECT_BASE_ID: u32 = 0x7000;
 
 static RECORDING_SENDER: OnceLock<Mutex<Option<mpsc::Sender<String>>>> = OnceLock::new();
+/// True for the whole StartRecording→StopRecording window, even when
+/// `recording_sender` is momentarily cleared during hook transitions.
+static RECORDING_SESSION: AtomicBool = AtomicBool::new(false);
 static RECORDING_HOOK: OnceLock<Mutex<isize>> = OnceLock::new();
 static RECORDING_MOUSE_HOOK: OnceLock<Mutex<isize>> = OnceLock::new();
 static ACTIVE_BINDINGS: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
@@ -139,6 +145,14 @@ enum Cmd {
 
 fn recording_sender() -> &'static Mutex<Option<mpsc::Sender<String>>> {
     RECORDING_SENDER.get_or_init(|| Mutex::new(None))
+}
+
+/// Public clone of the currently-installed recording sender (or `None` if no
+/// recording session is active). Used by the runtime loop to flush the
+/// `PENDING_RECORDING_MOUSE` fallback buffer without re-acquiring the inner
+/// static via the private helper.
+pub fn recording_sender_clone() -> Option<mpsc::Sender<String>> {
+    recording_sender().lock().unwrap().clone()
 }
 
 fn recording_hook() -> &'static Mutex<isize> {
@@ -300,8 +314,6 @@ const RECORD_KEYS: &[&str] = &[
     "Launch_App1",
     "Launch_App2",
     "Launch_Mail",
-    "RAlt",
-    "RControl",
     "AppsKey",
     "F1",
     "F13",
@@ -365,11 +377,13 @@ impl HotkeyManager {
     }
 
     pub fn start_recording(&self) {
-        *recording_sender().lock().unwrap() = Some(self.event_tx.clone());
+        // ponytail: recording_sender is set inside Cmd::StartRecording AFTER hooks are
+        // installed, so the mouse hook is ready before any events can arrive.
         self.cmd_tx.send(Cmd::StartRecording).ok();
     }
 
     pub fn stop_recording(&self) {
+        // Clear immediately so hooks stop routing to recording even before the Cmd is processed.
         *recording_sender().lock().unwrap() = None;
         self.cmd_tx.send(Cmd::StopRecording).ok();
     }
@@ -580,6 +594,13 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
                 },
                 Cmd::StartRecording => {
                     recording_mode = true;
+                    RECORDING_SESSION.store(true, Ordering::SeqCst);
+                    // Set recording_sender BEFORE installing hooks so the very first
+                    // mouse-hook WM_XBUTTONDOWN / keyboard-hook VK_VOLUME_* that arrives
+                    // immediately after install can already route to the sender. The
+                    // previous "after all hooks" ordering created a race window during
+                    // which X1/X2 clicks and Bluetooth Vol+/- fell through to WebView2
+                    // (back/forward navigation) and the recording was lost.
                     *recording_sender().lock().unwrap() = Some(event_tx.clone());
                     unsafe {
                         install_raw_input(hwnd);
@@ -597,6 +618,7 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
                 Cmd::StopRecording => {
                     recording_mode = false;
                     *recording_sender().lock().unwrap() = None;
+                    RECORDING_SESSION.store(false, Ordering::SeqCst);
                     unsafe {
                         install_raw_input(hwnd);
                     }
@@ -706,6 +728,27 @@ unsafe fn remove_raw_input() {
 
 fn dispatch_physical_payload(payload: &str, source: &str, report_hex: &str) -> bool {
     let ev = parse_physical_event(payload);
+
+    let body = format_device_key(ev.device.as_deref().unwrap_or(""), &ev.key);
+    let wire = if ev.is_keyup {
+        format!("keyup:{body}")
+    } else {
+        body
+    };
+
+    if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
+        sender.send(wire).ok();
+        emit_input_obs(
+            onetone_logic::runtime_event::kind::INPUT_CAPTURED,
+            &ev.key,
+            ev.device.as_deref(),
+            report_hex,
+            "recording",
+            source,
+        );
+        return true;
+    }
+
     if send_guard::blocks_key(&ev.key) {
         send_guard::note_blocked();
         emit_input_obs(
@@ -719,13 +762,6 @@ fn dispatch_physical_payload(payload: &str, source: &str, report_hex: &str) -> b
         return false;
     }
 
-    let body = format_device_key(ev.device.as_deref().unwrap_or(""), &ev.key);
-    let wire = if ev.is_keyup {
-        format!("keyup:{body}")
-    } else {
-        body
-    };
-
     if !report_hex.is_empty() || is_extension_key(&ev.key) {
         set_pending_input_debug(InputDebugMeta {
             key: ev.key.clone(),
@@ -733,19 +769,6 @@ fn dispatch_physical_payload(payload: &str, source: &str, report_hex: &str) -> b
             report_hex: report_hex.to_string(),
             source: source.to_string(),
         });
-    }
-
-    if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
-        sender.send(wire).ok();
-        emit_input_obs(
-            onetone_logic::runtime_event::kind::INPUT_CAPTURED,
-            &ev.key,
-            ev.device.as_deref(),
-            report_hex,
-            "recording",
-            source,
-        );
-        return true;
     }
 
     if let Some(binding) = resolve_active_binding(&ev.key, ev.device.as_deref()) {
@@ -872,50 +895,138 @@ unsafe fn remove_mouse_hook() {
 
 const LLKHF_INJECTED: u32 = 0x10;
 
+/// Defence-in-depth buffer for mouse events that arrive before `recording_sender`
+/// is observable from inside the hook. With the Cmd::StartRecording ordering fix
+/// the sender is now set before any hook is installed, but this buffer covers
+/// the StopRecording transition (sender cleared but hook still installed) and
+/// any future reordering of the cmd pipeline. The runtime loop drains it on
+/// every tick.
+static PENDING_RECORDING_MOUSE: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+
+fn pending_recording_mouse() -> &'static Mutex<Vec<String>> {
+    PENDING_RECORDING_MOUSE.get_or_init(|| Mutex::new(Vec::new()))
+}
+
+pub(crate) fn drain_pending_recording_mouse() -> Vec<String> {
+    let mut buf = pending_recording_mouse().lock().unwrap();
+    std::mem::take(&mut *buf)
+}
+
+fn xbutton_name_from_mouse_data(mouse_data: u32) -> Option<&'static str> {
+    // Spec: HIWORD(mouseData) is XBUTTON1/2. Some dongles put the button in
+    // the low word, or stash RAWMOUSE button flags (0x0040 / 0x0100) instead.
+    let hi = (mouse_data >> 16) as u16;
+    let lo = (mouse_data & 0xFFFF) as u16;
+    for v in [hi, lo] {
+        if v == winapi::um::winuser::XBUTTON1 as u16 || v == 0x0040 {
+            return Some("XButton1");
+        }
+        if v == winapi::um::winuser::XBUTTON2 as u16 || v == 0x0100 {
+            return Some("XButton2");
+        }
+    }
+    None
+}
+
 unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    if send_guard::is_active() {
+    let session_active = RECORDING_SESSION.load(Ordering::SeqCst);
+    let sender_ready = recording_sender().lock().unwrap().is_some();
+    if send_guard::is_active() && !session_active {
         return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
     }
     if code >= 0 {
-        let btn = match wparam as u32 {
+        let w = wparam as u32;
+        let is_x_up = w == WM_XBUTTONUP;
+        let btn = match w {
             WM_LBUTTONDOWN => Some("LButton"),
             WM_RBUTTONDOWN => Some("RButton"),
             WM_MBUTTONDOWN => Some("MButton"),
-            WM_XBUTTONDOWN => {
+            WM_XBUTTONDOWN | WM_XBUTTONUP => {
                 let info = *(lparam as *const MSLLHOOKSTRUCT);
-                let xbtn = (info.mouseData >> 16) as u16;
-                if xbtn == winapi::um::winuser::XBUTTON1 as u16 {
-                    Some("XButton1")
-                } else if xbtn == winapi::um::winuser::XBUTTON2 as u16 {
-                    Some("XButton2")
-                } else {
-                    None
-                }
+                xbutton_name_from_mouse_data(info.mouseData)
             }
             _ => None,
         };
         if let Some(name) = btn {
-            if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
-                sender.send(name.to_string()).ok();
+            if sender_ready {
+                if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
+                    if !is_x_up {
+                        sender.send(name.to_string()).ok();
+                    }
+                }
+                // Swallow side buttons so WebView2 does not treat them as Back/Forward.
+                if name == "XButton1" || name == "XButton2" {
+                    return 1;
+                }
             } else if resolve_active_binding(name, None).is_some() {
-                if let Some(sender) = active_sender().lock().unwrap().as_ref() {
-                    sender.send(name.to_string()).ok();
+                // Side buttons are pulse-only — keyup must not re-dispatch as a second tap.
+                if !is_x_up {
+                    if let Some(sender) = active_sender().lock().unwrap().as_ref() {
+                        sender.send(name.to_string()).ok();
+                    }
                 }
                 return 1;
+            } else if session_active && (name == "XButton1" || name == "XButton2") && !is_x_up {
+                // Sender race / StopRecording transition: session is active but the
+                // sender is not yet visible from inside the hook. Buffer the side
+                // button so the runtime loop can still route it to recording once
+                // it drains the buffer. Swallow the event so WebView2 does not
+                // navigate Back/Forward in the meantime.
+                pending_recording_mouse().lock().unwrap().push(name.to_string());
+                return 1;
             }
+        } else if session_active && (w == WM_XBUTTONDOWN || w == WM_XBUTTONUP) {
+            // mouseData was empty/unrecognized. Still swallow so WebView2 cannot
+            // navigate Forward; raw input names the button on the recording channel.
+            return 1;
         }
     }
     CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam)
 }
 
+/// Pure bridge helper extracted from `keyboard_proc` so the Bluetooth
+/// RAlt → Volume_Up rewrite is unit-testable without spinning up a Windows
+/// hook. Returns the bridged wire name to send down the recording channel.
+fn bridge_injected_ralt_to_volume(injected: bool, name: &str) -> &str {
+    // Recording: 02 识别 defaults to RAlt. BT volume keys often surface as
+    // VK_RMENU with or without LLKHF_INJECTED — both must become Volume_Up
+    // or finish_hardware_capture treats them as a recognition-key echo.
+    if name == "RAlt" && (injected || RECORDING_SESSION.load(Ordering::SeqCst)) {
+        "Volume_Up"
+    } else {
+        name
+    }
+}
+
 unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    let recording = is_recording();
+    let recording = RECORDING_SESSION.load(Ordering::SeqCst) || is_recording();
     let is_key_down = wparam == WM_KEYDOWN as usize || wparam == WM_SYSKEYDOWN as usize;
     let is_key_up = wparam == WM_KEYUP as usize || wparam == WM_SYSKEYUP as usize;
     if code >= 0 && (is_key_down || is_key_up) {
         let kb = *(lparam as *const KBDLLHOOKSTRUCT);
         if kb.flags & LLKHF_INJECTED != 0 {
-            return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
+            // Hardware dongles often inject VK_VOLUME_* ; skip only non-volume ghosts
+            // so recording can still capture the physical volume key.
+            //
+            // Bluetooth HID remap bridge: some Bluetooth keyboards describe their
+            // media keys with the same usage page as RAlt, so Windows surfaces the
+            // keystroke as an injected VK_RMENU (0xA5 = "RAlt"). Without the bridge
+            // the recording session would fall through to the IME and the trigger
+            // capture would either get short-circuited by is_recognition_key_echo
+            // (target is RAlt by default) or never reach the runtime at all.
+            //
+            // During a recording session we let the in-flight RAlt ride the same
+            // channel as a hardware volume key; the handler bridges it into the
+            // Volume_Up fast-path and tags the source device accordingly so the
+            // user can see what happened.
+            let injected_capture_token = recording
+                && vk_to_name(kb.vkCode as u32)
+                    .as_deref()
+                    .map(|n| is_volume_hotkey(n) || n == "RAlt")
+                    .unwrap_or(false);
+            if !injected_capture_token {
+                return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
+            }
         }
         let extended = kb.flags & 0x01 != 0;
         if let Some(source) = crate::codex_numpad_layer::normalize_numpad_physical(
@@ -948,19 +1059,38 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
                     }
                 }
             }
-            if send_guard::blocks_key(&name) {
-                return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
-            }
             if recording {
+                // Bluetooth HID remap bridge: an injected RAlt during recording is
+                // almost always a Bluetooth media key that Windows translated to
+                // VK_RMENU. We surface it as a Volume_Up event so the handler's
+                // Volume fast-path catches it; the source device tag is set by
+                // the handler when it sees the bridge tag in the payload.
+                let bridged = bridge_injected_ralt_to_volume(
+                    kb.flags & LLKHF_INJECTED != 0,
+                    &name,
+                )
+                .to_string();
                 if is_key_down {
                     if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
-                        sender.send(name.clone()).ok();
+                        sender.send(bridged.clone()).ok();
                     }
                 } else if is_key_up {
                     if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
-                        sender.send(format!("keyup:{name}")).ok();
+                        sender.send(format!("keyup:{bridged}")).ok();
                     }
                 }
+                // Swallow volume / bridged RAlt / mouse-as-browser keys so IME
+                // and WebView2 Back/Forward do not steal the press.
+                if is_volume_hotkey(&bridged)
+                    || name == "RAlt"
+                    || name == "Browser_Back"
+                    || name == "Browser_Forward"
+                {
+                    return 1;
+                }
+                return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
+            }
+            if send_guard::blocks_key(&name) {
                 return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
             }
             if is_modifier_watch_key(&name) {
@@ -1070,11 +1200,7 @@ unsafe extern "system" fn wnd_proc(
         if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
             if !ctx_ptr.is_null() {
                 if let Some(name) = (*ctx_ptr).names.get(&id) {
-                    if send_guard::blocks_key(name) {
-                        send_guard::note_blocked();
-                    } else {
-                        sender.send(name.clone()).ok();
-                    }
+                    sender.send(name.clone()).ok();
                 }
             }
             return 1;
@@ -1148,20 +1274,36 @@ fn scan_consumer_bytes(data: &[u8]) -> Option<String> {
             return Some(name);
         }
     }
-    // 常见蓝牙外设：consumer control 以位图方式上报，usage 常从 0x00E0 起连续展开。
-    // 这里不能只看单字节内的 0..7 位，Volume Up/Down 往往落在更高位（如 0x00E9/0x00EA）。
-    for (byte_index, byte) in data.iter().enumerate() {
-        if *byte == 0 {
-            continue;
-        }
-        for bit in 0..8u16 {
-            if (*byte as u16) & (1 << bit) == 0 {
+    fn scan_bitmap(bytes: &[u8], base: u16) -> Option<String> {
+        for (byte_index, byte) in bytes.iter().enumerate() {
+            if *byte == 0 {
                 continue;
             }
-            let usage = 0x00E0u16 + (byte_index as u16 * 8) + bit;
-            if let Some(name) = consumer_usage_to_name(usage) {
-                return Some(name);
+            for bit in 0..8u16 {
+                if (*byte as u16) & (1 << bit) == 0 {
+                    continue;
+                }
+                let usage = base + (byte_index as u16 * 8) + bit;
+                if let Some(name) = consumer_usage_to_name(usage) {
+                    return Some(name);
+                }
             }
+        }
+        None
+    }
+    // 常见蓝牙外设：consumer control 以位图方式上报，usage 常从 0x00E0 起连续展开。
+    if let Some(name) = scan_bitmap(data, 0x00E0) {
+        return Some(name);
+    }
+    // BLE often prefixes a report id (1..=15). Vol+/Vol- then sit in the next byte
+    // as bits starting at usage 0xE9, not at 0xE0-from-byte-0.
+    if !data.is_empty() && (1..=15).contains(&data[0]) {
+        let payload = &data[1..];
+        if let Some(name) = scan_bitmap(payload, 0x00E0) {
+            return Some(name);
+        }
+        if let Some(name) = scan_bitmap(payload, 0x00E9) {
+            return Some(name);
         }
     }
     None
@@ -1242,10 +1384,47 @@ unsafe fn try_dispatch_raw_input(lparam: LPARAM) -> bool {
     if raw.header.dwType == RIM_TYPEHID {
         return dispatch_raw_hid_input(raw, device.as_deref());
     }
+    if let Some((name, is_up)) = raw_mouse_xbutton(raw) {
+        return dispatch_key_event(&name, is_up, device.as_deref(), "raw_input");
+    }
     if let Some((name, is_up)) = raw_input_to_event(raw) {
         return dispatch_key_event(&name, is_up, device.as_deref(), "raw_input");
     }
     false
+}
+
+fn raw_mouse_xbutton(raw: &RAWINPUT) -> Option<(String, bool)> {
+    unsafe {
+        if raw.header.dwType != winapi::um::winuser::RIM_TYPEMOUSE {
+            return None;
+        }
+        let flags = raw.data.mouse().usButtonFlags;
+        const RI_MOUSE_BUTTON_4_DOWN: u16 = 0x0040;
+        const RI_MOUSE_BUTTON_4_UP: u16 = 0x0080;
+        const RI_MOUSE_BUTTON_5_DOWN: u16 = 0x0100;
+        const RI_MOUSE_BUTTON_5_UP: u16 = 0x0200;
+        if flags & RI_MOUSE_BUTTON_4_DOWN != 0 {
+            return Some(("XButton1".into(), false));
+        }
+        if flags & RI_MOUSE_BUTTON_5_DOWN != 0 {
+            return Some(("XButton2".into(), false));
+        }
+        if flags & RI_MOUSE_BUTTON_4_UP != 0 {
+            return Some(("XButton1".into(), true));
+        }
+        if flags & RI_MOUSE_BUTTON_5_UP != 0 {
+            return Some(("XButton2".into(), true));
+        }
+        // Some dongles leave usButtonFlags empty and put XBUTTON1/2 in usButtonData.
+        let data = raw.data.mouse().usButtonData;
+        if flags == 0 && data == winapi::um::winuser::XBUTTON1 as u16 {
+            return Some(("XButton1".into(), false));
+        }
+        if flags == 0 && data == winapi::um::winuser::XBUTTON2 as u16 {
+            return Some(("XButton2".into(), false));
+        }
+        None
+    }
 }
 
 unsafe fn dispatch_raw_hid_input(raw: &RAWINPUT, device: Option<&str>) -> bool {
@@ -1255,6 +1434,9 @@ unsafe fn dispatch_raw_hid_input(raw: &RAWINPUT, device: Option<&str>) -> bool {
         return false;
     }
     let data = std::slice::from_raw_parts(hid.bRawData.as_ptr(), len);
+    if let Some(name) = scan_consumer_bytes(data) {
+        return dispatch_key_event(&name, false, device, "raw_input");
+    }
     let mut handled = false;
     for ev in crate::codex_micro_vendor::ingest_hid_report(data) {
         if crate::codex_numpad_layer::vendor_micro_should_dispatch(&ev.micro_key_id) {
@@ -1270,9 +1452,6 @@ unsafe fn dispatch_raw_hid_input(raw: &RAWINPUT, device: Option<&str>) -> bool {
     }
     if handled {
         return true;
-    }
-    if let Some(name) = scan_consumer_bytes(data) {
-        return dispatch_key_event(&name, false, device, "raw_input");
     }
     if let Some(name) = scan_boot_keyboard_bytes(data) {
         return dispatch_key_event(&name, false, device, "raw_input");
@@ -1362,5 +1541,84 @@ fn appcommand_to_name(cmd: i32) -> Option<String> {
         val if val == APPCOMMAND_LAUNCH_APP1 as i32 => Some("Launch_App1".into()),
         val if val == APPCOMMAND_LAUNCH_APP2 as i32 => Some("Launch_App2".into()),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        bridge_injected_ralt_to_volume, drain_pending_recording_mouse, scan_consumer_bytes,
+        xbutton_name_from_mouse_data, RECORDING_SESSION,
+    };
+    use crate::config::is_volume_hotkey;
+    use std::sync::atomic::Ordering;
+
+    #[test]
+    fn scan_consumer_bytes_finds_volume_usages() {
+        assert_eq!(scan_consumer_bytes(&[0xE9]).as_deref(), Some("Volume_Up"));
+        assert_eq!(scan_consumer_bytes(&[0xEA]).as_deref(), Some("Volume_Down"));
+        assert_eq!(
+            scan_consumer_bytes(&[0x01, 0xE9, 0x00]).as_deref(),
+            Some("Volume_Up")
+        );
+        assert_eq!(
+            scan_consumer_bytes(&[0x01, 0x01]).as_deref(),
+            Some("Volume_Up")
+        );
+        assert_eq!(
+            scan_consumer_bytes(&[0x01, 0x02]).as_deref(),
+            Some("Volume_Down")
+        );
+        assert_eq!(scan_consumer_bytes(&[0x03, 0x00, 0x80]), None);
+    }
+
+    /// The pending-recording-mouse buffer must accept side-button names pushed
+    /// while `recording_sender` is temporarily invisible from inside the hook
+    /// (race around Cmd::StartRecording / Cmd::StopRecording transitions), and
+    /// the runtime loop must drain it cleanly without leaking entries between
+    /// sessions.
+    #[test]
+    fn pending_recording_mouse_buffer_round_trips_side_buttons() {
+        drain_pending_recording_mouse();
+        // The mouse hook would push the side-button names via the same static
+        // (we exercise the round-trip directly because the WH_MOUSE_LL proc is
+        // unsafe and Windows-only).
+        let names = vec!["XButton1".to_string(), "XButton2".to_string()];
+        for n in &names {
+            super::pending_recording_mouse()
+                .lock()
+                .unwrap()
+                .push(n.clone());
+        }
+        let drained = drain_pending_recording_mouse();
+        assert_eq!(drained, names);
+        // Second drain is empty — no leakage between recording sessions.
+        assert!(drain_pending_recording_mouse().is_empty());
+    }
+
+    #[test]
+    fn xbutton_name_reads_hi_or_lo_word() {
+        assert_eq!(xbutton_name_from_mouse_data(0x0001_0000), Some("XButton1"));
+        assert_eq!(xbutton_name_from_mouse_data(0x0002_0000), Some("XButton2"));
+        assert_eq!(xbutton_name_from_mouse_data(0x0000_0001), Some("XButton1"));
+        assert_eq!(xbutton_name_from_mouse_data(0x0000_0002), Some("XButton2"));
+        assert_eq!(xbutton_name_from_mouse_data(0x0100_0000), Some("XButton2"));
+        assert_eq!(xbutton_name_from_mouse_data(0x0000_0100), Some("XButton2"));
+        assert_eq!(xbutton_name_from_mouse_data(0x0040_0000), Some("XButton1"));
+        assert_eq!(xbutton_name_from_mouse_data(0), None);
+    }
+
+    /// The Bluetooth keyboard bridge — when VK_RMENU arrives during recording
+    /// we treat it as `Volume_Up` so the handler's volume fast-path catches it
+    /// instead of letting the IME swallow the keystroke / recognition echo.
+    #[test]
+    fn bridge_injected_ralt_to_volume_during_recording() {
+        assert_eq!(bridge_injected_ralt_to_volume(true, "RAlt"), "Volume_Up");
+        assert!(is_volume_hotkey(bridge_injected_ralt_to_volume(true, "RAlt")));
+        RECORDING_SESSION.store(true, Ordering::SeqCst);
+        assert_eq!(bridge_injected_ralt_to_volume(false, "RAlt"), "Volume_Up");
+        RECORDING_SESSION.store(false, Ordering::SeqCst);
+        assert_eq!(bridge_injected_ralt_to_volume(false, "RAlt"), "RAlt");
+        assert_eq!(bridge_injected_ralt_to_volume(true, "Volume_Up"), "Volume_Up");
     }
 }

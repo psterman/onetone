@@ -155,11 +155,40 @@ assert.ok(/mode:'voiceOpenApp'/.test(bindings), 'add app uses voiceOpenApp picke
 assert.ok(/findAppScenarioForIdentity/.test(bindings), 'add app claims running identity');
 assert.ok(/voice-open-app-btn is-primary/.test(wakeRender), 'open-app cards use primary record/test CTA');
 
+const tab2Mvp = read('src/js/features/voice/voice-tab2-mvp.js');
+assert.ok(/function formatFollowLine/.test(tab2Mvp), 'tab2 formatFollowLine');
+assert.ok(/function renderHero/.test(tab2Mvp), 'tab2 renderHero');
+assert.ok(/openStandaloneQsVoicePractice/.test(tab2Mvp), 'tab2 local CTA opens standalone practice');
+assert.ok(/habit-agent-workflow-test/.test(tab2Mvp), 'tab2 agent CTA uses workflow context');
+assert.ok(/onTryLocalClick/.test(tab2Mvp), 'tab2 local try handler');
+assert.ok(/resolveTriggerHoldProfile/.test(tab2Mvp), 'tab2 honest CTA resolver');
+assert.ok(/resolveAgentActivationTarget/.test(tab2Mvp), 'tab2 agent fallback resolver');
+assert.ok(/voiceTab2AgentHint/.test(tab2Mvp), 'tab2 agent hint render');
+assert.ok(html.includes('id="voiceTab2AgentHint"'), 'html agent hint');
+assert.ok(html.includes('id="voiceTab2FollowRow"'), 'html follow row');
+assert.ok(html.includes('id="voiceTab2TryLocal"'), 'html local try');
+assert.ok(html.includes('id="voiceTab2TryAgent"'), 'html agent try');
+assert.ok(html.includes('id="voiceTab2VoiceGate"'), 'html voice gate');
+assert.ok(html.includes('id="voiceTab2HoldNote"'), 'html hold note');
+assert.ok(html.includes('voice-tab2-advanced'), 'html advanced details');
+assert.ok(html.includes('voiceTab2AdvancedSummary'), 'html advanced summary');
+assert.ok(html.includes('id="voiceTab2AdvancedBadge"'), 'html advanced badge');
+assert.ok(/resolveOpenAppRows/.test(wakeRender), 'open-app roster still in wake-render');
+assert.ok(!html.includes('voice-tab2-approval'), 'no tab2 approval banner id');
+
 const picker = read('src/js/features/mapping/app-behavior-rules.js');
 assert.ok(/function isCallbackPicker/.test(picker), 'picker callback mode covers voice add');
 assert.ok(/appPickerVoiceTitle/.test(picker), 'voice picker uses dedicated copy');
 
 const i18n = read('src/js/core/i18n.js');
+assert.ok(/voiceTab2TryCtaTap:\s*['"]用 \{trigger\} 试说['"]/.test(i18n), 'tab2 tap CTA i18n');
+assert.ok(/voiceTab2HoldUnsupported:/.test(i18n), 'tab2 hold unsupported i18n');
+assert.ok(/voiceTab2VoiceGate:/.test(i18n), 'tab2 voice gate i18n');
+assert.ok(/voiceTab2FollowFgHint:/.test(i18n), 'tab2 fg hint i18n');
+assert.ok(/voiceTab2TryLocal:/.test(i18n), 'tab2 local try i18n');
+assert.ok(/voiceTab2TryAgent:/.test(i18n), 'tab2 agent try i18n');
+assert.ok(/voiceTab2FollowTrigger:/.test(i18n), 'tab2 follow trigger i18n');
+assert.ok(/voiceTab2AgentNeedsTrigger:/.test(i18n), 'tab2 agent needs trigger i18n');
 assert.ok(/voiceOpenAppRecord:\s*['"]录制声音口令['"]/.test(i18n), 'record CTA');
 assert.ok(/voiceOpenAppReplay:\s*['"]回听录音['"]/.test(i18n), 'replay CTA');
 assert.ok(/voiceOpenAppTestPrompt:\s*['"]请说出口令，识别后会打开或切换到该应用['"]/.test(i18n), 'test prompt');

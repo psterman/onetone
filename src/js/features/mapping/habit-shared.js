@@ -360,6 +360,15 @@
     var list=arr(model&&model.mappings).filter(function(m){
       return !query||(appName(m)+' '+sceneName(m)).toLowerCase().indexOf(query)>=0;
     });
+    var baseline=diff().findGlobalBaselineMapping?diff().findGlobalBaselineMapping(cfg(),global.OneToneMappingCore):null;
+    var baselineId=baseline&&baseline.id?String(baseline.id):'';
+    if(baselineId){
+      list=list.slice().sort(function(a,b){
+        var ab=String(a&&a.id||'')===baselineId?0:1;
+        var bb=String(b&&b.id||'')===baselineId?0:1;
+        return ab-bb;
+      });
+    }
     var selectedId=model&&model.mapping?model.mapping.id:null;
     var batchOn=wsBatchMode();
     var batchBtn='<button type="button" class="habit-ws-batch-toggle'+(batchOn?' is-active':'')+'" data-habit-batch-toggle aria-pressed="'+(batchOn?'true':'false')+'">'+esc(batchOn?t('habitHubBatchDone','完成批量'):t('habitHubBatchManage','批量管理'))+'</button>';

@@ -67,12 +67,12 @@ pub fn default_vscode_key_for_slot(slot_id: &str) -> &'static str {
 }
 
 /// Cursor: VS Code base + Agent (`Ctrl+I`) + cancel generation.
-/// Soft Pad mic (pushToTalk): Cursor native Voice Mode (`Ctrl+Shift+Space`).
+/// Soft Pad mic (pushToTalk): OneTone voice input target key (ex: `RAlt`).
 pub fn default_cursor_key_for_slot(slot_id: &str) -> &'static str {
     match slot_id {
         "cancel" => "Ctrl+Shift+Backspace",
         "quickChat" => "Ctrl+I",
-        "pushToTalk" => "Ctrl+Shift+Space",
+        "pushToTalk" => "RAlt",
         // Seeded into Cursor keybindings.json as composerMode.plan / composerMode.agent.
         // Ctrl+Alt+Shift+P — Ctrl+Alt+P collides with screenshot / pin shortcuts.
         "plan" => "Ctrl+Alt+Shift+P",
@@ -366,7 +366,7 @@ mod tests {
         );
         assert_eq!(
             default_key_for_scenario("cursor-chat", "pushToTalk"),
-            "Ctrl+Shift+Space"
+            "RAlt"
         );
         assert!(build_vscode_chord_bindings("zh-CN").iter().any(|b| {
             b.trigger_type == "key" && b.slot_id == "quickChat" && b.trigger_binding.is_empty()

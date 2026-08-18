@@ -181,6 +181,23 @@ pub fn mark_voice_wake_key_sent(state: &AppState) {
     *state.voice_wake_last_key_at.lock() = Some(Instant::now());
 }
 
+pub fn arm_external_voice_send_suppression(state: &AppState, window_ms: u64) {
+    *state.external_voice_send_suppressed_until.lock() =
+        Some(Instant::now() + Duration::from_millis(window_ms.max(1)));
+}
+
+pub fn external_voice_send_suppressed(state: &AppState) -> bool {
+    if *state.recording.lock() {
+        return true;
+    }
+    state
+        .external_voice_send_suppressed_until
+        .lock()
+        .as_ref()
+        .map(|until| Instant::now() < *until)
+        .unwrap_or(false)
+}
+
 /// True when the voice shortcut must stay pressed until release (Codex dictation).
 pub fn is_hold_to_talk_voice_key(key: &str) -> bool {
     crate::key_chord::is_hold_to_talk_chord(key)

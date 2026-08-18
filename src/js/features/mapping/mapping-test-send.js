@@ -330,12 +330,14 @@
     }
   }
 
-  function runInvoke(target){
+  function runInvoke(target, context){
     var invoke=window.__vp_invoke__;
     if(!invoke) return Promise.reject(new Error('invoke unavailable'));
+    var agentWorkflow=context==='habit-agent-workflow-test';
     return invoke('cmd_test_send',window.__vp_tauri_args__({
       mapping_id:target.mappingId||null,
-      target_key:target.targetKey||null
+      target_key:target.targetKey||null,
+      agent_workflow:agentWorkflow
     }));
   }
 
@@ -787,7 +789,7 @@
       resetState();
       renderSendButton();
     }
-    if(context==='habit-activation-test'){
+    if(context==='habit-activation-test'||context==='habit-agent-workflow-test'){
       activationTestCallback=opts&&typeof opts.onResult==='function'?opts.onResult:null;
       activationTestSilent=!!(opts&&opts.silent);
     }else{
@@ -882,7 +884,7 @@
       });
       return;
     }
-    runInvoke(target)
+    runInvoke(target,context)
       .then(function(msg){
         if(sendState!=='sending') return;
         handleResult(msg&&typeof msg==='object'?msg:{ok:false,reason:'send_failed'});

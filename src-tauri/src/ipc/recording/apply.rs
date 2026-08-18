@@ -53,8 +53,17 @@ pub(crate) fn apply_trigger_capture(
         if !device.trim().is_empty() {
             m.trigger_device = crate::device_identity::stable_id_from_path(device.trim());
         }
-        if is_peripheral_trigger_key(raw) || is_volume_hotkey(raw) {
+        if is_volume_hotkey(raw) {
             apply_peripheral_autotrigger_with_device(m, raw, device);
+        } else if is_peripheral_trigger_key(raw) {
+            // Side buttons / HID keep their physical name — AutoTrigger is volume-only.
+            let canon = canonical_trigger(raw);
+            m.trigger_key = canon.clone();
+            m.source_key = canon;
+            m.trigger_source = Some(make_peripheral_mixed_source_with_device(
+                &[raw.to_string()],
+                device,
+            ));
         } else if captured.contains('+') || raw.contains('+') {
             let stored = if captured.contains('+') {
                 captured.to_string()

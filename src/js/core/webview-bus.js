@@ -249,6 +249,17 @@
       if(msg.type==='mvp_kws_download'&&global.OneToneVoiceWake&&global.OneToneVoiceWake.handleKwsDownloadMessage){
         global.OneToneVoiceWake.handleKwsDownloadMessage(msg);
       }
+      if(msg.type==='mvp_scheme_select_blocked'){
+        var reason=String(msg.reason||'').trim();
+        var toastFn=global.OneToneAppToast&&global.OneToneAppToast.show;
+        if(toastFn){
+          if(reason==='recording'){
+            toastFn(hooks().t('schemeSelectBlockedRecording')||'正在录制快捷键，请先取消录制再切换习惯','warn');
+          }else{
+            toastFn(hooks().t('schemeSelectBlocked')||'暂时无法切换习惯','warn');
+          }
+        }
+      }
       if(msg.type==='mvp_scheme_switched'){
         // Light runtime merge only — full applyMvpInit remounts editors and 假死's home switch.
         if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.applySchemeSwitchedRuntime==='function'){

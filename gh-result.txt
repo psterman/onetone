@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "status": 403,
+    "body": {
+      "message": "API rate limit exceeded for 134.195.101.180. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)",
+      "documentation_url": "https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting"
+    }
+  },
+  "meta_short": {
+    "visibility": "public",
+    "license": null,
+    "message_if_error": "API rate limit exceeded for 134.195.101.180. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)"
+  },
+  "readme_status": 403,
+  "readme_error": "{\"message\":\"API rate limit exceeded for 134.195.101.180. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)\",\"documentation_url\":\"https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting\"}\n",
+  "tree_status": 403,
+  "tree_error": "{\"message\":\"API rate limit exceeded for 134.195.101.180. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)\",\"documentation_url\":\"https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting\"}\n",
+  "pkg_status": 403,
+  "pkg_error": "{\"message\":\"API rate limit exceeded for 134.195.101.180. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)\",\"documentation_url\":\"https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting\"}\n",
+  "releases_status": 403,
+  "releases_error": "{\"message\":\"API rate limit exceeded for 134.195.101.180. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)\",\"documentation_url\":\"https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting\"}\n",
+  "tags_status": 403,
+  "tags_error": "{\"message\":\"API rate limit exceeded for 134.195.101.180. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)\",\"documentation_url\":\"https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting\"}\n",
+  "branches_status": 403,
+  "branches_error": "{\"message\":\"API rate limit exceeded for 134.195.101.180. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)\",\"documentation_url\":\"https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting\"}\n"
+}

@@ -566,6 +566,9 @@
     renderCompactWake(vm);
     renderCustomPhrases(vm);
     renderOutputSummon(vm);
+    if(global.OneToneVoiceTab2Mvp&&global.OneToneVoiceTab2Mvp.renderHero){
+      global.OneToneVoiceTab2Mvp.renderHero();
+    }
     renderInputTarget(vm);
     syncWakePhraseKind();
     syncWakeInputCount();

@@ -2287,7 +2287,7 @@ mod tests {
         assert!(result.changed);
         assert_eq!(result.mapping_id.as_deref(), Some("cursor-soft-pad"));
         let ptt = agent_key_binding_for_slot(&cfg.mappings[1], "pushToTalk").unwrap();
-        assert_eq!(ptt.trigger_binding, "Ctrl+Shift+Space");
+        assert_eq!(ptt.trigger_binding, "RAlt");
         assert!(micro_key_routable(&cfg.mappings[1], cfg.mappings[1].codex_micro_pad.as_ref().unwrap(), "ACT10"));
     }
 
@@ -2352,7 +2352,7 @@ mod tests {
         let result = ensure_codex_pad_ready_for(&mut cfg, "zh-CN", Some(CURSOR_APP_TARGET_ID));
         assert!(result.changed);
         let ptt = agent_key_binding_for_slot(&cfg.mappings[0], "pushToTalk").unwrap();
-        assert_eq!(ptt.trigger_binding, "Ctrl+Shift+Space");
+        assert_eq!(ptt.trigger_binding, "RAlt");
     }
 
     #[test]

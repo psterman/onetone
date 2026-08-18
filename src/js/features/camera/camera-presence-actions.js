@@ -1681,6 +1681,8 @@
         logPresence('key fail '+targetKey+' reason='+reason);
         if(reason==='paused'){
           toast(t('cameraPresenceKeyPaused','监听已暂停，无法注入按键'));
+        }else if(reason==='suppressed'){
+          setSkipReason(t('cameraPresenceKeySuppressed','当前正在录制或切换输入目标，已跳过本次摄像头注入'),'key');
         }else if(reason==='self_foreground'){
           toast(t('cameraPresenceKeySelfFg','请先点到记事本等要听写的窗口，再摇头/眨眼（OneTone 在前台时不会发送 Alt）'));
           setSkipReason(t('cameraPresenceKeySelfFgShort','目标窗口不在前台'),'key');

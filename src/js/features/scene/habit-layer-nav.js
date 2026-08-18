@@ -45,6 +45,9 @@
     if((ui().settingsPanel||'')==='voiceWake'&&global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
       global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
     }
+    if((ui().settingsPanel||'')==='voiceWake'&&global.OneToneVoiceTab2Mvp&&global.OneToneVoiceTab2Mvp.renderHero){
+      global.OneToneVoiceTab2Mvp.renderHero();
+    }
   }
 
   function setHabitLayer(layer,opts){

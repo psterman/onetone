@@ -159,11 +159,12 @@
   };
 
   /** Cursor IDE: Agent `Ctrl+I`, cancel generation.
-   * Soft Pad mic: Cursor native Voice Mode (Ctrl+Shift+Space). */
+   * Soft Pad mic follows OneTone voice input target key (default `RAlt`). */
   var CURSOR_DEFAULT_KEY_BY_SLOT = Object.assign({}, VSCODE_EDITOR_KEY_BY_SLOT, {
     cancel: 'Ctrl+Shift+Backspace',
     quickChat: 'Ctrl+I',
-    pushToTalk: 'Ctrl+Shift+Space',
+    // Cursor voice input should follow OneTone configured IME/voice key, not Cursor native toggle.
+    pushToTalk: 'RAlt',
     // Avoid Ctrl+Alt+P — clashes with screenshot / pin tools.
     plan: 'Ctrl+Alt+Shift+P',
     switchAgent: 'Ctrl+Alt+.'
@@ -277,6 +278,10 @@
   }
 
   function defaultKeyForMapping(m, slotId) {
+    if (m && String((m.appTargetId) || '').trim() === 'cursor-chat' && String(slotId || '').trim() === 'pushToTalk') {
+      var target = String(m.targetKey || '').trim();
+      if (target) return target;
+    }
     var map = defaultKeyMapForApp((m && m.appTargetId) || '');
     if (map) return map[String(slotId || '').trim()] || '';
     return defaultKeyForSlot(slotId);

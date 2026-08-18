@@ -1208,8 +1208,10 @@
       }catch(_){}
       var id=desiredFollowFgSceneId(res);
       if(!id) return;
-      if(global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene){
-        global.OneToneSceneActivate.activateScene(id,{source:'foreground'});
+      var act=global.OneToneSceneActivate;
+      if(act&&act.isManualScenePinned&&act.isManualScenePinned()) return;
+      if(act&&act.activateScene){
+        act.activateScene(id,{source:'foreground'});
       }
     }).catch(function(){});
   }

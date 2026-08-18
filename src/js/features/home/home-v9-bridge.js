@@ -150,6 +150,12 @@
     if(!st||!st.config) return null;
     var cfg=st.config;
     cfg.mappings=Array.isArray(cfg.mappings)?cfg.mappings:[];
+    var diff=global.OneToneHabitOverrideDiff;
+    var core=global.OneToneMappingCore;
+    if(diff&&diff.ensureGlobalBaselineMapping){
+      var ensured=diff.ensureGlobalBaselineMapping(cfg,core);
+      if(ensured&&ensured.mapping) return ensured.mapping;
+    }
     if(cfg.mappings.length){
       var activeId=String(cfg.activeSceneId||'').trim();
       var active=activeId?cfg.mappings.find(function(x){ return x&&x.id===activeId; }):null;

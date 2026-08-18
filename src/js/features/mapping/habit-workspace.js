@@ -91,7 +91,7 @@
   function mappings(){ return arr(cfg().mappings).filter(function(m){ return m&&m.id; }); }
   function byId(id){ return mappings().find(function(m){ return String(m.id)===String(id); })||null; }
   function isApp(m){ return !!(diff().isAppScenarioMapping&&diff().isAppScenarioMapping(m)); }
-  function baseline(){ return diff().findGlobalBaselineMapping?diff().findGlobalBaselineMapping(cfg(),global.OneToneMappingCore):mappings()[0]||null; }
+  function baseline(){ return diff().findGlobalBaselineMapping?diff().findGlobalBaselineMapping(cfg(),global.OneToneMappingCore):null; }
 
   function normalizeSelection(){
     var list=mappings();
@@ -333,9 +333,20 @@
       }
     },0);
   }
+  function persistBaselineIfCreated(created){
+    if(!created) return;
+    var persist=global.OneToneConfigPersist;
+    if(persist&&persist.saveAsync) persist.saveAsync({source:'ensureBaseline'});
+    else if(persist&&persist.save) persist.save();
+  }
+
   function render(){
     var host=ensureShell();
     if(!host) return;
+    var diffApi=diff();
+    if(diffApi&&diffApi.ensureGlobalBaselineMapping){
+      persistBaselineIfCreated(diffApi.ensureGlobalBaselineMapping(cfg(),global.OneToneMappingCore).created);
+    }
     bindEvents(host);
     captureWorkspaceScroll();
     if(!ui().habitExperienceMode) ui().habitExperienceMode=prefs()?prefs().getMode():'novice';

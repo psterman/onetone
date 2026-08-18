@@ -1,11 +1,121 @@
-﻿(function(global){
+(function(global){
   'use strict';
   var OneToneMappingCore=global.OneToneMappingCore;
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
   function Rec(){ return global.OneToneMappingRecording; }
   function hooks(){ return global.__vp_mapping_recording_input_hooks__ || {}; }
+  function probePush(src, kind, key, note){
+    var probe=global.OneToneRecordProbe;
+    if(probe&&probe.push) probe.push(src, kind, key, note);
+  }
   var cap={pendingModifier:'',mods:{ctrl:false,shift:false,alt:false,meta:false},modSide:{ctrl:'',shift:'',alt:'',meta:''}};
+
+  // Watchdog timer: if we dispatched a hardware capture but the backend
+  // never confirms via mvp_key_captured within RECONCILE_GRACE_MS, surface
+  // a toast that explains what may have gone wrong. The bridge case
+  // (Bluetooth RAlt → Volume_Up) and the side-button race both benefit from
+  // this — without it, the user just stares at "未设置" with no feedback.
+  var RECONCILE_GRACE_MS=1800;
+  var reconcileWatchdog=null;
+  var reconcileAwaiting=false;
+  var lastHardwarePressKey='';
+  var lastHardwarePressDevice='';
+  var recGen=-1;
+  var sawVolumeToken=false;
+  function syncPeripheralSession(){
+    var gen=Rec()&&Rec().captureGen?Rec().captureGen():0;
+    if(gen!==recGen){
+      recGen=gen;
+      sawVolumeToken=false;
+    }
+  }
+  function isRecordUiLeakKey(key,code){
+    var k=String(key||'');
+    var c=String(code||'');
+    return k==='Enter'||c==='Enter'||c==='NumpadEnter'||k==='Tab'||c==='Tab';
+  }
+  function tryCommitPeripheralFromEvent(e){
+    if(!e||(Rec().mode()!=='trigger'&&Rec().mode()!=='agentBinding')) return false;
+    syncPeripheralSession();
+    var key=String(e.key||'');
+    var code=String(e.code||'');
+    var physical=webEventToPhysicalKey(key,code)||key;
+    var delegated=Rec().isHardwareDelegatedTriggerKey(key,code)
+      ||(Rec().isHardwareCaptureToken&&Rec().isHardwareCaptureToken(physical));
+    if(!delegated) return false;
+    e.preventDefault();
+    e.stopPropagation();
+    if(/volume/i.test(key+' '+code+' '+physical)) sawVolumeToken=true;
+    probePush('fe','commit',physical,e.type||'');
+    if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(physical);
+    hooks().pushLog(t('triggerRecordDetected')+hooks().friendlyKeyName(physical));
+    hooks().armTriggerPeripheralGuard(450);
+    noteHardwarePressAwaitingAck(physical);
+    Rec().finishDetectedHardwareTrigger(physical);
+    return true;
+  }
+  function clearReconcileWatchdog(){
+    reconcileAwaiting=false;
+    if(reconcileWatchdog){
+      clearTimeout(reconcileWatchdog);
+      reconcileWatchdog=null;
+    }
+  }
+  function rememberHardwarePress(key, device){
+    const k=String(key||'').trim();
+    if(k) lastHardwarePressKey=k;
+    if(device!=null) lastHardwarePressDevice=String(device||'');
+  }
+  function invokeFrontendKeydownBackup(key){
+    const physical=String(key||'').trim();
+    if(!physical) return Promise.resolve(false);
+    const ipc=global.OneToneIpc;
+    const invoke=ipc&&typeof ipc.invoke==='function'?ipc.invoke.bind(ipc):global.__vp_invoke__;
+    if(!invoke) return Promise.resolve(false);
+    const payload=global.__vp_tauri_args__?global.__vp_tauri_args__({
+      key:physical,
+      mappingId:Rec().mappingId()||'',
+      mode:Rec().mode()||'trigger'
+    }):{key:physical,mappingId:Rec().mappingId()||'',mode:Rec().mode()||'trigger'};
+    return invoke('cmd_frontend_keydown',payload).then(function(){ return true; }).catch(function(err){
+      hooks().pushLog('[record] cmd_frontend_keydown backup failed: '+String(err&&err.message||err||'unknown'));
+      return false;
+    });
+  }
+  function retryPeripheralCaptureFromWatchdog(){
+    if(Rec().mode()!=='trigger'&&Rec().mode()!=='agentBinding') return Promise.resolve(false);
+    const preview=String(Rec().previewKey&&Rec().previewKey()||'').trim();
+    const seen=String(lastHardwarePressKey||'').trim();
+    const hw=(Rec().resolveHardwareTriggerFromSeen&&Rec().resolveHardwareTriggerFromSeen(seen||preview))
+      ||seen||preview;
+    if(!hw||!(Rec().isHardwareCaptureToken&&Rec().isHardwareCaptureToken(hw))) return Promise.resolve(false);
+    hooks().pushLog('[record] watchdog retry peripheral key='+hw);
+    probePush('fe','retry',hw,'watchdog');
+    Rec().finishDetectedHardwareTrigger(hw, lastHardwarePressDevice||'');
+    if(Rec().mode()==='none') return Promise.resolve(true);
+    return invokeFrontendKeydownBackup(hw);
+  }
+  function armReconcileWatchdog(){
+    clearReconcileWatchdog();
+    reconcileAwaiting=true;
+    reconcileWatchdog=setTimeout(function(){
+      reconcileWatchdog=null;
+      if(!reconcileAwaiting||Rec().mode()==='none') return;
+      reconcileAwaiting=false;
+      retryPeripheralCaptureFromWatchdog().then(function(ok){
+        if(ok||Rec().mode()==='none') return;
+        hooks().toast(t('recordWatchdogNoAck','检测到按键信号，但未能完成录制。请再按一次鼠标侧键或蓝牙音量键，并保持 OneTone 窗口在前台。'));
+        hooks().pushLog('[record] watchdog: hardware press not confirmed after '+RECONCILE_GRACE_MS+'ms');
+        probePush('fe','watchdog', lastHardwarePressKey||'', String(RECONCILE_GRACE_MS));
+      });
+    },RECONCILE_GRACE_MS);
+  }
+  function noteHardwarePressAwaitingAck(key, device){
+    if(Rec().mode()!=='trigger'&&Rec().mode()!=='agentBinding') return;
+    rememberHardwarePress(key, device);
+    armReconcileWatchdog();
+  }
   function containsLeftMouse(key){
     var util=global.OneToneAppKeyUtils;
     if(util&&util.containsLeftMouseToken) return util.containsLeftMouseToken(key);
@@ -77,8 +187,17 @@
     if(c==='ShiftRight') return 'RShift';
     if(c==='MetaLeft') return 'LWin';
     if(c==='MetaRight') return 'RWin';
+    if(k==='Control'||k==='Ctrl') return sideFromCode(c,'LCtrl','RCtrl');
+    if(k==='Alt') return sideFromCode(c,'LAlt','RAlt');
+    if(k==='Shift') return sideFromCode(c,'LShift','RShift');
     if(k && !['Control','Shift','Alt','Meta','OS'].includes(k)) return k;
     return c || k;
+  }
+
+  function sideFromCode(code,left,right){
+    if(String(code||'')==='ControlRight'||String(code||'')==='AltRight'||String(code||'')==='ShiftRight'||String(code||'')==='MetaRight') return right;
+    if(String(code||'')==='ControlLeft'||String(code||'')==='AltLeft'||String(code||'')==='ShiftLeft'||String(code||'')==='MetaLeft') return left;
+    return left;
   }
 
   function normalizeStandaloneModifier(code){
@@ -116,7 +235,22 @@
   }
 
   function isTargetModifierToken(tok){
-    return ['LCtrl','RCtrl','LShift','RShift','LAlt','RAlt','LWin','RWin','Ctrl','Shift','Alt','Win'].indexOf(String(tok||''))>=0;
+    return ['LCtrl','RCtrl','LShift','RShift','LAlt','RAlt','LWin','RWin','Ctrl','Control','Shift','Alt','Win','Meta'].indexOf(String(tok||''))>=0;
+  }
+
+  function collapseModifierAlias(parts){
+    var alias={
+      Control:'LCtrl',Ctrl:'LCtrl',LCtrl:'LCtrl',RCtrl:'RCtrl',
+      Alt:'LAlt',LAlt:'LAlt',RAlt:'RAlt',
+      Shift:'LShift',LShift:'LShift',RShift:'RShift',
+      Win:'LWin',LWin:'LWin',RWin:'RWin'
+    };
+    var out=[];
+    parts.forEach(function(p){
+      var canon=alias[p]||p;
+      if(out.indexOf(canon)<0) out.push(canon);
+    });
+    return out;
   }
 
   function sanitizeTargetCombo(combo){
@@ -128,9 +262,11 @@
       if(p==='Shift'&&side.shift) return side.shift;
       if(p==='Alt'&&side.alt) return side.alt;
       if(p==='Ctrl'&&side.ctrl) return side.ctrl;
+      if(p==='Control'&&side.ctrl) return side.ctrl;
       if(p==='Win'&&side.meta) return side.meta;
       return p;
     });
+    parts=collapseModifierAlias(parts);
     const out=[];
     parts.forEach(function(p){
       if(out.indexOf(p)<0) out.push(p);
@@ -143,6 +279,10 @@
 
   function isModifierCode(code){
     return ['ControlLeft','ControlRight','ShiftLeft','ShiftRight','AltLeft','AltRight','MetaLeft','MetaRight'].includes(String(code||''));
+  }
+  function isModifierEvent(key, code){
+    if(isModifierCode(code)) return true;
+    return ['Control','Ctrl','Shift','Alt','Meta'].indexOf(String(key||''))>=0;
   }
   function resetTargetCapture(){
     cap.pendingModifier='';
@@ -167,6 +307,33 @@
     return false;
   }
 
+  function isSpuriousGhostCombo(combo){
+    const raw=String(combo||'').split('+').map(function(p){ return p.trim(); }).filter(Boolean);
+    const parts=collapseModifierAlias(raw);
+    if(!parts.length) return false;
+    const nonMod=parts.filter(function(p){ return !isTargetModifierToken(p); });
+    if(nonMod.length===1&&nonMod[0]==='Space'&&(parts.length>=3||raw.length>=3)) return true;
+    if(raw.length>=2&&parts.every(isTargetModifierToken)) return true;
+    return false;
+  }
+
+  function isRecognitionKeyEcho(key){
+    const m=OneToneMappingCore.recording()||OneToneMappingCore.byId(Rec().mappingId())||OneToneMappingCore.selected();
+    if(!m) return false;
+    const tgt=hooks().normalizeTriggerKey(OneToneMappingCore.editorTarget(m)||m.targetKey||'');
+    const k=hooks().normalizeTriggerKey(key);
+    return !!(tgt&&k&&tgt===k);
+  }
+
+  function tryFinishHardwareTriggerFromSeen(seen, device){
+    const hw=Rec().resolveHardwareTriggerFromSeen?Rec().resolveHardwareTriggerFromSeen(seen):'';
+    if(!hw) return false;
+    hooks().armTriggerPeripheralGuard(450);
+    noteHardwarePressAwaitingAck(hw, device||'');
+    Rec().finishDetectedHardwareTrigger(hw, device||'');
+    return true;
+  }
+
   function handleKeyDown(e){
     if(Rec().mode()==='none'){
     const physical=webEventToPhysicalKey(e.key,e.code);
@@ -178,22 +345,25 @@
     }
     }
     if(Rec().mode()==='trigger'){
+    syncPeripheralSession();
+    if(tryCommitPeripheralFromEvent(e)) return;
     const code=String(e.code||'');
     const key=String(e.key||'');
+    if(isRecordUiLeakKey(key,code)){
+    e.preventDefault();
+    probePush('fe','skip',key||code,'ui-leak');
+    return;
+    }
+    if(Date.now()<hooks().triggerPeripheralGuardUntil()){
+    if(!Rec().isHardwareDelegatedTriggerKey(key,code)) return;
+    }
     if(Date.now()<hooks().triggerPeripheralGuardUntil()&&isTargetModifierToken(normalizeStandaloneModifier(code)||normalizeKeyFromCode(code,key)||key)){
     return;
     }
     e.preventDefault();
     e.stopPropagation();
-    if(Rec().isHardwareDelegatedTriggerKey(key,code)){
-    const physical=webEventToPhysicalKey(key,code)||key;
-    if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(physical);
-    hooks().pushLog(t('triggerRecordDetected')+hooks().friendlyKeyName(physical));
-    Rec().finishDetectedHardwareTrigger(physical);
-    return;
-    }
     const mods={ctrl:e.ctrlKey,shift:e.shiftKey,alt:e.altKey,meta:e.metaKey};
-    if(isModifierCode(code)){
+    if(isModifierEvent(key,code)){
     cap.pendingModifier=code;
     cap.mods=mods;
     noteModifierSide(code);
@@ -206,6 +376,18 @@
     const main=normalizeKeyFromCode(code, key);
     const combo=normalizeTargetCombination(mods, main, cap.modSide);
     if(combo){
+    if((main==='Space'||code==='Space')&&mods.ctrl&&mods.shift){
+    probePush('fe','skip',combo,'ghost-media');
+    return;
+    }
+    if(isSpuriousGhostCombo(combo)){
+    probePush('fe','skip',combo,'ghost-combo');
+    return;
+    }
+    if(sawVolumeToken){
+    probePush('fe','skip',combo,'after-volume');
+    return;
+    }
     if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(combo);
     Rec().finishFrontendTrigger(combo);
     }
@@ -340,6 +522,14 @@
     const combo=sanitizeTargetCombo(normalizeTargetCombination(mods, btn, cap.modSide));
     if(rejectLeftMouseRecording(Rec().mode(), combo, btn, null)) return;
     if(Rec().mode()==='trigger'){
+    if(Rec().isHardwareCaptureToken(btn)){
+    if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(btn);
+    hooks().armTriggerPeripheralGuard(450);
+    noteHardwarePressAwaitingAck(btn);
+    Rec().finishDetectedHardwareTrigger(btn);
+    return;
+    }
+    if(isSpuriousGhostCombo(combo)) return;
     if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(combo);
     Rec().finishFrontendTrigger(combo);
     return;
@@ -349,6 +539,7 @@
 
   function handleKeyUp(e){
     if(Rec().mode()!=='target'&&Rec().mode()!=='schemeSwitch'&&Rec().mode()!=='mappingSwitch'&&Rec().mode()!=='trigger'&&Rec().mode()!=='agentBinding') return;
+    if(tryCommitPeripheralFromEvent(e)) return;
     const code=String(e.code||'');
     if(!isModifierCode(code)) return;
     if(cap.pendingModifier===code){
@@ -359,6 +550,19 @@
     else if(Rec().mode()==='trigger'){
     e.preventDefault();
     e.stopPropagation();
+    if(modifierName==='RAlt'){
+      // 02 识别 defaults to RAlt. A real volume key already arrived as
+      // AudioVolume* — extra RAlt from the dongle must not overwrite it.
+      if(sawVolumeToken||isRecognitionKeyEcho('RAlt')){
+        probePush('fe','skip','RAlt',sawVolumeToken?'after-volume':'recognition-echo');
+        cap.pendingModifier='';
+        return;
+      }
+      Rec().finishDetectedHardwareTrigger('Volume_Up');
+      cap.pendingModifier='';
+      return;
+    }
+    if(isTargetModifierToken(modifierName)) return;
     if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(modifierName);
     Rec().finishFrontendTrigger(modifierName);
     }
@@ -380,15 +584,43 @@
   function handleWebViewMessage(msg){
     if(!msg||typeof msg!=='object') return false;
     const type=msg.type||'';
+    if(type==='mvp_record_probe'){
+    probePush('rs', msg.stage||'probe', msg.key||'', msg.note||'');
+    return true;
+    }
+    if(type==='mvp_record_echo'){
+    clearReconcileWatchdog();
+    probePush('rs','echo', msg.key||'', 'recognition_key_echo');
+    hooks().toast(t('recordTriggerMatchesTarget','这是「语音快捷键」，不能用作触发键。请按鼠标侧键或蓝牙音量键，或先在右侧修改识别键。'));
+    hooks().pushLog('[record] echo rejected key='+String(msg.key||''));
+    return true;
+    }
     if(type==='mvp_record_rejected'){
     var reason=String(msg.reason||'');
+    probePush('rs','reject', msg.key||'', reason);
     hooks().toast(reason.indexOf('left_mouse')>=0||reason.indexOf('mouse')>=0?t('leftMouseRejected'):t('whitelistRejected'));
     Rec().cancel();
     return true;
     }
     if(type==='mvp_record_seen'){
+    probePush('rs','seen', msg.key||'', msg.device||'');
     if(Rec().mode()!=='none') hooks().playSoundCue('record');
     const seen=msg.key||'?';
+    try{
+      const mappingId=String(msg.mappingId||'').trim();
+      const m=(mappingId && global.OneToneMappingCore && global.OneToneMappingCore.byId)
+        ? global.OneToneMappingCore.byId(mappingId)
+        : null;
+      const isCursor=!!(m && String(m.appTargetId||'').trim()==='cursor-chat');
+      if(isCursor && hooks().pushLog){
+        hooks().pushLog(
+          '[debug][cursor-record] mvp_record_seen '+
+          'mode='+String(Rec().mode()||'')+' '+
+          'key='+String(msg.key||'')+' '+
+          'device='+(msg.device||'')
+        );
+      }
+    }catch(_){}
     if(Rec().mode()==='trigger'){
     if(rejectLeftMouseRecording('trigger', seen, seen, null)) return true;
     const preview=Rec().previewCaptureKey('trigger',seen);
@@ -410,9 +642,11 @@
     if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(seen);
     }
     hooks().pushLog(t('triggerRecordDetected')+hooks().friendlyKeyName(seen));
-    if(Rec().mode()==='trigger' && Rec().isHardwareCaptureToken(seen)){
-    hooks().armTriggerPeripheralGuard(450);
-    Rec().finishDetectedHardwareTrigger(seen, msg.device||'');
+    if(Rec().mode()==='trigger'){
+    if(Rec().isHardwareCaptureToken(seen)||(Rec().resolveHardwareTriggerFromSeen&&Rec().resolveHardwareTriggerFromSeen(seen))){
+      noteHardwarePressAwaitingAck(seen, msg.device||'');
+    }
+    tryFinishHardwareTriggerFromSeen(seen, msg.device||'');
     }
     if(Rec().mode()==='agentBinding' && Rec().isHardwareCaptureToken(seen)){
     Rec().finishAgentBinding(seen);
@@ -440,8 +674,28 @@
     return true;
     }
     if(type==='mvp_key_captured'){
+    clearReconcileWatchdog();
+    probePush('rs','captured', msg.key||'', (msg.mode||'')+' '+(msg.sourceKey||''));
     const key=msg.key||'AutoTrigger';
     const captureMode=msg.mode||'trigger';
+    // Debug: confirm what backend actually captured during Cursor scenario recording.
+    // This helps detect whether XButton1/2 is being rewritten earlier to AltRight/RAlt.
+    try{
+      const mappingId=String(msg.mappingId||'').trim();
+      const m=(mappingId && global.OneToneMappingCore && global.OneToneMappingCore.byId)
+        ? global.OneToneMappingCore.byId(mappingId)
+        : null;
+      const isCursor=!!(m && String(m.appTargetId||'').trim()==='cursor-chat');
+      if(isCursor && hooks().pushLog){
+        hooks().pushLog(
+          '[debug][cursor-record] mvp_key_captured '+
+          'mode='+String(captureMode)+' '+
+          'key='+String(msg.key||'')+' '+
+          'sourceKey='+String(msg.sourceKey||'')+' '+
+          'source='+String(msg.source||'')
+        );
+      }
+    }catch(_){}
     if(captureMode==='agentBinding'){
     if(Rec().mode()==='agentBinding'||Rec().mode()==='trigger'){
     if(rejectLeftMouseRecording('trigger', key, msg.sourceKey||'', msg.source||null)) return true;
@@ -452,17 +706,17 @@
     if(captureMode==='trigger'){
     if(Rec().mode()==='trigger'){
     if(rejectLeftMouseRecording('trigger', key, msg.sourceKey||'', msg.source||null)) return true;
+    if(isRecognitionKeyEcho(key)) return true;
     if(Date.now()<hooks().triggerPeripheralGuardUntil()&&isTargetModifierToken(key)&&key!=='AutoTrigger'){
     return true;
     }
-    Rec().finishTrigger(key, msg.source||null, msg.sourceKey||'', msg.sourceTime||'');
+    Rec().finishTrigger(key, msg.source||null, msg.sourceKey||'', msg.sourceTime||'', {backendCommitted:true});
     }else if(Rec().applyBackendKeyCapture(msg)){
     Rec().clearMappingGuard();
     Rec().clearTimer();
     Rec().clearSnapshot();
     Rec().setMappingId('');
     Rec().setRecording('none');
-    hooks().save();
     hooks().render();
     Rec().notifyOnboardingCapture('trigger',msg);
     }
@@ -479,7 +733,6 @@
     Rec().clearSnapshot();
     Rec().setMappingId('');
     Rec().setRecording('none');
-    hooks().save();
     hooks().render();
     Rec().notifyOnboardingCapture('target',msg);
     if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.onTargetCaptured){
@@ -505,6 +758,9 @@
     tryEscapeRecording:tryEscapeRecording,handleKeyDown:handleKeyDown,
     handleKeyUp:handleKeyUp,handleMouseDown:handleMouseDown,
     handleWebViewMessage:handleWebViewMessage,resetTargetCapture:resetTargetCapture,
-    sanitizeTargetCombo:sanitizeTargetCombo,normalizeKeyFromCode:normalizeKeyFromCode
+    sanitizeTargetCombo:sanitizeTargetCombo,normalizeKeyFromCode:normalizeKeyFromCode,
+    armReconcileWatchdog:armReconcileWatchdog,
+    clearReconcileWatchdog:clearReconcileWatchdog,
+    noteHardwarePressAwaitingAck:noteHardwarePressAwaitingAck
   };
 })((typeof window!=='undefined')?window:globalThis);

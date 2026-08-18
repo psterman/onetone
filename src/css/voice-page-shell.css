@@ -3294,3 +3294,162 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   line-height: 1.5;
   color: var(--on-surface-muted);
 }
+
+/* Tab2 MVP hero (visual A) */
+#settingsPanelVoiceWake .voice-tab2-mvp {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0 8px;
+}
+
+#settingsPanelVoiceWake .voice-tab2-voice-gate {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--warn-soft, #fff6dc);
+  color: var(--warn-strong, #9a6700);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+#settingsPanelVoiceWake .voice-tab2-voice-gate[hidden] {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake .voice-tab2-agent-hint {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelVoiceWake .voice-tab2-agent-hint[hidden] {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake .voice-tab2-hold-note {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelVoiceWake .voice-tab2-hold-note[hidden] {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake .voice-tab2-scenario-note {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+#settingsPanelVoiceWake .voice-tab2-scenario-note[hidden] {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake .voice-tab2-advanced-badge {
+  margin-left: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--warn-soft, #fff6dc);
+  color: var(--warn-strong, #9a6700);
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+#settingsPanelVoiceWake .voice-tab2-advanced-badge[hidden] {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake .voice-tab2-follow-row {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+#settingsPanelVoiceWake .voice-tab2-follow-k {
+  font-weight: 800;
+  color: var(--on-surface-muted);
+  flex-shrink: 0;
+}
+
+#settingsPanelVoiceWake .voice-tab2-follow-v {
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+#settingsPanelVoiceWake .voice-tab2-try-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+#settingsPanelVoiceWake .voice-tab2-try-row .voice-tab2-try-cta {
+  align-self: flex-start;
+  margin-top: 0;
+}
+
+#settingsPanelVoiceWake .voice-tab2-try-cta:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+#settingsPanelVoiceWake .voice-tab2-try-cta {
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+#settingsPanelVoiceWake .voice-tab2-fail-hint {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--warn-soft, #fff6dc);
+  color: var(--warn-strong, #9a6700);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+#settingsPanelVoiceWake .voice-tab2-fail-hint[hidden] {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake .voice-tab2-advanced {
+  margin-top: 4px;
+  border-top: 1px solid var(--outline-variant);
+  padding-top: 8px;
+}
+
+#settingsPanelVoiceWake .voice-tab2-advanced-summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 750;
+  color: var(--on-surface-muted);
+  list-style: none;
+}
+
+#settingsPanelVoiceWake .voice-tab2-advanced-summary::-webkit-details-marker {
+  display: none;
+}
+
+#settingsPanelVoiceWake .voice-tab2-advanced[open] .voice-tab2-advanced-summary {
+  margin-bottom: 8px;
+  color: var(--primary-strong);
+}

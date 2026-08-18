@@ -5,10 +5,25 @@ use tauri::{Emitter, Manager};
 use crate::app_chat_workflow;
 use crate::app_identity;
 use crate::config::{
-    agent_key_binding_for_slot, find_app_scenario_for_foreground, resolve_foreground_workflow_target,
+    agent_key_binding_for_slot, find_app_scenario_for_dispatch,
+    find_preferred_workflow_scenario_for_dispatch, is_app_scenario_mapping,
+    resolve_foreground_workflow_target,
 };
 use crate::ipc::core::push_runtime_with_cue;
 use crate::AppState;
+
+fn push_soft_pad_success(app: &tauri::AppHandle, state: &AppState, mapping_id: &str, app_target: &str) {
+    let Some(kind) = crate::soft_pad_runtime::AgentKind::from_app_target(app_target) else {
+        return;
+    };
+    let mid = mapping_id.trim();
+    if mid.is_empty() {
+        crate::codex_micro_overlay::note_soft_pad_surface_for_agent(kind);
+    } else {
+        crate::codex_micro_overlay::note_soft_pad_surface_for_mapping(mid, kind);
+    }
+    crate::codex_micro_overlay::push_state(app, state);
+}
 
 fn emit_onboarding_trigger_fired(
     window: &tauri::WebviewWindow,
@@ -173,6 +188,7 @@ fn dispatch_app_workflow(
     let trigger_key = trigger_key.to_string();
     let target_key = target_key.to_string();
     let source_key = source_key.to_string();
+    crate::voice_end_runtime::arm_external_voice_send_suppression(state.as_ref(), 3500);
     let _ = std::thread::Builder::new()
         .name("app-workflow".into())
         .spawn(move || {
@@ -183,17 +199,25 @@ fn dispatch_app_workflow(
                 &workflow_target,
                 duration_ms,
             ) {
-                Ok(label) => finish_send_key_dispatch(
-                    &state2,
-                    &window2,
-                    &log_mapping_id,
-                    &trigger_key,
-                    &target_key,
-                    &source_key,
-                    true,
-                    "sent",
-                    &label,
-                ),
+                Ok(label) => {
+                    push_soft_pad_success(
+                        &window2.app_handle(),
+                        state2.as_ref(),
+                        &workflow_mapping_id,
+                        &workflow_target,
+                    );
+                    finish_send_key_dispatch(
+                        &state2,
+                        &window2,
+                        &log_mapping_id,
+                        &trigger_key,
+                        &target_key,
+                        &source_key,
+                        true,
+                        "sent",
+                        &label,
+                    )
+                }
                 Err((prefix, err)) => {
                     let reason = err.reason(&prefix);
                     finish_send_key_dispatch(
@@ -276,7 +300,7 @@ pub(super) fn dispatch_send_key(
     if let Some(fg) = app_identity::foreground_app_identity() {
         let (app_scenario_id, workflow_target) = {
             let cfg = state.cfg.lock();
-            let app_id = find_app_scenario_for_foreground(&cfg, &fg).map(|m| m.id.clone());
+            let app_id = find_app_scenario_for_dispatch(&cfg, &fg).map(|m| m.id.clone());
             let workflow = cfg
                 .find_mapping_by_id(mapping_id)
                 .and_then(|tm| resolve_foreground_workflow_target(tm, &fg));
@@ -291,6 +315,13 @@ pub(super) fn dispatch_send_key(
                     crate::voice_end_runtime::resolve_voice_key_for_mapping(&cfg, m)
                         .unwrap_or_else(|| key.to_string())
                 };
+                let app_target = {
+                    let cfg = state.cfg.lock();
+                    cfg.find_mapping_by_id(app_id)
+                        .map(|m| m.app_target_id.clone())
+                        .unwrap_or_default()
+                };
+                push_soft_pad_success(&window.app_handle(), state.as_ref(), app_id, &app_target);
                 finish_send_key_dispatch(
                     state,
                     window,
@@ -304,11 +335,16 @@ pub(super) fn dispatch_send_key(
                 );
                 return;
             }
-            let app_workflow_target = {
+            // Only fall through to Composer workflow when the trigger mapping has no
+            // native target_key.  When it does (e.g. XButton2 → RAlt for OneTone voice),
+            // the native key should be sent instead.
+            let app_workflow_target = if target_key.trim().is_empty() {
                 let cfg = state.cfg.lock();
                 cfg.find_mapping_by_id(app_id)
                     .map(|m| m.app_target_id.clone())
                     .filter(|t| app_chat_workflow::profile_for(t).is_some())
+            } else {
+                None
             };
             if let Some(target) = app_workflow_target {
                 dispatch_app_workflow(
@@ -343,6 +379,39 @@ pub(super) fn dispatch_send_key(
         }
     }
 
+    // Global trigger with no native target key: summon the configured workflow scene (e.g. Cursor).
+    // If the mapping has a real target_key (e.g. RAlt for system IME), fall through to send it.
+    let try_fallback_workflow = {
+        let cfg = state.cfg.lock();
+        cfg.find_mapping_by_id(mapping_id)
+            .map(|m| !is_app_scenario_mapping(m) && m.target_key.trim().is_empty())
+            .unwrap_or(false)
+    };
+    if try_fallback_workflow {
+        let fallback = {
+            let cfg = state.cfg.lock();
+            find_preferred_workflow_scenario_for_dispatch(&cfg).map(|m| {
+                (m.id.clone(), m.app_target_id.trim().to_string())
+            })
+        };
+        if let Some((scenario_id, target)) = fallback {
+            if app_chat_workflow::profile_for(&target).is_some() {
+                dispatch_app_workflow(
+                    state,
+                    window,
+                    &scenario_id,
+                    &target,
+                    mapping_id,
+                    &trigger_key,
+                    &target_key,
+                    source_key,
+                    duration_ms,
+                );
+                return;
+            }
+        }
+    }
+
     if app_chat_workflow::profile_for(&app_target_id).is_some() {
         match app_chat_workflow::run_for_target_id(
             state,
@@ -352,6 +421,7 @@ pub(super) fn dispatch_send_key(
             duration_ms,
         ) {
             Ok(label) => {
+                push_soft_pad_success(&window.app_handle(), state.as_ref(), mapping_id, &app_target_id);
                 finish_send_key_dispatch(
                     state,
                     window,

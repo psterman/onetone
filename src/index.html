@@ -818,6 +818,18 @@
           <div class="key-flow-section" id="quickKeyWakeSection">
             <div class="habit-layer-shell key-wake-settings" id="keyWakeSettings">
               <section class="habit-key-mapping-section habit-flow-section" id="habitKeyMappingSection">
+                <aside class="record-probe-panel" id="recordProbePanel">
+                  <header class="record-probe-head">
+                    <strong id="recordProbeTitle">录制检测</strong>
+                    <span class="record-probe-status" id="recordProbeStatus">等待按键…</span>
+                    <span class="record-probe-actions">
+                      <button type="button" class="record-probe-btn" id="btnRecordProbeCopy">复制日志</button>
+                      <button type="button" class="record-probe-btn" id="btnRecordProbeClear">清空</button>
+                    </span>
+                  </header>
+                  <p class="record-probe-hint" id="recordProbeHint">开始录制后按侧键 / 音量键，这里会列出 WebView 与 Rust 各自看到的事件。没有新行 = 系统没把按键交给 OneTone。</p>
+                  <ol class="record-probe-log" id="recordProbeLog"></ol>
+                </aside>
                 <div class="keys-workflow-pipeline" id="keysWorkflowPipeline">
                 <section class="flow-nodes" id="keysFlowNodes" role="tablist" aria-label="触发流程导航">
                   <div class="flow-nodes-track" aria-hidden="true">
@@ -1888,18 +1900,36 @@
                       <div id="voiceWakeAcousticHost" class="habit-scenario-voice-command-host voice-wake-acoustic-host"></div>
                     </div>
                     <div class="voice-phrase-kind-pane" id="voiceWakeKindAppPane" data-phrase-kind-pane="app" role="tabpanel" aria-labelledby="btnVoiceWakeKindApp" hidden>
-                      <section class="voice-output-summon-block voice-wake-summon-block voice-wake-flat" id="voiceOutputSummonBlock">
-                        <div class="voice-wake-card-titles">
-                          <p class="voice-phrase-panel-title" id="voiceOutputSummonLbl">打开应用</p>
-                          <p class="voice-wake-card-sub" id="voiceOutputSummonHint">说出已录的口令即可打开或切到该应用</p>
+                      <div class="voice-tab2-mvp" id="voiceTab2Mvp">
+                        <p class="voice-tab2-voice-gate" id="voiceTab2VoiceGate" hidden role="status"></p>
+                        <p class="voice-tab2-follow-row" id="voiceTab2FollowRow">
+                          <span class="voice-tab2-follow-k" id="voiceTab2FollowLbl">联动</span>
+                          <span class="voice-tab2-follow-v" id="voiceTab2FollowText">—</span>
+                        </p>
+                        <p class="voice-tab2-hold-note" id="voiceTab2HoldNote" hidden role="note"></p>
+                        <div class="voice-tab2-try-row" id="voiceTab2TryRow">
+                          <button type="button" class="voice-tab2-try-cta page-status-btn" id="voiceTab2TryLocal">本地试说</button>
+                          <button type="button" class="voice-tab2-try-cta page-status-btn is-primary" id="voiceTab2TryAgent">在 Cursor 试说</button>
                         </div>
-                        <p class="voice-output-summon-empty" id="voiceOutputSummonEmpty">还没有可语音打开的应用。点「添加应用」选一个，再录制口令。</p>
-                        <div class="voice-output-summon-rows" id="voiceOutputSummonChips"></div>
-                        <div class="voice-open-app-actions">
-                          <button type="button" class="page-status-btn is-primary" id="btnVoiceOpenAppAdd">添加应用</button>
-                          <button type="button" class="voice-mode-meta-link" id="btnVoiceOutputSummonManage">在按键页管理</button>
-                        </div>
-                      </section>
+                        <p class="voice-tab2-agent-hint" id="voiceTab2AgentHint" hidden role="note"></p>
+                        <p class="voice-tab2-scenario-note" id="voiceTab2ScenarioNote" hidden role="note"></p>
+                        <p class="voice-tab2-fail-hint" id="voiceTab2FailHint" hidden role="status" aria-live="polite"></p>
+                        <details class="voice-tab2-advanced" id="voiceTab2Advanced">
+                          <summary class="voice-tab2-advanced-summary" id="voiceTab2AdvancedSummary">高级 · 能跟哪些 Agent<span class="voice-tab2-advanced-badge" id="voiceTab2AdvancedBadge" hidden></span></summary>
+                          <section class="voice-output-summon-block voice-wake-summon-block voice-wake-flat" id="voiceOutputSummonBlock">
+                            <div class="voice-wake-card-titles">
+                              <p class="voice-phrase-panel-title" id="voiceOutputSummonLbl">打开应用</p>
+                              <p class="voice-wake-card-sub" id="voiceOutputSummonHint">说出已录的口令即可打开或切到该应用</p>
+                            </div>
+                            <p class="voice-output-summon-empty" id="voiceOutputSummonEmpty">还没有可语音打开的应用。点「添加应用」选一个，再录制口令。</p>
+                            <div class="voice-output-summon-rows" id="voiceOutputSummonChips"></div>
+                            <div class="voice-open-app-actions">
+                              <button type="button" class="page-status-btn is-primary" id="btnVoiceOpenAppAdd">添加应用</button>
+                              <button type="button" class="voice-mode-meta-link" id="btnVoiceOutputSummonManage">在按键页管理</button>
+                            </div>
+                          </section>
+                        </details>
+                      </div>
                     </div>
                     <p class="voice-phrase-custom-lbl sr-only" id="voiceWakeCustomLbl">自定义唤醒词</p>
                     <p class="voice-phrase-custom-lbl sr-only" id="voiceWakeCustomSummary">自定义唤醒词</p>
@@ -4445,28 +4475,6 @@
         <div class="habit-setup-voice-lessons" id="habitSetupVoiceLessons" role="listbox" aria-label="语音教学"></div>
         <div class="habit-setup-voice-lesson-demo" id="habitSetupVoiceLessonDemoHost" hidden></div>
 
-        <div class="habit-setup-voice-practice-stage" id="habitSetupVoicePracticeStage" hidden>
-          <button type="button" class="habit-setup-voice-practice-back" id="btnHabitSetupVoicePracticeBack">← 返回</button>
-          <div class="habit-setup-voice-practice-stage-inner">
-            <div class="habit-setup-badge" id="habitSetupVoicePracticeBadge">语音测试</div>
-            <h3 class="habit-setup-title" id="habitSetupVoicePracticeTitle">对着输入框说</h3>
-            <p class="habit-setup-desc" id="habitSetupVoicePracticeDesc">先说激活词开始听写，听写开始后请主动说结束词完成。</p>
-            <div class="habit-setup-voice-practice-coach" id="habitSetupVoicePracticeCoach" hidden role="status" aria-live="polite"></div>
-            <label class="habit-setup-voice-practice-field" id="habitSetupVoicePracticeField">
-              <span class="habit-setup-voice-practice-field-lbl" id="habitSetupVoicePracticeFieldLbl">练习输入框</span>
-              <textarea class="habit-setup-voice-practice-input" id="habitSetupVoicePracticeInput" rows="4" placeholder="系统语音输入法转化的文字会出现在这里…"></textarea>
-              <span class="habit-setup-voice-practice-caret" aria-hidden="true"></span>
-              <span class="habit-setup-voice-practice-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
-            </label>
-            <div class="habit-setup-voice-practice-success" id="habitSetupVoicePracticeSuccess" hidden>
-              <span class="habit-setup-voice-practice-success-check" aria-hidden="true"></span>
-              <span id="habitSetupVoicePracticeSuccessText">已完成这次语音输入</span>
-            </div>
-            <div id="habitSetupVoicePracticeMount" class="habit-setup-voice-practice-mount"></div>
-            <button type="button" class="btn ghost habit-setup-voice-practice-mark" id="btnHabitSetupVoicePracticeMarkDone">标记为已完成</button>
-          </div>
-        </div>
-
         <div class="habit-setup-actions habit-setup-actions--footer">
           <button type="button" class="btn secondary" id="btnHabitSetupBackFromVoiceLesson">上一步</button>
           <button type="button" class="btn primary" id="btnHabitSetupSaveVoice" disabled>完成设置</button>
@@ -4484,6 +4492,27 @@
       <div class="habit-setup-view habit-setup-screen" id="habitSetupDoneView" hidden>
         <div class="habit-setup-screen-inner habit-setup-screen-inner--left" id="habitSetupDoneBody"></div>
       </div>
+    </div>
+  </div>
+  <div class="habit-setup-voice-practice-stage" id="habitSetupVoicePracticeStage" hidden>
+    <button type="button" class="habit-setup-voice-practice-back" id="btnHabitSetupVoicePracticeBack">← 返回</button>
+    <div class="habit-setup-voice-practice-stage-inner">
+      <div class="habit-setup-badge" id="habitSetupVoicePracticeBadge">语音测试</div>
+      <h3 class="habit-setup-title" id="habitSetupVoicePracticeTitle">对着输入框说</h3>
+      <p class="habit-setup-desc" id="habitSetupVoicePracticeDesc">先说激活词开始听写，听写开始后请主动说结束词完成。</p>
+      <div class="habit-setup-voice-practice-coach" id="habitSetupVoicePracticeCoach" hidden role="status" aria-live="polite"></div>
+      <label class="habit-setup-voice-practice-field" id="habitSetupVoicePracticeField">
+        <span class="habit-setup-voice-practice-field-lbl" id="habitSetupVoicePracticeFieldLbl">练习输入框</span>
+        <textarea class="habit-setup-voice-practice-input" id="habitSetupVoicePracticeInput" rows="4" placeholder="系统语音输入法转化的文字会出现在这里…"></textarea>
+        <span class="habit-setup-voice-practice-caret" aria-hidden="true"></span>
+        <span class="habit-setup-voice-practice-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+      </label>
+      <div class="habit-setup-voice-practice-success" id="habitSetupVoicePracticeSuccess" hidden>
+        <span class="habit-setup-voice-practice-success-check" aria-hidden="true"></span>
+        <span id="habitSetupVoicePracticeSuccessText">已完成这次语音输入</span>
+      </div>
+      <div id="habitSetupVoicePracticeMount" class="habit-setup-voice-practice-mount"></div>
+      <button type="button" class="btn ghost habit-setup-voice-practice-mark" id="btnHabitSetupVoicePracticeMarkDone">标记为已完成</button>
     </div>
   </div>
   <div class="template-pick-overlay" id="templatePickOverlay" aria-hidden="true">
@@ -4709,6 +4738,7 @@
   <script src="js/features/voice/voice-scheme-name-modal.js"></script>
   <script src="js/features/voice/voice-scheme-persist.js"></script>
   <script src="js/features/voice/voice-workflow-templates.js"></script>
+  <script src="js/features/voice/voice-tab2-mvp.js"></script>
   <script src="js/features/voice/voice-step-wake-render.js"></script>
   <script src="js/features/voice/voice-step-recognize-render.js"></script>
   <script src="js/features/voice/voice-step-send-render.js"></script>
@@ -4808,6 +4838,7 @@
   <script src="js/features/mapping/key-finish-flow-ui.js"></script>
   <script src="js/features/mapping/record-ipc-lifecycle.js"></script>
   <script src="js/features/mapping/mapping-recording.js"></script>
+  <script src="js/features/mapping/mapping-record-probe.js"></script>
   <script src="js/features/mapping/mapping-test-send.js"></script>
   <script src="js/features/mapping/mapping-trash-menu.js"></script>
   <script src="js/features/mapping/mapping-recording-input.js"></script>

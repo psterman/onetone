@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-coach-hud-flash-success"
+description = "Enables the cmd_coach_hud_flash_success command without any pre-configured scope."
+commands.allow = ["cmd_coach_hud_flash_success"]
+
+[[permission]]
+identifier = "deny-cmd-coach-hud-flash-success"
+description = "Denies the cmd_coach_hud_flash_success command without any pre-configured scope."
+commands.deny = ["cmd_coach_hud_flash_success"]
