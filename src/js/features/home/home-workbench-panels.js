@@ -875,6 +875,21 @@
       +'</button>';
   }
 
+  function dedupeRailAppScenarios(items,baselineId){
+    var hub=global.OneToneHabitHub;
+    if(!hub||!hub.findAppScenarioByAppId) return items;
+    var hide={};
+    items.forEach(function(m){
+      if(!m||!m.id) return;
+      if(baselineId&&String(m.id)===baselineId) return;
+      var appId=String(m.appTargetId||'').trim();
+      if(!appId||appId==='custom') return;
+      var canon=hub.findAppScenarioByAppId(appId);
+      if(canon&&canon.id&&String(canon.id)!==String(m.id)) hide[m.id]=true;
+    });
+    return items.filter(function(m){ return !hide[m.id]; });
+  }
+
   function renderScenarioPanel(vm){
     var host=$('wbScenarioPanel');
     if(!host) return;
@@ -891,6 +906,7 @@
       if(rules&&rules.isIncompleteCustomStub&&rules.isIncompleteCustomStub(m)) return false;
       return true;
     });
+    items=dedupeRailAppScenarios(items,baselineId);
     items.sort(function(a,b){
       var ab=isBaselineScene(a)?0:1;
       var bb=isBaselineScene(b)?0:1;

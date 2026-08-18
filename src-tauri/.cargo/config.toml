@@ -6,3 +6,20 @@
 [alias]
 t = ["test", "-p", "onetone-logic"]
 kws = ["build", "--features", "kws-engine"]
+
+# Tier-1 build speed-ups.
+# - sccache: caches rlib/rmeta per-crate across builds and across projects.
+#   Set C:\Users\Administrator\.cargo\bin\sccache.exe as rustc-wrapper so every
+#   rustc invocation is intercepted. First run is normal; subsequent runs reuse
+#   artifacts on disk. Override cache location with SCCACHE_DIR if needed.
+# - lld-link: same exe vendored by rustup as rust-lld.exe. Setting
+#   `linker = "<abs path>"` together with `-Clinker-flavor=gnu-lld` makes
+#   rustc invoke rust-lld explicitly. rust-lld then auto-detects the LLD mode
+#   from the calling args. ~30-60s link steps become ~5-15s on Tauri-sized
+#   binaries. Requires LLVM tools (`rustup component add llvm-tools`).
+[build]
+rustc-wrapper = "C:/Users/Administrator/.cargo/bin/sccache.exe"
+
+[target.x86_64-pc-windows-msvc]
+linker = "C:/Users/Administrator/.rustup/toolchains/stable-x86_64-pc-windows-msvc/lib/rustlib/x86_64-pc-windows-msvc/bin/rust-lld.exe"
+rustflags = ["-Clinker-flavor=lld-link"]

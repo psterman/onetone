@@ -10,7 +10,11 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $tauri = Join-Path $root 'src-tauri'
-$buildRoot = Join-Path $tauri 'target-release-live'
+# Honor CARGO_TARGET_DIR when set (e.g. by scripts/move-target-to-d-drive.ps1
+# to D:\rust-target\onetone). Default keeps the historical
+# src-tauri\target-release-live location for backward compatibility.
+$defaultBuildRoot = Join-Path $tauri 'target-release-live'
+$buildRoot = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { $defaultBuildRoot }
 $releaseExe = Join-Path $buildRoot 'release\onetone.exe'
 $logDir = Join-Path $root 'logs'
 $logFile = Join-Path $logDir 'launch.log'

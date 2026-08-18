@@ -864,6 +864,8 @@ pub fn run() {
             ipc::cmd_set_setup_interaction_active,
             ipc::cmd_voice_set_practice_hold_fg,
             ipc::cmd_voice_practice_activate_ime,
+            ipc::cmd_voice_wake_phrase_test_begin,
+            ipc::cmd_voice_wake_phrase_test_end,
             ipc::cmd_set_settings_drawer_open,
             ipc::cmd_capture_source,
             ipc::cmd_frontend_keydown,

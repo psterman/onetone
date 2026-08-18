@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440" />
+<title>OneTone · 语音页重构提案 · vibecoding 场景入口面板</title>
+<style>
+/* ============================================================
+   Tokens — OneTone brand (cyan) + light/dark + 新面板语义色
+   ============================================================ */
+:root{
+  /* brand */
+  --primary:#2a9cc4;
+  --primary-strong:#1f8fb8;
+  --primary-muted:#45b0d4;
+  --primary-soft:#e6f7fc;
+  --primary-glow:#5ec8e8;
+
+  /* surface (light) */
+  --bg:#edf2f8;
+  --bg-grain:#e3eaf3;
+  --surface:rgba(255,255,255,.92);
+  --surface-high:#ffffff;
+  --surface-soft:#f0f7fb;
+  --surface-2:#e8eef5;
+  --on-surface:#152238;
+  --on-surface-muted:#5a7086;
+  --on-surface-faint:#8696a8;
+  --outline:rgba(42,156,196,.24);
+  --outline-variant:rgba(26,45,74,.10);
+
+  /* 新增语义色 */
+  --rec:#ef4444;
+  --rec-soft:#fee2e2;
+  --ok:#10b981;
+  --ok-soft:#d1fae5;
+  --warn:#f59e0b;
+  --warn-soft:#fef3c7;
+  --scenario-bg:linear-gradient(180deg,#f6fbfd 0%,#ffffff 60%);
+
+  --radius-sm:8px;
+  --radius:12px;
+  --radius-lg:16px;
+  --radius-xl:22px;
+  --shadow-sm:0 1px 2px rgba(20,40,70,.04),0 1px 1px rgba(20,40,70,.03);
+  --shadow:0 6px 24px -10px rgba(20,40,70,.18),0 2px 6px rgba(20,40,70,.06);
+  --shadow-lg:0 24px 60px -20px rgba(20,40,70,.25),0 8px 16px rgba(20,40,70,.06);
+
+  --ease:cubic-bezier(.2,.8,.2,1);
+  --font:"Segoe UI","PingFang SC","Microsoft YaHei",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --font-mono:"JetBrains Mono","Cascadia Code",ui-monospace,Menlo,Consolas,monospace;
+}
+
+[data-theme="dark"]{
+  --bg:#0c1322;
+  --bg-grain:#0f1a2c;
+  --surface:rgba(22,30,44,.94);
+  --surface-high:rgba(28,38,54,.97);
+  --surface-soft:rgba(94,200,232,.08);
+  --surface-2:rgba(36,48,68,.96);
+  --on-surface:#e8f0f8;
+  --on-surface-muted:#9aa8b8;
+  --on-surface-faint:#6b7c93;
+  --outline:rgba(94,200,232,.22);
+  --outline-variant:rgba(148,163,184,.14);
+  --primary:#5ec8e8;
+  --primary-strong:#3eb8dc;
+  --primary-muted:#7ed4ef;
+  --primary-soft:rgba(94,200,232,.14);
+  --scenario-bg:linear-gradient(180deg,rgba(94,200,232,.08) 0%,rgba(28,38,54,.97) 60%);
+  --rec-soft:rgba(239,68,68,.18);
+  --ok-soft:rgba(16,185,129,.18);
+  --warn-soft:rgba(245,158,11,.18);
+  --shadow:0 8px 28px -8px rgba(0,0,0,.4),0 2px 6px rgba(0,0,0,.2);
+  --shadow-lg:0 30px 70px -16px rgba(0,0,0,.55),0 10px 20px rgba(0,0,0,.3);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--on-surface);font-family:var(--font);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{min-height:100vh;font-size:14px;line-height:1.55}
+
+/* subtle grain to kill generic-flat */
+body::before{content:"";position:fixed;inset:0;background-image:radial-gradient(circle at 1px 1px,rgba(20,40,70,.03) 1px,transparent 0);background-size:18px 18px;pointer-events:none;z-index:0}
+[data-theme="dark"] body::before{background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.025) 1px,transparent 0)}
+
+/* ============================================================
+   Top bar (annotation strip + theme + state toggle)
+   ============================================================ */
+.canvas{
+  position:relative;z-index:1;
+  max-width:1440px;margin:0 auto;padding:18px 22px 36px;
+}
+.brand-row{
+  display:flex;align-items:center;gap:14px;margin-bottom:14px;
+}
+.brand-logo{
+  width:34px;height:34px;border-radius:9px;
+  background:linear-gradient(135deg,#1f8fb8 0%,#5ec8e8 100%);
+  display:grid;place-items:center;color:#fff;font-weight:800;font-size:14px;
+  box-shadow:0 4px 10px rgba(31,143,184,.35);
+}
+.brand-title{font-weight:700;font-size:15px;color:var(--on-surface)}
+.brand-sub{color:var(--on-surface-muted);font-size:12px;margin-left:2px}
+
+.canvas-tools{margin-left:auto;display:flex;gap:8px;align-items:center}
+.chip-toggle{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 12px;border-radius:999px;
+  background:var(--surface);border:1px solid var(--outline-variant);
+  font-size:12px;font-weight:600;color:var(--on-surface-muted);
+  cursor:pointer;transition:all .2s var(--ease);
+}
+.chip-toggle:hover{border-color:var(--outline);color:var(--on-surface)}
+.chip-toggle.is-on{background:var(--primary-soft);color:var(--primary-strong);border-color:rgba(42,156,196,.3)}
+.chip-toggle .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+/* ============================================================
+   Annotation callout strip (explains the redesign while you look)
+   ============================================================ */
+.callout{
+  display:grid;grid-template-columns:auto 1fr auto;gap:14px;
+  background:linear-gradient(180deg,rgba(94,200,232,.10),rgba(94,200,232,.04));
+  border:1px solid rgba(94,200,232,.25);border-radius:var(--radius);
+  padding:10px 14px;margin-bottom:18px;font-size:12.5px;color:var(--on-surface);
+}
+.callout .tag{font-weight:700;color:var(--primary-strong);white-space:nowrap}
+.callout b{color:var(--primary-strong);font-weight:700}
+.callout .meta{color:var(--on-surface-faint);font-size:11.5px;white-space:nowrap}
+
+/* ============================================================
+   Main grid — sidebar | voice panel | right inspector
+   ============================================================ */
+.main-grid{
+  display:grid;
+  grid-template-columns:212px minmax(0,1fr) 296px;
+  gap:18px;
+}
+
+/* sidebar */
+.sidebar{
+  background:var(--surface);border:1px solid var(--outline-variant);
+  border-radius:var(--radius-lg);padding:8px;
+  box-shadow:var(--shadow-sm);align-self:start;position:sticky;top:18px;
+}
+.sidebar-search{
+  display:flex;align-items:center;gap:6px;margin:6px 6px 12px;
+  padding:6px 10px;border-radius:9px;background:var(--surface-soft);
+  border:1px solid transparent;
+  color:var(--on-surface-faint);font-size:12px;
+}
+.sidebar-group-label{
+  padding:14px 8px 4px;font-size:10.5px;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--on-surface-faint);
+}
+.nav-item{
+  display:flex;align-items:center;gap:9px;
+  padding:7px 9px;border-radius:8px;font-size:13px;font-weight:600;
+  color:var(--on-surface-muted);cursor:pointer;
+  transition:background .15s var(--ease),color .15s var(--ease);
+}
+.nav-item:hover{background:var(--surface-soft);color:var(--on-surface)}
+.nav-item.is-active{background:var(--primary-soft);color:var(--primary-strong)}
+.nav-item .ic{width:16px;height:16px;opacity:.85;flex:0 0 auto}
+
+/* voice panel (main) */
+.voice-panel{
+  background:var(--surface);border:1px solid var(--outline-variant);
+  border-radius:var(--radius-xl);box-shadow:var(--shadow);
+  overflow:hidden;display:flex;flex-direction:column;
+}
+
+/* context bar (sticky to panel) */
+.context-bar{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:12px 18px;border-bottom:1px solid var(--outline-variant);
+  background:var(--surface-soft);
+  font-size:12.5px;color:var(--on-surface-muted);
+}
+.context-bar .lbl{color:var(--on-surface-faint);font-weight:600}
+.context-bar .val{color:var(--on-surface);font-weight:700}
+.context-bar .mode{
+  margin-left:auto;display:flex;gap:6px;align-items:center;
+  background:var(--surface-high);border:1px solid var(--outline-variant);
+  border-radius:999px;padding:3px;
+}
+.mode-pill{
+  padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700;
+  color:var(--on-surface-muted);cursor:pointer;
+  transition:all .2s var(--ease);
+}
+.mode-pill.is-on{background:var(--primary);color:#fff;box-shadow:0 2px 6px rgba(42,156,196,.35)}
+.mode-pill:hover:not(.is-on){background:var(--surface-soft);color:var(--on-surface)}
+
+/* pipeline 3-step (kept) */
+.pipeline{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:14px;
+  padding:18px 18px 6px;position:relative;
+}
+.pipeline::before{
+  content:"";position:absolute;left:18%;right:18%;top:48px;height:2px;
+  background:repeating-linear-gradient(90deg,rgba(42,156,196,.4) 0 8px,transparent 8px 14px);
+  z-index:0;
+}
+.step{
+  position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:8px;text-align:center;cursor:pointer;
+}
+.step-orb{
+  width:56px;height:56px;border-radius:50%;
+  display:grid;place-items:center;
+  background:var(--surface-high);border:2px solid var(--outline-variant);
+  color:var(--on-surface-muted);transition:all .25s var(--ease);
+}
+.step.is-on .step-orb{
+  background:radial-gradient(circle at 30% 30%,#5ec8e8,#1f8fb8);
+  color:#fff;border-color:transparent;
+  box-shadow:0 0 0 6px rgba(42,156,196,.14),0 10px 24px -8px rgba(42,156,196,.5);
+}
+.step-tag{
+  font-size:10.5px;font-weight:700;letter-spacing:.05em;
+  padding:2px 8px;border-radius:999px;
+  background:rgba(42,156,196,.08);color:var(--primary-strong);
+  border:1px solid rgba(42,156,196,.18);
+}
+.step.is-on .step-tag{background:var(--primary);color:#fff;border-color:transparent}
+.step-title{font-size:13px;font-weight:700;color:var(--on-surface)}
+.step-hint{font-size:11.5px;color:var(--on-surface-faint)}
+
+/* ============================================================
+   Section A — Trigger cards
+   ============================================================ */
+.section{padding:14px 18px 18px}
+.section-head{
+  display:flex;align-items:baseline;gap:10px;margin:6px 0 12px;
+}
+.section-head h2{
+  margin:0;font-size:13.5px;font-weight:700;letter-spacing:.02em;
+  color:var(--on-surface);text-transform:uppercase;
+}
+.section-head .note{font-size:11.5px;color:var(--on-surface-faint)}
+.section-head .note b{color:var(--primary-strong)}
+.section-head .badge{
+  margin-left:auto;font-size:10.5px;font-weight:700;
+  padding:3px 8px;border-radius:6px;
+  background:var(--ok-soft);color:var(--ok);
+  display:inline-flex;align-items:center;gap:5px;
+}
+.section-head .badge::before{
+  content:"";width:5px;height:5px;border-radius:50%;background:currentColor;
+  animation:pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.triggers{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+}
+.trigger{
+  position:relative;
+  background:var(--surface-high);
+  border:1px solid var(--outline-variant);border-radius:var(--radius-lg);
+  padding:14px 14px 12px;
+  transition:all .2s var(--ease);
+  cursor:pointer;overflow:hidden;
+}
+.trigger:hover{border-color:rgba(42,156,196,.4);transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+.trigger.is-active{
+  border-color:rgba(42,156,196,.5);
+  background:linear-gradient(180deg,rgba(94,200,232,.06) 0%,var(--surface-high) 80%);
+  box-shadow:0 0 0 3px rgba(42,156,196,.10),var(--shadow-sm);
+}
+.trigger.is-active::after{
+  content:"";position:absolute;top:12px;right:12px;
+  width:7px;height:7px;border-radius:50%;background:var(--ok);
+  box-shadow:0 0 0 3px var(--ok-soft);
+}
+.trigger-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.trigger-ic{
+  width:36px;height:36px;border-radius:10px;display:grid;place-items:center;
+  background:var(--primary-soft);color:var(--primary-strong);
+}
+.trigger.is-paused .trigger-ic{background:var(--surface-soft);color:var(--on-surface-faint)}
+.trigger-title{font-weight:700;font-size:14px;color:var(--on-surface)}
+.trigger-sub{font-size:11.5px;color:var(--on-surface-muted);margin-top:1px}
+.trigger-meta{
+  display:grid;grid-template-columns:auto 1fr;gap:4px 10px;
+  font-size:12px;color:var(--on-surface-muted);
+  padding-top:10px;border-top:1px dashed var(--outline-variant);
+}
+.trigger-meta .k{color:var(--on-surface-faint);font-weight:600}
+.trigger-meta .v{color:var(--on-surface);font-weight:700}
+.trigger-meta .v.tag{
+  font-family:var(--font-mono);font-size:11.5px;
+  padding:2px 8px;background:var(--primary-soft);color:var(--primary-strong);
+  border-radius:6px;justify-self:start;display:inline-flex;
+}
+.trigger-toggle{
+  position:absolute;top:14px;right:14px;
+  width:34px;height:18px;border-radius:999px;
+  background:var(--surface-2);cursor:pointer;
+  transition:background .2s var(--ease);
+}
+.trigger-toggle::after{
+  content:"";position:absolute;top:2px;left:2px;
+  width:14px;height:14px;border-radius:50%;background:#fff;
+  transition:transform .2s var(--ease);
+  box-shadow:0 1px 2px rgba(0,0,0,.2);
+}
+.trigger.is-on .trigger-toggle{background:var(--primary)}
+.trigger.is-on .trigger-toggle::after{transform:translateX(16px)}
+
+/* ============================================================
+   Section B — Scenario presets
+   ============================================================ */
+.scenarios{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:10px;
+}
+.scenario{
+  position:relative;
+  background:var(--scenario-bg);
+  border:1px solid var(--outline-variant);border-radius:var(--radius);
+  padding:12px 12px 10px;
+  cursor:pointer;transition:all .2s var(--ease);
+  display:flex;flex-direction:column;gap:8px;
+}
+.scenario:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm);border-color:rgba(42,156,196,.4)}
+.scenario.is-active{
+  border-color:rgba(42,156,196,.55);
+  box-shadow:0 0 0 3px rgba(42,156,196,.12),var(--shadow);
+  background:linear-gradient(180deg,rgba(94,200,232,.10) 0%,var(--surface-high) 70%);
+}
+.scenario-ic{
+  width:30px;height:30px;border-radius:8px;
+  display:grid;place-items:center;
+  background:var(--surface-high);border:1px solid var(--outline-variant);
+}
+.scenario-ic.claude{background:#1f2937;color:#fff;border-color:transparent}
+.scenario-ic.codex{background:#0d0d0d;color:#fff;border-color:transparent}
+.scenario-ic.cursor{background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;border-color:transparent}
+.scenario-ic.ide{background:#0078d4;color:#fff;border-color:transparent}
+.scenario-ic.window{background:var(--surface-2);color:var(--on-surface-muted)}
+.scenario-name{font-weight:700;font-size:13px;color:var(--on-surface)}
+.scenario-desc{font-size:11.5px;color:var(--on-surface-muted);line-height:1.45;flex:1}
+.scenario-foot{
+  display:flex;align-items:center;justify-content:space-between;gap:6px;
+  padding-top:8px;border-top:1px dashed var(--outline-variant);
+  font-size:11px;color:var(--on-surface-faint);
+}
+.scenario-foot .route{
+  font-weight:700;color:var(--on-surface);
+  display:inline-flex;align-items:center;gap:4px;
+}
+.scenario.is-active .scenario-foot .route{color:var(--primary-strong)}
+
+/* ============================================================
+   Scenario detail (active scenario expands inline)
+   ============================================================ */
+.scenario-detail{
+  margin-top:14px;
+  background:var(--surface-high);
+  border:1px solid var(--outline-variant);border-radius:var(--radius-lg);
+  overflow:hidden;
+}
+.detail-head{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px;border-bottom:1px solid var(--outline-variant);
+  background:linear-gradient(180deg,var(--primary-soft) 0%,transparent 100%);
+}
+.detail-head .scenario-ic{width:36px;height:36px;border-radius:9px}
+.detail-head h3{margin:0;font-size:15px;font-weight:700;color:var(--on-surface)}
+.detail-head .meta{font-size:12px;color:var(--on-surface-muted);margin-left:6px}
+.detail-head .switch{margin-left:auto;display:flex;gap:8px;align-items:center}
+.btn{
+  padding:7px 14px;border-radius:8px;border:1px solid var(--outline-variant);
+  background:var(--surface-high);font-size:12.5px;font-weight:700;
+  color:var(--on-surface);cursor:pointer;
+  transition:all .15s var(--ease);
+}
+.btn:hover{border-color:var(--outline);background:var(--surface-soft)}
+.btn.primary{background:var(--primary);color:#fff;border-color:transparent}
+.btn.primary:hover{background:var(--primary-strong)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--primary-strong)}
+
+.detail-body{padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field-label{font-size:11px;font-weight:700;color:var(--on-surface-faint);text-transform:uppercase;letter-spacing:.05em}
+.field-row{
+  display:flex;align-items:center;gap:8px;
+  padding:9px 12px;border-radius:9px;
+  background:var(--surface-soft);border:1px solid var(--outline-variant);
+  font-size:13px;color:var(--on-surface);
+}
+.field-row .tag{
+  padding:3px 8px;border-radius:6px;background:var(--primary-soft);color:var(--primary-strong);
+  font-family:var(--font-mono);font-size:11.5px;font-weight:700;
+}
+.field-row .meta{color:var(--on-surface-faint);font-size:11.5px;margin-left:auto}
+.field-row .pulse{width:7px;height:7px;border-radius:50%;background:var(--rec);animation:pulse 1.4s infinite}
+.field-actions{display:flex;gap:8px;margin-top:auto}
+.link{
+  font-size:12px;font-weight:700;color:var(--primary-strong);
+  cursor:pointer;text-decoration:none;
+}
+.link:hover{text-decoration:underline}
+
+/* ============================================================
+   Section C — Sticky dictation bar (Wispr-inspired)
+   ============================================================ */
+.dictation{
+  position:sticky;bottom:18px;margin:14px 18px 18px;
+  background:var(--surface-high);
+  border:1px solid rgba(42,156,196,.35);border-radius:var(--radius-xl);
+  box-shadow:var(--shadow-lg);
+  padding:14px 16px;display:flex;flex-direction:column;gap:10px;
+  backdrop-filter:saturate(140%) blur(10px);
+}
+.dictation.is-recording{border-color:var(--rec);box-shadow:0 0 0 4px var(--rec-soft),var(--shadow-lg)}
+
+.dictation-top{display:flex;align-items:center;gap:12px}
+.dictation-orb{
+  width:36px;height:36px;border-radius:50%;
+  display:grid;place-items:center;
+  background:var(--primary);color:#fff;
+  flex:0 0 auto;
+  box-shadow:0 4px 12px rgba(42,156,196,.4);
+}
+.dictation.is-recording .dictation-orb{
+  background:var(--rec);
+  box-shadow:0 0 0 6px var(--rec-soft);
+  animation:orb-pulse 1.6s ease-in-out infinite;
+}
+@keyframes orb-pulse{0%,100%{box-shadow:0 0 0 6px var(--rec-soft)}50%{box-shadow:0 0 0 14px transparent}}
+
+.dictation-info{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.dictation-title{font-weight:700;font-size:13px;color:var(--on-surface);display:flex;align-items:center;gap:8px}
+.dictation-title .scenario-pill{
+  font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;
+  background:var(--primary-soft);color:var(--primary-strong);
+  display:inline-flex;align-items:center;gap:4px;
+}
+.dictation-title .scenario-pill::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+.dictation-sub{font-size:11.5px;color:var(--on-surface-muted)}
+.dictation-actions{display:flex;gap:6px;align-items:center}
+.icon-btn{
+  width:30px;height:30px;border-radius:8px;border:1px solid var(--outline-variant);
+  background:var(--surface);display:grid;place-items:center;
+  color:var(--on-surface-muted);cursor:pointer;
+  transition:all .15s var(--ease);
+}
+.icon-btn:hover{border-color:var(--outline);color:var(--on-surface)}
+.icon-btn.danger:hover{color:var(--rec);border-color:var(--rec)}
+
+.dictation-wave{
+  display:flex;align-items:center;gap:2px;height:24px;
+  padding:0 4px;
+}
+.dictation-wave .bar{
+  width:3px;border-radius:2px;background:var(--primary);
+  animation:wave 1.2s ease-in-out infinite;
+}
+.dictation-wave .bar:nth-child(1){height:30%;animation-delay:0s}
+.dictation-wave .bar:nth-child(2){height:60%;animation-delay:.1s}
+.dictation-wave .bar:nth-child(3){height:90%;animation-delay:.2s}
+.dictation-wave .bar:nth-child(4){height:50%;animation-delay:.3s}
+.dictation-wave .bar:nth-child(5){height:80%;animation-delay:.4s}
+.dictation-wave .bar:nth-child(6){height:40%;animation-delay:.5s}
+.dictation-wave .bar:nth-child(7){height:70%;animation-delay:.6s}
+.dictation-wave .bar:nth-child(8){height:55%;animation-delay:.7s}
+.dictation-wave .bar:nth-child(9){height:85%;animation-delay:.8s}
+.dictation-wave .bar:nth-child(10){height:35%;animation-delay:.9s}
+@keyframes wave{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1)}}
+
+.dictation-text{
+  font-size:14px;line-height:1.5;color:var(--on-surface);
+  font-family:var(--font-mono);
+  min-height:22px;letter-spacing:.01em;
+}
+.dictation-text .live{background:linear-gradient(transparent 60%,rgba(42,156,196,.18) 60%);animation:caret 1s steps(1) infinite}
+.dictation-text .muted{color:var(--on-surface-faint)}
+@keyframes caret{50%{background:linear-gradient(transparent 60%,transparent 60%)}}
+
+/* ============================================================
+   Right inspector
+   ============================================================ */
+.rightbar{display:flex;flex-direction:column;gap:14px;position:sticky;top:18px}
+.inspector{
+  background:var(--surface);border:1px solid var(--outline-variant);
+  border-radius:var(--radius-lg);padding:14px;box-shadow:var(--shadow-sm);
+}
+.inspector h4{margin:0 0 8px;font-size:12px;font-weight:700;color:var(--on-surface-faint);text-transform:uppercase;letter-spacing:.06em}
+.inspector-row{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:6px 0;color:var(--on-surface-muted)}
+.inspector-row .k{flex:0 0 auto;color:var(--on-surface-faint);font-weight:600}
+.inspector-row .v{color:var(--on-surface);font-weight:700;margin-left:auto;font-family:var(--font-mono);font-size:11.5px}
+
+/* ============================================================
+   Comparison strip — old vs new
+   ============================================================ */
+.compare{
+  margin-top:28px;
+  background:var(--surface);border:1px solid var(--outline-variant);
+  border-radius:var(--radius-xl);box-shadow:var(--shadow);overflow:hidden;
+}
+.compare-head{padding:14px 18px;border-bottom:1px solid var(--outline-variant);background:var(--surface-soft)}
+.compare-head h3{margin:0;font-size:14px;font-weight:700;color:var(--on-surface)}
+.compare-head p{margin:4px 0 0;font-size:12px;color:var(--on-surface-muted)}
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.compare-col{padding:16px 18px}
+.compare-col + .compare-col{border-left:1px solid var(--outline-variant)}
+.compare-col h5{margin:0 0 8px;font-size:12px;font-weight:700;color:var(--on-surface-faint);text-transform:uppercase;letter-spacing:.05em}
+.compare-col.old h5{color:#b45309}
+.compare-col.new h5{color:var(--primary-strong)}
+.compare-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.compare-list li{font-size:12.5px;color:var(--on-surface-muted);padding-left:18px;position:relative;line-height:1.5}
+.compare-list li::before{
+  content:"";position:absolute;left:0;top:7px;width:6px;height:6px;border-radius:50%;
+}
+.compare-col.old .compare-list li::before{background:#fbbf24}
+.compare-col.new .compare-list li::before{background:var(--ok)}
+
+/* old mock — chips + dashed rows */
+.mock-old{
+  margin-top:10px;background:var(--surface-soft);border:1px dashed var(--outline-variant);
+  border-radius:10px;padding:10px;font-size:11.5px;color:var(--on-surface-muted);
+  display:flex;flex-direction:column;gap:8px;
+}
+.mock-old .tabs{display:flex;gap:6px;margin-bottom:4px}
+.mock-old .tabs span{
+  padding:4px 10px;border-radius:7px;background:var(--surface);
+  border:1px solid var(--outline-variant);font-weight:700;color:var(--on-surface-muted);
+}
+.mock-old .tabs span.on{background:var(--primary);color:#fff;border-color:transparent}
+.mock-old .row{
+  display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center;
+  padding:6px 8px;background:var(--surface-high);border-radius:8px;
+  border:1px solid var(--outline-variant);
+}
+.mock-old .ic{
+  width:18px;height:18px;border-radius:5px;background:#1e293b;color:#fff;
+  display:grid;place-items:center;font-size:9px;font-weight:800;
+}
+.mock-old .meta{display:flex;flex-direction:column;gap:2px;min-width:0}
+.mock-old .meta .a{font-weight:700;color:var(--on-surface);font-size:12px}
+.mock-old .meta .b{color:var(--on-surface-faint);font-size:10.5px}
+.mock-old .empty{padding:8px 10px;border-radius:7px;border:1px dashed var(--outline-variant);color:var(--on-surface-faint);text-align:center}
+.mock-old .actions{display:flex;gap:8px}
+.mock-old .actions span{padding:3px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--outline-variant);font-size:10.5px;font-weight:700;color:var(--primary-strong)}
+
+/* responsive guard */
+@media (max-width:1280px){
+  .main-grid{grid-template-columns:200px minmax(0,1fr) 280px}
+}
+</style>
+</head>
+<body data-theme="light">
+
+<div class="canvas">
+
+  <!-- Brand row + tools -->
+  <div class="brand-row">
+    <div class="brand-logo">1T</div>
+    <div>
+      <div class="brand-title">OneTone <span class="brand-sub">· 语音页重构提案</span></div>
+      <div class="brand-sub" style="margin-left:0">vibecoding 场景入口面板 · 「打开应用」框架退场</div>
+    </div>
+    <div class="canvas-tools">
+      <div class="chip-toggle" onclick="toggleState('recording', this)"><span class="dot"></span>录音中</div>
+      <div class="chip-toggle" onclick="toggleState('paused', this)"><span class="dot"></span>侧键关闭</div>
+      <div class="chip-toggle is-on" onclick="toggleTheme()"><span class="dot"></span>浅色</div>
+    </div>
+  </div>
+
+  <!-- callout — why -->
+  <div class="callout">
+    <span class="tag">为什么这样改</span>
+    <span>
+      「打开应用」是 <b>2015 年</b> 的概念 — 让语音启动程序。现在 <b>vibecoding 时代</b>：窗口已开、agent 已就位，
+      痛点不是「怎么打开」，是 <b>怎么把话稳定送进 agent</b>。把「口令配置中心」改成「场景入口面板」：
+      上 = <b>怎么说话</b>，中 = <b>说给谁</b>，下 = <b>听写条</b>。
+    </span>
+    <span class="meta">对比：见底部 · 鼠标悬停看注解</span>
+  </div>
+
+  <!-- Main 3-col -->
+  <div class="main-grid">
+
+    <!-- sidebar (kept compact, mirrors real product) -->
+    <aside class="sidebar">
+      <div class="sidebar-search">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
+        <span>搜索功能或设置…</span>
+      </div>
+      <div class="sidebar-group-label">主面板</div>
+      <div class="nav-item"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>首页</div>
+      <div class="nav-item"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h12"/></svg>我的习惯</div>
+      <div class="nav-item"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01"/></svg>按键设置</div>
+      <div class="nav-item"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/></svg>虚拟键盘</div>
+      <div class="nav-item is-active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>语音设置</div>
+      <div class="nav-item"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="14" height="12" rx="2"/><circle cx="17" cy="10" r="1"/></svg>摄像头</div>
+      <div class="sidebar-group-label">系统</div>
+      <div class="nav-item"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1.1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.5-1.1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>通用设置</div>
+      <div class="nav-item"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15 9a4 4 0 0 1 0 6"/></svg>声音与反馈</div>
+      <div class="nav-item"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>状态与维护</div>
+    </aside>
+
+    <!-- voice panel -->
+    <article class="voice-panel">
+
+      <!-- context bar -->
+      <div class="context-bar">
+        <span class="lbl">正在编辑</span><span class="val">通用设置</span>
+        <span class="lbl" style="margin-left:10px">使用中</span><span class="val">通用设置</span>
+        <div class="mode">
+          <span class="mode-pill is-on">自动</span>
+          <span class="mode-pill">省电</span>
+          <span class="mode-pill">增强</span>
+        </div>
+      </div>
+
+      <!-- pipeline 3 steps -->
+      <div class="pipeline">
+        <div class="step is-on">
+          <div class="step-orb"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg></div>
+          <span class="step-tag">01 · 开启</span>
+          <span class="step-title">怎么开启打字？</span>
+          <span class="step-hint">唤醒词 · 侧键 · 音量键</span>
+        </div>
+        <div class="step">
+          <div class="step-orb"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+          <span class="step-tag">02 · 结束</span>
+          <span class="step-title">说错了想结束？</span>
+          <span class="step-hint">自动 · 确认 · 口令</span>
+        </div>
+        <div class="step">
+          <div class="step-orb"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div>
+          <span class="step-tag">03 · 发送</span>
+          <span class="step-title">说完怎么发出去？</span>
+          <span class="step-hint">Enter · 停顿 · 自定义</span>
+        </div>
+      </div>
+
+      <!-- ====== SECTION A — Trigger cards ====== -->
+      <section class="section">
+        <div class="section-head">
+          <h2>① 触发方式</h2>
+          <span class="note">选怎么把嘴接到 OneTone · <b>手不离键选侧键</b> · <b>双手空闲选唤醒词</b></span>
+          <span class="badge">侧键 push-to-talk 已激活</span>
+        </div>
+
+        <div class="triggers">
+
+          <!-- Side button — primary for vibecoding -->
+          <div class="trigger is-active">
+            <div class="trigger-head">
+              <div class="trigger-ic">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="3" width="12" height="18" rx="6"/><line x1="12" y1="7" x2="12" y2="11"/></svg>
+              </div>
+              <div>
+                <div class="trigger-title">侧键 push-to-talk</div>
+                <div class="trigger-sub">按住说话 · 松开发送</div>
+              </div>
+            </div>
+            <div class="trigger-meta">
+              <span class="k">按键</span><span class="v tag">Mouse X1</span>
+              <span class="k">场景</span><span class="v">Claude Code</span>
+              <span class="k">最近</span><span class="v">2 分钟前</span>
+            </div>
+            <div class="trigger-toggle"></div>
+          </div>
+
+          <!-- Volume key -->
+          <div class="trigger is-on">
+            <div class="trigger-head">
+              <div class="trigger-ic">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19 12a4 4 0 0 1-4 4"/></svg>
+              </div>
+              <div>
+                <div class="trigger-title">音量键</div>
+                <div class="trigger-sub">双击切换听写 · 长按停用</div>
+              </div>
+            </div>
+            <div class="trigger-meta">
+              <span class="k">按键</span><span class="v tag">Vol Up ×2</span>
+              <span class="k">场景</span><span class="v">通用前台</span>
+              <span class="k">最近</span><span class="v">1 小时前</span>
+            </div>
+            <div class="trigger-toggle"></div>
+          </div>
+
+          <!-- Wake word -->
+          <div class="trigger is-on is-paused">
+            <div class="trigger-head">
+              <div class="trigger-ic">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/></svg>
+              </div>
+              <div>
+                <div class="trigger-title">唤醒词</div>
+                <div class="trigger-sub">双手空闲时的免提入口</div>
+              </div>
+            </div>
+            <div class="trigger-meta">
+              <span class="k">口令</span><span class="v tag">嘿 OneTone</span>
+              <span class="k">场景</span><span class="v">通用前台</span>
+              <span class="k">最近</span><span class="v">今天未触发</span>
+            </div>
+            <div class="trigger-toggle"></div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ====== SECTION B — Scenario presets ====== -->
+      <section class="section">
+        <div class="section-head">
+          <h2>② vibecoding 场景</h2>
+          <span class="note">点开一张卡 → 配这个场景的 <b>按键 · 唤醒词 · agent 接收方</b></span>
+          <span class="badge">5 个预置</span>
+        </div>
+
+        <div class="scenarios">
+
+          <div class="scenario is-active" data-scenario="claude">
+            <div class="scenario-ic claude"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 3 7v10l9 5 9-5V7z"/></svg></div>
+            <div class="scenario-name">Claude Code</div>
+            <div class="scenario-desc">终端里的 claude，TUI 接收。给 Anthropic 官方 CLI。</div>
+            <div class="scenario-foot">
+              <span class="route"><span class="pulse" style="background:var(--rec);width:6px;height:6px;border-radius:50%;display:inline-block"></span> 激活中</span>
+              <span>侧键</span>
+            </div>
+          </div>
+
+          <div class="scenario" data-scenario="codex">
+            <div class="scenario-ic codex"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+            <div class="scenario-name">Codex CLI</div>
+            <div class="scenario-desc">OpenAI 的 Codex 终端工具，配 TUI。</div>
+            <div class="scenario-foot">
+              <span class="route">▸ 待激活</span>
+              <span>侧键</span>
+            </div>
+          </div>
+
+          <div class="scenario" data-scenario="cursor">
+            <div class="scenario-ic cursor"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M5 3l14 9-6 2-2 6z"/></svg></div>
+            <div class="scenario-name">Cursor</div>
+            <div class="scenario-desc">Cursor 编辑器内置 Composer。</div>
+            <div class="scenario-foot">
+              <span class="route">▸ 待激活</span>
+              <span>侧键</span>
+            </div>
+          </div>
+
+          <div class="scenario" data-scenario="ide">
+            <div class="scenario-ic ide"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+            <div class="scenario-name">通用 IDE</div>
+            <div class="scenario-desc">VS Code / JetBrains 等任何编辑器。送到焦点窗口。</div>
+            <div class="scenario-foot">
+              <span class="route">▸ 待激活</span>
+              <span>音量键</span>
+            </div>
+          </div>
+
+          <div class="scenario" data-scenario="window">
+            <div class="scenario-ic window"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg></div>
+            <div class="scenario-name">前台窗口</div>
+            <div class="scenario-desc">不绑死应用 — 一切送给当前焦点窗口。</div>
+            <div class="scenario-foot">
+              <span class="route">▸ 兜底</span>
+              <span>唤醒词</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- scenario detail -->
+        <div class="scenario-detail">
+          <div class="detail-head">
+            <div class="scenario-ic claude"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 3 7v10l9 5 9-5V7z"/></svg></div>
+            <div>
+              <h3>Claude Code 场景详情</h3>
+              <div class="meta">侧键 push-to-talk · 发送到终端 TUI · 智能路由到最近输入框</div>
+            </div>
+            <div class="switch">
+              <button class="btn ghost">声学校准</button>
+              <button class="btn">编辑</button>
+              <button class="btn primary">保存</button>
+            </div>
+          </div>
+          <div class="detail-body">
+            <div class="field">
+              <span class="field-label">触发方式</span>
+              <div class="field-row">
+                <span class="tag">Mouse X1</span>
+                <span class="meta">按住说话 · 松开自动发送</span>
+              </div>
+              <div class="field-row">
+                <span class="tag">嘿 OneTone</span>
+                <span class="meta">唤醒词 · 中文</span>
+              </div>
+              <div class="field-actions"><a class="link">+ 添加触发</a> · <a class="link">声学录制</a></div>
+            </div>
+            <div class="field">
+              <span class="field-label">接收方</span>
+              <div class="field-row">
+                <span style="font-weight:700">前台匹配</span>
+                <span class="meta">进程名 = <b style="font-family:var(--font-mono);font-size:11.5px;color:var(--primary-strong)">claude</b> 时激活</span>
+              </div>
+              <div class="field-row">
+                <span style="font-weight:700">回退</span>
+                <span class="meta">未匹配 → 通用前台窗口</span>
+              </div>
+              <div class="field-actions"><a class="link">配置进程规则</a> · <a class="link">真机测试</a></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====== SECTION C — Sticky dictation bar ====== -->
+      <div class="dictation is-recording" id="dictation">
+        <div class="dictation-top">
+          <div class="dictation-orb">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+          </div>
+          <div class="dictation-info">
+            <div class="dictation-title">
+              <span>正在听写</span>
+              <span class="scenario-pill">Claude Code · 侧键 push-to-talk</span>
+            </div>
+            <div class="dictation-sub">说完整段话松开 X1 自动发送 · 已 4.2 秒</div>
+          </div>
+          <div class="dictation-actions">
+            <div class="dictation-wave" aria-hidden="true">
+              <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+              <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+            </div>
+            <button class="icon-btn" title="暂停"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg></button>
+            <button class="icon-btn danger" title="停止"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
+          </div>
+        </div>
+        <div class="dictation-text" id="dictationText"><span class="muted">重构这个模块，把测试覆盖率提到 80%，用 reactive 思路，加注释，</span><span class="live">|</span></div>
+      </div>
+
+    </article>
+
+    <!-- right inspector -->
+    <aside class="rightbar">
+      <div class="inspector">
+        <h4>实时交互预览</h4>
+        <div class="inspector-row"><span class="k">场景</span><span class="v">claude-code</span></div>
+        <div class="inspector-row"><span class="k">触发</span><span class="v">Mouse X1</span></div>
+        <div class="inspector-row"><span class="k">引擎</span><span class="v">Vosk · CN 0.3</span></div>
+        <div class="inspector-row"><span class="k">延迟</span><span class="v">312 ms</span></div>
+        <div class="inspector-row"><span class="k">麦克风</span><span class="v">USB AUDIO</span></div>
+      </div>
+
+      <div class="inspector">
+        <h4>本场会话统计</h4>
+        <div class="inspector-row"><span class="k">已听写</span><span class="v">14 段</span></div>
+        <div class="inspector-row"><span class="k">最长 prompt</span><span class="v">68 字</span></div>
+        <div class="inspector-row"><span class="k">节省手打</span><span class="v">≈ 4 分钟</span></div>
+        <div class="inspector-row"><span class="k">场景切换</span><span class="v">3 次</span></div>
+      </div>
+
+      <div class="inspector" style="background:linear-gradient(180deg,var(--primary-soft),var(--surface))">
+        <h4 style="color:var(--primary-strong)">vibecoding 心法</h4>
+        <div style="font-size:12px;line-height:1.65;color:var(--on-surface-muted)">
+          一段 <b style="color:var(--on-surface)">68 字</b>的 prompt，<br/>
+          手打需要 <b style="color:var(--on-surface)">35 秒</b>，<br/>
+          侧键 push-to-talk 只需 <b style="color:var(--primary-strong)">8 秒</b>。<br/>
+          <span style="color:var(--on-surface-faint);font-size:11px">—— prompt 越长，语音越赚</span>
+        </div>
+      </div>
+    </aside>
+
+  </div><!-- /main-grid -->
+
+
+  <!-- ============================================================
+       Comparison strip
+       ============================================================ -->
+  <div class="compare">
+    <div class="compare-head">
+      <h3>新旧对比 · 「打开应用」框架退场</h3>
+      <p>旧框架让用户配置「每个 app 的语音口令」—— 2015 年的概念。新框架预置 vibecoding 场景，让用户配的是「嘴怎么说话、说给谁」。</p>
+    </div>
+    <div class="compare-grid">
+
+      <div class="compare-col old">
+        <h5>旧 · voiceWakeKindAppPane</h5>
+        <ul class="compare-list">
+          <li>Tab 二选一：<b>开始输入 / 打开应用</b></li>
+          <li>每行 = 一个应用：图标 + 文字口令 + 声学状态</li>
+          <li>三个按钮：录制 / 回放 / 测试</li>
+          <li>「添加应用」+「在按键页管理」按钮</li>
+          <li>空态：「尚未设置，请到按键页添加」</li>
+          <li>用户要懂：app id、聚焦 vs 启动、声音口令</li>
+        </ul>
+        <div class="mock-old">
+          <div class="tabs"><span class="on">开始输入</span><span>打开应用</span></div>
+          <div class="row">
+            <div class="ic">C</div>
+            <div class="meta"><span class="a">Cursor</span><span class="b">文字口令：打开 Cursor</span></div>
+          </div>
+          <div class="row">
+            <div class="ic" style="background:#0d0d0d">⌘</div>
+            <div class="meta"><span class="a">Codex</span><span class="b">声音口令：未录制</span></div>
+          </div>
+          <div class="empty">尚未设置，请到按键页添加</div>
+          <div class="actions"><span>录制声音口令</span><span>测试</span></div>
+        </div>
+      </div>
+
+      <div class="compare-col new">
+        <h5>新 · vibecoding 场景入口</h5>
+        <ul class="compare-list">
+          <li>三段式：<b>触发方式 / vibecoding 场景 / sticky 听写条</b></li>
+          <li>5 个出厂场景预设：Claude Code · Codex · Cursor · 通用 IDE · 前台窗口</li>
+          <li>场景卡 = 图标 + 名 + 接收方 + 触发器绑定</li>
+          <li>点击展开场景详情：触发方式 / 接收方 / 进程匹配</li>
+          <li>侧键 push-to-talk = 主推（手不离键）</li>
+          <li>sticky 听写条 = Wispr 式最小化，永远在底部</li>
+          <li>用户只决定：嘴 / 手怎么说话 → 默认送到对的地方</li>
+        </ul>
+        <div style="margin-top:10px;background:var(--surface-soft);border:1px solid var(--outline-variant);border-radius:10px;padding:10px;font-size:11.5px;color:var(--on-surface-muted);line-height:1.65">
+          <b style="color:var(--primary-strong)">关键差异</b>：用户不再 <i>「加 app」</i>，而是 <i>「选当前在哪个场景」</i>。
+          场景激活后，<b style="color:var(--on-surface)">前台匹配 = claude</b> → 侧键 push-to-talk 自动送到终端 TUI。
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /canvas -->
+
+<script>
+function toggleTheme(){
+  const body=document.body;
+  const next=body.dataset.theme==='dark'?'light':'dark';
+  body.dataset.theme=next;
+  document.querySelectorAll('.chip-toggle')[2].textContent=next==='dark'?'深色':'浅色';
+}
+function toggleState(state,el){
+  const dict=document.getElementById('dictation');
+  if(state==='recording'){
+    dict.classList.toggle('is-recording');
+    el.classList.toggle('is-on');
+  } else if(state==='paused'){
+    el.classList.toggle('is-on');
+    document.querySelector('.trigger').classList.toggle('is-paused');
+  }
+}
+
+// live typing animation for dictation text
+const dictationText=document.getElementById('dictationText');
+const samples=[
+  ['重构这个模块，把测试覆盖率提到 80%，用 reactive 思路，加注释，',''],
+  ['给这个文件写单元测试，mock 掉外部 API 调用，',''],
+  ['解释一下这段代码为什么用 WeakMap 而不是 Map，',''],
+  ['把这一段改成 TypeScript，加严格的类型守卫，',''],
+];
+let idx=0,charIdx=0,phase=0;
+function tick(){
+  const s=samples[idx];
+  if(phase===0){
+    charIdx++;
+    if(charIdx>=s[0].length){phase=1;return setTimeout(tick,1400);}
+  } else {
+    charIdx--;
+    if(charIdx<=0){phase=0;idx=(idx+1)%samples.length;return setTimeout(tick,400);}
+  }
+  const visible=s[0].slice(0,charIdx);
+  dictationText.innerHTML='<span class="muted">'+visible+'</span><span class="live">|</span>';
+  setTimeout(tick,phase===0?55:30);
+}
+tick();
+
+// scenario click — switch active
+document.querySelectorAll('.scenario').forEach(card=>{
+  card.addEventListener('click',()=>{
+    document.querySelectorAll('.scenario').forEach(c=>c.classList.remove('is-active'));
+    card.classList.add('is-active');
+  });
+});
+
+// trigger toggle
+document.querySelectorAll('.trigger').forEach(trig=>{
+  const toggle=trig.querySelector('.trigger-toggle');
+  if(!toggle)return;
+  toggle.addEventListener('click',e=>{
+    e.stopPropagation();
+    trig.classList.toggle('is-on');
+    trig.classList.toggle('is-paused');
+  });
+});
+</script>
+</body>
+</html>

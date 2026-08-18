@@ -1335,12 +1335,14 @@
     if(on&&!hasAppScenarioMappings()) return;
     var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
     if(!cfg) return;
+    var act=global.OneToneSceneActivate;
+    if(act&&act.clearManualScenePin) act.clearManualScenePin();
     cfg.followForegroundAppScenario=!!on;
     refreshFollowFgToggle();
     if(!on){
       var base=baselineMappingId();
-      if(base&&global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene){
-        global.OneToneSceneActivate.activateScene(base,{source:'manual'});
+      if(base&&act&&act.activateScene){
+        act.activateScene(base,{source:'manual'});
       }
     }else{
       syncFollowForegroundApp();

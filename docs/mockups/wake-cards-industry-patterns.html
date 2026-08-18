@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>01 开启页 · 行业模式对比</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #eceef2;
+    --surface: #fff;
+    --line: #e2e5ea;
+    --line-soft: #f4f5f7;
+    --text: #14171e;
+    --text-2: #5a6271;
+    --text-3: #9099a8;
+    --primary: #3b82f6;
+    --primary-soft: #eff5ff;
+    --primary-hover: #dbeafe;
+    --warn: #f59e0b;
+    --warn-soft: #fff7e6;
+    --ok: #10b981;
+    --rec: #059669;
+    --rec-soft: #ecfdf5;
+    --ios-group: #f2f2f7;
+    --shadow: 0 8px 32px rgba(15,23,42,.08);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page-header {
+    padding: 24px 28px 18px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .page-header h1 { margin: 0 0 6px; font-size: 19px; font-weight: 600; }
+  .page-header > p { margin: 0; color: var(--text-2); font-size: 12.5px; max-width: 860px; }
+  .refs {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
+  }
+  .ref {
+    font-size: 11px; color: var(--text-2);
+    padding: 4px 10px; border-radius: 999px;
+    background: var(--line-soft); border: 1px solid var(--line);
+  }
+  .ref strong { color: var(--text); font-weight: 600; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(320px, 1fr));
+    gap: 22px;
+    padding: 22px 28px 60px;
+    align-items: start;
+  }
+  @media (max-width: 1080px) {
+    .grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .panel.is-rec { border-color: #6ee7b7; }
+
+  .panel-head {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--line-soft);
+    background: linear-gradient(180deg, #fafbfc, #fff);
+  }
+  .panel-head h2 {
+    margin: 0 0 3px; font-size: 14px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .tag {
+    font-size: 10px; font-weight: 600; padding: 2px 8px;
+    border-radius: 999px; letter-spacing: .02em;
+  }
+  .tag--rec { background: var(--rec-soft); color: var(--rec); }
+  .tag--ref { background: var(--primary-soft); color: var(--primary); }
+  .panel-head p { margin: 0; font-size: 11.5px; color: var(--text-2); }
+  .panel-head .cite { margin-top: 6px; font-size: 10.5px; color: var(--text-3); font-style: italic; }
+
+  .phone {
+    background: #f8f9fb;
+    border-top: 1px solid var(--line-soft);
+    position: relative;
+  }
+  .phone-rail {
+    display: flex; gap: 5px; padding: 9px 12px;
+    background: var(--surface); border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+  }
+  .rail-pill {
+    flex: 0 0 auto; font-size: 10px; font-weight: 600;
+    padding: 5px 9px; border-radius: 7px;
+    color: var(--text-3); background: var(--line-soft);
+  }
+  .rail-pill.on { background: var(--primary-soft); color: var(--primary); }
+
+  .phone-body {
+    height: 500px; overflow-y: auto;
+    padding: 14px 14px 24px;
+    position: relative;
+  }
+  .fold-line {
+    position: absolute; left: 0; right: 0; top: 168px;
+    border-top: 2px dashed #f59e0b66;
+    pointer-events: none; z-index: 5;
+  }
+  .fold-label {
+    position: absolute; right: 6px; top: 154px;
+    font-size: 9px; color: #b45309; background: #fff7e6;
+    padding: 2px 6px; border-radius: 4px; border: 1px solid #fde68a;
+    z-index: 6;
+  }
+
+  .panel-foot {
+    padding: 12px 16px 14px;
+    border-top: 1px solid var(--line-soft);
+    background: #fafbfc;
+  }
+  .metrics { display: flex; gap: 10px; margin-bottom: 10px; }
+  .metric {
+    flex: 1; text-align: center;
+    padding: 8px 6px; border-radius: 8px;
+    background: var(--line-soft);
+  }
+  .metric-val { font-size: 16px; font-weight: 700; display: block; }
+  .metric-lbl { font-size: 10px; color: var(--text-3); }
+  .pros { margin: 0; padding: 0; list-style: none; }
+  .pros li {
+    font-size: 11px; color: var(--text-2);
+    padding: 2px 0 2px 14px; position: relative;
+  }
+  .pros li::before {
+    content: ''; position: absolute; left: 0; top: 8px;
+    width: 5px; height: 5px; border-radius: 50%; background: var(--ok);
+  }
+
+  /* shared atoms */
+  kbd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; padding: 2px 7px; border-radius: 6px;
+    background: #eef0f4; border: 1px solid #d8dce3;
+    box-shadow: 0 1px 0 #fff inset;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 11px; padding: 3px 8px; border-radius: 6px;
+    background: var(--primary-soft); color: var(--primary);
+    border: 1px solid #dbeafe;
+  }
+  .chip .x { opacity: .45; font-size: 12px; }
+  .ghost-link {
+    all: unset; font-size: 11px; color: var(--primary);
+    cursor: pointer; font-weight: 500;
+  }
+  .ghost-link:hover { text-decoration: underline; }
+
+  /* ─── D: Raycast unified command ─── */
+  .cmd-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,.04);
+  }
+  .cmd-top {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 16px 16px 12px;
+    background: linear-gradient(135deg, #fafcff 0%, #fff 60%);
+  }
+  .cmd-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--primary); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .cmd-main { flex: 1; min-width: 0; }
+  .cmd-kbd-wrap { flex-shrink: 0; text-align: right; }
+  .cmd-kbd-lbl { font-size: 9px; color: var(--text-3); display: block; margin-bottom: 3px; }
+  .cmd-title { font-size: 22px; font-weight: 600; margin: 0 0 2px; letter-spacing: -.02em; }
+  .cmd-sub { font-size: 11.5px; color: var(--text-2); margin: 0; }
+  .cmd-status {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10.5px; font-weight: 500; margin-top: 8px;
+    padding: 2px 8px; border-radius: 999px;
+    background: var(--warn-soft); color: var(--warn);
+  }
+  .cmd-status::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+  .cmd-divider { height: 1px; background: var(--line-soft); margin: 0 16px; }
+  .cmd-aliases {
+    padding: 10px 16px 12px;
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  }
+  .cmd-aliases-label { font-size: 10px; color: var(--text-3); width: 100%; margin-bottom: 2px; }
+  .cmd-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px 12px;
+    background: var(--line-soft);
+    border-top: 1px solid var(--line-soft);
+  }
+  .cmd-footer-left { display: flex; gap: 12px; align-items: center; }
+  .cmd-test-btn {
+    font-size: 11px; padding: 5px 10px; border-radius: 7px;
+    border: none; background: var(--primary); color: #fff;
+    font-weight: 500; cursor: pointer; font-family: inherit;
+  }
+  .cmd-test-hint { font-size: 10.5px; color: var(--text-3); }
+
+  /* alias popover */
+  .popover {
+    display: none; position: absolute;
+    left: 14px; right: 14px; top: 200px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: var(--shadow);
+    z-index: 30;
+  }
+  .popover.is-open { display: block; }
+  .popover-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+  }
+  .popover-head strong { font-size: 12px; }
+  .popover-close {
+    all: unset; cursor: pointer; font-size: 16px; color: var(--text-3);
+    width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+  }
+  .add-row { display: flex; gap: 6px; margin-top: 8px; }
+  .add-row input {
+    flex: 1; border: 1px solid var(--line); border-radius: 8px;
+    padding: 6px 8px; font-size: 11px; font-family: inherit;
+  }
+  .add-btn {
+    font-size: 11px; padding: 6px 10px; border-radius: 8px;
+    border: none; background: var(--primary-soft); color: var(--primary);
+    font-weight: 500; cursor: pointer; font-family: inherit;
+  }
+
+  /* ─── E: iOS grouped inset list ─── */
+  .ios-hero-mini {
+    text-align: center; padding: 18px 12px 14px;
+  }
+  .ios-hero-mini .phrase {
+    font-size: 26px; font-weight: 600; margin: 0 0 4px;
+    letter-spacing: -.02em;
+  }
+  .ios-hero-mini .sub { font-size: 12px; color: var(--text-2); margin: 0 0 12px; }
+  .ios-test {
+    font-size: 11px; padding: 6px 14px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--surface);
+    cursor: pointer; font-family: inherit; color: var(--text);
+  }
+  .ios-group {
+    background: var(--ios-group);
+    border-radius: 12px;
+    margin: 0 0 12px;
+    overflow: hidden;
+  }
+  .ios-group-label {
+    font-size: 11px; color: var(--text-3);
+    padding: 0 14px 6px;
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  .ios-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line-soft);
+    cursor: pointer;
+    transition: background .12s;
+  }
+  .ios-row:last-child { border-bottom: none; }
+  .ios-row:hover { background: #fafbfc; }
+  .ios-row:active { background: var(--line-soft); }
+  .ios-row-icon {
+    width: 28px; height: 28px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0;
+  }
+  .ios-row-icon--blue { background: #eff5ff; }
+  .ios-row-icon--purple { background: #f3e8ff; }
+  .ios-row-body { flex: 1; min-width: 0; }
+  .ios-row-title { font-size: 13px; font-weight: 500; }
+  .ios-row-sub { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+  .ios-row-value {
+    font-size: 12px; color: var(--text-3);
+    display: flex; align-items: center; gap: 6px;
+    flex-shrink: 0;
+  }
+  .ios-chevron { color: #c4c9d4; font-size: 14px; font-weight: 300; }
+
+  .ios-sheet {
+    display: none;
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: var(--surface);
+    border-radius: 16px 16px 0 0;
+    padding: 8px 14px 20px;
+    box-shadow: 0 -8px 40px rgba(0,0,0,.12);
+    z-index: 30;
+    animation: slideUp .25s ease;
+  }
+  .ios-sheet.is-open { display: block; }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .sheet-handle {
+    width: 36px; height: 4px; border-radius: 999px;
+    background: #d1d5db; margin: 4px auto 12px;
+  }
+  .sheet-title { font-size: 14px; font-weight: 600; margin: 0 0 12px; text-align: center; }
+  .sheet-backdrop {
+    display: none; position: absolute; inset: 0;
+    background: rgba(0,0,0,.25); z-index: 25;
+  }
+  .sheet-backdrop.is-open { display: block; }
+
+  /* ─── F: Linear property rows ─── */
+  .linear-head {
+    padding: 4px 2px 16px;
+    border-bottom: 1px solid var(--line-soft);
+    margin-bottom: 4px;
+  }
+  .linear-phrase {
+    font-size: 24px; font-weight: 600; margin: 0 0 6px;
+    cursor: text; padding: 2px 4px; border-radius: 6px;
+    border: 1px solid transparent;
+  }
+  .linear-phrase:hover { background: var(--line-soft); }
+  .linear-phrase.is-editing {
+    border-color: var(--primary);
+    background: var(--surface);
+    outline: none;
+  }
+  .linear-desc {
+    font-size: 12px; color: var(--text-2); margin: 0;
+    cursor: text; padding: 2px 4px; border-radius: 6px;
+  }
+  .linear-desc:hover { background: var(--line-soft); }
+  .prop-row {
+    display: grid;
+    grid-template-columns: 72px 1fr;
+    gap: 8px; align-items: start;
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .prop-row:last-child { border-bottom: none; }
+  .prop-key {
+    font-size: 11px; color: var(--text-3);
+    padding-top: 4px; font-weight: 500;
+  }
+  .prop-val { min-width: 0; }
+  .prop-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .prop-add {
+    font-size: 11px; color: var(--text-3);
+    padding: 3px 8px; border-radius: 6px;
+    border: 1px dashed var(--line);
+    cursor: pointer; background: transparent;
+    font-family: inherit;
+  }
+  .prop-add:hover { border-color: var(--primary); color: var(--primary); }
+  .prop-kbd-row {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .prop-edit {
+    all: unset; font-size: 11px; color: var(--primary);
+    cursor: pointer; font-weight: 500;
+  }
+  .prop-edit:hover { text-decoration: underline; }
+  .linear-toolbar {
+    display: flex; gap: 8px; margin-top: 14px;
+    padding-top: 12px; border-top: 1px solid var(--line-soft);
+  }
+  .linear-toolbar button {
+    font-size: 11px; padding: 6px 12px; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--surface);
+    cursor: pointer; font-family: inherit;
+  }
+  .linear-toolbar .primary {
+    background: var(--primary); color: #fff; border-color: var(--primary);
+  }
+
+  .below-fold { opacity: .3; margin-top: 16px; }
+  .below-fold .fake-block {
+    height: 40px; background: var(--line-soft);
+    border-radius: 8px; margin-bottom: 8px;
+  }
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1>01 开启页 · 行业优秀案例再设计</h1>
+  <p>方案 A/C 只是「全展开 vs 折叠」，视觉层级几乎一样。下面三列参考不同产品的设置范式，在首屏高度、信息密度、编辑路径上拉开差距。</p>
+  <div class="refs">
+    <span class="ref"><strong>D</strong> Raycast · 命令即卡片，快捷键右上角，别名内嵌</span>
+    <span class="ref"><strong>E</strong> iOS 设置 · 分组 inset 列表 + 底部 Sheet</span>
+    <span class="ref"><strong>F</strong> Linear · 属性行内联编辑，零卡片嵌套</span>
+  </div>
+</header>
+
+<div class="grid">
+
+  <!-- D: Raycast -->
+  <article class="panel is-rec" id="panelD">
+    <div class="panel-head">
+      <h2>方案 D <span class="tag tag--rec">推荐</span> <span class="tag tag--ref">Raycast</span></h2>
+      <p>一张「命令卡」收拢口令、快捷键、别名；高级编辑用 popover</p>
+      <p class="cite">参考：Raycast 把 hotkey + alias 绑在同一条 Command 上，快捷键 inline 可见</p>
+    </div>
+    <div class="phone">
+      <div class="phone-rail">
+        <span class="rail-pill on">01 开启</span>
+        <span class="rail-pill">02 结束</span>
+        <span class="rail-pill">03 发送</span>
+      </div>
+      <div class="phone-body" id="bodyD">
+        <div class="fold-line"></div>
+        <div class="fold-label">首屏折线</div>
+
+        <div class="cmd-card">
+          <div class="cmd-top">
+            <div class="cmd-icon">🎙</div>
+            <div class="cmd-main">
+              <h2 class="cmd-title">开始听写</h2>
+              <p class="cmd-sub">说出此口令或按下快捷键，开始听写</p>
+              <span class="cmd-status">语音未启用</span>
+            </div>
+            <div class="cmd-kbd-wrap">
+              <span class="cmd-kbd-lbl">快捷键</span>
+              <kbd>右 Alt</kbd>
+            </div>
+          </div>
+          <div class="cmd-divider"></div>
+          <div class="cmd-aliases">
+            <span class="cmd-aliases-label">也可说</span>
+            <span class="chip">打开听写</span>
+            <span class="chip">语音输入</span>
+            <span class="chip">开启输入</span>
+            <button class="ghost-link" type="button" id="openPopoverD">+2 个别名</button>
+          </div>
+          <div class="cmd-footer">
+            <div class="cmd-footer-left">
+              <button class="cmd-test-btn" type="button">试试口令</button>
+              <span class="cmd-test-hint">模拟识别</span>
+            </div>
+            <button class="ghost-link" type="button">改快捷键 →</button>
+          </div>
+        </div>
+
+        <div class="popover" id="popoverD">
+          <div class="popover-head">
+            <strong>管理别名</strong>
+            <button class="popover-close" type="button" id="closePopoverD">×</button>
+          </div>
+          <div class="prop-chips">
+            <span class="chip">开始听写 <span class="x">×</span></span>
+            <span class="chip">打开听写 <span class="x">×</span></span>
+            <span class="chip">语音输入 <span class="x">×</span></span>
+            <span class="chip">开启输入 <span class="x">×</span></span>
+            <span class="chip">开始输入 <span class="x">×</span></span>
+          </div>
+          <div class="add-row">
+            <input placeholder="例如：嘿，电脑" maxlength="20">
+            <button class="add-btn" type="button">添加</button>
+          </div>
+        </div>
+
+        <div class="below-fold">
+          <div class="fake-block"></div>
+          <div class="fake-block" style="width:70%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel-foot">
+      <div class="metrics">
+        <div class="metric"><span class="metric-val" style="color:var(--rec)">1</span><span class="metric-lbl">张卡片</span></div>
+        <div class="metric"><span class="metric-val" style="color:var(--rec)">~210px</span><span class="metric-lbl">首屏高度</span></div>
+        <div class="metric"><span class="metric-val" style="color:var(--rec)">0</span><span class="metric-lbl">额外表格</span></div>
+      </div>
+      <ul class="pros">
+        <li>口令 + 快捷键 + 别名语义合一，和 Raycast Command 一致</li>
+        <li>首屏比 A 少 ~40% 纵向空间</li>
+        <li>加别名：点「+N」popover，不必整页滚动</li>
+      </ul>
+    </div>
+  </article>
+
+  <!-- E: iOS Settings -->
+  <article class="panel" id="panelE">
+    <div class="panel-head">
+      <h2>方案 E <span class="tag tag--ref">iOS 设置</span></h2>
+      <p>Hero 极简化；配置项收成 inset 分组行，点行进 Sheet</p>
+      <p class="cite">参考：Siri/快捷指令设置 — 主值右对齐 + chevron，详情在子层</p>
+    </div>
+    <div class="phone">
+      <div class="phone-rail">
+        <span class="rail-pill on">01 开启</span>
+        <span class="rail-pill">02 结束</span>
+        <span class="rail-pill">03 发送</span>
+      </div>
+      <div class="phone-body" id="bodyE" style="background:var(--ios-group)">
+        <div class="fold-line"></div>
+        <div class="fold-label">首屏折线</div>
+
+        <div class="ios-hero-mini">
+          <p class="phrase">「开始听写」</p>
+          <p class="sub">语音未启用 · 响应最快</p>
+          <button class="ios-test" type="button">🎙 试试口令效果</button>
+        </div>
+
+        <p class="ios-group-label">口令配置</p>
+        <div class="ios-group">
+          <div class="ios-row" id="openSheetAlias">
+            <div class="ios-row-icon ios-row-icon--blue">🏷</div>
+            <div class="ios-row-body">
+              <div class="ios-row-title">别名</div>
+              <div class="ios-row-sub">说出任意一个即可触发</div>
+            </div>
+            <div class="ios-row-value">5 个 <span class="ios-chevron">›</span></div>
+          </div>
+          <div class="ios-row" id="openSheetTarget">
+            <div class="ios-row-icon ios-row-icon--purple">⌨</div>
+            <div class="ios-row-body">
+              <div class="ios-row-title">输入目标</div>
+              <div class="ios-row-sub">触发后切换到听写状态</div>
+            </div>
+            <div class="ios-row-value"><kbd>右 Alt</kbd> <span class="ios-chevron">›</span></div>
+          </div>
+        </div>
+
+        <p class="ios-group-label">设备</p>
+        <div class="ios-group">
+          <div class="ios-row">
+            <div class="ios-row-icon ios-row-icon--blue">🎤</div>
+            <div class="ios-row-body">
+              <div class="ios-row-title">麦克风</div>
+            </div>
+            <div class="ios-row-value">系统默认 <span class="ios-chevron">›</span></div>
+          </div>
+        </div>
+
+        <div class="sheet-backdrop" id="backdropE"></div>
+        <div class="ios-sheet" id="sheetE">
+          <div class="sheet-handle"></div>
+          <p class="sheet-title" id="sheetTitleE">别名</p>
+          <div class="prop-chips" id="sheetContentE">
+            <span class="chip">开始听写 <span class="x">×</span></span>
+            <span class="chip">打开听写 <span class="x">×</span></span>
+            <span class="chip">语音输入 <span class="x">×</span></span>
+            <span class="chip">开启输入 <span class="x">×</span></span>
+          </div>
+          <div class="add-row">
+            <input placeholder="添加别名">
+            <button class="add-btn" type="button">添加</button>
+          </div>
+        </div>
+
+        <div class="below-fold">
+          <div class="fake-block"></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel-foot">
+      <div class="metrics">
+        <div class="metric"><span class="metric-val" style="color:var(--primary)">~180px</span><span class="metric-lbl">首屏高度</span></div>
+        <div class="metric"><span class="metric-val" style="color:var(--primary)">2</span><span class="metric-lbl">配置行</span></div>
+        <div class="metric"><span class="metric-val" style="color:var(--warn)">+1</span><span class="metric-lbl">点击进 Sheet</span></div>
+      </div>
+      <ul class="pros">
+        <li>首屏最短，和系统设置心智一致</li>
+        <li>未来加「麦克风/语言」自然扩展成新行</li>
+        <li>编辑别名需多一次点击（Sheet 非整页跳转）</li>
+      </ul>
+    </div>
+  </article>
+
+  <!-- F: Linear -->
+  <article class="panel" id="panelF">
+    <div class="panel-head">
+      <h2>方案 F <span class="tag tag--ref">Linear</span></h2>
+      <p>无卡片嵌套；口令标题 + 属性行，点哪改哪</p>
+      <p class="cite">参考：Linear issue 属性行 — 左标签右值，inline edit</p>
+    </div>
+    <div class="phone">
+      <div class="phone-rail">
+        <span class="rail-pill on">01 开启</span>
+        <span class="rail-pill">02 结束</span>
+        <span class="rail-pill">03 发送</span>
+      </div>
+      <div class="phone-body" id="bodyF">
+        <div class="fold-line"></div>
+        <div class="fold-label">首屏折线</div>
+
+        <div class="linear-head">
+          <h2 class="linear-phrase" id="phraseF" contenteditable="false" tabindex="0">开始听写</h2>
+          <p class="linear-desc" id="descF" contenteditable="false" tabindex="0">说出此口令后开始听写 · 语音未启用</p>
+        </div>
+
+        <div class="prop-row">
+          <div class="prop-key">别名</div>
+          <div class="prop-val">
+            <div class="prop-chips">
+              <span class="chip">打开听写 <span class="x">×</span></span>
+              <span class="chip">语音输入 <span class="x">×</span></span>
+              <span class="chip">开启输入 <span class="x">×</span></span>
+              <button class="prop-add" type="button">+ 添加</button>
+            </div>
+          </div>
+        </div>
+        <div class="prop-row">
+          <div class="prop-key">快捷键</div>
+          <div class="prop-val">
+            <div class="prop-kbd-row">
+              <kbd>右 Alt</kbd>
+              <span style="font-size:11px;color:var(--text-3)">触发后切换听写</span>
+              <button class="prop-edit" type="button">编辑</button>
+            </div>
+          </div>
+        </div>
+        <div class="prop-row">
+          <div class="prop-key">状态</div>
+          <div class="prop-val" style="font-size:12px;color:var(--warn);padding-top:3px">● 语音未启用</div>
+        </div>
+
+        <div class="linear-toolbar">
+          <button class="primary" type="button">试试口令</button>
+          <button type="button">真机测试</button>
+        </div>
+
+        <div class="below-fold">
+          <div class="fake-block"></div>
+          <div class="fake-block" style="width:60%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel-foot">
+      <div class="metrics">
+        <div class="metric"><span class="metric-val" style="color:var(--primary)">0</span><span class="metric-lbl">卡片边框</span></div>
+        <div class="metric"><span class="metric-val" style="color:var(--primary)">~240px</span><span class="metric-lbl">首屏高度</span></div>
+        <div class="metric"><span class="metric-val" style="color:var(--ok)">inline</span><span class="metric-lbl">编辑路径</span></div>
+      </div>
+      <ul class="pros">
+        <li>信息密度高，无重复 section 标题</li>
+        <li>别名 chips 直接可见可删，零导航</li>
+        <li>视觉偏「工具属性页」，口语感弱于 D</li>
+      </ul>
+    </div>
+  </article>
+
+</div>
+
+<section style="max-width:1060px;margin:0 auto 48px;padding:0 28px">
+  <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px">
+    <h3 style="margin:0 0 10px;font-size:14px">对比 A/C 为什么差不大？</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead>
+        <tr style="color:var(--text-3);text-align:left">
+          <th style="padding:6px 8px;border-bottom:1px solid var(--line)"></th>
+          <th style="padding:6px 8px;border-bottom:1px solid var(--line)">A 现状</th>
+          <th style="padding:6px 8px;border-bottom:1px solid var(--line)">C 折叠</th>
+          <th style="padding:6px 8px;border-bottom:1px solid var(--line);color:var(--rec)">D Raycast</th>
+          <th style="padding:6px 8px;border-bottom:1px solid var(--line)">E iOS</th>
+          <th style="padding:6px 8px;border-bottom:1px solid var(--line)">F Linear</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft);color:var(--text-2)">信息架构</td>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft)">3 个平级 section</td>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft)">仍是 3 section，只是折起</td>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft);background:var(--rec-soft)"><strong>1 张命令卡</strong></td>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft)"><strong>Hero + 列表行</strong></td>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft)"><strong>标题 + 属性行</strong></td>
+        </tr>
+        <tr>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft);color:var(--text-2)">首屏高度</td>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft)">~360px</td>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft)">~280px</td>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft);background:var(--rec-soft)"><strong>~210px</strong></td>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft)"><strong>~180px</strong></td>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft)">~240px</td>
+        </tr>
+        <tr>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft);color:var(--text-2)">加别名路径</td>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft)">滚动到别名区</td>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft)">先展开再编辑</td>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft);background:var(--rec-soft)">点 +N popover</td>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft)">点行进 Sheet</td>
+          <td style="padding:8px;border-bottom:1px solid var(--line-soft)">行内 + 添加</td>
+        </tr>
+        <tr>
+          <td style="padding:8px;color:var(--text-2)">适合 voice-pilot</td>
+          <td style="padding:8px">已实现</td>
+          <td style="padding:8px">改动小，收益小</td>
+          <td style="padding:8px;background:var(--rec-soft)"><strong>口语命令感强，和 mockup 精神一致</strong></td>
+          <td style="padding:8px">扩展性好，偏系统设置</td>
+          <td style="padding:8px">高密度，偏高级用户</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="margin:14px 0 0;font-size:12px;color:var(--text-2)">
+      <strong>建议落地顺序：</strong>优先做 <strong>方案 D</strong>（一张命令卡 + popover 管理别名），与现有 mockup 的「命令中心」叙事最契合；
+      若后续 01 页还要加麦克风/语言/引擎，可渐进演进到 <strong>方案 E</strong> 的分组行模式。
+    </p>
+  </div>
+</section>
+
+<script>
+  // D: popover
+  document.getElementById('openPopoverD').onclick = function() {
+    document.getElementById('popoverD').classList.add('is-open');
+  };
+  document.getElementById('closePopoverD').onclick = function() {
+    document.getElementById('popoverD').classList.remove('is-open');
+  };
+
+  // E: bottom sheet
+  function openSheet(title, html) {
+    document.getElementById('sheetTitleE').textContent = title;
+    document.getElementById('sheetContentE').innerHTML = html;
+    document.getElementById('sheetE').classList.add('is-open');
+    document.getElementById('backdropE').classList.add('is-open');
+  }
+  function closeSheet() {
+    document.getElementById('sheetE').classList.remove('is-open');
+    document.getElementById('backdropE').classList.remove('is-open');
+  }
+  document.getElementById('openSheetAlias').onclick = function() {
+    openSheet('别名', document.querySelector('#sheetE .prop-chips').innerHTML);
+  };
+  document.getElementById('openSheetTarget').onclick = function() {
+    openSheet('输入目标', '<div class="prop-kbd-row" style="padding:8px 0"><kbd>右 Alt</kbd><span style="font-size:11px;color:var(--text-3)">触发后切换到听写状态</span></div><button class="prop-edit" type="button" style="margin-top:8px">前往按键页修改 →</button>');
+  };
+  document.getElementById('backdropE').onclick = closeSheet;
+
+  // F: inline edit demo
+  ['phraseF','descF'].forEach(function(id) {
+    var el = document.getElementById(id);
+    el.onclick = function() {
+      el.contentEditable = 'true';
+      el.classList.add('is-editing');
+      el.focus();
+    };
+    el.onblur = function() {
+      el.contentEditable = 'false';
+      el.classList.remove('is-editing');
+    };
+  });
+</script>
+</body>
+</html>

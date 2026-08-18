@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>原型 · 语音场景入口面板（vibecoding）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #e4e8ee;
+    --shell: #f6f7f9;
+    --card: #fff;
+    --ink: #12151a;
+    --sub: #4d5562;
+    --hint: #8a929f;
+    --line: #dde1e8;
+    --accent: #18799c;
+    --accent-soft: #e4f3f9;
+    --live: #c9890a;
+    --live-glow: rgba(201,137,10,.28);
+    --ok: #1f7a4a;
+    --ok-soft: #e6f4ec;
+    --warn: #9a6700;
+    --warn-soft: #fff6dc;
+    --key: #252930;
+    --key-lit: #3d4450;
+    --bar: #101318;
+    --bar-text: #e8eaef;
+    --proto: #2b3140;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: "DM Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; cursor: pointer; border: 0; background: none; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+
+  /* prototype chrome */
+  .proto-wrap {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 100vh;
+  }
+  @media (max-width: 900px) {
+    .proto-wrap { grid-template-columns: 1fr; }
+    .proto-nav { position: sticky; top: 0; z-index: 50; }
+  }
+  .proto-nav {
+    background: var(--proto);
+    color: #c8ced8;
+    padding: 18px 14px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .proto-nav h1 {
+    margin: 0 0 2px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: -.02em;
+  }
+  .proto-nav > p {
+    margin: 0 0 14px;
+    font-size: 11px;
+    color: #8b95a5;
+    line-height: 1.4;
+  }
+  .proto-nav label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #6d7788;
+    margin: 10px 0 6px;
+    display: block;
+  }
+  .nav-btn {
+    text-align: left;
+    padding: 8px 10px;
+    border-radius: 8px;
+    color: #b8c0cc;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .nav-btn small {
+    font-size: 10px;
+    font-weight: 400;
+    color: #7a8494;
+  }
+  .nav-btn:hover { background: rgba(255,255,255,.06); color: #fff; }
+  .nav-btn.is-on {
+    background: rgba(24,121,156,.35);
+    color: #fff;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+  }
+  .flow-mini {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,.08);
+    font-size: 10px;
+    color: #7a8494;
+    line-height: 1.55;
+  }
+  .flow-mini b { color: #a8b0bc; display: block; margin-bottom: 4px; }
+
+  .proto-main {
+    padding: 20px 24px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .screen-title {
+    width: min(720px, 100%);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .screen-title h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -.02em;
+  }
+  .screen-title p { margin: 0; font-size: 12px; color: var(--sub); }
+
+  /* app frame */
+  .app {
+    width: min(720px, 100%);
+    background: var(--shell);
+    border: 1px solid #c8ced8;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 24px 48px rgba(18,21,26,.1);
+    display: flex;
+    flex-direction: column;
+    min-height: 680px;
+  }
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  .status-bar .title {
+    font-weight: 600;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot-live {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--live);
+    box-shadow: 0 0 0 3px var(--live-glow);
+  }
+  .pill {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--ok-soft);
+    color: var(--ok);
+  }
+  .pill.offline { background: var(--warn-soft); color: var(--warn); }
+  .pill.neutral { background: #eef1f5; color: var(--sub); }
+  .status-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .btn-sm {
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .btn-sm.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .toggle {
+    width: 34px; height: 20px; border-radius: 99px;
+    background: var(--ok); position: relative;
+  }
+  .toggle::after {
+    content: ""; position: absolute; top: 2px; right: 2px;
+    width: 16px; height: 16px; border-radius: 50%; background: #fff;
+  }
+
+  .flow-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    padding: 12px 14px 0;
+  }
+  .flow-step {
+    text-align: center;
+    font-size: 10px;
+    color: var(--hint);
+  }
+  .flow-step .ico {
+    width: 34px; height: 34px; margin: 0 auto 5px;
+    border-radius: 10px; border: 1px solid var(--line);
+    background: #fff;
+    display: grid; place-items: center;
+    font-size: 10px; font-weight: 600;
+  }
+  .flow-step.on { color: var(--ink); }
+  .flow-step.on .ico { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .content {
+    flex: 1;
+    padding: 14px 14px 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .sec-head h3 {
+    margin: 0;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--hint);
+  }
+  .sec-head span { font-size: 11px; color: var(--hint); }
+
+  /* triggers */
+  .triggers {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .trig {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px;
+    text-align: left;
+    min-height: 104px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .trig.live { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+  .trig.dim { opacity: .65; }
+  .key {
+    width: 38px; height: 28px; border-radius: 6px 6px 8px 8px;
+    background: linear-gradient(180deg, var(--key-lit), var(--key));
+    box-shadow: 0 2px 0 #151820;
+    display: grid; place-items: center;
+    color: #d8dce4; font-size: 8px; font-weight: 600; letter-spacing: .05em;
+  }
+  .key.pulse { animation: pulse 1.2s ease infinite; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 2px 0 #151820, 0 0 0 0 var(--live-glow); }
+    50% { box-shadow: 0 2px 0 #151820, 0 0 0 6px transparent; }
+  }
+  .trig-k { font-size: 10px; color: var(--hint); }
+  .trig-s { font-size: 13px; font-weight: 600; }
+  .trig-m {
+    margin-top: auto;
+    font-size: 10px;
+    color: var(--sub);
+    display: flex; align-items: center; gap: 5px;
+  }
+  .led { width: 5px; height: 5px; border-radius: 50%; background: #c5cad3; }
+  .trig.live .led { background: var(--live); box-shadow: 0 0 5px var(--live); }
+
+  /* scenes */
+  .scenes {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .scene {
+    grid-column: span 2;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 11px 12px;
+    text-align: left;
+    min-height: 108px;
+    display: flex;
+    flex-direction: column;
+  }
+  .scene.wide { grid-column: span 3; }
+  .scene.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .scene .tag {
+    font-size: 9px; font-weight: 600; letter-spacing: .04em;
+    color: var(--accent); margin-bottom: 6px;
+  }
+  .scene.on .tag { color: var(--live); }
+  .scene h4 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -.02em; }
+  .scene .who { margin: 3px 0 0; font-size: 11px; color: var(--sub); }
+  .scene.on .who { color: #a8b0bc; }
+  .scene .wake {
+    margin-top: auto; padding-top: 8px;
+    font-size: 10px; color: var(--hint);
+  }
+  .scene.on .wake { color: #8b95a5; }
+  .scene .wake em { font-style: normal; font-weight: 500; color: var(--ink); }
+  .scene.on .wake em { color: #fff; }
+
+  /* detail drawer */
+  .detail {
+    background: var(--card);
+    border: 1px solid var(--ink);
+    border-radius: 12px;
+    padding: 12px 14px 14px;
+    margin-bottom: 10px;
+  }
+  .detail-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .detail-head h4 { margin: 0; font-size: 15px; font-weight: 600; }
+  .detail-head p { margin: 2px 0 0; font-size: 11px; color: var(--sub); }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 68px 1fr;
+    gap: 7px 10px;
+    font-size: 12px;
+  }
+  .detail-grid dt { color: var(--hint); }
+  .detail-grid dd { margin: 0; }
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag-pill {
+    background: #eef1f5; border-radius: 6px;
+    padding: 2px 7px; font-size: 11px;
+  }
+  .cap-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .cap {
+    font-size: 10px; padding: 2px 7px; border-radius: 999px;
+    background: var(--ok-soft); color: var(--ok);
+  }
+  .cap.no { background: #f0f1f4; color: var(--hint); text-decoration: line-through; }
+
+  /* micro banner */
+  .micro {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--warn-soft);
+    border: 1px solid #f0dfa8;
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    font-size: 12px;
+  }
+  .micro b { font-weight: 600; }
+  .micro-chips { margin-left: auto; display: flex; gap: 5px; }
+  .micro-chips span {
+    background: #fff; border: 1px solid #e8d48a;
+    border-radius: 6px; padding: 2px 8px;
+    font-size: 11px; font-weight: 500;
+  }
+
+  /* setup banner */
+  .setup {
+    background: var(--accent-soft);
+    border: 1px solid #b8dce8;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: var(--sub);
+  }
+  .setup strong { color: var(--ink); }
+
+  /* dictation bar */
+  .dict {
+    margin: auto -14px 0;
+    background: var(--bar);
+    color: var(--bar-text);
+    padding: 12px 14px 14px;
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    gap: 10px 12px;
+    align-items: center;
+  }
+  .dict.idle { background: #1a1e26; }
+  .dict.hidden-bar { display: none; }
+  .mic {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: #222831;
+    display: grid; place-items: center;
+    color: #6d7788;
+    box-shadow: inset 0 0 0 1px #343b48;
+  }
+  .mic.hot {
+    background: #2a2318; color: var(--live);
+    box-shadow: 0 0 0 3px var(--live-glow);
+  }
+  .wave {
+    display: flex; align-items: center; gap: 3px; height: 20px; margin-bottom: 5px;
+  }
+  .wave i {
+    display: block; width: 3px; border-radius: 2px; background: var(--live);
+    animation: eq .9s ease-in-out infinite;
+  }
+  .wave i:nth-child(1){height:5px;animation-delay:0s}
+  .wave i:nth-child(2){height:12px;animation-delay:.08s}
+  .wave i:nth-child(3){height:18px;animation-delay:.16s}
+  .wave i:nth-child(4){height:10px;animation-delay:.04s}
+  .wave i:nth-child(5){height:15px;animation-delay:.2s}
+  .wave i:nth-child(6){height:7px;animation-delay:.12s}
+  @keyframes eq {
+    0%,100%{transform:scaleY(.4);opacity:.5}
+    50%{transform:scaleY(1);opacity:1}
+  }
+  .live-text { margin: 0; font-size: 13px; color: #f0f2f6; }
+  .live-text u { text-decoration: none; color: var(--live); }
+  .live-text.muted { color: #7a8494; font-size: 12px; }
+  .send {
+    background: var(--live); color: #1a1408;
+    font-weight: 600; font-size: 12px;
+    border-radius: 8px; padding: 8px 12px;
+  }
+  .send.ghost { background: #2a303a; color: #8b95a5; }
+  .dict-foot {
+    grid-column: 2 / -1;
+    font-size: 10px; color: #6d7788; margin-top: -2px;
+  }
+
+  /* annotations */
+  .anno {
+    width: min(720px, 100%);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .anno div {
+    background: rgba(255,255,255,.7);
+    border: 1px dashed #b8c0cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 11px;
+    color: var(--sub);
+  }
+  .anno b { color: var(--ink); display: block; margin-bottom: 2px; font-size: 10px; }
+
+  /* state visibility — tokens space-separated on data-only */
+  [data-only] { display: none !important; }
+  body[data-screen="main"] [data-only~="main"],
+  body[data-screen="detail"] [data-only~="detail"],
+  body[data-screen="listening"] [data-only~="listening"],
+  body[data-screen="idle"] [data-only~="idle"],
+  body[data-screen="needs"] [data-only~="needs"],
+  body[data-screen="setup"] [data-only~="setup"],
+  body[data-screen="offline"] [data-only~="offline"] { display: revert !important; }
+  body[data-screen="detail"] .scene.on { outline: 2px solid var(--live); outline-offset: 2px; }
+  body[data-screen="listening"] .dict.hidden-bar { display: grid !important; }
+  body[data-screen="idle"] .dict.hidden-bar { display: grid !important; }
+  body[data-screen="needs"] .dict.hidden-bar { display: grid !important; }
+  body[data-screen="offline"] .dict.hidden-bar { display: grid !important; }
+  body[data-screen="setup"] .dict.hidden-bar { display: grid !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wave i, .key.pulse { animation: none; }
+  }
+</style>
+</head>
+<body data-screen="main">
+
+<div class="proto-wrap">
+  <nav class="proto-nav" aria-label="原型状态切换">
+    <h1>语音场景入口</h1>
+    <p>侧键 × 场景路由 × 本地唤醒。点击左侧切换界面态。</p>
+
+    <label>主流程</label>
+    <button type="button" class="nav-btn is-on" data-screen="main">
+      01 · 默认主页
+      <small>触发器 + 五场景 + 听写条待命</small>
+    </button>
+    <button type="button" class="nav-btn" data-screen="detail">
+      02 · 场景详情
+      <small>点 Cursor 展开 · 唤醒词是子属性</small>
+    </button>
+    <button type="button" class="nav-btn" data-screen="listening">
+      03 · 侧键听写中
+      <small>长 prompt · 松开发送</small>
+    </button>
+    <button type="button" class="nav-btn" data-screen="idle">
+      04 · 听写待命
+      <small>未按住 · 底栏存在感</small>
+    </button>
+
+    <label>特殊场景</label>
+    <button type="button" class="nav-btn" data-screen="needs">
+      05 · 等批准
+      <small>needs_input · 可说「同意」</small>
+    </button>
+    <button type="button" class="nav-btn" data-screen="offline">
+      06 · 断网本地
+      <small>侧键仍可用 · 云听写不可用</small>
+    </button>
+    <button type="button" class="nav-btn" data-screen="setup">
+      07 · 首次绑定
+      <small>录侧键 · 出厂五场景</small>
+    </button>
+
+    <div class="flow-mini">
+      <b>用户路径</b>
+      侧键按住 → 长 prompt → 松开<br>
+      Agent 停 → 「同意」/ 侧键短词<br>
+      换 agent → 点场景卡一次
+    </div>
+  </nav>
+
+  <main class="proto-main">
+    <div class="screen-title">
+      <div>
+        <h2 id="screenLabel">01 · 默认主页</h2>
+        <p id="screenDesc">配置页几乎不用点；会话中靠侧键说话</p>
+      </div>
+    </div>
+
+    <div class="app" role="img" aria-label="语音页原型">
+      <header class="status-bar">
+        <div class="title">
+          <span class="dot-live" data-only="listening needs offline"></span>
+          场景入口
+          <span class="pill" id="statusPill">侧键 · Cursor</span>
+        </div>
+        <div class="status-actions">
+          <button type="button" class="btn-sm primary">保存到习惯</button>
+          <button type="button" class="toggle" aria-label="语音开"></button>
+        </div>
+      </header>
+
+      <div class="flow-steps">
+        <div class="flow-step on"><div class="ico">01</div>怎么开启</div>
+        <div class="flow-step"><div class="ico">02</div>说错结束</div>
+        <div class="flow-step"><div class="ico">03</div>说完发送</div>
+      </div>
+
+      <div class="content">
+        <!-- setup -->
+        <div class="setup" data-only="setup">
+          <strong>先绑侧键。</strong> 场景已出厂：Cursor 为默认。按住侧键说一句话，确认字进 Agent 框。
+          <button type="button" class="btn-sm primary" style="margin-left:8px;vertical-align:middle">去录侧键</button>
+        </div>
+
+        <!-- needs input -->
+        <div class="micro" data-only="needs">
+          <span>Codex 等你批准 bash</span>
+          <div class="micro-chips">
+            <span>同意</span><span>不要</span>
+          </div>
+        </div>
+
+        <div class="sec-head">
+          <h3>怎么开始说</h3>
+          <span>硬件 × 场景，不是 tab</span>
+        </div>
+        <div class="triggers">
+          <div class="trig live" id="trigSide">
+            <span class="key pulse" data-only="listening">SIDE</span>
+            <span class="key" data-only="main detail idle needs offline setup">SIDE</span>
+            <span class="trig-k">侧键 · push-to-talk</span>
+            <span class="trig-s">Cursor</span>
+            <span class="trig-m"><span class="led"></span><span id="trigSideMeta">12 秒前</span></span>
+          </div>
+          <div class="trig dim">
+            <span class="key">VOL</span>
+            <span class="trig-k">音量键</span>
+            <span class="trig-s">未绑定</span>
+            <span class="trig-m"><span class="led"></span>点按绑定</span>
+          </div>
+          <div class="trig">
+            <span class="key">KWS</span>
+            <span class="trig-k">本地唤醒</span>
+            <span class="trig-s">开始输入</span>
+            <span class="trig-m"><span class="led"></span>场景子属性</span>
+          </div>
+        </div>
+
+        <div class="sec-head">
+          <h3>说到哪</h3>
+          <span data-only="main listening idle needs offline setup">出厂预设 · 不添加应用</span>
+          <span data-only="detail">详情 · 编辑 mapping</span>
+        </div>
+
+        <div class="detail" data-only="detail">
+          <div class="detail-head">
+            <div>
+              <h4>Cursor</h4>
+              <p>Agent 输入框 · Desktop Automation</p>
+            </div>
+            <button type="button" class="btn-sm">收起</button>
+          </div>
+          <dl class="detail-grid">
+            <dt>触发</dt><dd>侧键按住 · 音量未绑</dd>
+            <dt>唤醒</dt>
+            <dd><span class="tags"><span class="tag-pill">开始输入</span><span class="tag-pill">开始听写</span></span></dd>
+            <dt>落点</dt><dd>Agent（确保打开，不 toggle 关）</dd>
+            <dt>引擎</dt><dd>本地 Vosk · 断网可用</dd>
+            <dt>发送</dt><dd>03 步 · 确认后 Enter</dd>
+          </dl>
+          <div class="cap-row">
+            <span class="cap">对着说</span>
+            <span class="cap">取消生成</span>
+            <span class="cap no">同意批准</span>
+            <span class="cap no">命令菜单</span>
+          </div>
+          <p style="margin:8px 0 0;font-size:11px;color:var(--hint)">灰色 = 该 agent 未验证或未接 Hook，不在语音页承诺</p>
+        </div>
+
+        <div class="scenes" data-only="main detail listening idle needs offline setup">
+          <div class="scene">
+            <span class="tag">CLI</span>
+            <h4>Claude Code</h4>
+            <p class="who">终端会话</p>
+            <p class="wake">唤醒 <em>开始输入</em></p>
+          </div>
+          <div class="scene">
+            <span class="tag">桌面</span>
+            <h4>Codex</h4>
+            <p class="who">ChatGPT.exe</p>
+            <p class="wake">唤醒 <em>开始输入</em></p>
+          </div>
+          <div class="scene on">
+            <span class="tag">在用</span>
+            <h4>Cursor</h4>
+            <p class="who">Agent 输入框</p>
+            <p class="wake">侧键 · <em>开始输入</em></p>
+          </div>
+          <div class="scene wide">
+            <span class="tag">通用</span>
+            <h4>通用 IDE</h4>
+            <p class="who">已在编辑器 · 不抢 Agent 面板</p>
+            <p class="wake">只听写</p>
+          </div>
+          <div class="scene wide">
+            <span class="tag">通用</span>
+            <h4>前台窗口</h4>
+            <p class="who">任意输入框</p>
+            <p class="wake">Wispr 式落点</p>
+          </div>
+        </div>
+
+        <div class="dict hidden-bar" id="dictBar">
+          <div class="mic hot" data-only="listening">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+          </div>
+          <div class="mic" data-only="idle needs offline setup">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+          </div>
+          <div class="mic" data-only="main detail">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+          </div>
+          <div>
+            <div class="wave" data-only="listening" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <p class="live-text mono" data-only="listening">重构这个模块，测试覆盖率到 80%，用 reactive 思路，<u>加注释</u></p>
+            <p class="live-text muted" data-only="idle">按住侧键开始说 · Cursor Agent</p>
+            <p class="live-text muted" data-only="main detail">校准时可试说 · 日常在 Cursor 里按侧键</p>
+            <p class="live-text muted" data-only="needs">可说「同意」或「不要」· 也可去 Codex 点按钮</p>
+            <p class="live-text muted" data-only="offline">本地 Vosk 可用 · 云润色已暂停</p>
+            <p class="live-text muted" data-only="setup">试说「测试一下」验证落点</p>
+          </div>
+          <button type="button" class="send" data-only="listening">松开发送</button>
+          <button type="button" class="send ghost" data-only="idle main detail needs offline setup" disabled>发送</button>
+          <p class="dict-foot" id="dictFoot">侧键按住 · 本地 · 光标不动</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="anno" id="annotations">
+      <div><b>触发器</b>回答「怎么开始说」，不是二选一 tab</div>
+      <div><b>场景卡</b>回答「说到哪」，出厂五张</div>
+      <div><b>听写条</b>校准/演示用；会话中靠侧键 + earcon</div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const meta = {
+    main: {
+      label: '01 · 默认主页',
+      desc: '配置页几乎不用点；会话中靠侧键说话',
+      pill: '侧键 · Cursor',
+      pillClass: '',
+      foot: '侧键按住 · 本地 · 光标不动',
+      anno: ['触发器', '回答「怎么开始说」', '场景卡', '回答「说到哪」', '听写条', '校准用；日常靠侧键']
+    },
+    detail: {
+      label: '02 · 场景详情',
+      desc: '低频：改唤醒词、看 agent 能力诚实标注',
+      pill: '编辑 Cursor',
+      pillClass: 'neutral',
+      foot: '唤醒词是子属性 · 不是顶层 tab',
+      anno: ['详情', '能力灰掉=不承诺', '落点', 'Agent 不 toggle', '编辑', '改 mapping 非切在用']
+    },
+    listening: {
+      label: '03 · 侧键听写中',
+      desc: '长 prompt 唯一稳赢键盘的场景',
+      pill: '正在听 · Cursor',
+      pillClass: '',
+      foot: '松开 → 确认发送 · 光标仍在 Composer',
+      anno: ['侧键', '按住=听', '长句', '>30 字才值', '发送', '跟 03 步策略']
+    },
+    idle: {
+      label: '04 · 听写待命',
+      desc: 'Granola 式存在感：在，但不打断编码',
+      pill: '待命 · Cursor',
+      pillClass: 'neutral',
+      foot: '未按住 · 小飞一声仅在切场景/失败时',
+      anno: ['待命', '底栏可藏', '侧键', '随时按住', '不抢焦点', '不学全双工']
+    },
+    needs: {
+      label: '05 · Agent 等批准',
+      desc: '回合缝微操作：闭集短词，不是长方案',
+      pill: 'Codex 等你',
+      pillClass: 'offline',
+      foot: '有挂起态才响应「同意」· 听错=失败音',
+      anno: ['微操作', '同意/不要', '闭集', '无挂起不响应', '离线', '本地 KWS 仍可']
+    },
+    offline: {
+      label: '06 · 断网本地',
+      desc: '侧键 + Vosk 仍可用；云听写工具在此失效',
+      pill: '离线 · 本地',
+      pillClass: 'offline',
+      foot: '长 prompt 本地转写 · 不依赖 Wispr',
+      anno: ['护城河', '本地唤醒', '侧键', '硬件 PTT', '场景', '路由仍有效']
+    },
+    setup: {
+      label: '07 · 首次绑定',
+      desc: '开箱只绑侧键；五场景已出厂',
+      pill: '待绑侧键',
+      pillClass: 'neutral',
+      foot: '试说验证 · 不录「打开应用」口令',
+      anno: ['一次', '录侧键', '出厂', '五场景', '不添加', '无应用 roster']
+    }
+  };
+
+  const labels = document.getElementById('screenLabel');
+  const descs = document.getElementById('screenDesc');
+  const pill = document.getElementById('statusPill');
+  const foot = document.getElementById('dictFoot');
+  const anno = document.getElementById('annotations');
+
+  document.querySelectorAll('.nav-btn[data-screen]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = btn.dataset.screen;
+      document.body.dataset.screen = s;
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('is-on'));
+      btn.classList.add('is-on');
+      const m = meta[s];
+      labels.textContent = m.label;
+      descs.textContent = m.desc;
+      pill.textContent = m.pill;
+      pill.className = 'pill' + (m.pillClass ? ' ' + m.pillClass : '');
+      foot.textContent = m.foot;
+      const cells = anno.querySelectorAll('div');
+      for (let i = 0; i < 3; i++) {
+        cells[i].innerHTML = '<b>' + m.anno[i*2] + '</b>' + m.anno[i*2+1];
+      }
+    });
+  });
+</script>
+</body>
+</html>

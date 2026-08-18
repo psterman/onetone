@@ -2442,6 +2442,16 @@
     };
   }
 
+  function primaryWakePhraseDisplay(){
+    var V=global.OneToneVoiceSettingsViewModel;
+    if(!V||!V.build||!V.resolveDisplayWakePhrase) return '';
+    try{
+      return V.resolveDisplayWakePhrase(V.build(false)).display||'';
+    }catch(_e){
+      return '';
+    }
+  }
+
   function renderWakePhraseTags(){
     var pc=global.OneToneVoicePhraseCustom;
     if(!pc||!pc.renderPhraseTags) return;
@@ -2449,7 +2459,11 @@
     var lang=global.__vp_voice_wake_lang__||'zh';
     var active=currentWakePhraseList();
     if(mode==='vosk') active=filterWakePhrasesByLang(active,lang);
-    var activeModel=active.map(function(p){ return {phrase:p,active:true}; });
+    var primary=primaryWakePhraseDisplay();
+    var activeModel=active.map(function(p){ return {phrase:p,active:true}; })
+      .filter(function(tag){
+        return String(tag.phrase||'').trim()!==String(primary||'').trim();
+      });
     pc.renderPhraseTags('voiceWakePhraseTags',activeModel);
     var collapse=$('voiceWakePresetCollapse');
     if(collapse){ collapse.hidden=true; collapse.setAttribute('aria-hidden','true'); }
@@ -2585,9 +2599,9 @@
 
   function renderWakeCustomPhrases(){
     renderWakePhraseTags();
-    const block=$('voiceWakeCustomBlock');
+    const poolAdd=$('btnVoiceWakePoolAdd');
     const mode=voiceWakeExpandedMode||currentVoiceMode()||defaultUiVoiceMode();
-    if(block) block.hidden=mode==='off';
+    if(poolAdd) poolAdd.hidden=mode==='off';
   }
 
   function persistWakePhrases(next,opts){

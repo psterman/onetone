@@ -7,6 +7,27 @@
 
   /** Consumed once by scheme-switch-feedback after mvp_scheme_switched. */
   var pendingSwitchSource='manual';
+  /** When set to baseline id, foreground poll must not override manual 通用. */
+  var manualScenePinId='';
+
+  function isBaselineMappingId(id){
+    id=String(id||'').trim();
+    if(!id) return false;
+    var cfg=state().config;
+    var core=global.OneToneMappingCore;
+    var diff=global.OneToneHabitOverrideDiff;
+    if(!diff||!diff.isGlobalBaselineMapping||!core||!core.byId) return false;
+    var m=core.byId(id);
+    return !!(m&&diff.isGlobalBaselineMapping(m,cfg||{},core));
+  }
+
+  function clearManualScenePin(){
+    manualScenePinId='';
+  }
+
+  function isManualScenePinned(){
+    return !!manualScenePinId;
+  }
 
   function activeSceneId(){
     var cfg=state().config;
@@ -37,6 +58,17 @@
     if(!id) return;
     var cfg=state().config;
     if(!cfg) return;
+    var src=normalizeSource(opts&&opts.source);
+    if(src==='manual'){
+      if(cfg.followForegroundAppScenario){
+        if(isBaselineMappingId(id)) manualScenePinId=String(id);
+        else manualScenePinId='';
+      }else{
+        manualScenePinId='';
+      }
+    }else if(src==='foreground'){
+      if(manualScenePinId&&isBaselineMappingId(manualScenePinId)) return;
+    }
     if(activeSceneId()===id) return;
     var core=global.OneToneMappingCore;
     var m=core&&core.byId?core.byId(id):null;
@@ -51,7 +83,7 @@
       toast(t('sceneActivateNeedComplete'),'warn');
       return;
     }
-    pendingSwitchSource=normalizeSource(opts&&opts.source);
+    pendingSwitchSource=src;
     m.lastUsedAt=Date.now();
     m.useCount=(m.useCount||0)+1;
     // Optimistic in-use so home howto refreshes before mvp_scheme_switched round-trip.
@@ -70,6 +102,8 @@
     activeSceneId:activeSceneId,
     isActiveScene:isActiveScene,
     activateScene:activateScene,
+    clearManualScenePin:clearManualScenePin,
+    isManualScenePinned:isManualScenePinned,
     takePendingSwitchSource:takePendingSwitchSource,
     peekPendingSwitchSource:peekPendingSwitchSource
   };

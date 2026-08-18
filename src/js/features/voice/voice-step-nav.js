@@ -82,7 +82,12 @@
   function resolveStepHints(vm){
     var V=global.OneToneVoiceSettingsViewModel;
     if(!V||!vm) return {wake:'',recognize:'',send:''};
-    var wakeHint=vm.loading?t('homeLiveLoading'):V.resolveDisplayWakePhrase(vm).display;
+    var wakeHint='';
+    if(!vm.loading){
+      wakeHint=V.resolveScopeSummary(vm)||'';
+    }else{
+      wakeHint=t('homeLiveLoading');
+    }
     var wake=global.OneToneVoiceStepWake;
     if(!vm.loading&&wake&&wake.isScenarioVoiceEdit&&wake.isScenarioVoiceEdit()){
       var cmd=global.OneToneHabitScenarioVoiceCommand;

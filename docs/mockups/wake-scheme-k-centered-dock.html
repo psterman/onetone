@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>01 开启 · 单栏居中 + 底部 Voice Dock（方案 K）</title>
+  <link rel="stylesheet" href="../../src/css/app.css" />
+  <link rel="stylesheet" href="../../src/css/keys-workflow.css" />
+  <link rel="stylesheet" href="../../src/css/flow-desk.css" />
+  <link rel="stylesheet" href="../../src/css/voice-workflow.css" />
+  <link rel="stylesheet" href="../../src/css/voice-page-shell.css" />
+  <link rel="stylesheet" href="../../src/css/typography.css" />
+  <link rel="stylesheet" href="wake-scheme-k-centered-dock.css" />
+</head>
+<body class="mockup-body">
+
+<div class="app mockup-app is-settings">
+  <div class="mockup-drawer-shell">
+
+    <div class="mockup-toolbar" aria-label="Mockup 切换">
+      <strong>方案 K</strong>
+      <span>预览：</span>
+      <button type="button" class="mockup-toolbar-btn is-on" id="btnViewGlobal">通用语音</button>
+      <button type="button" class="mockup-toolbar-btn" id="btnViewScenario">场景 · Cursor</button>
+      <button type="button" class="mockup-toolbar-btn" id="btnToggleVoice">切换语音开/关</button>
+    </div>
+
+    <section id="settingsPanelVoiceWake" class="settings-panel voice-page voice-page-v2 voice-page-desk scheme-k-panel" aria-label="语音听写设置">
+
+      <!-- 场景编辑横幅（Hub 进入时显示；01 页不再放右侧习惯列表） -->
+      <div class="habit-scenario-context-banner" id="scenarioBanner" hidden role="status">
+        <div class="habit-scenario-context-banner-main">
+          <span class="habit-scenario-context-banner-icon" aria-hidden="true">◎</span>
+          <div class="habit-scenario-context-banner-text-wrap">
+            <p class="habit-scenario-context-banner-text">正在配置 Cursor 的语音</p>
+            <p class="habit-scenario-context-banner-sub">保存后仅在该应用场景生效；未覆盖项沿用通用设置。</p>
+          </div>
+        </div>
+        <div class="habit-scenario-context-banner-actions">
+          <button type="button" class="habit-hub-act">改按键</button>
+          <button type="button" class="habit-hub-act is-primary">保存应用场景</button>
+          <button type="button" class="habit-hub-act">返回习惯</button>
+        </div>
+      </div>
+
+      <!-- 旧顶栏保留 DOM 但 CSS 隐藏 -->
+      <div class="page-status-bar voice-page-status-bar" aria-hidden="true">
+        <div class="page-status-bar-main"><span>legacy top bar hidden</span></div>
+      </div>
+
+      <div class="voice-page-shell">
+        <div class="voice-page-body">
+          <div class="voice-page-main">
+            <div class="voice-page-layout">
+
+              <div class="keys-workflow-pipeline voice-workflow-pipeline">
+                <section class="flow-nodes" aria-label="语音流程导航">
+                  <div class="flow-nodes-grid">
+                    <div class="flow-node">
+                      <span class="flow-node-tag">01 / 开启</span>
+                      <button type="button" class="flow-node-btn is-active" aria-current="step">
+                        <svg class="flow-node-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+                      </button>
+                      <h3 class="flow-node-title">怎么开启打字？</h3>
+                    </div>
+                    <div class="flow-node">
+                      <span class="flow-node-tag">02 / 结束</span>
+                      <button type="button" class="flow-node-btn">
+                        <svg class="flow-node-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                      </button>
+                      <h3 class="flow-node-title">说错了想结束？</h3>
+                    </div>
+                    <div class="flow-node">
+                      <span class="flow-node-tag">03 / 发送</span>
+                      <button type="button" class="flow-node-btn">
+                        <svg class="flow-node-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                      </button>
+                      <h3 class="flow-node-title">说完怎么发出去？</h3>
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              <div class="flow-desk-panel">
+                <div class="voice-flow-step keys-workflow-col voice-wake-root is-active-step">
+                  <div class="keys-step-body">
+
+                    <div class="voice-wake-flat-layout voice-phrase-panel voice-wake-phrase-panel">
+                      <header class="voice-wake-toolbar">
+                        <div class="voice-phrase-kind-tabs voice-wake-kind-tabs" role="tablist">
+                          <button type="button" class="voice-phrase-kind-tab is-on" role="tab" aria-selected="true">开始输入</button>
+                          <button type="button" class="voice-phrase-kind-tab" role="tab" aria-selected="false">打开应用</button>
+                        </div>
+                      </header>
+
+                      <div class="voice-phrase-kind-pane voice-wake-text-pane" role="tabpanel">
+                        <section class="voice-wake-section voice-wake-unified-section">
+                          <h4 class="voice-wake-section-title">开启口令</h4>
+
+                          <div class="voice-wake-pool-card voice-wake-primary-card voice-wake-hero-card">
+                            <div class="voice-wake-pool-hero">
+                              <div class="voice-wake-hero-meta">
+                                <button type="button" class="voice-wake-status-badge is-on" id="heroBadge">语音已就绪 · 后台守护中</button>
+                                <span class="voice-wake-primary-badge">响应最快</span>
+                              </div>
+                              <p class="voice-wake-pool-hero-kicker">默认口令</p>
+                              <h2 class="voice-wake-hero-name">
+                                <span class="voice-phrase-compact-zh">开始输入</span>
+                              </h2>
+                              <p class="voice-wake-hero-desc">说出即可开始听写</p>
+                            </div>
+
+                            <div class="voice-wake-pool-alias-inset voice-wake-alias-card">
+                              <p class="voice-wake-pool-bridge">这些说法同样有效</p>
+                              <div class="voice-phrase-tags voice-wake-active-tags voice-wake-alias-list" id="phrasePool" role="listbox" aria-label="其他开启口令">
+                                <span class="voice-phrase-tag is-active" role="option">
+                                  <button type="button" class="voice-phrase-tag-btn" tabindex="-1">开始听写</button>
+                                  <button type="button" class="voice-phrase-tag-del" aria-label="删除" onclick="removePhrase(this)">×</button>
+                                </span>
+                                <span class="voice-phrase-tag is-active" role="option">
+                                  <button type="button" class="voice-phrase-tag-btn" tabindex="-1">打开听写</button>
+                                  <button type="button" class="voice-phrase-tag-del" aria-label="删除" onclick="removePhrase(this)">×</button>
+                                </span>
+                                <span class="voice-phrase-tag is-active" role="option">
+                                  <button type="button" class="voice-phrase-tag-btn" tabindex="-1">语音输入</button>
+                                  <button type="button" class="voice-phrase-tag-del" aria-label="删除" onclick="removePhrase(this)">×</button>
+                                </span>
+                              </div>
+                              <div class="voice-wake-pool-actions">
+                                <button type="button" class="voice-wake-pool-add-btn" id="btnAddPhrase">+ 添加口令</button>
+                              </div>
+                            </div>
+                          </div>
+                        </section>
+                      </div>
+                    </div>
+
+                    <div class="mockup-legend">
+                      <strong>方案 K 结构</strong>
+                      <ul>
+                        <li><strong>去掉</strong>右侧习惯 Hub + 旧顶栏三列状态栏</li>
+                        <li><strong>居中</strong>01 开启口令（J v3 单卡，max ~560px）</li>
+                        <li><strong>底部 dock</strong>：运行态 + 听到什么 + 麦克风 + 引擎；次行编辑/使用上下文</li>
+                        <li><strong>场景</strong>：横幅只在 Hub 进场景时出现；习惯切换回 Hub，不在 01 页重复</li>
+                      </ul>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部 Voice Dock -->
+        <footer class="voice-bottom-dock" id="voiceBottomDock" role="status" aria-live="polite">
+          <div class="voice-bottom-dock-inner">
+            <div class="voice-dock-live">
+              <div class="voice-dock-live-item">
+                <span class="voice-dock-status-pill is-live" id="dockStatusPill">
+                  <span class="voice-dock-status-dot" aria-hidden="true"></span>
+                  <span id="dockStatusText">后台守护中</span>
+                </span>
+              </div>
+              <div class="voice-dock-live-item is-grow">
+                <span class="voice-dock-lbl">听到</span>
+                <span class="voice-dock-heard is-placeholder" id="dockHeard">—</span>
+              </div>
+              <div class="voice-dock-live-item">
+                <button type="button" class="voice-dock-mic-btn" id="btnDockMic">🎤 默认麦克风</button>
+              </div>
+              <div class="voice-dock-live-item">
+                <div class="voice-dock-engine" role="group" aria-label="语音模式">
+                  <button type="button" class="voice-dock-engine-btn is-active" data-engine="auto">自动</button>
+                  <button type="button" class="voice-dock-engine-btn" data-engine="saver">省电</button>
+                  <button type="button" class="voice-dock-engine-btn" data-engine="enhanced">增强</button>
+                </div>
+              </div>
+            </div>
+            <div class="voice-dock-context">
+              <div class="voice-dock-context-lines">
+                <p class="voice-dock-context-editing" id="dockEditing">正在编辑：通用</p>
+                <p class="voice-dock-context-active" id="dockActive">正在使用：通用</p>
+                <p class="voice-dock-context-hint" id="dockHint" hidden></p>
+              </div>
+              <div class="voice-dock-actions">
+                <button type="button" class="voice-dock-btn" id="btnDockActivate" hidden>设为正在使用</button>
+                <button type="button" class="voice-dock-btn is-primary" id="btnDockSave">保存</button>
+                <button type="button" class="toggle-switch keys-summary-enable page-status-toggle voice-dock-toggle is-on" id="btnDockVoiceToggle" role="switch" aria-checked="true" aria-label="语音总开关"></button>
+              </div>
+            </div>
+          </div>
+        </footer>
+      </div>
+
+    </section>
+  </div>
+</div>
+
+<!-- 添加口令 Popover -->
+<div class="confirm-overlay voice-wake-phrase-overlay" id="phraseOverlay" aria-hidden="true">
+  <div class="confirm-modal voice-wake-phrase-popover" role="dialog" aria-modal="true" aria-labelledby="popoverTitle">
+    <div class="voice-wake-phrase-popover-head">
+      <h3 class="confirm-title" id="popoverTitle">添加开启口令</h3>
+      <button type="button" class="voice-wake-phrase-popover-close" id="btnPopoverClose" aria-label="关闭">&times;</button>
+    </div>
+    <p class="voice-wake-phrase-popover-sub">从预设选择，或输入自定义口令</p>
+    <div class="voice-wake-popover-presets" id="popoverPresets">
+      <button type="button" class="voice-sapi-preset" data-phrase="嘿，电脑">嘿，电脑</button>
+      <button type="button" class="voice-sapi-preset" data-phrase="小助手">小助手</button>
+    </div>
+    <div class="voice-phrase-add-row voice-wake-add-row voice-wake-alias-add">
+      <div class="voice-wake-input-wrap">
+        <input type="text" class="voice-phrase-custom-input" id="phraseInput" autocomplete="off" spellcheck="false" maxlength="20" placeholder="例如：嘿，电脑" />
+        <span class="voice-wake-input-count" id="phraseCount" aria-hidden="true">0/20</span>
+      </div>
+      <button type="button" class="voice-phrase-custom-add voice-wake-add-btn" id="btnPopoverAdd">+ 添加</button>
+    </div>
+    <div class="confirm-actions">
+      <button type="button" class="btn secondary" id="btnPopoverCancel">取消</button>
+    </div>
+    <p class="voice-wake-popover-hint">新口令会同步到尚未单独设置口令的习惯</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var voiceOn=true;
+  var mode='global'; // global | scenario
+
+  var pool=document.getElementById('phrasePool');
+  var overlay=document.getElementById('phraseOverlay');
+  var input=document.getElementById('phraseInput');
+  var count=document.getElementById('phraseCount');
+  var presets=['开始听写','打开听写','语音输入','开始输入'];
+
+  var scenarioBanner=document.getElementById('scenarioBanner');
+  var dockEditing=document.getElementById('dockEditing');
+  var dockActive=document.getElementById('dockActive');
+  var dockHint=document.getElementById('dockHint');
+  var btnActivate=document.getElementById('btnDockActivate');
+  var btnSave=document.getElementById('btnDockSave');
+  var dockStatusPill=document.getElementById('dockStatusPill');
+  var dockStatusText=document.getElementById('dockStatusText');
+  var dockHeard=document.getElementById('dockHeard');
+  var heroBadge=document.getElementById('heroBadge');
+  var btnDockToggle=document.getElementById('btnDockVoiceToggle');
+  var btnViewGlobal=document.getElementById('btnViewGlobal');
+  var btnViewScenario=document.getElementById('btnViewScenario');
+
+  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+  function setVoiceOn(on){
+    voiceOn=!!on;
+    btnDockToggle.classList.toggle('is-on',voiceOn);
+    btnDockToggle.setAttribute('aria-checked',voiceOn?'true':'false');
+    if(voiceOn){
+      dockStatusPill.className='voice-dock-status-pill is-live';
+      dockStatusText.textContent='后台守护中';
+      heroBadge.className='voice-wake-status-badge is-on';
+      heroBadge.textContent='语音已就绪 · 后台守护中';
+    }else{
+      dockStatusPill.className='voice-dock-status-pill is-off';
+      dockStatusText.textContent='语音未启用';
+      dockHeard.textContent='—';
+      dockHeard.className='voice-dock-heard is-placeholder';
+      heroBadge.className='voice-wake-status-badge is-off';
+      heroBadge.textContent='语音未启用 · 点击开启';
+    }
+  }
+
+  function setMode(next){
+    mode=next;
+    var isScenario=mode==='scenario';
+    btnViewGlobal.classList.toggle('is-on',!isScenario);
+    btnViewScenario.classList.toggle('is-on',isScenario);
+    scenarioBanner.hidden=!isScenario;
+    if(isScenario){
+      dockEditing.textContent='正在编辑：Cursor';
+      dockActive.textContent='正在使用：通用';
+      dockHint.hidden=false;
+      dockHint.textContent='编辑不会立即切换正在使用；保存场景后 Cursor 才单独生效。';
+      btnActivate.hidden=false;
+      btnSave.textContent='保存到 Cursor';
+    }else{
+      dockEditing.textContent='正在编辑：通用';
+      dockActive.textContent='正在使用：通用';
+      dockHint.hidden=true;
+      btnActivate.hidden=true;
+      btnSave.textContent='保存';
+    }
+  }
+
+  function simulateHeard(text){
+    if(!voiceOn) return;
+    dockHeard.textContent=text;
+    dockHeard.className='voice-dock-heard is-hit';
+    dockStatusText.textContent='正在监听';
+    setTimeout(function(){
+      if(voiceOn) dockStatusText.textContent='后台守护中';
+    }, 2200);
+  }
+
+  function openPopover(){
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden','false');
+    input.value='';
+    count.textContent='0/20';
+    setTimeout(function(){ input.focus(); }, 50);
+  }
+  function closePopover(){
+    overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden','true');
+  }
+
+  function addTag(text){
+    text=String(text||'').trim();
+    if(!text||presets.indexOf(text)>=0) return;
+    presets.push(text);
+    var tag=document.createElement('span');
+    tag.className='voice-phrase-tag is-active';
+    tag.setAttribute('role','option');
+    tag.innerHTML='<button type="button" class="voice-phrase-tag-btn" tabindex="-1">'+esc(text)+'</button>'
+      +'<button type="button" class="voice-phrase-tag-del" aria-label="删除" onclick="removePhrase(this)">×</button>';
+    pool.appendChild(tag);
+    closePopover();
+  }
+
+  window.removePhrase=function(btn){
+    var tag=btn.closest('.voice-phrase-tag');
+    if(!tag||pool.children.length<=1) return;
+    var t=tag.querySelector('.voice-phrase-tag-btn').textContent;
+    presets=presets.filter(function(p){ return p!==t; });
+    tag.remove();
+  };
+
+  document.getElementById('btnAddPhrase').onclick=function(e){ e.preventDefault(); openPopover(); };
+  document.getElementById('btnPopoverClose').onclick=function(e){ e.preventDefault(); closePopover(); };
+  document.getElementById('btnPopoverCancel').onclick=function(e){ e.preventDefault(); closePopover(); };
+  overlay.addEventListener('click',function(e){ if(e.target===overlay) closePopover(); });
+  document.getElementById('popoverPresets').addEventListener('click',function(e){
+    var btn=e.target.closest('[data-phrase]');
+    if(!btn) return;
+    addTag(btn.getAttribute('data-phrase'));
+  });
+  document.getElementById('btnPopoverAdd').onclick=function(e){ e.preventDefault(); addTag(input.value); };
+  input.addEventListener('input',function(){ count.textContent=String(input.value.length)+'/20'; });
+  input.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); addTag(input.value); } });
+
+  btnViewGlobal.onclick=function(){ setMode('global'); };
+  btnViewScenario.onclick=function(){ setMode('scenario'); };
+  document.getElementById('btnToggleVoice').onclick=function(){ setVoiceOn(!voiceOn); };
+  btnDockToggle.onclick=function(){ setVoiceOn(!voiceOn); };
+  heroBadge.onclick=function(){ if(!voiceOn) setVoiceOn(true); };
+
+  document.querySelector('.voice-dock-engine').addEventListener('click',function(e){
+    var btn=e.target.closest('[data-engine]');
+    if(!btn) return;
+    this.querySelectorAll('.voice-dock-engine-btn').forEach(function(b){ b.classList.remove('is-active'); });
+    btn.classList.add('is-active');
+  });
+
+  document.getElementById('btnDockMic').onclick=function(){
+    alert('Mockup：麦克风选择 Popover（与添加口令同模式）');
+  };
+
+  // 点击口令 tag 模拟「听到」反馈到底栏
+  pool.addEventListener('click',function(e){
+    var btn=e.target.closest('.voice-phrase-tag-btn');
+    if(!btn) return;
+    simulateHeard(btn.textContent.trim());
+  });
+
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'&&overlay.classList.contains('open')) closePopover();
+  });
+
+  setMode('global');
+  setVoiceOn(true);
+})();
+</script>
+</body>
+</html>

@@ -37,7 +37,7 @@
       ['voiceAdvancedNote','voiceAdvancedNote'],
       ['voiceEndPhraseMoreSummary','voiceEndRulesTitle'],
       ['voiceOutputSummonLbl','voiceOutputSummonLbl'],
-      ['voiceOutputSummonHint','voiceOutputSummonHint'],
+      ['voiceOutputSummonHint','voiceOpenAppSayHint'],
       ['voiceMicPickerSummary','voiceMicPickerSummary'],
       ['voiceRecognizeEngineSummary','voiceRecognizeEngineSummary'],
       ['voiceSettingsMicHint','voiceInputMicHint'],
@@ -54,7 +54,11 @@
       ['voiceRecognizeResourcesSummary','voiceEditSectionModelRes'],
       ['voiceEditSectionSend','voiceEditSectionSend'],
       ['voiceRecognizeAdvancedSummary','voiceRecognizeAdvancedSummary'],
-      ['voiceWakeDisplayHint','voiceWakeDisplayHint']
+      ['voiceWakeUnifiedSectionLbl','voiceWakeSectionUnified'],
+      ['voiceWakeAliasHint','voiceWakeAliasHint'],
+      ['voiceWakePopoverTitle','voiceWakePopoverTitle'],
+      ['voiceWakePopoverSub','voiceWakePopoverSub'],
+      ['voiceDockHeardLbl','voiceDockHeardLbl']
     ];
     pairs.forEach(function(pair){
       const el=$(pair[0]);
@@ -104,8 +108,6 @@
     if(outPhraseDesc) outPhraseDesc.textContent=t('voiceOutputHintPhrase');
     const outManual=$('voiceOutputModeManual');
     if(outManual) outManual.textContent=t('voiceOutputModeManual');
-    const sandboxOpen=$('btnVoiceSandboxOpen');
-    if(sandboxOpen) sandboxOpen.textContent=t('voiceSandboxOpenBtn');
     const primaryBadge=$('voiceWakePrimaryFastBadge');
     if(primaryBadge) primaryBadge.textContent=t('voiceWakePrimaryFastBadge');
     const sendSectionTitle=$('voiceEditSectionSend');
@@ -113,7 +115,7 @@
     const summonLbl=$('voiceOutputSummonLbl');
     if(summonLbl) summonLbl.textContent=t('voiceOutputSummonLbl');
     const summonHint=$('voiceOutputSummonHint');
-    if(summonHint) summonHint.textContent=t('voiceOutputSummonHint');
+    if(summonHint) summonHint.textContent=t('voiceOpenAppSayHint');
     const globalSub=$('voiceWakeGlobalSub');
     if(globalSub) globalSub.textContent=t('voiceWakeGlobalSub');
     const activeLbl=$('voiceWakeActiveLbl');
@@ -162,10 +164,6 @@
     if(summonManage) summonManage.textContent=t('voiceOutputSummonManage');
     const openAppAdd=$('btnVoiceOpenAppAdd');
     if(openAppAdd) openAppAdd.textContent=t('voiceOpenAppAdd');
-    const inputTargetLbl=$('voiceWakeInputTargetLbl');
-    if(inputTargetLbl) inputTargetLbl.textContent=t('voiceWakeInputTargetLbl');
-    const summonLbl=$('voiceOutputSummonLbl');
-    if(summonLbl) summonLbl.textContent=t('voiceOutputSummonLbl');
     const globalTitle=$('voiceEditSectionPresets');
     if(globalTitle) globalTitle.textContent=t('voiceWakeGlobalTitle');
     const habitLink=$('btnVoiceSendHabitLink');
@@ -178,14 +176,16 @@
     if(wakeHeroTitle) wakeHeroTitle.textContent=t('voiceWakePrimaryLbl');
     const wakeCustomHint=$('voiceWakeCustomHint');
     if(wakeCustomHint) wakeCustomHint.textContent=t('voiceWakeCustomHint');
-    const wakeCustomInput=$('voiceWakeCustomInput');
+    const wakeCustomInput=$('voiceWakePhraseInput');
     if(wakeCustomInput) wakeCustomInput.placeholder=t('voiceWakeCustomPlaceholder');
     const endCustomLbl=$('voiceEndCustomLbl');
     if(endCustomLbl) endCustomLbl.textContent=t('voiceEndCustomLbl');
     const endCustomHint=$('voiceEndCustomHint');
     if(endCustomHint) endCustomHint.textContent=t('voiceEndCustomHint');
-    const wakeCustomAdd=$('btnVoiceWakeCustomAdd');
-    if(wakeCustomAdd) wakeCustomAdd.textContent=t('voiceWakeAddBtn')||t('voicePhraseAdd');
+    const poolAdd=$('btnVoiceWakePoolAdd');
+    if(poolAdd) poolAdd.textContent=t('voiceWakePoolAddBtn');
+    const phraseAdd=$('btnVoiceWakePhraseAdd');
+    if(phraseAdd) phraseAdd.textContent=t('voiceWakeAddBtn')||t('voicePhraseAdd');
     const endCustomAdd=$('btnVoiceEndCustomAdd');
     if(endCustomAdd) endCustomAdd.textContent=t('voicePhraseAdd');
     const endListen=$('btnVoiceEndCustomListen');
@@ -396,45 +396,13 @@
   }
 
   function renderAppScope(vm){
-    var V=vmApi();
     const strip=$('voiceAppScopeStrip');
     const chips=$('voiceAppScopeChips');
-    const appRules=global.OneToneAppBehaviorRules;
-    if(!strip||!chips||!appRules) return;
-    const m=resolveScopeMapping(vm);
-    const scenarioEdit=isScenarioVoiceEditContext();
-    strip.hidden=false;
-    if(appRules.renderContextChipsHtml){
-      // Prefer primary appTargetId in scenario edit so chip highlight matches save requirements.
-      var ctxId=m?String(m.appTargetId||'').trim():'';
-      if(!ctxId&&appRules.getActiveAppContextId) ctxId=appRules.getActiveAppContextId()||'';
-      chips.innerHTML=appRules.renderContextChipsHtml(m,{
-        variant:'chip',
-        chipAttr:'data-voice-scope-app',
-        noneAttr:'data-voice-scope-none',
-        // App scenarios must bind an app — hide "any app" while editing a scenario.
-        includeNone:!scenarioEdit,
-        contextId:ctxId
-      });
-      if(appRules.scheduleHydrateCustomRuleIcons) appRules.scheduleHydrateCustomRuleIcons();
-      return;
-    }
-    const presets=appRules.behaviorPresets||[];
-    const primaryId=m?String(m.appTargetId||'').trim():'';
-    const noneSelected=!primaryId;
-    var html='';
-    if(!scenarioEdit){
-      html+='<button type="button" class="keys-app-chip keys-app-chip--none'+(noneSelected?' is-selected':'')+'" data-voice-scope-none="1" role="radio" aria-checked="'+(noneSelected?'true':'false')+'" title="'+V.escHtml(t('keysAppChipNoneHint'))+'"><span>'+V.escHtml(t('keysAppChipNone'))+'</span></button>';
-    }
-    presets.forEach(function(p){
-      const icon=presetIcon(p.id);
-      const isPri=primaryId===p.id;
-      const name=appRules.appDisplayName(p.id);
-      html+='<button type="button" class="keys-app-chip'+(isPri?' is-selected is-primary':'')+'" data-voice-scope-app="'+V.escHtml(p.id)+'" role="radio" aria-checked="'+(isPri?'true':'false')+'" title="'+V.escHtml(name)+'">';
-      if(icon) html+='<img class="keys-app-chip-icon" src="'+V.escHtml(icon)+'" alt="" decoding="async" />';
-      html+='<span>'+V.escHtml(name)+'</span></button>';
-    });
-    chips.innerHTML=html;
+    if(!strip||!chips) return;
+    // ponytail: wake 页 scope 已在 hero 叙事里；底部悬浮栏与 mockup 冲突且易与预设 chip 视觉重叠
+    strip.hidden=true;
+    strip.setAttribute('aria-hidden','true');
+    chips.innerHTML='';
   }
 
   function renderSaveAction(vm){

@@ -77,6 +77,15 @@
     if(!hasPendingEnable(id)&&!!m.enabled===target) return;
     setPendingEnable(id,target);
     m.enabled=target;
+    if(target){
+      var hub=global.OneToneHabitHub;
+      var appId=String(m.appTargetId||'').trim();
+      if(hub&&hub.disableSiblingPresetScenarios&&appId&&appId!=='custom'){
+        if(hub.disableSiblingPresetScenarios(m)&&global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
+          global.OneToneConfigPersist.save();
+        }
+      }
+    }
     // QS/habit overlay: in-memory only — backend toggle runs persist_and_rebind → mvp_init freeze.
     if(!opts.skipBackend) postMappingToggle(id,target);
     if(!opts.skipRender){

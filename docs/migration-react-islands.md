@@ -162,7 +162,7 @@
 | `#softPadSubpageBody` | **P14f** | SoftPad 子页 paint-target handoff 岛（sync-push） | `paintSubpage` / `clearSubpage` → `__otSoftPadSubpageSync`；外层 attrs `data-soft-pad-panel` / mapping / token / `is-editing-key`；Pad 四面板写入 `[data-soft-pad-subpage-paint]`；**延迟挂载** `__otMountSoftPadSubpageIsland()`；顶栏见 P14g | 是 | 否 |
 | `#softPadSubpageBar` | **P14g** | SoftPad detail 顶栏岛（返回 + 标题 sync-push） | `syncHubChrome` / `clearSubpage` / `paintSubpage` 标题 → `__otSoftPadDetailChromeSync`；React onClick → `closeSubpage`；`bindChrome` 跳过 subBack；**延迟挂载** `__otMountSoftPadDetailChromeIsland()` | 是 | 否 |
 | `#softPadScopeHint` | **P14h** | SoftPad scope 提示文案岛（sync-push） | `updateScopeHint` → `__otSoftPadScopeHintSync`；宿主保留 `aria-live`；**延迟挂载** `__otMountSoftPadScopeHintIsland()` | 是 | 否 |
-| `#voiceConfigIsland`（新建，位于 `#voiceDeskPanel` 内） | P6 | 语音配置岛 | 接管文本短语+策略；声学留 legacy；**勿**作为 `voice-page-body` 网格子项（会挤占流程 hero） | 是 | 经 OneToneUi |
+| `#voiceConfigIsland`（新建，位于 `#voiceDeskPanel` 内） | P6 | 语音配置岛 | **仅监听策略**；取消/结束词编辑归 step 02 legacy（`#voiceCancelPhraseTags` / `#voiceEndPhraseTags`）；声学留 legacy；**勿**作为 `voice-page-body` 网格子项 | 是 | 经 OneToneUi |
 | `#voiceWakeAcousticHost` / `#voiceCancelAcousticHost` / `#voiceEndAcousticHost` | **P6e** | 声学 paint-target 岛（共享组件；外层 React、业务写 `[data-voice-acoustic-paint]`） | `voice-wake-acoustic.js`：`__otVoiceAcousticMounted` 时 `resolveAcousticPaintHost`；MediaRecorder / 校准业务 **留 legacy**；**延迟挂载** `__otMountVoiceAcousticIslands()` | 是 | 否 |
 | `#cameraFlowNodeTriggerHint`（+ tabs/lock 由 apply 写） | **Camera shell** | Camera flow chrome 岛（sync-push；hint 文案 React） | `camera-workflow.js`：`__otCameraFlowChromeMounted` → `__otCameraFlowChromeSync`；预览 / MediaPipe / presence **不迁**；**延迟挂载** `__otMountCameraFlowChromeIsland()` | 是 | 否 |
 | `#debugHeroTitle`（+ hero/cards/actions 由 apply 写） | **Debug shell** | Debug overview 岛（sync-push；title React） | `debug-panel.js`：`__otDebugOverviewMounted` → `__otDebugOverviewSync`；diag / MediaPipe 邻域 **留 legacy**；**延迟挂载** `__otMountDebugOverviewIsland()` | 是 | 否 |
@@ -353,8 +353,8 @@
 - `src/index.html`：`#settingsPanelVoiceWake` 内新增 `#voiceConfigIsland.ot-island` 容器。
 - legacy 守卫（全部 `if (OneToneIslands.isMounted('voiceConfig'))` 触发，岛未挂载即原样保留 legacy）：
   - `voice-phrase-custom.js` `renderPhraseTags`：加 `isInsideIsland(el)` 守卫（保护任意被岛接管的短语标签容器）。
-  - `voice-step-wake-render.js`：全局唤醒文字编辑器由 legacy TextPane 拥有（不再因 voiceConfig 岛挂载而隐藏）；岛仅保留策略 + 取消/结束词。
-  - `voice-step-recognize-render.js` `renderRecognizePage` 末：隐藏 `#voiceCancelKindTextPane`/`#voiceCancelCustomBlock`/`#voiceEndKindTextPane`/`#voiceEndCustomBlock`。
+  - `voice-step-wake-render.js`：全局唤醒文字编辑器由 legacy TextPane 拥有（不再因 voiceConfig 岛挂载而隐藏）；岛**仅**保留监听策略。
+  - `voice-step-recognize-render.js`：step 02 legacy 拥有取消/结束词（preset tags + 中/EN + 自定义输入）；**不再**因 `voiceConfig` 岛挂载而隐藏文本短语编辑器。
   - `voice-wake.js` `syncVoiceStrategyTabButtons`：`grid.hidden = islandOn; if(islandOn) return;`（隐藏 legacy 策略开关，保留声音录制子页）。
 - `scripts/test-voice-config.mjs`：phrase-utils 单测；`scripts/smoke-islands.mjs` 增 P6 bundle 标记与容器校验；`package.json` `test:islands` 串入新测试。
 

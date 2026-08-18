@@ -1354,7 +1354,9 @@
     } catch (_) {}
   }
 
-  function prepareSoftPadScopeScenario() {
+  function prepareSoftPadScopeScenario(opts) {
+    opts = opts || {};
+    var silent = !!opts.silent;
     var appId = String(softPadScopeAppId || '').trim();
     if (!appId && isGlobalKeysEditContext()) return;
     var ctx = resolveSoftPadScope();
@@ -1379,12 +1381,14 @@
       }
       softPadScopeMappingIdOverride = String(target.id || '');
       softPadScopeAppId = String(target.appTargetId || appId || softPadScopeAppId);
-      toast(
-        t('keysSoftPadScopePrepared', '已准备 {app} 虚拟键盘').replace(
-          '{app}',
-          softPadAppTitle(softPadScopeAppId)
-        )
-      );
+      if (!silent) {
+        toast(
+          t('keysSoftPadScopePrepared', '已准备 {app} 虚拟键盘').replace(
+            '{app}',
+            softPadAppTitle(softPadScopeAppId)
+          )
+        );
+      }
       refresh();
       return;
     }
@@ -1416,12 +1420,14 @@
     }
     softPadScopeMappingIdOverride = String(target.id || '');
     softPadScopeAppId = String(target.appTargetId || appId);
-    toast(
-      t('keysSoftPadScopePrepared', '已准备 {app} 虚拟键盘').replace(
-        '{app}',
-        softPadAppTitle(softPadScopeAppId)
-      )
-    );
+    if (!silent) {
+      toast(
+        t('keysSoftPadScopePrepared', '已准备 {app} 虚拟键盘').replace(
+          '{app}',
+          softPadAppTitle(softPadScopeAppId)
+        )
+      );
+    }
     refresh();
   }
 
@@ -1845,6 +1851,14 @@
     }
 
     if (ctx && ctx.missingScenario) {
+      if (isKnownSoftPadAppTargetId(ctx.appTargetId || softPadScopeAppId)) {
+        prepareSoftPadScopeScenario({ silent: true });
+        var afterCtx = resolveSoftPadScope();
+        if (afterCtx && !afterCtx.missingScenario) {
+          return;
+        }
+        ctx = afterCtx || ctx;
+      }
       html += renderSoftPadPreviewOnlyHtml(ctx);
       panel.innerHTML = html;
       disableAllSoftPadPickKeys(panel);

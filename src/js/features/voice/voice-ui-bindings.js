@@ -353,9 +353,18 @@
         global.OneToneVoiceSettingsFlow.render();
       }
     }
-    function ensureOpenAppMapping(appId){
+    function mappingById(id){
+      id=String(id||'').trim();
+      if(!id) return null;
+      var core=global.OneToneMappingCore;
+      if(core&&core.byId) return core.byId(id);
+      return null;
+    }
+    function ensureOpenAppMapping(appId,mappingId){
+      var byId=mappingById(mappingId);
+      if(byId) return byId;
       appId=String(appId||'').trim();
-      if(!appId) return null;
+      if(!appId||appId==='custom') return null;
       var hub=global.OneToneHabitHub;
       if(!hub) return null;
       var existing=hub.findAppScenarioByAppId?hub.findAppScenarioByAppId(appId):null;
@@ -363,24 +372,23 @@
       if(!hub.createAppScenario) return null;
       return hub.createAppScenario(appId,{ deferPersist:true });
     }
-    function mountOpenAppAcoustic(appId,act){
+    function mountOpenAppAcoustic(appId,act,mappingId){
       appId=String(appId||'').trim();
-      if(!appId) return;
-      var mapping=ensureOpenAppMapping(appId);
+      var mapping=ensureOpenAppMapping(appId,mappingId);
       if(!mapping||!mapping.id){
         if(global.OneToneAppToast) global.OneToneAppToast.show((t&&t('voiceOpenAppCreateFailed'))||'无法创建应用场景','error');
         return;
       }
       var wakeStep=global.OneToneVoiceStepWake;
-      var hostId=wakeStep&&wakeStep.openAppHostId?wakeStep.openAppHostId(appId):('openAppAcousticHost_'+appId);
-      if(wakeStep&&wakeStep.setOpenAppExpanded) wakeStep.setOpenAppExpanded(appId);
+      var hostId=wakeStep&&wakeStep.openAppHostId?wakeStep.openAppHostId(appId,mapping.id):('openAppAcousticHost_'+mapping.id);
+      if(wakeStep&&wakeStep.setOpenAppExpanded) wakeStep.setOpenAppExpanded(mapping.id);
       refreshOpenAppCards();
       var host=$(hostId);
       if(host){ host.hidden=false; host.removeAttribute('hidden'); }
       var cmd=global.OneToneHabitScenarioVoiceCommand;
       if(!cmd) return;
       function remountIdle(){
-        if(wakeStep&&wakeStep.getOpenAppExpanded&&wakeStep.getOpenAppExpanded()!==appId) return;
+        if(wakeStep&&wakeStep.getOpenAppExpanded&&wakeStep.getOpenAppExpanded()!==mapping.id) return;
         var h=$(hostId);
         if(h){ h.hidden=false; h.removeAttribute('hidden'); }
         cmd.render({ mappingId:mapping.id, hostId:hostId });
@@ -535,6 +543,62 @@
         if(hooks.setSettingsPanel) hooks.setSettingsPanel('keys');
       };
     }
+    var btnVoiceWakeInputTargetEdit=$('btnVoiceWakeInputTargetEdit');
+    if(btnVoiceWakeInputTargetEdit){
+      btnVoiceWakeInputTargetEdit.onclick=function(e){
+        e.preventDefault();
+        if(hooks.setSettingsPanel) hooks.setSettingsPanel('keys');
+      };
+    }
+    function persistOpenAppQuiet(){
+      var p=global.OneToneConfigPersist;
+      if(p&&p.saveAsync) return p.saveAsync({source:'mapping'});
+      if(p&&p.save) p.save();
+      return Promise.resolve();
+    }
+    function restorePrevSelection(prevId){
+      var st=global.OneToneState&&global.OneToneState.state;
+      if(st) st.selectedMappingId=prevId||null;
+    }
+    function claimVoiceOpenApp(payload){
+      payload=payload||{};
+      var hub=global.OneToneHabitHub;
+      var rules=global.OneToneAppBehaviorRules;
+      var st=global.OneToneState&&global.OneToneState.state;
+      var prevId=st?String(st.selectedMappingId||''):'';
+      var identity=payload.identity||null;
+      var presetId=String(payload.presetId||payload.appId||'').trim();
+      if(identity){
+        var existingI=hub&&hub.findAppScenarioForIdentity?hub.findAppScenarioForIdentity(identity):null;
+        if(existingI) return Promise.resolve(existingI);
+        var matched=String(identity.matchedPresetAppId||identity.matched_preset_app_id||'').trim();
+        if(matched&&rules&&rules.isPresetAppId&&rules.isPresetAppId(matched)){
+          presetId=matched;
+          identity=null;
+        }else{
+          if(!hub||!hub.createAppScenario) return Promise.resolve(null);
+          var custom=hub.createAppScenario('custom',{deferPersist:true});
+          if(!custom) return Promise.resolve(null);
+          if(rules&&rules.setPickerCreateTarget) rules.setPickerCreateTarget(custom.id);
+          if(rules&&rules.pickRunningIdentity) rules.pickRunningIdentity(custom,identity);
+          if(rules&&rules.isIncompleteCustomStub&&rules.isIncompleteCustomStub(custom)){
+            if(rules.discardIncompleteCustomCreate) rules.discardIncompleteCustomCreate(custom.id);
+            restorePrevSelection(prevId);
+            return Promise.resolve(null);
+          }
+          restorePrevSelection(prevId);
+          return persistOpenAppQuiet().then(function(){ return custom; });
+        }
+      }
+      if(!presetId||!hub) return Promise.resolve(null);
+      var existing=hub.findAppScenarioByAppId?hub.findAppScenarioByAppId(presetId):null;
+      if(existing) return Promise.resolve(existing);
+      if(!hub.createAppScenario) return Promise.resolve(null);
+      var created=hub.createAppScenario(presetId,{deferPersist:true});
+      restorePrevSelection(prevId);
+      if(!created) return Promise.resolve(null);
+      return persistOpenAppQuiet().then(function(){ return created; });
+    }
     var btnVoiceOpenAppAdd=$('btnVoiceOpenAppAdd');
     if(btnVoiceOpenAppAdd){
       btnVoiceOpenAppAdd.onclick=function(e){
@@ -542,14 +606,16 @@
         var rules=global.OneToneAppBehaviorRules;
         if(!rules||!rules.openAppPicker) return;
         rules.openAppPicker({
-          mode:'topbarMonitor',
+          mode:'voiceOpenApp',
           onPick:function(payload){
-            payload=payload||{};
-            var appId=String(payload.presetId||payload.appId||'').trim();
-            if(!appId) return;
-            var hub=global.OneToneHabitHub;
-            if(hub&&hub.createAppScenario) hub.createAppScenario(appId);
-            refreshOpenAppCards();
+            claimVoiceOpenApp(payload).then(function(mapping){
+              refreshOpenAppCards();
+              if(!mapping){
+                if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceOpenAppCreateFailed'),'warn');
+                return;
+              }
+              mountOpenAppAcoustic(mapping.appTargetId,'record',mapping.id);
+            });
           }
         });
       };
@@ -583,7 +649,7 @@
           return;
         }
         if(act==='record'||act==='rerecord'){
-          mountOpenAppAcoustic(appId,act);
+          mountOpenAppAcoustic(appId,act,mappingId);
         }
       });
     }
@@ -679,8 +745,11 @@
         var pc=global.OneToneVoicePhraseCustom;
         if(pc&&pc.clearInput) pc.clearInput(inputId);
         else if(input) input.value='';
-        if(inputId==='voiceWakeCustomInput'&&global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.syncWakeInputCount){
+        if(inputId==='voiceWakePhraseInput'&&global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.syncWakeInputCount){
           global.OneToneVoiceStepWake.syncWakeInputCount();
+        }
+        if(global.OneToneVoiceStepRecognize&&global.OneToneVoiceStepRecognize.syncEndPhraseInputCounts){
+          global.OneToneVoiceStepRecognize.syncEndPhraseInputCounts();
         }
       }
       btn.onclick=function(e){
@@ -697,17 +766,97 @@
         });
       }
     }
-    bindCustomPhraseAdd('voiceWakeCustomInput','btnVoiceWakeCustomAdd',function(phrase){
+    function openWakePhrasePopover(){
+      var overlay=$('voiceWakePhraseOverlay');
+      if(!overlay) return;
+      overlay.classList.add('open');
+      overlay.setAttribute('aria-hidden','false');
+      if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.syncWakeInputCount){
+        global.OneToneVoiceStepWake.syncWakeInputCount();
+      }
+      var input=$('voiceWakePhraseInput');
+      if(input){
+        setTimeout(function(){
+          input.focus();
+        },0);
+      }
+    }
+    function closeWakePhrasePopover(){
+      var overlay=$('voiceWakePhraseOverlay');
+      if(!overlay) return;
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden','true');
+      var pc=global.OneToneVoicePhraseCustom;
+      if(pc&&pc.clearInput) pc.clearInput('voiceWakePhraseInput');
+      else{
+        var input=$('voiceWakePhraseInput');
+        if(input) input.value='';
+      }
+      if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.syncWakeInputCount){
+        global.OneToneVoiceStepWake.syncWakeInputCount();
+      }
+    }
+    function addWakePhraseFromPopover(phrase){
       var wake=global.OneToneVoiceWake;
-      if(wake&&wake.addCustomWakePhrase) wake.addCustomWakePhrase(phrase);
-    });
-    var wakeInput=$('voiceWakeCustomInput');
-    if(wakeInput&&wakeInput.dataset.countBound!=='1'){
-      wakeInput.dataset.countBound='1';
-      wakeInput.addEventListener('input',function(){
+      if(wake&&wake.addCustomWakePhrase){
+        wake.addCustomWakePhrase(phrase).then(function(){
+          closeWakePhrasePopover();
+        });
+      }
+    }
+    var btnVoiceWakePoolAdd=$('btnVoiceWakePoolAdd');
+    if(btnVoiceWakePoolAdd){
+      btnVoiceWakePoolAdd.onclick=function(e){
+        e.preventDefault();
+        openWakePhrasePopover();
+      };
+    }
+    var wakePhraseOverlay=$('voiceWakePhraseOverlay');
+    if(wakePhraseOverlay&&!wakePhraseOverlay.dataset.bound){
+      wakePhraseOverlay.dataset.bound='1';
+      wakePhraseOverlay.addEventListener('click',function(e){
+        if(e.target===wakePhraseOverlay) closeWakePhrasePopover();
+      });
+    }
+    var btnVoiceWakePopoverClose=$('btnVoiceWakePopoverClose');
+    if(btnVoiceWakePopoverClose){
+      btnVoiceWakePopoverClose.onclick=function(e){
+        e.preventDefault();
+        closeWakePhrasePopover();
+      };
+    }
+    var btnVoiceWakePopoverCancel=$('btnVoiceWakePopoverCancel');
+    if(btnVoiceWakePopoverCancel){
+      btnVoiceWakePopoverCancel.onclick=function(e){
+        e.preventDefault();
+        closeWakePhrasePopover();
+      };
+    }
+    bindCustomPhraseAdd('voiceWakePhraseInput','btnVoiceWakePhraseAdd',addWakePhraseFromPopover);
+    var wakePhraseInput=$('voiceWakePhraseInput');
+    if(wakePhraseInput&&!wakePhraseInput.dataset.countBound){
+      wakePhraseInput.dataset.countBound='1';
+      wakePhraseInput.addEventListener('input',function(){
         if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.syncWakeInputCount){
           global.OneToneVoiceStepWake.syncWakeInputCount();
         }
+      });
+      wakePhraseInput.addEventListener('keydown',function(e){
+        if(e.key==='Escape'){
+          e.preventDefault();
+          closeWakePhrasePopover();
+        }
+      });
+    }
+    var wakePopoverPresets=$('voiceWakePopoverPresets');
+    if(wakePopoverPresets&&!wakePopoverPresets.dataset.bound){
+      wakePopoverPresets.dataset.bound='1';
+      wakePopoverPresets.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-phrase]');
+        if(!btn) return;
+        e.preventDefault();
+        var phrase=String(btn.getAttribute('data-phrase')||'').trim();
+        if(phrase) addWakePhraseFromPopover(phrase);
       });
     }
     bindCustomPhraseAdd('voiceEndCustomInput','btnVoiceEndCustomAdd',function(phrase){
@@ -717,6 +866,16 @@
     bindCustomPhraseAdd('voiceCancelCustomInput','btnVoiceCancelCustomAdd',function(phrase){
       var end=global.OneToneVoiceEnd;
       if(end&&end.addCustomCancelPhrase) end.addCustomCancelPhrase(phrase);
+    });
+    ['voiceEndCustomInput','voiceCancelCustomInput'].forEach(function(inputId){
+      var input=$(inputId);
+      if(!input||input.dataset.countBound==='1') return;
+      input.dataset.countBound='1';
+      input.addEventListener('input',function(){
+        if(global.OneToneVoiceStepRecognize&&global.OneToneVoiceStepRecognize.syncEndPhraseInputCounts){
+          global.OneToneVoiceStepRecognize.syncEndPhraseInputCounts();
+        }
+      });
     });
     bindCustomPhraseAdd('voiceSendCustomInput','btnVoiceSendCustomAdd',function(phrase){
       var end=global.OneToneVoiceEnd;

@@ -2019,13 +2019,11 @@
     return pickCanonicalAppScenario(listAppScenarios(appId,exceptMappingId));
   }
 
-  var reconcilePresetDone=false;
   var reconcileToastShown=false;
 
-  /** One-shot idempotent merge of duplicate preset app scenarios (not in render). */
+  /** Merge duplicate preset app scenarios on each config load (not in render). */
   function reconcileDuplicatePresetScenarios(opts){
     opts=opts||{};
-    if(reconcilePresetDone&&!opts.force) return { changed:false };
     if(!core()) return { changed:false };
     core().ensureConfig&&core().ensureConfig();
     var cfg=state().config;
@@ -2057,7 +2055,6 @@
         }
       }
     }
-    reconcilePresetDone=true;
     if(changed){
       if(!opts.skipPersist){
         if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
@@ -3221,6 +3218,7 @@
     pickCanonicalAppScenario:pickCanonicalAppScenario,
     scenarioBetter:scenarioBetter,
     reconcileDuplicatePresetScenarios:reconcileDuplicatePresetScenarios,
+    disableSiblingPresetScenarios:disableSiblingPresetScenarios,
     countAppScenarios:countAppScenarios,
     uniqueScenarioName:uniqueScenarioName,
     startInlineCreate:startInlineCreate,

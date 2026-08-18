@@ -417,6 +417,11 @@
   }
 
   function renderVoiceHub(){
+    var aside=$('voicePanelAside');
+    var panel=$('settingsPanelVoiceWake');
+    if((panel&&panel.classList.contains('voice-page-k'))||(aside&&aside.hidden)){
+      return;
+    }
     var schemeList=$('voiceHubSchemeList');
     var countEl=$('voiceHubCount');
     var titleLbl=$('voiceHubTitleLbl');

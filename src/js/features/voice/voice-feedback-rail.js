@@ -529,18 +529,23 @@
 
   function updateTranscript(step){
     var box=$('voiceFbTranscript');
-    if(!box) return;
+    var dockHeard=$('voiceDockHeard');
     var info=resolveTranscriptText(step);
-    box.classList.toggle('is-partial',!!info.partial);
-    box.classList.toggle('is-matched',!!info.matched);
-    if(info.text){
-      box.textContent=info.matched?(info.text+' ✓'):info.text;
-      box.classList.remove('is-placeholder');
-    }else{
-      box.textContent=info.placeholder||'';
-      box.classList.remove('is-matched');
-      box.classList.add('is-placeholder');
+    function paint(el){
+      if(!el) return;
+      el.classList.toggle('is-partial',!!info.partial);
+      el.classList.toggle('is-matched',!!info.matched);
+      if(info.text){
+        el.textContent=info.matched?(info.text+' ✓'):info.text;
+        el.classList.remove('is-placeholder');
+      }else{
+        el.textContent=info.placeholder||'';
+        el.classList.remove('is-matched');
+        el.classList.add('is-placeholder');
+      }
     }
+    paint(box);
+    if(currentStep(step)==='wake') paint(dockHeard);
   }
 
   function updateLiveSlotValues(vm,step){
@@ -584,8 +589,16 @@
 
     var btnWake=$('voiceFbBtnSimulateWake');
     var btnSpeak=$('voiceFbBtnSimulateSpeak');
-    if(btnWake) btnWake.textContent=t('voiceFbBtnSimulateWake');
-    if(btnSpeak) btnSpeak.textContent=t('voiceFbBtnSimulateSpeak');
+    if(btnWake){
+      btnWake.hidden=true;
+      btnWake.textContent=t('voiceFbBtnSimulateWake');
+    }
+    if(btnSpeak){
+      btnSpeak.hidden=true;
+      btnSpeak.textContent=t('voiceFbBtnSimulateSpeak');
+    }
+    var dockHeardLbl=$('voiceDockHeardLbl');
+    if(dockHeardLbl) dockHeardLbl.textContent=t('voiceDockHeardLbl');
   }
 
   function syncLiveState(vm,step){

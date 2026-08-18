@@ -83,3 +83,16 @@ aes-gcm = "0.10"
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 image = "0.25"
+
+# Lean profiles — keep C: drive slim.
+# Future `cargo build` invocations will not produce *.pdb or incremental/
+# caches in the target dir; release binaries are stripped of debug symbols.
+# Combined effect: a typical Rust build tree drops from ~10-15 GB to ~2-3 GB.
+[profile.release]
+strip = "symbols"          # strip PDB / DWARF from onetone.exe + DLLs
+debug = false              # no DWARF in rlib/rmeta either
+incremental = false        # don't keep release/incremental around
+
+[profile.dev]
+debug = false              # no line-tables — set to 1 (or "line-tables-only") if you need stack traces
+incremental = true         # default; faster recompile

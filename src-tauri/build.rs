@@ -43,6 +43,8 @@ fn main() {
         "cmd_set_setup_interaction_active",
         "cmd_voice_set_practice_hold_fg",
         "cmd_voice_practice_activate_ime",
+        "cmd_voice_wake_phrase_test_begin",
+        "cmd_voice_wake_phrase_test_end",
         "cmd_capture_source",
         "cmd_frontend_keydown",
         "cmd_physical_trigger",

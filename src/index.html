@@ -1716,7 +1716,7 @@
           </div>
           </div>
         </section>
-        <section class="settings-panel drawer-section voice-page" id="settingsPanelVoiceWake" hidden>
+        <section class="settings-panel drawer-section voice-page voice-page-k" id="settingsPanelVoiceWake" hidden>
           <div class="habit-scenario-context-banner" id="habitScenarioContextBannerVoice" hidden role="status" aria-live="polite">
             <div class="habit-scenario-context-banner-main">
               <span class="habit-scenario-context-banner-icon" aria-hidden="true">◎</span>
@@ -1733,40 +1733,28 @@
               <button type="button" class="habit-scenario-context-banner-back is-primary" id="btnHabitScenarioContextBackVoice"></button>
             </div>
           </div>
-          <div class="page-status-bar voice-page-status-bar" id="voiceWorkflowTabsBar">
+          <div class="page-status-bar voice-page-status-bar voice-unified-status" id="voiceWorkflowTabsBar">
             <div class="page-status-bar-main voice-scheme-status-main">
               <div class="keys-scheme-summary-title-row voice-scheme-summary-title-row">
-                <span class="voice-status-brand-icon" aria-hidden="true">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
-                </span>
                 <span class="keys-scheme-summary-name voice-scheme-summary-name" id="voicePageBrandTitle">语音听写</span>
                 <span class="keys-scheme-summary-pill voice-scheme-summary-pill" id="voiceSummaryStatus">默认 已激活</span>
                 <small class="voice-active-hint" id="voiceActiveHint" hidden></small>
                 <span class="sr-only" id="voiceSummaryName">默认</span>
               </div>
             </div>
-            <div class="voice-status-center-cluster" id="voiceStatusCenterCluster">
-              <span class="keys-scheme-summary-item" hidden>
-                <span class="keys-scheme-summary-lbl" id="voiceSummaryEngineLbl">语音模式</span>
-                <span class="keys-scheme-summary-val" id="voiceSummaryEngine">—</span>
-              </span>
-              <div class="voice-summary-engine-switch voice-recognize-source-grid" id="voiceSummaryEngineSwitch" role="group" aria-labelledby="voiceSummaryEngineLbl">
-                <button type="button" class="voice-recognize-source-btn" data-voice-strategy-tab="auto" id="voiceSummaryEngineAuto">自动</button>
-                <button type="button" class="voice-recognize-source-btn" data-voice-strategy-tab="resourceSaver" id="voiceSummaryEngineResourceSaver">省电</button>
-                <button type="button" class="voice-recognize-source-btn" data-voice-strategy-tab="enhanced" id="voiceSummaryEngineEnhanced">增强</button>
-              </div>
-              <span class="keys-scheme-summary-item voice-status-scope-item sr-only">
-                <span class="keys-scheme-summary-lbl" id="voiceSummaryScopeLbl">生效范围</span>
-                <span class="keys-scheme-summary-val" id="voiceSummaryScope">不限应用</span>
-              </span>
-            </div>
             <div class="page-status-bar-actions voice-scheme-status-actions">
               <button type="button" class="page-status-btn is-primary" id="btnVoiceSaveHabit">保存到正在编辑的习惯</button>
+              <button type="button" class="page-status-btn sr-only" id="btnVoiceSchemeAdd">+ 新建</button>
               <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="btnVoiceEnabled" role="switch" aria-checked="true" title="关闭后回退到系统默认听写" aria-label="关闭后回退到系统默认听写"></button>
-              <button type="button" class="page-status-btn" id="btnVoiceSchemeAdd">+ 新建</button>
             </div>
+            <div class="voice-unified-extras" id="voiceUnifiedExtras"></div>
+            <span class="sr-only" id="voiceStatusCenterCluster"></span>
+            <span class="keys-scheme-summary-lbl sr-only" id="voiceSummaryEngineLbl">语音模式</span>
+            <span class="keys-scheme-summary-val sr-only" id="voiceSummaryEngine">—</span>
+            <span class="keys-scheme-summary-lbl sr-only" id="voiceSummaryScopeLbl">生效范围</span>
+            <span class="keys-scheme-summary-val sr-only" id="voiceSummaryScope">不限应用</span>
             <span class="sr-only" id="voiceWorkflowTabsLbl">语音通道</span>
-            <div class="keys-workflow-tabs voice-workflow-tabs sr-only" id="voiceWorkflowTabs" role="tablist" aria-labelledby="voiceWorkflowTabsLbl" hidden>            </div>
+            <div class="keys-workflow-tabs voice-workflow-tabs sr-only" id="voiceWorkflowTabs" role="tablist" aria-labelledby="voiceWorkflowTabsLbl" hidden></div>
           </div>
           <div class="voice-setup-banner" id="voiceSetupBanner" hidden role="alert">
             <div class="voice-setup-banner-content">
@@ -1783,6 +1771,7 @@
               <button type="button" class="keys-summary-btn" id="btnVoiceSetupOpenDir" hidden>打开资源目录</button>
             </div>
           </div>
+          <div class="voice-page-shell">
           <div class="voice-page-body">
             <div class="voice-page-main">
           <div class="voice-page-layout">
@@ -1846,56 +1835,54 @@
                     </header>
                     <div id="habitScenarioVoiceBody" class="habit-scenario-voice-body" hidden></div>
                     <div class="voice-step-page-stack voice-wake-page-stack" id="voiceWakePageGrid">
-                    <div class="voice-phrase-panel voice-wake-phrase-panel voice-wake-text-card" id="voiceWakePresetsPanel">
-                    <div class="voice-phrase-panel-head">
-                      <p class="voice-phrase-panel-title" id="voiceEditSectionPresets">开启</p>
+                    <div class="voice-wake-flat-layout voice-phrase-panel voice-wake-phrase-panel" id="voiceWakePresetsPanel">
+                    <header class="voice-wake-toolbar">
+                      <p class="voice-phrase-panel-title sr-only" id="voiceEditSectionPresets">开启</p>
                       <p class="voice-wake-card-sub sr-only" id="voiceWakeGlobalSub"></p>
-                      <div class="voice-phrase-kind-tabs" id="voiceWakeKindTabs" role="tablist" aria-label="说完话要做什么">
+                      <div class="voice-phrase-kind-tabs voice-wake-kind-tabs" id="voiceWakeKindTabs" role="tablist" aria-label="说完话要做什么">
                         <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceWakeKindText" role="tab" aria-selected="true" aria-controls="voiceWakeKindTextPane">开始输入</button>
                         <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="app" id="btnVoiceWakeKindApp" role="tab" aria-selected="false" aria-controls="voiceWakeKindAppPane">打开应用</button>
                       </div>
-                      <div class="flow-lang-toggle" id="voiceWakeLangToggle" role="group" aria-label="唤醒词语言" hidden>
+                      <div class="flow-lang-toggle voice-wake-lang-toggle" id="voiceWakeLangToggle" role="group" aria-label="唤醒词语言" hidden>
                         <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceWakeLangZh">中</button>
+                        <span class="voice-wake-lang-sep" aria-hidden="true">|</span>
                         <button type="button" class="flow-lang-btn" data-lang="en" id="btnVoiceWakeLangEn">EN</button>
                       </div>
-                    </div>
-                    <div class="voice-phrase-kind-pane" id="voiceWakeKindTextPane" data-phrase-kind-pane="text" role="tabpanel" aria-labelledby="btnVoiceWakeKindText">
-                    <section class="voice-wake-primary-card" id="voiceWakeHeroCard">
-                      <div class="voice-wake-primary-head">
-                        <p class="voice-wake-primary-lbl" id="voiceWakeHeroTitle">首选唤醒口令</p>
-                        <span class="voice-wake-primary-badge" id="voiceWakePrimaryFastBadge">响应最快</span>
+                    </header>
+                    <div class="voice-phrase-kind-pane voice-wake-text-pane" id="voiceWakeKindTextPane" data-phrase-kind-pane="text" role="tabpanel" aria-labelledby="btnVoiceWakeKindText">
+                    <section class="voice-wake-section voice-wake-unified-section">
+                      <h4 class="voice-wake-section-title" id="voiceWakeCurrentSectionLbl">开启口令</h4>
+                      <div class="voice-wake-pool-card voice-wake-primary-card voice-wake-hero-card" id="voiceWakeHeroCard">
+                        <div class="voice-wake-pool-hero">
+                          <div class="voice-wake-hero-meta">
+                            <button type="button" class="voice-wake-status-badge" id="voiceWakeHeroReady" aria-live="polite">语音未启用</button>
+                            <span class="voice-wake-primary-badge" id="voiceWakePrimaryFastBadge">响应最快</span>
+                          </div>
+                          <p class="voice-wake-pool-hero-kicker" id="voiceWakeHeroKicker">默认口令</p>
+                          <p class="voice-wake-primary-lbl sr-only" id="voiceWakeHeroTitle">首选唤醒口令</p>
+                          <h2 class="voice-wake-hero-name" id="voiceWakePhraseDisplay">
+                            <span class="voice-phrase-compact-zh" id="voiceWakeCompactZh">—</span>
+                            <span class="voice-phrase-compact-en" id="voiceWakeCompactEn" hidden>—</span>
+                          </h2>
+                          <p class="voice-wake-hero-desc" id="voiceWakeDisplayHint">说出即可开始听写</p>
+                          <button type="button" class="sr-only" id="btnVoiceSettingsMic" tabindex="-1" aria-hidden="true">
+                            <span id="voiceSettingsMicName">默认麦克风</span>
+                          </button>
+                          <span class="sr-only" id="voiceSettingsMicLbl">麦克风</span>
+                          <span class="mic-level-bars sr-only" id="voiceSettingsMicBars" aria-hidden="true"></span>
+                        </div>
+                        <div class="voice-wake-pool-alias-inset voice-wake-alias-card">
+                          <p class="voice-wake-pool-bridge" id="voiceWakePoolBridge">这些说法同样有效</p>
+                          <p class="voice-phrase-pool-label sr-only" id="voiceWakeActiveLbl">已启用的唤醒短语</p>
+                          <p class="voice-phrase-panel-hint sr-only" id="voiceWakeAliasSectionLbl">其他开启口令</p>
+                          <div class="voice-phrase-tags voice-wake-active-tags voice-wake-alias-list" id="voiceWakePhraseTags" role="listbox" aria-labelledby="voiceWakeAliasSectionLbl"></div>
+                          <div class="voice-wake-pool-actions">
+                            <button type="button" class="voice-wake-pool-add-btn" id="btnVoiceWakePoolAdd">+ 添加口令</button>
+                          </div>
+                        </div>
                       </div>
-                      <p class="voice-wake-primary-ready" id="voiceWakeHeroReady" aria-live="polite">语音已就绪 · 后台守护中</p>
-                      <div class="voice-wake-primary-body">
-                        <p class="voice-wake-primary-phrase voice-wake-phrase-display" id="voiceWakePhraseDisplay">
-                          <span class="voice-phrase-compact-zh" id="voiceWakeCompactZh">—</span>
-                          <span class="voice-phrase-compact-en" id="voiceWakeCompactEn" hidden>—</span>
-                        </p>
-                        <p class="voice-wake-primary-hint" id="voiceWakeDisplayHint">说出此口令后开始听写</p>
-                      </div>
-                      <button type="button" class="voice-wake-sandbox-btn" id="btnVoiceSandboxOpen">试试口令效果</button>
-                      <button type="button" class="sr-only" id="btnVoiceSettingsMic" tabindex="-1" aria-hidden="true">
-                        <span id="voiceSettingsMicName">默认麦克风</span>
-                      </button>
-                      <span class="sr-only" id="voiceSettingsMicLbl">麦克风</span>
-                      <span class="mic-level-bars sr-only" id="voiceSettingsMicBars" aria-hidden="true"></span>
+                      <p class="voice-phrase-panel-hint sr-only" id="voiceWakeCustomHint">点击标签开关；× 删除自定义</p>
                     </section>
-                    <div class="voice-wake-phrase-editor">
-                    <p class="voice-phrase-pool-label" id="voiceWakeActiveLbl">已启用的唤醒短语</p>
-                    <div class="voice-phrase-tags voice-wake-active-tags" id="voiceWakePhraseTags" role="listbox" aria-labelledby="voiceWakeActiveLbl"></div>
-                    <div class="voice-phrase-add-row voice-wake-add-row" id="voiceWakeCustomBlock">
-                      <div class="voice-wake-input-wrap">
-                        <input type="text" class="voice-phrase-custom-input" id="voiceWakeCustomInput" autocomplete="off" spellcheck="false" maxlength="20" placeholder="例如：嘿，电脑" aria-labelledby="voiceWakeCustomLbl">
-                        <span class="voice-wake-input-count" id="voiceWakeCustomCount" aria-hidden="true">0/20</span>
-                      </div>
-                      <button type="button" class="voice-phrase-custom-add voice-wake-add-btn" id="btnVoiceWakeCustomAdd">+ 添加</button>
-                    </div>
-                    <p class="voice-phrase-panel-hint sr-only" id="voiceWakeCustomHint">点击标签开关；× 删除自定义</p>
-                    <div class="voice-wake-input-target" id="voiceWakeInputTarget">
-                      <p class="voice-phrase-pool-label" id="voiceWakeInputTargetLbl">输入目标</p>
-                      <p class="voice-wake-input-target-val" id="voiceWakeInputTargetVal">—</p>
-                    </div>
-                    </div>
                     </div>
                     <div class="voice-phrase-kind-pane" id="voiceWakeKindSoundPane" data-phrase-kind-pane="sound" role="tabpanel" hidden aria-hidden="true">
                       <div id="voiceWakeAcousticHost" class="habit-scenario-voice-command-host voice-wake-acoustic-host"></div>
@@ -1904,12 +1891,12 @@
                       <section class="voice-output-summon-block voice-wake-summon-block voice-wake-flat" id="voiceOutputSummonBlock">
                         <div class="voice-wake-card-titles">
                           <p class="voice-phrase-panel-title" id="voiceOutputSummonLbl">打开应用</p>
-                          <p class="voice-wake-card-sub sr-only" id="voiceOutputSummonHint"></p>
+                          <p class="voice-wake-card-sub" id="voiceOutputSummonHint">说出已录的口令即可打开或切到该应用</p>
                         </div>
-                        <p class="voice-output-summon-empty" id="voiceOutputSummonEmpty">尚未设置，请到按键页添加</p>
+                        <p class="voice-output-summon-empty" id="voiceOutputSummonEmpty">还没有可语音打开的应用。点「添加应用」选一个，再录制口令。</p>
                         <div class="voice-output-summon-rows" id="voiceOutputSummonChips"></div>
                         <div class="voice-open-app-actions">
-                          <button type="button" class="voice-mode-meta-link" id="btnVoiceOpenAppAdd">添加应用</button>
+                          <button type="button" class="page-status-btn is-primary" id="btnVoiceOpenAppAdd">添加应用</button>
                           <button type="button" class="voice-mode-meta-link" id="btnVoiceOutputSummonManage">在按键页管理</button>
                         </div>
                       </section>
@@ -1975,8 +1962,7 @@
                     </div>
                     <div class="voice-end-detect-vosk voice-recognize-phrase-card" id="voiceEndPresetsWrap" hidden>
                       <div class="voice-phrase-panel voice-cancel-phrase-panel" id="voiceCancelPhrasePanel" data-recognize-intent-pane="cancel">
-                        <div class="voice-phrase-panel-head">
-                          <p class="voice-phrase-panel-title" id="voiceCancelPresetsZhLabel">取消词</p>
+                        <div class="voice-phrase-panel-head voice-end-phrase-toolbar">
                           <div class="voice-phrase-kind-tabs" id="voiceCancelKindTabs" role="tablist" aria-label="取消怎么激活">
                             <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceCancelKindText" role="tab" aria-selected="true" aria-controls="voiceCancelKindTextPane">输入文字</button>
                             <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceCancelKindSound" role="tab" aria-selected="false" aria-controls="voiceCancelKindSoundPane">录制声音</button>
@@ -1987,21 +1973,26 @@
                           </div>
                         </div>
                         <div class="voice-phrase-kind-pane" id="voiceCancelKindTextPane" data-phrase-kind-pane="text" role="tabpanel" aria-labelledby="btnVoiceCancelKindText">
-                        <div class="voice-phrase-tags" id="voiceCancelPhraseTags" role="listbox" aria-labelledby="voiceCancelPresetsZhLabel"></div>
-                        <div class="voice-phrase-add-row" id="voiceCancelCustomBlock">
-                          <input type="text" class="voice-phrase-custom-input" id="voiceCancelCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：不要了" aria-label="自定义取消词">
-                          <button type="button" class="voice-phrase-custom-listen" id="btnVoiceCancelCustomListen" title="说一句，用识别结果填入" aria-label="听写填入">🎤</button>
-                          <button type="button" class="voice-phrase-custom-add" id="btnVoiceCancelCustomAdd">添加</button>
+                        <h4 class="voice-wake-section-title" id="voiceCancelPresetsZhLabel">取消词 · 说出即可丢弃输入</h4>
+                        <div class="voice-wake-alias-card voice-end-alias-card">
+                        <div class="voice-phrase-tags voice-wake-active-tags voice-wake-alias-list" id="voiceCancelPhraseTags" role="listbox" aria-labelledby="voiceCancelPresetsZhLabel"></div>
+                        <div class="voice-phrase-add-row voice-wake-add-row voice-wake-alias-add" id="voiceCancelCustomBlock">
+                          <div class="voice-wake-input-wrap">
+                            <input type="text" class="voice-phrase-custom-input" id="voiceCancelCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：不要了" aria-label="自定义取消词">
+                            <span class="voice-wake-input-count" id="voiceCancelCustomCount" aria-hidden="true">0/48</span>
+                          </div>
+                          <button type="button" class="voice-phrase-custom-listen sr-only" id="btnVoiceCancelCustomListen" title="说一句，用识别结果填入" aria-label="听写填入">🎤</button>
+                          <button type="button" class="voice-phrase-custom-add voice-wake-add-btn" id="btnVoiceCancelCustomAdd">+ 添加</button>
                         </div>
-                        <p class="voice-phrase-panel-hint" id="voiceCancelCustomHint">丢弃本轮输入</p>
+                        <p class="voice-wake-alias-hint" id="voiceCancelCustomHint">丢弃本轮输入</p>
+                        </div>
                         </div>
                         <div class="voice-phrase-kind-pane" id="voiceCancelKindSoundPane" data-phrase-kind-pane="sound" role="tabpanel" aria-labelledby="btnVoiceCancelKindSound" hidden>
                           <div id="voiceCancelAcousticHost" class="habit-scenario-voice-command-host voice-control-acoustic-host"></div>
                         </div>
                       </div>
                       <div class="voice-phrase-panel voice-end-phrase-panel" id="voiceEndPhrasePanel" data-recognize-intent-pane="confirm" hidden>
-                        <div class="voice-phrase-panel-head">
-                          <p class="voice-phrase-panel-title" id="voiceEndPresetsZhLabel">结束词</p>
+                        <div class="voice-phrase-panel-head voice-end-phrase-toolbar">
                           <div class="voice-phrase-kind-tabs" id="voiceEndKindTabs" role="tablist" aria-label="确认怎么激活">
                             <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceEndKindText" role="tab" aria-selected="true" aria-controls="voiceEndKindTextPane">输入文字</button>
                             <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceEndKindSound" role="tab" aria-selected="false" aria-controls="voiceEndKindSoundPane">录制声音</button>
@@ -2012,14 +2003,20 @@
                           </div>
                         </div>
                         <div class="voice-phrase-kind-pane" id="voiceEndKindTextPane" data-phrase-kind-pane="text" role="tabpanel" aria-labelledby="btnVoiceEndKindText">
-                        <div class="voice-phrase-tags" id="voiceEndPhraseTags" role="listbox" aria-labelledby="voiceEndPresetsZhLabel"></div>
-                        <div class="voice-phrase-add-row" id="voiceEndCustomBlock">
-                          <input type="text" class="voice-phrase-custom-input" id="voiceEndCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：就这样" aria-label="自定义结束词">
-                          <button type="button" class="voice-phrase-custom-listen" id="btnVoiceEndCustomListen" title="说一句，用识别结果填入" aria-label="听写填入">🎤</button>
-                          <button type="button" class="voice-phrase-custom-add" id="btnVoiceEndCustomAdd">添加</button>
+                        <h4 class="voice-wake-section-title" id="voiceEndPresetsZhLabel">结束词 · 说出即可停止听写</h4>
+                        <div class="voice-wake-alias-card voice-end-alias-card">
+                        <div class="voice-phrase-tags voice-wake-active-tags voice-wake-alias-list" id="voiceEndPhraseTags" role="listbox" aria-labelledby="voiceEndPresetsZhLabel"></div>
+                        <div class="voice-phrase-add-row voice-wake-add-row voice-wake-alias-add" id="voiceEndCustomBlock">
+                          <div class="voice-wake-input-wrap">
+                            <input type="text" class="voice-phrase-custom-input" id="voiceEndCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：就这样" aria-label="自定义结束词">
+                            <span class="voice-wake-input-count" id="voiceEndCustomCount" aria-hidden="true">0/48</span>
+                          </div>
+                          <button type="button" class="voice-phrase-custom-listen sr-only" id="btnVoiceEndCustomListen" title="说一句，用识别结果填入" aria-label="听写填入">🎤</button>
+                          <button type="button" class="voice-phrase-custom-add voice-wake-add-btn" id="btnVoiceEndCustomAdd">+ 添加</button>
                         </div>
-                        <p class="voice-phrase-panel-hint" id="voiceEndSilenceNote">只停止录音，保留文本</p>
-                        <p class="voice-phrase-panel-hint" id="voiceEndCustomHint">可添加预设以外的结束短语</p>
+                        <p class="voice-wake-alias-hint" id="voiceEndSilenceNote">只停止录音，保留文本</p>
+                        <p class="voice-phrase-panel-hint sr-only" id="voiceEndCustomHint">可添加预设以外的结束短语</p>
+                        </div>
                         </div>
                         <div class="voice-phrase-kind-pane" id="voiceEndKindSoundPane" data-phrase-kind-pane="sound" role="tabpanel" aria-labelledby="btnVoiceEndKindSound" hidden>
                           <div id="voiceEndAcousticHost" class="habit-scenario-voice-command-host voice-control-acoustic-host"></div>
@@ -2320,7 +2317,93 @@
               </div>
           </div>
             </div>
-            <aside class="voice-page-aside" id="voicePanelAside" aria-label="习惯与模板">
+          <footer class="voice-bottom-dock" id="voiceBottomDock" role="status" aria-live="polite">
+            <div class="voice-bottom-dock-inner">
+              <div class="voice-dock-live">
+                <div class="voice-dock-live-item">
+                  <span class="voice-fb-status-pill is-standby voice-dock-status-pill" id="voiceFbStatusPill">系统待命中</span>
+                </div>
+                <div class="voice-dock-live-item is-grow">
+                  <span class="voice-dock-lbl" id="voiceDockHeardLbl">听到</span>
+                  <span class="voice-dock-heard is-placeholder" id="voiceDockHeard">—</span>
+                </div>
+                <div class="voice-dock-live-item voice-dock-mic-slot">
+                  <div class="voice-live-mic-row" id="voiceLiveMicRow">
+                    <button type="button" class="voice-dock-mic-btn voice-live-mic-trigger" id="btnVoiceLiveMicToggle" aria-expanded="false" aria-controls="voiceLiveMicPicker">
+                      <span id="voiceLiveMicName">默认麦克风</span>
+                    </button>
+                    <button type="button" class="voice-mic-change-btn sr-only" id="btnVoiceLiveMicChange">更换设备</button>
+                    <span class="voice-mic-status-dot sr-only" id="voiceLiveMicDot" aria-hidden="true"></span>
+                    <span class="sr-only" id="voiceLiveMicState">正常</span>
+                    <span class="voice-live-mic-chevron sr-only" id="voiceLiveMicChevron" aria-hidden="true">▾</span>
+                    <span class="voice-mic-status-readonly sr-only" id="voiceLiveMicReadonly"></span>
+                  </div>
+                </div>
+                <div class="voice-dock-live-item">
+                  <div class="voice-summary-engine-switch voice-recognize-source-grid voice-dock-engine" id="voiceSummaryEngineSwitch" role="group" aria-labelledby="voiceSummaryEngineLbl">
+                    <button type="button" class="voice-recognize-source-btn" data-voice-strategy-tab="auto" id="voiceSummaryEngineAuto">自动</button>
+                    <button type="button" class="voice-recognize-source-btn" data-voice-strategy-tab="resourceSaver" id="voiceSummaryEngineResourceSaver">省电</button>
+                    <button type="button" class="voice-recognize-source-btn" data-voice-strategy-tab="enhanced" id="voiceSummaryEngineEnhanced">增强</button>
+                  </div>
+                </div>
+              </div>
+              <div class="voice-dock-actions voice-scheme-status-actions sr-only" id="voiceDockActionsLegacy" aria-hidden="true"></div>
+              <div class="voice-live-strip voice-dock-rail" id="voiceAsidePreview">
+                <section class="voice-feedback-rail voice-feedback-rail--compact voice-feedback-rail--dock" id="voiceFeedbackRail" aria-label="实时交互预览">
+                  <header class="voice-fb-head voice-fb-head--compact sr-only">
+                    <span class="voice-fb-title" id="voiceFbTitle">实时交互预览</span>
+                    <div class="voice-fb-actions voice-fb-actions--compact" id="voiceFbActions" hidden>
+                      <button type="button" class="voice-fb-action-btn" id="voiceFbBtnSimulateWake" hidden>模拟唤醒</button>
+                      <button type="button" class="voice-fb-action-btn" id="voiceFbBtnSimulateSpeak" hidden>模拟说话</button>
+                    </div>
+                  </header>
+                  <div class="voice-live-mic-picker" id="voiceLiveMicPicker" hidden>
+                    <div class="voice-live-mic-picker-head">
+                      <span class="voice-live-mic-picker-title" id="voiceMicPickerSummary">麦克风与设备</span>
+                      <button type="button" class="control-btn voice-mic-refresh-btn" id="btnMicRefresh">刷新设备</button>
+                    </div>
+                    <div class="mic-settings-block drawer-section" id="voiceMicSection">
+                      <div class="mini-title sr-only" id="micTitle">麦克风</div>
+                      <p class="mic-desc sr-only" id="micDesc">选择能捕捉到您声音的麦克风。电平条随声跳动时，下方会同步显示识别状态与实时文字。</p>
+                      <p class="mic-empty" id="micEmpty" hidden></p>
+                      <div class="mic-device-list" id="micDeviceList"></div>
+                    </div>
+                  </div>
+                  <div class="voice-fb-orb-wrap voice-fb-orb-wrap--compact" aria-hidden="true" hidden>
+                    <div id="voiceFbMicOrb" aria-hidden="true">
+                      <div class="voice-fb-mic-ring"></div>
+                      <div class="voice-fb-mic-core">🎤</div>
+                    </div>
+                  </div>
+                  <div class="voice-fb-transcript-block voice-fb-transcript-block--compact sr-only">
+                    <span class="voice-fb-transcript-lbl" id="voiceFbTranscriptLbl">实时输出</span>
+                    <div id="voiceFbTranscript" class="is-placeholder" role="log" aria-live="polite" aria-atomic="false">等待唤醒词或长按说话…</div>
+                  </div>
+                  <div class="voice-fb-metrics voice-fb-metrics--compact" id="voiceFbMetrics" role="group" aria-label="语音链路指标" hidden>
+                    <div class="voice-fb-metric" data-fb-slot="primary">
+                      <span class="voice-fb-metric-lbl" id="voiceFbLblLatency">—</span>
+                      <span class="voice-fb-metric-val" id="voiceFbMetricLatency">—</span>
+                    </div>
+                    <div class="voice-fb-metric" data-fb-slot="secondary">
+                      <span class="voice-fb-metric-lbl" id="voiceFbLblConfidence">—</span>
+                      <span class="voice-fb-metric-val" id="voiceFbMetricConfidence">—</span>
+                    </div>
+                    <div class="voice-fb-metric" data-fb-slot="tertiary">
+                      <span class="voice-fb-metric-lbl" id="voiceFbLblEngine">—</span>
+                      <span class="voice-fb-metric-val" id="voiceFbMetricEngine">—</span>
+                    </div>
+                    <div class="voice-fb-metric" data-fb-slot="quaternary">
+                      <span class="voice-fb-metric-lbl" id="voiceFbLblSend">—</span>
+                      <span class="voice-fb-metric-val" id="voiceFbMetricSend">—</span>
+                    </div>
+                  </div>
+                  <span class="sr-only" id="voiceModeLiteMetric" aria-hidden="true"></span>
+                  <span class="sr-only" id="voiceModeProMetric" aria-hidden="true"></span>
+                </section>
+              </div>
+            </div>
+          </footer>
+          <aside class="voice-page-aside" id="voicePanelAside" aria-label="习惯与模板" hidden>
               <section class="keys-aside-card keys-hub-card" id="voiceHubCard">
                 <header class="keys-aside-card-head keys-hub-head">
                   <span class="keys-aside-title" id="voiceHubTitleLbl">语音编辑对象</span>
@@ -2343,79 +2426,13 @@
                   </div>
                 </details>
               </section>
-              <div class="voice-live-strip voice-aside-preview" id="voiceAsidePreview">
-                <section class="voice-feedback-rail voice-feedback-rail--compact" id="voiceFeedbackRail" aria-label="实时交互预览">
-                  <header class="voice-fb-head voice-fb-head--compact">
-                    <span class="voice-fb-title" id="voiceFbTitle">实时交互预览</span>
-                    <span class="voice-fb-status-pill is-standby" id="voiceFbStatusPill">系统待命中</span>
-                    <div class="voice-live-mic-row" id="voiceLiveMicRow">
-                      <button type="button" class="voice-live-mic-trigger" id="btnVoiceLiveMicToggle" aria-expanded="false" aria-controls="voiceLiveMicPicker">
-                        <span class="voice-mic-status-readonly voice-status-readonly voice-live-mic-readonly" id="voiceLiveMicReadonly">
-                          <span class="voice-mic-status-dot" id="voiceLiveMicDot" aria-hidden="true"></span>
-                          <span id="voiceLiveMicName">默认麦克风</span>
-                          <span aria-hidden="true">·</span>
-                          <span id="voiceLiveMicState">正常</span>
-                        </span>
-                        <span class="voice-live-mic-chevron" id="voiceLiveMicChevron" aria-hidden="true">▾</span>
-                      </button>
-                      <button type="button" class="voice-mic-change-btn" id="btnVoiceLiveMicChange">更换设备</button>
-                    </div>
-                    <div class="voice-fb-actions voice-fb-actions--compact" id="voiceFbActions">
-                      <button type="button" class="voice-fb-action-btn" id="voiceFbBtnSimulateWake">模拟唤醒</button>
-                      <button type="button" class="voice-fb-action-btn" id="voiceFbBtnSimulateSpeak">模拟说话</button>
-                    </div>
-                  </header>
-                  <div class="voice-live-mic-picker" id="voiceLiveMicPicker" hidden>
-                    <div class="voice-live-mic-picker-head">
-                      <span class="voice-live-mic-picker-title" id="voiceMicPickerSummary">麦克风与设备</span>
-                      <button type="button" class="control-btn voice-mic-refresh-btn" id="btnMicRefresh">刷新设备</button>
-                    </div>
-                    <div class="mic-settings-block drawer-section" id="voiceMicSection">
-                      <div class="mini-title sr-only" id="micTitle">麦克风</div>
-                      <p class="mic-desc sr-only" id="micDesc">选择能捕捉到您声音的麦克风。电平条随声跳动时，下方会同步显示识别状态与实时文字。</p>
-                      <p class="mic-empty" id="micEmpty" hidden></p>
-                      <div class="mic-device-list" id="micDeviceList"></div>
-                    </div>
-                  </div>
-                  <div class="voice-fb-orb-wrap voice-fb-orb-wrap--compact" aria-hidden="true">
-                    <div id="voiceFbMicOrb" aria-hidden="true">
-                      <div class="voice-fb-mic-ring"></div>
-                      <div class="voice-fb-mic-core">🎤</div>
-                    </div>
-                  </div>
-                  <div class="voice-fb-transcript-block voice-fb-transcript-block--compact">
-                    <span class="voice-fb-transcript-lbl" id="voiceFbTranscriptLbl">TEXT OUTPUT [REAL-TIME]</span>
-                    <div id="voiceFbTranscript" class="is-placeholder" role="log" aria-live="polite" aria-atomic="false">等待唤醒词或长按说话…</div>
-                  </div>
-                  <div class="voice-fb-metrics voice-fb-metrics--compact" id="voiceFbMetrics" role="group" aria-label="语音链路指标">
-                    <div class="voice-fb-metric" data-fb-slot="primary">
-                      <span class="voice-fb-metric-lbl" id="voiceFbLblLatency">—</span>
-                      <span class="voice-fb-metric-val" id="voiceFbMetricLatency">—</span>
-                    </div>
-                    <div class="voice-fb-metric" data-fb-slot="secondary">
-                      <span class="voice-fb-metric-lbl" id="voiceFbLblConfidence">—</span>
-                      <span class="voice-fb-metric-val" id="voiceFbMetricConfidence">—</span>
-                    </div>
-                    <div class="voice-fb-metric" data-fb-slot="tertiary">
-                      <span class="voice-fb-metric-lbl" id="voiceFbLblEngine">—</span>
-                      <span class="voice-fb-metric-val" id="voiceFbMetricEngine">—</span>
-                    </div>
-                    <div class="voice-fb-metric" data-fb-slot="quaternary">
-                      <span class="voice-fb-metric-lbl" id="voiceFbLblSend">—</span>
-                      <span class="voice-fb-metric-val" id="voiceFbMetricSend">—</span>
-                    </div>
-                  </div>
-                  <span class="sr-only" id="voiceModeLiteMetric" aria-hidden="true"></span>
-                  <span class="sr-only" id="voiceModeProMetric" aria-hidden="true"></span>
-                </section>
-              </div>
             </aside>
           </div>
           <p class="settings-panel-desc voice-page-head-desc sr-only" id="settingsPanelVoiceWakeDesc">配置从声音采集到文本输出的本地语音输入流程</p>
           <p class="settings-panel-note voice-page-scene-note sr-only" id="voiceActiveSceneNote" hidden aria-hidden="true"></p>
           <h3 class="pref-page-title sr-only" id="settingsPanelVoiceWakeTitle">音频</h3>
           <div class="keys-scheme-summary voice-scheme-summary sr-only" id="voiceSchemeSummary" aria-live="polite" hidden></div>
-          <div class="voice-app-scope-strip voice-app-scope-dock" id="voiceAppScopeStrip">
+          <div class="voice-app-scope-strip voice-app-scope-dock" id="voiceAppScopeStrip" hidden aria-hidden="true">
             <div class="voice-app-scope-head">
               <div class="voice-app-scope-head-text">
                 <h4 class="voice-app-scope-title" id="voiceAppScopeTitle">生效应用</h4>
@@ -4554,26 +4571,28 @@
       </div>
     </div>
   </div>
-  <div class="confirm-overlay voice-sandbox-overlay" id="voiceSandboxOverlay" aria-hidden="true">
-    <div class="confirm-modal voice-sandbox-modal" role="dialog" aria-modal="true" aria-labelledby="voiceSandboxTitle" aria-describedby="voiceSandboxDesc">
-      <div class="voice-sandbox-head">
-        <h3 class="confirm-title" id="voiceSandboxTitle">口令效果试演</h3>
-        <button type="button" class="voice-sandbox-close-x" id="btnVoiceSandboxCloseX" aria-label="关闭">&times;</button>
+  <div class="confirm-overlay voice-wake-phrase-overlay" id="voiceWakePhraseOverlay" aria-hidden="true">
+    <div class="confirm-modal voice-wake-phrase-popover" role="dialog" aria-modal="true" aria-labelledby="voiceWakePopoverTitle">
+      <div class="voice-wake-phrase-popover-head">
+        <h3 class="confirm-title" id="voiceWakePopoverTitle">添加开启口令</h3>
+        <button type="button" class="voice-wake-phrase-popover-close" id="btnVoiceWakePopoverClose" aria-label="关闭">&times;</button>
       </div>
-      <p class="confirm-body" id="voiceSandboxDesc">不用开麦也能点按体验取消 / 完成；需要真机时可一键模拟说话。</p>
-      <div class="voice-sandbox-box" aria-live="polite">
-        <span class="voice-sandbox-box-lbl" id="voiceSandboxBoxLbl">模拟编辑框</span>
-        <p class="voice-sandbox-text is-placeholder" id="voiceSandboxText">［等待试演…］</p>
+      <p class="voice-wake-phrase-popover-sub" id="voiceWakePopoverSub">从预设选择，或输入自定义口令</p>
+      <div class="voice-wake-popover-presets" id="voiceWakePopoverPresets">
+        <button type="button" class="voice-sapi-preset" data-phrase="嘿，电脑">嘿，电脑</button>
+        <button type="button" class="voice-sapi-preset" data-phrase="小助手">小助手</button>
       </div>
-      <div class="voice-sandbox-actions" role="group" aria-label="试演动作">
-        <button type="button" class="btn secondary" id="btnVoiceSandboxSpeak" data-sandbox-act="speak">模拟说话</button>
-        <button type="button" class="btn secondary" id="btnVoiceSandboxCancel" data-sandbox-act="cancel">模拟取消</button>
-        <button type="button" class="btn secondary" id="btnVoiceSandboxConfirm" data-sandbox-act="confirm">模拟完成</button>
-        <button type="button" class="btn primary" id="btnVoiceSandboxReal" data-sandbox-act="real">真机试一次</button>
+      <div class="voice-phrase-add-row voice-wake-add-row voice-wake-alias-add">
+        <div class="voice-wake-input-wrap">
+          <input type="text" class="voice-phrase-custom-input" id="voiceWakePhraseInput" autocomplete="off" spellcheck="false" maxlength="20" placeholder="例如：嘿，电脑" aria-labelledby="voiceWakeCustomLbl">
+          <span class="voice-wake-input-count" id="voiceWakePhraseCount" aria-hidden="true">0/20</span>
+        </div>
+        <button type="button" class="voice-phrase-custom-add voice-wake-add-btn" id="btnVoiceWakePhraseAdd">+ 添加</button>
       </div>
       <div class="confirm-actions">
-        <button type="button" class="btn secondary" id="btnVoiceSandboxClose">关闭</button>
+        <button type="button" class="btn secondary" id="btnVoiceWakePopoverCancel">取消</button>
       </div>
+      <p class="voice-wake-popover-hint" id="voiceWakeAliasHint">新口令会同步到尚未单独设置口令的习惯</p>
     </div>
   </div>
   <div class="confirm-overlay" id="confirmOverlay" aria-hidden="true">
@@ -4688,7 +4707,6 @@
   <script src="js/core/habit-override-diff.js"></script>
   <script src="js/features/voice/voice-scheme-context.js"></script>
   <script src="js/features/voice/voice-scheme-name-modal.js"></script>
-  <script src="js/features/voice/voice-sandbox.js"></script>
   <script src="js/features/voice/voice-scheme-persist.js"></script>
   <script src="js/features/voice/voice-workflow-templates.js"></script>
   <script src="js/features/voice/voice-step-wake-render.js"></script>

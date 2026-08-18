@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>01 开启 · 打开应用 · A–E 方案横向对比</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #eceef2;
+    --surface: #fff;
+    --line: #e2e5ea;
+    --line-soft: #f4f5f7;
+    --text: #14171e;
+    --text-2: #5a6271;
+    --text-3: #9099a8;
+    --primary: #2a9cc4;
+    --primary-strong: #0369a1;
+    --primary-soft: #e8f6ff;
+    --warn: #f59e0b;
+    --warn-soft: #fff7e6;
+    --bad: #dc2626;
+    --bad-soft: #fef2f2;
+    --ok: #059669;
+    --ok-soft: #ecfdf5;
+    --shadow: 0 8px 28px rgba(15, 23, 42, .07);
+    --r: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: 12px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page-header {
+    padding: 22px 24px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .page-header h1 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+  .page-header > p { margin: 0; color: var(--text-2); font-size: 12px; max-width: 920px; }
+  .refs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .ref {
+    font-size: 10px; color: var(--text-2);
+    padding: 3px 8px; border-radius: 999px;
+    background: var(--line-soft); border: 1px solid var(--line);
+  }
+
+  .compare-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(220px, 1fr));
+    gap: 14px;
+    padding: 18px 20px 48px;
+    align-items: start;
+  }
+  @media (max-width: 1400px) {
+    .compare-grid { grid-template-columns: repeat(3, minmax(240px, 1fr)); }
+  }
+  @media (max-width: 900px) {
+    .compare-grid { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+  }
+  @media (max-width: 560px) {
+    .compare-grid { grid-template-columns: 1fr; max-width: 360px; margin: 0 auto; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    min-width: 0;
+  }
+  .panel.is-rec { border-color: #6ee7b7; }
+  .panel-head {
+    padding: 12px 13px 10px;
+    border-bottom: 1px solid var(--line-soft);
+    background: linear-gradient(180deg, #fafbfc, #fff);
+  }
+  .panel-head h2 {
+    margin: 0 0 2px;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  }
+  .tag {
+    font-size: 9px; font-weight: 700; padding: 2px 6px;
+    border-radius: 999px; letter-spacing: .03em;
+  }
+  .tag--a { background: var(--primary-soft); color: var(--primary-strong); }
+  .tag--b { background: #ede9fe; color: #6d28d9; }
+  .tag--c { background: #f0fdf4; color: var(--ok); }
+  .tag--d { background: var(--warn-soft); color: #b45309; }
+  .tag--e { background: #fce7f3; color: #be185d; }
+  .tag--rec { background: var(--ok-soft); color: var(--ok); }
+  .panel-head p { margin: 0; font-size: 10.5px; color: var(--text-2); line-height: 1.4; }
+  .panel-meta {
+    display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px;
+  }
+  .meta {
+    font-size: 9px; padding: 2px 6px; border-radius: 5px;
+    background: var(--line-soft); color: var(--text-2);
+  }
+
+  /* Phone / drawer chrome */
+  .phone {
+    background: #f8f9fb;
+    border-top: 1px solid var(--line-soft);
+    padding: 10px 10px 14px;
+    min-height: 340px;
+  }
+  .tabs {
+    display: flex; gap: 6px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;
+  }
+  .tab {
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 10px;
+    font-weight: 650;
+    color: var(--text-2);
+    font-family: inherit;
+  }
+  .tab.is-on {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+  }
+  .sec-title {
+    margin: 0 0 8px;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--text);
+  }
+
+  /* shared atoms */
+  .app-icon {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: linear-gradient(135deg, #64748b, #334155);
+    flex-shrink: 0;
+  }
+  .app-icon--cursor { background: linear-gradient(135deg, #1e293b, #0f172a); }
+  .app-icon--codex { background: linear-gradient(135deg, #10b981, #059669); }
+  .app-icon--claude { background: linear-gradient(135deg, #f97316, #ea580c); }
+  .pill {
+    display: inline-flex; align-items: center;
+    font-size: 9px; font-weight: 700;
+    padding: 2px 7px; border-radius: 999px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--text-2);
+    white-space: nowrap;
+  }
+  .pill--ok { background: var(--ok-soft); border-color: #6ee7b7; color: var(--ok); }
+  .pill--warn { background: var(--warn-soft); border-color: #fcd34d; color: #b45309; }
+  .pill--bad { background: var(--bad-soft); border-color: #fecaca; color: var(--bad); }
+  .btn {
+    appearance: none; border: 1px solid var(--line);
+    background: #fff; border-radius: 8px;
+    padding: 4px 9px; font-size: 9px; font-weight: 700;
+    font-family: inherit; cursor: pointer; color: var(--text);
+  }
+  .btn--primary {
+    background: var(--primary); border-color: var(--primary); color: #fff;
+  }
+  .btn--ghost {
+    border-color: transparent; background: transparent; color: var(--primary-strong);
+    padding: 4px 6px;
+  }
+  .link {
+    font-size: 9px; font-weight: 650; color: var(--primary-strong);
+    background: none; border: none; padding: 0; font-family: inherit; cursor: pointer;
+  }
+
+  /* ── A: camera config card ── */
+  .a-card {
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: #fff;
+    padding: 10px;
+    display: grid;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .a-card-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .a-card-id {
+    display: flex; align-items: center; gap: 8px; min-width: 0;
+  }
+  .a-card-name { font-size: 12px; font-weight: 800; }
+  .a-card-sub { font-size: 10px; color: var(--text-2); margin-top: 1px; }
+  .a-card-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+  /* ── B: J pool card ── */
+  .b-pool {
+    border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--line));
+    border-radius: 14px;
+    overflow: hidden;
+    background: linear-gradient(165deg, #f0f9ff 0%, #fff 48%);
+    box-shadow: 0 2px 12px rgba(42, 156, 196, .08);
+  }
+  .b-hero {
+    padding: 12px 12px 10px;
+  }
+  .b-hero-kicker {
+    margin: 0 0 2px; font-size: 9px; font-weight: 800;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--text-3);
+  }
+  .b-hero-title { margin: 0; font-size: 13px; font-weight: 800; }
+  .b-hero-desc { margin: 4px 0 0; font-size: 10px; color: var(--text-2); }
+  .b-inset {
+    margin: 0 8px 8px;
+    padding: 10px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid var(--line-soft);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+    display: grid; gap: 8px;
+  }
+  .b-bridge { margin: 0; font-size: 10px; color: var(--text-2); }
+  .b-app-grid {
+    display: grid; gap: 6px;
+  }
+  .b-app-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    padding: 6px 8px; border-radius: 8px; background: var(--line-soft);
+  }
+  .b-app-left { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .b-add {
+    border: 1px dashed color-mix(in srgb, var(--primary) 40%, var(--line));
+    background: color-mix(in srgb, var(--primary) 5%, #fff);
+    color: var(--primary-strong);
+    border-radius: 999px; padding: 4px 10px;
+    font-size: 9px; font-weight: 700; font-family: inherit; cursor: pointer;
+    justify-self: start;
+  }
+  .b-popover-hint {
+    margin-top: 8px; padding: 8px 10px;
+    border-radius: 10px; border: 1px dashed var(--line);
+    background: #fff; font-size: 9px; color: var(--text-3); text-align: center;
+  }
+
+  /* ── C: iOS rows + sheet ── */
+  .c-group {
+    border-radius: 12px; overflow: hidden;
+    border: 1px solid var(--line); background: #fff;
+  }
+  .c-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--line-soft);
+    cursor: pointer;
+  }
+  .c-row:last-child { border-bottom: 0; }
+  .c-row-body { flex: 1; min-width: 0; }
+  .c-row-title { font-size: 11px; font-weight: 700; }
+  .c-row-val {
+    font-size: 10px; color: var(--text-2); font-weight: 650;
+    display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+  }
+  .c-chev { opacity: .45; font-size: 11px; }
+  .c-sheet {
+    margin-top: 10px;
+    border-radius: 14px 14px 10px 10px;
+    border: 1px solid var(--line);
+    background: #fff;
+    box-shadow: 0 -4px 24px rgba(0,0,0,.08);
+    overflow: hidden;
+  }
+  .c-sheet-handle {
+    width: 28px; height: 3px; border-radius: 999px;
+    background: var(--line); margin: 8px auto 0;
+  }
+  .c-sheet-head {
+    padding: 8px 12px 6px;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .c-sheet-body { padding: 10px 12px; display: grid; gap: 8px; }
+  .c-rec-box {
+    border-radius: 10px; border: 1px solid var(--line);
+    background: var(--line-soft); padding: 16px 10px; text-align: center;
+    font-size: 10px; color: var(--text-2);
+  }
+
+  /* ── D: chips + keys delegate ── */
+  .d-hero-note {
+    margin: 0 0 10px; padding: 8px 10px;
+    border-radius: 10px; background: var(--primary-soft);
+    border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
+    font-size: 10px; color: var(--primary-strong); line-height: 1.45;
+  }
+  .d-chips {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;
+  }
+  .d-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 9px 5px 6px;
+    border-radius: 999px; border: 1px solid var(--line);
+    background: #fff; font-size: 10px; font-weight: 650;
+  }
+  .d-foot {
+    display: flex; flex-wrap: wrap; gap: 8px 12px;
+    padding-top: 8px; border-top: 1px solid var(--line-soft);
+  }
+
+  /* ── E: accordion ── */
+  .e-card {
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: #fff;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .e-card.is-open { border-color: color-mix(in srgb, var(--primary) 35%, var(--line)); }
+  .e-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 9px 10px; cursor: pointer;
+  }
+  .e-head-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .e-chev { font-size: 10px; color: var(--text-3); transition: transform .15s; }
+  .e-card.is-open .e-chev { transform: rotate(180deg); }
+  .e-body {
+    display: none;
+    padding: 0 10px 10px;
+    border-top: 1px solid var(--line-soft);
+  }
+  .e-card.is-open .e-body { display: block; }
+  .e-rec {
+    margin-top: 8px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, #fafbfc, #fff);
+    padding: 12px 10px;
+    text-align: center;
+  }
+  .e-rec-ring {
+    width: 44px; height: 44px; border-radius: 999px;
+    border: 2px solid var(--primary);
+    margin: 0 auto 6px;
+    display: grid; place-items: center;
+    font-size: 16px;
+  }
+  .e-rec p { margin: 0; font-size: 10px; color: var(--text-2); }
+
+  /* ── CURRENT (prod) baseline in each col footer ── */
+  .prod-baseline {
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px dashed var(--line);
+  }
+  .prod-label {
+    font-size: 9px; font-weight: 800; color: var(--bad);
+    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px;
+  }
+  .prod-row {
+    display: grid;
+    grid-template-columns: 72px 1fr;
+    gap: 6px 8px;
+    padding: 8px 0;
+    border-top: 1px solid var(--line);
+    opacity: .55;
+  }
+  .prod-row:first-of-type { border-top: 0; }
+  .prod-meta { font-size: 9px; color: var(--text-2); line-height: 1.35; }
+  .prod-links { display: flex; gap: 8px; margin-top: 3px; }
+
+  .panel-foot {
+    padding: 10px 13px 12px;
+    border-top: 1px solid var(--line-soft);
+    background: #fafafa;
+    font-size: 10px; color: var(--text-2);
+    line-height: 1.45;
+  }
+  .panel-foot strong { color: var(--text); }
+  .score-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .score {
+    font-size: 9px; padding: 2px 6px; border-radius: 5px;
+    background: var(--line-soft);
+  }
+  .score.is-good { background: var(--ok-soft); color: var(--ok); }
+  .score.is-mid { background: var(--warn-soft); color: #b45309; }
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1>01 开启 · 「打开应用」Tab · A–E 横向对比</h1>
+  <p>对比五种 IA / 视觉框架。每列均为同一数据（Cursor / Codex / Claude Code），在 K 壳层单栏宽度下的表现。灰底虚线区为<strong>当前 prod 列表行</strong>（难绷基准）。</p>
+  <div class="refs">
+    <span class="ref">A ← 摄像头 <code>camera-config-card</code></span>
+    <span class="ref">B ← J v3 pool + popover</span>
+    <span class="ref">C ← iOS row + sheet</span>
+    <span class="ref">D ← Keys chips 委托</span>
+    <span class="ref">E ← Accordion + inline 录制</span>
+  </div>
+</header>
+
+<div class="compare-grid">
+
+  <!-- A -->
+  <article class="panel is-rec">
+    <div class="panel-head">
+      <h2><span class="tag tag--a">A</span> 摄像头规则卡 <span class="tag tag--rec">P0 推荐</span></h2>
+      <p>每 app 一张独立卡：左标识 + 状态 pill，右主按钮。四行日志 → 一行副标题。</p>
+      <div class="panel-meta">
+        <span class="meta">diff 小</span>
+        <span class="meta">复用 camera CSS</span>
+        <span class="meta">IPC 不动</span>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="tabs">
+        <span class="tab">开始输入</span>
+        <span class="tab is-on">打开应用</span>
+      </div>
+      <h3 class="sec-title">打开应用</h3>
+
+      <div class="a-card">
+        <div class="a-card-head">
+          <div class="a-card-id">
+            <span class="app-icon app-icon--cursor"></span>
+            <div>
+              <div class="a-card-name">Cursor</div>
+              <div class="a-card-sub">声音口令 · 尚未录制</div>
+            </div>
+          </div>
+          <div class="a-card-actions">
+            <span class="pill pill--bad">不可启动</span>
+            <button type="button" class="btn btn--primary">录制</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="a-card">
+        <div class="a-card-head">
+          <div class="a-card-id">
+            <span class="app-icon app-icon--codex"></span>
+            <div>
+              <div class="a-card-name">Codex</div>
+              <div class="a-card-sub">声音口令 · 已录 1 条</div>
+            </div>
+          </div>
+          <div class="a-card-actions">
+            <span class="pill pill--ok">可启动</span>
+            <button type="button" class="btn">测试</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="a-card">
+        <div class="a-card-head">
+          <div class="a-card-id">
+            <span class="app-icon app-icon--claude"></span>
+            <div>
+              <div class="a-card-name">Claude Code</div>
+              <div class="a-card-sub">声音口令 · 尚未录制</div>
+            </div>
+          </div>
+          <div class="a-card-actions">
+            <span class="pill pill--warn">仅聚焦</span>
+            <button type="button" class="btn btn--primary">录制</button>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="link">+ 添加应用</button>
+
+      <div class="prod-baseline">
+        <div class="prod-label">当前 prod ↓</div>
+        <div class="prod-row">
+          <div style="display:flex;align-items:center;gap:6px"><span class="app-icon app-icon--cursor"></span><strong>Cursor</strong></div>
+          <div class="prod-meta">文字口令：无<br>声音口令：尚未录制<br>状态：启动信息缺失…<br><span class="prod-links"><span class="link">录制声音口令</span></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel-foot">
+      <strong>优点</strong>：最快落地、和摄像头/按键卡片语言统一。<br>
+      <strong>缺点</strong>：与「开始输入」J pool 仍不对称。
+      <div class="score-row">
+        <span class="score is-good">实现成本 低</span>
+        <span class="score is-good">扫读性 高</span>
+        <span class="score is-mid">品牌一致 中</span>
+      </div>
+    </div>
+  </article>
+
+  <!-- B -->
+  <article class="panel">
+    <div class="panel-head">
+      <h2><span class="tag tag--b">B</span> J v3 App Pool</h2>
+      <p>与「开始输入」对称：外卡 Hero + 内嵌 app 列表。点 app → Popover 录制/测试。</p>
+      <div class="panel-meta">
+        <span class="meta">视觉最统一</span>
+        <span class="meta">P1 目标</span>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="tabs">
+        <span class="tab">开始输入</span>
+        <span class="tab is-on">打开应用</span>
+      </div>
+
+      <section>
+        <h3 class="sec-title">打开应用</h3>
+        <div class="b-pool">
+          <div class="b-hero">
+            <p class="b-hero-kicker">语音召唤</p>
+            <p class="b-hero-title">说出应用名即可打开</p>
+            <p class="b-hero-desc">已录声音口令的应用，可直接说出触发</p>
+          </div>
+          <div class="b-inset">
+            <p class="b-bridge">这些应用已绑定</p>
+            <div class="b-app-grid">
+              <div class="b-app-row">
+                <div class="b-app-left"><span class="app-icon app-icon--cursor"></span><span>Cursor</span></div>
+                <span class="pill pill--bad">未录制</span>
+              </div>
+              <div class="b-app-row">
+                <div class="b-app-left"><span class="app-icon app-icon--codex"></span><span>Codex</span></div>
+                <span class="pill pill--ok">已录 1 条</span>
+              </div>
+              <div class="b-app-row">
+                <div class="b-app-left"><span class="app-icon app-icon--claude"></span><span>Claude Code</span></div>
+                <span class="pill">未录制</span>
+              </div>
+            </div>
+            <button type="button" class="b-add">+ 添加应用</button>
+          </div>
+        </div>
+        <div class="b-popover-hint">↳ 点击应用行打开 Popover：录制 · 回听 · 测试</div>
+      </section>
+    </div>
+    <div class="panel-foot">
+      <strong>优点</strong>：01 页两 Tab 同一套 card 语言；Popover 收拢操作。<br>
+      <strong>缺点</strong>：需新 Popover + 改 render；多一步点击。
+      <div class="score-row">
+        <span class="score is-mid">实现成本 中</span>
+        <span class="score is-good">品牌一致 高</span>
+        <span class="score is-good">首屏干净 高</span>
+      </div>
+    </div>
+  </article>
+
+  <!-- C -->
+  <article class="panel">
+    <div class="panel-head">
+      <h2><span class="tag tag--c">C</span> iOS 行 + Sheet</h2>
+      <p>首屏极窄：图标 + 名 + 状态 + chevron。所有操作进底部 Sheet。</p>
+      <div class="panel-meta">
+        <span class="meta">app 多时最优</span>
+        <span class="meta">行业 Settings 范式</span>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="tabs">
+        <span class="tab">开始输入</span>
+        <span class="tab is-on">打开应用</span>
+      </div>
+      <h3 class="sec-title">打开应用</h3>
+
+      <div class="c-group">
+        <div class="c-row">
+          <span class="app-icon app-icon--cursor"></span>
+          <div class="c-row-body"><div class="c-row-title">Cursor</div></div>
+          <div class="c-row-val">尚未录制 <span class="c-chev">›</span></div>
+        </div>
+        <div class="c-row">
+          <span class="app-icon app-icon--codex"></span>
+          <div class="c-row-body"><div class="c-row-title">Codex</div></div>
+          <div class="c-row-val">已录 1 条 <span class="c-chev">›</span></div>
+        </div>
+        <div class="c-row">
+          <span class="app-icon app-icon--claude"></span>
+          <div class="c-row-body"><div class="c-row-title">Claude Code</div></div>
+          <div class="c-row-val">尚未录制 <span class="c-chev">›</span></div>
+        </div>
+      </div>
+
+      <div class="c-sheet">
+        <div class="c-sheet-handle"></div>
+        <div class="c-sheet-head">
+          <span class="app-icon app-icon--codex"></span>
+          <div><strong>Codex</strong><div style="font-size:9px;color:var(--text-2)">声音口令</div></div>
+        </div>
+        <div class="c-sheet-body">
+          <div class="c-rec-box">🎤 按住录制 · M3 录制面板</div>
+          <div style="display:flex;gap:6px">
+            <button type="button" class="btn btn--primary" style="flex:1">重新录制</button>
+            <button type="button" class="btn" style="flex:1">测试</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel-foot">
+      <strong>优点</strong>：密度高、扩展性好（10+ app 也不炸）。<br>
+      <strong>缺点</strong>：Sheet 组件新造；录制离列表一层。
+      <div class="score-row">
+        <span class="score is-mid">实现成本 中高</span>
+        <span class="score is-good">可扩展 高</span>
+        <span class="score is-mid">录制直达 中</span>
+      </div>
+    </div>
+  </article>
+
+  <!-- D -->
+  <article class="panel">
+    <div class="panel-head">
+      <h2><span class="tag tag--d">D</span> Chips 委托 Keys</h2>
+      <p>Voice 只做入口：展示已绑定 app chips，配置/文字口令回按键页。</p>
+      <div class="panel-meta">
+        <span class="meta">最 lazy</span>
+        <span class="meta">YAGNI 向</span>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="tabs">
+        <span class="tab">开始输入</span>
+        <span class="tab is-on">打开应用</span>
+      </div>
+      <h3 class="sec-title">打开应用</h3>
+
+      <p class="d-hero-note">召唤短语与文字口令在<strong>按键页</strong>配置；此处仅管理<strong>声音口令</strong>快捷录制。</p>
+
+      <div class="d-chips">
+        <span class="d-chip"><span class="app-icon app-icon--cursor"></span> Cursor <span class="pill pill--bad" style="font-size:8px">未录</span></span>
+        <span class="d-chip"><span class="app-icon app-icon--codex"></span> Codex <span class="pill pill--ok" style="font-size:8px">1 条</span></span>
+        <span class="d-chip"><span class="app-icon app-icon--claude"></span> Claude <span class="pill" style="font-size:8px">未录</span></span>
+        <span class="d-chip" style="border-style:dashed;color:var(--primary-strong)">+ 添加</span>
+      </div>
+
+      <p style="margin:0 0 8px;font-size:10px;color:var(--text-2)">点 chip 跳转按键页对应应用场景，或弹出仅含「录制」的极简浮层。</p>
+
+      <div class="d-foot">
+        <button type="button" class="link">在按键页管理召唤短语</button>
+        <button type="button" class="link">添加应用</button>
+      </div>
+    </div>
+    <div class="panel-foot">
+      <strong>优点</strong>：几乎不重复 Keys 能力；Voice 页极轻。<br>
+      <strong>缺点</strong>：打断流；与用户「在语音页录口令」预期冲突。
+      <div class="score-row">
+        <span class="score is-good">实现成本 最低</span>
+        <span class="score is-mid">体验连贯 中</span>
+        <span class="score is-mid">录制直达 低</span>
+      </div>
+    </div>
+  </article>
+
+  <!-- E -->
+  <article class="panel">
+    <div class="panel-head">
+      <h2><span class="tag tag--e">E</span> Accordion 卡片</h2>
+      <p>在现有 inline acoustic-host 上演进：折叠卡 + 卡内展开 M3 录制面板。</p>
+      <div class="panel-meta">
+        <span class="meta">保留 inline 录制</span>
+        <span class="meta">A → E 自然路径</span>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="tabs">
+        <span class="tab">开始输入</span>
+        <span class="tab is-on">打开应用</span>
+      </div>
+      <h3 class="sec-title">打开应用</h3>
+
+      <div class="e-card">
+        <div class="e-head">
+          <div class="e-head-left">
+            <span class="app-icon app-icon--cursor"></span>
+            <div><strong>Cursor</strong><div style="font-size:9px;color:var(--text-2)">尚未录制</div></div>
+          </div>
+          <span class="pill pill--bad">不可启动</span>
+          <span class="e-chev">▾</span>
+        </div>
+      </div>
+
+      <div class="e-card is-open">
+        <div class="e-head">
+          <div class="e-head-left">
+            <span class="app-icon app-icon--codex"></span>
+            <div><strong>Codex</strong><div style="font-size:9px;color:var(--text-2)">已录 1 条 · 可启动</div></div>
+          </div>
+          <span class="pill pill--ok">已录</span>
+          <span class="e-chev">▾</span>
+        </div>
+        <div class="e-body">
+          <div class="e-rec">
+            <div class="e-rec-ring">🎤</div>
+            <p>habit-voice-cmd M3 录制区<br><button type="button" class="btn btn--primary" style="margin-top:6px">开始录制</button></p>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button type="button" class="btn btn--ghost">回听</button>
+            <button type="button" class="btn btn--ghost">测试</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="e-card">
+        <div class="e-head">
+          <div class="e-head-left">
+            <span class="app-icon app-icon--claude"></span>
+            <div><strong>Claude Code</strong><div style="font-size:9px;color:var(--text-2)">尚未录制</div></div>
+          </div>
+          <span class="pill pill--warn">仅聚焦</span>
+          <span class="e-chev">▾</span>
+        </div>
+      </div>
+    </div>
+    <div class="panel-foot">
+      <strong>优点</strong>：复用现有 acoustic-host；录制不跳页；比 list row 有容器感。<br>
+      <strong>缺点</strong>：展开仍占高；多 app 同时展开会乱。
+      <div class="score-row">
+        <span class="score is-good">实现成本 中低</span>
+        <span class="score is-good">录制直达 高</span>
+        <span class="score is-mid">首屏干净 中</span>
+      </div>
+    </div>
+  </article>
+
+</div>
+
+<script>
+  /* ponytail: demo-only accordion toggle on column E */
+  document.querySelectorAll('.e-head').forEach(function (head) {
+    head.addEventListener('click', function () {
+      var card = head.closest('.e-card');
+      if (!card) return;
+      document.querySelectorAll('.e-card.is-open').forEach(function (c) {
+        if (c !== card) c.classList.remove('is-open');
+      });
+      card.classList.toggle('is-open');
+    });
+  });
+</script>
+</body>
+</html>

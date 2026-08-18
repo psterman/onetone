@@ -185,12 +185,19 @@
 
   function resolveShortcutChipLabel(vm){
     if(vm.loading) return t('homeLiveLoading');
+    const sk=resolveWakeShortcutKey(vm);
+    if(sk.unset) return t('voiceInputChipShortcutUnset');
+    return t('voiceInputChipShortcut').replace('{key}',sk.friendly);
+  }
+
+  function resolveWakeShortcutKey(vm){
+    if(vm&&vm.loading) return {key:'',friendly:'',unset:true};
     const cfg=(state.config&&state.config.voiceSapi)||(state.config&&state.config.voice_sapi)||{};
     const vosk=(state.config&&state.config.voiceVosk)||(state.config&&state.config.voice_vosk)||{};
     const key=String(cfg.targetKey||vosk.targetKey||endCfgTargetKey()||'').trim();
-    if(!key) return t('voiceInputChipShortcutUnset');
+    if(!key) return {key:'',friendly:'',unset:true};
     const friendly=global.OneToneKeyLabels?global.OneToneKeyLabels.friendlyKeyName(key,global.OneToneI18n.getLang()):key;
-    return t('voiceInputChipShortcut').replace('{key}',friendly);
+    return {key:key,friendly:friendly,unset:false};
   }
 
   function firstSelectedPhrase(selector){
@@ -314,6 +321,7 @@
     sanitizePhrase:sanitizePhrase,
     sanitizePhraseList:sanitizePhraseList,
     resolveShortcutChipLabel:resolveShortcutChipLabel,
+    resolveWakeShortcutKey:resolveWakeShortcutKey,
     resolveFinishChipLabel:resolveFinishChipLabel,
     firstSelectedPhrase:firstSelectedPhrase
   };

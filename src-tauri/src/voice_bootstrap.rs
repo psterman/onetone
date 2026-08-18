@@ -511,7 +511,10 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
     }
     // Settings park owns capture. Strategy 切换 used to start vosk then re-park under
     // ACTIVATE_LOCK (stop_sync + FE waitForActivateIdle status) → UI_HB_STALL / 未响应.
-    if reason != "force:settings_unpark" && *state.settings_drawer_open.lock() {
+    if reason != "force:settings_unpark"
+        && reason != "force:wake_phrase_test"
+        && *state.settings_drawer_open.lock()
+    {
         crate::app_log::log_line(
             state,
             "voice",
@@ -798,7 +801,10 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
     );
     // Settings drawer owns wake lifecycle: any activate while open must re-park capture
     // (strategy switch / force reload would otherwise leave vosk cpal running → idle 假死).
-    if reason != "force:settings_unpark" && *state.settings_drawer_open.lock() {
+    if reason != "force:settings_unpark"
+        && reason != "force:wake_phrase_test"
+        && *state.settings_drawer_open.lock()
+    {
         schedule_park_wake_for_settings(state);
     }
     // Warm KWS FS probe off the IPC path so status polls never readdir under load.

@@ -9,7 +9,7 @@
 
   var PANEL_HOSTS=[
     {panel:'keys',panelId:'settingsPanelKeys',stripId:'habitChannelStatusStripKeys',beforeId:'habitScenarioContextBannerKeys',unified:true},
-    {panel:'voice',panelId:'settingsPanelVoiceWake',stripId:'habitChannelStatusStripVoice',beforeId:'habitScenarioContextBannerVoice'},
+    {panel:'voice',panelId:'settingsPanelVoiceWake',stripId:'habitChannelStatusStripVoice',mountId:'voiceUnifiedExtras'},
     {panel:'camera',panelId:'settingsPanelCamera',stripId:'habitChannelStatusStripCamera',beforeId:'habitScenarioContextBannerCamera'},
     {panel:'softPad',panelId:'settingsPanelSoftPad',stripId:'habitChannelStatusStripSoftPad',beforeId:'softPadStatusBar'}
   ];
@@ -132,7 +132,10 @@
       +'<button type="button" class="habit-channel-status-strip-btn" data-strip-activate hidden></button>'
       +'</div>';
     var before=$(spec.beforeId);
-    if(before&&before.parentNode===panel){
+    var mount=spec.mountId?$(spec.mountId):null;
+    if(mount){
+      mount.insertBefore(el,mount.firstChild);
+    }else if(before&&before.parentNode===panel){
       panel.insertBefore(el,before);
     }else{
       panel.insertBefore(el,panel.firstChild);

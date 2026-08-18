@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>01 开启页 · 布局方案对比</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f3f4f6;
+    --surface: #ffffff;
+    --line: #e5e7eb;
+    --line-soft: #f3f4f6;
+    --text: #14171e;
+    --text-2: #5a6271;
+    --text-3: #9099a8;
+    --primary: #3b82f6;
+    --primary-soft: #eff5ff;
+    --warn: #f59e0b;
+    --warn-soft: #fff7e6;
+    --ok: #10b981;
+    --bad: #ef4444;
+    --bad-soft: #fef2f2;
+    --rec: #059669;
+    --rec-soft: #ecfdf5;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page-header {
+    padding: 28px 32px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .page-header h1 { margin: 0 0 6px; font-size: 20px; font-weight: 600; }
+  .page-header p { margin: 0; color: var(--text-2); font-size: 13px; max-width: 720px; }
+
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    margin-top: 14px;
+  }
+  .legend-item {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text-2);
+    padding: 4px 10px; border-radius: 999px;
+    background: var(--line-soft); border: 1px solid var(--line);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot--a { background: var(--primary); }
+  .dot--b { background: var(--bad); }
+  .dot--c { background: var(--rec); }
+
+  .compare-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(300px, 1fr));
+    gap: 20px;
+    padding: 24px 32px 48px;
+    align-items: start;
+  }
+  @media (max-width: 1100px) {
+    .compare-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
+  }
+
+  .col {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,.04);
+  }
+  .col.is-rec { border-color: #6ee7b7; box-shadow: 0 4px 20px rgba(5,150,105,.08); }
+  .col.is-bad { border-color: #fecaca; }
+
+  .col-head {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--line-soft);
+    background: #fafafa;
+  }
+  .col-head h2 {
+    margin: 0 0 4px;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .badge {
+    font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 999px;
+    letter-spacing: .02em;
+  }
+  .badge--current { background: var(--primary-soft); color: var(--primary); }
+  .badge--bad { background: var(--bad-soft); color: var(--bad); }
+  .badge--rec { background: var(--rec-soft); color: var(--rec); }
+  .col-head p { margin: 0; font-size: 12px; color: var(--text-2); }
+  .col-meta {
+    display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;
+  }
+  .meta-chip {
+    font-size: 11px; padding: 3px 8px; border-radius: 6px;
+    background: var(--line-soft); color: var(--text-2);
+  }
+  .meta-chip strong { color: var(--text); }
+
+  /* Drawer frame */
+  .drawer {
+    background: #fafafa;
+    border-top: 1px solid var(--line-soft);
+  }
+  .drawer-rail {
+    display: flex; gap: 6px; padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    overflow-x: auto;
+  }
+  .rail-node {
+    flex: 0 0 auto;
+    font-size: 10px; font-weight: 600;
+    padding: 6px 10px; border-radius: 8px;
+    color: var(--text-3); background: var(--line-soft);
+    white-space: nowrap;
+  }
+  .rail-node.is-on {
+    background: var(--primary-soft); color: var(--primary);
+  }
+
+  .drawer-body {
+    height: 520px;
+    overflow-y: auto;
+    padding: 14px 14px 20px;
+    position: relative;
+  }
+  .drawer-body::after {
+    content: '';
+    position: sticky;
+    bottom: 0; left: 0; right: 0;
+    display: block; height: 28px;
+    margin: 0 -14px -20px;
+    background: linear-gradient(transparent, rgba(250,250,250,.95));
+    pointer-events: none;
+  }
+
+  .scroll-hint {
+    position: absolute; right: 8px; top: 8px;
+    font-size: 10px; color: var(--text-3);
+    background: rgba(255,255,255,.9);
+    padding: 2px 6px; border-radius: 4px;
+    border: 1px solid var(--line);
+    z-index: 2;
+  }
+
+  /* Shared mini components */
+  .sec { margin-bottom: 16px; }
+  .sec-title {
+    font-size: 10.5px; font-weight: 600;
+    color: var(--text-3);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin: 0 0 8px;
+  }
+  .sec-title-btn {
+    all: unset;
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; cursor: pointer;
+    font-size: 10.5px; font-weight: 600;
+    color: var(--text-3);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin: 0 0 8px;
+  }
+  .sec-title-btn:hover { color: var(--text-2); }
+  .chevron {
+    width: 14px; height: 14px;
+    transition: transform .2s;
+    color: var(--text-3);
+  }
+  .is-collapsed .chevron { transform: rotate(-90deg); }
+
+  .hero {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .hero-meta { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .status {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    background: var(--warn-soft); color: var(--warn); font-weight: 500;
+  }
+  .fast { margin-left: auto; font-size: 10px; color: var(--text-3); }
+  .hero-name { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+  .hero-desc { margin: 0; font-size: 12px; color: var(--text-2); }
+  .test-row {
+    margin-top: 12px; padding-top: 10px;
+    border-top: 1px solid var(--line-soft);
+    display: flex; gap: 8px; align-items: center;
+  }
+  .btn-sm {
+    font-size: 11px; padding: 5px 10px; border-radius: 6px;
+    border: none; background: var(--primary-soft); color: var(--primary);
+    font-weight: 500; cursor: pointer; font-family: inherit;
+  }
+  .test-hint { font-size: 11px; color: var(--text-3); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .chip {
+    font-size: 11px; padding: 4px 8px; border-radius: 6px;
+    background: var(--primary-soft); color: var(--primary);
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .chip .x { opacity: .5; font-size: 12px; }
+  .add-row { display: flex; gap: 6px; align-items: center; }
+  .add-row input {
+    flex: 1; border: 1px solid var(--line); border-radius: 8px;
+    padding: 6px 8px; font-size: 11px; font-family: inherit;
+  }
+  .add-btn {
+    font-size: 11px; padding: 6px 10px; border-radius: 8px;
+    border: none; background: var(--primary-soft); color: var(--primary);
+    font-weight: 500; cursor: pointer; font-family: inherit;
+    white-space: nowrap;
+  }
+  .hint { font-size: 10.5px; color: var(--text-3); margin: 8px 0 0; }
+
+  .target {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 12px;
+  }
+  .target-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--primary-soft); color: var(--primary);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .target-info { flex: 1; min-width: 0; }
+  .target-lbl { font-size: 10px; color: var(--text-3); margin: 0 0 2px; }
+  .target-val { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  kbd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; padding: 2px 8px; border-radius: 6px;
+    background: var(--line-soft); border: 1px solid var(--line);
+  }
+  .target-sub { font-size: 10.5px; color: var(--text-3); }
+  .edit-btn {
+    width: 28px; height: 28px; border-radius: 6px;
+    border: 1px solid var(--line); background: var(--surface);
+    color: var(--text-2); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* Summary row (collapsed target) */
+  .summary-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .summary-row:hover { border-color: #cbd5e1; }
+  .summary-row .label { font-size: 11px; color: var(--text-2); flex: 1; }
+
+  /* Secondary menu mock */
+  .sub-back {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 0 12px;
+    border-bottom: 1px solid var(--line-soft);
+    margin-bottom: 12px;
+    font-size: 12px; font-weight: 500; color: var(--primary);
+  }
+  .menu-list { display: flex; flex-direction: column; gap: 8px; }
+  .menu-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    cursor: pointer;
+  }
+  .menu-item:hover { border-color: #cbd5e1; background: #fafafa; }
+  .menu-item .icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--line-soft);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-2);
+  }
+  .menu-item .text { flex: 1; }
+  .menu-item .text strong { display: block; font-size: 12px; margin-bottom: 2px; }
+  .menu-item .text span { font-size: 11px; color: var(--text-3); }
+  .menu-item .arrow { color: var(--text-3); }
+
+  .hidden-block { display: none; }
+  .is-expanded .hidden-block { display: block; }
+  .collapsed-only { display: none; }
+  .is-collapsed .collapsed-only { display: flex; }
+  .is-collapsed .expanded-only { display: none; }
+
+  /* Pros/cons footer */
+  .col-foot {
+    padding: 12px 16px 16px;
+    border-top: 1px solid var(--line-soft);
+    background: #fafafa;
+  }
+  .pros-cons { margin: 0; padding: 0; list-style: none; }
+  .pros-cons li {
+    font-size: 11.5px; color: var(--text-2);
+    padding: 3px 0 3px 16px; position: relative;
+  }
+  .pros-cons li::before {
+    content: ''; position: absolute; left: 0; top: 9px;
+    width: 6px; height: 6px; border-radius: 50%;
+  }
+  .pros-cons .pro::before { background: var(--ok); }
+  .pros-cons .con::before { background: var(--bad); }
+
+  .height-bar {
+    margin-top: 10px;
+    height: 6px; border-radius: 999px;
+    background: var(--line-soft); overflow: hidden;
+  }
+  .height-fill {
+    height: 100%; border-radius: 999px;
+    transition: width .3s;
+  }
+  .height-fill--high { width: 100%; background: var(--bad); }
+  .height-fill--mid { width: 72%; background: var(--warn); }
+  .height-fill--low { width: 48%; background: var(--rec); }
+  .height-label {
+    font-size: 10px; color: var(--text-3); margin-top: 4px;
+    display: flex; justify-content: space-between;
+  }
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1>01 开启页 · 别名 &amp; 输入目标 布局对比</h1>
+  <p>三列原型并排：左为当前实现，中为二级菜单方案，右为推荐的页内折叠。右侧列可点击 section 标题体验折叠交互。</p>
+  <div class="legend">
+    <span class="legend-item"><span class="dot dot--a"></span>方案 A · 现状（全展开）</span>
+    <span class="legend-item"><span class="dot dot--b"></span>方案 B · 二级菜单</span>
+    <span class="legend-item"><span class="dot dot--c"></span>方案 C · 折叠摘要（推荐）</span>
+  </div>
+</header>
+
+<div class="compare-grid">
+
+  <!-- A: Current -->
+  <article class="col">
+    <div class="col-head">
+      <h2>方案 A <span class="badge badge--current">现状</span></h2>
+      <p>Hero + 别名 + 输入目标 三张卡片同级平铺</p>
+      <div class="col-meta">
+        <span class="meta-chip">滚动量 <strong>高</strong></span>
+        <span class="meta-chip">操作步数 <strong>最少</strong></span>
+      </div>
+    </div>
+    <div class="drawer">
+      <div class="drawer-rail">
+        <span class="rail-node is-on">01 开启</span>
+        <span class="rail-node">02 结束</span>
+        <span class="rail-node">03 发送</span>
+      </div>
+      <div class="drawer-body" id="bodyA">
+        <span class="scroll-hint">↕ 可滚动</span>
+        <div class="sec">
+          <h3 class="sec-title">当前口令</h3>
+          <div class="hero">
+            <div class="hero-meta">
+              <span class="status">语音未启用</span>
+              <span class="fast">响应最快</span>
+            </div>
+            <p class="hero-name">「开始听写」</p>
+            <p class="hero-desc">说出此口令后开始听写</p>
+            <div class="test-row">
+              <button class="btn-sm" type="button">真机测试口令</button>
+              <span class="test-hint">点击左侧按钮测试</span>
+            </div>
+          </div>
+        </div>
+        <div class="sec">
+          <h3 class="sec-title">别名 · 说出任意一个即可触发</h3>
+          <div class="card">
+            <div class="chips">
+              <span class="chip">开始听写 <span class="x">×</span></span>
+              <span class="chip">打开听写 <span class="x">×</span></span>
+              <span class="chip">语音输入 <span class="x">×</span></span>
+              <span class="chip">开启输入 <span class="x">×</span></span>
+            </div>
+            <div class="add-row">
+              <input placeholder="例如：嘿，电脑" maxlength="20">
+              <button class="add-btn" type="button">+ 添加</button>
+            </div>
+            <p class="hint">新增别名会同步到未单独覆盖的习惯</p>
+          </div>
+        </div>
+        <div class="sec">
+          <h3 class="sec-title">输入目标</h3>
+          <div class="target">
+            <div class="target-icon">⌨</div>
+            <div class="target-info">
+              <p class="target-lbl">快捷键</p>
+              <div class="target-val">
+                <kbd>右 Alt</kbd>
+                <span class="target-sub">触发后切换到听写状态</span>
+              </div>
+            </div>
+            <button class="edit-btn" type="button" title="编辑">✎</button>
+          </div>
+        </div>
+        <div class="sec" style="opacity:.35">
+          <h3 class="sec-title">… 下方还有更多设置</h3>
+          <div class="card" style="height:48px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-foot">
+      <ul class="pros-cons">
+        <li class="pro">与 mockup 一致，信息一目了然</li>
+        <li class="pro">加别名零额外点击</li>
+        <li class="con">抽屉内纵向空间占用大</li>
+      </ul>
+      <div class="height-bar"><div class="height-fill height-fill--high"></div></div>
+      <div class="height-label"><span>首屏可见内容</span><span>约 35%</span></div>
+    </div>
+  </article>
+
+  <!-- B: Secondary menu -->
+  <article class="col is-bad">
+    <div class="col-head">
+      <h2>方案 B <span class="badge badge--bad">二级菜单</span></h2>
+      <p>别名 / 输入目标 收进子页，需返回</p>
+      <div class="col-meta">
+        <span class="meta-chip">滚动量 <strong>低</strong></span>
+        <span class="meta-chip">操作步数 <strong>+2 点击</strong></span>
+      </div>
+    </div>
+    <div class="drawer">
+      <div class="drawer-rail">
+        <span class="rail-node is-on">01 开启</span>
+        <span class="rail-node">02 结束</span>
+        <span class="rail-node">03 发送</span>
+      </div>
+      <div class="drawer-body" id="bodyB">
+        <div id="viewB-main">
+          <div class="sec">
+            <h3 class="sec-title">当前口令</h3>
+            <div class="hero">
+              <div class="hero-meta">
+                <span class="status">语音未启用</span>
+                <span class="fast">响应最快</span>
+              </div>
+              <p class="hero-name">「开始听写」</p>
+              <p class="hero-desc">说出此口令后开始听写</p>
+              <div class="test-row">
+                <button class="btn-sm" type="button">真机测试口令</button>
+                <span class="test-hint">点击左侧按钮测试</span>
+              </div>
+            </div>
+          </div>
+          <div class="sec">
+            <h3 class="sec-title">更多设置</h3>
+            <div class="menu-list">
+              <div class="menu-item" id="btnB-alias">
+                <div class="icon">🏷</div>
+                <div class="text">
+                  <strong>别名</strong>
+                  <span>5 个已启用 · 说出任意一个即可触发</span>
+                </div>
+                <span class="arrow">›</span>
+              </div>
+              <div class="menu-item" id="btnB-target">
+                <div class="icon">⌨</div>
+                <div class="text">
+                  <strong>输入目标</strong>
+                  <span>快捷键 · 右 Alt</span>
+                </div>
+                <span class="arrow">›</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="viewB-alias" hidden>
+          <div class="sub-back" id="backB-alias">← 返回 01 开启</div>
+          <div class="sec">
+            <h3 class="sec-title">别名</h3>
+            <div class="card">
+              <div class="chips">
+                <span class="chip">开始听写 <span class="x">×</span></span>
+                <span class="chip">打开听写 <span class="x">×</span></span>
+                <span class="chip">语音输入 <span class="x">×</span></span>
+                <span class="chip">开启输入 <span class="x">×</span></span>
+              </div>
+              <div class="add-row">
+                <input placeholder="例如：嘿，电脑">
+                <button class="add-btn" type="button">+ 添加</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="viewB-target" hidden>
+          <div class="sub-back" id="backB-target">← 返回 01 开启</div>
+          <div class="sec">
+            <h3 class="sec-title">输入目标</h3>
+            <div class="target">
+              <div class="target-icon">⌨</div>
+              <div class="target-info">
+                <p class="target-lbl">快捷键</p>
+                <div class="target-val">
+                  <kbd>右 Alt</kbd>
+                  <span class="target-sub">触发后切换到听写状态</span>
+                </div>
+              </div>
+              <button class="edit-btn" type="button">✎</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-foot">
+      <ul class="pros-cons">
+        <li class="pro">首屏更短，滚动少</li>
+        <li class="con">加别名：进入 → 编辑 → 返回</li>
+        <li class="con">与 02/03 步骤视觉不一致</li>
+        <li class="con">输入目标编辑还要再跳按键页</li>
+      </ul>
+      <div class="height-bar"><div class="height-fill height-fill--low"></div></div>
+      <div class="height-label"><span>首屏可见内容</span><span>约 70%</span></div>
+    </div>
+  </article>
+
+  <!-- C: Collapsible (recommended) -->
+  <article class="col is-rec">
+    <div class="col-head">
+      <h2>方案 C <span class="badge badge--rec">推荐</span></h2>
+      <p>页内折叠：输入目标默认摘要，别名可收起</p>
+      <div class="col-meta">
+        <span class="meta-chip">滚动量 <strong>中低</strong></span>
+        <span class="meta-chip">操作步数 <strong>几乎不变</strong></span>
+      </div>
+    </div>
+    <div class="drawer">
+      <div class="drawer-rail">
+        <span class="rail-node is-on">01 开启</span>
+        <span class="rail-node">02 结束</span>
+        <span class="rail-node">03 发送</span>
+      </div>
+      <div class="drawer-body" id="bodyC">
+        <div class="sec">
+          <h3 class="sec-title">当前口令</h3>
+          <div class="hero">
+            <div class="hero-meta">
+              <span class="status">语音未启用</span>
+              <span class="fast">响应最快</span>
+            </div>
+            <p class="hero-name">「开始听写」</p>
+            <p class="hero-desc">说出此口令后开始听写</p>
+            <div class="test-row">
+              <button class="btn-sm" type="button">真机测试口令</button>
+              <span class="test-hint">点击左侧按钮测试</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sec" id="secAlias">
+          <button class="sec-title-btn" type="button" id="toggleAlias">
+            <span>别名 · 说出任意一个即可触发</span>
+            <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="expanded-only">
+            <div class="card">
+              <div class="chips">
+                <span class="chip">开始听写 <span class="x">×</span></span>
+                <span class="chip">打开听写 <span class="x">×</span></span>
+                <span class="chip">语音输入 <span class="x">×</span></span>
+                <span class="chip">开启输入 <span class="x">×</span></span>
+              </div>
+              <div class="add-row">
+                <input placeholder="例如：嘿，电脑">
+                <button class="add-btn" type="button">+ 添加</button>
+              </div>
+              <p class="hint">新增别名会同步到未单独覆盖的习惯</p>
+            </div>
+          </div>
+          <div class="collapsed-only summary-row">
+            <span class="label">5 个别名已启用</span>
+            <span class="chip" style="margin:0">+ 添加</span>
+          </div>
+        </div>
+
+        <div class="sec is-collapsed" id="secTarget">
+          <button class="sec-title-btn" type="button" id="toggleTarget">
+            <span>输入目标</span>
+            <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="collapsed-only summary-row" id="summaryTarget">
+            <div class="target-icon" style="width:24px;height:24px;font-size:12px">⌨</div>
+            <span class="label">快捷键 · <kbd style="font-size:10px">右 Alt</kbd></span>
+            <button class="edit-btn" type="button" style="width:24px;height:24px" title="编辑">✎</button>
+          </div>
+          <div class="expanded-only">
+            <div class="target">
+              <div class="target-icon">⌨</div>
+              <div class="target-info">
+                <p class="target-lbl">快捷键</p>
+                <div class="target-val">
+                  <kbd>右 Alt</kbd>
+                  <span class="target-sub">触发后切换到听写状态</span>
+                </div>
+              </div>
+              <button class="edit-btn" type="button">✎</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-foot">
+      <ul class="pros-cons">
+        <li class="pro">默认高度明显缩短</li>
+        <li class="pro">别名仍在同页，无需导航栈</li>
+        <li class="pro">编辑快捷键仍一键跳按键页</li>
+        <li class="pro">与 mockup 信息层级一致</li>
+      </ul>
+      <div class="height-bar"><div class="height-fill height-fill--mid"></div></div>
+      <div class="height-label"><span>首屏可见内容</span><span>约 55%</span></div>
+    </div>
+  </article>
+
+</div>
+
+<script>
+  // Scheme B: subpage navigation
+  var mainB = document.getElementById('viewB-main');
+  var aliasB = document.getElementById('viewB-alias');
+  var targetB = document.getElementById('viewB-target');
+  document.getElementById('btnB-alias').onclick = function() {
+    mainB.hidden = true; aliasB.hidden = false; targetB.hidden = true;
+  };
+  document.getElementById('btnB-target').onclick = function() {
+    mainB.hidden = true; aliasB.hidden = true; targetB.hidden = false;
+  };
+  document.getElementById('backB-alias').onclick = function() {
+    mainB.hidden = false; aliasB.hidden = true;
+  };
+  document.getElementById('backB-target').onclick = function() {
+    mainB.hidden = false; targetB.hidden = true;
+  };
+
+  // Scheme C: collapse toggles
+  function toggleSec(id) {
+    var el = document.getElementById(id);
+    el.classList.toggle('is-collapsed');
+  }
+  document.getElementById('toggleAlias').onclick = function() { toggleSec('secAlias'); };
+  document.getElementById('toggleTarget').onclick = function() { toggleSec('secTarget'); };
+  document.getElementById('summaryTarget').onclick = function(e) {
+    if (e.target.closest('.edit-btn')) return;
+    document.getElementById('secTarget').classList.remove('is-collapsed');
+  };
+</script>
+</body>
+</html>

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>开启 · 习惯设置</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --line: #ececef;
+    --line-soft: #f4f4f6;
+    --text: #14171e;
+    --text-2: #5a6271;
+    --text-3: #9099a8;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --primary-soft: #eff5ff;
+    --warn: #f59e0b;
+    --warn-soft: #fff7e6;
+    --ok: #10b981;
+    --ok-soft: #ecfdf5;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app { max-width: 880px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* Top bar */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 0; margin-bottom: 32px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .page-title { font-size: 15px; font-weight: 600; }
+  .topbar-actions { display: flex; gap: 8px; align-items: center; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 8px;
+    font-size: 13px; font-weight: 500;
+    border: 1px solid var(--line); background: var(--surface); color: var(--text);
+    cursor: pointer; transition: all .15s;
+    font-family: inherit;
+  }
+  .btn:hover { background: var(--line-soft); }
+  .btn-primary { background: var(--primary); color: white; border-color: var(--primary); }
+  .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn-ghost { border-color: transparent; background: transparent; padding: 6px 10px; color: var(--text-2); }
+  .btn-ghost:hover { background: var(--line-soft); color: var(--text); }
+  .lang-sep { color: var(--text-3); margin: 0 1px; }
+
+  /* Section */
+  .section { margin-bottom: 28px; }
+  .section-title {
+    font-size: 11.5px; font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin: 0 0 12px;
+  }
+
+  /* Hero card */
+  .hero-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px 26px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .hero-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 500;
+    background: var(--warn-soft); color: var(--warn);
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .response-tag {
+    margin-left: auto;
+    font-size: 11px; color: var(--text-3);
+    padding: 3px 9px; border-radius: 6px; background: var(--line-soft);
+  }
+  .hero-name {
+    font-size: 28px; font-weight: 600;
+    letter-spacing: -0.01em; margin: 0 0 6px;
+    color: var(--text);
+  }
+  .hero-name .quote { color: var(--text-3); font-weight: 400; font-size: 22px; margin: 0 2px; }
+  .hero-desc { color: var(--text-2); margin: 0; font-size: 13.5px; }
+
+  /* Test row */
+  .test-row {
+    display: flex; align-items: center; gap: 14px;
+    margin-top: 18px; padding-top: 16px;
+    border-top: 1px solid var(--line-soft);
+  }
+  .btn-test {
+    background: var(--primary-soft); color: var(--primary);
+    border-color: transparent;
+  }
+  .btn-test:hover { background: #dbeafe; }
+  .btn-test:disabled { opacity: 0.6; cursor: not-allowed; }
+  .test-feedback {
+    flex: 1; font-size: 12.5px; color: var(--text-3);
+    display: flex; align-items: center; gap: 6px;
+    min-height: 22px;
+    transition: color .2s;
+  }
+  .test-feedback.is-listening { color: var(--primary); }
+  .test-feedback.is-recognized { color: var(--ok); }
+  .wave { display: inline-flex; gap: 2px; align-items: center; }
+  .wave span {
+    display: inline-block; width: 2px; height: 12px; background: currentColor;
+    border-radius: 1px; animation: wave 1.2s infinite ease-in-out;
+  }
+  .wave span:nth-child(2) { animation-delay: 0.15s; }
+  .wave span:nth-child(3) { animation-delay: 0.3s; }
+  .wave span:nth-child(4) { animation-delay: 0.45s; }
+  @keyframes wave {
+    0%, 100% { transform: scaleY(0.3); }
+    50% { transform: scaleY(1); }
+  }
+
+  /* Alias card */
+  .alias-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 20px;
+  }
+  .alias-list {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-bottom: 14px;
+  }
+  .alias-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 6px 5px 12px;
+    background: var(--primary-soft); color: var(--primary);
+    border-radius: 999px; font-size: 13px; font-weight: 500;
+  }
+  .alias-chip .x {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.16);
+    color: var(--primary);
+    cursor: pointer; border: none; padding: 0;
+    font-size: 14px; line-height: 1;
+    transition: background .15s;
+  }
+  .alias-chip .x:hover { background: rgba(59,130,246,0.32); }
+
+  .alias-add {
+    display: flex; gap: 8px; align-items: center;
+  }
+  .alias-add input {
+    flex: 1; padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px; font-size: 13px;
+    font-family: inherit;
+    background: var(--bg); color: var(--text);
+    transition: all .15s;
+  }
+  .alias-add input:focus { outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 3px var(--primary-soft); }
+  .alias-add input::placeholder { color: var(--text-3); }
+  .alias-add .count { font-size: 11px; color: var(--text-3); white-space: nowrap; }
+  .btn-add {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 8px 14px; border-radius: 8px;
+    background: var(--surface); border: 1px solid var(--line);
+    color: var(--text); font-size: 13px; font-weight: 500;
+    cursor: pointer; font-family: inherit;
+    transition: all .15s;
+  }
+  .btn-add:hover { background: var(--line-soft); border-color: var(--text-3); }
+
+  .hint {
+    margin-top: 12px; font-size: 12px; color: var(--text-3);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* Target row */
+  .target-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .target-icon {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: var(--primary-soft); color: var(--primary);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .target-info { flex: 1; min-width: 0; }
+  .target-info .label { font-size: 11.5px; color: var(--text-3); margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .target-info .value { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 10px; }
+  .kbd {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 9px; border-radius: 5px;
+    background: var(--bg); border: 1px solid var(--line);
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500;
+    color: var(--text);
+  }
+  .value-hint { color: var(--text-3); font-weight: 400; font-size: 13px; }
+  .target-edit {
+    background: transparent; border: none; color: var(--text-3);
+    cursor: pointer; padding: 6px; border-radius: 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: all .15s;
+  }
+  .target-edit:hover { background: var(--line-soft); color: var(--text); }
+
+  /* Comparison strip */
+  .compare {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    margin-top: 48px; padding-top: 32px;
+    border-top: 1px solid var(--line-soft);
+  }
+  .compare-col h3 {
+    font-size: 11px; font-weight: 600; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin: 0 0 10px;
+  }
+  .compare-col ul { margin: 0; padding-left: 18px; color: var(--text-2); font-size: 13px; }
+  .compare-col li { margin-bottom: 4px; }
+  .compare-col.before li::marker { color: var(--warn); }
+  .compare-col.after li::marker { color: var(--ok); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="page-title">开启</div>
+    <div class="topbar-actions">
+      <button class="btn btn-primary">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+        开始输入
+      </button>
+      <button class="btn">打开应用</button>
+      <button class="btn btn-ghost">中<span class="lang-sep">|</span>EN</button>
+    </div>
+  </div>
+
+  <!-- Section 1: 当前口令 -->
+  <div class="section">
+    <div class="section-title">当前口令</div>
+    <div class="hero-card">
+      <div class="hero-meta">
+        <span class="status-badge">
+          <span class="status-dot"></span>
+          语音未启用
+        </span>
+        <span class="response-tag">响应最快</span>
+      </div>
+      <h1 class="hero-name"><span class="quote">「</span>开始听写<span class="quote">」</span></h1>
+      <p class="hero-desc">在「所有未单独覆盖的习惯」说出此口令即可开始听写。</p>
+      <div class="test-row">
+        <button class="btn btn-test" id="testBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          试试口令效果
+        </button>
+        <div class="test-feedback" id="testFeedback">点击左侧按钮，模拟说出此口令</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2: 别名 -->
+  <div class="section">
+    <div class="section-title">别名 · 说出其中任意一个即可触发</div>
+    <div class="alias-card">
+      <div class="alias-list">
+        <span class="alias-chip">开始听写<button class="x" title="删除">×</button></span>
+        <span class="alias-chip">打开听写<button class="x" title="删除">×</button></span>
+        <span class="alias-chip">语音输入<button class="x" title="删除">×</button></span>
+        <span class="alias-chip">开启输入<button class="x" title="删除">×</button></span>
+        <span class="alias-chip">开始输入<button class="x" title="删除">×</button></span>
+      </div>
+      <div class="alias-add">
+        <input type="text" placeholder="例如：嘿，电脑" maxlength="20" />
+        <span class="count">0/20</span>
+        <button class="btn-add">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          添加
+        </button>
+      </div>
+      <div class="hint">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        新增的别名会同步到所有未单独覆盖该口令的习惯
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 3: 输入目标 -->
+  <div class="section">
+    <div class="section-title">输入目标</div>
+    <div class="target-card">
+      <div class="target-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+      </div>
+      <div class="target-info">
+        <div class="label">快捷键</div>
+        <div class="value">
+          <span class="kbd">Right Alt</span>
+          <span class="value-hint">触发后切换到听写状态</span>
+        </div>
+      </div>
+      <button class="target-edit" title="编辑">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Change summary -->
+  <div class="compare">
+    <div class="compare-col before">
+      <h3>原版问题</h3>
+      <ul>
+        <li>"开始听写"在标题/副标题/描述/底部 chip 出现 4 次</li>
+        <li>顶部 CTA 三按钮视觉权重一样，主操作不突出</li>
+        <li>当前口令卡片信息层级错位</li>
+        <li>"试试口令效果"没有反馈状态</li>
+        <li>"+ 添加"内联在 chip 列表下，归属不明</li>
+        <li>"输入目标/快捷键"作为底部孤儿</li>
+        <li>底部 chip 行与已启用口令完全重复</li>
+      </ul>
+    </div>
+    <div class="compare-col after">
+      <h3>新版改进</h3>
+      <ul>
+        <li>命令名只在 hero 出现 1 次，加引号视觉锁定</li>
+        <li>主按钮填充蓝、次按钮描边、语言切换 ghost</li>
+        <li>当前口令用 hero 卡片，状态/名称/说明三层清晰</li>
+        <li>"试试"按钮带 idle → 聆听 → 识别 状态机</li>
+        <li>别名独立 section，标题解释用途（"说出任意一个"）</li>
+        <li>输入目标独立 section，图标 + kbd 视觉 + 编辑入口</li>
+        <li>删除底部重复 chip 行</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const btn = document.getElementById('testBtn');
+  const fb = document.getElementById('testFeedback');
+  let timer = null;
+  let resetTimer = null;
+  btn.addEventListener('click', () => {
+    if (timer) return;
+    btn.disabled = true;
+    fb.className = 'test-feedback is-listening';
+    fb.innerHTML = '<span class="wave"><span></span><span></span><span></span><span></span></span>正在聆听...';
+    timer = setTimeout(() => {
+      fb.className = 'test-feedback is-recognized';
+      fb.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>识别成功：开始听写';
+      resetTimer = setTimeout(() => {
+        fb.className = 'test-feedback';
+        fb.innerHTML = '点击左侧按钮，模拟说出此口令';
+        btn.disabled = false;
+        timer = null;
+      }, 2400);
+    }, 1600);
+  });
+
+  // Input char counter
+  const input = document.querySelector('.alias-add input');
+  const count = document.querySelector('.alias-add .count');
+  input.addEventListener('input', () => {
+    count.textContent = `${input.value.length}/20`;
+  });
+</script>
+</body>
+</html>

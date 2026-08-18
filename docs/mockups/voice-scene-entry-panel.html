@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>语音页 · 口令中心 vs 场景入口面板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --desk: #d8dce3;
+    --ink: #16181d;
+    --mute: #5c6470;
+    --faint: #8b93a0;
+    --line: #d5dae2;
+    --paper: #f7f8fa;
+    --card: #ffffff;
+    --led: #e8a317;
+    --led-dim: #f3e2b8;
+    --cyan: #1f8fb8;
+    --cyan-ink: #0e5f7a;
+    --bad: #c43c32;
+    --ok: #2a7a52;
+    --keycap: #2a2e36;
+    --keycap-top: #3a404b;
+    --recess: #0f1216;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--desk);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font-family: inherit; cursor: pointer; }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+  /* —— chrome —— */
+  .top {
+    position: sticky; top: 0; z-index: 40;
+    background: #eef1f5;
+    border-bottom: 1px solid #c9ced6;
+    padding: 16px 22px 14px;
+  }
+  .top h1 {
+    margin: 0 0 4px;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .top p { margin: 0; color: var(--mute); max-width: 880px; }
+  .top p strong { color: var(--ink); font-weight: 600; }
+  .modes {
+    display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap;
+  }
+  .mode {
+    border: 1px solid #c3c9d2;
+    background: #fff;
+    color: var(--mute);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .mode.is-on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .legend {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    margin-top: 10px; font-size: 11px; color: var(--faint);
+  }
+  .legend b { color: var(--mute); font-weight: 500; }
+
+  .stage {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    padding: 18px 18px 40px;
+    align-items: start;
+  }
+  body[data-view="now"] .stage { grid-template-columns: minmax(320px, 560px); justify-content: center; }
+  body[data-view="next"] .stage { grid-template-columns: minmax(360px, 720px); justify-content: center; }
+  @media (max-width: 1080px) {
+    body[data-view="both"] .stage { grid-template-columns: 1fr; }
+  }
+
+  .col-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--mute);
+    margin: 0 0 8px;
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .col-label span { letter-spacing: 0; text-transform: none; font-weight: 400; color: var(--faint); }
+
+  /* —— shared phone/frame —— */
+  .frame {
+    background: var(--paper);
+    border: 1px solid #c5cad3;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 18px 40px rgba(22, 24, 29, .08);
+    min-height: 640px;
+    display: flex;
+    flex-direction: column;
+  }
+  .frame-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px;
+    background: #fff;
+    border-bottom: 1px solid var(--line);
+    gap: 8px;
+  }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; }
+  .brand i {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--led); box-shadow: 0 0 0 3px var(--led-dim);
+    display: block;
+  }
+  .pill {
+    font-size: 10px; font-weight: 500;
+    padding: 2px 7px; border-radius: 999px;
+    background: #eef1f4; color: var(--mute);
+  }
+  .pill.ok { background: #e5f4ea; color: var(--ok); }
+  .bar-actions { display: flex; gap: 6px; }
+  .tiny {
+    border: 1px solid var(--line); background: #fff;
+    border-radius: 7px; padding: 5px 9px; font-size: 11px; color: var(--ink);
+  }
+  .tiny.pri { background: var(--cyan); border-color: var(--cyan); color: #fff; }
+  .sw { width: 32px; height: 18px; border-radius: 99px; border: 0; background: var(--ok); position: relative; }
+  .sw::after {
+    content: ""; position: absolute; top: 2px; right: 2px;
+    width: 14px; height: 14px; border-radius: 50%; background: #fff;
+  }
+
+  .body { flex: 1; padding: 14px 14px 0; display: flex; flex-direction: column; min-height: 0; }
+  .steps {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    margin-bottom: 14px;
+  }
+  .step {
+    text-align: center; color: var(--faint); font-size: 11px;
+  }
+  .step b { display: block; font-size: 9px; letter-spacing: .08em; font-weight: 600; margin-bottom: 4px; }
+  .dot {
+    width: 36px; height: 36px; border-radius: 10px; margin: 0 auto 6px;
+    border: 1px solid var(--line); background: #fff;
+    display: grid; place-items: center;
+  }
+  .step.on { color: var(--ink); }
+  .step.on .dot { border-color: var(--ink); background: var(--ink); color: #fff; }
+
+  /* —— NOW: phrase config —— */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+  .tab {
+    border: 0; background: none; padding: 8px 12px 10px;
+    color: var(--faint); font-size: 13px; font-weight: 500;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .tab.on { color: var(--ink); border-bottom-color: var(--ink); }
+  .hint { margin: 0 0 10px; color: var(--mute); font-size: 12px; }
+  .app-card {
+    background: #fff; border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 12px; margin-bottom: 8px;
+  }
+  .app-row { display: flex; align-items: center; gap: 10px; }
+  .ico {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: #eef1f4; display: grid; place-items: center;
+    font-size: 11px; font-weight: 600; color: var(--mute);
+  }
+  .app-row h3 { margin: 0; font-size: 13px; font-weight: 600; }
+  .app-row p { margin: 2px 0 0; font-size: 11px; color: var(--mute); }
+  .chip {
+    margin-left: auto; font-size: 10px; padding: 2px 7px; border-radius: 999px;
+    background: #e5f4ea; color: var(--ok);
+  }
+  .chip.warn { background: #fff4d6; color: #8a6200; }
+  .acts { display: flex; gap: 6px; margin-top: 8px; padding-left: 42px; }
+  .ghost {
+    border: 1px solid var(--line); background: #fff; border-radius: 7px;
+    padding: 4px 8px; font-size: 11px;
+  }
+  .ghost.pri { background: var(--cyan); border-color: var(--cyan); color: #fff; }
+  .empty {
+    border: 1px dashed #c5cad3; border-radius: 10px;
+    padding: 18px; text-align: center; color: var(--mute); font-size: 12px;
+    margin-bottom: 10px;
+  }
+  .foot-btns { display: flex; gap: 8px; margin: 8px 0 16px; }
+  .kill {
+    outline: 1px dashed var(--bad); outline-offset: 3px;
+    position: relative;
+  }
+  .kill::after {
+    content: "砍";
+    position: absolute; top: -8px; right: -8px;
+    background: var(--bad); color: #fff;
+    font-size: 9px; font-weight: 600;
+    padding: 1px 5px; border-radius: 4px;
+  }
+
+  /* —— NEXT: scene entry —— */
+  .next-body { padding-bottom: 0; }
+  .triggers {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    margin-bottom: 16px;
+  }
+  .trig {
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px 10px 11px;
+    text-align: left;
+    min-height: 108px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .trig:hover { border-color: #adb4c0; }
+  .trig.is-live {
+    border-color: var(--ink);
+    box-shadow: inset 0 0 0 1px var(--ink);
+  }
+  .trig.is-off { opacity: .72; }
+  .keycap {
+    width: 36px; height: 28px;
+    border-radius: 6px 6px 8px 8px;
+    background: linear-gradient(180deg, var(--keycap-top), var(--keycap));
+    box-shadow: 0 2px 0 #1a1d22, inset 0 1px 0 rgba(255,255,255,.12);
+    display: grid; place-items: center;
+    color: #e8eaee; font-size: 9px; font-weight: 600;
+    letter-spacing: .04em;
+  }
+  .trig-kicker {
+    font-size: 10px; color: var(--faint); font-weight: 500;
+  }
+  .trig-scene { font-size: 13px; font-weight: 600; }
+  .trig-meta { font-size: 11px; color: var(--mute); margin-top: auto; }
+  .led {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #c5cad3; display: inline-block; margin-right: 5px; vertical-align: 1px;
+  }
+  .trig.is-live .led { background: var(--led); box-shadow: 0 0 6px var(--led); }
+
+  .sec-h {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 0 0 8px;
+  }
+  .sec-h h2 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); }
+  .sec-h small { color: var(--faint); font-size: 11px; }
+
+  .scenes {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  }
+  .scene {
+    border: 1px solid var(--line); background: #fff;
+    border-radius: 12px; padding: 12px 12px 11px;
+    text-align: left; min-height: 118px;
+    display: flex; flex-direction: column;
+  }
+  .scene:hover { border-color: #9aa3b0; }
+  .scene.is-on {
+    background: var(--ink); color: #fff; border-color: var(--ink);
+  }
+  .scene.is-on .who { color: #b8bec8; }
+  .scene.is-on .wake { color: #d7dbe2; }
+  .mark {
+    font-size: 10px; font-weight: 600; letter-spacing: .04em;
+    color: var(--cyan-ink); margin-bottom: 8px;
+  }
+  .scene.is-on .mark { color: var(--led); }
+  .scene h3 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.02em; }
+  .who { margin: 4px 0 0; font-size: 11px; color: var(--mute); }
+  .wake {
+    margin-top: auto; padding-top: 10px;
+    font-size: 11px; color: var(--mute);
+  }
+  .wake em { font-style: normal; font-weight: 500; color: var(--ink); }
+  .scene.is-on .wake em { color: #fff; }
+  .wide { grid-column: span 1; }
+  @media (min-width: 520px) {
+    .scenes { grid-template-columns: repeat(6, 1fr); }
+    .scene { grid-column: span 2; }
+    .scene.half { grid-column: span 3; }
+  }
+
+  .note {
+    margin: 12px 0 8px;
+    font-size: 11px; color: var(--faint);
+  }
+
+  /* sticky dictation */
+  .dict {
+    margin: 12px -14px 0;
+    background: var(--recess);
+    color: #e7e9ee;
+    padding: 12px 14px 14px;
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    gap: 12px;
+    align-items: center;
+  }
+  .mic {
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 0; background: #1c222b; color: var(--led);
+    display: grid; place-items: center;
+    box-shadow: inset 0 0 0 1px #323846;
+  }
+  .mic.is-hot { background: #2a2416; box-shadow: 0 0 0 3px rgba(232,163,23,.25); }
+  .wave { display: flex; align-items: center; gap: 3px; height: 22px; margin-bottom: 6px; }
+  .wave i {
+    display: block; width: 3px; border-radius: 2px; background: var(--led);
+    animation: eq 1s ease-in-out infinite;
+  }
+  .wave i:nth-child(1) { height: 6px; animation-delay: 0s; }
+  .wave i:nth-child(2) { height: 14px; animation-delay: .1s; }
+  .wave i:nth-child(3) { height: 20px; animation-delay: .18s; }
+  .wave i:nth-child(4) { height: 11px; animation-delay: .08s; }
+  .wave i:nth-child(5) { height: 16px; animation-delay: .22s; }
+  .wave i:nth-child(6) { height: 8px; animation-delay: .14s; }
+  .wave i:nth-child(7) { height: 18px; animation-delay: .04s; }
+  .wave i:nth-child(8) { height: 10px; animation-delay: .2s; }
+  @keyframes eq {
+    0%, 100% { transform: scaleY(.45); opacity: .55; }
+    50% { transform: scaleY(1); opacity: 1; }
+  }
+  .live {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 400;
+    color: #f2f3f6;
+    letter-spacing: -0.01em;
+  }
+  .live u { text-decoration: none; color: var(--led); }
+  .send {
+    border: 0; background: var(--led); color: #1a1408;
+    font-weight: 600; font-size: 12px;
+    border-radius: 8px; padding: 8px 12px;
+  }
+  .dict-sub {
+    grid-column: 2 / -1;
+    font-size: 10px; color: #8b93a0; margin-top: -4px;
+  }
+
+  /* scene detail overlay */
+  .detail {
+    display: none;
+    margin: 10px 0 0;
+    background: #fff;
+    border: 1px solid var(--ink);
+    border-radius: 12px;
+    padding: 12px 14px 14px;
+  }
+  .detail.show { display: block; }
+  .detail h3 { margin: 0 0 2px; font-size: 14px; }
+  .detail .sub { margin: 0 0 12px; color: var(--mute); font-size: 12px; }
+  .kv {
+    display: grid; grid-template-columns: 72px 1fr;
+    gap: 6px 10px; font-size: 12px; align-items: center;
+  }
+  .kv dt { color: var(--faint); }
+  .kv dd { margin: 0; }
+  .wake-as-prop {
+    display: inline-flex; gap: 6px; flex-wrap: wrap;
+  }
+  .tag {
+    background: #eef1f4; border-radius: 6px;
+    padding: 2px 7px; font-size: 11px;
+  }
+  .close {
+    float: right; border: 0; background: none;
+    color: var(--mute); font-size: 12px; padding: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wave i { animation: none; height: 10px !important; }
+  }
+</style>
+</head>
+<body data-view="both">
+
+<header class="top">
+  <h1>语音页不是口令配置中心，是 vibecoding 场景入口</h1>
+  <p>护城河是 <strong>硬件按键 × 场景路由 × 本地唤醒</strong> 捆成一束。Wispr 没有侧键，Cursor / Claude Code 没有本地唤醒。口令越短越亏，所以「打开应用」整段删掉。</p>
+  <div class="modes" role="tablist" aria-label="对比视图">
+    <button type="button" class="mode" data-view="now">现在 · 打开应用</button>
+    <button type="button" class="mode" data-view="next">提案 · 场景入口</button>
+    <button type="button" class="mode is-on" data-view="both">并排对比</button>
+  </div>
+  <div class="legend">
+    <span><b>现在</b> 开始输入 / 打开应用 tab · 用户加应用 · 录口令</span>
+    <span><b>提案</b> 触发器三联 · 出厂 5 场景 · sticky 听写条</span>
+    <span><b>红虚线</b> 要砍的块</span>
+  </div>
+</header>
+
+<div class="stage">
+
+  <!-- NOW -->
+  <section class="col" id="colNow">
+    <p class="col-label">现在 <span>voiceOutputSummonBlock / 口令中心</span></p>
+    <div class="frame" aria-label="当前语音页示意">
+      <div class="frame-bar">
+        <div class="brand">语音听写 <span class="pill">默认</span></div>
+        <div class="bar-actions">
+          <button class="tiny pri" type="button">保存</button>
+          <button class="sw" type="button" aria-label="开"></button>
+        </div>
+      </div>
+      <div class="body">
+        <div class="steps">
+          <div class="step on"><div class="dot">01</div><b>01</b>怎么开启打字？</div>
+          <div class="step"><div class="dot">02</div><b>02</b>说错了想结束？</div>
+          <div class="step"><div class="dot">03</div><b>03</b>说完怎么发出去？</div>
+        </div>
+
+        <div class="tabs kill" title="二选一 tab 删除">
+          <button class="tab" type="button">开始输入</button>
+          <button class="tab on" type="button">打开应用</button>
+        </div>
+        <p class="hint">说出已录的口令即可打开或切到该应用</p>
+
+        <div class="app-card kill">
+          <div class="app-row">
+            <div class="ico">Cu</div>
+            <div>
+              <h3>Cursor</h3>
+              <p>声音口令：已录 1 条 · 文字口令：打开 Cursor</p>
+            </div>
+            <span class="chip">可启动</span>
+          </div>
+          <div class="acts">
+            <button class="ghost" type="button">重新录制</button>
+            <button class="ghost" type="button">回听</button>
+            <button class="ghost pri" type="button">测试</button>
+          </div>
+        </div>
+        <div class="app-card kill">
+          <div class="app-row">
+            <div class="ico">Cd</div>
+            <div>
+              <h3>Codex</h3>
+              <p>声音口令：尚未录制</p>
+            </div>
+            <span class="chip warn">仅聚焦</span>
+          </div>
+          <div class="acts">
+            <button class="ghost pri" type="button">录制声音口令</button>
+          </div>
+        </div>
+        <div class="empty kill">还没有更多应用。点「添加应用」选一个，再录制口令。</div>
+        <div class="foot-btns kill">
+          <button class="tiny pri" type="button">添加应用</button>
+          <button class="tiny" type="button">在按键页管理</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NEXT -->
+  <section class="col" id="colNext">
+    <p class="col-label">提案 <span>触发器 · 场景预设 · 听写条</span></p>
+    <div class="frame" aria-label="场景入口面板">
+      <div class="frame-bar">
+        <div class="brand"><i></i> 场景入口 <span class="pill ok">侧键 · Cursor</span></div>
+        <div class="bar-actions">
+          <button class="tiny" type="button">保存到习惯</button>
+          <button class="sw" type="button" aria-label="开"></button>
+        </div>
+      </div>
+      <div class="body next-body">
+        <div class="sec-h">
+          <h2>怎么开始说</h2>
+          <small>三件捆一束，不是二选一 tab</small>
+        </div>
+        <div class="triggers" id="triggers">
+          <button type="button" class="trig is-live" data-trig="side">
+            <span class="keycap">SIDE</span>
+            <span class="trig-kicker">侧键 · push-to-talk</span>
+            <span class="trig-scene">Cursor</span>
+            <span class="trig-meta"><span class="led"></span>12 秒前</span>
+          </button>
+          <button type="button" class="trig is-off" data-trig="vol">
+            <span class="keycap">VOL</span>
+            <span class="trig-kicker">音量键</span>
+            <span class="trig-scene">未绑定</span>
+            <span class="trig-meta"><span class="led"></span>点按绑定</span>
+          </button>
+          <button type="button" class="trig" data-trig="wake">
+            <span class="keycap">KWS</span>
+            <span class="trig-kicker">本地唤醒词</span>
+            <span class="trig-scene">开始输入</span>
+            <span class="trig-meta"><span class="led"></span>场景子属性</span>
+          </button>
+        </div>
+
+        <div class="sec-h">
+          <h2>说到哪</h2>
+          <small>出厂预设，不「添加应用」</small>
+        </div>
+        <div class="scenes" id="scenes">
+          <button type="button" class="scene" data-scene="claude">
+            <span class="mark">CLI</span>
+            <h3>Claude Code</h3>
+            <p class="who">终端会话</p>
+            <p class="wake">唤醒 <em>开始输入</em></p>
+          </button>
+          <button type="button" class="scene" data-scene="codex">
+            <span class="mark">桌面</span>
+            <h3>Codex</h3>
+            <p class="who">ChatGPT.exe</p>
+            <p class="wake">唤醒 <em>开始输入</em></p>
+          </button>
+          <button type="button" class="scene is-on" data-scene="cursor">
+            <span class="mark">在用</span>
+            <h3>Cursor</h3>
+            <p class="who">Agent 输入框</p>
+            <p class="wake">侧键 · 唤醒 <em>开始输入</em></p>
+          </button>
+          <button type="button" class="scene half" data-scene="ide">
+            <span class="mark">通用</span>
+            <h3>通用 IDE</h3>
+            <p class="who">当前前台编辑器</p>
+            <p class="wake">不抢面板，只听写</p>
+          </button>
+          <button type="button" class="scene half" data-scene="fg">
+            <span class="mark">通用</span>
+            <h3>前台窗口</h3>
+            <p class="who">任意输入框</p>
+            <p class="wake">Wispr 式落点</p>
+          </button>
+        </div>
+
+        <aside class="detail" id="detail" hidden>
+          <button type="button" class="close" id="detailClose">收起</button>
+          <h3 id="detailTitle">Cursor</h3>
+          <p class="sub">唤醒词是场景的子属性，不是顶层 tab</p>
+          <dl class="kv">
+            <dt>触发</dt><dd>侧键按住说话 · 音量键未绑</dd>
+            <dt>唤醒</dt>
+            <dd>
+              <span class="wake-as-prop">
+                <span class="tag">开始输入</span>
+                <span class="tag">开始听写</span>
+              </span>
+            </dd>
+            <dt>落点</dt><dd>Agent 框（Ctrl+I，不切换类乱按）</dd>
+            <dt>模型</dt><dd>本地 Vosk / KWS · 断网可用</dd>
+            <dt>校准</dt><dd>声学校准进详情，不进主列表</dd>
+          </dl>
+        </aside>
+
+        <p class="note">长 prompt 才赢键盘。短口令「打开 Cursor」已从主路径拿掉。</p>
+
+        <div class="dict" aria-live="polite">
+          <button type="button" class="mic is-hot" aria-label="正在听" title="侧键按住">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+          </button>
+          <div>
+            <div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <p class="live mono">重构这个模块，测试覆盖率到 80%，用 reactive 思路，<u>加注释</u></p>
+          </div>
+          <button type="button" class="send">发送</button>
+          <p class="dict-sub">侧键按住 · Cursor Agent · 本地 · 松开发送，光标不动</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  const scenes = {
+    claude: { title: "Claude Code", sub: "终端会话 · 子进程识别，不是再开 Claude.exe" },
+    codex: { title: "Codex", sub: "桌面 composer · 断网仍可侧键听写" },
+    cursor: { title: "Cursor", sub: "唤醒词是场景的子属性，不是顶层 tab" },
+    ide: { title: "通用 IDE", sub: "只听写，不发 Ctrl+I，避免把面板关掉" },
+    fg: { title: "前台窗口", sub: "落点 = 当前焦点，学 Wispr 不抢窗" }
+  };
+
+  const body = document.body;
+  document.querySelectorAll(".mode").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".mode").forEach((b) => b.classList.remove("is-on"));
+      btn.classList.add("is-on");
+      body.dataset.view = btn.dataset.view;
+      const now = document.getElementById("colNow");
+      const next = document.getElementById("colNext");
+      now.style.display = btn.dataset.view === "next" ? "none" : "";
+      next.style.display = btn.dataset.view === "now" ? "none" : "";
+    });
+  });
+
+  document.getElementById("triggers").addEventListener("click", (e) => {
+    const t = e.target.closest(".trig");
+    if (!t) return;
+    document.querySelectorAll(".trig").forEach((x) => x.classList.remove("is-live"));
+    t.classList.add("is-live");
+    t.classList.remove("is-off");
+  });
+
+  const detail = document.getElementById("detail");
+  document.getElementById("scenes").addEventListener("click", (e) => {
+    const s = e.target.closest(".scene");
+    if (!s) return;
+    document.querySelectorAll(".scene").forEach((x) => x.classList.remove("is-on"));
+    s.classList.add("is-on");
+    const info = scenes[s.dataset.scene];
+    document.getElementById("detailTitle").textContent = info.title;
+    detail.querySelector(".sub").textContent = info.sub;
+    detail.hidden = false;
+    detail.classList.add("show");
+  });
+  document.getElementById("detailClose").addEventListener("click", () => {
+    detail.hidden = true;
+    detail.classList.remove("show");
+  });
+</script>
+</body>
+</html>

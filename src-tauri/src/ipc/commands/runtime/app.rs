@@ -109,6 +109,43 @@ pub fn cmd_voice_practice_activate_ime(
     })
 }
 
+/// Voice settings: temporarily unpark wake + allow mic while user speaks the wake phrase.
+#[tauri::command]
+pub fn cmd_voice_wake_phrase_test_begin(
+    state: tauri::State<Arc<AppState>>,
+    app: tauri::AppHandle,
+) -> serde_json::Value {
+    use std::sync::atomic::Ordering;
+    state.settings_asr_quiet.store(false, Ordering::SeqCst);
+    state.voice_practice_hold_fg.store(true, Ordering::SeqCst);
+    crate::app_log::log_line(state.as_ref(), "voice", "wake_phrase_test begin");
+    crate::voice_bootstrap::activate_desired_engine(
+        &app,
+        state.inner(),
+        "force:wake_phrase_test",
+    );
+    serde_json::json!({ "ok": true })
+}
+
+#[tauri::command]
+pub fn cmd_voice_wake_phrase_test_end(
+    state: tauri::State<Arc<AppState>>,
+    app: tauri::AppHandle,
+) -> serde_json::Value {
+    use std::sync::atomic::Ordering;
+    state.voice_practice_hold_fg.store(false, Ordering::SeqCst);
+    let settings_open = *state.settings_drawer_open.lock();
+    state
+        .settings_asr_quiet
+        .store(settings_open, Ordering::SeqCst);
+    crate::app_log::log_line(state.as_ref(), "voice", "wake_phrase_test end");
+    if settings_open {
+        crate::voice_bootstrap::schedule_park_wake_for_settings(state.inner());
+    }
+    let _ = app;
+    serde_json::json!({ "ok": true })
+}
+
 #[tauri::command]
 pub fn cmd_set_settings_drawer_open(
     state: tauri::State<Arc<AppState>>,

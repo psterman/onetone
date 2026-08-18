@@ -1,0 +1,91 @@
+/**
+ * 01 开启 · 统一口令池 — 产品规范增量样式
+ * 基线：src/css/app.css + voice-page-shell.css（voice-page-desk）
+ * 仅定义 Hero+Alias 合并后的 delta，不重复产品已有 token。
+ */
+
+/* mockup 壳：允许滚动预览 */
+.mockup-body,
+.mockup-body .app.mockup-app {
+  height: auto;
+  min-height: 100vh;
+  overflow: visible;
+}
+
+.mockup-frame {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* mockup 无侧栏，单列 body */
+#settingsPanelVoiceWake .voice-page-body {
+  grid-template-columns: 1fr;
+}
+
+.mockup-note {
+  margin: 0 0 12px;
+  font-size: var(--type-body-sm, 12px);
+  line-height: 1.5;
+  color: var(--on-surface-muted);
+}
+
+/* ── 统一口令池：复用 alias-card 容器，叠加 hero 渐变顶 ── */
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-pool-card.voice-wake-alias-card {
+  gap: 14px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary, #2a9cc4) 6%, transparent) 0%,
+    var(--surface-high) 28%
+  );
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-pool-intro {
+  display: grid;
+  gap: 8px;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-pool-desc {
+  margin: 0;
+  font-size: var(--type-body-sm, 12px);
+  line-height: 1.55;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-pool-desc strong {
+  color: var(--on-surface);
+  font-weight: 700;
+}
+
+/* 默认口令 tag：池内标记，沿用 primary-badge */
+#settingsPanelVoiceWake.voice-page-desk .voice-phrase-tag.is-default {
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 42%, transparent);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 12%, transparent);
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-phrase-tag.is-default .voice-phrase-tag-btn {
+  color: var(--primary-strong);
+  font-weight: 700;
+  cursor: default;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-tag-default-badge {
+  flex-shrink: 0;
+  margin: 0 6px 0 0;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+/* 测试行放进池卡 */
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-pool-card .voice-wake-test-row {
+  margin-top: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--outline-variant);
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-pool-card .voice-wake-add-row {
+  margin-top: 0;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-pool-card .voice-wake-alias-hint {
+  margin-top: -2px;
+}

@@ -1533,6 +1533,10 @@
     return pickerSession.mode==='topbarMonitor' && typeof pickerSession.onPick==='function';
   }
 
+  function isCallbackPicker(){
+    return typeof pickerSession.onPick==='function';
+  }
+
   function discardIncompleteCustomCreate(mappingId){
     mappingId=String(mappingId||pickerCreateMappingId||'').trim();
     if(!mappingId||!core()||!core().byId) return;
@@ -1872,12 +1876,13 @@
     var emptyEl=$('appPickerRunningEmpty');
     var cancelBtn=$('btnAppPickerCancel');
     var topbar=isTopbarMonitorPicker();
+    var voicePick=pickerSession.mode==='voiceOpenApp';
     if(title) title.textContent=topbar
       ? tf('softPadTopbarPickerTitle','添加到顶栏监视')
-      : t('appPickerTitle');
+      :(voicePick?t('appPickerVoiceTitle'):t('appPickerTitle'));
     if(desc) desc.textContent=topbar
       ? tf('softPadTopbarPickerDesc','状态灯：已接生命周期的客户端/CLI。额度候补：填 API key 后进迷你栏用量 pill。')
-      : t('appPickerDesc');
+      :(voicePick?t('appPickerVoiceDesc'):t('appPickerDesc'));
     if(presetsLbl) presetsLbl.textContent=topbar
       ? tf('softPadTopbarPickerLights','状态灯（客户端 / CLI）')
       : t('appPickerPresets');
@@ -2029,7 +2034,7 @@
     var presetBtn=e.target.closest&&e.target.closest('[data-pick-preset]');
     if(presetBtn){
       e.preventDefault();
-      if(isTopbarMonitorPicker()){
+      if(isCallbackPicker()){
         finishTopbarPick({ type:'preset', presetId:presetBtn.getAttribute('data-pick-preset')||'' });
         return;
       }
@@ -2048,7 +2053,7 @@
       e.preventDefault();
       var idx=parseInt(runBtn.getAttribute('data-pick-running')||'',10);
       var identity=pickerRunningCache[idx];
-      if(isTopbarMonitorPicker()){
+      if(isCallbackPicker()){
         finishTopbarPick({ type:'running', identity:identity||null });
         return;
       }
@@ -2080,7 +2085,7 @@
       fgBtn.addEventListener('click',function(e){
         e.preventDefault();
         e.stopPropagation();
-        if(isTopbarMonitorPicker()){
+        if(isCallbackPicker()){
           finishTopbarPick({ type:'running', identity:pickerForegroundIdentity||null });
           return;
         }

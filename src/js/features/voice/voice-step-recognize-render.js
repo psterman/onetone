@@ -248,6 +248,18 @@
     if(cancelBlock) cancelBlock.hidden=!show;
   }
 
+  function syncEndPhraseInputCounts(){
+    function paint(inputId,countId){
+      var input=$(inputId);
+      var count=$(countId);
+      if(!input||!count) return;
+      var max=input.maxLength>0?input.maxLength:48;
+      count.textContent=String((input.value||'').length)+'/'+max;
+    }
+    paint('voiceCancelCustomInput','voiceCancelCustomCount');
+    paint('voiceEndCustomInput','voiceEndCustomCount');
+  }
+
   function renderRecognizePage(vm){
     renderRecognizePanel(vm);
     renderModelPresetRow(vm);
@@ -263,14 +275,21 @@
     var confirmTab=$('btnVoiceRecognizeIntentConfirm');
     if(cancelTab) cancelTab.textContent=t('voiceRecognizeIntentCancel');
     if(confirmTab) confirmTab.textContent=t('voiceRecognizeIntentConfirm');
+    var cancelLbl=$('voiceCancelPresetsZhLabel');
+    var endLbl=$('voiceEndPresetsZhLabel');
+    if(cancelLbl) cancelLbl.textContent=t('voiceCancelPresetsZhLabel');
+    if(endLbl) endLbl.textContent=t('voiceEndPresetsZhLabel');
+    syncEndPhraseInputCounts();
     if(global.OneToneAppThemePrefs&&global.OneToneAppThemePrefs.syncRecordingAudioUi){
       global.OneToneAppThemePrefs.syncRecordingAudioUi();
     }
-    // P6 守卫：语音配置岛挂载后，隐藏 legacy 文本短语编辑器（保留声音录制子页），避免重复控件。岛未挂载则原样保留。
-    if(window.OneToneIslands&&window.OneToneIslands.isMounted&&window.OneToneIslands.isMounted('voiceConfig')){
-      ['voiceCancelKindTextPane','voiceCancelCustomBlock','voiceEndKindTextPane','voiceEndCustomBlock'].forEach(function(id){
-        var el=$(id); if(el) el.hidden=true;
-      });
+    if(!vm.loading&&global.OneToneVoiceEnd){
+      if(typeof global.OneToneVoiceEnd.renderEndPhraseTags==='function'){
+        global.OneToneVoiceEnd.renderEndPhraseTags();
+      }
+      if(typeof global.OneToneVoiceEnd.renderCancelPhraseTags==='function'){
+        global.OneToneVoiceEnd.renderCancelPhraseTags();
+      }
     }
   }
 
@@ -281,6 +300,7 @@
     syncEndPresetLangVisibility:syncEndPresetLangVisibility,
     syncCancelLangVisibility:syncCancelLangVisibility,
     syncRecognizeIntentTabs:syncRecognizeIntentTabs,
-    syncControlAcousticKinds:syncControlAcousticKinds
+    syncControlAcousticKinds:syncControlAcousticKinds,
+    syncEndPhraseInputCounts:syncEndPhraseInputCounts
   };
 })((typeof window!=='undefined')?window:globalThis);

@@ -2377,7 +2377,7 @@
     applySoftPadEmptyIdleHost(buildSoftPadEmptyIdleModel());
   }
 
-  /** Scope without mapping: CTA only — never auto-create. */
+  /** Scope without mapping: failure fallback CTA when auto-prepare did not succeed. */
   function showPrepareMain(scope) {
     ++selectToken;
     ++agentLoadToken;
@@ -4457,7 +4457,15 @@
     ++agentLoadToken;
     resetSoftPadRouteToPadAppear();
     clearSubpage();
-    showPrepareMain(scope);
+
+    var kind = scope.kind;
+    if (kind !== SOFT_PAD_UNIVERSAL_KIND && isHubSoftPadKind(kind)) {
+      var prepared = prepareAppFromUi(scope.appId || appIdForKind(kind), kind);
+      if (!prepared) showPrepareMain(scope);
+    } else {
+      showPrepareMain(scope);
+    }
+
     renderAppSwitcher();
     updateScopeHint();
     syncSoftPadPadRing();

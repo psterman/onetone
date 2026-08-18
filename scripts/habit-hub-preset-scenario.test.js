@@ -193,8 +193,15 @@ assert.strictEqual(saveCalls, 1, 'reconcile persists once');
 
 saveCalls = 0;
 var r2 = H.reconcileDuplicatePresetScenarios({ skipToast: true });
-assert.strictEqual(r2.changed, false, 'reconcile idempotent second run');
-assert.strictEqual(saveCalls, 0, 'no second persist');
+assert.strictEqual(r2.changed, false, 'reconcile no-op when no duplicates remain');
+assert.strictEqual(saveCalls, 0, 'no persist when unchanged');
+
+mappings[0].enabled = true;
+saveCalls = 0;
+var r3 = H.reconcileDuplicatePresetScenarios({ skipToast: true });
+assert.ok(r3.changed, 'reconcile runs again after duplicate re-enabled');
+assert.strictEqual(mappings[0].enabled, false, 're-enabled loser disabled again');
+assert.strictEqual(saveCalls, 1, 'reconcile persists on re-merge');
 
 mappings[0].enabled = true;
 var created = H.createAppScenario('codex-chat');
@@ -203,12 +210,88 @@ assert.strictEqual(mappings.filter(function (m) {
   return m.appTargetId === 'codex-chat';
 }).length, 2, 'no third codex mapping added');
 
-// Disabled canonical must revive on create — home rail filters enabled===false.
 mappings[1].enabled = false;
 var revived = H.createAppScenario('codex-chat');
 assert.strictEqual(revived.id, 'm-codex-winner', 'create returns disabled canonical');
 assert.strictEqual(revived.enabled, true, 'create re-enables disabled preset scenario');
 assert.strictEqual(mappings[0].enabled, false, 'sibling stays disabled after revive');
+
+var savedMappings = mappings.slice();
+mappings.length = 0;
+mappings.push(
+  { id: 'm-cursor-a', appTargetId: 'cursor-chat', enabled: true, order: 0 },
+  { id: 'm-cursor-b', appTargetId: 'cursor-chat', enabled: true, order: 1 }
+);
+assert.ok(H.disableSiblingPresetScenarios(mappings[1]), 'disableSibling disables other preset rows');
+assert.strictEqual(mappings[0].enabled, false, 'sibling disabled');
+assert.strictEqual(mappings[1].enabled, true, 'except mapping stays enabled');
+mappings.length = 0;
+savedMappings.forEach(function (m) { mappings.push(m); });
+
+// --- manual scene pin (foreground must not override pinned 通用) ---
+var pinMappings = [
+  { id: 'm-base', appTargetId: 'custom', enabled: true, order: 0 },
+  { id: 'm-cursor', appTargetId: 'cursor-chat', enabled: true, order: 1 }
+];
+var pinSt = {
+  config: {
+    mappings: pinMappings,
+    activeSceneId: 'm-cursor',
+    followForegroundAppScenario: true
+  }
+};
+var pinSb = {
+  window: {},
+  console: console,
+  global: {},
+  document: { querySelector: function () { return null; } }
+};
+pinSb.window = pinSb.global;
+pinSb.global.OneToneState = { state: pinSt };
+pinSb.global.OneToneI18n = { t: function (k) { return k; } };
+pinSb.global.OneToneAppToast = { show: function () {} };
+pinSb.global.OneToneMappingCore = {
+  byId: function (id) {
+    for (var i = 0; i < pinMappings.length; i++) {
+      if (pinMappings[i].id === id) return pinMappings[i];
+    }
+    return null;
+  },
+  isSaved: function () { return true; }
+};
+pinSb.global.OneToneHabitProfile = { isLibraryHabit: function () { return true; } };
+pinSb.global.OneToneHabitOverrideDiff = {
+  isGlobalBaselineMapping: function (m) {
+    return !!(m && m.id === 'm-base');
+  }
+};
+pinSb.global.chrome = { webview: { postMessage: function () {} } };
+loadScript('src/js/features/scene/scene-activate.js', pinSb);
+var SA = pinSb.global.OneToneSceneActivate;
+assert.ok(SA);
+
+SA.activateScene('m-base', { source: 'manual' });
+assert.strictEqual(pinSt.config.activeSceneId, 'm-base', 'manual baseline activates');
+assert.ok(SA.isManualScenePinned(), 'manual baseline pins scene');
+
+var fgBlocked = false;
+try {
+  SA.activateScene('m-cursor', { source: 'foreground' });
+} catch (e) {
+  fgBlocked = true;
+}
+assert.strictEqual(pinSt.config.activeSceneId, 'm-base', 'foreground blocked while baseline pinned');
+assert.ok(!fgBlocked, 'foreground skip is silent');
+
+SA.activateScene('m-cursor', { source: 'manual' });
+assert.strictEqual(pinSt.config.activeSceneId, 'm-cursor', 'manual app scenario activates');
+assert.ok(!SA.isManualScenePinned(), 'manual app scenario clears pin');
+
+SA.activateScene('m-cursor', { source: 'foreground' });
+assert.strictEqual(pinSt.config.activeSceneId, 'm-cursor', 'foreground noop when already on target');
+pinSt.config.activeSceneId = 'm-base';
+SA.activateScene('m-cursor', { source: 'foreground' });
+assert.strictEqual(pinSt.config.activeSceneId, 'm-cursor', 'foreground follows after pin cleared');
 
 assert.strictEqual(H.listAppScenarios('custom').length, 0, 'custom excluded from preset list helper');
 assert.strictEqual(

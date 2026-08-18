@@ -74,6 +74,7 @@ habitScenarioReturnPanel === 'camera' && habitScenarioReturnId
 - **无全局 pad**；编辑 Soft Pad 时 mapping 选中真相 = `state.selectedMappingId`（与主车道无关）。
 - 局部 UI（tab / 子页 / 预览）可留模块内（如 `selectedScopeId`）。
 - 空态 CTA：创建 Codex / Claude **应用场景** → 选中新 id；**默认不**自动 `activeSceneId`（除非文案为「创建并使用」）。
+- builtin Agent 首次在 Hub/Keys 配 Soft Pad 键位时静默创建应用场景；不修改 `activeSceneId`，不切换首页「正在使用」。
 - **专用边界**：Soft Pad 服务 Agent 应用场景。Hub 主列表 = **Codex / Claude / Cursor / MiniMax / WorkBuddy / Trae / Qoder**。Cursor 诚实上限 = 官方 Lifecycle Hooks + Desktop Automation（focus/chord）；**默认** `can_observe_needs_input=false`，不凭推断参加 Auto 等待抢主控。Copilot Cloud Agent **不**参与桌面抢主控。
 - **顶栏 `topbar_habit_ids`**：状态栏观察 / 跳转入口（忙闲展示、点进习惯），**不是**钉主控。运行 pin 已移除；Soft Pad 主控始终 Auto。切换 `activeSceneId`（含切到「通用」习惯）**不会**关掉 Soft Pad 键位主控——按键/语音/摄像头动作跟正在使用习惯，Soft Pad 键位跟 Auto 车道。
 - **摄像头分层**：设备、校准、美颜与默认 presence action 在全局底座 `cameraPrefs`（对外可叫通用摄像头设置）；**不要**说 baseline mapping 存了 `cameraPrefs`。仅应用场景例外动作进 `cameraOverride`。

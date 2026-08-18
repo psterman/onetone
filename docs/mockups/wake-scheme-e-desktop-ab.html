@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>方案 E（桌面化）A/B：Popover vs Sheet</title>
+<style>
+  :root{
+    --bg:#eef1f5; --surface:#fff; --line:#e3e7ee; --text:#151922; --muted:#6b7384;
+    --primary:#3b82f6; --primary-soft:#eaf2ff; --ok:#10b981;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font:13px/1.45 "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--text)}
+  .top{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);padding:14px 18px}
+  .top h1{margin:0 0 4px;font-size:17px}
+  .top p{margin:0;color:var(--muted)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .head{padding:12px 14px;border-bottom:1px solid var(--line)}
+  .head h2{margin:0 0 2px;font-size:14px}
+  .head p{margin:0;color:var(--muted);font-size:12px}
+  .body{height:560px;position:relative;background:#f8fafc}
+  .rail{display:flex;gap:6px;padding:9px 10px;border-bottom:1px solid var(--line);background:#fff}
+  .pill{font-size:10px;padding:4px 8px;border-radius:8px;background:#f1f5f9;color:#7a879a}
+  .pill.on{background:var(--primary-soft);color:var(--primary)}
+  .page{padding:12px}
+  .hero{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff}
+  .meta{display:flex;align-items:center;gap:8px}
+  .status{font-size:11px;padding:2px 8px;border-radius:999px;background:#fff7e6;color:#b7730a}
+  .fast{margin-left:auto;font-size:11px;color:#8a95a8}
+  .phrase{font-size:22px;margin:8px 0 3px}
+  .desc{color:var(--muted);font-size:12px;margin:0}
+  .test{margin-top:10px;border-top:1px solid #f0f2f6;padding-top:9px;display:flex;gap:8px;align-items:center}
+  .btn{border:0;background:var(--primary-soft);color:var(--primary);padding:5px 10px;border-radius:8px;cursor:pointer}
+  .hint{font-size:11px;color:#8a95a8}
+
+  .groupLabel{margin:12px 2px 8px;font-size:11px;letter-spacing:.05em;color:#8a95a8;text-transform:uppercase}
+  .rows{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+  .row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #f3f5f9;cursor:pointer}
+  .row:last-child{border-bottom:0}
+  .row:hover{background:#fafcff}
+  .icon{width:28px;height:28px;border-radius:8px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;color:var(--primary)}
+  .label{font-weight:600}
+  .sub{font-size:11px;color:var(--muted)}
+  .val{margin-left:auto;display:flex;align-items:center;gap:6px;color:#7d889a}
+  kbd{font-size:11px;padding:2px 7px;background:#f1f5f9;border:1px solid #dbe4ee;border-radius:6px}
+  .chev{font-size:14px;color:#bac4d2}
+
+  .popover{display:none;position:absolute;left:24px;right:24px;top:278px;z-index:3;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 10px 30px rgba(20,28,45,.15)}
+  .popover.open{display:block}
+  .popHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .close{border:0;background:transparent;font-size:17px;color:#9aa5b5;cursor:pointer}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{font-size:11px;padding:3px 8px;border-radius:7px;background:var(--primary-soft);color:var(--primary)}
+  .add{display:flex;gap:6px;margin-top:10px}
+  .add input{flex:1;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+  .add button{border:0;background:var(--primary);color:#fff;border-radius:8px;padding:6px 10px;cursor:pointer}
+
+  .sheetMask{display:none;position:absolute;inset:0;background:rgba(10,14,21,.34);z-index:2}
+  .sheetMask.open{display:block}
+  .sheet{display:none;position:absolute;left:0;right:0;bottom:0;z-index:3;background:#fff;border-radius:14px 14px 0 0;border-top:1px solid var(--line);padding:10px 12px 14px}
+  .sheet.open{display:block}
+  .grab{width:34px;height:4px;border-radius:999px;background:#d3d9e3;margin:4px auto 10px}
+  .foot{padding:10px 14px;border-top:1px solid var(--line);background:#fbfcff;color:var(--muted);font-size:11px}
+  @media (max-width:980px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>方案 E（桌面化）A/B 原型</h1>
+  <p>A=Popover（推荐）｜B=Bottom Sheet（备选）。两列都基于“主页面两行摘要 + 单层编辑”。</p>
+</div>
+<div class="grid">
+  <section class="panel">
+    <div class="head">
+      <h2>A. Popover（推荐）</h2>
+      <p>行内就近打开，视觉扰动更小，适合桌面鼠标+键盘流。</p>
+    </div>
+    <div class="body">
+      <div class="rail"><span class="pill on">01 开启</span><span class="pill">02 结束</span><span class="pill">03 发送</span></div>
+      <div class="page">
+        <div class="hero">
+          <div class="meta"><span class="status">语音未启用</span><span class="fast">响应最快</span></div>
+          <h3 class="phrase">「开始听写」</h3>
+          <p class="desc">说出此口令或按快捷键即可开始听写</p>
+          <div class="test"><button class="btn">真机测试口令</button><span class="hint">点击测试识别</span></div>
+        </div>
+        <p class="groupLabel">口令配置</p>
+        <div class="rows">
+          <div class="row" id="aAlias">
+            <span class="icon">🏷</span>
+            <div><div class="label">别名</div><div class="sub">说出任意一个即可触发</div></div>
+            <div class="val">5 个 <span class="chev">›</span></div>
+          </div>
+          <div class="row" id="aTarget">
+            <span class="icon">⌨</span>
+            <div><div class="label">输入目标</div><div class="sub">触发后切换到听写状态</div></div>
+            <div class="val"><kbd>右 Alt</kbd><span class="chev">›</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="popover" id="aPopAlias">
+        <div class="popHead"><strong>管理别名</strong><button class="close" data-close="aPopAlias">×</button></div>
+        <div class="chips"><span class="chip">开始听写</span><span class="chip">打开听写</span><span class="chip">语音输入</span><span class="chip">开启输入</span></div>
+        <div class="add"><input placeholder="添加别名"><button>添加</button></div>
+      </div>
+      <div class="popover" id="aPopTarget">
+        <div class="popHead"><strong>输入目标</strong><button class="close" data-close="aPopTarget">×</button></div>
+        <p style="margin:0 0 8px;color:#5f6980">当前快捷键：<kbd>右 Alt</kbd></p>
+        <button class="btn" style="background:#3b82f6;color:#fff">前往按键页编辑 →</button>
+      </div>
+    </div>
+    <div class="foot">观察点：加别名无需切屏；打开层后主页面仍可见，回看上下文快。</div>
+  </section>
+
+  <section class="panel">
+    <div class="head">
+      <h2>B. Bottom Sheet（备选）</h2>
+      <p>聚焦更强，但遮挡主内容更多；更偏移动端习惯。</p>
+    </div>
+    <div class="body">
+      <div class="rail"><span class="pill on">01 开启</span><span class="pill">02 结束</span><span class="pill">03 发送</span></div>
+      <div class="page">
+        <div class="hero">
+          <div class="meta"><span class="status">语音未启用</span><span class="fast">响应最快</span></div>
+          <h3 class="phrase">「开始听写」</h3>
+          <p class="desc">说出此口令或按快捷键即可开始听写</p>
+          <div class="test"><button class="btn">真机测试口令</button><span class="hint">点击测试识别</span></div>
+        </div>
+        <p class="groupLabel">口令配置</p>
+        <div class="rows">
+          <div class="row" id="bAlias">
+            <span class="icon">🏷</span>
+            <div><div class="label">别名</div><div class="sub">说出任意一个即可触发</div></div>
+            <div class="val">5 个 <span class="chev">›</span></div>
+          </div>
+          <div class="row" id="bTarget">
+            <span class="icon">⌨</span>
+            <div><div class="label">输入目标</div><div class="sub">触发后切换到听写状态</div></div>
+            <div class="val"><kbd>右 Alt</kbd><span class="chev">›</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="sheetMask" id="bMask"></div>
+      <div class="sheet" id="bSheet">
+        <div class="grab"></div>
+        <div class="popHead"><strong id="bTitle">管理别名</strong><button class="close" id="bClose">×</button></div>
+        <div id="bContent">
+          <div class="chips"><span class="chip">开始听写</span><span class="chip">打开听写</span><span class="chip">语音输入</span><span class="chip">开启输入</span></div>
+          <div class="add"><input placeholder="添加别名"><button>添加</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="foot">观察点：聚焦更强，但会挡住主摘要行，来回核对值成本更高。</div>
+  </section>
+</div>
+<script>
+  function closeAllA(){['aPopAlias','aPopTarget'].forEach(id=>document.getElementById(id).classList.remove('open'));}
+  document.getElementById('aAlias').onclick=()=>{closeAllA();document.getElementById('aPopAlias').classList.add('open');};
+  document.getElementById('aTarget').onclick=()=>{closeAllA();document.getElementById('aPopTarget').classList.add('open');};
+  document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.close).classList.remove('open'));
+
+  const bMask=document.getElementById('bMask');
+  const bSheet=document.getElementById('bSheet');
+  const bTitle=document.getElementById('bTitle');
+  const bContent=document.getElementById('bContent');
+  function closeSheet(){bMask.classList.remove('open');bSheet.classList.remove('open');}
+  function openSheet(html,title){bTitle.textContent=title;bContent.innerHTML=html;bMask.classList.add('open');bSheet.classList.add('open');}
+  document.getElementById('bAlias').onclick=()=>openSheet(
+    '<div class="chips"><span class="chip">开始听写</span><span class="chip">打开听写</span><span class="chip">语音输入</span><span class="chip">开启输入</span></div><div class="add"><input placeholder="添加别名"><button>添加</button></div>',
+    '管理别名'
+  );
+  document.getElementById('bTarget').onclick=()=>openSheet(
+    '<p style="margin:0 0 8px;color:#5f6980">当前快捷键：<kbd>右 Alt</kbd></p><button class="btn" style="background:#3b82f6;color:#fff">前往按键页编辑 →</button>',
+    '输入目标'
+  );
+  bMask.onclick=closeSheet;
+  document.getElementById('bClose').onclick=closeSheet;
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeAllA(); closeSheet(); }});
+</script>
+</body>
+</html>

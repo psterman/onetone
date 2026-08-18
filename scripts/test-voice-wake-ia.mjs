@@ -16,7 +16,13 @@ assert.ok(!html.includes('btnVoiceWakeKindSound'), 'no sound tab button');
 assert.ok(/data-phrase-kind="text"/.test(html), 'has data-phrase-kind=text');
 assert.ok(/data-phrase-kind="app"/.test(html), 'has data-phrase-kind=app');
 assert.ok(html.includes('id="voiceWakeAcousticHost"'), 'keeps voiceWakeAcousticHost');
-assert.ok(html.includes('id="voiceWakeInputTarget"'), 'has voiceWakeInputTarget');
+assert.ok(!html.includes('id="voiceWakeInputTarget"'), 'no voiceWakeInputTarget on wake page');
+assert.ok(html.includes('voice-wake-pool-card'), 'has voice-wake-pool-card');
+assert.ok(html.includes('id="btnVoiceWakePoolAdd"'), 'has btnVoiceWakePoolAdd');
+assert.ok(html.includes('id="voiceWakePhraseOverlay"'), 'has voiceWakePhraseOverlay');
+assert.ok(!html.includes('btnVoiceSandboxOpen'), 'no btnVoiceSandboxOpen');
+assert.ok(!html.includes('voiceSandboxOverlay'), 'no voiceSandboxOverlay');
+assert.ok(!html.includes('voice-sandbox.js'), 'no voice-sandbox script');
 assert.ok(!html.includes('voiceWakePhraseSuggestions'), 'no suggestions');
 
 const wakeRender = read('src/js/features/voice/voice-step-wake-render.js');
@@ -28,7 +34,8 @@ assert.ok(!/OneToneVoiceWakeAcoustic/.test(wakeRender), 'wake-render does not mo
 assert.ok(/data-open-app-acoustic-act/.test(wakeRender), 'cards emit data-open-app-acoustic-act');
 assert.ok(/data-open-app-acoustic-host/.test(wakeRender), 'cards emit inline acoustic host marker');
 assert.ok(!/voiceOpenAppKeysRecord/.test(wakeRender), 'no KeysRecord CTA in wake-render');
-assert.ok(/findAppScenarioByAppId/.test(wakeRender), 'resolves app-scenario mappings');
+assert.ok(/resolveOpenAppRows/.test(wakeRender), 'open-app roster resolver exists');
+assert.ok(/isAppScenarioMapping/.test(wakeRender), 'open-app roster filters app scenarios');
 
 const bindings = read('src/js/features/voice/voice-ui-bindings.js');
 assert.ok(/data-open-app-acoustic-act/.test(bindings), 'bindings handle acoustic acts');
@@ -143,6 +150,14 @@ assert.ok(/voiceOpenAppNoteLbl/.test(wakeRender), 'note label for displayText');
 assert.ok(/playOpenAppAcousticPreview|setSuspend\(true\)/.test(bindings), 'replay suspends matching');
 assert.ok(/voiceOpenAppTestLaunchFailed|app_launch_failed/.test(bindings), 'test handles launch failure');
 assert.ok(/habitAcousticCmdLaunchFailed|app_launch_failed/.test(matcher), 'matcher launch-fail toast');
+assert.ok(!/presets\.forEach\(function\(p\)/.test(wakeRender), 'open-app roster does not dump catalog presets');
+assert.ok(/mode:'voiceOpenApp'/.test(bindings), 'add app uses voiceOpenApp picker mode');
+assert.ok(/findAppScenarioForIdentity/.test(bindings), 'add app claims running identity');
+assert.ok(/voice-open-app-btn is-primary/.test(wakeRender), 'open-app cards use primary record/test CTA');
+
+const picker = read('src/js/features/mapping/app-behavior-rules.js');
+assert.ok(/function isCallbackPicker/.test(picker), 'picker callback mode covers voice add');
+assert.ok(/appPickerVoiceTitle/.test(picker), 'voice picker uses dedicated copy');
 
 const i18n = read('src/js/core/i18n.js');
 assert.ok(/voiceOpenAppRecord:\s*['"]录制声音口令['"]/.test(i18n), 'record CTA');

@@ -1149,10 +1149,18 @@ function softPadFnSlice(src, name, nextName) {
   return src.slice(start, end);
 }
 var selectScopeFn = softPadFnSlice(softPadHubSrc, 'selectScope', 'renderSchemeRow');
-assert.ok(selectScopeFn.indexOf('ensureAppSoftPad(') < 0, 'selectScope must not auto-create mapping');
-assert.ok(selectScopeFn.indexOf('showPrepareMain') >= 0, 'selectScope shows prepare CTA when missing mapping');
+assert.ok(selectScopeFn.indexOf('prepareAppFromUi(') >= 0, 'selectScope auto-prepares via prepareAppFromUi when missing mapping');
+assert.ok(selectScopeFn.indexOf('showPrepareMain') >= 0, 'selectScope keeps showPrepareMain as failure fallback');
+assert.ok(
+  selectScopeFn.indexOf('renderAppSwitcher()') >= 0 &&
+  selectScopeFn.indexOf('updateScopeHint()') >= 0 &&
+  selectScopeFn.indexOf('syncSoftPadPadRing()') >= 0 &&
+  selectScopeFn.indexOf('requestOverlayUsageForScope') >= 0,
+  'selectScope must run post-handling after auto-prepare'
+);
 var prepareAppFn = softPadFnSlice(softPadHubSrc, 'prepareAppFromUi', 'applyEnabledUi');
 assert.ok(prepareAppFn.indexOf('ensureAppSoftPad(') >= 0, 'prepareAppFromUi creates mapping');
+assert.ok(prepareAppFn.indexOf('activateScene') < 0, 'prepareAppFromUi must not activate scene');
 var ensureCodexFn = softPadFnSlice(softPadHubSrc, 'ensureCodex', 'prepareAppFromUi');
 assert.ok(ensureCodexFn.indexOf('prepareAppFromUi') >= 0, 'ensureCodex goes through prepare path');
 assert.ok(ensureCodexFn.indexOf('selectScope') < 0, 'ensureCodex must not re-enter selectScope');

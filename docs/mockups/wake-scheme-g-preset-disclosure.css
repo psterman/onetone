@@ -1,0 +1,56 @@
+/**
+ * wake-scheme-g — 最小增量：只改 IA，不改产品卡片皮肤
+ * Hero = voice-wake-hero-card（渐变）
+ * 池   = voice-wake-alias-card（白底，与线上一致）
+ */
+
+.mockup-body,
+.mockup-body .app.mockup-app {
+  height: auto;
+  min-height: 100vh;
+  overflow: visible;
+}
+
+.mockup-frame {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+#settingsPanelVoiceWake .voice-page-body {
+  grid-template-columns: 1fr;
+}
+
+.mockup-note {
+  margin: 0 0 12px;
+  font-size: var(--type-body-sm, 12px);
+  line-height: 1.5;
+  color: var(--on-surface-muted);
+}
+
+/* 统一 section：两张产品卡之间间距略收 */
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-unified-section {
+  display: grid;
+  gap: 10px;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-unified-section .voice-wake-section-title {
+  margin-bottom: 0;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-unified-cards {
+  display: grid;
+  gap: 10px;
+}
+
+/* alias 卡顶一句引导，沿用产品 hint 字号 */
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-pool-bridge {
+  margin: 0;
+  font-size: var(--type-body-sm, 12px);
+  line-height: 1.55;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-pool-bridge strong {
+  color: var(--on-surface);
+  font-weight: 700;
+}
