@@ -294,6 +294,21 @@ fn resolve_active_binding(name: &str, device: Option<&str>) -> Option<String> {
     resolve_binding_in_list(&bindings, name, device)
 }
 
+fn try_dispatch_named_pad(name: &str, is_keyup: bool) -> bool {
+    let Some(snap) = crate::codex_numpad_layer::lookup_named_pad_route(name) else {
+        return false;
+    };
+    if let Some(sender) = active_sender().lock().unwrap().as_ref() {
+        sender
+            .send(crate::codex_numpad_layer::format_micro_key_event(
+                &snap.micro_key_id,
+                !is_keyup,
+            ))
+            .ok();
+    }
+    true
+}
+
 /// Multi-key chords use RegisterHotKey (WM_HOTKEY). The low-level hook must not swallow
 /// only the terminal key — Ctrl/Shift would still reach the OS and switch IME layouts.
 fn hook_handles_binding(binding: &str) -> bool {
@@ -749,6 +764,10 @@ fn dispatch_physical_payload(payload: &str, source: &str, report_hex: &str) -> b
         return true;
     }
 
+    if try_dispatch_named_pad(&ev.key, ev.is_keyup) {
+        return true;
+    }
+
     if send_guard::blocks_key(&ev.key) {
         send_guard::note_blocked();
         emit_input_obs(
@@ -958,6 +977,8 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
                 if name == "XButton1" || name == "XButton2" {
                     return 1;
                 }
+            } else if try_dispatch_named_pad(name, is_x_up) {
+                return 1;
             } else if resolve_active_binding(name, None).is_some() {
                 // Side buttons are pulse-only — keyup must not re-dispatch as a second tap.
                 if !is_x_up {
@@ -1032,12 +1053,18 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
         if let Some(source) = crate::codex_numpad_layer::normalize_numpad_physical(
             kb.scanCode as u16,
             extended,
-        )
-        {
+        ) {
+            if recording {
+                if is_key_down {
+                    if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
+                        sender.send(source.id()).ok();
+                    }
+                }
+                return 1;
+            }
             if crate::codex_numpad_layer::hook_should_swallow(&source) {
                 if let Some(sender) = active_sender().lock().unwrap().as_ref() {
-                    let payload =
-                        crate::codex_numpad_layer::format_event(&source, is_key_down);
+                    let payload = crate::codex_numpad_layer::format_event(&source, is_key_down);
                     sender.send(payload).ok();
                 }
                 return 1;
@@ -1092,6 +1119,9 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
             }
             if send_guard::blocks_key(&name) {
                 return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
+            }
+            if try_dispatch_named_pad(&name, is_key_up) {
+                return 1;
             }
             if is_modifier_watch_key(&name) {
                 if let Some(sender) = active_sender().lock().unwrap().as_ref() {
@@ -1170,6 +1200,12 @@ fn vk_to_name(vk: u32) -> Option<String> {
         0x7C..=0x87 => Some(format!("F{}", vk - 0x7C + 13)),
         0x14 => Some("CapsLock".into()),
         0x70..=0x7B => Some(format!("F{}", vk - 0x70 + 1)),
+        0x60..=0x69 => Some(format!("Numpad{}", vk - 0x60)),
+        0x6A => Some("NumpadMultiply".into()),
+        0x6B => Some("NumpadAdd".into()),
+        0x6D => Some("NumpadSubtract".into()),
+        0x6E => Some("NumpadDecimal".into()),
+        0x6F => Some("NumpadDivide".into()),
         other => Some(format!("VK_{:02X}", other)),
     }
 }

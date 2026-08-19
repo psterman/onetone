@@ -3217,6 +3217,13 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   cursor:pointer;
 }
 .record-probe-hint{ margin:6px 0 8px; color:#667; }
+.record-probe-adv{ display:inline-flex; align-items:center; gap:6px; margin:0 0 8px; color:#445; cursor:pointer; }
+.record-probe-hid-box{ margin:0 0 8px; }
+.record-probe-hid-list{ margin:0; padding:0; list-style:none; }
+.record-probe-hid-item{ display:flex; align-items:center; gap:8px; margin:0 0 4px; font-family:ui-monospace,Consolas,monospace; font-size:12px; }
+.record-probe-hid-item .k{ font-weight:600; }
+.record-probe-hid-item .n{ color:#667; flex:1; overflow:hidden; text-overflow:ellipsis; }
+.record-probe-hid-empty{ color:#889; font-size:12px; }
 .record-probe-log{
   max-height:160px;
   overflow:auto;
@@ -3226,10 +3233,12 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   font-family:ui-monospace,Consolas,monospace;
   line-height:1.45;
 }
-.record-probe-line{ display:grid; grid-template-columns:92px 44px 1fr 1fr; gap:6px; }
+.record-probe-line{ display:grid; grid-template-columns:92px 36px minmax(0,1.1fr) minmax(0,.9fr) minmax(0,1fr); gap:6px; }
 .record-probe-line .t{ color:#889; }
+.record-probe-line .a{ color:#7a5; font-size:11px; overflow:hidden; text-overflow:ellipsis; }
 .record-probe-line.is-drop .k,
-.record-probe-line.is-drop .n{ color:#b42318; }
+.record-probe-line.is-drop .n,
+.record-probe-line.is-unknown .k{ color:#b42318; }
 .record-probe-line.is-commit .k{ color:#027a48; font-weight:600; }
 .record-probe-line.is-recv .k{ color:#175cd3; }
 

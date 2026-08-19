@@ -161,6 +161,22 @@ pub fn resolve_idle_effective_scene(cfg: &VoiceConfig) -> Option<EffectiveSceneC
     resolve_effective_scene(cfg, &idle_scene_ctx(cfg))
 }
 
+/// Wake/dispatch follows the foreground Agent overlay when it has `voiceOverride`; else baseline.
+/// Idle grammar/fingerprint stay on `active_scene_id` so Alt-Tab does not restart Vosk.
+pub fn resolve_dispatch_effective_scene(cfg: &VoiceConfig) -> Option<EffectiveSceneConfig> {
+    let scene_id = crate::config::live_pack_mapping(cfg)
+        .filter(|m| m.voice_override.is_some())
+        .map(|m| m.id.clone())
+        .or_else(|| crate::config::find_global_baseline_mapping(cfg).map(|m| m.id.clone()))
+        .unwrap_or_else(|| cfg.active_scene_id.clone());
+    resolve_effective_scene(
+        cfg,
+        &SceneResolveContext {
+            active_scene_id: &scene_id,
+        },
+    )
+}
+
 /// One summon phrase registered on a saved habit (mapping), usable from anywhere while voice is idle.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GlobalSummonMatch {
@@ -246,6 +262,15 @@ pub fn vosk_grammar_phrases_for_cfg(cfg: &VoiceConfig) -> Vec<String> {
     };
     for p in &effective.wake_phrases {
         push(p);
+    }
+    for mapping in &cfg.mappings {
+        if let Some(ov) = mapping.voice_override.as_ref() {
+            if let Some(phrases) = ov.wake_phrases.as_ref() {
+                for p in phrases {
+                    push(p);
+                }
+            }
+        }
     }
     for p in &effective.summon_phrases {
         push(p);

@@ -2,7 +2,7 @@
   'use strict';
 
   var DIRECT_ZH = {
-    AutoTrigger:'外设触发键',
+    AutoTrigger:'音量键',
     Ctrl:'Ctrl', Shift:'Shift', Alt:'Alt', Win:'Win',
     LCtrl:'左 Ctrl', RCtrl:'右 Ctrl', LShift:'左 Shift', RShift:'右 Shift',
     LAlt:'左 Alt', RAlt:'右 Alt', LWin:'左 Win', RWin:'右 Win',
@@ -24,8 +24,18 @@
     Gamepad_DpadUp:'手柄 上', Gamepad_DpadDown:'手柄 下', Gamepad_DpadLeft:'手柄 左', Gamepad_DpadRight:'手柄 右'
   };
 
+  var KARABINER_ALIAS = {
+    LButton:'pointing_button1', RButton:'pointing_button2', MButton:'pointing_button3',
+    XButton1:'pointing_button4', XButton2:'pointing_button5',
+    Volume_Up:'volume_increment', Volume_Down:'volume_decrement', Volume_Mute:'mute',
+    Browser_Back:'consumer_key_code.back', Browser_Forward:'consumer_key_code.forward',
+    Browser_Refresh:'consumer_key_code.refresh',
+    Media_Next:'consumer_key_code.scan_next_track', Media_Prev:'consumer_key_code.scan_previous_track',
+    Media_Play_Pause:'consumer_key_code.play_or_pause', Media_Stop:'consumer_key_code.stop'
+  };
+
   var DIRECT_EN = {
-    AutoTrigger:'Peripheral trigger',
+    AutoTrigger:'Volume',
     Ctrl:'Ctrl', Shift:'Shift', Alt:'Alt', Win:'Win',
     LCtrl:'Left Ctrl', RCtrl:'Right Ctrl', LShift:'Left Shift', RShift:'Right Shift',
     LAlt:'Left Alt', RAlt:'Right Alt', LWin:'Left Win', RWin:'Right Win',
@@ -55,7 +65,9 @@
     var raw = String(token || '').trim();
     if(!raw) return '';
     var direct = directTable(lang);
-    if(Object.prototype.hasOwnProperty.call(direct, raw)) return direct[raw];
+    if(Object.prototype.hasOwnProperty.call(direct, raw)){
+      return direct[raw];
+    }
     if(raw.indexOf('HID_') === 0) {
       if(/^HID_R\d{2}_/i.test(raw)) {
         var parts=raw.split('_');
@@ -84,8 +96,17 @@
     return friendlySingleToken(k, lang);
   }
 
+  function karabinerAlias(key){
+    var raw=String(key||'').trim();
+    if(!raw) return '';
+    if(Object.prototype.hasOwnProperty.call(KARABINER_ALIAS, raw)) return KARABINER_ALIAS[raw];
+    if(raw.indexOf('HID_')===0) return 'vendor_hid';
+    return '';
+  }
+
   function autoTriggerDisplay(lang, sourceKey){
-    if(sourceKey) return friendlyKeyName(sourceKey, lang);
+    var src = String(sourceKey || '').trim();
+    if(src && src !== 'AutoTrigger') return friendlyKeyName(src, lang);
     return lang === 'zh' ? '音量减 / 音量加' : 'Volume Down / Up';
   }
 
@@ -117,6 +138,7 @@
     triggerDisplayLabel: triggerDisplayLabel,
     targetDisplayLabel: targetDisplayLabel,
     labelsForMapping: labelsForMapping,
-    autoTriggerDisplay: autoTriggerDisplay
+    autoTriggerDisplay: autoTriggerDisplay,
+    karabinerAlias: karabinerAlias
   };
 })(typeof window !== 'undefined' ? window : globalThis);

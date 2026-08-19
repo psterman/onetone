@@ -1469,6 +1469,9 @@ pub struct CodexMicroPadKeyRoute {
     pub source_scan: u16,
     #[serde(default)]
     pub source_extended: bool,
+    /// Folk/DIY named key (AHK/Windows), e.g. F13. Empty = official numpad scan.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub source_key: String,
     #[serde(default)]
     pub slot_id: String,
     /// UI-only keycap icon id (fast / reject / mic …). Does not affect dispatch.
@@ -1499,6 +1502,7 @@ impl Default for CodexMicroPadKeyRoute {
             micro_key_id: String::new(),
             source_scan: 0,
             source_extended: false,
+            source_key: String::new(),
             slot_id: String::new(),
             ui_icon_id: String::new(),
             enabled: true,
@@ -3218,8 +3222,19 @@ pub fn hotkey_registration_bindings(m: &MappingEntry) -> Vec<String> {
             }
         }
     }
+    for chord in hotkey_registration_agent_only(m) {
+        if !out.contains(&chord) {
+            out.push(chord);
+        }
+    }
+    out
+}
+
+/// Agent chords only — used when an app habit inherits 01 (empty triggerKey).
+fn hotkey_registration_agent_only(m: &MappingEntry) -> Vec<String> {
+    let mut out = Vec::new();
     for chord in agent_key_chords(m) {
-        if chord.is_empty() || out.contains(&chord) {
+        if chord.is_empty() {
             continue;
         }
         // Soft Pad / Micro agent key rows document *target* app chords (Ctrl+K, Enter, …).
@@ -3228,7 +3243,9 @@ pub fn hotkey_registration_bindings(m: &MappingEntry) -> Vec<String> {
         if crate::key_chord::is_app_synthesize_target_chord(&chord) {
             continue;
         }
-        out.push(chord);
+        if !out.contains(&chord) {
+            out.push(chord);
+        }
     }
     out
 }
@@ -3370,6 +3387,67 @@ pub fn mapping_physical_bindings(m: &MappingEntry) -> Vec<String> {
     physical_bindings(&tk)
 }
 
+pub fn is_folk_pad_bind_key(key: &str) -> bool {
+    let c = canonical_trigger(key);
+    if is_volume_hotkey(&c) || is_peripheral_trigger_key(&c) {
+        return true;
+    }
+    if c.starts_with("sc") && c.contains(":ext") {
+        return true;
+    }
+    c.starts_with("Numpad")
+}
+
+fn physical_tokens_match(owned: &str, incoming: &str) -> bool {
+    let a = canonical_trigger(owned);
+    let b = canonical_trigger(incoming);
+    if a == b {
+        return true;
+    }
+    if a == "AutoTrigger" && is_volume_hotkey(&b) {
+        return true;
+    }
+    if b == "AutoTrigger" && is_volume_hotkey(&a) {
+        return true;
+    }
+    false
+}
+
+fn occupancy_trigger_mapping<'a>(
+    cfg: &'a VoiceConfig,
+    mapping_id: &str,
+) -> Option<&'a MappingEntry> {
+    let m = cfg.find_mapping_by_id(mapping_id)?;
+    if is_app_scenario_mapping(m) && m.trigger_key.trim().is_empty() {
+        return find_global_baseline_mapping(cfg).or(Some(m));
+    }
+    Some(m)
+}
+
+/// Same-habit mutex: 01 vs pad. App overlay with empty triggerKey inherits baseline 01.
+pub fn physical_key_owned_by_triggers(cfg: &VoiceConfig, key: &str, mapping_id: &str) -> bool {
+    let Some(m) = occupancy_trigger_mapping(cfg, mapping_id) else {
+        return false;
+    };
+    mapping_physical_bindings(m)
+        .iter()
+        .any(|tok| physical_tokens_match(tok, key))
+        || physical_tokens_match(&m.trigger_key, key)
+        || physical_tokens_match(&m.source_key, key)
+}
+
+pub fn physical_key_owned_by_pads(cfg: &VoiceConfig, key: &str, mapping_id: &str) -> bool {
+    let Some(m) = cfg.find_mapping_by_id(mapping_id) else {
+        return false;
+    };
+    let Some(pad) = m.codex_micro_pad.as_ref() else {
+        return false;
+    };
+    pad.keys.iter().any(|r| {
+        r.enabled && !r.source_key.trim().is_empty() && physical_tokens_match(&r.source_key, key)
+    })
+}
+
 fn needs_autotrigger_default_source(m: &MappingEntry) -> bool {
     if canonical_trigger(&m.trigger_key) != "AutoTrigger" {
         return false;
@@ -3422,12 +3500,10 @@ pub fn apply_peripheral_autotrigger_with_device(
     if !device.trim().is_empty() {
         m.trigger_device = crate::device_identity::stable_id_from_path(device.trim());
     }
-    if m.source_key.trim().is_empty() {
-        m.source_key = if extra.is_empty() {
-            "AutoTrigger".into()
-        } else {
-            canonical_trigger(&extra[0])
-        };
+    if !extra.is_empty() {
+        m.source_key = canonical_trigger(&extra[0]);
+    } else if m.source_key.trim().is_empty() {
+        m.source_key = "AutoTrigger".into();
     }
     m.trigger_source = Some(make_peripheral_mixed_source_with_device(&extra, device));
 }
@@ -3724,6 +3800,55 @@ pub fn find_app_scenario_for_dispatch<'a>(
     identity: &crate::app_identity::AppIdentity,
 ) -> Option<&'a MappingEntry> {
     pick_app_scenario_for_identity(cfg, identity)
+}
+
+/// Foreground Agent habit pack. None → use global baseline (Notepad / browser / OneTone-self).
+pub fn live_pack_mapping_for<'a>(
+    cfg: &'a VoiceConfig,
+    identity: Option<&crate::app_identity::AppIdentity>,
+) -> Option<&'a MappingEntry> {
+    find_app_scenario_for_dispatch(cfg, identity?)
+}
+
+pub fn live_pack_mapping(cfg: &VoiceConfig) -> Option<&MappingEntry> {
+    if crate::app_identity::foreground_is_self() {
+        return None;
+    }
+    live_pack_mapping_for(cfg, crate::app_identity::foreground_app_identity().as_ref())
+}
+
+pub fn live_pack_id(cfg: &VoiceConfig) -> String {
+    live_pack_mapping(cfg)
+        .map(|m| m.id.clone())
+        .unwrap_or_default()
+}
+
+/// App overlay 01 is live only when this habit overrode `trigger_key` and FG matches.
+pub fn overlay_trigger_is_live(
+    m: &MappingEntry,
+    identity: Option<&crate::app_identity::AppIdentity>,
+) -> bool {
+    if !is_app_scenario_mapping(m) {
+        return true;
+    }
+    if m.trigger_key.trim().is_empty() {
+        return false;
+    }
+    identity.is_some_and(|id| mapping_matches_foreground_identity(m, id))
+}
+
+fn live_dispatch_mappings<'a>(cfg: &'a VoiceConfig) -> Vec<&'a MappingEntry> {
+    let pack_id = live_pack_mapping(cfg).map(|m| m.id.clone());
+    cfg.active_mappings()
+        .into_iter()
+        .filter(|m| {
+            if is_app_scenario_mapping(m) {
+                pack_id.as_deref() == Some(m.id.as_str())
+            } else {
+                true
+            }
+        })
+        .collect()
 }
 
 fn pick_app_scenario_for_identity<'a>(
@@ -4377,6 +4502,9 @@ impl VoiceConfig {
         let foreground = crate::app_identity::foreground_app_identity();
         let mut candidates: Vec<&MappingEntry> = Vec::new();
         for m in self.active_mappings() {
+            if !overlay_trigger_is_live(m, foreground.as_ref()) {
+                continue;
+            }
             if !mapping_matches_device(m, event.device.as_deref()) {
                 continue;
             }
@@ -4399,14 +4527,14 @@ impl VoiceConfig {
         if candidates.len() == 1 {
             return Some(candidates[0]);
         }
-        if self.follow_foreground_app_scenario {
-            if let Some(ref identity) = foreground {
-                if let Some(hit) = candidates.iter().copied().find(|m| {
-                    is_app_scenario_mapping(m) && mapping_matches_foreground_identity(m, identity)
-                }) {
-                    return Some(hit);
-                }
+        if let Some(ref identity) = foreground {
+            if let Some(hit) = candidates.iter().copied().find(|m| {
+                is_app_scenario_mapping(m) && mapping_matches_foreground_identity(m, identity)
+            }) {
+                return Some(hit);
             }
+        }
+        if self.follow_foreground_app_scenario {
             if let Some(hit) = candidates.iter().copied().find(|m| is_app_scenario_mapping(m)) {
                 return Some(hit);
             }
@@ -4420,10 +4548,10 @@ impl VoiceConfig {
         Some(candidates[0])
     }
 
-    /// All modifier-only agent watch chords across enabled mappings.
+    /// All modifier-only agent watch chords across live pack + baseline.
     pub fn agent_modifier_watch_bindings(&self) -> Vec<String> {
         let mut out = Vec::new();
-        for m in self.active_mappings() {
+        for m in live_dispatch_mappings(self) {
             for chord in agent_modifier_watch_chords(m) {
                 if !out.contains(&chord) {
                     out.push(chord);
@@ -4438,7 +4566,7 @@ impl VoiceConfig {
         &'a self,
         pressed_chord: &str,
     ) -> Option<(&'a MappingEntry, &'a AgentBinding)> {
-        for m in self.active_mappings() {
+        for m in live_dispatch_mappings(self) {
             if let Some(b) = find_agent_key_binding_for_chord(m, pressed_chord) {
                 if !crate::key_chord::is_modifier_only_chord(pressed_chord) {
                     return Some((m, b));
@@ -4456,7 +4584,7 @@ impl VoiceConfig {
         if !crate::key_chord::is_modifier_only_chord(pressed_chord) {
             return None;
         }
-        for m in self.active_mappings() {
+        for m in live_dispatch_mappings(self) {
             if let Some(b) = find_agent_key_binding_for_chord(m, pressed_chord) {
                 return Some((m, b));
             }
@@ -4466,8 +4594,13 @@ impl VoiceConfig {
 
     pub fn bindings(&self) -> Vec<String> {
         let mut out = Vec::new();
-        for m in self.active_mappings() {
-            for pb in hotkey_registration_bindings(m) {
+        for m in live_dispatch_mappings(self) {
+            let keys = if is_app_scenario_mapping(m) && m.trigger_key.trim().is_empty() {
+                hotkey_registration_agent_only(m)
+            } else {
+                hotkey_registration_bindings(m)
+            };
+            for pb in keys {
                 if !out.contains(&pb) {
                     out.push(pb);
                 }
@@ -4485,6 +4618,9 @@ impl VoiceConfig {
         let mut conflicts = Vec::new();
 
         for other in self.mappings.iter().filter(|m| m.enabled && m.id != id) {
+            if is_app_scenario_mapping(entry) || is_app_scenario_mapping(other) {
+                continue;
+            }
             let other_canonical = canonical_trigger(&other.trigger_key);
             if other_canonical == canonical {
                 conflicts.push(Conflict {
@@ -6456,6 +6592,131 @@ mod tests {
             bindings,
             vec!["Volume_Down".to_string(), "Volume_Up".to_string()]
         );
+    }
+
+    #[test]
+    fn volume_capture_overwrites_source_key_direction() {
+        let mut cfg = VoiceConfig::default();
+        let m = &mut cfg.mappings[0];
+        m.source_key = "Volume_Up".into();
+        apply_peripheral_autotrigger(m, "Volume_Down");
+        assert_eq!(m.trigger_key, "AutoTrigger");
+        assert_eq!(m.source_key, "Volume_Down");
+    }
+
+    #[test]
+    fn folk_pad_named_key_occupancy() {
+        assert!(is_folk_pad_bind_key("F13"));
+        assert!(is_folk_pad_bind_key("Volume_Down"));
+        assert!(is_folk_pad_bind_key("Numpad0"));
+        assert!(is_folk_pad_bind_key("sc52:ext0"));
+        assert!(!is_folk_pad_bind_key("A"));
+        assert!(!is_folk_pad_bind_key("Enter"));
+        let mut cfg = VoiceConfig::default();
+        let base_id = cfg.mappings[0].id.clone();
+        cfg.mappings[0].trigger_key = "F13".into();
+        cfg.mappings[0].source_key = "F13".into();
+        assert!(physical_key_owned_by_triggers(&cfg, "F13", &base_id));
+        cfg.mappings[0].codex_micro_pad = Some(CodexMicroPadConfig {
+            enabled: true,
+            keys: vec![CodexMicroPadKeyRoute {
+                micro_key_id: "AG00".into(),
+                source_key: "F14".into(),
+                enabled: true,
+                ..Default::default()
+            }],
+            ..Default::default()
+        });
+        assert!(physical_key_owned_by_pads(&cfg, "F14", &base_id));
+        assert!(!physical_key_owned_by_pads(&cfg, "F13", &base_id));
+    }
+
+    #[test]
+    fn live_pack_overlay_does_not_steal_global_keys() {
+        let mut cfg = VoiceConfig::default();
+        let base_id = cfg.mappings[0].id.clone();
+        cfg.mappings[0].trigger_key = "Volume_Down".into();
+        cfg.mappings[0].source_key = "Volume_Down".into();
+        let mut cursor = cfg.mappings[0].clone();
+        cursor.id = "cursor".into();
+        cursor.app_target_id = "cursor-chat".into();
+        cursor.trigger_key = "F13".into();
+        cursor.source_key = "F13".into();
+        cursor.enabled = true;
+        cursor.codex_micro_pad = Some(CodexMicroPadConfig {
+            enabled: true,
+            keys: vec![CodexMicroPadKeyRoute {
+                micro_key_id: "AG00".into(),
+                source_key: "F14".into(),
+                enabled: true,
+                ..Default::default()
+            }],
+            ..Default::default()
+        });
+        let mut codex = cfg.mappings[0].clone();
+        codex.id = "codex".into();
+        codex.app_target_id = "codex-chat".into();
+        codex.trigger_key = String::new();
+        codex.source_key = String::new();
+        codex.enabled = true;
+        cfg.mappings.push(cursor);
+        cfg.mappings.push(codex);
+
+        let cursor_fg = test_identity(Some("cursor-chat"), "Cursor.exe");
+        let codex_fg = test_identity(Some("codex-chat"), "Codex.exe");
+        assert_eq!(
+            live_pack_mapping_for(&cfg, Some(&cursor_fg)).map(|m| m.id.as_str()),
+            Some("cursor")
+        );
+        assert_eq!(
+            live_pack_mapping_for(&cfg, Some(&codex_fg)).map(|m| m.id.as_str()),
+            Some("codex")
+        );
+        assert!(live_pack_mapping_for(&cfg, None).is_none());
+
+        let cursor_m = cfg.find_mapping_by_id("cursor").unwrap();
+        assert!(!overlay_trigger_is_live(cursor_m, None));
+        assert!(overlay_trigger_is_live(cursor_m, Some(&cursor_fg)));
+        assert!(!overlay_trigger_is_live(cursor_m, Some(&codex_fg)));
+        let inherit = cfg.find_mapping_by_id("codex").unwrap();
+        assert!(!overlay_trigger_is_live(inherit, Some(&codex_fg)));
+        assert!(overlay_trigger_is_live(&cfg.mappings[0], None));
+
+        let f13 = crate::press_gesture::PhysicalKeyEvent {
+            is_keyup: false,
+            device: None,
+            key: "F13".into(),
+        };
+        assert!(cfg.find_mapping_for_event(&f13).is_none());
+        let vol = crate::press_gesture::PhysicalKeyEvent {
+            is_keyup: false,
+            device: None,
+            key: "Volume_Down".into(),
+        };
+        assert_eq!(
+            cfg.find_mapping_for_event(&vol).map(|m| m.id.as_str()),
+            Some(base_id.as_str())
+        );
+
+        let bindings = cfg.bindings();
+        assert!(bindings.iter().any(|k| k == "Volume_Down"));
+        assert!(!bindings.iter().any(|k| k == "F13"));
+
+        assert!(cfg.conflicts_on_enable("cursor").is_empty());
+        cfg.enable_mapping("cursor");
+        assert!(
+            cfg.mappings
+                .iter()
+                .find(|m| m.id == base_id)
+                .unwrap()
+                .enabled
+        );
+
+        assert!(!physical_key_owned_by_pads(&cfg, "F14", &base_id));
+        assert!(physical_key_owned_by_pads(&cfg, "F14", "cursor"));
+        assert!(physical_key_owned_by_triggers(&cfg, "Volume_Down", "codex"));
+        assert!(!physical_key_owned_by_triggers(&cfg, "F13", "codex"));
+        assert!(physical_key_owned_by_triggers(&cfg, "F13", "cursor"));
     }
 
     #[test]

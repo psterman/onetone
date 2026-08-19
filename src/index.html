@@ -827,7 +827,11 @@
                       <button type="button" class="record-probe-btn" id="btnRecordProbeClear">清空</button>
                     </span>
                   </header>
-                  <p class="record-probe-hint" id="recordProbeHint">开始录制后按侧键 / 音量键，这里会列出 WebView 与 Rust 各自看到的事件。没有新行 = 系统没把按键交给 OneTone。</p>
+                  <p class="record-probe-hint" id="recordProbeHint">01 启动建议 F13 / 音量减 / 侧键 2。SoftPad 格子可用 F14–F24 或小键盘。把脚踏、旋钮固件设成这些键。主事件会自动提交。未知 HID 只在「抓取自定义键」里点选。没有新行 = 系统没把按键交给 OneTone。只有 wv、没有 rs = 请重新编译并重启（只刷新页面不够）。</p>
+                  <label class="record-probe-adv"><input type="checkbox" id="recordProbeAdvancedHid"> 抓取自定义键</label>
+                  <div class="record-probe-hid-box" id="recordProbeHidBox" hidden>
+                    <ol class="record-probe-hid-list" id="recordProbeHidList"></ol>
+                  </div>
                   <ol class="record-probe-log" id="recordProbeLog"></ol>
                 </aside>
                 <div class="keys-workflow-pipeline" id="keysWorkflowPipeline">

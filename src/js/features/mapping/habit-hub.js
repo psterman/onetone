@@ -2030,9 +2030,26 @@
     return pickCanonicalAppScenario(listAppScenarios(appId,exceptMappingId));
   }
 
+  function foldLoserOverlayIntoWinner(winner,loser){
+    if(!winner||!loser) return;
+    ['triggerKey','targetKey','sourceKey'].forEach(function(k){
+      if(!String(winner[k]||'').trim()&&String(loser[k]||'').trim()) winner[k]=loser[k];
+    });
+    if(!winner.voiceOverride&&loser.voiceOverride) winner.voiceOverride=loser.voiceOverride;
+    if(!winner.cameraOverride&&loser.cameraOverride) winner.cameraOverride=loser.cameraOverride;
+    if(!(winner.agentBindings&&winner.agentBindings.length)&&loser.agentBindings&&loser.agentBindings.length){
+      winner.agentBindings=loser.agentBindings;
+    }
+    var wPad=winner.codexMicroPad;
+    var lPad=loser.codexMicroPad;
+    var wKeys=wPad&&Array.isArray(wPad.keys)?wPad.keys.length:0;
+    var lOn=!!(lPad&&lPad.enabled);
+    if((!wPad||!wPad.enabled||!wKeys)&&lOn) winner.codexMicroPad=lPad;
+  }
+
   var reconcileToastShown=false;
 
-  /** Merge duplicate preset app scenarios on each config load (not in render). */
+  /** One preset app → one mapping. Fold empty overlay fields, then drop extras. */
   function reconcileDuplicatePresetScenarios(opts){
     opts=opts||{};
     if(!core()) return { changed:false };
@@ -2041,6 +2058,7 @@
     if(!cfg||!Array.isArray(cfg.mappings)) return { changed:false };
     var changed=false;
     var mergedApps=[];
+    var drop={};
     var presetIds=presetAppTargetIds();
     for(var pi=0;pi<presetIds.length;pi++){
       var appId=presetIds[pi];
@@ -2052,21 +2070,23 @@
       for(var li=0;li<candidates.length;li++){
         var m=candidates[li];
         if(m.id===winner.id) continue;
-        if(m.enabled!==false){
-          m.enabled=false;
-          changed=true;
-        }
+        foldLoserOverlayIntoWinner(winner,m);
+        drop[m.id]=true;
         if(String(state().selectedMappingId||'')===String(m.id)){
           state().selectedMappingId=winner.id;
-          changed=true;
         }
         if(String(cfg.activeSceneId||'')===String(m.id)){
           cfg.activeSceneId=winner.id;
-          changed=true;
         }
+        changed=true;
       }
     }
     if(changed){
+      for(var i=cfg.mappings.length-1;i>=0;i--){
+        var row=cfg.mappings[i];
+        if(row&&drop[row.id]) cfg.mappings.splice(i,1);
+      }
+      cfg.mappings.forEach(function(row,idx){ if(row) row.order=idx; });
       if(!opts.skipPersist){
         if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
         else if(hooks().save) hooks().save();
@@ -2075,7 +2095,7 @@
         reconcileToastShown=true;
         var mergeMsg=t(
           'habitHubDuplicateMerged',
-          '检测到多个 {app} 场景，已统一当前使用场景，其余配置已停用并保留。'
+          '检测到多个 {app} 场景，已收成一张。'
         ).replace('{app}',mergedApps.join('、'));
         if(global.OneToneAppToast) global.OneToneAppToast.show(mergeMsg,'scheme');
         else if(global.OneToneUiFeedback&&global.OneToneUiFeedback.toast) global.OneToneUiFeedback.toast(mergeMsg);
@@ -3242,6 +3262,7 @@
     habitName:habitName,
     isAppScope:isAppScope,
     isAppScenario:isAppScenario,
+    isSelfForegroundIdentity:isSelfForegroundIdentity,
     isGlobalScope:function(m){ return !isAppScenario(m); },
     touchUpdated:touchUpdated,
     snapshotVoiceOverride:currentVoiceOverride,

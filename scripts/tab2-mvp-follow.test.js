@@ -153,6 +153,7 @@ assert.ok(/push_soft_pad_success/.test(sendRs), 'soft pad on workflow success');
 var configRs = read('src-tauri/src/config.rs');
 assert.ok(/find_preferred_workflow_scenario_for_dispatch/.test(configRs), 'preferred workflow scenario helper');
 assert.ok(/find_app_scenario_for_dispatch/.test(configRs), 'dispatch ignores follow_foreground flag');
+assert.ok(/volume_capture_overwrites_source_key_direction/.test(configRs), 'volume sourceKey keeps Up or Down');
 
 var testSendRs = read('src-tauri/src/ipc/commands/runtime/test_send.rs');
 assert.ok(/note_soft_pad_surface_for_mapping/.test(testSendRs), 'agent test send pushes soft pad');
@@ -266,5 +267,105 @@ assert.ok(html.includes('id="voiceTab2TryAgent"'), 'agent try button');
 assert.ok(!html.includes('id="voiceTab2TryCta"'), 'old single CTA removed');
 assert.ok(html.includes('id="recordProbePanel"'), 'record probe panel in keys UI');
 assert.ok(/mapping-record-probe\.js/.test(html), 'record probe script loaded');
+
+var keyLabelsSrc = read('src/js/key-labels.js');
+assert.ok(/pointing_button5/.test(keyLabelsSrc), 'XButton2 Karabiner alias');
+assert.ok(/volume_decrement/.test(keyLabelsSrc), 'Volume_Down Karabiner alias');
+assert.ok(/consumer_key_code\.back/.test(keyLabelsSrc), 'Browser_Back Karabiner alias');
+
+var keyLabelsCtx = { globalThis: null };
+keyLabelsCtx.globalThis = keyLabelsCtx;
+vm.createContext(keyLabelsCtx);
+vm.runInContext(keyLabelsSrc, keyLabelsCtx);
+var KL = keyLabelsCtx.OneToneKeyLabels;
+assert.strictEqual(KL.karabinerAlias('XButton2'), 'pointing_button5');
+assert.strictEqual(KL.karabinerAlias('Volume_Down'), 'volume_decrement');
+assert.ok(KL.triggerDisplayLabel({ triggerKey: 'AutoTrigger', sourceKey: 'Volume_Down' }, 'zh').indexOf('音量减') >= 0, 'AutoTrigger shows volume direction');
+assert.ok(KL.triggerDisplayLabel({ triggerKey: 'AutoTrigger', sourceKey: 'Volume_Up' }, 'zh').indexOf('外设触发键') < 0, 'trigger chip has no 外设 prefix');
+assert.ok(KL.friendlyKeyName('Volume_Up', 'zh').indexOf('volume_increment') < 0, 'friendly name has no Karabiner suffix');
+assert.strictEqual(KL.friendlyKeyName('XButton2', 'zh'), '鼠标侧键 2');
+
+var normalizeRs = read('src-tauri/src/ipc/recording/hardware/normalize.rs');
+assert.ok(!/"Browser_Back" => "XButton1"/.test(normalizeRs), 'Browser_Back not folded to XButton1');
+assert.ok(!/"Browser_Forward" => "XButton2"/.test(normalizeRs), 'Browser_Forward not folded to XButton2');
+assert.ok(/browser_keys_are_not_folded_to_xbutton/.test(normalizeRs), 'normalize keeps Browser vs XButton');
+
+assert.ok(/starts_with\("HID_"\)/.test(handlerRs), 'unknown HID skipped in record handler');
+assert.ok(handlerRs.indexOf('starts_with("HID_")') < handlerRs.indexOf('Pulse peripherals'), 'HID unknown returns before pulse finish');
+assert.ok(/"unknown"/.test(handlerRs), 'unknown HID probe stage');
+assert.ok(/ingestUnknown/.test(recInput), 'frontend lists unknown HID instead of auto-commit');
+assert.ok(/ingestUnknown/.test(probeJs), 'probe panel advanced HID picker');
+assert.ok(html.includes('id="recordProbeAdvancedHid"'), 'advanced HID checkbox in keys UI');
+assert.ok(/用这个/.test(probeJs), 'unknown HID requires explicit pick');
+assert.ok(/if\(!advancedHid\) return/.test(probeJs), 'HID bind disabled when advanced off');
+
+var sessionRs = read('src-tauri/src/ipc/commands/recording/session.rs');
+assert.ok(/padBind/.test(sessionRs), 'rust recording mode padBind');
+assert.ok(/hook_ok/.test(sessionRs), 'recording hello hook_ok');
+assert.ok(/"hello"/.test(sessionRs), 'hello probe on start');
+
+var finishRs = read('src-tauri/src/ipc/recording/hardware/finish.rs');
+assert.ok(/mvp_pad_bind_captured/.test(finishRs), 'pad bind emits captured event');
+assert.ok(/softpad_occupied/.test(finishRs), '01 rejects pad-occupied key');
+assert.ok(/target\.mapping_id/.test(finishRs) && /physical_key_owned_by_pads/.test(finishRs), 'occupancy scoped to recording mapping');
+assert.ok(/pad_unfriendly_key/.test(finishRs), 'pad bind rejects letters');
+assert.ok(/trigger_occupied/.test(finishRs), 'pad bind rejects 01 trigger');
+
+var configRs = read('src-tauri/src/config.rs');
+assert.ok(/source_key/.test(configRs.split('pub struct CodexMicroPadKeyRoute')[1].split('impl Default')[0]), 'pad route named source_key');
+assert.ok(/fn is_folk_pad_bind_key/.test(configRs), 'folk pad bind allow-list');
+assert.ok(/fn physical_key_owned_by_pads/.test(configRs), 'pad occupancy helper');
+assert.ok(/folk_pad_named_key_occupancy/.test(configRs), 'occupancy unit test');
+assert.ok(/fn live_pack_mapping/.test(configRs), 'live pack resolver');
+assert.ok(/fn overlay_trigger_is_live/.test(configRs), 'overlay trigger gated by FG');
+assert.ok(/live_pack_overlay_does_not_steal_global_keys/.test(configRs), 'overlay isolation unit test');
+assert.ok(/is_app_scenario_mapping\(entry\) \|\| is_app_scenario_mapping\(other\)/.test(configRs), 'enable skip app overlay conflicts');
+
+var libRs = read('src-tauri/src/lib.rs');
+assert.ok(/live_pack_id/.test(libRs), 'rebind when live pack changes');
+
+var sceneRs = read('src-tauri/src/scene_config.rs');
+assert.ok(/fn resolve_dispatch_effective_scene/.test(sceneRs), 'voice dispatch follows live pack');
+
+var cameraJs = read('src/js/features/camera/camera-presence-actions.js');
+assert.ok(/findAppScenarioForIdentity/.test(cameraJs), 'camera overlay follows FG identity');
+assert.ok(!/activeSceneId/.test(cameraJs.split('function resolveCameraOverrideMapping')[1].split('function mergeCameraOverride')[0]), 'camera runtime merge ignores 使用中');
+
+var numpadRs = read('src-tauri/src/codex_numpad_layer.rs');
+assert.ok(/fn lookup_named_pad_route/.test(numpadRs), 'named pad runtime lookup');
+assert.ok(/try_dispatch_named_pad/.test(hotkeyRs), 'hook dispatches named pad keys');
+assert.ok(/source\.id\(\)/.test(hotkeyRs), 'recording sends numpad scan id');
+
+assert.ok(/F13/.test(html), 'folk keymap hint in keys UI');
+assert.ok(/重新编译并重启/.test(html) || /只刷新页面不够/.test(html), 'rebuild hint in probe copy');
+assert.ok(/sawRs/.test(probeJs), 'probe tracks rust hello vs webview-only');
+assert.ok(/请重新编译并重启/.test(probeJs), 'rebuild hint when only wv');
+
+assert.ok(/invokeStart\(m && m.id, 'padBind'\)/.test(read('src/js/features/agent/codex-micro-pad-ui.js')), 'SoftPad bind uses hook recording');
+assert.ok(/2\[0-4\]/.test(recJs), 'F13-F24 hardware capture token');
+assert.ok(/mvp_pad_bind_captured/.test(recInput), 'frontend handles pad bind capture');
+assert.ok(/mode\(\)===\'padBind\'/.test(recInput), 'webview backup during pad bind');
+assert.ok(/rec\.mode==='padBind'/.test(recJs), 'cancel pad bind without restoring 01 snapshot');
+
+var kuCtx = { globalThis: null };
+kuCtx.globalThis = kuCtx;
+vm.createContext(kuCtx);
+vm.runInContext(read('src/js/core/app-key-utils.js'), kuCtx);
+var KU = kuCtx.OneToneAppKeyUtils;
+assert.ok(KU.isFolkPadBindKey('F13'));
+assert.ok(KU.isFolkPadBindKey('Numpad0'));
+assert.ok(!KU.isFolkPadBindKey('A'));
+assert.ok(KU.triggerOccupiesPhysical({ triggerKey: 'F13', sourceKey: 'F13' }, 'F13'));
+assert.ok(KU.padOccupiesPhysical({ keys: [{ enabled: true, microKeyId: 'AG00', sourceKey: 'F14' }] }, 'F14'));
+assert.ok(!KU.padOccupiesPhysical({ keys: [{ enabled: true, microKeyId: 'AG00', sourceKey: 'F14' }] }, 'F13'));
+var occCfg = {
+  mappings: [
+    { id: 'base', triggerKey: 'Volume_Down', sourceKey: 'Volume_Down' },
+    { id: 'cursor', appTargetId: 'cursor-chat', triggerKey: '', sourceKey: '' }
+  ]
+};
+assert.ok(KU.effectiveTriggerOccupiesPhysical(occCfg, occCfg.mappings[1], 'Volume_Down'), 'inherit 01 occupies pad bind');
+assert.ok(!KU.effectiveTriggerOccupiesPhysical(occCfg, occCfg.mappings[1], 'F13'), 'empty overlay does not occupy F13');
+assert.ok(KU.effectiveTriggerOccupiesPhysical(occCfg, { id: 'cur2', appTargetId: 'cursor-chat', triggerKey: 'F13', sourceKey: 'F13' }, 'F13'));
 
 console.log('PASS tab2-mvp-follow');

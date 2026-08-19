@@ -176,7 +176,7 @@
     };
     if(Object.prototype.hasOwnProperty.call(map, c)) return map[c];
     if(/^Digit\d$/.test(c)) return c.slice(5);
-    if(/^Numpad\d$/.test(c)) return c;
+    if(c.indexOf('Numpad')===0) return c;
     if(/^Key[A-Z]$/.test(c)) return c.slice(3);
     if(/^F\d{1,2}$/.test(c)) return c;
     if(c==='AltLeft') return 'LAlt';
@@ -343,6 +343,15 @@
     try{window.chrome?.webview?.postMessage({type:'mvp_physical_trigger', key:physical});}catch(_){ }
     return;
     }
+    }
+    if(Rec().mode()==='padBind'){
+    const physical=webEventToPhysicalKey(e.key,e.code);
+    if(!Rec().isHardwareCaptureToken(physical)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    probePush('wv','seen',physical,'padBind');
+    invokeFrontendKeydownBackup(physical);
+    return;
     }
     if(Rec().mode()==='trigger'){
     syncPeripheralSession();
@@ -585,19 +594,43 @@
     if(!msg||typeof msg!=='object') return false;
     const type=msg.type||'';
     if(type==='mvp_record_probe'){
+    if(msg.stage==='unknown'){
+      if(global.OneToneRecordProbe&&global.OneToneRecordProbe.ingestUnknown){
+        global.OneToneRecordProbe.ingestUnknown(msg.key||'', msg.note||'');
+      }else{
+        probePush('rs','unknown', msg.key||'', msg.note||'');
+      }
+      return true;
+    }
     probePush('rs', msg.stage||'probe', msg.key||'', msg.note||'');
     return true;
     }
     if(type==='mvp_record_echo'){
     clearReconcileWatchdog();
-    probePush('rs','echo', msg.key||'', 'recognition_key_echo');
-    hooks().toast(t('recordTriggerMatchesTarget','这是「语音快捷键」，不能用作触发键。请按鼠标侧键或蓝牙音量键，或先在右侧修改识别键。'));
-    hooks().pushLog('[record] echo rejected key='+String(msg.key||''));
+    var echoReason=String(msg.reason||'recognition_key_echo');
+    probePush('rs','echo', msg.key||'', echoReason);
+    hooks().toast(echoReason==='softpad_occupied'
+      ? t('recordTriggerMatchesSoftPad','这是 SoftPad 格子键，不能用作 01 触发。请换 F13 / 音量减 / 侧键，或先改 SoftPad 绑定。')
+      : t('recordTriggerMatchesTarget','这是「语音快捷键」，不能用作触发键。请按鼠标侧键或蓝牙音量键，或先在右侧修改识别键。'));
+    hooks().pushLog('[record] echo rejected key='+String(msg.key||'')+' reason='+echoReason);
+    return true;
+    }
+    if(type==='mvp_pad_bind_captured'){
+    probePush('rs','commit', msg.key||'', 'padBind');
+    var padUi=global.OneToneCodexMicroPadUi;
+    if(padUi&&typeof padUi.onPadBindCaptured==='function') padUi.onPadBindCaptured(msg.key||'');
     return true;
     }
     if(type==='mvp_record_rejected'){
     var reason=String(msg.reason||'');
     probePush('rs','reject', msg.key||'', reason);
+    if(String(msg.mode||'')==='padBind'){
+      var padUi2=global.OneToneCodexMicroPadUi;
+      if(padUi2&&typeof padUi2.onPadBindRejected==='function') padUi2.onPadBindRejected(reason, msg.key||'');
+      else if(reason==='trigger_occupied') hooks().toast(t('recordPadTriggerOccupied','这是 01 触发键，不能绑到 SoftPad 格子'));
+      else if(reason==='pad_unfriendly_key') hooks().toast(t('recordPadUnfriendlyKey','请用 F13–F24 / 音量 / 侧键 / 小键盘，不要用字母或 Enter'));
+      return true;
+    }
     hooks().toast(reason.indexOf('left_mouse')>=0||reason.indexOf('mouse')>=0?t('leftMouseRejected'):t('whitelistRejected'));
     Rec().cancel();
     return true;

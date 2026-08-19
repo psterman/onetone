@@ -1742,8 +1742,8 @@
     var pad = m && m.codexMicroPad;
     if (!pad || !pad.enabled || !slotId) return '';
     var route = routeForSlot(m, slotId);
-    if (!route || !route.enabled || !route.sourceScan) return '';
-    return scanLabel(route.sourceScan, route.sourceExtended);
+    if (!route || !route.enabled) return '';
+    return routeSourceLabel(route);
   }
 
   function routeBySource(pad, scan, ext) {
@@ -2253,6 +2253,28 @@
       }
     }
     return null;
+  }
+
+  function findNamedSourceConflict(pad, key, exceptMicroId) {
+    var k = String(key || '').trim();
+    if (!k || !pad || !Array.isArray(pad.keys)) return null;
+    for (var i = 0; i < pad.keys.length; i++) {
+      var r = pad.keys[i];
+      if (!r || !r.enabled || r.microKeyId === exceptMicroId) continue;
+      if (String(r.sourceKey || '').trim() === k) return r.microKeyId;
+    }
+    return null;
+  }
+
+  function routeSourceLabel(route) {
+    if (!route) return '';
+    var named = String(route.sourceKey || '').trim();
+    if (named) {
+      var kl = global.OneToneKeyLabels;
+      return kl && kl.friendlyKeyName ? kl.friendlyKeyName(named) : named;
+    }
+    if (Number(route.sourceScan) > 0) return scanLabel(route.sourceScan, route.sourceExtended);
+    return '';
   }
 
   function renderHardwarePad(m, pad, opts) {
@@ -9824,6 +9846,7 @@
       sourceExtended: route.sourceExtended != null
         ? !!route.sourceExtended
         : !!(def && def.sourceExtended) || !!(suggest && suggest.sourceExtended),
+      sourceKey: String(route.sourceKey || '').trim(),
       iconTouched: iconState.iconTouched,
       mode: mode,
       root: host,
@@ -9944,14 +9967,14 @@
     if (hwHint) {
       hwHint.textContent = t(
         'codexMicroEditHwDetailsHint',
-        '不连接实体键盘时无需设置。只有连接实体小键盘或调试扫描码时才需要。'
+        '把脚踏/旋钮固件设成 F13–F24、音量或侧键。官方小键盘仍可用扫描码。'
       );
     }
 
     var recBtn = document.getElementById('microHwEditRecord');
     if (recBtn) {
-      recBtn.textContent = editDraft.sourceScan
-        ? scanLabel(editDraft.sourceScan, editDraft.sourceExtended)
+      recBtn.textContent = routeSourceLabel(editDraft)
+        ? routeSourceLabel(editDraft)
         : (microKeyId === 'ENC'
           ? t('codexMicroPadScreenPower', '屏幕总开关')
           : (isNavMicroKey(microKeyId)
@@ -9973,7 +9996,8 @@
     if (dbgScan) {
       dbgScan.textContent = 'microKeyId=' + microKeyId +
         ' · sourceScan=0x' + Number(editDraft.sourceScan || 0).toString(16) +
-        ' · extended=' + (editDraft.sourceExtended ? '1' : '0');
+        ' · extended=' + (editDraft.sourceExtended ? '1' : '0') +
+        ' · sourceKey=' + String(editDraft.sourceKey || '');
     }
 
     renderCapabilityList(m);
@@ -9994,11 +10018,11 @@
         var r = routeForMicroKey(pad, microKeyId) || {};
         editDraft.sourceScan = r.sourceScan || 0;
         editDraft.sourceExtended = !!r.sourceExtended;
+        editDraft.sourceKey = String(r.sourceKey || '').trim();
         var rb = document.getElementById('microHwEditRecord');
         if (rb) {
-          rb.textContent = editDraft.sourceScan
-            ? scanLabel(editDraft.sourceScan, editDraft.sourceExtended)
-            : t('codexMicroPadTapRecord', '点击绑定');
+          rb.textContent = routeSourceLabel(editDraft)
+            || t('codexMicroPadTapRecord', '点击绑定');
         }
         commitEditKeycapDraft({ keepOpen: true, quiet: true });
       });
@@ -10115,11 +10139,12 @@
       enabled: !!slotId,
       sourceScan: scan,
       sourceExtended: (editDraft.microKeyId === 'ENC' || navKey) ? false : editDraft.sourceExtended,
+      sourceKey: (editDraft.microKeyId === 'ENC' || navKey) ? '' : String(editDraft.sourceKey || '').trim(),
       advanced: navKey ? true : undefined
     }, { skipPersist: true });
     pad.layoutProfile = 'custom';
     if (pad.softwareEnhanceEnabled == null) pad.softwareEnhanceEnabled = true;
-    if (slotId && !scan && suggest && editDraft.microKeyId !== 'ENC' && !navKey) {
+    if (slotId && !scan && !editDraft.sourceKey && suggest && editDraft.microKeyId !== 'ENC' && !navKey) {
       upsertRoute(m, pad, editDraft.microKeyId, {
         sourceScan: suggest.sourceScan,
         sourceExtended: !!suggest.sourceExtended
@@ -10223,6 +10248,7 @@
         microKeyId: microKeyId,
         sourceScan: 0,
         sourceExtended: false,
+        sourceKey: '',
         slotId: '',
         uiIconId: '',
         enabled: false
@@ -10231,6 +10257,11 @@
     }
     if (patch.sourceScan != null) route.sourceScan = patch.sourceScan;
     if (patch.sourceExtended != null) route.sourceExtended = !!patch.sourceExtended;
+    if (patch.sourceKey != null) route.sourceKey = String(patch.sourceKey || '').trim();
+    if (route.sourceKey) {
+      route.sourceScan = 0;
+      route.sourceExtended = false;
+    }
     if (patch.slotId != null) route.slotId = patch.slotId;
     if (patch.enabled != null) route.enabled = !!patch.enabled;
     if (patch.uiIconId != null) route.uiIconId = patch.uiIconId;
@@ -10241,9 +10272,10 @@
       if (microKeyId === 'ENC' || isNavMicroKey(microKeyId)) {
         route.sourceScan = 0;
         route.sourceExtended = false;
+        route.sourceKey = '';
       }
       if (isNavMicroKey(microKeyId)) route.advanced = true;
-    } else if (route.slotId && !route.sourceScan) {
+    } else if (route.slotId && !route.sourceScan && !route.sourceKey) {
       var def = LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === microKeyId; });
       var suggest = AGENT_NUMPAD_SUGGEST[microKeyId];
       if (def && Number(def.sourceScan) > 0) {
@@ -10261,6 +10293,85 @@
     else persist();
   }
 
+  var padBindPending = null;
+
+  function stopPadBindSession() {
+    var pending = padBindPending;
+    padBindPending = null;
+    var Rec = global.OneToneMappingRecording;
+    if (Rec && Rec.mode && Rec.mode() === 'padBind' && Rec.setMode) Rec.setMode('none');
+    if (Rec && Rec.invokeStop) Rec.invokeStop();
+    var probe = global.OneToneRecordProbe;
+    if (probe && probe.setRecording) probe.setRecording(false);
+    return pending;
+  }
+
+  function applyPadBindKey(key) {
+    var pending = padBindPending;
+    if (!pending) return false;
+    padBindPending = null;
+    var Rec = global.OneToneMappingRecording;
+    if (Rec && Rec.invokeStop) Rec.invokeStop();
+    var physical = String(key || '').trim();
+    var ku = global.OneToneAppKeyUtils;
+    var cfg = global.OneToneState && global.OneToneState.state && global.OneToneState.state.config;
+    var occupied = !!(ku && ku.effectiveTriggerOccupiesPhysical && ku.effectiveTriggerOccupiesPhysical(cfg, pending.m, physical));
+    if (occupied) {
+      toast(t('recordPadTriggerOccupied', '这是 01 触发键，不能绑到 SoftPad 格子'));
+      if (pending.done) pending.done();
+      return true;
+    }
+    var parsed = parseRecordedNumpad(physical);
+    if (parsed) {
+      if (findSourceConflict(pending.pad, parsed.scan, parsed.ext, pending.microKeyId)) {
+        toast(t('codexMicroPadSourceConflict', '该小键盘键已被占用'));
+        if (pending.done) pending.done();
+        return true;
+      }
+      upsertRoute(pending.m, pending.pad, pending.microKeyId, {
+        sourceScan: parsed.scan,
+        sourceExtended: parsed.ext,
+        sourceKey: '',
+        enabled: true
+      });
+      toast(t('codexMicroPadRecordDone', '已绑定小键盘键'));
+    } else {
+      if (findNamedSourceConflict(pending.pad, physical, pending.microKeyId)) {
+        toast(t('codexMicroPadSourceConflict', '该小键盘键已被占用'));
+        if (pending.done) pending.done();
+        return true;
+      }
+      upsertRoute(pending.m, pending.pad, pending.microKeyId, {
+        sourceKey: physical,
+        sourceScan: 0,
+        sourceExtended: false,
+        enabled: true
+      });
+      toast(t('codexMicroPadNamedRecordDone', '已绑定 ') + physical);
+    }
+    if (pending.done) pending.done();
+    return true;
+  }
+
+  function onPadBindCaptured(key) {
+    applyPadBindKey(key);
+  }
+
+  function onPadBindRejected(reason, key) {
+    if (reason === 'trigger_occupied') {
+      toast(t('recordPadTriggerOccupied', '这是 01 触发键，不能绑到 SoftPad 格子'));
+    } else if (reason === 'pad_unfriendly_key') {
+      toast(t('recordPadUnfriendlyKey', '请用 F13–F24 / 音量 / 侧键 / 小键盘，不要用字母或 Enter'));
+    } else {
+      toast(t('codexMicroPadRecordInvalid', '请录制小键盘区按键'));
+    }
+    void key;
+  }
+
+  function onPadBindCancelled() {
+    padBindPending = null;
+  }
+
   function startRecordNumpad(m, pad, microKeyId, done) {
     if (microKeyId === 'ENC') {
       toast(t('codexMicroPadEncScreenOnly', '总开关默认仅屏幕点击，不占用小键盘 0（说话键）'));
@@ -10272,37 +10383,24 @@
       if (done) done();
       return;
     }
-    toast(t('codexMicroPadRecordHint', '请按下小键盘上的目标键…'));
-    var handler = function (e) {
-      var code = String(e.code || '');
-      if (code.indexOf('Numpad') !== 0 && code !== 'NumpadEnter') return;
-      e.preventDefault();
-      e.stopPropagation();
-      document.removeEventListener('keydown', handler, true);
-      var keyName = code === 'NumpadEnter' ? 'NumpadEnter' : code;
-      var parsed = parseRecordedNumpad(keyName);
-      if (!parsed) {
-        toast(t('codexMicroPadRecordInvalid', '请录制小键盘区按键'));
-        if (done) done();
-        return;
-      }
-      var conflict = findSourceConflict(pad, parsed.scan, parsed.ext, microKeyId);
-      if (conflict) {
-        toast(t('codexMicroPadSourceConflict', '该小键盘键已被占用'));
-        if (done) done();
-        return;
-      }
-      upsertRoute(m, pad, microKeyId, {
-        sourceScan: parsed.scan,
-        sourceExtended: parsed.ext,
-        enabled: true
-      });
-      toast(t('codexMicroPadRecordDone', '已绑定小键盘键'));
+    var Rec = global.OneToneMappingRecording;
+    if (Rec && Rec.mode && Rec.mode() !== 'none' && Rec.mode() !== 'padBind') {
+      toast(t('codexMicroPadRecordBusy', '请先结束按键录制'));
       if (done) done();
-    };
-    document.addEventListener('keydown', handler, true);
+      return;
+    }
+    stopPadBindSession();
+    toast(t('codexMicroPadFolkRecordHint', '按下目标键：F13–F24、音量、侧键或小键盘。把脚踏/旋钮固件设成这些键。'));
+    padBindPending = { m: m, pad: pad, microKeyId: microKeyId, done: done || function () {} };
+    if (Rec && Rec.setMode) Rec.setMode('padBind');
+    var probe = global.OneToneRecordProbe;
+    if (probe && probe.setRecording) probe.setRecording(true, 'padBind');
+    if (Rec && Rec.invokeStart) Rec.invokeStart(m && m.id, 'padBind');
     setTimeout(function () {
-      document.removeEventListener('keydown', handler, true);
+      if (!padBindPending || padBindPending.microKeyId !== microKeyId) return;
+      stopPadBindSession();
+      toast(t('logTimeout', '录制超时'));
+      if (done) done();
     }, 12000);
   }
 
@@ -10544,6 +10642,9 @@
     ensureHosts: ensureHosts,
     refreshTrigger: refreshTrigger,
     onPadKeyEvent: onPadKeyEvent,
+    onPadBindCaptured: onPadBindCaptured,
+    onPadBindRejected: onPadBindRejected,
+    onPadBindCancelled: onPadBindCancelled,
     onPadReady: onPadReady,
     onOverlayDismissed: onOverlayDismissed,
     onCapabilitySelected: onCapabilitySelected,

@@ -553,17 +553,58 @@
     return m;
   }
 
+  var runtimeFgIdentity=null;
+  var runtimeFgAt=0;
+
+  function isSelfForegroundIdentity(identity){
+    var hub=global.OneToneHabitHub;
+    if(hub&&hub.isSelfForegroundIdentity) return hub.isSelfForegroundIdentity(identity);
+    if(!identity) return true;
+    var exe=String(identity.exeName||identity.exe_name||'').toLowerCase();
+    if(exe.indexOf('onetone')>=0) return true;
+    var path=String(identity.fullPath||identity.full_path||'').toLowerCase();
+    return path.indexOf('onetone')>=0||path.indexOf('voice-pilot')>=0;
+  }
+
+  function runtimeForegroundIdentity(){
+    var nav=global.OneToneHabitLayerNav;
+    if(nav&&nav.getForegroundIdentity){
+      var id=nav.getForegroundIdentity();
+      if(id) return id;
+    }
+    var u=uiState();
+    if(u&&u.habitHubFgIdentity) return u.habitHubFgIdentity;
+    return runtimeFgIdentity;
+  }
+
+  function refreshRuntimeForeground(){
+    var now=Date.now();
+    if(now-runtimeFgAt<800) return;
+    runtimeFgAt=now;
+    var nav=global.OneToneHabitLayerNav;
+    if(nav&&nav.getForegroundIdentity){
+      var id=nav.getForegroundIdentity();
+      if(id) runtimeFgIdentity=id;
+    }
+    var u=uiState();
+    if(u&&u.habitHubFgIdentity) runtimeFgIdentity=u.habitHubFgIdentity;
+    if(global.OneToneIpc&&global.OneToneIpc.invoke){
+      global.OneToneIpc.invoke('cmd_foreground_app',{}).then(function(res){
+        runtimeFgIdentity=res||null;
+      }).catch(function(){});
+    }
+  }
+
   /** Runtime merge only — does not authorize writing override. */
   function resolveCameraOverrideMapping(){
     var edit=scenarioCameraEditMapping();
     if(edit) return edit;
-    var cfg=stateRoot().config||{};
-    var activeId=String(cfg.activeSceneId||'').trim();
-    if(activeId&&coreApi()&&coreApi().byId){
-      var active=coreApi().byId(activeId);
-      if(active&&active.enabled&&diffApi()&&diffApi().isAppScenarioMapping&&diffApi().isAppScenarioMapping(active)){
-        return active;
-      }
+    var identity=runtimeForegroundIdentity();
+    if(!identity||isSelfForegroundIdentity(identity)) return null;
+    var hub=global.OneToneHabitHub;
+    if(hub&&hub.findAppScenarioForIdentity){
+      var hit=hub.findAppScenarioForIdentity(identity);
+      if(hit&&hit.enabled!==false) return hit;
     }
     return null;
   }
@@ -1305,6 +1346,7 @@
   }
 
   function syncDetectInterval(){
+    refreshRuntimeForeground();
     var api=global.OneToneCameraGazeLandmarker;
     var hand=global.OneToneCameraHandGesture;
     if(!api||!api.setDetectIntervalMs) return;

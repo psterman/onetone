@@ -12,6 +12,7 @@ pub enum RecordMode {
     Trigger,
     Target,
     AgentBinding,
+    PadBind,
 }
 
 #[derive(Debug, Clone)]

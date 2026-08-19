@@ -43,7 +43,7 @@
   function fromLegacyRecordingMode(mode) {
     mode = String(mode || 'none');
     if (mode === 'none' || !mode) return PHASES.idle;
-    if (mode === 'trigger' || mode === 'target' || mode === 'agentBinding') return PHASES.recording;
+    if (mode === 'trigger' || mode === 'target' || mode === 'agentBinding' || mode === 'padBind') return PHASES.recording;
     return PHASES.idle;
   }
 
@@ -137,7 +137,7 @@
     phase = normalize(phase || currentPhase || global.__otRecordIpcPhase);
     if (isBusy(phase)) return true;
     mode = String(mode || 'none');
-    return mode === 'trigger' || mode === 'target' || mode === 'agentBinding';
+    return mode === 'trigger' || mode === 'target' || mode === 'agentBinding' || mode === 'padBind';
   }
 
   function getPhase() {

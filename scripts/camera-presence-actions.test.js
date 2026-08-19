@@ -341,6 +341,19 @@ Api.dispatchAction('send','blink').then(function(r){
   global.OneToneState.selectedMappingId='';
   global.OneToneMappingCore={byId:function(id){ return id==='codex-1'?codex:null; }};
   global.OneToneHabitOverrideDiff={isAppScenarioMapping:function(m){ return !!(m&&m.appTargetId); }};
+  var cameraFg=null;
+  global.OneToneHabitLayerNav={getForegroundIdentity:function(){ return cameraFg; }};
+  global.OneToneHabitHub={
+    findAppScenarioForIdentity:function(identity){
+      if(!identity) return null;
+      var preset=String(identity.matchedPresetAppId||identity.matched_preset_app_id||'');
+      return preset==='codex-chat'?codex:null;
+    },
+    isSelfForegroundIdentity:function(identity){
+      if(!identity) return true;
+      return String(identity.exeName||identity.exe_name||'').toLowerCase().indexOf('onetone')>=0;
+    }
+  };
   global.OneToneAgentActions={
     actionById:function(id){
       return {cancel:1,startDictation:1,openAgent:1,status:1,commandPalette:1}[id]
@@ -348,8 +361,14 @@ Api.dispatchAction('send','blink').then(function(r){
     }
   };
 
+  var effGlobal=Api.prefs();
+  assert.strictEqual(effGlobal.shakeHead,'pressCtrlI','no Agent FG uses global camera prefs');
+  assert.strictEqual(effGlobal.deliberateBlink,'pressCtrlI');
+  assert.strictEqual(Api.overrideDiffersFromBase(),false);
+
+  cameraFg={exeName:'Codex.exe',matchedPresetAppId:'codex-chat'};
   var eff=Api.prefs();
-  assert.strictEqual(eff.shakeHead,'agent:cancel','runtime merges active scenario override');
+  assert.strictEqual(eff.shakeHead,'agent:cancel','runtime merges foreground scenario override');
   assert.strictEqual(eff.deliberateBlink,'agent:startDictation');
   assert.strictEqual(Api.overrideDiffersFromBase(),true);
 

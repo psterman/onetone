@@ -32,8 +32,9 @@ pub(crate) fn finish_hardware_capture(
     let is_trigger = matches!(target.mode, RecordMode::Trigger);
     let is_target = matches!(target.mode, RecordMode::Target);
     let is_agent_binding = matches!(target.mode, RecordMode::AgentBinding);
+    let is_pad_bind = matches!(target.mode, RecordMode::PadBind);
 
-    let key = if is_trigger || is_agent_binding {
+    let key = if is_trigger || is_agent_binding || is_pad_bind {
         sanitize_trigger_capture(key)
     } else {
         key.to_string()
@@ -59,6 +60,45 @@ pub(crate) fn finish_hardware_capture(
             "key": key,
             "mappingId": target.mapping_id,
             "mode": "trigger",
+        });
+        window.emit("to_js", &ack).ok();
+        return;
+    }
+
+    if is_trigger && crate::config::physical_key_owned_by_pads(&state.cfg.lock(), &key, &target.mapping_id) {
+        emit_record_probe(window, "drop", &key, "softpad_occupied");
+        let ack = serde_json::json!({
+            "type": "mvp_record_echo",
+            "key": key,
+            "mappingId": target.mapping_id,
+            "mode": "trigger",
+            "reason": "softpad_occupied",
+        });
+        window.emit("to_js", &ack).ok();
+        return;
+    }
+
+    if is_pad_bind && !crate::config::is_folk_pad_bind_key(&key) {
+        emit_record_probe(window, "drop", &key, "pad_unfriendly_key");
+        let ack = serde_json::json!({
+            "type": "mvp_record_rejected",
+            "reason": "pad_unfriendly_key",
+            "key": key,
+            "mappingId": target.mapping_id,
+            "mode": "padBind",
+        });
+        window.emit("to_js", &ack).ok();
+        return;
+    }
+
+    if is_pad_bind && crate::config::physical_key_owned_by_triggers(&state.cfg.lock(), &key, &target.mapping_id) {
+        emit_record_probe(window, "drop", &key, "trigger_occupied");
+        let ack = serde_json::json!({
+            "type": "mvp_record_rejected",
+            "reason": "trigger_occupied",
+            "key": key,
+            "mappingId": target.mapping_id,
+            "mode": "padBind",
         });
         window.emit("to_js", &ack).ok();
         return;
@@ -93,6 +133,22 @@ pub(crate) fn finish_hardware_capture(
     *state.record_hw_pending.lock() = None;
     *state.record_started_at.lock() = None;
     clear_record_guard(state);
+
+    if is_pad_bind {
+        if let Some(ref mgr) = *state.hotkey_mgr.lock() {
+            mgr.stop_recording();
+        }
+        let ack = serde_json::json!({
+            "type": "mvp_pad_bind_captured",
+            "key": physical_key,
+            "mappingId": target.mapping_id,
+            "mode": "padBind",
+        });
+        window.emit("to_js", &ack).ok();
+        emit_record_probe(window, "commit", &physical_key, "padBind");
+        crate::tray::refresh_tray_visual_forced(window.app_handle());
+        return;
+    }
 
     if is_trigger {
         {

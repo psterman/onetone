@@ -149,6 +149,16 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       renderRecordCancelBar();
       return;
     }
+    if(rec.mode==='padBind'){
+      rec.mode='none';
+      rec.mappingId='';
+      invokeStopRecording();
+      setRecording('none');
+      if(global.OneToneCodexMicroPadUi&&typeof global.OneToneCodexMicroPadUi.onPadBindCancelled==='function'){
+        global.OneToneCodexMicroPadUi.onPadBindCancelled();
+      }
+      return;
+    }
     rec.mode='none';
     if(rec.snapshot){
       hooks().setEditorTriggerKey(rec.snapshot.editorTrigger);
@@ -885,6 +895,9 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     if(k.startsWith('Gamepad_')||k.startsWith('HID_')) return true;
     if(physical.startsWith('Gamepad_')||physical.startsWith('HID_')) return true;
     if(/^VK_[0-9A-Fa-f]{2}$/.test(k)||/^VK_[0-9A-Fa-f]{2}$/.test(physical)) return true;
+    if(/^F([1-9]|1[0-9]|2[0-4])$/.test(k)||/^F([1-9]|1[0-9]|2[0-4])$/.test(physical)) return true;
+    if(k==='AppsKey'||physical==='AppsKey') return true;
+    if(k.indexOf('Numpad')===0||physical.indexOf('Numpad')===0) return true;
     return k==='Volume_Up' || k==='Volume_Down' || k==='Volume_Mute'
       || k==='AudioVolumeUp' || k==='AudioVolumeDown' || k==='AudioVolumeMute'
       || k==='AudioVolume_Up' || k==='AudioVolume_Down' || k==='AudioVolume_Mute'

@@ -568,6 +568,9 @@ fn build_agent_routes_for_candidate(
                 };
                 routes.insert(source.id(), snapshot.clone());
             }
+            if !route.source_key.trim().is_empty() {
+                routes.insert(route.source_key.trim().to_string(), snapshot.clone());
+            }
             if !route.micro_key_id.trim().is_empty() {
                 by_micro.insert(route.micro_key_id.clone(), snapshot);
             }
@@ -613,6 +616,9 @@ fn build_agent_routes_for_candidate(
                 extended: route.source_extended,
             };
             routes.insert(source.id(), snapshot.clone());
+        }
+        if !route.source_key.trim().is_empty() {
+            routes.insert(route.source_key.trim().to_string(), snapshot.clone());
         }
         if !route.micro_key_id.trim().is_empty() {
             by_micro.insert(route.micro_key_id.clone(), snapshot);

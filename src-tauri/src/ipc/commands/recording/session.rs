@@ -1,6 +1,9 @@
 use std::sync::Arc;
 use std::time::Instant;
 
+use tauri::Emitter;
+use tauri::Manager;
+
 use crate::ipc::recording::{RecordMode, RecordingTarget};
 use crate::AppState;
 
@@ -15,6 +18,7 @@ pub fn cmd_start_recording(
     let record_mode = match mode.as_str() {
         "target" => RecordMode::Target,
         "agentBinding" | "agent_binding" => RecordMode::AgentBinding,
+        "padBind" | "pad_bind" => RecordMode::PadBind,
         _ => RecordMode::Trigger,
     };
     *state.recording_target.lock() = Some(RecordingTarget {
@@ -29,6 +33,17 @@ pub fn cmd_start_recording(
     crate::ipc::recording::clear_record_guard(state.inner());
     if let Some(ref mgr) = *state.hotkey_mgr.lock() {
         mgr.start_recording();
+    }
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.emit(
+            "to_js",
+            serde_json::json!({
+                "type": "mvp_record_probe",
+                "stage": "hello",
+                "key": "",
+                "note": "hook_ok",
+            }),
+        );
     }
     crate::tray::refresh_tray_visual_forced(&app);
 }

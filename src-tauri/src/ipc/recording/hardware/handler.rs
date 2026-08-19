@@ -14,7 +14,7 @@ use crate::press_gesture::{parse_physical_event, RecordedGesture};
 use crate::AppState;
 
 use super::finish::finish_hardware_capture;
-use super::guard::{arm_record_guard, emit_record_probe, emit_record_seen, record_guard_active};
+use super::guard::{emit_record_probe, emit_record_seen, record_guard_active};
 use super::normalize::{
     build_hardware_record_chord, is_recordable_target_hotkey, normalize_hardware_key,
 };
@@ -45,10 +45,26 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
     };
     let event = parse_physical_event(key_name);
     let is_trigger = matches!(target.mode, RecordMode::Trigger | RecordMode::AgentBinding);
+    let is_pad_bind = matches!(target.mode, RecordMode::PadBind);
     let is_target = matches!(target.mode, RecordMode::Target);
     let is_keyup = event.is_keyup;
     let normalized = normalize_hardware_key(&event.key);
     let device = event.device.as_deref();
+    if (is_trigger || is_pad_bind) && normalized.starts_with("HID_") {
+        let hex = record_report_hex(&normalized, device).unwrap_or_default();
+        let note = [device.unwrap_or(""), hex.as_str()]
+            .into_iter()
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ");
+        emit_record_probe(
+            window,
+            "unknown",
+            &normalized,
+            if note.is_empty() { "unknown_hid" } else { &note },
+        );
+        return;
+    }
     emit_record_probe(
         window,
         "recv",
@@ -119,7 +135,9 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
     }
 
     // Pulse peripherals (volume, side buttons) finish on keydown — they often lack keyup.
-    if is_trigger && (is_peripheral_trigger_key(&normalized) || is_volume_hotkey(&normalized)) {
+    if (is_trigger || is_pad_bind)
+        && (is_peripheral_trigger_key(&normalized) || is_volume_hotkey(&normalized))
+    {
         *state.record_hw_pending.lock() = None;
         emit_record_probe(window, "finish", &normalized, "pulse_peripheral");
         finish_hardware_capture(
@@ -148,7 +166,10 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
         }
     }
 
-    if is_trigger && !is_modifier_token(&normalized) && !is_spurious_trigger_capture(&normalized) {
+    if (is_trigger || is_pad_bind)
+        && !is_modifier_token(&normalized)
+        && !is_spurious_trigger_capture(&normalized)
+    {
         *state.record_hw_pending.lock() = None;
         finish_hardware_capture(
             state,

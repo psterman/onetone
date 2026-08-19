@@ -154,6 +154,72 @@
     return false;
   }
 
+  function isFolkPadBindKey(key){
+    var k=String(key||'').trim();
+    if(!k||k==='AutoTrigger') return false;
+    if(/^F([1-9]|1[0-9]|2[0-4])$/.test(k)) return true;
+    if(k.indexOf('Numpad')===0) return true;
+    if(k==='AppsKey') return true;
+    return /^(Volume_|XButton|Browser_|Media_|Launch_|Gamepad_)/.test(k);
+  }
+
+  function mappingPhysicalTokens(m){
+    var trig=String(m&&m.triggerKey||'').trim();
+    var src=String(m&&m.sourceKey||'').trim();
+    if(trig==='AutoTrigger'||/^Volume_/.test(trig)||/^Volume_/.test(src)){
+      return ['Volume_Up','Volume_Down'];
+    }
+    var out=[];
+    if(trig) out.push(trig);
+    if(src&&src!==trig&&src!=='AutoTrigger') out.push(src);
+    return out;
+  }
+
+  function triggerOccupiesPhysical(m, key){
+    var k=String(key||'').trim();
+    if(!k||!m) return false;
+    var toks=mappingPhysicalTokens(m);
+    if(toks.indexOf(k)>=0) return true;
+    if(k==='AutoTrigger') return toks.indexOf('Volume_Up')>=0||toks.indexOf('Volume_Down')>=0;
+    return false;
+  }
+
+  function padOccupiesPhysical(pad, key, exceptMicroId){
+    var k=String(key||'').trim();
+    if(!k||!pad||!Array.isArray(pad.keys)) return false;
+    for(var i=0;i<pad.keys.length;i++){
+      var r=pad.keys[i];
+      if(!r||!r.enabled||r.microKeyId===exceptMicroId) continue;
+      if(String(r.sourceKey||'').trim()===k) return true;
+    }
+    return false;
+  }
+
+  function occupancyTriggerMapping(cfg, mapping){
+    if(!mapping) return null;
+    var isApp=false;
+    if(global.OneToneHabitOverrideDiff&&global.OneToneHabitOverrideDiff.isAppScenarioMapping){
+      isApp=!!global.OneToneHabitOverrideDiff.isAppScenarioMapping(mapping);
+    }else{
+      isApp=!!String(mapping.appTargetId||mapping.app_target_id||'').trim();
+    }
+    if(isApp&&!String(mapping.triggerKey||mapping.trigger_key||'').trim()){
+      if(global.OneToneHabitOverrideDiff&&global.OneToneHabitOverrideDiff.findGlobalBaselineMapping){
+        return global.OneToneHabitOverrideDiff.findGlobalBaselineMapping(cfg, global.OneToneMappingCore)||mapping;
+      }
+      var list=cfg&&Array.isArray(cfg.mappings)?cfg.mappings:[];
+      for(var i=0;i<list.length;i++){
+        if(!String(list[i].appTargetId||list[i].app_target_id||'').trim()) return list[i];
+      }
+      return mapping;
+    }
+    return mapping;
+  }
+
+  function effectiveTriggerOccupiesPhysical(cfg, mapping, key){
+    return triggerOccupiesPhysical(occupancyTriggerMapping(cfg, mapping), key);
+  }
+
   global.OneToneAppKeyUtils={
     rawEventForHotkey:rawEventForHotkey,
     buildPeripheralTriggerSource:buildPeripheralTriggerSource,
@@ -165,6 +231,12 @@
     armTriggerLeftClickIgnore:armTriggerLeftClickIgnore,
     armTargetLeftClickIgnore:armTargetLeftClickIgnore,
     shouldIgnoreTriggerLeftClickCapture:shouldIgnoreTriggerLeftClickCapture,
-    shouldIgnoreTargetLeftClickCapture:shouldIgnoreTargetLeftClickCapture
+    shouldIgnoreTargetLeftClickCapture:shouldIgnoreTargetLeftClickCapture,
+    isFolkPadBindKey:isFolkPadBindKey,
+    mappingPhysicalTokens:mappingPhysicalTokens,
+    triggerOccupiesPhysical:triggerOccupiesPhysical,
+    occupancyTriggerMapping:occupancyTriggerMapping,
+    effectiveTriggerOccupiesPhysical:effectiveTriggerOccupiesPhysical,
+    padOccupiesPhysical:padOccupiesPhysical
   };
 })((typeof window!=='undefined')?window:globalThis);

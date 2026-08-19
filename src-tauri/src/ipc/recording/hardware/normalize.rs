@@ -16,8 +16,6 @@ pub(crate) fn normalize_hardware_key(key: &str) -> String {
         "Alt" => "LAlt".into(),
         "LWin" | "MetaLeft" => "LWin".into(),
         "RWin" | "MetaRight" => "RWin".into(),
-        "Browser_Back" => "XButton1".into(),
-        "Browser_Forward" => "XButton2".into(),
         other => other.to_string(),
     }
 }
@@ -41,4 +39,17 @@ pub(crate) fn is_recordable_target_hotkey(key: &str) -> bool {
                 | "Launch_App1"
                 | "Launch_App2"
         )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn browser_keys_are_not_folded_to_xbutton() {
+        assert_eq!(normalize_hardware_key("Browser_Back"), "Browser_Back");
+        assert_eq!(normalize_hardware_key("Browser_Forward"), "Browser_Forward");
+        assert_eq!(normalize_hardware_key("XButton1"), "XButton1");
+        assert_eq!(normalize_hardware_key("XButton2"), "XButton2");
+    }
 }

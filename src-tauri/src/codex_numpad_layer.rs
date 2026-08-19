@@ -294,6 +294,7 @@ pub fn resolve_enc_summon_route(cfg: &VoiceConfig) -> Option<CodexNumpadRouteSna
                 micro_key_id: "ENC".into(),
                 source_scan: 0,
                 source_extended: false,
+                source_key: String::new(),
                 slot_id: "summonCodex".into(),
                 ui_icon_id: String::new(),
                 enabled: true,
@@ -1439,6 +1440,10 @@ fn merge_pad_routes(gate: &mut HookGate, mapping: &MappingEntry, pad: &CodexMicr
             };
             gate.routes.insert(source.id(), snapshot.clone());
         }
+        let named = route.source_key.trim();
+        if !named.is_empty() {
+            gate.routes.insert(named.to_string(), snapshot.clone());
+        }
         if !route.micro_key_id.trim().is_empty() {
             gate.routes_by_micro
                 .insert(route.micro_key_id.clone(), snapshot);
@@ -1448,6 +1453,17 @@ fn merge_pad_routes(gate: &mut HookGate, mapping: &MappingEntry, pad: &CodexMicr
 
 pub fn lookup_route(source: &NumpadSourceKey) -> Option<CodexNumpadRouteSnapshot> {
     hook_gate().lock().unwrap().routes.get(&source.id()).cloned()
+}
+
+pub fn lookup_named_pad_route(name: &str) -> Option<CodexNumpadRouteSnapshot> {
+    let name = name.trim();
+    if name.is_empty() || name.starts_with("sc") {
+        return None;
+    }
+    if !codex_foreground_for_micro() {
+        return None;
+    }
+    hook_gate().lock().unwrap().routes.get(name).cloned()
 }
 
 pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
@@ -1642,6 +1658,7 @@ fn route(micro_key_id: &str, scan: u16, extended: bool, slot_id: &str) -> CodexM
         micro_key_id: micro_key_id.into(),
         source_scan: scan,
         source_extended: extended,
+        source_key: String::new(),
         slot_id: slot_id.into(),
         ui_icon_id: ui_icon_id.into(),
         enabled: true,
@@ -2557,6 +2574,7 @@ mod tests {
                 micro_key_id: "NAV_LEFT".into(),
                 source_scan: 0,
                 source_extended: false,
+                source_key: String::new(),
                 slot_id: "navBack".into(),
                 ui_icon_id: "navLeft".into(),
                 enabled: true,

@@ -142,7 +142,7 @@ mod xinput_win;
 use parking_lot::Mutex;
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicU64};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use tauri::Manager;
 use tokio::time::{sleep, Duration};
 
@@ -150,6 +150,8 @@ use crate::audio_win::{AudioBackoffState, MicLevelState, MicMonitorHandle};
 use crate::config::{load_config, VoiceConfig};
 use crate::ipc::RecordingTarget;
 use crate::state::StateMachinePool;
+
+static LAST_LIVE_PACK_ID: OnceLock<Mutex<String>> = OnceLock::new();
 
 #[derive(Debug, Clone)]
 pub struct AgentModifierTapState {
@@ -680,6 +682,22 @@ pub fn run() {
                     if last_fg_track.elapsed() >= Duration::from_millis(FG_TRACK_MS) {
                         keyboard::track_foreground_for_send();
                         last_fg_track = std::time::Instant::now();
+                        let cfg = state2.cfg.lock();
+                        let pack_id = crate::config::live_pack_id(&cfg);
+                        let mut last = LAST_LIVE_PACK_ID
+                            .get_or_init(|| Mutex::new(String::new()))
+                            .lock();
+                        if *last != pack_id {
+                            *last = pack_id;
+                            drop(last);
+                            let bindings = cfg.bindings();
+                            let watches = cfg.agent_modifier_watch_bindings();
+                            drop(cfg);
+                            if let Some(mgr) = state2.hotkey_mgr.lock().as_ref() {
+                                mgr.bind_all(&bindings);
+                                mgr.bind_modifier_watches(&watches);
+                            }
+                        }
                     }
                     voice_sapi_runtime::drain_voice_sapi_events(&state2, &app2);
                     voice_vosk_runtime::drain_voice_vosk_events(&state2, &app2);

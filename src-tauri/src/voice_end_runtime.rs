@@ -43,7 +43,7 @@ pub fn resolve_wake_mapping_id(cfg: &VoiceConfig) -> String {
 
 /// Idle wake/stop target from effective scene (Rule A).
 pub fn resolve_wake_target_key(cfg: &VoiceConfig, fallback: &str) -> String {
-    if let Some(eff) = crate::scene_config::resolve_idle_effective_scene(cfg) {
+    if let Some(eff) = crate::scene_config::resolve_dispatch_effective_scene(cfg) {
         let key = eff.target_key.trim();
         if !key.is_empty() {
             return key.to_string();
@@ -130,9 +130,27 @@ fn session_effective(state: &AppState) -> Option<crate::scene_config::EffectiveS
 }
 
 pub fn idle_wake_phrases(cfg: &VoiceConfig) -> Vec<String> {
-    crate::scene_config::resolve_idle_effective_scene(cfg)
+    let mut out = crate::scene_config::resolve_idle_effective_scene(cfg)
         .map(|e| e.wake_phrases)
-        .unwrap_or_default()
+        .unwrap_or_default();
+    for mapping in &cfg.mappings {
+        let Some(ov) = mapping.voice_override.as_ref() else {
+            continue;
+        };
+        let Some(phrases) = ov.wake_phrases.as_ref() else {
+            continue;
+        };
+        for p in phrases {
+            let t = p.trim();
+            if t.is_empty() {
+                continue;
+            }
+            if !out.iter().any(|e| e == t) {
+                out.push(t.to_string());
+            }
+        }
+    }
+    out
 }
 
 /// Wake + summon phrases that may start a voice session (routes differ in dispatch).

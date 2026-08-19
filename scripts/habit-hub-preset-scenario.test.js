@@ -186,7 +186,12 @@ assert.strictEqual(
 
 var r1 = H.reconcileDuplicatePresetScenarios({ skipToast: true });
 assert.ok(r1.changed, 'reconcile changes duplicate preset scenarios');
-assert.strictEqual(mappings[0].enabled, false, 'loser disabled');
+assert.strictEqual(mappings.filter(function (m) {
+  return m.appTargetId === 'codex-chat';
+}).length, 1, 'duplicate preset rows removed');
+assert.strictEqual(mappings.find(function (m) {
+  return m.appTargetId === 'codex-chat';
+}).id, 'm-codex-winner', 'canonical row kept');
 assert.strictEqual(st.selectedMappingId, 'm-codex-winner', 'selectedMappingId redirected');
 assert.strictEqual(st.config.activeSceneId, 'm-codex-winner', 'activeSceneId redirected');
 assert.strictEqual(saveCalls, 1, 'reconcile persists once');
@@ -196,25 +201,40 @@ var r2 = H.reconcileDuplicatePresetScenarios({ skipToast: true });
 assert.strictEqual(r2.changed, false, 'reconcile no-op when no duplicates remain');
 assert.strictEqual(saveCalls, 0, 'no persist when unchanged');
 
-mappings[0].enabled = true;
+mappings.push({
+  id: 'm-codex-extra',
+  appTargetId: 'codex-chat',
+  enabled: false,
+  voiceOverride: { targetKey: 'Win+H' },
+  order: 9
+});
 saveCalls = 0;
 var r3 = H.reconcileDuplicatePresetScenarios({ skipToast: true });
-assert.ok(r3.changed, 'reconcile runs again after duplicate re-enabled');
-assert.strictEqual(mappings[0].enabled, false, 're-enabled loser disabled again');
+assert.ok(r3.changed, 'reconcile runs again after a new duplicate');
+assert.strictEqual(mappings.filter(function (m) {
+  return m.appTargetId === 'codex-chat';
+}).length, 1, 'new duplicate folded away');
+assert.strictEqual(
+  mappings.find(function (m) { return m.appTargetId === 'codex-chat'; }).voiceOverride.targetKey,
+  'Win+H',
+  'empty winner takes loser voiceOverride'
+);
 assert.strictEqual(saveCalls, 1, 'reconcile persists on re-merge');
 
-mappings[0].enabled = true;
 var created = H.createAppScenario('codex-chat');
 assert.strictEqual(created.id, 'm-codex-winner', 'second create returns existing');
 assert.strictEqual(mappings.filter(function (m) {
   return m.appTargetId === 'codex-chat';
-}).length, 2, 'no third codex mapping added');
+}).length, 1, 'no extra codex mapping added');
 
-mappings[1].enabled = false;
+var winnerRow = mappings.find(function (m) { return m.id === 'm-codex-winner'; });
+winnerRow.enabled = false;
 var revived = H.createAppScenario('codex-chat');
 assert.strictEqual(revived.id, 'm-codex-winner', 'create returns disabled canonical');
 assert.strictEqual(revived.enabled, true, 'create re-enables disabled preset scenario');
-assert.strictEqual(mappings[0].enabled, false, 'sibling stays disabled after revive');
+assert.strictEqual(mappings.filter(function (m) {
+  return m.appTargetId === 'codex-chat';
+}).length, 1, 'revive does not spawn a sibling');
 
 var savedMappings = mappings.slice();
 mappings.length = 0;
@@ -244,7 +264,8 @@ var pinSb = {
   window: {},
   console: console,
   global: {},
-  document: { querySelector: function () { return null; } }
+  document: { querySelector: function () { return null; } },
+  requestAnimationFrame: function (fn) { fn(); }
 };
 pinSb.window = pinSb.global;
 pinSb.global.OneToneState = { state: pinSt };
