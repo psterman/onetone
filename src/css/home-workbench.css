@@ -3994,10 +3994,12 @@ html[data-theme="dark"] .wb-pipeline-node-val.is-finish { color: #a78bfa; }
 }
 
 .wb-scene-chip-flyout {
-  position: absolute;
-  z-index: 40;
+  position: fixed;
+  z-index: 1200;
   min-width: 220px;
   max-width: min(320px, 92vw);
+  max-height: min(70vh, 420px);
+  overflow-y: auto;
   padding: 12px 12px 10px;
   border-radius: 14px;
   border: 1px solid var(--outline-variant);
@@ -4005,6 +4007,21 @@ html[data-theme="dark"] .wb-pipeline-node-val.is-finish { color: #a78bfa; }
   box-shadow: var(--shadow-card, 0 12px 28px rgba(0, 0, 0, 0.28));
   transform: translateX(-50%);
   pointer-events: auto;
+}
+
+.wb-scene-chip-flyout.is-below::before {
+  top: auto;
+  bottom: 100%;
+  height: 12px;
+}
+
+.wb-scene-chip-flyout::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  right: -12px;
+  top: -14px;
+  height: 14px;
 }
 
 .wb-scene-chip-flyout[hidden] {
@@ -4670,5 +4687,109 @@ html[data-theme="dark"] .wb-pipeline-node-val.is-finish { color: #a78bfa; }
     transition: none !important;
     transform: none !important;
   }
+}
+
+.wb-runtime-habit-status {
+  min-width: 0;
+}
+
+.wb-runtime-habit-status-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.wb-runtime-habit-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(42, 156, 196, 0.12);
+  color: var(--primary-strong, #2a9cc4);
+}
+
+.wb-runtime-habit-badge.is-softOverride {
+  background: rgba(217, 119, 6, 0.14);
+  color: #b45309;
+}
+
+.wb-runtime-habit-badge.is-pinHabit,
+.wb-runtime-habit-badge.is-pinAppHabit {
+  background: rgba(100, 116, 139, 0.14);
+  color: var(--text-muted, #64748b);
+}
+
+.wb-scene-chip-flyout-pin {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.wb-scene-chip-flyout-pin-hint {
+  margin: 0 0 2px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--on-surface-muted);
+  font-weight: 600;
+}
+
+.wb-runtime-habit-clear {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--primary-strong, #2a9cc4);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+.wb-howto-card-runtime {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(42, 156, 196, 0.12);
+  color: var(--primary-strong, #2a9cc4);
+}
+
+.wb-howto-card {
+  position: relative;
+}
+
+.wb-howto-card-edit {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  appearance: none;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .wb-howto-card-edit {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+.habit-hub-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
 

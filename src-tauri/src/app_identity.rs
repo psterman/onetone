@@ -28,6 +28,9 @@ pub struct AppIdentity {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub full_path: Option<String>,
     pub window_title: String,
+    /// Win32 window class name for fgSignature (C' soft-override expiry).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub window_class: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub matched_preset_app_id: Option<String>,
 }
@@ -440,6 +443,19 @@ pub fn process_exe_name(_pid: u32) -> Option<String> {
 const WINDOW_TEXT_TIMEOUT_MS: u32 = 200;
 
 #[cfg(windows)]
+fn window_class_for_hwnd(hwnd: winapi::shared::windef::HWND) -> String {
+    use winapi::um::winuser::GetClassNameW;
+    unsafe {
+        let mut buf = [0u16; 256];
+        let len = GetClassNameW(hwnd, buf.as_mut_ptr(), buf.len() as i32);
+        if len <= 0 {
+            return String::new();
+        }
+        String::from_utf16_lossy(&buf[..len as usize])
+    }
+}
+
+#[cfg(windows)]
 fn window_title_for_hwnd(hwnd: winapi::shared::windef::HWND) -> String {
     use winapi::um::winuser::{SendMessageTimeoutW, SMTO_ABORTIFHUNG, SMTO_BLOCK, WM_GETTEXT};
 
@@ -528,6 +544,16 @@ fn identity_for_pid_hwnd(pid: u32, hwnd: winapi::shared::windef::HWND) -> Option
     } else {
         window_title_for_hwnd(hwnd)
     };
+    let window_class = if hwnd.is_null() {
+        None
+    } else {
+        let cls = window_class_for_hwnd(hwnd);
+        if cls.is_empty() {
+            None
+        } else {
+            Some(cls)
+        }
+    };
     let aumid = application_user_model_id(pid);
     let matched_preset_app_id = full_path
         .as_deref()
@@ -546,6 +572,7 @@ fn identity_for_pid_hwnd(pid: u32, hwnd: winapi::shared::windef::HWND) -> Option
         exe_name,
         full_path,
         window_title,
+        window_class,
         matched_preset_app_id,
     })
 }

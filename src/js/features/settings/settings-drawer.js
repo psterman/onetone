@@ -1085,7 +1085,9 @@
         if(typeof mountCameraFlow==='function') mountCameraFlow();
       }catch(err){ console.error('camera island mount',err); }
 
-      if(String(ui.habitScenarioReturnPanel||'')!=='camera'||!String(ui.habitScenarioReturnId||'').trim()){
+      if(global.OneToneHabitChannelEditBanner&&global.OneToneHabitChannelEditBanner.syncPanelContext){
+        global.OneToneHabitChannelEditBanner.syncPanelContext('camera');
+      }else if(String(ui.habitScenarioReturnPanel||'')!=='camera'||!String(ui.habitScenarioReturnId||'').trim()){
         ui.cameraEditMode='global';
       }else{
         ui.cameraEditMode='appScenario';
@@ -1116,6 +1118,21 @@
     if(panel!=='camera'){
       if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.onPanelHidden){
         global.OneToneCameraWorkflow.onPanelHidden();
+      }
+    }
+
+    if(panel==='keys'||panel==='voiceWake'||panel==='camera'||panel==='softPad'){
+      if(global.OneToneHabitChannelEditBanner){
+        if(global.OneToneHabitChannelEditBanner.ensureEditContextFromRuntime){
+          try{ global.OneToneHabitChannelEditBanner.ensureEditContextFromRuntime(); }catch(_){}
+        }
+        if(global.OneToneHabitChannelEditBanner.syncPanelContext){
+          global.OneToneHabitChannelEditBanner.syncPanelContext(panel);
+        }
+        if(global.OneToneHabitChannelEditBanner.bindOnce) global.OneToneHabitChannelEditBanner.bindOnce();
+        if(global.OneToneHabitChannelEditBanner.renderAll){
+          try{ global.OneToneHabitChannelEditBanner.renderAll(); }catch(_){}
+        }
       }
     }
 

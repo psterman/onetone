@@ -1724,6 +1724,7 @@
     var bind = buildBindAppProps();
     if (!entry) {
       return mergeUsageIntoStatusProps({
+        brandTitle: t('softPadPageBrandTitle', '虚拟键盘'),
         name: '—',
         status: '—',
         statusCls: '',
@@ -1746,6 +1747,7 @@
     }
     var hero = buildHeroMeta(entry);
     return mergeUsageIntoStatusProps({
+      brandTitle: t('softPadPageBrandTitle', '虚拟键盘'),
       name: displayTitle(entry),
       status: statusLabel(entry),
       statusCls: statusTag(entry).cls,
@@ -1778,6 +1780,8 @@
     }
     var e = els();
     var props = buildStatusProps(entry);
+    var brandEl = document.getElementById('softPadPageBrandTitle');
+    if (brandEl) brandEl.textContent = props.brandTitle || t('softPadPageBrandTitle', '虚拟键盘');
     if (e.name) e.name.textContent = props.name;
     if (e.status) {
       e.status.textContent = props.status;

@@ -254,6 +254,7 @@
                               <button type="button" class="toggle-switch" id="wbFollowFgToggle" role="switch" aria-checked="false" data-i18n-aria="homeWbFollowFgLabel"></button>
                             </div>
                           </div>
+                          <div class="wb-runtime-habit-status" id="wbRuntimeHabitStatus" role="status" aria-live="polite"></div>
                         </div>
                         <div class="wb-scene-rail-body" id="wbScenarioPanel"></div>
                       </section>
@@ -737,9 +738,10 @@
           <div class="page-status-bar keys-page-status-bar keys-unified-status" id="keysWorkflowTabsBar">
             <div class="page-status-bar-main keys-scheme-status-main">
               <div class="keys-scheme-summary-title-row">
-                <span class="keys-scheme-summary-name" id="keysSummaryName">—</span>
+                <span class="keys-scheme-summary-name keys-page-brand-title" id="keysPageBrandTitle">按键</span>
                 <span class="keys-scheme-summary-pill" id="keysSummaryStatus">—</span>
               </div>
+              <span class="sr-only" id="keysSummaryName">—</span>
               <div class="keys-scheme-summary-meta sr-only" id="keysSummaryMeta" hidden aria-hidden="true">
                 <span class="keys-scheme-summary-item"><span class="keys-scheme-summary-lbl" id="keysSummaryTriggerLbl">触发键</span><span class="keys-scheme-summary-val" id="keysSummaryTrigger">—</span></span>
                 <span class="keys-scheme-summary-divider keys-summary-scope-divider" aria-hidden="true" hidden></span>
@@ -1044,10 +1046,11 @@
           </div>
         </section>
         <section class="settings-panel drawer-section soft-pad-page" id="settingsPanelSoftPad" hidden>
+          <div class="habit-scenario-context-banner" id="habitScenarioContextBannerSoftPad" hidden role="status" aria-live="polite"></div>
           <div class="page-status-bar soft-pad-status-bar" id="softPadStatusBar">
             <div class="page-status-bar-main keys-scheme-status-main">
               <div class="keys-scheme-summary-title-row">
-                <span class="keys-scheme-summary-name" id="softPadSummaryName">—</span>
+                <span class="keys-scheme-summary-name soft-pad-page-brand-title" id="softPadPageBrandTitle">虚拟键盘</span>
                 <span class="keys-scheme-summary-pill" id="softPadSummaryStatus">—</span>
                 <div class="soft-pad-bind-app" id="softPadBindApp">
                   <button type="button" class="soft-pad-bind-app__btn" id="softPadBindAppBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="softPadBindAppMenu">
@@ -1057,6 +1060,7 @@
                   <div class="soft-pad-bind-app__menu" id="softPadBindAppMenu" role="listbox" hidden></div>
                 </div>
               </div>
+              <span class="sr-only" id="softPadSummaryName">—</span>
               <div class="keys-scheme-summary-meta">
                 <span class="keys-scheme-summary-item">
                   <span class="keys-scheme-summary-lbl" id="softPadSummaryAgentLbl">状态灯</span>
@@ -1358,7 +1362,8 @@
                 <p class="habit-hub-hint" id="habitHubAutoHint">建议先完成通用按键与语音，日常先用通用；某个应用需要不一样时再新建场景。</p>
               </div>
               <div class="habit-hub-head-actions">
-                <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitHubHeadNew" data-habit-hub-new>+ 新建应用场景</button>
+                <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitHubHeadNew" data-habit-hub-new-draft data-i18n="habitHubNewHabit">+ 新建习惯</button>
+                <button type="button" class="habit-hub-new-btn" id="btnHabitHubHeadFg" data-habit-hub-fg-config data-i18n="habitHubFgConfig">为当前前台配置</button>
               </div>
             </header>
             <div class="habit-hub-toolbar">
@@ -4765,6 +4770,7 @@
   <script src="vendor/gpuimage-beautify/gpuimage-beautify.js"></script>
   <script src="js/features/camera/camera-video-enhancer.js"></script>
   <script src="js/features/camera/camera-workflow.js"></script>
+  <script src="js/features/scene/runtime-habit-control.js"></script>
   <script src="js/features/scene/scene-activate.js"></script>
   <script src="js/features/scene/scene-flow-summary.js"></script>
   <script src="js/features/scene/habit-layer-nav.js"></script>
@@ -4819,6 +4825,7 @@
   <script src="js/features/mapping/habit-scenario-voice-command.js"></script>
   <script src="js/features/voice/voice-wake-acoustic.js"></script>
   <script src="js/features/mapping/habit-scenario-voice-editor.js"></script>
+  <script src="js/features/mapping/habit-channel-edit-banner.js"></script>
   <script src="js/features/mapping/habit-scenario-context-banner.js"></script>
   <script src="js/features/mapping/habit-channel-status-strip.js"></script>
   <script src="js/features/mapping/habit-scenario-access-cards.js"></script>

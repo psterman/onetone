@@ -5472,6 +5472,7 @@ mod tests {
             exe_name: exe.to_string(),
             full_path: Some(format!(r"C:\fake\{exe}")),
             window_title: String::new(),
+            window_class: None,
             matched_preset_app_id: preset.map(|s| s.to_string()),
         }
     }
@@ -7463,6 +7464,7 @@ mod tests {
             exe_name: "Cursor.exe".into(),
             full_path: Some(r"C:\Users\me\AppData\Local\Programs\cursor\Cursor.exe".into()),
             window_title: "proj - Cursor".into(),
+            window_class: None,
             matched_preset_app_id: Some("cursor-chat".into()),
         };
         let effective = effective_mapping_for_trigger(&mapping, Some(&identity));
@@ -7491,6 +7493,7 @@ mod tests {
             exe_name: "Code.exe".into(),
             full_path: None,
             window_title: String::new(),
+            window_class: None,
             matched_preset_app_id: None,
         };
         assert!(!rule_matches_identity(&rule, &identity_exe_only));
@@ -7635,6 +7638,7 @@ mod tests {
             exe_name: "WeChat.exe".into(),
             full_path: Some(r"C:\Program Files\Tencent\WeChat\WeChat.exe".into()),
             window_title: "Chat".into(),
+            window_class: None,
             matched_preset_app_id: None,
         };
         let matched = match_behavior_rule(&rules, &identity_a).unwrap();
@@ -7672,6 +7676,7 @@ mod tests {
                 r"C:\Users\me\AppData\Roaming\Tencent\xwechat\xplugin\WeChatAppEx.exe".into(),
             ),
             window_title: "文件传输助手".into(),
+            window_class: None,
             matched_preset_app_id: None,
         };
         assert!(!rule_matches_identity(&rule, &chat_ui));
@@ -7701,6 +7706,7 @@ mod tests {
             exe_name: "WeChat.exe".into(),
             full_path: None,
             window_title: String::new(),
+            window_class: None,
             matched_preset_app_id: None,
         };
         assert!(!rule_matches_identity(&rule, &identity));
@@ -7727,6 +7733,7 @@ mod tests {
             exe_name: "WeChat.exe".into(),
             full_path: None,
             window_title: "????".into(),
+            window_class: None,
             matched_preset_app_id: None,
         };
         let rules_one = vec![rule];

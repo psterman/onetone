@@ -314,34 +314,8 @@
   function renderTabs(vm){
     var tabs=$('voiceWorkflowTabs');
     var bar=$('voiceWorkflowTabsBar');
-    var lbl=$('voiceWorkflowTabsLbl');
-    var addBtn=$('btnVoiceSchemeAdd');
-    if(lbl) lbl.textContent=t('voiceWorkflowTabsLbl');
-    if(addBtn) addBtn.textContent=t('voiceSchemesAdd');
-    if(!tabs) return;
-    var cfg=state().config||{};
-    var schemes=voiceSchemes(cfg);
-    var editing=editSchemeId(cfg,schemes);
-    var running=activeRuntimeSchemeId(cfg,schemes);
-    var baselineRunning=isBaselineRuntimeActive(cfg);
-    if(bar) bar.hidden=false;
-    if(!schemes.length){
-      tabs.innerHTML=renderGlobalTab(editing===GLOBAL_SCHEME_ID,baselineRunning);
-      return;
-    }
-    var html=renderGlobalTab(editing===GLOBAL_SCHEME_ID,baselineRunning);
-    html+=schemes.map(function(m){
-      var isEditing=m.id===editing;
-      var isRunning=!!running&&m.id===running;
-      var isDraft=core()&&core().isIncomplete&&core().isIncomplete(m);
-      var draftBadge=core()&&core().isDraft&&core().isDraft(m)?t('homeLiveSchemeDraft'):t('keySchemeCompletenessIncomplete');
-      return '<button type="button" class="keys-workflow-tab voice-workflow-tab'+(isEditing?' is-active':'')+(isRunning?' is-voice-running':'')+(isDraft?' is-draft':'')+'" role="tab" aria-selected="'+(isEditing?'true':'false')+'" id="voiceWorkflowTab-'+esc(m.id)+'" data-voice-scheme-id="'+esc(m.id)+'">'
-        +'<span class="keys-workflow-tab-name">'+esc(habitName(m))+'</span>'
-        +(isRunning?'<span class="voice-workflow-tab-running" aria-hidden="true">●</span>':'')
-        +(isDraft?'<span class="keys-workflow-tab-draft">'+esc(draftBadge)+'</span>':'')
-        +'</button>';
-    }).join('');
-    tabs.innerHTML=html;
+    if(bar) bar.hidden=true;
+    if(tabs){ tabs.innerHTML=''; tabs.hidden=true; }
   }
 
   function voiceSchemeSummaryLine(m,cfg){
@@ -418,39 +392,9 @@
 
   function renderVoiceHub(){
     var aside=$('voicePanelAside');
-    var panel=$('settingsPanelVoiceWake');
-    if((panel&&panel.classList.contains('voice-page-k'))||(aside&&aside.hidden)){
-      return;
-    }
     var schemeList=$('voiceHubSchemeList');
-    var countEl=$('voiceHubCount');
-    var titleLbl=$('voiceHubTitleLbl');
-    var hintEl=$('voiceHubEditHint');
-    var addBtn=$('btnVoiceHubAddDraft');
-    if(titleLbl) titleLbl.textContent=t('voiceHubCardTitle');
-    if(hintEl) hintEl.textContent=t('voiceHubEditHint');
-    if(addBtn) addBtn.textContent='+ '+t('voiceHubAddDraft');
-    if(!schemeList) return;
-    var cfg=state().config||{};
-    var schemes=voiceSchemes(cfg);
-    var editing=editSchemeId(cfg,schemes);
-    var running=activeRuntimeSchemeId(cfg,schemes);
-    if(countEl) countEl.textContent=String(schemes.length);
-    var html=renderVoiceHubRuntimeRow(editing,cfg);
-    if(!schemes.length){
-      schemeList.innerHTML=html;
-    }else{
-      var sorted=schemes.slice().sort(function(a,b){
-        if(a.id===editing) return -1;
-        if(b.id===editing) return 1;
-        if(a.id===running) return -1;
-        if(b.id===running) return 1;
-        return (a.order||0)-(b.order||0);
-      });
-      html+=sorted.map(function(m){ return renderVoiceHubSchemeRow(m,editing,running); }).join('');
-      schemeList.innerHTML=html;
-    }
-    renderVoiceHubTemplates();
+    if(aside) aside.hidden=true;
+    if(schemeList) schemeList.innerHTML='';
   }
 
   function renderVoiceHubTemplates(){

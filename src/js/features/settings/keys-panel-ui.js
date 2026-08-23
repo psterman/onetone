@@ -340,6 +340,7 @@
       if(!trigLabel&&trig) trigLabel=friendlyKey(trig);
     }
     var name='—';
+    var brandTitle=t('keysPageBrandTitle','按键');
     var status='—';
     var statusCls='';
     if(m){
@@ -387,6 +388,7 @@
       mappingEnabled=rec&&rec.wasEnabledBeforeRecording?rec.wasEnabledBeforeRecording():!!(m&&m.enabled);
     }
     return {
+      brandTitle:brandTitle,
       name:name,
       status:status,
       statusCls:statusCls,
@@ -435,7 +437,13 @@
     if(edit&&edit.setMappingEnabled) edit.setMappingEnabled(m.id,!m.enabled);
   }
 
+  function syncKeysPageBrandTitle(){
+    var brand=$('keysPageBrandTitle');
+    if(brand) brand.textContent=t('keysPageBrandTitle','按键');
+  }
+
   function renderSchemeSummary(m){
+    syncKeysPageBrandTitle();
     var islandOn=pushKeysStatusIfMounted(m);
     var nameEl=islandOn?null:$('keysSummaryName');
     var statusEl=islandOn?null:$('keysSummaryStatus');
@@ -807,8 +815,7 @@
   }
 
   function shouldShowHabitStrip(){
-    if(shouldHideHabitStrip()) return false;
-    return contextFilteredSchemes().length>0;
+    return false;
   }
 
   function buildKeysAppContextStripModel(){
@@ -993,34 +1000,7 @@
   }
 
   function buildKeysHubSchemeListModel(){
-    if(!core()||!core().sorted){
-      return { html:'', count:0, cardHidden:true, selected:'', sig:'empty' };
-    }
-    var schemes=contextFilteredSchemes();
-    var selected=ensureContextSelection();
-    var html='';
-    if(!schemes.length){
-      html='<p class="keys-hub-empty">'+esc(t('keysWorkflowOverviewEmpty'))+'</p>';
-    }else{
-      var sorted=schemes.slice().sort(function(a,b){
-        if(a.id===selected) return -1;
-        if(b.id===selected) return 1;
-        var aSaved=core().isSaved&&core().isSaved(a);
-        var bSaved=core().isSaved&&core().isSaved(b);
-        if(aSaved!==bSaved) return aSaved?-1:1;
-        return (a.order||0)-(b.order||0);
-      });
-      html='<div class="keys-hub-scheme-group">'
-        +groupSchemesByKey(sorted).map(function(g){ return renderKeysHubGroupCard(g.key,g.items,selected); }).join('')
-        +'</div>';
-    }
-    return {
-      html:html,
-      count:groupSchemesByKey(schemes).length,
-      cardHidden:false,
-      selected:selected||'',
-      sig:[selected||'',schemes.length,html].join('\0')
-    };
+    return { html:'', count:0, cardHidden:true, selected:'', sig:'d-banner' };
   }
 
   function applyKeysHubSchemeListHost(model){
@@ -1124,7 +1104,7 @@
     var label=habitName(m);
     var trig=core().editorTrigger?core().editorTrigger(m):((m.triggerKey||'').trim());
     if(trig) label=label+' · '+friendlyKey(trig);
-    return '<button type="button" class="keys-workflow-tab keys-habit-strip-tab'+(isSel?' is-active':'')+(!enabled?' is-disabled-scheme':'')+(isDraft?' is-draft':'')+'" role="tab" aria-selected="'+(isSel?'true':'false')+'" id="keysWorkflowTab-'+esc(m.id)+'" data-scheme-id="'+esc(m.id)+'">'
+    return '<button type="button" class="keys-workflow-tab keys-habit-strip-tab'+(isSel?' is-active':'')+(!enabled?' is-disabled-scheme':'')+(isDraft?' is-draft':'')+'" role="tab" aria-selected="'+(isSel?'true':'false')+'" id="keysWorkflowTab-'+esc(m.id)+'" data-scheme-id="'+esc(m.id)+'" data-ot-tip="'+esc(t('keysHabitPillEditOnlyTip','仅切换编辑对象，不影响正在使用'))+'">'
       +'<span class="keys-workflow-tab-name">'+esc(label)+'</span>'
       +(isDraft?'<span class="keys-workflow-tab-draft">'+esc(draftBadge)+'</span>':'')
       +'</button>';

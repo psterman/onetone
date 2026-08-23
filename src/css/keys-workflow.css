@@ -2299,6 +2299,13 @@
   color: var(--on-surface);
 }
 
+#settingsPanelKeys .keys-page-brand-title,
+#settingsPanelSoftPad .soft-pad-page-brand-title {
+  font-size: var(--type-h2);
+  font-weight: 800;
+  color: var(--on-surface);
+}
+
 #settingsPanelKeys .keys-scheme-summary-pill {
   font-size: var(--type-status);
   font-weight: 700;

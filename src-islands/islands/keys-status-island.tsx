@@ -5,6 +5,7 @@ import * as React from 'react';
 import { useIslandRefresh } from '../island-runtime';
 
 interface KeysStatusProps {
+  brandTitle: string;
   name: string;
   status: string;
   statusCls?: string;
@@ -24,6 +25,7 @@ function w() {
 }
 
 const EMPTY: KeysStatusProps = {
+  brandTitle: '按键',
   name: '—',
   status: '—',
   statusCls: '',
@@ -35,6 +37,7 @@ function readProps(): KeysStatusProps {
   const raw = w().__otKeysStatusRead?.();
   if (!raw) return EMPTY;
   return {
+    brandTitle: raw.brandTitle || '按键',
     name: raw.name,
     status: raw.status,
     statusCls: raw.statusCls,
@@ -64,14 +67,14 @@ export function KeysStatusBarIsland(): JSX.Element {
     w().OneToneKeysPanelUi?.toggleMappingEnable?.();
   }, []);
 
-  const { name, status, statusCls, mappingEnabled, toggleDisabled } = props;
+  const { brandTitle, name, status, statusCls, mappingEnabled, toggleDisabled } = props;
 
   return (
     <>
       <div className="page-status-bar-main keys-scheme-status-main">
         <div className="keys-scheme-summary-title-row">
-          <span className="keys-scheme-summary-name" id="keysSummaryName">
-            {name}
+          <span className="keys-scheme-summary-name keys-page-brand-title" id="keysPageBrandTitle">
+            {brandTitle}
           </span>
           <span
             className={['keys-scheme-summary-pill', statusCls].filter(Boolean).join(' ')}
@@ -80,6 +83,9 @@ export function KeysStatusBarIsland(): JSX.Element {
             {status}
           </span>
         </div>
+        <span className="sr-only" id="keysSummaryName">
+          {name}
+        </span>
       </div>
       <div className="page-status-bar-actions keys-scheme-status-actions">
         <button

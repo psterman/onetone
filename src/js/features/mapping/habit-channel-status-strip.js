@@ -9,8 +9,8 @@
 
   var PANEL_HOSTS=[
     {panel:'keys',panelId:'settingsPanelKeys',stripId:'habitChannelStatusStripKeys',beforeId:'habitScenarioContextBannerKeys',unified:true},
-    {panel:'voice',panelId:'settingsPanelVoiceWake',stripId:'habitChannelStatusStripVoice',mountId:'voiceUnifiedExtras'},
-    {panel:'camera',panelId:'settingsPanelCamera',stripId:'habitChannelStatusStripCamera',beforeId:'habitScenarioContextBannerCamera'},
+    {panel:'voice',panelId:'settingsPanelVoiceWake',stripId:'habitChannelStatusStripVoice',mountId:'voiceUnifiedExtras',unified:true},
+    {panel:'camera',panelId:'settingsPanelCamera',stripId:'habitChannelStatusStripCamera',beforeId:'habitScenarioContextBannerCamera',unified:true},
     {panel:'softPad',panelId:'settingsPanelSoftPad',stripId:'habitChannelStatusStripSoftPad',beforeId:'softPadStatusBar'}
   ];
 

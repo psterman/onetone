@@ -1343,8 +1343,14 @@
     html+=menuItemBtn('data-habit-move="down" data-habit-id="'+esc(m.id)+'"',t('habitHubActMoveDown'));
     html+=menuItemBtn('data-habit-dup="'+esc(m.id)+'"',t('habitHubActCopy'));
     html+=menuItemBtn('data-habit-rename="'+esc(m.id)+'"',t('habitHubActRename'));
-    html+='<hr class="habit-hub-menu-sep" />';
-    html+=menuItemBtn('data-habit-del="'+esc(m.id)+'"',t('habitHubActDelete'),{danger:true});
+    var diff=global.OneToneHabitOverrideDiff;
+    var isBaseline=!!(diff&&diff.isGlobalBaselineMapping&&diff.isGlobalBaselineMapping(m,cfg,core()));
+    if(isBaseline){
+      html+=menuItemBtn('data-habit-reset-baseline="'+esc(m.id)+'"',t('habitBaselineReset','重置 baseline'));
+    }else{
+      html+='<hr class="habit-hub-menu-sep" />';
+      html+=menuItemBtn('data-habit-del="'+esc(m.id)+'"',t('habitHubActDelete'),{danger:true});
+    }
     html+='</div></details>';
     html+='</div></div>';
     return html;
@@ -1481,8 +1487,14 @@
           &&global.OneToneAgentScenarioTemplate.isCodexScenario(m)){
           html+=menuItemBtn('data-habit-codex-reset="'+esc(m.id)+'"',t('codexPackReset','重置推荐'));
         }
-        html+='<hr class="habit-hub-menu-sep" />';
-        html+=menuItemBtn('data-habit-del="'+esc(m.id)+'"',t('habitHubActDelete'),{danger:true});
+        var cardDiff=global.OneToneHabitOverrideDiff;
+        var cardBaseline=!!(cardDiff&&cardDiff.isGlobalBaselineMapping&&cardDiff.isGlobalBaselineMapping(m,cfg,core()));
+        if(cardBaseline){
+          html+=menuItemBtn('data-habit-reset-baseline="'+esc(m.id)+'"',t('habitBaselineReset','重置 baseline'));
+        }else{
+          html+='<hr class="habit-hub-menu-sep" />';
+          html+=menuItemBtn('data-habit-del="'+esc(m.id)+'"',t('habitHubActDelete'),{danger:true});
+        }
         html+='</div></details>';
       }else{
         if(legacy){
@@ -1495,8 +1507,14 @@
         html+='<div class="habit-hub-more-menu-panel">';
         html+=menuItemBtn('data-habit-dup="'+esc(m.id)+'"',t('habitHubActCopy'));
         html+=menuItemBtn('data-habit-rename="'+esc(m.id)+'"',t('habitHubActRename'));
-        html+='<hr class="habit-hub-menu-sep" />';
-        html+=menuItemBtn('data-habit-del="'+esc(m.id)+'"',t('habitHubActDelete'),{danger:true});
+        var cardDiff2=global.OneToneHabitOverrideDiff;
+        var cardBaseline2=!!(cardDiff2&&cardDiff2.isGlobalBaselineMapping&&cardDiff2.isGlobalBaselineMapping(m,cfg,core()));
+        if(cardBaseline2){
+          html+=menuItemBtn('data-habit-reset-baseline="'+esc(m.id)+'"',t('habitBaselineReset','重置 baseline'));
+        }else{
+          html+='<hr class="habit-hub-menu-sep" />';
+          html+=menuItemBtn('data-habit-del="'+esc(m.id)+'"',t('habitHubActDelete'),{danger:true});
+        }
         html+='</div></details>';
       }
     }
@@ -1782,6 +1800,18 @@
     ids=(Array.isArray(ids)?ids:[]).map(function(id){ return String(id||'').trim(); }).filter(Boolean);
     if(!ids.length) return;
     var cfg=state().config||{};
+    var diff=global.OneToneHabitOverrideDiff;
+    var coreRef=core();
+    if(diff&&diff.isGlobalBaselineMapping&&coreRef){
+      ids=ids.filter(function(id){
+        var m=coreRef.byId?coreRef.byId(id):null;
+        return !(m&&diff.isGlobalBaselineMapping(m,cfg,coreRef));
+      });
+      if(!ids.length){
+        if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitBaselineDeleteBlocked','通用习惯不能删除，请使用「重置 baseline」'),'warn');
+        return;
+      }
+    }
     if(!Array.isArray(cfg.mappings)) return;
     if(!Array.isArray(cfg.trash)) cfg.trash=[];
     var remove={};
@@ -2277,9 +2307,74 @@
     ui().habitView='hub';
     if(ui().habitHubFilter==='legacy') ui().habitHubFilter='all';
     if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('habits');
-    applyShellVisibility();
-    render();
     refreshInlineCreateForeground();
+    render();
+  }
+
+  function createHabitDraft(){
+    core().ensureConfig&&core().ensureConfig();
+    var cfg=state().config;
+    if(!Array.isArray(cfg.mappings)) cfg.mappings=[];
+    var id=core().newMappingId?core().newMappingId():('m-'+Date.now()+'-'+Math.random().toString(36).slice(2,7));
+    var m={
+      id:id,
+      label:'',
+      group:t('habitHubNewDraftName','新习惯'),
+      triggerKey:'',
+      targetKey:'',
+      enabled:false,
+      order:cfg.mappings.length,
+      triggerMode:'tap',
+      intervalMs:cfg.intervalMs||1200,
+      enterDelayMs:cfg.enterDelayMs||5000,
+      cancelEnabled:cfg.cancelEnabled!==false,
+      autoEnterEnabled:cfg.autoEnterEnabled!==false,
+      switchKeys:[],
+      nativeKeyRestore:false,
+      imePresetId:'',
+      appTargetId:'',
+      appBehaviorRules:[],
+      voiceOverride:null,
+      cameraOverride:null,
+      updatedAt:Date.now(),
+      lastUsedAt:0,
+      useCount:0
+    };
+    if(core().ensureMappingExtras) core().ensureMappingExtras(m);
+    cfg.mappings.push(m);
+    state().selectedMappingId=id;
+    ui().habitHubCreating=false;
+    ui().habitView='hub';
+    if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('habits');
+    scheduleHubPaint();
+    var saveAsync=global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync;
+    if(saveAsync) saveAsync({source:'habitDraft'});
+    else persistHub();
+    if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubDraftCreated','已创建草稿（未设为正在使用）'),'scheme');
+  }
+
+  function startForegroundConfig(){
+    ui().habitView='hub';
+    if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('habits');
+    if(!global.OneToneIpc||!global.OneToneIpc.invoke){
+      startInlineCreate();
+      return;
+    }
+    global.OneToneIpc.invoke('cmd_foreground_app',{}).then(function(res){
+      if(res&&(res.exeName||res.exe_name)&&!isSelfForegroundIdentity(res)){
+        ui().habitHubFgIdentity=res;
+        var existing=findAppScenarioForIdentity(res);
+        if(existing){
+          openExistingFgScenario(existing.id);
+          return;
+        }
+        acceptForegroundRecommend();
+        return;
+      }
+      if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubFgUnavailable','未检测到可用前台应用'),'warn');
+    }).catch(function(){
+      startInlineCreate();
+    });
   }
 
   function cancelInlineCreate(){
@@ -2867,10 +2962,31 @@
           }
           return;
         }
+        var hubNewDraft=e.target.closest&&e.target.closest('[data-habit-hub-new-draft]');
+        if(hubNewDraft){
+          e.preventDefault();
+          createHabitDraft();
+          return;
+        }
+        var hubFgConfig=e.target.closest&&e.target.closest('[data-habit-hub-fg-config]');
+        if(hubFgConfig){
+          e.preventDefault();
+          startForegroundConfig();
+          return;
+        }
         var hubNew=e.target.closest&&e.target.closest('[data-habit-hub-new],[data-habit-app-empty-new]');
         if(hubNew){
           e.preventDefault();
           startInlineCreate();
+          return;
+        }
+        var resetBaselineBtn=e.target.closest&&e.target.closest('[data-habit-reset-baseline]');
+        if(resetBaselineBtn){
+          e.preventDefault();
+          if(global.OneToneHabitShared&&global.OneToneHabitShared.resetBaselineMapping){
+            global.OneToneHabitShared.resetBaselineMapping();
+            scheduleHubPaint();
+          }
           return;
         }
         var createChannelBtn=e.target.closest&&e.target.closest('[data-habit-create-channel]');

@@ -1106,8 +1106,10 @@
         afterOpenFocus();
         return;
       }
-      if(id&&global.OneToneState&&global.OneToneState.state){
-        global.OneToneState.state.selectedMappingId=id;
+      if(banner&&banner.openGlobalKeys){
+        banner.openGlobalKeys({fromHub:false});
+        afterOpenFocus();
+        return;
       }
       openSettings({panel:'keys',focus:focus||'trigger'});
       return;
@@ -1219,18 +1221,29 @@
     if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
     global.OneToneIpc.invoke('cmd_foreground_app',{}).then(function(res){
       if(!isFollowFgEnabled()) return;
+      var rt=global.OneToneRuntimeHabitControl;
+      if(rt&&rt.noteForegroundIdentity) rt.noteForegroundIdentity(res);
       try{
         var appId=res&&(res.matchedPresetAppId||res.matched_preset_app_id||res.appId)||'';
         if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.noteLaneForeground){
           global.OneToneSoftPadHub.noteLaneForeground(appId);
         }
       }catch(_){}
-      var id=desiredFollowFgSceneId(res);
+      if(res&&global.OneToneHomeWorkbenchPanels&&global.OneToneHomeWorkbenchPanels.renderRuntimeStatusRow){
+        global.OneToneHomeWorkbenchPanels.renderRuntimeStatusRow(res);
+      }
+      var id='';
+      if(rt&&rt.resolveActiveSceneId){
+        id=rt.resolveActiveSceneId(res);
+      }else{
+        id=desiredFollowFgSceneId(res);
+      }
       if(!id) return;
-      var act=global.OneToneSceneActivate;
-      if(act&&act.isManualScenePinned&&act.isManualScenePinned()) return;
-      if(act&&act.activateScene){
-        act.activateScene(id,{source:'foreground'});
+      if(res&&!isSelfFgIdentity(res)){
+        var act=global.OneToneSceneActivate;
+        if(act&&act.activateScene){
+          act.activateScene(id,{source:'foreground'});
+        }
       }
     }).catch(function(){});
   }
@@ -1377,9 +1390,15 @@
     id=String(id||'').trim();
     if(!id) return;
     hideChipFlyout(true);
-    // Home rail: activate directly — skip scheme-menu flush path (unnecessary on chip click).
-    if(global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene){
-      global.OneToneSceneActivate.activateScene(id,{source:'manual'});
+    var act=global.OneToneSceneActivate;
+    var rt=global.OneToneRuntimeHabitControl;
+    if(act&&act.applySoftOverride){
+      var fg=rt&&rt.foregroundIdentity?rt.foregroundIdentity():null;
+      act.applySoftOverride(id,fg);
+      return;
+    }
+    if(act&&act.activateScene){
+      act.activateScene(id,{source:'manual'});
       return;
     }
     if(global.OneToneHomeScheme) global.OneToneHomeScheme.selectMapping(id);
@@ -1401,10 +1420,41 @@
       chipFlyoutOpenId='';
     }
     if(immediate) hide();
-    else chipFlyoutHideTimer=setTimeout(hide,160);
+    else chipFlyoutHideTimer=setTimeout(hide,280);
+  }
+
+  function reanchorChipFlyout(){
+    if(!chipFlyoutOpenId) return;
+    var rail=$('wbScenarioPanel');
+    if(!rail) return;
+    var chip=rail.querySelector('.wb-scene-chip[data-wb-chip-id="'+chipFlyoutOpenId+'"]')
+      ||rail.querySelector('.wb-scene-chip[data-wb-scenario-id="'+chipFlyoutOpenId+'"]');
+    if(chip) showChipFlyout(chip);
+    else hideChipFlyout(true);
+  }
+
+  function bindFlyoutHoverOnce(){
+    var fly=$('wbSceneChipFlyout');
+    if(!fly||fly._wbChipFlyoutHoverBound) return;
+    fly._wbChipFlyoutHoverBound=true;
+    fly.addEventListener('pointerenter',function(){
+      if(chipFlyoutHideTimer){
+        clearTimeout(chipFlyoutHideTimer);
+        chipFlyoutHideTimer=0;
+      }
+    });
+    fly.addEventListener('pointerleave',function(e){
+      var to=e.relatedTarget;
+      if(to&&to.closest&&(to.closest('#wbSceneChipFlyout')||to.closest('#wbScenarioPanel .wb-scene-chip[data-wb-chip-id]'))) return;
+      hideChipFlyout(false);
+    });
   }
 
   function showChipFlyout(chip){
+    if(global.OneToneHomeWorkbenchPanels&&global.OneToneHomeWorkbenchPanels.ensureSceneChipFlyoutShell){
+      global.OneToneHomeWorkbenchPanels.ensureSceneChipFlyoutShell();
+    }
+    bindFlyoutHoverOnce();
     // Boot settle: skip hover flyout while first paints churn (pointerover storm → 假死).
     try{
       if(global.OneToneAppSession&&global.OneToneAppSession.isBootSettling
@@ -1454,18 +1504,59 @@
         ?t('homeWbChipGlobalConfigure','配置 Soft Pad')
         :t('homeWbHabitOpenHub','查看全部');
     }
+    var pinRow=fly.querySelector('[data-flyout-pin-row]');
+    var pinHabitBtn=fly.querySelector('[data-wb-pin-habit]');
+    var pinAppBtn=fly.querySelector('[data-wb-pin-app]');
+    if(pinHabitBtn){
+      pinHabitBtn.hidden=false;
+      pinHabitBtn.setAttribute('data-wb-pin-habit',model.id);
+    }
+    if(pinAppBtn){
+      var rtPin=global.OneToneRuntimeHabitControl;
+      var fgPin=rtPin&&rtPin.foregroundIdentity?rtPin.foregroundIdentity():null;
+      var fgApp=String(fgPin&&(fgPin.matchedPresetAppId||fgPin.matched_preset_app_id)||'').trim();
+      var mapM=global.OneToneMappingCore&&global.OneToneMappingCore.byId
+        ?global.OneToneMappingCore.byId(model.id):null;
+      var mapApp=String(mapM&&mapM.appTargetId||'').trim();
+      var pinApp=mapApp||fgApp;
+      if(pinApp&&pinApp!=='custom'){
+        pinAppBtn.hidden=false;
+        pinAppBtn.setAttribute('data-wb-pin-app',model.id);
+        pinAppBtn.setAttribute('data-wb-pin-app-target',pinApp);
+        var appLbl=pinApp;
+        var rules=global.OneToneAppBehaviorRules;
+        if(rules&&rules.appDisplayName) appLbl=rules.appDisplayName(pinApp)||appLbl;
+        pinAppBtn.textContent=t('runtimeHabitPinAppBtnNamed','只在 {app} 用这个习惯').replace('{app}',appLbl);
+      }else{
+        pinAppBtn.hidden=true;
+        pinAppBtn.removeAttribute('data-wb-pin-app');
+        pinAppBtn.removeAttribute('data-wb-pin-app-target');
+      }
+    }
+    if(pinRow) pinRow.hidden=!(pinHabitBtn&&!pinHabitBtn.hidden);
     fly.hidden=false;
     var cr=chip.getBoundingClientRect();
-    var rr=rail.getBoundingClientRect();
-    var left=cr.left-rr.left+cr.width/2;
-    var bottom=rr.bottom-cr.top+8;
+    var fh=fly.offsetHeight||1;
     var fw=fly.offsetWidth||240;
-    var minPad=8;
-    var maxLeft=Math.max(minPad+fw/2,rr.width-minPad-fw/2);
-    left=Math.min(Math.max(left,minPad+fw/2),maxLeft);
+    var gap=10;
+    var vpPad=8;
+    var top=cr.top-fh-gap;
+    if(top<vpPad){
+      top=cr.bottom+gap;
+      fly.classList.add('is-below');
+    }else{
+      fly.classList.remove('is-below');
+    }
+    var left=cr.left+cr.width/2;
+    var minLeft=vpPad+fw/2;
+    var maxLeft=Math.max(minLeft,window.innerWidth-vpPad-fw/2);
+    left=Math.min(Math.max(left,minLeft),maxLeft);
+    fly.style.position='fixed';
     fly.style.left=left+'px';
-    fly.style.bottom=bottom+'px';
-    fly.style.top='auto';
+    fly.style.top=top+'px';
+    fly.style.bottom='auto';
+    fly.style.transform='translateX(-50%)';
+    fly.style.zIndex='1200';
   }
 
   function bindChipFlyout(center){
@@ -1475,6 +1566,12 @@
     center.addEventListener('pointerover',function(e){
       var chip=e.target.closest&&e.target.closest('#wbScenarioPanel .wb-scene-chip[data-wb-chip-id]');
       if(chip) showChipFlyout(chip);
+      if(e.target.closest&&e.target.closest('#wbSceneChipFlyout')){
+        if(chipFlyoutHideTimer){
+          clearTimeout(chipFlyoutHideTimer);
+          chipFlyoutHideTimer=0;
+        }
+      }
     });
     center.addEventListener('pointerout',function(e){
       var fromChip=e.target.closest&&e.target.closest('#wbScenarioPanel .wb-scene-chip[data-wb-chip-id]');
@@ -1506,6 +1603,7 @@
         if(e.key==='Escape') hideChipFlyout(true);
       });
     }
+    bindFlyoutHoverOnce();
   }
 
   function bindPanelActions(){
@@ -1521,6 +1619,77 @@
         if(followFg.disabled||followFg.getAttribute('aria-disabled')==='true') return;
         if(!hasAppScenarioMappings()) return;
         setFollowFgEnabled(!isFollowFgEnabled());
+        return;
+      }
+      var clearOverride=e.target.closest&&e.target.closest('#wbRuntimeClearOverride,[data-wb-runtime-clear-override]');
+      if(clearOverride){
+        e.preventDefault();
+        var rt=global.OneToneRuntimeHabitControl;
+        if(rt&&rt.clearSoftOverride) rt.clearSoftOverride();
+        syncFollowForegroundApp();
+        if(global.OneToneHomeWorkbenchPanels&&global.OneToneHomeWorkbenchPanels.renderRuntimeStatusRow){
+          global.OneToneHomeWorkbenchPanels.renderRuntimeStatusRow();
+        }
+        if(global.OneToneHomeWorkbenchPanels&&global.OneToneHomeWorkbenchPanels.renderScenarioPanel){
+          global.OneToneHomeWorkbenchPanels.renderScenarioPanel();
+        }
+        return;
+      }
+      var clearPin=e.target.closest&&e.target.closest('#wbRuntimeClearPin,[data-wb-runtime-clear-pin]');
+      if(clearPin){
+        e.preventDefault();
+        var rt2=global.OneToneRuntimeHabitControl;
+        if(rt2&&rt2.clearPin) rt2.clearPin();
+        syncFollowForegroundApp();
+        if(global.OneToneHomeWorkbenchPanels&&global.OneToneHomeWorkbenchPanels.renderRuntimeStatusRow){
+          global.OneToneHomeWorkbenchPanels.renderRuntimeStatusRow();
+        }
+        if(global.OneToneHomeWorkbenchPanels&&global.OneToneHomeWorkbenchPanels.renderScenarioPanel){
+          global.OneToneHomeWorkbenchPanels.renderScenarioPanel();
+        }
+        return;
+      }
+      var pinHabitBtn=e.target.closest&&e.target.closest('[data-wb-pin-habit]');
+      if(pinHabitBtn){
+        e.preventDefault();
+        e.stopPropagation();
+        var pinId=pinHabitBtn.getAttribute('data-wb-pin-habit')||'';
+        var rtPin=global.OneToneRuntimeHabitControl;
+        if(rtPin&&rtPin.setPinHabit&&pinId) rtPin.setPinHabit(pinId);
+        if(global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene&&pinId){
+          global.OneToneSceneActivate.activateScene(pinId,{source:'manual',force:true});
+        }
+        hideChipFlyout(true);
+        syncFollowForegroundApp();
+        if(global.OneToneHomeWorkbenchPanels&&global.OneToneHomeWorkbenchPanels.renderRuntimeStatusRow){
+          global.OneToneHomeWorkbenchPanels.renderRuntimeStatusRow();
+        }
+        if(global.OneToneHomeWorkbenchPanels&&global.OneToneHomeWorkbenchPanels.renderScenarioPanel){
+          global.OneToneHomeWorkbenchPanels.renderScenarioPanel();
+        }
+        return;
+      }
+      var pinAppBtn=e.target.closest&&e.target.closest('[data-wb-pin-app]');
+      if(pinAppBtn){
+        e.preventDefault();
+        e.stopPropagation();
+        var pinMapId=pinAppBtn.getAttribute('data-wb-pin-app')||'';
+        var pinAppTarget=pinAppBtn.getAttribute('data-wb-pin-app-target')||'';
+        var rtApp=global.OneToneRuntimeHabitControl;
+        if(rtApp&&rtApp.setPinAppHabit&&pinMapId&&pinAppTarget){
+          rtApp.setPinAppHabit(pinAppTarget,pinMapId);
+        }
+        if(global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene&&pinMapId){
+          global.OneToneSceneActivate.activateScene(pinMapId,{source:'manual',force:true});
+        }
+        hideChipFlyout(true);
+        syncFollowForegroundApp();
+        if(global.OneToneHomeWorkbenchPanels&&global.OneToneHomeWorkbenchPanels.renderRuntimeStatusRow){
+          global.OneToneHomeWorkbenchPanels.renderRuntimeStatusRow();
+        }
+        if(global.OneToneHomeWorkbenchPanels&&global.OneToneHomeWorkbenchPanels.renderScenarioPanel){
+          global.OneToneHomeWorkbenchPanels.renderScenarioPanel();
+        }
         return;
       }
       var scenarioUse=e.target.closest&&e.target.closest('[data-wb-scenario-use]');
@@ -1555,7 +1724,13 @@
       }
       var habitEdit=e.target.closest&&e.target.closest('[data-wb-habit-edit]');
       if(habitEdit){
-        openHabitsHubForMapping(habitEdit.getAttribute('data-wb-habit-edit')||'');
+        e.preventDefault();
+        e.stopPropagation();
+        var editId=habitEdit.getAttribute('data-wb-habit-edit')||'';
+        if(editId&&global.OneToneState&&global.OneToneState.state){
+          global.OneToneState.state.selectedMappingId=editId;
+        }
+        openHabitsHubForMapping(editId);
         return;
       }
       var habit=e.target.closest&&e.target.closest('[data-wb-habit-id]');
@@ -1930,6 +2105,11 @@
         return;
       }
       if(row.panel){
+        if(row.panel==='keys'||row.panel==='voiceWake'||row.panel==='camera'){
+          var ch=row.panel==='voiceWake'?'voice':row.panel;
+          openHabitChannelChip(ch);
+          return;
+        }
         var opts={panel:row.panel};
         if(row.debugMode) opts.debugMode=row.debugMode;
         openSettings(opts);
@@ -1940,6 +2120,9 @@
   function bindOnce(){
     if(bound) return;
     bound=true;
+    if(global.OneToneHomeWorkbenchPanels&&global.OneToneHomeWorkbenchPanels.ensureSceneChipFlyoutShell){
+      global.OneToneHomeWorkbenchPanels.ensureSceneChipFlyoutShell();
+    }
     heroMode=readHeroMode();
     bindNav();
     bindPanelActions();
@@ -2049,21 +2232,11 @@
       }
     }catch(_){}
     var ui=global.OneToneState&&global.OneToneState.ui;
-    // Already on target panel — remounting voiceWake from orb click was empty-tag 假死.
     if(ui&&ui.drawerOpen&&ui.settingsPanel===want){
       return;
     }
-    if(want==='keys'){
-      var id=null;
-      try{
-        var vm=global.OneToneHomeV9&&global.OneToneHomeV9.buildViewModel&&global.OneToneHomeV9.buildViewModel();
-        id=vm&&vm.m&&vm.m.id?vm.m.id:null;
-      }catch(_){}
-      openSettings({panel:'keys',focus:id});
-      return;
-    }
-    // voice/camera/softPad: never sync buildViewModel on the click path.
-    openSettings({panel:want});
+    var channel=want==='voiceWake'?'voice':want;
+    openHabitChannelChip(channel);
   }
 
   function hookCameraPresence(){
@@ -2137,6 +2310,7 @@
   global.OneToneHomeWorkbench={
     render:render,
     bindOnce:bindOnce,
+    reanchorChipFlyout:reanchorChipFlyout,
     applyLang:applyLang,
     syncNavActiveState:syncNavActiveState,
     buildPerf:buildPerf,

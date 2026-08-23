@@ -394,6 +394,18 @@
     var ids=[String(id||'').trim()].filter(Boolean);
     if(!ids.length) return;
     var config=state().config||{};
+    var diff=global.OneToneHabitOverrideDiff;
+    var core=global.OneToneMappingCore;
+    if(diff&&diff.isGlobalBaselineMapping&&core){
+      var blocked=ids.some(function(x){
+        var m=core.byId?core.byId(x):null;
+        return !!(m&&diff.isGlobalBaselineMapping(m,config,core));
+      });
+      if(blocked){
+        if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitBaselineDeleteBlocked','通用习惯不能删除，请使用「重置 baseline」'),'warn');
+        return;
+      }
+    }
     if(!Array.isArray(config.mappings)) return;
     if(!Array.isArray(config.trash)) config.trash=[];
     var remove={};
@@ -435,6 +447,40 @@
     }
   }
 
+  function resetBaselineMapping(){
+    var config=state().config||{};
+    var diff=global.OneToneHabitOverrideDiff;
+    var core=global.OneToneMappingCore;
+    if(!diff||!diff.findGlobalBaselineMapping||!core) return false;
+    var baseline=diff.findGlobalBaselineMapping(config,core);
+    if(!baseline) return false;
+    baseline.triggerKey='';
+    baseline.targetKey='';
+    baseline.triggerMode='tap';
+    baseline.triggerSource=null;
+    baseline.sourceKey='';
+    baseline.sourceTime='';
+    baseline.switchKeys=[];
+    baseline.voiceOverride=null;
+    baseline.cameraOverride=null;
+    baseline.voiceCommands=null;
+    baseline.acousticVoiceCommands=null;
+    baseline.appBehaviorRules=[];
+    baseline.agentBindings=null;
+    baseline.agentTemplateId='';
+    baseline.agentProviderId='';
+    baseline.codexMicroPad=null;
+    baseline.updatedAt=Date.now();
+    if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitBaselineResetDone','已重置通用习惯'),'scheme');
+    var hub=global.OneToneHabitHub;
+    if(hub&&hub.scheduleHubPaint) hub.scheduleHubPaint();
+    var saveAsync=global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync;
+    var save=global.OneToneConfigPersist&&global.OneToneConfigPersist.save;
+    if(saveAsync) saveAsync({source:'resetBaseline'});
+    else if(save) save();
+    return true;
+  }
+
   global.OneToneHabitShared={
     CHANNELS:CHANNELS,
     CAMERA_ITEMS:CAMERA_ITEMS,
@@ -454,6 +500,7 @@
     storyHtml:storyHtml,
     appListHtml:appListHtml,
     deleteMapping:deleteMapping,
+    resetBaselineMapping:resetBaselineMapping,
     friendlyKey:friendlyKey
   };
 })((typeof window!=='undefined')?window:globalThis);

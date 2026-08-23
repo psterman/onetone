@@ -1732,6 +1732,7 @@ fn rule_process_running(rule: &crate::config::AppBehaviorRule) -> bool {
                         exe_name,
                         full_path,
                         window_title: String::new(),
+                        window_class: None,
                         matched_preset_app_id: None,
                     };
                     if crate::config::rule_matches_identity_for_summon(rule, &identity) {

@@ -3997,8 +3997,8 @@
     .habit-ws-create .habit-hub-inline-create{margin:12px 0 0;border-color:var(--outline-variant)}
 #settingsPanelVoiceWake.is-scenario-config .voice-scheme-status-actions #btnVoiceSchemeAdd{display:none}
 
-/* App-scenario keys: blue banner is the only title; hide duplicate summary + context strips. */
-#settingsPanelKeys.is-scenario-config .keys-scheme-status-main{
+/* App-scenario keys: hide duplicate scheme line; channel title stays in status bar. */
+#settingsPanelKeys.is-scenario-config #keysSummaryName{
   display:none !important;
 }
 #settingsPanelKeys.is-scenario-config #keysAppContext{
@@ -4020,8 +4020,20 @@
       height:32px;padding:0 12px;border-radius:8px;border:0;background:var(--primary);color:#fff;
       font:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;
     }
-    #settingsPanelKeys.has-scenario-context-banner .keys-page-status-bar,
-    #settingsPanelVoiceWake.has-scenario-context-banner .voice-page-status-bar{margin-top:0}
+    .habit-channel-edit-banner{padding:10px 14px}
+    .habit-channel-edit-banner-main{display:flex;align-items:center;gap:8px;min-width:0;flex:1;flex-wrap:wrap}
+    .habit-channel-edit-banner-label{font-size:13px;font-weight:800;line-height:1.4;color:var(--on-surface)}
+    .habit-channel-edit-banner-hint{font-size:11px;line-height:1.35;color:#15803d;font-weight:700}
+    .habit-channel-edit-banner-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;flex-shrink:0}
+    .habit-channel-edit-banner-btn{
+      height:30px;padding:0 10px;border-radius:8px;border:1px solid rgba(26,45,74,.16);
+      background:var(--surface-high);color:var(--on-surface);font:inherit;font-size:12px;font-weight:700;
+      cursor:pointer;white-space:nowrap;
+    }
+    .habit-channel-edit-banner-btn:hover{background:var(--surface-container-high)}
+    #settingsPanelKeys.has-channel-edit-banner .keys-page-status-bar,
+    #settingsPanelVoiceWake.has-channel-edit-banner .voice-page-status-bar,
+    #settingsPanelSoftPad.has-channel-edit-banner .soft-pad-status-bar{margin-top:0}
     .habit-hub-list.is-grid .habit-hub-card{grid-template-columns:1fr;min-height:0;min-width:0;overflow:hidden}
     .habit-hub-list.is-grid .habit-hub-card-actions{justify-content:flex-start;flex-wrap:wrap;gap:6px;padding-left:0;padding-top:10px;border-left:0;border-top:1px dashed var(--outline-variant)}
     .habit-hub-aside{

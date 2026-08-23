@@ -16,8 +16,10 @@
     var spBasic=$('settingsPanelBasicDesc'); if(spBasic&&!(global.OneToneIslands&&typeof global.OneToneIslands.isMounted==='function'&&global.OneToneIslands.isMounted('settingsPanelBasic'))) spBasic.textContent=d.settingsPanelBasicDesc;
     var spKeys=$('settingsPanelKeysDesc'); if(spKeys) spKeys.textContent=d.settingsPanelKeysDesc;
     var spKeysTitle=$('settingsPanelKeysTitle'); if(spKeysTitle) spKeysTitle.textContent=d.settingsNavKeys;
+    var spKeysBrand=$('keysPageBrandTitle'); if(spKeysBrand) spKeysBrand.textContent=d.keysPageBrandTitle||d.settingsNavKeys||'按键';
     var spSoftPad=$('settingsPanelSoftPadDesc'); if(spSoftPad) spSoftPad.textContent=d.settingsPanelSoftPadDesc||'';
     var spSoftPadTitle=$('settingsPanelSoftPadTitle'); if(spSoftPadTitle) spSoftPadTitle.textContent=d.settingsNavSoftPad||'虚拟键盘';
+    var spSoftPadBrand=$('softPadPageBrandTitle'); if(spSoftPadBrand) spSoftPadBrand.textContent=d.softPadPageBrandTitle||d.settingsNavSoftPad||'虚拟键盘';
     var spHabits=$('settingsPanelHabitsDesc'); if(spHabits) spHabits.textContent=d.settingsPanelHabitsDesc;
     var spHabitsTitle=$('settingsPanelHabitsTitle'); if(spHabitsTitle) spHabitsTitle.textContent=d.settingsNavHabits;
     var spVoice=$('settingsPanelVoiceWakeDesc'); if(spVoice) spVoice.textContent=d.settingsPanelVoiceWakeDesc;

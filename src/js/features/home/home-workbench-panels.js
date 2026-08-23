@@ -132,12 +132,20 @@
         }).join('')
         +'</div>';
     }
-    // Summary card: inactive → switch hero; active → open channel settings.
+    var runtimeBadge='';
+    if(card.runtimeBadge){
+      runtimeBadge='<span class="wb-howto-card-runtime" data-ot-tip="'+esc(card.runtimeTooltip||'')+'">'+esc(card.runtimeBadge)+'</span>';
+    }
+    var editBtn=card.habitEditId
+      ?'<button type="button" class="wb-howto-card-edit" data-wb-habit-edit="'+esc(card.habitEditId)+'" data-ot-tip="'+esc(t('homeWbHabitEditOnlyTip','仅切换编辑对象，不影响正在使用'))+'">'+esc(t('homeWbHabitEditOnly','编辑'))+'</button>'
+      :'';
     var habitChip=card.habitShort
       ?'<span class="wb-howto-card-habit">'+esc(card.habitShort)+'</span>'
       :'';
     return '<article class="wb-howto-card'+(card.active?' is-active':'')+(kind?' is-'+kind:'')+(card.empty?' is-empty':'')+'" data-wb-howto="'+esc(kind)+'" role="button" tabindex="0" aria-pressed="'+(card.active?'true':'false')+'" data-ot-tip="'+esc(t('homeWbHowToOpenTip','点此切换上方预览；再点打开设置'))+'">'
+      +runtimeBadge
       +habitChip
+      +editBtn
       +'<div class="wb-howto-card-head">'
       +'<span class="wb-howto-card-ico" aria-hidden="true">'+icon+'</span>'
       +'<span class="wb-howto-card-title">'+esc(card.title||'')+'</span>'
@@ -298,13 +306,17 @@
     if(!projection||!Array.isArray(projection.howtoCards)) return;
     var cards=projection.howtoCards;
     var activeMap=null;
+    var runtimeDisp=null;
     try{
       var mid=activeSceneId();
       if(mid&&global.OneToneMappingCore&&global.OneToneMappingCore.byId){
         activeMap=global.OneToneMappingCore.byId(mid);
       }
+      var rt=global.OneToneRuntimeHabitControl;
+      if(rt&&rt.resolveRuntimeHabitDisplay) runtimeDisp=rt.resolveRuntimeHabitDisplay();
     }catch(_){}
     var habitShort=activeMap?sceneChipShortName(activeMap):'';
+    var habitEditId=activeMap&&activeMap.id?String(activeMap.id):'';
     var keyIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>';
     var voiceIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>';
     var camIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -330,6 +342,11 @@
       }
       var painted=Object.assign({},card);
       if(habitShort) painted.habitShort=habitShort;
+      if(habitEditId) painted.habitEditId=habitEditId;
+      if(runtimeDisp&&runtimeDisp.badgeLabel){
+        painted.runtimeBadge=runtimeDisp.badgeLabel;
+        painted.runtimeTooltip=runtimeDisp.tooltip||'';
+      }
       html+=howToSummaryCardHtml(painted,icon,art);
     });
     html+='</div>';
@@ -867,6 +884,17 @@
       +esc(t('homeWbHabitOpenHub','查看全部'))
       +'</button>'
       +'</div>'
+      +'<div class="wb-scene-chip-flyout-pin" data-flyout-pin-row hidden>'
+      +'<p class="wb-scene-chip-flyout-pin-hint" data-flyout-pin-hint>'
+      +esc(t('homeWbChipFlyoutPinHint','自动切换开启时，可锁定习惯，避免被前台改掉'))
+      +'</p>'
+      +'<button type="button" class="wb-scene-summary-cta is-ghost" data-wb-pin-habit hidden>'
+      +esc(t('runtimeHabitPinAllBtn','全部应用都用这个习惯'))
+      +'</button>'
+      +'<button type="button" class="wb-scene-summary-cta is-ghost" data-wb-pin-app hidden>'
+      +esc(t('runtimeHabitPinAppBtn','只在当前应用用这个习惯'))
+      +'</button>'
+      +'</div>'
       +'</div>';
   }
 
@@ -906,6 +934,35 @@
       if(canon&&canon.id&&String(canon.id)!==String(m.id)) hide[m.id]=true;
     });
     return items.filter(function(m){ return !hide[m.id]; });
+  }
+
+  function renderRuntimeStatusRow(fgIdentity){
+    var host=$('wbRuntimeHabitStatus');
+    if(!host) return;
+    var rt=global.OneToneRuntimeHabitControl;
+    if(!rt||!rt.resolveRuntimeHabitDisplay){
+      host.innerHTML='';
+      host.hidden=true;
+      return;
+    }
+    var disp=rt.resolveRuntimeHabitDisplay(fgIdentity);
+    if(!disp){
+      host.innerHTML='';
+      host.hidden=true;
+      return;
+    }
+    host.hidden=false;
+    var badge=disp.badgeLabel
+      ?'<span class="wb-runtime-habit-badge is-'+esc(disp.mode||'auto')+'" data-ot-tip="'+esc(disp.tooltip||'')+'">'+esc(disp.badgeLabel)+'</span>'
+      :'<span class="wb-runtime-habit-badge is-auto" data-ot-tip="'+esc(disp.tooltip||'')+'">'+esc(disp.habitName||'—')+'</span>';
+    var actions='';
+    if(disp.canClearOverride){
+      actions+='<button type="button" class="wb-runtime-habit-clear" id="wbRuntimeClearOverride" data-ot-tip="'+esc(disp.tooltip||'')+'">'+esc(t('runtimeHabitClearOverride','🔓 取消临时选用'))+'</button>';
+    }
+    if(disp.canClearPin){
+      actions+='<button type="button" class="wb-runtime-habit-clear" id="wbRuntimeClearPin">'+esc(t('runtimeHabitClearPin','取消固定'))+'</button>';
+    }
+    host.innerHTML='<div class="wb-runtime-habit-status-inner">'+badge+actions+'</div>';
   }
 
   function renderScenarioPanel(vm){
@@ -961,8 +1018,7 @@
       +'<span class="wb-scene-chip-name">'+esc(t('homeWbSceneNewHabit'))+'</span>'
       +'</button>';
     html+='</div>';
-    // No summary card under chips — hero + active chip + hover flyout already cover it.
-    html+=sceneChipFlyoutShellHtml();
+    // Flyout shell lives outside innerHTML — see ensureSceneChipFlyoutShell.
     if(!appCount){
       html+='<p class="wb-scene-rail-hint">'+esc(t(
         'homeWbHabitRailHint',
@@ -975,6 +1031,11 @@
       ))+'</p>';
     }
     host.innerHTML=html;
+    ensureSceneChipFlyoutShell();
+    if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.reanchorChipFlyout){
+      global.OneToneHomeWorkbench.reanchorChipFlyout();
+    }
+    renderRuntimeStatusRow();
     var manage=$('wbHabitManage');
     if(manage){
       manage.textContent=t('homeWbHabitManage','管理');
@@ -1015,9 +1076,16 @@
     renderScenarioPanel(vm);
   }
 
+  function ensureSceneChipFlyoutShell(){
+    if(document.getElementById('wbSceneChipFlyout')) return;
+    var host=$('homeWorkbench')||document.body;
+    host.insertAdjacentHTML('beforeend',sceneChipFlyoutShellHtml());
+  }
+
   function bindOnce(){
     if(global.__wb_panels_bound__) return;
     global.__wb_panels_bound__=true;
+    ensureSceneChipFlyoutShell();
   }
 
   global.OneToneHomeWorkbenchPanels={
@@ -1027,10 +1095,13 @@
     renderHabitBar:renderHabitBar,
     renderHabitGrid:renderHabitGrid,
     renderScenarioPanel:renderScenarioPanel,
+    renderRuntimeStatusRow:renderRuntimeStatusRow,
     renderVoicePanel:renderMicCard,
     renderMicCard:renderMicCard,
     softPadHowToSnapshot:softPadHowToSnapshot,
     chipFlyoutContent:chipFlyoutContent,
+    ensureSceneChipFlyoutShell:ensureSceneChipFlyoutShell,
+    sceneChipFlyoutShellHtml:sceneChipFlyoutShellHtml,
     sceneChipShortName:sceneChipShortName,
     cameraHowToSnapshot:cameraHowToSnapshot,
     collectHowToSurfaceBits:collectHowToSurfaceBits,

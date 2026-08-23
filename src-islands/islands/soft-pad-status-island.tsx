@@ -21,6 +21,7 @@ interface SoftPadBindScope {
 }
 
 interface SoftPadStatusProps {
+  brandTitle: string;
   name: string;
   status: string;
   statusCls?: string;
@@ -58,6 +59,7 @@ function w() {
 }
 
 const EMPTY: SoftPadStatusProps = {
+  brandTitle: '虚拟键盘',
   name: '—',
   status: '—',
   statusCls: '',
@@ -142,6 +144,7 @@ export function SoftPadStatusBarIsland(): JSX.Element {
   }, []);
 
   const {
+    brandTitle,
     name,
     status,
     statusCls,
@@ -162,8 +165,8 @@ export function SoftPadStatusBarIsland(): JSX.Element {
     <>
       <div className="page-status-bar-main keys-scheme-status-main">
         <div className="keys-scheme-summary-title-row">
-          <span className="keys-scheme-summary-name" id="softPadSummaryName">
-            {name}
+          <span className="keys-scheme-summary-name soft-pad-page-brand-title" id="softPadPageBrandTitle">
+            {brandTitle}
           </span>
           <span
             className={['keys-scheme-summary-pill', statusCls].filter(Boolean).join(' ')}
@@ -220,6 +223,9 @@ export function SoftPadStatusBarIsland(): JSX.Element {
             </div>
           </div>
         </div>
+        <span className="sr-only" id="softPadSummaryName">
+          {name}
+        </span>
         <div className="keys-scheme-summary-meta">
           <span className="keys-scheme-summary-item">
             <span className="keys-scheme-summary-lbl" id="softPadSummaryAgentLbl">

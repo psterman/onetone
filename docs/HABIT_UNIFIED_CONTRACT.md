@@ -128,6 +128,84 @@ Skills 只负责 Hook 安装/配置/诊断，**不是**实时状态源。
 | 语音 UI 哨兵 | 可映射到 null + 局部「配全局底座」 |
 | Camera 编辑模式 | `ui.cameraEditMode` |
 
+## C' 运行时模型（M1）
+
+默认**跟随前台**；首页/Hub 为 escape hatch（软 override 过期 + 显式 pin）。
+
+### 优先级（解析正在使用）
+
+`pinHabit` > `pinAppHabit`（当前 FG 匹配时）> `softOverride`（FG signature 匹配时）> 自动跟前台 > baseline
+
+持久化：`config.runtimeHabitControl`（`softOverride`、`pin`）；`config.followForegroundAppScenario` 默认 `true`。
+
+### FG signature（软 override 过期）
+
+```text
+fgSignature := normalize(processPath) + '\0' + normalize(windowClass)
+```
+
+- `processPath`：`cmd_foreground_app` 的 `fullPath`
+- `windowClass`：Win32 class name（Rust `AppIdentity.window_class`；缺省降级为 `(processPath, '')`）
+- 比较：字符串相等；不等 → 软 override 失效，回自动
+
+### 软 override 可见性（状态行）
+
+- 徽标：**「临时选用」**
+- Tooltip：「你临时选用了 {habit}。切到别的应用时自动恢复跟随前台。」
+- **🔓 取消 override** → `clearSoftOverride()`
+
+### Pin 二级粒度
+
+| 类型 | 语义 | 状态行 |
+|------|------|--------|
+| `pinHabit` | 所有应用都用此 habit | `🔒 固定: {habit}` |
+| `pinAppHabit` | 仅在 app X 内用 habit Y | `🔒 在 {app} 固定: {habit}` |
+
+Schema：
+
+```typescript
+runtimeHabitControl: {
+  softOverride: { mappingId, fgSignature } | null,
+  pin:
+    | { kind: 'habit', mappingId }
+    | { kind: 'appHabit', appTargetId, mappingId }
+    | null
+}
+```
+
+### Baseline 规则
+
+- **禁止删除** baseline mapping（`appTargetId=null` 的全局兜底）
+- **「重置 baseline」**：清空触发/识别/override 字段，**不删除** mapping 行
+- 启动时 `ensureGlobalBaselineMapping` 保证 baseline 存在
+
+### 页面顶栏 habit/app 条
+
+| 页面 | 顶部 habit/app 条 |
+|------|------------------|
+| **首页** | 要：状态行 + habit rail（runtime） |
+| **Hub** | 要：管理 + 新建/为前台配 |
+| **按键/语音/摄像头** | 不要 runtime 切换；只编辑上下文（D 单行 banner） |
+| **Soft Pad** | Auto 车道，独立；保留 agent scope bar（例外） |
+
+## D — 通道页编辑 banner
+
+通道页（按键 / 语音 / 摄像头）**不再**展示 habit 列表、scheme tabs、hub aside 或「正在使用」切换条。顶栏仅一行只读编辑上下文：
+
+```text
+正在编辑：{name}   [切换 →]   [↻ 跟前台]
+```
+
+- **`[切换 →]`**：打开 Hub，便于换习惯或新建；**不**在通道页内切习惯。
+- **`[↻ 跟前台]`**：把**编辑上下文**对齐到 runtime 解析结果（`OneToneRuntimeHabitControl.resolveActiveSceneId`）；**不**调用 `activateScene`，不改变「正在使用」 unless 用户另行操作。
+- **编辑解析优先级**：`ui.habitScenarioReturnId` → `state.selectedMappingId` → 显示「通用设置」。
+- **Tab 切换保留**：keys ↔ voice ↔ camera 切换时保留 `habitScenarioReturnId`；`syncPanelContext(panel)` 只同步各通道 edit 字段（`voiceEditSchemeId` / `cameraEditMode`），禁止无条件 `openGlobal*` 清上下文。
+- **打开通道时自动 bootstrap**：从首页或抽屉进入 keys/voice/camera 时，若 `habitScenarioReturnId` 为空（无 Hub/场景编辑显式目标），默认调用 `ensureEditContextFromRuntime()` 对齐到当前正在使用的习惯；已有 return id 则保留。
+- **Runtime 状态行**：仅首页 `#wbRuntimeHabitStatus`；通道页不出现「正在使用」条或设为正在使用 CTA。
+- **Soft Pad 例外**：保留 agent scope bar；可显示当前编辑习惯名，但不复刻通道页 habit 列表。
+
+实现：`OneToneHabitChannelEditBanner`（`habit-channel-edit-banner.js`）；旧 `habit-scenario-context-banner` 的 `render()` 委托至此。
+
 ## 批次
 
 - **B0**：本文档 + i18n 对齐五词。

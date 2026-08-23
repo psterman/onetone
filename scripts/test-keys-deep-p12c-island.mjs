@@ -48,6 +48,12 @@ check('main mount strip', mainSrc.includes('__otMountKeysAppContextStripIsland')
 check('drawer strip', drawerSrc.includes('__otMountKeysAppContextStripIsland'));
 check('index keysHabitStripWrap', html.includes('id="keysHabitStripWrap"'));
 check('shouldShowHabitStrip export', panelSrc.includes('shouldShowHabitStrip:shouldShowHabitStrip'));
+check('shouldShowHabitStrip always false', panelSrc.includes('function shouldShowHabitStrip(){\n    return false;'));
+check('hub scheme list hidden', panelSrc.includes('cardHidden:true'));
+check('edit banner module', readFileSync(join(root, 'src/js/features/mapping/habit-channel-edit-banner.js'), 'utf8').includes('OneToneHabitChannelEditBanner'));
+check('context banner delegates to edit banner', readFileSync(join(root, 'src/js/features/mapping/habit-scenario-context-banner.js'), 'utf8').includes('OneToneHabitChannelEditBanner.renderAll'));
+check('drawer syncPanelContext', drawerSrc.includes('OneToneHabitChannelEditBanner.syncPanelContext'));
+check('index edit banner script', html.includes('habit-channel-edit-banner.js'));
 check('habit strip not hidden by scenario css', !readFileSync(join(root, 'src/css/app.css'), 'utf8').includes('#settingsPanelKeys.is-scenario-config #keysAppBindingStrip'));
 
 console.log('[keys-deep-p12c] header slim:');
