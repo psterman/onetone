@@ -114,59 +114,12 @@
       return;
     }
 
-    var schemeTab=e.target.closest&&e.target.closest('#keysWorkflowTabs [data-scheme-id]');
+    var schemeTab=e.target.closest&&e.target.closest('#keysWorkflowTabs [data-scheme-id], #keysHabitStripWrap [data-scheme-id]');
     if(schemeTab){
       e.preventDefault();
       e.stopPropagation();
       var panelUiTab=global.OneToneKeysPanelUi;
       if(panelUiTab&&panelUiTab.switchActiveScheme) panelUiTab.switchActiveScheme(schemeTab.getAttribute('data-scheme-id')||'');
-      return;
-    }
-
-    var appChip=e.target.closest&&e.target.closest('#keysAppContextStrip [data-app-context]');
-    if(appChip){
-      e.preventDefault();
-      e.stopPropagation();
-      var appRulesCtx=global.OneToneAppBehaviorRules;
-      if(appRulesCtx&&appRulesCtx.setActiveAppContextId) appRulesCtx.setActiveAppContextId(appChip.getAttribute('data-app-context')||'');
-      return;
-    }
-
-    var ruleChip=e.target.closest&&e.target.closest('#keysAppContextStrip [data-rule-context]');
-    if(ruleChip){
-      e.preventDefault();
-      e.stopPropagation();
-      var appRulesRule=global.OneToneAppBehaviorRules;
-      if(appRulesRule&&appRulesRule.setActiveRuleContext) appRulesRule.setActiveRuleContext(ruleChip.getAttribute('data-rule-context')||'');
-      return;
-    }
-
-    var ruleDeleteChip=e.target.closest&&e.target.closest('#keysAppContextStrip [data-rule-delete]');
-    if(ruleDeleteChip){
-      e.preventDefault();
-      e.stopPropagation();
-      var coreMod=global.OneToneMappingCore;
-      var mDel=coreMod&&coreMod.selected?coreMod.selected():null;
-      var rulesDel=global.OneToneAppBehaviorRules;
-      if(mDel&&rulesDel&&rulesDel.removeRuleById){
-        rulesDel.removeRuleById(mDel,ruleDeleteChip.getAttribute('data-rule-delete')||'');
-      }
-      return;
-    }
-
-    var appChipNone=e.target.closest&&e.target.closest('#keysAppContextStrip [data-app-chip-none]');
-    if(appChipNone){
-      e.preventDefault();
-      e.stopPropagation();
-      var atp=global.OneToneAppTargetPresets;
-      if(atp&&atp.clearPrimaryForMapping) atp.clearPrimaryForMapping();
-      var appRulesNone=global.OneToneAppBehaviorRules;
-      if(appRulesNone){
-        if(appRulesNone.setActiveAppContextId) appRulesNone.setActiveAppContextId('');
-        if(appRulesNone.setKeysExpandedAppId) appRulesNone.setKeysExpandedAppId('');
-      }
-      var panelUi=global.OneToneKeysPanelUi;
-      if(panelUi&&panelUi.render) panelUi.render();
       return;
     }
 

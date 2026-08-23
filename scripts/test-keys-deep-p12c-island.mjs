@@ -17,6 +17,8 @@ const panelSrc = readFileSync(join(root, 'src/js/features/settings/keys-panel-ui
 const tableSrc = readFileSync(join(root, 'src/js/features/mapping/habit-key-mapping-table.js'), 'utf8');
 const listSrc = readFileSync(join(root, 'src/js/features/mapping/mapping-list.js'), 'utf8');
 const html = readFileSync(join(root, 'src/index.html'), 'utf8');
+const islandStatusSrc = readFileSync(join(root, 'src-islands/islands/keys-status-island.tsx'), 'utf8');
+const stripSrc = readFileSync(join(root, 'src/js/features/mapping/habit-channel-status-strip.js'), 'utf8');
 
 console.log('[keys-deep-p12c] P12c-2 pills:');
 check('export buildKeysStatusPillsModel', tableSrc.includes('buildKeysStatusPillsModel:buildKeysStatusPillsModel'));
@@ -41,10 +43,26 @@ check('index keysHubSchemeList', html.includes('id="keysHubSchemeList"'));
 
 console.log('[keys-deep-p12c] P12c-5 strip:');
 check('export buildKeysAppContextStripModel', panelSrc.includes('buildKeysAppContextStripModel:buildKeysAppContextStripModel'));
-check('strip 岛守卫', panelSrc.includes('__otKeysAppContextStripMounted'));
+check('strip 岛守卫', panelSrc.includes('__otKeysAppContextStripMounted')||panelSrc.includes('applyKeysHabitStripHost'));
 check('main mount strip', mainSrc.includes('__otMountKeysAppContextStripIsland'));
 check('drawer strip', drawerSrc.includes('__otMountKeysAppContextStripIsland'));
-check('index keysAppContextStrip', html.includes('id="keysAppContextStrip"'));
+check('index keysHabitStripWrap', html.includes('id="keysHabitStripWrap"'));
+check('shouldShowHabitStrip export', panelSrc.includes('shouldShowHabitStrip:shouldShowHabitStrip'));
+check('habit strip not hidden by scenario css', !readFileSync(join(root, 'src/css/app.css'), 'utf8').includes('#settingsPanelKeys.is-scenario-config #keysAppBindingStrip'));
+
+console.log('[keys-deep-p12c] header slim:');
+check('index no btnKeysTestTop', !html.includes('id="btnKeysTestTop"'));
+check('index no btnKeysSave', !html.includes('id="btnKeysSave"'));
+check('index no btnKeysSchemeAdd', !html.includes('id="btnKeysSchemeAdd"'));
+check('index toggle kept', html.includes('id="btnKeysMappingEnable"'));
+check('index habit strip add kept', html.includes('id="btnKeysHabitStripAdd"'));
+check('index meta hidden', html.includes('id="keysSummaryMeta"') && html.includes('keysSummaryMeta" hidden'));
+check('index no keysUnifiedActivate', !html.includes('id="keysUnifiedActivate"'));
+check('persistEditorIfDirty export', panelSrc.includes('persistEditorIfDirty:persistEditorIfDirty'));
+check('drawer close autosave', drawerSrc.includes('persistEditorIfDirty'));
+check('switch autosave', panelSrc.includes('if(isEditorDirty()) persistEditorIfDirty()'));
+check('status island toggle only', islandStatusSrc.includes('btnKeysMappingEnable') && !islandStatusSrc.includes('btnKeysSave'));
+check('keys strip noop', stripSrc.includes('if(spec.unified){\n      return;\n    }'));
 
 console.log('[keys-deep-p12c] P12c-6 display:');
 check('export buildKeysDisplayChromeModel', listSrc.includes('buildKeysDisplayChromeModel:buildKeysDisplayChromeModel'));

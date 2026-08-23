@@ -1807,7 +1807,6 @@
     setTimeout(function(){
       var m=core()&&core().selected?core().selected():null;
       prefetchMappingRuleIcons(m);
-      hydrateCustomRuleChipIcons($('keysAppContextStrip'));
       hydrateCustomRuleChipIcons($('voiceAppScopeChips'));
       hydrateCustomRuleChipIcons($('habitAppRulesList'));
       hydrateCustomRuleChipIcons($('keysAppRulesList'));

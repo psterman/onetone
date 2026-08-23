@@ -801,6 +801,9 @@
           var mountRecordCancel=global.__otMountRecordCancelBarIsland;
           if(typeof mountRecordCancel==='function') mountRecordCancel();
         }catch(err){ console.error('keys island mount',err); }
+        if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.renderHabitStrip){
+          try{ global.OneToneKeysPanelUi.renderHabitStrip(); }catch(_){}
+        }
         requestAnimationFrame(function(){ setTimeout(runKeysAfterMount,0); });
       }
       requestAnimationFrame(function(){ setTimeout(mountKeysIslands,0); });
@@ -1376,6 +1379,11 @@
         var closeFn=capPicker.closeCapturePopover||capPicker.closeCaptureSheet;
         closeFn.call(capPicker,{ keepPanel:true, skipStep:true });
       }catch(_){}
+    }
+
+    var closingPanel=normalizePanel(ui.settingsPanel);
+    if(closingPanel==='keys'&&global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.persistEditorIfDirty){
+      try{ global.OneToneKeysPanelUi.persistEditorIfDirty(); }catch(_){}
     }
 
     ui.drawerOpen=false;

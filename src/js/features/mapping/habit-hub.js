@@ -1681,8 +1681,6 @@
       wizard.setAttribute('aria-hidden','true');
     }
     if(detail) detail.hidden=true;
-    var appStrip=$('keysAppBindingStrip');
-    if(appStrip) appStrip.hidden=true;
     var panel=$('settingsPanelHabits');
     if(panel) panel.classList.toggle('is-habit-hub',isHub);
     if(panel) panel.classList.toggle('is-habit-wizard',false);

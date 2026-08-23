@@ -9,7 +9,7 @@ import {
   type KeysAppContextStripModel,
 } from '../domain/keysAppContextStrip';
 
-// P12c-5: #keysAppContextStrip sync-push；chip 点击仍走 legacy 委托。
+// P12c-5 → habit strip：#keysAppBindingStrip 可见性 sync-push；pill 点击 legacy 委托。
 
 const EMPTY: KeysAppContextStripModel = {
   hidden: true,
@@ -41,10 +41,20 @@ function syncFromLegacy(): void {
   const next = pullModel();
   applyKeysAppContextStripHosts(next);
   const sig = keysAppContextStripSignature(next);
-  if (sig === currentSig) return;
+  if (sig === currentSig) {
+    if (!next.hidden) {
+      const w = window as unknown as { __otKeysWorkflowSync?: () => void };
+      w.__otKeysWorkflowSync?.();
+    }
+    return;
+  }
   currentSig = sig;
   currentModel = next;
   emit();
+  if (!next.hidden) {
+    const w = window as unknown as { __otKeysWorkflowSync?: () => void };
+    w.__otKeysWorkflowSync?.();
+  }
 }
 
 function subscribe(listener: () => void): () => void {

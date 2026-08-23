@@ -3995,16 +3995,13 @@
     .habit-hub-create-channels{margin:2px 0 0}
     .habit-hub-inline-create-channel-hint{margin:0;font-size:11px;line-height:1.45;color:var(--on-surface-muted)}
     .habit-ws-create .habit-hub-inline-create{margin:12px 0 0;border-color:var(--outline-variant)}
-#settingsPanelKeys.is-scenario-config .keys-scheme-status-actions #btnKeysSchemeAdd,
 #settingsPanelVoiceWake.is-scenario-config .voice-scheme-status-actions #btnVoiceSchemeAdd{display:none}
 
 /* App-scenario keys: blue banner is the only title; hide duplicate summary + context strips. */
 #settingsPanelKeys.is-scenario-config .keys-scheme-status-main{
   display:none !important;
 }
-#settingsPanelKeys.is-scenario-config #keysAppContext,
-#settingsPanelKeys.is-scenario-config #keysAppContextStripWrap,
-#settingsPanelKeys.is-scenario-config #keysAppBindingStrip{
+#settingsPanelKeys.is-scenario-config #keysAppContext{
   display:none !important;
 }
 #settingsPanelKeys.is-scenario-config #keysWorkflowTabsBar{

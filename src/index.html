@@ -740,40 +740,26 @@
                 <span class="keys-scheme-summary-name" id="keysSummaryName">—</span>
                 <span class="keys-scheme-summary-pill" id="keysSummaryStatus">—</span>
               </div>
-              <div class="keys-scheme-summary-meta" id="keysSummaryMeta">
+              <div class="keys-scheme-summary-meta sr-only" id="keysSummaryMeta" hidden aria-hidden="true">
                 <span class="keys-scheme-summary-item"><span class="keys-scheme-summary-lbl" id="keysSummaryTriggerLbl">触发键</span><span class="keys-scheme-summary-val" id="keysSummaryTrigger">—</span></span>
-                <span class="keys-scheme-summary-divider keys-summary-scope-divider" aria-hidden="true"></span>
-                <span class="keys-scheme-summary-item keys-summary-scope-item" id="keysSummaryScopeItem"><span class="keys-scheme-summary-lbl" id="keysSummaryScopeLbl">生效范围</span><span class="keys-scheme-summary-val" id="keysSummaryScope">—</span></span>
+                <span class="keys-scheme-summary-divider keys-summary-scope-divider" aria-hidden="true" hidden></span>
+                <span class="keys-scheme-summary-item keys-summary-scope-item" id="keysSummaryScopeItem" hidden><span class="keys-scheme-summary-lbl" id="keysSummaryScopeLbl">生效范围</span><span class="keys-scheme-summary-val" id="keysSummaryScope">—</span></span>
               </div>
             </div>
             <div class="page-status-bar-actions keys-scheme-status-actions">
-              <button type="button" class="page-status-btn" id="btnKeysTestTop" disabled>测试一次</button>
-              <button type="button" class="page-status-btn is-primary" id="btnKeysSave" disabled>保存</button>
               <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="btnKeysMappingEnable" role="switch" aria-checked="false" aria-labelledby="keysSummaryStatus"></button>
-              <button type="button" class="page-status-btn" id="btnKeysSchemeAdd">+ 新建</button>
             </div>
             <!-- Survives KeysStatus island mount (island only replaces main/actions). -->
             <div class="keys-unified-extras" id="keysUnifiedExtras">
-              <span class="keys-unified-role-badge" id="keysUnifiedRoleBadge" hidden></span>
-              <div class="keys-unified-habit-line" id="keysUnifiedHabitLine" hidden>
-                <span class="keys-unified-habit-part" id="keysUnifiedEditing"></span>
-                <span class="keys-unified-sep" aria-hidden="true">·</span>
-                <span class="keys-unified-habit-part is-muted" id="keysUnifiedActive"></span>
-              </div>
-              <p class="keys-unified-hint" id="keysUnifiedHint" hidden></p>
-              <button type="button" class="habit-channel-status-strip-btn keys-unified-activate" id="keysUnifiedActivate" data-strip-activate hidden></button>
-              <div class="keys-unified-apps keys-app-binding-strip voice-app-scope-dock" id="keysAppBindingStrip" hidden>
-                <span class="keys-unified-apps-lbl" id="keysAppScopeTitle">生效范围</span>
-                <span class="keys-app-binding-lbl sr-only" id="keysAppBindingLbl">在哪些程序中生效</span>
-                <div class="keys-app-chips-wrap flow-scope-bar-wrap" id="keysAppContextStripWrap" hidden>
-                  <div class="keys-app-chips flow-scope-bar" id="keysAppContextStrip" role="radiogroup" aria-labelledby="keysAppContextStripLbl"></div>
-                  <button type="button" class="keys-app-chip keys-app-chip--add flow-scope-bar-add" id="btnKeysAppChipAdd">+ 添加应用</button>
-                  <span class="sr-only" id="keysAppContextStripLbl">预览应用上下文</span>
+              <div class="keys-unified-apps keys-habit-strip keys-app-binding-strip voice-app-scope-dock" id="keysAppBindingStrip" hidden>
+                <span class="keys-unified-apps-lbl" id="keysHabitStripLbl">按键习惯</span>
+                <div class="keys-habit-strip-wrap flow-scope-bar-wrap" id="keysHabitStripWrap">
+                  <div class="keys-workflow-tabs keys-habit-strip-tabs flow-scope-bar" id="keysWorkflowTabs" role="tablist" aria-labelledby="keysHabitStripLbl"></div>
+                  <button type="button" class="keys-app-chip keys-app-chip--add flow-scope-bar-add" id="btnKeysHabitStripAdd">+ 新建</button>
                 </div>
               </div>
             </div>
             <span class="sr-only" id="keysWorkflowTabsLbl">正在编辑的习惯</span>
-            <div class="keys-workflow-tabs sr-only" id="keysWorkflowTabs" role="tablist" aria-labelledby="keysWorkflowTabsLbl" hidden></div>
             <label class="keys-habit-switcher-assist sr-only">
               <span class="sr-only" id="keysHabitSwitcherLbl">当前习惯</span>
               <select class="keys-habit-switcher-inline" id="keysHabitSwitcher" aria-labelledby="keysHabitSwitcherLbl keysWorkflowTabsLbl" hidden></select>

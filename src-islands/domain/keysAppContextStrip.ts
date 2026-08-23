@@ -1,5 +1,4 @@
-// P12c-5: Keys 应用上下文 strip。
-// 单一来源：legacy OneToneKeysPanelUi.buildKeysAppContextStripModel。
+// P12c-5 → habit strip：legacy OneToneKeysPanelUi.buildKeysAppContextStripModel 控制可见性。
 
 export interface KeysAppContextStripModel {
   hidden: boolean;
@@ -47,12 +46,10 @@ export function keysAppContextStripSignature(model: KeysAppContextStripModel): s
 }
 
 export function applyKeysAppContextStripHosts(model: KeysAppContextStripModel): void {
-  const strip = document.getElementById('keysAppContextStrip');
-  const wrap = document.getElementById('keysAppContextStripWrap');
   const bindingStrip = document.getElementById('keysAppBindingStrip');
-  if (!strip || !wrap) return;
-  wrap.hidden = !!model.hidden;
+  const wrap = document.getElementById('keysHabitStripWrap');
+  const bar = document.getElementById('keysWorkflowTabsBar');
   if (bindingStrip) bindingStrip.hidden = !!model.hidden;
-  if (model.hidden) return;
-  strip.innerHTML = model.html || '';
+  if (wrap) wrap.hidden = !!model.hidden;
+  if (bar) bar.classList.toggle('has-habit-strip', !model.hidden);
 }

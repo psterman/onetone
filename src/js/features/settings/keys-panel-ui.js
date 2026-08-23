@@ -364,9 +364,8 @@
     var scopeVal='—';
     var scopeApps=[];
     var scopeIcons=false;
-    var chipsOn=false;
+    var habitStripOn=shouldShowHabitStrip();
     if(m){
-      chipsOn=!shouldHideAppBindingStrip(m)&&!!(core().isSaved&&core().isSaved(m));
       if(codexCtx&&capUi&&capUi.pushToTalkDisplay){
         var talkKey=capUi.pushToTalkDisplay(m);
         scopeVal=talkKey
@@ -398,7 +397,7 @@
       scopeApps:scopeApps,
       scopeIcons:scopeIcons,
       // Interactive chips already show 生效范围 — don't duplicate icon pills above.
-      scopeHidden:!!chipsOn,
+      scopeHidden:!!habitStripOn,
       saveLabel:t('keysSave'),
       testLabel:t('keysTestOnce'),
       addLabel:'+ '+t('addKeysDraft'),
@@ -440,22 +439,11 @@
     var islandOn=pushKeysStatusIfMounted(m);
     var nameEl=islandOn?null:$('keysSummaryName');
     var statusEl=islandOn?null:$('keysSummaryStatus');
-    var trigLbl=islandOn?null:$('keysSummaryTriggerLbl');
-    var trigVal=islandOn?null:$('keysSummaryTrigger');
-    var scopeLbl=islandOn?null:$('keysSummaryScopeLbl');
-    var scopeVal=islandOn?null:$('keysSummaryScope');
-    var saveBtn=islandOn?null:$('btnKeysSave');
-    var testBtn=islandOn?null:$('btnKeysTestTop');
-    var schemeAddBtn=islandOn?null:$('btnKeysSchemeAdd');
+    var toggle=$('btnKeysMappingEnable');
     var keycapHint=$('keysKeycapHint');
     var keycapHost=$('habitKeyMapCellTrigger');
     var targetKeycapHost=$('habitKeyMapCellTarget');
-    if(trigLbl) trigLbl.textContent=t('keysSummaryTriggerLbl');
-    if(scopeLbl) scopeLbl.textContent=t('keysSummaryScopeLbl');
     if(keycapHint) keycapHint.textContent=t('keysKeycapHint');
-    if(saveBtn) saveBtn.textContent=t('keysSave');
-    if(testBtn) testBtn.textContent=t('keysTestOnce');
-    if(schemeAddBtn) schemeAddBtn.textContent='+ '+t('addKeysDraft');
     var imeHint=$('imePresetHintMapping');
     if(imeHint) imeHint.textContent=t('keysCaptureImeSource');
     var triggerFooterLbl=$('keysTriggerModeFooterLbl');
@@ -463,10 +451,11 @@
     if(!m){
       if(nameEl) nameEl.textContent='—';
       if(statusEl){ statusEl.textContent='—'; statusEl.className='keys-scheme-summary-pill'; }
-      if(trigVal) trigVal.textContent='—';
-      if(scopeVal){ scopeVal.classList.remove('has-icons'); scopeVal.textContent='—'; }
-      if(saveBtn) saveBtn.disabled=true;
-      if(testBtn) testBtn.disabled=true;
+      if(toggle){
+        toggle.classList.remove('is-on');
+        toggle.setAttribute('aria-checked','false');
+        toggle.disabled=true;
+      }
       if(keycapHost) keycapHost.removeAttribute('title');
       if(targetKeycapHost) targetKeycapHost.removeAttribute('title');
       return;
@@ -512,20 +501,11 @@
       statusEl.textContent=pillText;
       statusEl.className=pillCls;
     }
-    if(trigVal) trigVal.textContent=trigLabel||(trig?friendlyKey(trig):t('keysStatusUnset'));
-    var chipsOn=!shouldHideAppBindingStrip(m)&&!!(core().isSaved&&core().isSaved(m));
-    var scopeItemEl=$('keysSummaryScopeItem');
-    var scopeDividerEl=document.querySelector('#keysWorkflowTabsBar .keys-summary-scope-divider, #keysSummaryMeta .keys-summary-scope-divider');
-    if(scopeItemEl) scopeItemEl.hidden=!!chipsOn;
-    if(scopeDividerEl) scopeDividerEl.hidden=!!chipsOn;
-    if(!chipsOn) paintScopeSummary(scopeVal,m,{codexCtx:codexCtx});
-    if(saveBtn){
-      saveBtn.disabled=!dirty;
-      saveBtn.hidden=!!codexCtx;
-    }
-    if(testBtn){
-      var tgt=core().editorTarget?core().editorTarget(m):((m.targetKey||'').trim());
-      testBtn.disabled=!trig||!tgt;
+    if(!global.__otKeysStatusMounted&&toggle){
+      toggle.classList.toggle('is-on',!!m.enabled);
+      toggle.setAttribute('aria-checked',m.enabled?'true':'false');
+      toggle.disabled=!m||recording;
+      delete toggle.dataset.vpToggleBusy;
     }
     if(keycapHost){
       keycapHost.setAttribute('title',recording&&recMode==='trigger'?t('keysKeycapRecording'):t('keysKeycapHint'));
@@ -707,18 +687,17 @@
     box.dataset.otConflictWarmed='1';
   }
 
-  function saveCurrentScheme(){
-    if(!isEditorDirty()) return;
+  function persistEditorIfDirty(){
+    if(!isEditorDirty()) return false;
     hooks().flushAllEditorToMappings&&hooks().flushAllEditorToMappings();
     if(hooks().save) hooks().save();
+    return true;
+  }
+
+  function saveCurrentScheme(){
+    if(!persistEditorIfDirty()) return;
     if(hooks().render) hooks().render();
     render();
-    var saveBtn=$('btnKeysSave');
-    if(saveBtn){
-      var prev=t('keysSave');
-      saveBtn.textContent=t('keysSaveDone');
-      setTimeout(function(){ if(saveBtn) saveBtn.textContent=prev; },1200);
-    }
   }
 
   function applyRecommendedTriggerKey(){
@@ -822,103 +801,55 @@
     renderSchemeSummary(m);
   }
 
-  function shouldHideAppBindingStrip(m){
+  function shouldHideHabitStrip(){
     if(!keysPanelActive()) return true;
-    if(isInAppScenarioContext()) return true;
-    var capUi=global.OneToneAgentCapabilityUi;
-    if(capUi&&capUi.isCodexKeysEditing&&capUi.isCodexKeysEditing()) return true;
-    var T=global.OneToneAgentScenarioTemplate;
-    if(m&&T&&T.isCodexScenario&&T.isCodexScenario(m)) return true;
     return false;
+  }
+
+  function shouldShowHabitStrip(){
+    if(shouldHideHabitStrip()) return false;
+    return contextFilteredSchemes().length>0;
   }
 
   function buildKeysAppContextStripModel(){
     var m=core()&&core().selected?core().selected():null;
-    var hide=shouldHideAppBindingStrip(m)||!m||!core().isSaved||!core().isSaved(m);
-    if(hide){
-      return {
-        hidden:true,
-        html:'',
-        mappingId:m&&m.id?String(m.id):'',
-        contextId:'',
-        sig:'hidden'
-      };
-    }
-    var rulesApi=appRules();
-    var ctxId=activeAppContextId();
-    var html='';
-    if(rulesApi&&rulesApi.renderContextChipsHtml){
-      html=rulesApi.renderContextChipsHtml(m,{
-        variant:'chip',
-        contextId:ctxId
-      })||'';
-    }else{
-      var presets=rulesApi&&rulesApi.behaviorPresets?rulesApi.behaviorPresets:[];
-      if(!presets.length&&global.OneToneAppTargetPresets&&Array.isArray(global.OneToneAppTargetPresets.presets)){
-        presets=global.OneToneAppTargetPresets.presets.map(function(p){ return {id:p.id}; });
-      }
-      var primaryId=m?String(m.appTargetId||'').trim():'';
-      var noneSelected=!ctxId&&!primaryId;
-      html='<button type="button" class="keys-app-chip keys-app-chip--none'+(noneSelected?' is-selected':'')+'" data-app-chip-none="1" role="radio" aria-checked="'+(noneSelected?'true':'false')+'" title="'+esc(t('keysAppChipNoneHint'))+'"><span>'+esc(t('keysAppChipNone'))+'</span></button>';
-      presets.forEach(function(p){
-        var icon=presetIcon(p.id);
-        var isSel=ctxId===p.id;
-        var isPri=m&&String(m.appTargetId||'')===p.id;
-        var name=rulesApi&&rulesApi.appDisplayName?rulesApi.appDisplayName(p.id):(function(){
-          var atp=global.OneToneAppTargetPresets;
-          var preset=atp&&atp.presetById?atp.presetById(p.id):null;
-          return preset&&preset.nameKey?t(preset.nameKey):p.id;
-        })();
-        html+='<button type="button" class="keys-app-chip'+(isSel?' is-selected':'')+(isPri?' is-primary':'')+'" data-app-context="'+esc(p.id)+'" role="radio" aria-checked="'+(isSel?'true':'false')+'" title="'+esc(name)+'">';
-        if(icon){
-          html+='<img class="keys-app-chip-icon" src="'+esc(icon)+'" alt="" decoding="async" />';
-        }
-        html+='<span>'+esc(name)+'</span></button>';
-      });
-    }
-    var mappingId=m&&m.id?String(m.id):'';
+    var hide=!shouldShowHabitStrip();
+    var selected=ensureContextSelection();
     return {
-      hidden:false,
-      html:html,
-      mappingId:mappingId,
-      contextId:ctxId||'',
-      sig:[mappingId,ctxId||'',html].join('\0')
+      hidden:hide,
+      html:'',
+      mappingId:m&&m.id?String(m.id):'',
+      contextId:selected||'',
+      sig:[hide?'hidden':'show',selected||'',String(contextFilteredSchemes().length)].join('\0')
     };
   }
 
-  function applyKeysAppContextStripHost(model){
+  function applyKeysHabitStripHost(model){
     if(!model) model=buildKeysAppContextStripModel();
+    var bindingStrip=$('keysAppBindingStrip');
+    var wrap=$('keysHabitStripWrap');
+    var bar=$('keysWorkflowTabsBar');
+    if(bindingStrip) bindingStrip.hidden=!!model.hidden;
+    if(wrap) wrap.hidden=!!model.hidden;
+    if(bar) bar.classList.toggle('has-habit-strip',!model.hidden);
     if(global.__otKeysAppContextStripMounted&&typeof global.__otKeysAppContextStripSync==='function'){
       global.__otKeysAppContextStripSync();
-      return;
     }
-    var strip=$('keysAppContextStrip');
-    var wrap=$('keysAppContextStripWrap');
-    var bindingStrip=$('keysAppBindingStrip');
-    var scopeItem=$('keysSummaryScopeItem');
-    var scopeDivider=document.querySelector('#keysSummaryMeta .keys-summary-scope-divider');
-    var bar=$('keysWorkflowTabsBar');
-    if(!strip||!wrap) return;
-    wrap.hidden=!!model.hidden;
-    if(bindingStrip) bindingStrip.hidden=!!model.hidden;
-    if(bar) bar.classList.toggle('has-app-chips',!model.hidden);
-    // Chips own "生效应用" — hide the duplicate text scope when chips are visible.
-    if(scopeItem) scopeItem.hidden=!model.hidden;
-    if(scopeDivider) scopeDivider.hidden=!model.hidden;
     if(model.hidden) return;
-    strip.innerHTML=model.html||'';
-    var rulesApi=appRules();
-    if(rulesApi&&rulesApi.scheduleHydrateCustomRuleIcons) rulesApi.scheduleHydrateCustomRuleIcons();
+    renderWorkflowTabs();
+    if(global.__otKeysWorkflowMounted&&typeof global.__otKeysWorkflowSync==='function'){
+      try{ global.__otKeysWorkflowSync(); }catch(_){}
+    }
   }
 
-  function renderAppContextStrip(){
-    var bindingLbl=$('keysAppBindingLbl');
-    var addBtn=$('btnKeysAppChipAdd');
-    if(bindingLbl) bindingLbl.textContent=t('keysAppBindingLbl');
-    if(addBtn) addBtn.textContent=t('keysAppChipAdd');
-    var scopeTitle=$('keysAppScopeTitle');
-    if(scopeTitle) scopeTitle.textContent=t('keysSummaryScopeLbl')||t('keysAppScopeTitle')||'生效范围';
-    applyKeysAppContextStripHost(buildKeysAppContextStripModel());
+  function renderHabitStrip(){
+    var lbl=$('keysHabitStripLbl');
+    var addBtn=$('btnKeysHabitStripAdd');
+    var tabsLbl=$('keysWorkflowTabsLbl');
+    if(lbl) lbl.textContent=t('keysHabitStripLbl');
+    if(addBtn) addBtn.textContent='+ '+t('addKeysDraft');
+    if(tabsLbl) tabsLbl.textContent=t('keysWorkflowTabsLbl');
+    applyKeysHabitStripHost(buildKeysAppContextStripModel());
   }
 
   function renderHabitSwitcher(){
@@ -1190,8 +1121,11 @@
     var isDraft=core().isIncomplete&&core().isIncomplete(m);
     var isStrictDraft=core().isDraft&&core().isDraft(m);
     var draftBadge=isStrictDraft?t('homeLiveSchemeDraft'):t('keySchemeCompletenessIncomplete');
-    return '<button type="button" class="keys-workflow-tab'+(isSel?' is-active':'')+(!enabled?' is-disabled-scheme':'')+(isDraft?' is-draft':'')+'" role="tab" aria-selected="'+(isSel?'true':'false')+'" id="keysWorkflowTab-'+esc(m.id)+'" data-scheme-id="'+esc(m.id)+'">'
-      +'<span class="keys-workflow-tab-name">'+esc(habitName(m))+'</span>'
+    var label=habitName(m);
+    var trig=core().editorTrigger?core().editorTrigger(m):((m.triggerKey||'').trim());
+    if(trig) label=label+' · '+friendlyKey(trig);
+    return '<button type="button" class="keys-workflow-tab keys-habit-strip-tab'+(isSel?' is-active':'')+(!enabled?' is-disabled-scheme':'')+(isDraft?' is-draft':'')+'" role="tab" aria-selected="'+(isSel?'true':'false')+'" id="keysWorkflowTab-'+esc(m.id)+'" data-scheme-id="'+esc(m.id)+'">'
+      +'<span class="keys-workflow-tab-name">'+esc(label)+'</span>'
       +(isDraft?'<span class="keys-workflow-tab-draft">'+esc(draftBadge)+'</span>':'')
       +'</button>';
   }
@@ -1240,15 +1174,7 @@
     if(!id||id===state().selectedMappingId) return;
     var schemes=contextFilteredSchemes();
     if(!schemes.some(function(m){ return m.id===id; })) return;
-    if(isEditorDirty()){
-      var modal=global.OneToneMappingConfirmModal;
-      if(modal&&modal.open){
-        modal.open(t('keysUnsavedSwitchPrompt')).then(function(ok){
-          if(ok) switchActiveSchemeNow(id);
-        });
-        return;
-      }
-    }
+    if(isEditorDirty()) persistEditorIfDirty();
     switchActiveSchemeNow(id);
   }
 
@@ -1269,8 +1195,13 @@
     var tab=$('keysWorkflowTab-'+id);
     if(tab) tab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
     var schemeList=$('keysHubSchemeList');
-    var hubRow=schemeList&&schemeList.querySelector('[data-scheme-id="'+id+'"]');
-    if(hubRow) hubRow.scrollIntoView({behavior:'smooth',block:'nearest'});
+    var hubBtn=schemeList&&schemeList.querySelector('[data-scheme-select="'+id+'"]');
+    if(hubBtn){
+      var hubWrap=hubBtn.closest('.keys-hub-trigger-row-wrap');
+      if(hubWrap) hubWrap.scrollIntoView({behavior:'smooth',block:'nearest'});
+      var groupCard=hubBtn.closest('.keys-hub-scheme-group-card');
+      if(groupCard) groupCard.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
   }
 
   function renderAppContext(){
@@ -1518,8 +1449,7 @@
       ['keysCaptureKeycapTitle','keysCaptureImeRecordTitle'],
       ['keysCaptureRecordHint','keysCaptureRecordHint'],
       ['keysCaptureKeyFinishLbl','keysCaptureKeyFinishTitle'],
-      ['keysAppScopeTitle','keysSummaryScopeLbl'],
-      ['keysAppScopeDesc','keysAppScopeDesc']
+      ['keysHabitStripLbl','keysHabitStripLbl'],
     ];
     colLbls.forEach(function(pair){
       var el=$(pair[0]);
@@ -1531,12 +1461,12 @@
     if(finishMoreHint) finishMoreHint.textContent=t('keysFinishMoreHint');
     var desc=$('settingsPanelKeysDesc');
     if(desc) desc.textContent=t('settingsPanelKeysDesc');
-    renderAppContextStrip();
     renderTriggerContextBadge();
     syncKeyDisplayIcons(m);
     renderTriggerModeSegments(m);
     renderTriggerConflict(m);
     renderSchemeSummary(m);
+    renderHabitStrip();
     if(global.OneToneHabitChannelStatusStrip){
       if(global.OneToneHabitChannelStatusStrip.bindOnce) global.OneToneHabitChannelStatusStrip.bindOnce();
       if(global.OneToneHabitChannelStatusStrip.render){
@@ -1609,40 +1539,17 @@
         if(main) main.click();
       });
     }
-    var addChip=$('btnKeysAppChipAdd');
+    var addChip=$('btnKeysHabitStripAdd');
     if(addChip){
       addChip.addEventListener('click',function(e){
         e.preventDefault();
         e.stopPropagation();
-        if(appRules()&&appRules().openAppPicker) appRules().openAppPicker();
-      });
-    }
-    var saveBtn=$('btnKeysSave');
-    if(saveBtn){
-      saveBtn.addEventListener('click',function(e){
-        e.preventDefault();
-        saveCurrentScheme();
-      });
-    }
-    var testTop=$('btnKeysTestTop');
-    if(testTop){
-      testTop.addEventListener('click',function(e){
-        e.preventDefault();
-        var main=$('btnTestSend');
-        if(main&&!main.disabled) main.click();
+        addScheme();
       });
     }
     var hubAdd=$('btnKeysHubAddScheme');
     if(hubAdd){
       hubAdd.addEventListener('click',function(e){
-        e.preventDefault();
-        var addBtn=$('btnAddMapping');
-        if(addBtn) addBtn.click();
-      });
-    }
-    var schemeAdd=$('btnKeysSchemeAdd');
-    if(schemeAdd){
-      schemeAdd.addEventListener('click',function(e){
         e.preventDefault();
         var addBtn=$('btnAddMapping');
         if(addBtn) addBtn.click();
@@ -1747,7 +1654,9 @@
     renderRecordingFeedback:renderRecordingFeedback,
     syncCancelButtonHost:syncCancelButtonHost,
     renderAppContext:renderAppContext,
-    renderAppContextStrip:renderAppContextStrip,
+    renderHabitStrip:renderHabitStrip,
+    renderAppContextStrip:renderHabitStrip,
+    shouldShowHabitStrip:shouldShowHabitStrip,
     renderTriggerContextBadge:renderTriggerContextBadge,
     renderImePill:renderImePill,
     renderKeysHub:renderKeysHub,
@@ -1760,6 +1669,7 @@
     renderTestProgress:renderTestProgress,
     isEditorDirty:isEditorDirty,
     saveCurrentScheme:saveCurrentScheme,
+    persistEditorIfDirty:persistEditorIfDirty,
     keysPanelActive:keysPanelActive,
     previewKeyConflict:previewKeyConflict,
     testOnceTop:testOnceTop,

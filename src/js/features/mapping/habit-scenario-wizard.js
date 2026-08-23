@@ -157,8 +157,6 @@
       wizard.setAttribute('aria-hidden',view==='wizard'?'false':'true');
     }
     if(detail) detail.hidden=true;
-    var appStrip=$('keysAppBindingStrip');
-    if(appStrip) appStrip.hidden=true;
     var panel=$('settingsPanelHabits');
     if(panel){
       panel.classList.toggle('is-habit-hub',view==='hub');

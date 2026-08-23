@@ -2100,13 +2100,31 @@
 #settingsPanelKeys .keys-unified-extras {
   flex: 1 1 100%;
   display: grid;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
   order: 3;
 }
 
 #settingsPanelKeys .keys-unified-status {
-  align-items: flex-start;
+  align-items: center;
+  gap: 8px 12px;
+  padding-top: 10px;
+  padding-bottom: 8px;
+}
+
+#settingsPanelKeys .keys-scheme-status-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#settingsPanelKeys .keys-scheme-status-actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+  align-self: flex-start;
+}
+
+#settingsPanelKeys #keysSummaryMeta {
+  display: none !important;
 }
 
 /* Island host wraps main+actions; keep flex row layout via contents when possible */
@@ -2168,7 +2186,8 @@
   justify-self: start;
 }
 
-#settingsPanelKeys .keys-unified-apps {
+#settingsPanelKeys .keys-unified-apps,
+#settingsPanelKeys #keysUnifiedExtras .voice-app-scope-dock {
   display: grid !important;
   gap: 6px;
   margin-top: 2px !important;
@@ -2204,6 +2223,45 @@
 
 #settingsPanelKeys .keys-unified-apps .keys-app-chips-wrap {
   min-width: 0;
+}
+
+#settingsPanelKeys .keys-habit-strip-tabs .keys-workflow-tab,
+#settingsPanelKeys .keys-habit-strip .flow-scope-bar .keys-workflow-tab {
+  flex-shrink: 0;
+}
+
+#settingsPanelKeys .keys-habit-strip .keys-habit-strip-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+#settingsPanelKeys .keys-unified-apps.keys-habit-strip:not([hidden]) {
+  display: grid !important;
+}
+
+#settingsPanelKeys .keys-habit-strip-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#settingsPanelKeys #keysWorkflowTabsBar.has-habit-strip .keys-unified-extras {
+  padding-bottom: 0;
+}
+
+#settingsPanelKeys .keys-habit-strip-tab.is-active {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+#settingsPanelKeys .keys-hub-scheme-group-card.is-editing {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--outline-variant));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+#settingsPanelKeys .keys-hub-trigger-row.is-active {
+  background: var(--primary-soft);
 }
 
 #settingsPanelKeys .keys-unified-apps .voice-app-scope-head {

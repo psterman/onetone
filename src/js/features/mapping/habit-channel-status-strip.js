@@ -212,7 +212,6 @@
     var editing=resolveEditing(spec.panel);
     var active=resolveActive();
     if(spec.unified){
-      paintKeysUnified(editing,active);
       return;
     }
     var el=ensureStrip(spec);
