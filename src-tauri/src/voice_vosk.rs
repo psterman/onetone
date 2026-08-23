@@ -18,7 +18,7 @@ use crate::config::{
 const TARGET_SAMPLE_RATE: u32 = 16_000;
 const AUDIO_CHANNEL_CAP: usize = 64;
 const EVENT_CHANNEL_CAP: usize = 64;
-const PARTIAL_MIN_INTERVAL: Duration = Duration::from_millis(200);
+const PARTIAL_MIN_INTERVAL: Duration = Duration::from_millis(100);
 const LEVEL_MIN_INTERVAL: Duration = Duration::from_millis(250);
 const EN_WAKE_BUFFER_TTL: Duration = Duration::from_millis(2800);
 /// Suppress partial+final double-fire within one utterance, not across repeats.
@@ -301,16 +301,17 @@ pub fn start_voice_vosk(
     grammar_phrases: Vec<String>,
     frame_tx: Option<crate::audio_frame_bus::AudioFramePublisher>,
     asr_quiet: Arc<AtomicBool>,
+    continuous_asr: bool,
 ) -> Result<VoiceVoskHandle, String> {
     #[cfg(not(windows))]
     {
-        let _ = (cfg, resource_dir, grammar_phrases, frame_tx, asr_quiet);
+        let _ = (cfg, resource_dir, grammar_phrases, frame_tx, asr_quiet, continuous_asr);
         return Err("Vosk is Windows-only".into());
     }
 
     #[cfg(all(windows, vosk_disabled))]
     {
-        let _ = (cfg, resource_dir, grammar_phrases, frame_tx, asr_quiet);
+        let _ = (cfg, resource_dir, grammar_phrases, frame_tx, asr_quiet, continuous_asr);
         return Err(
             "Vosk native library not linked: place libvosk.lib and libvosk.dll in src-tauri/resources/vosk/ and rebuild"
                 .into(),
@@ -319,7 +320,14 @@ pub fn start_voice_vosk(
 
     #[cfg(all(windows, not(vosk_disabled)))]
     {
-        start_voice_vosk_impl(cfg, resource_dir, grammar_phrases, frame_tx, asr_quiet)
+        start_voice_vosk_impl(
+            cfg,
+            resource_dir,
+            grammar_phrases,
+            frame_tx,
+            asr_quiet,
+            continuous_asr,
+        )
     }
 }
 
@@ -330,6 +338,7 @@ fn start_voice_vosk_impl(
     grammar_phrases: Vec<String>,
     frame_tx: Option<crate::audio_frame_bus::AudioFramePublisher>,
     asr_quiet: Arc<AtomicBool>,
+    continuous_asr: bool,
 ) -> Result<VoiceVoskHandle, String> {
     let probe = probe_vosk_resources(&cfg, resource_dir.as_deref());
     if !probe.dll_exists {
@@ -375,6 +384,7 @@ fn start_voice_vosk_impl(
                     event_tx,
                     frame_tx_dual,
                     quiet_dual,
+                    continuous_asr,
                 ) {
                     send_event_blocking(&event_tx_err, VoiceVoskEvent::Error(e));
                     let _ = event_tx_err.send(VoiceVoskEvent::StateChanged("error".into()));
@@ -395,6 +405,7 @@ fn start_voice_vosk_impl(
                     event_tx,
                     frame_tx,
                     asr_quiet,
+                    continuous_asr,
                 ) {
                     send_event_blocking(&event_tx_err, VoiceVoskEvent::Error(e));
                     let _ = event_tx_err.send(VoiceVoskEvent::StateChanged("error".into()));
@@ -420,6 +431,7 @@ fn run_worker(
     event_tx: Sender<VoiceVoskEvent>,
     frame_tx: Option<crate::audio_frame_bus::AudioFramePublisher>,
     asr_quiet: Arc<AtomicBool>,
+    continuous_asr: bool,
 ) -> Result<(), String> {
     use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
     use cpal::SampleFormat;
@@ -452,9 +464,9 @@ fn run_worker(
         if let Some(r) =
             Recognizer::new_with_grammar(&model, TARGET_SAMPLE_RATE as f32, &grammar_refs)
         {
-            (r, true, "???????????".into())
+            (r, true, "已启用 grammar 限制识别".into())
         } else if let Some(r) = Recognizer::new(&model, TARGET_SAMPLE_RATE as f32) {
-            (r, false, "?????????????????????grammar ???????".into())
+            (r, false, "grammar 创建失败，已切换为自由识别".into())
         } else {
             return Err("create recognizer failed: grammar failed; free mode also failed".into());
         }
@@ -462,7 +474,7 @@ fn run_worker(
         (
             r,
             false,
-            "???????????????????/??? model ?????????? grammar??".into(),
+            "轻量/小模型不使用 grammar，已切换为自由识别".into(),
         )
     } else {
         return Err("create recognizer failed: free mode failed".into());
@@ -557,7 +569,7 @@ fn run_worker(
                     last_partial_text.clear();
                     en_wake_buffer.clear();
                 }
-                if !speech_gate.is_active() {
+                if !continuous_asr && !speech_gate.is_active() {
                     continue;
                 }
                 let state = recognizer
@@ -630,6 +642,7 @@ fn run_dual_worker(
     event_tx: Sender<VoiceVoskEvent>,
     frame_tx: Option<crate::audio_frame_bus::AudioFramePublisher>,
     asr_quiet: Arc<AtomicBool>,
+    continuous_asr: bool,
 ) -> Result<(), String> {
     use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
     use cpal::SampleFormat;
@@ -750,7 +763,7 @@ fn run_dual_worker(
                     last_partial_text.clear();
                     en_wake_buffer.clear();
                 }
-                if !speech_gate.is_active() {
+                if !continuous_asr && !speech_gate.is_active() {
                     continue;
                 }
 

@@ -1954,6 +1954,13 @@
       text = t('softPadHintApp', '当前编辑 · {app}：该应用前台时的键位和状态灯')
         .replace('{app}', app);
     }
+    var heard = global.__otVoiceHeardSurface;
+    if (heard && String(heard.text || '').trim()) {
+      var heardLine = String(heard.text || '').trim();
+      if (heard.matched) heardLine = '✓ ' + heardLine;
+      else if (heard.miss) heardLine = heardLine + ' ✗';
+      text = heardLine + ' · ' + text;
+    }
     var support = t(
       'softPadHubSupportRange',
       '支持 Codex、Claude、Cursor、MiniMax，以及 WorkBuddy / Trae Work / Trae Code / Qoder（状态连接 · Shortcuts）'
@@ -5568,6 +5575,7 @@
     syncSoftPadPadRing: syncSoftPadPadRing,
     // P14h：scope 提示文案模型
     buildSoftPadScopeHintModel: buildSoftPadScopeHintModel,
+    updateScopeHint: updateScopeHint,
     // P14j：准备 Codex CTA
     buildSoftPadEnsureCtaModel: buildSoftPadEnsureCtaModel,
     ensureCodex: ensureCodex,

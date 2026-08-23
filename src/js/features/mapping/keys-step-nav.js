@@ -2,13 +2,12 @@
   'use strict';
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
-  var STEPS=['trigger','target','finish'];
+  var STEPS=['trigger','target'];
   var lastFlowMapping=null;
 
   var FLOW_NODE_IDS={
     trigger:{btn:'keysFlowNodeTrigger',hint:'keysFlowNodeTriggerHint'},
-    target:{btn:'keysFlowNodeTarget',hint:'keysFlowNodeTargetHint'},
-    finish:{btn:'keysFlowNodeFinish',hint:'keysFlowNodeFinishHint'}
+    target:{btn:'keysFlowNodeTarget',hint:'keysFlowNodeTargetHint'}
   };
 
   function core(){
@@ -45,6 +44,11 @@
   }
 
   function codexTargetHintKey(m) {
+    var picker = global.OneToneKeysChannelCommandPicker;
+    if (picker && typeof picker.resolveHeroCapture === 'function') {
+      var cap = picker.resolveHeroCapture(m);
+      if (cap && cap.primaryLabel) return cap.primaryLabel;
+    }
     var cap = global.OneToneAgentCapabilityUi;
     if (cap && cap.flowTargetDisplayKey) {
       var ck = cap.flowTargetDisplayKey(m);
@@ -72,24 +76,21 @@
       :mode==='target'?t('keysFlowNodeRecordingTarget'):'';
     var trig='';
     var tgt='';
-    var fin='';
     if(m&&core()){
       trig=triggerHintLabel(m);
       tgt=friendlyKey(codexTargetHintKey(m));
       if(mode==='trigger'&&tgt) tgt=t('keysHeroModeIme','输入法识别键')+' · '+tgt;
     }
-    if(m&&global.OneToneSceneFlowSummary){
+    if(!tgt&&m&&global.OneToneSceneFlowSummary){
       var preview=global.OneToneAppBehaviorRules?global.OneToneAppBehaviorRules.getActiveAppContextId():'';
       var finTxt=global.OneToneSceneFlowSummary.finishBehaviorTextSettings(m,preview);
-      fin=finTxt&&finTxt.text?finTxt.text:'';
+      if(finTxt&&finTxt.text) tgt=t('keysCaptureEntryFinishHint','收尾')+' · '+finTxt.text;
     }
-    if(!fin&&m&&core()&&core().isSaved&&core().isSaved(m)) fin=t('habitKeyMapStatusEnabled');
     var capUi=global.OneToneAgentCapabilityUi;
     var codexCtx=capUi&&capUi.isCodexKeysEditing&&capUi.isCodexKeysEditing();
     return {
       trigger:recHint&&mode==='trigger'?recHint:(trig||t('keysStatusUnset')),
       target:recHint&&(mode==='target'||mode==='agentBinding')?recHint:(tgt||t('keysStatusUnset')),
-      finish:fin||t('keysStatusUnset'),
       codexCtx:!!codexCtx
     };
   }
@@ -104,7 +105,7 @@
     var ipcPhase=recordingIpcPhase();
     var recording=isRecordingUi();
     var hints=resolveStepHints(m);
-    var sig=[step,mode,ipcPhase,recording?'1':'0',hints.trigger||'',hints.target||'',hints.finish||'',hints.codexCtx?'1':'0'].join('\0');
+    var sig=[step,mode,ipcPhase,recording?'1':'0',hints.trigger||'',hints.target||'',hints.codexCtx?'1':'0'].join('\0');
     return {
       activeStep:step,
       recordingMode:mode,
@@ -112,7 +113,7 @@
       recording:recording,
       triggerHint:hints.trigger||'',
       targetHint:hints.target||'',
-      finishHint:hints.finish||'',
+      finishHint:'',
       sig:sig
     };
   }

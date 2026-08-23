@@ -442,6 +442,43 @@ fn activation_scope_for_route(
     }
 }
 
+fn spawn_cursor_beginner_tap(
+    state: Arc<AppState>,
+    app: AppHandle,
+    exec_window: tauri::WebviewWindow,
+    slot_id: String,
+    micro_key_id: String,
+    hold_confirmed: bool,
+) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static BUSY: AtomicBool = AtomicBool::new(false);
+    if BUSY.swap(true, Ordering::SeqCst) {
+        crate::codex_micro_overlay::note_pad_run_status("done", &micro_key_id);
+        crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        return;
+    }
+    let _ = std::thread::Builder::new()
+        .name("cursor-beginner-tap".into())
+        .spawn(move || {
+            let out = crate::cursor_beginner::run_slot(
+                &state,
+                &exec_window,
+                &slot_id,
+                false,
+                hold_confirmed,
+            );
+            let ok = out.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
+            crate::codex_micro_overlay::apply_overlay_no_activate();
+            crate::codex_micro_overlay::refocus_overlay(&app);
+            crate::codex_micro_overlay::note_pad_run_status(
+                if ok { "done" } else { "failed" },
+                &micro_key_id,
+            );
+            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+            BUSY.store(false, Ordering::SeqCst);
+        });
+}
+
 fn spawn_overlay_tap_fire(
     state: Arc<AppState>,
     app: AppHandle,
@@ -1177,6 +1214,39 @@ pub fn fire_codex_micro_pad_key(
         crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
         return serde_json::json!({ "ok": true, "reason": "tap_up_ignored", "slotId": route.slot_id });
     }
+    let inject_tid = soft_pad_inject_target_id(state, &route.mapping_id);
+    if inject_tid.trim() == app_chat_workflow::CURSOR_APP_TARGET_ID
+        && crate::cursor_beginner::is_beginner_slot(&route.slot_id)
+        && crate::cursor_beginner::probe_ok()
+    {
+        if let Some(def) = crate::cursor_beginner::slot_def(&route.slot_id) {
+            if def.tap_hold_ms > 0 {
+                return serde_json::json!({
+                    "ok": false,
+                    "reason": "hold_required",
+                    "holdMs": def.tap_hold_ms,
+                    "slotId": route.slot_id,
+                    "microKeyId": micro_key_id
+                });
+            }
+        }
+        crate::codex_micro_overlay::note_pad_run_status("running", micro_key_id);
+        crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        spawn_cursor_beginner_tap(
+            Arc::clone(state),
+            app.clone(),
+            exec_window.clone(),
+            route.slot_id.clone(),
+            micro_key_id.to_string(),
+            true,
+        );
+        return serde_json::json!({
+            "ok": true,
+            "reason": "fired",
+            "slotId": route.slot_id,
+            "actionId": route.action_id,
+        });
+    }
     // Always async — sync focus+SendInput on the IPC/UI thread freezes Soft Pad / WebView2.
     crate::codex_micro_overlay::note_pad_run_status("running", micro_key_id);
     crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
@@ -1389,6 +1459,10 @@ pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWin
         return;
     }
     if event.is_keyup {
+        if let Some(dispatch_key) = crate::cursor_beginner::on_side_key_up(&event) {
+            handle_physical_key(state, window, &dispatch_key);
+            return;
+        }
         if try_dispatch_agent_modifier_keyup(state, window, &event) {
             return;
         }
@@ -1408,6 +1482,10 @@ pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWin
     }
 
     track_agent_modifier_keydown(state, &event);
+
+    if crate::cursor_beginner::maybe_intercept_side_key_down(&event) {
+        return;
+    }
 
     // Modifier-only agent bindings fire on keyup after a clean tap — never on keydown.
     let chord = build_pressed_chord(&event.key);

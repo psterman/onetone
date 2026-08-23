@@ -76,6 +76,12 @@
           if(panel==='debug') hooks().scheduleDebugChromeRefresh();
         }else{
           homeLightRenderCounter++;
+          if(drawerPayload&&drawerPayload.vosk&&global.OneToneHomeV9&&global.OneToneHomeV9.paintHomeLiveTextImmediate){
+            try{ global.OneToneHomeV9.paintHomeLiveTextImmediate(); }catch(_){}
+          }
+          if(drawerPayload&&drawerPayload.vosk&&global.OneToneHomeV9&&global.OneToneHomeV9.syncVoiceHeardSurfaces){
+            try{ global.OneToneHomeV9.syncVoiceHeardSurfaces(); }catch(_){}
+          }
           if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
           else hooks().renderHomeLiveZone();
           if(homeLightRenderCounter%5===0) hooks().renderHome();

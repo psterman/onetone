@@ -34,6 +34,11 @@ static ACTIVATE_LOCK: Mutex<()> = Mutex::new(());
 /// Count of async activate jobs spawned from strategy IPC (set before thread acquires ACTIVATE_LOCK).
 static ACTIVATE_ASYNC_PENDING: AtomicUsize = AtomicUsize::new(0);
 
+/// Voice-settings park (cpal idle 假死). Independent of drawer open so debug/home can listen.
+pub fn voice_settings_parked(state: &AppState) -> bool {
+    state.settings_asr_quiet.load(Ordering::SeqCst)
+}
+
 fn log_bootstrap_phase(state: &AppState, t0: Instant, phase: &str, detail: &str) {
     let elapsed = t0.elapsed().as_millis();
     let hb = crate::ui_heartbeat::ui_hb_diag();
@@ -513,12 +518,12 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
     // ACTIVATE_LOCK (stop_sync + FE waitForActivateIdle status) → UI_HB_STALL / 未响应.
     if reason != "force:settings_unpark"
         && reason != "force:wake_phrase_test"
-        && *state.settings_drawer_open.lock()
+        && voice_settings_parked(state)
     {
         crate::app_log::log_line(
             state,
             "voice",
-            &format!("voice_bootstrap skip activate (settings open) reason={reason}"),
+            &format!("voice_bootstrap skip activate (settings park) reason={reason}"),
         );
         return;
     }
@@ -799,11 +804,10 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
             engine_label(desired)
         ),
     );
-    // Settings drawer owns wake lifecycle: any activate while open must re-park capture
-    // (strategy switch / force reload would otherwise leave vosk cpal running → idle 假死).
+    // Voice-settings park owns wake lifecycle. Debug/home must not re-park after activate.
     if reason != "force:settings_unpark"
         && reason != "force:wake_phrase_test"
-        && *state.settings_drawer_open.lock()
+        && voice_settings_parked(state)
     {
         schedule_park_wake_for_settings(state);
     }
@@ -841,14 +845,14 @@ pub fn schedule_park_wake_for_settings(state: &Arc<AppState>) {
         .spawn(move || {
             // Let in-flight start register a handle before we take it.
             std::thread::sleep(Duration::from_millis(120));
-            if !*state.settings_drawer_open.lock() {
+            if !voice_settings_parked(state.as_ref()) {
                 return;
             }
             {
                 let _guard = ACTIVATE_LOCK
                     .lock()
                     .unwrap_or_else(|poisoned| poisoned.into_inner());
-                if !*state.settings_drawer_open.lock() {
+                if !voice_settings_parked(state.as_ref()) {
                     return;
                 }
                 let from = observe_running_engine(state.as_ref());
@@ -881,7 +885,7 @@ pub fn schedule_unpark_wake_for_settings(app: &AppHandle, state: &Arc<AppState>)
         .spawn(move || {
             // Longer than a quick hero re-open (orb→voiceWake) so park wins the race.
             std::thread::sleep(Duration::from_millis(400));
-            if *state.settings_drawer_open.lock() {
+            if voice_settings_parked(state.as_ref()) {
                 return;
             }
             activate_desired_engine(&app, &state, "force:settings_unpark");

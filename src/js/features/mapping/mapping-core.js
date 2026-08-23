@@ -263,8 +263,10 @@
     var prev=state().selectedMappingId;
     hooks().flushAllEditorToMappings();
     state().selectedMappingId=id;
-    if(prev!==id&&global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.clearSelection){
-      try{ global.OneToneKeysChannelCommandPicker.clearSelection({ skipHero:true, skipRender:true }); }catch(_){}
+    if(prev!==id&&global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.loadHeroCaptureFromMapping){
+      try{ global.OneToneKeysChannelCommandPicker.loadHeroCaptureFromMapping(mappingById(id)); }catch(_){}
+    }else if(prev!==id&&global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.clearSelection){
+      try{ global.OneToneKeysChannelCommandPicker.clearSelection({ skipHero:true, skipRender:true, skipPersist:true }); }catch(_){}
     }
     hooks().syncEditorFromSelection();
     hooks().render();
@@ -372,6 +374,42 @@
     if(!Array.isArray(m.voiceCommands)) m.voiceCommands=[];
     if(!Array.isArray(m.acousticVoiceCommands)) m.acousticVoiceCommands=[];
     if(m.timeMachineWorkspace===undefined) m.timeMachineWorkspace='';
+    if(m.captureHeroRef===undefined) m.captureHeroRef=null;
+  }
+
+  function defaultCaptureHeroRef(){
+    return {channel:'key',bindingRef:'ime',actionId:'',actionInstanceId:'',kind:'ime'};
+  }
+
+  function normalizeCaptureHeroRef(ref){
+    if(!ref||typeof ref!=='object') return defaultCaptureHeroRef();
+    var ch=String(ref.channel||'key').trim();
+    if(['key','voice','cursor','softPad','camera','ime'].indexOf(ch)<0) ch='key';
+    return {
+      channel:ch,
+      bindingRef:String(ref.bindingRef||'').trim(),
+      actionId:String(ref.actionId||'').trim(),
+      actionInstanceId:String(ref.actionInstanceId||'').trim(),
+      kind:String(ref.kind||((ch==='key'&&!ref.actionId)?'ime':'action')).trim()
+    };
+  }
+
+  function isDefaultCaptureHeroRef(ref){
+    ref=normalizeCaptureHeroRef(ref);
+    return ref.kind==='ime'&&!ref.actionId;
+  }
+
+  function captureHeroRefForMapping(m){
+    if(!m) return defaultCaptureHeroRef();
+    if(!m.captureHeroRef) return defaultCaptureHeroRef();
+    return normalizeCaptureHeroRef(m.captureHeroRef);
+  }
+
+  function setCaptureHeroRef(m,ref){
+    if(!m) return;
+    var norm=normalizeCaptureHeroRef(ref);
+    if(isDefaultCaptureHeroRef(norm)) m.captureHeroRef=null;
+    else m.captureHeroRef=norm;
   }
 
   function isAutoTriggerMapping(m){
@@ -394,6 +432,9 @@
     countConflictPairs:countConflictPairs,renderConflictBanner:renderConflictBanner,
     formatTriggerTrace:formatTriggerTrace,selected:selectedMapping,sorted:sortedMappings,
     newMappingId:newMappingId,ensureMappingTiming:ensureMappingTiming,
-    ensureMappingExtras:ensureMappingExtras,isAutoTriggerMapping:isAutoTriggerMapping
+    ensureMappingExtras:ensureMappingExtras,isAutoTriggerMapping:isAutoTriggerMapping,
+    defaultCaptureHeroRef:defaultCaptureHeroRef,normalizeCaptureHeroRef:normalizeCaptureHeroRef,
+    isDefaultCaptureHeroRef:isDefaultCaptureHeroRef,captureHeroRefForMapping:captureHeroRefForMapping,
+    setCaptureHeroRef:setCaptureHeroRef
   };
 })((typeof window!=='undefined')?window:globalThis);

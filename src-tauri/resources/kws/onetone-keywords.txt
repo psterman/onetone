@@ -5,3 +5,11 @@ k āi q ǐ sh ū r ù @开启输入
 f ā ch ū q ù @发出去
 j ié sh ù sh ū r ù @结束输入
 q ǔ x iāo sh ū r ù @取消输入
+j ì x ù @继续
+f ā s òng @发送
+x īn j iàn @新建
+x īn h uì h uà @新会话
+sh uō h uà @说话
+m ài k è f ēng @麦克风
+x iǎo zh ù sh ǒu @小助手
+q ǔ x iāo @取消

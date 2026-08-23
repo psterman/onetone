@@ -73,20 +73,25 @@
       seen[clean]=true;
       out.push(clean);
     }
-    var m=vm&&vm.m;
+    var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
+    var hp=global.OneToneHabitProfile;
+    var projected=hp&&hp.projectActive?hp.projectActive(cfg||{}):null;
+    if(projected&&Array.isArray(projected.baseWakePhrases)){
+      projected.baseWakePhrases.forEach(push);
+    }
+    if(projected&&Array.isArray(projected.summonPhrases)){
+      projected.summonPhrases.forEach(push);
+    }
+    var m=activeHabitMapping(vm);
     if(m&&m.voiceOverride&&Array.isArray(m.voiceOverride.wakePhrases)){
       m.voiceOverride.wakePhrases.forEach(push);
     }
-    var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
-    if(cfg&&Array.isArray(cfg.mappings)){
-      cfg.mappings.forEach(function(map){
-        if(!map||!map.enabled) return;
-        if(!Array.isArray(map.acousticVoiceCommands)) return;
-        map.acousticVoiceCommands.forEach(function(cmd){
-          if(!cmd||cmd.enabled===false) return;
-          push(cmd.displayText);
-          push(cmd.label);
-        });
+    // ponytail: only active habit acoustic commands — scanning all mappings showed Codex phrases on Cursor.
+    if(m&&Array.isArray(m.acousticVoiceCommands)){
+      m.acousticVoiceCommands.forEach(function(cmd){
+        if(!cmd||cmd.enabled===false) return;
+        push(cmd.displayText);
+        push(cmd.label);
       });
     }
     if(out.length>=6) return out.slice(0,6);
@@ -179,6 +184,10 @@
     var finish=dash(vm&&vm.finishText);
     var phrasesWake=wakePhrases(vm);
     var wakeMain=phrasesWake.length?phrasesWake[0]:dash(vm&&vm.wakePrimary);
+    if(global.OneToneHomeLive&&global.OneToneHomeLive.voiceWakePhrases){
+      var homeWake=global.OneToneHomeLive.voiceWakePhrases();
+      if(homeWake.length) wakeMain=homeWake[0];
+    }
     if(m&&m.voiceOverride&&Array.isArray(m.voiceOverride.wakePhrases)&&m.voiceOverride.wakePhrases.length){
       wakeMain=String(m.voiceOverride.wakePhrases[0]||wakeMain);
     }

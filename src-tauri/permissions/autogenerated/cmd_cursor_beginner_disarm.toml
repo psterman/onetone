@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-cursor-beginner-disarm"
+description = "Enables the cmd_cursor_beginner_disarm command without any pre-configured scope."
+commands.allow = ["cmd_cursor_beginner_disarm"]
+
+[[permission]]
+identifier = "deny-cmd-cursor-beginner-disarm"
+description = "Denies the cmd_cursor_beginner_disarm command without any pre-configured scope."
+commands.deny = ["cmd_cursor_beginner_disarm"]

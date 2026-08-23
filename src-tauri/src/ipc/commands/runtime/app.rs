@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use tauri::Manager;
+use tauri::{Manager, WebviewWindow};
 
 use crate::app_identity::{self, AppIdentity};
 use crate::AppState;
@@ -131,15 +131,20 @@ pub fn cmd_voice_wake_phrase_test_begin(
 pub fn cmd_voice_wake_phrase_test_end(
     state: tauri::State<Arc<AppState>>,
     app: tauri::AppHandle,
+    park_voice: Option<bool>,
+    #[allow(non_snake_case)]
+    parkVoice: Option<bool>,
 ) -> serde_json::Value {
     use std::sync::atomic::Ordering;
     state.voice_practice_hold_fg.store(false, Ordering::SeqCst);
-    let settings_open = *state.settings_drawer_open.lock();
-    state
-        .settings_asr_quiet
-        .store(settings_open, Ordering::SeqCst);
-    crate::app_log::log_line(state.as_ref(), "voice", "wake_phrase_test end");
-    if settings_open {
+    let want_park = park_voice.or(parkVoice).unwrap_or(false);
+    crate::app_log::log_line(
+        state.as_ref(),
+        "voice",
+        &format!("wake_phrase_test end park={want_park}"),
+    );
+    if want_park {
+        state.settings_asr_quiet.store(true, Ordering::SeqCst);
         crate::voice_bootstrap::schedule_park_wake_for_settings(state.inner());
     }
     let _ = app;
@@ -149,10 +154,15 @@ pub fn cmd_voice_wake_phrase_test_end(
 #[tauri::command]
 pub fn cmd_set_settings_drawer_open(
     state: tauri::State<Arc<AppState>>,
-    window: tauri::WebviewWindow,
+    window: WebviewWindow,
     open: bool,
+    park_voice: Option<bool>,
+    #[allow(non_snake_case)]
+    parkVoice: Option<bool>,
 ) {
-    let changed = {
+    use std::sync::atomic::Ordering;
+    let want_park = open && park_voice.or(parkVoice).unwrap_or(false);
+    let open_changed = {
         let mut gate = state.settings_drawer_open.lock();
         if *gate == open {
             false
@@ -161,32 +171,20 @@ pub fn cmd_set_settings_drawer_open(
             true
         }
     };
-    if changed {
+    let was_parked = state.settings_asr_quiet.swap(want_park, Ordering::SeqCst);
+    let park_changed = was_parked != want_park;
+    if open_changed {
         crate::app_log::log_line(
             &state,
             "workflow",
-            &format!("settings drawer open={open}"),
+            &format!("settings drawer open={open} park={want_park}"),
         );
-        // Park wake ASR flag + stop capture while configuring (cpal idle → UI_HB_STALL).
-        state
-            .settings_asr_quiet
-            .store(open, std::sync::atomic::Ordering::SeqCst);
-        // Opening settings: soft-dismiss float so always-on-top pad cannot cover the drawer
-        // (gate alone races one tick behind FG host — feels like 假死 / 未响应).
         if open {
             let _ = crate::codex_micro_overlay::dismiss_overlay(&window.app_handle(), state.inner());
-            crate::voice_bootstrap::schedule_park_wake_for_settings(state.inner());
         } else {
-            // Symmetric with open→dismiss: closing settings must clear the session latch
-            // or Soft Pad stays hidden until process restart when Cursor FG clear races fail.
             crate::codex_micro_overlay::clear_overlay_session_dismissed();
             crate::codex_micro_overlay::push_state(&window.app_handle(), state.inner());
-            crate::voice_bootstrap::schedule_unpark_wake_for_settings(
-                &window.app_handle(),
-                state.inner(),
-            );
         }
-        // Off IPC thread — sync command must not join acoustic stop (≤800ms) on the pump.
         let app2 = window.app_handle().clone();
         let state2 = Arc::clone(state.inner());
         let _ = std::thread::Builder::new()
@@ -195,8 +193,22 @@ pub fn cmd_set_settings_drawer_open(
                 crate::voice_acoustic_runtime::sync_acoustic_match_runtime(Some(&app2), &state2);
             });
     } else if open {
-        // Re-entry while already open (panel hops): keep float down.
         let _ = crate::codex_micro_overlay::dismiss_overlay(&window.app_handle(), state.inner());
+    }
+    if park_changed {
+        crate::app_log::log_line(
+            &state,
+            "voice",
+            &format!("settings voice park={want_park} open={open}"),
+        );
+        if want_park {
+            crate::voice_bootstrap::schedule_park_wake_for_settings(state.inner());
+        } else {
+            crate::voice_bootstrap::schedule_unpark_wake_for_settings(
+                &window.app_handle(),
+                state.inner(),
+            );
+        }
     }
 }
 

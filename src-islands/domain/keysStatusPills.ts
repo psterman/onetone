@@ -36,7 +36,6 @@ const PILL_IDS: Array<{ id: string; key: keyof Pick<KeysStatusPillsModel, 'trigg
   { id: 'habitKeyMapStTrigger', key: 'trigger', row: 'habitKeyMapRowTrigger', step: 'trigger' },
   { id: 'habitKeyMapStTarget', key: 'target', row: 'habitKeyMapRowTarget', step: 'target' },
   { id: 'habitKeyMapStCancel', key: 'cancel', row: 'habitKeyMapRowCancel', step: 'cancel' },
-  { id: 'habitKeyMapStFinish', key: 'finish', row: 'habitKeyMapRowFinish', step: 'finish' },
 ];
 
 function legacyTable(): LegacyTable {

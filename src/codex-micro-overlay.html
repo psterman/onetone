@@ -10,10 +10,12 @@
   <script src="js/core/agent-status-edge.js"></script>
   <script src="js/features/agent/usage-format.js"></script>
   <script src="js/features/agent/soft-pad-agent-bar-rank.js"></script>
+  <script src="js/cursor-beginner-onboard.js"></script>
 </head>
 <body>
   <div class="root">
     <div class="wrap" id="wrap">
+      <div class="overlay-mini-stack" id="overlayMiniStack">
       <div class="overlay-mini" id="overlayMini">
         <div class="overlay-mini__agents" id="miniAgents" role="list" aria-label="Agent 状态">
           <span class="overlay-mini__agent" role="listitem" data-agent="codex" data-status="idle" aria-label="Codex：空闲">
@@ -70,6 +72,12 @@
           </span>
           <button type="button" class="overlay-mini__more" id="miniAgentMore" data-act="agent-more-mini" hidden title="展开查看更多 Agent" aria-label="更多 Agent">+0</button>
         </div>
+        <div class="overlay-mini__beginner-actions" id="miniBeginnerActions" hidden role="toolbar" aria-label="Cursor 快捷操作"></div>
+        <span class="overlay-mini__listen-chip" id="miniBeginnerListenChip" hidden aria-live="polite">
+          <span class="overlay-mini__listen-chip-dot" aria-hidden="true"></span>
+          <span class="overlay-mini__listen-chip-text" id="miniBeginnerListenChipText">聆听</span>
+        </span>
+        <span class="overlay-mini__beginner-hint" id="miniBeginnerHint" hidden aria-live="polite"></span>
         <span class="overlay-mini__usage-cluster">
           <span class="overlay-mini__usage" id="miniUsagePill" hidden aria-live="polite"></span>
           <span class="overlay-mini__fresh" id="miniUsageFresh" hidden aria-hidden="true">●</span>
@@ -82,6 +90,11 @@
           </svg>
         </button>
         <button type="button" class="overlay-mini__btn" data-act="close" title="关闭" aria-label="关闭">×</button>
+      </div>
+      <div class="overlay-mini-listen" id="miniBeginnerListenBanner" hidden aria-live="polite">
+        <span class="overlay-mini-listen__dot" aria-hidden="true"></span>
+        <span class="overlay-mini-listen__text" id="miniBeginnerListenText"></span>
+      </div>
       </div>
 
       <div class="overlay-full" id="overlayFull">
@@ -319,7 +332,13 @@
       invalid_key:'无效按键',
       invalid_phase:'无效操作',
       numpad_mode:'请先打开模式开关 · 切换到虚拟键盘模式',
-      no_applied_lane:'当前 Soft Pad 未接入按键路由（请确认 Cursor Soft Pad 已启用）'
+      no_applied_lane:'当前 Soft Pad 未接入按键路由（请确认 Cursor Soft Pad 已启用）',
+      probe_failed:'未检测到 Cursor，请先安装 / 登录',
+      hold_required:'按住 0.5 秒确认',
+      invalid_key:'按键无效',
+      unbound:'此键未绑定，请打开设置页检查 Cursor Soft Pad',
+      failed:'操作失败',
+      voice_key_unset:'请先在设置里配置语音输入快捷键（如 Right Alt）'
     };
     function reasonHint(reason){
       if(reason==='not_foreground'){
@@ -357,6 +376,12 @@
     var agentBarExpanded=false;
     var miniUsagePill=document.getElementById('miniUsagePill');
     var miniUsageFresh=document.getElementById('miniUsageFresh');
+    var miniBeginnerActions=document.getElementById('miniBeginnerActions');
+    var miniBeginnerHint=document.getElementById('miniBeginnerHint');
+    var miniBeginnerListenBanner=document.getElementById('miniBeginnerListenBanner');
+    var miniBeginnerListenText=document.getElementById('miniBeginnerListenText');
+    var miniBeginnerListenChip=document.getElementById('miniBeginnerListenChip');
+    var miniBeginnerListenChipText=document.getElementById('miniBeginnerListenChipText');
     var miniQuotaDropdown=document.getElementById('miniQuotaDropdown');
     var miniQuotaOpen=false;
     var statusChip=document.getElementById('statusChip');
@@ -1795,6 +1820,226 @@
       if(fg) touchAgentBarRecency(fg);
     }
 
+    function applyCursorBeginnerMini(s){
+      var mode=!!(s&&(s.cursorBeginnerMode||s.cursor_beginner_mode));
+      var probeOk=!!(s&&(s.cursorProbeOk||s.cursor_probe_ok));
+      var armed=!!(s&&(s.cursorBeginnerArmed||s.cursor_beginner_armed));
+      wrap.classList.toggle('is-cursor-beginner', mode);
+      wrap.classList.toggle('is-cursor-beginner-armed', mode&&armed);
+      if(!mode){
+        if(miniBeginnerActions) miniBeginnerActions.hidden=true;
+        if(miniBeginnerHint) miniBeginnerHint.hidden=true;
+        if(miniBeginnerListenBanner) miniBeginnerListenBanner.hidden=true;
+        if(miniBeginnerListenChip) miniBeginnerListenChip.hidden=true;
+        if(window.OneToneCursorBeginnerOnboard) window.OneToneCursorBeginnerOnboard.hide();
+        var capOff=document.getElementById('overlayKeyCaption');
+        if(capOff) capOff.classList.remove('is-beginner-arm-caption');
+        applyCursorBeginnerMini.__lastArmed=false;
+        return;
+      }
+      var slots=Array.isArray(s&&s.cursorBeginnerSlots)?s.cursorBeginnerSlots:(Array.isArray(s&&s.cursor_beginner_slots)?s.cursor_beginner_slots:[]);
+      var msg=String((s&&s.cursorBeginnerProbeMessage)||(s&&s.cursor_beginner_probe_message)||'').trim();
+      var armHint=String((s&&s.cursorBeginnerArmHint)||(s&&s.cursor_beginner_arm_hint)||'').trim();
+      if(!armHint&&armed) armHint='聆听中 · 可说：发送、继续、新建、麦克风';
+      if(miniBeginnerHint){
+        if(!probeOk&&msg){
+          miniBeginnerHint.hidden=false;
+          miniBeginnerHint.textContent=msg;
+        } else {
+          miniBeginnerHint.hidden=true;
+          miniBeginnerHint.textContent='';
+        }
+      }
+      if(miniBeginnerListenBanner&&miniBeginnerListenText){
+        if(armed&&probeOk){
+          var vPartial=String((s&&s.voiceHeardPartial)||(s&&s.voice_heard_partial)||'').trim();
+          var vFinal=String((s&&s.voiceHeardFinal)||(s&&s.voice_heard_final)||'').trim();
+          var vHeard=vPartial||vFinal;
+          var vMatched=!!((s&&s.voiceHeardMatched)||(s&&s.voice_heard_matched));
+          miniBeginnerListenBanner.hidden=false;
+          miniBeginnerListenBanner.classList.toggle('is-matched',!!(vMatched&&vHeard));
+          miniBeginnerListenBanner.classList.toggle('is-miss',!!(vHeard&&!vMatched&&vFinal));
+          miniBeginnerListenText.textContent=vHeard||armHint||'';
+        } else {
+          miniBeginnerListenBanner.hidden=true;
+          miniBeginnerListenBanner.classList.remove('is-matched','is-miss');
+          miniBeginnerListenText.textContent='';
+        }
+      }
+      if(miniBeginnerListenChip&&miniBeginnerListenChipText){
+        if(armed&&probeOk){
+          miniBeginnerListenChip.hidden=false;
+          miniBeginnerListenChipText.textContent='聆听';
+        } else {
+          miniBeginnerListenChip.hidden=true;
+        }
+      }
+      if(armed&&probeOk){
+        wrap.classList.add('is-cursor-beginner-listen');
+      } else {
+        wrap.classList.remove('is-cursor-beginner-listen');
+      }
+      if(typeof applyCursorBeginnerMini.__lastArmed==='undefined') applyCursorBeginnerMini.__lastArmed=false;
+      if(armed&&!applyCursorBeginnerMini.__lastArmed&&probeOk&&armHint){
+        toast(armHint);
+      }
+      applyCursorBeginnerMini.__lastArmed=armed;
+      var cap=document.getElementById('overlayKeyCaption');
+      if(armed&&probeOk&&armHint&&!keyHoverActive){
+        setKeyCaption(armHint,'');
+        if(cap) cap.classList.add('is-beginner-arm-caption');
+      } else if(cap){
+        cap.classList.remove('is-beginner-arm-caption');
+        if(!armed&&!keyHoverActive) applyUsageCaptionIdle(s);
+      }
+      if(!miniBeginnerActions) return;
+      if(!probeOk||!slots.length){
+        miniBeginnerActions.hidden=true;
+        miniBeginnerActions.innerHTML='';
+        return;
+      }
+      miniBeginnerActions.hidden=false;
+      var sig=slots.map(function(x){
+        return String(x.slotId||x.slot_id||'')+':'+(Number(x.holdMs!=null?x.holdMs:x.hold_ms)||0);
+      }).join('|')+':'+armed;
+      if(miniBeginnerActions.__sig===sig) return;
+      miniBeginnerActions.__sig=sig;
+      miniBeginnerActions.innerHTML=slots.map(function(slot){
+        var iconId=slot.iconId||slot.icon_id||'';
+        var icon=ICON[iconId]||ICON.empty;
+        var hold=Number(slot.holdMs!=null?slot.holdMs:slot.hold_ms)||0;
+        var slotId=slot.slotId||slot.slot_id||'';
+        var microKey=slot.microKeyId||slot.micro_key_id||'';
+        var label=slot.labelZh||slot.label_zh||slotId;
+        return '<button type="button" class="overlay-mini__action" data-beginner-slot="'+escHtml(slotId)+'"'
+          +' data-hold-ms="'+hold+'" data-micro-key="'+escHtml(microKey)+'"'
+          +' aria-label="'+escHtml(label)+'" title="'+escHtml(label)+'">'
+          +'<span class="overlay-mini__action-icon">'+icon+'</span></button>';
+      }).join('');
+      miniBeginnerActions.querySelectorAll('[data-beginner-slot]').forEach(function(btn){
+        bindBeginnerMiniAction(btn);
+      });
+      if(window.OneToneCursorBeginnerOnboard){
+        window.OneToneCursorBeginnerOnboard.maybeShow(s);
+      }
+    }
+
+    function beginnerMicroKey(slotId, microKey){
+      var k=String(microKey||'').trim();
+      if(k) return k;
+      var map={pushToTalk:'ACT10',stopOrSend:'ACT12',continue:'AG02',newThread:'AG01'};
+      return map[String(slotId||'')]||'';
+    }
+
+    function handleBeginnerSlotResult(res, slotId, microKey){
+      if(!res) return res;
+      var reason=String(res.reason||'');
+      if(reason==='probe_failed'){
+        toast(String(res.message||reasonHint('probe_failed')));
+      } else if(reason==='hold_required'){
+        toast(reasonHint('hold_required'));
+      } else if(res.ok&&(slotId==='pushToTalk'||reason==='hold_down')){
+        setLocalStatus('listening', microKey||'ACT10');
+        if(window.OneToneCursorBeginnerOnboard) window.OneToneCursorBeginnerOnboard.markDone();
+      } else if(res.ok){
+        toast('已触发 · '+String(slotId||''));
+      } else if(!res.ok){
+        toast(reasonHint(reason)||String(res.message||'')||'操作失败');
+      }
+      return res;
+    }
+
+    function beginnerPadFire(microKey, phase, slotId){
+      microKey=String(microKey||'').trim();
+      if(!microKey) return Promise.resolve(null);
+      return invoke('cmd_codex_micro_pad_fire',{microKeyId:microKey,phase:phase||'tap'}).then(function(res){
+        if(!res||!res.ok){
+          var reason=String(res&&res.reason||'');
+          toast(reasonHint(reason)||String(res&&res.message||'')||reason||'操作失败');
+        } else if(slotId==='pushToTalk'&&(phase==='down'||res.reason==='hold_down')){
+          setLocalStatus('listening', microKey);
+        }
+        return res;
+      }).catch(function(err){
+        toast(String(err||'调用失败'));
+        return null;
+      });
+    }
+
+    function runBeginnerSlot(slotId, holdConfirmed, microKey){
+      slotId=String(slotId||'');
+      return invoke('cmd_cursor_beginner_run_slot',{
+        slotId:slotId,
+        holdConfirmed:!!holdConfirmed,
+        fromVoice:false
+      }).then(function(res){
+        return handleBeginnerSlotResult(res, slotId, microKey);
+      }).catch(function(err){
+        toast(String(err||'调用失败'));
+        return beginnerPadFire(beginnerMicroKey(slotId, microKey), 'tap', slotId);
+      });
+    }
+
+    function bindBeginnerMiniAction(btn){
+      if(btn.__beginnerBound) return;
+      btn.__beginnerBound=true;
+      var slotId=String(btn.getAttribute('data-beginner-slot')||'');
+      var holdMs=Number(btn.getAttribute('data-hold-ms'))||0;
+      var holdTimer=0;
+      var fired=false;
+      function clearHold(){
+        if(holdTimer){ clearTimeout(holdTimer); holdTimer=0; }
+        fired=false;
+        btn.classList.remove('is-holding');
+      }
+      btn.addEventListener('pointerdown',function(e){
+        if(e.button!=null&&e.button!==0) return;
+        e.preventDefault(); e.stopPropagation();
+        btn.classList.add('is-pressed','is-holding');
+        fired=false;
+        if(slotId==='pushToTalk'){
+          beginnerPadFire(beginnerMicroKey(slotId,btn.getAttribute('data-micro-key')),'down',slotId);
+          return;
+        }
+        if(holdMs>0){
+          holdTimer=setTimeout(function(){
+            fired=true;
+            runBeginnerSlot(slotId,true,btn.getAttribute('data-micro-key')).finally(clearHold);
+          }, holdMs);
+        }
+      });
+      function up(e){
+        e.preventDefault(); e.stopPropagation();
+        btn.classList.remove('is-pressed');
+        if(slotId==='pushToTalk'){
+          clearHold();
+          beginnerPadFire(beginnerMicroKey(slotId,btn.getAttribute('data-micro-key')),'up',slotId).then(function(){
+            setLocalStatus('idle','');
+            if(window.OneToneCursorBeginnerOnboard) window.OneToneCursorBeginnerOnboard.markDone();
+          });
+          return;
+        }
+        if(holdMs>0){
+          if(!fired){ clearHold(); toast(reasonHint('hold_required')); return; }
+          clearHold();
+          return;
+        }
+        clearHold();
+        runBeginnerSlot(slotId,true,btn.getAttribute('data-micro-key'));
+      }
+      btn.addEventListener('pointerup',up);
+      btn.addEventListener('pointerleave',function(e){
+        if(holdMs>0) clearHold();
+        else btn.classList.remove('is-pressed');
+      });
+      btn.addEventListener('pointercancel',function(){ clearHold(); btn.classList.remove('is-pressed'); });
+      if(holdMs<=0){
+        btn.addEventListener('click',function(e){
+          e.preventDefault(); e.stopPropagation();
+        });
+      }
+    }
+
     function applyMiniAgentChips(s){
       noteForegroundRecency(s);
       var rows=Array.isArray(s&&s.agents)?s.agents:[];
@@ -1807,6 +2052,13 @@
       layoutMiniAgentBar(s, byKind, focus);
       layoutPadAgentBar(s, byKind, focus);
       applyUsageCaptionIdle(s);
+      if(s&&(s.cursorBeginnerMode||s.cursor_beginner_mode)){
+        applyCursorBeginnerMini(s);
+        return;
+      }
+      if(miniBeginnerActions) miniBeginnerActions.hidden=true;
+      if(miniBeginnerHint) miniBeginnerHint.hidden=true;
+      wrap.classList.remove('is-cursor-beginner','is-cursor-beginner-armed');
     }
 
     function touchAgentBarRecency(kind){
@@ -1986,6 +2238,20 @@
 
     function applyAppMetaChip(s){
       if(!overlayAppMeta) return;
+      var applied=String(s&&(s.appliedAgent||s.applied_agent)||'').toLowerCase();
+      var cursorMode=!!(s&&(s.cursorBeginnerMode||s.cursor_beginner_mode));
+      if(applied==='cursor'||cursorMode){
+        overlayAppMeta.hidden=true;
+        if(overlayAppMetaRow) overlayAppMetaRow.textContent='';
+        if(overlayAppMetaTask){
+          overlayAppMetaTask.textContent='';
+          overlayAppMetaTask.hidden=true;
+        }
+        overlayAppMeta.removeAttribute('title');
+        overlayAppMeta.removeAttribute('data-light');
+        wrap.classList.remove('is-pass-through');
+        return;
+      }
       var lastSrc=String(s&&(s.appLastSource||s.app_last_source)||'').trim();
       var lastEv=String(s&&(s.appLastEvent||s.app_last_event)||'').trim();
       var enabled=!!(s&&(s.appStateEnabled||s.app_state_enabled));
@@ -2350,7 +2616,13 @@
             holdSuppressCancel=false;
           }
           setLocalStatus('failed', id);
-          setFootHint(reasonHint(reason)||DEFAULT_FOOT);
+          if(reason==='probe_failed'){
+            toast(String(res.message||reasonHint('probe_failed')));
+          } else if(reason==='hold_required'){
+            toast(reasonHint('hold_required'));
+          } else {
+            setFootHint(reasonHint(reason)||DEFAULT_FOOT);
+          }
         }
         return res;
       }).catch(function(){
@@ -2479,6 +2751,30 @@
           if(id!=='ACT10' && tapFireBusy){
             return;
           }
+          var snapCb=lastSnap||{};
+          var padBeginner=!!snapCb.cursorBeginnerMode;
+          if(padBeginner && id==='AG01'){
+            e.preventDefault();
+            e.stopPropagation();
+            activePtr=id;
+            el.classList.add('is-pressed','is-active','is-holding');
+            var holdDone=false;
+            var holdT=setTimeout(function(){
+              holdDone=true;
+              tapFireBusy=true;
+              setLocalStatus('running', id);
+              fire(id,'down').finally(function(){ tapFireBusy=false; });
+            }, 500);
+            function cancelAg01Hold(){
+              clearTimeout(holdT);
+              el.classList.remove('is-pressed','is-active','is-holding');
+              if(!holdDone){ toast(reasonHint('hold_required')); }
+              activePtr='';
+            }
+            el.__ag01Cancel=cancelAg01Hold;
+            try{ el.setPointerCapture(e.pointerId); }catch(_){}
+            return;
+          }
           e.preventDefault();
           e.stopPropagation();
           activePtr=id;
@@ -2514,6 +2810,11 @@
             holdUiReleased=true;
             el.classList.remove('is-pressed','is-active');
             fire(id,'up');
+            return;
+          }
+          if(typeof el.__ag01Cancel==='function'){
+            el.__ag01Cancel();
+            el.__ag01Cancel=null;
             return;
           }
           activePtr='';
@@ -2604,12 +2905,23 @@
       });
     }
 
+    function padGridEmpty(){
+      return !!(grid && !grid.children.length);
+    }
+
     function shouldDeferGridRebuild(){
+      if(padGridEmpty()) return false;
       return !!holdLockId
         || !!activePtr
         || localPadStatus==='listening'
         || localPadStatus==='running'
         || localPadStatus==='done';
+    }
+
+    function forcePadGridRefresh(){
+      if(!lastSnap) return;
+      lastGridSig='';
+      render(Object.assign({}, lastSnap, { visible:true, minimized:false }));
     }
 
     var lastSnap={};
@@ -2803,7 +3115,7 @@
         applyLocalStatusDom();
         return;
       }
-      if(sig===lastGridSig){
+      if(sig===lastGridSig && !padGridEmpty()){
         patchGridRunStates(map,active);
         applyLocalStatusDom();
         return;
@@ -2814,6 +3126,9 @@
       var fgAgent=String(s.foregroundAgent||s.foreground_agent||'').toLowerCase();
       var surfaceAgent=String(s.surfaceAgent||s.surface_agent||appliedAgent||fgAgent||'').toLowerCase();
       var noAgChrome=surfaceAgent==='cursor'||appliedAgent==='cursor'||fgAgent==='cursor';
+      var cursorBeginner=!!(s.cursorBeginnerMode||s.cursor_beginner_mode);
+      var beginnerLabels={ACT10:'说话',ACT12:'发送',AG02:'继续',AG01:'新会话'};
+      var beginnerKeys={ACT10:1,ACT12:1,AG02:1,AG01:1,ENC:1};
       var cursorAgIcon={AG00:'palette',AG01:'fork',AG02:'fast',AG03:'search',AG04:'send',AG05:'reject'};
       grid.innerHTML=activeLayout().map(function(cell){
         var info=map[cell.id]||{};
@@ -2885,6 +3200,10 @@
           metaName=String(info.label||'').trim();
           metaChord=String(info.sub||'').trim();
           if(noAgChrome && (metaChord==='会话槽'||metaChord.indexOf('会话槽')===0)) metaChord='';
+          if(cursorBeginner && beginnerLabels[cell.id]) metaName=beginnerLabels[cell.id];
+          if(cursorBeginner && cell.id && !beginnerKeys[cell.id] && cell.id!=='ENC' && !isNav && !isNp){
+            cls+=' is-context-dim';
+          }
         }
         var npAriaMap={'/':'除','*':'乘','-':'减','+':'加','.':'小数点','↵':'回车'};
         var aria=cell.id==='ENC'
@@ -2938,6 +3257,7 @@
         '#overlayKeyCaption,#overlayMinimaxKey,.overlay-key-caption,.overlay-minimax-key,' +
         '.overlay-nav-cta,.overlay-light-gate,#miniUsagePill,#miniUsageFresh,#miniQuotaDropdown,' +
         '.overlay-mini__agent,.overlay-mini__usage,.overlay-mini__usage-cluster,.overlay-mini__fresh,.overlay-mini__quota-dd,' +
+        '.overlay-mini__beginner-actions,.overlay-mini__action,.overlay-mini__beginner-hint,' +
         '.soft-pad-agent-bar__chip,[data-agent],' +
         '#padAgentBarMore,#padAgentBarOverflow,.soft-pad-agent-bar__more,.soft-pad-agent-bar__overflow,' +
         '#miniAgentMore,.overlay-mini__more'
@@ -2987,7 +3307,7 @@
         hideAgentTip();
         localMinimized=false;
         applyLocalStatusDom();
-        invoke('cmd_codex_micro_overlay_set_minimized',{minimized:false}).catch(function(){});
+        invoke('cmd_codex_micro_overlay_set_minimized',{minimized:false}).then(forcePadGridRefresh).catch(forcePadGridRefresh);
       });
     });
 
@@ -3362,6 +3682,15 @@
           return;
         }
         if(action==='refresh'&&kind){
+          var bm=!!(lastSnap&&(lastSnap.cursorBeginnerMode||lastSnap.cursor_beginner_mode));
+          if(bm&&kind==='cursor'){
+            invoke('cmd_soft_pad_focus_agent',{kind:'cursor'}).then(function(){
+              toast('已切到 Cursor');
+            }).catch(function(){
+              toast('未能聚焦 Cursor');
+            });
+            return;
+          }
           refreshUsageFromOverlay(kind);
           return;
         }

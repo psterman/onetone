@@ -28,7 +28,6 @@ const EMPTY: KeysFlowChromeModel = {
 const FLOW_NODE_IDS: Record<string, { btn: string; hint: string }> = {
   trigger: { btn: 'keysFlowNodeTrigger', hint: 'keysFlowNodeTriggerHint' },
   target: { btn: 'keysFlowNodeTarget', hint: 'keysFlowNodeTargetHint' },
-  finish: { btn: 'keysFlowNodeFinish', hint: 'keysFlowNodeFinishHint' },
 };
 
 function legacyNav(): LegacyNav {
@@ -63,7 +62,7 @@ export function applyKeysFlowChromeHosts(model: KeysFlowChromeModel): void {
     typeof model.recording === 'boolean'
       ? model.recording
       : mode === 'trigger' || mode === 'target' || mode === 'agentBinding';
-  (['trigger', 'target', 'finish'] as const).forEach((page) => {
+  (['trigger', 'target'] as const).forEach((page) => {
     const meta = FLOW_NODE_IDS[page];
     if (!meta) return;
     const btn = document.getElementById(meta.btn);

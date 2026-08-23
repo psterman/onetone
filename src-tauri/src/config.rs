@@ -1175,6 +1175,22 @@ fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
+/// Hero recognition button mapping — one item from capture tabs shown on Keys step-02 keycap.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct CaptureHeroRef {
+    #[serde(default)]
+    pub channel: String,
+    #[serde(rename = "bindingRef", default)]
+    pub binding_ref: String,
+    #[serde(rename = "actionId", default)]
+    pub action_id: String,
+    #[serde(rename = "actionInstanceId", default)]
+    pub action_instance_id: String,
+    #[serde(default)]
+    pub kind: String,
+}
+
 /// Persisted habit/scene row. Runtime display uses read-only [`crate::habit_profile::HabitProfile`] projection.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MappingEntry {
@@ -1265,6 +1281,9 @@ pub struct MappingEntry {
     /// Soft Pad → Time Machine folder bind (absolute workspace path). Capsules stay folder-scoped.
     #[serde(rename = "timeMachineWorkspace", default, skip_serializing_if = "String::is_empty")]
     pub time_machine_workspace: String,
+    /// Which capture-tab item is shown on Keys step-02 hero keycap.
+    #[serde(rename = "captureHeroRef", default, skip_serializing_if = "Option::is_none")]
+    pub capture_hero_ref: Option<CaptureHeroRef>,
 }
 
 /// Codex scenario numpad layer — routes physical numpad keys to agent slots.
@@ -3548,6 +3567,7 @@ impl Default for VoiceConfig {
                 agent_bindings: vec![],
                 codex_micro_pad: None,
                 time_machine_workspace: String::new(),
+                capture_hero_ref: None,
             }],
             trash: vec![],
             interval_ms: default_interval_ms(),
@@ -4094,6 +4114,7 @@ impl VoiceConfig {
                 agent_bindings: vec![],
                 codex_micro_pad: None,
                 time_machine_workspace: String::new(),
+                capture_hero_ref: None,
             });
         }
 

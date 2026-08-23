@@ -778,7 +778,7 @@
     setSurfaceStateClass(hub,st);
     var status=$('wbHeroMicStatus');
     if(status) status.textContent=st.label;
-    var guide=$('wbHeroMicGuide');
+    var guide=$('wbHeroMicMuteHint');
     if(guide){
       var showGuide=st.key==='muted'&&st.muteKnown&&st.canToggleMute;
       guide.hidden=!showGuide;

@@ -1078,12 +1078,18 @@
   function remountKeysHosts(m) {
     var step = activeKeysStep();
     var targetRow = document.getElementById('habitKeyMapRowTarget');
-    var finishRow = document.getElementById('habitKeyMapRowFinish');
-    var imeBlock = targetRow && (targetRow.querySelector('.keys-capture-ime-block') || targetRow.querySelector('#habitFlowImeBlock'));
-    var finishBody = finishRow && finishRow.querySelector('.keys-step-body');
+    var finishRow = document.getElementById('keysCaptureKeyPanel');
+    var imeBlock =
+      document.getElementById('habitFlowImeBlock') ||
+      (targetRow &&
+        (targetRow.querySelector('.keys-capture-ime-block') ||
+          targetRow.querySelector('#habitFlowImeBlock')));
+    var finishBody = finishRow;
 
     var targetHost = ensureIn(
-      imeBlock && imeBlock.parentNode ? imeBlock.parentNode : (targetRow && targetRow.querySelector('.keys-step-body')),
+      imeBlock && imeBlock.parentNode
+        ? imeBlock.parentNode
+        : (targetRow && targetRow.querySelector('.keys-step-body')),
       'codexCapHostTarget',
       'codex-pack-host codex-cap-host--target'
     );

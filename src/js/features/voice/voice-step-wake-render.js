@@ -542,11 +542,31 @@
     if(ready){
       if(vm.loading){
         ready.textContent=t('homeLiveLoading');
-        ready.classList.remove('is-on','is-off');
+        ready.classList.remove('is-on','is-off','is-parked');
       }else{
-        ready.textContent=vm.voiceOn?t('voiceWakeHeroReadyOn'):t('voiceWakeHeroReadyOff');
-        ready.classList.toggle('is-on',!!vm.voiceOn);
-        ready.classList.toggle('is-off',!vm.voiceOn);
+        var wakeSnap=global.OneToneVoiceUiState?global.OneToneVoiceUiState.snapshot().wake||{}:{};
+        var voskSnap=wakeSnap.vosk||{};
+        var uiState=global.OneToneState&&global.OneToneState.ui;
+        var parked=!!(uiState&&uiState.drawerOpen);
+        var live=global.OneToneVoiceWake&&global.OneToneVoiceWake.voskListeningOk
+          &&global.OneToneVoiceWake.voskListeningOk(voskSnap);
+        if(live&&!parked){
+          ready.textContent=t('voiceWakeHeroReadyOn');
+          ready.classList.add('is-on');
+          ready.classList.remove('is-off','is-parked');
+        }else if(vm.voiceOn&&parked){
+          ready.textContent=t('voiceWakeHeroParkedHint');
+          ready.classList.add('is-parked');
+          ready.classList.remove('is-on','is-off');
+        }else if(vm.voiceOn){
+          ready.textContent=t('voiceWakeHeroStartingHint');
+          ready.classList.add('is-off');
+          ready.classList.remove('is-on','is-parked');
+        }else{
+          ready.textContent=t('voiceWakeHeroReadyOff');
+          ready.classList.add('is-off');
+          ready.classList.remove('is-on','is-parked');
+        }
       }
     }
     var hint=$('voiceWakeDisplayHint');

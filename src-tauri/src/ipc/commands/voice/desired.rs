@@ -49,7 +49,7 @@ pub fn voice_set_listening_strategy(
         cfg.normalize();
         cfg.clone()
     };
-    let settings_open = *state.settings_drawer_open.lock();
+    let parked = crate::voice_bootstrap::voice_settings_parked(state.as_ref());
     // Always save off-thread. Homepage「开启自动」used to sync pretty-print a bloated
     // settings.json on the blocking worker and 假死 the UI (layout_persist convoy).
     let _ = std::thread::Builder::new()
@@ -62,13 +62,12 @@ pub fn voice_set_listening_strategy(
         "voice",
         &format!("set_listening_strategy label={label} reason={reason}"),
     );
-    // While settings are open engines stay parked — only persist strategy; close unparks.
-    // Enqueue+start+re-park on 切换 was UI_HB_STALL (empty tag / Responding=false).
-    if settings_open {
+    // Voice-settings park: only persist strategy; unpark activates.
+    if parked {
         crate::app_log::log_line(
             state.as_ref(),
             "voice",
-            "set_listening_strategy config-only (settings open; activate deferred to unpark)",
+            "set_listening_strategy config-only (settings park; activate deferred to unpark)",
         );
     } else {
         crate::voice_supervisor::enqueue_activate(app.clone(), Arc::clone(state), reason);
@@ -80,8 +79,8 @@ pub fn voice_set_listening_strategy(
         "strategy": label,
         "engine": supervisor.get("desiredEngine").cloned().unwrap_or(serde_json::json!("none")),
         "supervisor": supervisor,
-        "activateAsync": !settings_open,
-        "activateBusy": !settings_open,
+        "activateAsync": !parked,
+        "activateBusy": !parked,
     }))
 }
 

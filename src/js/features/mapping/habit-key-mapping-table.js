@@ -13,6 +13,27 @@
     if(child.parentNode!==parent) parent.appendChild(child);
   }
 
+  function mountTargetRecordToCapture(){
+    ensureMounted();
+    var host=$('keysCaptureKeycapHost');
+    var act=$('keysCaptureKeycapRecordAct');
+    var disp=$('targetDisplay');
+    var btn=$('btnRecordTarget');
+    if(host&&disp&&disp.parentNode!==host) host.appendChild(disp);
+    if(act&&btn&&btn.parentNode!==act) act.appendChild(btn);
+  }
+
+  function restoreTargetRecordFromStash(){
+    var tgtCell=$('habitKeyMapCellTarget');
+    var row=$('keySchemeEditTarget');
+    var stash=$('habitBasicStash');
+    var disp=$('targetDisplay');
+    var btn=$('btnRecordTarget');
+    if(tgtCell&&disp&&disp.parentNode!==tgtCell) tgtCell.appendChild(disp);
+    var host=row||stash;
+    if(host&&btn&&btn.parentNode!==host) host.appendChild(btn);
+  }
+
   function mount(){
     var trigCell=$('habitKeyMapCellTrigger');
     var tgtCell=$('habitKeyMapCellTarget');
@@ -26,9 +47,8 @@
     }
     if(tgtCell){
       var disp2=$('targetDisplay');
-      var btn2=$('btnRecordTarget');
       if(disp2) moveChild(tgtCell,disp2);
-      if(btn2) moveChild(tgtCell||tgtAct,btn2);
+      restoreTargetRecordFromStash();
     }
     var cancelCard=$('voiceEndCancelCard');
     var cancelCell=$('habitKeyMapCellCancel');
@@ -208,14 +228,15 @@
     }
     if(step==='target'){
       setDetailStep('target',{skipScroll:true});
-      var cap=global.OneToneAgentCapabilityUi;
-      if(cap&&cap.activeCodexMapping&&cap.activeCodexMapping()){
-        if(cap.recordSelectedSlot) cap.recordSelectedSlot();
-        highlightRow('target');
-        return;
+      var picker=global.OneToneKeysChannelCommandPicker;
+      if(picker&&(picker.openCapturePopover||picker.openCaptureSheet)){
+        var openFn=picker.openCapturePopover||picker.openCaptureSheet;
+        openFn.call(picker,{ tab:'key' });
+      }else{
+        openTargetKeyPicker();
       }
-      openTargetKeyPicker();
       highlightRow('target');
+      return;
     }
   }
 
@@ -228,9 +249,10 @@
       '.keys-finish-cancel-host','[data-finish-mode]','[data-timing-toggle]','[data-timing-range]',
       '.toggle-switch','.keys-finish-segment','.keys-capture-voice-summary','.keys-capture-voice-link',
       '.habit-flow-finish-more','.map-timing-range','details','.ime-preset-strip','.ime-preset-item','.habit-flow-ime-block','.keys-capture-ime-block',
+      '.keys-capture-popover','.keys-capture-popover-backdrop','.keys-channel-picker','.keys-channel-subtabs','.keys-channel-panel',
       '.habit-flow-device-link','.keys-app-context-strip','.habit-flow-device-diagnostic',
       '.keys-app-chip','.keys-ime-pill','.btn-cancel-record',
-      '.keys-workflow-keycap-zone','.keys-workflow-footer-zone','.keys-trigger-modes-block','#keysTargetKeycapHint',
+      '.keys-trigger-modes-block','#keysTriggerModeHost',
       '.codex-cap-item','.codex-cap-strip','.codex-cap-block','.codex-pack-host',
       'input','button','select','textarea','label',
       '.keys-trigger-mode-seg','.keys-trigger-conflict-btn','.keys-finish-delay-input'
@@ -285,6 +307,17 @@
           }
           return;
         }
+        var captureZone=e.target.closest&&e.target.closest('.keys-workflow-keycap-zone');
+        if(captureZone){
+          var zoneStepEl=captureZone.closest&&captureZone.closest('[data-edit-step]');
+          var zoneStep=zoneStepEl&&zoneStepEl.dataset.editStep;
+          if(zoneStep==='target'){
+            e.preventDefault();
+            e.stopPropagation();
+            handleKeycapStep('target');
+            return;
+          }
+        }
         if(isInteractiveFlowTarget(e.target)) return;
         var stepEl=e.target.closest&&e.target.closest('[data-edit-step]');
         if(!stepEl) return;
@@ -301,6 +334,8 @@
 
   global.OneToneHabitKeyMappingTable={
     mount:mount,
+    mountTargetRecordToCapture:mountTargetRecordToCapture,
+    restoreTargetRecordFromStash:restoreTargetRecordFromStash,
     syncRowStatus:syncRowStatus,
     highlightRow:highlightRow,
     bindEvents:bindEvents,

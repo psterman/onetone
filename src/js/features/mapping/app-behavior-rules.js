@@ -1060,7 +1060,11 @@
         e.stopPropagation();
         var more=$('habitFlowFinishMore');
         if(more) more.open=true;
-        var finishRow=$('habitKeyMapRowFinish');
+        var picker=global.OneToneKeysChannelCommandPicker;
+        if(picker&&picker.openCaptureSheet){
+          picker.openCaptureSheet({tab:'key',expandFinishMore:true});
+        }
+        var finishRow=$('keysCaptureKeyPanel');
         if(finishRow) finishRow.scrollIntoView({behavior:'smooth',block:'nearest'});
         if(global.OneToneHabitKeyMappingTable) global.OneToneHabitKeyMappingTable.highlightRow('finish');
       });

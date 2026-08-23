@@ -1,7 +1,7 @@
 (function(global){
   'use strict';
   var $=function(id){ return global.OneToneDom.$(id); };
-  var STEPS=['trigger','target','finish'];
+  var STEPS=['trigger','target'];
   var activeStep='trigger';
 
   function panel(){
@@ -10,7 +10,12 @@
 
   function normalizeStep(step){
     step=String(step||'').trim();
-    if(step==='cancel') return {step:'finish',expandFinishMore:true,highlightCancel:true};
+    if(step==='cancel'){
+      return {step:'target',openCapture:'key',expandFinishMore:true,highlightCancel:true};
+    }
+    if(step==='finish'){
+      return {step:'target',openCapture:'key'};
+    }
     if(STEPS.indexOf(step)>=0) return {step:step};
     return {step:'trigger'};
   }
@@ -33,7 +38,8 @@
     STEPS.forEach(function(s){
       p.classList.toggle('is-step-'+s,s===step);
     });
-    p.querySelectorAll('[data-edit-step="trigger"],[data-edit-step="target"],[data-edit-step="finish"]').forEach(function(el){
+    p.classList.remove('is-step-finish');
+    p.querySelectorAll('[data-edit-step="trigger"],[data-edit-step="target"]').forEach(function(el){
       if(!el.classList.contains('habit-flow-step')) return;
       el.classList.toggle('is-active-step',el.getAttribute('data-edit-step')===step);
     });
@@ -62,15 +68,17 @@
   }
 
   function setStep(step,opts){
+    opts=opts||{};
     var meta=normalizeStep(step);
     step=meta.step;
     var changed=activeStep!==step;
     activeStep=step;
     applyStepToDom(step);
-    if(meta.expandFinishMore||meta.highlightCancel){
-      applyCancelSideEffects(meta);
-    }else if(step==='finish'&&opts&&opts.expandFinishMore){
-      applyCancelSideEffects({expandFinishMore:true});
+    if(meta.expandFinishMore||meta.highlightCancel||(opts&&opts.expandFinishMore)){
+      applyCancelSideEffects({
+        expandFinishMore:!!(meta.expandFinishMore||(opts&&opts.expandFinishMore)),
+        highlightCancel:!!meta.highlightCancel
+      });
     }
     if(changed&&!(opts&&opts.skipScroll)){
       scrollActiveStepIntoView(opts);
@@ -86,6 +94,20 @@
       var core=global.OneToneMappingCore;
       var m=core&&core.selected?core.selected():null;
       try{ capUi.applyCodexStepChrome(step,m); }catch(_){}
+    }
+    if(!(opts&&opts.skipSheet)&&meta.openCapture){
+      var picker=global.OneToneKeysChannelCommandPicker;
+      if(picker&&(picker.openCapturePopover||picker.openCaptureSheet)){
+        try{
+          var openFn=picker.openCapturePopover||picker.openCaptureSheet;
+          openFn.call(picker,{
+            tab:meta.openCapture,
+            expandFinishMore:!!meta.expandFinishMore,
+            skipStep:true,
+            returnPanel:opts.returnPanel
+          });
+        }catch(_){}
+      }
     }
   }
 

@@ -85,6 +85,8 @@
   var voiceStatusPollTimer=0;
   var voiceStatusPollInFlight=false;
   var voiceStatusPollStarted=false;
+  var voskHomeNudgeAt=0;
+  var homeVoiceEnsureAt=0;
   var voiceSapiPresetPending=null;
   var voiceSapiPresetSaveSeq=0;
   var voiceSapiSelectedPhrases=[];
@@ -1949,6 +1951,72 @@
     return 1500;
   }
 
+  function voiceEngineMismatch(wake){
+    wake=wake||{};
+    var sup=wake.supervisor||{};
+    var vosk=wake.vosk||{};
+    var desired=String(sup.desiredEngine||vosk.desiredEngine||'').trim().toLowerCase();
+    var active=String(sup.activeEngine||vosk.activeEngine||'').trim().toLowerCase();
+    if(!desired||desired==='none') return false;
+    if(desired==='vosk'){
+      if(voskListeningOk(vosk)) return false;
+      return active!=='vosk'||String(vosk.state||'').trim()==='stopped'||String(vosk.state||'').trim()==='error';
+    }
+    if(desired==='kws'){
+      var kws=wake.kws||{};
+      if(isKwsNativeListening(kws,wake)) return false;
+      return active!=='kws';
+    }
+    return desired!==active;
+  }
+
+  function settingsVoiceParked(){
+    return !!(ui().drawerOpen&&ui().settingsPanel==='voiceWake');
+  }
+
+  function maybeNudgeVoskOnHome(voskRes){
+    if(settingsVoiceParked()||runtime().paused) return;
+    if(!voskRes||voskListeningOk(voskRes)) return;
+    var sup=voskRes.supervisor||{};
+    var desired=String(voskRes.desiredEngine||sup.desiredEngine||'').trim().toLowerCase();
+    var active=String(voskRes.activeEngine||sup.activeEngine||'').trim().toLowerCase();
+    if(desired!=='vosk'&&!voskRes.enabled) return;
+    if(desired==='vosk'&&active==='vosk') return;
+    var st=String(voskRes.state||'').trim();
+    if(st==='starting'||st==='stopping') return;
+    var issue=String(voskRes.resourceIssue||'').trim();
+    if(issue==='model_missing'||issue==='dll_missing') return;
+    var now=Date.now();
+    if(now-voskHomeNudgeAt<12000) return;
+    voskHomeNudgeAt=now;
+    global.OneToneIpc.invoke('cmd_voice_vosk_retry_start',{}).catch(function(){});
+  }
+
+  function ensureHomeVoiceEngine(opts){
+    opts=opts||{};
+    if(settingsVoiceParked()||runtime().paused) return;
+    var strategy=currentListeningStrategy();
+    if(strategy==='off') return;
+    var now=Date.now();
+    if(!opts.force&&now-homeVoiceEnsureAt<8000) return;
+    homeVoiceEnsureAt=now;
+    voskHomeNudgeAt=0;
+    if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
+    if(strategy==='enhanced'||strategy==='auto'||strategy==='resourceSaver'){
+      global.OneToneIpc.invoke('cmd_voice_vosk_retry_start',{}).catch(function(){});
+    }else{
+      global.OneToneIpc.invoke('cmd_voice_set_listening_strategy',{strategy:strategy}).catch(function(){});
+    }
+    nudgeVoiceStatusPoll();
+  }
+
+  function ensureHomeVoiceEngineIfMismatch(opts){
+    if(settingsVoiceParked()||runtime().paused) return;
+    var wake=(hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake)||{};
+    if(!voiceEngineMismatch(wake)) return;
+    ensureHomeVoiceEngine(opts);
+  }
+
   function nudgeVoiceStatusPoll(){
     try{ voiceStatusPollTick(); }catch(_){}
     try{ scheduleNextVoicePoll(); }catch(_){}
@@ -2050,15 +2118,31 @@
         }
         const snap=hooks().voiceUiSnapshot;
         if(!snap) return;
-        if(endRes) snap.end=endRes;
-        if(sapiRes||voskRes||kwsRes){
-          snap.wake=mergeWakeSnapshot(sapiRes,voskRes,kwsRes);
+        const pollPayload={sapi:sapiRes,vosk:voskRes,kws:kwsRes,end:endRes};
+        if(global.OneToneVoiceUiState&&global.OneToneVoiceUiState.applyStatusFromPoll){
+          global.OneToneVoiceUiState.applyStatusFromPoll(voskRes,sapiRes,endRes,kwsRes);
+        }else{
+          if(endRes) snap.end=endRes;
+          if(sapiRes||voskRes||kwsRes){
+            snap.wake=mergeWakeSnapshot(sapiRes,voskRes,kwsRes);
+          }
+        }
+        if(!settingsVoiceParked()&&voskRes) maybeNudgeVoskOnHome(voskRes);
+        if(!settingsVoiceParked()) ensureHomeVoiceEngineIfMismatch();
+        if(!ui().drawerOpen&&global.OneToneHomeV9&&global.OneToneHomeV9.paintHomeLiveTextImmediate){
+          try{ global.OneToneHomeV9.paintHomeLiveTextImmediate(); }catch(_){}
+        }
+        if(!ui().drawerOpen&&global.OneToneHomeV9&&global.OneToneHomeV9.syncVoiceHeardSurfaces){
+          try{ global.OneToneHomeV9.syncVoiceHeardSurfaces(); }catch(_){}
+        }
+        if(!ui().drawerOpen&&voskRes){
+          renderVoiceVoskStatus(voskRes,{liveOnly:true});
         }
         const wakeFp=voiceWakeLiveFingerprint(sapiRes||{})+'|'+voiceWakeLiveFingerprint(voskRes||{})+'|'+(kwsRes&&[kwsRes.state,kwsRes.lastPartial,kwsRes.lastDetectedPhrase,kwsRes.lastDetectedKind,kwsRes.lastTrigger,kwsRes.lastSkip].join('|')||'')+'|'+(endRes&&endRes.state||'');
         // Same fp: skip even with drawer open — was re-painting voiceWake every 1.5s → 假死.
         if(wakeFp===lastVoicePollWakeFp) return;
         lastVoicePollWakeFp=wakeFp;
-        hooks().scheduleVoiceUiRender(ui().drawerOpen?{sapi:sapiRes,vosk:voskRes,kws:kwsRes,end:endRes}:null);
+        hooks().scheduleVoiceUiRender(pollPayload);
       }catch(err){
         console.error('voiceStatusPollTick',err);
       }
@@ -2833,7 +2917,7 @@
         errEl.textContent='';
       }
     }
-    if(!liveOnly||ui().settingsPanel==='debug'){
+    if(!liveOnly||ui().settingsPanel==='debug'||!ui().drawerOpen){
       const grammar=res.grammarMode===true?'语法限制':(res.grammarMode===false?'自由识别':'—');
       global.OneToneVoiceDiag.updateMetric('vosk','state',voiceWakeStateLabel(res.state||'stopped'),t('voiceDiagLogState'));
       global.OneToneVoiceDiag.updateMetric('vosk','model',modelPath?modelPath+' ('+modelOk+')':'',t('voiceDiagLogModel'));
@@ -2851,12 +2935,16 @@
     return global.OneToneIpc.invoke('cmd_voice_vosk_status',{}).then(function(res){
       const snap=hooks().voiceUiSnapshot;
       if(snap){
-        const wake=snap.wake||{};
-        snap.wake=mergeWakeSnapshot(wake.sapi,res,wake.kws);
+        if(global.OneToneVoiceUiState&&global.OneToneVoiceUiState.applyStatusFromPoll){
+          global.OneToneVoiceUiState.applyStatusFromPoll(res,snap.wake&&snap.wake.sapi,null,snap.wake&&snap.wake.kws);
+        }else{
+          const wake=snap.wake||{};
+          snap.wake=mergeWakeSnapshot(wake.sapi,res,wake.kws);
+        }
       }
       renderVoiceVoskStatus(res);
       hooks().syncHomeFromVoiceSettings&&hooks().syncHomeFromVoiceSettings(res,null,null,{lightOnly:true});
-      hooks().scheduleVoiceUiRender&&hooks().scheduleVoiceUiRender(ui().drawerOpen?{vosk:res}:null);
+      hooks().scheduleVoiceUiRender&&hooks().scheduleVoiceUiRender({vosk:res});
       return res;
     }).catch(function(err){
       voiceStatusPollTick();
@@ -3608,6 +3696,8 @@
     pollNeeded:voiceStatusPollNeeded,
     pollTick:voiceStatusPollTick,
     nudgePoll:nudgeVoiceStatusPoll,
+    ensureHomeVoiceEngine:ensureHomeVoiceEngine,
+    ensureHomeVoiceEngineIfMismatch:ensureHomeVoiceEngineIfMismatch,
     startPoll:startVoiceStatusPoll,
     liveFingerprint:voiceWakeLiveFingerprint,
     refreshDrawerMic:refreshDrawerMicAfterVoiceToggle,

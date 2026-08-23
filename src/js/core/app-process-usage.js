@@ -9,7 +9,7 @@
   function formatProcessMemory(memoryMb){
     var value=Number(memoryMb);
     if(!(value>=0)) return '0 MB';
-    if(value>=1024) return value.toFixed(1)+' GB';
+    if(value>=1024) return (value/1024).toFixed(1)+' GB';
     return Math.round(value)+' MB';
   }
 

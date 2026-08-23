@@ -371,7 +371,13 @@
       })(),
       String(raw.habitName||''),
       String(raw.triggerKey||''),
-      String(raw.finishText||'')
+      String(raw.finishText||''),
+      String((raw.live && raw.live.finalized) || ''),
+      String((raw.live && raw.live.pending) || ''),
+      String(raw.live && raw.live.placeholder ? '1' : '0'),
+      String((raw.live && raw.live.hintKey) || ''),
+      String(raw.live && raw.live.matched ? '1' : '0'),
+      String(raw.live && raw.live.miss ? '1' : '0')
     ]);
     return model;
   }

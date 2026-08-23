@@ -929,6 +929,12 @@ pub(crate) fn heal_cursor_pad_for_save(m: &mut MappingEntry, locale: &str) -> bo
     if heal_cursor_plan_chord_if_legacy(m) {
         changed = true;
     }
+    if crate::cursor_beginner::heal_cursor_beginner_pad_slots(m) {
+        changed = true;
+    }
+    if crate::cursor_beginner::heal_cursor_beginner_voice_bindings(m) {
+        changed = true;
+    }
     // Only Plan/Agent chords here — do not rebuild scenario bindings for every
     // pad slot on each quiet save (that 假死'd the Soft Pad keys page).
     for slot in ["plan", "switchAgent"] {

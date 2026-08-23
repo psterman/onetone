@@ -1,7 +1,7 @@
 //! Codex Micro always-on-top overlay ? compact pad grid when Codex is foreground.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Condvar, Mutex, OnceLock};
+use std::sync::{Arc, Condvar, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use parking_lot::Mutex as ParkingMutex;
@@ -27,6 +27,8 @@ const OVERLAY_HEIGHT_FULL: f64 = 680.0;
 /// 6 agent chips + usage pill (`Cu · N次`) + expand/close; 240px crushed the pill to "C.".
 const OVERLAY_WIDTH_MINI: f64 = 320.0;
 const OVERLAY_HEIGHT_MINI: f64 = 44.0;
+/// Extra band for Cursor beginner listen hint under mini bar.
+const OVERLAY_HEIGHT_MINI_LISTEN: f64 = 68.0;
 const HIGHLIGHT_MS: u64 = 320;
 
 static ACTIVE_MICRO_KEY: OnceLock<Mutex<String>> = OnceLock::new();
@@ -603,6 +605,26 @@ pub struct CodexMicroOverlaySnapshot {
     /// Ordered pass/fail gates for AG session lights + status host (overlay diagnose panel).
     pub ag_light_gates: Vec<AgLightGate>,
     pub cells: Vec<CodexMicroOverlayCell>,
+    /// Cursor beginner face: show 4 action icons in mini bar (Windows v0).
+    #[serde(default)]
+    pub cursor_beginner_mode: bool,
+    #[serde(default)]
+    pub cursor_probe_ok: bool,
+    #[serde(default)]
+    pub cursor_beginner_armed: bool,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub cursor_beginner_probe_message: String,
+    #[serde(default)]
+    pub cursor_beginner_slots: Vec<crate::cursor_beginner::BeginnerSlotSnapshot>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub cursor_beginner_arm_hint: String,
+    /// Live Vosk partial (mirrors diagnostic / home).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub voice_heard_partial: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub voice_heard_final: String,
+    #[serde(default)]
+    pub voice_heard_matched: bool,
 }
 
 /// One checklist row for overlay AG / status-light diagnose.
@@ -1532,6 +1554,20 @@ fn mapping_for_soft_pad_target<'a>(
 fn active_codex_mapping_with_overlay(
     cfg: &VoiceConfig,
 ) -> Option<(&MappingEntry, &CodexMicroPadConfig)> {
+    // Beginner MVP: Cursor habit / FG / alive → cursor-chat Soft Pad (not sticky Codex).
+    if crate::cursor_beginner::should_prefer_cursor_soft_pad(cfg) {
+        if let Some(hit) = mapping_for_soft_pad_target(
+            cfg,
+            crate::app_chat_workflow::CURSOR_APP_TARGET_ID,
+        ) {
+            return Some(hit);
+        }
+        if crate::cursor_beginner::cursor_habit_active(cfg)
+            || crate::cursor_beginner::cursor_is_foreground()
+        {
+            return None;
+        }
+    }
     if let Some((tid, _)) = soft_pad_surface_owner() {
         if let Some(hit) = mapping_for_soft_pad_target(cfg, &tid) {
             return Some(hit);
@@ -1737,6 +1773,10 @@ pub fn claude_multi_ag_lights_allowed(mapping: &MappingEntry, pad: &CodexMicroPa
 /// Applied Claude page for this mapping (purpose-agnostic).
 fn claude_light_page_matches(mapping: &MappingEntry) -> bool {
     use crate::soft_pad_runtime::AgentKind;
+    // Cursor has no session lanes — never show Claude/Codex agent lights.
+    if AgentKind::from_app_target(mapping.app_target_id.trim()) == Some(AgentKind::Cursor) {
+        return false;
+    }
     // Applied lane always wins — only show Claude lights on the matching mapping.
     if let Some((kind, mid)) = crate::soft_pad_runtime::applied_lane() {
         return kind == AgentKind::Claude && mid == mapping.id;
@@ -2367,15 +2407,41 @@ fn claude_waiting_hint_for(
 }
 
 pub fn build_snapshot(state: &AppState) -> CodexMicroOverlaySnapshot {
+    {
+        let mut cfg = state.cfg.lock();
+        if crate::cursor_beginner::should_prefer_cursor_soft_pad(&cfg) {
+            if crate::cursor_beginner::ensure_beginner_overlay_ready(&mut cfg) {
+                crate::codex_numpad_layer::sync_hook_cache(&cfg);
+            }
+        }
+    }
     // Clone under a short lock — host FG / process-tree must not run while holding cfg
     // (Hook floods + maybe_tick contending on cfg was freezing the UI).
     let cfg = state.cfg.lock().clone();
     let mut snapshot = build_snapshot_from_cfg(&cfg);
+    apply_voice_heard(&mut snapshot, state);
     if let Some(reason) = overlay_runtime_gate_reason(state) {
         snapshot.visible = false;
         snapshot.visible_reason = reason.to_string();
     }
     snapshot
+}
+
+fn apply_voice_heard(snapshot: &mut CodexMicroOverlaySnapshot, state: &AppState) {
+    let partial = state.voice_vosk_last_partial.lock().clone();
+    let final_text = state.voice_vosk_last_final.lock().clone();
+    snapshot.voice_heard_partial = partial.clone();
+    snapshot.voice_heard_final = final_text.clone();
+    let heard = if !partial.trim().is_empty() {
+        partial
+    } else {
+        final_text
+    };
+    let heard = heard.trim();
+    snapshot.voice_heard_matched = !state.voice_vosk_last_trigger.lock().trim().is_empty()
+        || (!heard.is_empty()
+            && snapshot.cursor_beginner_armed
+            && crate::cursor_beginner::matches_beginner_phrase(heard).is_some());
 }
 
 fn pad_run_status_slot() -> &'static ParkingMutex<(String, String, Instant)> {
@@ -2691,6 +2757,21 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             claude_waiting_hint,
             ag_light_gates,
             cells,
+            cursor_beginner_mode: crate::cursor_beginner::beginner_mode_active(cfg),
+            cursor_probe_ok: crate::cursor_beginner::probe_ok(),
+            cursor_beginner_armed: crate::cursor_beginner::effective_armed(cfg),
+            cursor_beginner_probe_message: if crate::cursor_beginner::probe_ok() {
+                String::new()
+            } else {
+                crate::cursor_beginner::PROBE_FAIL_MSG.into()
+            },
+            cursor_beginner_slots: crate::cursor_beginner::build_slot_snapshots(
+                crate::cursor_beginner::probe_ok(),
+            ),
+            cursor_beginner_arm_hint: crate::cursor_beginner::arm_hint(cfg),
+            voice_heard_partial: String::new(),
+            voice_heard_final: String::new(),
+            voice_heard_matched: false,
         };
     };
 
@@ -3221,6 +3302,21 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         claude_waiting_hint,
         ag_light_gates,
         cells,
+        cursor_beginner_mode: crate::cursor_beginner::beginner_mode_active(cfg),
+        cursor_probe_ok: crate::cursor_beginner::probe_ok(),
+        cursor_beginner_armed: crate::cursor_beginner::effective_armed(cfg),
+        cursor_beginner_probe_message: if crate::cursor_beginner::probe_ok() {
+            String::new()
+        } else {
+            crate::cursor_beginner::PROBE_FAIL_MSG.into()
+        },
+        cursor_beginner_slots: crate::cursor_beginner::build_slot_snapshots(
+            crate::cursor_beginner::probe_ok(),
+        ),
+        cursor_beginner_arm_hint: crate::cursor_beginner::arm_hint(cfg),
+        voice_heard_partial: String::new(),
+        voice_heard_final: String::new(),
+        voice_heard_matched: false,
     }
 }
 
@@ -3882,9 +3978,14 @@ pub fn set_overlay_minimized(minimized: bool) {
     *overlay_minimized().lock() = minimized;
 }
 
+pub fn overlay_runtime_minimized() -> bool {
+    *overlay_minimized().lock()
+}
+
 /// Set overlay mini/full chrome and persist `presentation` on the active overlay mapping.
-pub fn set_overlay_minimized_persist(_app: &AppHandle, state: &AppState, minimized: bool) {
+pub fn set_overlay_minimized_persist(app: &AppHandle, state: &AppState, minimized: bool) {
     *overlay_minimized().lock() = minimized;
+    crate::cursor_beginner::on_minimized_changed(state, app, minimized);
     // Invalidate geom cache so the next push always resizes mini↔full (do not wait on DPI drift).
     *overlay_last_geom().lock() = None;
     let presentation = if minimized { "mini" } else { "full" };
@@ -4111,9 +4212,14 @@ fn apply_overlay_payload(
     }
 }
 
-fn overlay_logical_size(minimized: bool, _joy_open: bool) -> (f64, f64) {
+fn overlay_logical_size(minimized: bool, _joy_open: bool, listen_band: bool) -> (f64, f64) {
     if minimized {
-        (OVERLAY_WIDTH_MINI, OVERLAY_HEIGHT_MINI)
+        let h = if listen_band {
+            OVERLAY_HEIGHT_MINI_LISTEN
+        } else {
+            OVERLAY_HEIGHT_MINI
+        };
+        (OVERLAY_WIDTH_MINI, h)
     } else {
         // NAV keys live on the 5-col main pad ? no side-rail width reserve.
         (OVERLAY_WIDTH, OVERLAY_HEIGHT_FULL)
@@ -4123,7 +4229,11 @@ fn overlay_logical_size(minimized: bool, _joy_open: bool) -> (f64, f64) {
 /// Resize overlay when minimized or full height budget changes.
 fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnapshot) -> bool {
     let minimized = snapshot.minimized;
-    let (logical_w, logical_h) = overlay_logical_size(minimized, snapshot.joy_nav_panel_open);
+    let listen_band = snapshot.minimized
+        && snapshot.cursor_beginner_mode
+        && snapshot.cursor_beginner_armed;
+    let (logical_w, logical_h) =
+        overlay_logical_size(minimized, snapshot.joy_nav_panel_open, listen_band);
     let width_key = logical_w.round() as i32;
     let height_key = logical_h.round() as i32;
     let want = (minimized, width_key, height_key);
@@ -4221,7 +4331,7 @@ fn position_overlay(win: &WebviewWindow) {
     let minimized = *overlay_minimized().lock();
     let joy_open = crate::codex_numpad_layer::joy_nav_panel_open()
         && crate::codex_numpad_layer::pad_mapping_active();
-    let (logical_w, logical_h) = overlay_logical_size(minimized, joy_open);
+    let (logical_w, logical_h) = overlay_logical_size(minimized, joy_open, false);
     let scale = win.scale_factor().unwrap_or(1.0);
     let w = (logical_w * scale).round() as i32;
     let h = (logical_h * scale).round() as i32;
@@ -4319,7 +4429,7 @@ pub fn dismiss_overlay(app: &AppHandle, state: &AppState) -> bool {
     true
 }
 
-pub fn maybe_tick(app: &AppHandle, state: &AppState) {
+pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
     let was_fg = *last_foreground_codex().lock();
     let gate_reason = overlay_runtime_gate_reason(state);
     let force_open = state.cfg.lock().soft_pad_force_open;
@@ -4378,7 +4488,113 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
     {
         *overlay_session_dismissed().lock() = false;
     }
+
+    // Cursor FG: auto arm on enter, disarm on leave (beginner listen mode).
+    #[cfg(windows)]
+    {
+        static LAST_CURSOR_FG: std::sync::OnceLock<parking_lot::Mutex<bool>> =
+            std::sync::OnceLock::new();
+        let slot = LAST_CURSOR_FG.get_or_init(|| parking_lot::Mutex::new(false));
+        let cursor_fg = cursor_is_foreground();
+        let prev_cursor_fg = *slot.lock();
+        let overlay_fg = overlay_hwnd_is_foreground();
+        if cursor_fg != prev_cursor_fg {
+            *slot.lock() = cursor_fg;
+            crate::cursor_beginner::note_cursor_fg_change(cursor_fg, overlay_fg);
+            if cursor_fg {
+                if crate::cursor_beginner::probe_ok()
+                    && !crate::app_identity::foreground_is_self()
+                    && gate_reason.is_none()
+                {
+                    clear_overlay_session_dismissed();
+                    let mut cfg = state.cfg.lock();
+                    let changed = crate::cursor_beginner::ensure_beginner_overlay_ready(&mut cfg);
+                    if changed {
+                        crate::codex_numpad_layer::sync_hook_cache(&cfg);
+                        let snap = cfg.clone();
+                        drop(cfg);
+                        crate::soft_pad_runtime::request_soft_pad_recompute(&snap);
+                        let _ = std::thread::Builder::new()
+                            .name("cursor-beginner-ensure-save".into())
+                            .spawn(move || {
+                                crate::config::save_config(&snap);
+                            });
+                        crate::voice_bootstrap::activate_desired_engine(
+                            app,
+                            state,
+                            "force:kws_grammar_reload",
+                        );
+                    } else {
+                        drop(cfg);
+                    }
+                    crate::cursor_beginner::arm(state, app, false);
+                    static KWS_BEGINNER_RELOAD: std::sync::OnceLock<std::sync::atomic::AtomicBool> =
+                        std::sync::OnceLock::new();
+                    let reloaded = KWS_BEGINNER_RELOAD.get_or_init(|| {
+                        std::sync::atomic::AtomicBool::new(false)
+                    });
+                    if !reloaded.load(std::sync::atomic::Ordering::Relaxed) {
+                        reloaded.store(true, std::sync::atomic::Ordering::Relaxed);
+                        crate::voice_bootstrap::activate_desired_engine(
+                            app,
+                            state,
+                            "force:kws_grammar_reload",
+                        );
+                    }
+                }
+            } else if prev_cursor_fg && !overlay_fg {
+                // Only disarm when a real other app (not our overlay) takes focus.
+                crate::cursor_beginner::disarm(state, app);
+            }
+        } else if !cursor_fg && overlay_fg {
+            // Keep latch aware while overlay holds Win32 FG over Cursor.
+            crate::cursor_beginner::note_cursor_fg_change(false, true);
+        }
+    }
+
     if is_fg || agent_process || agent_fg {
+        // Cursor beginner: heal pad when Cursor habit selected (incl. OneTone home FG).
+        let (cursor_heal, cursor_habit) = {
+            let cfg = state.cfg.lock();
+            (
+                crate::cursor_beginner::should_prefer_cursor_soft_pad(&cfg),
+                crate::cursor_beginner::cursor_habit_active(&cfg),
+            )
+        };
+        if cursor_heal
+            && (!crate::app_identity::foreground_is_self() || cursor_habit)
+            && gate_reason.is_none()
+        {
+            static LAST_CURSOR_ENSURE: std::sync::OnceLock<parking_lot::Mutex<std::time::Instant>> =
+                std::sync::OnceLock::new();
+            let slot = LAST_CURSOR_ENSURE.get_or_init(|| {
+                parking_lot::Mutex::new(
+                    std::time::Instant::now() - std::time::Duration::from_secs(10),
+                )
+            });
+            let mut last = slot.lock();
+            if last.elapsed() >= std::time::Duration::from_secs(2) {
+                *last = std::time::Instant::now();
+                drop(last);
+                let mut cfg = state.cfg.lock();
+                if crate::cursor_beginner::ensure_beginner_overlay_ready(&mut cfg) {
+                    crate::codex_numpad_layer::sync_hook_cache(&cfg);
+                    let snap = cfg.clone();
+                    drop(cfg);
+                    crate::soft_pad_runtime::request_soft_pad_recompute(&snap);
+                    crate::voice_bootstrap::activate_desired_engine(
+                        app,
+                        state,
+                        "force:kws_grammar_reload",
+                    );
+                    let _ = std::thread::Builder::new()
+                        .name("cursor-beginner-ensure-save".into())
+                        .spawn(move || {
+                            crate::config::save_config(&snap);
+                        });
+                }
+            }
+        }
         // Auto-ensure Soft Pad routes when a supported agent is FG or its process is running.
         // Skip while OneTone itself is FG (home / settings): Cursor.exe alive used to
         // take cfg.lock every 250ms for readiness+heal, which 假死'd the homepage.

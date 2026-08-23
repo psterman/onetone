@@ -5,17 +5,256 @@
 (function (global) {
   'use strict';
 
-  var TABS = ['voice', 'softPad', 'camera', 'ime'];
+  var TABS = ['key', 'voice', 'cursor', 'softPad', 'camera', 'ime'];
   var CHANNEL_TABS = ['voice', 'softPad', 'camera'];
   /** Voice lifecycle intents shown on 识别 — not full BindingView expansion. */
   var VOICE_LIFECYCLE_IDS = {
     start: 'input.start',
     cancel: 'input.cancel',
-    // end/send lives on step 03 — never bind here
+    // end/send: open capture sheet key/voice — never a separate finish step
     endCommit: 'input.commit',
     endSend: 'input.send'
   };
-  var activeTab = 'ime';
+  /** Layout-only Cursor catalogue, grouped by how the action is triggered. */
+  var CURSOR_COMMAND_GROUPS = [
+    {
+      id: 'native',
+      titleKey: 'keysChannelCursorGroupNative',
+      titleFb: '原生快捷键（Cursor / VS Code）',
+      items: [
+        {
+          slotId: 'stopOrSend',
+          labelZh: '发送',
+          labelEn: 'Send',
+          phrase: '发送',
+          chordHint: 'Enter',
+          noteZh: 'Composer 内回车发送',
+          noteEn: 'Enter in Composer'
+        },
+        {
+          slotId: 'newThread',
+          labelZh: '新会话',
+          labelEn: 'New chat',
+          phrase: '新会话',
+          chordHint: 'Ctrl+N',
+          noteZh: '新建；是否等于新 Composer 看绑定',
+          noteEn: 'New; may differ from new Composer'
+        },
+        {
+          slotId: 'quickSearch',
+          labelZh: '搜索',
+          labelEn: 'Search',
+          phrase: '搜索',
+          chordHint: 'Ctrl+P',
+          noteZh: '快速打开文件',
+          noteEn: 'Quick Open'
+        },
+        {
+          slotId: 'commandPalette',
+          labelZh: '命令',
+          labelEn: 'Command',
+          phrase: '命令',
+          chordHint: 'Ctrl+Shift+P',
+          noteZh: '命令面板',
+          noteEn: 'Command Palette'
+        }
+      ]
+    },
+    {
+      id: 'editor',
+      titleKey: 'keysChannelCursorGroupEditor',
+      titleFb: '编辑器习惯键',
+      items: [
+        {
+          slotId: 'quickChat',
+          labelZh: '开 Chat',
+          labelEn: 'Open Chat',
+          phrase: '开 Chat',
+          chordHint: 'Ctrl+I',
+          noteZh: '侧栏 Chat / Agent（亦常见 Ctrl+L）',
+          noteEn: 'Sidepanel Chat / Agent (also Ctrl+L)'
+        },
+        {
+          slotId: 'inlineEdit',
+          labelZh: '行内编辑',
+          labelEn: 'Inline Edit',
+          phrase: '行内编辑',
+          chordHint: 'Ctrl+K',
+          noteZh: '选中代码后就地改',
+          noteEn: 'Inline edit on selection'
+        },
+        {
+          slotId: 'acceptTab',
+          labelZh: '接受补全',
+          labelEn: 'Accept Tab',
+          phrase: '接受补全',
+          chordHint: 'Tab',
+          noteZh: '接受 Cursor Tab 建议',
+          noteEn: 'Accept Cursor Tab suggestion'
+        },
+        {
+          slotId: 'modeMenu',
+          labelZh: '切模式',
+          labelEn: 'Mode menu',
+          phrase: '切模式',
+          chordHint: 'Ctrl+.',
+          noteZh: 'Mode Menu；输入框内亦可用 Shift+Tab 轮换',
+          noteEn: 'Mode Menu; Shift+Tab cycles in chat input'
+        }
+      ]
+    },
+    {
+      id: 'seeded',
+      titleKey: 'keysChannelCursorGroupSeeded',
+      titleFb: 'OneTone 写入 Cursor',
+      items: [
+        {
+          slotId: 'plan',
+          labelZh: '定计划',
+          labelEn: 'Plan',
+          phrase: '定计划',
+          chordHint: 'Ctrl+Alt+Shift+P',
+          noteZh: 'seed composerMode.plan',
+          noteEn: 'seed composerMode.plan'
+        },
+        {
+          slotId: 'switchAgent',
+          labelZh: '开工',
+          labelEn: 'Agent',
+          phrase: '开工',
+          chordHint: 'Ctrl+Alt+.',
+          noteZh: 'seed composerMode.agent',
+          noteEn: 'seed composerMode.agent'
+        },
+        {
+          slotId: 'cancel',
+          labelZh: '取消',
+          labelEn: 'Cancel',
+          phrase: '取消',
+          chordHint: 'Ctrl+Shift+Backspace',
+          noteZh: 'OneTone 默认停生成映射',
+          noteEn: 'OneTone stop-generation default'
+        }
+      ]
+    },
+    {
+      id: 'inject',
+      titleKey: 'keysChannelCursorGroupInject',
+      titleFb: '无固定快捷键 / 注入',
+      items: [
+        {
+          slotId: 'pushToTalk',
+          labelZh: '说话',
+          labelEn: 'Talk',
+          phrase: '说话',
+          chordHint: '',
+          rightLabelZh: '语音键',
+          rightLabelEn: 'Voice key',
+          noteZh: 'PTT → 第三方输入法，非 Cursor 自带麦',
+          noteEn: 'PTT → IME, not Cursor mic'
+        },
+        {
+          slotId: 'continue',
+          labelZh: '继续',
+          labelEn: 'Continue',
+          phrase: '继续',
+          chordHint: '',
+          rightLabelZh: '模板句',
+          rightLabelEn: 'Template',
+          noteZh: '注入固定文案，无 Cursor 原生键',
+          noteEn: 'Injected template, no native key'
+        },
+        {
+          slotId: 'summarizeDiff',
+          labelZh: '总结改动',
+          labelEn: 'Summarize',
+          phrase: '总结改动',
+          chordHint: '',
+          rightLabelZh: '模板句',
+          rightLabelEn: 'Template',
+          noteZh: '注入固定总结提示',
+          noteEn: 'Injected summarize prompt'
+        },
+        {
+          slotId: 'runChecks',
+          labelZh: '跑测试',
+          labelEn: 'Run checks',
+          phrase: '跑测试',
+          chordHint: '',
+          rightLabelZh: '模板句',
+          rightLabelEn: 'Template',
+          noteZh: '注入 lint/test 提示，不直跑终端',
+          noteEn: 'Injected lint/test prompt, not direct terminal'
+        }
+      ]
+    },
+    {
+      id: 'wrapup',
+      titleKey: 'keysChannelCursorGroupWrapup',
+      titleFb: '回合收尾',
+      items: [
+        {
+          slotId: 'focusComposer',
+          labelZh: '回 Cursor',
+          labelEn: 'Focus Cursor',
+          phrase: '回 Cursor',
+          chordHint: '',
+          rightLabelZh: '焦点',
+          rightLabelEn: 'Focus',
+          noteZh: '从其他 App 切回并聚焦 Composer',
+          noteEn: 'Focus Composer from another app'
+        },
+        {
+          slotId: 'paste',
+          labelZh: '粘贴',
+          labelEn: 'Paste',
+          phrase: '粘贴',
+          chordHint: 'Ctrl+V',
+          noteZh: '聚焦后粘贴（截图/剪贴板）',
+          noteEn: 'Focus then paste clipboard'
+        },
+        {
+          slotId: 'nextChange',
+          labelZh: '下一处',
+          labelEn: 'Next change',
+          phrase: '下一处',
+          chordHint: 'F7',
+          noteZh: 'diff 下一处；Cursor 上不一定稳定',
+          noteEn: 'Next diff hunk; may be unreliable in Cursor'
+        },
+        {
+          slotId: 'prevChange',
+          labelZh: '上一处',
+          labelEn: 'Prev change',
+          phrase: '上一处',
+          chordHint: 'Shift+F7',
+          noteZh: 'diff 上一处；Cursor 上不一定稳定',
+          noteEn: 'Prev diff hunk; may be unreliable in Cursor'
+        },
+        {
+          slotId: 'acceptChanges',
+          labelZh: '接受',
+          labelEn: 'Accept',
+          phrase: '接受',
+          chordHint: 'Ctrl+Enter',
+          gated: true,
+          noteZh: 'gate 默认关；needs_input 时才高亮',
+          noteEn: 'Gate off by default; only when needs_input'
+        },
+        {
+          slotId: 'acceptAllChanges',
+          labelZh: '全部接受',
+          labelEn: 'Accept all',
+          phrase: '全部接受',
+          chordHint: 'Ctrl+Shift+Enter',
+          gated: true,
+          noteZh: 'gate 默认关；接受当前建议全部改动',
+          noteEn: 'Gate off by default; accept all suggested changes'
+        }
+      ]
+    }
+  ];
+  var activeTab = 'key';
   /** @type {{mappingId:string,sourceChannel:string,sourceBindingRef:string,actionId:string,keyBindingRef:string,actionInstanceId?:string,actionArgs?:*,iconHtml?:string}|null} */
   var selection = null;
   var viewsCache = [];
@@ -37,6 +276,9 @@
   var scopeSessionMappingId = '';
   /** Frozen selection for in-flight key recording / wizard. */
   var recordSnap = null;
+  var capturePopoverOpen = false;
+  var captureReturnPanel = '';
+  var capturePopoverEscapeBound = false;
 
   var SOFTPAD_SCOPE_PRIMARY = [
     { appTargetId: 'codex-chat', kind: 'codex', titleKey: 'softPadHubKindCodex', titleFb: 'Codex' },
@@ -873,6 +1115,9 @@
   function clearSelection(opts) {
     var had = !!selection;
     selection = null;
+    if (had && !(opts && opts.skipPersist)) {
+      persistHeroCapture(defaultCaptureHeroRef());
+    }
     if (had && !(opts && opts.skipHero)) applyHero();
     if (had && !(opts && opts.skipRender)) renderPanelOnly();
     if (had && global.OneToneCodexMicroPadUi && global.OneToneCodexMicroPadUi.notifySelection) {
@@ -895,6 +1140,9 @@
           iconHtml: next.iconHtml != null ? String(next.iconHtml) : ''
         }
       : null;
+    if (next && !(opts && opts.skipPersist)) {
+      persistHeroCapture(selectionToHeroRef(selection));
+    }
     if (!(opts && opts.skipHero)) applyHero();
     if (!(opts && opts.skipRender)) renderPanelOnly();
   }
@@ -967,65 +1215,436 @@
     if (ctx && ctx.targetMappingId && selection.mappingId === ctx.targetMappingId) {
       return;
     }
-    clearSelection({ skipRender: true });
+    loadHeroCaptureFromMapping(mappingById(mid));
+  }
+
+  function defaultCaptureHeroRef() {
+    var coreApi = global.OneToneMappingCore;
+    if (coreApi && coreApi.defaultCaptureHeroRef) return coreApi.defaultCaptureHeroRef();
+    return { channel: 'key', bindingRef: 'ime', actionId: '', actionInstanceId: '', kind: 'ime' };
+  }
+
+  function normalizeCaptureHeroRef(ref) {
+    var coreApi = global.OneToneMappingCore;
+    if (coreApi && coreApi.normalizeCaptureHeroRef) return coreApi.normalizeCaptureHeroRef(ref);
+    return defaultCaptureHeroRef();
+  }
+
+  function captureHeroRefForMapping(m) {
+    var coreApi = global.OneToneMappingCore;
+    if (coreApi && coreApi.captureHeroRefForMapping) return coreApi.captureHeroRefForMapping(m);
+    return defaultCaptureHeroRef();
+  }
+
+  function isDefaultCaptureHeroRef(ref) {
+    var coreApi = global.OneToneMappingCore;
+    if (coreApi && coreApi.isDefaultCaptureHeroRef) return coreApi.isDefaultCaptureHeroRef(ref);
+    ref = normalizeCaptureHeroRef(ref);
+    return ref.kind === 'ime' && !ref.actionId;
+  }
+
+  function channelTabLabel(ch) {
+    var map = {
+      key: 'keysChannelTabKey',
+      voice: 'keysChannelTabVoice',
+      cursor: 'keysChannelTabCursor',
+      softPad: 'keysChannelTabSoftPad',
+      camera: 'keysChannelTabCamera',
+      ime: 'keysChannelTabIme'
+    };
+    return t(map[ch] || ch, ch);
+  }
+
+  function selectionToHeroRef(sel) {
+    if (!sel) return defaultCaptureHeroRef();
+    var kind = 'action';
+    if (sel.sourceChannel === 'camera') kind = 'gesture';
+    else if (sel.sourceChannel === 'ime') kind = 'imePreset';
+    else if (sel.sourceChannel === 'key' && !sel.actionId) kind = 'ime';
+    return {
+      channel: String(sel.sourceChannel || 'voice'),
+      bindingRef: String(sel.sourceBindingRef || ''),
+      actionId: String(sel.actionId || ''),
+      actionInstanceId: String(sel.actionInstanceId || ''),
+      kind: kind
+    };
+  }
+
+  function heroRefMatches(ref, opts) {
+    ref = normalizeCaptureHeroRef(ref);
+    opts = opts || {};
+    if (opts.kind === 'ime' || (opts.channel === 'key' && !opts.actionId)) {
+      return isDefaultCaptureHeroRef(ref);
+    }
+    return (
+      ref.channel === opts.channel &&
+      ref.bindingRef === opts.bindingRef &&
+      ref.actionId === opts.actionId &&
+      String(ref.actionInstanceId || '') === String(opts.actionInstanceId || '')
+    );
+  }
+
+  function persistHeroCapture(ref, mid) {
+    mid = String(mid || selectedMappingId() || '').trim();
+    var m = mappingById(mid);
+    if (!m) return;
+    var norm = normalizeCaptureHeroRef(ref);
+    var coreApi = global.OneToneMappingCore;
+    if (coreApi && coreApi.setCaptureHeroRef) coreApi.setCaptureHeroRef(m, norm);
+    else if (isDefaultCaptureHeroRef(norm)) m.captureHeroRef = null;
+    else m.captureHeroRef = norm;
+  }
+
+  function captureRefToSelection(ref, mid) {
+    ref = normalizeCaptureHeroRef(ref);
+    mid = String(mid || selectedMappingId() || '').trim();
+    if (!mid || isDefaultCaptureHeroRef(ref)) return null;
+    return {
+      mappingId: mid,
+      sourceChannel: ref.channel,
+      sourceBindingRef: ref.bindingRef,
+      actionId: ref.actionId,
+      actionInstanceId: ref.actionInstanceId || '',
+      keyBindingRef: '',
+      actionArgs: null,
+      iconHtml: ''
+    };
+  }
+
+  function loadHeroCaptureFromMapping(m) {
+    m = m || mappingById(selectedMappingId());
+    if (!m) {
+      selection = null;
+      return;
+    }
+    selection = captureRefToSelection(captureHeroRefForMapping(m), m.id);
+    if (selection) {
+      var keyB = findKeyBinding(m, selection.actionId, selection.actionInstanceId);
+      if (keyB) selection.keyBindingRef = String(keyB.slotId || '');
+    }
+  }
+
+  function resolveHeroCapture(m) {
+    m = m || mappingById(selectedMappingId());
+    if (!m) {
+      return {
+        kind: 'ime',
+        active: false,
+        primaryLabel: '',
+        secondaryLabel: '',
+        badge: t('keysHeroModeIme', '输入法识别键'),
+        chord: '',
+        empty: true,
+        channel: 'key',
+        channelLabel: channelTabLabel('key'),
+        targetLabel: '',
+        targetEmpty: true,
+        actionId: '',
+        sourceChannel: 'key',
+        iconHtml: ''
+      };
+    }
+    var ref = captureHeroRefForMapping(m);
+    var bootHooks = global.__vp_mapping_core_hooks__ || {};
+    var friendly = bootHooks.friendlyKeyName || function (k) {
+      return k;
+    };
+    if (isDefaultCaptureHeroRef(ref)) {
+      var coreApi = global.OneToneMappingCore;
+      var tgt =
+        coreApi && coreApi.editorTarget
+          ? String(coreApi.editorTarget(m) || '').trim()
+          : String(m.targetKey || '').trim();
+      var fl = tgt ? friendly(tgt) || tgt : t('badgeNotRecorded', '未设置');
+      return {
+        kind: 'ime',
+        active: false,
+        primaryLabel: fl,
+        secondaryLabel: '',
+        badge: t('keysHeroModeIme', '输入法识别键'),
+        chord: tgt,
+        empty: !tgt,
+        channel: 'key',
+        channelLabel: channelTabLabel('key'),
+        targetLabel: fl,
+        targetEmpty: !tgt,
+        actionId: '',
+        sourceChannel: 'key',
+        iconHtml: ''
+      };
+    }
+    var label = actionLabel(ref.actionId) || ref.bindingRef;
+    if (ref.kind === 'imePreset') {
+      var preset =
+        global.OneToneImePresets && global.OneToneImePresets.presetById
+          ? global.OneToneImePresets.presetById(ref.bindingRef)
+          : null;
+      label =
+        preset && preset.nameKey
+          ? t(preset.nameKey)
+          : ref.bindingRef || t('keysHeroModeIme', '输入法识别键');
+    }
+    var ctx = resolveSoftPadScope();
+    var scopeTitle =
+      ref.channel === 'softPad' && ctx && ctx.title ? String(ctx.title) : '';
+    if (scopeTitle) label = scopeTitle + ' · ' + label;
+    var keyB = findKeyBinding(m, ref.actionId, ref.actionInstanceId);
+    var chord = keyB ? String(keyB.triggerBinding || '').trim() : '';
+    var primary = chord ? (friendly(chord) || chord) + ' · ' + label : label;
+    var badge = channelTabLabel(ref.channel);
+    if (chord || ref.kind === 'action') {
+      badge = badge + ' · ' + t('keysHeroModeAction', '动作快捷键');
+    }
+    return {
+      kind: ref.kind,
+      active: true,
+      primaryLabel: primary,
+      secondaryLabel: label,
+      badge: badge,
+      chord: chord,
+      empty: !label && !chord,
+      channel: ref.channel,
+      channelLabel: channelTabLabel(ref.channel),
+      targetLabel: primary,
+      targetEmpty: !chord && !label,
+      actionId: ref.actionId,
+      sourceChannel: ref.channel,
+      iconHtml: '',
+      scopeTitle: scopeTitle
+    };
+  }
+
+  function syncCaptureHeroDisplay() {
+    var m = mappingById(selectedMappingId());
+    var cap = resolveHeroCapture(m);
+    var popBadge = document.getElementById('keysCaptureKeycapBadge');
+    var zone = document.getElementById('keysCaptureKeycapZone');
+    if (popBadge) popBadge.textContent = cap.badge || t('keysHeroModeIme', '输入法识别键');
+    if (zone) {
+      zone.classList.toggle(
+        'is-hero-mapped',
+        isDefaultCaptureHeroRef(captureHeroRefForMapping(m))
+      );
+    }
+  }
+
+  function syncCaptureRecordChrome() {
+    var table = global.OneToneHabitKeyMappingTable;
+    if (capturePopoverOpen && activeTab === 'key') {
+      if (table && table.mountTargetRecordToCapture) table.mountTargetRecordToCapture();
+    } else if (table && table.restoreTargetRecordFromStash) {
+      table.restoreTargetRecordFromStash();
+    }
+    syncCaptureHeroDisplay();
+    if (global.OneToneKeysPanelUi && global.OneToneKeysPanelUi.syncRecordButtons) {
+      try {
+        global.OneToneKeysPanelUi.syncRecordButtons();
+      } catch (_) {}
+    }
+    if (global.OneToneMappingEditorChrome && global.OneToneMappingEditorChrome.updatePrimaryCTA) {
+      try {
+        global.OneToneMappingEditorChrome.updatePrimaryCTA();
+      } catch (_) {}
+    }
   }
 
   function onStepChange(step) {
     ensureSoftPadScopeSession();
     if (String(step || '') !== 'target') {
-      clearSelection({ skipHero: false });
+      if (capturePopoverOpen) closeCapturePopover({ keepPanel: true, skipStep: true });
     } else {
+      loadHeroCaptureFromMapping();
       refresh();
     }
   }
 
+  function isCapturePopoverOpen() {
+    return !!capturePopoverOpen;
+  }
+
+  function isCaptureSheetOpen() {
+    return isCapturePopoverOpen();
+  }
+
+  function positionCapturePopover() {
+    var pop = document.getElementById('keysCapturePopover');
+    var anchor = document.getElementById('habitKeyMapCellTarget');
+    if (!pop || !anchor) return;
+    pop.hidden = false;
+    var pw = Math.min(560, Math.max(280, window.innerWidth - 24));
+    pop.style.width = pw + 'px';
+    var r = anchor.getBoundingClientRect();
+    var ph = pop.offsetHeight || 420;
+    var left = Math.max(12, Math.min(r.left + r.width / 2 - pw / 2, window.innerWidth - pw - 12));
+    var top = r.bottom + 8;
+    if (top + ph > window.innerHeight - 12) {
+      top = Math.max(12, r.top - ph - 8);
+    }
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+  }
+
+  function bindCapturePopoverEscape() {
+    if (capturePopoverEscapeBound) return;
+    capturePopoverEscapeBound = true;
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key !== 'Escape' || !capturePopoverOpen) return;
+      ev.preventDefault();
+      closeCapturePopover({});
+    });
+  }
+
+  function renderKeyFinishHosts() {
+    try {
+      if (
+        global.OneToneKeyFinishFlowRender &&
+        global.OneToneKeyFinishFlowRender.renderKeyFinishFlowPanel
+      ) {
+        global.OneToneKeyFinishFlowRender.renderKeyFinishFlowPanel();
+      }
+    } catch (_) {}
+  }
+
+  function openCapturePopover(opts) {
+    opts = opts || {};
+    bindOnce();
+    var drawer = global.OneToneSettingsDrawer;
+    var ui = global.OneToneState && global.OneToneState.ui;
+    var curPanel =
+      ui && ui.settingsPanel
+        ? String(global.OneToneSettingsDrawer && global.OneToneSettingsDrawer.normalizePanel
+            ? global.OneToneSettingsDrawer.normalizePanel(ui.settingsPanel)
+            : ui.settingsPanel)
+        : '';
+    if (opts.returnPanel) {
+      captureReturnPanel = String(opts.returnPanel);
+    } else if (curPanel && curPanel !== 'keys' && !captureReturnPanel) {
+      captureReturnPanel = curPanel;
+    }
+    if (drawer && drawer.setPanel) {
+      try {
+        drawer.setPanel('keys', opts.drawerOpts || {});
+      } catch (_) {}
+    }
+    if (!opts.skipStep && global.OneToneKeysPageState && global.OneToneKeysPageState.setStep) {
+      try {
+        global.OneToneKeysPageState.setStep('target', {
+          skipSheet: true,
+          skipOpenSheet: true,
+          skipScroll: !!opts.skipScroll
+        });
+      } catch (_) {}
+    }
+    var pop = document.getElementById('keysCapturePopover');
+    var backdrop = document.getElementById('keysCapturePopoverBackdrop');
+    if (backdrop) backdrop.hidden = false;
+    capturePopoverOpen = true;
+    loadHeroCaptureFromMapping();
+    bindCapturePopoverEscape();
+    if (opts.tab && TABS.indexOf(opts.tab) >= 0) {
+      setActiveTab(opts.tab, { skipRender: false });
+    } else {
+      renderPanelOnly();
+    }
+    refresh();
+    if (opts.expandFinishMore) {
+      var more = document.getElementById('habitFlowFinishMore');
+      if (more) more.open = true;
+    }
+    renderKeyFinishHosts();
+    syncCaptureRecordChrome();
+    if (pop) {
+      pop.hidden = false;
+      requestAnimationFrame(function () {
+        positionCapturePopover();
+        try {
+          pop.focus();
+        } catch (_) {}
+      });
+    }
+  }
+
+  function closeCapturePopover(opts) {
+    opts = opts || {};
+    var pop = document.getElementById('keysCapturePopover');
+    var backdrop = document.getElementById('keysCapturePopoverBackdrop');
+    if (pop) pop.hidden = true;
+    if (backdrop) backdrop.hidden = true;
+    capturePopoverOpen = false;
+    loadHeroCaptureFromMapping();
+    if (!opts.skipStep && global.OneToneKeysPageState && global.OneToneKeysPageState.setStep) {
+      try {
+        global.OneToneKeysPageState.setStep('target', {
+          skipSheet: true,
+          skipOpenSheet: true,
+          skipScroll: true
+        });
+      } catch (_) {}
+    }
+    var ret = captureReturnPanel;
+    captureReturnPanel = '';
+    syncCaptureRecordChrome();
+    if (!opts.keepPanel && ret && ret !== 'keys') {
+      var drawer = global.OneToneSettingsDrawer;
+      if (drawer && drawer.setPanel) {
+        try {
+          drawer.setPanel(ret);
+        } catch (_) {}
+      }
+    }
+    applyHero();
+  }
+
+  function openCaptureSheet(opts) {
+    openCapturePopover(opts);
+  }
+
+  function closeCaptureSheet(opts) {
+    closeCapturePopover(opts);
+  }
+
+  function syncCaptureEntrySummary() {}
+
+  function syncImeTabChrome() {
+    var panel = document.getElementById('keysChannelPanel');
+    var imeStrip = document.getElementById('keysImeStripWrap');
+    var keyPanel = document.getElementById('keysCaptureKeyPanel');
+    var onIme = activeTab === 'ime';
+    var onKey = activeTab === 'key';
+    if (keyPanel) keyPanel.hidden = !onKey;
+    if (panel) {
+      panel.hidden = onIme || onKey;
+      if (!onIme && !onKey) {
+        var tabId =
+          activeTab === 'softPad'
+            ? 'keysChannelTabSoftPad'
+            : activeTab === 'camera'
+              ? 'keysChannelTabCamera'
+              : activeTab === 'cursor'
+                ? 'keysChannelTabCursor'
+                : 'keysChannelTabVoice';
+        panel.setAttribute('aria-labelledby', tabId);
+      }
+    }
+    if (imeStrip) {
+      imeStrip.hidden = !onIme;
+    }
+    if (onIme) syncImeHeroMarkers();
+  }
+
   function heroModel() {
-    if (!selection || !selection.mappingId || keysStep() !== 'target') {
-      return {
-        active: false,
-        targetLabel: '',
-        targetEmpty: true,
-        iconHtml: '',
-        actionId: '',
-        chord: '',
-        sourceChannel: '',
-        scopeTitle: ''
-      };
-    }
-    var ctx = resolveSoftPadScope();
-    var allowed =
-      selection.mappingId === selectedMappingId() ||
-      !!(ctx && ctx.targetMappingId && selection.mappingId === ctx.targetMappingId);
-    if (!allowed) {
-      return {
-        active: false,
-        targetLabel: '',
-        targetEmpty: true,
-        iconHtml: '',
-        actionId: '',
-        chord: '',
-        sourceChannel: '',
-        scopeTitle: ''
-      };
-    }
-    var m = mappingById(selection.mappingId);
-    var keyB = findKeyBinding(m, selection.actionId, selection.actionInstanceId);
-    var chord = keyB ? String(keyB.triggerBinding || '').trim() : '';
-    var label = actionLabel(selection.actionId);
-    var scopeTitle =
-      selection.sourceChannel === 'softPad' && ctx && ctx.title ? String(ctx.title) : '';
-    var prefixed = scopeTitle ? scopeTitle + ' · ' + label : label;
+    var cap = resolveHeroCapture();
     return {
-      active: true,
-      actionId: selection.actionId,
-      chord: chord,
-      targetLabel: chord
-        ? prefixed + ' · ' + friendlyChord(chord)
-        : prefixed + ' · ' + t('keysHeroActionNeedsKey', '待设置快捷键'),
-      targetEmpty: !chord,
-      iconHtml: selection.iconHtml || '',
-      sourceChannel: selection.sourceChannel || '',
-      scopeTitle: scopeTitle
+      active: !!cap.active,
+      actionId: cap.actionId || '',
+      chord: cap.chord || '',
+      targetLabel: cap.targetLabel || cap.primaryLabel || '',
+      targetEmpty: !!cap.targetEmpty,
+      iconHtml: cap.iconHtml || '',
+      sourceChannel: cap.sourceChannel || cap.channel || '',
+      scopeTitle: cap.scopeTitle || '',
+      badge: cap.badge || '',
+      channelLabel: cap.channelLabel || ''
     };
   }
 
@@ -1044,31 +1663,61 @@
     }
   }
 
+  function syncImeStay() {
+    var el = document.getElementById('keysImeStay');
+    if (!el) return;
+    var hm = heroModel();
+    var show = !!(selection && hm.active);
+    if (!show) {
+      el.hidden = true;
+      el.textContent = '';
+      return;
+    }
+    var mid = selectedMappingId();
+    var m = mappingById(mid) || activeMapping();
+    var chord = m ? String(m.targetKey || '').trim() : '';
+    el.hidden = false;
+    el.textContent = chord
+      ? t('keysImeStayWithChord', '识别键仍为 {chord}（未改动）').replace(
+          '{chord}',
+          friendlyChord(chord)
+        )
+      : t('keysImeStayEmpty', '识别键未设置 · 录动作快捷键不会改动它');
+  }
+
+  function selectionToast(displayName, hasChord) {
+    var tip = hasChord
+      ? t('keysActionKeyUpdateToast', '已选中 · 再录将更新该命令快捷键（不改动识别键）')
+      : t('keysActionKeyAppendToast', '已选中 · 录制后将追加动作快捷键（不改动识别键）');
+    toast(tip + ' · ' + displayName);
+  }
+
   function applyHero() {
     var badge = document.getElementById('keysTargetModeBadge');
-    var hint = document.getElementById('keysTargetKeycapHint');
     var targetEl = document.getElementById('targetView');
     var targetDisp = document.getElementById('targetDisplay');
     var host = document.getElementById('habitKeyMapCellTarget');
     var imeIcon = document.getElementById('targetImeIconMapping');
     var appBadge = document.getElementById('targetAppBadgeMapping');
+    var m = mappingById(selectedMappingId());
+    var cap = resolveHeroCapture(m);
     var hm = heroModel();
-    var m = selection ? mappingById(selection.mappingId) : null;
 
-    if (selection && hm.active) {
-      var keyB = findKeyBinding(m, selection.actionId, selection.actionInstanceId);
-      // keyBindingRef only from existing key binding — never softPad/route slotId.
-      selection.keyBindingRef = keyB ? String(keyB.slotId || '') : '';
-      if (keyB && keyB.actionInstanceId && !selection.actionInstanceId) {
-        selection.actionInstanceId = String(keyB.actionInstanceId);
-      }
-      if (keyB && keyB.actionArgs != null && selection.actionArgs == null) {
-        selection.actionArgs = keyB.actionArgs;
+    if (cap.active) {
+      if (selection && m) {
+        var keyB = findKeyBinding(m, selection.actionId, selection.actionInstanceId);
+        if (selection) {
+          selection.keyBindingRef = keyB ? String(keyB.slotId || '') : '';
+          if (keyB && keyB.actionInstanceId && !selection.actionInstanceId) {
+            selection.actionInstanceId = String(keyB.actionInstanceId);
+          }
+          if (keyB && keyB.actionArgs != null && selection.actionArgs == null) {
+            selection.actionArgs = keyB.actionArgs;
+          }
+        }
       }
       if (badge) {
-        badge.textContent = hm.scopeTitle
-          ? hm.scopeTitle + ' · ' + t('keysHeroModeAction', '动作快捷键')
-          : t('keysHeroModeAction', '动作快捷键');
+        badge.textContent = cap.badge || t('keysHeroModeAction', '动作快捷键');
         badge.classList.add('is-action');
       }
       if (imeIcon) imeIcon.hidden = true;
@@ -1080,30 +1729,35 @@
       if (global.__otMappingEditorDisplayMounted && typeof global.__otMappingEditorDisplaySync === 'function') {
         global.__otMappingEditorDisplaySync();
       } else if (targetEl) {
-        targetEl.textContent = hm.targetLabel;
+        targetEl.textContent = cap.primaryLabel || cap.targetLabel || '';
       }
       if (targetDisp) {
-        targetDisp.classList.toggle('empty', !!hm.targetEmpty);
+        targetDisp.classList.toggle('empty', !!cap.empty);
         targetDisp.classList.add('is-codex-cap-edit');
       }
       if (host) host.classList.add('is-codex-cap-edit');
-      if (hint) {
-        hint.textContent = t('keysHeroActionHint', '点击录制动作快捷键 · 再点列表项退出');
-      }
+      syncImeStay();
+      syncCaptureRecordChrome();
       return true;
     }
 
     if (badge) {
-      badge.textContent = t('keysHeroModeIme', '输入法识别键');
+      badge.textContent = cap.badge || t('keysHeroModeIme', '输入法识别键');
       badge.classList.remove('is-action');
     }
     syncActionIconHost('');
-    if (targetDisp) targetDisp.classList.remove('is-codex-cap-edit');
-    if (host) host.classList.remove('is-codex-cap-edit');
     if (global.__otMappingEditorDisplayMounted && typeof global.__otMappingEditorDisplaySync === 'function') {
       global.__otMappingEditorDisplaySync();
+    } else if (targetEl) {
+      targetEl.textContent = cap.primaryLabel || '';
     }
-    // Leave IME badges/text to mapping-list / IME presets.
+    if (targetDisp) {
+      targetDisp.classList.toggle('empty', !!cap.empty);
+      targetDisp.classList.remove('is-codex-cap-edit');
+    }
+    if (host) host.classList.remove('is-codex-cap-edit');
+    syncImeStay();
+    syncCaptureRecordChrome();
     return false;
   }
 
@@ -1241,7 +1895,7 @@
         actionId: VOICE_LIFECYCLE_IDS.endCommit,
         bindingRef: 'voice-lifecycle:end',
         name: finishSendModeLabel(),
-        sub: t('keysVoiceBridgeEndSub', '在 03 收尾配置，不在识别区重复建键'),
+        sub: t('keysVoiceBridgeEndSub', '在「快捷键」标签配置按键收尾，不在识别区重复建键'),
         offerIme: false
       }
     ];
@@ -1313,6 +1967,9 @@
     if (channel === 'voice') {
       return t('keysChannelEmptyVoice', '当前习惯暂无可适配为快捷键的语音命令');
     }
+    if (channel === 'cursor') {
+      return t('keysChannelEmptyCursor', '暂无 Cursor 命令');
+    }
     if (channel === 'softPad') {
       return t('keysChannelEmptySoftPad', '当前习惯暂无可适配为快捷键的虚拟键盘命令');
     }
@@ -1320,6 +1977,133 @@
       return t('keysChannelEmptyCamera', '当前习惯暂无可适配为快捷键的摄像头动作');
     }
     return t('keysChannelEmpty', '当前习惯暂无可适配为快捷键的命令');
+  }
+
+  function cursorItemLabel(item) {
+    var en = ((global.OneToneI18n && global.OneToneI18n.lang) || 'zh') === 'en';
+    return en ? item.labelEn || item.labelZh : item.labelZh || item.labelEn;
+  }
+
+  function cursorItemNote(item) {
+    var en = ((global.OneToneI18n && global.OneToneI18n.lang) || 'zh') === 'en';
+    return en ? item.noteEn || item.noteZh || '' : item.noteZh || item.noteEn || '';
+  }
+
+  function cursorItemChord(item) {
+    var hint = String((item && item.chordHint) || '').trim();
+    if (hint) return hint;
+    var A = global.OneToneAgentActions;
+    return A && A.defaultCursorKeyForSlot
+      ? String(A.defaultCursorKeyForSlot(item.slotId) || '').trim()
+      : '';
+  }
+
+  function cursorItemRightLabel(item) {
+    var en = ((global.OneToneI18n && global.OneToneI18n.lang) || 'zh') === 'en';
+    var custom = en ? item.rightLabelEn || item.rightLabelZh : item.rightLabelZh || item.rightLabelEn;
+    if (custom) return custom;
+    var chord = cursorItemChord(item);
+    if (chord) return friendlyChord(chord);
+    return t('keysHeroActionNeedsKey', '待设置快捷键');
+  }
+
+  function cursorItemSub(item) {
+    var note = cursorItemNote(item);
+    var phrase = String((item && item.phrase) || '').trim();
+    var parts = [];
+    if (phrase) parts.push(t('keysChannelTriggerPhrase', '口令') + ' · ' + phrase);
+    if (note) parts.push(note);
+    return parts.join(' · ') || note || '';
+  }
+
+  function cursorItemActionId(item) {
+    var sid = String((item && item.slotId) || '').trim();
+    if (!sid) return '';
+    var fromSlot = actionIdFromSlot(sid);
+    if (fromSlot && fromSlot !== sid) return fromSlot;
+    var A = global.OneToneAgentActions;
+    var slot = A && A.slotById ? A.slotById(sid) : null;
+    if (slot && slot.actionId) return canonicalActionId(slot.actionId);
+    return 'cursor.' + sid;
+  }
+
+  function renderCursorCommandsPanel(panel) {
+    if (panel.classList) panel.classList.remove('is-softpad-pick');
+    syncSoftPadTargetChrome(false);
+    var mid = selectedMappingId();
+    var m = mappingById(mid);
+    var html = '';
+    var gi;
+    for (gi = 0; gi < CURSOR_COMMAND_GROUPS.length; gi++) {
+      var group = CURSOR_COMMAND_GROUPS[gi];
+      if (group.titleKey || group.titleFb) {
+        html +=
+          '<p class="keys-channel-group-label">' +
+          esc(t(group.titleKey, group.titleFb)) +
+          '</p>';
+      }
+      var items = group.items || [];
+      var ii;
+      for (ii = 0; ii < items.length; ii++) {
+        var item = items[ii];
+        var slotId = String(item.slotId || '').trim();
+        var actionId = cursorItemActionId(item);
+        var gated = !!item.gated;
+        var keyB = mid ? findKeyBinding(m, actionId, '') : null;
+        var boundChord = keyB ? String(keyB.triggerBinding || '').trim() : '';
+        var selected =
+          selection &&
+          selection.sourceChannel === 'cursor' &&
+          selection.sourceBindingRef === slotId &&
+          (!mid || selection.mappingId === mid);
+        var heroRef = captureHeroRefForMapping(m);
+        var heroMapped = heroRefMatches(heroRef, {
+          channel: 'cursor',
+          bindingRef: slotId,
+          actionId: actionId,
+          actionInstanceId: ''
+        });
+        html +=
+          '<button type="button" class="keys-channel-item' +
+          (selected ? ' is-selected' : '') +
+          (heroMapped ? ' is-hero-mapped' : '') +
+          (gated ? ' is-disabled' : '') +
+          '" data-channel-item="1" data-channel="cursor" data-binding-ref="' +
+          esc(slotId) +
+          '" data-action-id="' +
+          esc(actionId) +
+          '" data-cursor-slot="' +
+          esc(slotId) +
+          '"' +
+          (gated ? ' data-gated="1" disabled aria-disabled="true"' : '') +
+          '>' +
+          '<span class="keys-channel-item-name">' +
+          esc(cursorItemLabel(item)) +
+          '</span>' +
+          '<span class="keys-channel-item-key">' +
+          esc(
+            gated
+              ? t('keysChannelCursorGated', 'gate 关闭')
+              : boundChord
+                ? friendlyChord(boundChord)
+                : cursorItemRightLabel(item)
+          ) +
+          '</span>' +
+          '<span class="keys-channel-item-sub">' +
+          esc(cursorItemSub(item)) +
+          '</span>' +
+          (heroMapped
+            ? '<span class="keys-channel-item-hero-tag">' +
+              esc(t('keysCaptureHeroMapped', '已映射到识别按钮')) +
+              '</span>'
+            : '') +
+          '</button>';
+      }
+    }
+    if (!html) {
+      html = '<p class="keys-channel-empty">' + esc(emptyCopy('cursor')) + '</p>';
+    }
+    panel.innerHTML = html;
   }
 
   function guideToSoftPadSettings() {
@@ -1948,32 +2732,6 @@
     }
   }
 
-  function syncImeTabChrome() {
-    var panel = document.getElementById('keysChannelPanel');
-    var imeStrip = document.getElementById('keysImeStripWrap');
-    var imeTab = document.getElementById('keysChannelTabIme');
-    var onIme = activeTab === 'ime';
-    if (panel) {
-      panel.hidden = onIme;
-      if (!onIme) {
-        var tabId =
-          activeTab === 'softPad'
-            ? 'keysChannelTabSoftPad'
-            : activeTab === 'camera'
-              ? 'keysChannelTabCamera'
-              : 'keysChannelTabVoice';
-        panel.setAttribute('aria-labelledby', tabId);
-      }
-    }
-    if (imeStrip) {
-      imeStrip.hidden = !onIme;
-    }
-    if (imeTab) {
-      imeTab.classList.toggle('is-active', onIme);
-      imeTab.setAttribute('aria-selected', onIme ? 'true' : 'false');
-    }
-  }
-
   function renderBindRowHtml(opts) {
     var mid = opts.mid;
     var m = opts.m;
@@ -1994,9 +2752,17 @@
       selection.sourceChannel === channel &&
       selection.sourceBindingRef === ref;
     var disabled = !bindable;
+    var heroRef = captureHeroRefForMapping(m);
+    var heroMapped = heroRefMatches(heroRef, {
+      channel: channel,
+      bindingRef: ref,
+      actionId: actionId,
+      actionInstanceId: actionInstanceId
+    });
     var html =
       '<div class="keys-channel-item-wrap' +
       (selected ? ' is-selected' : '') +
+      (heroMapped ? ' is-hero-mapped' : '') +
       (disabled ? ' is-disabled' : '') +
       '">' +
       '<button type="button" class="keys-channel-item' +
@@ -2032,6 +2798,11 @@
       '<span class="keys-channel-item-sub">' +
       esc(sub) +
       '</span>' +
+      (heroMapped
+        ? '<span class="keys-channel-item-hero-tag">' +
+          esc(t('keysCaptureHeroMapped', '已映射到识别按钮')) +
+          '</span>'
+        : '') +
       '</button>';
     if (offerIme) {
       html +=
@@ -2052,7 +2823,7 @@
       esc(bridge.name) +
       '</span>' +
       '<span class="keys-channel-item-key">' +
-      esc(t('keysVoiceBridgeGoFinish', '去收尾')) +
+      esc(t('keysVoiceBridgeGoFinish', '去快捷键收尾')) +
       '</span>' +
       '<span class="keys-channel-item-sub">' +
       esc(bridge.sub) +
@@ -2071,6 +2842,14 @@
       btn.setAttribute('aria-selected', on ? 'true' : 'false');
     });
     syncImeTabChrome();
+    if (activeTab === 'key') {
+      if (panel.classList) panel.classList.remove('is-softpad-pick');
+      syncSoftPadTargetChrome(false);
+      panel.innerHTML = '';
+      renderKeyFinishHosts();
+      syncCaptureRecordChrome();
+      return;
+    }
     if (activeTab === 'ime') {
       if (panel.classList) panel.classList.remove('is-softpad-pick');
       syncSoftPadTargetChrome(false);
@@ -2085,6 +2864,10 @@
 
     var mid = selectedMappingId();
     var m = mappingById(mid);
+    if (activeTab === 'cursor') {
+      renderCursorCommandsPanel(panel);
+      return;
+    }
     if (activeTab === 'softPad') {
       renderSoftPadKeyboardPanel(panel);
       return;
@@ -2138,9 +2921,17 @@
         selection.sourceChannel === activeTab &&
         selection.sourceBindingRef === ref;
       var disabled = !bindable;
+      var heroRef = captureHeroRefForMapping(m);
+      var heroMapped = heroRefMatches(heroRef, {
+        channel: activeTab,
+        bindingRef: ref,
+        actionId: actionId,
+        actionInstanceId: ''
+      });
       html +=
         '<button type="button" class="keys-channel-item' +
         (selected ? ' is-selected' : '') +
+        (heroMapped ? ' is-hero-mapped' : '') +
         (disabled ? ' is-disabled' : '') +
         '" data-channel-item="1" data-channel="' +
         esc(activeTab) +
@@ -2166,6 +2957,11 @@
         '<span class="keys-channel-item-sub">' +
         esc(sourceSubline(activeTab, v)) +
         '</span>' +
+        (heroMapped
+          ? '<span class="keys-channel-item-hero-tag">' +
+            esc(t('keysCaptureHeroMapped', '已映射到识别按钮')) +
+            '</span>'
+          : '') +
         '</button>';
     }
     if (footer && footer.kind === 'add-app-shortcut') {
@@ -2181,12 +2977,10 @@
   }
 
   function guideToFinish() {
-    if (global.OneToneKeysPageState && global.OneToneKeysPageState.setStep) {
-      global.OneToneKeysPageState.setStep('finish');
-    } else if (global.OneToneKeysPageNav && global.OneToneKeysPageNav.go) {
-      global.OneToneKeysPageNav.go('finish');
-    }
-    toast(t('keysVoiceBridgeEndToast', '结束/发送在 03 收尾配置，不在识别区建快捷键'));
+    openCapturePopover({ tab: 'key' });
+    toast(
+      t('keysVoiceBridgeEndToast', '结束/发送请在「快捷键」标签配置按键收尾，不在识别区重复建键')
+    );
   }
 
   function guideToIme() {
@@ -2231,6 +3025,7 @@
       }
       renderPanelOnly();
     }
+    syncCaptureRecordChrome();
   }
 
   function onSoftPadKeyClick(keyEl, ev) {
@@ -2299,6 +3094,84 @@
     if (!btn || btn.disabled) return;
     var channel = btn.getAttribute('data-channel') || activeTab;
     var mid = selectedMappingId();
+    if (channel === 'cursor') {
+      if (btn.getAttribute('data-gated') === '1') {
+        toast(t('keysChannelCursorGatedToast', '接受类需开启 gate 后才可绑定'));
+        return;
+      }
+      var slotId = btn.getAttribute('data-cursor-slot') || btn.getAttribute('data-binding-ref') || '';
+      var cursorActionId = canonicalActionId(btn.getAttribute('data-action-id') || '') || slotId;
+      if (!slotId || !cursorActionId) return;
+      if (!mid) {
+        toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
+        return;
+      }
+      if (
+        selection &&
+        selection.mappingId === mid &&
+        selection.sourceChannel === 'cursor' &&
+        selection.sourceBindingRef === slotId
+      ) {
+        clearSelection();
+        toast(t('codexCapDeselected', '已恢复语音识别键显示'));
+        if (global.OneToneMappingList && global.OneToneMappingList.renderEditor) {
+          global.OneToneMappingList.renderEditor();
+        }
+        return;
+      }
+      var mapCur = mappingById(mid);
+      var keyBCur = findKeyBinding(mapCur, cursorActionId, '');
+      var forceRecordCur = !!(ev && (ev.altKey || ev.shiftKey));
+      setSelection({
+        mappingId: mid,
+        sourceChannel: 'cursor',
+        sourceBindingRef: slotId,
+        actionId: cursorActionId,
+        keyBindingRef: keyBCur ? String(keyBCur.slotId || '') : '',
+        actionInstanceId: (keyBCur && keyBCur.actionInstanceId) || '',
+        actionArgs: keyBCur && keyBCur.actionArgs ? keyBCur.actionArgs : null
+      });
+      var nameEl = btn.querySelector('.keys-channel-item-name');
+      selectionToast(
+        nameEl ? nameEl.textContent : cursorItemLabel({ labelZh: slotId, labelEn: slotId }),
+        !!(keyBCur && keyBCur.triggerBinding)
+      );
+      if (forceRecordCur) recordSelected();
+      return;
+    }
+    if (channel === 'key') {
+      if (!mid) return;
+      var keyRef = btn.getAttribute('data-binding-ref') || '';
+      var keyActionId = canonicalActionId(btn.getAttribute('data-action-id') || '');
+      var keyInst = btn.getAttribute('data-action-instance-id') || '';
+      if (!keyRef || !keyActionId) return;
+      if (
+        selection &&
+        selection.mappingId === mid &&
+        selection.keyBindingRef === keyRef &&
+        selection.actionId === keyActionId
+      ) {
+        clearSelection();
+        toast(t('codexCapDeselected', '已恢复语音识别键显示'));
+        if (global.OneToneMappingList && global.OneToneMappingList.renderEditor) {
+          global.OneToneMappingList.renderEditor();
+        }
+        return;
+      }
+      var mapKey = mappingById(mid);
+      var keyRow = findKeyBinding(mapKey, keyActionId, keyInst);
+      setSelection({
+        mappingId: mid,
+        sourceChannel: 'key',
+        sourceBindingRef: keyRef,
+        actionId: keyActionId,
+        keyBindingRef: keyRef,
+        actionInstanceId: keyInst || (keyRow && keyRow.actionInstanceId) || '',
+        actionArgs: keyRow && keyRow.actionArgs ? keyRow.actionArgs : null
+      });
+      selectionToast(actionLabel(keyActionId), !!(keyRow && keyRow.triggerBinding));
+      return;
+    }
     if (channel === 'softPad') {
       var ctx = resolveSoftPadScope();
       if (!ctx || !ctx.targetMappingId) return;
@@ -2352,12 +3225,7 @@
           ? btn.querySelector('.keys-channel-item-name').textContent
           : actionLabel(actionId)
         : actionLabel(actionId);
-    toast(
-      t('codexCapLoadedToKeycap', '已加载到识别键') +
-        ' · ' +
-        displayName +
-        (chord ? ' · ' + friendlyChord(chord) : ' · ' + t('keysHeroActionNeedsKey', '待设置快捷键'))
-    );
+    selectionToast(displayName, !!chord);
 
     if (forceRecord || !chord) {
       if (forceRecord) recordSelected();
@@ -2667,13 +3535,14 @@
 
   function refresh() {
     var picker = document.getElementById('keysChannelPicker');
-    if (!picker) return Promise.resolve();
+    if (!picker) {
+      return Promise.resolve();
+    }
     ensureSoftPadScopeSession();
     var mid = selectedMappingId();
     syncSelectionToMapping(mid);
-    if (!mid || keysStep() !== 'target') {
-      picker.hidden = keysStep() !== 'target';
-      if (keysStep() !== 'target') clearSelection({ skipRender: true, skipHero: false });
+    if (!mid || (keysStep() !== 'target' && !capturePopoverOpen)) {
+      picker.hidden = keysStep() !== 'target' && !capturePopoverOpen;
       applyHero();
       renderPanelOnly();
       return Promise.resolve();
@@ -2772,6 +3641,18 @@
     bound = true;
     var tabs = document.getElementById('keysChannelSubtabs');
     var panel = document.getElementById('keysChannelPanel');
+    var closeBtn = document.getElementById('btnKeysCaptureClose');
+    var backdrop = document.getElementById('keysCapturePopoverBackdrop');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function () {
+        closeCapturePopover({});
+      });
+    }
+    if (backdrop) {
+      backdrop.addEventListener('click', function () {
+        closeCapturePopover({});
+      });
+    }
     if (tabs) {
       tabs.addEventListener('click', function (ev) {
         var btn = ev.target && ev.target.closest ? ev.target.closest('[data-channel]') : null;
@@ -2781,6 +3662,32 @@
         if (TABS.indexOf(ch) < 0 || ch === activeTab) return;
         // Tab switch must not persist.
         setActiveTab(ch);
+      });
+    }
+    var imeStrip = document.getElementById('keysImeStripWrap');
+    if (imeStrip) {
+      imeStrip.addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.closest ? ev.target.closest('[data-ime-id]') : null;
+        if (!btn || !imeStrip.contains(btn) || btn.getAttribute('data-ime-context') !== 'mapping') {
+          return;
+        }
+        if (!capturePopoverOpen || activeTab !== 'ime') return;
+        var id = btn.getAttribute('data-ime-id') || '';
+        if (!id) return;
+        setSelection(
+          {
+            mappingId: selectedMappingId(),
+            sourceChannel: 'ime',
+            sourceBindingRef: id,
+            actionId: id,
+            keyBindingRef: '',
+            actionInstanceId: '',
+            actionArgs: null,
+            iconHtml: ''
+          },
+          { skipRender: false }
+        );
+        toast(t('keysCaptureHeroMapped', '已映射到识别按钮'));
       });
     }
     if (panel) {
@@ -2874,8 +3781,24 @@
     }
   }
 
+  function syncImeHeroMarkers() {
+    var strip = document.getElementById('imePresetStripMapping');
+    if (!strip) return;
+    var m = mappingById(selectedMappingId());
+    var ref = captureHeroRefForMapping(m);
+    strip.querySelectorAll('[data-ime-id]').forEach(function (btn) {
+      var id = btn.getAttribute('data-ime-id') || '';
+      var on =
+        ref.kind === 'imePreset' &&
+        ref.channel === 'ime' &&
+        ref.bindingRef === id;
+      btn.classList.toggle('is-hero-mapped', on);
+    });
+  }
+
   function init() {
     bindOnce();
+    loadHeroCaptureFromMapping();
     refresh();
   }
 
@@ -2900,6 +3823,8 @@
     selectedSlotId: selectedSlotId,
     applyHero: applyHero,
     heroModel: heroModel,
+    resolveHeroCapture: resolveHeroCapture,
+    loadHeroCaptureFromMapping: loadHeroCaptureFromMapping,
     resolveMigratableAction: resolveMigratableAction,
     resolveSoftPadScope: resolveSoftPadScope,
     setSoftPadScopeAppId: setSoftPadScopeAppId,
@@ -2921,6 +3846,12 @@
     getActiveTab: function () {
       return activeTab;
     },
-    setActiveTab: setActiveTab
+    setActiveTab: setActiveTab,
+    openCapturePopover: openCapturePopover,
+    closeCapturePopover: closeCapturePopover,
+    isCapturePopoverOpen: isCapturePopoverOpen,
+    openCaptureSheet: openCaptureSheet,
+    closeCaptureSheet: closeCaptureSheet,
+    isCaptureSheetOpen: isCaptureSheetOpen
   };
 })(typeof window !== 'undefined' ? window : globalThis);

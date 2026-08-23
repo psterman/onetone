@@ -448,13 +448,11 @@
     var testBtn=islandOn?null:$('btnKeysTestTop');
     var schemeAddBtn=islandOn?null:$('btnKeysSchemeAdd');
     var keycapHint=$('keysKeycapHint');
-    var targetKeycapHint=$('keysTargetKeycapHint');
     var keycapHost=$('habitKeyMapCellTrigger');
     var targetKeycapHost=$('habitKeyMapCellTarget');
     if(trigLbl) trigLbl.textContent=t('keysSummaryTriggerLbl');
     if(scopeLbl) scopeLbl.textContent=t('keysSummaryScopeLbl');
     if(keycapHint) keycapHint.textContent=t('keysKeycapHint');
-    if(targetKeycapHint) targetKeycapHint.textContent=t('keysTargetKeycapHint');
     if(saveBtn) saveBtn.textContent=t('keysSave');
     if(testBtn) testBtn.textContent=t('keysTestOnce');
     if(schemeAddBtn) schemeAddBtn.textContent='+ '+t('addKeysDraft');
@@ -541,9 +539,6 @@
     if(tgtRow) tgtRow.classList.toggle('is-record-pending',!!recPending);
     if(keycapHint&&recording&&recMode==='trigger') keycapHint.textContent=t('keysKeycapRecording');
     else if(keycapHint) keycapHint.textContent=t('keysKeycapHint');
-    if(targetKeycapHint&&recording&&recMode==='target') targetKeycapHint.textContent=t('keysKeycapRecording');
-    else if(targetKeycapHint&&recPending) targetKeycapHint.textContent=t('targetKeyPickerPending');
-    else if(targetKeycapHint) targetKeycapHint.textContent=t('keysTargetKeycapHint');
     if(global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.applyRecognitionOverlay){
       global.OneToneAgentCapabilityUi.applyRecognitionOverlay();
     }
@@ -963,6 +958,15 @@
     return m.appBehaviorRules.length;
   }
 
+  function schemeGroupKey(m){
+    if(!m) return '';
+    var g=String(m.group||'').trim();
+    if(g) return g;
+    var l=String(m.label||'').trim();
+    if(l) return l;
+    return String(m.id||'').trim();
+  }
+
   function schemePairLine(m){
     var capUi=global.OneToneAgentCapabilityUi;
     if(capUi&&capUi.schemePairLine){
@@ -976,29 +980,76 @@
     return friendlyKey(trig||'—')+' → '+friendlyKey(tgt||'—');
   }
 
-  function renderKeysHubSchemeRow(m,selected){
+  function renderKeysHubTriggerRow(m,selected){
     var isEditing=m.id===selected;
     var comp=schemeCompletion(m);
     var stepsText=comp.done+'/'+comp.total;
     var enabled=!!m.enabled;
     var tag=schemeStatusTag(m);
     var canToggle=core().isSaved&&core().isSaved(m);
-    var pair=schemePairLine(m);
-    return '<div class="keys-hub-scheme-row'+(isEditing?' is-editing':'')+(!enabled?' is-disabled-scheme':'')+(tag.cls==='is-draft'?' is-draft':'')+'" role="listitem" data-scheme-id="'+esc(m.id)+'">'
-      +'<button type="button" class="keys-hub-scheme-main" data-scheme-select="'+esc(m.id)+'" aria-current="'+(isEditing?'true':'false')+'">'
-      +'<span class="keys-hub-scheme-copy">'
-      +'<span class="keys-hub-scheme-name">'+esc(habitName(m))+'</span>'
-      +(pair?'<span class="keys-hub-scheme-pair">'+esc(pair)+'</span>':'')
-      +'</span>'
-      +'<span class="keys-hub-scheme-tag '+esc(tag.cls)+'">'+esc(t(tag.key))+'</span>'
-      +'<span class="keys-hub-scheme-steps">'+esc(stepsText)+'</span>'
+    var pair=schemePairLine(m)||t('keysWorkflowOverviewEmpty');
+    return '<div class="keys-hub-trigger-row-wrap'+(isEditing?' is-editing':'')+(!enabled?' is-disabled-scheme':'')+(tag.cls==='is-draft'?' is-draft':'')+'">'
+      +'<button type="button" class="keys-hub-trigger-row'+(isEditing?' is-active':'')+'" data-scheme-select="'+esc(m.id)+'" aria-current="'+(isEditing?'true':'false')+'">'
+      +'<span class="keys-hub-trigger-pair">'+esc(pair)+'</span>'
+      +'<span class="keys-hub-trigger-meta">'+esc(stepsText)+'</span>'
       +'</button>'
-      +'<div class="keys-hub-scheme-actions">'
+      +'<div class="keys-hub-trigger-actions">'
       +(isEditing?'<span class="keys-hub-scheme-editing">'+esc(t('keysWorkflowEditing'))+'</span>':'')
-      +'<button type="button" class="keys-hub-scheme-rename" data-scheme-rename="'+esc(m.id)+'" aria-label="'+esc(t('keysSchemeRename'))+'" title="'+esc(t('keysSchemeRename'))+'">✎</button>'
+      +'<span class="keys-hub-scheme-tag '+esc(tag.cls)+'">'+esc(t(tag.key))+'</span>'
       +(canToggle?'<button type="button" class="toggle-switch keys-hub-scheme-toggle'+(enabled?' is-on':'')+'" data-scheme-enable="'+esc(m.id)+'" role="switch" aria-checked="'+(enabled?'true':'false')+'" aria-label="'+esc(enabled?t('keysWorkflowEnabled'):t('keysWorkflowDisabled'))+'"></button>':'')
       +'<button type="button" class="keys-hub-scheme-delete" data-scheme-delete="'+esc(m.id)+'" aria-label="'+esc(t('habitHubActDelete'))+'" title="'+esc(t('habitHubActDelete'))+'">×</button>'
       +'</div></div>';
+  }
+
+  function renderKeysHubGroupCard(groupKey,items,selected){
+    var label=habitName(items[0]);
+    var isEditing=items.some(function(m){ return m.id===selected; });
+    var renameId=(items[0]&&items[0].id)||'';
+    return '<div class="keys-hub-scheme-group-card'+(isEditing?' is-editing':'')+'" role="listitem" data-group="'+esc(groupKey)+'">'
+      +'<header class="keys-hub-group-head">'
+      +'<span class="keys-hub-group-name">'+esc(label)+'</span>'
+      +'<span class="keys-hub-group-count">'+esc(String(items.length))+'</span>'
+      +'<button type="button" class="keys-hub-scheme-rename" data-scheme-rename="'+esc(renameId)+'" aria-label="'+esc(t('keysSchemeRename'))+'" title="'+esc(t('keysSchemeRename'))+'">✎</button>'
+      +'</header>'
+      +items.map(function(m){ return renderKeysHubTriggerRow(m,selected); }).join('')
+      +'<button type="button" class="keys-hub-add-trigger" data-hub-add-trigger="'+esc(renameId)+'">+ '+esc(t('keysHubAddTrigger'))+'</button>'
+      +'</div>';
+  }
+
+  function renderKeysHubSchemeRow(m,selected){
+    return renderKeysHubGroupCard(schemeGroupKey(m),[m],selected);
+  }
+
+  function groupSchemesByKey(schemes){
+    var map={};
+    var order=[];
+    schemes.forEach(function(m){
+      var key=schemeGroupKey(m);
+      if(!map[key]){
+        map[key]=[];
+        order.push(key);
+      }
+      map[key].push(m);
+    });
+    return order.map(function(key){
+      return { key:key, items:map[key] };
+    });
+  }
+
+  function addTriggerVariant(sourceId){
+    sourceId=String(sourceId||'').trim();
+    if(!sourceId||!global.OneToneMappingTrashMenu||!global.OneToneMappingTrashMenu.duplicate) return;
+    global.OneToneMappingTrashMenu.duplicate(sourceId);
+    var m=core()&&core().selected?core().selected():null;
+    if(!m) return;
+    m.triggerKey='';
+    m.enabled=false;
+    if(hooks().setEditorTriggerKey) hooks().setEditorTriggerKey('');
+    if(hooks().save) hooks().save();
+    if(global.OneToneKeysPageState&&global.OneToneKeysPageState.setStep){
+      global.OneToneKeysPageState.setStep('trigger');
+    }
+    render();
   }
 
   function renderCodexPadMapList(selectedId){
@@ -1029,12 +1080,12 @@
         return (a.order||0)-(b.order||0);
       });
       html='<div class="keys-hub-scheme-group">'
-        +sorted.map(function(m){ return renderKeysHubSchemeRow(m,selected); }).join('')
+        +groupSchemesByKey(sorted).map(function(g){ return renderKeysHubGroupCard(g.key,g.items,selected); }).join('')
         +'</div>';
     }
     return {
       html:html,
-      count:schemes.length,
+      count:groupSchemesByKey(schemes).length,
       cardHidden:false,
       selected:selected||'',
       sig:[selected||'',schemes.length,html].join('\0')
@@ -1167,12 +1218,17 @@
     if(!id||!core()) return;
     var m=core().byId?core().byId(id):null;
     if(!m) return;
+    var groupKey=schemeGroupKey(m);
     var next=prompt(t('keysSchemeRenamePrompt'),habitName(m));
     if(next===null) return;
     next=String(next).trim();
     if(!next) return;
-    m.group=next;
-    if(global.OneToneHabitHub&&global.OneToneHabitHub.touchUpdated) global.OneToneHabitHub.touchUpdated(m);
+    contextFilteredSchemes().forEach(function(s){
+      if(schemeGroupKey(s)===groupKey){
+        s.group=next;
+        if(global.OneToneHabitHub&&global.OneToneHabitHub.touchUpdated) global.OneToneHabitHub.touchUpdated(s);
+      }
+    });
     if(hooks().save) hooks().save();
     if(hooks().renderMappingList) hooks().renderMappingList();
     if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
@@ -1394,6 +1450,12 @@
     var tgt=core().editorTarget?core().editorTarget(m):((m&&m.targetKey)||'').trim();
     var trigBtn=$('btnRecordTrigger');
     var tgtBtn=$('btnRecordTarget');
+    var tgtAct=$('habitKeyMapActTarget');
+    var capOpen=global.OneToneKeysChannelCommandPicker&&(
+      global.OneToneKeysChannelCommandPicker.isCapturePopoverOpen&&global.OneToneKeysChannelCommandPicker.isCapturePopoverOpen()||
+      global.OneToneKeysChannelCommandPicker.isCaptureSheetOpen&&global.OneToneKeysChannelCommandPicker.isCaptureSheetOpen()
+    );
+    if(tgtAct) tgtAct.hidden=!capOpen;
     if(trigBtn){
       var trigLbl=trig?t('btnRerecordTrigger'):t('keysRecordTrigger');
       if(global.OneToneMappingEditorChrome&&global.OneToneMappingEditorChrome.setRecordBtnLabel){
@@ -1402,13 +1464,10 @@
       trigBtn.classList.add('keys-record-btn');
     }
     if(tgtBtn){
-      var inKeys=keysPanelActive();
-      if(inKeys) tgtBtn.setAttribute('aria-label',t('keysTargetKeycapHint'));
-      else tgtBtn.removeAttribute('aria-label');
-      var tgtLbl=tgt?t('btnRerecordTarget'):t('keysRecordTarget');
+      var tgtLbl=tgt?t('btnRerecordTarget'):t('btnRecordTarget');
       if(global.OneToneMappingEditorChrome&&global.OneToneMappingEditorChrome.setRecordBtnLabel){
-        global.OneToneMappingEditorChrome.setRecordBtnLabel(tgtBtn,inKeys?'':tgtLbl);
-      }else if(!inKeys) tgtBtn.textContent=tgtLbl;
+        global.OneToneMappingEditorChrome.setRecordBtnLabel(tgtBtn,tgtLbl);
+      }else tgtBtn.textContent=tgtLbl;
       tgtBtn.classList.add('keys-record-btn');
     }
     if(global.OneToneMappingEditorChrome&&global.OneToneMappingEditorChrome.updatePrimaryCTA){
@@ -1441,8 +1500,7 @@
     if(advSummary) advSummary.textContent=t('keysAdvancedTitle');
     var stepLbls=[
       ['habitFlowStepTriggerLbl','keysStep1Title'],
-      ['habitFlowStepTargetLbl','keysStep2Title'],
-      ['habitFlowStepFinishLbl','keysStep3Title']
+      ['habitFlowStepTargetLbl','keysStep2Title']
     ];
     stepLbls.forEach(function(pair){
       var el=$(pair[0]);
@@ -1451,13 +1509,15 @@
     var colLbls=[
       ['keysColTriggerLbl','keysColTrigger'],
       ['keysColCaptureLbl','keysColCapture'],
-      ['keysColActionLbl','keysColAction'],
       ['keysFlowNodeTriggerTag','keysFlowNodeTriggerTag'],
       ['keysFlowNodeTargetTag','keysFlowNodeTargetTag'],
-      ['keysFlowNodeFinishTag','keysFlowNodeFinishTag'],
       ['keysFlowNodeTriggerTitle','keysColTrigger'],
       ['keysFlowNodeTargetTitle','keysColCapture'],
-      ['keysFlowNodeFinishTitle','keysColAction'],
+      ['keysCapturePopoverTitle','keysCaptureSheetTitle'],
+      ['keysCaptureImeRecordTitle','keysCaptureImeRecordTitle'],
+      ['keysCaptureKeycapTitle','keysCaptureImeRecordTitle'],
+      ['keysCaptureRecordHint','keysCaptureRecordHint'],
+      ['keysCaptureKeyFinishLbl','keysCaptureKeyFinishTitle'],
       ['keysAppScopeTitle','keysSummaryScopeLbl'],
       ['keysAppScopeDesc','keysAppScopeDesc']
     ];
@@ -1485,8 +1545,12 @@
     }
     syncRecordButtons();
     if(global.OneToneImePresets) global.OneToneImePresets.refresh('mapping');
-    if(global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.refresh){
-      try{ global.OneToneKeysChannelCommandPicker.refresh(); }catch(_){}
+    if(global.OneToneKeysChannelCommandPicker){
+      if(global.OneToneKeysChannelCommandPicker.init){
+        try{ global.OneToneKeysChannelCommandPicker.init(); }catch(_){}
+      }else if(global.OneToneKeysChannelCommandPicker.refresh){
+        try{ global.OneToneKeysChannelCommandPicker.refresh(); }catch(_){}
+      }
     }
     renderRecordingFeedback();
     if(global.OneToneMappingCore&&global.OneToneMappingCore.renderConflictBanner){
@@ -1666,6 +1730,13 @@
           switchActiveScheme(schemeSelect.getAttribute('data-scheme-select')||'');
           return;
         }
+        var addTriggerBtn=e.target.closest&&e.target.closest('[data-hub-add-trigger]');
+        if(addTriggerBtn){
+          e.__vpKeysPanelHandled=true;
+          e.preventDefault();
+          addTriggerVariant(addTriggerBtn.getAttribute('data-hub-add-trigger')||'');
+          return;
+        }
       });
     }
   }
@@ -1693,6 +1764,7 @@
     previewKeyConflict:previewKeyConflict,
     testOnceTop:testOnceTop,
     addScheme:addScheme,
+    addTriggerVariant:addTriggerVariant,
     toggleMappingEnable:toggleMappingEnable,
     buildKeysStatusProps:buildKeysStatusProps,
     workflowTabView:workflowTabView,

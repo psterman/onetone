@@ -66,6 +66,12 @@
       if(kws.enabled) global.OneToneVoiceWake.setExpandedMode('kws');
       else if(isVoskOnlyUi()) global.OneToneVoiceWake.setExpandedMode('vosk');
     }
+    var ui=hooks().ui&&hooks().ui();
+    if(!(ui&&ui.drawerOpen&&ui.settingsPanel==='voiceWake')){
+      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceEngineIfMismatch){
+        try{ global.OneToneVoiceWake.ensureHomeVoiceEngineIfMismatch({force:true}); }catch(_){}
+      }
+    }
     if(!entryWantsVoice()) return Promise.resolve();
     return probe().then(function(st){
       var vosk=st.vosk;

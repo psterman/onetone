@@ -510,6 +510,10 @@ pub fn handle_voice_wake_detected(
 
     // Generic wake (开始输入…): global IME voice shortcut — never Soft Pad pushToTalk / app PTT.
     if !is_generic_wake {
+        if let Some(result) = crate::cursor_beginner::dispatch_voice_phrase(state, app, matched_phrase)
+        {
+            return result;
+        }
         if let Some(result) = try_dispatch_agent_voice(state, app, matched_phrase) {
             return result;
         }

@@ -45,6 +45,7 @@ mod cursor_hook_setup;
 mod cursor_keybindings_setup;
 mod shell_agent_hook_setup;
 mod cursor_workflow;
+mod cursor_beginner;
 mod data_root;
 mod device_identity;
 mod gaze_monitor;
@@ -703,6 +704,8 @@ pub fn run() {
                     voice_vosk_runtime::drain_voice_vosk_events(&state2, &app2);
                     voice_kws_runtime::drain_voice_kws_events(&state2, &app2);
                     voice_end_runtime::maybe_timeout_dictation(&state2, &app2);
+                    crate::cursor_beginner::maybe_timeout_arm(state2.as_ref(), &app2);
+                    crate::cursor_beginner::poll_side_key_arm(state2.as_ref(), &app2);
 
                     ipc::poll_trigger_compat_probe(&state2, &win2);
 
@@ -1064,6 +1067,10 @@ pub fn run() {
             ipc::cmd_soft_pad_focus_session,
             ipc::cmd_soft_pad_status_host_gate,
             ipc::cmd_codex_micro_pad_fire,
+            ipc::cmd_cursor_beginner_probe,
+            ipc::cmd_cursor_beginner_arm,
+            ipc::cmd_cursor_beginner_disarm,
+            ipc::cmd_cursor_beginner_run_slot,
             ipc::cmd_soft_pad_runtime_snapshot,
             ipc::cmd_soft_pad_set_follow,
             ipc::cmd_soft_pad_lane_page,

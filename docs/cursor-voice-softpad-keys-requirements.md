@@ -82,6 +82,44 @@
 
 熟手「跳得快」= 展开更多后 12 卡随时说。和小白环共用同一套 `slotId`，只是默认可见集不同。
 
+### 1.3 小白全局跳转（Windows v0 · 定稿）
+
+**平台：** v0 **仅 Windows**。macOS 不装半残；焦点层以后若做 Mac 再抽。
+
+**听 vs 做：**
+
+| 阶段 | 行为 |
+|---|---|
+| **激活（arm）** | **Cursor 前台自动 arm**（离开 Cursor 立即 disarm）/ 说「小助手」/ 长按侧键 1s / 展开 Soft Pad → **只开 KWS**，**不抢** Cursor 前台 |
+| **执行（点卡 / 已 arm 口令）** | `probe` → `focus_composer_only(cursor-chat)` → dispatch slot → **留在 Cursor** |
+
+**迷你栏（Cursor 进程在跑）：** `[ Cu● ] [mic] [send] [cont] [new*] [展开] [关]` — 22×22 图标；**Pad 形态记忆上次 mini/展开**；arm 时醒目文案「聆听中 · 可说：发送、继续、新建、麦克风」。
+
+**语音口令（exact match）：** `发送` / `继续` / `麦克风`（同「说话」）/ `新建`（同「新会话」）/ `取消` 退出 arm / `小助手` 手动 arm。
+
+**探测失败：** 迷你栏仍可见；**不画 4 卡**；文案「未检测到 Cursor，请先安装 / 登录」。点卡失败同文案 toast，禁止静默。
+
+**侧键状态机（验收）：**
+
+| 当前态 | 短按侧键 | 长按侧键 1s | 说「继续」 |
+|---|---|---|---|
+| Cursor 焦点（auto-arm） | 往 Composer 打字 | 保持 arm | Cursor 执行并留下 |
+| 未 arm，WeChat 焦点 | 往 WeChat 打字 | arm（Pad 出现，不抢焦点） | 无视 |
+| 已 arm，WeChat 焦点 | 往 WeChat 打字 | 保持 arm | 切 Cursor 执行并留下 |
+
+**arm 退出：** 离开 Cursor 前台（立即）/ 说「取消」/ 收起 Pad / 30s 无语音 → 退 arm（4 卡仍在，进程在时）。
+
+**新会话 hold：** 点 Pad 或迷你栏须 **按住 0.5s**；语音「新会话」或「新建」命中即执行，不再二次 hold。
+
+**首装 1 屏：** 遮罩钉在真实迷你栏 4 图标；点 mic → 真进 Cursor → 真出字 →「懂了」后不再出现。
+
+**实现入口：**
+
+```text
+arm_cursor_beginner()          // Cursor FG 自动 / 小助手 / 长按 1s / 展开 Pad
+run_cursor_beginner_slot(slot) // probe → focus_composer_only → dispatch
+```
+
 ---
 
 ## 2. 核心原则

@@ -301,6 +301,7 @@ pub fn vosk_grammar_phrases_for_cfg(cfg: &VoiceConfig) -> Vec<String> {
             push(p);
         }
     }
+    crate::cursor_beginner::push_beginner_grammar_phrases(&mut out, &mut seen);
     out
 }
 
@@ -426,6 +427,14 @@ pub fn kws_keyword_plan_for_cfg(cfg: &VoiceConfig, max_entries: usize) -> KwsKey
     };
     let mut seen = std::collections::HashSet::new();
     let mut candidates = Vec::new();
+    if crate::cursor_beginner::probe_ok() {
+        let mut beginner = Vec::new();
+        let mut bseen = std::collections::HashSet::new();
+        crate::cursor_beginner::push_beginner_grammar_phrases(&mut beginner, &mut bseen);
+        for phrase in beginner {
+            push_unique_phrase(&mut candidates, &mut seen, &phrase);
+        }
+    }
     for tier in tiers {
         for phrase in tier {
             push_unique_phrase(&mut candidates, &mut seen, &phrase);

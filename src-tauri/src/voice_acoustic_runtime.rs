@@ -925,7 +925,7 @@ pub fn sync_acoustic_match_runtime(app: Option<&AppHandle>, state: &Arc<AppState
     let running = state.acoustic_voice.match_running.load(Ordering::SeqCst);
     let should_run = {
         // Settings drawer: matcher not needed while configuring; quiet PCM consumer path.
-        if *state.settings_drawer_open.lock() {
+        if crate::voice_bootstrap::voice_settings_parked(state) {
             false
         } else if state.acoustic_voice.is_suspended() || *state.paused.lock() {
             false

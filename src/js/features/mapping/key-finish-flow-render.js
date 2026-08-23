@@ -296,20 +296,28 @@
     return html;
   }
 
-  function focusSchemeEditStep(step){
+  function focusSchemeEditStep(step,opts){
     if(!step) return;
+    opts=opts||{};
     schemeStepFocus=step;
     if(global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.setHabitLayer('global');
     var flowIds={trigger:'sceneFlowStepTrigger',target:'sceneFlowStepTarget',finish:'sceneFlowStepFinish'};
-    var editIds={trigger:'habitKeyMapRowTrigger',target:'habitKeyMapRowTarget',finish:'habitKeyMapRowFinish',cancel:'habitKeyMapRowCancel'};
+    var editIds={trigger:'habitKeyMapRowTrigger',target:'habitKeyMapRowTarget',finish:'keysCaptureKeyPanel',cancel:'habitKeyMapRowCancel'};
     ['trigger','target','finish','cancel'].forEach(function(s){
       var card=$(editIds[s]);
       if(card) card.classList.remove('is-focus-highlight');
     });
+    var stepOpts={skipScroll:true};
+    if(opts.returnPanel) stepOpts.returnPanel=opts.returnPanel;
     if(global.OneToneKeysPageState){
-      global.OneToneKeysPageState.setStep(step,{skipScroll:true});
+      if(step==='finish'||step==='cancel'){
+        stepOpts.expandFinishMore=step==='cancel';
+        global.OneToneKeysPageState.setStep('finish',stepOpts);
+      }else{
+        global.OneToneKeysPageState.setStep(step,stepOpts);
+      }
     }
-    var focusStep=step;
+    var focusStep=step==='cancel'?'finish':step;
     var card=$(editIds[focusStep]);
     if(card){
       card.classList.add('is-focus-highlight');

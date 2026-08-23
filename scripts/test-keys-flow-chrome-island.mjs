@@ -50,9 +50,9 @@ function fakeEl(id) {
   return domNodes[id];
 }
 globalThis.OneToneDom = { $: (id) => fakeEl(id) };
-['keysFlowNodeTrigger', 'keysFlowNodeTarget', 'keysFlowNodeFinish',
-  'keysFlowNodeTriggerHint', 'keysFlowNodeTargetHint', 'keysFlowNodeFinishHint',
-  'habitKeyMapRowTrigger', 'habitKeyMapRowTarget', 'habitKeyMapRowFinish',
+['keysFlowNodeTrigger', 'keysFlowNodeTarget',
+  'keysFlowNodeTriggerHint', 'keysFlowNodeTargetHint',
+  'habitKeyMapRowTrigger', 'habitKeyMapRowTarget',
 ].forEach(fakeEl);
 
 globalThis.OneToneMappingCore = {

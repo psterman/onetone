@@ -205,29 +205,28 @@
       triggerLabel=triggerLabel||d.triggerPlaceholder;
     }
     var picker=global.OneToneKeysChannelCommandPicker;
-    var hero=picker&&typeof picker.heroModel==='function'?picker.heroModel():null;
-    if(hero&&hero.active&&recMode!=='trigger'){
+    var cap=picker&&typeof picker.resolveHeroCapture==='function'?picker.resolveHeroCapture(m):null;
+    if(cap){
       if(recMode==='target'||recMode==='agentBinding'){
-        // Keep live recording preview on the hero while capturing a key chord.
-        var live=tgt?hooks().friendlyKeyName(tgt):(hero.targetLabel||'');
+        var live=tgt?hooks().friendlyKeyName(tgt):(cap.primaryLabel||cap.targetLabel||'');
         return {
           triggerLabel:triggerLabel,
           targetLabel:live,
           triggerRaw:trigRaw,
-          targetRaw:tgt||hero.chord||'',
+          targetRaw:tgt||cap.chord||'',
           triggerEmpty:!trigRaw,
-          targetEmpty:!tgt&&!!hero.targetEmpty,
-          sig:String(triggerLabel)+'\0'+String(live)+'\0'+String(trigRaw)+'\0'+String(tgt||hero.actionId||'')+'\0'+String(recMode)+'\0action-hero'
+          targetEmpty:!tgt&&!!cap.targetEmpty,
+          sig:String(triggerLabel)+'\0'+String(live)+'\0'+String(trigRaw)+'\0'+String(tgt||cap.actionId||'')+'\0'+String(recMode)+'\0capture-hero'
         };
       }
       return {
         triggerLabel:triggerLabel,
-        targetLabel:hero.targetLabel||'',
+        targetLabel:cap.primaryLabel||cap.targetLabel||'',
         triggerRaw:trigRaw,
-        targetRaw:hero.chord||('action:'+String(hero.actionId||'')),
+        targetRaw:cap.chord||('capture:'+String(cap.actionId||cap.kind||'')),
         triggerEmpty:!trigRaw,
-        targetEmpty:!!hero.targetEmpty,
-        sig:String(triggerLabel)+'\0'+String(hero.targetLabel||'')+'\0'+String(trigRaw)+'\0'+String(hero.actionId||'')+'\0'+String(hero.chord||'')+'\0action-hero'
+        targetEmpty:!!cap.targetEmpty,
+        sig:String(triggerLabel)+'\0'+String(cap.primaryLabel||'')+'\0'+String(trigRaw)+'\0'+String(cap.actionId||cap.kind||'')+'\0'+String(cap.chord||'')+'\0capture-hero'
       };
     }
     var targetLabel=tgt?hooks().friendlyKeyName(tgt):d.targetPlaceholder;
@@ -316,22 +315,31 @@
     if(global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.applyRecognitionOverlay){
       global.OneToneAgentCapabilityUi.applyRecognitionOverlay();
     }
-    if(global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.refresh){
-      try{ global.OneToneKeysChannelCommandPicker.refresh(); }catch(_){}
+    if(global.OneToneKeysChannelCommandPicker){
+      var capPicker=global.OneToneKeysChannelCommandPicker;
+      var capOpen=capPicker.isCapturePopoverOpen&&capPicker.isCapturePopoverOpen();
+      var drawer=global.OneToneSettingsDrawer;
+      var keysCtx=drawer&&((drawer.isKeysPanel&&drawer.isKeysPanel())||(drawer.isHabitsPanel&&drawer.isHabitsPanel()));
+      if(capOpen||keysCtx){
+        if(capPicker.refresh){
+          try{ capPicker.refresh(); }catch(_){}
+        }
+      }else if(capPicker.applyHero){
+        try{ capPicker.applyHero(); }catch(_){}
+      }
     }
     if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.applyTriggerHeroPreview){
       global.OneToneCodexMicroPadUi.applyTriggerHeroPreview(m);
     }
-    var inKeysPanel=global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.keysPanelActive&&global.OneToneKeysPanelUi.keysPanelActive();
     var tgtLbl=tgt?t('btnRerecordTarget'):t('btnRecordTarget');
     if(global.OneToneMappingEditorChrome&&global.OneToneMappingEditorChrome.setRecordBtnLabel){
       global.OneToneMappingEditorChrome.setRecordBtnLabel($('btnRecordTrigger'),trigRaw?t('btnRerecordTrigger'):t('btnRecordTrigger'));
-      global.OneToneMappingEditorChrome.setRecordBtnLabel($('btnRecordTarget'),inKeysPanel?'':tgtLbl);
+      global.OneToneMappingEditorChrome.setRecordBtnLabel($('btnRecordTarget'),tgtLbl);
     }else{
       var triggerBtn=$('btnRecordTrigger');
       var targetBtn=$('btnRecordTarget');
       if(triggerBtn) triggerBtn.textContent=trigRaw?t('btnRerecordTrigger'):t('btnRecordTrigger');
-      if(!inKeysPanel&&targetBtn) targetBtn.textContent=tgtLbl;
+      if(targetBtn) targetBtn.textContent=tgtLbl;
     }
     hooks().updatePrimaryCTA();
     hooks().applyKeyWakeRecordingUi();

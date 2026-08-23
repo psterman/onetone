@@ -12,7 +12,7 @@
 [CmdletBinding()]
 param(
     [switch]$NoBrowser,
-    [string]$Host = '127.0.0.1',
+    [string]$BindHost = '127.0.0.1',
     [int]$Port = 3080
 )
 
@@ -49,13 +49,13 @@ function Test-PortOpen {
     }
 }
 
-# Locate the dsh CLI. Prefer the user-installed copy on PATH; fall back to the npm shim.
-$dshCmd = Get-Command 'dsh' -ErrorAction SilentlyContinue
-if (-not $dshCmd) {
-    $npmShim = Join-Path $env:APPDATA 'npm\dsh.cmd'
-    if (Test-Path $npmShim) {
-        $dshCmd = @{ Source = $npmShim; Path = $npmShim }
-    }
+# Locate the dsh CLI. On Windows the .cmd shim is the directly-exec-friendly entry;
+# Get-Command would otherwise return the .ps1, which Process::Start cannot launch.
+$npmShim = Join-Path $env:APPDATA 'npm\dsh.cmd'
+if (Test-Path $npmShim) {
+    $dshCmd = @{ Source = $npmShim; Path = $npmShim }
+} else {
+    $dshCmd = Get-Command 'dsh' -ErrorAction SilentlyContinue
 }
 if (-not $dshCmd) {
     Write-LaunchLog 'dsh CLI not found on PATH or %APPDATA%\npm\dsh.cmd'
@@ -66,7 +66,7 @@ if (-not $dshCmd) {
 if (Test-PortOpen -CheckPort $Port) {
     Write-LaunchLog "port $Port already open; skipping relaunch"
     if (-not $NoBrowser) {
-        Start-Process "http://$($Host):$($Port)" | Out-Null
+        Start-Process "http://$($BindHost):$($Port)" | Out-Null
     }
     exit 0
 }
@@ -75,7 +75,7 @@ if (Test-PortOpen -CheckPort $Port) {
 $dshExe   = '"' + $dshCmd.Source + '"'
 $hostArg  = '--host'
 $portArg  = '--port'
-$hostVal  = '"' + $Host + '"'
+$hostVal  = '"' + $BindHost + '"'
 $portVal  = [string]$Port
 $argList  = @($hostArg, $hostVal, $portArg, $portVal) -join ' '
 $cmdLine  = "$dshExe --profile web $argList"
@@ -84,7 +84,7 @@ Write-LaunchLog "starting: $cmdLine (no-browser=$([bool]$NoBrowser))"
 
 $psi = New-Object System.Diagnostics.ProcessStartInfo
 $psi.FileName = $dshCmd.Source
-$psi.Arguments = "--profile web $hostArg $Host $portArg $Port"
+$psi.Arguments = "--profile web $hostArg $BindHost $portArg $Port"
 $psi.WorkingDirectory = $projectRoot
 $psi.UseShellExecute = $false
 $psi.CreateNoWindow = $true
@@ -120,13 +120,13 @@ while ((Get-Date) -lt $deadline) {
 
 if (-not $ready) {
     Write-LaunchLog "dsh did not open port $Port within 15s"
-    throw "DeepSeek Web failed to listen on $Host:$Port within 15 seconds. See log: $logFile"
+    throw "DeepSeek Web failed to listen on ${BindHost}:${Port} within 15 seconds. See log: $logFile"
 }
 
-Write-LaunchLog "dsh ready on http://$($Host):$($Port)"
+Write-LaunchLog "dsh ready on http://$($BindHost):$($Port)"
 
 if (-not $NoBrowser) {
-    Start-Process "http://$($Host):$($Port)" | Out-Null
+    Start-Process "http://$($BindHost):$($Port)" | Out-Null
 }
 
 exit 0

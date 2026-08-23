@@ -403,6 +403,17 @@ pub fn run_hold_voice_foreground(
     Ok(format!("{prefix}_hold_start"))
 }
 
+/// True when a visible main window for the app target exists (probe / UI gate).
+#[cfg(windows)]
+pub fn app_target_window_visible(app_target_id: &str) -> bool {
+    profile_for(app_target_id).is_some_and(|p| find_app_window(p).is_some())
+}
+
+#[cfg(not(windows))]
+pub fn app_target_window_visible(_app_target_id: &str) -> bool {
+    false
+}
+
 /// Focus the app composer without starting voice input (AgentAction openAgent / focusComposer).
 #[cfg(windows)]
 pub fn focus_composer_only(

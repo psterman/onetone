@@ -49,6 +49,53 @@
         }
         return;
       }
+      if(msg.type==='vosk_text'){
+        if(global.OneToneVoiceUiState&&global.OneToneVoiceUiState.patchVoskLive){
+          global.OneToneVoiceUiState.patchVoskLive(msg.kind==='final'?'final':'partial',msg.text||'');
+        }else{
+          var snap=global.OneToneVoiceUiState&&global.OneToneVoiceUiState.snapshot
+            ?global.OneToneVoiceUiState.snapshot():null;
+          if(snap){
+            if(!snap.wake) snap.wake={};
+            if(!snap.wake.vosk) snap.wake.vosk={};
+            var vosk=snap.wake.vosk;
+            if(typeof msg.text==='string'){
+              if(msg.kind==='final'){
+                vosk.lastFinal=msg.text;
+                vosk.lastPartial='';
+              }else{
+                vosk.lastPartial=msg.text;
+              }
+            }
+          }
+        }
+        if(global.OneToneHomeV9&&global.OneToneHomeV9.paintHomeLiveTextImmediate){
+          global.OneToneHomeV9.paintHomeLiveTextImmediate();
+        }
+        if(msg.kind==='final'&&global.OneToneHomeWorkbench){
+          if(global.OneToneHomeWorkbench.forceHomeRender){
+            global.OneToneHomeWorkbench.forceHomeRender();
+          }
+          if(global.OneToneHomeWorkbench.render){
+            global.OneToneHomeWorkbench.render();
+          }
+        }
+        if(global.OneToneVoiceFeedbackRail&&global.OneToneVoiceFeedbackRail.syncLiveText){
+          global.OneToneVoiceFeedbackRail.syncLiveText();
+        }
+        if(global.OneToneHomeV9&&global.OneToneHomeV9.syncVoiceHeardSurfaces){
+          global.OneToneHomeV9.syncVoiceHeardSurfaces();
+        }
+        if(global.OneToneVoiceDiag&&global.OneToneVoiceDiag.updateMetric&&typeof msg.text==='string'&&msg.text.trim()){
+          var diagT=hooks().t||function(k){ return k; };
+          if(msg.kind==='final'){
+            global.OneToneVoiceDiag.updateMetric('vosk','final',msg.text.trim(),diagT('voiceDiagLogFinal'));
+          }else{
+            global.OneToneVoiceDiag.updateMetric('vosk','partial',msg.text.trim(),diagT('voiceDiagLogHeard'));
+          }
+        }
+        return;
+      }
       if(msg.type==='mic_monitor_error'){
         hooks.handleMicMonitorError(msg);
         return;
@@ -254,9 +301,9 @@
         var toastFn=global.OneToneAppToast&&global.OneToneAppToast.show;
         if(toastFn){
           if(reason==='recording'){
-            toastFn(hooks().t('schemeSelectBlockedRecording')||'正在录制快捷键，请先取消录制再切换习惯','warn');
+            toastFn(t('schemeSelectBlockedRecording')||'正在录制快捷键，请先取消录制再切换习惯','warn');
           }else{
-            toastFn(hooks().t('schemeSelectBlocked')||'暂时无法切换习惯','warn');
+            toastFn(t('schemeSelectBlocked')||'暂时无法切换习惯','warn');
           }
         }
       }
@@ -264,17 +311,17 @@
         // Light runtime merge only — full applyMvpInit remounts editors and 假死's home switch.
         if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.applySchemeSwitchedRuntime==='function'){
           global.OneToneConfigPersist.applySchemeSwitchedRuntime(msg);
-        }else if(hooks().applyMvpInit&&msg.config){
-          hooks().applyMvpInit({type:'mvp_init',config:msg.config,conflicts:msg.conflicts});
+        }else if(hooks.applyMvpInit&&msg.config){
+          hooks.applyMvpInit({type:'mvp_init',config:msg.config,conflicts:msg.conflicts});
         }else if(msg.config){
           state.config=msg.config;
         }else if(msg.toId){
-          hooks().ensureConfig();
+          hooks.ensureConfig();
           state.config.mappings.forEach(function(mapping){ mapping.enabled=(mapping.id===msg.toId); });
           if(state.config) state.config.activeSceneId=msg.toId;
           // Do not touch selectedMappingId — in-use ≠ editing.
         }
-        hooks().showSchemeSwitchFeedback(msg.toId, msg.label||'');
+        hooks.showSchemeSwitchFeedback(msg.toId, msg.label||'');
       }
       if(msg.type==='mvp_test_sent'){
         hooks.handleTestSendResult(msg);

@@ -1879,6 +1879,15 @@
     earlyPersistLog('applySchemeSwitchedRuntime to='+toId+
       ' maps='+(st.config.mappings?st.config.mappings.length:0)+
       ' edit='+String(st.selectedMappingId==null?'null':st.selectedMappingId));
+    if(global.OneToneHomeWorkbench){
+      try{
+        if(global.OneToneHomeWorkbench.forceHomeRender) global.OneToneHomeWorkbench.forceHomeRender();
+        var wb=global.OneToneHomeWorkbench;
+        requestAnimationFrame(function(){
+          try{ if(wb&&wb.render) wb.render(); }catch(_){}
+        });
+      }catch(_){}
+    }
   }
 
   function applyMvpInit(msg){

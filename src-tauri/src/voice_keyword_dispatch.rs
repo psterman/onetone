@@ -72,6 +72,10 @@ pub fn classify_voice_keyword(cfg: &VoiceConfig, phrase: &str) -> VoiceKeywordKi
         return VoiceKeywordKind::Custom;
     }
 
+    if crate::cursor_beginner::probe_ok() && crate::cursor_beginner::is_beginner_voice_phrase(text) {
+        return VoiceKeywordKind::Wake;
+    }
+
     if let Some(effective) = crate::scene_config::resolve_idle_effective_scene(cfg) {
         if matches_cancel_phrase(
             text,
@@ -161,6 +165,22 @@ pub fn dispatch_voice_keyword_detected(
 mod tests {
     use super::*;
     use crate::config::VoiceConfig;
+
+    #[test]
+    fn classify_beginner_phrases_as_wake_when_cursor_alive() {
+        let cfg = VoiceConfig::default();
+        // ponytail: probe_ok needs Cursor.exe; when false, skip — golden/KWS path tested elsewhere
+        if crate::cursor_beginner::probe_ok() {
+            assert_eq!(
+                classify_voice_keyword(&cfg, "继续"),
+                VoiceKeywordKind::Wake
+            );
+            assert_eq!(
+                classify_voice_keyword(&cfg, "发送"),
+                VoiceKeywordKind::Wake
+            );
+        }
+    }
 
     #[test]
     fn classify_wake_end_cancel() {

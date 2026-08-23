@@ -108,6 +108,7 @@ pub fn cmd_mapping_duplicate(
                 agent_bindings: src.agent_bindings.clone(),
                 codex_micro_pad: src.codex_micro_pad.clone(),
                 time_machine_workspace: src.time_machine_workspace.clone(),
+                capture_hero_ref: src.capture_hero_ref.clone(),
             });
             cfg.normalize();
         }

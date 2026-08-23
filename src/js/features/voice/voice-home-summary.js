@@ -195,7 +195,9 @@
         if(heard) heardLine=t('voiceSapiHeard')+'：'+heard;
       }else{
         var partial=(res&&res.lastPartial)||'';
+        var lastFinal=(res&&res.lastFinal)||'';
         if(partial) heardLine=t('voiceVoskPartial')+'：'+partial;
+        else if(lastFinal) heardLine=t('voiceVoskFinal')+'：'+lastFinal;
       }
       return {
         heardLine:heardLine,

@@ -268,14 +268,110 @@ html[data-theme="dark"] .wb-sidebar-status {
 }
 
 .wb-hero-mic {
-  display: block;
-  width: min(100%, 420px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(100%, 480px);
   margin: 4px auto 0;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--outline-variant) 55%, transparent);
   border-radius: 16px;
   background: color-mix(in srgb, var(--surface-high, var(--surface)) 92%, transparent);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.wb-hero-mic-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.wb-hero-mic-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.wb-hero-mic-chip--engine {
+  margin: 0;
+  border: 0;
+  cursor: pointer;
+  background: color-mix(in srgb, #22c55e 10%, transparent);
+  color: color-mix(in srgb, #166534 70%, var(--on-surface));
+}
+
+.wb-hero-mic-chip--engine.is-warn {
+  background: color-mix(in srgb, #f59e0b 12%, transparent);
+  color: color-mix(in srgb, #b45309 75%, var(--on-surface));
+}
+
+.wb-hero-mic-chip--engine.is-off {
+  background: color-mix(in srgb, var(--outline-variant) 35%, transparent);
+  color: var(--on-surface-muted);
+}
+
+.wb-hero-mic-chip--wake {
+  background: color-mix(in srgb, var(--primary-soft, #e6f7fc) 80%, transparent);
+  color: color-mix(in srgb, var(--primary) 55%, var(--on-surface));
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.wb-hero-mic-heard {
+  display: block;
+  min-height: 1.2em;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--on-surface);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.wb-hero-mic-heard.is-partial {
+  color: var(--on-surface-muted);
+}
+
+.wb-hero-mic-heard.is-matched {
+  color: #15803d;
+}
+
+html[data-theme="dark"] .wb-hero-mic-heard.is-matched {
+  color: #86efac;
+}
+
+.wb-hero-mic-heard.is-miss {
+  color: #b45309;
+}
+
+.wb-hero-mic-mute-hint {
+  display: block;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 650;
+  color: color-mix(in srgb, #f59e0b 70%, var(--on-surface));
+}
+
+.wb-hero-mic-mute-hint[hidden] {
+  display: none !important;
+}
+
+.wb-hero-mic-toolbar .wb-hero-mic-listen {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.wb-hero-caption[hidden] {
+  display: none !important;
 }
 
 .wb-hero-mic-main {
@@ -2863,6 +2959,44 @@ html[data-theme="dark"] .wb-live-text {
 .wb-live-text .last {
   color: var(--on-surface-muted);
   font-weight: 600;
+}
+
+.wb-live-text.is-partial .last {
+  opacity: 0.85;
+}
+
+.wb-live-text.is-matched {
+  color: #15803d;
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+html[data-theme="dark"] .wb-live-text.is-matched {
+  color: #86efac;
+}
+
+.wb-live-text.is-miss {
+  color: #b45309;
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+html[data-theme="dark"] .wb-live-text.is-miss {
+  color: #fcd34d;
+}
+
+.wb-live-match-badge {
+  display: inline-flex;
+  margin-left: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  vertical-align: middle;
+}
+
+.wb-live-match-badge.is-ok {
+  color: #16a34a;
+}
+
+.wb-live-match-badge.is-miss {
+  color: #d97706;
 }
 
 .wb-live-text .cursor {

@@ -107,6 +107,11 @@ pub fn handle_detection(
         detection.matched_phrase.trim()
     };
 
+    // Cursor beginner: route before Send/Cancel/Wake gates (「发送」等也是全局 send/cancel 词).
+    if let Some(result) = try_route_cursor_beginner_voice(state, app, &detection.engine, phrase) {
+        return result;
+    }
+
     match detection.kind {
         VoiceDetectionKind::Wake | VoiceDetectionKind::Summon => {
             if !idle {
@@ -119,7 +124,10 @@ pub fn handle_detection(
             if let Some(reason) = crate::voice_end_runtime::wake_phrase_skip_reason(state) {
                 return skip(reason.into());
             }
-            if !crate::voice_end_runtime::is_start_phrase(&state.cfg.lock(), phrase) {
+            if !crate::voice_end_runtime::is_start_phrase(&state.cfg.lock(), phrase)
+                && !(crate::cursor_beginner::probe_ok()
+                    && crate::cursor_beginner::is_beginner_voice_phrase(phrase))
+            {
                 return skip(format!("未识别的启动词「{}」", phrase));
             }
             dispatch_wake_or_summon(state, app, &detection.engine, phrase)
@@ -179,6 +187,78 @@ fn skip(reason: String) -> VoiceCommandRouterResult {
         skipped: true,
         skip_reason: reason,
         ..Default::default()
+    }
+}
+
+fn try_route_cursor_beginner_voice(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    _engine: &str,
+    phrase: &str,
+) -> Option<VoiceCommandRouterResult> {
+    if !crate::cursor_beginner::probe_ok() {
+        return None;
+    }
+    if !crate::cursor_beginner::is_beginner_voice_phrase(phrase) {
+        return None;
+    }
+    // Only intercept when Cursor is actually foreground or user explicitly armed.
+    // On OneTone home, let normal routing handle phrases like「麦克风」(wake/dictation).
+    if !crate::cursor_beginner::cursor_is_foreground()
+        && !crate::cursor_beginner::is_armed()
+        && !crate::cursor_beginner::is_arm_phrase(phrase)
+    {
+        // Habit active + Cursor alive: intercept action phrases (发送/继续/新建) but not mic toggle.
+        let habit_ok = {
+            let cfg = state.cfg.lock();
+            crate::cursor_beginner::cursor_habit_active(&cfg)
+        } && crate::cursor_beginner::probe_ok();
+        let is_mic_phrase = crate::cursor_beginner::matches_beginner_phrase(phrase)
+            .is_some_and(|d| d.slot_id == "pushToTalk");
+        if !habit_ok || is_mic_phrase {
+            return None;
+        }
+    }
+    if *state.paused.lock() {
+        return Some(skip("监听已暂停，请先在上方点「恢复」。".into()));
+    }
+    if state
+        .voice_practice_hold_fg
+        .load(std::sync::atomic::Ordering::SeqCst)
+    {
+        return Some(skip("语音练习台中，仅本页听写测试，不发送快捷键。".into()));
+    }
+    if crate::send_guard::is_active() && !crate::send_guard::wait_until_inactive(800) {
+        return Some(skip("快捷键发送通道忙，请再说一次。".into()));
+    }
+    let duration_ms = state.cfg.lock().key_press_duration_ms;
+    let result = crate::cursor_beginner::dispatch_voice_phrase(state, app, phrase)?;
+    // Update home page display — beginner phrases bypass the normal lastDetectedPhrase path.
+    *state.voice_vosk_last_detected_phrase.lock() = phrase.to_string();
+    let label = result.runtime_label.clone();
+    if result.ok {
+        let sound_cue = crate::config::runtime_sound_cue(&state.cfg.lock(), "voice_wake");
+        crate::ipc::push_runtime_via_app(
+            app,
+            state.as_ref(),
+            &label,
+            "",
+            sound_cue.as_deref(),
+        );
+        Some(VoiceCommandRouterResult {
+            handled: true,
+            trigger_label: format!("{}（{}）", label, phrase),
+            ..Default::default()
+        })
+    } else if label == "cursor_beginner:not_armed" {
+        Some(skip("请先进入 Cursor 或说「小助手」激活。".into()))
+    } else {
+        Some(VoiceCommandRouterResult {
+            handled: false,
+            skipped: true,
+            skip_reason: format!("Cursor 操作未执行（{}）", label),
+            trigger_label: String::new(),
+        })
     }
 }
 

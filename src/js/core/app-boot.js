@@ -226,6 +226,13 @@
             try{ console.error('boot settled voice check',err); }catch(_){}
           }
         },400);
+        setTimeout(function(){
+          try{
+            if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceEngine){
+              global.OneToneVoiceWake.ensureHomeVoiceEngine({force:true});
+            }
+          }catch(_){}
+        },900);
         // Hang viz: expand live panel + pin main with the app body (debug假死 session).
         setTimeout(function(){
           try{

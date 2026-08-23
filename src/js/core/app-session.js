@@ -46,6 +46,23 @@
     }
   }
 
+  function strategyActivateCommitted(bundle){
+    if(!bundle||bundle.activateAsync===false) return false;
+    var ui=hooks().ui();
+    if(ui&&ui.drawerOpen&&ui.settingsPanel==='voiceWake') return false;
+    // activate_desired_engine is async (supervisor queue) — IPC return only means enqueued.
+    return bundle.ok!==false;
+  }
+
+  function rescheduleDeferredVoiceBoot(ms){
+    clearTimeout(voiceEngineBootTimer);
+    voiceEngineBootTimer=setTimeout(function(){
+      voiceEngineBootTimer=0;
+      voiceEngineBootDone=false;
+      scheduleDeferredVoiceEngineBoot();
+    },ms||3000);
+  }
+
   function markVoiceEngineBootHandled(){
     voiceEngineBootDone=true;
     clearTimeout(voiceEngineBootTimer);
@@ -239,14 +256,18 @@
             if(hooks().renderVoiceKwsStatus) hooks().renderVoiceKwsStatus(kwsRes);
             hooks().syncHomeFromVoiceSettings(voskRes,sapiRes,null,{homeOnly:true,lightOnly:true},kwsRes);
           }
-          markVoiceEngineBootHandled();
+          if(strategyActivateCommitted(bundle)){
+            markVoiceEngineBootHandled();
+          }else{
+            rescheduleDeferredVoiceBoot(hooks().ui().drawerOpen?5000:2500);
+          }
           setTimeout(function(){
             try{ hooks().renderHomeLiveZone&&hooks().renderHomeLiveZone(); }catch(_){}
           },0);
           return null;
         }).catch(function(err){
           console.error('voice boot strategy',err);
-          markVoiceEngineBootHandled();
+          rescheduleDeferredVoiceBoot(5000);
         }).then(function(){
           try{
             if(global.OneToneUiHeartbeat&&global.OneToneUiHeartbeat.clearTag) global.OneToneUiHeartbeat.clearTag('voiceBootStrategy');

@@ -99,7 +99,7 @@
     function containsLeftMouseToken(key){ return OneToneAppKeyUtils.containsLeftMouseToken(key); }
     
     function renderKeyFinishFlowPanel(){ return OneToneKeyFinishFlowRender.renderKeyFinishFlowPanel(); }
-    function focusSchemeEditStep(step){ return OneToneKeyFinishFlowRender.focusSchemeEditStep(step); }
+    function focusSchemeEditStep(step,opts){ return OneToneKeyFinishFlowRender.focusSchemeEditStep(step,opts); }
     function syncKeySchemeTimeline(focusStep){ return OneToneKeyFinishFlowRender.syncKeySchemeTimeline(focusStep); }
     function renderKeySchemeCardHeader(){ return OneToneKeyFinishFlowRender.renderKeySchemeCardHeader(); }
     function handleKeyFinishFlowInput(e){ return OneToneKeyFinishFlowRender.handleKeyFinishFlowInput(e); }

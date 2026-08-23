@@ -17,6 +17,62 @@ use crate::voice_vosk::{
 };
 use crate::AppState;
 
+static OVERLAY_VOICE_NUDGE: std::sync::OnceLock<parking_lot::Mutex<(Instant, String)>> =
+    std::sync::OnceLock::new();
+
+fn maybe_nudge_overlay_for_voice(app: &AppHandle, state: &AppState, text: &str) {
+    const MIN: Duration = Duration::from_millis(120);
+    let slot = OVERLAY_VOICE_NUDGE.get_or_init(|| parking_lot::Mutex::new((Instant::now() - MIN, String::new())));
+    let mut gate = slot.lock();
+    if gate.1 == text && gate.0.elapsed() < MIN {
+        return;
+    }
+    if gate.0.elapsed() < MIN {
+        return;
+    }
+    gate.0 = Instant::now();
+    gate.1 = text.to_string();
+    crate::codex_micro_overlay::push_overlay_status(app, state);
+}
+
+/// Free-mode Vosk may miss grammar Detected; fuzzy-match finals for Cursor beginner commands.
+fn try_route_vosk_final_phrase(state: &Arc<AppState>, app: &AppHandle, text: &str) {
+    let text = text.trim();
+    if text.is_empty() || *state.paused.lock() {
+        return;
+    }
+    if state
+        .voice_practice_hold_fg
+        .load(std::sync::atomic::Ordering::SeqCst)
+    {
+        return;
+    }
+    if crate::cursor_beginner::probe_ok() {
+        let route = crate::cursor_beginner::is_arm_phrase(text)
+            || crate::cursor_beginner::is_disarm_phrase(text)
+            || crate::cursor_beginner::matches_beginner_phrase(text).is_some();
+        if route {
+            *state.voice_vosk_last_detected_phrase.lock() = text.to_string();
+            process_detected(state, app, text);
+            return;
+        }
+    }
+    let phrases = crate::scene_config::vosk_grammar_phrases_for_cfg(&state.cfg.lock());
+    let Some(phrase) = crate::voice_vosk::matches_final(text, &phrases) else {
+        return;
+    };
+    let cfg = state.cfg.lock();
+    let is_start = crate::voice_end_runtime::is_start_phrase(&cfg, &phrase);
+    let is_beginner =
+        crate::cursor_beginner::probe_ok() && crate::cursor_beginner::is_beginner_voice_phrase(&phrase);
+    drop(cfg);
+    if !is_start && !is_beginner {
+        return;
+    }
+    *state.voice_vosk_last_detected_phrase.lock() = phrase.clone();
+    process_detected(state, app, &phrase);
+}
+
 fn next_vosk_epoch(state: &AppState) -> u64 {
     state.voice_vosk_epoch.fetch_add(1, Ordering::SeqCst) + 1
 }
@@ -150,12 +206,16 @@ pub fn voice_vosk_start(
     // Clone grammar while holding cfg briefly — never keep cfg locked across model open
     // (start_voice_vosk can take seconds; holding the lock 假死'd IPC / UI on launch).
     let grammar = crate::scene_config::vosk_grammar_phrases_for_cfg(&state.cfg.lock());
+    let strategy = crate::scene_config::voice_listening_strategy(&state.cfg.lock());
+    // Enhanced/auto need live partials on home + debug; resourceSaver keeps VAD gate.
+    let continuous_asr = !matches!(strategy, "resourceSaver" | "off");
     match start_voice_vosk(
         cfg.clone(),
         resource_dir,
         grammar,
         Some(state.audio_frame_bus.publisher()),
         Arc::clone(&state.settings_asr_quiet),
+        continuous_asr,
     ) {
         Ok(handle) => {
             crate::app_log::log_line(
@@ -416,11 +476,30 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, app: &AppHandle) {
                 emit_vosk_mic_level(app, state.as_ref(), level);
             }
             VoiceVoskEvent::Partial(text) => {
-                *state.voice_vosk_last_partial.lock() = text;
+                *state.voice_vosk_last_partial.lock() = text.clone();
+                // Push to JS so the home page can render real-time heard text without
+                // waiting for cmd_voice_vosk_status polling (which is 2-3s).
+                // Worker already throttles to PARTIAL_MIN_INTERVAL (100ms) + dedups by text,
+                // so this emit is bounded.
+                let payload = serde_json::json!({
+                    "type": "vosk_text",
+                    "kind": "partial",
+                    "text": text,
+                });
+                crate::ipc::emit_to_main_if_available(app, Some(state), payload);
+                maybe_nudge_overlay_for_voice(app, state, &text);
             }
             VoiceVoskEvent::Final(text) => {
                 *state.voice_vosk_last_final.lock() = text.clone();
+                let payload = serde_json::json!({
+                    "type": "vosk_text",
+                    "kind": "final",
+                    "text": text,
+                });
+                crate::ipc::emit_to_main_if_available(app, Some(state), payload);
+                maybe_nudge_overlay_for_voice(app, state, &text);
                 crate::voice_end_runtime::try_match_end_phrase_on_final(state, app, &text);
+                try_route_vosk_final_phrase(state, app, &text);
                 if crate::voice_end_runtime::session_state(state) == "idle" {
                     let phrases = crate::voice_end_runtime::idle_wake_phrases(&state.cfg.lock());
                     if let Some(reason) =
@@ -451,11 +530,14 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, app: &AppHandle) {
                     *state.voice_vosk_last_trigger.lock() = String::new();
                     continue;
                 }
-                let is_start = {
+                let route = {
                     let cfg = state.cfg.lock();
-                    crate::voice_end_runtime::is_start_phrase(&cfg, &phrase)
+                    let is_start = crate::voice_end_runtime::is_start_phrase(&cfg, &phrase);
+                    let is_beginner = crate::cursor_beginner::probe_ok()
+                        && crate::cursor_beginner::is_beginner_voice_phrase(&phrase);
+                    is_start || is_beginner
                 };
-                if !is_start {
+                if !route {
                     continue;
                 }
                 *state.voice_vosk_last_detected_phrase.lock() = phrase.clone();

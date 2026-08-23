@@ -173,11 +173,17 @@
 
     if(focus==='trigger'||focus==='target'||focus==='keyFinishFlow'||focus==='finish'||focus==='cancel'){
 
+      var prevPanel=ui.settingsPanel?String(ui.settingsPanel):'';
+
       setSettingsPanel('keys');
 
       var step=focus==='keyFinishFlow'||focus==='finish'?'finish':focus;
 
-      hooks().focusSchemeEditStep(step);
+      var editOpts={};
+
+      if(prevPanel&&prevPanel!=='keys') editOpts.returnPanel=prevPanel;
+
+      hooks().focusSchemeEditStep(step,editOpts);
 
       return;
 
@@ -310,7 +316,7 @@
 
       mappings:['habitMappingsSection','mappingListTitle'],
 
-      keyFinishFlow:['habitKeyMapRowFinish','habitFinishCard'],
+      keyFinishFlow:['keysCaptureKeyPanel','keysFinishModeHost','habitFinishCard'],
 
       mic:['micDeviceList','micTitle'],
 
@@ -482,6 +488,17 @@
       return;
     }
 
+    if(panel==='debug'){
+      // Debug keeps Vosk live — poll shared MicLevelState for level bars while drawer open.
+      if(hooks().voiceCaptureActive()&&hooks().startMicLevelPoll){
+        hooks().startMicLevelPoll();
+      }else{
+        hooks().stopMicLevelPoll();
+        if(!hooks().voiceCaptureActive()) hooks().stopMicMonitor();
+      }
+      return;
+    }
+
     hooks().stopMicLevelPoll();
 
     if(!hooks().voiceCaptureActive()) hooks().stopMicMonitor();
@@ -624,6 +641,15 @@
     if(panelChanged&&panel!=='keys'&&global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close){
       global.OneToneTargetKeyPicker.close();
     }
+    if(panelChanged&&panel!=='keys'){
+      var capPicker=global.OneToneKeysChannelCommandPicker;
+      if(capPicker&&(capPicker.closeCapturePopover||capPicker.closeCaptureSheet)){
+        try{
+          var closeFn=capPicker.closeCapturePopover||capPicker.closeCaptureSheet;
+          closeFn.call(capPicker,{ keepPanel:true, skipStep:true });
+        }catch(_){}
+      }
+    }
 
     // Leaving keys: stop pad readiness remount/poll so「我的习惯」open is not stacked under it.
     if(panelChanged&&lastPanel==='keys'&&panel!=='keys'){
@@ -658,6 +684,10 @@
     }
 
     ui.settingsPanel=panel;
+
+    if(ui.drawerOpen){
+      setSettingsDrawerGate(true,{panel:panel});
+    }
 
     // Flush deferred mvp_init only after leaving Soft Pad / keys / camera — never while still on one
     // (softPad→camera used to flush remount + MediaPipe open in the same turn → 假死).
@@ -704,6 +734,15 @@
         global.OneToneVoiceDiag.setFocusMode(opts.debugMode);
       }else{
         hooks().syncDebugFocusSections();
+      }
+
+      if(panelChanged){
+        setTimeout(function(){
+          if(!ui.drawerOpen||normalizePanel(ui.settingsPanel)!=='debug') return;
+          if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceEngine){
+            try{ global.OneToneVoiceWake.ensureHomeVoiceEngine({force:true}); }catch(_){}
+          }
+        },500);
       }
 
     }
@@ -1179,11 +1218,20 @@
 
   }
 
-  function setSettingsDrawerGate(open){
+  function settingsShouldParkVoice(panel){
+    panel=normalizePanel(panel||ui.settingsPanel||'basic');
+    // Only voiceWake parks capture (cpal + status poll 假死). Debug/home must keep Vosk running.
+    return panel==='voiceWake';
+  }
+
+  function setSettingsDrawerGate(open,opts){
     try{
       var ipc=global.OneToneIpc;
       if(ipc&&typeof ipc.invoke==='function'){
-        ipc.invoke('cmd_set_settings_drawer_open',{open:!!open}).catch(function(){});
+        var parkVoice=!!open&&(opts&&Object.prototype.hasOwnProperty.call(opts,'parkVoice')
+          ?!!opts.parkVoice
+          :settingsShouldParkVoice(opts&&opts.panel));
+        ipc.invoke('cmd_set_settings_drawer_open',{open:!!open,parkVoice:parkVoice,park_voice:parkVoice}).catch(function(){});
       }
     }catch(_){}
   }
@@ -1202,7 +1250,6 @@
       }
     }catch(_){}
     // Soft Pad float is always-on-top; durable gate + soft-dismiss so left nav / drawer stay clickable.
-    setSettingsDrawerGate(true);
     try{
       var ipc=global.OneToneIpc;
       if(ipc&&typeof ipc.invoke==='function'){
@@ -1239,6 +1286,7 @@
     }
 
     ui.drawerOpen=true;
+    setSettingsDrawerGate(true,{panel:opts.panel||'basic'});
 
     // Pause MediaPipe before any panel remount — presence createImageBitmap + habit/softPad
     // remount on the same turn wedges WebView2 (Responding=false).
@@ -1322,6 +1370,13 @@
     }catch(_){}
 
     if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
+    var capPicker=global.OneToneKeysChannelCommandPicker;
+    if(capPicker&&(capPicker.closeCapturePopover||capPicker.closeCaptureSheet)){
+      try{
+        var closeFn=capPicker.closeCapturePopover||capPicker.closeCaptureSheet;
+        closeFn.call(capPicker,{ keepPanel:true, skipStep:true });
+      }catch(_){}
+    }
 
     ui.drawerOpen=false;
     setSettingsDrawerGate(false);
@@ -1381,6 +1436,32 @@
       if(!ui.drawerOpen&&hooks().micLevelUiVisible()) hooks().syncHomeMicMonitor().catch(function(){});
 
     },200);
+
+    setTimeout(function(){
+      if(ui.drawerOpen) return;
+      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceEngine){
+        try{ global.OneToneVoiceWake.ensureHomeVoiceEngine({force:true}); }catch(_){}
+      }
+      if(global.OneToneHomeWorkbench){
+        try{
+          global.OneToneHomeWorkbench.forceHomeRender();
+          global.OneToneHomeWorkbench.render();
+        }catch(_){}
+      }
+      if(global.OneToneHomeV9&&global.OneToneHomeV9.paintHomeLiveTextImmediate){
+        try{ global.OneToneHomeV9.paintHomeLiveTextImmediate(); }catch(_){}
+      }
+    },600);
+
+    setTimeout(function(){
+      if(ui.drawerOpen) return;
+      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.pollTick){
+        try{ global.OneToneVoiceWake.pollTick(); }catch(_){}
+      }
+      if(global.OneToneHomeV9&&global.OneToneHomeV9.paintHomeLiveTextImmediate){
+        try{ global.OneToneHomeV9.paintHomeLiveTextImmediate(); }catch(_){}
+      }
+    },80);
 
   }
 
