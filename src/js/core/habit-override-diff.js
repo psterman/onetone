@@ -184,6 +184,12 @@
     if(!Array.isArray(cfg.mappings)) cfg.mappings=[];
     var existing=findGlobalBaselineMapping(cfg,mappingCore);
     if(existing) return {mapping:existing,created:false};
+    for(var hi=0;hi<cfg.mappings.length;hi++){
+      var hid=cfg.mappings[hi];
+      if(!hid||String(hid.id||'')==='soft-pad-global') continue;
+      if(String(hid.appTargetId||'').trim()) continue;
+      return {mapping:hid,created:false};
+    }
     var voiceKey='';
     try{
       var sc=global.OneToneSceneConfig;

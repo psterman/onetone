@@ -161,6 +161,18 @@ assert.strictEqual(ensured.mapping.group,'通用设置');
 assert.strictEqual(Diff.findGlobalBaselineMapping(appOnlyCfg,mockCore).id,ensured.mapping.id);
 assert.strictEqual(Diff.ensureGlobalBaselineMapping(appOnlyCfg,mockCore).created,false);
 
+var strayCfg={
+  mappings:[
+    {id:'uni-stray',group:'通用设置',appTargetId:'',appBehaviorRules:[{match:{exeNames:['Cursor.exe']}}]},
+    {id:'cursor',appTargetId:'cursor-chat',appBehaviorRules:[]}
+  ],
+  activeSceneId:'cursor'
+};
+var strayEnsure=Diff.ensureGlobalBaselineMapping(strayCfg,mockCore);
+assert.strictEqual(strayEnsure.created,false,'stray-rule 通用 is not a new baseline');
+assert.strictEqual(strayEnsure.mapping.id,'uni-stray');
+assert.strictEqual(strayCfg.mappings.length,2);
+
 var keysAccess=Diff.getKeysAccessState({triggerKey:'F8',targetKey:'',keyModeEnabled:true},cfg,mockCore);
 assert.strictEqual(keysAccess.status,'overridden');
 

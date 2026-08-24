@@ -1778,21 +1778,38 @@
     persistAppScenarioBackup();
   }
 
+  function presetAppTargetId(m){
+    var id=String((m&&(m.appTargetId||m.app_target_id))||'').trim();
+    if(!id||id==='custom') return '';
+    return id;
+  }
+
   function reinjectRememberedAppScenarios(cfg){
     if(!cfg||typeof cfg!=='object') return 0;
     cfg.mappings=Array.isArray(cfg.mappings)?cfg.mappings:[];
     var ids={};
-    cfg.mappings.forEach(function(m){ if(m&&m.id) ids[String(m.id)]=true; });
+    var presentPresets={};
+    cfg.mappings.forEach(function(m){
+      if(m&&m.id) ids[String(m.id)]=true;
+      var preset=presetAppTargetId(m);
+      if(preset) presentPresets[preset]=true;
+    });
     var trashIds={};
     (cfg.trash||[]).forEach(function(m){ if(m&&m.id) trashIds[String(m.id)]=true; });
     var rules=global.OneToneAppBehaviorRules;
     var added=0;
+    var forget=[];
     Object.keys(lastKnownAppScenarios).forEach(function(id){
       if(ids[id]||trashIds[id]) return;
       var snap=lastKnownAppScenarios[id];
       if(!snap||!isAppScopedMapping(snap)) return;
       if(rules&&rules.isIncompleteCustomStub&&rules.isIncompleteCustomStub(snap)){
-        delete lastKnownAppScenarios[id];
+        forget.push(id);
+        return;
+      }
+      var preset=presetAppTargetId(snap);
+      if(preset&&presentPresets[preset]){
+        forget.push(id);
         return;
       }
       try{
@@ -1801,8 +1818,10 @@
         cfg.mappings.push(snap);
       }
       ids[id]=true;
+      if(preset) presentPresets[preset]=true;
       added++;
     });
+    if(forget.length) forgetAppScenarioIds(forget);
     return added;
   }
 
@@ -2314,6 +2333,7 @@
     isLoaded:function(){ return configLoadedFromBackend; },
     rememberAppScenariosNow:rememberAppScenariosFromConfig,
     forgetAppScenarioIds:forgetAppScenarioIds,
+    reinjectRememberedAppScenarios:reinjectRememberedAppScenarios,
     installToJsReady:installToJsReady,
     normalizeVoiceCommands:normalizeVoiceCommands,
     serializeVoiceCommands:serializeVoiceCommands,

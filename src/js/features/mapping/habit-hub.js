@@ -1343,8 +1343,8 @@
     html+=menuItemBtn('data-habit-move="down" data-habit-id="'+esc(m.id)+'"',t('habitHubActMoveDown'));
     html+=menuItemBtn('data-habit-dup="'+esc(m.id)+'"',t('habitHubActCopy'));
     html+=menuItemBtn('data-habit-rename="'+esc(m.id)+'"',t('habitHubActRename'));
-    var diff=global.OneToneHabitOverrideDiff;
-    var isBaseline=!!(diff&&diff.isGlobalBaselineMapping&&diff.isGlobalBaselineMapping(m,cfg,core()));
+    var diffApi=global.OneToneHabitOverrideDiff;
+    var isBaseline=!!(diffApi&&diffApi.isGlobalBaselineMapping&&diffApi.isGlobalBaselineMapping(m,cfg,core()));
     if(isBaseline){
       html+=menuItemBtn('data-habit-reset-baseline="'+esc(m.id)+'"',t('habitBaselineReset','重置 baseline'));
     }else{
@@ -1642,6 +1642,7 @@
           global.OneToneAppBehaviorRules.pruneIncompleteCustomStubs({persist:true});
         }
       }catch(_){}
+      try{ reconcileDuplicatePresetScenarios({skipToast:true}); }catch(_){}
     }
     try{
       var api=diff();
@@ -2109,12 +2110,35 @@
         changed=true;
       }
     }
+    var winnerBase=diff()&&diff().findGlobalBaselineMapping
+      ?diff().findGlobalBaselineMapping(cfg,core())
+      :null;
+    if(winnerBase&&winnerBase.id){
+      for(var bi=0;bi<cfg.mappings.length;bi++){
+        var baseRow=cfg.mappings[bi];
+        if(!baseRow||baseRow.id===winnerBase.id) continue;
+        if(String(baseRow.id||'')==='soft-pad-global') continue;
+        if(isAppScenario(baseRow)) continue;
+        drop[baseRow.id]=true;
+        if(String(state().selectedMappingId||'')===String(baseRow.id)){
+          state().selectedMappingId=winnerBase.id;
+        }
+        if(String(cfg.activeSceneId||'')===String(baseRow.id)){
+          cfg.activeSceneId=winnerBase.id;
+        }
+        changed=true;
+      }
+    }
     if(changed){
+      var droppedIds=Object.keys(drop);
       for(var i=cfg.mappings.length-1;i>=0;i--){
         var row=cfg.mappings[i];
         if(row&&drop[row.id]) cfg.mappings.splice(i,1);
       }
       cfg.mappings.forEach(function(row,idx){ if(row) row.order=idx; });
+      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.forgetAppScenarioIds){
+        global.OneToneConfigPersist.forgetAppScenarioIds(droppedIds);
+      }
       if(!opts.skipPersist){
         if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
         else if(hooks().save) hooks().save();

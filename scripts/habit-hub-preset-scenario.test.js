@@ -73,6 +73,7 @@ assert.strictEqual(
 );
 
 var saveCalls = 0;
+var forgottenIds = [];
 var toastMsgs = [];
 var mappings = [
   {
@@ -148,7 +149,11 @@ sb.global.OneToneHabitOverrideDiff = {
   isAppScenarioMapping: function (m) {
     return !!(m && m.appTargetId);
   },
-  findGlobalBaselineMapping: function () {
+  findGlobalBaselineMapping: function (cfg) {
+    var maps = (cfg && cfg.mappings) || mappings;
+    for (var i = 0; i < maps.length; i++) {
+      if (maps[i] && !maps[i].appTargetId && maps[i].id !== 'soft-pad-global') return maps[i];
+    }
     return null;
   }
 };
@@ -166,6 +171,9 @@ sb.global.OneToneI18n = {
 sb.global.OneToneConfigPersist = {
   save: function () {
     saveCalls++;
+  },
+  forgetAppScenarioIds: function (ids) {
+    (ids || []).forEach(function (id) { forgottenIds.push(id); });
   }
 };
 sb.global.OneToneAppToast = {
@@ -220,6 +228,20 @@ assert.strictEqual(
   'empty winner takes loser voiceOverride'
 );
 assert.strictEqual(saveCalls, 1, 'reconcile persists on re-merge');
+
+mappings.push({ id: 'm-base-a', group: '通用设置', enabled: true, order: 0 });
+mappings.push({ id: 'm-base-b', group: '通用设置', enabled: true, order: 20 });
+saveCalls = 0;
+st.selectedMappingId = 'm-base-b';
+st.config.activeSceneId = 'm-base-b';
+var rBase = H.reconcileDuplicatePresetScenarios({ skipToast: true });
+assert.ok(rBase.changed, 'reconcile folds extra universal baselines');
+assert.strictEqual(mappings.filter(function (m) {
+  return m && !m.appTargetId && m.id !== 'soft-pad-global';
+}).length, 1, 'one universal baseline remains');
+assert.strictEqual(st.selectedMappingId, 'm-base-a', 'baseline selection redirected');
+assert.strictEqual(st.config.activeSceneId, 'm-base-a', 'baseline in-use redirected');
+assert.ok(forgottenIds.indexOf('m-base-b') >= 0, 'dropped baseline forgotten from backup');
 
 var created = H.createAppScenario('codex-chat');
 assert.strictEqual(created.id, 'm-codex-winner', 'second create returns existing');
@@ -291,28 +313,13 @@ loadScript('src/js/features/scene/scene-activate.js', pinSb);
 var SA = pinSb.global.OneToneSceneActivate;
 assert.ok(SA);
 
+// Manual activate switches in-use. Scene pin lives on RuntimeHabitControl, not activateScene.
 SA.activateScene('m-base', { source: 'manual' });
 assert.strictEqual(pinSt.config.activeSceneId, 'm-base', 'manual baseline activates');
-assert.ok(SA.isManualScenePinned(), 'manual baseline pins scene');
-
-var fgBlocked = false;
-try {
-  SA.activateScene('m-cursor', { source: 'foreground' });
-} catch (e) {
-  fgBlocked = true;
-}
-assert.strictEqual(pinSt.config.activeSceneId, 'm-base', 'foreground blocked while baseline pinned');
-assert.ok(!fgBlocked, 'foreground skip is silent');
-
+SA.activateScene('m-cursor', { source: 'foreground' });
+assert.strictEqual(pinSt.config.activeSceneId, 'm-cursor', 'foreground follows when no pin');
 SA.activateScene('m-cursor', { source: 'manual' });
 assert.strictEqual(pinSt.config.activeSceneId, 'm-cursor', 'manual app scenario activates');
-assert.ok(!SA.isManualScenePinned(), 'manual app scenario clears pin');
-
-SA.activateScene('m-cursor', { source: 'foreground' });
-assert.strictEqual(pinSt.config.activeSceneId, 'm-cursor', 'foreground noop when already on target');
-pinSt.config.activeSceneId = 'm-base';
-SA.activateScene('m-cursor', { source: 'foreground' });
-assert.strictEqual(pinSt.config.activeSceneId, 'm-cursor', 'foreground follows after pin cleared');
 
 assert.strictEqual(H.listAppScenarios('custom').length, 0, 'custom excluded from preset list helper');
 assert.strictEqual(
