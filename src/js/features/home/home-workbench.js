@@ -1085,11 +1085,18 @@
     opts=opts||{};
     channel=String(channel||'').trim();
     var focus=String(opts.focus||'').trim();
-    var m=currentHabitMapping();
+    var route=global.OneToneHomeHabitChannelRoute;
+    var byId=global.OneToneMappingCore&&global.OneToneMappingCore.byId
+      ?function(id){ return global.OneToneMappingCore.byId(id); }
+      :null;
+    var m=route&&route.pickMapping
+      ?route.pickMapping(opts.mappingId,currentHabitMapping(),byId)
+      :currentHabitMapping();
     var id=m&&m.id?String(m.id):'';
     var diff=global.OneToneHabitOverrideDiff;
     var banner=global.OneToneHabitScenarioContextBanner;
     var isApp=!!(m&&diff&&diff.isAppScenarioMapping&&diff.isAppScenarioMapping(m));
+    var mode=route&&route.editMode?route.editMode(channel,isApp):(channel==='softPad'?'softPad':(isApp?'scenario':'global'));
 
     function afterOpenFocus(){
       if(!focus) return;
@@ -1102,7 +1109,7 @@
     }
 
     if(channel==='keys'){
-      if(isApp&&banner&&banner.openScenarioKeysEdit){
+      if(mode==='scenario'&&banner&&banner.openScenarioKeysEdit){
         banner.openScenarioKeysEdit(id,{returnToHub:false});
         afterOpenFocus();
         return;
@@ -1116,7 +1123,7 @@
       return;
     }
     if(channel==='voice'){
-      if(isApp&&banner&&banner.openScenarioVoiceEdit){
+      if(mode==='scenario'&&banner&&banner.openScenarioVoiceEdit){
         banner.openScenarioVoiceEdit(id,{returnToHub:false});
         afterOpenFocus();
         return;
@@ -1130,7 +1137,7 @@
       return;
     }
     if(channel==='camera'){
-      if(isApp&&banner&&banner.openScenarioCameraEdit){
+      if(mode==='scenario'&&banner&&banner.openScenarioCameraEdit){
         banner.openScenarioCameraEdit(id,{returnToHub:false});
         afterOpenFocus();
         return;
@@ -1727,11 +1734,9 @@
       if(habitEdit){
         e.preventDefault();
         e.stopPropagation();
-        var editId=habitEdit.getAttribute('data-wb-habit-edit')||'';
-        if(editId&&global.OneToneState&&global.OneToneState.state){
-          global.OneToneState.state.selectedMappingId=editId;
-        }
-        openHabitsHubForMapping(editId);
+        var editCard=habitEdit.closest('[data-wb-howto]');
+        var editCh=editCard?editCard.getAttribute('data-wb-howto')||'':'';
+        openHabitChannelChip(editCh,{mappingId:habitEdit.getAttribute('data-wb-habit-edit')||''});
         return;
       }
       var habit=e.target.closest&&e.target.closest('[data-wb-habit-id]');
@@ -1799,8 +1804,10 @@
           }
         }catch(_){}
         if(kind==='keys'||kind==='voice'||kind==='camera'||kind==='softPad'){
-          if(normalizeHeroMode(kind)===heroMode) openHabitChannelChip(kind);
-          else setHeroMode(kind);
+          if(normalizeHeroMode(kind)===heroMode){
+            var mapBtn=howto.querySelector('[data-wb-habit-edit]');
+            openHabitChannelChip(kind,{mappingId:mapBtn?mapBtn.getAttribute('data-wb-habit-edit')||'':''});
+          }else setHeroMode(kind);
         }
         return;
       }

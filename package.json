@@ -16,7 +16,7 @@
     "test:e2e": "powershell -NoProfile -File scripts/build-and-run-tauri-e2e.ps1",
     "test:habit-profile": "node scripts/reconcile-habit-profile.js",
     "test:home-alerts": "node scripts/test-home-workbench-alerts.js",
-    "test:home-habit-channels": "node scripts/test-home-habit-channel-pills.mjs",
+    "test:home-habit-channels": "node scripts/test-home-habit-channel-pills.mjs && node scripts/test-home-habit-channel-route.js",
     "test:habit-ia-copy": "node scripts/test-habit-ia-universal-copy.mjs",
     "test:habit-hub-slim": "node scripts/habit-hub-light-orchestrator.test.js && node scripts/test-habit-hub-menu-behavior.mjs",
     "test:habit-workspace": "node scripts/test-habit-workspace.mjs && node scripts/habit-override-diff.test.js",

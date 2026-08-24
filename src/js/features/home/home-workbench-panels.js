@@ -137,7 +137,7 @@
       runtimeBadge='<span class="wb-howto-card-runtime" data-ot-tip="'+esc(card.runtimeTooltip||'')+'">'+esc(card.runtimeBadge)+'</span>';
     }
     var editBtn=card.habitEditId
-      ?'<button type="button" class="wb-howto-card-edit" data-wb-habit-edit="'+esc(card.habitEditId)+'" data-ot-tip="'+esc(t('homeWbHabitEditOnlyTip','仅切换编辑对象，不影响正在使用'))+'">'+esc(t('homeWbHabitEditOnly','编辑'))+'</button>'
+      ?'<button type="button" class="wb-howto-card-edit" data-wb-habit-edit="'+esc(card.habitEditId)+'" data-ot-tip="'+esc(t('homeWbHabitEditOnlyTip','打开当前习惯的此通道设置，不切换正在使用'))+'">'+esc(t('homeWbHabitEditOnly','编辑'))+'</button>'
       :'';
     var habitChip=card.habitShort
       ?'<span class="wb-howto-card-habit">'+esc(card.habitShort)+'</span>'
