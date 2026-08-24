@@ -179,7 +179,7 @@
     }
     var kwsListening=eng==='kws'&&global.OneToneVoiceWake&&global.OneToneVoiceWake.isKwsNativeListening
       &&global.OneToneVoiceWake.isKwsNativeListening(res,w);
-    if(kwsListening||(eng!=='kws'&&(raw==='listening'||raw==='starting'))){
+    if(kwsListening||(eng!=='kws'&&(raw==='listening'||raw==='starting'||raw==='running'||raw==='cooldown'||raw==='triggered'))){
       statusMode='listening';
       statusLine=eng==='kws'?t('voiceFbTranscriptKwsListening'):t('homeVoiceSimpleStatusListening');
       if(supervisor.degraded){

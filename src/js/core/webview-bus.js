@@ -30,22 +30,25 @@
   }
 
   function bindListeners(){
-    var hooks=h();
     var state=global.OneToneState.state;
     var runtime=global.OneToneState.runtime;
-    var t=hooks.t;
     window.chrome?.webview?.addEventListener?.('message',function(e){
+      var hooks=h();
+      var t=hooks.t;
       var msg=e&&e.data;
       if(!msg||typeof msg!=='object') return;
       if(msg.type==='mic_level'){
-        if(!hooks.micLevelUiVisible()) return;
+        if(typeof hooks.micLevelUiVisible==='function'&&!hooks.micLevelUiVisible()) return;
         var id=msg.deviceId!=null?String(msg.deviceId):(msg.device_id!=null?String(msg.device_id):'');
         if(typeof msg.level==='number'){
-          hooks.updateMicLevelBars(id,msg.level);
+          if(typeof hooks.updateMicLevelBars==='function') hooks.updateMicLevelBars(id,msg.level);
+          else if(global.OneToneAppMic&&global.OneToneAppMic.updateMicLevelBars){
+            global.OneToneAppMic.updateMicLevelBars(id,msg.level);
+          }
           if(global.OneToneVoiceFeedbackRail&&global.OneToneVoiceFeedbackRail.setMicLevel){
             global.OneToneVoiceFeedbackRail.setMicLevel(msg.level);
           }
-          if(msg.level>0||id) hooks.clearMicBackoff();
+          if((msg.level>0||id)&&typeof hooks.clearMicBackoff==='function') hooks.clearMicBackoff();
         }
         return;
       }

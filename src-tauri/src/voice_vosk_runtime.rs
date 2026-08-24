@@ -400,8 +400,10 @@ fn tick_cooldown_state(state: &AppState) {
 }
 
 fn emit_vosk_mic_level(app: &AppHandle, state: &AppState, level: u32) {
-    // Settings voiceWake already paints enough; mic_level flood → idle 假死.
-    if *state.settings_drawer_open.lock() {
+    // Voice-settings park drops audio; don't flood the WebView while parked.
+    // Gate on asr_quiet (not drawer_open) so the homepage still gets levels if the
+    // drawer flag is stuck true after leaving 语音唤醒.
+    if state.settings_asr_quiet.load(Ordering::SeqCst) {
         state.mic_level.set("", level);
         return;
     }
@@ -935,10 +937,13 @@ pub fn voice_vosk_retry_start(
     resource_dir: Option<PathBuf>,
 ) -> serde_json::Value {
     refresh_vosk_probe_cache(state, resource_dir.as_deref());
+    // Homepage can look "listening" while settings_asr_quiet still drops every chunk.
+    let was_quiet = state.settings_asr_quiet.swap(false, Ordering::SeqCst);
     let st = state.voice_vosk_state.lock().clone();
-    let healthy = matches!(st.as_str(), "listening" | "cooldown" | "triggered")
+    let healthy = !was_quiet
+        && matches!(st.as_str(), "listening" | "cooldown" | "triggered")
         && state.voice_vosk.lock().is_some();
-    // Already listening: soft activate (noop). Otherwise force reload stuck/error handles.
+    // Already listening: soft activate (noop). Parked / stuck / error → force reload.
     let reason = if healthy {
         "vosk_retry_start"
     } else {

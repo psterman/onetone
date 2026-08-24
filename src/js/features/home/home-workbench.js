@@ -4,6 +4,7 @@
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
   var bound=false;
+  var homeVoiceBootstrapped=false;
   var HERO_MODE_KEY='onetone.wbHeroMode';
   var heroMode='voice';
   var presenceHooked=false;
@@ -2014,10 +2015,34 @@
     }catch(_){}
   }
 
+  function bootstrapHomeVoice(){
+    var wake=global.OneToneVoiceWake;
+    if(wake){
+      if(wake.startPoll&&wake.isPollStarted&&!wake.isPollStarted()){
+        try{ wake.startPoll(); }catch(_){}
+      }
+      if(wake.ensureHomeVoiceListening){
+        var force=!homeVoiceBootstrapped;
+        try{ wake.ensureHomeVoiceListening({force:force}); }catch(_){}
+        if(force){
+          homeVoiceBootstrapped=true;
+          if(wake.unparkHomeAsrQuiet){
+            try{ wake.unparkHomeAsrQuiet(); }catch(_){}
+          }
+        }
+      }
+    }
+    var mic=global.OneToneAppMic;
+    if(mic&&mic.syncHomeMicMonitor){
+      try{ mic.syncHomeMicMonitor().catch(function(){}); }catch(_){}
+    }
+  }
+
   function render(){
     if(!global.OneToneHomeV9||!global.OneToneHomeV9.buildViewModel) return;
     if(global.OneToneQuickStart&&global.OneToneQuickStart.isOpen&&global.OneToneQuickStart.isOpen()) return;
     if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.isOpen&&global.OneToneHabitTriggerSetup.isOpen()) return;
+    bootstrapHomeVoice();
     var micApi=global.OneToneAppMic;
     if(micApi&&typeof micApi.listLoaded==='function'&&!micApi.listLoaded()&&typeof micApi.loadMicDevices==='function'){
       var bootHooks=global.__vp_bootstrap_hooks__||{};
@@ -2030,6 +2055,7 @@
     var vm=model&&model.rawVm?model.rawVm:enrichViewModel(global.OneToneHomeV9.buildViewModel());
     if(model&&model.sig){
       if(global.__otHomeWorkbenchGuardEnabled!==false&&model.sig===lastWorkbenchSig&&!model.force){
+        bootstrapHomeVoice();
         if(global.OneToneHomeV9&&global.OneToneHomeV9.paintMicHeardSurface){
           try{ global.OneToneHomeV9.paintMicHeardSurface(); }catch(_){}
         }
@@ -2055,9 +2081,7 @@
       global.OneToneHomeWorkbenchPanels.renderAll(vm);
     }
     refreshFollowFgToggle();
-    if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceListening){
-      try{ global.OneToneVoiceWake.ensureHomeVoiceListening({ force:false }); }catch(_){}
-    }
+    bootstrapHomeVoice();
     if(global.OneToneState&&global.OneToneState.ui){
       var ui=global.OneToneState.ui;
       if(ui.drawerOpen&&ui.settingsPanel==='debug'&&global.OneToneVoiceDiag&&global.OneToneVoiceDiag.getFocusMode()==='repair'){

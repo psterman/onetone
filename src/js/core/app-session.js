@@ -80,7 +80,7 @@
     if(!key) return false;
     var res=snapshot[key]||{};
     var st=String(res.state||'').trim().toLowerCase();
-    return st==='starting'||st==='listening'||st==='cooldown'||st==='triggered';
+    return st==='starting'||st==='listening'||st==='running'||st==='cooldown'||st==='triggered';
   }
 
   function runtimeAlreadyMatchesStrategy(snapshot, strategy){

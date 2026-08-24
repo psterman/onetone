@@ -1405,6 +1405,9 @@
 
     ui.drawerOpen=false;
     setSettingsDrawerGate(false);
+    if(global.OneToneVoiceWake&&global.OneToneVoiceWake.unparkHomeAsrQuiet){
+      try{ global.OneToneVoiceWake.unparkHomeAsrQuiet(); }catch(_){}
+    }
     try{ document.documentElement.classList.remove('ot-voice-wake-park'); }catch(_){}
 
     lastPanel='basic';

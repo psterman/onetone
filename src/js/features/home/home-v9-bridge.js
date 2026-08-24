@@ -559,6 +559,22 @@
     return null;
   }
 
+  function micHeardIdleLabel(summary,live){
+    summary=summary||{};
+    live=live||{};
+    if(live.hintKey) return t(live.hintKey);
+    if(summary.loading) return t('homeLiveLoading');
+    if(summary.statusMode==='error') return summary.statusLine||t('homeCtaError');
+    if(summary.statusMode==='idle'){
+      var paused=!!(global.OneToneState&&global.OneToneState.runtime&&global.OneToneState.runtime.paused);
+      if(paused) return t('homeWbLivePausedHint');
+    }
+    if(summary.statusMode==='listening') return t('homeVoiceSimpleStatusListening');
+    if(summary.statusMode==='ready') return t('homeVoiceSimpleStatusReady');
+    if(summary.statusMode==='off'||!summary.voiceOn) return t('homeVoiceSimpleStatusOff');
+    return '';
+  }
+
   function paintMicHeardSurface(){
     var el=document.getElementById('wbHeroMicHeard');
     if(!el) return;
@@ -567,9 +583,11 @@
       var summary=global.OneToneVoiceHomeSummary&&global.OneToneVoiceHomeSummary.compute
         ?global.OneToneVoiceHomeSummary.compute():{};
       var live=liveTextParts(summary,{});
-      if(live&&live.placeholder&&live.hintKey==='homeWbLiveVoskStoppedHint'){
-        el.textContent=t('homeWbLiveVoskStoppedHint');
+      var idle=micHeardIdleLabel(summary,live);
+      if(idle){
+        el.textContent=idle;
         el.classList.remove('is-partial','is-matched','is-miss');
+        el.classList.toggle('is-partial',summary.statusMode==='listening'||summary.statusMode==='ready');
         return;
       }
       el.textContent='';
@@ -578,11 +596,7 @@
     }
     var finalText=String(parts.finalized||'');
     var pending=String(parts.pending||'');
-    if(global.vp9&&global.vp9.setText){
-      global.vp9.setText('#wbHeroMicHeard',finalText,pending);
-    }else{
-      el.textContent=finalText+pending;
-    }
+    el.textContent=finalText+pending;
     el.classList.toggle('is-partial',!!pending);
     el.classList.toggle('is-matched',!!parts.matched);
     el.classList.toggle('is-miss',!!parts.miss);
@@ -667,8 +681,7 @@
       if(holdParts) return holdParts;
       return { finalized:'', pending:'', placeholder:true, trigger:hs.triggerLabel, hintKey:'' };
     }
-    var paused=!!(global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.runtime
-      &&global.OneToneState.state.runtime.paused);
+    var paused=!!(global.OneToneState&&global.OneToneState.runtime&&global.OneToneState.runtime.paused);
     // One blocker at a time: pause must not also preach "go enable Auto".
     if(paused){
       return {

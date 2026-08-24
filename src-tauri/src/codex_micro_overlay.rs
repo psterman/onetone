@@ -4579,12 +4579,9 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
                     let snap = cfg.clone();
                     drop(cfg);
                     crate::soft_pad_runtime::request_soft_pad_recompute(&snap);
-                    // Never sync-activate on maybe_tick — blocks tokio + ACTIVATE_LOCK.
-                    crate::voice_supervisor::enqueue_activate(
-                        app.clone(),
-                        Arc::clone(state),
-                        "force:kws_grammar_reload",
-                    );
+                    // Soft-pad chrome heal only. Do NOT force-activate Vosk here —
+                    // every-2s force:kws_grammar_reload thrash left homepage
+                    // "listening" with flat mic bars and no partials.
                     let _ = std::thread::Builder::new()
                         .name("cursor-beginner-ensure-save".into())
                         .spawn(move || {

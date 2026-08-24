@@ -1974,6 +1974,14 @@
     return !!(ui().drawerOpen&&ui().settingsPanel==='voiceWake');
   }
 
+  function unparkHomeAsrQuiet(){
+    if(settingsVoiceParked()||runtime().paused) return;
+    if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
+    global.OneToneIpc.invoke('cmd_set_settings_drawer_open',{
+      open:false,parkVoice:false,park_voice:false
+    }).catch(function(){});
+  }
+
   function maybeNudgeVoskOnHome(voskRes){
     if(settingsVoiceParked()||runtime().paused) return;
     if(!voskRes||voskListeningOk(voskRes)) return;
@@ -2002,6 +2010,7 @@
     homeVoiceEnsureAt=now;
     voskHomeNudgeAt=0;
     if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
+    if(opts.force) unparkHomeAsrQuiet();
     if(strategy==='enhanced'||strategy==='auto'||strategy==='resourceSaver'){
       global.OneToneIpc.invoke('cmd_voice_vosk_retry_start',{}).catch(function(){});
     }else{
@@ -2026,8 +2035,8 @@
       return;
     }
     var wake=(hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake)||{};
-    var voskRes=opts.voskRes||wake.vosk;
-    if(voskRes&&!voskListeningOk(voskRes)){
+    var voskRes=opts.voskRes!=null?opts.voskRes:wake.vosk;
+    if(!voskRes||!voskListeningOk(voskRes)){
       ensureHomeVoiceEngine(opts);
       return;
     }
@@ -3722,6 +3731,7 @@
     ensureHomeVoiceEngine:ensureHomeVoiceEngine,
     ensureHomeVoiceEngineIfMismatch:ensureHomeVoiceEngineIfMismatch,
     ensureHomeVoiceListening:ensureHomeVoiceListening,
+    unparkHomeAsrQuiet:unparkHomeAsrQuiet,
     startPoll:startVoiceStatusPoll,
     liveFingerprint:voiceWakeLiveFingerprint,
     refreshDrawerMic:refreshDrawerMicAfterVoiceToggle,
