@@ -66,6 +66,7 @@
       if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
     });
     bindClick('btnCancelRecord',hooks.cancelDraftOrRecording);
+    bindClick('btnCancelRecordInline',hooks.cancelDraftOrRecording);
     var btnKeySchemeAdd=$('btnKeySchemeAdd');
     if(btnKeySchemeAdd){
       btnKeySchemeAdd.onclick=function(){

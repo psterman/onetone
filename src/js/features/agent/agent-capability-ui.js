@@ -962,12 +962,25 @@
     if (rec.mode && rec.mode() !== 'none') return;
     setSub(t('agentCapRecording', '按下快捷键…'));
     if (btn) btn.classList.add('is-recording');
-    var host = document.getElementById('habitKeyMapCellTarget');
+    var table = global.OneToneHabitKeyMappingTable;
+    var host =
+      (table && table.recordingChromeHostEl && table.recordingChromeHostEl()) ||
+      document.getElementById('habitKeyMapCellTarget');
     if (host) host.classList.add('is-recording');
+    if (table && table.syncCaptureRecordingChrome) {
+      try {
+        table.syncCaptureRecordingChrome();
+      } catch (_) {}
+    }
     rec.startAgentBinding(m.id, {
       onDone: function (chord) {
         if (btn) btn.classList.remove('is-recording');
         if (host) host.classList.remove('is-recording');
+        if (table && table.syncCaptureRecordingChrome) {
+          try {
+            table.syncCaptureRecordingChrome();
+          } catch (_) {}
+        }
         var next = String(chord || '').trim();
         var conflict = findChordConflict(m, next, slotId);
         if (conflict) {
@@ -991,6 +1004,11 @@
       onCancel: function () {
         if (btn) btn.classList.remove('is-recording');
         if (host) host.classList.remove('is-recording');
+        if (table && table.syncCaptureRecordingChrome) {
+          try {
+            table.syncCaptureRecordingChrome();
+          } catch (_) {}
+        }
         var b3 = bindingFor(m, slotId, 'key');
         var label = (b3 && b3.triggerBinding) ? friendlyChord(b3.triggerBinding) : '';
         setSub(label || t('codexCapTapLoad', '点击加载到识别键'));

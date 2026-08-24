@@ -15,6 +15,7 @@ export interface KeysRecordingFeedbackModel {
 
 interface LegacyKeysPanel {
   buildKeysRecordingFeedbackModel?: () => KeysRecordingFeedbackModel;
+  applyRecordingHighlightHosts?: (model: KeysRecordingFeedbackModel) => void;
 }
 
 const EMPTY: KeysRecordingFeedbackModel = {
@@ -69,13 +70,10 @@ export function applyKeysRecordingFeedbackHosts(model: KeysRecordingFeedbackMode
     conflict.textContent = model.conflictText || '';
     conflict.classList.toggle('is-warn', !!model.conflictWarn);
   }
-  const trigRow = document.getElementById('habitKeyMapRowTrigger');
-  const tgtRow = document.getElementById('habitKeyMapRowTarget');
-  if (trigRow) trigRow.classList.toggle('is-recording-active', model.mode === 'trigger');
-  if (tgtRow) {
-    tgtRow.classList.toggle(
-      'is-recording-active',
-      model.mode === 'target' || model.mode === 'agentBinding',
-    );
+  const api = legacyKeysPanel();
+  if (typeof api.applyRecordingHighlightHosts === 'function') {
+    try {
+      api.applyRecordingHighlightHosts(model);
+    } catch (_) {}
   }
 }

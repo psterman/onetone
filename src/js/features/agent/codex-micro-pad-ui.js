@@ -3247,7 +3247,7 @@
         (focused ? ' is-focused' : '') + '" ' +
         'data-act="topbar-jump" data-agent="' + esc(c.agent) + '" data-status="idle"' +
         (focused ? ' aria-current="true"' : '') + '>' +
-        '<img src="' + esc(agentLightIconSrc(c.agent)) + '" alt="" decoding="async" aria-hidden="true">' +
+        '<img src="' + esc(agentLightIconSrc(c.agent)) + '" alt="" width="16" height="16" decoding="async" aria-hidden="true">' +
         '<i class="soft-pad-agent-bar__dot" aria-hidden="true"></i></button>'
       );
     }).concat(habitIds.map(function (hid) {
@@ -3257,7 +3257,7 @@
         (focused ? ' is-focused' : '') + '" ' +
         'data-act="topbar-jump" data-habit-id="' + esc(hid) + '" data-status="idle"' +
         (focused ? ' aria-current="true"' : '') + '>' +
-        '<img src="' + esc(habitIconForMappingId(hid)) + '" alt="" decoding="async" aria-hidden="true">' +
+        '<img src="' + esc(habitIconForMappingId(hid)) + '" alt="" width="16" height="16" decoding="async" aria-hidden="true">' +
         '<i class="soft-pad-agent-bar__dot" aria-hidden="true"></i></button>'
       );
     })).join('');

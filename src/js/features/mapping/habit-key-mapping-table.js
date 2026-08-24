@@ -34,6 +34,55 @@
     if(host&&btn&&btn.parentNode!==host) host.appendChild(btn);
   }
 
+  function captureOwnsLiveRecording(){
+    var picker=global.OneToneKeysChannelCommandPicker;
+    if(!picker||!picker.isCapturePopoverOpen||!picker.isCapturePopoverOpen()) return false;
+    if(picker.getActiveTab&&picker.getActiveTab()!=='key') return false;
+    var rec=global.OneToneMappingRecording;
+    var mode=rec&&rec.mode?String(rec.mode()):'none';
+    return mode==='target'||mode==='agentBinding';
+  }
+
+  function recordingChromeHostEl(){
+    if(captureOwnsLiveRecording()){
+      return $('keysCaptureKeycapZone')||$('keysCaptureKeycapHost')||$('habitKeyMapCellTarget');
+    }
+    return $('habitKeyMapCellTarget');
+  }
+
+  function mountRecordingChromeToCapture(){
+    var fbHost=$('keysCaptureRecordingFeedbackHost');
+    var probeHost=$('keysCaptureRecordProbeHost');
+    var fb=$('keysRecordingFeedback');
+    var probe=$('recordProbePanel');
+    if(fbHost&&fb&&fb.parentNode!==fbHost) fbHost.appendChild(fb);
+    if(probeHost&&probe&&probe.parentNode!==probeHost) probeHost.appendChild(probe);
+  }
+
+  function restoreRecordingChromeHome(){
+    var fb=$('keysRecordingFeedback');
+    var probe=$('recordProbePanel');
+    var section=$('quickKeyWakeSection');
+    var mapSec=$('habitKeyMappingSection');
+    var pipe=$('keysWorkflowPipeline');
+    if(fb&&section&&section.parentNode){
+      if(fb.parentNode!==section.parentNode||fb.nextSibling!==section){
+        section.parentNode.insertBefore(fb,section);
+      }
+    }
+    if(probe&&mapSec){
+      var before=pipe&&pipe.parentNode===mapSec?pipe:mapSec.firstChild;
+      if(probe.parentNode!==mapSec||(before&&probe.nextSibling!==before)){
+        mapSec.insertBefore(probe,before);
+      }
+    }
+  }
+
+  function syncCaptureRecordingChrome(){
+    if(captureOwnsLiveRecording()) mountRecordingChromeToCapture();
+    else restoreRecordingChromeHome();
+  }
+
   function mount(){
     var trigCell=$('habitKeyMapCellTrigger');
     var tgtCell=$('habitKeyMapCellTarget');
@@ -336,6 +385,11 @@
     mount:mount,
     mountTargetRecordToCapture:mountTargetRecordToCapture,
     restoreTargetRecordFromStash:restoreTargetRecordFromStash,
+    mountRecordingChromeToCapture:mountRecordingChromeToCapture,
+    restoreRecordingChromeHome:restoreRecordingChromeHome,
+    syncCaptureRecordingChrome:syncCaptureRecordingChrome,
+    captureOwnsLiveRecording:captureOwnsLiveRecording,
+    recordingChromeHostEl:recordingChromeHostEl,
     syncRowStatus:syncRowStatus,
     highlightRow:highlightRow,
     bindEvents:bindEvents,

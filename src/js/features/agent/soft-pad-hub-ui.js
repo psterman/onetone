@@ -905,6 +905,7 @@
       var kind = kindForMapping(m);
       var pad = m.codexMicroPad;
       var flags = softPadRuntimeFlags(m);
+      if (kind === SOFT_PAD_UNIVERSAL_KIND) return; // synthetic universalSoftPadSchemeEntry() only
       if (!isHubSoftPadKind(kind)) {
         // Custom Soft Pad habits: only show when pad switch is on (configured).
         if (!flags.padSwitchOn) return;

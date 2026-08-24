@@ -977,6 +977,8 @@
     var items=sortedMappings().filter(function(m){
       if(!m) return false;
       if(baselineId&&String(m.id||'')===baselineId) return true;
+      // ponytail: rail 只保留 baseline + 应用场景；第二条「通用设置」legacy 全局习惯会跟「通用」重复
+      if(baselineId&&!isAppScenarioScene(m)) return false;
       if(!m.enabled) return false;
       if(rules&&rules.isIncompleteCustomStub&&rules.isIncompleteCustomStub(m)) return false;
       return true;

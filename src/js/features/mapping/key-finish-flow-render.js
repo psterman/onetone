@@ -108,6 +108,8 @@
     var hintText='';
     var hintHidden=true;
     if(m&&finishMode){
+      var allowed=allowedFinishModes(m);
+      if(allowed.indexOf(finishMode)<0) finishMode=allowed[0]||'manual';
       hintText=t(finishModeHintKey(finishMode,gesture));
       hintHidden=false;
     }

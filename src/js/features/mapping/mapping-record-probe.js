@@ -144,11 +144,22 @@
       navigator.clipboard.writeText(body).catch(function(){});
     }
   }
+  function syncProbeExpandLabel(panel){
+    var btn=$('btnRecordProbeExpand');
+    if(!btn||!panel) return;
+    var t=global.OneToneI18n&&global.OneToneI18n.t;
+    var expanded=panel.classList.contains('is-expanded');
+    btn.textContent=expanded
+      ?(t?t('keysCaptureProbeCollapse','收起检测'):'收起检测')
+      :(t?t('keysCaptureProbeExpand','按键没反应？点开检测'):'按键没反应？点开检测');
+    btn.setAttribute('aria-expanded',expanded?'true':'false');
+  }
   function bind(){
     var btn=$('btnRecordProbeCopy');
     var clr=$('btnRecordProbeClear');
     var adv=$('recordProbeAdvancedHid');
     var host=$('recordProbeHidList');
+    var expand=$('btnRecordProbeExpand');
     if(btn) btn.addEventListener('click',function(e){ e.preventDefault(); copy(); });
     if(clr) clr.addEventListener('click',function(e){ e.preventDefault(); clear(); });
     if(adv){
@@ -163,6 +174,16 @@
       var row=hidRows[idx];
       if(row) bindHidKey(row.key, row.note);
     });
+    if(expand){
+      expand.addEventListener('click',function(e){
+        e.preventDefault();
+        var panel=$('recordProbePanel');
+        if(!panel) return;
+        panel.classList.toggle('is-expanded');
+        syncProbeExpandLabel(panel);
+      });
+      syncProbeExpandLabel($('recordProbePanel'));
+    }
     render();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bind);

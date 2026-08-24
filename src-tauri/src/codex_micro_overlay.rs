@@ -4519,25 +4519,22 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
                             .spawn(move || {
                                 crate::config::save_config(&snap);
                             });
-                        crate::voice_bootstrap::activate_desired_engine(
-                            app,
-                            state,
-                            "force:kws_grammar_reload",
-                        );
                     } else {
                         drop(cfg);
                     }
                     crate::cursor_beginner::arm(state, app, false);
+                    // One enqueue only: changed+first used to sync-activate twice on the
+                    // 250ms maybe_tick tokio worker and storm vosk → UI_HB_STALL_5S.
                     static KWS_BEGINNER_RELOAD: std::sync::OnceLock<std::sync::atomic::AtomicBool> =
                         std::sync::OnceLock::new();
                     let reloaded = KWS_BEGINNER_RELOAD.get_or_init(|| {
                         std::sync::atomic::AtomicBool::new(false)
                     });
-                    if !reloaded.load(std::sync::atomic::Ordering::Relaxed) {
-                        reloaded.store(true, std::sync::atomic::Ordering::Relaxed);
-                        crate::voice_bootstrap::activate_desired_engine(
-                            app,
-                            state,
+                    let first = !reloaded.swap(true, std::sync::atomic::Ordering::Relaxed);
+                    if changed || first {
+                        crate::voice_supervisor::enqueue_activate(
+                            app.clone(),
+                            Arc::clone(state),
                             "force:kws_grammar_reload",
                         );
                     }
@@ -4582,9 +4579,10 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
                     let snap = cfg.clone();
                     drop(cfg);
                     crate::soft_pad_runtime::request_soft_pad_recompute(&snap);
-                    crate::voice_bootstrap::activate_desired_engine(
-                        app,
-                        state,
+                    // Never sync-activate on maybe_tick — blocks tokio + ACTIVATE_LOCK.
+                    crate::voice_supervisor::enqueue_activate(
+                        app.clone(),
+                        Arc::clone(state),
                         "force:kws_grammar_reload",
                     );
                     let _ = std::thread::Builder::new()

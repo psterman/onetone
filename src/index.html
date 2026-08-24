@@ -800,6 +800,7 @@
                     <span class="keys-recording-pulse" aria-hidden="true"></span>
                     <span class="keys-recording-feedback-text" id="keysRecordingFeedbackText"></span>
                   </div>
+                  <button type="button" class="btn-cancel-record" id="btnCancelRecordInline" hidden>取消</button>
                 </div>
                 <p class="keys-recording-conflict" id="keysRecordingConflict" hidden role="alert"></p>
               </div>
@@ -810,6 +811,7 @@
                   <header class="record-probe-head">
                     <strong id="recordProbeTitle">录制检测</strong>
                     <span class="record-probe-status" id="recordProbeStatus">等待按键…</span>
+                    <button type="button" class="record-probe-expand-btn" id="btnRecordProbeExpand" data-i18n="keysCaptureProbeExpand">按键没反应？点开检测</button>
                     <span class="record-probe-actions">
                       <button type="button" class="record-probe-btn" id="btnRecordProbeCopy">复制日志</button>
                       <button type="button" class="record-probe-btn" id="btnRecordProbeClear">清空</button>
@@ -4525,14 +4527,16 @@
           </div>
           <div class="keys-capture-key-panel" id="keysCaptureKeyPanel" data-capture-panel="key" role="tabpanel" aria-labelledby="keysChannelTabKey">
             <div class="keys-capture-keycap-zone keys-workflow-keycap-zone" id="keysCaptureKeycapZone">
-              <p class="keys-channel-group-label" id="keysCaptureKeycapTitle" data-i18n="keysCaptureImeRecordTitle">听写识别键</p>
+              <p class="keys-channel-group-label" id="keysCaptureKeycapTitle" data-i18n="keysCaptureImeRecordTitle">听写启动键</p>
               <div class="keys-step-row keys-step-row--hero">
                 <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="keysCaptureKeycapHost"></div>
                 <div class="habit-flow-step-act keys-step-record-act" id="keysCaptureKeycapRecordAct"></div>
               </div>
-              <p class="keys-keycap-mode" id="keysCaptureKeycapBadge" data-i18n="keysHeroModeIme">输入法识别键</p>
-              <p class="keys-keycap-hint" id="keysCaptureRecordHint" data-i18n="keysCaptureRecordHint">点击键帽录制</p>
+              <p class="keys-keycap-mode" id="keysCaptureKeycapBadge" data-i18n="keysHeroModeIme" hidden aria-hidden="true">启动听写的按键</p>
+              <p class="keys-keycap-hint" id="keysCaptureRecordHint" data-i18n="keysCaptureRecordHint">先点上方大按钮，再按下你要设的快捷键</p>
             </div>
+            <div class="keys-capture-recording-feedback-host" id="keysCaptureRecordingFeedbackHost"></div>
+            <div class="keys-capture-record-probe-host" id="keysCaptureRecordProbeHost"></div>
             <p class="keys-channel-group-label" id="keysCaptureKeyFinishLbl" data-i18n="keysCaptureKeyFinishTitle">按键收尾</p>
             <div class="keys-finish-mode-host" id="keysFinishModeHost">
               <div class="voice-end-key-mode-panel keys-finish-segments" id="voiceEndKeyModePanel"></div>

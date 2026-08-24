@@ -81,7 +81,14 @@
       return all.filter(function(m){ return sameAppScenarioGroup(m, ctx); });
     }
     if(!diff||!diff.isAppScenarioMapping) return all;
-    return all.filter(function(m){ return !diff.isAppScenarioMapping(m); });
+    var cfg=global.OneToneState&&global.OneToneState.state?global.OneToneState.state.config:null;
+    var baseline=diff.findGlobalBaselineMapping?diff.findGlobalBaselineMapping(cfg||{},core()):null;
+    var baselineId=baseline&&baseline.id?String(baseline.id):'';
+    return all.filter(function(m){
+      if(diff.isAppScenarioMapping(m)) return false;
+      if(!baselineId) return true;
+      return String(m.id||'')===baselineId;
+    });
   }
 
   /** Keep selectedMappingId aligned with the active keys-panel context. */
@@ -1274,7 +1281,23 @@
     return '';
   }
 
+  function syncInlineCancelForCapture(){
+    var table=global.OneToneHabitKeyMappingTable;
+    var captureOwns=table&&table.captureOwnsLiveRecording&&table.captureOwnsLiveRecording();
+    var snap=recordingUiSnapshot();
+    var recording=snap.recording;
+    var showInline=!!(captureOwns&&recording);
+    var inline=$('btnCancelRecordInline');
+    var bar=$('recordCancelBar');
+    if(inline){
+      inline.hidden=!showInline;
+      if(showInline) inline.textContent=t('cancelRecord','取消录制');
+    }
+    if(bar) bar.classList.toggle('is-capture-suppressed',showInline);
+  }
+
   function syncCancelButtonHost(){
+    syncInlineCancelForCapture();
     // P12b-3：录制取消条岛拥有 #btnCancelRecord，禁止挪出 React root
     if(global.__otRecordCancelBarMounted) return;
     var btn=$('btnCancelRecord');
@@ -1317,8 +1340,37 @@
     };
   }
 
+  function applyRecordingHighlightHosts(model){
+    if(!model) model=buildKeysRecordingFeedbackModel();
+    var table=global.OneToneHabitKeyMappingTable;
+    var captureOwns=table&&table.captureOwnsLiveRecording&&table.captureOwnsLiveRecording();
+    var trigRow=$('habitKeyMapRowTrigger');
+    var tgtRow=$('habitKeyMapRowTarget');
+    var zone=$('keysCaptureKeycapZone');
+    var hint=$('keysCaptureRecordHint');
+    if(trigRow) trigRow.classList.toggle('is-recording-active',!captureOwns&&model.mode==='trigger');
+    if(tgtRow) tgtRow.classList.toggle('is-recording-active',!captureOwns&&(model.mode==='target'||model.mode==='agentBinding'));
+    if(zone){
+      zone.classList.toggle(
+        'is-recording-active',
+        !!(captureOwns&&(model.mode==='target'||model.mode==='agentBinding'))
+      );
+    }
+    if(hint){
+      hint.textContent=captureOwns&&model.recording
+        ?t('keysCaptureRecordHintWaiting','正在等待按键…')
+        :t('keysCaptureRecordHint','先点上方大按钮，再按下你要设的快捷键');
+    }
+    syncInlineCancelForCapture();
+  }
+
   function applyKeysRecordingFeedbackHost(model){
     if(!model) model=buildKeysRecordingFeedbackModel();
+    var table=global.OneToneHabitKeyMappingTable;
+    if(table&&table.syncCaptureRecordingChrome){
+      try{ table.syncCaptureRecordingChrome(); }catch(_){}
+    }
+    applyRecordingHighlightHosts(model);
     if(global.__otKeysRecordingFeedbackMounted&&typeof global.__otKeysRecordingFeedbackSync==='function'){
       global.__otKeysRecordingFeedbackSync();
       return;
@@ -1336,10 +1388,6 @@
       conflict.textContent=model.conflictText||'';
       conflict.classList.toggle('is-warn',!!model.conflictWarn);
     }
-    var trigRow=$('habitKeyMapRowTrigger');
-    var tgtRow=$('habitKeyMapRowTarget');
-    if(trigRow) trigRow.classList.toggle('is-recording-active',model.mode==='trigger');
-    if(tgtRow) tgtRow.classList.toggle('is-recording-active',model.mode==='target'||model.mode==='agentBinding');
   }
 
   function renderRecordingFeedback(){
@@ -1633,6 +1681,7 @@
     bindEvents:bindEvents,
     renderRecordingFeedback:renderRecordingFeedback,
     syncCancelButtonHost:syncCancelButtonHost,
+    applyRecordingHighlightHosts:applyRecordingHighlightHosts,
     renderAppContext:renderAppContext,
     renderHabitStrip:renderHabitStrip,
     renderAppContextStrip:renderHabitStrip,

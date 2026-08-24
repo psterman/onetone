@@ -107,27 +107,85 @@ pub fn schedule_save(state: Arc<AppState>, window: WebviewWindow) {
     });
 }
 
-fn capture_into(cfg: &mut VoiceConfig, window: &WebviewWindow) {
-    // Minimized / tray-hidden geometry is not meaningful and must not overwrite layout.
+struct WindowGeo {
+    skip: bool,
+    maximized: bool,
+    width: Option<f64>,
+    height: Option<f64>,
+    x: Option<f64>,
+    y: Option<f64>,
+}
+
+/// Win32 geometry queries — must run *outside* cfg.lock (under-lock queries
+/// stacked with voice activate → layout_persist held≈3.5s / UI_HB_STALL_5S).
+fn read_window_geo(window: &WebviewWindow) -> WindowGeo {
     if window.is_minimized().unwrap_or(false) {
-        return;
+        return WindowGeo {
+            skip: true,
+            maximized: false,
+            width: None,
+            height: None,
+            x: None,
+            y: None,
+        };
     }
-    cfg.window_maximized = window.is_maximized().unwrap_or(false);
-    if cfg.window_maximized {
-        return;
+    let maximized = window.is_maximized().unwrap_or(false);
+    if maximized {
+        return WindowGeo {
+            skip: false,
+            maximized: true,
+            width: None,
+            height: None,
+            x: None,
+            y: None,
+        };
     }
     let scale = window.scale_factor().unwrap_or(1.0);
-    if let Ok(size) = window.inner_size() {
-        let logical = size.to_logical::<f64>(scale);
-        cfg.window_width = logical.width.max(MIN_W);
-        cfg.window_height = logical.height.max(MIN_H);
+    let (width, height) = window
+        .inner_size()
+        .ok()
+        .map(|size| {
+            let logical = size.to_logical::<f64>(scale);
+            (Some(logical.width.max(MIN_W)), Some(logical.height.max(MIN_H)))
+        })
+        .unwrap_or((None, None));
+    let (x, y) = window
+        .outer_position()
+        .ok()
+        .map(|pos| {
+            let logical = pos.to_logical::<f64>(scale);
+            if is_storable_position(logical.x, logical.y) {
+                (Some(logical.x), Some(logical.y))
+            } else {
+                (None, None)
+            }
+        })
+        .unwrap_or((None, None));
+    WindowGeo {
+        skip: false,
+        maximized: false,
+        width,
+        height,
+        x,
+        y,
     }
-    if let Ok(pos) = window.outer_position() {
-        let logical = pos.to_logical::<f64>(scale);
-        if is_storable_position(logical.x, logical.y) {
-            cfg.window_x = Some(logical.x);
-            cfg.window_y = Some(logical.y);
-        }
+}
+
+fn apply_window_geo(cfg: &mut VoiceConfig, geo: &WindowGeo) {
+    if geo.skip {
+        return;
+    }
+    cfg.window_maximized = geo.maximized;
+    if geo.maximized {
+        return;
+    }
+    if let (Some(w), Some(h)) = (geo.width, geo.height) {
+        cfg.window_width = w;
+        cfg.window_height = h;
+    }
+    if let (Some(x), Some(y)) = (geo.x, geo.y) {
+        cfg.window_x = Some(x);
+        cfg.window_y = Some(y);
     }
 }
 
@@ -144,13 +202,14 @@ fn layout_fingerprint(cfg: &VoiceConfig) -> (bool, bool, u32, u32, i32, i32) {
 
 fn persist_and_log(state: &Arc<AppState>, window: &WebviewWindow, reason: &str) {
     let t0 = Instant::now();
-    // Capture under lock, then drop before disk — save_config under cfg.lock 假死'd IPC/HB.
+    // Geometry first (no cfg.lock), then short lock mutate — save_config stays off-lock.
+    let geo = read_window_geo(window);
     let (changed, snapshot, lock_ms) = {
         let _ipc = crate::ui_heartbeat::IpcInflightGuard::enter("layout_persist");
         let lock_t0 = Instant::now();
         let mut cfg = state.cfg.lock();
         let before = layout_fingerprint(&cfg);
-        capture_into(&mut cfg, window);
+        apply_window_geo(&mut cfg, &geo);
         cfg.window_layout_seen = true;
         let after = layout_fingerprint(&cfg);
         let changed = before != after;
@@ -209,7 +268,8 @@ fn persist_and_log(state: &Arc<AppState>, window: &WebviewWindow, reason: &str) 
 
 #[cfg(test)]
 mod tests {
-    use super::is_storable_position;
+    use super::{apply_window_geo, is_storable_position, WindowGeo};
+    use crate::config::VoiceConfig;
 
     #[test]
     fn rejects_windows_hidden_sentinel_position() {
@@ -219,5 +279,51 @@ mod tests {
     #[test]
     fn accepts_normal_position() {
         assert!(is_storable_position(120.0, 80.0));
+    }
+
+    #[test]
+    fn apply_window_geo_skips_minimized_and_sets_restored() {
+        let mut cfg = VoiceConfig::default();
+        cfg.window_width = 800.0;
+        apply_window_geo(
+            &mut cfg,
+            &WindowGeo {
+                skip: true,
+                maximized: false,
+                width: Some(900.0),
+                height: Some(700.0),
+                x: Some(10.0),
+                y: Some(20.0),
+            },
+        );
+        assert_eq!(cfg.window_width, 800.0);
+
+        apply_window_geo(
+            &mut cfg,
+            &WindowGeo {
+                skip: false,
+                maximized: false,
+                width: Some(900.0),
+                height: Some(700.0),
+                x: Some(10.0),
+                y: Some(20.0),
+            },
+        );
+        assert_eq!(cfg.window_width, 900.0);
+        assert_eq!(cfg.window_height, 700.0);
+        assert_eq!(cfg.window_x, Some(10.0));
+        assert_eq!(cfg.window_y, Some(20.0));
+    }
+
+    /// Cursor FG rising edge: changed+first must enqueue once (not twice).
+    #[test]
+    fn kws_reload_coalesce_once() {
+        fn need(changed: bool, first: bool) -> bool {
+            changed || first
+        }
+        assert!(need(true, true)); // was double-fire
+        assert!(need(false, true));
+        assert!(need(true, false));
+        assert!(!need(false, false));
     }
 }

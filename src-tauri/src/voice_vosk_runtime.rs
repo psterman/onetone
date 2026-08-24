@@ -944,6 +944,8 @@ pub fn voice_vosk_retry_start(
     } else {
         "force:vosk_retry_start"
     };
-    crate::voice_bootstrap::activate_desired_engine(app, state, reason);
+    // Enqueue — sync activate on the IPC thread stacked with overlay kws reload
+    // and held ACTIVATE_LOCK → voiceStatusPoll UI_HB_STALL_5S / 假死.
+    crate::voice_supervisor::enqueue_activate(app.clone(), Arc::clone(state), reason);
     voice_vosk_status(state, resource_dir)
 }

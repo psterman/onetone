@@ -48,6 +48,7 @@
 
   function bindEvents(){
     bindPanelFallback($('settingsPanelKeys'));
+    bindPanelFallback($('keysCapturePopover'));
   }
   global.OneToneKeyFinishFlowUi={bindEvents:bindEvents};
 })((typeof window!=='undefined')?window:globalThis);

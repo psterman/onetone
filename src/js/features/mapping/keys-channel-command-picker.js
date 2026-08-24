@@ -1435,6 +1435,11 @@
     } else if (table && table.restoreTargetRecordFromStash) {
       table.restoreTargetRecordFromStash();
     }
+    if (table && table.syncCaptureRecordingChrome) {
+      try {
+        table.syncCaptureRecordingChrome();
+      } catch (_) {}
+    }
     syncCaptureHeroDisplay();
     if (global.OneToneKeysPanelUi && global.OneToneKeysPanelUi.syncRecordButtons) {
       try {
@@ -1471,7 +1476,7 @@
     var anchor = document.getElementById('habitKeyMapCellTarget');
     if (!pop || !anchor) return;
     pop.hidden = false;
-    var pw = Math.min(560, Math.max(280, window.innerWidth - 24));
+    var pw = Math.min(680, Math.max(280, window.innerWidth - 24));
     pop.style.width = pw + 'px';
     var r = anchor.getBoundingClientRect();
     var ph = pop.offsetHeight || 420;
@@ -3273,8 +3278,16 @@
     var prevLock = scopeLock;
     scopeLock = 'record';
 
-    var host = document.getElementById('habitKeyMapCellTarget');
+    var table = global.OneToneHabitKeyMappingTable;
+    var host =
+      (table && table.recordingChromeHostEl && table.recordingChromeHostEl()) ||
+      document.getElementById('habitKeyMapCellTarget');
     if (host) host.classList.add('is-recording');
+    if (table && table.syncCaptureRecordingChrome) {
+      try {
+        table.syncCaptureRecordingChrome();
+      } catch (_) {}
+    }
     var excludeRef = snap.keyBindingRef || '';
     var upsertOpts = {
       bindingRef: snap.keyBindingRef ? snap.keyBindingRef : null,
@@ -3292,6 +3305,11 @@
         onDone: function (chord) {
           if (host) host.classList.remove('is-recording');
           endRecordLock();
+          if (table && table.syncCaptureRecordingChrome) {
+            try {
+              table.syncCaptureRecordingChrome();
+            } catch (_) {}
+          }
           var next = String(chord || '').trim();
           if (!next) return;
           var mapNow = mappingById(mid);
@@ -3387,8 +3405,16 @@
     }
     if (rec.mode && rec.mode() !== 'none') return;
     toast(t('keysAddAppShortcutRecordOut', '先录制要发送到应用的快捷键（如 Ctrl+K）'));
-    var host = document.getElementById('habitKeyMapCellTarget');
+    var table = global.OneToneHabitKeyMappingTable;
+    var host =
+      (table && table.recordingChromeHostEl && table.recordingChromeHostEl()) ||
+      document.getElementById('habitKeyMapCellTarget');
     if (host) host.classList.add('is-recording');
+    if (table && table.syncCaptureRecordingChrome) {
+      try {
+        table.syncCaptureRecordingChrome();
+      } catch (_) {}
+    }
     var wizSnap = {
       mappingId: mid,
       appTargetId: String(m.appTargetId || '')
@@ -3399,6 +3425,11 @@
     function endWizardLock() {
       recordSnap = null;
       if (scopeLock === 'record') scopeLock = prevLock === 'record' ? 'manual' : prevLock;
+      if (table && table.syncCaptureRecordingChrome) {
+        try {
+          table.syncCaptureRecordingChrome();
+        } catch (_) {}
+      }
     }
     Promise.resolve(
       rec.startAgentBinding(mid, {
@@ -3651,6 +3682,23 @@
     if (backdrop) {
       backdrop.addEventListener('click', function () {
         closeCapturePopover({});
+      });
+    }
+    var keyZone = document.getElementById('keysCaptureKeycapZone');
+    if (keyZone) {
+      keyZone.addEventListener('click', function (ev) {
+        if (!capturePopoverOpen || activeTab !== 'key') return;
+        if (ev.target && ev.target.closest && ev.target.closest('button,a,input,label')) return;
+        var rec = global.OneToneMappingRecording;
+        if (rec && rec.mode && rec.mode() !== 'none') return;
+        if (hasSelection() && selection.sourceChannel && selection.sourceChannel !== 'key') {
+          recordSelected();
+          return;
+        }
+        var table = global.OneToneHabitKeyMappingTable;
+        if (table && table.startTargetRecordForKeysPanel) {
+          table.startTargetRecordForKeysPanel();
+        }
       });
     }
     if (tabs) {
