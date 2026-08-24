@@ -2055,8 +2055,8 @@
       global.OneToneHomeWorkbenchPanels.renderAll(vm);
     }
     refreshFollowFgToggle();
-    if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceEngineIfMismatch){
-      try{ global.OneToneVoiceWake.ensureHomeVoiceEngineIfMismatch(); }catch(_){}
+    if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceListening){
+      try{ global.OneToneVoiceWake.ensureHomeVoiceListening({ force:false }); }catch(_){}
     }
     if(global.OneToneState&&global.OneToneState.ui){
       var ui=global.OneToneState.ui;

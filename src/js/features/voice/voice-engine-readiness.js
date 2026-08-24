@@ -68,8 +68,8 @@
     }
     var ui=hooks().ui&&hooks().ui();
     if(!(ui&&ui.drawerOpen&&ui.settingsPanel==='voiceWake')){
-      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceEngineIfMismatch){
-        try{ global.OneToneVoiceWake.ensureHomeVoiceEngineIfMismatch({force:true}); }catch(_){}
+      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceListening){
+        try{ global.OneToneVoiceWake.ensureHomeVoiceListening({force:true}); }catch(_){}
       }
     }
     if(!entryWantsVoice()) return Promise.resolve();

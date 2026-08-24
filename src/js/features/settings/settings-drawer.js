@@ -739,8 +739,8 @@
       if(panelChanged){
         setTimeout(function(){
           if(!ui.drawerOpen||normalizePanel(ui.settingsPanel)!=='debug') return;
-          if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceEngine){
-            try{ global.OneToneVoiceWake.ensureHomeVoiceEngine({force:true}); }catch(_){}
+          if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceListening){
+            try{ global.OneToneVoiceWake.ensureHomeVoiceListening({force:true}); }catch(_){}
           }
         },500);
       }
@@ -1464,8 +1464,8 @@
 
     setTimeout(function(){
       if(ui.drawerOpen) return;
-      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceEngine){
-        try{ global.OneToneVoiceWake.ensureHomeVoiceEngine({force:true}); }catch(_){}
+      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceListening){
+        try{ global.OneToneVoiceWake.ensureHomeVoiceListening({force:true}); }catch(_){}
       }
       if(global.OneToneHomeWorkbench){
         try{

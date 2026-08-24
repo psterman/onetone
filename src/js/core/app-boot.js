@@ -228,8 +228,8 @@
         },400);
         setTimeout(function(){
           try{
-            if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceEngine){
-              global.OneToneVoiceWake.ensureHomeVoiceEngine({force:true});
+            if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceListening){
+              global.OneToneVoiceWake.ensureHomeVoiceListening({force:true});
             }
           }catch(_){}
         },900);
@@ -268,6 +268,10 @@
       }).catch(function(err){
         console.error('request runtime on focus',err);
       });
+      var ui=global.OneToneState&&global.OneToneState.ui;
+      if(!(ui&&ui.drawerOpen)&&global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceListening){
+        try{ global.OneToneVoiceWake.ensureHomeVoiceListening({ force:true }); }catch(_){}
+      }
     });
   }
   global.OneToneAppBoot={run:run};

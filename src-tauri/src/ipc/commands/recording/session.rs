@@ -26,6 +26,7 @@ pub fn cmd_start_recording(
         mode: record_mode,
     });
     *state.recording.lock() = true;
+    crate::hotkey_win::arm_recording_session();
     crate::voice_end_runtime::arm_external_voice_send_suppression(state.inner(), 1500);
     *state.record_hw_pending.lock() = None;
     *state.record_started_at.lock() = Some(Instant::now());
@@ -51,6 +52,7 @@ pub fn cmd_start_recording(
 #[tauri::command]
 pub fn cmd_stop_recording(app: tauri::AppHandle, state: tauri::State<Arc<AppState>>) {
     *state.recording.lock() = false;
+    crate::hotkey_win::disarm_recording_session();
     *state.recording_target.lock() = None;
     *state.record_hw_pending.lock() = None;
     *state.record_started_at.lock() = None;

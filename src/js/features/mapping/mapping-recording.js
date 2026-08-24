@@ -556,14 +556,14 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       m.triggerSource=null; m.sourceKey=''; m.sourceTime='';
     }
     rec.startPending=true;
+    setRecording('trigger');
     hooks().pushLog('[record] start trigger mapping='+String(rec.mappingId||''));
     hooks().pushLog(t('logStartTrigger'));
-    return disableMappingForRecordingAsync(m).then(function(){
-      return invokeStartRecording(rec.mappingId,'trigger');
-    }).then(function(ok){
+    return invokeStartRecording(rec.mappingId,'trigger').then(function(ok){
       rec.startPending=false;
       if(!ok||captureGen!==rec.captureGen){
         if(captureGen===rec.captureGen){
+          setRecording('none');
           restoreMappingEnabledAfterRecordCancel(m);
           rec.snapshot=null;
           rec.mappingId='';
@@ -571,15 +571,17 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
         }
         return false;
       }
-      setRecording('trigger');
-      updateRecordingPreview('trigger','');
-      notifyOnboardingRecordingPreview('trigger','');
-      var triggerState=$('triggerState');
-      if(triggerState) triggerState.textContent=t('triggerRecordHint');
-      rec.timer=setTimeout(function(){
-        if(rec.mode==='trigger'){ cancelRecording(); hooks().pushLog(t('logTimeout')); }
-      },30000);
-      return true;
+      return disableMappingForRecordingAsync(m).then(function(){
+        hooks().armTriggerLeftClickIgnore(360);
+        updateRecordingPreview('trigger','');
+        notifyOnboardingRecordingPreview('trigger','');
+        var triggerState=$('triggerState');
+        if(triggerState) triggerState.textContent=t('triggerRecordHint');
+        rec.timer=setTimeout(function(){
+          if(rec.mode==='trigger'){ cancelRecording(); hooks().pushLog(t('logTimeout')); }
+        },30000);
+        return true;
+      });
     });
   }
 
@@ -634,13 +636,13 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     var captureGen=rec.captureGen;
     var m=OneToneMappingCore.byId(rec.mappingId)||OneToneMappingCore.selected();
     rec.startPending=true;
+    setRecording('agentBinding');
     hooks().pushLog('[record] start agent binding mapping='+String(rec.mappingId||''));
     hooks().pushLog(t('logStartTrigger'));
-    return disableMappingForRecordingAsync(m).then(function(){
-      return invokeStartRecording(rec.mappingId,'agentBinding');
-    }).then(function(ok){
+    return invokeStartRecording(rec.mappingId,'agentBinding').then(function(ok){
       rec.startPending=false;
       if(!ok){
+        setRecording('none');
         var onCancel=rec.agentBindingCapture&&rec.agentBindingCapture.onCancel;
         rec.agentBindingCapture=null;
         restoreMappingEnabledAfterRecordCancel(m);
@@ -650,23 +652,25 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
         return false;
       }
       if(captureGen!==rec.captureGen){
+        setRecording('none');
         restoreMappingEnabledAfterRecordCancel(m);
         rec.agentBindingCapture=null;
         rec.mappingId='';
         renderRecordCancelBar();
         return false;
       }
-      setRecording('agentBinding');
-      updateRecordingPreview('agentBinding','');
-      var triggerState=$('triggerState');
-      var targetState=$('targetState');
-      var hint=t('agentCapRecording','按下快捷键…');
-      if(triggerState) triggerState.textContent=hint;
-      if(targetState) targetState.textContent=hint;
-      rec.timer=setTimeout(function(){
-        if(rec.mode==='agentBinding'&&rec.agentBindingCapture){ cancelRecording(); hooks().pushLog(t('logTimeout')); }
-      },30000);
-      return ok;
+      return disableMappingForRecordingAsync(m).then(function(){
+        updateRecordingPreview('agentBinding','');
+        var triggerState=$('triggerState');
+        var targetState=$('targetState');
+        var hint=t('agentCapRecording','按下快捷键…');
+        if(triggerState) triggerState.textContent=hint;
+        if(targetState) targetState.textContent=hint;
+        rec.timer=setTimeout(function(){
+          if(rec.mode==='agentBinding'&&rec.agentBindingCapture){ cancelRecording(); hooks().pushLog(t('logTimeout')); }
+        },30000);
+        return true;
+      });
     });
   }
 
@@ -701,14 +705,14 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     const captureGen=rec.captureGen;
     const m=OneToneMappingCore.recording();
     rec.startPending=true;
+    setRecording('target');
     hooks().pushLog('[record] start target mapping='+String(rec.mappingId||''));
     hooks().pushLog(t('logStartTarget'));
-    return disableMappingForRecordingAsync(m).then(function(){
-      return invokeStartRecording(rec.mappingId,'target');
-    }).then(function(ok){
+    return invokeStartRecording(rec.mappingId,'target').then(function(ok){
       rec.startPending=false;
       if(!ok||captureGen!==rec.captureGen){
         if(captureGen===rec.captureGen){
+          setRecording('none');
           restoreMappingEnabledAfterRecordCancel(m);
           rec.snapshot=null;
           rec.mappingId='';
@@ -716,14 +720,15 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
         }
         return false;
       }
-      setRecording('target');
-      hooks().armTargetLeftClickIgnore(360);
-      updateRecordingPreview('target','');
-      notifyOnboardingRecordingPreview('target','');
-      rec.timer=setTimeout(function(){
-        if(rec.mode==='target'){ cancelRecording(); hooks().pushLog(t('logTimeout')); }
-      },30000);
-      return true;
+      return disableMappingForRecordingAsync(m).then(function(){
+        hooks().armTargetLeftClickIgnore(360);
+        updateRecordingPreview('target','');
+        notifyOnboardingRecordingPreview('target','');
+        rec.timer=setTimeout(function(){
+          if(rec.mode==='target'){ cancelRecording(); hooks().pushLog(t('logTimeout')); }
+        },30000);
+        return true;
+      });
     });
   }
 

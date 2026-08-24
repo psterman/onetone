@@ -564,6 +564,14 @@
     if(!el) return;
     var parts=micHeardLiveParts();
     if(!parts){
+      var summary=global.OneToneVoiceHomeSummary&&global.OneToneVoiceHomeSummary.compute
+        ?global.OneToneVoiceHomeSummary.compute():{};
+      var live=liveTextParts(summary,{});
+      if(live&&live.placeholder&&live.hintKey==='homeWbLiveVoskStoppedHint'){
+        el.textContent=t('homeWbLiveVoskStoppedHint');
+        el.classList.remove('is-partial','is-matched','is-miss');
+        return;
+      }
       el.textContent='';
       el.classList.remove('is-partial','is-matched','is-miss');
       return;

@@ -28,7 +28,9 @@ pub(crate) fn is_recordable_target_hotkey(key: &str) -> bool {
     is_volume_hotkey(key)
         || matches!(
             canonical_trigger(key).as_str(),
-            "Media_Next"
+            "XButton1"
+                | "XButton2"
+                | "Media_Next"
                 | "Media_Prev"
                 | "Media_Play_Pause"
                 | "Media_Stop"
@@ -51,5 +53,12 @@ mod tests {
         assert_eq!(normalize_hardware_key("Browser_Forward"), "Browser_Forward");
         assert_eq!(normalize_hardware_key("XButton1"), "XButton1");
         assert_eq!(normalize_hardware_key("XButton2"), "XButton2");
+    }
+
+    #[test]
+    fn mouse_side_buttons_are_recordable_target_hotkeys() {
+        assert!(is_recordable_target_hotkey("XButton1"));
+        assert!(is_recordable_target_hotkey("XButton2"));
+        assert!(!is_recordable_target_hotkey("LButton"));
     }
 }

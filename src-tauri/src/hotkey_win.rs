@@ -12,7 +12,8 @@ macro_rules! w {
 }
 
 use crate::config::{
-    bindings_need_mouse_hook, is_volume_hotkey, SCHEME_CYCLE_MARKER, SCHEME_SELECT_PREFIX,
+    bindings_need_mouse_hook, is_peripheral_trigger_key, is_volume_hotkey, SCHEME_CYCLE_MARKER,
+    SCHEME_SELECT_PREFIX,
 };
 use crate::device_identity;
 use crate::input_ext::InputExtensionBus;
@@ -55,6 +56,17 @@ static RECORDING_SENDER: OnceLock<Mutex<Option<mpsc::Sender<String>>>> = OnceLoc
 /// True for the whole StartRecording→StopRecording window, even when
 /// `recording_sender` is momentarily cleared during hook transitions.
 static RECORDING_SESSION: AtomicBool = AtomicBool::new(false);
+
+/// Arm before the hotkey thread finishes StartRecording so side buttons bound to
+/// voice/IME cannot fire through `resolve_active_binding` during IPC/hook setup.
+pub fn arm_recording_session() {
+    RECORDING_SESSION.store(true, Ordering::SeqCst);
+}
+
+pub fn disarm_recording_session() {
+    RECORDING_SESSION.store(false, Ordering::SeqCst);
+}
+
 static RECORDING_HOOK: OnceLock<Mutex<isize>> = OnceLock::new();
 static RECORDING_MOUSE_HOOK: OnceLock<Mutex<isize>> = OnceLock::new();
 static ACTIVE_BINDINGS: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
@@ -764,6 +776,21 @@ fn dispatch_physical_payload(payload: &str, source: &str, report_hex: &str) -> b
         return true;
     }
 
+    if RECORDING_SESSION.load(Ordering::SeqCst) && !ev.is_keyup {
+        if is_peripheral_trigger_key(&ev.key) || is_volume_hotkey(&ev.key) {
+            pending_recording_mouse().lock().unwrap().push(ev.key.clone());
+            emit_input_obs(
+                onetone_logic::runtime_event::kind::INPUT_CAPTURED,
+                &ev.key,
+                ev.device.as_deref(),
+                report_hex,
+                "recording_pending",
+                source,
+            );
+            return true;
+        }
+    }
+
     if try_dispatch_named_pad(&ev.key, ev.is_keyup) {
         return true;
     }
@@ -967,6 +994,21 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
             _ => None,
         };
         if let Some(name) = btn {
+            let is_side = name == "XButton1" || name == "XButton2";
+            // Recording owns side buttons for the whole session — never voice-dispatch
+            // them even when `recording_sender` is not wired yet (IPC / hook race).
+            if is_side && session_active {
+                if !is_x_up {
+                    if sender_ready {
+                        if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
+                            sender.send(name.to_string()).ok();
+                        }
+                    } else {
+                        pending_recording_mouse().lock().unwrap().push(name.to_string());
+                    }
+                }
+                return 1;
+            }
             if sender_ready {
                 if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
                     if !is_x_up {
@@ -974,7 +1016,7 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
                     }
                 }
                 // Swallow side buttons so WebView2 does not treat them as Back/Forward.
-                if name == "XButton1" || name == "XButton2" {
+                if is_side {
                     return 1;
                 }
             } else if try_dispatch_named_pad(name, is_x_up) {
@@ -986,14 +1028,6 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
                         sender.send(name.to_string()).ok();
                     }
                 }
-                return 1;
-            } else if session_active && (name == "XButton1" || name == "XButton2") && !is_x_up {
-                // Sender race / StopRecording transition: session is active but the
-                // sender is not yet visible from inside the hook. Buffer the side
-                // button so the runtime loop can still route it to recording once
-                // it drains the buffer. Swallow the event so WebView2 does not
-                // navigate Back/Forward in the meantime.
-                pending_recording_mouse().lock().unwrap().push(name.to_string());
                 return 1;
             }
         } else if session_active && (w == WM_XBUTTONDOWN || w == WM_XBUTTONUP) {

@@ -1981,7 +1981,7 @@
     var desired=String(voskRes.desiredEngine||sup.desiredEngine||'').trim().toLowerCase();
     var active=String(voskRes.activeEngine||sup.activeEngine||'').trim().toLowerCase();
     if(desired!=='vosk'&&!voskRes.enabled) return;
-    if(desired==='vosk'&&active==='vosk') return;
+    if(desired==='vosk'&&active==='vosk'&&voskListeningOk(voskRes)) return;
     var st=String(voskRes.state||'').trim();
     if(st==='starting'||st==='stopping') return;
     var issue=String(voskRes.resourceIssue||'').trim();
@@ -2015,6 +2015,23 @@
     var wake=(hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake)||{};
     if(!voiceEngineMismatch(wake)) return;
     ensureHomeVoiceEngine(opts);
+  }
+
+  function ensureHomeVoiceListening(opts){
+    opts=opts||{};
+    if(settingsVoiceParked()||runtime().paused) return;
+    if(currentListeningStrategy()==='off') return;
+    if(opts.force){
+      ensureHomeVoiceEngine(opts);
+      return;
+    }
+    var wake=(hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake)||{};
+    var voskRes=opts.voskRes||wake.vosk;
+    if(voskRes&&!voskListeningOk(voskRes)){
+      ensureHomeVoiceEngine(opts);
+      return;
+    }
+    ensureHomeVoiceEngineIfMismatch(opts);
   }
 
   function nudgeVoiceStatusPoll(){
@@ -2128,7 +2145,13 @@
           }
         }
         if(!settingsVoiceParked()&&voskRes) maybeNudgeVoskOnHome(voskRes);
-        if(!settingsVoiceParked()) ensureHomeVoiceEngineIfMismatch();
+        if(!settingsVoiceParked()){
+          if(!ui().drawerOpen){
+            ensureHomeVoiceListening({ force:false, voskRes:voskRes });
+          }else{
+            ensureHomeVoiceEngineIfMismatch();
+          }
+        }
         if(!ui().drawerOpen&&global.OneToneHomeV9&&global.OneToneHomeV9.paintHomeLiveTextImmediate){
           try{ global.OneToneHomeV9.paintHomeLiveTextImmediate(); }catch(_){}
         }
@@ -3698,6 +3721,7 @@
     nudgePoll:nudgeVoiceStatusPoll,
     ensureHomeVoiceEngine:ensureHomeVoiceEngine,
     ensureHomeVoiceEngineIfMismatch:ensureHomeVoiceEngineIfMismatch,
+    ensureHomeVoiceListening:ensureHomeVoiceListening,
     startPoll:startVoiceStatusPoll,
     liveFingerprint:voiceWakeLiveFingerprint,
     refreshDrawerMic:refreshDrawerMicAfterVoiceToggle,
