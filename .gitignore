@@ -60,6 +60,21 @@ Desktop.ini
 *.tmp
 *.bak
 
+# 根目录探针 / 一次性抓取产物（勿再进仓）
+.tmp-*.js
+/_probe*.json
+/_thstatus*.json
+/ab-*.txt
+/gh-*.txt
+/gh-fetch.js
+/raw-*.txt
+/raw-fetch.js
+/raw-fetch2.js
+/junc-*.txt
+/rmdir-*.txt
+/node-v*.txt
+.codex-serve.*.log
+
 # Vosk 大体积资源（本地保留；运行时 DLL 可提交）
 src-tauri/resources/vosk/vosk-model-*/
 src-tauri/resources/kws/sherpa-kws-zh-small/
