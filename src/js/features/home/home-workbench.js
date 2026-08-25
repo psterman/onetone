@@ -1829,6 +1829,7 @@
     models:'voice',
     camera:'camera',
     sounds:'sounds',
+    actionHistory:'schemes',
     basic:'general',
     scenes:'schemes'
   };
@@ -2163,6 +2164,16 @@
     fetchLastUiStallOnce();
     if(global.OneToneAppSession&&global.OneToneAppSession.whenBootSettled){
       global.OneToneAppSession.whenBootSettled(fetchLastUiStallOnce);
+    }
+    if(global.OneToneHomeActionHistoryCard){
+      var refreshHistoryCard=function(){
+        try{ global.OneToneHomeActionHistoryCard.refresh(); }catch(_){}
+      };
+      if(global.OneToneAppSession&&global.OneToneAppSession.whenBootSettled){
+        global.OneToneAppSession.whenBootSettled(refreshHistoryCard);
+      }else{
+        refreshHistoryCard();
+      }
     }
     if(global.OneToneHomeWorkbenchPanels) global.OneToneHomeWorkbenchPanels.bindOnce();
     if(global.OneToneHomeWorkbenchCmdk) global.OneToneHomeWorkbenchCmdk.bindOnce();

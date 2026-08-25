@@ -89,7 +89,11 @@
     var s=shared();
     var name=s&&s.appName?s.appName(model.mapping):'—';
     var sub=s&&s.sceneName?s.sceneName(model.mapping):'';
-    return '<main class="habit-novice-main"><div class="habit-novice-head"><div><div class="app-title">'+esc(name)+'</div><div class="app-sub">'+esc(sub)+'</div></div></div>'+dimTabsHtml(model)+sceneChipsHtml(model)+cardsListHtml(model)+'</main>';
+    var mid=model&&model.mapping?model.mapping.id:'';
+    var usage='';
+    var stats=global.OneToneHabitActionStats;
+    if(stats&&stats.headKpiHtml&&mid) usage=stats.headKpiHtml(mid);
+    return '<main class="habit-novice-main"><div class="habit-novice-head"><div><div class="app-title">'+esc(name)+'</div><div class="app-sub">'+esc(sub)+'</div></div>'+usage+'</div>'+dimTabsHtml(model)+sceneChipsHtml(model)+cardsListHtml(model)+'</main>';
   }
 
   function layoutHtml(model){
@@ -119,8 +123,21 @@
     if(host.__habitNoviceBound) return;
     host.__habitNoviceBound=true;
     host.addEventListener('click',function(event){
-      var target=event.target.closest&&event.target.closest('[data-habit-novice-dim],[data-habit-novice-scene],[data-habit-novice-demo],[data-habit-novice-del],[data-habit-novice-toggle],[data-habit-novice-edit],.chip');
+      var target=event.target.closest&&event.target.closest('[data-habit-novice-dim],[data-habit-novice-scene],[data-habit-novice-demo],[data-habit-novice-del],[data-habit-novice-toggle],[data-habit-novice-edit],[data-habit-usage-peek],[data-habit-usage-export],.chip');
       if(!target) return;
+      if(target.hasAttribute('data-habit-usage-export')){
+        var exportId=target.getAttribute('data-habit-usage-export');
+        var api=global.OneToneHabitActionStats;
+        if(api&&api.exportHabitDoc) api.exportHabitDoc(exportId,{}).catch(function(){});
+        return;
+      }
+      if(target.hasAttribute('data-habit-usage-peek')){
+        var peekId=target.getAttribute('data-habit-usage-peek');
+        if(global.OneToneHabitUsageSheet&&global.OneToneHabitUsageSheet.open){
+          global.OneToneHabitUsageSheet.open(peekId);
+        }
+        return;
+      }
       if(target.hasAttribute('data-habit-novice-dim')){
         ui().habitNoviceDim=target.getAttribute('data-habit-novice-dim')||'key';
         rerender();

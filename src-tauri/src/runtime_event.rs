@@ -40,6 +40,14 @@ pub fn publish_runtime_event_with_log(
         crate::app_log::log_line(state, source, message);
     }
 
+    if let Some(entry) =
+        crate::action_history::record_runtime_mirror(state, source, kind, message)
+    {
+        if let Some(app) = app {
+            crate::action_history::emit_record_with_app(state, app, entry);
+        }
+    }
+
     if let Some(app) = app {
         let emit_payload = serde_json::json!({
             "type": "mvp_runtime_event",

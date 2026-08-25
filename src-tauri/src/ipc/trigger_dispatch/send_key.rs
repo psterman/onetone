@@ -113,6 +113,13 @@ fn finish_send_key_dispatch(
     } else {
         crate::coach_hud::push_state(&window.app_handle(), state.as_ref());
     }
+    let entry = crate::action_history::record_send_key(
+        state.as_ref(),
+        mapping_id,
+        target_key,
+        ok,
+    );
+    crate::action_history::emit_record_with_app(state.as_ref(), &window.app_handle(), entry);
 }
 
 fn try_dispatch_app_scenario_agent(

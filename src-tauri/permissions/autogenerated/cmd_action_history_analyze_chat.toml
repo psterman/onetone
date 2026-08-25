@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-action-history-analyze-chat"
+description = "Enables the cmd_action_history_analyze_chat command without any pre-configured scope."
+commands.allow = ["cmd_action_history_analyze_chat"]
+
+[[permission]]
+identifier = "deny-cmd-action-history-analyze-chat"
+description = "Denies the cmd_action_history_analyze_chat command without any pre-configured scope."
+commands.deny = ["cmd_action_history_analyze_chat"]

@@ -1,5 +1,6 @@
 mod agent;
 mod agent_attention;
+pub mod action_history;
 mod agent_catalog;
 mod agent_install_inventory;
 mod agent_model_metadata;
@@ -1112,6 +1113,13 @@ pub fn run() {
             ipc::cmd_codex_hook_install_confirm,
             ipc::cmd_pad_status_diagnose,
             ipc::cmd_pad_status_clear_errors,
+            ipc::cmd_action_history_list,
+            ipc::cmd_action_history_record,
+            ipc::cmd_action_history_clear,
+            ipc::cmd_action_history_stats,
+            ipc::cmd_action_history_analyze_summary,
+            ipc::cmd_action_history_analyze_optimization,
+            ipc::cmd_action_history_analyze_chat,
             ipc::cmd_claude_activity_inject,
             ipc::cmd_claude_activity_clear,
             ipc::cmd_claude_hook_setup_status,

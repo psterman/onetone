@@ -75,6 +75,15 @@
     var prevTs = prev.timestamp != null && isFinite(Number(prev.timestamp)) ? Number(prev.timestamp) : null;
     var prevStatus = normalizeStatus(prev.status);
 
+    // Idle clear must win over a sticky usage stamp after attention drops.
+    // Still honor sequence monotonicity when both sides carry a seq.
+    if (status === 'idle' && prevStatus !== 'idle') {
+      if (sequence != null && prevSeq != null && sequence < prevSeq) {
+        return reject();
+      }
+      return accept(true, sequence != null ? sequence : prevSeq, timestamp != null ? timestamp : prevTs);
+    }
+
     if (sequence != null && prevSeq != null) {
       if (sequence < prevSeq) return reject();
       if (sequence === prevSeq) {

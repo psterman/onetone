@@ -1699,6 +1699,10 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
   background: linear-gradient(180deg, #ffffff 0%, #eef8f4 55%, #d4ebe2 100%);
   border-color: rgba(16, 163, 127, 0.22);
 }
+.soft-pad-agent-bar__chip[data-agent="codex"][data-status="idle"]:not(.is-usage-focus) {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 55%, #eef2f6 100%);
+  border-color: rgba(92, 105, 122, 0.2);
+}
 .soft-pad-agent-bar__chip[data-agent="claude"] {
   background: linear-gradient(180deg, #ffffff 0%, #faf1ec 55%, #ead8cf 100%);
   border-color: rgba(217, 119, 87, 0.28);
@@ -1818,12 +1822,14 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
   border-color: rgba(120, 136, 156, 0.28);
 }
 
+/* Usage focus = which agent’s quota is shown — not lifecycle.
+   Keep off the running/done green vocabulary so idle Codex doesn’t look “on”. */
 .soft-pad-agent-bar__chip[data-agent="codex"].is-usage-focus {
-  border-color: rgba(16, 163, 127, 0.55);
+  border-color: rgba(42, 156, 196, 0.55);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
     inset 0 -5px 10px rgba(139, 152, 169, 0.12),
-    0 0 0 2px rgba(16, 163, 127, 0.35),
+    0 0 0 2px rgba(42, 156, 196, 0.32),
     0 3px 0 #cfd8e0;
 }
 .soft-pad-agent-bar__chip[data-agent="claude"].is-usage-focus {
@@ -2116,10 +2122,21 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
 .wrap.is-cursor-beginner-armed .micro-hw__key[data-micro-key="ACT10"],
 .wrap.is-cursor-beginner-armed .micro-hw__key[data-micro-key="ACT12"],
 .wrap.is-cursor-beginner-armed .micro-hw__key[data-micro-key="AG02"],
-.wrap.is-cursor-beginner-armed .micro-hw__key[data-micro-key="AG01"] {
+.wrap.is-cursor-beginner-armed .micro-hw__key[data-micro-key="AG01"],
+.wrap.is-cursor-beginner-armed .micro-hw__key[data-micro-key="ACT08"] {
   box-shadow:
     0 0 0 2px var(--micro-hw-status-listening),
     0 0 16px var(--micro-hw-status-listening);
+}
+
+.micro-hw__key.is-voice-hit,
+.overlay-mini__action.is-voice-hit {
+  box-shadow:
+    0 0 0 3px rgba(74, 222, 128, 0.75),
+    0 0 18px rgba(74, 222, 128, 0.55) !important;
+  border-color: rgba(74, 222, 128, 0.85) !important;
+  transform: scale(1.06);
+  z-index: 5;
 }
 
 .overlay-mini__action-icon {

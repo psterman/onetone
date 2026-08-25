@@ -1,3 +1,4 @@
+mod action_history_cmd;
 mod coach_hud_cmd;
 mod gaze_monitor_cmd;
 mod soft_pad_runtime_cmd;
@@ -16,6 +17,7 @@ mod tray_customization_cmd;
 mod update;
 mod window;
 
+pub use action_history_cmd::*;
 pub use coach_hud_cmd::*;
 pub use gaze_monitor_cmd::*;
 pub use soft_pad_runtime_cmd::*;

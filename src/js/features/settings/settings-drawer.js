@@ -25,6 +25,7 @@
   function resolveSettingsPanelRequest(panel,opts){
     opts=opts||{};
     if(panel==='voiceEnd') panel='voiceWake';
+    if(panel==='actionHistory') panel='habits';
     if(panel==='general'){
       return {
         panel:'debug',
@@ -1439,6 +1440,9 @@
         }
         if(global.OneToneCameraPresenceActions&&global.OneToneCameraPresenceActions.reconcileRuntime){
           global.OneToneCameraPresenceActions.reconcileRuntime({reason:'drawer_close'});
+        }
+        if(global.OneToneHomeActionHistoryCard&&global.OneToneHomeActionHistoryCard.refresh){
+          global.OneToneHomeActionHistoryCard.refresh();
         }
       }catch(_){}
     },0);

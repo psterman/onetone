@@ -235,8 +235,10 @@ fn try_route_cursor_beginner_voice(
     let result = crate::cursor_beginner::dispatch_voice_phrase(state, app, phrase)?;
     // Update home page display — beginner phrases bypass the normal lastDetectedPhrase path.
     *state.voice_vosk_last_detected_phrase.lock() = phrase.to_string();
+    *state.voice_vosk_last_final.lock() = phrase.to_string();
     let label = result.runtime_label.clone();
     if result.ok {
+        *state.voice_vosk_last_trigger.lock() = format!("{}（{}）", label, phrase);
         let sound_cue = crate::config::runtime_sound_cue(&state.cfg.lock(), "voice_wake");
         crate::ipc::push_runtime_via_app(
             app,
@@ -245,14 +247,17 @@ fn try_route_cursor_beginner_voice(
             "",
             sound_cue.as_deref(),
         );
+        crate::codex_micro_overlay::request_overlay_push(app, state.as_ref(), false);
         Some(VoiceCommandRouterResult {
             handled: true,
             trigger_label: format!("{}（{}）", label, phrase),
             ..Default::default()
         })
     } else if label == "cursor_beginner:not_armed" {
+        *state.voice_vosk_last_trigger.lock() = String::new();
         Some(skip("请先进入 Cursor 或说「小助手」激活。".into()))
     } else {
+        *state.voice_vosk_last_trigger.lock() = String::new();
         Some(VoiceCommandRouterResult {
             handled: false,
             skipped: true,

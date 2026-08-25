@@ -1401,6 +1401,17 @@
     });
   }
 
+  function recordCameraLocalHistory(action, status, ok){
+    var label=typeof actionLabel==='function'?actionLabel(action):String(action||'');
+    invokeIpc('cmd_action_history_record',{
+      channel:'camera',
+      kind:'camera_local',
+      status:status||(ok===false?'failed':'executed'),
+      summary:'摄像头 · '+label,
+      detail:String(action||'')
+    });
+  }
+
   function canPressKey(){
     if(st.presence!=='present') return false;
     if(runtime().paused) return false;
@@ -2145,7 +2156,10 @@
       });
     }
 
-    if(action==='pressEsc') return pressKey('Esc');
+    if(action==='pressEsc') return pressKey('Esc').then(function(res){
+      if(res&&res.ok!==false) recordCameraLocalHistory(action,'executed',true);
+      return res;
+    });
     if(action==='pressCtrlI'){
       var voiceKey=resolveVoiceActivateKey();
       logPresence('voice-activate resolve='+(voiceKey||'(unset)'));
@@ -2154,12 +2168,16 @@
         setSkipReason(t('cameraPresenceVoiceKeyUnset','未配置'),source);
         return Promise.resolve({ok:false,reason:'unset'});
       }
-      return pressKey(voiceKey,{voiceActivate:true});
+      return pressKey(voiceKey,{voiceActivate:true}).then(function(res){
+        if(res&&res.ok!==false) recordCameraLocalHistory(action,'executed',true);
+        return res;
+      });
     }
 
     if(action==='privacyScreen'){
       openPrivacyScreen();
       emitRuntime();
+      recordCameraLocalHistory(action,'executed',true);
       return Promise.resolve({ok:true,action:action});
     }
 
@@ -2172,6 +2190,7 @@
       }catch(_){}
       emitRuntime();
       toast(t('cameraPresenceLowPowerOn','已切换低消耗运行'));
+      recordCameraLocalHistory(action,'executed',true);
       return Promise.resolve({ok:true,action:action});
     }
 
@@ -2182,6 +2201,7 @@
         st.pausedByPresence=true;
         return invokeIpc('cmd_pause',{}).then(function(res){
           emitRuntime();
+          recordCameraLocalHistory(action,'executed',true);
           return res||{ok:true,action:action};
         });
       }
@@ -2196,6 +2216,7 @@
         return invokeIpc('cmd_resume',{}).then(function(res){
           st.pausedByPresence=false;
           emitRuntime();
+          recordCameraLocalHistory(action,'executed',true);
           return res||{ok:true,action:action};
         });
       }

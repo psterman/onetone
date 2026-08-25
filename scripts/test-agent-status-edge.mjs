@@ -62,6 +62,21 @@ const plan = Edge.planAgentChipProjection.bind(Edge);
   assert.equal(d.accepted, false);
 }
 
+// Idle clear with older usage stamp: must accept (don't stick green lamp)
+{
+  const prev = { status: 'running', sequence: null, timestamp: 500, warmed: true };
+  const d = decide(prev, 'idle', { sequence: null, timestamp: 100 });
+  assert.equal(d.accepted, true);
+  assert.equal(d.stateChanged, true);
+  assert.equal(d.nextMemory.status, 'idle');
+}
+{
+  const prev = { status: 'done', sequence: 3, timestamp: 500, warmed: true };
+  const d = decide(prev, 'idle', { sequence: null, timestamp: 50 });
+  assert.equal(d.accepted, true);
+  assert.equal(d.nextMemory.status, 'idle');
+}
+
 // No sequence, same timestamp different status: last-write-wins
 {
   const prev = { status: 'running', sequence: null, timestamp: 200, warmed: true };

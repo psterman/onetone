@@ -16,6 +16,7 @@
   <title>一声 onetone</title>
   <link rel="icon" type="image/png" sizes="256x256" href="icon.png" />
   <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/action-history.css" />
   <link rel="stylesheet" href="css/habit-hub-table.css" />
   <link rel="stylesheet" href="css/home-v9.css" />
   <link rel="stylesheet" href="css/home-workbench.css" />
@@ -262,6 +263,13 @@
                             <span data-i18n="homeWbContextBoundBridge">此习惯下的唤起方式</span>
                   </div>
                           <section class="wb-howto" id="wbHowTo" aria-label="上方习惯下的四个通道：说话、按键、屏幕按钮与摄像头；点卡切换上方预览，再点打开设置"></section>
+                          <section class="wb-action-history-card" id="wbActionHistoryCard" hidden aria-label="最近动作">
+                            <div class="wb-action-history-head">
+                              <h4 class="wb-action-history-title" data-i18n="homeWbActionHistoryTitle">最近动作</h4>
+                              <button type="button" class="wb-action-history-link" id="wbActionHistoryViewAll" data-i18n="homeWbActionHistoryViewAll">在习惯中查看 →</button>
+                            </div>
+                            <div class="wb-action-history-list" id="wbActionHistoryList" role="list"></div>
+                          </section>
                         </div>
                       </section>
                   </div>
@@ -1430,6 +1438,33 @@
                 </footer>
               </div>
             </aside>
+            <div class="habit-usage-sheet-backdrop" id="habitUsageSheetBackdrop" hidden></div>
+            <section class="habit-usage-sheet is-closed" id="habitUsageSheet" aria-hidden="true" aria-labelledby="habitUsageSheetTitle">
+              <div class="habit-usage-sheet-inner">
+                <header class="habit-usage-sheet-head">
+                  <div class="habit-usage-sheet-head-text">
+                    <p class="habit-usage-sheet-kicker" id="habitUsageSheetSub">使用记录</p>
+                    <h4 class="habit-usage-sheet-title" id="habitUsageSheetTitle">—</h4>
+                  </div>
+                  <button type="button" class="habit-usage-sheet-close" id="btnHabitUsageSheetClose" aria-label="关闭">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </header>
+                <div class="habit-usage-sheet-sticky">
+                  <div class="habit-usage-sheet-kpi" id="habitUsageSheetKpi"></div>
+                  <div class="habit-usage-sheet-tools">
+                    <div class="habit-usage-sheet-window" role="tablist" data-usage-sheet-window id="habitUsageSheetWindow"></div>
+                    <div class="habit-usage-sheet-export-wrap">
+                      <button type="button" class="habit-usage-sheet-export" data-usage-sheet-export id="btnHabitUsageSheetExport">导出文档</button>
+                      <span class="habit-usage-sheet-export-hint" id="habitUsageSheetExportHint"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="habit-usage-sheet-body">
+                  <div id="habitUsageSheetHistory" class="ot-island habit-usage-sheet-history"></div>
+                </div>
+              </div>
+            </section>
           </div>
           <div class="habit-scenario-shell" id="habitWizardView" hidden>
             <button type="button" class="habit-detail-back" id="btnHabitWizardBack">
@@ -4823,6 +4858,8 @@
   <script src="js/features/mapping/habit-shared.js"></script>
   <script src="js/features/mapping/habit-card-utils.js"></script>
   <script src="js/features/mapping/habit-novice-mode.js"></script>
+  <script src="js/features/mapping/habit-action-stats.js"></script>
+  <script src="js/features/mapping/habit-usage-sheet.js"></script>
   <script src="js/features/mapping/habit-hub.js"></script>
   <script src="js/features/mapping/habit-workspace.js"></script>
   <script src="js/features/mapping/habit-hub-side-peek.js"></script>
@@ -4857,6 +4894,7 @@
   <script src="js/features/home/home-habit-channel-route.js"></script>
   <script src="js/features/home/home-workbench-panels.js"></script>
   <script src="js/features/home/home-workbench-stats.js"></script>
+  <script src="js/features/home/home-action-history-card.js"></script>
   <script src="js/features/home/home-workbench.js"></script>
   <script src="js/features/home/home-v9-bridge.js"></script>
   <script src="js/features/home/home-hooks.js"></script>

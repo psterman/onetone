@@ -567,8 +567,53 @@ pub fn click_client_relative(
     }
 }
 
+/// Client-area click via PostMessage — does not depend on Z-order (Soft Pad on top).
+#[cfg(windows)]
+pub fn click_client_relative_via_message(
+    hwnd: winapi::shared::windef::HWND,
+    x_ratio: f32,
+    y_ratio: f32,
+) -> bool {
+    use winapi::shared::windef::RECT;
+    use winapi::um::winuser::{GetClientRect, PostMessageW, WM_LBUTTONDOWN, WM_LBUTTONUP};
+
+    unsafe {
+        if hwnd.is_null() {
+            return false;
+        }
+        let mut rect = RECT {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        };
+        if GetClientRect(hwnd, &mut rect) == 0 {
+            return false;
+        }
+        let width = rect.right - rect.left;
+        let height = rect.bottom - rect.top;
+        if width <= 0 || height <= 0 {
+            return false;
+        }
+        let x_ratio = x_ratio.clamp(0.08, 0.92);
+        let y_ratio = y_ratio.clamp(0.08, 0.95);
+        let x = (width as f32 * x_ratio).round() as i32;
+        let y = (height as f32 * y_ratio).round() as i32;
+        let lp = ((y as u32) << 16) | (x as u32 & 0xffff);
+        let down_ok = PostMessageW(hwnd, WM_LBUTTONDOWN, 1, lp as isize) != 0;
+        std::thread::sleep(std::time::Duration::from_millis(30));
+        let up_ok = PostMessageW(hwnd, WM_LBUTTONUP, 0, lp as isize) != 0;
+        down_ok && up_ok
+    }
+}
+
 #[cfg(not(windows))]
 pub fn click_client_relative(_hwnd: isize, _x_ratio: f32, _y_ratio: f32) -> bool {
+    false
+}
+
+#[cfg(not(windows))]
+pub fn click_client_relative_via_message(_hwnd: isize, _x_ratio: f32, _y_ratio: f32) -> bool {
     false
 }
 

@@ -91,6 +91,15 @@
       run: function () { jumpAndHighlight('sounds'); },
     },
 
+    // --- habit usage (was standalone action history) ---
+    {
+      id: 'actionHistory',
+      title: t('habitUsagePaletteTitle', '习惯使用数据'),
+      keywords: ['动作历史', 'history', '记录', '日志', '使用次数', '习惯'],
+      group: group,
+      run: function () { jumpAndHighlight('habits'); },
+    },
+
     // --- camera panel ---
     {
       id: 'camera',

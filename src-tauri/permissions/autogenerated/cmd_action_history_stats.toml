@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-action-history-stats"
+description = "Enables the cmd_action_history_stats command without any pre-configured scope."
+commands.allow = ["cmd_action_history_stats"]
+
+[[permission]]
+identifier = "deny-cmd-action-history-stats"
+description = "Denies the cmd_action_history_stats command without any pre-configured scope."
+commands.deny = ["cmd_action_history_stats"]

@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use tauri::WebviewWindow;
+use tauri::{Manager, WebviewWindow};
 
 use super::context_risk::context_risk_gate;
 use super::execute::{execute_agent_action, AgentExecuteRequest, AgentExecuteResult};
@@ -145,12 +145,18 @@ pub fn route_semantic_action(
     window: &WebviewWindow,
     req: SemanticActionRequest,
 ) -> SemanticRouteResult {
+    let slot_id = req.slot_id.clone();
     let result = route_semantic_action_inner(state, window, req, false);
-    log_route_result(state, &result);
+    log_route_result(state, window, &result, slot_id.as_deref());
     result
 }
 
-fn log_route_result(state: &AppState, r: &SemanticRouteResult) {
+fn log_route_result(
+    state: &Arc<AppState>,
+    window: &WebviewWindow,
+    r: &SemanticRouteResult,
+    slot_id: Option<&str>,
+) {
     // Lightweight reliability log — no user text / prompts / paths.
     let msg = format!(
         "actionId={} channel={} providerId={} status={} reasonCode={}",
@@ -161,6 +167,8 @@ fn log_route_result(state: &AppState, r: &SemanticRouteResult) {
         r.reason_code.as_deref().unwrap_or(""),
     );
     crate::app_log::log_line(state, "semantic_route", &msg);
+    let entry = crate::action_history::record_semantic_route(state.as_ref(), r, slot_id);
+    crate::action_history::emit_record_with_app(state.as_ref(), &window.app_handle(), entry);
 }
 
 fn route_semantic_action_inner(

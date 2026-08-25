@@ -42,7 +42,7 @@
     overlay.setAttribute('aria-label','Cursor 新手引导');
     overlay.innerHTML=
       '<div class="cursor-beginner-onboard__card">'+
-        '<p class="cursor-beginner-onboard__text">进入 Cursor 自动聆听；可说 <strong>发送</strong>、<strong>继续</strong>、<strong>新建</strong>、<strong>麦克风</strong>。</p>'+
+        '<p class="cursor-beginner-onboard__text">进入 Cursor 自动聆听；可说 <strong>发送</strong>、<strong>继续</strong>、<strong>新建</strong>、<strong>麦克风</strong>、<strong>取消</strong>。</p>'+
         '<button type="button" class="cursor-beginner-onboard__done">懂了</button>'+
       '</div>';
     overlay.querySelector('.cursor-beginner-onboard__done').addEventListener('click',function(e){

@@ -1223,6 +1223,20 @@
     }
   }
 
+  function refreshUsageStatsThenPaint(){
+    var api=global.OneToneHabitActionStats;
+    if(!api||!api.fetch){
+      paintWorkspace();
+      return;
+    }
+    api.fetch({hours:168}).then(function(){
+      paintWorkspace();
+      if(habitHubChromeMounted()&&typeof global.__otHabitHubChromeSync==='function'){
+        try{ global.__otHabitHubChromeSync(); }catch(_){}
+      }
+    }).catch(function(){ paintWorkspace(); });
+  }
+
   // Workspace 轻量刷新（避免 delete/confirm 走全量 render() 假死）
   function scheduleHubPaint(){
     requestAnimationFrame(function(){
@@ -1288,6 +1302,7 @@
     return '<div class="habit-hub-table-head" role="row">'
       +'<div class="habit-hub-table-col is-name" role="columnheader">'+esc(t('habitHubTableColName'))+'</div>'
       +'<div class="habit-hub-table-col is-hotkey" role="columnheader">'+esc(t('habitHubTableColHotkey'))+'</div>'
+      +'<div class="habit-hub-table-col is-usage" role="columnheader">'+esc(t('habitHubTableColUsage','使用'))+'</div>'
       +'<div class="habit-hub-table-col is-overrides" role="columnheader">'+esc(t('habitHubTableColOverrides'))+'</div>'
       +'<div class="habit-hub-table-col is-status" role="columnheader">'+esc(t('habitHubTableColStatus'))+'</div>'
       +'<div class="habit-hub-table-col is-actions" role="columnheader">'+esc(t('habitHubTableColActions'))+'</div>'
@@ -1326,6 +1341,10 @@
     if(proc) html+='<span class="habit-hub-table-name-sub">'+esc(proc)+'</span>';
     html+='</span></button></div>';
     html+='<div class="habit-hub-table-col is-hotkey" role="cell">'+hotkeyHtml+'</div>';
+    var usageApi=global.OneToneHabitActionStats;
+    html+='<div class="habit-hub-table-col is-usage" role="cell">'
+      +(usageApi&&usageApi.cellHtml?usageApi.cellHtml(m.id):'—')
+      +'</div>';
     html+='<div class="habit-hub-table-col is-overrides" role="cell"><div class="habit-hub-table-tags">'+renderOverrideTags(m)+'</div></div>';
     html+='<div class="habit-hub-table-col is-status" role="cell">';
     html+='<button type="button" class="toggle-switch habit-hub-enable-toggle'+(enOn?' is-on':'')+'" data-habit-enable="'+esc(m.id)+'" role="switch" aria-checked="'+(enOn?'true':'false')+'" aria-label="'+esc(t('habitScenarioEnableLbl'))+'"></button>';
@@ -1660,7 +1679,7 @@
     renderList();
     renderFilters();
     applyShellVisibility();
-    paintWorkspace();
+    refreshUsageStatsThenPaint();
     try{
       if(global.OneToneIpc&&global.OneToneIpc.invoke){
         var ms=Math.round(((typeof performance!=='undefined'&&performance.now)?performance.now():Date.now())-t0);
@@ -3286,6 +3305,16 @@
           showDetail(openBtn.dataset.habitOpen);
           return;
         }
+        var usagePeekBtn=e.target.closest&&e.target.closest('[data-habit-usage-peek]');
+        if(usagePeekBtn){
+          e.preventDefault();
+          e.stopPropagation();
+          var usageId=usagePeekBtn.getAttribute('data-habit-usage-peek')||'';
+          if(usageId&&global.OneToneHabitUsageSheet&&global.OneToneHabitUsageSheet.open){
+            global.OneToneHabitUsageSheet.open(usageId);
+          }
+          return;
+        }
         var peekBtn=e.target.closest&&e.target.closest('[data-habit-peek]');
         if(peekBtn){
           e.preventDefault();
@@ -3415,6 +3444,7 @@
     guideView:guideView,
     buildHabitHubChromeModel:buildHabitHubChromeModel,
     afterHabitHubChromeCommit:afterHabitHubChromeCommit,
-    scheduleHubPaint:scheduleHubPaint
+    scheduleHubPaint:scheduleHubPaint,
+    refreshUsageStatsThenPaint:refreshUsageStatsThenPaint
   };
 })((typeof window!=='undefined')?window:globalThis);

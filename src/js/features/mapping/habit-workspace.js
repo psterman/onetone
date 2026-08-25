@@ -340,7 +340,8 @@
     else if(persist&&persist.save) persist.save();
   }
 
-  function render(){
+  function render(opts){
+    opts=opts||{};
     var host=ensureShell();
     if(!host) return;
     var diffApi=diff();
@@ -348,6 +349,7 @@
       persistBaselineIfCreated(diffApi.ensureGlobalBaselineMapping(cfg(),global.OneToneMappingCore).created);
     }
     bindEvents(host);
+    bindUsageLive();
     captureWorkspaceScroll();
     if(!ui().habitExperienceMode) ui().habitExperienceMode=prefs()?prefs().getMode():'novice';
     if(!ui().habitNoviceDim) ui().habitNoviceDim='key';
@@ -368,7 +370,7 @@
     var body='';
     if(model.mode==='novice'&&novice()&&novice().layoutHtml){
       body=novice().layoutHtml(model);
-      if(novice().bindEvents) novice().bindEvents(host,function(){ render(); });
+      if(novice().bindEvents) novice().bindEvents(host,function(){ render({skipStatsFetch:true}); });
     }else if(model.mode==='programmer'){
       body='<div class="habit-ws-layout">'+appListHtml(model)+'<main class="habit-ws-main">'+programHtml(model)+'</main></div>';
     }else{
@@ -376,6 +378,37 @@
     }
     host.innerHTML=modeHtml(model.mode)+introHtml()+body;
     restoreWorkspaceScroll(host);
+    if(!opts.skipStatsFetch){
+      var api=global.OneToneHabitActionStats;
+      if(api&&api.fetch&&!(api.isFresh&&api.isFresh(168))){
+        api.fetch({hours:168}).then(function(){
+          render({skipStatsFetch:true});
+        }).catch(function(){});
+      }
+    }
+  }
+
+  function bindUsageLive(){
+    if(global.__otHabitUsageLiveBound) return;
+    global.__otHabitUsageLiveBound=true;
+    var onEvent=function(entry){
+      var api=global.OneToneHabitActionStats;
+      if(api&&api.invalidate) api.invalidate();
+      clearTimeout(global.__otHabitUsageLiveT);
+      global.__otHabitUsageLiveT=setTimeout(function(){
+        if(!api||!api.fetch){ render({skipStatsFetch:true}); return; }
+        api.fetch({hours:168,force:true}).then(function(){
+          render({skipStatsFetch:true});
+        }).catch(function(){ render({skipStatsFetch:true}); });
+      },400);
+    };
+    if(global.chrome&&global.chrome.webview&&global.chrome.webview.addEventListener){
+      global.chrome.webview.addEventListener('message',function(e){
+        var msg=e&&e.data;
+        if(!msg||msg.type!=='mvp_action_history_event') return;
+        onEvent(msg.entry);
+      });
+    }
   }
   function switchMode(mode,force){
     captureWorkspaceScroll();
@@ -409,6 +442,33 @@
       if(target.hasAttribute('data-habit-mode')){ switchMode(target.getAttribute('data-habit-mode')); return; }
       if(target.hasAttribute('data-habit-intro-cancel')){ ui().habitProgrammerIntroOpen=false; render(); return; }
       if(target.hasAttribute('data-habit-intro-continue')){ if(prefs()) prefs().markProgrammerIntroSeen(); switchMode('programmer',true); return; }
+      if(target.hasAttribute('data-habit-usage-rank')){
+        event.stopPropagation();
+        state().selectedMappingId=target.getAttribute('data-habit-usage-rank');
+        render({skipStatsFetch:true});
+        return;
+      }
+      if(target.hasAttribute('data-habit-usage-export-all')){
+        event.stopPropagation();
+        var apiAll=global.OneToneHabitActionStats;
+        if(apiAll&&apiAll.exportAllHabitsDoc) apiAll.exportAllHabitsDoc({}).catch(function(){});
+        return;
+      }
+      if(target.hasAttribute('data-habit-usage-export')){
+        event.stopPropagation();
+        var exportId=target.getAttribute('data-habit-usage-export');
+        var apiOne=global.OneToneHabitActionStats;
+        if(apiOne&&apiOne.exportHabitDoc) apiOne.exportHabitDoc(exportId,{}).catch(function(){});
+        return;
+      }
+      if(target.hasAttribute('data-habit-usage-peek')){
+        event.stopPropagation();
+        var peekId=target.getAttribute('data-habit-usage-peek');
+        if(global.OneToneHabitUsageSheet&&global.OneToneHabitUsageSheet.open){
+          global.OneToneHabitUsageSheet.open(peekId);
+        }
+        return;
+      }
       if(target.hasAttribute('data-habit-mapping')){
         event.stopPropagation();
         if(ui().habitHubBatchMode||(Array.isArray(ui().habitHubSelectedIds)&&ui().habitHubSelectedIds.length)){

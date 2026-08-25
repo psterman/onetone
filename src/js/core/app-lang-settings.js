@@ -47,6 +47,9 @@
     var keySchemeStepTargetTitle=$('keySchemeStepTargetTitle'); if(keySchemeStepTargetTitle) keySchemeStepTargetTitle.textContent=d.keySchemeStepTargetTitle;
     var keySchemeStepFinishTitle=$('keySchemeStepFinishTitle'); if(keySchemeStepFinishTitle) keySchemeStepFinishTitle.textContent=d.keyExecFinishTitle;
     var spSounds=$('settingsPanelSoundsDesc'); if(spSounds) spSounds.textContent=d.settingsPanelSoundsDesc;
+    var wbHistTitle=$('wbActionHistoryCard')&&document.querySelector('#wbActionHistoryCard .wb-action-history-title');
+    if(wbHistTitle) wbHistTitle.textContent=d.homeWbActionHistoryTitle||'';
+    var wbHistLink=$('wbActionHistoryViewAll'); if(wbHistLink) wbHistLink.textContent=d.homeWbActionHistoryViewAll||'';
     var spDbg=$('settingsPanelDebugDesc');
     if(spDbg){
       spDbg.textContent=d.settingsPanelDebugDesc||'';

@@ -185,4 +185,11 @@ permissions = [
   "allow-cmd-tm-restore",
   "allow-cmd-tm-diff-summary",
   "allow-cmd-tm-undo-restore",
+  "allow-cmd-action-history-list",
+  "allow-cmd-action-history-stats",
+  "allow-cmd-action-history-record",
+  "allow-cmd-action-history-clear",
+  "allow-cmd-action-history-analyze-summary",
+  "allow-cmd-action-history-analyze-optimization",
+  "allow-cmd-action-history-analyze-chat",
 ]

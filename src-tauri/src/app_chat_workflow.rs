@@ -439,6 +439,83 @@ pub fn focus_composer_only(
     Ok(())
 }
 
+/// Focus composer then re-click the input so Enter/send lands in the box — not Soft Pad / editor.
+/// Soft Pad / voice races often leave FG on Cursor window but caret outside the composer.
+/// Requires verified UIA keyboard focus on a high-score Edit/Document — bare click is not enough.
+#[cfg(windows)]
+pub fn focus_composer_for_send(
+    app: &AppHandle,
+    app_target_id: &str,
+    duration_ms: u32,
+) -> Result<(), AppChatWorkflowError> {
+    let _ = duration_ms;
+    let profile = profile_for(app_target_id).ok_or(AppChatWorkflowError::NotFound)?;
+    let _hide_guard = MainWindowHideGuard::maybe_hide(app);
+    let (hwnd, freshly_launched) =
+        ensure_app_window(profile).ok_or(AppChatWorkflowError::NotFound)?;
+    if freshly_launched {
+        std::thread::sleep(Duration::from_millis(2200));
+    }
+    if !crate::keyboard::focus_window(hwnd) {
+        return Err(AppChatWorkflowError::FocusFailed);
+    }
+    std::thread::sleep(Duration::from_millis(120));
+
+    let min_score = uia_min_score_for_send(profile);
+    let mut uia_ok = uia_focus_chat_input_verified(hwnd, min_score);
+    let mut click_via = "none";
+    if !uia_ok {
+        let _ = crate::keyboard::click_client_relative_via_message(
+            hwnd,
+            profile.composer_anchor.0,
+            profile.composer_anchor.1,
+        );
+        click_via = "post";
+        std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
+        uia_ok = uia_focus_chat_input_verified(hwnd, min_score);
+    }
+    if !uia_ok {
+        // Soft Pad should already be click-through (caller guard); screen click as last resort.
+        let _ = click_composer_anchor(hwnd, profile.composer_anchor);
+        click_via = "screen";
+        std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
+        uia_ok = uia_focus_chat_input_verified(hwnd, min_score);
+    }
+
+    let fg = if crate::app_identity::foreground_is_self() {
+        "self"
+    } else if crate::app_identity::foreground_effective_app_target_id()
+        .as_deref()
+        .is_some_and(|id| id == app_target_id)
+    {
+        "target"
+    } else {
+        "other"
+    };
+    crate::app_log::sync_emergency_line(
+        "cursor_send",
+        &format!(
+            "send_focus uia={uia_ok} click={click_via} fg={fg} focused={}",
+            if uia_ok { "composer" } else { "other" }
+        ),
+    );
+
+    if crate::app_identity::foreground_is_self() || !uia_ok {
+        return Err(AppChatWorkflowError::FocusFailed);
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn uia_min_score_for_send(profile: &AppChatProfile) -> i32 {
+    // Stricter than normal focus — avoid search/filter Edit boxes.
+    if profile.open_key.is_some() {
+        70
+    } else {
+        40
+    }
+}
+
 #[cfg(not(windows))]
 pub fn focus_composer_only(
     _app: &AppHandle,
@@ -446,6 +523,15 @@ pub fn focus_composer_only(
     _duration_ms: u32,
 ) -> Result<(), AppChatWorkflowError> {
     Err(AppChatWorkflowError::NotFound)
+}
+
+#[cfg(not(windows))]
+pub fn focus_composer_for_send(
+    app: &AppHandle,
+    app_target_id: &str,
+    duration_ms: u32,
+) -> Result<(), AppChatWorkflowError> {
+    focus_composer_only(app, app_target_id, duration_ms)
 }
 
 /// Open / focus the habit's declared app target only — no composer focus, no voice.
@@ -1399,6 +1485,12 @@ fn process_matches_profile(pid: u32, profile: &AppChatProfile) -> bool {
 
 #[cfg(windows)]
 fn uia_focus_chat_input(hwnd: winapi::shared::windef::HWND, min_score: i32) -> bool {
+    uia_focus_chat_input_verified(hwnd, min_score)
+}
+
+/// SetFocus on best Edit/Document, then confirm HasKeyboardFocus (or focused name scores high).
+#[cfg(windows)]
+fn uia_focus_chat_input_verified(hwnd: winapi::shared::windef::HWND, min_score: i32) -> bool {
     use windows::core::VARIANT;
     use windows::Win32::Foundation::HWND as WinHwnd;
     use windows::Win32::System::Com::{
@@ -1407,6 +1499,7 @@ fn uia_focus_chat_input(hwnd: winapi::shared::windef::HWND, min_score: i32) -> b
     use windows::Win32::UI::Accessibility::{
         CUIAutomation, IUIAutomation, IUIAutomationElement, TreeScope_Descendants,
         UIA_ControlTypePropertyId, UIA_DocumentControlTypeId, UIA_EditControlTypeId,
+        UIA_HasKeyboardFocusPropertyId,
     };
 
     unsafe {
@@ -1452,8 +1545,32 @@ fn uia_focus_chat_input(hwnd: winapi::shared::windef::HWND, min_score: i32) -> b
         let Some((element, score)) = best.filter(|(_, score)| *score >= min_score) else {
             return false;
         };
+        if element.SetFocus().is_err() {
+            return false;
+        }
+        std::thread::sleep(Duration::from_millis(60));
+        let has_focus = element
+            .GetCurrentPropertyValue(UIA_HasKeyboardFocusPropertyId)
+            .ok()
+            .and_then(|v| bool::try_from(&v).ok())
+            .unwrap_or(false);
+        if has_focus {
+            return true;
+        }
+        // Fallback: focused element elsewhere in tree may still be a high-score composer.
+        if let Ok(focused) = automation.GetFocusedElement() {
+            let name = element_name(&focused).unwrap_or_default();
+            let fs = score_input_name(&name, UIA_EditControlTypeId.0 as i32);
+            if fs >= min_score {
+                return true;
+            }
+            let fs_doc = score_input_name(&name, UIA_DocumentControlTypeId.0 as i32);
+            if fs_doc >= min_score {
+                return true;
+            }
+        }
         let _ = score;
-        element.SetFocus().is_ok()
+        false
     }
 }
 
@@ -1498,10 +1615,10 @@ fn score_input_name(name: &str, control_type: i32) -> i32 {
 
     let lower = name.to_ascii_lowercase();
     let mut score = 0;
-    if lower.contains("chat") {
-        score += 50;
-    }
     if lower.contains("composer") {
+        score += 60;
+    }
+    if lower.contains("chat") {
         score += 50;
     }
     if lower.contains("thread") {
@@ -1523,7 +1640,11 @@ fn score_input_name(name: &str, control_type: i32) -> i32 {
         score += 30;
     }
     if lower.contains("agent") {
-        score += 20;
+        score += 25;
+    }
+    // Demote search / filter / find — not Composer.
+    if lower.contains("search") || lower.contains("filter") || lower.contains("find") {
+        score -= 45;
     }
     if name.trim().is_empty() && control_type == UIA_DocumentControlTypeId.0 as i32 {
         score += 15;

@@ -849,6 +849,19 @@ pub fn fire_codex_micro_pad_key(
                                 }
                                 crate::agent_lane::begin_lane_press_lease(&lane_ticket);
                                 let nav = crate::agent_lane::navigate_lane(&lane_ticket);
+                                let entry = crate::action_history::record_lane_nav(
+                                    state.as_ref(),
+                                    &lane_ticket.mapping_id,
+                                    micro_key_id,
+                                    &nav.action,
+                                    nav.ok,
+                                    &nav.detail,
+                                );
+                                crate::action_history::emit_record_with_app(
+                                    state.as_ref(),
+                                    &app,
+                                    entry,
+                                );
                                 crate::codex_micro_overlay::note_micro_key(micro_key_id, true);
                                 crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
                             return serde_json::json!({
@@ -1215,6 +1228,30 @@ pub fn fire_codex_micro_pad_key(
         return serde_json::json!({ "ok": true, "reason": "tap_up_ignored", "slotId": route.slot_id });
     }
     let inject_tid = soft_pad_inject_target_id(state, &route.mapping_id);
+    // Soft Pad 「取消」while listening → exit listen (same as voice「取消」).
+    let beginner_cancel = inject_tid.trim() == app_chat_workflow::CURSOR_APP_TARGET_ID
+        && crate::cursor_beginner::probe_ok()
+        && (route.slot_id == "cancelListen"
+            || (micro_key_id == crate::cursor_beginner::CANCEL_LISTEN_MICRO_KEY
+                && crate::cursor_beginner::effective_armed(&state.cfg.lock())));
+    if beginner_cancel {
+        crate::codex_micro_overlay::note_pad_run_status("running", micro_key_id);
+        crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        spawn_cursor_beginner_tap(
+            Arc::clone(state),
+            app.clone(),
+            exec_window.clone(),
+            "cancelListen".into(),
+            micro_key_id.to_string(),
+            true,
+        );
+        return serde_json::json!({
+            "ok": true,
+            "reason": "fired",
+            "slotId": "cancelListen",
+            "actionId": "cursorBeginnerDisarm",
+        });
+    }
     if inject_tid.trim() == app_chat_workflow::CURSOR_APP_TARGET_ID
         && crate::cursor_beginner::is_beginner_slot(&route.slot_id)
         && crate::cursor_beginner::probe_ok()

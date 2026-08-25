@@ -16,6 +16,10 @@ use crate::pad_status::adapters::codex::ingest_codex_app_payload;
 const POLL_SECS: u64 = 2;
 const MAX_SESSIONS: usize = 6;
 const TAIL_READ_MAX: u64 = 256 * 1024;
+/// Incomplete rollouts (`task_started` without `task_complete`) stay `running` forever.
+/// Settle when the file itself has gone quiet. Live turns keep writing (token_count etc.).
+/// ponytail: mtime only, not process watch — raise if silent streams exceed 3 min.
+const RUNNING_STALE_MS: u64 = 3 * 60 * 1000;
 
 /// 0=fresh path ok, 1=stale unused, 2=corrupt parse seen this process.
 static SCAN_HEALTH: AtomicU8 = AtomicU8::new(0);
@@ -106,6 +110,26 @@ pub fn aggregate_pad_event(statuses: &[&str]) -> &'static str {
         "Stop"
     } else {
         "SessionEnd"
+    }
+}
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+/// Drop latched `running` when the rollout has not been written recently.
+fn settle_stale_running(status: &str, mtime_ms: u64, now: u64) -> &'static str {
+    if status == "running" && (mtime_ms == 0 || now.saturating_sub(mtime_ms) > RUNNING_STALE_MS) {
+        return "done";
+    }
+    match status {
+        "running" => "running",
+        "failed" => "failed",
+        "done" => "done",
+        _ => "idle",
     }
 }
 
@@ -278,6 +302,7 @@ fn tick_once() {
     if !index.is_file() {
         return;
     }
+    let now = now_ms();
     let idx_mt = mtime_ms(&index);
     let mut g = match scan_state().lock() {
         Ok(g) => g,
@@ -310,6 +335,7 @@ fn tick_once() {
         } else {
             status
         };
+        let status = settle_stale_running(status, cur.mtime_ms, now);
         cur.status = status;
         statuses.push(status);
         if primary_session.is_empty() {
@@ -325,11 +351,6 @@ fn tick_once() {
     }
     g.last_emitted = Some(event);
     drop(g);
-
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis() as u64)
-        .unwrap_or(0);
 
     let _ = ingest_codex_app_payload(&CodexAppStatePayload {
         source: "codex_app".into(),
@@ -378,5 +399,21 @@ mod tests {
         assert_eq!(aggregate_pad_event(&["done", "failed"]), "StopFailure");
         assert_eq!(aggregate_pad_event(&["done", "idle"]), "Stop");
         assert_eq!(aggregate_pad_event(&["idle"]), "SessionEnd");
+    }
+
+    #[test]
+    fn stale_task_started_without_complete_settles() {
+        let now = 10 * 60 * 1000;
+        assert_eq!(settle_stale_running("running", now - 60_000, now), "running");
+        assert_eq!(
+            settle_stale_running("running", now - RUNNING_STALE_MS - 1, now),
+            "done"
+        );
+        assert_eq!(settle_stale_running("running", 0, now), "done");
+        assert_eq!(settle_stale_running("done", 0, now), "done");
+        assert_eq!(
+            aggregate_pad_event(&["done", settle_stale_running("running", 1, now)]),
+            "Stop"
+        );
     }
 }

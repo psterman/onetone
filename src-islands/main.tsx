@@ -28,6 +28,7 @@ import {
   DebugOverviewIsland,
   registerDebugOverviewBridge,
 } from './islands/debug-overview-island';
+import { ActionHistoryIsland } from './islands/action-history-island';
 import { MappingListIsland } from './islands/mapping-list-island';
 import { WbCommandIsland } from './islands/wb-command-island';
 import { SoftPadStatusBarIsland } from './islands/soft-pad-status-island';
@@ -273,6 +274,23 @@ function mountDebugOverviewIsland(): void {
 }
 (window as unknown as { __otMountDebugOverviewIsland?: () => void }).__otMountDebugOverviewIsland =
   mountDebugOverviewIsland;
+
+function mountHabitUsageSheetHistory(mappingId?: string, hours?: number): void {
+  const host = document.getElementById('habitUsageSheetHistory');
+  if (!host) return;
+  const mid = String(mappingId || '').trim();
+  const h = hours && hours > 0 ? hours : 168;
+  const props = { mappingId: mid || undefined, compact: true, hours: h };
+  if (OneToneIslands.isMounted('habitUsageSheetHistory')) {
+    OneToneIslands.unmountIsland('habitUsageSheetHistory');
+  }
+  host.innerHTML = '';
+  OneToneIslands.mountIsland('habitUsageSheetHistory', ActionHistoryIsland, props, {
+    onRefresh: () => ({}) as Record<string, unknown>,
+  });
+}
+(window as unknown as { __otMountHabitUsageSheetHistory?: (mappingId?: string, hours?: number) => void }).__otMountHabitUsageSheetHistory =
+  mountHabitUsageSheetHistory;
 
 // P7：挂载映射列表岛到 #mappingList（接管行渲染 keyed diff；交互仍走 legacy 容器级事件委托）
 function mountMappingListIsland(): void {

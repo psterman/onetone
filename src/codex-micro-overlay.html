@@ -1128,7 +1128,7 @@
         var lt=usageValue(usage,'localTodayTokens','local_today_tokens');
         if(detail&&lt!=null&&Number(lt)>0) locBits.push('本机今日 '+Math.round(Number(lt)));
         var base=balCap+(locBits.length?(' · '+locBits.join(' · ')):'');
-        if(status==='stale') return base+(detail?' · 数据陈旧':' · 陈旧');
+        if(status==='stale') return base+(detail?' · 额度缓存':' · 缓存');
         return base;
       }
       // WorkBuddy / Trae Work / Trae Code / Qoder — official message is the caption.
@@ -1141,7 +1141,7 @@
             var lm=usageValue(usage,'localMonthTokens','local_month_tokens');
             if(lm!=null&&Number(lm)>0) shellCap+=' · 本机本月 '+Math.round(Number(lm));
           }
-          if(status==='stale') return shellCap+(detail?' · 数据陈旧':' · 陈旧');
+          if(status==='stale') return shellCap+(detail?' · 额度缓存':' · 缓存');
           if(status==='waiting') return shellCap;
           if(status==='ready') return shellCap;
           return shellCap;
@@ -1149,7 +1149,7 @@
         var shellRem=usageValue(usage,'remainingPercent','remaining_percent');
         if(shellRem!=null&&(status==='ready'||status==='stale'||status==='waiting')){
           var shellBase='余 '+Math.round(Number(shellRem))+'%';
-          if(status==='stale') return shellBase+(detail?' · 数据陈旧':' · 陈旧');
+          if(status==='stale') return shellBase+(detail?' · 额度缓存':' · 缓存');
           return shellBase;
         }
         if(status!=='ready'&&status!=='stale'&&status!=='waiting'){
@@ -1190,8 +1190,8 @@
         }
       }
       if(status==='stale'){
-        if(bits.length) return bits.join(detail?' · ':' / ')+(detail?' · 数据陈旧':' · 陈旧');
-        return detail?(friendlyUsageMessage(usage.message)||'数据陈旧，保留上次值'):'数据陈旧';
+        if(bits.length) return bits.join(detail?' · ':' / ')+(detail?' · 额度缓存':' · 缓存');
+        return detail?(friendlyUsageMessage(usage.message)||'额度未刷新，显示上次值'):'额度缓存';
       }
       if(status==='waiting'){
         if(bits.length) return bits.join(detail?' · ':' / ');
@@ -1249,7 +1249,7 @@
       if(status==='ready'||state==='live'||((hasRem||hasOtel)&&status!=='stale'&&status!=='waiting')){
         return { label:'正常', state:'live' };
       }
-      if(status==='stale'||state==='stale') return { label:'数据陈旧', state:'stale' };
+      if(status==='stale'||state==='stale') return { label:'额度缓存', state:'stale' };
       if(status==='waiting'||state==='configured_waiting') return { label:'同步中', state:'configured_waiting' };
       if(status==='disabled'||state==='disabled') return { label:'已关闭', state:'disabled' };
       if(state==='error'&&!hasRem&&!hasOtel) return { label:'出错', state:'error' };
@@ -1379,7 +1379,19 @@
       return '';
     }
 
-    /** One visible pill: pinned focus → app_agent → renderable-first (Cursor activity ok). */
+    /** IDE / Soft Pad context — not sticky tip-pin, not quota-rich default. */
+    function contextAgentKind(s){
+      var fg=canonAgentKind(s&&(s.foregroundAgent||s.foreground_agent));
+      if(isUsageFocusKind(fg)) return fg;
+      // Soft Pad often steals OS focus; Applied mapping still names the IDE pad.
+      var applied=canonAgentKind(s&&(s.appliedAgent||s.applied_agent));
+      if(isUsageFocusKind(applied)) return applied;
+      var surface=canonAgentKind(s&&(s.surfaceAgent||s.surface_agent));
+      if(isUsageFocusKind(surface)) return surface;
+      return '';
+    }
+
+    /** One visible pill: context → pin → app_agent → renderable-first (Cursor activity ok). */
     function pickMiniUsageKind(s){
       var rows=Array.isArray(s&&s.agents)?s.agents:[];
       var byKind={};
@@ -1392,9 +1404,10 @@
       }
       // Hover preview wins even when that agent has no renderable usage yet.
       if(hoverUsageKind) return canonAgentKind(hoverUsageKind);
+      var ctx=contextAgentKind(s);
+      // Follow the IDE you're in even when Cursor has no activity stats yet.
+      if(ctx) return ctx;
       if(usageFocusPinned&&focusedUsageAgent&&hasRenderable(focusedUsageAgent)) return canonAgentKind(focusedUsageAgent);
-      var fg=canonAgentKind(s&&(s.foregroundAgent||s.foreground_agent));
-      if(fg&&hasRenderable(fg)) return fg;
       var app=canonAgentKind(s&&(s.appAgent||s.app_agent));
       if(app&&hasRenderable(app)) return app;
       var active=['needs_input','running'];
@@ -1422,16 +1435,24 @@
 
     function resolveUsageFocus(s){
       if(hoverUsageKind) return canonAgentKind(hoverUsageKind);
+      var ctx=contextAgentKind(s);
+      if(ctx) return ctx;
       if(usageFocusPinned&&isUsageFocusKind(focusedUsageAgent)){
         return canonAgentKind(focusedUsageAgent);
       }
-      var fg=canonAgentKind(s&&(s.foregroundAgent||s.foreground_agent));
-      if(isUsageFocusKind(fg)) return fg;
       var app=canonAgentKind(s&&(s.appAgent||s.app_agent));
       if(isUsageFocusKind(app)) return app;
       var auto=pickMiniUsageKind(s);
       if(auto) return auto;
       return canonAgentKind(focusedUsageAgent)||'codex';
+    }
+
+    /** Usage-focus ring: hover / current IDE / active task — never sticky tip-pin. */
+    function shouldShowUsageFocusChrome(kind, focus, state, ctx){
+      if(kind!==focus) return false;
+      if(hoverUsageKind===kind) return true;
+      if(state==='running'||state==='needs_input') return true;
+      return !!(ctx&&kind===ctx);
     }
 
     function usageLineBits(kind,usage,row,snap){
@@ -1749,9 +1770,10 @@
           state='needs_input';
         }
       }
-      // Always sync focus chrome first (not derived from stale row state).
-      el.classList.toggle('is-usage-focus', kind===focus);
-      el.setAttribute('aria-pressed', kind===focus?'true':'false');
+      // Focus chrome ≠ lifecycle lamp — follow IDE context, not tip-pin.
+      var usageFocusOn=shouldShowUsageFocusChrome(kind, focus, state, contextAgentKind(s));
+      el.classList.toggle('is-usage-focus', usageFocusOn);
+      el.setAttribute('aria-pressed', usageFocusOn?'true':'false');
 
       var decision=applyAgentStatusEdge(el, state, row);
       var Edge=window.OneToneAgentStatusEdge;
@@ -1840,7 +1862,7 @@
       var slots=Array.isArray(s&&s.cursorBeginnerSlots)?s.cursorBeginnerSlots:(Array.isArray(s&&s.cursor_beginner_slots)?s.cursor_beginner_slots:[]);
       var msg=String((s&&s.cursorBeginnerProbeMessage)||(s&&s.cursor_beginner_probe_message)||'').trim();
       var armHint=String((s&&s.cursorBeginnerArmHint)||(s&&s.cursor_beginner_arm_hint)||'').trim();
-      if(!armHint&&armed) armHint='聆听中 · 可说：发送、继续、新建、麦克风';
+      if(!armHint&&armed) armHint='聆听中 · 可说：发送、继续、新建、麦克风、取消';
       if(miniBeginnerHint){
         if(!probeOk&&msg){
           miniBeginnerHint.hidden=false;
@@ -1861,9 +1883,19 @@
           miniBeginnerListenBanner.classList.toggle('is-miss',!!(vHeard&&!vMatched&&vFinal));
           miniBeginnerListenText.textContent=vHeard||armHint||'';
         } else {
-          miniBeginnerListenBanner.hidden=true;
-          miniBeginnerListenBanner.classList.remove('is-matched','is-miss');
-          miniBeginnerListenText.textContent='';
+          // Keep last matched phrase briefly after「取消」so user sees confirmation.
+          var vFinalOff=String((s&&s.voiceHeardFinal)||(s&&s.voice_heard_final)||'').trim();
+          var vMatchedOff=!!((s&&s.voiceHeardMatched)||(s&&s.voice_heard_matched));
+          if(vMatchedOff&&vFinalOff){
+            miniBeginnerListenBanner.hidden=false;
+            miniBeginnerListenBanner.classList.add('is-matched');
+            miniBeginnerListenBanner.classList.remove('is-miss');
+            miniBeginnerListenText.textContent=vFinalOff;
+          } else {
+            miniBeginnerListenBanner.hidden=true;
+            miniBeginnerListenBanner.classList.remove('is-matched','is-miss');
+            miniBeginnerListenText.textContent='';
+          }
         }
       }
       if(miniBeginnerListenChip&&miniBeginnerListenChipText){
@@ -1902,32 +1934,61 @@
       var sig=slots.map(function(x){
         return String(x.slotId||x.slot_id||'')+':'+(Number(x.holdMs!=null?x.holdMs:x.hold_ms)||0);
       }).join('|')+':'+armed;
-      if(miniBeginnerActions.__sig===sig) return;
-      miniBeginnerActions.__sig=sig;
-      miniBeginnerActions.innerHTML=slots.map(function(slot){
-        var iconId=slot.iconId||slot.icon_id||'';
-        var icon=ICON[iconId]||ICON.empty;
-        var hold=Number(slot.holdMs!=null?slot.holdMs:slot.hold_ms)||0;
-        var slotId=slot.slotId||slot.slot_id||'';
-        var microKey=slot.microKeyId||slot.micro_key_id||'';
-        var label=slot.labelZh||slot.label_zh||slotId;
-        return '<button type="button" class="overlay-mini__action" data-beginner-slot="'+escHtml(slotId)+'"'
-          +' data-hold-ms="'+hold+'" data-micro-key="'+escHtml(microKey)+'"'
-          +' aria-label="'+escHtml(label)+'" title="'+escHtml(label)+'">'
-          +'<span class="overlay-mini__action-icon">'+icon+'</span></button>';
-      }).join('');
-      miniBeginnerActions.querySelectorAll('[data-beginner-slot]').forEach(function(btn){
-        bindBeginnerMiniAction(btn);
-      });
-      if(window.OneToneCursorBeginnerOnboard){
-        window.OneToneCursorBeginnerOnboard.maybeShow(s);
+      if(miniBeginnerActions.__sig!==sig){
+        miniBeginnerActions.__sig=sig;
+        miniBeginnerActions.innerHTML=slots.map(function(slot){
+          var iconId=slot.iconId||slot.icon_id||'';
+          var icon=ICON[iconId]||ICON.empty;
+          var hold=Number(slot.holdMs!=null?slot.holdMs:slot.hold_ms)||0;
+          var slotId=slot.slotId||slot.slot_id||'';
+          var microKey=slot.microKeyId||slot.micro_key_id||'';
+          var label=slot.labelZh||slot.label_zh||slotId;
+          return '<button type="button" class="overlay-mini__action" data-beginner-slot="'+escHtml(slotId)+'"'
+            +' data-hold-ms="'+hold+'" data-micro-key="'+escHtml(microKey)+'"'
+            +' aria-label="'+escHtml(label)+'" title="'+escHtml(label)+'">'
+            +'<span class="overlay-mini__action-icon">'+icon+'</span></button>';
+        }).join('');
+        miniBeginnerActions.querySelectorAll('[data-beginner-slot]').forEach(function(btn){
+          bindBeginnerMiniAction(btn);
+        });
+        if(window.OneToneCursorBeginnerOnboard){
+          window.OneToneCursorBeginnerOnboard.maybeShow(s);
+        }
+      }
+      flashBeginnerVoiceHit(s);
+    }
+
+    function flashBeginnerVoiceHit(s){
+      var active=String((s&&(s.activeMicroKeyId||s.active_micro_key_id))||'').trim();
+      var matched=!!((s&&s.voiceHeardMatched)||(s&&s.voice_heard_matched));
+      if(!matched||!active) return;
+      var padKey=document.querySelector('.micro-hw__key[data-micro-key="'+active+'"]');
+      if(padKey){
+        padKey.classList.add('is-pressed','is-active','is-voice-hit');
+        clearTimeout(padKey.__voiceHitT);
+        padKey.__voiceHitT=setTimeout(function(){
+          padKey.classList.remove('is-pressed','is-active','is-voice-hit');
+        },900);
+      }
+      if(miniBeginnerActions){
+        miniBeginnerActions.querySelectorAll('[data-micro-key]').forEach(function(btn){
+          var on=btn.getAttribute('data-micro-key')===active;
+          btn.classList.toggle('is-voice-hit',on);
+          if(on){
+            btn.classList.add('is-pressed');
+            clearTimeout(btn.__voiceHitT);
+            btn.__voiceHitT=setTimeout(function(){
+              btn.classList.remove('is-pressed','is-voice-hit');
+            },900);
+          }
+        });
       }
     }
 
     function beginnerMicroKey(slotId, microKey){
       var k=String(microKey||'').trim();
       if(k) return k;
-      var map={pushToTalk:'ACT10',stopOrSend:'ACT12',continue:'AG02',newThread:'AG01'};
+      var map={pushToTalk:'ACT10',stopOrSend:'ACT12',continue:'AG02',newThread:'AG01',cancelListen:'ACT08'};
       return map[String(slotId||'')]||'';
     }
 
@@ -1936,11 +1997,15 @@
       var reason=String(res.reason||'');
       if(reason==='probe_failed'){
         toast(String(res.message||reasonHint('probe_failed')));
+      } else if(reason==='focus_failed'){
+        toast(String(res.message||'未能聚焦 Cursor 输入框'));
       } else if(reason==='hold_required'){
         toast(reasonHint('hold_required'));
       } else if(res.ok&&(slotId==='pushToTalk'||reason==='hold_down')){
         setLocalStatus('listening', microKey||'ACT10');
         if(window.OneToneCursorBeginnerOnboard) window.OneToneCursorBeginnerOnboard.markDone();
+      } else if(res.ok&&(slotId==='cancelListen'||reason==='disarmed')){
+        toast('已取消聆听');
       } else if(res.ok){
         toast('已触发 · '+String(slotId||''));
       } else if(!res.ok){
@@ -3127,8 +3192,8 @@
       var surfaceAgent=String(s.surfaceAgent||s.surface_agent||appliedAgent||fgAgent||'').toLowerCase();
       var noAgChrome=surfaceAgent==='cursor'||appliedAgent==='cursor'||fgAgent==='cursor';
       var cursorBeginner=!!(s.cursorBeginnerMode||s.cursor_beginner_mode);
-      var beginnerLabels={ACT10:'说话',ACT12:'发送',AG02:'继续',AG01:'新会话'};
-      var beginnerKeys={ACT10:1,ACT12:1,AG02:1,AG01:1,ENC:1};
+      var beginnerLabels={ACT10:'说话',ACT12:'发送',AG02:'继续',AG01:'新会话',ACT08:'取消'};
+      var beginnerKeys={ACT10:1,ACT12:1,AG02:1,AG01:1,ACT08:1,ENC:1};
       var cursorAgIcon={AG00:'palette',AG01:'fork',AG02:'fast',AG03:'search',AG04:'send',AG05:'reject'};
       grid.innerHTML=activeLayout().map(function(cell){
         var info=map[cell.id]||{};

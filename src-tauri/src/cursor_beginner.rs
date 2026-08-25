@@ -16,6 +16,8 @@ pub const ARM_IDLE_TIMEOUT_MS: u64 = 30_000;
 pub const NEW_THREAD_HOLD_MS: u32 = 500;
 pub const SIDE_KEY_ARM_MS: u64 = 1_000;
 pub const PROBE_FAIL_MSG: &str = "未检测到 Cursor，请先安装 / 登录";
+/// Soft Pad / mini cancel-listen key (reject icon).
+pub const CANCEL_LISTEN_MICRO_KEY: &str = "ACT08";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BeginnerSlotDef {
@@ -65,12 +67,21 @@ pub const BEGINNER_SLOTS: &[BeginnerSlotDef] = &[
         voice_phrases: &["新会话", "新建"],
         tap_hold_ms: NEW_THREAD_HOLD_MS,
     },
+    BeginnerSlotDef {
+        slot_id: "cancelListen",
+        action_id: "cursorBeginnerDisarm",
+        micro_key_id: CANCEL_LISTEN_MICRO_KEY,
+        icon_id: "reject",
+        label_zh: "取消",
+        voice_phrases: &["取消"],
+        tap_hold_ms: 0,
+    },
 ];
 
 pub const DISARM_PHRASES: &[&str] = &["取消"];
 /// Voice-only arm: show mini bar + enter listen mode without stealing Cursor FG.
 pub const ARM_PHRASES: &[&str] = &["小助手"];
-pub const ARM_HINT: &str = "聆听中 · 可说：发送、继续、新建、麦克风";
+pub const ARM_HINT: &str = "聆听中 · 可说：发送、继续、新建、麦克风、取消";
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -93,6 +104,8 @@ pub struct CursorBeginnerRuntime {
     pub armed: bool,
     pub armed_at: Option<Instant>,
     pub last_voice_at: Option<Instant>,
+    /// 「取消」while Cursor FG auto-listen: ignore commands until leave Cursor / re-arm.
+    pub listen_suppressed: bool,
     side_pending: Option<SideKeyPending>,
     side_arm_fired: bool,
     last_overlay_minimized: Option<bool>,
@@ -102,6 +115,7 @@ static RUNTIME: Mutex<CursorBeginnerRuntime> = Mutex::new(CursorBeginnerRuntime 
     armed: false,
     armed_at: None,
     last_voice_at: None,
+    listen_suppressed: false,
     side_pending: None,
     side_arm_fired: false,
     last_overlay_minimized: None,
@@ -121,6 +135,8 @@ pub fn note_cursor_fg_change(cursor_now_fg: bool, overlay_is_fg: bool) {
         *CURSOR_WAS_FG.lock() = true;
     } else if !overlay_is_fg {
         *CURSOR_WAS_FG.lock() = false;
+        // Left Cursor → clear「取消」suppress so next Cursor visit auto-listens again.
+        runtime().listen_suppressed = false;
     }
 }
 
@@ -344,7 +360,11 @@ pub fn cursor_is_foreground() -> bool {
 /// Armed explicitly or Cursor FG (auto-listen while composing).
 /// Uses overlay-aware latch so clicking the overlay doesn't break the armed state.
 pub fn effective_armed(cfg: &VoiceConfig) -> bool {
-    is_armed() || (probe_ok() && cursor_was_or_is_foreground())
+    let rt = runtime();
+    if rt.listen_suppressed {
+        return false;
+    }
+    rt.armed || (probe_ok() && cursor_was_or_is_foreground())
 }
 
 pub fn arm_hint(cfg: &VoiceConfig) -> String {
@@ -397,6 +417,7 @@ pub fn arm(state: &AppState, app: &AppHandle, expand_pad: bool) {
         rt.armed = true;
         rt.armed_at = Some(Instant::now());
         rt.last_voice_at = None;
+        rt.listen_suppressed = false;
     }
     if expand_pad {
         crate::codex_micro_overlay::set_overlay_minimized_persist(app, state, false);
@@ -410,6 +431,8 @@ pub fn disarm(state: &AppState, app: &AppHandle) {
         rt.armed = false;
         rt.armed_at = None;
         rt.last_voice_at = None;
+        // Keep suppress while still on Cursor so auto-FG listen doesn't instantly re-arm.
+        rt.listen_suppressed = true;
     }
     crate::codex_micro_overlay::push_overlay_status(app, state);
 }
@@ -551,6 +574,20 @@ pub fn run_slot(
     let Some(def) = slot_def(slot_id) else {
         return serde_json::json!({ "ok": false, "reason": "unknown_slot" });
     };
+    if def.slot_id == "cancelListen" {
+        if from_voice {
+            note_voice_activity();
+        }
+        crate::codex_micro_overlay::note_micro_key(def.micro_key_id, true);
+        disarm(state.as_ref(), &window.app_handle());
+        return serde_json::json!({
+            "ok": true,
+            "reason": "disarmed",
+            "slotId": def.slot_id,
+            "microKeyId": def.micro_key_id,
+            "mappingId": ""
+        });
+    }
     if def.tap_hold_ms > 0 && !from_voice && !hold_confirmed {
         return serde_json::json!({
             "ok": false,
@@ -580,6 +617,50 @@ pub fn run_slot(
     }
     let app = window.app_handle();
     let duration_ms = state.cfg.lock().key_press_duration_ms;
+    // 「发送」must land Enter in Cursor composer — Soft Pad/voice often leaves caret elsewhere.
+    if def.slot_id == "stopOrSend" {
+        let _pad_pass = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app);
+        if let Err(err) =
+            app_chat_workflow::focus_composer_for_send(&app, CURSOR_APP_TARGET_ID, duration_ms)
+        {
+            crate::app_log::log_line(
+                state.as_ref(),
+                "cursor_beginner",
+                &format!("send focus failed err={err:?}"),
+            );
+            return serde_json::json!({
+                "ok": false,
+                "reason": "focus_failed",
+                "message": "未能聚焦 Cursor 输入框，请点一下对话框再说「发送」",
+                "slotId": def.slot_id,
+                "microKeyId": def.micro_key_id
+            });
+        }
+        let commit_key = {
+            let cfg = state.cfg.lock();
+            let k = cfg.voice_end.commit_key.trim().to_string();
+            if k.is_empty() {
+                "Enter".into()
+            } else {
+                k
+            }
+        };
+        let ok = crate::keyboard::send_chord(&commit_key, duration_ms);
+        if from_voice {
+            note_voice_activity();
+        }
+        crate::codex_micro_overlay::note_micro_key(def.micro_key_id, true);
+        drop(_pad_pass);
+        crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        return serde_json::json!({
+            "ok": ok,
+            "reason": if ok { "executed" } else { "input_failed" },
+            "slotId": def.slot_id,
+            "microKeyId": def.micro_key_id,
+            "mappingId": mapping_id,
+            "message": if ok { format!("sent {commit_key}") } else { format!("failed {commit_key}") }
+        });
+    }
     if let Err(err) = app_chat_workflow::focus_composer_only(&app, CURSOR_APP_TARGET_ID, duration_ms)
     {
         crate::app_log::log_line(
@@ -651,23 +732,12 @@ pub fn dispatch_voice_phrase(
     app: &AppHandle,
     phrase: &str,
 ) -> Option<crate::voice_end_runtime::VoiceWakeDispatchResult> {
-    if is_disarm_phrase(phrase) {
-        if is_armed() {
-            disarm(state, app);
-        }
-        return Some(crate::voice_end_runtime::VoiceWakeDispatchResult {
-            ok: true,
-            target_key: phrase.to_string(),
-            mapping_id: String::new(),
-            used_summon_workflow: false,
-            runtime_label: "cursor_beginner:disarm".into(),
-        });
-    }
     if is_arm_phrase(phrase) {
         if !beginner_mode_active(&state.cfg.lock()) {
             return None;
         }
         arm(state, app, true);
+        crate::codex_micro_overlay::note_micro_key("ENC", true);
         return Some(crate::voice_end_runtime::VoiceWakeDispatchResult {
             ok: true,
             target_key: phrase.to_string(),
@@ -680,6 +750,20 @@ pub fn dispatch_voice_phrase(
     let armed = effective_armed(&cfg);
     let habit_ok = cursor_habit_active(&cfg) && probe_ok();
     drop(cfg);
+    // 「取消」：已聆听时退出；未聆听也闪一下取消键，方便用户确认口令命中。
+    if is_disarm_phrase(phrase) || matches_beginner_phrase(phrase).is_some_and(|d| d.slot_id == "cancelListen")
+    {
+        let window = crate::ipc::get_main_window(app)?;
+        let out = run_slot(state, &window, "cancelListen", true, true);
+        let ok = out.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
+        return Some(crate::voice_end_runtime::VoiceWakeDispatchResult {
+            ok,
+            target_key: phrase.to_string(),
+            mapping_id: String::new(),
+            used_summon_workflow: false,
+            runtime_label: "cursor_beginner:cancelListen".into(),
+        });
+    }
     if !armed && !habit_ok {
         if matches_beginner_phrase(phrase).is_some() {
             return Some(crate::voice_end_runtime::VoiceWakeDispatchResult {
@@ -724,6 +808,14 @@ pub fn heal_cursor_beginner_pad_slots(m: &mut config::MappingEntry) -> bool {
             route.slot_id = "continue".into();
             if route.ui_icon_id.trim().is_empty() || route.ui_icon_id == "fast" {
                 route.ui_icon_id = "fast".into();
+            }
+            changed = true;
+        }
+        // ACT08: listen cancel (口令「取消」) — not Esc generation while Cursor beginner pad.
+        if route.micro_key_id == CANCEL_LISTEN_MICRO_KEY && route.slot_id.trim() != "cancelListen" {
+            route.slot_id = "cancelListen".into();
+            if route.ui_icon_id.trim().is_empty() {
+                route.ui_icon_id = "reject".into();
             }
             changed = true;
         }
@@ -797,6 +889,8 @@ mod tests {
         assert_eq!(matches_beginner_phrase("麦克风").map(|d| d.slot_id), Some("pushToTalk"));
         assert_eq!(matches_beginner_phrase("新建").map(|d| d.slot_id), Some("newThread"));
         assert_eq!(matches_beginner_phrase("但是").map(|d| d.slot_id), Some("continue"));
+        assert_eq!(matches_beginner_phrase("取消").map(|d| d.slot_id), Some("cancelListen"));
+        assert!(is_disarm_phrase("取消"));
     }
 
     #[test]
@@ -812,9 +906,36 @@ mod tests {
         assert_eq!(def.tap_hold_ms, NEW_THREAD_HOLD_MS);
     }
 
+    #[test]
+    fn cancel_listen_slot_on_act08() {
+        let def = slot_def("cancelListen").unwrap();
+        assert_eq!(def.micro_key_id, CANCEL_LISTEN_MICRO_KEY);
+        assert_eq!(
+            slot_for_micro_key(CANCEL_LISTEN_MICRO_KEY).map(|d| d.slot_id),
+            Some("cancelListen")
+        );
+    }
+
+    #[test]
+    fn stop_or_send_uses_dedicated_focus_path() {
+        // Contract: 「发送」must punch Soft Pad + verify UIA composer before Enter.
+        let src = include_str!("cursor_beginner.rs");
+        assert!(src.contains("focus_composer_for_send"));
+        assert!(src.contains("SoftPadSendPassGuard"));
+        assert!(src.contains("stopOrSend"));
+        let workflow = include_str!("app_chat_workflow.rs");
+        assert!(workflow.contains("uia_focus_chat_input_verified"));
+        assert!(workflow.contains("click_client_relative_via_message"));
+        assert!(workflow.contains("uia_min_score_for_send"));
+        let def = slot_def("stopOrSend").unwrap();
+        assert_eq!(def.micro_key_id, "ACT12");
+    }
+
     fn disarm_for_test() {
         let mut rt = runtime();
         rt.armed = false;
         rt.armed_at = None;
+        rt.last_voice_at = None;
+        rt.listen_suppressed = false;
     }
 }

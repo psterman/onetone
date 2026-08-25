@@ -28,6 +28,18 @@ assert.ok(html.includes('未收到 Claude Hook') || html.includes('pickLightGate
 assert.ok(html.includes('function applyMiniAgentChips'));
 assert.ok(html.includes('function applyMiniUsagePill'));
 assert.ok(html.includes('function pickMiniUsageKind'));
+assert.ok(html.includes('function contextAgentKind'), 'IDE/applied context before tip-pin');
+assert.ok(html.includes('function shouldShowUsageFocusChrome'), 'focus chrome gate');
+assert.ok(
+  /function resolveUsageFocus\(s\)\{[\s\S]*?contextAgentKind\(s\)[\s\S]*?usageFocusPinned/.test(html),
+  'resolveUsageFocus: context must beat tip-pin'
+);
+{
+  var chromeFn = html.match(/function shouldShowUsageFocusChrome\([\s\S]*?\n    \}/);
+  assert.ok(chromeFn, 'shouldShowUsageFocusChrome body');
+  assert.ok(!chromeFn[0].includes('usageFocusPinned'), 'focus chrome must not use sticky tip-pin');
+  assert.ok(chromeFn[0].includes('ctx') || chromeFn[0].includes('context'), 'focus chrome follows IDE context');
+}
 assert.ok(html.includes('function applyUsageCaptionIdle') || html.includes('usageCaptionIdle'));
 assert.ok(html.includes('usage-format.js'));
 assert.ok(html.includes('OneToneUsageFormat') || html.includes('formatResetCountdown'));

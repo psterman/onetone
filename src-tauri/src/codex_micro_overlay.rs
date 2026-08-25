@@ -29,7 +29,7 @@ const OVERLAY_WIDTH_MINI: f64 = 320.0;
 const OVERLAY_HEIGHT_MINI: f64 = 44.0;
 /// Extra band for Cursor beginner listen hint under mini bar.
 const OVERLAY_HEIGHT_MINI_LISTEN: f64 = 68.0;
-const HIGHLIGHT_MS: u64 = 320;
+const HIGHLIGHT_MS: u64 = 900;
 
 static ACTIVE_MICRO_KEY: OnceLock<Mutex<String>> = OnceLock::new();
 static HIGHLIGHT_UNTIL: OnceLock<ParkingMutex<Option<Instant>>> = OnceLock::new();
@@ -207,6 +207,36 @@ pub fn apply_overlay_no_activate() {
 
 #[cfg(not(windows))]
 pub fn apply_overlay_no_activate() {}
+
+/// Temporarily punch Soft Pad so screen/client clicks reach Cursor Composer under it.
+/// Restores previous pass-through + WebView ignore-cursor on drop.
+pub struct SoftPadSendPassGuard {
+    app: AppHandle,
+    restore_pass: bool,
+}
+
+impl SoftPadSendPassGuard {
+    pub fn engage(app: &AppHandle) -> Self {
+        let restore_pass = *last_pass_through().lock();
+        set_overlay_click_through_impl(true, true);
+        if let Some(win) = app.get_webview_window(CODEX_MICRO_OVERLAY_LABEL) {
+            let _ = win.set_ignore_cursor_events(true);
+        }
+        Self {
+            app: app.clone(),
+            restore_pass,
+        }
+    }
+}
+
+impl Drop for SoftPadSendPassGuard {
+    fn drop(&mut self) {
+        set_overlay_click_through_impl(self.restore_pass, true);
+        if let Some(win) = self.app.get_webview_window(CODEX_MICRO_OVERLAY_LABEL) {
+            let _ = win.set_ignore_cursor_events(self.restore_pass);
+        }
+    }
+}
 
 fn set_overlay_click_through_impl(pass: bool, force: bool) {
     let mut last = last_pass_through().lock();
@@ -2438,10 +2468,12 @@ fn apply_voice_heard(snapshot: &mut CodexMicroOverlaySnapshot, state: &AppState)
         final_text
     };
     let heard = heard.trim();
+    let phrase_hit = !heard.is_empty()
+        && (crate::cursor_beginner::matches_beginner_phrase(heard).is_some()
+            || crate::cursor_beginner::is_disarm_phrase(heard)
+            || crate::cursor_beginner::is_arm_phrase(heard));
     snapshot.voice_heard_matched = !state.voice_vosk_last_trigger.lock().trim().is_empty()
-        || (!heard.is_empty()
-            && snapshot.cursor_beginner_armed
-            && crate::cursor_beginner::matches_beginner_phrase(heard).is_some());
+        || (phrase_hit && snapshot.cursor_beginner_armed);
 }
 
 fn pad_run_status_slot() -> &'static ParkingMutex<(String, String, Instant)> {
