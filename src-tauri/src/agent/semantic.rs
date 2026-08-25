@@ -79,6 +79,7 @@ pub const LAYER1_ACTION_IDS: &[&str] = &[
     "status.read",
     "app.open",
     "app.shortcut",
+    "workspace.applyLayout",
 ];
 
 pub const LAYER2_CORE_ACTION_IDS: &[&str] = &[
@@ -126,6 +127,8 @@ pub fn resolve_canonical_action_id(raw: &str, finish: FinishPolicy) -> String {
             FinishPolicy::Send => "input.send".into(),
             FinishPolicy::Commit => "input.commit".into(),
         },
+        // workspace.applyLayout:{id} → workspace.applyLayout (id via args / raw)
+        other if other.starts_with("workspace.applyLayout") => "workspace.applyLayout".into(),
         // Legacy status slash → Layer1 status.read when used as semantic status
         other => other.to_string(),
     }
@@ -589,6 +592,20 @@ const SEMANTIC_META: &[SemanticActionMeta] = &[
         requires_second_channel_from: REQ_NONE,
         provider_scope: "currentTarget",
     },
+    SemanticActionMeta {
+        id: "workspace.applyLayout",
+        layer: ActionLayer::OneToneBase,
+        category: ActionCategory::System,
+        label_zh: "恢复工作区布局",
+        label_en: "Apply workspace layout",
+        risk: RiskLevel::Safe,
+        channels: KEY_VOICE_PAD_CAMERA,
+        implemented: true,
+        executor: "onetoneRuntime",
+        available_when: AW_ANY_V1,
+        requires_second_channel_from: REQ_NONE,
+        provider_scope: "none",
+    },
 ];
 
 pub fn semantic_meta_by_id(id: &str) -> Option<&'static SemanticActionMeta> {
@@ -816,6 +833,11 @@ mod tests {
             resolve_canonical_action_id("openAgent", FinishPolicy::Commit),
             "agent.focus"
         );
+        assert_eq!(
+            resolve_canonical_action_id("workspace.applyLayout:wl-1", FinishPolicy::Commit),
+            "workspace.applyLayout"
+        );
+        assert!(semantic_meta_by_id("workspace.applyLayout").is_some());
     }
 
     #[test]

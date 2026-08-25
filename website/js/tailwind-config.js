@@ -4,8 +4,20 @@ tailwind.config = {
     extend: {
       fontFamily: {
         sans: ["Inter", "PingFang SC", "Microsoft YaHei", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "Menlo", "Monaco", "Courier New", "monospace"],
       },
       colors: {
+        mac: {
+          bg: "#000000",
+          panel: "rgba(30, 30, 32, 0.65)",
+          border: "rgba(255, 255, 255, 0.12)",
+          accent: "#2a9cc4",
+          glow: "#5ec8e8",
+          text: "#f5f5f7",
+          textMuted: "#86868b",
+        },
+        "mac-accent": "#2a9cc4",
+        "mac-glow": "#5ec8e8",
         brand: {
           50: "#e6f7fc",
           100: "#d4f0fa",
@@ -20,19 +32,7 @@ tailwind.config = {
         },
         surface: {
           light: "#ffffff",
-          dark: "#0f172a",
-        },
-      },
-      animation: {
-        blob: "blob 7s infinite",
-        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-      },
-      keyframes: {
-        blob: {
-          "0%": { transform: "translate(0px, 0px) scale(1)" },
-          "33%": { transform: "translate(30px, -50px) scale(1.1)" },
-          "66%": { transform: "translate(-20px, 20px) scale(0.9)" },
-          "100%": { transform: "translate(0px, 0px) scale(1)" },
+          dark: "#000000",
         },
       },
     },

@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>视觉中枢 · OneTone Proto</title>
+  
+  <!-- Loading Fonts and Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  
+  <!-- Loading Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['Menlo', 'Monaco', 'Courier New', 'monospace'] },
+          colors: {
+            mac: {
+              bg: '#000000',
+              panel: 'rgba(30, 30, 32, 0.65)',
+              border: 'rgba(255, 255, 255, 0.12)',
+              accent: '#f59e0b', /* Amber */
+              text: '#f5f5f7',
+              textMuted: '#86868b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: theme('colors.mac.bg');
+      color: theme('colors.mac.text');
+      font-family: theme('fontFamily.sans');
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* =========================================
+       Glassmorphism Utilities
+       ========================================= */
+    .mac-glass {
+      background: theme('colors.mac.panel');
+      backdrop-filter: blur(40px) saturate(150%);
+      -webkit-backdrop-filter: blur(40px) saturate(150%);
+      border: 1px solid theme('colors.mac.border');
+      box-shadow: 0 24px 48px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+
+    /* =========================================
+       Hero: 动态视觉中枢 (Vision Canvas)
+       ========================================= */
+    .hero-wrapper {
+      position: relative; height: 100vh; min-height: 800px; display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #18181b 0%, #000000 100%);
+    }
+
+    /* 空间透视网格 */
+    .hero-grid {
+      position: absolute; inset: -50%; width: 200%; height: 200%;
+      background-image: 
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      transform: perspective(800px) rotateX(60deg) translateY(-100px) translateZ(-200px);
+      pointer-events: none;
+      animation: grid-move 20s linear infinite;
+    }
+    @keyframes grid-move { 
+      0% { transform: perspective(800px) rotateX(60deg) translateY(0) translateZ(-200px); } 
+      100% { transform: perspective(800px) rotateX(60deg) translateY(60px) translateZ(-200px); } 
+    }
+
+    .vision-stage {
+      position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+      width: 900px; height: 600px; pointer-events: none; z-index: 1;
+    }
+
+    /* 智能对焦框 (Bounding Box) */
+    .viewfinder {
+      position: absolute; top: 50%; left: 50%; width: 200px; height: 200px;
+      transform: translate(-50%, -50%);
+      transition: all 0.8s cubic-bezier(0.32, 0.72, 0, 1);
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .vf-corner {
+      position: absolute; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.2);
+      transition: border-color 0.4s ease;
+    }
+    .vf-corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; }
+    .vf-corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; }
+    .vf-corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; }
+    .vf-corner.br { bottom: 0; right: 0; border-left: none; border-top: none; }
+
+    /* 扫描光栅 */
+    .vf-scanline {
+      position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(245,158,11,0.8), transparent);
+      box-shadow: 0 0 10px rgba(245,158,11,0.5);
+      opacity: 0; transform: translateY(0);
+    }
+
+    /* 内部目标 Icon */
+    .vf-target {
+      font-size: 64px; color: rgba(255,255,255,0);
+      transition: all 0.4s ease;
+      filter: drop-shadow(0 0 12px rgba(245,158,11,0));
+      transform: scale(0.8);
+    }
+
+    /* 顶部标签 */
+    .vf-label {
+      position: absolute; top: -24px; left: 0; font-family: theme('fontFamily.mono');
+      font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 1px;
+      transition: color 0.4s ease;
+    }
+
+    /* --- 状态切换动画 --- */
+    /* 1. 待机寻踪 (Idle) */
+    .state-idle .viewfinder { width: 280px; height: 180px; transform: translate(-50%, -40%); }
+    .state-idle .vf-corner { border-color: rgba(255,255,255,0.2); }
+    
+    /* 2. 捕捉眨眼 (Blink) */
+    .state-blink .viewfinder { width: 140px; height: 100px; transform: translate(-50%, -60%); }
+    .state-blink .vf-corner { border-color: theme('colors.mac.accent'); border-width: 3px; }
+    .state-blink .vf-label { color: theme('colors.mac.accent'); }
+    .state-blink .vf-target { color: theme('colors.mac.accent'); filter: drop-shadow(0 0 15px rgba(245,158,11,0.4)); transform: scale(1); }
+    .state-blink .vf-scanline { animation: scan-anim 1.5s ease-in-out infinite; opacity: 1; }
+
+    /* 3. 捕捉举手 (Hand) */
+    .state-hand .viewfinder { width: 160px; height: 200px; transform: translate(30%, -20%); }
+    .state-hand .vf-corner { border-color: theme('colors.mac.accent'); border-width: 3px; }
+    .state-hand .vf-label { color: theme('colors.mac.accent'); }
+    .state-hand .vf-target { color: theme('colors.mac.accent'); filter: drop-shadow(0 0 15px rgba(245,158,11,0.4)); transform: scale(1); }
+    .state-hand .vf-scanline { animation: scan-anim 1.5s ease-in-out infinite; opacity: 1; }
+
+    /* 4. 捕捉摇头 (Shake) */
+    .state-shake .viewfinder { width: 180px; height: 180px; transform: translate(-50%, -50%); }
+    .state-shake .vf-corner { border-color: theme('colors.mac.accent'); border-width: 3px; }
+    .state-shake .vf-label { color: theme('colors.mac.accent'); }
+    .state-shake .vf-target { color: theme('colors.mac.accent'); filter: drop-shadow(0 0 15px rgba(245,158,11,0.4)); transform: scale(1); animation: shake-anim 0.4s ease-in-out infinite alternate; }
+    .state-shake .vf-scanline { animation: scan-anim 1.5s ease-in-out infinite; opacity: 1; }
+
+    /* 5. 离席隐匿 (Away) */
+    .state-away .viewfinder { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+
+    @keyframes scan-anim { 0% { transform: translateY(0px); } 50% { transform: translateY(100%); } 100% { transform: translateY(0px); } }
+    @keyframes shake-anim { 0% { transform: translateX(-8px) scale(1); } 100% { transform: translateX(8px) scale(1); } }
+
+    /* 离席 (Away) 磨砂盾牌 */
+    .vs-frost-shield {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8);
+      width: 140px; height: 140px; border-radius: 50%;
+      background: rgba(20, 20, 22, 0.6); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+      border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 50px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+      display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px;
+      opacity: 0; transition: all 0.8s cubic-bezier(0.32, 0.72, 0, 1); z-index: 10;
+    }
+    .vs-frost-shield i { font-size: 42px; color: #fff; opacity: 0.9; }
+    .vs-frost-shield span { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.6); letter-spacing: 2px; text-transform: uppercase; }
+    
+    .state-away .vs-frost-shield { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+    /* 状态指示器面板 (终端风) */
+    .vs-status-panel {
+      position: absolute; right: -120px; top: 50%; transform: translateY(-50%);
+      width: 220px; padding: 16px; background: rgba(15,15,17,0.6); border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 12px; backdrop-filter: blur(20px); font-family: theme('fontFamily.mono');
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+    .vs-status-header { font-size: 10px; color: theme('colors.mac.textMuted'); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+    .vs-status-code { font-size: 13px; color: theme('colors.mac.accent'); font-weight: 500; margin-bottom: 6px; transition: color 0.3s; }
+    .vs-status-desc { font-size: 12px; color: rgba(255,255,255,0.7); line-height: 1.5; transition: opacity 0.3s; }
+    
+    .vs-status-dot {
+      display: inline-block; width: 6px; height: 6px; background: theme('colors.mac.accent');
+      border-radius: 50%; margin-right: 6px; box-shadow: 0 0 8px theme('colors.mac.accent');
+      animation: pulse-dot 1.5s infinite alternate; transition: background 0.3s, box-shadow 0.3s;
+    }
+    .vs-status-dot.idle { background: #86868b; box-shadow: 0 0 8px transparent; }
+
+    @keyframes pulse-dot { from { opacity: 0.4; } to { opacity: 1; } }
+
+    /* --- 新增手势动画专用的 Keyframes --- */
+    @keyframes icon-shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); color: theme('colors.mac.accent'); }
+        75% { transform: translateX(5px); color: theme('colors.mac.accent'); }
+    }
+    .animate-pip-shake {
+        animation: icon-shake 0.4s ease-in-out;
+    }
+
+    /* =========================================
+       Feature Cards
+       ========================================= */
+    .feature-card {
+      transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1), box-shadow 0.4s ease;
+    }
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 32px 64px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+    }
+
+    /* 手势按钮 (类似 macOS 控制中心) */
+    .gesture-btn {
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 12px;
+      font-size: 14px; font-weight: 500; color: theme('colors.mac.text');
+      transition: all 0.2s ease; cursor: pointer;
+    }
+    .gesture-btn:hover { background: rgba(255,255,255,0.1); transform: scale(1.02); }
+    .gesture-btn:active { transform: scale(0.96); background: rgba(255,255,255,0.08); }
+    .gesture-btn i { font-size: 20px; color: theme('colors.mac.accent'); }
+  </style>
+</head>
+<body class="antialiased selection:bg-mac-accent selection:text-white">
+
+  <!-- Header -->
+  <header class="fixed top-0 w-full z-50 mac-glass border-b-0 rounded-none bg-black/40">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="#" class="flex items-center gap-2 text-white font-semibold text-lg tracking-tight hover:opacity-80 transition-opacity">
+        <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-mac-accent to-orange-400"></div>
+        OneTone
+      </a>
+      <nav class="hidden md:flex gap-8 text-sm font-medium text-mac-textMuted">
+        <a href="#" class="hover:text-white transition-colors">概览</a>
+        <a href="#" class="text-white">视觉</a>
+        <a href="#" class="hover:text-white transition-colors">能力</a>
+      </nav>
+      <a href="#" class="text-sm font-semibold bg-white text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors">下载体验</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero-wrapper" id="hero">
+      
+      <!-- 空间透视网格 -->
+      <div class="hero-grid"></div>
+
+      <!-- 全新动态视觉中枢：空间取景器 -->
+      <div class="vision-stage state-idle" id="vision-stage">
+        
+        <!-- 智能对焦框 -->
+        <div class="viewfinder">
+          <div class="vf-corner tl"></div>
+          <div class="vf-corner tr"></div>
+          <div class="vf-corner bl"></div>
+          <div class="vf-corner br"></div>
+          <div class="vf-scanline"></div>
+          <div class="vf-label" id="vf-label">AWAITING_INPUT</div>
+          <!-- 目标 Icon (通过 JS 切换 class 改变图标) -->
+          <i class="ph ph-scan vf-target" id="vf-icon"></i>
+        </div>
+
+        <!-- 图层: 离席 (Away) 盾牌 -->
+        <div class="vs-frost-shield">
+          <i class="ph-fill ph-lock-key"></i>
+          <span>SECURED</span>
+        </div>
+
+        <!-- 旁侧状态信息面板 -->
+        <div class="vs-status-panel hidden md:block">
+          <div class="vs-status-header"><span class="vs-status-dot idle" id="vs-dot"></span> Vision Scanner Feed</div>
+          <div class="vs-status-code" id="vs-code" style="color: #86868b;">SYS.TRACKING_READY</div>
+          <div class="vs-status-desc" id="vs-desc">正在扫描环境体态特征...</div>
+        </div>
+      </div>
+
+      <!-- 文字层 -->
+      <div class="relative z-10 text-center max-w-3xl mx-auto px-6 pointer-events-none mt-[35vh]">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mac-glass text-xs font-medium text-mac-textMuted mb-6">
+          <i class="ph-fill ph-shield-check text-mac-accent"></i> 本地处理 · 绝不上传云端
+        </div>
+        <h1 class="text-5xl md:text-6xl font-bold tracking-tight text-white mb-6 leading-tight">
+          摄像头只帮你触发<br>不帮云端看你。
+        </h1>
+        <p class="text-lg md:text-xl text-mac-textMuted mb-10 max-w-2xl mx-auto">
+          运用 Apple Vision 框架与精密拓扑追踪技术。精准捕捉眨眼、摇头、举手与离席动作，瞬间化为生产力指令。
+        </p>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="py-32 relative z-10 bg-mac-bg">
+      <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 gap-12">
+        
+        <!-- Card 1: 离席与防护 -->
+        <div class="mac-glass rounded-3xl p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 feature-card">
+          <div class="flex-1 space-y-6">
+            <div class="text-mac-textMuted text-sm font-mono tracking-widest uppercase">01 · Presence</div>
+            <h2 class="text-3xl font-bold text-white">离席遮罩，旁观者提醒。</h2>
+            <p class="text-mac-textMuted leading-relaxed">
+              人脸离开约 3 秒，全屏隐私遮罩迅速盖住所有显示器；回席约 2.5 秒后自动收起，也可按 Esc 解除。遮罩保护隐私但绝不强制锁定 Mac。
+              <br><br>
+              当第二张脸稳定出现时，系统级毛玻璃弹窗轻巧提醒——只提醒，不验证身份，可随时暂停。
+            </p>
+          </div>
+          <div class="flex-1 w-full relative h-[300px] rounded-2xl bg-black overflow-hidden border border-white/10 flex items-center justify-center">
+             <!-- macOS Notification Mockup -->
+             <div id="c1-notif" class="absolute top-4 right-4 w-64 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-4 shadow-2xl flex gap-4 items-start transition-all duration-700 opacity-0 translate-x-8">
+               <div class="w-10 h-10 rounded-full bg-mac-accent/20 flex items-center justify-center text-mac-accent flex-shrink-0">
+                 <i class="ph-fill ph-eye text-xl"></i>
+               </div>
+               <div>
+                 <div class="text-sm font-semibold text-white mb-1">另一张脸</div>
+                 <div class="text-xs text-white/70">检测到旁观者。可暂停 5 分钟。</div>
+               </div>
+             </div>
+             <!-- Screen Mockup -->
+             <div class="w-64 h-40 border-8 border-gray-900 rounded-xl bg-gray-800 flex items-center justify-center relative overflow-hidden shadow-2xl">
+                <!-- User Workspace Content -->
+                <div class="absolute inset-0 flex flex-col p-4 opacity-30">
+                   <div class="w-1/3 h-3 bg-white rounded mb-4"></div>
+                   <div class="w-3/4 h-2 bg-gray-400 rounded mb-2"></div>
+                   <div class="w-2/3 h-2 bg-gray-400 rounded mb-2"></div>
+                   <div class="w-full h-2 bg-gray-400 rounded mb-2"></div>
+                </div>
+                <!-- Shield Overlay -->
+                <div id="c1-shield" class="absolute inset-0 bg-black/60 backdrop-blur-md flex flex-col items-center justify-center text-center transition-opacity duration-700 opacity-0">
+                  <i class="ph-fill ph-lock-key text-white text-2xl mb-2"></i>
+                  <span class="text-white text-xs font-medium">OneTone 已遮住屏幕</span>
+                </div>
+             </div>
+          </div>
+        </div>
+
+        <!-- Card 2: 多屏追踪 -->
+        <div class="mac-glass rounded-3xl p-8 md:p-12 flex flex-col md:flex-row-reverse items-center gap-12 feature-card">
+          <div class="flex-1 space-y-6">
+            <div class="text-mac-textMuted text-sm font-mono tracking-widest uppercase">02 · Tracking</div>
+            <h2 class="text-3xl font-bold text-white">看向哪块屏，<br>光标跟过去。</h2>
+            <p class="text-mac-textMuted leading-relaxed">
+              基于精密的面部 Yaw 轴计算。注视停顿后，按下 Control 键，光标或拖拽中的窗口将以优雅的物理吸附质感，瞬间飞越到你正注视的那块屏幕。
+            </p>
+          </div>
+          <div class="flex-1 w-full relative h-[300px] rounded-2xl bg-black overflow-hidden border border-white/10 flex items-center justify-center gap-6">
+             <!-- Dual Monitors -->
+             <div id="c2-mon-a" class="w-40 h-28 border-4 border-mac-accent rounded-lg bg-gray-900 relative transition-colors duration-500 shadow-xl">
+               <div class="absolute top-2 left-2 w-16 h-12 bg-white/10 rounded border border-white/20 shadow-lg"></div>
+               <div id="c2-label-a" class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-mac-accent font-mono whitespace-nowrap transition-colors duration-500">Display A (Focused)</div>
+             </div>
+             <div id="c2-mon-b" class="w-40 h-28 border-4 border-gray-800 rounded-lg bg-gray-900 relative transition-colors duration-500 shadow-xl">
+                <div id="c2-label-b" class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-gray-500 font-mono whitespace-nowrap transition-colors duration-500">Display B</div>
+             </div>
+             
+             <!-- Global Flying Cursor -->
+             <div id="c2-cursor" class="absolute transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] z-10" style="left: 30%; top: 50%; transform: translate(-50%, -50%);">
+                <!-- Cursor tail effect -->
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-mac-accent rounded-full blur-md opacity-50 scale-150"></div>
+                <i class="ph-fill ph-cursor text-mac-accent text-xl relative drop-shadow-[0_0_8px_rgba(245,158,11,0.8)] z-10"></i>
+             </div>
+          </div>
+        </div>
+
+        <!-- Card 2: 多屏追踪 -->
+        <div class="mac-glass rounded-3xl p-8 md:p-12 flex flex-col md:flex-row-reverse items-center gap-12 feature-card">
+          <div class="flex-1 space-y-6">
+            <div class="text-mac-textMuted text-sm font-mono tracking-widest uppercase">02 · Tracking</div>
+            <h2 class="text-3xl font-bold text-white">看向哪块屏，<br>光标跟过去。</h2>
+            <p class="text-mac-textMuted leading-relaxed">
+              基于精密的面部 Yaw 轴计算。注视停顿后，按下 Control 键，光标或拖拽中的窗口将以优雅的物理吸附质感，瞬间飞越到你正注视的那块屏幕。
+            </p>
+          </div>
+          <div class="flex-1 w-full relative h-[300px] rounded-2xl bg-black overflow-hidden border border-white/10 flex items-center justify-center gap-6">
+             <!-- Dual Monitors -->
+             <div class="w-40 h-28 border-4 border-gray-800 rounded-lg bg-gray-900 relative">
+               <div class="absolute top-2 left-2 w-16 h-12 bg-white/10 rounded border border-white/20 shadow-lg"></div>
+               <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-gray-500 font-mono">Display A</div>
+             </div>
+             <div class="w-40 h-28 border-4 border-gray-800 rounded-lg bg-gray-900 relative">
+                <!-- Cursor tail effect -->
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-mac-accent rounded-full blur-md opacity-50"></div>
+                <i class="ph-fill ph-cursor text-mac-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xl drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]"></i>
+                <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-mac-accent font-mono">Display B (Focused)</div>
+             </div>
+          </div>
+        </div>
+
+        <!-- Card 3: 手势触发 -->
+        <div class="mac-glass rounded-3xl p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 feature-card">
+          <div class="flex-1 space-y-6">
+            <div class="text-mac-textMuted text-sm font-mono tracking-widest uppercase">03 · Gestures</div>
+            <h2 class="text-3xl font-bold text-white">四种手势，信手拈来。</h2>
+            <p class="text-mac-textMuted leading-relaxed">
+              Apple Vision 本机毫秒级识别。默认映射至最常用的操作；在 Workbench 中可自由定制。无需真的抬手，在设置中即可「立即测试」效果。
+            </p>
+          </div>
+          <div class="flex-1 w-full flex flex-col gap-5">
+             
+             <!-- 迷你桌面演示舞台 (Stage) -->
+             <div class="relative w-full h-[220px] rounded-2xl bg-gray-900 overflow-hidden border border-white/10 flex items-center justify-center shadow-inner">
+                
+                <!-- 模拟当前屏幕的虚化背景 -->
+                <div class="absolute inset-0 bg-gradient-to-br from-gray-800 to-black opacity-50"></div>
+                
+                <!-- 摄像头 PiP (画中画) 视窗 -->
+                <div class="absolute top-4 right-4 w-16 h-12 bg-black/80 backdrop-blur-md rounded-lg border border-white/20 shadow-2xl flex items-center justify-center overflow-hidden z-20">
+                   <i class="ph-fill ph-user text-gray-500 text-2xl transition-all duration-300" id="g-pip-icon"></i>
+                </div>
+
+                <!-- 离席遮罩图层 (对应摇头) -->
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-xl flex flex-col items-center justify-center opacity-0 transition-opacity duration-500 z-10" id="g-shield-layer">
+                   <i class="ph-fill ph-lock-key text-white/90 text-3xl mb-3"></i>
+                   <span class="text-white/80 text-xs font-semibold tracking-wide">离席遮罩已开启</span>
+                </div>
+
+                <!-- 屏幕中央的大图标反馈 -->
+                <i class="ph-fill ph-command text-mac-accent text-6xl opacity-0 transform scale-50 transition-all duration-500 drop-shadow-[0_0_15px_rgba(245,158,11,0.5)] z-20" id="g-center-icon"></i>
+                
+                <!-- 底部毛玻璃 Toast 通知 -->
+                <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full px-5 py-2 text-xs font-medium text-white opacity-0 transform translate-y-6 transition-all duration-500 whitespace-nowrap shadow-xl z-20" id="g-toast">
+                   指令已触发
+                </div>
+             </div>
+
+             <!-- 手势触发控制面板 -->
+             <div class="grid grid-cols-2 gap-3">
+               <button class="gesture-btn group" data-gesture="blink"><i class="ph ph-eye group-hover:scale-110 transition-transform"></i> <span>长眨眼</span></button>
+               <button class="gesture-btn group" data-gesture="shake"><i class="ph ph-arrows-left-right group-hover:scale-110 transition-transform"></i> <span>水平摇头</span></button>
+               <button class="gesture-btn group" data-gesture="fist"><i class="ph ph-hand-fist group-hover:scale-110 transition-transform"></i> <span>单手握拳</span></button>
+               <button class="gesture-btn group" data-gesture="palm"><i class="ph ph-hand-palm group-hover:scale-110 transition-transform"></i> <span>五指张开</span></button>
+             </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      
+      /* --- 1. Hero 视觉中枢状态循环 (空间取景器) --- */
+      const visionStage = document.getElementById('vision-stage');
+      const vsCode = document.getElementById('vs-code');
+      const vsDesc = document.getElementById('vs-desc');
+      const vsDot = document.getElementById('vs-dot');
+      const vfLabel = document.getElementById('vf-label');
+      const vfIcon = document.getElementById('vf-icon');
+      
+      // UI 状态调度剧本
+      const heroStates = [
+        { 
+          class: 'state-blink', icon: 'ph-eye', label: 'TARGET_LOCKED',
+          code: 'ACTION.BLINK_DETECTED', desc: '捕获眼睑拓扑动作：长眨眼。已映射至自定义按键。' 
+        },
+        { 
+          class: 'state-shake', icon: 'ph-user', label: 'MOTION_TRACKED',
+          code: 'ACTION.HEAD_SHAKE', desc: '高频震荡分析：水平摇头。执行窗口切换或静音指令。' 
+        },
+        { 
+          class: 'state-hand', icon: 'ph-hand-palm', label: 'GESTURE_RECOGNIZED',
+          code: 'ACTION.HAND_RAISED', desc: '骨骼节点捕捉：五指张开。系统进入全局挂起状态。' 
+        },
+        { 
+          class: 'state-away', icon: '', label: '',
+          code: 'PRESENCE.AWAY', desc: '特征锚点丢失。判定为离席，已启动毛玻璃隐私遮罩保护。' 
+        }
+      ];
+
+      // 异步循环控制状态切换
+      async function runHeroVisionLoop() {
+        if(!visionStage) return;
+        let currentIndex = 0;
+
+        while(true) {
+          // 1. 回归待机寻踪状态 (Idle)
+          visionStage.className = 'vision-stage state-idle';
+          vsCode.textContent = 'SYS.SCANNING_ENV';
+          vsDesc.textContent = '正在扫描环境与人体特征...';
+          vsCode.style.color = '#86868b'; 
+          vsDot.classList.add('idle');
+          vfLabel.textContent = 'SEARCHING';
+          vfIcon.className = 'ph ph-scan vf-target';
+          
+          await new Promise(r => setTimeout(r, 2500)); // 待机扫描 2.5 秒
+
+          // 2. 触发特定捕捉状态
+          const state = heroStates[currentIndex];
+          visionStage.className = `vision-stage ${state.class}`;
+          
+          vsCode.textContent = state.code;
+          vsDesc.textContent = state.desc;
+          vsCode.style.color = '#f59e0b'; // Amber Color
+          vsDot.classList.remove('idle');
+          
+          if(state.class !== 'state-away') {
+            vfLabel.textContent = state.label;
+            vfIcon.className = `ph ${state.icon} vf-target`;
+          }
+          
+          await new Promise(r => setTimeout(r, 3500)); // 展示捕捉状态 3.5 秒
+
+          currentIndex = (currentIndex + 1) % heroStates.length;
+        }
+      }
+      
+      // 启动视觉循环
+      runHeroVisionLoop();
+
+      /* --- 2. 手势卡片互动舞台控制 --- */
+      const gestureBtns = document.querySelectorAll('.gesture-btn');
+      const gPipIcon = document.getElementById('g-pip-icon');
+      const gShieldLayer = document.getElementById('g-shield-layer');
+      const gCenterIcon = document.getElementById('g-center-icon');
+      const gToast = document.getElementById('g-toast');
+      let gestureTimeout;
+
+      gestureBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const type = btn.getAttribute('data-gesture');
+          
+          // 1. 重置所有状态
+          clearTimeout(gestureTimeout);
+          gPipIcon.className = 'ph-fill ph-user text-gray-500 text-2xl transition-all duration-300';
+          gPipIcon.classList.remove('animate-pip-shake');
+          gShieldLayer.style.opacity = '0';
+          
+          gCenterIcon.style.opacity = '0';
+          gCenterIcon.style.transform = 'scale(0.5)';
+          
+          gToast.style.opacity = '0';
+          gToast.style.transform = 'translate(-50%, 15px)';
+
+          // 强制浏览器重排，使得动画每次点击都能重新触发
+          void gPipIcon.offsetWidth;
+
+          // 2. 根据不同手势分配不同反馈效果
+          if (type === 'blink') {
+             gPipIcon.className = 'ph-fill ph-eye-closed text-mac-accent text-2xl transition-all duration-300';
+             showStageFeedback('ph-keyboard', '已触发习惯键: [ ⌘ + ⇧ + 2 ]');
+          } 
+          else if (type === 'shake') {
+             // 摇头表现为图标震动，且屏蔽层落下
+             gPipIcon.classList.add('animate-pip-shake');
+             gShieldLayer.style.opacity = '1';
+             showStageFeedback('', '检测到离席动作'); 
+          } 
+          else if (type === 'fist') {
+             gPipIcon.className = 'ph-fill ph-hand-fist text-mac-accent text-2xl transition-all duration-300';
+             showStageFeedback('ph-x-circle', '系统指令: [ ESC ]');
+          } 
+          else if (type === 'palm') {
+             gPipIcon.className = 'ph-fill ph-hand-palm text-mac-accent text-2xl transition-all duration-300';
+             showStageFeedback('ph-pause-circle', '全局任务挂起');
+          }
+
+          // 3. 两秒后自动恢复待机态
+          gestureTimeout = setTimeout(() => {
+             gPipIcon.className = 'ph-fill ph-user text-gray-500 text-2xl transition-all duration-500';
+             gShieldLayer.style.opacity = '0';
+             
+             gCenterIcon.style.opacity = '0';
+             gCenterIcon.style.transform = 'scale(0.5)';
+             
+             gToast.style.opacity = '0';
+             gToast.style.transform = 'translate(-50%, 15px)';
+          }, 2500);
+        });
+      });
+
+      // 辅助函数：显示中央图标与底部 Toast
+      function showStageFeedback(iconClass, text) {
+          if(iconClass) {
+              gCenterIcon.className = `ph-fill ${iconClass} text-mac-accent text-6xl transition-all duration-500 drop-shadow-[0_0_15px_rgba(245,158,11,0.5)] z-20`;
+              gCenterIcon.style.opacity = '1';
+              gCenterIcon.style.transform = 'scale(1)';
+          }
+          gToast.textContent = text;
+          gToast.style.opacity = '1';
+          gToast.style.transform = 'translate(-50%, 0)';
+      }
+
+
+      /* --- 3. Hero 鼠标交互追踪 (增强物理抓取感) --- */
+      const heroWrapper = document.getElementById('hero');
+      if(heroWrapper && visionStage) {
+        visionStage.style.transition = 'transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)'; // 平滑物理缓冲
+        
+        heroWrapper.addEventListener('mousemove', (e) => {
+          // 视差正向跟随，让取景框“追”着鼠标看
+          const x = (e.clientX - window.innerWidth / 2) * 0.15; 
+          const y = (e.clientY - window.innerHeight / 2) * 0.15;
+          
+          visionStage.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+        });
+
+        heroWrapper.addEventListener('mouseleave', () => {
+           // 鼠标离开，取景器回正
+           visionStage.style.transform = `translate(-50%, -50%)`;
+        });
+      }
+
+      /* --- 4. Card 01: 在场保护 (全自动循环剧本) --- */
+      async function runPresenceLoop() {
+        const notif = document.getElementById('c1-notif');
+        const shield = document.getElementById('c1-shield');
+        if(!notif || !shield) return;
+        
+        while(true) {
+          // Scene 1: 正常工作
+          notif.style.opacity = '0'; notif.style.transform = 'translateX(20px)';
+          shield.style.opacity = '0';
+          await new Promise(r => setTimeout(r, 3000));
+          
+          // Scene 2: 弹窗提醒发现旁观者
+          notif.style.opacity = '1'; notif.style.transform = 'translateX(0)';
+          await new Promise(r => setTimeout(r, 4000));
+          notif.style.opacity = '0'; notif.style.transform = 'translateX(20px)';
+          await new Promise(r => setTimeout(r, 1000));
+          
+          // Scene 3: 主人离席，下落隐私遮罩
+          shield.style.opacity = '1';
+          await new Promise(r => setTimeout(r, 3500));
+        }
+      }
+      runPresenceLoop();
+
+      /* --- 5. Card 02: 多屏追踪 (全自动循环剧本) --- */
+      async function runTrackingLoop() {
+        const cursor = document.getElementById('c2-cursor');
+        const monA = document.getElementById('c2-mon-a');
+        const monB = document.getElementById('c2-mon-b');
+        const labelA = document.getElementById('c2-label-a');
+        const labelB = document.getElementById('c2-label-b');
+        if(!cursor) return;
+        
+        const focusColor = '#f59e0b';
+        const blurColor = '#1f2937';
+        
+        while(true) {
+          // Scene 1: 视线聚焦屏幕 A
+          monA.style.borderColor = focusColor; labelA.style.color = focusColor; labelA.textContent = 'Display A (Focused)';
+          monB.style.borderColor = blurColor; labelB.style.color = '#6b7280'; labelB.textContent = 'Display B';
+          cursor.style.left = '30%'; 
+          await new Promise(r => setTimeout(r, 3000));
+          
+          // Scene 2: 视线转移到屏幕 B，光标延迟飞跃
+          monA.style.borderColor = blurColor; labelA.style.color = '#6b7280'; labelA.textContent = 'Display A';
+          monB.style.borderColor = focusColor; labelB.style.color = focusColor; labelB.textContent = 'Display B (Focused)';
+          await new Promise(r => setTimeout(r, 600)); // 0.6s 后光标随动
+          
+          cursor.style.left = '70%';
+          await new Promise(r => setTimeout(r, 3000));
+        }
+      }
+      runTrackingLoop();
+
+      /* --- 6. Card 03: 手势识别 (全自动演示剧本) --- */
+      let autoGestureEnabled = true;
+      let currentGestureIndex = 0;
+      
+      // 用户干涉逻辑 (悬停暂停自动演示)
+      gestureBtns.forEach(btn => {
+        btn.addEventListener('mouseenter', () => autoGestureEnabled = false);
+        btn.addEventListener('mouseleave', () => {
+           autoGestureEnabled = true;
+           currentGestureIndex = Array.from(gestureBtns).indexOf(btn); // 接着离开的按钮继续
+        });
+      });
+
+      async function runGestureLoop() {
+        if(gestureBtns.length === 0) return;
+        while(true) {
+          if (autoGestureEnabled) {
+            gestureBtns[currentGestureIndex].click();
+            currentGestureIndex = (currentGestureIndex + 1) % gestureBtns.length;
+          }
+          await new Promise(r => setTimeout(r, 3500)); // 每 3.5 秒演示一个
+        }
+      }
+      runGestureLoop();
+
+    });
+  </script>
+</body>
+</html>

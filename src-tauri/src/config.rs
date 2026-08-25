@@ -1286,6 +1286,113 @@ pub struct MappingEntry {
     pub capture_hero_ref: Option<CaptureHeroRef>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceAnchorMatch {
+    #[serde(default)]
+    pub process_name: String,
+    #[serde(default)]
+    pub title_contains: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceLayoutSlot {
+    #[serde(default)]
+    pub hwnd: String,
+    #[serde(default)]
+    pub display_name: String,
+    #[serde(default)]
+    pub process_name: String,
+    #[serde(default)]
+    pub title_contains: String,
+    #[serde(default)]
+    pub class_name: String,
+    #[serde(default)]
+    pub full_path: String,
+    #[serde(default)]
+    pub monitor_id: String,
+    #[serde(default)]
+    pub x: i32,
+    #[serde(default)]
+    pub y: i32,
+    #[serde(default)]
+    pub width: u32,
+    #[serde(default)]
+    pub height: u32,
+    #[serde(default)]
+    pub x_pct: f64,
+    #[serde(default)]
+    pub y_pct: f64,
+    #[serde(default)]
+    pub w_pct: f64,
+    #[serde(default)]
+    pub h_pct: f64,
+    #[serde(default)]
+    pub show_state: String,
+    #[serde(default)]
+    pub z_order: u32,
+    #[serde(default)]
+    pub required: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceLayoutConfig {
+    #[serde(default)]
+    pub id: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub saved_at: i64,
+    #[serde(default)]
+    pub monitor_fingerprint: String,
+    #[serde(default)]
+    pub auto_apply: String,
+    #[serde(default)]
+    pub anchor_app: String,
+    #[serde(default)]
+    pub companion_apps: Vec<String>,
+    #[serde(default)]
+    pub anchor_match: WorkspaceAnchorMatch,
+    #[serde(default = "default_workspace_debounce_ms")]
+    pub debounce_ms: u32,
+    #[serde(default = "default_workspace_cooldown_ms")]
+    pub cooldown_ms: u32,
+    #[serde(default = "default_true")]
+    pub skip_if_user_dragging: bool,
+    #[serde(default)]
+    pub slots: Vec<WorkspaceLayoutSlot>,
+}
+
+impl Default for WorkspaceLayoutConfig {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            name: String::new(),
+            saved_at: 0,
+            monitor_fingerprint: String::new(),
+            auto_apply: String::new(),
+            anchor_app: String::new(),
+            companion_apps: vec![],
+            anchor_match: WorkspaceAnchorMatch::default(),
+            debounce_ms: default_workspace_debounce_ms(),
+            cooldown_ms: default_workspace_cooldown_ms(),
+            skip_if_user_dragging: true,
+            slots: vec![],
+        }
+    }
+}
+
+fn new_workspace_layout_id() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    format!("wl-{ms}")
+}
+
 /// Codex scenario numpad layer — routes physical numpad keys to agent slots.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -1976,6 +2083,8 @@ pub struct VoiceConfig {
     pub soft_pad_status_notify_enabled: bool,
     #[serde(default, rename = "cameraPrefs")]
     pub camera_prefs: CameraPrefs,
+    #[serde(default, rename = "workspaceLayouts")]
+    pub workspace_layouts: Vec<WorkspaceLayoutConfig>,
     #[serde(default, rename = "sounds")]
     pub sounds: SoundsConfig,
     #[serde(default = "default_false", rename = "startMinimizedToTray")]
@@ -2054,6 +2163,134 @@ fn default_debounce_ms() -> u32 {
 }
 fn default_key_press_duration_ms() -> u32 {
     250
+}
+fn default_workspace_debounce_ms() -> u32 {
+    1000
+}
+fn default_workspace_cooldown_ms() -> u32 {
+    30000
+}
+
+pub fn normalize_workspace_layouts_pub(list: &mut Vec<WorkspaceLayoutConfig>) {
+    normalize_workspace_layouts(list);
+}
+
+fn normalize_workspace_layouts(list: &mut Vec<WorkspaceLayoutConfig>) {
+    let mut seen_auto_anchor = std::collections::HashSet::new();
+    for item in list.iter_mut() {
+        if item.id.trim().is_empty() {
+            item.id = new_workspace_layout_id();
+        } else {
+            item.id = item.id.trim().to_string();
+        }
+        item.name = item.name.trim().to_string();
+        if item.name.is_empty() {
+            item.name = "工作区".into();
+        }
+        item.anchor_app = item.anchor_app.trim().to_string();
+        item.anchor_match.process_name = item.anchor_match.process_name.trim().to_string();
+        item.anchor_match.title_contains = item.anchor_match.title_contains.trim().to_string();
+        if item.anchor_match.process_name.is_empty() {
+            item.anchor_match.process_name = item.anchor_app.clone();
+        }
+        item.auto_apply = match item.auto_apply.trim() {
+            "onEnterAnchorApp" => "onEnterAnchorApp".into(),
+            _ => String::new(),
+        };
+        item.debounce_ms = item.debounce_ms.clamp(300, 5000);
+        item.cooldown_ms = item.cooldown_ms.clamp(1000, 300000);
+        for slot in item.slots.iter_mut() {
+            slot.display_name = slot.display_name.trim().to_string();
+            slot.process_name = slot.process_name.trim().to_string();
+            slot.title_contains = slot.title_contains.trim().to_string();
+            slot.class_name = slot.class_name.trim().to_string();
+            slot.monitor_id = slot.monitor_id.trim().to_string();
+            slot.width = slot.width.max(1);
+            slot.height = slot.height.max(1);
+            slot.x_pct = slot.x_pct.clamp(0.0, 1.0);
+            slot.y_pct = slot.y_pct.clamp(0.0, 1.0);
+            slot.w_pct = slot.w_pct.clamp(0.05, 1.0);
+            slot.h_pct = slot.h_pct.clamp(0.05, 1.0);
+            if slot.show_state.trim().is_empty() {
+                slot.show_state = "normal".into();
+            }
+        }
+        item.slots.retain(|s| {
+            let n = s
+                .process_name
+                .rsplit(['\\', '/'])
+                .next()
+                .unwrap_or(s.process_name.as_str())
+                .to_ascii_lowercase();
+            !matches!(
+                n.as_str(),
+                "applicationframehost.exe"
+                    | "systemsettings.exe"
+                    | "textinputhost.exe"
+                    | "shellexperiencehost.exe"
+                    | "searchhost.exe"
+                    | "startmenuexperiencehost.exe"
+                    | "searchapp.exe"
+                    | "runtimebroker.exe"
+                    | "dwm.exe"
+                    | "explorer.exe"
+                    | "onetone.exe"
+                    | "securityhealthsystray.exe"
+                    | "lockapp.exe"
+                    | "taskmgr.exe"
+                    | "logioptionsui.exe"
+                    | "logioptions.exe"
+                    | "widgets.exe"
+                    | "widgetservice.exe"
+                    | ""
+            )
+        });
+        let anchor_key = item.anchor_match.process_name.to_ascii_lowercase();
+        item.companion_apps = item
+            .companion_apps
+            .iter()
+            .map(|s| s.trim().to_string())
+            .filter(|s| {
+                if s.is_empty() {
+                    return false;
+                }
+                let n = s
+                    .rsplit(['\\', '/'])
+                    .next()
+                    .unwrap_or(s.as_str())
+                    .to_ascii_lowercase();
+                n != anchor_key
+                    && !matches!(
+                        n.as_str(),
+                        "applicationframehost.exe"
+                            | "systemsettings.exe"
+                            | "textinputhost.exe"
+                            | "shellexperiencehost.exe"
+                            | "searchhost.exe"
+                            | "startmenuexperiencehost.exe"
+                            | "searchapp.exe"
+                            | "runtimebroker.exe"
+                            | "dwm.exe"
+                            | "explorer.exe"
+                            | "onetone.exe"
+                            | "securityhealthsystray.exe"
+                            | "lockapp.exe"
+                            | "taskmgr.exe"
+                            | "logioptionsui.exe"
+                            | "logioptions.exe"
+                            | "widgets.exe"
+                            | "widgetservice.exe"
+                    )
+            })
+            .collect();
+        if item.auto_apply == "onEnterAnchorApp" {
+            let key = item.anchor_match.process_name.to_ascii_lowercase();
+            if key.is_empty() || !seen_auto_anchor.insert(key) {
+                item.auto_apply.clear();
+            }
+        }
+    }
+    list.retain(|item| !item.anchor_match.process_name.trim().is_empty() && !item.slots.is_empty());
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -3593,6 +3830,7 @@ impl Default for VoiceConfig {
             soft_pad_session_persist_enabled: true,
             soft_pad_status_notify_enabled: false,
             camera_prefs: CameraPrefs::default(),
+            workspace_layouts: vec![],
             sounds: SoundsConfig::default(),
             start_minimized_to_tray: false,
             window_layout_seen: false,
@@ -4359,6 +4597,7 @@ impl VoiceConfig {
             self.sounds.key_wake.enabled = true;
         }
         self.sounds.normalize();
+        normalize_workspace_layouts(&mut self.workspace_layouts);
         for (i, m) in self.mappings.iter_mut().enumerate() {
             if m.id.is_empty() {
                 m.id = new_mapping_id();
@@ -5136,8 +5375,10 @@ pub fn load_config() -> VoiceConfig {
         .mappings
         .iter()
         .any(|m| m.agent_bindings.len() > 512);
+    let wl_before = serde_json::to_string(&cfg.workspace_layouts).unwrap_or_default();
     cfg.migrate();
-    if bloated {
+    let wl_after = serde_json::to_string(&cfg.workspace_layouts).unwrap_or_default();
+    if bloated || wl_before != wl_after {
         save_config(&cfg);
     }
     crate::cursor_local_activity::set_consent_enabled(cfg.cursor_activity_stats_enabled);

@@ -1224,14 +1224,15 @@ html[data-theme="dark"] .soft-pad-face-tm__detail {
 .soft-pad-face-pad__preview.soft-pad-preview-host,
 #softPadPreviewHost.soft-pad-preview-host {
   min-height: 400px;
-  height: 100%;
+  height: auto;
   align-self: stretch;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 10px 8px 12px;
   box-sizing: border-box;
+  overflow: auto;
 }
 #softPadPreviewHost[data-preview-label]::before,
 #softPadAgentPreviewHost[data-preview-label]::before {
@@ -1255,12 +1256,12 @@ html[data-theme="dark"] .soft-pad-face-tm__detail {
 #softPadPreviewHost .codex-micro-pad.soft-pad-preview {
   width: 100%;
   max-width: 100%;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 8px;
   box-sizing: border-box;
 }
@@ -1275,8 +1276,9 @@ html[data-theme="dark"] .soft-pad-face-tm__detail {
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
+  flex: 0 0 auto;
   width: 100%;
-  margin-bottom: 8px;
+  margin-bottom: 0;
   box-sizing: border-box;
 }
 .soft-pad-preview-host .micro-hw__face-title {
@@ -1355,6 +1357,48 @@ html[data-theme="dark"] .soft-pad-preview-host .soft-pad-agent-bar--face {
   width: 100% !important;
   max-width: min(100%, 380px) !important;
   margin: 0 auto !important;
+  /* Grow with face chrome (title + agent chips); grid stays square below. */
+  aspect-ratio: auto !important;
+  height: auto !important;
+  overflow: hidden;
+}
+.soft-pad-face-agent .soft-pad-preview-host .micro-hw,
+.soft-pad-face-agent .soft-pad-preview-host .micro-hw-shell .micro-hw,
+.soft-pad-face-tm .soft-pad-preview-host .micro-hw,
+.soft-pad-face-tm .soft-pad-preview-host .micro-hw-shell .micro-hw {
+  max-width: 300px !important;
+  width: min(100%, 300px) !important;
+  margin: 0 auto !important;
+  aspect-ratio: auto !important;
+  height: auto !important;
+  overflow: hidden;
+}
+/* Keep face chrome + key grid inside the chassis (same fix as keys-capture Soft Pad). */
+.soft-pad-preview-host .micro-hw-wrap,
+.soft-pad-preview-host .micro-hw-shell {
+  overflow: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.soft-pad-preview-host .micro-hw__face {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  height: auto;
+  overflow: hidden;
+}
+.soft-pad-preview-host .micro-hw__grid {
+  flex: 0 0 auto;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+}
+.soft-pad-preview-host .micro-hw__key {
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
 }
 .soft-pad-face-pad .soft-pad-preview-host .soft-pad-key-caption,
 .soft-pad-face-pad .soft-pad-preview-host .soft-pad-preview__hint,
@@ -1368,8 +1412,11 @@ html[data-theme="dark"] .soft-pad-preview-host .soft-pad-agent-bar--face {
 .soft-pad-face-agent__preview.soft-pad-preview-host,
 .soft-pad-face-tm__preview.soft-pad-preview-host {
   min-height: 260px;
+  height: auto;
   align-self: start;
   padding: 8px 6px 10px;
+  overflow: auto;
+  justify-content: flex-start;
 }
 .soft-pad-face-agent .soft-pad-preview-host .codex-micro-pad.soft-pad-preview,
 .soft-pad-face-tm .soft-pad-preview-host .codex-micro-pad.soft-pad-preview {
@@ -1379,14 +1426,6 @@ html[data-theme="dark"] .soft-pad-preview-host .soft-pad-agent-bar--face {
 }
 .soft-pad-face-agent .soft-pad-preview-host .micro-hw-shell,
 .soft-pad-face-tm .soft-pad-preview-host .micro-hw-shell {
-  max-width: 300px !important;
-  width: min(100%, 300px) !important;
-  margin: 0 auto !important;
-}
-.soft-pad-face-agent .soft-pad-preview-host .micro-hw,
-.soft-pad-face-agent .soft-pad-preview-host .micro-hw-shell .micro-hw,
-.soft-pad-face-tm .soft-pad-preview-host .micro-hw,
-.soft-pad-face-tm .soft-pad-preview-host .micro-hw-shell .micro-hw {
   max-width: 300px !important;
   width: min(100%, 300px) !important;
   margin: 0 auto !important;

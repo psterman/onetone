@@ -156,7 +156,57 @@ pub fn execute_layer1(
         "status.read" => execute_status_read(state),
         "app.open" => execute_app_open(state, window, mapping_id),
         "app.shortcut" => execute_app_shortcut(state, mapping_id, args),
+        "workspace.applyLayout" => execute_workspace_apply_layout(state, window, raw_action_id, args),
         _ => Layer1Outcome::err("not_implemented", Some(format!("no layer1 handler for {canonical}"))),
+    }
+}
+
+fn execute_workspace_apply_layout(
+    state: &Arc<AppState>,
+    window: &WebviewWindow,
+    raw_action_id: &str,
+    args: Option<&serde_json::Value>,
+) -> Layer1Outcome {
+    let layout_id = args
+        .and_then(|v| v.get("layoutId").or_else(|| v.get("layout_id")))
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .or_else(|| {
+            raw_action_id
+                .trim()
+                .strip_prefix("workspace.applyLayout:")
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string())
+        });
+    let app = window.app_handle();
+    let result = match layout_id {
+        Some(id) => crate::workspace_layout::apply_layout_id(&app, state, &id),
+        None => crate::workspace_layout::apply_for_foreground_anchor(&app, state),
+    };
+    match result {
+        Ok(out) => {
+            let mut detail = format!(
+                "workspace.applyLayout {} ({}/{})",
+                out.layout_name,
+                out.restored_count,
+                out.restored_count + out.failed.len() as u32 + out.skipped.len() as u32
+            );
+            if !out.skipped.is_empty() {
+                detail.push_str(&format!(" skip={}", out.skipped.join(",")));
+            }
+            if !out.failed.is_empty() {
+                detail.push_str(&format!(" fail={}", out.failed.join(",")));
+            }
+            if out.restored_count == 0 {
+                Layer1Outcome::err("layout_apply_empty", Some(detail))
+            } else {
+                Layer1Outcome::ok_detail(detail)
+            }
+        }
+        Err(reason) => Layer1Outcome::err(&reason, None),
     }
 }
 
@@ -688,5 +738,10 @@ mod tests {
     fn app_open_and_shortcut_are_layer1() {
         assert!(is_layer1_native("app.open"));
         assert!(is_layer1_native("app.shortcut"));
+    }
+
+    #[test]
+    fn workspace_apply_layout_is_layer1() {
+        assert!(is_layer1_native("workspace.applyLayout"));
     }
 }

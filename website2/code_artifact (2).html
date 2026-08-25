@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>概览 · OneTone Proto</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['Menlo', 'Monaco', 'Courier New', 'monospace'] },
+          colors: {
+            mac: {
+              bg: '#000000',
+              panel: 'rgba(30, 30, 32, 0.65)',
+              border: 'rgba(255, 255, 255, 0.12)',
+              accent: '#f59e0b', /* Amber */
+              text: '#f5f5f7',
+              textMuted: '#86868b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* 基础重置 */
+    body { background-color: theme('colors.mac.bg'); color: theme('colors.mac.text'); font-family: theme('fontFamily.sans'); overflow-x: hidden; }
+    
+    /* Mac 极致毛玻璃拟物化 */
+    .mac-glass {
+      background: theme('colors.mac.panel');
+      backdrop-filter: blur(40px) saturate(150%);
+      -webkit-backdrop-filter: blur(40px) saturate(150%);
+      border: 1px solid theme('colors.mac.border');
+      box-shadow: 0 24px 48px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+
+    /* 滚动导航 */
+    .scroll-rail { position: fixed; right: 24px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 12px; z-index: 100; }
+    .rail-dot { width: 8px; height: 8px; border-radius: 50%; background: theme('colors.mac.textMuted'); opacity: 0.5; transition: all 0.3s; cursor: pointer; }
+    .rail-dot.is-active { background: theme('colors.mac.accent'); opacity: 1; transform: scale(1.5); box-shadow: 0 0 10px theme('colors.mac.accent'); }
+
+    /* =========================================
+       Hero 区域：3D 透视与鼠标交互
+       ========================================= */
+    #sec-hero { position: relative; background: radial-gradient(circle at center, #18181b 0%, #000000 100%); overflow: hidden; min-height: 100vh; display: flex; align-items: center; padding-top: 64px; }
+    
+    .spatial-grid-wrap { position: absolute; inset: 0; pointer-events: none; overflow: hidden; transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+    .spatial-grid {
+      position: absolute; inset: -50%; width: 200%; height: 200%;
+      background-image: linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 60px 60px;
+      transform: perspective(800px) rotateX(60deg) translateY(-100px) translateZ(-200px);
+      animation: grid-move 20s linear infinite;
+    }
+    @keyframes grid-move { 0% { transform: perspective(800px) rotateX(60deg) translateY(0) translateZ(-200px); } 100% { transform: perspective(800px) rotateX(60deg) translateY(60px) translateZ(-200px); } }
+
+    /* Hero Demo 容器 */
+    .op-demo-wrap { perspective: 1200px; position: relative; z-index: 10; margin-top: 40px; }
+    .op-demo {
+      transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.2s ease;
+      transform-style: preserve-3d; border-radius: 20px;
+    }
+    
+    /* 应用窗口 UI */
+    .op-app { background: #121212; border: 1px solid theme('colors.mac.border'); border-radius: 12px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.8); position: relative; height: 340px; }
+    .op-app-titlebar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid theme('colors.mac.border'); background: rgba(255,255,255,0.03); }
+    .op-app-dots i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: #4b4b4b; margin-right: 4px; }
+    .op-app-body { padding: 16px; height: calc(100% - 45px); display: flex; flex-direction: column; overflow: hidden; }
+
+    /* --- 子应用 UI 样式 --- */
+    .ui-cursor { display: flex; gap: 16px; height: 100%; }
+    .ui-cursor-sidebar { width: 60px; border-right: 1px solid theme('colors.mac.border'); display: flex; flex-direction: column; align-items: center; gap: 16px; padding-top: 8px; }
+    .ui-cursor-main { flex: 1; display: flex; flex-direction: column; gap: 12px; position: relative; }
+    .ui-cursor-msg { padding: 8px 12px; border-radius: 8px; font-size: 13px; max-width: 80%; }
+    .ui-cursor-msg.is-user { background: rgba(255,255,255,0.1); align-self: flex-end; border: 1px solid rgba(255,255,255,0.05); }
+    .ui-cursor-msg.is-ai { background: transparent; align-self: flex-start; color: #a1a1aa; }
+    
+    .ui-claude { display: flex; flex-direction: column; font-family: theme('fontFamily.mono'); font-size: 13px; color: #a1a1aa; gap: 8px; }
+    .ui-claude-line.is-dim { color: #52525b; }
+    .ui-claude-line.is-tool { color: theme('colors.mac.accent'); }
+    .ui-claude-prompt { display: flex; align-items: center; gap: 8px; color: #fff; margin-top: auto; position: relative; padding-bottom: 8px; }
+    .ui-claude-chevron { color: theme('colors.mac.accent'); font-weight: bold; }
+
+    .ui-doubao { display: flex; flex-direction: column; height: 100%; }
+    .ui-doubao-head { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; margin-bottom: 12px; }
+    .ui-doubao-msg { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px 12px 12px 0; font-size: 13px; color: #fff; max-width: 80%; border: 1px solid rgba(255,255,255,0.05); }
+
+    /* 通用输入框 */
+    .ui-composer-inner { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(255,255,255,0.05); border: 1px solid theme('colors.mac.border'); border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 8px; min-height: 44px; }
+    .ui-doubao .ui-composer-inner { position: relative; margin-top: auto; border-radius: 24px; }
+    .ui-composer-placeholder { color: #52525b; font-size: 13px; position: absolute; left: 12px; transition: opacity 0.2s; }
+    .ui-composer-placeholder.is-hidden { opacity: 0; }
+    .op-input-text { font-size: 13px; color: #fff; line-height: 1.5; white-space: pre-wrap; }
+    .op-caret { display: inline-block; width: 2px; height: 14px; background-color: theme('colors.mac.accent'); vertical-align: middle; margin-left: 2px; animation: blink 1s step-end infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* =========================================
+       设备与交互动画 (Mouse, Ring, Gamepad)
+       ========================================= */
+    .op-action { 
+      position: absolute; right: -50px; bottom: -40px; z-index: 20;
+      transform: translate(var(--pose-tx, 0), var(--pose-ty, 0)) rotate(var(--pose-r, 0deg)) translateZ(60px);
+      transition: all 0.6s cubic-bezier(0.32, 0.72, 0, 1); 
+    }
+    .op-device-svg-wrap { position: relative; color: theme('colors.mac.accent'); }
+    
+    /* 触发动作反馈：LED亮起 & 涟漪 */
+    .device-led { opacity: 0; transition: opacity 0.2s, filter 0.2s; }
+    .phase-trigger .device-led { opacity: 1; filter: drop-shadow(0 0 6px currentColor); }
+    
+    .op-press-ring { 
+      position: absolute; top: var(--hs-y, 50%); left: var(--hs-x, 50%); 
+      width: 40px; height: 40px; transform: translate(-50%, -50%) scale(0.5);
+      border: 2px solid theme('colors.mac.accent'); border-radius: 50%; opacity: 0; 
+      pointer-events: none;
+    }
+    .phase-trigger .op-press-ring { animation: ripple 0.8s ease-out forwards; }
+    @keyframes ripple { 0% { opacity: 1; transform: translate(-50%, -50%) scale(0.5); border-width: 3px; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(2); border-width: 0px; } }
+
+    /* 戒指的悬浮手势提示 */
+    .op-action-gesture { position: absolute; top: -40px; left: 50%; transform: translateX(-50%); color: theme('colors.mac.accent'); opacity: 0; transition: opacity 0.3s; }
+    .has-gesture .op-action-gesture { opacity: 1; }
+
+    /* 麦克风收音动画 */
+    .ui-composer-mic { margin-left: auto; display: flex; align-items: center; gap: 6px; color: #52525b; transition: color 0.3s; }
+    .ui-claude-prompt .ui-composer-mic { position: absolute; right: 0; }
+    .phase-listen .ui-composer-mic, .phase-typing .ui-composer-mic { color: theme('colors.mac.accent'); }
+    .op-mic-waves { display: flex; gap: 2px; height: 12px; align-items: center; opacity: 0; transition: opacity 0.3s; }
+    .phase-listen .op-mic-waves, .phase-typing .op-mic-waves { opacity: 1; }
+    .op-mic-waves span { display: block; width: 2px; background: currentColor; border-radius: 1px; height: 2px; transition: height 0.1s; }
+    .phase-listen .op-mic-waves span, .phase-typing .op-mic-waves span { animation: wave 1s infinite ease-in-out alternate; }
+    .op-mic-waves span:nth-child(2) { animation-delay: 0.2s; } .op-mic-waves span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes wave { 0% { height: 2px; } 100% { height: 12px; } }
+
+    /* =========================================
+       终端状态面板 (Live Status)
+       ========================================= */
+    .demo-status-panel {
+      position: absolute; right: -260px; top: 50%; transform: translateY(-50%) translateZ(40px);
+      width: 240px; padding: 16px; background: rgba(15,15,17,0.8); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px; backdrop-filter: blur(30px); font-family: theme('fontFamily.mono');
+      box-shadow: 0 30px 60px rgba(0,0,0,0.6); z-index: 30; transition: transform 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    .ds-header { font-size: 10px; color: theme('colors.mac.textMuted'); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 6px; }
+    .ds-dot { width: 6px; height: 6px; background: theme('colors.mac.textMuted'); border-radius: 50%; box-shadow: 0 0 8px transparent; transition: all 0.3s; }
+    .ds-dot.is-active { background: theme('colors.mac.accent'); box-shadow: 0 0 8px theme('colors.mac.accent'); animation: pulse-dot 1.5s infinite alternate; }
+    @keyframes pulse-dot { from { opacity: 0.4; } to { opacity: 1; } }
+    .ds-code { font-size: 13px; font-weight: 600; margin-bottom: 6px; transition: color 0.3s; color: theme('colors.mac.textMuted'); }
+    .ds-code.is-active { color: theme('colors.mac.accent'); }
+    .ds-desc { font-size: 12px; color: rgba(255,255,255,0.7); line-height: 1.5; }
+
+    /* =========================================
+       下方卡片区域
+       ========================================= */
+    .story-section { padding: 120px 0; position: relative; z-index: 10; }
+    .section-title { font-size: 2.5rem; font-weight: 700; text-align: center; margin-bottom: 1rem; color: #fff; }
+    .section-eyebrow { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.1em; color: theme('colors.mac.accent'); text-align: center; margin-bottom: 0.5rem; font-weight: 600; }
+
+    /* 触发链路 (Card 1) */
+    .command-window { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 32px; border-radius: 24px; }
+    .command-list { display: flex; flex-direction: column; gap: 12px; }
+    .command-item { 
+      display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 12px; 
+      background: rgba(255,255,255,0.03); border: 1px solid transparent; cursor: pointer; transition: all 0.2s; text-align: left;
+    }
+    .command-item.is-active { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); }
+    .command-item i { font-size: 24px; color: theme('colors.mac.textMuted'); transition: color 0.2s; }
+    .command-item.is-active i { color: theme('colors.mac.accent'); }
+    .command-item strong { display: block; font-size: 15px; color: #fff; margin-bottom: 4px; }
+    .command-item small { font-size: 13px; color: theme('colors.mac.textMuted'); }
+    
+    .command-status { background: rgba(0,0,0,0.4); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 20px; border: 1px solid theme('colors.mac.border'); }
+    .status-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 99px; background: rgba(245,158,11,0.15); color: theme('colors.mac.accent'); font-size: 13px; font-weight: 500; width: fit-content; }
+    .mapping-card strong { display: flex; align-items: center; gap: 12px; font-size: 18px; color: #fff; margin: 12px 0; }
+
+    /* 心流体验 (Card 2 & 3) */
+    .flow-stack { display: flex; flex-direction: column; gap: 32px; max-width: 900px; margin: 40px auto 0; }
+    .flow-card { padding: 40px; border-radius: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+    .flow-tag { display: inline-block; padding: 4px 10px; border-radius: 6px; background: rgba(255,255,255,0.1); font-size: 12px; margin-bottom: 16px; }
+    .home-ime-wake-stage { background: #121212; border-radius: 16px; padding: 24px; border: 1px solid theme('colors.mac.border'); position: relative; }
+    .home-ime-voice-bar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: rgba(255,255,255,0.05); border-radius: 12px; margin-bottom: 16px; transition: background 0.3s; }
+    .home-ime-voice-bar.is-active { background: rgba(245,158,11,0.1); color: theme('colors.mac.accent'); border: 1px solid rgba(245,158,11,0.2); }
+    .home-ime-editor { min-height: 100px; background: #000; border-radius: 8px; padding: 16px; font-size: 14px; position: relative; border: 1px solid rgba(255,255,255,0.05); }
+    
+  </style>
+</head>
+<body class="antialiased selection:bg-mac-accent selection:text-white">
+
+  <!-- 侧边导航 -->
+  <nav class="scroll-rail" aria-label="Scroll sections">
+    <button type="button" class="rail-dot is-active" data-target="#sec-hero" aria-label="首屏"></button>
+    <button type="button" class="rail-dot" data-target="#sec-chain" aria-label="链路"></button>
+    <button type="button" class="rail-dot" data-target="#sec-caps" aria-label="心流"></button>
+  </nav>
+
+  <!-- 顶部 Header -->
+  <header class="fixed top-0 w-full z-50 mac-glass border-b-0 rounded-none bg-black/40">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="#" class="flex items-center gap-2 text-white font-semibold text-lg tracking-tight">
+        <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-mac-accent to-orange-400"></div>
+        OneTone
+      </a>
+      <nav class="hidden md:flex gap-8 text-sm font-medium text-mac-textMuted">
+        <a href="#sec-hero" class="text-white">概览</a>
+        <a href="#sec-chain" class="hover:text-white transition-colors">使用</a>
+        <a href="#sec-caps" class="hover:text-white transition-colors">能力</a>
+      </nav>
+      <a href="#" class="text-sm font-semibold bg-white text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors">下载体验</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- =========================================
+         SECTION 1: HERO & 多设备演示
+         ========================================= -->
+    <section id="sec-hero" data-section="0">
+      <div class="spatial-grid-wrap" id="spatialWrap"><div class="spatial-grid"></div></div>
+
+      <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10 w-full">
+        
+        <!-- 左侧文案 -->
+        <div class="space-y-6">
+          <div class="inline-flex items-center gap-4 px-4 py-2 rounded-full mac-glass text-xs font-mono text-mac-textMuted mb-2">
+            <span class="flex items-center gap-2 text-white"><i class="ph-fill ph-windows-logo"></i> Windows 可下载</span>
+            <span class="w-1 h-1 bg-white/20 rounded-full"></span>
+            <span class="flex items-center gap-2 opacity-50"><i class="ph-fill ph-apple-logo"></i> macOS 开发中</span>
+          </div>
+          <h1 class="text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-white m-0">OneTone</h1>
+          <div class="text-3xl md:text-4xl font-semibold mt-4 mb-6">
+            <span class="text-mac-accent block mb-3">后台触发层</span>
+            <p class="text-white/70 m-0 text-2xl md:text-3xl"><em id="heroRotate" class="not-italic text-mac-textMuted font-mono">Cursor 里直接说</em></p>
+          </div>
+          <p class="text-lg text-mac-textMuted max-w-md leading-relaxed">侧键一按，在当前对话框里开口。Cursor、Claude Code、豆包……在哪写、在哪聊，就在哪说。</p>
+        </div>
+
+        <!-- 右侧 3D Demo 舞台 -->
+        <div class="op-demo-wrap" id="demoWrap">
+          <div class="op-demo mac-glass p-6 w-full" id="opDemo">
+            
+            <!-- 头部应用切换 Indicator -->
+            <div class="flex justify-between items-center border-b border-white/10 pb-4 mb-5">
+              <p class="flex items-center gap-3 text-white font-medium m-0">
+                <i class="ph-fill ph-app-window text-xl text-mac-accent"></i>
+                <span id="opSceneLabelText">Cursor</span>
+              </p>
+              <div class="flex gap-2.5 items-center" id="opSceneDots"></div>
+            </div>
+
+            <div class="op-demo-stage phase-idle" id="opStage">
+              <!-- 应用窗口 -->
+              <div class="op-app" id="opApp">
+                <div class="op-app-titlebar">
+                  <span class="op-app-dots"><i></i><i></i><i></i></span>
+                  <span id="opAppName" class="text-xs text-white/70 font-medium ml-2">Cursor</span>
+                </div>
+                <div class="op-app-body" id="opAppBody">
+                  <!-- JS Injects UI here -->
+                </div>
+              </div>
+
+              <!-- 物理外设展示区 -->
+              <div class="op-action" id="opAction" style="--pose-r: -12deg; --pose-tx: -10px; --pose-ty: 20px;">
+                <!-- 戒指专用的悬浮手势提示 -->
+                <div class="op-action-gesture" id="opGesture" aria-hidden="true">
+                  <svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true">
+                    <path d="M14 22c0-3 2-5 4-5 1 0 2 1 2 2v8M20 19v12M26 17c2 0 3 2 3 4v10M32 20v9c0 4-3 7-7 7h-2c-5 0-9-4-9-9V18c0-2 2-4 4-4 1 0 2 1 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                </div>
+                <!-- 纯 SVG 绘制的设备 -->
+                <div class="op-device-svg-wrap" id="opDeviceSvgWrap">
+                  <!-- SVG injected by JS -->
+                </div>
+                <!-- 点击波纹 -->
+                <span class="op-press-ring"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右侧独立终端状态面板 -->
+          <div class="demo-status-panel hidden lg:block" id="demoStatusPanel">
+            <div class="ds-header"><span class="ds-dot" id="dsDot"></span> Live Status Feed</div>
+            <div class="ds-code" id="dsCode">SYS.IDLE</div>
+            <div class="ds-desc" id="dsDesc">等待外设触发信号...</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =========================================
+         SECTION 2: 触发链路
+         ========================================= -->
+    <section class="story-section bg-mac-bg" id="sec-chain" data-section="1">
+      <div class="max-w-7xl mx-auto px-6">
+        <p class="section-eyebrow">触发链路</p>
+        <h2 class="section-title">绑一次，到处可用</h2>
+
+        <div class="command-demo mt-12 mac-glass command-window">
+          <div class="command-list">
+            <button type="button" class="command-item is-active" data-cycle-item>
+              <i class="ph-fill ph-mouse"></i>
+              <span><strong>鼠标侧键</strong><small>拇指按一下，立即开始说</small></span>
+            </button>
+            <button type="button" class="command-item" data-cycle-item>
+              <i class="ph-fill ph-game-controller"></i>
+              <span><strong>手柄按键</strong><small>客厅、沙发或远距离输入</small></span>
+            </button>
+            <button type="button" class="command-item" data-cycle-item>
+              <i class="ph-fill ph-circle"></i>
+              <span><strong>蓝牙戒指</strong><small>轻点一下，不离开当前动作</small></span>
+            </button>
+            <button type="button" class="command-item" data-cycle-item>
+              <i class="ph-fill ph-microphone"></i>
+              <span><strong>麦克风口令</strong><small>说出口令激活语音输入</small></span>
+            </button>
+          </div>
+
+          <aside class="command-status">
+            <div class="status-pill">
+              <i class="ph-fill ph-lightning"></i>
+              <span data-flow-status>鼠标侧键已记录</span>
+            </div>
+            <div class="mapping-card">
+              <span class="text-sm text-mac-textMuted">动作映射结果</span>
+              <strong><span data-flow-current class="text-mac-accent">鼠标侧键</span> <i class="ph-bold ph-arrow-right text-white/30"></i> <span class="bg-white/10 px-2 py-1 rounded text-sm">唤醒 OneTone</span></strong>
+              <p class="text-mac-textMuted text-sm mt-2 leading-relaxed">系统会在后台安静监听。按外设后，该开的语音输入自己开，你继续装作在认真看屏幕。</p>
+            </div>
+            <div class="mt-auto p-4 bg-black/50 border border-white/5 rounded-xl">
+              <div class="flex items-center gap-2 mb-2 text-sm text-white/70">
+                <i class="ph-fill ph-chat-circle-dots text-mac-accent"></i> 最终效果
+              </div>
+              <p class="text-sm text-white/90" data-flow-result>按下鼠标侧键后，说的话会进入当前输入框。</p>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================
+         SECTION 3: 输入心流
+         ========================================= -->
+    <section class="story-section bg-[#0a0a0a]" id="sec-caps" data-section="2">
+      <div class="max-w-7xl mx-auto px-6">
+        <p class="section-eyebrow">输入心流</p>
+        <h2 class="section-title">少一次打断，就多留住一点思路</h2>
+        <p class="text-center text-mac-textMuted text-lg max-w-2xl mx-auto mb-16">好的语音输入，不该让你先离开思考。彻底抛弃寻找输入框的过程。</p>
+
+        <div class="flow-stack">
+          <!-- Card 1: 语音唤醒 -->
+          <article class="flow-card mac-glass">
+            <div>
+              <span class="flow-tag text-mac-accent border border-mac-accent/30">不用按键也行</span>
+              <h3 class="text-2xl font-bold text-white mb-4">念句口令，直接帮你叫醒</h3>
+              <p class="text-mac-textMuted leading-relaxed">在软件里选择或写下唤醒词。说出口令后，按文字匹配并替你唤醒——手可以继续忙别的。</p>
+            </div>
+            <div class="home-ime-wake-stage">
+              <div class="home-ime-voice-bar" id="ime-bar-1">
+                <i class="ph-fill ph-microphone text-lg"></i>
+                <span class="text-sm font-medium" id="ime-status-1">正在待机聆听...</span>
+                <div class="op-mic-waves ml-auto" id="ime-waves-1" style="opacity: 0;"><span></span><span></span><span></span><span></span><span></span></div>
+              </div>
+              <div class="home-ime-editor">
+                <div class="text-xs text-white/30 mb-2 border-b border-white/10 pb-2">Target App Editor</div>
+                <p class="text-white/90"><span id="ime-typed-1"></span><span class="op-caret" id="ime-caret-1" style="display:none;"></span></p>
+              </div>
+            </div>
+          </article>
+
+          <!-- Card 2: 取消重说 -->
+          <article class="flow-card mac-glass">
+            <div class="order-2 lg:order-1 home-ime-wake-stage">
+              <div class="home-ime-voice-bar" id="ime-bar-2">
+                <i class="ph-fill ph-microphone text-lg"></i>
+                <span class="text-sm font-medium" id="ime-status-2">聆听中...</span>
+                <div class="op-mic-waves ml-auto" id="ime-waves-2" style="opacity: 1;"><span></span><span></span><span></span><span></span><span></span></div>
+              </div>
+              <div class="home-ime-editor relative">
+                <div class="text-xs text-white/30 mb-2 border-b border-white/10 pb-2">Target App Editor</div>
+                <p class="text-white/90"><span id="ime-typed-2"></span><span class="op-caret" id="ime-caret-2"></span></p>
+                <div id="ime-cancel-hint" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-full text-xs opacity-0 transition-opacity">
+                  <kbd class="bg-black/40 px-1 rounded mr-1">Esc</kbd> 已取消
+                </div>
+              </div>
+            </div>
+            <div class="order-1 lg:order-2">
+              <span class="flow-tag text-white border border-white/30">说错了也能重来</span>
+              <h3 class="text-2xl font-bold text-white mb-4">输入一半，取消重说</h3>
+              <p class="text-mac-textMuted leading-relaxed">快速再按一次，错字清掉，接着把想说的话重新说一遍。系统即刻响应，毫不拖沓。</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      
+      /* =========================================
+         1. Hero 区域 3D 鼠标视差 (Parallax)
+         ========================================= */
+      const demoWrap = document.getElementById("demoWrap");
+      const opDemo = document.getElementById("opDemo");
+      const spatialWrap = document.getElementById("spatialWrap");
+      
+      if (demoWrap && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        document.getElementById('sec-hero').addEventListener("mousemove", (e) => {
+          const rect = demoWrap.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          const centerX = rect.width / 2;
+          const centerY = rect.height / 2;
+          const deltaX = (x - centerX) / centerX;
+          const deltaY = (y - centerY) / centerY;
+
+          opDemo.style.transform = `rotateY(${deltaX * 8}deg) rotateX(${-deltaY * 8}deg) translateY(-6px) scale(1.02)`;
+          opDemo.style.boxShadow = `${-deltaX * 15}px ${deltaY * 15 + 40}px 80px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.2)`;
+          if (spatialWrap) spatialWrap.style.transform = `translateX(${-deltaX * 20}px) translateY(${-deltaY * 20}px)`;
+        });
+
+        document.getElementById('sec-hero').addEventListener("mouseleave", () => {
+          opDemo.style.transform = `rotateY(0deg) rotateX(0deg) translateY(0) scale(1)`;
+          opDemo.style.boxShadow = ``;
+          if (spatialWrap) spatialWrap.style.transform = `translateX(0) translateY(0)`;
+        });
+      }
+
+      /* =========================================
+         2. Hero 数据集：纯 CSS/SVG 绘制的设备与 UI
+         ========================================= */
+      const opScenes = [
+        {
+          label: "Cursor", app: "Cursor", theme: "cursor", 
+          deviceSVG: `
+            <svg viewBox="0 0 100 140" width="80" height="112" style="filter: drop-shadow(0 20px 30px rgba(0,0,0,0.8));">
+              <rect x="20" y="10" width="60" height="120" rx="30" fill="rgba(30,30,32,0.9)" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+              <line x1="50" y1="10" x2="50" y2="50" stroke="rgba(255,255,255,0.1)" stroke-width="2"/>
+              <circle cx="50" cy="35" r="4" fill="#52525b"/>
+              <circle cx="15" cy="55" r="4" fill="currentColor" class="device-led"/>
+            </svg>`,
+          pose: { r: "-15deg", tx: "10px", ty: "10px", hsX: "15%", hsY: "40%" },
+          typed: "把这个按钮改成圆角，跟主色一致",
+          gesture: false,
+          render() {
+            return `
+              <div class="ui-cursor">
+                <div class="ui-cursor-sidebar">
+                  <div class="w-6 h-6 rounded bg-white/10 flex items-center justify-center text-xs">C</div>
+                </div>
+                <div class="ui-cursor-main">
+                  <div class="ui-cursor-msg is-user">这个按钮样式有点乱</div>
+                  <div class="ui-cursor-msg is-ai">我可以帮你改。想要圆角还是方角？</div>
+                  <div class="ui-composer-inner">
+                    <span class="op-input-text"></span><span class="op-caret"></span>
+                    <span class="ui-composer-placeholder">Plan, @ for context</span>
+                    <span class="ui-composer-mic" aria-hidden="true">
+                      <i class="ph-fill ph-microphone"></i>
+                      <span class="op-mic-waves"><span></span><span></span><span></span><span></span><span></span></span>
+                    </span>
+                  </div>
+                </div>
+              </div>`;
+          }
+        },
+        {
+          label: "Claude Code", app: "Terminal", theme: "claude", 
+          deviceSVG: `
+            <svg viewBox="0 0 100 100" width="70" height="70" style="filter: drop-shadow(0 20px 30px rgba(0,0,0,0.8));">
+              <circle cx="50" cy="50" r="40" fill="rgba(30,30,32,0.6)" stroke="rgba(255,255,255,0.2)" stroke-width="12"/>
+              <circle cx="50" cy="50" r="34" fill="none" stroke="rgba(0,0,0,0.5)" stroke-width="2"/>
+              <circle cx="50" cy="16" r="3" fill="currentColor" class="device-led"/>
+            </svg>`,
+          pose: { r: "5deg", tx: "0px", ty: "15px", hsX: "50%", hsY: "16%" },
+          typed: "帮我把这个页面改窄一点",
+          gesture: true,
+          render() {
+            return `
+              <div class="ui-claude">
+                <div style="color: #fff; margin-bottom: 8px;">Claude Code</div>
+                <div class="ui-claude-line is-dim">~/projects/my-app</div>
+                <div class="ui-claude-line is-tool">Read src/App.tsx</div>
+                <div class="ui-claude-prompt">
+                  <span class="ui-claude-chevron">›</span>
+                  <span class="op-input-text"></span><span class="op-caret"></span>
+                  <span class="ui-composer-mic" aria-hidden="true">
+                    <i class="ph-fill ph-microphone"></i>
+                    <span class="op-mic-waves"><span></span><span></span><span></span><span></span><span></span></span>
+                  </span>
+                </div>
+              </div>`;
+          }
+        },
+        {
+          label: "豆包", app: "豆包", theme: "doubao",
+          deviceSVG: `
+            <svg viewBox="0 0 140 100" width="112" height="80" style="filter: drop-shadow(0 20px 30px rgba(0,0,0,0.8));">
+              <path d="M 20 40 C 20 10, 50 10, 70 20 C 90 10, 120 10, 120 40 C 120 70, 140 90, 120 90 C 100 90, 80 70, 70 70 C 60 70, 40 90, 20 90 C 0 90, 20 70, 20 40 Z" fill="rgba(30,30,32,0.9)" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+              <circle cx="45" cy="40" r="12" fill="#27272a" stroke="rgba(255,255,255,0.1)"/>
+              <circle cx="95" cy="55" r="12" fill="#27272a" stroke="rgba(255,255,255,0.1)"/>
+              <circle cx="105" cy="20" r="4" fill="currentColor" class="device-led"/>
+              <circle cx="95" cy="30" r="3" fill="#52525b"/><circle cx="105" cy="40" r="3" fill="#52525b"/><circle cx="85" cy="40" r="3" fill="#52525b"/><circle cx="95" cy="50" r="3" fill="#52525b"/>
+            </svg>`,
+          pose: { r: "-8deg", tx: "-5px", ty: "5px", hsX: "75%", hsY: "25%" },
+          typed: "写一段产品介绍，语气轻松点",
+          gesture: false,
+          render() {
+            return `
+              <div class="ui-doubao">
+                <div class="ui-doubao-head">
+                  <div class="w-6 h-6 rounded-full bg-mac-accent flex items-center justify-center text-xs text-black">豆</div>
+                  <span>豆包</span>
+                </div>
+                <div class="ui-doubao-msg is-ai">想写什么？直接说或打字都行。</div>
+                <div class="ui-composer-inner mt-auto relative" style="border-radius: 24px;">
+                  <span class="op-input-text"></span><span class="op-caret"></span>
+                  <span class="ui-composer-placeholder">发消息...</span>
+                  <span class="ui-composer-mic" aria-hidden="true">
+                    <i class="ph-fill ph-microphone"></i>
+                    <span class="op-mic-waves"><span></span><span></span><span></span><span></span><span></span></span>
+                  </span>
+                </div>
+              </div>`;
+          }
+        }
+      ];
+
+      /* =========================================
+         3. Hero 动画调度器 (Animation Scheduler)
+         ========================================= */
+      const opStage = document.getElementById("opStage");
+      const opAppBody = document.getElementById("opAppBody");
+      const opAction = document.getElementById("opAction");
+      const opDeviceSvgWrap = document.getElementById("opDeviceSvgWrap");
+      
+      const dsCode = document.getElementById("dsCode");
+      const dsDesc = document.getElementById("dsDesc");
+      const dsDot = document.getElementById("dsDot");
+      const dsPanel = document.getElementById("demoStatusPanel");
+
+      // 终端状态面板更新逻辑
+      function updateStatusPanel(phase, text) {
+        if(!dsPanel) return;
+        // 缩放强调动画
+        dsPanel.style.transform = 'translateY(-50%) translateZ(40px) scale(1.03)';
+        setTimeout(() => dsPanel.style.transform = 'translateY(-50%) translateZ(40px) scale(1)', 200);
+
+        if(phase === 'idle') {
+           dsCode.textContent = 'SYS.IDLE'; dsCode.classList.remove('is-active'); dsDot.classList.remove('is-active');
+           dsDesc.textContent = '等待外设触发信号...';
+        } else if (phase === 'trigger') {
+           dsCode.textContent = 'SYS.TRIGGERED'; dsCode.classList.add('is-active'); dsDot.classList.add('is-active');
+           dsDesc.textContent = '捕获按键信号，静默唤醒。';
+        } else if (phase === 'listen') {
+           dsCode.textContent = 'AUDIO.LISTENING';
+           dsDesc.textContent = '正在录入语音，准备流式上屏...';
+        } else if (phase === 'typing') {
+           dsCode.textContent = 'ACTION.TYPING';
+           dsDesc.textContent = `输出内容: "${text}"`;
+        }
+      }
+
+      function renderScene(index) {
+        const scene = opScenes[index % opScenes.length];
+        
+        // 渲染文案
+        document.getElementById("opAppName").textContent = scene.app;
+        document.getElementById("opSceneLabelText").textContent = scene.label;
+        
+        // 渲染内部 UI
+        opAppBody.innerHTML = scene.render();
+        
+        // 渲染纯代码 SVG 设备
+        opDeviceSvgWrap.innerHTML = scene.deviceSVG;
+        
+        // 调整设备位置和涟漪坐标
+        opAction.style.setProperty('--pose-r', scene.pose.r);
+        opAction.style.setProperty('--pose-tx', scene.pose.tx);
+        opAction.style.setProperty('--pose-ty', scene.pose.ty);
+        opAction.style.setProperty('--hs-x', scene.pose.hsX);
+        opAction.style.setProperty('--hs-y', scene.pose.hsY);
+        
+        // 戒指手势特有
+        opAction.classList.toggle('has-gesture', scene.gesture);
+
+        // 渲染顶部小圆点指示器
+        const dotsContainer = document.getElementById("opSceneDots");
+        dotsContainer.innerHTML = '';
+        opScenes.forEach((_, i) => {
+           dotsContainer.innerHTML += `<div class="w-2 h-2 rounded-full transition-colors ${i === index ? 'bg-mac-accent' : 'bg-white/20'}"></div>`;
+        });
+        
+        return scene;
+      }
+
+      function startTimeline(index) {
+        const scene = renderScene(index);
+        const typedText = scene.typed;
+        
+        // 1. 待机 (Idle)
+        opStage.className = "op-demo-stage phase-idle";
+        updateStatusPanel('idle');
+
+        // 2. 按键触发 (Trigger: LED 亮起，涟漪出现)
+        setTimeout(() => {
+           opStage.className = "op-demo-stage phase-trigger";
+           updateStatusPanel('trigger');
+        }, 1500);
+
+        // 3. 聆听收音 (Listen: 麦克风波动)
+        setTimeout(() => {
+           opStage.className = "op-demo-stage phase-listen";
+           updateStatusPanel('listen');
+           const placeholder = opAppBody.querySelector('.ui-composer-placeholder');
+           if(placeholder) placeholder.style.opacity = '0';
+        }, 2500);
+
+        // 4. 流式打字 (Typing)
+        setTimeout(() => {
+           opStage.className = "op-demo-stage phase-typing";
+           updateStatusPanel('typing', typedText);
+           
+           const typedEl = opAppBody.querySelector('.op-input-text');
+           let i = 0;
+           const typeInterval = setInterval(() => {
+              if (i < typedText.length) {
+                 typedEl.textContent += typedText[i];
+                 i++;
+              } else {
+                 clearInterval(typeInterval);
+                 opStage.className = "op-demo-stage phase-done";
+                 // 5. 等待 3 秒后播放下一个场景
+                 setTimeout(() => startTimeline(index + 1), 3000);
+              }
+           }, 80);
+        }, 4000);
+      }
+      
+      // 启动 Hero 轮播
+      startTimeline(0);
+
+      /* =========================================
+         4. 下方卡片自动演示循环 (Card 1, 2, 3)
+         ========================================= */
+      
+      // --- Card 1: 触发链路轮播 ---
+      const flowItems = document.querySelectorAll('.command-item');
+      const flowStatus = document.querySelector('[data-flow-status]');
+      const flowCurrent = document.querySelector('[data-flow-current]');
+      const flowResult = document.querySelector('[data-flow-result]');
+      const statuses = ["鼠标侧键已记录", "手柄按键已记录", "蓝牙戒指已记录", "麦克风口令已记录"];
+      const results = [
+        "按下鼠标侧键后，说的话会进入当前输入框。",
+        "按下手柄按钮后，可以远距离口述文字。",
+        "轻点蓝牙戒指后，不离开当前动作也能输入。",
+        "说出口令后，麦克风也可以激活语音输入。"
+      ];
+      let flowIndex = 0;
+      setInterval(() => {
+        flowItems.forEach((item, i) => {
+          if (i === flowIndex) {
+            item.classList.add('is-active');
+            flowCurrent.textContent = item.querySelector('strong').textContent;
+            flowStatus.textContent = statuses[i];
+            flowResult.textContent = results[i];
+          } else {
+            item.classList.remove('is-active');
+          }
+        });
+        flowIndex = (flowIndex + 1) % flowItems.length;
+      }, 3000);
+
+      // --- Card 2: 语音唤醒心流演示 ---
+      const typed1 = document.getElementById('ime-typed-1');
+      const caret1 = document.getElementById('ime-caret-1');
+      const status1 = document.getElementById('ime-status-1');
+      const waves1 = document.getElementById('ime-waves-1');
+      const bar1 = document.getElementById('ime-bar-1');
+      const text1 = "今天就把这句想法说出来。";
+      
+      async function runImeDemo1() {
+        while(true) {
+          typed1.textContent = ''; caret1.style.display = 'none';
+          status1.textContent = '等待口令唤醒...'; waves1.style.opacity = '0';
+          bar1.classList.remove('is-active');
+          await new Promise(r => setTimeout(r, 2000));
+          
+          status1.textContent = '正在聆听...'; waves1.style.opacity = '1';
+          bar1.classList.add('is-active'); caret1.style.display = 'inline-block';
+          await new Promise(r => setTimeout(r, 1000));
+          
+          for(let i=0; i<text1.length; i++) {
+            typed1.textContent += text1[i];
+            await new Promise(r => setTimeout(r, 100));
+          }
+          
+          status1.textContent = '已自动上屏并发送'; waves1.style.opacity = '0';
+          bar1.classList.remove('is-active'); caret1.style.display = 'none';
+          await new Promise(r => setTimeout(r, 3000));
+        }
+      }
+      runImeDemo1();
+
+      // --- Card 3: 撤销重说心流演示 ---
+      const typed2 = document.getElementById('ime-typed-2');
+      const status2 = document.getElementById('ime-status-2');
+      const hint2 = document.getElementById('ime-cancel-hint');
+      const text2_wrong = "我爱你";
+      const text2_right = "我爱你塞北的雪。";
+
+      async function runImeDemo2() {
+        while(true) {
+          typed2.textContent = ''; hint2.style.opacity = '0';
+          status2.textContent = '聆听中...';
+          await new Promise(r => setTimeout(r, 1000));
+          
+          for(let i=0; i<text2_wrong.length; i++) {
+            typed2.textContent += text2_wrong[i];
+            await new Promise(r => setTimeout(r, 150));
+          }
+          await new Promise(r => setTimeout(r, 500));
+          
+          hint2.style.opacity = '1'; status2.textContent = '已取消';
+          await new Promise(r => setTimeout(r, 800));
+          
+          typed2.textContent = ''; hint2.style.opacity = '0';
+          status2.textContent = '重新聆听...';
+          await new Promise(r => setTimeout(r, 500));
+          
+          for(let i=0; i<text2_right.length; i++) {
+            typed2.textContent += text2_right[i];
+            await new Promise(r => setTimeout(r, 100));
+          }
+          status2.textContent = '完成输入';
+          await new Promise(r => setTimeout(r, 3000));
+        }
+      }
+      runImeDemo2();
+
+      // 滚动监听指示器同步
+      const sections = document.querySelectorAll("[data-section]");
+      const dots = document.querySelectorAll(".rail-dot");
+      const sectionObs = new IntersectionObserver((entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) {
+              dots.forEach((d, i) => d.classList.toggle("is-active", i === Number(e.target.dataset.section)));
+            }
+          });
+        }, { threshold: 0.5 }
+      );
+      sections.forEach((s) => sectionObs.observe(s));
+      
+      dots.forEach((dot) => {
+        dot.addEventListener("click", () => {
+          const target = document.querySelector(dot.dataset.target);
+          if (target) target.scrollIntoView({ behavior: "smooth" });
+        });
+      });
+
+    });
+  </script>
+</body>
+</html>

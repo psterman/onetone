@@ -772,6 +772,61 @@
       if(cp.smartPointer===undefined&&cp.smart_pointer!==undefined) cp.smartPointer=cp.smart_pointer;
       cfg.cameraPrefs=cp;
     }
+    if(!Array.isArray(cfg.workspaceLayouts)&&Array.isArray(cfg.workspace_layouts)){
+      cfg.workspaceLayouts=cfg.workspace_layouts;
+    }
+    if(Array.isArray(cfg.workspaceLayouts)){
+      cfg.workspaceLayouts=cfg.workspaceLayouts.map(function(item){
+        item=item&&typeof item==='object'?Object.assign({},item):{};
+        if(!Array.isArray(item.companionApps)&&Array.isArray(item.companion_apps)) item.companionApps=item.companion_apps;
+        if(!item.anchorMatch&&item.anchor_match) item.anchorMatch=item.anchor_match;
+        if(!Array.isArray(item.slots)) item.slots=[];
+        item.id=String(item.id||'').trim();
+        item.name=String(item.name||'').trim();
+        item.anchorApp=String(item.anchorApp||item.anchor_app||'').trim();
+        item.autoApply=String(item.autoApply||item.auto_apply||'').trim();
+        item.monitorFingerprint=String(item.monitorFingerprint||item.monitor_fingerprint||'').trim();
+        item.companionApps=(item.companionApps||[]).map(function(x){ return String(x||'').trim(); }).filter(Boolean);
+        item.anchorMatch=item.anchorMatch&&typeof item.anchorMatch==='object'?{
+          processName:String(item.anchorMatch.processName||item.anchorMatch.process_name||item.anchorApp||'').trim(),
+          titleContains:String(item.anchorMatch.titleContains||item.anchorMatch.title_contains||'').trim()
+        }:{processName:item.anchorApp,titleContains:''};
+        item.debounceMs=Math.max(300,Math.min(5000,Number(item.debounceMs||item.debounce_ms)||1000))|0;
+        item.cooldownMs=Math.max(1000,Math.min(300000,Number(item.cooldownMs||item.cooldown_ms)||30000))|0;
+        item.skipIfUserDragging=item.skipIfUserDragging!==false;
+        item.slots=item.slots.map(function(slot){
+          slot=slot&&typeof slot==='object'?Object.assign({},slot):{};
+          return {
+            hwnd:String(slot.hwnd||'').trim(),
+            displayName:String(slot.displayName||slot.display_name||'').trim(),
+            processName:String(slot.processName||slot.process_name||'').trim(),
+            titleContains:String(slot.titleContains||slot.title_contains||'').trim(),
+            className:String(slot.className||slot.class_name||'').trim(),
+            fullPath:String(slot.fullPath||slot.full_path||'').trim(),
+            monitorId:String(slot.monitorId||slot.monitor_id||'').trim(),
+            x:Number(slot.x)||0,y:Number(slot.y)||0,
+            width:Math.max(1,Number(slot.width)||1)|0,
+            height:Math.max(1,Number(slot.height)||1)|0,
+            xPct:Number(slot.xPct!=null?slot.xPct:slot.x_pct)||0,
+            yPct:Number(slot.yPct!=null?slot.yPct:slot.y_pct)||0,
+            wPct:Number(slot.wPct!=null?slot.wPct:slot.w_pct)||0.5,
+            hPct:Number(slot.hPct!=null?slot.hPct:slot.h_pct)||0.5,
+            showState:String(slot.showState||slot.show_state||'normal').trim()||'normal',
+            zOrder:Math.max(0,Number(slot.zOrder!=null?slot.zOrder:slot.z_order)||0)|0,
+            required:!!slot.required
+          };
+        }).filter(function(slot){
+          var n=String(slot.processName||'').split(/[/\\]/).pop().toLowerCase();
+          return slot.processName && [
+            'applicationframehost.exe','systemsettings.exe','textinputhost.exe',
+            'shellexperiencehost.exe','searchhost.exe','startmenuexperiencehost.exe',
+            'searchapp.exe','runtimebroker.exe','dwm.exe','explorer.exe','onetone.exe',
+            'securityhealthsystray.exe','lockapp.exe'
+          ].indexOf(n)<0;
+        });
+        return item;
+      }).filter(function(item){ return item.anchorMatch.processName&&item.slots.length; });
+    }
     return cfg;
   }
 
@@ -817,6 +872,7 @@
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
       debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,followForegroundAppScenario:true,softPadForceOpen:false,startMinimizedToTray:false,
       runtimeHabitControl:{softOverride:null,pin:null},
+      workspaceLayouts:[],
       cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,smartPointer:null,snapWindow:null,autoMute:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none',awayMs:3000,presentMs:1000},videoEnhancement:{enabled:false,look:'off',faceMask:'off',preset:'natural',beautyEnabled:false,whiten:0,smooth:0,rosy:0,slim:0,beauty:18,brightness:0,contrast:8,saturation:6,sharpen:8,denoise:8,lowLight:0,antiFlicker:'auto',displayFrameRate:0}},
       sounds:hooks().defaultSoundsConfig(),
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
@@ -876,6 +932,7 @@
     if(st.config.followForegroundAppScenario===undefined) st.config.followForegroundAppScenario=true;
     if(st.config.softPadForceOpen===undefined) st.config.softPadForceOpen=false;
     if(st.config.startMinimizedToTray===undefined) st.config.startMinimizedToTray=false;
+    if(!Array.isArray(st.config.workspaceLayouts)) st.config.workspaceLayouts=[];
     if(!st.config.runtimeHabitControl||typeof st.config.runtimeHabitControl!=='object'){
       st.config.runtimeHabitControl={softOverride:null,pin:null};
     }else{
@@ -1065,6 +1122,51 @@
       })(),
       softPadForceOpen:!!st.config.softPadForceOpen,
       startMinimizedToTray:!!st.config.startMinimizedToTray,
+      workspaceLayouts:(Array.isArray(st.config.workspaceLayouts)?st.config.workspaceLayouts:[]).map(function(item){
+        item=item&&typeof item==='object'?item:{};
+        return {
+          id:String(item.id||'').trim(),
+          name:String(item.name||'').trim(),
+          savedAt:Number(item.savedAt||item.saved_at)||0,
+          monitorFingerprint:String(item.monitorFingerprint||item.monitor_fingerprint||'').trim(),
+          autoApply:String(item.autoApply||item.auto_apply||'').trim(),
+          anchorApp:String(item.anchorApp||item.anchor_app||'').trim(),
+          companionApps:(item.companionApps||item.companion_apps||[]).map(function(x){ return String(x||'').trim(); }).filter(Boolean),
+          anchorMatch:(function(){
+            var m=item.anchorMatch||item.anchor_match||{};
+            return {
+              processName:String(m.processName||m.process_name||item.anchorApp||item.anchor_app||'').trim(),
+              titleContains:String(m.titleContains||m.title_contains||'').trim()
+            };
+          })(),
+          debounceMs:Math.max(300,Math.min(5000,Number(item.debounceMs||item.debounce_ms)||1000))|0,
+          cooldownMs:Math.max(1000,Math.min(300000,Number(item.cooldownMs||item.cooldown_ms)||30000))|0,
+          skipIfUserDragging:item.skipIfUserDragging!==false,
+          slots:(item.slots||[]).map(function(slot){
+            slot=slot&&typeof slot==='object'?slot:{};
+            return {
+              hwnd:String(slot.hwnd||'').trim(),
+              displayName:String(slot.displayName||slot.display_name||'').trim(),
+              processName:String(slot.processName||slot.process_name||'').trim(),
+              titleContains:String(slot.titleContains||slot.title_contains||'').trim(),
+              className:String(slot.className||slot.class_name||'').trim(),
+              fullPath:String(slot.fullPath||slot.full_path||'').trim(),
+              monitorId:String(slot.monitorId||slot.monitor_id||'').trim(),
+              x:Number(slot.x)||0,
+              y:Number(slot.y)||0,
+              width:Math.max(1,Number(slot.width)||1)|0,
+              height:Math.max(1,Number(slot.height)||1)|0,
+              xPct:Number(slot.xPct!=null?slot.xPct:slot.x_pct)||0,
+              yPct:Number(slot.yPct!=null?slot.yPct:slot.y_pct)||0,
+              wPct:Number(slot.wPct!=null?slot.wPct:slot.w_pct)||0.5,
+              hPct:Number(slot.hPct!=null?slot.hPct:slot.h_pct)||0.5,
+              showState:String(slot.showState||slot.show_state||'normal').trim()||'normal',
+              zOrder:Math.max(0,Number(slot.zOrder!=null?slot.zOrder:slot.z_order)||0)|0,
+              required:!!slot.required
+            };
+          }).filter(function(slot){ return slot.processName; })
+        };
+      }),
       cameraPrefs:(function(){
         var p=st.config.cameraPrefs||{};
         var pa=p.presenceActions&&typeof p.presenceActions==='object'?p.presenceActions:{};

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="js/theme-init.js"></script>
+  <title>视觉 — 一声 OneTone</title>
+  <meta name="description" content="摄像头帮你眨眼、摇头就触发；画面只在本机，不上传。">
+  <link rel="canonical" href="https://www.onetone.app/vision.html">
+  <link rel="icon" href="assets/logo.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tailwind-config.js"></script>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/vision.css">
+
+</head>
+<body class="antialiased" data-page="vision">
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="site-brand" href="index.html">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span data-i18n="siteName">一声 OneTone</span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="index.html" data-nav="home">概览</a>
+      <a href="quickstart.html" data-nav="quickstart">使用</a>
+      <a href="vision.html" data-nav="vision" class="is-active">视觉</a>
+      <a href="agent.html" data-nav="agent">快捷台</a>
+      <a href="faq.html" data-nav="faq">帮助</a>
+    </nav>
+    <div class="site-header-actions">
+      <button type="button" class="lang-toggle" id="langToggle" data-i18n="langToggle">EN</button>
+      <a class="nav-cta" href="download.html">下载</a>
+      <button type="button" class="mobile-nav-toggle" id="mobileNavToggle" aria-label="菜单" aria-expanded="false">
+        <i class="ph ph-list text-xl"></i>
+      </button>
+    </div>
+  </div>
+</header>
+<div class="mobile-nav-panel" id="mobileNavPanel">
+  <a href="index.html" data-nav="home">概览</a>
+  <a href="quickstart.html" data-nav="quickstart">使用</a>
+  <a href="vision.html" data-nav="vision" class="is-active">视觉</a>
+  <a href="agent.html" data-nav="agent">快捷台</a>
+  <a href="faq.html" data-nav="faq">帮助</a>
+  <a href="download.html" data-nav="download">下载</a>
+</div>
+
+
+  
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero-wrapper" id="hero">
+      
+      <!-- 空间透视网格 -->
+      <div class="hero-grid"></div>
+
+      <!-- 全新动态视觉中枢：空间取景器 -->
+      <div class="vision-stage state-idle" id="vision-stage">
+        
+        <!-- 智能对焦框 -->
+        <div class="viewfinder">
+          <div class="vf-corner tl"></div>
+          <div class="vf-corner tr"></div>
+          <div class="vf-corner bl"></div>
+          <div class="vf-corner br"></div>
+          <div class="vf-scanline"></div>
+          <div class="vf-label" id="vf-label">AWAITING_INPUT</div>
+          <!-- 目标 Icon (通过 JS 切换 class 改变图标) -->
+          <i class="ph ph-scan vf-target" id="vf-icon"></i>
+        </div>
+
+        <!-- 图层: 离席 (Away) 盾牌 -->
+        <div class="vs-frost-shield">
+          <i class="ph-fill ph-lock-key"></i>
+          <span>SECURED</span>
+        </div>
+
+        <!-- 旁侧状态信息面板 -->
+        <div class="vs-status-panel hidden md:block">
+          <div class="vs-status-header"><span class="vs-status-dot idle" id="vs-dot"></span> 摄像头状态</div>
+          <div class="vs-status-code" id="vs-code" style="color: #86868b;">准备中</div>
+          <div class="vs-status-desc" id="vs-desc">等你做一个小动作…</div>
+        </div>
+      </div>
+
+      <!-- 文字层 -->
+      <div class="relative z-10 text-center max-w-3xl mx-auto px-6 pointer-events-none mt-[35vh]">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mac-glass text-xs font-medium text-mac-textMuted mb-6">
+          <i class="ph-fill ph-shield-check text-mac-accent"></i> 画面只在本机看 · 不传到网上
+        </div>
+        <h1 class="text-5xl md:text-6xl font-bold tracking-tight text-white mb-6 leading-tight">
+          摄像头帮你按一下<br>不帮别人偷看你。
+        </h1>
+        <p class="text-lg md:text-xl text-mac-textMuted mb-10 max-w-2xl mx-auto">
+          眨眼、摇头、举手、走开——这些小动作都能变成快捷键。全部在你电脑里算完，不上传。
+        </p>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="py-32 relative z-10 bg-mac-bg">
+      <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 gap-12">
+        
+        <!-- Card 1: 离席与防护 -->
+        <div class="mac-glass rounded-3xl p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 feature-card">
+          <div class="flex-1 space-y-6">
+            <div class="text-mac-textMuted text-sm tracking-widest uppercase">01 · 走开一下</div>
+            <h2 class="text-3xl font-bold text-white">人走了，屏幕先盖上。</h2>
+            <p class="text-mac-textMuted leading-relaxed">
+              脸离开大约 3 秒，所有屏幕会蒙一层雾；你回来约 2.5 秒后自动解开，也可按 Esc。只挡一眼，不锁机。
+              <br><br>
+              旁边多了一张脸？轻轻提醒一声——不查身份，嫌烦随时关。
+            </p>
+          </div>
+          <div class="flex-1 w-full relative h-[300px] rounded-2xl bg-black overflow-hidden border border-white/10 flex items-center justify-center">
+             <!-- macOS Notification Mockup -->
+             <div id="c1-notif" class="absolute top-4 right-4 w-64 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-4 shadow-2xl flex gap-4 items-start transition-all duration-700 opacity-0 translate-x-8">
+               <div class="w-10 h-10 rounded-full bg-mac-accent/20 flex items-center justify-center text-mac-accent flex-shrink-0">
+                 <i class="ph-fill ph-eye text-xl"></i>
+               </div>
+               <div>
+                 <div class="text-sm font-semibold text-white mb-1">另一张脸</div>
+                 <div class="text-xs text-white/70">检测到旁观者。可暂停 5 分钟。</div>
+               </div>
+             </div>
+             <!-- Screen Mockup -->
+             <div class="w-64 h-40 border-8 border-gray-900 rounded-xl bg-gray-800 flex items-center justify-center relative overflow-hidden shadow-2xl">
+                <!-- User Workspace Content -->
+                <div class="absolute inset-0 flex flex-col p-4 opacity-30">
+                   <div class="w-1/3 h-3 bg-white rounded mb-4"></div>
+                   <div class="w-3/4 h-2 bg-gray-400 rounded mb-2"></div>
+                   <div class="w-2/3 h-2 bg-gray-400 rounded mb-2"></div>
+                   <div class="w-full h-2 bg-gray-400 rounded mb-2"></div>
+                </div>
+                <!-- Shield Overlay -->
+                <div id="c1-shield" class="absolute inset-0 bg-black/60 backdrop-blur-md flex flex-col items-center justify-center text-center transition-opacity duration-700 opacity-0">
+                  <i class="ph-fill ph-lock-key text-white text-2xl mb-2"></i>
+                  <span class="text-white text-xs font-medium">OneTone 已遮住屏幕</span>
+                </div>
+             </div>
+          </div>
+        </div>
+
+        <!-- Card 2: 多屏追踪 -->
+        <div class="mac-glass rounded-3xl p-8 md:p-12 flex flex-col md:flex-row-reverse items-center gap-12 feature-card">
+          <div class="flex-1 space-y-6">
+            <div class="text-mac-textMuted text-sm tracking-widest uppercase">02 · 多屏</div>
+            <h2 class="text-3xl font-bold text-white">看向哪块屏，<br>光标跟过去。</h2>
+            <p class="text-mac-textMuted leading-relaxed">
+              盯着某块屏停一下，再按一下 Control，光标（或你正在拖的窗口）会飞到你正看的那块——少摸一次鼠标。
+            </p>
+          </div>
+          <div class="flex-1 w-full relative h-[300px] rounded-2xl bg-black overflow-hidden border border-white/10 flex items-center justify-center gap-6">
+             <!-- Dual Monitors -->
+             <div id="c2-mon-a" class="w-40 h-28 border-4 border-mac-accent rounded-lg bg-gray-900 relative transition-colors duration-500 shadow-xl">
+               <div class="absolute top-2 left-2 w-16 h-12 bg-white/10 rounded border border-white/20 shadow-lg"></div>
+               <div id="c2-label-a" class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-mac-accent font-mono whitespace-nowrap transition-colors duration-500">Display A (Focused)</div>
+             </div>
+             <div id="c2-mon-b" class="w-40 h-28 border-4 border-gray-800 rounded-lg bg-gray-900 relative transition-colors duration-500 shadow-xl">
+                <div id="c2-label-b" class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-gray-500 font-mono whitespace-nowrap transition-colors duration-500">Display B</div>
+             </div>
+             
+             <!-- Global Flying Cursor -->
+             <div id="c2-cursor" class="absolute transition-all duration-[800ms] ease-[cubic-bezier(0.32,0.72,0,1)] z-10" style="left: 30%; top: 50%; transform: translate(-50%, -50%);">
+                <!-- Cursor tail effect -->
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-mac-accent rounded-full blur-md opacity-50 scale-150"></div>
+                <i class="ph-fill ph-cursor text-mac-accent text-xl relative drop-shadow-[0_0_8px_rgba(42, 156, 196,0.8)] z-10"></i>
+             </div>
+          </div>
+        </div>
+
+        <!-- Card 3: 手势触发 -->
+        <div class="mac-glass rounded-3xl p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 feature-card">
+          <div class="flex-1 space-y-6">
+            <div class="text-mac-textMuted text-sm tracking-widest uppercase">03 · 手势</div>
+            <h2 class="text-3xl font-bold text-white">四种小动作，随手就用。</h2>
+            <p class="text-mac-textMuted leading-relaxed">
+              眨眼、摇头、举手……默认对应常用操作，设置里也能改。不用真的挥手演示，点一下「立即测试」就能预览。
+            </p>
+          </div>
+          <div class="flex-1 w-full flex flex-col gap-5">
+             
+             <!-- 迷你桌面演示舞台 (Stage) -->
+             <div class="relative w-full h-[220px] rounded-2xl bg-gray-900 overflow-hidden border border-white/10 flex items-center justify-center shadow-inner">
+                
+                <!-- 模拟当前屏幕的虚化背景 -->
+                <div class="absolute inset-0 bg-gradient-to-br from-gray-800 to-black opacity-50"></div>
+                
+                <!-- 摄像头 PiP (画中画) 视窗 -->
+                <div class="absolute top-4 right-4 w-16 h-12 bg-black/80 backdrop-blur-md rounded-lg border border-white/20 shadow-2xl flex items-center justify-center overflow-hidden z-20">
+                   <i class="ph-fill ph-user text-gray-500 text-2xl transition-all duration-300" id="g-pip-icon"></i>
+                </div>
+
+                <!-- 离席遮罩图层 (对应摇头) -->
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-xl flex flex-col items-center justify-center opacity-0 transition-opacity duration-500 z-10" id="g-shield-layer">
+                   <i class="ph-fill ph-lock-key text-white/90 text-3xl mb-3"></i>
+                   <span class="text-white/80 text-xs font-semibold tracking-wide">离席遮罩已开启</span>
+                </div>
+
+                <!-- 屏幕中央的大图标反馈 -->
+                <i class="ph-fill ph-command text-mac-accent text-6xl opacity-0 transform scale-50 transition-all duration-500 drop-shadow-[0_0_15px_rgba(42, 156, 196,0.5)] z-20" id="g-center-icon"></i>
+                
+                <!-- 底部毛玻璃 Toast 通知 -->
+                <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full px-5 py-2 text-xs font-medium text-white opacity-0 transform translate-y-6 transition-all duration-500 whitespace-nowrap shadow-xl z-20" id="g-toast">
+                   指令已触发
+                </div>
+             </div>
+
+             <!-- 手势触发控制面板 -->
+             <div class="grid grid-cols-2 gap-3">
+               <button class="gesture-btn group" data-gesture="blink"><i class="ph ph-eye group-hover:scale-110 transition-transform"></i> <span>长眨眼</span></button>
+               <button class="gesture-btn group" data-gesture="shake"><i class="ph ph-arrows-left-right group-hover:scale-110 transition-transform"></i> <span>水平摇头</span></button>
+               <button class="gesture-btn group" data-gesture="fist"><i class="ph ph-hand-fist group-hover:scale-110 transition-transform"></i> <span>单手握拳</span></button>
+               <button class="gesture-btn group" data-gesture="palm"><i class="ph ph-hand-palm group-hover:scale-110 transition-transform"></i> <span>五指张开</span></button>
+             </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  
+
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <span data-i18n="footerCopy">© 2026 一声 OneTone</span>
+    <nav>
+      <a href="changelog.html" data-i18n="footerChangelog">更新日志</a>
+      <a href="privacy.html" data-i18n="footerPrivacy">隐私政策</a>
+      <a href="terms.html" data-i18n="footerTerms">服务条款</a>
+      <a href="https://github.com/psterman/onetone" target="_blank" rel="noopener noreferrer" data-i18n="footerGithub">GitHub</a>
+      <a href="https://github.com/psterman/onetone/issues/new?template=bug_report.yml" data-i18n="footerReport">反馈问题</a>
+      <a href="support.html" data-i18n="footerSupport">支持项目</a>
+    </nav>
+  </div>
+</footer>
+<script src="js/shell.js"></script>
+<script src="js/i18n.js"></script>
+  <script src="js/vision-demo.js"></script>
+</body>
+</html>

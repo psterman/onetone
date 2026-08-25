@@ -1,15 +1,9 @@
-/* Runs synchronously in <head> — apply theme before first paint (no FOUC). */
+/* Dark-only site — force dark class before first paint. */
 (function () {
   try {
-    var stored = localStorage.getItem("theme");
-    var dark =
-      stored === "dark" ||
-      (stored !== "light" &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches);
     var root = document.documentElement;
-    if (dark) root.classList.add("dark");
-    else root.classList.remove("dark");
-    root.style.colorScheme = dark ? "dark" : "light";
+    root.classList.add("dark");
+    root.style.colorScheme = "dark";
     root.classList.add("theme-init");
   } catch (_) {}
 })();

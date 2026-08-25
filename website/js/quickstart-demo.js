@@ -1,151 +1,6 @@
 (function () {
   "use strict";
 
-  function initTheme() {
-    const html = document.documentElement;
-    html.classList.remove("theme-init");
-
-    const toggle = document.getElementById("themeToggle");
-    if (!toggle) return;
-
-    toggle.addEventListener("click", () => {
-      const dark = html.classList.toggle("dark");
-      localStorage.theme = dark ? "dark" : "light";
-      html.style.colorScheme = dark ? "dark" : "light";
-    });
-  }
-
-  function initNavActive() {
-    const page = document.body.dataset.page;
-    if (!page) return;
-    document.querySelectorAll(`[data-nav="${page}"]`).forEach((el) => {
-      el.classList.add("nav-active", "font-semibold");
-    });
-  }
-
-  function initHeroWordCycle() {
-    const wordEl = document.querySelector("[data-hero-word]");
-    const liveEl = document.querySelector("[data-hero-live]");
-    const pillEl = document.querySelector(".hero-word-pill");
-    if (!wordEl || !pillEl) return;
-
-    const fallbackWords = {
-      zh: ["脑子里的吐槽", "还没写的周报", "凌晨三点灵感", "摸鱼时的金句", "心流上头瞬间", "今天的小目标"],
-      en: ["inner roast", "late report", "3am spark", "slack gold", "flow state", "tiny win"],
-    };
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let words = fallbackWords.zh;
-    let index = 0;
-    let timer = 0;
-    const themeCount = 6;
-
-    function currentLang() {
-      if (window.OneToneSite?.getLang) return window.OneToneSite.getLang();
-      return document.documentElement.lang === "en" ? "en" : "zh";
-    }
-
-    function getWords() {
-      const lang = currentLang();
-      const siteWords = window.OneToneSite?.strings?.[lang]?.heroWords;
-      if (Array.isArray(siteWords) && siteWords.length) return siteWords;
-      return fallbackWords[lang] || fallbackWords.zh;
-    }
-
-    function applyTheme(nextIndex) {
-      const themeIndex = nextIndex % themeCount;
-      for (let i = 0; i < themeCount; i += 1) {
-        pillEl.classList.toggle(`hero-pill-theme-${i}`, i === themeIndex);
-      }
-    }
-
-    function setWord(nextIndex, animate) {
-      index = nextIndex % words.length;
-      if (animate) pillEl.classList.remove("is-changing");
-      wordEl.textContent = words[index];
-      if (liveEl) liveEl.textContent = words[index];
-      applyTheme(index);
-      if (animate) {
-        requestAnimationFrame(() => {
-          pillEl.classList.add("is-changing");
-        });
-      }
-    }
-
-    function stop() {
-      if (!timer) return;
-      window.clearInterval(timer);
-      timer = 0;
-    }
-
-    function start() {
-      stop();
-      words = getWords();
-      setWord(0, false);
-      if (reduceMotion.matches || document.visibilityState === "hidden" || words.length < 2) return;
-      timer = window.setInterval(() => {
-        setWord(index + 1, true);
-      }, 1800);
-    }
-
-    document.addEventListener("visibilitychange", start);
-    document.addEventListener("onetone:langchange", start);
-    if (reduceMotion.addEventListener) {
-      reduceMotion.addEventListener("change", start);
-    }
-
-    start();
-  }
-
-  function initHeroDeviceCycle() {
-    const objectEls = Array.from(document.querySelectorAll("[data-hero-device-object]"));
-    const listeningCard = document.querySelector(".hero-object-demo .hero-listening-card");
-    const textDemo = document.querySelector(".hero-object-demo .hero-text-demo");
-    if (!objectEls.length) return;
-
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let index = 0;
-    let timer = 0;
-
-    function setDevice(nextIndex, animate) {
-      index = nextIndex % objectEls.length;
-      objectEls.forEach((el, objectIndex) => {
-        el.classList.toggle("is-active", objectIndex === index);
-      });
-      if (listeningCard) {
-        listeningCard.classList.remove("is-pulsing");
-        if (animate) {
-          requestAnimationFrame(() => listeningCard.classList.add("is-pulsing"));
-        }
-      }
-      if (textDemo && animate) {
-        textDemo.classList.remove("is-typing-reset");
-        requestAnimationFrame(() => textDemo.classList.add("is-typing-reset"));
-      }
-    }
-
-    function stop() {
-      if (!timer) return;
-      window.clearInterval(timer);
-      timer = 0;
-    }
-
-    function start() {
-      stop();
-      setDevice(0, false);
-      if (reduceMotion.matches || document.visibilityState === "hidden" || objectEls.length < 2) return;
-      timer = window.setInterval(() => {
-        setDevice(index + 1, true);
-      }, 2200);
-    }
-
-    document.addEventListener("visibilitychange", start);
-    if (reduceMotion.addEventListener) {
-      reduceMotion.addEventListener("change", start);
-    }
-
-    start();
-  }
-
   function createCycle({ items, dots = [], interval = 2200, onChange, autoplay = true }) {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let index = 0;
@@ -198,106 +53,6 @@
     };
   }
 
-  function initFlowDemoCycle() {
-    const root = document.querySelector('[data-cycle-group="flow"]');
-    if (!root) return;
-    const items = Array.from(root.querySelectorAll(".command-item"));
-    const currentEl = root.querySelector("[data-flow-current]");
-    const statusEl = root.querySelector("[data-flow-status]");
-    const resultEl = root.querySelector("[data-flow-result]");
-    if (!items.length) return;
-
-    const fallbacks = {
-      zh: {
-        statuses: ["鼠标侧键已记录", "手柄按键已记录", "蓝牙戒指已记录", "麦克风口令已记录"],
-        results: [
-          "按下鼠标侧键后，说的话会进入当前输入框。",
-          "按下手柄按钮后，可以远距离口述文字。",
-          "轻点蓝牙戒指后，不离开当前动作也能输入。",
-          "说出口令后，麦克风也可以激活语音输入。",
-        ],
-      },
-      en: {
-        statuses: ["Mouse button recorded", "Gamepad button recorded", "Bluetooth ring recorded", "Voice command recorded"],
-        results: [
-          "Press the mouse button and your speech lands in the focused field.",
-          "Press the gamepad button to dictate from farther away.",
-          "Tap the Bluetooth ring to type without leaving the current action.",
-          "Say the command and the microphone can wake voice input too.",
-        ],
-      },
-    };
-
-    function currentLang() {
-      if (window.OneToneSite?.getLang) return window.OneToneSite.getLang();
-      return document.documentElement.lang === "en" ? "en" : "zh";
-    }
-
-    function readList(key, fallbackKey) {
-      const lang = currentLang();
-      const list = window.OneToneSite?.strings?.[lang]?.[key];
-      if (Array.isArray(list) && list.length) return list;
-      return fallbacks[lang]?.[fallbackKey] || fallbacks.zh[fallbackKey];
-    }
-
-    function flowTargetLabel() {
-      const lang = currentLang();
-      return window.OneToneSite?.strings?.[lang]?.flowTargetLabel
-        || (lang === "en" ? "voice wake key" : "语音唤醒键");
-    }
-
-    function syncFlow(index) {
-      const activeItem = items[index % items.length];
-      const triggerName = activeItem?.querySelector("strong")?.textContent?.trim();
-      const statuses = readList("flowStatusLabels", "statuses");
-      const results = readList("flowResultTexts", "results");
-      if (currentEl && triggerName) currentEl.textContent = triggerName;
-      const targetEl = root.querySelector("[data-flow-target]");
-      if (targetEl) targetEl.textContent = flowTargetLabel();
-      if (statusEl) statusEl.textContent = statuses[index % statuses.length];
-      if (resultEl) resultEl.textContent = results[index % results.length];
-    }
-
-    const cycle = createCycle({
-      items,
-      interval: 2400,
-      onChange: syncFlow,
-    });
-
-    document.addEventListener("onetone:langchange", () => {
-      window.requestAnimationFrame(() => syncFlow(cycle.getIndex()));
-    });
-  }
-
-  function initContextCycle() {
-    const root = document.querySelector('[data-cycle-group="context"]');
-    if (!root) return;
-    const tabs = Array.from(root.querySelectorAll(".context-tabs button"));
-    createCycle({
-      items: tabs,
-      interval: 2200,
-    });
-  }
-
-  function initQuickstartSceneCycle() {
-    const root = document.querySelector('[data-cycle-group="quickstart-scene"]');
-    if (!root) return;
-    const items = Array.from(root.querySelectorAll("[data-scene-item]"));
-    const panels = Array.from(root.querySelectorAll("[data-scene-panel]"));
-    if (!items.length) return;
-    const autoplay = !root.hasAttribute("data-no-autoplay");
-    createCycle({
-      items,
-      interval: 2600,
-      autoplay,
-      onChange(index) {
-        panels.forEach((panel, panelIndex) => {
-          panel.classList.toggle("is-active", panelIndex === index);
-        });
-      },
-    });
-  }
-
   const QS_IME_PRESETS = [
     { id: "typeless", nameKey: "imePresetTypeless", badge: "Ty", badgeEn: "Ty", targetKey: "RAlt", icon: "assets/icons/ime/typeless.png" },
     { id: "zhipu", nameKey: "imePresetZhipu", badge: "智", badgeEn: "Zp", targetKey: "RAlt", icon: "assets/icons/ime/zhipu.png" },
@@ -306,439 +61,6 @@
     { id: "sogou", nameKey: "imePresetSogou", badge: "搜", badgeEn: "Sg", targetKey: "Ctrl+Space", icon: "assets/icons/ime/sougou.png" },
     { id: "xunfei", nameKey: "imePresetXunfei", badge: "讯", badgeEn: "Xf", targetKey: "F2", icon: "assets/icons/ime/xunfei.png" },
   ];
-
-  const HOME_IME_PRESET_IDS = ["typeless", "xunfei", "sogou"];
-  const HOME_IME_PHRASE_KEYS = ["homeImeWakePhrase1", "homeImeWakePhrase2", "homeImeWakePhrase3"];
-
-  const HOME_IME_DEMO_CONFIGS = {
-    normal: {
-      withWake: true,
-      withSend: true,
-      draftKey: "homeImeWakeDraft",
-      partialDraftKey: null,
-      doneKey: null,
-      flowLabelKeys: ["homeImeWakeFlowEnd", "homeImeWakeFlowWait", "homeImeWakeFlowSend"],
-    },
-    cancel: {
-      withWake: false,
-      withSend: false,
-      draftKey: "homeImeCancelDraft",
-      partialDraftKey: "homeImeCancelDraftPartial",
-      doneKey: "homeImeCancelDone",
-      flowLabelKeys: ["homeImeWakeFlow1", "homeImeWakeFlow2", "homeImeWakeFlow3"],
-    },
-  };
-
-  function getHomeImePresets() {
-    return HOME_IME_PRESET_IDS.map((id) => QS_IME_PRESETS.find((p) => p.id === id)).filter(Boolean);
-  }
-
-  function createHomeImeDemo(root, config) {
-    const stageEl = root.querySelector(".home-ime-wake-stage");
-    const phraseTranscriptEl = root.querySelector("[data-home-ime-phrase]");
-    const statusEl = root.querySelector("[data-home-ime-status]");
-    const phraseNodeEl = root.querySelector("[data-home-ime-phrase-node]");
-    const phraseLabelEl = root.querySelector("[data-home-ime-phrase-label]");
-    const onetoneEl = root.querySelector("[data-home-ime-onetone]");
-    const targetEl = root.querySelector("[data-home-ime-target]");
-    const iconEl = root.querySelector("[data-home-ime-icon]");
-    const nameEl = root.querySelector("[data-home-ime-name]");
-    const barEl = root.querySelector("[data-home-ime-bar]");
-    const barTextEl = root.querySelector("[data-home-ime-bar-text]");
-    const editorEl = root.querySelector("[data-home-ime-editor]");
-    const typedEl = root.querySelector("[data-home-ime-typed]");
-    const typedWrap = root.querySelector(".home-ime-typed");
-    const sendBtn = root.querySelector("[data-home-ime-send]");
-    const cancelChip = root.querySelector("[data-home-ime-cancel-chip]");
-    const delayEl = root.querySelector("[data-home-ime-delay]");
-    const delayFillEl = root.querySelector("[data-home-ime-delay-fill]");
-    const outcomeEl = root.querySelector("[data-home-ime-outcome-status]");
-    const flowSteps = Array.from(root.querySelectorAll("[data-home-ime-flow-step]"));
-
-    const presets = getHomeImePresets();
-    if (!presets.length) return;
-
-    let presetIndex = 0;
-    let phraseIndex = 0;
-    const timers = [];
-    let typeTimer = 0;
-    let running = false;
-    let visible = false;
-
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-    function clearAll() {
-      timers.splice(0).forEach((id) => window.clearTimeout(id));
-      if (typeTimer) {
-        window.clearTimeout(typeTimer);
-        typeTimer = 0;
-      }
-    }
-
-    function schedule(fn, delay) {
-      const id = window.setTimeout(fn, delay);
-      timers.push(id);
-      return id;
-    }
-
-    function currentPhrase() {
-      const key = HOME_IME_PHRASE_KEYS[phraseIndex % HOME_IME_PHRASE_KEYS.length];
-      return qsT(key);
-    }
-
-    function getDraftText() {
-      return qsT(config.draftKey);
-    }
-
-    function getPartialDraftText() {
-      return config.partialDraftKey ? qsT(config.partialDraftKey) : "";
-    }
-
-    function syncFlowLabels() {
-      config.flowLabelKeys.forEach((key, index) => {
-        if (flowSteps[index]) flowSteps[index].textContent = qsT(key);
-      });
-    }
-
-    function setWakeStatus(key) {
-      if (statusEl) statusEl.textContent = qsT(key);
-    }
-
-    function setBarText(key) {
-      if (barTextEl) barTextEl.textContent = qsT(key);
-    }
-
-    function setOutcome(text, muted = false) {
-      if (!outcomeEl) return;
-      outcomeEl.textContent = text;
-      outcomeEl.classList.toggle("is-muted", muted);
-      outcomeEl.removeAttribute("hidden");
-    }
-
-    function hideOutcome() {
-      outcomeEl?.setAttribute("hidden", "");
-      outcomeEl?.classList.remove("is-muted");
-    }
-
-    function syncFlowStep(step) {
-      flowSteps.forEach((item) => {
-        const idx = Number(item.dataset.homeImeFlowStep);
-        item.classList.toggle("is-active", idx <= step);
-        item.classList.toggle("is-current", idx === step);
-      });
-    }
-
-    function syncPreset(preset) {
-      if (iconEl && preset?.icon) {
-        iconEl.src = preset.icon;
-        iconEl.alt = qsT(preset.nameKey);
-      }
-      if (nameEl && preset) nameEl.textContent = qsT(preset.nameKey);
-    }
-
-    function syncPhraseLabel(phrase) {
-      if (phraseLabelEl) phraseLabelEl.textContent = `「${phrase}」`;
-    }
-
-    function resetVisual() {
-      stageEl?.classList.remove("is-listening");
-      phraseNodeEl?.classList.remove("is-lit");
-      onetoneEl?.classList.remove("is-lit");
-      targetEl?.classList.remove("is-lit");
-      barEl?.classList.remove("is-active", "is-ending");
-      editorEl?.classList.remove("is-waiting", "is-sending", "is-sent", "is-canceling", "is-retrying", "is-done");
-      typedWrap?.classList.remove("is-typing");
-      phraseTranscriptEl?.classList.remove("is-typing");
-      cancelChip?.classList.remove("is-lit");
-      cancelChip?.setAttribute("hidden", "");
-      if (phraseTranscriptEl) phraseTranscriptEl.textContent = "";
-      if (typedEl) typedEl.textContent = "";
-      if (sendBtn) {
-        sendBtn.disabled = true;
-        sendBtn.classList.remove("is-sent");
-      }
-      delayEl?.setAttribute("hidden", "");
-      if (delayFillEl) delayFillEl.style.width = "0%";
-      hideOutcome();
-      syncFlowStep(0);
-      if (config.withWake && statusEl) setWakeStatus("homeImeWakeRecognizing");
-      setBarText("homeImeWakeListening");
-    }
-
-    function showFinalState(preset, phrase) {
-      syncPreset(preset);
-      syncFlowLabels();
-      if (config.withWake) {
-        syncPhraseLabel(phrase);
-        if (phraseTranscriptEl) phraseTranscriptEl.textContent = phrase;
-        phraseNodeEl?.classList.add("is-lit");
-        onetoneEl?.classList.add("is-lit");
-        targetEl?.classList.add("is-lit");
-      }
-      if (config.withSend) {
-        barEl?.classList.add("is-ending");
-        if (typedEl) typedEl.textContent = getDraftText();
-        editorEl?.classList.add("is-committed");
-        syncFlowStep(3);
-        setOutcome(qsT("homeImeWakeSent"));
-        if (sendBtn) {
-          sendBtn.disabled = true;
-          sendBtn.classList.add("is-sent");
-        }
-        setBarText("homeImeWakeEnded");
-        return;
-      }
-      barEl?.classList.add("is-active");
-      if (typedEl) typedEl.textContent = getDraftText();
-      editorEl?.classList.add("is-done");
-      syncFlowStep(3);
-      if (config.doneKey) setOutcome(qsT(config.doneKey));
-    }
-
-    function typeInto(el, text, speed, onDone) {
-      if (!el) {
-        onDone?.();
-        return;
-      }
-      el.textContent = "";
-      el.classList.add("is-typing");
-      let index = 0;
-      const step = () => {
-        if (!running || !visible) return;
-        el.textContent = text.slice(0, index);
-        if (index < text.length) {
-          index += 1;
-          typeTimer = window.setTimeout(step, speed);
-          return;
-        }
-        el.classList.remove("is-typing");
-        onDone?.();
-      };
-      step();
-    }
-
-    function typeDraft(text, onDone) {
-      if (!typedEl) {
-        onDone?.();
-        return;
-      }
-      typedEl.textContent = "";
-      typedWrap?.classList.add("is-typing");
-      let index = 0;
-      const step = () => {
-        if (!running || !visible) return;
-        typedEl.textContent = text.slice(0, index);
-        if (index < text.length) {
-          index += 1;
-          typeTimer = window.setTimeout(step, 48);
-          return;
-        }
-        typedWrap?.classList.remove("is-typing");
-        onDone?.();
-      };
-      step();
-    }
-
-    function playAfterEnd(onDone) {
-      barEl?.classList.remove("is-active");
-      barEl?.classList.add("is-ending");
-      setBarText("homeImeWakeEnded");
-      syncFlowStep(1);
-
-      schedule(() => {
-        editorEl?.classList.add("is-waiting");
-        delayEl?.removeAttribute("hidden");
-        setOutcome(qsT("homeImeWakeWaiting"));
-        syncFlowStep(2);
-        if (delayFillEl) delayFillEl.style.width = "0%";
-        window.requestAnimationFrame(() => {
-          if (delayFillEl) delayFillEl.style.width = "100%";
-        });
-
-        schedule(() => {
-          editorEl?.classList.remove("is-waiting");
-          editorEl?.classList.add("is-committed");
-          delayEl?.setAttribute("hidden", "");
-          editorEl?.classList.add("is-sending");
-          syncFlowStep(3);
-          setOutcome(qsT("homeImeWakeSending"));
-          if (sendBtn) sendBtn.disabled = false;
-
-          schedule(() => {
-            if (sendBtn) {
-              sendBtn.disabled = true;
-              sendBtn.classList.add("is-sent");
-            }
-            editorEl?.classList.remove("is-sending");
-            editorEl?.classList.add("is-sent");
-            if (typedEl) typedEl.textContent = "";
-            setOutcome(qsT("homeImeWakeSent"));
-            schedule(onDone, 1200);
-          }, 980);
-        }, reduceMotion.matches ? 500 : 1300);
-      }, 520);
-    }
-
-    function playCancelMidDictation(onDone) {
-      schedule(() => {
-        cancelChip?.removeAttribute("hidden");
-        cancelChip?.classList.add("is-lit");
-        setOutcome(qsT("homeImeWakeCancelHint"));
-        syncFlowStep(2);
-        editorEl?.classList.add("is-canceling");
-        barEl?.classList.add("is-ending");
-        setBarText("homeImeWakeCancelAction");
-
-        schedule(() => {
-          if (typedEl) typedEl.textContent = "";
-          editorEl?.classList.remove("is-canceling");
-          barEl?.classList.remove("is-active", "is-ending");
-          cancelChip?.classList.remove("is-lit");
-          cancelChip?.setAttribute("hidden", "");
-          setOutcome(qsT("homeImeWakeCanceled"), true);
-          syncFlowStep(3);
-
-          schedule(() => {
-            hideOutcome();
-            editorEl?.classList.add("is-retrying");
-            barEl?.classList.add("is-active");
-            setBarText("homeImeWakeListening");
-            typeDraft(getDraftText(), () => {
-              editorEl?.classList.remove("is-retrying");
-              editorEl?.classList.add("is-done");
-              if (config.doneKey) setOutcome(qsT(config.doneKey));
-              schedule(onDone, 1400);
-            });
-          }, 900);
-        }, 820);
-      }, 480);
-    }
-
-    function playWakePhase(onReady) {
-      const preset = presets[presetIndex % presets.length];
-      const phrase = currentPhrase();
-      syncPreset(preset);
-      syncPhraseLabel(phrase);
-      syncFlowLabels();
-      stageEl?.classList.add("is-listening");
-      setWakeStatus("homeImeWakeRecognizing");
-
-      typeInto(phraseTranscriptEl, phrase, 68, () => {
-        schedule(() => phraseNodeEl?.classList.add("is-lit"), 180);
-        schedule(() => onetoneEl?.classList.add("is-lit"), 520);
-        schedule(() => {
-          stageEl?.classList.remove("is-listening");
-          targetEl?.classList.add("is-lit");
-        }, 860);
-        schedule(() => {
-          barEl?.classList.add("is-active");
-          setBarText("homeImeWakeListening");
-          syncFlowStep(1);
-        }, 1180);
-        schedule(onReady, 1500);
-      });
-    }
-
-    function playCancelCycle(onDone) {
-      syncFlowLabels();
-      barEl?.classList.add("is-active");
-      setBarText("homeImeWakeListening");
-      syncFlowStep(1);
-
-      schedule(() => {
-        typeDraft(getPartialDraftText(), () => {
-          playCancelMidDictation(onDone);
-        });
-      }, 420);
-    }
-
-    function playCycle() {
-      if (!visible || !running) return;
-      clearAll();
-      resetVisual();
-
-      const preset = presets[presetIndex % presets.length];
-      const phrase = currentPhrase();
-
-      if (reduceMotion.matches) {
-        showFinalState(preset, phrase);
-        presetIndex += 1;
-        phraseIndex += 1;
-        schedule(() => playCycle(), 6500);
-        return;
-      }
-
-      const finishCycle = () => {
-        presetIndex += 1;
-        phraseIndex += 1;
-        schedule(() => playCycle(), 900);
-      };
-
-      if (config.withWake) {
-        playWakePhase(() => {
-          typeDraft(getDraftText(), () => {
-            playAfterEnd(finishCycle);
-          });
-        });
-        return;
-      }
-
-      playCancelCycle(finishCycle);
-    }
-
-    function start() {
-      if (running) return;
-      running = true;
-      playCycle();
-    }
-
-    function stop() {
-      running = false;
-      clearAll();
-      resetVisual();
-    }
-
-    document.addEventListener("onetone:langchange", () => {
-      syncFlowLabels();
-      if (reduceMotion.matches && visible) {
-        showFinalState(presets[presetIndex % presets.length], currentPhrase());
-      }
-    });
-
-    if ("IntersectionObserver" in window) {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.target !== root) return;
-            visible = entry.isIntersecting;
-            if (visible) start();
-            else stop();
-          });
-        },
-        { threshold: 0.2, rootMargin: "0px 0px -8% 0px" }
-      );
-      observer.observe(root);
-    } else {
-      visible = true;
-      start();
-    }
-
-    if (reduceMotion.addEventListener) {
-      reduceMotion.addEventListener("change", () => {
-        if (!visible) return;
-        stop();
-        start();
-      });
-    }
-  }
-
-  function initHomeImeWakeDemo() {
-    document.querySelectorAll("[data-home-ime-demo]").forEach((root) => {
-      const variant = root.dataset.homeImeDemo || "normal";
-      const config = HOME_IME_DEMO_CONFIGS[variant];
-      if (config) createHomeImeDemo(root, config);
-    });
-  }
 
   const QS_TRIGGER_FALLBACK = {
     zh: {
@@ -1613,15 +935,267 @@
     });
   }
 
+  function initQsHero() {
+    const canvas = document.getElementById("neural-canvas");
+    const wrapper = document.getElementById("qs-hero");
+    if (!canvas || !wrapper) return;
+
+    const ctx = canvas.getContext("2d");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let width = 0;
+    let height = 0;
+    let particles = [];
+    const particleCount = 45;
+    const mouse = { x: -1000, y: -1000, radius: 150 };
+    let isHovering = false;
+    let activeSignal = null;
+
+    const hubEl = document.getElementById("hn-hub");
+    const hubIcon = document.getElementById("hn-hub-icon");
+    const stDot = document.getElementById("st-dot");
+    const stCode = document.getElementById("st-code");
+    const stDesc = document.getElementById("st-desc");
+    const stText = document.getElementById("st-text");
+    const stCursor = document.getElementById("st-cursor");
+    if (!hubEl || !hubIcon || !stDot || !stCode || !stDesc || !stText || !stCursor) return;
+
+    const peripherals = [
+      document.getElementById("rn-kb"),
+      document.getElementById("rn-mouse"),
+      document.getElementById("rn-gamepad"),
+      document.getElementById("rn-ring"),
+      document.getElementById("rn-trackball"),
+    ].filter(Boolean);
+
+    function resize() {
+      const dpr = window.devicePixelRatio || 1;
+      width = wrapper.clientWidth;
+      height = wrapper.clientHeight;
+      canvas.width = Math.max(1, Math.floor(width * dpr));
+      canvas.height = Math.max(1, Math.floor(height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    class Particle {
+      constructor() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.vx = (Math.random() - 0.5) * 0.6;
+        this.vy = (Math.random() - 0.5) * 0.6;
+        this.baseRadius = Math.random() * 1.5 + 0.5;
+      }
+      update() {
+        if (isHovering) {
+          const dx = mouse.x - this.x;
+          const dy = mouse.y - this.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance < mouse.radius) {
+            const force = (mouse.radius - distance) / mouse.radius;
+            const angle = Math.atan2(dy, dx);
+            this.vx -= Math.cos(angle) * force * 0.08;
+            this.vy -= Math.sin(angle) * force * 0.08;
+          }
+        }
+        this.vx *= 0.98;
+        this.vy *= 0.98;
+        if (Math.abs(this.vx) < 0.2) this.vx += (Math.random() - 0.5) * 0.1;
+        if (Math.abs(this.vy) < 0.2) this.vy += (Math.random() - 0.5) * 0.1;
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.x < 0 || this.x > width) this.vx *= -1;
+        if (this.y < 0 || this.y > height) this.vy *= -1;
+      }
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.baseRadius, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+        ctx.fill();
+      }
+    }
+
+    function getElCenter(el) {
+      if (!el) return { x: 0, y: 0 };
+      const rect = el.getBoundingClientRect();
+      const wrapRect = wrapper.getBoundingClientRect();
+      return {
+        x: rect.left - wrapRect.left + rect.width / 2,
+        y: rect.top - wrapRect.top + rect.height / 2,
+      };
+    }
+
+    function drawNetwork() {
+      ctx.clearRect(0, 0, width, height);
+      const centerPos = getElCenter(hubEl);
+      const periPositions = peripherals
+        .filter((el) => window.getComputedStyle(el).display !== "none")
+        .map(getElCenter);
+
+      particles.forEach((p, index) => {
+        p.update();
+        p.draw();
+        for (let j = index + 1; j < particles.length; j += 1) {
+          const p2 = particles[j];
+          const dx = p.x - p2.x;
+          const dy = p.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 120) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 - (dist / 120) * 0.1})`;
+            ctx.stroke();
+          }
+        }
+      });
+
+      ctx.setLineDash([4, 4]);
+      periPositions.forEach((pos) => {
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+        ctx.lineTo(centerPos.x, centerPos.y);
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+
+      if (activeSignal) {
+        const sx = activeSignal.startX + (activeSignal.endX - activeSignal.startX) * activeSignal.progress;
+        const sy = activeSignal.startY + (activeSignal.endY - activeSignal.startY) * activeSignal.progress;
+
+        ctx.beginPath();
+        ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+        ctx.fillStyle = "#f59e0b";
+        ctx.shadowColor = "#f59e0b";
+        ctx.shadowBlur = 15;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.beginPath();
+        ctx.moveTo(activeSignal.startX, activeSignal.startY);
+        ctx.lineTo(sx, sy);
+        ctx.strokeStyle = "rgba(245, 158, 11, 0.8)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        if (Math.random() > 0.5) {
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(sx + (Math.random() - 0.5) * 20, sy + (Math.random() - 0.5) * 20);
+          ctx.strokeStyle = "rgba(245, 158, 11, 0.4)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+
+        activeSignal.progress += 0.04;
+        if (activeSignal.progress >= 1) {
+          activeSignal.onArrive();
+          activeSignal = null;
+        }
+      }
+
+      window.requestAnimationFrame(drawNetwork);
+    }
+
+    const scenarios = [
+      { el: document.getElementById("rn-kb"), code: "INT.KEYBOARD_HOOK", desc: "捕获系统级键盘钩子，ALT+Space，激活听写...", text: "「帮我生成一段测试代码」", icon: "ph-code" },
+      { el: document.getElementById("rn-mouse"), code: "INT.MOUSE_EVENT", desc: "拦截到鼠标侧键 XButton1 电平跳变，激活听写...", text: "「这个方案我觉得可以」", icon: "ph-check-circle" },
+      { el: document.getElementById("rn-gamepad"), code: "INT.XINPUT_POLL", desc: "读取到手柄 RT 扳机键阈值溢出，激活听写...", text: "「上路 Miss，请求支援！」", icon: "ph-sword" },
+      { el: document.getElementById("rn-ring"), code: "INT.BLE_GATT", desc: "接收到蓝牙低功耗外设特征值，激活听写...", text: "「稍等，我马上看。」", icon: "ph-chat-teardrop" },
+    ];
+
+    function wait(ms) {
+      return new Promise((resolve) => window.setTimeout(resolve, ms));
+    }
+
+    async function playStoryLoop() {
+      let sIdx = 0;
+      while (true) {
+        scenarios.forEach((s) => s.el?.classList.remove("is-active"));
+        hubEl.classList.remove("is-listening");
+        hubIcon.className = "ph-fill ph-microphone";
+        stDot.classList.remove("active");
+        stCode.classList.remove("active");
+        stCode.textContent = "SYS.IDLE";
+        stDesc.textContent = "控制台中枢待机中，监控硬件总线信号...";
+        stText.textContent = "";
+        stCursor.classList.add("blinking");
+
+        await wait(reduceMotion.matches ? 800 : 2000);
+
+        const current = scenarios[sIdx];
+        if (current.el && window.getComputedStyle(current.el).display !== "none") {
+          current.el.classList.add("is-active");
+          stCode.textContent = current.code;
+          stCode.classList.add("active");
+          stDesc.textContent = "总线中断！捕获按键信号...";
+          await wait(400);
+
+          const startPos = getElCenter(current.el);
+          const endPos = getElCenter(hubEl);
+          if (reduceMotion.matches) {
+            activeSignal = null;
+          } else {
+            await new Promise((resolve) => {
+              activeSignal = {
+                startX: startPos.x,
+                startY: startPos.y,
+                endX: endPos.x,
+                endY: endPos.y,
+                progress: 0,
+                onArrive: resolve,
+              };
+            });
+          }
+
+          current.el.classList.remove("is-active");
+          hubEl.classList.add("is-listening");
+          stDot.classList.add("active");
+          stDesc.textContent = current.desc;
+          stCursor.classList.remove("blinking");
+
+          if (reduceMotion.matches) {
+            stText.textContent = current.text;
+          } else {
+            for (let i = 0; i < current.text.length; i += 1) {
+              stText.textContent += current.text[i];
+              await wait(Math.random() * 40 + 60);
+            }
+          }
+          stCursor.classList.add("blinking");
+          await wait(600);
+
+          hubEl.classList.remove("is-listening");
+          hubIcon.className = `ph-fill ${current.icon}`;
+          stDesc.textContent = "数据包封装完毕，已自动投递至目标窗口。";
+          await wait(reduceMotion.matches ? 1200 : 3000);
+        }
+
+        sIdx = (sIdx + 1) % scenarios.length;
+      }
+    }
+
+    resize();
+    window.addEventListener("resize", resize);
+    wrapper.addEventListener("mousemove", (e) => {
+      const rect = wrapper.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+      isHovering = true;
+    });
+    wrapper.addEventListener("mouseleave", () => {
+      isHovering = false;
+      mouse.x = -1000;
+      mouse.y = -1000;
+    });
+
+    for (let i = 0; i < particleCount; i += 1) particles.push(new Particle());
+    drawNetwork();
+    playStoryLoop();
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
-    initTheme();
-    initNavActive();
-    initHeroWordCycle();
-    initHeroDeviceCycle();
-    initFlowDemoCycle();
-    initContextCycle();
-    initHomeReveal();
-    initHomeImeWakeDemo();
+    initQsHero();
     initQuickstartPage();
   });
 })();

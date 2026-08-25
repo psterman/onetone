@@ -101,6 +101,7 @@ mod voice_vosk_runtime;
 mod vosk_model_download;
 mod webview_camera_permission;
 mod window_layout;
+mod workspace_layout;
 
 /// Public façade for semantic action catalog / route / binding projection (integration tests + IPC).
 pub mod semantic_action {
@@ -683,6 +684,7 @@ pub fn run() {
 
                     if last_fg_track.elapsed() >= Duration::from_millis(FG_TRACK_MS) {
                         keyboard::track_foreground_for_send();
+                        workspace_layout::maybe_auto_apply_for_foreground(&app2, &state2);
                         last_fg_track = std::time::Instant::now();
                         let cfg = state2.cfg.lock();
                         let pack_id = crate::config::live_pack_id(&cfg);
@@ -1048,6 +1050,14 @@ pub fn run() {
             ipc::cmd_gaze_is_ctrl_down,
             ipc::cmd_gaze_drag_state,
             ipc::cmd_gaze_move_window_to_monitor,
+            ipc::cmd_workspace_list_windows,
+            ipc::cmd_workspace_list_layouts,
+            ipc::cmd_workspace_snapshot,
+            ipc::cmd_workspace_save,
+            ipc::cmd_workspace_apply,
+            ipc::cmd_workspace_apply_current_anchor,
+            ipc::cmd_workspace_delete,
+            ipc::cmd_workspace_set_auto_apply,
             ipc::cmd_mic_get_mute,
             ipc::cmd_mic_set_mute,
             ipc::cmd_codex_micro_overlay_get_state,

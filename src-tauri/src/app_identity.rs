@@ -361,7 +361,9 @@ pub fn process_image_path(pid: u32) -> Option<String> {
     use winapi::um::winnt::{PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_VM_READ};
 
     unsafe {
-        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, 0, pid);
+        // Chromium (Cursor) often denies PROCESS_VM_READ. Requesting it here
+        // makes OpenProcess fail entirely and drops the window from matching.
+        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
         if handle.is_null() {
             return None;
         }
@@ -374,15 +376,21 @@ pub fn process_image_path(pid: u32) -> Option<String> {
             &mut len,
         )
         .is_ok();
-        if !ok || len == 0 {
-            len = GetModuleFileNameExW(
-                handle,
-                std::ptr::null_mut(),
-                buf.as_mut_ptr(),
-                buf.len() as u32,
-            );
-        }
         CloseHandle(handle);
+        if ok && len > 0 {
+            return Some(String::from_utf16_lossy(&buf[..len as usize]));
+        }
+        let vm = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, 0, pid);
+        if vm.is_null() {
+            return None;
+        }
+        let len = GetModuleFileNameExW(
+            vm,
+            std::ptr::null_mut(),
+            buf.as_mut_ptr(),
+            buf.len() as u32,
+        );
+        CloseHandle(vm);
         if len == 0 {
             return None;
         }
@@ -405,32 +413,46 @@ pub fn process_exe_name(pid: u32) -> Option<String> {
             .map(|s| s.to_string())
             .filter(|s| !s.is_empty());
     }
-    use winapi::um::handleapi::CloseHandle;
-    use winapi::um::processthreadsapi::OpenProcess;
-    use winapi::um::psapi::GetModuleFileNameExW;
-    use winapi::um::winnt::{PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_VM_READ};
+    toolhelp_exe_name(pid)
+}
 
+#[cfg(windows)]
+fn toolhelp_exe_name(pid: u32) -> Option<String> {
+    use winapi::um::handleapi::CloseHandle;
+    use winapi::um::tlhelp32::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+        TH32CS_SNAPPROCESS,
+    };
     unsafe {
-        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, 0, pid);
-        if handle.is_null() {
+        let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snap.is_null() || snap == winapi::um::handleapi::INVALID_HANDLE_VALUE {
             return None;
         }
-        let mut buf = [0u16; 1024];
-        let len = GetModuleFileNameExW(
-            handle,
-            std::ptr::null_mut(),
-            buf.as_mut_ptr(),
-            buf.len() as u32,
-        );
-        CloseHandle(handle);
-        if len == 0 {
-            return None;
+        let mut pe: PROCESSENTRY32W = std::mem::zeroed();
+        pe.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+        let mut found = None;
+        if Process32FirstW(snap, &mut pe) != 0 {
+            loop {
+                if pe.th32ProcessID == pid {
+                    let name = String::from_utf16_lossy(
+                        &pe.szExeFile[..pe
+                            .szExeFile
+                            .iter()
+                            .position(|&c| c == 0)
+                            .unwrap_or(pe.szExeFile.len())],
+                    );
+                    if !name.trim().is_empty() {
+                        found = Some(name);
+                    }
+                    break;
+                }
+                if Process32NextW(snap, &mut pe) == 0 {
+                    break;
+                }
+            }
         }
-        let path = String::from_utf16_lossy(&buf[..len as usize]);
-        path.rsplit(['\\', '/'])
-            .next()
-            .map(|s| s.to_string())
-            .filter(|s| !s.is_empty())
+        CloseHandle(snap);
+        found
     }
 }
 

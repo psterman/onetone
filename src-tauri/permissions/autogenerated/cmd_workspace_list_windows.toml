@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-workspace-list-windows"
+description = "Enables the cmd_workspace_list_windows command without any pre-configured scope."
+commands.allow = ["cmd_workspace_list_windows"]
+
+[[permission]]
+identifier = "deny-cmd-workspace-list-windows"
+description = "Denies the cmd_workspace_list_windows command without any pre-configured scope."
+commands.deny = ["cmd_workspace_list_windows"]

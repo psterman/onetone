@@ -1,7 +1,8 @@
-﻿/* Download page - conversion-focused layout */
+﻿/* Download page - dark HUD */
 
 .dl-page {
   overflow-x: hidden;
+  padding-top: 64px;
 }
 
 /* 鈹€鈹€ Hero 鈹€鈹€ */

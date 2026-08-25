@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="js/theme-init.js"></script>
+  <title>快捷台 — 一声 OneTone</title>
+  <meta name="description" content="屏幕上的小键盘：说口令、看 Agent 忙不忙、数字键也能跟。">
+  <link rel="canonical" href="https://www.onetone.app/agent.html">
+  <link rel="icon" href="assets/logo.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tailwind-config.js"></script>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/agent.css">
+
+</head>
+<body class="antialiased" data-page="agent">
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="site-brand" href="index.html">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span data-i18n="siteName">一声 OneTone</span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="index.html" data-nav="home">概览</a>
+      <a href="quickstart.html" data-nav="quickstart">使用</a>
+      <a href="vision.html" data-nav="vision">视觉</a>
+      <a href="agent.html" data-nav="agent" class="is-active">快捷台</a>
+      <a href="faq.html" data-nav="faq">帮助</a>
+    </nav>
+    <div class="site-header-actions">
+      <button type="button" class="lang-toggle" id="langToggle" data-i18n="langToggle">EN</button>
+      <a class="nav-cta" href="download.html">下载</a>
+      <button type="button" class="mobile-nav-toggle" id="mobileNavToggle" aria-label="菜单" aria-expanded="false">
+        <i class="ph ph-list text-xl"></i>
+      </button>
+    </div>
+  </div>
+</header>
+<div class="mobile-nav-panel" id="mobileNavPanel">
+  <a href="index.html" data-nav="home">概览</a>
+  <a href="quickstart.html" data-nav="quickstart">使用</a>
+  <a href="vision.html" data-nav="vision">视觉</a>
+  <a href="agent.html" data-nav="agent" class="is-active">快捷台</a>
+  <a href="faq.html" data-nav="faq">帮助</a>
+  <a href="download.html" data-nav="download">下载</a>
+</div>
+
+
+  
+
+  <main>
+    <!-- SECTION 1: HERO SECTION -->
+    <section class="relative min-h-screen pt-24 pb-16 flex items-center justify-center overflow-hidden" id="sec-hero">
+      <div class="spatial-grid-wrap"><div class="spatial-grid"></div></div>
+
+      <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10 w-full">
+        
+        <!-- Left Hero Copy -->
+        <div class="lg:col-span-5 space-y-6">
+          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mac-glass text-xs font-mono text-mac-accent">
+            <i class="ph-fill ph-windows-logo text-sm"></i> Windows · 屏幕上的小键盘
+          </div>
+
+          <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white leading-tight">
+            不用买实体小键盘<br>
+            <span class="text-mac-accent">屏幕上也能敲 Agent</span>
+          </h1>
+
+          <p class="text-base text-mac-textMuted leading-relaxed">
+            一块始终浮在最上面的虚拟小键盘。想展开就展开，想收成就收成一条胶囊；你的数字小键盘也能一对一跟它联动。说口令也能直接干活。
+          </p>
+
+          <!-- Hero Action & Mode Switcher -->
+          <div class="flex flex-wrap items-center gap-4 pt-2">
+            <div class="p-1 mac-glass rounded-full flex items-center gap-1" role="group" aria-label="键盘形态">
+              <button id="btn-mode-full" class="px-4 py-1.5 rounded-full text-xs font-medium text-black bg-white transition-all shadow-md">
+                <i class="ph-bold ph-keyboards mr-1"></i> 展开键盘
+              </button>
+              <button id="btn-mode-mini" class="px-4 py-1.5 rounded-full text-xs font-medium text-mac-textMuted hover:text-white transition-all">
+                <i class="ph-bold ph-minus-circle mr-1"></i> 收成一条
+              </button>
+            </div>
+            <a href="#sec-numpad" class="text-xs font-medium text-mac-accent hover:underline flex items-center gap-1">
+              看看实体小键盘怎么跟 <i class="ph-bold ph-arrow-right"></i>
+            </a>
+          </div>
+
+          <!-- Hero Specs Mini Pills -->
+          <div class="grid grid-cols-3 gap-3 pt-4 border-t border-white/10 text-xs text-mac-textMuted">
+            <div><span class="text-white block font-semibold">14 个键</span>摸起来像真的</div>
+            <div><span class="text-white block font-semibold">多款 Agent</span>状态一眼看清</div>
+            <div><span class="text-mac-accent block font-semibold">说口令</span>嘴比手快</div>
+          </div>
+        </div>
+
+        <!-- Right 3D Codex Micro Virtual Keypad Stage -->
+        <div class="lg:col-span-7 hud-deck-wrap" id="hudWrap">
+          <div class="hud-deck mac-glass rounded-3xl p-6 relative w-full max-w-lg mx-auto" id="hudDeck">
+            
+            <!-- Morphing View A: Full Keypad Deck -->
+            <div id="view-full-deck" class="space-y-5 transition-all duration-500">
+              
+              <!-- Header Bar: Window Controls & Title -->
+              <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-red-500/80 inline-block"></span>
+                  <span class="w-2.5 h-2.5 rounded-full bg-yellow-500/80 inline-block"></span>
+                  <span class="w-2.5 h-2.5 rounded-full bg-green-500/80 inline-block"></span>
+                  <span class="text-xs font-mono text-mac-textMuted ml-2">Codex Micro HUD (Topmost)</span>
+                </div>
+                <button id="btn-toggle-mini-icon" class="text-xs text-mac-textMuted hover:text-white transition-colors" title="切换为 Mini 胶囊栏">
+                  <i class="ph-bold ph-corners-in text-base"></i>
+                </button>
+              </div>
+
+              <!-- Top Agent Dock Row (13+ Agent Icons with LEDs) -->
+              <div class="bg-black/40 border border-white/10 rounded-2xl p-2.5 flex items-center justify-between gap-1 overflow-x-auto">
+                <!-- Agent Icon 1: Cursor -->
+                <div class="agent-icon-wrap relative p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors">
+                  <div class="w-7 h-7 rounded-lg bg-zinc-800 border border-white/20 flex items-center justify-center font-bold text-xs text-white">C</div>
+                  <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981]"></span>
+                  
+                  <!-- Cursor Popover Card -->
+                  <div class="agent-popover">
+                    <div class="flex items-center justify-between text-xs mb-2">
+                      <span class="font-bold text-white flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Cursor</span>
+                      <span class="text-emerald-400 font-mono text-[10px]">空闲</span>
+                    </div>
+                    <p class="text-[11px] text-mac-textMuted leading-normal">
+                      Cursor 本地活动 · 今日 <strong class="text-white">85</strong> 次对话 · <strong class="text-white">13</strong> 个会话 · 活跃 <strong class="text-white">26h 40m</strong>
+                    </p>
+                    <div class="text-[10px] text-mac-accent/90 font-mono mt-2 pt-2 border-t border-white/10">
+                      较昨日对话 ↑2733% · 本地统计
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Agent Icon 2: Claude -->
+                <div class="agent-icon-wrap relative p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors">
+                  <div class="w-7 h-7 rounded-lg bg-orange-950/60 border border-orange-500/30 flex items-center justify-center font-bold text-xs text-orange-400">Cl</div>
+                  <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-mac-accent shadow-[0_0_6px_#2a9cc4]"></span>
+                  
+                  <!-- Claude Popover Card -->
+                  <div class="agent-popover">
+                    <div class="flex items-center justify-between text-xs mb-2">
+                      <span class="font-bold text-white flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-mac-accent"></span> Claude Code</span>
+                      <span class="text-mac-accent font-mono text-[10px]">思考中...</span>
+                    </div>
+                    <p class="text-[11px] text-mac-textMuted leading-normal">
+                      DeepSeek 余额 <strong class="text-mac-accent">¥4.57</strong> · 今日已执行 42 个工具调用
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Agent Icon 3: OpenAI Codex -->
+                <div class="agent-icon-wrap relative p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors">
+                  <div class="w-7 h-7 rounded-lg bg-emerald-950/60 border border-emerald-500/30 flex items-center justify-center font-bold text-xs text-emerald-400">Ox</div>
+                  <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500"></span>
+                </div>
+
+                <!-- Agent Icon 4: DeepSeek -->
+                <div class="agent-icon-wrap relative p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors">
+                  <div class="w-7 h-7 rounded-lg bg-blue-950/60 border border-blue-500/30 flex items-center justify-center font-bold text-xs text-blue-400">DS</div>
+                  <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500"></span>
+                </div>
+
+                <!-- Agent Icon 5: Trae -->
+                <div class="agent-icon-wrap relative p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors">
+                  <div class="w-7 h-7 rounded-lg bg-purple-950/60 border border-purple-500/30 flex items-center justify-center font-bold text-xs text-purple-400">Tr</div>
+                  <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-purple-500"></span>
+                </div>
+
+                <!-- Agent Icon 6: Qoder -->
+                <div class="agent-icon-wrap relative p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors">
+                  <div class="w-7 h-7 rounded-lg bg-teal-950/60 border border-teal-500/30 flex items-center justify-center font-bold text-xs text-teal-400">Qo</div>
+                  <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-teal-500"></span>
+                </div>
+
+                <!-- More count -->
+                <div class="px-2 py-1 text-xs text-mac-textMuted font-mono bg-white/5 rounded-lg border border-white/10">+7</div>
+              </div>
+
+              <!-- Neumorphic 14-Key Grid Layout -->
+              <div class="grid grid-cols-4 gap-2.5" id="key-matrix">
+                <!-- Row 1 -->
+                <button class="neo-key h-12" data-key="power" data-numpad="NumLock"><i class="ph-bold ph-power text-mac-accent"></i><span class="neo-key-badge">Nlock</span></button>
+                <button class="neo-key h-12" data-key="bolt" data-numpad="NumpadDivide"><i class="ph-bold ph-lightning text-zinc-700"></i><span class="neo-key-badge">/</span></button>
+                <button class="neo-key h-12" data-key="sidebar" data-numpad="NumpadMultiply"><i class="ph-bold ph-sidebar-simple text-zinc-700"></i><span class="neo-key-badge">*</span></button>
+                <button class="neo-key h-12" data-key="close" data-numpad="NumpadSubtract"><i class="ph-bold ph-x-circle text-zinc-700"></i><span class="neo-key-badge">-</span></button>
+
+                <!-- Row 2 -->
+                <button class="neo-key h-12 glow-mint" data-key="menu" data-numpad="Numpad7"><i class="ph-bold ph-list text-emerald-700"></i><span class="neo-key-badge">Num 7</span></button>
+                <button class="neo-key h-12 glow-orange" data-key="undo" data-numpad="Numpad8"><i class="ph-bold ph-arrow-counter-clockwise text-orange-700"></i><span class="neo-key-badge">Num 8</span></button>
+                <button class="neo-key h-12" data-key="action" data-numpad="Numpad9"><i class="ph-bold ph-lightning text-zinc-700"></i><span class="neo-key-badge">Num 9</span></button>
+                <!-- 2U Vertical Add Key -->
+                <button class="neo-key row-span-2 h-full" data-key="add" data-numpad="NumpadAdd"><i class="ph-bold ph-plus text-zinc-800 text-xl"></i><span class="neo-key-badge">+</span></button>
+
+                <!-- Row 3 -->
+                <button class="neo-key h-12" data-key="search" data-numpad="Numpad4"><i class="ph-bold ph-magnifying-glass text-zinc-700"></i><span class="neo-key-badge">Num 4</span></button>
+                <button class="neo-key h-12 glow-pink" data-key="send" data-numpad="Numpad5"><i class="ph-bold ph-arrow-right text-rose-700"></i><span class="neo-key-badge">Num 5</span></button>
+                <button class="neo-key h-12 glow-blue" data-key="stop" data-numpad="Numpad6"><i class="ph-bold ph-x text-blue-700"></i><span class="neo-key-badge">Num 6</span></button>
+
+                <!-- Row 4 -->
+                <button class="neo-key h-12" data-key="reset" data-numpad="Numpad1"><i class="ph-bold ph-arrow-u-up-left text-zinc-700"></i><span class="neo-key-badge">Num 1</span></button>
+                <button class="neo-key h-12" data-key="back" data-numpad="Numpad2"><i class="ph-bold ph-arrow-left text-zinc-700"></i><span class="neo-key-badge">Num 2</span></button>
+                <button class="neo-key h-12" data-key="find" data-numpad="Numpad3"><i class="ph-bold ph-magnifying-glass text-zinc-700"></i><span class="neo-key-badge">Num 3</span></button>
+                <!-- 2U Vertical Submit Key -->
+                <button class="neo-key row-span-2 h-full" data-key="submit" data-numpad="NumpadEnter"><i class="ph-bold ph-arrow-elbow-down-left text-zinc-800 text-xl"></i><span class="neo-key-badge">Enter</span></button>
+
+                <!-- Row 5 (2U Horizontal Mic Key) -->
+                <button class="neo-key col-span-2 h-12" data-key="mic" data-numpad="Numpad0"><i class="ph-bold ph-microphone text-zinc-800 text-lg mr-1"></i><span class="neo-key-badge">Num 0</span></button>
+                <button class="neo-key h-12" data-key="target" data-numpad="NumpadDecimal"><i class="ph-bold ph-target text-zinc-700"></i><span class="neo-key-badge">.</span></button>
+              </div>
+
+              <!-- Footer Status Bar inside HUD -->
+              <div class="bg-black/60 border border-white/10 rounded-xl px-4 py-2 flex items-center justify-between text-xs font-mono">
+                <span class="text-mac-textMuted flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-mac-accent animate-pulse"></span>
+                  Cursor · 今日 85 次对话
+                </span>
+                <span class="text-white/60">活跃 26h 40m · 本地统计</span>
+              </div>
+            </div>
+
+            <!-- Morphing View B: Compact Mini Bar Mode (Hidden by default) -->
+            <div id="view-mini-bar" class="hidden space-y-4 py-4">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-mono text-mac-accent flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-mac-accent animate-ping"></span>
+                  Mini 胶囊模式 (置顶顶栏)
+                </span>
+                <button id="btn-toggle-full-icon" class="text-xs text-mac-textMuted hover:text-white transition-colors" title="展开为全键盘">
+                  <i class="ph-bold ph-corners-out text-base"></i>
+                </button>
+              </div>
+
+              <!-- Compact Mini Bar UI -->
+              <div class="mini-bar justify-between">
+                <div class="flex items-center gap-2">
+                  <button class="mini-bar-btn"><i class="ph-fill ph-microphone"></i></button>
+                  <button class="mini-bar-btn"><i class="ph-bold ph-arrow-right"></i></button>
+                  <button class="mini-bar-btn"><i class="ph-bold ph-lightning"></i></button>
+                  <button class="mini-bar-btn"><i class="ph-bold ph-arrow-u-up-left"></i></button>
+                  <button class="mini-bar-btn"><i class="ph-bold ph-x"></i></button>
+                </div>
+
+                <div class="flex items-center gap-2 bg-black/40 px-3 py-1 rounded-full border border-white/10 text-xs font-mono">
+                  <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                  <span class="text-sky-300">• 聆听</span>
+                </div>
+
+                <div class="text-xs font-mono text-white/80 bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
+                  Cu · 85次
+                </div>
+              </div>
+
+              <!-- Voice Command Floating Hint Strip -->
+              <div class="bg-sky-500/10 border border-sky-500/30 rounded-full px-4 py-2 text-xs font-mono text-sky-300 flex items-center justify-between">
+                <span class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
+                  聆听中 · 可说: <strong>发送</strong>、<strong>继续</strong>、<strong>新建</strong>、<strong>麦克风</strong>、<strong>取消</strong>
+                </span>
+                <div class="mic-wave-bars"><span></span><span></span><span></span><span></span></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 2: VOICE COMMAND ENGINE -->
+    <section class="py-24 bg-[#08080a] border-t border-white/10 relative" id="sec-voice">
+      <div class="max-w-6xl mx-auto px-6">
+        <div class="text-center max-w-2xl mx-auto mb-16 space-y-3">
+          <p class="text-xs uppercase tracking-widest text-mac-accent">说一声就行</p>
+          <h2 class="text-3xl font-bold text-white">手不用动，嘴也能指挥</h2>
+          <p class="text-sm text-mac-textMuted">
+            小键盘浮着的时候，说「继续」「发送」「新建」这类常用词，就能替你按对应快捷键。
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center mac-glass rounded-3xl p-8">
+          <!-- Voice Command Controls -->
+          <div class="lg:col-span-5 space-y-6">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/30 text-sky-400 text-xs font-mono">
+              <i class="ph-fill ph-waveform"></i> 语音指令触发模拟
+            </div>
+
+            <h3 class="text-xl font-bold text-white">点一下试试口令</h3>
+            <p class="text-xs text-mac-textMuted leading-relaxed">
+              点下面的词，看看它怎么帮你在当前编辑器里按快捷键。
+            </p>
+
+            <div class="flex flex-wrap gap-2" id="voice-chip-group">
+              <button class="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-white hover:bg-mac-accent/20 hover:border-mac-accent transition-all is-active" data-voice="继续">
+                🗣️ 说「继续」
+              </button>
+              <button class="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-white hover:bg-mac-accent/20 hover:border-mac-accent transition-all" data-voice="发送">
+                🗣️ 说「发送」
+              </button>
+              <button class="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-white hover:bg-mac-accent/20 hover:border-mac-accent transition-all" data-voice="新建">
+                🗣️ 说「新建」
+              </button>
+              <button class="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-white hover:bg-mac-accent/20 hover:border-mac-accent transition-all" data-voice="取消">
+                🗣️ 说「取消」
+              </button>
+            </div>
+          </div>
+
+          <!-- Live Simulator Window -->
+          <div class="lg:col-span-7 bg-black/80 border border-white/10 rounded-2xl p-6 font-mono text-xs space-y-4">
+            <div class="flex items-center justify-between border-b border-white/10 pb-3">
+              <span class="text-mac-textMuted flex items-center gap-2">
+                <i class="ph-fill ph-terminal text-mac-accent"></i> IDE Context: Cursor Editor
+              </span>
+              <span class="text-emerald-400 text-[10px]">● Voice Match Enabled</span>
+            </div>
+
+            <!-- Code Simulation Area -->
+            <div class="bg-zinc-950 p-4 rounded-xl border border-white/5 text-zinc-300 min-h-[140px] relative">
+              <div class="text-zinc-600 mb-2">// 触发的生成代码...</div>
+              <div id="sim-code-text" class="text-mac-glow font-mono leading-relaxed">
+                function syncAgentState() { return state.activeSession; }
+              </div>
+              <span id="sim-cursor" class="inline-block w-2 h-4 bg-mac-accent ml-1 animate-pulse"></span>
+
+              <!-- Floating Trigger Toast -->
+              <div id="sim-toast" class="absolute bottom-3 right-3 bg-mac-accent/20 border border-mac-accent/50 text-mac-glow px-3 py-1 rounded-full text-[11px] opacity-0 transition-opacity flex items-center gap-1.5">
+                <i class="ph-fill ph-lightning"></i> 已触发口令：<span id="sim-toast-word">继续</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: AGENT TELEMETRY DOCK -->
+    <section class="py-24 relative" id="sec-telemetry">
+      <div class="max-w-6xl mx-auto px-6 space-y-12">
+        <div class="text-center max-w-2xl mx-auto space-y-3">
+          <p class="text-xs uppercase tracking-widest text-mac-accent">一眼看清</p>
+          <h2 class="text-3xl font-bold text-white">多个 Agent，状态和余额放一起</h2>
+          <p class="text-sm text-mac-textMuted">谁在忙、还剩多少额度，不用切来切去翻。</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Card 1: Cursor -->
+          <div class="mac-glass rounded-2xl p-6 space-y-4 hover:border-mac-accent/50 transition-colors">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-zinc-800 border border-white/20 flex items-center justify-center font-bold text-white">C</div>
+                <div>
+                  <h4 class="font-bold text-white text-sm">Cursor IDE</h4>
+                  <span class="text-[11px] text-mac-textMuted">本地会话分析</span>
+                </div>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-mono border border-emerald-500/30">🟢 待命</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-2 text-xs font-mono">
+              <div class="bg-black/40 p-3 rounded-xl border border-white/5">
+                <span class="text-mac-textMuted block text-[10px]">今日对话</span>
+                <span class="text-lg font-bold text-white">85 次</span>
+              </div>
+              <div class="bg-black/40 p-3 rounded-xl border border-white/5">
+                <span class="text-mac-textMuted block text-[10px]">活跃时长</span>
+                <span class="text-lg font-bold text-white">26h 40m</span>
+              </div>
+            </div>
+            <p class="text-[11px] text-mac-accent/90 font-mono">较昨日对话 ↑2733% · 13 个会话</p>
+          </div>
+
+          <!-- Card 2: Claude Code -->
+          <div class="mac-glass rounded-2xl p-6 space-y-4 hover:border-mac-accent/50 transition-colors">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-orange-950/60 border border-orange-500/30 flex items-center justify-center font-bold text-orange-400">Cl</div>
+                <div>
+                  <h4 class="font-bold text-white text-sm">Claude Code</h4>
+                  <span class="text-[11px] text-mac-textMuted">Terminal Agent</span>
+                </div>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-mac-accent/20 text-mac-accent text-xs font-mono border border-mac-accent/30">🟡 思考中</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-2 text-xs font-mono">
+              <div class="bg-black/40 p-3 rounded-xl border border-white/5">
+                <span class="text-mac-textMuted block text-[10px]">DeepSeek 余额</span>
+                <span class="text-lg font-bold text-mac-accent">¥4.57</span>
+              </div>
+              <div class="bg-black/40 p-3 rounded-xl border border-white/5">
+                <span class="text-mac-textMuted block text-[10px]">工具调用</span>
+                <span class="text-lg font-bold text-white">42 次</span>
+              </div>
+            </div>
+            <p class="text-[11px] text-emerald-400 font-mono">CLI 工具连接正常 · 语法树可解析</p>
+          </div>
+
+          <!-- Card 3: DeepSeek V3 -->
+          <div class="mac-glass rounded-2xl p-6 space-y-4 hover:border-mac-accent/50 transition-colors">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-950/60 border border-blue-500/30 flex items-center justify-center font-bold text-blue-400">DS</div>
+                <div>
+                  <h4 class="font-bold text-white text-sm">DeepSeek V3</h4>
+                  <span class="text-[11px] text-mac-textMuted">API Router</span>
+                </div>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-mono border border-blue-500/30">🔵 生成中</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-2 text-xs font-mono">
+              <div class="bg-black/40 p-3 rounded-xl border border-white/5">
+                <span class="text-mac-textMuted block text-[10px]">吞吐速度</span>
+                <span class="text-lg font-bold text-white">42 tok/s</span>
+              </div>
+              <div class="bg-black/40 p-3 rounded-xl border border-white/5">
+                <span class="text-mac-textMuted block text-[10px]">API 延迟</span>
+                <span class="text-lg font-bold text-white">180ms</span>
+              </div>
+            </div>
+            <p class="text-[11px] text-mac-textMuted font-mono">余额监测警报设置: &lt; ¥1.00</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: NUMPAD HARDWARE BRIDGE -->
+    <section class="py-24 bg-[#08080a] border-t border-white/10 relative" id="sec-numpad">
+      <div class="max-w-6xl mx-auto px-6 space-y-12">
+        <div class="text-center max-w-2xl mx-auto space-y-3">
+          <p class="text-xs uppercase tracking-widest text-mac-accent">实体小键盘</p>
+          <h2 class="text-3xl font-bold text-white">真键盘按一下，屏幕键跟着动</h2>
+          <p class="text-sm text-mac-textMuted">
+            用电脑边上的数字小键盘试一下——屏幕上的键会跟着按下、亮起来。
+          </p>
+        </div>
+
+        <div class="mac-glass rounded-3xl p-8 grid grid-cols-1 lg:grid-cols-11 gap-8 items-center">
+          
+          <!-- Left: Standard PC Numpad View -->
+          <div class="lg:col-span-5 bg-black/60 border border-white/10 rounded-2xl p-6 text-center space-y-4">
+            <span class="text-xs text-mac-textMuted block">你电脑上的数字小键盘</span>
+            
+            <div class="grid grid-cols-4 gap-2 max-w-[220px] mx-auto text-xs font-mono" id="physical-numpad">
+              <div class="bg-zinc-800 p-2.5 rounded-lg border border-white/10 text-white" data-np="NumLock">Num</div>
+              <div class="bg-zinc-800 p-2.5 rounded-lg border border-white/10 text-white" data-np="NumpadDivide">/</div>
+              <div class="bg-zinc-800 p-2.5 rounded-lg border border-white/10 text-white" data-np="NumpadMultiply">*</div>
+              <div class="bg-zinc-800 p-2.5 rounded-lg border border-white/10 text-white" data-np="NumpadSubtract">-</div>
+
+              <div class="bg-zinc-800 p-2.5 rounded-lg border border-white/10 text-white" data-np="Numpad7">7</div>
+              <div class="bg-zinc-800 p-2.5 rounded-lg border border-white/10 text-white" data-np="Numpad8">8</div>
+              <div class="bg-zinc-800 p-2.5 rounded-lg border border-white/10 text-white" data-np="Numpad9">9</div>
+              <div class="bg-zinc-800 p-2.5 rounded-lg border border-white/10 text-white row-span-2 flex items-center justify-center" data-np="NumpadAdd">+</div>
+
+              <div class="bg-zinc-800 p-2.5 rounded-lg border border-white/10 text-white" data-np="Numpad4">4</div>
+              <div class="bg-zinc-800 p-2.5 rounded-lg border border-white/10 text-white" data-np="Numpad5">5</div>
+              <div class="bg-zinc-800 p-2.5 rounded-lg border border-white/10 text-white" data-np="Numpad6">6</div>
+
+              <div class="bg-zinc-800 p-2.5 rounded-lg border border-white/10 text-white" data-np="Numpad1">1</div>
+              <div class="bg-zinc-800 p-2.5 rounded-lg border border-white/10 text-white" data-np="Numpad2">2</div>
+              <div class="bg-zinc-800 p-2.5 rounded-lg border border-white/10 text-white" data-np="Numpad3">3</div>
+              <div class="bg-zinc-800 p-2.5 rounded-lg border border-white/10 text-white row-span-2 flex items-center justify-center" data-np="NumpadEnter">↵</div>
+
+              <div class="bg-zinc-800 p-2.5 rounded-lg border border-white/10 text-white col-span-2" data-np="Numpad0">0</div>
+              <div class="bg-zinc-800 p-2.5 rounded-lg border border-white/10 text-white" data-np="NumpadDecimal">.</div>
+            </div>
+
+            <p class="text-[11px] text-mac-accent font-mono">💡 在物理键盘按 Num 0~9 试试看</p>
+          </div>
+
+          <!-- Middle Bridge Fiber Line -->
+          <div class="lg:col-span-1 hidden lg:flex flex-col items-center justify-center space-y-2">
+            <span class="text-[10px] font-mono text-mac-textMuted uppercase">1:1 Link</span>
+            <div class="w-full bridge-line">
+              <div class="bridge-particle"></div>
+            </div>
+            <i class="ph-bold ph-lightning text-mac-accent"></i>
+          </div>
+
+          <!-- Right: OneTone Virtual HUD Trigger Feedback -->
+          <div class="lg:col-span-5 bg-black/60 border border-white/10 rounded-2xl p-6 text-center space-y-4">
+            <span class="text-xs text-mac-textMuted block">屏幕上的虚拟键盘</span>
+            
+            <div class="p-4 bg-zinc-900/80 rounded-xl border border-white/10 text-xs font-mono text-left space-y-2">
+              <div class="text-zinc-500">// 刚才发生了什么</div>
+              <div id="numpad-log" class="text-mac-glow min-h-[60px] leading-relaxed">
+                准备好了，按一下 Num 0～9 试试…
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4.5: AGENT SHORTCUT CUSTOMIZER -->
+    <section class="py-24 relative border-t border-white/10" id="sec-custom-keys">
+      <div class="max-w-6xl mx-auto px-6 space-y-12">
+        <div class="text-center max-w-2xl mx-auto space-y-3">
+          <p class="text-xs uppercase tracking-widest text-mac-accent">自己改键</p>
+          <h2 class="text-3xl font-bold text-white">不同 Agent，快捷键各配一套</h2>
+          <p class="text-sm text-mac-textMuted">
+            Cursor、Claude、Trae……每家快捷键不一样，给虚拟键各自安排就行，用起来不用换脑子。
+          </p>
+        </div>
+
+        <div class="mac-glass rounded-3xl p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          <!-- Left: Agent Switcher & Virtual Key Selector -->
+          <div class="lg:col-span-5 space-y-6">
+            <div>
+              <label class="text-xs font-mono text-mac-textMuted block mb-2">1. 选择 Agent 控制预设</label>
+              <div class="grid grid-cols-3 gap-2" id="agent-remap-preset">
+                <button class="p-2.5 rounded-xl mac-glass text-xs font-mono text-white border-mac-accent/50 bg-mac-accent/10 flex items-center justify-center gap-1.5 is-active" data-agent-preset="Cursor">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Cursor
+                </button>
+                <button class="p-2.5 rounded-xl mac-glass text-xs font-mono text-mac-textMuted hover:text-white flex items-center justify-center gap-1.5" data-agent-preset="Claude">
+                  <span class="w-2 h-2 rounded-full bg-mac-accent"></span> Claude
+                </button>
+                <button class="p-2.5 rounded-xl mac-glass text-xs font-mono text-mac-textMuted hover:text-white flex items-center justify-center gap-1.5" data-agent-preset="Trae">
+                  <span class="w-2 h-2 rounded-full bg-purple-500"></span> Trae
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between items-center mb-2">
+                <label class="text-xs font-mono text-mac-textMuted">2. 选择要定制的虚拟按键 (点击选中)</label>
+                <span id="selected-key-label" class="text-xs font-mono text-mac-accent font-bold">键位: [Num 8] 重置/撤销</span>
+              </div>
+
+              <!-- Interactive Key Selector Matrix -->
+              <div class="grid grid-cols-4 gap-2 bg-black/60 p-4 rounded-2xl border border-white/10" id="custom-key-picker">
+                <button class="neo-key h-10 text-xs" data-picker-key="power"><i class="ph-bold ph-power text-mac-accent"></i></button>
+                <button class="neo-key h-10 text-xs" data-picker-key="bolt"><i class="ph-bold ph-lightning"></i></button>
+                <button class="neo-key h-10 text-xs" data-picker-key="sidebar"><i class="ph-bold ph-sidebar-simple"></i></button>
+                <button class="neo-key h-10 text-xs" data-picker-key="close"><i class="ph-bold ph-x-circle"></i></button>
+
+                <button class="neo-key h-10 text-xs" data-picker-key="menu"><i class="ph-bold ph-list"></i></button>
+                <button class="neo-key h-10 text-xs border-mac-accent ring-2 ring-mac-accent/50" data-picker-key="undo"><i class="ph-bold ph-arrow-counter-clockwise text-orange-600"></i></button>
+                <button class="neo-key h-10 text-xs" data-picker-key="action"><i class="ph-bold ph-lightning"></i></button>
+                <button class="neo-key row-span-2 h-full text-xs" data-picker-key="add"><i class="ph-bold ph-plus"></i></button>
+
+                <button class="neo-key h-10 text-xs" data-picker-key="search"><i class="ph-bold ph-magnifying-glass"></i></button>
+                <button class="neo-key h-10 text-xs" data-picker-key="send"><i class="ph-bold ph-arrow-right text-rose-600"></i></button>
+                <button class="neo-key h-10 text-xs" data-picker-key="stop"><i class="ph-bold ph-x text-blue-600"></i></button>
+
+                <button class="neo-key h-10 text-xs" data-picker-key="reset"><i class="ph-bold ph-arrow-u-up-left"></i></button>
+                <button class="neo-key h-10 text-xs" data-picker-key="back"><i class="ph-bold ph-arrow-left"></i></button>
+                <button class="neo-key h-10 text-xs" data-picker-key="find"><i class="ph-bold ph-magnifying-glass"></i></button>
+                <button class="neo-key row-span-2 h-full text-xs" data-picker-key="submit"><i class="ph-bold ph-arrow-elbow-down-left"></i></button>
+
+                <button class="neo-key col-span-2 h-10 text-xs" data-picker-key="mic"><i class="ph-bold ph-microphone"></i></button>
+                <button class="neo-key h-10 text-xs" data-picker-key="target"><i class="ph-bold ph-target"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Keybinding Configuration & Test Panel -->
+          <div class="lg:col-span-7 bg-black/60 border border-white/10 rounded-2xl p-6 space-y-6">
+            <div class="flex items-center justify-between border-b border-white/10 pb-4">
+              <div>
+                <h4 class="font-bold text-white text-sm flex items-center gap-2">
+                  <i class="ph-fill ph-gear-six text-mac-accent"></i> 
+                  <span id="cfg-panel-title">Cursor 模式下 [Num 8] 映射参数</span>
+                </h4>
+                <p class="text-xs text-mac-textMuted mt-1">设置敲击此虚拟/物理按键时分发的底层系统快捷键宏。</p>
+              </div>
+              <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full">生效中</span>
+            </div>
+
+            <!-- Form Controls -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">
+              <div class="space-y-1.5">
+                <label class="text-mac-textMuted block">目标动作分类 (Action Class)</label>
+                <select id="cfg-action-class" class="w-full bg-zinc-900 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-mac-accent">
+                  <option value="undo">撤销 / 恢复上下文 (Undo/Restore)</option>
+                  <option value="send">发送消息 / 提交代码 (Send/Submit)</option>
+                  <option value="new_chat">新建 Agent 会话 (New Session)</option>
+                  <option value="clear_ctx">清空当前对话上下文 (Clear Ctx)</option>
+                  <option value="toggle_mic">唤醒语音听写 (Voice Dictation)</option>
+                </select>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-mac-textMuted block">分发系统快捷键 (Shortcut Macro)</label>
+                <div class="flex items-center gap-2">
+                  <input type="text" id="cfg-shortcut-input" class="w-full bg-zinc-900 border border-white/15 rounded-xl px-3 py-2 text-mac-accent font-bold focus:outline-none focus:border-mac-accent" value="Ctrl + Shift + Backspace" readonly>
+                  <button id="btn-record-key" class="px-3 py-2 rounded-xl bg-mac-accent/20 border border-mac-accent/50 text-mac-glow hover:bg-mac-accent hover:text-black transition-all whitespace-nowrap">
+                    录制键位
+                  </button>
+                </div>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-mac-textMuted block">绑定的语音口令 (Voice Alias)</label>
+                <input type="text" id="cfg-voice-alias" class="w-full bg-zinc-900 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-mac-accent" value="撤销, 重新来, 撤回">
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-mac-textMuted block">窗口聚焦行为 (Target Window Focus)</label>
+                <select class="w-full bg-zinc-900 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-mac-accent">
+                  <option>送到当前正在用的编辑器</option>
+                  <option>仅分发至最顶层窗口</option>
+                  <option>后台静默执行 API</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Realtime Macro Test Terminal Container -->
+            <div class="bg-zinc-950 p-4 rounded-xl border border-white/10 text-xs font-mono space-y-2">
+              <div class="flex items-center justify-between text-zinc-500 border-b border-white/5 pb-2">
+                <span>// 映射测试控制台 (Macro Test Bench)</span>
+                <span class="text-mac-accent/90 hover:underline cursor-pointer" id="btn-test-dispatch">测试触发该按键</span>
+              </div>
+              <div id="cfg-test-log" class="text-emerald-400 min-h-[40px] leading-relaxed">
+                [READY] 当前配置：按 [Num 8] -> 派发 [Ctrl + Shift + Backspace] 到 Cursor IDE。
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: FEATURE SPECS & FOOTER -->
+    <section class="py-20 border-t border-white/10" id="sec-specs">
+      <div class="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="mac-glass p-6 rounded-2xl space-y-3">
+          <i class="ph-fill ph-layout text-mac-accent text-2xl"></i>
+          <h4 class="font-bold text-white text-sm">一直浮在最上面</h4>
+          <p class="text-xs text-mac-textMuted leading-relaxed">
+            写代码、开全屏也能用，不抢焦点、不卡顿。
+          </p>
+        </div>
+
+        <div class="mac-glass p-6 rounded-2xl space-y-3">
+          <i class="ph-fill ph-lightning text-mac-accent text-2xl"></i>
+          <h4 class="font-bold text-white text-sm">在哪编辑都能敲</h4>
+          <p class="text-xs text-mac-textMuted leading-relaxed">
+            光标在哪个窗口，按键就送到哪——不用先点回 Agent 窗口。
+          </p>
+        </div>
+
+        <div class="mac-glass p-6 rounded-2xl space-y-3">
+          <i class="ph-fill ph-shield-check text-mac-accent text-2xl"></i>
+          <h4 class="font-bold text-white text-sm">用量留在本机</h4>
+          <p class="text-xs text-mac-textMuted leading-relaxed">
+            对话次数、活跃时长这些统计只在你电脑里看，不往外传。
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <span data-i18n="footerCopy">© 2026 一声 OneTone</span>
+    <nav>
+      <a href="changelog.html" data-i18n="footerChangelog">更新日志</a>
+      <a href="privacy.html" data-i18n="footerPrivacy">隐私政策</a>
+      <a href="terms.html" data-i18n="footerTerms">服务条款</a>
+      <a href="https://github.com/psterman/onetone" target="_blank" rel="noopener noreferrer" data-i18n="footerGithub">GitHub</a>
+      <a href="https://github.com/psterman/onetone/issues/new?template=bug_report.yml" data-i18n="footerReport">反馈问题</a>
+      <a href="support.html" data-i18n="footerSupport">支持项目</a>
+    </nav>
+  </div>
+</footer>
+<script src="js/shell.js"></script>
+<script src="js/i18n.js"></script>
+  <script src="js/agent-demo.js"></script>
+</body>
+</html>

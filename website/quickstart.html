@@ -1,54 +1,129 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="scroll-smooth">
+<html lang="zh-CN" class="dark scroll-smooth">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="js/theme-init.js"></script>
-  <link rel="stylesheet" href="css/site.css">
-  <title>上手 — 三层链路 — 一声 OneTone</title>
+  <title>使用 — 一声 OneTone</title>
+  <meta name="description" content="三步上手：选个键、对接你的语音输入、说完字自己上屏。">
   <link rel="canonical" href="https://www.onetone.app/quickstart.html">
   <link rel="icon" href="assets/logo.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="js/tailwind-config.js"></script>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/qs-layout.css">
   <link rel="stylesheet" href="css/qs-quickstart.css">
 </head>
-<body class="bg-slate-50 dark:bg-surface-dark text-slate-900 dark:text-slate-100" data-page="quickstart">
+<body class="antialiased" data-page="quickstart">
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="site-brand" href="index.html">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span data-i18n="siteName">一声 OneTone</span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="index.html" data-nav="home">概览</a>
+      <a href="quickstart.html" data-nav="quickstart" class="is-active">使用</a>
+      <a href="vision.html" data-nav="vision">视觉</a>
+      <a href="agent.html" data-nav="agent">Agent</a>
+      <a href="faq.html" data-nav="faq">帮助</a>
+    </nav>
+    <div class="site-header-actions">
+      <button type="button" class="lang-toggle" id="langToggle" data-i18n="langToggle">EN</button>
+      <a class="nav-cta" href="download.html">下载</a>
+      <button type="button" class="mobile-nav-toggle" id="mobileNavToggle" aria-label="菜单" aria-expanded="false">
+        <i class="ph ph-list text-xl"></i>
+      </button>
+    </div>
+  </div>
+</header>
+<div class="mobile-nav-panel" id="mobileNavPanel">
+  <a href="index.html" data-nav="home">概览</a>
+  <a href="quickstart.html" data-nav="quickstart" class="is-active">使用</a>
+  <a href="vision.html" data-nav="vision">视觉</a>
+  <a href="agent.html" data-nav="agent">Agent</a>
+  <a href="faq.html" data-nav="faq">帮助</a>
+  <a href="download.html" data-nav="download">下载</a>
+</div>
+<main class="qs-page">
+  <section id="qs-hero" class="qs-hero-wrapper qs-reveal" aria-label="使用开场">
+    <div class="qs-hero-grid" aria-hidden="true"></div>
+    <div class="qs-hero-vignette" aria-hidden="true"></div>
+    <canvas id="neural-canvas" aria-hidden="true"></canvas>
 
-  <div id="flowBanner" class="hidden fixed z-40 bg-brand-100 dark:bg-brand-900/40 text-brand-800 dark:text-brand-200 text-center text-sm py-2" data-i18n="flowBannerQs">从下载页继续 · 步骤一</div>
+    <div class="relative z-10 text-center max-w-3xl mx-auto px-4 pointer-events-none mb-12">
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full qs-glass-card border border-mac-border text-xs font-medium text-gray-300 mb-6">
+        <i class="ph-fill ph-infinity text-[#f59e0b] text-sm" aria-hidden="true"></i>
+        万物互联 · 全局接管
+      </div>
+      <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white mb-6 leading-tight" style="text-shadow: 0 10px 30px rgba(0,0,0,0.8);">
+        任意设备，皆可化身<br>
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-[#f59e0b] to-orange-300">全局语音键</span>
+      </h1>
+      <p class="text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed">
+        底层事件拦截器。无论是鼠标侧键、手柄摇杆，还是蓝牙指环与轨迹球。沉浸在主舞台，物理一键呼出麦克风，说完即刻上屏。
+      </p>
+    </div>
 
-  <header class="site-nav-shell">
-    <div class="site-nav-card glass-header">
-      <div class="site-nav-inner">
-        <a class="site-nav-brand" href="index.html">
-          <img src="assets/logo.png" alt="" width="32" height="32">
-          <span data-i18n="siteName">一声 OneTone</span>
-        </a>
-        <nav class="site-nav-links hidden md:flex" aria-label="Main">
-          <a href="download.html" data-nav="download" data-i18n="navDownload">下载</a>
-          <a href="quickstart.html" data-nav="quickstart" data-i18n="navQuickstart">上手</a>
-          <a href="faq.html" data-nav="faq" data-i18n="navFaq">帮助</a>
-        </nav>
-        <div class="site-nav-actions">
-          <button type="button" id="themeToggle" aria-label="Toggle theme">
-            <i class="ph ph-moon block dark:hidden"></i>
-            <i class="ph ph-sun hidden dark:block"></i>
-          </button>
-          <button type="button" id="langToggle" data-i18n="langToggle">EN</button>
+    <div class="absolute inset-0 pointer-events-none" id="node-layer">
+      <div class="qs-rich-node qs-glass-card" id="rn-kb" style="top: 25%; left: 18%;">
+        <div class="rn-icon-box"><i class="ph-fill ph-keyboard" aria-hidden="true"></i></div>
+        <div class="rn-info">
+          <span class="rn-name">组合快捷键</span>
+          <span class="rn-status"><span class="rn-dot"></span> ALT + Space</span>
         </div>
       </div>
+      <div class="qs-rich-node qs-glass-card" id="rn-mouse" style="top: 30%; left: 82%;">
+        <div class="rn-icon-box"><i class="ph-fill ph-mouse" aria-hidden="true"></i></div>
+        <div class="rn-info">
+          <span class="rn-name">鼠标侧键</span>
+          <span class="rn-status"><span class="rn-dot"></span> Button 4</span>
+        </div>
+      </div>
+      <div class="qs-rich-node qs-glass-card" id="rn-gamepad" style="top: 65%; left: 12%;">
+        <div class="rn-icon-box"><i class="ph-fill ph-game-controller" aria-hidden="true"></i></div>
+        <div class="rn-info">
+          <span class="rn-name">Xbox 手柄</span>
+          <span class="rn-status"><span class="rn-dot"></span> RT Trigger</span>
+        </div>
+      </div>
+      <div class="qs-rich-node qs-glass-card" id="rn-ring" style="top: 60%; left: 85%;">
+        <div class="rn-icon-box"><i class="ph-fill ph-circle" aria-hidden="true"></i></div>
+        <div class="rn-info">
+          <span class="rn-name">智能指环</span>
+          <span class="rn-status"><span class="rn-dot"></span> BLE Tap</span>
+        </div>
+      </div>
+      <div class="qs-rich-node qs-glass-card" id="rn-trackball" style="top: 75%; left: 35%;">
+        <div class="rn-icon-box"><i class="ph-fill ph-target" aria-hidden="true"></i></div>
+        <div class="rn-info">
+          <span class="rn-name">轨迹球</span>
+          <span class="rn-status"><span class="rn-dot"></span> Fn 键</span>
+        </div>
+      </div>
+      <div class="qs-rich-hub qs-glass-card" id="hn-hub">
+        <i class="ph-fill ph-microphone" id="hn-hub-icon" aria-hidden="true"></i>
+      </div>
     </div>
-  </header>
 
-  <main class="qs-page pb-16 max-w-6xl mx-auto px-6">
+    <div class="qs-sleek-terminal qs-glass-card">
+      <div class="st-header">
+        <div class="st-title"><span class="st-dot" id="st-dot"></span> Hardware Intercept Log</div>
+        <div class="st-code" id="st-code">SYS.IDLE</div>
+      </div>
+      <div class="st-body">
+        <div class="st-desc" id="st-desc">控制台中枢待机中，监控硬件总线信号...</div>
+        <div class="st-output"><span id="st-text"></span><span class="st-cursor" id="st-cursor"></span></div>
+      </div>
+    </div>
+  </section>
 
-    <header class="qs-page-head qs-reveal text-center mb-6">
-      <h1 class="text-3xl md:text-4xl font-bold mb-2" data-i18n="qsTitle">你已经装好了，接下来 3 步</h1>
-      <p class="text-slate-500 max-w-2xl mx-auto text-base md:text-lg" data-i18n="qsSubtitle">OneTone = 后台触发层 + 流式输入法 + 说完后的动作</p>
-    </header>
-
+  <div class="qs-content">
     <div class="qs-success-banner qs-reveal" data-reveal-delay="1" role="status">
       <span><i class="ph-fill ph-check-circle"></i> <span data-i18n="qsSuccessBanner">拿到语音条 = 成功</span></span>
       <a href="faq.html#no-response"><span data-i18n="qsSuccessBannerLink">不会？去排错</span> <i class="ph-bold ph-caret-right"></i></a>
@@ -423,47 +498,23 @@
     <div class="text-center rounded-2xl bg-slate-100 dark:bg-slate-800/50 p-6">
       <p><span data-i18n="qsNextFail">还有问题？</span> <a href="faq.html#no-response" class="text-brand-600 font-medium" data-i18n="qsNextFailLink">查看常见问题</a></p>
     </div>
-  </main>
-
-  <footer class="qs-page-footer qs-reveal border-t border-slate-200 dark:border-slate-800" data-reveal-delay="2">
-    <div class="max-w-6xl mx-auto px-6 py-12">
-      <div class="qs-footer-grid">
-        <div>
-          <strong data-i18n="qsFooterTrouble">排错</strong>
-          <a href="faq.html#no-response" data-i18n="qsFooterTrouble1">安装 / 设备 / 声音</a>
-          <a href="faq.html#no-mic" data-i18n="qsFooterTrouble2">麦克风检测不到</a>
-        </div>
-        <div>
-          <strong data-i18n="qsFooterFaq">常见问题</strong>
-          <a href="faq.html#baidu-ime" data-i18n="qsFooterFaq1">输入法支持</a>
-          <a href="faq.html" data-i18n="qsFooterFaq2">设备兼容性</a>
-        </div>
-        <div>
-          <strong data-i18n="qsFooterPrivacy">安全与隐私</strong>
-          <p data-i18n="qsFooterPrivacyNote">本地处理，不上传语音内容</p>
-          <a href="privacy.html" data-i18n="footerPrivacy">隐私政策</a>
-        </div>
-        <div>
-          <strong data-i18n="footerSupport">支持项目</strong>
-          <a href="support.html" data-i18n="qsFooterSupportLink">自愿支持开发</a>
-          <a href="https://github.com/psterman/onetone/issues/new?template=bug_report.yml" data-i18n="footerReport">反馈问题</a>
-        </div>
-        <div class="qs-footer-download">
-          <a href="download.html" class="qs-footer-cta" data-i18n="qsFooterDownload">立即免费下载</a>
-          <span data-i18n="ctaBannerMeta">v1.0.0 | Windows 10/11</span>
-        </div>
-      </div>
-      <div class="qs-footer-bottom">
-        <nav class="flex flex-wrap justify-center gap-6">
-          <a href="privacy.html" data-i18n="footerPrivacy">隐私政策</a>
-          <a href="support.html" data-i18n="footerSupport">支持项目</a>
-          <a href="https://github.com/psterman/onetone" data-i18n="footerGithub">GitHub</a>
-        </nav>
-        <span data-i18n="footerCopy">© 2026 一声 OneTone</span>
-      </div>
-    </div>
-  </footer>
-  <script src="js/site.js"></script>
-  <script src="js/i18n.js"></script>
+  </div>
+</main>
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <span data-i18n="footerCopy">© 2026 一声 OneTone</span>
+    <nav>
+      <a href="changelog.html" data-i18n="footerChangelog">更新日志</a>
+      <a href="privacy.html" data-i18n="footerPrivacy">隐私政策</a>
+      <a href="terms.html" data-i18n="footerTerms">服务条款</a>
+      <a href="https://github.com/psterman/onetone" target="_blank" rel="noopener noreferrer" data-i18n="footerGithub">GitHub</a>
+      <a href="https://github.com/psterman/onetone/issues/new?template=bug_report.yml" data-i18n="footerReport">反馈问题</a>
+      <a href="support.html" data-i18n="footerSupport">支持项目</a>
+    </nav>
+  </div>
+</footer>
+<script src="js/shell.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/quickstart-demo.js"></script>
 </body>
 </html>

@@ -1,60 +1,87 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="dark scroll-smooth">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="js/theme-init.js"></script>
-  <link rel="stylesheet" href="css/site.css">
   <title>更新日志 — 一声 OneTone</title>
+  <meta name="description" content="更新日志 — 一声 OneTone">
+  <link rel="canonical" href="https://www.onetone.app/changelog.html">
   <link rel="icon" href="assets/logo.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="js/tailwind-config.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/shell.css">
+
 </head>
-<body class="bg-slate-50 dark:bg-surface-dark text-slate-900 dark:text-slate-100">
-  <header class="site-nav-shell">
-    <div class="site-nav-card glass-header">
-      <div class="site-nav-inner">
-        <a class="site-nav-brand" href="index.html">
-          <img src="assets/logo.png" alt="" width="32" height="32">
-          <span>一声 OneTone</span>
-        </a>
-      </div>
+<body class="antialiased" data-page="changelog">
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="site-brand" href="index.html">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span data-i18n="siteName">一声 OneTone</span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="index.html" data-nav="home">概览</a>
+      <a href="quickstart.html" data-nav="quickstart">使用</a>
+      <a href="vision.html" data-nav="vision">视觉</a>
+      <a href="agent.html" data-nav="agent">快捷台</a>
+      <a href="faq.html" data-nav="faq">帮助</a>
+    </nav>
+    <div class="site-header-actions">
+      <button type="button" class="lang-toggle" id="langToggle" data-i18n="langToggle">EN</button>
+      <a class="nav-cta" href="download.html">下载</a>
+      <button type="button" class="mobile-nav-toggle" id="mobileNavToggle" aria-label="菜单" aria-expanded="false">
+        <i class="ph ph-list text-xl"></i>
+      </button>
     </div>
-  </header>
-  <main class="max-w-2xl mx-auto px-6 pb-12">
-    <h1 class="text-3xl font-bold mb-4">更新日志</h1>
-    <p class="text-slate-500 mb-8">完整记录见 <a href="https://github.com/psterman/onetone/blob/main/CHANGELOG.md" class="text-brand-600">GitHub CHANGELOG</a></p>
-    <h2 class="text-xl font-bold mb-2">未发布（开发中）</h2>
-    <ul class="list-disc pl-5 text-slate-500 space-y-1 mb-8">
+  </div>
+</header>
+<div class="mobile-nav-panel" id="mobileNavPanel">
+  <a href="index.html" data-nav="home">概览</a>
+  <a href="quickstart.html" data-nav="quickstart">使用</a>
+  <a href="vision.html" data-nav="vision">视觉</a>
+  <a href="agent.html" data-nav="agent">快捷台</a>
+  <a href="faq.html" data-nav="faq">帮助</a>
+  <a href="download.html" data-nav="download">下载</a>
+</div>
+<main class="page-main max-w-2xl mx-auto px-6 pb-16 prose-dark">
+    <h1 class="text-3xl font-bold mb-4 text-white">更新日志</h1>
+    <p class="text-mac-textMuted mb-8">完整记录见 <a href="https://github.com/psterman/onetone/blob/main/CHANGELOG.md" class="text-mac-accent">GitHub CHANGELOG</a></p>
+    <h2 class="text-xl font-bold mb-2 text-white">未发布（开发中）</h2>
+    <ul class="list-disc pl-5 text-mac-textMuted space-y-1 mb-8">
       <li>使用场景（config v6）：当前场景 <code>activeSceneId</code>、按场景语音覆盖</li>
       <li>设置 → 使用场景（四 Tab）与 全局语音 分层</li>
       <li>Coach HUD 场景按键提示；设置 → 基础 → 场景辅助提示</li>
       <li>听写会话快照：听写中切换场景不影响本轮结束规则</li>
     </ul>
-    <h2 class="text-xl font-bold mb-2">1.0.0（2026-07-01）</h2>
-    <ul class="list-disc pl-5 text-slate-500 space-y-1">
+    <h2 class="text-xl font-bold mb-2 text-white">1.0.0（2026-07-01）</h2>
+    <ul class="list-disc pl-5 text-mac-textMuted space-y-1">
       <li>硬件键 → 语音输入快捷键</li>
       <li>SAPI + Vosk 离线识别</li>
       <li>结束词、多方案、中英文界面</li>
       <li>托盘、自启、应用内更新</li>
     </ul>
-    <p class="mt-8"><a href="download.html" class="text-brand-600 font-medium">下载最新版 →</a></p>
+    <p class="mt-8"><a href="download.html" class="text-mac-accent font-medium">下载最新版 →</a></p>
   </main>
-  <footer class="bg-slate-50 dark:bg-surface-dark border-t border-slate-200 dark:border-slate-800 py-12 text-sm text-slate-500">
-    <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
-      <span data-i18n="footerCopy">© 2026 一声 OneTone</span>
-      <nav class="flex flex-wrap justify-center gap-x-8 gap-y-4">
-        <a href="changelog.html" data-i18n="footerChangelog">更新日志</a>
-        <a href="privacy.html" data-i18n="footerPrivacy">隐私政策</a>
-        <a href="terms.html" data-i18n="footerTerms">服务条款</a>
-        <a href="https://github.com/psterman/onetone" target="_blank" rel="noopener noreferrer" data-i18n="footerGithub">GitHub</a>
-        <a href="https://github.com/psterman/onetone/issues/new?template=bug_report.yml" data-i18n="footerReport">反馈问题</a>
-        <a href="support.html" data-i18n="footerSupport">支持项目</a>
-      </nav>
-    </div>
-  </footer>
-  <script src="js/site.js"></script>
-  <script src="js/i18n.js"></script>
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <span data-i18n="footerCopy">© 2026 一声 OneTone</span>
+    <nav>
+      <a href="changelog.html" data-i18n="footerChangelog">更新日志</a>
+      <a href="privacy.html" data-i18n="footerPrivacy">隐私政策</a>
+      <a href="terms.html" data-i18n="footerTerms">服务条款</a>
+      <a href="https://github.com/psterman/onetone" target="_blank" rel="noopener noreferrer" data-i18n="footerGithub">GitHub</a>
+      <a href="https://github.com/psterman/onetone/issues/new?template=bug_report.yml" data-i18n="footerReport">反馈问题</a>
+      <a href="support.html" data-i18n="footerSupport">支持项目</a>
+    </nav>
+  </div>
+</footer>
+<script src="js/shell.js"></script>
+<script src="js/i18n.js"></script>
 </body>
 </html>

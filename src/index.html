@@ -28,8 +28,8 @@
   <link rel="stylesheet" href="css/voice-page-shell.css" />
   <link rel="stylesheet" href="css/voice-feedback-rail.css" />
   <link rel="stylesheet" href="css/codex-micro-hw-tokens.css" />
-  <link rel="stylesheet" href="css/codex-micro-pad.css" />
-  <link rel="stylesheet" href="css/soft-pad-hub.css" />
+  <link rel="stylesheet" href="css/codex-micro-pad.css?v=20260825-pad1" />
+  <link rel="stylesheet" href="css/soft-pad-hub.css?v=20260825-pad1" />
   <link rel="stylesheet" href="css/semantic-action-picker.css" />
   <link rel="stylesheet" href="css/habit-actions-detail.css" />
   <link rel="stylesheet" href="css/habit-workspace.css" />
@@ -3238,6 +3238,7 @@
                       <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabTrack" data-pro-subtab="track" aria-selected="false" aria-controls="cameraProSubTrack" data-i18n="cameraProSubtabTrack">自动追踪</button>
                       <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabWellness" data-pro-subtab="wellness" aria-selected="false" aria-controls="cameraProSubWellness" data-i18n="cameraProSubtabWellness">健康</button>
                       <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabSnap" data-pro-subtab="snap" aria-selected="false" aria-controls="cameraProSubSnap" data-i18n="cameraProSubtabSnap">移窗</button>
+                      <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabLayout" data-pro-subtab="layout" aria-selected="false" aria-controls="cameraProSubLayout" data-i18n="cameraProSubtabLayout">布局</button>
                       <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabAutoMute" data-pro-subtab="automute" aria-selected="false" aria-controls="cameraProSubAutoMute" data-i18n="cameraProSubtabAutoMute">自动静音</button>
                     </div>
 
@@ -3679,6 +3680,21 @@
                         </div>
                         <p class="camera-snap-scene-caption" data-i18n="cameraSnapSceneCaption">按住标题栏 → 看向目标屏 → 窗口自动跳转</p>
                       </div>
+                    </section>
+
+                    <section class="camera-pro-section camera-pro-subpanel" id="cameraProSubLayout" role="tabpanel" data-pro-subpanel="layout" aria-labelledby="cameraProSubtabLayout" hidden>
+                      <div class="camera-pro-card">
+                        <div class="camera-card-kicker" data-i18n="cameraWorkspaceLayoutKicker">工作区</div>
+                        <div class="camera-card-title" data-i18n="cameraWorkspaceLayoutTitle">窗口布局</div>
+                        <p class="camera-card-desc" data-i18n="cameraWorkspaceLayoutDesc">保存会记下当前所有已打开窗口（系统壳除外）。请先排好 Cursor / 浏览器等，关掉不需要的软件，再保存；用时开齐后点「立即恢复」。</p>
+                        <p class="camera-pro-safety-note" data-i18n="cameraWorkspaceLayoutNote">自动恢复只移动已打开的窗口。不要和 FancyZones 同时自动套用。</p>
+                        <div class="camera-pro-lab-actions">
+                          <button type="button" class="control-btn primary" id="workspaceLayoutSaveBtn" data-i18n="workspaceLayoutSave">保存当前工作区</button>
+                          <button type="button" class="control-btn" id="workspaceLayoutApplyCurrentBtn" data-i18n="workspaceLayoutApplyCurrent">恢复当前锚点</button>
+                        </div>
+                        <p class="camera-pro-status-line" id="workspaceLayoutCurrentAnchor">—</p>
+                      </div>
+                      <div class="camera-pro-card" id="workspaceLayoutListHost"></div>
                     </section>
 
                     <section class="camera-pro-section camera-pro-subpanel" id="cameraProSubAutoMute" role="tabpanel" data-pro-subpanel="automute" aria-labelledby="cameraProSubtabAutoMute" hidden>
@@ -4786,6 +4802,7 @@
   <script src="js/features/voice/voice-ui-bindings.js?v=20260809-stall9"></script>
   <script src="js/features/settings/settings-debug-hooks.js"></script>
   <script src="js/features/settings/basic-panel-ui.js"></script>
+  <script src="js/features/settings/workspace-layout-ui.js"></script>
   <script src="js/features/settings/settings-drawer.js?v=20260809-stall9"></script>
   <script src="js/features/settings/app-prefs-bindings.js"></script>
   <script src="js/features/settings/app-shell-bindings.js"></script>

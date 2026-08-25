@@ -1,46 +1,55 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="scroll-smooth">
+<html lang="zh-CN" class="dark scroll-smooth">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="js/theme-init.js"></script>
-  <link rel="stylesheet" href="css/site.css">
   <title>帮助与排错 — 一声 OneTone</title>
   <meta name="description" content="一声 OneTone 常见问题：按键没反应、录键失败、麦克风、输入法快捷键与恢复设置。">
   <link rel="canonical" href="https://www.onetone.app/faq.html">
   <link rel="icon" href="assets/logo.png" type="image/png">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="js/tailwind-config.js"></script>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/shell.css">
   <link rel="stylesheet" href="css/faq.css">
 </head>
-<body class="bg-slate-50 dark:bg-surface-dark text-slate-900 dark:text-slate-100" data-page="faq">
-
-  <header class="site-nav-shell">
-    <div class="site-nav-card glass-header">
-      <div class="site-nav-inner">
-        <a class="site-nav-brand" href="index.html">
-          <img src="assets/logo.png" alt="" width="32" height="32">
-          <span data-i18n="siteName">一声 OneTone</span>
-        </a>
-        <nav class="site-nav-links hidden md:flex" aria-label="Main">
-          <a href="download.html" data-nav="download" data-i18n="navDownload">下载</a>
-          <a href="quickstart.html" data-nav="quickstart" data-i18n="navQuickstart">上手</a>
-          <a href="faq.html" data-nav="faq" data-i18n="navFaq">帮助</a>
-        </nav>
-        <div class="site-nav-actions">
-          <button type="button" id="themeToggle" aria-label="Toggle theme">
-            <i class="ph ph-moon block dark:hidden"></i>
-            <i class="ph ph-sun hidden dark:block"></i>
-          </button>
-          <button type="button" id="langToggle" data-i18n="langToggle">EN</button>
-        </div>
-      </div>
+<body class="antialiased" data-page="faq">
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="site-brand" href="index.html">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span data-i18n="siteName">一声 OneTone</span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="index.html" data-nav="home">概览</a>
+      <a href="quickstart.html" data-nav="quickstart">使用</a>
+      <a href="vision.html" data-nav="vision">视觉</a>
+      <a href="agent.html" data-nav="agent">快捷台</a>
+      <a href="faq.html" data-nav="faq" class="is-active">帮助</a>
+    </nav>
+    <div class="site-header-actions">
+      <button type="button" class="lang-toggle" id="langToggle" data-i18n="langToggle">EN</button>
+      <a class="nav-cta" href="download.html">下载</a>
+      <button type="button" class="mobile-nav-toggle" id="mobileNavToggle" aria-label="菜单" aria-expanded="false">
+        <i class="ph ph-list text-xl"></i>
+      </button>
     </div>
-  </header>
-
-  <main class="faq-page pb-16 max-w-3xl mx-auto px-6">
+  </div>
+</header>
+<div class="mobile-nav-panel" id="mobileNavPanel">
+  <a href="index.html" data-nav="home">概览</a>
+  <a href="quickstart.html" data-nav="quickstart">使用</a>
+  <a href="vision.html" data-nav="vision">视觉</a>
+  <a href="agent.html" data-nav="agent">快捷台</a>
+  <a href="faq.html" data-nav="faq" class="is-active">帮助</a>
+  <a href="download.html" data-nav="download">下载</a>
+</div>
+<main class="faq-page pb-16 max-w-3xl mx-auto px-6">
     <header class="faq-page-head">
       <h1 data-i18n="faqPageTitle">帮助与排错</h1>
       <p data-i18n="faqPageIntro">先选你的症状，再按步骤操作。多数情况是按键或输入法设置问题，不是软件坏了。</p>
@@ -328,21 +337,21 @@
       <a href="https://github.com/psterman/onetone/issues/new?template=bug_report.yml" data-i18n="faqNextLink">提交问题</a>
     </p>
   </main>
-
-  <footer class="border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-surface-dark py-10 text-sm text-slate-500">
-    <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
-      <span data-i18n="footerCopy">© 2026 一声 OneTone</span>
-      <nav class="flex flex-wrap justify-center gap-x-8 gap-y-4">
-        <a href="changelog.html" data-i18n="footerChangelog">更新日志</a>
-        <a href="privacy.html" data-i18n="footerPrivacy">隐私政策</a>
-        <a href="terms.html" data-i18n="footerTerms">服务条款</a>
-        <a href="https://github.com/psterman/onetone" target="_blank" rel="noopener noreferrer" data-i18n="footerGithub">GitHub</a>
-        <a href="https://github.com/psterman/onetone/issues/new?template=bug_report.yml" data-i18n="footerReport">反馈问题</a>
-        <a href="support.html" data-i18n="footerSupport">支持项目</a>
-      </nav>
-    </div>
-  </footer>
-  <script src="js/site.js"></script>
-  <script src="js/i18n.js"></script>
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <span data-i18n="footerCopy">© 2026 一声 OneTone</span>
+    <nav>
+      <a href="changelog.html" data-i18n="footerChangelog">更新日志</a>
+      <a href="privacy.html" data-i18n="footerPrivacy">隐私政策</a>
+      <a href="terms.html" data-i18n="footerTerms">服务条款</a>
+      <a href="https://github.com/psterman/onetone" target="_blank" rel="noopener noreferrer" data-i18n="footerGithub">GitHub</a>
+      <a href="https://github.com/psterman/onetone/issues/new?template=bug_report.yml" data-i18n="footerReport">反馈问题</a>
+      <a href="support.html" data-i18n="footerSupport">支持项目</a>
+    </nav>
+  </div>
+</footer>
+<script src="js/shell.js"></script>
+<script src="js/i18n.js"></script>
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
 </body>
 </html>

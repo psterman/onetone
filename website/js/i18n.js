@@ -203,10 +203,10 @@
       homeFitLinkPrivacy: "隐私说明 →",
       homeFitLinkQuickstart: "想了解细节？看上手指南 →",
       homeFitLinkIme: "语音输入兼容说明 →",
-      dlKicker: "Windows 语音输入助手",
+      dlKicker: "Windows · 按一下就能说",
       dlTitlePrefix: "下载",
       dlTitleBrand: "一声",
-      dlSubtitle: "Windows 安装包，几步就能把外设变成语音输入开关。",
+      dlSubtitle: "装上之后，侧键、音量键都能变成开麦键。几分钟搞定。",
       dlBtn: "下载 Windows 安装包",
       dlFileNameFallback: "OneTone_Setup_x64.exe",
       dlSeeQuickstart: "查看上手",
@@ -261,7 +261,7 @@
       dlFinalCheck4: "持续更新",
       flowBannerQs: "从下载页继续 · 步骤一",
       qsTitle: "你已经装好了，接下来 3 步",
-      qsSubtitle: "OneTone = 后台触发层 + 流式输入法 + 说完后的动作",
+      qsSubtitle: "选个键 → 对接你的语音输入 → 说完字自己上屏",
       qsSuccessBanner: "拿到语音条 = 成功",
       qsSuccessBannerLink: "不会？去排错",
       qsChainSeg1: "外设触发",
@@ -1176,6 +1176,10 @@
   function applyLangContent(lang) {
     const htmlLang = lang === "zh" ? "zh-CN" : "en";
     document.documentElement.lang = htmlLang;
+    document.querySelectorAll("[data-lang-content]").forEach((el) => {
+      const match = el.getAttribute("data-lang-content") === lang;
+      el.hidden = !match;
+    });
   }
 
   function setLang(lang) {

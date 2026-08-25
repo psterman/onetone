@@ -822,7 +822,7 @@
   }
 
   var currentProSubtab='safety';
-  var PRO_SUBTABS=['safety','privacy','beauty','gesture','track','wellness','snap','automute'];
+  var PRO_SUBTABS=['safety','privacy','beauty','gesture','track','wellness','snap','layout','automute'];
 
   function notifyProFeatureSubtab(name, visible){
     try{
@@ -888,6 +888,13 @@
       }catch(_){}
     }
     if(name==='beauty') syncProEnhUi();
+    if(name==='layout'){
+      try{
+        if(global.OneToneWorkspaceLayoutUi&&global.OneToneWorkspaceLayoutUi.render){
+          global.OneToneWorkspaceLayoutUi.render();
+        }
+      }catch(_){}
+    }
     if(name==='track'||name==='snap'||name==='automute'){
       notifyProFeatureSubtab(name,true);
       try{

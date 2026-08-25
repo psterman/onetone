@@ -63,6 +63,34 @@ pub fn restore_external_foreground() -> bool {
     focus_window(target_hwnd)
 }
 
+/// Last non-OneTone foreground hwnd tracked for send/restore (0 if none).
+#[cfg(windows)]
+pub fn last_external_hwnd() -> isize {
+    *LAST_EXTERNAL_HWND
+        .get_or_init(|| Mutex::new(0))
+        .lock()
+        .unwrap()
+}
+
+#[cfg(not(windows))]
+pub fn last_external_hwnd() -> isize {
+    0
+}
+
+#[cfg(windows)]
+pub fn note_last_external_hwnd(hwnd: isize) {
+    if hwnd == 0 {
+        return;
+    }
+    *LAST_EXTERNAL_HWND
+        .get_or_init(|| Mutex::new(0))
+        .lock()
+        .unwrap() = hwnd;
+}
+
+#[cfg(not(windows))]
+pub fn note_last_external_hwnd(_hwnd: isize) {}
+
 /// Pick any visible top-level window that is not OneTone, then focus it.
 /// Used when Quick Start / settings own FG and no LAST_EXTERNAL_HWND was tracked.
 #[cfg(windows)]

@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>使用 — 定制语音触发 · OneTone Proto</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  
+  <!-- Tailwind 基础以防您的 class 依赖 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    /* =========================================
+       1. 基础重置 & Mac 顶级暗黑质感变量
+       ========================================= */
+    :root {
+      --mac-bg: #000000;
+      --mac-panel: rgba(30, 30, 32, 0.65);
+      --mac-border: rgba(255, 255, 255, 0.12);
+      --mac-accent: #f59e0b; /* Amber */
+      --mac-text: #f5f5f7;
+      --mac-text-muted: #86868b;
+    }
+    
+    body {
+      background-color: var(--mac-bg);
+      color: var(--mac-text);
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    /* 空间透视网格背景 */
+    body::before {
+      content: '';
+      position: fixed; inset: -50%; width: 200%; height: 200%;
+      background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      transform: perspective(800px) rotateX(60deg) translateY(-100px) translateZ(-200px);
+      animation: grid-move 20s linear infinite;
+      z-index: -1; pointer-events: none;
+    }
+    @keyframes grid-move {
+      0% { transform: perspective(800px) rotateX(60deg) translateY(0) translateZ(-200px); }
+      100% { transform: perspective(800px) rotateX(60deg) translateY(60px) translateZ(-200px); }
+    }
+
+    /* Mac 毛玻璃通用类 */
+    .mac-glass {
+      background: var(--mac-panel);
+      backdrop-filter: blur(40px) saturate(150%);
+      -webkit-backdrop-filter: blur(40px) saturate(150%);
+      border: 1px solid var(--mac-border);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+
+    /* =========================================
+       2. 页面骨架与头部布局
+       ========================================= */
+    .site-header { position: fixed; top: 0; width: 100%; z-index: 50; background: rgba(0,0,0,0.4); backdrop-filter: blur(20px); border-bottom: 1px solid var(--mac-border); }
+    .header-inner { max-width: 1200px; margin: 0 auto; height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
+    .brand { font-weight: 600; font-size: 18px; color: #fff; display: flex; align-items: center; gap: 8px; text-decoration: none; }
+    .brand-mark { display: block; width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(45deg, var(--mac-accent), #fca5a5); }
+    .site-nav { display: flex; gap: 32px; font-size: 14px; font-weight: 500; }
+    .site-nav a { color: var(--mac-text-muted); text-decoration: none; transition: color 0.2s; }
+    .site-nav a:hover, .site-nav a.is-active { color: #fff; }
+    .nav-cta { background: #fff; color: #000; padding: 6px 16px; border-radius: 99px; font-size: 14px; font-weight: 600; text-decoration: none; }
+    .proto-tag { position: fixed; bottom: 12px; right: 12px; font-size: 10px; font-family: monospace; color: var(--mac-text-muted); z-index: 100; pointer-events: none; }
+
+    .usage-main { max-width: 1000px; margin: 100px auto 40px; padding: 0 24px; }
+    .qs-page-head { text-align: center; margin-bottom: 40px; }
+    .qs-page-head h1 { font-size: 40px; font-weight: 700; color: #fff; margin-bottom: 12px; }
+    .qs-page-head p { font-size: 16px; color: var(--mac-text-muted); }
+    .qs-success-banner { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); border-radius: 12px; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; color: var(--mac-accent); font-weight: 500; margin-bottom: 60px; box-shadow: 0 0 20px rgba(245,158,11,0.1); }
+    .qs-success-banner a { color: #fff; text-decoration: none; font-size: 14px; display: flex; align-items: center; gap: 4px; }
+
+    /* =========================================
+       3. 核心布局重建：配置实验室 (Zone)
+       ========================================= */
+    .qs-chain-rail { margin-bottom: 60px; display: flex; justify-content: center; }
+    .qs-chain-track { display: flex; align-items: center; gap: 16px; background: rgba(255,255,255,0.03); border: 1px solid var(--mac-border); padding: 16px 32px; border-radius: 99px; backdrop-filter: blur(20px); }
+    .qs-chain-seg { display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: 0.5; transition: all 0.3s; }
+    .qs-chain-seg.is-active { opacity: 1; }
+    .qs-chain-seg-label { font-size: 12px; color: var(--mac-text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+    .qs-chain-seg-state { font-size: 14px; color: #fff; font-weight: 500; }
+    .qs-chain-seg.is-active .qs-chain-seg-state { color: var(--mac-accent); }
+    .qs-chain-arrow { color: var(--mac-text-muted); font-size: 18px; }
+
+    .qs-zone { margin-bottom: 80px; scroll-margin-top: 100px; }
+    .qs-zone-card { @apply mac-glass; border-radius: 24px; padding: 40px; overflow: hidden; }
+    .qs-zone-head { margin-bottom: 32px; }
+    .qs-zone-head h2 { font-size: 24px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+    .qs-zone-head p { font-size: 14px; color: var(--mac-text-muted); }
+
+    /* 左右分栏结构 (类 macOS 设置面板) */
+    .qs-zone-lab { display: grid; grid-template-columns: 260px 1fr; gap: 32px; align-items: stretch; }
+    @media (max-width: 768px) { .qs-zone-lab { grid-template-columns: 1fr; } }
+    
+    .qs-zone-cards { display: flex; flex-direction: column; gap: 8px; border-right: 1px solid var(--mac-border); padding-right: 24px; }
+    .qs-zone-cards button { text-align: left; padding: 16px; border-radius: 12px; border: 1px solid transparent; background: transparent; transition: all 0.2s; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+    .qs-zone-cards button:hover { background: rgba(255,255,255,0.05); }
+    .qs-zone-cards button.is-active { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); }
+    .qs-zone-card-num { display: none; } /* 弱化数字 */
+    .qs-zone-cards strong { font-size: 15px; color: #fff; transition: color 0.2s; }
+    .qs-zone-cards button.is-active strong { color: var(--mac-accent); }
+    .qs-zone-cards span { font-size: 12px; color: var(--mac-text-muted); line-height: 1.4; }
+
+    .qs-zone-stage { position: relative; display: flex; flex-direction: column; min-height: 380px; }
+    .qs-zone-panel { display: none; flex-direction: column; height: 100%; animation: fade-in 0.4s ease; }
+    .qs-zone-panel.is-active { display: flex; }
+    @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .qs-stage-title { font-size: 13px; font-weight: 600; color: var(--mac-text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 24px; }
+    .qs-manual-note { margin-top: auto; padding-top: 24px; font-size: 12px; color: var(--mac-text-muted); }
+    .qs-stage-foot a { color: var(--mac-accent); text-decoration: none; }
+
+    /* =========================================
+       4. 内部组件动画与样式重构
+       ========================================= */
+       
+    /* 触发设备网格 (qs-device-grid) */
+    .qs-device-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .qs-device-card { background: rgba(255,255,255,0.03); border: 1px solid var(--mac-border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s; }
+    .qs-device-card:hover { background: rgba(255,255,255,0.08); }
+    .qs-device-card.is-active { background: rgba(245,158,11,0.1); border-color: var(--mac-accent); box-shadow: 0 0 15px rgba(245,158,11,0.15); }
+    .qs-device-photo { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
+    .qs-device-photo img { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.8)); opacity: 0.8; transition: all 0.3s; }
+    .qs-device-card.is-active .qs-device-photo img { opacity: 1; filter: drop-shadow(0 0 10px rgba(245,158,11,0.4)); transform: scale(1.1); }
+    .qs-device-card strong { font-size: 13px; color: #fff; }
+    .qs-device-card.is-active strong { color: var(--mac-accent); }
+
+    /* 链路演示 (qs-onboard-flow) */
+    .qs-onboard-flow { display: flex; align-items: center; justify-content: space-between; padding: 40px 20px; background: #0a0a0c; border: 1px solid var(--mac-border); border-radius: 16px; margin-bottom: 24px; box-shadow: inset 0 10px 20px rgba(0,0,0,0.5); }
+    .qs-onboard-step { display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative; z-index: 10; opacity: 0.4; transition: all 0.3s; }
+    .qs-onboard-step.is-active { opacity: 1; }
+    .qs-onboard-step-num, .qs-onboard-step-cap { display: none; }
+    .qs-onboard-step-art { width: 64px; height: 64px; border-radius: 16px; background: #1a1a1c; border: 1px solid var(--mac-border); display: flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; position: relative; transition: all 0.3s; }
+    .qs-onboard-step.is-active .qs-onboard-step-art { border-color: var(--mac-accent); box-shadow: 0 0 20px rgba(245,158,11,0.2); }
+    .qs-onboard-step-key { font-size: 12px; color: var(--mac-text-muted); font-family: monospace; }
+    
+    /* 桥接线 */
+    .qs-onboard-bridge { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; margin: 0 16px; }
+    .qs-onboard-bridge-label { font-size: 10px; color: var(--mac-text-muted); margin-bottom: 8px; white-space: nowrap; }
+    .qs-onboard-bridge-line { width: 100%; height: 2px; background: var(--mac-border); position: relative; overflow: hidden; }
+    .qs-onboard-bridge-particle { position: absolute; top: 0; left: -100%; height: 100%; width: 50%; background: linear-gradient(90deg, transparent, var(--mac-accent), transparent); opacity: 0; }
+    .qs-onboard-bridge.is-flowing .qs-onboard-bridge-particle { animation: bridge-flow 0.6s linear forwards; opacity: 1; }
+    @keyframes bridge-flow { to { left: 100%; } }
+
+    /* 物理按压环 */
+    .qs-onboard-press-ring { position: absolute; inset: -4px; border: 2px solid var(--mac-accent); border-radius: 20px; opacity: 0; }
+    .qs-onboard-step.is-active .qs-onboard-press-ring { animation: ripple 0.6s ease-out forwards; }
+    @keyframes ripple { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+
+    /* 语音波动波形 */
+    .qs-onboard-wave { display: flex; gap: 3px; height: 16px; align-items: center; opacity: 0; }
+    .qs-onboard-step.is-active .qs-onboard-wave { opacity: 1; }
+    .qs-onboard-wave span { width: 3px; background: var(--mac-accent); border-radius: 2px; height: 4px; animation: wave-pulse 1s infinite ease-in-out alternate; }
+    .qs-onboard-wave span:nth-child(2) { animation-delay: 0.1s; } .qs-onboard-wave span:nth-child(3) { animation-delay: 0.2s; }
+    .qs-onboard-voice-head { display: none; }
+    @keyframes wave-pulse { to { height: 24px; } }
+
+    /* 目标编辑器 */
+    .qs-onboard-editor { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 14px; }
+    .qs-onboard-editor-ln { display: none; }
+    .qs-onboard-cursor { color: var(--mac-accent); animation: blink 1s infinite step-end; margin-left: 2px; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .qs-onboard-value-row { display: flex; gap: 24px; list-style: none; padding: 0; margin-top: 16px; }
+    .qs-onboard-value { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--mac-text-muted); }
+
+    /* 语音绑定 (qs-voice-bind) */
+    .qs-voice-bind-scene { display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 40px; background: #0a0a0c; border: 1px solid var(--mac-border); border-radius: 16px; margin-bottom: 24px; }
+    .qs-voice-bind-status { font-size: 12px; color: var(--mac-text-muted); font-family: monospace; display: flex; align-items: center; gap: 8px; }
+    .qs-voice-bind-dot { width: 6px; height: 6px; background: var(--mac-text-muted); border-radius: 50%; }
+    .is-listening .qs-voice-bind-dot { background: var(--mac-accent); box-shadow: 0 0 8px var(--mac-accent); animation: dot-blink 1s infinite alternate; }
+    @keyframes dot-blink { to { opacity: 0.3; } }
+    
+    .qs-voice-bind-mic-ring { position: relative; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; }
+    .qs-voice-bind-mic { font-size: 32px; color: var(--mac-text-muted); z-index: 10; transition: color 0.3s; }
+    .is-listening .qs-voice-bind-mic { color: var(--mac-accent); }
+    .qs-voice-bind-pulse { position: absolute; inset: 0; border: 2px solid var(--mac-accent); border-radius: 50%; opacity: 0; }
+    .is-listening .qs-voice-bind-pulse-a { animation: mic-pulse 2s infinite ease-out; }
+    .is-listening .qs-voice-bind-pulse-b { animation: mic-pulse 2s infinite ease-out 1s; }
+    @keyframes mic-pulse { 0% { transform: scale(0.8); opacity: 0.8; } 100% { transform: scale(2); opacity: 0; } }
+
+    .qs-voice-bind-transcript { font-size: 20px; font-weight: 500; color: #fff; min-height: 30px; }
+    .qs-voice-bind-chips { display: flex; gap: 12px; }
+    .qs-voice-bind-chips button { padding: 6px 16px; border-radius: 99px; background: rgba(255,255,255,0.05); border: 1px solid var(--mac-border); color: var(--mac-text-muted); font-size: 13px; cursor: pointer; }
+    .qs-voice-bind-result { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); border-radius: 12px; padding: 20px; margin-top: -12px; animation: fade-in 0.4s; }
+    .qs-voice-bind-flow { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 12px; font-weight: 600; font-size: 15px; }
+    .qs-bind-arrow { color: var(--mac-text-muted); }
+    .qs-voice-bind-success { text-align: center; font-size: 13px; color: var(--mac-accent); }
+    .qs-bind-node { display: flex; align-items: center; gap: 6px; }
+
+    /* 自动发送 (qs-after-speak) */
+    .qs-after-speak-layout { display: grid; grid-template-columns: 1fr 240px; gap: 24px; }
+    @media (max-width: 768px) { .qs-after-speak-layout { grid-template-columns: 1fr; } }
+    
+    .qs-after-speak-window { background: #121212; border: 1px solid var(--mac-border); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .qs-after-speak-bar-top { padding: 12px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--mac-border); display: flex; align-items: center; gap: 6px; }
+    .qs-after-speak-bar-top span { width: 10px; height: 10px; border-radius: 50%; background: #4b4b4b; }
+    .qs-after-speak-bar-top strong { margin-left: 8px; font-size: 12px; color: var(--mac-text-muted); font-family: monospace; }
+    
+    .qs-after-speak-body { padding: 20px; min-height: 200px; display: flex; flex-direction: column; justify-content: flex-end; gap: 16px; }
+    .qs-after-speak-draft { background: rgba(245,158,11,0.15); color: #fff; padding: 10px 16px; border-radius: 16px 16px 0 16px; font-size: 14px; align-self: flex-end; border: 1px solid rgba(245,158,11,0.2); opacity: 0; transform: translateY(10px); transition: all 0.3s; }
+    .qs-after-speak-draft.is-visible { opacity: 1; transform: translateY(0); }
+    
+    .qs-after-speak-compose { background: rgba(255,255,255,0.05); border: 1px solid transparent; border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; min-height: 44px; transition: border 0.3s; }
+    .qs-after-speak-compose.is-active { border-color: rgba(255,255,255,0.2); }
+    .qs-after-speak-input { flex: 1; font-size: 14px; color: #fff; }
+    .qs-after-speak-send-btn { display: none; }
+    
+    .qs-after-speak-delay { margin-top: 16px; display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--mac-text-muted); opacity: 0; transition: opacity 0.3s; }
+    .qs-after-speak-delay.is-visible { opacity: 1; }
+    .qs-after-speak-delay-track { flex: 1; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+    .qs-after-speak-delay-fill { display: block; height: 100%; width: 0%; background: var(--mac-accent); box-shadow: 0 0 10px var(--mac-accent); transition: width 0s linear; }
+    
+    .qs-after-speak-side { background: rgba(255,255,255,0.02); border: 1px solid var(--mac-border); border-radius: 12px; padding: 20px; }
+    .qs-after-speak-side-path { font-size: 11px; color: var(--mac-text-muted); font-family: monospace; margin-bottom: 16px; }
+    .qs-after-speak-flow-list { list-style: none; padding: 0; margin-top: 24px; display: flex; flex-direction: column; gap: 12px; font-size: 13px; color: var(--mac-text-muted); border-left: 2px solid var(--mac-border); padding-left: 12px; }
+    .qs-after-speak-flow-list li { transition: color 0.3s; position: relative; }
+    .qs-after-speak-flow-list li::before { content: ''; position: absolute; left: -15px; top: 6px; width: 4px; height: 4px; border-radius: 50%; background: var(--mac-border); transition: background 0.3s; }
+    .qs-after-speak-flow-list li.is-active { color: #fff; font-weight: 500; }
+    .qs-after-speak-flow-list li.is-active::before { background: var(--mac-accent); box-shadow: 0 0 6px var(--mac-accent); }
+    
+    .qs-after-speak-commit-pills { display: flex; gap: 8px; margin-top: 16px; }
+    .qs-after-speak-commit-pills button { flex: 1; padding: 6px; border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--mac-border); color: var(--mac-text-muted); font-size: 12px; }
+    .qs-after-speak-commit-pills button.is-active { background: rgba(245,158,11,0.2); border-color: var(--mac-accent); color: var(--mac-accent); }
+    
+    .qs-after-speak-status, .qs-after-speak-modes, .qs-after-speak-action, .qs-settings-actions, .qs-after-speak-setting-field, .qs-after-speak-side-warn, .qs-notepad-mock, .qs-flow-steps { display: none; }
+
+    /* 排错区 */
+    .qs-troubleshoot { margin-bottom: 80px; }
+    .qs-troubleshoot-title { font-size: 24px; font-weight: 600; text-align: center; margin-bottom: 32px; }
+    .qs-troubleshoot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    @media (max-width: 768px) { .qs-troubleshoot-grid { grid-template-columns: 1fr; } }
+    .qs-troubleshoot-card { @apply mac-glass; padding: 24px; border-radius: 16px; text-decoration: none; display: flex; flex-direction: column; gap: 8px; transition: transform 0.2s, background 0.2s; }
+    .qs-troubleshoot-card:hover { transform: translateY(-2px); background: rgba(255,255,255,0.05); }
+    .qs-troubleshoot-card strong { font-size: 15px; color: #fff; }
+    .qs-troubleshoot-card span { font-size: 13px; color: var(--mac-text-muted); }
+    .qs-more-card { display: none; }
+    .qs-next-cta { text-align: center; margin-top: 40px; }
+    .qs-next-cta a { color: var(--mac-accent); text-decoration: none; font-weight: 500; }
+  </style>
+</head>
+<body class="proto-usage" data-page="quickstart">
+  
+  <div class="proto-tag">Prototype · 使用 = onetone.app/quickstart（step1+step2+排错）· art/website-proto</div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="01-overview-ac.html">
+        <span class="brand-mark" aria-hidden="true"></span>
+        OneTone
+      </a>
+      <nav class="site-nav">
+        <a href="01-overview-ac.html">概览</a>
+        <a href="04-usage.html" class="is-active">使用</a>
+        <a href="05-camera.html">视觉</a>
+        <a href="02-install.html">安装</a>
+        <a href="03-capabilities.html">能力</a>
+      </nav>
+      <a class="nav-cta" href="02-install.html">下载</a>
+    </div>
+  </header>
+
+  <!-- HTML DOM 结构完全保留原版 -->
+  <main class="usage-main qs-page">
+    <header class="qs-page-head qs-reveal">
+      <h1>你已经装好了，接下来 3 步</h1>
+      <p>OneTone = 后台触发层 + 流式输入法 + 说完后的动作</p>
+    </header>
+
+    <div class="qs-success-banner qs-reveal" data-reveal-delay="1" role="status">
+      <span><i class="ph-fill ph-check-circle"></i> 拿到语音条 = 成功</span>
+      <a href="02-install.html">不会？去安装页 <i class="ph-bold ph-caret-right"></i></a>
+    </div>
+
+    <section id="step0" class="qs-chain-rail qs-reveal scroll-mt-28" data-reveal-delay="2" aria-label="三层链路对照">
+      <div class="qs-chain-track">
+        <div class="qs-chain-seg is-active" data-chain-seg="0" id="tr-seg-0">
+          <span class="qs-chain-seg-label">外设触发</span>
+          <span class="qs-chain-seg-state">触发源已录入</span>
+        </div>
+        <span class="qs-chain-arrow" aria-hidden="true"><i class="ph-bold ph-arrow-right"></i></span>
+        <div class="qs-chain-seg" data-chain-seg="1" id="tr-seg-1">
+          <span class="qs-chain-seg-label">输入法听写</span>
+          <span class="qs-chain-seg-state">等待唤醒...</span>
+        </div>
+        <span class="qs-chain-arrow" aria-hidden="true"><i class="ph-bold ph-arrow-right"></i></span>
+        <div class="qs-chain-seg" data-chain-seg="2" id="tr-seg-2">
+          <span class="qs-chain-seg-label">说完动作</span>
+          <span class="qs-chain-seg-state">自动上屏 / 发送</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 1 -->
+    <section id="step1" class="qs-zone qs-zone-card qs-zone-blue qs-reveal scroll-mt-28" data-zone-color="blue" data-reveal-delay="1">
+      <header class="qs-zone-head">
+        <h2>定制你的专属语音神器</h2>
+        <p>选择任意外设或按键，实现语音输入的触发</p>
+      </header>
+      <div class="qs-zone-lab" data-cycle-group="zone1" data-no-autoplay>
+        <div class="qs-zone-cards" role="tablist" aria-label="步骤一">
+          <button type="button" class="is-active" data-zone-item data-zone-target="triggers">
+            <span class="qs-zone-card-num">1</span>
+            <strong>触发源</strong>
+            <span>选择任意外设或按键作为触发</span>
+          </button>
+          <button type="button" data-zone-item data-zone-target="ime">
+            <span class="qs-zone-card-num">2</span>
+            <strong>流式输入法</strong>
+            <span>选择你正在用的输入法，OneTone 负责唤醒</span>
+          </button>
+          <button type="button" data-zone-item data-zone-target="mapping">
+            <span class="qs-zone-card-num">3</span>
+            <strong>映射关系</strong>
+            <span>把「触发源」和「激活快捷键」关联起来</span>
+          </button>
+        </div>
+        <div class="qs-zone-stage">
+          <article class="qs-zone-panel is-active" data-zone-panel="triggers">
+            <p class="qs-stage-title">选择触发源（6 选 1）</p>
+            <div class="qs-device-grid" data-trigger-list role="list">
+              <button type="button" class="qs-device-card qs-trigger-item is-active" data-trigger-id="mouse">
+                <span class="qs-device-photo">
+                  <img src="assets/devices/mouse.png" alt="" width="720" height="544" decoding="async" draggable="false" onerror="this.style.display='none'">
+                  <i class="ph-fill ph-mouse text-3xl text-gray-400 absolute" style="z-index:-1"></i>
+                </span>
+                <strong>鼠标侧键</strong>
+              </button>
+              <button type="button" class="qs-device-card qs-trigger-item" data-trigger-id="volume">
+                <span class="qs-device-photo">
+                  <img src="assets/devices/volume.png" alt="" width="720" height="551" decoding="async" draggable="false" onerror="this.style.display='none'">
+                  <i class="ph-fill ph-keyboard text-3xl text-gray-400 absolute" style="z-index:-1"></i>
+                </span>
+                <strong>按键</strong>
+              </button>
+              <button type="button" class="qs-device-card qs-trigger-item" data-trigger-id="gamepad">
+                <span class="qs-device-photo">
+                  <img src="assets/devices/gamepad.png" alt="" width="720" height="628" decoding="async" draggable="false" onerror="this.style.display='none'">
+                  <i class="ph-fill ph-game-controller text-3xl text-gray-400 absolute" style="z-index:-1"></i>
+                </span>
+                <strong>手柄按键</strong>
+              </button>
+              <button type="button" class="qs-device-card qs-trigger-item" data-trigger-id="ring">
+                <span class="qs-device-photo">
+                  <img src="assets/devices/ring.png" alt="" width="624" height="720" decoding="async" draggable="false" onerror="this.style.display='none'">
+                  <i class="ph-fill ph-circle text-3xl text-gray-400 absolute" style="z-index:-1"></i>
+                </span>
+                <strong>蓝牙戒指</strong>
+              </button>
+              <button type="button" class="qs-device-card qs-trigger-item" data-trigger-id="trackball">
+                <span class="qs-device-photo">
+                  <img src="assets/devices/trackball.png" alt="" width="720" height="495" decoding="async" draggable="false" onerror="this.style.display='none'">
+                  <i class="ph-fill ph-target text-3xl text-gray-400 absolute" style="z-index:-1"></i>
+                </span>
+                <strong>轨迹球</strong>
+              </button>
+              <button type="button" class="qs-device-card qs-trigger-item" data-trigger-id="mic">
+                <span class="qs-device-photo">
+                  <img src="assets/devices/mic.png" alt="" width="306" height="720" decoding="async" draggable="false" onerror="this.style.display='none'">
+                  <i class="ph-fill ph-microphone text-3xl text-gray-400 absolute" style="z-index:-1"></i>
+                </span>
+                <strong>麦克风口令</strong>
+              </button>
+            </div>
+            <p class="qs-manual-note">以上仅为示例，任意按键或组合键均可录入。</p>
+            <p class="qs-stage-foot"><a href="#step1" class="text-brand-600">如何录入按键？</a></p>
+          </article>
+          
+          <article class="qs-zone-panel" data-zone-panel="ime">
+            <p class="qs-stage-title">选择你正在用的流式输入法预设</p>
+            <div class="qs-ime-presets" data-ime-list role="tablist">
+                <!-- Fallback content if JS doesn't populate -->
+                <div class="p-4 border border-mac-border rounded-xl flex items-center justify-between bg-white/5">
+                    <span class="flex items-center gap-2"><i class="ph-fill ph-windows-logo text-blue-400"></i> 系统自带语音</span>
+                    <span class="text-xs text-mac-accent bg-mac-accent/20 px-2 py-1 rounded-full">已绑定</span>
+                </div>
+            </div>
+            <p class="qs-manual-note">也可以手动录入任何输入法的语音激活键（含系统自带语音输入）。</p>
+          </article>
+          
+          <article class="qs-zone-panel" data-zone-panel="mapping">
+            <p class="qs-stage-title">用起来 · 一次完整操作</p>
+            <div class="qs-onboard-flow" data-qs-onboard>
+              <div class="qs-onboard-step" data-onboard-stage="hw" id="map-hw">
+                <span class="qs-onboard-step-num">01</span>
+                <span class="qs-onboard-step-cap">随时随地</span>
+                <div class="qs-onboard-step-art qs-onboard-step-art-hw">
+                  <span class="qs-onboard-press-ring"></span>
+                  <div class="qs-onboard-icon" data-qs-demo-icon><i class="ph-bold ph-mouse" aria-hidden="true"></i></div>
+                </div>
+                <span class="qs-onboard-step-key" data-qs-demo-key>物理按下</span>
+              </div>
+              <div class="qs-onboard-bridge" aria-hidden="true" id="map-b1">
+                <span class="qs-onboard-bridge-label">拦截信号</span>
+                <span class="qs-onboard-bridge-line"><span class="qs-onboard-bridge-particle"></span></span>
+              </div>
+              <div class="qs-onboard-step" data-onboard-stage="sw" id="map-sw">
+                <span class="qs-onboard-step-num">02</span>
+                <span class="qs-onboard-step-cap">心流时刻</span>
+                <div class="qs-onboard-step-art qs-onboard-step-art-sw">
+                    <i class="ph-fill ph-lightning"></i>
+                </div>
+                <span class="qs-onboard-step-key">静默唤醒</span>
+              </div>
+              <div class="qs-onboard-bridge" aria-hidden="true" id="map-b2">
+                <span class="qs-onboard-bridge-label">自动上屏</span>
+                <span class="qs-onboard-bridge-line"><span class="qs-onboard-bridge-particle"></span></span>
+              </div>
+              <div class="qs-onboard-step qs-onboard-step-out" data-onboard-stage="out" id="map-out">
+                <span class="qs-onboard-step-num">03</span>
+                <span class="qs-onboard-step-cap">速效搞定</span>
+                <div class="qs-onboard-step-art qs-onboard-step-art-out" style="width: 140px; background: #000;">
+                  <div class="qs-onboard-editor">
+                    <code><span data-qs-demo-target id="map-text"></span><span class="qs-onboard-cursor" id="map-cursor">|</span></code>
+                  </div>
+                </div>
+                <span class="qs-onboard-step-key">当前窗口</span>
+              </div>
+            </div>
+            <ul class="qs-onboard-value-row" role="list">
+              <li class="qs-onboard-value"><i class="ph-bold ph-microphone" aria-hidden="true"></i><span>手不离嘴</span></li>
+              <li class="qs-onboard-value"><i class="ph-bold ph-target" aria-hidden="true"></i><span>说到就要做到</span></li>
+              <li class="qs-onboard-value"><i class="ph-bold ph-trend-up" aria-hidden="true"></i><span>提速小目标</span></li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 2 -->
+    <section id="step2" class="qs-zone qs-zone-card qs-zone-accent qs-reveal scroll-mt-28" data-zone-color="accent" data-reveal-delay="2">
+      <header class="qs-zone-head">
+        <h2>语音激活输入法，结束后自动上屏</h2>
+        <p>触发听写，结束时文字自动出现在当前窗口</p>
+      </header>
+      <div class="qs-zone-lab" data-cycle-group="zone2" data-no-autoplay>
+        <div class="qs-zone-cards" role="tablist" aria-label="步骤二">
+          <button type="button" class="is-active" data-zone-item data-zone-target="key-wake">
+            <span class="qs-zone-card-num">1</span>
+            <strong>口令激活</strong>
+            <span>念出关键词，绑定输入法激活方案</span>
+          </button>
+          <button type="button" data-zone-item data-zone-target="voice-end" style="display:none;">
+            <!-- Hidden as per requirement to use auto-send -->
+          </button>
+          <button type="button" data-zone-item data-zone-target="auto-send">
+            <span class="qs-zone-card-num">3</span>
+            <strong>语音结束后发送</strong>
+            <span>可开 Enter 自动发送，或只上屏不发送</span>
+          </button>
+        </div>
+        <div class="qs-zone-stage">
+          <article class="qs-zone-panel is-active" data-zone-panel="key-wake" id="p-key-wake">
+            <p class="qs-stage-title">说出关键词，绑定输入法激活方案</p>
+            <div class="qs-voice-bind" data-voice-bind-demo>
+              <div class="qs-voice-bind-scene" id="vk-scene">
+                <div class="qs-voice-bind-status" data-bind-status>
+                  <span class="qs-voice-bind-dot" aria-hidden="true"></span>
+                  <span data-bind-status-text id="vk-status">等待口令…</span>
+                </div>
+                <div class="qs-voice-bind-mic-ring" aria-hidden="true">
+                  <span class="qs-voice-bind-pulse qs-voice-bind-pulse-a"></span>
+                  <span class="qs-voice-bind-pulse qs-voice-bind-pulse-b"></span>
+                  <span class="qs-voice-bind-mic"><i class="ph-fill ph-microphone"></i></span>
+                </div>
+                <p class="qs-voice-bind-transcript" data-bind-transcript id="vk-text" aria-live="polite"></p>
+                <div class="qs-voice-bind-chips" role="list" aria-label="示例口令">
+                  <button type="button" class="is-active" data-bind-phrase="开始听写">开始听写</button>
+                  <button type="button" data-bind-phrase="开始输入">开始输入</button>
+                  <button type="button" data-bind-phrase="打开听写">打开听写</button>
+                </div>
+              </div>
+              <div class="qs-voice-bind-result" data-bind-result id="vk-result" hidden>
+                <div class="qs-voice-bind-flow">
+                  <span class="qs-bind-node qs-bind-phrase" data-bind-result-phrase>「开始听写」</span>
+                  <span class="qs-bind-arrow">→</span>
+                  <span class="qs-bind-node qs-bind-onetone">OneTone</span>
+                  <span class="qs-bind-arrow">→</span>
+                  <span class="qs-bind-node qs-bind-ime">
+                    <i class="ph-fill ph-chat-centered-text text-mac-accent"></i>
+                    <span data-bind-result-ime>输入法唤醒</span>
+                  </span>
+                </div>
+                <p class="qs-voice-bind-success"><i class="ph-fill ph-check-circle"></i> 绑定成功：说出口令即模拟输入法激活键</p>
+              </div>
+            </div>
+          </article>
+          
+          <article class="qs-zone-panel" data-zone-panel="auto-send" id="p-auto-send">
+            <p class="qs-stage-title">语音结束后：是否自动发送 Enter</p>
+            <div class="qs-after-speak-layout">
+              <div class="qs-after-speak" data-after-speak-demo>
+                <div class="qs-after-speak-window">
+                  <div class="qs-after-speak-bar-top">
+                    <span></span><span></span><span></span>
+                    <strong>Chat Window</strong>
+                  </div>
+                  <div class="qs-after-speak-body">
+                    <p class="qs-after-speak-draft" data-after-draft id="as-bubble"></p>
+                    <div class="qs-after-speak-compose is-active" data-after-compose id="as-compose">
+                      <span class="qs-after-speak-input" data-after-input id="as-text"></span><span class="qs-onboard-cursor" id="as-cursor">|</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="qs-after-speak-delay is-visible" data-after-delay id="as-delay">
+                  <span class="qs-after-speak-delay-label">延迟等待</span>
+                  <span class="qs-after-speak-delay-track" aria-hidden="true"><span class="qs-after-speak-delay-fill" data-after-delay-fill id="as-fill"></span></span>
+                </div>
+              </div>
+              
+              <aside class="qs-after-speak-side" data-after-speak-side aria-label="语音结束设置">
+                <p class="qs-after-speak-side-path">Settings → Voice → Action</p>
+                
+                <div class="qs-after-speak-commit-pills" role="group" aria-label="发送快捷键">
+                  <button type="button" class="is-active" data-after-commit="Enter">Enter 发送</button>
+                </div>
+                
+                <ol class="qs-after-speak-flow-list" data-after-flow>
+                  <li data-after-flow-step="1" id="as-s1">结束听写，文字上屏</li>
+                  <li data-after-flow-step="2" id="as-s2">等待确认时间 (可撤回)</li>
+                  <li data-after-flow-step="3" id="as-s3">模拟按下 Enter</li>
+                </ol>
+              </aside>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="qs-troubleshoot qs-reveal scroll-mt-28" data-reveal-delay="3" aria-label="排错入口">
+      <h2 class="qs-troubleshoot-title">遇到问题？</h2>
+      <div class="qs-troubleshoot-grid">
+        <a href="02-install.html" class="qs-troubleshoot-card">
+          <strong>按了没反应</strong>
+          <span>OneTone 是否收到触发</span>
+        </a>
+        <a href="#step1" class="qs-troubleshoot-card">
+          <strong>输入法没被唤醒</strong>
+          <span>激活键是否录对</span>
+        </a>
+        <a href="#step1" class="qs-troubleshoot-card">
+          <strong>麦克风权限</strong>
+          <span>输入法需要麦克风</span>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      
+      // --- 通用 Tab 切换逻辑 ---
+      function setupTabs(groupName) {
+        const group = document.querySelector(`[data-cycle-group="${groupName}"]`);
+        if(!group) return;
+        const tabs = group.querySelectorAll('[data-zone-item]');
+        const panels = group.querySelectorAll('[data-zone-panel]');
+        
+        tabs.forEach(tab => {
+          tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('is-active'));
+            tab.classList.add('is-active');
+            
+            const target = tab.getAttribute('data-zone-target');
+            panels.forEach(p => p.classList.remove('is-active'));
+            const activePanel = group.querySelector(`[data-zone-panel="${target}"]`);
+            if(activePanel) activePanel.classList.add('is-active');
+            
+            // 触发对应剧本
+            if(target === 'mapping') startMappingDemo();
+            if(target === 'key-wake') startKeyWakeDemo();
+            if(target === 'auto-send') startAutoSendDemo();
+          });
+        });
+      }
+      setupTabs('zone1');
+      setupTabs('zone2');
+      
+      // --- 设备选择交互 ---
+      const devices = document.querySelectorAll('.qs-trigger-item');
+      devices.forEach(d => {
+        d.addEventListener('click', () => {
+          devices.forEach(x => x.classList.remove('is-active'));
+          d.classList.add('is-active');
+        });
+      });
+
+      // ==========================================
+      // Script 1: 映射链路演示 (Mapping)
+      // ==========================================
+      let mapTimeout;
+      function startMappingDemo() {
+        const panel = document.querySelector('[data-zone-panel="mapping"]');
+        const hw = document.getElementById('map-hw');
+        const b1 = document.getElementById('map-b1');
+        const sw = document.getElementById('map-sw');
+        const b2 = document.getElementById('map-b2');
+        const out = document.getElementById('map-out');
+        const text = document.getElementById('map-text');
+        const cursor = document.getElementById('map-cursor');
+        
+        async function play() {
+          if(!panel.classList.contains('is-active')) return;
+          
+          // Reset
+          hw.classList.remove('is-active'); sw.classList.remove('is-active'); out.classList.remove('is-active');
+          b1.classList.remove('is-flowing'); b2.classList.remove('is-flowing');
+          text.textContent = ''; cursor.style.display = 'inline';
+          
+          await new Promise(r => setTimeout(r, 800));
+          
+          hw.classList.add('is-active');
+          await new Promise(r => setTimeout(r, 300));
+          
+          b1.classList.add('is-flowing');
+          await new Promise(r => setTimeout(r, 400));
+          
+          sw.classList.add('is-active');
+          await new Promise(r => setTimeout(r, 300));
+          
+          b2.classList.add('is-flowing');
+          await new Promise(r => setTimeout(r, 400));
+          
+          out.classList.add('is-active');
+          const str = "Hello, OneTone!";
+          for(let i=0; i<str.length; i++) {
+             if(!panel.classList.contains('is-active')) break;
+             text.textContent += str[i];
+             await new Promise(r => setTimeout(r, 60));
+          }
+          await new Promise(r => setTimeout(r, 800));
+          cursor.style.display = 'none';
+
+          mapTimeout = setTimeout(play, 2000);
+        }
+        
+        clearTimeout(mapTimeout);
+        play();
+      }
+
+      // ==========================================
+      // Script 2: 口令激活 (Key Wake)
+      // ==========================================
+      let wakeTimeout;
+      function startKeyWakeDemo() {
+        const panel = document.getElementById('p-key-wake');
+        const scene = document.getElementById('vk-scene');
+        const status = document.getElementById('vk-status');
+        const text = document.getElementById('vk-text');
+        const result = document.getElementById('vk-result');
+        
+        async function play() {
+          if(!panel.classList.contains('is-active')) return;
+          
+          // Reset
+          scene.classList.remove('is-listening');
+          result.setAttribute('hidden', '');
+          text.textContent = '';
+          status.textContent = '等待口令…';
+          
+          await new Promise(r => setTimeout(r, 1000));
+          
+          // Listen
+          scene.classList.add('is-listening');
+          status.textContent = '正在识别…';
+          await new Promise(r => setTimeout(r, 800));
+          
+          const str = "开始听写";
+          for(let i=0; i<str.length; i++) {
+             if(!panel.classList.contains('is-active')) break;
+             text.textContent += str[i];
+             await new Promise(r => setTimeout(r, 100));
+          }
+          await new Promise(r => setTimeout(r, 500));
+          
+          // Success
+          scene.classList.remove('is-listening');
+          status.textContent = '匹配成功';
+          text.style.color = 'var(--mac-accent)';
+          await new Promise(r => setTimeout(r, 400));
+          result.removeAttribute('hidden');
+          
+          wakeTimeout = setTimeout(() => {
+             text.style.color = '#fff';
+             play();
+          }, 3500);
+        }
+        
+        clearTimeout(wakeTimeout);
+        play();
+      }
+
+      // ==========================================
+      // Script 3: 自动发送 (Auto Send)
+      // ==========================================
+      let sendTimeout;
+      function startAutoSendDemo() {
+        const panel = document.getElementById('p-auto-send');
+        const compose = document.getElementById('as-compose');
+        const text = document.getElementById('as-text');
+        const cursor = document.getElementById('as-cursor');
+        const bubble = document.getElementById('as-bubble');
+        const fill = document.getElementById('as-fill');
+        const s1 = document.getElementById('as-s1');
+        const s2 = document.getElementById('as-s2');
+        const s3 = document.getElementById('as-s3');
+        
+        async function play() {
+          if(!panel.classList.contains('is-active')) return;
+          
+          // Reset
+          text.textContent = ''; cursor.style.display = 'inline';
+          bubble.classList.remove('is-visible');
+          compose.classList.add('is-active');
+          fill.style.transition = 'none'; fill.style.width = '0%';
+          s1.classList.remove('is-active'); s2.classList.remove('is-active'); s3.classList.remove('is-active');
+          
+          await new Promise(r => setTimeout(r, 800));
+          
+          // Typing
+          const str = "这个动效完美复刻。";
+          for(let i=0; i<str.length; i++) {
+             if(!panel.classList.contains('is-active')) break;
+             text.textContent += str[i];
+             await new Promise(r => setTimeout(r, 80));
+          }
+          
+          // Step 1: Text ready
+          s1.classList.add('is-active');
+          await new Promise(r => setTimeout(r, 500));
+          
+          // Step 2: Delay waiting
+          s1.classList.remove('is-active'); s2.classList.add('is-active');
+          fill.style.transition = 'width 2s linear';
+          fill.style.width = '100%';
+          await new Promise(r => setTimeout(r, 2000));
+          
+          // Step 3: Sent
+          s2.classList.remove('is-active'); s3.classList.add('is-active');
+          compose.classList.remove('is-active');
+          text.textContent = ''; cursor.style.display = 'none';
+          bubble.textContent = str;
+          bubble.classList.add('is-visible');
+          
+          sendTimeout = setTimeout(play, 3500);
+        }
+        
+        clearTimeout(sendTimeout);
+        play();
+      }
+
+      // Step 0 Rail Logic (Update UI step progress based on scroll, simplified for demo)
+      const trSeg1 = document.getElementById('tr-seg-1');
+      const trSeg2 = document.getElementById('tr-seg-2');
+      setTimeout(() => { trSeg1.classList.add('is-active'); }, 2000);
+      setTimeout(() => { trSeg2.classList.add('is-active'); }, 4000);
+
+    });
+  </script>
+</body>
+</html>
