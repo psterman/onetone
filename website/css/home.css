@@ -835,71 +835,6 @@
   text-decoration: underline;
 }
 
-/* —— Download CTA banner —— */
-.home-cta-section {
-  padding-top: 80px;
-  padding-bottom: 100px;
-}
-
-.home-cta-banner {
-  text-align: center;
-  border-radius: 2rem;
-  padding: clamp(2.5rem, 6vw, 4rem) 1.5rem;
-  background: linear-gradient(135deg, var(--mac-accent) 0%, var(--mac-glow, #5ec8e8) 100%);
-  box-shadow: 0 24px 60px rgba(var(--mac-accent-rgb), 0.25);
-}
-
-.home-cta-banner h2 {
-  margin: 0 0 0.75rem;
-  color: #fff;
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-
-.home-cta-banner > p {
-  margin: 0 auto 1.75rem;
-  max-width: 28rem;
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 1.05rem;
-  line-height: 1.55;
-}
-
-.home-cta-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem 1.25rem;
-}
-
-.home-cta-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.85rem 1.75rem;
-  border-radius: 999px;
-  background: #fff;
-  color: var(--mac-accent);
-  font-weight: 700;
-  font-size: 1rem;
-  text-decoration: none;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.home-cta-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
-}
-
-.home-cta-meta {
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .apple-reveal {
     opacity: 1;
@@ -945,15 +880,5 @@
     mask-image: none;
     -webkit-mask-image: none;
     overflow-x: auto;
-  }
-}
-
-@media (max-width: 640px) {
-  .home-quotes-grid {
-    grid-template-columns: 1fr;
-  }
-  .home-cta-banner {
-    border-radius: 1.5rem;
-    padding: 2rem 1.25rem;
   }
 }

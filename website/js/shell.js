@@ -50,4 +50,26 @@
 
   syncNavActive();
   window.addEventListener("hashchange", syncNavActive);
+
+  // Site-wide Cursor-style download CTA above footer
+  (function injectSiteDownloadCta() {
+    if (document.getElementById("site-download-cta")) return;
+    var path = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+    if (path === "download.html") return; // page already has install CTAs
+    var footer = document.querySelector("footer.site-footer");
+    if (!footer) return;
+    var sec = document.createElement("section");
+    sec.id = "site-download-cta";
+    sec.className = "site-download-cta";
+    sec.setAttribute("aria-label", "Download");
+    sec.setAttribute("data-section", "5");
+    sec.innerHTML =
+      '<div class="site-download-cta-inner">' +
+      '<h2 class="site-download-cta-title" data-i18n="ctaBannerTitle">立即试用一声。</h2>' +
+      '<a class="site-download-cta-btn" href="download.html">' +
+      '<span data-i18n="ctaBannerBtn">下载 Windows 版本</span>' +
+      '<i class="ph ph-download-simple" aria-hidden="true"></i>' +
+      "</a></div>";
+    footer.parentNode.insertBefore(sec, footer);
+  })();
 })();

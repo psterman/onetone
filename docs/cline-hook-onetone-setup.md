@@ -24,7 +24,9 @@ Marker：`--onetone-hook-id cline-activity-v1`。
 | `TaskComplete` | `Stop` | `done` |
 | `TaskCancel` / `TaskError` | `StopFailure` | `error` |
 
-无虚拟键盘 workflow；`can_focus=false`。
+## Soft Pad Shortcuts
+
+Hub 已提供 **Cline** Soft Pad：Shortcuts 聚焦 VS Code/Cursor 宿主并派发和弦（`can_focus`/`can_send_chord`）。天花板：无 Sessions / Resume / multi-lights。
 
 ## 自检
 

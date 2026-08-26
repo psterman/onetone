@@ -1,9 +1,9 @@
-//! WorkBuddy / Trae / Qoder process + mtime fallback for Soft Pad lamps.
+//! WorkBuddy / Trae / Windsurf / Qoder process + mtime fallback for Soft Pad lamps.
 //!
 //! Does **not** extend PadState. Writes attention `Inferred` Working/Idle only.
 //! Hook `OfficialHook` / NeedsInput always win.
 //!
-//! Trae Solo: Cursor-style local activity (process + Solo/ModularData mtime).
+//! Trae Solo / Windsurf: Cursor-style local activity (process + client data mtime).
 //! TraeCode/IDE hooks still publish OfficialHook when present.
 //! WorkBuddy / Qoder: Hook-only motion (no mtime fake Working).
 
@@ -16,7 +16,7 @@ use crate::agent_attention::store::{self, raise_lifecycle};
 use crate::agent_attention::{AttentionState, SignalSource};
 use crate::app_identity::{
     process_running_by_exe, preset_process_names, QODER_APP_TARGET_ID, TRAE_APP_TARGET_ID,
-    TRAE_CODE_APP_TARGET_ID, WORKBUDDY_APP_TARGET_ID,
+    TRAE_CODE_APP_TARGET_ID, WINDSURF_APP_TARGET_ID, WORKBUDDY_APP_TARGET_ID,
 };
 use crate::pad_status::SHELL_AGENT_MTIME_BUSY_MS;
 use crate::shell_agent_hook_setup;
@@ -25,7 +25,7 @@ use crate::AppState;
 
 const PROCESS_POLL_SECS: u64 = 3;
 const CONFIGURED_REFRESH_SECS: u64 = 30;
-/// Trae Solo agent turns can gap >60s between tool writes; keep lamp sticky longer.
+/// Trae Solo / Windsurf agent turns can gap >60s between tool writes; keep lamp sticky longer.
 const TRAE_SOLO_MTIME_BUSY_MS: u64 = 180_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,6 +44,7 @@ struct ConfiguredCache {
     workbuddy: Option<bool>,
     trae: Option<bool>,
     trae_code: Option<bool>,
+    windsurf: Option<bool>,
     qoder: Option<bool>,
     force_refresh: bool,
 }
@@ -52,9 +53,11 @@ struct ConfiguredCache {
 struct LastPublished {
     workbuddy: Option<&'static str>,
     trae: Option<&'static str>,
+    windsurf: Option<&'static str>,
     qoder: Option<&'static str>,
     workbuddy_cfg: Option<bool>,
     trae_cfg: Option<bool>,
+    windsurf_cfg: Option<bool>,
     qoder_cfg: Option<bool>,
 }
 
@@ -84,6 +87,7 @@ pub fn hook_configured(kind: AgentKind) -> Option<bool> {
         AgentKind::WorkBuddy => g.workbuddy,
         AgentKind::Trae => g.trae,
         AgentKind::TraeCode => g.trae_code,
+        AgentKind::Windsurf => g.windsurf,
         AgentKind::Qoder => g.qoder,
         _ => None,
     }
@@ -95,7 +99,7 @@ pub fn infer_busy_from_mtime_age(age_ms: u64) -> bool {
 }
 
 fn infer_busy_from_mtime_age_for(kind: AgentKind, age_ms: u64) -> bool {
-    let window = if kind == AgentKind::Trae {
+    let window = if matches!(kind, AgentKind::Trae | AgentKind::Windsurf) {
         TRAE_SOLO_MTIME_BUSY_MS
     } else {
         SHELL_AGENT_MTIME_BUSY_MS
@@ -103,11 +107,12 @@ fn infer_busy_from_mtime_age_for(kind: AgentKind, age_ms: u64) -> bool {
     age_ms < window
 }
 
-fn shell_kinds() -> [AgentKind; 4] {
+fn shell_kinds() -> [AgentKind; 5] {
     [
         AgentKind::WorkBuddy,
         AgentKind::Trae,
         AgentKind::TraeCode,
+        AgentKind::Windsurf,
         AgentKind::Qoder,
     ]
 }
@@ -117,6 +122,7 @@ fn exe_names_for(kind: AgentKind) -> &'static [&'static str] {
         AgentKind::WorkBuddy => WORKBUDDY_APP_TARGET_ID,
         AgentKind::Trae => TRAE_APP_TARGET_ID,
         AgentKind::TraeCode => TRAE_CODE_APP_TARGET_ID,
+        AgentKind::Windsurf => WINDSURF_APP_TARGET_ID,
         AgentKind::Qoder => QODER_APP_TARGET_ID,
         _ => return &[],
     };
@@ -169,6 +175,27 @@ fn trae_code_activity_roots() -> Vec<PathBuf> {
     roots
 }
 
+fn windsurf_activity_roots() -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+    if let Ok(appdata) = std::env::var("APPDATA") {
+        let root = PathBuf::from(appdata).join("Windsurf");
+        roots.push(root.join("logs"));
+        roots.push(
+            root.join("User")
+                .join("globalStorage")
+                .join("state.vscdb"),
+        );
+        roots.push(root.join("User").join("workspaceStorage"));
+    }
+    if let Some(home) = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")) {
+        let home = PathBuf::from(home);
+        for dir in [".codeium", ".windsurf"] {
+            roots.push(home.join(dir));
+        }
+    }
+    roots
+}
+
 fn mtime_roots(kind: AgentKind) -> Vec<PathBuf> {
     let mut roots = Vec::new();
     if let Some(profile) = shell_agent_hook_setup::profile_for_kind(kind) {
@@ -198,6 +225,9 @@ fn mtime_roots(kind: AgentKind) -> Vec<PathBuf> {
     }
     if kind == AgentKind::TraeCode {
         roots.extend(trae_code_activity_roots());
+    }
+    if kind == AgentKind::Windsurf {
+        roots.extend(windsurf_activity_roots());
     }
     roots
 }
@@ -274,7 +304,7 @@ fn apply_inferred(kind: AgentKind, busy: InferredBusy) {
     match busy {
         InferredBusy::Working => {
             // WorkBuddy / Qoder: no realtime motion lamp from process/mtime chatter.
-            // Trae Work + Trae Code: Cursor-style inferred Working (OfficialHook still wins above).
+            // Trae Work / Windsurf + Trae Code: Cursor-style inferred Working (OfficialHook still wins above).
             if matches!(kind, AgentKind::WorkBuddy | AgentKind::Qoder) {
                 if prev == Some(AttentionState::Working) && prev_src == Some(SignalSource::Inferred) {
                     raise_lifecycle(kind, None, AttentionState::Idle, SignalSource::Inferred);
@@ -312,8 +342,8 @@ fn refresh_configured_if_due(force: bool) {
     }
     g.force_refresh = false;
     for kind in shell_kinds() {
-        let configured = if kind == AgentKind::Trae {
-            // Solo: inferred activity only — no OfficialHook profile.
+        let configured = if matches!(kind, AgentKind::Trae | AgentKind::Windsurf) {
+            // Solo / Windsurf: inferred activity only — no OfficialHook profile.
             false
         } else {
             shell_agent_hook_setup::setup_status(kind.as_str())
@@ -323,6 +353,7 @@ fn refresh_configured_if_due(force: bool) {
         match kind {
             AgentKind::WorkBuddy => g.workbuddy = Some(configured),
             AgentKind::Trae => g.trae = Some(configured),
+            AgentKind::Windsurf => g.windsurf = Some(configured),
             AgentKind::Qoder => g.qoder = Some(configured),
             _ => {}
         }
@@ -339,6 +370,7 @@ fn label_for(kind: AgentKind) -> &'static str {
     match kind {
         AgentKind::WorkBuddy => "WorkBuddy",
         AgentKind::Trae => "Trae",
+        AgentKind::Windsurf => "Windsurf",
         AgentKind::Qoder => "Qoder",
         _ => kind.as_str(),
     }
@@ -366,6 +398,7 @@ fn publish_edges(
     let (prev_state, prev_cfg) = match kind {
         AgentKind::WorkBuddy => (last.workbuddy, last.workbuddy_cfg),
         AgentKind::Trae => (last.trae, last.trae_cfg),
+        AgentKind::Windsurf => (last.windsurf, last.windsurf_cfg),
         AgentKind::Qoder => (last.qoder, last.qoder_cfg),
         _ => return,
     };
@@ -386,6 +419,12 @@ fn publish_edges(
             last.trae = Some(wire);
             if let Some(c) = configured {
                 last.trae_cfg = Some(c);
+            }
+        }
+        AgentKind::Windsurf => {
+            last.windsurf = Some(wire);
+            if let Some(c) = configured {
+                last.windsurf_cfg = Some(c);
             }
         }
         AgentKind::Qoder => {
@@ -461,15 +500,17 @@ mod tests {
 
     #[test]
     fn workbuddy_never_raises_inferred_working() {
-        // Guard: WorkBuddy/Qoder stay Hook-only; Trae Work + Trae Code may publish Inferred Working.
+        // Guard: WorkBuddy/Qoder stay Hook-only; Trae Work / Windsurf + Trae Code may publish Inferred Working.
         let src = include_str!("shell_agent_process.rs");
         assert!(
             src.contains("matches!(kind, AgentKind::WorkBuddy | AgentKind::Qoder)"),
             "WorkBuddy/Qoder must not publish Inferred Working"
         );
         assert!(
-            src.contains("trae_solo_activity_roots") && src.contains("trae_code_activity_roots"),
-            "Trae Work + Trae Code watch client activity trees"
+            src.contains("trae_solo_activity_roots")
+                && src.contains("trae_code_activity_roots")
+                && src.contains("windsurf_activity_roots"),
+            "Trae Work / Trae Code / Windsurf watch client activity trees"
         );
         let apply = src
             .split("fn apply_inferred")

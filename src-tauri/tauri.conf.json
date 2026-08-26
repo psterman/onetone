@@ -54,6 +54,7 @@
       "../scripts/copilot-cli-hook-probe.js": "scripts/copilot-cli-hook-probe.js",
       "../scripts/gemini-hook-probe.js": "scripts/gemini-hook-probe.js",
       "../scripts/cline-hook-probe.js": "scripts/cline-hook-probe.js",
+      "../scripts/roo-hook-probe.js": "scripts/roo-hook-probe.js",
       "../scripts/aider-notify-probe.js": "scripts/aider-notify-probe.js",
       "../scripts/opencode-onetone-plugin/": "scripts/opencode-onetone-plugin/"
     },

@@ -15,8 +15,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="js/tailwind-config.js"></script>
   <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/shell.css">
-  <link rel="stylesheet" href="css/agent.css">
+  <link rel="stylesheet" href="css/shell.css?v=20260826b">
+  <link rel="stylesheet" href="css/agent.css?v=20260826g">
 
 </head>
 <body class="antialiased" data-page="agent">
@@ -61,7 +61,7 @@
     <section class="relative min-h-screen pt-24 pb-16 flex items-center justify-center overflow-hidden" id="sec-hero">
       <div class="spatial-grid-wrap"><div class="spatial-grid"></div></div>
 
-      <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10 w-full">
+      <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10 w-full" id="pad-demo" data-pad-mode="full">
         
         <!-- Left Hero Copy -->
         <div class="lg:col-span-5 space-y-6">
@@ -75,22 +75,39 @@
           </h1>
 
           <p class="text-base text-mac-textMuted leading-relaxed">
-            一块始终浮在最上面的虚拟小键盘。想展开就展开，想收成就收成一条胶囊；你的数字小键盘也能一对一跟它联动。说口令也能直接干活。
+            一块始终浮在最上面的虚拟小键盘。可展开成虚拟键盘，也可收成迷你栏；你的数字小键盘也能一对一跟它联动。说口令也能直接干活。
           </p>
 
-          <!-- Hero Action & Mode Switcher -->
+          <!-- Hero mode indicators (auto-cycles; not clickable) -->
           <div class="flex flex-wrap items-center gap-4 pt-2">
-            <div class="p-1 mac-glass rounded-full flex items-center gap-1" role="group" aria-label="键盘形态">
-              <button id="btn-mode-full" class="px-4 py-1.5 rounded-full text-xs font-medium text-black bg-white transition-all shadow-md">
-                <i class="ph-bold ph-keyboards mr-1"></i> 展开键盘
-              </button>
-              <button id="btn-mode-mini" class="px-4 py-1.5 rounded-full text-xs font-medium text-mac-textMuted hover:text-white transition-all">
-                <i class="ph-bold ph-minus-circle mr-1"></i> 收成一条
-              </button>
+            <div class="p-1 mac-glass rounded-full flex items-center gap-1 pad-mode-pills" role="status" aria-live="polite" aria-label="键盘形态演示">
+              <span id="btn-mode-full" class="pad-mode-pill">
+                <i class="ph-bold ph-keyboards" aria-hidden="true"></i> 虚拟键盘
+              </span>
+              <span id="btn-mode-mini" class="pad-mode-pill">
+                <i class="ph-bold ph-minus-circle" aria-hidden="true"></i> 迷你栏
+              </span>
             </div>
             <a href="#sec-numpad" class="text-xs font-medium text-mac-accent hover:underline flex items-center gap-1">
               看看实体小键盘怎么跟 <i class="ph-bold ph-arrow-right"></i>
             </a>
+          </div>
+
+          <div class="pad-hero-brands" aria-label="支持的 Agent">
+            <p class="pad-hero-brands-label">支持的 Agent</p>
+            <div class="pad-hero-brands-row">
+              <span class="pad-hero-brand" title="Cursor"><img src="assets/brands/cursor.png" alt="Cursor" width="28" height="28"></span>
+              <span class="pad-hero-brand" title="Claude"><img src="assets/brands/claude.png" alt="Claude" width="28" height="28"></span>
+              <span class="pad-hero-brand" title="ChatGPT"><img src="assets/brands/chatgpt.png" alt="ChatGPT" width="28" height="28"></span>
+              <span class="pad-hero-brand" title="Trae"><img src="assets/brands/trae.png" alt="Trae" width="28" height="28"></span>
+              <span class="pad-hero-brand" title="Windsurf"><img src="assets/brands/windsurf.png" alt="Windsurf" width="28" height="28"></span>
+              <span class="pad-hero-brand" title="Copilot"><img src="assets/brands/copilot.png" alt="Copilot" width="28" height="28"></span>
+              <span class="pad-hero-brand" title="Gemini"><img src="assets/brands/gemini.png" alt="Gemini" width="28" height="28"></span>
+              <span class="pad-hero-brand" title="Qoder"><img src="assets/brands/qoder.png" alt="Qoder" width="28" height="28"></span>
+              <span class="pad-hero-brand" title="Cline"><img src="assets/brands/cline.png" alt="Cline" width="28" height="28"></span>
+              <span class="pad-hero-brand" title="OpenCode"><img src="assets/brands/opencode.png" alt="OpenCode" width="28" height="28"></span>
+              <span class="pad-hero-brand" title="WorkBuddy"><img src="assets/brands/workbuddy.png" alt="WorkBuddy" width="28" height="28"></span>
+            </div>
           </div>
 
           <!-- Hero Specs Mini Pills -->
@@ -121,14 +138,11 @@
                 </button>
               </div>
 
-              <!-- Top Agent Dock Row (13+ Agent Icons with LEDs) -->
-              <div class="bg-black/40 border border-white/10 rounded-2xl p-2.5 flex items-center justify-between gap-1 overflow-x-auto">
-                <!-- Agent Icon 1: Cursor -->
-                <div class="agent-icon-wrap relative p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors">
-                  <img class="w-7 h-7 rounded-lg object-contain" src="assets/brands/cursor.png" alt="Cursor" width="28" height="28">
-                  <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981]"></span>
-                  
-                  <!-- Cursor Popover Card -->
+              <!-- Top Agent Dock Row -->
+              <div class="pad-hud-agents" aria-label="Agent 状态栏">
+                <div class="agent-icon-wrap relative">
+                  <img src="assets/brands/cursor.png" alt="Cursor" width="28" height="28">
+                  <span class="agent-led agent-led-on"></span>
                   <div class="agent-popover">
                     <div class="flex items-center justify-between text-xs mb-2">
                       <span class="font-bold text-white flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Cursor</span>
@@ -142,13 +156,9 @@
                     </div>
                   </div>
                 </div>
-
-                <!-- Agent Icon 2: Claude -->
-                <div class="agent-icon-wrap relative p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors">
-                  <img class="w-7 h-7 rounded-lg object-contain" src="assets/brands/claude.png" alt="Claude" width="28" height="28">
-                  <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-mac-accent shadow-[0_0_6px_#2a9cc4]"></span>
-                  
-                  <!-- Claude Popover Card -->
+                <div class="agent-icon-wrap relative">
+                  <img src="assets/brands/claude.png" alt="Claude" width="28" height="28">
+                  <span class="agent-led agent-led-busy"></span>
                   <div class="agent-popover">
                     <div class="flex items-center justify-between text-xs mb-2">
                       <span class="font-bold text-white flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-mac-accent"></span> Claude Code</span>
@@ -159,65 +169,71 @@
                     </p>
                   </div>
                 </div>
-
-                <!-- Agent Icon 3: OpenAI Codex -->
-                <div class="agent-icon-wrap relative p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors">
-                  <img class="w-7 h-7 rounded-lg object-contain" src="assets/brands/codex.png" alt="Codex" width="28" height="28">
-                  <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500"></span>
+                <div class="agent-icon-wrap relative">
+                  <img src="assets/brands/chatgpt.png" alt="ChatGPT" width="28" height="28">
+                  <span class="agent-led agent-led-on"></span>
                 </div>
-
-                <!-- Agent Icon 4: DeepSeek -->
-                <div class="agent-icon-wrap relative p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors">
-                  <img class="w-7 h-7 rounded-lg object-contain" src="assets/brands/deepseek.svg" alt="DeepSeek" width="28" height="28">
-                  <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500"></span>
+                <div class="agent-icon-wrap relative">
+                  <img src="assets/brands/trae.png" alt="Trae" width="28" height="28">
+                  <span class="agent-led agent-led-idle"></span>
                 </div>
-
-                <!-- Agent Icon 5: Trae -->
-                <div class="agent-icon-wrap relative p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors">
-                  <img class="w-7 h-7 rounded-lg object-contain" src="assets/brands/trae.png" alt="Trae" width="28" height="28">
-                  <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-purple-500"></span>
+                <div class="agent-icon-wrap relative">
+                  <img src="assets/brands/copilot.png" alt="Copilot" width="28" height="28">
+                  <span class="agent-led agent-led-on"></span>
                 </div>
-
-                <!-- Agent Icon 6: Qoder -->
-                <div class="agent-icon-wrap relative p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors">
-                  <img class="w-7 h-7 rounded-lg object-contain" src="assets/brands/qoder.png" alt="Qoder" width="28" height="28">
-                  <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-teal-500"></span>
+                <div class="agent-icon-wrap relative">
+                  <img src="assets/brands/gemini.png" alt="Gemini" width="28" height="28">
+                  <span class="agent-led agent-led-idle"></span>
                 </div>
-
-                <!-- More count -->
-                <div class="px-2 py-1 text-xs text-mac-textMuted font-mono bg-white/5 rounded-lg border border-white/10">+7</div>
+                <div class="agent-icon-wrap relative">
+                  <img src="assets/brands/windsurf.png" alt="Windsurf" width="28" height="28">
+                  <span class="agent-led agent-led-on"></span>
+                </div>
+                <div class="agent-icon-wrap relative">
+                  <img src="assets/brands/qoder.png" alt="Qoder" width="28" height="28">
+                  <span class="agent-led agent-led-idle"></span>
+                </div>
+                <div class="agent-icon-wrap relative">
+                  <img src="assets/brands/cline.png" alt="Cline" width="28" height="28">
+                  <span class="agent-led agent-led-on"></span>
+                </div>
+                <div class="agent-icon-wrap relative">
+                  <img src="assets/brands/opencode.png" alt="OpenCode" width="28" height="28">
+                  <span class="agent-led agent-led-idle"></span>
+                </div>
+                <div class="pad-hud-agents-more">+1</div>
               </div>
 
               <!-- Neumorphic 14-Key Grid Layout -->
               <div class="grid grid-cols-4 gap-2.5" id="key-matrix">
                 <!-- Row 1 -->
                 <button class="neo-key h-12" data-key="power" data-numpad="NumLock"><i class="ph-bold ph-power text-mac-accent"></i><span class="neo-key-badge">Nlock</span></button>
-                <button class="neo-key h-12" data-key="bolt" data-numpad="NumpadDivide"><i class="ph-bold ph-lightning text-zinc-700"></i><span class="neo-key-badge">/</span></button>
-                <button class="neo-key h-12" data-key="sidebar" data-numpad="NumpadMultiply"><i class="ph-bold ph-sidebar-simple text-zinc-700"></i><span class="neo-key-badge">*</span></button>
-                <button class="neo-key h-12" data-key="close" data-numpad="NumpadSubtract"><i class="ph-bold ph-x-circle text-zinc-700"></i><span class="neo-key-badge">-</span></button>
+                <button class="neo-key h-12" data-key="bolt" data-numpad="NumpadDivide"><i class="ph-bold ph-lightning"></i><span class="neo-key-badge">/</span></button>
+                <button class="neo-key h-12" data-key="sidebar" data-numpad="NumpadMultiply"><i class="ph-bold ph-sidebar-simple"></i><span class="neo-key-badge">*</span></button>
+                <button class="neo-key h-12" data-key="close" data-numpad="NumpadSubtract"><i class="ph-bold ph-x-circle"></i><span class="neo-key-badge">-</span></button>
 
                 <!-- Row 2 -->
-                <button class="neo-key h-12 glow-mint" data-key="menu" data-numpad="Numpad7"><i class="ph-bold ph-list text-emerald-700"></i><span class="neo-key-badge">Num 7</span></button>
-                <button class="neo-key h-12 glow-orange" data-key="undo" data-numpad="Numpad8"><i class="ph-bold ph-arrow-counter-clockwise text-orange-700"></i><span class="neo-key-badge">Num 8</span></button>
-                <button class="neo-key h-12" data-key="action" data-numpad="Numpad9"><i class="ph-bold ph-lightning text-zinc-700"></i><span class="neo-key-badge">Num 9</span></button>
+                <button class="neo-key h-12 glow-mint" data-key="menu" data-numpad="Numpad7"><i class="ph-bold ph-list"></i><span class="neo-key-badge">Num 7</span></button>
+                <button class="neo-key h-12 glow-orange" data-key="undo" data-numpad="Numpad8"><i class="ph-bold ph-arrow-counter-clockwise"></i><span class="neo-key-badge">Num 8</span></button>
+                <button class="neo-key h-12" data-key="action" data-numpad="Numpad9"><i class="ph-bold ph-lightning"></i><span class="neo-key-badge">Num 9</span></button>
                 <!-- 2U Vertical Add Key -->
-                <button class="neo-key row-span-2 h-full" data-key="add" data-numpad="NumpadAdd"><i class="ph-bold ph-plus text-zinc-800 text-xl"></i><span class="neo-key-badge">+</span></button>
+                <button class="neo-key row-span-2 h-full" data-key="add" data-numpad="NumpadAdd"><i class="ph-bold ph-plus text-xl"></i><span class="neo-key-badge">+</span></button>
 
                 <!-- Row 3 -->
-                <button class="neo-key h-12" data-key="search" data-numpad="Numpad4"><i class="ph-bold ph-magnifying-glass text-zinc-700"></i><span class="neo-key-badge">Num 4</span></button>
-                <button class="neo-key h-12 glow-pink" data-key="send" data-numpad="Numpad5"><i class="ph-bold ph-arrow-right text-rose-700"></i><span class="neo-key-badge">Num 5</span></button>
-                <button class="neo-key h-12 glow-blue" data-key="stop" data-numpad="Numpad6"><i class="ph-bold ph-x text-blue-700"></i><span class="neo-key-badge">Num 6</span></button>
+                <button class="neo-key h-12" data-key="search" data-numpad="Numpad4"><i class="ph-bold ph-magnifying-glass"></i><span class="neo-key-badge">Num 4</span></button>
+                <button class="neo-key h-12 glow-pink" data-key="send" data-numpad="Numpad5"><i class="ph-bold ph-arrow-right"></i><span class="neo-key-badge">Num 5</span></button>
+                <button class="neo-key h-12 glow-blue" data-key="stop" data-numpad="Numpad6"><i class="ph-bold ph-x"></i><span class="neo-key-badge">Num 6</span></button>
 
                 <!-- Row 4 -->
-                <button class="neo-key h-12" data-key="reset" data-numpad="Numpad1"><i class="ph-bold ph-arrow-u-up-left text-zinc-700"></i><span class="neo-key-badge">Num 1</span></button>
-                <button class="neo-key h-12" data-key="back" data-numpad="Numpad2"><i class="ph-bold ph-arrow-left text-zinc-700"></i><span class="neo-key-badge">Num 2</span></button>
-                <button class="neo-key h-12" data-key="find" data-numpad="Numpad3"><i class="ph-bold ph-magnifying-glass text-zinc-700"></i><span class="neo-key-badge">Num 3</span></button>
+                <button class="neo-key h-12" data-key="reset" data-numpad="Numpad1"><i class="ph-bold ph-arrow-u-up-left"></i><span class="neo-key-badge">Num 1</span></button>
+                <button class="neo-key h-12" data-key="back" data-numpad="Numpad2"><i class="ph-bold ph-arrow-left"></i><span class="neo-key-badge">Num 2</span></button>
+                <button class="neo-key h-12" data-key="find" data-numpad="Numpad3"><i class="ph-bold ph-magnifying-glass"></i><span class="neo-key-badge">Num 3</span></button>
                 <!-- 2U Vertical Submit Key -->
-                <button class="neo-key row-span-2 h-full" data-key="submit" data-numpad="NumpadEnter"><i class="ph-bold ph-arrow-elbow-down-left text-zinc-800 text-xl"></i><span class="neo-key-badge">Enter</span></button>
+                <button class="neo-key row-span-2 h-full" data-key="submit" data-numpad="NumpadEnter"><i class="ph-bold ph-arrow-elbow-down-left text-xl"></i><span class="neo-key-badge">Enter</span></button>
 
                 <!-- Row 5 (2U Horizontal Mic Key) -->
-                <button class="neo-key col-span-2 h-12" data-key="mic" data-numpad="Numpad0"><i class="ph-bold ph-microphone text-zinc-800 text-lg mr-1"></i><span class="neo-key-badge">Num 0</span></button>
-                <button class="neo-key h-12" data-key="target" data-numpad="NumpadDecimal"><i class="ph-bold ph-target text-zinc-700"></i><span class="neo-key-badge">.</span></button>
+                <button class="neo-key col-span-2 h-12" data-key="mic" data-numpad="Numpad0"><i class="ph-bold ph-microphone text-lg mr-1"></i><span class="neo-key-badge">Num 0</span></button>
+                <button class="neo-key h-12" data-key="target" data-numpad="NumpadDecimal"><i class="ph-bold ph-target"></i><span class="neo-key-badge">.</span></button>
               </div>
 
               <!-- Footer Status Bar inside HUD -->
@@ -231,7 +247,7 @@
             </div>
 
             <!-- Morphing View B: Compact Mini Bar Mode (Hidden by default) -->
-            <div id="view-mini-bar" class="hidden space-y-4 py-4">
+            <div id="view-mini-bar" class="space-y-4 py-4">
               <div class="flex items-center justify-between">
                 <span class="text-xs font-mono text-mac-accent flex items-center gap-2">
                   <span class="w-2 h-2 rounded-full bg-mac-accent animate-ping"></span>
@@ -522,14 +538,17 @@
             <div>
               <label class="text-xs font-mono text-mac-textMuted block mb-2">1. 选择 Agent 控制预设</label>
               <div class="grid grid-cols-3 gap-2" id="agent-remap-preset">
-                <button class="p-2.5 rounded-xl mac-glass text-xs font-mono text-white border-mac-accent/50 bg-mac-accent/10 flex items-center justify-center gap-1.5 is-active" data-agent-preset="Cursor">
-                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Cursor
+                <button type="button" class="agent-preset-btn is-active" data-agent-preset="Cursor">
+                  <img src="assets/brands/cursor.png" alt="" width="18" height="18">
+                  <span>Cursor</span>
                 </button>
-                <button class="p-2.5 rounded-xl mac-glass text-xs font-mono text-mac-textMuted hover:text-white flex items-center justify-center gap-1.5" data-agent-preset="Claude">
-                  <span class="w-2 h-2 rounded-full bg-mac-accent"></span> Claude
+                <button type="button" class="agent-preset-btn" data-agent-preset="Claude">
+                  <img src="assets/brands/claude.png" alt="" width="18" height="18">
+                  <span>Claude</span>
                 </button>
-                <button class="p-2.5 rounded-xl mac-glass text-xs font-mono text-mac-textMuted hover:text-white flex items-center justify-center gap-1.5" data-agent-preset="Trae">
-                  <span class="w-2 h-2 rounded-full bg-purple-500"></span> Trae
+                <button type="button" class="agent-preset-btn" data-agent-preset="Trae">
+                  <img src="assets/brands/trae.png" alt="" width="18" height="18">
+                  <span>Trae</span>
                 </button>
               </div>
             </div>
@@ -540,29 +559,29 @@
                 <span id="selected-key-label" class="text-xs font-mono text-mac-accent font-bold">键位: [Num 8] 重置/撤销</span>
               </div>
 
-              <!-- Interactive Key Selector Matrix -->
-              <div class="grid grid-cols-4 gap-2 bg-black/60 p-4 rounded-2xl border border-white/10" id="custom-key-picker">
-                <button class="neo-key h-10 text-xs" data-picker-key="power"><i class="ph-bold ph-power text-mac-accent"></i></button>
-                <button class="neo-key h-10 text-xs" data-picker-key="bolt"><i class="ph-bold ph-lightning"></i></button>
-                <button class="neo-key h-10 text-xs" data-picker-key="sidebar"><i class="ph-bold ph-sidebar-simple"></i></button>
-                <button class="neo-key h-10 text-xs" data-picker-key="close"><i class="ph-bold ph-x-circle"></i></button>
+              <!-- Real-numpad style picker -->
+              <div class="pad-numpad" id="custom-key-picker" aria-label="数字小键盘">
+                <button type="button" class="pad-numpad-key" data-picker-key="power"><i class="ph-bold ph-power"></i><span class="pad-numpad-cap">NumLk</span></button>
+                <button type="button" class="pad-numpad-key" data-picker-key="bolt"><i class="ph-bold ph-lightning"></i><span class="pad-numpad-cap">/</span></button>
+                <button type="button" class="pad-numpad-key" data-picker-key="sidebar"><i class="ph-bold ph-sidebar-simple"></i><span class="pad-numpad-cap">*</span></button>
+                <button type="button" class="pad-numpad-key" data-picker-key="close"><i class="ph-bold ph-x-circle"></i><span class="pad-numpad-cap">−</span></button>
 
-                <button class="neo-key h-10 text-xs" data-picker-key="menu"><i class="ph-bold ph-list"></i></button>
-                <button class="neo-key h-10 text-xs border-mac-accent ring-2 ring-mac-accent/50" data-picker-key="undo"><i class="ph-bold ph-arrow-counter-clockwise text-orange-600"></i></button>
-                <button class="neo-key h-10 text-xs" data-picker-key="action"><i class="ph-bold ph-lightning"></i></button>
-                <button class="neo-key row-span-2 h-full text-xs" data-picker-key="add"><i class="ph-bold ph-plus"></i></button>
+                <button type="button" class="pad-numpad-key" data-picker-key="menu"><i class="ph-bold ph-list"></i><span class="pad-numpad-cap">7</span></button>
+                <button type="button" class="pad-numpad-key is-picked" data-picker-key="undo"><i class="ph-bold ph-arrow-counter-clockwise"></i><span class="pad-numpad-cap">8</span></button>
+                <button type="button" class="pad-numpad-key" data-picker-key="action"><i class="ph-bold ph-lightning"></i><span class="pad-numpad-cap">9</span></button>
+                <button type="button" class="pad-numpad-key pad-numpad-tall" data-picker-key="add"><i class="ph-bold ph-plus"></i><span class="pad-numpad-cap">+</span></button>
 
-                <button class="neo-key h-10 text-xs" data-picker-key="search"><i class="ph-bold ph-magnifying-glass"></i></button>
-                <button class="neo-key h-10 text-xs" data-picker-key="send"><i class="ph-bold ph-arrow-right text-rose-600"></i></button>
-                <button class="neo-key h-10 text-xs" data-picker-key="stop"><i class="ph-bold ph-x text-blue-600"></i></button>
+                <button type="button" class="pad-numpad-key" data-picker-key="search"><i class="ph-bold ph-magnifying-glass"></i><span class="pad-numpad-cap">4</span></button>
+                <button type="button" class="pad-numpad-key" data-picker-key="send"><i class="ph-bold ph-arrow-right"></i><span class="pad-numpad-cap">5</span></button>
+                <button type="button" class="pad-numpad-key" data-picker-key="stop"><i class="ph-bold ph-x"></i><span class="pad-numpad-cap">6</span></button>
 
-                <button class="neo-key h-10 text-xs" data-picker-key="reset"><i class="ph-bold ph-arrow-u-up-left"></i></button>
-                <button class="neo-key h-10 text-xs" data-picker-key="back"><i class="ph-bold ph-arrow-left"></i></button>
-                <button class="neo-key h-10 text-xs" data-picker-key="find"><i class="ph-bold ph-magnifying-glass"></i></button>
-                <button class="neo-key row-span-2 h-full text-xs" data-picker-key="submit"><i class="ph-bold ph-arrow-elbow-down-left"></i></button>
+                <button type="button" class="pad-numpad-key" data-picker-key="reset"><i class="ph-bold ph-arrow-u-up-left"></i><span class="pad-numpad-cap">1</span></button>
+                <button type="button" class="pad-numpad-key" data-picker-key="back"><i class="ph-bold ph-arrow-left"></i><span class="pad-numpad-cap">2</span></button>
+                <button type="button" class="pad-numpad-key" data-picker-key="find"><i class="ph-bold ph-magnifying-glass"></i><span class="pad-numpad-cap">3</span></button>
+                <button type="button" class="pad-numpad-key pad-numpad-tall" data-picker-key="submit"><i class="ph-bold ph-arrow-elbow-down-left"></i><span class="pad-numpad-cap">Enter</span></button>
 
-                <button class="neo-key col-span-2 h-10 text-xs" data-picker-key="mic"><i class="ph-bold ph-microphone"></i></button>
-                <button class="neo-key h-10 text-xs" data-picker-key="target"><i class="ph-bold ph-target"></i></button>
+                <button type="button" class="pad-numpad-key pad-numpad-wide" data-picker-key="mic"><i class="ph-bold ph-microphone"></i><span class="pad-numpad-cap">0</span></button>
+                <button type="button" class="pad-numpad-key" data-picker-key="target"><i class="ph-bold ph-target"></i><span class="pad-numpad-cap">.</span></button>
               </div>
             </div>
           </div>
@@ -666,6 +685,15 @@
   </main>
 
 
+<section id="site-download-cta" class="site-download-cta" aria-label="Download" data-section="5">
+  <div class="site-download-cta-inner">
+    <h2 class="site-download-cta-title" data-i18n="ctaBannerTitle">立即试用一声。</h2>
+    <a class="site-download-cta-btn" href="download.html">
+      <span data-i18n="ctaBannerBtn">下载 Windows 版本</span>
+      <i class="ph ph-download-simple" aria-hidden="true"></i>
+    </a>
+  </div>
+</section>
 <footer class="site-footer">
   <div class="site-footer-inner">
     <span data-i18n="footerCopy">© 2026 一声 OneTone</span>
@@ -681,6 +709,6 @@
 </footer>
 <script src="js/shell.js"></script>
 <script src="js/i18n.js"></script>
-  <script src="js/agent-demo.js"></script>
+<script src="js/agent-demo.js?v=20260826e"></script>
 </body>
 </html>

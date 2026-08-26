@@ -119,12 +119,92 @@
   border-color: rgba(255, 255, 255, 0.3);
 }
 
+/* Cursor-style site download CTA (all pages, above footer) */
+#site-download-cta.site-download-cta {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  background: #0f0e0d;
+  padding: clamp(5.5rem, 14vw, 9rem) 1.5rem;
+  text-align: center;
+  border: 0;
+}
+
+#site-download-cta .site-download-cta-inner {
+  max-width: 42rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.75rem;
+}
+
+#site-download-cta .site-download-cta-title {
+  margin: 0;
+  padding: 0;
+  color: #ffffff;
+  font-size: clamp(2.25rem, 5.5vw, 3.5rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  text-align: center;
+}
+
+#site-download-cta .site-download-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.8rem 1.5rem;
+  border: 0;
+  border-radius: 9999px;
+  background: #ebebeb;
+  color: #0f0e0d;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  text-align: center;
+  box-shadow: none;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+#site-download-cta .site-download-cta-btn i {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+#site-download-cta .site-download-cta-btn:hover {
+  background: #ffffff;
+  color: #0f0e0d;
+  transform: translateY(-1px);
+}
+
+#site-download-cta .site-download-cta-btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #site-download-cta .site-download-cta-btn {
+    transition: none;
+  }
+}
+
+/* Seamless join: CTA into footer */
 .site-footer {
   border-top: 1px solid var(--mac-border);
   padding: 3rem 0;
   font-size: 0.875rem;
   color: var(--mac-text-muted);
   background: var(--mac-bg);
+}
+
+#site-download-cta + .site-footer {
+  border-top-color: rgba(255, 255, 255, 0.06);
+  background: #0f0e0d;
 }
 
 .site-footer-inner {

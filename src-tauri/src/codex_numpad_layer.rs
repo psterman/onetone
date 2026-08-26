@@ -1,4 +1,4 @@
-//! Codex Micro numpad physical-key layer — scanCode + extended normalization,
+//! Codex Micro numpad physical-key layer ???scanCode + extended normalization,
 //! conservative hook swallow, and runtime dispatch for Codex foreground only.
 
 use std::collections::HashMap;
@@ -22,7 +22,7 @@ use crate::config::{
 const EVENT_PREFIX: &str = "codexNumpad:";
 const MICRO_EVENT_PREFIX: &str = "codexMicroKey:";
 
-/// Reserved mapping id — overlay-only fallback when no Agent app is matched.
+/// Reserved mapping id ???overlay-only fallback when no Agent app is matched.
 pub const SOFT_PAD_GLOBAL_MAPPING_ID: &str = "soft-pad-global";
 
 pub fn is_soft_pad_global_mapping(m: &MappingEntry) -> bool {
@@ -48,16 +48,19 @@ pub fn default_global_soft_pad() -> CodexMicroPadConfig {
         qoder_status_lights_enabled: true,
         minimax_status_lights_enabled: true,
         copilot_status_lights_enabled: true,
+        copilot_vscode_status_lights_enabled: false,
         gemini_status_lights_enabled: true,
         cline_status_lights_enabled: true,
+        roo_status_lights_enabled: true,
         opencode_status_lights_enabled: true,
         aider_status_lights_enabled: true,
+        windsurf_status_lights_enabled: true,
         keys: Vec::new(),
         ..default_codex_micro_pad()
     }
 }
 
-/// Legacy reserved mapping — migrated into universal baseline on FE load.
+/// Legacy reserved mapping ? migrated into universal baseline on FE load.
 pub fn global_soft_pad_overlay_candidate(
     cfg: &VoiceConfig,
 ) -> Option<(&MappingEntry, &CodexMicroPadConfig)> {
@@ -131,7 +134,7 @@ struct HookGate {
     /// Opt-in: physical main-keyboard arrows may be swallowed when NAV_* has a bound slot.
     capture_physical_arrows: bool,
     software_enhance_enabled: bool,
-    /// Overlay session: JOY NAV rail open — physical arrows only hijacked when true.
+    /// Overlay session: JOY NAV rail open ???physical arrows only hijacked when true.
     joy_nav_panel_open: bool,
     /// Any Soft Pad mapping opted into Claude CLI key inject.
     claude_cli_inject_pref_enabled: bool,
@@ -148,7 +151,7 @@ fn hook_gate() -> &'static Mutex<HookGate> {
 /// Map LL keyboard hook scan + extended to a numpad physical key, if any.
 ///
 /// Dedicated cursor keys share scancodes with numpad 8/2/4/6 but set LLKHF_EXTENDED.
-/// Those must return `None` here so the arrow → NAV_* path can claim them independently.
+/// Those must return `None` here so the arrow ???NAV_* path can claim them independently.
 pub fn normalize_numpad_physical(scan: u16, extended: bool) -> Option<NumpadSourceKey> {
     match scan {
         0x45 => None,
@@ -156,7 +159,7 @@ pub fn normalize_numpad_physical(scan: u16, extended: bool) -> Option<NumpadSour
         0x1C => None,
         0x35 if extended => Some(NumpadSourceKey { scan, extended: true }),
         0x35 if !extended => None,
-        // Numpad 8/2/4/6 (same scans as ↑↓←→). Extended = dedicated arrows → not Soft Pad.
+        // Numpad 8/2/4/6 (same scans as ????????????). Extended = dedicated arrows ???not Soft Pad.
         0x48 | 0x50 | 0x4B | 0x4D if extended => None,
         0x47 | 0x48 | 0x49 | 0x4B | 0x4C | 0x4D | 0x4F | 0x50 | 0x51 | 0x52 | 0x53 => {
             Some(NumpadSourceKey {
@@ -203,7 +206,7 @@ pub fn arrow_nav_micro_key(name: &str) -> Option<&'static str> {
 
 /// True when this main-keyboard arrow may be swallowed into Soft Pad NAV_*.
 /// Requires Soft Pad session + `capturePhysicalArrows` + a bound slot on that NAV_*
-/// (never re-injects the same arrow — empty slot means pass-through).
+/// (never re-injects the same arrow ???empty slot means pass-through).
 pub fn pad_should_capture_arrow(nav_micro_key_id: &str) -> bool {
     if !codex_foreground_for_micro() {
         return false;
@@ -246,7 +249,7 @@ pub fn numpad_mode_allows_fire(micro_key_id: &str) -> bool {
     id == "ENC" || is_overlay_numpad_key(id)
 }
 
-/// Soft-pad digit keys shown only in 数字键模式 (not Codex AG/ACT routes).
+/// Soft-pad digit keys shown only in ???????????(not Codex AG/ACT routes).
 pub fn is_overlay_numpad_key(micro_key_id: &str) -> bool {
     matches!(
         micro_key_id.trim(),
@@ -276,7 +279,7 @@ pub fn lookup_route_by_micro_key(micro_key_id: &str) -> Option<CodexNumpadRouteS
         .cloned()
 }
 
-/// Resolve ENC → summonCodex from config even when `pad.enabled=false` (numpad-mode exception).
+/// Resolve ENC ???summonCodex from config even when `pad.enabled=false` (numpad-mode exception).
 pub fn resolve_enc_summon_route(cfg: &VoiceConfig) -> Option<CodexNumpadRouteSnapshot> {
     for m in cfg.active_mappings() {
         if m.app_target_id.trim() != CODEX_APP_TARGET_ID {
@@ -356,7 +359,7 @@ pub fn is_software_enhance_micro_key(micro_key_id: &str) -> bool {
     )
 }
 
-/// Vendor HID / fttawa Micro hardware — Codex foreground + pad enabled.
+/// Vendor HID / fttawa Micro hardware ???Codex foreground + pad enabled.
 pub fn vendor_micro_should_dispatch(micro_key_id: &str) -> bool {
     if !codex_is_foreground() {
         return false;
@@ -422,7 +425,7 @@ fn codex_is_foreground() -> bool {
 }
 
 /// Public FG check for screen/overlay Micro fire (M2).
-/// Agent FG or overlay HWND FG — not the sticky visibility latch.
+/// Agent FG or overlay HWND FG ???not the sticky visibility latch.
 pub fn codex_foreground_for_micro() -> bool {
     crate::codex_micro_overlay::micro_pad_session_active()
 }
@@ -434,7 +437,7 @@ pub fn hook_should_swallow(source: &NumpadSourceKey) -> bool {
         return false;
     }
     // Match overlay/screen Micro fire: Soft Pad agent FG or Soft Pad overlay FG.
-    // Sticky visibility latch alone must not authorize session (that caused inject-into-self 假死).
+    // Sticky visibility latch alone must not authorize session (that caused inject-into-self ???).
     if !codex_foreground_for_micro() {
         return false;
     }
@@ -572,9 +575,9 @@ fn needs_auto_ready(m: &MappingEntry) -> bool {
     match &m.codex_micro_pad {
         None => true,
         Some(pad) => {
-            // overlay_enabled=false is a durable user choice ("不显示浮窗") — do not
+            // overlay_enabled=false is a durable user choice ("????????) ???do not
             // treat it as "needs seed / reopen". Dismiss uses a session latch instead.
-            // pad.enabled=false is intentional numpad mode — do not auto-re-enable.
+            // pad.enabled=false is intentional numpad mode ???do not auto-re-enable.
             if !pad.enabled {
                 return pad.keys.is_empty();
             }
@@ -595,10 +598,10 @@ fn pad_routes_need_heal(m: &MappingEntry, pad: &CodexMicroPadConfig) -> bool {
             let slot = route.slot_id.trim();
             let icon = route.ui_icon_id.trim();
             let mid = route.micro_key_id.trim();
-            // Icon leftovers heal on set_layout / explicit ensure — not overlay ticks
-            // (need_heal here + save_config under cfg.lock 假死).
+            // Icon leftovers heal on set_layout / explicit ensure ???not overlay ticks
+            // (need_heal here + save_config under cfg.lock ???).
             route.key_role == Some(crate::soft_pad_purpose::SoftPadKeyRole::AgentLane)
-                // Session-lane leftover icons — not Plan/Agent mode capability glyphs.
+                // Session-lane leftover icons ???not Plan/Agent mode capability glyphs.
                 || (mid.starts_with("AG")
                     && matches!(icon, "agent" | "lane" | "claude")
                     && !matches!(slot, "plan" | "switchAgent"))
@@ -606,7 +609,7 @@ fn pad_routes_need_heal(m: &MappingEntry, pad: &CodexMicroPadConfig) -> bool {
         }) {
             return true;
         }
-        // Legacy Plan chord Ctrl+Alt+P → migrate to Ctrl+Alt+Shift+P.
+        // Legacy Plan chord Ctrl+Alt+P ???migrate to Ctrl+Alt+Shift+P.
         if m.agent_bindings.iter().any(|b| {
             b.slot_id.trim().eq_ignore_ascii_case("plan")
                 && b.trigger_type.eq_ignore_ascii_case("key")
@@ -638,7 +641,7 @@ fn pad_routes_need_heal(m: &MappingEntry, pad: &CodexMicroPadConfig) -> bool {
                     )
                     .is_empty();
                 }
-                // Cursor Soft Pad once shipped Codex Ctrl+Shift+D as mic — rewrite to Voice Mode.
+                // Cursor Soft Pad once shipped Codex Ctrl+Shift+D as mic ???rewrite to Voice Mode.
                 cursor_push_to_talk_needs_rewrite(m, slot, chord)
             }
         }
@@ -784,7 +787,7 @@ pub(crate) fn heal_cursor_plan_chord_if_legacy(m: &mut MappingEntry) -> bool {
     heal_slot_key_bindings(m, "plan", "zh-CN")
 }
 
-/// Align with FE `CURSOR_SOFT_PAD_SLOT_IDS` — Codex slash insertOnly never on Cursor Soft Pad.
+/// Align with FE `CURSOR_SOFT_PAD_SLOT_IDS` ???Codex slash insertOnly never on Cursor Soft Pad.
 fn cursor_soft_pad_slot_allowed(slot_id: &str) -> bool {
     matches!(
         slot_id.trim(),
@@ -889,7 +892,7 @@ fn heal_cursor_illegal_soft_pad_slots(m: &mut MappingEntry) -> bool {
         }
         route.slot_id.clear();
         route.enabled = false;
-        // Stock icon for the physical key — avoid leftover slash/capability glyphs.
+        // Stock icon for the physical key ???avoid leftover slash/capability glyphs.
         let id = route.micro_key_id.trim();
         let stock = match id {
             "PLUS" => "plus",
@@ -935,8 +938,8 @@ pub(crate) fn heal_cursor_pad_for_save(m: &mut MappingEntry, locale: &str) -> bo
     if crate::cursor_beginner::heal_cursor_beginner_voice_bindings(m) {
         changed = true;
     }
-    // Only Plan/Agent chords here — do not rebuild scenario bindings for every
-    // pad slot on each quiet save (that 假死'd the Soft Pad keys page).
+    // Only Plan/Agent chords here ???do not rebuild scenario bindings for every
+    // pad slot on each quiet save (that ???'d the Soft Pad keys page).
     for slot in ["plan", "switchAgent"] {
         if heal_slot_key_bindings(m, slot, locale) {
             changed = true;
@@ -1287,8 +1290,8 @@ pub fn ensure_codex_pad_ready_for(
             let pad = m
                 .codex_micro_pad
                 .get_or_insert_with(default_codex_micro_pad);
-            // Do not force pad.enabled=true — numpad mode is a user choice.
-            // Do not force overlay_enabled=true — "不显示浮窗" is a durable setting.
+            // Do not force pad.enabled=true ???numpad mode is a user choice.
+            // Do not force overlay_enabled=true ???"???????? is a durable setting.
             if pad.layout_profile.trim().is_empty() {
                 pad.layout_profile = "standard".into();
                 changed = true;
@@ -1309,8 +1312,8 @@ pub fn ensure_codex_pad_ready_for(
             touched_pad = m.codex_micro_pad.clone();
             touched_bindings = Some(m.agent_bindings.clone());
         }
-        // Never call ensure_composer_mode_keybindings_quiet here — it does disk IO and
-        // callers hold `cfg` (overlay tick / IPC). Cursor keybindings.json lock → 假死.
+        // Never call ensure_composer_mode_keybindings_quiet here ???it does disk IO and
+        // callers hold `cfg` (overlay tick / IPC). Cursor keybindings.json lock ??????.
         break;
     }
 
@@ -1426,7 +1429,7 @@ fn merge_pad_routes(gate: &mut HookGate, mapping: &MappingEntry, pad: &CodexMicr
             mapping.agent_provider_id.clone()
         };
         // Soft Pad / Numpad0 mic: hold Ctrl+Shift+D down until release (historical path).
-        // Tap + focus_then_hotkey pulse re-entered dispatch/FG and caused 循环假死风暴.
+        // Tap + focus_then_hotkey pulse re-entered dispatch/FG and caused ????????????.
         let is_hold = binding.action_id == "startDictation"
             || binding.slot_id.eq_ignore_ascii_case("pushToTalk");
         let snapshot = CodexNumpadRouteSnapshot {
@@ -1492,10 +1495,13 @@ pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
         qoder_status_lights_enabled: false,
         minimax_status_lights_enabled: false,
         copilot_status_lights_enabled: false,
+        copilot_vscode_status_lights_enabled: false,
         gemini_status_lights_enabled: false,
         cline_status_lights_enabled: false,
+        roo_status_lights_enabled: false,
         opencode_status_lights_enabled: false,
         aider_status_lights_enabled: false,
+        windsurf_status_lights_enabled: false,
         ambient_mode: "status".into(),
         ambient_solid_rgb: String::new(),
         ambient_opacity: 100,
@@ -1526,13 +1532,13 @@ pub fn default_codex_micro_pad_routes() -> Vec<CodexMicroPadKeyRoute> {
         route("ACT08", 0x4A, false, "cancel"),
         route("ACT09", 0x4F, false, "newThread"),
         // Soft physical: Numpad 2 / 3 (not on Micro 13 face; fire via scan).
-        // UNDO unbound — not in Codex Soft Pad one-press picker; heal must not restore undo.
+        // UNDO unbound ???not in Codex Soft Pad one-press picker; heal must not restore undo.
         route("UNDO", 0x50, false, ""),
         route("SEARCH", 0x51, false, "quickSearch"),
         route("ACT10", 0x52, false, "pushToTalk"),
-        // Send / confirm → Numpad Enter (region 4 preview; frees 3 for search).
+        // Send / confirm ???Numpad Enter (region 4 preview; frees 3 for search).
         route("ACT12", 0x1C, true, "stopOrSend"),
-        // ENC: vendor HID / overlay only — do not steal physical Numpad 0 (mic).
+        // ENC: vendor HID / overlay only ???do not steal physical Numpad 0 (mic).
         route("ENC", 0, false, "summonCodex"),
         // Right numpad column + decimal (face keys; bindable, no default slot).
         route("PLUS", 0x4E, false, ""),
@@ -1571,7 +1577,7 @@ pub fn heal_stock_mic_on_numpad0(pad: &mut CodexMicroPadConfig) -> bool {
     false
 }
 
-/// Cursor Soft Pad: strip Codex session-lane chrome; seed PLUS/DOT → plan / Agent mode.
+/// Cursor Soft Pad: strip Codex session-lane chrome; seed PLUS/DOT ???plan / Agent mode.
 fn heal_cursor_pad_ag_chrome(m: &mut MappingEntry) -> bool {
     if m.app_target_id.trim() != crate::app_chat_workflow::CURSOR_APP_TARGET_ID {
         return false;
@@ -1590,7 +1596,7 @@ fn heal_cursor_pad_ag_chrome(m: &mut MappingEntry) -> bool {
             changed = true;
         }
         let id = route.micro_key_id.trim();
-        // Empty PLUS/DOT → Cursor Plan / Agent mode (composerMode.* via keybindings + chord).
+        // Empty PLUS/DOT ???Cursor Plan / Agent mode (composerMode.* via keybindings + chord).
         if id == "PLUS" && route.slot_id.trim().is_empty() {
             route.slot_id = "plan".into();
             route.ui_icon_id = "plan".into();
@@ -1699,7 +1705,7 @@ mod tests {
 
     #[test]
     fn dedicated_arrows_not_mapped_as_numpad_digits() {
-        // Main-keyboard ↑↓←→ share scans with numpad 8/2/4/6 but set extended.
+        // Main-keyboard ???????????? share scans with numpad 8/2/4/6 but set extended.
         for scan in [0x48u16, 0x50, 0x4B, 0x4D] {
             assert!(
                 normalize_numpad_physical(scan, true).is_none(),
@@ -1827,7 +1833,7 @@ mod tests {
         cfg.mappings.push(MappingEntry {
             id: "codex-1".into(),
             label: String::new(),
-            group: "默认".into(),
+            group: "???".into(),
             app_target_id: CODEX_APP_TARGET_ID.into(),
             trigger_key: "F1".into(),
             target_key: "RAlt".into(),
@@ -1887,7 +1893,7 @@ mod tests {
         let mut m = MappingEntry {
             id: "codex-heal".into(),
             label: String::new(),
-            group: "默认".into(),
+            group: "???".into(),
             app_target_id: CODEX_APP_TARGET_ID.into(),
             trigger_key: "F1".into(),
             target_key: "RAlt".into(),
@@ -1956,7 +1962,7 @@ mod tests {
         let mut m = MappingEntry {
             id: "cursor-heal-once".into(),
             label: String::new(),
-            group: "默认".into(),
+            group: "???".into(),
             app_target_id: CURSOR_APP_TARGET_ID.into(),
             trigger_key: "F1".into(),
             target_key: "RAlt".into(),
@@ -2036,7 +2042,7 @@ mod tests {
         let m = MappingEntry {
             id: "codex-heal-all".into(),
             label: String::new(),
-            group: "默认".into(),
+            group: "???".into(),
             app_target_id: CODEX_APP_TARGET_ID.into(),
             trigger_key: "F1".into(),
             target_key: "RAlt".into(),
@@ -2112,7 +2118,7 @@ mod tests {
         let mut m = MappingEntry {
             id: "cursor-mode".into(),
             label: String::new(),
-            group: "默认".into(),
+            group: "???".into(),
             app_target_id: CURSOR_APP_TARGET_ID.into(),
             trigger_key: "F1".into(),
             target_key: "RAlt".into(),
@@ -2170,7 +2176,7 @@ mod tests {
         let mut m = MappingEntry {
             id: "cursor-apps".into(),
             label: String::new(),
-            group: "默认".into(),
+            group: "???".into(),
             app_target_id: CURSOR_APP_TARGET_ID.into(),
             trigger_key: "F1".into(),
             target_key: "RAlt".into(),
@@ -2223,7 +2229,7 @@ mod tests {
                 MappingEntry {
                     id: "codex-first".into(),
                     label: String::new(),
-                    group: "默认".into(),
+                    group: "???".into(),
                     app_target_id: CODEX_APP_TARGET_ID.into(),
                     trigger_key: "F1".into(),
                     target_key: "RAlt".into(),
@@ -2259,7 +2265,7 @@ mod tests {
                 MappingEntry {
                     id: "cursor-soft-pad".into(),
                     label: String::new(),
-                    group: "默认".into(),
+                    group: "???".into(),
                     app_target_id: CURSOR_APP_TARGET_ID.into(),
                     trigger_key: "F2".into(),
                     target_key: "RAlt".into(),
@@ -2326,7 +2332,7 @@ mod tests {
             mappings: vec![MappingEntry {
                 id: "cursor-soft-pad".into(),
                 label: String::new(),
-                group: "默认".into(),
+                group: "???".into(),
                 app_target_id: CURSOR_APP_TARGET_ID.into(),
                 trigger_key: "F2".into(),
                 target_key: "RAlt".into(),
@@ -2388,7 +2394,7 @@ mod tests {
             mappings: vec![MappingEntry {
                 id: "codex-ptt-hold".into(),
                 label: String::new(),
-                group: "默认".into(),
+                group: "???".into(),
                 app_target_id: CODEX_APP_TARGET_ID.into(),
                 trigger_key: "F1".into(),
                 target_key: "RAlt".into(),
@@ -2433,14 +2439,14 @@ mod tests {
         );
         assert!(
             route.is_hold,
-            "Soft Pad ACT10 must hold Ctrl+Shift+D until release (tap pulse caused 循环假死)"
+            "Soft Pad ACT10 must hold Ctrl+Shift+D until release (tap pulse caused ???????)"
         );
     }
 
     #[test]
     fn numpad_mode_blocks_all_keys_except_enc() {
         set_joy_nav_panel_open(true);
-        // Empty cache → pad inactive (numpad mode).
+        // Empty cache ???pad inactive (numpad mode).
         *hook_gate().lock().unwrap() = HookGate {
             joy_nav_panel_open: true,
             ..HookGate::default()
@@ -2470,7 +2476,7 @@ mod tests {
         cfg.mappings = vec![MappingEntry {
             id: "codex-arrows".into(),
             label: String::new(),
-            group: "默认".into(),
+            group: "???".into(),
             app_target_id: CODEX_APP_TARGET_ID.into(),
             trigger_key: "F1".into(),
             target_key: "RAlt".into(),
@@ -2507,7 +2513,7 @@ mod tests {
         assert!(pad_mapping_active());
         // Capture depends on Soft Pad session (Codex/overlay FG latch) + pad_active.
         set_joy_nav_panel_open(false);
-        assert!(!pad_should_capture_arrows(), "no Soft Pad session → false");
+        assert!(!pad_should_capture_arrows(), "no Soft Pad session ???false");
         set_joy_nav_panel_open(true);
         assert!(!pad_should_capture_arrows(), "rail open still needs Soft Pad session");
     }
@@ -2519,12 +2525,12 @@ mod tests {
         let mut cfg = VoiceConfig::default();
         let mut pad = default_codex_micro_pad();
         pad.enabled = true;
-        pad.nav_keys_enabled = true; // show column — must NOT capture alone
+        pad.nav_keys_enabled = true; // show column ???must NOT capture alone
         pad.capture_physical_arrows = false;
         cfg.mappings = vec![MappingEntry {
             id: "codex-arrows-capture".into(),
             label: String::new(),
-            group: "默认".into(),
+            group: "???".into(),
             app_target_id: CODEX_APP_TARGET_ID.into(),
             trigger_key: "F1".into(),
             target_key: "RAlt".into(),
@@ -2567,7 +2573,7 @@ mod tests {
 
         if let Some(p) = cfg.mappings[0].codex_micro_pad.as_mut() {
             p.capture_physical_arrows = true;
-            // Still no NAV slot bound → still no capture (avoid re-inject loop).
+            // Still no NAV slot bound ???still no capture (avoid re-inject loop).
         }
         sync_hook_cache(&cfg);
         assert!(
@@ -2594,7 +2600,7 @@ mod tests {
         sync_hook_cache(&cfg);
         assert!(
             pad_should_capture_arrow("NAV_LEFT"),
-            "opt-in + bound NAV_LEFT → capture Left only"
+            "opt-in + bound NAV_LEFT ???capture Left only"
         );
         assert!(
             !pad_should_capture_arrow("NAV_RIGHT"),

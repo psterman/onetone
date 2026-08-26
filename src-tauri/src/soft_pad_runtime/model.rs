@@ -21,14 +21,20 @@ pub enum AgentKind {
     Trae,
     /// ByteDance Trae Code (Trae IDE / TraeCode) — OfficialHook status lamps.
     TraeCode,
+    /// Codeium Windsurf — local activity lamps (no Settings>Hooks UI) + Hub Shortcuts.
+    Windsurf,
     /// Alibaba Qoder IDE/CLI — shell hooks.
     Qoder,
     /// Cline — file hooks (`.cline/hooks` / Documents/Cline/Hooks); no virtual keyboard.
     Cline,
+    /// Roo — file hooks (`.roo/hooks` / Documents/Roo/Hooks); no exclusive FG (like Cline).
+    Roo,
     /// OpenCode — TypeScript plugin (not settings.json hooks).
     OpenCode,
     /// Aider — `--notifications-command` done-only (no running / needs_input).
     Aider,
+    /// VS Code Copilot Agent (desktop) — separate from Copilot CLI / Cloud Agent.
+    CopilotVscode,
 }
 
 impl AgentKind {
@@ -43,10 +49,13 @@ impl AgentKind {
             AgentKind::WorkBuddy => "workbuddy",
             AgentKind::Trae => "trae",
             AgentKind::TraeCode => "traeCode",
+            AgentKind::Windsurf => "windsurf",
             AgentKind::Qoder => "qoder",
             AgentKind::Cline => "cline",
+            AgentKind::Roo => "roo",
             AgentKind::OpenCode => "opencode",
             AgentKind::Aider => "aider",
+            AgentKind::CopilotVscode => "copilotVscode",
         }
     }
 
@@ -57,12 +66,15 @@ impl AgentKind {
             "cursor-chat" => Some(AgentKind::Cursor),
             "minimax-chat" => Some(AgentKind::MiniMax),
             "copilot-cli" => Some(AgentKind::CopilotCli),
+            "copilot-vscode" => Some(AgentKind::CopilotVscode),
             "gemini-cli" => Some(AgentKind::Gemini),
             "workbuddy-chat" | "codebuddy-chat" => Some(AgentKind::WorkBuddy),
             "trae-work" | "trae-chat" | "trae-solo" => Some(AgentKind::Trae),
             "trae-code" => Some(AgentKind::TraeCode),
+            "windsurf-chat" => Some(AgentKind::Windsurf),
             "qoder-chat" => Some(AgentKind::Qoder),
             "cline-chat" => Some(AgentKind::Cline),
+            "roo-chat" => Some(AgentKind::Roo),
             "opencode-chat" => Some(AgentKind::OpenCode),
             "aider-chat" => Some(AgentKind::Aider),
             _ => None,
@@ -76,12 +88,17 @@ impl AgentKind {
             "cursor" => Some(AgentKind::Cursor),
             "minimax" => Some(AgentKind::MiniMax),
             "copilotCli" | "copilotcli" | "copilot_cli" | "copilot-cli" => Some(AgentKind::CopilotCli),
+            "copilotVscode" | "copilotvscode" | "copilot_vscode" | "copilot-vscode" => {
+                Some(AgentKind::CopilotVscode)
+            }
             "gemini" | "gemini-cli" | "gemini_cli" => Some(AgentKind::Gemini),
             "workbuddy" | "codebuddy" => Some(AgentKind::WorkBuddy),
             "trae" | "trae-work" | "trae_work" | "trae-solo" => Some(AgentKind::Trae),
             "traeCode" | "traecode" | "trae-code" | "trae_code" => Some(AgentKind::TraeCode),
+            "windsurf" | "windsurf-chat" => Some(AgentKind::Windsurf),
             "qoder" => Some(AgentKind::Qoder),
             "cline" | "cline-chat" | "cline_cli" => Some(AgentKind::Cline),
+            "roo" | "roo-chat" | "roo_cli" => Some(AgentKind::Roo),
             "opencode" | "opencode-chat" | "open-code" => Some(AgentKind::OpenCode),
             "aider" | "aider-chat" => Some(AgentKind::Aider),
             _ => None,
@@ -95,12 +112,15 @@ impl AgentKind {
             AgentKind::Cursor => "cursor-chat",
             AgentKind::MiniMax => "minimax-chat",
             AgentKind::CopilotCli => "copilot-cli",
+            AgentKind::CopilotVscode => "copilot-vscode",
             AgentKind::Gemini => "gemini-cli",
             AgentKind::WorkBuddy => "workbuddy-chat",
             AgentKind::Trae => "trae-work",
             AgentKind::TraeCode => "trae-code",
+            AgentKind::Windsurf => "windsurf-chat",
             AgentKind::Qoder => "qoder-chat",
             AgentKind::Cline => "cline-chat",
+            AgentKind::Roo => "roo-chat",
             AgentKind::OpenCode => "opencode-chat",
             AgentKind::Aider => "aider-chat",
         }
@@ -113,10 +133,13 @@ impl AgentKind {
             AgentKind::WorkBuddy
                 | AgentKind::Trae
                 | AgentKind::TraeCode
+                | AgentKind::Windsurf
                 | AgentKind::Qoder
                 | AgentKind::CopilotCli
+                | AgentKind::CopilotVscode
                 | AgentKind::Gemini
                 | AgentKind::Cline
+                | AgentKind::Roo
                 | AgentKind::OpenCode
                 | AgentKind::Aider
         )

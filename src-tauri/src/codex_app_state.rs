@@ -107,6 +107,7 @@ fn normalize_source(raw: &str) -> Option<&'static str> {
         "copilot_cli_hook" => Some("copilot_cli_hook"),
         "gemini_hook" => Some("gemini_hook"),
         "cline_hook" => Some("cline_hook"),
+        "roo_hook" => Some("roo_hook"),
         "opencode_hook" => Some("opencode_hook"),
         "aider_hook" => Some("aider_hook"),
         _ => None,

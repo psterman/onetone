@@ -1,5 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
-
+function bootAgentDemo() {
       /* 1. Hero 3D Parallax Tilt */
       const hudWrap = document.getElementById('hudWrap');
       const hudDeck = document.getElementById('hudDeck');
@@ -23,34 +22,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
 
-      /* 2. Full Deck <-> Mini Bar Mode Switcher */
-      const btnModeFull = document.getElementById('btn-mode-full');
-      const btnModeMini = document.getElementById('btn-mode-mini');
-      const viewFullDeck = document.getElementById('view-full-deck');
-      const viewMiniBar = document.getElementById('view-mini-bar');
+      /* 2. Full Deck <-> Mini Bar — auto demo via data-pad-mode */
+      const padDemo = document.getElementById('pad-demo');
       const btnToggleMiniIcon = document.getElementById('btn-toggle-mini-icon');
       const btnToggleFullIcon = document.getElementById('btn-toggle-full-icon');
 
+      function padMode() {
+        return padDemo ? padDemo.getAttribute('data-pad-mode') : 'full';
+      }
       function switchMode(toMini) {
-        if (toMini) {
-          viewFullDeck.classList.add('hidden');
-          viewMiniBar.classList.remove('hidden');
-          
-          btnModeMini.className = "px-4 py-1.5 rounded-full text-xs font-medium text-black bg-white transition-all shadow-md";
-          btnModeFull.className = "px-4 py-1.5 rounded-full text-xs font-medium text-mac-textMuted hover:text-white transition-all";
-        } else {
-          viewMiniBar.classList.add('hidden');
-          viewFullDeck.classList.remove('hidden');
-
-          btnModeFull.className = "px-4 py-1.5 rounded-full text-xs font-medium text-black bg-white transition-all shadow-md";
-          btnModeMini.className = "px-4 py-1.5 rounded-full text-xs font-medium text-mac-textMuted hover:text-white transition-all";
-        }
+        if (!padDemo) return;
+        padDemo.setAttribute('data-pad-mode', toMini ? 'mini' : 'full');
       }
 
-      btnModeFull?.addEventListener('click', () => switchMode(false));
-      btnModeMini?.addEventListener('click', () => switchMode(true));
       btnToggleMiniIcon?.addEventListener('click', () => switchMode(true));
       btnToggleFullIcon?.addEventListener('click', () => switchMode(false));
+
+      if (padDemo) {
+        switchMode(false);
+        window.setInterval(function () {
+          switchMode(padMode() !== 'mini');
+        }, 2500);
+      }
 
       /* 3. Voice Command Simulator Logic */
       const voiceChips = document.querySelectorAll('#voice-chip-group button');
@@ -181,12 +174,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       agentPresetBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-          agentPresetBtns.forEach(b => b.classList.remove('is-active', 'bg-mac-accent/10', 'border-mac-accent/50', 'text-white'));
-          agentPresetBtns.forEach(b => b.classList.add('text-mac-textMuted'));
-          
-          btn.classList.add('is-active', 'bg-mac-accent/10', 'border-mac-accent/50', 'text-white');
-          btn.classList.remove('text-mac-textMuted');
-          
+          agentPresetBtns.forEach(b => b.classList.remove('is-active'));
+          btn.classList.add('is-active');
           activeAgent = btn.dataset.agentPreset;
           updateRemapPanel();
         });
@@ -194,9 +183,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       keyPickerBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-          keyPickerBtns.forEach(b => b.classList.remove('border-mac-accent', 'ring-2', 'ring-mac-accent/50'));
-          btn.classList.add('border-mac-accent', 'ring-2', 'ring-mac-accent/50');
-          
+          keyPickerBtns.forEach(b => b.classList.remove('is-picked'));
+          btn.classList.add('is-picked');
           activeSelectedKey = btn.dataset.pickerKey;
           updateRemapPanel();
         });
@@ -223,4 +211,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 800);
       });
 
-    });
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootAgentDemo);
+} else {
+  bootAgentDemo();
+}

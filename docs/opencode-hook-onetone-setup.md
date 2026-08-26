@@ -34,6 +34,10 @@ POST `source: opencode_hook` 到 `127.0.0.1:8796/api/codex-app/state`。
 
 TUI statusline **不是** Soft Pad 通道。
 
+## Soft Pad Shortcuts
+
+Hub 已提供 **OpenCode** Soft Pad：Shortcuts 聚焦 `opencode.exe` 并派发和弦。天花板：无 Sessions / Resume / multi-lights。
+
 ## 限制
 
-无虚拟键盘；需 Node 可用（插件内 `http.request`）。fail-open。
+需 Node 可用（插件内 `http.request`）。fail-open。

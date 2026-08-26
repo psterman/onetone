@@ -118,6 +118,7 @@ pub fn is_vscode_lineage_app(app_target_id: &str) -> bool {
             | crate::app_chat_workflow::TRAE_APP_TARGET_ID
             | crate::app_chat_workflow::TRAE_CHAT_LEGACY_APP_TARGET_ID
             | crate::app_chat_workflow::TRAE_CODE_APP_TARGET_ID
+            | crate::app_chat_workflow::WINDSURF_APP_TARGET_ID
             | crate::app_chat_workflow::QODER_APP_TARGET_ID
     )
 }
@@ -129,6 +130,7 @@ pub fn default_key_for_scenario(app_target_id: &str, slot_id: &str) -> &'static 
     } else if app == crate::app_chat_workflow::TRAE_APP_TARGET_ID
         || app == crate::app_chat_workflow::TRAE_CHAT_LEGACY_APP_TARGET_ID
         || app == crate::app_chat_workflow::TRAE_CODE_APP_TARGET_ID
+        || app == crate::app_chat_workflow::WINDSURF_APP_TARGET_ID
     {
         default_trae_key_for_slot(slot_id)
     } else if app == crate::app_chat_workflow::QODER_APP_TARGET_ID {

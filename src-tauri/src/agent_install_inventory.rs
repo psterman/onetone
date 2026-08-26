@@ -8,7 +8,7 @@ use crate::app_chat_workflow::{app_launch_capability, AppLaunchCapability};
 use crate::app_identity::{
     is_claude_cli_exe, list_running_apps, CODEX_APP_TARGET_ID, CURSOR_APP_TARGET_ID,
     MINIMAX_APP_TARGET_ID, QODER_APP_TARGET_ID, TRAE_APP_TARGET_ID, TRAE_CODE_APP_TARGET_ID,
-    WORKBUDDY_APP_TARGET_ID,
+    WINDSURF_APP_TARGET_ID, WORKBUDDY_APP_TARGET_ID,
 };
 use crate::config::VoiceConfig;
 use crate::soft_pad_runtime::AgentKind;
@@ -81,6 +81,7 @@ const KINDS: &[AgentKind] = &[
     AgentKind::WorkBuddy,
     AgentKind::Trae,
     AgentKind::TraeCode,
+    AgentKind::Windsurf,
     AgentKind::Qoder,
 ];
 
@@ -150,14 +151,20 @@ fn probe_kind(
             &["Trae"],
             &[".trae/hooks.json", ".trae-cn/hooks.json"],
         ),
+        AgentKind::Windsurf => probe_shell(
+            &mut evidence,
+            WINDSURF_APP_TARGET_ID,
+            &["Windsurf"],
+            &[],
+        ),
         AgentKind::Qoder => probe_shell(
             &mut evidence,
             QODER_APP_TARGET_ID,
             &["Qoder", "QoderCN"],
             &[".qoder/settings.json", ".qoder-cn/settings.json"],
         ),
-        AgentKind::CopilotCli | AgentKind::Gemini | AgentKind::Cline | AgentKind::OpenCode
-        | AgentKind::Aider => {}
+        AgentKind::CopilotCli | AgentKind::CopilotVscode | AgentKind::Gemini | AgentKind::Cline
+        | AgentKind::Roo | AgentKind::OpenCode | AgentKind::Aider => {}
     }
 
     let (presence, confidence) = classify_evidence(&evidence, running);
@@ -342,11 +349,14 @@ fn mapping_flags(cfg: &VoiceConfig, kind: AgentKind) -> (bool, bool) {
             AgentKind::WorkBuddy => pad.workbuddy_status_lights_enabled,
             AgentKind::Trae => pad.trae_status_lights_enabled,
             AgentKind::TraeCode => pad.trae_code_status_lights_enabled,
+            AgentKind::Windsurf => pad.windsurf_status_lights_enabled,
             AgentKind::Qoder => pad.qoder_status_lights_enabled,
             AgentKind::MiniMax => pad.minimax_status_lights_enabled,
             AgentKind::CopilotCli => pad.copilot_status_lights_enabled,
+            AgentKind::CopilotVscode => pad.copilot_vscode_status_lights_enabled,
             AgentKind::Gemini => pad.gemini_status_lights_enabled,
             AgentKind::Cline => pad.cline_status_lights_enabled,
+            AgentKind::Roo => pad.roo_status_lights_enabled,
             AgentKind::OpenCode => pad.opencode_status_lights_enabled,
             AgentKind::Aider => pad.aider_status_lights_enabled,
         };

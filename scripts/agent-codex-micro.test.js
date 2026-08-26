@@ -646,6 +646,15 @@ assert.ok(overlayHtml.indexOf('data-act="drag"') < 0);
 assert.ok(overlayHtml.indexOf('cmd_codex_micro_overlay_start_drag') >= 0);
 assert.ok(overlayHtml.indexOf('isDragBlocked') >= 0);
 assert.ok(overlayHtml.indexOf('cmd_codex_micro_overlay_set_minimized') >= 0);
+assert.ok(overlayHtml.indexOf('data-act="minimize"') >= 0);
+assert.ok(
+  /\[data-act="minimize"\][\s\S]*?contextmenu[\s\S]*?dismiss\(/.test(overlayHtml),
+  'chrome minimize: left click shrinks, right-click closes'
+);
+assert.ok(
+  overlayHtml.indexOf('overlay-chrome__btn--close') < 0,
+  'full chrome uses one minimize btn (no separate close)'
+);
 assert.ok(
   /sync_minimized_for_mapping|resolve_minimized_on_mapping_change|expand_sticky_across_same_mapping/.test(
     fs.readFileSync(path.join(__dirname, '../src-tauri/src/codex_micro_overlay.rs'), 'utf8')
@@ -1277,6 +1286,7 @@ assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?minimax-chat/.test(softPadHubSrc), 'BUIL
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?workbuddy-chat/.test(softPadHubSrc), 'BUILTIN includes workbuddy');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-work/.test(softPadHubSrc), 'BUILTIN includes trae-work');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-code/.test(softPadHubSrc), 'BUILTIN includes trae-code');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?windsurf-chat/.test(softPadHubSrc), 'BUILTIN includes windsurf');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?qoder-chat/.test(softPadHubSrc), 'BUILTIN includes qoder');
 assert.ok(padUiAgentSrc.indexOf("agent: 'copilotCli'") >= 0, 'topbar candidates include copilotCli');
 assert.ok(padUiAgentSrc.indexOf("agent: 'gemini'") >= 0, 'topbar candidates include gemini');
@@ -1287,7 +1297,8 @@ assert.ok(padUiAgentSrc.indexOf("return 'icons/app-target/gemini.png'") >= 0, 'g
 assert.ok(padUiAgentSrc.indexOf('TOPBAR_QUOTA_CANDIDATES') >= 0, 'quota backup list');
 assert.ok(padUiAgentSrc.indexOf("provider: 'openrouter'") >= 0, 'quota includes openrouter');
 assert.ok(softPadHubSrc.indexOf("'copilot-cli': 'copilotCli'") >= 0, 'hub maps copilot-cli');
-assert.ok(!/BUILTIN_SOFT_PAD_APPS[\s\S]{0,400}copilot-cli/.test(softPadHubSrc), 'BUILTIN omits copilot-cli');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]{0,800}copilot-cli/.test(softPadHubSrc), 'BUILTIN includes copilot-cli');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]{0,800}gemini-cli/.test(softPadHubSrc), 'BUILTIN includes gemini-cli');
 assert.ok(softPadHubSrc.indexOf('HUB_KIND_RANK') >= 0 || softPadHubSrc.indexOf('workbuddy: 3') >= 0, 'hub kind rank');
 assert.ok(softPadHubSrc.indexOf('BUILTIN_SOFT_PAD_APPS.map') >= 0, 'scopes from BUILTIN map');
 assert.ok(softPadHubSrc.indexOf('data-scope') >= 0, 'switcher uses data-scope');

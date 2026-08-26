@@ -197,7 +197,9 @@
     var app = String((m && m.appTargetId) || '').trim();
     if (A && A.isVscodeLineageApp) return A.isVscodeLineageApp(app);
     return app === 'cursor-chat' || app === 'workbuddy-chat' ||
-      app === 'trae-work' || app === 'trae-chat' || app === 'trae-code' || app === 'qoder-chat';
+      app === 'trae-work' || app === 'trae-chat' || app === 'trae-code' ||
+      app === 'windsurf-chat' ||
+      app === 'qoder-chat';
   }
 
   function hasVscodePack(m) {

@@ -15,7 +15,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="js/tailwind-config.js"></script>
   <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/shell.css?v=20260826b">
   <link rel="stylesheet" href="css/home.css">
 
 </head>
@@ -58,7 +58,7 @@
     <button type="button" class="rail-dot" data-target="#sec-caps" aria-label="说着更顺"></button>
     <button type="button" class="rail-dot" data-target="#sec-brands" aria-label="品牌墙"></button>
     <button type="button" class="rail-dot" data-target="#sec-quotes" aria-label="评价"></button>
-    <button type="button" class="rail-dot" data-target="#sec-cta" aria-label="下载"></button>
+    <button type="button" class="rail-dot" data-target="#site-download-cta" aria-label="下载"></button>
   </nav>
 <main>
     <!-- =========================================
@@ -72,7 +72,10 @@
         <!-- 左侧文案 -->
         <div class="space-y-6">
           <div class="inline-flex items-center gap-4 px-4 py-2 rounded-full mac-glass text-xs font-mono text-mac-textMuted mb-2">
-            <span class="flex items-center gap-2 text-white"><i class="ph-fill ph-windows-logo"></i> Windows 可下载</span>
+            <a href="download.html" class="flex items-center gap-2 text-white hover:text-mac-accent transition-colors no-underline">
+              <i class="ph-fill ph-windows-logo" aria-hidden="true"></i>
+              <span data-i18n="heroTrust">适用于 Windows 10 / 11</span>
+            </a>
             <span class="w-1 h-1 bg-white/20 rounded-full"></span>
             <span class="flex items-center gap-2 opacity-50"><i class="ph-fill ph-apple-logo"></i> macOS 开发中</span>
           </div>
@@ -83,7 +86,7 @@
           </div>
           <p class="text-lg text-mac-textMuted max-w-md leading-relaxed">按一下侧键就能开麦。Cursor、Claude、Trae……在哪写就在哪说，不用先找麦克风按钮。</p>
           <div class="flex flex-wrap gap-3 pt-2">
-            <a href="download.html" class="nav-cta">我就试试</a>
+            <a href="download.html" class="nav-cta" data-i18n="navDownload">下载</a>
             <a href="quickstart.html" class="text-sm font-medium text-mac-textMuted hover:text-white transition-colors inline-flex items-center gap-1">
               先看看怎么用 <i class="ph-bold ph-arrow-right"></i>
             </a>
@@ -340,48 +343,41 @@
               <a class="home-quote-src" href="https://www.v2ex.com/t/1223673" rel="noopener noreferrer" target="_blank">原文</a>
             </footer>
           </blockquote>
-          <blockquote class="home-quote apple-reveal" style="--d:200" cite="https://chic.pub/">
-            <p lang="zh-CN">「对着 Cursor 说『帮我写一个用户认证模块』，对着 Claude Code 说『重构这段函数』——思路直接变成指令，不再被键盘打断灵感流。说话，是最快的 prompt。」</p>
+          <blockquote class="home-quote apple-reveal" style="--d:200" cite="https://www.v2ex.com/t/1235223">
+            <p lang="zh-CN">「Claude Code 横空出世后，可以直接面向代码交付的结果 vibe，而不是面向编码过程。把程序员从体力敲代码里解放出来，很多 idea 也更容易实现了——所谓提效。」</p>
             <footer>
-              <img class="home-quote-avatar" src="assets/quotes/chic.png" alt="" width="40" height="40">
+              <img class="home-quote-avatar" src="assets/quotes/pursuit.png" alt="" width="40" height="40">
               <span class="home-quote-meta">
-                <span class="home-quote-by">轻快语音</span>
-                <span class="home-quote-role">chic.pub · Vibe Coding</span>
+                <span class="home-quote-by">pursuit</span>
+                <span class="home-quote-role">V2EX · Vibe Coding</span>
               </span>
-              <a class="home-quote-src" href="https://chic.pub/" rel="noopener noreferrer" target="_blank">原文</a>
+              <a class="home-quote-src" href="https://www.v2ex.com/t/1235223" rel="noopener noreferrer" target="_blank">原文</a>
             </footer>
           </blockquote>
-          <blockquote class="home-quote apple-reveal" style="--d:240" cite="https://cn-sec.com/archives/4208263.html">
-            <p lang="zh-CN">「全程我都没写过一行代码，而是复制粘贴错误给 Cursor，全程完全就是点击 Accept 和 Run。而这次的『行为艺术』就是 Vibe Coding——如果较真，当时我还缺一个语音输入。」</p>
+          <blockquote class="home-quote apple-reveal" style="--d:240" cite="https://www.v2ex.com/t/1235223#reply1">
+            <p lang="zh-CN">「vibe coding 对于 Demo 和功能 POC 快速验证是好的。」</p>
             <footer>
-              <img class="home-quote-avatar" src="assets/quotes/heige.png" alt="" width="40" height="40">
+              <img class="home-quote-avatar" src="assets/quotes/lovedebug.png" alt="" width="40" height="40">
               <span class="home-quote-meta">
-                <span class="home-quote-by">黑哥虾撩</span>
-                <span class="home-quote-role">微信公众号 · 转载见 CN-SEC</span>
+                <span class="home-quote-by">lovedebug</span>
+                <span class="home-quote-role">V2EX · 回复 pursuit</span>
               </span>
-              <a class="home-quote-src" href="https://cn-sec.com/archives/4208263.html" rel="noopener noreferrer" target="_blank">原文</a>
+              <a class="home-quote-src" href="https://www.v2ex.com/t/1235223#reply1" rel="noopener noreferrer" target="_blank">原文</a>
             </footer>
           </blockquote>
-        </div>
-      </div>
-    </section>
-
-    <!-- =========================================
-         SECTION 6: 下载提示卡
-         ========================================= -->
-    <section class="story-section home-cta-section bg-mac-bg" id="sec-cta" data-section="5">
-      <div class="max-w-7xl mx-auto px-6">
-        <div class="home-cta-banner apple-reveal" style="--d:0">
-          <h2 data-i18n="ctaBannerTitle">周报可以拖，开麦不必</h2>
-          <p data-i18n="ctaBannerDesc">不到一分钟设置，把「想说」变成「已经说了」。</p>
-          <div class="home-cta-actions">
-            <a href="download.html" class="home-cta-btn" data-i18n="ctaBannerBtn">下载安装包</a>
-            <span class="home-cta-meta" data-i18n="ctaBannerMeta">v1.0.0 | Windows 10/11</span>
-          </div>
         </div>
       </div>
     </section>
   </main>
+<section id="site-download-cta" class="site-download-cta" aria-label="Download" data-section="5">
+  <div class="site-download-cta-inner">
+    <h2 class="site-download-cta-title" data-i18n="ctaBannerTitle">立即试用一声。</h2>
+    <a class="site-download-cta-btn" href="download.html">
+      <span data-i18n="ctaBannerBtn">下载 Windows 版本</span>
+      <i class="ph ph-download-simple" aria-hidden="true"></i>
+    </a>
+  </div>
+</section>
 <footer class="site-footer">
   <div class="site-footer-inner">
     <span data-i18n="footerCopy">© 2026 一声 OneTone</span>

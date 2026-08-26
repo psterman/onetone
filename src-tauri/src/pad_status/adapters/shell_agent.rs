@@ -19,6 +19,7 @@ pub fn agent_kind_from_hook_source(source: &str) -> Option<AgentKind> {
         "copilot_cli_hook" => Some(AgentKind::CopilotCli),
         "gemini_hook" => Some(AgentKind::Gemini),
         "cline_hook" => Some(AgentKind::Cline),
+        "roo_hook" => Some(AgentKind::Roo),
         "opencode_hook" => Some(AgentKind::OpenCode),
         "aider_hook" => Some(AgentKind::Aider),
         _ => None,

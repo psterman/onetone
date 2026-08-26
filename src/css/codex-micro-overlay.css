@@ -111,6 +111,9 @@ body {
 }
 
 .overlay-chrome__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 24px;
   height: 24px;
   border: none;
@@ -118,10 +121,11 @@ body {
   background: rgba(235, 240, 246, 0.58);
   color: #687687;
   font-size: 14px;
-  line-height: 24px;
+  line-height: 1;
   padding: 0;
   backdrop-filter: blur(6px);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  cursor: pointer;
 }
 
 .overlay-chrome__btn:hover {
@@ -129,9 +133,8 @@ body {
   color: #263241;
 }
 
-.overlay-chrome__btn--close:hover {
-  background: rgba(255, 216, 216, 0.92);
-  color: #a3231c;
+.overlay-chrome__btn svg {
+  display: block;
 }
 
 .overlay-body {

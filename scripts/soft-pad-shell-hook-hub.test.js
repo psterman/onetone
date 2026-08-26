@@ -26,21 +26,21 @@ assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?minimax-chat/.test(hubSrc), 'BUILTIN inc
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?workbuddy-chat/.test(hubSrc), 'BUILTIN includes workbuddy');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-work/.test(hubSrc), 'BUILTIN includes trae-work');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?trae-code/.test(hubSrc), 'BUILTIN includes trae-code');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?windsurf-chat/.test(hubSrc), 'BUILTIN includes windsurf');
 assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?qoder-chat/.test(hubSrc), 'BUILTIN includes qoder');
 assert.ok(hubSrc.indexOf('HUB_KIND_RANK') >= 0, 'hub kind rank');
 assert.ok(
-  /minimax:\s*3[\s\S]*?workbuddy:\s*4[\s\S]*?trae:\s*5[\s\S]*?traeCode:\s*6[\s\S]*?qoder:\s*7/.test(hubSrc) ||
+  /minimax:\s*3[\s\S]*?workbuddy:\s*4[\s\S]*?trae:\s*5[\s\S]*?traeCode:\s*6[\s\S]*?windsurf:\s*7[\s\S]*?qoder:\s*8/.test(hubSrc) ||
     hubSrc.indexOf('minimax: 3') >= 0,
-  'order after cursor: minimax → workbuddy → trae → traeCode → qoder'
+  'order after cursor: minimax → workbuddy → trae → traeCode → windsurf → qoder'
 );
 assert.ok(hubSrc.indexOf('BUILTIN_SOFT_PAD_APPS.map') >= 0, 'scopes from BUILTIN map');
 assert.ok(hubSrc.indexOf('data-scope') >= 0, 'switcher uses data-scope');
 assert.ok(hubSrc.indexOf('data-lane-pin') < 0, 'no temporary pin chips');
 assert.ok(hubSrc.indexOf('data-lane-follow') < 0, 'no follow chip');
 assert.ok(
-  runtimeCmd.indexOf('set_follow_pin(None)') >= 0 &&
-    /cmd_soft_pad_set_follow[\s\S]*?set_follow_pin\(None\)/.test(runtimeCmd),
-  'set_follow always clears pin'
+  /cmd_soft_pad_set_follow[\s\S]*?set_follow_pin\(kind\)/.test(runtimeCmd),
+  'set_follow pins lane kind (None → Auto)'
 );
 var workflowIsland = fs.readFileSync(
   path.join(root, 'src-islands/islands/soft-pad-workflow-island.tsx'),
@@ -91,13 +91,15 @@ assert.ok(presetsSrc.indexOf("'workbuddy-chat'") >= 0);
 assert.ok(presetsSrc.indexOf("'trae-work'") >= 0);
 assert.ok(presetsSrc.indexOf("'trae-code'") >= 0);
 assert.ok(presetsSrc.indexOf("'trae-chat'") >= 0, 'legacy trae-chat alias kept');
+assert.ok(presetsSrc.indexOf("'windsurf-chat'") >= 0);
 assert.ok(presetsSrc.indexOf("'qoder-chat'") >= 0);
 assert.ok(presetsSrc.indexOf('icons/app-target/workbuddy.png') >= 0);
 assert.ok(presetsSrc.indexOf('icons/app-target/trae.png') >= 0);
 assert.ok(presetsSrc.indexOf('icons/app-target/trae-code.png') >= 0);
+assert.ok(presetsSrc.indexOf('icons/app-target/windsurf.png') >= 0);
 assert.ok(presetsSrc.indexOf('icons/app-target/qoder.png') >= 0);
 
-['workbuddy', 'trae', 'qoder'].forEach(function (id) {
+['workbuddy', 'trae', 'windsurf', 'qoder'].forEach(function (id) {
   assert.ok(fs.existsSync(path.join(root, 'src/icons/app-target/' + id + '.png')), id + '.png');
   assert.ok(fs.existsSync(path.join(root, 'src/icons/app-target/' + id + '.svg')), id + '.svg');
 });
@@ -109,8 +111,10 @@ assert.ok(
 );
 
 assert.ok(padUiSrc.indexOf('workbuddyStatusLightsEnabled') >= 0, 'pad ui shell light flags');
+assert.ok(padUiSrc.indexOf('windsurfStatusLightsEnabled') >= 0, 'pad ui windsurf light flag');
 assert.ok(padUiSrc.indexOf('AGENT_LIGHT_SPECS') >= 0, 'agent light rows');
 assert.ok(padUiSrc.indexOf("agent: 'workbuddy'") >= 0);
+assert.ok(padUiSrc.indexOf("agent: 'windsurf'") >= 0, 'topbar includes windsurf');
 assert.ok(padUiSrc.indexOf("agent: 'copilotCli'") >= 0, 'topbar includes copilotCli');
 assert.ok(padUiSrc.indexOf("agent: 'gemini'") >= 0, 'topbar includes gemini');
 assert.ok(padUiSrc.indexOf('copilotStatusLightsEnabled') >= 0, 'copilot light flag');
@@ -125,8 +129,10 @@ assert.ok(padUiSrc.indexOf('cmd_shell_agent_hook_install_confirm') >= 0, 'shell 
 assert.ok(overlayHtml.indexOf('data-agent="workbuddy"') >= 0, 'overlay workbuddy chip');
 assert.ok(overlayHtml.indexOf('data-agent="trae"') >= 0, 'overlay trae Work chip');
 assert.ok(overlayHtml.indexOf('data-agent="traeCode"') >= 0, 'overlay trae Code chip');
+assert.ok(overlayHtml.indexOf('data-agent="windsurf"') >= 0, 'overlay windsurf chip');
 assert.ok(panelSrc.indexOf('traecode: true') >= 0 || panelSrc.indexOf('traecode:true') >= 0, 'Hook panel allows traeCode');
 assert.ok(!/SHELL_KINDS\s*=\s*\{[^}]*\btrae:\s*true/.test(panelSrc), 'Hook panel does not install for Trae Work');
+assert.ok(!/SHELL_KINDS\s*=\s*\{[^}]*\bwindsurf:\s*true/.test(panelSrc), 'Hook panel does not install for Windsurf');
 assert.ok(fs.existsSync(path.join(root, 'src/icons/app-target/trae-code.png')), 'trae-code.png');
 assert.ok(overlayHtml.indexOf('data-agent="qoder"') >= 0, 'overlay qoder chip');
 assert.ok(overlayHtml.indexOf('data-agent="copilotCli"') >= 0, 'overlay copilot chip');
@@ -140,6 +146,7 @@ assert.ok(runtimeCmd.indexOf('cline_status_lights_enabled') >= 0, 'ipc persists 
 assert.ok(runtimeCmd.indexOf('opencode_status_lights_enabled') >= 0, 'ipc persists opencode lights');
 assert.ok(runtimeCmd.indexOf('aider_status_lights_enabled') >= 0, 'ipc persists aider lights');
 assert.ok(runtimeCmd.indexOf('workbuddy_status_lights_enabled') >= 0, 'ipc persists shell lights');
+assert.ok(runtimeCmd.indexOf('windsurf_status_lights_enabled') >= 0, 'ipc persists windsurf lights');
 
 assert.ok(presetsSrc.indexOf("'copilot-cli'") >= 0, 'preset copilot-cli');
 assert.ok(presetsSrc.indexOf("'gemini-cli'") >= 0, 'preset gemini-cli');
@@ -161,16 +168,16 @@ assert.ok(geminiSvg.indexOf('<text') < 0 && !/>G<\/text>/.test(geminiSvg),
   var svg = fs.readFileSync(path.join(root, 'src/icons/app-target/' + stem + '.svg'), 'utf8');
   assert.ok(svg.indexOf('<text') < 0, stem + '.svg is a mark, not initials');
 });
-assert.ok(!/WORKFLOW_APP_TARGET_IDS[\s\S]*?copilot-cli/.test(presetsSrc.split('var PRESETS')[0]),
-  'copilot-cli not a workflow keyboard target');
-assert.ok(!/WORKFLOW_APP_TARGET_IDS[\s\S]*?gemini-cli/.test(presetsSrc.split('var PRESETS')[0]),
-  'gemini-cli not a workflow keyboard target');
-assert.ok(!/WORKFLOW_APP_TARGET_IDS[\s\S]*?cline-chat/.test(presetsSrc.split('var PRESETS')[0]),
-  'cline-chat not a workflow keyboard target');
-assert.ok(!/WORKFLOW_APP_TARGET_IDS[\s\S]*?opencode-chat/.test(presetsSrc.split('var PRESETS')[0]),
-  'opencode-chat not a workflow keyboard target');
-assert.ok(!/WORKFLOW_APP_TARGET_IDS[\s\S]*?aider-chat/.test(presetsSrc.split('var PRESETS')[0]),
-  'aider-chat not a workflow keyboard target');
+assert.ok(/WORKFLOW_APP_TARGET_IDS[\s\S]*?copilot-cli/.test(presetsSrc.split('var PRESETS')[0]),
+  'copilot-cli is a workflow keyboard target');
+assert.ok(/WORKFLOW_APP_TARGET_IDS[\s\S]*?gemini-cli/.test(presetsSrc.split('var PRESETS')[0]),
+  'gemini-cli is a workflow keyboard target');
+assert.ok(/WORKFLOW_APP_TARGET_IDS[\s\S]*?cline-chat/.test(presetsSrc.split('var PRESETS')[0]),
+  'cline-chat is a workflow keyboard target');
+assert.ok(/WORKFLOW_APP_TARGET_IDS[\s\S]*?opencode-chat/.test(presetsSrc.split('var PRESETS')[0]),
+  'opencode-chat is a workflow keyboard target');
+assert.ok(/WORKFLOW_APP_TARGET_IDS[\s\S]*?aider-chat/.test(presetsSrc.split('var PRESETS')[0]),
+  'aider-chat is a workflow keyboard target');
 
 var pickerSrc = fs.readFileSync(path.join(root, 'src/js/features/mapping/app-behavior-rules.js'), 'utf8');
 assert.ok(pickerSrc.indexOf("p.id!=='minimax-chat'") < 0, 'topbar picker no longer hides MiniMax');
@@ -180,9 +187,13 @@ assert.ok(hubSrc.indexOf("'gemini-cli': 'gemini'") >= 0, 'hub kindForAppId gemin
 assert.ok(hubSrc.indexOf("'cline-chat': 'cline'") >= 0, 'hub kindForAppId cline-chat');
 assert.ok(hubSrc.indexOf("'opencode-chat': 'opencode'") >= 0, 'hub kindForAppId opencode-chat');
 assert.ok(hubSrc.indexOf("'aider-chat': 'aider'") >= 0, 'hub kindForAppId aider-chat');
-assert.ok(!/BUILTIN_SOFT_PAD_APPS[\s\S]*?copilot-cli/.test(hubSrc), 'BUILTIN omits copilot keyboard scope');
-assert.ok(!/BUILTIN_SOFT_PAD_APPS[\s\S]*?gemini-cli/.test(hubSrc), 'BUILTIN omits gemini keyboard scope');
-assert.ok(!/BUILTIN_SOFT_PAD_APPS[\s\S]*?cline-chat/.test(hubSrc), 'BUILTIN omits cline keyboard scope');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?copilot-cli/.test(hubSrc), 'BUILTIN includes copilot keyboard scope');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?copilot-vscode/.test(hubSrc), 'BUILTIN includes copilot-vscode keyboard scope');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?gemini-cli/.test(hubSrc), 'BUILTIN includes gemini keyboard scope');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?cline-chat/.test(hubSrc), 'BUILTIN includes cline keyboard scope');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?roo-chat/.test(hubSrc), 'BUILTIN includes roo keyboard scope');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?opencode-chat/.test(hubSrc), 'BUILTIN includes opencode keyboard scope');
+assert.ok(/BUILTIN_SOFT_PAD_APPS[\s\S]*?aider-chat/.test(hubSrc), 'BUILTIN includes aider keyboard scope');
 
 assert.ok(padUiSrc.indexOf('TOPBAR_QUOTA_CANDIDATES') >= 0, 'quota backup candidates');
 assert.ok(padUiSrc.indexOf("provider: 'openrouter'") >= 0, 'quota openrouter');

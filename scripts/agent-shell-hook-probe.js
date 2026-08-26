@@ -5,7 +5,7 @@
  * Shared Soft Pad probe for WorkBuddy / Trae / Qoder shell hooks.
  * Fail-open, stdout empty. No Claude approval polling.
  *
- * Usage: node agent-shell-hook-probe.js --source workbuddy|trae_code|qoder|copilot_cli|gemini|cline|aider [--event …] [--onetone-hook-id …]
+ * Usage: node agent-shell-hook-probe.js --source workbuddy|trae_code|qoder|copilot_cli|gemini|cline|roo|aider [--event …] [--onetone-hook-id …]
  */
 
 var fs = require('fs');
@@ -24,6 +24,7 @@ var ALLOWED = {
   copilot_cli: true,
   gemini: true,
   cline: true,
+  roo: true,
   aider: true
 };
 

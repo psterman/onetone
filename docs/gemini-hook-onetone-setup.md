@@ -24,6 +24,10 @@ Marker：`--onetone-hook-id gemini-activity-v1`。
 
 与 Claude 共用事件→状态映射（锁测在 `shell_agent`）。无多灯。
 
+## Soft Pad Shortcuts
+
+Hub 已提供 **Gemini CLI** Soft Pad（WorkBuddy 级）：Shortcuts 聚焦 `gemini.exe` / 终端宿主并派发和弦。天花板：无 Sessions / Resume / multi-lights。
+
 ## IDE mid-session（实测）
 
 社区与官方文档表明 hooks 主要服务 **CLI**（`settings.json`）。本仓库验收以 CLI 为准。

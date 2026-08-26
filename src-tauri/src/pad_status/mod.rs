@@ -58,6 +58,7 @@ pub fn ingest_codex_payload(payload: &CodexAppStatePayload) -> PadStatus {
         "copilot_cli_hook" => Some(crate::soft_pad_runtime::AgentKind::CopilotCli),
         "gemini_hook" => Some(crate::soft_pad_runtime::AgentKind::Gemini),
         "cline_hook" => Some(crate::soft_pad_runtime::AgentKind::Cline),
+        "roo_hook" => Some(crate::soft_pad_runtime::AgentKind::Roo),
         "opencode_hook" => Some(crate::soft_pad_runtime::AgentKind::OpenCode),
         "aider_hook" => Some(crate::soft_pad_runtime::AgentKind::Aider),
         _ => None,

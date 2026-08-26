@@ -138,22 +138,19 @@ pub fn descriptor(kind: AgentKind) -> AgentDescriptor {
         AgentKind::CopilotCli => AgentDescriptor {
             kind,
             app_target_id: "copilot-cli",
-            windows_process_hints: &[],
+            windows_process_hints: &["copilot.exe"],
             macos_bundle_ids: &[],
-            capabilities: AgentCapabilities {
-                can_focus: false,
-                can_send_chord: false,
-                can_observe_lifecycle: true,
-                can_observe_needs_input: true,
-                can_observe_session_lanes: false,
-                can_focus_live_session: false,
-                can_resume_session: false,
-                can_open_exact_app_conversation: false,
-                can_multi_agent_lights: false,
-                can_invoke_internal_actions: false,
-                official_hid: false,
-            },
-            default_face_id: "copilot-cli-v1",
+            capabilities: shell_hook_capabilities(),
+            default_face_id: "copilot-cli-chord-v1",
+        },
+        AgentKind::CopilotVscode => AgentDescriptor {
+            kind,
+            app_target_id: "copilot-vscode",
+            // Host is VS Code — Shortcuts focus only (no exclusive FG steal).
+            windows_process_hints: &["Code.exe"],
+            macos_bundle_ids: &[],
+            capabilities: shell_hook_capabilities(),
+            default_face_id: "copilot-vscode-chord-v1",
         },
         AgentKind::Gemini => AgentDescriptor {
             kind,
@@ -161,7 +158,7 @@ pub fn descriptor(kind: AgentKind) -> AgentDescriptor {
             windows_process_hints: &["gemini.exe"],
             macos_bundle_ids: &[],
             capabilities: shell_hook_capabilities(),
-            default_face_id: "gemini-cli-v1",
+            default_face_id: "gemini-chord-v1",
         },
         AgentKind::WorkBuddy => AgentDescriptor {
             kind,
@@ -192,6 +189,14 @@ pub fn descriptor(kind: AgentKind) -> AgentDescriptor {
             capabilities: shell_hook_capabilities(),
             default_face_id: "trae-code-chord-v1",
         },
+        AgentKind::Windsurf => AgentDescriptor {
+            kind,
+            app_target_id: "windsurf-chat",
+            windows_process_hints: &["Windsurf.exe", "windsurf.exe"],
+            macos_bundle_ids: &[],
+            capabilities: shell_hook_capabilities(),
+            default_face_id: "windsurf-chord-v1",
+        },
         AgentKind::Qoder => AgentDescriptor {
             kind,
             app_target_id: "qoder-chat",
@@ -203,51 +208,37 @@ pub fn descriptor(kind: AgentKind) -> AgentDescriptor {
         AgentKind::Cline => AgentDescriptor {
             kind,
             app_target_id: "cline-chat",
-            windows_process_hints: &[],
+            windows_process_hints: &["Code.exe", "Cursor.exe"],
             macos_bundle_ids: &[],
-            capabilities: AgentCapabilities {
-                can_focus: false,
-                can_send_chord: false,
-                can_observe_lifecycle: true,
-                can_observe_needs_input: true,
-                can_observe_session_lanes: false,
-                can_focus_live_session: false,
-                can_resume_session: false,
-                can_open_exact_app_conversation: false,
-                can_multi_agent_lights: false,
-                can_invoke_internal_actions: false,
-                official_hid: false,
-            },
-            default_face_id: "cline-v1",
+            capabilities: shell_hook_capabilities(),
+            default_face_id: "cline-chord-v1",
+        },
+        AgentKind::Roo => AgentDescriptor {
+            kind,
+            app_target_id: "roo-chat",
+            // Like Cline: host is VS Code/Cursor — hints for Shortcuts focus only (no exclusive FG).
+            windows_process_hints: &["Code.exe", "Cursor.exe"],
+            macos_bundle_ids: &[],
+            capabilities: shell_hook_capabilities(),
+            default_face_id: "roo-chord-v1",
         },
         AgentKind::OpenCode => AgentDescriptor {
             kind,
             app_target_id: "opencode-chat",
-            windows_process_hints: &[],
+            windows_process_hints: &["opencode.exe"],
             macos_bundle_ids: &[],
-            capabilities: AgentCapabilities {
-                can_focus: false,
-                can_send_chord: false,
-                can_observe_lifecycle: true,
-                can_observe_needs_input: true,
-                can_observe_session_lanes: false,
-                can_focus_live_session: false,
-                can_resume_session: false,
-                can_open_exact_app_conversation: false,
-                can_multi_agent_lights: false,
-                can_invoke_internal_actions: false,
-                official_hid: false,
-            },
-            default_face_id: "opencode-v1",
+            capabilities: shell_hook_capabilities(),
+            default_face_id: "opencode-chord-v1",
         },
         AgentKind::Aider => AgentDescriptor {
             kind,
             app_target_id: "aider-chat",
-            windows_process_hints: &[],
+            windows_process_hints: &["aider.exe"],
             macos_bundle_ids: &[],
+            // Done-only lifecycle ceiling: no needs_input observation.
             capabilities: AgentCapabilities {
-                can_focus: false,
-                can_send_chord: false,
+                can_focus: true,
+                can_send_chord: true,
                 can_observe_lifecycle: true,
                 can_observe_needs_input: false,
                 can_observe_session_lanes: false,
@@ -258,7 +249,7 @@ pub fn descriptor(kind: AgentKind) -> AgentDescriptor {
                 can_invoke_internal_actions: false,
                 official_hid: false,
             },
-            default_face_id: "aider-v1",
+            default_face_id: "aider-chord-v1",
         },
     }
 }
@@ -364,32 +355,56 @@ pub fn pad_face(face_id: &str) -> Option<PadFace> {
             agent_kind: AgentKind::TraeCode,
             required: shell_hook_capabilities(),
         }),
+        "windsurf-chord-v1" => Some(PadFace {
+            face_id: "windsurf-chord-v1",
+            version: 1,
+            agent_kind: AgentKind::Windsurf,
+            required: shell_hook_capabilities(),
+        }),
         "qoder-chord-v1" => Some(PadFace {
             face_id: "qoder-chord-v1",
             version: 1,
             agent_kind: AgentKind::Qoder,
             required: shell_hook_capabilities(),
         }),
-        "gemini-cli-v1" => Some(PadFace {
-            face_id: "gemini-cli-v1",
+        "gemini-chord-v1" | "gemini-cli-v1" => Some(PadFace {
+            face_id: "gemini-chord-v1",
             version: 1,
             agent_kind: AgentKind::Gemini,
             required: shell_hook_capabilities(),
         }),
-        "cline-v1" => Some(PadFace {
-            face_id: "cline-v1",
+        "copilot-cli-chord-v1" | "copilot-cli-v1" => Some(PadFace {
+            face_id: "copilot-cli-chord-v1",
+            version: 1,
+            agent_kind: AgentKind::CopilotCli,
+            required: shell_hook_capabilities(),
+        }),
+        "copilot-vscode-chord-v1" => Some(PadFace {
+            face_id: "copilot-vscode-chord-v1",
+            version: 1,
+            agent_kind: AgentKind::CopilotVscode,
+            required: shell_hook_capabilities(),
+        }),
+        "cline-chord-v1" | "cline-v1" => Some(PadFace {
+            face_id: "cline-chord-v1",
             version: 1,
             agent_kind: AgentKind::Cline,
-            required: descriptor(AgentKind::Cline).capabilities,
+            required: shell_hook_capabilities(),
         }),
-        "opencode-v1" => Some(PadFace {
-            face_id: "opencode-v1",
+        "roo-chord-v1" | "roo-v1" => Some(PadFace {
+            face_id: "roo-chord-v1",
+            version: 1,
+            agent_kind: AgentKind::Roo,
+            required: shell_hook_capabilities(),
+        }),
+        "opencode-chord-v1" | "opencode-v1" => Some(PadFace {
+            face_id: "opencode-chord-v1",
             version: 1,
             agent_kind: AgentKind::OpenCode,
-            required: descriptor(AgentKind::OpenCode).capabilities,
+            required: shell_hook_capabilities(),
         }),
-        "aider-v1" => Some(PadFace {
-            face_id: "aider-v1",
+        "aider-chord-v1" | "aider-v1" => Some(PadFace {
+            face_id: "aider-chord-v1",
             version: 1,
             agent_kind: AgentKind::Aider,
             required: descriptor(AgentKind::Aider).capabilities,
@@ -512,8 +527,19 @@ mod tests {
     }
 
     #[test]
-    fn copilot_cli_not_desktop_dispatch() {
-        let r = mapping_dispatch_ready(true, true, "copilot-cli", "copilotCli", None);
-        assert!(r.is_none());
+    fn shell_hook_agents_desktop_dispatch() {
+        for (app, provider, kind) in [
+            ("copilot-cli", "copilotCli", AgentKind::CopilotCli),
+            ("gemini-cli", "gemini", AgentKind::Gemini),
+            ("cline-chat", "cline", AgentKind::Cline),
+            ("roo-chat", "roo", AgentKind::Roo),
+            ("opencode-chat", "opencode", AgentKind::OpenCode),
+            ("aider-chat", "aider", AgentKind::Aider),
+            ("windsurf-chat", "windsurf", AgentKind::Windsurf),
+        ] {
+            let r = mapping_dispatch_ready(true, true, app, provider, None);
+            assert!(r.is_some(), "{app} should dispatch");
+            assert_eq!(r.unwrap().0, kind);
+        }
     }
 }

@@ -34,6 +34,10 @@
             <img src="icons/app-target/copilot.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
           </span>
+          <span class="overlay-mini__agent" role="listitem" data-agent="copilotVscode" data-status="idle" data-placeholder="1" aria-label="Copilot VS Code：占位" hidden>
+            <img src="icons/app-target/copilot.png" alt="" aria-hidden="true">
+            <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
+          </span>
           <span class="overlay-mini__agent" role="listitem" data-agent="gemini" data-status="idle" data-placeholder="1" aria-label="Gemini：占位" hidden>
             <img src="icons/app-target/gemini.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
@@ -54,12 +58,20 @@
             <img src="icons/app-target/trae-code.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
           </span>
+          <span class="overlay-mini__agent" role="listitem" data-agent="windsurf" data-status="idle" aria-label="Windsurf：空闲" hidden>
+            <img src="icons/app-target/windsurf.png" alt="" aria-hidden="true">
+            <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
+          </span>
           <span class="overlay-mini__agent" role="listitem" data-agent="qoder" data-status="idle" aria-label="Qoder：空闲" hidden>
             <img src="icons/app-target/qoder.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
           </span>
           <span class="overlay-mini__agent" role="listitem" data-agent="cline" data-status="idle" data-placeholder="1" aria-label="Cline：占位" hidden>
             <img src="icons/app-target/cline.png" alt="" aria-hidden="true">
+            <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
+          </span>
+          <span class="overlay-mini__agent" role="listitem" data-agent="roo" data-status="idle" data-placeholder="1" aria-label="Roo：占位" hidden>
+            <img src="icons/app-target/roo.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
           </span>
           <span class="overlay-mini__agent" role="listitem" data-agent="opencode" data-status="idle" data-placeholder="1" aria-label="OpenCode：占位" hidden>
@@ -99,8 +111,11 @@
 
       <div class="overlay-full" id="overlayFull">
         <header class="overlay-chrome">
-          <button type="button" class="overlay-chrome__btn" data-act="minimize" title="最小化" aria-label="最小化">—</button>
-          <button type="button" class="overlay-chrome__btn overlay-chrome__btn--close" data-act="close" title="关闭" aria-label="关闭">×</button>
+          <button type="button" class="overlay-chrome__btn" data-act="minimize" title="缩小 · 右键关闭" aria-label="缩小，右键关闭">
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+              <path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M2.5 6h7"/>
+            </svg>
+          </button>
         </header>
         <div class="overlay-body" id="overlayBody">
           <div class="overlay-pad-stack">
@@ -124,6 +139,10 @@
                     <img src="icons/app-target/copilot.png" alt="" aria-hidden="true">
                     <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
                   </button>
+                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="copilotVscode" data-status="idle" data-placeholder="1" aria-pressed="false" aria-label="Copilot VS Code" title="Copilot VS Code" hidden>
+                    <img src="icons/app-target/copilot.png" alt="" aria-hidden="true">
+                    <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
+                  </button>
                   <button type="button" class="soft-pad-agent-bar__chip" data-agent="gemini" data-status="idle" data-placeholder="1" aria-pressed="false" aria-label="Gemini" title="Gemini" hidden>
                     <img src="icons/app-target/gemini.png" alt="" aria-hidden="true">
                     <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
@@ -144,12 +163,20 @@
                     <img src="icons/app-target/trae-code.png" alt="" aria-hidden="true">
                     <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
                   </button>
+                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="windsurf" data-status="idle" aria-pressed="false" aria-label="Windsurf" title="Windsurf" hidden>
+                    <img src="icons/app-target/windsurf.png" alt="" aria-hidden="true">
+                    <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
+                  </button>
                   <button type="button" class="soft-pad-agent-bar__chip" data-agent="qoder" data-status="idle" aria-pressed="false" aria-label="Qoder" title="Qoder" hidden>
                     <img src="icons/app-target/qoder.png" alt="" aria-hidden="true">
                     <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
                   </button>
                   <button type="button" class="soft-pad-agent-bar__chip" data-agent="cline" data-status="idle" data-placeholder="1" aria-pressed="false" aria-label="Cline" title="Cline" hidden>
                     <img src="icons/app-target/cline.png" alt="" aria-hidden="true">
+                    <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="soft-pad-agent-bar__chip" data-agent="roo" data-status="idle" data-placeholder="1" aria-pressed="false" aria-label="Roo" title="Roo" hidden>
+                    <img src="icons/app-target/roo.png" alt="" aria-hidden="true">
                     <i class="soft-pad-agent-bar__dot" aria-hidden="true"></i>
                   </button>
                   <button type="button" class="soft-pad-agent-bar__chip" data-agent="opencode" data-status="idle" data-placeholder="1" aria-pressed="false" aria-label="OpenCode" title="OpenCode" hidden>
@@ -3360,6 +3387,11 @@
         localMinimized=true;
         applyLocalStatusDom();
         invoke('cmd_codex_micro_overlay_set_minimized',{minimized:true}).catch(function(){});
+      });
+      btn.addEventListener('contextmenu',function(e){
+        e.preventDefault(); e.stopPropagation();
+        hideAgentTip();
+        dismiss();
       });
     });
 

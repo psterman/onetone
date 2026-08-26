@@ -144,10 +144,13 @@
       workbuddyStatusLightsEnabled: true,
       traeStatusLightsEnabled: true,
       traeCodeStatusLightsEnabled: true,
+      windsurfStatusLightsEnabled: true,
       qoderStatusLightsEnabled: true,
       copilotStatusLightsEnabled: true,
+      copilotVscodeStatusLightsEnabled: false,
       geminiStatusLightsEnabled: true,
       clineStatusLightsEnabled: true,
+      rooStatusLightsEnabled: true,
       opencodeStatusLightsEnabled: true,
       aiderStatusLightsEnabled: true,
       ambientEnabled: true,
@@ -193,13 +196,16 @@
     'cursor-chat': 'cursor',
     'minimax-chat': 'minimax',
     'copilot-cli': 'copilotCli',
+    'copilot-vscode': 'copilotVscode',
     'gemini-cli': 'gemini',
     'workbuddy-chat': 'workbuddy',
     'trae-work': 'trae',
     'trae-chat': 'trae', // legacy → Trae Work
     'trae-code': 'traeCode',
+    'windsurf-chat': 'windsurf',
     'qoder-chat': 'qoder',
     'cline-chat': 'cline',
+    'roo-chat': 'roo',
     'opencode-chat': 'opencode',
     'aider-chat': 'aider'
   };
@@ -213,7 +219,15 @@
     { kind: 'workbuddy', appId: 'workbuddy-chat' },
     { kind: 'trae', appId: 'trae-work' },
     { kind: 'traeCode', appId: 'trae-code' },
-    { kind: 'qoder', appId: 'qoder-chat' }
+    { kind: 'windsurf', appId: 'windsurf-chat' },
+    { kind: 'qoder', appId: 'qoder-chat' },
+    { kind: 'gemini', appId: 'gemini-cli' },
+    { kind: 'cline', appId: 'cline-chat' },
+    { kind: 'roo', appId: 'roo-chat' },
+    { kind: 'opencode', appId: 'opencode-chat' },
+    { kind: 'copilotCli', appId: 'copilot-cli' },
+    { kind: 'copilotVscode', appId: 'copilot-vscode' },
+    { kind: 'aider', appId: 'aider-chat' }
   ];
 
   var HUB_KIND_RANK = {
@@ -224,7 +238,15 @@
     workbuddy: 4,
     trae: 5,
     traeCode: 6,
-    qoder: 7
+    windsurf: 7,
+    qoder: 8,
+    gemini: 9,
+    cline: 10,
+    roo: 11,
+    opencode: 12,
+    copilotCli: 13,
+    copilotVscode: 14,
+    aider: 15
   };
 
   /** Cached install inventory for Hub sort / scan UI. */
@@ -344,8 +366,16 @@
     if (kind === 'traeCode' || String(kind || '').toLowerCase() === 'traecode') {
       return t('softPadHubKindTraeCode', 'Trae Code');
     }
+    if (kind === 'windsurf') return t('softPadHubKindWindsurf', 'Windsurf');
     if (kind === 'qoder') return t('softPadHubKindQoder', 'Qoder');
     if (kind === 'minimax') return t('softPadHubKindMinimax', 'MiniMax');
+    if (kind === 'gemini') return t('softPadHubKindGemini', 'Gemini CLI');
+    if (kind === 'cline') return t('softPadHubKindCline', 'Cline');
+    if (kind === 'roo') return t('softPadHubKindRoo', 'Roo');
+    if (kind === 'opencode') return t('softPadHubKindOpenCode', 'OpenCode');
+    if (kind === 'copilotCli') return t('softPadHubKindCopilotCli', 'Copilot CLI');
+    if (kind === 'copilotVscode') return t('softPadHubKindCopilotVscode', 'Copilot VS Code');
+    if (kind === 'aider') return t('softPadHubKindAider', 'Aider');
     return t('softPadHubKindSoft', 'Soft Pad');
   }
 
@@ -1007,6 +1037,7 @@
     if (existing) {
       if (appId === 'cursor-chat' || appId === 'workbuddy-chat' ||
           appId === 'trae-work' || appId === 'trae-chat' || appId === 'trae-code' ||
+          appId === 'windsurf-chat' ||
           appId === 'qoder-chat') {
         var Tcur = global.OneToneAgentScenarioTemplate;
         if (Tcur && Tcur.ensurePackForMapping) {

@@ -30,7 +30,7 @@ function shellParts(active) {
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="js/tailwind-config.js"></script>
   <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/shell.css">
+  <link rel="stylesheet" href="css/shell.css?v=20260826b">
 ${extraCss}
 </head>
 <body class="antialiased" data-page="${active}">
@@ -69,7 +69,16 @@ ${extraCss}
   <a href="download.html" data-nav="download" data-i18n="navDownload">下载</a>
 </div>
 `,
-    footer: `<footer class="site-footer">
+    footer: `<section id="site-download-cta" class="site-download-cta" aria-label="Download" data-section="5">
+  <div class="site-download-cta-inner">
+    <h2 class="site-download-cta-title" data-i18n="ctaBannerTitle">立即试用一声。</h2>
+    <a class="site-download-cta-btn" href="download.html">
+      <span data-i18n="ctaBannerBtn">下载 Windows 版本</span>
+      <i class="ph ph-download-simple" aria-hidden="true"></i>
+    </a>
+  </div>
+</section>
+<footer class="site-footer">
   <div class="site-footer-inner">
     <span data-i18n="footerCopy">© 2026 一声 OneTone</span>
     <nav>

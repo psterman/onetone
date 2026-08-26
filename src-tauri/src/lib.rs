@@ -30,6 +30,7 @@ mod claude_hook_setup;
 mod copilot_cli_hook_setup;
 mod gemini_hook_setup;
 mod cline_hook_setup;
+mod roo_hook_setup;
 mod opencode_hook_setup;
 mod aider_hook_setup;
 mod coach_hud;

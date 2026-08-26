@@ -10,7 +10,15 @@
     'trae-work': true,
     'trae-chat': true, // legacy alias → Trae Work
     'trae-code': true,
-    'qoder-chat': true
+    'windsurf-chat': true,
+    'qoder-chat': true,
+    'gemini-cli': true,
+    'cline-chat': true,
+    'roo-chat': true,
+    'opencode-chat': true,
+    'copilot-cli': true,
+    'copilot-vscode': true,
+    'aider-chat': true
   };
 
   var PRESETS = [
@@ -78,6 +86,15 @@
       badgeEn: 'Tc'
     },
     {
+      id: 'windsurf-chat',
+      nameKey: 'appTargetWindsurf',
+      descKey: 'appTargetWindsurfDesc',
+      targetKey: '',
+      icon: 'icons/app-target/windsurf.png',
+      badge: 'Ws',
+      badgeEn: 'Ws'
+    },
+    {
       id: 'qoder-chat',
       nameKey: 'appTargetQoder',
       descKey: 'appTargetQoderDesc',
@@ -96,6 +113,15 @@
       badgeEn: 'Cp'
     },
     {
+      id: 'copilot-vscode',
+      nameKey: 'appTargetCopilotVscode',
+      descKey: 'appTargetCopilotVscodeDesc',
+      targetKey: '',
+      icon: 'icons/app-target/copilot.png',
+      badge: 'Cv',
+      badgeEn: 'Cv'
+    },
+    {
       id: 'gemini-cli',
       nameKey: 'appTargetGeminiCli',
       descKey: 'appTargetGeminiCliDesc',
@@ -112,6 +138,15 @@
       icon: 'icons/app-target/cline.png',
       badge: 'Cl',
       badgeEn: 'Cl'
+    },
+    {
+      id: 'roo-chat',
+      nameKey: 'appTargetRoo',
+      descKey: 'appTargetRooDesc',
+      targetKey: '',
+      icon: 'icons/app-target/roo.png',
+      badge: 'Ro',
+      badgeEn: 'Ro'
     },
     {
       id: 'opencode-chat',

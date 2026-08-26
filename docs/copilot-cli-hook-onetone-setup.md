@@ -23,6 +23,10 @@ Installer 只写入带 `--onetone-hook-id copilot-cli-activity-v1` 的 command�
 
 **不做多灯**：`can_multi_agent_lights=false`。与 Claude 共用 `map_claude_event_to_state`（有锁测，改映射须重验）。
 
+## Soft Pad Shortcuts
+
+Hub 已提供 **Copilot CLI** Soft Pad：Shortcuts 聚焦 `copilot.exe` / 终端宿主并派发和弦。天花板：无 Sessions / Resume / multi-lights。
+
 ## 隐私与失败行为
 
 probe 只保留 event / session / cwd / model / ts。OneTone 未启动时 fail-open、退出码 0。日志：`logs/copilot_cli-hook-probe.jsonl`（不写 `pad-status.jsonl`）。

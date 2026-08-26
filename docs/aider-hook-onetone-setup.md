@@ -25,9 +25,9 @@ notifications-command: node "REPO_ROOT/scripts/aider-notify-probe.js" --onetone-
 | 回合结束 → `done` | ✅ |
 | `running` / 工具执行中 | ❌ |
 | `needs_input` | ❌ |
-| 虚拟键盘 workflow | ❌ |
+| Soft Pad Shortcuts（聚焦 + chord） | ✅（无 running 灯） |
 
-UI 与 catalog 均标明 **仅完成通知**。
+UI 与 catalog 均标明 **仅完成通知灯**；Hub 仍可建 Shortcuts Soft Pad。
 
 ## 自检
 

@@ -36,7 +36,15 @@ pub const TRAE_APP_TARGET_ID: &str = "trae-work";
 pub const TRAE_CHAT_LEGACY_APP_TARGET_ID: &str = "trae-chat";
 /// Trae Code (Trae IDE).
 pub const TRAE_CODE_APP_TARGET_ID: &str = "trae-code";
+pub const WINDSURF_APP_TARGET_ID: &str = "windsurf-chat";
 pub const QODER_APP_TARGET_ID: &str = "qoder-chat";
+pub const GEMINI_APP_TARGET_ID: &str = "gemini-cli";
+pub const CLINE_APP_TARGET_ID: &str = "cline-chat";
+pub const ROO_APP_TARGET_ID: &str = "roo-chat";
+pub const OPENCODE_APP_TARGET_ID: &str = "opencode-chat";
+pub const COPILOT_CLI_APP_TARGET_ID: &str = "copilot-cli";
+pub const COPILOT_VSCODE_APP_TARGET_ID: &str = "copilot-vscode";
+pub const AIDER_APP_TARGET_ID: &str = "aider-chat";
 
 #[derive(Debug, Clone, Copy)]
 pub struct AppChatProfile {
@@ -160,6 +168,19 @@ const TRAE_CODE_PROFILE: AppChatProfile = AppChatProfile {
     launch_localappdata_rel: &[],
 };
 
+const WINDSURF_PROFILE: AppChatProfile = AppChatProfile {
+    id: WINDSURF_APP_TARGET_ID,
+    error_prefix: "windsurf",
+    process_names: &["Windsurf.exe", "windsurf.exe"],
+    path_marker: None,
+    open_key: None,
+    composer_anchor: (0.50, 0.91),
+    accept_click_without_uia: true,
+    post_voice_key_ms: 420,
+    restore_main_delay_ms: 360,
+    launch_localappdata_rel: &["Programs\\Windsurf\\Windsurf.exe"],
+};
+
 const QODER_PROFILE: AppChatProfile = AppChatProfile {
     id: QODER_APP_TARGET_ID,
     error_prefix: "qoder",
@@ -167,6 +188,97 @@ const QODER_PROFILE: AppChatProfile = AppChatProfile {
     path_marker: None,
     open_key: None,
     composer_anchor: (0.50, 0.91),
+    accept_click_without_uia: true,
+    post_voice_key_ms: 420,
+    restore_main_delay_ms: 360,
+    launch_localappdata_rel: &[],
+};
+
+const GEMINI_PROFILE: AppChatProfile = AppChatProfile {
+    id: GEMINI_APP_TARGET_ID,
+    error_prefix: "gemini",
+    process_names: &["gemini.exe"],
+    path_marker: None,
+    open_key: None,
+    composer_anchor: (0.50, 0.92),
+    accept_click_without_uia: true,
+    post_voice_key_ms: 420,
+    restore_main_delay_ms: 360,
+    launch_localappdata_rel: &[],
+};
+
+const CLINE_PROFILE: AppChatProfile = AppChatProfile {
+    id: CLINE_APP_TARGET_ID,
+    error_prefix: "cline",
+    process_names: &["Code.exe", "Cursor.exe"],
+    path_marker: None,
+    open_key: None,
+    composer_anchor: (0.50, 0.88),
+    accept_click_without_uia: true,
+    post_voice_key_ms: 420,
+    restore_main_delay_ms: 360,
+    launch_localappdata_rel: &[],
+};
+
+const ROO_PROFILE: AppChatProfile = AppChatProfile {
+    id: ROO_APP_TARGET_ID,
+    error_prefix: "roo",
+    process_names: &["Code.exe", "Cursor.exe"],
+    path_marker: None,
+    open_key: None,
+    composer_anchor: (0.50, 0.88),
+    accept_click_without_uia: true,
+    post_voice_key_ms: 420,
+    restore_main_delay_ms: 360,
+    launch_localappdata_rel: &[],
+};
+
+const OPENCODE_PROFILE: AppChatProfile = AppChatProfile {
+    id: OPENCODE_APP_TARGET_ID,
+    error_prefix: "opencode",
+    process_names: &["opencode.exe"],
+    path_marker: None,
+    open_key: None,
+    composer_anchor: (0.50, 0.92),
+    accept_click_without_uia: true,
+    post_voice_key_ms: 420,
+    restore_main_delay_ms: 360,
+    launch_localappdata_rel: &[],
+};
+
+const COPILOT_CLI_PROFILE: AppChatProfile = AppChatProfile {
+    id: COPILOT_CLI_APP_TARGET_ID,
+    error_prefix: "copilot_cli",
+    process_names: &["copilot.exe"],
+    path_marker: None,
+    open_key: None,
+    composer_anchor: (0.50, 0.92),
+    accept_click_without_uia: true,
+    post_voice_key_ms: 420,
+    restore_main_delay_ms: 360,
+    launch_localappdata_rel: &[],
+};
+
+const COPILOT_VSCODE_PROFILE: AppChatProfile = AppChatProfile {
+    id: COPILOT_VSCODE_APP_TARGET_ID,
+    error_prefix: "copilot_vscode",
+    process_names: &["Code.exe"],
+    path_marker: None,
+    open_key: None,
+    composer_anchor: (0.50, 0.88),
+    accept_click_without_uia: true,
+    post_voice_key_ms: 420,
+    restore_main_delay_ms: 360,
+    launch_localappdata_rel: &[],
+};
+
+const AIDER_PROFILE: AppChatProfile = AppChatProfile {
+    id: AIDER_APP_TARGET_ID,
+    error_prefix: "aider",
+    process_names: &["aider.exe"],
+    path_marker: None,
+    open_key: None,
+    composer_anchor: (0.50, 0.92),
     accept_click_without_uia: true,
     post_voice_key_ms: 420,
     restore_main_delay_ms: 360,
@@ -182,7 +294,15 @@ pub fn profile_for(app_target_id: &str) -> Option<&'static AppChatProfile> {
         WORKBUDDY_APP_TARGET_ID => Some(&WORKBUDDY_PROFILE),
         TRAE_APP_TARGET_ID | TRAE_CHAT_LEGACY_APP_TARGET_ID => Some(&TRAE_PROFILE),
         TRAE_CODE_APP_TARGET_ID => Some(&TRAE_CODE_PROFILE),
+        WINDSURF_APP_TARGET_ID => Some(&WINDSURF_PROFILE),
         QODER_APP_TARGET_ID => Some(&QODER_PROFILE),
+        GEMINI_APP_TARGET_ID => Some(&GEMINI_PROFILE),
+        CLINE_APP_TARGET_ID => Some(&CLINE_PROFILE),
+        ROO_APP_TARGET_ID => Some(&ROO_PROFILE),
+        OPENCODE_APP_TARGET_ID => Some(&OPENCODE_PROFILE),
+        COPILOT_CLI_APP_TARGET_ID => Some(&COPILOT_CLI_PROFILE),
+        COPILOT_VSCODE_APP_TARGET_ID => Some(&COPILOT_VSCODE_PROFILE),
+        AIDER_APP_TARGET_ID => Some(&AIDER_PROFILE),
         _ => None,
     }
 }
@@ -859,6 +979,7 @@ fn try_launch_app_profile(profile: &AppChatProfile) -> bool {
             | TRAE_APP_TARGET_ID
             | TRAE_CHAT_LEGACY_APP_TARGET_ID
             | TRAE_CODE_APP_TARGET_ID
+            | WINDSURF_APP_TARGET_ID
     ) {
         return launch_from_resolved_hint(profile);
     }
@@ -1017,6 +1138,7 @@ fn shortcut_name_needles(profile: &AppChatProfile) -> Vec<&'static str> {
         WORKBUDDY_APP_TARGET_ID => vec!["WorkBuddy", "Work Buddy"],
         TRAE_APP_TARGET_ID | TRAE_CHAT_LEGACY_APP_TARGET_ID => vec!["TRAE SOLO", "Trae Solo"],
         TRAE_CODE_APP_TARGET_ID => vec!["Trae", "TRAE"],
+        WINDSURF_APP_TARGET_ID => vec!["Windsurf"],
         _ => vec![],
     }
 }
@@ -1120,6 +1242,10 @@ fn known_install_exe_candidates(profile: &AppChatProfile) -> Vec<std::path::Path
             "TRAE SOLO\\TRAE SOLO.exe",
         ],
         TRAE_CODE_APP_TARGET_ID => &["Programs\\Trae\\Trae.exe", "Trae\\Trae.exe"],
+        WINDSURF_APP_TARGET_ID => &[
+            "Programs\\Windsurf\\Windsurf.exe",
+            "Windsurf\\Windsurf.exe",
+        ],
         _ => &[],
     };
     for rel in rels {
@@ -1136,6 +1262,7 @@ fn probe_uninstall_exe(profile: &AppChatProfile) -> Option<std::path::PathBuf> {
         WORKBUDDY_APP_TARGET_ID => &["WorkBuddy"],
         TRAE_APP_TARGET_ID | TRAE_CHAT_LEGACY_APP_TARGET_ID => &["TRAE SOLO", "Trae Solo"],
         TRAE_CODE_APP_TARGET_ID => &["Trae"],
+        WINDSURF_APP_TARGET_ID => &["Windsurf"],
         _ => return None,
     };
     let roots = [

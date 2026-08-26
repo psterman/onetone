@@ -224,15 +224,21 @@ pub fn cmd_soft_pad_agent_lights_set(
             | "minimax"
             | "workbuddy"
             | "trae"
+            | "windsurf"
             | "qoder"
             | "copilotcli"
             | "copilot_cli"
             | "copilot-cli"
+            | "copilotvscode"
+            | "copilot_vscode"
+            | "copilot-vscode"
             | "gemini"
             | "gemini-cli"
             | "gemini_cli"
             | "cline"
             | "cline-chat"
+            | "roo"
+            | "roo-chat"
             | "opencode"
             | "opencode-chat"
             | "aider"
@@ -260,12 +266,17 @@ pub fn cmd_soft_pad_agent_lights_set(
             "traecode" | "trae_code" | "trae-code" => {
                 pad.trae_code_status_lights_enabled = enabled
             }
+            "windsurf" | "windsurf-chat" => pad.windsurf_status_lights_enabled = enabled,
             "qoder" => pad.qoder_status_lights_enabled = enabled,
             "copilotcli" | "copilot_cli" | "copilot-cli" => {
                 pad.copilot_status_lights_enabled = enabled
             }
+            "copilotvscode" | "copilot_vscode" | "copilot-vscode" => {
+                pad.copilot_vscode_status_lights_enabled = enabled
+            }
             "gemini" | "gemini-cli" | "gemini_cli" => pad.gemini_status_lights_enabled = enabled,
             "cline" | "cline-chat" => pad.cline_status_lights_enabled = enabled,
+            "roo" | "roo-chat" => pad.roo_status_lights_enabled = enabled,
             "opencode" | "opencode-chat" => pad.opencode_status_lights_enabled = enabled,
             "aider" | "aider-chat" => pad.aider_status_lights_enabled = enabled,
             _ => {}
@@ -284,6 +295,8 @@ pub fn cmd_soft_pad_agent_lights_set(
                 | "traecode"
                 | "trae_code"
                 | "trae-code"
+                | "windsurf"
+                | "windsurf-chat"
                 | "qoder"
                 | "copilotcli"
                 | "copilot_cli"
@@ -293,6 +306,8 @@ pub fn cmd_soft_pad_agent_lights_set(
                 | "gemini_cli"
                 | "cline"
                 | "cline-chat"
+                | "roo"
+                | "roo-chat"
                 | "opencode"
                 | "opencode-chat"
                 | "aider"
@@ -407,14 +422,19 @@ pub fn cmd_soft_pad_agent_lights_batch_set(
                 "traecode" | "trae_code" | "trae-code" => {
                     pad.trae_code_status_lights_enabled = enabled
                 }
+                "windsurf" | "windsurf-chat" => pad.windsurf_status_lights_enabled = enabled,
                 "qoder" => pad.qoder_status_lights_enabled = enabled,
                 "copilotcli" | "copilot_cli" | "copilot-cli" => {
                     pad.copilot_status_lights_enabled = enabled
+                }
+                "copilotvscode" | "copilot_vscode" | "copilot-vscode" => {
+                    pad.copilot_vscode_status_lights_enabled = enabled
                 }
                 "gemini" | "gemini-cli" | "gemini_cli" => {
                     pad.gemini_status_lights_enabled = enabled
                 }
                 "cline" | "cline-chat" => pad.cline_status_lights_enabled = enabled,
+                "roo" | "roo-chat" => pad.roo_status_lights_enabled = enabled,
                 "opencode" | "opencode-chat" => pad.opencode_status_lights_enabled = enabled,
                 "aider" | "aider-chat" => pad.aider_status_lights_enabled = enabled,
                 _ => return Err(format!("bad_agent:{agent}")),
@@ -429,15 +449,22 @@ pub fn cmd_soft_pad_agent_lights_batch_set(
                         | "traecode"
                         | "trae_code"
                         | "trae-code"
+                        | "windsurf"
+                        | "windsurf-chat"
                         | "qoder"
                         | "copilotcli"
                         | "copilot_cli"
                         | "copilot-cli"
+                        | "copilotvscode"
+                        | "copilot_vscode"
+                        | "copilot-vscode"
                         | "gemini"
                         | "gemini-cli"
                         | "gemini_cli"
                         | "cline"
                         | "cline-chat"
+                        | "roo"
+                        | "roo-chat"
                         | "opencode"
                         | "opencode-chat"
                         | "aider"

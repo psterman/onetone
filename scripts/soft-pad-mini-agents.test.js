@@ -14,7 +14,7 @@ var overlayCmd = fs.readFileSync(
 );
 var fmt = require(path.join(root, 'src/js/features/agent/usage-format.js'));
 
-['codex', 'claude', 'cursor', 'copilotCli', 'gemini', 'minimax', 'workbuddy', 'trae', 'traeCode', 'qoder', 'cline', 'opencode', 'aider'].forEach(function (kind) {
+['codex', 'claude', 'cursor', 'copilotCli', 'gemini', 'minimax', 'workbuddy', 'trae', 'traeCode', 'windsurf', 'qoder', 'cline', 'opencode', 'aider'].forEach(function (kind) {
   assert.ok(html.includes('data-agent="' + kind + '"'), 'missing agent chip: ' + kind);
 });
 assert.ok(html.includes('id="overlayAppMeta"') && html.includes('id="overlayLightGate"'));
@@ -109,8 +109,9 @@ assert.ok(rust.includes('primary_state_for(kind)'));
 assert.ok(rust.includes('agent_model_metadata::snapshot'));
 assert.ok(rust.includes('headline_label') || rust.includes('headline_for_agent'));
 assert.ok(rust.includes('AgentKind::Codex') && rust.includes('AgentKind::Claude') && rust.includes('AgentKind::Cursor'));
-assert.ok(rust.includes('AgentKind::WorkBuddy') && rust.includes('AgentKind::Trae') && rust.includes('AgentKind::Qoder'));
+assert.ok(rust.includes('AgentKind::WorkBuddy') && rust.includes('AgentKind::Trae') && rust.includes('AgentKind::Windsurf') && rust.includes('AgentKind::Qoder'));
 assert.ok(rust.includes('workbuddy_status_lights_enabled'));
+assert.ok(rust.includes('windsurf_status_lights_enabled'));
 assert.ok(
   rust.includes('sync_minimax_inferred_lifecycle') &&
     rust.includes('Quota lamp only') &&

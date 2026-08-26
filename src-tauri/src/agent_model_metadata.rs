@@ -210,9 +210,13 @@ pub fn ingest_hook_model(
         AgentKind::Cursor if raw.eq_ignore_ascii_case("default") => ("Auto".into(), "low"),
         AgentKind::Cursor => (raw.to_string(), "medium"),
         AgentKind::MiniMax => (raw.to_string(), "low"),
-        AgentKind::CopilotCli | AgentKind::Gemini => return,
-        AgentKind::Cline | AgentKind::OpenCode | AgentKind::Aider => return,
-        AgentKind::WorkBuddy | AgentKind::Trae | AgentKind::TraeCode | AgentKind::Qoder => {
+        AgentKind::CopilotCli | AgentKind::CopilotVscode | AgentKind::Gemini => return,
+        AgentKind::Cline | AgentKind::Roo | AgentKind::OpenCode | AgentKind::Aider => return,
+        AgentKind::WorkBuddy
+        | AgentKind::Trae
+        | AgentKind::TraeCode
+        | AgentKind::Windsurf
+        | AgentKind::Qoder => {
             (raw.to_string(), "low")
         }
     };

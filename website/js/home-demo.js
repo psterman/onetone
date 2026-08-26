@@ -391,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       /* Section switch: whole story block enters once, children stagger via --d */
       const revealSections = document.querySelectorAll(
-        "#sec-chain, #sec-caps, #sec-brands, #sec-quotes, #sec-cta"
+        "#sec-chain, #sec-caps, #sec-brands, #sec-quotes"
       );
       if (revealSections.length) {
         const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

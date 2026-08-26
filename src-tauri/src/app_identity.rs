@@ -14,7 +14,13 @@ pub const TRAE_APP_TARGET_ID: &str = "trae-work";
 pub const TRAE_CHAT_LEGACY_APP_TARGET_ID: &str = "trae-chat";
 /// Trae Code (Trae IDE / TraeCode).
 pub const TRAE_CODE_APP_TARGET_ID: &str = "trae-code";
+pub const WINDSURF_APP_TARGET_ID: &str = "windsurf-chat";
 pub const QODER_APP_TARGET_ID: &str = "qoder-chat";
+pub const GEMINI_APP_TARGET_ID: &str = "gemini-cli";
+pub const CLINE_APP_TARGET_ID: &str = "cline-chat";
+pub const OPENCODE_APP_TARGET_ID: &str = "opencode-chat";
+pub const COPILOT_CLI_APP_TARGET_ID: &str = "copilot-cli";
+pub const AIDER_APP_TARGET_ID: &str = "aider-chat";
 
 /// ponytail: Toolhelp process-tree walk is O(processes); overlay ticks every 250ms.
 /// Cache terminal-CLI resolution so we don't snapshot the whole machine multiple times per tick.
@@ -103,9 +109,35 @@ const PRESET_MATCHERS: &[PresetMatcher] = &[
         path_markers: Some(&["Trae"]),
     },
     PresetMatcher {
+        id: WINDSURF_APP_TARGET_ID,
+        process_names: &["Windsurf.exe", "windsurf.exe"],
+        path_markers: Some(&["Windsurf"]),
+    },
+    PresetMatcher {
         id: QODER_APP_TARGET_ID,
         process_names: &["Qoder.exe", "qoder.exe"],
         path_markers: Some(&["Qoder"]),
+    },
+    PresetMatcher {
+        id: GEMINI_APP_TARGET_ID,
+        process_names: &["gemini.exe"],
+        path_markers: None,
+    },
+    // Cline lives in Code/Cursor — no exclusive FG matcher (would steal VS Code identity).
+    PresetMatcher {
+        id: OPENCODE_APP_TARGET_ID,
+        process_names: &["opencode.exe"],
+        path_markers: None,
+    },
+    PresetMatcher {
+        id: COPILOT_CLI_APP_TARGET_ID,
+        process_names: &["copilot.exe"],
+        path_markers: None,
+    },
+    PresetMatcher {
+        id: AIDER_APP_TARGET_ID,
+        process_names: &["aider.exe"],
+        path_markers: None,
     },
 ];
 
@@ -262,7 +294,13 @@ const SOFT_PAD_HOST_PROCESS_TARGETS: &[&str] = &[
     WORKBUDDY_APP_TARGET_ID,
     TRAE_APP_TARGET_ID,
     TRAE_CODE_APP_TARGET_ID,
+    WINDSURF_APP_TARGET_ID,
     QODER_APP_TARGET_ID,
+    GEMINI_APP_TARGET_ID,
+    OPENCODE_APP_TARGET_ID,
+    COPILOT_CLI_APP_TARGET_ID,
+    AIDER_APP_TARGET_ID,
+    // Cline host is Code/Cursor — already covered by CURSOR; skip Code.exe as Soft Pad host gate.
 ];
 
 /// True when any built-in Soft Pad agent desktop process is running.
@@ -687,6 +725,18 @@ fn terminal_cli_target_from_title(title: &str) -> Option<String> {
     if t.contains("codex") {
         return Some(CODEX_APP_TARGET_ID.to_string());
     }
+    if t.contains("gemini") {
+        return Some(GEMINI_APP_TARGET_ID.to_string());
+    }
+    if t.contains("copilot") {
+        return Some(COPILOT_CLI_APP_TARGET_ID.to_string());
+    }
+    if t.contains("opencode") {
+        return Some(OPENCODE_APP_TARGET_ID.to_string());
+    }
+    if t.contains("aider") {
+        return Some(AIDER_APP_TARGET_ID.to_string());
+    }
     None
 }
 
@@ -749,14 +799,31 @@ fn process_tree_cli_target(root_pid: u32) -> Option<&'static str> {
         let mut q = VecDeque::from([root_pid]);
         let mut seen = HashSet::from([root_pid]);
         let mut found_codex = false;
+        let mut found_gemini = false;
+        let mut found_copilot = false;
+        let mut found_opencode = false;
+        let mut found_aider = false;
         while let Some(pid) = q.pop_front() {
             if pid != root_pid {
                 if let Some(n) = names.get(&pid) {
+                    let lower = exe_base_name(n).to_ascii_lowercase();
                     if is_claude_cli_exe(n) {
                         return Some(CLAUDE_CODE_APP_TARGET_ID);
                     }
                     if !found_codex && is_codex_cli_exe(n) {
                         found_codex = true;
+                    }
+                    if !found_gemini && (lower == "gemini.exe" || lower == "gemini") {
+                        found_gemini = true;
+                    }
+                    if !found_copilot && (lower == "copilot.exe" || lower == "copilot") {
+                        found_copilot = true;
+                    }
+                    if !found_opencode && (lower == "opencode.exe" || lower == "opencode") {
+                        found_opencode = true;
+                    }
+                    if !found_aider && (lower == "aider.exe" || lower == "aider") {
+                        found_aider = true;
                     }
                 }
             }
@@ -768,7 +835,19 @@ fn process_tree_cli_target(root_pid: u32) -> Option<&'static str> {
                 }
             }
         }
-        found_codex.then_some(CODEX_APP_TARGET_ID)
+        if found_codex {
+            return Some(CODEX_APP_TARGET_ID);
+        }
+        if found_gemini {
+            return Some(GEMINI_APP_TARGET_ID);
+        }
+        if found_copilot {
+            return Some(COPILOT_CLI_APP_TARGET_ID);
+        }
+        if found_opencode {
+            return Some(OPENCODE_APP_TARGET_ID);
+        }
+        found_aider.then_some(AIDER_APP_TARGET_ID)
     }
 }
 

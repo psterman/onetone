@@ -204,9 +204,12 @@ fn signal_allows_waiting(s: &AgentAttentionSignal) -> bool {
         | AgentKind::WorkBuddy
         | AgentKind::Trae
         | AgentKind::TraeCode
+        | AgentKind::Windsurf
         | AgentKind::Qoder
         | AgentKind::Cline
-        | AgentKind::OpenCode => true,
+        | AgentKind::Roo
+        | AgentKind::OpenCode
+        | AgentKind::CopilotVscode => true,
         AgentKind::Aider => s.source == SignalSource::OneToneAsk,
         AgentKind::Cursor | AgentKind::MiniMax => {
             s.source == SignalSource::OneToneAsk
@@ -224,9 +227,12 @@ fn agent_allows_waiting_row(agent: AgentKind, source: SignalSource) -> bool {
         | AgentKind::WorkBuddy
         | AgentKind::Trae
         | AgentKind::TraeCode
+        | AgentKind::Windsurf
         | AgentKind::Qoder
         | AgentKind::Cline
-        | AgentKind::OpenCode => true,
+        | AgentKind::Roo
+        | AgentKind::OpenCode
+        | AgentKind::CopilotVscode => true,
         AgentKind::Aider => source == SignalSource::OneToneAsk,
         AgentKind::Cursor | AgentKind::MiniMax => {
             source == SignalSource::OneToneAsk

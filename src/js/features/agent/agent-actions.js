@@ -229,6 +229,7 @@
     'trae-work': 1,
     'trae-chat': 1,
     'trae-code': 1,
+    'windsurf-chat': 1,
     'qoder-chat': 1
   };
 
@@ -239,6 +240,7 @@
     'trae-work': 'trae',
     'trae-chat': 'trae',
     'trae-code': 'traeCode',
+    'windsurf-chat': 'windsurf',
     'qoder-chat': 'qoder',
     'claude-code': 'claude',
     'minimax-chat': 'minimax'
@@ -270,7 +272,7 @@
   function defaultKeyMapForApp(appId) {
     var app = String(appId || '').trim();
     if (app === 'cursor-chat') return CURSOR_DEFAULT_KEY_BY_SLOT;
-    if (app === 'trae-work' || app === 'trae-chat' || app === 'trae-code') return TRAE_DEFAULT_KEY_BY_SLOT;
+    if (app === 'trae-work' || app === 'trae-chat' || app === 'trae-code' || app === 'windsurf-chat') return TRAE_DEFAULT_KEY_BY_SLOT;
     if (app === 'qoder-chat') return QODER_DEFAULT_KEY_BY_SLOT;
     if (app === 'workbuddy-chat') return WORKBUDDY_DEFAULT_KEY_BY_SLOT;
     if (app === 'codex-chat') return DEFAULT_KEY_BY_SLOT;
@@ -344,6 +346,7 @@
       'trae-work': { zh: 'Trae Work', en: 'Trae Work' },
       'trae-chat': { zh: 'Trae Work', en: 'Trae Work' },
       'trae-code': { zh: 'Trae Code', en: 'Trae Code' },
+      'windsurf-chat': { zh: 'Windsurf', en: 'Windsurf' },
       'qoder-chat': { zh: 'Qoder', en: 'Qoder' }
     };
     var name = names[app];

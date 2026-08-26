@@ -1143,11 +1143,14 @@
         workbuddyStatusLightsEnabled: true,
         traeStatusLightsEnabled: true,
         traeCodeStatusLightsEnabled: true,
+        windsurfStatusLightsEnabled: true,
         qoderStatusLightsEnabled: true,
         minimaxStatusLightsEnabled: false,
         copilotStatusLightsEnabled: false,
+        copilotVscodeStatusLightsEnabled: false,
         geminiStatusLightsEnabled: false,
         clineStatusLightsEnabled: false,
+        rooStatusLightsEnabled: false,
         opencodeStatusLightsEnabled: false,
         aiderStatusLightsEnabled: false,
         ambientMode: 'status',
@@ -1222,6 +1225,9 @@
     if (m.codexMicroPad.traeCodeStatusLightsEnabled == null) {
       m.codexMicroPad.traeCodeStatusLightsEnabled = true;
     }
+    if (m.codexMicroPad.windsurfStatusLightsEnabled == null) {
+      m.codexMicroPad.windsurfStatusLightsEnabled = true;
+    }
     if (m.codexMicroPad.qoderStatusLightsEnabled == null) {
       m.codexMicroPad.qoderStatusLightsEnabled = true;
     }
@@ -1231,11 +1237,17 @@
     if (m.codexMicroPad.copilotStatusLightsEnabled == null) {
       m.codexMicroPad.copilotStatusLightsEnabled = false;
     }
+    if (m.codexMicroPad.copilotVscodeStatusLightsEnabled == null) {
+      m.codexMicroPad.copilotVscodeStatusLightsEnabled = false;
+    }
     if (m.codexMicroPad.geminiStatusLightsEnabled == null) {
       m.codexMicroPad.geminiStatusLightsEnabled = false;
     }
     if (m.codexMicroPad.clineStatusLightsEnabled == null) {
       m.codexMicroPad.clineStatusLightsEnabled = false;
+    }
+    if (m.codexMicroPad.rooStatusLightsEnabled == null) {
+      m.codexMicroPad.rooStatusLightsEnabled = false;
     }
     if (m.codexMicroPad.opencodeStatusLightsEnabled == null) {
       m.codexMicroPad.opencodeStatusLightsEnabled = false;
@@ -1776,7 +1788,9 @@
   function isVscodeSoftPadMapping(m) {
     var app = String((m && m.appTargetId) || '').trim();
     return app === 'cursor-chat' || app === 'workbuddy-chat' ||
-      app === 'trae-work' || app === 'trae-chat' || app === 'trae-code' || app === 'qoder-chat';
+      app === 'trae-work' || app === 'trae-chat' || app === 'trae-code' ||
+      app === 'windsurf-chat' ||
+      app === 'qoder-chat';
   }
 
   function isSoftPadInsertOnlySlot(slotId, m) {
@@ -1883,6 +1897,7 @@
         app === 'cursor-chat' ? (en ? 'Cursor shortcut' : 'Cursor 快捷键')
         : (app === 'trae-work' || app === 'trae-chat') ? (en ? 'Trae Work shortcut' : 'Trae Work 快捷键')
         : app === 'trae-code' ? (en ? 'Trae Code shortcut' : 'Trae Code 快捷键')
+        : app === 'windsurf-chat' ? (en ? 'Windsurf shortcut' : 'Windsurf 快捷键')
         : app === 'qoder-chat' ? (en ? 'Qoder shortcut' : 'Qoder 快捷键')
         : app === 'workbuddy-chat' ? (en ? 'WorkBuddy shortcut' : 'WorkBuddy 快捷键')
         : (en ? 'IDE shortcut' : 'IDE 快捷键');
@@ -3304,12 +3319,14 @@
             : agent === 'copilotcli' || agent === 'copilot' ? 'copilot-cli'
               : agent === 'gemini' ? 'gemini-cli'
                 : agent === 'cline' ? 'cline-chat'
-                  : agent === 'opencode' ? 'opencode-chat'
-                    : agent === 'aider' ? 'aider-chat'
+                  : agent === 'roo' ? 'roo-chat'
+                    : agent === 'opencode' ? 'opencode-chat'
+                      : agent === 'aider' ? 'aider-chat'
                       : agent === 'minimax' ? 'minimax-chat'
                   : agent === 'workbuddy' ? 'workbuddy-chat'
                     : agent === 'trae' ? 'trae-work'
                       : agent === 'traeCode' || agent === 'traecode' ? 'trae-code'
+                        : agent === 'windsurf' ? 'windsurf-chat'
                         : agent === 'qoder' ? 'qoder-chat'
                         : agent;
       var preset = P.presetById(appId);
@@ -3325,13 +3342,16 @@
     { agent: 'claude', label: 'Claude', connectKind: 'claude' },
     { agent: 'cursor', label: 'Cursor', connectKind: 'cursor' },
     { agent: 'copilotCli', label: 'Copilot', connectKind: 'shell' },
+    { agent: 'copilotVscode', label: 'Copilot VS Code', connectKind: 'shell' },
     { agent: 'gemini', label: 'Gemini', connectKind: 'shell' },
     { agent: 'minimax', label: 'MiniMax', connectKind: 'minimax' },
     { agent: 'workbuddy', label: 'WorkBuddy', connectKind: 'shell' },
     { agent: 'trae', label: 'Trae Work', connectKind: 'solo' },
     { agent: 'traeCode', label: 'Trae Code', connectKind: 'shell' },
+    { agent: 'windsurf', label: 'Windsurf', connectKind: 'solo' },
     { agent: 'qoder', label: 'Qoder', connectKind: 'shell' },
     { agent: 'cline', label: 'Cline', connectKind: 'shell' },
+    { agent: 'roo', label: 'Roo', connectKind: 'shell' },
     { agent: 'opencode', label: 'OpenCode', connectKind: 'shell' },
     { agent: 'aider', label: 'Aider（仅完成）', connectKind: 'shell' }
   ];
@@ -3355,6 +3375,7 @@
     copilotcli: true,
     gemini: true,
     cline: true,
+    roo: true,
     opencode: true,
     aider: true
   };
@@ -3364,13 +3385,16 @@
     if (agent === 'claude') return !!pad.claudeStatusLightsEnabled;
     if (agent === 'cursor') return !!pad.cursorStatusLightsEnabled;
     if (agent === 'copilotCli' || agent === 'copilotcli') return !!pad.copilotStatusLightsEnabled;
+    if (agent === 'copilotVscode' || agent === 'copilotvscode') return !!pad.copilotVscodeStatusLightsEnabled;
     if (agent === 'gemini') return !!pad.geminiStatusLightsEnabled;
     if (agent === 'minimax') return !!pad.minimaxStatusLightsEnabled;
     if (agent === 'workbuddy') return !!pad.workbuddyStatusLightsEnabled;
     if (agent === 'trae') return !!pad.traeStatusLightsEnabled;
     if (agent === 'traeCode' || agent === 'traecode') return !!pad.traeCodeStatusLightsEnabled;
+    if (agent === 'windsurf') return !!pad.windsurfStatusLightsEnabled;
     if (agent === 'qoder') return !!pad.qoderStatusLightsEnabled;
     if (agent === 'cline') return !!pad.clineStatusLightsEnabled;
+    if (agent === 'roo') return !!pad.rooStatusLightsEnabled;
     if (agent === 'opencode') return !!pad.opencodeStatusLightsEnabled;
     if (agent === 'aider') return !!pad.aiderStatusLightsEnabled;
     return !!pad.codexStatusLightsEnabled;
@@ -3381,13 +3405,16 @@
     if (agent === 'claude') pad.claudeStatusLightsEnabled = !!enabled;
     else if (agent === 'cursor') pad.cursorStatusLightsEnabled = !!enabled;
     else if (agent === 'copilotCli' || agent === 'copilotcli') pad.copilotStatusLightsEnabled = !!enabled;
+    else if (agent === 'copilotVscode' || agent === 'copilotvscode') pad.copilotVscodeStatusLightsEnabled = !!enabled;
     else if (agent === 'gemini') pad.geminiStatusLightsEnabled = !!enabled;
     else if (agent === 'minimax') pad.minimaxStatusLightsEnabled = !!enabled;
     else if (agent === 'workbuddy') pad.workbuddyStatusLightsEnabled = !!enabled;
     else if (agent === 'trae') pad.traeStatusLightsEnabled = !!enabled;
     else if (agent === 'traeCode' || agent === 'traecode') pad.traeCodeStatusLightsEnabled = !!enabled;
+    else if (agent === 'windsurf') pad.windsurfStatusLightsEnabled = !!enabled;
     else if (agent === 'qoder') pad.qoderStatusLightsEnabled = !!enabled;
     else if (agent === 'cline') pad.clineStatusLightsEnabled = !!enabled;
+    else if (agent === 'roo') pad.rooStatusLightsEnabled = !!enabled;
     else if (agent === 'opencode') pad.opencodeStatusLightsEnabled = !!enabled;
     else if (agent === 'aider') pad.aiderStatusLightsEnabled = !!enabled;
     else pad.codexStatusLightsEnabled = !!enabled;
@@ -3605,6 +3632,7 @@
     if (appId === 'workbuddy-chat') return 'workbuddy';
     if (appId === 'trae-work' || appId === 'trae-chat') return 'trae';
     if (appId === 'trae-code') return 'traeCode';
+    if (appId === 'windsurf-chat') return 'windsurf';
     if (appId === 'qoder-chat') return 'qoder';
     if (appId === 'cline-chat') return 'cline';
     if (appId === 'opencode-chat') return 'opencode';

@@ -18,6 +18,7 @@
     'workbuddy',
     'trae',
     'traeCode',
+    'windsurf',
     'qoder',
     'cline',
     'opencode',

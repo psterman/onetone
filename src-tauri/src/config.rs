@@ -1446,6 +1446,9 @@ pub struct CodexMicroPadConfig {
     /// Soft Pad top-bar Trae Code status dot (OfficialHook lifecycle).
     #[serde(default = "default_true")]
     pub trae_code_status_lights_enabled: bool,
+    /// Soft Pad top-bar Windsurf status dot (local activity lamps).
+    #[serde(default = "default_true")]
+    pub windsurf_status_lights_enabled: bool,
     /// Soft Pad top-bar Qoder status dot (shell hook lifecycle).
     #[serde(default = "default_true")]
     pub qoder_status_lights_enabled: bool,
@@ -1455,12 +1458,18 @@ pub struct CodexMicroPadConfig {
     /// Soft Pad top-bar Copilot CLI status dot (shell hook lifecycle).
     #[serde(default)]
     pub copilot_status_lights_enabled: bool,
+    /// Soft Pad top-bar VS Code Copilot Agent status dot (opt-in; not CLI / Cloud).
+    #[serde(default)]
+    pub copilot_vscode_status_lights_enabled: bool,
     /// Soft Pad top-bar Gemini CLI status dot (shell hook lifecycle).
     #[serde(default)]
     pub gemini_status_lights_enabled: bool,
     /// Soft Pad top-bar Cline status dot (file hooks).
     #[serde(default)]
     pub cline_status_lights_enabled: bool,
+    /// Soft Pad top-bar Roo status dot (file hooks).
+    #[serde(default)]
+    pub roo_status_lights_enabled: bool,
     /// Soft Pad top-bar OpenCode status dot (plugin).
     #[serde(default)]
     pub opencode_status_lights_enabled: bool,
@@ -1525,11 +1534,14 @@ impl Default for CodexMicroPadConfig {
             workbuddy_status_lights_enabled: true,
             trae_status_lights_enabled: true,
             trae_code_status_lights_enabled: true,
+            windsurf_status_lights_enabled: true,
             qoder_status_lights_enabled: true,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
+            copilot_vscode_status_lights_enabled: false,
             gemini_status_lights_enabled: false,
             cline_status_lights_enabled: false,
+            roo_status_lights_enabled: false,
             opencode_status_lights_enabled: false,
             aider_status_lights_enabled: false,
             ambient_mode: default_ambient_mode(),
