@@ -20,8 +20,8 @@
     var hash = (location.hash || "").replace(/^#/, "");
 
     if (path === "quickstart.html") {
-      if (hash === "step1") return "keys";
-      if (hash === "step2" || hash === "step3") return "voice";
+      if (hash === "keys" || hash === "step1") return "keys";
+      if (hash === "voice" || hash === "step2" || hash === "step3") return "voice";
       return null;
     }
     if (path === "vision.html") return "camera";

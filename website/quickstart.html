@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="js/theme-init.js"></script>
+  <script>if ("scrollRestoration" in history) history.scrollRestoration = "manual";</script>
   <title>语音与按键 — 一声 OneTone</title>
   <meta name="description" content="三步上手：选个键、对接你的语音输入、说完字自己上屏。">
   <link rel="canonical" href="https://www.onetone.app/quickstart.html">
@@ -18,6 +19,7 @@
   <link rel="stylesheet" href="css/shell.css">
   <link rel="stylesheet" href="css/qs-layout.css">
   <link rel="stylesheet" href="css/qs-quickstart.css">
+  <link rel="stylesheet" href="css/qs-voice-hero.css">
 </head>
 <body class="antialiased" data-page="quickstart">
 <header class="site-header">
@@ -27,8 +29,8 @@
       <span data-i18n="siteName">一声 OneTone</span>
     </a>
     <nav class="site-nav" aria-label="Main">
-      <a href="quickstart.html#step2" data-nav="voice"><i class="ph ph-microphone site-nav-icon" aria-hidden="true"></i><span data-i18n="navVoice">语音</span></a>
-      <a href="quickstart.html#step1" data-nav="keys"><i class="ph ph-keyboard site-nav-icon" aria-hidden="true"></i><span data-i18n="navKeys">按键</span></a>
+      <a href="quickstart.html#voice" data-nav="voice"><i class="ph ph-microphone site-nav-icon" aria-hidden="true"></i><span data-i18n="navVoice">语音</span></a>
+      <a href="quickstart.html#keys" data-nav="keys"><i class="ph ph-keyboard site-nav-icon" aria-hidden="true"></i><span data-i18n="navKeys">按键</span></a>
       <a href="vision.html" data-nav="camera"><i class="ph ph-camera site-nav-icon" aria-hidden="true"></i><span data-i18n="navCamera">摄像头</span></a>
       <a href="agent.html" data-nav="softpad"><i class="ph ph-squares-four site-nav-icon" aria-hidden="true"></i><span data-i18n="navSoftPad">SoftPad</span></a>
       <a href="faq.html" data-nav="faq"><i class="ph ph-question site-nav-icon" aria-hidden="true"></i><span data-i18n="navFaq">帮助</span></a>
@@ -43,71 +45,72 @@
   </div>
 </header>
 <div class="mobile-nav-panel" id="mobileNavPanel">
-  <a href="quickstart.html#step2" data-nav="voice"><i class="ph ph-microphone site-nav-icon" aria-hidden="true"></i><span data-i18n="navVoice">语音</span></a>
-  <a href="quickstart.html#step1" data-nav="keys"><i class="ph ph-keyboard site-nav-icon" aria-hidden="true"></i><span data-i18n="navKeys">按键</span></a>
+  <a href="quickstart.html#voice" data-nav="voice"><i class="ph ph-microphone site-nav-icon" aria-hidden="true"></i><span data-i18n="navVoice">语音</span></a>
+  <a href="quickstart.html#keys" data-nav="keys"><i class="ph ph-keyboard site-nav-icon" aria-hidden="true"></i><span data-i18n="navKeys">按键</span></a>
   <a href="vision.html" data-nav="camera"><i class="ph ph-camera site-nav-icon" aria-hidden="true"></i><span data-i18n="navCamera">摄像头</span></a>
   <a href="agent.html" data-nav="softpad"><i class="ph ph-squares-four site-nav-icon" aria-hidden="true"></i><span data-i18n="navSoftPad">SoftPad</span></a>
   <a href="faq.html" data-nav="faq"><i class="ph ph-question site-nav-icon" aria-hidden="true"></i><span data-i18n="navFaq">帮助</span></a>
   <a href="download.html" data-nav="download" data-i18n="navDownload">下载</a>
 </div>
 <main>
-  <section id="qs-hero" class="qs-hero-wrapper is-visible" aria-label="使用开场">
+  <section id="qs-hero" class="qs-hero-wrapper is-visible" data-mode="keys" aria-label="使用开场">
     <div class="spatial-grid-wrap" aria-hidden="true"><div class="spatial-grid"></div></div>
 
-    <div class="qs-hero-inner">
+    <!-- 按键：神经网络 / 外设演示 -->
+    <div class="qs-hero-inner" data-hero-keys>
       <header class="qs-hero-head">
         <div class="qs-hero-badge qs-glass-card">
           <i class="ph-fill ph-keyboard text-mac-accent text-sm" aria-hidden="true"></i>
-          不用买键盘 · 现有设备就行
+          <span data-i18n="qsHeroKeysBadge">不用买键盘 · 现有设备就行</span>
         </div>
         <h1 class="qs-hero-title">
-          按一下，就能在 <span class="qs-hero-title-accent">Cursor 里说</span>
+          <span data-i18n="qsHeroKeysTitleBefore">按一下，就能在 </span><span class="qs-hero-title-accent" data-i18n="qsHeroKeysTitleAccent">Cursor 里说</span>
         </h1>
       </header>
 
       <div class="qs-hero-stage" id="qs-hero-stage">
         <canvas id="neural-canvas" aria-hidden="true"></canvas>
-        <div class="qs-hero-node-layer" id="node-layer">
-        <div class="qs-rich-node qs-glass-card" id="rn-kb" style="top: 18%; left: 16%;">
-          <div class="rn-icon-box"><i class="ph-fill ph-keyboard" aria-hidden="true"></i></div>
-          <div class="rn-info">
-            <span class="rn-name">快捷键</span>
-            <span class="rn-status"><span class="rn-dot"></span> Alt + 空格</span>
+        <div class="qs-hero-node-layer" id="node-layer-keys">
+          <div class="qs-rich-node qs-glass-card" id="rn-kb" style="top: 18%; left: 16%;">
+            <div class="rn-icon-box"><i class="ph-fill ph-keyboard" aria-hidden="true"></i></div>
+            <div class="rn-info">
+              <span class="rn-name">快捷键</span>
+              <span class="rn-status"><span class="rn-dot"></span> Alt + 空格</span>
+            </div>
           </div>
-        </div>
-        <div class="qs-rich-node qs-glass-card" id="rn-mouse" style="top: 18%; left: 84%;">
-          <div class="rn-icon-box"><i class="ph-fill ph-mouse" aria-hidden="true"></i></div>
-          <div class="rn-info">
-            <span class="rn-name">鼠标侧键</span>
-            <span class="rn-status"><span class="rn-dot"></span> 侧键</span>
+          <div class="qs-rich-node qs-glass-card" id="rn-mouse" style="top: 18%; left: 84%;">
+            <div class="rn-icon-box"><i class="ph-fill ph-mouse" aria-hidden="true"></i></div>
+            <div class="rn-info">
+              <span class="rn-name">鼠标侧键</span>
+              <span class="rn-status"><span class="rn-dot"></span> 侧键</span>
+            </div>
           </div>
-        </div>
-        <div class="qs-rich-node qs-glass-card" id="rn-gamepad" style="top: 82%; left: 14%;">
-          <div class="rn-icon-box"><i class="ph-fill ph-game-controller" aria-hidden="true"></i></div>
-          <div class="rn-info">
-            <span class="rn-name">手柄</span>
-            <span class="rn-status"><span class="rn-dot"></span> 扳机</span>
+          <div class="qs-rich-node qs-glass-card" id="rn-gamepad" style="top: 82%; left: 14%;">
+            <div class="rn-icon-box"><i class="ph-fill ph-game-controller" aria-hidden="true"></i></div>
+            <div class="rn-info">
+              <span class="rn-name">手柄</span>
+              <span class="rn-status"><span class="rn-dot"></span> 扳机</span>
+            </div>
           </div>
-        </div>
-        <div class="qs-rich-node qs-glass-card" id="rn-ring" style="top: 82%; left: 86%;">
-          <div class="rn-icon-box"><i class="ph-fill ph-circle" aria-hidden="true"></i></div>
-          <div class="rn-info">
-            <span class="rn-name">指环</span>
-            <span class="rn-status"><span class="rn-dot"></span> 点一下</span>
+          <div class="qs-rich-node qs-glass-card" id="rn-ring" style="top: 82%; left: 86%;">
+            <div class="rn-icon-box"><i class="ph-fill ph-circle" aria-hidden="true"></i></div>
+            <div class="rn-info">
+              <span class="rn-name">指环</span>
+              <span class="rn-status"><span class="rn-dot"></span> 点一下</span>
+            </div>
           </div>
-        </div>
-        <div class="qs-rich-node qs-glass-card" id="rn-trackball" style="top: 88%; left: 50%;">
-          <div class="rn-icon-box"><i class="ph-fill ph-target" aria-hidden="true"></i></div>
-          <div class="rn-info">
-            <span class="rn-name">轨迹球</span>
-            <span class="rn-status"><span class="rn-dot"></span> Fn 键</span>
+          <div class="qs-rich-node qs-glass-card" id="rn-trackball" style="top: 88%; left: 50%;">
+            <div class="rn-icon-box"><i class="ph-fill ph-target" aria-hidden="true"></i></div>
+            <div class="rn-info">
+              <span class="rn-name">轨迹球</span>
+              <span class="rn-status"><span class="rn-dot"></span> Fn 键</span>
+            </div>
           </div>
         </div>
         <div class="qs-rich-hub qs-glass-card" id="hn-hub">
           <i class="ph-fill ph-microphone" id="hn-hub-icon" aria-hidden="true"></i>
         </div>
       </div>
-    </div>
 
       <div class="qs-sleek-terminal qs-glass-card">
         <div class="st-header">
@@ -119,6 +122,102 @@
           <div class="st-output"><span id="st-text"></span><span class="st-cursor" id="st-cursor"></span></div>
         </div>
       </div>
+    </div>
+
+    <!-- 语音：还原首页原版设备轮播 Hero -->
+    <div class="qs-classic-hero hero-section max-w-6xl mx-auto px-6 pt-6 pb-8" data-hero-voice>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <div class="hero-platform-pill">
+            <i class="ph-fill ph-windows-logo"></i>
+            <span data-i18n="heroTrust">适用于 Windows 10 / 11</span>
+          </div>
+          <h1 class="hero-title">
+            <span class="hero-title-line hero-title-line-pill">
+              <span class="hero-word-pill hero-pill-theme-0" aria-live="polite"><span class="hero-word-dot" aria-hidden="true"></span><span data-hero-word>脑子里的吐槽</span></span>
+            </span>
+            <span class="hero-title-line hero-title-line-action" data-i18n="heroActionLine2">想什么，说一声</span>
+          </h1>
+          <p class="hero-tagline" data-i18n="heroTagline">按心动按钮，我口说我心</p>
+          <div class="hero-actions">
+            <a href="download.html" class="hero-primary-cta" data-i18n="ctaDownload">我就试试</a>
+            <a href="#step2" class="hero-secondary-cta">
+              <span data-i18n="ctaSeeHow">先看看怎么用</span>
+              <i class="ph-bold ph-arrow-right"></i>
+            </a>
+          </div>
+          <div class="hero-proof-row" aria-label="OneTone benefits">
+            <span><i class="ph ph-hand-pointing"></i><span data-i18n="heroProofKeyboard">外设随便选</span></span>
+            <span><i class="ph ph-globe-hemisphere-west"></i><span data-i18n="heroProofGlobal">在哪都能说</span></span>
+            <span><i class="ph ph-shield-check"></i><span data-i18n="heroProofLocal">话留本机</span></span>
+          </div>
+          <span class="sr-only" data-hero-live>脑子里的吐槽</span>
+        </div>
+
+        <div class="hero-demo hero-object-demo" aria-label="OneTone voice input demo">
+          <div class="hero-flow-connector" aria-hidden="true"></div>
+          <div class="hero-object-stage" aria-hidden="true">
+            <div class="hero-object hero-object-photo is-active" data-hero-device-object="0" data-device-id="mouse">
+              <figure class="hero-device-photo">
+                <img src="assets/devices/mouse.png" alt="" width="720" height="544" decoding="async" draggable="false">
+                <span class="hero-device-accent"></span>
+              </figure>
+            </div>
+            <div class="hero-object hero-object-photo" data-hero-device-object="1" data-device-id="volume">
+              <figure class="hero-device-photo">
+                <img src="assets/devices/volume.png" alt="" width="720" height="551" decoding="async" draggable="false">
+                <span class="hero-device-accent"></span>
+              </figure>
+            </div>
+            <div class="hero-object hero-object-photo" data-hero-device-object="2" data-device-id="gamepad">
+              <figure class="hero-device-photo">
+                <img src="assets/devices/gamepad.png" alt="" width="720" height="628" decoding="async" draggable="false">
+                <span class="hero-device-accent"></span>
+              </figure>
+            </div>
+            <div class="hero-object hero-object-photo" data-hero-device-object="3" data-device-id="ring">
+              <figure class="hero-device-photo">
+                <img src="assets/devices/ring.png" alt="" width="624" height="720" decoding="async" draggable="false">
+                <span class="hero-device-accent"></span>
+              </figure>
+            </div>
+            <div class="hero-object hero-object-photo" data-hero-device-object="4" data-device-id="trackball">
+              <figure class="hero-device-photo">
+                <img src="assets/devices/trackball.png" alt="" width="720" height="495" decoding="async" draggable="false">
+                <span class="hero-device-accent"></span>
+              </figure>
+            </div>
+            <div class="hero-object hero-object-photo" data-hero-device-object="5" data-device-id="mic">
+              <figure class="hero-device-photo">
+                <img src="assets/devices/mic.png" alt="" width="306" height="720" decoding="async" draggable="false">
+                <span class="hero-device-accent"></span>
+              </figure>
+            </div>
+            <div class="hero-object-glow"></div>
+          </div>
+
+          <div class="hero-listening-card">
+            <div class="hero-card-title">
+              <span class="hero-mic-dot"><i class="ph-fill ph-microphone"></i></span>
+              <span data-i18n="heroDemoCardTitle">一声</span>
+            </div>
+            <div class="hero-wave" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <p data-i18n="heroDemoListening">想什么，说一声</p>
+          </div>
+
+          <div class="hero-text-demo">
+            <div class="hero-text-line is-muted"></div>
+            <div class="hero-text-line is-short"></div>
+            <p><span data-i18n="heroDemoTypedText">说啥都行，字会自己蹦到光标那。</span><span class="hero-caret" aria-hidden="true"></span></p>
+          </div>
+        </div>
+      </div>
+      <blockquote class="hero-slogan">
+        <i class="ph-fill ph-quotes" aria-hidden="true"></i>
+        <p data-i18n="heroSlogan">「小红书别再给我推299￥的vibecoding键盘了，穷是俺的问题」</p>
+      </blockquote>
     </div>
   </section>
 

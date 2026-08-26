@@ -907,8 +907,25 @@
 
   function applyQuickstartHash() {
     const hash = location.hash.slice(1);
+    const hero = document.getElementById("qs-hero");
+
+    function setHeroMode(mode) {
+      if (!hero) return;
+      hero.dataset.mode = mode === "voice" ? "voice" : "keys";
+      window.dispatchEvent(new CustomEvent("qs-hero-mode", { detail: { mode: hero.dataset.mode } }));
+    }
+
+    function scrollToHero() {
+      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+      // beat native hash scroll to #step* / keep pillar landing on hero
+      const go = () => window.scrollTo(0, 0);
+      go();
+      requestAnimationFrame(go);
+      window.setTimeout(go, 0);
+    }
 
     if (hash === "step0") {
+      setHeroMode("voice");
       setQuickstartChainHighlight(2);
       quickstartZoneCycles.zone2?.apply(2);
       document.getElementById("step0")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -916,13 +933,33 @@
     }
 
     if (hash === "step3") {
+      setHeroMode("voice");
       setQuickstartChainHighlight(2);
       quickstartZoneCycles.zone2?.apply(2);
       document.getElementById("step2")?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
 
+    // Pillar landings: show matching hero at top
+    if (hash === "keys") {
+      setHeroMode("keys");
+      quickstartZoneCycles.zone1?.apply(0);
+      setQuickstartChainHighlight(0);
+      scrollToHero();
+      return;
+    }
+
+    if (hash === "voice") {
+      setHeroMode("voice");
+      quickstartZoneCycles.zone2?.apply(0);
+      setQuickstartChainHighlight(1);
+      scrollToHero();
+      return;
+    }
+
+    // Deep links into zones
     if (hash === "step1") {
+      setHeroMode("keys");
       quickstartZoneCycles.zone1?.apply(0);
       setQuickstartChainHighlight(0);
       document.getElementById("step1")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -930,6 +967,7 @@
     }
 
     if (hash === "step2") {
+      setHeroMode("voice");
       quickstartZoneCycles.zone2?.apply(0);
       setQuickstartChainHighlight(1);
       document.getElementById("step2")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -937,6 +975,7 @@
     }
 
     if (!hash) {
+      setHeroMode("keys");
       quickstartZoneCycles.zone1?.apply(0);
       setQuickstartChainHighlight(0);
     }
@@ -1030,7 +1069,12 @@
       document.getElementById("rn-trackball"),
     ].filter(Boolean);
 
+    function isKeysMode() {
+      return wrapper.dataset.mode !== "voice";
+    }
+
     function resize() {
+      if (!isKeysMode()) return false;
       const dpr = window.devicePixelRatio || 1;
       const nextWidth = stage.clientWidth;
       const nextHeight = stage.clientHeight;
@@ -1062,6 +1106,10 @@
     }
 
     function drawNetwork() {
+      if (!isKeysMode()) {
+        window.requestAnimationFrame(drawNetwork);
+        return;
+      }
       if (!stageReady) {
         window.requestAnimationFrame(drawNetwork);
         return;
@@ -1161,6 +1209,11 @@
 
       while (storyRunning) {
         try {
+          if (!isKeysMode()) {
+            await wait(500);
+            continue;
+          }
+
           scenarios.forEach((s) => s.el?.classList.remove("is-active"));
           hubEl.classList.remove("is-listening");
           hubIcon.className = "ph-fill ph-microphone";
@@ -1172,9 +1225,10 @@
           stCursor.classList.add("blinking");
 
           await wait(reduceMotion.matches ? 800 : 2000);
+          if (!isKeysMode()) continue;
 
-          const current = scenarios[sIdx];
-          if (current.el && window.getComputedStyle(current.el).display !== "none") {
+          const current = scenarios[sIdx % scenarios.length];
+          if (current?.el && window.getComputedStyle(current.el).display !== "none") {
             current.el.classList.add("is-active");
             stCode.textContent = current.code;
             stCode.classList.add("active");
@@ -1215,6 +1269,10 @@
     }
 
     function bootHeroVisuals() {
+      if (!isKeysMode()) {
+        window.requestAnimationFrame(bootHeroVisuals);
+        return;
+      }
       if (!resize()) {
         window.requestAnimationFrame(bootHeroVisuals);
         return;
@@ -1224,6 +1282,12 @@
     }
 
     window.addEventListener("resize", resize);
+    window.addEventListener("qs-hero-mode", () => {
+      activeSignal = null;
+      clearSignalTimer();
+      scenarios.forEach((s) => s.el?.classList.remove("is-active"));
+      if (isKeysMode()) resize();
+    });
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") clearSignalTimer();
     });
@@ -1231,7 +1295,101 @@
     window.requestAnimationFrame(bootHeroVisuals);
   }
 
+  function initClassicVoiceHero() {
+    const root = document.querySelector(".qs-classic-hero");
+    if (!root) return;
+
+    const wordEl = root.querySelector("[data-hero-word]");
+    const liveEl = root.querySelector("[data-hero-live]");
+    const pillEl = root.querySelector(".hero-word-pill");
+    const objectEls = Array.from(root.querySelectorAll("[data-hero-device-object]"));
+    const listeningCard = root.querySelector(".hero-listening-card");
+    const textDemo = root.querySelector(".hero-text-demo");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    const fallbackWords = {
+      zh: ["脑子里的吐槽", "还没写的周报", "凌晨三点灵感", "摸鱼时的金句", "心流上头瞬间", "今天的小目标"],
+      en: ["inner roast", "late report", "3am spark", "slack gold", "flow state", "tiny win"],
+    };
+
+    let wordIndex = 0;
+    let deviceIndex = 0;
+    let wordTimer = 0;
+    let deviceTimer = 0;
+    const themeCount = 6;
+
+    function currentLang() {
+      if (window.OneToneSite?.getLang) return window.OneToneSite.getLang();
+      return document.documentElement.lang === "en" ? "en" : "zh";
+    }
+
+    function getWords() {
+      const lang = currentLang();
+      const siteWords = window.OneToneSite?.strings?.[lang]?.heroWords;
+      if (Array.isArray(siteWords) && siteWords.length) return siteWords;
+      return fallbackWords[lang] || fallbackWords.zh;
+    }
+
+    function setWord(nextIndex, animate) {
+      if (!wordEl || !pillEl) return;
+      const words = getWords();
+      wordIndex = nextIndex % words.length;
+      if (animate) pillEl.classList.remove("is-changing");
+      wordEl.textContent = words[wordIndex];
+      if (liveEl) liveEl.textContent = words[wordIndex];
+      for (let i = 0; i < themeCount; i += 1) {
+        pillEl.classList.toggle(`hero-pill-theme-${i}`, i === wordIndex % themeCount);
+      }
+      if (animate) {
+        requestAnimationFrame(() => pillEl.classList.add("is-changing"));
+      }
+    }
+
+    function setDevice(nextIndex, animate) {
+      if (!objectEls.length) return;
+      deviceIndex = nextIndex % objectEls.length;
+      objectEls.forEach((el, i) => el.classList.toggle("is-active", i === deviceIndex));
+      if (listeningCard) {
+        listeningCard.classList.remove("is-pulsing");
+        if (animate) requestAnimationFrame(() => listeningCard.classList.add("is-pulsing"));
+      }
+      if (textDemo && animate) {
+        textDemo.classList.remove("is-typing-reset");
+        requestAnimationFrame(() => textDemo.classList.add("is-typing-reset"));
+      }
+    }
+
+    function stop() {
+      if (wordTimer) window.clearInterval(wordTimer);
+      if (deviceTimer) window.clearInterval(deviceTimer);
+      wordTimer = 0;
+      deviceTimer = 0;
+    }
+
+    function start() {
+      stop();
+      setWord(0, false);
+      setDevice(0, false);
+      const hero = document.getElementById("qs-hero");
+      if (hero?.dataset.mode !== "voice") return;
+      if (reduceMotion.matches || document.visibilityState === "hidden") return;
+      if (wordEl && pillEl) {
+        wordTimer = window.setInterval(() => setWord(wordIndex + 1, true), 1800);
+      }
+      if (objectEls.length > 1) {
+        deviceTimer = window.setInterval(() => setDevice(deviceIndex + 1, true), 2200);
+      }
+    }
+
+    document.addEventListener("visibilitychange", start);
+    document.addEventListener("onetone:langchange", start);
+    window.addEventListener("qs-hero-mode", start);
+    if (reduceMotion.addEventListener) reduceMotion.addEventListener("change", start);
+    start();
+  }
+
   function bootQuickstartPage() {
+    initClassicVoiceHero();
     initQsHero();
     initQuickstartPage();
   }

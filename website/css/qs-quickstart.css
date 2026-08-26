@@ -1714,6 +1714,32 @@ body[data-page="quickstart"] main {
   color: transparent;
 }
 
+/* keys / voice share one hero shell; toggle by data-mode */
+#qs-hero[data-mode="keys"] [data-hero-voice],
+#qs-hero[data-mode="voice"] [data-hero-keys] {
+  display: none !important;
+}
+
+#qs-hero[data-mode="voice"] {
+  display: block;
+  min-height: auto;
+  padding-bottom: clamp(16px, 3vh, 32px);
+}
+
+#qs-hero[data-mode="voice"] .qs-classic-hero {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+
+#qs-hero[data-mode="voice"] .hero-slogan {
+  color: #e2e8f0;
+}
+
+#qs-hero[data-mode="voice"] .hero-slogan p {
+  color: #cbd5e1;
+}
+
 .qs-hero-node-layer {
   position: absolute;
   inset: 0;
