@@ -14,18 +14,39 @@
     });
   }
 
-  var path = (location.pathname.split("/").pop() || "index.html").toLowerCase();
-  if (path === "" || path === "/") path = "index.html";
-  document.querySelectorAll("[data-nav]").forEach(function (el) {
-    var key = el.getAttribute("data-nav");
-    var map = {
-      home: "index.html",
-      quickstart: "quickstart.html",
-      vision: "vision.html",
-      agent: "agent.html",
-      download: "download.html",
-      faq: "faq.html",
-    };
-    if (map[key] === path) el.classList.add("is-active");
-  });
+  function activeNavKey() {
+    var path = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+    if (path === "" || path === "/") path = "index.html";
+    var hash = (location.hash || "").replace(/^#/, "");
+
+    if (path === "quickstart.html") {
+      if (hash === "step1") return "keys";
+      if (hash === "step2" || hash === "step3") return "voice";
+      return null;
+    }
+    if (path === "vision.html") return "camera";
+    if (path === "agent.html") return "softpad";
+    if (path === "faq.html") return "faq";
+    if (path === "download.html") return "download";
+    return null;
+  }
+
+  function syncNavIcons(el, on) {
+    var icon = el.querySelector(".site-nav-icon");
+    if (!icon) return;
+    icon.classList.toggle("ph-fill", on);
+    icon.classList.toggle("ph", !on);
+  }
+
+  function syncNavActive() {
+    var key = activeNavKey();
+    document.querySelectorAll("[data-nav]").forEach(function (el) {
+      var on = key != null && el.getAttribute("data-nav") === key;
+      el.classList.toggle("is-active", on);
+      syncNavIcons(el, on);
+    });
+  }
+
+  syncNavActive();
+  window.addEventListener("hashchange", syncNavActive);
 })();

@@ -8,6 +8,10 @@
     zh: {
       siteName: "一声 OneTone",
       navDownload: "下载",
+      navVoice: "语音",
+      navKeys: "按键",
+      navCamera: "摄像头",
+      navSoftPad: "SoftPad",
       navQuickstart: "上手",
       navFaq: "帮助",
       langToggle: "EN",
@@ -591,6 +595,10 @@
     en: {
       siteName: "OneTone",
       navDownload: "Download",
+      navVoice: "Voice",
+      navKeys: "Keys",
+      navCamera: "Camera",
+      navSoftPad: "SoftPad",
       navQuickstart: "Get started",
       navFaq: "Help",
       langToggle: "中文",
@@ -1204,17 +1212,21 @@
     document.querySelectorAll("[data-i18n]").forEach((el) => {
       const key = el.getAttribute("data-i18n");
       const val = t(lang, key);
-      el.textContent = val ?? "";
+      // Keep HTML fallback if the key is missing (avoid showing "navVoice").
+      if (val == null || val === key) return;
+      el.textContent = val;
     });
     document.querySelectorAll("[data-i18n-html]").forEach((el) => {
       const key = el.getAttribute("data-i18n-html");
       const val = t(lang, key);
-      if (val) el.innerHTML = val;
+      if (!val || val === key) return;
+      el.innerHTML = val;
     });
     document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
       const key = el.getAttribute("data-i18n-placeholder");
       const val = t(lang, key);
-      if (val) el.setAttribute("placeholder", val);
+      if (!val || val === key) return;
+      el.setAttribute("placeholder", val);
     });
   }
 
@@ -1230,11 +1242,7 @@
   }
 
   function initNavActive() {
-    const page = document.body.dataset.page;
-    if (!page) return;
-    document.querySelectorAll(`.site-nav a[data-nav="${page}"]`).forEach((a) => {
-      a.classList.add("is-active");
-    });
+    // Active state is hash-aware in shell.js (voice/keys share quickstart.html).
   }
 
   function initFromDownload() {

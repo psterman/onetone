@@ -39,7 +39,7 @@
 
 .site-nav {
   display: none;
-  gap: 2rem;
+  gap: 1.5rem;
   font-size: 0.875rem;
   font-weight: 500;
 }
@@ -51,6 +51,9 @@
 }
 
 .site-nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   color: var(--mac-text-muted);
   text-decoration: none;
   transition: color 0.2s;
@@ -59,6 +62,22 @@
 .site-nav a:hover,
 .site-nav a.is-active {
   color: #fff;
+}
+
+.site-nav-icon {
+  font-size: 1.05rem;
+  line-height: 1;
+  color: inherit;
+  transition: color 0.2s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.site-nav a:hover .site-nav-icon {
+  color: var(--mac-accent);
+}
+
+.site-nav a.is-active .site-nav-icon {
+  color: var(--mac-accent);
+  transform: scale(1.08);
 }
 
 .site-header-actions {
@@ -214,13 +233,26 @@
 }
 
 .mobile-nav-panel a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
   color: var(--mac-text-muted);
   text-decoration: none;
   font-size: 1rem;
   padding: 0.5rem 0;
+  transition: color 0.2s;
 }
 
 .mobile-nav-panel a.is-active,
 .mobile-nav-panel a:hover {
   color: #fff;
+}
+
+.mobile-nav-panel a .site-nav-icon {
+  font-size: 1.15rem;
+}
+
+.mobile-nav-panel a.is-active .site-nav-icon,
+.mobile-nav-panel a:hover .site-nav-icon {
+  color: var(--mac-accent);
 }

@@ -53,8 +53,10 @@ function pageShell({ title, desc, active, cssHrefs, bodyHtml, pageScripts, bodyC
     .map((s) => `  <script src="${s}"></script>`)
     .join("\n");
 
-  const nav = (key, href, label) =>
-    `<a href="${href}" data-nav="${key}"${active === key ? ' class="is-active"' : ""}>${label}</a>`;
+  const navActive =
+    active === "vision" ? "camera" : active === "agent" ? "softpad" : active;
+  const nav = (key, href, icon, i18n, label) =>
+    `<a href="${href}" data-nav="${key}"${navActive === key ? ' class="is-active"' : ""}><i class="ph ${icon} site-nav-icon" aria-hidden="true"></i><span data-i18n="${i18n}">${label}</span></a>`;
 
   return `<!DOCTYPE html>
 <html lang="zh-CN" class="dark scroll-smooth">
@@ -85,15 +87,15 @@ ${extraHead || ""}
       <span data-i18n="siteName">一声 OneTone</span>
     </a>
     <nav class="site-nav" aria-label="Main">
-      ${nav("home", "index.html", "概览")}
-      ${nav("quickstart", "quickstart.html", "使用")}
-      ${nav("vision", "vision.html", "视觉")}
-      ${nav("agent", "agent.html", "Agent")}
-      ${nav("faq", "faq.html", "帮助")}
+      ${nav("voice", "quickstart.html#step2", "ph-microphone", "navVoice", "语音")}
+      ${nav("keys", "quickstart.html#step1", "ph-keyboard", "navKeys", "按键")}
+      ${nav("camera", "vision.html", "ph-camera", "navCamera", "摄像头")}
+      ${nav("softpad", "agent.html", "ph-squares-four", "navSoftPad", "SoftPad")}
+      ${nav("faq", "faq.html", "ph-question", "navFaq", "帮助")}
     </nav>
     <div class="site-header-actions">
       <button type="button" class="lang-toggle" id="langToggle" data-i18n="langToggle">EN</button>
-      <a class="nav-cta" href="download.html">下载</a>
+      <a class="nav-cta" href="download.html" data-i18n="navDownload">下载</a>
       <button type="button" class="mobile-nav-toggle" id="mobileNavToggle" aria-label="菜单" aria-expanded="false">
         <i class="ph ph-list text-xl"></i>
       </button>
@@ -101,12 +103,12 @@ ${extraHead || ""}
   </div>
 </header>
 <div class="mobile-nav-panel" id="mobileNavPanel">
-  ${nav("home", "index.html", "概览")}
-  ${nav("quickstart", "quickstart.html", "使用")}
-  ${nav("vision", "vision.html", "视觉")}
-  ${nav("agent", "agent.html", "Agent")}
-  ${nav("faq", "faq.html", "帮助")}
-  <a href="download.html" data-nav="download">下载</a>
+  ${nav("voice", "quickstart.html#step2", "ph-microphone", "navVoice", "语音")}
+  ${nav("keys", "quickstart.html#step1", "ph-keyboard", "navKeys", "按键")}
+  ${nav("camera", "vision.html", "ph-camera", "navCamera", "摄像头")}
+  ${nav("softpad", "agent.html", "ph-squares-four", "navSoftPad", "SoftPad")}
+  ${nav("faq", "faq.html", "ph-question", "navFaq", "帮助")}
+  <a href="download.html" data-nav="download" data-i18n="navDownload">下载</a>
 </div>
 ${bodyHtml}
 <footer class="site-footer">
@@ -317,7 +319,7 @@ processGeneric({
   outCss: "quickstart.css",
   outJs: "quickstart-demo.js",
   active: "quickstart",
-  title: "使用 — 一声 OneTone",
+  title: "语音与按键 — 一声 OneTone",
   desc: "三步定制语音触发：选外设、绑定输入法、说完自动上屏。",
 });
 
@@ -327,7 +329,7 @@ processGeneric({
   outCss: "vision.css",
   outJs: "vision-demo.js",
   active: "vision",
-  title: "视觉中枢 — 一声 OneTone",
+  title: "摄像头 — 一声 OneTone",
   desc: "摄像头本地触发：眨眼、摇头、举手与离席遮罩。不上传云端。",
 });
 
@@ -337,8 +339,8 @@ processGeneric({
   outCss: "agent.css",
   outJs: "agent-demo.js",
   active: "agent",
-  title: "Agent HUD — 一声 OneTone",
-  desc: "Codex Micro 虚拟 HUD：语音口令、Agent 遥测、小键盘映射与快捷键定制。",
+  title: "SoftPad — 一声 OneTone",
+  desc: "屏幕上的虚拟小键盘：说口令、看 Agent 忙不忙、数字键也能跟。",
 });
 
 console.log("done");

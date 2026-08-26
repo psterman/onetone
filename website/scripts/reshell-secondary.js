@@ -7,8 +7,10 @@ const path = require("path");
 const ROOT = path.join(__dirname, "..");
 
 function shellParts(active) {
-  const nav = (key, href, label) =>
-    `<a href="${href}" data-nav="${key}"${active === key ? ' class="is-active"' : ""}>${label}</a>`;
+  const navKey =
+    active === "vision" ? "camera" : active === "agent" ? "softpad" : active;
+  const nav = (key, href, icon, i18n, label) =>
+    `<a href="${href}" data-nav="${key}"${navKey === key ? ' class="is-active"' : ""}><i class="ph ${icon} site-nav-icon" aria-hidden="true"></i><span data-i18n="${i18n}">${label}</span></a>`;
   return {
     headStart(title, desc, extraCss) {
       return `<!DOCTYPE html>
@@ -41,15 +43,15 @@ ${extraCss}
       <span data-i18n="siteName">一声 OneTone</span>
     </a>
     <nav class="site-nav" aria-label="Main">
-      ${nav("home", "index.html", "概览")}
-      ${nav("quickstart", "quickstart.html", "使用")}
-      ${nav("vision", "vision.html", "视觉")}
-      ${nav("agent", "agent.html", "Agent")}
-      ${nav("faq", "faq.html", "帮助")}
+      ${nav("voice", "quickstart.html#step2", "ph-microphone", "navVoice", "语音")}
+      ${nav("keys", "quickstart.html#step1", "ph-keyboard", "navKeys", "按键")}
+      ${nav("camera", "vision.html", "ph-camera", "navCamera", "摄像头")}
+      ${nav("softpad", "agent.html", "ph-squares-four", "navSoftPad", "SoftPad")}
+      ${nav("faq", "faq.html", "ph-question", "navFaq", "帮助")}
     </nav>
     <div class="site-header-actions">
       <button type="button" class="lang-toggle" id="langToggle" data-i18n="langToggle">EN</button>
-      <a class="nav-cta${active === "download" ? " is-active" : ""}" href="download.html">下载</a>
+      <a class="nav-cta${active === "download" ? " is-active" : ""}" href="download.html" data-i18n="navDownload">下载</a>
       <button type="button" class="mobile-nav-toggle" id="mobileNavToggle" aria-label="菜单" aria-expanded="false">
         <i class="ph ph-list text-xl"></i>
       </button>
@@ -57,12 +59,12 @@ ${extraCss}
   </div>
 </header>
 <div class="mobile-nav-panel" id="mobileNavPanel">
-  ${nav("home", "index.html", "概览")}
-  ${nav("quickstart", "quickstart.html", "使用")}
-  ${nav("vision", "vision.html", "视觉")}
-  ${nav("agent", "agent.html", "Agent")}
-  ${nav("faq", "faq.html", "帮助")}
-  <a href="download.html" data-nav="download">下载</a>
+  ${nav("voice", "quickstart.html#step2", "ph-microphone", "navVoice", "语音")}
+  ${nav("keys", "quickstart.html#step1", "ph-keyboard", "navKeys", "按键")}
+  ${nav("camera", "vision.html", "ph-camera", "navCamera", "摄像头")}
+  ${nav("softpad", "agent.html", "ph-squares-four", "navSoftPad", "SoftPad")}
+  ${nav("faq", "faq.html", "ph-question", "navFaq", "帮助")}
+  <a href="download.html" data-nav="download" data-i18n="navDownload">下载</a>
 </div>
 `,
     footer: `<footer class="site-footer">
