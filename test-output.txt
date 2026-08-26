@@ -1,0 +1,538 @@
+﻿
+=== scroll @ 0 (hero) ===
+{
+  "scrollY": 0,
+  "viewport": {
+    "w": 1440,
+    "h": 900
+  },
+  "chapters": {
+    "sec-hero": {
+      "top": 0,
+      "height": 900,
+      "inViewport": true,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgba(0, 0, 0, 0)",
+      "lensInfo": null,
+      "demoInfo": null
+    },
+    "ch-trigger": {
+      "top": 900,
+      "height": 900,
+      "inViewport": false,
+      "isStoryActive": false,
+      "isStackVisible": true,
+      "isChapterPinned": false,
+      "bg": "rgb(0, 0, 0)",
+      "lensInfo": {
+        "visibility": "hidden",
+        "opacity": "1",
+        "transform": "matrix3d(0.98, 0, 0, 0, 0, 0.979403, 0.0342015, -2.85013e-05, 0, -0.0348995, 0.9",
+        "display": "flex"
+      },
+      "demoInfo": {
+        "top": 1273,
+        "height": 436,
+        "visible": false,
+        "textContent": "鼠标侧键拇指按一下，立即开始说\n                \n                \n          "
+      }
+    },
+    "ch-voice": {
+      "top": 900,
+      "height": 900,
+      "inViewport": false,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgb(10, 10, 10)",
+      "lensInfo": {
+        "visibility": "hidden",
+        "opacity": "1",
+        "transform": "matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, -0.000833333, 0, 0, 0, 1)",
+        "display": "grid"
+      },
+      "demoInfo": {
+        "top": 1224,
+        "height": 220,
+        "visible": false,
+        "textContent": "正在待机聆听...\n                  \n                \n              "
+      }
+    },
+    "ch-softpad": {
+      "top": 900,
+      "height": 900,
+      "inViewport": false,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgb(0, 0, 0)",
+      "lensInfo": {
+        "visibility": "hidden",
+        "opacity": "1",
+        "transform": "matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, -0.000833333, 0, 0, 0, 1)",
+        "display": "grid"
+      },
+      "demoInfo": {
+        "top": 1212,
+        "height": 244,
+        "visible": false,
+        "textContent": "虚拟键盘\n                  迷你栏\n                \n                "
+      }
+    },
+    "sec-brands": {
+      "top": 4635,
+      "height": 450,
+      "inViewport": false,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgb(0, 0, 0)",
+      "lensInfo": null,
+      "demoInfo": null
+    },
+    "sec-quotes": {
+      "top": 5085,
+      "height": 725,
+      "inViewport": false,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgb(10, 10, 10)",
+      "lensInfo": null,
+      "demoInfo": null
+    }
+  }
+}
+
+=== scroll @ 900 (ch-trigger) ===
+{
+  "scrollY": 900,
+  "viewport": {
+    "w": 1440,
+    "h": 900
+  },
+  "chapters": {
+    "sec-hero": {
+      "top": -900,
+      "height": 900,
+      "inViewport": false,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgba(0, 0, 0, 0)",
+      "lensInfo": null,
+      "demoInfo": null
+    },
+    "ch-trigger": {
+      "top": 64,
+      "height": 900,
+      "inViewport": true,
+      "isStoryActive": true,
+      "isStackVisible": true,
+      "isChapterPinned": true,
+      "bg": "rgb(0, 0, 0)",
+      "lensInfo": {
+        "visibility": "visible",
+        "opacity": "1",
+        "transform": "matrix3d(0.9883, 0, 0, 0, 0, 0.988093, 0.0202128, -1.6844e-05, 0, -0.0204521, 0.",
+        "display": "flex"
+      },
+      "demoInfo": {
+        "top": 438,
+        "height": 438,
+        "visible": true,
+        "textContent": "鼠标侧键拇指按一下，立即开始说\n                \n                \n          "
+      }
+    },
+    "ch-voice": {
+      "top": 64,
+      "height": 900,
+      "inViewport": true,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgb(10, 10, 10)",
+      "lensInfo": {
+        "visibility": "hidden",
+        "opacity": "1",
+        "transform": "matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, -0.000833333, 0, 0, 0, 1)",
+        "display": "grid"
+      },
+      "demoInfo": {
+        "top": 388,
+        "height": 220,
+        "visible": true,
+        "textContent": "正在待机聆听...\n                  \n                \n              "
+      }
+    },
+    "ch-softpad": {
+      "top": 64,
+      "height": 900,
+      "inViewport": true,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgb(0, 0, 0)",
+      "lensInfo": {
+        "visibility": "hidden",
+        "opacity": "1",
+        "transform": "matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, -0.000833333, 0, 0, 0, 1)",
+        "display": "grid"
+      },
+      "demoInfo": {
+        "top": 376,
+        "height": 244,
+        "visible": true,
+        "textContent": "虚拟键盘\n                  迷你栏\n                \n                "
+      }
+    },
+    "sec-brands": {
+      "top": 3735,
+      "height": 450,
+      "inViewport": false,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgb(0, 0, 0)",
+      "lensInfo": null,
+      "demoInfo": null
+    },
+    "sec-quotes": {
+      "top": 4185,
+      "height": 725,
+      "inViewport": false,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgb(10, 10, 10)",
+      "lensInfo": null,
+      "demoInfo": null
+    }
+  }
+}
+
+=== scroll @ 2000 (ch-voice) ===
+{
+  "scrollY": 2000,
+  "viewport": {
+    "w": 1440,
+    "h": 900
+  },
+  "chapters": {
+    "sec-hero": {
+      "top": -2000,
+      "height": 900,
+      "inViewport": false,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgba(0, 0, 0, 0)",
+      "lensInfo": null,
+      "demoInfo": null
+    },
+    "ch-trigger": {
+      "top": 64,
+      "height": 900,
+      "inViewport": true,
+      "isStoryActive": true,
+      "isStackVisible": false,
+      "isChapterPinned": true,
+      "bg": "rgb(0, 0, 0)",
+      "lensInfo": {
+        "visibility": "hidden",
+        "opacity": "1",
+        "transform": "matrix3d(0.98, 0, 0, 0, 0, 0.98, 0, 0, 0, 0, 1, -0.000833333, 0, -24, 0, 1)",
+        "display": "flex"
+      },
+      "demoInfo": {
+        "top": 385,
+        "height": 431,
+        "visible": true,
+        "textContent": "鼠标侧键拇指按一下，立即开始说\n                \n                \n          "
+      }
+    },
+    "ch-voice": {
+      "top": 64,
+      "height": 900,
+      "inViewport": true,
+      "isStoryActive": true,
+      "isStackVisible": false,
+      "isChapterPinned": true,
+      "bg": "rgb(10, 10, 10)",
+      "lensInfo": {
+        "visibility": "visible",
+        "opacity": "1",
+        "transform": "matrix3d(1.0009, 0, 0, 0, 0, 1.0009, 0.00186045, -1.55037e-06, 0, -0.00185877, 0",
+        "display": "grid"
+      },
+      "demoInfo": {
+        "top": 387,
+        "height": 222,
+        "visible": true,
+        "textContent": "正在聆听...\n                  \n                \n                "
+      }
+    },
+    "ch-softpad": {
+      "top": 64,
+      "height": 900,
+      "inViewport": true,
+      "isStoryActive": false,
+      "isStackVisible": true,
+      "isChapterPinned": false,
+      "bg": "rgb(0, 0, 0)",
+      "lensInfo": {
+        "visibility": "hidden",
+        "opacity": "1",
+        "transform": "matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, -0.000833333, 0, 0, 0, 1)",
+        "display": "grid"
+      },
+      "demoInfo": {
+        "top": 376,
+        "height": 244,
+        "visible": true,
+        "textContent": "虚拟键盘\n                  迷你栏\n                \n                "
+      }
+    },
+    "sec-brands": {
+      "top": 2635,
+      "height": 450,
+      "inViewport": false,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgb(0, 0, 0)",
+      "lensInfo": null,
+      "demoInfo": null
+    },
+    "sec-quotes": {
+      "top": 3085,
+      "height": 725,
+      "inViewport": false,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgb(10, 10, 10)",
+      "lensInfo": null,
+      "demoInfo": null
+    }
+  }
+}
+
+=== scroll @ 3200 (ch-softpad) ===
+{
+  "scrollY": 3200,
+  "viewport": {
+    "w": 1440,
+    "h": 900
+  },
+  "chapters": {
+    "sec-hero": {
+      "top": -3200,
+      "height": 900,
+      "inViewport": false,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgba(0, 0, 0, 0)",
+      "lensInfo": null,
+      "demoInfo": null
+    },
+    "ch-trigger": {
+      "top": 64,
+      "height": 900,
+      "inViewport": true,
+      "isStoryActive": true,
+      "isStackVisible": true,
+      "isChapterPinned": true,
+      "bg": "rgb(0, 0, 0)",
+      "lensInfo": {
+        "visibility": "hidden",
+        "opacity": "1",
+        "transform": "matrix3d(0.98, 0, 0, 0, 0, 0.98, 0, 0, 0, 0, 1, -0.000833333, 0, -24, 0, 1)",
+        "display": "flex"
+      },
+      "demoInfo": {
+        "top": 385,
+        "height": 431,
+        "visible": true,
+        "textContent": "鼠标侧键拇指按一下，立即开始说\n                \n                \n          "
+      }
+    },
+    "ch-voice": {
+      "top": 64,
+      "height": 900,
+      "inViewport": true,
+      "isStoryActive": true,
+      "isStackVisible": false,
+      "isChapterPinned": true,
+      "bg": "rgb(10, 10, 10)",
+      "lensInfo": {
+        "visibility": "hidden",
+        "opacity": "1",
+        "transform": "matrix3d(1.02, 0, 0, 0, 0, 1.02, 0, 0, 0, 0, 1, -0.000833333, 0, -12, 60, 0.95)",
+        "display": "grid"
+      },
+      "demoInfo": {
+        "top": 367,
+        "height": 238,
+        "visible": true,
+        "textContent": "正在聆听...\n                  \n                \n                "
+      }
+    },
+    "ch-softpad": {
+      "top": 64,
+      "height": 900,
+      "inViewport": true,
+      "isStoryActive": true,
+      "isStackVisible": false,
+      "isChapterPinned": true,
+      "bg": "rgb(0, 0, 0)",
+      "lensInfo": {
+        "visibility": "visible",
+        "opacity": "1",
+        "transform": "matrix3d(1.0017, 0, 0, 0, 0, 1.0017, 0, 0, 0, 0, 1, -0.000833333, 0, -0.6825, 0,",
+        "display": "grid"
+      },
+      "demoInfo": {
+        "top": 437,
+        "height": 122,
+        "visible": true,
+        "textContent": "虚拟键盘\n                  迷你栏\n                \n                "
+      }
+    },
+    "sec-brands": {
+      "top": 1435,
+      "height": 450,
+      "inViewport": false,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgb(0, 0, 0)",
+      "lensInfo": null,
+      "demoInfo": null
+    },
+    "sec-quotes": {
+      "top": 1885,
+      "height": 725,
+      "inViewport": false,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgb(10, 10, 10)",
+      "lensInfo": null,
+      "demoInfo": null
+    }
+  }
+}
+
+=== scroll @ 4200 (brands) ===
+{
+  "scrollY": 4200,
+  "viewport": {
+    "w": 1440,
+    "h": 900
+  },
+  "chapters": {
+    "sec-hero": {
+      "top": -4200,
+      "height": 900,
+      "inViewport": false,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgba(0, 0, 0, 0)",
+      "lensInfo": null,
+      "demoInfo": null
+    },
+    "ch-trigger": {
+      "top": -465,
+      "height": 900,
+      "inViewport": true,
+      "isStoryActive": true,
+      "isStackVisible": true,
+      "isChapterPinned": true,
+      "bg": "rgb(0, 0, 0)",
+      "lensInfo": {
+        "visibility": "hidden",
+        "opacity": "1",
+        "transform": "matrix3d(0.98, 0, 0, 0, 0, 0.98, 0, 0, 0, 0, 1, -0.000833333, 0, -24, 0, 1)",
+        "display": "flex"
+      },
+      "demoInfo": {
+        "top": -144,
+        "height": 431,
+        "visible": true,
+        "textContent": "鼠标侧键拇指按一下，立即开始说\n                \n                \n          "
+      }
+    },
+    "ch-voice": {
+      "top": -465,
+      "height": 900,
+      "inViewport": true,
+      "isStoryActive": true,
+      "isStackVisible": false,
+      "isChapterPinned": true,
+      "bg": "rgb(10, 10, 10)",
+      "lensInfo": {
+        "visibility": "hidden",
+        "opacity": "1",
+        "transform": "matrix3d(1.02, 0, 0, 0, 0, 1.02, 0, 0, 0, 0, 1, -0.000833333, 0, -12, 60, 0.95)",
+        "display": "grid"
+      },
+      "demoInfo": {
+        "top": -162,
+        "height": 238,
+        "visible": true,
+        "textContent": "按 Esc 取消…\n                  \n                \n              "
+      }
+    },
+    "ch-softpad": {
+      "top": -465,
+      "height": 900,
+      "inViewport": true,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": true,
+      "bg": "rgb(0, 0, 0)",
+      "lensInfo": {
+        "visibility": "hidden",
+        "opacity": "1",
+        "transform": "matrix3d(0.9606, 0, 0, 0, 0, 0.9606, 0, 0, 0, 0, 1, -0.000833333, 0, -31.4956, 0",
+        "display": "grid"
+      },
+      "demoInfo": {
+        "top": -121,
+        "height": 117,
+        "visible": false,
+        "textContent": "虚拟键盘\n                  迷你栏\n                \n                "
+      }
+    },
+    "sec-brands": {
+      "top": 435,
+      "height": 450,
+      "inViewport": true,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgb(0, 0, 0)",
+      "lensInfo": null,
+      "demoInfo": null
+    },
+    "sec-quotes": {
+      "top": 885,
+      "height": 725,
+      "inViewport": true,
+      "isStoryActive": false,
+      "isStackVisible": false,
+      "isChapterPinned": false,
+      "bg": "rgb(10, 10, 10)",
+      "lensInfo": null,
+      "demoInfo": null
+    }
+  }
+}
+
+=== console messages ===
+[warning] cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation

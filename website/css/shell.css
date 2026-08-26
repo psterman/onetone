@@ -256,7 +256,7 @@
 
 .scroll-rail {
   position: fixed;
-  right: 24px;
+  right: 18px;
   top: 50%;
   transform: translateY(-50%);
   display: none;
@@ -265,9 +265,16 @@
   z-index: 100;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 900px) {
   .scroll-rail {
     display: flex;
+    right: 18px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .scroll-rail {
+    right: 24px;
   }
 }
 

@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>首页 IA 两方案对比 — OneTone</title>
+  <link rel="icon" href="../assets/logo.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    :root {
+      --accent: #2a9cc4;
+      --accent-rgb: 42, 156, 196;
+      --muted: #86868b;
+      --border: rgba(255, 255, 255, 0.12);
+      --glass: rgba(30, 30, 32, 0.72);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #050505;
+      color: #f5f5f7;
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      padding: 2rem 1.25rem 3rem;
+    }
+    .page-head {
+      max-width: 76rem;
+      margin: 0 auto 2rem;
+    }
+    .page-head h1 {
+      margin: 0 0 0.5rem;
+      font-size: 1.75rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+    }
+    .page-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      max-width: 52rem;
+    }
+    .compare-grid {
+      max-width: 76rem;
+      margin: 0 auto;
+      display: grid;
+      gap: 1.75rem;
+    }
+    @media (min-width: 1100px) {
+      .compare-grid { grid-template-columns: 1fr 1fr; align-items: start; }
+    }
+    .proto-card {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1.25rem;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .proto-label {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .proto-label strong {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 0.35rem;
+    }
+    .proto-label strong.a { color: #f87171; }
+    .proto-label strong.b { color: var(--accent); }
+    .proto-label span {
+      font-size: 0.8125rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .proto-preview {
+      background: #000;
+      position: relative;
+    }
+    .proto-notes {
+      padding: 1rem 1.25rem 1.25rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 0.8125rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .proto-notes ul { margin: 0.5rem 0 0; padding-left: 1.1rem; }
+    .proto-notes li { margin-bottom: 0.25rem; }
+    .proto-notes .tag {
+      display: inline-block;
+      padding: 0.15rem 0.45rem;
+      border-radius: 999px;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      margin-right: 0.35rem;
+    }
+    .tag-bad { background: rgba(248, 113, 113, 0.15); color: #fca5a5; }
+    .tag-good { background: rgba(var(--accent-rgb), 0.18); color: #7dd3fc; }
+
+    /* scrollable mini browser */
+    .mini-browser {
+      height: 34rem;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .mini-bar {
+      flex-shrink: 0;
+      height: 2.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 0.65rem;
+      gap: 0.35rem;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.625rem;
+    }
+    .mini-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      color: #fff;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .mini-brand img { width: 1rem; height: 1rem; border-radius: 0.2rem; }
+    .mini-nav {
+      display: flex;
+      flex: 1;
+      justify-content: center;
+      gap: 0.45rem;
+      overflow: hidden;
+    }
+    .mini-nav a {
+      color: var(--muted);
+      text-decoration: none;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+    }
+    .mini-nav a.active { color: #fff; }
+    .mini-nav a.active i { color: var(--accent); }
+    .mini-dl {
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: #fff;
+      color: #000;
+      font-weight: 600;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .mini-scroll {
+      flex: 1;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(var(--accent-rgb), 0.5) transparent;
+    }
+    .mini-scroll::-webkit-scrollbar { width: 4px; }
+    .mini-scroll::-webkit-scrollbar-thumb {
+      background: rgba(var(--accent-rgb), 0.45);
+      border-radius: 999px;
+    }
+
+    /* shared section bits */
+    .sec {
+      padding: 1.25rem 1rem 1.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      position: relative;
+    }
+    .sec-hero {
+      min-height: 11rem;
+      background: radial-gradient(circle at 30% 40%, #18181b 0%, #000 70%);
+    }
+    .eyebrow {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.5625rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 0 0 0.35rem;
+    }
+    .sec h2 {
+      margin: 0 0 0.45rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+    }
+    .sec p {
+      margin: 0;
+      font-size: 0.6875rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .hero-title {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 0 0.25rem;
+      letter-spacing: -0.04em;
+    }
+    .hero-accent { color: var(--accent); font-size: 0.95rem; font-weight: 600; }
+    .hero-demo {
+      margin-top: 0.75rem;
+      height: 5.5rem;
+      border-radius: 0.65rem;
+      border: 1px solid var(--border);
+      background: var(--glass);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-size: 0.625rem;
+      color: var(--muted);
+    }
+    .hero-demo i { font-size: 1.1rem; color: var(--accent); }
+
+    /* A: four equal feature cards */
+    .feat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.45rem;
+      margin-top: 0.65rem;
+    }
+    .feat-card {
+      padding: 0.55rem;
+      border-radius: 0.55rem;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      text-align: center;
+    }
+    .feat-card i {
+      display: block;
+      font-size: 1rem;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+    .feat-card strong {
+      display: block;
+      font-size: 0.6875rem;
+      color: #fff;
+      margin-bottom: 0.15rem;
+    }
+    .feat-card small {
+      font-size: 0.5625rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .feat-card.is-equal {
+      outline: 1px dashed rgba(248, 113, 113, 0.35);
+      outline-offset: -1px;
+    }
+    .sec-note {
+      margin-top: 0.5rem;
+      padding: 0.4rem 0.5rem;
+      border-radius: 0.4rem;
+      background: rgba(248, 113, 113, 0.08);
+      border: 1px solid rgba(248, 113, 113, 0.2);
+      font-size: 0.5625rem;
+      color: #fca5a5;
+      line-height: 1.4;
+    }
+
+    /* B: story stack */
+    .story-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      margin-top: 0.65rem;
+    }
+    .story-layer {
+      display: grid;
+      grid-template-columns: 3.5rem 1fr;
+      gap: 0.55rem;
+      align-items: start;
+      padding: 0.55rem;
+      border-radius: 0.65rem;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      position: relative;
+    }
+    .story-layer::before {
+      content: "";
+      position: absolute;
+      left: 1.75rem;
+      bottom: -0.55rem;
+      width: 1px;
+      height: 0.55rem;
+      background: rgba(var(--accent-rgb), 0.35);
+    }
+    .story-layer:last-child::before { display: none; }
+    .layer-num {
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 0.5rem;
+      background: rgba(var(--accent-rgb), 0.15);
+      border: 1px solid rgba(var(--accent-rgb), 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.625rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .layer-body strong {
+      display: block;
+      font-size: 0.75rem;
+      color: #fff;
+      margin-bottom: 0.15rem;
+    }
+    .layer-body small {
+      display: block;
+      font-size: 0.5625rem;
+      color: var(--muted);
+      line-height: 1.4;
+      margin-bottom: 0.35rem;
+    }
+    .layer-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+    }
+    .layer-chips span {
+      font-size: 0.5rem;
+      padding: 0.12rem 0.35rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.65);
+    }
+    .layer-chips span.sub {
+      opacity: 0.75;
+      border-style: dashed;
+    }
+    .story-arrow {
+      text-align: center;
+      font-size: 0.5625rem;
+      color: rgba(var(--accent-rgb), 0.7);
+      letter-spacing: 0.06em;
+    }
+    .sec-note.good {
+      background: rgba(var(--accent-rgb), 0.08);
+      border-color: rgba(var(--accent-rgb), 0.25);
+      color: #7dd3fc;
+    }
+
+    /* scroll hint rail */
+    .scroll-rail {
+      position: absolute;
+      right: 0.35rem;
+      top: 3.5rem;
+      bottom: 0.5rem;
+      width: 3px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      pointer-events: none;
+    }
+    .scroll-rail i {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 3px;
+      height: 18%;
+      border-radius: 999px;
+      background: var(--accent);
+      animation: railMove 4s ease-in-out infinite;
+    }
+    @keyframes railMove {
+      0%, 100% { top: 0; }
+      50% { top: 75%; }
+    }
+
+    .cta-sec {
+      text-align: center;
+      padding: 1rem;
+    }
+    .cta-btn {
+      display: inline-block;
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      background: #fff;
+      color: #000;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <header class="page-head">
+    <h1>首页 IA 两方案对比</h1>
+    <p>
+      左：<strong style="color:#fca5a5">功能分列</strong>（现状）— 顶栏与首页都把语音/按键/摄像头/SoftPad 当并列模块。
+      右：<strong style="color:#7dd3fc">层级叙事</strong>（推荐）— 顶栏讲去向，首页纵向滚三层故事：触发 → 说话 → SoftPad。
+      可在各预览框内滚动查看完整首页节奏。
+    </p>
+  </header>
+
+  <div class="compare-grid">
+    <!-- A: 功能分列 -->
+    <article class="proto-card">
+      <div class="proto-label">
+        <strong class="a">A · 功能分列（现状）</strong>
+        <span>顶栏四个功能并列；首页像「功能目录」，访客不知道它们怎么叠在一起。</span>
+      </div>
+      <div class="proto-preview">
+        <div class="mini-browser" id="browser-a">
+          <header class="mini-bar">
+            <a class="mini-brand" href="#">
+              <img src="../assets/logo.png" alt="">
+              一声
+            </a>
+            <nav class="mini-nav" aria-label="A nav">
+              <a href="#" class="active"><i class="ph-fill ph-house"></i> 首页</a>
+              <a href="#"><i class="ph ph-microphone"></i> 语音</a>
+              <a href="#"><i class="ph ph-keyboard"></i> 按键</a>
+              <a href="#"><i class="ph ph-camera"></i> 摄像头</a>
+              <a href="#"><i class="ph ph-squares-four"></i> SoftPad</a>
+              <a href="#"><i class="ph ph-question"></i> 帮助</a>
+            </nav>
+            <a class="mini-dl" href="#">下载</a>
+          </header>
+          <div class="mini-scroll" tabindex="0" aria-label="方案 A 首页滚动预览">
+            <section class="sec sec-hero">
+              <p class="eyebrow">Hero</p>
+              <h1 class="hero-title">一声</h1>
+              <p class="hero-accent">想什么，说一声</p>
+              <p style="margin-top:0.35rem;font-size:0.625rem;color:var(--muted)">按一下侧键就能开麦</p>
+              <div class="hero-demo">
+                <i class="ph-fill ph-cursor"></i>
+                <span>设备轮播 demo · Cursor / Claude …</span>
+              </div>
+            </section>
+
+            <section class="sec">
+              <p class="eyebrow">Section · 功能概览</p>
+              <h2>四大能力，各管一块</h2>
+              <p>横向四列 / 两列网格 — 每个功能等权展示</p>
+              <div class="feat-grid">
+                <div class="feat-card is-equal">
+                  <i class="ph-fill ph-microphone"></i>
+                  <strong>语音</strong>
+                  <small>在哪写就在哪说</small>
+                </div>
+                <div class="feat-card is-equal">
+                  <i class="ph-fill ph-keyboard"></i>
+                  <strong>按键</strong>
+                  <small>侧键 / 外设触发</small>
+                </div>
+                <div class="feat-card is-equal">
+                  <i class="ph-fill ph-camera"></i>
+                  <strong>摄像头</strong>
+                  <small>眨眼摇头也能开麦</small>
+                </div>
+                <div class="feat-card is-equal">
+                  <i class="ph-fill ph-squares-four"></i>
+                  <strong>SoftPad</strong>
+                  <small>屏幕小键盘控 Agent</small>
+                </div>
+              </div>
+              <div class="sec-note">
+                <i class="ph ph-warning"></i>
+                问题：四个模块看起来互不依赖，像四款产品拼在一起
+              </div>
+            </section>
+
+            <section class="sec">
+              <p class="eyebrow">Section · 怎么开麦</p>
+              <h2>绑一次，到处能说</h2>
+              <p>只讲按键链路，摄像头 / SoftPad 又在别的页 — 故事被拆散</p>
+              <div class="hero-demo" style="height:4rem;margin-top:0.5rem">
+                <i class="ph-fill ph-mouse"></i>
+                <span>鼠标侧键 → 开麦说话</span>
+              </div>
+            </section>
+
+            <section class="sec">
+              <p class="eyebrow">Section · 说着更顺</p>
+              <h2>少摸一次鼠标</h2>
+              <p>又回到「语音体验」— 与上面四列重复，层级感弱</p>
+            </section>
+
+            <section class="sec cta-sec">
+              <a class="cta-btn" href="#">下载 OneTone</a>
+            </section>
+          </div>
+          <div class="scroll-rail" aria-hidden="true"><i></i></div>
+        </div>
+      </div>
+      <div class="proto-notes">
+        <span class="tag tag-bad">不推荐</span>
+        <strong style="color:#fff">像软件设置面板，不像官网</strong>
+        <ul>
+          <li>顶栏 6 个入口，认知负担高</li>
+          <li>首页四功能等权 → 用户不知道先理解什么</li>
+          <li>摄像头与按键本同属「触发」，却被抬成独立产品线</li>
+        </ul>
+      </div>
+    </article>
+
+    <!-- B: 层级叙事 -->
+    <article class="proto-card">
+      <div class="proto-label">
+        <strong class="b">B · 层级叙事（推荐）</strong>
+        <span>顶栏只讲去向；首页纵向滚三层故事，动画只做章节 reveal，不做四功能全屏 sticky。</span>
+      </div>
+      <div class="proto-preview">
+        <div class="mini-browser" id="browser-b">
+          <header class="mini-bar">
+            <a class="mini-brand" href="#">
+              <img src="../assets/logo.png" alt="">
+              一声
+            </a>
+            <nav class="mini-nav" aria-label="B nav">
+              <a href="#" class="active">产品 ▾</a>
+              <a href="#">上手</a>
+              <a href="#">帮助</a>
+            </nav>
+            <a class="mini-dl" href="#">下载</a>
+          </header>
+          <div class="mini-scroll" tabindex="0" aria-label="方案 B 首页滚动预览">
+            <section class="sec sec-hero">
+              <p class="eyebrow">Hero</p>
+              <h1 class="hero-title">一声</h1>
+              <p class="hero-accent">想什么，说一声</p>
+              <p style="margin-top:0.35rem;font-size:0.625rem;color:var(--muted)">一句话价值 + 设备 demo（不变）</p>
+              <div class="hero-demo">
+                <i class="ph-fill ph-cursor"></i>
+                <span>设备轮播 demo · Cursor / Claude …</span>
+              </div>
+            </section>
+
+            <section class="sec">
+              <p class="eyebrow">Chapter 1 · 触发</p>
+              <h2>先解决：怎么开麦</h2>
+              <p>按键、外设、口令、摄像头 — 都是同一层的不同方式</p>
+              <div class="story-stack">
+                <div class="story-layer">
+                  <div class="layer-num">L1</div>
+                  <div class="layer-body">
+                    <strong>触发层</strong>
+                    <small>绑一次，到处能说 — 手不用离开当前动作</small>
+                    <div class="layer-chips">
+                      <span>侧键</span>
+                      <span>手柄</span>
+                      <span>戒指</span>
+                      <span>口令</span>
+                      <span class="sub">摄像头</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="story-arrow">↓ 触发之后</div>
+            </section>
+
+            <section class="sec">
+              <p class="eyebrow">Chapter 2 · 说出口</p>
+              <h2>核心价值：在哪写就在哪说</h2>
+              <p>语音上屏到 Cursor / Claude / Trae … 不换工具栈</p>
+              <div class="story-stack">
+                <div class="story-layer">
+                  <div class="layer-num">L2</div>
+                  <div class="layer-body">
+                    <strong>输入层</strong>
+                    <small>说着更顺 · 错字可重来 · Agent 品牌墙</small>
+                    <div class="layer-chips">
+                      <span>语音上屏</span>
+                      <span>唤醒词</span>
+                      <span>Esc 取消</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="story-arrow">↓ 需要控 Agent 时</div>
+            </section>
+
+            <section class="sec">
+              <p class="eyebrow">Chapter 3 · SoftPad</p>
+              <h2>上一层：屏幕小键盘控 Agent</h2>
+              <p>短节 + 链到 agent.html — 不在首页复刻整页</p>
+              <div class="story-stack">
+                <div class="story-layer">
+                  <div class="layer-num">L3</div>
+                  <div class="layer-body">
+                    <strong>操控层</strong>
+                    <small>虚拟键盘 / 迷你栏 · 数字小键盘联动</small>
+                    <div class="layer-chips">
+                      <span>SoftPad</span>
+                      <span>Agent 状态</span>
+                      <span>语音口令</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="sec-note good">
+                <i class="ph ph-check-circle"></i>
+                10 秒内能说出：触发 → 说话 → SoftPad
+              </div>
+            </section>
+
+            <section class="sec cta-sec">
+              <a class="cta-btn" href="#">下载 OneTone</a>
+            </section>
+          </div>
+          <div class="scroll-rail" aria-hidden="true"><i></i></div>
+        </div>
+      </div>
+      <div class="proto-notes">
+        <span class="tag tag-good">推荐</span>
+        <strong style="color:#fff">像 Linear / Arc 式产品官网</strong>
+        <ul>
+          <li>顶栏干净：产品 / 上手 / 帮助 / 下载</li>
+          <li>首页纵向三章，每层回答「然后呢」</li>
+          <li>摄像头归入触发层；SoftPad 是上层操控，不是并列第四功能</li>
+          <li>深页保留，从产品浮层进入</li>
+        </ul>
+      </div>
+    </article>
+  </div>
+
+  <script>
+    // Auto-scroll demo: gently loop each preview to show scroll rhythm
+    (function () {
+      var panels = document.querySelectorAll(".mini-scroll");
+      panels.forEach(function (panel, idx) {
+        var dir = 1;
+        var paused = false;
+        panel.addEventListener("mouseenter", function () { paused = true; });
+        panel.addEventListener("mouseleave", function () { paused = false; });
+        panel.addEventListener("wheel", function () { paused = true; setTimeout(function () { paused = false; }, 2500); });
+        setInterval(function () {
+          if (paused) return;
+          var max = panel.scrollHeight - panel.clientHeight;
+          if (max <= 0) return;
+          if (panel.scrollTop >= max - 2) dir = -1;
+          if (panel.scrollTop <= 2) dir = 1;
+          panel.scrollTop += dir * (idx === 0 ? 0.6 : 0.45);
+        }, 28);
+      });
+    })();
+  </script>
+</body>
+</html>
