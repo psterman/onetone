@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
           label: "Cursor",
           app: "Cursor",
           theme: "cursor",
-          icon: "assets/brands/cursor.svg",
+          icon: "assets/brands/cursor.png",
           deviceSVG: `
             <svg viewBox="0 0 100 140" width="80" height="112" style="filter: drop-shadow(0 20px 30px rgba(0,0,0,0.8));">
               <rect x="20" y="10" width="60" height="120" rx="30" fill="rgba(30,30,32,0.9)" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return `
               <div class="ui-cursor">
                 <div class="ui-cursor-sidebar">
-                  <img class="op-brand-icon" src="assets/brands/cursor.svg" alt="" width="24" height="24">
+                  <img class="op-brand-icon" src="assets/brands/cursor.png" alt="" width="24" height="24">
                 </div>
                 <div class="ui-cursor-main">
                   <div class="ui-cursor-msgs">
@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
           label: "Claude Code",
           app: "Terminal",
           theme: "claude",
-          icon: "assets/brands/claude.svg",
+          icon: "assets/brands/claude.png",
           deviceSVG: `
             <svg viewBox="0 0 100 100" width="70" height="70" style="filter: drop-shadow(0 20px 30px rgba(0,0,0,0.8));">
               <circle cx="50" cy="50" r="40" fill="rgba(30,30,32,0.6)" stroke="rgba(255,255,255,0.2)" stroke-width="12"/>
@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return `
               <div class="ui-claude">
                 <div class="ui-claude-head">
-                  <img class="op-brand-icon" src="assets/brands/claude.svg" alt="" width="24" height="24">
+                  <img class="op-brand-icon" src="assets/brands/claude.png" alt="" width="24" height="24">
                   <span>Claude Code</span>
                 </div>
                 <div class="ui-claude-lines">
@@ -109,10 +109,10 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         },
         {
-          label: "豆包",
-          app: "豆包",
-          theme: "doubao",
-          icon: "assets/brands/doubao.svg",
+          label: "Trae",
+          app: "Trae",
+          theme: "trae",
+          icon: "assets/brands/trae.png",
           deviceSVG: `
             <svg viewBox="0 0 140 100" width="112" height="80" style="filter: drop-shadow(0 20px 30px rgba(0,0,0,0.8));">
               <path d="M 20 40 C 20 10, 50 10, 70 20 C 90 10, 120 10, 120 40 C 120 70, 140 90, 120 90 C 100 90, 80 70, 70 70 C 60 70, 40 90, 20 90 C 0 90, 20 70, 20 40 Z" fill="rgba(30,30,32,0.9)" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
@@ -128,8 +128,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return `
               <div class="ui-doubao">
                 <div class="ui-doubao-head">
-                  <img class="op-brand-icon is-lg" src="assets/brands/doubao.svg" alt="" width="28" height="28">
-                  <span>豆包</span>
+                  <img class="op-brand-icon is-lg" src="assets/brands/trae.png" alt="" width="28" height="28">
+                  <span>Trae</span>
                 </div>
                 <div class="ui-doubao-body">
                   <div class="ui-doubao-msg is-ai">想写什么？直接说或打字都行。</div>
@@ -381,7 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const heroRotate = document.getElementById("heroRotate");
       if (heroRotate) {
-        const lines = ["Cursor 里直接说", "Claude Code 里直接说", "豆包里直接说", "任何输入框里直接说"];
+        const lines = ["Cursor 里直接说", "Claude Code 里直接说", "Trae 里直接说", "任何输入框里直接说"];
         let hi = 0;
         setInterval(() => {
           hi = (hi + 1) % lines.length;

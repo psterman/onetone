@@ -26,7 +26,7 @@
 <header class="site-header">
   <div class="site-header-inner">
     <a class="site-brand" href="index.html">
-      <span class="brand-mark" aria-hidden="true"></span>
+      <img class="brand-mark" src="assets/logo.png" alt="" width="24" height="24">
       <span data-i18n="siteName">一声 OneTone</span>
     </a>
     <nav class="site-nav" aria-label="Main">
@@ -224,7 +224,11 @@
     </div>
   </section>
 
-  <section id="qs-voice-command" class="qs-voice-command" aria-label="语音指挥演示" hidden>
+  <section id="qs-voice-command" class="qs-voice-command qs-zone" aria-label="语音指挥演示" hidden>
+    <header class="qs-zone-head">
+      <h2>想什么，说一声</h2>
+      <p>在任意 AI 编程助手里，动动嘴即可发送、继续或新建</p>
+    </header>
     <div class="ot-vc-shell">
       <div class="ot-vc-glow ot-vc-glow-a" aria-hidden="true"></div>
       <div class="ot-vc-glow ot-vc-glow-b" aria-hidden="true"></div>
@@ -235,10 +239,6 @@
           <span class="ot-vc-badge-dot" aria-hidden="true"></span>
           <span>OneTone 快速上手</span>
         </div>
-        <h2 class="ot-vc-title">
-          想什么，说一声。<br>
-          <span class="ot-vc-title-grad">指挥所有 AI。</span>
-        </h2>
         <p class="ot-vc-lead">
           无需打断心流寻找鼠标，告别繁琐的快捷键。在任意 AI 编程助手界面，动动嘴即可完成
           <strong>发送、继续或新建</strong>。释放双手，像魔法，但是真的。
@@ -259,25 +259,25 @@
           <div class="ot-vc-agent-grid" data-ot-agents role="list">
             <button type="button" class="ot-vc-agent is-active" data-ot-agent="0" data-agent-name="Cursor" data-tone="cyan" role="listitem">
               <span class="ot-vc-agent-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M5.5 3L18.5 13L11.5 14.5L8.5 21L5.5 3Z"/></svg>
+                <img src="assets/brands/cursor.png" alt="" width="20" height="20">
               </span>
               <span>Cursor</span>
             </button>
             <button type="button" class="ot-vc-agent" data-ot-agent="1" data-agent-name="Claude" data-tone="orange" role="listitem">
               <span class="ot-vc-agent-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4L12 2z"/></svg>
+                <img src="assets/brands/claude.png" alt="" width="20" height="20">
               </span>
               <span>Claude</span>
             </button>
             <button type="button" class="ot-vc-agent" data-ot-agent="2" data-agent-name="Trae" data-tone="indigo" role="listitem">
               <span class="ot-vc-agent-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                <img src="assets/brands/trae.png" alt="" width="20" height="20">
               </span>
               <span>Trae</span>
             </button>
             <button type="button" class="ot-vc-agent" data-ot-agent="3" data-agent-name="Codex" data-tone="emerald" role="listitem">
               <span class="ot-vc-agent-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><path d="M9 9h6v6H9z"/></svg>
+                <img src="assets/brands/codex.png" alt="" width="20" height="20">
               </span>
               <span>Codex</span>
             </button>
