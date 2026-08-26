@@ -27,6 +27,7 @@
       <span data-i18n="siteName">一声 OneTone</span>
     </a>
     <nav class="site-nav" aria-label="Main">
+      <a href="index.html" data-nav="home" class="is-active"><i class="ph-fill ph-house site-nav-icon" aria-hidden="true"></i><span data-i18n="navHome">首页</span></a>
       <a href="quickstart.html#voice" data-nav="voice"><i class="ph ph-microphone site-nav-icon" aria-hidden="true"></i><span data-i18n="navVoice">语音</span></a>
       <a href="quickstart.html#keys" data-nav="keys"><i class="ph ph-keyboard site-nav-icon" aria-hidden="true"></i><span data-i18n="navKeys">按键</span></a>
       <a href="vision.html" data-nav="camera"><i class="ph ph-camera site-nav-icon" aria-hidden="true"></i><span data-i18n="navCamera">摄像头</span></a>
@@ -43,6 +44,7 @@
   </div>
 </header>
 <div class="mobile-nav-panel" id="mobileNavPanel">
+  <a href="index.html" data-nav="home" class="is-active"><i class="ph-fill ph-house site-nav-icon" aria-hidden="true"></i><span data-i18n="navHome">首页</span></a>
   <a href="quickstart.html#voice" data-nav="voice"><i class="ph ph-microphone site-nav-icon" aria-hidden="true"></i><span data-i18n="navVoice">语音</span></a>
   <a href="quickstart.html#keys" data-nav="keys"><i class="ph ph-keyboard site-nav-icon" aria-hidden="true"></i><span data-i18n="navKeys">按键</span></a>
   <a href="vision.html" data-nav="camera"><i class="ph ph-camera site-nav-icon" aria-hidden="true"></i><span data-i18n="navCamera">摄像头</span></a>
@@ -54,6 +56,9 @@
     <button type="button" class="rail-dot is-active" data-target="#sec-hero" aria-label="首屏"></button>
     <button type="button" class="rail-dot" data-target="#sec-chain" aria-label="链路"></button>
     <button type="button" class="rail-dot" data-target="#sec-caps" aria-label="说着更顺"></button>
+    <button type="button" class="rail-dot" data-target="#sec-brands" aria-label="品牌墙"></button>
+    <button type="button" class="rail-dot" data-target="#sec-quotes" aria-label="评价"></button>
+    <button type="button" class="rail-dot" data-target="#sec-cta" aria-label="下载"></button>
   </nav>
 <main>
     <!-- =========================================
@@ -240,6 +245,89 @@
               <p class="text-mac-textMuted leading-relaxed">再按一下，错字清掉，接着把想说的重新说一遍。不拖沓，不尴尬。</p>
             </div>
           </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================
+         SECTION 4: Agent 品牌墙
+         ========================================= -->
+    <section class="story-section home-brands bg-mac-bg" id="sec-brands" data-section="3">
+      <div class="max-w-7xl mx-auto px-6">
+        <p class="section-eyebrow apple-reveal" style="--d:0" data-i18n="homeBrandsKicker">在哪写就在哪说</p>
+        <h2 class="section-title apple-reveal" style="--d:80" data-i18n="homeBrandsTitle">开口说，落在这些 Agent 里</h2>
+        <p class="home-brands-lead apple-reveal" style="--d:120" data-i18n="homeBrandsLead">不换你的工具栈——一声只负责把麦递过去。</p>
+        <div class="home-brands-track apple-reveal" style="--d:160" aria-label="Supported agents">
+          <div class="home-brands-row">
+            <span class="home-brand-item"><img src="assets/brands/cursor.svg" alt="" width="28" height="28"><span>Cursor</span></span>
+            <span class="home-brand-item"><img src="assets/brands/claude.svg" alt="" width="28" height="28"><span>Claude</span></span>
+            <span class="home-brand-item"><img src="assets/brands/doubao.svg" alt="" width="28" height="28"><span>豆包</span></span>
+            <span class="home-brand-item home-brand-text"><span class="home-brand-mark">GPT</span><span>ChatGPT</span></span>
+            <span class="home-brand-item home-brand-text"><span class="home-brand-mark">Tr</span><span>Trae</span></span>
+            <span class="home-brand-item home-brand-text"><span class="home-brand-mark">Ws</span><span>Windsurf</span></span>
+            <span class="home-brand-item home-brand-text"><span class="home-brand-mark">Co</span><span>Copilot</span></span>
+          </div>
+          <div class="home-brands-row" aria-hidden="true">
+            <span class="home-brand-item"><img src="assets/brands/cursor.svg" alt="" width="28" height="28"><span>Cursor</span></span>
+            <span class="home-brand-item"><img src="assets/brands/claude.svg" alt="" width="28" height="28"><span>Claude</span></span>
+            <span class="home-brand-item"><img src="assets/brands/doubao.svg" alt="" width="28" height="28"><span>豆包</span></span>
+            <span class="home-brand-item home-brand-text"><span class="home-brand-mark">GPT</span><span>ChatGPT</span></span>
+            <span class="home-brand-item home-brand-text"><span class="home-brand-mark">Tr</span><span>Trae</span></span>
+            <span class="home-brand-item home-brand-text"><span class="home-brand-mark">Ws</span><span>Windsurf</span></span>
+            <span class="home-brand-item home-brand-text"><span class="home-brand-mark">Co</span><span>Copilot</span></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================
+         SECTION 5: vibecoding 评价
+         ========================================= -->
+    <section class="story-section home-quotes bg-[#0a0a0a]" id="sec-quotes" data-section="4">
+      <div class="max-w-7xl mx-auto px-6">
+        <p class="section-eyebrow apple-reveal" style="--d:0" data-i18n="homeQuotesKicker">他们怎么说</p>
+        <h2 class="section-title apple-reveal" style="--d:80" data-i18n="homeQuotesTitle">vibecoding 现场实录</h2>
+        <div class="home-quotes-grid">
+          <blockquote class="home-quote apple-reveal" style="--d:0">
+            <p data-i18n="homeQuote1">「小红书别再给我推 299 的 vibecoding 键盘了——侧键一按，穷人也有心流。」</p>
+            <footer><span data-i18n="homeQuote1By">阿哲</span><span data-i18n="homeQuote1Role">独立开发</span></footer>
+          </blockquote>
+          <blockquote class="home-quote apple-reveal" style="--d:80">
+            <p data-i18n="homeQuote2">「Win+H 我永远记不住。现在拇指按一下，Cursor 里就开始说。」</p>
+            <footer><span data-i18n="homeQuote2By">Mina</span><span data-i18n="homeQuote2Role">前端工程师</span></footer>
+          </blockquote>
+          <blockquote class="home-quote apple-reveal" style="--d:120">
+            <p data-i18n="homeQuote3">「周报可以拖，开麦真的不必。说完字就在光标那儿，像作弊但合法。」</p>
+            <footer><span data-i18n="homeQuote3By">老周</span><span data-i18n="homeQuote3Role">产品经理</span></footer>
+          </blockquote>
+          <blockquote class="home-quote apple-reveal" style="--d:160">
+            <p data-i18n="homeQuote4">「豆包、Claude、Cursor 来回切，触发键不用换。这才叫工具人该干的事。」</p>
+            <footer><span data-i18n="homeQuote4By">Kiki</span><span data-i18n="homeQuote4Role">全栈摸鱼选手</span></footer>
+          </blockquote>
+          <blockquote class="home-quote apple-reveal" style="--d:200">
+            <p data-i18n="homeQuote5">「说错了再按一下清掉重来。比删到一半发现快捷键冲突体面多了。」</p>
+            <footer><span data-i18n="homeQuote5By">阿木</span><span data-i18n="homeQuote5Role">AI 应用开发</span></footer>
+          </blockquote>
+          <blockquote class="home-quote apple-reveal" style="--d:240">
+            <p data-i18n="homeQuote6">「不是又一个语音输入法。它只帮你按那一下——剩下的还是你熟悉的听写。」</p>
+            <footer><span data-i18n="homeQuote6By">林林</span><span data-i18n="homeQuote6Role">设计师兼 prompt 农民</span></footer>
+          </blockquote>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================
+         SECTION 6: 下载提示卡
+         ========================================= -->
+    <section class="story-section home-cta-section bg-mac-bg" id="sec-cta" data-section="5">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="home-cta-banner apple-reveal" style="--d:0">
+          <h2 data-i18n="ctaBannerTitle">周报可以拖，开麦不必</h2>
+          <p data-i18n="ctaBannerDesc">不到一分钟设置，把「想说」变成「已经说了」。</p>
+          <div class="home-cta-actions">
+            <a href="download.html" class="home-cta-btn" data-i18n="ctaBannerBtn">下载安装包</a>
+            <span class="home-cta-meta" data-i18n="ctaBannerMeta">v1.0.0 | Windows 10/11</span>
+          </div>
         </div>
       </div>
     </section>

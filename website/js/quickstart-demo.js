@@ -912,6 +912,9 @@
     function setHeroMode(mode) {
       if (!hero) return;
       hero.dataset.mode = mode === "voice" ? "voice" : "keys";
+      const showcase = document.getElementById("qs-voice-command");
+      if (showcase) showcase.hidden = hero.dataset.mode !== "voice";
+      window.OneToneVoiceCard?.instance?.setMode(hero.dataset.mode === "voice");
       window.dispatchEvent(new CustomEvent("qs-hero-mode", { detail: { mode: hero.dataset.mode } }));
     }
 

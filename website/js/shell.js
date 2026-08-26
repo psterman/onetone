@@ -19,6 +19,7 @@
     if (path === "" || path === "/") path = "index.html";
     var hash = (location.hash || "").replace(/^#/, "");
 
+    if (path === "index.html") return "home";
     if (path === "quickstart.html") {
       if (hash === "keys" || hash === "step1") return "keys";
       if (hash === "voice" || hash === "step2" || hash === "step3") return "voice";

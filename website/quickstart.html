@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="css/qs-layout.css">
   <link rel="stylesheet" href="css/qs-quickstart.css">
   <link rel="stylesheet" href="css/qs-voice-hero.css">
+  <link rel="stylesheet" href="css/onetone-voice-card.css">
 </head>
 <body class="antialiased" data-page="quickstart">
 <header class="site-header">
@@ -29,6 +30,7 @@
       <span data-i18n="siteName">一声 OneTone</span>
     </a>
     <nav class="site-nav" aria-label="Main">
+      <a href="index.html" data-nav="home"><i class="ph ph-house site-nav-icon" aria-hidden="true"></i><span data-i18n="navHome">首页</span></a>
       <a href="quickstart.html#voice" data-nav="voice"><i class="ph ph-microphone site-nav-icon" aria-hidden="true"></i><span data-i18n="navVoice">语音</span></a>
       <a href="quickstart.html#keys" data-nav="keys"><i class="ph ph-keyboard site-nav-icon" aria-hidden="true"></i><span data-i18n="navKeys">按键</span></a>
       <a href="vision.html" data-nav="camera"><i class="ph ph-camera site-nav-icon" aria-hidden="true"></i><span data-i18n="navCamera">摄像头</span></a>
@@ -45,6 +47,7 @@
   </div>
 </header>
 <div class="mobile-nav-panel" id="mobileNavPanel">
+  <a href="index.html" data-nav="home"><i class="ph ph-house site-nav-icon" aria-hidden="true"></i><span data-i18n="navHome">首页</span></a>
   <a href="quickstart.html#voice" data-nav="voice"><i class="ph ph-microphone site-nav-icon" aria-hidden="true"></i><span data-i18n="navVoice">语音</span></a>
   <a href="quickstart.html#keys" data-nav="keys"><i class="ph ph-keyboard site-nav-icon" aria-hidden="true"></i><span data-i18n="navKeys">按键</span></a>
   <a href="vision.html" data-nav="camera"><i class="ph ph-camera site-nav-icon" aria-hidden="true"></i><span data-i18n="navCamera">摄像头</span></a>
@@ -218,6 +221,117 @@
         <i class="ph-fill ph-quotes" aria-hidden="true"></i>
         <p data-i18n="heroSlogan">「小红书别再给我推299￥的vibecoding键盘了，穷是俺的问题」</p>
       </blockquote>
+    </div>
+  </section>
+
+  <section id="qs-voice-command" class="qs-voice-command" aria-label="语音指挥演示" hidden>
+    <div class="ot-vc-shell">
+      <div class="ot-vc-glow ot-vc-glow-a" aria-hidden="true"></div>
+      <div class="ot-vc-glow ot-vc-glow-b" aria-hidden="true"></div>
+
+      <div class="ot-vc-copy">
+        <div class="ot-vc-badge">
+          <span class="ot-vc-badge-ping" aria-hidden="true"></span>
+          <span class="ot-vc-badge-dot" aria-hidden="true"></span>
+          <span>OneTone 快速上手</span>
+        </div>
+        <h2 class="ot-vc-title">
+          想什么，说一声。<br>
+          <span class="ot-vc-title-grad">指挥所有 AI。</span>
+        </h2>
+        <p class="ot-vc-lead">
+          无需打断心流寻找鼠标，告别繁琐的快捷键。在任意 AI 编程助手界面，动动嘴即可完成
+          <strong>发送、继续或新建</strong>。释放双手，像魔法，但是真的。
+        </p>
+
+        <div class="ot-vc-agents">
+          <div class="ot-vc-agents-head">
+            <span>支持各大主流 Agent 平台</span>
+            <div class="ot-vc-wake" aria-live="polite">
+              <span class="ot-vc-wake-chip" data-ot-wake>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/>
+                </svg>
+                <span data-ot-wake-text>"唤醒 Cursor"</span>
+              </span>
+            </div>
+          </div>
+          <div class="ot-vc-agent-grid" data-ot-agents role="list">
+            <button type="button" class="ot-vc-agent is-active" data-ot-agent="0" data-agent-name="Cursor" data-tone="cyan" role="listitem">
+              <span class="ot-vc-agent-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M5.5 3L18.5 13L11.5 14.5L8.5 21L5.5 3Z"/></svg>
+              </span>
+              <span>Cursor</span>
+            </button>
+            <button type="button" class="ot-vc-agent" data-ot-agent="1" data-agent-name="Claude" data-tone="orange" role="listitem">
+              <span class="ot-vc-agent-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4L12 2z"/></svg>
+              </span>
+              <span>Claude</span>
+            </button>
+            <button type="button" class="ot-vc-agent" data-ot-agent="2" data-agent-name="Trae" data-tone="indigo" role="listitem">
+              <span class="ot-vc-agent-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+              </span>
+              <span>Trae</span>
+            </button>
+            <button type="button" class="ot-vc-agent" data-ot-agent="3" data-agent-name="Codex" data-tone="emerald" role="listitem">
+              <span class="ot-vc-agent-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><path d="M9 9h6v6H9z"/></svg>
+              </span>
+              <span>Codex</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ot-vc-demo">
+        <div class="ot-vc-window">
+          <div class="ot-vc-window-bar">
+            <div class="ot-vc-traffic" aria-hidden="true"><span></span><span></span><span></span></div>
+            <div class="ot-vc-window-title">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6.364 6.364 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+              Claude / Cursor
+            </div>
+          </div>
+          <div class="ot-vc-chat" data-ot-chat>
+            <div class="ot-vc-empty" data-ot-empty>
+              <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+              </svg>
+              <p>今天想构建点什么？</p>
+            </div>
+            <div class="ot-vc-msgs" data-ot-msgs hidden></div>
+          </div>
+          <div class="ot-vc-composer">
+            <div class="ot-vc-input" data-ot-input-wrap>
+              <span class="ot-vc-input-text" data-ot-input><span class="ot-vc-ph">问点什么...</span></span>
+              <span class="ot-vc-send" data-ot-send aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+              </span>
+            </div>
+          </div>
+          <div class="ot-vc-pill" data-ot-pill aria-hidden="true">
+            <div class="ot-vc-pill-inner">
+              <div class="ot-vc-mic" data-ot-mic>
+                <div class="ot-vc-waves" data-ot-waves hidden>
+                  <span></span><span></span><span></span><span></span>
+                </div>
+                <svg data-ot-mic-icon width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="22"/>
+                </svg>
+              </div>
+              <div class="ot-vc-voice-text" data-ot-voice></div>
+              <div class="ot-vc-badge-intent" data-ot-intent hidden>
+                <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                <span data-ot-intent-label></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -539,45 +653,10 @@
       </div>
     </section>
 
-    <!-- 排错 -->
-    <section class="qs-troubleshoot scroll-mt-28" aria-label="排错入口">
-      <h2 class="text-lg font-bold mb-4" data-i18n="qsTroubleshootTitle">遇到问题？</h2>
-      <div class="qs-troubleshoot-grid">
-        <a href="faq.html#no-response" class="qs-troubleshoot-card">
-          <strong data-i18n="qsHelpNoResponse">按了没反应</strong>
-          <span data-i18n="qsHelpNoResponseHint">OneTone 是否收到触发</span>
-        </a>
-        <a href="faq.html#ime-not-wake" class="qs-troubleshoot-card">
-          <strong data-i18n="qsHelpImeNotWake">输入法没被唤醒</strong>
-          <span data-i18n="qsHelpImeNotWakeHint">激活键是否录对</span>
-        </a>
-        <a href="faq.html#record-failed" class="qs-troubleshoot-card">
-          <strong data-i18n="qsHelpRecordFail">录键失败</strong>
-          <span data-i18n="qsHelpRecordFailHint">未能识别该按键</span>
-        </a>
-        <a href="faq.html#wrong-keys" class="qs-troubleshoot-card">
-          <strong data-i18n="qsHelpWrongKeys">按键设错了</strong>
-          <span data-i18n="qsHelpWrongKeysHint">怎么改回来</span>
-        </a>
-        <a href="faq.html#no-mic" class="qs-troubleshoot-card">
-          <strong data-i18n="qsHelpMicPerm">麦克风权限</strong>
-          <span data-i18n="qsHelpMicPermHint">输入法需要麦克风</span>
-        </a>
-        <a href="download.html#smartscreen" class="qs-troubleshoot-card">
-          <strong data-i18n="qsHelpSmartScreen">安装 / SmartScreen</strong>
-          <span data-i18n="qsHelpSmartScreenHint">首次安装提示</span>
-        </a>
-      </div>
-    </section>
-
     <details class="glass-card rounded-2xl p-5 mb-8 mt-10">
       <summary class="font-semibold cursor-pointer" data-i18n="qsMoreExamples">更多输入法与手动录键</summary>
       <p class="mt-3 text-sm text-slate-500"><span data-i18n="qsMoreExamplesBody">不用预设？在软件里手动录任意输入法的语音激活键。</span> <a href="faq.html#baidu-ime" class="text-brand-600" data-i18n="qsMoreExamplesLink">常见问题里的输入法说明</a></p>
     </details>
-
-    <div class="text-center rounded-2xl bg-slate-100 dark:bg-slate-800/50 p-6">
-      <p><span data-i18n="qsNextFail">还有问题？</span> <a href="faq.html#no-response" class="text-brand-600 font-medium" data-i18n="qsNextFailLink">查看常见问题</a></p>
-    </div>
   </div>
   </section>
 </main>
@@ -596,6 +675,7 @@
 </footer>
 <script src="js/shell.js"></script>
 <script src="js/i18n.js"></script>
+<script src="js/onetone-voice-card.js"></script>
 <script src="js/quickstart-demo.js"></script>
 </body>
 </html>
