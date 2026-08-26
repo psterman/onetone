@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logo 三方案对比 — 一声 OneTone</title>
+  <link rel="icon" href="../assets/logo.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --mac-accent: #2a9cc4;
+      --mac-text-muted: #86868b;
+      --mac-border: rgba(255, 255, 255, 0.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #050505;
+      color: #f5f5f7;
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      padding: 2rem 1.5rem 4rem;
+    }
+    .page-head {
+      max-width: 80rem;
+      margin: 0 auto 2rem;
+    }
+    .page-head h1 {
+      margin: 0 0 0.5rem;
+      font-size: 1.75rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+    }
+    .page-head p {
+      margin: 0 0 0.75rem;
+      color: var(--mac-text-muted);
+      font-size: 0.9375rem;
+      line-height: 1.55;
+    }
+    .rec {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.85rem;
+      border-radius: 999px;
+      background: rgba(42, 156, 196, 0.12);
+      border: 1px solid rgba(42, 156, 196, 0.35);
+      font-size: 0.8125rem;
+      color: #9edcf0;
+    }
+    .compare-grid {
+      max-width: 80rem;
+      margin: 0 auto;
+      display: grid;
+      gap: 1.5rem;
+    }
+    @media (min-width: 1100px) {
+      .compare-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    .proto-card {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1.25rem;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .proto-card.is-rec {
+      border-color: rgba(42, 156, 196, 0.45);
+      box-shadow: 0 0 0 1px rgba(42, 156, 196, 0.15);
+    }
+    .proto-label {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .proto-label strong {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--mac-accent);
+      margin-bottom: 0.35rem;
+    }
+    .proto-label span {
+      font-size: 0.8125rem;
+      color: var(--mac-text-muted);
+      line-height: 1.45;
+    }
+    .scene {
+      padding: 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .scene:last-child { border-bottom: none; }
+    .scene-label {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(134, 134, 139, 0.85);
+      margin-bottom: 0.75rem;
+    }
+    .bar-demo {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      padding: 0 1.25rem;
+      background: rgba(0, 0, 0, 0.85);
+      border-bottom: 1px solid var(--mac-border);
+    }
+    .bar-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    .brand-mark {
+      width: 1.6rem;
+      height: 1.6rem;
+      border-radius: 0.35rem;
+      flex-shrink: 0;
+    }
+    .size-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 1.25rem;
+    }
+    .size-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .size-cell img {
+      image-rendering: auto;
+    }
+    .size-cell code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.625rem;
+      color: var(--mac-text-muted);
+    }
+    .favicon-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.65rem 0.85rem;
+      background: #1a1a1a;
+      border-radius: 0.5rem;
+      max-width: 14rem;
+    }
+    .favicon-row img { width: 16px; height: 16px; }
+    .favicon-row span {
+      font-size: 0.75rem;
+      color: var(--mac-text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .dl-mock {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1rem;
+      max-width: 18rem;
+    }
+    .dl-mock img {
+      width: 3.5rem;
+      height: 3.5rem;
+      border-radius: 0.85rem;
+    }
+    .dl-mock div {
+      font-size: 0.8125rem;
+      color: var(--mac-text-muted);
+      line-height: 1.4;
+    }
+    .dl-mock strong {
+      display: block;
+      color: #fff;
+      font-size: 0.9375rem;
+      margin-bottom: 0.15rem;
+    }
+    .taskbar {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.4rem 0.65rem;
+      background: linear-gradient(180deg, #2d2d30 0%, #1e1e1e 100%);
+      border-radius: 0.35rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .taskbar img {
+      border-radius: 0.2rem;
+    }
+    .hero-lg {
+      display: flex;
+      justify-content: center;
+      padding: 0.5rem 0 0.25rem;
+    }
+    .hero-lg img {
+      width: 7rem;
+      height: 7rem;
+      border-radius: 1.25rem;
+    }
+    .page-foot {
+      max-width: 80rem;
+      margin: 2.5rem auto 0;
+      padding: 1.25rem 1.5rem;
+      border-radius: 1rem;
+      border: 1px dashed rgba(255, 255, 255, 0.12);
+      color: var(--mac-text-muted);
+      font-size: 0.875rem;
+      line-height: 1.55;
+    }
+  </style>
+</head>
+<body>
+  <header class="page-head">
+    <h1>麦克风 + 翅膀 Logo 对比</h1>
+    <p>同一图形在顶栏、favicon、下载页 mock、任务栏与 squircle 大图下的表现。看完回复 <strong>A</strong> / <strong>B</strong> / <strong>B+渐变货架</strong> 即可全量替换。</p>
+    <p class="rec">长期品牌推荐 <strong>B 扁平白版</strong>：小尺寸可读、与暗色 HUD 一致、可拆纯 glyph 做 wordmark</p>
+  </header>
+
+  <div class="compare-grid">
+    <article class="proto-card">
+      <div class="proto-label">
+        <strong>现状</strong>
+        <span>圆环 + 三片羽，抽象声波翼。非 literal 麦克风。</span>
+      </div>
+      <div class="scene">
+        <div class="scene-label">顶栏 24px</div>
+        <div class="bar-demo">
+          <span class="bar-brand">
+            <img class="brand-mark" src="../assets/logo.png" alt="" width="24" height="24">
+            一声 OneTone
+          </span>
+        </div>
+      </div>
+      <div class="scene">
+        <div class="scene-label">Favicon / 下载 mock</div>
+        <div class="favicon-row">
+          <img src="../assets/logo.png" alt="" width="16" height="16">
+          <span>一声 OneTone — 帮助</span>
+        </div>
+        <div class="dl-mock" style="margin-top:0.75rem">
+          <img src="../assets/logo.png" alt="" width="56" height="56">
+          <div><strong>OneTone Setup</strong>Windows 10 / 11</div>
+        </div>
+      </div>
+      <div class="scene">
+        <div class="scene-label">任务栏</div>
+        <div class="taskbar">
+          <img src="../assets/logo.png" alt="" width="16" height="16">
+          <img src="../assets/logo.png" alt="" width="32" height="32">
+          <img src="../assets/logo.png" alt="" width="48" height="48">
+        </div>
+      </div>
+      <div class="scene">
+        <div class="scene-label">Squircle 1024</div>
+        <div class="hero-lg">
+          <img src="../assets/logo.png" alt="" width="112" height="112">
+        </div>
+      </div>
+    </article>
+
+    <article class="proto-card">
+      <div class="proto-label">
+        <strong>A 渐变版</strong>
+        <span>青蓝渐变麦克风 + 翼，暗色 squircle。货架 / 开始菜单感强。</span>
+      </div>
+      <div class="scene">
+        <div class="scene-label">顶栏 24px</div>
+        <div class="bar-demo">
+          <span class="bar-brand">
+            <img class="brand-mark" src="../../assets/icons/onetone-logo-candidate-a.png" alt="" width="24" height="24">
+            一声 OneTone
+          </span>
+        </div>
+      </div>
+      <div class="scene">
+        <div class="scene-label">Favicon / 下载 mock</div>
+        <div class="favicon-row">
+          <img src="../../assets/icons/onetone-logo-candidate-a.png" alt="" width="16" height="16">
+          <span>一声 OneTone — 帮助</span>
+        </div>
+        <div class="dl-mock" style="margin-top:0.75rem">
+          <img src="../../assets/icons/onetone-logo-candidate-a.png" alt="" width="56" height="56">
+          <div><strong>OneTone Setup</strong>Windows 10 / 11</div>
+        </div>
+      </div>
+      <div class="scene">
+        <div class="scene-label">任务栏</div>
+        <div class="taskbar">
+          <img src="../../assets/icons/onetone-logo-candidate-a.png" alt="" width="16" height="16">
+          <img src="../../assets/icons/onetone-logo-candidate-a.png" alt="" width="32" height="32">
+          <img src="../../assets/icons/onetone-logo-candidate-a.png" alt="" width="48" height="48">
+        </div>
+      </div>
+      <div class="scene">
+        <div class="scene-label">Squircle 1024</div>
+        <div class="hero-lg">
+          <img src="../../assets/icons/onetone-logo-candidate-a.png" alt="" width="112" height="112">
+        </div>
+      </div>
+    </article>
+
+    <article class="proto-card is-rec">
+      <div class="proto-label">
+        <strong>B 扁平白版 · 推荐</strong>
+        <span>纯白麦克风 + 翼，深蓝实底。高对比，16px 仍可读。</span>
+      </div>
+      <div class="scene">
+        <div class="scene-label">顶栏 24px</div>
+        <div class="bar-demo">
+          <span class="bar-brand">
+            <img class="brand-mark" src="../../assets/icons/onetone-logo-candidate-b.png" alt="" width="24" height="24">
+            一声 OneTone
+          </span>
+        </div>
+      </div>
+      <div class="scene">
+        <div class="scene-label">Favicon / 下载 mock</div>
+        <div class="favicon-row">
+          <img src="../../assets/icons/onetone-logo-candidate-b.png" alt="" width="16" height="16">
+          <span>一声 OneTone — 帮助</span>
+        </div>
+        <div class="dl-mock" style="margin-top:0.75rem">
+          <img src="../../assets/icons/onetone-logo-candidate-b.png" alt="" width="56" height="56">
+          <div><strong>OneTone Setup</strong>Windows 10 / 11</div>
+        </div>
+      </div>
+      <div class="scene">
+        <div class="scene-label">任务栏</div>
+        <div class="taskbar">
+          <img src="../../assets/icons/onetone-logo-candidate-b.png" alt="" width="16" height="16">
+          <img src="../../assets/icons/onetone-logo-candidate-b.png" alt="" width="32" height="32">
+          <img src="../../assets/icons/onetone-logo-candidate-b.png" alt="" width="48" height="48">
+        </div>
+      </div>
+      <div class="scene">
+        <div class="scene-label">Squircle 1024</div>
+        <div class="hero-lg">
+          <img src="../../assets/icons/onetone-logo-candidate-b.png" alt="" width="112" height="112">
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <footer class="page-foot">
+    确认方案后：网站 <code>assets/logo.png</code>、桌面 <code>src-tauri/icons</code>、应用内 <code>src/icon-*.png</code> 将从所选 master 重新生成。可选「B 品牌 + A 货架」：品牌用 B，开始菜单 1024 用 A。
+  </footer>
+</body>
+</html>

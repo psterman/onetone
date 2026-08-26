@@ -13,6 +13,15 @@ const VOSK_RUNTIME_DLLS: &[&str] = &[
 
 fn main() {
     ensure_icons_exist();
+    for name in [
+        "icons/icon.ico",
+        "icons/icon.png",
+        "icons/tray-16.png",
+        "icons/tray-32.png",
+        "icons/32x32.png",
+    ] {
+        println!("cargo:rerun-if-changed={name}");
+    }
     // Gate on feature so `cargo test --lib --no-default-features` does not hard-link
     // MinGW libvosk into the harness (STATUS_ENTRYPOINT_NOT_FOUND on Windows).
     if std::env::var_os("CARGO_FEATURE_VOSK_ENGINE").is_some() {

@@ -17,9 +17,10 @@
   height: 64px;
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   justify-content: space-between;
   padding: 0 1.5rem;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .site-brand {
@@ -31,10 +32,17 @@
   font-size: 1.125rem;
   letter-spacing: -0.02em;
   text-decoration: none;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .site-brand:hover {
   opacity: 0.85;
+}
+
+.site-brand .brand-mark {
+  width: 1.6rem;
+  height: 1.6rem;
 }
 
 .site-nav {
@@ -42,11 +50,14 @@
   gap: 1.5rem;
   font-size: 0.875rem;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 @media (min-width: 768px) {
   .site-nav {
     display: flex;
+    flex: 1;
+    justify-content: center;
   }
 }
 
@@ -57,6 +68,8 @@
   color: var(--mac-text-muted);
   text-decoration: none;
   transition: color 0.2s;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .site-nav a:hover,
@@ -84,6 +97,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-shrink: 0;
 }
 
 .nav-cta {

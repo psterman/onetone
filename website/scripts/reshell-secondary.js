@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Re-shell secondary pages onto dark HUD chrome.
  * Run: node website/scripts/reshell-secondary.js
  */
@@ -30,7 +30,7 @@ function shellParts(active) {
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="js/tailwind-config.js"></script>
   <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/shell.css?v=20260826b">
+  <link rel="stylesheet" href="css/shell.css?v=20260826h">
 ${extraCss}
 </head>
 <body class="antialiased" data-page="${active}">

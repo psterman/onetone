@@ -6142,7 +6142,7 @@
     });
   }
 
-  /** Preview key →「键位」右侧预览 + modal 二级配置页。 */
+  /** Preview key →「改按键」左预览 + 右栏直改表单（不再弹能力列表）。 */
   function softPadPreviewEditKey(m, microKeyId) {
     markSoftPadPreviewFocus(microKeyId);
     var Hub = global.OneToneSoftPadHub;
@@ -6152,7 +6152,7 @@
     function openLayoutEditor() {
       paintSoftPadLayoutKeyPreviewForMapping(m, microKeyId);
       openEditKeycap(m, microKeyId, {
-        mode: 'modal',
+        mode: 'inline',
         onSaved: function (mm) {
           paintSoftPadLayoutKeyPreviewForMapping(mm || m, microKeyId);
         }
@@ -6505,8 +6505,7 @@
     var id = String(microKeyId || '').trim();
     if (!id || id === 'JOY' || !cellByMicroId(id)) {
       return (
-        '<div class="soft-pad-layout-key-preview is-idle" data-soft-pad-layout-preview="1"' +
-        ' data-soft-pad-layout-editor="1">' +
+        '<div class="soft-pad-layout-key-preview is-idle" data-soft-pad-layout-preview="1">' +
         '<p class="soft-pad-layout-key-preview__badge">' +
         esc(t('softPadLayoutPreviewBadge', '修改后预览')) + '</p>' +
         '<p class="codex-pad-mgr__hint soft-pad-layout-editor-pending">' +
@@ -6518,7 +6517,7 @@
     var meta = softPadLayoutKeyMeta(m, id);
     return (
       '<div class="soft-pad-layout-key-preview" data-soft-pad-layout-preview="1"' +
-      ' data-soft-pad-layout-editor="1" data-preview-key="' + esc(id) + '">' +
+      ' data-preview-key="' + esc(id) + '">' +
       '<p class="soft-pad-layout-key-preview__badge">' +
       esc(t('softPadLayoutPreviewBadge', '修改后预览')) + '</p>' +
       '<div class="soft-pad-layout-key-preview__stage" aria-hidden="true">' +
@@ -6580,7 +6579,10 @@
     container.innerHTML =
       softPadExperienceChrome('layout', m) +
       '<div class="soft-pad-layout-shell">' +
+      '<div class="soft-pad-layout-split">' +
       softPadLayoutKeyPreviewHtml(m, focusId) +
+      '<div class="soft-pad-layout-editor" data-soft-pad-layout-editor="1" hidden></div>' +
+      '</div>' +
       '<details class="soft-pad-layout-actions" data-soft-pad-layout-tools="1">' +
       '<summary class="soft-pad-layout-actions-label">' +
       esc(t('softPadLayoutActionsLbl', '批量操作')) +
@@ -6607,6 +6609,12 @@
     mirrorSoftPadSubpageChrome(container);
     bindSoftPadLightPanelEvents(container, m, pad, Object.assign({}, opts, { panel: 'layout' }));
     try { global.__otSoftPadLayoutShellMounted = true; } catch (_) {}
+    var openId = focusId || pickDefaultLayoutKey(m);
+    if (openId) {
+      requestAnimationFrame(function () {
+        openEditKeycap(m, openId, { mode: 'inline' });
+      });
+    }
   }
 
   /** Prefer last focused key, else a sensible starter (AG00). */
@@ -6664,8 +6672,10 @@
   }
 
   function softPadLayoutEditorHost() {
-    // Layout face uses modal + right-side key preview — no inline editor host.
-    return null;
+    var body = document.getElementById('softPadSubpageBody');
+    if (!body || body.getAttribute('data-soft-pad-panel') !== 'layout') return null;
+    var paint = resolveSoftPadSubpagePaintHost(body) || body;
+    return paint.querySelector('[data-soft-pad-layout-editor]');
   }
 
   /** Presentation subpage — skins only (full/mini live under「何时显示」). */
@@ -9561,6 +9571,243 @@
     );
   }
 
+  function agentBindingFor(m, slotId, type) {
+    if (!m || !Array.isArray(m.agentBindings)) return null;
+    var id = String(slotId || '').trim();
+    var want = String(type || '');
+    for (var i = 0; i < m.agentBindings.length; i++) {
+      var b = m.agentBindings[i];
+      if (b && b.slotId === id && String(b.triggerType || '') === want) return b;
+    }
+    return null;
+  }
+
+  function normalizeActivationScope(v) {
+    return String(v || '').trim() === 'global' ? 'global' : 'foregroundApp';
+  }
+
+  function defaultPhrasesForSlot(m, slotId) {
+    var A = agent();
+    if (!A || !A.slotById) return '';
+    var slot = A.slotById(slotId);
+    if (!slot) return '';
+    if (A.phraseForAction) return String(A.phraseForAction(slot.actionId) || '').trim();
+    var act = A.actionById && A.actionById(slot.actionId);
+    if (!act) return '';
+    return String((lang().indexOf('en') === 0 ? act.phrasesEn : act.phrasesZh) || '').trim();
+  }
+
+  function readLayoutKeyBindings(m, slotId) {
+    var id = String(slotId || '').trim();
+    if (!id) return { chord: '', phrases: '', activationScope: 'foregroundApp' };
+    var keyB = agentBindingFor(m, id, 'key');
+    var voiceB = agentBindingFor(m, id, 'voice');
+    return {
+      chord: String((keyB && keyB.triggerBinding) || chordForSlot(m, id) || '').trim(),
+      phrases: String((voiceB && voiceB.triggerBinding) || defaultPhrasesForSlot(m, id) || '').trim(),
+      activationScope: normalizeActivationScope(
+        (keyB && keyB.activationScope) || (voiceB && voiceB.activationScope)
+      )
+    };
+  }
+
+  function applyLayoutKeyBindings(m, slotId, draft) {
+    var id = String(slotId || '').trim();
+    if (!m || !id || !draft) return;
+    if (!Array.isArray(m.agentBindings)) m.agentBindings = [];
+    ensureAgentKeyBinding(m, id);
+    var scope = normalizeActivationScope(draft.activationScope);
+    var chord = String(draft.chord != null ? draft.chord : '').trim();
+    var phrases = String(draft.phrases != null ? draft.phrases : '').trim();
+    var A = agent();
+    var slot = A && A.slotById ? A.slotById(id) : null;
+    var act = slot && A.actionById ? A.actionById(slot.actionId) : null;
+    var keyB = agentBindingFor(m, id, 'key');
+    if (keyB) {
+      keyB.activationScope = scope;
+      keyB.enabled = true;
+      // Keep ensureAgentKeyBinding's default chord when user didn't record.
+      if (chord) keyB.triggerBinding = chord;
+    }
+    var voiceB = agentBindingFor(m, id, 'voice');
+    if (!voiceB) {
+      if (phrases) {
+        m.agentBindings.push({
+          slotId: id,
+          actionId: slot ? slot.actionId : id,
+          triggerType: 'voice',
+          triggerBinding: phrases,
+          enabled: true,
+          executionMode: (act && act.mode) || 'execute',
+          activationScope: scope
+        });
+      }
+    } else {
+      voiceB.enabled = !!phrases;
+      voiceB.triggerBinding = phrases;
+      voiceB.activationScope = scope;
+      if (slot) voiceB.actionId = slot.actionId;
+    }
+  }
+
+  function hydrateLayoutDraftBindings(draft) {
+    if (!draft || !draft.mapping) return;
+    var fields = readLayoutKeyBindings(draft.mapping, draft.slotId);
+    draft.chord = fields.chord;
+    draft.phrases = fields.phrases;
+    draft.activationScope = fields.activationScope;
+  }
+
+  function fillLayoutKeySlotSelect(sel, m, currentId) {
+    if (!sel) return;
+    sel.innerHTML = '';
+    var unbound = document.createElement('option');
+    unbound.value = '';
+    unbound.textContent = t('codexMicroPadUnbound', '未绑定');
+    sel.appendChild(unbound);
+    allSlotOptions(m).forEach(function (o) {
+      var opt = document.createElement('option');
+      opt.value = o.id;
+      opt.textContent = o.label || o.id;
+      if (o.tip) opt.title = o.tip;
+      sel.appendChild(opt);
+    });
+    sel.value = String(currentId || '');
+  }
+
+  function syncLayoutKeyFormFields() {
+    if (!editDraft) return;
+    var chordEl = document.getElementById('layoutKeyChord');
+    var phrasesEl = document.getElementById('layoutKeyPhrases');
+    var focusEl = document.getElementById('layoutKeyFocus');
+    var recBtn = document.getElementById('layoutKeyRecord');
+    var bound = !!String(editDraft.slotId || '').trim();
+    if (chordEl) {
+      chordEl.value = bound ? friendlyChord(editDraft.chord || '') : '';
+      chordEl.disabled = !bound;
+    }
+    if (phrasesEl) {
+      phrasesEl.value = bound ? String(editDraft.phrases || '') : '';
+      phrasesEl.disabled = !bound;
+    }
+    if (focusEl) {
+      focusEl.value = normalizeActivationScope(editDraft.activationScope);
+      focusEl.disabled = !bound;
+    }
+    if (recBtn) recBtn.disabled = !bound;
+    var badge = document.getElementById('microHwEditBadge');
+    if (badge) {
+      badge.textContent = bound
+        ? t('softPadLayoutFormLive', '生效中')
+        : t('codexMicroPadUnbound', '未绑定');
+    }
+  }
+
+  function startRecordLayoutChord(btn) {
+    if (!editDraft || !String(editDraft.slotId || '').trim()) return;
+    var rec = global.OneToneMappingRecording;
+    if (!rec || !rec.startAgentBinding) {
+      toast(t('codexMicroPadRecordBusy', '请先结束按键录制'));
+      return;
+    }
+    if (rec.mode && rec.mode() !== 'none') return;
+    if (btn) btn.classList.add('is-recording');
+    rec.startAgentBinding(editDraft.mapping && editDraft.mapping.id, {
+      onDone: function (chord) {
+        if (btn) btn.classList.remove('is-recording');
+        if (!editDraft) return;
+        editDraft.chord = String(chord || '').trim();
+        syncLayoutKeyFormFields();
+        commitEditKeycapDraft({ keepOpen: true, quiet: true });
+      },
+      onCancel: function () {
+        if (btn) btn.classList.remove('is-recording');
+      }
+    });
+  }
+
+  function bindLayoutKeyForm(host, m) {
+    var slotSel = document.getElementById('layoutKeySlot');
+    fillLayoutKeySlotSelect(slotSel, m, editDraft && editDraft.slotId);
+    syncHiddenSlotSelect();
+    syncLayoutKeyFormFields();
+    if (slotSel) {
+      slotSel.onchange = function () {
+        if (!editDraft) return;
+        editDraft.slotId = String(slotSel.value || '');
+        maybeAutoSuggestIcon();
+        hydrateLayoutDraftBindings(editDraft);
+        syncHiddenSlotSelect();
+        syncLayoutKeyFormFields();
+        commitEditKeycapDraft({ keepOpen: true, quiet: true });
+      };
+    }
+    var phrasesEl = document.getElementById('layoutKeyPhrases');
+    if (phrasesEl) {
+      phrasesEl.onchange = function () {
+        if (!editDraft) return;
+        editDraft.phrases = String(phrasesEl.value || '').trim();
+        commitEditKeycapDraft({ keepOpen: true, quiet: true });
+      };
+    }
+    var focusEl = document.getElementById('layoutKeyFocus');
+    if (focusEl) {
+      focusEl.onchange = function () {
+        if (!editDraft) return;
+        editDraft.activationScope = normalizeActivationScope(focusEl.value);
+        commitEditKeycapDraft({ keepOpen: true, quiet: true });
+      };
+    }
+    var recBtn = document.getElementById('layoutKeyRecord');
+    if (recBtn) {
+      recBtn.textContent = t('softPadLayoutRecordChord', '录制键位');
+      recBtn.onclick = function () { startRecordLayoutChord(recBtn); };
+    }
+  }
+
+  function buildLayoutKeyFormHtml() {
+    return (
+      '<div class="soft-pad-layout-form-wrap">' +
+      '<div class="soft-pad-layout-form-head">' +
+      '<div>' +
+      '<p class="soft-pad-layout-form-title" id="microHwEditTitle"></p>' +
+      '<p class="soft-pad-layout-form-sub" id="microHwEditSub"></p>' +
+      '</div>' +
+      '<span class="soft-pad-layout-form-badge" id="microHwEditBadge"></span>' +
+      editKeycapCloseBtnHtml() +
+      '</div>' +
+      '<p class="soft-pad-layout-form-hint" id="microHwEditHint"></p>' +
+      '<div class="soft-pad-layout-form">' +
+      '<label class="soft-pad-layout-form__field">' +
+      '<span>' + esc(t('softPadLayoutFieldSlot', '动作分类')) + '</span>' +
+      '<select id="layoutKeySlot"></select>' +
+      '</label>' +
+      '<label class="soft-pad-layout-form__field">' +
+      '<span>' + esc(t('softPadLayoutFieldChord', '快捷键配置')) + '</span>' +
+      '<span class="soft-pad-layout-form__chord-row">' +
+      '<input id="layoutKeyChord" type="text" readonly autocomplete="off" />' +
+      '<button type="button" class="codex-micro-pad__btn" id="layoutKeyRecord"></button>' +
+      '</span>' +
+      '</label>' +
+      '<label class="soft-pad-layout-form__field">' +
+      '<span>' + esc(t('softPadLayoutFieldPhrases', '文本口令')) + '</span>' +
+      '<input id="layoutKeyPhrases" type="text" autocomplete="off" />' +
+      '</label>' +
+      '<label class="soft-pad-layout-form__field">' +
+      '<span>' + esc(t('softPadLayoutFieldFocus', '窗口聚焦')) + '</span>' +
+      '<select id="layoutKeyFocus">' +
+      '<option value="foregroundApp">' +
+      esc(t('softPadLayoutFocusEditor', '送到当前正在用的编辑器')) + '</option>' +
+      '<option value="global">' +
+      esc(t('softPadLayoutFocusGlobal', '不抢焦点（全局）')) + '</option>' +
+      '</select>' +
+      '</label>' +
+      '</div>' +
+      '<select id="microHwEditSlot" class="micro-hw-modal__slot-hidden" aria-hidden="true" tabindex="-1" hidden></select>' +
+      '</div>'
+    );
+  }
+
   function applyEditKeycapGuideTab(host, tab) {
     if (!host) return;
     if (tab !== 'look') tab = 'action';
@@ -9581,22 +9828,15 @@
   }
 
   function buildEditKeycapInnerHtml(mode) {
-    var inline = mode === 'inline';
+    if (mode === 'inline') return buildLayoutKeyFormHtml();
     return (
-      (inline
-        ? '<div class="soft-pad-keycap-editor__bar">' +
-          '<div class="soft-pad-keycap-editor__head-text">' +
-          '<p class="soft-pad-keycap-editor__badge" id="microHwEditBadge"></p>' +
-          '<p class="soft-pad-keycap-editor__key-name" id="microHwEditSub"></p>' +
-          editKeycapGuideHtml() +
-          '</div>' + editKeycapCloseBtnHtml() + '</div>'
-        : '<div class="micro-hw-modal__head">' +
-          '<div class="micro-hw-modal__head-main">' +
-          '<p class="micro-hw-modal__title" id="microHwEditTitle"></p>' +
-          '<p class="micro-hw-modal__sub" id="microHwEditSub"></p>' +
-          editKeycapGuideHtml() +
-          '</div>' + editKeycapCloseBtnHtml() +
-          '</div>') +
+      '<div class="micro-hw-modal__head">' +
+      '<div class="micro-hw-modal__head-main">' +
+      '<p class="micro-hw-modal__title" id="microHwEditTitle"></p>' +
+      '<p class="micro-hw-modal__sub" id="microHwEditSub"></p>' +
+      editKeycapGuideHtml() +
+      '</div>' + editKeycapCloseBtnHtml() +
+      '</div>' +
       '<div class="soft-pad-keycap-editor__scroll">' +
       '<section class="micro-hw-modal__effect-section soft-pad-keycap-editor__effect" data-edit-panel="action" id="microHwEffectSection">' +
       '<p class="micro-hw-modal__section-title" id="microHwEffectTitle"></p>' +
@@ -9607,7 +9847,7 @@
       '<p class="micro-hw-modal__assign-hint" id="microHwAssignHint" hidden></p>' +
       '</section>' +
       '<section class="micro-hw-modal__cap-section" data-edit-panel="action" id="microHwCapSection">' +
-      (inline ? '' : '<p class="micro-hw-modal__section-title" id="microHwCapTitle"></p>') +
+      '<p class="micro-hw-modal__section-title" id="microHwCapTitle"></p>' +
       '<div class="micro-hw-modal__cap-list" id="microHwCapList" role="listbox"></div>' +
       '<select id="microHwEditSlot" class="micro-hw-modal__slot-hidden" aria-hidden="true" tabindex="-1"></select>' +
       '</section>' +
@@ -9657,9 +9897,14 @@
     var layoutEd = softPadLayoutEditorHost();
     if (layoutEd) {
       layoutEd.innerHTML = '';
-      // Keep host visible — layout page always shows an editor.
-      layoutEd.hidden = false;
+      // Close inline right panel shell (keep preview on the left).
+      layoutEd.hidden = true;
     }
+    var bodyEl = document.getElementById('softPadSubpageBody');
+    var paintEl = resolveSoftPadSubpagePaintHost(bodyEl);
+    if (paintEl) paintEl.classList.remove('is-editing-key');
+    if (bodyEl) bodyEl.classList.remove('is-editing-key');
+    if (layoutEd && layoutEd.parentNode) layoutEd.parentNode.classList.remove('is-editing-key');
   }
 
   function ensureEditModal() {
@@ -9879,25 +10124,51 @@
       mode: mode,
       root: host,
       onClose: opts.onClose || null,
-      onSaved: opts.onSaved || null
+      onSaved: opts.onSaved || null,
+      chord: '',
+      phrases: '',
+      activationScope: 'foregroundApp'
     };
+    hydrateLayoutDraftBindings(editDraft);
 
     var keyLabel = humanMicroKeyLabel(microKeyId);
     var titleEl = document.getElementById('microHwEditTitle');
     var subEl = document.getElementById('microHwEditSub');
     var badgeEl = document.getElementById('microHwEditBadge');
+    if (mode === 'inline') {
+      var appName = String((m && (m.name || m.appTargetId)) || 'Soft Pad');
+      if (titleEl) {
+        titleEl.textContent = t('softPadLayoutFormTitle', '{app} · [{key}] 映射参数')
+          .replace('{app}', appName)
+          .replace('{key}', keyLabel);
+      }
+      if (subEl) subEl.textContent = '';
+      var hintEl = document.getElementById('microHwEditHint');
+      if (hintEl) {
+        hintEl.textContent = t(
+          'softPadLayoutFormHint',
+          '设置敲击此键时分发的快捷键、口令与窗口聚焦。'
+        );
+      }
+      bindLayoutKeyForm(host, m);
+      host.querySelectorAll('[data-act="close"]').forEach(function (btn) {
+        if (btn.__softPadCloseBound) return;
+        btn.__softPadCloseBound = true;
+        btn.setAttribute('aria-label', t('codexMicroEditClose', '关闭'));
+        btn.onclick = function () { closeEditKeycap({ reopenInline: false }); };
+      });
+      try {
+        padInvoke('cmd_app_log', {
+          line: 'fe renderEditKeycapEditor mode=inline id=' + String(microKeyId || '')
+        });
+      } catch (_) {}
+      return;
+    }
     if (badgeEl) {
       badgeEl.textContent = t('softPadLayoutEditingBadge', '正在编辑');
     }
-    if (mode === 'inline') {
-      // Inline: only badge + bold key name — no extra instructional copy.
-      if (subEl) subEl.textContent = keyLabel;
-    } else {
-      if (titleEl) titleEl.textContent = t('codexMicroEditTitle', '编辑这个键');
-      if (subEl) subEl.textContent = keyLabel;
-      var capTitle = document.getElementById('microHwCapTitle');
-      if (capTitle) capTitle.textContent = t('codexMicroEditCapTitle', '这个键做什么');
-    }
+    if (titleEl) titleEl.textContent = t('codexMicroEditTitle', '编辑这个键');
+    if (subEl) subEl.textContent = keyLabel;
     var actionLbl = host.querySelector('[data-guide-label="action"]');
     var lookLbl = host.querySelector('[data-guide-label="look"]');
     if (isNavMicroKey(microKeyId)) {
@@ -10152,7 +10423,13 @@
     var navKey = isNavMicroKey(editDraft.microKeyId);
     var scan = (editDraft.microKeyId === 'ENC' || navKey) ? 0 : (editDraft.sourceScan || 0);
     // Seed binding before route persist so quiet IPC never races an empty chord.
-    if (slotId) ensureAgentKeyBinding(m, slotId);
+    if (slotId) {
+      ensureAgentKeyBinding(m, slotId);
+      // Inline layout editor needs to persist chord/phrases/scope into agentBindings.
+      if (mode === 'inline') {
+        applyLayoutKeyBindings(m, slotId, editDraft);
+      }
+    }
     var saveIcon = editDraft.uiIconId;
     if (
       (slotId === 'plan' || slotId === 'switchAgent') &&

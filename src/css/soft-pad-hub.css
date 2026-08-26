@@ -2373,6 +2373,24 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   min-height: 0;
   height: 100%;
 }
+.soft-pad-layout-split {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.soft-pad-layout-split > .soft-pad-layout-key-preview {
+  flex: 0 1 42%;
+  min-width: 200px;
+  max-width: 360px;
+}
+.soft-pad-layout-split > .soft-pad-layout-editor {
+  flex: 1 1 58%;
+  min-width: 0;
+  min-height: 0;
+}
 .soft-pad-layout-key-preview {
   flex: 1 1 auto;
   min-height: 220px;
@@ -2530,6 +2548,16 @@ html[data-theme="dark"] .soft-pad-layout-key-preview__effect {
 .soft-pad-layout-editor[hidden] {
   display: none !important;
 }
+.is-editing-key .soft-pad-layout-actions {
+  opacity: 0.72;
+  max-height: 2.4em;
+  overflow: hidden;
+}
+.is-editing-key .soft-pad-layout-actions[open] {
+  max-height: none;
+  overflow: visible;
+  opacity: 1;
+}
 .soft-pad-layout-editor {
   display: flex;
   flex-direction: column;
@@ -2537,6 +2565,139 @@ html[data-theme="dark"] .soft-pad-layout-key-preview__effect {
   min-height: 180px;
   max-height: 100%;
   overflow: hidden;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(42, 156, 196, 0.14);
+  background: rgba(255, 255, 255, 0.96);
+  box-sizing: border-box;
+}
+.soft-pad-layout-form-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+}
+.soft-pad-layout-form-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.soft-pad-layout-form-head > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.soft-pad-layout-form-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.35;
+  color: #0f172a;
+}
+.soft-pad-layout-form-sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+.soft-pad-layout-form-badge {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #1d4ed8;
+  background: rgba(37, 99, 235, 0.1);
+}
+.soft-pad-layout-form-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #64748b;
+}
+.soft-pad-layout-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+.soft-pad-layout-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 650;
+  color: #334155;
+}
+.soft-pad-layout-form__field select,
+.soft-pad-layout-form__field input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 36px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(26, 45, 74, 0.14);
+  background: #fff;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 500;
+}
+.soft-pad-layout-form__field select:disabled,
+.soft-pad-layout-form__field input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.soft-pad-layout-form__chord-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.soft-pad-layout-form__chord-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.soft-pad-layout-form__chord-row .codex-micro-pad__btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.soft-pad-layout-form__chord-row .codex-micro-pad__btn.is-recording {
+  outline: 2px solid #f59e0b;
+  outline-offset: 1px;
+}
+@media (max-width: 860px) {
+  .soft-pad-layout-split {
+    flex-direction: column;
+  }
+  .soft-pad-layout-split > .soft-pad-layout-key-preview {
+    flex: 0 0 auto;
+    max-width: none;
+    min-height: 180px;
+  }
+  .soft-pad-layout-form {
+    grid-template-columns: 1fr;
+  }
+}
+html[data-theme="dark"] .soft-pad-layout-editor {
+  border-color: rgba(125, 211, 252, 0.18);
+  background: rgba(18, 24, 36, 0.94);
+}
+html[data-theme="dark"] .soft-pad-layout-form-title {
+  color: #e8eef6;
+}
+html[data-theme="dark"] .soft-pad-layout-form-hint,
+html[data-theme="dark"] .soft-pad-layout-form-sub {
+  color: #9aa8b8;
+}
+html[data-theme="dark"] .soft-pad-layout-form__field {
+  color: #cbd5e1;
+}
+html[data-theme="dark"] .soft-pad-layout-form__field select,
+html[data-theme="dark"] .soft-pad-layout-form__field input[type="text"] {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.85);
+  color: #e2e8f0;
 }
 .soft-pad-keycap-editor__badge {
   margin: 0 0 2px;

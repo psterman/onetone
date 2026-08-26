@@ -1,4 +1,4 @@
-"""Build OneTone icons from Tornado-T art: strip plate, transparent canvas, max fill."""
+"""Build OneTone icons from mic+wing art: strip plate, transparent canvas, max fill."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from pathlib import Path
 from PIL import Image, ImageChops, ImageEnhance, ImageFilter, ImageOps
 
 ROOT = Path(__file__).resolve().parents[1]
+SRC_MASTER = ROOT / "assets" / "icons" / "onetone-logo-candidate-b.png"
 SRC_LIGHT = ROOT / "assets" / "icons" / "onetone-logo-source-light.png"
 SRC_DARK = ROOT / "assets" / "icons" / "onetone-logo-source-dark.png"
 OUT_LIGHT = ROOT / "assets" / "icons" / "onetone-icon-ui-light-1024.png"
@@ -60,6 +61,9 @@ def is_plate(p: tuple[int, int, int, int]) -> bool:
         return True
     # Near-black plate
     if mx < 28 and (mx - mn) < 18:
+        return True
+    # Dark navy squircle (mic+wing app icon background)
+    if mx < 100 and b >= r and b >= g and (mx - mn) < 55:
         return True
     return False
 
@@ -164,28 +168,74 @@ def derive_tray_variants(tray32: Image.Image) -> None:
     write(ICONS_DIR / "tray-32-missing.png", gray)
 
 
+TRAY_BG = (3, 14, 42, 255)  # match tray_icon_render::THEME_BG
+
+
+def extract_white_glyph(img: Image.Image) -> Image.Image:
+    """Keep near-white logo strokes; drop navy plate."""
+    rgba = img.convert("RGBA")
+    px = rgba.load()
+    for y in range(rgba.height):
+        for x in range(rgba.width):
+            r, g, b, a = px[x, y]
+            if a < 8:
+                continue
+            if min(r, g, b) > 170:
+                px[x, y] = (255, 255, 255, a)
+            else:
+                px[x, y] = (0, 0, 0, 0)
+    return rgba
+
+
+def build_tray_icon(glyph_src: Image.Image, size: int) -> Image.Image:
+    """Solid tray/taskbar tile: white glyph on navy with readable padding."""
+    glyph = extract_white_glyph(glyph_src)
+    x0, y0, x1, y1 = glyph_bbox(glyph)
+    crop = glyph.crop((x0, y0, x1, y1))
+    # ~12–14% margin each side; 16px keeps a touch fuller so strokes survive.
+    fill = 0.76 if size <= 16 else 0.72
+    target = int(round(size * fill))
+    # contain (min) — never clip feathers / mic stem
+    scale = min(target / max(1, crop.width), target / max(1, crop.height))
+    nw = max(1, int(round(crop.width * scale)))
+    nh = max(1, int(round(crop.height * scale)))
+    scaled = crop.resize((nw, nh), Image.Resampling.LANCZOS)
+    out = Image.new("RGBA", (size, size), TRAY_BG)
+    ox = (size - nw) // 2
+    oy = (size - nh) // 2
+    out.paste(scaled, (ox, oy), scaled)
+    if size <= 48:
+        out = out.filter(ImageFilter.UnsharpMask(radius=0.9, percent=180, threshold=1))
+    return out
+
+
+def build_app_web_icon(master: Image.Image, size: int = 256) -> Image.Image:
+    """In-app chrome: same padded solid tile as tray (readable on light UI)."""
+    return build_tray_icon(master, size)
+
+
 def main() -> None:
-    if not SRC_LIGHT.exists():
-        raise FileNotFoundError(f"missing {SRC_LIGHT}")
+    if not SRC_MASTER.exists():
+        raise FileNotFoundError(f"missing {SRC_MASTER}")
 
-    # One master glyph: strip plate → transparent.
-    cleared = flood_clear_plate(Image.open(SRC_LIGHT))
+    master = Image.open(SRC_MASTER).convert("RGBA")
+    write(SRC_LIGHT, master.copy())
+    write(SRC_DARK, master.copy())
+
+    cleared = flood_clear_plate(master.copy())
     write(SRC_LIGHT, cleared)
-    write(SRC_DARK, cleared)  # same art; no plate color
+    write(SRC_DARK, cleared)
 
-    ui = fit_glyph(cleared, fill_ratio=FILL_RATIO, edge_inset=EDGE_INSET, cover=False)
-    write(OUT_LIGHT, ui)
-    write(OUT_DARK, ui)
-    web = ui.resize((256, 256), Image.Resampling.LANCZOS)
+    write(OUT_LIGHT, master)
+    write(OUT_DARK, master)
+
+    web = build_app_web_icon(master)
     write(OUT_LIGHT_WEB, web)
     write(OUT_DARK_WEB, web)
     write(ROOT / "src" / "icon.png", web)
 
-    tray_master = fit_glyph(cleared, fill_ratio=1.0, edge_inset=0.0, cover=True)
     for size, name in ((16, "tray-16.png"), (24, "tray-24.png"), (32, "tray-32.png"), (48, "tray-48.png")):
-        tray = tray_master.resize((size, size), Image.Resampling.LANCZOS)
-        tray = tray.filter(ImageFilter.UnsharpMask(radius=1.0, percent=180, threshold=1))
-        write(ICONS_DIR / name, tray)
+        write(ICONS_DIR / name, build_tray_icon(master, size))
     derive_tray_variants(Image.open(ICONS_DIR / "tray-32.png").convert("RGBA"))
 
     print("Next: python scripts/generate_onetone_icon.py  (exe/taskbar ico)")

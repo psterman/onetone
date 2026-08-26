@@ -1,24 +1,30 @@
 //! Apply the app window / taskbar icon.
 //!
 //! Tray icons are separate (`tray_icon_render`, runtime PNG).
-//! Taskbar buttons follow the HWND icon — load the transparent master PNG
-//! (not the exe's embedded BMP-era .ico, which paints alpha as a black plate).
+//! Taskbar/title-bar use max-fill tray tiles — squircle downscales lose the glyph at 16px.
 
 use tauri::image::Image;
 
-const ICON_PNG: &[u8] = include_bytes!("../icons/icon.png");
+const ICON_SMALL: &[u8] = include_bytes!("../icons/tray-16.png");
+const ICON_BIG: &[u8] = include_bytes!("../icons/tray-32.png");
+
+fn load_rgba(bytes: &[u8]) -> Result<image::RgbaImage, std::io::Error> {
+    let img = image::load_from_memory(bytes)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+    Ok(img.to_rgba8())
+}
 
 pub fn apply_window_icon(window: &tauri::WebviewWindow) -> tauri::Result<()> {
-    let img = image::load_from_memory(ICON_PNG)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
-    let rgba = img.to_rgba8();
-    let (width, height) = rgba.dimensions();
-    window.set_icon(Image::new_owned(rgba.into_raw(), width, height))?;
+    let big = load_rgba(ICON_BIG)?;
+    let (width, height) = big.dimensions();
+    window.set_icon(Image::new_owned(big.clone().into_raw(), width, height))?;
 
     #[cfg(windows)]
     {
-        if let Err(err) = apply_win32_hwnd_icons(window, &img.to_rgba8()) {
-            eprintln!("[app_icon] win32 hwnd icon: {err}");
+        if let Ok(small) = load_rgba(ICON_SMALL) {
+            if let Err(err) = apply_win32_hwnd_icons(window, &small, &big) {
+                eprintln!("[app_icon] win32 hwnd icon: {err}");
+            }
         }
     }
 
@@ -26,13 +32,11 @@ pub fn apply_window_icon(window: &tauri::WebviewWindow) -> tauri::Result<()> {
 }
 
 #[cfg(windows)]
-fn encode_png_size(img: &image::RgbaImage, size: u32) -> Result<Vec<u8>, String> {
-    use image::imageops::FilterType;
+fn encode_png_rgba(img: &image::RgbaImage) -> Result<Vec<u8>, String> {
     use std::io::Cursor;
 
-    let resized = image::imageops::resize(img, size, size, FilterType::Lanczos3);
     let mut png = Cursor::new(Vec::new());
-    image::DynamicImage::ImageRgba8(resized)
+    image::DynamicImage::ImageRgba8(img.clone())
         .write_to(&mut png, image::ImageFormat::Png)
         .map_err(|e| e.to_string())?;
     Ok(png.into_inner())
@@ -41,7 +45,8 @@ fn encode_png_size(img: &image::RgbaImage, size: u32) -> Result<Vec<u8>, String>
 #[cfg(windows)]
 fn apply_win32_hwnd_icons(
     window: &tauri::WebviewWindow,
-    rgba: &image::RgbaImage,
+    small_rgba: &image::RgbaImage,
+    big_rgba: &image::RgbaImage,
 ) -> Result<(), String> {
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
     use winapi::shared::windef::HWND;
@@ -58,9 +63,8 @@ fn apply_win32_hwnd_icons(
         _ => return Ok(()),
     };
 
-    // Vista+: CreateIconFromResourceEx accepts raw PNG bytes and keeps alpha.
-    let small_png = encode_png_size(rgba, 16)?;
-    let big_png = encode_png_size(rgba, 32)?;
+    let small_png = encode_png_rgba(small_rgba)?;
+    let big_png = encode_png_rgba(big_rgba)?;
 
     unsafe {
         let small = CreateIconFromResourceEx(

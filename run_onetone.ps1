@@ -255,11 +255,56 @@ function Start-OnetoneExe {
   Write-LaunchLog "launched onetone.exe from $ExePath"
 }
 
+function Sync-OnetoneIcons {
+  $iconScript = Join-Path $root 'scripts\gen-logo-icons.py'
+  if (-not (Test-Path $iconScript)) {
+    throw "missing icon generator: $iconScript"
+  }
+  Write-LaunchLog 'generating icons (tray + ico + in-app)...'
+  py -3 $iconScript
+  if ($LASTEXITCODE -ne 0) {
+    throw "gen-logo-icons.py failed with exit code $LASTEXITCODE"
+  }
+}
+
+function Sync-PinnedTaskbarIcon {
+  param([string]$ExePath)
+  $pinned = Join-Path $env:APPDATA 'Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\OneTone.lnk'
+  if (-not (Test-Path $pinned)) {
+    Write-LaunchLog 'no pinned OneTone.lnk; skip taskbar icon sync'
+    return
+  }
+  $srcIco = Join-Path $tauri 'icons\icon.ico'
+  if (-not (Test-Path $srcIco)) {
+    Write-LaunchLog 'icon.ico missing; skip taskbar icon sync'
+    return
+  }
+  # Unique filename so Windows does not keep the old pinned bitmap.
+  $bustIco = Join-Path $tauri 'icons\taskbar-pin.ico'
+  Copy-Item -LiteralPath $srcIco -Destination $bustIco -Force
+  try {
+    $sh = New-Object -ComObject WScript.Shell
+    $lnk = $sh.CreateShortcut($pinned)
+    $lnk.TargetPath = $ExePath
+    $lnk.WorkingDirectory = (Split-Path -Parent $ExePath)
+    $lnk.IconLocation = "$bustIco,0"
+    $lnk.Save()
+    Write-LaunchLog "pinned taskbar icon -> $bustIco"
+  } catch {
+    Write-LaunchLog "pinned taskbar icon sync failed: $($_.Exception.Message)"
+  }
+}
+
 function Get-DevSourceFiles {
   $files = @()
   foreach ($path in @(
       (Join-Path $root 'src'),
       (Join-Path $tauri 'src'),
+      (Join-Path $tauri 'icons'),
+      (Join-Path $root 'assets\icons\onetone-logo-candidate-b.png'),
+      (Join-Path $root 'scripts\gen-logo-icons.py'),
+      (Join-Path $root 'scripts\build_onetone_theme_icons.py'),
+      (Join-Path $root 'scripts\generate_onetone_icon.py'),
       (Join-Path $tauri 'Cargo.toml'),
       (Join-Path $tauri 'Cargo.lock'),
       (Join-Path $tauri 'tauri.conf.json'),
@@ -271,7 +316,7 @@ function Get-DevSourceFiles {
       $files += Get-ChildItem -Path $item.FullName -Recurse -File -ErrorAction SilentlyContinue |
         Where-Object {
           $_.FullName -notmatch '\\target\\' -and
-          $_.Extension -in @('.html', '.js', '.css', '.rs', '.toml', '.json')
+          $_.Extension -in @('.html', '.js', '.css', '.rs', '.toml', '.json', '.png', '.ico')
         }
     } else {
       $files += $item
@@ -396,16 +441,7 @@ try {
     Stop-AppProcessGracefully -Name $name
   }
 
-  $iconIco = Join-Path $tauri 'icons\icon.ico'
-  $iconPng = Join-Path $tauri 'icons\icon.png'
-  $iconScript = Join-Path $root 'scripts\generate_onetone_icon.py'
-  if ((-not (Test-Path $iconIco)) -or (-not (Test-Path $iconPng)) -or ((Get-Item $iconScript).LastWriteTimeUtc -gt (Get-Item $iconIco).LastWriteTimeUtc)) {
-    if (-not (Test-Path $iconScript)) {
-      throw "missing icon generator: $iconScript"
-    }
-    Write-LaunchLog 'generating icons...'
-    py -3 $iconScript
-  }
+  Sync-OnetoneIcons
 
   Push-Location $tauri
   try {
@@ -428,6 +464,7 @@ try {
 
   Sync-VoskBundleResources -ReleaseDir (Split-Path -Parent $releaseExe)
   Sync-KwsBundleResources -ReleaseDir (Split-Path -Parent $releaseExe)
+  Sync-PinnedTaskbarIcon -ExePath $releaseExe
 
   Write-LaunchLog 'build ok'
   Start-OnetoneExe -ExePath $releaseExe -Safe:$Safe -CodexMicroProtocol:$CodexMicroProtocol

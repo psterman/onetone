@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>顶部 Bar 三方案对比 — OneTone</title>
+  <link rel="icon" href="../assets/logo.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    :root {
+      --mac-accent: #2a9cc4;
+      --mac-accent-rgb: 42, 156, 196;
+      --mac-text-muted: #86868b;
+      --mac-border: rgba(255, 255, 255, 0.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #050505;
+      color: #f5f5f7;
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      padding: 2rem 1.5rem 4rem;
+    }
+    .page-head {
+      max-width: 72rem;
+      margin: 0 auto 2.5rem;
+    }
+    .page-head h1 {
+      margin: 0 0 0.5rem;
+      font-size: 1.75rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+    }
+    .page-head p {
+      margin: 0;
+      color: var(--mac-text-muted);
+      font-size: 0.9375rem;
+      line-height: 1.55;
+    }
+    .compare-grid {
+      max-width: 72rem;
+      margin: 0 auto;
+      display: grid;
+      gap: 2rem;
+    }
+    @media (min-width: 1100px) {
+      .compare-grid {
+        grid-template-columns: repeat(3, 1fr);
+        align-items: start;
+      }
+    }
+    .proto-card {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1.25rem;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .proto-label {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .proto-label strong {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--mac-accent);
+      margin-bottom: 0.35rem;
+    }
+    .proto-label span {
+      font-size: 0.8125rem;
+      color: var(--mac-text-muted);
+      line-height: 1.45;
+    }
+    .proto-preview {
+      background: #000;
+      min-height: 11rem;
+      position: relative;
+    }
+    .proto-preview::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      height: 3rem;
+      background: linear-gradient(to bottom, transparent, rgba(42, 156, 196, 0.06));
+      pointer-events: none;
+    }
+    .proto-fake-hero {
+      padding: 1.25rem 1.25rem 2rem;
+      font-size: 0.75rem;
+      color: rgba(134, 134, 139, 0.9);
+    }
+    .proto-fake-hero .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.65rem;
+      color: var(--mac-accent);
+      margin-bottom: 0.75rem;
+    }
+    .proto-fake-hero h2 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+
+    /* —— A: 官网导航 —— */
+    .bar-a {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem;
+      gap: 0.5rem;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--mac-border);
+    }
+    .bar-a .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      color: #fff;
+      font-weight: 600;
+      font-size: 1rem;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .bar-a .brand img { width: 1.35rem; height: 1.35rem; border-radius: 0.3rem; }
+    .bar-a nav {
+      display: none;
+      flex: 1;
+      justify-content: center;
+      gap: 1.15rem;
+      font-size: 0.8125rem;
+    }
+    @media (min-width: 900px) { .bar-a nav { display: flex; } }
+    .bar-a nav a {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: var(--mac-text-muted);
+      text-decoration: none;
+    }
+    .bar-a nav a.active { color: #fff; }
+    .bar-a nav a.active i { color: var(--mac-accent); }
+    .bar-a .actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .bar-a .lang {
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid var(--mac-border);
+      background: transparent;
+      color: var(--mac-text-muted);
+      font-size: 0.6875rem;
+      font-weight: 600;
+    }
+    .bar-a .dl {
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      background: #fff;
+      color: #000;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    /* —— B: 桌面 HUD —— */
+    .bar-b-wrap {
+      padding: 0.65rem 0.75rem 0;
+    }
+    .bar-b {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.45rem 0.55rem 0.45rem 0.65rem;
+      border-radius: 0.85rem;
+      background: rgba(22, 22, 26, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow:
+        0 12px 40px rgba(0, 0, 0, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+    .bar-b .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.65rem 0.35rem 0.45rem;
+      border-radius: 0.55rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      text-decoration: none;
+      color: #fff;
+      white-space: nowrap;
+    }
+    .bar-b .brand img { width: 1.5rem; height: 1.5rem; border-radius: 0.35rem; }
+    .bar-b .brand-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.1;
+    }
+    .bar-b .brand-text em {
+      font-style: normal;
+      font-size: 0.625rem;
+      color: var(--mac-text-muted);
+      font-family: "JetBrains Mono", monospace;
+    }
+    .bar-b .brand-text strong {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    .bar-b nav {
+      flex: 1;
+      display: none;
+      align-items: center;
+      gap: 0.2rem;
+      padding: 0 0.25rem;
+    }
+    @media (min-width: 900px) { .bar-b nav { display: flex; } }
+    .bar-b nav a {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.4rem 0.55rem;
+      border-radius: 0.45rem;
+      font-size: 0.75rem;
+      color: rgba(134, 134, 139, 0.95);
+      text-decoration: none;
+    }
+    .bar-b nav a.active {
+      color: #fff;
+      background: rgba(42, 156, 196, 0.18);
+      border: 1px solid rgba(42, 156, 196, 0.35);
+      box-shadow: 0 0 20px rgba(42, 156, 196, 0.15);
+    }
+    .bar-b nav a.active i { color: var(--mac-accent); }
+    .bar-b .dot {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      margin: 0 0.1rem;
+    }
+    .bar-b .actions {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .bar-b .lang {
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 0.4rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--mac-text-muted);
+      font-size: 0.625rem;
+      font-weight: 700;
+      cursor: default;
+    }
+    .bar-b .dl {
+      padding: 0.35rem 0.7rem;
+      border-radius: 0.45rem;
+      background: rgba(235, 235, 235, 0.95);
+      color: #0f0e0d;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    /* —— C: 极简品牌条 —— */
+    .bar-c {
+      height: 72px;
+      display: flex;
+      align-items: center;
+      padding: 0 1.25rem;
+      gap: 2rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .bar-c .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 0.6rem;
+      text-decoration: none;
+      color: #fff;
+      white-space: nowrap;
+    }
+    .bar-c .brand img { width: 1.75rem; height: 1.75rem; border-radius: 0.35rem; align-self: center; }
+    .bar-c .brand-cn {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.04em;
+    }
+    .bar-c .brand-en {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.45);
+      letter-spacing: 0.02em;
+    }
+    .bar-c nav {
+      flex: 1;
+      display: none;
+      gap: 1.75rem;
+      font-size: 0.8125rem;
+    }
+    @media (min-width: 900px) { .bar-c nav { display: flex; } }
+    .bar-c nav a {
+      position: relative;
+      color: rgba(134, 134, 139, 0.85);
+      text-decoration: none;
+      padding-bottom: 0.35rem;
+    }
+    .bar-c nav a.active {
+      color: #fff;
+    }
+    .bar-c nav a.active::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 2px;
+      background: var(--mac-accent);
+      border-radius: 1px;
+    }
+    .bar-c .actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-left: auto;
+    }
+    .bar-c .lang {
+      background: none;
+      border: none;
+      color: var(--mac-text-muted);
+      font-size: 0.8125rem;
+      cursor: default;
+    }
+    .bar-c .dl {
+      color: #fff;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      text-decoration: none;
+      opacity: 0.85;
+    }
+    .bar-c .dl:hover { opacity: 1; }
+
+    .proto-notes {
+      padding: 1rem 1.25rem 1.25rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 0.75rem;
+      color: var(--mac-text-muted);
+      line-height: 1.5;
+    }
+    .proto-notes ul {
+      margin: 0.5rem 0 0;
+      padding-left: 1.1rem;
+    }
+    .proto-notes li { margin-bottom: 0.25rem; }
+  </style>
+</head>
+<body>
+  <header class="page-head">
+    <h1>顶部 Bar 三方案对比</h1>
+    <p>打开本页在浏览器中并排查看。当前站点接近 A；SoftPad 页面更适合 B 或 C 的方向。</p>
+  </header>
+
+  <div class="compare-grid">
+    <!-- A -->
+    <article class="proto-card">
+      <div class="proto-label">
+        <strong>A · 官网导航</strong>
+        <span>居中导航 + 白 pill 下载。熟悉、均衡，但品牌感偏弱。</span>
+      </div>
+      <div class="proto-preview">
+        <header class="bar-a">
+          <a class="brand" href="#">
+            <img src="../assets/logo.png" alt="">
+            一声 OneTone
+          </a>
+          <nav aria-label="Main">
+            <a href="#"><i class="ph ph-house"></i> 首页</a>
+            <a href="#"><i class="ph ph-microphone"></i> 语音</a>
+            <a href="#"><i class="ph ph-keyboard"></i> 按键</a>
+            <a href="#"><i class="ph ph-camera"></i> 摄像头</a>
+            <a href="#" class="active"><i class="ph-fill ph-squares-four"></i> SoftPad</a>
+            <a href="#"><i class="ph ph-question"></i> 帮助</a>
+          </nav>
+          <div class="actions">
+            <button type="button" class="lang">EN</button>
+            <a class="dl" href="#">下载</a>
+          </div>
+        </header>
+        <div class="proto-fake-hero">
+          <div class="pill"><i class="ph-fill ph-windows-logo"></i> Windows · 屏幕上的小键盘</div>
+          <h2>不用买实体小键盘</h2>
+        </div>
+      </div>
+      <div class="proto-notes">
+        <strong style="color:#fff;font-size:0.8125rem;">适合</strong>
+        <ul>
+          <li>多页面营销站、信息架构清晰</li>
+          <li>改动最小，与现有 shell 一致</li>
+        </ul>
+      </div>
+    </article>
+
+    <!-- B -->
+    <article class="proto-card">
+      <div class="proto-label">
+        <strong>B · 桌面 HUD</strong>
+        <span>浮动工具条 + 当前页高亮容器。最贴 SoftPad「置顶 HUD」气质。</span>
+      </div>
+      <div class="proto-preview">
+        <div class="bar-b-wrap">
+          <header class="bar-b">
+            <a class="brand" href="#">
+              <img src="../assets/logo.png" alt="">
+              <span class="brand-text">
+                <em>OneTone</em>
+                <strong>一声</strong>
+              </span>
+            </a>
+            <nav aria-label="Main">
+              <a href="#"><i class="ph ph-house"></i> 首页</a>
+              <span class="dot"></span>
+              <a href="#"><i class="ph ph-microphone"></i> 语音</a>
+              <span class="dot"></span>
+              <a href="#"><i class="ph ph-keyboard"></i> 按键</a>
+              <span class="dot"></span>
+              <a href="#" class="active"><i class="ph-fill ph-squares-four"></i> SoftPad</a>
+              <span class="dot"></span>
+              <a href="#"><i class="ph ph-question"></i> 帮助</a>
+            </nav>
+            <div class="actions">
+              <button type="button" class="lang">EN</button>
+              <a class="dl" href="#">下载</a>
+            </div>
+          </header>
+        </div>
+        <div class="proto-fake-hero">
+          <div class="pill"><i class="ph-fill ph-windows-logo"></i> Windows · 屏幕上的小键盘</div>
+          <h2>屏幕上也能敲 Agent</h2>
+        </div>
+      </div>
+      <div class="proto-notes">
+        <strong style="color:#fff;font-size:0.8125rem;">适合</strong>
+        <ul>
+          <li>强调「桌面工具 / 置顶窗口」</li>
+          <li>当前页识别最强，与 hero 演示统一</li>
+        </ul>
+      </div>
+    </article>
+
+    <!-- C -->
+    <article class="proto-card">
+      <div class="proto-label">
+        <strong>C · 极简品牌条</strong>
+        <span>大字号品牌 + 下划线当前页 + 轻量下载。编辑感强，导航退后。</span>
+      </div>
+      <div class="proto-preview">
+        <header class="bar-c">
+          <a class="brand" href="#">
+            <img src="../assets/logo.png" alt="">
+            <span class="brand-cn">一声</span>
+            <span class="brand-en">OneTone</span>
+          </a>
+          <nav aria-label="Main">
+            <a href="#">首页</a>
+            <a href="#">语音</a>
+            <a href="#">按键</a>
+            <a href="#">摄像头</a>
+            <a href="#" class="active">SoftPad</a>
+            <a href="#">帮助</a>
+          </nav>
+          <div class="actions">
+            <button type="button" class="lang">EN</button>
+            <a class="dl" href="#">下载 →</a>
+          </div>
+        </header>
+        <div class="proto-fake-hero">
+          <div class="pill"><i class="ph-fill ph-windows-logo"></i> Windows · 屏幕上的小键盘</div>
+          <h2>虚拟键盘 · 迷你栏</h2>
+        </div>
+      </div>
+      <div class="proto-notes">
+        <strong style="color:#fff;font-size:0.8125rem;">适合</strong>
+        <ul>
+          <li>品牌优先、少按钮感</li>
+          <li>与 Cursor 式克制 CTA 更一致</li>
+        </ul>
+      </div>
+    </article>
+  </div>
+</body>
+</html>

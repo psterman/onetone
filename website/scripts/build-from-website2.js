@@ -1,4 +1,4 @@
-/**
+﻿/**
  * One-shot: convert website2 prototypes → website pages (cyan + shared shell).
  * Run: node website/scripts/build-from-website2.js
  */
@@ -75,7 +75,7 @@ function pageShell({ title, desc, active, cssHrefs, bodyHtml, pageScripts, bodyC
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="js/tailwind-config.js"></script>
   <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/shell.css?v=20260826b">
+  <link rel="stylesheet" href="css/shell.css?v=20260826h">
 ${cssLinks}
 ${extraHead || ""}
 </head>

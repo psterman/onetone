@@ -35,8 +35,9 @@ check('Pad 渲染后置 LayoutShellMounted', pad.includes('__otSoftPadLayoutShel
 
 console.log('[soft-pad-deep] P14n editKeycap:');
 check('openEditKeycap 仍由 Pad 导出', pad.includes('openEditKeycap: openEditKeycap'));
-check('layout 右侧为键预览 + modal 编辑', pad.includes('soft-pad-layout-key-preview') &&
-  pad.includes("mode: 'modal'") && pad.includes('soft-pad-layout-editor-pending'));
+check('layout 右侧为键预览 + inline 四字段表单', pad.includes('soft-pad-layout-key-preview') &&
+  pad.includes("mode: 'inline'") && pad.includes('buildLayoutKeyFormHtml') &&
+  pad.includes('soft-pad-layout-split') && pad.includes('soft-pad-layout-editor-pending'));
 check('clearSubpage 清深面板挂载标记', hub.includes('__otSoftPadRuntimeMounted = false') && hub.includes('__otSoftPadLayoutShellMounted = false'));
 
 console.log('[soft-pad-deep] screen opacity float:');
