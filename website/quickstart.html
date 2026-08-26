@@ -50,110 +50,88 @@
   <a href="faq.html" data-nav="faq">帮助</a>
   <a href="download.html" data-nav="download">下载</a>
 </div>
-<main class="qs-page">
-  <section id="qs-hero" class="qs-hero-wrapper qs-reveal" aria-label="使用开场">
-    <div class="qs-hero-grid" aria-hidden="true"></div>
-    <div class="qs-hero-vignette" aria-hidden="true"></div>
-    <canvas id="neural-canvas" aria-hidden="true"></canvas>
+<main>
+  <section id="qs-hero" class="qs-hero-wrapper is-visible" aria-label="使用开场">
+    <div class="spatial-grid-wrap" aria-hidden="true"><div class="spatial-grid"></div></div>
 
-    <div class="relative z-10 text-center max-w-3xl mx-auto px-4 pointer-events-none mb-12">
-      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full qs-glass-card border border-mac-border text-xs font-medium text-gray-300 mb-6">
-        <i class="ph-fill ph-infinity text-[#f59e0b] text-sm" aria-hidden="true"></i>
-        万物互联 · 全局接管
+    <div class="qs-hero-inner">
+      <header class="qs-hero-head">
+        <div class="qs-hero-badge qs-glass-card">
+          <i class="ph-fill ph-keyboard text-mac-accent text-sm" aria-hidden="true"></i>
+          不用买键盘 · 现有设备就行
+        </div>
+        <h1 class="qs-hero-title">
+          按一下，就能在 <span class="qs-hero-title-accent">Cursor 里说</span>
+        </h1>
+      </header>
+
+      <div class="qs-hero-stage" id="qs-hero-stage">
+        <canvas id="neural-canvas" aria-hidden="true"></canvas>
+        <div class="qs-hero-node-layer" id="node-layer">
+        <div class="qs-rich-node qs-glass-card" id="rn-kb" style="top: 18%; left: 16%;">
+          <div class="rn-icon-box"><i class="ph-fill ph-keyboard" aria-hidden="true"></i></div>
+          <div class="rn-info">
+            <span class="rn-name">快捷键</span>
+            <span class="rn-status"><span class="rn-dot"></span> Alt + 空格</span>
+          </div>
+        </div>
+        <div class="qs-rich-node qs-glass-card" id="rn-mouse" style="top: 18%; left: 84%;">
+          <div class="rn-icon-box"><i class="ph-fill ph-mouse" aria-hidden="true"></i></div>
+          <div class="rn-info">
+            <span class="rn-name">鼠标侧键</span>
+            <span class="rn-status"><span class="rn-dot"></span> 侧键</span>
+          </div>
+        </div>
+        <div class="qs-rich-node qs-glass-card" id="rn-gamepad" style="top: 82%; left: 14%;">
+          <div class="rn-icon-box"><i class="ph-fill ph-game-controller" aria-hidden="true"></i></div>
+          <div class="rn-info">
+            <span class="rn-name">手柄</span>
+            <span class="rn-status"><span class="rn-dot"></span> 扳机</span>
+          </div>
+        </div>
+        <div class="qs-rich-node qs-glass-card" id="rn-ring" style="top: 82%; left: 86%;">
+          <div class="rn-icon-box"><i class="ph-fill ph-circle" aria-hidden="true"></i></div>
+          <div class="rn-info">
+            <span class="rn-name">指环</span>
+            <span class="rn-status"><span class="rn-dot"></span> 点一下</span>
+          </div>
+        </div>
+        <div class="qs-rich-node qs-glass-card" id="rn-trackball" style="top: 88%; left: 50%;">
+          <div class="rn-icon-box"><i class="ph-fill ph-target" aria-hidden="true"></i></div>
+          <div class="rn-info">
+            <span class="rn-name">轨迹球</span>
+            <span class="rn-status"><span class="rn-dot"></span> Fn 键</span>
+          </div>
+        </div>
+        <div class="qs-rich-hub qs-glass-card" id="hn-hub">
+          <i class="ph-fill ph-microphone" id="hn-hub-icon" aria-hidden="true"></i>
+        </div>
       </div>
-      <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white mb-6 leading-tight" style="text-shadow: 0 10px 30px rgba(0,0,0,0.8);">
-        任意设备，皆可化身<br>
-        <span class="text-transparent bg-clip-text bg-gradient-to-r from-[#f59e0b] to-orange-300">全局语音键</span>
-      </h1>
-      <p class="text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed">
-        底层事件拦截器。无论是鼠标侧键、手柄摇杆，还是蓝牙指环与轨迹球。沉浸在主舞台，物理一键呼出麦克风，说完即刻上屏。
-      </p>
     </div>
 
-    <div class="absolute inset-0 pointer-events-none" id="node-layer">
-      <div class="qs-rich-node qs-glass-card" id="rn-kb" style="top: 25%; left: 18%;">
-        <div class="rn-icon-box"><i class="ph-fill ph-keyboard" aria-hidden="true"></i></div>
-        <div class="rn-info">
-          <span class="rn-name">组合快捷键</span>
-          <span class="rn-status"><span class="rn-dot"></span> ALT + Space</span>
+      <div class="qs-sleek-terminal qs-glass-card">
+        <div class="st-header">
+          <div class="st-title"><span class="st-dot" id="st-dot"></span> 演示日志</div>
+          <div class="st-code" id="st-code">待命</div>
         </div>
-      </div>
-      <div class="qs-rich-node qs-glass-card" id="rn-mouse" style="top: 30%; left: 82%;">
-        <div class="rn-icon-box"><i class="ph-fill ph-mouse" aria-hidden="true"></i></div>
-        <div class="rn-info">
-          <span class="rn-name">鼠标侧键</span>
-          <span class="rn-status"><span class="rn-dot"></span> Button 4</span>
+        <div class="st-body">
+          <div class="st-desc" id="st-desc">等着看你按哪个键…</div>
+          <div class="st-output"><span id="st-text"></span><span class="st-cursor" id="st-cursor"></span></div>
         </div>
-      </div>
-      <div class="qs-rich-node qs-glass-card" id="rn-gamepad" style="top: 65%; left: 12%;">
-        <div class="rn-icon-box"><i class="ph-fill ph-game-controller" aria-hidden="true"></i></div>
-        <div class="rn-info">
-          <span class="rn-name">Xbox 手柄</span>
-          <span class="rn-status"><span class="rn-dot"></span> RT Trigger</span>
-        </div>
-      </div>
-      <div class="qs-rich-node qs-glass-card" id="rn-ring" style="top: 60%; left: 85%;">
-        <div class="rn-icon-box"><i class="ph-fill ph-circle" aria-hidden="true"></i></div>
-        <div class="rn-info">
-          <span class="rn-name">智能指环</span>
-          <span class="rn-status"><span class="rn-dot"></span> BLE Tap</span>
-        </div>
-      </div>
-      <div class="qs-rich-node qs-glass-card" id="rn-trackball" style="top: 75%; left: 35%;">
-        <div class="rn-icon-box"><i class="ph-fill ph-target" aria-hidden="true"></i></div>
-        <div class="rn-info">
-          <span class="rn-name">轨迹球</span>
-          <span class="rn-status"><span class="rn-dot"></span> Fn 键</span>
-        </div>
-      </div>
-      <div class="qs-rich-hub qs-glass-card" id="hn-hub">
-        <i class="ph-fill ph-microphone" id="hn-hub-icon" aria-hidden="true"></i>
-      </div>
-    </div>
-
-    <div class="qs-sleek-terminal qs-glass-card">
-      <div class="st-header">
-        <div class="st-title"><span class="st-dot" id="st-dot"></span> Hardware Intercept Log</div>
-        <div class="st-code" id="st-code">SYS.IDLE</div>
-      </div>
-      <div class="st-body">
-        <div class="st-desc" id="st-desc">控制台中枢待机中，监控硬件总线信号...</div>
-        <div class="st-output"><span id="st-text"></span><span class="st-cursor" id="st-cursor"></span></div>
       </div>
     </div>
   </section>
 
+  <section class="qs-steps-section" aria-label="上手步骤">
   <div class="qs-content">
-    <div class="qs-success-banner qs-reveal" data-reveal-delay="1" role="status">
-      <span><i class="ph-fill ph-check-circle"></i> <span data-i18n="qsSuccessBanner">拿到语音条 = 成功</span></span>
-      <a href="faq.html#no-response"><span data-i18n="qsSuccessBannerLink">不会？去排错</span> <i class="ph-bold ph-caret-right"></i></a>
-    </div>
 
-    <section id="step0" class="qs-chain-rail qs-reveal scroll-mt-28" data-reveal-delay="2" aria-label="三层链路对照">
-      <div class="qs-chain-track">
-        <div class="qs-chain-seg" data-chain-seg="0">
-          <span class="qs-chain-seg-label" data-i18n="qsChainSeg1">外设触发</span>
-          <span class="qs-chain-seg-state" data-i18n="qsChainState1">触发源已录入</span>
-        </div>
-        <span class="qs-chain-arrow" aria-hidden="true"><i class="ph-bold ph-arrow-right"></i></span>
-        <div class="qs-chain-seg" data-chain-seg="1">
-          <span class="qs-chain-seg-label" data-i18n="qsChainSeg2">输入法听写</span>
-          <span class="qs-chain-seg-state" data-i18n="qsChainState2">输入法已唤醒</span>
-        </div>
-        <span class="qs-chain-arrow" aria-hidden="true"><i class="ph-bold ph-arrow-right"></i></span>
-        <div class="qs-chain-seg" data-chain-seg="2">
-          <span class="qs-chain-seg-label" data-i18n="qsChainSeg3">说完动作</span>
-          <span class="qs-chain-seg-state" data-i18n="qsChainState3">文字已上屏 / 发送</span>
-        </div>
-      </div>
-    </section>
-
-    <section id="step1" class="qs-zone qs-zone-card qs-zone-blue qs-reveal scroll-mt-28" data-zone-color="blue" data-reveal-delay="1">
+    <section id="step1" class="qs-zone qs-zone-blue scroll-mt-28" data-zone-color="blue">
       <header class="qs-zone-head">
         <h2 data-i18n="qsZone1Title">定制你的专属语音神器</h2>
         <p data-i18n="qsZone1Desc">选择任意外设或按键，实现语音输入的触发</p>
       </header>
-      <div class="qs-zone-lab" data-cycle-group="zone1" data-no-autoplay>
+      <div class="qs-zone-card">
+      <div class="qs-zone-lab" data-cycle-group="zone1">
         <div class="qs-zone-cards" role="tablist" aria-label="步骤一">
           <button type="button" class="is-active" data-zone-item data-zone-target="triggers">
             <span class="qs-zone-card-num">1</span>
@@ -290,14 +268,16 @@
           </article>
         </div>
       </div>
+      </div>
     </section>
 
-    <section id="step2" class="qs-zone qs-zone-card qs-zone-accent qs-reveal scroll-mt-28" data-zone-color="accent" data-reveal-delay="2">
+    <section id="step2" class="qs-zone qs-zone-accent scroll-mt-28" data-zone-color="accent">
       <header class="qs-zone-head">
         <h2 data-i18n="qsZone2Title">语音激活输入法，结束后自动上屏</h2>
         <p data-i18n="qsZone2Desc">触发听写，结束时文字自动出现在当前窗口</p>
       </header>
-      <div class="qs-zone-lab" data-cycle-group="zone2" data-no-autoplay>
+      <div class="qs-zone-card">
+      <div class="qs-zone-lab" data-cycle-group="zone2">
         <div class="qs-zone-cards" role="tablist" aria-label="步骤二">
           <button type="button" class="is-active" data-zone-item data-zone-target="key-wake">
             <span class="qs-zone-card-num">1</span>
@@ -457,10 +437,11 @@
           </article>
         </div>
       </div>
+      </div>
     </section>
 
     <!-- 排错 -->
-    <section class="qs-troubleshoot qs-reveal scroll-mt-28" data-reveal-delay="3" aria-label="排错入口">
+    <section class="qs-troubleshoot scroll-mt-28" aria-label="排错入口">
       <h2 class="text-lg font-bold mb-4" data-i18n="qsTroubleshootTitle">遇到问题？</h2>
       <div class="qs-troubleshoot-grid">
         <a href="faq.html#no-response" class="qs-troubleshoot-card">
@@ -499,6 +480,7 @@
       <p><span data-i18n="qsNextFail">还有问题？</span> <a href="faq.html#no-response" class="text-brand-600 font-medium" data-i18n="qsNextFailLink">查看常见问题</a></p>
     </div>
   </div>
+  </section>
 </main>
 <footer class="site-footer">
   <div class="site-footer-inner">

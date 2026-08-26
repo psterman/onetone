@@ -183,9 +183,25 @@
   }
 
   function activateQuickstartPanels(panels, target) {
+    const next = panels.find((panel) => panel.dataset.zonePanel === target);
+    if (!next) return;
+
+    const current = panels.find((panel) => panel.classList.contains("is-active"));
+    if (current === next) return;
+
     panels.forEach((panel) => {
-      panel.classList.toggle("is-active", panel.dataset.zonePanel === target);
+      if (panel !== current && panel !== next) {
+        panel.classList.remove("is-active", "is-exiting");
+      }
     });
+
+    if (current) {
+      current.classList.remove("is-active");
+      current.classList.add("is-exiting");
+      window.setTimeout(() => current.classList.remove("is-exiting"), 340);
+    }
+
+    next.classList.add("is-active");
   }
 
   function initQuickstartZoneLab(root, chainIndex) {
@@ -197,6 +213,7 @@
     const cycle = createCycle({
       items,
       autoplay,
+      interval: 4200,
       onChange(index) {
         const target = items[index]?.dataset.zoneTarget;
         activateQuickstartPanels(panels, target);
@@ -334,44 +351,78 @@
 
   function runOnboardTypingDemo() {
     const target = document.querySelector("[data-qs-demo-target]");
-    if (!target) return;
+    if (!target) return null;
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (reduceMotion.matches) {
-      target.textContent = "AI.write(code);";
-      return;
-    }
     let idx = 0;
-    let typingTimer = null;
-    let eraseTimer = null;
+    let typingTimer = 0;
+    let eraseTimer = 0;
+    let running = false;
 
     function pickPhrase() {
       const arr = QS_TYPING_PHRASES[qsLang()] || QS_TYPING_PHRASES.zh;
       return arr[idx % arr.length];
     }
+
+    function clearTimers() {
+      if (typingTimer) {
+        window.clearTimeout(typingTimer);
+        typingTimer = 0;
+      }
+      if (eraseTimer) {
+        window.clearTimeout(eraseTimer);
+        eraseTimer = 0;
+      }
+    }
+
     function typeChar(text, i) {
+      if (!running) return;
       if (i > text.length) {
-        eraseTimer = setTimeout(() => eraseChar(text, text.length), 1600);
+        eraseTimer = window.setTimeout(() => eraseChar(text, text.length), 1600);
         return;
       }
       target.textContent = text.slice(0, i);
-      typingTimer = setTimeout(() => typeChar(text, i + 1), 70);
+      typingTimer = window.setTimeout(() => typeChar(text, i + 1), 70);
     }
+
     function eraseChar(text, j) {
+      if (!running) return;
       if (j < 0) {
-        idx++;
-        typingTimer = setTimeout(startCycle, 500);
+        idx += 1;
+        typingTimer = window.setTimeout(startCycle, 500);
         return;
       }
       target.textContent = text.slice(0, j);
-      eraseTimer = setTimeout(() => eraseChar(text, j - 1), 28);
+      eraseTimer = window.setTimeout(() => eraseChar(text, j - 1), 28);
     }
+
     function startCycle() {
-      const text = pickPhrase();
-      typeChar(text, 0);
+      if (!running) return;
+      if (reduceMotion.matches) {
+        target.textContent = "AI.write(code);";
+        return;
+      }
+      typeChar(pickPhrase(), 0);
     }
-    startCycle();
+
+    function stop() {
+      running = false;
+      clearTimers();
+    }
+
+    function start() {
+      if (running) return;
+      running = true;
+      idx = 0;
+      startCycle();
+    }
+
     return {
-      restart: () => { clearTimeout(typingTimer); clearTimeout(eraseTimer); idx = 0; startCycle(); },
+      start,
+      stop,
+      restart() {
+        stop();
+        start();
+      },
     };
   }
 
@@ -387,9 +438,18 @@
     });
     syncQuickstartMappingPreview();
     onboardTypingCtrl = runOnboardTypingDemo();
+    const mappingPanel = document.querySelector('[data-zone-panel="mapping"]');
+    if (onboardTypingCtrl && mappingPanel) {
+      const mappingObserver = new MutationObserver(() => {
+        if (mappingPanel.classList.contains("is-active")) onboardTypingCtrl.start();
+        else onboardTypingCtrl.stop();
+      });
+      mappingObserver.observe(mappingPanel, { attributes: true, attributeFilter: ["class"] });
+      if (mappingPanel.classList.contains("is-active")) onboardTypingCtrl.start();
+    }
     document.addEventListener("onetone:langchange", () => {
       syncQuickstartMappingPreview();
-      if (onboardTypingCtrl) onboardTypingCtrl.restart();
+      if (mappingPanel?.classList.contains("is-active")) onboardTypingCtrl?.restart();
     });
   }
 
@@ -938,17 +998,20 @@
   function initQsHero() {
     const canvas = document.getElementById("neural-canvas");
     const wrapper = document.getElementById("qs-hero");
-    if (!canvas || !wrapper) return;
+    const stage = document.getElementById("qs-hero-stage");
+    if (!canvas || !wrapper || !stage) return;
 
     const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const heroAccent = getComputedStyle(wrapper).getPropertyValue("--qs-hero-accent").trim() || "#2a9cc4";
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let width = 0;
     let height = 0;
-    let particles = [];
-    const particleCount = 45;
-    const mouse = { x: -1000, y: -1000, radius: 150 };
-    let isHovering = false;
+    let stageReady = false;
     let activeSignal = null;
+    let signalTimer = 0;
+    let storyRunning = false;
 
     const hubEl = document.getElementById("hn-hub");
     const hubIcon = document.getElementById("hn-hub-icon");
@@ -969,84 +1032,46 @@
 
     function resize() {
       const dpr = window.devicePixelRatio || 1;
-      width = wrapper.clientWidth;
-      height = wrapper.clientHeight;
+      const nextWidth = stage.clientWidth;
+      const nextHeight = stage.clientHeight;
+      if (nextWidth < 1 || nextHeight < 1) return false;
+
+      width = nextWidth;
+      height = nextHeight;
       canvas.width = Math.max(1, Math.floor(width * dpr));
       canvas.height = Math.max(1, Math.floor(height * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-
-    class Particle {
-      constructor() {
-        this.x = Math.random() * width;
-        this.y = Math.random() * height;
-        this.vx = (Math.random() - 0.5) * 0.6;
-        this.vy = (Math.random() - 0.5) * 0.6;
-        this.baseRadius = Math.random() * 1.5 + 0.5;
-      }
-      update() {
-        if (isHovering) {
-          const dx = mouse.x - this.x;
-          const dy = mouse.y - this.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          if (distance < mouse.radius) {
-            const force = (mouse.radius - distance) / mouse.radius;
-            const angle = Math.atan2(dy, dx);
-            this.vx -= Math.cos(angle) * force * 0.08;
-            this.vy -= Math.sin(angle) * force * 0.08;
-          }
-        }
-        this.vx *= 0.98;
-        this.vy *= 0.98;
-        if (Math.abs(this.vx) < 0.2) this.vx += (Math.random() - 0.5) * 0.1;
-        if (Math.abs(this.vy) < 0.2) this.vy += (Math.random() - 0.5) * 0.1;
-        this.x += this.vx;
-        this.y += this.vy;
-        if (this.x < 0 || this.x > width) this.vx *= -1;
-        if (this.y < 0 || this.y > height) this.vy *= -1;
-      }
-      draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.baseRadius, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
-        ctx.fill();
-      }
+      stageReady = true;
+      return true;
     }
 
     function getElCenter(el) {
       if (!el) return { x: 0, y: 0 };
       const rect = el.getBoundingClientRect();
-      const wrapRect = wrapper.getBoundingClientRect();
+      const stageRect = stage.getBoundingClientRect();
       return {
-        x: rect.left - wrapRect.left + rect.width / 2,
-        y: rect.top - wrapRect.top + rect.height / 2,
+        x: rect.left - stageRect.left + rect.width / 2,
+        y: rect.top - stageRect.top + rect.height / 2,
       };
     }
 
+    function clearSignalTimer() {
+      if (!signalTimer) return;
+      window.clearInterval(signalTimer);
+      signalTimer = 0;
+    }
+
     function drawNetwork() {
+      if (!stageReady) {
+        window.requestAnimationFrame(drawNetwork);
+        return;
+      }
+
       ctx.clearRect(0, 0, width, height);
       const centerPos = getElCenter(hubEl);
       const periPositions = peripherals
         .filter((el) => window.getComputedStyle(el).display !== "none")
         .map(getElCenter);
-
-      particles.forEach((p, index) => {
-        p.update();
-        p.draw();
-        for (let j = index + 1; j < particles.length; j += 1) {
-          const p2 = particles[j];
-          const dx = p.x - p2.x;
-          const dy = p.y - p2.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 120) {
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 - (dist / 120) * 0.1})`;
-            ctx.stroke();
-          }
-        }
-      });
 
       ctx.setLineDash([4, 4]);
       periPositions.forEach((pos) => {
@@ -1065,8 +1090,8 @@
 
         ctx.beginPath();
         ctx.arc(sx, sy, 4, 0, Math.PI * 2);
-        ctx.fillStyle = "#f59e0b";
-        ctx.shadowColor = "#f59e0b";
+        ctx.fillStyle = heroAccent;
+        ctx.shadowColor = heroAccent;
         ctx.shadowBlur = 15;
         ctx.fill();
         ctx.shadowBlur = 0;
@@ -1074,7 +1099,7 @@
         ctx.beginPath();
         ctx.moveTo(activeSignal.startX, activeSignal.startY);
         ctx.lineTo(sx, sy);
-        ctx.strokeStyle = "rgba(245, 158, 11, 0.8)";
+        ctx.strokeStyle = "rgba(42, 156, 196, 0.8)";
         ctx.lineWidth = 2;
         ctx.stroke();
 
@@ -1082,15 +1107,9 @@
           ctx.beginPath();
           ctx.moveTo(sx, sy);
           ctx.lineTo(sx + (Math.random() - 0.5) * 20, sy + (Math.random() - 0.5) * 20);
-          ctx.strokeStyle = "rgba(245, 158, 11, 0.4)";
+          ctx.strokeStyle = "rgba(42, 156, 196, 0.4)";
           ctx.lineWidth = 1;
           ctx.stroke();
-        }
-
-        activeSignal.progress += 0.04;
-        if (activeSignal.progress >= 1) {
-          activeSignal.onArrive();
-          activeSignal = null;
         }
       }
 
@@ -1098,104 +1117,128 @@
     }
 
     const scenarios = [
-      { el: document.getElementById("rn-kb"), code: "INT.KEYBOARD_HOOK", desc: "捕获系统级键盘钩子，ALT+Space，激活听写...", text: "「帮我生成一段测试代码」", icon: "ph-code" },
-      { el: document.getElementById("rn-mouse"), code: "INT.MOUSE_EVENT", desc: "拦截到鼠标侧键 XButton1 电平跳变，激活听写...", text: "「这个方案我觉得可以」", icon: "ph-check-circle" },
-      { el: document.getElementById("rn-gamepad"), code: "INT.XINPUT_POLL", desc: "读取到手柄 RT 扳机键阈值溢出，激活听写...", text: "「上路 Miss，请求支援！」", icon: "ph-sword" },
-      { el: document.getElementById("rn-ring"), code: "INT.BLE_GATT", desc: "接收到蓝牙低功耗外设特征值，激活听写...", text: "「稍等，我马上看。」", icon: "ph-chat-teardrop" },
+      { el: document.getElementById("rn-kb"), code: "快捷键", desc: "你按了 Alt + 空格，开麦了…", text: "「帮我写个登录页组件」", icon: "ph-code" },
+      { el: document.getElementById("rn-mouse"), code: "鼠标侧键", desc: "你按了鼠标侧键，开麦了…", text: "「这段报错什么意思」", icon: "ph-check-circle" },
+      { el: document.getElementById("rn-gamepad"), code: "手柄", desc: "你按了手柄扳机，开麦了…", text: "「先别改，我口述需求」", icon: "ph-sword" },
+      { el: document.getElementById("rn-ring"), code: "指环", desc: "你点了指环，开麦了…", text: "「稍等，我看一眼 Cursor」", icon: "ph-chat-teardrop" },
     ];
 
     function wait(ms) {
       return new Promise((resolve) => window.setTimeout(resolve, ms));
     }
 
-    async function playStoryLoop() {
-      let sIdx = 0;
-      while (true) {
-        scenarios.forEach((s) => s.el?.classList.remove("is-active"));
-        hubEl.classList.remove("is-listening");
-        hubIcon.className = "ph-fill ph-microphone";
-        stDot.classList.remove("active");
-        stCode.classList.remove("active");
-        stCode.textContent = "SYS.IDLE";
-        stDesc.textContent = "控制台中枢待机中，监控硬件总线信号...";
-        stText.textContent = "";
-        stCursor.classList.add("blinking");
+    function animateSignal(startPos, endPos) {
+      if (reduceMotion.matches) return Promise.resolve();
 
-        await wait(reduceMotion.matches ? 800 : 2000);
+      return new Promise((resolve) => {
+        clearSignalTimer();
+        activeSignal = {
+          startX: startPos.x,
+          startY: startPos.y,
+          endX: endPos.x,
+          endY: endPos.y,
+          progress: 0,
+          onArrive: resolve,
+        };
 
-        const current = scenarios[sIdx];
-        if (current.el && window.getComputedStyle(current.el).display !== "none") {
-          current.el.classList.add("is-active");
-          stCode.textContent = current.code;
-          stCode.classList.add("active");
-          stDesc.textContent = "总线中断！捕获按键信号...";
-          await wait(400);
-
-          const startPos = getElCenter(current.el);
-          const endPos = getElCenter(hubEl);
-          if (reduceMotion.matches) {
+        signalTimer = window.setInterval(() => {
+          if (!activeSignal) return;
+          activeSignal.progress += 0.04;
+          if (activeSignal.progress >= 1) {
+            const done = activeSignal.onArrive;
             activeSignal = null;
-          } else {
-            await new Promise((resolve) => {
-              activeSignal = {
-                startX: startPos.x,
-                startY: startPos.y,
-                endX: endPos.x,
-                endY: endPos.y,
-                progress: 0,
-                onArrive: resolve,
-              };
-            });
+            clearSignalTimer();
+            done();
           }
+        }, 16);
+      });
+    }
 
-          current.el.classList.remove("is-active");
-          hubEl.classList.add("is-listening");
-          stDot.classList.add("active");
-          stDesc.textContent = current.desc;
-          stCursor.classList.remove("blinking");
+    async function playStoryLoop() {
+      if (storyRunning) return;
+      storyRunning = true;
+      let sIdx = 0;
 
-          if (reduceMotion.matches) {
-            stText.textContent = current.text;
-          } else {
-            for (let i = 0; i < current.text.length; i += 1) {
-              stText.textContent += current.text[i];
-              await wait(Math.random() * 40 + 60);
-            }
-          }
-          stCursor.classList.add("blinking");
-          await wait(600);
-
+      while (storyRunning) {
+        try {
+          scenarios.forEach((s) => s.el?.classList.remove("is-active"));
           hubEl.classList.remove("is-listening");
-          hubIcon.className = `ph-fill ${current.icon}`;
-          stDesc.textContent = "数据包封装完毕，已自动投递至目标窗口。";
-          await wait(reduceMotion.matches ? 1200 : 3000);
-        }
+          hubIcon.className = "ph-fill ph-microphone";
+          stDot.classList.remove("active");
+          stCode.classList.remove("active");
+          stCode.textContent = "待命";
+          stDesc.textContent = "等着看你按哪个键…";
+          stText.textContent = "";
+          stCursor.classList.add("blinking");
 
-        sIdx = (sIdx + 1) % scenarios.length;
+          await wait(reduceMotion.matches ? 800 : 2000);
+
+          const current = scenarios[sIdx];
+          if (current.el && window.getComputedStyle(current.el).display !== "none") {
+            current.el.classList.add("is-active");
+            stCode.textContent = current.code;
+            stCode.classList.add("active");
+            stDesc.textContent = "检测到按键，开麦中…";
+            await wait(400);
+
+            await animateSignal(getElCenter(current.el), getElCenter(hubEl));
+
+            current.el.classList.remove("is-active");
+            hubEl.classList.add("is-listening");
+            stDot.classList.add("active");
+            stDesc.textContent = current.desc;
+            stCursor.classList.remove("blinking");
+
+            if (reduceMotion.matches) {
+              stText.textContent = current.text;
+            } else {
+              for (let i = 0; i < current.text.length; i += 1) {
+                stText.textContent += current.text[i];
+                await wait(Math.random() * 40 + 60);
+              }
+            }
+            stCursor.classList.add("blinking");
+            await wait(600);
+
+            hubEl.classList.remove("is-listening");
+            hubIcon.className = `ph-fill ${current.icon}`;
+            stDesc.textContent = "说完了，字已上屏";
+            await wait(reduceMotion.matches ? 1200 : 3000);
+          }
+
+          sIdx = (sIdx + 1) % scenarios.length;
+        } catch (err) {
+          console.error("qs-hero demo", err);
+          await wait(1200);
+        }
       }
     }
 
-    resize();
+    function bootHeroVisuals() {
+      if (!resize()) {
+        window.requestAnimationFrame(bootHeroVisuals);
+        return;
+      }
+      drawNetwork();
+      playStoryLoop();
+    }
+
     window.addEventListener("resize", resize);
-    wrapper.addEventListener("mousemove", (e) => {
-      const rect = wrapper.getBoundingClientRect();
-      mouse.x = e.clientX - rect.left;
-      mouse.y = e.clientY - rect.top;
-      isHovering = true;
-    });
-    wrapper.addEventListener("mouseleave", () => {
-      isHovering = false;
-      mouse.x = -1000;
-      mouse.y = -1000;
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") clearSignalTimer();
     });
 
-    for (let i = 0; i < particleCount; i += 1) particles.push(new Particle());
-    drawNetwork();
-    playStoryLoop();
+    window.requestAnimationFrame(bootHeroVisuals);
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
+  function bootQuickstartPage() {
     initQsHero();
     initQuickstartPage();
-  });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootQuickstartPage);
+  } else {
+    bootQuickstartPage();
+  }
 })();
