@@ -235,7 +235,35 @@
 @media (min-width: 768px) {
   .site-footer-inner {
     flex-direction: row;
+    flex-wrap: wrap;
   }
+}
+
+.site-footer-features {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem 1.25rem;
+  width: 100%;
+  order: -1;
+}
+
+@media (min-width: 768px) {
+  .site-footer-features {
+    width: auto;
+    order: 0;
+    flex: 1 1 auto;
+    justify-content: flex-start;
+  }
+}
+
+.site-footer-features-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  margin-right: 0.25rem;
 }
 
 .site-footer nav {

@@ -17,16 +17,9 @@
   function activeNavKey() {
     var path = (location.pathname.split("/").pop() || "index.html").toLowerCase();
     if (path === "" || path === "/") path = "index.html";
-    var hash = (location.hash || "").replace(/^#/, "");
 
     if (path === "index.html") return "home";
-    if (path === "quickstart.html") {
-      if (hash === "keys" || hash === "step1") return "keys";
-      if (hash === "voice" || hash === "step2" || hash === "step3") return "voice";
-      return null;
-    }
-    if (path === "vision.html") return "camera";
-    if (path === "agent.html") return "softpad";
+    if (path === "quickstart.html") return "quickstart";
     if (path === "faq.html") return "faq";
     if (path === "download.html") return "download";
     return null;

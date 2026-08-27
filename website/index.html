@@ -29,10 +29,7 @@
     </a>
     <nav class="site-nav" aria-label="Main">
       <a href="index.html" data-nav="home" class="is-active"><i class="ph-fill ph-house site-nav-icon" aria-hidden="true"></i><span data-i18n="navHome">首页</span></a>
-      <a href="quickstart.html#voice" data-nav="voice"><i class="ph ph-microphone site-nav-icon" aria-hidden="true"></i><span data-i18n="navVoice">语音</span></a>
-      <a href="quickstart.html#keys" data-nav="keys"><i class="ph ph-keyboard site-nav-icon" aria-hidden="true"></i><span data-i18n="navKeys">按键</span></a>
-      <a href="vision.html" data-nav="camera"><i class="ph ph-camera site-nav-icon" aria-hidden="true"></i><span data-i18n="navCamera">摄像头</span></a>
-      <a href="agent.html" data-nav="softpad"><i class="ph ph-squares-four site-nav-icon" aria-hidden="true"></i><span data-i18n="navSoftPad">SoftPad</span></a>
+      <a href="quickstart.html" data-nav="quickstart"><i class="ph ph-rocket-launch site-nav-icon" aria-hidden="true"></i><span data-i18n="navQuickstart">上手</span></a>
       <a href="faq.html" data-nav="faq"><i class="ph ph-question site-nav-icon" aria-hidden="true"></i><span data-i18n="navFaq">帮助</span></a>
     </nav>
     <div class="site-header-actions">
@@ -46,10 +43,7 @@
 </header>
 <div class="mobile-nav-panel" id="mobileNavPanel">
   <a href="index.html" data-nav="home" class="is-active"><i class="ph-fill ph-house site-nav-icon" aria-hidden="true"></i><span data-i18n="navHome">首页</span></a>
-  <a href="quickstart.html#voice" data-nav="voice"><i class="ph ph-microphone site-nav-icon" aria-hidden="true"></i><span data-i18n="navVoice">语音</span></a>
-  <a href="quickstart.html#keys" data-nav="keys"><i class="ph ph-keyboard site-nav-icon" aria-hidden="true"></i><span data-i18n="navKeys">按键</span></a>
-  <a href="vision.html" data-nav="camera"><i class="ph ph-camera site-nav-icon" aria-hidden="true"></i><span data-i18n="navCamera">摄像头</span></a>
-  <a href="agent.html" data-nav="softpad"><i class="ph ph-squares-four site-nav-icon" aria-hidden="true"></i><span data-i18n="navSoftPad">SoftPad</span></a>
+  <a href="quickstart.html" data-nav="quickstart"><i class="ph ph-rocket-launch site-nav-icon" aria-hidden="true"></i><span data-i18n="navQuickstart">上手</span></a>
   <a href="faq.html" data-nav="faq"><i class="ph ph-question site-nav-icon" aria-hidden="true"></i><span data-i18n="navFaq">帮助</span></a>
   <a href="download.html" data-nav="download" data-i18n="navDownload">下载</a>
 </div>
@@ -152,10 +146,10 @@
       </div>
     </section>
 
-    <div id="story-world" class="story-world">
+    <div id="story-world" class="story-world" data-mood="light">
       <div class="story-chapter-counter" aria-live="polite"><span data-i18n="homeStoryCounter1">01 / 03</span></div>
 
-      <section class="story-chapter bg-mac-bg" id="ch-trigger" data-chapter="trigger" data-section="1">
+      <section class="story-chapter" id="ch-trigger" data-chapter="trigger" data-mood="light" data-section="1">
         <div class="story-bridge story-bridge-in" id="bridge-hero" data-bridge="hero" aria-hidden="true">
           <p class="story-bridge__line" data-i18n="homeBridgeHero">下面，麦到你手上了</p>
         </div>
@@ -166,6 +160,7 @@
             <p class="chapter-eyebrow" data-i18n="homeChTriggerEyebrow">怎么开麦</p>
             <h2 class="chapter-question" data-i18n="homeChTriggerQ">我怎么开麦？</h2>
             <p class="chapter-answer" data-i18n="homeChTriggerA">绑一次外设，到处能说。侧键、手柄、戒指——顺手的动作就是你的开麦键。</p>
+            <a class="chapter-chip chapter-chip--keys" href="quickstart.html#keys" data-i18n="homeChTriggerKeys"><i class="ph ph-keyboard" aria-hidden="true"></i> 绑定按键</a>
             <a class="chapter-chip chapter-chip--camera" href="vision.html" data-i18n="homeChTriggerCamera"><i class="ph ph-camera" aria-hidden="true"></i> 摄像头也能开麦</a>
           </div>
           <div class="chapter-demo-wrap">
@@ -215,7 +210,7 @@
         </div>
       </section>
 
-      <section class="story-chapter story-chapter--voice bg-[#0a0a0a]" id="ch-voice" data-chapter="voice" data-section="2">
+      <section class="story-chapter story-chapter--voice" id="ch-voice" data-chapter="voice" data-mood="dark" data-section="2">
         <div class="camera-rig">
           <div class="camera-rig-lens chapter-layout--split">
           <div class="chapter-copy">
@@ -223,6 +218,7 @@
             <p class="chapter-eyebrow" data-i18n="homeChVoiceEyebrow">说着更顺</p>
             <h2 class="chapter-question" data-i18n="homeChVoiceQ">说了，字会跟上吗？</h2>
             <p class="chapter-answer" data-i18n="homeChVoiceA">好的语音输入不该让你先停下来找按钮。念句口令也能开麦，字落到光标那。</p>
+            <a class="chapter-chip" href="quickstart.html#voice" data-i18n="homeChVoiceLink"><i class="ph ph-microphone" aria-hidden="true"></i> 语音上手</a>
           </div>
           <div class="chapter-demo-wrap">
             <div class="chapter-demo chapter-demo--voice mac-glass">
@@ -251,7 +247,7 @@
         </div>
       </section>
 
-      <section class="story-chapter bg-mac-bg" id="ch-softpad" data-chapter="softpad" data-section="3">
+      <section class="story-chapter" id="ch-softpad" data-chapter="softpad" data-mood="pad" data-section="3">
         <div class="camera-rig">
           <div class="camera-rig-lens chapter-layout--split-reverse">
           <div class="chapter-copy">
@@ -419,7 +415,14 @@
 <footer class="site-footer">
   <div class="site-footer-inner">
     <span data-i18n="footerCopy">© 2026 一声 OneTone</span>
-    <nav>
+        <nav class="site-footer-features" aria-label="Features">
+      <span class="site-footer-features-label" data-i18n="footerFeatures">功能</span>
+      <a href="quickstart.html#voice" data-i18n="navVoice">语音</a>
+      <a href="quickstart.html#keys" data-i18n="navKeys">按键</a>
+      <a href="vision.html" data-i18n="navCamera">摄像头</a>
+      <a href="agent.html" data-i18n="navSoftPad">SoftPad</a>
+    </nav>
+<nav>
       <a href="changelog.html" data-i18n="footerChangelog">更新日志</a>
       <a href="privacy.html" data-i18n="footerPrivacy">隐私政策</a>
       <a href="terms.html" data-i18n="footerTerms">服务条款</a>

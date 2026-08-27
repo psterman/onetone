@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  // Scheme B: keep three chapter DOM; no lens scrub.
-  // GSAP = hero exit + brands + rail. Copy/bridge = IO reveal. Demo = IO play/pause.
+  // Scheme B: no lens scrub. GSAP = hero + brands + rail + bridge words + voice chars.
+  // Copy/bridge/demo = IO. Mood = shared #story-world data-mood.
 
   var CHAPTERS = ["ch-trigger", "ch-voice", "ch-softpad"];
   var CHAPTER_NAMES = ["trigger", "voice", "softpad"];
@@ -19,12 +19,15 @@
   ];
   var HEADER = 64;
   var HERO_HARD_PAUSE = 0.35;
+  var BRIDGE_STAGGER_TOTAL = 0.3;
 
   var brandsHandoffFired = false;
   var initScheduled = false;
   var railBound = false;
   var demoIOs = [];
   var revealIOs = [];
+  var moodIO = null;
+  var moodRatios = {};
 
   function getDemo(name) {
     return window.OneToneHomeDemo && OneToneHomeDemo.getDemo(name);
@@ -32,6 +35,10 @@
 
   function isHeroIntroDone() {
     return window.OneToneHomeDemo && OneToneHomeDemo.isHeroIntroDone && OneToneHomeDemo.isHeroIntroDone();
+  }
+
+  function prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }
 
   function clearChapterTransforms() {
@@ -63,6 +70,28 @@
     counter.setAttribute("data-i18n", COUNTER_KEYS[i]);
   }
 
+  function setStoryMood(mood) {
+    var world = document.getElementById("story-world");
+    if (!world || !mood) return;
+    if (world.getAttribute("data-mood") === mood) return;
+    world.setAttribute("data-mood", mood);
+  }
+
+  function pickBestMood() {
+    var bestId = null;
+    var bestRatio = 0;
+    CHAPTERS.forEach(function (id) {
+      var r = moodRatios[id] || 0;
+      if (r > bestRatio) {
+        bestRatio = r;
+        bestId = id;
+      }
+    });
+    if (!bestId || bestRatio <= 0) return;
+    var section = document.getElementById(bestId);
+    if (section && section.dataset.mood) setStoryMood(section.dataset.mood);
+  }
+
   function killDemoObservers() {
     demoIOs.forEach(function (io) {
       io.disconnect();
@@ -72,12 +101,75 @@
       io.disconnect();
     });
     revealIOs = [];
+    if (moodIO) {
+      moodIO.disconnect();
+      moodIO = null;
+    }
+    moodRatios = {};
   }
 
   function bindDemoLifecycleStatic() {
     CHAPTER_NAMES.forEach(function (name) {
       var demo = getDemo(name);
       if (demo && demo.play) demo.play();
+    });
+  }
+
+  function splitBridgeWords(el) {
+    if (!el || el.querySelector(".bridge-words")) return;
+    var text = (el.textContent || "").trim();
+    if (!text) return;
+
+    var parts;
+    if (/\s/.test(text)) {
+      parts = text.split(/(\s+)/).filter(function (p) {
+        return p.length > 0;
+      });
+    } else {
+      parts = Array.from(text);
+    }
+
+    var wrap = document.createElement("span");
+    wrap.className = "bridge-words";
+    parts.forEach(function (part) {
+      if (/^\s+$/.test(part)) {
+        wrap.appendChild(document.createTextNode(part));
+        return;
+      }
+      var word = document.createElement("span");
+      word.className = "bridge-word";
+      word.textContent = part;
+      wrap.appendChild(word);
+    });
+    el.textContent = "";
+    el.appendChild(wrap);
+  }
+
+  function animateBridgeWords(el) {
+    var words = el.querySelectorAll(".bridge-word");
+    if (!words.length) return;
+    if (prefersReducedMotion() || !window.gsap) {
+      words.forEach(function (w) {
+        w.style.opacity = "1";
+      });
+      return;
+    }
+    var n = words.length;
+    var stagger = n > 1 ? BRIDGE_STAGGER_TOTAL / (n - 1) : 0;
+    gsap.fromTo(
+      words,
+      { opacity: 0, y: 6 },
+      { opacity: 1, y: 0, duration: 0.12, stagger: stagger, ease: "power2.out", overwrite: true }
+    );
+  }
+
+  function onBridgeReveal(entries) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) return;
+      var el = entry.target;
+      if (el.classList.contains("is-revealed")) return;
+      el.classList.add("is-revealed");
+      animateBridgeWords(el);
     });
   }
 
@@ -92,13 +184,18 @@
     var bridges = document.querySelectorAll(".story-bridge__line");
     if (!copies.length && !bridges.length) return;
 
-    var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var reduced = prefersReducedMotion();
+    bridges.forEach(function (el) {
+      splitBridgeWords(el);
+    });
+
     if (reduced || !("IntersectionObserver" in window)) {
       copies.forEach(function (el) {
         el.classList.add("is-revealed");
       });
       bridges.forEach(function (el) {
         el.classList.add("is-revealed");
+        animateBridgeWords(el);
       });
       return;
     }
@@ -115,15 +212,40 @@
     }
 
     if (bridges.length) {
-      var bridgeIO = new IntersectionObserver(markRevealed, {
+      var bridgeIO = new IntersectionObserver(onBridgeReveal, {
         threshold: 0.2,
         rootMargin: "0px 0px 20% 0px",
       });
       bridges.forEach(function (el) {
-        bridgeIO.observe(el);
+        if (el.classList.contains("is-revealed")) {
+          animateBridgeWords(el);
+        } else {
+          bridgeIO.observe(el);
+        }
       });
       revealIOs.push(bridgeIO);
     }
+  }
+
+  function initMoodIO() {
+    var world = document.getElementById("story-world");
+    if (!world || !("IntersectionObserver" in window)) return;
+
+    moodRatios = {};
+    moodIO = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          moodRatios[entry.target.id] = entry.isIntersecting ? entry.intersectionRatio : 0;
+        });
+        pickBestMood();
+      },
+      { threshold: [0, 0.25, 0.45, 0.6, 0.8, 1], rootMargin: "-10% 0px -10% 0px" }
+    );
+
+    CHAPTERS.forEach(function (id) {
+      var section = document.getElementById(id);
+      if (section) moodIO.observe(section);
+    });
   }
 
   function initDemoIO() {
@@ -132,8 +254,7 @@
       return;
     }
 
-    var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) {
+    if (prefersReducedMotion()) {
       bindDemoLifecycleStatic();
       return;
     }
@@ -154,6 +275,7 @@
             if (entry.isIntersecting) {
               section.classList.add("is-demo-visible", "is-story-active");
               setCounterIndex(i);
+              if (section.dataset.mood) setStoryMood(section.dataset.mood);
               if (!playing) {
                 playing = true;
                 if (name === "voice" && demo.cancel) demo.cancel();
@@ -173,6 +295,48 @@
 
       io.observe(target);
       demoIOs.push(io);
+    });
+  }
+
+  function splitVoiceChars(el) {
+    if (!el || el.querySelector(".voice-char")) return;
+    var text = el.textContent || "";
+    if (!text) return;
+    el.textContent = "";
+    Array.from(text).forEach(function (ch) {
+      var span = document.createElement("span");
+      span.className = "voice-char";
+      span.textContent = ch === " " ? "\u00a0" : ch;
+      el.appendChild(span);
+    });
+  }
+
+  function initVoiceCharScrub() {
+    var answer = document.querySelector("#ch-voice .chapter-answer");
+    if (!answer) return;
+
+    splitVoiceChars(answer);
+    var chars = answer.querySelectorAll(".voice-char");
+    if (!chars.length) return;
+
+    if (prefersReducedMotion() || !window.gsap || !window.ScrollTrigger) {
+      chars.forEach(function (c) {
+        c.style.opacity = "1";
+      });
+      return;
+    }
+
+    gsap.set(chars, { opacity: 0 });
+    gsap.to(chars, {
+      opacity: 1,
+      ease: "none",
+      stagger: 0.02,
+      scrollTrigger: {
+        trigger: "#ch-voice",
+        start: "top 70%",
+        end: "center center",
+        scrub: true,
+      },
     });
   }
 
@@ -309,6 +473,7 @@
     killDemoObservers();
     brandsHandoffFired = false;
     setCounterHidden(true);
+    setStoryMood("light");
     document.documentElement.classList.remove(
       "story-pin-mode",
       "story-nopin-mode",
@@ -329,14 +494,16 @@
       }
     });
 
-    var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var reduced = prefersReducedMotion();
     var mobile = !reduced && window.matchMedia("(max-width: 768px) and (hover: none)").matches;
 
     if (reduced) {
       document.documentElement.classList.add("story-reduced-motion");
       if (window.gsap) gsap.set(".camera-rig-lens, .camera-rig", { clearProps: "all" });
       clearChapterTransforms();
+      initMoodIO();
       initReveals();
+      initVoiceCharScrub();
       bindDemoLifecycleStatic();
       return;
     }
@@ -345,14 +512,18 @@
       document.documentElement.classList.add("story-mobile-static");
       if (window.gsap) gsap.set(".camera-rig-lens, .camera-rig", { clearProps: "all" });
       clearChapterTransforms();
+      initMoodIO();
       initReveals();
       initDemoIO();
+      initVoiceCharScrub();
       return;
     }
 
     if (!window.gsap || !window.ScrollTrigger) {
+      initMoodIO();
       initReveals();
       initDemoIO();
+      initVoiceCharScrub();
       return;
     }
 
@@ -364,8 +535,10 @@
 
     document.documentElement.classList.add("story-gsap-live");
     buildHeroExitTimeline();
+    initMoodIO();
     initReveals();
     initDemoIO();
+    initVoiceCharScrub();
     bindNarrativeRail();
     bindStoryCounterVisibility();
     bindBrandsHandoff();

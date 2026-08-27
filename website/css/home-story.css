@@ -2,6 +2,24 @@
 
 .story-world {
   position: relative;
+  background-color: #1a1c22;
+  transition: background-color 0.6s ease, background 0.6s ease;
+}
+
+.story-world[data-mood="light"] {
+  background: #1a1c22;
+}
+
+.story-world[data-mood="dark"] {
+  background: #08080a;
+}
+
+.story-world[data-mood="pad"] {
+  background: linear-gradient(165deg, #161320 0%, #0a0a0a 55%);
+}
+
+.story-world .story-chapter {
+  background: transparent;
 }
 
 html.story-gsap-live,
@@ -134,13 +152,34 @@ html.story-decoupled-mode .story-chapter .chapter-copy {
 html.story-decoupled-mode .story-chapter .story-bridge__line {
   opacity: 0;
   transform: translateY(14px);
-  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+  transition: opacity 0.15s ease-out, transform 0.15s ease-out;
 }
 
 html.story-decoupled-mode .story-chapter .chapter-copy.is-revealed,
 html.story-decoupled-mode .story-chapter .story-bridge__line.is-revealed {
   opacity: 1;
   transform: translateY(0);
+}
+
+.bridge-words {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0 0.15em;
+  justify-content: center;
+}
+
+.bridge-word {
+  display: inline-block;
+  opacity: 0;
+}
+
+html.story-decoupled-mode .story-chapter .story-bridge__line.is-revealed .bridge-word {
+  opacity: 1;
+}
+
+.voice-char {
+  display: inline;
+  opacity: 0;
 }
 
 html.story-decoupled-mode .camera-rig-lens {
@@ -268,6 +307,7 @@ html.story-decoupled-mode .story-chapter.is-demo-visible {
   gap: 0.35rem;
   width: fit-content;
   margin-top: 0.5rem;
+  margin-right: 0.5rem;
   padding: 0.35rem 0.75rem;
   border-radius: 999px;
   border: 1px dashed rgba(255, 255, 255, 0.18);
@@ -468,9 +508,15 @@ html.story-mobile-static .camera-rig {
 
 html.story-reduced-motion .chapter-demo-wrap,
 html.story-reduced-motion .story-chapter .chapter-copy,
-html.story-reduced-motion .story-chapter .story-bridge__line {
+html.story-reduced-motion .story-chapter .story-bridge__line,
+html.story-reduced-motion .bridge-word,
+html.story-reduced-motion .voice-char {
   opacity: 1;
   transform: none;
+  transition: none;
+}
+
+html.story-reduced-motion .story-world {
   transition: none;
 }
 
@@ -479,9 +525,15 @@ html.story-reduced-motion .story-chapter .story-bridge__line {
     display: none;
   }
 
+  .story-world {
+    transition: none;
+  }
+
   html.story-decoupled-mode .chapter-demo-wrap,
   html.story-decoupled-mode .story-chapter .chapter-copy,
-  html.story-decoupled-mode .story-chapter .story-bridge__line {
+  html.story-decoupled-mode .story-chapter .story-bridge__line,
+  .bridge-word,
+  .voice-char {
     opacity: 1;
     transform: none;
     transition: none;
