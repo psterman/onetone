@@ -798,6 +798,7 @@ fn cursor_soft_pad_slot_allowed(slot_id: &str) -> bool {
             | "quickSearch"
             | "pushToTalk"
             | "stopOrSend"
+            | "pasteAndSend"
             | "cancel"
             | "undo"
             | "toggleSidebar"
@@ -827,10 +828,10 @@ pub(crate) fn soft_pad_icon_is_leftover(icon: &str, micro_key_id: &str, slot_id:
         return false;
     }
     let stock = match micro_key_id.trim() {
-        "ACT06" => "fast",
-        "ACT07" => "palette",
+        "ACT06" => "sparkles",
+        "ACT07" => "command",
         "ACT08" => "reject",
-        "ACT09" => "fork",
+        "ACT09" => "messagePlus",
         "UNDO" => "undo",
         "SEARCH" => "search",
         "ACT10" => "mic",
@@ -838,9 +839,9 @@ pub(crate) fn soft_pad_icon_is_leftover(icon: &str, micro_key_id: &str, slot_id:
         "PLUS" => "plus",
         "DOT" => "dot",
         "ENC" => "power",
-        "AG00" => "palette",
-        "AG01" => "fork",
-        "AG02" => "fast",
+        "AG00" => "command",
+        "AG01" => "messagePlus",
+        "AG02" => "sparkles",
         "AG03" => "search",
         "AG04" => "send",
         "AG05" => "reject",
@@ -854,6 +855,11 @@ pub(crate) fn soft_pad_icon_is_leftover(icon: &str, micro_key_id: &str, slot_id:
         "palette"
             | "fork"
             | "fast"
+            | "command"
+            | "messagePlus"
+            | "sparkles"
+            | "panelLeft"
+            | "settings"
             | "search"
             | "send"
             | "reject"
@@ -873,7 +879,40 @@ pub(crate) fn soft_pad_icon_is_leftover(icon: &str, micro_key_id: &str, slot_id:
             | "plan"
             | "agent"
             | "model"
+            | "clipboardPaste"
     )
+}
+
+/// One-shot migrate prior weak defaults (palette/folder/…) → Lucide-like ids.
+pub(crate) fn migrate_cursor_weak_slot_icon(slot: &str, icon: &str) -> Option<&'static str> {
+    match (slot.trim(), icon.trim()) {
+        ("commandPalette", "palette") => Some("command"),
+        ("newThread", "fork") => Some("messagePlus"),
+        ("quickChat", "fast") => Some("sparkles"),
+        ("toggleSidebar", "folder") => Some("panelLeft"),
+        ("openSettings", "status") => Some("settings"),
+        _ => None,
+    }
+}
+
+/// Migrate prior weak SLOT_DEFAULT icons (palette/folder/…) → Lucide-like ids.
+fn heal_cursor_weak_slot_icons(m: &mut MappingEntry) -> bool {
+    if m.app_target_id.trim() != crate::app_chat_workflow::CURSOR_APP_TARGET_ID {
+        return false;
+    }
+    let Some(pad) = m.codex_micro_pad.as_mut() else {
+        return false;
+    };
+    let mut changed = false;
+    for route in &mut pad.keys {
+        if let Some(want) =
+            migrate_cursor_weak_slot_icon(route.slot_id.trim(), route.ui_icon_id.trim())
+        {
+            route.ui_icon_id = want.into();
+            changed = true;
+        }
+    }
+    changed
 }
 
 /// Strip Codex-only insert routes (e.g. appsOrPlugins) left on Cursor Soft Pad keys.
@@ -898,15 +937,21 @@ fn heal_cursor_illegal_soft_pad_slots(m: &mut MappingEntry) -> bool {
             "PLUS" => "plus",
             "DOT" => "dot",
             "ENC" => "power",
-            "ACT06" => "fast",
-            "ACT07" => "palette",
+            "ACT06" => "sparkles",
+            "ACT07" => "command",
             "ACT08" => "reject",
-            "ACT09" => "fork",
+            "ACT09" => "messagePlus",
             "UNDO" => "undo",
             "SEARCH" => "search",
             "ACT10" => "mic",
             "ACT12" => "send",
-            _ if id.starts_with("AG") => "palette",
+            "AG00" => "command",
+            "AG01" => "messagePlus",
+            "AG02" => "sparkles",
+            "AG03" => "search",
+            "AG04" => "send",
+            "AG05" => "reject",
+            _ if id.starts_with("AG") => "command",
             _ => "",
         };
         if !stock.is_empty() && route.ui_icon_id.trim() != stock {
@@ -927,6 +972,9 @@ pub(crate) fn heal_cursor_pad_for_save(m: &mut MappingEntry, locale: &str) -> bo
         changed = true;
     }
     if heal_cursor_pad_ag_chrome(m) {
+        changed = true;
+    }
+    if heal_cursor_weak_slot_icons(m) {
         changed = true;
     }
     if heal_cursor_plan_chord_if_legacy(m) {
@@ -1623,13 +1671,13 @@ fn heal_cursor_pad_ag_chrome(m: &mut MappingEntry) -> bool {
             }
         } else if matches!(icon, "agent" | "lane" | "claude" | "") && id.starts_with("AG") {
             let stock = match id {
-                "AG00" => "palette",
-                "AG01" => "fork",
-                "AG02" => "fast",
+                "AG00" => "command",
+                "AG01" => "messagePlus",
+                "AG02" => "sparkles",
                 "AG03" => "search",
                 "AG04" => "send",
                 "AG05" => "reject",
-                _ => "palette",
+                _ => "command",
             };
             if icon != stock {
                 route.ui_icon_id = stock.into();
@@ -1642,19 +1690,19 @@ fn heal_cursor_pad_ag_chrome(m: &mut MappingEntry) -> bool {
 
 fn route(micro_key_id: &str, scan: u16, extended: bool, slot_id: &str) -> CodexMicroPadKeyRoute {
     let ui_icon_id = match micro_key_id {
-        "ACT06" => "fast",
-        "ACT07" => "palette",
+        "ACT06" => "sparkles",
+        "ACT07" => "command",
         "ACT08" => "reject",
-        "ACT09" => "fork",
+        "ACT09" => "messagePlus",
         "UNDO" => "undo",
         "SEARCH" => "search",
         "ACT10" => "mic",
         "ACT12" => "send",
         "PLUS" => "plus",
         "DOT" => "dot",
-        "AG00" => "palette",
-        "AG01" => "fork",
-        "AG02" => "fast",
+        "AG00" => "command",
+        "AG01" => "messagePlus",
+        "AG02" => "sparkles",
         "AG03" => "search",
         "AG04" => "send",
         "AG05" => "reject",

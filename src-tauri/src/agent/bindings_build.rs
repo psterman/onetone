@@ -77,6 +77,8 @@ pub fn default_cursor_key_for_slot(slot_id: &str) -> &'static str {
         // Ctrl+Alt+Shift+P — Ctrl+Alt+P collides with screenshot / pin shortcuts.
         "plan" => "Ctrl+Alt+Shift+P",
         "switchAgent" => "Ctrl+Alt+.",
+        // Soft Pad workflow (focus → Ctrl+V → Enter), not a Cursor hotkey.
+        "pasteAndSend" => "",
         _ => default_vscode_key_for_slot(slot_id),
     }
 }

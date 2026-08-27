@@ -648,6 +648,9 @@ pub struct CodexMicroOverlaySnapshot {
     pub cursor_beginner_slots: Vec<crate::cursor_beginner::BeginnerSlotSnapshot>,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub cursor_beginner_arm_hint: String,
+    /// Scheme A panel: short send/cancel flow under the listen hint.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub cursor_beginner_flow_hint: String,
     /// Live Vosk partial (mirrors diagnostic / home).
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub voice_heard_partial: String,
@@ -2854,6 +2857,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
                 crate::cursor_beginner::probe_ok(),
             ),
             cursor_beginner_arm_hint: crate::cursor_beginner::arm_hint(cfg),
+            cursor_beginner_flow_hint: crate::cursor_beginner::flow_hint(cfg),
             voice_heard_partial: String::new(),
             voice_heard_final: String::new(),
             voice_heard_matched: false,
@@ -3092,15 +3096,20 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             ) {
                 ui_icon_id = want.into();
             }
+        } else if let Some(want) =
+            crate::codex_numpad_layer::migrate_cursor_weak_slot_icon(route_slot, &ui_icon_id)
+        {
+            // Keep overlay == settings: apply weak-default migrate even before config save.
+            ui_icon_id = want.into();
         } else if applied_kind == Some(crate::soft_pad_runtime::AgentKind::Cursor)
             && def.micro_key_id.starts_with("AG")
             && matches!(ui_icon_id.as_str(), "agent" | "lane" | "claude" | "")
         {
             // Cursor Soft Pad: strip Codex session-lane icons on AG* only (not Plan/Agent slots).
             ui_icon_id = match def.micro_key_id {
-                "AG01" => "fork".into(),
-                "AG00" => "palette".into(),
-                "AG02" => "fast".into(),
+                "AG01" => "messagePlus".into(),
+                "AG00" => "command".into(),
+                "AG02" => "sparkles".into(),
                 "AG03" => "search".into(),
                 "AG04" => "send".into(),
                 "AG05" => "reject".into(),
@@ -3402,6 +3411,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             crate::cursor_beginner::probe_ok(),
         ),
         cursor_beginner_arm_hint: crate::cursor_beginner::arm_hint(cfg),
+        cursor_beginner_flow_hint: crate::cursor_beginner::flow_hint(cfg),
         voice_heard_partial: String::new(),
         voice_heard_final: String::new(),
         voice_heard_matched: false,

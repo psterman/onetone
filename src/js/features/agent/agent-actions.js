@@ -33,6 +33,7 @@
     { id: 'focusComposer', labelZh: '聚焦输入框', labelEn: 'Focus composer', risk: 'safe', scope: 'global', mode: 'execute', phrasesZh: '聚焦输入框', phrasesEn: 'focus composer' },
     { id: 'startDictation', labelZh: '开始说话', labelEn: 'Start talking', risk: 'confirm', scope: 'global', mode: 'execute', phrasesZh: '开始说话', phrasesEn: 'start talking' },
     { id: 'stopOrSendDictation', labelZh: '结束或发送', labelEn: 'Stop or send', risk: 'confirm', scope: 'foregroundApp', mode: 'execute', phrasesZh: '结束输入', phrasesEn: 'stop dictation' },
+    { id: 'pasteAndSend', labelZh: '粘贴发送', labelEn: 'Paste and send', risk: 'confirm', scope: 'foregroundApp', mode: 'execute', phrasesZh: '粘贴发送', phrasesEn: 'paste and send' },
     { id: 'cancel', labelZh: '取消', labelEn: 'Cancel', risk: 'safe', scope: 'global', mode: 'execute', phrasesZh: '取消', phrasesEn: 'cancel' },
     { id: 'newThread', labelZh: '新建对话', labelEn: 'New chat', risk: 'confirm', scope: 'foregroundApp', mode: 'execute', phrasesZh: '新建对话', phrasesEn: 'new chat' },
     { id: 'undo', labelZh: '撤销', labelEn: 'Undo', risk: 'safe', scope: 'foregroundApp', mode: 'execute', phrasesZh: '撤销', phrasesEn: 'undo' },
@@ -63,6 +64,7 @@
     { slotId: 'summonCodex', actionId: 'openAgent', labelZh: '召唤 Codex', labelEn: 'Summon Codex' },
     { slotId: 'pushToTalk', actionId: 'startDictation', labelZh: '开始说话', labelEn: 'Start talking' },
     { slotId: 'stopOrSend', actionId: 'stopOrSendDictation', labelZh: '结束或发送', labelEn: 'Stop or send' },
+    { slotId: 'pasteAndSend', actionId: 'pasteAndSend', labelZh: '粘贴发送', labelEn: 'Paste and send' },
     { slotId: 'cancel', actionId: 'cancel', labelZh: '取消', labelEn: 'Cancel' },
     { slotId: 'newThread', actionId: 'newThread', labelZh: '新建对话', labelEn: 'New chat' },
     { slotId: 'undo', actionId: 'undo', labelZh: '撤销', labelEn: 'Undo' },
@@ -101,6 +103,7 @@
     summonCodex: '',
     pushToTalk: 'Ctrl+Shift+D',
     stopOrSend: 'Enter',
+    pasteAndSend: '',
     cancel: 'Escape',
     newThread: 'Ctrl+N',
     undo: 'Ctrl+Z',
@@ -167,7 +170,9 @@
     pushToTalk: 'RAlt',
     // Avoid Ctrl+Alt+P — clashes with screenshot / pin tools.
     plan: 'Ctrl+Alt+Shift+P',
-    switchAgent: 'Ctrl+Alt+.'
+    switchAgent: 'Ctrl+Alt+.',
+    // Soft Pad workflow (focus → Ctrl+V → Enter), not a Cursor chord.
+    pasteAndSend: ''
   });
 
   /** Trae IDE: side chat is Ctrl+U, inline is Ctrl+I. Pad quickChat → side chat. */
@@ -361,6 +366,9 @@
       }
       if (id === 'switchAgent' && app === 'cursor-chat') {
         return isEnLocale() ? 'Agent mode' : 'Agent 模式';
+      }
+      if (id === 'pasteAndSend' && app === 'cursor-chat') {
+        return isEnLocale() ? 'Paste and send' : '粘贴发送';
       }
     }
     return labelForSlot(slotById(id));

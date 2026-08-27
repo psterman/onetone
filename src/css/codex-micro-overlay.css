@@ -2035,14 +2035,16 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
   gap: 6px;
   width: 100%;
   box-sizing: border-box;
-  padding: 3px 8px;
-  border-radius: 999px;
+  padding: 4px 8px;
+  border-radius: 12px;
   white-space: nowrap;
   font-size: 10px;
   font-weight: 600;
   line-height: 1.3;
-  color: #0369a1;
-  background: rgba(255, 255, 255, 0.96);
+  /* Panel A: always light plate — ignore SoftPad data-light / OS dark. */
+  isolation: isolate;
+  color: #0369a1 !important;
+  background: rgba(255, 255, 255, 0.96) !important;
   border: 1px solid rgba(0, 163, 255, 0.45);
   box-shadow: 0 4px 12px rgba(0, 163, 255, 0.14);
   pointer-events: none;
@@ -2062,6 +2064,9 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
   pointer-events: auto;
   border-color: rgba(34, 197, 94, 0.4);
   box-shadow: 0 4px 12px rgba(34, 197, 94, 0.12);
+  /* Keep light plate; only border/shadow shift for Hub. */
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #0369a1 !important;
 }
 
 .wrap.is-hub-active[data-hub-phase="listen"] .overlay-mini-listen__dot {
@@ -2078,15 +2083,35 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
   animation: beginner-listen-dot 0.55s ease-in-out infinite;
 }
 
+.overlay-mini-listen__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  white-space: normal;
+}
+
+.overlay-mini-listen__flow {
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: #64748b !important;
+}
+
+.overlay-mini-listen__flow[hidden] {
+  display: none !important;
+}
+
 .overlay-mini-listen__cd {
   flex: 0 0 auto;
   font-variant-numeric: tabular-nums;
-  color: #64748b;
+  color: #64748b !important;
   font-weight: 600;
 }
 
 .overlay-mini-listen.is-soft-close .overlay-mini-listen__cd {
-  color: #c2410c;
+  color: #c2410c !important;
 }
 
 .overlay-mini-listen__cancel {
@@ -2159,16 +2184,39 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: #0369a1 !important;
 }
 
 .overlay-mini-listen.is-matched {
-  border-color: rgba(74, 222, 128, 0.45);
-  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.55);
+  background: rgba(255, 255, 255, 0.96) !important;
+}
+
+.overlay-mini-listen.is-matched .overlay-mini-listen__text {
+  color: #15803d !important;
 }
 
 .overlay-mini-listen.is-miss {
-  border-color: rgba(251, 191, 36, 0.45);
-  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.55);
+  background: rgba(255, 255, 255, 0.96) !important;
+}
+
+.overlay-mini-listen.is-miss .overlay-mini-listen__text {
+  color: #b45309 !important;
+}
+
+/* Dark OS / app theme must not flip Panel A to a dark strip. */
+@media (prefers-color-scheme: dark) {
+  .overlay-mini-listen {
+    color: #0369a1 !important;
+    background: rgba(255, 255, 255, 0.96) !important;
+  }
+}
+
+html[data-theme="dark"] .overlay-mini-listen,
+html[data-theme="dark"] .wrap.is-hub-active .overlay-mini-listen {
+  color: #0369a1 !important;
+  background: rgba(255, 255, 255, 0.96) !important;
 }
 
 .overlay-key-caption.is-beginner-arm-caption {

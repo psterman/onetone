@@ -368,6 +368,16 @@ fn run_overlay_tap_action(
         return true;
     }
 
+    // Cursor Soft Pad: paste clipboard into Agent composer then Enter.
+    if route.slot_id.trim() == "pasteAndSend"
+        || route.action_id.trim() == "pasteAndSend"
+    {
+        let target_id = soft_pad_inject_target_id(state, &route.mapping_id);
+        if target_id.trim() == crate::app_chat_workflow::CURSOR_APP_TARGET_ID {
+            return crate::cursor_beginner::run_paste_and_send(state, exec_window);
+        }
+    }
+
     let duration_ms = state.cfg.lock().key_press_duration_ms;
     let target_id = soft_pad_inject_target_id(state, &route.mapping_id);
     let mut chord = route.trigger_binding.trim().to_string();

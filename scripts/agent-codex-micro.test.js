@@ -17,7 +17,7 @@ assert.ok(A && T);
 // scenarioAllKeys: all catalog slots on for keys; voice essentials only
 var allKeys = A.buildCodexMicro13Bindings({ enableProfile: 'scenarioAllKeys' });
 var keyBindings = allKeys.filter(function (b) { return b.triggerType === 'key'; });
-assert.equal(keyBindings.length, 27);
+assert.equal(keyBindings.length, 28);
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'claudeModel'; }));
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'switchModel'; }));
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'undo'; }));
@@ -45,7 +45,7 @@ assert.equal(A.defaultKeyForSlot('focusBrowserAddressBar'), 'Ctrl+L');
 assert.equal(A.insertTextForSlot('openReviewTab'), '');
 assert.equal(A.insertTextForSlot('review'), '/review');
 keyBindings.forEach(function (b) {
-  if (b.slotId === 'summonCodex' || b.slotId === 'claudeModel') {
+  if (b.slotId === 'summonCodex' || b.slotId === 'claudeModel' || b.slotId === 'pasteAndSend') {
     assert.equal(b.triggerBinding, '', b.slotId + ' uses focus workflow, no chord');
     return;
   }
@@ -55,6 +55,7 @@ keyBindings.forEach(function (b) {
 });
 assert.equal(A.defaultKeyForSlot('summonCodex'), '');
 assert.equal(A.defaultKeyForSlot('claudeModel'), '');
+assert.equal(A.defaultKeyForSlot('pasteAndSend'), '');
 assert.equal(A.defaultKeyForSlot('commandPalette'), 'Ctrl+K');
 
 var voiceOn = allKeys.filter(function (b) { return b.triggerType === 'voice' && b.enabled; });
@@ -139,7 +140,7 @@ assert.ok(T.hasCodexPack(empty));
 assert.equal(empty.triggerKey, 'VolUp');
 assert.equal(empty.targetKey, 'Ctrl+Win');
 empty.agentBindings.filter(function (x) { return x.triggerType === 'key'; }).forEach(function (x) {
-  if (x.slotId === 'summonCodex' || x.slotId === 'claudeModel') {
+  if (x.slotId === 'summonCodex' || x.slotId === 'claudeModel' || x.slotId === 'pasteAndSend') {
     assert.equal(x.triggerBinding, '', x.slotId + ' seeded empty (focus workflow)');
     return;
   }
@@ -424,10 +425,12 @@ assert.ok(Pad.CODEX_SOFT_PAD_SLOT_IDS);
   assert.ok(iconTips.indexOf('插入') < 0);
   assert.ok(iconTips.indexOf('Insert') < 0);
   assert.ok(iconTips.indexOf('外观：') >= 0 || iconTips.indexOf('Appearance:') >= 0);
-  assert.equal(Pad.SLOT_DEFAULT_ICON.newThread, 'fork');
-  assert.equal(Pad.SLOT_DEFAULT_ICON.commandPalette, 'palette');
+  assert.equal(Pad.SLOT_DEFAULT_ICON.newThread, 'messagePlus');
+  assert.equal(Pad.SLOT_DEFAULT_ICON.commandPalette, 'command');
   assert.equal(Pad.SLOT_DEFAULT_ICON.summonCodex, 'focus');
-  assert.equal(Pad.SLOT_DEFAULT_ICON.quickChat, 'fast');
+  assert.equal(Pad.SLOT_DEFAULT_ICON.quickChat, 'sparkles');
+  assert.equal(Pad.SLOT_DEFAULT_ICON.toggleSidebar, 'panelLeft');
+  assert.equal(Pad.SLOT_DEFAULT_ICON.openSettings, 'settings');
   assert.equal(Pad.SLOT_DEFAULT_ICON.toggleBrowserPanel, 'browser');
   assert.equal(Pad.SLOT_DEFAULT_ICON.newBrowserTab, 'browserPlus');
   assert.equal(Pad.SLOT_DEFAULT_ICON.openTerminal, 'terminal');
@@ -492,18 +495,25 @@ assert.ok(padSrc.indexOf('bindIconToCapabilitySlot') < 0, 'must not force-bind i
   var custom = Pad.resolveOpenEditIconState(
     { uiIconId: 'cloud', slotId: 'newThread' },
     'newThread',
-    { uiIconId: 'fork' }
+    { uiIconId: 'messagePlus' }
   );
   assert.equal(custom.uiIconId, 'cloud', 'prefer route.uiIconId');
   assert.equal(custom.iconTouched, true, 'custom icon survives reopen as touched');
   var stock = Pad.resolveOpenEditIconState(
+    { uiIconId: 'messagePlus', slotId: 'newThread' },
+    'newThread',
+    { uiIconId: 'messagePlus' }
+  );
+  assert.equal(stock.iconTouched, false, 'stock default icon is untouched');
+  var weakLegacy = Pad.resolveOpenEditIconState(
     { uiIconId: 'fork', slotId: 'newThread' },
     'newThread',
     { uiIconId: 'fork' }
   );
-  assert.equal(stock.iconTouched, false, 'stock default icon is untouched');
+  assert.equal(weakLegacy.uiIconId, 'messagePlus', 'weak fork migrates to messagePlus');
+  assert.equal(weakLegacy.iconTouched, false);
   var missing = Pad.resolveOpenEditIconState({}, 'commandPalette', null);
-  assert.equal(missing.uiIconId, 'palette');
+  assert.equal(missing.uiIconId, 'command');
   assert.equal(missing.iconTouched, false);
 
   // iconTouched blocks auto-suggest overwrite
@@ -512,7 +522,7 @@ assert.ok(padSrc.indexOf('bindIconToCapabilitySlot') < 0, 'must not force-bind i
   assert.equal(draftTouched.uiIconId, 'cloud');
   var draftFresh = { slotId: 'commandPalette', uiIconId: 'fork', iconTouched: false };
   assert.equal(Pad.maybeAutoSuggestIcon(draftFresh), true);
-  assert.equal(draftFresh.uiIconId, 'palette');
+  assert.equal(draftFresh.uiIconId, 'command');
 
   assert.equal(Pad.humanMicroKeyLabel('AG00'), '\u6570\u5b57 7');
   assert.equal(Pad.humanMicroKeyLabel('AG01'), '\u6570\u5b57 8');
@@ -669,7 +679,7 @@ assert.ok(overlayHtml.indexOf('statusSourceLabel') >= 0);
 assert.ok(overlayHtml.indexOf('Codex Hook') >= 0);
 assert.ok(overlayHtml.indexOf('Claude Hook') >= 0);
 assert.ok(overlayHtml.indexOf('Native Micro') >= 0);
-assert.ok(overlayHtml.indexOf('data-ag=') >= 0);
+assert.ok(overlayHtml.indexOf('data-ag') >= 0);
 assert.ok(overlayHtml.indexOf('overlayAppMeta') >= 0);
 assert.ok(overlayHtml.indexOf('appLastSource') >= 0);
 assert.ok(overlayHtml.indexOf('appLastEvent') >= 0);

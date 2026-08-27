@@ -1890,6 +1890,17 @@ html[data-theme="dark"] .micro-hw-modal__cap-trigger { color: #7dd3f0; }
   overflow: auto;
   padding: 2px;
 }
+.micro-hw-modal__cap-group {
+  margin: 10px 0 2px;
+  padding: 0 2px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: #64748b;
+}
+.micro-hw-modal__cap-group:first-child {
+  margin-top: 4px;
+}
 .micro-hw-modal__cap-card {
   display: flex;
   flex-direction: row;
@@ -1985,6 +1996,7 @@ html[data-theme="dark"] .micro-hw-modal__cap-trigger { color: #7dd3f0; }
   margin-bottom: 8px;
 }
 html[data-theme="dark"] .micro-hw-modal__section-title { color: #e8eef6; }
+html[data-theme="dark"] .micro-hw-modal__cap-group { color: #94a3b8; }
 html[data-theme="dark"] .micro-hw-modal__cap-card {
   background: #1a2330;
   border-color: rgba(255, 255, 255, 0.1);

@@ -46,7 +46,7 @@ assert.strictEqual(
   );
 assert.ok(
   padSrc.includes('function isSoftPadLeftoverIcon') &&
-    padSrc.includes('isSoftPadLeftoverIcon(cur, microKeyId, slotId)'),
+    /isSoftPadLeftoverIcon\(\s*cur\s*,/.test(padSrc),
   'Plan/Agent icons replace leftover palette/fork'
 );
 assert.ok(

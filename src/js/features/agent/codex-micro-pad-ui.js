@@ -50,16 +50,16 @@
       { microKeyId: 'NP_DOT', uiLabelZh: '小数点', uiLabelEn: '.', kind: 'numpad', gridRow: 5, gridCol: 3, digit: '.' }
     ],
     defaultRoutes: [
-      { microKeyId: 'AG00', sourceScan: 0x47, sourceExtended: false, slotId: 'commandPalette', uiIconId: 'palette' },
-      { microKeyId: 'AG01', sourceScan: 0x48, sourceExtended: false, slotId: 'newThread', uiIconId: 'fork' },
-      { microKeyId: 'AG02', sourceScan: 0x49, sourceExtended: false, slotId: 'quickChat', uiIconId: 'fast' },
+      { microKeyId: 'AG00', sourceScan: 0x47, sourceExtended: false, slotId: 'commandPalette', uiIconId: 'command' },
+      { microKeyId: 'AG01', sourceScan: 0x48, sourceExtended: false, slotId: 'newThread', uiIconId: 'messagePlus' },
+      { microKeyId: 'AG02', sourceScan: 0x49, sourceExtended: false, slotId: 'quickChat', uiIconId: 'sparkles' },
       { microKeyId: 'AG03', sourceScan: 0x4B, sourceExtended: false, slotId: 'quickSearch', uiIconId: 'search' },
       { microKeyId: 'AG04', sourceScan: 0x4C, sourceExtended: false, slotId: 'stopOrSend', uiIconId: 'send' },
       { microKeyId: 'AG05', sourceScan: 0x4D, sourceExtended: false, slotId: 'cancel', uiIconId: 'reject' },
-      { microKeyId: 'ACT06', sourceScan: 0x37, sourceExtended: false, slotId: 'quickChat', uiIconId: 'fast' },
-      { microKeyId: 'ACT07', sourceScan: 0x35, sourceExtended: true, slotId: 'commandPalette', uiIconId: 'palette' },
+      { microKeyId: 'ACT06', sourceScan: 0x37, sourceExtended: false, slotId: 'quickChat', uiIconId: 'sparkles' },
+      { microKeyId: 'ACT07', sourceScan: 0x35, sourceExtended: true, slotId: 'commandPalette', uiIconId: 'command' },
       { microKeyId: 'ACT08', sourceScan: 0x4A, sourceExtended: false, slotId: 'cancel', uiIconId: 'reject' },
-      { microKeyId: 'ACT09', sourceScan: 0x4F, sourceExtended: false, slotId: 'newThread', uiIconId: 'fork' },
+      { microKeyId: 'ACT09', sourceScan: 0x4F, sourceExtended: false, slotId: 'newThread', uiIconId: 'messagePlus' },
       { microKeyId: 'UNDO', sourceScan: 0x50, sourceExtended: false, slotId: '', uiIconId: 'undo' },
       { microKeyId: 'SEARCH', sourceScan: 0x51, sourceExtended: false, slotId: 'quickSearch', uiIconId: 'search' },
       { microKeyId: 'ACT10', sourceScan: 0x52, sourceExtended: false, slotId: 'pushToTalk', uiIconId: 'mic' },
@@ -102,6 +102,7 @@
     quickSearch: 1,
     pushToTalk: 1,
     stopOrSend: 1,
+    pasteAndSend: 1,
     cancel: 1,
     undo: 1,
     toggleSidebar: 1,
@@ -135,18 +136,19 @@
   /** Default keycap icon when a capability is selected (beginner auto-suggest). */
   var SLOT_DEFAULT_ICON = {
     summonCodex: 'focus',
-    commandPalette: 'palette',
-    newThread: 'fork',
-    quickChat: 'fast',
+    commandPalette: 'command',
+    newThread: 'messagePlus',
+    quickChat: 'sparkles',
     quickSearch: 'search',
     pushToTalk: 'mic',
     stopOrSend: 'send',
+    pasteAndSend: 'clipboardPaste',
     cancel: 'reject',
     undo: 'undo',
     openReviewTab: 'review',
     toggleReviewPanel: 'review',
-    toggleSidebar: 'folder',
-    openSettings: 'status',
+    toggleSidebar: 'panelLeft',
+    openSettings: 'settings',
     navBack: 'navLeft',
     navForward: 'navRight',
     openTerminal: 'terminal',
@@ -156,6 +158,46 @@
     plan: 'plan',
     switchAgent: 'agent'
   };
+
+  /** Prior SLOT_DEFAULT_ICON values — migrate only when still these (user custom stays). */
+  var SLOT_WEAK_LEGACY_ICON = {
+    commandPalette: 'palette',
+    newThread: 'fork',
+    quickChat: 'fast',
+    toggleSidebar: 'folder',
+    openSettings: 'status'
+  };
+
+  /**
+   * Cursor Soft Pad capability picker groups (allowlist only).
+   * Labels via lang(); slot ids must stay inside CURSOR_SOFT_PAD_SLOT_IDS.
+   */
+  var CURSOR_SLOT_GROUPS = [
+    {
+      id: 'chat',
+      labelZh: '对话与生成',
+      labelEn: 'Chat & generate',
+      slots: ['pushToTalk', 'stopOrSend', 'pasteAndSend', 'cancel', 'newThread', 'quickChat']
+    },
+    {
+      id: 'mode',
+      labelZh: '模式',
+      labelEn: 'Modes',
+      slots: ['plan', 'switchAgent']
+    },
+    {
+      id: 'nav',
+      labelZh: '导航与界面',
+      labelEn: 'Navigation & UI',
+      slots: ['navBack', 'navForward', 'toggleSidebar', 'commandPalette', 'quickSearch']
+    },
+    {
+      id: 'app',
+      labelZh: '应用',
+      labelEn: 'App',
+      slots: ['summonCodex', 'openSettings', 'openTerminal', 'newBrowserTab', 'undo']
+    }
+  ];
 
   /** Human physical key names for edit subtitle (not capability labels, not AG ids). */
   var PHYSICAL_KEY_LABELS = {
@@ -191,17 +233,17 @@
   };
 
   var DEFAULT_ICON_BY_MICRO = {
-    ACT06: 'fast',
-    ACT07: 'palette',
+    ACT06: 'sparkles',
+    ACT07: 'command',
     ACT08: 'reject',
-    ACT09: 'fork',
+    ACT09: 'messagePlus',
     UNDO: 'undo',
     SEARCH: 'search',
     ACT10: 'mic',
     ACT12: 'send',
-    AG00: 'palette',
-    AG01: 'fork',
-    AG02: 'fast',
+    AG00: 'command',
+    AG01: 'messagePlus',
+    AG02: 'sparkles',
     AG03: 'search',
     AG04: 'send',
     AG05: 'reject',
@@ -222,6 +264,7 @@
     { id: 'fork', label: 'FORK' },
     { id: 'mic', label: 'MIC' },
     { id: 'send', label: 'SEND' },
+    { id: 'clipboardPaste', label: 'PASTE' },
     { id: 'new', label: 'NEW' },
     { id: 'power', label: 'PWR' },
     { id: 'focus', label: 'FOCUS' },
@@ -231,11 +274,14 @@
     { id: 'navRight', label: 'RIGHT' },
     { id: 'codex', label: 'CODEX' },
     { id: 'palette', label: 'CMD' },
+    { id: 'command', label: 'CMD' },
     { id: 'status', label: 'STATUS' },
+    { id: 'settings', label: 'SET' },
     { id: 'plan', label: 'PLAN' },
     { id: 'review', label: 'REVIEW' },
     { id: 'trash', label: 'TRASH' },
     { id: 'folder', label: 'FOLDER' },
+    { id: 'panelLeft', label: 'SIDE' },
     { id: 'cloud', label: 'CLOUD' },
     { id: 'browser', label: 'WEB' },
     { id: 'browserPlus', label: 'TAB+' },
@@ -248,6 +294,8 @@
     { id: 'model', label: 'MODEL' },
     { id: 'undo', label: 'UNDO' },
     { id: 'search', label: 'FIND' },
+    { id: 'messagePlus', label: 'NEW' },
+    { id: 'sparkles', label: 'CHAT' },
     { id: 'plus', label: 'PLUS' },
     { id: 'dot', label: 'DOT' },
     { id: 'empty', label: 'EMPT' }
@@ -266,17 +314,25 @@
     fork: '<svg viewBox="0 0 24 24"><path d="M7 4v8a4 4 0 004 4h2a4 4 0 004-4V4"/><path d="M17 4l3 3-3 3M7 4L4 7l3 3"/></svg>',
     mic: '<svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
     send: '<svg viewBox="0 0 24 24"><path d="M4 12h12"/><path d="M12 6l6 6-6 6"/><path d="M20 7v10"/></svg>',
+    /* Lucide clipboard-paste */
+    clipboardPaste: '<svg viewBox="0 0 24 24"><path d="M15 2H9a1 1 0 00-1 1v2h8V3a1 1 0 00-1-1z"/><path d="M8 4H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2v-2"/><path d="M16 4h2a2 2 0 012 2v4"/><path d="M21 14H11"/><path d="M15 10l-4 4 4 4"/></svg>',
     new: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
     /* Mode toggle — same stroke language as search icon. */
     power: '<svg viewBox="0 0 24 24"><path d="M12 2v9"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/></svg>',
     focus: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M4 12h4M16 12h4M12 4v4M12 16v4"/></svg>',
     codex: '<svg viewBox="0 0 24 24"><path d="M12 3l2 5 5 1-4 3 1 5-4-3-4 3 1-5-4-3 5-1z"/></svg>',
     palette: '<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h5"/></svg>',
+    /* Lucide command — ⌘ corners */
+    command: '<svg viewBox="0 0 24 24"><path d="M15 6v12a3 3 0 103-3H6a3 3 0 103 3V6a3 3 0 10-3 3h12a3 3 0 10-3-3"/></svg>',
     status: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>',
+    /* Lucide settings — gear */
+    settings: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>',
     plan: '<svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>',
     review: '<svg viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
     trash: '<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>',
     folder: '<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>',
+    /* Lucide panel-left */
+    panelLeft: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>',
     cloud: '<svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 00.5-8 5.5 5.5 0 00-10.7 1.5A3.5 3.5 0 007 18z"/></svg>',
     browser: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v5"/></svg>',
     browserPlus: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M3 8h14M19 14v6M16 17h6"/></svg>',
@@ -289,6 +345,10 @@
     model: '<svg viewBox="0 0 24 24"><path d="M4 7h16v10H4z"/><path d="M8 7V5h8v2M8 17v2h8v-2"/><path d="M9 11h6M9 14h4"/></svg>',
     undo: '<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a5 5 0 010 10h-1"/></svg>',
     search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg>',
+    /* Lucide message-square-plus */
+    messagePlus: '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><path d="M12 7v6M9 10h6"/></svg>',
+    /* Lucide sparkles (compact) */
+    sparkles: '<svg viewBox="0 0 24 24"><path d="M12 3l1.2 3.6L17 8l-3.8 1.4L12 13l-1.2-3.6L7 8l3.8-1.4z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9z"/><path d="M5 14l.6 1.8L8 16.5l-2.4.7L5 19l-.6-1.8L2 16.5l2.4-.7z"/></svg>',
     empty: '<svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2" stroke-dasharray="3 3"/></svg>'
   };
 
@@ -847,6 +907,10 @@
       if (except && k === except) continue;
       if (SLOT_DEFAULT_ICON[k] === cur) return true;
     }
+    for (var wk in SLOT_WEAK_LEGACY_ICON) {
+      if (!Object.prototype.hasOwnProperty.call(SLOT_WEAK_LEGACY_ICON, wk)) continue;
+      if (SLOT_WEAK_LEGACY_ICON[wk] === cur) return true;
+    }
     return !!LEGACY_MISLEADING_ICONS[cur];
   }
 
@@ -858,7 +922,12 @@
       var slotIcon = SLOT_DEFAULT_ICON[slotId] || '';
       if (slotIcon) return slotIcon;
     }
-    if (cur) return cur;
+    if (cur) {
+      var weak = SLOT_WEAK_LEGACY_ICON[slotId] || '';
+      var want = SLOT_DEFAULT_ICON[slotId] || '';
+      if (weak && want && cur === weak) return want;
+      return cur;
+    }
     return DEFAULT_ICON_BY_MICRO[microKeyId] || 'empty';
   }
 
@@ -948,14 +1017,14 @@
       if (a7Idx < 0) {
         out.push(Object.assign({}, npadEnter, {
           microKeyId: 'ACT07',
-          uiIconId: npadEnter.uiIconId || 'palette'
+          uiIconId: npadEnter.uiIconId || 'command'
         }));
       } else {
         var a7 = out[a7Idx];
         if (!String(a7.slotId || '').trim() && npadEnter.slotId) {
           a7.slotId = npadEnter.slotId;
           a7.enabled = npadEnter.enabled !== false;
-          if (!a7.uiIconId) a7.uiIconId = 'palette';
+          if (!a7.uiIconId) a7.uiIconId = 'command';
         }
         if (!(Number(a7.sourceScan) > 0) && Number(npadEnter.sourceScan) > 0) {
           a7.sourceScan = npadEnter.sourceScan;
@@ -1047,6 +1116,15 @@
           var cur = String(k.uiIconId || '').trim();
           if (want && cur !== want && isSoftPadLeftoverIcon(cur, id, slot)) {
             k.uiIconId = want;
+            changed = true;
+          }
+        } else if (slot && SLOT_DEFAULT_ICON[slot]) {
+          // One-shot: old weak defaults (palette/folder/…) → Lucide-like ids.
+          var wantSlot = SLOT_DEFAULT_ICON[slot];
+          var curIcon = String(k.uiIconId || '').trim();
+          var weak = SLOT_WEAK_LEGACY_ICON[slot] || '';
+          if (wantSlot && weak && curIcon === weak) {
+            k.uiIconId = wantSlot;
             changed = true;
           }
         }
@@ -1941,6 +2019,7 @@
     fork: { zh: '分叉', en: 'Fork' },
     mic: { zh: '麦克风', en: 'Mic' },
     send: { zh: '发送', en: 'Send' },
+    clipboardPaste: { zh: '粘贴发送', en: 'Paste send' },
     new: { zh: '新建', en: 'New' },
     power: { zh: '电源', en: 'Power' },
     focus: { zh: '聚焦', en: 'Focus' },
@@ -2035,6 +2114,12 @@
         resultZh: '发送 Enter：会发送当前已输入内容；空输入框时不会生成新内容。口述中则结束 OneTone 口述。审批焦点时≈批准请求',
         resultEn: 'Sends Enter: current composer text, or invents nothing if empty. Ends OneTone dictation if running. When focused on approval ≈ approve',
         triggerZh: '通用输入 / OneTone 工作流', triggerEn: 'General input / OneTone workflow'
+      },
+      pasteAndSend: {
+        titleZh: '粘贴发送', titleEn: 'Paste and send',
+        resultZh: '聚焦右侧 Agent 输入框 → 粘贴剪贴板 → Enter 发送',
+        resultEn: 'Focus Agent composer → paste clipboard → Enter',
+        triggerZh: 'OneTone Soft Pad 工作流', triggerEn: 'OneTone Soft Pad workflow'
       },
       cancel: {
         titleZh: '取消', titleEn: 'Cancel',
@@ -9719,6 +9804,51 @@
     draft.activationScope = fields.activationScope;
   }
 
+  function cursorSlotGroupLabel(g) {
+    if (!g) return '';
+    return lang().indexOf('en') === 0 ? (g.labelEn || g.labelZh) : (g.labelZh || g.labelEn);
+  }
+
+  /** Grouped Cursor Soft Pad options; flat list for other Soft Pads. */
+  function slotOptionsGrouped(m) {
+    var opts = allSlotOptions(m);
+    if (!isCursorSoftPadMapping(m)) {
+      return [{ id: '', label: '', options: opts }];
+    }
+    var byId = {};
+    opts.forEach(function (o) {
+      byId[String(o.id || '')] = o;
+    });
+    var groups = [];
+    var seen = {};
+    CURSOR_SLOT_GROUPS.forEach(function (g) {
+      var list = [];
+      (g.slots || []).forEach(function (sid) {
+        var o = byId[sid];
+        if (!o || seen[sid]) return;
+        seen[sid] = 1;
+        list.push(o);
+      });
+      if (list.length) {
+        groups.push({ id: g.id, label: cursorSlotGroupLabel(g), options: list });
+      }
+    });
+    var orphan = [];
+    opts.forEach(function (o) {
+      var sid = String(o.id || '');
+      if (!sid || seen[sid]) return;
+      orphan.push(o);
+    });
+    if (orphan.length) {
+      groups.push({
+        id: 'other',
+        label: lang().indexOf('en') === 0 ? 'Other' : '其他',
+        options: orphan
+      });
+    }
+    return groups;
+  }
+
   function fillLayoutKeySlotSelect(sel, m, currentId) {
     if (!sel) return;
     sel.innerHTML = '';
@@ -9726,12 +9856,22 @@
     unbound.value = '';
     unbound.textContent = t('codexMicroPadUnbound', '未绑定');
     sel.appendChild(unbound);
-    allSlotOptions(m).forEach(function (o) {
-      var opt = document.createElement('option');
-      opt.value = o.id;
-      opt.textContent = o.label || o.id;
-      if (o.tip) opt.title = o.tip;
-      sel.appendChild(opt);
+    var groups = slotOptionsGrouped(m);
+    groups.forEach(function (g) {
+      var parent = sel;
+      if (g.label && isCursorSoftPadMapping(m)) {
+        var og = document.createElement('optgroup');
+        og.label = g.label;
+        sel.appendChild(og);
+        parent = og;
+      }
+      (g.options || []).forEach(function (o) {
+        var opt = document.createElement('option');
+        opt.value = o.id;
+        opt.textContent = o.label || o.id;
+        if (o.tip) opt.title = o.tip;
+        parent.appendChild(opt);
+      });
     });
     sel.value = String(currentId || '');
   }
@@ -10038,7 +10178,8 @@
       host.appendChild(pickBtn);
     }
     var opts = allSlotOptions(m).concat([{ id: '', label: '' }]);
-    opts.forEach(function (o) {
+    var cursorGrouped = isCursorSoftPadMapping(m);
+    var renderCapCard = function (o) {
       var id = String(o.id || '');
       var copy = capabilityCardCopy(id, m);
       var iconId = iconIdForCapabilitySlot(id);
@@ -10080,7 +10221,22 @@
         if (String(editDraft.slotId || '') === id) opt.selected = true;
         slotSel.appendChild(opt);
       }
-    });
+    };
+    if (cursorGrouped) {
+      // Unbound on top, then section headers + cards.
+      renderCapCard({ id: '', label: '' });
+      slotOptionsGrouped(m).forEach(function (g) {
+        if (!g.options || !g.options.length) return;
+        var head = document.createElement('div');
+        head.className = 'micro-hw-modal__cap-group';
+        head.textContent = g.label || '';
+        head.setAttribute('role', 'presentation');
+        host.appendChild(head);
+        g.options.forEach(renderCapCard);
+      });
+    } else {
+      opts.forEach(renderCapCard);
+    }
     syncHiddenSlotSelect();
   }
 
@@ -11069,8 +11225,12 @@
     CODEX_SOFT_PAD_SLOT_IDS: CODEX_SOFT_PAD_SLOT_IDS,
     CURSOR_SOFT_PAD_SLOT_IDS: CURSOR_SOFT_PAD_SLOT_IDS,
     VSCODE_SOFT_PAD_SLOT_IDS: VSCODE_SOFT_PAD_SLOT_IDS,
+    CURSOR_SLOT_GROUPS: CURSOR_SLOT_GROUPS,
     SLOT_DEFAULT_ICON: SLOT_DEFAULT_ICON,
+    SLOT_WEAK_LEGACY_ICON: SLOT_WEAK_LEGACY_ICON,
+    ICON_SVG: ICON_SVG,
     allSlotOptions: allSlotOptions,
+    slotOptionsGrouped: slotOptionsGrouped,
     slotEffectTip: slotEffectTip,
     slotSourceTag: slotSourceTag,
     capabilityCardCopy: capabilityCardCopy,

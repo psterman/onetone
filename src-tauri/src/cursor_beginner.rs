@@ -62,7 +62,7 @@ pub const BEGINNER_SLOTS: &[BeginnerSlotDef] = &[
         slot_id: "newThread",
         action_id: "newThread",
         micro_key_id: "AG01",
-        icon_id: "fork",
+        icon_id: "messagePlus",
         label_zh: "新会话",
         voice_phrases: &["新会话", "新建"],
         tap_hold_ms: NEW_THREAD_HOLD_MS,
@@ -84,6 +84,10 @@ pub const DEFAULT_ARM_PHRASE: &str = "一声";
 /// Legacy default — still accepted until user changes the setting away from it.
 pub const LEGACY_ARM_PHRASE: &str = "小助手";
 pub const ARM_HINT: &str = "聆听中 · 可说：发送、继续、新建、麦克风、取消";
+/// Panel A secondary line — short operation flow (方案 A 次行).
+pub const FLOW_HINT: &str = "发送→右侧框+Enter · 取消→退出聆听并停生成";
+/// Soft Pad ACT08 / 口令「取消」also stop Cursor generation (same as provider cancel).
+pub const CANCEL_GENERATION_CHORD: &str = "Ctrl+Shift+Backspace";
 
 static ARM_PHRASE_CACHE: Mutex<String> = Mutex::new(String::new());
 
@@ -416,6 +420,15 @@ pub fn arm_hint(cfg: &VoiceConfig) -> String {
     }
 }
 
+/// Scheme A secondary line under the listen hint.
+pub fn flow_hint(cfg: &VoiceConfig) -> String {
+    if effective_armed(cfg) && probe_ok() {
+        FLOW_HINT.into()
+    } else {
+        String::new()
+    }
+}
+
 pub fn note_voice_activity() {
     let mut rt = runtime();
     rt.last_voice_at = Some(Instant::now());
@@ -620,13 +633,48 @@ pub fn run_slot(
             note_voice_activity();
         }
         crate::codex_micro_overlay::note_micro_key(def.micro_key_id, true);
-        disarm(state.as_ref(), &window.app_handle());
+        let app = window.app_handle();
+        disarm(state.as_ref(), &app);
+        // Restore cancel-generation: beginner used to remap ACT08 away from this chord.
+        let (duration_ms, mapping_id) = {
+            let cfg = state.cfg.lock();
+            (
+                cfg.key_press_duration_ms,
+                cursor_chat_mapping_id(&cfg).unwrap_or_default(),
+            )
+        };
+        let mut chord_ok = false;
+        #[cfg(windows)]
+        {
+            let _pad_pass = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app);
+            let mid = if mapping_id.is_empty() {
+                None
+            } else {
+                Some(mapping_id.as_str())
+            };
+            let _ = crate::agent::layer1_native::ensure_mapping_target_foreground(
+                state,
+                window,
+                mid,
+                true,
+            );
+            std::thread::sleep(std::time::Duration::from_millis(80));
+            chord_ok = crate::keyboard::send_chord(CANCEL_GENERATION_CHORD, duration_ms);
+            drop(_pad_pass);
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = duration_ms;
+        }
+        crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
         return serde_json::json!({
             "ok": true,
             "reason": "disarmed",
             "slotId": def.slot_id,
             "microKeyId": def.micro_key_id,
-            "mappingId": ""
+            "mappingId": mapping_id,
+            "cancelChord": CANCEL_GENERATION_CHORD,
+            "cancelChordOk": chord_ok
         });
     }
     if def.tap_hold_ms > 0 && !from_voice && !hold_confirmed {
@@ -745,6 +793,120 @@ pub fn run_slot(
             "message": if ok { format!("sent {commit_key}") } else { format!("failed {commit_key}") }
         });
     }
+    // 「继续」: same composer punch as send, then insert 继续/Continue + Enter.
+    if def.slot_id == "continue" {
+        crate::app_log::cursor_send_oplog(
+            "voice_or_pad_hit",
+            serde_json::json!({
+                "fromVoice": from_voice,
+                "slotId": def.slot_id,
+                "microKeyId": def.micro_key_id,
+                "mappingId": mapping_id,
+            }),
+        );
+        let _pad_pass = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app);
+        let focus_res =
+            app_chat_workflow::focus_composer_for_send(&app, CURSOR_APP_TARGET_ID, duration_ms);
+        let focused = focus_res.is_ok();
+        if let Err(err) = &focus_res {
+            crate::app_log::cursor_send_oplog(
+                "abort_no_commit",
+                serde_json::json!({
+                    "reason": "focus_failed",
+                    "err": format!("{err:?}"),
+                    "commitKeySent": false,
+                    "openKeySent": false,
+                    "slotId": "continue",
+                    "hint": "no insert/Enter — focus never verified on right Agent box",
+                }),
+            );
+            crate::app_log::log_line(
+                state.as_ref(),
+                "cursor_beginner",
+                &format!("continue focus failed err={err:?} (no Ctrl+I fallback)"),
+            );
+        }
+        if !focused {
+            return serde_json::json!({
+                "ok": false,
+                "reason": "focus_failed",
+                "message": "未能聚焦右侧 Agent 输入框，请先点一下对话框再说「继续」",
+                "slotId": def.slot_id,
+                "microKeyId": def.micro_key_id
+            });
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        let text = crate::agent::layer1_native::continue_prompt_text();
+        if let Err(e) = crate::agent::insert_text::insert_text_no_enter(text, duration_ms) {
+            crate::app_log::cursor_send_oplog(
+                "abort_no_commit",
+                serde_json::json!({
+                    "reason": "insert_failed",
+                    "err": format!("{e:?}"),
+                    "slotId": "continue",
+                    "text": text,
+                }),
+            );
+            drop(_pad_pass);
+            return serde_json::json!({
+                "ok": false,
+                "reason": e.as_reason(),
+                "message": format!("未能输入「{text}」"),
+                "slotId": def.slot_id,
+                "microKeyId": def.micro_key_id
+            });
+        }
+        std::thread::sleep(std::time::Duration::from_millis(60));
+        let commit_key = {
+            let cfg = state.cfg.lock();
+            let k = cfg.voice_end.commit_key.trim().to_string();
+            if k.is_empty() {
+                "Enter".into()
+            } else {
+                k
+            }
+        };
+        crate::app_log::cursor_send_oplog(
+            "commit_key_attempt",
+            serde_json::json!({
+                "commitKey": commit_key,
+                "durationMs": duration_ms,
+                "openKeySent": false,
+                "slotId": "continue",
+                "insertText": text,
+            }),
+        );
+        let ok = crate::keyboard::send_chord(&commit_key, duration_ms);
+        crate::app_log::cursor_send_oplog(
+            "done",
+            serde_json::json!({
+                "ok": ok,
+                "commitKey": commit_key,
+                "commitKeySent": ok,
+                "openKeySent": false,
+                "slotId": "continue",
+                "insertText": text,
+            }),
+        );
+        if from_voice {
+            note_voice_activity();
+        }
+        crate::codex_micro_overlay::note_micro_key(def.micro_key_id, true);
+        drop(_pad_pass);
+        crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        return serde_json::json!({
+            "ok": ok,
+            "reason": if ok { "executed" } else { "input_failed" },
+            "slotId": def.slot_id,
+            "microKeyId": def.micro_key_id,
+            "mappingId": mapping_id,
+            "message": if ok {
+                format!("continue sent {text}+{commit_key}")
+            } else {
+                format!("failed {commit_key} after {text}")
+            }
+        });
+    }
     if let Err(err) = app_chat_workflow::focus_composer_only(&app, CURSOR_APP_TARGET_ID, duration_ms)
     {
         crate::app_log::log_line(
@@ -809,6 +971,74 @@ pub fn run_slot(
         out["message"] = serde_json::Value::String(d);
     }
     out
+}
+
+/// Soft Pad「粘贴发送」: focus Agent composer → Ctrl+V → Enter (same punch as send).
+pub fn run_paste_and_send(state: &Arc<AppState>, window: &WebviewWindow) -> bool {
+    if !probe_ok() {
+        return false;
+    }
+    let app = window.app_handle();
+    let duration_ms = state.cfg.lock().key_press_duration_ms;
+    crate::app_log::cursor_send_oplog(
+        "voice_or_pad_hit",
+        serde_json::json!({ "slotId": "pasteAndSend" }),
+    );
+    let _pad_pass = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app);
+    if let Err(err) =
+        app_chat_workflow::focus_composer_for_send(&app, CURSOR_APP_TARGET_ID, duration_ms)
+    {
+        crate::app_log::cursor_send_oplog(
+            "abort_no_commit",
+            serde_json::json!({
+                "reason": "focus_failed",
+                "err": format!("{err:?}"),
+                "slotId": "pasteAndSend",
+            }),
+        );
+        return false;
+    }
+    std::thread::sleep(Duration::from_millis(100));
+    if !crate::keyboard::send_chord("Ctrl+V", duration_ms) {
+        crate::app_log::cursor_send_oplog(
+            "abort_no_commit",
+            serde_json::json!({
+                "reason": "paste_failed",
+                "slotId": "pasteAndSend",
+            }),
+        );
+        return false;
+    }
+    std::thread::sleep(Duration::from_millis(60));
+    let commit_key = {
+        let cfg = state.cfg.lock();
+        let k = cfg.voice_end.commit_key.trim().to_string();
+        if k.is_empty() {
+            "Enter".into()
+        } else {
+            k
+        }
+    };
+    crate::app_log::cursor_send_oplog(
+        "commit_key_attempt",
+        serde_json::json!({
+            "commitKey": commit_key,
+            "slotId": "pasteAndSend",
+            "pasted": true,
+        }),
+    );
+    let ok = crate::keyboard::send_chord(&commit_key, duration_ms);
+    crate::app_log::cursor_send_oplog(
+        "done",
+        serde_json::json!({
+            "ok": ok,
+            "commitKey": commit_key,
+            "slotId": "pasteAndSend",
+            "pasted": true,
+        }),
+    );
+    drop(_pad_pass);
+    ok
 }
 
 pub fn dispatch_voice_phrase(
@@ -905,7 +1135,15 @@ pub fn heal_cursor_beginner_pad_slots(m: &mut config::MappingEntry) -> bool {
             }
             changed = true;
         }
-        // ACT08: listen cancel (口令「取消」) — not Esc generation while Cursor beginner pad.
+        // AG01 newThread: migrate prior fork glyph once.
+        if route.micro_key_id == "AG01" && route.slot_id.trim() == "newThread" {
+            let icon = route.ui_icon_id.trim();
+            if icon.is_empty() || icon == "fork" {
+                route.ui_icon_id = "messagePlus".into();
+                changed = true;
+            }
+        }
+        // ACT08: cancelListen — disarm + Ctrl+Shift+Backspace (see run_slot).
         if route.micro_key_id == CANCEL_LISTEN_MICRO_KEY && route.slot_id.trim() != "cancelListen" {
             route.slot_id = "cancelListen".into();
             if route.ui_icon_id.trim().is_empty() {
@@ -1011,6 +1249,12 @@ mod tests {
             slot_for_micro_key(CANCEL_LISTEN_MICRO_KEY).map(|d| d.slot_id),
             Some("cancelListen")
         );
+        // Contract: cancel also stops Cursor generation (not disarm-only).
+        let src = include_str!("cursor_beginner.rs");
+        assert!(src.contains("CANCEL_GENERATION_CHORD"));
+        assert_eq!(CANCEL_GENERATION_CHORD, "Ctrl+Shift+Backspace");
+        assert!(FLOW_HINT.contains("发送→"));
+        assert!(FLOW_HINT.contains("取消→"));
     }
 
     #[test]
@@ -1029,6 +1273,43 @@ mod tests {
         assert!(workflow.contains("cursor_send_oplog"));
         let def = slot_def("stopOrSend").unwrap();
         assert_eq!(def.micro_key_id, "ACT12");
+    }
+
+    #[test]
+    fn continue_uses_send_focus_then_insert() {
+        // Contract: 「继续」shares focus_composer_for_send, then insert 继续 + Enter.
+        let src = include_str!("cursor_beginner.rs");
+        assert!(src.contains("slot_id == \"continue\""));
+        assert!(src.contains("continue_prompt_text"));
+        assert!(src.contains("insert_text_no_enter"));
+        // Dedicated branch must not fall through to focus_composer_only for continue.
+        let cont_at = src
+            .find("if def.slot_id == \"continue\"")
+            .expect("continue branch");
+        let next_generic = src[cont_at..]
+            .find("focus_composer_only")
+            .expect("generic focus after continue");
+        let cont_end = src[cont_at..]
+            .find("if let Err(err) = app_chat_workflow::focus_composer_only")
+            .expect("fallthrough focus_composer_only");
+        assert!(
+            next_generic >= cont_end,
+            "continue branch must not call focus_composer_only"
+        );
+        let def = slot_def("continue").unwrap();
+        assert_eq!(def.micro_key_id, "AG02");
+        assert_eq!(def.action_id, "agent.continue");
+    }
+
+    #[test]
+    fn paste_and_send_uses_send_focus_then_ctrl_v() {
+        let src = include_str!("cursor_beginner.rs");
+        assert!(src.contains("fn run_paste_and_send"));
+        assert!(src.contains("Ctrl+V"));
+        assert!(src.contains("focus_composer_for_send"));
+        let dispatch = include_str!("ipc/runtime_dispatch.rs");
+        assert!(dispatch.contains("pasteAndSend"));
+        assert!(dispatch.contains("run_paste_and_send"));
     }
 
     fn disarm_for_test() {

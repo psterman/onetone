@@ -538,7 +538,7 @@ pub fn execute_agent_respond(
     execute_commit_or_send(state, window, "input.send", "input.send")
 }
 
-fn continue_prompt_text() -> &'static str {
+pub(crate) fn continue_prompt_text() -> &'static str {
     #[cfg(windows)]
     {
         // PRIMARYLANGID(LANG_ENGLISH) == 0x09
