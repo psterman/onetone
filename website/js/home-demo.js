@@ -434,6 +434,109 @@
     }, { restartOnPlay: false });
   }
 
+  function initCameraTeaser(root) {
+    root = root || document;
+    const stage = root.querySelector("#hct-stage") || document.getElementById("hct-stage");
+    if (!stage) return { play: function () {}, pause: function () {}, cancel: function () {}, isRunning: false, onBeat: function () {} };
+
+    const codeEl = root.querySelector("#hct-code") || document.getElementById("hct-code");
+    const descEl = root.querySelector("#hct-desc") || document.getElementById("hct-desc");
+    const dotEl = root.querySelector("#hct-dot") || document.getElementById("hct-dot");
+    const labelEl = root.querySelector("#hct-label") || document.getElementById("hct-label");
+    const iconEl = root.querySelector("#hct-icon") || document.getElementById("hct-icon");
+    const modes = root.querySelectorAll("[data-hct-mode]");
+
+    const states = [
+      {
+        className: "state-blink",
+        icon: "ph-eye",
+        label: "眨眼",
+        code: "眨眼了",
+        desc: "长眨眼 → 开麦说话（接到语音模式）",
+        mode: "voice",
+      },
+      {
+        className: "state-shake",
+        icon: "ph-user",
+        label: "摇头",
+        code: "摇头了",
+        desc: "左右摇头 → 取消 / 切窗（按键态联动）",
+        mode: "keys",
+      },
+      {
+        className: "state-hand",
+        icon: "ph-hand-palm",
+        label: "举手",
+        code: "举手了",
+        desc: "张开手掌 → 暂停当前动作（可控 SoftPad）",
+        mode: "softpad",
+      },
+      {
+        className: "state-away",
+        icon: "",
+        label: "",
+        code: "人不在",
+        desc: "镜头前没人了，屏幕先帮你盖上。",
+        mode: null,
+      },
+    ];
+
+    function setModes(mode) {
+      modes.forEach(function (el) {
+        el.classList.toggle("is-on", mode != null && el.getAttribute("data-hct-mode") === mode);
+      });
+    }
+
+    function setIdle() {
+      stage.className = "hct-stage state-idle";
+      if (codeEl) {
+        codeEl.textContent = "看着你呢";
+        codeEl.classList.remove("is-live");
+      }
+      if (descEl) descEl.textContent = "做个小动作试试看…";
+      if (dotEl) dotEl.classList.add("is-idle");
+      if (labelEl) labelEl.textContent = "SEARCHING";
+      if (iconEl) iconEl.className = "ph ph-scan hct-target";
+      setModes(null);
+    }
+
+    function setCapture(state) {
+      stage.className = "hct-stage " + state.className;
+      if (codeEl) {
+        codeEl.textContent = state.code;
+        codeEl.classList.add("is-live");
+      }
+      if (descEl) descEl.textContent = state.desc;
+      if (dotEl) dotEl.classList.remove("is-idle");
+      if (state.className !== "state-away") {
+        if (labelEl) labelEl.textContent = state.label;
+        if (iconEl) iconEl.className = "ph " + state.icon + " hct-target";
+      }
+      setModes(state.mode);
+    }
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setIdle();
+      if (descEl) descEl.textContent = "眨眼、摇头、举手都能变成快捷键（静态预览）。";
+      return { play: function () {}, pause: function () {}, cancel: function () {}, isRunning: false, onBeat: function () {} };
+    }
+
+    let stateIndex = 0;
+    return createDemoHandle(async function (ctx) {
+      while (ctx.isActive()) {
+        // Lead with a capture beat so thrash/short views still show motion.
+        setCapture(states[stateIndex]);
+        ctx.beat();
+        await ctx.sleep(2600);
+        if (!ctx.isActive()) break;
+        setIdle();
+        await ctx.sleep(1400);
+        if (!ctx.isActive()) break;
+        stateIndex = (stateIndex + 1) % states.length;
+      }
+    }, { restartOnPlay: false });
+  }
+
   function initVoiceDemo(root) {
     root = root || document;
     const typed1 = root.querySelector("#ime-typed-1") || document.getElementById("ime-typed-1");
@@ -500,15 +603,36 @@
     const pillMini = root.querySelector("#pad-teaser-mini");
     if (!visual) return { play: function () {}, pause: function () {}, cancel: function () {}, isRunning: false, onBeat: function () {} };
 
+    const hotKeys = visual.querySelectorAll("[data-pad-hot]");
     let mini = false;
+    let hotIndex = 0;
+
+    function setHot(i) {
+      hotKeys.forEach(function (el, idx) {
+        el.classList.toggle("is-hot", idx === i);
+      });
+    }
+
     return createDemoHandle(async function (ctx) {
       while (ctx.isActive()) {
-        mini = !mini;
-        visual.classList.toggle("is-mini", mini);
-        if (pillFull) pillFull.classList.toggle("is-active", !mini);
-        if (pillMini) pillMini.classList.toggle("is-active", mini);
+        mini = false;
+        visual.classList.remove("is-mini");
+        if (pillFull) pillFull.classList.add("is-active");
+        if (pillMini) pillMini.classList.remove("is-active");
+        for (let n = 0; n < hotKeys.length && ctx.isActive(); n++) {
+          setHot(hotIndex);
+          hotIndex = (hotIndex + 1) % Math.max(hotKeys.length, 1);
+          ctx.beat();
+          await ctx.sleep(700);
+        }
+        if (!ctx.isActive()) break;
+
+        mini = true;
+        visual.classList.add("is-mini");
+        if (pillFull) pillFull.classList.remove("is-active");
+        if (pillMini) pillMini.classList.add("is-active");
         ctx.beat();
-        await ctx.sleep(mini ? 1800 : 2000);
+        await ctx.sleep(1800);
       }
     }, { restartOnPlay: false });
   }
@@ -538,14 +662,16 @@
     revealSections.forEach(function (s) { revealObs.observe(s); });
   }
 
-  const demos = { trigger: null, voice: null, softpad: null };
+  const demos = { trigger: null, camera: null, voice: null, softpad: null };
 
   function boot() {
     heroController = initHero();
     const triggerRoot = document.getElementById("ch-trigger") || document.getElementById("sec-chain");
+    const cameraRoot = document.getElementById("ch-camera");
     const voiceRoot = document.getElementById("ch-voice") || document.getElementById("sec-caps");
     const padRoot = document.getElementById("ch-softpad");
     if (triggerRoot) demos.trigger = initTriggerDemo(triggerRoot);
+    if (cameraRoot) demos.camera = initCameraTeaser(cameraRoot);
     if (voiceRoot) demos.voice = initVoiceDemo(voiceRoot);
     if (padRoot) demos.softpad = initSoftPadTeaser(padRoot);
     initTailReveal();
@@ -567,6 +693,7 @@
       if (heroController) heroController.destroyHero();
     },
     initTriggerDemo: initTriggerDemo,
+    initCameraTeaser: initCameraTeaser,
     initVoiceDemo: initVoiceDemo,
     initSoftPadTeaser: initSoftPadTeaser,
     getDemo: function (name) { return demos[name] || null; },

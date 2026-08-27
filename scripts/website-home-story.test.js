@@ -29,6 +29,7 @@ assert.match(indexHtml, /id="ch-trigger"[^>]*data-mood="light"/, "trigger mood l
 assert.match(indexHtml, /id="ch-voice"[^>]*data-mood="dark"/, "voice mood dark");
 assert.match(indexHtml, /id="ch-softpad"[^>]*data-mood="pad"/, "softpad mood pad");
 assert.match(indexHtml, /id="ch-trigger"/, "index has ch-trigger");
+assert.match(indexHtml, /id="ch-camera"/, "index has ch-camera");
 assert.match(indexHtml, /id="ch-voice"/, "index has ch-voice");
 assert.match(indexHtml, /id="ch-softpad"/, "index has ch-softpad");
 assert.match(indexHtml, /hero-exit-overlay/, "index has hero exit overlay");
@@ -37,6 +38,8 @@ assert.match(indexHtml, /home-story\.css/, "index loads home-story.css");
 assert.match(indexHtml, /id="ime-cancel-chip"/, "index has voice Esc cancel chip");
 assert.match(indexHtml, /story-bridge-in/, "index has ch-trigger bridge-in");
 assert.match(indexHtml, /story-bridge-out/, "index has in-chapter bridge-out");
+assert.match(indexHtml, /homeBridgeTriggerCamera/, "bridge trigger→camera");
+assert.match(indexHtml, /homeBridgeCameraVoice/, "bridge camera→voice");
 assert.doesNotMatch(indexHtml, /scroll-smooth/, "index has no scroll-smooth");
 assert.doesNotMatch(indexHtml, /id="sec-chain"/, "sec-chain removed");
 assert.doesNotMatch(indexHtml, /id="sec-caps"/, "sec-caps removed");
@@ -50,7 +53,17 @@ assert.match(indexHtml, /quickstart\.html#keys/, "trigger keys deep link");
 assert.match(indexHtml, /quickstart\.html#voice/, "voice deep link");
 assert.match(indexHtml, /homeChTriggerKeys/, "keys chip i18n");
 assert.match(indexHtml, /homeChVoiceLink/, "voice chip i18n");
+assert.match(indexHtml, /chapter-chip[\s\S]*ph-keyboard/, "keys chip has icon");
+assert.match(indexHtml, /chapter-chip[\s\S]*ph-squares-four/, "softpad chip has icon");
+assert.match(indexHtml, /pad-teaser-keys[\s\S]*pad-teaser-tall[\s\S]*pad-teaser-wide/, "softpad teaser is numpad layout");
+assert.match(homeStoryCss, /\.pad-teaser-key \{[\s\S]*linear-gradient\(180deg/, "softpad keys have keycap gradient");
+assert.match(homeDemo, /data-pad-hot/, "softpad demo cycles key press");
+assert.match(homeStoryCss, /\.chapter-chip \{[\s\S]*background:\s*#fff/, "chapter chip solid like download CTA");
 assert.match(indexHtml, /vision\.html/, "camera deep link");
+assert.match(indexHtml, /id="home-camera-teaser"/, "camera chapter has teaser card");
+assert.match(indexHtml, /id="ch-camera"[\s\S]*?id="home-camera-teaser"/, "camera teaser lives in ch-camera");
+assert.doesNotMatch(indexHtml, /chapter-demo-wrap--pair/, "no side-by-side pair wrap");
+assert.doesNotMatch(indexHtml, /chapter-chip--camera/, "camera not a sibling chip next to keys");
 assert.match(indexHtml, /agent\.html/, "softpad deep link");
 assert.match(indexHtml, /site-footer-features/, "footer features row");
 assert.match(indexHtml, /footerFeatures/, "footer features i18n");
@@ -61,6 +74,8 @@ assert.doesNotMatch(shellJs, /return "voice"|return "keys"|return "camera"|retur
 
 assert.match(i18n, /homeChTriggerKeys:/, "i18n homeChTriggerKeys");
 assert.match(i18n, /homeChVoiceLink:/, "i18n homeChVoiceLink");
+assert.match(i18n, /homeChCameraLink:/, "i18n homeChCameraLink");
+assert.match(i18n, /homeStoryCounter4:/, "i18n four-chapter counter");
 assert.match(i18n, /footerFeatures:/, "i18n footerFeatures");
 
 
@@ -68,6 +83,8 @@ var voiceSection = indexHtml.match(/id="ch-voice"[\s\S]*?<\/section>/);
 assert.ok(voiceSection && !/story-bridge-in/.test(voiceSection[0]), "ch-voice has no duplicate bridge-in");
 var padSection = indexHtml.match(/id="ch-softpad"[\s\S]*?<\/section>/);
 assert.ok(padSection && !/story-bridge-in/.test(padSection[0]), "ch-softpad has no duplicate bridge-in");
+var cameraSection = indexHtml.match(/id="ch-camera"[\s\S]*?<\/section>/);
+assert.ok(cameraSection && !/story-bridge-in/.test(cameraSection[0]), "ch-camera has no duplicate bridge-in");
 
 assert.match(protoHtml, /camera-rig-lens/, "prototype has camera-rig-lens");
 assert.match(protoHtml, /story-bridge-in/, "prototype has ch-trigger bridge-in");
@@ -75,6 +92,7 @@ assert.match(protoHtml, /story-bridge-in/, "prototype has ch-trigger bridge-in")
 assert.match(homeDemo, /OneToneHomeDemo/, "exports OneToneHomeDemo");
 assert.match(homeDemo, /pauseHero/, "exports pauseHero");
 assert.match(homeDemo, /isHeroIntroDone/, "exports isHeroIntroDone");
+assert.match(homeDemo, /initCameraTeaser/, "camera teaser demo");
 assert.match(homeDemo, /ime-cancel-chip/, "voice demo flashes Esc cancel");
 assert.match(homeDemo, /ime-typed-1/, "IME typed target kept for demo loop");
 assert.match(homeDemo, /onetone:home-demo-ready/, "dispatches demo ready event");
@@ -82,9 +100,12 @@ assert.match(homeDemo, /onetone:home-demo-ready/, "dispatches demo ready event")
 assert.match(homeGsap, /story-decoupled-mode/, "scheme B decoupled mode");
 assert.match(homeGsap, /initDemoIO/, "IO drives chapter demos");
 assert.match(homeGsap, /initReveals/, "IO reveals copy and bridge");
-assert.match(homeGsap, /threshold: 0\.35/, "demo IO threshold 0.35");
+assert.match(homeGsap, /"ch-camera"/, "gsap registers camera chapter");
+assert.match(homeGsap, /"camera"/, "gsap camera demo name");
+assert.match(homeGsap, /threshold: \[0, 0\.12/, "demo IO hysteresis thresholds");
 assert.match(homeGsap, /HERO_HARD_PAUSE = 0\.35/, "hero hard pause at 35%");
 assert.match(homeGsap, /resumeHero/, "hero resumes on scroll back");
+assert.match(homeStoryCss, /\.chapter-demo--camera/, "camera card css");
 assert.match(homeGsap, /buildHeroExitTimeline/, "hero exit timeline");
 assert.match(homeGsap, /bindBrandsHandoff/, "brands handoff ST");
 assert.match(homeGsap, /runBrandsHandoff/, "has brands handoff");
@@ -141,10 +162,13 @@ assert.doesNotMatch(homeStoryCss, /is-stack-visible/, "no pin stack visibility c
 
 var i18nKeys = [
   "homeStoryCounter1",
+  "homeStoryCounter4",
   "homeBridgeHero",
-  "homeBridgeTriggerVoice",
+  "homeBridgeTriggerCamera",
+  "homeBridgeCameraVoice",
   "homeBridgeVoicePad",
   "homeChTriggerQ",
+  "homeChCameraQ",
   "homeChVoiceQ",
   "homeChVoiceCancel",
   "homeChSoftpadQ",

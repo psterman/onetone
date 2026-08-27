@@ -4,13 +4,14 @@
   // Scheme B: no lens scrub. GSAP = hero + brands + rail + bridge words + voice chars.
   // Copy/bridge/demo = IO. Mood = shared #story-world data-mood.
 
-  var CHAPTERS = ["ch-trigger", "ch-voice", "ch-softpad"];
-  var CHAPTER_NAMES = ["trigger", "voice", "softpad"];
-  var COUNTER_KEYS = ["homeStoryCounter1", "homeStoryCounter2", "homeStoryCounter3"];
-  var COUNTER_FALLBACK = ["01 / 03", "02 / 03", "03 / 03"];
+  var CHAPTERS = ["ch-trigger", "ch-camera", "ch-voice", "ch-softpad"];
+  var CHAPTER_NAMES = ["trigger", "camera", "voice", "softpad"];
+  var COUNTER_KEYS = ["homeStoryCounter1", "homeStoryCounter2", "homeStoryCounter3", "homeStoryCounter4"];
+  var COUNTER_FALLBACK = ["01 / 04", "02 / 04", "03 / 04", "04 / 04"];
   var RAIL_TARGETS = [
     "#sec-hero",
     "#ch-trigger",
+    "#ch-camera",
     "#ch-voice",
     "#ch-softpad",
     "#sec-brands",
@@ -264,33 +265,44 @@
       if (!section) return;
       var name = CHAPTER_NAMES[i];
       var demo = getDemo(name);
-      if (!demo) return;
-
-      var target = section.querySelector(".chapter-demo") || section;
+      // Observe the lens (copy+demo), not the opacity-0 wrap — otherwise the card
+      // never hits threshold and stays invisible forever.
+      var target = section.querySelector(".camera-rig-lens") || section;
       var playing = false;
+      var leaveTimer = null;
 
       var io = new IntersectionObserver(
         function (entries) {
           entries.forEach(function (entry) {
-            if (entry.isIntersecting) {
+            // Hysteresis: enter easily, leave only when fully gone — prevents
+            // pause/play thrash that restarts demos at idle forever.
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.12) {
+              if (leaveTimer) {
+                window.clearTimeout(leaveTimer);
+                leaveTimer = null;
+              }
               section.classList.add("is-demo-visible", "is-story-active");
               setCounterIndex(i);
               if (section.dataset.mood) setStoryMood(section.dataset.mood);
-              if (!playing) {
+              if (demo && !playing) {
                 playing = true;
                 if (name === "voice" && demo.cancel) demo.cancel();
                 demo.play();
               }
-            } else {
-              section.classList.remove("is-demo-visible", "is-story-active");
-              if (playing) {
-                playing = false;
-                demo.pause();
-              }
+            } else if (!entry.isIntersecting || entry.intersectionRatio === 0) {
+              if (leaveTimer) window.clearTimeout(leaveTimer);
+              leaveTimer = window.setTimeout(function () {
+                leaveTimer = null;
+                section.classList.remove("is-demo-visible", "is-story-active");
+                if (demo && playing) {
+                  playing = false;
+                  demo.pause();
+                }
+              }, 280);
             }
           });
         },
-        { threshold: 0.35, rootMargin: "-5% 0px -5% 0px" }
+        { threshold: [0, 0.12, 0.25, 0.5], rootMargin: "0px 0px -8% 0px" }
       );
 
       io.observe(target);

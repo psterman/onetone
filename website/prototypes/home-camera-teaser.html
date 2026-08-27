@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>摄像头体态卡原型 — OneTone</title>
+  <link rel="icon" href="../assets/logo.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <link rel="stylesheet" href="home-camera-teaser.css">
+</head>
+<body class="hct-page">
+  <div class="hct-banner">
+    Phase 1 原型 · 对齐 vision.html 取景器
+    <a href="../vision.html">对照 vision</a>
+    ·
+    <a href="home-ia-compare.html">回 IA 对比</a>
+    ·
+    <a href="../index.html">首页</a>
+  </div>
+
+  <main class="hct-main">
+    <h1>摄像头体态卡</h1>
+    <p>
+      首页触发章候选视觉：精简版空间取景器循环（待机 → 眨眼开麦 → 摇头 → 举手 → 离席）。
+      底部 pill 示意「联动各模式」。验收通过后再并入 index 与按键卡并列。
+    </p>
+
+    <article class="hct-card" id="home-camera-teaser" aria-label="摄像头体态演示">
+      <header class="hct-card-head">
+        <p class="hct-eyebrow">体态也能开麦</p>
+        <div class="hct-status">
+          <span class="hct-dot is-idle" id="hct-dot" aria-hidden="true"></span>
+          <span>摄像头</span>
+        </div>
+      </header>
+
+      <div class="hct-stage state-idle" id="hct-stage">
+        <div class="hct-viewfinder">
+          <div class="hct-corner tl"></div>
+          <div class="hct-corner tr"></div>
+          <div class="hct-corner bl"></div>
+          <div class="hct-corner br"></div>
+          <div class="hct-scanline" aria-hidden="true"></div>
+          <div class="hct-label" id="hct-label">SEARCHING</div>
+          <i class="ph ph-scan hct-target" id="hct-icon" aria-hidden="true"></i>
+        </div>
+        <div class="hct-shield" aria-hidden="true">
+          <i class="ph-fill ph-lock-key"></i>
+          <span>SECURED</span>
+        </div>
+      </div>
+
+      <div class="hct-meta">
+        <p class="hct-code" id="hct-code">看着你呢</p>
+        <p class="hct-desc" id="hct-desc">做个小动作试试看…</p>
+        <div class="hct-modes" aria-label="联动模式">
+          <span class="hct-mode" data-hct-mode="voice">语音</span>
+          <span class="hct-mode" data-hct-mode="keys">按键态</span>
+          <span class="hct-mode" data-hct-mode="softpad">SoftPad</span>
+        </div>
+        <a class="hct-cta" href="../vision.html">
+          <i class="ph ph-camera" aria-hidden="true"></i>
+          了解摄像头
+        </a>
+      </div>
+    </article>
+  </main>
+
+  <script src="home-camera-teaser.js"></script>
+</body>
+</html>

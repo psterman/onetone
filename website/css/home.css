@@ -6,8 +6,16 @@
   overflow: hidden;
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
   padding-top: 64px;
+}
+
+.hero-inner {
+  width: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 .op-demo-wrap {
@@ -423,10 +431,10 @@
   }
 }
 
-/* Live status panel */
+/* Live status panel — reserved inside wrap so hero composition stays centered */
 .demo-status-panel {
   position: absolute;
-  right: -260px;
+  right: 0;
   top: 50%;
   transform: translateY(-50%) translateZ(40px);
   width: 240px;
@@ -439,6 +447,16 @@
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
   z-index: 30;
   transition: transform 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (min-width: 1024px) {
+  .op-demo-wrap {
+    padding-right: 220px;
+  }
+
+  .demo-status-panel {
+    right: 0;
+  }
 }
 
 .ds-header {
