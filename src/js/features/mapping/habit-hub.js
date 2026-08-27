@@ -194,6 +194,15 @@
     return Array.isArray(phrases)&&phrases.length?String(phrases[0]||'').trim():'';
   }
 
+  function isCursorHabitMapping(m){
+    return !!(m&&/cursor/i.test(String(m.appTargetId||'')));
+  }
+
+  function cursorArmPhraseFromCfg(cfg){
+    var p=String((cfg&&cfg.cursorBeginnerArmPhrase)||'').trim();
+    return p||'一声';
+  }
+
   function habitDescription(m,type,cfg,profile){
     var activation=primaryActivationPhrase(m,cfg);
     if(type==='app'){
@@ -1448,6 +1457,11 @@
       if(showActive) html+='<span class="habit-hub-card-active">'+esc(t('habitHubActiveBadge'))+'</span>';
       var activation=primaryActivationPhrase(m,cfg);
       if(activation) html+='<span class="habit-hub-card-wake" title="'+esc(t('habitHubDescWakePhrase'))+'">'+esc(activation)+'</span>';
+      if(isCursorHabitMapping(m)){
+        var arm=cursorArmPhraseFromCfg(cfg);
+        html+='<span class="habit-hub-card-arm" title="'+esc(t('habitHubCursorArmTip','Cursor 未在前台时，说这句进入聆听（不是全局唤醒词）'))+'">'+
+          esc(t('habitHubCursorArm','进入聆听：{p}').replace('{p}',arm))+'</span>';
+      }
     }
     html+='</span>';
     if(!renaming){

@@ -787,8 +787,8 @@ pub(crate) fn heal_cursor_plan_chord_if_legacy(m: &mut MappingEntry) -> bool {
     heal_slot_key_bindings(m, "plan", "zh-CN")
 }
 
-/// Align with FE `CURSOR_SOFT_PAD_SLOT_IDS` ???Codex slash insertOnly never on Cursor Soft Pad.
-fn cursor_soft_pad_slot_allowed(slot_id: &str) -> bool {
+/// Align with FE `CURSOR_SOFT_PAD_SLOT_IDS` — Codex slash insertOnly never on Cursor Soft Pad.
+pub(crate) fn cursor_soft_pad_slot_allowed(slot_id: &str) -> bool {
     matches!(
         slot_id.trim(),
         "summonCodex"

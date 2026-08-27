@@ -300,6 +300,12 @@
     if (!micEmpty && howto.micLabel) {
       voiceLines.push({ lbl: t('homeWbHowToMic'), val: String(howto.micLabel) });
     }
+    if (howto.cursorArmPhrase) {
+      voiceLines.unshift({
+        lbl: t('homeCursorArmMetaLbl', '进入聆听'),
+        val: String(howto.cursorArmPhrase),
+      });
+    }
 
     var keysLines = [];
     if (!keysEmpty && howto.finish && howto.finish !== '—') {

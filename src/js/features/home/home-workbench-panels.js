@@ -199,6 +199,13 @@
     if(m&&m.voiceOverride&&Array.isArray(m.voiceOverride.wakePhrases)&&m.voiceOverride.wakePhrases.length){
       wakeMain=String(m.voiceOverride.wakePhrases[0]||wakeMain);
     }
+    var cursorArmPhrase='';
+    if(m&&/cursor/i.test(String(m.appTargetId||''))){
+      try{
+        var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
+        cursorArmPhrase=String((cfg&&cfg.cursorBeginnerArmPhrase)||'').trim()||'一声';
+      }catch(_){ cursorArmPhrase='一声'; }
+    }
     var micEmpty=!vm||!vm.micLabel||vm.micLabel===t('homeLiveMicUnset')||vm.micLabel===t('homeLiveMicUnknown');
     var keysEmpty=!trig||trig==='—';
     var micLabel='';
@@ -212,6 +219,7 @@
       triggerKey:trig,
       finish:finish,
       wakeMain:wakeMain,
+      cursorArmPhrase:cursorArmPhrase,
       micEmpty:micEmpty,
       keysEmpty:keysEmpty,
       micLabel:micLabel

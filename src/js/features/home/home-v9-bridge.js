@@ -490,10 +490,17 @@
   function habitCardDescription(m,cfg){
     var profile=global.OneToneHabitProfile&&global.OneToneHabitProfile.project?global.OneToneHabitProfile.project(m,cfg):null;
     var type=profile&&profile.habitType||'keys';
-    if(type==='voice') return t('habitHubDescVoice');
-    if(type==='app') return t('habitHubDescApp');
-    if(type==='combo') return t('habitHubDescKeysShort')+' + '+t('habitHubDescVoiceShort');
-    return global.OneToneHomeScheme.pairLine(m);
+    var base='';
+    if(type==='voice') base=t('habitHubDescVoice');
+    else if(type==='app') base=t('habitHubDescApp');
+    else if(type==='combo') base=t('habitHubDescKeysShort')+' + '+t('habitHubDescVoiceShort');
+    else base=global.OneToneHomeScheme.pairLine(m);
+    if(m&&/cursor/i.test(String(m.appTargetId||''))){
+      var arm=String((cfg&&cfg.cursorBeginnerArmPhrase)||'').trim()||'一声';
+      var armLbl=t('habitHubCursorArm','进入聆听：{p}').replace('{p}',arm);
+      return base&&base!=='—'?(base+' · '+armLbl):armLbl;
+    }
+    return base;
   }
 
   function mapVp9State(summary,hs){

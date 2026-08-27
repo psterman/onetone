@@ -667,6 +667,9 @@ pub struct CodexMicroOverlaySnapshot {
     /// Dictation timeout budget for mini countdown.
     #[serde(default)]
     pub activation_hub_timeout_ms: u64,
+    /// Soft Pad uncommon voice pending (3s countdown confirm).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pending_confirm: Option<crate::soft_pad_voice_pending::SoftPadVoicePendingPublic>,
 }
 
 /// One checklist row for overlay AG / status-light diagnose.
@@ -2469,6 +2472,7 @@ pub fn build_snapshot(state: &AppState) -> CodexMicroOverlaySnapshot {
     let mut snapshot = build_snapshot_from_cfg(&cfg);
     apply_voice_heard(&mut snapshot, state);
     apply_activation_hub(&mut snapshot, state, &cfg);
+    snapshot.pending_confirm = crate::soft_pad_voice_pending::public_snapshot();
     if let Some(reason) = overlay_runtime_gate_reason(state) {
         snapshot.visible = false;
         snapshot.visible_reason = reason.to_string();
@@ -2864,6 +2868,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             activation_hub_active: false,
             activation_hub_started_at_ms: 0,
             activation_hub_timeout_ms: 0,
+            pending_confirm: None,
         };
     };
 
@@ -3418,6 +3423,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         activation_hub_active: false,
         activation_hub_started_at_ms: 0,
         activation_hub_timeout_ms: 0,
+        pending_confirm: None,
     }
 }
 

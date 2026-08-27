@@ -71,6 +71,7 @@ mod send_guard;
 mod soft_pad_purpose;
 mod agent_lane;
 mod soft_pad_runtime;
+mod soft_pad_voice_pending;
 mod state;
 mod test_pulse;
 pub mod time_machine;

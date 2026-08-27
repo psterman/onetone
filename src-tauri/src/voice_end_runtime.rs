@@ -396,7 +396,7 @@ fn try_dispatch_agent_voice(
     matched_phrase: &str,
 ) -> Option<VoiceWakeDispatchResult> {
     let window = crate::ipc::get_main_window(app)?;
-    let (mapping_id, action_id, slot_id, _provider_id, _execution_mode, _activation_scope) = {
+    let (mapping_id, action_id, slot_id, _provider_id, _execution_mode, _activation_scope, is_cursor) = {
         let cfg = state.cfg.lock();
         let mut found = None;
         for m in cfg.mappings.iter().filter(|m| m.enabled) {
@@ -406,6 +406,8 @@ fn try_dispatch_agent_voice(
                 } else {
                     m.agent_provider_id.clone()
                 };
+                let is_cursor = m.app_target_id.trim()
+                    == crate::app_chat_workflow::CURSOR_APP_TARGET_ID;
                 found = Some((
                     m.id.clone(),
                     b.action_id.clone(),
@@ -413,12 +415,39 @@ fn try_dispatch_agent_voice(
                     provider,
                     b.execution_mode.clone(),
                     b.activation_scope.clone(),
+                    is_cursor,
                 ));
                 break;
             }
         }
         found?
     };
+    // Cursor Soft Pad uncommon voice → 3s countdown confirm (not Soft Pad key taps).
+    if is_cursor
+        && crate::soft_pad_voice_pending::should_defer_voice(&slot_id, &action_id)
+    {
+        crate::soft_pad_voice_pending::insert_pending(
+            state,
+            app,
+            &mapping_id,
+            &slot_id,
+            &action_id,
+        );
+        crate::app_log::log_line(
+            state.as_ref(),
+            "soft_pad_voice_pending",
+            &format!(
+                "deferred phrase={matched_phrase} slot={slot_id} action={action_id}"
+            ),
+        );
+        return Some(VoiceWakeDispatchResult {
+            ok: true,
+            target_key: matched_phrase.to_string(),
+            mapping_id,
+            used_summon_workflow: false,
+            runtime_label: format!("soft_pad_voice_pending:{}", action_id),
+        });
+    }
     let result = crate::agent::dispatch::dispatch_semantic_action_ids(
         state,
         &window,

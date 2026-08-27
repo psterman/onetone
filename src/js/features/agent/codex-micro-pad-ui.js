@@ -436,7 +436,8 @@
     });
     el.addEventListener('contextmenu', function (e) {
       e.preventDefault();
-      openEditKeycap(m, id);
+      if (softPadPanelActive()) softPadPreviewEditKey(m, id);
+      else openEditKeycap(m, id);
     });
   }
 
@@ -3508,13 +3509,25 @@
   function renderAgentLightRow(agent, label, pad) {
     var on = agentLightEnabledOnPad(pad, agent);
     var icon = agentLightIconSrc(agent);
+    var fg = String(hubSelectedScopeKind() || '').toLowerCase() === String(agent || '').toLowerCase();
+    var Conn = global.OneToneSoftPadConnect;
+    var pill = Conn && Conn.renderPhasePillHtml
+      ? Conn.renderPhasePillHtml('unknown')
+      : '';
     return (
-      '<div class="soft-pad-agent-light-row" data-agent-light-row="' + esc(agent) + '">' +
+      '<div class="soft-pad-agent-light-row' + (fg ? ' is-fg' : '') +
+      '" data-agent-light-row="' + esc(agent) + '"' +
+      (fg ? ' data-connect-fg="1"' : '') + '>' +
       '<span class="soft-pad-agent-light-row__chip" data-agent="' + esc(agent) + '" data-status="idle">' +
       '<img src="' + esc(icon) + '" alt="" width="16" height="16" aria-hidden="true">' +
       '<i class="soft-pad-agent-light-row__dot" aria-hidden="true"></i>' +
       '</span>' +
-      '<span class="soft-pad-agent-light-row__name">' + esc(label) + '</span>' +
+      '<span class="soft-pad-agent-light-row__name">' + esc(label) +
+      (fg ? (' <span class="soft-pad-connect-card__fg">' +
+        esc(t('softPadConnectFgBadge', '当前前台')) + '</span>') : '') +
+      '</span>' +
+      '<span class="soft-pad-agent-light-row__phase" data-connect-phase-host="' + esc(agent) + '">' +
+      pill + '</span>' +
       '<label class="soft-pad-agent-light-row__toggle">' +
       '<input type="checkbox" data-act="agent-light" data-agent="' + esc(agent) + '"' +
       (on ? ' checked' : '') +
@@ -3522,6 +3535,91 @@
       '</label>' +
       '<button type="button" class="codex-micro-pad__btn soft-pad-agent-light-row__cta" ' +
       'data-act="agent-light-connect" data-agent="' + esc(agent) + '" hidden></button>' +
+      '</div>'
+    );
+  }
+
+  function sortConnectAgentsForUi(agents, fgKind) {
+    fgKind = String(fgKind || '').toLowerCase();
+    return (agents || []).slice().sort(function (a, b) {
+      var al = String(a || '').toLowerCase();
+      var bl = String(b || '').toLowerCase();
+      var af = !!(fgKind && al === fgKind);
+      var bf = !!(fgKind && bl === fgKind);
+      if (af !== bf) return af ? -1 : 1;
+      var ai = TOPBAR_LIGHT_CANDIDATES.findIndex(function (c) {
+        return String(c.agent).toLowerCase() === al;
+      });
+      var bi = TOPBAR_LIGHT_CANDIDATES.findIndex(function (c) {
+        return String(c.agent).toLowerCase() === bl;
+      });
+      return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+    });
+  }
+
+  function labelForConnectAgent(agent) {
+    var i;
+    for (i = 0; i < TOPBAR_LIGHT_CANDIDATES.length; i++) {
+      if (TOPBAR_LIGHT_CANDIDATES[i].agent === agent) return TOPBAR_LIGHT_CANDIDATES[i].label;
+    }
+    return agent;
+  }
+
+  /** MiniMax-style connect cards for enabled topbar agents. */
+  function renderConnectStatusSectionHtml(pad, phaseByAgent) {
+    var Connect = global.OneToneSoftPadConnect;
+    if (!Connect || !Connect.renderExpandCardHtml) return '';
+    phaseByAgent = phaseByAgent || {};
+    var fg = '';
+    try { fg = String(hubSelectedScopeKind() || ''); } catch (_) {}
+    var enabled = TOPBAR_LIGHT_CANDIDATES.filter(function (c) {
+      return agentLightEnabledOnPad(pad, c.agent);
+    }).map(function (c) { return c.agent; });
+    if (!enabled.length) {
+      return (
+        '<div class="soft-pad-connect-section" data-connect-section="1">' +
+        '<p class="codex-pad-mgr__label">' +
+        esc(t('softPadConnectSectionTitle', '状态连接')) + '</p>' +
+        '<p class="codex-pad-mgr__hint">' +
+        esc(t('softPadConnectSectionEmpty',
+          '在上方添加 Agent 灯后，可在此查看接入状态并一键安装 hooks。')) +
+        '</p></div>'
+      );
+    }
+    enabled = sortConnectAgentsForUi(enabled, fg);
+    var cards = enabled.map(function (agent) {
+      var entry = phaseByAgent[agent] || phaseByAgent[String(agent).toLowerCase()] || {};
+      var phase = entry.phase || 'unknown';
+      var isFg = fg && String(agent).toLowerCase() === String(fg).toLowerCase();
+      var force = !!(entry.forceExpand || connectExpandOverride[agent]);
+      if (!Connect.needsAction(phase) && !isFg && !force) {
+        return (
+          '<div class="soft-pad-connect-strip" data-connect-strip="' + esc(agent) +
+          '" data-connect-phase="' + esc(phase) + '">' +
+          '<span class="soft-pad-connect-strip__name">' + esc(labelForConnectAgent(agent)) + '</span>' +
+          Connect.renderPhasePillHtml(phase) +
+          '<button type="button" class="codex-micro-pad__btn soft-pad-connect-strip__btn" ' +
+          'data-act="connect-expand" data-agent="' + esc(agent) + '">' +
+          esc(t('softPadConnectExpand', '详情')) + '</button></div>'
+        );
+      }
+      return Connect.renderExpandCardHtml({
+        kind: agent,
+        label: labelForConnectAgent(agent),
+        phase: phase,
+        status: entry.status || null,
+        isFg: !!isFg
+      });
+    }).join('');
+    return (
+      '<div class="soft-pad-connect-section" data-connect-section="1">' +
+      '<p class="codex-pad-mgr__label">' +
+      esc(t('softPadConnectSectionTitle', '状态连接')) + '</p>' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t('softPadConnectSectionLead',
+        '像额度监视一样：看状态 → 未接入就确认安装 → 装完持续监视灯。')) +
+      '</p>' +
+      '<div class="soft-pad-connect-section__list" data-connect-list="1">' + cards + '</div>' +
       '</div>'
     );
   }
@@ -3916,6 +4014,7 @@
       esc(t('softPadTopbarQuotaLbl', 'API 额度候补')) + '</p>' +
       '<div class="soft-pad-topbar-light-active-list" data-topbar-quota-list role="list"></div>' +
       renderQuotaKeyCardHtml() +
+      '<div data-connect-host="1">' + renderConnectStatusSectionHtml(pad, {}) + '</div>' +
       addHtml +
       '<p class="codex-pad-mgr__hint soft-pad-agent-light-legend">' +
       esc(t('softPadAgentLightsLegend',
@@ -3995,6 +4094,7 @@
         return renderAgentLightRow(spec.agent, spec.label, pad);
       }).join('') +
       '</div>' +
+      '<div data-connect-host="1">' + renderConnectStatusSectionHtml(pad, {}) + '</div>' +
       '<p class="codex-pad-mgr__hint soft-pad-agent-light-legend">' +
       esc(t('softPadAgentLightsLegend',
         '灰=空闲 · 蓝=忙 · 琥珀=等你 · 绿=完成 · 红=失败')) +
@@ -4241,10 +4341,45 @@
     }
   }
 
-  var agentLightsHookCache = { claude: null, cursor: null, workbuddy: null, traeCode: null, qoder: null };
+  function paintConnectPhasePill(root, agent, phase) {
+    if (!root) return;
+    var Conn = global.OneToneSoftPadConnect;
+    if (!Conn || !Conn.renderPhasePillHtml) return;
+    var host = root.querySelector('[data-connect-phase-host="' + agent + '"]');
+    if (!host) return;
+    host.innerHTML = Conn.renderPhasePillHtml(phase || 'unknown');
+  }
+
+  function paintConnectStatusSection(root, pad, phaseByAgent) {
+    if (!root) return;
+    var host = root.querySelector('[data-connect-host]');
+    if (!host) return;
+    host.innerHTML = renderConnectStatusSectionHtml(pad, phaseByAgent || {});
+    bindConnectStatusCardEvents(root, null, pad);
+  }
+
+  var agentLightsHookCache = {
+    codex: null,
+    claude: null,
+    cursor: null,
+    workbuddy: null,
+    traeCode: null,
+    qoder: null,
+    gemini: null,
+    copilotCli: null,
+    cline: null,
+    roo: null,
+    opencode: null,
+    aider: null
+  };
+  var connectExpandOverride = Object.create(null);
 
   function shellHookConnectNeeded(kind, st) {
-    kind = String(kind || '').toLowerCase();
+    var Conn = global.OneToneSoftPadConnect;
+    if (Conn && Conn.phaseOf) {
+      var ph = Conn.phaseOf(kind, st, {});
+      return Conn.needsAction(ph);
+    }
     st = st || {};
     if (st.probeExists === false) return true;
     if (st.onetoneConfigured) return false;
@@ -4258,130 +4393,270 @@
     var panel = root.querySelector('[data-topbar-lights-panel]') ||
       root.querySelector('[data-agent-lights-picker]') ||
       (root.getAttribute && root.getAttribute('data-topbar-lights-panel') ? root : null);
-    var scope = panel || root;
-    var empty = scope.querySelector('[data-topbar-lights-empty]') ||
-      scope.querySelector('[data-agent-lights-empty]');
+    var scopeEl = panel || root;
+    var empty = scopeEl.querySelector('[data-topbar-lights-empty]') ||
+      scopeEl.querySelector('[data-agent-lights-empty]');
     if (empty) {
       var any = TOPBAR_LIGHT_CANDIDATES.some(function (spec) {
         return agentLightEnabledOnPad(pad, spec.agent);
       });
       empty.hidden = !!any;
     }
+    var Conn = global.OneToneSoftPadConnect;
+
+    function attnLightFor(attn, kind) {
+      kind = String(kind || '').toLowerCase();
+      var rows = (attn && (attn.rows || attn.agents)) || [];
+      var i;
+      for (i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        if (!r) continue;
+        var a = String(r.agent || r.kind || '').toLowerCase();
+        if (a === kind) return String(r.state || r.status || 'idle').toLowerCase();
+      }
+      return 'idle';
+    }
+
+    function stateFor(attn, kind) {
+      if (!agentLightEnabledOnPad(pad, kind)) return 'idle';
+      var st = attnLightFor(attn, kind);
+      if (st === 'working') return 'running';
+      if (st === 'needs_input' || st === 'needsinput') return 'needs_input';
+      if (st === 'complete' || st === 'done') return 'done';
+      if (st === 'error' || st === 'failed') return 'failed';
+      return st || 'idle';
+    }
+
+    function buildPhaseMap(attn) {
+      var map = {};
+      TOPBAR_LIGHT_CANDIDATES.forEach(function (spec) {
+        var agent = spec.agent;
+        var st = agentLightsHookCache[agent] ||
+          agentLightsHookCache[String(agent).toLowerCase()] || null;
+        var light = stateFor(attn, agent);
+        var phase = 'unknown';
+        if (Conn && Conn.phaseOf) {
+          phase = Conn.phaseOf(agent, st, {
+            lightStatus: light,
+            hasRecentEvent: light && light !== 'idle'
+          });
+        }
+        if (connectExpandOverride[agent]) {
+          // Force expand card even when watching.
+          map[agent] = { phase: phase, status: st, forceExpand: true };
+        } else {
+          map[agent] = { phase: phase, status: st };
+        }
+      });
+      return map;
+    }
+
     function paintFromCache(attn) {
       attn = attn || {};
-      var claude = agentLightsHookCache.claude || {};
-      var cursor = agentLightsHookCache.cursor || {};
-      function stateFor(kind) {
-        kind = String(kind || '');
-        var kindLow = kind.toLowerCase();
-        if (!agentLightEnabledOnPad(pad, kind)) return 'idle';
-        var rows = attn.rows || attn.agents || [];
-        var i;
-        for (i = 0; i < rows.length; i++) {
-          var r = rows[i];
-          if (!r) continue;
-          var a = String(r.agent || r.kind || '').toLowerCase();
-          if (a === kindLow || a === kind) {
-            var st = String(r.state || r.status || 'idle').toLowerCase();
-            if (st === 'working') return 'running';
-            if (st === 'needs_input' || st === 'needsinput') return 'needs_input';
-            if (st === 'complete' || st === 'done') return 'done';
-            if (st === 'error' || st === 'failed') return 'failed';
-            return st || 'idle';
-          }
+      var phaseMap = buildPhaseMap(attn);
+
+      function paintOne(agent, needLabel) {
+        var entry = phaseMap[agent] || {};
+        var phase = entry.phase || 'unknown';
+        var need = Conn ? Conn.needsAction(phase) : false;
+        var label = needLabel || t('softPadConnectInstallWatch', '确认接入并监视状态');
+        if (String(agent).toLowerCase() === 'cursor') {
+          label = t('softPadCursorConnect', '复制 Cursor Hook 配置');
         }
-        return 'idle';
+        paintAgentLightRowStatus(root, agent, stateFor(attn, agent), need, label);
+        paintTopbarPreviewChipStatus(root, agent, stateFor(attn, agent));
+        paintConnectPhasePill(root, agent, phase);
+        patchStatusLightsConnectRow(root, agent, need, label);
       }
-      var claudePhase = String(
-        claude.panelPhase || claude.panel_phase || claude.installPhase || claude.phase || ''
-      ).toLowerCase();
-      var claudeKnown = !!agentLightsHookCache.claude;
-      var cursorKnown = !!agentLightsHookCache.cursor;
-      var claudeNeed = claudeKnown && (
-        claudePhase === 'not_installed' || claudePhase === 'offline' ||
-        claudePhase === 'not-installed' || claudePhase === ''
-      );
-      var cursorReady = !!(cursor.tokenOk || cursor.token_ok || cursor.probeOk || cursor.probe_ok);
-      var cursorNeed = cursorKnown && !cursorReady;
-      paintAgentLightRowStatus(root, 'codex', stateFor('codex'), false, '');
-      paintTopbarPreviewChipStatus(root, 'codex', stateFor('codex'));
-      paintAgentLightRowStatus(
-        root,
-        'claude',
-        stateFor('claude'),
-        claudeNeed,
-        t('softPadClaudeConnect', '连接 Claude（写入 hooks）')
-      );
-      paintTopbarPreviewChipStatus(root, 'claude', stateFor('claude'));
-      paintAgentLightRowStatus(
-        root,
-        'cursor',
-        stateFor('cursor'),
-        cursorNeed,
-        t('softPadCursorConnect', '复制 Cursor Hook 配置')
-      );
-      paintTopbarPreviewChipStatus(root, 'cursor', stateFor('cursor'));
-      ['workbuddy', 'traeCode', 'qoder'].forEach(function (kind) {
-        var st = agentLightsHookCache[kind] || {};
-        var known = !!agentLightsHookCache[kind];
-        var need = known && shellHookConnectNeeded(kind, st);
-        var label = t('softPadShellHookInstall', '接入');
-        paintAgentLightRowStatus(root, kind, stateFor(kind), need, label);
-        paintTopbarPreviewChipStatus(root, kind, stateFor(kind));
-        patchStatusLightsConnectRow(root, kind, need, label);
+
+      paintOne('codex');
+      paintOne('claude', t('softPadClaudeConnect', '连接 Claude（写入 hooks）'));
+      paintOne('cursor', t('softPadCursorConnect', '复制 Cursor Hook 配置'));
+      ['workbuddy', 'traeCode', 'qoder', 'gemini', 'copilotCli', 'cline', 'roo', 'opencode', 'aider']
+        .forEach(function (kind) {
+          paintOne(kind, t('softPadShellHookInstall', '接入'));
+        });
+      paintOne('trae');
+      paintOne('minimax');
+      paintOne('windsurf');
+
+      Object.keys(connectExpandOverride).forEach(function (k) {
+        if (connectExpandOverride[k] && phaseMap[k]) phaseMap[k].forceExpand = true;
       });
-      paintAgentLightRowStatus(root, 'trae', stateFor('trae'), false, '');
-      paintTopbarPreviewChipStatus(root, 'trae', stateFor('trae'));
-      patchStatusLightsConnectRow(root, 'trae', false, '');
-      patchStatusLightsConnectRow(root, 'codex', false, '');
-      patchStatusLightsConnectRow(
-        root,
-        'claude',
-        claudeNeed,
-        t('softPadClaudeConnect', '连接 Claude（写入 hooks）')
-      );
-      patchStatusLightsConnectRow(
-        root,
-        'cursor',
-        cursorNeed,
-        t('softPadCursorConnect', '复制 Cursor Hook 配置')
-      );
+      paintConnectStatusSection(root, pad, phaseMap);
     }
+
     return padInvoke('cmd_agent_attention_snapshot', {}).catch(function () { return null; })
       .then(function (attn) {
         paintFromCache(attn);
         if (!opts.hooks) return { attn: attn };
-        var scope = hubSelectedScopeKind();
-        var hookTasks = [];
-        if (scope === 'claude' || !scope) {
-          hookTasks.push(padInvoke('cmd_claude_hook_setup_status', {}).catch(function () { return null; }));
-        }
-        if (scope === 'cursor' || !scope) {
-          hookTasks.push(padInvoke('cmd_cursor_hook_setup_status', {}).catch(function () { return null; }));
-        }
-        if (SHELL_HOOK_LIGHT_AGENTS[scope]) {
-          hookTasks.push(
-            padInvoke('cmd_shell_agent_hook_setup_status', { kind: scope }).catch(function () { return null; })
-          );
-        }
-        if (!hookTasks.length) return { attn: attn };
-        return Promise.all(hookTasks).then(function (results) {
-          var ri = 0;
-          if (scope === 'claude' || !scope) {
-            if (results[ri]) agentLightsHookCache.claude = results[ri];
-            ri++;
+        var fg = hubSelectedScopeKind();
+        var enabled = TOPBAR_LIGHT_CANDIDATES.filter(function (c) {
+          return agentLightEnabledOnPad(pad, c.agent);
+        }).map(function (c) { return c.agent; });
+        // Always refresh FG + enabled hook agents (cap to avoid storm).
+        var want = {};
+        enabled.forEach(function (a) { want[a] = true; });
+        if (fg) want[fg] = true;
+        ['codex', 'claude', 'cursor'].forEach(function (a) {
+          if (want[a] || !enabled.length) want[a] = true;
+        });
+
+        var tasks = [];
+        var keys = [];
+        Object.keys(want).forEach(function (agent) {
+          if (Conn && Conn.isSoloKind && Conn.isSoloKind(agent)) return;
+          if (Conn && Conn.isQuotaKind && Conn.isQuotaKind(agent)) return;
+          if (Conn && Conn.fetchStatus) {
+            keys.push(agent);
+            tasks.push(Conn.fetchStatus(agent).catch(function () { return null; }));
           }
-          if (scope === 'cursor' || !scope) {
-            if (results[ri]) agentLightsHookCache.cursor = results[ri];
-            ri++;
-          }
-          if (SHELL_HOOK_LIGHT_AGENTS[scope] && results[ri]) {
-            agentLightsHookCache[scope] = results[ri];
-          }
+        });
+        if (!tasks.length) return { attn: attn };
+        return Promise.all(tasks).then(function (results) {
+          results.forEach(function (st, i) {
+            if (st && keys[i]) agentLightsHookCache[keys[i]] = st;
+          });
           paintFromCache(attn);
           return { attn: attn };
         });
       });
+  }
+
+  function bindConnectStatusCardEvents(root, m, pad) {
+    if (!root) return;
+    var Conn = global.OneToneSoftPadConnect;
+    function refresh() {
+      return refreshAgentLightsPickerState(root, m, pad, { hooks: true });
+    }
+    root.querySelectorAll('[data-act="connect-expand"]').forEach(function (btn) {
+      if (btn.__connectBound) return;
+      btn.__connectBound = true;
+      btn.addEventListener('click', function () {
+        var agent = btn.getAttribute('data-agent') || '';
+        if (!agent) return;
+        connectExpandOverride[agent] = true;
+        refresh();
+      });
+    });
+    root.querySelectorAll('[data-act="connect-refresh"]').forEach(function (btn) {
+      if (btn.__connectBound) return;
+      btn.__connectBound = true;
+      btn.addEventListener('click', function () {
+        var agent = btn.getAttribute('data-agent') || '';
+        btn.disabled = true;
+        var p = Conn && Conn.fetchStatus
+          ? Conn.fetchStatus(agent).then(function (st) {
+            if (st) agentLightsHookCache[agent] = st;
+          })
+          : Promise.resolve();
+        p.finally(function () {
+          btn.disabled = false;
+          refresh();
+        });
+      });
+    });
+    root.querySelectorAll('[data-act="connect-install"]').forEach(function (btn) {
+      if (btn.__connectBound) return;
+      btn.__connectBound = true;
+      btn.addEventListener('click', function () {
+        var agent = btn.getAttribute('data-agent') || '';
+        if (!agent) return;
+        if (!window.confirm(t(
+          'softPadConnectInstallConfirm',
+          '将把 OneTone hooks 写入该 Agent 配置（会先备份）。继续？'
+        ))) return;
+        btn.disabled = true;
+        btn.textContent = t('softPadConnecting', '连接中…');
+        var run = Conn && Conn.installKind
+          ? Conn.installKind(agent)
+          : Promise.reject(new Error('no_connect'));
+        Promise.resolve(run).then(function (res) {
+          if (res && res.ok === false && res.manual) {
+            toast(t('softPadConnectManualOnly', '请使用复制配置完成接入'));
+            return;
+          }
+          toast(t('softPadConnectInstalled', '已接入 — 回 Agent 发一条消息以点亮状态'));
+          return Conn.fetchStatus(agent).then(function (st) {
+            if (st) agentLightsHookCache[agent] = st;
+          });
+        }).catch(function (err) {
+          toast(String(err && err.message || err || 'install_failed'));
+        }).finally(function () {
+          btn.disabled = false;
+          refresh();
+        });
+      });
+    });
+    root.querySelectorAll('[data-act="connect-copy"]').forEach(function (btn) {
+      if (btn.__connectBound) return;
+      btn.__connectBound = true;
+      btn.addEventListener('click', function () {
+        var agent = btn.getAttribute('data-agent') || 'cursor';
+        btn.disabled = true;
+        var cached = agentLightsHookCache[agent];
+        function runCopy(st) {
+          btn.disabled = false;
+          var text = (st && (st.mergePreview || st.merge_preview || st.previewCopy || st.draftJson || '')) || '';
+          if (!text) {
+            toast(t('cursorHookCopyFail', '无法生成 Cursor Hook 预览'));
+            return;
+          }
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(text).then(function () {
+                toast(t('cursorHookCopied', '已复制 Cursor Hook 合并预览（不会自动写入）'));
+              }).catch(function () {
+                toast(t('cursorHookCopyFail', '无法生成 Cursor Hook 预览'));
+              });
+            } else {
+              toast(t('cursorHookCopied', '已复制 Cursor Hook 合并预览（不会自动写入）'));
+            }
+          } catch (_) {
+            toast(t('cursorHookCopyFail', '无法生成 Cursor Hook 预览'));
+          }
+        }
+        if (cached && (cached.mergePreview || cached.merge_preview)) {
+          runCopy(cached);
+          return;
+        }
+        padInvoke('cmd_cursor_hook_setup_status', {}).then(function (st) {
+          if (st) agentLightsHookCache.cursor = st;
+          runCopy(st);
+        }).catch(function () {
+          btn.disabled = false;
+          toast(t('cursorHookCopyFail', '无法生成 Cursor Hook 预览'));
+        });
+      });
+    });
+    root.querySelectorAll('[data-act="connect-uninstall"]').forEach(function (btn) {
+      if (btn.__connectBound) return;
+      btn.__connectBound = true;
+      btn.addEventListener('click', function () {
+        var agent = btn.getAttribute('data-agent') || '';
+        if (!agent) return;
+        if (!window.confirm(t('softPadConnectUninstallConfirm', '撤回 OneTone 写入的 hooks？'))) return;
+        btn.disabled = true;
+        var run = Conn && Conn.uninstallKind
+          ? Conn.uninstallKind(agent)
+          : Promise.resolve({ ok: false });
+        Promise.resolve(run).then(function (res) {
+          if (res && res.ok === false && res.reason === 'codex_manual') {
+            toast(t('softPadConnectCodexUninstallManual', 'Codex 请手动编辑 hooks.json 移除 OneTone 段'));
+            return;
+          }
+          toast(t('softPadConnectUninstalled', '已撤回'));
+          return Conn.fetchStatus(agent).then(function (st) {
+            if (st) agentLightsHookCache[agent] = st;
+          });
+        }).catch(function (err) {
+          toast(String(err && err.message || err || 'uninstall_failed'));
+        }).finally(function () {
+          btn.disabled = false;
+          refresh();
+        });
+      });
+    });
   }
 
   function setAgentLightEnabled(m, agent, enabled) {
@@ -6236,11 +6511,29 @@
     }
     function openLayoutEditor() {
       paintSoftPadLayoutKeyPreviewForMapping(m, microKeyId);
-      openEditKeycap(m, microKeyId, {
-        mode: 'inline',
-        onSaved: function (mm) {
-          paintSoftPadLayoutKeyPreviewForMapping(mm || m, microKeyId);
-        }
+      var host = softPadLayoutEditorHost();
+      if (host) {
+        renderEditKeycapEditor(host, m, microKeyId, {
+          mode: 'inline',
+          onSaved: function (mm) {
+            paintSoftPadLayoutKeyPreviewForMapping(mm || m, microKeyId);
+          }
+        });
+        return;
+      }
+      // Host still mounting — one short retry, never open capability modal.
+      requestAnimationFrame(function () {
+        setTimeout(function () {
+          paintSoftPadLayoutKeyPreviewForMapping(m, microKeyId);
+          var host2 = softPadLayoutEditorHost();
+          if (!host2) return;
+          renderEditKeycapEditor(host2, m, microKeyId, {
+            mode: 'inline',
+            onSaved: function (mm) {
+              paintSoftPadLayoutKeyPreviewForMapping(mm || m, microKeyId);
+            }
+          });
+        }, 80);
       });
     }
     if (softPadPreviewOnLayout()) {
@@ -6469,9 +6762,13 @@
       var keyId = (pending.bindingRef && String(pending.bindingRef).indexOf('semantic:') !== 0)
         ? pending.bindingRef
         : 'F1';
-      // Prefill: open keycap editor if possible; else open shared picker.
+      // Prefill: Soft Pad → inline form; elsewhere keycap editor + optional semantic picker.
+      if (softPadPanelActive()) {
+        softPadPreviewEditKey(mapping, keyId);
+        return;
+      }
       if (typeof openEditKeycap === 'function') {
-        openEditKeycap(mapping, keyId, { mode: softPadPreviewOnLayout() ? 'inline' : 'modal' });
+        openEditKeycap(mapping, keyId, { mode: 'modal' });
       }
       if (global.OneToneSemanticActionPicker) {
         global.OneToneSemanticActionPicker.open({
@@ -7236,17 +7533,24 @@
     } catch (_) { armPhrase = '一声'; }
     var armRow = isCursor
       ? (
-        '<div class="soft-pad-runtime-arm" style="margin-top:12px">' +
-        '<p class="codex-pad-mgr__label">' + esc(t('softPadCursorArmPhraseLbl', '聆听激活口令')) + '</p>' +
-        '<div class="soft-pad-runtime-arm__row" style="display:flex;gap:8px;align-items:center">' +
-        '<input type="text" class="codex-pad-mgr__input" data-act="cursorArmPhrase" maxlength="12" value="' + esc(armPhrase) + '" ' +
-        'aria-label="' + esc(t('softPadCursorArmPhraseLbl', '聆听激活口令')) + '" style="flex:1;min-width:0">' +
+        '<article class="soft-pad-runtime-arm soft-pad-minimax-key" data-cursor-arm-card="1">' +
+        '<p class="codex-pad-mgr__label">' +
+        esc(t('softPadCursorArmSectionLbl', '聆听')) +
+        '</p>' +
+        '<p class="codex-pad-mgr__hint soft-pad-runtime-arm__lead">' +
+        esc(t('softPadCursorArmPhraseHint',
+          '未在 Cursor 前台时，说这句可手动进入聆听。默认「一声」。与语音页全局唤醒词无关。')) +
+        '</p>' +
+        '<p class="codex-pad-mgr__label soft-pad-runtime-arm__field-lbl">' +
+        esc(t('softPadCursorArmPhraseLbl', '聆听激活口令')) +
+        '</p>' +
+        '<div class="soft-pad-runtime-arm__row">' +
+        '<input type="text" class="soft-pad-runtime-arm__input" data-act="cursorArmPhrase" maxlength="12" value="' +
+        esc(armPhrase) + '" autocomplete="off" spellcheck="false" ' +
+        'aria-label="' + esc(t('softPadCursorArmPhraseLbl', '聆听激活口令')) + '">' +
         '<button type="button" class="codex-micro-pad__btn is-primary" data-act="cursorArmPhraseSave">' +
         esc(t('softPadCursorArmPhraseSave', '保存')) + '</button>' +
-        '</div>' +
-        '<p class="codex-pad-mgr__hint">' +
-        esc(t('softPadCursorArmPhraseHint', '未在 Cursor 前台时，说这句可手动进入聆听。默认「一声」。')) +
-        '</p></div>'
+        '</div></article>'
       )
       : '';
     container.innerHTML =
@@ -7258,8 +7562,8 @@
       '<p class="codex-pad-mgr__hint soft-pad-runtime-show__hint" data-show-mode-hint>' +
       esc(softPadShowModeHint(mode)) +
       '</p>' +
-      armRow +
-      '</div>';
+      '</div>' +
+      armRow;
     container.setAttribute('data-soft-pad-mapping', String(m.id || ''));
     container.setAttribute('data-soft-pad-panel', 'runtime');
     container.classList.remove('is-editing-key');
@@ -8074,6 +8378,10 @@
       });
     });
     fillTopbarQuotaChips(body, m, pad);
+    bindConnectStatusCardEvents(body, m, pad);
+    try {
+      refreshAgentLightsPickerState(body, m, pad, { hooks: true });
+    } catch (_) {}
   }
 
   function fillTopbarQuotaChips(body, m, pad) {
@@ -8981,6 +9289,7 @@
       btn.__softPadBound = true;
       btn.addEventListener('click', function () {
         var agent = btn.getAttribute('data-agent') || '';
+        var Conn = global.OneToneSoftPadConnect;
         if (agent === 'claude') {
           if (!window.confirm(t(
             'softPadClaudeConnectConfirm',
@@ -8989,7 +9298,33 @@
           btn.disabled = true;
           btn.textContent = t('softPadConnecting', '连接中…');
           confirmClaudeHookInstall().then(function () {
-            refreshAgentLightsPickerState(body, m, pad);
+            refreshAgentLightsPickerState(body, m, pad, { hooks: true });
+          }).finally(function () {
+            btn.disabled = false;
+          });
+          return;
+        }
+        if (agent === 'codex') {
+          if (!window.confirm(t(
+            'softPadConnectInstallConfirm',
+            '将把 OneTone hooks 写入该 Agent 配置（会先备份）。继续？'
+          ))) return;
+          btn.disabled = true;
+          btn.textContent = t('softPadConnecting', '连接中…');
+          var installCodex = Conn && Conn.installKind
+            ? Conn.installKind('codex')
+            : padInvoke('cmd_codex_hook_install_confirm', {});
+          Promise.resolve(installCodex).then(function () {
+            toast(t('softPadConnectInstalled', '已接入 — 回 Agent 发一条消息以点亮状态'));
+            return Conn && Conn.fetchStatus
+              ? Conn.fetchStatus('codex').then(function (st) {
+                if (st) agentLightsHookCache.codex = st;
+              })
+              : null;
+          }).then(function () {
+            refreshAgentLightsPickerState(body, m, pad, { hooks: true });
+          }).catch(function (err) {
+            toast(String(err && err.message || err || 'install_failed'));
           }).finally(function () {
             btn.disabled = false;
           });
@@ -9051,6 +9386,7 @@
         }
       });
     });
+    bindConnectStatusCardEvents(body, m, pad);
     var hookCopyBtn = body.querySelector('[data-act="hook-copy"]');
     if (hookCopyBtn && !hookCopyBtn.__softPadBound) {
       hookCopyBtn.__softPadBound = true;
@@ -9543,6 +9879,10 @@
           return;
         }
         if (mode === 'softPad' || mode === 'edit' || mode === 'config') {
+          if (softPadPanelActive()) {
+            softPadPreviewEditKey(m, nav);
+            return;
+          }
           openEditKeycap(m, nav);
           return;
         }
@@ -9577,10 +9917,14 @@
         return;
       }
       if (mode === 'softPad' || mode === 'edit' || mode === 'config') {
-        // Soft Pad / edit / config: click keycap → capability editor (restore prior design).
+        // Soft Pad settings: left preview + right form. Modal capability list only outside Soft Pad.
         if (id === 'JOY') { return; }
         el.addEventListener('click', function (e) {
           if (e.target && e.target.closest && e.target.closest('[data-act="pad-mode"]')) return;
+          if (softPadPanelActive()) {
+            softPadPreviewEditKey(m, id);
+            return;
+          }
           openEditKeycap(m, id);
         });
         return;
@@ -10555,10 +10899,14 @@
     opts = opts || {};
     ensurePad(m, { persist: false });
     var mode = opts.mode === 'inline' ? 'inline' : 'modal';
+    // Soft Pad settings: always left preview + right form — never capability modal.
+    if (softPadPanelActive() && mode !== 'inline') {
+      softPadPreviewEditKey(m, microKeyId);
+      return;
+    }
     if (mode === 'inline') {
       var layoutHost = softPadLayoutEditorHost();
-      if (!layoutHost) mode = 'modal';
-      else {
+      if (layoutHost) {
         renderEditKeycapEditor(layoutHost, m, microKeyId, {
           mode: 'inline',
           onClose: opts.onClose,
@@ -10566,6 +10914,27 @@
         });
         return;
       }
+      if (softPadPanelActive()) {
+        // Layout host not ready yet (subpage paint race) — wait, do not fall back to modal.
+        var Hub = global.OneToneSoftPadHub;
+        if (Hub && typeof Hub.getView === 'function' && Hub.getView() !== 'layout' &&
+            typeof Hub.openSubpage === 'function') {
+          Hub.openSubpage('layout', { fromUser: true, keyId: microKeyId });
+        }
+        requestAnimationFrame(function () {
+          setTimeout(function () {
+            var host2 = softPadLayoutEditorHost();
+            if (!host2) return;
+            renderEditKeycapEditor(host2, m, microKeyId, {
+              mode: 'inline',
+              onClose: opts.onClose,
+              onSaved: opts.onSaved
+            });
+          }, 80);
+        });
+        return;
+      }
+      mode = 'modal';
     }
     var modal = ensureEditModal();
     var card = modal.querySelector('.micro-hw-modal__card');

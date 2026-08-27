@@ -113,6 +113,12 @@
         <span class="overlay-mini-listen__cd" id="miniHubCountdown" hidden aria-hidden="true">—</span>
         <button type="button" class="overlay-mini-listen__cancel" id="miniHubCancel" data-act="hub-cancel" hidden>取消</button>
       </div>
+      <div class="soft-pad-confirm-bar" data-soft-pad-confirm hidden aria-live="polite">
+        <div class="soft-pad-confirm-bar__track" aria-hidden="true">
+          <div class="soft-pad-confirm-bar__fill"></div>
+        </div>
+        <span class="soft-pad-confirm-bar__label"></span>
+      </div>
       </div>
 
       <div class="overlay-full" id="overlayFull">
@@ -230,6 +236,12 @@
               <ol class="overlay-light-gate__list" id="overlayLightGateList"></ol>
               <p class="overlay-light-gate__hint" data-gate-hint></p>
             </details>
+            <div class="soft-pad-confirm-bar soft-pad-confirm-bar--pad" data-soft-pad-confirm hidden aria-live="polite">
+              <div class="soft-pad-confirm-bar__track" aria-hidden="true">
+                <div class="soft-pad-confirm-bar__fill"></div>
+              </div>
+              <span class="soft-pad-confirm-bar__label"></span>
+            </div>
           </div>
         </div>
         <div class="overlay-toast" id="overlayToast" aria-live="polite"></div>
@@ -2063,6 +2075,65 @@
       if(miniHubCancel) miniHubCancel.hidden=!hubOn;
     }
 
+    var softPadConfirmRaf=0;
+    var softPadConfirmUntil=0;
+    var softPadConfirmTotal=3000;
+    function stopSoftPadConfirmAnim(){
+      if(softPadConfirmRaf){
+        cancelAnimationFrame(softPadConfirmRaf);
+        softPadConfirmRaf=0;
+      }
+    }
+    function tickSoftPadConfirmBars(){
+      softPadConfirmRaf=0;
+      var bars=document.querySelectorAll('[data-soft-pad-confirm]');
+      if(!bars.length||softPadConfirmUntil<=0){
+        bars.forEach(function(bar){ bar.hidden=true; });
+        return;
+      }
+      var remain=Math.max(0, softPadConfirmUntil-Date.now());
+      var total=Math.max(1, softPadConfirmTotal);
+      var ratio=remain/total;
+      bars.forEach(function(bar){
+        var fill=bar.querySelector('.soft-pad-confirm-bar__fill');
+        if(fill) fill.style.transform='scaleX('+ratio.toFixed(4)+')';
+      });
+      if(remain>0){
+        softPadConfirmRaf=requestAnimationFrame(tickSoftPadConfirmBars);
+      }
+    }
+    /** Soft Pad uncommon voice pending: bottom strip + local progress. */
+    function applySoftPadConfirmBar(s){
+      var bars=document.querySelectorAll('[data-soft-pad-confirm]');
+      if(!bars.length) return;
+      var pc=(s&&(s.pendingConfirm||s.pending_confirm))||null;
+      var label=pc?String(pc.label||'').trim():'';
+      var remain=pc?Number(pc.remainMs!=null?pc.remainMs:pc.remain_ms)||0:0;
+      var total=pc?Number(pc.totalMs!=null?pc.totalMs:pc.total_ms)||3000:3000;
+      if(!pc||!label||remain<=0){
+        stopSoftPadConfirmAnim();
+        softPadConfirmUntil=0;
+        bars.forEach(function(bar){
+          bar.hidden=true;
+          var lab=bar.querySelector('.soft-pad-confirm-bar__label');
+          if(lab) lab.textContent='';
+        });
+        return;
+      }
+      softPadConfirmTotal=Math.max(1, total);
+      softPadConfirmUntil=Date.now()+remain;
+      var text='即将：'+label+' · 说取消可中止';
+      bars.forEach(function(bar){
+        bar.hidden=false;
+        var lab=bar.querySelector('.soft-pad-confirm-bar__label');
+        if(lab) lab.textContent=text;
+        var fill=bar.querySelector('.soft-pad-confirm-bar__fill');
+        if(fill) fill.style.transform='scaleX('+(remain/softPadConfirmTotal).toFixed(4)+')';
+      });
+      stopSoftPadConfirmAnim();
+      softPadConfirmRaf=requestAnimationFrame(tickSoftPadConfirmBars);
+    }
+
     function flashBeginnerVoiceHit(s){
       var active=String((s&&(s.activeMicroKeyId||s.active_micro_key_id))||'').trim();
       var matched=!!((s&&s.voiceHeardMatched)||(s&&s.voice_heard_matched));
@@ -2225,12 +2296,14 @@
       if(s&&(s.cursorBeginnerMode||s.cursor_beginner_mode)){
         applyCursorBeginnerMini(s);
         applyHubMini(s);
+        applySoftPadConfirmBar(s);
         return;
       }
       if(miniBeginnerActions) miniBeginnerActions.hidden=true;
       if(miniBeginnerHint) miniBeginnerHint.hidden=true;
       wrap.classList.remove('is-cursor-beginner','is-cursor-beginner-armed','is-cursor-beginner-listen');
       applyHubMini(s);
+      applySoftPadConfirmBar(s);
     }
 
     function touchAgentBarRecency(kind){

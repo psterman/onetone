@@ -2335,6 +2335,7 @@
     html[data-theme="dark"] .habit-hub-card--app .habit-hub-card-type{color:#fdba74;border-color:rgba(201,122,26,.28);background:rgba(201,122,26,.14)}
     html[data-theme="dark"] .habit-hub-card--combo .habit-hub-card-type{color:#d8b4fe;border-color:rgba(124,79,191,.28);background:rgba(124,79,191,.14)}
     html[data-theme="dark"] .habit-hub-card-wake{background:rgba(201,122,26,.14);color:#fdba74;border-color:rgba(201,122,26,.28)}
+    html[data-theme="dark"] .habit-hub-card-arm{background:rgba(56,189,248,.14);color:#7dd3fc;border-color:rgba(56,189,248,.32)}
     html[data-theme="dark"] .habit-hub-guide-close{background:rgba(28,38,54,.85)}
     html[data-theme="dark"] .scene-mode-badge.is-wake{background:rgba(201,122,26,.14);color:#fdba74;border-color:rgba(201,122,26,.28)}
 
@@ -3872,6 +3873,11 @@
     .habit-hub-card-wake{
       display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:999px;
       background:#fff4e8;color:#c97a1a;border:1px solid rgba(201,122,26,.18);
+      font-size:9px;font-weight:800;line-height:1;
+    }
+    .habit-hub-card-arm{
+      display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:999px;
+      background:rgba(62,184,220,.12);color:#0369a1;border:1px solid rgba(62,184,220,.28);
       font-size:9px;font-weight:800;line-height:1;
     }
     .habit-hub-card-desc{font-size:11px;line-height:1.4;color:var(--on-surface-muted)}

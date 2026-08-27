@@ -25,6 +25,9 @@ check('shell mounts layout-editor sibling', /soft-pad-layout-split[\s\S]*data-so
 check('softPadLayoutEditorHost returns node', pad.includes('function softPadLayoutEditorHost') &&
   /querySelector\('\[[^\]]*data-soft-pad-layout-editor[^\]]*\]'\)/.test(pad.slice(pad.indexOf('function softPadLayoutEditorHost'))));
 check('previewEdit uses inline', /function softPadPreviewEditKey[\s\S]*?mode:\s*'inline'/.test(pad));
+check('softPad panel never falls back to capability modal',
+  /Soft Pad settings: always left preview[\s\S]*never capability modal/.test(pad) &&
+  /softPadPanelActive\(\)[\s\S]*softPadPreviewEditKey\(m, id\)/.test(pad));
 check('inline HTML is four-field form', pad.includes('function buildLayoutKeyFormHtml') &&
   pad.includes('layoutKeySlot') && pad.includes('layoutKeyPhrases') &&
   pad.includes('layoutKeyChord') && pad.includes('layoutKeyFocus'));

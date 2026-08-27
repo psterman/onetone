@@ -803,8 +803,22 @@
       if(btn){ btn.disabled=true; btn.textContent=t('qsAiPreparing','正在准备…'); }
       AI.prepareKinds(route.selectedKinds,{ enableNumpad:route.softEnabledPreview===true }).then(function(res){
         route.prepareResults=res;
-        stopDemoTimer();
-        startCore('vibe');
+        var connectP = AI.connectSelectedKinds
+          ? AI.connectSelectedKinds(route.selectedKinds, {})
+          : Promise.resolve({ ok:true, results:[] });
+        return connectP.then(function(cres){
+          route.connectResults=cres;
+          if(cres && cres.cancelled){
+            /* user skipped hooks — Soft Pad still prepared */
+          }else if(cres && cres.results && cres.results.length && global.OneToneApp&&global.OneToneApp.toast){
+            var okN=cres.results.filter(function(r){return r.ok;}).length;
+            if(okN){
+              global.OneToneApp.toast(t('qsAiConnectDone','已接入 {n} 个工具 — 回 Agent 发一条消息点亮状态').replace('{n}',String(okN)));
+            }
+          }
+          stopDemoTimer();
+          startCore('vibe');
+        });
       }).catch(function(err){
         if(global.OneToneApp&&global.OneToneApp.toast){
           global.OneToneApp.toast(t('qsAiPrepareFail','准备失败：')+String(err&&err.message||err||''));

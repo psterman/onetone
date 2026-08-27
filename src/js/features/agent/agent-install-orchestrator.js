@@ -238,16 +238,72 @@
   function connectKind(kind) {
     kind = String(kind || '').toLowerCase();
     // Trae Work (trae) is SOLO / local activity — Hook install only for Trae Code.
-    if (kind === 'qoder' || kind === 'traecode' || kind === 'workbuddy') {
-      return invoke('cmd_shell_agent_hook_install_confirm', {
-        kind: kind === 'traecode' ? 'traeCode' : kind
-      });
+    if (kind === 'qoder' || kind === 'traecode' || kind === 'workbuddy' ||
+        kind === 'gemini' || kind === 'copilotcli' || kind === 'cline' ||
+        kind === 'roo' || kind === 'opencode' || kind === 'aider') {
+      var shellKind = kind === 'traecode' ? 'traeCode'
+        : (kind === 'copilotcli' ? 'copilotCli' : kind);
+      return invoke('cmd_shell_agent_hook_install_confirm', { kind: shellKind });
     }
     if (kind === 'claude') {
       return invoke('cmd_claude_hook_install_confirm');
     }
-    // Codex / Cursor: copy-only — return phase for UI.
+    if (kind === 'codex') {
+      return invoke('cmd_codex_hook_install_confirm');
+    }
+    // Cursor: copy-only — return phase for UI.
+    if (kind === 'cursor') {
+      return Promise.resolve({ ok: false, manual: true, kind: kind });
+    }
     return Promise.resolve({ ok: false, manual: true, kind: kind });
+  }
+
+  /**
+   * After Soft Pad prepare: confirm once, then one-click connect selected hook agents.
+   * Skips solo/quota/cursor-manual (cursor stays manual).
+   */
+  function connectSelectedKinds(kinds, opts) {
+    opts = opts || {};
+    kinds = (kinds || []).map(function (k) {
+      k = String(k || '').trim();
+      if (k.toLowerCase() === 'traecode') return 'traeCode';
+      if (k.toLowerCase() === 'copilotcli') return 'copilotCli';
+      return k;
+    }).filter(Boolean);
+    var Conn = global.OneToneSoftPadConnect;
+    var installable = kinds.filter(function (k) {
+      var low = String(k).toLowerCase();
+      if (low === 'cursor' || low === 'minimax' || low === 'trae' || low === 'windsurf') return false;
+      if (Conn && Conn.supportsHookInstall) return Conn.supportsHookInstall(k);
+      return low === 'claude' || low === 'codex' || low === 'workbuddy' || low === 'traecode' ||
+        low === 'qoder';
+    });
+    if (!installable.length) {
+      return Promise.resolve({ ok: true, results: [], skipped: kinds.slice() });
+    }
+    if (!opts.skipConfirm) {
+      var ok = true;
+      try {
+        ok = global.confirm(
+          t('qsAiConnectConfirm', '为已选工具写入 OneTone 状态 hooks（会先备份，可稍后撤回）。继续？')
+        );
+      } catch (_) {}
+      if (!ok) return Promise.resolve({ ok: false, cancelled: true, results: [] });
+    }
+    var results = [];
+    var chain = Promise.resolve();
+    installable.forEach(function (kind) {
+      chain = chain.then(function () {
+        return connectKind(kind).then(function (res) {
+          results.push({ kind: kind, ok: !(res && res.ok === false), res: res });
+        }).catch(function (err) {
+          results.push({ kind: kind, ok: false, error: String(err && err.message || err || '') });
+        });
+      });
+    });
+    return chain.then(function () {
+      return { ok: true, results: results };
+    });
   }
 
   function connectStatus(kind) {
@@ -404,6 +460,7 @@
     maybeAutoSeedAfterInventory: maybeAutoSeedAfterInventory,
     isMinimaxDetected: isMinimaxDetected,
     connectKind: connectKind,
+    connectSelectedKinds: connectSelectedKinds,
     connectStatus: connectStatus,
     phaseConnected: phaseConnected,
     findMappingForKind: findMappingForKind

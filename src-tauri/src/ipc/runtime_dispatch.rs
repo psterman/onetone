@@ -348,6 +348,20 @@ fn run_overlay_tap_action(
     exec_window: &tauri::WebviewWindow,
     route: &crate::codex_numpad_layer::CodexNumpadRouteSnapshot,
 ) -> bool {
+    let app = exec_window.app_handle();
+    // Soft Pad 取消键 clears uncommon-command countdown (voice pending).
+    if matches!(route.slot_id.trim(), "cancel" | "cancelListen")
+        || matches!(route.action_id.trim(), "cancel")
+    {
+        let _ = crate::soft_pad_voice_pending::cancel_pending(state.as_ref(), &app);
+    }
+    // Soft Pad 发送键 confirms pending uncommon voice action first.
+    if crate::soft_pad_voice_pending::has_pending()
+        && (route.slot_id.trim() == "stopOrSend"
+            || route.action_id.trim() == "stopOrSendDictation")
+    {
+        return crate::soft_pad_voice_pending::confirm_and_run(state, &app);
+    }
     // ENC 召回 / focusComposer: bring Codex + composer via workflow — never inject
     // Ctrl+Shift+P (that chord is not a stable summon and often hits the wrong app).
     if is_pad_summon_action(&route.action_id, &route.slot_id) {

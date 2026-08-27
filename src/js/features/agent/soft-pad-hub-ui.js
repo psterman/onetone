@@ -1286,14 +1286,8 @@
   function syncPadTabs() {
     var e = els();
     if (!e.padTabs) return;
-    var isUniversal = String(selectedScopeId || '') === SOFT_PAD_UNIVERSAL_KIND;
     e.padTabs.querySelectorAll('[data-pad-mode]').forEach(function (btn) {
       var mode = btn.getAttribute('data-pad-mode') || '';
-      if (isUniversal && mode === 'keys') {
-        btn.hidden = true;
-        btn.setAttribute('aria-hidden', 'true');
-        return;
-      }
       btn.hidden = false;
       btn.removeAttribute('aria-hidden');
       var on = softPadFace === 'pad' && mode === softPadPadMode;
@@ -1301,9 +1295,6 @@
       btn.setAttribute('aria-selected', on ? 'true' : 'false');
     });
     e.padTabs.setAttribute('data-pad-mode', softPadPadMode);
-    if (isUniversal && softPadPadMode === 'keys') {
-      setSoftPadPadMode('appear');
-    }
   }
 
   function resetSoftPadRouteToPadAppear() {

@@ -634,6 +634,8 @@ pub fn run_slot(
         }
         crate::codex_micro_overlay::note_micro_key(def.micro_key_id, true);
         let app = window.app_handle();
+        // Uncommon-command countdown: 「取消」clears pending without running it.
+        let _ = crate::soft_pad_voice_pending::cancel_pending(state.as_ref(), &app);
         disarm(state.as_ref(), &app);
         // Restore cancel-generation: beginner used to remap ACT08 away from this chord.
         let (duration_ms, mapping_id) = {
@@ -675,6 +677,22 @@ pub fn run_slot(
             "mappingId": mapping_id,
             "cancelChord": CANCEL_GENERATION_CHORD,
             "cancelChordOk": chord_ok
+        });
+    }
+    // Countdown confirm before probe: Soft Pad send / 「发送」commits pending first.
+    if def.slot_id == "stopOrSend" && crate::soft_pad_voice_pending::has_pending() {
+        let app = window.app_handle();
+        let ok = crate::soft_pad_voice_pending::confirm_and_run(state, &app);
+        if from_voice {
+            note_voice_activity();
+        }
+        crate::codex_micro_overlay::note_micro_key(def.micro_key_id, true);
+        crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        return serde_json::json!({
+            "ok": ok,
+            "reason": if ok { "pending_confirmed" } else { "pending_confirm_failed" },
+            "slotId": def.slot_id,
+            "microKeyId": def.micro_key_id
         });
     }
     if def.tap_hold_ms > 0 && !from_voice && !hold_confirmed {
