@@ -58,66 +58,81 @@
       <header class="qs-hero-head">
         <div class="qs-hero-badge qs-glass-card">
           <i class="ph-fill ph-keyboard text-mac-accent text-sm" aria-hidden="true"></i>
-          <span data-i18n="qsHeroKeysBadge">不用买键盘 · 现有设备就行</span>
+          <span data-i18n="qsHeroKeysBadge">外设、体态、迷你栏，都能指挥 Agent</span>
         </div>
         <h1 class="qs-hero-title">
-          <span data-i18n="qsHeroKeysTitleBefore">按一下，就能在 </span><span class="qs-hero-title-accent" data-i18n="qsHeroKeysTitleAccent">Cursor 里说</span>
+          <span data-i18n="qsHeroKeysTitleBefore">对着迷你栏，就能让 </span><span class="qs-hero-title-accent" data-i18n="qsHeroKeysTitleAccent">Agent 动手</span>
         </h1>
       </header>
 
       <div class="qs-hero-stage" id="qs-hero-stage">
         <canvas id="neural-canvas" aria-hidden="true"></canvas>
         <div class="qs-hero-node-layer" id="node-layer-keys">
-          <div class="qs-rich-node qs-glass-card" id="rn-kb" style="top: 18%; left: 16%;">
-            <div class="rn-icon-box"><i class="ph-fill ph-keyboard" aria-hidden="true"></i></div>
+          <div class="qs-rich-node qs-glass-card" id="rn-camera" style="top: 10%; left: 50%;">
+            <div class="rn-icon-box"><i class="ph-fill ph-camera" aria-hidden="true"></i></div>
             <div class="rn-info">
-              <span class="rn-name">快捷键</span>
-              <span class="rn-status"><span class="rn-dot"></span> Alt + 空格</span>
+              <span class="rn-name">摄像头</span>
+              <span class="rn-status"><span class="rn-dot"></span> 举手 / 摇头</span>
             </div>
           </div>
-          <div class="qs-rich-node qs-glass-card" id="rn-mouse" style="top: 18%; left: 84%;">
+          <div class="qs-rich-node qs-glass-card" id="rn-kb" style="top: 28%; left: 10%;">
+            <div class="rn-icon-box"><i class="ph-fill ph-keyboard" aria-hidden="true"></i></div>
+            <div class="rn-info">
+              <span class="rn-name">键盘</span>
+              <span class="rn-status"><span class="rn-dot"></span> 快捷键</span>
+            </div>
+          </div>
+          <div class="qs-rich-node qs-glass-card" id="rn-mouse" style="top: 28%; left: 90%;">
             <div class="rn-icon-box"><i class="ph-fill ph-mouse" aria-hidden="true"></i></div>
             <div class="rn-info">
-              <span class="rn-name">鼠标侧键</span>
+              <span class="rn-name">鼠标</span>
               <span class="rn-status"><span class="rn-dot"></span> 侧键</span>
             </div>
           </div>
-          <div class="qs-rich-node qs-glass-card" id="rn-gamepad" style="top: 82%; left: 14%;">
-            <div class="rn-icon-box"><i class="ph-fill ph-game-controller" aria-hidden="true"></i></div>
+          <div class="qs-rich-node qs-glass-card" id="rn-mic" style="top: 72%; left: 10%;">
+            <div class="rn-icon-box"><i class="ph-fill ph-microphone" aria-hidden="true"></i></div>
             <div class="rn-info">
-              <span class="rn-name">手柄</span>
-              <span class="rn-status"><span class="rn-dot"></span> 扳机</span>
+              <span class="rn-name">麦克风</span>
+              <span class="rn-status"><span class="rn-dot"></span> 语音</span>
             </div>
           </div>
-          <div class="qs-rich-node qs-glass-card" id="rn-ring" style="top: 82%; left: 86%;">
-            <div class="rn-icon-box"><i class="ph-fill ph-circle" aria-hidden="true"></i></div>
+          <div class="qs-rich-node qs-glass-card" id="rn-softpad" style="top: 72%; left: 90%;">
+            <div class="rn-icon-box"><i class="ph-fill ph-squares-four" aria-hidden="true"></i></div>
             <div class="rn-info">
-              <span class="rn-name">指环</span>
-              <span class="rn-status"><span class="rn-dot"></span> 点一下</span>
+              <span class="rn-name">SoftPad</span>
+              <span class="rn-status"><span class="rn-dot"></span> 迷你栏</span>
             </div>
           </div>
-          <div class="qs-rich-node qs-glass-card" id="rn-trackball" style="top: 88%; left: 50%;">
+          <div class="qs-rich-node qs-glass-card" id="rn-trackball" style="top: 90%; left: 50%;">
             <div class="rn-icon-box"><i class="ph-fill ph-target" aria-hidden="true"></i></div>
             <div class="rn-info">
               <span class="rn-name">轨迹球</span>
-              <span class="rn-status"><span class="rn-dot"></span> Fn 键</span>
+              <span class="rn-status"><span class="rn-dot"></span> Fn</span>
             </div>
           </div>
         </div>
         <div class="qs-rich-hub qs-glass-card" id="hn-hub">
-          <i class="ph-fill ph-microphone" id="hn-hub-icon" aria-hidden="true"></i>
+          <img class="qs-rich-hub-logo" src="assets/brands/cursor.png" alt="" width="40" height="40">
+          <i class="ph-fill ph-robot" id="hn-hub-icon" aria-hidden="true"></i>
         </div>
       </div>
 
-      <div class="qs-sleek-terminal qs-glass-card">
-        <div class="st-header">
-          <div class="st-title"><span class="st-dot" id="st-dot"></span> 演示日志</div>
-          <div class="st-code" id="st-code">待命</div>
+      <div class="qs-hero-minibar qs-glass-card" id="qs-hero-minibar">
+        <div class="qs-mini-row">
+          <span class="qs-mini-apps" aria-hidden="true">
+            <i class="ph-fill ph-robot"></i>
+            <i class="ph-fill ph-code"></i>
+            <i class="ph-fill ph-cursor"></i>
+          </span>
+          <span class="qs-mini-btns">
+            <button type="button" class="qs-mini-btn" data-mini-act="mic" aria-label="麦克风"><i class="ph-fill ph-microphone"></i></button>
+            <button type="button" class="qs-mini-btn" data-mini-act="send" aria-label="发送"><i class="ph-bold ph-arrow-right"></i></button>
+            <button type="button" class="qs-mini-btn" data-mini-act="continue" aria-label="继续"><i class="ph-bold ph-lightning"></i></button>
+            <button type="button" class="qs-mini-btn" data-mini-act="cancel" aria-label="取消"><i class="ph-bold ph-x"></i></button>
+          </span>
+          <span class="qs-mini-mic" data-mini-act="mic" aria-hidden="true"><i class="ph-fill ph-microphone"></i></span>
         </div>
-        <div class="st-body">
-          <div class="st-desc" id="st-desc">等着看你按哪个键…</div>
-          <div class="st-output"><span id="st-text"></span><span class="st-cursor" id="st-cursor"></span></div>
-        </div>
+        <p class="qs-mini-status" id="qs-mini-status">待命</p>
       </div>
     </div>
 
@@ -209,6 +224,13 @@
         <p data-i18n="heroSlogan">「小红书别再给我推299￥的vibecoding键盘了，穷是俺的问题」</p>
       </blockquote>
     </div>
+  </section>
+
+  <section class="qs-guide-video" id="qs-guide-video" aria-labelledby="qs-guide-video-title">
+    <h2 class="qs-guide-video-title" id="qs-guide-video-title" data-i18n="qsGuideVideoTitle">曾经……</h2>
+    <video class="qs-guide-video-el" controls playsinline muted loop autoplay preload="metadata" aria-label="OneTone vibe coding demo">
+      <source src="assets/videos/vibecoding-15s-hq.mp4" type="video/mp4">
+    </video>
   </section>
 
   <section id="qs-voice-command" class="qs-voice-command qs-zone" aria-label="语音指挥演示" hidden>

@@ -1056,19 +1056,16 @@
     let storyRunning = false;
 
     const hubEl = document.getElementById("hn-hub");
-    const hubIcon = document.getElementById("hn-hub-icon");
-    const stDot = document.getElementById("st-dot");
-    const stCode = document.getElementById("st-code");
-    const stDesc = document.getElementById("st-desc");
-    const stText = document.getElementById("st-text");
-    const stCursor = document.getElementById("st-cursor");
-    if (!hubEl || !hubIcon || !stDot || !stCode || !stDesc || !stText || !stCursor) return;
+    const miniBar = document.getElementById("qs-hero-minibar");
+    const miniStatus = document.getElementById("qs-mini-status");
+    if (!hubEl || !miniBar || !miniStatus) return;
 
     const peripherals = [
+      document.getElementById("rn-camera"),
       document.getElementById("rn-kb"),
       document.getElementById("rn-mouse"),
-      document.getElementById("rn-gamepad"),
-      document.getElementById("rn-ring"),
+      document.getElementById("rn-mic"),
+      document.getElementById("rn-softpad"),
       document.getElementById("rn-trackball"),
     ].filter(Boolean);
 
@@ -1167,11 +1164,56 @@
       window.requestAnimationFrame(drawNetwork);
     }
 
+    const statusCopy = {
+      zh: {
+        idle: "待命",
+        voice: "语音 · 聆听",
+        key: "按键 · 发送",
+        hand: "举手 · 继续",
+        shake: "摇头 · 取消",
+        shortcut: "快捷键 · 发送",
+        pad: "SoftPad · 发送",
+        track: "快捷键 · 继续",
+      },
+      en: {
+        idle: "Idle",
+        voice: "Voice · listen",
+        key: "Key · send",
+        hand: "Hand up · continue",
+        shake: "Shake head · cancel",
+        shortcut: "Shortcut · send",
+        pad: "SoftPad · send",
+        track: "Shortcut · continue",
+      },
+    };
+
+    function statusLang() {
+      if (window.OneToneSite?.getLang) return window.OneToneSite.getLang();
+      return document.documentElement.lang === "en" ? "en" : "zh";
+    }
+
+    function statusText(key) {
+      const pack = statusCopy[statusLang()] || statusCopy.zh;
+      return pack[key] || pack.idle;
+    }
+
+    function clearMiniHot() {
+      miniBar.querySelectorAll(".is-hot").forEach((el) => el.classList.remove("is-hot"));
+    }
+
+    function setMiniHot(act) {
+      clearMiniHot();
+      miniBar.querySelectorAll(`[data-mini-act="${act}"]`).forEach((el) => el.classList.add("is-hot"));
+    }
+
     const scenarios = [
-      { el: document.getElementById("rn-kb"), code: "快捷键", desc: "你按了 Alt + 空格，开麦了…", text: "「帮我写个登录页组件」", icon: "ph-code" },
-      { el: document.getElementById("rn-mouse"), code: "鼠标侧键", desc: "你按了鼠标侧键，开麦了…", text: "「这段报错什么意思」", icon: "ph-check-circle" },
-      { el: document.getElementById("rn-gamepad"), code: "手柄", desc: "你按了手柄扳机，开麦了…", text: "「先别改，我口述需求」", icon: "ph-sword" },
-      { el: document.getElementById("rn-ring"), code: "指环", desc: "你点了指环，开麦了…", text: "「稍等，我看一眼 Cursor」", icon: "ph-chat-teardrop" },
+      { el: document.getElementById("rn-mic"), act: "mic", status: "voice" },
+      { el: document.getElementById("rn-mouse"), act: "send", status: "key" },
+      { el: document.getElementById("rn-camera"), act: "continue", status: "hand" },
+      { el: document.getElementById("rn-camera"), act: "cancel", status: "shake" },
+      { el: document.getElementById("rn-kb"), act: "send", status: "shortcut" },
+      { el: document.getElementById("rn-softpad"), act: "send", status: "pad" },
+      { el: document.getElementById("rn-trackball"), act: "continue", status: "track" },
     ];
 
     function wait(ms) {
@@ -1219,13 +1261,8 @@
 
           scenarios.forEach((s) => s.el?.classList.remove("is-active"));
           hubEl.classList.remove("is-listening");
-          hubIcon.className = "ph-fill ph-microphone";
-          stDot.classList.remove("active");
-          stCode.classList.remove("active");
-          stCode.textContent = "待命";
-          stDesc.textContent = "等着看你按哪个键…";
-          stText.textContent = "";
-          stCursor.classList.add("blinking");
+          clearMiniHot();
+          miniStatus.textContent = statusText("idle");
 
           await wait(reduceMotion.matches ? 800 : 2000);
           if (!isKeysMode()) continue;
@@ -1233,34 +1270,20 @@
           const current = scenarios[sIdx % scenarios.length];
           if (current?.el && window.getComputedStyle(current.el).display !== "none") {
             current.el.classList.add("is-active");
-            stCode.textContent = current.code;
-            stCode.classList.add("active");
-            stDesc.textContent = "检测到按键，开麦中…";
+            miniStatus.textContent = statusText(current.status);
+            setMiniHot(current.act);
             await wait(400);
 
             await animateSignal(getElCenter(current.el), getElCenter(hubEl));
 
             current.el.classList.remove("is-active");
             hubEl.classList.add("is-listening");
-            stDot.classList.add("active");
-            stDesc.textContent = current.desc;
-            stCursor.classList.remove("blinking");
-
-            if (reduceMotion.matches) {
-              stText.textContent = current.text;
-            } else {
-              for (let i = 0; i < current.text.length; i += 1) {
-                stText.textContent += current.text[i];
-                await wait(Math.random() * 40 + 60);
-              }
-            }
-            stCursor.classList.add("blinking");
-            await wait(600);
+            await wait(reduceMotion.matches ? 800 : 1600);
 
             hubEl.classList.remove("is-listening");
-            hubIcon.className = `ph-fill ${current.icon}`;
-            stDesc.textContent = "说完了，字已上屏";
-            await wait(reduceMotion.matches ? 1200 : 3000);
+            clearMiniHot();
+            miniStatus.textContent = statusText("idle");
+            await wait(reduceMotion.matches ? 600 : 1400);
           }
 
           sIdx = (sIdx + 1) % scenarios.length;
@@ -1289,6 +1312,9 @@
       activeSignal = null;
       clearSignalTimer();
       scenarios.forEach((s) => s.el?.classList.remove("is-active"));
+      hubEl.classList.remove("is-listening");
+      clearMiniHot();
+      miniStatus.textContent = statusText("idle");
       if (isKeysMode()) resize();
     });
     document.addEventListener("visibilitychange", () => {
