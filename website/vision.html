@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="zh-CN" class="dark scroll-smooth">
+<html lang="zh-CN" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/shell.css?v=20260826h">
   <link rel="stylesheet" href="css/vision.css">
-
+  <link rel="stylesheet" href="css/site-scroll.css">
 </head>
 <body class="antialiased" data-page="vision">
 <header class="site-header">
@@ -51,8 +51,9 @@
   
 
   <main>
+    <div id="story-world" class="story-world" data-mood="dark">
     <!-- Hero Section -->
-    <section class="hero-wrapper" id="hero">
+    <section class="hero-wrapper" id="hero" data-mood="dark">
       
       <!-- 空间透视网格 -->
       <div class="hero-grid"></div>
@@ -101,7 +102,7 @@
     </section>
 
     <!-- Features Section -->
-    <section class="py-32 relative z-10 bg-mac-bg">
+    <section class="py-32 relative z-10" id="sec-features" data-mood="light" data-scroll-reveal>
       <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 gap-12">
         
         <!-- Card 1: 离席与防护 -->
@@ -221,7 +222,7 @@
 
       </div>
     </section>
-
+    </div>
   </main>
 
   
@@ -241,7 +242,7 @@
         <nav class="site-footer-features" aria-label="Features">
       <span class="site-footer-features-label" data-i18n="footerFeatures">功能</span>
       <a href="quickstart.html#voice" data-i18n="navVoice">语音</a>
-      <a href="quickstart.html#keys" data-i18n="navKeys">按键</a>
+      <a href="keys.html" data-i18n="navKeys">按键</a>
       <a href="vision.html" data-i18n="navCamera">摄像头</a>
       <a href="agent.html" data-i18n="navSoftPad">SoftPad</a>
     </nav>
@@ -255,6 +256,8 @@
     </nav>
   </div>
 </footer>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="js/site-scroll.js"></script>
 <script src="js/shell.js"></script>
 <script src="js/i18n.js"></script>
   <script src="js/vision-demo.js"></script>

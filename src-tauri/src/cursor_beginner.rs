@@ -79,9 +79,39 @@ pub const BEGINNER_SLOTS: &[BeginnerSlotDef] = &[
 ];
 
 pub const DISARM_PHRASES: &[&str] = &["取消"];
-/// Voice-only arm: show mini bar + enter listen mode without stealing Cursor FG.
-pub const ARM_PHRASES: &[&str] = &["小助手"];
+/// Default voice-only arm phrase (overridable via `cursorBeginnerArmPhrase`).
+pub const DEFAULT_ARM_PHRASE: &str = "一声";
+/// Legacy default — still accepted until user changes the setting away from it.
+pub const LEGACY_ARM_PHRASE: &str = "小助手";
 pub const ARM_HINT: &str = "聆听中 · 可说：发送、继续、新建、麦克风、取消";
+
+static ARM_PHRASE_CACHE: Mutex<String> = Mutex::new(String::new());
+
+pub fn normalize_arm_phrase(raw: &str) -> String {
+    let t: String = raw
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .take(12)
+        .collect();
+    if t.is_empty() {
+        DEFAULT_ARM_PHRASE.into()
+    } else {
+        t
+    }
+}
+
+pub fn sync_arm_phrase_cache(cfg: &VoiceConfig) {
+    *ARM_PHRASE_CACHE.lock() = normalize_arm_phrase(&cfg.cursor_beginner_arm_phrase);
+}
+
+pub fn current_arm_phrase() -> String {
+    let g = ARM_PHRASE_CACHE.lock();
+    if g.trim().is_empty() {
+        DEFAULT_ARM_PHRASE.into()
+    } else {
+        g.clone()
+    }
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -306,9 +336,18 @@ pub fn is_disarm_phrase(text: &str) -> bool {
 
 pub fn is_arm_phrase(text: &str) -> bool {
     let t = text.trim();
-    ARM_PHRASES
-        .iter()
-        .any(|p| config::phrases_fuzzy_match(t, p))
+    if t.is_empty() {
+        return false;
+    }
+    let current = current_arm_phrase();
+    if config::phrases_fuzzy_match(t, &current) {
+        return true;
+    }
+    // Keep legacy wake working until user customizes away from it.
+    if current == DEFAULT_ARM_PHRASE && config::phrases_fuzzy_match(t, LEGACY_ARM_PHRASE) {
+        return true;
+    }
+    false
 }
 
 pub fn is_beginner_voice_phrase(text: &str) -> bool {
@@ -329,8 +368,10 @@ pub fn push_beginner_grammar_phrases(out: &mut Vec<String>, seen: &mut std::coll
             out.push(t.to_string());
         }
     };
-    for p in ARM_PHRASES {
-        push(p);
+    let arm = current_arm_phrase();
+    push(&arm);
+    if arm == DEFAULT_ARM_PHRASE {
+        push(LEGACY_ARM_PHRASE);
     }
     for p in DISARM_PHRASES {
         push(p);
@@ -619,23 +660,49 @@ pub fn run_slot(
     let duration_ms = state.cfg.lock().key_press_duration_ms;
     // 「发送」must land Enter in Cursor composer — Soft Pad/voice often leaves caret elsewhere.
     if def.slot_id == "stopOrSend" {
+        crate::app_log::cursor_send_oplog(
+            "voice_or_pad_hit",
+            serde_json::json!({
+                "fromVoice": from_voice,
+                "slotId": def.slot_id,
+                "microKeyId": def.micro_key_id,
+                "mappingId": mapping_id,
+            }),
+        );
         let _pad_pass = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app);
-        if let Err(err) =
-            app_chat_workflow::focus_composer_for_send(&app, CURSOR_APP_TARGET_ID, duration_ms)
-        {
+        let focus_res =
+            app_chat_workflow::focus_composer_for_send(&app, CURSOR_APP_TARGET_ID, duration_ms);
+        // No fallback to focus_composer_only: that path may send Ctrl+I, which in the
+        // code editor opens Cursor inline edit (selects junk) instead of Agent send.
+        let focused = focus_res.is_ok();
+        if let Err(err) = &focus_res {
+            crate::app_log::cursor_send_oplog(
+                "abort_no_commit",
+                serde_json::json!({
+                    "reason": "focus_failed",
+                    "err": format!("{err:?}"),
+                    "commitKeySent": false,
+                    "openKeySent": false,
+                    "hint": "no Enter/Ctrl+Enter — focus never verified on right Agent box",
+                }),
+            );
             crate::app_log::log_line(
                 state.as_ref(),
                 "cursor_beginner",
-                &format!("send focus failed err={err:?}"),
+                &format!("send focus failed err={err:?} (no Ctrl+I fallback)"),
             );
+        }
+        if !focused {
             return serde_json::json!({
                 "ok": false,
                 "reason": "focus_failed",
-                "message": "未能聚焦 Cursor 输入框，请点一下对话框再说「发送」",
+                "message": "未能聚焦右侧 Agent 输入框，请先点一下对话框再说「发送」",
                 "slotId": def.slot_id,
                 "microKeyId": def.micro_key_id
             });
         }
+        // Let Electron settle caret after Soft Pad click-through race.
+        std::thread::sleep(std::time::Duration::from_millis(100));
         let commit_key = {
             let cfg = state.cfg.lock();
             let k = cfg.voice_end.commit_key.trim().to_string();
@@ -645,7 +712,24 @@ pub fn run_slot(
                 k
             }
         };
+        crate::app_log::cursor_send_oplog(
+            "commit_key_attempt",
+            serde_json::json!({
+                "commitKey": commit_key,
+                "durationMs": duration_ms,
+                "openKeySent": false,
+            }),
+        );
         let ok = crate::keyboard::send_chord(&commit_key, duration_ms);
+        crate::app_log::cursor_send_oplog(
+            "done",
+            serde_json::json!({
+                "ok": ok,
+                "commitKey": commit_key,
+                "commitKeySent": ok,
+                "openKeySent": false,
+            }),
+        );
         if from_voice {
             note_voice_activity();
         }
@@ -778,6 +862,16 @@ pub fn dispatch_voice_phrase(
     }
     let def = matches_beginner_phrase(phrase)?;
     note_voice_activity();
+    if def.slot_id == "stopOrSend" {
+        crate::app_log::cursor_send_oplog(
+            "phrase_matched",
+            serde_json::json!({
+                "phrase": phrase,
+                "slotId": def.slot_id,
+                "armed": true,
+            }),
+        );
+    }
     let window = crate::ipc::get_main_window(app)?;
     let out = run_slot(state, &window, def.slot_id, true, true);
     let ok = out.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -849,19 +943,19 @@ pub fn heal_cursor_beginner_voice_bindings(m: &mut config::MappingEntry) -> bool
             }
         }
     }
-    for phrase in ARM_PHRASES {
+    for phrase in [current_arm_phrase(), LEGACY_ARM_PHRASE.to_string()] {
         let exists = m.agent_bindings.iter().any(|b| {
             b.enabled
                 && b.trigger_type.eq_ignore_ascii_case("voice")
                 && b.slot_id == "__cursor_beginner_arm__"
-                && config::phrases_fuzzy_match(&b.trigger_binding, phrase)
+                && config::phrases_fuzzy_match(&b.trigger_binding, &phrase)
         });
         if !exists {
             m.agent_bindings.push(config::AgentBinding {
                 slot_id: "__cursor_beginner_arm__".into(),
                 action_id: "cursorBeginnerArm".into(),
                 trigger_type: "voice".into(),
-                trigger_binding: (*phrase).into(),
+                trigger_binding: phrase,
                 enabled: true,
                 ..Default::default()
             });
@@ -880,8 +974,11 @@ mod tests {
 
     #[test]
     fn arm_phrase_recognized() {
-        assert!(is_arm_phrase("小助手"));
+        assert!(is_arm_phrase("一声"));
+        assert!(is_arm_phrase("小助手")); // legacy alias while default is 一声
         assert!(!is_arm_phrase("继续"));
+        assert_eq!(normalize_arm_phrase(""), DEFAULT_ARM_PHRASE);
+        assert_eq!(normalize_arm_phrase("  开机  "), "开机");
     }
 
     #[test]
@@ -927,6 +1024,9 @@ mod tests {
         assert!(workflow.contains("uia_focus_chat_input_verified"));
         assert!(workflow.contains("click_client_relative_via_message"));
         assert!(workflow.contains("uia_min_score_for_send"));
+        // Send must not open Cursor inline edit via Ctrl+I while caret is in the editor.
+        assert!(workflow.contains("never uses open_key"));
+        assert!(workflow.contains("cursor_send_oplog"));
         let def = slot_def("stopOrSend").unwrap();
         assert_eq!(def.micro_key_id, "ACT12");
     }

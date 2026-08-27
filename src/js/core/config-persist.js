@@ -763,6 +763,11 @@
             var v=pa.blinkConfirmCue!=null?pa.blinkConfirmCue:pa.blink_confirm_cue;
             if(v===undefined||v===null) return true;
             return !!v;
+          })(),
+          requireActivationHub:(function(){
+            var v=pa.requireActivationHub!=null?pa.requireActivationHub:pa.require_activation_hub;
+            if(v===undefined||v===null) return true;
+            return !!v;
           })()
         };
       }
@@ -870,7 +875,7 @@
       mappings:[{id:id,label:'AutoTrigger → '+labelSuffix,group:'通用设置',triggerKey:'AutoTrigger',targetKey:targetKey,enabled:true,order:0,triggerMode:'tap',intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,switchKeys:[],nativeKeyRestore:false,appTargetId:'',imePresetId:'',voiceOverride:null}],
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
-      debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,followForegroundAppScenario:true,softPadForceOpen:false,startMinimizedToTray:false,
+      debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,followForegroundAppScenario:true,softPadForceOpen:false,cursorBeginnerArmPhrase:'一声',startMinimizedToTray:false,
       runtimeHabitControl:{softOverride:null,pin:null},
       workspaceLayouts:[],
       cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,smartPointer:null,snapWindow:null,autoMute:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none',awayMs:3000,presentMs:1000},videoEnhancement:{enabled:false,look:'off',faceMask:'off',preset:'natural',beautyEnabled:false,whiten:0,smooth:0,rosy:0,slim:0,beauty:18,brightness:0,contrast:8,saturation:6,sharpen:8,denoise:8,lowLight:0,antiFlicker:'auto',displayFrameRate:0}},
@@ -931,6 +936,7 @@
     if(st.config.coachHudEnabled===undefined) st.config.coachHudEnabled=false;
     if(st.config.followForegroundAppScenario===undefined) st.config.followForegroundAppScenario=true;
     if(st.config.softPadForceOpen===undefined) st.config.softPadForceOpen=false;
+    if(!String(st.config.cursorBeginnerArmPhrase||'').trim()) st.config.cursorBeginnerArmPhrase='一声';
     if(st.config.startMinimizedToTray===undefined) st.config.startMinimizedToTray=false;
     if(!Array.isArray(st.config.workspaceLayouts)) st.config.workspaceLayouts=[];
     if(!st.config.runtimeHabitControl||typeof st.config.runtimeHabitControl!=='object'){
@@ -1121,6 +1127,7 @@
         };
       })(),
       softPadForceOpen:!!st.config.softPadForceOpen,
+      cursorBeginnerArmPhrase:String(st.config.cursorBeginnerArmPhrase||'').trim()||'一声',
       startMinimizedToTray:!!st.config.startMinimizedToTray,
       workspaceLayouts:(Array.isArray(st.config.workspaceLayouts)?st.config.workspaceLayouts:[]).map(function(item){
         item=item&&typeof item==='object'?item:{};
@@ -1205,6 +1212,11 @@
             okHand:String(pa.okHand||'none').trim()||'none',
             fist:String(pa.fist||'none').trim()||'none',
             wave:String(pa.wave||'none').trim()||'none',
+            requireActivationHub:(function(){
+              var v=pa.requireActivationHub!=null?pa.requireActivationHub:pa.require_activation_hub;
+              if(v===undefined||v===null) return true;
+              return !!v;
+            })(),
             awayMs:Math.max(1000,Math.min(30000,Number(pa.awayMs!=null?pa.awayMs:pa.away_ms)||3000))|0,
             presentMs:Math.max(500,Math.min(10000,Number(pa.presentMs!=null?pa.presentMs:pa.present_ms)||1000))|0,
             shakeHow:(function(){
@@ -1721,6 +1733,11 @@
         })(),
         blinkConfirmCue:(function(){
           var v=pa.blinkConfirmCue!=null?pa.blinkConfirmCue:pa.blink_confirm_cue;
+          if(v===undefined||v===null) return true;
+          return !!v;
+        })(),
+        requireActivationHub:(function(){
+          var v=pa.requireActivationHub!=null?pa.requireActivationHub:pa.require_activation_hub;
           if(v===undefined||v===null) return true;
           return !!v;
         })()

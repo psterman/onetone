@@ -72,7 +72,8 @@ const CURSOR_PROFILE: AppChatProfile = AppChatProfile {
     path_marker: None,
     // Cursor Agent / chat composer focus (not Ctrl+L, which is Chat history search).
     open_key: Some("Ctrl+I"),
-    composer_anchor: (0.50, 0.88),
+    // Agent / Chat panel sits on the RIGHT — (0.50, 0.88) hit the code editor and Enter landed mid-doc.
+    composer_anchor: (0.84, 0.91),
     accept_click_without_uia: true,
     post_voice_key_ms: 220,
     restore_main_delay_ms: 120,
@@ -568,7 +569,6 @@ pub fn focus_composer_for_send(
     app_target_id: &str,
     duration_ms: u32,
 ) -> Result<(), AppChatWorkflowError> {
-    let _ = duration_ms;
     let profile = profile_for(app_target_id).ok_or(AppChatWorkflowError::NotFound)?;
     let _hide_guard = MainWindowHideGuard::maybe_hide(app);
     let (hwnd, freshly_launched) =
@@ -576,30 +576,105 @@ pub fn focus_composer_for_send(
     if freshly_launched {
         std::thread::sleep(Duration::from_millis(2200));
     }
+    crate::app_log::cursor_send_oplog(
+        "focus_start",
+        serde_json::json!({
+            "appTargetId": app_target_id,
+            "anchor": [profile.composer_anchor.0, profile.composer_anchor.1],
+            "openKeyConfigured": profile.open_key,
+            "openKeyWillSend": false,
+            "freshlyLaunched": freshly_launched,
+            "durationMs": duration_ms,
+        }),
+    );
     if !crate::keyboard::focus_window(hwnd) {
+        crate::app_log::cursor_send_oplog(
+            "focus_window_failed",
+            serde_json::json!({ "reason": "FocusFailed" }),
+        );
         return Err(AppChatWorkflowError::FocusFailed);
     }
     std::thread::sleep(Duration::from_millis(120));
 
+    let _ = duration_ms; // send path never uses open_key (Ctrl+I)
     let min_score = uia_min_score_for_send(profile);
-    let mut uia_ok = uia_focus_chat_input_verified(hwnd, min_score);
-    let mut click_via = "none";
-    if !uia_ok {
-        let _ = crate::keyboard::click_client_relative_via_message(
-            hwnd,
-            profile.composer_anchor.0,
-            profile.composer_anchor.1,
-        );
-        click_via = "post";
-        std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
-        uia_ok = uia_focus_chat_input_verified(hwnd, min_score);
+    // Cursor Agent box often has empty UIA name (score≈10). Old rule blocked blind
+    // accept whenever open_key was set — logs show bestScore=-1 / focusedScore=10 /
+    // abort_no_commit every time. After RIGHT-panel click, trust an Edit focus.
+    let allow_blind_after_right_click = profile.accept_click_without_uia;
+    // Click RIGHT panel composer first. Do NOT send Ctrl+I here: with editor focus,
+    // Cursor treats Ctrl+I as inline edit (selects text) instead of Agent composer.
+    let mut click_via = "post";
+    let post_ok = crate::keyboard::click_client_relative_via_message(
+        hwnd,
+        profile.composer_anchor.0,
+        profile.composer_anchor.1,
+    );
+    crate::app_log::cursor_send_oplog(
+        "click_post",
+        serde_json::json!({
+            "ok": post_ok,
+            "anchor": [profile.composer_anchor.0, profile.composer_anchor.1],
+            "minScore": min_score,
+        }),
+    );
+    std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
+    let mut probe = uia_focus_chat_input_probe(hwnd, min_score);
+    crate::app_log::cursor_send_oplog(
+        "uia_after_post",
+        serde_json::json!({
+            "ok": probe.ok,
+            "bestName": probe.best_name,
+            "bestScore": probe.best_score,
+            "focusedName": probe.focused_name,
+            "focusedScore": probe.focused_score,
+            "hasKeyboardFocus": probe.has_keyboard_focus,
+        }),
+    );
+    let mut uia_ok = probe.ok;
+    if !uia_ok
+        && allow_blind_after_right_click
+        && post_ok
+        && probe.focused_score >= 10
+    {
+        // ponytail: Cursor composer UIA names are often empty; ceiling = wrong Edit if
+        // anchor drifts. Upgrade: geometry-bias UIA to right half of window.
+        uia_ok = true;
+        click_via = "post_accept_edit";
     }
     if !uia_ok {
         // Soft Pad should already be click-through (caller guard); screen click as last resort.
-        let _ = click_composer_anchor(hwnd, profile.composer_anchor);
+        let screen_ok = click_composer_anchor(hwnd, profile.composer_anchor);
         click_via = "screen";
+        crate::app_log::cursor_send_oplog(
+            "click_screen",
+            serde_json::json!({
+                "ok": screen_ok,
+                "anchor": [profile.composer_anchor.0, profile.composer_anchor.1],
+            }),
+        );
         std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
-        uia_ok = uia_focus_chat_input_verified(hwnd, min_score);
+        probe = uia_focus_chat_input_probe(hwnd, min_score);
+        crate::app_log::cursor_send_oplog(
+            "uia_after_screen",
+            serde_json::json!({
+                "ok": probe.ok,
+                "bestName": probe.best_name,
+                "bestScore": probe.best_score,
+                "focusedName": probe.focused_name,
+                "focusedScore": probe.focused_score,
+                "hasKeyboardFocus": probe.has_keyboard_focus,
+            }),
+        );
+        uia_ok = probe.ok;
+        if !uia_ok
+            && allow_blind_after_right_click
+            && screen_ok
+            && probe.focused_score >= 10
+        {
+            uia_ok = true;
+            click_via = "screen_accept_edit";
+        }
     }
 
     let fg = if crate::app_identity::foreground_is_self() {
@@ -612,12 +687,23 @@ pub fn focus_composer_for_send(
     } else {
         "other"
     };
-    crate::app_log::sync_emergency_line(
-        "cursor_send",
-        &format!(
-            "send_focus uia={uia_ok} click={click_via} fg={fg} focused={}",
-            if uia_ok { "composer" } else { "other" }
-        ),
+    let result = if crate::app_identity::foreground_is_self() || !uia_ok {
+        "FocusFailed"
+    } else {
+        "Ok"
+    };
+    crate::app_log::cursor_send_oplog(
+        "focus_result",
+        serde_json::json!({
+            "result": result,
+            "uiaOk": uia_ok,
+            "clickVia": click_via,
+            "fg": fg,
+            "openKeySent": false,
+            "bestName": probe.best_name,
+            "bestScore": probe.best_score,
+            "focusedName": probe.focused_name,
+        }),
     );
 
     if crate::app_identity::foreground_is_self() || !uia_ok {
@@ -628,12 +714,8 @@ pub fn focus_composer_for_send(
 
 #[cfg(windows)]
 fn uia_min_score_for_send(profile: &AppChatProfile) -> i32 {
-    // Stricter than normal focus — avoid search/filter Edit boxes.
-    if profile.open_key.is_some() {
-        70
-    } else {
-        40
-    }
+    // Align with normal composer focus — 70 rejected real Cursor Agent boxes after Soft Pad races.
+    uia_min_score(profile)
 }
 
 #[cfg(not(windows))]
@@ -891,34 +973,42 @@ fn focus_chat_input(
 ) -> bool {
     let min_score = uia_min_score(profile);
 
-    // Soft path first: panel already open → focus without Ctrl+I.
-    // Ctrl+I toggles Agent/composer; sending it while open closes the input.
+    // Soft path first: click RIGHT panel, then UIA. Never Ctrl+I while editor has focus —
+    // Cursor maps Ctrl+I to inline edit (selects text) when caret is in the code editor.
+    let allow_blind_click = profile.accept_click_without_uia && profile.open_key.is_none();
     if uia_focus_chat_input(hwnd, min_score) {
         return true;
     }
-    if profile.accept_click_without_uia && click_then_confirm(hwnd, profile, min_score) {
-        return true;
+    if click_then_confirm(hwnd, profile, min_score) {
+        if allow_blind_click || uia_focus_chat_input(hwnd, min_score) {
+            return true;
+        }
     }
 
-    // Hard open once: only when soft probe failed (panel likely closed).
+    // Hard open only after right-panel click stole focus from the editor.
     if let Some(open_key) = profile.open_key.filter(|k| !k.trim().is_empty()) {
+        let _ = click_composer_anchor(hwnd, profile.composer_anchor);
+        std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
         let _ = crate::keyboard::focus_window(hwnd);
         std::thread::sleep(Duration::from_millis(80));
+        crate::app_log::cursor_send_oplog(
+            "open_key_chord",
+            serde_json::json!({
+                "chord": open_key,
+                "via": "focus_chat_input_not_send",
+                "note": "send path must NOT call this; if seen after 发送, wrong code path",
+            }),
+        );
         if crate::keyboard::send_chord(open_key, duration_ms) {
             std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_OPEN_MS));
             if uia_focus_chat_input(hwnd, min_score) {
                 return true;
             }
-            // Newly opened panel: land in the box with a click (no second Ctrl+I).
             if click_then_confirm(hwnd, profile, min_score) {
-                return true;
+                return uia_focus_chat_input(hwnd, min_score) || allow_blind_click;
             }
-            return profile.accept_click_without_uia;
+            return false;
         }
-    }
-
-    if !profile.accept_click_without_uia && click_then_confirm(hwnd, profile, min_score) {
-        return true;
     }
 
     false
@@ -1612,12 +1702,27 @@ fn process_matches_profile(pid: u32, profile: &AppChatProfile) -> bool {
 
 #[cfg(windows)]
 fn uia_focus_chat_input(hwnd: winapi::shared::windef::HWND, min_score: i32) -> bool {
-    uia_focus_chat_input_verified(hwnd, min_score)
+    uia_focus_chat_input_probe(hwnd, min_score).ok
+}
+
+#[cfg(windows)]
+struct UiaFocusProbe {
+    ok: bool,
+    best_name: String,
+    best_score: i32,
+    focused_name: String,
+    focused_score: i32,
+    has_keyboard_focus: bool,
 }
 
 /// SetFocus on best Edit/Document, then confirm HasKeyboardFocus (or focused name scores high).
 #[cfg(windows)]
 fn uia_focus_chat_input_verified(hwnd: winapi::shared::windef::HWND, min_score: i32) -> bool {
+    uia_focus_chat_input_probe(hwnd, min_score).ok
+}
+
+#[cfg(windows)]
+fn uia_focus_chat_input_probe(hwnd: winapi::shared::windef::HWND, min_score: i32) -> UiaFocusProbe {
     use windows::core::VARIANT;
     use windows::Win32::Foundation::HWND as WinHwnd;
     use windows::Win32::System::Com::{
@@ -1629,19 +1734,28 @@ fn uia_focus_chat_input_verified(hwnd: winapi::shared::windef::HWND, min_score: 
         UIA_HasKeyboardFocusPropertyId,
     };
 
+    let empty = || UiaFocusProbe {
+        ok: false,
+        best_name: String::new(),
+        best_score: -1,
+        focused_name: String::new(),
+        focused_score: -1,
+        has_keyboard_focus: false,
+    };
+
     unsafe {
         let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
         let automation: IUIAutomation =
             match CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER) {
                 Ok(v) => v,
-                Err(_) => return false,
+                Err(_) => return empty(),
             };
         let root = match automation.ElementFromHandle(WinHwnd(hwnd as *mut _)) {
             Ok(v) => v,
-            Err(_) => return false,
+            Err(_) => return empty(),
         };
 
-        let mut best: Option<(IUIAutomationElement, i32)> = None;
+        let mut best: Option<(IUIAutomationElement, i32, String)> = None;
         for control_type in [UIA_EditControlTypeId, UIA_DocumentControlTypeId] {
             let value = VARIANT::from(control_type.0);
             let condition =
@@ -1663,17 +1777,38 @@ fn uia_focus_chat_input_verified(hwnd: winapi::shared::windef::HWND, min_score: 
                 }
                 let name = element_name(&element).unwrap_or_default();
                 let score = score_input_name(&name, control_type.0 as i32);
-                if score > best.as_ref().map(|(_, s)| *s).unwrap_or(-1) {
-                    best = Some((element, score));
+                if score > best.as_ref().map(|(_, s, _)| *s).unwrap_or(-1) {
+                    best = Some((element, score, name));
                 }
             }
         }
 
-        let Some((element, score)) = best.filter(|(_, score)| *score >= min_score) else {
-            return false;
+        let (pre_best_score, pre_best_name) = best
+            .as_ref()
+            .map(|(_, s, n)| (*s, n.clone()))
+            .unwrap_or((-1, String::new()));
+        let Some((element, score, best_name)) = best.filter(|(_, score, _)| *score >= min_score)
+        else {
+            let (focused_name, focused_score) = focused_input_probe(&automation);
+            return UiaFocusProbe {
+                ok: false,
+                best_name: pre_best_name,
+                best_score: pre_best_score,
+                focused_name,
+                focused_score,
+                has_keyboard_focus: false,
+            };
         };
         if element.SetFocus().is_err() {
-            return false;
+            let (focused_name, focused_score) = focused_input_probe(&automation);
+            return UiaFocusProbe {
+                ok: false,
+                best_name,
+                best_score: score,
+                focused_name,
+                focused_score,
+                has_keyboard_focus: false,
+            };
         }
         std::thread::sleep(Duration::from_millis(60));
         let has_focus = element
@@ -1681,24 +1816,42 @@ fn uia_focus_chat_input_verified(hwnd: winapi::shared::windef::HWND, min_score: 
             .ok()
             .and_then(|v| bool::try_from(&v).ok())
             .unwrap_or(false);
+        let (focused_name, focused_score) = focused_input_probe(&automation);
         if has_focus {
-            return true;
+            return UiaFocusProbe {
+                ok: true,
+                best_name,
+                best_score: score,
+                focused_name,
+                focused_score,
+                has_keyboard_focus: true,
+            };
         }
         // Fallback: focused element elsewhere in tree may still be a high-score composer.
-        if let Ok(focused) = automation.GetFocusedElement() {
-            let name = element_name(&focused).unwrap_or_default();
-            let fs = score_input_name(&name, UIA_EditControlTypeId.0 as i32);
-            if fs >= min_score {
-                return true;
-            }
-            let fs_doc = score_input_name(&name, UIA_DocumentControlTypeId.0 as i32);
-            if fs_doc >= min_score {
-                return true;
-            }
+        let ok = focused_score >= min_score;
+        UiaFocusProbe {
+            ok,
+            best_name,
+            best_score: score,
+            focused_name,
+            focused_score,
+            has_keyboard_focus: false,
         }
-        let _ = score;
-        false
     }
+}
+
+#[cfg(windows)]
+unsafe fn focused_input_probe(
+    automation: &windows::Win32::UI::Accessibility::IUIAutomation,
+) -> (String, i32) {
+    use windows::Win32::UI::Accessibility::{UIA_DocumentControlTypeId, UIA_EditControlTypeId};
+    let Ok(focused) = automation.GetFocusedElement() else {
+        return (String::new(), -1);
+    };
+    let name = element_name(&focused).unwrap_or_default();
+    let fs = score_input_name(&name, UIA_EditControlTypeId.0 as i32)
+        .max(score_input_name(&name, UIA_DocumentControlTypeId.0 as i32));
+    (name, fs)
 }
 
 #[cfg(windows)]
@@ -1773,8 +1926,9 @@ fn score_input_name(name: &str, control_type: i32) -> i32 {
     if lower.contains("search") || lower.contains("filter") || lower.contains("find") {
         score -= 45;
     }
+    // Empty Document is usually the code editor — never prefer it over Chat/Agent Edit.
     if name.trim().is_empty() && control_type == UIA_DocumentControlTypeId.0 as i32 {
-        score += 15;
+        score -= 40;
     }
     if control_type == UIA_EditControlTypeId.0 as i32 {
         score += 10;

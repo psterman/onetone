@@ -7143,6 +7143,27 @@
     ensurePad(m, { persist: false });
     var pad = m.codexMicroPad;
     var mode = resolveSoftPadShowMode(pad);
+    var isCursor = String(m.appTargetId || '').toLowerCase().indexOf('cursor') >= 0;
+    var armPhrase = '';
+    try {
+      var st = global.OneToneState && global.OneToneState.state;
+      armPhrase = String((st && st.config && st.config.cursorBeginnerArmPhrase) || '').trim() || '一声';
+    } catch (_) { armPhrase = '一声'; }
+    var armRow = isCursor
+      ? (
+        '<div class="soft-pad-runtime-arm" style="margin-top:12px">' +
+        '<p class="codex-pad-mgr__label">' + esc(t('softPadCursorArmPhraseLbl', '聆听激活口令')) + '</p>' +
+        '<div class="soft-pad-runtime-arm__row" style="display:flex;gap:8px;align-items:center">' +
+        '<input type="text" class="codex-pad-mgr__input" data-act="cursorArmPhrase" maxlength="12" value="' + esc(armPhrase) + '" ' +
+        'aria-label="' + esc(t('softPadCursorArmPhraseLbl', '聆听激活口令')) + '" style="flex:1;min-width:0">' +
+        '<button type="button" class="codex-micro-pad__btn is-primary" data-act="cursorArmPhraseSave">' +
+        esc(t('softPadCursorArmPhraseSave', '保存')) + '</button>' +
+        '</div>' +
+        '<p class="codex-pad-mgr__hint">' +
+        esc(t('softPadCursorArmPhraseHint', '未在 Cursor 前台时，说这句可手动进入聆听。默认「一声」。')) +
+        '</p></div>'
+      )
+      : '';
     container.innerHTML =
       softPadExperienceChrome('runtime', m) +
       '<div class="soft-pad-runtime-show">' +
@@ -7152,6 +7173,7 @@
       '<p class="codex-pad-mgr__hint soft-pad-runtime-show__hint" data-show-mode-hint>' +
       esc(softPadShowModeHint(mode)) +
       '</p>' +
+      armRow +
       '</div>';
     container.setAttribute('data-soft-pad-mapping', String(m.id || ''));
     container.setAttribute('data-soft-pad-panel', 'runtime');
@@ -8402,6 +8424,45 @@
         softPadPanelChanged(m, Object.assign({}, opts, {
           refreshPreview: true
         }));
+      });
+    }
+
+    var armSaveBtn = body.querySelector('[data-act="cursorArmPhraseSave"]');
+    var armInput = body.querySelector('[data-act="cursorArmPhrase"]');
+    if (armSaveBtn && armInput) {
+      function saveArmPhrase() {
+        if (isBusy()) return;
+        var next = String(armInput.value || '').replace(/\s+/g, '').slice(0, 12);
+        if (!next) next = '一声';
+        armInput.value = next;
+        markBusy(280);
+        try {
+          var App = global.OneToneApp;
+          if (App && typeof App.saveConfigPatch === 'function') {
+            App.saveConfigPatch(function (_m, cfg) {
+              if (cfg) cfg.cursorBeginnerArmPhrase = next;
+            });
+          } else {
+            var st = global.OneToneState && global.OneToneState.state;
+            if (st && st.config) st.config.cursorBeginnerArmPhrase = next;
+            if (global.OneToneConfigPersist && typeof global.OneToneConfigPersist.save === 'function') {
+              global.OneToneConfigPersist.save();
+            }
+          }
+          toast(t('softPadCursorArmPhraseSaved', '已保存聆听口令：{p}').replace('{p}', next));
+        } catch (err) {
+          toast(t('softPadCursorArmPhraseSaveFail', '保存失败'));
+        }
+      }
+      armSaveBtn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        saveArmPhrase();
+      });
+      armInput.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          saveArmPhrase();
+        }
       });
     }
 

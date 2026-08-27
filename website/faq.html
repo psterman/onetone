@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="zh-CN" class="dark scroll-smooth">
+<html lang="zh-CN" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/shell.css?v=20260826h">
   <link rel="stylesheet" href="css/faq.css">
+  <link rel="stylesheet" href="css/site-scroll.css">
 </head>
 <body class="antialiased" data-page="faq">
 <header class="site-header">
@@ -47,7 +48,8 @@
 </div>
 
 <main class="faq-page">
-  <section class="faq-hero" id="faq-hero" aria-label="帮助开场">
+<div id="story-world" class="story-world" data-mood="light">
+  <section class="faq-hero" id="faq-hero" data-mood="light" aria-label="帮助开场">
     <div class="faq-hero-grid" aria-hidden="true"></div>
 
     <div class="faq-lexicon" aria-hidden="true">
@@ -180,7 +182,7 @@
       </div>
 
       <!-- 快速入门 -->
-      <section class="faq-section" id="sec-start" aria-labelledby="faq-sec-start">
+      <section class="faq-section" data-mood="dark" data-scroll-reveal id="sec-start" aria-labelledby="faq-sec-start">
         <h2 class="faq-docs-h2" id="faq-sec-start" data-i18n="faqSymptomsTitle">先选你的问题</h2>
         <div class="faq-symptoms" aria-label="Quick links">
           <div class="faq-symptom-grid">
@@ -221,7 +223,7 @@
       </section>
 
       <!-- 语音 -->
-      <section class="faq-section" id="sec-voice" aria-labelledby="faq-sec-voice">
+      <section class="faq-section" data-mood="dark" data-scroll-reveal id="sec-voice" aria-labelledby="faq-sec-voice">
         <h2 class="faq-docs-h2" id="faq-sec-voice" data-i18n="faqSectionVoice">语音与麦克风</h2>
 
         <details id="no-mic" class="faq-item group">
@@ -273,7 +275,7 @@
         </details>
       </section>
 
-      <section class="faq-section" id="sec-ime" aria-labelledby="faq-sec-ime">
+      <section class="faq-section" data-mood="dark" data-scroll-reveal id="sec-ime" aria-labelledby="faq-sec-ime">
         <h2 class="faq-docs-h2" id="faq-sec-ime" data-i18n="faqSectionIme">输入法</h2>
 
         <details id="baidu-ime" class="faq-item group">
@@ -292,7 +294,7 @@
       </section>
 
       <!-- 按键 -->
-      <section class="faq-section" id="sec-keys" aria-labelledby="faq-sec-keys">
+      <section class="faq-section" data-mood="dark" data-scroll-reveal id="sec-keys" aria-labelledby="faq-sec-keys">
         <h2 class="faq-docs-h2" id="faq-sec-keys" data-i18n="faqSectionKeys">按键与方案</h2>
 
         <details id="no-response" class="faq-item group" open>
@@ -385,7 +387,7 @@
       </section>
 
       <!-- 摄像头 -->
-      <section class="faq-section" id="sec-camera" aria-labelledby="faq-sec-camera">
+      <section class="faq-section" data-mood="dark" data-scroll-reveal id="sec-camera" aria-labelledby="faq-sec-camera">
         <h2 class="faq-docs-h2" id="faq-sec-camera" data-i18n="faqSectionCamera">摄像头</h2>
         <a class="faq-pillar-card" href="vision.html">
           <i class="ph-fill ph-camera" aria-hidden="true"></i>
@@ -397,7 +399,7 @@
       </section>
 
       <!-- SoftPad -->
-      <section class="faq-section" id="sec-softpad" aria-labelledby="faq-sec-softpad">
+      <section class="faq-section" data-mood="dark" data-scroll-reveal id="sec-softpad" aria-labelledby="faq-sec-softpad">
         <h2 class="faq-docs-h2" id="faq-sec-softpad" data-i18n="faqSectionSoftPad">SoftPad</h2>
         <a class="faq-pillar-card" href="agent.html">
           <i class="ph-fill ph-squares-four" aria-hidden="true"></i>
@@ -409,7 +411,7 @@
       </section>
 
       <!-- 排错 -->
-      <section class="faq-section" id="sec-fix" aria-labelledby="faq-sec-errors">
+      <section class="faq-section" data-mood="dark" data-scroll-reveal id="sec-fix" aria-labelledby="faq-sec-errors">
         <h2 class="faq-docs-h2" id="faq-sec-errors" data-i18n="faqSectionErrors">软件提示对照</h2>
 
         <details id="error-messages" class="faq-item group">
@@ -455,7 +457,7 @@
         </details>
       </section>
 
-      <section class="faq-section" id="sec-reset" aria-labelledby="faq-sec-reset">
+      <section class="faq-section" data-mood="dark" data-scroll-reveal id="sec-reset" aria-labelledby="faq-sec-reset">
         <h2 class="faq-docs-h2" id="faq-sec-reset" data-i18n="faqSectionReset">重置与反馈</h2>
 
         <details id="reset" class="faq-item group">
@@ -496,6 +498,7 @@
       </nav>
     </aside>
   </div>
+</div>
 </main>
 
 <div id="faq-search-modal" class="faq-search-modal" hidden>
@@ -525,7 +528,7 @@
         <nav class="site-footer-features" aria-label="Features">
       <span class="site-footer-features-label" data-i18n="footerFeatures">功能</span>
       <a href="quickstart.html#voice" data-i18n="navVoice">语音</a>
-      <a href="quickstart.html#keys" data-i18n="navKeys">按键</a>
+      <a href="keys.html" data-i18n="navKeys">按键</a>
       <a href="vision.html" data-i18n="navCamera">摄像头</a>
       <a href="agent.html" data-i18n="navSoftPad">SoftPad</a>
     </nav>
@@ -539,6 +542,8 @@
     </nav>
   </div>
 </footer>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="js/site-scroll.js"></script>
 <script src="js/shell.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/faq-docs.js"></script>

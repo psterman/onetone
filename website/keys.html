@@ -1,0 +1,317 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="js/theme-init.js"></script>
+  <script>if ("scrollRestoration" in history) history.scrollRestoration = "manual";</script>
+  <title>语音与按键 — 一声 OneTone</title>
+  <meta name="description" content="绑定外设或快捷键，一按就开麦。选触发源、对接输入法、完成映射。">
+  <link rel="canonical" href="https://www.onetone.app/keys.html">
+  <link rel="icon" href="assets/logo.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tailwind-config.js"></script>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/shell.css?v=20260826h">
+  <link rel="stylesheet" href="css/qs-layout.css">
+  <link rel="stylesheet" href="css/qs-quickstart.css">
+  <link rel="stylesheet" href="css/site-scroll.css">
+</head>
+<body class="antialiased" data-page="keys">
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="site-brand" href="index.html">
+      <img class="brand-mark" src="assets/logo.png" alt="" width="24" height="24">
+      <span data-i18n="siteName">一声 OneTone</span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="index.html" data-nav="home"><i class="ph ph-house site-nav-icon" aria-hidden="true"></i><span data-i18n="navHome">首页</span></a>
+      <a href="quickstart.html" data-nav="quickstart"><i class="ph ph-rocket-launch site-nav-icon" aria-hidden="true"></i><span data-i18n="navQuickstart">上手</span></a>
+      <a href="faq.html" data-nav="faq"><i class="ph ph-question site-nav-icon" aria-hidden="true"></i><span data-i18n="navFaq">帮助</span></a>
+    </nav>
+    <div class="site-header-actions">
+      <button type="button" class="lang-toggle" id="langToggle" data-i18n="langToggle">EN</button>
+      <a class="nav-cta" href="download.html">下载</a>
+      <button type="button" class="mobile-nav-toggle" id="mobileNavToggle" aria-label="菜单" aria-expanded="false">
+        <i class="ph ph-list text-xl"></i>
+      </button>
+    </div>
+  </div>
+</header>
+<div class="mobile-nav-panel" id="mobileNavPanel">
+  <a href="index.html" data-nav="home"><i class="ph ph-house site-nav-icon" aria-hidden="true"></i><span data-i18n="navHome">首页</span></a>
+  <a href="quickstart.html" data-nav="quickstart"><i class="ph ph-rocket-launch site-nav-icon" aria-hidden="true"></i><span data-i18n="navQuickstart">上手</span></a>
+  <a href="faq.html" data-nav="faq"><i class="ph ph-question site-nav-icon" aria-hidden="true"></i><span data-i18n="navFaq">帮助</span></a>
+  <a href="download.html" data-nav="download" data-i18n="navDownload">下载</a>
+</div>
+<main>
+<div id="story-world" class="story-world" data-mood="dark">
+  <section id="qs-hero" class="qs-hero-wrapper is-visible" data-mode="keys" data-mood="dark" aria-label="按键开场">
+    <div class="spatial-grid-wrap" aria-hidden="true"><div class="spatial-grid"></div></div>
+
+    <!-- 按键：改前外设 → 开麦演示（演示日志） -->
+    <div class="qs-hero-inner" data-hero-keys>
+      <header class="qs-hero-head">
+        <div class="qs-hero-badge qs-glass-card">
+          <i class="ph-fill ph-keyboard text-mac-accent text-sm" aria-hidden="true"></i>
+          <span data-i18n="qsHeroKeysBadge">不用买键盘 · 现有设备就行</span>
+        </div>
+        <h1 class="qs-hero-title">
+          <span data-i18n="qsHeroKeysTitleBefore">按一下，就能在 </span><span class="qs-hero-title-accent" data-i18n="qsHeroKeysTitleAccent">Cursor 里说</span>
+        </h1>
+      </header>
+
+      <div class="qs-hero-stage" id="qs-hero-stage">
+        <canvas id="neural-canvas" aria-hidden="true"></canvas>
+        <div class="qs-hero-node-layer" id="node-layer-keys">
+          <div class="qs-rich-node qs-glass-card" id="rn-kb" style="top: 18%; left: 16%;">
+            <div class="rn-icon-box"><i class="ph-fill ph-keyboard" aria-hidden="true"></i></div>
+            <div class="rn-info">
+              <span class="rn-name">快捷键</span>
+              <span class="rn-status"><span class="rn-dot"></span> Alt + 空格</span>
+            </div>
+          </div>
+          <div class="qs-rich-node qs-glass-card" id="rn-mouse" style="top: 18%; left: 84%;">
+            <div class="rn-icon-box"><i class="ph-fill ph-mouse" aria-hidden="true"></i></div>
+            <div class="rn-info">
+              <span class="rn-name">鼠标侧键</span>
+              <span class="rn-status"><span class="rn-dot"></span> 侧键</span>
+            </div>
+          </div>
+          <div class="qs-rich-node qs-glass-card" id="rn-gamepad" style="top: 82%; left: 14%;">
+            <div class="rn-icon-box"><i class="ph-fill ph-game-controller" aria-hidden="true"></i></div>
+            <div class="rn-info">
+              <span class="rn-name">手柄</span>
+              <span class="rn-status"><span class="rn-dot"></span> 扳机</span>
+            </div>
+          </div>
+          <div class="qs-rich-node qs-glass-card" id="rn-ring" style="top: 82%; left: 86%;">
+            <div class="rn-icon-box"><i class="ph-fill ph-circle" aria-hidden="true"></i></div>
+            <div class="rn-info">
+              <span class="rn-name">指环</span>
+              <span class="rn-status"><span class="rn-dot"></span> 点一下</span>
+            </div>
+          </div>
+          <div class="qs-rich-node qs-glass-card" id="rn-trackball" style="top: 88%; left: 50%;">
+            <div class="rn-icon-box"><i class="ph-fill ph-target" aria-hidden="true"></i></div>
+            <div class="rn-info">
+              <span class="rn-name">轨迹球</span>
+              <span class="rn-status"><span class="rn-dot"></span> Fn 键</span>
+            </div>
+          </div>
+        </div>
+        <div class="qs-rich-hub qs-glass-card" id="hn-hub">
+          <i class="ph-fill ph-microphone" id="hn-hub-icon" aria-hidden="true"></i>
+        </div>
+      </div>
+
+      <div class="qs-sleek-terminal qs-glass-card">
+        <div class="st-header">
+          <div class="st-title"><span class="st-dot" id="st-dot"></span> 演示日志</div>
+          <div class="st-code" id="st-code">待命</div>
+        </div>
+        <div class="st-body">
+          <div class="st-desc" id="st-desc">等着看你按哪个键…</div>
+          <div class="st-output"><span id="st-text"></span><span class="st-cursor" id="st-cursor"></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="qs-steps-section" aria-label="按键设置">
+  <div class="qs-content">
+
+    <section id="step1" class="qs-zone qs-zone-blue scroll-mt-28" data-zone-color="blue" data-mood="light" data-scroll-reveal>
+      <header class="qs-zone-head">
+        <h2 data-i18n="qsZone1Title">定制你的专属语音神器</h2>
+        <p data-i18n="qsZone1Desc">选择任意外设或按键，实现语音输入的触发</p>
+      </header>
+      <div class="qs-zone-card">
+      <div class="qs-zone-lab" data-cycle-group="zone1">
+        <div class="qs-zone-cards" role="tablist" aria-label="步骤一">
+          <button type="button" class="is-active" data-zone-item data-zone-target="triggers">
+            <span class="qs-zone-card-num">1</span>
+            <strong data-i18n="qsZ1CardTriggers">触发源</strong>
+            <span data-i18n="qsZ1CardTriggersHint">选择任意外设或按键作为触发</span>
+          </button>
+          <button type="button" data-zone-item data-zone-target="ime">
+            <span class="qs-zone-card-num">2</span>
+            <strong data-i18n="qsZ1CardIme">流式输入法</strong>
+            <span data-i18n="qsZ1CardImeHint">选择你正在用的输入法，OneTone 负责唤醒</span>
+          </button>
+          <button type="button" data-zone-item data-zone-target="mapping">
+            <span class="qs-zone-card-num">3</span>
+            <strong data-i18n="qsZ1CardMapping">映射关系</strong>
+            <span data-i18n="qsZ1CardMappingHint">把「触发源」和「激活快捷键」关联起来</span>
+          </button>
+        </div>
+        <div class="qs-zone-stage">
+          <article class="qs-zone-panel is-active" data-zone-panel="triggers">
+            <p class="qs-stage-title" data-i18n="qsZ1PanelTriggersTitle">选择触发源（6 选 1）</p>
+            <div class="qs-device-grid" data-trigger-list role="list">
+              <button type="button" class="qs-device-card qs-trigger-item is-active" data-trigger-id="mouse">
+                <span class="qs-device-photo">
+                  <img src="assets/devices/mouse.png" alt="" width="720" height="544" decoding="async" draggable="false">
+                </span>
+                <strong data-i18n="triggerMouse">鼠标侧键</strong>
+              </button>
+              <button type="button" class="qs-device-card qs-trigger-item" data-trigger-id="volume">
+                <span class="qs-device-photo">
+                  <img src="assets/devices/volume.png" alt="" width="720" height="551" decoding="async" draggable="false">
+                </span>
+                <strong data-i18n="triggerVolume">按键</strong>
+              </button>
+              <button type="button" class="qs-device-card qs-trigger-item" data-trigger-id="gamepad">
+                <span class="qs-device-photo">
+                  <img src="assets/devices/gamepad.png" alt="" width="720" height="628" decoding="async" draggable="false">
+                </span>
+                <strong data-i18n="triggerGamepad">手柄按键</strong>
+              </button>
+              <button type="button" class="qs-device-card qs-trigger-item" data-trigger-id="ring">
+                <span class="qs-device-photo">
+                  <img src="assets/devices/ring.png" alt="" width="624" height="720" decoding="async" draggable="false">
+                </span>
+                <strong data-i18n="triggerRing">蓝牙戒指</strong>
+              </button>
+              <button type="button" class="qs-device-card qs-trigger-item" data-trigger-id="trackball">
+                <span class="qs-device-photo">
+                  <img src="assets/devices/trackball.png" alt="" width="720" height="495" decoding="async" draggable="false">
+                </span>
+                <strong data-i18n="triggerTrackball">轨迹球</strong>
+              </button>
+              <button type="button" class="qs-device-card qs-trigger-item" data-trigger-id="mic">
+                <span class="qs-device-photo">
+                  <img src="assets/devices/mic.png" alt="" width="306" height="720" decoding="async" draggable="false">
+                </span>
+                <strong data-i18n="triggerMic">麦克风口令</strong>
+              </button>
+            </div>
+            <p class="qs-manual-note" data-i18n="qsZ1PanelTriggersNote">以上仅为示例，任意按键或组合键均可录入。</p>
+            <p class="qs-stage-foot"><a href="faq.html#no-response-check-key" class="text-brand-600" data-i18n="qsRecordKeysLink">如何录入按键？</a></p>
+          </article>
+          <article class="qs-zone-panel" data-zone-panel="ime">
+            <p class="qs-stage-title" data-i18n="qsImePresetLead">选择你正在用的流式输入法预设</p>
+            <div class="qs-ime-presets" data-ime-list role="tablist"></div>
+            <p class="qs-manual-note" data-i18n="qsImeManualFallback">也可以手动录入任何输入法的语音激活键（含系统自带语音输入）。</p>
+          </article>
+          <article class="qs-zone-panel" data-zone-panel="mapping">
+            <p class="qs-stage-title" data-i18n="qsOnboardTitle">用起来 · 一次完整操作</p>
+            <div class="qs-onboard-flow" data-qs-onboard>
+              <div class="qs-onboard-step" data-onboard-stage="hw">
+                <span class="qs-onboard-step-num">01</span>
+                <span class="qs-onboard-step-cap" data-i18n="qsOnboardCap1">随时随地</span>
+                <div class="qs-onboard-step-art qs-onboard-step-art-hw">
+                  <span class="qs-onboard-press-ring"></span>
+                  <span class="qs-onboard-press-ring qs-onboard-press-ring-2"></span>
+                  <div class="qs-onboard-icon" data-qs-demo-icon>
+                    <i class="ph-bold ph-mouse" aria-hidden="true"></i>
+                  </div>
+                </div>
+                <span class="qs-onboard-step-key" data-qs-demo-key>一键超人</span>
+              </div>
+              <div class="qs-onboard-bridge" aria-hidden="true">
+                <span class="qs-onboard-bridge-label" data-i18n="qsOnboardBridge1">OneTone 触发</span>
+                <span class="qs-onboard-bridge-line">
+                  <span class="qs-onboard-bridge-particle"></span>
+                </span>
+              </div>
+              <div class="qs-onboard-step" data-onboard-stage="sw">
+                <span class="qs-onboard-step-num">02</span>
+                <span class="qs-onboard-step-cap" data-i18n="qsOnboardCap2">心流时刻</span>
+                <div class="qs-onboard-step-art qs-onboard-step-art-sw">
+                  <div class="qs-onboard-voice-head">
+                    <img data-qs-demo-ime-icon src="assets/logo.png" alt="OneTone" width="16" height="16" decoding="async">
+                    <span data-qs-demo-ime-name>OneTone</span>
+                  </div>
+                  <div class="qs-onboard-wave" aria-hidden="true">
+                    <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                  </div>
+                </div>
+                <span class="qs-onboard-step-key" data-i18n="qsOnboardKey2">张嘴就写</span>
+              </div>
+              <div class="qs-onboard-bridge" aria-hidden="true">
+                <span class="qs-onboard-bridge-label" data-i18n="qsOnboardBridge2">自动上屏</span>
+                <span class="qs-onboard-bridge-line">
+                  <span class="qs-onboard-bridge-particle"></span>
+                </span>
+              </div>
+              <div class="qs-onboard-step qs-onboard-step-out" data-onboard-stage="out">
+                <span class="qs-onboard-step-num">03</span>
+                <span class="qs-onboard-step-cap" data-i18n="qsOnboardCap3">速效搞定</span>
+                <div class="qs-onboard-step-art qs-onboard-step-art-out">
+                  <div class="qs-onboard-editor">
+                    <span class="qs-onboard-editor-ln">12</span>
+                    <code><span data-qs-demo-target></span><span class="qs-onboard-cursor">|</span></code>
+                  </div>
+                </div>
+                <span class="qs-onboard-step-key" data-i18n="qsOnboardOutKey">最不绕弯子</span>
+              </div>
+            </div>
+            <ul class="qs-onboard-value-row" role="list">
+              <li class="qs-onboard-value">
+                <i class="ph-bold ph-microphone" aria-hidden="true"></i>
+                <span data-i18n="qsOnboardValue1">手不离嘴</span>
+              </li>
+              <li class="qs-onboard-value">
+                <i class="ph-bold ph-target" aria-hidden="true"></i>
+                <span data-i18n="qsOnboardValue2">说到就要做到</span>
+              </li>
+              <li class="qs-onboard-value">
+                <i class="ph-bold ph-trend-up" aria-hidden="true"></i>
+                <span data-i18n="qsOnboardValue3">提速小目标</span>
+              </li>
+            </ul>
+          </article>
+        </div>
+      </div>
+      </div>
+    </section>
+
+    <details class="glass-card rounded-2xl p-5 mb-8 mt-10">
+      <summary class="font-semibold cursor-pointer" data-i18n="qsMoreExamples">更多输入法与手动录键</summary>
+      <p class="mt-3 text-sm text-slate-500"><span data-i18n="qsMoreExamplesBody">不用预设？在软件里手动录任意输入法的语音激活键。</span> <a href="faq.html#baidu-ime" class="text-brand-600" data-i18n="qsMoreExamplesLink">常见问题里的输入法说明</a></p>
+    </details>
+  </div>
+  </section>
+</div>
+</main>
+<section id="site-download-cta" class="site-download-cta" aria-label="Download" data-section="5">
+  <div class="site-download-cta-inner">
+    <h2 class="site-download-cta-title" data-i18n="ctaBannerTitle">立即试用一声。</h2>
+    <a class="site-download-cta-btn" href="download.html">
+      <span data-i18n="ctaBannerBtn">下载 Windows 版本</span>
+      <i class="ph ph-download-simple" aria-hidden="true"></i>
+    </a>
+  </div>
+</section>
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <span data-i18n="footerCopy">© 2026 一声 OneTone</span>
+        <nav class="site-footer-features" aria-label="Features">
+      <span class="site-footer-features-label" data-i18n="footerFeatures">功能</span>
+      <a href="quickstart.html#voice" data-i18n="navVoice">语音</a>
+      <a href="keys.html" data-i18n="navKeys">按键</a>
+      <a href="vision.html" data-i18n="navCamera">摄像头</a>
+      <a href="agent.html" data-i18n="navSoftPad">SoftPad</a>
+    </nav>
+<nav>
+      <a href="changelog.html" data-i18n="footerChangelog">更新日志</a>
+      <a href="privacy.html" data-i18n="footerPrivacy">隐私政策</a>
+      <a href="terms.html" data-i18n="footerTerms">服务条款</a>
+      <a href="https://github.com/psterman/onetone" target="_blank" rel="noopener noreferrer" data-i18n="footerGithub">GitHub</a>
+      <a href="https://github.com/psterman/onetone/issues/new?template=bug_report.yml" data-i18n="footerReport">反馈问题</a>
+      <a href="support.html" data-i18n="footerSupport">支持项目</a>
+    </nav>
+  </div>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="js/site-scroll.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/quickstart-demo.js"></script>
+</body>
+</html>

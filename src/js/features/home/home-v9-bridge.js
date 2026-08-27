@@ -504,7 +504,7 @@
     return 'IDLE';
   }
 
-  var CURSOR_BEGINNER_PHRASES=['发送','继续','新建','新会话','麦克风','说话','小助手','取消','但是'];
+  var CURSOR_BEGINNER_PHRASES=['发送','继续','新建','新会话','麦克风','说话','一声','小助手','取消','但是'];
 
   function liveMatchMeta(res, summary){
     res=res||{};

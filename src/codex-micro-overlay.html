@@ -11,6 +11,7 @@
   <script src="js/features/agent/usage-format.js"></script>
   <script src="js/features/agent/soft-pad-agent-bar-rank.js"></script>
   <script src="js/cursor-beginner-onboard.js"></script>
+  <script src="js/features/activation/activation-hub.js"></script>
 </head>
 <body>
   <div class="root">
@@ -106,6 +107,8 @@
       <div class="overlay-mini-listen" id="miniBeginnerListenBanner" hidden aria-live="polite">
         <span class="overlay-mini-listen__dot" aria-hidden="true"></span>
         <span class="overlay-mini-listen__text" id="miniBeginnerListenText"></span>
+        <span class="overlay-mini-listen__cd" id="miniHubCountdown" hidden aria-hidden="true">—</span>
+        <button type="button" class="overlay-mini-listen__cancel" id="miniHubCancel" data-act="hub-cancel" hidden>取消</button>
       </div>
       </div>
 
@@ -409,6 +412,8 @@
     var miniBeginnerListenText=document.getElementById('miniBeginnerListenText');
     var miniBeginnerListenChip=document.getElementById('miniBeginnerListenChip');
     var miniBeginnerListenChipText=document.getElementById('miniBeginnerListenChipText');
+    var miniHubCountdown=document.getElementById('miniHubCountdown');
+    var miniHubCancel=document.getElementById('miniHubCancel');
     var miniQuotaDropdown=document.getElementById('miniQuotaDropdown');
     var miniQuotaOpen=false;
     var statusChip=document.getElementById('statusChip');
@@ -1899,32 +1904,7 @@
           miniBeginnerHint.textContent='';
         }
       }
-      if(miniBeginnerListenBanner&&miniBeginnerListenText){
-        if(armed&&probeOk){
-          var vPartial=String((s&&s.voiceHeardPartial)||(s&&s.voice_heard_partial)||'').trim();
-          var vFinal=String((s&&s.voiceHeardFinal)||(s&&s.voice_heard_final)||'').trim();
-          var vHeard=vPartial||vFinal;
-          var vMatched=!!((s&&s.voiceHeardMatched)||(s&&s.voice_heard_matched));
-          miniBeginnerListenBanner.hidden=false;
-          miniBeginnerListenBanner.classList.toggle('is-matched',!!(vMatched&&vHeard));
-          miniBeginnerListenBanner.classList.toggle('is-miss',!!(vHeard&&!vMatched&&vFinal));
-          miniBeginnerListenText.textContent=vHeard||armHint||'';
-        } else {
-          // Keep last matched phrase briefly after「取消」so user sees confirmation.
-          var vFinalOff=String((s&&s.voiceHeardFinal)||(s&&s.voice_heard_final)||'').trim();
-          var vMatchedOff=!!((s&&s.voiceHeardMatched)||(s&&s.voice_heard_matched));
-          if(vMatchedOff&&vFinalOff){
-            miniBeginnerListenBanner.hidden=false;
-            miniBeginnerListenBanner.classList.add('is-matched');
-            miniBeginnerListenBanner.classList.remove('is-miss');
-            miniBeginnerListenText.textContent=vFinalOff;
-          } else {
-            miniBeginnerListenBanner.hidden=true;
-            miniBeginnerListenBanner.classList.remove('is-matched','is-miss');
-            miniBeginnerListenText.textContent='';
-          }
-        }
-      }
+      // Listen / Hub 共用次行由 applyHubMini（status band）统一绘制。
       if(miniBeginnerListenChip&&miniBeginnerListenChipText){
         if(armed&&probeOk){
           miniBeginnerListenChip.hidden=false;
@@ -1983,6 +1963,76 @@
         }
       }
       flashBeginnerVoiceHit(s);
+    }
+
+    function hubPhaseLabel(phase, beginnerOn){
+      if(beginnerOn){
+        if(phase==='think') return '聆听中 · 手势派发 · 可说：发送、继续、新建、麦克风、取消';
+        return '聆听中 · 手势有效 · 可说：发送、继续、新建、麦克风、取消';
+      }
+      if(phase==='listen') return '激活中 · 聆听 · 手势有效';
+      if(phase==='think') return '激活中 · 派发';
+      return '激活中 · 手势有效';
+    }
+
+    /** 方案 A：与 Cursor 聆听次行合并为一条 status band。 */
+    function applyHubMini(s){
+      if(!miniBeginnerListenBanner||!wrap) return;
+      var hubOn=!!(s&&(s.activationHubActive||s.activation_hub_active));
+      var mode=!!(s&&(s.cursorBeginnerMode||s.cursor_beginner_mode));
+      var probeOk=!!(s&&(s.cursorProbeOk||s.cursor_probe_ok));
+      var armed=!!(s&&(s.cursorBeginnerArmed||s.cursor_beginner_armed));
+      var beginnerOn=mode&&armed&&probeOk;
+      wrap.classList.toggle('is-hub-active', hubOn);
+
+      var vPartial=String((s&&(s.voiceHeardPartial||s.voice_heard_partial))||'').trim();
+      var vFinal=String((s&&(s.voiceHeardFinal||s.voice_heard_final))||'').trim();
+      var vHeard=vPartial||vFinal;
+      var vMatched=!!((s&&(s.voiceHeardMatched||s.voice_heard_matched)));
+
+      var started=Number((s&&(s.activationHubStartedAtMs||s.activation_hub_started_at_ms))||0);
+      var timeout=Number((s&&(s.activationHubTimeoutMs||s.activation_hub_timeout_ms))||0);
+      var remain=0;
+      if(hubOn&&started>0&&timeout>0){
+        remain=Math.max(0, timeout-(Date.now()-started));
+      }
+      var softClose=hubOn&&timeout>0&&remain>0&&remain<=Math.min(10000, timeout*0.2);
+      var phase='watch';
+      if(hubOn){
+        if(remain<=0&&timeout>0) phase='think';
+        else if(started>0&&(Date.now()-started)<2500) phase='listen';
+      }
+      wrap.setAttribute('data-hub-phase', hubOn?phase:'');
+
+      var showBand=hubOn||beginnerOn||(vMatched&&vFinal);
+      if(!showBand){
+        miniBeginnerListenBanner.hidden=true;
+        miniBeginnerListenBanner.classList.remove('is-matched','is-miss','is-soft-close');
+        if(miniHubCountdown){ miniHubCountdown.hidden=true; miniHubCountdown.textContent=''; }
+        if(miniHubCancel) miniHubCancel.hidden=true;
+        return;
+      }
+
+      miniBeginnerListenBanner.hidden=false;
+      miniBeginnerListenBanner.classList.toggle('is-matched',!!(vMatched&&vHeard));
+      miniBeginnerListenBanner.classList.toggle('is-miss',!!(vHeard&&!vMatched&&vFinal&&beginnerOn));
+      miniBeginnerListenBanner.classList.toggle('is-soft-close', softClose);
+
+      var armHint=String((s&&(s.cursorBeginnerArmHint||s.cursor_beginner_arm_hint))||'').trim();
+      if(!armHint&&beginnerOn) armHint='聆听中 · 可说：发送、继续、新建、麦克风、取消';
+      var text=vHeard||(hubOn?hubPhaseLabel(phase, beginnerOn):(armHint||''));
+      if(miniBeginnerListenText) miniBeginnerListenText.textContent=text;
+
+      if(miniHubCountdown){
+        if(hubOn&&timeout>0){
+          miniHubCountdown.hidden=false;
+          miniHubCountdown.textContent=Math.ceil(remain/1000)+'s';
+        }else{
+          miniHubCountdown.hidden=true;
+          miniHubCountdown.textContent='';
+        }
+      }
+      if(miniHubCancel) miniHubCancel.hidden=!hubOn;
     }
 
     function flashBeginnerVoiceHit(s){
@@ -2146,11 +2196,13 @@
       applyUsageCaptionIdle(s);
       if(s&&(s.cursorBeginnerMode||s.cursor_beginner_mode)){
         applyCursorBeginnerMini(s);
+        applyHubMini(s);
         return;
       }
       if(miniBeginnerActions) miniBeginnerActions.hidden=true;
       if(miniBeginnerHint) miniBeginnerHint.hidden=true;
-      wrap.classList.remove('is-cursor-beginner','is-cursor-beginner-armed');
+      wrap.classList.remove('is-cursor-beginner','is-cursor-beginner-armed','is-cursor-beginner-listen');
+      applyHubMini(s);
     }
 
     function touchAgentBarRecency(kind){
@@ -3407,6 +3459,29 @@
         invoke('cmd_codex_micro_overlay_set_minimized',{minimized:false}).then(forcePadGridRefresh).catch(forcePadGridRefresh);
       });
     });
+
+    if(miniHubCancel){
+      miniHubCancel.addEventListener('pointerdown',function(e){ e.stopPropagation(); });
+      miniHubCancel.addEventListener('click',function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        invoke('cmd_voice_end_ui_cancel',{}).then(function(res){
+          if(res&&res.ok===false){
+            toast('当前未在激活窗');
+            return;
+          }
+          toast('已取消激活');
+          if(window.OneToneActivationHub&&window.OneToneActivationHub.deactivate){
+            window.OneToneActivationHub.deactivate('manual');
+          }
+          if(lastSnap){
+            lastSnap.activationHubActive=false;
+            lastSnap.activation_hub_active=false;
+            applyHubMini(lastSnap);
+          }
+        }).catch(function(){ toast('取消失败'); });
+      });
+    }
 
     if(overlayNavCta){
       overlayNavCta.addEventListener('click',function(e){

@@ -1684,6 +1684,84 @@ body[data-page="quickstart"] main {
   font-family: 'JetBrains Mono', monospace;
 }
 
+.st-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 12px;
+}
+
+.st-title {
+  font-size: 11px;
+  color: #6b7280;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.st-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4b5563;
+  transition: all 0.3s;
+}
+
+.st-dot.active {
+  background: var(--qs-hero-accent);
+  box-shadow: 0 0 8px var(--qs-hero-accent);
+  animation: qs-pulse-opacity 1s infinite alternate;
+}
+
+.st-code {
+  font-size: 11px;
+  color: var(--qs-hero-accent);
+  opacity: 0;
+  transform: translateY(5px);
+  transition: all 0.3s;
+  font-weight: 500;
+}
+
+.st-code.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.st-body { min-height: 54px; }
+.st-desc {
+  font-size: 13px;
+  color: #9ca3af;
+  margin-bottom: 8px;
+}
+
+.st-output {
+  font-size: 15px;
+  color: #fff;
+  min-height: 22px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.st-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 18px;
+  background: var(--qs-hero-accent);
+  vertical-align: middle;
+  margin-left: 6px;
+  opacity: 0;
+}
+
+.st-cursor.blinking {
+  animation: qs-blink-cursor 1s step-end infinite;
+  opacity: 1;
+}
+
+@keyframes qs-pulse-opacity { to { opacity: 0.3; } }
+@keyframes qs-blink-cursor { 50% { opacity: 0; } }
+
 .qs-hero-minibar {
   display: flex;
   flex-direction: column;
@@ -2065,12 +2143,21 @@ body[data-page="quickstart"] main {
   #rn-mic { top: 74% !important; left: 8% !important; }
   #rn-softpad { top: 74% !important; left: 92% !important; }
   #rn-trackball { top: 92% !important; left: 50% !important; }
+
+  /* classic keys page (pre-agent hero) */
+  [data-page="keys"] #rn-kb { top: 12% !important; left: 12% !important; }
+  [data-page="keys"] #rn-mouse { top: 12% !important; left: 88% !important; }
+  [data-page="keys"] #rn-gamepad { top: 88% !important; left: 12% !important; }
+  [data-page="keys"] #rn-ring { top: 88% !important; left: 88% !important; }
+  [data-page="keys"] #rn-trackball { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .qs-rich-node,
   .qs-rich-hub::before,
-  .qs-mini-btn.is-hot {
+  .qs-mini-btn.is-hot,
+  .st-dot.active,
+  .st-cursor.blinking {
     animation: none !important;
   }
 }

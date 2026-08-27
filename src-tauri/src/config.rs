@@ -2093,6 +2093,12 @@ pub struct VoiceConfig {
     /// Soft Pad waiting/error OS notifications (Hub preference).
     #[serde(default, rename = "softPadStatusNotifyEnabled")]
     pub soft_pad_status_notify_enabled: bool,
+    /// Cursor beginner voice arm phrase (default「一声」). Soft Pad can edit.
+    #[serde(
+        default = "default_cursor_beginner_arm_phrase",
+        rename = "cursorBeginnerArmPhrase"
+    )]
+    pub cursor_beginner_arm_phrase: String,
     #[serde(default, rename = "cameraPrefs")]
     pub camera_prefs: CameraPrefs,
     #[serde(default, rename = "workspaceLayouts")]
@@ -2157,6 +2163,9 @@ fn default_window_height() -> f64 {
 }
 fn default_scheme_switch_key() -> String {
     String::new()
+}
+fn default_cursor_beginner_arm_phrase() -> String {
+    crate::cursor_beginner::DEFAULT_ARM_PHRASE.into()
 }
 fn default_interval_ms() -> u32 {
     1200
@@ -3841,6 +3850,7 @@ impl Default for VoiceConfig {
             soft_pad_rgb_aggregate_enabled: true,
             soft_pad_session_persist_enabled: true,
             soft_pad_status_notify_enabled: false,
+            cursor_beginner_arm_phrase: default_cursor_beginner_arm_phrase(),
             camera_prefs: CameraPrefs::default(),
             workspace_layouts: vec![],
             sounds: SoundsConfig::default(),
@@ -5284,6 +5294,12 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
         cfg.cursor_activity_stats_enabled = existing.cursor_activity_stats_enabled;
     }
     crate::cursor_local_activity::set_consent_enabled(cfg.cursor_activity_stats_enabled);
+    if raw.get("cursorBeginnerArmPhrase").is_none() {
+        cfg.cursor_beginner_arm_phrase = existing.cursor_beginner_arm_phrase.clone();
+    } else {
+        cfg.cursor_beginner_arm_phrase =
+            crate::cursor_beginner::normalize_arm_phrase(&cfg.cursor_beginner_arm_phrase);
+    }
     // Camera prefs only change via cmd_save_camera_prefs — never let a full mapping
     // save overwrite them with a stale FE snapshot (looked like "restart cleared camera").
     cfg.camera_prefs = existing.camera_prefs.clone();
@@ -5471,6 +5487,7 @@ pub fn save_config(cfg: &VoiceConfig) {
 }
 
 pub fn apply_config(state: &AppState, cfg: &VoiceConfig) {
+    crate::cursor_beginner::sync_arm_phrase_cache(cfg);
     crate::codex_numpad_layer::sync_hook_cache(cfg);
     if let Some(ref mgr) = *state.hotkey_mgr.lock() {
         mgr.bind_all(&cfg.bindings());

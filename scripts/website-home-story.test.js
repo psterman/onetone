@@ -49,8 +49,9 @@ assert.ok(siteNav, "index has site-nav");
 assert.match(siteNav[0], /data-nav="quickstart"/, "top nav has quickstart");
 assert.doesNotMatch(siteNav[0], /navVoice|navKeys|navCamera|navSoftPad/, "top nav has no four-feature labels");
 assert.doesNotMatch(siteNav[0], /data-nav="voice"|data-nav="keys"|data-nav="camera"|data-nav="softpad"/, "top nav has no feature data-nav");
-assert.match(indexHtml, /quickstart\.html#keys/, "trigger keys deep link");
+assert.match(indexHtml, /href="keys\.html"/, "trigger keys deep link");
 assert.match(indexHtml, /quickstart\.html#voice/, "voice deep link");
+assert.doesNotMatch(indexHtml, /quickstart\.html#keys/, "keys no longer on quickstart hash");
 assert.match(indexHtml, /homeChTriggerKeys/, "keys chip i18n");
 assert.match(indexHtml, /homeChVoiceLink/, "voice chip i18n");
 assert.match(indexHtml, /chapter-chip[\s\S]*ph-keyboard/, "keys chip has icon");
@@ -194,5 +195,39 @@ var i18nKeys = [
 i18nKeys.forEach(function (key) {
   assert.match(i18n, new RegExp(key + ":"), "i18n has " + key);
 });
+
+var siteScrollJs = read("website/js/site-scroll.js");
+var siteScrollCss = read("website/css/site-scroll.css");
+assert.match(siteScrollJs, /story-gsap-live/, "site-scroll marks story-gsap-live");
+assert.match(siteScrollJs, /IntersectionObserver/, "site-scroll uses IO");
+assert.match(siteScrollJs, /qs-hero-mode/, "site-scroll listens for quickstart hero mode");
+assert.match(siteScrollCss, /data-mood="pad"/, "site-scroll has pad mood");
+assert.match(siteScrollCss, /data-scroll-reveal/, "site-scroll reveal CSS");
+
+["quickstart.html", "keys.html", "faq.html", "vision.html", "agent.html"].forEach(function (page) {
+  var html = read("website/" + page);
+  assert.match(html, /id="story-world"/, page + " has story-world");
+  assert.match(html, /site-scroll\.js/, page + " loads site-scroll.js");
+  assert.match(html, /site-scroll\.css/, page + " loads site-scroll.css");
+  assert.match(html, /gsap@3\.12\.5\/dist\/gsap\.min\.js/, page + " loads GSAP");
+  assert.doesNotMatch(html, /class="[^"]*scroll-smooth/, page + " has no scroll-smooth");
+});
+
+var qsHtml = read("website/quickstart.html");
+assert.match(qsHtml, /id="qs-hero"/, "quickstart keeps hero");
+assert.match(qsHtml, /data-mood="light"/, "quickstart has light mood");
+assert.match(qsHtml, /data-scroll-reveal/, "quickstart has scroll reveal blocks");
+
+var keysHtml = read("website/keys.html");
+assert.match(keysHtml, /data-page="keys"/, "keys page identity");
+assert.match(keysHtml, /data-hero-keys/, "keys page has keys hero");
+assert.match(keysHtml, /id="step1"/, "keys page has bind zone");
+assert.match(keysHtml, /qs-sleek-terminal/, "keys page uses classic demo log");
+assert.match(keysHtml, /按一下，就能在/, "keys page classic title");
+assert.doesNotMatch(keysHtml, /qs-hero-minibar|qs-guide-video|data-hero-voice/, "keys page is classic keys, not 上手 agent");
+assert.match(read("website/js/quickstart-demo.js"), /initQsClassicKeysHero/, "classic keys hero demo");
+assert.match(read("website/js/quickstart-demo.js"), /location\.replace\("keys\.html"\)/, "old #keys redirects to keys.html");
+assert.match(read("website/quickstart.html"), /qs-hero-minibar/, "上手 keeps agent minibar hero");
+assert.match(read("website/quickstart.html"), /qsHeroAgentBadge/, "上手 uses agent i18n keys");
 
 console.log("website-home-story.test.js: all assertions passed");

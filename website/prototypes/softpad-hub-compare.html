@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SoftPad + Hub 布局方案对比 — OneTone</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,500&family=IBM+Plex+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0c1018;
+      --panel: #141a24;
+      --ink: #e8eef6;
+      --muted: #8b97a8;
+      --shell: rgba(226, 236, 248, 0.9);
+      --shell-ink: #3a4454;
+      --shell-muted: #7d8998;
+      --agent-idle: rgba(125, 137, 152, 0.55);
+      --agent-run: rgba(0, 163, 255, 0.95);
+      --agent-wait: rgba(245, 158, 11, 0.95);
+      --hub-listen: #00a3ff;
+      --hub-watch: #22c55e;
+      --hub-think: #a855f7;
+      --hub-done: #16a34a;
+      --accent: #3db8e0;
+      --warn: #f59e0b;
+      --ok: #34d399;
+      --bad: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(900px 480px at 12% -10%, rgba(0, 163, 255, 0.14), transparent 55%),
+        radial-gradient(700px 400px at 90% 0%, rgba(168, 85, 247, 0.1), transparent 50%),
+        var(--bg);
+      color: var(--ink);
+      font-family: "IBM Plex Sans SC", "DM Sans", "PingFang SC", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      padding: 2rem 1.25rem 3.5rem;
+    }
+    .head {
+      max-width: 72rem;
+      margin: 0 auto 1.75rem;
+    }
+    .head h1 {
+      margin: 0 0 0.4rem;
+      font-family: "DM Sans", sans-serif;
+      font-size: 1.65rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+    .head p {
+      margin: 0;
+      max-width: 42rem;
+      color: var(--muted);
+      font-size: 0.9375rem;
+      line-height: 1.65;
+    }
+    .rules {
+      max-width: 72rem;
+      margin: 0 auto 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .rules span {
+      font-size: 0.75rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--muted);
+      background: rgba(255,255,255,0.03);
+    }
+    .rules .must { color: var(--ok); border-color: rgba(52, 211, 153, 0.35); }
+    .rules .no { color: var(--bad); border-color: rgba(248, 113, 113, 0.35); }
+
+    .toolbar {
+      max-width: 72rem;
+      margin: 0 auto 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .toolbar label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-right: 0.25rem;
+    }
+    .toolbar button {
+      font: inherit;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      padding: 0.45rem 0.85rem;
+      border-radius: 0.55rem;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .toolbar button.is-on {
+      background: rgba(61, 184, 224, 0.2);
+      border-color: rgba(61, 184, 224, 0.45);
+      color: #b8ecff;
+    }
+    .toolbar .note {
+      margin-left: auto;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .grid {
+      max-width: 72rem;
+      margin: 0 auto;
+      display: grid;
+      gap: 1.25rem;
+    }
+    @media (min-width: 960px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    .card {
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 1.1rem;
+      background: var(--panel);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-meta {
+      padding: 1rem 1.15rem 0.85rem;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .card-meta .tag {
+      display: inline-block;
+      font-family: "DM Sans", sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.35rem;
+    }
+    .card[data-scheme="A"] .tag { color: var(--ok); }
+    .card[data-scheme="B"] .tag { color: var(--warn); }
+    .card[data-scheme="C"] .tag { color: var(--accent); }
+    .card[data-scheme="D"] .tag { color: #c4b5fd; }
+    .card-meta h2 {
+      margin: 0 0 0.35rem;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+    .card-meta p {
+      margin: 0;
+      font-size: 0.8125rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .pros {
+      margin: 0.65rem 0 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+    .pros li {
+      font-size: 0.6875rem;
+      padding: 0.2rem 0.45rem;
+      border-radius: 0.35rem;
+      background: rgba(255,255,255,0.05);
+      color: var(--muted);
+    }
+    .pros li.good { color: var(--ok); background: rgba(52,211,153,0.1); }
+    .pros li.risk { color: var(--warn); background: rgba(245,158,11,0.1); }
+
+    .stage {
+      padding: 1.5rem 1.15rem 1.35rem;
+      min-height: 168px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background:
+        linear-gradient(180deg, rgba(0,0,0,0.25), transparent 40%),
+        repeating-linear-gradient(
+          -12deg,
+          transparent,
+          transparent 11px,
+          rgba(255,255,255,0.015) 11px,
+          rgba(255,255,255,0.015) 12px
+        );
+      position: relative;
+    }
+    .stage-caption {
+      position: absolute;
+      top: 0.75rem;
+      left: 1rem;
+      font-size: 0.6875rem;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 0.04em;
+    }
+
+    /* —— shared mini chrome —— */
+    .mini-stack {
+      width: min(340px, 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      filter: drop-shadow(0 12px 28px rgba(0,0,0,0.45));
+    }
+    .mini {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      min-height: 44px;
+      border-radius: 14px;
+      background: var(--shell);
+      color: var(--shell-ink);
+      position: relative;
+      overflow: hidden;
+    }
+    .mini.is-hub-on {
+      box-shadow: inset 0 0 0 1px rgba(0, 163, 255, 0.25);
+    }
+    .agents {
+      display: flex;
+      gap: 3px;
+      flex: 0 0 auto;
+    }
+    .agent {
+      position: relative;
+      width: 22px;
+      height: 22px;
+      border-radius: 7px;
+      background: rgba(15, 23, 42, 0.08);
+      display: grid;
+      place-items: center;
+      font-size: 9px;
+      font-weight: 700;
+      font-family: "DM Sans", sans-serif;
+      color: #64748b;
+    }
+    .agent .dot {
+      position: absolute;
+      right: 1px;
+      bottom: 1px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--agent-idle);
+      box-shadow: 0 0 0 1.5px rgba(255,255,255,0.9);
+    }
+    .agent[data-status="running"] .dot {
+      background: var(--agent-run);
+      box-shadow: 0 0 0 1.5px rgba(255,255,255,0.9), 0 0 6px var(--agent-run);
+    }
+    .agent[data-status="needs_input"] .dot {
+      background: var(--agent-wait);
+      box-shadow: 0 0 0 1.5px rgba(255,255,255,0.9), 0 0 6px var(--agent-wait);
+    }
+    .pill {
+      margin-left: auto;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 7px;
+      border-radius: 8px;
+      background: rgba(15,23,42,0.08);
+      color: var(--shell-muted);
+      white-space: nowrap;
+      min-width: 58px;
+      text-align: center;
+    }
+    .btn {
+      width: 24px;
+      height: 24px;
+      border: 0;
+      border-radius: 8px;
+      background: rgba(15,23,42,0.06);
+      color: var(--shell-muted);
+      font-size: 12px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+    }
+
+    /* A: second row */
+    .hub-row {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 12px;
+      background: rgba(226, 236, 248, 0.92);
+      color: var(--shell-ink);
+      font-size: 11px;
+      min-height: 32px;
+    }
+    body.is-active .scheme-a .hub-row { display: flex; }
+    .hub-row .phase-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--hub-listen);
+      flex: 0 0 auto;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    body.phase-watch .scheme-a .hub-row .phase-dot { background: var(--hub-watch); animation: none; }
+    body.phase-think .scheme-a .hub-row .phase-dot {
+      background: var(--hub-think);
+      animation: pulse 0.55s ease-in-out infinite;
+    }
+    .hub-row .txt { flex: 1; min-width: 0; font-weight: 500; }
+    .hub-row .cd { font-variant-numeric: tabular-nums; color: var(--shell-muted); }
+    .hub-row .cancel {
+      border: 0;
+      background: rgba(15,23,42,0.08);
+      color: var(--shell-ink);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 7px;
+      cursor: pointer;
+    }
+
+    /* B: inline indicators (crowds) */
+    .divider {
+      width: 1px;
+      height: 18px;
+      background: rgba(15,23,42,0.12);
+      flex: 0 0 auto;
+    }
+    .act-bar {
+      display: flex;
+      gap: 4px;
+      padding: 2px 5px;
+      border-radius: 10px;
+      background: rgba(15,23,42,0.05);
+      flex: 0 0 auto;
+    }
+    .act-i {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(125,137,152,0.35);
+      display: grid;
+      place-items: center;
+      color: rgba(255,255,255,0.45);
+      font-size: 9px;
+      transform: scale(0.92);
+    }
+    body.is-active .scheme-b .act-i.mic {
+      background: var(--hub-listen);
+      color: #fff;
+      transform: scale(1);
+      box-shadow: 0 0 8px rgba(0,163,255,0.55);
+    }
+    body.is-active.phase-watch .scheme-b .act-i.cam,
+    body.is-active.phase-think .scheme-b .act-i.cam {
+      background: var(--hub-watch);
+      color: #fff;
+      transform: scale(1);
+    }
+    body.is-active.phase-think .scheme-b .act-i.think {
+      background: var(--hub-think);
+      color: #fff;
+      transform: scale(1);
+      animation: pulse 0.55s ease-in-out infinite;
+    }
+    body.is-active .scheme-b .mini {
+      background: linear-gradient(135deg, var(--shell), rgba(0,163,255,0.28));
+    }
+    .scheme-b .pill { min-width: 0; padding: 3px 5px; font-size: 9px; }
+
+    /* C: single hub chip */
+    .hub-chip {
+      display: none;
+      align-items: center;
+      gap: 4px;
+      height: 22px;
+      padding: 0 7px 0 5px;
+      border-radius: 8px;
+      background: rgba(0,163,255,0.15);
+      border: 1px solid rgba(0,163,255,0.35);
+      color: #0369a1;
+      font-size: 10px;
+      font-weight: 700;
+      flex: 0 0 auto;
+    }
+    body.is-active .scheme-c .hub-chip { display: inline-flex; }
+    .hub-chip .led {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--hub-listen);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    body.phase-watch .scheme-c .hub-chip .led { background: var(--hub-watch); animation: none; }
+    body.phase-think .scheme-c .hub-chip .led {
+      background: var(--hub-think);
+      animation: pulse 0.55s ease-in-out infinite;
+    }
+    .hub-tip {
+      display: none;
+      margin-top: 2px;
+      font-size: 10px;
+      color: rgba(255,255,255,0.45);
+      text-align: center;
+    }
+    body.is-active .scheme-c .hub-tip { display: block; }
+
+    /* D: left rail + full caption */
+    .scheme-d .mini::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 6px;
+      bottom: 6px;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: transparent;
+      transition: background 0.2s;
+    }
+    body.is-active .scheme-d .mini::before {
+      background: var(--hub-listen);
+      box-shadow: 0 0 10px rgba(0,163,255,0.5);
+    }
+    body.phase-watch .scheme-d .mini::before { background: var(--hub-watch); box-shadow: none; }
+    body.phase-think .scheme-d .mini::before {
+      background: var(--hub-think);
+      box-shadow: 0 0 10px rgba(168,85,247,0.45);
+    }
+    .d-caption {
+      display: none;
+      width: min(340px, 100%);
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.06);
+      font-size: 11px;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.4;
+    }
+    body.is-active .scheme-d .d-caption { display: block; }
+    .d-caption strong { color: #fff; font-weight: 600; }
+    .d-caption .acts {
+      margin-top: 6px;
+      display: flex;
+      gap: 6px;
+    }
+    .d-caption button {
+      font: inherit;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      cursor: pointer;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.55; transform: scale(0.92); }
+    }
+
+    .verdict {
+      max-width: 72rem;
+      margin: 1.75rem auto 0;
+      padding: 1rem 1.15rem;
+      border-radius: 0.9rem;
+      border: 1px solid rgba(52, 211, 153, 0.25);
+      background: rgba(52, 211, 153, 0.06);
+      font-size: 0.875rem;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+    .verdict strong { color: var(--ok); }
+    .path {
+      max-width: 72rem;
+      margin: 0.75rem auto 0;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.35);
+      font-family: ui-monospace, "Cascadia Code", monospace;
+    }
+  </style>
+</head>
+<body class="is-active phase-watch">
+  <header class="head">
+    <h1>SoftPad + Hub · 四方案原型</h1>
+    <p>
+      Agent 芯片始终表示任务阶段（蓝=执行 / 琥珀=等待）。Hub 只表达「激活窗」。
+      下面用同一组 Agent 状态，对比 Hub 信号怎么挂在 SoftPad 上、会不会抢戏。
+    </p>
+  </header>
+
+  <div class="rules">
+    <span class="must">必须：Agent 点颜色语义不动</span>
+    <span class="must">必须：有开/关窗操作落点</span>
+    <span class="no">禁止：用 running 点冒充 Hub 激活</span>
+    <span class="no">禁止：主条挤掉 6 chip + 用量</span>
+  </div>
+
+  <div class="toolbar">
+    <label>演示状态</label>
+    <button type="button" data-demo="idle">未激活</button>
+    <button type="button" data-demo="listen" class="is-on">激活 · listen</button>
+    <button type="button" data-demo="watch">激活 · watch</button>
+    <button type="button" data-demo="think">激活 · think</button>
+    <span class="note">Cursor 执行中 · Claude 等待输入（固定）</span>
+  </div>
+
+  <div class="grid">
+    <!-- A -->
+    <article class="card scheme-a" data-scheme="A">
+      <div class="card-meta">
+        <div class="tag">方案 A · 推荐</div>
+        <h2>主条不动 · 次行 Hub 条</h2>
+        <p>激活后在迷你栏下方长出一条（同 beginner 聆听条槽）。取消在条上。未激活零占位。</p>
+        <ul class="pros">
+          <li class="good">不抢 Agent</li>
+          <li class="good">操作完整</li>
+          <li class="good">与现有 stack 一致</li>
+          <li>高度 +32px</li>
+        </ul>
+      </div>
+      <div class="stage">
+        <span class="stage-caption">IDLE → 次行 hidden</span>
+        <div class="mini-stack">
+          <div class="mini is-hub-on">
+            <div class="agents" aria-label="Agent">
+              <span class="agent" data-status="idle" title="Codex">Cx<i class="dot"></i></span>
+              <span class="agent" data-status="needs_input" title="Claude">Cl<i class="dot"></i></span>
+              <span class="agent" data-status="running" title="Cursor">Cu<i class="dot"></i></span>
+            </div>
+            <span class="pill">Cu · 12次</span>
+            <span class="btn" aria-hidden="true">⛶</span>
+            <span class="btn" aria-hidden="true">×</span>
+          </div>
+          <div class="hub-row" id="hubRowA">
+            <span class="phase-dot" aria-hidden="true"></span>
+            <span class="txt hub-txt">激活中 · 手势有效</span>
+            <span class="cd">12s</span>
+            <button type="button" class="cancel">取消</button>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- B -->
+    <article class="card scheme-b" data-scheme="B">
+      <div class="card-meta">
+        <div class="tag">方案 B · 原稿</div>
+        <h2>主条内嵌 mic / cam / think 三灯</h2>
+        <p>Activation Hub 设计稿做法。相位直观，但主条变挤，用量易缩成碎片。</p>
+        <ul class="pros">
+          <li class="good">相位一眼可见</li>
+          <li class="risk">挤 Agent / 用量</li>
+          <li class="risk">易与 Agent 点混淆</li>
+          <li>壳色整体变蓝</li>
+        </ul>
+      </div>
+      <div class="stage">
+        <span class="stage-caption">320 宽预算紧张</span>
+        <div class="mini-stack">
+          <div class="mini">
+            <div class="agents">
+              <span class="agent" data-status="idle">Cx<i class="dot"></i></span>
+              <span class="agent" data-status="needs_input">Cl<i class="dot"></i></span>
+              <span class="agent" data-status="running">Cu<i class="dot"></i></span>
+            </div>
+            <span class="divider" aria-hidden="true"></span>
+            <div class="act-bar" aria-label="Hub">
+              <span class="act-i mic" title="mic">🎙</span>
+              <span class="act-i cam" title="cam">👁</span>
+              <span class="act-i think" title="think">✦</span>
+            </div>
+            <span class="pill">用量</span>
+            <span class="btn">⛶</span>
+            <span class="btn">×</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- C -->
+    <article class="card scheme-c" data-scheme="C">
+      <div class="card-meta">
+        <div class="tag">方案 C · 紧凑</div>
+        <h2>主条一枚 Hub chip</h2>
+        <p>激活时在 Agent 与用量之间插入「激活」芯片；详情靠 tip/展开。省高度，取消要另找落点。</p>
+        <ul class="pros">
+          <li class="good">主条几乎不长高</li>
+          <li class="good">少抢视线</li>
+          <li class="risk">取消/倒计时弱</li>
+          <li class="risk">chip 易当第四 Agent</li>
+        </ul>
+      </div>
+      <div class="stage">
+        <span class="stage-caption">chip ≠ Agent 图标</span>
+        <div class="mini-stack">
+          <div class="mini is-hub-on">
+            <div class="agents">
+              <span class="agent" data-status="idle">Cx<i class="dot"></i></span>
+              <span class="agent" data-status="needs_input">Cl<i class="dot"></i></span>
+              <span class="agent" data-status="running">Cu<i class="dot"></i></span>
+            </div>
+            <span class="hub-chip"><i class="led"></i>激活</span>
+            <span class="pill">Cu · 12次</span>
+            <span class="btn">⛶</span>
+            <span class="btn">×</span>
+          </div>
+          <div class="hub-tip">点击 chip 或展开 Soft Pad 管理 Hub · 12s</div>
+        </div>
+      </div>
+    </article>
+
+    <!-- D -->
+    <article class="card scheme-d" data-scheme="D">
+      <div class="card-meta">
+        <div class="tag">方案 D · 全盘载体</div>
+        <h2>迷你左边线 + 展开后管理台</h2>
+        <p>迷你只留相位色条，不占 chip 位；综合管理（开/关、通道状态）放在展开 Soft Pad 底栏。</p>
+        <ul class="pros">
+          <li class="good">迷你最干净</li>
+          <li class="good">综合管理空间足</li>
+          <li class="risk">迷你信息量少</li>
+          <li>依赖展开</li>
+        </ul>
+      </div>
+      <div class="stage">
+        <span class="stage-caption">展开 = Hub 控制台</span>
+        <div class="mini is-hub-on">
+          <div class="agents">
+            <span class="agent" data-status="idle">Cx<i class="dot"></i></span>
+            <span class="agent" data-status="needs_input">Cl<i class="dot"></i></span>
+            <span class="agent" data-status="running">Cu<i class="dot"></i></span>
+          </div>
+          <span class="pill">Cu · 12次</span>
+          <span class="btn">⛶</span>
+          <span class="btn">×</span>
+        </div>
+        <div class="d-caption">
+          <strong>Hub 激活 · watch</strong> — 摄像头手势有效 · 剩余 12s<br />
+          通道：语音窗开 · 摄像头监听 · SoftPad 键可用
+          <div class="acts">
+            <button type="button">取消激活</button>
+            <button type="button">仅看 Agent</button>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <p class="verdict">
+    <strong>规划建议：A 为主路径</strong>（次行 = 信号 + 取消，Agent 主条零干扰）；
+    需要更强综合管理时，用 <strong>A + D 底栏</strong>（迷你次行看状态，展开 Soft Pad 看通道清单）。
+    B 仅作相位教学；C 适合极简，但取消弱，不建议单独做综合管理。
+  </p>
+  <p class="path">file:// …/website/prototypes/softpad-hub-compare.html</p>
+
+  <script>
+    (function () {
+      var body = document.body;
+      var buttons = document.querySelectorAll('[data-demo]');
+      var texts = {
+        listen: '激活中 · 聆听',
+        watch: '激活中 · 手势有效',
+        think: '执行中 · 动作派发'
+      };
+      function setDemo(mode) {
+        buttons.forEach(function (b) {
+          b.classList.toggle('is-on', b.getAttribute('data-demo') === mode);
+        });
+        body.classList.remove('is-active', 'phase-listen', 'phase-watch', 'phase-think');
+        if (mode === 'idle') {
+          document.querySelectorAll('.hub-txt').forEach(function (el) {
+            el.textContent = '激活中 · 手势有效';
+          });
+          return;
+        }
+        body.classList.add('is-active', 'phase-' + mode);
+        var t = texts[mode] || texts.watch;
+        document.querySelectorAll('.hub-txt').forEach(function (el) {
+          el.textContent = t;
+        });
+        var tip = document.querySelector('.scheme-c .hub-tip');
+        if (tip) tip.textContent = '点击 chip 或展开 Soft Pad 管理 Hub · 12s · ' + mode;
+        var cap = document.querySelector('.scheme-d .d-caption');
+        if (cap) {
+          cap.innerHTML =
+            '<strong>Hub 激活 · ' + mode + '</strong> — 摄像头手势有效 · 剩余 12s<br />' +
+            '通道：语音窗开 · 摄像头监听 · SoftPad 键可用' +
+            '<div class="acts"><button type="button">取消激活</button><button type="button">仅看 Agent</button></div>';
+        }
+      }
+      buttons.forEach(function (b) {
+        b.addEventListener('click', function () {
+          setDemo(b.getAttribute('data-demo'));
+        });
+      });
+      setDemo('watch');
+    })();
+  </script>
+</body>
+</html>

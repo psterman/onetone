@@ -47,6 +47,36 @@ pub fn sync_emergency_line(source: &str, message: &str) {
     }
 }
 
+/// Cursor「发送」操作日志：逐步 JSONL，便于定位聚焦/发键卡在哪一步。
+/// 文件：`<logs>/cursor-send-oplog.jsonl`（与 runtime-live.log 同目录）。
+pub fn cursor_send_oplog(step: &str, detail: serde_json::Value) {
+    let ts_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    let mut obj = match detail {
+        serde_json::Value::Object(m) => m,
+        other => {
+            let mut m = serde_json::Map::new();
+            m.insert("detail".into(), other);
+            m
+        }
+    };
+    obj.insert("tsMs".into(), serde_json::json!(ts_ms));
+    obj.insert("step".into(), serde_json::json!(step));
+    let Ok(line) = serde_json::to_string(&serde_json::Value::Object(obj)) else {
+        return;
+    };
+    let dir = crate::data_root::effective_logs_dir();
+    let _ = fs::create_dir_all(&dir);
+    let path = dir.join("cursor-send-oplog.jsonl");
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&path) {
+        let _ = writeln!(file, "{line}");
+    }
+    // Mirror into runtime-live so existing log viewers catch it.
+    sync_emergency_line("cursor_send", &format!("{step} {line}"));
+}
+
 /// Alias for panic hook — must not use async writer or multi-dir early_line.
 pub fn panic_line(message: &str) {
     sync_emergency_line("panic", message);

@@ -135,6 +135,7 @@ pub fn cmd_save(
     // and voice restart chain, which can freeze UI during drawer open/new-habit flows.
     if source == "voice" {
         crate::config::save_config(&cfg);
+        crate::cursor_beginner::sync_arm_phrase_cache(&cfg);
         *state.cfg.lock() = cfg;
         crate::app_log::log_line(
             &state,

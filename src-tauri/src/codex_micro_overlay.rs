@@ -655,6 +655,15 @@ pub struct CodexMicroOverlaySnapshot {
     pub voice_heard_final: String,
     #[serde(default)]
     pub voice_heard_matched: bool,
+    /// SoftPad Hub 方案 A：听写激活窗开着（与 Agent 灯分离）。
+    #[serde(default)]
+    pub activation_hub_active: bool,
+    /// Epoch ms when dictating session started (0 if inactive).
+    #[serde(default)]
+    pub activation_hub_started_at_ms: u64,
+    /// Dictation timeout budget for mini countdown.
+    #[serde(default)]
+    pub activation_hub_timeout_ms: u64,
 }
 
 /// One checklist row for overlay AG / status-light diagnose.
@@ -2456,11 +2465,43 @@ pub fn build_snapshot(state: &AppState) -> CodexMicroOverlaySnapshot {
     let cfg = state.cfg.lock().clone();
     let mut snapshot = build_snapshot_from_cfg(&cfg);
     apply_voice_heard(&mut snapshot, state);
+    apply_activation_hub(&mut snapshot, state, &cfg);
     if let Some(reason) = overlay_runtime_gate_reason(state) {
         snapshot.visible = false;
         snapshot.visible_reason = reason.to_string();
     }
     snapshot
+}
+
+fn apply_activation_hub(
+    snapshot: &mut CodexMicroOverlaySnapshot,
+    state: &AppState,
+    cfg: &VoiceConfig,
+) {
+    let dictating = crate::voice_end_runtime::session_state(state) == "dictating";
+    snapshot.activation_hub_active = dictating;
+    if !dictating {
+        snapshot.activation_hub_started_at_ms = 0;
+        snapshot.activation_hub_timeout_ms = 0;
+        return;
+    }
+    let started_ms = match *state.voice_session_started_at.lock() {
+        Some(t) => {
+            let elapsed = t.elapsed().as_millis() as u64;
+            now_epoch_ms().saturating_sub(elapsed)
+        }
+        None => now_epoch_ms(),
+    };
+    snapshot.activation_hub_started_at_ms = started_ms;
+    let timeout = cfg.voice_end.dictation_timeout_ms.max(5_000);
+    snapshot.activation_hub_timeout_ms = timeout as u64;
+}
+
+fn now_epoch_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
 }
 
 fn apply_voice_heard(snapshot: &mut CodexMicroOverlaySnapshot, state: &AppState) {
@@ -2816,6 +2857,9 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             voice_heard_partial: String::new(),
             voice_heard_final: String::new(),
             voice_heard_matched: false,
+            activation_hub_active: false,
+            activation_hub_started_at_ms: 0,
+            activation_hub_timeout_ms: 0,
         };
     };
 
@@ -3361,6 +3405,9 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         voice_heard_partial: String::new(),
         voice_heard_final: String::new(),
         voice_heard_matched: false,
+        activation_hub_active: false,
+        activation_hub_started_at_ms: 0,
+        activation_hub_timeout_ms: 0,
     }
 }
 
@@ -4280,8 +4327,8 @@ fn overlay_logical_size(minimized: bool, _joy_open: bool, listen_band: bool) -> 
 fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnapshot) -> bool {
     let minimized = snapshot.minimized;
     let listen_band = snapshot.minimized
-        && snapshot.cursor_beginner_mode
-        && snapshot.cursor_beginner_armed;
+        && ((snapshot.cursor_beginner_mode && snapshot.cursor_beginner_armed)
+            || snapshot.activation_hub_active);
     let (logical_w, logical_h) =
         overlay_logical_size(minimized, snapshot.joy_nav_panel_open, listen_band);
     let width_key = logical_w.round() as i32;

@@ -908,10 +908,18 @@
   function applyQuickstartHash() {
     const hash = location.hash.slice(1);
     const hero = document.getElementById("qs-hero");
+    const page = document.body.dataset.page;
+
+    // Old #keys bookmarks → dedicated keys page (上手 ≠ 按键)
+    if (page === "quickstart" && hash === "keys") {
+      location.replace("keys.html");
+      return;
+    }
 
     function setHeroMode(mode) {
       if (!hero) return;
       hero.dataset.mode = mode === "voice" ? "voice" : "keys";
+      hero.setAttribute("data-mood", hero.dataset.mode === "voice" ? "dark" : "light");
       const showcase = document.getElementById("qs-voice-command");
       if (showcase) showcase.hidden = hero.dataset.mode !== "voice";
       window.OneToneVoiceCard?.instance?.setMode(hero.dataset.mode === "voice");
@@ -985,7 +993,8 @@
   }
 
   function initQuickstartPage() {
-    if (document.body.dataset.page !== "quickstart") return;
+    const page = document.body.dataset.page;
+    if (page !== "quickstart" && page !== "keys") return;
 
     initQuickstartImePresets();
     initQuickstartTriggerRef();
@@ -1037,7 +1046,270 @@
     });
   }
 
+  function initQsClassicKeysHero() {
+    const canvas = document.getElementById("neural-canvas");
+    const wrapper = document.getElementById("qs-hero");
+    const stage = document.getElementById("qs-hero-stage");
+    if (!canvas || !wrapper || !stage) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const heroAccent = getComputedStyle(wrapper).getPropertyValue("--qs-hero-accent").trim() || "#2a9cc4";
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let width = 0;
+    let height = 0;
+    let stageReady = false;
+    let activeSignal = null;
+    let signalTimer = 0;
+    let storyRunning = false;
+
+    const hubEl = document.getElementById("hn-hub");
+    const hubIcon = document.getElementById("hn-hub-icon");
+    const stDot = document.getElementById("st-dot");
+    const stCode = document.getElementById("st-code");
+    const stDesc = document.getElementById("st-desc");
+    const stText = document.getElementById("st-text");
+    const stCursor = document.getElementById("st-cursor");
+    if (!hubEl || !hubIcon || !stDot || !stCode || !stDesc || !stText || !stCursor) return;
+
+    const peripherals = [
+      document.getElementById("rn-kb"),
+      document.getElementById("rn-mouse"),
+      document.getElementById("rn-gamepad"),
+      document.getElementById("rn-ring"),
+      document.getElementById("rn-trackball"),
+    ].filter(Boolean);
+
+    function isKeysMode() {
+      return wrapper.dataset.mode !== "voice";
+    }
+
+    function resize() {
+      if (!isKeysMode()) return false;
+      const dpr = window.devicePixelRatio || 1;
+      const nextWidth = stage.clientWidth;
+      const nextHeight = stage.clientHeight;
+      if (nextWidth < 1 || nextHeight < 1) return false;
+
+      width = nextWidth;
+      height = nextHeight;
+      canvas.width = Math.max(1, Math.floor(width * dpr));
+      canvas.height = Math.max(1, Math.floor(height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      stageReady = true;
+      return true;
+    }
+
+    function getElCenter(el) {
+      if (!el) return { x: 0, y: 0 };
+      const rect = el.getBoundingClientRect();
+      const stageRect = stage.getBoundingClientRect();
+      return {
+        x: rect.left - stageRect.left + rect.width / 2,
+        y: rect.top - stageRect.top + rect.height / 2,
+      };
+    }
+
+    function clearSignalTimer() {
+      if (!signalTimer) return;
+      window.clearInterval(signalTimer);
+      signalTimer = 0;
+    }
+
+    function drawNetwork() {
+      if (!isKeysMode() || !stageReady) {
+        window.requestAnimationFrame(drawNetwork);
+        return;
+      }
+
+      ctx.clearRect(0, 0, width, height);
+      const centerPos = getElCenter(hubEl);
+      const periPositions = peripherals
+        .filter((el) => window.getComputedStyle(el).display !== "none")
+        .map(getElCenter);
+
+      ctx.setLineDash([4, 4]);
+      periPositions.forEach((pos) => {
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+        ctx.lineTo(centerPos.x, centerPos.y);
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+
+      if (activeSignal) {
+        const sx = activeSignal.startX + (activeSignal.endX - activeSignal.startX) * activeSignal.progress;
+        const sy = activeSignal.startY + (activeSignal.endY - activeSignal.startY) * activeSignal.progress;
+
+        ctx.beginPath();
+        ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+        ctx.fillStyle = heroAccent;
+        ctx.shadowColor = heroAccent;
+        ctx.shadowBlur = 15;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.beginPath();
+        ctx.moveTo(activeSignal.startX, activeSignal.startY);
+        ctx.lineTo(sx, sy);
+        ctx.strokeStyle = "rgba(42, 156, 196, 0.8)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        if (Math.random() > 0.5) {
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(sx + (Math.random() - 0.5) * 20, sy + (Math.random() - 0.5) * 20);
+          ctx.strokeStyle = "rgba(42, 156, 196, 0.4)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+
+      window.requestAnimationFrame(drawNetwork);
+    }
+
+    const scenarios = [
+      { el: document.getElementById("rn-kb"), code: "快捷键", desc: "你按了 Alt + 空格，开麦了…", text: "「帮我写个登录页组件」", icon: "ph-code" },
+      { el: document.getElementById("rn-mouse"), code: "鼠标侧键", desc: "你按了鼠标侧键，开麦了…", text: "「这段报错什么意思」", icon: "ph-check-circle" },
+      { el: document.getElementById("rn-gamepad"), code: "手柄", desc: "你按了手柄扳机，开麦了…", text: "「先别改，我口述需求」", icon: "ph-sword" },
+      { el: document.getElementById("rn-ring"), code: "指环", desc: "你点了指环，开麦了…", text: "「稍等，我看一眼 Cursor」", icon: "ph-chat-teardrop" },
+    ];
+
+    function wait(ms) {
+      return new Promise((resolve) => window.setTimeout(resolve, ms));
+    }
+
+    function animateSignal(startPos, endPos) {
+      if (reduceMotion.matches) return Promise.resolve();
+
+      return new Promise((resolve) => {
+        clearSignalTimer();
+        activeSignal = {
+          startX: startPos.x,
+          startY: startPos.y,
+          endX: endPos.x,
+          endY: endPos.y,
+          progress: 0,
+          onArrive: resolve,
+        };
+
+        signalTimer = window.setInterval(() => {
+          if (!activeSignal) return;
+          activeSignal.progress += 0.04;
+          if (activeSignal.progress >= 1) {
+            const done = activeSignal.onArrive;
+            activeSignal = null;
+            clearSignalTimer();
+            done();
+          }
+        }, 16);
+      });
+    }
+
+    async function playStoryLoop() {
+      if (storyRunning) return;
+      storyRunning = true;
+      let sIdx = 0;
+
+      while (storyRunning) {
+        try {
+          if (!isKeysMode()) {
+            await wait(500);
+            continue;
+          }
+
+          scenarios.forEach((s) => s.el?.classList.remove("is-active"));
+          hubEl.classList.remove("is-listening");
+          hubIcon.className = "ph-fill ph-microphone";
+          stDot.classList.remove("active");
+          stCode.classList.remove("active");
+          stCode.textContent = "待命";
+          stDesc.textContent = "等着看你按哪个键…";
+          stText.textContent = "";
+          stCursor.classList.add("blinking");
+
+          await wait(reduceMotion.matches ? 800 : 2000);
+          if (!isKeysMode()) continue;
+
+          const current = scenarios[sIdx % scenarios.length];
+          if (current?.el && window.getComputedStyle(current.el).display !== "none") {
+            current.el.classList.add("is-active");
+            stCode.textContent = current.code;
+            stCode.classList.add("active");
+            stDesc.textContent = "检测到按键，开麦中…";
+            await wait(400);
+
+            await animateSignal(getElCenter(current.el), getElCenter(hubEl));
+
+            current.el.classList.remove("is-active");
+            hubEl.classList.add("is-listening");
+            stDot.classList.add("active");
+            stDesc.textContent = current.desc;
+            stCursor.classList.remove("blinking");
+
+            if (reduceMotion.matches) {
+              stText.textContent = current.text;
+            } else {
+              for (let i = 0; i < current.text.length; i += 1) {
+                stText.textContent += current.text[i];
+                await wait(Math.random() * 40 + 60);
+              }
+            }
+            stCursor.classList.add("blinking");
+            await wait(600);
+
+            hubEl.classList.remove("is-listening");
+            hubIcon.className = `ph-fill ${current.icon}`;
+            stDesc.textContent = "说完了，字已上屏";
+            await wait(reduceMotion.matches ? 1200 : 3000);
+          }
+
+          sIdx = (sIdx + 1) % scenarios.length;
+        } catch (err) {
+          console.error("qs-hero classic demo", err);
+          await wait(1200);
+        }
+      }
+    }
+
+    function bootHeroVisuals() {
+      if (!isKeysMode()) {
+        window.requestAnimationFrame(bootHeroVisuals);
+        return;
+      }
+      if (!resize()) {
+        window.requestAnimationFrame(bootHeroVisuals);
+        return;
+      }
+      drawNetwork();
+      playStoryLoop();
+    }
+
+    window.addEventListener("resize", resize);
+    window.addEventListener("qs-hero-mode", () => {
+      activeSignal = null;
+      clearSignalTimer();
+      scenarios.forEach((s) => s.el?.classList.remove("is-active"));
+      if (isKeysMode()) resize();
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") clearSignalTimer();
+    });
+
+    window.requestAnimationFrame(bootHeroVisuals);
+  }
+
   function initQsHero() {
+    // keys.html = classic 演示日志; quickstart = SoftPad / Agent 迷你栏
+    if (document.getElementById("st-desc")) {
+      initQsClassicKeysHero();
+      return;
+    }
+
     const canvas = document.getElementById("neural-canvas");
     const wrapper = document.getElementById("qs-hero");
     const stage = document.getElementById("qs-hero-stage");

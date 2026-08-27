@@ -299,6 +299,7 @@ pub fn run() {
     let mut initial = load_config();
     app_log::early_line("startup", "config loaded");
     initial.migrate();
+    crate::cursor_beginner::sync_arm_phrase_cache(&initial);
     crate::agent_lane::sync_flags_from_config(&initial);
     crate::agent_lane::persist::hydrate_on_boot();
     let safe_mode = std::env::var("ONETONE_SAFE_MODE").ok().as_deref() == Some("1");

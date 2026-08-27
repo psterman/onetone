@@ -255,7 +255,10 @@ fn try_route_cursor_beginner_voice(
         })
     } else if label == "cursor_beginner:not_armed" {
         *state.voice_vosk_last_trigger.lock() = String::new();
-        Some(skip("请先进入 Cursor 或说「小助手」激活。".into()))
+        Some(skip(format!(
+            "请先进入 Cursor 或说「{}」激活。",
+            crate::cursor_beginner::current_arm_phrase()
+        )))
     } else {
         *state.voice_vosk_last_trigger.lock() = String::new();
         Some(VoiceCommandRouterResult {

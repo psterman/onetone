@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="zh-CN" class="dark scroll-smooth">
+<html lang="zh-CN" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="css/qs-quickstart.css">
   <link rel="stylesheet" href="css/qs-voice-hero.css">
   <link rel="stylesheet" href="css/onetone-voice-card.css">
+  <link rel="stylesheet" href="css/site-scroll.css">
 </head>
 <body class="antialiased" data-page="quickstart">
 <header class="site-header">
@@ -50,7 +51,8 @@
   <a href="download.html" data-nav="download" data-i18n="navDownload">下载</a>
 </div>
 <main>
-  <section id="qs-hero" class="qs-hero-wrapper is-visible" data-mode="keys" aria-label="使用开场">
+<div id="story-world" class="story-world" data-mood="light">
+  <section id="qs-hero" class="qs-hero-wrapper is-visible" data-mode="keys" data-mood="light" aria-label="使用开场">
     <div class="spatial-grid-wrap" aria-hidden="true"><div class="spatial-grid"></div></div>
 
     <!-- 按键：神经网络 / 外设演示 -->
@@ -58,10 +60,10 @@
       <header class="qs-hero-head">
         <div class="qs-hero-badge qs-glass-card">
           <i class="ph-fill ph-keyboard text-mac-accent text-sm" aria-hidden="true"></i>
-          <span data-i18n="qsHeroKeysBadge">外设、体态、迷你栏，都能指挥 Agent</span>
+          <span data-i18n="qsHeroAgentBadge">外设、体态、迷你栏，都能指挥 Agent</span>
         </div>
         <h1 class="qs-hero-title">
-          <span data-i18n="qsHeroKeysTitleBefore">对着迷你栏，就能让 </span><span class="qs-hero-title-accent" data-i18n="qsHeroKeysTitleAccent">Agent 动手</span>
+          <span data-i18n="qsHeroAgentTitleBefore">对着迷你栏，就能让 </span><span class="qs-hero-title-accent" data-i18n="qsHeroAgentTitleAccent">Agent 动手</span>
         </h1>
       </header>
 
@@ -226,7 +228,7 @@
     </div>
   </section>
 
-  <section class="qs-guide-video" id="qs-guide-video" aria-labelledby="qs-guide-video-title">
+  <section class="qs-guide-video" id="qs-guide-video" data-mood="dark" data-scroll-reveal aria-labelledby="qs-guide-video-title">
     <h2 class="qs-guide-video-title" id="qs-guide-video-title" data-i18n="qsGuideVideoTitle">曾经……</h2>
     <video class="qs-guide-video-el" controls playsinline muted loop autoplay preload="metadata" aria-label="OneTone vibe coding demo">
       <source src="assets/videos/vibecoding-15s-hq.mp4" type="video/mp4">
@@ -347,7 +349,7 @@
   <section class="qs-steps-section" aria-label="上手步骤">
   <div class="qs-content">
 
-    <section id="step1" class="qs-zone qs-zone-blue scroll-mt-28" data-zone-color="blue">
+    <section id="step1" class="qs-zone qs-zone-blue scroll-mt-28" data-zone-color="blue" data-mood="light" data-scroll-reveal>
       <header class="qs-zone-head">
         <h2 data-i18n="qsZone1Title">定制你的专属语音神器</h2>
         <p data-i18n="qsZone1Desc">选择任意外设或按键，实现语音输入的触发</p>
@@ -493,7 +495,7 @@
       </div>
     </section>
 
-    <section id="step2" class="qs-zone qs-zone-accent scroll-mt-28" data-zone-color="accent">
+    <section id="step2" class="qs-zone qs-zone-accent scroll-mt-28" data-zone-color="accent" data-mood="dark" data-scroll-reveal>
       <header class="qs-zone-head">
         <h2 data-i18n="qsZone2Title">语音激活输入法，结束后自动上屏</h2>
         <p data-i18n="qsZone2Desc">触发听写，结束时文字自动出现在当前窗口</p>
@@ -668,6 +670,7 @@
     </details>
   </div>
   </section>
+</div>
 </main>
 <section id="site-download-cta" class="site-download-cta" aria-label="Download" data-section="5">
   <div class="site-download-cta-inner">
@@ -684,7 +687,7 @@
         <nav class="site-footer-features" aria-label="Features">
       <span class="site-footer-features-label" data-i18n="footerFeatures">功能</span>
       <a href="quickstart.html#voice" data-i18n="navVoice">语音</a>
-      <a href="quickstart.html#keys" data-i18n="navKeys">按键</a>
+      <a href="keys.html" data-i18n="navKeys">按键</a>
       <a href="vision.html" data-i18n="navCamera">摄像头</a>
       <a href="agent.html" data-i18n="navSoftPad">SoftPad</a>
     </nav>
@@ -698,6 +701,8 @@
     </nav>
   </div>
 </footer>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="js/site-scroll.js"></script>
 <script src="js/shell.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/onetone-voice-card.js"></script>

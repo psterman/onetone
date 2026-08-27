@@ -28,6 +28,15 @@
 | **AgentAttention** | NeedsInput 优先；lifecycle Working/Complete/Error | 琥珀色等待；完成/失败短 TTL 后回落 |
 | **signalHealth** | `fresh` / `stale` / `unconfigured` / `corrupt` | 灰黄角标「信号过期/未验证」；**不**改成假 idle |
 
+### SoftPad Hub 次行（方案 A · 与「聆听中」合并）
+
+听写激活窗 / Cursor beginner 聆听 **共用** `#miniBeginnerListenBanner` 一条次行（不再另起 Hub 条）。  
+
+- **Hub 次行 ≠ Agent 灯**：禁止用 `data-status=running` 或 Soft RGB 冒充「激活中」。  
+- 未激活且未聆听：次行 `hidden`，主条与现网一致。  
+- Hub 开着时：同条显示「激活中 · 手势有效」、倒计时、**取消**；与 beginner 口令提示可叠成一句。  
+- 取消 → `cmd_voice_end_ui_cancel`；摄像头手势默认仅窗内开火（`requireActivationHub`）。
+
 - `needs_input` 仍压过任务色；假 idle 只在 `signalHealth=fresh` 且无等待时成立。
 - **显示门控**：内置 Agent 桌面进程在跑（Cursor / Codex / Claude / MiniMax / 壳三端等）或切到其前台 → Soft Pad 显示；OneTone 主界面仍隐藏。
 - **Cursor Plan/Agent**：Soft Pad 会合并写入 Cursor `keybindings.json` 的 `composerMode.plan` / `composerMode.agent`（默认 `Ctrl+Alt+Shift+P` / `Ctrl+Alt+.`），并接到 Soft Pad `plan` / `switchAgent`（默认 PLUS / DOT）。避免 `Ctrl+Alt+P`（易与截图/置顶冲突）。

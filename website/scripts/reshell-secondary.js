@@ -45,7 +45,7 @@ ${extraCss}
     <nav class="site-nav" aria-label="Main">
       ${nav("home", "index.html", "ph-house", "navHome", "首页")}
       ${nav("voice", "quickstart.html#voice", "ph-microphone", "navVoice", "语音")}
-      ${nav("keys", "quickstart.html#keys", "ph-keyboard", "navKeys", "按键")}
+      ${nav("keys", "keys.html", "ph-keyboard", "navKeys", "按键")}
       ${nav("camera", "vision.html", "ph-camera", "navCamera", "摄像头")}
       ${nav("softpad", "agent.html", "ph-squares-four", "navSoftPad", "SoftPad")}
       ${nav("faq", "faq.html", "ph-question", "navFaq", "帮助")}
@@ -62,7 +62,7 @@ ${extraCss}
 <div class="mobile-nav-panel" id="mobileNavPanel">
   ${nav("home", "index.html", "ph-house", "navHome", "首页")}
   ${nav("voice", "quickstart.html#voice", "ph-microphone", "navVoice", "语音")}
-  ${nav("keys", "quickstart.html#keys", "ph-keyboard", "navKeys", "按键")}
+  ${nav("keys", "keys.html", "ph-keyboard", "navKeys", "按键")}
   ${nav("camera", "vision.html", "ph-camera", "navCamera", "摄像头")}
   ${nav("softpad", "agent.html", "ph-squares-four", "navSoftPad", "SoftPad")}
   ${nav("faq", "faq.html", "ph-question", "navFaq", "帮助")}

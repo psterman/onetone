@@ -2052,8 +2052,64 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
   display: none !important;
 }
 
-.wrap.is-cursor-beginner-listen .overlay-mini-listen:not([hidden]) {
+/* 方案 A 合并：beginner 聆听 / Hub 激活 共用次行 */
+.wrap.is-cursor-beginner-listen .overlay-mini-listen:not([hidden]),
+.wrap.is-hub-active .overlay-mini-listen:not([hidden]) {
   display: inline-flex;
+}
+
+.wrap.is-hub-active .overlay-mini-listen {
+  pointer-events: auto;
+  border-color: rgba(34, 197, 94, 0.4);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.12);
+}
+
+.wrap.is-hub-active[data-hub-phase="listen"] .overlay-mini-listen__dot {
+  background: #0ea5e9;
+}
+
+.wrap.is-hub-active[data-hub-phase="watch"] .overlay-mini-listen__dot {
+  background: #22c55e;
+  animation: none;
+}
+
+.wrap.is-hub-active[data-hub-phase="think"] .overlay-mini-listen__dot {
+  background: #a855f7;
+  animation: beginner-listen-dot 0.55s ease-in-out infinite;
+}
+
+.overlay-mini-listen__cd {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.overlay-mini-listen.is-soft-close .overlay-mini-listen__cd {
+  color: #c2410c;
+}
+
+.overlay-mini-listen__cancel {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.3;
+  cursor: pointer;
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.08);
+  pointer-events: auto;
+}
+
+.overlay-mini-listen__cancel:hover {
+  background: rgba(15, 23, 42, 0.14);
+}
+
+.overlay-mini-listen__cancel[hidden] {
+  display: none !important;
 }
 
 .overlay-mini__listen-chip {

@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OneTone · 激活态指示灯 · 迷你栏扩展设计稿</title>
+  <style>
+    /* ────────── 沿用 OneTone overlay 色系 ────────── */
+    :root {
+      --overlay-shell: rgba(226, 236, 248, 0.88);
+      --overlay-shell-hot: rgba(0, 163, 255, 0.35);
+      --overlay-face: rgba(232, 238, 244, 0.68);
+      --overlay-key-face: #f7f9fb;
+      --overlay-ink: #3a4454;
+      --overlay-muted: #7d8998;
+      --overlay-led-idle: rgba(0, 163, 255, 0.45);
+
+      /* 激活态阶段色（phases.md 定义） */
+      --act-idle: rgba(125, 137, 152, 0.4);
+      --act-listen: rgba(0, 163, 255, 0.85);
+      --act-listen-soft: rgba(255, 165, 0, 0.9);
+      --act-watch: rgba(34, 197, 94, 0.85);
+      --act-think: rgba(168, 85, 247, 0.9);
+      --act-done: rgba(22, 163, 74, 1);
+      --act-error: rgba(220, 38, 38, 0.95);
+
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+      color: #e8f0f8;
+      min-height: 100vh;
+    }
+
+    /* ────────── 顶部说明区 ────────── */
+    .page-header {
+      padding: 24px 32px 16px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .page-header h1 {
+      margin: 0 0 6px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .page-header p {
+      margin: 0;
+      font-size: 13px;
+      color: #9aa8b8;
+      line-height: 1.6;
+    }
+
+    /* ────────── 演示区 ────────── */
+    .stage {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 32px;
+    }
+
+    .stage-title {
+      font-size: 12px;
+      color: #7d8998;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin: 0 0 12px;
+      font-weight: 600;
+    }
+
+    /* ────────── 迷你栏（mock） ────────── */
+    .overlay-mini {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      background: var(--overlay-shell);
+      border-radius: 14px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(12px);
+      min-height: 44px;
+      transition: background 0.3s ease;
+    }
+    .overlay-mini.is-activated {
+      background: linear-gradient(135deg, var(--overlay-shell) 0%, var(--overlay-shell-hot) 100%);
+    }
+
+    /* 现有：agent 列表 */
+    .overlay-mini__agents {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .overlay-mini__agent {
+      position: relative;
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.06);
+    }
+    .overlay-mini__agent img {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+    }
+    .overlay-mini__agent-dot {
+      position: absolute;
+      bottom: 1px;
+      right: 1px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--overlay-led-idle);
+    }
+    .overlay-mini__agent[data-status="working"] .overlay-mini__agent-dot {
+      background: var(--act-listen);
+      box-shadow: 0 0 6px var(--act-listen);
+    }
+
+    /* 新增：分隔线 */
+    .overlay-mini__divider {
+      width: 1px;
+      height: 20px;
+      background: rgba(0, 0, 0, 0.12);
+    }
+
+    /* 新增：激活态指示位容器 */
+    .act-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.04);
+      transition: background 0.3s ease;
+    }
+    .act-bar.is-activated {
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    /* 单个指示位 */
+    .act-indicator {
+      position: relative;
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: var(--act-idle);
+      color: rgba(255, 255, 255, 0.5);
+      transition: background 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  box-shadow 0.22s ease;
+      transform: scale(0.92);
+    }
+    .act-indicator svg {
+      width: 12px;
+      height: 12px;
+      fill: currentColor;
+    }
+    .act-indicator.is-on {
+      transform: scale(1);
+      color: white;
+    }
+    /* 听（蓝）*/
+    .act-indicator[data-kind="mic"].is-on {
+      background: var(--act-listen);
+      box-shadow: 0 0 8px var(--act-listen);
+    }
+    .act-indicator[data-kind="mic"].is-on.is-soft-close {
+      background: var(--act-listen-soft);
+      box-shadow: 0 0 10px var(--act-listen-soft);
+    }
+    /* 看（绿）*/
+    .act-indicator[data-kind="cam"].is-on {
+      background: var(--act-watch);
+      box-shadow: 0 0 8px var(--act-watch);
+    }
+    /* 想（紫）*/
+    .act-indicator[data-kind="think"].is-on {
+      background: var(--act-think);
+      box-shadow: 0 0 8px var(--act-think);
+    }
+    /* 完成（全绿 ✓）*/
+    .act-bar.is-phase-done .act-indicator.is-on {
+      background: var(--act-done);
+      box-shadow: 0 0 10px var(--act-done);
+    }
+    /* 错误 */
+    .act-indicator.is-error {
+      background: var(--act-error) !important;
+      box-shadow: 0 0 10px var(--act-error) !important;
+      animation: errorFlash 0.4s ease 2;
+    }
+    @keyframes errorFlash {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* 脉冲（listen / think）*/
+    .act-indicator[data-kind="mic"].is-on.is-pulse {
+      animation: pulseSlow 1.2s ease-in-out infinite;
+    }
+    .act-indicator[data-kind="think"].is-on.is-pulse {
+      animation: pulseFast 0.6s ease-in-out infinite;
+    }
+    .act-indicator[data-kind="mic"].is-on.is-soft-close {
+      animation: pulseSoft 0.4s ease-in-out infinite;
+    }
+    @keyframes pulseSlow {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.15); opacity: 0.6; }
+    }
+    @keyframes pulseFast {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.18); opacity: 0.7; }
+    }
+    @keyframes pulseSoft {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.7; }
+    }
+
+    /* 倒计时 */
+    .act-countdown {
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      color: var(--overlay-ink);
+      min-width: 26px;
+      text-align: center;
+      transition: color 0.2s ease, transform 0.24s ease;
+    }
+    .act-countdown.is-soft-close {
+      color: var(--act-listen-soft);
+      font-weight: 600;
+      animation: countdownTic 1s ease-in-out infinite;
+    }
+    @keyframes countdownTic {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+
+    /* 现有：聆听 chip */
+    .overlay-mini__listen-chip {
+      display: none;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      background: rgba(0, 163, 255, 0.16);
+      color: #0066cc;
+      font-size: 11px;
+      border-radius: 10px;
+    }
+    .overlay-mini__listen-chip.is-shown { display: inline-flex; }
+    .overlay-mini__listen-chip-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #0066cc;
+      animation: pulseSlow 1.2s ease-in-out infinite;
+    }
+
+    /* 现有：展开/关闭按钮 */
+    .overlay-mini__btn {
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: var(--overlay-muted);
+      cursor: pointer;
+      border-radius: 6px;
+    }
+    .overlay-mini__btn:hover { background: rgba(0, 0, 0, 0.06); }
+
+    /* ────────── 多个 phase 对比展示 ────────── */
+    .phase-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 24px;
+      margin-top: 24px;
+    }
+    .phase-cell {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .phase-cell-label {
+      font-size: 11px;
+      color: #7d8998;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin: 0 0 10px;
+    }
+    .phase-cell-desc {
+      font-size: 12px;
+      color: #9aa8b8;
+      margin: 8px 0 0;
+      line-height: 1.5;
+    }
+
+    /* ────────── 控制台（让交互可见）────────── */
+    .control-panel {
+      margin-top: 32px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+    }
+    .control-panel-title {
+      margin: 0 0 12px;
+      font-size: 12px;
+      color: #7d8998;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .control-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .control-btn {
+      padding: 6px 12px;
+      background: rgba(0, 163, 255, 0.18);
+      color: #5ec8e8;
+      border: 1px solid rgba(0, 163, 255, 0.3);
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .control-btn:hover { background: rgba(0, 163, 255, 0.32); }
+    .control-btn.is-warn {
+      background: rgba(255, 165, 0, 0.18);
+      color: #fbbf24;
+      border-color: rgba(255, 165, 0, 0.3);
+    }
+    .control-btn.is-bad {
+      background: rgba(220, 38, 38, 0.18);
+      color: #f87171;
+      border-color: rgba(220, 38, 38, 0.3);
+    }
+
+    /* ────────── 信息卡 ────────── */
+    .info-card {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: rgba(0, 163, 255, 0.08);
+      border-left: 3px solid #5ec8e8;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #cbd5e1;
+      line-height: 1.6;
+    }
+    .info-card code {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      color: #5ec8e8;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>OneTone · 激活态指示灯 · 迷你栏扩展</h1>
+  <p>激活语音输入法 = OneTone 进入激活态。新增 3 个图标位（mic / cam / think）跟随阶段切换动效。点击下方按钮查看效果。</p>
+</div>
+
+<div class="stage">
+  <h2 class="stage-title">真实交互 · 控制台</h2>
+  <div class="overlay-mini" id="mainBar">
+    <!-- 现有：agent 状态 -->
+    <div class="overlay-mini__agents" role="list" aria-label="Agent 状态">
+      <span class="overlay-mini__agent" data-agent="codex" data-status="idle">
+        <svg viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="7" fill="#10a37f"/><text x="8" y="11" text-anchor="middle" fill="white" font-size="9" font-weight="bold">C</text></svg>
+        <i class="overlay-mini__agent-dot"></i>
+      </span>
+      <span class="overlay-mini__agent" data-agent="claude" data-status="idle">
+        <svg viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="7" fill="#d97706"/><text x="8" y="11" text-anchor="middle" fill="white" font-size="9" font-weight="bold">A</text></svg>
+        <i class="overlay-mini__agent-dot"></i>
+      </span>
+      <span class="overlay-mini__agent" data-agent="cursor" data-status="idle">
+        <svg viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="7" fill="#000"/><text x="8" y="11" text-anchor="middle" fill="white" font-size="9" font-weight="bold">▸</text></svg>
+        <i class="overlay-mini__agent-dot"></i>
+      </span>
+    </div>
+
+    <!-- 新增：分隔线 -->
+    <span class="overlay-mini__divider"></span>
+
+    <!-- 新增：激活态指示位 -->
+    <div class="act-bar" id="actBar">
+      <span class="act-indicator" data-kind="mic" id="indMic" title="麦克风">
+        <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+      </span>
+      <span class="act-indicator" data-kind="cam" id="indCam" title="摄像头">
+        <svg viewBox="0 0 24 24"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+      </span>
+      <span class="act-indicator" data-kind="think" id="indThink" title="AI 处理中">
+        <svg viewBox="0 0 24 24"><path d="M21 8h-6V6a3 3 0 0 0-3-3h-2a3 3 0 0 0-3 3v2H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1zM9 6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2H9V6zm6 8.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm-6 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>
+      </span>
+      <span class="act-countdown" id="actCountdown" hidden></span>
+    </div>
+
+    <!-- 现有：聆听 chip -->
+    <span class="overlay-mini__listen-chip" id="listenChip">
+      <span class="overlay-mini__listen-chip-dot"></span>
+      <span>聆听</span>
+    </span>
+
+    <!-- 现有：展开/关闭 -->
+    <button class="overlay-mini__btn" title="展开">⊕</button>
+    <button class="overlay-mini__btn" title="关闭">×</button>
+  </div>
+
+  <!-- 控制台 -->
+  <div class="control-panel">
+    <h3 class="control-panel-title">阶段控制（点击切换）</h3>
+    <div class="control-buttons">
+      <button class="control-btn" onclick="demoIdle()">① IDLE（默认）</button>
+      <button class="control-btn" onclick="demoListen()">② LISTEN（激活）</button>
+      <button class="control-btn" onclick="demoWatch()">③ WATCH（摄像头加入）</button>
+      <button class="control-btn" onclick="demoThink()">④ THINK（AI 处理）</button>
+      <button class="control-btn" onclick="demoSoftClose()">⑤ SOFT CLOSE（剩 5s）</button>
+      <button class="control-btn" onclick="demoDone()">⑥ DONE（完成）</button>
+      <button class="control-btn is-warn" onclick="demoCommit()">✓ Commit（正常退出）</button>
+      <button class="control-btn is-warn" onclick="demoCancel()">✕ Cancel（取消）</button>
+      <button class="control-btn is-bad" onclick="demoError()">⚠ Camera 错误</button>
+    </div>
+  </div>
+
+  <!-- 6 个静态对比 -->
+  <h2 class="stage-title" style="margin-top: 40px;">5 个阶段视觉对比</h2>
+  <div class="phase-grid">
+    <div class="phase-cell">
+      <h3 class="phase-cell-label">① IDLE</h3>
+      <div class="overlay-mini">
+        <div class="overlay-mini__agents">
+          <span class="overlay-mini__agent"><svg viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="7" fill="#10a37f"/></svg><i class="overlay-mini__agent-dot"></i></span>
+        </div>
+        <span class="overlay-mini__divider"></span>
+        <div class="act-bar">
+          <span class="act-indicator" data-kind="mic"><svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/></svg></span>
+          <span class="act-indicator" data-kind="cam"><svg viewBox="0 0 24 24"><path d="M17 10.5V7a1 1 0 0 0-1-1H4v10h12a1 1 0 0 0 1-1z"/></svg></span>
+          <span class="act-indicator" data-kind="think"><svg viewBox="0 0 24 24"><path d="M21 8H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1z"/></svg></span>
+        </div>
+      </div>
+      <p class="phase-cell-desc">3 个图标全灰，不脉冲，不显示倒计时。布局占位但视觉低调。</p>
+    </div>
+
+    <div class="phase-cell">
+      <h3 class="phase-cell-label">② LISTEN</h3>
+      <div class="overlay-mini is-activated">
+        <div class="overlay-mini__agents">
+          <span class="overlay-mini__agent" data-status="working"><svg viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="7" fill="#10a37f"/></svg><i class="overlay-mini__agent-dot"></i></span>
+        </div>
+        <span class="overlay-mini__divider"></span>
+        <div class="act-bar is-activated is-phase-listen">
+          <span class="act-indicator is-on is-pulse" data-kind="mic" style="background: var(--act-listen); color: white; box-shadow: 0 0 8px var(--act-listen);"><svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/></svg></span>
+          <span class="act-indicator" data-kind="cam"><svg viewBox="0 0 24 24"><path d="M17 10.5V7a1 1 0 0 0-1-1H4v10h12a1 1 0 0 0 1-1z"/></svg></span>
+          <span class="act-indicator" data-kind="think"><svg viewBox="0 0 24 24"><path d="M21 8H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1z"/></svg></span>
+          <span class="act-countdown" style="color: var(--overlay-ink);">12s</span>
+        </div>
+      </div>
+      <p class="phase-cell-desc">mic 蓝脉冲（1.2s 周期），cam / think 灰，倒计时 12s。</p>
+    </div>
+
+    <div class="phase-cell">
+      <h3 class="phase-cell-label">③ WATCH</h3>
+      <div class="overlay-mini is-activated">
+        <div class="overlay-mini__agents">
+          <span class="overlay-mini__agent" data-status="working"><svg viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="7" fill="#10a37f"/></svg><i class="overlay-mini__agent-dot"></i></span>
+        </div>
+        <span class="overlay-mini__divider"></span>
+        <div class="act-bar is-activated is-phase-watch">
+          <span class="act-indicator is-on is-pulse" data-kind="mic" style="background: var(--act-listen); color: white; box-shadow: 0 0 8px var(--act-listen);"><svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/></svg></span>
+          <span class="act-indicator is-on" data-kind="cam" style="background: var(--act-watch); color: white; box-shadow: 0 0 8px var(--act-watch);"><svg viewBox="0 0 24 24"><path d="M17 10.5V7a1 1 0 0 0-1-1H4v10h12a1 1 0 0 0 1-1z"/></svg></span>
+          <span class="act-indicator" data-kind="think"><svg viewBox="0 0 24 24"><path d="M21 8H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1z"/></svg></span>
+          <span class="act-countdown" style="color: var(--overlay-ink);">8s</span>
+        </div>
+      </div>
+      <p class="phase-cell-desc">mic 蓝脉冲，cam 绿常亮，think 灰，摄像头接管。</p>
+    </div>
+
+    <div class="phase-cell">
+      <h3 class="phase-cell-label">④ THINK</h3>
+      <div class="overlay-mini is-activated">
+        <div class="overlay-mini__agents">
+          <span class="overlay-mini__agent" data-status="working"><svg viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="7" fill="#10a37f"/></svg><i class="overlay-mini__agent-dot"></i></span>
+        </div>
+        <span class="overlay-mini__divider"></span>
+        <div class="act-bar is-activated is-phase-think">
+          <span class="act-indicator is-on" data-kind="mic" style="background: var(--act-listen); color: white; box-shadow: 0 0 8px var(--act-listen);"><svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/></svg></span>
+          <span class="act-indicator is-on" data-kind="cam" style="background: var(--act-watch); color: white; box-shadow: 0 0 8px var(--act-watch);"><svg viewBox="0 0 24 24"><path d="M17 10.5V7a1 1 0 0 0-1-1H4v10h12a1 1 0 0 0 1-1z"/></svg></span>
+          <span class="act-indicator is-on is-pulse" data-kind="think" style="background: var(--act-think); color: white; box-shadow: 0 0 8px var(--act-think);"><svg viewBox="0 0 24 24"><path d="M21 8H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1z"/></svg></span>
+          <span class="act-countdown" style="color: var(--overlay-ink);">5s</span>
+        </div>
+      </div>
+      <p class="phase-cell-desc">全亮。think 紫脉冲（0.6s 周期，更急促），AI 正在处理。</p>
+    </div>
+
+    <div class="phase-cell">
+      <h3 class="phase-cell-label">⑤ SOFT CLOSE（剩 5s）</h3>
+      <div class="overlay-mini is-activated">
+        <div class="overlay-mini__agents">
+          <span class="overlay-mini__agent" data-status="working"><svg viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="7" fill="#10a37f"/></svg><i class="overlay-mini__agent-dot"></i></span>
+        </div>
+        <span class="overlay-mini__divider"></span>
+        <div class="act-bar is-activated is-phase-soft-close">
+          <span class="act-indicator is-on is-soft-close" data-kind="mic" style="background: var(--act-listen-soft); color: white; box-shadow: 0 0 10px var(--act-listen-soft); animation: pulseSoft 0.4s ease-in-out infinite;"><svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/></svg></span>
+          <span class="act-indicator is-on" data-kind="cam" style="background: var(--act-watch); color: white; box-shadow: 0 0 8px var(--act-watch);"><svg viewBox="0 0 24 24"><path d="M17 10.5V7a1 1 0 0 0-1-1H4v10h12a1 1 0 0 0 1-1z"/></svg></span>
+          <span class="act-indicator is-on" data-kind="think" style="background: var(--act-think); color: white; box-shadow: 0 0 8px var(--act-think);"><svg viewBox="0 0 24 24"><path d="M21 8H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1z"/></svg></span>
+          <span class="act-countdown is-soft-close" style="color: var(--act-listen-soft); font-weight: 600;">3s</span>
+        </div>
+      </div>
+      <p class="phase-cell-desc">mic 变橙 + 加快脉冲（0.4s 周期），倒计时数字变橙红 + 缩放跳动，警告用户即将关闭。</p>
+    </div>
+
+    <div class="phase-cell">
+      <h3 class="phase-cell-label">⑥ DONE（完成态）</h3>
+      <div class="overlay-mini">
+        <div class="overlay-mini__agents">
+          <span class="overlay-mini__agent"><svg viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="7" fill="#10a37f"/></svg><i class="overlay-mini__agent-dot"></i></span>
+        </div>
+        <span class="overlay-mini__divider"></span>
+        <div class="act-bar is-phase-done" style="background: rgba(22, 163, 74, 0.18);">
+          <span class="act-indicator is-on" data-kind="mic" style="background: var(--act-done); color: white; box-shadow: 0 0 10px var(--act-done);"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>
+          <span class="act-indicator is-on" data-kind="cam" style="background: var(--act-done); color: white; box-shadow: 0 0 10px var(--act-done);"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>
+          <span class="act-indicator is-on" data-kind="think" style="background: var(--act-done); color: white; box-shadow: 0 0 10px var(--act-done);"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>
+        </div>
+      </div>
+      <p class="phase-cell-desc">全图标打勾变绿实色 800ms，然后 fade out 回 IDLE。</p>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <strong>设计要点：</strong>
+    <ul style="margin: 6px 0 0 16px; padding: 0;">
+      <li>沿用 OneTone overlay 色系（<code>--overlay-shell</code> / <code>--overlay-led-idle</code>）</li>
+      <li>3 个图标尺寸 22×22，与现有 <code>overlay-mini__agent</code> 同级（26×26）</li>
+      <li>激活时整个 act-bar 背景从灰色 → 白色半透明，区分 IDLE 状态</li>
+      <li>动效全部走 cubic-bezier(0.34, 1.56, 0.64, 1) 回弹，匹配 motion.css 风格</li>
+      <li>不引入新字体、新图标风格</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  // ────────── 模拟 ActivationHub 状态机（demo 用）──────────
+  var state = {
+    active: false,
+    phase: 'idle',
+    remainingMs: 0,
+    totalMs: 15000,
+    softCloseMs: 5000,
+    tickHandle: null,
+  };
+
+  var $mic = document.getElementById('indMic');
+  var $cam = document.getElementById('indCam');
+  var $think = document.getElementById('indThink');
+  var $bar = document.getElementById('actBar');
+  var $main = document.getElementById('mainBar');
+  var $countdown = document.getElementById('actCountdown');
+  var $listenChip = document.getElementById('listenChip');
+
+  function clearAll() {
+    [$mic, $cam, $think].forEach(function (el) {
+      el.classList.remove('is-on', 'is-pulse', 'is-soft-close', 'is-error');
+    });
+    $bar.classList.remove('is-activated', 'is-phase-listen', 'is-phase-watch', 'is-phase-think', 'is-phase-done');
+    $main.classList.remove('is-activated');
+    $countdown.hidden = true;
+    $countdown.classList.remove('is-soft-close');
+    $countdown.textContent = '';
+    $listenChip.classList.remove('is-shown');
+  }
+
+  function applyPhase(p) {
+    clearAll();
+    state.phase = p;
+    if (p === 'idle') return;
+
+    state.active = true;
+    $main.classList.add('is-activated');
+    $bar.classList.add('is-activated', 'is-phase-' + p);
+    $mic.classList.add('is-on', 'is-pulse');
+    $countdown.hidden = false;
+
+    if (p === 'listen') {
+      $listenChip.classList.add('is-shown');
+      $countdown.textContent = Math.ceil(state.remainingMs / 1000) + 's';
+    } else if (p === 'watch') {
+      $cam.classList.add('is-on');
+      $countdown.textContent = Math.ceil(state.remainingMs / 1000) + 's';
+    } else if (p === 'think') {
+      $cam.classList.add('is-on');
+      $think.classList.add('is-on', 'is-pulse');
+      $countdown.textContent = Math.ceil(state.remainingMs / 1000) + 's';
+    } else if (p === 'soft-close') {
+      $cam.classList.add('is-on');
+      $think.classList.add('is-on');
+      $mic.classList.add('is-soft-close');
+      $mic.classList.remove('is-pulse');
+      $countdown.classList.add('is-soft-close');
+      $countdown.textContent = Math.ceil(state.remainingMs / 1000) + 's';
+    } else if (p === 'done') {
+      [$mic, $cam, $think].forEach(function (el) {
+        el.classList.remove('is-pulse', 'is-soft-close');
+        el.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+      });
+    }
+  }
+
+  function startTick() {
+    if (state.tickHandle) clearInterval(state.tickHandle);
+    state.remainingMs = state.totalMs;
+    state.tickHandle = setInterval(function () {
+      if (!state.active) { clearInterval(state.tickHandle); return; }
+      state.remainingMs -= 1000;
+      if (state.remainingMs <= 0) { deactivate('timeout'); return; }
+      // 自动进入 soft-close
+      if (state.totalMs - state.remainingMs >= state.totalMs - state.softCloseMs) {
+        if (state.phase !== 'soft-close' && state.phase !== 'think' && state.phase !== 'done') {
+          applyPhase('soft-close');
+        }
+      }
+      var txt = Math.ceil(state.remainingMs / 1000) + 's';
+      $countdown.textContent = txt;
+    }, 1000);
+  }
+
+  function activate() {
+    state.active = true;
+    state.remainingMs = state.totalMs;
+    applyPhase('listen');
+    startTick();
+  }
+
+  function deactivate(reason) {
+    state.active = false;
+    if (state.tickHandle) clearInterval(state.tickHandle);
+    applyPhase('done');
+    setTimeout(function () {
+      state.phase = 'idle';
+      clearAll();
+      // 恢复 mic/cam/think 原图标
+      $mic.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>';
+      $cam.innerHTML = '<svg viewBox="0 0 24 24"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/></svg>';
+      $think.innerHTML = '<svg viewBox="0 0 24 24"><path d="M21 8h-6V6a3 3 0 0 0-3-3h-2a3 3 0 0 0-3 3v2H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1zM9 6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2H9V6zm6 8.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm-6 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>';
+    }, 800);
+  }
+
+  // 演示按钮
+  function demoIdle() { if (state.tickHandle) clearInterval(state.tickHandle); state.active = false; applyPhase('idle'); }
+  function demoListen() { activate(); }
+  function demoWatch() { if (!state.active) activate(); applyPhase('watch'); }
+  function demoThink() { if (!state.active) activate(); applyPhase('think'); }
+  function demoSoftClose() { if (!state.active) activate(); state.remainingMs = 3000; applyPhase('soft-close'); }
+  function demoDone() { if (state.tickHandle) clearInterval(state.tickHandle); applyPhase('done'); setTimeout(demoIdle, 1000); }
+  function demoCommit() { if (state.active) deactivate('commit'); }
+  function demoCancel() { if (state.active) deactivate('cancel'); }
+  function demoError() { $cam.classList.add('is-error'); setTimeout(function () { $cam.classList.remove('is-error'); }, 1000); }
+</script>
+
+</body>
+</html>

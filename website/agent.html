@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="zh-CN" class="dark scroll-smooth">
+<html lang="zh-CN" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/shell.css?v=20260826h">
   <link rel="stylesheet" href="css/agent.css?v=20260826g">
-
+  <link rel="stylesheet" href="css/site-scroll.css">
 </head>
 <body class="antialiased" data-page="agent">
 <header class="site-header">
@@ -51,8 +51,9 @@
   
 
   <main>
+    <div id="story-world" class="story-world" data-mood="pad">
     <!-- SECTION 1: HERO SECTION -->
-    <section class="relative min-h-screen pt-24 pb-16 flex items-center justify-center overflow-hidden" id="sec-hero">
+    <section class="relative min-h-screen pt-24 pb-16 flex items-center justify-center overflow-hidden" id="sec-hero" data-mood="pad">
       <div class="spatial-grid-wrap"><div class="spatial-grid"></div></div>
 
       <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10 w-full" id="pad-demo" data-pad-mode="full">
@@ -289,7 +290,7 @@
     </section>
 
     <!-- SECTION 2: VOICE COMMAND ENGINE -->
-    <section class="py-24 bg-[#08080a] border-t border-white/10 relative" id="sec-voice">
+    <section class="py-24 border-t border-white/10 relative" id="sec-voice" data-mood="dark" data-scroll-reveal>
       <div class="max-w-6xl mx-auto px-6">
         <div class="text-center max-w-2xl mx-auto mb-16 space-y-3">
           <p class="text-xs uppercase tracking-widest text-mac-accent">说一声就行</p>
@@ -355,7 +356,7 @@
     </section>
 
     <!-- SECTION 3: AGENT TELEMETRY DOCK -->
-    <section class="py-24 relative" id="sec-telemetry">
+    <section class="py-24 relative" id="sec-telemetry" data-mood="pad" data-scroll-reveal>
       <div class="max-w-6xl mx-auto px-6 space-y-12">
         <div class="text-center max-w-2xl mx-auto space-y-3">
           <p class="text-xs uppercase tracking-widest text-mac-accent">一眼看清</p>
@@ -446,7 +447,7 @@
     </section>
 
     <!-- SECTION 4: NUMPAD HARDWARE BRIDGE -->
-    <section class="py-24 bg-[#08080a] border-t border-white/10 relative" id="sec-numpad">
+    <section class="py-24 border-t border-white/10 relative" id="sec-numpad" data-mood="dark" data-scroll-reveal>
       <div class="max-w-6xl mx-auto px-6 space-y-12">
         <div class="text-center max-w-2xl mx-auto space-y-3">
           <p class="text-xs uppercase tracking-widest text-mac-accent">实体小键盘</p>
@@ -515,7 +516,7 @@
     </section>
 
     <!-- SECTION 4.5: AGENT SHORTCUT CUSTOMIZER -->
-    <section class="py-24 relative border-t border-white/10" id="sec-custom-keys">
+    <section class="py-24 relative border-t border-white/10" id="sec-custom-keys" data-mood="pad" data-scroll-reveal>
       <div class="max-w-6xl mx-auto px-6 space-y-12">
         <div class="text-center max-w-2xl mx-auto space-y-3">
           <p class="text-xs uppercase tracking-widest text-mac-accent">自己改键</p>
@@ -649,7 +650,7 @@
     </section>
 
     <!-- SECTION 5: FEATURE SPECS & FOOTER -->
-    <section class="py-20 border-t border-white/10" id="sec-specs">
+    <section class="py-20 border-t border-white/10" id="sec-specs" data-mood="dark" data-scroll-reveal>
       <div class="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="mac-glass p-6 rounded-2xl space-y-3">
           <i class="ph-fill ph-layout text-mac-accent text-2xl"></i>
@@ -676,6 +677,7 @@
         </div>
       </div>
     </section>
+    </div>
   </main>
 
 
@@ -694,7 +696,7 @@
         <nav class="site-footer-features" aria-label="Features">
       <span class="site-footer-features-label" data-i18n="footerFeatures">功能</span>
       <a href="quickstart.html#voice" data-i18n="navVoice">语音</a>
-      <a href="quickstart.html#keys" data-i18n="navKeys">按键</a>
+      <a href="keys.html" data-i18n="navKeys">按键</a>
       <a href="vision.html" data-i18n="navCamera">摄像头</a>
       <a href="agent.html" data-i18n="navSoftPad">SoftPad</a>
     </nav>
@@ -708,6 +710,8 @@
     </nav>
   </div>
 </footer>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="js/site-scroll.js"></script>
 <script src="js/shell.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/agent-demo.js?v=20260826e"></script>

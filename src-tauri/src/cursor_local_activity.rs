@@ -614,12 +614,28 @@ pub fn refresh_once() {
     let schema = match cached_schema(&conn) {
         Some(s) => s,
         None => {
-            agent_usage::put_snapshot(
-                crate::soft_pad_runtime::AgentKind::Cursor,
-                disabled_snap("Cursor 本地库结构无法识别"),
-            );
-            crate::app_log::sync_emergency_line("cursor_activity", "refresh: schema detect failed");
-            return;
+            // ponytail: 11GB+ vscdb under Cursor WAL often fails one probe; retry once.
+            std::thread::sleep(Duration::from_millis(400));
+            match cached_schema(&conn) {
+                Some(s) => s,
+                None => {
+                    crate::app_log::sync_emergency_line(
+                        "cursor_activity",
+                        "refresh: schema detect failed (keeping prior snapshot if ready)",
+                    );
+                    // Don't clobber a recent ready pill with a false "结构无法识别".
+                    if let prev = agent_usage::snapshot(crate::soft_pad_runtime::AgentKind::Cursor) {
+                        if prev.status == "ready" && prev.source == SRC_CURSOR_LOCAL {
+                            return;
+                        }
+                    }
+                    agent_usage::put_snapshot(
+                        crate::soft_pad_runtime::AgentKind::Cursor,
+                        disabled_snap("Cursor 本地统计暂时读不到（库正忙），稍后自动重试"),
+                    );
+                    return;
+                }
+            }
         }
     };
     match aggregate_activity(&conn, &schema) {

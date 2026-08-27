@@ -3484,6 +3484,10 @@
                       <div class="camera-card-kicker" id="cameraProHandKicker" data-i18n="cameraProCapGestureKicker">已接入</div>
                       <div class="camera-card-title" data-i18n="cameraCardHandTitle">手势识别</div>
                       <p class="camera-card-desc" id="cameraProHandDesc" data-i18n="cameraProHandBindHint">五指 / OK / 握拳 / 挥手的 if-then 规则在这里配置，与「视觉识别」基础项分开。</p>
+                      <label class="camera-inline-check" style="display:flex;align-items:center;gap:8px;margin:8px 0 0;font-size:12px;cursor:pointer;">
+                        <input type="checkbox" id="cameraHubGateToggle" checked />
+                        <span data-i18n="cameraHubGateLabel">仅在 SoftPad 激活窗内触发手势（推荐）</span>
+                      </label>
                       <p class="camera-pro-status-line" id="cameraProHandStatus" aria-live="polite">尚未开启预览</p>
                       <div class="camera-rule-list camera-pro-hand-rules" id="cameraRulesPro" data-camera-rules-panel="pro" role="region" aria-label="Pro 手势">
                         <p class="camera-rules-pro-hint" id="cameraRulesProHint" data-i18n="cameraRulesProHint">已可配置 · 开启预览后识别</p>
@@ -4660,7 +4664,7 @@
       <p class="voice-wake-phrase-popover-sub" id="voiceWakePopoverSub">从预设选择，或输入自定义口令</p>
       <div class="voice-wake-popover-presets" id="voiceWakePopoverPresets">
         <button type="button" class="voice-sapi-preset" data-phrase="嘿，电脑">嘿，电脑</button>
-        <button type="button" class="voice-sapi-preset" data-phrase="小助手">小助手</button>
+        <button type="button" class="voice-sapi-preset" data-phrase="一声">一声</button>
       </div>
       <div class="voice-phrase-add-row voice-wake-add-row voice-wake-alias-add">
         <div class="voice-wake-input-wrap">
@@ -4813,6 +4817,7 @@
   <script src="js/features/camera/camera-gaze-calibration.js"></script>
   <script src="js/features/camera/gaze-context-resolver.js"></script>
   <script src="js/features/camera/camera-action-picker.js?v=20260815-cap4"></script>
+  <script src="js/features/activation/activation-hub.js"></script>
   <script src="js/features/camera/camera-presence-actions.js?v=20260815-cap3"></script>
   <script src="js/features/camera/camera-gaze-monitor-topology.js"></script>
   <script src="js/features/camera/camera-gaze-monitor-assessment.js"></script>

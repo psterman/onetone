@@ -1,0 +1,42 @@
+/* Shared subpage scroll: mood wash + block reveal (not home chapter story) */
+
+html.story-gsap-live {
+  scroll-behavior: auto !important;
+}
+
+.story-world {
+  position: relative;
+  background-color: #1a1c22;
+  transition: background-color 0.6s ease, background 0.6s ease;
+}
+
+.story-world[data-mood="light"] {
+  background: #1a1c22;
+}
+
+.story-world[data-mood="dark"] {
+  background: #08080a;
+}
+
+.story-world[data-mood="pad"] {
+  background: linear-gradient(165deg, #161320 0%, #0a0a0a 55%);
+}
+
+[data-scroll-reveal] {
+  opacity: 0;
+  transform: translateY(1.25rem);
+}
+
+[data-scroll-reveal].is-revealed {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-scroll-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

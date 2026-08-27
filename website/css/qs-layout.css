@@ -2,7 +2,7 @@
 .qs-steps-section {
   position: relative;
   z-index: 10;
-  background: var(--mac-bg);
+  background: transparent;
   padding: clamp(4rem, 8vw, 8rem) 0;
 }
 

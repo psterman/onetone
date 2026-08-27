@@ -281,7 +281,9 @@
       shakeHow:'normal',
       shakeConfirmCue:true,
       blinkCloseSec:0.6,
-      blinkConfirmCue:true
+      blinkConfirmCue:true,
+      // SoftPad Hub：手势仅在听写激活窗内开火（默认开，降误判）
+      requireActivationHub:true
     };
   }
 
@@ -472,6 +474,11 @@
       ),
       blinkConfirmCue:(function(){
         var v=raw.blinkConfirmCue!=null?raw.blinkConfirmCue:raw.blink_confirm_cue;
+        if(v===undefined||v===null) return true;
+        return !!v;
+      })(),
+      requireActivationHub:(function(){
+        var v=raw.requireActivationHub!=null?raw.requireActivationHub:raw.require_activation_hub;
         if(v===undefined||v===null) return true;
         return !!v;
       })()
@@ -1223,6 +1230,10 @@
       var cue=partial.blinkConfirmCue!=null?partial.blinkConfirmCue:partial.blink_confirm_cue;
       cur.blinkConfirmCue=!!cue;
     }
+    if(partial.requireActivationHub!=null||partial.require_activation_hub!=null){
+      var hubReq=partial.requireActivationHub!=null?partial.requireActivationHub:partial.require_activation_hub;
+      cur.requireActivationHub=!!hubReq;
+    }
     if(hasTriggers){
       cur.triggers=normalizeTriggers(Object.assign({},cur.triggers,partial.triggers),cur);
     }else if(hasAction){
@@ -1492,7 +1503,8 @@
       invalid_combo:['cameraPresenceSkipInvalidCombo','此动作与当前事件不兼容'],
       cooldown:['cameraSkipCooldown','未执行：冷却中'],
       resume_manual:['cameraPresenceSkipResumeManual','只恢复由摄像头触发的暂停'],
-      cancelled:['cameraSkipCancelled','状态变化，已取消']
+      cancelled:['cameraSkipCancelled','状态变化，已取消'],
+      hub_inactive:['cameraSkipHubInactive','未执行：请先激活语音（SoftPad 激活窗）']
     };
     var pair=map[reason];
     if(pair) return t(pair[0],pair[1]);
@@ -1543,6 +1555,12 @@
     if(source==='shake'||source==='blink'
       ||source==='openPalm'||source==='ok'||source==='okHand'||source==='fist'||source==='wave'){
       if(st.presence!=='present') return gateFail('need_present');
+      if(prefs().requireActivationHub!==false){
+        var hub=global.OneToneActivationHub;
+        var hubOn=!!(hub&&hub.isActive&&hub.isActive());
+        if(!hubOn&&typeof isVoiceDictating==='function'&&isVoiceDictating()) hubOn=true;
+        if(!hubOn) return gateFail('hub_inactive');
+      }
       if(isKeyAction(action)){
         if(st.privacyOpen) return gateFail('privacy_blocks_key');
         if(runtime().paused) return gateFail('voice_paused');
@@ -2427,6 +2445,9 @@
     else if(kind==='fist') toast(t('cameraPresenceFistDetected','已识别：握拳'));
     else if(kind==='wave') toast(t('cameraPresenceWaveDetected','已识别：挥手'));
     pulseGesture(kind);
+    if(global.OneToneActivationHub&&global.OneToneActivationHub.setPhase){
+      try{ global.OneToneActivationHub.setPhase('think',{cameraEvent:kind}); }catch(_){}
+    }
     dispatchAction(action,kind).catch(function(err){
       logPresence(kind+' dispatch fail '+(err&&err.message?err.message:String(err||'')));
     });
@@ -3591,6 +3612,11 @@
   }
 
   function syncRuntimeChrome(){
+    var hubGate=$('cameraHubGateToggle');
+    if(hubGate){
+      var want=prefs().requireActivationHub!==false;
+      if(hubGate.checked!==want) hubGate.checked=want;
+    }
     var rs=getRuntimeStatus();
     var statusEl=$('cameraRuntimeStatusText');
     if(statusEl){
@@ -3923,6 +3949,13 @@
       toggle.addEventListener('click',function(e){
         e.preventDefault();
         persistPresencePrefs({enabled:!isEnabled()});
+      });
+    }
+
+    var hubGate=$('cameraHubGateToggle');
+    if(hubGate){
+      hubGate.addEventListener('change',function(){
+        persistPresencePrefs({requireActivationHub:!!hubGate.checked});
       });
     }
 

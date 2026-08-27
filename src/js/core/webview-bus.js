@@ -272,6 +272,9 @@
       }
       if(msg.type==='mvp_runtime_event'){
         appendRuntimeEvent(msg.event);
+        if(global.OneToneActivationHub&&global.OneToneActivationHub.onRuntimeEvent){
+          try{ global.OneToneActivationHub.onRuntimeEvent(msg.event); }catch(_){}
+        }
         if(global.OneToneVoiceAcousticMatcher&&global.OneToneVoiceAcousticMatcher.onRuntimeEvent){
           try{ global.OneToneVoiceAcousticMatcher.onRuntimeEvent(msg.event); }catch(_){}
         }
