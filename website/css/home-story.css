@@ -1,6 +1,4 @@
-/* Home story scroll — GSAP camera rigs (index only) */
-
-/* 简化版：chapter 在 document flow 自然滚动，scrub: true 100% 跟手 */
+/* Home story — scheme B: natural chapter flow + IO demos (no lens scrub) */
 
 .story-world {
   position: relative;
@@ -58,11 +56,24 @@ html:has(#story-world) {
 
 .story-bridge__line {
   margin: 0;
-  font-size: 0.9375rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.125rem;
   font-weight: 500;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   color: rgba(255, 255, 255, 0.78);
   text-shadow: 0 1px 12px rgba(0, 0, 0, 0.45);
+}
+
+.story-bridge__line::before,
+.story-bridge__line::after {
+  content: "";
+  display: block;
+  width: 2.5rem;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.28);
+  flex-shrink: 0;
 }
 
 .story-chapter {
@@ -102,18 +113,58 @@ html:has(#story-world) {
 
 .camera-rig-lens {
   width: 100%;
-  transform-style: preserve-3d;
   transform-origin: 50% 50%;
-  will-change: transform, opacity;
-  backface-visibility: hidden;
 }
 
-/* ponytail: no backdrop-filter under transform — blurs text while scrubbing */
+/* mac-glass stays opaque — no backdrop-filter under any leftover transform */
 .story-world .chapter-demo.mac-glass,
 .story-world .chapter-demo--softpad {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   background: rgba(28, 28, 30, 0.96);
+}
+
+/* copy / bridge reveal via IO class toggle */
+html.story-decoupled-mode .story-chapter .chapter-copy {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.45s ease-out, transform 0.45s ease-out;
+}
+
+html.story-decoupled-mode .story-chapter .story-bridge__line {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+
+html.story-decoupled-mode .story-chapter .chapter-copy.is-revealed,
+html.story-decoupled-mode .story-chapter .story-bridge__line.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+html.story-decoupled-mode .camera-rig-lens {
+  opacity: 1;
+  transform: none;
+}
+
+html.story-decoupled-mode .chapter-demo-wrap {
+  opacity: 0;
+  transform: scale(0.96);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+
+html.story-decoupled-mode .story-chapter.is-demo-visible .chapter-demo-wrap {
+  opacity: 1;
+  transform: scale(1);
+}
+
+html.story-mobile-static.story-decoupled-mode .chapter-demo-wrap {
+  transition-duration: 0.3s;
+}
+
+html.story-decoupled-mode .story-chapter.is-demo-visible {
+  z-index: 2;
 }
 
 .chapter-copy,
@@ -396,16 +447,6 @@ html:has(#story-world) {
   opacity: 0.35;
 }
 
-.chapter-copy,
-.chapter-demo-wrap {
-  transform: translateZ(0);
-}
-
-html.story-nopin-mode .chapter-copy,
-html.story-nopin-mode .chapter-demo-wrap {
-  transform: none;
-}
-
 html.story-reduced-motion .story-chapter,
 html.story-mobile-static .story-chapter {
   min-height: auto;
@@ -425,14 +466,25 @@ html.story-mobile-static .camera-rig {
   filter: none !important;
 }
 
-html.story-mobile-static.story-pin-mode .story-chapter {
-  min-height: auto;
-  overflow: visible;
+html.story-reduced-motion .chapter-demo-wrap,
+html.story-reduced-motion .story-chapter .chapter-copy,
+html.story-reduced-motion .story-chapter .story-bridge__line {
+  opacity: 1;
+  transform: none;
+  transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .story-chapter-counter {
     display: none;
+  }
+
+  html.story-decoupled-mode .chapter-demo-wrap,
+  html.story-decoupled-mode .story-chapter .chapter-copy,
+  html.story-decoupled-mode .story-chapter .story-bridge__line {
+    opacity: 1;
+    transform: none;
+    transition: none;
   }
 }
 

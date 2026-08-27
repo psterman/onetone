@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>原型 A — Sticky Demo Stage · OneTone</title>
+  <link rel="icon" href="../assets/logo.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="../js/tailwind-config.js"></script>
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/home.css">
+  <link rel="stylesheet" href="../css/home-story.css">
+  <link rel="stylesheet" href="home-story-sticky-stage.css">
+</head>
+<body class="proto-sticky antialiased" data-prototype="sticky-stage">
+  <p class="proto-banner">
+    原型 A · Sticky Demo Stage（Linear / Loom）
+    · <a href="home-story-decoupled.html">原型 B</a>
+    · <a href="home-ia-compare.html">IA 对比</a>
+    · <a href="../index.html">生产首页</a>
+  </p>
+
+  <main>
+    <section id="sec-hero" data-section="0">
+      <div class="hero-inner max-w-3xl mx-auto px-6 text-center">
+        <p class="text-mac-accent text-sm font-mono mb-4">一声 OneTone · 原型 A</p>
+        <h1 class="text-5xl md:text-6xl font-bold tracking-tight text-white m-0">想什么，说一声</h1>
+        <p class="text-mac-textMuted mt-4 leading-relaxed">Demo 区 sticky 固定，滚动只切换步骤文案与 demo 态。</p>
+        <div class="op-demo-wrap mt-8 mx-auto max-w-md" id="demoWrap">
+          <div class="op-demo mac-glass p-5" id="opDemo">
+            <div class="flex justify-between items-center border-b border-white/10 pb-3 mb-4">
+              <p class="flex items-center gap-2 text-white font-medium m-0 text-sm">
+                <img id="opSceneIcon" class="op-brand-icon" src="../assets/brands/cursor.png" alt="" width="20" height="20">
+                <span id="opSceneLabelText">Cursor</span>
+              </p>
+              <div class="flex gap-2" id="opSceneDots"></div>
+            </div>
+            <div class="op-demo-stage phase-idle" id="opStage">
+              <div class="op-app" id="opApp">
+                <div class="op-app-body" id="opAppBody"></div>
+              </div>
+              <div class="op-action" id="opAction"><div class="op-device-svg-wrap" id="opDeviceSvgWrap"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="story-sticky-world" class="sticky-story">
+      <div class="sticky-stage-shell">
+        <div id="demo-stage" aria-live="polite">
+          <span class="stage-counter">01 / 03</span>
+
+          <div id="stage-demo-trigger" class="stage-demo-panel is-active" data-step="0">
+            <div class="chapter-demo chapter-demo--trigger mac-glass command-window">
+              <div class="command-list">
+                <button type="button" class="command-item is-active"><i class="ph-fill ph-mouse"></i><span><strong>鼠标侧键</strong><small>拇指按一下</small></span></button>
+                <button type="button" class="command-item"><i class="ph-fill ph-game-controller"></i><span><strong>手柄按键</strong><small>沙发也能说</small></span></button>
+                <button type="button" class="command-item"><i class="ph-fill ph-circle"></i><span><strong>蓝牙戒指</strong><small>轻点一下</small></span></button>
+                <button type="button" class="command-item"><i class="ph-fill ph-microphone"></i><span><strong>麦克风口令</strong><small>说出口令</small></span></button>
+              </div>
+              <aside class="command-status">
+                <div class="status-pill"><i class="ph-fill ph-lightning"></i><span data-flow-status>鼠标侧键已记录</span></div>
+                <div class="mapping-card">
+                  <strong><span data-flow-current class="text-mac-accent">鼠标侧键</span> → 开麦说话</strong>
+                  <p class="text-mac-textMuted text-sm mt-2" data-flow-result>按下后，字进当前输入框。</p>
+                </div>
+              </aside>
+            </div>
+          </div>
+
+          <div id="stage-demo-voice" class="stage-demo-panel" data-step="1">
+            <div class="chapter-demo chapter-demo--voice mac-glass">
+              <div class="home-ime-wake-stage">
+                <div class="home-ime-voice-bar" id="ime-bar-1">
+                  <i class="ph-fill ph-microphone text-lg"></i>
+                  <span class="text-sm font-medium" id="ime-status-1">等待口令唤醒...</span>
+                  <div class="op-mic-waves ml-auto" id="ime-waves-1" style="opacity:0"><span></span><span></span><span></span></div>
+                </div>
+                <div class="home-ime-editor">
+                  <p class="text-white/90"><span id="ime-typed-1"></span><span class="op-caret" id="ime-caret-1" style="display:none"></span></p>
+                </div>
+                <div class="home-ime-cancel-chip" id="ime-cancel-chip" aria-hidden="true"><kbd>Esc</kbd><span>取消重说</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="stage-demo-softpad" class="stage-demo-panel" data-step="2">
+            <div class="chapter-demo chapter-demo--softpad">
+              <div class="pad-teaser-shell">
+                <div class="pad-teaser-bar">
+                  <span id="pad-teaser-full" class="is-active">虚拟键盘</span>
+                  <span id="pad-teaser-mini">迷你栏</span>
+                </div>
+                <div class="pad-teaser-visual" id="pad-teaser-visual">
+                  <div class="pad-teaser-mini-row"><span>Codex · Claude · Cursor</span></div>
+                  <div class="pad-teaser-keys">
+                    <div class="pad-teaser-key">⏻</div>
+                    <div class="pad-teaser-key is-hot">🎤</div>
+                    <div class="pad-teaser-key">↵</div>
+                    <div class="pad-teaser-key">Tab</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="scroll-steps">
+        <section class="story-step is-step-active" id="step-trigger" data-step="0">
+          <p class="step-bridge">下面，麦到你手上了</p>
+          <p class="step-eyebrow">怎么开麦</p>
+          <h2>我怎么开麦？</h2>
+          <p>绑一次外设，到处能说。侧键、手柄、戒指——顺手的动作就是你的开麦键。</p>
+        </section>
+        <section class="story-step" id="step-voice" data-step="1">
+          <p class="step-bridge">说了，字得自己跟上来</p>
+          <p class="step-eyebrow">说着更顺</p>
+          <h2>说了，字会跟上吗？</h2>
+          <p>念句口令也能开麦，字落到光标那。Esc 取消，错字清掉重来。</p>
+        </section>
+        <section class="story-step" id="step-softpad" data-step="2">
+          <p class="step-bridge">字飞起来了，但有时你想叫它停</p>
+          <p class="step-eyebrow">SoftPad</p>
+          <h2>有时你想叫它停？</h2>
+          <p>屏幕上的小键盘，可展开、可收成迷你栏。数字键一对一联动你的 Agent。</p>
+        </section>
+      </div>
+    </div>
+
+    <section class="story-section home-brands bg-mac-bg" id="sec-brands">
+      <div class="max-w-7xl mx-auto px-6 py-16">
+        <h2 class="section-title text-center mb-8">在哪写就在哪说</h2>
+        <div class="home-brands-track">
+          <div class="home-brands-row">
+            <span class="home-brand-item"><img src="../assets/brands/cursor.png" alt="" width="28" height="28"><span>Cursor</span></span>
+            <span class="home-brand-item"><img src="../assets/brands/claude.png" alt="" width="28" height="28"><span>Claude</span></span>
+            <span class="home-brand-item"><img src="../assets/brands/trae.png" alt="" width="28" height="28"><span>Trae</span></span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <script src="../js/home-demo.js"></script>
+  <script src="home-story-sticky-stage.js"></script>
+</body>
+</html>

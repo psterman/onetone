@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>原型 B — Decoupled 三章 · OneTone</title>
+  <link rel="icon" href="../assets/logo.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="../js/tailwind-config.js"></script>
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/home.css">
+  <link rel="stylesheet" href="../css/home-story.css">
+  <link rel="stylesheet" href="home-story-decoupled.css">
+  <style>
+    #sec-hero { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 4rem 1.5rem; background: radial-gradient(circle at 30% 40%, #18181b 0%, #000 65%); }
+    .scroll-rail { position: fixed; right: 1rem; top: 50%; transform: translateY(-50%); z-index: 50; display: flex; flex-direction: column; gap: 0.5rem; }
+    .rail-dot { width: 8px; height: 8px; border-radius: 50%; border: none; background: rgba(255,255,255,0.2); cursor: pointer; padding: 0; }
+    .rail-dot.is-active { background: #2a9cc4; transform: scale(1.25); }
+  </style>
+</head>
+<body class="proto-decoupled antialiased" data-prototype="decoupled">
+  <p class="proto-banner">
+    原型 B · Decoupled 三章（IO demo + 文案 reveal，无 lens scrub）
+    · <a href="home-story-sticky-stage.html">原型 A</a>
+    · <a href="home-ia-compare.html">IA 对比</a>
+    · <a href="../index.html">生产首页</a>
+  </p>
+
+  <nav class="scroll-rail" aria-label="Scroll sections">
+    <button type="button" class="rail-dot is-active" data-target="#sec-hero" aria-label="首屏"></button>
+    <button type="button" class="rail-dot" data-target="#ch-trigger" aria-label="触发"></button>
+    <button type="button" class="rail-dot" data-target="#ch-voice" aria-label="说话"></button>
+    <button type="button" class="rail-dot" data-target="#ch-softpad" aria-label="SoftPad"></button>
+    <button type="button" class="rail-dot" data-target="#sec-brands" aria-label="品牌墙"></button>
+  </nav>
+
+  <main>
+    <section id="sec-hero" data-section="0">
+      <div class="hero-exit-overlay" aria-hidden="true"></div>
+      <div class="hero-inner max-w-3xl mx-auto px-6 text-center">
+        <p class="text-mac-accent text-sm font-mono mb-4">一声 OneTone · 原型 B</p>
+        <h1 class="text-5xl md:text-6xl font-bold tracking-tight text-white m-0">想什么，说一声</h1>
+        <p class="text-mac-textMuted mt-4 leading-relaxed">保留三章竖排 DOM；demo 用 IntersectionObserver 自循环，GSAP 只管 Hero 退场。</p>
+        <div class="op-demo-wrap mt-8 mx-auto max-w-md" id="demoWrap">
+          <div class="op-demo mac-glass p-5" id="opDemo">
+            <div class="flex justify-between items-center border-b border-white/10 pb-3 mb-4">
+              <p class="flex items-center gap-2 text-white font-medium m-0 text-sm">
+                <img id="opSceneIcon" class="op-brand-icon" src="../assets/brands/cursor.png" alt="" width="20" height="20">
+                <span id="opSceneLabelText">Cursor</span>
+              </p>
+              <div class="flex gap-2" id="opSceneDots"></div>
+            </div>
+            <div class="op-demo-stage phase-idle" id="opStage">
+              <div class="op-app" id="opApp">
+                <div class="op-app-body" id="opAppBody"></div>
+              </div>
+              <div class="op-action" id="opAction"><div class="op-device-svg-wrap" id="opDeviceSvgWrap"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="story-world" class="story-world">
+      <section class="story-chapter bg-mac-bg" id="ch-trigger" data-chapter="trigger" data-section="1">
+        <div class="story-bridge story-bridge-in" aria-hidden="true">
+          <p class="story-bridge__line">下面，麦到你手上了</p>
+        </div>
+        <div class="camera-rig">
+          <div class="camera-rig-lens chapter-layout--below">
+            <div class="chapter-copy">
+              <span class="scenario-pill">你在 Cursor 里改 UI</span>
+              <p class="chapter-eyebrow">怎么开麦</p>
+              <h2 class="chapter-question">我怎么开麦？</h2>
+              <p class="chapter-answer">绑一次外设，到处能说。</p>
+            </div>
+            <div class="chapter-demo-wrap">
+              <div class="chapter-demo chapter-demo--trigger mac-glass command-window">
+                <div class="command-list">
+                  <button type="button" class="command-item is-active"><i class="ph-fill ph-mouse"></i><span><strong>鼠标侧键</strong><small>拇指按一下</small></span></button>
+                  <button type="button" class="command-item"><i class="ph-fill ph-game-controller"></i><span><strong>手柄按键</strong><small>沙发也能说</small></span></button>
+                  <button type="button" class="command-item"><i class="ph-fill ph-circle"></i><span><strong>蓝牙戒指</strong><small>轻点一下</small></span></button>
+                  <button type="button" class="command-item"><i class="ph-fill ph-microphone"></i><span><strong>麦克风口令</strong><small>说出口令</small></span></button>
+                </div>
+                <aside class="command-status">
+                  <div class="status-pill"><i class="ph-fill ph-lightning"></i><span data-flow-status>鼠标侧键已记录</span></div>
+                  <div class="mapping-card">
+                    <strong><span data-flow-current class="text-mac-accent">鼠标侧键</span> → 开麦说话</strong>
+                    <p class="text-mac-textMuted text-sm mt-2" data-flow-result>按下后，字进当前输入框。</p>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="story-bridge story-bridge-out" aria-hidden="true">
+          <p class="story-bridge__line">说了，字得自己跟上来</p>
+        </div>
+      </section>
+
+      <section class="story-chapter story-chapter--voice bg-[#0a0a0a]" id="ch-voice" data-chapter="voice" data-section="2">
+        <div class="camera-rig">
+          <div class="camera-rig-lens chapter-layout--split">
+            <div class="chapter-copy">
+              <span class="scenario-pill">脑子比手快的时候</span>
+              <p class="chapter-eyebrow">说着更顺</p>
+              <h2 class="chapter-question">说了，字会跟上吗？</h2>
+              <p class="chapter-answer">念句口令也能开麦，字落到光标那。</p>
+            </div>
+            <div class="chapter-demo-wrap">
+              <div class="chapter-demo chapter-demo--voice mac-glass">
+                <div class="home-ime-wake-stage">
+                  <div class="home-ime-voice-bar" id="ime-bar-1">
+                    <i class="ph-fill ph-microphone text-lg"></i>
+                    <span class="text-sm font-medium" id="ime-status-1">等待口令唤醒...</span>
+                    <div class="op-mic-waves ml-auto" id="ime-waves-1" style="opacity:0"><span></span><span></span><span></span></div>
+                  </div>
+                  <div class="home-ime-editor">
+                    <p class="text-white/90"><span id="ime-typed-1"></span><span class="op-caret" id="ime-caret-1" style="display:none"></span></p>
+                  </div>
+                  <div class="home-ime-cancel-chip" id="ime-cancel-chip" aria-hidden="true"><kbd>Esc</kbd><span>取消重说</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="story-bridge story-bridge-out" aria-hidden="true">
+          <p class="story-bridge__line">字飞起来了，但有时你想叫它停</p>
+        </div>
+      </section>
+
+      <section class="story-chapter bg-mac-bg" id="ch-softpad" data-chapter="softpad" data-section="3">
+        <div class="camera-rig">
+          <div class="camera-rig-lens chapter-layout--split-reverse">
+            <div class="chapter-copy">
+              <span class="scenario-pill">需要控 Agent 时</span>
+              <p class="chapter-eyebrow">SoftPad</p>
+              <h2 class="chapter-question">有时你想叫它停？</h2>
+              <p class="chapter-answer">可展开、可收成迷你栏。</p>
+            </div>
+            <div class="chapter-demo-wrap">
+              <div class="chapter-demo chapter-demo--softpad">
+                <div class="pad-teaser-shell">
+                  <div class="pad-teaser-bar">
+                    <span id="pad-teaser-full" class="is-active">虚拟键盘</span>
+                    <span id="pad-teaser-mini">迷你栏</span>
+                  </div>
+                  <div class="pad-teaser-visual" id="pad-teaser-visual">
+                    <div class="pad-teaser-mini-row"><span>Codex · Claude · Cursor</span></div>
+                    <div class="pad-teaser-keys">
+                      <div class="pad-teaser-key">⏻</div>
+                      <div class="pad-teaser-key is-hot">🎤</div>
+                      <div class="pad-teaser-key">↵</div>
+                      <div class="pad-teaser-key">Tab</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="story-section home-brands bg-mac-bg" id="sec-brands" data-section="4">
+      <div class="max-w-7xl mx-auto px-6 py-16">
+        <h2 class="section-title text-center mb-8">在哪写就在哪说</h2>
+        <div class="home-brands-track">
+          <div class="home-brands-row">
+            <span class="home-brand-item"><img src="../assets/brands/cursor.png" alt="" width="28" height="28"><span>Cursor</span></span>
+            <span class="home-brand-item"><img src="../assets/brands/claude.png" alt="" width="28" height="28"><span>Claude</span></span>
+            <span class="home-brand-item"><img src="../assets/brands/trae.png" alt="" width="28" height="28"><span>Trae</span></span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <script src="../js/home-demo.js"></script>
+  <script src="home-story-decoupled.js"></script>
+</body>
+</html>

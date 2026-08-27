@@ -1,0 +1,168 @@
+/* Prototype A — Sticky Demo Stage (Linear / Loom pattern) */
+
+.proto-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 0.45rem 1rem;
+  text-align: center;
+  font-size: 0.75rem;
+  background: rgba(42, 156, 196, 0.12);
+  border-bottom: 1px solid rgba(42, 156, 196, 0.25);
+  color: #bae6fd;
+  backdrop-filter: blur(12px);
+}
+
+.proto-banner a {
+  color: #fff;
+  margin: 0 0.35rem;
+}
+
+body.proto-sticky {
+  padding-top: 2rem;
+  background: #000;
+  color: #f5f5f7;
+}
+
+#sec-hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1.5rem;
+  background: radial-gradient(circle at 30% 40%, #18181b 0%, #000 65%);
+}
+
+.sticky-story {
+  position: relative;
+  background: #0a0a0a;
+}
+
+.sticky-stage-shell {
+  position: sticky;
+  top: 4rem;
+  z-index: 10;
+  height: min(640px, 72vh);
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  pointer-events: none;
+}
+
+#demo-stage {
+  position: relative;
+  height: 100%;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 18, 20, 0.96);
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.stage-counter {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  font-family: "JetBrains Mono", Menlo, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.45);
+  z-index: 5;
+}
+
+.stage-demo-panel {
+  position: absolute;
+  inset: 0;
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.32s ease-out, visibility 0.32s;
+}
+
+.stage-demo-panel.is-active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.stage-demo-panel .chapter-demo {
+  width: 100%;
+  max-width: 36rem;
+}
+
+.scroll-steps {
+  position: relative;
+  z-index: 1;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 1.5rem 4rem;
+}
+
+.story-step {
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2rem 0;
+  opacity: 0.35;
+  transition: opacity 0.35s ease-out;
+}
+
+.story-step.is-step-active {
+  opacity: 1;
+}
+
+.story-step .step-bridge {
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.story-step .step-eyebrow {
+  font-family: "JetBrains Mono", Menlo, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #2a9cc4;
+  margin: 0 0 0.5rem;
+}
+
+.story-step h2 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.story-step p {
+  margin: 0;
+  max-width: 32rem;
+  line-height: 1.6;
+  color: #86868b;
+}
+
+@media (max-width: 900px) {
+  .sticky-stage-shell {
+    height: min(520px, 58vh);
+  }
+
+  .story-step {
+    min-height: 70vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-demo-panel,
+  .story-step {
+    transition: none;
+  }
+
+  .story-step {
+    opacity: 1;
+  }
+}

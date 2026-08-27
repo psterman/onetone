@@ -98,6 +98,101 @@
     }
     .tag-bad { background: rgba(248, 113, 113, 0.15); color: #fca5a5; }
     .tag-good { background: rgba(var(--accent-rgb), 0.18); color: #7dd3fc; }
+    .tag-warn { background: rgba(251, 191, 36, 0.12); color: #fcd34d; }
+
+    .motion-section {
+      max-width: 76rem;
+      margin: 2.5rem auto 0;
+      padding-top: 2rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .motion-section h2 {
+      margin: 0 0 0.5rem;
+      font-size: 1.35rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+    }
+    .motion-section > p {
+      margin: 0 0 1.25rem;
+      color: var(--muted);
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      max-width: 52rem;
+    }
+    .motion-grid {
+      display: grid;
+      gap: 1.25rem;
+    }
+    @media (min-width: 900px) {
+      .motion-grid { grid-template-columns: 1fr 1fr; }
+    }
+    .motion-link-card {
+      display: block;
+      padding: 1.1rem 1.25rem;
+      border-radius: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.03);
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .motion-link-card:hover {
+      border-color: rgba(var(--accent-rgb), 0.45);
+      background: rgba(var(--accent-rgb), 0.06);
+    }
+    .motion-link-card strong {
+      display: block;
+      font-size: 0.9375rem;
+      color: #fff;
+      margin-bottom: 0.35rem;
+    }
+    .motion-link-card span {
+      font-size: 0.8125rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .motion-link-card code {
+      display: inline-block;
+      margin-top: 0.5rem;
+      font-size: 0.6875rem;
+      font-family: "JetBrains Mono", monospace;
+      color: #7dd3fc;
+    }
+    .checklist {
+      margin-top: 1.5rem;
+      padding: 1.25rem 1.35rem;
+      border-radius: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .checklist h3 {
+      margin: 0 0 0.75rem;
+      font-size: 0.9375rem;
+      font-weight: 600;
+    }
+    .checklist ul {
+      margin: 0;
+      padding-left: 1.15rem;
+      font-size: 0.8125rem;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+    .checklist li { margin-bottom: 0.35rem; }
+    .checklist li strong { color: #e5e5e7; font-weight: 500; }
+    .gate-note {
+      margin-top: 1rem;
+      padding: 0.85rem 1rem;
+      border-radius: 0.65rem;
+      background: rgba(251, 191, 36, 0.08);
+      border: 1px solid rgba(251, 191, 36, 0.22);
+      font-size: 0.8125rem;
+      color: #fcd34d;
+      line-height: 1.55;
+    }
+    .gate-note code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.75rem;
+    }
 
     /* scrollable mini browser */
     .mini-browser {
@@ -624,6 +719,51 @@
       </div>
     </article>
   </div>
+
+  <section class="motion-section" id="motion-prototypes">
+    <h2>动效 A/B 原型（可点击验证）</h2>
+    <p>
+      IA 方案 B 已定「触发 → 说话 → SoftPad」三层叙事；下面两个<strong style="color:#fff">动效实现</strong>原型对比 scroll 与 demo 生命周期。
+      整章 pin/lens scrub 已证伪 — 请在本地打开完整页面试滚，再跑自动化脚本。
+    </p>
+
+    <div class="motion-grid">
+      <a class="motion-link-card" href="home-story-sticky-stage.html" target="_blank" rel="noopener">
+        <span class="tag tag-good">Motion A</span>
+        <strong>Sticky Demo Stage</strong>
+        <span>Linear / Loom 模式：sticky 舞台固定 demo，滚动步骤文案切换三态 crossfade；demo 用 IO 自循环。</span>
+        <code>prototypes/home-story-sticky-stage.html</code>
+      </a>
+      <a class="motion-link-card" href="home-story-decoupled.html" target="_blank" rel="noopener">
+        <span class="tag tag-good">Motion B</span>
+        <strong>Decoupled 三章</strong>
+        <span>保留现有三章 DOM；GSAP 只做 copy/bridge reveal，demo 用 IO 解耦 scroll scrub。</span>
+        <code>prototypes/home-story-decoupled.html</code>
+      </a>
+    </div>
+
+    <div class="checklist">
+      <h3>验收 checklist（人工 + 自动化）</h3>
+      <ul>
+        <li><strong>Hero 加载</strong> — 3s 内 demo 场景切换 ≥1 次</li>
+        <li><strong>慢滚三章</strong> — 每章 demo 在视口内持续循环 ≥5s</li>
+        <li><strong>快滚</strong> — 无整屏黑场、无双 demo 叠层</li>
+        <li><strong>倒滚</strong> — 回到上一章 demo 恢复循环</li>
+        <li><strong>边界 scrollY</strong> — 每 150–200px 采样：至少一章 demo opacity &gt; 0.9 且可见</li>
+        <li><strong>reduced-motion</strong> — 静态展示，无 JS 报错</li>
+        <li><strong>人工 30s</strong> — 主视觉视口中央偏上；bridge 单行不重复；10s 内能说出触发→说话→SoftPad</li>
+      </ul>
+      <p style="margin:0.75rem 0 0;font-size:0.8125rem;color:var(--muted)">
+        自动化：<code style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:#7dd3fc">npm run test:website-prototypes</code>
+        （需 <code style="font-family:'JetBrains Mono',monospace;font-size:0.75rem">python -m http.server 8765</code> 在 <code style="font-family:'JetBrains Mono',monospace;font-size:0.75rem">website/</code> 目录）
+      </p>
+      <div class="gate-note">
+        <span class="tag tag-good">已选定 Motion B</span>
+        生产首页已按 <strong style="color:#fef3c7">Decoupled 三章</strong> 合并：保留 DOM，删 lens scrub，demo / copy 用 IO。
+        Sticky Stage（Motion A）仅作对照原型保留。
+      </div>
+    </div>
+  </section>
 
   <script>
     // Auto-scroll demo: gently loop each preview to show scroll rhythm

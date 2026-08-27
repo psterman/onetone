@@ -1,0 +1,59 @@
+/* Prototype B — Decoupled chapters (IO demos, no lens scrub) */
+
+.proto-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 0.45rem 1rem;
+  text-align: center;
+  font-size: 0.75rem;
+  background: rgba(167, 139, 250, 0.12);
+  border-bottom: 1px solid rgba(167, 139, 250, 0.25);
+  color: #ddd6fe;
+  backdrop-filter: blur(12px);
+}
+
+.proto-banner a {
+  color: #fff;
+  margin: 0 0.35rem;
+}
+
+body.proto-decoupled {
+  padding-top: 2rem;
+  background: #000;
+  color: #f5f5f7;
+}
+
+html.proto-decoupled-mode .story-chapter .chapter-copy,
+html.proto-decoupled-mode .story-chapter .story-bridge__line {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.45s ease-out, transform 0.45s ease-out;
+}
+
+html.proto-decoupled-mode .story-chapter .chapter-copy.is-revealed,
+html.proto-decoupled-mode .story-chapter .story-bridge__line.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+html.proto-decoupled-mode .camera-rig-lens,
+html.proto-decoupled-mode .chapter-demo-wrap {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+html.proto-decoupled-mode .story-chapter.is-demo-visible {
+  z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.proto-decoupled-mode .story-chapter .chapter-copy,
+  html.proto-decoupled-mode .story-chapter .story-bridge__line {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
