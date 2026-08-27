@@ -604,8 +604,14 @@
     if (!visual) return { play: function () {}, pause: function () {}, cancel: function () {}, isRunning: false, onBeat: function () {} };
 
     const hotKeys = visual.querySelectorAll("[data-pad-hot]");
-    let mini = false;
+    const MORPH_MS = 580;
     let hotIndex = 0;
+
+    function setMode(mini) {
+      visual.classList.toggle("is-mini", mini);
+      if (pillFull) pillFull.classList.toggle("is-active", !mini);
+      if (pillMini) pillMini.classList.toggle("is-active", mini);
+    }
 
     function setHot(i) {
       hotKeys.forEach(function (el, idx) {
@@ -615,10 +621,8 @@
 
     return createDemoHandle(async function (ctx) {
       while (ctx.isActive()) {
-        mini = false;
-        visual.classList.remove("is-mini");
-        if (pillFull) pillFull.classList.add("is-active");
-        if (pillMini) pillMini.classList.remove("is-active");
+        setMode(false);
+        await ctx.sleep(MORPH_MS);
         for (let n = 0; n < hotKeys.length && ctx.isActive(); n++) {
           setHot(hotIndex);
           hotIndex = (hotIndex + 1) % Math.max(hotKeys.length, 1);
@@ -627,12 +631,9 @@
         }
         if (!ctx.isActive()) break;
 
-        mini = true;
-        visual.classList.add("is-mini");
-        if (pillFull) pillFull.classList.remove("is-active");
-        if (pillMini) pillMini.classList.add("is-active");
+        setMode(true);
         ctx.beat();
-        await ctx.sleep(1800);
+        await ctx.sleep(MORPH_MS + 1400);
       }
     }, { restartOnPlay: false });
   }

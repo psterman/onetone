@@ -57,7 +57,9 @@ assert.match(indexHtml, /chapter-chip[\s\S]*ph-keyboard/, "keys chip has icon");
 assert.match(indexHtml, /chapter-chip[\s\S]*ph-squares-four/, "softpad chip has icon");
 assert.match(indexHtml, /pad-teaser-keys[\s\S]*pad-teaser-tall[\s\S]*pad-teaser-wide/, "softpad teaser is numpad layout");
 assert.match(homeStoryCss, /\.pad-teaser-key \{[\s\S]*linear-gradient\(180deg/, "softpad keys have keycap gradient");
-assert.match(homeDemo, /data-pad-hot/, "softpad demo cycles key press");
+assert.match(homeStoryCss, /max-height 0\.55s/, "softpad morph animates height");
+assert.match(homeStoryCss, /pad-teaser-face--mini/, "softpad mini face crossfade");
+assert.match(homeDemo, /MORPH_MS/, "softpad demo waits for morph");
 assert.match(homeStoryCss, /\.chapter-chip \{[\s\S]*background:\s*#fff/, "chapter chip solid like download CTA");
 assert.match(indexHtml, /vision\.html/, "camera deep link");
 assert.match(indexHtml, /id="home-camera-teaser"/, "camera chapter has teaser card");
@@ -75,8 +77,24 @@ assert.doesNotMatch(shellJs, /return "voice"|return "keys"|return "camera"|retur
 assert.match(i18n, /homeChTriggerKeys:/, "i18n homeChTriggerKeys");
 assert.match(i18n, /homeChVoiceLink:/, "i18n homeChVoiceLink");
 assert.match(i18n, /homeChCameraLink:/, "i18n homeChCameraLink");
-assert.match(i18n, /homeStoryCounter4:/, "i18n four-chapter counter");
-assert.match(i18n, /footerFeatures:/, "i18n footerFeatures");
+assert.match(indexHtml, /homeQuotesLead/, "quotes lead i18n");
+assert.match(indexHtml, /home-quote-avatar/, "quotes have avatars");
+assert.equal((indexHtml.match(/class="home-quote /g) || []).length, 8, "eight quote cards");
+assert.doesNotMatch(indexHtml, /homeQuote1Text/, "quote bodies stay original, not i18n");
+assert.match(indexHtml, /qingzhi0508/, "real Chinese user qingzhi0508");
+assert.match(indexHtml, /Andrej Karpathy/, "real English Karpathy");
+assert.match(indexHtml, />comerc</, "real Russian user comerc");
+assert.match(indexHtml, />abalol</, "real Japanese user abalol");
+assert.match(indexHtml, />goddaehee</, "real Korean user goddaehee");
+assert.match(indexHtml, /Juan Pol/, "real Spanish user Juan Pol");
+assert.match(indexHtml, /Matthieu HERMAN/, "real French user Matthieu HERMAN");
+assert.match(indexHtml, /Fadl Labanie/, "real Arabic user Fadl Labanie");
+assert.match(indexHtml, /dir="rtl"/, "Arabic quote is RTL");
+assert.match(indexHtml, /home-quote-src/, "quotes link to source");
+assert.doesNotMatch(indexHtml, /homeQuote[0-9]Role/, "no language-tagged quote roles");
+assert.doesNotMatch(indexHtml, /aning\.svg|阿宁|小林|老周/, "no fabricated personas");
+assert.doesNotMatch(indexHtml, /without reviewing the code/, "no jargon definition quotes");
+assert.doesNotMatch(indexHtml, /功能 POC/, "no POC jargon quote");
 
 
 var voiceSection = indexHtml.match(/id="ch-voice"[\s\S]*?<\/section>/);
