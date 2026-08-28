@@ -341,6 +341,42 @@
         if(hooks.homeToggleVoiceWake) hooks.homeToggleVoiceWake();
       };
     }
+    var wakeOptInBtn=$('voiceWakeListeningOptInToggle');
+    function syncWakeListeningOptInToggle(){
+      if(!wakeOptInBtn) return;
+      var cfg=global.OneToneState.state.config||{};
+      var on=!!cfg.voiceWakeListeningOptIn;
+      wakeOptInBtn.classList.toggle('is-on',on);
+      wakeOptInBtn.setAttribute('aria-checked',on?'true':'false');
+    }
+    global.__vp_syncWakeListeningOptInToggle__=syncWakeListeningOptInToggle;
+    if(wakeOptInBtn){
+      wakeOptInBtn.onclick=function(){
+        var cfg=global.OneToneState.state.config||{};
+        var next=!cfg.voiceWakeListeningOptIn;
+        if(next){
+          if(!global.confirm(t('voiceWakeListeningOptInConfirm'))) return;
+          cfg.voiceWakeListeningOptIn=true;
+          if(cfg.voiceAssistEnabled!==false&&global.OneToneVoiceWake&&global.OneToneVoiceWake.switchListeningStrategy){
+            global.OneToneVoiceWake.switchListeningStrategy('resourceSaver',{force:true});
+          }
+        }else{
+          cfg.voiceWakeListeningOptIn=false;
+          var strat=String(cfg.voiceListeningStrategy||cfg.voice_listening_strategy||'off');
+          if((strat==='resourceSaver'||strat==='auto'||strat==='enhanced')
+            &&global.OneToneVoiceWake&&global.OneToneVoiceWake.switchListeningStrategy){
+            global.OneToneVoiceWake.switchListeningStrategy('off',{force:true});
+          }
+        }
+        if(global.OneToneConfigPersist&&global.OneToneConfigPersist.invokeSaveOnce){
+          global.OneToneConfigPersist.invokeSaveOnce('voiceWakeOptIn');
+        }
+        syncWakeListeningOptInToggle();
+        if(global.OneToneHomeLive&&global.OneToneHomeLive.render) global.OneToneHomeLive.render();
+        if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.render) global.OneToneHomeWorkbench.render();
+      };
+      syncWakeListeningOptInToggle();
+    }
     bindVoiceEngineSwitch($('voiceRecognizeSourceGrid'));
     bindVoiceStrategySwitch($('voiceSummaryEngineSwitch'));
     var btnVoiceOutputSummonManage=$('btnVoiceOutputSummonManage');

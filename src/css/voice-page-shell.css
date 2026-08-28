@@ -2642,6 +2642,7 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
 #settingsPanelVoiceWake.voice-page-desk .voice-wake-section {
   display: grid;
   gap: 10px;
+  margin-bottom: 12px;
 }
 
 #settingsPanelVoiceWake.voice-page-desk .voice-wake-section-title {
@@ -2651,6 +2652,36 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--on-surface-muted);
+}
+
+.voice-wake-optin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 55%, transparent);
+  background: color-mix(in srgb, var(--surface-high, var(--surface)) 88%, transparent);
+}
+
+.voice-wake-optin-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.voice-wake-optin-label {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.voice-wake-optin-hint {
+  font-size: 11px;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--on-surface) 68%, transparent);
 }
 
 #settingsPanelVoiceWake.voice-page-desk #voiceSettingsWakeCard .keys-step-card-head {

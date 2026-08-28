@@ -601,65 +601,47 @@
   }
 
   function syncHeroMicCard(projection){
+    var hub=$('wbHeroMic');
     var engineBtn=$('wbHeroMicEngine');
     var engineNameEl=$('wbHeroMicEngineName');
     var wakeHintEl=$('wbHeroMicWakeHint');
     var toolbar=$('wbHeroMicToolbar');
     var listenBtn=$('wbBtnListenToggle');
-    var listenLbl=$('wbBtnListenToggleLabel');
+    var voiceSwitch=$('wbHeroVoiceSwitch');
+    var statusEl=$('wbHeroMicStatus');
+    var hintEl=$('wbHeroMicVoiceHint');
     var mode=projection&&projection.mode?projection.mode:heroMode;
     var inVoiceOrKeys=mode==='voice'||mode==='keys';
-    var pills=(projection&&projection.pills)||[];
     var vm=projection&&projection._vm?projection._vm:{};
     var paused=!!(vm.runtime&&vm.runtime.paused);
-    var engine=null;
-    var micFull='';
-    pills.forEach(function(pill){
-      if(!pill) return;
-      if(pill.id==='mic') micFull=String(pill.label||'');
-      if(pill.id==='engine'||pill.id==='engine-off') engine=pill;
-    });
+    var dictating=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating);
     if(toolbar) toolbar.hidden=!inVoiceOrKeys;
-    if(engineBtn){
-      if(!inVoiceOrKeys||!engine){
-        engineBtn.hidden=true;
-      }else{
-        engineBtn.hidden=false;
-        var engOk=(engine.tone||'').indexOf('is-ok')>=0;
-        var engOff=engine.id==='engine-off'||(engine.tone||'').indexOf('is-muted')>=0;
-        engineBtn.classList.toggle('is-warn',!engOk&&!engOff);
-        engineBtn.classList.toggle('is-off',!!engOff);
-        var label=String(engine.label||'');
-        var split=label.indexOf(' · ');
-        var engName=split>=0?label.slice(0,split).trim():label.trim();
-        var wakeHint=split>=0?label.slice(split+3).trim():'';
-        if(engineNameEl) engineNameEl.textContent=engName||'—';
-        if(wakeHintEl){
-          wakeHintEl.textContent=wakeHint||'';
-          wakeHintEl.hidden=!wakeHint;
-        }
-        var tip=engName||'';
-        if(wakeHint) tip=tip+' · '+wakeHint;
-        if(micFull) tip=tip+' · '+micFull;
-        engineBtn.title=tip+' · '+t('homeWbFlowCtaVoice','打开语音设置');
-      }
+    if(engineBtn) engineBtn.hidden=true;
+    if(wakeHintEl) wakeHintEl.hidden=true;
+    if(listenBtn) listenBtn.hidden=true;
+    if(hub){
+      hub.classList.toggle('is-voice-surface',inVoiceOrKeys);
+      hub.classList.toggle('is-dictating',inVoiceOrKeys&&dictating);
     }
-    if(listenBtn){
-      if(!inVoiceOrKeys){
-        listenBtn.hidden=true;
-      }else{
-        listenBtn.hidden=false;
-        listenBtn.classList.toggle('is-paused',paused);
-        listenBtn.setAttribute('aria-pressed',paused?'true':'false');
-        var tipText=paused?t('homeWbListenResumeTip'):t('homeWbListenPauseTip');
-        if(global.OneToneHoverTip&&global.OneToneHoverTip.setText){
-          global.OneToneHoverTip.setText(listenBtn, tipText);
-        }else{
-          listenBtn.setAttribute('data-ot-tip', tipText);
-        }
-        if(listenLbl) listenLbl.textContent=paused?t('homeWbListenResume'):t('homeWbListenPause');
+    if(inVoiceOrKeys&&global.OneToneVoiceSurfaceCopy){
+      var surface=global.OneToneVoiceSurfaceCopy.resolve({dictating:dictating,paused:paused});
+      if(statusEl) statusEl.textContent=surface.line1||'';
+      if(hintEl){
+        hintEl.textContent=surface.line2||'';
+        hintEl.hidden=!surface.line2;
       }
+      if(voiceSwitch){
+        voiceSwitch.hidden=false;
+        voiceSwitch.classList.toggle('is-on',!!surface.switchOn);
+        voiceSwitch.setAttribute('aria-checked',surface.switchOn?'true':'false');
+        voiceSwitch.disabled=!!surface.switchDisabled;
+        voiceSwitch.setAttribute('aria-label',surface.switchOn?t('voiceSurfaceSwitchOn'):t('voiceSurfaceSwitchOff'));
+      }
+      return;
     }
+    if(hub) hub.classList.remove('is-voice-surface','is-dictating');
+    if(voiceSwitch) voiceSwitch.hidden=true;
+    if(hintEl){ hintEl.textContent=''; hintEl.hidden=true; }
   }
 
   function renderHeroPills(projection,stats){
@@ -1755,6 +1737,13 @@
       var micBtn=e.target.closest&&e.target.closest('#wbVoiceChangeMic,.wb-hero-pill-mic-btn,#wbHeroMicEngine');
       if(micBtn){
         openSettings({panel:'voiceWake',focus:micBtn.id==='wbHeroMicEngine'?null:'mic'});
+        return;
+      }
+      var voiceSwitch=e.target.closest&&e.target.closest('#wbHeroVoiceSwitch');
+      if(voiceSwitch){
+        e.preventDefault();
+        var bootHooks=global.__vp_bootstrap_hooks__;
+        if(bootHooks&&bootHooks.homeToggleVoiceWake) bootHooks.homeToggleVoiceWake();
         return;
       }
       var listenBtn=e.target.closest&&e.target.closest('#wbBtnListenToggle,.wb-hero-pill-listen,.wb-hero-mic-listen');

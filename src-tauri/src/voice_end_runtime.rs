@@ -513,6 +513,7 @@ pub fn handle_voice_wake_detected(
     engine: &str,
 ) -> VoiceWakeDispatchResult {
     use std::sync::atomic::Ordering;
+    crate::voice_bootstrap::touch_wake_activity(state.as_ref());
     // Practice stage: ASR still runs for on-screen dictation; skip summon / IME inject.
     if state.voice_practice_hold_fg.load(Ordering::SeqCst) {
         crate::app_log::log_line(

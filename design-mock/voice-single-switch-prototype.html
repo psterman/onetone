@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneTone · 语音单开关原型 · 按需听写</title>
+<style>
+:root{
+  --bg:#F5F5F7; --surface:#FFFFFF; --surface-high:#FAFAFB;
+  --border:#E5E5E5; --outline-variant:#D4D4D8;
+  --primary:#2A9CC4; --primary-soft:#E6F7FC;
+  --text:#1A1A1A; --text-muted:#666; --text-faint:#999;
+  --off:#71717A; --off-soft:#F4F4F5;
+  --on:#2A9CC4; --on-soft:#E6F7FC;
+  --dictating:#16A34A; --dictating-soft:#DCFCE7;
+  --r-card:20px; --r-mic:16px; --r-pill:999px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:'Outfit','Inter',system-ui,-apple-system,'PingFang SC','Microsoft YaHei UI',sans-serif;
+  line-height:1.55;-webkit-font-smoothing:antialiased;}
+
+header{background:#fff;border-bottom:1px solid var(--border);padding:24px 32px;}
+header h1{margin:0 0 6px;font:700 22px/30px 'Outfit';letter-spacing:-.01em;}
+header .sub{color:var(--text-muted);font-size:13px;max-width:800px;}
+header .path{margin-top:10px;font:500 11px/14px ui-monospace,monospace;color:var(--text-faint);}
+header .badge{
+  display:inline-block;margin-top:12px;padding:4px 10px;border-radius:var(--r-pill);
+  font-size:11px;font-weight:700;background:#FEE2E2;color:#991B1B;
+}
+
+.container{padding:32px;max-width:1200px;margin:0 auto;}
+
+/* ── 对比：旧 vs 新 ── */
+.compare{
+  display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:24px 0 36px;
+}
+@media(max-width:800px){.compare{grid-template-columns:1fr;}}
+.compare-card{
+  padding:16px 18px;border-radius:14px;border:1px solid var(--border);background:#fff;
+}
+.compare-card.bad{border-color:#FECACA;background:#FEF2F2;}
+.compare-card.good{border-color:#BBF7D0;background:#F0FDF4;}
+.compare-card h3{margin:0 0 8px;font-size:13px;font-weight:700;}
+.compare-card ul{margin:0;padding-left:18px;font-size:12.5px;color:var(--text-muted);}
+.compare-card li{margin:4px 0;}
+
+/* ── 心智模型 ── */
+.principle{
+  background:#fff;border:1px solid var(--border);border-radius:var(--r-card);
+  padding:20px 24px;margin-bottom:32px;
+}
+.principle h2{margin:0 0 8px;font:700 16px/22px 'Outfit';}
+.principle p{margin:0;font-size:13px;color:var(--text-muted);}
+.principle .formula{
+  margin-top:14px;padding:14px 18px;border-radius:12px;
+  background:var(--on-soft);font:600 15px/22px 'Outfit';color:#0c6e8c;text-align:center;
+}
+
+/* ── 麦克风卡 ── */
+.section{margin:36px 0 0;}
+.section h2{margin:0 0 4px;font:700 18px/24px 'Outfit';}
+.section .desc{color:var(--text-muted);font-size:13px;margin-bottom:18px;}
+
+.demo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;}
+@media(max-width:900px){.demo-grid{grid-template-columns:1fr;}}
+
+.wb-hero-mic{
+  display:flex;flex-direction:column;gap:10px;
+  padding:12px 14px;border:1px solid color-mix(in srgb,var(--outline-variant) 55%,transparent);
+  border-radius:var(--r-mic);background:color-mix(in srgb,var(--surface-high) 92%,transparent);
+  box-shadow:0 1px 2px rgba(15,23,42,.04);
+}
+.wb-hero-mic.is-off{border-color:color-mix(in srgb,var(--off) 40%,var(--outline-variant));background:var(--off-soft);}
+.wb-hero-mic.is-on{border-color:color-mix(in srgb,var(--on) 35%,var(--outline-variant));}
+.wb-hero-mic.is-dictating{
+  border-color:color-mix(in srgb,var(--dictating) 40%,var(--outline-variant));
+  background:color-mix(in srgb,var(--dictating-soft) 50%,var(--surface-high));
+}
+
+.mic-row{display:flex;align-items:flex-start;gap:10px;}
+.mic-dot{width:10px;height:10px;border-radius:50%;margin-top:6px;flex-shrink:0;background:var(--off);}
+.wb-hero-mic.is-on .mic-dot{background:var(--on);box-shadow:0 0 0 3px color-mix(in srgb,var(--on) 22%,transparent);}
+.wb-hero-mic.is-dictating .mic-dot{background:var(--dictating);animation:pulse 1.2s ease infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.mic-copy{flex:1;min-width:0;}
+.mic-copy .line1{font-size:14px;font-weight:700;line-height:1.4;}
+.mic-copy .line2{font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.45;}
+.mic-copy .live{
+  display:block;margin-top:8px;padding:8px 10px;border-radius:10px;
+  background:color-mix(in srgb,var(--dictating-soft) 80%,transparent);
+  font-size:13px;font-weight:650;color:#15803d;line-height:1.4;
+}
+
+.mic-bars{display:flex;align-items:flex-end;gap:2px;height:24px;flex-shrink:0;}
+.mic-bars span{display:block;width:3px;border-radius:2px;background:color-mix(in srgb,var(--on) 45%,transparent);}
+.mic-bars span:nth-child(3n){height:65%;}
+.mic-bars span:nth-child(5){height:100%;}
+.mic-bars span:nth-child(even){height:35%;}
+.wb-hero-mic.is-off .mic-bars span{background:var(--outline-variant);height:18%!important;}
+.wb-hero-mic.is-dictating .mic-bars span{background:color-mix(in srgb,var(--dictating) 50%,transparent);}
+
+.mic-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:2px;}
+.switch{
+  position:relative;width:44px;height:26px;border-radius:var(--r-pill);border:none;cursor:pointer;
+  background:var(--outline-variant);transition:background .2s;flex-shrink:0;
+}
+.switch::after{
+  content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.15);transition:transform .2s;
+}
+.switch.is-on{background:var(--on);}
+.switch.is-on::after{transform:translateX(18px);}
+.switch-label{font-size:12px;font-weight:650;color:var(--text-muted);}
+.switch-label strong{color:var(--text);}
+
+.note{font-size:11.5px;color:var(--text-muted);padding:10px 12px;background:var(--surface-high);
+  border-radius:10px;border:1px dashed var(--border);margin-top:8px;}
+.note strong{color:var(--text);}
+
+/* ── 交互区 ── */
+.interactive{
+  background:#fff;border:1px solid var(--border);border-radius:var(--r-card);
+  padding:24px;max-width:480px;
+}
+.tab-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.tab-btn{
+  padding:6px 14px;border-radius:var(--r-pill);border:1px solid var(--border);
+  background:var(--surface);font-size:12px;font-weight:650;cursor:pointer;
+}
+.tab-btn.is-active{background:var(--on-soft);border-color:var(--on);color:#0c6e8c;}
+
+.opt-row{display:flex;align-items:center;gap:10px;margin:14px 0 0;font-size:12px;color:var(--text-muted);}
+.opt-row input{accent-color:var(--on);}
+
+.flow-diagram{
+  display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+  margin:24px 0;padding:20px;background:#fff;border:1px solid var(--border);border-radius:var(--r-card);
+  font-size:12px;font-weight:650;
+}
+.flow-box{padding:10px 16px;border-radius:10px;border:2px solid var(--border);background:var(--surface-high);}
+.flow-box.highlight{border-color:var(--on);background:var(--on-soft);color:#0c6e8c;}
+.flow-box.session{border-color:var(--dictating);background:var(--dictating-soft);color:#15803d;}
+.flow-arrow{color:var(--text-faint);font-size:18px;}
+
+.table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px;}
+.table th,.table td{border:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top;}
+.table th{background:var(--surface-high);font-weight:700;}
+.table code{font:500 11px ui-monospace,monospace;background:#f0f0f2;padding:1px 5px;border-radius:4px;}
+.strike{text-decoration:line-through;color:var(--text-faint);}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>语音单开关 · 按需听写（修订原型）</h1>
+  <p class="sub">第一性原理结论：用户只决定「语音开/关」；默认不常驻监听；听写是会话反馈，不是第三种可选模式。取代 <code>voice-phase-3state-prototype.html</code>。</p>
+  <p class="path">design-mock/voice-single-switch-prototype.html</p>
+  <span class="badge">废弃：三态 pill · 暂停按钮 · 关闭/暂停双轨</span>
+</header>
+
+<div class="container">
+
+  <div class="compare">
+    <div class="compare-card bad">
+      <h3>旧方案（过繁）</h3>
+      <ul>
+        <li>用户要理解：关闭 / 待机 / 听写 / 暂停</li>
+        <li>首页 3 个按钮：开启 · 暂停 · 关闭</li>
+        <li>默认 <code>auto</code> 常驻 KWS/Vosk → 内存 + 误触</li>
+        <li>「待机」不是用户需求，是实现层</li>
+      </ul>
+    </div>
+    <div class="compare-card good">
+      <h3>新方案（单开关）</h3>
+      <ul>
+        <li>用户只操作：<strong>语音开 / 关</strong></li>
+        <li>听写 = 自动反馈（绿条 + 字幕），不用选</li>
+        <li>默认 <code>off</code>，按按键才听写</li>
+        <li>口令唤醒 = 设置里显式 opt-in</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="principle">
+    <h2>用户心智公式</h2>
+    <p>内部可以有很多状态机，首页只回答一个问题：<strong>「我现在能不能用语音输入？」</strong></p>
+    <div class="formula">一个开关 · 一行怎么说 · 听写时多一行反馈</div>
+  </div>
+
+  <div class="flow-diagram">
+    <span class="flow-box">语音关<br><small>零后台引擎</small></span>
+    <span class="flow-arrow">→ 开</span>
+    <span class="flow-box highlight">语音开<br><small>按 {key} 或说口令</small></span>
+    <span class="flow-arrow">→ 触发</span>
+    <span class="flow-box session">听写中<br><small>自动，只读提示</small></span>
+    <span class="flow-arrow">→ 结束</span>
+    <span class="flow-box highlight">回到语音开</span>
+  </div>
+
+  <!-- 四场景静态 -->
+  <div class="section">
+    <h2>首页 #wbHeroMic 四场景（用户零选择）</h2>
+    <p class="desc">每格只有一个开关可操作。无「暂停」、无 phase pill、无引擎名（KWS/Vosk 进设置）。</p>
+    <div class="demo-grid">
+
+      <div>
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--off);margin:0 0 8px;">① 默认 · 语音关</p>
+        <div class="wb-hero-mic is-off">
+          <div class="mic-row">
+            <span class="mic-dot"></span>
+            <div class="mic-copy">
+              <div class="line1">语音已关闭</div>
+              <div class="line2">按键习惯仍可用 · 需要时再开</div>
+            </div>
+            <span class="mic-bars"><span></span><span></span><span></span><span></span><span></span></span>
+          </div>
+          <div class="mic-footer">
+            <span class="switch-label">语音 <strong>关</strong></span>
+            <button type="button" class="switch" aria-label="开启语音"></button>
+          </div>
+        </div>
+        <div class="note"><strong>后台：</strong>无 KWS/Vosk 进程。任务管理器干净。</div>
+      </div>
+
+      <div>
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#0c6e8c;margin:0 0 8px;">② 开 · 按键触发（默认路径）</p>
+        <div class="wb-hero-mic is-on">
+          <div class="mic-row">
+            <span class="mic-dot"></span>
+            <div class="mic-copy">
+              <div class="line1">按 F13 说话</div>
+              <div class="line2">按住开始 · 松开或说结束词停止</div>
+            </div>
+            <span class="mic-bars"><span></span><span></span><span></span><span></span><span></span></span>
+          </div>
+          <div class="mic-footer">
+            <span class="switch-label">语音 <strong>开</strong></span>
+            <button type="button" class="switch is-on" aria-label="关闭语音"></button>
+          </div>
+        </div>
+        <div class="note"><strong>后台：</strong>仍无常驻引擎。按键按下时才拉起识别。</div>
+      </div>
+
+      <div>
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#0c6e8c;margin:0 0 8px;">③ 开 · 口令唤醒（设置 opt-in）</p>
+        <div class="wb-hero-mic is-on">
+          <div class="mic-row">
+            <span class="mic-dot"></span>
+            <div class="mic-copy">
+              <div class="line1">说「开始听写」开始</div>
+              <div class="line2">仅在你说口令时听 · 5 分钟无操作自动休眠</div>
+            </div>
+            <span class="mic-bars"><span></span><span></span><span></span><span></span><span></span></span>
+          </div>
+          <div class="mic-footer">
+            <span class="switch-label">语音 <strong>开</strong></span>
+            <button type="button" class="switch is-on" aria-label="关闭语音"></button>
+          </div>
+        </div>
+        <div class="note"><strong>后台：</strong>仅 KWS（resourceSaver）。用户勾选时看到耗电提示。</div>
+      </div>
+
+      <div>
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#15803d;margin:0 0 8px;">④ 听写中（只读反馈，不可选）</p>
+        <div class="wb-hero-mic is-dictating">
+          <div class="mic-row">
+            <span class="mic-dot"></span>
+            <div class="mic-copy">
+              <div class="line1">正在输入… 说「结束输入」停止</div>
+              <div class="live">今天把登录页的文案改一下</div>
+            </div>
+            <span class="mic-bars"><span></span><span></span><span></span><span></span><span></span></span>
+          </div>
+          <div class="mic-footer">
+            <span class="switch-label">语音 <strong>开</strong></span>
+            <button type="button" class="switch is-on" aria-label="关闭语音" disabled style="opacity:.5" title="先结束听写"></button>
+          </div>
+        </div>
+        <div class="note"><strong>交互：</strong>开关听写中禁用。不设暂停按钮。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 交互演示 -->
+  <div class="section" style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start;">
+    <div>
+      <h2>可点切换演示</h2>
+      <p class="desc">模拟真实首页单卡行为。</p>
+      <div class="interactive" id="demo">
+        <div class="tab-bar">
+          <button type="button" class="tab-btn is-active" data-scene="off">关</button>
+          <button type="button" class="tab-btn" data-scene="key">开·按键</button>
+          <button type="button" class="tab-btn" data-scene="wake">开·口令</button>
+          <button type="button" class="tab-btn" data-scene="dictating">听写中</button>
+        </div>
+        <div id="demoCard"></div>
+        <label class="opt-row">
+          <input type="checkbox" id="optWake"> 模拟：设置里已开启口令唤醒
+        </label>
+      </div>
+    </div>
+    <div>
+      <h2>文案 & 实现对照</h2>
+      <table class="table">
+        <thead><tr><th>场景</th><th>line1</th><th>用户操作</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>off</td>
+            <td><code>voiceSurfaceOffLine</code><br>语音已关闭</td>
+            <td>拨开关 → 开</td>
+          </tr>
+          <tr>
+            <td>on + key</td>
+            <td><code>voiceSurfaceKeyLine</code><br>按 {key} 说话</td>
+            <td>拨开关 → 关</td>
+          </tr>
+          <tr>
+            <td>on + wake</td>
+            <td><code>voiceSurfaceWakeLine</code><br>说「{wake}」开始</td>
+            <td>拨开关 → 关</td>
+          </tr>
+          <tr>
+            <td>dictating</td>
+            <td><code>voiceSurfaceDictatingLine</code><br>+ 实时字幕</td>
+            <td>说结束词（开关禁用）</td>
+          </tr>
+        </tbody>
+      </table>
+      <table class="table" style="margin-top:16px;">
+        <thead><tr><th>移除项</th><th>去向</th></tr></thead>
+        <tbody>
+          <tr><td class="strike">#wbBtnListenToggle 暂停</td><td>托盘菜单 / 调试面板</td></tr>
+          <tr><td class="strike">待机 / 已暂停 pill</td><td>删除</td></tr>
+          <tr><td class="strike">btnHomeVoiceToggle + 暂停 + 关闭 三按钮</td><td>合并为开关一个</td></tr>
+          <tr><td class="strike">默认 auto 策略</td><td>新装 → off</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var SCENES={
+    off:{
+      cls:'is-off',on:false,
+      line1:'语音已关闭',
+      line2:'按键习惯仍可用 · 需要时再开',
+      live:'',switchDisabled:false
+    },
+    key:{
+      cls:'is-on',on:true,
+      line1:'按 F13 说话',
+      line2:'按住开始 · 松开或说结束词停止',
+      live:'',switchDisabled:false
+    },
+    wake:{
+      cls:'is-on',on:true,
+      line1:'说「开始听写」开始',
+      line2:'仅在你说口令时听 · 5 分钟无操作自动休眠',
+      live:'',switchDisabled:false
+    },
+    dictating:{
+      cls:'is-dictating',on:true,
+      line1:'正在输入… 说「结束输入」停止',
+      line2:'',
+      live:'今天把登录页的文案改一下',
+      switchDisabled:true
+    }
+  };
+
+  var current='off';
+
+  function render(scene){
+    var s=SCENES[scene];
+    var live=s.live?'<div class="live">'+s.live+'</div>':'';
+    var line2=s.line2?'<div class="line2">'+s.line2+'</div>':'';
+    document.getElementById('demoCard').innerHTML=
+      '<div class="wb-hero-mic '+s.cls+'">'
+      +'<div class="mic-row"><span class="mic-dot"></span>'
+      +'<div class="mic-copy"><div class="line1">'+s.line1+'</div>'+line2+live+'</div>'
+      +'<span class="mic-bars"><span></span><span></span><span></span><span></span><span></span></span>'
+      +'</div>'
+      +'<div class="mic-footer">'
+      +'<span class="switch-label">语音 <strong>'+(s.on?'开':'关')+'</strong></span>'
+      +'<button type="button" class="switch'+(s.on?' is-on':'')+'" id="demoSwitch"'
+      +(s.switchDisabled?' disabled style="opacity:.5"':'')+'></button>'
+      +'</div></div>';
+
+    var sw=document.getElementById('demoSwitch');
+    if(sw&&!s.switchDisabled){
+      sw.onclick=function(){
+        if(scene==='off'){
+          var wake=document.getElementById('optWake').checked;
+          setScene(wake?'wake':'key');
+        }else{
+          setScene('off');
+        }
+      };
+    }
+  }
+
+  function setScene(scene){
+    current=scene;
+    document.querySelectorAll('.tab-btn').forEach(function(b){
+      b.classList.toggle('is-active',b.getAttribute('data-scene')===scene);
+    });
+    render(scene);
+  }
+
+  document.querySelectorAll('.tab-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      setScene(btn.getAttribute('data-scene'));
+    });
+  });
+  document.getElementById('optWake').addEventListener('change',function(){
+    if(current==='key'&&!this.checked) return;
+    if(current==='wake'&&this.checked) return;
+    if(current==='off') return;
+    setScene(this.checked?'wake':'key');
+  });
+
+  render('off');
+})();
+</script>
+</body>
+</html>

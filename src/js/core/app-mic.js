@@ -776,8 +776,9 @@
     ensureLevelBars(hub,'mic-level-bars--hero',8);
     updateMicLevelBars(st.deviceId||activeMicId||'',homeMicLastLevel);
     setSurfaceStateClass(hub,st);
+    var skipVoiceSurface=hub.classList.contains('is-voice-surface');
     var status=$('wbHeroMicStatus');
-    if(status) status.textContent=st.label;
+    if(status&&!skipVoiceSurface) status.textContent=st.label;
     var guide=$('wbHeroMicMuteHint');
     if(guide){
       var showGuide=st.key==='muted'&&st.muteKnown&&st.canToggleMute;

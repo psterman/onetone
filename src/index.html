@@ -205,18 +205,20 @@
                               <span class="wb-hero-mic-dot" aria-hidden="true"></span>
                               <span class="wb-hero-mic-copy">
                                 <strong id="wbHeroMicStatus">麦克风可用</strong>
+                                <span class="wb-hero-mic-voice-hint" id="wbHeroMicVoiceHint" hidden></span>
                                 <span class="wb-hero-mic-heard" id="wbHeroMicHeard" role="log" aria-live="polite" aria-atomic="false"></span>
                                 <span class="wb-hero-mic-mute-hint" id="wbHeroMicMuteHint" hidden></span>
                               </span>
                               <span class="mic-level-bars mic-level-bars--hero" id="wbHeroMicBars" aria-hidden="true"></span>
                             </button>
                             <div class="wb-hero-mic-toolbar" id="wbHeroMicToolbar">
+                              <button type="button" class="toggle-switch wb-hero-voice-switch" id="wbHeroVoiceSwitch" role="switch" aria-checked="false" hidden></button>
                               <button type="button" class="wb-hero-mic-chip wb-hero-mic-chip--engine" id="wbHeroMicEngine" hidden title="">
                                 <span class="wb-hero-mic-engine-dot" aria-hidden="true"></span>
                                 <span id="wbHeroMicEngineName">—</span>
                               </button>
                               <span class="wb-hero-mic-chip wb-hero-mic-chip--wake" id="wbHeroMicWakeHint" hidden>—</span>
-                              <button type="button" class="wb-hero-mic-listen" id="wbBtnListenToggle" hidden aria-pressed="false" data-ot-tip="">
+                              <button type="button" class="wb-hero-mic-listen" id="wbBtnListenToggle" hidden aria-hidden="true" aria-pressed="false" data-ot-tip="">
                                 <span id="wbBtnListenToggleLabel">暂停</span>
                               </button>
                             </div>
@@ -1873,6 +1875,13 @@
                         </div>
                       </div>
                       <p class="voice-phrase-panel-hint sr-only" id="voiceWakeCustomHint">点击标签开关；× 删除自定义</p>
+                      <div class="voice-wake-optin-row" id="voiceWakeListeningOptInRow">
+                        <div class="voice-wake-optin-copy">
+                          <span class="voice-wake-optin-label" id="voiceWakeListeningOptInLabel" data-i18n="voiceWakeListeningOptInLabel">开启口令唤醒</span>
+                          <span class="voice-wake-optin-hint" id="voiceWakeListeningOptInHint" data-i18n="voiceWakeListeningOptInHint">后台听唤醒词，更耗资源；可随时关掉</span>
+                        </div>
+                        <button type="button" class="toggle-switch" id="voiceWakeListeningOptInToggle" role="switch" aria-checked="false" aria-labelledby="voiceWakeListeningOptInLabel"></button>
+                      </div>
                     </section>
                     </div>
                     <div class="voice-phrase-kind-pane" id="voiceWakeKindSoundPane" data-phrase-kind-pane="sound" role="tabpanel" hidden aria-hidden="true">
@@ -4781,6 +4790,7 @@
   <script src="js/features/voice/voice-wake-presets.js"></script>
   <script src="js/features/voice/voice-wake-navigation.js"></script>
   <script src="js/features/voice/voice-wake.js?v=20260809-stall9"></script>
+  <script src="js/shared/voice-surface-copy.js"></script>
   <script src="js/features/voice/voice-home-summary.js"></script>
   <script src="js/features/input-flow-summary.js"></script>
   <script src="js/features/home/home-voice-link-map.js"></script>

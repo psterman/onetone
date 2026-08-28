@@ -164,6 +164,8 @@
     }
     var collapse=$('voiceWakePresetCollapse');
     if(collapse){ collapse.hidden=true; collapse.setAttribute('aria-hidden','true'); }
+    var optInRow=$('voiceWakeListeningOptInRow');
+    if(optInRow) optInRow.hidden=hideGlobal;
     var appTab=$('btnVoiceWakeKindApp');
     var appPane=$('voiceWakeKindAppPane');
     var summonBlock=$('voiceOutputSummonBlock');
@@ -593,6 +595,7 @@
     syncWakePhraseKind();
     syncWakeInputCount();
     renderHeroNarrative(vm);
+    if(global.__vp_syncWakeListeningOptInToggle__) global.__vp_syncWakeListeningOptInToggle__();
     renderWakeSectionLabels();
     var title=$('voiceWakePageTitle');
     if(title) title.textContent=t('voiceWakePageTitle');

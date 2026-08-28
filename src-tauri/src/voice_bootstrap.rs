@@ -1543,6 +1543,57 @@ pub fn resume_voice_engines(app: &AppHandle, state: &Arc<AppState>) {
     activate_desired_engine(app, state, "listen resume");
 }
 
+/// ponytail: 4 min idle → off; upgrade path = user re-enables wake opt-in or speaks wake phrase.
+pub const WAKE_IDLE_DOWNGRADE_MS: u64 = 4 * 60 * 1000;
+
+pub fn touch_wake_activity(state: &AppState) {
+    *state.voice_wake_last_activity_at.lock() = Some(Instant::now());
+}
+
+pub fn maybe_idle_downgrade_wake(app: &AppHandle, state: &Arc<AppState>) {
+    let strategy = {
+        let cfg = state.cfg.lock();
+        crate::scene_config::voice_listening_strategy(&cfg).to_string()
+    };
+    if strategy != "resourceSaver" {
+        return;
+    }
+    let session = state.voice_session_state.lock().clone();
+    if session == "dictating" || session == "stopping" || session == "committing" {
+        return;
+    }
+    let at = match *state.voice_wake_last_activity_at.lock() {
+        Some(t) => t,
+        None => return,
+    };
+    if Instant::now().saturating_duration_since(at)
+        < Duration::from_millis(WAKE_IDLE_DOWNGRADE_MS)
+    {
+        return;
+    }
+    crate::app_log::log_line(
+        state.as_ref(),
+        "voice",
+        "idle_downgrade resourceSaver→off",
+    );
+    *state.voice_wake_last_activity_at.lock() = None;
+    let parked = voice_settings_parked(state.as_ref());
+    let cfg_snapshot = {
+        let mut cfg = state.cfg.lock();
+        crate::config::apply_voice_listening_strategy(&mut cfg, "off");
+        cfg.normalize();
+        cfg.clone()
+    };
+    let _ = std::thread::Builder::new()
+        .name("idle-downgrade-save".into())
+        .spawn(move || {
+            crate::config::save_config(&cfg_snapshot);
+        });
+    if !parked {
+        crate::voice_supervisor::enqueue_activate(app.clone(), Arc::clone(state), "idle_downgrade");
+    }
+}
+
 #[cfg(test)]
 mod activate_gate_tests {
     use super::{resolve_activate_gate, resolve_strategy_engine, ActivateGate};

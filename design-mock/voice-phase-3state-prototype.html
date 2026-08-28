@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneTone · 语音三态首页原型 · 关闭 / 待机 / 听写</title>
+<style>
+:root{
+  --bg:#F5F5F7; --surface:#FFFFFF; --surface-high:#FAFAFB;
+  --border:#E5E5E5; --outline-variant:#D4D4D8;
+  --primary:#2A9CC4; --primary-soft:#E6F7FC;
+  --text:#1A1A1A; --text-muted:#666; --text-faint:#999;
+  --off:#71717A; --off-soft:#F4F4F5;
+  --armed:#2A9CC4; --armed-soft:#E6F7FC;
+  --active:#16A34A; --active-soft:#DCFCE7;
+  --warn:#F59E0B; --warn-soft:#FEF3C7;
+  --r-card:20px; --r-mic:16px; --r-pill:999px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:'Outfit','Inter',system-ui,-apple-system,'PingFang SC','Microsoft YaHei UI',sans-serif;
+  line-height:1.55;-webkit-font-smoothing:antialiased;}
+
+header{background:#fff;border-bottom:1px solid var(--border);padding:24px 32px;}
+header h1{margin:0 0 6px;font:700 22px/30px 'Outfit';letter-spacing:-.01em;}
+header .sub{color:var(--text-muted);font-size:13px;max-width:720px;}
+header .path{margin-top:10px;font:500 11px/14px ui-monospace,monospace;color:var(--text-faint);}
+
+.container{padding:32px;max-width:1320px;margin:0 auto;}
+
+/* ── 状态机总览 ── */
+.flow-overview{
+  display:grid;grid-template-columns:1fr 48px 1fr 48px 1fr;gap:8px;align-items:center;
+  margin:28px 0 36px;
+}
+@media(max-width:900px){.flow-overview{grid-template-columns:1fr;}}
+.flow-node{
+  background:#fff;border:2px solid var(--border);border-radius:var(--r-card);
+  padding:18px 20px;text-align:center;position:relative;
+}
+.flow-node.off{border-color:var(--off);background:var(--off-soft);}
+.flow-node.armed{border-color:var(--armed);background:var(--armed-soft);}
+.flow-node.active{border-color:var(--active);background:var(--active-soft);}
+.flow-node .emoji{font-size:28px;line-height:1;margin-bottom:8px;}
+.flow-node .name{font:700 16px/22px 'Outfit';}
+.flow-node .one-liner{font-size:12.5px;color:var(--text-muted);margin-top:6px;}
+.flow-arrow{color:var(--text-faint);font-size:28px;text-align:center;}
+.flow-caption{
+  grid-column:1/-1;text-align:center;font-size:12px;color:var(--text-muted);
+  margin-top:-8px;
+}
+
+/* ── 三列对比 ── */
+.section{margin:40px 0 0;}
+.section h2{margin:0 0 4px;font:700 18px/24px 'Outfit';}
+.section .desc{color:var(--text-muted);font-size:13px;margin-bottom:18px;}
+
+.tri-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+@media(max-width:1000px){.tri-grid{grid-template-columns:1fr;}}
+
+.state-col{display:grid;gap:12px;align-content:start;}
+.state-label{
+  font:700 11px/14px 'Outfit';text-transform:uppercase;letter-spacing:.08em;
+  padding:4px 10px;border-radius:var(--r-pill);width:fit-content;
+}
+.state-label.off{background:var(--off-soft);color:var(--off);}
+.state-label.armed{background:var(--armed-soft);color:#0c6e8c;}
+.state-label.active{background:var(--active-soft);color:#15803d;}
+.state-label.paused{background:var(--warn-soft);color:#b45309;}
+
+/* ── 麦克风 Hero 卡（贴近 wbHeroMic）── */
+.wb-hero-mic{
+  display:flex;flex-direction:column;gap:8px;
+  padding:10px 12px;border:1px solid color-mix(in srgb,var(--outline-variant) 55%,transparent);
+  border-radius:var(--r-mic);background:color-mix(in srgb,var(--surface-high) 92%,transparent);
+  box-shadow:0 1px 2px rgba(15,23,42,.04);
+}
+.wb-hero-mic.is-off{border-color:color-mix(in srgb,var(--off) 35%,var(--outline-variant));}
+.wb-hero-mic.is-armed{border-color:color-mix(in srgb,var(--armed) 30%,var(--outline-variant));}
+.wb-hero-mic.is-dictating{border-color:color-mix(in srgb,var(--active) 35%,var(--outline-variant));
+  background:color-mix(in srgb,var(--active-soft) 40%,var(--surface-high));}
+.wb-hero-mic.is-paused{border-color:color-mix(in srgb,var(--warn) 35%,var(--outline-variant));}
+
+.wb-hero-mic-status{
+  display:flex;align-items:flex-start;gap:10px;width:100%;
+  padding:0;border:0;background:transparent;text-align:left;cursor:default;
+}
+.wb-hero-mic-dot{
+  width:10px;height:10px;border-radius:50%;margin-top:5px;flex-shrink:0;
+  background:var(--off);
+}
+.wb-hero-mic.is-armed .wb-hero-mic-dot{background:var(--armed);box-shadow:0 0 0 3px color-mix(in srgb,var(--armed) 25%,transparent);}
+.wb-hero-mic.is-dictating .wb-hero-mic-dot{background:var(--active);animation:pulse 1.2s ease infinite;}
+.wb-hero-mic.is-paused .wb-hero-mic-dot{background:var(--warn);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+
+.wb-hero-mic-copy{flex:1;min-width:0;}
+.wb-hero-mic-copy strong{display:block;font-size:14px;font-weight:700;line-height:1.35;}
+.wb-hero-mic-copy .hint{display:block;font-size:12px;color:var(--text-muted);margin-top:3px;line-height:1.4;}
+.wb-hero-mic-heard{display:block;font-size:13px;font-weight:650;margin-top:6px;color:var(--text);}
+.wb-hero-mic-heard.live{color:#15803d;}
+
+.mic-bars{display:flex;align-items:flex-end;gap:2px;height:28px;flex-shrink:0;}
+.mic-bars span{display:block;width:3px;border-radius:2px;background:color-mix(in srgb,var(--armed) 50%,transparent);}
+.mic-bars span:nth-child(odd){height:40%;}
+.mic-bars span:nth-child(3n){height:70%;}
+.mic-bars span:nth-child(5){height:100%;}
+.wb-hero-mic.is-off .mic-bars span,.wb-hero-mic.is-paused .mic-bars span{background:var(--outline-variant);height:20%!important;}
+
+.wb-hero-mic-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:6px;}
+.wb-hero-mic-chip{
+  display:inline-flex;align-items:center;gap:5px;min-height:28px;padding:0 10px;
+  border-radius:var(--r-pill);font-size:11px;font-weight:650;line-height:1.2;white-space:nowrap;
+}
+.chip-phase.off{background:var(--off-soft);color:var(--off);}
+.chip-phase.armed{background:var(--armed-soft);color:#0c6e8c;border:1px solid color-mix(in srgb,var(--armed) 20%,transparent);}
+.chip-phase.active{background:var(--active-soft);color:#15803d;border:1px solid color-mix(in srgb,var(--active) 25%,transparent);}
+.chip-phase.paused{background:var(--warn-soft);color:#b45309;}
+.chip-wake{background:color-mix(in srgb,var(--primary-soft) 80%,transparent);color:color-mix(in srgb,var(--primary) 55%,var(--text));border:1px solid color-mix(in srgb,var(--primary) 18%,transparent);}
+
+.btn-listen{
+  margin-left:auto;padding:0 12px;min-height:28px;border-radius:var(--r-pill);
+  border:1px solid var(--outline-variant);background:var(--surface);
+  font-size:11px;font-weight:650;cursor:pointer;color:var(--text);
+}
+.btn-listen:hover{background:var(--surface-high);}
+.btn-listen.primary{background:var(--primary-soft);color:var(--primary);border-color:color-mix(in srgb,var(--primary) 28%,transparent);}
+.btn-listen:disabled{opacity:.4;cursor:not-allowed;}
+
+/* ── 操作区 ── */
+.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+.home-live-btn{
+  flex:1;min-width:100px;min-height:36px;padding:0 14px;border-radius:12px;
+  border:1px solid var(--outline-variant);background:var(--surface);
+  font-size:13px;font-weight:650;cursor:pointer;
+}
+.home-live-btn.turn-on{background:var(--primary-soft);color:var(--primary);border-color:color-mix(in srgb,var(--primary) 28%,transparent);}
+.home-live-btn.turn-off{color:var(--text-muted);}
+
+.annot{
+  font-size:11.5px;color:var(--text-muted);padding:10px 12px;
+  background:var(--surface-high);border-radius:12px;border:1px dashed var(--border);
+}
+.annot strong{color:var(--text);}
+
+/* ── 交互演示 ── */
+.interactive-wrap{
+  background:#fff;border:1px solid var(--border);border-radius:var(--r-card);
+  padding:24px;display:grid;gap:20px;max-width:520px;
+}
+.tab-bar{display:flex;gap:6px;flex-wrap:wrap;}
+.tab-btn{
+  padding:6px 14px;border-radius:var(--r-pill);border:1px solid var(--border);
+  background:var(--surface);font-size:12px;font-weight:650;cursor:pointer;
+}
+.tab-btn.is-active.off{background:var(--off-soft);border-color:var(--off);color:var(--off);}
+.tab-btn.is-active.armed{background:var(--armed-soft);border-color:var(--armed);color:#0c6e8c;}
+.tab-btn.is-active.active{background:var(--active-soft);border-color:var(--active);color:#15803d;}
+.tab-btn.is-active.paused{background:var(--warn-soft);border-color:var(--warn);color:#b45309;}
+
+.copy-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+.copy-table th,.copy-table td{border:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top;}
+.copy-table th{background:var(--surface-high);font-weight:700;}
+.copy-table code{font:500 11px ui-monospace,monospace;background:#f0f0f2;padding:1px 5px;border-radius:4px;}
+
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);margin-top:12px;}
+.legend span{display:inline-flex;align-items:center;gap:6px;}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>语音三态 · 首页原型</h1>
+  <p class="sub">关闭 / 待机 / 听写 — 一句话讲清 + 小白可操作。对齐计划：<code>voice-phase-3state</code>，落点 <code>#wbHeroMic</code>。</p>
+  <p class="path">design-mock/voice-phase-3state-prototype.html — 用浏览器直接打开</p>
+</header>
+
+<div class="container">
+
+  <!-- 状态机 -->
+  <div class="flow-overview">
+    <div class="flow-node off">
+      <div class="emoji">⏹</div>
+      <div class="name">关闭</div>
+      <div class="one-liner">不会听麦克风<br>按键习惯仍可用</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node armed">
+      <div class="emoji">👂</div>
+      <div class="name">待机</div>
+      <div class="one-liner">只听唤醒词<br>不会录入你说的话</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node active">
+      <div class="emoji">🎙</div>
+      <div class="name">听写</div>
+      <div class="one-liner">正在写入当前应用<br>说结束词停止</div>
+    </div>
+    <p class="flow-caption">暂停（临时）在 UI 上归入「关闭」样式，副标题写「已暂停」· 点恢复回到待机</p>
+  </div>
+
+  <!-- 三列静态对比 -->
+  <div class="section">
+    <h2>三态并排对比（#wbHeroMic 目标态）</h2>
+    <p class="desc">每列 = 首页语音 Hero 麦克风条 + 底部主按钮。引擎名（KWS/Vosk）不进首页，进设置再看。</p>
+
+    <div class="tri-grid">
+
+      <!-- 关闭 -->
+      <div class="state-col">
+        <span class="state-label off">关闭</span>
+        <div class="wb-hero-mic is-off">
+          <div class="wb-hero-mic-status">
+            <span class="wb-hero-mic-dot"></span>
+            <span class="wb-hero-mic-copy">
+              <strong>语音已关闭，不会听麦克风</strong>
+              <span class="hint">按键习惯仍可用 · 需要时再开</span>
+            </span>
+            <span class="mic-bars" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span>
+            </span>
+          </div>
+          <div class="wb-hero-mic-toolbar">
+            <span class="wb-hero-mic-chip chip-phase off">已关闭</span>
+          </div>
+        </div>
+        <div class="action-row">
+          <button type="button" class="home-live-btn turn-on">开启语音</button>
+        </div>
+        <div class="annot"><strong>操作：</strong>点「开启语音」→ 进入待机。不设暂停按钮。</div>
+      </div>
+
+      <!-- 待机 -->
+      <div class="state-col">
+        <span class="state-label armed">待机</span>
+        <div class="wb-hero-mic is-armed">
+          <div class="wb-hero-mic-status">
+            <span class="wb-hero-mic-dot"></span>
+            <span class="wb-hero-mic-copy">
+              <strong>只听唤醒词，不会录入你说的话</strong>
+              <span class="hint">说「开始听写」或按启动键开始</span>
+            </span>
+            <span class="mic-bars" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span>
+            </span>
+          </div>
+          <div class="wb-hero-mic-toolbar">
+            <span class="wb-hero-mic-chip chip-phase armed">待机中</span>
+            <span class="wb-hero-mic-chip chip-wake">开始听写</span>
+            <button type="button" class="btn-listen">暂停</button>
+          </div>
+        </div>
+        <div class="action-row">
+          <button type="button" class="home-live-btn turn-off">关闭语音</button>
+        </div>
+        <div class="annot"><strong>操作：</strong>「暂停」= 临时停（省内存）；「关闭语音」= 彻底关引擎。</div>
+      </div>
+
+      <!-- 听写 -->
+      <div class="state-col">
+        <span class="state-label active">听写</span>
+        <div class="wb-hero-mic is-dictating">
+          <div class="wb-hero-mic-status">
+            <span class="wb-hero-mic-dot"></span>
+            <span class="wb-hero-mic-copy">
+              <strong>正在听写并写入当前应用</strong>
+              <span class="hint">说「结束输入」停止</span>
+              <span class="wb-hero-mic-heard live">今天把登录页改一下…</span>
+            </span>
+            <span class="mic-bars" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span>
+            </span>
+          </div>
+          <div class="wb-hero-mic-toolbar">
+            <span class="wb-hero-mic-chip chip-phase active">听写中</span>
+            <span class="wb-hero-mic-chip chip-wake">结束输入</span>
+            <button type="button" class="btn-listen" disabled title="先说结束词">暂停</button>
+          </div>
+        </div>
+        <div class="action-row">
+          <button type="button" class="home-live-btn turn-off" disabled>关闭语音</button>
+        </div>
+        <div class="annot"><strong>操作：</strong>听写中禁用暂停/关闭，防误触。结束靠结束词或超时。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 暂停变体 -->
+  <div class="section">
+    <h2>关闭 · 暂停变体（同一视觉族，副标题区分）</h2>
+    <p class="desc">内部仍是 <code>cmd_pause</code>，用户看到归入「关闭」灰色态，避免第四种主状态。</p>
+    <div class="tri-grid" style="grid-template-columns:1fr;max-width:400px;">
+      <div class="state-col">
+        <span class="state-label paused">关闭 · 已暂停</span>
+        <div class="wb-hero-mic is-paused">
+          <div class="wb-hero-mic-status">
+            <span class="wb-hero-mic-dot"></span>
+            <span class="wb-hero-mic-copy">
+              <strong>已暂停，语音和按键触发都不响应</strong>
+              <span class="hint">点「恢复」约 2 秒就绪</span>
+            </span>
+            <span class="mic-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+          </div>
+          <div class="wb-hero-mic-toolbar">
+            <span class="wb-hero-mic-chip chip-phase paused">已暂停</span>
+            <button type="button" class="btn-listen primary">恢复</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 交互演示 + 文案表 -->
+  <div class="section" style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start;">
+    <div>
+      <h2>可点切换 · 单卡演示</h2>
+      <p class="desc">模拟用户视角，一次只看一种态。</p>
+      <div class="interactive-wrap" id="demo">
+        <div class="tab-bar" role="tablist">
+          <button type="button" class="tab-btn is-active off" data-phase="off">关闭</button>
+          <button type="button" class="tab-btn armed" data-phase="armed">待机</button>
+          <button type="button" class="tab-btn active" data-phase="active">听写</button>
+          <button type="button" class="tab-btn paused" data-phase="paused">已暂停</button>
+        </div>
+        <div id="demoCard"></div>
+        <div class="action-row" id="demoActions"></div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--off)"></i>关闭</span>
+        <span><i style="background:var(--armed)"></i>待机</span>
+        <span><i style="background:var(--active)"></i>听写</span>
+        <span><i style="background:var(--warn)"></i>暂停</span>
+      </div>
+    </div>
+    <div>
+      <h2>文案锁定表（i18n）</h2>
+      <p class="desc">实现时写入 <code>i18n.js</code>，<code>voice-user-phase.js</code> 按 phase 取 key。</p>
+      <table class="copy-table">
+        <thead><tr><th>Phase</th><th>Pill</th><th>一句话（strong）</th><th>提示（hint）</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>off</td><td>已关闭</td>
+            <td>语音已关闭，不会听麦克风</td>
+            <td>按键习惯仍可用 · 点「开启语音」恢复</td>
+          </tr>
+          <tr>
+            <td>paused</td><td>已暂停</td>
+            <td>已暂停，语音和按键触发都不响应</td>
+            <td>点「恢复」约 2 秒就绪</td>
+          </tr>
+          <tr>
+            <td>armed</td><td>待机中</td>
+            <td>只听唤醒词，不会录入你说的话</td>
+            <td>说「{wake}」或按启动键开始</td>
+          </tr>
+          <tr>
+            <td>dictating</td><td>听写中</td>
+            <td>正在听写并写入当前应用</td>
+            <td>说「{end}」结束</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var STATES={
+    off:{
+      cls:'is-off', phaseChip:'off', phaseText:'已关闭',
+      title:'语音已关闭，不会听麦克风',
+      hint:'按键习惯仍可用 · 需要时再开',
+      wake:'', heard:'', listenBtn:null,
+      mainBtn:{text:'开启语音',cls:'turn-on',disabled:false}
+    },
+    armed:{
+      cls:'is-armed', phaseChip:'armed', phaseText:'待机中',
+      title:'只听唤醒词，不会录入你说的话',
+      hint:'说「开始听写」或按启动键开始',
+      wake:'开始听写', heard:'', listenBtn:{text:'暂停',primary:false,disabled:false},
+      mainBtn:{text:'关闭语音',cls:'turn-off',disabled:false}
+    },
+    active:{
+      cls:'is-dictating', phaseChip:'active', phaseText:'听写中',
+      title:'正在听写并写入当前应用',
+      hint:'说「结束输入」停止',
+      wake:'结束输入', heard:'今天把登录页改一下…', listenBtn:{text:'暂停',primary:false,disabled:true},
+      mainBtn:{text:'关闭语音',cls:'turn-off',disabled:true}
+    },
+    paused:{
+      cls:'is-paused', phaseChip:'paused', phaseText:'已暂停',
+      title:'已暂停，语音和按键触发都不响应',
+      hint:'点「恢复」约 2 秒就绪',
+      wake:'', heard:'', listenBtn:{text:'恢复',primary:true,disabled:false},
+      mainBtn:null
+    }
+  };
+
+  function render(phase){
+    var s=STATES[phase];
+    var heard=s.heard?'<span class="wb-hero-mic-heard live">'+s.heard+'</span>':'';
+    var wake=s.wake?'<span class="wb-hero-mic-chip chip-wake">'+s.wake+'</span>':'';
+    var listen='';
+    if(s.listenBtn){
+      var lb=s.listenBtn;
+      listen='<button type="button" class="btn-listen'+(lb.primary?' primary':'')+'"'+(lb.disabled?' disabled':'')+'>'
+        +lb.text+'</button>';
+    }
+    document.getElementById('demoCard').innerHTML=
+      '<div class="wb-hero-mic '+s.cls+'">'
+      +'<div class="wb-hero-mic-status">'
+      +'<span class="wb-hero-mic-dot"></span>'
+      +'<span class="wb-hero-mic-copy"><strong>'+s.title+'</strong>'
+      +'<span class="hint">'+s.hint+'</span>'+heard+'</span>'
+      +'<span class="mic-bars"><span></span><span></span><span></span><span></span><span></span></span>'
+      +'</div>'
+      +'<div class="wb-hero-mic-toolbar">'
+      +'<span class="wb-hero-mic-chip chip-phase '+s.phaseChip+'">'+s.phaseText+'</span>'
+      +wake+listen
+      +'</div></div>';
+
+    var act='';
+    if(s.mainBtn){
+      act='<button type="button" class="home-live-btn '+s.mainBtn.cls+'"'
+        +(s.mainBtn.disabled?' disabled':'')+'>'+s.mainBtn.text+'</button>';
+    }
+    document.getElementById('demoActions').innerHTML=act;
+  }
+
+  document.querySelectorAll('.tab-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('is-active');});
+      btn.classList.add('is-active');
+      render(btn.getAttribute('data-phase'));
+    });
+  });
+  render('off');
+})();
+</script>
+</body>
+</html>

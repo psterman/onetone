@@ -703,6 +703,13 @@
     if(cfg.voiceListeningStrategy==null){
       cfg.voiceListeningStrategy=cfg.desiredEngine==='none'?'off':(cfg.desiredEngine==='vosk'?'enhanced':'advanced');
     }
+    if(cfg.voiceAssistEnabled===undefined){
+      cfg.voiceAssistEnabled=String(cfg.voiceListeningStrategy||'off').trim()!=='off';
+    }
+    if(cfg.voiceWakeListeningOptIn===undefined){
+      var st0=String(cfg.voiceListeningStrategy||'').trim();
+      cfg.voiceWakeListeningOptIn=st0==='resourceSaver'||st0==='auto'||st0==='enhanced';
+    }
     if(Array.isArray(cfg.mappings)){
       cfg.mappings=cfg.mappings.map(normalizeInboundMapping);
     }
@@ -871,7 +878,9 @@
       version:7,
       activeSceneId:id,
       desiredEngine:'none',
-      voiceListeningStrategy:'auto',
+      voiceListeningStrategy:'off',
+      voiceAssistEnabled:true,
+      voiceWakeListeningOptIn:false,
       mappings:[{id:id,label:'AutoTrigger → '+labelSuffix,group:'通用设置',triggerKey:'AutoTrigger',targetKey:targetKey,enabled:true,order:0,triggerMode:'tap',intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,switchKeys:[],nativeKeyRestore:false,appTargetId:'',imePresetId:'',voiceOverride:null}],
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
@@ -1327,7 +1336,9 @@
           targetKey:String(cfg.targetKey||cfg.target_key||'RAlt').trim()||'RAlt'
         };
       })(),
-      voiceListeningStrategy:String(st.config.voiceListeningStrategy||st.config.voice_listening_strategy||'auto'),
+      voiceListeningStrategy:String(st.config.voiceListeningStrategy||st.config.voice_listening_strategy||'off'),
+      voiceAssistEnabled:st.config.voiceAssistEnabled!==false,
+      voiceWakeListeningOptIn:!!st.config.voiceWakeListeningOptIn,
       imePresetId:String(st.config.imePresetId||''),
       voiceWakeAcousticCommands:(function(){
         const cfg=st.config||{};

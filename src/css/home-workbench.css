@@ -280,6 +280,28 @@ html[data-theme="dark"] .wb-sidebar-status {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
+.wb-hero-mic-voice-hint {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--on-surface) 68%, transparent);
+}
+
+.wb-hero-mic.is-voice-surface.is-dictating {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--outline-variant));
+  background: color-mix(in srgb, var(--primary-container, var(--primary)) 12%, var(--surface-high, var(--surface)));
+}
+
+.wb-hero-mic.is-voice-surface.is-dictating .wb-hero-mic-dot {
+  background: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+.wb-hero-voice-switch {
+  flex-shrink: 0;
+}
+
 .wb-hero-mic-toolbar {
   display: flex;
   align-items: center;

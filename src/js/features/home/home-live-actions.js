@@ -19,22 +19,32 @@
     return 'vosk';
   }
 
-  function homeRestoreListeningStrategy(){
-    var cfg=global.OneToneState.state.config||{};
-    var strategy=String(cfg.voiceListeningStrategy||cfg.voice_listening_strategy||'auto').trim();
-    if(!strategy||strategy==='off'||strategy==='advanced') return 'auto';
-    return strategy;
+  function persistVoiceAssistToggle(){
+    if(global.OneToneConfigPersist&&global.OneToneConfigPersist.invokeSaveOnce){
+      global.OneToneConfigPersist.invokeSaveOnce('voiceAssistToggle');
+    }
+    if(global.OneToneHomeLive&&global.OneToneHomeLive.render) global.OneToneHomeLive.render();
+    if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.render) global.OneToneHomeWorkbench.render();
   }
 
   function homeToggleVoiceWake(){
-    var eng=global.OneToneHomeLive.voiceEngineOn();
     var vw=global.OneToneVoiceWake;
     if(!vw||!vw.switchListeningStrategy) return;
-    if(eng==='vosk'||eng==='sapi'||eng==='kws'){
-      vw.switchListeningStrategy('off',{force:true});
+    var cfg=global.OneToneState.state.config||{};
+    var on=global.OneToneVoiceSurfaceCopy
+      ?global.OneToneVoiceSurfaceCopy.assistEnabled(cfg)
+      :(global.OneToneHomeLive.voiceEngineOn()!=='off');
+    if(on){
+      cfg.voiceAssistEnabled=false;
+      vw.switchListeningStrategy('off',{force:true}).then(persistVoiceAssistToggle).catch(persistVoiceAssistToggle);
       return;
     }
-    vw.switchListeningStrategy(homeRestoreListeningStrategy(),{force:true});
+    cfg.voiceAssistEnabled=true;
+    if(cfg.voiceWakeListeningOptIn){
+      vw.switchListeningStrategy('resourceSaver',{force:true}).then(persistVoiceAssistToggle).catch(persistVoiceAssistToggle);
+      return;
+    }
+    persistVoiceAssistToggle();
   }
 
   function toggleHomeKeyEnable(){

@@ -62,6 +62,9 @@ pub fn voice_set_listening_strategy(
         "voice",
         &format!("set_listening_strategy label={label} reason={reason}"),
     );
+    if label == "resourceSaver" {
+        crate::voice_bootstrap::touch_wake_activity(state.as_ref());
+    }
     // Voice-settings park: only persist strategy; unpark activates.
     if parked {
         crate::app_log::log_line(

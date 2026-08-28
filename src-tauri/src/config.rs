@@ -2065,6 +2065,12 @@ pub struct VoiceConfig {
         rename = "voiceListeningStrategy"
     )]
     pub voice_listening_strategy: String,
+    /// Home single-switch: voice assist on (key path may keep strategy off).
+    #[serde(default = "default_true", rename = "voiceAssistEnabled")]
+    pub voice_assist_enabled: bool,
+    /// Opt-in background wake-word listening (resourceSaver when on).
+    #[serde(default = "default_false", rename = "voiceWakeListeningOptIn")]
+    pub voice_wake_listening_opt_in: bool,
     #[serde(default, skip_serializing)]
     pub scenes: Option<Vec<SceneConfig>>,
     #[serde(rename = "schemeSwitchKey", default = "default_scheme_switch_key")]
@@ -2151,7 +2157,7 @@ fn default_desired_engine() -> String {
 }
 
 fn default_voice_listening_strategy() -> String {
-    "auto".into()
+    "off".into()
 }
 
 fn default_window_width() -> f64 {
@@ -3840,6 +3846,8 @@ impl Default for VoiceConfig {
             voice_end: VoiceEndConfig::default(),
             desired_engine: default_desired_engine(),
             voice_listening_strategy: default_voice_listening_strategy(),
+            voice_assist_enabled: true,
+            voice_wake_listening_opt_in: false,
             scenes: None,
             scheme_switch_key: String::new(),
             key_wake_sound_enabled: false,
@@ -5268,6 +5276,12 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
     cfg.voice_end = existing.voice_end.clone();
     cfg.desired_engine = existing.desired_engine.clone();
     cfg.voice_listening_strategy = existing.voice_listening_strategy.clone();
+    if raw.get("voiceAssistEnabled").is_none() {
+        cfg.voice_assist_enabled = existing.voice_assist_enabled;
+    }
+    if raw.get("voiceWakeListeningOptIn").is_none() {
+        cfg.voice_wake_listening_opt_in = existing.voice_wake_listening_opt_in;
+    }
     if raw.get("voiceWakeAcousticCommands").is_none() {
         cfg.voice_wake_acoustic_commands = existing.voice_wake_acoustic_commands.clone();
     } else {

@@ -216,6 +216,8 @@ pub struct AppState {
     pub voice_session_commit_token: Mutex<u64>,
     /// Last time a voice wake/stop shortcut was physically sent (RAlt etc.).
     pub voice_wake_last_key_at: Mutex<Option<std::time::Instant>>,
+    /// Last wake-listen activity (phrase hit or resourceSaver arm) for idle downgrade.
+    pub voice_wake_last_activity_at: Mutex<Option<std::time::Instant>>,
     /// Chord held down for hold-to-talk (e.g. Codex Ctrl+Shift+D).
     pub held_voice_chord: Mutex<Option<String>>,
     /// Numpad source id held for Codex Micro PTT (sc50:ext0).
@@ -353,6 +355,7 @@ pub fn run() {
         voice_degraded_reason: Mutex::new(String::new()),
         voice_session_commit_token: Mutex::new(0),
         voice_wake_last_key_at: Mutex::new(None),
+        voice_wake_last_activity_at: Mutex::new(None),
         held_voice_chord: Mutex::new(None),
         codex_numpad_hold_source: Mutex::new(None),
         voice_vosk_probe: Mutex::new(None),
@@ -710,6 +713,7 @@ pub fn run() {
                     voice_vosk_runtime::drain_voice_vosk_events(&state2, &app2);
                     voice_kws_runtime::drain_voice_kws_events(&state2, &app2);
                     voice_end_runtime::maybe_timeout_dictation(&state2, &app2);
+                    crate::voice_bootstrap::maybe_idle_downgrade_wake(&app2, &state2);
                     crate::cursor_beginner::maybe_timeout_arm(state2.as_ref(), &app2);
                     crate::cursor_beginner::poll_side_key_arm(state2.as_ref(), &app2);
 

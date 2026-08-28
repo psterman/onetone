@@ -151,7 +151,13 @@
     var statusMode='idle';
     var supervisor=(w&&w.supervisor)||{};
     if(!voiceOn){
-      return { heardLine:null, statusLine:t('homeVoiceSimpleStatusOff'), statusMode:'off' };
+      return {
+        heardLine:null,
+        statusLine:global.OneToneVoiceSurfaceCopy
+          ?global.OneToneVoiceSurfaceCopy.resolve({paused:!!runtime().paused}).line1
+          :t('homeVoiceSimpleStatusOff'),
+        statusMode:'off'
+      };
     }
     if(supervisor.degraded&&!supervisor.activeEngine){
       return {
@@ -273,8 +279,10 @@
     var w=snap().wake||{};
     var endSnap=snap().end||{};
     var eng=engineOn(w,voskCfg,sapiCfg,kwsCfg);
-    var voiceOn=eng!=='off';
     var paused=!!runtime().paused;
+    var voiceOn=global.OneToneVoiceSurfaceCopy
+      ?global.OneToneVoiceSurfaceCopy.assistEnabled(cfg)&&!paused
+      :(eng!=='off');
     var phrases=wakePhrases(eng,w,voskCfg,sapiCfg);
     var wakePhrase=phrases[0]||'';
     var stateRaw=endSnap.state||'idle';
@@ -289,8 +297,12 @@
 
     if(dictating){
       statusMode='dictating';
-      statusLine=endSnap.statusLabel||(global.OneToneVoiceEnd&&global.OneToneVoiceEnd.stateLabel
-        ?global.OneToneVoiceEnd.stateLabel(stateRaw):stateRaw);
+      if(global.OneToneVoiceSurfaceCopy){
+        statusLine=global.OneToneVoiceSurfaceCopy.resolve({dictating:true,paused:paused}).line1;
+      }else{
+        statusLine=endSnap.statusLabel||(global.OneToneVoiceEnd&&global.OneToneVoiceEnd.stateLabel
+          ?global.OneToneVoiceEnd.stateLabel(stateRaw):stateRaw);
+      }
       statusKind='pending';
       var endList=endPhrases(endSnap,endCfg);
       var endHint=endList[0]||t('homeEndPhraseDefault');
@@ -324,7 +336,12 @@
       statusKind='warn';
     }else if(!voiceOn){
       statusMode='off';
-      statusLine=t('homeVoiceSimpleStatusOff');
+      if(global.OneToneVoiceSurfaceCopy){
+        var surfaceOff=global.OneToneVoiceSurfaceCopy.resolve({paused:paused});
+        statusLine=surfaceOff.line1;
+      }else{
+        statusLine=t('homeVoiceSimpleStatusOff');
+      }
       statusKind='';
     }else{
       var wakeStatus=wakeHeardAndStatus(eng,true,w);
