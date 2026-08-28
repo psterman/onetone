@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>v15c · 顶部 Flow 应用切换</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #eef2f7;
+      --surface: #fff;
+      --surface-2: #f6f8fb;
+      --line: rgba(26, 45, 74, 0.1);
+      --line-strong: rgba(26, 45, 74, 0.16);
+      --text: #1a2d4a;
+      --muted: #5c6b82;
+      --faint: #8b97a8;
+      --cyan: #2a9cc4;
+      --cyan-soft: rgba(42, 156, 196, 0.12);
+      --cyan-bd: rgba(42, 156, 196, 0.35);
+      --green: #2e7d4f;
+      --green-soft: rgba(46, 125, 79, 0.1);
+      --amber: #d97706;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; }
+    button { font-family: inherit; cursor: pointer; }
+
+    .proto {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 8px 16px; background: #1a2d4a; color: #c5d0de; font-size: 12px;
+    }
+    .proto strong { color: #fff; }
+    .proto a { color: #5ec8e8; margin-left: auto; text-decoration: none; font-weight: 600; }
+
+    .app { max-width: 1180px; margin: 0 auto; padding: 12px 16px 24px; }
+
+    .ctx-bar {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 10px 14px; background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .ctx-l { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .back { border: 0; background: none; color: var(--muted); font-size: 13px; padding: 4px 0; }
+    .ctx-title { font-weight: 700; font-size: 14px; }
+    .ctx-title span { color: var(--muted); font-weight: 500; }
+    .ctx-actions { display: flex; gap: 8px; align-items: center; }
+    .btn-ghost {
+      padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line-strong);
+      background: var(--surface-2); color: var(--text); font-size: 12px; font-weight: 600;
+    }
+    .bind-wrap { position: relative; }
+    .bind-wrap.is-open .bind-menu { display: block; }
+    .bind-menu {
+      display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 20;
+      min-width: 220px; padding: 6px; border-radius: 10px; border: 1px solid var(--line-strong);
+      background: var(--surface); box-shadow: 0 8px 24px rgba(26, 45, 74, 0.12);
+    }
+    .bind-item {
+      width: 100%; text-align: left; padding: 10px; border-radius: 8px; border: 1px solid transparent;
+      background: none; color: inherit;
+    }
+    .bind-item:hover { background: var(--surface-2); }
+    .bind-item.is-on { border-color: rgba(46, 125, 79, 0.35); background: var(--green-soft); }
+    .bind-item strong { display: block; font-size: 13px; margin-bottom: 4px; }
+    .pills { display: flex; gap: 4px; flex-wrap: wrap; }
+    .pl { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+    .pl.ok { color: var(--green); border-color: rgba(46, 125, 79, 0.3); background: var(--green-soft); }
+    .toggle {
+      width: 38px; height: 22px; border-radius: 999px; background: var(--cyan);
+      border: 1px solid var(--cyan-bd); position: relative;
+    }
+    .toggle::after {
+      content: ""; position: absolute; top: 2px; right: 2px; width: 16px; height: 16px;
+      border-radius: 50%; background: #fff;
+    }
+
+    .flow {
+      position: relative; padding: 20px 24px 12px; background: var(--surface);
+      border-left: 1px solid var(--line); border-right: 1px solid var(--line);
+    }
+    .flow-track {
+      position: absolute; left: 18%; right: 18%; top: 54px; height: 3px; pointer-events: none;
+      background: linear-gradient(90deg, rgba(42,156,196,.5), rgba(42,156,196,.8), rgba(217,119,6,.5));
+      border-radius: 999px; opacity: .6;
+    }
+    .flow-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; position: relative; }
+    .node {
+      display: grid; justify-items: center; gap: 6px; text-align: center;
+      background: none; border: 0; color: inherit; font: inherit; padding: 0; cursor: pointer;
+    }
+    .node .tag {
+      font-size: 10px; font-weight: 700; letter-spacing: .04em; color: var(--muted);
+      padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2);
+    }
+    .node.is-active .tag { color: var(--cyan); border-color: var(--cyan-bd); background: var(--cyan-soft); }
+    .node[data-node="agent"].is-active .tag { color: var(--green); border-color: rgba(46,125,79,.35); background: var(--green-soft); }
+    .node[data-node="tray"].is-active .tag { color: var(--amber); border-color: rgba(217,119,6,.35); background: rgba(245,158,11,.1); }
+    .node-btn {
+      width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--line-strong);
+      background: var(--surface-2); display: grid; place-items: center; color: var(--muted); transition: .15s ease;
+    }
+    .node.is-active .node-btn { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 0 4px var(--cyan-soft); }
+    .node[data-node="agent"].is-active .node-btn { border-color: var(--green); color: var(--green); box-shadow: 0 0 0 4px var(--green-soft); }
+    .node[data-node="tray"].is-active .node-btn { border-color: var(--amber); color: var(--amber); box-shadow: 0 0 0 4px rgba(245,158,11,.15); }
+    .node h3 { margin: 0; font-size: 13px; font-weight: 700; }
+    .node p { margin: 0; font-size: 11px; color: var(--muted); max-width: 140px; }
+
+    .banner {
+      display: flex; gap: 10px; padding: 12px 16px; background: rgba(42, 156, 196, 0.08);
+      border: 1px solid var(--line); border-top: 0; font-size: 12px; color: var(--muted); align-items: flex-start;
+    }
+    .banner svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--cyan); margin-top: 1px; }
+    .banner b { display: block; color: var(--text); font-size: 13px; margin-bottom: 2px; }
+
+    .shell {
+      background: var(--surface); border: 1px solid var(--line); border-top: 0;
+      border-radius: 0 0 var(--radius) var(--radius); overflow: hidden; min-height: 420px;
+    }
+    .face { display: none; }
+    .face.is-on { display: grid; }
+
+    .face-pad,
+    .face-agent { grid-template-columns: minmax(220px, 34%) 1fr; min-height: 420px; }
+
+    .col-preview {
+      border-right: 1px solid var(--line); padding: 14px; background: var(--surface-2);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .col-preview-lbl { font-size: 11px; font-weight: 700; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+    .preview-agent { margin: 0; font-size: 15px; font-weight: 800; }
+    .preview-frame {
+      flex: 1; min-height: 220px; border-radius: 10px; border: 1px dashed var(--line-strong);
+      background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; padding: 14px;
+    }
+    .topbar-mock {
+      display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px;
+      border: 1px solid var(--line-strong); background: var(--surface-2); font-size: 11px; color: var(--muted);
+    }
+    .ld { width: 10px; height: 10px; border-radius: 50%; }
+    .ld.g { background: var(--green); }
+    .ld.a { background: var(--amber); }
+    .ld.f { background: var(--faint); }
+    .mini-pad {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; width: 100%; max-width: 180px;
+      padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2);
+    }
+    .mini-pad.is-off { opacity: .45; }
+    .k { aspect-ratio: 1; border-radius: 6px; border: 1px solid var(--line); font-size: 9px; display: grid; place-items: center; color: var(--muted); background: #fff; }
+    .k.w { grid-column: span 2; aspect-ratio: auto; height: 28px; }
+    .preview-lines { width: 100%; max-width: 200px; font-size: 11px; color: var(--muted); line-height: 1.55; }
+    .preview-lines b { color: var(--text); }
+    .preview-note { font-size: 11px; color: var(--faint); line-height: 1.4; }
+
+    .col-main { display: flex; flex-direction: column; min-width: 0; }
+    .wb-head { padding: 12px 14px 0; font-size: 16px; font-weight: 800; }
+    .subtabs { display: flex; padding: 0 14px; border-bottom: 1px solid var(--line); }
+    .stab {
+      padding: 11px 14px; border: 0; border-bottom: 2px solid transparent; background: none;
+      color: var(--muted); font: 700 12px/1 var(--font); margin-bottom: -1px;
+    }
+    .stab.is-on { color: var(--cyan); border-bottom-color: var(--cyan); }
+    .stab-green.is-on { color: var(--green); border-bottom-color: var(--green); }
+    .panel { padding: 14px; flex: 1; }
+    .card { border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); padding: 14px; }
+    .card h4 { margin: 0 0 6px; font-size: 13px; }
+    .card p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+
+    .face-tray { grid-template-columns: 40% 1fr; min-height: 420px; }
+
+    .note {
+      margin-top: 12px; padding: 12px 14px; border-radius: 10px; border: 1px dashed var(--line-strong);
+      background: #fff; font-size: 12px; color: var(--muted); line-height: 1.5;
+    }
+    .note b { color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="proto">
+    <strong>v15c</strong> Flow 三节点切页 · Agent 仅顶栏切换 · 左预览随 scope 更新
+    <a href="index.html">← 索引</a>
+  </div>
+
+  <div class="app">
+    <div class="ctx-bar">
+      <div class="ctx-l">
+        <button type="button" class="back">← 返回</button>
+        <div class="ctx-title">虚拟键盘 <span>/ 正在编辑：<b id="habitName">通用习惯</b></span></div>
+        <div class="bind-wrap" id="bindWrap">
+          <button type="button" class="btn-ghost" id="bindBtn" aria-haspopup="listbox" aria-expanded="false">切换 · Codex ▾</button>
+          <div class="bind-menu" id="bindMenu" role="listbox" aria-label="切换 Agent"></div>
+        </div>
+      </div>
+      <div class="ctx-actions">
+        <button type="button" class="btn-ghost">回顶层</button>
+        <span class="toggle" title="虚拟键盘开关"></span>
+      </div>
+    </div>
+
+    <section class="flow" role="tablist" aria-label="虚拟键盘模块">
+      <div class="flow-track" aria-hidden="true"></div>
+      <div class="flow-grid">
+        <button type="button" class="node" data-node="pad" role="tab" aria-selected="false">
+          <span class="tag">SOFT PAD</span>
+          <span class="node-btn" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="4" y="4" width="16" height="16" rx="3"/><rect x="7" y="7" width="3" height="3" rx=".5"/><rect x="11" y="7" width="3" height="3" rx=".5"/><rect x="15" y="7" width="3" height="3" rx=".5"/></svg>
+          </span>
+          <h3>Soft Pad</h3>
+          <p id="hintPad">已启用 · 12 个</p>
+        </button>
+        <button type="button" class="node is-active" data-node="agent" role="tab" aria-selected="true">
+          <span class="tag">状态灯</span>
+          <span class="node-btn" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="9" y="3" width="6" height="14" rx="3"/><circle cx="12" cy="7" r="1.2" fill="currentColor"/><circle cx="12" cy="11" r="1.2" fill="currentColor" opacity=".7"/></svg>
+          </span>
+          <h3>状态灯</h3>
+          <p>看 AI 忙不忙</p>
+        </button>
+        <button type="button" class="node" data-node="tray" role="tab" aria-selected="false">
+          <span class="tag">托盘</span>
+          <span class="node-btn" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="4" y="5" width="16" height="13" rx="2"/><path d="M9 5V3h6v2"/></svg>
+          </span>
+          <h3>托盘菜单</h3>
+          <p>预览 · 显示项</p>
+        </button>
+      </div>
+    </section>
+
+    <div class="banner">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7z"/><circle cx="12" cy="12" r="3"/></svg>
+      <div>
+        <b>设置中预览</b>
+        左侧预览展示顶栏「切换 · Agent」当前 scope 的 Pad 键位与状态灯。无 Agent 目录列。
+      </div>
+    </div>
+
+    <div class="shell">
+      <div class="face face-pad" id="facePad" data-face="pad">
+        <aside class="col-preview" id="padPreviewCol"></aside>
+        <div class="col-main">
+          <div class="subtabs" id="padTabs">
+            <button type="button" class="stab is-on" data-tab="appear">出现</button>
+            <button type="button" class="stab" data-tab="keys">键位</button>
+            <button type="button" class="stab" data-tab="look">外观</button>
+            <button type="button" class="stab" data-tab="purpose">用途</button>
+          </div>
+          <div class="panel" id="padPanel"></div>
+        </div>
+      </div>
+
+      <div class="face face-agent is-on" id="faceAgent" data-face="agent">
+        <aside class="col-preview" id="agentPreviewCol"></aside>
+        <div class="col-main">
+          <div class="wb-head agentLbl">Codex</div>
+          <div class="subtabs" id="wbTabs">
+            <button type="button" class="stab stab-green is-on" data-wb="ready">准备度</button>
+            <button type="button" class="stab stab-green" data-wb="lights">灯效</button>
+            <button type="button" class="stab stab-green" data-wb="cross">跨应用</button>
+            <button type="button" class="stab stab-green" data-wb="session">会话</button>
+          </div>
+          <div class="panel" id="wbPanel"></div>
+        </div>
+      </div>
+
+      <div class="face face-tray" id="faceTray" data-face="tray">
+        <aside class="col-preview">
+          <span class="col-preview-lbl">托盘菜单预览</span>
+          <div class="preview-frame" style="min-height:280px;font-size:12px;color:var(--muted)">
+            Hero · 四通道 · 麦克风
+          </div>
+        </aside>
+        <div class="col-main">
+          <div class="subtabs">
+            <button type="button" class="stab is-on">显示项</button>
+            <button type="button" class="stab">通道</button>
+          </div>
+          <div class="panel">
+            <div class="card"><h4>托盘布局</h4><p>勾选 Hero / 事件 / 语音 / 按键 / Pad / 摄像头在托盘中的显示。</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="note">
+      <b>导航分层</b>：① 顶栏「切换 · Agent」= scope（含原目录信息：Pad / 顶栏 / 接入态）&nbsp;|&nbsp;
+      ② Flow 三节点 = 模块页切换 &nbsp;|&nbsp;
+      ③ 左预览 = 当前 Agent 的 Pad + 顶栏灯 &nbsp;|&nbsp;
+      ④ 右栏 subtab = 该页配置。<br>
+      <b>去掉</b> 状态灯页中间「Agent 目录」列。
+    </p>
+  </div>
+
+  <script>
+  (function () {
+    var AGENTS = [
+      { id: 'codex', name: 'Codex', keys: 12, hook: '已接', pad: true, busy: 'idle' },
+      { id: 'claude', name: 'Claude', keys: 10, hook: '待接', pad: true, busy: 'busy' },
+      { id: 'cursor', name: 'Cursor', keys: 0, hook: '已接', pad: false, busy: 'idle' }
+    ];
+    var sel = 'codex', page = 'agent', padTab = 'appear', wbTab = 'cross';
+
+    function agent() { return AGENTS.find(function (a) { return a.id === sel; }); }
+
+    function padKeys(n) {
+      if (!n) return '<div class="k" style="grid-column:span 3">未启用</div>';
+      return '<div class="k">1</div><div class="k">2</div><div class="k">3</div><div class="k">4</div><div class="k">5</div><div class="k">6</div><div class="k w">发</div><div class="k">✓</div>';
+    }
+
+    function topbarMock(a) {
+      var d = a.busy === 'busy' ? 'a' : (a.hook === '已接' ? 'g' : 'f');
+      return '<div class="topbar-mock"><span class="ld ' + d + '"></span><span class="ld g"></span><span class="ld f"></span><span>' + a.name + '</span></div>';
+    }
+
+    function previewCol(label) {
+      var a = agent();
+      var padClass = a.pad ? '' : ' is-off';
+      var padLine = a.pad ? ('已绑定 <b>' + a.keys + '</b> 个键') : 'Pad <b>未开启</b>';
+      var hookLine = 'Hook <b>' + a.hook + '</b> · 顶栏灯 ' + (a.busy === 'busy' ? '<b>忙碌</b>' : '<b>空闲</b>');
+      return '<span class="col-preview-lbl">' + label + ' · <span class="agentLbl">' + a.name + '</span></span>' +
+        '<h2 class="preview-agent agentLbl">' + a.name + '</h2>' +
+        '<div class="preview-frame">' + topbarMock(a) +
+        '<div class="mini-pad' + padClass + '">' + padKeys(a.pad) + '</div>' +
+        '<div class="preview-lines">' + padLine + '<br>' + hookLine + '</div></div>' +
+        '<p class="preview-note">随顶栏 Agent 切换更新，不另设目录列。</p>';
+    }
+
+    function bindMenuHtml() {
+      return AGENTS.map(function (x) {
+        return '<button type="button" class="bind-item' + (x.id === sel ? ' is-on' : '') + '" data-id="' + x.id + '" role="option" aria-selected="' + (x.id === sel) + '">' +
+          '<strong>' + x.name + '</strong>' +
+          '<div class="pills"><span class="pl' + (x.pad ? ' ok' : '') + '">Pad</span><span class="pl ok">顶栏</span><span class="pl' + (x.hook === '已接' ? ' ok' : '') + '">' + x.hook + '</span></div></button>';
+      }).join('');
+    }
+
+    function setPage(p) {
+      page = p;
+      document.getElementById('facePad').classList.toggle('is-on', page === 'pad');
+      document.getElementById('faceAgent').classList.toggle('is-on', page === 'agent');
+      document.getElementById('faceTray').classList.toggle('is-on', page === 'tray');
+      document.querySelectorAll('.flow .node').forEach(function (n) {
+        var on = n.getAttribute('data-node') === page;
+        n.classList.toggle('is-active', on);
+        n.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      render();
+    }
+
+    function render() {
+      var a = agent();
+      document.getElementById('bindBtn').textContent = '切换 · ' + a.name + ' ▾';
+      document.getElementById('bindMenu').innerHTML = bindMenuHtml();
+      document.querySelectorAll('.agentLbl').forEach(function (el) { el.textContent = a.name; });
+      document.getElementById('hintPad').textContent = a.pad ? ('已启用 · ' + a.keys + ' 个') : '未启用';
+
+      document.getElementById('padPreviewCol').innerHTML = previewCol('Pad 预览');
+      document.getElementById('agentPreviewCol').innerHTML = previewCol('状态预览');
+
+      document.querySelectorAll('.bind-item').forEach(function (item) {
+        item.addEventListener('click', function () {
+          sel = item.getAttribute('data-id');
+          document.getElementById('bindWrap').classList.remove('is-open');
+          document.getElementById('bindBtn').setAttribute('aria-expanded', 'false');
+          render();
+        });
+      });
+
+      var padCopy = {
+        appear: '<div class="card"><h4>何时显示</h4><p>' + a.name + ' 前台时弹出浮层键盘。</p></div>',
+        keys: '<div class="card"><h4>键位</h4><p>' + a.keys + ' 键已配置。</p></div>',
+        look: '<div class="card"><h4>外观</h4><p>完整体 / 迷你条。</p></div>',
+        purpose: '<div class="card"><h4>用途</h4><p>AG 键动作。</p></div>'
+      };
+      document.getElementById('padPanel').innerHTML = padCopy[padTab];
+      document.querySelectorAll('#padTabs .stab').forEach(function (b) {
+        b.classList.toggle('is-on', b.getAttribute('data-tab') === padTab);
+      });
+
+      var wbCopy = {
+        ready: '<div class="card"><h4>准备度</h4><p>' + a.name + ' · Pad ' + (a.pad ? '已开' : '未开') + ' · Hook ' + a.hook + '</p></div>',
+        lights: '<div class="card"><h4>灯效</h4><p>顶栏三盏灯颜色与映射（' + a.name + '）。</p></div>',
+        cross: '<div class="card"><h4>跨应用</h4><p>全局设置：影响 Soft Pad 顶栏显示哪些 Agent 的状态灯。右侧为「' + a.name + '」的 per-app 配置。</p></div>',
+        session: '<div class="card"><h4>会话</h4><p>恢复 ' + a.name + ' 线程 / 聚焦终端。</p></div>'
+      };
+      document.getElementById('wbPanel').innerHTML = wbCopy[wbTab];
+      document.querySelectorAll('#wbTabs .stab').forEach(function (b) {
+        b.classList.toggle('is-on', b.getAttribute('data-wb') === wbTab);
+      });
+    }
+
+    document.getElementById('bindBtn').addEventListener('click', function (e) {
+      e.stopPropagation();
+      var open = document.getElementById('bindWrap').classList.toggle('is-open');
+      document.getElementById('bindBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    document.addEventListener('click', function () {
+      document.getElementById('bindWrap').classList.remove('is-open');
+      document.getElementById('bindBtn').setAttribute('aria-expanded', 'false');
+    });
+    document.getElementById('bindMenu').addEventListener('click', function (e) { e.stopPropagation(); });
+
+    document.querySelectorAll('.flow .node').forEach(function (n) {
+      n.addEventListener('click', function () { setPage(n.getAttribute('data-node')); });
+    });
+    document.querySelectorAll('#padTabs .stab').forEach(function (b) {
+      b.addEventListener('click', function () { padTab = b.getAttribute('data-tab'); render(); });
+    });
+    document.querySelectorAll('#wbTabs .stab').forEach(function (b) {
+      b.addEventListener('click', function () { wbTab = b.getAttribute('data-wb'); render(); });
+    });
+
+    render();
+  })();
+  </script>
+</body>
+</html>

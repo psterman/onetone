@@ -12,6 +12,7 @@ export interface SoftPadWorkflowRow {
 
 export interface SoftPadWorkflowModel {
   switcherHidden: boolean;
+  schemeListHidden: boolean;
   switcherLabel: string;
   switcherChips: SoftPadWorkflowChip[];
   schemeTitle: string;
@@ -37,6 +38,7 @@ export function buildSoftPadWorkflowModel(): SoftPadWorkflowModel {
   if (!hub.buildSoftPadWorkflowModel) {
     return {
       switcherHidden: true,
+      schemeListHidden: true,
       switcherLabel: '',
       switcherChips: [],
       schemeTitle: '',
@@ -51,6 +53,7 @@ export function buildSoftPadWorkflowModel(): SoftPadWorkflowModel {
     console.error('[islands] buildSoftPadWorkflowModel failed', err);
     return {
       switcherHidden: true,
+      schemeListHidden: true,
       switcherLabel: '',
       switcherChips: [],
       schemeTitle: '',
@@ -62,7 +65,7 @@ export function buildSoftPadWorkflowModel(): SoftPadWorkflowModel {
 }
 
 export function softPadWorkflowSignature(model: SoftPadWorkflowModel): string {
-  let sig = (model.switcherHidden ? '1' : '0') + '\u0001' + model.switcherLabel + '\u0002';
+  let sig = (model.switcherHidden ? '1' : '0') + (model.schemeListHidden ? '1' : '0') + '\u0001' + model.switcherLabel + '\u0002';
   for (const chip of model.switcherChips) {
     sig += chip.id + '\u0001' + chip.html + '\u0003';
   }

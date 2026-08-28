@@ -1210,9 +1210,16 @@
                   <div class="soft-pad-pad-ring" id="softPadPadRing" hidden aria-hidden="true"></div>
                   <div class="soft-pad-ring-float" id="softPadRingFloat" hidden></div>
                 </div>
-                <!-- C2 Agent face: left Soft Pad preview + right single-app lightboard -->
+                <!-- C2 Agent face: left preview · center directory · right workbench (v12b) -->
                 <div class="soft-pad-face-root soft-pad-face-agent" id="softPadFaceAgent" data-face="agent" hidden>
                   <div class="soft-pad-face-agent__preview soft-pad-preview-host" id="softPadAgentPreviewHost"></div>
+                  <nav class="soft-pad-face-agent__directory soft-pad-agent-directory" id="softPadAgentDirectory" aria-label="Agent 目录">
+                    <header class="soft-pad-agent-directory__head">
+                      <h2 class="soft-pad-agent-directory__title" id="softPadAgentDirectoryTitle">Agent</h2>
+                      <p class="soft-pad-agent-directory__sub" id="softPadAgentDirectorySub">Pad · 灯 · 接</p>
+                    </header>
+                    <div class="soft-pad-agent-directory__list" id="softPadAgentDirectoryList" role="listbox" aria-labelledby="softPadAgentDirectoryTitle"></div>
+                  </nav>
                   <aside class="soft-pad-face-agent__panel soft-pad-detail" id="softPadAgentPanelHost" aria-live="polite">
                     <div class="codex-pad-mgr soft-pad-subpage-body" id="softPadAgentBody"></div>
                   </aside>
@@ -4886,6 +4893,7 @@
   <script src="js/features/agent/usage-format.js"></script>
   <script src="js/features/agent/shell-agent-hook-panel.js"></script>
   <script src="js/features/agent/soft-pad-connect-status.js"></script>
+  <script src="js/features/agent/soft-pad-agent-registry.js"></script>
   <script src="js/features/agent/soft-pad-hub-ui.js"></script>
   <script src="js/features/agent/agent-capability-ui.js"></script>
   <script src="js/features/mapping/habit-shared.js"></script>

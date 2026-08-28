@@ -3329,6 +3329,7 @@
   function buildTopbarPreviewChipsHtml(pad, opts) {
     opts = opts || {};
     var focus = String(opts.focusAgent || hubSelectedScopeKind() || '').toLowerCase();
+    var stripMode = opts.stripMode === 'full' ? 'full' : 'focus';
     var focusMap = '';
     try {
       var Hub = global.OneToneSoftPadHub;
@@ -3337,10 +3338,36 @@
         if (entry && entry.mapping) focusMap = String(entry.mapping.id);
       }
     } catch (_) {}
+    if (stripMode === 'focus') {
+      if (!focus && !focusMap) return '';
+      var habitIds = topbarHabitIdsOnPad(pad);
+      if (focusMap && habitIds.indexOf(focusMap) >= 0) {
+        return (
+          '<button type="button" class="soft-pad-agent-bar__chip soft-pad-agent-bar__chip--preview is-focused" ' +
+          'data-act="topbar-jump" data-habit-id="' + esc(focusMap) + '" data-status="idle" aria-current="true">' +
+          '<img src="' + esc(habitIconForMappingId(focusMap)) + '" alt="" width="16" height="16" decoding="async" aria-hidden="true">' +
+          '<i class="soft-pad-agent-bar__dot" aria-hidden="true"></i></button>'
+        );
+      }
+      var i;
+      for (i = 0; i < TOPBAR_LIGHT_CANDIDATES.length; i++) {
+        if (TOPBAR_LIGHT_CANDIDATES[i].agent === focus) {
+          var inTopbar = agentLightEnabledOnPad(pad, focus);
+          return (
+            '<button type="button" class="soft-pad-agent-bar__chip soft-pad-agent-bar__chip--preview is-focused' +
+            (inTopbar ? '' : ' is-preview-off') + '" ' +
+            'data-act="topbar-jump" data-agent="' + esc(focus) + '" data-status="idle" aria-current="true">' +
+            '<img src="' + esc(agentLightIconSrc(focus)) + '" alt="" width="16" height="16" decoding="async" aria-hidden="true">' +
+            '<i class="soft-pad-agent-bar__dot" aria-hidden="true"></i></button>'
+          );
+        }
+      }
+      return '';
+    }
     var enabled = TOPBAR_LIGHT_CANDIDATES.filter(function (c) {
       return agentLightEnabledOnPad(pad, c.agent);
     });
-    var habitIds = topbarHabitIdsOnPad(pad);
+    var habitIdsFull = topbarHabitIdsOnPad(pad);
     return enabled.map(function (c) {
       var focused = focus && c.agent === focus;
       return (
@@ -3351,7 +3378,7 @@
         '<img src="' + esc(agentLightIconSrc(c.agent)) + '" alt="" width="16" height="16" decoding="async" aria-hidden="true">' +
         '<i class="soft-pad-agent-bar__dot" aria-hidden="true"></i></button>'
       );
-    }).concat(habitIds.map(function (hid) {
+    }).concat(habitIdsFull.map(function (hid) {
       var focused = focusMap && String(hid) === focusMap;
       return (
         '<button type="button" class="soft-pad-agent-bar__chip soft-pad-agent-bar__chip--preview' +
@@ -3368,13 +3395,16 @@
   function renderPadFaceTopChrome(m, pad, opts) {
     opts = opts || {};
     var title = softPadPreviewMainTitle(m);
-    var chips = buildTopbarPreviewChipsHtml(pad, opts);
-    var bar = chips
-      ? ('<div class="soft-pad-agent-bar soft-pad-agent-bar--preview soft-pad-agent-bar--face" role="presentation">' +
-        chips + '</div>')
-      : '';
+    var bar = '';
+    if (!opts.omitFaceTopbar) {
+      var chips = buildTopbarPreviewChipsHtml(pad, opts);
+      if (chips) {
+        bar = '<div class="soft-pad-agent-bar soft-pad-agent-bar--preview soft-pad-agent-bar--face" role="presentation">' +
+          chips + '</div>';
+      }
+    }
     return (
-      '<div class="micro-hw__face-top">' +
+      '<div class="micro-hw__face-top' + (opts.omitFaceTopbar ? ' micro-hw__face-top--title-only' : '') + '">' +
       '<span class="micro-hw__face-title">' + esc(title) + '</span>' +
       bar +
       '</div>'
@@ -3565,16 +3595,115 @@
     return agent;
   }
 
+  function normConnectAgent(agent) {
+    var Connect = global.OneToneSoftPadConnect;
+    if (Connect && Connect.normKind) return Connect.normKind(agent);
+    agent = String(agent || '').trim();
+    if (agent === 'traecode') return 'traeCode';
+    if (agent === 'copilotcli') return 'copilotCli';
+    return agent;
+  }
+
   /** MiniMax-style connect cards for enabled topbar agents. */
-  function renderConnectStatusSectionHtml(pad, phaseByAgent) {
+  function renderConnectStatusSectionHtml(pad, phaseByAgent, opts) {
     var Connect = global.OneToneSoftPadConnect;
     if (!Connect || !Connect.renderExpandCardHtml) return '';
+    opts = opts || {};
+    var mode = opts.mode || 'full';
     phaseByAgent = phaseByAgent || {};
     var fg = '';
     try { fg = String(hubSelectedScopeKind() || ''); } catch (_) {}
+    var scopeAgent = normConnectAgent(opts.scopeAgent || fg);
+
+    if (mode === 'scope') {
+      if (!scopeAgent) return '';
+      if (Connect.isSoloKind && Connect.isSoloKind(scopeAgent)) {
+        return (
+          '<div class="soft-pad-connect-section" data-connect-section="scope">' +
+          '<p class="codex-pad-mgr__hint">' +
+          esc(t('softPadConnectSoloLead',
+            '此应用无需 Hook 接入；顶栏灯根据本地活跃度显示。')) +
+          '</p></div>'
+        );
+      }
+      if (Connect.isQuotaKind && Connect.isQuotaKind(scopeAgent)) {
+        return (
+          '<div class="soft-pad-connect-section" data-connect-section="scope">' +
+          renderQuotaKeyCardHtml() +
+          '</div>'
+        );
+      }
+      var scopeEntry = phaseByAgent[scopeAgent] || phaseByAgent[String(scopeAgent).toLowerCase()] || {};
+      var scopePhase = scopeEntry.phase || 'unknown';
+      var scopeBody = '';
+      if (!Connect.needsAction(scopePhase)) {
+        scopeBody =
+          '<div class="soft-pad-connect-strip" data-connect-strip="' + esc(scopeAgent) +
+          '" data-connect-phase="' + esc(scopePhase) + '">' +
+          '<span class="soft-pad-connect-strip__name">' + esc(labelForConnectAgent(scopeAgent)) + '</span>' +
+          Connect.renderPhasePillHtml(scopePhase) +
+          '</div>';
+      } else {
+        scopeBody = Connect.renderExpandCardHtml({
+          kind: scopeAgent,
+          label: labelForConnectAgent(scopeAgent),
+          phase: scopePhase,
+          status: scopeEntry.status || null,
+          isFg: true
+        });
+      }
+      return (
+        '<div class="soft-pad-connect-section" data-connect-section="scope" data-connect-mode="scope">' +
+        '<p class="codex-pad-mgr__label">' +
+        esc(t('softPadConnectScopeTitle', '接入')) + '</p>' +
+        scopeBody +
+        '</div>'
+      );
+    }
+
     var enabled = TOPBAR_LIGHT_CANDIDATES.filter(function (c) {
       return agentLightEnabledOnPad(pad, c.agent);
     }).map(function (c) { return c.agent; });
+    if (mode === 'fold') {
+      if (!enabled.length) {
+        return (
+          '<p class="codex-pad-mgr__hint">' +
+          esc(t('softPadConnectFoldEmpty', '开启 Agent 顶栏灯后，可在此查看跨应用接入状态。')) +
+          '</p>'
+        );
+      }
+      enabled = sortConnectAgentsForUi(enabled, fg);
+      var foldCards = enabled.map(function (agent) {
+        var entry = phaseByAgent[agent] || phaseByAgent[String(agent).toLowerCase()] || {};
+        var phase = entry.phase || 'unknown';
+        var isFg = fg && String(agent).toLowerCase() === String(fg).toLowerCase();
+        var force = !!(entry.forceExpand || connectExpandOverride[agent]);
+        if (!Connect.needsAction(phase) && !isFg && !force) {
+          return (
+            '<div class="soft-pad-connect-strip" data-connect-strip="' + esc(agent) +
+            '" data-connect-phase="' + esc(phase) + '">' +
+            '<span class="soft-pad-connect-strip__name">' + esc(labelForConnectAgent(agent)) + '</span>' +
+            Connect.renderPhasePillHtml(phase) +
+            '<button type="button" class="codex-micro-pad__btn soft-pad-connect-strip__btn" ' +
+            'data-act="connect-expand" data-agent="' + esc(agent) + '">' +
+            esc(t('softPadConnectExpand', '详情')) + '</button></div>'
+          );
+        }
+        return Connect.renderExpandCardHtml({
+          kind: agent,
+          label: labelForConnectAgent(agent),
+          phase: phase,
+          status: entry.status || null,
+          isFg: !!isFg
+        });
+      }).join('');
+      return (
+        '<div class="soft-pad-connect-section" data-connect-section="fold" data-connect-mode="fold">' +
+        '<div class="soft-pad-connect-section__list" data-connect-list="1">' + foldCards + '</div>' +
+        '</div>'
+      );
+    }
+
     if (!enabled.length) {
       return (
         '<div class="soft-pad-connect-section" data-connect-section="1">' +
@@ -3984,7 +4113,143 @@
     }
   }
 
-  function renderTopbarLightsPanel(pad) {
+  function renderCrossTopbarMergedRow(c, phaseByAgent, fg) {
+    var agent = c.agent;
+    var entry = phaseByAgent[agent] || phaseByAgent[String(agent).toLowerCase()] || {};
+    var phase = entry.phase || 'unknown';
+    var Connect = global.OneToneSoftPadConnect;
+    var pill = Connect && Connect.renderPhasePillHtml
+      ? Connect.renderPhasePillHtml(phase)
+      : '';
+    var icon = agentLightIconSrc(agent);
+    var isFg = fg && String(agent).toLowerCase() === String(fg).toLowerCase();
+    var force = !!(entry.forceExpand || connectExpandOverride[agent]);
+    var showExpandBtn = Connect && !Connect.needsAction(phase) && !isFg && !force;
+    var expandBody = '';
+    if (Connect && Connect.renderExpandCardHtml &&
+      (Connect.needsAction(phase) || isFg || force)) {
+      expandBody = Connect.renderExpandCardHtml({
+        kind: agent,
+        label: c.label,
+        phase: phase,
+        status: entry.status || null,
+        isFg: !!isFg
+      });
+    }
+    return (
+      '<div class="soft-pad-cross-item" data-cross-agent-item="' + esc(agent) + '">' +
+      '<div class="soft-pad-cross-row soft-pad-topbar-light-active" data-agent-light-row="' + esc(agent) +
+      '" data-cross-agent="' + esc(agent) + '" role="listitem">' +
+      '<button type="button" class="soft-pad-topbar-light-active__jump" data-act="topbar-jump" data-agent="' +
+      esc(agent) + '" title="' + esc(t('softPadTopbarJump', '跳转到此习惯')) + '">' +
+      '<span class="soft-pad-agent-light-row__chip" data-agent="' + esc(agent) + '" data-status="idle">' +
+      '<img src="' + esc(icon) + '" alt="" width="16" height="16" decoding="async" aria-hidden="true">' +
+      '<i class="soft-pad-agent-light-row__dot" aria-hidden="true"></i></span>' +
+      '<span class="soft-pad-topbar-light-active__name">' + esc(c.label) + '</span></button>' +
+      '<span class="soft-pad-cross-row__phase" data-connect-phase-host="' + esc(agent) + '">' +
+      pill + '</span>' +
+      '<button type="button" class="codex-micro-pad__btn soft-pad-connect-strip__btn" data-act="connect-expand" data-agent="' +
+      esc(agent) + '"' + (showExpandBtn ? '' : ' hidden') + '>' +
+      esc(t('softPadConnectExpand', '详情')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn soft-pad-agent-light-row__cta" ' +
+      'data-act="agent-light-connect" data-agent="' + esc(agent) + '" hidden></button>' +
+      '<button type="button" class="soft-pad-topbar-light-active__remove" data-act="topbar-light-remove" ' +
+      'data-agent="' + esc(agent) + '" aria-label="' + esc(t('softPadTopbarRemove', '移除')) + '">×</button>' +
+      '</div>' +
+      '<div class="soft-pad-cross-expand" data-cross-expand-host="' + esc(agent) + '"' +
+      (expandBody ? '' : ' hidden') + '>' + expandBody + '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderCrossTopbarMergedPanel(pad, phaseByAgent) {
+    phaseByAgent = phaseByAgent || {};
+    var fg = '';
+    try { fg = String(hubSelectedScopeKind() || ''); } catch (_) {}
+    var enabled = TOPBAR_LIGHT_CANDIDATES.filter(function (c) {
+      return agentLightEnabledOnPad(pad, c.agent);
+    });
+    var habitIds = topbarHabitIdsOnPad(pad);
+    enabled = sortConnectAgentsForUi(enabled.map(function (c) { return c.agent; }), fg)
+      .map(function (agent) {
+        var i;
+        for (i = 0; i < TOPBAR_LIGHT_CANDIDATES.length; i++) {
+          if (TOPBAR_LIGHT_CANDIDATES[i].agent === agent) return TOPBAR_LIGHT_CANDIDATES[i];
+        }
+        return null;
+      })
+      .filter(Boolean);
+    var rows = enabled.map(function (c) {
+      return renderCrossTopbarMergedRow(c, phaseByAgent, fg);
+    }).concat(habitIds.map(renderTopbarHabitActiveChip));
+    var listHtml = rows.length
+      ? rows.join('')
+      : ('<p class="codex-pad-mgr__hint" data-topbar-lights-empty="1">' +
+        esc(t('softPadTopbarEmpty', '尚未添加 — 顶栏不会显示圆点')) + '</p>');
+    return (
+      '<article class="soft-pad-topbar-lights-card soft-pad-cross-merged" data-cross-topbar-merged="1" data-topbar-lights-panel="1">' +
+      '<p class="codex-pad-mgr__label">' + esc(t('softPadTopbarMonitorTitle', '顶栏监视')) + '</p>' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t('softPadCrossMergedLead',
+        '每行一个 Agent：图标与名称、接入状态、移除；需操作时自动展开。')) +
+      '</p>' +
+      '<div class="soft-pad-topbar-light-active-list soft-pad-cross-merged__list" role="list" aria-live="polite">' +
+      listHtml + '</div>' +
+      '<div class="soft-pad-topbar-add" data-topbar-add="1">' +
+      '<button type="button" class="soft-pad-topbar-add__btn" data-act="topbar-add-open" ' +
+      'aria-haspopup="dialog">' +
+      esc(t('softPadTopbarAdd', '+ 添加')) + '</button></div>' +
+      '<p class="codex-pad-mgr__hint soft-pad-agent-light-legend">' +
+      esc(t('softPadAgentLightsLegend',
+        '灰=空闲 · 蓝=忙 · 琥珀=等你 · 绿=完成 · 红=失败')) +
+      '</p>' +
+      '<p class="codex-pad-mgr__hint is-error" data-topbar-lights-error hidden></p>' +
+      '</article>'
+    );
+  }
+
+  function paintCrossTopbarMergedConnect(root, pad, phaseByAgent) {
+    if (!root || !pad) return;
+    var panel = root.querySelector('[data-cross-topbar-merged]');
+    if (!panel) return;
+    var Connect = global.OneToneSoftPadConnect;
+    var fg = '';
+    try { fg = String(hubSelectedScopeKind() || ''); } catch (_) {}
+    TOPBAR_LIGHT_CANDIDATES.forEach(function (c) {
+      if (!agentLightEnabledOnPad(pad, c.agent)) return;
+      var agent = c.agent;
+      var entry = phaseByAgent[agent] || phaseByAgent[String(agent).toLowerCase()] || {};
+      var phase = entry.phase || 'unknown';
+      var isFg = fg && String(agent).toLowerCase() === String(fg).toLowerCase();
+      var force = !!(entry.forceExpand || connectExpandOverride[agent]);
+      paintConnectPhasePill(root, agent, phase);
+      var item = root.querySelector('[data-cross-agent-item="' + agent + '"]');
+      if (!item) return;
+      var expandBtn = item.querySelector('[data-act="connect-expand"]');
+      var expandHost = item.querySelector('[data-cross-expand-host="' + agent + '"]');
+      var need = Connect && Connect.needsAction(phase);
+      if (expandBtn) expandBtn.hidden = !(Connect && !need && !isFg && !force);
+      if (expandHost && Connect && Connect.renderExpandCardHtml) {
+        if (need || isFg || force) {
+          expandHost.innerHTML = Connect.renderExpandCardHtml({
+            kind: agent,
+            label: c.label,
+            phase: phase,
+            status: entry.status || null,
+            isFg: !!isFg
+          });
+          expandHost.hidden = false;
+        } else {
+          expandHost.innerHTML = '';
+          expandHost.hidden = true;
+        }
+      }
+    });
+    bindConnectStatusCardEvents(root, null, pad);
+  }
+
+  function renderTopbarLightsPanel(pad, opts) {
+    opts = opts || {};
     var enabled = TOPBAR_LIGHT_CANDIDATES.filter(function (c) {
       return agentLightEnabledOnPad(pad, c.agent);
     });
@@ -4001,6 +4266,15 @@
       '<button type="button" class="soft-pad-topbar-add__btn" data-act="topbar-add-open" ' +
       'aria-haspopup="dialog">' +
       esc(t('softPadTopbarAdd', '+ 添加')) + '</button></div>';
+    var connectHtml = opts.noConnect
+      ? ''
+      : ('<div data-connect-host="1">' + renderConnectStatusSectionHtml(pad, {}, { mode: 'full' }) + '</div>');
+    var matrixHtml = opts.compact
+      ? ''
+      : ('<p class="codex-pad-mgr__hint soft-pad-agent-light-matrix">' +
+        esc(t('softPadAgentLightsMatrix',
+          '精度：Cursor/Claude/Codex 高（Hook/活动）；Trae Work 高（本地活跃度）；WorkBuddy/Trae Code/Qoder 高（仅 Hook，禁止进程假闪）；MiniMax 常亮额度灯（无运动）；Cline/OpenCode/Aider 中（仅 Hook）。')) +
+        '</p>');
     return (
       '<article class="soft-pad-topbar-lights-card" data-topbar-lights-panel="1">' +
       '<p class="codex-pad-mgr__label">' + esc(t('softPadTopbarMonitorTitle', '顶栏监视')) + '</p>' +
@@ -4014,16 +4288,13 @@
       esc(t('softPadTopbarQuotaLbl', 'API 额度候补')) + '</p>' +
       '<div class="soft-pad-topbar-light-active-list" data-topbar-quota-list role="list"></div>' +
       renderQuotaKeyCardHtml() +
-      '<div data-connect-host="1">' + renderConnectStatusSectionHtml(pad, {}) + '</div>' +
+      connectHtml +
       addHtml +
       '<p class="codex-pad-mgr__hint soft-pad-agent-light-legend">' +
       esc(t('softPadAgentLightsLegend',
         '灰=空闲 · 蓝=忙 · 琥珀=等你 · 绿=完成 · 红=失败')) +
       '</p>' +
-      '<p class="codex-pad-mgr__hint soft-pad-agent-light-matrix">' +
-      esc(t('softPadAgentLightsMatrix',
-        '精度：Cursor/Claude/Codex 高（Hook/活动）；Trae Work 高（本地活跃度）；WorkBuddy/Trae Code/Qoder 高（仅 Hook，禁止进程假闪）；MiniMax 常亮额度灯（无运动）；Cline/OpenCode/Aider 中（仅 Hook）。')) +
-      '</p>' +
+      matrixHtml +
       '<p class="codex-pad-mgr__hint is-error" data-topbar-lights-error hidden></p>' +
       '</article>'
     );
@@ -4040,9 +4311,11 @@
         if (entry && entry.mapping) focusMap = String(entry.mapping.id);
       }
     } catch (_) {}
-    var chips = buildTopbarPreviewChipsHtml(pad, { focusAgent: focus, focusMap: focusMap });
+    var chips = buildTopbarPreviewChipsHtml(pad, opts);
+    var stripMode = opts.stripMode === 'full' ? 'full' : 'focus';
     return (
-      '<div class="soft-pad-lights-topbar-preview" data-lights-topbar-preview="1">' +
+      '<div class="soft-pad-lights-topbar-preview" data-lights-topbar-preview="1" data-strip-mode="' +
+      esc(stripMode) + '">' +
       '<p class="soft-pad-lights-topbar-preview__label">' +
       esc(t('softPadTopbarPreviewLbl', '顶栏预览')) + '</p>' +
       '<div class="soft-pad-agent-bar soft-pad-agent-bar--preview" role="presentation">' +
@@ -4058,60 +4331,6 @@
     if (!strip) return;
     var chip = strip.querySelector('.soft-pad-agent-bar__chip[data-agent="' + agent + '"]');
     if (chip) chip.setAttribute('data-status', status || 'idle');
-  }
-
-  function renderAgentLightsPicker(m, pad) {
-    var anyOn = AGENT_LIGHT_SPECS.some(function (spec) {
-      return agentLightEnabledOnPad(pad, spec.agent);
-    });
-    var sessionsNote = String((pad && pad.purpose) || '') === 'sessions'
-      ? t('softPadLightsSessionsNote', '混排导航：仅配置的 AG 会话槽显示 Lane 角标；Claude 子代理只做角点装饰。')
-      : t('softPadLightsShortcutsNote', 'AG 仍是动作键。顶栏灯只控显示；导航槽需在「更多」里启用。');
-    var lab = softPadLabVisible(pad)
-      ? (
-        '<details class="codex-pad-mgr__diag soft-pad-more-lab" data-soft-pad-lab="1">' +
-        '<summary>' + esc(t('softPadMoreLabSummary', '高级诊断（开发用）')) + '</summary>' +
-        '<p class="codex-pad-mgr__hint">' +
-        esc(t('softPadMoreLabLead', '诊断回放与测试注入，日常不必打开。')) +
-        '</p>' +
-        renderPadDiagDetails() +
-        renderClaudeLabDetails() +
-        '</details>'
-      )
-      : '';
-    return (
-      '<article class="soft-pad-more-card" data-agent-lights-picker="1">' +
-      '<p class="codex-pad-mgr__label">' +
-      esc(t('softPadAgentLightsTitle', '顶栏状态灯')) +
-      '</p>' +
-      '<p class="codex-pad-mgr__hint">' +
-      esc(t('softPadAgentLightsLead',
-        '对照 Soft Pad 顶栏状态灯：开关决定谁显示忙闲。灯≠按下动作。')) +
-      '</p>' +
-      '<div class="soft-pad-agent-light-list" role="group" aria-label="' +
-      esc(t('softPadAgentLightsTitle', '顶栏状态灯')) + '" aria-live="polite">' +
-      AGENT_LIGHT_SPECS.map(function (spec) {
-        return renderAgentLightRow(spec.agent, spec.label, pad);
-      }).join('') +
-      '</div>' +
-      '<div data-connect-host="1">' + renderConnectStatusSectionHtml(pad, {}) + '</div>' +
-      '<p class="codex-pad-mgr__hint soft-pad-agent-light-legend">' +
-      esc(t('softPadAgentLightsLegend',
-        '灰=空闲 · 蓝=忙 · 琥珀=等你 · 绿=完成 · 红=失败')) +
-      '</p>' +
-      '<p class="codex-pad-mgr__hint soft-pad-agent-light-matrix">' +
-      esc(t('softPadAgentLightsMatrix',
-        '精度：Cursor/Claude/Codex 高（Hook/活动）；Trae Work 高（本地活跃度）；WorkBuddy/Trae Code/Qoder 高（仅 Hook，禁止进程假闪）；MiniMax 常亮额度灯（无运动）；Cline/OpenCode/Aider 中（仅 Hook）。')) +
-      '</p>' +
-      '<p class="codex-pad-mgr__hint" data-agent-lights-empty' + (anyOn ? ' hidden' : '') + '>' +
-      esc(t('softPadAgentLightsEmpty',
-        '至少打开一个 Agent 灯，才会在 Soft Pad 顶栏看到忙闲。')) +
-      '</p>' +
-      '<p class="codex-pad-mgr__hint">' + esc(sessionsNote) + '</p>' +
-      '<p class="codex-pad-mgr__hint is-error" data-agent-lights-error hidden></p>' +
-      lab +
-      '</article>'
-    );
   }
 
   /** Soft Pad「更多」：横向标签 + 规整卡片（主题 segmented）。 */
@@ -4352,6 +4571,10 @@
 
   function paintConnectStatusSection(root, pad, phaseByAgent) {
     if (!root) return;
+    if (root.querySelector('[data-cross-topbar-merged]')) {
+      paintCrossTopbarMergedConnect(root, pad, phaseByAgent || {});
+      return;
+    }
     var host = root.querySelector('[data-connect-host]');
     if (!host) return;
     host.innerHTML = renderConnectStatusSectionHtml(pad, phaseByAgent || {});
@@ -4391,6 +4614,7 @@
     opts = opts || {};
     if (!root) return Promise.resolve();
     var panel = root.querySelector('[data-topbar-lights-panel]') ||
+      root.querySelector('[data-cross-topbar-merged]') ||
       root.querySelector('[data-agent-lights-picker]') ||
       (root.getAttribute && root.getAttribute('data-topbar-lights-panel') ? root : null);
     var scopeEl = panel || root;
@@ -4704,7 +4928,7 @@
       return refreshAgentLightsPickerState(refreshRoot, m, pad).then(function () {
         var Hub = global.OneToneSoftPadHub;
         var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
-        syncStatusLightsPreviewChrome(previewHost, m, pad, { subtab: softPadLightsSubtab });
+        syncStatusLightsPreviewChrome(previewHost, m, pad, workbenchPreviewOpts());
         return res;
       });
     }).catch(function () {
@@ -6700,6 +6924,11 @@
       return;
     }
     var skin = canonicalizePadSkin(pad && pad.skin);
+    var omitFaceTopbar = false;
+    try {
+      var HubFace = global.OneToneSoftPadHub;
+      if (HubFace && HubFace.getFace && HubFace.getFace() === 'agent') omitFaceTopbar = true;
+    } catch (_) {}
     host.innerHTML =
       '<div class="codex-micro-pad soft-pad-preview" data-pad-skin="' + esc(skin) + '">' +
       '<div class="codex-micro-pad__head">' +
@@ -6709,7 +6938,7 @@
         ? t('codexMicroPadStatusOn', '已开启 · 已绑定 {n} 个键').replace('{n}', String(n))
         : t('codexMicroPadStatusOff', '已关闭')) +
       '</span></div>' +
-      renderHardwarePad(m, pad, { mode: 'softPad' }) +
+      renderHardwarePad(m, pad, { mode: 'softPad', omitFaceTopbar: omitFaceTopbar }) +
       '<div class="soft-pad-key-caption" data-soft-pad-caption aria-live="polite">' +
       '<span class="soft-pad-key-caption__name" data-cap-name>' +
       esc(t('softPadKeyCaptionIdle', '悬停或点按键查看名称')) + '</span>' +
@@ -7645,22 +7874,6 @@
     return '';
   }
 
-  function lightsSimpleLead(mode) {
-    if (mode === 'preset-claude') {
-      return t('softPadLightsLeadClaude', '多个任务时，不同键会亮不同颜色（自动）');
-    }
-    if (mode === 'preset-codex') {
-      return t('softPadLightsLeadCodex', '一整段任务亮在一盏键上（自动）');
-    }
-    if (mode === 'preset-cursor') {
-      return t('softPadLightsLeadCursor', '只看顶栏圆点（此应用不支持多键灯）');
-    }
-    if (mode === 'preset-shell') {
-      return t('softPadLightsLeadShell', '顶栏显示忙闲（Hook 生命周期）');
-    }
-    return t('softPadLightsLeadCustom', '选下面一种效果即可');
-  }
-
   function appDisplayName(m, mode) {
     var agent = scopeAgentKind(m, mode);
     if (agent === 'claude') return t('softPadHubKindClaude', 'Claude');
@@ -7675,10 +7888,15 @@
   }
 
   /** Agent subpage — v10/v12 lights config (center column). */
-  var softPadLightsSubtab = 'topbar';
+  var softPadLightsSubtab = 'keys';
+  var softPadWorkbenchTab = 'readiness';
 
   function getSoftPadLightsSubtab() {
     return softPadLightsSubtab;
+  }
+
+  function getSoftPadWorkbenchTab() {
+    return softPadWorkbenchTab;
   }
 
   function renderAmbientBezelCard(pad) {
@@ -7722,41 +7940,6 @@
       }).join('') +
       '</div>'
     );
-  }
-
-  function renderStatusLightsSubtabBar(activeTab) {
-    function btn(id, label) {
-      var on = activeTab === id;
-      return (
-        '<button type="button" class="soft-pad-feature-subtab soft-pad-lights-subtab' +
-        (on ? ' is-active' : '') + '" role="tab" data-lights-subtab="' + id + '" aria-selected="' +
-        (on ? 'true' : 'false') + '">' +
-        '<span class="soft-pad-feature-subtab__lbl">' + esc(label) + '</span></button>'
-      );
-    }
-    return (
-      '<div class="soft-pad-lights-subtabs" data-lights-subtab-bar="1" role="tablist" aria-label="' +
-      esc(t('softPadLightsSubtabsAria', '状态灯配置')) + '">' +
-      btn('topbar', t('softPadLightsTabTopbar', '顶栏')) +
-      btn('ambient', t('softPadLightsTabAmbient', '氛围灯')) +
-      btn('keys', t('softPadLightsTabKeys', '按键灯')) +
-      '</div>'
-    );
-  }
-
-  function renderStatusLightsScopeLead(m, mode, appName) {
-    appName = appName || appDisplayName(m, mode);
-    return (
-      '<p class="soft-pad-lights-scope-lead" data-lights-scope-lead="1">' +
-      '<span class="soft-pad-lights-scope-lead__app">' +
-      esc(t('softPadLightsScopeApp', '当前应用：{name}').replace('{name}', appName)) +
-      '</span> · <span class="soft-pad-lights-scope-lead__hint">' +
-      esc(lightsSimpleLead(mode)) + '</span></p>'
-    );
-  }
-
-  function renderLightsTopbarTab(pad) {
-    return renderTopbarLightsPanel(pad);
   }
 
   function clampAmbientOpacity(v) {
@@ -7827,7 +8010,7 @@
     var Hub = global.OneToneSoftPadHub;
     var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
     if (previewHost) {
-      syncStatusLightsPreviewChrome(previewHost, m, pad, { subtab: softPadLightsSubtab });
+      syncStatusLightsPreviewChrome(previewHost, m, pad, workbenchPreviewOpts());
     }
     var p = global.OneToneConfigPersist;
     if (p && p.saveAsync) p.saveAsync();
@@ -8022,20 +8205,10 @@
     var body = '';
     if (cap === 'preset' && agent) {
       body =
-        '<div class="soft-pad-lights-simple__row">' +
-        '<label><input type="checkbox" data-act="agent-light" data-agent="' + esc(agent) + '"' +
-        (mainOn ? ' checked' : '') + '> ' +
-        esc(t('softPadLightsShowApp', '显示 {name} 状态灯').replace('{name}', appName)) +
-        '</label></div>' +
-        '<div class="soft-pad-lights-simple__row" data-lights-connect-row="' + esc(agent) + '">' +
-        '<span class="soft-pad-lights-simple__status" data-lights-connected hidden>' +
-        '<i class="soft-pad-lights-simple__status-dot" aria-hidden="true"></i>' +
-        esc(t('softPadLightsConnected', '已连接 {name} Activity').replace('{name}', appName)) +
-        '</span>' +
-        '<button type="button" class="codex-micro-pad__btn codex-micro-pad__btn--primary" ' +
-        'data-act="agent-light-connect" data-agent="' + esc(agent) + '" hidden>' +
-        esc(t('softPadLightsConnectApp', '连接 {name}').replace('{name}', appName)) +
-        '</button></div>';
+        '<p class="codex-pad-mgr__hint" data-lights-keys-preset-lead="1">' +
+        esc(t('softPadLightsKeysPresetLead',
+          '按键灯配色见下方；顶栏开关与接入请在「跨应用」Tab 管理。')) +
+        '</p>';
     } else if (cap === 'customizable') {
       body =
         renderLightTemplateKeysCards(pad) +
@@ -8081,12 +8254,6 @@
     );
   }
 
-  function renderLightsTabPanel(tab, m, pad) {
-    if (tab === 'ambient') return renderLightsAmbientTab(m, pad);
-    if (tab === 'keys') return renderLightsKeysTab(m, pad);
-    return renderLightsTopbarTab(pad);
-  }
-
   function renderLightTemplateCards(pad) {
     var cur = String((pad && pad.lightTemplate) || 'bezel');
     var items = [
@@ -8117,21 +8284,268 @@
     );
   }
 
-  function renderStatusLightsSimple(m, pad) {
+  function workbenchPreviewSubtab(tab) {
+    tab = tab || softPadWorkbenchTab;
+    if (tab === 'lights') {
+      return softPadLightsSubtab === 'ambient' ? 'ambient' : 'keys';
+    }
+    if (tab === 'session') return 'keys';
+    return 'topbar';
+  }
+
+  function workbenchPreviewOpts(tab) {
+    tab = tab || softPadWorkbenchTab;
+    return {
+      subtab: workbenchPreviewSubtab(tab),
+      focusAgent: hubSelectedScopeKind(),
+      stripMode: tab === 'cross' ? 'full' : 'focus'
+    };
+  }
+
+  function resolveAgentWorkbenchCaps(m, scopeKind) {
     var mode = resolveLightsPanelMode(m);
-    var appName = appDisplayName(m, mode);
+    var Reg = global.OneToneSoftPadAgentRegistry;
+    var caps = Reg && Reg.agentLightsCapability
+      ? Reg.agentLightsCapability(scopeKind)
+      : { topbar: true, keys: keysLightsCapability(mode), ambient: true, session: false };
+    return { mode: mode, caps: caps };
+  }
+
+  function renderAgentWorkbenchSubtabBar(activeTab, caps) {
+    function btn(id, label) {
+      var on = activeTab === id;
+      return (
+        '<button type="button" class="soft-pad-feature-subtab soft-pad-agent-workbench__tab' +
+        (on ? ' is-active' : '') + '" role="tab" data-agent-workbench-tab="' + id +
+        '" aria-selected="' + (on ? 'true' : 'false') + '">' +
+        '<span class="soft-pad-feature-subtab__lbl">' + esc(label) + '</span></button>'
+      );
+    }
+    var html =
+      btn('readiness', t('softPadWorkbenchTabReadiness', '准备度')) +
+      btn('lights', t('softPadWorkbenchTabLights', '灯效')) +
+      btn('cross', t('softPadWorkbenchTabCross', '跨应用'));
+    if (caps && caps.session) {
+      html += btn('session', t('softPadWorkbenchTabSession', '会话'));
+    }
+    return (
+      '<div class="soft-pad-agent-workbench__tabs" data-agent-workbench-tab-bar="1" role="tablist" aria-label="' +
+      esc(t('softPadWorkbenchTabsAria', 'Agent 工作台')) + '">' + html + '</div>'
+    );
+  }
+
+  function renderAgentWorkbenchLightsSubtabBar(activeTab) {
+    function btn(id, label) {
+      var on = activeTab === id;
+      return (
+        '<button type="button" class="soft-pad-feature-subtab soft-pad-lights-subtab' +
+        (on ? ' is-active' : '') + '" role="tab" data-lights-subtab="' + id +
+        '" aria-selected="' + (on ? 'true' : 'false') + '">' +
+        '<span class="soft-pad-feature-subtab__lbl">' + esc(label) + '</span></button>'
+      );
+    }
+    return (
+      '<div class="soft-pad-lights-subtabs soft-pad-agent-workbench__lights-tabs" data-lights-subtab-bar="1" role="tablist" aria-label="' +
+      esc(t('softPadLightsSubtabsAria', '状态灯配置')) + '">' +
+      btn('keys', t('softPadLightsTabKeys', '按键灯')) +
+      btn('ambient', t('softPadLightsTabAmbient', '氛围灯')) +
+      '</div>'
+    );
+  }
+
+  function renderAgentReadinessPanel(m, pad, ctx) {
+    ctx = ctx || {};
+    var caps = ctx.caps;
+    var scopeKind = ctx.scopeKind;
+    var mid = m && m.id ? String(m.id) : '';
+    var padOn = !!(pad && pad.enabled);
+    return (
+      '<div class="soft-pad-agent-readiness" data-agent-readiness="1">' +
+      '<div class="soft-pad-agent-readiness__row">' +
+      '<span class="soft-pad-agent-readiness__lbl">' + esc(t('softPadReadinessPad', 'Pad')) + '</span>' +
+      (mid
+        ? ('<button type="button" class="toggle-switch' + (padOn ? ' is-on' : '') +
+          '" data-scheme-enable="' + esc(mid) + '" role="switch" aria-checked="' +
+          (padOn ? 'true' : 'false') + '" aria-label="' +
+          esc(t('softPadReadinessPadToggle', '虚拟键盘开关')) + '"></button>')
+        : '<span class="soft-pad-agent-readiness__lbl">—</span>') +
+      '<span class="soft-pad-agent-readiness__hint">' +
+      esc(padOn ? t('softPadHubStatusOn', '已启用') : t('softPadHubStatusOff', '未启用')) +
+      '</span></div>' +
+      (caps.topbar
+        ? ('<p class="codex-pad-mgr__hint soft-pad-agent-readiness__topbar-hint">' +
+          esc(t('softPadReadinessTopbarHint',
+            '顶栏状态灯在「跨应用」Tab 统一管理（添加/移除与接入）。')) + '</p>')
+        : '') +
+      renderConnectStatusSectionHtml(pad, {}, { mode: 'scope', scopeAgent: scopeKind }) +
+      '</div>'
+    );
+  }
+
+  function renderAgentLightsPanel(m, pad, ctx) {
+    ctx = ctx || {};
+    var caps = ctx.caps;
+    var keysCap = caps.keys || keysLightsCapability(ctx.mode);
+    var keysNa = keysCap === 'unsupported';
+    var ambientNa = caps.ambient === false;
     var tab = softPadLightsSubtab;
-    if (tab !== 'topbar' && tab !== 'ambient' && tab !== 'keys') tab = 'topbar';
+    if (tab !== 'keys' && tab !== 'ambient') tab = 'keys';
+    var body = '';
+    if (tab === 'ambient') {
+      body = ambientNa
+        ? ('<p class="codex-pad-mgr__hint">' + esc(t('softPadLightsCapNa', '此应用不支持')) + '</p>')
+        : renderLightsAmbientTab(m, pad);
+    } else {
+      body = keysNa
+        ? ('<p class="codex-pad-mgr__hint">' +
+          esc(t('softPadLightsKeysUnsupported',
+            '此习惯无自动按键灯。可用氛围灯/顶栏，或在右侧改习惯配置。')) + '</p>')
+        : renderLightsKeysTab(m, pad);
+    }
+    return (
+      '<div class="soft-pad-agent-workbench__lights" data-agent-lights-panel="1">' +
+      renderAgentWorkbenchLightsSubtabBar(tab) +
+      '<div class="soft-pad-agent-workbench__lights-body" data-agent-workbench-lights-body="1" data-lights-subtab="' +
+      esc(tab) + '">' + body + '</div></div>'
+    );
+  }
+
+  function renderAgentCrossPanel(pad) {
+    return (
+      '<div class="soft-pad-agent-workbench__cross" data-agent-cross-panel="1">' +
+      '<p class="codex-pad-mgr__hint soft-pad-agent-cross-global-hint">' +
+      esc(t('softPadCrossGlobalHint',
+        '全局设置：影响 Soft Pad 顶栏显示哪些 Agent，与左侧「当前应用」无关。')) +
+      '</p>' +
+      renderCrossTopbarMergedPanel(pad, {}) +
+      '</div>'
+    );
+  }
+
+  function renderAgentSessionPanel(m, pad) {
+    return (
+      '<div class="soft-pad-agent-workbench__session" data-agent-session-panel="1">' +
+      renderPadPurposeCard(m, pad) +
+      '</div>'
+    );
+  }
+
+  function renderAgentWorkbenchPanel(tab, m, pad, ctx) {
+    if (tab === 'lights') return renderAgentLightsPanel(m, pad, ctx);
+    if (tab === 'cross') return renderAgentCrossPanel(pad);
+    if (tab === 'session') return renderAgentSessionPanel(m, pad);
+    return renderAgentReadinessPanel(m, pad, ctx);
+  }
+
+  function renderAgentWorkbench(m, pad) {
+    var scopeKind = '';
+    try { scopeKind = String(hubSelectedScopeKind() || ''); } catch (_) {}
+    var resolved = resolveAgentWorkbenchCaps(m, scopeKind);
+    var mode = resolved.mode;
+    var caps = resolved.caps;
+    var agent = scopeAgentKind(m, mode);
+    if (!scopeKind && agent) scopeKind = agent;
+    var appName = appDisplayName(m, mode);
+    var fgLow = '';
+    try {
+      var Hub = global.OneToneSoftPadHub;
+      if (Hub && Hub.laneContextFromRuntime) {
+        var laneCtx = Hub.laneContextFromRuntime();
+        fgLow = String(Hub.kindForAppId(laneCtx.foregroundAppId || '') || '').toLowerCase();
+      }
+    } catch (_) {}
+    var isFg = fgLow && fgLow === String(scopeKind || '').toLowerCase();
+    var tab = softPadWorkbenchTab;
+    if (tab === 'session' && !caps.session) tab = 'readiness';
+    if (tab !== 'readiness' && tab !== 'lights' && tab !== 'cross' && tab !== 'session') tab = 'readiness';
+    softPadWorkbenchTab = tab;
+    var ctx = { mode: mode, caps: caps, agent: agent, scopeKind: scopeKind };
 
     return (
-      '<div class="soft-pad-lights-simple" data-lights-simple="1" data-lights-mode="' + esc(mode) +
-      '" data-lights-subtab="' + esc(tab) + '">' +
-      renderStatusLightsSubtabBar(tab) +
-      renderStatusLightsScopeLead(m, mode, appName) +
-      '<div class="soft-pad-lights-tab-panel" data-lights-tab-panel="1">' +
-      renderLightsTabPanel(tab, m, pad) +
+      '<div class="soft-pad-agent-workbench" data-agent-workbench="1" data-agent-workbench-tab="' +
+      esc(tab) + '" data-lights-mode="' + esc(mode) + '">' +
+      '<header class="soft-pad-agent-workbench__head">' +
+      '<h3>' + esc(appName) + '</h3>' +
+      (isFg
+        ? ('<span class="soft-pad-agent-workbench__fg">' +
+          esc(t('softPadConnectFgBadge', '当前前台')) + '</span>')
+        : '') +
+      '</header>' +
+      renderAgentWorkbenchSubtabBar(tab, caps) +
+      '<div class="soft-pad-agent-workbench__panel" data-agent-workbench-panel="1">' +
+      renderAgentWorkbenchPanel(tab, m, pad, ctx) +
       '</div></div>'
     );
+  }
+
+  function applyAgentWorkbenchTab(body, m, pad, tab) {
+    if (!body || !m || !pad) return;
+    if (tab !== 'readiness' && tab !== 'lights' && tab !== 'cross' && tab !== 'session') tab = 'readiness';
+    softPadWorkbenchTab = tab;
+    var root = body.querySelector('[data-agent-workbench]');
+    if (root) root.setAttribute('data-agent-workbench-tab', tab);
+    body.querySelectorAll('[data-agent-workbench-tab][role="tab"]').forEach(function (btn) {
+      var on = btn.getAttribute('data-agent-workbench-tab') === tab;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    var panel = body.querySelector('[data-agent-workbench-panel]');
+    if (panel) {
+      var scopeKind = '';
+      try { scopeKind = String(hubSelectedScopeKind() || ''); } catch (_) {}
+      var resolved = resolveAgentWorkbenchCaps(m, scopeKind);
+      var agent = scopeAgentKind(m, resolved.mode);
+      if (!scopeKind && agent) scopeKind = agent;
+      panel.innerHTML = renderAgentWorkbenchPanel(tab, m, pad, {
+        mode: resolved.mode,
+        caps: resolved.caps,
+        agent: agent,
+        scopeKind: scopeKind
+      });
+    }
+    if (tab === 'lights') {
+      var lightsTab = softPadLightsSubtab;
+      if (lightsTab !== 'keys' && lightsTab !== 'ambient') softPadLightsSubtab = 'keys';
+      var keysCap = keysLightsCapability(resolveLightsPanelMode(m));
+      if (keysCap === 'preset' || keysCap === 'customizable') {
+        var advHost = body.querySelector('.soft-pad-lights-advanced__body');
+        if (advHost) advHost.setAttribute('data-filled', '0');
+        fillStatusLightsAdvanced(body, m, pad);
+        bindShellDiagOptional(body, m);
+        refreshAgentLightsPickerState(body, m, pad);
+        setTimeout(function () {
+          try { refreshAgentLightsPickerState(body, m, pad, { hooks: true }); } catch (_) {}
+        }, 0);
+      }
+    }
+    bindTopbarLightsPanelEvents(body, m, pad);
+    bindAgentConnectEvents(body, m, pad);
+    bindSoftPadLightsSubtabEvents(body, m, pad);
+    var Hub = global.OneToneSoftPadHub;
+    var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
+    syncStatusLightsPreviewChrome(previewHost, m, pad, workbenchPreviewOpts(tab));
+    echoStatusPaletteOnSoftPads(pad);
+  }
+
+  function bindAgentWorkbenchSubtabEvents(body, m, pad) {
+    if (!body || !m || !pad) return;
+    body.querySelectorAll('[data-agent-workbench-tab][role="tab"]').forEach(function (btn) {
+      if (btn.__workbenchTabBound) return;
+      btn.__workbenchTabBound = true;
+      btn.addEventListener('click', function () {
+        var next = btn.getAttribute('data-agent-workbench-tab') || 'readiness';
+        if (next === softPadWorkbenchTab) return;
+        applyAgentWorkbenchTab(body, m, pad, next);
+      });
+    });
+  }
+
+  function patchAgentWorkbench(body, m, pad) {
+    if (!body || !m || !pad) return;
+    var tab = softPadWorkbenchTab;
+    var resolved = resolveAgentWorkbenchCaps(m, hubSelectedScopeKind());
+    if (tab === 'session' && !resolved.caps.session) tab = 'readiness';
+    applyAgentWorkbenchTab(body, m, pad, tab);
   }
 
   function renderStatusLightsPreviewLegend() {
@@ -8158,8 +8572,8 @@
   function syncStatusLightsPreviewChrome(host, m, pad, opts) {
     opts = opts || {};
     if (!host) return;
-    var tab = opts.subtab || softPadLightsSubtab || 'topbar';
-    if (tab !== 'topbar' && tab !== 'ambient' && tab !== 'keys') tab = 'topbar';
+    var tab = opts.subtab || softPadLightsSubtab || 'keys';
+    if (tab !== 'topbar' && tab !== 'ambient' && tab !== 'keys') tab = 'keys';
     host.querySelectorAll('[data-lights-topbar-preview], [data-lights-preview-legend]').forEach(function (el) {
       el.remove();
     });
@@ -8175,7 +8589,8 @@
     }
     applyStatusPaletteToPreview(host, pad);
     host.insertAdjacentHTML('afterbegin', renderTopbarPreviewStrip(pad, {
-      focusAgent: opts.focusAgent || hubSelectedScopeKind()
+      focusAgent: opts.focusAgent || hubSelectedScopeKind(),
+      stripMode: opts.stripMode
     }));
     if (tab === 'keys') {
       host.insertAdjacentHTML('beforeend', renderStatusLightsPreviewLegend());
@@ -8192,39 +8607,51 @@
 
   function applySoftPadLightsSubtab(body, m, pad, tab) {
     if (!body || !m || !pad) return;
-    if (tab !== 'topbar' && tab !== 'ambient' && tab !== 'keys') tab = 'topbar';
-    softPadLightsSubtab = tab;
-    var root = body.querySelector('[data-lights-simple]');
-    if (root) root.setAttribute('data-lights-subtab', tab);
-    body.querySelectorAll('.soft-pad-lights-subtab[data-lights-subtab]').forEach(function (btn) {
-      var on = btn.getAttribute('data-lights-subtab') === tab;
-      btn.classList.toggle('is-active', on);
-      btn.setAttribute('aria-selected', on ? 'true' : 'false');
-    });
-    var panel = body.querySelector('[data-lights-tab-panel]');
-    if (panel) panel.innerHTML = renderLightsTabPanel(tab, m, pad);
-    var mode = resolveLightsPanelMode(m);
-    var lead = body.querySelector('[data-lights-scope-lead]');
-    if (lead) {
-      lead.outerHTML = renderStatusLightsScopeLead(m, mode, appDisplayName(m, mode));
+    var wbLights = body.querySelector('[data-agent-workbench-lights-body]');
+    if (wbLights) {
+      if (tab !== 'keys' && tab !== 'ambient') tab = 'keys';
+      softPadLightsSubtab = tab;
+      wbLights.setAttribute('data-lights-subtab', tab);
+      body.querySelectorAll('.soft-pad-lights-subtab[data-lights-subtab]').forEach(function (btn) {
+        var on = btn.getAttribute('data-lights-subtab') === tab;
+        btn.classList.toggle('is-active', on);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      var scopeKind = '';
+      try { scopeKind = String(hubSelectedScopeKind() || ''); } catch (_) {}
+      var resolved = resolveAgentWorkbenchCaps(m, scopeKind);
+      var keysCap = resolved.caps.keys || keysLightsCapability(resolved.mode);
+      var keysNa = keysCap === 'unsupported';
+      var ambientNa = resolved.caps.ambient === false;
+      if (tab === 'ambient') {
+        wbLights.innerHTML = ambientNa
+          ? ('<p class="codex-pad-mgr__hint">' + esc(t('softPadLightsCapNa', '此应用不支持')) + '</p>')
+          : renderLightsAmbientTab(m, pad);
+      } else {
+        wbLights.innerHTML = keysNa
+          ? ('<p class="codex-pad-mgr__hint">' +
+            esc(t('softPadLightsKeysUnsupported',
+              '此习惯无自动按键灯。可用氛围灯/顶栏，或在右侧改习惯配置。')) + '</p>')
+          : renderLightsKeysTab(m, pad);
+      }
+      if (tab === 'keys' && (keysCap === 'preset' || keysCap === 'customizable')) {
+        var advHost = body.querySelector('.soft-pad-lights-advanced__body');
+        if (advHost) advHost.setAttribute('data-filled', '0');
+        fillStatusLightsAdvanced(body, m, pad);
+        bindShellDiagOptional(body, m);
+        refreshAgentLightsPickerState(body, m, pad);
+        setTimeout(function () {
+          try { refreshAgentLightsPickerState(body, m, pad, { hooks: true }); } catch (_) {}
+        }, 0);
+      }
+      bindSoftPadLightPanelEvents(body, m, pad, { panel: 'agent' });
+      bindAgentConnectEvents(body, m, pad);
+      var HubWb = global.OneToneSoftPadHub;
+      var previewHostWb = HubWb && HubWb.previewHostForFace ? HubWb.previewHostForFace('agent') : null;
+      syncStatusLightsPreviewChrome(previewHostWb, m, pad, workbenchPreviewOpts('lights'));
+      echoStatusPaletteOnSoftPads(pad);
+      return;
     }
-    if (tab === 'keys') {
-      var advHost = body.querySelector('.soft-pad-lights-advanced__body');
-      if (advHost) advHost.setAttribute('data-filled', '0');
-      fillStatusLightsAdvanced(body, m, pad);
-      bindShellDiagOptional(body, m);
-      refreshAgentLightsPickerState(body, m, pad);
-      setTimeout(function () {
-        try { refreshAgentLightsPickerState(body, m, pad, { hooks: true }); } catch (_) {}
-      }, 0);
-    }
-    bindTopbarLightsPanelEvents(body, m, pad);
-    bindSoftPadLightsSubtabEvents(body, m, pad);
-    bindAgentConnectEvents(body, m, pad);
-    var Hub = global.OneToneSoftPadHub;
-    var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
-    syncStatusLightsPreviewChrome(previewHost, m, pad, { subtab: tab });
-    echoStatusPaletteOnSoftPads(pad);
   }
 
   function bindSoftPadLightsSubtabEvents(body, m, pad) {
@@ -8233,7 +8660,7 @@
       if (btn.__lightsSubtabBound) return;
       btn.__lightsSubtabBound = true;
       btn.addEventListener('click', function () {
-        var next = btn.getAttribute('data-lights-subtab') || 'topbar';
+        var next = btn.getAttribute('data-lights-subtab') || 'keys';
         if (next === softPadLightsSubtab) return;
         applySoftPadLightsSubtab(body, m, pad, next);
       });
@@ -8287,6 +8714,19 @@
 
   function patchTopbarLightsPanel(body, m, pad) {
     if (!body || !pad) return;
+    var merged = body.querySelector('[data-cross-topbar-merged]');
+    if (merged) {
+      var wrapMerged = document.createElement('div');
+      wrapMerged.innerHTML = renderCrossTopbarMergedPanel(pad, {});
+      var nextMerged = wrapMerged.firstElementChild;
+      if (nextMerged) merged.replaceWith(nextMerged);
+      bindTopbarLightsPanelEvents(body, m, pad);
+      refreshAgentLightsPickerState(body, m, pad);
+      var HubM = global.OneToneSoftPadHub;
+      var previewHostM = HubM && HubM.previewHostForFace ? HubM.previewHostForFace('agent') : null;
+      syncStatusLightsPreviewChrome(previewHostM, m, pad, workbenchPreviewOpts('cross'));
+      return;
+    }
     var card = body.querySelector('[data-topbar-lights-panel]');
     if (!card) return;
     var wrap = document.createElement('div');
@@ -8297,7 +8737,7 @@
     refreshAgentLightsPickerState(body, m, pad);
     var Hub = global.OneToneSoftPadHub;
     var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
-    syncStatusLightsPreviewChrome(previewHost, m, pad, { subtab: softPadLightsSubtab });
+    syncStatusLightsPreviewChrome(previewHost, m, pad, workbenchPreviewOpts());
   }
 
   function bindTopbarLightsPanelEvents(body, m, pad) {
@@ -8440,7 +8880,7 @@
     }
   }
 
-  /** Agent subpage — advanced status lights; fill immediately (user entered intentionally). */
+  /** Agent subpage — v12c workbench; fill immediately (user entered intentionally). */
   function renderSoftPadAgentPanel(container, m, opts) {
     opts = opts || {};
     container = resolveSoftPadSubpagePaintHost(container);
@@ -8448,13 +8888,27 @@
     ensurePad(m, { persist: false });
     var pad = m.codexMicroPad;
     var token = opts.agentLoadToken != null ? opts.agentLoadToken : opts.token;
-    container.innerHTML = renderStatusLightsSimple(m, pad);
+    if (softPadWorkbenchTab === 'session') {
+      var scopeKind = '';
+      try { scopeKind = String(hubSelectedScopeKind() || ''); } catch (_) {}
+      if (!resolveAgentWorkbenchCaps(m, scopeKind).caps.session) {
+        softPadWorkbenchTab = 'readiness';
+      }
+    }
+    if (softPadWorkbenchTab === 'lights' &&
+      softPadLightsSubtab !== 'keys' && softPadLightsSubtab !== 'ambient') {
+      softPadLightsSubtab = 'keys';
+    }
+    container.innerHTML = renderAgentWorkbench(m, pad);
     container.setAttribute('data-soft-pad-mapping', String(m.id || ''));
     container.setAttribute('data-soft-pad-panel', 'agent');
-    container.setAttribute('data-lights-simple', '1');
+    container.setAttribute('data-agent-workbench', '1');
+    container.removeAttribute('data-lights-simple');
     container.classList.remove('is-editing-key');
     if (token != null) container.setAttribute('data-agent-load-token', String(token));
-    if (softPadLightsSubtab === 'keys') {
+    var mode = resolveLightsPanelMode(m);
+    var keysCap = keysLightsCapability(mode);
+    if (softPadWorkbenchTab === 'lights' && (keysCap === 'preset' || keysCap === 'customizable')) {
       fillStatusLightsAdvanced(container, m, pad, {
         agentLoadToken: token,
         requireSoftPad: true
@@ -8470,10 +8924,11 @@
     bindSoftPadLightPanelEvents(container, m, pad, Object.assign({}, opts, { panel: 'agent' }));
     bindAgentConnectEvents(container, m, pad);
     bindTopbarLightsPanelEvents(container, m, pad);
+    bindAgentWorkbenchSubtabEvents(container, m, pad);
     bindSoftPadLightsSubtabEvents(container, m, pad);
     var Hub = global.OneToneSoftPadHub;
     var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
-    syncStatusLightsPreviewChrome(previewHost, m, pad, { subtab: softPadLightsSubtab });
+    syncStatusLightsPreviewChrome(previewHost, m, pad, workbenchPreviewOpts());
     echoStatusPaletteOnSoftPads(pad);
   }
 
@@ -9183,7 +9638,7 @@
         });
         var Hub = global.OneToneSoftPadHub;
         var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
-        syncStatusLightsPreviewChrome(previewHost, m, pad, { subtab: softPadLightsSubtab });
+        syncStatusLightsPreviewChrome(previewHost, m, pad, workbenchPreviewOpts());
         softPadPanelChanged(m, { panel: 'agent', refreshPreview: true });
       });
     });
@@ -9197,7 +9652,7 @@
         softPadPanelChanged(m, { panel: 'agent', refreshPreview: true });
         var Hub = global.OneToneSoftPadHub;
         var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
-        syncStatusLightsPreviewChrome(previewHost, m, pad, { subtab: softPadLightsSubtab });
+        syncStatusLightsPreviewChrome(previewHost, m, pad, workbenchPreviewOpts());
         var p = global.OneToneConfigPersist;
         if (p && p.saveAsync) p.saveAsync();
         else if (p && p.save) p.save();
@@ -9279,7 +9734,7 @@
         }).finally(function () {
           var Hub = global.OneToneSoftPadHub;
           var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
-          syncStatusLightsPreviewChrome(previewHost, m, pad, { subtab: softPadLightsSubtab });
+          syncStatusLightsPreviewChrome(previewHost, m, pad, workbenchPreviewOpts());
           softPadPanelChanged(m, { panel: 'agent', refreshPreview: true });
         });
       });
@@ -11556,7 +12011,10 @@
     renderSoftPadRuntimePanel: renderSoftPadRuntimePanel,
     renderSoftPadPurposePanel: renderSoftPadPurposePanel,
     renderSoftPadAgentPanel: renderSoftPadAgentPanel,
-    renderStatusLightsSimple: renderStatusLightsSimple,
+    renderAgentWorkbench: renderAgentWorkbench,
+    getSoftPadWorkbenchTab: getSoftPadWorkbenchTab,
+    patchAgentWorkbench: patchAgentWorkbench,
+    agentLightEnabledOnPad: agentLightEnabledOnPad,
     getSoftPadLightsSubtab: getSoftPadLightsSubtab,
     renderLightsAmbientTab: renderLightsAmbientTab,
     renderLightsKeysTab: renderLightsKeysTab,

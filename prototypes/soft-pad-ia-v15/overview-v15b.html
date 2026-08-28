@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>虚拟键盘 IA v15b · 双页总览</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#0e1116;--surface:#161b22;--surface-2:#1c2330;--line:rgba(255,255,255,.08);--line-strong:rgba(255,255,255,.14);
+      --text:#e8eef5;--muted:#8b97a8;--faint:#5c6b7a;--cyan:#3eb8dc;--cyan-soft:rgba(62,184,220,.14);--cyan-bd:rgba(62,184,220,.35);
+      --green:#34d399;--green-soft:rgba(52,211,153,.12);--amber:#f59e0b;--red:#f87171;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;--mono:"JetBrains Mono",monospace}
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:var(--font)}
+    button{font-family:inherit;cursor:pointer}
+    header{padding:16px 20px;border-bottom:1px solid var(--line);background:#141920}
+    header h1{margin:0 0 6px;font-size:18px}
+    header p{margin:0;font-size:13px;color:var(--muted);max-width:720px;line-height:1.45}
+    header p b{color:var(--text)}
+  .page{padding:16px 20px 24px;max-width:1280px;margin:0 auto}
+    .compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+    @media(max-width:1000px){.compare{grid-template-columns:1fr}}
+    .col-label{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+    .col-label.a{color:var(--cyan)}.col-label.b{color:var(--green)}
+    .mock{border-radius:12px;background:var(--surface);overflow:hidden;border:1px solid var(--line)}
+    .mock.a{border-color:rgba(62,184,220,.25)}.mock.b{border-color:rgba(52,211,153,.28)}
+    .shell-status,.shell-scope,.shell-page{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--line);font-size:11px}
+    .shell-status{justify-content:space-between}
+    .shell-scope{background:rgba(0,0,0,.12)}.shell-page{background:rgba(0,0,0,.18);gap:4px}
+    .shell-page button{flex:1;padding:7px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font:700 11px/1 var(--font)}
+    .shell-page button.on-a{color:var(--cyan);border-color:var(--cyan-bd);background:var(--cyan-soft)}
+    .shell-page button.on-b{color:var(--green);border-color:rgba(52,211,153,.35);background:var(--green-soft)}
+    .chip{padding:4px 10px;border-radius:6px;border:1px solid var(--line);font-size:10px;font-weight:600;color:var(--muted)}
+    .chip.on-cyan{border-color:var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan)}
+    .chip.on-green{border-color:rgba(52,211,153,.35);background:var(--green-soft);color:var(--green)}
+    .body{display:grid;grid-template-columns:38% 1fr;min-height:320px}
+    .prev{border-right:1px solid var(--line);padding:12px;background:rgba(52,211,153,.04);font-size:10px;color:var(--faint)}
+    .prev b{display:block;color:var(--text);font-size:12px;margin-bottom:8px}
+    .prev-pad{margin:8px auto;width:80px;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:5px;border:1px solid var(--line);border-radius:6px;background:var(--surface-2)}
+    .prev-pad span{aspect-ratio:1;border:1px solid var(--line);border-radius:3px;font-size:6px;display:grid;place-items:center}
+    .lights-row{display:flex;gap:4px;align-items:center;margin:8px 0;font-size:10px;color:var(--muted)}
+    .dot{width:8px;height:8px;border-radius:50%}.dot.g{background:var(--green)}.dot.a{background:var(--amber)}.dot.f{background:var(--faint)}
+    .right{padding:0;display:flex;flex-direction:column}
+    .rtabs{display:flex;border-bottom:1px solid var(--line);font-size:10px;font-weight:700}
+    .rtab{padding:8px 10px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+    .rtab.on-cyan{color:var(--cyan);border-color:var(--cyan)}.rtab.on-green{color:var(--green);border-color:var(--green)}
+    .rpanel{padding:12px;flex:1;font-size:11px;color:var(--muted)}
+    .rpanel .card{padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2)}
+    .legend{margin-top:16px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-family:var(--mono);font-size:11px;line-height:1.55;color:var(--muted)}
+    .legend h3{margin:0 0 8px;font-family:var(--font);font-size:13px;color:var(--text)}
+    .ok{color:var(--green)}.no{color:var(--red);text-decoration:line-through}
+    .links{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
+    .links a{font-size:12px;font-weight:600;color:var(--cyan);text-decoration:none;padding:8px 14px;border:1px solid var(--line);border-radius:8px}
+    .links a:hover{border-color:var(--cyan-bd)}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>虚拟键盘 IA v15b · 双页总览</h1>
+    <p>两页<strong>独立</strong>，共用顶部 <b>状态栏 + 应用切换基座</b>。对称布局：<b>左预览 | 右配置</b>。状态灯页<strong>无 Agent 左栏目录</strong>。</p>
+  </header>
+  <div class="page">
+    <div class="compare">
+      <div>
+        <div class="col-label a">页面 1 · 浮层键盘</div>
+        <div class="mock a">
+          <div class="shell-status"><span><b>虚拟键盘</b> · 已启用 · 绑定·Codex</span><span>开关</span></div>
+          <div class="shell-scope"><span style="color:var(--faint);font-weight:700">应用</span>
+            <span class="chip on-cyan">Codex</span><span class="chip">Claude</span><span class="chip">Cursor</span></div>
+          <div class="shell-page"><button class="on-a">浮层键盘</button><button>状态灯</button></div>
+          <div class="body">
+            <div class="prev"><b>Pad 大图预览</b>12 键布局<br><div class="prev-pad"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span style="grid-column:span 2">发</span><span>✓</span></div></div>
+            <div class="right">
+              <div class="rtabs">
+                <span class="rtab on-cyan">出现</span><span class="rtab">键位</span><span class="rtab">外观</span><span class="rtab">用途</span>
+              </div>
+              <div class="rpanel"><div class="card">何时显示 · 匹配规则 · 表单</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-label b">页面 2 · 状态灯</div>
+        <div class="mock b">
+          <div class="shell-status"><span><b>虚拟键盘</b> · 已启用 · 绑定·Codex</span><span>开关</span></div>
+          <div class="shell-scope"><span style="color:var(--faint);font-weight:700">应用</span>
+            <span class="chip on-green">Codex</span><span class="chip">Claude</span><span class="chip">Cursor</span></div>
+          <div class="shell-page"><button>浮层键盘</button><button class="on-b">状态灯</button></div>
+          <div class="body">
+            <div class="prev">
+              <b>Codex · 状态预览</b>
+              <div class="lights-row"><span class="dot g"></span><span class="dot f"></span><span class="dot f"></span> 空闲</div>
+              <div class="prev-pad"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span style="grid-column:span 2">发</span><span>✓</span></div>
+              Pad 12键 · Hook 已接
+            </div>
+            <div class="right">
+              <div class="rtabs">
+                <span class="rtab on-green">准备度</span><span class="rtab">灯效</span><span class="rtab">跨应用</span>
+              </div>
+              <div class="rpanel" style="padding-top:6px"><span style="font-size:10px;color:var(--faint)">灯效下 → 按键灯 | 氛围灯</span>
+                <div class="card" style="margin-top:8px">Hook · Pad 开关 · 额度</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <h3>导航契约</h3>
+      全局侧栏: 虚拟键盘（仅一项）
+      L1 状态栏 + 绑定 + 开关
+      L2 应用 scope chips（Agent 只在这里切）
+      L3 页级: [浮层键盘 | 状态灯]  ← 两个独立页面
+      L4a 页面1 右栏: 出现|键位|外观|用途
+      L4b 页面2 右栏: 准备度|灯效|跨应用 (+ 灯效→按键灯|氛围灯)
+      <span class="ok">两页都是 左预览 | 右配置</span>
+      <span class="no">不要 Agent 左栏目录</span>
+      <span class="no">不要 状态灯塞进 Pad 四 tab</span>
+      <span class="no">不要 顶栏 compact 预览条（信息在左栏）</span>
+    </div>
+
+    <div class="links">
+      <a href="a-pad-primary-tabs.html">交互原型 · 页面 1</a>
+      <a href="b-lights-workbench.html">交互原型 · 页面 2</a>
+      <a href="index.html">索引</a>
+    </div>
+  </div>
+</body>
+</html>

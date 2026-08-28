@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="900" viewBox="0 0 1320 900">
+  <defs><style type="text/css"><![CDATA[
+.bg{fill:#0f1419}.shell{fill:#161b22;stroke:rgba(255,255,255,0.08)}
+.surface{fill:#1c2330;stroke:rgba(255,255,255,0.08)}
+.soft{fill:#252d3a;stroke:rgba(255,255,255,0.08)}
+.ink{fill:#e8eef5}.muted{fill:#8b97a8}.faint{fill:#5c6b7a}
+.small{font:11px 'Segoe UI','Microsoft YaHei',sans-serif}
+.body{font:13px 'Segoe UI','Microsoft YaHei',sans-serif}
+.title{font:700 14px 'Segoe UI','Microsoft YaHei',sans-serif}
+.h1{font:700 20px 'Segoe UI','Microsoft YaHei',sans-serif}
+.label{font:700 12px 'Segoe UI','Microsoft YaHei',sans-serif}
+.cap{font:700 10px 'Segoe UI','Microsoft YaHei',sans-serif}
+]]></style></defs>
+  <rect class="bg" width="1320" height="900"/>
+
+  <rect x="16" y="16" width="1288" height="868" rx="16" class="shell"/>
+  <rect x="32" y="28" width="140" height="20" rx="10" fill="#3eb8dc22" stroke="#3eb8dc"/>
+    <text x="102" y="42" text-anchor="middle" class="cap" fill="#3eb8dc">v12 · Agent 工作台</text>
+  <text x="184" y="44" class="h1 ink">融合能力 · 一 Agent 一工作台</text>
+  <text x="184" y="64" class="small muted">取代「状态灯独立舞台 + 三份 Agent 列表」</text>
+
+  <rect x="32" y="80" width="280" height="780" rx="14" class="surface"/>
+  <text x="48" y="104" class="label ink">Agent 目录</text>
+  <text x="48" y="120" class="small muted">Pad · 灯 · 接 — 三态一眼看清</text>
+  <g transform="translate(24 120)">
+    <rect width="248" height="52" rx="10" fill="#1c2330" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+    <text x="14" y="22" class="label ink">Codex</text>
+    <rect x="14" y="30" width="64" height="20" rx="10" fill="#34d39922" stroke="#34d399"/>
+    <text x="46" y="44" text-anchor="middle" class="cap" fill="#34d399">Pad·开</text><rect x="86" y="30" width="64" height="20" rx="10" fill="#34d39922" stroke="#34d399"/>
+    <text x="118" y="44" text-anchor="middle" class="cap" fill="#34d399">灯·开</text><rect x="158" y="30" width="64" height="20" rx="10" fill="#f59e0b22" stroke="#f59e0b"/>
+    <text x="190" y="44" text-anchor="middle" class="cap" fill="#f59e0b">接·等</text>
+  </g><g transform="translate(24 178)">
+    <rect width="248" height="52" rx="10" fill="#1c2330" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+    <text x="14" y="22" class="label ink">Claude</text>
+    <rect x="14" y="30" width="64" height="20" rx="10" fill="#34d39922" stroke="#34d399"/>
+    <text x="46" y="44" text-anchor="middle" class="cap" fill="#34d399">Pad·开</text><rect x="86" y="30" width="64" height="20" rx="10" fill="#5c6b7a22" stroke="#5c6b7a"/>
+    <text x="118" y="44" text-anchor="middle" class="cap" fill="#5c6b7a">灯·关</text><rect x="158" y="30" width="64" height="20" rx="10" fill="#f8717122" stroke="#f87171"/>
+    <text x="190" y="44" text-anchor="middle" class="cap" fill="#f87171">接·未</text>
+  </g><g transform="translate(24 236)">
+    <rect width="248" height="52" rx="10" fill="rgba(62,184,220,0.14)" stroke="#3eb8dc" stroke-width="2"/>
+    <text x="14" y="22" class="label ink">Cursor</text>
+    <rect x="14" y="30" width="64" height="20" rx="10" fill="#34d39922" stroke="#34d399"/>
+    <text x="46" y="44" text-anchor="middle" class="cap" fill="#34d399">Pad·开</text><rect x="86" y="30" width="64" height="20" rx="10" fill="#34d39922" stroke="#34d399"/>
+    <text x="118" y="44" text-anchor="middle" class="cap" fill="#34d399">灯·开</text><rect x="158" y="30" width="64" height="20" rx="10" fill="#f8717122" stroke="#f87171"/>
+    <text x="190" y="44" text-anchor="middle" class="cap" fill="#f87171">接·未</text>
+  </g><g transform="translate(24 294)">
+    <rect width="248" height="52" rx="10" fill="#1c2330" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+    <text x="14" y="22" class="label ink">WorkBuddy</text>
+    <rect x="14" y="30" width="64" height="20" rx="10" fill="#f59e0b22" stroke="#f59e0b"/>
+    <text x="46" y="44" text-anchor="middle" class="cap" fill="#f59e0b">可准备</text><rect x="86" y="30" width="64" height="20" rx="10" fill="#5c6b7a22" stroke="#5c6b7a"/>
+    <text x="118" y="44" text-anchor="middle" class="cap" fill="#5c6b7a">灯·关</text><rect x="158" y="30" width="64" height="20" rx="10" fill="#8b97a822" stroke="#8b97a8"/>
+    <text x="190" y="44" text-anchor="middle" class="cap" fill="#8b97a8">Hook</text>
+  </g><g transform="translate(24 352)">
+    <rect width="248" height="52" rx="10" fill="#1c2330" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+    <text x="14" y="22" class="label ink">Trae Work</text>
+    <rect x="14" y="30" width="64" height="20" rx="10" fill="#34d39922" stroke="#34d399"/>
+    <text x="46" y="44" text-anchor="middle" class="cap" fill="#34d399">Pad·开</text><rect x="86" y="30" width="64" height="20" rx="10" fill="#34d39922" stroke="#34d399"/>
+    <text x="118" y="44" text-anchor="middle" class="cap" fill="#34d399">灯·开</text><rect x="158" y="30" width="64" height="20" rx="10" fill="#3eb8dc22" stroke="#3eb8dc"/>
+    <text x="190" y="44" text-anchor="middle" class="cap" fill="#3eb8dc">本地</text>
+  </g><g transform="translate(24 410)">
+    <rect width="248" height="52" rx="10" fill="#1c2330" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+    <text x="14" y="22" class="label ink">MiniMax</text>
+    <rect x="14" y="30" width="64" height="20" rx="10" fill="#34d39922" stroke="#34d399"/>
+    <text x="46" y="44" text-anchor="middle" class="cap" fill="#34d399">Pad·开</text><rect x="86" y="30" width="64" height="20" rx="10" fill="#a78bfa22" stroke="#a78bfa"/>
+    <text x="118" y="44" text-anchor="middle" class="cap" fill="#a78bfa">额度</text><rect x="158" y="30" width="64" height="20" rx="10" fill="#f59e0b22" stroke="#f59e0b"/>
+    <text x="190" y="44" text-anchor="middle" class="cap" fill="#f59e0b">API</text>
+  </g>
+  <text x="48" y="844" class="small faint">+ 添加自定义习惯</text>
+
+  <rect x="328" y="80" width="960" height="780" rx="14" fill="#252d3a" stroke="rgba(255,255,255,0.08)"/>
+  <text x="344" y="104" class="title ink">Cursor · 工作台</text>
+  <rect x="460" y="90" width="72" height="20" rx="10" fill="#3eb8dc22" stroke="#3eb8dc"/>
+    <text x="496" y="104" text-anchor="middle" class="cap" fill="#3eb8dc">当前前台</text>
+  <g transform="translate(360 120)"><rect width="200" height="200" rx="18" fill="#1a2a35" stroke="#3eb8dc" stroke-width="2"/><rect x="16" y="16" width="168" height="130" rx="12" fill="#0f1a22" stroke="rgba(255,255,255,0.08)"/><rect x="28" y="28" width="44" height="36" rx="8" fill="#fff" stroke="rgba(255,255,255,0.08)"/><rect x="80" y="28" width="44" height="36" rx="8" fill="#fff" stroke="rgba(255,255,255,0.08)"/><rect x="132" y="28" width="44" height="36" rx="8" fill="#3eb8dc" stroke="rgba(255,255,255,0.08)"/><text x="154" y="50" text-anchor="middle" class="cap" fill="#fff">●</text><rect x="16" y="154" width="168" height="28" rx="8" fill="#0a1018"/><circle cx="36" cy="168" r="5" fill="#3eb8dc"/><circle cx="56" cy="168" r="5" fill="#f59e0b"/><text x="170" y="172" text-anchor="end" class="cap" fill="#5c6b7a">顶栏</text></g>
+
+  <g transform="translate(600 120)">
+    <rect width="680" height="88" rx="12" class="surface"/>
+    <text x="16" y="24" class="label ink">① 准备度（一次看清三件事）</text>
+    
+      <text x="16" y="48" class="small muted">Soft Pad</text><rect x="80" y="36" width="36" height="20" rx="10" fill="#34d399" stroke="#34d399"/>
+    <circle cx="106" cy="46" r="7" fill="#fff"/><text x="128" y="50" class="body ink">已启用 · 14/15 键</text>
+      <text x="320" y="48" class="small muted">顶栏灯</text><rect x="380" y="36" width="36" height="20" rx="10" fill="#34d399" stroke="#34d399"/>
+    <circle cx="406" cy="46" r="7" fill="#fff"/><text x="428" y="50" class="body ink">显示圆点</text>
+      <text x="520" y="48" class="small muted">接入</text><rect x="560" y="36" width="56" height="20" rx="10" fill="#f8717122" stroke="#f87171"/>
+    <text x="588" y="50" text-anchor="middle" class="cap" fill="#f87171">未接入</text><rect x="630" y="36" width="100" height="28" rx="8" fill="#3eb8dc"/><text x="680" y="55" text-anchor="middle" class="cap" fill="#fff">连接</text>
+  </g>
+
+  <g transform="translate(600 220)">
+    <rect width="680" height="100" rx="12" class="surface"/>
+    <text x="16" y="24" class="label ink">② 灯效（按能力显示，不画三个 Tab）</text>
+    
+      <text x="16" y="44" class="body ink">顶栏圆点</text><text x="100" y="44" class="small muted">— Cursor 仅支持顶栏，无多键灯</text>
+      <rect x="16" y="56" width="200" height="32" rx="8" fill="#0a1018" stroke="rgba(255,255,255,0.08)"/><circle cx="190" cy="72" r="5" fill="#3eb8dc"/>
+      <text x="240" y="76" class="small faint">氛围灯 / 按键灯：此 Agent 不适用（诚实灰掉）</text>
+  </g>
+
+  <g transform="translate(600 336)">
+    <rect width="680" height="72" rx="12" class="surface"/>
+    <text x="16" y="24" class="label ink">③ 跨应用顶栏（次要，默认折叠）</text>
+    <text x="16" y="44" class="small muted">▸ 还监视 Codex · Claude · Trae Work（chip 管理 + 添加）</text>
+  </g>
+
+  <text x="32" y="876" class="small" fill="#34d399">图 A · 左：唯一 Agent 列表 · 右：选中 Agent 的 Pad+灯+接入 融合工作台</text>
+
+</svg>

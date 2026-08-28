@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>虚拟键盘 IA v15c · 原型索引</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#0e1116;--surface:#161b22;--line:rgba(255,255,255,.1);--text:#e8eef5;--muted:#8b97a8;--cyan:#3eb8dc;--green:#34d399;--amber:#f59e0b;--font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5}
+    header{padding:20px 24px;border-bottom:1px solid var(--line);background:#141920}
+    h1{margin:0 0 8px;font-size:20px}p.lead{margin:0;color:var(--muted);max-width:760px;font-size:14px}
+    main{padding:24px;max-width:920px;margin:0 auto;display:grid;gap:16px}
+    .hero{padding:16px;border-radius:12px;border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.08);font-size:13px;color:var(--muted)}
+    .hero b{color:var(--amber)}
+    .card{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:18px}
+    .card h2{margin:0 0 8px;font-size:16px}
+    .card p{margin:0 0 12px;font-size:13px;color:var(--muted)}
+    pre{font-size:10px;line-height:1.5;color:var(--muted);background:rgba(0,0,0,.25);padding:12px;border-radius:8px;overflow-x:auto}
+    a.btn{display:inline-block;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;text-decoration:none;color:#0a1018;background:linear-gradient(90deg,var(--cyan),var(--green))}
+    .old{font-size:12px;color:var(--muted);opacity:.7}
+    .old a{color:var(--cyan)}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>虚拟键盘 IA v15c</h1>
+    <p class="lead">页面切换 = 顶部 <b>Flow 三节点</b>。Agent 仅顶栏「切换 · App」下拉，<b>无 Agent 目录列</b>；左预览随 scope 更新。</p>
+  </header>
+  <main>
+    <div class="hero">
+      <b>修正 v15a/b</b>：不用扁平分段条或 scope chips 做模块切换。模块切换保留现有 <code>#softPadFlowNodes</code> 样式，放在状态栏下方。
+    </div>
+    <article class="card">
+      <h2>推荐 · 顶部 Flow 应用切换（浅色 · 对齐截图）</h2>
+      <p>默认「状态灯」页。顶栏下拉切 Agent（含 Pad/顶栏/接入态）；状态灯与 Pad 页均为 <b>左预览 | 右配置</b> 两栏。</p>
+      <pre>顶栏: 切换·Codex ▾（= 原 Agent 目录能力）| 开关
+Flow: [Soft Pad] — [状态灯] — [托盘菜单]
+左栏: 当前 Agent 的 Pad 键位 + 顶栏灯预览
+右栏: 出现/键位… 或 准备度/灯效…</pre>
+      <a class="btn" href="top-flow-switch.html">打开 v15c 原型 →</a>
+    </article>
+    <p class="old">旧版探索：<a href="overview-v15b.html">v15b 双页总览</a> · <a href="a-pad-primary-tabs.html">扁平分段</a>（已弃用为模块切换方案）</p>
+  </main>
+</body>
+</html>

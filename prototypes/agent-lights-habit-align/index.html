@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>状态灯 v12e · 扁平方案原型</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:#0e1116;--surface:#161b22;--line:rgba(255,255,255,.1);
+      --text:#e8eef5;--muted:#8b97a8;--cyan:#3eb8dc;--green:#34d399;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;--radius:12px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5}
+    header{padding:20px 24px;border-bottom:1px solid var(--line);background:#141920;position:sticky;top:0;z-index:10}
+    h1{margin:0 0 8px;font-size:20px}
+    .lead{margin:0;font-size:14px;color:var(--muted);max-width:720px}
+    nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+    nav a{color:var(--muted);text-decoration:none;font-size:12px;font-weight:600;padding:7px 14px;border:1px solid var(--line);border-radius:8px}
+    nav a:hover{color:var(--cyan);border-color:rgba(62,184,220,.35)}
+    main{padding:24px;max-width:900px;margin:0 auto}
+    .callout{padding:14px 16px;border-radius:var(--radius);border:1px solid rgba(248,113,113,.35);background:rgba(248,113,113,.06);font-size:13px;margin-bottom:24px}
+    .callout strong{color:#fca5a5}
+    .principle{padding:14px 16px;border-radius:var(--radius);border:1px solid rgba(52,211,153,.35);background:rgba(52,211,153,.06);font-size:13px;margin-bottom:24px;color:var(--muted)}
+    .principle em{color:var(--text);font-style:normal;font-weight:600}
+    .schemes{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media(max-width:720px){.schemes{grid-template-columns:1fr}}
+    .card{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:18px;display:flex;flex-direction:column;gap:12px}
+    .card.rec{border-color:rgba(52,211,153,.4)}
+    .tag{font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;width:fit-content}
+    .tag.a{background:rgba(52,211,153,.12);color:var(--green)}
+    .tag.b{background:rgba(62,184,220,.12);color:var(--cyan)}
+    .card h2{margin:0;font-size:16px}
+    .card p{margin:0;font-size:13px;color:var(--muted)}
+    .wf{margin-top:4px;padding:12px;border-radius:8px;background:rgba(0,0,0,.25);font-family:monospace;font-size:11px;line-height:1.45;color:var(--muted);white-space:pre}
+    .card a{margin-top:auto;text-align:center;padding:10px;border-radius:8px;background:var(--green);color:#0a1018;font-weight:700;font-size:13px;text-decoration:none}
+    .card:not(.rec) a{background:var(--cyan)}
+    .drop{margin-top:24px;font-size:12px;color:var(--muted)}
+    .drop s{color:#f87171}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>状态灯 v12e · 扁平方案（重做）</h1>
+    <p class="lead">上一版把 banner、状态栏、strip、flow、预览、answer、Tab 竖着叠了 7 层 — 方向错了。新方案只保留 <strong>选谁</strong> 和 <strong>改什么</strong> 两层。</p>
+    <nav>
+      <a href="a-flat-workspace.html">A · 两栏扁平</a>
+      <a href="b-flat-single.html">B · 单栏扁平</a>
+      <a href="../agent-workbench-v12/index.html">旧 v12b（对照）</a>
+    </nav>
+  </header>
+  <main>
+    <div class="callout">
+      <strong>弃用</strong>：三栏 + 补丁（preview | 目录 | 工作台 + banner/strip/answer）、以及任何在 agent 面上重复 Soft Pad 壳层（flow 瓷片、整页状态栏）的方案。
+    </div>
+    <div class="principle">
+      Agent 面只做两件事：<em>① 选 Agent</em>（左列表或顶栏 chip）· <em>② 改配置</em>（Tab 内容区）。<br>
+      Pad / 顶栏 / 接入状态 → 收成选中行上的 3 个 pill，或顶栏一行；预览只在「灯效」Tab 内按需展开。
+    </div>
+
+    <div class="schemes">
+      <article class="card rec">
+        <span class="tag a">A · 推荐</span>
+        <h2>两栏扁平</h2>
+        <p>对齐习惯页宽度：左 248px Agent 列表（行内带状态 pill），右栏只有 agent 标题行 + Tab + 面板。无 answer 卡、无预览列。</p>
+        <pre class="wf">┌─────────┬──────────────────────┐
+│ Agent   │ Codex  Pad·顶栏·已接  [顶栏…] │
+│ 列表    ├──────────────────────┤
+│         │ 准备度 │ 灯效 │ 会话   │
+│         │ （Tab 内容）          │
+└─────────┴──────────────────────┘</pre>
+        <a href="a-flat-workspace.html">打开 A →</a>
+      </article>
+      <article class="card">
+        <span class="tag b">B</span>
+        <h2>单栏扁平</h2>
+        <p>无左栏：顶上一行 scope chip + 状态 pill + 全局顶栏入口，下面直接 Tab。主区最宽，适合已熟 Keys scope 条的用户。</p>
+        <pre class="wf">┌────────────────────────────────┐
+│ [Codex][Claude]…  Pad·顶栏·已接 │
+├────────────────────────────────┤
+│ 准备度 │ 灯效 │ 会话            │
+│ （Tab 内容）                    │
+└────────────────────────────────┘</pre>
+        <a href="b-flat-single.html">打开 B →</a>
+      </article>
+    </div>
+
+    <p class="drop">已移除：<s>a-habit-workspace（叠层版）</s> · <s>b-keys-strip（叠层版）</s> · <s>c-minimal（三栏补丁）</s></p>
+  </main>
+</body>
+</html>

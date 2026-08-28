@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>B · 单栏扁平 · 状态灯</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:#0e1116;--surface:#161b22;--surface-2:#1c2330;--line:rgba(255,255,255,.08);
+      --text:#e8eef5;--muted:#8b97a8;--cyan:#3eb8dc;--cyan-soft:rgba(62,184,220,.14);
+      --green:#34d399;--green-soft:rgba(52,211,153,.12);--pink:#f472b6;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;--radius:12px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font)}
+    button{font-family:inherit;cursor:pointer}
+    .proto{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:#141920;font-size:12px;color:var(--muted)}
+    .proto strong{color:var(--text)}
+    .proto a{color:var(--cyan);margin-left:auto}
+    .wrap{max-width:720px;margin:0 auto;padding:16px}
+    .top{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px}
+    .scope{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+    .chip{padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);font-size:12px;font-weight:600;color:inherit}
+    .chip.is-on{border-color:var(--cyan);background:var(--cyan-soft);color:var(--cyan)}
+    .meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .meta h2{margin:0;font-size:17px;font-weight:700;margin-right:4px}
+    .pill{font-size:9px;font-weight:700;padding:2px 6px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+    .pill.ok{color:var(--green);border-color:rgba(52,211,153,.35);background:var(--green-soft)}
+    .pill.warn{color:#fbbf24}
+    .pill.off{opacity:.5}
+    .spacer{flex:1}
+    .ghost{padding:6px 10px;border-radius:8px;border:1px solid rgba(244,114,182,.4);background:rgba(244,114,182,.08);color:var(--pink);font-size:11px;font-weight:600}
+    .main{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);min-height:440px;display:flex;flex-direction:column}
+    .tabs{display:flex;gap:0;border-bottom:1px solid var(--line);padding:0 14px}
+    .tab{padding:10px 14px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--muted);font-size:12px;font-weight:700;margin-bottom:-1px}
+    .tab.is-on{color:var(--cyan);border-bottom-color:var(--cyan)}
+    .panel{flex:1;padding:16px;font-size:13px}
+    .panel h3{margin:0 0 12px;font-size:13px;color:var(--muted)}
+    .row-ctrl{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}
+    .sw{width:36px;height:20px;border-radius:999px;background:var(--green);position:relative}
+    .sw::after{content:"";position:absolute;top:2px;right:2px;width:14px;height:14px;border-radius:50%;background:#fff}
+    details.preview{margin-top:10px;font-size:12px;color:var(--muted)}
+    details.preview .pad{width:64px;height:64px;border-radius:8px;border:2px solid var(--cyan);background:#1a2a35;margin-top:8px}
+  </style>
+</head>
+<body>
+  <div class="proto"><strong>B · 单栏扁平</strong> scope 条 + Tab，共 2 层<a href="index.html">← 对比</a></div>
+
+  <div class="wrap">
+    <header class="top">
+      <div class="scope" id="scope" role="tablist"></div>
+      <div class="meta">
+        <h2 id="name">Codex</h2>
+        <div id="pills"></div>
+        <span class="spacer"></span>
+        <button type="button" class="ghost" onclick="alert('原型：顶栏全局列表')">顶栏…</button>
+      </div>
+    </header>
+
+    <section class="main">
+      <div class="tabs">
+        <button type="button" class="tab is-on" data-t="ready">准备度</button>
+        <button type="button" class="tab" data-t="lights">灯效</button>
+        <button type="button" class="tab" data-t="session">会话</button>
+      </div>
+      <div class="panel" id="panel"></div>
+    </section>
+  </div>
+
+  <script>
+    var AGENTS = [
+      { id:'codex', name:'Codex', pad:true, top:true, conn:'已接' },
+      { id:'claude', name:'Claude', pad:true, top:true, conn:'待接' },
+      { id:'cursor', name:'Cursor', pad:false, top:true, conn:'已接' },
+      { id:'minimax', name:'MiniMax', pad:true, top:false, conn:'—' }
+    ];
+    var sel='codex', tab='ready';
+    function a(id){ return AGENTS.find(function(x){ return x.id===id; }); }
+    function pillHtml(x){
+      return '<span class="pill'+(x.pad?' ok':' off')+'">Pad</span><span class="pill'+(x.top?' ok':' off')+'">顶栏</span><span class="pill'+(x.conn==='待接'?' warn':x.conn==='—'?' off':' ok')+'">'+x.conn+'</span>';
+    }
+    function render(){
+      var x = a(sel);
+      document.getElementById('scope').innerHTML = AGENTS.map(function(g){
+        return '<button type="button" class="chip'+(g.id===sel?' is-on':'')+'" data-id="'+g.id+'">'+g.name+'</button>';
+      }).join('');
+      document.getElementById('name').textContent = x.name;
+      document.getElementById('pills').innerHTML = pillHtml(x);
+      var panels = {
+        ready:'<h3>准备度</h3><div class="row-ctrl"><span>Pad</span><div class="sw"></div></div><div class="row-ctrl"><span>接入</span><button style="padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:inherit">连接</button></div>',
+        lights:'<h3>灯效</h3><details class="preview"><summary>预览</summary><div class="pad"></div></details><div class="row-ctrl" style="margin-top:12px"><span>忙 · 蓝</span><span style="width:18px;height:18px;border-radius:4px;background:#3053FE"></span></div>',
+        session:'<h3>会话</h3><p style="color:var(--muted)">用途 · 槽位</p>'
+      };
+      document.getElementById('panel').innerHTML = panels[tab];
+    }
+    document.getElementById('scope').addEventListener('click', function(e){
+      var b = e.target.closest('[data-id]'); if(!b) return;
+      sel = b.getAttribute('data-id'); render();
+    });
+    document.querySelectorAll('.tab').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        tab = btn.getAttribute('data-t');
+        document.querySelectorAll('.tab').forEach(function(b){ b.classList.toggle('is-on', b===btn); });
+        render();
+      });
+    });
+    render();
+  </script>
+</body>
+</html>

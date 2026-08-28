@@ -36,6 +36,8 @@ check('应用标签由 island 直接处理点击', softPadWorkflowIsland.include
   softPadWorkflowIsland.includes('OneToneSoftPadHub?.selectScope?.(scopeId)'));
 check('应用标签点击即时同步选中态', softPadWorkflowIsland.includes("classList.toggle('is-active', active)") &&
   softPadWorkflowIsland.includes('__otSoftPadWorkflowSync?.()'));
+check('schemeListHidden 在 workflow model', softPadJs.includes('schemeListHidden: onAgentFace'));
+check('agent face 隐藏 scheme list 岛', softPadWorkflowIsland.includes('model.schemeListHidden'));
 
 console.log(`[workflow-islands] ${pass} 通过 / ${fail} 失败`);
 if (fail > 0) process.exit(1);

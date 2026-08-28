@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agent 工作台 v12 · 左预览 / 中目录 / 右设置</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0e1116;
+      --surface: #161b22;
+      --surface-2: #1c2330;
+      --surface-soft: #252d3a;
+      --line: rgba(255,255,255,.08);
+      --line-strong: rgba(255,255,255,.14);
+      --text: #e8eef5;
+      --muted: #8b97a8;
+      --faint: #5c6b7a;
+      --cyan: #3eb8dc;
+      --cyan-soft: rgba(62,184,220,.14);
+      --cyan-bd: rgba(62,184,220,.35);
+      --green: #34d399;
+      --green-soft: rgba(52,211,153,.12);
+      --amber: #f59e0b;
+      --red: #f87171;
+      --purple: #a78bfa;
+      --agent: #34d399;
+      --preview-bg: rgba(52,211,153,.06);
+      --radius: 12px;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); }
+    button { font-family: inherit; cursor: pointer; }
+
+    .proto-bar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 10px 16px; border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #141920, #10141a);
+      position: sticky; top: 0; z-index: 50;
+    }
+    .proto-bar h1 { margin: 0; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    .proto-bar h1 strong { color: var(--text); }
+    .proto-note { flex: 1; min-width: 200px; font-size: 12px; color: var(--muted); }
+    .layout-tag {
+      font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+      background: var(--green-soft); color: var(--green); border: 1px solid rgba(52,211,153,.28);
+    }
+
+    .app { max-width: 1440px; margin: 0 auto; padding: 16px; }
+
+    .hub-head {
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;
+      padding: 12px 16px; border-radius: var(--radius); border: 1px solid var(--line);
+      background: var(--surface); margin-bottom: 12px;
+    }
+    .hub-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
+    .hub-head .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    .flow {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;
+    }
+    .flow-node {
+      display: grid; justify-items: center; gap: 4px; padding: 10px 8px; border-radius: var(--radius);
+      border: 1px solid var(--line); background: var(--surface); color: inherit; text-align: center;
+    }
+    .flow-node.is-active { border-color: var(--agent); background: rgba(52,211,153,.08); }
+    .flow-node .tag { font-size: 10px; font-weight: 700; color: var(--faint); }
+    .flow-node.is-active .tag { color: var(--agent); }
+    .flow-node h3 { margin: 0; font-size: 13px; font-weight: 700; }
+    .flow-node p { margin: 0; font-size: 11px; color: var(--muted); }
+
+    /* —— 三栏：左预览 · 中目录 · 右设置 —— */
+    .workbench {
+      display: grid;
+      grid-template-columns: minmax(240px, 0.28fr) minmax(260px, 0.32fr) minmax(320px, 1fr);
+      gap: 12px;
+      min-height: 640px;
+      align-items: stretch;
+    }
+    @media (max-width: 1100px) {
+      .workbench { grid-template-columns: 1fr 1fr; }
+      .col-preview { grid-column: 1 / -1; }
+    }
+    @media (max-width: 720px) {
+      .workbench { grid-template-columns: 1fr; }
+    }
+
+    .col {
+      border-radius: var(--radius); border: 1px solid var(--line);
+      display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+    }
+    .col-head {
+      padding: 12px 14px; border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .col-head h3 { margin: 0; font-size: 13px; font-weight: 700; }
+    .col-head p { margin: 4px 0 0; font-size: 11px; color: var(--muted); }
+    .col-body { flex: 1; overflow: auto; padding: 14px; }
+
+    /* 左：预览 */
+    .col-preview {
+      background: var(--preview-bg);
+      border-color: rgba(52,211,153,.22);
+    }
+    .col-preview .col-head { background: rgba(52,211,153,.08); }
+    .col-preview .col-head h3 { color: var(--agent); }
+
+    .preview-stack { display: grid; gap: 14px; justify-items: center; }
+    .pad {
+      width: 100%; max-width: 220px; aspect-ratio: 1; border-radius: 18px;
+      background: linear-gradient(145deg, #1a2a35, #0f1a22);
+      border: 2px solid var(--cyan); padding: 14px;
+    }
+    .pad-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+      background: rgba(0,0,0,.25); border-radius: 12px; padding: 10px; min-height: 140px;
+    }
+    .pad-key {
+      border-radius: 8px; border: 1px solid var(--line); background: rgba(255,255,255,.06);
+      display: grid; place-items: center; font-size: 9px; font-weight: 700; color: #fff;
+    }
+    .pad-key.is-running { background: #3b82f6; border-color: #3b82f6; }
+    .pad-key.is-wait { background: #f59e0b; border-color: #f59e0b; }
+    .pad-key.is-done { background: #22c55e; border-color: #22c55e; }
+    .preview-block { width: 100%; max-width: 220px; }
+    .preview-block .lbl {
+      font-size: 10px; font-weight: 700; color: var(--muted); margin-bottom: 6px; display: block;
+    }
+    .pad-topbar {
+      height: 28px; border-radius: 8px; background: #0a1018; border: 1px solid var(--line);
+      display: flex; align-items: center; gap: 6px; padding: 0 10px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex-shrink: 0; }
+    .dot.running { background: #3b82f6; }
+    .dot.wait { background: #f59e0b; }
+    .dot.done { background: #22c55e; }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 8px; font-size: 10px; color: var(--muted);
+      justify-content: center; width: 100%; max-width: 220px;
+    }
+    .legend i {
+      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      margin-right: 3px; vertical-align: middle;
+    }
+    .preview-agent {
+      font-size: 12px; font-weight: 700; text-align: center; color: var(--text);
+      padding: 8px 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line);
+      width: 100%; max-width: 220px;
+    }
+
+    /* 中：目录 */
+    .col-directory { background: var(--surface); }
+    .directory-list { display: grid; gap: 6px; padding: 0; }
+    .agent-row {
+      width: 100%; text-align: left; border: 1px solid var(--line); background: var(--surface-2);
+      border-radius: 10px; padding: 10px 12px; color: inherit; transition: .12s ease;
+    }
+    .agent-row:hover { border-color: var(--line-strong); }
+    .agent-row.is-selected {
+      border-color: var(--cyan); background: var(--cyan-soft);
+      box-shadow: inset 0 0 0 1px var(--cyan-bd);
+    }
+    .agent-row.is-fg .name::after {
+      content: " · 前台"; font-size: 10px; font-weight: 700; color: var(--cyan);
+    }
+    .agent-row .name { font-size: 13px; font-weight: 700; display: block; margin-bottom: 6px; }
+    .pills { display: flex; flex-wrap: wrap; gap: 4px; }
+    .pill {
+      font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 999px; border: 1px solid;
+      white-space: nowrap;
+    }
+    .pill.green { color: var(--green); border-color: rgba(52,211,153,.35); background: var(--green-soft); }
+    .pill.amber { color: var(--amber); border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.1); }
+    .pill.red { color: var(--red); border-color: rgba(248,113,113,.35); background: rgba(248,113,113,.1); }
+    .pill.cyan { color: var(--cyan); border-color: var(--cyan-bd); background: var(--cyan-soft); }
+    .pill.muted { color: var(--muted); border-color: var(--line); background: var(--surface-soft); }
+    .pill.purple { color: var(--purple); border-color: rgba(167,139,250,.35); background: rgba(167,139,250,.1); }
+
+    /* 右：设置 */
+    .col-settings { background: var(--surface-2); }
+    .settings-head {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 12px 14px; border-bottom: 1px solid var(--line); background: var(--surface);
+    }
+    .settings-head h3 { margin: 0; font-size: 15px; font-weight: 700; flex: 1; }
+    .fg-badge {
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      background: var(--cyan-soft); color: var(--cyan); border: 1px solid var(--cyan-bd);
+    }
+    .settings-body { flex: 1; overflow: auto; padding: 12px; display: grid; gap: 10px; align-content: start; }
+
+    .card {
+      border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface);
+      padding: 12px 14px;
+    }
+    .card h4 { margin: 0 0 10px; font-size: 12px; font-weight: 700; color: var(--muted); }
+    .card h4 span { color: var(--text); }
+    .readiness { display: grid; gap: 10px; }
+    .ready-item {
+      display: grid; grid-template-columns: 52px 36px 1fr; gap: 10px; align-items: center;
+      font-size: 13px;
+    }
+    .ready-item .lbl { font-size: 11px; color: var(--muted); }
+    .ready-item .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .switch {
+      width: 36px; height: 20px; border-radius: 999px; border: 1px solid var(--line);
+      background: var(--surface-soft); position: relative; flex-shrink: 0;
+    }
+    .switch::after {
+      content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+      border-radius: 50%; background: #fff; transition: .15s;
+    }
+    .switch.on { background: var(--green); border-color: var(--green); }
+    .switch.on::after { left: 18px; }
+    .btn {
+      border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text);
+      font: 600 11px/1 var(--font); padding: 7px 12px; border-radius: 8px;
+    }
+    .btn.primary { background: var(--cyan); border-color: var(--cyan); color: #0a1018; }
+    .btn.ghost { background: transparent; }
+    .hint { font-size: 11px; color: var(--muted); line-height: 1.45; margin: 0; }
+    .hint.na { color: var(--faint); font-style: italic; }
+    .lights-grid { display: grid; gap: 8px; }
+    .light-row {
+      display: grid; grid-template-columns: 88px 1fr; gap: 8px; align-items: center; font-size: 12px;
+    }
+    .light-row.disabled { opacity: .45; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 8px;
+      border: 1px solid var(--line); background: var(--surface-2); font-size: 11px; font-weight: 600;
+    }
+    .chip button { border: 0; background: transparent; color: var(--red); font-size: 12px; padding: 0; }
+    details.fold summary {
+      font-size: 12px; color: var(--muted); cursor: pointer; user-select: none; list-style: none;
+    }
+    details.fold summary::-webkit-details-marker { display: none; }
+    details.fold[open] summary { margin-bottom: 8px; color: var(--text); }
+    .strip-list { display: grid; gap: 4px; margin-top: 8px; }
+    .strip {
+      display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px;
+      border: 1px solid var(--line); background: var(--surface-2); font-size: 11px;
+    }
+    .strip .name { flex: 1; font-weight: 600; }
+
+    .assert-bar {
+      margin-top: 12px; padding: 10px 14px; border-radius: var(--radius);
+      border: 1px solid var(--line); background: var(--surface); font-size: 11px; color: var(--muted);
+    }
+    .assert-bar b { color: var(--green); }
+  </style>
+</head>
+<body>
+  <header class="proto-bar">
+    <h1><strong>Agent 工作台</strong> v12b</h1>
+    <span class="layout-tag">左预览 · 中目录 · 右设置</span>
+    <p class="proto-note">点<b>中间</b> Agent → 左侧预览与右侧设置同步更新</p>
+  </header>
+
+  <div class="app">
+    <div class="hub-head">
+      <div>
+        <h2>Soft Pad · 状态灯</h2>
+        <p class="sub">三栏布局：预览始终可见，目录选 Agent，右侧改配置</p>
+      </div>
+      <button type="button" class="btn ghost" id="btnSimFg">模拟前台切换</button>
+    </div>
+
+    <div class="flow" role="tablist" aria-label="Hub 舞台">
+      <button type="button" class="flow-node" data-stage="pad"><span class="tag">01</span><h3>Soft Pad</h3><p>改键位 · 何时显示</p></button>
+      <button type="button" class="flow-node is-active" data-stage="agent"><span class="tag">02</span><h3>状态灯</h3><p>Agent 工作台</p></button>
+      <button type="button" class="flow-node" data-stage="timeline"><span class="tag">03</span><h3>时间胶囊</h3><p>恢复点</p></button>
+    </div>
+
+    <div class="workbench">
+      <!-- 左：Soft Pad 预览 -->
+      <aside class="col col-preview" aria-label="Soft Pad 预览">
+        <div class="col-head">
+          <h3>设备预览</h3>
+          <p>键灯 + 顶栏圆点 · 只读</p>
+        </div>
+        <div class="col-body">
+          <div class="preview-stack">
+            <div class="preview-agent" id="previewAgentLabel">Cursor</div>
+            <div class="pad">
+              <div class="pad-grid" id="padGrid"></div>
+            </div>
+            <div class="preview-block">
+              <span class="lbl">顶栏预览</span>
+              <div class="pad-topbar" id="padTopbar"></div>
+            </div>
+            <div class="legend">
+              <span><i style="background:#94a3b8"></i>空闲</span>
+              <span><i style="background:#3b82f6"></i>忙</span>
+              <span><i style="background:#f59e0b"></i>等你</span>
+              <span><i style="background:#22c55e"></i>完成</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- 中：Agent 目录 -->
+      <nav class="col col-directory" aria-label="Agent 目录">
+        <div class="col-head">
+          <h3>Agent 目录</h3>
+          <p>Pad · 灯 · 接</p>
+        </div>
+        <div class="col-body">
+          <div class="directory-list" id="agentList" role="listbox"></div>
+        </div>
+      </nav>
+
+      <!-- 右：设置选项 -->
+      <main class="col col-settings" id="workbench" aria-label="设置">
+        <div class="settings-head">
+          <h3 id="panelTitle">—</h3>
+          <span class="fg-badge" id="fgBadge" hidden>当前前台</span>
+        </div>
+        <div class="settings-body" id="sections"></div>
+      </main>
+    </div>
+
+    <div class="assert-bar">
+      布局 <b>左预览 · 中目录 · 右设置</b> · 选中 <b id="assertAgent">—</b> · 设置区块 <b id="assertBlocks">0</b>
+    </div>
+  </div>
+
+  <script>
+    const AGENTS = {
+      codex: {
+        name: "Codex",
+        pills: [["Pad·开", "green"], ["灯·开", "green"], ["接·等", "amber"]],
+        caps: { pad: true, topbar: true, keyLights: "single", sessions: true, hook: "codex" },
+        padKeys: ["", "忙", "", "", "", ""],
+        topbarDots: ["running"],
+        readiness: { pad: true, light: true, connect: "waiting", connectLabel: "等待事件" },
+        cross: ["Codex", "Claude", "Cursor"],
+        strips: [{ name: "Claude", phase: "未接入" }, { name: "Cursor", phase: "已接入" }],
+      },
+      claude: {
+        name: "Claude",
+        pills: [["Pad·开", "green"], ["灯·关", "muted"], ["接·未", "red"]],
+        caps: { pad: true, topbar: true, keyLights: "multi", sessions: true, hook: "claude" },
+        padKeys: ["忙", "完", "等", "忙", "", ""],
+        topbarDots: ["running", "wait"],
+        readiness: { pad: true, light: false, connect: "off", connectLabel: "未接入" },
+        cross: ["Claude", "Codex"],
+        strips: [{ name: "Codex", phase: "已接入" }],
+      },
+      cursor: {
+        name: "Cursor",
+        pills: [["Pad·开", "green"], ["灯·开", "green"], ["接·未", "red"]],
+        caps: { pad: true, topbar: true, keyLights: false, sessions: false, hook: "cursor" },
+        padKeys: ["", "", "", "", "", ""],
+        topbarDots: ["running"],
+        readiness: { pad: true, light: true, connect: "off", connectLabel: "未接入" },
+        cross: ["Cursor", "Codex", "Trae Work"],
+        strips: [],
+      },
+      workbuddy: {
+        name: "WorkBuddy",
+        pills: [["可准备", "amber"], ["灯·关", "muted"], ["Hook", "muted"]],
+        caps: { pad: true, topbar: true, keyLights: false, sessions: false, hook: "shell" },
+        padKeys: ["", "", "", "", "", ""],
+        topbarDots: [],
+        readiness: { pad: false, light: false, connect: "off", connectLabel: "未接入" },
+        cross: [],
+        strips: [],
+      },
+      trae: {
+        name: "Trae Work",
+        pills: [["Pad·开", "green"], ["灯·开", "green"], ["本地", "cyan"]],
+        caps: { pad: true, topbar: true, keyLights: false, sessions: false, hook: "solo" },
+        padKeys: ["", "", "", "", "", ""],
+        topbarDots: ["running"],
+        readiness: { pad: true, light: true, connect: "solo", connectLabel: "本地监视" },
+        cross: ["Trae Work"],
+        strips: [],
+      },
+      minimax: {
+        name: "MiniMax",
+        pills: [["Pad·开", "green"], ["额度", "purple"], ["API", "amber"]],
+        caps: { pad: true, topbar: true, keyLights: false, sessions: false, hook: "quota" },
+        padKeys: ["", "", "", "", "", ""],
+        topbarDots: ["done"],
+        readiness: { pad: true, light: true, connect: "quota", connectLabel: "填 API Key" },
+        cross: ["MiniMax"],
+        strips: [],
+      },
+      qoder: {
+        name: "Qoder",
+        pills: [["Pad·开", "green"], ["灯·开", "green"], ["接·未", "red"]],
+        caps: { pad: true, topbar: true, keyLights: false, sessions: false, hook: "shell" },
+        padKeys: ["", "", "", "", "", ""],
+        topbarDots: [],
+        readiness: { pad: true, light: true, connect: "off", connectLabel: "未接入" },
+        cross: ["Qoder", "Codex"],
+        strips: [{ name: "Codex", phase: "已接入" }],
+      },
+    };
+
+    const state = { selected: "cursor", fg: "cursor" };
+
+    function esc(s) {
+      return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    }
+
+    function pillHtml(text, kind) {
+      return `<span class="pill ${kind}">${esc(text)}</span>`;
+    }
+
+    function switchHtml(on) {
+      return `<span class="switch${on ? " on" : ""}" role="switch" aria-checked="${on}"></span>`;
+    }
+
+    function renderDirectory() {
+      document.getElementById("agentList").innerHTML = Object.entries(AGENTS).map(([id, a]) => `
+        <button type="button" class="agent-row${state.selected === id ? " is-selected" : ""}${state.fg === id ? " is-fg" : ""}"
+          data-agent="${id}" role="option" aria-selected="${state.selected === id}">
+          <span class="name">${esc(a.name)}</span>
+          <span class="pills">${a.pills.map(([t, k]) => pillHtml(t, k)).join("")}</span>
+        </button>
+      `).join("");
+    }
+
+    function renderPreview(a) {
+      document.getElementById("previewAgentLabel").textContent = a.name;
+      const keys = a.padKeys || ["", "", "", "", "", ""];
+      document.getElementById("padGrid").innerHTML = keys.map((k) => {
+        const cls = k === "忙" ? "is-running" : k === "等" ? "is-wait" : k === "完" ? "is-done" : "";
+        return `<div class="pad-key ${cls}">${esc(k)}</div>`;
+      }).join("");
+      document.getElementById("padTopbar").innerHTML = (a.topbarDots || [])
+        .map((d) => `<span class="dot ${d}"></span>`).join("") || `<span class="dot"></span>`;
+    }
+
+    function connectBlock(a) {
+      const r = a.readiness;
+      if (r.connect === "solo") return `<p class="hint">本地活跃度监视，无需 Hook。</p>`;
+      if (r.connect === "quota") return `<button type="button" class="btn primary">保存 API Key</button>`;
+      if (r.connect === "waiting") {
+        return `<div class="actions">${pillHtml("已接入", "green")}<span class="hint">发一条消息点亮</span></div>`;
+      }
+      if (r.connect === "off") {
+        const label = a.caps.hook === "cursor" ? "复制 Hook 配置" : "确认接入";
+        return `<div class="actions">${pillHtml(r.connectLabel, "red")}<button type="button" class="btn primary">${label}</button></div>`;
+      }
+      return "";
+    }
+
+    function lightsBlock(a) {
+      const c = a.caps;
+      let rows = "";
+      if (c.topbar) rows += `<div class="light-row"><span>顶栏圆点</span><span class="hint">跨应用忙闲</span></div>`;
+      if (c.keyLights === "single") rows += `<div class="light-row"><span>单键宿主</span><span class="hint">AG00 整段任务</span></div>`;
+      else if (c.keyLights === "multi") rows += `<div class="light-row"><span>多键子代理</span><span class="hint">多任务多键色</span></div>`;
+      else if (c.keyLights === false) rows += `<div class="light-row disabled"><span>按键灯</span><span class="hint na">不支持</span></div>`;
+      rows += `<div class="light-row disabled"><span>氛围灯</span><span class="hint na">自定义习惯可用</span></div>`;
+      return rows;
+    }
+
+    function sessionsBlock(a) {
+      if (!a.caps.sessions) return `<p class="hint na">无会话/线程槽。</p>`;
+      const label = a.name === "Codex" ? "线程槽" : "会话导航";
+      return `<div class="light-row">${switchHtml(false)}<span>${label}</span><span class="hint">AG 混排</span></div>`;
+    }
+
+    function renderSettings() {
+      const a = AGENTS[state.selected];
+      if (!a) return;
+      document.getElementById("panelTitle").textContent = a.name + " · 设置";
+      document.getElementById("fgBadge").hidden = state.fg !== state.selected;
+      renderPreview(a);
+
+      const r = a.readiness;
+      document.getElementById("sections").innerHTML = `
+        <section class="card">
+          <h4><span>①</span> 准备度</h4>
+          <div class="readiness">
+            <div class="ready-item"><span class="lbl">Pad</span>${switchHtml(r.pad)}<span>${r.pad ? "已启用" : "可准备"}</span></div>
+            <div class="ready-item"><span class="lbl">顶栏灯</span>${switchHtml(r.light)}<span>${r.light ? "显示" : "关闭"}</span></div>
+            <div class="ready-item"><span class="lbl">接入</span><div class="actions">${connectBlock(a)}</div></div>
+          </div>
+        </section>
+        <section class="card">
+          <h4><span>②</span> 灯效</h4>
+          <div class="lights-grid">${lightsBlock(a)}</div>
+        </section>
+        ${a.caps.sessions ? `<section class="card"><h4><span>③</span> 会话</h4>${sessionsBlock(a)}</section>` : ""}
+        <details class="fold card">
+          <summary>▸ 跨应用顶栏${a.cross.length ? "（" + a.cross.length + "）" : ""}</summary>
+          ${a.cross.length
+            ? `<div class="chips">${a.cross.map((n) => `<span class="chip">${esc(n)}<button type="button">×</button></span>`).join("")}<button type="button" class="btn ghost">+ 添加</button></div>`
+            : `<p class="hint">未添加其他 Agent。</p>`}
+          ${a.strips.length
+            ? `<div class="strip-list">${a.strips.map((s) => `<div class="strip"><span class="name">${esc(s.name)}</span><span class="pill muted">${esc(s.phase)}</span><button type="button" class="btn ghost">详情</button></div>`).join("")}</div>`
+            : ""}
+        </details>
+      `;
+      document.getElementById("assertAgent").textContent = a.name;
+      document.getElementById("assertBlocks").textContent = String(a.caps.sessions ? 4 : 3);
+    }
+
+    function selectAgent(id) {
+      if (!AGENTS[id]) return;
+      state.selected = id;
+      renderDirectory();
+      renderSettings();
+    }
+
+    document.getElementById("agentList").addEventListener("click", (e) => {
+      const row = e.target.closest("[data-agent]");
+      if (row) selectAgent(row.dataset.agent);
+    });
+
+    document.getElementById("btnSimFg").addEventListener("click", () => {
+      const ids = Object.keys(AGENTS);
+      state.fg = ids[(ids.indexOf(state.fg) + 1) % ids.length];
+      renderDirectory();
+      renderSettings();
+    });
+
+    renderDirectory();
+    renderSettings();
+  </script>
+</body>
+</html>

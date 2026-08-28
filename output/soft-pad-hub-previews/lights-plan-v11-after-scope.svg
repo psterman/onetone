@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="920" viewBox="0 0 1280 920">
+  <defs><style type="text/css"><![CDATA[
+.bg{fill:#eef3f7}.shell{fill:#f8fbfd;stroke:#d5e0eb}
+.ink{fill:#142033}.muted{fill:#6b7a8d}.faint{fill:#94a3b4}
+.surface{fill:#ffffff;stroke:rgba(26,45,74,0.14)}
+.soft{fill:#f1f5f9;stroke:rgba(26,45,74,0.14)}
+.small{font:11px 'Segoe UI','Microsoft YaHei',sans-serif}
+.body{font:13px 'Segoe UI','Microsoft YaHei',sans-serif}
+.title{font:700 15px 'Segoe UI','Microsoft YaHei',sans-serif}
+.h1{font:700 18px 'Segoe UI','Microsoft YaHei',sans-serif}
+.label{font:700 12px 'Segoe UI','Microsoft YaHei',sans-serif}
+.cap{font:700 10px 'Segoe UI','Microsoft YaHei',sans-serif}
+]]></style></defs>
+
+  <rect class="bg" width="1280" height="920"/>
+  <rect x="40" y="16" width="115" height="22" rx="11" fill="#2e7d4f20" stroke="#2e7d4f"/>
+    <text x="48" y="31" class="cap" fill="#2e7d4f">去重后 · v11</text>
+  <text x="160" y="32" class="h1 ink">状态灯页 · Scope 中心化</text>
+
+  <rect x="40" y="52" width="360" height="36" rx="10" class="soft"/>
+  <text x="56" y="74" class="label ink">正在编辑 · Cursor</text>
+  <rect x="300" y="60" width="84" height="24" rx="8" fill="#fff" stroke="rgba(26,45,74,0.14)"/>
+  <text x="342" y="76" text-anchor="middle" class="cap muted">换应用 ▾</text>
+
+  <rect x="40" y="96" width="380" height="780" rx="14" fill="#ecf8f3" stroke="rgba(52,211,153,0.35)"/>
+  <text x="56" y="120" class="cap" fill="#34d399">键盘预览（只读）</text>
+  <g transform="translate(120 140)">
+    <rect x="0" y="0" width="180" height="180" rx="16" fill="#d9eef6" stroke="#3eb8dc" stroke-width="2"/>
+    <rect x="14" y="14" width="152" height="120" rx="12" fill="#f7fbfd" stroke="#b7dcea"/>
+    <rect x="24" y="24" width="44" height="36" rx="8" fill="#fff" stroke="#d5e1ec"/>
+    <rect x="76" y="24" width="44" height="36" rx="8" fill="#3b82f6" stroke="#3b82f6"/>
+    <rect x="128" y="24" width="28" height="36" rx="8" fill="#fff" stroke="#d5e1ec"/>
+    <rect x="14" y="142" width="152" height="22" rx="6" fill="#1e3a48"/>
+    <circle cx="34" cy="153" r="4" fill="#3b82f6"/>
+    <text x="150" y="156" text-anchor="end" class="cap" fill="#9ec9d8">顶栏</text>
+  </g>
+  <text x="56" y="340" class="small muted">顶栏预览</text>
+  <rect x="56" y="348" width="200" height="32" rx="8" fill="rgba(148,163,184,0.12)" stroke="rgba(26,45,74,0.14)"/>
+  <circle cx="180" cy="364" r="4" fill="#3b82f6"/>
+  <text x="56" y="400" class="small muted">灰=空闲 · 蓝=忙 · 橙=等你 · 绿=完成 · 红=失败</text>
+
+  <rect x="440" y="96" width="800" height="780" rx="14" class="surface"/>
+  <text x="456" y="120" class="cap" fill="#2a9cc4">顶栏</text>
+  <text x="520" y="120" class="cap muted">氛围灯</text>
+  <text x="584" y="120" class="cap muted">按键灯</text>
+  <text x="456" y="148" class="small muted">Cursor · 只看顶栏圆点（不支持多键灯）</text>
+
+  <rect x="456" y="168" width="40" height="22" rx="11" fill="#2e7d4f" stroke="#2e7d4f"/>
+    <circle cx="484" cy="179" r="8" fill="#fff"/>
+  <text x="508" y="183" class="label ink">显示 Cursor 顶栏状态灯</text>
+
+  <rect x="456" y="208" width="320" height="100" rx="12" fill="#f1f5f9" stroke="rgba(26,45,74,0.14)"/>
+  <text x="472" y="232" class="label ink">Cursor · 未接入</text>
+  <text x="472" y="252" class="small muted">复制 Hook 配置到 hooks.json，装完发一条消息点亮</text>
+  <rect x="472" y="268" width="120" height="28" rx="8" fill="#3eb8dc"/>
+  <text x="532" y="286" text-anchor="middle" class="cap" fill="#fff">连接 Cursor</text>
+
+  <text x="456" y="340" class="small faint">▸ 管理其他 Agent 顶栏灯（chip 列表 + 添加）</text>
+  <text x="456" y="360" class="small faint">▸ 其他 Agent 接入状态（Codex · 已接入 · 详情）</text>
+  <text x="456" y="380" class="small faint">▸ 高级设置（精度说明、API、诊断）</text>
+
+  <rect x="40" y="888" width="1200" height="24" rx="6" fill="rgba(46,125,79,0.1)"/>
+  <text x="56" y="906" class="small" fill="#2e7d4f">✓ 无右栏 · 首屏 1 处 scope · 1 开关 · 1 连接卡 · 跨应用管理折叠</text>
+
+</svg>

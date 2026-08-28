@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>v15 页面 1 · 浮层键盘</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#0e1116;--surface:#161b22;--surface-2:#1c2330;--line:rgba(255,255,255,.08);--line-strong:rgba(255,255,255,.14);
+      --text:#e8eef5;--muted:#8b97a8;--faint:#5c6b7a;--cyan:#3eb8dc;--cyan-soft:rgba(62,184,220,.14);--cyan-bd:rgba(62,184,220,.35);
+      --green:#34d399;--green-soft:rgba(52,211,153,.12);--font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif}
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:var(--font)}
+    button{font-family:inherit;cursor:pointer}
+    .proto{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:#141920;font-size:12px;color:var(--muted)}
+    .proto strong{color:var(--cyan)}.proto a{color:var(--cyan);margin-left:auto;text-decoration:none;font-weight:600}
+    .wrap{max-width:1040px;margin:0 auto;padding:16px}
+    .mock{border:1px solid rgba(62,184,220,.28);border-radius:14px;background:var(--surface);overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,.3)}
+    .status{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
+    .status-l{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .brand{font-size:15px;font-weight:800}
+    .pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--green-soft);color:var(--green);border:1px solid rgba(52,211,153,.28)}
+    .bind{font:600 12px/1 var(--font);padding:5px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface-2);color:var(--text)}
+    .toggle{width:38px;height:22px;border-radius:999px;background:var(--cyan);position:relative;border:1px solid var(--cyan-bd)}
+    .toggle::after{content:"";position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+    .scope{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.12)}
+    .scope-lbl{font-size:10px;font-weight:700;color:var(--faint);letter-spacing:.06em;text-transform:uppercase;margin-right:4px}
+    .chip{font:600 12px/1 var(--font);padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--muted)}
+    .chip.is-on{border-color:var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan)}
+    /* 页级切换 — 两个独立页面 */
+    .page-seg{display:flex;gap:4px;padding:8px 14px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.18)}
+    .page-seg button{flex:1;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font:700 12px/1 var(--font);padding:10px;border-radius:10px}
+    .page-seg button.is-on{color:var(--cyan);border-color:var(--cyan-bd);background:var(--cyan-soft)}
+    .page-seg button.to-lights{color:var(--muted)}
+  .page-seg button.to-lights:hover{border-color:rgba(52,211,153,.35);color:var(--green)}
+    /* Pad 页专属 subtab */
+    .pad-tabs{display:flex;padding:0 14px;border-bottom:1px solid var(--line);background:var(--surface)}
+    .ptab{padding:11px 14px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--muted);font:700 12px/1 var(--font);margin-bottom:-1px}
+    .ptab.is-on{color:var(--cyan);border-bottom-color:var(--cyan)}
+    .body{display:grid;grid-template-columns:minmax(220px,.38fr) 1fr;min-height:400px}
+    .preview{border-right:1px solid var(--line);padding:14px;background:rgba(52,211,153,.04);display:flex;flex-direction:column;gap:8px}
+    .preview-lbl{font-size:10px;font-weight:700;color:var(--faint);letter-spacing:.06em;text-transform:uppercase}
+    .preview-box{flex:1;min-height:260px;border-radius:10px;border:1px dashed var(--line-strong);background:rgba(0,0,0,.2);display:grid;place-items:center;padding:16px}
+    .pad{width:100%;max-width:220px;padding:12px;border-radius:12px;border:1px solid var(--line-strong);background:var(--surface-2);display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+    .key{aspect-ratio:1;border-radius:7px;border:1px solid var(--line);background:var(--surface);font-size:10px;display:grid;place-items:center;color:var(--muted)}
+    .key.w{grid-column:span 2;aspect-ratio:auto;height:32px}
+    .key.hl{border-color:var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan)}
+    .preview-hint{font-size:11px;color:var(--muted)}
+    .main{display:flex;flex-direction:column}
+    .panel-head{padding:14px 14px 0}
+    .panel-head h2{margin:0;font-size:15px;font-weight:700}
+    .panel-head p{margin:4px 0 0;font-size:12px;color:var(--muted)}
+    .panel-body{padding:14px;flex:1}
+    .card{border:1px solid var(--line);border-radius:10px;background:var(--surface-2);padding:14px}
+    .card h4{margin:0 0 8px;font-size:13px;font-weight:700}
+    .card p{margin:0 0 10px;font-size:12px;color:var(--muted);line-height:1.45}
+    .field{display:grid;gap:4px}
+    .field label{font-size:11px;font-weight:600;color:var(--muted)}
+    .field select{padding:8px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--text);font:inherit;font-size:12px}
+    .callout{margin-top:12px;padding:10px 12px;border-radius:8px;border:1px dashed var(--line);font-size:11px;color:var(--faint)}
+  </style>
+</head>
+<body>
+  <div class="proto"><strong>页面 1 · 浮层键盘</strong>（独立页，非 Tab 子项）<a href="b-lights-workbench.html">切到页面 2：状态灯 →</a></div>
+  <div class="wrap">
+    <div class="mock">
+      <div class="status">
+        <div class="status-l">
+          <span class="brand">虚拟键盘</span>
+          <span class="pill">已启用</span>
+          <button type="button" class="bind">绑定 · Codex ▾</button>
+        </div>
+        <span class="toggle"></span>
+      </div>
+      <div class="scope">
+        <span class="scope-lbl">Agent</span>
+        <button type="button" class="chip is-on" data-agent="codex">Codex</button>
+        <button type="button" class="chip" data-agent="claude">Claude</button>
+        <button type="button" class="chip" data-agent="cursor">Cursor</button>
+      </div>
+      <!-- 页级：两个独立页面 -->
+      <div class="page-seg" role="tablist" aria-label="虚拟键盘子页面">
+        <button type="button" class="is-on" aria-selected="true">浮层键盘</button>
+        <button type="button" class="to-lights" onclick="location.href='b-lights-workbench.html'">状态灯</button>
+      </div>
+      <!-- 仅本页：Pad 四 tab -->
+      <div class="pad-tabs" role="tablist" id="padTabs">
+        <button type="button" class="ptab is-on" data-tab="appear">出现</button>
+        <button type="button" class="ptab" data-tab="keys">键位</button>
+        <button type="button" class="ptab" data-tab="look">外观</button>
+        <button type="button" class="ptab" data-tab="purpose">用途</button>
+      </div>
+      <div class="body">
+        <aside class="preview">
+          <span class="preview-lbl">Pad 预览 · <span id="scopeName">Codex</span></span>
+          <div class="preview-box"><div class="pad" id="padPreview"></div></div>
+          <span class="preview-hint" id="previewHint">前台匹配时弹出此键盘</span>
+        </aside>
+        <div class="main">
+          <div class="panel-head">
+            <h2 id="panelTitle">何时显示</h2>
+            <p id="panelSub">决定 Pad 什么时候出现在屏幕上</p>
+          </div>
+          <div class="panel-body">
+            <div class="card">
+              <h4 id="cardTitle">匹配规则</h4>
+              <p id="cardDesc">Codex 聊天窗口在前台时自动弹出。</p>
+              <div class="field"><label id="fieldLbl">前台窗口</label><select id="fieldSel"></select></div>
+            </div>
+            <p class="callout">本页只有 Pad 四维 subtab。状态灯在另一页 → 点上方「状态灯」分段。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var AGENTS={codex:{name:'Codex',hint:'前台匹配时弹出此键盘'},claude:{name:'Claude',hint:'Claude Code 前台时弹出'},cursor:{name:'Cursor',hint:'Cursor 未开 Pad'}};
+    var TAB={
+      appear:{title:'何时显示',sub:'决定 Pad 什么时候出现在屏幕上',card:'匹配规则',desc:'聊天窗口在前台时自动弹出。',lbl:'前台窗口',opts:['聊天窗口','手动唤起'],hl:null},
+      keys:{title:'键位',sub:'点击预览键帽可改功能',card:'布局方案',desc:'12/15 键 + 发送/确认。',lbl:'方案',opts:['标准 15 键','紧凑 12 键'],hl:'5'},
+      look:{title:'外观',sub:'完整体 / 迷你条',card:'展示形态',desc:'屏幕占用与皮肤。',lbl:'形态',opts:['完整体','迷你条'],hl:null},
+      purpose:{title:'用途',sub:'AG 键动作',card:'主用途',desc:'确认发送、聚焦终端。',lbl:'动作',opts:['确认并发送','聚焦终端'],hl:'w'}
+    };
+    var scope='codex', tab='appear';
+    function padHtml(hl){
+      return ['1','2','3','4','5','6','发','✓'].map(function(k){
+        return '<div class="key'+(k==='发'?' w':'')+(hl&&(hl===k||(hl==='w'&&k==='发'))?' hl':'')+'">'+k+'</div>';
+      }).join('');
+    }
+    function render(){
+      var a=AGENTS[scope], t=TAB[tab];
+      document.getElementById('scopeName').textContent=a.name;
+      document.getElementById('previewHint').textContent=a.hint;
+      document.getElementById('padPreview').innerHTML=padHtml(t.hl);
+      document.getElementById('panelTitle').textContent=t.title;
+      document.getElementById('panelSub').textContent=t.sub;
+      document.getElementById('cardTitle').textContent=t.card;
+      document.getElementById('cardDesc').textContent=a.name+'：'+t.desc;
+      document.getElementById('fieldLbl').textContent=t.lbl;
+      document.getElementById('fieldSel').innerHTML=t.opts.map(function(o){return '<option>'+o+'</option>';}).join('');
+      document.querySelectorAll('.chip[data-agent]').forEach(function(c){c.classList.toggle('is-on',c.getAttribute('data-agent')===scope);});
+      document.querySelectorAll('#padTabs .ptab').forEach(function(b){b.classList.toggle('is-on',b.getAttribute('data-tab')===tab);});
+    }
+    document.querySelectorAll('.chip[data-agent]').forEach(function(c){c.addEventListener('click',function(){scope=c.getAttribute('data-agent');render();});});
+    document.querySelectorAll('#padTabs .ptab').forEach(function(b){b.addEventListener('click',function(){tab=b.getAttribute('data-tab');render();});});
+    render();
+  })();
+  </script>
+</body>
+</html>

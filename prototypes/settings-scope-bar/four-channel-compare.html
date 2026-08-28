@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>四通道顶栏对比 · settingsContextBar</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #eef2f7;
+      --surface: #fff;
+      --surface-2: #f6f8fb;
+      --line: rgba(26, 45, 74, 0.1);
+      --line-strong: rgba(26, 45, 74, 0.16);
+      --text: #1a2d4a;
+      --muted: #5c6b82;
+      --faint: #8b97a8;
+      --cyan: #2a9cc4;
+      --cyan-soft: rgba(42, 156, 196, 0.12);
+      --cyan-bd: rgba(42, 156, 196, 0.35);
+      --green: #2e7d4f;
+      --green-soft: rgba(46, 125, 79, 0.1);
+      --amber: #d97706;
+      --pink: #c45c8a;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; }
+    button { font-family: inherit; cursor: pointer; }
+
+    .proto {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 8px 16px; background: #1a2d4a; color: #c5d0de; font-size: 12px; position: sticky; top: 0; z-index: 50;
+    }
+    .proto strong { color: #fff; }
+    .proto a { color: #5ec8e8; text-decoration: none; font-weight: 600; }
+    .proto .links { margin-left: auto; display: flex; gap: 12px; }
+
+    .page { max-width: 1280px; margin: 0 auto; padding: 16px; }
+
+    .legend {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;
+    }
+    @media (max-width: 800px) { .legend { grid-template-columns: 1fr; } }
+    .legend-card {
+      padding: 12px 14px; border-radius: 10px; border: 1px dashed var(--line-strong); background: var(--surface); font-size: 12px; color: var(--muted); line-height: 1.5;
+    }
+    .legend-card b { color: var(--text); display: block; margin-bottom: 4px; font-size: 13px; }
+    .legend-card.bad { border-color: rgba(196, 92, 138, 0.35); background: rgba(196, 92, 138, 0.06); }
+    .legend-card.good { border-color: rgba(46, 125, 79, 0.35); background: var(--green-soft); }
+
+    .grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    }
+    @media (max-width: 960px) { .grid { grid-template-columns: 1fr; } }
+
+    .channel {
+      border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
+      overflow: hidden; box-shadow: 0 4px 20px rgba(26, 45, 74, 0.06);
+    }
+    .channel-hd {
+      padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--surface-2);
+      display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted);
+    }
+    .channel-hd .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .channel[data-ch="keys"] .dot { background: var(--cyan); }
+    .channel[data-ch="voice"] .dot { background: var(--green); }
+    .channel[data-ch="camera"] .dot { background: var(--amber); }
+    .channel[data-ch="softPad"] .dot { background: var(--pink); }
+
+    /* ── settingsContextBar（四页共用） ── */
+    .ctx-bar {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+      padding: 10px 12px; border-bottom: 1px solid var(--line);
+    }
+    .ctx-l { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+    .back { border: 0; background: none; color: var(--muted); font-size: 12px; padding: 2px 0; white-space: nowrap; }
+    .ctx-title { font-weight: 700; font-size: 13px; white-space: nowrap; }
+    .ctx-title .sub { color: var(--muted); font-weight: 500; }
+    .ctx-title .scope { color: var(--text); }
+    .ctx-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+    .btn-ghost {
+      padding: 5px 10px; border-radius: 8px; border: 1px solid var(--line-strong);
+      background: var(--surface-2); color: var(--text); font-size: 11px; font-weight: 600; white-space: nowrap;
+    }
+    .btn-ghost.is-muted { color: var(--muted); font-weight: 500; }
+    .bind-wrap { position: relative; }
+    .bind-wrap.is-open .bind-menu { display: block; }
+    .bind-menu {
+      display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 30;
+      min-width: 200px; max-width: 260px; padding: 5px; border-radius: 10px;
+      border: 1px solid var(--line-strong); background: var(--surface);
+      box-shadow: 0 8px 24px rgba(26, 45, 74, 0.14);
+    }
+    .bind-item {
+      width: 100%; text-align: left; padding: 8px 10px; border-radius: 7px; border: 1px solid transparent; background: none; color: inherit;
+    }
+    .bind-item:hover { background: var(--surface-2); }
+    .bind-item.is-on { border-color: rgba(46, 125, 79, 0.35); background: var(--green-soft); }
+    .bind-item strong { display: block; font-size: 12px; margin-bottom: 3px; }
+    .bind-item small { font-size: 10px; color: var(--muted); }
+    .pills { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 4px; }
+    .pl { font-size: 8px; font-weight: 700; padding: 1px 5px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+    .pl.ok { color: var(--green); border-color: rgba(46, 125, 79, 0.3); background: var(--green-soft); }
+    .pl.warn { color: var(--amber); border-color: rgba(217, 119, 6, 0.3); }
+    .toggle {
+      width: 34px; height: 20px; border-radius: 999px; background: var(--cyan); border: 1px solid var(--cyan-bd); position: relative; flex-shrink: 0;
+    }
+    .toggle::after {
+      content: ""; position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff;
+    }
+    .aligned-hint { font-size: 10px; font-weight: 700; color: var(--green); padding: 2px 6px; border-radius: 999px; background: var(--green-soft); }
+
+    /* 页内示意（各通道不同，顶栏下方） */
+    .body { min-height: 200px; display: flex; flex-direction: column; }
+    .flow-mini {
+      display: flex; gap: 4px; padding: 8px 10px; border-bottom: 1px solid var(--line); background: var(--surface-2); font-size: 10px;
+    }
+    .flow-mini span {
+      flex: 1; text-align: center; padding: 6px 4px; border-radius: 6px; border: 1px solid var(--line); color: var(--muted); font-weight: 600;
+    }
+    .flow-mini span.on { color: var(--cyan); border-color: var(--cyan-bd); background: var(--cyan-soft); }
+    .flow-mini span.on.green { color: var(--green); border-color: rgba(46,125,79,.35); background: var(--green-soft); }
+    .flow-mini span.on.amber { color: var(--amber); border-color: rgba(217,119,6,.35); background: rgba(245,158,11,.1); }
+
+    .content {
+      flex: 1; display: grid; grid-template-columns: 34% 1fr; gap: 0; min-height: 140px;
+    }
+    .content.one-col { grid-template-columns: 1fr; }
+    .preview {
+      border-right: 1px solid var(--line); padding: 10px; background: var(--surface-2); font-size: 11px; color: var(--muted);
+    }
+    .preview b { display: block; color: var(--text); font-size: 12px; margin-bottom: 4px; }
+    .preview-box {
+      margin-top: 6px; padding: 8px; border-radius: 8px; border: 1px dashed var(--line-strong); background: #fff; font-size: 10px; line-height: 1.45;
+    }
+    .main { padding: 10px; font-size: 11px; color: var(--muted); }
+    .main .tabs { display: flex; gap: 2px; margin-bottom: 8px; flex-wrap: wrap; }
+    .main .tab { padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); font-size: 10px; font-weight: 700; color: var(--muted); }
+    .main .tab.on { color: var(--cyan); border-color: var(--cyan-bd); background: var(--cyan-soft); }
+    .card { border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: var(--surface-2); }
+    .card h4 { margin: 0 0 4px; font-size: 11px; color: var(--text); }
+
+    .contract {
+      margin-top: 16px; padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface);
+      font-size: 12px; color: var(--muted); line-height: 1.55;
+    }
+    .contract b { color: var(--text); }
+    .contract table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
+    .contract th, .contract td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+    .contract th { color: var(--faint); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="proto">
+    <strong>settingsContextBar</strong> 四通道顶栏 · 壳统一 · 下拉分治
+    <div class="links">
+      <a href="index.html">索引</a>
+      <a href="../soft-pad-ia-v15/top-flow-switch.html">Pad v15c</a>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="legend">
+      <div class="legend-card bad">
+        <b>现状（弃为主路径）</b>
+        场景 bar「正在编辑」+ <code>切换 →</code> 跳 Hub；部分页再叠一层 page-status-bar。换 scope 要离开当前页。
+      </div>
+      <div class="legend-card good">
+        <b>目标（本原型）</b>
+        一层 <code>settingsContextBar</code>：<code>切换 · {name} ▾</code> 内联列表；Hub 降为「我的习惯」二级入口。页内 Flow 各通道保留。
+      </div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <div class="contract">
+      <b>实现契约（不改脑，只改壳）</b>
+      <table>
+        <thead><tr><th>槽位</th><th>按键</th><th>语音</th><th>摄像头</th><th>虚拟键盘</th></tr></thead>
+        <tbody>
+          <tr><td>通道名</td><td>按键</td><td>语音</td><td>摄像头</td><td>虚拟键盘</td></tr>
+          <tr><td>下拉数据源</td><td colspan="3">habitScopes（通用 + 应用场景）</td><td>agentScopes（Codex…）</td></tr>
+          <tr><td>下拉 pill</td><td>按键·已配 / 生效范围</td><td>引擎 / 唤醒词</td><td>规则数 / 设备</td><td>Pad / 顶栏 / Hook</td></tr>
+          <tr><td>页内专属</td><td>录制键位表单</td><td>Flow：开启→结束→发送</td><td>Flow：识别→设置→Pro</td><td>Flow：Pad→状态灯→托盘</td></tr>
+          <tr><td>删除</td><td colspan="4">双层 bar、「切换→」主路径、Soft Pad Agent 目录列</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    var HABITS = [
+      { id: 'global', name: '通用设置', sub: '所有应用默认', pills: [{ t: '按键', ok: true }, { t: '语音', ok: true }] },
+      { id: 'cursor', name: 'Cursor 场景', sub: '仅 Cursor 前台', pills: [{ t: '按键', ok: true }, { t: '语音', ok: false }] },
+      { id: 'word', name: 'Word 场景', sub: '仅 Word 前台', pills: [{ t: '按键', ok: true }, { t: '语音', ok: true }] }
+    ];
+    var AGENTS = [
+      { id: 'codex', name: 'Codex', sub: '已接 · Pad 12 键', pills: [{ t: 'Pad', ok: true }, { t: '顶栏', ok: true }, { t: '已接', ok: true }] },
+      { id: 'claude', name: 'Claude', sub: '待接 · Pad 10 键', pills: [{ t: 'Pad', ok: true }, { t: '顶栏', ok: true }, { t: '待接', ok: false }] },
+      { id: 'cursor', name: 'Cursor', sub: '已接 · Pad 未开', pills: [{ t: 'Pad', ok: false }, { t: '顶栏', ok: true }, { t: '已接', ok: true }] }
+    ];
+
+    var CHANNELS = [
+      {
+        id: 'keys', label: '按键', channel: '按键', scopeType: 'habit', sel: 'cursor',
+        actions: ['测试按键'],
+        flow: null,
+        tabs: ['触发键', '目标键', '收尾'],
+        preview: function (s) { return '触发 <b>F13</b> → 打开语音 · ' + s.name; },
+        card: function (s) { return '<h4>键位配置</h4><p>' + s.name + ' 下的按键流程。</p>'; }
+      },
+      {
+        id: 'voice', label: '语音', channel: '语音', scopeType: 'habit', sel: 'global',
+        actions: ['保存习惯'],
+        flow: ['开启', '结束', '发送'],
+        flowOn: 0,
+        tabs: [],
+        preview: function (s) { return s.id === 'global' ? '唤醒词 <b>小One</b> · 自动模式' : s.name + ' · 覆盖唤醒词'; },
+        card: function (s) { return '<h4>怎么开启打字？</h4><p>' + s.name + ' 的听写入口。</p>'; }
+      },
+      {
+        id: 'camera', label: '摄像头', channel: '摄像头', scopeType: 'habit', sel: 'cursor',
+        actions: [],
+        flow: ['视觉识别', '摄像头设置', 'Pro'],
+        flowOn: 0,
+        tabs: [],
+        oneCol: true,
+        preview: function (s) { return s.name + ' · 2 条 if-then 规则'; },
+        card: function (s) { return '<h4>视觉识别</h4><p>' + s.name + ' 下的手势规则。</p>'; }
+      },
+      {
+        id: 'softPad', label: '虚拟键盘', channel: '虚拟键盘', scopeType: 'agent', sel: 'codex',
+        actions: ['测试前台'],
+        flow: ['Soft Pad', '状态灯', '托盘'],
+        flowOn: 1,
+        tabs: ['准备度', '灯效', '跨应用', '会话'],
+        preview: function (s) { return '顶栏灯 + 迷你 Pad · ' + s.name; },
+        card: function (s) { return '<h4>跨应用</h4><p>' + s.name + ' 的 per-app 灯效。</p>'; }
+      }
+    ];
+
+    function pillsHtml(pills) {
+      return '<div class="pills">' + pills.map(function (p) {
+        return '<span class="pl' + (p.ok ? ' ok' : (p.ok === false ? ' warn' : '')) + '">' + p.t + '</span>';
+      }).join('') + '</div>';
+    }
+
+    function scopeList(ch) {
+      var list = ch.scopeType === 'agent' ? AGENTS : HABITS;
+      return list.map(function (x) {
+        return '<button type="button" class="bind-item' + (x.id === ch.sel ? ' is-on' : '') + '" data-ch="' + ch.id + '" data-id="' + x.id + '">' +
+          '<strong>' + x.name + '</strong><small>' + x.sub + '</small>' + pillsHtml(x.pills) + '</button>';
+      }).join('');
+    }
+
+    function scopeName(ch) {
+      var list = ch.scopeType === 'agent' ? AGENTS : HABITS;
+      var x = list.find(function (a) { return a.id === ch.sel; });
+      return x ? x.name : '—';
+    }
+
+    function scopeObj(ch) {
+      var list = ch.scopeType === 'agent' ? AGENTS : HABITS;
+      return list.find(function (a) { return a.id === ch.sel; }) || list[0];
+    }
+
+    function renderChannel(ch) {
+      var s = scopeObj(ch);
+      var flowHtml = '';
+      if (ch.flow) {
+        flowHtml = '<div class="flow-mini">' + ch.flow.map(function (f, i) {
+          var cls = 'on';
+          if (ch.id === 'softPad' && i === 1) cls += ' green';
+          if (ch.id === 'camera' && i === 2) cls += ' amber';
+          return '<span class="' + (i === ch.flowOn ? cls : '') + '">' + f + '</span>';
+        }).join('') + '</div>';
+      }
+      var tabsHtml = ch.tabs.length
+        ? '<div class="tabs">' + ch.tabs.map(function (t, i) {
+          return '<span class="tab' + (i === (ch.id === 'softPad' ? 2 : 0) ? ' on' : '') + '">' + t + '</span>';
+        }).join('') + '</div>'
+        : '';
+      var actionsHtml = ch.actions.map(function (a) {
+        return '<button type="button" class="btn-ghost is-muted">' + a + '</button>';
+      }).join('');
+      var aligned = ch.sel === 'cursor' ? '<span class="aligned-hint">已与前台一致</span>' : '';
+
+      return '<article class="channel" data-ch="' + ch.id + '">' +
+        '<div class="channel-hd"><span class="dot"></span>' + ch.label + ' · settingsContextBar</div>' +
+        '<div class="ctx-bar">' +
+          '<div class="ctx-l">' +
+            '<button type="button" class="back">← 返回</button>' +
+            '<div class="ctx-title">' + ch.channel + ' <span class="sub">/ 正在编辑：<span class="scope" data-scope-name>' + scopeName(ch) + '</span></span></div>' +
+            aligned +
+            '<div class="bind-wrap" data-bind="' + ch.id + '">' +
+              '<button type="button" class="btn-ghost" data-bind-btn>切换 · <span data-bind-lbl>' + scopeName(ch) + '</span> ▾</button>' +
+              '<div class="bind-menu" data-bind-menu>' + scopeList(ch) + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="ctx-actions">' +
+            '<button type="button" class="btn-ghost is-muted">我的习惯</button>' +
+            actionsHtml +
+            '<span class="toggle" title="通道开关"></span>' +
+          '</div>' +
+        '</div>' +
+        flowHtml +
+        '<div class="body"><div class="content' + (ch.oneCol ? ' one-col' : '') + '">' +
+          (ch.oneCol ? '' : '<aside class="preview"><b>预览 · <span data-preview-scope>' + s.name + '</span></b><div class="preview-box" data-preview-box>' + ch.preview(s) + '</div></aside>') +
+          '<div class="main">' + tabsHtml + '<div class="card" data-card>' + ch.card(s) + '</div></div>' +
+        '</div></div>' +
+      '</article>';
+    }
+
+    function repaint(ch) {
+      var el = document.querySelector('.channel[data-ch="' + ch.id + '"]');
+      if (!el) return;
+      var s = scopeObj(ch);
+      el.querySelector('[data-scope-name]').textContent = s.name;
+      el.querySelector('[data-bind-lbl]').textContent = s.name;
+      var prevScope = el.querySelector('[data-preview-scope]');
+      if (prevScope) prevScope.textContent = s.name;
+      var box = el.querySelector('[data-preview-box]');
+      if (box) box.innerHTML = ch.preview(s);
+      el.querySelector('[data-card]').innerHTML = ch.card(s);
+      el.querySelector('[data-bind-menu]').innerHTML = scopeList(ch);
+    }
+
+    document.getElementById('grid').innerHTML = CHANNELS.map(renderChannel).join('');
+
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-bind-btn]');
+      if (btn) {
+        e.stopPropagation();
+        var wrap = btn.closest('.bind-wrap');
+        var open = !wrap.classList.contains('is-open');
+        document.querySelectorAll('.bind-wrap').forEach(function (w) { w.classList.remove('is-open'); });
+        if (open) wrap.classList.add('is-open');
+        return;
+      }
+      var item = e.target.closest('.bind-item');
+      if (item) {
+        var chId = item.getAttribute('data-ch');
+        var ch = CHANNELS.find(function (c) { return c.id === chId; });
+        if (ch) {
+          ch.sel = item.getAttribute('data-id');
+          repaint(ch);
+        }
+        document.querySelectorAll('.bind-wrap').forEach(function (w) { w.classList.remove('is-open'); });
+        return;
+      }
+      document.querySelectorAll('.bind-wrap').forEach(function (w) { w.classList.remove('is-open'); });
+    });
+  })();
+  </script>
+</body>
+</html>

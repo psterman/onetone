@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="900" viewBox="0 0 1320 900">
+  <defs><style type="text/css"><![CDATA[
+.bg{fill:#0f1419}.shell{fill:#161b22;stroke:rgba(255,255,255,0.08)}
+.surface{fill:#1c2330;stroke:rgba(255,255,255,0.08)}
+.soft{fill:#252d3a;stroke:rgba(255,255,255,0.08)}
+.ink{fill:#e8eef5}.muted{fill:#8b97a8}.faint{fill:#5c6b7a}
+.small{font:11px 'Segoe UI','Microsoft YaHei',sans-serif}
+.body{font:13px 'Segoe UI','Microsoft YaHei',sans-serif}
+.title{font:700 14px 'Segoe UI','Microsoft YaHei',sans-serif}
+.h1{font:700 20px 'Segoe UI','Microsoft YaHei',sans-serif}
+.label{font:700 12px 'Segoe UI','Microsoft YaHei',sans-serif}
+.cap{font:700 10px 'Segoe UI','Microsoft YaHei',sans-serif}
+]]></style></defs>
+  <rect class="bg" width="1320" height="900"/>
+
+  <rect x="16" y="16" width="1288" height="868" rx="16" class="shell"/>
+  <rect x="32" y="28" width="64" height="20" rx="10" fill="#3eb8dc22" stroke="#3eb8dc"/>
+    <text x="64" y="42" text-anchor="middle" class="cap" fill="#3eb8dc">Codex</text>
+  <text x="108" y="44" class="h1 ink">高能力 Agent · 全区块展示</text>
+
+  <rect x="32" y="72" width="300" height="56" rx="10" class="surface"/>
+  <text x="48" y="96" class="small muted">准备度</text>
+  <rect x="110" y="84" width="52" height="20" rx="10" fill="#34d39922" stroke="#34d399"/>
+    <text x="136" y="98" text-anchor="middle" class="cap" fill="#34d399">Pad·开</text><rect x="170" y="84" width="52" height="20" rx="10" fill="#34d39922" stroke="#34d399"/>
+    <text x="196" y="98" text-anchor="middle" class="cap" fill="#34d399">灯·开</text><rect x="230" y="84" width="72" height="20" rx="10" fill="#34d39922" stroke="#34d399"/>
+    <text x="266" y="98" text-anchor="middle" class="cap" fill="#34d399">接·已接入</text>
+  <rect x="350" y="72" width="200" height="56" rx="10" class="surface"/>
+  <text x="366" y="96" class="small muted">精度</text><text x="420" y="96" class="body ink">Hook 单灯 · 线程槽</text>
+  <g transform="translate(580 60)"><rect width="200" height="200" rx="18" fill="#1a2a35" stroke="#3eb8dc" stroke-width="2"/><rect x="16" y="16" width="168" height="130" rx="12" fill="#0f1a22" stroke="rgba(255,255,255,0.08)"/><rect x="28" y="28" width="44" height="36" rx="8" fill="#fff" stroke="rgba(255,255,255,0.08)"/><rect x="80" y="28" width="44" height="36" rx="8" fill="#3eb8dc" stroke="rgba(255,255,255,0.08)"/><text x="102" y="50" text-anchor="middle" class="cap" fill="#fff">忙</text><rect x="132" y="28" width="44" height="36" rx="8" fill="#fff" stroke="rgba(255,255,255,0.08)"/><rect x="16" y="154" width="168" height="28" rx="8" fill="#0a1018"/><circle cx="36" cy="168" r="5" fill="#3eb8dc"/><circle cx="56" cy="168" r="5" fill="#f59e0b"/><text x="170" y="172" text-anchor="end" class="cap" fill="#5c6b7a">顶栏</text></g>
+
+  <g transform="translate(32 150)">
+    <rect width="400" height="120" rx="12" class="surface"/>
+    <text x="16" y="24" class="label ink">Soft Pad</text>
+    
+    <rect x="16" y="40" width="36" height="20" rx="10" fill="#34d399" stroke="#34d399"/>
+    <circle cx="42" cy="50" r="7" fill="#fff"/><text x="60" y="54" class="body ink">启用虚拟键盘</text>
+    <text x="16" y="78" class="small muted">21 键 · 标准布局</text>
+    <rect x="16" y="88" width="88" height="24" rx="6" fill="#252d3a" stroke="rgba(255,255,255,0.08)"/><text x="60" y="104" text-anchor="middle" class="cap muted">改按键</text>
+    <rect x="112" y="88" width="88" height="24" rx="6" fill="#252d3a" stroke="rgba(255,255,255,0.08)"/><text x="156" y="104" text-anchor="middle" class="cap muted">何时显示</text>
+  </g>
+
+  <g transform="translate(448 150)">
+    <rect width="400" height="120" rx="12" class="surface"/>
+    <text x="16" y="24" class="label ink">状态灯</text>
+    
+    <rect x="16" y="40" width="36" height="20" rx="10" fill="#34d399" stroke="#34d399"/>
+    <circle cx="42" cy="50" r="7" fill="#fff"/><text x="60" y="54" class="body ink">顶栏 + 键灯</text>
+    <text x="16" y="78" class="small muted">一整段任务亮在 AG00（自动）</text>
+    <circle cx="24" cy="100" r="4" fill="#5c6b7a"/><text x="34" y="104" class="small muted">灰空闲</text>
+    <circle cx="84" cy="100" r="4" fill="#3eb8dc"/><text x="94" y="104" class="small muted">蓝忙</text>
+    <circle cx="134" cy="100" r="4" fill="#f59e0b"/><text x="144" y="104" class="small muted">琥珀等你</text>
+  </g>
+
+  <g transform="translate(864 150)">
+    <rect width="424" height="120" rx="12" class="surface"/>
+    <text x="16" y="24" class="label ink">接入</text>
+    
+    <rect x="16" y="40" width="56" height="20" rx="10" fill="#34d39922" stroke="#34d399"/>
+    <text x="44" y="54" text-anchor="middle" class="cap" fill="#34d399">已接入</text>
+    <text x="80" y="54" class="body ink">Codex Hook · 等待事件</text>
+    <text x="16" y="78" class="small muted">在 Codex 发一条消息点亮状态</text>
+    <rect x="16" y="88" width="72" height="24" rx="6" fill="#252d3a" stroke="rgba(255,255,255,0.08)"/><text x="52" y="104" text-anchor="middle" class="cap muted">详情</text>
+  </g>
+
+  <g transform="translate(32 290)">
+    <rect width="1256" height="80" rx="12" class="surface"/>
+    <text x="16" y="24" class="label ink">会话导航（仅 Codex / Claude）</text>
+    
+    <rect x="16" y="40" width="36" height="20" rx="10" fill="#252d3a" stroke="rgba(255,255,255,0.08)"/>
+    <circle cx="26" cy="50" r="7" fill="#fff"/><text x="60" y="54" class="body ink">启用线程槽（实验）</text>
+    <text x="16" y="72" class="small muted">AG00–01 混排 · 不影响 ACT/NAV</text>
+  </g>
+
+  <g transform="translate(32 386)">
+    <rect width="1256" height="200" rx="12" class="surface"/>
+    <text x="16" y="24" class="label ink">跨应用顶栏监视</text>
+    
+    <text x="16" y="44" class="small muted">此习惯顶栏还显示：</text>
+    <rect x="16" y="52" width="108" height="28" rx="8" fill="#fff" stroke="rgba(255,255,255,0.08)"/><text x="70" y="70" text-anchor="middle" class="small ink">Codex</text><text x="108" y="70" class="cap" fill="#f87171">×</text><rect x="136" y="52" width="108" height="28" rx="8" fill="#fff" stroke="rgba(255,255,255,0.08)"/><text x="190" y="70" text-anchor="middle" class="small ink">Claude</text><text x="228" y="70" class="cap" fill="#f87171">×</text><rect x="256" y="52" width="108" height="28" rx="8" fill="#fff" stroke="rgba(255,255,255,0.08)"/><text x="310" y="70" text-anchor="middle" class="small ink">Cursor</text><text x="348" y="70" class="cap" fill="#f87171">×</text>
+    <text x="16" y="100" class="small" fill="#3eb8dc">+ 添加</text>
+    <text x="16" y="130" class="small faint">其他 Agent 接入：Claude · 未接入 · 详情  |  Cursor · 已接入</text>
+  </g>
+
+  <text x="32" y="876" class="small" fill="#3eb8dc">图 B · 能力驱动：有会话槽才显示会话区；有 Hook 才显示接入区；无能力则灰掉</text>
+
+</svg>

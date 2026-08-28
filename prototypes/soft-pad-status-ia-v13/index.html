@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>虚拟键盘 IA v14b · 状态灯 · Agent+Pad 捆绑列表</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:#0e1116;--surface:#161b22;--surface-2:#1c2330;--line:rgba(255,255,255,.08);--line-strong:rgba(255,255,255,.14);
+      --text:#e8eef5;--muted:#8b97a8;--faint:#5c6b7a;
+      --cyan:#3eb8dc;--cyan-soft:rgba(62,184,220,.14);--cyan-bd:rgba(62,184,220,.35);
+      --green:#34d399;--green-soft:rgba(52,211,153,.12);
+      --amber:#f59e0b;--amber-soft:rgba(245,158,11,.12);
+      --red:#f87171;--pink:#f472b6;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+      --mono:"JetBrains Mono",ui-monospace,monospace;--radius:12px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:var(--font)}
+    button{font-family:inherit;cursor:pointer}
+
+    .proto{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--line);background:#141920;position:sticky;top:0;z-index:40}
+    .proto h1{margin:0;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+    .proto h1 strong{color:var(--text)}
+    .proto p{margin:0;flex:1;min-width:200px;font-size:12px;color:var(--muted);line-height:1.45}
+    .proto p b{color:var(--text)}
+    .tag{font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--green-soft);color:var(--green);border:1px solid rgba(52,211,153,.3)}
+
+    .page{max-width:1100px;margin:0 auto;padding:18px;display:grid;gap:14px}
+
+    .insight{padding:12px 14px;border-radius:10px;border:1px solid rgba(52,211,153,.3);background:var(--green-soft);font-size:12px;color:var(--muted);line-height:1.5}
+    .insight strong{color:var(--green)}
+
+    .contract{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden}
+    .contract-h{padding:12px 16px;border-bottom:1px solid var(--line);font-size:13px;font-weight:700}
+    .contract-body{padding:14px 16px;display:grid;gap:12px}
+    .contract-body p{margin:0;font-size:12px;color:var(--muted);line-height:1.45}
+    .compare{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media(max-width:700px){.compare{grid-template-columns:1fr}}
+    .cmp{padding:10px 12px;border-radius:8px;border:1px solid var(--line);font-size:11px;line-height:1.45}
+    .cmp.bad{background:var(--red-soft);border-color:rgba(248,113,113,.25);color:var(--muted)}
+    .cmp.bad strong{color:var(--red)}
+    .cmp.good{background:var(--green-soft);border-color:rgba(52,211,153,.25);color:var(--muted)}
+    .cmp.good strong{color:var(--green)}
+    .wf{font-family:var(--mono);font-size:10px;line-height:1.5;color:var(--muted);white-space:pre;margin-top:8px}
+
+    .mock{border:1px solid rgba(52,211,153,.22);border-radius:14px;background:var(--surface);overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,.28)}
+    .status{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
+    .status-l{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .brand{font-size:15px;font-weight:800}
+    .pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid rgba(52,211,153,.28);background:var(--green-soft);color:var(--green)}
+    .bind{font:600 12px/1 var(--font);padding:4px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface-2)}
+    .toggle{width:38px;height:22px;border-radius:999px;background:var(--cyan);border:1px solid var(--cyan-bd);position:relative}
+    .toggle::after{content:"";position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+
+    .face-seg{display:flex;gap:4px;padding:8px 14px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.12)}
+    .face-seg button{flex:1;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font:700 12px/1 var(--font);padding:10px;border-radius:10px}
+    .face-seg button.is-on{color:var(--cyan);border-color:var(--cyan-bd);background:var(--cyan-soft)}
+    .face-seg button[data-face="agent"].is-on{color:var(--green);border-color:rgba(52,211,153,.35);background:var(--green-soft)}
+
+    .body-wrap{min-height:460px}
+    .face{display:none;min-height:460px}
+    .face.is-on{display:grid}
+
+    /* Pad face */
+    .face-pad{grid-template-columns:minmax(200px,.36fr) 1fr}
+    .preview-col{border-right:1px solid var(--line);padding:14px;background:rgba(52,211,153,.03);display:flex;flex-direction:column;gap:8px}
+    .preview-lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+    .preview-box{flex:1;min-height:220px;border-radius:10px;border:1px dashed var(--line-strong);background:rgba(0,0,0,.18);display:grid;place-items:center;padding:12px}
+    .mini-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;width:100%;max-width:176px;padding:8px;border-radius:9px;border:1px solid var(--line-strong);background:var(--surface-2)}
+    .mini-pad.sm{max-width:88px;padding:5px;gap:2px;border-radius:6px}
+    .mini-pad.sm .k{font-size:7px;border-radius:4px}
+    .mini-pad.sm .k.w{height:14px}
+    .k{aspect-ratio:1;border-radius:5px;border:1px solid var(--line);background:var(--surface);font-size:8px;display:grid;place-items:center;color:var(--muted)}
+    .k.w{grid-column:span 2;aspect-ratio:auto;height:22px}
+
+    .panel-col{display:flex;flex-direction:column;min-width:0}
+    .subtabs{display:flex;padding:0 14px;border-bottom:1px solid var(--line)}
+    .subtab{padding:10px 14px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--muted);font:700 12px/1 var(--font);margin-bottom:-1px}
+    .subtab.is-on{color:var(--cyan);border-bottom-color:var(--cyan)}
+    .face-agent .subtab.is-on{color:var(--green);border-bottom-color:var(--green)}
+    .panel-head{padding:12px 14px 0}
+    .panel-head h2{margin:0;font-size:14px;font-weight:700}
+    .panel-head p{margin:4px 0 0;font-size:11px;color:var(--muted)}
+    .panel-body{flex:1;padding:14px}
+    .card{border:1px solid var(--line);border-radius:10px;background:var(--surface-2);padding:12px}
+    .card h4{margin:0 0 6px;font-size:13px;font-weight:700}
+    .card p{margin:0;font-size:12px;color:var(--muted);line-height:1.45}
+    .field{margin-top:10px;display:grid;gap:4px}
+    .field label{font-size:11px;font-weight:600;color:var(--muted)}
+    .field select{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--text);font:inherit;font-size:12px}
+
+    /* Agent face — bundled list */
+    .face-agent{grid-template-columns:272px 1fr}
+    @media(max-width:720px){.face-agent{grid-template-columns:1fr}}
+    .bundle-list{border-right:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,.1);overflow-y:auto}
+    .bundle-list-h{margin:0 0 2px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+    .bundle-list-sub{margin:0 0 6px;font-size:11px;color:var(--faint);line-height:1.35}
+
+    /* 核心：Agent + Pad 预览 + 状态灯 捆绑行 */
+    .bundle{
+      width:100%;text-align:left;padding:10px;border-radius:12px;border:1px solid var(--line);
+      background:var(--surface-2);color:inherit;display:grid;gap:8px;transition:border-color .15s,background .15s;
+    }
+    .bundle:hover{border-color:var(--line-strong)}
+    .bundle.is-on{border-color:rgba(52,211,153,.4);background:var(--green-soft);box-shadow:inset 0 0 0 1px rgba(52,211,153,.15)}
+    .bundle-head{display:flex;align-items:center;gap:8px}
+    .bundle-av{width:30px;height:30px;border-radius:8px;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;font-size:12px;font-weight:700;flex-shrink:0}
+    .bundle-title{flex:1;min-width:0}
+    .bundle-title strong{display:block;font-size:13px;font-weight:700}
+    .bundle-title span{font-size:10px;color:var(--muted)}
+  .bundle-lights{display:flex;align-items:center;gap:4px;flex-shrink:0}
+    .ldot{width:8px;height:8px;border-radius:50%;border:1px solid rgba(0,0,0,.2)}
+    .ldot.idle{background:var(--green)}
+    .ldot.busy{background:var(--amber)}
+    .ldot.off{background:var(--faint)}
+    .bundle-body{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center}
+    .bundle-pad-wrap{
+      padding:6px;border-radius:8px;border:1px solid var(--line);background:rgba(0,0,0,.2);
+      position:relative;
+    }
+    .bundle-pad-wrap::after{
+      content:attr(data-state);position:absolute;top:-6px;right:-4px;
+      font-size:8px;font-weight:700;padding:1px 5px;border-radius:999px;
+      background:var(--surface);border:1px solid var(--line);color:var(--muted);
+    }
+    .bundle-pad-wrap.on::after{color:var(--green);border-color:rgba(52,211,153,.35)}
+    .bundle-meta{display:grid;gap:4px;font-size:10px;color:var(--muted)}
+    .bundle-meta b{color:var(--text);font-weight:700}
+    .bundle-meta .live{color:var(--green);font-weight:700}
+    .bundle-meta .warn{color:var(--amber);font-weight:700}
+
+    .amain{display:flex;flex-direction:column;min-width:0}
+    .sel-preview{
+      display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);
+      background:rgba(52,211,153,.04);
+    }
+    .sel-preview-lbl{font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.06em}
+    .sel-preview-pad{padding:6px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface-2)}
+    .sel-preview-meta{font-size:11px;color:var(--muted);line-height:1.45}
+    .sel-preview-meta strong{color:var(--text);display:block;font-size:12px;margin-bottom:2px}
+    .sel-lights{display:flex;gap:6px;align-items:center;margin-left:auto;font-size:10px;color:var(--muted)}
+    .ghost{padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--pink);font:600 11px/1 var(--font);margin-left:8px}
+  </style>
+</head>
+<body>
+  <header class="proto">
+    <h1><strong>虚拟键盘 IA v14b</strong></h1>
+    <span class="tag">Agent·Pad 捆绑</span>
+    <p>状态灯面 <b>保留 Pad 预览</b>，但嵌进左侧列表行（图标 + 迷你键盘 + 三盏灯），不是独立预览列。右侧只做 <b>准备度|灯效|会话</b>。</p>
+  </header>
+
+  <main class="page">
+    <div class="insight">
+      <strong>修正 v14a 的误解</strong>：状态灯与悬浮键盘是一体的——用户要一眼看到「这个 Agent 的 Pad 长什么样、灯什么颜色、开没开」。所以不是去掉预览，而是把 <b>Agent 图标 + Pad 缩略图 + 实时灯态</b> 捆成左侧可选行；点行切换 Agent，右侧改该 Agent 的灯/接入配置。
+    </div>
+
+    <section class="contract">
+      <div class="contract-h">状态灯 Face 左侧列表 · 捆绑契约</div>
+      <div class="contract-body">
+        <div class="compare">
+          <div class="cmp bad">
+            <strong>✗ 不要</strong><br>
+            独立左预览列 + 纯文字 Agent 列表（两者脱节）<br>
+            或 Pad 四 tab 叠在状态灯面
+          </div>
+          <div class="cmp good">
+            <strong>✓ 要</strong><br>
+            每行 = Agent 头像 + 迷你 Pad + 三盏灯 + 一行状态文案<br>
+            选中行 → 右侧 subtab 配置该 Agent
+          </div>
+        </div>
+        <pre class="wf">┌─ 捆绑行 ─────────────────┐     ┌─ 右侧（选中 Agent）──┐
+│ [C] Codex      ● ● ○    │     │ 准备度 | 灯效 | 会话   │
+│ ┌──┐  Pad·12键·已开     │ ──► │ Hook / 颜色 / 会话目标 │
+│ │▦▦│  顶栏·已接·空闲     │     └────────────────────────┘
+│ └──┘                     │
+└──────────────────────────┘</pre>
+      </div>
+    </section>
+
+    <section class="mock" id="mock">
+      <div class="status">
+        <div class="status-l">
+          <span class="brand">虚拟键盘</span>
+          <span class="pill">已启用</span>
+          <button type="button" class="bind">绑定 · Codex ▾</button>
+        </div>
+        <span class="toggle"></span>
+      </div>
+
+      <div class="face-seg" role="tablist">
+        <button type="button" data-face="pad" role="tab">浮层键盘</button>
+        <button type="button" class="is-on" data-face="agent" role="tab" aria-selected="true">状态灯</button>
+      </div>
+
+      <div class="body-wrap">
+        <!-- Pad face (简化示意) -->
+        <div class="face face-pad" id="facePad">
+          <aside class="preview-col">
+            <span class="preview-lbl">Pad 预览 · 大图编辑</span>
+            <div class="preview-box">
+              <div class="mini-pad" id="padBigPreview"></div>
+            </div>
+          </aside>
+          <div class="panel-col">
+            <div class="subtabs" id="padSubtabs">
+              <button type="button" class="subtab is-on" data-tab="appear">出现</button>
+              <button type="button" class="subtab" data-tab="keys">键位</button>
+              <button type="button" class="subtab" data-tab="look">外观</button>
+              <button type="button" class="subtab" data-tab="purpose">用途</button>
+            </div>
+            <div class="panel-head"><h2>何时显示</h2><p>大图预览 + 四 subtab — 专用于编辑 Pad</p></div>
+            <div class="panel-body"><div class="card"><h4>匹配规则</h4><p>与状态灯面的迷你预览是同一 mapping，只是展示尺度不同。</p></div></div>
+          </div>
+        </div>
+
+        <!-- Agent face — bundled list -->
+        <div class="face face-agent is-on" id="faceAgent">
+          <aside class="bundle-list">
+            <h3 class="bundle-list-h">Agent · Pad · 状态</h3>
+            <p class="bundle-list-sub">每行捆绑：谁 · 键盘长什么样 · 灯什么态</p>
+            <div id="bundleRows"></div>
+          </aside>
+          <div class="amain">
+            <div class="sel-preview" id="selPreview">
+              <span class="sel-preview-lbl">当前</span>
+              <div class="sel-preview-pad"><div class="mini-pad sm" id="selPadThumb"></div></div>
+              <div class="sel-preview-meta" id="selMeta"></div>
+              <div class="sel-lights" id="selLights"></div>
+              <button type="button" class="ghost">顶栏成员…</button>
+            </div>
+            <div class="subtabs" id="agentSubtabs">
+              <button type="button" class="subtab is-on" data-tab="ready">准备度</button>
+              <button type="button" class="subtab" data-tab="lights">灯效</button>
+              <button type="button" class="subtab" data-tab="session">会话</button>
+            </div>
+            <div class="panel-body" id="agentPanel"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+  (function(){
+    var AGENTS=[
+      {id:'codex',icon:'C',name:'Codex',padOn:true,keys:12,hook:'已接',light:'idle',lightLbl:'空闲',usage:'68%'},
+      {id:'claude',icon:'Cl',name:'Claude',padOn:true,keys:10,hook:'待接',light:'busy',lightLbl:'忙碌',usage:'—'},
+      {id:'cursor',icon:'Cu',name:'Cursor',padOn:false,keys:0,hook:'已接',light:'off',lightLbl:'未开 Pad',usage:'—'}
+    ];
+    var sel='codex', agentTab='ready';
+
+    function padHtml(sm){
+      return '<div class="k">1</div><div class="k">2</div><div class="k">3</div>'+
+        '<div class="k">4</div><div class="k">5</div><div class="k">6</div>'+
+        '<div class="k w">发</div><div class="k">✓</div>';
+    }
+
+    function lightDots(a){
+      var idle=a.light==='idle', busy=a.light==='busy';
+      return '<span class="ldot '+(idle?'idle':busy?'busy':'off')+'"></span>'+
+        '<span class="ldot '+(busy?'busy':'off')+'"></span>'+
+        '<span class="ldot off"></span>';
+    }
+
+    function renderBundles(){
+      document.getElementById('bundleRows').innerHTML=AGENTS.map(function(a){
+        return '<button type="button" class="bundle'+(a.id===sel?' is-on':'')+'" data-id="'+a.id+'">'+
+          '<div class="bundle-head">'+
+            '<span class="bundle-av">'+a.icon+'</span>'+
+            '<div class="bundle-title"><strong>'+a.name+'</strong><span>'+a.lightLbl+'</span></div>'+
+            '<div class="bundle-lights">'+lightDots(a)+'</div>'+
+          '</div>'+
+          '<div class="bundle-body">'+
+            '<div class="bundle-pad-wrap'+(a.padOn?' on':'')+'" data-state="'+(a.padOn?'开':'关')+'">'+
+              '<div class="mini-pad sm">'+padHtml(true)+'</div>'+
+            '</div>'+
+            '<div class="bundle-meta">'+
+              '<span>Pad · <b>'+(a.keys?a.keys+' 键':'未准备')+'</b> · '+(a.padOn?'<span class="live">已开</span>':'<span class="warn">关</span>')+'</span>'+
+              '<span>顶栏 · <b>'+a.hook+'</b> · '+a.lightLbl+'</span>'+
+            '</div>'+
+          '</div></button>';
+      }).join('');
+      document.querySelectorAll('.bundle').forEach(function(b){
+        b.addEventListener('click',function(){
+          sel=b.getAttribute('data-id');
+          renderBundles(); renderSel(); renderAgentPanel();
+        });
+      });
+    }
+
+    function agent(){ return AGENTS.find(function(x){return x.id===sel;}); }
+
+    function renderSel(){
+      var a=agent();
+      document.getElementById('selPadThumb').innerHTML=padHtml(true);
+      document.getElementById('selMeta').innerHTML=
+        '<strong>'+a.name+' · Pad + 顶栏灯</strong>'+
+        (a.padOn?a.keys+' 键已配置':'Pad 未开')+' · Hook '+a.hook+' · '+a.lightLbl;
+      document.getElementById('selLights').innerHTML=lightDots(a)+' '+a.lightLbl;
+    }
+
+    var agentCopy={
+      ready:function(a){
+        return '<div class="card"><h4>'+a.name+' · 准备度</h4><p>该 Agent 的 Hook 接入与额度（跟左侧选中行对应）。</p>'+
+          '<div class="field"><label>Shell Hook</label><select><option>'+a.hook+'</option></select></div>'+
+          (a.usage!=='—'?'<div class="field"><label>额度</label><select><option>'+a.usage+' · 12天后重置</option></select></div>':'')+
+        '</div>';
+      },
+      lights:function(a){
+        return '<div class="card"><h4>'+a.name+' · 顶栏灯效</h4><p>三盏灯表示忙/等你/完成。左侧列表实时反映颜色。</p>'+
+          '<div class="field"><label>顶栏状态灯</label><select><option>开启</option><option>仅托盘</option></select></div>'+
+          '<div class="field"><label>当前态</label><select><option>'+a.lightLbl+'</option></select></div></div>';
+      },
+      session:function(a){
+        return '<div class="card"><h4>'+a.name+' · 会话</h4><p>AG 键 / 会话恢复目标。</p>'+
+          '<div class="field"><label>默认动作</label><select><option>恢复上一线程</option></select></div></div>';
+      }
+    };
+
+    function renderAgentPanel(){
+      document.getElementById('agentPanel').innerHTML=agentCopy[agentTab](agent());
+    }
+
+    function setFace(f){
+      document.getElementById('facePad').classList.toggle('is-on',f==='pad');
+      document.getElementById('faceAgent').classList.toggle('is-on',f==='agent');
+      document.querySelectorAll('.face-seg button').forEach(function(b){
+        var on=b.getAttribute('data-face')===f;
+        b.classList.toggle('is-on',on);
+        b.setAttribute('aria-selected',on?'true':'false');
+      });
+      document.getElementById('mock').classList.toggle('face-agent',f==='agent');
+    }
+
+    document.querySelectorAll('.face-seg button').forEach(function(b){
+      b.addEventListener('click',function(){ setFace(b.getAttribute('data-face')); });
+    });
+    document.querySelectorAll('#agentSubtabs .subtab').forEach(function(b){
+      b.addEventListener('click',function(){
+        agentTab=b.getAttribute('data-tab');
+        document.querySelectorAll('#agentSubtabs .subtab').forEach(function(x){
+          x.classList.toggle('is-on',x===b);
+        });
+        renderAgentPanel();
+      });
+    });
+
+    document.getElementById('padBigPreview').innerHTML=padHtml(false);
+    renderBundles(); renderSel(); renderAgentPanel();
+  })();
+  </script>
+</body>
+</html>

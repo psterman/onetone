@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>v12 Agent 工作台 · 原型</title>
+  <style>
+    :root { --bg:#0e1116; --surface:#161b22; --line:rgba(255,255,255,.1); --text:#e8eef5; --muted:#8b97a8; --cyan:#3eb8dc; --green:#34d399; --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:var(--font); }
+    header { padding:16px 20px; border-bottom:1px solid var(--line); position:sticky; top:0; background:#141920; z-index:5; }
+    h1 { margin:0 0 6px; font-size:18px; }
+    p { margin:0; font-size:13px; color:var(--muted); line-height:1.5; }
+    nav { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+    nav a { color:var(--muted); text-decoration:none; font-size:12px; font-weight:600; padding:6px 12px; border:1px solid var(--line); border-radius:8px; }
+    nav a:hover, nav a.active { color:var(--cyan); border-color:rgba(62,184,220,.35); background:rgba(62,184,220,.1); }
+    main { padding:20px; max-width:1400px; margin:0 auto; }
+    section { margin-bottom:32px; }
+    h2 { font-size:15px; margin:0 0 10px; }
+    img { width:100%; border-radius:12px; border:1px solid var(--line); }
+    .tag { display:inline-block; font-size:10px; font-weight:700; padding:2px 8px; border-radius:999px; margin-right:6px; }
+    .tag.new { background:rgba(52,211,153,.12); color:var(--green); }
+    .compare { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    @media (max-width:900px) { .compare { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>v12 · Agent 工作台（整页重构）</h1>
+    <p>不是藏右栏：用「一 Agent 一工作台」融合 Pad / 灯 / 接入，能力由 <code>agent_catalog</code> 驱动。</p>
+    <nav>
+      <a href="#a" class="active">A 工作台总览</a>
+      <a href="#b">B Codex 全能力</a>
+      <a href="#c">C 架构对比</a>
+      <a href="../../prototypes/agent-workbench-v12/index.html">★ 交互原型 HTML</a>
+      <a href="lights-plan-v11-index.html">← v11 小修对比</a>
+    </nav>
+  </header>
+  <main>
+    <section id="a">
+      <h2><span class="tag new">A</span>Agent 工作台总览（Cursor 选中）</h2>
+      <img src="lights-plan-v12-a-workbench.png" alt="Agent 工作台" width="1320" height="900" />
+    </section>
+    <section id="b">
+      <h2><span class="tag new">B</span>高能力 Agent（Codex）· 能力区块全开</h2>
+      <img src="lights-plan-v12-b-codex.png" alt="Codex 工作台" />
+    </section>
+    <section id="c">
+      <h2><span class="tag new">C</span>架构：碎片化 → 融合</h2>
+      <img src="lights-plan-v12-c-architecture.png" alt="架构对比" />
+    </section>
+    <section class="compare">
+      <div>
+        <h2>v11（小修）</h2>
+        <img src="lights-plan-v11-after-scope.png" alt="v11" />
+      </div>
+      <div>
+        <h2>v12（重构）</h2>
+        <img src="lights-plan-v12-a-workbench.png" alt="v12" />
+      </div>
+    </section>
+  </main>
+</body>
+</html>

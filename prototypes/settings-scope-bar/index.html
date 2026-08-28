@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>四通道顶栏 · 原型索引</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#eef2f7;--surface:#fff;--line:rgba(26,45,74,.12);--text:#1a2d4a;--muted:#5c6b82;--cyan:#2a9cc4;--green:#2e7d4f;--font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5}
+    header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--surface)}
+    h1{margin:0 0 8px;font-size:20px}p.lead{margin:0;color:var(--muted);max-width:720px;font-size:14px}
+    main{padding:24px;max-width:920px;margin:0 auto;display:grid;gap:16px}
+    .card{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:18px}
+    .card h2{margin:0 0 8px;font-size:16px}
+    .card p{margin:0 0 12px;font-size:13px;color:var(--muted)}
+    pre{font-size:11px;line-height:1.5;color:var(--muted);background:#f6f8fb;padding:12px;border-radius:8px;overflow-x:auto}
+    a.btn{display:inline-block;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;text-decoration:none;color:#fff;background:linear-gradient(90deg,var(--cyan),var(--green))}
+    .links{font-size:12px;color:var(--muted)}.links a{color:var(--cyan)}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>settingsContextBar · 四通道顶栏</h1>
+    <p class="lead">统一外壳：<b>返回 · 通道 / 正在编辑 · 切换 ▾ · 动作 · 开关</b>。下拉内容按通道注入（习惯 vs Agent），不整体重写各页 Flow。</p>
+  </header>
+  <main>
+    <article class="card">
+      <h2>四通道并排对比（推荐）</h2>
+      <p>按键 / 语音 / 摄像头 / 虚拟键盘 — 同一顶栏契约，两种下拉数据源。可点「切换 ▾」切换 scope，预览区随动。</p>
+      <pre>壳：settingsContextBar（共享）
+下拉：habitScopes[]  |  agentScopes[]
+页内：各通道自有 Flow / 配置区（不变）</pre>
+      <a class="btn" href="four-channel-compare.html">打开对比原型 →</a>
+    </article>
+    <p class="links">相关：<a href="../soft-pad-ia-v15/top-flow-switch.html">虚拟键盘 v15c</a> · <a href="../soft-pad-ia-v15/index.html">Pad IA 索引</a></p>
+  </main>
+</body>
+</html>

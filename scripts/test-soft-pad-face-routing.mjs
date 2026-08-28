@@ -39,7 +39,8 @@ assert(/facePad:|faceAgent:|faceTimeline:/.test(src), 'els() face roots');
 assert(/softPadAgentPreviewHost/.test(src) && /softPadTmPreviewHost/.test(src), 'per-face preview hosts');
 assert(/PAD_MODE_TO_PANEL/.test(src) && /PANEL_TO_PAD_MODE/.test(src), 'pad mode ↔ panel maps');
 assert(/goSoftPadFlowNode[\s\S]*?setSoftPadFace\('agent'\)/.test(src), 'flow node agent → setSoftPadFace');
-assert(/goSoftPadFlowNode[\s\S]*?setSoftPadFace\('timeline'\)/.test(src), 'flow node timeline → setSoftPadFace');
+assert(/goSoftPadFlowNode[\s\S]*?nodeId === 'timeline'[\s\S]*?return;/.test(src),
+  'flow node timeline retired (no setSoftPadFace)');
 assert(/nodeId === 'pad'[\s\S]*?setSoftPadFace\('pad'/.test(src), 'flow node pad → setSoftPadFace');
 assert(/canPaint = true/.test(src), 'timeline keeps Soft Pad preview');
 
@@ -52,6 +53,8 @@ assert(html.includes('data-pad-mode="keys"'), 'html keys tab');
 assert(html.includes('data-pad-mode="look"'), 'html look tab');
 assert(html.includes('data-pad-mode="purpose"'), 'html purpose tab');
 assert(html.includes('id="softPadAgentBody"'), 'html agent body host');
+assert(html.includes('id="softPadAgentDirectory"'), 'html agent directory host');
+assert(html.includes('id="softPadAgentDirectoryList"'), 'html agent directory list');
 assert(html.includes('id="softPadTmDetailHost"'), 'html tm detail host');
 assert(!/01 \/ Soft Pad/.test(html), 'flow node tags drop 01/ numbering');
 assert(!html.includes('id="softPadPadChassis"') || html.includes('soft-pad-pad-ring" id="softPadPadRing" hidden'), 'pad chassis ring not main path');
@@ -64,11 +67,18 @@ assert(/soft-pad-tm-mark/.test(tm), 'tm spine mark markup');
 assert(/#softPadPreviewHost.*micro-hw|min\(100%,\s*380px\)/.test(css), 'hub Soft Pad fills left column');
 assert(/\.soft-pad-face-agent[\s\S]{0,1200}?max-width:\s*300px/.test(css),
   'C2 Soft Pad preview compact');
-assert(/\.soft-pad-page-body\.is-face-agent[\s\S]*?grid-template-columns/.test(css),
-  'C2 agent face enables page aside column');
-assert(/\.soft-pad-page-body\.is-face-agent #softPadSchemeAside[\s\S]*?display:\s*flex/.test(css),
-  'C2 agent face shows scheme aside');
-assert(/function renderForegroundAppBarHtml\(/.test(src), 'foreground app bar for scheme rail');
+assert(/\.soft-pad-face-agent[\s\S]{0,2000}?grid-template-columns:\s*minmax\(240px,\s*0\.28fr\)\s*minmax\(260px,\s*0\.32fr\)/.test(css),
+  'C2 agent face 3-column grid');
+assert(/\.soft-pad-face-agent__directory/.test(css), 'C2 agent directory column css');
+assert(/\.soft-pad-agent-workbench__tabs/.test(css), 'workbench horizontal tabs css');
+assert(/\.soft-pad-agent-workbench__panel/.test(css), 'workbench panel css');
+assert(/\.soft-pad-hub-page\.is-face-agent #softPadAppSwitcher[\s\S]*?display:\s*none/.test(css),
+  'agent face hides app switcher ribbon');
+assert(!/\.soft-pad-page-body\.is-face-agent #softPadSchemeAside[\s\S]*?display:\s*flex/.test(css),
+  'agent face no longer shows page aside');
+assert(/function renderAgentDirectory\(/.test(src), 'renderAgentDirectory helper');
+assert(/schemeListHidden:\s*onAgentFace/.test(src), 'workflow model hides scheme list on agent face');
+assert(/function renderForegroundAppBarHtml\(/.test(src), 'foreground app bar helper kept');
 assert(/is-face-agent/.test(src), 'syncFaceChrome toggles is-face-agent');
 assert(/\.soft-pad-face-tm[\s\S]{0,1200}?max-width:\s*300px/.test(css),
   'C3 Soft Pad preview compact');
@@ -77,13 +87,43 @@ assert(/softPadTmDetailHost/.test(tm), 'tm detail paints into face host');
 assert(!/stage\.classList\.toggle\('is-tm-desk'/.test(tm), 'tm does not toggle stage is-tm-desk');
 
 const padUi = fs.readFileSync(path.join(root, 'src/js/features/agent/codex-micro-pad-ui.js'), 'utf8');
-assert(/function renderStatusLightsSimple\(/.test(padUi), 'renderStatusLightsSimple');
+assert(!/function renderStatusLightsSimple\(/.test(padUi), 'v12d removed legacy renderStatusLightsSimple');
+assert(!/function renderAgentLightsPicker\(/.test(padUi), 'v12d removed renderAgentLightsPicker');
+assert(/function workbenchPreviewOpts\(/.test(padUi), 'workbenchPreviewOpts for contextual preview');
+assert(/stripMode/.test(padUi), 'preview stripMode contextual');
+assert(/function renderAgentWorkbench\(/.test(padUi), 'renderAgentWorkbench');
 assert(/TOPBAR_LIGHT_CANDIDATES/.test(padUi), 'TOPBAR_LIGHT_CANDIDATES registry');
 assert(/function renderTopbarLightsPanel\(/.test(padUi), 'renderTopbarLightsPanel');
-assert(/data-lights-simple/.test(padUi), 'agent panel data-lights-simple');
-assert(!/data-act="lights-topbar"/.test(
-  padUi.slice(padUi.indexOf('function renderStatusLightsSimple'), padUi.indexOf('function renderStatusLightsPreviewLegend'))
-), 'simple panel no duplicate topbar sync checkbox');
+assert(/data-agent-workbench/.test(padUi), 'agent panel data-agent-workbench');
+assert(/data-agent-workbench-tab/.test(padUi), 'workbench horizontal tab marker');
+assert(/function bindAgentWorkbenchSubtabEvents\(/.test(padUi), 'bindAgentWorkbenchSubtabEvents');
+assert(/function getSoftPadWorkbenchTab\(/.test(padUi), 'getSoftPadWorkbenchTab export');
+assert(/omitFaceTopbar/.test(padUi), 'agent face omitFaceTopbar preview dedup');
+assert(/renderAgentWorkbench\(m, pad\)/.test(
+  padUi.slice(padUi.indexOf('function renderSoftPadAgentPanel'), padUi.indexOf('function setSoftPadControlsBusy'))
+), 'agent panel uses renderAgentWorkbench');
+assert(/data-connect-mode="scope"/.test(padUi), 'connect scope mode marker');
+assert(/data-connect-mode="fold"/.test(padUi), 'connect fold mode marker');
+assert(/data-agent-cross-panel/.test(padUi), 'cross-app topbar panel marker');
+assert(/data-cross-topbar-merged/.test(padUi), 'cross-app merged list marker');
+assert(/function renderCrossTopbarMergedPanel\(/.test(padUi), 'renderCrossTopbarMergedPanel');
+assert(!/renderTopbarLightsPanel\(pad, \{ noConnect: true/.test(
+  padUi.slice(padUi.indexOf('function renderAgentCrossPanel'), padUi.indexOf('function renderAgentSessionPanel'))
+), 'cross panel uses merged list not dual panels');
+assert(!/data-act="agent-light"/.test(
+  padUi.slice(padUi.indexOf('function renderAgentReadinessPanel'), padUi.indexOf('function renderAgentLightsPanel'))
+), 'readiness panel no topbar checkbox');
+assert(!/data-act="agent-light"/.test(
+  padUi.slice(padUi.indexOf('function renderLightsKeysTab'), padUi.indexOf('function renderLightTemplateCards'))
+), 'keys tab no topbar enable checkbox');
+assert(/softPadReadinessTopbarHint/.test(padUi), 'readiness points to cross tab for topbar');
+assert(/softPadCrossGlobalHint/.test(padUi), 'cross tab global hint');
+assert(!/<details class="soft-pad-agent-cross-topbar" data-agent-cross-topbar>/.test(
+  padUi.slice(padUi.indexOf('function renderAgentWorkbench'), padUi.indexOf('function renderStatusLightsPreviewLegend'))
+), 'workbench no folded cross-topbar details');
+assert(!/softPadLightsCapTopbar/.test(
+  padUi.slice(padUi.indexOf('function renderAgentWorkbench'), padUi.indexOf('function renderStatusLightsPreviewLegend'))
+), 'workbench lights tab no duplicate topbar row');
 assert(!/fillStatusLightsAdvanced[\s\S]*?renderAgentLightsPicker/.test(padUi),
   'advanced section no global agent lights picker');
 assert(/data-lights-topbar-preview/.test(padUi), 'left preview topbar strip marker');
@@ -92,8 +132,7 @@ assert(/\.soft-pad-lights-topbar-preview/.test(css), 'css topbar preview strip')
 assert(/\.soft-pad-topbar-lights-card/.test(css), 'css topbar monitor card');
 assert(!/renderSoftPadMoreBody[\s\S]*?renderAgentLightsPicker/.test(padUi),
   'Soft Pad more body no topbar picker');
-assert(!/data-adapter-card/.test(padUi.slice(padUi.indexOf('renderStatusLightsSimple'), padUi.indexOf('function renderSoftPadAgentPanel') + 220)),
-  'simple lights path avoids adapter cards');
+assert(/data-agent-workbench/.test(padUi), 'agent panel data-agent-workbench');
 assert(/function renderSoftPadPurposePanel\(/.test(padUi), 'purpose panel renderer');
 assert(/function renderSoftPadRuntimePanel\([\s\S]*?renderSoftPadPurposePanel/.test(padUi) &&
   !/function renderSoftPadRuntimePanel\([\s\S]*?renderNumpadMapHtml\(pad\)/.test(
@@ -124,18 +163,19 @@ assert(/preferred\.id === 'softPadAgentBody'/.test(padUi), 'agent body paint hos
 assert(/preferred\.id !== 'softPadPreviewHost'/.test(padUi), 'face preview hosts not redirected to pad island');
 assert(/useIsland = softPadFace === 'pad'/.test(src), 'preview island only on pad face');
 
-assert(/softPadLightsSubtab/.test(padUi), 'v12 lights subtab state');
-assert(/function getSoftPadLightsSubtab\(/.test(padUi), 'getSoftPadLightsSubtab export');
-assert(/function renderStatusLightsSubtabBar\(/.test(padUi), 'renderStatusLightsSubtabBar');
-assert(/btn\('topbar'/.test(padUi) && /btn\('ambient'/.test(padUi) && /btn\('keys'/.test(padUi),
-  'v12 three lights subtabs');
-assert(/function renderLightsAmbientTab\(/.test(padUi) && /function renderLightsKeysTab\(/.test(padUi),
-  'v12 ambient and keys tab panels');
+assert(/soft-pad-agent-registry\.js/.test(html), 'agent registry script in html');
+assert(/function listAgentRegistry\(/.test(
+  fs.readFileSync(path.join(root, 'src/js/features/agent/soft-pad-agent-registry.js'), 'utf8')
+), 'agent registry listAgentRegistry');
 assert(/data-light-template-scope="keys"/.test(padUi),
   'v12 scoped light template pickers for keys');
 assert(/data-lights-preview-accent/.test(padUi), 'v12 preview accent attribute');
 assert(/\.soft-pad-lights-subtabs/.test(css) && /data-lights-preview-accent="ambient"/.test(css),
   'v12 subtabs and preview accent css');
+assert(/\.soft-pad-hub-page\.is-face-agent \.soft-pad-bind-app[\s\S]*?display:\s*none/.test(css),
+  'v12d agent face hides status-bar bind app');
+assert(/data-strip-mode/.test(padUi), 'preview strip mode attribute');
+assert(/softPadFace !== 'agent'/.test(src), 'bind app menu blocked on agent face');
 assert(/resetView: softPadFace !== 'agent'/.test(src),
   'agent face scheme click keeps resetView false');
 assert(/forceRemount: softPadFace === 'agent'/.test(src),

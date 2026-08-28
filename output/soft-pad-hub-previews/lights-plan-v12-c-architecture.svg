@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="900" viewBox="0 0 1320 900">
+  <defs><style type="text/css"><![CDATA[
+.bg{fill:#0f1419}.shell{fill:#161b22;stroke:rgba(255,255,255,0.08)}
+.surface{fill:#1c2330;stroke:rgba(255,255,255,0.08)}
+.soft{fill:#252d3a;stroke:rgba(255,255,255,0.08)}
+.ink{fill:#e8eef5}.muted{fill:#8b97a8}.faint{fill:#5c6b7a}
+.small{font:11px 'Segoe UI','Microsoft YaHei',sans-serif}
+.body{font:13px 'Segoe UI','Microsoft YaHei',sans-serif}
+.title{font:700 14px 'Segoe UI','Microsoft YaHei',sans-serif}
+.h1{font:700 20px 'Segoe UI','Microsoft YaHei',sans-serif}
+.label{font:700 12px 'Segoe UI','Microsoft YaHei',sans-serif}
+.cap{font:700 10px 'Segoe UI','Microsoft YaHei',sans-serif}
+]]></style></defs>
+  <rect class="bg" width="1320" height="900"/>
+
+  <text x="40" y="36" class="h1 ink">架构对比：碎片化 → Agent 工作台</text>
+
+  <text x="40" y="72" class="title" fill="#f87171">现状（6 个入口管 1 个 Agent）</text>
+  <rect x="40" y="84" width="600" height="320" rx="12" fill="rgba(248,113,113,0.06)" stroke="#f87171"/>
+  <text x="56" y="112" class="small ink">顶栏 ribbon → scope</text>
+  <text x="56" y="132" class="small ink">右栏选应用 → Pad 开/关</text>
+  <text x="56" y="152" class="small ink">顶栏 tab → 跨应用 chip 列表</text>
+  <text x="56" y="172" class="small ink">状态连接 → N 张接入卡</text>
+  <text x="56" y="192" class="small ink">按键灯 tab → 又一次开关+连接</text>
+  <text x="56" y="212" class="small ink">Quick Start → 又一套批量接入</text>
+  <text x="56" y="260" class="small muted">数据源：BUILTIN_SOFT_PAD_APPS + TOPBAR_LIGHT_CANDIDATES + CATALOG 三份表手工同步</text>
+
+  <text x="680" y="72" class="title" fill="#34d399">目标（1 入口 · 能力矩阵驱动）</text>
+  <rect x="680" y="84" width="600" height="320" rx="12" fill="rgba(52,211,153,0.06)" stroke="#34d399"/>
+  <text x="696" y="112" class="small ink">Agent 目录（左）→ 唯一列表 + Pad/灯/接 三 pill</text>
+  <text x="696" y="132" class="small ink">工作台（右）→ 准备度一行 + 能力区块</text>
+  <text x="696" y="152" class="small ink">agent_catalog（Rust SSOT）→ FE 镜像能力，控制显示</text>
+  <text x="696" y="172" class="small ink">connectKind → 接入 UI 形态（hook/solo/quota）</text>
+  <text x="696" y="192" class="small ink">跨应用顶栏 → 折叠次要区</text>
+  <text x="696" y="212" class="small ink">状态灯舞台 → 并入工作台，不独立三栏</text>
+  <text x="696" y="260" class="small muted">数据源：SOFT_PAD_AGENT_REGISTRY 单表（hub + lights + overlay + connect）</text>
+
+  <text x="40" y="440" class="title ink">实施分期</text>
+  <g transform="translate(40 460)"><rect x="0" y="0" width="36" height="20" rx="10" fill="#3eb8dc22" stroke="#3eb8dc"/>
+    <text x="18" y="14" text-anchor="middle" class="cap" fill="#3eb8dc">P0</text><text x="48" y="14" class="body ink">SOFT_PAD_AGENT_REGISTRY + Agent 目录组件</text></g><g transform="translate(40 508)"><rect x="0" y="0" width="36" height="20" rx="10" fill="#34d39922" stroke="#34d399"/>
+    <text x="18" y="14" text-anchor="middle" class="cap" fill="#34d399">P1</text><text x="48" y="14" class="body ink">Agent 工作台替换 agent face（准备度+灯效+接入）</text></g><g transform="translate(40 556)"><rect x="0" y="0" width="36" height="20" rx="10" fill="#f59e0b22" stroke="#f59e0b"/>
+    <text x="18" y="14" text-anchor="middle" class="cap" fill="#f59e0b">P2</text><text x="48" y="14" class="body ink">按 agent_catalog 隐藏/灰掉不适用的区块</text></g><g transform="translate(40 604)"><rect x="0" y="0" width="36" height="20" rx="10" fill="#a78bfa22" stroke="#a78bfa"/>
+    <text x="18" y="14" text-anchor="middle" class="cap" fill="#a78bfa">P3</text><text x="48" y="14" class="body ink">Quick Start / 顶栏监视 / Shell 面板汇入同一 connect 状态机</text></g>
+
+  <text x="40" y="876" class="small" fill="#8b97a8">图 C · 不是藏右栏，是重做信息架构 + 统一 Agent 能力模型</text>
+
+</svg>

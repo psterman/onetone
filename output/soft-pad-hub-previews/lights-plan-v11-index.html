@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>状态灯页去重 · v11 原型</title>
+  <style>
+    :root {
+      --bg: #0e1116;
+      --surface: #161b22;
+      --line: rgba(255,255,255,.1);
+      --text: #e8eef5;
+      --muted: #8b97a8;
+      --cyan: #3eb8dc;
+      --green: #34d399;
+      --red: #f87171;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); }
+    .bar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 14px 20px; border-bottom: 1px solid var(--line);
+      background: #141920; position: sticky; top: 0; z-index: 10;
+    }
+    .bar h1 { margin: 0; font-size: 15px; font-weight: 700; }
+    .tabs { display: flex; gap: 6px; }
+    .tabs button {
+      border: 1px solid var(--line); background: var(--surface); color: var(--muted);
+      font: 600 12px/1 var(--font); padding: 8px 14px; border-radius: 8px; cursor: pointer;
+    }
+    .tabs button[aria-pressed="true"] {
+      background: rgba(62,184,220,.14); color: var(--cyan); border-color: rgba(62,184,220,.35);
+    }
+    .note { flex: 1; min-width: 200px; font-size: 12px; color: var(--muted); }
+    main { padding: 20px; max-width: 1400px; margin: 0 auto; }
+    .panel[hidden] { display: none !important; }
+    figure { margin: 0; }
+    img {
+      width: 100%; height: auto; border-radius: 12px;
+      border: 1px solid var(--line); background: #fff;
+    }
+    figcaption { margin-top: 10px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    .tag {
+      display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px;
+      border-radius: 999px; margin-right: 6px;
+    }
+    .tag.bad { background: rgba(248,113,113,.15); color: var(--red); }
+    .tag.good { background: rgba(52,211,153,.12); color: var(--green); }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <h1>状态灯页去重 · v11</h1>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" data-tab="compare" aria-pressed="true">对比</button>
+      <button type="button" role="tab" data-tab="before" aria-pressed="false">现状</button>
+      <button type="button" role="tab" data-tab="after" aria-pressed="false">去重后</button>
+    </div>
+    <p class="note">第一性原理：一屏只回答「当前 AI 灯开没开、Hook 接没接」</p>
+  </header>
+  <main>
+    <section class="panel" id="panel-compare" data-panel="compare">
+      <figure>
+        <img src="lights-plan-v11-compare.png" alt="现状 vs 去重后对比" width="1280" height="920" />
+        <figcaption>
+          <span class="tag bad">现状</span>三层 Agent 列表（顶栏带 + 监视列表 + 右栏开关）+ N 张接入大卡
+          <br />
+          <span class="tag good">去重后</span>Scope 条 + 左预览 + 右「一开关一连接」+ 跨应用管理折叠
+        </figcaption>
+      </figure>
+    </section>
+    <section class="panel" id="panel-before" data-panel="before" hidden>
+      <figure>
+        <img src="lights-plan-v11-before-clutter.png" alt="现状：列表重叠" />
+        <figcaption>对应你截图：顶栏监视 14 项 + 状态连接多卡 + 右栏选应用 16 项 toggle</figcaption>
+      </figure>
+    </section>
+    <section class="panel" id="panel-after" data-panel="after" hidden>
+      <figure>
+        <img src="lights-plan-v11-after-scope.png" alt="去重后：scope 中心化" />
+        <figcaption>Phase 1 目标：无右栏；首屏仅 Cursor 一张连接卡；其他 Agent 进折叠区</figcaption>
+      </figure>
+    </section>
+    <div class="grid" style="margin-top:24px">
+      <figure>
+        <img src="lights-plan-v11-before-clutter.png" alt="现状" />
+        <figcaption><span class="tag bad">现状</span>问题详图</figcaption>
+      </figure>
+      <figure>
+        <img src="lights-plan-v11-after-scope.png" alt="去重后" />
+        <figcaption><span class="tag good">去重后</span>目标详图</figcaption>
+      </figure>
+    </div>
+  </main>
+  <script>
+    document.querySelector(".tabs").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-tab]");
+      if (!btn) return;
+      const tab = btn.dataset.tab;
+      document.querySelectorAll(".tabs button").forEach((b) => {
+        b.setAttribute("aria-pressed", b.dataset.tab === tab ? "true" : "false");
+      });
+      document.querySelectorAll(".panel").forEach((p) => {
+        p.hidden = p.dataset.panel !== tab;
+      });
+    });
+  </script>
+</body>
+</html>

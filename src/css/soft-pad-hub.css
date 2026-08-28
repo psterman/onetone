@@ -1015,28 +1015,33 @@ html[data-theme="dark"] .soft-pad-tm-detail .soft-pad-tm-safety { color: #f2c56f
   gap: 14px;
   align-items: start;
 }
-/* Top bar owns app selection on pad/timeline faces; C2 agent face shows scheme rail. */
+/* Top bar owns app selection on pad/timeline faces; agent face uses center directory (v12b). */
 #softPadSchemeAside,
 .soft-pad-page-aside {
   display: none !important;
 }
 .soft-pad-page-body.is-face-agent {
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.28fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
 }
-.soft-pad-page-body.is-face-agent #softPadSchemeAside,
-.soft-pad-page-body.is-face-agent .soft-pad-page-aside {
-  display: flex !important;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
+.soft-pad-hub-page.is-face-agent #softPadAppSwitcher,
+.soft-pad-page-body.is-face-agent #softPadAppSwitcher {
+  display: none !important;
+}
+/* v12d: agent face scope SSOT = center directory; hide status-bar bind dropdown */
+.soft-pad-hub-page.is-face-agent .soft-pad-bind-app,
+.soft-pad-page-body.is-face-agent .soft-pad-bind-app {
+  display: none !important;
+}
+.soft-pad-hub-page.is-face-agent #softPadScopeHint,
+.soft-pad-page-body.is-face-agent #softPadScopeHint {
+  display: none !important;
+}
+.soft-pad-face-agent__preview .soft-pad-agent-bar__chip--preview.is-preview-off {
+  opacity: 0.45;
 }
 @media (max-width: 1040px) {
   .soft-pad-page-body.keys-page-body { grid-template-columns: 1fr; }
-  .soft-pad-page-body.is-face-agent #softPadSchemeAside,
-  .soft-pad-page-body.is-face-agent .soft-pad-page-aside {
-    display: none !important;
-  }
 }
 .soft-pad-page-main {
   min-width: 0;
@@ -1119,10 +1124,10 @@ html[data-theme="dark"] .soft-pad-pad-tab.is-active {
   border-color: rgba(62, 184, 220, 0.4);
 }
 
-/* C2 Agent: left preview + center config (v10 three-column with page aside) */
+/* C2 Agent: left preview · center directory · right workbench (v12b) */
 .soft-pad-face-agent {
   display: grid;
-  grid-template-columns: minmax(240px, 0.34fr) minmax(0, 0.66fr);
+  grid-template-columns: minmax(240px, 0.28fr) minmax(260px, 0.32fr) minmax(320px, 1fr);
   grid-template-rows: minmax(0, 1fr);
   gap: 12px 16px;
   align-items: stretch;
@@ -1130,11 +1135,310 @@ html[data-theme="dark"] .soft-pad-pad-tab.is-active {
 .soft-pad-face-agent__preview {
   grid-column: 1;
   grid-row: 1;
+  min-height: 0;
 }
-.soft-pad-face-agent__panel {
+.soft-pad-face-agent__directory {
   grid-column: 2;
   grid-row: 1;
+  min-width: 0;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  background: rgba(248, 250, 252, 0.92);
+  overflow: hidden;
+}
+html[data-theme="dark"] .soft-pad-face-agent__directory {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(18, 24, 36, 0.92);
+}
+.soft-pad-agent-directory__head {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(26, 45, 74, 0.08);
+}
+html[data-theme="dark"] .soft-pad-agent-directory__head {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+.soft-pad-agent-directory__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+.soft-pad-agent-directory__sub {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+}
+.soft-pad-agent-directory__list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.soft-pad-agent-directory__row {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(26, 45, 74, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+html[data-theme="dark"] .soft-pad-agent-directory__row {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(30, 38, 52, 0.85);
+}
+.soft-pad-agent-directory__row:hover {
+  border-color: rgba(62, 184, 220, 0.35);
+}
+.soft-pad-agent-directory__row.is-selected {
+  border-color: rgba(62, 184, 220, 0.55);
+  background: rgba(62, 184, 220, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(62, 184, 220, 0.25);
+}
+.soft-pad-agent-directory__row.is-fg .soft-pad-agent-directory__name::after {
+  content: " · 前台";
+  font-size: 10px;
+  font-weight: 700;
+  color: #3eb8dc;
+}
+.soft-pad-agent-directory__name {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.soft-pad-agent-directory__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.soft-pad-agent-pill {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(26, 45, 74, 0.14);
+  white-space: nowrap;
+}
+.soft-pad-agent-pill.is-on {
+  color: #059669;
+  border-color: rgba(5, 150, 105, 0.35);
+  background: rgba(5, 150, 105, 0.1);
+}
+.soft-pad-agent-pill.is-prepare {
+  color: #d97706;
+  border-color: rgba(217, 119, 6, 0.35);
+  background: rgba(217, 119, 6, 0.1);
+}
+.soft-pad-agent-pill.is-off {
+  color: #64748b;
+  border-color: rgba(100, 116, 139, 0.25);
+  background: rgba(100, 116, 139, 0.08);
+}
+.soft-pad-agent-pill.is-connect-ok {
+  color: #3eb8dc;
+  border-color: rgba(62, 184, 220, 0.35);
+  background: rgba(62, 184, 220, 0.1);
+}
+.soft-pad-agent-pill.is-connect-warn {
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.35);
+  background: rgba(220, 38, 38, 0.08);
+}
+.soft-pad-face-agent__panel {
+  grid-column: 3;
+  grid-row: 1;
+  min-height: 0;
+}
+@media (max-width: 1100px) {
+  .soft-pad-face-agent {
+    grid-template-columns: 1fr 1fr;
+  }
+  .soft-pad-face-agent__preview {
+    grid-column: 1 / -1;
+  }
+  .soft-pad-face-agent__directory {
+    grid-column: 1;
+  }
+  .soft-pad-face-agent__panel {
+    grid-column: 2;
+  }
+}
+@media (max-width: 720px) {
+  .soft-pad-face-agent {
+    grid-template-columns: 1fr;
+  }
+  .soft-pad-face-agent__preview,
+  .soft-pad-face-agent__directory,
+  .soft-pad-face-agent__panel {
+    grid-column: 1;
+  }
+}
+.soft-pad-agent-workbench {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-height: 0;
+}
+.soft-pad-agent-workbench__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 2px;
+}
+.soft-pad-agent-workbench__tabs .soft-pad-agent-workbench__tab {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.soft-pad-agent-workbench__panel {
+  min-height: 0;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  background: rgba(255, 255, 255, 0.65);
+  padding: 12px 14px;
+}
+html[data-theme="dark"] .soft-pad-agent-workbench__panel {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(22, 28, 40, 0.9);
+}
+.soft-pad-agent-workbench__lights-tabs {
+  margin-bottom: 10px;
+}
+.soft-pad-agent-workbench__lights-body {
+  min-height: 0;
+}
+.soft-pad-cross-merged__list {
+  display: grid;
+  gap: 6px;
+}
+.soft-pad-cross-item {
+  display: grid;
+  gap: 4px;
+}
+.soft-pad-cross-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 8px;
+  align-items: center;
+}
+.soft-pad-cross-row .soft-pad-topbar-light-active__jump {
+  min-width: 0;
+}
+.soft-pad-cross-row__phase {
+  flex-shrink: 0;
+}
+.soft-pad-cross-expand {
+  padding-left: 4px;
+}
+.soft-pad-preview-host .micro-hw__face-top--title-only {
+  margin-bottom: 4px;
+}
+.soft-pad-preview-host .micro-hw__face-top--title-only .micro-hw__face-title {
+  display: block;
+}
+.soft-pad-agent-workbench__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(26, 45, 74, 0.08);
+  margin-bottom: 2px;
+}
+html[data-theme="dark"] .soft-pad-agent-workbench__head {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+.soft-pad-agent-workbench__head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  flex: 1;
+}
+.soft-pad-agent-workbench__fg {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(62, 184, 220, 0.12);
+  color: #3eb8dc;
+  border: 1px solid rgba(62, 184, 220, 0.35);
+}
+.soft-pad-agent-workbench__card {
+  border-radius: 12px;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  background: rgba(255, 255, 255, 0.65);
+  padding: 12px 14px;
+}
+html[data-theme="dark"] .soft-pad-agent-workbench__card {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(22, 28, 40, 0.9);
+}
+.soft-pad-agent-workbench__card h4 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+.soft-pad-agent-readiness {
+  display: grid;
+  gap: 10px;
+}
+.soft-pad-agent-readiness__row {
+  display: grid;
+  grid-template-columns: 52px 36px 1fr;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+}
+.soft-pad-agent-readiness__lbl {
+  font-size: 11px;
+  color: #64748b;
+}
+.soft-pad-agent-lights-cap {
+  display: grid;
+  gap: 8px;
+}
+.soft-pad-agent-lights-cap__row {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 8px;
+  align-items: start;
+  font-size: 12px;
+}
+.soft-pad-agent-lights-cap__row.is-na {
+  opacity: 0.45;
+}
+.soft-pad-agent-cross-topbar {
+  border-radius: 12px;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  background: rgba(255, 255, 255, 0.5);
+  padding: 10px 12px;
+}
+html[data-theme="dark"] .soft-pad-agent-cross-topbar {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(22, 28, 40, 0.75);
+}
+.soft-pad-agent-cross-topbar > summary {
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+.soft-pad-agent-cross-topbar > summary::-webkit-details-marker {
+  display: none;
+}
+.soft-pad-agent-cross-topbar[open] > summary {
+  margin-bottom: 8px;
+  color: inherit;
 }
 
 /* C3 Timeline: compact Soft Pad, right node detail, bottom date rail */

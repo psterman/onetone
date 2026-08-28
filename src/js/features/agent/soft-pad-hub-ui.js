@@ -1202,6 +1202,10 @@
       preview: document.getElementById('softPadPreviewHost'),
       agentPreview: document.getElementById('softPadAgentPreviewHost'),
       agentBody: document.getElementById('softPadAgentBody'),
+      agentDirectory: document.getElementById('softPadAgentDirectory'),
+      agentDirectoryList: document.getElementById('softPadAgentDirectoryList'),
+      agentDirectoryTitle: document.getElementById('softPadAgentDirectoryTitle'),
+      agentDirectorySub: document.getElementById('softPadAgentDirectorySub'),
       facePad: document.getElementById('softPadFacePad'),
       faceAgent: document.getElementById('softPadFaceAgent'),
       faceTray: document.getElementById('softPadFaceTray'),
@@ -2078,6 +2082,12 @@
   function updateScopeHint() {
     var e = els();
     if (!e.hint) return;
+    if (softPadFace === 'agent') {
+      e.hint.textContent = '';
+      e.hint.hidden = true;
+      updateStatusBar(findEntry(getSelectedMappingId()));
+      return;
+    }
     if (softPadFace === 'tray') {
       e.hint.textContent = '';
       e.hint.hidden = true;
@@ -3148,15 +3158,16 @@
     if (e.pageBody) {
       e.pageBody.classList.toggle('is-face-agent', face === 'agent');
     }
+    if (e.switcher) {
+      e.switcher.hidden = face === 'agent';
+    }
     if (e.aside) {
-      if (face === 'agent') {
-        e.aside.removeAttribute('hidden');
-        e.aside.setAttribute('aria-hidden', 'false');
-        renderSchemeList();
-      } else {
-        e.aside.setAttribute('hidden', '');
-        e.aside.setAttribute('aria-hidden', 'true');
-      }
+      e.aside.setAttribute('hidden', '');
+      e.aside.setAttribute('aria-hidden', 'true');
+    }
+    if (face === 'agent') {
+      setBindAppMenuOpen(false);
+      renderAgentDirectory();
     }
     if (entry) {
       if (global.__otSoftPadFuncTilesMounted && typeof global.__otSoftPadFuncTilesSync === 'function') {
@@ -3329,10 +3340,10 @@
       return !!(desk && desk.dataset.tmBound === '1' && !desk.hidden);
     }
     if (view === 'agent') {
-      // v12：灯板按当前 scope 配置；同 mapping + 同 scope 才跳过 remount。
+      // v12d workbench：同 mapping + 同 scope 才跳过 remount。
       var scopeAttr = host.getAttribute('data-lights-scope') || '';
-      return !!(host.querySelector('[data-lights-simple]') &&
-        host.querySelector('[data-lights-tab-panel]') &&
+      return !!(host.querySelector('[data-agent-workbench]') &&
+        host.getAttribute('data-soft-pad-mapping') &&
         scopeAttr === String(selectedScopeId || ''));
     }
     return false;
@@ -3843,7 +3854,7 @@
     if (face === 'agent') {
       paintSubpage(entry, { forceRemount: true });
       ensureSoftPadPreview(entry);
-      renderSchemeList();
+      renderAgentDirectory();
       return;
     }
     // pad face
@@ -3981,12 +3992,14 @@
     var scopes = listAppScopes();
     var entries = listAsideEntries();
     pruneInvalidUserLanePin(listSoftPadSchemes());
+    var onAgentFace = softPadFace === 'agent';
     // Apps live in status-bar bind control; purpose chips live on pad ring.
     var chips = scopes.map(function (scope) {
       return { id: scope.id, html: appSwitcherChipView(scope) };
     });
     return {
-      switcherHidden: false,
+      switcherHidden: onAgentFace,
+      schemeListHidden: onAgentFace,
       switcherLabel: t('softPadAppSwitcherAria', '应用虚拟键盘'),
       switcherChips: chips,
       schemeTitle: t('softPadSchemeTitle', '选应用'),
@@ -4484,6 +4497,9 @@
       renderAppSwitcher();
       updateScopeHint();
       syncSoftPadPadRing();
+      if (softPadFace === 'agent') {
+        patchAgentDirectorySelection();
+      }
       return;
     }
 
@@ -4503,6 +4519,9 @@
     renderAppSwitcher();
     updateScopeHint();
     syncSoftPadPadRing();
+    if (softPadFace === 'agent') {
+      patchAgentDirectorySelection();
+    }
     requestOverlayUsageForScope(selectedScopeId);
   }
 
@@ -4604,6 +4623,146 @@
       switchHtml +
       '</div>'
     );
+  }
+
+  function agentDirectoryScopeId(entry) {
+    if (entry.mapping && entry.mapping.id) return String(entry.mapping.id);
+    return String(entry.kind || '');
+  }
+
+  function agentDirectoryLightsOn(entry) {
+    var PadUi = global.OneToneCodexMicroPadUi;
+    if (!PadUi || !entry || !entry.mapping || !entry.mapping.codexMicroPad) return false;
+    var pad = entry.mapping.codexMicroPad;
+    var kind = String(entry.kind || '');
+    if (PadUi.agentLightEnabledOnPad) {
+      return !!PadUi.agentLightEnabledOnPad(pad, kind);
+    }
+    return false;
+  }
+
+  function agentDirectoryPadPill(entry) {
+    if (entry.padEnabled) {
+      return { cls: 'is-on', text: t('softPadAgentPillPadOn', 'Pad 开') };
+    }
+    if (entry.canPrepare) {
+      return { cls: 'is-prepare', text: t('softPadAgentPillPadPrep', '可准备') };
+    }
+    return { cls: 'is-off', text: t('softPadAgentPillPadOff', 'Pad 关') };
+  }
+
+  function agentDirectoryLightsPill(entry) {
+    if (!agentDirectoryLightsOn(entry)) {
+      return { cls: 'is-off', text: t('softPadAgentPillLightsOff', '灯 关') };
+    }
+    return { cls: 'is-on', text: t('softPadAgentPillLightsOn', '灯 开') };
+  }
+
+  function agentDirectoryConnectPillClass(phase) {
+    phase = String(phase || 'unknown');
+    if (phase === 'connected' || phase === 'watching') return 'is-connect-ok';
+    if (phase === 'needsAction' || phase === 'error') return 'is-connect-warn';
+    return 'is-off';
+  }
+
+  function agentDirectoryConnectPillText(phase) {
+    phase = String(phase || 'unknown');
+    var Connect = global.OneToneSoftPadConnect;
+    if (Connect && Connect.phaseLabel) {
+      var lbl = Connect.phaseLabel(phase);
+      if (lbl) return lbl;
+    }
+    if (phase === 'connected' || phase === 'watching') return t('softPadAgentPillConnOk', '已接');
+    if (phase === 'needsAction') return t('softPadAgentPillConnAct', '待接');
+    return t('softPadAgentPillConnOff', '接 —');
+  }
+
+  function renderAgentDirectoryRow(entry, opts) {
+    opts = opts || {};
+    var rowId = agentDirectoryScopeId(entry);
+    var active = opts.activeScope
+      ? String(opts.activeScope) === String(selectedScopeId || '')
+      : (entry.mapping && entry.mapping.id
+        ? String(getSelectedMappingId() || '') === String(entry.mapping.id)
+        : selectedScopeId === entry.kind);
+    var fg = !!opts.isFg;
+    var padPill = agentDirectoryPadPill(entry);
+    var lightsPill = agentDirectoryLightsPill(entry);
+    var connPill = opts.connectPill || { cls: 'is-off', text: t('softPadAgentPillConnOff', '接 —') };
+    var icon = iconHtml(entry.kind, 'soft-pad-agent-directory__icon');
+    return (
+      '<button type="button" class="soft-pad-agent-directory__row' +
+      (active ? ' is-selected' : '') +
+      (fg ? ' is-fg' : '') +
+      '" role="option" aria-selected="' + (active ? 'true' : 'false') +
+      '" data-agent-directory-row="' + esc(rowId) +
+      '" data-scope="' + esc(entry.kind) + '">' +
+      icon +
+      '<span class="soft-pad-agent-directory__name">' + esc(entry.title) + '</span>' +
+      '<span class="soft-pad-agent-directory__pills">' +
+      '<span class="soft-pad-agent-pill ' + esc(padPill.cls) + '" data-pill="pad">' + esc(padPill.text) + '</span>' +
+      '<span class="soft-pad-agent-pill ' + esc(lightsPill.cls) + '" data-pill="lights">' + esc(lightsPill.text) + '</span>' +
+      '<span class="soft-pad-agent-pill ' + esc(connPill.cls) + '" data-pill="connect" data-connect-phase="' +
+      esc(opts.connectPhase || 'unknown') + '">' + esc(connPill.text) + '</span>' +
+      '</span></button>'
+    );
+  }
+
+  function patchAgentDirectorySelection() {
+    var e = els();
+    if (!e.agentDirectoryList || softPadFace !== 'agent') return;
+    var scope = String(selectedScopeId || '');
+    e.agentDirectoryList.querySelectorAll('[data-agent-directory-row]').forEach(function (row) {
+      var kind = row.getAttribute('data-scope') || '';
+      var on = kind === scope;
+      row.classList.toggle('is-selected', on);
+      row.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+  }
+
+  function refreshAgentDirectoryConnectPills() {
+    var e = els();
+    if (!e.agentDirectoryList || softPadFace !== 'agent') return;
+    var Connect = global.OneToneSoftPadConnect;
+    if (!Connect || !Connect.phaseOf) return;
+    var st = global.OneToneState && global.OneToneState.state;
+    var attn = global.OneToneSoftPadConnectAttn;
+    e.agentDirectoryList.querySelectorAll('[data-agent-directory-row]').forEach(function (row) {
+      var kind = row.getAttribute('data-scope') || '';
+      if (!kind) return;
+      var phase = Connect.phaseOf(kind, st, attn);
+      var pill = row.querySelector('[data-pill="connect"]');
+      if (!pill) return;
+      pill.className = 'soft-pad-agent-pill ' + agentDirectoryConnectPillClass(phase);
+      pill.textContent = agentDirectoryConnectPillText(phase);
+      pill.setAttribute('data-connect-phase', phase);
+    });
+  }
+
+  function renderAgentDirectory() {
+    var e = els();
+    if (!e.agentDirectoryList || softPadFace !== 'agent') return;
+    if (e.agentDirectoryTitle) {
+      e.agentDirectoryTitle.textContent = t('softPadAgentDirectoryTitle', 'Agent 目录');
+    }
+    if (e.agentDirectorySub) {
+      e.agentDirectorySub.textContent = t('softPadAgentDirectorySub', 'Pad · 灯 · 接');
+    }
+    var entries = listAsideEntries();
+    var ctx = laneContextFromRuntime();
+    var fgKind = kindForAppId(String(ctx.foregroundAppId || '').trim());
+    if (!entries.length) {
+      e.agentDirectoryList.innerHTML =
+        '<p class="keys-hub-empty">' + esc(t('softPadHubEmptyTitle', '还没有可管理的虚拟键盘')) + '</p>';
+      return;
+    }
+    e.agentDirectoryList.innerHTML = entries.map(function (entry) {
+      return renderAgentDirectoryRow(entry, {
+        isFg: fgKind && fgKind === entry.kind,
+        activeScope: true
+      });
+    }).join('');
+    refreshAgentDirectoryConnectPills();
   }
 
   function renderSchemeList() {
@@ -4851,6 +5010,16 @@
     if (e.subBack && !(global.__otSoftPadDetailChromeMounted)) {
       e.subBack.addEventListener('click', function () { closeSubpage(); });
     }
+    if (e.agentDirectoryList) {
+      e.agentDirectoryList.addEventListener('click', function (ev) {
+        var row = ev.target.closest && ev.target.closest('[data-agent-directory-row]');
+        if (!row) return;
+        ev.preventDefault();
+        var kind = row.getAttribute('data-scope');
+        if (!kind) return;
+        selectScope(kind, { fromUser: true, forceRemount: true, resetView: false });
+      });
+    }
     if (e.list) {
       e.list.addEventListener('click', function (ev) {
         var fgBtn = ev.target.closest && ev.target.closest('[data-act="fg-switch-scope"]');
@@ -4898,7 +5067,7 @@
     }
     if (e.statusBar) {
       e.statusBar.addEventListener('click', function (ev) {
-        if (!global.__otSoftPadStatusMounted) {
+        if (!global.__otSoftPadStatusMounted && softPadFace !== 'agent') {
           var bindOpt = ev.target.closest && ev.target.closest('#softPadBindAppMenu [data-scope]');
           if (bindOpt) {
             ev.preventDefault();
@@ -4912,6 +5081,19 @@
             ev.stopPropagation();
             var menu = els().bindAppMenu;
             setBindAppMenuOpen(!(menu && !menu.hidden));
+            return;
+          }
+        }
+        if (softPadFace === 'agent') {
+          var dirJump = ev.target.closest && ev.target.closest('#softPadSummaryAgent, #softPadPageBrandTitle');
+          if (dirJump) {
+            ev.preventDefault();
+            var dir = document.getElementById('softPadAgentDirectory');
+            if (dir && dir.scrollIntoView) {
+              try { dir.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {}
+            }
+            var activeRow = document.querySelector('#softPadAgentDirectoryList [data-agent-directory-row].is-selected');
+            if (activeRow && activeRow.focus) activeRow.focus();
             return;
           }
         }
@@ -5537,6 +5719,8 @@
     getPadMode: function () { return softPadPadMode; },
     setSoftPadFace: setSoftPadFace,
     setSoftPadPadMode: setSoftPadPadMode,
+    renderAgentDirectory: renderAgentDirectory,
+    refreshAgentDirectoryConnectPills: refreshAgentDirectoryConnectPills,
     listSoftPadSchemes: listSoftPadSchemes,
     schemeBetter: schemeBetter,
     softPadRuntimeFlags: softPadRuntimeFlags,

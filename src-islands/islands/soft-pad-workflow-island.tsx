@@ -112,8 +112,16 @@ export function SoftPadSchemeListIsland(): JSX.Element {
     const aside = document.getElementById('softPadSchemeAside');
     if (title) title.textContent = model.schemeTitle;
     if (count) count.textContent = model.schemeCount;
-    if (aside) aside.setAttribute('aria-label', model.schemeTitle);
-  }, [model.schemeTitle, model.schemeCount]);
+    if (aside) {
+      aside.setAttribute('aria-label', model.schemeTitle);
+      if (model.schemeListHidden) {
+        aside.setAttribute('hidden', '');
+        aside.setAttribute('aria-hidden', 'true');
+      }
+    }
+  }, [model.schemeTitle, model.schemeCount, model.schemeListHidden]);
+
+  if (model.schemeListHidden) return <></>;
 
   if (model.emptyHtml) {
     return <p className="keys-hub-empty">{model.emptyHtml}</p>;

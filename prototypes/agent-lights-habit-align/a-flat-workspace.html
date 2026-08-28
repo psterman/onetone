@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>A · 两栏扁平 · 状态灯</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:#0e1116;--surface:#161b22;--surface-2:#1c2330;--line:rgba(255,255,255,.08);
+      --text:#e8eef5;--muted:#8b97a8;--cyan:#3eb8dc;--cyan-soft:rgba(62,184,220,.14);
+      --green:#34d399;--green-soft:rgba(52,211,153,.12);--pink:#f472b6;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;--radius:12px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font)}
+    button{font-family:inherit;cursor:pointer}
+    .proto{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:#141920;font-size:12px;color:var(--muted)}
+    .proto strong{color:var(--text)}
+    .proto a{color:var(--cyan);margin-left:auto}
+    .ws{max-width:1100px;margin:0 auto;padding:16px;display:grid;grid-template-columns:248px 1fr;gap:12px;min-height:calc(100vh - 44px)}
+    @media(max-width:800px){.ws{grid-template-columns:1fr}}
+    .list{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px;display:flex;flex-direction:column}
+    .list-h{margin:0 0 8px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase}
+    .row{width:100%;text-align:left;padding:10px;border-radius:10px;border:1px solid transparent;background:transparent;color:inherit;margin-bottom:4px}
+    .row:hover{background:rgba(255,255,255,.04)}
+    .row.is-on{background:var(--cyan-soft);border-color:rgba(62,184,220,.35)}
+    .row-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+    .av{width:32px;height:32px;border-radius:8px;background:var(--surface-2);display:grid;place-items:center;font-size:12px;font-weight:700;flex-shrink:0}
+    .row strong{font-size:13px;flex:1}
+    .pills{display:flex;gap:4px;flex-wrap:wrap}
+    .pill{font-size:9px;font-weight:700;padding:2px 6px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+    .pill.ok{color:var(--green);border-color:rgba(52,211,153,.35);background:var(--green-soft)}
+    .pill.warn{color:#fbbf24;border-color:rgba(251,191,36,.35)}
+    .pill.off{opacity:.5}
+    .global-btn{margin-top:auto;padding:8px;border-radius:8px;border:1px dashed rgba(244,114,182,.4);background:rgba(244,114,182,.08);color:var(--pink);font-size:11px;font-weight:600}
+    .main{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;min-height:480px}
+    .agent-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid var(--line)}
+    .agent-bar h2{margin:0;font-size:18px;font-weight:700}
+    .agent-bar .pills{margin-left:4px}
+    .agent-bar .spacer{flex:1}
+    .ghost{padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--pink);font-size:11px;font-weight:600}
+    .tabs{display:flex;gap:4px;padding:0 16px;border-bottom:1px solid var(--line)}
+    .tab{padding:10px 14px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--muted);font-size:12px;font-weight:700;margin-bottom:-1px}
+    .tab.is-on{color:var(--cyan);border-bottom-color:var(--cyan)}
+    .panel{flex:1;padding:16px;font-size:13px}
+    .panel h3{margin:0 0 12px;font-size:13px;color:var(--muted);font-weight:600}
+    .row-ctrl{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}
+    .sw{width:36px;height:20px;border-radius:999px;background:var(--green);position:relative;flex-shrink:0}
+    .sw::after{content:"";position:absolute;top:2px;right:2px;width:14px;height:14px;border-radius:50%;background:#fff}
+    .preview-fold{margin-top:12px;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2)}
+    .preview-fold summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--muted)}
+    .pad-row{display:flex;gap:12px;margin-top:10px;align-items:center}
+    .pad{width:72px;height:72px;border-radius:10px;border:2px solid var(--cyan);background:#1a2a35}
+    .peek-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
+    .peek-bg.open{opacity:1;pointer-events:auto}
+    .peek{position:fixed;top:0;right:0;width:360px;max-width:92vw;height:100%;background:var(--surface);border-left:1px solid var(--line);transform:translateX(100%);transition:transform .2s;z-index:60;padding:16px}
+    .peek.open{transform:translateX(0)}
+    .peek h4{margin:0 0 4px}
+    .peek p{font-size:11px;color:var(--pink);margin:0 0 12px}
+    .peek-item{display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:12px}
+    .peek-close{float:right;border:0;background:transparent;color:var(--muted);font-size:18px;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="proto"><strong>A · 两栏扁平</strong> 只有列表 + 主区，共 2 层<a href="index.html">← 对比</a></div>
+
+  <div class="ws">
+    <aside class="list">
+      <h3 class="list-h">Agent</h3>
+      <div id="list"></div>
+      <button type="button" class="global-btn" id="openPeek">顶栏成员…</button>
+    </aside>
+
+    <section class="main">
+      <header class="agent-bar">
+        <h2 id="name">Codex</h2>
+        <div class="pills" id="barPills"></div>
+        <span class="spacer"></span>
+        <button type="button" class="ghost" id="openPeek2">顶栏…</button>
+      </header>
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab is-on" data-t="ready">准备度</button>
+        <button type="button" class="tab" data-t="lights">灯效</button>
+        <button type="button" class="tab" data-t="session">会话</button>
+      </div>
+      <div class="panel" id="panel"></div>
+    </section>
+  </div>
+
+  <div class="peek-bg" id="peekBg"></div>
+  <aside class="peek" id="peek">
+    <button type="button" class="peek-close" id="peekClose">×</button>
+    <h4>顶栏成员</h4>
+    <p>全局 — 与左侧选中的 Agent 无关</p>
+    <div class="peek-item"><span>Codex</span><span style="flex:1"></span><span style="color:var(--green)">已接</span></div>
+    <div class="peek-item"><span>Claude</span><span style="flex:1"></span><span style="color:#fbbf24">待接</span></div>
+    <div class="peek-item"><span>Cursor</span><span style="flex:1"></span><span style="color:var(--green)">已接</span></div>
+  </aside>
+
+  <script>
+    var AGENTS = [
+      { id:'codex', name:'Codex', icon:'C', pad:true, top:true, conn:'已接' },
+      { id:'claude', name:'Claude', icon:'Cl', pad:true, top:true, conn:'待接' },
+      { id:'cursor', name:'Cursor', icon:'Cu', pad:false, top:true, conn:'已接' },
+      { id:'minimax', name:'MiniMax', icon:'M', pad:true, top:false, conn:'—' }
+    ];
+    var sel = 'codex', tab = 'ready';
+    function a(id){ return AGENTS.find(function(x){ return x.id===id; }); }
+    function pills(a, compact) {
+      return '<span class="pill'+(a.pad?' ok':' off')+'">Pad</span>'+
+        '<span class="pill'+(a.top?' ok':' off')+'">顶栏</span>'+
+        '<span class="pill'+(a.conn==='待接'?' warn':a.conn==='—'?' off':' ok')+'">'+a.conn+'</span>';
+    }
+    function renderList() {
+      document.getElementById('list').innerHTML = AGENTS.map(function(x){
+        return '<button type="button" class="row'+(x.id===sel?' is-on':'')+'" data-id="'+x.id+'">'+
+          '<div class="row-top"><span class="av">'+x.icon+'</span><strong>'+x.name+'</strong></div>'+
+          '<div class="pills">'+pills(x)+'</div></button>';
+      }).join('');
+    }
+    function renderMain() {
+      var x = a(sel);
+      document.getElementById('name').textContent = x.name;
+      document.getElementById('barPills').innerHTML = pills(x);
+      var html = {
+        ready: '<h3>准备度</h3><div class="row-ctrl"><span>Pad</span><div class="sw"></div></div><div class="row-ctrl"><span>接入 Activity</span><button type="button" style="padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:inherit">连接</button></div><p style="font-size:11px;color:var(--muted);margin:12px 0 0">顶栏成员用左下或右上角入口，不进 Tab。</p>',
+        lights: '<h3>灯效</h3><details class="preview-fold"><summary>展开预览</summary><div class="pad-row"><div class="pad"></div><span style="font-size:11px;color:var(--muted)">仅配置时看效果</span></div></details><div class="row-ctrl" style="margin-top:12px"><span>忙 · 蓝</span><span style="width:20px;height:20px;border-radius:4px;background:#3053FE"></span></div><div class="row-ctrl"><span>等你 · 琥珀</span><span style="width:20px;height:20px;border-radius:4px;background:#FF6A00"></span></div>',
+        session: '<h3>会话</h3><p style="color:var(--muted)">用途 · 槽位</p>'
+      };
+      document.getElementById('panel').innerHTML = html[tab];
+    }
+    document.getElementById('list').addEventListener('click', function(e){
+      var b = e.target.closest('[data-id]'); if(!b) return;
+      sel = b.getAttribute('data-id'); renderList(); renderMain();
+    });
+    document.querySelectorAll('.tab').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        tab = btn.getAttribute('data-t');
+        document.querySelectorAll('.tab').forEach(function(b){ b.classList.toggle('is-on', b===btn); });
+        renderMain();
+      });
+    });
+    function togglePeek(on){
+      document.getElementById('peek').classList.toggle('open', on);
+      document.getElementById('peekBg').classList.toggle('open', on);
+    }
+    document.getElementById('openPeek').onclick = function(){ togglePeek(true); };
+    document.getElementById('openPeek2').onclick = function(){ togglePeek(true); };
+    document.getElementById('peekClose').onclick = function(){ togglePeek(false); };
+    document.getElementById('peekBg').onclick = function(){ togglePeek(false); };
+    renderList(); renderMain();
+  </script>
+</body>
+</html>
