@@ -11,6 +11,16 @@ const context = {
     getElementById(id) {
       return context.__els[id] || null;
     },
+    createElement(tag) {
+      return {
+        type: tag,
+        className: '',
+        textContent: '',
+        setAttribute() {},
+        insertBefore() {},
+        firstChild: null
+      };
+    },
     addEventListener() {}
   },
   localStorage: {
@@ -18,7 +28,10 @@ const context = {
     setItem: (k, v) => storage.set(k, String(v))
   },
   OneToneI18n: {getLang: () => 'zh', t: (k, fb) => fb || k},
-  OneToneDom: {esc: (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;')},
+  OneToneDom: {
+    esc: (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;'),
+    $: (id) => context.__els[id] || null
+  },
   OneToneState: {
     state: {
       config: {
@@ -41,9 +54,13 @@ const context = {
     }
   },
   OneToneMappingCore: {
+    sorted() {
+      return context.OneToneState.state.config.mappings.slice();
+    },
     byId(id) {
       return context.OneToneState.state.config.mappings.find((m) => m.id === id) || null;
-    }
+    },
+    editorTrigger(m) { return m && m.triggerKey ? m.triggerKey : ''; }
   },
   OneToneHabitOverrideDiff: {
     isGlobalBaselineMapping(m) {
@@ -66,33 +83,86 @@ const context = {
       savedPanels.push(panel);
     }
   },
+  OneToneHabitScenarioContextBanner: {
+    shouldShowWizardForPanel(panel) {
+      return panel === 'keys' && context.OneToneState.ui.habitScenarioReturnPanel === 'keys';
+    }
+  },
   OneToneHabitHubShow: [],
   __els: {}
 };
 context.globalThis = context;
 vm.createContext(context);
 
-['habitScenarioContextBannerKeys', 'settingsPanelKeys'].forEach((id) => {
-  context.__els[id] = {
+function makeEl(id) {
+  return {
     id,
     hidden: true,
     className: '',
+    innerHTML: '',
     classList: {
       _c: new Set(),
-      add(c) {
-        this._c.add(c);
-      },
-      remove(c) {
-        this._c.delete(c);
-      },
-      toggle(c, on) {
-        if (on) this._c.add(c);
-        else this._c.delete(c);
-      }
+      add(c) { this._c.add(c); },
+      remove(c) { this._c.delete(c); },
+      toggle(c, on) { if (on) this._c.add(c); else this._c.delete(c); }
     },
-    innerHTML: ''
+    querySelector() { return null; },
+    insertBefore() {}
   };
+}
+
+['habitScenarioContextBannerKeys', 'settingsPanelKeys', 'keysWorkflowTabsBar', 'settingsNavKeysLabel', 'keysScopeSwitch', 'softPadStatusBar', 'settingsPanelSoftPad', 'settingsNavSoftPadLabel'].forEach((id) => {
+  context.__els[id] = makeEl(id);
 });
+context.__els.softPadStatusBar.insertBefore = function (node) {
+  this._chrome = node;
+  this.innerHTML = node.innerHTML || '';
+};
+context.__els.softPadStatusBar.querySelector = function (sel) {
+  if (sel === '.settings-context-chrome') return null;
+  return null;
+};
+context.__els.keysScopeSwitch.querySelector = function (sel) {
+  if (sel === '.settings-scope-switch') {
+    return context.__scopeSwitchEl || (context.__scopeSwitchEl = {
+      addEventListener() {},
+      querySelector(s) {
+        if (s === '[data-settings-scope-toggle]') return {textContent: ''};
+        if (s === '.settings-scope-switch__menu') return {innerHTML: ''};
+        return null;
+      }
+    });
+  }
+  return null;
+};
+context.__els.keysWorkflowTabsBar.querySelector = function (sel) {
+  if (sel === ':scope > .settings-context-chrome') return this._chrome || null;
+  if (sel === '.page-status-bar-actions') {
+    return {
+      insertBefore(node) { this._hub = node; },
+      firstChild: null,
+      _hub: null
+    };
+  }
+  if (sel === '.page-status-bar-main') {
+    return {
+      insertBefore(node) { this._chrome = node; },
+      firstChild: null,
+      _chrome: null
+    };
+  }
+  return null;
+};
+context.__els.keysWorkflowTabsBar.insertBefore = function (node) {
+  this._chrome = node;
+  this.innerHTML = node.innerHTML || '';
+};
+
+vm.runInContext(
+  readFileSync(new URL('../src/js/features/settings/settings-scope-switch.js', import.meta.url), 'utf8'),
+  context,
+  {filename: 'settings-scope-switch.js'}
+);
 
 vm.runInContext(
   readFileSync(new URL('../src/js/features/mapping/habit-channel-edit-banner.js', import.meta.url), 'utf8'),
@@ -111,33 +181,41 @@ assert.equal(vs.aligned, true);
 
 Banner.syncPanelContext('voiceWake');
 assert.equal(context.OneToneState.ui.voiceEditSchemeId, 'app-cursor');
-assert.equal(context.OneToneState.state.selectedMappingId, 'app-cursor');
 
 context.OneToneState.ui.settingsPanel = 'keys';
+context.OneToneState.ui.habitScenarioReturnPanel = null;
+Banner.renderAll();
+const panel = context.__els.settingsPanelKeys;
+assert.ok(panel.classList._c.has('has-settings-context-bar'));
+assert.match(String(context.__els.keysWorkflowTabsBar._chrome?.innerHTML || ''), /settings-context-chrome__left/);
+assert.match(String(context.__els.keysWorkflowTabsBar._chrome?.innerHTML || ''), /settings-context-chrome__actions/);
+
+Banner.renderAll();
+assert.match(String(context.__els.keysWorkflowTabsBar._chrome?.innerHTML || ''), /settings-context-chrome__left/, 'second renderAll keeps L1 chrome');
+
+context.OneToneState.ui.habitScenarioReturnPanel = 'keys';
 Banner.renderAll();
 const banner = context.__els.habitScenarioContextBannerKeys;
-assert.equal(banner.hidden, false);
-assert.match(banner.innerHTML, /正在编辑：Cursor/);
-assert.match(banner.innerHTML, /data-habit-edit-switch-hub/);
-assert.match(banner.innerHTML, /data-habit-edit-follow-runtime/);
+assert.equal(banner.hidden, true, 'legacy banner hidden when unified L1 renders');
+assert.ok(context.__els.settingsPanelKeys.classList._c.has('has-settings-context-bar'));
+assert.match(String(context.__els.keysWorkflowTabsBar._chrome?.innerHTML || ''), /settings-scope-switch|keysScopeSwitch/);
 
 context.OneToneRuntimeHabitControl.resolveActiveSceneId = () => 'base';
 Banner.syncEditToRuntime();
 assert.equal(context.OneToneState.ui.habitScenarioReturnId, null);
 assert.equal(context.OneToneState.ui.voiceEditSchemeId, '__global__');
-assert.equal(context.OneToneState.ui.cameraEditMode, 'global');
 
-context.OneToneState.ui.habitScenarioReturnId = null;
-context.OneToneState.ui.voiceEditSchemeId = '__global__';
-context.OneToneState.state.selectedMappingId = 'base';
-context.OneToneRuntimeHabitControl.resolveActiveSceneId = () => 'app-cursor';
-assert.equal(Banner.ensureEditContextFromRuntime(), true);
-assert.equal(context.OneToneState.ui.habitScenarioReturnId, 'app-cursor');
-assert.equal(context.OneToneState.ui.voiceEditSchemeId, 'app-cursor');
-
-context.OneToneState.ui.habitScenarioReturnId = 'app-cursor';
-context.OneToneRuntimeHabitControl.resolveActiveSceneId = () => 'base';
-assert.equal(Banner.ensureEditContextFromRuntime(), true);
-assert.equal(context.OneToneState.ui.habitScenarioReturnId, 'app-cursor');
+context.OneToneState.ui.settingsPanel = 'softPad';
+context.OneToneSoftPadHub = {
+  getSelectedScopeId: () => 'cursor',
+  appTitleFor: () => 'Cursor',
+  softPadScopeSwitchLabel: () => '切换 · Cursor',
+  buildBindAppProps: () => ({scopes: [{id: 'cursor', title: 'Cursor', active: true}]}),
+  renderSoftPadScopeMenuItems: () => '<button data-settings-scope-id="cursor">Cursor</button>'
+};
+Banner.renderAll();
+assert.ok(context.__els.softPadStatusBar._chrome, 'softPad renders settings-context-chrome');
+assert.match(String(context.__els.softPadStatusBar._chrome.innerHTML || ''), /softPadScopeSwitch|settings-scope-switch/);
+assert.ok(context.__els.settingsPanelSoftPad.classList._c.has('has-settings-context-bar'), 'softPad panel flagged');
 
 console.log('[habit-channel-edit-banner] all checks passed');

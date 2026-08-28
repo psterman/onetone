@@ -53,8 +53,8 @@ assert(html.includes('data-pad-mode="keys"'), 'html keys tab');
 assert(html.includes('data-pad-mode="look"'), 'html look tab');
 assert(html.includes('data-pad-mode="purpose"'), 'html purpose tab');
 assert(html.includes('id="softPadAgentBody"'), 'html agent body host');
-assert(html.includes('id="softPadAgentDirectory"'), 'html agent directory host');
-assert(html.includes('id="softPadAgentDirectoryList"'), 'html agent directory list');
+assert(!html.includes('id="softPadAgentDirectory"'), 'html agent directory removed');
+assert(html.includes('id="cameraWorkflowTabsBar"'), 'html camera status bar');
 assert(html.includes('id="softPadTmDetailHost"'), 'html tm detail host');
 assert(!/01 \/ Soft Pad/.test(html), 'flow node tags drop 01/ numbering');
 assert(!html.includes('id="softPadPadChassis"') || html.includes('soft-pad-pad-ring" id="softPadPadRing" hidden'), 'pad chassis ring not main path');
@@ -67,9 +67,16 @@ assert(/soft-pad-tm-mark/.test(tm), 'tm spine mark markup');
 assert(/#softPadPreviewHost.*micro-hw|min\(100%,\s*380px\)/.test(css), 'hub Soft Pad fills left column');
 assert(/\.soft-pad-face-agent[\s\S]{0,1200}?max-width:\s*300px/.test(css),
   'C2 Soft Pad preview compact');
-assert(/\.soft-pad-face-agent[\s\S]{0,2000}?grid-template-columns:\s*minmax\(240px,\s*0\.28fr\)\s*minmax\(260px,\s*0\.32fr\)/.test(css),
-  'C2 agent face 3-column grid');
-assert(/\.soft-pad-face-agent__directory/.test(css), 'C2 agent directory column css');
+assert(/\.soft-pad-face-agent[\s\S]{0,800}?grid-template-columns:\s*minmax\(220px,\s*0\.34fr\)\s*minmax\(320px,\s*1fr\)/.test(css),
+  'C2 agent face 2-column grid');
+assert(!/\.soft-pad-face-agent__directory/.test(css), 'C2 agent directory column css removed');
+assert(/renderSoftPadScopeMenuItems/.test(src), 'hub exports agent scope menu for unified bar');
+assert(/softPadScopeSwitchLabel/.test(src), 'hub exports scope switch label');
+assert(/__otSoftPadStatusMounted\) return/.test(src), 'bind menu skips legacy DOM when status island mounted');
+assert(/getSoftPadFace:\s*function/.test(src), 'hub exports getSoftPadFace for island');
+assert(/OneToneSoftPadHubUi\s*=\s*global\.OneToneSoftPadHub/.test(src), 'hub Ui alias for repaint hooks');
+assert(!/soft-pad-hub-page\.is-face-agent \.soft-pad-bind-app[\s\S]*display:\s*none/.test(css),
+  'agent face does not hide bind dropdown');
 assert(/\.soft-pad-agent-workbench__tabs/.test(css), 'workbench horizontal tabs css');
 assert(/\.soft-pad-agent-workbench__panel/.test(css), 'workbench panel css');
 assert(/\.soft-pad-hub-page\.is-face-agent #softPadAppSwitcher[\s\S]*?display:\s*none/.test(css),
@@ -172,14 +179,11 @@ assert(/data-light-template-scope="keys"/.test(padUi),
 assert(/data-lights-preview-accent/.test(padUi), 'v12 preview accent attribute');
 assert(/\.soft-pad-lights-subtabs/.test(css) && /data-lights-preview-accent="ambient"/.test(css),
   'v12 subtabs and preview accent css');
-assert(/\.soft-pad-hub-page\.is-face-agent \.soft-pad-bind-app[\s\S]*?display:\s*none/.test(css),
-  'v12d agent face hides status-bar bind app');
+assert(!/\.soft-pad-hub-page\.is-face-agent \.soft-pad-bind-app[\s\S]*?display:\s*none/.test(css),
+  'v15c agent face keeps status-bar bind app');
 assert(/data-strip-mode/.test(padUi), 'preview strip mode attribute');
-assert(/softPadFace !== 'agent'/.test(src), 'bind app menu blocked on agent face');
-assert(/resetView: softPadFace !== 'agent'/.test(src),
-  'agent face scheme click keeps resetView false');
 assert(/forceRemount: softPadFace === 'agent'/.test(src),
-  'agent face scheme click forceRemounts lights panel');
+  'agent face bind select forceRemounts lights panel');
 assert(/getSelectedScopeId:\s*function/.test(src) && /iconForKind:\s*iconForKind/.test(src),
   'hub exports scope id and iconForKind for topbar focus');
 assert(/is-focused/.test(padUi) && /\.is-focused/.test(css),

@@ -63,6 +63,7 @@ function fakeEl(id) {
       querySelectorAll() { return []; },
       querySelector() { return null; },
       replaceChildren() { children.length = 0; },
+      remove() { delete domNodes[id]; },
       addEventListener() {},
       contains() { return false; },
     };

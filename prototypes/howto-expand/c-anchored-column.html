@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>方案 C′ · 列锚定详情</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+  <link rel="stylesheet" href="shared-cprime.css" />
+</head>
+<body>
+  <div class="proto">
+    <strong>方案 C′</strong> · 详情从被点卡片正下方展开（同列宽）·
+    <a href="index.html">返回对比</a>
+    <span class="links"><a href="b-span-wide.html">看方案 B</a></span>
+  </div>
+
+  <div class="page">
+    <div class="page-hd">
+      <h1>列锚定详情（C′）</h1>
+      <p>四张预览卡保持等高横排。点哪张，详情就从那张卡正下方「长出来」（仅占该列）；切换通道时详情横向滑到新列。再点同卡收起。</p>
+    </div>
+
+    <div class="workbench" id="workbench">
+      <div class="howto-stage" id="howtoStage"></div>
+      <div class="hint-bar">
+        <b>试试：</b>点「屏幕按钮」展开 → 再点「按键触发」看横向滑动 → 再点同卡收起。悬停看三段式 tooltip。
+      </div>
+    </div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script src="shared-cprime.js"></script>
+  <script>
+    HowtoExpandCPrime.boot({ rootId: 'workbench', stageId: 'howtoStage' });
+  </script>
+</body>
+</html>

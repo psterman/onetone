@@ -31,6 +31,6 @@ assert(route.editMode('softPad',true)==='softPad','softPad stays softPad');
 var wb=fs.readFileSync(path.join(__dirname,'../src/js/features/home/home-workbench.js'),'utf8');
 assert(wb.includes('openHabitChannelChip(editCh,{mappingId:'), 'edit button opens channel with mappingId');
 assert(!/data-wb-habit-edit[\s\S]{0,400}openHabitsHubForMapping/.test(wb), 'edit button does not open hub');
-assert(wb.includes('openHabitChannelChip(kind,{mappingId:'), 'howto re-click passes mappingId');
+assert(wb.includes("howtoExpandedKind=''"), 'howto re-click collapses drawer');
 
 console.log('ok  home-habit-channel-route');

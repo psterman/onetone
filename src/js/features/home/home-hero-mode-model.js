@@ -276,6 +276,148 @@
     return out;
   }
 
+  function howtoStackTip(mode, ctx, t) {
+    ctx = ctx || {};
+    if (mode === 'voice') {
+      var lead = t('homeWbHowToStackVoiceLead', '说话');
+      var desc = ctx.micEmpty
+        ? t('homeWbHowToStackVoiceDescEmpty', '选好消息筒和唤醒词，就能用说话写进当前窗口')
+        : t('homeWbHowToStackVoiceDesc', '说完的话会进到当前正在用的窗口');
+      var cur = '';
+      if (!ctx.micEmpty && ctx.micLabel) {
+        cur = t('homeWbHowToStackCurrentMic', '当前：麦克风 {mic}').replace(
+          '{mic}',
+          String(ctx.micLabel)
+        );
+      } else if (!ctx.micEmpty && ctx.wakeMain) {
+        cur = t('homeWbHowToStackCurrentWake', '当前：唤醒「{wake}」').replace(
+          '{wake}',
+          String(ctx.wakeMain)
+        );
+      }
+      return { lead: lead, desc: desc, current: cur };
+    }
+    if (mode === 'keys') {
+      return {
+        lead: t('homeWbHowToStackKeysLead', '按键'),
+        desc: ctx.keysEmpty
+          ? t('homeWbHowToStackKeysDescEmpty', '给这个习惯设一个触发键，按住就能映射')
+          : t('homeWbHowToStackKeysDesc', '按住你设的键，就能代替另一个键'),
+        current: ctx.keysEmpty
+          ? ''
+          : t('homeWbHowToStackCurrentKeys', '当前：{mapping}').replace(
+              '{mapping}',
+              String(ctx.keysLine || ctx.triggerKey || '—')
+            ),
+      };
+    }
+    if (mode === 'softPad') {
+      return {
+        lead: t('homeWbHowToStackSoftPadLead', '屏幕按钮'),
+        desc: t(
+          'homeWbHowToStackSoftPadDesc',
+          '在屏幕上点按钮，控制 Codex / Claude 等 Agent'
+        ),
+        current: t('homeWbHowToStackCurrentSoftPad', '当前：{control}').replace(
+          '{control}',
+          String(ctx.controlLbl || t('homeWbSoftPadControlNone', '暂无'))
+        ),
+      };
+    }
+    if (mode === 'camera') {
+      return {
+        lead: t('homeWbHowToStackCameraLead', '摄像头'),
+        desc: ctx.enabled
+          ? t('homeWbHowToStackCameraDesc', '做手势可以确认、取消或结束语音输入')
+          : t(
+              'homeWbHowToStackCameraDescEmpty',
+              '绑定手势后，可用手势确认或取消说话'
+            ),
+        current: ctx.enabled
+          ? t('homeWbHowToStackCurrentCamera', '当前：{actions}').replace(
+              '{actions}',
+              String(ctx.actionsLine || '—')
+            )
+          : '',
+      };
+    }
+    return { lead: '', desc: '', current: '' };
+  }
+
+  function howtoCapabilityTip(mode, ctx, t) {
+    ctx = ctx || {};
+    if (mode === 'voice') {
+      if (ctx.micEmpty) {
+        return t(
+          'homeWbHowToCapVoiceEmpty',
+          '说话通道：选择麦克风并配置唤醒方式后，可用语音写入前台应用。'
+        );
+      }
+      var parts = [
+        t('homeWbHowToCapVoice', '说话通道：采集语音并写入当前前台应用。'),
+      ];
+      if (ctx.micLabel) {
+        parts.push(
+          t('homeWbHowToCapMicCur', '麦克风 {mic}').replace('{mic}', String(ctx.micLabel))
+        );
+      }
+      if (ctx.wakeMain && !isUnset(ctx.wakeMain, t)) {
+        parts.push(
+          t('homeWbHowToCapWakeCur', '唤醒 {wake}').replace('{wake}', String(ctx.wakeMain))
+        );
+      }
+      if (ctx.cursorArmPhrase) {
+        parts.push(
+          t('homeWbHowToCapArmCur', '进入聆听 {phrase}').replace(
+            '{phrase}',
+            String(ctx.cursorArmPhrase)
+          )
+        );
+      }
+      return parts.join(' · ');
+    }
+    if (mode === 'keys') {
+      if (ctx.keysEmpty) {
+        return t(
+          'homeWbHowToCapKeysEmpty',
+          '按键通道：为当前习惯绑定触发键与目标键，按住即可映射。'
+        );
+      }
+      var map = ctx.keysLine || ctx.triggerKey || '—';
+      var tip = t('homeWbHowToCapKeys', '按键通道：{mapping}').replace('{mapping}', map);
+      if (ctx.finish && ctx.finish !== '—') {
+        tip +=
+          ' · ' +
+          t('homeWbHowToCapKeysFinish', '结束 {finish}').replace('{finish}', String(ctx.finish));
+      }
+      return tip;
+    }
+    if (mode === 'softPad') {
+      var cfg = ctx.configLbl || t('homeWbSoftPadHabitNa', '不含 Soft Pad');
+      var ctl = ctx.controlLbl || t('homeWbSoftPadControlNone', '暂无');
+      return t(
+        'homeWbHowToCapSoftPad',
+        '屏幕按钮：此习惯 {config}；当前控制 {control}。'
+      )
+        .replace('{config}', cfg)
+        .replace('{control}', ctl);
+    }
+    if (mode === 'camera') {
+      if (!ctx.enabled) {
+        return t(
+          'homeWbHowToCapCameraEmpty',
+          '摄像头通道：绑定手势或离席动作，用于确认或取消语音输入。'
+        );
+      }
+      var camTip = t('homeWbHowToCapCamera', '摄像头通道：识别姿态并触发已绑定的动作。');
+      if (ctx.actionsLine) {
+        camTip += ' ' + String(ctx.actionsLine);
+      }
+      return camTip;
+    }
+    return '';
+  }
+
   function howtoCards(mode, howto, softPad, camera, t) {
     howto = howto || {};
     softPad = softPad || {};
@@ -300,6 +442,9 @@
     if (!micEmpty && howto.micLabel) {
       voiceLines.push({ lbl: t('homeWbHowToMic'), val: String(howto.micLabel) });
     }
+    if (!wakeEmpty && howto.wakeMain) {
+      voiceLines.push({ lbl: t('homeVoiceMapWakeLbl', '唤醒词'), val: String(howto.wakeMain) });
+    }
     if (howto.cursorArmPhrase) {
       voiceLines.unshift({
         lbl: t('homeCursorArmMetaLbl', '进入聆听'),
@@ -308,9 +453,18 @@
     }
 
     var keysLines = [];
+    if (!keysEmpty && howto.triggerKey && howto.triggerKey !== '—') {
+      keysLines.push({ lbl: t('homeWbHowToTrigger', '触发键'), val: String(howto.triggerKey) });
+    }
     if (!keysEmpty && howto.finish && howto.finish !== '—') {
       keysLines.push({ lbl: t('homeWbHowToFinish'), val: howto.finish });
     }
+
+    var keysStatusLbl = keysEmpty
+      ? t('homeWbFlowEmptyKeys')
+      : howto.keysEnabled === false
+        ? t('keysSummaryStatusInactive', '未启用')
+        : t('keysSummaryStatusActive', '已启用');
 
     var softLines = [];
     softLines.push({
@@ -321,6 +475,12 @@
       lbl: t('homeWbSoftPadControlMetaLbl', '当前控制'),
       val: softPad.controlLbl || t('homeWbSoftPadControlNone', '暂无'),
     });
+    if (softPad.followHint) {
+      softLines.push({
+        lbl: t('homeWbSoftPadFollowMetaLbl', '跟随'),
+        val: String(softPad.followHint),
+      });
+    }
 
     var camLines = [];
     if (camera.enabled) {
@@ -335,14 +495,70 @@
             ? t('homeWbCameraOn')
             : t('homeWbCameraConfiguredIdle', '已配置 · 未运行'),
       });
+      if (camera.actionsLine) {
+        camLines.push({
+          lbl: t('homeWbHowToCameraActions', '动作'),
+          val: String(camera.actionsLine),
+        });
+      }
+      if (camera.bound) {
+        camLines.push({
+          lbl: t('homeWbHowToCameraBound', '已绑定'),
+          val: t('homeWbCameraBoundCount').replace('{n}', String(camera.bound)),
+        });
+      }
     }
+
+    var voicePrimary = micEmpty
+      ? t('homeWbHowToVoiceUnset', '未选麦克风')
+      : !wakeEmpty
+        ? String(howto.wakeMain)
+        : howto.micLabel
+          ? String(howto.micLabel)
+          : t('homeWbHowToVoiceReady', '已就绪');
+    var voiceState = micEmpty
+      ? { lbl: t('homeWbHowToStateUnset', '待设置'), tone: 'is-muted' }
+      : { lbl: t('homeWbHowToStateReady', '已配置'), tone: 'is-on' };
+
+    var keysPrimary = keysEmpty
+      ? t('homeWbFlowEmptyKeys')
+      : howto.keysLine || howto.triggerKey || '—';
+    var keysState = keysEmpty
+      ? { lbl: t('homeWbHowToStateUnset', '待设置'), tone: 'is-muted' }
+      : howto.keysEnabled === false
+        ? { lbl: t('keysSummaryStatusInactive', '未启用'), tone: 'is-off' }
+        : { lbl: t('keysSummaryStatusActive', '已启用'), tone: 'is-on' };
+
+    var softPrimary =
+      softPad.controlLbl ||
+      softPad.displayPrimary ||
+      t('homeWbSoftPadControlNone', '暂无');
+    var softState = softPad.configConfigured
+      ? { lbl: t('homeWbHowToStateReady', '已配置'), tone: 'is-on' }
+      : softPad.configKind === 'na'
+        ? { lbl: t('homeWbSoftPadHabitNa', '不适用'), tone: 'is-muted' }
+        : { lbl: t('homeWbHowToStateUnset', '待设置'), tone: 'is-warn' };
+
+    var camPrimary = !camera.enabled
+      ? t('homeWbFlowEmptyCamera')
+      : camera.actionsLine || camLabel;
+    var camState = !camera.enabled
+      ? { lbl: t('homeWbHowToStateOff', '未开启'), tone: 'is-muted' }
+      : camera.running || camera.status === 'running'
+        ? { lbl: t('homeWbCameraOn'), tone: 'is-on' }
+        : { lbl: t('homeWbHowToStateReady', '已配置'), tone: 'is-warn' };
 
     return [
       {
         mode: 'voice',
         title: t('homeWbHeroModeVoice'),
         value: voiceValue,
-        lines: voiceLines.slice(0, 2),
+        primaryLine: voicePrimary,
+        stateLabel: voiceState.lbl,
+        stateTone: voiceState.tone,
+        capabilityTip: howtoCapabilityTip('voice', howto, t),
+        stackTip: howtoStackTip('voice', howto, t),
+        lines: voiceLines,
         active: mode === 'voice',
         empty: voiceEmpty,
         emptyText: voiceEmptyText,
@@ -350,8 +566,15 @@
       {
         mode: 'keys',
         title: t('homeWbHeroModeKeys'),
-        value: keysEmpty ? t('homeWbFlowEmptyKeys') : howto.keysLine || howto.triggerKey || '—',
-        lines: keysLines.slice(0, 2),
+        value: keysStatusLbl,
+        primaryLine: keysPrimary,
+        stateLabel: keysState.lbl,
+        stateTone: keysState.tone,
+        capabilityTip: howtoCapabilityTip('keys', howto, t),
+        stackTip: howtoStackTip('keys', howto, t),
+        summaryLine: keysEmpty ? '' : howto.keysLine || howto.triggerKey || '—',
+        detailValue: keysEmpty ? t('homeWbFlowEmptyKeys') : howto.keysLine || howto.triggerKey || '—',
+        lines: keysLines,
         artKind: 'keycaps',
         artPayload: howto.triggerKey || '',
         active: mode === 'keys',
@@ -369,8 +592,26 @@
             '{state}',
             softPad.controlLbl || t('homeWbSoftPadControlNone', '暂无')
           ),
-        lines: softLines.slice(0, 2),
-        status: softPad.followHint || softPad.status || '',
+        primaryLine: softPrimary,
+        stateLabel: softState.lbl,
+        stateTone: softState.tone,
+        capabilityTip: howtoCapabilityTip(
+          'softPad',
+          {
+            configLbl: softPad.configLbl,
+            controlLbl: softPad.controlLbl,
+          },
+          t
+        ),
+        stackTip: howtoStackTip(
+          'softPad',
+          {
+            configLbl: softPad.configLbl,
+            controlLbl: softPad.controlLbl,
+          },
+          t
+        ),
+        lines: softLines,
         artKind: 'softArt',
         active: mode === 'softPad',
         empty: false,
@@ -379,13 +620,26 @@
         mode: 'camera',
         title: t('homeWbHeroModeCamera'),
         value: !camera.enabled ? t('homeWbFlowEmptyCamera') : camLabel,
-        lines: camLines.slice(0, 2),
-        status:
-          camera.enabled && camera.bound
-            ? t('homeWbCameraBoundCount').replace('{n}', String(camera.bound))
-            : camera.enabled
-              ? t('homeWbHabitActive')
-              : '',
+        primaryLine: camPrimary,
+        stateLabel: camState.lbl,
+        stateTone: camState.tone,
+        capabilityTip: howtoCapabilityTip(
+          'camera',
+          {
+            enabled: camera.enabled,
+            actionsLine: camera.actionsLine,
+          },
+          t
+        ),
+        stackTip: howtoStackTip(
+          'camera',
+          {
+            enabled: camera.enabled,
+            actionsLine: camera.actionsLine,
+          },
+          t
+        ),
+        lines: camLines,
         artKind: 'camDot',
         cameraEnabled: !!camera.enabled,
         cameraRunning: !!(camera.running || camera.status === 'running'),

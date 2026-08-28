@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>方案 C · 整行下方抽屉</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    /* ── C: drawer below row ── */
+    .howto-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .howto-card {
+      min-height: var(--card-h);
+      max-height: var(--card-h);
+      transition:
+        background var(--dur) var(--ease),
+        border-color var(--dur) var(--ease),
+        box-shadow var(--dur) var(--ease);
+    }
+    .howto-card.is-selected {
+      border-color: color-mix(in srgb, var(--primary) 45%, var(--line));
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent);
+    }
+
+    .howto-drawer {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition:
+        max-height 0.28s var(--ease),
+        opacity var(--dur) var(--ease),
+        transform var(--dur) var(--ease);
+      border-radius: 0 0 var(--radius) var(--radius);
+      margin-top: -4px;
+    }
+    .howto-drawer.is-open {
+      max-height: 240px;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .drawer-shell {
+      margin-top: 12px;
+      border-radius: var(--radius);
+      border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--line));
+      background: var(--surface);
+      box-shadow: 0 8px 24px rgba(26, 45, 74, 0.08);
+      overflow: hidden;
+    }
+
+    .drawer-hd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-soft);
+    }
+    .drawer-hd-label {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .drawer-hd-label span { color: var(--muted); font-weight: 600; }
+    .drawer-close {
+      border: 1px solid var(--line-strong);
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .drawer-close:hover { color: var(--primary-strong); }
+
+    .drawer-body {
+      position: relative;
+      padding: 14px 16px 16px;
+      min-height: 120px;
+    }
+    .drawer-pane {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: 14px;
+      align-items: start;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      top: 14px;
+      pointer-events: none;
+    }
+    .drawer-pane.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+      position: relative;
+      left: auto;
+      right: auto;
+      top: auto;
+      pointer-events: auto;
+    }
+
+    .hint-bar {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px dashed var(--line-strong);
+      background: var(--surface-soft);
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .hint-bar b { color: var(--text); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .howto-drawer,
+      .drawer-pane { transition: none; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="proto">
+    <strong>方案 C（已弃用）</strong> · 全宽抽屉横跨四列 · 请用
+    <a href="c-anchored-column.html">C′ 列锚定</a>
+    <span class="links"><a href="index.html">返回对比</a></span>
+  </div>
+
+  <div class="page">
+    <div class="page-hd">
+      <h1>整行下方抽屉</h1>
+      <p>四张卡永远保持摘要高度。点选通道后，在卡片行下方滑出全宽详情抽屉；再点同卡或点「收起」关闭。切换通道时抽屉内容 cross-fade。</p>
+    </div>
+
+    <div class="workbench" id="workbench">
+      <div class="howto-wrap">
+        <div class="howto-grid" id="howtoGrid"></div>
+        <div class="howto-drawer" id="howtoDrawer" aria-hidden="true">
+          <div class="drawer-shell">
+            <div class="drawer-hd">
+              <div class="drawer-hd-label" id="drawerLabel">— <span>· 详情</span></div>
+              <button type="button" class="drawer-close" id="drawerClose">收起</button>
+            </div>
+            <div class="drawer-body" id="drawerBody"></div>
+          </div>
+        </div>
+      </div>
+      <div class="hint-bar">
+        <b>交互：</b>四卡高度始终一致；点「屏幕按钮」开抽屉，再点「按键触发」看内容切换动画。
+        Hero 区图标会随选中通道同步切换。
+      </div>
+    </div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script>
+    (function () {
+      var P = window.HowtoExpandProto;
+      var activeId = 'voice';
+      var drawerId = '';
+
+      var wb = document.getElementById('workbench');
+      wb.insertAdjacentHTML('afterbegin', P.renderScopeTop() + P.renderHero(activeId));
+
+      var drawer = document.getElementById('howtoDrawer');
+      var drawerBody = document.getElementById('drawerBody');
+      var drawerLabel = document.getElementById('drawerLabel');
+      var drawerClose = document.getElementById('drawerClose');
+
+      function paintCards() {
+        var grid = document.getElementById('howtoGrid');
+        grid.innerHTML = P.CARDS.map(function (card) {
+          return P.summaryCardHtml(card, {
+            activeId: activeId,
+            expanded: false,
+            extraClass: drawerId === card.id ? 'is-selected' : '',
+          });
+        }).join('');
+      }
+
+      function renderDrawerPane(card, visible) {
+        return (
+          '<div class="drawer-pane' +
+          (visible ? ' is-visible' : '') +
+          '" data-pane="' +
+          card.id +
+          '">' +
+          '<div class="detail-hero-icon is-' +
+          card.id +
+          ' is-enter">' +
+          (P.ICONS[card.id] || '') +
+          '</div>' +
+          '<div class="detail-copy">' +
+          '<p class="howto-card-primary detail-primary">' +
+          P.esc(card.primary) +
+          '</p>' +
+          P.metaHtml(card.meta) +
+          '</div></div>'
+        );
+      }
+
+      function openDrawer(id) {
+        drawerId = id;
+        activeId = id;
+        P.setHeroMode(id);
+        var card = P.cardById(id);
+        drawerLabel.innerHTML = P.esc(card.title) + ' <span>· 详情</span>';
+        drawer.setAttribute('aria-hidden', 'false');
+        drawer.classList.add('is-open');
+
+        var existing = drawerBody.querySelector('[data-pane="' + id + '"]');
+        if (existing) {
+          drawerBody.querySelectorAll('.drawer-pane').forEach(function (p) {
+            p.classList.toggle('is-visible', p.getAttribute('data-pane') === id);
+          });
+        } else {
+          drawerBody.querySelectorAll('.drawer-pane').forEach(function (p) {
+            p.classList.remove('is-visible');
+          });
+          drawerBody.insertAdjacentHTML('beforeend', renderDrawerPane(card, true));
+          requestAnimationFrame(function () {
+            var pane = drawerBody.querySelector('[data-pane="' + id + '"]');
+            if (pane) pane.classList.add('is-visible');
+          });
+        }
+        paintCards();
+      }
+
+      function closeDrawer() {
+        drawerId = '';
+        drawer.classList.remove('is-open');
+        drawer.setAttribute('aria-hidden', 'true');
+        paintCards();
+      }
+
+      function onCardClick(id) {
+        if (drawerId === id) {
+          closeDrawer();
+          return;
+        }
+        if (drawerId && drawerId !== id) {
+          var card = P.cardById(id);
+          drawerBody.querySelectorAll('.drawer-pane').forEach(function (p) {
+            p.classList.remove('is-visible');
+          });
+          var old = drawerBody.querySelector('[data-pane="' + id + '"]');
+          if (old) old.remove();
+          drawerLabel.innerHTML = P.esc(card.title) + ' <span>· 详情</span>';
+          drawerBody.insertAdjacentHTML('beforeend', renderDrawerPane(card, false));
+          requestAnimationFrame(function () {
+            var pane = drawerBody.querySelector('[data-pane="' + id + '"]');
+            if (pane) pane.classList.add('is-visible');
+          });
+          drawerId = id;
+          activeId = id;
+          P.setHeroMode(id);
+          paintCards();
+          return;
+        }
+        openDrawer(id);
+      }
+
+      paintCards();
+      P.bindStackTips(wb);
+      P.stopEditClick(wb);
+
+      wb.addEventListener('click', function (e) {
+        if (e.target.id === 'drawerClose' || e.target.closest('#drawerClose')) {
+          closeDrawer();
+          return;
+        }
+        var card = e.target.closest && e.target.closest('[data-card]');
+        if (!card) return;
+        onCardClick(card.getAttribute('data-card'));
+      });
+
+      wb.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        var card = e.target.closest && e.target.closest('[data-card]');
+        if (!card) return;
+        e.preventDefault();
+        onCardClick(card.getAttribute('data-card'));
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>顶栏方案 A/B/C/D · Plan B 双层</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #eef2f7;
+      --surface: #fff;
+      --line: rgba(26, 45, 74, 0.1);
+      --text: #1a2d4a;
+      --muted: #5c6b82;
+      --green: #15803d;
+      --green-soft: rgba(46, 125, 79, 0.12);
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--font); background: var(--bg); color: var(--text); font-size: 13px; }
+    .proto { padding: 10px 16px; background: #1a2d4a; color: #c5d0de; font-size: 12px; }
+    .proto strong { color: #fff; }
+    .page { max-width: 1200px; margin: 0 auto; padding: 16px; }
+    h1 { font-size: 18px; margin: 0 0 8px; }
+    .note { color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    .opt { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
+    .opt-hd { padding: 8px 12px; border-bottom: 1px solid var(--line); font-weight: 700; font-size: 12px; color: var(--muted); }
+    .opt-hd b { color: var(--text); }
+    .opt-hd .pick { float: right; color: var(--green); font-size: 11px; }
+    /* L1 shared */
+    .l1 { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+    .l1-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+    .l1-title { font-weight: 700; }
+    .aligned { font-size: 10px; font-weight: 700; color: var(--green); padding: 2px 8px; border-radius: 999px; background: var(--green-soft); }
+    .btn { border: 1px solid var(--line); background: #f6f8fb; border-radius: 8px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+    .l1-actions { display: flex; gap: 6px; margin-left: auto; }
+    /* L2 */
+    .l2 { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; }
+    .pill { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: rgba(42, 156, 196, 0.12); color: #1a6f8f; }
+    .meta { color: var(--muted); font-size: 12px; }
+    .toggle { width: 36px; height: 20px; border-radius: 999px; background: #2e7d4f; flex-shrink: 0; }
+    /* variants */
+    .opt-a .l1 { flex-direction: column; align-items: stretch; }
+    .opt-a .l1-actions { margin-left: 0; justify-content: flex-end; }
+    .opt-b .l1 { /* Plan B — chosen */ }
+    .opt-c .l1-title { font-size: 12px; color: var(--muted); font-weight: 500; }
+    .opt-c .l1-title b { color: var(--text); font-weight: 700; }
+    .opt-d .l1 { background: #f6f8fb; }
+    .opt-d .l2 { border-top: 1px dashed var(--line); }
+    .divider { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="proto"><strong>顶栏原型</strong> · 四通道 L1 同构 + L2 页内差异 · <a href="four-channel-compare.html" style="color:#5ec8e8">四页对比</a></div>
+  <div class="page">
+    <h1>方案 A/B/C/D 并排</h1>
+    <p class="note">已选 <b>方案 B（双层）</b>：L1 <code>settingsContextBar</code> 单行左编辑线 + 切换 + 右操作；L2 <code>channelStatusRow</code> 仅通道状态（pill / meta / toggle）。点击切换按钮可开合菜单（仅演示 B）。</p>
+    <div class="grid">
+      <article class="opt opt-a">
+        <div class="opt-hd"><b>A</b> 双行 L1（编辑一行 / 切换一行）</div>
+        <div class="l1">
+          <div class="l1-left"><span class="l1-title">按键 / 正在编辑：Cursor</span><span class="aligned">已与前台一致</span></div>
+          <div class="l1-actions"><button class="btn">我的习惯</button><button class="btn">↻ 跟前台</button></div>
+        </div>
+        <div class="l1" style="border-bottom-width:0;padding-top:0">
+          <div class="l1-left"><button class="btn">切换 · Cursor ▾</button></div>
+        </div>
+        <div class="l2"><span class="pill">Cursor 已激活</span><span class="toggle"></span></div>
+      </article>
+
+      <article class="opt opt-b" id="optB">
+        <div class="opt-hd"><b>B</b> 单行 L1 + L2 状态 <span class="pick">✓ 已采用</span></div>
+        <div class="l1">
+          <div class="l1-left">
+            <span class="l1-title">按键 / 正在编辑：Cursor</span>
+            <span class="aligned">已与前台一致</span>
+            <button class="btn" type="button" data-scope-toggle>切换 · Cursor ▾</button>
+            <div class="scope-menu" data-scope-menu hidden style="position:absolute;margin-top:28px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,.08)">
+              <button class="btn" type="button" style="display:block;width:100%;text-align:left;margin:2px 0">通用设置</button>
+              <button class="btn" type="button" style="display:block;width:100%;text-align:left;margin:2px 0;background:#e8f4fa">Cursor</button>
+            </div>
+          </div>
+          <div class="l1-actions"><button class="btn">我的习惯</button><button class="btn">↻ 跟前台</button></div>
+        </div>
+        <div class="l2"><span class="pill">Cursor 已激活</span><span class="toggle"></span></div>
+      </article>
+
+      <article class="opt opt-c">
+        <div class="opt-hd"><b>C</b> 弱化通道名（灰字前缀）</div>
+        <div class="l1">
+          <div class="l1-left">
+            <span class="l1-title">按键 / <b>正在编辑：Cursor</b></span>
+            <button class="btn">切换 · Cursor ▾</button>
+          </div>
+          <div class="l1-actions"><button class="btn">我的习惯</button><button class="btn">↻ 跟前台</button></div>
+        </div>
+        <div class="l2"><span class="pill">Cursor 已激活</span><span class="toggle"></span></div>
+      </article>
+
+      <article class="opt opt-d">
+        <div class="opt-hd"><b>D</b> L1 底纹 + L2 虚线分隔</div>
+        <div class="l1">
+          <div class="l1-left">
+            <span class="l1-title">按键 / 正在编辑：Cursor</span>
+            <span class="aligned">已与前台一致</span>
+            <button class="btn">切换 · Cursor ▾</button>
+          </div>
+          <div class="l1-actions"><button class="btn">我的习惯</button><button class="btn">↻ 跟前台</button></div>
+        </div>
+        <div class="l2">
+          <span class="pill">已接</span><span class="divider">·</span><span class="meta">状态灯 Codex</span><span class="divider">·</span><span class="meta">键位 12</span>
+          <span class="toggle" style="margin-left:auto"></span>
+        </div>
+      </article>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var root = document.getElementById('optB');
+      if (!root) return;
+      var btn = root.querySelector('[data-scope-toggle]');
+      var menu = root.querySelector('[data-scope-menu]');
+      document.addEventListener('click', function (e) {
+        if (btn && e.target === btn) {
+          menu.hidden = !menu.hidden;
+          return;
+        }
+        if (menu && !menu.contains(e.target)) menu.hidden = true;
+      });
+    })();
+  </script>
+</body>
+</html>

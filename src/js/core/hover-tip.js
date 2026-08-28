@@ -161,7 +161,30 @@
 
   function tipTextFrom(el){
     if(!el) return '';
+    if(el.getAttribute&&el.getAttribute('data-ot-tip-layout')==='stack') return 'stack';
     return String(el.getAttribute(ATTR)||'').trim();
+  }
+
+  function stackTipOptsFrom(el){
+    if(!el||el.getAttribute('data-ot-tip-layout')!=='stack') return null;
+    var lead=el.getAttribute('data-ot-tip-lead')||'';
+    var desc=el.getAttribute('data-ot-tip-desc')||'';
+    var current=el.getAttribute('data-ot-tip-current')||'';
+    var foot=el.getAttribute('data-ot-tip-foot')||'';
+    if(!lead&&!desc&&!foot) return null;
+    var html='<div class="ot-hover-tip__lead">'+esc(lead)+'</div>'
+      +'<div class="ot-hover-tip__desc">'+esc(desc)+'</div>'
+      +(current?'<div class="ot-hover-tip__desc">'+esc(current)+'</div>':'')
+      +'<div class="ot-hover-tip__foot">'+esc(foot)+'</div>';
+    return { html:html, rich:true };
+  }
+
+  function showFromEl(el){
+    if(!el) return;
+    var stack=stackTipOptsFrom(el);
+    if(stack){ show(el, stack); return; }
+    var text=tipTextFrom(el);
+    if(text&&text!=='stack') show(el, { text:text });
   }
 
   function bind(el, textOrOpts){
@@ -201,13 +224,19 @@
   }
 
   function onPointerOver(e){
-    var el=e.target&&e.target.closest&&e.target.closest('['+ATTR+']');
-    if(!el||!tipTextFrom(el)) return;
-    show(el, { text:tipTextFrom(el) });
+    var el=e.target&&e.target.closest&&e.target.closest('[data-ot-tip-layout="stack"],['+ATTR+']');
+    if(!el) return;
+    if(el.getAttribute('data-ot-tip-layout')==='stack'){
+      showFromEl(el);
+      return;
+    }
+    var text=String(el.getAttribute(ATTR)||'').trim();
+    if(!text) return;
+    show(el, { text:text });
   }
 
   function onPointerOut(e){
-    var el=e.target&&e.target.closest&&e.target.closest('['+ATTR+']');
+    var el=e.target&&e.target.closest&&e.target.closest('[data-ot-tip-layout="stack"],['+ATTR+']');
     if(!el) return;
     if(relatedInside(el, e.relatedTarget)) return;
     // Allow pointer to move onto interactive tip plate.
@@ -217,13 +246,19 @@
   }
 
   function onFocusIn(e){
-    var el=e.target&&e.target.closest&&e.target.closest('['+ATTR+']');
-    if(!el||!tipTextFrom(el)) return;
-    show(el, { text:tipTextFrom(el), delay:0 });
+    var el=e.target&&e.target.closest&&e.target.closest('[data-ot-tip-layout="stack"],['+ATTR+']');
+    if(!el) return;
+    if(el.getAttribute('data-ot-tip-layout')==='stack'){
+      show(el, Object.assign({}, stackTipOptsFrom(el), { delay:0 }));
+      return;
+    }
+    var text=String(el.getAttribute(ATTR)||'').trim();
+    if(!text) return;
+    show(el, { text:text, delay:0 });
   }
 
   function onFocusOut(e){
-    var el=e.target&&e.target.closest&&e.target.closest('['+ATTR+']');
+    var el=e.target&&e.target.closest&&e.target.closest('[data-ot-tip-layout="stack"],['+ATTR+']');
     if(!el) return;
     if(relatedInside(el, e.relatedTarget)) return;
     hide();

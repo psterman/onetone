@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>预览卡片展开方案 B / C′ 对比</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #eef2f7;
+      --surface: #fff;
+      --line: rgba(26, 45, 74, 0.1);
+      --line-strong: rgba(26, 45, 74, 0.16);
+      --text: #1a2d4a;
+      --muted: #5c6b82;
+      --cyan: #2a9cc4;
+      --green: #2e7d4f;
+      --green-soft: rgba(46, 125, 79, 0.12);
+      --pink: #c45c8a;
+      --pink-soft: rgba(196, 92, 138, 0.08);
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+    }
+    a { color: var(--cyan); font-weight: 600; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .proto {
+      padding: 8px 16px;
+      background: #1a2d4a;
+      color: #c5d0de;
+      font-size: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .proto strong { color: #fff; }
+
+    .page { max-width: 1400px; margin: 0 auto; padding: 16px; }
+    h1 { margin: 0 0 8px; font-size: 20px; }
+    .lead {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+      max-width: 52rem;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 960px) { .legend { grid-template-columns: 1fr; } }
+    .legend-card {
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px dashed var(--line-strong);
+      background: var(--surface);
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .legend-card b {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
+      color: var(--text);
+    }
+    .legend-card.bad {
+      border-color: rgba(196, 92, 138, 0.35);
+      background: var(--pink-soft);
+    }
+    .legend-card.good {
+      border-color: rgba(46, 125, 79, 0.35);
+      background: var(--green-soft);
+    }
+    .legend-card.muted { opacity: 0.85; }
+
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 1100px) { .compare { grid-template-columns: 1fr; } }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--surface);
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(26, 45, 74, 0.06);
+    }
+    .panel-hd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #f6f8fb;
+    }
+    .panel-hd h2 { margin: 0; font-size: 14px; }
+    .panel-hd .tag {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(42, 156, 196, 0.14);
+      color: #1a6f8f;
+    }
+    .panel-hd .tag.rec {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+    .panel iframe {
+      display: block;
+      width: 100%;
+      height: 640px;
+      border: 0;
+      background: var(--bg);
+    }
+    .panel-notes {
+      padding: 12px 14px 14px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.55;
+      border-top: 1px solid var(--line);
+    }
+    .panel-notes ul { margin: 6px 0 0; padding-left: 1.1rem; }
+    .panel-notes li { margin-bottom: 4px; }
+    .panel-notes b { color: var(--text); }
+
+    .matrix {
+      margin-top: 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface);
+      overflow: hidden;
+    }
+    .matrix table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .matrix th,
+    .matrix td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    .matrix th {
+      background: #f6f8fb;
+      font-weight: 700;
+      color: var(--muted);
+      width: 100px;
+    }
+    .matrix tr:last-child th,
+    .matrix tr:last-child td { border-bottom: 0; }
+
+    .pick {
+      margin-top: 16px;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(46, 125, 79, 0.35);
+      background: var(--green-soft);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .pick b { color: var(--text); }
+
+    .archive {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="proto">
+    <strong>首页预览卡片</strong> · 方案 B vs C′（推荐）· 点击 iframe 内卡片交互
+  </div>
+
+  <div class="page">
+    <h1>预览卡片展开方案 B / C′</h1>
+    <p class="lead">
+      C′ 在方案 C 心智上升级：四卡等高不变，但详情不再横跨四列，而是从<strong>被点那张卡正下方</strong>展开（同列宽）。
+      切换通道时详情横向滑到新列（layout animation），更像「预览卡的下半截」。
+    </p>
+
+    <div class="legend">
+      <div class="legend-card bad">
+        <b>A · 产线现状（问题）</b>
+        点一张卡整行变高；按键出现 [HID][键][R03-80]；图标与 Hero 不一致。
+      </div>
+      <div class="legend-card">
+        <b>B · 原位加宽</b>
+        展开卡占 2 列，详情在卡内横向排布；邻卡保持矮摘要。
+      </div>
+      <div class="legend-card good">
+        <b>C′ · 列锚定详情（推荐）</b>
+        四卡等高；详情从被点列下方 origin-aware 展开；切换时横向滑动，不垄断全宽。
+      </div>
+    </div>
+
+    <div class="compare">
+      <article class="panel">
+        <div class="panel-hd">
+          <h2>方案 B · 原位加宽</h2>
+          <span class="tag">span 2</span>
+        </div>
+        <iframe src="b-span-wide.html" title="方案 B 演示" loading="lazy"></iframe>
+        <div class="panel-notes">
+          <b>优点</b>
+          <ul>
+            <li>详情在卡片内，视线不跳</li>
+            <li>横向放得下长文案</li>
+          </ul>
+          <b>缺点</b>
+          <ul>
+            <li>第 3/4 卡展开时挤占邻卡</li>
+          </ul>
+          <p><a href="b-span-wide.html" target="_blank">全屏打开 B →</a></p>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-hd">
+          <h2>方案 C′ · 列锚定详情</h2>
+          <span class="tag rec">推荐</span>
+        </div>
+        <iframe src="c-anchored-column.html" title="方案 C′ 演示" loading="lazy"></iframe>
+        <div class="panel-notes">
+          <b>优点</b>
+          <ul>
+            <li>四卡高度永远一致</li>
+            <li>详情像「这张卡的延伸」，小白好理解</li>
+            <li>切换通道时详情滑到新列，动效自然</li>
+          </ul>
+          <b>缺点</b>
+          <ul>
+            <li>窄列时长文案需折行</li>
+          </ul>
+          <p><a href="c-anchored-column.html" target="_blank">全屏打开 C′ →</a></p>
+        </div>
+      </article>
+    </div>
+
+    <div class="matrix">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>方案 B</th>
+            <th>方案 C′</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>邻卡高度</th>
+            <td>保持矮卡</td>
+            <td>永远固定 108px</td>
+          </tr>
+          <tr>
+            <th>详情宽度</th>
+            <td>2 列宽</td>
+            <td>1 列宽（锚定被点卡）</td>
+          </tr>
+          <tr>
+            <th>动效</th>
+            <td>加宽 + max-height</td>
+            <td>accordion 0fr→1fr + FLIP 横滑 + meta stagger</td>
+          </tr>
+          <tr>
+            <th>小白心智</th>
+            <td>「这张卡变大了」</td>
+            <td>「点哪张，下方长出哪张的详情」</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pick">
+      <b>下一步：</b>确认动效后回复「按 C′ 落地」，再进入产线实现。
+    </div>
+
+    <p class="archive">
+      旧版全宽抽屉：<a href="c-drawer-below.html">c-drawer-below.html</a>（已弃用，详情横跨四列）
+    </p>
+  </div>
+</body>
+</html>

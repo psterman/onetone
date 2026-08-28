@@ -7,6 +7,7 @@
   var homeVoiceBootstrapped=false;
   var HERO_MODE_KEY='onetone.wbHeroMode';
   var heroMode='voice';
+  var howtoExpandedKind='';
   var presenceHooked=false;
   var MIC_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v11m0 0a4 4 0 01-4-4V5a4 4 0 118 0v4a4 4 0 01-4 4zm0 0v3m0 0a7 7 0 01-7-7M12 15a7 7 0 007-7M12 18v3m-3 0h6"/></svg>';
   var KEY_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2.2" class="wb-key-frame"/><circle cx="6" cy="10" r="1.1" class="wb-key-el wb-key-1" fill="currentColor" stroke="none"/><circle cx="10" cy="10" r="1.1" class="wb-key-el wb-key-2" fill="currentColor" stroke="none"/><circle cx="14" cy="10" r="1.1" class="wb-key-el wb-key-3" fill="currentColor" stroke="none"/><circle cx="18" cy="10" r="1.1" class="wb-key-el wb-key-4" fill="currentColor" stroke="none"/><rect x="7" y="13.5" width="10" height="1.8" rx="0.9" class="wb-key-el wb-key-space" fill="currentColor" stroke="none"/></svg>';
@@ -611,37 +612,104 @@
     var statusEl=$('wbHeroMicStatus');
     var hintEl=$('wbHeroMicVoiceHint');
     var mode=projection&&projection.mode?projection.mode:heroMode;
-    var inVoiceOrKeys=mode==='voice'||mode==='keys';
     var vm=projection&&projection._vm?projection._vm:{};
     var paused=!!(vm.runtime&&vm.runtime.paused);
     var dictating=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating);
-    if(toolbar) toolbar.hidden=!inVoiceOrKeys;
+    if(hintEl){ hintEl.textContent=''; hintEl.hidden=true; }
+    if(toolbar) toolbar.hidden=mode!=='voice';
     if(engineBtn) engineBtn.hidden=true;
     if(wakeHintEl) wakeHintEl.hidden=true;
     if(listenBtn) listenBtn.hidden=true;
-    if(hub){
-      hub.classList.toggle('is-voice-surface',inVoiceOrKeys);
-      hub.classList.toggle('is-dictating',inVoiceOrKeys&&dictating);
-    }
-    if(inVoiceOrKeys&&global.OneToneVoiceSurfaceCopy){
-      var surface=global.OneToneVoiceSurfaceCopy.resolve({dictating:dictating,paused:paused});
-      if(statusEl) statusEl.textContent=surface.line1||'';
-      if(hintEl){
-        hintEl.textContent=surface.line2||'';
-        hintEl.hidden=!surface.line2;
+    if(mode==='softPad'||mode==='camera'){
+      if(hub){
+        hub.hidden=true;
+        hub.classList.remove('is-voice-surface','is-dictating');
       }
-      if(voiceSwitch){
-        voiceSwitch.hidden=false;
-        voiceSwitch.classList.toggle('is-on',!!surface.switchOn);
-        voiceSwitch.setAttribute('aria-checked',surface.switchOn?'true':'false');
-        voiceSwitch.disabled=!!surface.switchDisabled;
-        voiceSwitch.setAttribute('aria-label',surface.switchOn?t('voiceSurfaceSwitchOn'):t('voiceSurfaceSwitchOff'));
-      }
+      if(voiceSwitch) voiceSwitch.hidden=true;
       return;
     }
-    if(hub) hub.classList.remove('is-voice-surface','is-dictating');
-    if(voiceSwitch) voiceSwitch.hidden=true;
-    if(hintEl){ hintEl.textContent=''; hintEl.hidden=true; }
+    if(hub) hub.hidden=false;
+    if(mode==='keys'){
+      if(hub){
+        hub.classList.remove('is-voice-surface','is-dictating');
+      }
+      if(voiceSwitch) voiceSwitch.hidden=true;
+      var m=vm.m||null;
+      var line1=t('homeWbFlowEmptyKeys');
+      if(m){
+        if(global.OneToneHomeScheme&&global.OneToneHomeScheme.pairLine){
+          var pair=global.OneToneHomeScheme.pairLine(m);
+          if(pair&&pair!=='—') line1=pair;
+        }
+        var keysUi=global.OneToneKeysPanelUi;
+        if(keysUi&&keysUi.buildKeysStatusProps){
+          var kp=keysUi.buildKeysStatusProps(m);
+          if(kp&&kp.status&&kp.status!=='—'){
+            line1=line1&&line1!==t('homeWbFlowEmptyKeys')?line1+' · '+kp.status:kp.status;
+          }
+        }
+      }
+      if(statusEl) statusEl.textContent=line1;
+      return;
+    }
+    if(mode==='voice'){
+      if(hub){
+        hub.classList.toggle('is-voice-surface',true);
+        hub.classList.toggle('is-dictating',dictating);
+      }
+      if(global.OneToneVoiceSurfaceCopy){
+        var surface=global.OneToneVoiceSurfaceCopy.resolve({dictating:dictating,paused:paused});
+        var flow=projection&&projection.flow?projection.flow:null;
+        var line1='';
+        if(dictating){
+          line1=surface.line1||'';
+        }else if(flow&&flow.trigger){
+          line1=String(flow.trigger);
+        }else{
+          line1=surface.line1||'';
+        }
+        if(statusEl) statusEl.textContent=line1;
+        if(voiceSwitch){
+          voiceSwitch.hidden=false;
+          voiceSwitch.classList.toggle('is-on',!!surface.switchOn);
+          voiceSwitch.setAttribute('aria-checked',surface.switchOn?'true':'false');
+          voiceSwitch.disabled=!!surface.switchDisabled;
+          voiceSwitch.setAttribute('aria-label',surface.switchOn?t('voiceSurfaceSwitchOn'):t('voiceSurfaceSwitchOff'));
+        }
+      }
+      var pills=(projection&&projection.pills)||[];
+      var enginePill=null;
+      var micPill=null;
+      var listenPill=null;
+      pills.forEach(function(pill){
+        if(!pill) return;
+        if(pill.id==='engine'||pill.id==='engine-off') enginePill=pill;
+        else if(pill.id==='mic') micPill=pill;
+        else if(pill.action==='listen-toggle') listenPill=pill;
+      });
+      if(engineBtn){
+        var engLbl=enginePill?String(enginePill.label||'').trim():'';
+        engineBtn.hidden=!engLbl;
+        if(engineNameEl) engineNameEl.textContent=engLbl||'—';
+        engineBtn.classList.toggle('is-warn', !!(enginePill&&enginePill.tone&&String(enginePill.tone).indexOf('is-warn')>=0));
+        engineBtn.classList.toggle('is-muted', !!(enginePill&&enginePill.tone&&String(enginePill.tone).indexOf('is-muted')>=0));
+        // device name lives on engine pill title — skip mic row in #wbHeroPills
+        var micTip=micPill?(shortMicLabel(micPill.label)||String(micPill.label||'').trim()):'';
+        if(micTip){
+          if(global.OneToneHoverTip&&global.OneToneHoverTip.setText){
+            global.OneToneHoverTip.setText(engineBtn, micTip);
+          }else{
+            engineBtn.setAttribute('title', micTip);
+          }
+        }else{
+          engineBtn.removeAttribute('title');
+        }
+      }
+      if(listenBtn&&listenPill){
+        listenBtn.hidden=false;
+        listenBtn.removeAttribute('aria-hidden');
+      }
+    }
   }
 
   function renderHeroPills(projection,stats){
@@ -680,13 +748,13 @@
 
     // voice / keys: engine + listen live inside #wbHeroMic card
     syncHeroMicCard(projection);
+    // device name lives on engine pill title — skip mic row in #wbHeroPills
     pills.forEach(function(pill){
       if(!pill) return;
-      if(pill.id==='engine'||pill.id==='engine-off'||pill.id==='mic') return;
+      if(pill.id==='engine'||pill.id==='engine-off') return;
+      if(pill.id==='mic') return;
       if(pill.action==='listen-toggle') return;
-      if(pill.id==='trigger-key'){
-        html+=pillHtml(pill.label,'is-key','');
-      }
+      if(pill.id==='trigger-key') return;
     });
 
     if(stats&&stats.latency&&stats.latency!=='—') html+=pillHtml(stats.latency,'is-latency','');
@@ -839,18 +907,27 @@
     paintHeroModeChrome(projection);
     renderHeroFlowSummary(projection);
     renderHero(projection,opts.stats);
-    if(global.OneToneHomeWorkbenchPanels&&typeof global.OneToneHomeWorkbenchPanels.renderHowTo==='function'){
-      global.OneToneHomeWorkbenchPanels.renderHowTo(projection);
+    var panels=global.OneToneHomeWorkbenchPanels;
+    if(panels){
+      if(opts.howtoPatchOnly&&panels.patchHowtoDrawer){
+        if(!panels.patchHowtoDrawer(projection,howtoExpandedKind,normalizeHeroMode(heroMode))
+          &&typeof panels.renderHowTo==='function'){
+          panels.renderHowTo(projection);
+        }
+      }else if(typeof panels.renderHowTo==='function'){
+        panels.renderHowTo(projection);
+      }
     }
     renderLiveText(projection);
   }
 
-  function refreshHeroModeSurfaces(){
+  function refreshHeroModeSurfaces(opts){
+    opts=opts||{};
     if(!global.OneToneHomeV9||!global.OneToneHomeV9.buildViewModel) return;
     var model=peekHomeModel({force:true})||{};
     var vm=model.rawVm||enrichViewModel(global.OneToneHomeV9.buildViewModel());
     var projection=buildHeroProjection(model,vm);
-    paintHeroSurfaces(projection);
+    paintHeroSurfaces(projection,opts);
   }
 
   function setHeroMode(mode,opts){
@@ -1783,9 +1860,16 @@
         openHeroSettings();
         return;
       }
-      // 首页 howto：点未激活卡切 Hero；再点当前激活卡打开通道设置
+      var drawerClose=e.target.closest&&e.target.closest('#wbHowtoDrawerClose');
+      if(drawerClose){
+        howtoExpandedKind='';
+        refreshHeroModeSurfaces({howtoPatchOnly:true});
+        return;
+      }
+      // 首页 howto：首点展开；再点同卡收起；点其他卡切换；编辑进设置
       var howto=e.target.closest&&e.target.closest('#wbHowTo [data-wb-howto]');
       if(howto){
+        if(e.target.closest&&e.target.closest('.wb-howto-card-edit')) return;
         var kind=howto.getAttribute('data-wb-howto')||'';
         try{
           if(global.OneToneIpc&&global.OneToneIpc.invoke){
@@ -1793,10 +1877,25 @@
           }
         }catch(_){}
         if(kind==='keys'||kind==='voice'||kind==='camera'||kind==='softPad'){
-          if(normalizeHeroMode(kind)===heroMode){
-            var mapBtn=howto.querySelector('[data-wb-habit-edit]');
-            openHabitChannelChip(kind,{mappingId:mapBtn?mapBtn.getAttribute('data-wb-habit-edit')||'':''});
-          }else setHeroMode(kind);
+          var isSelected=howto.classList.contains('is-selected');
+          if(isSelected){
+            howtoExpandedKind='';
+            refreshHeroModeSurfaces({howtoPatchOnly:true});
+          }else{
+            var switching=!!(howtoExpandedKind&&howtoExpandedKind!==kind&&document.querySelector('#wbHowTo #wbHowtoDrawer.is-open'));
+            howtoExpandedKind=kind;
+            var isActive=normalizeHeroMode(kind)===heroMode;
+            if(!isActive){
+              writeHeroMode(kind);
+              var model=peekHomeModel({force:true})||{};
+              var vm=model.rawVm||enrichViewModel(global.OneToneHomeV9.buildViewModel());
+              var projection=buildHeroProjection(model,vm);
+              paintHeroModeChrome(projection);
+              paintHeroSurfaces(projection,switching?{howtoPatchOnly:true}:{});
+            }else{
+              refreshHeroModeSurfaces(switching?{howtoPatchOnly:true}:{});
+            }
+          }
         }
         return;
       }
@@ -2154,16 +2253,6 @@
     if(global.OneToneAppSession&&global.OneToneAppSession.whenBootSettled){
       global.OneToneAppSession.whenBootSettled(fetchLastUiStallOnce);
     }
-    if(global.OneToneHomeActionHistoryCard){
-      var refreshHistoryCard=function(){
-        try{ global.OneToneHomeActionHistoryCard.refresh(); }catch(_){}
-      };
-      if(global.OneToneAppSession&&global.OneToneAppSession.whenBootSettled){
-        global.OneToneAppSession.whenBootSettled(refreshHistoryCard);
-      }else{
-        refreshHistoryCard();
-      }
-    }
     if(global.OneToneHomeWorkbenchPanels) global.OneToneHomeWorkbenchPanels.bindOnce();
     if(global.OneToneHomeWorkbenchCmdk) global.OneToneHomeWorkbenchCmdk.bindOnce();
     var searchInput=$('wbCommandSearchInput');
@@ -2312,10 +2401,8 @@
         :t('homeWbListenPause'));
     var boundTitle=$('wbContextBoundTitle');
     if(boundTitle) boundTitle.textContent=t('homeWbContextBoundTitle','当前习惯');
-    var boundSub=document.querySelector('#wbContextBound .wb-context-bound-sub');
+    var boundSub=document.querySelector('#wbScopeTop .wb-context-bound-sub');
     if(boundSub) boundSub.textContent=t('homeWbContextBoundSub','切换习惯时，下方四通道状态一起跟着变。');
-    var boundBridge=document.querySelector('#wbContextBound .wb-context-bound-bridge span');
-    if(boundBridge) boundBridge.textContent=t('homeWbContextBoundBridge','此习惯下的唤起方式');
     var manage=$('wbHabitManage');
     if(manage) manage.textContent=t('homeWbHabitManage','管理');
     refreshFollowFgToggle();
@@ -2354,6 +2441,8 @@
     renderTriggerDiagBlocks:renderTriggerDiagBlocks,
     startCompatProbe:startCompatProbe,
     getHeroMode:function(){ return normalizeHeroMode(heroMode); },
+    getHowtoExpandedKind:function(){ return howtoExpandedKind; },
+    heroIconSvg:heroModeIconSvg,
     setHeroMode:setHeroMode,
     onCompatResult:function(msg){
       if(global.OneToneHomeWorkbenchCompat&&msg){

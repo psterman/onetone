@@ -27,7 +27,7 @@ assert.ok(css.includes('prefers-reduced-motion'), 'reduced motion for tip');
 assert.ok(!/habit-hub-act\[data-tip\]:hover::after/.test(css), 'crude habit data-tip CSS removed');
 assert.ok(!css.includes('.habit-hub-channel-hover-tip{'), 'orphan channel hover tip CSS removed');
 
-assert.ok(panels.includes('data-ot-tip') && panels.includes('homeWbHowToOpenTip'), 'howto card uses HoverTip');
+assert.ok(panels.includes('data-ot-tip-layout') && panels.includes('howtoStackTipAttrs'), 'howto card uses stack HoverTip');
 assert.ok(!/wb-howto-card[^>]*title=/.test(panels.replace(/\s+/g, ' ')), 'howto card has no native title');
 
 assert.ok(workbench.includes('data-ot-tip') && workbench.includes('homeWbListenPauseTip'), 'listen tip on HoverTip');

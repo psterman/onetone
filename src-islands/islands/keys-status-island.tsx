@@ -72,17 +72,15 @@ export function KeysStatusBarIsland(): JSX.Element {
   return (
     <>
       <div className="page-status-bar-main keys-scheme-status-main">
-        <div className="keys-scheme-summary-title-row">
-          <span className="keys-scheme-summary-name keys-page-brand-title" id="keysPageBrandTitle">
-            {brandTitle}
-          </span>
-          <span
-            className={['keys-scheme-summary-pill', statusCls].filter(Boolean).join(' ')}
-            id="keysSummaryStatus"
-          >
-            {status}
-          </span>
-        </div>
+        <span className="sr-only keys-page-brand-title" id="keysPageBrandTitle">
+          {brandTitle}
+        </span>
+        <span
+          className={['keys-scheme-summary-pill', statusCls].filter(Boolean).join(' ')}
+          id="keysSummaryStatus"
+        >
+          {status}
+        </span>
         <span className="sr-only" id="keysSummaryName">
           {name}
         </span>

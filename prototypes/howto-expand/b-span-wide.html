@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>方案 B · 原位加宽 span-2</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    /* ── B: span 2 cols ── */
+    .howto-card.is-expanded {
+      grid-column: span 2;
+      min-height: auto;
+    }
+    @media (max-width: 1280px) {
+      .howto-card.is-expanded { grid-column: span 2; }
+    }
+    @media (max-width: 640px) {
+      .howto-card.is-expanded { grid-column: span 1; }
+    }
+
+    .howto-card .detail-body {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: 14px;
+      align-items: start;
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: max-height var(--dur) var(--ease), opacity var(--dur) var(--ease), margin var(--dur) var(--ease);
+      margin-top: 0;
+    }
+    .howto-card.is-expanded .detail-body {
+      max-height: 220px;
+      opacity: 1;
+      margin-top: 2px;
+    }
+    .howto-card.is-expanded .howto-card-primary:not(.detail-primary) {
+      display: none;
+    }
+    .detail-primary { margin: 0 0 4px; }
+
+    .hint-bar {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px dashed var(--line-strong);
+      background: var(--surface-soft);
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .hint-bar b { color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="proto">
+    <strong>方案 B</strong> · 展开卡占 2 列，邻卡保持矮卡 ·
+    <a href="index.html">返回对比</a>
+    <span class="links"><a href="c-drawer-below.html">看方案 C</a></span>
+  </div>
+
+  <div class="page">
+    <div class="page-hd">
+      <h1>原位加宽（span 2）</h1>
+      <p>点一张卡：该卡横向加宽并展示 Hero 同款大图标 + 详情；其余三张保持 108px 矮卡，不会被同行拉高。再点同卡收起；点其他卡切换。</p>
+    </div>
+
+    <div class="workbench" id="workbench">
+      <!-- scope + hero injected -->
+      <div class="howto-grid" id="howtoGrid"></div>
+      <div class="hint-bar">
+        <b>交互：</b>点击「屏幕按钮」看重叠展开；点击「按键触发」看长文案横向排版（无三段 keycap）。
+        悬停卡片可见三段式小白 tooltip。
+      </div>
+    </div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script>
+    (function () {
+      var P = window.HowtoExpandProto;
+      var activeId = 'voice';
+      var expandedId = '';
+
+      var wb = document.getElementById('workbench');
+      wb.insertAdjacentHTML('afterbegin', P.renderScopeTop() + P.renderHero(activeId));
+
+      function paint() {
+        var grid = document.getElementById('howtoGrid');
+        grid.innerHTML = P.CARDS.map(function (card) {
+          var isExp = expandedId === card.id;
+          var body = isExp ? P.detailBodyHtml(card) : '';
+          return P.summaryCardHtml(card, {
+            activeId: activeId,
+            expanded: isExp,
+            body: body,
+          });
+        }).join('');
+      }
+
+      function onCardClick(id) {
+        if (expandedId === id) {
+          expandedId = '';
+        } else {
+          expandedId = id;
+          activeId = id;
+          P.setHeroMode(id);
+        }
+        paint();
+      }
+
+      paint();
+      P.bindStackTips(wb);
+      P.stopEditClick(wb);
+
+      wb.addEventListener('click', function (e) {
+        var card = e.target.closest && e.target.closest('[data-card]');
+        if (!card) return;
+        onCardClick(card.getAttribute('data-card'));
+      });
+
+      wb.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        var card = e.target.closest && e.target.closest('[data-card]');
+        if (!card) return;
+        e.preventDefault();
+        onCardClick(card.getAttribute('data-card'));
+      });
+    })();
+  </script>
+</body>
+</html>

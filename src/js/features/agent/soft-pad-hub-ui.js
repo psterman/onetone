@@ -1088,6 +1088,39 @@
     return m;
   }
 
+  function isAgentInstalledForKind(kind) {
+    var inv = hubInventoryByKind[String(kind || '')] || null;
+    return !!(inv && (inv.confidence === 'high' || inv.running));
+  }
+
+  function isAgentInstalledForAppId(appId) {
+    return isAgentInstalledForKind(kindForAppId(appId));
+  }
+
+  function isVisibleSoftPadScope(scope, activeId) {
+    if (!scope) return false;
+    if (String(scope.id) === SOFT_PAD_UNIVERSAL_KIND) return true;
+    if (String(scope.id) === String(activeId || selectedScopeId || '')) return true;
+    if (scope.installed || scope.connected || scope.padEnabled) return true;
+    var entry = scope.entry || entryForScopeKind(scope.id);
+    if (entry && hasMapping(entry)) return true;
+    if (entry && entry.mapping && entry.mapping.codexMicroPad) return true;
+    return false;
+  }
+
+  function isScopeVisibleForMenu(kindOrAppId) {
+    var kind = String(kindOrAppId || '');
+    if (kind.indexOf('-') >= 0) kind = kindForAppId(kind) || kind;
+    if (kind === SOFT_PAD_UNIVERSAL_KIND) return true;
+    if (kind === String(selectedScopeId || '')) return true;
+    if (isAgentInstalledForKind(kind)) return true;
+    var entry = entryForScopeKind(kind);
+    if (entry && hasMapping(entry)) return true;
+    if (entry && entry.padEnabled) return true;
+    if (entry && entry.mapping && entry.mapping.codexMicroPad) return true;
+    return false;
+  }
+
   /**
    * Scopes for top switcher: universal baseline fallback + builtin Agent apps.
    */
@@ -1136,6 +1169,8 @@
       if (ra !== rb) return ra - rb;
       return (HUB_KIND_RANK[a.kind] || 99) - (HUB_KIND_RANK[b.kind] || 99);
     });
+    var activeId = String(selectedScopeId || '');
+    scopes = scopes.filter(function (s) { return isVisibleSoftPadScope(s, activeId); });
     return universalScope ? [universalScope].concat(scopes) : scopes;
   }
 
@@ -1596,7 +1631,42 @@
     ensureSoftPadConfig(entry, { persist: false });
     setSelectedMappingId(String(entry.mapping.id));
     if (entry.kind) selectedScopeId = entry.kind;
+    syncHabitEditFromSoftPadEntry(entry);
     return entry;
+  }
+
+  function syncHabitEditFromSoftPadEntry(entry) {
+    var uiState = global.OneToneState && global.OneToneState.ui;
+    if (!uiState) return;
+    var diffMod = global.OneToneHabitOverrideDiff;
+    var m = entry && entry.mapping;
+    if (m && diffMod && diffMod.isAppScenarioMapping && diffMod.isAppScenarioMapping(m)) {
+      uiState.habitScenarioReturnId = m.id;
+      var panel = String(uiState.settingsPanel || 'softPad');
+      uiState.habitScenarioReturnPanel = panel === 'voiceWake' ? 'voiceWake' : panel;
+      uiState.cameraEditMode = 'appScenario';
+      if (panel === 'voiceWake') uiState.voiceEditSchemeId = m.id;
+    } else if (entry && entry.kind === SOFT_PAD_UNIVERSAL_KIND) {
+      uiState.habitScenarioReturnId = null;
+      uiState.habitScenarioReturnPanel = null;
+      uiState.habitHubEditReturn = false;
+      uiState.cameraEditMode = 'global';
+      uiState.voiceEditSchemeId = '__global__';
+      var baseline = findBaselineMapping();
+      if (baseline && baseline.id && global.OneToneState && global.OneToneState.state) {
+        global.OneToneState.state.selectedMappingId = baseline.id;
+      }
+    }
+  }
+
+  function statusBarEntry() {
+    return resolveSoftPadEntry();
+  }
+
+  function canToggleSoftPadStatus(entry) {
+    if (!entry) return false;
+    applyRuntimeFlagsToEntry(entry);
+    return !!(hasMapping(entry) || entry.canPrepare || entry.canEnable);
   }
 
   function hostsNeedPaint(entry) {
@@ -1734,7 +1804,7 @@
     var active = String(selectedScopeId || 'codex');
     return {
       activeScope: active,
-      bindLabel: t('softPadBindAppLbl', '绑定 · {app}').replace('{app}', appTitleFor(active)),
+      bindLabel: t('settingsScopeSwitchLbl', '切换 · {name}').replace('{name}', appTitleFor(active)),
       scopes: scopes.map(function (scope) {
         return {
           id: scope.id,
@@ -1767,6 +1837,7 @@
         usageState: 'unavailable',
         padEnabled: false,
         hasMapping: false,
+        canToggle: false,
         activeScope: bind.activeScope,
         bindLabel: bind.bindLabel,
         scopes: bind.scopes
@@ -1790,6 +1861,7 @@
       usageState: 'unavailable',
       padEnabled: !!entry.padEnabled,
       hasMapping: hasMapping(entry),
+      canToggle: canToggleSoftPadStatus(entry),
       activeScope: bind.activeScope,
       bindLabel: bind.bindLabel,
       scopes: bind.scopes
@@ -1849,33 +1921,102 @@
   }
 
   function syncBindAppControl(props) {
+    if (global.__otSoftPadStatusMounted) return;
     var e = els();
     if (!e.bindAppLbl && !e.bindAppBtn) return;
     props = props || buildBindAppProps();
-    if (e.bindAppLbl) e.bindAppLbl.textContent = props.bindLabel || t('softPadBindAppLbl', '绑定 · {app}').replace('{app}', '—');
+    if (e.bindAppLbl) {
+      e.bindAppLbl.textContent = props.bindLabel || t('settingsScopeSwitchLbl', '切换 · {name}').replace('{name}', '—');
+    }
     if (e.bindAppMenu && !e.bindAppMenu.hidden) {
       renderBindAppMenu(props);
     }
   }
 
+  function bindMenuPillsHtml(entry) {
+    if (!entry) return '';
+    var Connect = global.OneToneSoftPadConnect;
+    var attn = global.OneToneSoftPadConnectAttn;
+    var st = global.OneToneState && global.OneToneState.state;
+    var phase = Connect && Connect.phaseOf ? Connect.phaseOf(entry.kind, st, attn) : 'unknown';
+    var padPill = agentDirectoryPadPill(entry);
+    var lightsPill = agentDirectoryLightsPill(entry);
+    var connCls = agentDirectoryConnectPillClass(phase);
+    var connText = agentDirectoryConnectPillText(phase);
+    return (
+      '<span class="soft-pad-agent-directory__pills">' +
+      '<span class="soft-pad-agent-pill ' + esc(padPill.cls) + '">' + esc(padPill.text) + '</span>' +
+      '<span class="soft-pad-agent-pill ' + esc(lightsPill.cls) + '">' + esc(lightsPill.text) + '</span>' +
+      '<span class="soft-pad-agent-pill ' + esc(connCls) + '">' + esc(connText) + '</span>' +
+      '</span>'
+    );
+  }
+
+  function entryForScopeKind(scopeId) {
+    var entries = listAsideEntries();
+    var i;
+    for (i = 0; i < entries.length; i++) {
+      if (entries[i] && entries[i].kind === scopeId) return entries[i];
+    }
+    return null;
+  }
+
+  function softPadScopeSubline(scopeId) {
+    if (String(scopeId || '') === SOFT_PAD_UNIVERSAL_KIND) {
+      return t('settingsScopeSubGlobal', '所有应用默认');
+    }
+    return t('softPadScopeAgentSub', 'Agent 应用场景');
+  }
+
+  function softPadScopeSwitchLabel() {
+    return t('settingsScopeSwitchLbl', '切换 · {name}').replace('{name}', appTitleFor(selectedScopeId || 'codex'));
+  }
+
+  function renderSoftPadScopeMenuItems(activeId) {
+    activeId = String(activeId || selectedScopeId || 'codex');
+    var Scope = global.OneToneSettingsScopeSwitch;
+    if (!Scope || !Scope.renderScopeMenuRow) return '';
+    var props = buildBindAppProps();
+    return (props.scopes || []).map(function (scope) {
+      return Scope.renderScopeMenuRow({
+        id: scope.id,
+        panel: 'softPad',
+        name: scope.title,
+        active: String(scope.id) === activeId,
+        iconHtml: iconHtml(scope.id, 'settings-scope-switch__icon-img')
+      });
+    }).join('');
+  }
+
   function renderBindAppMenu(props) {
+    if (global.__otSoftPadStatusMounted) return;
     var e = els();
     if (!e.bindAppMenu) return;
     props = props || buildBindAppProps();
     var scopes = props.scopes || [];
+    var entries = listAsideEntries();
     e.bindAppMenu.innerHTML = scopes.map(function (scope) {
+      var entry = null;
+      for (var i = 0; i < entries.length; i++) {
+        if (entries[i] && entries[i].kind === scope.id) {
+          entry = entries[i];
+          break;
+        }
+      }
       return (
         '<button type="button" class="soft-pad-bind-app__opt' +
         (scope.active ? ' is-active' : '') +
         '" role="option" data-scope="' + esc(scope.id) + '"' +
         ' aria-selected="' + (scope.active ? 'true' : 'false') + '">' +
-        esc(scope.title) +
+        '<span class="soft-pad-agent-directory__name">' + esc(scope.title) + '</span>' +
+        bindMenuPillsHtml(entry) +
         '</button>'
       );
     }).join('');
   }
 
   function setBindAppMenuOpen(open) {
+    if (global.__otSoftPadStatusMounted) return;
     var e = els();
     if (!e.bindAppMenu || !e.bindAppBtn) return;
     e.bindAppMenu.hidden = !open;
@@ -3993,12 +4134,12 @@
     var entries = listAsideEntries();
     pruneInvalidUserLanePin(listSoftPadSchemes());
     var onAgentFace = softPadFace === 'agent';
-    // Apps live in status-bar bind control; purpose chips live on pad ring.
+    // App scope lives in status-bar bind dropdown (v15); hide horizontal chip rail.
     var chips = scopes.map(function (scope) {
       return { id: scope.id, html: appSwitcherChipView(scope) };
     });
     return {
-      switcherHidden: onAgentFace,
+      switcherHidden: true,
       schemeListHidden: onAgentFace,
       switcherLabel: t('softPadAppSwitcherAria', '应用虚拟键盘'),
       switcherChips: chips,
@@ -4494,6 +4635,7 @@
         resetView: opts.resetView === true,
         previewOnly: false
       });
+      syncHabitEditFromSoftPadEntry(scope.entry || entryForScopeKind(scope.id));
       renderAppSwitcher();
       updateScopeHint();
       syncSoftPadPadRing();
@@ -4523,6 +4665,9 @@
       patchAgentDirectorySelection();
     }
     requestOverlayUsageForScope(selectedScopeId);
+    if (global.OneToneHabitChannelEditBanner && global.OneToneHabitChannelEditBanner.renderAll) {
+      try { global.OneToneHabitChannelEditBanner.renderAll(); } catch (_) {}
+    }
   }
 
   function openShellHookConnect(kind) {
@@ -4708,62 +4853,14 @@
     );
   }
 
-  function patchAgentDirectorySelection() {
-    var e = els();
-    if (!e.agentDirectoryList || softPadFace !== 'agent') return;
-    var scope = String(selectedScopeId || '');
-    e.agentDirectoryList.querySelectorAll('[data-agent-directory-row]').forEach(function (row) {
-      var kind = row.getAttribute('data-scope') || '';
-      var on = kind === scope;
-      row.classList.toggle('is-selected', on);
-      row.setAttribute('aria-selected', on ? 'true' : 'false');
-    });
-  }
+  function patchAgentDirectorySelection() {}
 
   function refreshAgentDirectoryConnectPills() {
-    var e = els();
-    if (!e.agentDirectoryList || softPadFace !== 'agent') return;
-    var Connect = global.OneToneSoftPadConnect;
-    if (!Connect || !Connect.phaseOf) return;
-    var st = global.OneToneState && global.OneToneState.state;
-    var attn = global.OneToneSoftPadConnectAttn;
-    e.agentDirectoryList.querySelectorAll('[data-agent-directory-row]').forEach(function (row) {
-      var kind = row.getAttribute('data-scope') || '';
-      if (!kind) return;
-      var phase = Connect.phaseOf(kind, st, attn);
-      var pill = row.querySelector('[data-pill="connect"]');
-      if (!pill) return;
-      pill.className = 'soft-pad-agent-pill ' + agentDirectoryConnectPillClass(phase);
-      pill.textContent = agentDirectoryConnectPillText(phase);
-      pill.setAttribute('data-connect-phase', phase);
-    });
+    if (softPadFace !== 'agent') return;
+    renderBindAppMenu();
   }
 
-  function renderAgentDirectory() {
-    var e = els();
-    if (!e.agentDirectoryList || softPadFace !== 'agent') return;
-    if (e.agentDirectoryTitle) {
-      e.agentDirectoryTitle.textContent = t('softPadAgentDirectoryTitle', 'Agent 目录');
-    }
-    if (e.agentDirectorySub) {
-      e.agentDirectorySub.textContent = t('softPadAgentDirectorySub', 'Pad · 灯 · 接');
-    }
-    var entries = listAsideEntries();
-    var ctx = laneContextFromRuntime();
-    var fgKind = kindForAppId(String(ctx.foregroundAppId || '').trim());
-    if (!entries.length) {
-      e.agentDirectoryList.innerHTML =
-        '<p class="keys-hub-empty">' + esc(t('softPadHubEmptyTitle', '还没有可管理的虚拟键盘')) + '</p>';
-      return;
-    }
-    e.agentDirectoryList.innerHTML = entries.map(function (entry) {
-      return renderAgentDirectoryRow(entry, {
-        isFg: fgKind && fgKind === entry.kind,
-        activeScope: true
-      });
-    }).join('');
-    refreshAgentDirectoryConnectPills();
-  }
+  function renderAgentDirectory() {}
 
   function renderSchemeList() {
     var e = els();
@@ -4888,8 +4985,13 @@
   }
 
   function toggleSelectedEnable() {
-    var entry = findEntry(getSelectedMappingId());
-    if (!entry || !entry.mapping || !entry.mapping.codexMicroPad) return;
+    var entry = statusBarEntry();
+    if (!entry || !entry.mapping) return;
+    if (!entry.mapping.codexMicroPad) {
+      ensureSoftPadConfig(entry, { persist: true });
+      applyRuntimeFlagsToEntry(entry);
+    }
+    if (!entry.mapping.codexMicroPad) return;
     var next = !entry.mapping.codexMicroPad.enabled;
     setPadEnabled(entry.mapping, next);
     entry.padEnabled = next;
@@ -5010,16 +5112,6 @@
     if (e.subBack && !(global.__otSoftPadDetailChromeMounted)) {
       e.subBack.addEventListener('click', function () { closeSubpage(); });
     }
-    if (e.agentDirectoryList) {
-      e.agentDirectoryList.addEventListener('click', function (ev) {
-        var row = ev.target.closest && ev.target.closest('[data-agent-directory-row]');
-        if (!row) return;
-        ev.preventDefault();
-        var kind = row.getAttribute('data-scope');
-        if (!kind) return;
-        selectScope(kind, { fromUser: true, forceRemount: true, resetView: false });
-      });
-    }
     if (e.list) {
       e.list.addEventListener('click', function (ev) {
         var fgBtn = ev.target.closest && ev.target.closest('[data-act="fg-switch-scope"]');
@@ -5067,12 +5159,12 @@
     }
     if (e.statusBar) {
       e.statusBar.addEventListener('click', function (ev) {
-        if (!global.__otSoftPadStatusMounted && softPadFace !== 'agent') {
+        if (!global.__otSoftPadStatusMounted) {
           var bindOpt = ev.target.closest && ev.target.closest('#softPadBindAppMenu [data-scope]');
           if (bindOpt) {
             ev.preventDefault();
             ev.stopPropagation();
-            selectScope(bindOpt.getAttribute('data-scope'), { fromUser: true, resetView: false });
+            selectScope(bindOpt.getAttribute('data-scope'), { fromUser: true, resetView: false, forceRemount: softPadFace === 'agent' });
             return;
           }
           var bindBtn = ev.target.closest && ev.target.closest('#softPadBindAppBtn');
@@ -5081,19 +5173,6 @@
             ev.stopPropagation();
             var menu = els().bindAppMenu;
             setBindAppMenuOpen(!(menu && !menu.hidden));
-            return;
-          }
-        }
-        if (softPadFace === 'agent') {
-          var dirJump = ev.target.closest && ev.target.closest('#softPadSummaryAgent, #softPadPageBrandTitle');
-          if (dirJump) {
-            ev.preventDefault();
-            var dir = document.getElementById('softPadAgentDirectory');
-            if (dir && dir.scrollIntoView) {
-              try { dir.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {}
-            }
-            var activeRow = document.querySelector('#softPadAgentDirectoryList [data-agent-directory-row].is-selected');
-            if (activeRow && activeRow.focus) activeRow.focus();
             return;
           }
         }
@@ -5136,6 +5215,7 @@
       });
     }
     document.addEventListener('click', function (ev) {
+      if (global.__otSoftPadStatusMounted) return;
       var e2 = els();
       if (!e2.bindApp || !e2.bindAppMenu || e2.bindAppMenu.hidden) return;
       if (e2.bindApp.contains(ev.target)) return;
@@ -5686,6 +5766,10 @@
     openDetail: openDetail,
     selectScheme: selectScheme,
     selectScope: selectScope,
+    getSoftPadFace: function () { return softPadFace; },
+    softPadScopeSwitchLabel: softPadScopeSwitchLabel,
+    renderSoftPadScopeMenuItems: renderSoftPadScopeMenuItems,
+    buildBindAppProps: buildBindAppProps,
     getSelectedScopeId: function () { return selectedScopeId; },
     appTitleFor: appTitleFor,
     isUniversalSoftPadScope: function () { return String(selectedScopeId || '') === SOFT_PAD_UNIVERSAL_KIND; },
@@ -5695,6 +5779,11 @@
     /** @deprecated use ensureBaselineSoftPadOverlay */
     ensureGlobalSoftPad: ensureBaselineSoftPadOverlay,
     iconForKind: iconForKind,
+    iconHtmlForKind: function (kind) { return iconHtml(kind, 'settings-scope-switch__icon-img'); },
+    kindForAppId: kindForAppId,
+    isAgentInstalledForAppId: isAgentInstalledForAppId,
+    isScopeVisibleForMenu: isScopeVisibleForMenu,
+    listAppScopes: listAppScopes,
     previewHostForFace: previewHostForFace,
     resolveSoftPadEntry: resolveSoftPadEntry,
     refreshSelected: refreshSelected,
@@ -5758,6 +5847,8 @@
     pickHubDefaultEntry: pickHubDefaultEntry,
     // P10: exposed for React island toggle delegation
     toggleSelectedEnable: toggleSelectedEnable,
+    canToggleSoftPadStatus: canToggleSoftPadStatus,
+    statusBarEntry: statusBarEntry,
     toggleRowEnable: toggleRowEnable,
     buildSoftPadWorkflowModel: buildSoftPadWorkflowModel,
     buildSoftPadFourPanelModel: buildSoftPadFourPanelModel,
@@ -5800,7 +5891,8 @@
   };
   // P10: read bridge — island calls this on mount / refresh to get initial state
   global.__otSoftPadStatusRead = function () {
-    return buildStatusProps(findEntry(getSelectedMappingId()));
+    return buildStatusProps(statusBarEntry());
   };
   global.OneToneSoftPadSchemesUi = global.OneToneSoftPadHub;
+  global.OneToneSoftPadHubUi = global.OneToneSoftPadHub;
 })(window);

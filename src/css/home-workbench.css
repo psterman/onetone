@@ -806,6 +806,8 @@ html[data-theme="dark"] .wb-dot-grid {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
+  padding: 0;
 }
 
 /* Habit + channels bound group (hero stays independent above) */
@@ -1037,17 +1039,106 @@ html[data-theme="dark"] .wb-context-bound .wb-howto-card-habit {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
-  padding: 16px;
-  border-radius: 18px;
-  border: 1px solid var(--outline-variant);
+  min-height: 108px;
+  padding: 14px 14px 36px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 88%, transparent);
   background: var(--surface-high);
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--on-surface) 4%, transparent);
   text-align: left;
   color: inherit;
+  cursor: pointer;
   transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
   overflow: hidden;
+}
+
+.wb-howto-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wb-howto-card-primary {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--on-surface);
+  letter-spacing: -0.01em;
+  word-break: break-word;
+}
+
+.wb-howto-card.is-empty .wb-howto-card-primary {
+  color: var(--on-surface-muted);
+  font-weight: 700;
+}
+
+.wb-howto-card-state {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.3;
+  background: color-mix(in srgb, var(--on-surface-muted) 12%, transparent);
+  color: var(--on-surface-muted);
+}
+
+.wb-howto-card-state.is-on {
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: var(--primary-strong);
+}
+
+.wb-howto-card-state.is-off {
+  background: color-mix(in srgb, var(--on-surface-muted) 10%, transparent);
+  color: var(--on-surface-muted);
+}
+
+.wb-howto-card-state.is-warn {
+  background: color-mix(in srgb, #f59e0b 14%, transparent);
+  color: #b45309;
+}
+
+.wb-howto-card-art-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.wb-howto-card-meta {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--outline-variant) 65%, transparent);
+}
+
+.wb-howto-meta-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.wb-howto-meta-lbl {
+  flex-shrink: 0;
+  color: var(--on-surface-muted);
+}
+
+.wb-howto-meta-val {
+  min-width: 0;
+  text-align: right;
+  font-weight: 700;
+  color: var(--on-surface);
+  word-break: break-word;
 }
 
 .wb-howto-card.is-readonly {
@@ -1141,6 +1232,8 @@ html[data-theme="dark"] .wb-context-bound .wb-howto-card-habit {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .wb-howto-card-ico {
@@ -1261,7 +1354,6 @@ html[data-theme="dark"] .wb-context-bound .wb-howto-card-habit {
 }
 
 .wb-howto-card-meta {
-  display: grid;
   gap: 6px;
 }
 
@@ -2494,9 +2586,285 @@ button.wb-hero-pill:hover,
   display: none !important;
 }
 
-.wb-howto-card:not(.is-active) .wb-howto-card-meta {
+.wb-scope-top {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px 16px 12px;
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 72%, transparent);
+  background: color-mix(in srgb, var(--surface-high) 88%, transparent);
+}
+
+.wb-scope-top .wb-context-bound-head {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.wb-scope-top .wb-scene-rail {
+  margin: 0;
+}
+
+.wb-scope-top .wb-scene-rail-body {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.wb-context-bound--channels {
   display: none;
 }
+
+/* C full-width howto drawer */
+.wb-howto-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+.wb-howto-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.wb-howto-cards .wb-howto-card {
+  min-height: 108px;
+  max-height: 108px;
+  transition:
+    background var(--dur-fast) var(--ease-standard),
+    border-color 80ms var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
+}
+
+.wb-howto-cards .wb-howto-card.is-selected {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--outline-variant));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent);
+}
+
+.wb-howto-drawer {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    max-height 0.28s cubic-bezier(0.25, 1, 0.5, 1),
+    opacity var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-standard);
+}
+
+.wb-howto-drawer.is-open {
+  max-height: 520px;
+  opacity: 1;
+  transform: translateY(0);
+  margin-top: 12px;
+}
+
+.wb-howto-drawer-shell {
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--outline-variant));
+  background: var(--surface-high);
+  box-shadow: 0 8px 24px rgba(26, 45, 74, 0.08);
+  overflow: hidden;
+}
+
+.wb-howto-drawer-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--outline-variant) 70%, transparent);
+  background: color-mix(in srgb, var(--primary) 5%, var(--surface-high));
+}
+
+.wb-howto-drawer-hd-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--on-surface);
+  min-width: 0;
+}
+
+.wb-howto-drawer-hd-label span {
+  color: var(--on-surface-muted);
+  font-weight: 600;
+}
+
+.wb-howto-drawer-close {
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 80%, transparent);
+  background: var(--surface-high);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+}
+
+.wb-howto-drawer-close:hover,
+.wb-howto-drawer-close:focus-visible {
+  color: var(--primary-strong);
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--outline-variant));
+}
+
+.wb-howto-drawer-body {
+  position: relative;
+  padding: 14px 16px 16px;
+  min-height: 120px;
+}
+
+.wb-howto-drawer-pane {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 14px;
+  align-items: start;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 14px;
+  pointer-events: none;
+}
+
+.wb-howto-drawer-pane.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  position: relative;
+  left: auto;
+  right: auto;
+  top: auto;
+  pointer-events: auto;
+}
+
+.wb-howto-drawer-pane-body {
+  display: contents;
+}
+
+.wb-howto-drawer-copy {
+  min-width: 0;
+}
+
+.wb-howto-drawer-primary {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.wb-howto-detail-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px 16px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--outline-variant) 65%, transparent);
+}
+
+.wb-howto-meta-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.wb-howto-meta-cell .wb-howto-meta-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--on-surface-muted);
+}
+
+.wb-howto-meta-cell .wb-howto-meta-val {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--on-surface);
+  text-align: left;
+  word-break: break-word;
+}
+
+.wb-howto-detail-hero-icon {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  display: grid;
+  place-items: center;
+  color: var(--primary-strong);
+}
+
+.wb-howto-detail-hero-icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.wb-howto-detail-hero-icon.is-camera {
+  background: color-mix(in srgb, var(--wb-cyan) 14%, transparent);
+  color: var(--wb-cyan);
+  border-color: color-mix(in srgb, var(--wb-cyan) 28%, transparent);
+}
+
+.wb-howto-detail-hero-icon.is-softPad {
+  background: color-mix(in srgb, #6366f1 12%, transparent);
+  color: #4f46e5;
+  border-color: color-mix(in srgb, #6366f1 25%, transparent);
+}
+
+@media (max-width: 1280px) {
+  .wb-howto-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .wb-howto-cards {
+    grid-template-columns: 1fr;
+  }
+  .wb-howto-drawer-pane {
+    grid-template-columns: 52px 1fr;
+    gap: 10px;
+  }
+  .wb-howto-detail-hero-icon {
+    width: 52px;
+    height: 52px;
+  }
+  .wb-howto-detail-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wb-howto-drawer,
+  .wb-howto-drawer-pane,
+  .wb-howto-cards .wb-howto-card {
+    transition: none !important;
+    transform: none !important;
+  }
+  .wb-howto-drawer.is-open {
+    opacity: 1;
+  }
+  .wb-howto-drawer-pane.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.wb-scope-top .wb-scene-chips {
+  padding: 2px 0 4px;
+}
+
+.wb-scene-rail-follow-block {
+  display: none !important;
+}
+
 
 .wb-hero-footer {
   display: flex;

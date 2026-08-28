@@ -33,19 +33,25 @@ assert.ok(wb.includes('OneToneSceneActivate.activateScene'));
 assert.ok(/panel:\s*'habits',\s*focus:\s*'mappings'/.test(wb));
 assert.ok(wb.includes('data-habit-card'));
 assert.ok(wb.includes('hasAppScenarioMappings'));
-assert.ok(wb.includes('data-wb-scenario-use'));
+assert.ok(wb.includes('getHowtoExpandedKind'));
+assert.ok(panels.includes('painted.selected'));
 
 var activate = fs.readFileSync(path.join(root, 'src/js/features/scene/scene-activate.js'), 'utf8');
 assert.ok(activate.includes('mvp_scheme_select'));
 assert.ok(activate.includes('cfg.activeSceneId=id'));
-assert.ok(!/HomeWorkbench\.forceHomeRender|wb\.render/.test(activate));
+assert.ok(activate.includes('forceHomeRender'));
 var feedback = fs.readFileSync(path.join(root, 'src/js/features/home/scheme-switch-feedback.js'), 'utf8');
 assert.ok(feedback.includes('requestAnimationFrame'));
 assert.ok(/forceHomeRender[\s\S]*requestAnimationFrame[\s\S]*wb\.render/.test(feedback));
 assert.ok(feedback.includes('drawerOpen'));
 
 assert.ok(html.includes('id="wbHabitManage"'));
+assert.ok(html.includes('id="wbScopeTop"'));
+assert.ok(html.indexOf('id="wbScopeTop"') < html.indexOf('id="wbTriggerCard"'), 'scope rail above hero');
+assert.ok(!html.includes('id="wbActionHistoryCard"'));
 assert.ok(html.includes('wb-scene-rail-body') || html.includes('id="wbScenarioPanel"'));
+assert.ok(css.includes('.wb-scope-top'));
+assert.ok(css.includes('.wb-howto-drawer.is-open'));
 assert.ok(css.includes('.wb-scene-chip'));
 assert.ok(css.includes('justify-content: center') || css.includes('justify-content:center'));
 assert.ok(css.includes('-webkit-line-clamp: 2') || css.includes('-webkit-line-clamp:2'));

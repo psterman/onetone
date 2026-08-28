@@ -158,6 +158,34 @@
                 <div class="home-center" id="wbCenter">
                   <div class="wb-home-alert" id="wbHomeAlerts" hidden role="status"></div>
                   <div class="wb-dashboard-stack">
+                      <section class="wb-scope-top" id="wbScopeTop" aria-label="当前习惯">
+                        <header class="wb-context-bound-head">
+                          <div class="wb-context-bound-head-copy">
+                            <div class="wb-context-bound-title-row">
+                              <span class="wb-context-bound-title" id="wbContextBoundTitle" data-i18n="homeWbContextBoundTitle">当前习惯</span>
+                              <span class="wb-context-bound-scene" id="wbContextBoundScene" hidden>—</span>
+                            </div>
+                            <p class="wb-context-bound-sub" data-i18n="homeWbContextBoundSub">切换习惯时，下方四通道状态一起跟着变。</p>
+                          </div>
+                          <button type="button" class="wb-scene-rail-manage" id="wbHabitManage" data-wb-habit-open-hub="" data-i18n="homeWbHabitManage">管理</button>
+                        </header>
+                        <section class="wb-scene-rail" id="wbSceneRail" aria-label="习惯">
+                          <div class="wb-scene-rail-head wb-scene-rail-head--compact" hidden aria-hidden="true">
+                            <div class="wb-scene-rail-follow-block" hidden aria-hidden="true">
+                              <div class="wb-scene-rail-follow" title="根据前台应用使用对应习惯">
+                                <div class="wb-scene-rail-follow-copy">
+                                  <span class="wb-scene-rail-follow-label" data-i18n="homeWbFollowFgLabel">自动切换习惯（推荐）</span>
+                                  <span class="wb-scene-rail-follow-hint" id="wbFollowFgHint" data-i18n="homeWbFollowFgHint">根据前台应用使用对应习惯</span>
+                                </div>
+                                <button type="button" class="toggle-switch" id="wbFollowFgToggle" role="switch" aria-checked="false" data-i18n-aria="homeWbFollowFgLabel"></button>
+                              </div>
+                            </div>
+                            <div class="wb-runtime-habit-status sr-only" id="wbRuntimeHabitStatus" role="status" aria-live="polite"></div>
+                          </div>
+                          <div class="wb-scene-rail-body" id="wbScenarioPanel"></div>
+                        </section>
+                      </section>
+
                       <section class="wb-trigger-card wb-trigger-card--hero" id="wbTriggerCard" aria-label="语音工作台">
                         <div class="wb-trigger-head" id="wbTriggerHead" hidden>
                           <span class="wb-hero-dict-status is-standby" id="wbLivePreviewStatus" hidden>
@@ -234,46 +262,7 @@
                         <div id="wbVoicePanel" hidden></div>
                       </div>
 
-                      <section class="wb-context-bound" id="wbContextBound" aria-label="当前习惯与触发通道">
-                        <header class="wb-context-bound-head">
-                          <div class="wb-context-bound-head-copy">
-                            <div class="wb-context-bound-title-row">
-                              <span class="wb-context-bound-title" id="wbContextBoundTitle" data-i18n="homeWbContextBoundTitle">当前习惯</span>
-                              <span class="wb-context-bound-scene" id="wbContextBoundScene" hidden>—</span>
-                            </div>
-                            <p class="wb-context-bound-sub" data-i18n="homeWbContextBoundSub">切换习惯时，下方四通道状态一起跟着变。</p>
-                          </div>
-                          <button type="button" class="wb-scene-rail-manage" id="wbHabitManage" data-wb-habit-open-hub="" data-i18n="homeWbHabitManage">管理</button>
-                        </header>
-                        <div class="wb-context-bound-body">
-                      <section class="wb-scene-rail" id="wbSceneRail" aria-label="习惯">
-                        <div class="wb-scene-rail-head">
-                          <div class="wb-scene-rail-follow-block">
-                            <div class="wb-scene-rail-follow" title="根据前台应用使用对应习惯">
-                              <div class="wb-scene-rail-follow-copy">
-                                <span class="wb-scene-rail-follow-label" data-i18n="homeWbFollowFgLabel">自动切换习惯（推荐）</span>
-                                <span class="wb-scene-rail-follow-hint" id="wbFollowFgHint" data-i18n="homeWbFollowFgHint">根据前台应用使用对应习惯</span>
-                              </div>
-                              <button type="button" class="toggle-switch" id="wbFollowFgToggle" role="switch" aria-checked="false" data-i18n-aria="homeWbFollowFgLabel"></button>
-                            </div>
-                          </div>
-                          <div class="wb-runtime-habit-status" id="wbRuntimeHabitStatus" role="status" aria-live="polite"></div>
-                        </div>
-                        <div class="wb-scene-rail-body" id="wbScenarioPanel"></div>
-                      </section>
-                          <div class="wb-context-bound-bridge" aria-hidden="true">
-                            <span data-i18n="homeWbContextBoundBridge">此习惯下的唤起方式</span>
-                  </div>
-                          <section class="wb-howto" id="wbHowTo" aria-label="上方习惯下的四个通道：说话、按键、屏幕按钮与摄像头；点卡切换上方预览，再点打开设置"></section>
-                          <section class="wb-action-history-card" id="wbActionHistoryCard" hidden aria-label="最近动作">
-                            <div class="wb-action-history-head">
-                              <h4 class="wb-action-history-title" data-i18n="homeWbActionHistoryTitle">最近动作</h4>
-                              <button type="button" class="wb-action-history-link" id="wbActionHistoryViewAll" data-i18n="homeWbActionHistoryViewAll">在习惯中查看 →</button>
-                            </div>
-                            <div class="wb-action-history-list" id="wbActionHistoryList" role="list"></div>
-                          </section>
-                        </div>
-                      </section>
+                      <section class="wb-howto" id="wbHowTo" aria-label="此习惯下的四个通道：说话、按键、屏幕按钮与摄像头"></section>
                   </div>
                 </div>
               </div>
@@ -1089,7 +1078,7 @@
                   <span class="keys-scheme-summary-val" id="softPadSummaryTm">即将接入</span>
                 </span>
               </div>
-              <div class="keys-scheme-summary-meta soft-pad-status-usage-meta">
+              <div class="keys-scheme-summary-meta soft-pad-status-usage-meta" hidden aria-hidden="true">
                 <span class="keys-scheme-summary-item">
                   <span class="keys-scheme-summary-lbl" id="softPadSummaryAccountLbl">账号</span>
                   <span class="keys-scheme-summary-val" id="softPadSummaryAccount">—</span>
@@ -1210,16 +1199,9 @@
                   <div class="soft-pad-pad-ring" id="softPadPadRing" hidden aria-hidden="true"></div>
                   <div class="soft-pad-ring-float" id="softPadRingFloat" hidden></div>
                 </div>
-                <!-- C2 Agent face: left preview · center directory · right workbench (v12b) -->
+                <!-- C2 Agent face: left preview · right workbench (v15c) -->
                 <div class="soft-pad-face-root soft-pad-face-agent" id="softPadFaceAgent" data-face="agent" hidden>
                   <div class="soft-pad-face-agent__preview soft-pad-preview-host" id="softPadAgentPreviewHost"></div>
-                  <nav class="soft-pad-face-agent__directory soft-pad-agent-directory" id="softPadAgentDirectory" aria-label="Agent 目录">
-                    <header class="soft-pad-agent-directory__head">
-                      <h2 class="soft-pad-agent-directory__title" id="softPadAgentDirectoryTitle">Agent</h2>
-                      <p class="soft-pad-agent-directory__sub" id="softPadAgentDirectorySub">Pad · 灯 · 接</p>
-                    </header>
-                    <div class="soft-pad-agent-directory__list" id="softPadAgentDirectoryList" role="listbox" aria-labelledby="softPadAgentDirectoryTitle"></div>
-                  </nav>
                   <aside class="soft-pad-face-agent__panel soft-pad-detail" id="softPadAgentPanelHost" aria-live="polite">
                     <div class="codex-pad-mgr soft-pad-subpage-body" id="softPadAgentBody"></div>
                   </aside>
@@ -2913,7 +2895,15 @@
               <button type="button" class="habit-scenario-context-banner-back is-primary" id="btnHabitScenarioContextBackCamera"></button>
             </div>
           </div>
-          <header class="pref-page-head">
+          <div class="page-status-bar camera-page-status-bar" id="cameraWorkflowTabsBar">
+            <div class="page-status-bar-main camera-scheme-status-main">
+              <div class="keys-scheme-summary-title-row">
+                <span class="keys-scheme-summary-name" id="cameraPageBrandTitle" data-i18n="cameraPageTitle">摄像头</span>
+              </div>
+            </div>
+            <div class="page-status-bar-actions camera-scheme-status-actions"></div>
+          </div>
+          <header class="pref-page-head camera-page-head-sr">
             <h3 class="pref-page-title" id="settingsPanelCameraTitle" data-i18n="cameraPageTitle">摄像头</h3>
             <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelCameraDesc" data-i18n="cameraPageSubtitle">先设计 if-then 规则，再到摄像头设置里预览与校准；Pro 含本机预览增强（美颜、面具等）。</p>
           </header>
@@ -4907,6 +4897,7 @@
   <script src="js/features/mapping/habit-scenario-voice-command.js"></script>
   <script src="js/features/voice/voice-wake-acoustic.js"></script>
   <script src="js/features/mapping/habit-scenario-voice-editor.js"></script>
+  <script src="js/features/settings/settings-scope-switch.js"></script>
   <script src="js/features/mapping/habit-channel-edit-banner.js"></script>
   <script src="js/features/mapping/habit-scenario-context-banner.js"></script>
   <script src="js/features/mapping/habit-channel-status-strip.js"></script>

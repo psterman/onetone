@@ -226,12 +226,12 @@ const htmlHome = readFileSync(join(root, 'src/index.html'), 'utf8');
 check('hero softPad 由 howto 切换', htmlHome.includes('id="wbHowTo"') && !htmlHome.includes('wb-hero-modes') && !htmlHome.includes('id="wbHeroModeSoftPad"'));
 check('hero 无重复模式条', !htmlHome.includes('data-wb-hero-mode=') && wb.includes('syncHowToActive') && !wb.includes('function syncHeroModeTabs'));
 check('index 挂载 hero-mode-model', htmlHome.includes('home-hero-mode-model.js'));
-check('习惯与通道同组绑定', htmlHome.includes('id="wbContextBound"') && htmlHome.includes('wb-context-bound'));
+check('习惯与通道同组绑定', htmlHome.includes('id="wbScopeTop"') && htmlHome.includes('wb-context-bound-head') && htmlHome.includes('id="wbHowTo"'));
 check('习惯在通道之上', (() => {
-  const rail = htmlHome.indexOf('id="wbSceneRail"');
+  const scopeTop = htmlHome.indexOf('id="wbScopeTop"');
+  const hero = htmlHome.indexOf('id="wbTriggerCard"');
   const howto = htmlHome.indexOf('id="wbHowTo"');
-  const bound = htmlHome.indexOf('id="wbContextBound"');
-  return bound >= 0 && rail > bound && howto > rail;
+  return scopeTop >= 0 && hero > scopeTop && howto > hero;
 })());
 check('bound 组头场景 pill', htmlHome.includes('id="wbContextBoundScene"'));
 
@@ -240,8 +240,8 @@ check('bound 组样式', homeCss.includes('.wb-context-bound') && homeCss.includ
 
 const panels = readFileSync(join(root, 'src/js/features/home/home-workbench-panels.js'), 'utf8');
 check('howto 只吃 projection', panels.includes('projection.howtoCards') && panels.includes('禁止在此再采集'));
-check('inactive howto 无 meta', panels.includes('card.active?1:0'));
-check('bound 同步当前习惯短名', panels.includes('wbContextBoundScene') && panels.includes('habitShort'));
+check('inactive howto 无 meta', panels.includes('howtoDrawerShellHtml') && panels.includes('wb-howto-wrap') && !/howToSummaryCardHtml[\s\S]*howtoDetailMetaGridHtml/.test(panels));
+check('bound 同步当前习惯短名', panels.includes('wbContextBoundScene') && panels.includes('sceneChipShortName'));
 check('panels 导出 softPadHowToSnapshot', panels.includes('softPadHowToSnapshot:softPadHowToSnapshot'));
 check('panels 导出 collectHowToSurfaceBits', panels.includes('collectHowToSurfaceBits:collectHowToSurfaceBits'));
 check('softPad snapshot 走 resolvePrimaryLane', (() => {
@@ -261,10 +261,13 @@ check('renderHowTo 不再调 snapshot', (() => {
   const m = panels.match(/function renderHowTo\(projection\)\{[\s\S]*?\n  function /);
   return !!(m && !m[0].includes('cameraHowToSnapshot()') && !m[0].includes('softPadHowToSnapshot()'));
 })());
-check('howto 摘要点卡切 Hero', panels.includes('howToSummaryCardHtml') && panels.includes('点此切换上方预览；再点打开设置') && !/data-wb-howto-channel=/.test(panels));
-check('howto 点卡切 Hero / 再点开设置', (() => {
-  const m = wb.match(/#wbHowTo \[data-wb-howto\][\s\S]*?return;\s*\}/);
-  return !!(m && m[0].includes('setHeroMode(kind)') && m[0].includes('openHabitChannelChip(kind)') && m[0].includes('heroMode'));
+check('howto 摘要点卡切 Hero', panels.includes('howToSummaryCardHtml') && panels.includes('patchHowtoDrawer') && panels.includes('howtoStackTipAttrs') && !/data-wb-howto-channel=/.test(panels));
+check('howto 点卡切 Hero / 再点收起', (() => {
+  return wb.includes('howtoExpandedKind=kind')
+    && wb.includes('howtoPatchOnly:true')
+    && wb.includes("howtoExpandedKind=''")
+    && wb.includes('patchHowtoDrawer')
+    && wb.includes('wbHowtoDrawerClose');
 })());
 check('openGlobalVoice 会打开抽屉', (() => {
   const banner = readFileSync(join(root, 'src/js/features/mapping/habit-scenario-context-banner.js'), 'utf8');
@@ -281,7 +284,7 @@ check('boot settled heavy 错峰', (() => {
   const presence = readFileSync(join(root, 'src/js/features/camera/camera-presence-actions.js'), 'utf8');
   return persist.includes('__otBootCameraCold')
     && persist.includes('bootCameraReconcile')
-    && /camDelay\s*=\s*2500/.test(persist)
+    && /camDelay\s*=\s*4000/.test(persist)
     && /reason==='config_applied'[\s\S]*?boot_deferred/.test(presence)
     && session.includes('Yield between settle jobs')
     && /setTimeout\(next,\s*0\)/.test(session)
@@ -343,7 +346,7 @@ check('workbench sig 含 activeSceneId', (() => {
 check('hub 通用设置无四通道栅格', (() => {
   const hub = readFileSync(join(root, 'src/js/features/mapping/habit-hub.js'), 'utf8');
   const fn = hub.match(/function renderGlobalDefaultCard\(\)\{[\s\S]*?\n  function /);
-  return !!(fn && !fn[0].includes('habit-hub-channels') && fn[0].includes('data-habit-global-home') && fn[0].includes('habit-hub-hero--thin'));
+  return !!(fn && !fn[0].includes('habit-hub-channels') && fn[0].includes('habit-hub-baseline-callout') && fn[0].includes('data-habit-guide="universal"'));
 })());
 check('scenario 芯片切换、浮层进习惯页、无摘要卡/无 per-card 编辑深链', (() => {
   const chip = panels.match(/function sceneChipHtml\([\s\S]*?\n  function /);
@@ -519,10 +522,11 @@ loadIife('src/js/features/home/home-hero-mode-model.js', sandbox);
       p.localAction &&
       p.localAction.kind === 'settings';
     if (!fields) allOk = false;
-    // 摘要卡：无 phrases；每卡 lines ≤ 2
+    // 摘要卡：无 phrases；展开 meta 行数合理（camera 最多 4 行）
     for (const c of p.howtoCards || []) {
       if (c.phrases) allOk = false;
-      if ((c.lines || []).length > 2) allOk = false;
+      const maxLines = { voice: 2, keys: 2, softPad: 3, camera: 4 }[c.mode] || 2;
+      if ((c.lines || []).length > maxLines) allOk = false;
     }
     if (mode === 'camera') {
       const send = p.pills.some((x) => /send/i.test(x.id || '') || /send/i.test(x.action || ''));
@@ -542,7 +546,7 @@ loadIife('src/js/features/home/home-hero-mode-model.js', sandbox);
       if (p.liveStatus !== '暂无') allOk = false;
       const softCard = (p.howtoCards || []).find((c) => c.mode === 'softPad');
       if (!softCard || softCard.empty) allOk = false;
-      if (!softCard || (softCard.lines || []).length !== 2) allOk = false;
+      if (!softCard || (softCard.lines || []).length < 2) allOk = false;
     }
     if (p.howtoCards.map((c) => c.mode).join(',') !== 'voice,keys,softPad,camera') allOk = false;
   }

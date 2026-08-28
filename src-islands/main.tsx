@@ -199,6 +199,13 @@ function mountVoiceStatusChromeIsland(): void {
   OneToneIslands.mountIsland('voiceSummaryStatus', VoiceStatusChromeIsland, {}, {
     onRefresh: () => ({}) as Record<string, unknown>,
   });
+  const banner = (window as unknown as { OneToneHabitChannelEditBanner?: { renderAll?: () => void } })
+    .OneToneHabitChannelEditBanner;
+  if (banner?.renderAll) {
+    try {
+      banner.renderAll();
+    } catch (_) {}
+  }
 }
 (window as unknown as { __otMountVoiceStatusChromeIsland?: () => void }).__otMountVoiceStatusChromeIsland =
   mountVoiceStatusChromeIsland;
@@ -323,15 +330,42 @@ try {
   console.error('[islands] wb command mount failed, keeping legacy cmdk', err);
 }
 
-// P10：挂载 SoftPad 状态栏岛（延迟到面板首次 render，避免 boot 清空 hidden DOM）
+// P10：挂载 SoftPad 状态栏岛（延迟到面板首次 render；保留 .settings-context-chrome）
 function mountSoftPadStatusIsland(): void {
-  const host = document.getElementById('softPadStatusBar');
-  if (!host) return;
-  if (OneToneIslands.isMounted('softPadStatus')) return;
-  host.innerHTML = '';
+  const bar = document.getElementById('softPadStatusBar');
+  if (!bar || OneToneIslands.isMounted('softPadStatus')) return;
+
+  bar.querySelector(':scope > .page-status-bar-main')?.remove();
+  bar.querySelector(':scope > .page-status-bar-actions')?.remove();
+  bar.querySelector(':scope > .soft-pad-status-island-host')?.remove();
+
+  let host = document.getElementById('softPadStatus');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'softPadStatus';
+    host.className = 'ot-island soft-pad-status-island-host';
+    bar.appendChild(host);
+  }
+
   OneToneIslands.mountIsland('softPadStatus', SoftPadStatusBarIsland, {}, {
     onRefresh: () => ({}) as Record<string, unknown>,
   });
+  const banner = (window as unknown as { OneToneHabitChannelEditBanner?: { renderAll?: () => void } })
+    .OneToneHabitChannelEditBanner;
+  if (banner?.renderAll) {
+    try {
+      banner.renderAll();
+    } catch (_) {}
+  }
+  const win = window as unknown as {
+    __otSoftPadStatusRead?: () => Record<string, unknown>;
+    __otSoftPadStatusSync?: (props: Record<string, unknown>) => void;
+  };
+  if (win.__otSoftPadStatusRead && win.__otSoftPadStatusSync) {
+    try {
+      win.__otSoftPadStatusSync(win.__otSoftPadStatusRead());
+    } catch (_) {}
+  }
 }
 (window as unknown as { __otMountSoftPadStatusIsland?: () => void }).__otMountSoftPadStatusIsland =
   mountSoftPadStatusIsland;
@@ -361,6 +395,22 @@ function mountKeysStatusIsland(): void {
   OneToneIslands.mountIsland('keysStatus', KeysStatusBarIsland, {}, {
     onRefresh: () => ({}) as Record<string, unknown>,
   });
+  const banner = (window as unknown as { OneToneHabitChannelEditBanner?: { renderAll?: () => void } })
+    .OneToneHabitChannelEditBanner;
+  if (banner?.renderAll) {
+    try {
+      banner.renderAll();
+    } catch (_) {}
+  }
+  const win = window as unknown as {
+    __otKeysStatusRead?: () => Record<string, unknown>;
+    __otKeysStatusSync?: (props: Record<string, unknown>) => void;
+  };
+  if (win.__otKeysStatusRead && win.__otKeysStatusSync) {
+    try {
+      win.__otKeysStatusSync(win.__otKeysStatusRead());
+    } catch (_) {}
+  }
 }
 (window as unknown as { __otMountKeysStatusIsland?: () => void }).__otMountKeysStatusIsland =
   mountKeysStatusIsland;

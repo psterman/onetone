@@ -1408,6 +1408,9 @@
     .ot-hover-tip.is-show,
     .home-guide-hover-tip.is-show{opacity:1;transform:translateY(0)}
     .ot-hover-tip__body{font-size:11px;font-weight:600;color:var(--on-surface-muted);overflow-wrap:anywhere;line-height:1.45}
+    .ot-hover-tip__lead{font-size:12px;font-weight:800;color:var(--on-surface);margin-bottom:4px}
+    .ot-hover-tip__desc{font-size:11px;font-weight:500;color:var(--on-surface-muted);line-height:1.45;margin-bottom:6px}
+    .ot-hover-tip__foot{font-size:11px;font-weight:600;color:var(--primary-strong);padding-top:6px;border-top:1px solid var(--outline-variant)}
     html[data-theme="dark"] .ot-hover-tip,
     html[data-theme="dark"] .home-guide-hover-tip{
       background:rgba(24,32,44,.98);border-color:rgba(94,200,232,.32);
@@ -4037,9 +4040,10 @@
       cursor:pointer;white-space:nowrap;
     }
     .habit-channel-edit-banner-btn:hover{background:var(--surface-container-high)}
-    #settingsPanelKeys.has-channel-edit-banner .keys-page-status-bar,
-    #settingsPanelVoiceWake.has-channel-edit-banner .voice-page-status-bar,
-    #settingsPanelSoftPad.has-channel-edit-banner .soft-pad-status-bar{margin-top:0}
+    #settingsPanelKeys.has-settings-context-bar .keys-page-status-bar,
+    #settingsPanelVoiceWake.has-settings-context-bar .voice-page-status-bar,
+    #settingsPanelCamera.has-settings-context-bar .camera-page-status-bar,
+    #settingsPanelSoftPad.has-settings-context-bar .soft-pad-status-bar{margin-top:0}
     .habit-hub-list.is-grid .habit-hub-card{grid-template-columns:1fr;min-height:0;min-width:0;overflow:hidden}
     .habit-hub-list.is-grid .habit-hub-card-actions{justify-content:flex-start;flex-wrap:wrap;gap:6px;padding-left:0;padding-top:10px;border-left:0;border-top:1px dashed var(--outline-variant)}
     .habit-hub-aside{

@@ -422,6 +422,10 @@
   function renderBannerIn(opts){
     var panel=$(opts.panelId);
     var banner=$(opts.bannerId);
+    if(panel&&panel.classList&&panel.classList.contains('has-settings-context-bar')){
+      if(banner) banner.hidden=true;
+      return;
+    }
     if(!banner) return;
     var scenarioM=returnMapping();
     var hubReturn=!!ui().habitHubEditReturn&&!scenarioM;
@@ -503,7 +507,60 @@
     }
   }
 
+  function panelKeyFromSettings(panel){
+    panel=String(panel||'').trim();
+    if(panel==='voiceWake') return 'voice';
+    return panel;
+  }
+
+  function shouldShowWizardForPanel(panel){
+    panel=panelKeyFromSettings(panel);
+    var rid=String(ui().habitScenarioReturnId||'').trim();
+    if(!rid||!returnMapping()) return false;
+    var rp=String(ui().habitScenarioReturnPanel||'').trim();
+    if(panel==='keys') return rp==='keys';
+    if(panel==='voice') return rp==='voiceWake'||rp==='voice';
+    if(panel==='camera') return rp==='camera';
+    return false;
+  }
+
+  var PANEL_SPECS={
+    keys:{
+      panel:'keys',panelId:'settingsPanelKeys',bannerId:'habitScenarioContextBannerKeys',
+      textId:'habitScenarioContextBannerKeysText',subId:'habitScenarioContextBannerKeysSub',
+      previewId:'habitScenarioContextBannerKeysPreview',backId:'btnHabitScenarioContextBackKeys',
+      saveId:'btnHabitScenarioContextSaveKeys',toVoiceId:'btnHabitScenarioContextToVoiceKeys',
+      toCameraId:'btnHabitScenarioContextToCameraKeys',
+      actionIds:['btnHabitScenarioContextSaveKeys','btnHabitScenarioContextToVoiceKeys','btnHabitScenarioContextToCameraKeys']
+    },
+    voice:{
+      panel:'voice',panelId:'settingsPanelVoiceWake',bannerId:'habitScenarioContextBannerVoice',
+      textId:'habitScenarioContextBannerVoiceText',subId:'habitScenarioContextBannerVoiceSub',
+      previewId:'habitScenarioContextBannerVoicePreview',backId:'btnHabitScenarioContextBackVoice',
+      saveId:'btnHabitScenarioContextSaveVoice',toKeysId:'btnHabitScenarioContextToKeysVoice',
+      toCameraId:'btnHabitScenarioContextToCameraVoice',
+      actionIds:['btnHabitScenarioContextSaveVoice','btnHabitScenarioContextToKeysVoice','btnHabitScenarioContextToCameraVoice']
+    },
+    camera:{
+      panel:'camera',panelId:'settingsPanelCamera',bannerId:'habitScenarioContextBannerCamera',
+      textId:'habitScenarioContextBannerCameraText',subId:'habitScenarioContextBannerCameraSub',
+      previewId:'habitScenarioContextBannerCameraPreview',backId:'btnHabitScenarioContextBackCamera',
+      saveId:'btnHabitScenarioContextSaveCamera',toKeysId:'btnHabitScenarioContextToKeysCamera',
+      actionIds:['btnHabitScenarioContextSaveCamera','btnHabitScenarioContextToKeysCamera']
+    }
+  };
+
   function render(){
+    ['keys','voice','camera'].forEach(function(key){
+      var spec=PANEL_SPECS[key];
+      var panelEl=$(spec.panelId);
+      if(panelEl&&panelEl.classList&&panelEl.classList.contains('has-settings-context-bar')){
+        if($(spec.bannerId)) $(spec.bannerId).hidden=true;
+        return;
+      }
+      if(shouldShowWizardForPanel(spec.panel)) renderBannerIn(spec);
+      else if($(spec.bannerId)) $(spec.bannerId).hidden=true;
+    });
     if(global.OneToneHabitChannelEditBanner){
       if(global.OneToneHabitChannelEditBanner.bindOnce) global.OneToneHabitChannelEditBanner.bindOnce();
       if(global.OneToneHabitChannelEditBanner.renderAll) global.OneToneHabitChannelEditBanner.renderAll();
@@ -605,6 +662,7 @@
 
   global.OneToneHabitScenarioContextBanner={
     render:render,
+    shouldShowWizardForPanel:shouldShowWizardForPanel,
     bindEvents:bindEvents,
     clearScenarioContext:clearScenarioContext,
     openGlobalKeys:openGlobalKeys,
@@ -615,6 +673,7 @@
     openScenarioCameraEdit:openScenarioCameraEdit,
     returnToScenarioConsole:returnToScenarioConsole,
     returnToHabitHub:returnToHabitHub,
-    buildPreview:buildPreview
+    buildPreview:buildPreview,
+    saveCurrentScenario:saveCurrentScenario
   };
 })((typeof window!=='undefined')?window:globalThis);
