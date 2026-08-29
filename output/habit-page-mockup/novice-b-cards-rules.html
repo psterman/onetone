@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小白模式 · 方案 B（故事卡 + 精简规则清单）</title>
+<style>
+:root{--bg:#0f1216;--panel:#161a20;--panel-2:#1c2129;--panel-3:#222831;--bd:rgba(255,255,255,.07);--bd-2:rgba(255,255,255,.13);--tx:#e7eaee;--mu:#98a1ac;--dim:#6a7280;--ac:#2a9cc4;--ac-soft:rgba(42,156,196,.14);--gr:#3fb950}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:400 13px/1.6 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.app{display:flex;height:100vh;min-width:1180px;overflow:hidden}
+.side,.scenes{background:var(--panel);border-right:.5px solid rgba(255,255,255,.07);padding:16px 12px}
+.side{width:186px;flex:none}.scenes{width:230px;flex:none;overflow:auto}
+.row{padding:8px 10px;border-radius:8px;margin-bottom:2px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between}
+.row.on{background:rgba(42,156,196,.14)}.dot{width:7px;height:7px;border-radius:50%;background:var(--gr)}
+.main{flex:1;overflow:auto;padding:20px 26px 44px}
+.modes{margin-bottom:14px;font-size:11px;color:var(--dim)}.modes b{color:var(--ac)}
+.novice-head{display:flex;justify-content:space-between;margin-bottom:12px}
+.novice-head h1{margin:0;font-size:22px;font-weight:600}.kpi{text-align:right;font-size:12px;color:var(--dim)}
+.dim-tabs,.scene-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.dim-tabs button,.scene-chips button{background:var(--panel-2);border:.5px solid var(--bd);border-radius:20px;color:var(--mu);font-size:12px;padding:6px 12px;cursor:pointer}
+.dim-tabs button.on,.scene-chips button.on{background:var(--ac-soft);color:var(--ac);border-color:rgba(42,156,196,.4)}
+.scene-chips .lbl{font-size:11px;color:var(--dim);align-self:center;margin-right:4px}
+.viz-compact{background:var(--panel);border:.5px solid var(--bd);border-radius:12px;padding:12px 16px;margin-bottom:12px;min-height:72px}
+.viz-compact .vp{display:none}.viz-compact .vp.on{display:block}
+.viz-compact .vh{margin:0 0 4px;font-size:13px;font-weight:500}.viz-compact .vs{margin:0;font-size:12px;color:var(--dim)}
+.hero-card{display:grid;grid-template-columns:56px 1fr auto;gap:18px;background:var(--panel);border:1px solid rgba(42,156,196,.25);border-radius:18px;padding:22px 24px;margin-bottom:18px;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.hero-card.is-highlight{outline:2px solid var(--ac);outline-offset:2px}
+.hero-card .illus{width:56px;height:56px;border-radius:14px;background:var(--panel-2);display:flex;align-items:center;justify-content:center;font-size:28px}
+.hero-card .title{font-size:16px;font-weight:600;margin-bottom:8px}
+.hero-card .story{font-size:14px;color:var(--mu);line-height:1.6}
+.hero-card .story b{color:var(--ac);font-weight:500}
+.divider{display:flex;align-items:center;gap:12px;margin:18px 0 12px;color:var(--dim);font-size:12px}
+.divider::before,.divider::after{content:'';flex:1;height:.5px;background:var(--bd)}
+.rule-simple{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--panel);border:.5px solid var(--bd);border-radius:10px;padding:11px 14px;margin-bottom:6px;cursor:pointer}
+.rule-simple:hover{border-color:var(--bd-2)}
+.rule-simple.hide{display:none}
+.rule-simple.is-active{background:var(--panel-2);border-color:rgba(42,156,196,.35)}
+.rule-simple .txt{font-size:13px}.rule-simple .txt em{font-style:normal;color:var(--ac)}
+.mini{background:transparent;border:.5px solid var(--bd-2);border-radius:6px;color:var(--mu);font-size:11px;padding:4px 10px;cursor:pointer;flex:none}
+.mini.primary{color:var(--ac);border-color:rgba(42,156,196,.35)}
+.collapse{margin-top:8px}
+.collapse button{width:100%;background:var(--panel);border:.5px dashed var(--bd-2);border-radius:9px;color:var(--dim);font-size:12px;padding:9px 12px;cursor:pointer;text-align:left}
+.collapse .inner{display:none;margin-top:6px}.collapse.open .inner{display:block}
+.proto-tag{position:fixed;bottom:14px;right:14px;background:var(--panel-2);border:.5px solid var(--bd);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--dim);z-index:9}
+.proto-tag b{color:var(--ac)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side"><div style="font-weight:600;margin-bottom:20px">一声 OneTone</div><div style="color:var(--ac);font-size:13px">我的习惯</div></aside>
+  <aside class="scenes"><div class="row on"><span>Cursor</span><span class="dot"></span></div><div class="row"><span>通用设置</span><span class="dot"></span></div></aside>
+  <main class="main">
+    <div class="modes"><b>方案 B</b> · 故事卡负责理解，下方精简规则清单负责扫差异（无覆盖/继承标签）</div>
+    <div class="novice-head"><div><h1>Cursor</h1></div><div class="kpi">本周 47 次 · 最常 F1</div></div>
+    <div class="dim-tabs" id="dimTabs">
+      <button class="on" data-dim="key">⌨ 按键</button><button data-dim="voice">🎙 语音</button><button data-dim="cam">📷 摄像头</button><button data-dim="pad">⌘ Soft Pad</button>
+    </div>
+    <section class="viz-compact">
+      <div class="vp on" data-vp="key"><h3 class="vh">F1 键位</h3><p class="vs">短按开始输入 · 长按切换引擎</p></div>
+      <div class="vp" data-vp="voice"><h3 class="vh">语音</h3><p class="vs">6 种说法任一命中即可开始听写</p></div>
+      <div class="vp" data-vp="cam"><h3 class="vh">摄像头</h3><p class="vs">张嘴开始输入 · 其余沿用通用</p></div>
+      <div class="vp" data-vp="pad"><h3 class="vh">Soft Pad</h3><p class="vs">托盘「语音」「上屏」键已配置</p></div>
+    </section>
+    <div class="scene-chips" id="sceneChips">
+      <span class="lbl">使用场景</span>
+      <button class="on" data-scene="begin">启动输入</button><button data-scene="end">结束与取消</button><button data-scene="general">通用</button>
+    </div>
+    <div class="hero-card" id="heroCard" data-rule="r1">
+      <div class="illus">⌨</div>
+      <div>
+        <div class="title">在 Cursor 里按 F1 开始输入</div>
+        <div class="story">按下 <b>F1</b> 就开始听写，说完自动送到编辑器里。这是你在这个应用里最常用的方式。</div>
+      </div>
+      <div><button class="mini primary">▶ 试一下</button></div>
+    </div>
+    <div class="divider">本场景还配置了这些</div>
+    <div id="ruleList">
+      <div class="rule-simple" data-ch="key" data-rule="r1" data-scene="begin"><div class="txt">按 <em>F1</em> → 开始语音输入</div><button class="mini primary" onclick="event.stopPropagation()">试一下</button></div>
+      <div class="rule-simple" data-ch="key" data-rule="r2" data-scene="begin"><div class="txt">长按 <em>F1</em> → 切换识别引擎</div><button class="mini primary" onclick="event.stopPropagation()">试一下</button></div>
+      <div class="rule-simple hide" data-ch="voice" data-rule="r3" data-scene="begin"><div class="txt">说「<em>开始输入</em>」等 → 开始听写</div><button class="mini primary" onclick="event.stopPropagation()">试一下</button></div>
+      <div class="rule-simple hide" data-ch="cam" data-rule="r4" data-scene="general"><div class="txt"><em>张嘴</em> → 开始语音输入</div><button class="mini primary" onclick="event.stopPropagation()">试一下</button></div>
+    </div>
+    <div class="collapse" id="collapse">
+      <button type="button" id="collapseBtn">▸ 还有 8 条沿用通用设置</button>
+      <div class="inner">
+        <div class="rule-simple" data-priority="in"><div class="txt">说「<em>发送</em>」→ 立即上屏</div></div>
+        <div class="rule-simple" data-priority="in"><div class="txt"><em>眨眼</em> → 确认上屏</div></div>
+        <div class="rule-simple" data-priority="in"><div class="txt">托盘「<em>语音</em>」键 → 开始输入</div></div>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="proto-tag">方案 B <b>novice-b-cards-rules.html</b> · 点规则行高亮主卡</div>
+<script>
+(function(){
+  var dim='key', scene='begin';
+  var hero=document.getElementById('heroCard');
+  function filter(){
+    document.querySelectorAll('[data-vp]').forEach(function(p){ p.classList.toggle('on',p.dataset.vp===dim); });
+    document.querySelectorAll('#ruleList .rule-simple').forEach(function(r){
+      if(r.dataset.priority==='in') return;
+      var show=(r.dataset.ch===dim||!r.dataset.ch)&&(r.dataset.scene===scene||!r.dataset.scene);
+      r.classList.toggle('hide',!show);
+    });
+    if(dim==='voice'&&scene==='begin'){ hero.querySelector('.title').textContent='说一句话就能开始听写'; hero.querySelector('.story').innerHTML='说 <b>开始输入</b> 或类似的话，不用找鼠标。'; hero.dataset.rule='r3'; }
+    else if(dim==='cam'){ hero.querySelector('.title').textContent='张嘴就能开始输入'; hero.querySelector('.story').innerHTML='对着摄像头 <b>张嘴</b>，和按 F1 一样开始听写。'; hero.dataset.rule='r4'; }
+    else { hero.querySelector('.title').textContent='在 Cursor 里按 F1 开始输入'; hero.querySelector('.story').innerHTML='按下 <b>F1</b> 就开始听写，说完自动送到编辑器里。'; hero.dataset.rule='r1'; }
+  }
+  document.querySelectorAll('#dimTabs button').forEach(function(b){
+    b.addEventListener('click',function(){ dim=b.dataset.dim; document.querySelectorAll('#dimTabs button').forEach(function(x){x.classList.toggle('on',x===b);}); filter(); });
+  });
+  document.querySelectorAll('#sceneChips button').forEach(function(b){
+    b.addEventListener('click',function(){ scene=b.dataset.scene; document.querySelectorAll('#sceneChips button').forEach(function(x){x.classList.toggle('on',x===b);}); filter(); });
+  });
+  document.querySelectorAll('#ruleList .rule-simple').forEach(function(r){
+    r.addEventListener('click',function(){
+      document.querySelectorAll('.rule-simple').forEach(function(x){x.classList.remove('is-active');});
+      r.classList.add('is-active');
+      hero.classList.add('is-highlight');
+      hero.dataset.rule=r.dataset.rule;
+      setTimeout(function(){ hero.classList.remove('is-highlight'); },1200);
+    });
+  });
+  document.getElementById('collapseBtn').addEventListener('click',function(){
+    document.getElementById('collapse').classList.toggle('open');
+    this.textContent=document.getElementById('collapse').classList.contains('open')?'▾ 收起沿用通用的设置':'▸ 还有 8 条沿用通用设置';
+  });
+  filter();
+})();
+</script>
+</body>
+</html>

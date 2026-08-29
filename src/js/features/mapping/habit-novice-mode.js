@@ -90,10 +90,14 @@
     var name=s&&s.appName?s.appName(model.mapping):'—';
     var sub=s&&s.sceneName?s.sceneName(model.mapping):'';
     var mid=model&&model.mapping?model.mapping.id:'';
+    var dim=ui().habitNoviceDim||'key';
+    var channel=s&&s.noviceDimToChannel?s.noviceDimToChannel(dim):'key';
     var usage='';
     var stats=global.OneToneHabitActionStats;
     if(stats&&stats.headKpiHtml&&mid) usage=stats.headKpiHtml(mid);
-    return '<main class="habit-novice-main"><div class="habit-novice-head"><div><div class="app-title">'+esc(name)+'</div><div class="app-sub">'+esc(sub)+'</div></div>'+usage+'</div>'+dimTabsHtml(model)+sceneChipsHtml(model)+cardsListHtml(model)+'</main>';
+    var inherit=s&&s.inheritHintHtml?s.inheritHintHtml(model.mapping):'';
+    var viz=s&&s.channelVizHtml?s.channelVizHtml(channel,model.mapping):'';
+    return '<main class="habit-novice-main"><div class="habit-novice-head"><div><div class="app-title">'+esc(name)+'</div><div class="app-sub">'+esc(sub)+'</div></div>'+usage+'</div>'+inherit+dimTabsHtml(model)+'<section class="habit-novice-viz" aria-label="'+esc(t('habitNoviceVizLabel','通道预览'))+'">'+viz+'</section>'+sceneChipsHtml(model)+cardsListHtml(model)+'</main>';
   }
 
   function layoutHtml(model){
@@ -123,8 +127,16 @@
     if(host.__habitNoviceBound) return;
     host.__habitNoviceBound=true;
     host.addEventListener('click',function(event){
-      var target=event.target.closest&&event.target.closest('[data-habit-novice-dim],[data-habit-novice-scene],[data-habit-novice-demo],[data-habit-novice-del],[data-habit-novice-toggle],[data-habit-novice-edit],[data-habit-usage-peek],[data-habit-usage-export],.chip');
+      var target=event.target.closest&&event.target.closest('[data-habit-novice-dim],[data-habit-novice-scene],[data-habit-novice-demo],[data-habit-novice-del],[data-habit-novice-toggle],[data-habit-novice-edit],[data-habit-usage-peek],[data-habit-usage-export],[data-habit-inherit-peek],[data-habit-channel],.chip');
       if(!target) return;
+      if(target.hasAttribute('data-habit-inherit-peek')){
+        var s=shared();
+        var m=state().config&&state().config.mappings?state().config.mappings.find(function(x){ return x&&x.id===state().selectedMappingId; }):null;
+        var lines=s&&s.buildRuleRows?s.buildRuleRows(m,{channel:'all'}).filter(function(r){ return r.priority==='overridden'; }).map(function(r){ return r.txt; }):[];
+        var msg=lines.length?lines.join(' · '):t('habitNoviceInheritAll','完全沿用通用设置');
+        if(global.OneToneAppToast) global.OneToneAppToast.show(msg,'scheme');
+        return;
+      }
       if(target.hasAttribute('data-habit-usage-export')){
         var exportId=target.getAttribute('data-habit-usage-export');
         var api=global.OneToneHabitActionStats;
@@ -136,6 +148,13 @@
         if(global.OneToneHabitUsageSheet&&global.OneToneHabitUsageSheet.open){
           global.OneToneHabitUsageSheet.open(peekId);
         }
+        return;
+      }
+      if(target.hasAttribute('data-habit-channel')){
+        var s=shared();
+        var dim=s&&s.channelToNoviceDim?s.channelToNoviceDim(target.getAttribute('data-habit-channel')):'key';
+        ui().habitNoviceDim=dim||'key';
+        rerender();
         return;
       }
       if(target.hasAttribute('data-habit-novice-dim')){

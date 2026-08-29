@@ -2,6 +2,7 @@
   'use strict';
 
   var CHANNELS=['key','voice','camera','softPad'];
+  var QUICK_CHANNELS=['all','key','voice','camera','softPad'];
   var SECTIONS=['scope','trigger','action','safety','reuse'];
   var CAMERA_ITEMS=[
     {id:'camera-away',trigger:'away',action:'onAway',zh:'离开座位',en:'Away'},
@@ -100,9 +101,9 @@
       selected=list.find(isApp)||baseline()||list[0]||null;
       state().selectedMappingId=selected?selected.id:null;
     }
-    if(CHANNELS.indexOf(ui().habitWorkspaceChannel)<0) ui().habitWorkspaceChannel='key';
+    if(QUICK_CHANNELS.indexOf(ui().habitWorkspaceChannel)<0) ui().habitWorkspaceChannel='all';
     if(SECTIONS.indexOf(ui().habitProgramSection)<0) ui().habitProgramSection='scope';
-    if(!ui().habitWorkspaceItemId) ui().habitWorkspaceItemId=defaultItem(ui().habitWorkspaceChannel);
+    if(ui().habitWorkspaceChannel!=='all'&&!ui().habitWorkspaceItemId) ui().habitWorkspaceItemId=defaultItem(ui().habitWorkspaceChannel);
     return selected;
   }
   function defaultItem(channel){
@@ -225,17 +226,18 @@
     var m=normalizeSelection();
     if(!m) return {empty:true,mappings:[]};
     var channel=ui().habitWorkspaceChannel;
-    var items=quickItems(channel);
+    var itemChannel=channel==='all'?'key':channel;
+    var items=quickItems(itemChannel);
     var item=items.find(function(x){ return x.id===ui().habitWorkspaceItemId; });
     if(!item){ item=items[0]; ui().habitWorkspaceItemId=item.id; }
-    var detail=quickDetail(m,channel,item.id);
+    var detail=quickDetail(m,itemChannel,item.id);
     var q={};
     CHANNELS.forEach(function(ch){
       var first=quickItems(ch)[0];
       var d=quickDetail(m,ch,first.id);
       q[ch]={enabled:d.enabled,count:d.count||0,source:d.source};
     });
-    return {empty:false,mapping:m,mappings:mappings(),channel:channel,items:items,item:item,detail:detail,channels:q,groups:programmerGroups(m),mode:ui().habitExperienceMode||prefs()&&prefs().getMode()||'novice'};
+    return {empty:false,mapping:m,mappings:mappings(),channel:channel,items:items,item:item,detail:detail,channels:q,groups:programmerGroups(m),mode:ui().habitExperienceMode||prefs()&&prefs().getMode()||'novice',ruleRows:shared()&&shared().buildRuleRows?shared().buildRuleRows(m,{channel:channel}):[],inherit:shared()&&shared().inheritSummary?shared().inheritSummary(m):{overrideCount:0,inheritedCount:0,total:0}};
   }
 
   function ensureShell(){
@@ -281,10 +283,39 @@
     return '<svg class="habit-ws-channel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>';
   }
   function channelTabsHtml(model){
-    return '<div class="pref-segmented is-wide habit-ws-channels" role="tablist">'+CHANNELS.map(function(ch){
-      var meta=model.channels[ch],selected=ch===model.channel;
-      return '<button type="button" role="tab" aria-selected="'+(selected?'true':'false')+'" class="pref-segmented-btn habit-ws-channel'+(selected?' is-active':'')+'" data-habit-channel="'+ch+'">'+channelIconSvg(ch)+'<span class="habit-ws-channel-copy"><span>'+esc(c('channels')[ch])+'</span><small><i class="'+(meta.enabled?'is-on':'is-off')+'"></i>'+esc(meta.enabled?c('enabled'):c('disabled'))+(meta.count?' · '+esc(String(meta.count)): '')+'</small></span></button>';
+    var sum=model.inherit||{total:0};
+    return '<div class="pref-segmented is-wide habit-ws-channels" role="tablist">'+QUICK_CHANNELS.map(function(ch){
+      var meta=ch==='all'?{enabled:true,count:sum.total||0}:model.channels[ch];
+      var selected=ch===model.channel;
+      var label=ch==='all'?(lang()==='en'?'All':'全部'):c('channels')[ch];
+      return '<button type="button" role="tab" aria-selected="'+(selected?'true':'false')+'" class="pref-segmented-btn habit-ws-channel'+(selected?' is-active':'')+'" data-habit-channel="'+ch+'">'+channelIconSvg(ch==='all'?'key':ch)+'<span class="habit-ws-channel-copy"><span>'+esc(label)+'</span><small><i class="'+(meta.enabled?'is-on':'is-off')+'"></i>'+esc(meta.enabled?c('enabled'):c('disabled'))+(meta.count?' · '+esc(String(meta.count)): '')+'</small></span></button>';
     }).join('')+'</div>';
+  }
+  function ruleRowHtml(row){
+    var open=ui().habitWorkspaceRuleOpen===row.id;
+    var d=row.detail||{};
+    var tagCls=row.priority==='overridden'?'is-overridden':'is-inherited';
+    var tagLabel=row.priority==='overridden'?(lang()==='en'?'Override':'覆盖'):(lang()==='en'?'Inherited':'继承');
+    return '<article class="habit-ws-rule'+(open?' is-open':'')+'" data-rule-id="'+esc(row.id)+'"><div class="habit-ws-rule-row" data-habit-rule-toggle="'+esc(row.id)+'"><div class="habit-ws-rule-copy"><div class="habit-ws-rule-txt">'+esc(row.txt)+'</div><div class="habit-ws-rule-meta">'+esc(row.meta)+'</div></div><div class="habit-ws-rule-actions"><span class="habit-ws-rule-tag '+tagCls+'">'+esc(tagLabel)+'</span><button type="button" class="habit-ws-rule-edit" data-habit-edit data-channel="'+esc(row.channel)+'" data-focus="'+esc(row.focus)+'" onclick="event.stopPropagation()">'+esc(c('change'))+'</button></div></div>'+(open?'<div class="habit-ws-rule-peek"><dl><div><dt><b>1</b>'+esc(c('when'))+'</dt><dd>'+esc(d.when||c('none'))+'</dd></div><div><dt><b>2</b>'+esc(c('what'))+'</dt><dd>'+esc(d.what||c('none'))+'</dd></div><div><dt><b>3</b>'+esc(c('status'))+'</dt><dd><span class="habit-ws-status '+(d.enabled?'is-on':'is-off')+'"><i></i>'+esc(d.enabled?c('enabled'):c('disabled'))+'</span></dd></div></dl></div>':'')+'</article>';
+  }
+  function rulesListHtml(model){
+    var rows=model.ruleRows||[];
+    var overrides=rows.filter(function(row){ return row.priority==='overridden'; });
+    var inherited=rows.filter(function(row){ return row.priority==='inherited'; });
+    var inhOpen=!!ui().habitWorkspaceInheritedOpen;
+    var sum=model.channel==='all'?(model.inherit||{overrideCount:0,inheritedCount:0}):{overrideCount:overrides.length,inheritedCount:inherited.length};
+    var summaryKey=model.channel==='all'?'habitWsRulesSummary':'habitWsRulesSummaryChannel';
+    var summaryFb=model.channel==='all'?'{ov} 项覆盖 · {in} 项继承':'{ov} 项覆盖 · {in} 项继承（当前通道）';
+    var html='<div class="habit-ws-rules-head"><h4>'+esc(t('habitWsRulesTitle','规则清单'))+'</h4><span>'+esc(fmt(t(summaryKey,summaryFb),{ov:sum.overrideCount,in:sum.inheritedCount}))+'</span></div>';
+    if(!rows.length){
+      html+='<div class="habit-ws-rules-empty">'+esc(t('habitWsRulesEmpty','当前通道没有可展示的规则'))+'</div>';
+      return html;
+    }
+    html+=overrides.map(ruleRowHtml).join('');
+    if(inherited.length){
+      html+='<div class="habit-ws-rules-collapse'+(inhOpen?' is-open':'')+'"><button type="button" class="habit-ws-rules-collapse-btn" data-habit-inherited-toggle>'+esc(inhOpen?fmt(t('habitWsRulesCollapse','收起 {n} 条沿用通用设置'),{n:inherited.length}):fmt(t('habitWsRulesExpand','还有 {n} 条沿用通用设置'),{n:inherited.length}))+'</button><div class="habit-ws-rules-collapse-body">'+inherited.map(ruleRowHtml).join('')+'</div></div>';
+    }
+    return html;
   }
   function modeHtml(mode){
     var noviceLbl=t('habitDisplayModeNovice','\uD83C\uDF31 小白模式');
@@ -297,8 +328,10 @@
     return '<div class="habit-ws-intro" role="dialog" aria-modal="true" aria-labelledby="habitWsIntroTitle"><div><strong id="habitWsIntroTitle">'+esc(c('introTitle'))+'</strong><p>'+esc(c('introBody'))+'</p></div><div class="habit-ws-intro-actions"><button type="button" data-habit-intro-cancel>'+esc(c('cancel'))+'</button><button type="button" class="is-primary" data-habit-intro-continue>'+esc(c('continue'))+'</button></div></div>';
   }
   function quickHtml(model){
-    var d=model.detail;
-    return '<div class="habit-ws-current-head"><div><span>'+esc(c('currentApp'))+'</span><h4>'+esc(appName(model.mapping))+'</h4><p>'+esc(sceneName(model.mapping))+'</p></div><span class="habit-ws-live '+(model.mapping.id===cfg().activeSceneId?'is-active':'')+'">'+esc(model.mapping.id===cfg().activeSceneId?c('activeHabit'):c('notActive'))+'</span></div>'+channelTabsHtml(model)+sceneTabsHtml(model)+'<section class="habit-ws-answer" aria-labelledby="habitWsAnswerTitle"><div class="habit-ws-answer-title"><span>'+esc(c('channels')[model.channel])+'</span><h4 id="habitWsAnswerTitle">'+esc(itemLabel(model.item))+'</h4></div><dl><div><dt><b>1</b>'+esc(c('when'))+'</dt><dd>'+esc(d.when)+'</dd></div><div><dt><b>2</b>'+esc(c('what'))+'</dt><dd>'+esc(d.what)+'</dd></div><div><dt><b>3</b>'+esc(c('status'))+'</dt><dd><span class="habit-ws-status '+(d.enabled?'is-on':'is-off')+'"><i></i>'+esc(d.enabled?c('enabled'):c('disabled'))+'</span></dd></div></dl><div class="habit-ws-answer-actions"><button type="button" class="habit-ws-fine" data-habit-fine>'+esc(d.count?fmt(c('fine'),{n:d.count}):c('fineZero'))+' →</button><button type="button" class="habit-ws-change" data-habit-edit data-channel="'+esc(model.channel)+'" data-focus="'+esc(d.focus)+'">'+esc(c('change'))+'</button></div></section>';
+    var s=shared();
+    var viz=s&&s.channelVizHtml?s.channelVizHtml(model.channel,model.mapping):'';
+    var chain=s&&s.inheritChainHtml?s.inheritChainHtml(model.mapping):'';
+    return '<div class="habit-ws-current-head"><div><span>'+esc(c('currentApp'))+'</span><h4>'+esc(appName(model.mapping))+'</h4><p>'+esc(sceneName(model.mapping))+'</p></div><span class="habit-ws-live '+(model.mapping.id===cfg().activeSceneId?'is-active':'')+'">'+esc(model.mapping.id===cfg().activeSceneId?c('activeHabit'):c('notActive'))+'</span></div>'+chain+channelTabsHtml(model)+'<section class="habit-ws-viz" aria-label="'+esc(t('habitWsVizLabel','输入通道预览'))+'">'+viz+'</section><section class="habit-ws-rules">'+rulesListHtml(model)+'</section>';
   }
   function programHtml(model){
     var d=quickDetail(model.mapping,model.channel,defaultItem(model.channel));
@@ -478,7 +511,9 @@
         render();
         return;
       }
-      if(target.hasAttribute('data-habit-channel')){ event.stopPropagation(); ui().habitWorkspaceChannel=target.getAttribute('data-habit-channel'); ui().habitWorkspaceItemId=defaultItem(ui().habitWorkspaceChannel); render(); return; }
+      if(target.hasAttribute('data-habit-channel')){ event.stopPropagation(); ui().habitWorkspaceChannel=target.getAttribute('data-habit-channel'); if(ui().habitWorkspaceChannel!=='all') ui().habitWorkspaceItemId=defaultItem(ui().habitWorkspaceChannel); render(); return; }
+      if(target.hasAttribute('data-habit-rule-toggle')){ event.stopPropagation(); var rid=target.getAttribute('data-habit-rule-toggle'); ui().habitWorkspaceRuleOpen=ui().habitWorkspaceRuleOpen===rid?null:rid; render({skipStatsFetch:true}); return; }
+      if(target.hasAttribute('data-habit-inherited-toggle')){ event.stopPropagation(); ui().habitWorkspaceInheritedOpen=!ui().habitWorkspaceInheritedOpen; render({skipStatsFetch:true}); return; }
       if(target.hasAttribute('data-habit-item')){ event.stopPropagation(); ui().habitWorkspaceItemId=target.getAttribute('data-habit-item'); render(); return; }
       if(target.hasAttribute('data-habit-section')){ ui().habitProgramSection=target.getAttribute('data-habit-section'); render(); return; }
       if(target.hasAttribute('data-habit-edit')){ openEditor(target.getAttribute('data-channel'),target.getAttribute('data-focus')); return; }
@@ -522,7 +557,7 @@
     if(!context||!context.mappingId) return;
     state().selectedMappingId=context.mappingId;
     ui().habitExperienceMode=context.mode==='programmer'?'programmer':context.mode==='quick'?'quick':'novice';
-    ui().habitWorkspaceChannel=CHANNELS.indexOf(context.channel)>=0?context.channel:'key';
+    ui().habitWorkspaceChannel=QUICK_CHANNELS.indexOf(context.channel)>=0?context.channel:(CHANNELS.indexOf(context.channel)>=0?context.channel:'all');
     ui().habitWorkspaceItemId=context.itemId||defaultItem(ui().habitWorkspaceChannel);
     ui().habitProgramSection=SECTIONS.indexOf(context.sectionId)>=0?context.sectionId:'scope';
     render();

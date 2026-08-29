@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>习惯页原型索引</title>
+<style>
+:root{--bg:#0f1216;--panel:#161a20;--panel-2:#1c2129;--bd:rgba(255,255,255,.07);--tx:#e7eaee;--mu:#98a1ac;--dim:#6a7280;--ac:#2a9cc4;--ac-soft:rgba(42,156,196,.14)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:400 14px/1.6 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;padding:40px 48px;max-width:880px}
+h1{margin:0 0 8px;font-size:24px;font-weight:500}
+.lead{margin:0 0 32px;color:var(--mu);font-size:14px}
+.sec{margin-bottom:28px}
+.sec h2{margin:0 0 12px;font-size:13px;font-weight:600;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.grid{display:grid;gap:10px}
+.card{display:block;background:var(--panel);border:.5px solid var(--bd);border-radius:12px;padding:16px 18px;text-decoration:none;color:inherit;transition:border-color .15s}
+.card:hover{border-color:rgba(42,156,196,.4)}
+.card b{display:block;font-size:15px;font-weight:500;margin-bottom:4px;color:var(--tx)}
+.card span{font-size:13px;color:var(--mu)}
+.card .tag{display:inline-block;font-size:10px;background:var(--ac-soft);color:var(--ac);border-radius:4px;padding:2px 6px;margin-left:8px;vertical-align:middle}
+.card .tag.new{background:rgba(63,185,80,.14);color:#3fb950}
+.compare{margin-top:36px;background:var(--panel);border:.5px solid var(--bd);border-radius:12px;padding:18px 20px;font-size:13px}
+.compare table{width:100%;border-collapse:collapse}
+.compare th,.compare td{padding:8px 10px;text-align:left;border-bottom:.5px solid var(--bd)}
+.compare th{color:var(--dim);font-weight:500;font-size:12px}
+.compare tr:last-child td{border-bottom:none}
+.compare .rec{color:var(--ac)}
+</style>
+</head>
+<body>
+<h1>习惯页原型索引</h1>
+<p class="lead">本地浏览：直接打开下方链接，或从本页跳转。Cursor 场景示例数据统一。</p>
+
+<div class="sec">
+  <h2>早期探索</h2>
+  <div class="grid">
+    <a class="card" href="index.html"><b>index.html</b><span>键位双栏稿 — F1 示意图 + 规则列表并排</span></a>
+    <a class="card" href="triggers.html"><b>triggers.html</b><span>通道自适应稿 — 通道 Tab + 可视化 + 扁平规则清单</span></a>
+  </div>
+</div>
+
+<div class="sec">
+  <h2>快速模式</h2>
+  <div class="grid">
+    <a class="card" href="quick-hybrid.html"><b>quick-hybrid.html</b><span>混合稿 — 总览卡 + 可视化 + 规则清单（三问卡降为行内展开）</span></a>
+    <a class="card" href="quick-streamdeck.html"><b>quick-streamdeck.html</b><span>Stream Deck 化 — 大键总览 + Action 规则行 + Folder 继承 + sticky Page 顶栏</span><span class="tag">推荐快速模式</span></a>
+  </div>
+</div>
+
+<div class="sec">
+  <h2>小白模式三种拓展（对比用）</h2>
+  <div class="grid">
+    <a class="card" href="novice-a-viz.html"><b>novice-a-viz.html</b><span>方案 A — 故事卡 + 通道可视化 + 轻量继承提示</span><span class="tag new">推荐小白</span></a>
+    <a class="card" href="novice-b-cards-rules.html"><b>novice-b-cards-rules.html</b><span>方案 B — 主故事卡 + 精简规则清单（无技术标签）</span></a>
+    <a class="card" href="novice-c-unified.html"><b>novice-c-unified.html</b><span>方案 C — 与快速模式统一壳，口语规则 + 故事摘要</span><span class="tag">最高复用</span></a>
+  </div>
+</div>
+
+<div class="compare">
+  <table>
+    <thead><tr><th>维度</th><th>A</th><th>B</th><th>C</th></tr></thead>
+    <tbody>
+      <tr><td>新手友好</td><td class="rec">最高</td><td>中高</td><td>中</td></tr>
+      <tr><td>与快速模式代码复用</td><td>低</td><td>中</td><td class="rec">高</td></tr>
+      <tr><td>回答「改了啥」</td><td>弱</td><td>强</td><td class="rec">最强</td></tr>
+      <tr><td>维护成本</td><td class="rec">低</td><td>中</td><td>最低（长期）</td></tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小白模式 · 方案 C（统一壳 · 快速模式简化皮）</title>
+<style>
+:root{--bg:#0f1216;--panel:#161a20;--panel-2:#1c2129;--panel-3:#222831;--bd:rgba(255,255,255,.07);--bd-2:rgba(255,255,255,.13);--tx:#e7eaee;--mu:#98a1ac;--dim:#6a7280;--ac:#2a9cc4;--ac-soft:rgba(42,156,196,.14);--vi:#a78bfa;--vi-soft:rgba(167,139,250,.14);--gr:#3fb950}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:400 13px/1.6 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.app{display:flex;height:100vh;min-width:1180px;overflow:hidden}
+.side{width:186px;flex:none;background:var(--panel);border-right:.5px solid var(--bd);padding:16px 12px}
+.scenes{width:230px;flex:none;background:var(--panel);border-right:.5px solid var(--bd);padding:16px 12px}
+.row{padding:8px 10px;border-radius:8px;margin-bottom:2px;font-size:13px;display:flex;justify-content:space-between}
+.row.on{background:var(--ac-soft)}
+.main{flex:1;overflow:auto;padding:20px 26px 44px}
+.modes{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.modes .seg{display:inline-flex;background:var(--panel-2);border:.5px solid var(--bd);border-radius:9px;padding:3px}
+.modes .seg button{background:transparent;border:none;color:var(--mu);font-size:12px;padding:6px 12px;border-radius:7px}
+.modes .seg button.on{background:var(--panel-3);color:var(--tx)}
+.modes .hint{font-size:11px;color:var(--dim)}.modes .hint a{color:var(--ac);text-decoration:none}
+.hd h1{margin:0 0 4px;font-size:19px;font-weight:500}.hd p{margin:0;font-size:12px;color:var(--mu);max-width:560px}
+.inh{display:flex;align-items:center;gap:12px;background:var(--panel);border:.5px solid var(--bd);border-radius:12px;padding:11px 16px;margin:14px 0}
+.node{background:var(--panel-2);border:.5px solid var(--bd);border-radius:9px;padding:8px 13px}
+.node.cur{border-color:rgba(42,156,196,.5);background:var(--ac-soft)}
+.node .t{font-size:13px;font-weight:500}.node .s{font-size:11px;color:var(--dim);margin-top:1px}
+.link{font-size:11px;color:var(--dim)}
+.ch{display:flex;gap:2px;margin-bottom:12px;border-bottom:.5px solid var(--bd)}
+.ch button{background:none;border:none;border-bottom:2px solid transparent;color:var(--mu);font-size:13px;padding:8px 13px;cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:-1px}
+.ch button.on{color:var(--tx);border-bottom-color:var(--ac)}
+.ch .n{font-size:11px;background:rgba(255,255,255,.06);border-radius:20px;padding:1px 6px}
+.viz{background:var(--panel);border:.5px solid var(--bd);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+.vp{display:none}.vp.on{display:block}
+.ov{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ovc{background:var(--panel-2);border:.5px solid var(--bd);border-radius:10px;padding:12px;cursor:pointer;font-size:12px}
+.ovc:hover{border-color:var(--bd-2)}.ovc b{display:block;font-size:13px;margin-bottom:4px}.ovc i{font-style:normal;color:var(--dim);font-size:11px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{background:var(--panel-2);border:.5px solid var(--bd-2);border-radius:20px;padding:4px 10px;font-size:12px}
+.sec-title{font-size:11px;color:var(--dim);font-weight:600;letter-spacing:.04em;margin:14px 0 8px;text-transform:uppercase}
+.rule{background:var(--panel);border:.5px solid var(--bd);border-radius:11px;margin-bottom:6px;overflow:hidden}
+.rule.hide{display:none}
+.rule-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px 15px;cursor:pointer}
+.rule-row:hover{background:rgba(255,255,255,.02)}
+.rule .txt{font-size:13px}.rule .txt em{font-style:normal;color:var(--ac)}
+.rule .hint{font-size:11px;color:var(--dim);margin-top:4px}
+.rule .src{font-size:11px;color:var(--dim);white-space:nowrap;flex:none;align-self:center}
+.rule .src.custom{color:var(--ac)}.rule .r{display:flex;align-items:center;gap:8px;flex:none}
+.mini{background:transparent;border:.5px solid var(--bd-2);border-radius:6px;color:var(--mu);font-size:11px;padding:3px 9px;cursor:pointer}
+.story-peek{display:none;padding:0 15px 12px 15px;font-size:12px;color:var(--mu);border-top:.5px solid var(--bd);background:var(--panel-2)}
+.rule.is-open .story-peek{display:block}
+.collapse{margin-top:8px}
+.collapse button{width:100%;background:var(--panel);border:.5px dashed var(--bd-2);border-radius:9px;color:var(--dim);font-size:12px;padding:9px 12px;cursor:pointer;text-align:left}
+.collapse .inner{display:none;margin-top:6px}.collapse.open .inner{display:block}
+.proto-tag{position:fixed;bottom:14px;right:14px;background:var(--panel-2);border:.5px solid var(--bd);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--dim);z-index:9}
+.proto-tag b{color:var(--ac)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side"><div style="font-weight:600">一声 OneTone</div><div style="margin-top:16px;color:var(--ac)">我的习惯</div></aside>
+  <aside class="scenes"><div class="row on">Cursor</div><div class="row">通用设置</div></aside>
+  <main class="main">
+    <div class="modes">
+      <div class="seg"><button class="on">🌱 小白模式</button><button disabled>⚡ 快速设置</button><button disabled>🛠 程序员模式</button></div>
+      <span class="hint"><b style="color:var(--ac)">方案 C</b> · 与快速模式同壳 · <a href="quick-hybrid.html">熟悉后可切快速设置看完整参数 →</a></span>
+    </div>
+    <div class="hd"><h1>Cursor</h1><p>大部分跟通用设置一样；下面只列出跟平时不一样的地方。</p></div>
+    <div class="inh">
+      <div class="node"><div class="t">通用设置</div><div class="s">平时默认就这样</div></div>
+      <div class="link">→ 继承 →</div>
+      <div class="node cur"><div class="t">Cursor</div><div class="s">单独设了 3 处</div></div>
+    </div>
+    <div class="ch" id="chTabs">
+      <button class="on" data-go="all">全部<span class="n">12</span></button>
+      <button data-go="key">按键<span class="n">2</span></button>
+      <button data-go="voice">语音<span class="n">2</span></button>
+      <button data-go="cam">摄像头<span class="n">4</span></button>
+      <button data-go="pad">Soft Pad<span class="n">2</span></button>
+    </div>
+    <section class="viz">
+      <div class="vp on" data-vp="all">
+        <div class="ov">
+          <div class="ovc" data-go="key"><b>按键</b><i>F1 短按/长按</i></div>
+          <div class="ovc" data-go="voice"><b>语音</b><i>6 种说法</i></div>
+          <div class="ovc" data-go="cam"><b>摄像头</b><i>张嘴开始</i></div>
+          <div class="ovc" data-go="pad"><b>Soft Pad</b><i>沿用通用</i></div>
+        </div>
+      </div>
+      <div class="vp" data-vp="key"><p style="margin:0;font-size:13px">按 <b style="color:var(--ac)">F1</b> 开始输入，长按切换引擎 — 在 Cursor 里最常用的方式。</p></div>
+      <div class="vp" data-vp="voice"><div class="chips"><span class="chip">开始输入</span><span class="chip">开始听写</span><span class="chip">+4</span></div></div>
+      <div class="vp" data-vp="cam"><p style="margin:0;font-size:13px">张嘴就能开始听写，不用找鼠标。</p></div>
+      <div class="vp" data-vp="pad"><p style="margin:0;font-size:13px;color:var(--dim)">跟通用设置一样，不用改。</p></div>
+    </section>
+    <div class="sec-title">启动输入</div>
+    <div class="rule" data-ch="key" data-priority="ov" data-section="begin">
+      <div class="rule-row" data-toggle>
+        <div><div class="txt">在 Cursor 里按 <em>F1</em>，就开始听写</div><div class="hint">说完自动送到编辑器</div></div>
+        <div class="r"><span class="src custom">单独设的</span><button class="mini" onclick="event.stopPropagation()">▶ 试一下</button></div>
+      </div>
+      <div class="story-peek">故事版：在 Cursor 里按下 F1，然后开始输入，发送到 Right Alt。</div>
+    </div>
+    <div class="rule" data-ch="key" data-priority="ov" data-section="begin">
+      <div class="rule-row" data-toggle>
+        <div><div class="txt">长按 <em>F1</em> 可以换识别引擎</div></div>
+        <div class="r"><span class="src custom">单独设的</span><button class="mini" onclick="event.stopPropagation()">▶ 试一下</button></div>
+      </div>
+      <div class="story-peek">长按 F1 在已安装的引擎之间切换。</div>
+    </div>
+    <div class="rule" data-ch="voice" data-priority="ov" data-section="begin">
+      <div class="rule-row" data-toggle>
+        <div><div class="txt">说「<em>开始输入</em>」也行，不用按键盘</div></div>
+        <div class="r"><span class="src custom">单独设的</span><button class="mini" onclick="event.stopPropagation()">▶ 试一下</button></div>
+      </div>
+      <div class="story-peek">6 种说法任一命中即可开始听写。</div>
+    </div>
+    <div class="sec-title">通用动作</div>
+    <div class="rule" data-ch="cam" data-priority="ov" data-section="general">
+      <div class="rule-row" data-toggle>
+        <div><div class="txt"><em>张嘴</em> 也能开始输入</div></div>
+        <div class="r"><span class="src custom">单独设的</span><button class="mini" onclick="event.stopPropagation()">▶ 试一下</button></div>
+      </div>
+      <div class="story-peek">对着摄像头张嘴，和按 F1 效果一样。</div>
+    </div>
+    <div class="collapse" id="collapse">
+      <button type="button" id="collapseBtn">▸ 还有 8 条跟通用设置一样（不用管）</button>
+      <div class="inner">
+        <div class="rule" data-ch="voice" data-priority="in"><div class="rule-row"><div><div class="txt">说「<em>发送</em>」就上屏</div></div><span class="src">跟通用一样</span></div></div>
+        <div class="rule" data-ch="cam" data-priority="in"><div class="rule-row"><div><div class="txt"><em>眨眼</em> 确认上屏</div></div><span class="src">跟通用一样</span></div></div>
+        <div class="rule" data-ch="pad" data-priority="in"><div class="rule-row"><div><div class="txt">托盘「<em>语音</em>」键开始输入</div></div><span class="src">跟通用一样</span></div></div>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="proto-tag">方案 C <b>novice-c-unified.html</b> · 同 quick-hybrid 壳 · 口语规则 + 故事摘要</div>
+<script>
+(function(){
+  var ch='all';
+  function setChannel(c){
+    ch=c;
+    document.querySelectorAll('#chTabs button').forEach(function(b){ b.classList.toggle('on',b.dataset.go===c); });
+    document.querySelectorAll('[data-vp]').forEach(function(p){ p.classList.toggle('on',p.dataset.vp===c); });
+    document.querySelectorAll('.rule[data-ch]').forEach(function(r){
+      if(r.dataset.priority==='in'&&!document.getElementById('collapse').classList.contains('open')){ r.classList.add('hide'); return; }
+      var show=c==='all'||r.dataset.ch===c;
+      if(r.closest('.inner')&&!document.getElementById('collapse').classList.contains('open')) show=false;
+      r.classList.toggle('hide',!show);
+    });
+    document.querySelectorAll('.sec-title').forEach(function(s){
+      var next=s.nextElementSibling;
+      var any=false;
+      while(next&&!next.classList.contains('sec-title')&&next.id!=='collapse'){
+        if(next.classList.contains('rule')&&!next.classList.contains('hide')) any=true;
+        next=next.nextElementSibling;
+      }
+      s.style.display=any?'':'none';
+    });
+  }
+  document.querySelectorAll('[data-go]').forEach(function(el){ el.addEventListener('click',function(){ setChannel(el.dataset.go); }); });
+  document.querySelectorAll('[data-toggle]').forEach(function(row){
+    row.addEventListener('click',function(){
+      var rule=row.closest('.rule');
+      var open=rule.classList.contains('is-open');
+      document.querySelectorAll('.rule.is-open').forEach(function(r){ r.classList.remove('is-open'); });
+      if(!open) rule.classList.add('is-open');
+    });
+  });
+  document.getElementById('collapseBtn').addEventListener('click',function(){
+    document.getElementById('collapse').classList.toggle('open');
+    this.textContent=document.getElementById('collapse').classList.contains('open')?'▾ 收起跟通用一样的设置':'▸ 还有 8 条跟通用设置一样（不用管）';
+    setChannel(ch);
+  });
+  setChannel('all');
+})();
+</script>
+</body>
+</html>

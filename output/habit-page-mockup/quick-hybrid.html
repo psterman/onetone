@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>我的习惯 · 快速模式混合稿（总览 + 可视化 + 规则清单）</title>
+<style>
+:root{
+  --bg:#0f1216; --panel:#161a20; --panel-2:#1c2129; --panel-3:#222831;
+  --bd:rgba(255,255,255,.07); --bd-2:rgba(255,255,255,.13);
+  --tx:#e7eaee; --mu:#98a1ac; --dim:#6a7280;
+  --ac:#2a9cc4; --ac-soft:rgba(42,156,196,.14);
+  --vi:#a78bfa; --vi-soft:rgba(167,139,250,.14);
+  --gr:#3fb950; --gr-soft:rgba(63,185,80,.14);
+  --am:#d8a13a;
+  --mono:ui-monospace,"SF Mono",Consolas,"Cascadia Code",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);
+  font:400 13px/1.6 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased}
+.app{display:flex;height:100vh;min-width:1180px;overflow:hidden}
+
+/* ── 壳：导航 + 场景 ── */
+.side{width:186px;flex:none;background:var(--panel);border-right:.5px solid var(--bd);padding:16px 12px}
+.brand{display:flex;align-items:center;gap:9px;padding:6px 8px 18px}
+.km{width:28px;height:28px;border-radius:8px;background:var(--ac);color:#06131a;
+  display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;flex:none}
+.brand b{font-size:13px;font-weight:500;display:block}
+.brand span{font-size:11px;color:var(--dim)}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{padding:7px 10px;border-radius:7px;color:var(--mu);text-decoration:none;font-size:13px}
+.nav a.on{background:var(--ac-soft);color:var(--ac)}
+.nav .grp{font-size:11px;color:var(--dim);padding:14px 10px 6px}
+
+.scenes{width:230px;flex:none;background:var(--panel);border-right:.5px solid var(--bd);
+  padding:16px 12px;overflow:auto;display:flex;flex-direction:column;gap:8px}
+.srch{width:100%;background:var(--panel-2);border:.5px solid var(--bd);border-radius:8px;
+  color:var(--tx);padding:7px 10px;font-size:12px;outline:none}
+.srch::placeholder{color:var(--dim)}
+.bulk{width:100%;background:transparent;border:.5px solid var(--bd-2);border-radius:8px;
+  color:var(--mu);padding:6px 10px;font-size:12px;cursor:pointer}
+.sec{font-size:11px;color:var(--dim);margin:10px 4px 6px}
+.row{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;
+  border-radius:8px;margin-bottom:2px;cursor:pointer;font-size:13px}
+.row:hover{background:var(--panel-2)}
+.row.on{background:var(--ac-soft);box-shadow:inset 0 0 0 .5px rgba(42,156,196,.45)}
+.dot{width:7px;height:7px;border-radius:50%;flex:none}
+.dot.on{background:var(--gr)} .dot.off{background:#39414d}
+
+/* ── 主区 ── */
+.main{flex:1;overflow:auto;padding:20px 26px 44px}
+.hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:16px}
+.hd h1{margin:0 0 4px;font-size:19px;font-weight:500}
+.hd p{margin:0;font-size:12px;color:var(--mu);max-width:520px}
+.hd-actions{display:flex;align-items:center;gap:8px;flex:none}
+.live{font-size:11px;padding:4px 10px;border-radius:20px;background:var(--gr-soft);color:var(--gr);
+  border:.5px solid rgba(63,185,80,.25)}
+.btn{background:var(--ac);color:#06131a;border:none;border-radius:8px;padding:8px 14px;
+  font-size:13px;font-weight:500;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--mu);border:.5px solid var(--bd-2);font-weight:400}
+
+/* 模式切换 */
+.modes{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.modes .seg{display:inline-flex;background:var(--panel-2);border:.5px solid var(--bd);
+  border-radius:9px;padding:3px}
+.modes .seg button{background:transparent;border:none;color:var(--mu);font-size:12px;
+  padding:6px 12px;border-radius:7px;cursor:pointer}
+.modes .seg button.on{background:var(--panel-3);color:var(--tx);box-shadow:0 1px 0 rgba(0,0,0,.2)}
+.modes .seg button .badge{font-size:10px;background:var(--ac-soft);color:var(--ac);
+  border-radius:4px;padding:1px 5px;margin-left:4px}
+.modes .seg button em{font-style:normal;font-size:10px;color:var(--ac);margin-left:4px}
+.modes .note{font-size:11px;color:var(--dim)}
+
+/* 继承链 */
+.inh{display:flex;align-items:center;gap:12px;background:var(--panel);border:.5px solid var(--bd);
+  border-radius:12px;padding:11px 16px;margin-bottom:14px;flex-wrap:wrap}
+.node{background:var(--panel-2);border:.5px solid var(--bd);border-radius:9px;padding:8px 13px}
+.node.cur{border-color:rgba(42,156,196,.5);background:var(--ac-soft)}
+.node .t{font-size:13px;font-weight:500}
+.node .s{font-size:11px;color:var(--dim);margin-top:1px}
+.link{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--dim);font-size:11px}
+
+/* 通道 Tab */
+.ch{display:flex;gap:2px;margin-bottom:12px;border-bottom:.5px solid var(--bd)}
+.ch button{background:none;border:none;border-bottom:2px solid transparent;color:var(--mu);
+  font-size:13px;padding:8px 13px;cursor:pointer;display:flex;align-items:center;gap:7px;
+  margin-bottom:-1px}
+.ch button.on{color:var(--tx);border-bottom-color:var(--ac)}
+.ch button .n{background:rgba(255,255,255,.06);border-radius:20px;padding:1px 7px;
+  font-size:11px;color:var(--dim)}
+.ch button.on .n{background:var(--ac-soft);color:var(--ac)}
+
+/* 可视化 */
+.viz{background:var(--panel);border:.5px solid var(--bd);border-radius:14px;
+  padding:18px 20px;margin-bottom:14px}
+.viz.hide{display:none}
+.vp{display:none} .vp.on{display:block}
+.vh{font-size:14px;font-weight:500;margin:0 0 2px}
+.vs{font-size:12px;color:var(--dim);margin:0 0 14px}
+.ov{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px}
+.ovc{background:var(--panel-2);border:.5px solid var(--bd);border-radius:11px;padding:13px 15px;cursor:pointer}
+.ovc:hover{border-color:var(--bd-2)}
+.ovc .a{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.ovc .a b{font-weight:500;font-size:13px}
+.ovc .a i{font-style:normal;font-size:11px;color:var(--dim)}
+.ovc .d{font-size:11px;color:var(--mu);line-height:1.5}
+.microw{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.mic{width:38px;height:38px;border-radius:11px;background:var(--vi-soft);
+  display:flex;align-items:center;justify-content:center;flex:none}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.chip{background:var(--panel-2);border:.5px solid var(--bd-2);border-radius:20px;padding:5px 12px;font-size:12px}
+.chip.more{background:var(--vi-soft);border-color:rgba(167,139,250,.35);color:var(--vi)}
+.eng{display:flex;align-items:center;justify-content:space-between;background:var(--panel-2);
+  border:.5px solid var(--bd);border-radius:9px;padding:10px 13px;font-size:12px;color:var(--mu)}
+.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:400px;margin-bottom:12px}
+.pk{background:var(--panel-3);border:.5px solid var(--bd-2);border-radius:9px;padding:11px 8px;text-align:center;font-size:12px}
+.pk.hot{border-color:rgba(42,156,196,.5);background:var(--ac-soft);color:var(--ac)}
+
+/* 规则区 */
+.rules-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.rules-hd h2{margin:0;font-size:14px;font-weight:500}
+.rules-hd span{font-size:12px;color:var(--dim)}
+.rule{background:var(--panel);border:.5px solid var(--bd);border-radius:11px;margin-bottom:8px;overflow:hidden}
+.rule.hide{display:none}
+.rule.is-open{border-color:rgba(42,156,196,.35)}
+.rule-row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:12px 15px;cursor:pointer}
+.rule-row:hover{background:rgba(255,255,255,.02)}
+.rule .l{min-width:0;flex:1}
+.rule .txt{font-size:13px}
+.rule .txt em{font-style:normal;color:var(--ac)}
+.rule .meta{font-size:11px;color:var(--dim);margin-top:5px}
+.rule .r{display:flex;align-items:center;gap:8px;flex:none}
+.tag{font-size:11px;padding:2px 8px;border-radius:20px;flex:none}
+.tag.ov{background:var(--ac-soft);color:var(--ac)}
+.tag.in{background:rgba(255,255,255,.05);color:var(--dim)}
+.tag.off{background:rgba(255,255,255,.04);color:var(--dim)}
+.mini{background:transparent;border:.5px solid var(--bd-2);border-radius:6px;color:var(--mu);
+  font-size:11px;padding:3px 9px;cursor:pointer;white-space:nowrap}
+.mini:hover{border-color:var(--bd-2);color:var(--tx)}
+.mini.primary{color:var(--ac);border-color:rgba(42,156,196,.35)}
+
+/* 三问卡 peek（点规则行展开） */
+.peek{display:none;border-top:.5px solid var(--bd);background:var(--panel-2);padding:12px 15px 14px}
+.rule.is-open .peek{display:block}
+.peek dl{margin:0;display:grid;gap:10px}
+.peek dt{font-size:11px;color:var(--dim);display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.peek dt b{width:18px;height:18px;border-radius:50%;background:var(--ac-soft);color:var(--ac);
+  font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center}
+.peek dd{margin:0 0 0 26px;font-size:13px}
+.peek .acts{display:flex;gap:8px;margin-top:12px;padding-left:26px}
+.status-dot{display:inline-flex;align-items:center;gap:5px;font-size:12px}
+.status-dot i{width:6px;height:6px;border-radius:50%;background:var(--gr)}
+.status-dot.off i{background:#39414d}
+
+/* 继承项折叠 */
+.collapse{margin:4px 0 10px}
+.collapse button{width:100%;background:var(--panel);border:.5px dashed var(--bd-2);
+  border-radius:9px;color:var(--mu);font-size:12px;padding:9px 12px;cursor:pointer;text-align:left}
+.collapse button:hover{color:var(--tx);border-color:var(--bd-2)}
+.collapse .inner{display:none;margin-top:8px}
+.collapse.open .inner{display:block}
+
+/* 小白模式 */
+.view{display:none}
+.view.on{display:block}
+.novice-card{display:flex;gap:14px;background:var(--panel);border:.5px solid var(--bd);
+  border-radius:12px;padding:14px 16px;margin-bottom:10px;align-items:flex-start}
+.novice-card .illus{width:44px;height:44px;border-radius:11px;background:var(--panel-2);
+  display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.novice-card .info{flex:1;min-width:0}
+.novice-card .title{font-size:13px;font-weight:500;margin-bottom:4px}
+.novice-card .story{font-size:12px;color:var(--mu)}
+.novice-card .right{display:flex;flex-direction:column;gap:6px;flex:none}
+.dim-tabs,.scene-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.dim-tabs button,.scene-chips button{background:var(--panel-2);border:.5px solid var(--bd);
+  border-radius:20px;color:var(--mu);font-size:12px;padding:5px 12px;cursor:pointer}
+.dim-tabs button.on,.scene-chips button.on{background:var(--ac-soft);border-color:rgba(42,156,196,.4);color:var(--ac)}
+.scene-chips .lbl{font-size:11px;color:var(--dim);align-self:center;margin-right:4px}
+
+/* 程序员模式 */
+.pro-group{background:var(--panel);border:.5px solid var(--bd);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.pro-head{width:100%;background:transparent;border:none;color:var(--tx);font-size:13px;
+  padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.pro-head small{color:var(--dim);font-size:11px}
+.pro-body{display:none;border-top:.5px solid var(--bd);padding:0}
+.pro-group.open .pro-body{display:block}
+.pro-row{display:grid;grid-template-columns:1.2fr 1.4fr .8fr auto;gap:10px;padding:10px 16px;
+  border-bottom:.5px solid var(--bd);font-size:12px;align-items:center}
+.pro-row:last-child{border-bottom:none}
+.pro-row.head{color:var(--dim);font-size:11px;background:var(--panel-2)}
+.path{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;font-size:11px;color:var(--dim)}
+.path span{background:var(--panel-2);border:.5px solid var(--bd);border-radius:6px;padding:4px 9px}
+.path b{color:var(--dim);font-weight:400;margin:0 2px}
+
+/* 高级 */
+.adv{margin-top:16px;background:var(--panel);border:.5px dashed var(--bd-2);border-radius:14px;overflow:hidden}
+.adv .hd2{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;
+  cursor:pointer;user-select:none}
+.adv .hd2 h2{margin:0;font-size:14px;font-weight:500}
+.adv .hd2 .r{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--dim)}
+.adv .body{display:none;padding:0 18px 18px}
+.adv.open .body{display:block}
+.adv pre{margin:0;background:var(--panel-2);border:.5px solid var(--bd);border-radius:10px;
+  padding:13px 15px;font-family:var(--mono);font-size:12px;line-height:1.7;color:#b8c4d0;overflow-x:auto}
+.adv .k{color:var(--ac)} .adv .s{color:#98c793} .adv .c{color:var(--dim)}
+
+.proto-tag{position:fixed;bottom:14px;right:14px;background:var(--panel-2);border:.5px solid var(--bd);
+  border-radius:8px;padding:8px 12px;font-size:11px;color:var(--dim);z-index:9}
+.proto-tag b{color:var(--ac);font-weight:500}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="side">
+    <div class="brand">
+      <div class="km">F1</div>
+      <div><b>一声 OneTone</b><span>v0.9 · 已连接</span></div>
+    </div>
+    <nav class="nav">
+      <div class="grp">主面板</div>
+      <a href="#">首页</a><a href="#" class="on">我的习惯</a><a href="#">按键设置</a>
+      <a href="#">虚拟键盘</a><a href="#">语音设置</a><a href="#">摄像头</a>
+      <div class="grp">系统</div>
+      <a href="#">通用设置</a>
+    </nav>
+  </aside>
+
+  <aside class="scenes">
+    <input class="srch" placeholder="搜索应用或场景">
+    <button class="bulk">批量管理 · 已选 0 项</button>
+    <div class="sec">全局默认</div>
+    <div class="row"><span>通用设置</span><span class="dot on"></span></div>
+    <div class="sec">近 7 天用过</div>
+    <div class="row on"><span>Cursor</span><span class="dot on"></span></div>
+    <div class="row"><span>WorkBuddy</span><span class="dot on"></span></div>
+    <div class="row"><span>MiniMax</span><span class="dot off"></span></div>
+    <div class="sec">其他场景</div>
+    <div class="row"><span>Codex</span><span class="dot on"></span></div>
+    <div class="row"><span>Claude Code</span><span class="dot off"></span></div>
+  </aside>
+
+  <main class="main">
+
+    <div class="hd">
+      <div>
+        <h1>Cursor</h1>
+        <p>平时沿用通用设置；这里只列出为 Cursor 单独调整的部分。点规则行可展开详情，点「更改」跳到对应设置页。</p>
+      </div>
+      <div class="hd-actions">
+        <span class="live">正在使用</span>
+        <button class="btn ghost">为当前应用配置</button>
+      </div>
+    </div>
+
+    <!-- 三模式切换 -->
+    <div class="modes">
+      <div class="seg" role="tablist" aria-label="习惯视图模式">
+        <button type="button" data-mode="novice">🌱 小白模式 <span class="badge">新</span></button>
+        <button type="button" class="on" data-mode="quick">⚡ 快速设置 <em>推荐</em></button>
+        <button type="button" data-mode="programmer">🛠 程序员模式</button>
+      </div>
+      <span class="note">本稿重点：<b style="color:var(--tx)">快速设置</b> = 总览卡 + 通道可视化 + 规则清单（三问卡降为行内展开）</span>
+    </div>
+
+    <!-- ══════════ 快速模式 ══════════ -->
+    <div class="view on" id="viewQuick">
+
+      <div class="inh">
+        <div class="node"><div class="t">通用设置</div><div class="s">12 条规则 · 全局默认</div></div>
+        <div class="link">
+          <svg width="64" height="12" viewBox="0 0 64 12" fill="none"><path d="M0 6h54" stroke="#39414d"/><path d="M50 2l5 4-5 4" stroke="#39414d" fill="none"/></svg>
+          <span>继承</span>
+        </div>
+        <div class="node cur"><div class="t">Cursor 场景</div><div class="s">9 条继承 · <b style="color:var(--ac)">3 项被覆盖</b></div></div>
+      </div>
+
+      <div class="ch" id="chTabs">
+        <button class="on" data-go="all">全部<span class="n">12</span></button>
+        <button data-go="key">按键<span class="n">2</span></button>
+        <button data-go="voice">语音<span class="n">2</span></button>
+        <button data-go="cam">摄像头<span class="n">4</span></button>
+        <button data-go="pad">Soft Pad<span class="n">2</span></button>
+      </div>
+
+      <!-- 可视化：全部时显示总览卡，单通道时显示专属 UI -->
+      <section class="viz" id="vizPanel">
+        <div class="vp on" data-vp="all">
+          <h2 class="vh">输入通道总览</h2>
+          <p class="vs">点卡片跳到对应通道；下方规则清单会同步过滤</p>
+          <div class="ov">
+            <div class="ovc" data-go="key"><div class="a"><b>按键</b><i>2 条 · 2 覆盖</i></div><div class="d">F1 短按 / 长按<br>硬件启动键</div></div>
+            <div class="ovc" data-go="voice"><div class="a"><b>语音</b><i>2 条 · 1 覆盖</i></div><div class="d">6 种说法任一命中<br>轻量中文模型</div></div>
+            <div class="ovc" data-go="cam"><div class="a"><b>摄像头</b><i>4 条 · 1 覆盖</i></div><div class="d">眨眼 / 张嘴 / 注视<br>挥手取消</div></div>
+            <div class="ovc" data-go="pad"><div class="a"><b>Soft Pad</b><i>2 条 · 继承</i></div><div class="d">屏幕边缘托盘<br>8 个可自定义键</div></div>
+          </div>
+        </div>
+        <div class="vp" data-vp="key">
+          <h2 class="vh">F1 键位</h2>
+          <p class="vs">同一个物理键，多种按法对应不同动作（数据来自 effectiveKey）</p>
+          <svg width="100%" viewBox="0 0 400 200" role="img" aria-label="F1 键触发方式">
+            <rect x="28" y="44" width="124" height="118" rx="16" fill="#222831" stroke="#39414d"/>
+            <text x="90" y="103" text-anchor="middle" dominant-baseline="central" font-size="34" font-weight="500" fill="#e7eaee" font-family="system-ui,sans-serif">F1</text>
+            <text x="90" y="178" text-anchor="middle" font-size="11" fill="#6a7280" font-family="system-ui,sans-serif">硬件启动键</text>
+            <circle cx="152" cy="62" r="3.5" fill="#2a9cc4"/><line x1="158" y1="62" x2="176" y2="62" stroke="#39414d"/>
+            <text x="182" y="54" font-size="13" font-weight="500" fill="#2a9cc4" font-family="system-ui,sans-serif">短按</text>
+            <text x="182" y="72" font-size="12" fill="#98a1ac" font-family="system-ui,sans-serif">开始语音输入</text>
+            <circle cx="152" cy="103" r="3.5" fill="#2a9cc4"/><line x1="158" y1="103" x2="176" y2="103" stroke="#39414d"/>
+            <text x="182" y="95" font-size="13" font-weight="500" fill="#2a9cc4" font-family="system-ui,sans-serif">长按</text>
+            <text x="182" y="113" font-size="12" fill="#98a1ac" font-family="system-ui,sans-serif">切换识别引擎</text>
+          </svg>
+        </div>
+        <div class="vp" data-vp="voice">
+          <h2 class="vh">语音触发</h2>
+          <p class="vs">下列任意一种说法都能命中 · 支持模糊匹配</p>
+          <div class="microw">
+            <div class="mic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.6"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></div>
+            <div><div style="font-size:13px">说出下面任意一句</div><div style="font-size:12px;color:var(--dim)">识别到即触发</div></div>
+          </div>
+          <div class="chips">
+            <span class="chip">开始输入</span><span class="chip">开始听写</span><span class="chip">打开听写</span><span class="chip">语音输入</span>
+            <span class="chip more">+2</span>
+          </div>
+          <div class="eng"><span>识别引擎</span><span style="color:var(--tx)">轻量中文模型</span></div>
+        </div>
+        <div class="vp" data-vp="cam">
+          <h2 class="vh">摄像头触发</h2>
+          <p class="vs">仅高亮已启用动作（来自 effectiveCamera）</p>
+          <svg width="100%" viewBox="0 0 400 200" role="img">
+            <ellipse cx="92" cy="90" rx="56" ry="68" fill="#222831" stroke="#39414d"/>
+            <ellipse cx="72" cy="80" rx="12" ry="8" fill="#0f1216"/><ellipse cx="112" cy="80" rx="12" ry="8" fill="#0f1216"/>
+            <circle cx="72" cy="80" r="4" fill="#2a9cc4"/><circle cx="112" cy="80" r="4" fill="#2a9cc4"/>
+            <path d="M76 118q16 10 32 0" stroke="#39414d" stroke-width="2" fill="none"/>
+            <circle cx="148" cy="50" r="3.5" fill="#39414d"/><text x="176" y="48" font-size="12" fill="#6a7280" font-family="system-ui,sans-serif">眨眼 · 继承</text>
+            <circle cx="148" cy="90" r="3.5" fill="#2a9cc4"/><text x="176" y="88" font-size="13" font-weight="500" fill="#2a9cc4" font-family="system-ui,sans-serif">张嘴</text>
+            <text x="176" y="106" font-size="12" fill="#98a1ac" font-family="system-ui,sans-serif">开始语音输入</text>
+            <circle cx="148" cy="130" r="3.5" fill="#39414d"/><text x="176" y="128" font-size="12" fill="#6a7280" font-family="system-ui,sans-serif">注视左下 · 继承</text>
+          </svg>
+        </div>
+        <div class="vp" data-vp="pad">
+          <h2 class="vh">Soft Pad 托盘</h2>
+          <p class="vs">青色为已配置动作的按键</p>
+          <div class="pad">
+            <div class="pk hot">语音</div><div class="pk hot">上屏</div>
+            <div class="pk">清空</div><div class="pk">撤销</div>
+            <div class="pk">标点</div><div class="pk">换行</div>
+            <div class="pk">翻译</div><div class="pk">更多</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 规则清单（主操作区） -->
+      <div class="rules-hd">
+        <h2>规则清单</h2>
+        <span id="rulesCount">3 项覆盖 · 9 项继承</span>
+      </div>
+
+      <!-- 覆盖项：始终展开 -->
+      <div class="rule" data-ch="key" data-priority="ov">
+        <div class="rule-row" data-toggle-rule>
+          <div class="l"><div class="txt">按 <em>F1</em> → 开始语音输入</div><div class="meta">触发时机：启动输入 · 10 分钟前改过</div></div>
+          <div class="r"><span class="tag ov">覆盖</span><button class="mini primary" onclick="event.stopPropagation()">更改</button><button class="mini" onclick="event.stopPropagation()">试一下</button></div>
+        </div>
+        <div class="peek">
+          <dl>
+            <div><dt><b>1</b>什么时候触发</dt><dd>F1 · 短按</dd></div>
+            <div><dt><b>2</b>会发生什么</dt><dd>开始输入，发送到 Right Alt</dd></div>
+            <div><dt><b>3</b>当前是否启用</dt><dd><span class="status-dot"><i></i>已启用</span></dd></div>
+          </dl>
+          <div class="acts"><button class="mini primary">更改按键</button><button class="mini">查看 2 项精细设置 →</button></div>
+        </div>
+      </div>
+
+      <div class="rule" data-ch="key" data-priority="ov">
+        <div class="rule-row" data-toggle-rule>
+          <div class="l"><div class="txt">长按 <em>F1</em> → 切换识别引擎</div><div class="meta">触发时机：通用 · 10 分钟前改过</div></div>
+          <div class="r"><span class="tag ov">覆盖</span><button class="mini primary" onclick="event.stopPropagation()">更改</button><button class="mini" onclick="event.stopPropagation()">试一下</button></div>
+        </div>
+        <div class="peek">
+          <dl>
+            <div><dt><b>1</b>什么时候触发</dt><dd>F1 · 长按（≥500ms）</dd></div>
+            <div><dt><b>2</b>会发生什么</dt><dd>在已安装引擎之间切换</dd></div>
+            <div><dt><b>3</b>当前是否启用</dt><dd><span class="status-dot"><i></i>已启用</span></dd></div>
+          </dl>
+          <div class="acts"><button class="mini primary">更改按键</button></div>
+        </div>
+      </div>
+
+      <div class="rule" data-ch="voice" data-priority="ov">
+        <div class="rule-row" data-toggle-rule>
+          <div class="l"><div class="txt">说「<em>开始输入</em>」等 6 种说法 → 开始语音输入</div><div class="meta">命中任一说法即可 · 3 天前改过</div></div>
+          <div class="r"><span class="tag ov">覆盖</span><button class="mini primary" onclick="event.stopPropagation()">更改</button><button class="mini" onclick="event.stopPropagation()">试一下</button></div>
+        </div>
+        <div class="peek">
+          <dl>
+            <div><dt><b>1</b>什么时候触发</dt><dd>开始输入 / 开始听写 / 打开听写 / 语音输入 …</dd></div>
+            <div><dt><b>2</b>会发生什么</dt><dd>开始听写</dd></div>
+            <div><dt><b>3</b>当前是否启用</dt><dd><span class="status-dot"><i></i>已启用</span></dd></div>
+          </dl>
+          <div class="acts"><button class="mini primary">更改语音</button></div>
+        </div>
+      </div>
+
+      <div class="rule" data-ch="cam" data-priority="ov">
+        <div class="rule-row" data-toggle-rule>
+          <div class="l"><div class="txt"><em>张嘴</em> → 开始语音输入</div><div class="meta">触发时机：启动输入 · 3 天前改过</div></div>
+          <div class="r"><span class="tag ov">覆盖</span><button class="mini primary" onclick="event.stopPropagation()">更改</button><button class="mini" onclick="event.stopPropagation()">试一下</button></div>
+        </div>
+        <div class="peek">
+          <dl>
+            <div><dt><b>1</b>什么时候触发</dt><dd>检测到张嘴动作</dd></div>
+            <div><dt><b>2</b>会发生什么</dt><dd>开始语音输入</dd></div>
+            <div><dt><b>3</b>当前是否启用</dt><dd><span class="status-dot"><i></i>已启用</span></dd></div>
+          </dl>
+          <div class="acts"><button class="mini primary">更改摄像头</button></div>
+        </div>
+      </div>
+
+      <!-- 继承项：默认折叠 -->
+      <div class="collapse" id="inheritedBlock">
+        <button type="button" id="inheritedToggle">▸ 还有 8 条沿用通用设置（点击展开）</button>
+        <div class="inner" id="inheritedRules">
+          <div class="rule" data-ch="voice" data-priority="in">
+            <div class="rule-row" data-toggle-rule>
+              <div class="l"><div class="txt">说「<em>发送</em>」→ 立即上屏</div><div class="meta">来自：通用设置 · 全局统一</div></div>
+              <div class="r"><span class="tag in">继承</span><button class="mini" onclick="event.stopPropagation()">改为覆盖</button></div>
+            </div>
+            <div class="peek"><dl><div><dt><b>1</b>什么时候触发</dt><dd>发送 / Send …</dd></div><div><dt><b>2</b>会发生什么</dt><dd>立即上屏</dd></div><div><dt><b>3</b>当前是否启用</dt><dd><span class="status-dot"><i></i>已启用</span></dd></div></dl></div>
+          </div>
+          <div class="rule" data-ch="cam" data-priority="in">
+            <div class="rule-row" data-toggle-rule>
+              <div class="l"><div class="txt"><em>眨眼</em> → 确认上屏</div><div class="meta">来自：通用设置</div></div>
+              <div class="r"><span class="tag in">继承</span><button class="mini" onclick="event.stopPropagation()">改为覆盖</button></div>
+            </div>
+            <div class="peek"><dl><div><dt><b>1</b>什么时候触发</dt><dd>刻意眨眼</dd></div><div><dt><b>2</b>会发生什么</dt><dd>确认上屏</dd></div></dl></div>
+          </div>
+          <div class="rule" data-ch="cam" data-priority="in">
+            <div class="rule-row" data-toggle-rule>
+              <div class="l"><div class="txt"><em>挥手</em> → 取消本次输入</div><div class="meta">来自：通用设置</div></div>
+              <div class="r"><span class="tag in">继承</span><button class="mini" onclick="event.stopPropagation()">改为覆盖</button></div>
+            </div>
+            <div class="peek"></div>
+          </div>
+          <div class="rule" data-ch="pad" data-priority="in">
+            <div class="rule-row" data-toggle-rule>
+              <div class="l"><div class="txt">托盘「<em>语音</em>」键 → 开始语音输入</div><div class="meta">来自：通用设置</div></div>
+              <div class="r"><span class="tag in">继承</span><button class="mini" onclick="event.stopPropagation()">改为覆盖</button></div>
+            </div>
+            <div class="peek"></div>
+          </div>
+          <div class="rule" data-ch="pad" data-priority="in">
+            <div class="rule-row" data-toggle-rule>
+              <div class="l"><div class="txt">托盘「<em>上屏</em>」键 → 立即发送</div><div class="meta">来自：通用设置</div></div>
+              <div class="r"><span class="tag in">继承</span><button class="mini" onclick="event.stopPropagation()">改为覆盖</button></div>
+            </div>
+            <div class="peek"></div>
+          </div>
+        </div>
+      </div>
+
+      <section class="adv" id="advQuick">
+        <div class="hd2"><h2>高级</h2><div class="r"><span>调试日志 · 冲突检测</span><span id="advTagQ">展开</span></div></div>
+        <div class="body"><pre><span class="c">// 快速模式不展示裸 JSON；完整参数请切程序员模式</span></pre></div>
+      </section>
+    </div>
+
+    <!-- ══════════ 小白模式（保持故事卡，示意） ══════════ -->
+    <div class="view" id="viewNovice">
+      <div class="dim-tabs">
+        <button class="on">⌨ 按键 <span style="opacity:.6">2</span></button>
+        <button>🎙 语音 <span style="opacity:.6">2</span></button>
+        <button>📷 摄像头 <span style="opacity:.6">4</span></button>
+        <button>⌘ Soft Pad <span style="opacity:.6">2</span></button>
+      </div>
+      <div class="scene-chips"><span class="lbl">使用场景</span>
+        <button class="on">启动输入</button><button>结束与取消</button><button>通用</button>
+      </div>
+      <div class="novice-card">
+        <div class="illus">⌨</div>
+        <div class="info">
+          <div class="title">Cursor · 启动输入</div>
+          <div class="story">在 <b>Cursor</b> 里按下 <b>F1</b>，然后 🎙 开始输入，发送到 Right Alt。</div>
+        </div>
+        <div class="right"><button class="mini primary">▶ 试一下</button><button class="mini">完整改</button></div>
+      </div>
+      <p style="font-size:12px;color:var(--dim);margin:0">小白模式不显示规则清单，避免信息过载。日常微调请用快速设置。</p>
+    </div>
+
+    <!-- ══════════ 程序员模式（五组字段表，示意） ══════════ -->
+    <div class="view" id="viewProgrammer">
+      <div class="path" aria-label="规则路径">
+        <span><small>01</small>Cursor</span><b>→</b>
+        <span><small>02</small>启动输入</span><b>→</b>
+        <span><small>03</small>F1 短按</span><b>→</b>
+        <span><small>04</small>开始输入</span>
+      </div>
+      <p style="font-size:12px;color:var(--dim);margin:-6px 0 14px">ⓘ 摄像头阈值与设备校准由全局设备设置管理</p>
+      <div class="pro-group open">
+        <button class="pro-head" type="button"><span><b style="color:var(--dim);margin-right:8px">01</b>适用范围</span><small>3 项 ⌄</small></button>
+        <div class="pro-body">
+          <div class="pro-row head"><span>字段</span><span>当前值</span><span>来源</span><span></span></div>
+          <div class="pro-row"><strong>目标应用</strong><span>Cursor</span><span class="tag ov">覆盖</span><button class="mini">更改</button></div>
+          <div class="pro-row"><strong>场景启用</strong><span>开启</span><span class="tag ov">覆盖</span><button class="mini">更改</button></div>
+        </div>
+      </div>
+      <div class="pro-group">
+        <button class="pro-head" type="button"><span><b style="color:var(--dim);margin-right:8px">02</b>触发方式</span><small>5 项 ⌄</small></button>
+        <div class="pro-body"></div>
+      </div>
+      <div class="pro-group">
+        <button class="pro-head" type="button"><span><b style="color:var(--dim);margin-right:8px">03</b>执行动作与收尾</span><small>4 项 ⌄</small></button>
+        <div class="pro-body"></div>
+      </div>
+      <p style="font-size:12px;color:var(--dim)">程序员模式 = 现有 habit-workspace 五组表，不改动。</p>
+    </div>
+
+  </main>
+</div>
+
+<div class="proto-tag">混合稿 <b>quick-hybrid.html</b> · 点通道 Tab / 总览卡 / 规则行 / 模式切换可交互</div>
+
+<script>
+(function(){
+  var channel='all';
+
+  function setChannel(ch){
+    channel=ch;
+    document.querySelectorAll('#chTabs button').forEach(function(b){
+      b.classList.toggle('on', b.dataset.go===ch);
+    });
+    document.querySelectorAll('[data-vp]').forEach(function(p){
+      p.classList.toggle('on', p.dataset.vp===ch);
+    });
+    var viz=document.getElementById('vizPanel');
+    if(viz) viz.classList.toggle('hide', false);
+
+    var ov=0, inh=0;
+    document.querySelectorAll('#viewQuick .rule[data-ch]').forEach(function(r){
+      var show = ch==='all' || r.dataset.ch===ch;
+      var inCollapse = r.closest('#inheritedRules');
+      if(inCollapse && !document.getElementById('inheritedBlock').classList.contains('open')) {
+        if(r.dataset.priority==='in') show=false;
+      }
+      r.classList.toggle('hide', !show);
+      if(!show) return;
+      if(r.dataset.priority==='ov') ov++; else inh++;
+    });
+    var el=document.getElementById('rulesCount');
+    if(el) el.textContent = ov+' 项覆盖 · '+inh+' 项继承（当前通道）';
+  }
+
+  document.querySelectorAll('[data-go]').forEach(function(el){
+    el.addEventListener('click', function(){ setChannel(el.dataset.go); });
+  });
+
+  document.querySelectorAll('[data-toggle-rule]').forEach(function(row){
+    row.addEventListener('click', function(){
+      var rule=row.closest('.rule');
+      var open=rule.classList.contains('is-open');
+      document.querySelectorAll('#viewQuick .rule.is-open').forEach(function(r){ r.classList.remove('is-open'); });
+      if(!open) rule.classList.add('is-open');
+    });
+  });
+
+  var inhBtn=document.getElementById('inheritedToggle');
+  var inhBlock=document.getElementById('inheritedBlock');
+  if(inhBtn&&inhBlock){
+    inhBtn.addEventListener('click', function(){
+      inhBlock.classList.toggle('open');
+      inhBtn.textContent = inhBlock.classList.contains('open')
+        ? '▾ 收起 8 条沿用通用设置'
+        : '▸ 还有 8 条沿用通用设置（点击展开）';
+      setChannel(channel);
+    });
+  }
+
+  document.querySelectorAll('.modes .seg button').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.modes .seg button').forEach(function(b){ b.classList.remove('on'); });
+      btn.classList.add('on');
+      var mode=btn.dataset.mode;
+      document.getElementById('viewQuick').classList.toggle('on', mode==='quick');
+      document.getElementById('viewNovice').classList.toggle('on', mode==='novice');
+      document.getElementById('viewProgrammer').classList.toggle('on', mode==='programmer');
+    });
+  });
+
+  document.querySelectorAll('.pro-head').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      btn.closest('.pro-group').classList.toggle('open');
+    });
+  });
+
+  ['advQuick'].forEach(function(id){
+    var adv=document.getElementById(id);
+    if(!adv) return;
+    adv.addEventListener('click', function(e){
+      if(e.target.closest('.body')) return;
+      adv.classList.toggle('open');
+      var tag=adv.querySelector('[id^=advTag]');
+      if(tag) tag.textContent=adv.classList.contains('open')?'收起':'展开';
+    });
+  });
+
+  setChannel('all');
+})();
+</script>
+</body>
+</html>

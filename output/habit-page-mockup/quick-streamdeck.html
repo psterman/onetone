@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>快速模式 · Stream Deck 化原型</title>
+<style>
+:root{
+  --bg:#eef1f5;--panel:#fafbfc;--panel-2:#fff;--panel-3:#f4f7fa;
+  --bd:#d8dee6;--bd-2:#b8c4d2;
+  --tx:#1a2230;--mu:#526175;--dim:#667289;
+  --ac:#1d8fb8;--ac-soft:#e8f4fb;
+  --ch-key:#1d8fb8;--ch-voice:#7c5cbf;--ch-cam:#c77f1a;--ch-pad:#187144;
+  --ov-bg:#fff0df;--ov-tx:#bd641c;
+  --in-bg:#eef3f6;--in-tx:#657487;
+  --gr:#187144;--gr-soft:#e8f5ee;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);
+  font:400 13px/1.55 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased}
+.app{display:flex;height:100vh;min-width:1100px;overflow:hidden}
+
+.side{width:180px;flex:none;background:var(--panel);border-right:1px solid var(--bd);padding:14px 10px}
+.brand{display:flex;align-items:center;gap:8px;padding:4px 6px 16px}
+.km{width:28px;height:28px;border-radius:8px;background:var(--ac);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:600;font-size:11px}
+.brand b{font-size:13px;display:block}
+.brand span{font-size:11px;color:var(--dim)}
+.nav a{display:block;padding:7px 10px;border-radius:8px;color:var(--mu);text-decoration:none;font-size:13px;margin-bottom:2px}
+.nav a.on{background:var(--ac-soft);color:var(--ac);font-weight:600}
+
+.scenes{width:220px;flex:none;background:var(--panel);border-right:1px solid var(--bd);padding:14px 10px;overflow:auto}
+.srch{width:100%;border:1px solid var(--bd);border-radius:8px;padding:7px 10px;font-size:12px;background:#fff;outline:none;margin-bottom:10px}
+.row{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;margin-bottom:2px}
+.row:hover{background:var(--panel-3)}
+.row.on{background:var(--ac-soft);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ac) 35%,var(--bd))}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--gr)}
+
+.main-wrap{flex:1;display:flex;flex-direction:column;min-width:0}
+.main{flex:1;overflow:auto;padding:18px 22px 48px}
+
+.modes{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.seg{display:inline-flex;background:var(--panel-2);border:1px solid var(--bd);border-radius:9px;padding:3px}
+.seg button{background:transparent;border:none;color:var(--mu);font-size:12px;padding:6px 12px;border-radius:7px;cursor:pointer}
+.seg button.on{background:#fff;color:var(--tx);box-shadow:0 1px 3px rgba(15,23,42,.08);font-weight:600}
+.seg button em{font-style:normal;font-size:10px;color:var(--ac);margin-left:4px}
+.note{font-size:11px;color:var(--dim)}
+
+.hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:12px}
+.hd .lbl{font-size:11px;color:var(--ac);font-weight:700}
+.hd h1{margin:2px 0 0;font-size:18px;font-weight:650}
+.hd p{margin:4px 0 0;font-size:12px;color:var(--mu)}
+.live{font-size:11px;padding:4px 10px;border-radius:20px;background:var(--gr-soft);color:var(--gr);border:1px solid color-mix(in srgb,var(--gr) 25%,var(--bd))}
+
+.inh{display:flex;align-items:center;gap:12px;background:var(--panel-2);border:1px solid var(--bd);
+  border-radius:12px;padding:11px 15px;margin-bottom:14px;flex-wrap:wrap}
+.node{padding:8px 12px;border:1px solid var(--bd);border-radius:9px;background:var(--panel-3)}
+.node.cur{border-color:color-mix(in srgb,var(--ac) 45%,var(--bd));background:var(--ac-soft)}
+.node .t{font-size:13px;font-weight:650}
+.node .s{font-size:11px;color:var(--dim);margin-top:2px}
+.node .s b{color:var(--ac)}
+.link{font-size:11px;color:var(--dim);text-align:center}
+
+/* ── Sticky toolbar: underline tabs + page bar ── */
+.quick-toolbar{position:sticky;top:0;z-index:5;background:var(--bg);
+  padding:0 0 10px;margin:0 -2px 12px;border-bottom:1px solid var(--bd)}
+.ch-tabs{display:flex;gap:0;border-bottom:1px solid var(--bd);margin-bottom:0}
+.ch-tabs button{background:none;border:none;border-bottom:2px solid transparent;color:var(--mu);
+  font-size:13px;padding:9px 14px;cursor:pointer;display:flex;align-items:center;gap:7px;margin-bottom:-1px;font-family:inherit}
+.ch-tabs button.on{color:var(--tx);border-bottom-color:var(--ac);font-weight:650}
+.ch-tabs .badge{background:var(--panel-3);border-radius:20px;padding:1px 7px;font-size:11px;color:var(--dim);font-weight:500}
+.ch-tabs button.on .badge{background:var(--ac-soft);color:var(--ac)}
+
+.page-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 4px 0;font-size:12px}
+.page-bar .ch-label{font-weight:650;color:var(--tx)}
+.page-bar .ch-stats{color:var(--dim)}
+.page-bar .ch-stats b.ov{color:var(--ov-tx)}
+
+/* ── Canvas: big key cards ── */
+.viz{background:var(--panel-2);border:1px solid var(--bd);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+.viz.hide{display:none}
+.vh{margin:0 0 2px;font-size:14px;font-weight:650}
+.vs{margin:0 0 14px;font-size:12px;color:var(--dim)}
+.key-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.key-card{display:flex;flex-direction:column;gap:0;min-width:0;padding:13px 14px;
+  border:1px solid var(--bd);border-radius:12px;background:#fff;text-align:left;cursor:pointer;
+  font-family:inherit;color:inherit;transition:border-color .12s,box-shadow .12s}
+.key-card:hover{border-color:color-mix(in srgb,var(--ac) 35%,var(--bd));box-shadow:0 2px 8px rgba(15,23,42,.06)}
+.key-card-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.key-card-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex:none;background:var(--panel-3)}
+.key-card[data-ch="key"] .key-card-icon{background:#e8f4fb}
+.key-card[data-ch="voice"] .key-card-icon{background:#f0ebfa}
+.key-card[data-ch="cam"] .key-card-icon{background:#fef7ec}
+.key-card[data-ch="pad"] .key-card-icon{background:#e8f5ee}
+.key-card-head b{flex:1;font-size:13px;font-weight:650}
+.key-card-head i{font-style:normal;font-size:11px;color:var(--dim);white-space:nowrap}
+.key-card-desc{font-size:11px;color:var(--mu);line-height:1.5}
+
+/* single-channel viz panels */
+.vp{display:none}.vp.on{display:block}
+.key-svg{display:block;width:100%;max-width:400px;height:auto}
+
+/* ── Rules: Action rows + Folder ── */
+.rules-hd{margin:0 0 10px}
+.rules-hd h2{margin:0;font-size:15px;font-weight:650}
+
+.action{background:#fff;border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.action.hide{display:none}
+.action.is-open{border-color:color-mix(in srgb,var(--ac) 35%,var(--bd))}
+.action.is-ov .action-row{background:linear-gradient(90deg,rgba(255,240,223,.35),#fff 48px)}
+.action-row{display:grid;grid-template-columns:4px 32px 1fr auto;align-items:center;gap:0;cursor:pointer}
+.action-accent{align-self:stretch;border-radius:12px 0 0 12px}
+.action[data-ch="key"] .action-accent{background:var(--ch-key)}
+.action[data-ch="voice"] .action-accent{background:var(--ch-voice)}
+.action[data-ch="cam"] .action-accent{background:var(--ch-cam)}
+.action[data-ch="pad"] .action-accent{background:var(--ch-pad)}
+.action-icon{display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--mu)}
+.action-copy{padding:11px 10px 11px 0;min-width:0}
+.action-txt{font-size:13px;font-weight:650;line-height:1.4}
+.action-txt em{font-style:normal;color:var(--ac)}
+.action-side{display:flex;align-items:center;gap:8px;padding:11px 14px 11px 0;flex:none}
+.badge{font-size:10px;font-weight:650;padding:2px 8px;border-radius:999px}
+.badge.ov{background:var(--ov-bg);color:var(--ov-tx)}
+.badge.in{background:var(--in-bg);color:var(--in-tx)}
+.btn-edit{padding:5px 10px;border:1px solid color-mix(in srgb,var(--ac) 28%,var(--bd));
+  border-radius:8px;background:#fff;color:var(--ac);font-size:11px;font-weight:650;cursor:pointer;font-family:inherit}
+.btn-edit:hover{background:var(--ac-soft)}
+
+.peek{display:none;border-top:1px solid var(--bd);background:var(--panel-3);padding:12px 14px 14px 46px}
+.action.is-open .peek{display:block}
+.peek dl{margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.peek dt{font-size:11px;color:var(--dim);font-weight:650;margin-bottom:4px}
+.peek dd{margin:0;font-size:12px;font-weight:600}
+
+.folder{margin:6px 0 10px}
+.folder-btn{width:100%;padding:9px 12px;border:1px dashed var(--bd-2);border-radius:10px;
+  background:var(--panel-2);color:var(--dim);font-size:12px;text-align:left;cursor:pointer;font-family:inherit}
+.folder-btn:hover{color:var(--tx);border-color:var(--bd)}
+.folder-body{display:none;margin-top:8px}
+.folder.open .folder-body{display:block}
+
+.proto-tag{position:fixed;bottom:14px;right:14px;background:#fff;border:1px solid var(--bd);
+  border-radius:8px;padding:8px 12px;font-size:11px;color:var(--dim);z-index:9;box-shadow:0 4px 16px rgba(15,23,42,.08)}
+.proto-tag b{color:var(--ac)}
+.scroll-hint{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--dim);
+  background:#fff;border:1px solid var(--bd);padding:6px 12px;border-radius:20px;opacity:.9}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><div class="km">OT</div><div><b>一声 OneTone</b><span>习惯工作区</span></div></div>
+    <nav class="nav"><a href="#">首页</a><a href="#" class="on">我的习惯</a></nav>
+  </aside>
+  <aside class="scenes">
+    <input class="srch" placeholder="搜索应用或场景…" readonly>
+    <div class="row on"><span>Cursor</span><span class="dot"></span></div>
+    <div class="row"><span>通用设置</span><span class="dot"></span></div>
+  </aside>
+
+  <div class="main-wrap">
+    <div class="main" id="mainScroll">
+      <div class="modes">
+        <div class="seg">
+          <button type="button">🌱 小白模式</button>
+          <button type="button" class="on">⚡ 快速设置 <em>推荐</em></button>
+          <button type="button">🛠 程序员模式</button>
+        </div>
+        <span class="note"><b>Stream Deck 化</b> · 大键总览 + Action 规则行 + Folder 继承 + sticky Page 顶栏</span>
+      </div>
+
+      <div class="hd">
+        <div><div class="lbl">当前应用</div><h1>Cursor</h1><p>专注写作</p></div>
+        <span class="live">未设为当前使用</span>
+      </div>
+
+      <div class="inh">
+        <div class="node"><div class="t">通用设置</div><div class="s">12 条规则 · 全局默认</div></div>
+        <div class="link">继承 →</div>
+        <div class="node cur"><div class="t">Cursor 专注写作</div><div class="s">9 条继承 · <b>3 项被覆盖</b></div></div>
+      </div>
+
+      <!-- sticky toolbar -->
+      <div class="quick-toolbar" id="toolbar">
+        <div class="ch-tabs" id="chTabs" role="tablist">
+          <button type="button" class="on" data-ch="all">全部<span class="badge">12</span></button>
+          <button type="button" data-ch="key">按键<span class="badge">2</span></button>
+          <button type="button" data-ch="voice">语音<span class="badge">2</span></button>
+          <button type="button" data-ch="cam">摄像头<span class="badge">4</span></button>
+          <button type="button" data-ch="pad">Soft Pad<span class="badge">2</span></button>
+        </div>
+        <div class="page-bar">
+          <span class="ch-label" id="pageLabel">全部通道</span>
+          <span class="ch-stats" id="pageStats">3 项覆盖 · 9 项继承</span>
+        </div>
+      </div>
+
+      <!-- canvas -->
+      <section class="viz" id="vizAll">
+        <h2 class="vh">输入通道总览</h2>
+        <p class="vs">点「大键」跳到对应通道；下方规则清单同步过滤（Stream Deck Profile → Page）</p>
+        <div class="key-grid">
+          <button type="button" class="key-card" data-ch="key" data-go="key">
+            <div class="key-card-head">
+              <span class="key-card-icon">⌨</span>
+              <b>按键</b>
+              <i>2 条 · 2 覆盖</i>
+            </div>
+            <div class="key-card-desc">F9 短按 / 长按<br>硬件启动键</div>
+          </button>
+          <button type="button" class="key-card" data-ch="voice" data-go="voice">
+            <div class="key-card-head">
+              <span class="key-card-icon">🎙</span>
+              <b>语音</b>
+              <i>2 条 · 1 覆盖</i>
+            </div>
+            <div class="key-card-desc">6 种说法任一命中<br>轻量中文模型</div>
+          </button>
+          <button type="button" class="key-card" data-ch="cam" data-go="cam">
+            <div class="key-card-head">
+              <span class="key-card-icon">📷</span>
+              <b>摄像头</b>
+              <i>4 条 · 1 覆盖</i>
+            </div>
+            <div class="key-card-desc">眨眼 / 张嘴 / 注视<br>挥手取消</div>
+          </button>
+          <button type="button" class="key-card" data-ch="pad" data-go="pad">
+            <div class="key-card-head">
+              <span class="key-card-icon">⌘</span>
+              <b>Soft Pad</b>
+              <i>2 条 · 继承</i>
+            </div>
+            <div class="key-card-desc">屏幕边缘托盘<br>8 个可自定义键</div>
+          </button>
+        </div>
+      </section>
+
+      <section class="viz hide" id="vizKey">
+        <h2 class="vh">F9 键位</h2>
+        <p class="vs">单通道 Page · 同一物理键多种按法（effectiveKey）</p>
+        <svg class="key-svg" viewBox="0 0 400 160" role="img"><rect x="28" y="20" width="110" height="100" rx="14" fill="#222831" stroke="#39414d"/><text x="83" y="78" text-anchor="middle" font-size="30" fill="#e7eaee" font-family="system-ui,sans-serif">F9</text><circle cx="148" cy="45" r="3" fill="#1d8fb8"/><text x="164" y="42" font-size="12" fill="#1d8fb8" font-family="system-ui,sans-serif">短按 → 开始输入</text><circle cx="148" cy="75" r="3" fill="#1d8fb8"/><text x="164" y="72" font-size="12" fill="#1d8fb8" font-family="system-ui,sans-serif">长按 → 切换引擎</text></svg>
+      </section>
+
+      <section class="viz hide" id="vizVoice">
+        <h2 class="vh">语音触发</h2>
+        <p class="vs">唤醒词 chips · 识别引擎一行摘要</p>
+        <div style="display:flex;flex-wrap:wrap;gap:7px">
+          <span style="padding:5px 12px;border:1px solid var(--bd);border-radius:20px;font-size:12px;background:#fff">开始写作</span>
+          <span style="padding:5px 12px;border:1px solid var(--bd);border-radius:20px;font-size:12px;background:#fff">开始听写</span>
+          <span style="padding:5px 12px;border:1px solid var(--bd);border-radius:20px;font-size:12px;background:var(--ac-soft);color:var(--ac)">+4</span>
+        </div>
+      </section>
+
+      <!-- rules -->
+      <div class="rules-hd"><h2>规则清单</h2></div>
+
+      <article class="action is-ov" data-ch="key" data-priority="ov" data-rule="1">
+        <div class="action-row" data-toggle>
+          <span class="action-accent"></span>
+          <span class="action-icon">⌨</span>
+          <div class="action-copy"><div class="action-txt">按 <em>F9</em> → 开始输入，发送到 Enter</div></div>
+          <div class="action-side"><span class="badge ov">覆盖</span><button type="button" class="btn-edit" onclick="event.stopPropagation()">修改</button></div>
+        </div>
+        <div class="peek"><dl><div><dt>什么时候</dt><dd>F9 · tap</dd></div><div><dt>会发生什么</dt><dd>开始输入 → Enter</dd></div><div><dt>状态</dt><dd>已启用</dd></div></dl></div>
+      </article>
+
+      <article class="action is-ov" data-ch="key" data-priority="ov" data-rule="2">
+        <div class="action-row" data-toggle>
+          <span class="action-accent"></span>
+          <span class="action-icon">⌨</span>
+          <div class="action-copy"><div class="action-txt">输入完成后 → 自动发送，可随时取消</div></div>
+          <div class="action-side"><span class="badge ov">覆盖</span><button type="button" class="btn-edit" onclick="event.stopPropagation()">修改</button></div>
+        </div>
+        <div class="peek"><dl><div><dt>什么时候</dt><dd>输入完成后</dd></div><div><dt>会发生什么</dt><dd>自动发送</dd></div><div><dt>状态</dt><dd>已启用</dd></div></dl></div>
+      </article>
+
+      <article class="action is-ov" data-ch="voice" data-priority="ov" data-rule="3">
+        <div class="action-row" data-toggle>
+          <span class="action-accent"></span>
+          <span class="action-icon">🎙</span>
+          <div class="action-copy"><div class="action-txt">说「开始写作」→ 开始听写</div></div>
+          <div class="action-side"><span class="badge ov">覆盖</span><button type="button" class="btn-edit" onclick="event.stopPropagation()">修改</button></div>
+        </div>
+        <div class="peek"><dl><div><dt>什么时候</dt><dd>开始写作 / …</dd></div><div><dt>会发生什么</dt><dd>开始听写</dd></div><div><dt>状态</dt><dd>已关闭</dd></div></dl></div>
+      </article>
+
+      <div class="folder" id="folder">
+        <button type="button" class="folder-btn" id="folderBtn">▸ 还有 8 条沿用通用设置</button>
+        <div class="folder-body" id="folderBody">
+          <article class="action" data-ch="voice" data-priority="in">
+            <div class="action-row" data-toggle>
+              <span class="action-accent"></span><span class="action-icon">🎙</span>
+              <div class="action-copy"><div class="action-txt">说「结束」→ 结束听写</div></div>
+              <div class="action-side"><span class="badge in">继承</span><button type="button" class="btn-edit" onclick="event.stopPropagation()">修改</button></div>
+            </div>
+            <div class="peek"><dl><div><dt>来源</dt><dd>来自通用设置</dd></div></dl></div>
+          </article>
+          <article class="action" data-ch="cam" data-priority="in">
+            <div class="action-row" data-toggle>
+              <span class="action-accent"></span><span class="action-icon">📷</span>
+              <div class="action-copy"><div class="action-txt">刻意眨眼 → 确认上屏</div></div>
+              <div class="action-side"><span class="badge in">继承</span><button type="button" class="btn-edit" onclick="event.stopPropagation()">修改</button></div>
+            </div>
+          </article>
+          <article class="action" data-ch="cam" data-priority="in">
+            <div class="action-row" data-toggle>
+              <span class="action-accent"></span><span class="action-icon">📷</span>
+              <div class="action-copy"><div class="action-txt">离开座位 → 暂停输入</div></div>
+              <div class="action-side"><span class="badge in">继承</span><button type="button" class="btn-edit" onclick="event.stopPropagation()">修改</button></div>
+            </div>
+          </article>
+          <article class="action" data-ch="pad" data-priority="in">
+            <div class="action-row" data-toggle>
+              <span class="action-accent"></span><span class="action-icon">⌘</span>
+              <div class="action-copy"><div class="action-txt">托盘布局 → beginner · 8 键</div></div>
+              <div class="action-side"><span class="badge in">继承</span><button type="button" class="btn-edit" onclick="event.stopPropagation()">修改</button></div>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <div style="height:320px" aria-hidden="true"></div>
+    </div>
+  </div>
+</div>
+
+<div class="scroll-hint">向下滚动 · 观察 sticky 顶栏是否固定</div>
+<div class="proto-tag">原型 <b>quick-streamdeck.html</b> · 对照生产 <code>habit-workspace.js</code></div>
+
+<script>
+(function(){
+  var ch='all';
+  var labels={all:'全部通道',key:'按键',voice:'语音',cam:'摄像头',pad:'Soft Pad'};
+  var stats={
+    all:{label:'3 项覆盖 · 9 项继承',html:'<b class="ov">3</b> 项覆盖 · 9 项继承'},
+    key:{label:'2 项覆盖 · 0 项继承（当前通道）',html:'<b class="ov">2</b> 项覆盖 · 0 项继承（当前通道）'},
+    voice:{label:'1 项覆盖 · 1 项继承（当前通道）',html:'<b class="ov">1</b> 项覆盖 · 1 项继承（当前通道）'},
+    cam:{label:'0 项覆盖 · 4 项继承（当前通道）',html:'0 项覆盖 · 4 项继承（当前通道）'},
+    pad:{label:'0 项覆盖 · 2 项继承（当前通道）',html:'0 项继承 · 2 条沿用通用'}
+  };
+  var vizMap={all:'vizAll',key:'vizKey',voice:'vizVoice',cam:null,pad:null};
+
+  function setChannel(next){
+    ch=next;
+    document.querySelectorAll('#chTabs button').forEach(function(b){
+      b.classList.toggle('on',b.getAttribute('data-ch')===ch);
+    });
+    document.getElementById('pageLabel').textContent=labels[ch]||ch;
+    document.getElementById('pageStats').innerHTML=(stats[ch]&&stats[ch].html)||'';
+
+    ['vizAll','vizKey','vizVoice'].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el) el.classList.add('hide');
+    });
+    var showId=vizMap[ch];
+    if(showId){
+      var v=document.getElementById(showId);
+      if(v) v.classList.remove('hide');
+    }else{
+      document.getElementById('vizAll').classList.remove('hide');
+    }
+
+    document.querySelectorAll('.action[data-priority="ov"]').forEach(function(el){
+      var c=el.getAttribute('data-ch');
+      el.classList.toggle('hide',ch!=='all'&&c!==ch);
+    });
+    var folder=document.getElementById('folder');
+    var anyInh=ch==='all'||ch==='voice'||ch==='cam'||ch==='pad';
+    folder.style.display=anyInh?'':'none';
+    if(ch!=='all'){
+      folder.querySelectorAll('.action[data-priority="in"]').forEach(function(el){
+        el.classList.toggle('hide',el.getAttribute('data-ch')!==ch);
+      });
+    }else{
+      folder.querySelectorAll('.action[data-priority="in"]').forEach(function(el){ el.classList.remove('hide'); });
+    }
+  }
+
+  document.getElementById('chTabs').addEventListener('click',function(e){
+    var btn=e.target.closest('button[data-ch]');
+    if(btn) setChannel(btn.getAttribute('data-ch'));
+  });
+  document.querySelectorAll('.key-card[data-go]').forEach(function(card){
+    card.addEventListener('click',function(){ setChannel(card.getAttribute('data-go')); });
+  });
+
+  document.querySelectorAll('[data-toggle]').forEach(function(row){
+    row.addEventListener('click',function(){
+      var art=row.closest('.action');
+      var open=art.classList.contains('is-open');
+      document.querySelectorAll('.action.is-open').forEach(function(a){ a.classList.remove('is-open'); });
+      if(!open) art.classList.add('is-open');
+    });
+  });
+
+  var folder=document.getElementById('folder');
+  var folderBtn=document.getElementById('folderBtn');
+  folderBtn.addEventListener('click',function(){
+    var open=folder.classList.toggle('open');
+    var n=folder.querySelectorAll('.action:not(.hide)').length;
+    folderBtn.textContent=open?('▾ 收起 '+n+' 条沿用通用设置'):('▸ 还有 '+n+' 条沿用通用设置');
+  });
+
+  setChannel('all');
+})();
+</script>
+</body>
+</html>

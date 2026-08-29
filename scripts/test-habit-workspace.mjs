@@ -100,6 +100,9 @@ Workspace.render();
 assert.match(host.innerHTML,/pref-segmented is-wide habit-ws-channels/,'通道 tab 使用主题 segmented');
 assert.match(host.innerHTML,/pref-segmented-btn habit-ws-channel is-active/,'选中通道为白底 segmented');
 assert.equal(/<select[^>]*data-habit-item/.test(host.innerHTML),false,'不再使用场景下拉');
+assert.match(host.innerHTML,/habit-ws-rules/,'quick mode renders rules list');
+assert.match(host.innerHTML,/habit-ws-viz/,'quick mode renders channel viz');
+assert.match(host.innerHTML,/habit-ws-inherit-chain/,'quick mode renders inherit chain');
 assert.match(host.innerHTML,/icons\/app-target\/cursor\.png/,'官方应用图标');
 assert.match(host.innerHTML,/∞/,'通用设置字母/∞ fallback 仍存在于列表');
 
@@ -118,13 +121,13 @@ function fire(attrs){
   };
   click({stopPropagation(){},target:node});
 }
-fire({'data-habit-item':'key-finish'});
-assert.equal(context.OneToneState.ui.habitWorkspaceItemId,'key-finish','场景 subtab 只切换 item');
-assert.equal(openedEditor,null,'场景切换不得打开编辑页');
+fire({'data-habit-rule-toggle':'app-1::key::key-main'});
+assert.equal(context.OneToneState.ui.habitWorkspaceRuleOpen,'app-1::key::key-main','rule row toggles peek');
+assert.equal(openedEditor,null,'rule toggle must not open editor');
 
 fire({'data-habit-edit':'','data-channel':'key','data-focus':'trigger'});
 assert.equal(openedEditor&&openedEditor.channel,'key','只有修改才跳转编辑');
-assert.equal(openedEditor&&openedEditor.returnContext&&openedEditor.returnContext.itemId,'key-finish','返回上下文保留场景');
+assert.equal(openedEditor&&openedEditor.returnContext&&openedEditor.returnContext.itemId,'key-main','返回上下文保留 item');
 
 // Channel tab must not open editors (hub used to catch data-habit-channel and jump).
 openedEditor=null;

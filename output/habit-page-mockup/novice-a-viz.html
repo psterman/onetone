@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小白模式 · 方案 A（故事卡 + 可视化）</title>
+<style>
+:root{--bg:#0f1216;--panel:#161a20;--panel-2:#1c2129;--panel-3:#222831;--bd:rgba(255,255,255,.07);--bd-2:rgba(255,255,255,.13);--tx:#e7eaee;--mu:#98a1ac;--dim:#6a7280;--ac:#2a9cc4;--ac-soft:rgba(42,156,196,.14);--vi:#a78bfa;--vi-soft:rgba(167,139,250,.14);--gr:#3fb950;--gr-soft:rgba(63,185,80,.14)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:400 13px/1.6 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+.app{display:flex;height:100vh;min-width:1180px;overflow:hidden}
+.side{width:186px;flex:none;background:var(--panel);border-right:.5px solid var(--bd);padding:16px 12px}
+.brand{display:flex;align-items:center;gap:9px;padding:6px 8px 18px}
+.km{width:28px;height:28px;border-radius:8px;background:var(--ac);color:#06131a;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px}
+.brand b{font-size:13px;font-weight:500;display:block}.brand span{font-size:11px;color:var(--dim)}
+.nav a{display:block;padding:7px 10px;border-radius:7px;color:var(--mu);text-decoration:none;font-size:13px}
+.nav a.on{background:var(--ac-soft);color:var(--ac)}.nav .grp{font-size:11px;color:var(--dim);padding:14px 10px 6px}
+.scenes{width:230px;flex:none;background:var(--panel);border-right:.5px solid var(--bd);padding:16px 12px;overflow:auto}
+.srch{width:100%;background:var(--panel-2);border:.5px solid var(--bd);border-radius:8px;color:var(--tx);padding:7px 10px;font-size:12px;outline:none}
+.sec{font-size:11px;color:var(--dim);margin:14px 4px 6px}
+.row{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;margin-bottom:2px;cursor:pointer;font-size:13px}
+.row:hover{background:var(--panel-2)}.row.on{background:var(--ac-soft);box-shadow:inset 0 0 0 .5px rgba(42,156,196,.45)}
+.dot{width:7px;height:7px;border-radius:50%}.dot.on{background:var(--gr)}.dot.off{background:#39414d}
+.main{flex:1;overflow:auto;padding:20px 26px 44px}
+.modes{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.modes .seg{display:inline-flex;background:var(--panel-2);border:.5px solid var(--bd);border-radius:9px;padding:3px}
+.modes .seg button{background:transparent;border:none;color:var(--mu);font-size:12px;padding:6px 12px;border-radius:7px;cursor:default}
+.modes .seg button.on{background:var(--panel-3);color:var(--tx)}.modes .seg .badge{font-size:10px;background:var(--ac-soft);color:var(--ac);border-radius:4px;padding:1px 5px;margin-left:4px}
+.modes .note{font-size:11px;color:var(--dim)}.modes .note b{color:var(--ac)}
+.novice-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px}
+.novice-head h1{margin:0;font-size:22px;font-weight:600}
+.novice-head .sub{font-size:13px;color:var(--mu);margin-top:2px}
+.kpi{text-align:right}.kpi b{display:block;font-size:15px}.kpi span{font-size:12px;color:var(--dim)}
+.inherit-hint{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--panel);border:.5px solid var(--bd);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--mu)}
+.inherit-hint a{color:var(--ac);text-decoration:none;cursor:pointer;white-space:nowrap}
+.inherit-hint a:hover{text-decoration:underline}
+.dim-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.dim-tabs button{background:var(--panel-2);border:.5px solid var(--bd);border-radius:12px;color:var(--mu);font-size:13px;font-weight:600;padding:9px 14px;cursor:pointer}
+.dim-tabs button.on{background:var(--ac-soft);border-color:rgba(42,156,196,.4);color:var(--ac)}
+.dim-tabs .cnt{font-size:11px;padding:1px 6px;border-radius:999px;background:rgba(255,255,255,.06);margin-left:4px}
+.viz{background:var(--panel);border:.5px solid var(--bd);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+.vp{display:none}.vp.on{display:block}
+.vh{font-size:14px;font-weight:500;margin:0 0 2px}.vs{font-size:12px;color:var(--dim);margin:0 0 12px}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.chip{background:var(--panel-2);border:.5px solid var(--bd-2);border-radius:20px;padding:5px 12px;font-size:12px}
+.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:360px}
+.pk{background:var(--panel-3);border:.5px solid var(--bd-2);border-radius:9px;padding:10px 8px;text-align:center;font-size:12px}
+.pk.hot{border-color:rgba(42,156,196,.5);background:var(--ac-soft);color:var(--ac)}
+.scene-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;align-items:center}
+.scene-chips .lbl{font-size:12px;color:var(--dim);font-weight:600;margin-right:4px}
+.scene-chips button{background:var(--panel-2);border:.5px solid var(--bd);border-radius:999px;color:var(--mu);font-size:13px;padding:7px 14px;cursor:pointer}
+.scene-chips button.on{background:var(--ac);color:#06131a;border-color:var(--ac)}
+.novice-card{display:grid;grid-template-columns:52px 1fr auto;gap:16px;background:var(--panel);border:.5px solid var(--bd);border-radius:16px;padding:18px 20px;margin-bottom:10px;align-items:center}
+.novice-card.hide{display:none}
+.novice-card .illus{width:52px;height:52px;border-radius:14px;background:var(--panel-2);display:flex;align-items:center;justify-content:center;font-size:24px}
+.novice-card .title{font-size:14px;font-weight:600;margin-bottom:6px}
+.novice-card .story{font-size:13px;color:var(--mu);line-height:1.55}
+.novice-card .story .chip{display:inline-block;background:var(--ac-soft);color:var(--ac);border-radius:6px;padding:1px 7px;font-size:12px;cursor:pointer;border:.5px solid rgba(42,156,196,.25)}
+.novice-card .meta{font-size:11px;color:var(--dim);margin-top:8px}
+.novice-card .right{display:flex;flex-direction:column;gap:6px}
+.mini{background:transparent;border:.5px solid var(--bd-2);border-radius:8px;color:var(--mu);font-size:12px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.mini.primary{background:var(--ac);color:#06131a;border-color:var(--ac);font-weight:500}
+.empty{padding:24px;text-align:center;color:var(--dim);font-size:13px;background:var(--panel);border:.5px dashed var(--bd-2);border-radius:12px}
+.toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel-3);border:.5px solid var(--bd-2);border-radius:10px;padding:10px 16px;font-size:12px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:10}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.proto-tag{position:fixed;bottom:14px;right:14px;background:var(--panel-2);border:.5px solid var(--bd);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--dim);z-index:9}
+.proto-tag b{color:var(--ac)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><div class="km">F1</div><div><b>一声 OneTone</b><span>v0.9 · 已连接</span></div></div>
+    <nav class="nav"><div class="grp">主面板</div><a href="#">首页</a><a href="#" class="on">我的习惯</a><a href="#">按键设置</a></nav>
+  </aside>
+  <aside class="scenes">
+    <input class="srch" placeholder="搜索应用或场景">
+    <div class="sec">近 7 天用过</div>
+    <div class="row on"><span>Cursor</span><span class="dot on"></span></div>
+    <div class="row"><span>WorkBuddy</span><span class="dot on"></span></div>
+    <div class="sec">其他场景</div>
+    <div class="row"><span>通用设置</span><span class="dot on"></span></div>
+  </aside>
+  <main class="main">
+    <div class="modes">
+      <div class="seg"><button type="button" class="on">🌱 小白模式 <span class="badge">新</span></button><button type="button" disabled>⚡ 快速设置</button><button type="button" disabled>🛠 程序员模式</button></div>
+      <span class="note"><b>方案 A</b> · 故事卡为主 + 通道可视化 · 推荐默认路径</span>
+    </div>
+    <div class="novice-head">
+      <div><h1>Cursor</h1><div class="sub">专注写作</div></div>
+      <div class="kpi"><b>本周用了 47 次</b><span>最常：F1 短按</span></div>
+    </div>
+    <div class="inherit-hint">
+      <span>沿用通用设置 · 本场景单独改了 <b style="color:var(--tx)">2 项</b></span>
+      <a id="showDiff">看改了什么 →</a>
+    </div>
+    <div class="dim-tabs" id="dimTabs">
+      <button class="on" data-dim="key">⌨ 按键 <span class="cnt">2</span></button>
+      <button data-dim="voice">🎙 语音 <span class="cnt">2</span></button>
+      <button data-dim="cam">📷 摄像头 <span class="cnt">4</span></button>
+      <button data-dim="pad">⌘ Soft Pad <span class="cnt">2</span></button>
+    </div>
+    <section class="viz">
+      <div class="vp on" data-vp="key">
+        <h2 class="vh">F1 键位</h2>
+        <p class="vs">在 Cursor 里，这个键帮你启动输入</p>
+        <svg width="100%" viewBox="0 0 400 160" role="img"><rect x="28" y="20" width="110" height="100" rx="14" fill="#222831" stroke="#39414d"/><text x="83" y="75" text-anchor="middle" font-size="30" font-weight="500" fill="#e7eaee" font-family="system-ui,sans-serif">F1</text><circle cx="148" cy="45" r="3" fill="#2a9cc4"/><text x="164" y="40" font-size="12" fill="#2a9cc4" font-family="system-ui,sans-serif">短按 → 开始输入</text><circle cx="148" cy="75" r="3" fill="#2a9cc4"/><text x="164" y="72" font-size="12" fill="#2a9cc4" font-family="system-ui,sans-serif">长按 → 切换引擎</text></svg>
+      </div>
+      <div class="vp" data-vp="voice">
+        <h2 class="vh">语音触发</h2>
+        <p class="vs">说出任意一句即可开始</p>
+        <div class="chips"><span class="chip">开始输入</span><span class="chip">开始听写</span><span class="chip">语音输入</span><span class="chip">+3</span></div>
+      </div>
+      <div class="vp" data-vp="cam">
+        <h2 class="vh">摄像头</h2>
+        <p class="vs">眼神和口型也能当开关</p>
+        <svg width="100%" viewBox="0 0 400 120" role="img"><ellipse cx="80" cy="55" rx="48" ry="56" fill="#222831" stroke="#39414d"/><text x="160" y="50" font-size="12" fill="#2a9cc4" font-family="system-ui,sans-serif">张嘴 → 开始输入</text><text x="160" y="72" font-size="12" fill="#6a7280" font-family="system-ui,sans-serif">眨眼 → 确认上屏（通用）</text></svg>
+      </div>
+      <div class="vp" data-vp="pad">
+        <h2 class="vh">Soft Pad</h2>
+        <p class="vs">屏幕边缘的虚拟按键</p>
+        <div class="pad"><div class="pk hot">语音</div><div class="pk hot">上屏</div><div class="pk">清空</div><div class="pk">撤销</div></div>
+      </div>
+    </section>
+    <div class="scene-chips" id="sceneChips">
+      <span class="lbl">使用场景</span>
+      <button class="on" data-scene="begin">启动输入</button>
+      <button data-scene="end">结束与取消</button>
+      <button data-scene="general">通用</button>
+    </div>
+    <div id="cardList">
+      <div class="novice-card" data-dim="key" data-scene="begin">
+        <div class="illus">⌨</div>
+        <div><div class="title">Cursor · 启动输入</div><div class="story">在 <span class="chip">Cursor</span> 里按下 <span class="chip">F1</span>，然后 🎙 开始输入，发送到 Right Alt。</div><div class="meta">运行中 · 10 分钟前改过</div></div>
+        <div class="right"><button class="mini primary">▶ 试一下</button><button class="mini">完整改</button></div>
+      </div>
+      <div class="novice-card" data-dim="key" data-scene="end">
+        <div class="illus">⌨</div>
+        <div><div class="title">Cursor · 结束与取消</div><div class="story">输入完成后 <span class="chip">自动发送</span>，需要时可随时取消。</div><div class="meta">运行中 · 沿用通用</div></div>
+        <div class="right"><button class="mini primary">▶ 试一下</button><button class="mini">完整改</button></div>
+      </div>
+      <div class="novice-card hide" data-dim="voice" data-scene="begin">
+        <div class="illus">🎙</div>
+        <div><div class="title">Cursor · 语音唤醒</div><div class="story">说 <span class="chip">开始输入</span> 等任意一句，开始听写。</div><div class="meta">运行中 · 3 天前改过</div></div>
+        <div class="right"><button class="mini primary">▶ 试一下</button><button class="mini">完整改</button></div>
+      </div>
+      <div class="novice-card hide" data-dim="cam" data-scene="general">
+        <div class="illus">📷</div>
+        <div><div class="title">Cursor · 摄像头</div><div class="story"><span class="chip">张嘴</span> 开始输入，<span class="chip">眨眼</span> 确认上屏。</div><div class="meta">运行中 · 1 项单独设置</div></div>
+        <div class="right"><button class="mini primary">▶ 试一下</button><button class="mini">完整改</button></div>
+      </div>
+    </div>
+    <div class="empty hide" id="emptyState">这一类还没有习惯，点下面加一个</div>
+  </main>
+</div>
+<div class="toast" id="toast">单独设置：F1 短按、F1 长按（其余沿用通用）</div>
+<div class="proto-tag">方案 A <b>novice-a-viz.html</b> · 维度 Tab / 场景 chip / 故事卡可交互</div>
+<script>
+(function(){
+  var dim='key', scene='begin';
+  function filter(){
+    var n=0;
+    document.querySelectorAll('.novice-card').forEach(function(c){
+      var show=c.dataset.dim===dim&&c.dataset.scene===scene;
+      c.classList.toggle('hide',!show);
+      if(show) n++;
+    });
+    document.getElementById('emptyState').classList.toggle('hide',n>0);
+    document.querySelectorAll('[data-vp]').forEach(function(p){ p.classList.toggle('on',p.dataset.vp===dim); });
+  }
+  document.querySelectorAll('#dimTabs button').forEach(function(b){
+    b.addEventListener('click',function(){ dim=b.dataset.dim; document.querySelectorAll('#dimTabs button').forEach(function(x){x.classList.toggle('on',x===b);}); filter(); });
+  });
+  document.querySelectorAll('#sceneChips button').forEach(function(b){
+    b.addEventListener('click',function(){ scene=b.dataset.scene; document.querySelectorAll('#sceneChips button').forEach(function(x){x.classList.toggle('on',x===b);}); filter(); });
+  });
+  document.getElementById('showDiff').addEventListener('click',function(){
+    var t=document.getElementById('toast'); t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); },2800);
+  });
+  filter();
+})();
+</script>
+</body>
+</html>

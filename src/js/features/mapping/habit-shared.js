@@ -288,6 +288,164 @@
     return esc(c('storyIn'))+' '+appChip+' '+esc(c('storyPress'))+' '+keyPart+esc(c('storyThen'))+actionChip+esc(c('storyFinish'));
   }
 
+  function noviceDimToChannel(dim){
+    dim=String(dim||'').trim();
+    if(dim==='voice') return 'voice';
+    if(dim==='cam') return 'camera';
+    if(dim==='softpad') return 'softPad';
+    return 'key';
+  }
+
+  function channelToNoviceDim(channel){
+    channel=String(channel||'').trim();
+    if(channel==='voice') return 'voice';
+    if(channel==='camera') return 'cam';
+    if(channel==='softPad') return 'softpad';
+    return 'key';
+  }
+
+  function ruleRowText(card){
+    card=card||{};
+    var detail=card.detail||{};
+    var m=card.mapping||{};
+    var what=String(detail.what||'').trim()||c('none');
+    if(card.channel==='key'&&card.itemId==='key-main'){
+      var k=effectiveKey(m);
+      var keyName=friendlyKey(k.triggerKey);
+      return lang()==='en'?('Press '+keyName+' → '+what):('按 '+keyName+' → '+what);
+    }
+    if(card.channel==='key'&&card.itemId==='key-finish'){
+      return lang()==='en'?('After input → '+what):('输入完成后 → '+what);
+    }
+    if(card.channel==='voice'&&card.itemId==='voice-wake'){
+      var when=String(detail.when||'').trim();
+      var sample=when.split(' / ')[0]||when;
+      return lang()==='en'?('Say "'+sample+'" → '+what):('说「'+sample+'」→ '+what);
+    }
+    if(card.channel==='camera'){
+      var ci=cameraItem(card.itemId);
+      var label=itemLabel(ci);
+      return label+' → '+what;
+    }
+    if(card.channel==='softPad'){
+      return itemLabel(card.item)+' → '+what;
+    }
+    return String(detail.when||'')+' → '+what;
+  }
+
+  function ruleRowMeta(card){
+    card=card||{};
+    var detail=card.detail||{};
+    var src=detail.source&&detail.source.id==='overridden'?'overridden':'inherited';
+    if(src==='overridden'){
+      return lang()==='en'?'Custom for this scenario':'本场景单独设置';
+    }
+    return lang()==='en'?'From universal settings':'来自通用设置';
+  }
+
+  function buildRuleRows(mapping,opts){
+    opts=opts||{};
+    if(!mapping||!mapping.id) return [];
+    var channel=String(opts.channel||'all').trim();
+    var rows=buildNoviceCards([mapping]).map(function(card){
+      var detail=card.detail||{};
+      var priority=detail.source&&detail.source.id==='overridden'?'overridden':'inherited';
+      return {
+        id:card.id,
+        channel:card.channel,
+        itemId:card.itemId,
+        scene:card.scene,
+        priority:priority,
+        txt:ruleRowText(card),
+        meta:ruleRowMeta(card),
+        enabled:detail.enabled!==false,
+        focus:detail.focus||'',
+        detail:detail
+      };
+    });
+    if(channel&&channel!=='all') rows=rows.filter(function(row){ return row.channel===channel; });
+    rows.sort(function(a,b){
+      if(a.priority===b.priority) return 0;
+      return a.priority==='overridden'?-1:1;
+    });
+    return rows;
+  }
+
+  function inheritSummary(mapping){
+    var rows=buildRuleRows(mapping,{channel:'all'});
+    var overrideCount=0,inheritedCount=0;
+    rows.forEach(function(row){
+      if(row.priority==='overridden') overrideCount++;
+      else inheritedCount++;
+    });
+    return {overrideCount:overrideCount,inheritedCount:inheritedCount,total:rows.length};
+  }
+
+  function channelVizHtml(channel,mapping){
+    channel=String(channel||'all').trim();
+    mapping=mapping||{};
+    if(channel==='all'){
+      return '<div class="habit-ws-viz-overview">'+CHANNELS.map(function(ch){
+        var rows=buildRuleRows(mapping,{channel:ch});
+        var ov=rows.filter(function(r){ return r.priority==='overridden'; }).length;
+        var label=ch==='softPad'?'Soft Pad':ch==='camera'?(lang()==='en'?'Camera':'摄像头'):ch==='voice'?(lang()==='en'?'Voice':'语音'):(lang()==='en'?'Keys':'按键');
+        return '<button type="button" class="habit-ws-viz-card" data-habit-channel="'+ch+'"><b>'+esc(label)+'</b><small>'+esc(String(rows.length))+(ov?(' · '+ov+(lang()==='en'?' custom':' 覆盖')):'')+'</small></button>';
+      }).join('')+'</div>';
+    }
+    if(channel==='key'){
+      var k=effectiveKey(mapping);
+      var keyLabel=esc(friendlyKey(k.triggerKey));
+      var tapLbl=esc(t('habitWsKeyTap','短按'));
+      var holdLbl=esc(t('habitWsKeyHold','长按'));
+      var tapAct=esc(t('habitWsKeyTapAction','开始输入'));
+      var holdAct=esc(t('habitWsKeyHoldAction','切换引擎'));
+      var svg='<svg class="habit-ws-viz-key-svg" viewBox="0 0 400 160" role="img" aria-label="'+keyLabel+'"><rect x="28" y="20" width="110" height="100" rx="14" fill="#222831" stroke="#39414d"/><text x="83" y="78" text-anchor="middle" font-size="30" font-weight="500" fill="#e7eaee" font-family="system-ui,sans-serif">'+keyLabel+'</text><circle cx="148" cy="45" r="3" fill="#2a9cc4"/><text x="164" y="42" font-size="12" fill="#2a9cc4" font-family="system-ui,sans-serif">'+tapLbl+' → '+tapAct+'</text><circle cx="148" cy="75" r="3" fill="#2a9cc4"/><text x="164" y="72" font-size="12" fill="#2a9cc4" font-family="system-ui,sans-serif">'+holdLbl+' → '+holdAct+'</text></svg>';
+      return '<div class="habit-ws-viz-key">'+svg+'<p>'+esc(t('habitWsKeyVizHint','短按开始输入 · 长按切换引擎'))+'</p></div>';
+    }
+    if(channel==='voice'){
+      var v=effectiveVoice(mapping);
+      var phrases=arr(v.wakePhrases).slice(0,4);
+      return '<div class="habit-ws-viz-voice"><div class="habit-ws-viz-chips">'+phrases.map(function(p){ return '<span class="habit-ws-viz-chip">'+esc(p)+'</span>'; }).join('')+(arr(v.wakePhrases).length>4?'<span class="habit-ws-viz-chip is-more">+'+(arr(v.wakePhrases).length-4)+'</span>':'')+'</div></div>';
+    }
+    if(channel==='camera'){
+      var lines=CAMERA_ITEMS.filter(function(item){
+        var cv=effectiveCamera(mapping,item);
+        return cv.enabled||cv.source==='overridden';
+      }).slice(0,4).map(function(item){
+        var cv=effectiveCamera(mapping,item);
+        return '<span>'+esc(itemLabel(item))+' → '+esc(valueText(cv.action))+'</span>';
+      });
+      return '<div class="habit-ws-viz-camera">'+lines.join('')+'</div>';
+    }
+    var pad=mapping.codexMicroPad&&typeof mapping.codexMicroPad==='object'?mapping.codexMicroPad:{};
+    var keys=arr(pad.keys);
+    return '<div class="habit-ws-viz-pad"><p>'+esc((pad.layoutProfile||'custom')+' · '+keys.length+(lang()==='en'?' keys':' 个键位'))+'</p></div>';
+  }
+
+  function inheritHintHtml(mapping){
+    var sum=inheritSummary(mapping);
+    if(!sum.overrideCount){
+      return '<div class="habit-novice-inherit-hint is-universal"><span>'+esc(t('habitNoviceInheritAll','完全沿用通用设置'))+'</span></div>';
+    }
+    return '<div class="habit-novice-inherit-hint"><span>'+esc(fmt(t('habitNoviceInheritPartial','沿用通用设置 · 本场景单独改了 {n} 项'),{n:sum.overrideCount}))+'</span><button type="button" class="habit-novice-inherit-link" data-habit-inherit-peek>'+esc(t('habitNoviceInheritPeek','看改了什么 →'))+'</button></div>';
+  }
+
+  function inheritChainHtml(mapping){
+    mapping=mapping||{};
+    var d=diff();
+    var baseline=d.findGlobalBaselineMapping?d.findGlobalBaselineMapping(cfg(),global.OneToneMappingCore):null;
+    if(!baseline||!mapping.id||baseline.id===mapping.id) return '';
+    if(d.isAppScenarioMapping&&!d.isAppScenarioMapping(mapping)) return '';
+    var baseSum=inheritSummary(baseline);
+    var sum=inheritSummary(mapping);
+    var baseNode='<div class="habit-ws-inherit-node"><div class="t">'+esc(sceneName(baseline))+'</div><div class="s">'+esc(fmt(t('habitWsInheritBaselineRules','{n} 条规则 · 全局默认'),{n:baseSum.total}))+'</div></div>';
+    var link='<div class="habit-ws-inherit-link" aria-hidden="true"><svg width="64" height="12" viewBox="0 0 64 12" fill="none"><path d="M0 6h54" stroke="currentColor"/><path d="M50 2l5 4-5 4" stroke="currentColor" fill="none"/></svg><span>'+esc(t('habitWsInheritLink','继承'))+'</span></div>';
+    var curSub=esc(fmt(t('habitWsInheritInheritedCount','{n} 条继承'),{n:sum.inheritedCount}));
+    if(sum.overrideCount) curSub+=' · <b class="habit-ws-inherit-ov">'+esc(fmt(t('habitWsInheritOverrideCount','{n} 项被覆盖'),{n:sum.overrideCount}))+'</b>';
+    var curNode='<div class="habit-ws-inherit-node is-current"><div class="t">'+esc(sceneName(mapping))+'</div><div class="s">'+curSub+'</div></div>';
+    return '<div class="habit-ws-inherit-chain" role="group" aria-label="'+esc(t('habitWsInheritChainLabel','继承关系'))+'">'+baseNode+link+curNode+'</div>';
+  }
+
   function buildNoviceCards(mappings){
     mappings=arr(mappings).filter(function(m){ return m&&m.id; });
     var cards=[];
@@ -503,6 +661,14 @@
     itemLabel:itemLabel,
     quickDetail:quickDetail,
     buildNoviceCards:buildNoviceCards,
+    buildRuleRows:buildRuleRows,
+    inheritSummary:inheritSummary,
+    channelVizHtml:channelVizHtml,
+    inheritHintHtml:inheritHintHtml,
+    inheritChainHtml:inheritChainHtml,
+    noviceDimToChannel:noviceDimToChannel,
+    channelToNoviceDim:channelToNoviceDim,
+    ruleRowText:ruleRowText,
     storyHtml:storyHtml,
     appListHtml:appListHtml,
     deleteMapping:deleteMapping,

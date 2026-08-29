@@ -30,6 +30,12 @@ const context={
     addEventListener(){}
   },
   OneToneI18n:{getLang:()=> 'zh',t:(k,fb)=>fb||k},
+  OneToneVoiceWake:{currentMode:()=> 'vosk'},
+  OneToneSceneConfig:{
+    globalWakePhrases:()=>['你好'],
+    globalEndPhrases:()=>({zh:['结束'],en:['done']}),
+    globalVoiceTargetKey:()=> 'RAlt'
+  },
   OneToneState:{
     state:{selectedMappingId:'app-1',config:{activeSceneId:'base',mappings:[
       {id:'base',group:'通用设置',enabled:true,triggerKey:'F8',targetKey:'RAlt',triggerMode:'tap',autoEnterEnabled:true,cancelEnabled:true},
@@ -40,15 +46,6 @@ const context={
   OneToneMappingCore:{byId(id){return context.OneToneState.state.config.mappings.find((m)=>m.id===id)||null;}},
   OneToneAppBehaviorRules:{appDisplayName:(id)=>id==='cursor-chat'?'Cursor':id},
   OneToneHabitProfile:{habitDisplayName:(m)=>m.group||m.id},
-  OneToneHabitOverrideDiff:{
-    isAppScenarioMapping:(m)=>!!m.appTargetId,
-    findGlobalBaselineMapping:(cfg)=>cfg.mappings[0],
-    getGlobalKeyBaseline:()=>({triggerKey:'F8',targetKey:'RAlt',triggerMode:'tap',autoEnterEnabled:true,cancelEnabled:true}),
-    getGlobalVoiceBaseline:()=>({targetKey:'RAlt',wakePhrases:['你好'],engine:'off',endPhrases:{zh:[],en:[]},cancelPhrases:{zh:[],en:[]},sendPhrases:{zh:[],en:[]}}),
-    getKeysAccessState:()=>({status:'inherited',overrideCount:0}),
-    getVoiceAccessState:()=>({status:'inherited',overrideCount:0}),
-    fieldKeyStatus:()=>'inherited',fieldVoiceStatus:()=>'inherited'
-  },
   OneToneAppTargetPresets:{presetById:()=>null},
   OneToneActionNav:{openChannelEditor:()=>{}}
 };
@@ -56,6 +53,7 @@ context.globalThis=context;
 vm.createContext(context);
 for(const file of [
   'src/js/core/habit-experience-prefs.js',
+  'src/js/core/habit-override-diff.js',
   'src/js/features/mapping/habit-shared.js',
   'src/js/features/mapping/habit-card-utils.js',
   'src/js/features/mapping/habit-novice-mode.js',
@@ -84,11 +82,16 @@ context.OneToneState.ui.habitExperienceMode='novice';
 Workspace.render();
 assert.match(host.innerHTML,/data-habit-mode="novice"/,'mode bar has novice');
 assert.match(host.innerHTML,/habit-novice-card/,'novice renders big cards');
+assert.match(host.innerHTML,/habit-novice-inherit-hint/,'novice renders inherit hint');
+assert.match(host.innerHTML,/habit-novice-viz/,'novice renders channel viz');
+assert.match(host.innerHTML,/habit-ws-viz-key-svg/,'novice key viz uses svg');
 
 const before=model.mapping.id;
 Workspace.switchMode('quick');
 assert.equal(context.OneToneState.state.selectedMappingId,before,'mode switch keeps selected mapping');
-assert.match(host.innerHTML,/habit-ws-answer/,'quick mode renders answer card');
+assert.match(host.innerHTML,/habit-ws-rules/,'quick mode renders rules list');
+assert.match(host.innerHTML,/habit-ws-inherit-chain/,'quick mode renders inherit chain');
+assert.match(host.innerHTML,/is-overridden/,'quick mode shows override tags');
 
 const demoSteps=context.OneToneHabitCardUtils.buildDemo({detail:{when:'F9',what:'test'}});
 assert.equal(demoSteps.length,2,'demo fallback never empty');
