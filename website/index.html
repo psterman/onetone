@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="css/home.css">
   <link rel="stylesheet" href="css/home-story.css">
   <link rel="stylesheet" href="css/ot-components.css">
+  <link rel="stylesheet" href="css/home-positioning-cards.css">
 
 </head>
 <body class="antialiased" data-page="home">
@@ -214,40 +215,117 @@
     <section id="sec-positioning" data-section="1">
       <div class="max-w-7xl mx-auto px-6 relative z-10">
         <div class="ot-section-head ot-section-head--large">
-          <p class="ot-section-eyebrow" data-i18n="posEyebrow">能帮你做什么</p>
+          <h2 class="ot-section-eyebrow" data-i18n="posEyebrow">"一声"能帮你做什么</h2>
+          <p class="ot-section-subtitle" data-i18n="posSubtitle">为生产力而生，更快更好更强</p>
         </div>
-        <div class="ot-value-grid">
-          <div class="ot-value-card ot-value-card--scene" data-scene="code">
-            <div class="ot-value-card-body">
-              <i class="ph ph-code" aria-hidden="true"></i>
-              <h3 data-i18n="posCodeTitle">写代码</h3>
-              <p data-i18n="posCodeDesc">Cursor 里不用打断思路</p>
+        <div class="ot-pos-grid">
+          <div class="ot-pos-card">
+            <div class="ot-pos-card-head">
+              <div class="ot-pos-card-icon"><i class="ph-bold ph-code" aria-hidden="true"></i></div>
+              <h3 data-i18n="posCodeTitle">沉浸式 Vibe Coding</h3>
             </div>
-            <div class="ot-value-scene ot-scene-code" aria-hidden="true"><span class="ot-scene-code-line">const btn = </span><span class="ot-scene-cursor">|</span></div>
+            <p class="ot-pos-card-desc" data-i18n="posCodeDesc">不打断心流，对着 IDE 边想边说，让 AI 为你敲下代码。</p>
+            <div class="ot-pos-demo ot-pos-demo--code" aria-hidden="true">
+              <div class="ot-pos-ide-bar">
+                <span class="ot-pos-dot ot-pos-dot--red"></span>
+                <span class="ot-pos-dot ot-pos-dot--yellow"></span>
+                <span class="ot-pos-dot ot-pos-dot--green"></span>
+                <span class="ot-pos-ide-file">App.tsx</span>
+              </div>
+              <div class="ot-pos-ide-body">
+                <div class="ot-pos-code-muted">export default function App() {</div>
+                <div class="ot-pos-code-muted ot-pos-code-indent">return (</div>
+                <div id="pos-c1-voice-bubble" class="ot-pos-voice-bubble">
+                  <i class="ph-fill ph-microphone" aria-hidden="true"></i>
+                  <span id="pos-c1-voice-text"></span>
+                </div>
+                <div class="ot-pos-code-indent ot-pos-code-line">
+                  <span id="pos-c1-ai-loading" class="ot-pos-ai-loading" hidden>
+                    <span></span><span></span><span></span>
+                  </span>
+                  <span id="pos-c1-code-text"></span><span id="pos-c1-cursor" class="ot-pos-cursor">|</span>
+                </div>
+                <div class="ot-pos-code-muted ot-pos-code-indent">);</div>
+                <div class="ot-pos-code-muted">}</div>
+              </div>
+            </div>
           </div>
-          <div class="ot-value-card ot-value-card--scene" data-scene="dictate">
-            <div class="ot-value-card-body">
-              <i class="ph ph-microphone" aria-hidden="true"></i>
-              <h3 data-i18n="posDictateTitle">快速口述</h3>
-              <p data-i18n="posDictateDesc">周报、灵感一键上屏</p>
+          <div class="ot-pos-card">
+            <div class="ot-pos-card-head">
+              <div class="ot-pos-card-icon"><i class="ph-bold ph-microphone-stage" aria-hidden="true"></i></div>
+              <h3 data-i18n="posDictateTitle">全局随叫随到</h3>
             </div>
-            <div class="ot-value-scene ot-scene-wave" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+            <p class="ot-pos-card-desc" data-i18n="posDictateDesc">按下鼠标侧键，无论在哪都能呼出语音条，文字极速上屏。</p>
+            <div class="ot-pos-demo ot-pos-demo--dictate" aria-hidden="true">
+              <div class="ot-pos-doc-skeleton">
+                <span></span><span></span><span></span>
+                <div class="ot-pos-doc-line">
+                  <span id="pos-c2-doc-text"></span>
+                  <span id="pos-c2-doc-cursor" class="ot-pos-doc-cursor"></span>
+                </div>
+              </div>
+              <div id="pos-c2-onetone-bar" class="ot-pos-voice-bar">
+                <span class="ot-pos-voice-bar-mic"><i class="ph-fill ph-microphone" aria-hidden="true"></i></span>
+                <div id="pos-c2-waveform" class="ot-pos-waveform">
+                  <span></span><span></span><span></span><span></span><span></span>
+                </div>
+                <span id="pos-c2-voice-text"></span>
+              </div>
+              <div id="pos-c2-hardware-click" class="ot-pos-hw-hint">
+                <i class="ph-fill ph-mouse" aria-hidden="true"></i>
+                <span>按住侧键说话</span>
+              </div>
+            </div>
           </div>
-          <div class="ot-value-card ot-value-card--scene" data-scene="chat">
-            <div class="ot-value-card-body">
-              <i class="ph ph-chat-circle" aria-hidden="true"></i>
-              <h3 data-i18n="posChatTitle">秒回消息</h3>
-              <p data-i18n="posChatDesc">聊天框直接说，不切窗口</p>
+          <div class="ot-pos-card">
+            <div class="ot-pos-card-head">
+              <div class="ot-pos-card-icon"><i class="ph-bold ph-chats-circle" aria-hidden="true"></i></div>
+              <h3 data-i18n="posChatTitle">自然穿梭对话</h3>
             </div>
-            <div class="ot-value-scene ot-scene-bubble" aria-hidden="true"><span class="ot-scene-bubble-pill">好的，马上改</span></div>
+            <p class="ot-pos-card-desc" data-i18n="posChatDesc">无需动手，在 AI 聊天框中直接讲话，沟通就像跟真人交流。</p>
+            <div class="ot-pos-demo ot-pos-demo--chat" aria-hidden="true">
+              <div class="ot-pos-chat-log">
+                <div class="ot-pos-chat-bubble ot-pos-chat-bubble--ai">这里是初步架构方案。</div>
+                <div id="pos-c3-user-msg" class="ot-pos-chat-bubble ot-pos-chat-bubble--user"></div>
+                <div id="pos-c3-ai-msg" class="ot-pos-chat-bubble ot-pos-chat-bubble--ai ot-pos-chat-bubble--reply">
+                  <i class="ph-fill ph-check-circle" aria-hidden="true"></i> 好的，马上调整
+                </div>
+              </div>
+              <div class="ot-pos-chat-input">
+                <i class="ph-bold ph-microphone ot-pos-chat-mic" id="pos-c3-mic-icon" aria-hidden="true"></i>
+                <span id="pos-c3-input-text">等待输入...</span>
+                <i class="ph-bold ph-paper-plane-right ot-pos-chat-send" id="pos-c3-send-icon" aria-hidden="true"></i>
+              </div>
+            </div>
           </div>
-          <div class="ot-value-card ot-value-card--scene" data-scene="agent">
-            <div class="ot-value-card-body">
-              <img src="assets/illustrations/mic-sketch.svg" alt="" width="32" height="40" style="margin-bottom:0.65rem">
-              <h3 data-i18n="posAgentTitle">控 AI</h3>
-              <p data-i18n="posAgentDesc">SoftPad 数字键喊停</p>
+          <div class="ot-pos-card">
+            <div class="ot-pos-card-head">
+              <div class="ot-pos-card-icon"><i class="ph-bold ph-webcam" aria-hidden="true"></i></div>
+              <h3 data-i18n="posAgentTitle">全局视觉隔空控</h3>
             </div>
-            <div class="ot-value-scene ot-scene-pad" aria-hidden="true"><span class="ot-scene-pad-key">5</span><span class="ot-scene-pad-key is-hot">8</span><span class="ot-scene-pad-key">Enter</span></div>
+            <p class="ot-pos-card-desc" data-i18n="posAgentDesc">无需满屏幕找按钮。靠在椅背上，一个抬手或眼神，瞬间中止 AI 冗长输出或全局控场。</p>
+            <div class="ot-pos-demo ot-pos-demo--vision" aria-hidden="true">
+              <div class="ot-pos-gen-panel">
+                <div class="ot-pos-gen-status">
+                  <i id="pos-c4-ai-status-icon" class="ph-bold ph-robot" aria-hidden="true"></i>
+                  <span id="pos-c4-ai-status-text">AI 正在生成深度报告...</span>
+                </div>
+                <div class="ot-pos-gen-lines">
+                  <span></span><span></span><span></span>
+                  <span id="pos-c4-generating-line" class="ot-pos-gen-progress"></span>
+                </div>
+                <div id="pos-c4-stop-overlay" class="ot-pos-stop-overlay">
+                  <span><i class="ph-bold ph-hand-palm" aria-hidden="true"></i> 强制中止</span>
+                </div>
+              </div>
+              <div id="pos-c4-camera-pip" class="ot-pos-camera-pip">
+                <span class="ot-pos-rec-dot"></span>
+                <div id="pos-c4-bounding-box" class="ot-pos-gesture-box">
+                  <i id="pos-c4-gesture-icon" class="ph-fill ph-user" aria-hidden="true"></i>
+                </div>
+                <span id="pos-c4-action-badge" class="ot-pos-action-badge">Stop</span>
+              </div>
+            </div>
           </div>
         </div>
         <h3 class="ot-section-title text-left" style="font-size:1.25rem;margin-bottom:1rem" data-i18n="userTableTitle">谁在用 OneTone？</h3>
@@ -681,6 +759,7 @@
   <script src="js/i18n-bundles/home.js"></script>
   <script src="js/i18n.js"></script>
 <script src="js/home-demo.js"></script>
+<script src="js/home-positioning-cards.js"></script>
 <script src="js/home-advanced-tabs.js"></script>
 <script src="js/home-gsap.js"></script>
 </body>
