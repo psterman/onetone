@@ -255,7 +255,7 @@
       };
     }
 
-    function updateStatusPanel(phase, text) {
+    function updateStatusPanel(phase, text, extra) {
       if (!dsPanel) return;
       if (phase === "idle") {
         if (dsCode) dsCode.textContent = "待机中";
@@ -272,15 +272,20 @@
       } else if (phase === "typing") {
         if (dsCode) dsCode.textContent = "正在上屏";
         if (dsDesc) dsDesc.textContent = "正在打出：「" + text + "」";
+      } else if (phase === "done") {
+        if (dsCode) dsCode.textContent = "已完成";
+        if (dsDesc) dsDesc.textContent = extra || "字已落到光标处。";
       }
     }
+
+    const opDemoResult = document.getElementById("opDemoResult");
 
     function renderScene(index) {
       const scene = opScenes[index % opScenes.length];
       const opAppName = document.getElementById("opAppName");
       const opSceneLabelText = document.getElementById("opSceneLabelText");
       const sceneIcon = document.getElementById("opSceneIcon");
-      if (opAppName) opAppName.textContent = scene.app;
+      if (opAppName) opAppName.textContent = scene.app === "Cursor" ? "Cursor — main.tsx" : scene.app;
       if (opSceneLabelText) opSceneLabelText.textContent = scene.label;
       if (sceneIcon) { sceneIcon.src = scene.icon; sceneIcon.alt = scene.label; }
       opAppBody.innerHTML = scene.render();
@@ -316,8 +321,10 @@
       currentIndex = index;
       const scene = renderScene(index);
       const typedText = scene.typed;
+      const startMs = Date.now();
       opStage.className = "op-demo-stage phase-idle";
       updateStatusPanel("idle");
+      if (opDemoResult) opDemoResult.classList.remove("is-visible");
 
       handles.setTimeout(function () {
         if (paused) return;
@@ -349,8 +356,15 @@
           } else {
             handles.clearInterval(typeInterval);
             opStage.className = "op-demo-stage phase-done";
+            const elapsed = ((Date.now() - startMs) / 1000).toFixed(1);
+            const resultText = "已上屏 " + typedText.length + " 字 · 用时 " + elapsed + " 秒";
+            updateStatusPanel("done", typedText, resultText);
+            if (opDemoResult) {
+              opDemoResult.textContent = resultText;
+              opDemoResult.classList.add("is-visible");
+            }
             if (index === 0) introDone = true;
-            handles.setTimeout(function () { startTimeline(index + 1); }, 3000);
+            handles.setTimeout(function () { startTimeline(index + 1); }, 2500);
           }
         }, 80);
       }, 4000);
@@ -418,8 +432,9 @@
       "说出口令，麦克风也会帮你开麦。",
     ];
     let flowIndex = 0;
+    let userPicked = false;
 
-    return createDemoHandle(async function (ctx) {
+    const demo = createDemoHandle(async function (ctx) {
       while (ctx.isActive()) {
         flowItems.forEach(function (item, i) {
           item.classList.toggle("is-active", i === flowIndex);
@@ -428,10 +443,30 @@
         if (flowStatus) flowStatus.textContent = statuses[flowIndex];
         if (flowResult) flowResult.textContent = results[flowIndex];
         ctx.beat();
+        if (userPicked) {
+          await ctx.sleep(999999);
+          break;
+        }
         flowIndex = (flowIndex + 1) % flowItems.length;
         await ctx.sleep(1800);
       }
     }, { restartOnPlay: false });
+
+    flowItems.forEach(function (item, i) {
+      item.addEventListener("click", function () {
+        userPicked = true;
+        flowIndex = i;
+        flowItems.forEach(function (el, j) {
+          el.classList.toggle("is-active", j === i);
+        });
+        if (flowCurrent) flowCurrent.textContent = item.querySelector("strong").textContent;
+        if (flowStatus) flowStatus.textContent = statuses[i];
+        if (flowResult) flowResult.textContent = results[i];
+        demo.pause();
+      });
+    });
+
+    return demo;
   }
 
   function initCameraTeaser(root) {
@@ -611,6 +646,9 @@
       visual.classList.toggle("is-mini", mini);
       if (pillFull) pillFull.classList.toggle("is-active", !mini);
       if (pillMini) pillMini.classList.toggle("is-active", mini);
+      root.querySelectorAll(".pad-teaser-copy-panel").forEach(function (p) {
+        p.classList.toggle("is-active", p.getAttribute("data-pad-copy") === (mini ? "mini" : "full"));
+      });
     }
 
     function setHot(i) {
@@ -668,13 +706,31 @@
   function boot() {
     heroController = initHero();
     const triggerRoot = document.getElementById("ch-trigger") || document.getElementById("sec-chain");
-    const cameraRoot = document.getElementById("ch-camera");
+    const cameraRoot = document.getElementById("ch-advanced") || document.getElementById("ch-camera");
     const voiceRoot = document.getElementById("ch-voice") || document.getElementById("sec-caps");
-    const padRoot = document.getElementById("ch-softpad");
+    const padRoot = document.getElementById("ch-advanced") || document.getElementById("ch-softpad");
     if (triggerRoot) demos.trigger = initTriggerDemo(triggerRoot);
     if (cameraRoot) demos.camera = initCameraTeaser(cameraRoot);
     if (voiceRoot) demos.voice = initVoiceDemo(voiceRoot);
     if (padRoot) demos.softpad = initSoftPadTeaser(padRoot);
+    if (document.getElementById("ch-advanced")) {
+      demos.advanced = {
+        play: function () {
+          if (demos.camera && demos.camera.play) demos.camera.play();
+          if (demos.softpad && demos.softpad.play) demos.softpad.play();
+        },
+        pause: function () {
+          if (demos.camera && demos.camera.pause) demos.camera.pause();
+          if (demos.softpad && demos.softpad.pause) demos.softpad.pause();
+        },
+        cancel: function () {
+          if (demos.camera && demos.camera.cancel) demos.camera.cancel();
+          if (demos.softpad && demos.softpad.cancel) demos.softpad.cancel();
+        },
+        isRunning: false,
+        onBeat: function () {},
+      };
+    }
     initTailReveal();
     document.dispatchEvent(new CustomEvent("onetone:home-demo-ready"));
   }

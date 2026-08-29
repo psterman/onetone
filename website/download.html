@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/shell.css?v=20260826h">
   <link rel="stylesheet" href="css/download.css">
+  <link rel="stylesheet" href="css/ot-components.css">
 </head>
 <body class="antialiased" data-page="download">
 <header class="site-header">
@@ -32,7 +33,7 @@
     </nav>
     <div class="site-header-actions">
       <button type="button" class="lang-toggle" id="langToggle" data-i18n="langToggle">EN</button>
-      <a class="nav-cta is-active" href="download.html">下载</a>
+      <a class="nav-cta is-active" href="download.html" data-nav="download" data-i18n="navDownload">下载</a>
       <button type="button" class="mobile-nav-toggle" id="mobileNavToggle" aria-label="菜单" aria-expanded="false">
         <i class="ph ph-list text-xl"></i>
       </button>
@@ -46,6 +47,18 @@
   <a href="download.html" data-nav="download" class="is-active" data-i18n="navDownload">下载</a>
 </div>
 <main class="dl-page">
+    <div class="max-w-6xl mx-auto px-6 pt-8">
+      <aside class="dl-fit-check" aria-label="适合我吗">
+        <h2 data-i18n="dlFitTitle">我适合用 OneTone 吗？</h2>
+        <ul>
+          <li data-i18n="dlFit1">已经在用 Cursor / Claude / Trae 等 Agent</li>
+          <li data-i18n="dlFit2">觉得打字跟不上思考</li>
+          <li data-i18n="dlFit3">手上经常有别的事（吃饭、抽烟、带孩子）</li>
+          <li data-i18n="dlFit4">麦克风已经能正常工作</li>
+        </ul>
+        <p data-i18n="dlFitVerdict">满足 3 条以上？装一个不会亏。</p>
+      </aside>
+    </div>
     <!-- Hero -->
     <section class="dl-hero max-w-6xl mx-auto px-6 pt-10 pb-12 md:pb-16">
       <div class="dl-hero-grid">
@@ -63,9 +76,13 @@
             <a id="downloadBtn" href="https://github.com/psterman/onetone/releases/latest" class="dl-primary-btn dl-download-link">
               <span class="dl-primary-btn-main">
                 <i class="ph-bold ph-download-simple"></i>
-                <span data-i18n="dlBtn">下载 Windows 安装包</span>
+                <span data-i18n="dlBtnSize">下载 Windows 安装包（~30 MB）</span>
               </span>
               <span class="dl-primary-btn-sub" id="dlFileName">OneTone_Setup_x64.exe</span>
+            </a>
+            <a href="quickstart.html#sec-try-top" class="dl-secondary-btn">
+              <span data-i18n="dlTryOnline">先在线体验一下</span>
+              <i class="ph-bold ph-microphone"></i>
             </a>
             <a href="quickstart.html" class="dl-secondary-btn">
               <span data-i18n="dlSeeQuickstart">查看上手</span>
@@ -254,6 +271,30 @@
           <li><i class="ph-fill ph-check-circle"></i><span data-i18n="dlFinalCheck2">开源可审计（v1.0.0 未签名）</span></li>
           <li><i class="ph-fill ph-check-circle"></i><span data-i18n="dlFinalCheck3">本地运行（隐私保障）</span></li>
           <li><i class="ph-fill ph-check-circle"></i><span data-i18n="dlFinalCheck4">持续更新</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="story-section" id="sec-updates">
+      <div class="max-w-3xl mx-auto px-6">
+        <p class="ot-section-eyebrow" data-i18n="updatesEyebrow">最近更新</p>
+        <h2 class="ot-section-title text-left" style="font-size:1.5rem;margin-bottom:1rem" data-i18n="updatesTitle">开发动态</h2>
+        <ul class="ot-updates-list">
+          <li>使用场景（config v6）：当前场景 activeSceneId、按场景语音覆盖</li>
+          <li>设置 → 使用场景（四 Tab）与全局语音分层</li>
+          <li>Coach HUD 场景按键提示；听写会话快照</li>
+        </ul>
+        <p class="ot-updates-more"><a href="changelog.html" data-i18n="updatesMore">查看完整更新日志 →</a></p>
+      </div>
+    </section>
+
+    <section id="sec-roadmap">
+      <div class="max-w-3xl mx-auto px-6 pb-8">
+        <h2 class="ot-section-title text-left" style="font-size:1.25rem" data-i18n="roadmapTitle">Roadmap 2026 H2</h2>
+        <ul class="ot-roadmap-list">
+          <li data-i18n="roadmapCamera">摄像头体态规划中</li>
+          <li data-i18n="roadmapMac">macOS 开发中</li>
+          <li data-i18n="roadmapAgent">Agent 路由下一版本</li>
         </ul>
       </div>
     </section>

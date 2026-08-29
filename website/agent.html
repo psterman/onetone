@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="css/shell.css?v=20260826h">
   <link rel="stylesheet" href="css/agent.css?v=20260826g">
   <link rel="stylesheet" href="css/site-scroll.css">
+  <link rel="stylesheet" href="css/ot-components.css">
 </head>
 <body class="antialiased" data-page="agent">
 <header class="site-header">
@@ -51,6 +52,18 @@
   
 
   <main>
+    <div class="max-w-6xl mx-auto px-6 qs-with-sidebar page-with-toc">
+    <aside class="qs-side-toc" aria-label="目录">
+      <p class="qs-side-toc-title" data-i18n="qsSideTocTitle">目录</p>
+      <nav>
+        <a href="#sec-hero" data-i18n="agentTocHero">SoftPad 开场</a>
+        <a href="#sec-voice" data-i18n="agentTocVoice">语音口令</a>
+        <a href="#sec-telemetry" data-i18n="agentTocTelemetry">Agent 状态</a>
+        <a href="#sec-numpad" data-i18n="agentTocNumpad">物理小键盘</a>
+        <a href="#sec-custom-keys" data-i18n="agentTocCustom">自定义键位</a>
+      </nav>
+    </aside>
+    <div class="qs-content">
     <div id="story-world" class="story-world" data-mood="pad">
     <!-- SECTION 1: HERO SECTION -->
     <section class="relative min-h-screen pt-24 pb-16 flex items-center justify-center overflow-hidden" id="sec-hero" data-mood="pad">
@@ -677,6 +690,8 @@
         </div>
       </div>
     </section>
+    </div>
+    </div>
     </div>
   </main>
 

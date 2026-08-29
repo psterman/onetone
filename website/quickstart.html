@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="css/qs-voice-hero.css">
   <link rel="stylesheet" href="css/onetone-voice-card.css">
   <link rel="stylesheet" href="css/site-scroll.css">
+  <link rel="stylesheet" href="css/ot-components.css">
 </head>
 <body class="antialiased" data-page="quickstart">
 <header class="site-header">
@@ -53,6 +54,7 @@
 <main>
 <div id="story-world" class="story-world" data-mood="light">
   <section id="qs-hero" class="qs-hero-wrapper is-visible" data-mode="keys" data-mood="light" aria-label="使用开场">
+    <span id="voice" class="block scroll-mt-28" aria-hidden="true"></span>
     <div class="spatial-grid-wrap" aria-hidden="true"><div class="spatial-grid"></div></div>
 
     <!-- 按键：神经网络 / 外设演示 -->
@@ -347,6 +349,24 @@
   </section>
 
   <section class="qs-steps-section" aria-label="上手步骤">
+  <div class="max-w-6xl mx-auto px-6 qs-with-sidebar">
+    <aside class="qs-side-toc" aria-label="目录">
+      <p class="qs-side-toc-title" data-i18n="qsSideTocTitle">目录</p>
+      <nav>
+        <a href="#voice" data-i18n="qsSideVoice">语音开场</a>
+        <a href="#qs-guide-video" data-i18n="qsSideGuideVideo">引导视频</a>
+        <a href="#step1" data-i18n="qsSideStep1">① 选个顺手的键</a>
+        <a href="#step2" data-i18n="qsSideStep2">② 接入你的语音输入</a>
+        <a href="#step3" data-i18n="qsSideStep3">③ 试完整链路</a>
+        <a href="#sec-try-top" data-i18n="qsSideTryDemo">在线体验</a>
+      </nav>
+      <p class="qs-side-toc-more">
+        <span data-i18n="qsSideMoreLabel">延伸阅读</span>
+        <a href="vision.html" data-i18n="navCamera">摄像头</a>
+        ·
+        <a href="agent.html" data-i18n="navSoftPad">SoftPad</a>
+      </p>
+    </aside>
   <div class="qs-content">
 
     <section id="step1" class="qs-zone qs-zone-blue scroll-mt-28" data-zone-color="blue" data-mood="light" data-scroll-reveal>
@@ -664,10 +684,40 @@
       </div>
     </section>
 
+    <section id="step3" class="qs-zone qs-zone-blue scroll-mt-28" data-zone-color="blue" data-mood="light" data-scroll-reveal>
+      <header class="qs-zone-head">
+        <h2 data-i18n="qsStep3Title">试完整链路</h2>
+        <p data-i18n="qsStep3Desc">打开记事本或聊天框，按下你的键，语音输入面板瞬间唤醒。</p>
+      </header>
+      <div class="qs-zone-card glass-card rounded-2xl p-6">
+        <div class="ot-shot-frame" data-i18n="shotPlaceholder">截图待补</div>
+        <p class="text-mac-textMuted mb-4" data-i18n="qsSuccessVerdict">看到语音输入条或麦克风图标，说明你已经从「想打」升级成「想说」了。</p>
+        <a href="download.html" class="ot-btn ot-btn--primary" data-i18n="otFinalCtaDownload">免费下载</a>
+      </div>
+    </section>
+
+    <section id="sec-try-top" class="qs-zone scroll-mt-28" data-scroll-reveal>
+      <header class="qs-zone-head text-center">
+        <p class="ot-section-eyebrow" data-i18n="tryTopEyebrow">在线体验</p>
+        <h2 data-i18n="tryDemoTitle">在线体验一下</h2>
+        <p data-i18n="tryDemoLead">按住说话，看看浏览器能不能听懂（完整能力请下载桌面版）</p>
+      </header>
+      <div class="ot-try-demo-box max-w-xl mx-auto">
+        <button type="button" class="ot-try-hold-btn" data-i18n="tryDemoBtn">按住说话</button>
+        <div class="ot-try-output" aria-live="polite"></div>
+        <p class="ot-try-disclaimer" data-i18n="tryDemoDisclaimer">浏览器演示，非完整 OneTone 能力；完整体验请下载</p>
+        <div class="ot-try-fallback" hidden>
+          <p data-i18n="tryDemoFallback">你的浏览器不支持 Web Speech，请看录屏或下载桌面版</p>
+          <video src="assets/videos/vibecoding-15s-hq.mp4" controls playsinline muted></video>
+        </div>
+      </div>
+    </section>
+
     <details class="glass-card rounded-2xl p-5 mb-8 mt-10">
       <summary class="font-semibold cursor-pointer" data-i18n="qsMoreExamples">更多输入法与手动录键</summary>
       <p class="mt-3 text-sm text-slate-500"><span data-i18n="qsMoreExamplesBody">不用预设？在软件里手动录任意输入法的语音激活键。</span> <a href="faq.html#baidu-ime" class="text-brand-600" data-i18n="qsMoreExamplesLink">常见问题里的输入法说明</a></p>
     </details>
+  </div>
   </div>
   </section>
 </div>
@@ -707,5 +757,6 @@
 <script src="js/i18n.js"></script>
 <script src="js/onetone-voice-card.js"></script>
 <script src="js/quickstart-demo.js"></script>
+<script src="js/web-try-demo.js"></script>
 </body>
 </html>

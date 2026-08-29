@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="js/theme-init.js"></script>
-  <title>一声 OneTone — 想什么，说一声</title>
-  <meta name="description" content="按一下侧键就能开麦。继续用你习惯的语音输入，在哪写就在哪说。Windows 10/11。">
+  <title>一声 OneTone — 不按键，开口就能开工</title>
+  <meta name="description" content="不按键，开口就能开工。免费开源，在 Cursor / Claude / Trae 里直接说。Windows 10/11。">
   <link rel="canonical" href="https://www.onetone.app/">
   <link rel="icon" href="assets/logo.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="css/shell.css?v=20260826h">
   <link rel="stylesheet" href="css/home.css">
   <link rel="stylesheet" href="css/home-story.css">
+  <link rel="stylesheet" href="css/ot-components.css">
 
 </head>
 <body class="antialiased" data-page="home">
@@ -49,16 +50,17 @@
 </div>
 <nav class="scroll-rail" aria-label="Scroll sections">
     <button type="button" class="rail-dot is-active" data-target="#sec-hero" aria-label="首屏"></button>
+    <button type="button" class="rail-dot" data-target="#sec-positioning" aria-label="定位"></button>
     <button type="button" class="rail-dot" data-target="#ch-trigger" aria-label="触发"></button>
     <button type="button" class="rail-dot" data-target="#ch-voice" aria-label="说话"></button>
-    <button type="button" class="rail-dot" data-target="#ch-softpad" aria-label="SoftPad"></button>
+    <button type="button" class="rail-dot" data-target="#ch-advanced" aria-label="进阶"></button>
     <button type="button" class="rail-dot" data-target="#sec-brands" aria-label="品牌墙"></button>
     <button type="button" class="rail-dot" data-target="#sec-quotes" aria-label="评价"></button>
-    <button type="button" class="rail-dot" data-target="#site-download-cta" aria-label="下载"></button>
+    <button type="button" class="rail-dot" data-target="#ot-final-cta" aria-label="CTA"></button>
   </nav>
 <main>
     <!-- =========================================
-         SECTION 1: HERO & 多设备演示
+         SECTION: HERO & 多设备演示
          ========================================= -->
     <section id="sec-hero" data-section="0">
       <div class="hero-exit-overlay" aria-hidden="true"></div>
@@ -68,26 +70,70 @@
       <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10 w-full">
         
         <!-- 左侧文案 -->
-        <div class="space-y-6">
-          <div class="inline-flex items-center gap-4 px-4 py-2 rounded-full mac-glass text-xs font-mono text-mac-textMuted mb-2">
+        <div class="space-y-6 hero-copy-col">
+          <div class="inline-flex flex-wrap items-center gap-3 px-4 py-2 rounded-full mac-glass text-xs font-mono text-mac-textMuted mb-2">
             <a href="download.html" class="flex items-center gap-2 text-white hover:text-mac-accent transition-colors no-underline">
               <i class="ph-fill ph-windows-logo" aria-hidden="true"></i>
               <span data-i18n="heroTrust">适用于 Windows 10 / 11</span>
             </a>
             <span class="w-1 h-1 bg-white/20 rounded-full"></span>
+            <span class="hero-pill-open flex items-center gap-2"><i class="ph-fill ph-git-branch"></i><span data-i18n="heroFreeOpen">免费 · 开源</span></span>
+            <span class="w-1 h-1 bg-white/20 rounded-full"></span>
             <span class="flex items-center gap-2 opacity-50"><i class="ph-fill ph-apple-logo"></i> macOS 开发中</span>
           </div>
-          <h1 class="text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-white m-0">一声</h1>
-          <div class="text-3xl md:text-4xl font-semibold mt-4 mb-6">
-            <span class="text-mac-accent block mb-3">想什么，说一声</span>
-            <p class="text-white/70 m-0 text-2xl md:text-3xl"><em id="heroRotate" class="not-italic text-mac-textMuted">Cursor 里直接说</em></p>
+          <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white m-0 leading-tight" data-i18n="heroH1">不按键，开口就能开工</h1>
+          <div class="text-xl md:text-2xl font-semibold">
+            <span class="text-mac-accent block mb-2" data-i18n="heroSub1">说一声，字自己蹦到光标那</span>
           </div>
-          <p class="text-lg text-mac-textMuted max-w-md leading-relaxed">按一下侧键就能开麦。Cursor、Claude、Trae……在哪写就在哪说，不用先找麦克风按钮。</p>
-          <div class="flex flex-wrap gap-3 pt-2">
+          <p class="text-sm text-mac-textMuted m-0" data-i18n="heroCompare">比传统输入法快 3 倍 · 0 学习成本</p>
+          <div class="flex flex-wrap gap-3 pt-1">
             <a href="download.html" class="nav-cta" data-i18n="navDownload">下载</a>
-            <a href="quickstart.html" class="text-sm font-medium text-mac-textMuted hover:text-white transition-colors inline-flex items-center gap-1">
+            <a href="quickstart.html" class="text-sm font-medium text-mac-textMuted hover:text-white transition-colors inline-flex items-center gap-1" data-i18n="ctaSeeHow">
               先看看怎么用 <i class="ph-bold ph-arrow-right"></i>
             </a>
+          </div>
+          <div class="hero-kpi-strip" aria-label="Key metrics">
+            <div class="hero-kpi-item"><strong data-i18n="heroKpi1Val">3 分钟</strong><span data-i18n="heroKpi1Label">从下载到说第一句话</span></div>
+            <div class="hero-kpi-item"><strong data-i18n="heroKpi2Val">1 个键</strong><span data-i18n="heroKpi2Label">接管任意语音输入法</span></div>
+            <div class="hero-kpi-item"><strong data-i18n="heroKpi3Val">11+</strong><span data-i18n="heroKpi3Label">已验证 Agent / IDE</span></div>
+            <div class="hero-kpi-item"><strong data-i18n="heroKpi4Val">~30 MB</strong><span data-i18n="heroKpi4Label">安装包 · 本地运行</span></div>
+          </div>
+          <div class="hero-trust-pills" aria-label="安全承诺">
+            <span class="hero-trust-pill"><i class="ph-fill ph-hard-drives" aria-hidden="true"></i><span data-i18n="trustLocal">数据本地保存</span></span>
+            <span class="hero-trust-pill"><i class="ph-fill ph-shield-check" aria-hidden="true"></i><span data-i18n="trustVoice">绝不偷听语音</span></span>
+            <span class="hero-trust-pill"><i class="ph-fill ph-microphone-slash" aria-hidden="true"></i><span data-i18n="trustMic">麦克风一键开关</span></span>
+            <span class="hero-trust-pill"><i class="ph-fill ph-camera" aria-hidden="true"></i><span data-i18n="trustCamera">摄像仅用于本地体态捕捉</span></span>
+          </div>
+          <div class="hero-brands-mini">
+            <p class="hero-brands-mini-label" data-i18n="heroBrandsMini">已在 11+ Agent / IDE 验证</p>
+            <div class="hero-brands-mini-track" aria-label="Supported agents">
+              <div class="hero-brands-mini-row">
+                <span class="hero-brand-mini-item"><img src="assets/brands/cursor.png" alt="Cursor" width="22" height="22"><span>Cursor</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/claude.png" alt="Claude" width="22" height="22"><span>Claude</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/chatgpt.png" alt="ChatGPT" width="22" height="22"><span>ChatGPT</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/trae.png" alt="Trae" width="22" height="22"><span>Trae</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/windsurf.png" alt="Windsurf" width="22" height="22"><span>Windsurf</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/copilot.png" alt="Copilot" width="22" height="22"><span>Copilot</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/workbuddy.png" alt="WorkBuddy" width="22" height="22"><span>WorkBuddy</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/gemini.png" alt="Gemini" width="22" height="22"><span>Gemini</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/qoder.png" alt="Qoder" width="22" height="22"><span>Qoder</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/cline.png" alt="Cline" width="22" height="22"><span>Cline</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/opencode.png" alt="OpenCode" width="22" height="22"><span>OpenCode</span></span>
+              </div>
+              <div class="hero-brands-mini-row" aria-hidden="true">
+                <span class="hero-brand-mini-item"><img src="assets/brands/cursor.png" alt="" width="22" height="22"><span>Cursor</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/claude.png" alt="" width="22" height="22"><span>Claude</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/chatgpt.png" alt="" width="22" height="22"><span>ChatGPT</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/trae.png" alt="" width="22" height="22"><span>Trae</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/windsurf.png" alt="" width="22" height="22"><span>Windsurf</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/copilot.png" alt="" width="22" height="22"><span>Copilot</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/workbuddy.png" alt="" width="22" height="22"><span>WorkBuddy</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/gemini.png" alt="" width="22" height="22"><span>Gemini</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/qoder.png" alt="" width="22" height="22"><span>Qoder</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/cline.png" alt="" width="22" height="22"><span>Cline</span></span>
+                <span class="hero-brand-mini-item"><img src="assets/brands/opencode.png" alt="" width="22" height="22"><span>OpenCode</span></span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -132,6 +178,7 @@
                 <span class="op-press-ring"></span>
               </div>
             </div>
+            <div class="op-demo-result" id="opDemoResult" aria-live="polite"></div>
           </div>
 
           <!-- 右侧独立终端状态面板 -->
@@ -146,8 +193,74 @@
       </div>
     </section>
 
+    <!-- POSITIONING -->
+    <section id="sec-positioning" data-section="1">
+      <div class="max-w-7xl mx-auto px-6 relative z-10">
+        <div class="ot-section-head ot-section-head--large">
+          <p class="ot-section-eyebrow" data-i18n="posEyebrow">能帮你做什么</p>
+        </div>
+        <div class="ot-value-grid">
+          <div class="ot-value-card ot-value-card--scene" data-scene="code">
+            <div class="ot-value-card-body">
+              <i class="ph ph-code" aria-hidden="true"></i>
+              <h3 data-i18n="posCodeTitle">写代码</h3>
+              <p data-i18n="posCodeDesc">Cursor 里不用打断思路</p>
+            </div>
+            <div class="ot-value-scene ot-scene-code" aria-hidden="true"><span class="ot-scene-code-line">const btn = </span><span class="ot-scene-cursor">|</span></div>
+          </div>
+          <div class="ot-value-card ot-value-card--scene" data-scene="dictate">
+            <div class="ot-value-card-body">
+              <i class="ph ph-microphone" aria-hidden="true"></i>
+              <h3 data-i18n="posDictateTitle">快速口述</h3>
+              <p data-i18n="posDictateDesc">周报、灵感一键上屏</p>
+            </div>
+            <div class="ot-value-scene ot-scene-wave" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+          </div>
+          <div class="ot-value-card ot-value-card--scene" data-scene="chat">
+            <div class="ot-value-card-body">
+              <i class="ph ph-chat-circle" aria-hidden="true"></i>
+              <h3 data-i18n="posChatTitle">秒回消息</h3>
+              <p data-i18n="posChatDesc">聊天框直接说，不切窗口</p>
+            </div>
+            <div class="ot-value-scene ot-scene-bubble" aria-hidden="true"><span class="ot-scene-bubble-pill">好的，马上改</span></div>
+          </div>
+          <div class="ot-value-card ot-value-card--scene" data-scene="agent">
+            <div class="ot-value-card-body">
+              <img src="assets/illustrations/mic-sketch.svg" alt="" width="32" height="40" style="margin-bottom:0.65rem">
+              <h3 data-i18n="posAgentTitle">控 AI</h3>
+              <p data-i18n="posAgentDesc">SoftPad 数字键喊停</p>
+            </div>
+            <div class="ot-value-scene ot-scene-pad" aria-hidden="true"><span class="ot-scene-pad-key">5</span><span class="ot-scene-pad-key is-hot">8</span><span class="ot-scene-pad-key">Enter</span></div>
+          </div>
+        </div>
+        <h3 class="ot-section-title text-left" style="font-size:1.25rem;margin-bottom:1rem" data-i18n="userTableTitle">谁在用 OneTone？</h3>
+        <div class="ot-user-table-wrap">
+          <table class="ot-user-table">
+            <thead><tr><th data-i18n="userTableCol1">我是…</th><th data-i18n="userTableCol2">我用它做什么</th></tr></thead>
+            <tbody>
+              <tr><td data-i18n="userRow1a">Cursor / Claude 重度用户</td><td data-i18n="userRow1b">写代码时边想边说</td></tr>
+              <tr><td data-i18n="userRow2a">文字工作者 / 写作者</td><td data-i18n="userRow2b">写稿脑子比手快</td></tr>
+              <tr><td data-i18n="userRow3a">直播 / 录视频</td><td data-i18n="userRow3b">对话框直接上屏</td></tr>
+              <tr><td data-i18n="userRow4a">行动不便 / 不想打字</td><td data-i18n="userRow4b">戒指、摄像头、麦克风都能开</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="ot-persona-row">
+          <a class="ot-persona-card" href="agent.html"><strong data-i18n="personaAgent">为 AI 控</strong><span data-i18n="personaAgentDesc">提供虚拟键盘，你的 AI 副屏小帮手</span></a>
+          <a class="ot-persona-card" href="quickstart.html#step1"><strong data-i18n="personaDev">为独立开发者</strong><span data-i18n="personaDevDesc">手势/语音/眼神都能开启输入</span></a>
+          <a class="ot-persona-card" href="quickstart.html#voice"><strong data-i18n="personaViber">为脑力工作者</strong><span data-i18n="personaViberDesc">帮助 AI 更快起跑，定制更完善的工作流</span></a>
+        </div>
+        <div class="ot-jump-grid">
+          <a class="ot-jump-card" href="quickstart.html#step1"><strong data-i18n="jumpNew">我是新手</strong><span data-i18n="jumpNewDesc">上手指南</span></a>
+          <a class="ot-jump-card" href="vision.html"><strong data-i18n="jumpCamera">我想接摄像头</strong><span data-i18n="jumpCameraDesc">摄像头玩法</span></a>
+          <a class="ot-jump-card" href="agent.html"><strong data-i18n="jumpSoftpad">我想用 SoftPad</strong><span data-i18n="jumpSoftpadDesc">SoftPad 玩法</span></a>
+          <a class="ot-jump-card" href="faq.html"><strong data-i18n="jumpFaq">我有兼容问题</strong><span data-i18n="jumpFaqDesc">帮助中心</span></a>
+        </div>
+      </div>
+    </section>
+
     <div id="story-world" class="story-world" data-mood="light">
-      <div class="story-chapter-counter" aria-live="polite"><span data-i18n="homeStoryCounter1">01 / 04</span></div>
+      <div class="story-chapter-counter" aria-live="polite"><span data-i18n="homeStoryCounter1">01 / 03</span></div>
 
       <section class="story-chapter" id="ch-trigger" data-chapter="trigger" data-mood="light" data-section="1">
         <div class="story-bridge story-bridge-in" id="bridge-hero" data-bridge="hero" aria-hidden="true">
@@ -156,11 +269,12 @@
         <div class="camera-rig">
           <div class="camera-rig-lens chapter-layout--below">
           <div class="chapter-copy">
-            <span class="scenario-pill" data-i18n="homeChTriggerScenario">你在 Cursor 里改 UI</span>
-            <p class="chapter-eyebrow" data-i18n="homeChTriggerEyebrow">怎么开麦</p>
+            <span class="scenario-pill" data-i18n="homeChTriggerScenario">开工第一步</span>
             <h2 class="chapter-question" data-i18n="homeChTriggerQ">我怎么开麦？</h2>
             <p class="chapter-answer" data-i18n="homeChTriggerA">绑一次外设，到处能说。侧键、手柄、戒指——顺手的动作就是你的开麦键。</p>
+            <p class="chapter-aside" data-i18n="homeChTriggerAside">比找按钮快 4 倍，省下的时间够摸鱼</p>
             <a class="chapter-chip chapter-chip--keys" href="keys.html"><i class="ph ph-keyboard" aria-hidden="true"></i><span data-i18n="homeChTriggerKeys">绑定按键</span></a>
+            <p class="chapter-cta-line" data-i18n-html="chapterCtaLine">装好就能试 → <a href="download.html">下载（约 30 MB）</a></p>
           </div>
           <div class="chapter-demo-wrap">
             <div class="chapter-demo chapter-demo--trigger mac-glass command-window">
@@ -200,64 +314,11 @@
                 </div>
               </aside>
             </div>
-            <p class="outcome-caption" data-i18n="homeChTriggerOutcome">按下后，语音输入自己弹出来。</p>
+            <p class="outcome-caption-wrap"><span class="outcome-caption" data-i18n="homeChTriggerOutcome">按下后，语音输入自己弹出来。</span><a class="outcome-try-link" href="download.html" data-i18n="outcomeTry">去试试 →</a></p>
           </div>
           </div>
         </div>
-        <div class="story-bridge story-bridge-out" id="bridge-trigger-camera" data-bridge="trigger-camera" aria-hidden="true">
-          <p class="story-bridge__line" data-i18n="homeBridgeTriggerCamera">手不方便？镜头也能听你</p>
-        </div>
-      </section>
-
-      <section class="story-chapter" id="ch-camera" data-chapter="camera" data-mood="light" data-section="2">
-        <div class="camera-rig">
-          <div class="camera-rig-lens chapter-layout--split">
-          <div class="chapter-copy">
-            <span class="scenario-pill" data-i18n="homeChCameraScenario">手离开键盘的时候</span>
-            <p class="chapter-eyebrow" data-i18n="homeChCameraEyebrow">体态也能开麦</p>
-            <h2 class="chapter-question" data-i18n="homeChCameraQ">摄像头也能开麦？</h2>
-            <p class="chapter-answer" data-i18n="homeChCameraA">眨眼、摇头、举手——小动作接到开麦、取消、暂停。镜头当外设，不抢你的手。</p>
-            <a class="chapter-chip" href="vision.html"><i class="ph ph-camera" aria-hidden="true"></i><span data-i18n="homeChCameraLink">了解摄像头</span></a>
-          </div>
-          <div class="chapter-demo-wrap">
-            <article class="chapter-demo chapter-demo--camera" id="home-camera-teaser" aria-label="摄像头体态演示">
-              <header class="hct-card-head">
-                <p class="hct-eyebrow" data-i18n="homeChCameraCardEyebrow">体态也能开麦</p>
-                <div class="hct-status">
-                  <span class="hct-dot is-idle" id="hct-dot" aria-hidden="true"></span>
-                  <span data-i18n="navCamera">摄像头</span>
-                </div>
-              </header>
-              <div class="hct-stage state-idle" id="hct-stage">
-                <div class="hct-viewfinder">
-                  <div class="hct-corner tl"></div>
-                  <div class="hct-corner tr"></div>
-                  <div class="hct-corner bl"></div>
-                  <div class="hct-corner br"></div>
-                  <div class="hct-scanline" aria-hidden="true"></div>
-                  <div class="hct-label" id="hct-label">SEARCHING</div>
-                  <i class="ph ph-scan hct-target" id="hct-icon" aria-hidden="true"></i>
-                </div>
-                <div class="hct-shield" aria-hidden="true">
-                  <i class="ph-fill ph-lock-key"></i>
-                  <span>SECURED</span>
-                </div>
-              </div>
-              <div class="hct-meta">
-                <p class="hct-code" id="hct-code" data-i18n="homeChCameraIdleCode">看着你呢</p>
-                <p class="hct-desc" id="hct-desc" data-i18n="homeChCameraIdleDesc">做个小动作试试看…</p>
-                <div class="hct-modes" aria-label="联动模式">
-                  <span class="hct-mode" data-hct-mode="voice" data-i18n="navVoice">语音</span>
-                  <span class="hct-mode" data-hct-mode="keys" data-i18n="homeChCameraModeKeys">按键态</span>
-                  <span class="hct-mode" data-hct-mode="softpad" data-i18n="navSoftPad">SoftPad</span>
-                </div>
-              </div>
-            </article>
-            <p class="outcome-caption" data-i18n="homeChCameraOutcome">小动作变成快捷键，接到你正在用的模式。</p>
-          </div>
-          </div>
-        </div>
-        <div class="story-bridge story-bridge-out" id="bridge-camera-voice" data-bridge="camera-voice" aria-hidden="true">
+        <div class="story-bridge story-bridge-out" id="bridge-trigger-voice" data-bridge="trigger-voice" aria-hidden="true">
           <p class="story-bridge__line" data-i18n="homeBridgeCameraVoice">说了，字得自己跟上来</p>
         </div>
       </section>
@@ -270,7 +331,9 @@
             <p class="chapter-eyebrow" data-i18n="homeChVoiceEyebrow">说着更顺</p>
             <h2 class="chapter-question" data-i18n="homeChVoiceQ">说了，字会跟上吗？</h2>
             <p class="chapter-answer" data-i18n="homeChVoiceA">好的语音输入不该让你先停下来找按钮。念句口令也能开麦，字落到光标那。</p>
+            <p class="chapter-aside" data-i18n="homeChVoiceAside">脑子里的吐槽、还没写的周报、凌晨三点灵感 — 一句话全给你上屏</p>
             <a class="chapter-chip" href="quickstart.html#voice"><i class="ph ph-microphone" aria-hidden="true"></i><span data-i18n="homeChVoiceLink">语音上手</span></a>
+            <p class="chapter-cta-line" data-i18n-html="chapterCtaLine">装好就能试 → <a href="download.html">下载（约 30 MB）</a></p>
           </div>
           <div class="chapter-demo-wrap">
             <div class="chapter-demo chapter-demo--voice mac-glass">
@@ -281,7 +344,7 @@
                   <div class="op-mic-waves ml-auto" id="ime-waves-1" style="opacity: 0;"><span></span><span></span><span></span><span></span><span></span></div>
                 </div>
                 <div class="home-ime-editor">
-                  <div class="text-xs text-white/30 mb-2 border-b border-white/10 pb-2">Target App Editor</div>
+                  <div class="text-xs text-white/30 mb-2 border-b border-white/10 pb-2">Cursor — main.tsx</div>
                   <p class="text-white/90"><span id="ime-typed-1"></span><span class="op-caret" id="ime-caret-1" style="display:none;"></span></p>
                 </div>
                 <div class="home-ime-cancel-chip" id="ime-cancel-chip" aria-hidden="true">
@@ -290,75 +353,133 @@
                 </div>
               </div>
             </div>
-            <p class="outcome-caption" data-i18n="homeChVoiceOutcome">Esc 取消，错字清掉重来。</p>
+            <p class="outcome-caption-wrap"><span class="outcome-caption" data-i18n="homeChVoiceOutcome">Esc 取消，错字清掉重来。</span><a class="outcome-try-link" href="quickstart.html#voice" data-i18n="outcomeTry">去试试 →</a></p>
           </div>
           </div>
         </div>
-        <div class="story-bridge story-bridge-out" id="bridge-voice-pad" data-bridge="voice-pad" aria-hidden="true">
-          <p class="story-bridge__line" data-i18n="homeBridgeVoicePad">字飞起来了，但有时你想叫它停</p>
+        <div class="story-bridge story-bridge-out" id="bridge-voice-advanced" data-bridge="voice-advanced" aria-hidden="true">
+          <p class="story-bridge__line" data-i18n="homeBridgeTriggerCamera">手不方便？镜头也能听你</p>
         </div>
       </section>
 
-      <section class="story-chapter" id="ch-softpad" data-chapter="softpad" data-mood="pad" data-section="4">
+      <section class="story-chapter" id="ch-advanced" data-chapter="advanced" data-mood="pad" data-section="4">
         <div class="camera-rig">
           <div class="camera-rig-lens chapter-layout--split-reverse">
           <div class="chapter-copy">
             <span class="scenario-pill" data-i18n="homeChSoftpadScenario">需要控 Agent 时</span>
-            <p class="chapter-eyebrow" data-i18n="homeChSoftpadEyebrow">SoftPad</p>
-            <h2 class="chapter-question" data-i18n="homeChSoftpadQ">有时你想叫它停？</h2>
-            <p class="chapter-answer" data-i18n="homeChSoftpadA">屏幕上的小键盘，可展开、可收成迷你栏。数字键一对一联动你的 Agent。</p>
-            <a class="chapter-chip" href="agent.html"><i class="ph ph-squares-four" aria-hidden="true"></i><span data-i18n="homeChSoftpadLink">了解 SoftPad</span></a>
+            <p class="chapter-eyebrow" data-i18n="homeChAdvancedEyebrow">进阶玩法</p>
+            <h2 class="chapter-question" data-i18n="homeChAdvancedQ">手不方便？还有进阶玩法</h2>
+            <p class="chapter-answer" data-i18n="homeChAdvancedA">摄像头体态和 SoftPad 都能接到你正在用的模式。</p>
+            <p class="chapter-cta-line" data-i18n-html="chapterCtaLine">装好就能试 → <a href="download.html">下载（约 30 MB）</a></p>
           </div>
           <div class="chapter-demo-wrap">
-            <div class="chapter-demo chapter-demo--softpad">
-              <div class="pad-teaser-shell">
-                <div class="pad-teaser-bar">
-                  <span id="pad-teaser-full" class="is-active">虚拟键盘</span>
-                  <span id="pad-teaser-mini">迷你栏</span>
+            <div class="ch-advanced-tabs" role="tablist">
+              <button type="button" class="ch-advanced-tab is-active" data-tab="camera" role="tab" data-i18n="homeChAdvancedTabCamera">摄像头</button>
+              <button type="button" class="ch-advanced-tab" data-tab="softpad" role="tab" data-i18n="homeChAdvancedTabSoftpad">SoftPad</button>
+            </div>
+            <div class="ch-advanced-panel is-active" data-panel="camera">
+              <article class="chapter-demo chapter-demo--camera" id="home-camera-teaser" aria-label="摄像头体态演示">
+                <header class="hct-card-head">
+                  <p class="hct-eyebrow" data-i18n="homeChCameraCardEyebrow">体态也能开麦</p>
+                  <div class="hct-status">
+                    <span class="hct-dot is-idle" id="hct-dot" aria-hidden="true"></span>
+                    <span data-i18n="navCamera">摄像头</span>
+                  </div>
+                </header>
+                <div class="hct-stage state-idle" id="hct-stage">
+                  <div class="hct-viewfinder">
+                    <div class="hct-corner tl"></div>
+                    <div class="hct-corner tr"></div>
+                    <div class="hct-corner bl"></div>
+                    <div class="hct-corner br"></div>
+                    <div class="hct-scanline" aria-hidden="true"></div>
+                    <div class="hct-label" id="hct-label">SEARCHING</div>
+                    <i class="ph ph-scan hct-target" id="hct-icon" aria-hidden="true"></i>
+                  </div>
+                  <div class="hct-shield" aria-hidden="true">
+                    <i class="ph-fill ph-lock-key"></i>
+                    <span>SECURED</span>
+                  </div>
                 </div>
-                <div class="pad-teaser-visual" id="pad-teaser-visual">
-                  <div class="pad-teaser-face pad-teaser-face--full">
-                    <div class="pad-teaser-keys" aria-hidden="true">
-                      <div class="pad-teaser-key"><i class="ph-bold ph-power"></i><span class="pad-teaser-cap">NLock</span></div>
-                      <div class="pad-teaser-key"><i class="ph-bold ph-lightning"></i><span class="pad-teaser-cap">/</span></div>
-                      <div class="pad-teaser-key"><i class="ph-bold ph-sidebar-simple"></i><span class="pad-teaser-cap">*</span></div>
-                      <div class="pad-teaser-key"><i class="ph-bold ph-x-circle"></i><span class="pad-teaser-cap">−</span></div>
-
-                      <div class="pad-teaser-key is-glow-mint" data-pad-hot><i class="ph-bold ph-list"></i><span class="pad-teaser-cap">7</span></div>
-                      <div class="pad-teaser-key is-glow-orange" data-pad-hot><i class="ph-bold ph-arrow-counter-clockwise"></i><span class="pad-teaser-cap">8</span></div>
-                      <div class="pad-teaser-key"><i class="ph-bold ph-lightning"></i><span class="pad-teaser-cap">9</span></div>
-                      <div class="pad-teaser-key pad-teaser-tall"><i class="ph-bold ph-plus"></i><span class="pad-teaser-cap">+</span></div>
-
-                      <div class="pad-teaser-key"><i class="ph-bold ph-magnifying-glass"></i><span class="pad-teaser-cap">4</span></div>
-                      <div class="pad-teaser-key is-glow-pink is-hot" data-pad-hot><i class="ph-bold ph-arrow-right"></i><span class="pad-teaser-cap">5</span></div>
-                      <div class="pad-teaser-key is-glow-blue" data-pad-hot><i class="ph-bold ph-x"></i><span class="pad-teaser-cap">6</span></div>
-
-                      <div class="pad-teaser-key"><i class="ph-bold ph-arrow-u-up-left"></i><span class="pad-teaser-cap">1</span></div>
-                      <div class="pad-teaser-key"><i class="ph-bold ph-arrow-left"></i><span class="pad-teaser-cap">2</span></div>
-                      <div class="pad-teaser-key"><i class="ph-bold ph-magnifying-glass"></i><span class="pad-teaser-cap">3</span></div>
-                      <div class="pad-teaser-key pad-teaser-tall"><i class="ph-bold ph-arrow-elbow-down-left"></i><span class="pad-teaser-cap">Enter</span></div>
-
-                      <div class="pad-teaser-key pad-teaser-wide" data-pad-hot><i class="ph-bold ph-microphone"></i><span class="pad-teaser-cap">0</span></div>
-                      <div class="pad-teaser-key"><i class="ph-bold ph-target"></i><span class="pad-teaser-cap">.</span></div>
+                <div class="hct-meta">
+                  <p class="hct-code" id="hct-code" data-i18n="homeChCameraIdleCode">看着你呢</p>
+                  <p class="hct-desc" id="hct-desc" data-i18n="homeChCameraIdleDesc">做个小动作试试看…</p>
+                  <div class="hct-modes" aria-label="联动模式">
+                    <span class="hct-mode" data-hct-mode="voice" data-i18n="navVoice">语音</span>
+                    <span class="hct-mode" data-hct-mode="keys" data-i18n="homeChCameraModeKeys">按键态</span>
+                    <span class="hct-mode" data-hct-mode="softpad" data-i18n="navSoftPad">SoftPad</span>
+                  </div>
+                </div>
+              </article>
+              <p class="outcome-caption-wrap"><span class="outcome-caption" data-i18n="homeChCameraOutcome">小动作变成快捷键，接到你正在用的模式。</span><a class="outcome-try-link" href="vision.html" data-i18n="outcomeTry">去试试 →</a></p>
+            </div>
+            <div class="ch-advanced-panel" data-panel="softpad">
+              <div class="chapter-demo chapter-demo--softpad">
+                <div class="pad-teaser-shell">
+                  <div class="pad-teaser-bar" role="tablist">
+                    <button type="button" id="pad-teaser-full" class="is-active" role="tab" data-pad-mode="full" data-i18n="padTeaserFull">虚拟键盘</button>
+                    <button type="button" id="pad-teaser-mini" role="tab" data-pad-mode="mini" data-i18n="padTeaserMini">迷你栏</button>
+                  </div>
+                  <div class="pad-teaser-visual" id="pad-teaser-visual">
+                    <div class="pad-teaser-face pad-teaser-face--full">
+                      <div class="pad-teaser-keys" aria-hidden="true">
+                        <div class="pad-teaser-key"><i class="ph-bold ph-power"></i><span class="pad-teaser-cap">NLock</span></div>
+                        <div class="pad-teaser-key"><i class="ph-bold ph-lightning"></i><span class="pad-teaser-cap">/</span></div>
+                        <div class="pad-teaser-key"><i class="ph-bold ph-sidebar-simple"></i><span class="pad-teaser-cap">*</span></div>
+                        <div class="pad-teaser-key"><i class="ph-bold ph-x-circle"></i><span class="pad-teaser-cap">−</span></div>
+                        <div class="pad-teaser-key is-glow-mint" data-pad-hot><i class="ph-bold ph-list"></i><span class="pad-teaser-cap">7</span></div>
+                        <div class="pad-teaser-key is-glow-orange" data-pad-hot><i class="ph-bold ph-arrow-counter-clockwise"></i><span class="pad-teaser-cap">8</span></div>
+                        <div class="pad-teaser-key"><i class="ph-bold ph-lightning"></i><span class="pad-teaser-cap">9</span></div>
+                        <div class="pad-teaser-key pad-teaser-tall"><i class="ph-bold ph-plus"></i><span class="pad-teaser-cap">+</span></div>
+                        <div class="pad-teaser-key"><i class="ph-bold ph-magnifying-glass"></i><span class="pad-teaser-cap">4</span></div>
+                        <div class="pad-teaser-key is-glow-pink is-hot" data-pad-hot><i class="ph-bold ph-arrow-right"></i><span class="pad-teaser-cap">5</span></div>
+                        <div class="pad-teaser-key is-glow-blue" data-pad-hot><i class="ph-bold ph-x"></i><span class="pad-teaser-cap">6</span></div>
+                        <div class="pad-teaser-key"><i class="ph-bold ph-arrow-u-up-left"></i><span class="pad-teaser-cap">1</span></div>
+                        <div class="pad-teaser-key"><i class="ph-bold ph-arrow-left"></i><span class="pad-teaser-cap">2</span></div>
+                        <div class="pad-teaser-key"><i class="ph-bold ph-magnifying-glass"></i><span class="pad-teaser-cap">3</span></div>
+                        <div class="pad-teaser-key pad-teaser-tall"><i class="ph-bold ph-arrow-elbow-down-left"></i><span class="pad-teaser-cap">Enter</span></div>
+                        <div class="pad-teaser-key pad-teaser-wide" data-pad-hot><i class="ph-bold ph-microphone"></i><span class="pad-teaser-cap">0</span></div>
+                        <div class="pad-teaser-key"><i class="ph-bold ph-target"></i><span class="pad-teaser-cap">.</span></div>
+                      </div>
+                      <div class="pad-teaser-foot">
+                        <span class="pad-teaser-foot-dot" aria-hidden="true"></span>
+                        <span>Cursor · SoftPad</span>
+                      </div>
                     </div>
-                    <div class="pad-teaser-foot">
-                      <span class="pad-teaser-foot-dot" aria-hidden="true"></span>
-                      <span>Cursor · SoftPad</span>
+                    <div class="pad-teaser-face pad-teaser-face--mini" aria-hidden="true">
+                      <span class="pad-teaser-mini-apps">
+                        <i class="ph-fill ph-robot"></i>
+                        <i class="ph-fill ph-code"></i>
+                        <i class="ph-fill ph-cursor"></i>
+                      </span>
+                      <span class="pad-teaser-mini-label">Codex · Claude · Cursor</span>
+                      <span class="pad-teaser-mini-mic"><i class="ph-fill ph-microphone"></i></span>
                     </div>
                   </div>
-                  <div class="pad-teaser-face pad-teaser-face--mini" aria-hidden="true">
-                    <span class="pad-teaser-mini-apps">
-                      <i class="ph-fill ph-robot"></i>
-                      <i class="ph-fill ph-code"></i>
-                      <i class="ph-fill ph-cursor"></i>
-                    </span>
-                    <span class="pad-teaser-mini-label">Codex · Claude · Cursor</span>
-                    <span class="pad-teaser-mini-mic"><i class="ph-fill ph-microphone"></i></span>
+                </div>
+                <div class="pad-teaser-copy" id="pad-teaser-copy">
+                  <div class="pad-teaser-copy-panel is-active" data-pad-copy="full">
+                    <p data-i18n="padCopyFullLead">虚拟键盘是你的 AI 副屏小帮手</p>
+                    <ul class="pad-teaser-features">
+                      <li data-i18n="padCopyFull1">副屏能力：第二屏操控 Agent，主屏继续写代码</li>
+                      <li data-i18n="padCopyFull2">快速口令：数字键一键继续、撤销、切换模式</li>
+                      <li data-i18n="padCopyFull3">查看额度：剩余 Token / 请求次数实时显示</li>
+                      <li data-i18n="padCopyFull4">Agent 状态：当前 Agent 忙闲、任务进度一目了然</li>
+                    </ul>
+                  </div>
+                  <div class="pad-teaser-copy-panel" data-pad-copy="mini">
+                    <p data-i18n="padCopyMiniLead">迷你栏收成一条，副屏不挡主屏</p>
+                    <ul class="pad-teaser-features">
+                      <li data-i18n="padCopyMini1">副屏能力：浮在边缘，随时切 Agent</li>
+                      <li data-i18n="padCopyMini2">快速口令：语音喊停、继续，不用找按钮</li>
+                      <li data-i18n="padCopyMini3">查看额度：胶囊角标显示今日剩余</li>
+                      <li data-i18n="padCopyMini4">Agent 状态：绿点运行、黄点等待、红点报错</li>
+                    </ul>
                   </div>
                 </div>
               </div>
+              <p class="outcome-caption-wrap"><span class="outcome-caption" data-i18n="homeChSoftpadOutcome">展开全键，或收成迷你栏继续写。</span><a class="outcome-try-link" href="agent.html" data-i18n="outcomeTry">去试试 →</a></p>
             </div>
-            <p class="outcome-caption" data-i18n="homeChSoftpadOutcome">展开全键，或收成迷你栏继续写。</p>
           </div>
           </div>
         </div>
@@ -370,7 +491,7 @@
          ========================================= -->
     <section class="story-section home-brands bg-mac-bg" id="sec-brands" data-section="5">
       <div class="max-w-7xl mx-auto px-6">
-        <p class="section-eyebrow apple-reveal" style="--d:0" data-i18n="homeBrandsKicker">在哪写就在哪说</p>
+        <p class="section-eyebrow apple-reveal" style="--d:0" data-i18n="heroBrandsMini">已在 11+ Agent / IDE 验证</p>
         <h2 class="section-title apple-reveal" style="--d:80" data-i18n="homeBrandsTitle">开口说，落在这些 Agent 里</h2>
         <p class="home-brands-lead apple-reveal" style="--d:120" data-i18n="homeBrandsLead">不换你的工具栈——一声只负责把麦递过去。</p>
         <div class="home-brands-track apple-reveal" style="--d:160" aria-label="Supported agents">
@@ -405,7 +526,7 @@
     </section>
 
     <!-- =========================================
-         SECTION 5: vibecoding 评价（八语原文，不翻译正文）
+         SECTION: vibecoding 评价（八语原文，不翻译正文）
          ========================================= -->
     <section class="story-section home-quotes bg-[#0a0a0a]" id="sec-quotes" data-section="6">
       <div class="max-w-7xl mx-auto px-6">
@@ -505,13 +626,15 @@
       </div>
     </section>
   </main>
-<section id="site-download-cta" class="site-download-cta" aria-label="Download" data-section="7">
-  <div class="site-download-cta-inner">
-    <h2 class="site-download-cta-title" data-i18n="ctaBannerTitle">立即试用一声。</h2>
-    <a class="site-download-cta-btn" href="download.html">
-      <span data-i18n="ctaBannerBtn">下载 Windows 版本</span>
-      <i class="ph ph-download-simple" aria-hidden="true"></i>
-    </a>
+<section id="ot-final-cta" class="ot-final-cta" aria-label="Download" data-section="9">
+  <div class="ot-final-cta-inner">
+    <h2 class="ot-final-cta-title" data-i18n="otFinalCtaTitle">现在就试试一声</h2>
+    <div class="ot-final-cta-grid">
+      <a class="ot-btn ot-btn--primary" href="download.html"><span data-i18n="otFinalCtaDownload">免费下载（~30 MB）</span></a>
+      <a class="ot-btn ot-btn--ghost" href="quickstart.html"><span data-i18n="otFinalCtaDocs">查看文档</span></a>
+      <a class="ot-btn ot-btn--ghost" href="https://github.com/psterman/onetone/discussions" target="_blank" rel="noopener"><span data-i18n="otFinalCtaCommunity">加入讨论</span></a>
+      <a class="ot-btn ot-btn--ghost" href="https://github.com/psterman/onetone/issues/new?template=bug_report.yml" target="_blank" rel="noopener"><span data-i18n="otFinalCtaFeedback">提交反馈</span></a>
+    </div>
   </div>
 </section>
 <footer class="site-footer">
@@ -539,6 +662,7 @@
 <script src="js/shell.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/home-demo.js"></script>
+<script src="js/home-advanced-tabs.js"></script>
 <script src="js/home-gsap.js"></script>
 </body>
 </html>

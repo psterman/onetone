@@ -7,11 +7,11 @@
 }
 
 .story-world[data-mood="light"] {
-  background: #1a1c22;
+  background: linear-gradient(180deg, #0e1418 0%, #1a1c22 50%, #0a0a0a 100%);
 }
 
 .story-world[data-mood="dark"] {
-  background: #08080a;
+  background: radial-gradient(circle at 50% 30%, rgba(42, 156, 196, 0.08), transparent 60%), #08080a;
 }
 
 .story-world[data-mood="pad"] {

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OneTone 官网分析：向 WorkBuddy 中文官网学什么</title>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --panel: rgba(30, 30, 32, 0.75);
+      --border: rgba(255, 255, 255, 0.12);
+      --accent: #2a9cc4;
+      --accent-glow: #5ec8e8;
+      --text: #f5f5f7;
+      --muted: #86868b;
+      --green: #2ccf9c;
+      --red: #ff6b6b;
+      --yellow: #f5c542;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+    header {
+      padding: 64px 24px 40px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      background: radial-gradient(circle at 50% 0%, rgba(42,156,196,0.15), transparent 60%);
+    }
+    h1 { margin: 0 0 12px; font-size: clamp(1.8rem, 4vw, 2.6rem); letter-spacing: -0.02em; }
+    h2 { margin: 48px 0 20px; font-size: 1.5rem; color: #fff; border-left: 4px solid var(--accent); padding-left: 14px; }
+    h3 { margin: 28px 0 10px; font-size: 1.15rem; color: var(--accent-glow); }
+    p { margin: 0 0 14px; color: var(--muted); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container { max-width: 1080px; margin: 0 auto; padding: 24px; }
+    .lead { font-size: 1.1rem; max-width: 720px; margin: 0 auto; color: var(--text); }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 999px; border: 1px solid var(--border);
+      background: var(--panel); font-size: 0.85rem; color: var(--muted); margin-bottom: 16px;
+    }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      backdrop-filter: blur(20px);
+    }
+    .card h3 { margin-top: 0; }
+    .shot { width: 100%; border-radius: 12px; border: 1px solid var(--border); }
+    .shot-caption { font-size: 0.85rem; color: var(--muted); margin-top: 8px; text-align: center; }
+    table {
+      width: 100%; border-collapse: collapse; font-size: 0.95rem;
+      background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+    }
+    th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { background: rgba(255,255,255,0.04); color: #fff; font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+    .tag {
+      display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.78rem; font-weight: 600;
+      margin-right: 6px; margin-bottom: 4px;
+    }
+    .tag-p0 { background: rgba(255,107,107,0.15); color: var(--red); }
+    .tag-p1 { background: rgba(245,197,66,0.15); color: var(--yellow); }
+    .tag-p2 { background: rgba(44,207,156,0.15); color: var(--green); }
+    .tag-good { background: rgba(44,207,156,0.15); color: var(--green); }
+    .tag-warn { background: rgba(245,197,66,0.15); color: var(--yellow); }
+    .tag-bad { background: rgba(255,107,107,0.15); color: var(--red); }
+    ul.checklist { padding-left: 20px; }
+    ul.checklist li { margin-bottom: 10px; color: var(--muted); }
+    .highlight { color: var(--accent-glow); font-weight: 600; }
+    .quote {
+      border-left: 3px solid var(--accent); padding-left: 16px; margin: 16px 0; color: var(--text); font-style: italic;
+    }
+    .section { margin-bottom: 48px; }
+    .flex-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+    .metric {
+      flex: 1; min-width: 140px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px; text-align: center;
+    }
+    .metric strong { display: block; font-size: 1.6rem; color: #fff; }
+    .metric span { font-size: 0.85rem; color: var(--muted); }
+    footer { text-align: center; padding: 40px 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.9rem; }
+    @media (max-width: 640px) {
+      th, td { padding: 10px 12px; font-size: 0.9rem; }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="badge">📊 竞品官网拆解 · 2026-08-29</div>
+    <h1>OneTone 官网分析：从 WorkBuddy 中文官网借鉴什么</h1>
+    <p class="lead">通过对比两个官网的首屏结构、视觉语言、转化路径与社会证明，找出 OneTone 当前 website 可直接复用的改进点。</p>
+  </header>
+
+  <div class="container">
+
+    <section class="section">
+      <h2>一、核心发现摘要</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>🔴 最关键：部署版本与本地源码不同步</h3>
+          <p>线上 <code>www.onetone.app</code> 当前展示的是<span class="highlight">浅色、3D 麦克风 hero 的旧版</span>；而仓库中 <code>website/index.html</code> 已是深色 HUD + story scroll 的新版。用户看到的内容 ≠ 你正在迭代的内容，需先对齐部署。</p>
+        </div>
+        <div class="card">
+          <h3>🟡 关键差距</h3>
+          <p>WorkBuddy 把「真产品外壳」直接搬到首屏，并配套 4 档定价、30+ 客户 logo 墙、生态连接器。OneTone 有沉浸式 story demo，但缺少<span class="highlight">量化价值、社会证明、定价锚点和明确的用户旅程终点</span>。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>二、OneTone website 现状速览</h2>
+      <div class="flex-row">
+        <div class="metric"><strong>11</strong><span>HTML 页面</span></div>
+        <div class="metric"><strong>32 MB</strong><span>整站体积</span></div>
+        <div class="metric"><strong>679 / 673</strong><span>zh / en i18n keys</span></div>
+        <div class="metric"><strong>0</strong><span>定价/套餐板块</span></div>
+      </div>
+
+      <h3>页面清单与元数据</h3>
+      <table>
+        <tr><th>页面</th><th>Title</th><th>Description</th><th>备注</th></tr>
+        <tr><td>index.html</td><td>一声 OneTone — 想什么，说一声</td><td>按一下侧键就能开麦…</td><td><span class="tag tag-good">完整</span></td></tr>
+        <tr><td>download.html</td><td>下载 — 一声 OneTone</td><td>下载一声 Windows 安装包…</td><td><span class="tag tag-good">转化页</span></td></tr>
+        <tr><td>quickstart.html</td><td>语音与按键 — 一声 OneTone</td><td>三步上手：选个键…</td><td><span class="tag tag-warn">与 keys 标题重复</span></td></tr>
+        <tr><td>keys.html</td><td>语音与按键 — 一声 OneTone</td><td>绑定外设或快捷键…</td><td><span class="tag tag-bad">重复标题</span></td></tr>
+        <tr><td>vision.html</td><td>摄像头 — 一声 OneTone</td><td>摄像头帮你眨眼、摇头就触发…</td><td><span class="tag tag-good">完整</span></td></tr>
+        <tr><td>agent.html</td><td>SoftPad — 一声 OneTone</td><td>屏幕上的虚拟小键盘…</td><td><span class="tag tag-good">完整</span></td></tr>
+        <tr><td>faq.html</td><td>帮助与排错 — 一声 OneTone</td><td>常见问题：按键没反应…</td><td><span class="tag tag-good">完整</span></td></tr>
+        <tr><td>support.html</td><td>支持项目 — 一声 OneTone</td><td>通过爱发电自愿支持…</td><td><span class="tag tag-good">完整</span></td></tr>
+        <tr><td>changelog.html</td><td>更新日志 — 一声 OneTone</td><td>更新日志 — 一声 OneTone</td><td><span class="tag tag-bad">description 无价值</span></td></tr>
+        <tr><td>privacy / terms</td><td>隐私政策 / 服务条款</td><td>—</td><td><span class="tag tag-good">合规页</span></td></tr>
+      </table>
+
+      <h3>首页内容结构（本地 dark HUD 版）</h3>
+      <ol class="checklist">
+        <li><strong>Hero</strong>："一声" + "想什么，说一声" + 设备 SVG 交互演示 + 状态面板</li>
+        <li><strong>Story 章节 1</strong>：trigger — 鼠标侧键 / 手柄 / 戒指 / 麦克风口令</li>
+        <li><strong>Story 章节 2</strong>：camera — 体态开麦 teaser</li>
+        <li><strong>Story 章节 3</strong>：voice — IME 语音条 + Esc 取消</li>
+        <li><strong>Story 章节 4</strong>：softpad — 虚拟键盘 / 迷你栏</li>
+        <li><strong>品牌兼容墙</strong>：Cursor / Claude / ChatGPT / Trae / Windsurf / Copilot / WorkBuddy 等 11 个工具 logo</li>
+        <li><strong>vibecoding 用户评价墙</strong>：8 条多语言真实用户评价</li>
+        <li><strong>底部下载 CTA</strong>："立即试用一声"</li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <h2>三、WorkBuddy 中文官网拆解</h2>
+      <p>基于浏览器实际渲染抓取，非静态 HTML。官网是 SPA，整体采用<span class="highlight">浅色背景 + 薄荷绿品牌色 + 3D 机器人吉祥物</span>风格。</p>
+
+      <h3>首屏视觉</h3>
+      <img class="shot" src="wb-hero.png" alt="WorkBuddy 首屏截图">
+      <p class="shot-caption">WorkBuddy 首屏：大 logo + "我帮你" 轮播文案 + 双 CTA + 3D 吉祥物</p>
+
+      <h3>页面结构（从上到下）</h3>
+      <ol class="checklist">
+        <li><strong>导航</strong>：首页 / 定价 / 资源（下拉）/ 活动 / Nova 大使 + [下载] [登录]</li>
+        <li><strong>Hero</strong>：<br>
+          <span class="quote">WORK BUDDY>_ 我帮你<br>副标题：WorkBuddy 是腾讯出品的全场景 AI 办公工作台。说出要求、开始执行任务、交付完整成果。完美连接腾讯办公生态，你的办公好搭子。<br>CTA：[立即下载] + [在线使用]</span>
+        </li>
+        <li><strong>产品演示壳（ immediately below hero ）</strong>：左侧是真实 App 侧边栏（新建任务 / Claw / 专家 / 技能 / 探索 / 连接器 / 自动化），右侧展示完整任务流与产物（.md / .docx / .pptx）。</li>
+        <li><strong>"你的工作好帮手"</strong>：tab 切换 研究 / 文档 / 设计 / 开发，每个场景配短视频与量化文案。</li>
+        <li><strong>腾讯生态连接器墙</strong>：腾讯文档 / 乐享知识库 / QQ 邮箱 / 腾讯会议 / ima 笔记 / 微信 / 企业微信。</li>
+        <li><strong>客户 logo 墙</strong>：两排 marquee 滚动，含腾讯云 / 腾讯游戏 / 小米 / 荣耀 / 招商银行 / 中国联通 / OPPO / 美的等 30+ logo。</li>
+        <li><strong>定价区</strong>：4 档方案，划线原价锚定，按钮文案区分"免费试用" / "查看套餐"，多处"限时免费"制造紧迫感。</li>
+        <li><strong>最终 CTA</strong>："开启 AI 办公新范式" + 产品视频 + [立即下载]。</li>
+        <li><strong>Footer</strong>：小程序 / 公众号二维码 + 4 列链接（服务条款、文档指引、产品下载、联系我们）。</li>
+      </ol>
+
+      <h3>可迁移的关键经验</h3>
+      <div class="grid-2">
+        <div class="card"><h3>1. Hero 文案极短</h3><p>"我帮你" 3 个字 + 一句 60 字以内的价值主张。用户 3 秒就能读懂。</p></div>
+        <div class="card"><h3>2. 首屏放真产品</h3><p>不是静态截图，而是完整 App 外壳 + 工具调度时间线 + 产物下载。降低理解成本。</p></div>
+        <div class="card"><h3>3. 价值量化</h3><p>"从查资料到给结论，15 分钟交付报告" —— 用具体时间数字替代"高效"。</p></div>
+        <div class="card"><h3>4. 双墙背书</h3><p>生态墙讲"能连什么"，客户墙讲"谁在用"。两排 marquee 不停滚动强化信任。</p></div>
+        <div class="card"><h3>5. 定价前置</h3><p>首页就有 4 档方案，用划线价和"限时免费"锚定价值。</p></div>
+        <div class="card"><h3>6. 全平台下载</h3><p>列出 Mac / Windows / iOS / Android / 鸿蒙，并标注"当前设备"，减少用户犹豫。</p></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>四、OneTone 线上版 vs 本地版对比</h2>
+      <div class="grid-2">
+        <div>
+          <img class="shot" src="ot-hero.png" alt="OneTone 线上首屏">
+          <p class="shot-caption">线上 <code>www.onetone.app</code>：浅色 + 3D 麦克风 + 旋转文案</p>
+        </div>
+        <div>
+          <img class="shot" src="wb-hero.png" alt="WorkBuddy 首屏">
+          <p class="shot-caption">WorkBuddy：浅色 + 大 logo + 机器人吉祥物</p>
+        </div>
+      </div>
+      <p>线上 OneTone 在视觉风格上其实与 WorkBuddy 更接近（浅色、大插画、短文案），说明之前已有向"轻量官网"靠拢的尝试。但本地源码又切回了深色 HUD 故事线，造成<span class="highlight">用户-facing 品牌不统一</span>。</p>
+    </section>
+
+    <section class="section">
+      <h2>五、差距矩阵：OneTone vs WorkBuddy</h2>
+      <table>
+        <tr><th>维度</th><th>OneTone（本地新版）</th><th>WorkBuddy</th><th>可借鉴经验</th></tr>
+        <tr><td>Hero 文案</td><td>标题 + 长句 + 故事章节</td><td>3 字 punchline + 1 句价值</td><td>把首页 headline 缩短到 10 字以内</td></tr>
+        <tr><td>首屏 Demo</td><td>设备 SVG + 打字机动画</td><td>真实 App 外壳 + 任务时间线</td><td>做一个"可看到任务完成"的产品演示壳</td></tr>
+        <tr><td>量化价值</td><td>无</td><td>"15 分钟交付报告"</td><td>给时间/效率数字，如"3 分钟装好"</td></tr>
+        <tr><td>社会证明</td><td>品牌兼容墙 + 海外用户评价</td><td>客户 logo 墙 + 生态连接器 + 腾讯背书</td><td>增加"谁在用"真实客户/社区背书</td></tr>
+        <tr><td>定价</td><td>无</td><td>4 档 + 划线价 + 限免</td><td>若商业化，首页增加方案区</td></tr>
+        <tr><td>导航</td><td>首页 / 上手 / 帮助 + 下载</td><td>首页 / 定价 / 资源 / 活动 / Nova 大使 + 下载/登录</td><td>增加定价/资源/活动入口</td></tr>
+        <tr><td>下载入口</td><td>Windows 10/11</td><td>Mac / Win / iOS / Android / 鸿蒙</td><td>明确多平台 roadmap</td></tr>
+        <tr><td>Footer</td><td>功能链接 + 法律链接</td><td>4 列 + 小程序/公众号二维码</td><td>结构化 footer，增加社群触点</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>六、当前缺陷清单</h2>
+      <table>
+        <tr><th>优先级</th><th>问题</th><th>影响</th><th>修复动作</th></tr>
+        <tr><td><span class="tag tag-p0">P0</span></td><td>线上版与本地源码视觉不一致</td><td>用户看到的内容 ≠ 产品实际方向</td><td>确认 GitHub Pages 部署状态；统一 brand direction</td></tr>
+        <tr><td><span class="tag tag-p0">P0</span></td><td>quickstart.html 与 keys.html 标题重复</td><td>SEO 冲突，搜索引擎难以区分</td><td>quickstart 改为"快速上手 — 一声 OneTone"</td></tr>
+        <tr><td><span class="tag tag-p1">P1</span></td><td>changelog.html description 无价值</td><td>搜索结果点击率降低</td><td>改为"一声 OneTone 版本更新日志，包含功能、修复与改进。"</td></tr>
+        <tr><td><span class="tag tag-p1">P1</span></td><td>i18n 英文包缺 8 个 key</td><td>切 EN 时部分文案显示 key 名或空白</td><td>补齐 qsStep1Desc / qsStep1Title 等 8 个 key</td></tr>
+        <tr><td><span class="tag tag-p1">P1</span></td><td>首页无定价/无明确用户旅程终点</td><td>高意向用户找不到转化路径</td><td>在首页增加方案/下载锚点与 sticky CTA</td></tr>
+        <tr><td><span class="tag tag-p2">P2</span></td><td>品牌兼容墙只有工具 logo，无真实客户</td><td>社会证明弱</td><td>增加社区/用户/媒体背书区</td></tr>
+        <tr><td><span class="tag tag-p2">P2</span></td><td>导航缺少资源/活动入口</td><td>内容营销与社区运营缺少入口</td><td>增加"资源""活动"或"博客"导航项</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>七、可直接落地的改进建议</h2>
+
+      <h3>1. Hero 重构：从"口号"到"一句话价值 + 数字"</h3>
+      <div class="grid-2">
+        <div class="card">
+          <h3>当前</h3>
+          <p>"想什么，说一声"<br>按一下侧键就能开麦。Cursor、Claude、Trae……在哪写就在哪说，不用先找麦克风按钮。</p>
+        </div>
+        <div class="card">
+          <h3>建议</h3>
+          <p><strong>"侧键 = 麦克风"</strong><br>3 分钟装好，按一下就在当前 App 里说话输入。支持 Windows 10/11。</p>
+        </div>
+      </div>
+
+      <h3>2. 把"真产品演示"搬到首屏</h3>
+      <p>参考 WorkBuddy 的"产品演示壳"，在 OneTone hero 下方放一个左右分栏：</p>
+      <ul class="checklist">
+        <li>左侧：模拟用户 prompt，如"给 Cursor 写一段 React 按钮组件"</li>
+        <li>中间：按下鼠标侧键 → 麦克风激活 → 声波动画</li>
+        <li>右侧：Cursor 编辑器里文字逐字落入光标处</li>
+        <li>底部：产物/状态栏 "已输入 87 字 · 耗时 8 秒"</li>
+      </ul>
+
+      <h3>3. 增加量化指标区</h3>
+      <div class="flex-row">
+        <div class="metric"><strong>3 分钟</strong><span>完成安装到开麦</span></div>
+        <div class="metric"><strong>1 个键</strong><span>触发任意语音输入</span></div>
+        <div class="metric"><strong>11+</strong><span>Agent / IDE 兼容</span></div>
+        <div class="metric"><strong>100% 本地</strong><span>语音处理不上传</span></div>
+      </div>
+
+      <h3>4. 社会证明升级</h3>
+      <p>把现在的"品牌兼容墙"拆成两层：</p>
+      <ul class="checklist">
+        <li><strong>兼容生态</strong>：Cursor / Claude / ChatGPT / Trae / WorkBuddy…（保留现有）</li>
+        <li><strong>谁在用</strong>：社区截图、V2EX/即刻/微博真实反馈、GitHub stars 数、下载量（若有）</li>
+      </ul>
+
+      <h3>5. 导航与 CTA 优化</h3>
+      <ul class="checklist">
+        <li>主导航增加 <strong>文档</strong>（指向 FAQ 或未来 docs 站点）</li>
+        <li>Header 的"下载"按钮在首页保持 sticky，scroll 时缩小为 mini CTA</li>
+        <li>每个 story 章节末尾加章节级 CTA："去绑定按键" / "看语音上手" / "试用 SoftPad"</li>
+      </ul>
+
+      <h3>6. 定价/方案区（若准备商业化）</h3>
+      <p>即使目前免费，也可学习 WorkBuddy 放一档：</p>
+      <ul class="checklist">
+        <li><strong>免费版</strong>：所有核心功能，本地运行</li>
+        <li><strong>Pro 版（coming soon）</strong>：多设备同步、高级手势、云端配置</li>
+      </ul>
+      <p>这样既能收集意愿，又不影响当前免费体验。</p>
+    </section>
+
+    <section class="section">
+      <h2>八、执行优先级路线图</h2>
+      <table>
+        <tr><th>阶段</th><th>动作</th><th>预期收益</th><th>工作量</th></tr>
+        <tr><td><span class="tag tag-p0">本周</span></td><td>确认并修复线上/本地版本不一致；修复重复 title 与缺英文 key</td><td>消除品牌分裂与 SEO 冲突</td><td>小</td></tr>
+        <tr><td><span class="tag tag-p1">2 周内</span></td><td>重写 Hero headline + 副标题；增加 3–4 个量化指标</td><td>首屏转化率提升</td><td>小</td></tr>
+        <tr><td><span class="tag tag-p1">2–4 周</span></td><td>把现有 story demo 封装成"产品演示壳"放在 hero 下方</td><td>降低理解成本</td><td>中</td></tr>
+        <tr><td><span class="tag tag-p2">1–2 月</span></td><td>增加真实用户/社区背书区；优化 footer 结构</td><td>建立社会信任</td><td>中</td></tr>
+        <tr><td><span class="tag tag-p2">按需</span></td><td>增加定价/方案区与多平台下载说明</td><td>为商业化做准备</td><td>小</td></tr>
+      </table>
+    </section>
+
+  </div>
+
+  <footer>
+    分析时间：2026-08-29 · 数据来源：<code>website/</code> 本地源码 + 浏览器渲染抓取 www.workbuddy.cn / www.onetone.app
+  </footer>
+</body>
+</html>

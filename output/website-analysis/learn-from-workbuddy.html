@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OneTone website 借鉴 WorkBuddy 的可落地修改意见</title>
+<style>
+  :root{
+    --bg:#0a0a0a; --panel:rgba(30,30,32,.72); --border:rgba(255,255,255,.12);
+    --accent:#2a9cc4; --glow:#5ec8e8; --text:#f5f5f7; --muted:#86868b;
+    --good:#2ccf9c; --warn:#f5c542; --bad:#ff6b6b; --purple:#a78bfa;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;line-height:1.75;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 24px 80px}
+  header.hero{padding:72px 24px 44px;text-align:center;border-bottom:1px solid var(--border);
+    background:radial-gradient(circle at 50% -10%,rgba(42,156,196,.18),transparent 62%)}
+  h1{margin:0 0 14px;font-size:clamp(1.7rem,4.2vw,2.5rem);letter-spacing:-.02em}
+  .lead{max-width:760px;margin:0 auto;color:var(--muted);font-size:1.02rem}
+  h2{margin:56px 0 18px;font-size:1.4rem;color:#fff;border-left:4px solid var(--accent);padding-left:14px}
+  h3{margin:32px 0 10px;font-size:1.08rem;color:var(--glow)}
+  h4{margin:20px 0 8px;font-size:.98rem;color:#fff}
+  p{color:var(--muted);margin:0 0 14px}
+  code{background:rgba(255,255,255,.08);padding:.12em .42em;border-radius:4px;
+    font-family:"JetBrains Mono",Menlo,monospace;font-size:.88em;color:var(--glow)}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin:16px 0}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+  table{width:100%;border-collapse:collapse;font-size:.93rem;background:var(--panel);
+    border:1px solid var(--border);border-radius:12px;overflow:hidden;margin:14px 0}
+  th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:rgba(255,255,255,.05);color:#fff;font-weight:600}
+  tr:last-child td{border-bottom:none}
+  .t{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.76rem;font-weight:700;margin-right:6px}
+  .t-borrow{background:rgba(44,207,156,.16);color:var(--good)}
+  .t-trap{background:rgba(255,107,107,.16);color:var(--bad)}
+  .t-bug{background:rgba(167,139,250,.18);color:var(--purple)}
+  .t-warn{background:rgba(245,197,66,.16);color:var(--warn)}
+  ul{padding-left:20px}
+  ul li{margin-bottom:9px;color:var(--muted)}
+  .sect{margin-bottom:52px}
+  .kpi{display:flex;flex-wrap:wrap;gap:14px;margin:16px 0}
+  .kpi div{flex:1;min-width:130px;background:var(--panel);border:1px solid var(--border);
+    border-radius:12px;padding:14px;text-align:center}
+  .kpi strong{display:block;font-size:1.5rem;color:#fff}
+  .kpi span{font-size:.82rem;color:var(--muted)}
+  .quote{border-left:3px solid var(--accent);padding-left:14px;margin:12px 0;color:var(--text);font-style:italic}
+  .vs{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+  @media(max-width:720px){.vs{grid-template-columns:1fr}}
+  .no{background:rgba(255,107,107,.07);border:1px solid rgba(255,107,107,.25);border-radius:12px;padding:16px}
+  .yes{background:rgba(44,207,156,.07);border:1px solid rgba(44,207,156,.25);border-radius:12px;padding:16px}
+  .no h4,.yes h4{margin-top:0}
+  .step{display:flex;gap:14px;margin:16px 0;align-items:flex-start}
+  .step .n{flex:0 0 30px;height:30px;border-radius:50%;background:var(--accent);color:#000;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem}
+  .step .c{flex:1}
+  footer{border-top:1px solid var(--border);padding:32px 24px;text-align:center;color:var(--muted);font-size:.86rem}
+  .hl{color:var(--glow);font-weight:600}
+  .bad{color:var(--bad);font-weight:600}
+  .good{color:var(--good);font-weight:600}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>OneTone website：从 WorkBuddy 官网借鉴什么</h1>
+  <p class="lead">不比较旧版 onetone.app。聚焦仓库最新源码，逐维度给出<strong style="color:#fff">可落地</strong>的修改意见：<span class="hl">值得借鉴的</span>、<span class="bad">是坑的</span>、以及<span style="color:var(--purple);font-weight:600">已经出现的错误与偏差</span>。</p>
+</header>
+
+<div class="wrap">
+
+<!-- ============ 0. 结论先行 ============ -->
+<section class="sect">
+<h2>0 · 先给结论</h2>
+<div class="card">
+  <p style="color:#fff;margin-bottom:12px"><strong>OneTone 的 demo 做得比 WorkBuddy 更精致，但"说服"做得比 WorkBuddy 弱得多。</strong></p>
+  <p>WorkBuddy 靠三件事让人行动：<span class="hl">一句话说清价值</span>、<span class="hl">把真产品摆到首屏</span>、<span class="hl">用数字和社会证明兜底</span>。OneTone 目前把力气花在了"滚动叙事 + 动效"上，用户看完 4 个章节仍然不知道：<strong style="color:#fff">这东西比系统自带语音输入强在哪、我要花几分钟、在我的 Cursor 里能不能用。</strong></p>
+</div>
+<div class="kpi">
+  <div><strong>0</strong><span>首页量化指标</span></div>
+  <div><strong>0</strong><span>首页可输入元素</span></div>
+  <div><strong>0</strong><span>home-demo.js 点击监听</span></div>
+  <div><strong>3/11</strong><span>功能页未进主导航</span></div>
+  <div><strong>4</strong><span>生产环境 CDN 依赖</span></div>
+</div>
+</section>
+
+<!-- ============ 1. 值得借鉴 ============ -->
+<section class="sect">
+<h2>1 · 值得借鉴的（照着做）</h2>
+
+<h3>1.1 Hero：从"口号"改成"一句话价值 + 一个数字"</h3>
+<div class="vs">
+  <div class="no">
+    <h4>现在（index.html）</h4>
+    <p>H1「一声」+「想什么，说一声」+ 轮播「Cursor 里直接说」<br>
+    正文：按一下侧键就能开麦。Cursor、Claude、Trae……在哪写就在哪说。</p>
+    <p style="font-size:.86rem">问题：H1 是品牌名不是价值；"在哪写就在哪说"很文艺但不含决策信息。</p>
+  </div>
+  <div class="yes">
+    <h4>WorkBuddy 的做法</h4>
+    <p>「我帮你 / 做设计」→ 3 字 punchline<br>
+    一句 60 字内价值：WorkBuddy 是腾讯出品的全场景 AI 办公工作台。说出要求、开始执行任务、交付完整成果。</p>
+    <p style="font-size:.86rem">可迁移：<span class="hl">一句话同时回答"是什么 + 给我什么"。</span></p>
+  </div>
+</div>
+<div class="card">
+  <h4>落地建议</h4>
+  <ul>
+    <li>H1 改成<strong style="color:#fff">动作 + 结果</strong>：<code>按一下侧键，开口写代码</code></li>
+    <li>副标题塞进一个数字：<code>3 分钟装好，在你已经在用的 Cursor / Claude / Trae 里直接说。Windows 10/11。</code></li>
+    <li>把「适用于 Windows 10/11」「macOS 开发中」这个胶囊保留，但加上<strong style="color:#fff">免费用、开源</strong>——vibecoding 用户最怕的是"又一个要订阅的"。</li>
+  </ul>
+</div>
+
+<h3>1.2 把"动画"升级成"产品演示壳"</h3>
+<p>WorkBuddy 首屏下方放的不是动画，是<strong style="color:#fff">真实 App 外壳</strong>：侧边栏 tabs（新建任务/专家/技能/连接器/自动化）、任务时间线、最终产物（<code>.md / .docx / .pptx</code>）。用户 5 秒就"看懂"了产品。</p>
+<div class="card">
+  <h4>落地建议（改造现有 hero demo，不重写）</h4>
+  <p>现在 <code>#opDemo</code> 已经有应用窗口 + 设备 SVG 的底子，缺的是<span class="hl">"任务完成"的闭环</span>。建议把它改成一条完整的因果链：</p>
+  <ul>
+    <li><strong>左上</strong>：目标 App 标题栏显示 <code>Cursor — main.tsx</code>（现在是抽象的 "Target App Editor"）</li>
+    <li><strong>左中</strong>：光标停在空行上</li>
+    <li><strong>右</strong>：按下鼠标侧键 → 声波起 → 顶部状态条「正在听…」</li>
+    <li><strong>回到左</strong>：文字逐字落到光标处</li>
+    <li><strong>底部状态条</strong>：<code>已上屏 87 字 · 用时 6.4 秒</code> ← 这就是"数据"</li>
+  </ul>
+  <p>关键：<span class="hl">让 demo 有一个"完成态"</span>，而不是无限循环。WorkBuddy 的演示之所以有效，是因为它演到了"交付"。</p>
+</div>
+
+<h3>1.3 用"场景 tab"替掉一部分滚动章节</h3>
+<p>WorkBuddy 用「研究 / 文档 / 设计 / 开发」四个 tab + 短视频，把 4 个能力压进 1 屏。OneTone 现在用 4 个 100vh 章节讲「触发 / 摄像头 / 语音 / SoftPad」，需要滚 4 屏多。</p>
+<div class="card">
+  <h4>落地建议</h4>
+  <ul>
+    <li>把「摄像头」和「SoftPad」收进一个 <strong style="color:#fff">可切换的场景区</strong>（tab 或左右分栏），保留 1 屏</li>
+    <li>把「触发」和「语音」留在主叙事里——这是核心价值，值得展开</li>
+    <li>预期效果：首页从 ~8 屏压到 ~5 屏，vibecoding 用户（普遍耐心低）更容易走到下载</li>
+  </ul>
+</div>
+
+<h3>1.4 给每个章节装一个"章节级 CTA"</h3>
+<p>WorkBuddy 每个场景块都有明确的下一步。OneTone 目前只有「绑定按键」「了解摄像头」等章节 chip，但缺少<span class="hl">"现在就下载"的即时出口</span>。</p>
+<ul>
+  <li>在每个 <code>.chapter-copy</code> 末尾增加一行：<code>装好就能试 → 下载（约 30 MB）</code></li>
+  <li>把 <code>outcome-caption</code>（结果说明）旁边加一个小的「去试试」链接</li>
+</ul>
+
+<h3>1.5 数据：补 4 个可信指标</h3>
+<p>WorkBuddy 用「15 分钟交付报告」这种具体数字建立预期。OneTone 全站<strong style="color:#fff">零量化指标</strong>——这是最容易补、也最容易被低估的一块。</p>
+<div class="kpi">
+  <div><strong>3 分钟</strong><span>从下载到说第一句话</span></div>
+  <div><strong>1 个键</strong><span>接管任意语音输入法</span></div>
+  <div><strong>11+</strong><span>已验证 Agent / IDE</span></div>
+  <div><strong>~30 MB</strong><span>安装包 · 本地运行</span></div>
+</div>
+<p style="font-size:.88rem">注意：这 4 个数都来自现有素材（download.html 已提到 30 MB，品牌墙已有 11 个 logo），<span class="good">不需要编数据</span>，只是把它们提到首屏。</p>
+
+<h3>1.6 Footer 结构化 + 社群触点</h3>
+<p>WorkBuddy footer 是 4 列（服务条款 / 文档指引 / 产品下载 / 联系我们）+ 二维码。OneTone footer 是「功能链接 + 法律链接」两坨。</p>
+<ul>
+  <li>拆成 4 列：<strong>产品</strong>（语音/按键/摄像头/SoftPad）、<strong>上手</strong>（快速上手/常见问题/更新日志）、<strong>开源</strong>（GitHub/反馈问题/支持项目）、<strong>法律</strong></li>
+  <li>加一行版本号 <code>v1.x.x</code>——vibecoding 用户会看这个判断项目活不活跃</li>
+</ul>
+</section>
+
+<!-- ============ 2. 坑 ============ -->
+<section class="sect">
+<h2>2 · 不要照抄的（WorkBuddy 的坑）</h2>
+<table>
+  <tr><th style="width:26%">WorkBuddy 的做法</th><th>为什么对 OneTone 是坑</th><th>应该怎么做</th></tr>
+  <tr>
+    <td><span class="t t-trap">坑</span>4 档定价 + 划线价 + 限免</td>
+    <td>OneTone 是免费开源小工具。放定价会让 vibecoding 用户第一反应变成"这要钱吗？"，反而抬高门槛。</td>
+    <td>在 hero 直接写死 <code>免费 · 开源</code>，比放一张定价表更有说服力。</td>
+  </tr>
+  <tr>
+    <td><span class="t t-trap">坑</span>30+ 客户 logo 墙</td>
+    <td>logo 墙是"已有规模"的证明。独立项目硬摆一排 logo，没真实客户时反而显得心虚。</td>
+    <td>用现有素材替代：<strong>GitHub stars 数、下载量、V2EX/社区讨论截图</strong>。有 1 个真实数字胜过 30 个借来的 logo。</td>
+  </tr>
+  <tr>
+    <td><span class="t t-trap">坑</span>「打通腾讯生态」</td>
+    <td>这是腾讯的自有优势，OneTone 没有等价背书，照抄结构会露怯。</td>
+    <td>把生态墙的叙事从"我们跟谁合作"改成<span class="hl">"你在哪写，就能在哪说"</span>——即现有的品牌兼容墙，这个方向是对的，保留。</td>
+  </tr>
+  <tr>
+    <td><span class="t t-trap">坑</span>大量场景视频</td>
+    <td>视频制作+维护成本极高，小团队做一轮就停更，反而显得项目停滞。</td>
+    <td>继续用现有的 <strong>SVG/Canvas 交互 demo</strong>。这恰恰是 OneTone 比 WorkBuddy 强的地方，别丢。</td>
+  </tr>
+  <tr>
+    <td><span class="t t-trap">坑</span>「活动」「Nova 大使」运营栏目</td>
+    <td>没有运营人力时就是死链，且会稀释核心转化路径。</td>
+    <td>导航保持精简，不加运营栏目。</td>
+  </tr>
+  <tr>
+    <td><span class="t t-trap">坑</span>H1 放在 demo 内部</td>
+    <td>WorkBuddy 页面真正的 H1 是 demo 里的「AI 行业趋势深度研究报告」，价值主张反而不是标题——SEO 和无障碍都吃亏。</td>
+    <td>OneTone 现在 H1 是「一声」，建议改成价值句，<strong>这个别学 WorkBuddy</strong>。</td>
+  </tr>
+</table>
+</section>
+
+<!-- ============ 3. 已有错误 ============ -->
+<section class="sect">
+<h2>3 · 已经出现的错误与偏差（实测确认）</h2>
+
+<h3><span class="t t-bug">BUG</span>滚动导航漏掉「摄像头」章节</h3>
+<div class="card">
+  <p><code>index.html</code> 的 <code>.scroll-rail</code> 有 7 个锚点：<code>sec-hero / ch-trigger / ch-voice / ch-softpad / sec-brands / sec-quotes / site-download-cta</code>。</p>
+  <p>但页面实际定义了 4 个 story chapter：<code>ch-trigger / ch-camera / ch-voice / ch-softpad</code>。</p>
+  <p class="bad">→ <code>#ch-camera</code> 有章节、有内容、有计数器编号，却<span style="font-size:1.05em">没有对应的导航点</span>。右下角计数器显示「01 / 04」，而导航只跳 3 个章节，两者对不上。</p>
+  <p><strong>修法：</strong>在 rail 里补一个 <code>data-target="#ch-camera"</code>，位置在 trigger 和 voice 之间。</p>
+</div>
+
+<h3><span class="t t-bug">BUG</span>quickstart.html 与 keys.html 近乎重复</h3>
+<div class="card">
+  <p>两页共享 <strong>18 个相同 id</strong>（<code>qs-hero</code>、<code>neural-canvas</code>、<code>node-layer-keys</code>、<code>rn-*</code>、<code>hn-hub</code> 等），hero 完全一样，<code>&lt;title&gt;</code> 也完全一样（都是「语音与按键 — 一声 OneTone」）。</p>
+  <p class="bad">→ 这是同一个页面的两个副本。后果：SEO 互相蚕食、改一处忘另一处、用户分不清该看哪个。</p>
+  <p><strong>修法（三选一）：</strong></p>
+  <ul>
+    <li><strong>推荐</strong>：合并成 <code>quickstart.html</code>，keys 的内容作为其中一个 step；<code>keys.html</code> 做 301 跳转</li>
+    <li>或：keys 专做「按键映射参考手册」，去掉 hero 和神经网 demo，走纯文档风</li>
+    <li>最低成本：至少先把 <code>&lt;title&gt;</code> 改成「按键映射 — 一声 OneTone」，description 也区分开</li>
+  </ul>
+</div>
+
+<h3><span class="t t-bug">BUG</span>「假互动」：看起来能点，点了没用</h3>
+<div class="card">
+  <p><code>index.html</code> 的 <code>.command-item</code>（鼠标侧键 / 手柄 / 戒指 / 麦克风口令）是 4 个 <code>&lt;button&gt;</code>，视觉上完全可点。</p>
+  <p>但 <code>js/home-demo.js</code> 中<strong class="bad">没有任何 click 监听</strong>——它只是每 1800ms 自动轮播 <code>is-active</code> 类：</p>
+  <p class="quote">flowItems.forEach(item =&gt; item.classList.toggle("is-active", i === flowIndex)); … await ctx.sleep(1800);</p>
+  <p>整个 <code>home-demo.js</code>（27 KB）里 <strong>0 个 click 监听</strong>，11 处 <code>setInterval/setTimeout</code>。首页 <code>&lt;input&gt;</code> 数量为 <strong>0</strong>。</p>
+  <p class="bad">→ vibecoding 用户天生会去点、去试。点了没反应，是最伤信任的一类体验。</p>
+  <p><strong>修法（成本从低到高）：</strong></p>
+  <ul>
+    <li><strong>低</strong>：给 4 个 button 加 click → 立刻切到对应项并<strong>暂停自动轮播</strong>，让用户有掌控感</li>
+    <li><strong>中</strong>：轮播第一次播完后停住，交还控制权（"演示一遍，然后你自己点"）</li>
+    <li><strong>高</strong>：做成一个真的可玩 demo——点「鼠标侧键」→ 出现"按住说话"按钮 → 用 Web Speech API 真的转写一段（浏览器原生，无需后端）</li>
+  </ul>
+</div>
+
+<h3><span class="t t-bug">BUG</span>3 个功能页没进主导航</h3>
+<div class="card">
+  <p>所有 7 个页面的主导航完全一致：<code>首页 / 上手 / 帮助</code>（+ 右侧「下载」按钮）。</p>
+  <p>但网站有 4 个功能页：<code>keys.html</code>（按键）、<code>vision.html</code>（摄像头）、<code>agent.html</code>（SoftPad）、以及 quickstart。前 3 个<strong class="bad">只能从 footer 或正文内链进入</strong>。</p>
+  <p>→ 花了大力气做的功能页，用户从导航找不到。</p>
+  <p><strong>修法：</strong>导航改成 <code>首页 / 上手 / 功能▾ / 帮助 / 下载</code>，下拉里放 语音 · 按键 · 摄像头 · SoftPad。同时把 header 的「下载」保留为独立高亮按钮。</p>
+</div>
+
+<h3><span class="t t-warn">偏差</span>生产环境依赖 4 个外部 CDN</h3>
+<div class="card">
+  <table style="margin:0">
+    <tr><th>依赖</th><th>出现次数</th><th>问题</th></tr>
+    <tr><td><code>fonts.googleapis.com</code></td><td>12</td><td class="bad">国内不可靠，是首屏白屏/卡顿的主因之一</td></tr>
+    <tr><td><code>cdn.tailwindcss.com</code></td><td>12</td><td class="bad">Tailwind CDN 官方明确不建议上生产：全量 JS、运行时编译、FOUC</td></tr>
+    <tr><td><code>unpkg.com</code>（Phosphor）</td><td>13</td><td class="warn">全量图标库，实际只用了几十个图标</td></tr>
+    <tr><td><code>cdn.jsdelivr.net</code>（GSAP）</td><td>7</td><td class="warn">体积不小，且首页动效并非强依赖</td></tr>
+  </table>
+  <p style="margin-top:14px">实测：本地起服务打开 <code>index.html</code>，浏览器<strong class="bad">等待 load 事件超时</strong>——四个 CDN 串行拉取（各 2–4 秒）直接把首屏拖垮。而 WorkBuddy 作为 SPA 至少是打包自托管的。</p>
+  <p><strong>修法（按性价比排序）：</strong></p>
+  <ul>
+    <li><strong>最高性价比</strong>：给 <code>fonts.googleapis.com</code> 加 <code>media="print" onload="this.media='all'"</code> 异步化，或直接换自托管/国内镜像（如 <code>fonts.googleapis.cn</code>、字节静态资源）。字体不该阻塞渲染。</li>
+    <li><strong>次高</strong>：把 Tailwind 在本地 build 成静态 CSS 产物提交（一次性工作，之后 all pages 受益）</li>
+    <li>Phosphor 图标：改成只打包用到的 SVG（或直接内联 symbol sprite）</li>
+    <li>GSAP：首页保留，其余页面按需加载</li>
+  </ul>
+</div>
+
+<h3><span class="t t-warn">偏差</span>i18n：673 vs 679，英文缺 8 个 key</h3>
+<div class="card">
+  <p>中文 679 个 key，英文 673 个。切到 EN 时这 8 个会露馅：</p>
+  <p><code>qsStep1Title · qsStep1Desc · qsStep2Title · qsStep2Desc · qsStep3Title · qsStep3Desc · qsSuccessTitle · qsSuccessVerdict</code></p>
+  <p>这些恰好是<strong>快速上手三步</strong>的文案——也就是英文用户转化路径上最关键的一段。</p>
+  <p>另外 <code>i18n.js</code> 有 <strong>88 KB</strong>，全站每个页面都整包加载，而单个页面只用其中一小部分。</p>
+  <p><strong>修法：</strong>先补齐这 8 个 key；中期考虑按页面拆分语言包。</p>
+</div>
+
+<h3><span class="t t-warn">偏差</span>changelog.html 的 description 是废话</h3>
+<div class="card">
+  <p><code>&lt;meta name="description" content="更新日志 — 一声 OneTone"&gt;</code> —— 等于没写。</p>
+  <p>改成：<code>一声 OneTone 的版本更新记录：新功能、问题修复与兼容性改进。</code></p>
+</div>
+
+<h3><span class="t t-warn">偏差</span>CTA 按钮与品牌色脱节</h3>
+<div class="card">
+  <p><code>.nav-cta</code> 和 <code>.site-download-cta-btn</code> 都是<strong>白底黑字</strong>（<code>background:#fff; color:#000</code>），而品牌色是 cyan <code>#2a9cc4</code>。</p>
+  <p>WorkBuddy 的主 CTA 用的是品牌绿。OneTone 的 CTA 用了中性白，导致<span class="hl">品牌识别被稀释</span>——页面到处是青色发光，但最该被点的按钮反而是白的。</p>
+  <p><strong>修法：</strong>把主 CTA 改成品牌青（<code>background:var(--mac-accent)</code>），次要按钮保持描边白。同时全局统一——现在 <code>.nav-cta</code>、<code>.dl-primary-btn</code>、<code>.site-download-cta-btn</code> 三套按钮样式各写各的。</p>
+</div>
+</section>
+
+<!-- ============ 4. 审美 UI ============ -->
+<section class="sect">
+<h2>4 · 审美与 UI</h2>
+
+<h3>做得好的（别动）</h3>
+<ul>
+  <li><span class="good">✓</span> <strong>不是滚动劫持</strong>：<code>.story-chapter</code> 是 <code>min-height:100vh</code> 的自然滚动，没有 pin 牢用户——这比很多"创意官网"克制，很好。</li>
+  <li><span class="good">✓</span> <strong>尊重 <code>prefers-reduced-motion</code></strong>：<code>site-scroll.js</code> 和 <code>home-gsap.js</code> 都做了降级处理。</li>
+  <li><span class="good">✓</span> <strong>深色 HUD 与开发者工具调性吻合</strong>——vibecoding 用户就是 Cursor/终端深色党，这个方向是对的。</li>
+  <li><span class="good">✓</span> 品牌兼容墙（"在哪写就在哪说"）方向正确，比硬套"客户墙"诚实。</li>
+</ul>
+
+<h3>建议调整的</h3>
+<table>
+  <tr><th style="width:24%">问题</th><th>现状</th><th>建议</th></tr>
+  <tr>
+    <td>命名前缀混乱</td>
+    <td>至少 8 套前缀并存：<code>mac-*</code>（macOS 遗留）、<code>site-*</code>、<code>qs-*</code>、<code>hct-*</code>、<code>pad-teaser-*</code>、<code>op-*</code>、<code>rn-*</code>、<code>dl-*</code></td>
+    <td>不用一次性重构，但<strong>新写的样式统一到 <code>ot-</code> 前缀</strong>，逐步收敛。<code>mac-</code> 前缀对一个 Windows 工具尤其违和。</td>
+  </tr>
+  <tr>
+    <td>装饰噪音偏多</td>
+    <td>spatial-grid 透视网格、glass 毛玻璃、cyan glow、scanline 扫描线、四角取景框、粒子 canvas……同时出现在不同区块</td>
+    <td>做"装饰预算"：<strong>首屏保留 1 个主视觉焦点</strong>，章节内只允许 1 种装饰。现在每屏都在抢注意力，反而没有重点。</td>
+  </tr>
+  <tr>
+    <td>信息密度被稀释</td>
+    <td>4 个章节每屏只有「1 个场景胶囊 + 1 个 eyebrow + 1 个问句 + 1 段回答 + 1 个 chip + 1 个 demo」</td>
+    <td>把「结果」前置：每个章节先给<strong>一句可验证的结果</strong>（如"按下侧键 → 8 秒后 52 个字进 Cursor"），再展开原理。</td>
+  </tr>
+  <tr>
+    <td>三套按钮样式</td>
+    <td><code>.nav-cta</code> / <code>.dl-primary-btn</code> / <code>.site-download-cta-btn</code> 各自实现</td>
+    <td>统一成一个 <code>.ot-btn</code> + <code>--primary/--ghost</code> 变体。</td>
+  </tr>
+</table>
+</section>
+
+<!-- ============ 5. 叙事 ============ -->
+<section class="sect">
+<h2>5 · 叙事：从"能力清单"改成"问题-解决"</h2>
+<div class="card">
+  <p><strong>现在的叙事主线是"我们有哪些能力"</strong>：</p>
+  <p class="quote">触发（我怎么开麦）→ 摄像头（体态也能开麦）→ 语音（说了字会跟上吗）→ SoftPad（有时你想叫它停）</p>
+  <p style="margin-top:14px"><strong>建议改成 vibecoding 用户的真实困境</strong>：</p>
+  <p class="quote">手比脑子慢（说话比打字快 3 倍）→ 但我懒得找按钮（所以按一下侧键）→ 说错了想重来（Esc 取消）→ Agent 跑飞了想叫停（SoftPad）</p>
+</div>
+<p>两套叙事用的是同样的素材，差别只在<span class="hl">主语</span>：现在的主语是"产品功能"，建议改成"用户处境"。vibecoding 用户对"功能介绍"免疫，对"我也有这个问题"有反应。</p>
+
+<h4>具体改写示例</h4>
+<table>
+  <tr><th style="width:16%">章节</th><th style="width:42%">现在</th><th>建议</th></tr>
+  <tr>
+    <td>ch-trigger</td>
+    <td>「我怎么开麦？」<br>绑一次外设，到处能说。侧键、手柄、戒指——顺手的动作就是你的开麦键。</td>
+    <td>「手上有活，怎么开口？」<br>把开麦键绑到你已经在按的那个键上。侧键、手柄、戒指都行——不用抬手去找麦克风图标。</td>
+  </tr>
+  <tr>
+    <td>ch-voice</td>
+    <td>「说了，字会跟上吗？」<br>好的语音输入不该让你先停下来找按钮。</td>
+    <td>「说完了，字在哪？」<br>字直接落在你正在打字的那个光标上。说错了按 Esc，这段清空重来。</td>
+  </tr>
+  <tr>
+    <td>ch-softpad</td>
+    <td>「有时你想叫它停？」<br>屏幕上的小键盘，可展开、可收成迷你栏。</td>
+    <td>「Agent 跑偏了，怎么喊停？」<br>屏幕角落的迷你栏，数字键一对一接管你的 Agent——不用切窗口去点停止。</td>
+  </tr>
+</table>
+<p style="font-size:.88rem">注：bridge 文案（"下面，麦到你手上了"）写得很好，<span class="good">保留</span>，这是全站最有记忆点的部分。</p>
+</section>
+
+<!-- ============ 6. 帮助下载转化 ============ -->
+<section class="sect">
+<h2>6 · 帮 vibecoding 用户"理解 → 下载试用"</h2>
+<p>这是整个分析里最该优先做的一块。WorkBuddy 转化做得好，靠的是<span class="hl">把用户的每一步疑虑提前消灭</span>。</p>
+
+<div class="step"><div class="n">1</div><div class="c">
+  <h4>先回答"这跟我有什么关系"</h4>
+  <p>vibecoding 用户的第一问不是"这是什么"，是"<strong>我在 Cursor / Claude Code 里能用吗</strong>"。</p>
+  <p>→ 把品牌兼容墙从页面中段<strong>提到 hero 正下方</strong>，并把文案从"在哪写就在哪说"改成<span class="hl">"已在 Cursor / Claude / Trae / Windsurf 验证可用"</span>。用"已验证"替代"支持"，可信度完全不同。</p>
+</div></div>
+
+<div class="step"><div class="n">2</div><div class="c">
+  <h4>消灭"要花多少时间"的疑虑</h4>
+  <p>WorkBuddy 用"15 分钟交付报告"设定预期。OneTone 现在完全没提时间成本。</p>
+  <p>→ hero 副标题直接写 <code>3 分钟装好</code>；download.html 的"装好了，下一步这样做"保留（这块做得很好）。</p>
+</div></div>
+
+<div class="step"><div class="n">3</div><div class="c">
+  <h4>提前打 SmartScreen 预防针</h4>
+  <p>现在 SmartScreen 说明只在 <code>download.html</code>。用户如果直接从 hero 的下载按钮跳走，安装时遇到拦截会以为中毒。</p>
+  <p>→ 在 hero 的下载按钮<strong>下方加一行小字</strong>：<code>首次安装 Windows 会提示 SmartScreen，点「更多信息 → 仍要运行」即可 · 开源免签</code>。<span class="good">download.html 里这段处理得很好，把它前置。</span></p>
+</div></div>
+
+<div class="step"><div class="n">4</div><div class="c">
+  <h4>给一个"不用装也能信"的证据</h4>
+  <p>vibecoding 用户习惯先验证再安装。</p>
+  <p>→ 三选一：<strong>GitHub star 数</strong>（如果拿得出手就直接放）、<strong>一段 15 秒真机录屏</strong>（比 SVG demo 可信）、或<strong>社区讨论截图</strong>。现有的 8 条多语言评价很棒，但都是"语音输入"的价值，<span class="hl">不是"一声"的价值</span>——建议补 1–2 条明确提到"用一声之后"的评价。</p>
+</div></div>
+
+<div class="step"><div class="n">5</div><div class="c">
+  <h4>把"下载"做成常驻而非终点</h4>
+  <p>现在 header 的下载按钮是 <code>position:fixed</code> 常驻的，<span class="good">这点做得对</span>。</p>
+  <p>→ 补两点：滚动超过 1 屏后，header 下载按钮<strong>收窄成小胶囊并显示体积</strong>（<code>下载 · 30 MB</code>）；每个章节末尾加章节级下载链接。</p>
+</div></div>
+</section>
+
+<!-- ============ 7. 执行顺序 ============ -->
+<section class="sect">
+<h2>7 · 执行顺序建议</h2>
+<table>
+  <tr><th style="width:12%">优先级</th><th>动作</th><th style="width:16%">成本</th><th style="width:26%">为什么先做</th></tr>
+  <tr><td><span class="t t-bug">P0</span></td><td>补 <code>#ch-camera</code> 滚动锚点</td><td>1 行</td><td>纯 bug，不修就是硬伤</td></tr>
+  <tr><td><span class="t t-bug">P0</span></td><td>补齐 8 个英文 i18n key</td><td>10 分钟</td><td>挡在英文用户转化路径上</td></tr>
+  <tr><td><span class="t t-bug">P0</span></td><td>区分 quickstart / keys 的 title 与 description</td><td>5 分钟</td><td>SEO 互相蚕食</td></tr>
+  <tr><td><span class="t t-bug">P0</span></td><td>Google Fonts 异步化或换国内源</td><td>1 小时</td><td class="bad">国内首屏体验的最大单点风险</td></tr>
+  <tr><td><span class="t t-warn">P1</span></td><td>rewrite hero：价值句 + 3 分钟 + 免费开源</td><td>半天</td><td>首屏决定 70% 的去留</td></tr>
+  <tr><td><span class="t t-warn">P1</span></td><td>给 4 个 command-item 加真实点击 + 暂停轮播</td><td>半天</td><td>消除"假互动"的信任损耗</td></tr>
+  <tr><td><span class="t t-warn">P1</span></td><td>hero 下方前置品牌兼容墙 + SmartScreen 提示</td><td>半天</td><td>直击 vibecoding 用户两个最大疑虑</td></tr>
+  <tr><td><span class="t t-warn">P1</span></td><td>主导航加「功能▾」下拉</td><td>2 小时</td><td>让已做好的 3 个功能页被看见</td></tr>
+  <tr><td><span class="t t-borrow">P2</span></td><td>hero demo 改成有"完成态"的因果链 + 字数/耗时</td><td>1–2 天</td><td>从动画升级成演示</td></tr>
+  <tr><td><span class="t t-borrow">P2</span></td><td>摄像头/SoftPad 收进场景切换区，首页压到 ~5 屏</td><td>1–2 天</td><td>降低耐心成本</td></tr>
+  <tr><td><span class="t t-borrow">P2</span></td><td>章节文案从"功能"改成"用户困境"</td><td>半天</td><td>提升共鸣</td></tr>
+  <tr><td><span class="t t-borrow">P3</span></td><td>Tailwind 本地 build、图标按需、拆分 i18n</td><td>2–3 天</td><td>工程债，长期收益</td></tr>
+</table>
+</section>
+
+<!-- ============ 8. 一句话 ============ -->
+<section class="sect">
+<h2>8 · 一句话总结</h2>
+<div class="card" style="border-color:rgba(42,156,196,.4)">
+  <p style="color:#fff;font-size:1.05rem;margin-bottom:8px"><strong>跟 WorkBuddy 学"怎么说"，不学"摆什么"。</strong></p>
+  <p>学它的<strong>一句话价值、把真产品摆上首屏、用数字设定预期</strong>；不要学它的<strong>定价表、客户 logo 墙、生态背书</strong>——那些是腾讯规模才撑得起来的，独立开源项目照抄会露怯。</p>
+  <p style="margin-top:12px">而 OneTone 真正该优先补的，不是新的动效，是<strong style="color:#fff">4 个已经存在的 bug</strong>（漏锚点、缺英文 key、标题重复、字体阻塞）和<strong style="color:#fff">3 个说服力缺口</strong>（没有数字、假互动、没有"我的场景能用吗"的答案）。</p>
+</div>
+</section>
+
+</div>
+
+<footer>
+分析基于仓库最新源码 · 2026-08-29 · 仅诊断与建议，未修改任何代码
+</footer>
+</body>
+</html>

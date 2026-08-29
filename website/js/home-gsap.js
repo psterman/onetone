@@ -4,19 +4,19 @@
   // Scheme B: no lens scrub. GSAP = hero + brands + rail + bridge words + voice chars.
   // Copy/bridge/demo = IO. Mood = shared #story-world data-mood.
 
-  var CHAPTERS = ["ch-trigger", "ch-camera", "ch-voice", "ch-softpad"];
-  var CHAPTER_NAMES = ["trigger", "camera", "voice", "softpad"];
-  var COUNTER_KEYS = ["homeStoryCounter1", "homeStoryCounter2", "homeStoryCounter3", "homeStoryCounter4"];
-  var COUNTER_FALLBACK = ["01 / 04", "02 / 04", "03 / 04", "04 / 04"];
+  var CHAPTERS = ["ch-trigger", "ch-voice", "ch-advanced"];
+  var CHAPTER_NAMES = ["trigger", "voice", "advanced"];
+  var COUNTER_KEYS = ["homeStoryCounter1", "homeStoryCounter2", "homeStoryCounter3"];
+  var COUNTER_FALLBACK = ["01 / 03", "02 / 03", "03 / 03"];
   var RAIL_TARGETS = [
     "#sec-hero",
+    "#sec-positioning",
     "#ch-trigger",
-    "#ch-camera",
     "#ch-voice",
-    "#ch-softpad",
+    "#ch-advanced",
     "#sec-brands",
     "#sec-quotes",
-    "#site-download-cta",
+    "#ot-final-cta",
   ];
   var HEADER = 64;
   var HERO_HARD_PAUSE = 0.35;
