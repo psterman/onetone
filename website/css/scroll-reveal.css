@@ -1,0 +1,17 @@
+/* Shared scroll-reveal pending state (GSAP animates to visible) */
+[data-scroll-reveal] {
+  opacity: 0;
+  transform: translateY(1.25rem);
+}
+
+[data-scroll-reveal].is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-scroll-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+}

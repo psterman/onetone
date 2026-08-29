@@ -24,6 +24,24 @@ const PAGES = [
   "404.html",
 ];
 
+/** Pages with #story-world scroll narrative (gsap + scroll-reveal + site-scroll). */
+const CONTENT_SCROLL_PAGES = new Set([
+  "quickstart.html",
+  "keys.html",
+  "vision.html",
+  "agent.html",
+  "faq.html",
+]);
+
+const GSAP_CDN = "https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js";
+const CONTENT_SCROLL_HEAD =
+  '  <link rel="stylesheet" href="css/site-scroll.css">';
+const CONTENT_SCROLL_SCRIPTS = [
+  `<script src="${GSAP_CDN}"></script>`,
+  '<script src="js/scroll-reveal.js"></script>',
+  '<script src="js/site-scroll.js"></script>',
+].join("\n");
+
 const FONT_URL =
   "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap";
 
@@ -112,6 +130,36 @@ function i18nScriptTags(file) {
     .join("\n");
 }
 
+function ensureContentScrollPackage(html, file) {
+  if (!CONTENT_SCROLL_PAGES.has(file)) return html;
+
+  if (!html.includes("css/site-scroll.css")) {
+    const otLink = '<link rel="stylesheet" href="css/ot-components.css">';
+    if (html.includes(otLink)) {
+      html = html.replace(otLink, `${CONTENT_SCROLL_HEAD}\n  ${otLink}`);
+    } else {
+      html = html.replace("</head>", `${CONTENT_SCROLL_HEAD}\n</head>`);
+    }
+  }
+
+  if (!html.includes("js/site-scroll.js")) {
+    html = html.replace(
+      /<script src="js\/shell\.js"><\/script>/,
+      `${CONTENT_SCROLL_SCRIPTS}\n<script src="js/shell.js"></script>`
+    );
+    return html;
+  }
+
+  if (!html.includes("js/scroll-reveal.js")) {
+    html = html.replace(
+      /<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/gsap@[^"]+"><\/script>\n/,
+      `$&<script src="js/scroll-reveal.js"></script>\n`
+    );
+  }
+
+  return html;
+}
+
 function patchFile(file) {
   const filePath = path.join(ROOT, file);
   if (!fs.existsSync(filePath)) return false;
@@ -144,6 +192,8 @@ function patchFile(file) {
     /(?:\s*<script src="js\/i18n-bundles\/[^"]+\.js"><\/script>)*\s*<script src="js\/i18n\.js"><\/script>/,
     "\n" + i18nBlock
   );
+
+  html = ensureContentScrollPackage(html, file);
 
   fs.writeFileSync(filePath, html, "utf8");
   console.log("patched:", file);

@@ -479,6 +479,12 @@
     });
   }
 
+  function initPositioningReveal() {
+    var section = document.getElementById("sec-positioning");
+    if (!section || !window.OneToneScrollReveal) return;
+    window.OneToneScrollReveal.init(section);
+  }
+
   function initHomeStory() {
     if (!document.getElementById("story-world")) return;
 
@@ -517,6 +523,7 @@
       initReveals();
       initVoiceCharScrub();
       bindDemoLifecycleStatic();
+      initPositioningReveal();
       return;
     }
 
@@ -528,6 +535,7 @@
       initReveals();
       initDemoIO();
       initVoiceCharScrub();
+      initPositioningReveal();
       return;
     }
 
@@ -536,6 +544,7 @@
       initReveals();
       initDemoIO();
       initVoiceCharScrub();
+      initPositioningReveal();
       return;
     }
 
@@ -557,6 +566,7 @@
     if (ScrollTrigger.sort) ScrollTrigger.sort();
     ScrollTrigger.refresh();
     if (window.scrollY < 80 && window.OneToneHomeDemo) OneToneHomeDemo.resumeHero();
+    initPositioningReveal();
   }
 
   function scheduleInit() {

@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>我的习惯 · 输入通道自适应界面稿</title>
+<style>
+:root{
+  --bg:#0f1216; --panel:#161a20; --panel-2:#1c2129; --panel-3:#222831;
+  --bd:rgba(255,255,255,.07); --bd-2:rgba(255,255,255,.13);
+  --tx:#e7eaee; --mu:#98a1ac; --dim:#6a7280;
+  --ac:#2a9cc4; --ac-soft:rgba(42,156,196,.14);
+  --vi:#a78bfa; --vi-soft:rgba(167,139,250,.14);
+  --gr:#3fb950; --am:#d8a13a;
+  --mono:ui-monospace,"SF Mono",Consolas,"Cascadia Code",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);
+  font:400 13px/1.6 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased}
+.app{display:flex;height:100vh;min-width:1120px;overflow:hidden}
+
+/* 侧栏 */
+.side{width:186px;flex:none;background:var(--panel);border-right:.5px solid var(--bd);padding:16px 12px}
+.brand{display:flex;align-items:center;gap:9px;padding:6px 8px 18px}
+.km{width:28px;height:28px;border-radius:8px;background:var(--ac);color:#06131a;
+  display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;flex:none}
+.brand b{font-size:13px;font-weight:500;display:block}
+.brand span{font-size:11px;color:var(--dim)}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{padding:7px 10px;border-radius:7px;color:var(--mu);text-decoration:none;font-size:13px}
+.nav a.on{background:var(--ac-soft);color:var(--ac)}
+.nav .grp{font-size:11px;color:var(--dim);padding:14px 10px 6px}
+
+/* 场景列表 */
+.scenes{width:230px;flex:none;background:var(--panel);border-right:.5px solid var(--bd);
+  padding:16px 12px;overflow:auto}
+.srch{width:100%;background:var(--panel-2);border:.5px solid var(--bd);border-radius:8px;
+  color:var(--tx);padding:7px 10px;font-size:12px;outline:none}
+.srch::placeholder{color:var(--dim)}
+.sec{font-size:11px;color:var(--dim);margin:18px 4px 8px}
+.row{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;
+  border-radius:8px;margin-bottom:2px;cursor:pointer;font-size:13px}
+.row:hover{background:var(--panel-2)}
+.row.on{background:var(--ac-soft);box-shadow:inset 0 0 0 .5px rgba(42,156,196,.45)}
+.dot{width:7px;height:7px;border-radius:50%;flex:none}
+.dot.on{background:var(--gr)} .dot.off{background:#39414d}
+
+/* 主区 */
+.main{flex:1;overflow:auto;padding:22px 26px 44px}
+.hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px}
+.hd h1{margin:0 0 4px;font-size:19px;font-weight:500}
+.hd p{margin:0;font-size:12px;color:var(--mu)}
+.btn{background:var(--ac);color:#06131a;border:none;border-radius:8px;padding:8px 14px;
+  font-size:13px;font-weight:500;cursor:pointer}
+
+/* 继承链 */
+.inh{display:flex;align-items:center;gap:12px;background:var(--panel);border:.5px solid var(--bd);
+  border-radius:12px;padding:11px 16px;margin-bottom:16px}
+.node{background:var(--panel-2);border:.5px solid var(--bd);border-radius:9px;padding:8px 13px}
+.node.cur{border-color:rgba(42,156,196,.5);background:var(--ac-soft)}
+.node .t{font-size:13px;font-weight:500}
+.node .s{font-size:11px;color:var(--dim);margin-top:1px}
+.link{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--dim);font-size:11px}
+
+/* 通道标签 */
+.ch{display:flex;gap:6px;margin-bottom:14px;border-bottom:.5px solid var(--bd);padding-bottom:0}
+.ch button{background:none;border:none;border-bottom:2px solid transparent;color:var(--mu);
+  font-size:13px;padding:8px 13px;cursor:pointer;display:flex;align-items:center;gap:7px;
+  margin-bottom:-1px}
+.ch button.on{color:var(--tx);border-bottom-color:var(--ac)}
+.ch button .n{background:rgba(255,255,255,.06);border-radius:20px;padding:1px 7px;
+  font-size:11px;color:var(--dim)}
+.ch button.on .n{background:var(--ac-soft);color:var(--ac)}
+
+/* 可视化区 */
+.viz{background:var(--panel);border:.5px solid var(--bd);border-radius:14px;
+  padding:18px 20px;margin-bottom:16px;min-height:210px}
+.vp{display:none} .vp.on{display:block}
+.vh{font-size:14px;font-weight:500;margin:0 0 2px}
+.vs{font-size:12px;color:var(--dim);margin:0 0 14px}
+
+/* 语音：说法 chips */
+.microw{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.mic{width:38px;height:38px;border-radius:11px;background:var(--vi-soft);
+  display:flex;align-items:center;justify-content:center;flex:none}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.chip{background:var(--panel-2);border:.5px solid var(--bd-2);border-radius:20px;
+  padding:5px 12px;font-size:12px}
+.chip.more{background:var(--vi-soft);border-color:rgba(167,139,250,.35);color:var(--vi);cursor:pointer}
+.eng{display:flex;align-items:center;justify-content:space-between;background:var(--panel-2);
+  border:.5px solid var(--bd);border-radius:9px;padding:10px 13px;font-size:12px;color:var(--mu)}
+
+/* 软键盘：网格 */
+.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:400px;margin-bottom:12px}
+.pk{background:var(--panel-3);border:.5px solid var(--bd-2);border-radius:9px;padding:11px 8px;
+  text-align:center;font-size:12px}
+.pk.hot{border-color:rgba(42,156,196,.5);background:var(--ac-soft);color:var(--ac)}
+
+/* 总览 */
+.ov{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px}
+.ovc{background:var(--panel-2);border:.5px solid var(--bd);border-radius:11px;padding:13px 15px;
+  cursor:pointer}
+.ovc:hover{border-color:var(--bd-2)}
+.ovc .a{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.ovc .a b{font-weight:500;font-size:13px}
+.ovc .a i{font-style:normal;font-size:11px;color:var(--dim)}
+.ovc .d{font-size:11px;color:var(--mu);line-height:1.5}
+
+/* 规则列表 */
+.rule{background:var(--panel);border:.5px solid var(--bd);border-radius:11px;
+  padding:12px 15px;margin-bottom:8px;display:flex;align-items:flex-start;
+  justify-content:space-between;gap:14px}
+.rule.hide{display:none}
+.rule .l{min-width:0}
+.rule .txt{font-size:13px}
+.rule .txt em{font-style:normal;color:var(--ac)}
+.rule .meta{font-size:11px;color:var(--dim);margin-top:5px}
+.rule .r{display:flex;align-items:center;gap:8px;flex:none}
+.tag{font-size:11px;padding:2px 8px;border-radius:20px}
+.tag.ov{background:var(--ac-soft);color:var(--ac)}
+.tag.in{background:rgba(255,255,255,.05);color:var(--dim)}
+.mini{background:transparent;border:.5px solid var(--bd-2);border-radius:6px;color:var(--mu);
+  font-size:11px;padding:3px 9px;cursor:pointer;white-space:nowrap}
+
+/* 高级层 */
+.adv{margin-top:18px;background:var(--panel);border:.5px dashed var(--bd-2);
+  border-radius:14px;overflow:hidden}
+.adv .hd2{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;
+  cursor:pointer;user-select:none}
+.adv .hd2 h2{margin:0;font-size:14px;font-weight:500}
+.adv .hd2 .r{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--dim)}
+.adv .body{display:none;padding:0 18px 18px}
+.adv.open .body{display:block}
+.adv pre{margin:0;background:var(--panel-2);border:.5px solid var(--bd);border-radius:10px;
+  padding:13px 15px;font-family:var(--mono);font-size:12px;line-height:1.7;color:#b8c4d0;overflow-x:auto}
+.adv .k{color:var(--ac)} .adv .s{color:#98c793} .adv .c{color:var(--dim)}
+.gline{display:flex;gap:10px;font-size:11px;color:var(--dim);margin-top:10px;flex-wrap:wrap}
+.gline span{background:var(--panel-2);border:.5px solid var(--bd);border-radius:6px;padding:3px 9px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="side">
+    <div class="brand">
+      <div class="km">F1</div>
+      <div><b>一声 OneTone</b><span>v0.9 · 已连接</span></div>
+    </div>
+    <nav class="nav">
+      <div class="grp">主面板</div>
+      <a href="#">首页</a><a href="#" class="on">我的习惯</a><a href="#">按键设置</a>
+      <a href="#">虚拟键盘</a><a href="#">语音设置</a><a href="#">摄像头</a>
+      <div class="grp">系统</div>
+      <a href="#">通用设置</a><a href="#">声音与反馈</a><a href="#">状态与维护</a>
+    </nav>
+  </aside>
+
+  <aside class="scenes">
+    <input class="srch" placeholder="搜索应用或场景">
+    <div class="sec">全局默认</div>
+    <div class="row"><span>通用设置</span><span class="dot on"></span></div>
+    <div class="sec">近 7 天用过</div>
+    <div class="row on"><span>Cursor</span><span class="dot on"></span></div>
+    <div class="row"><span>WorkBuddy</span><span class="dot on"></span></div>
+    <div class="row"><span>MiniMax</span><span class="dot off"></span></div>
+    <div class="sec">其他场景</div>
+    <div class="row"><span>Codex</span><span class="dot on"></span></div>
+    <div class="row"><span>Claude Code</span><span class="dot off"></span></div>
+    <div class="row"><span>Qoder</span><span class="dot on"></span></div>
+    <div class="row"><span>Trae Code</span><span class="dot off"></span></div>
+  </aside>
+
+  <main class="main">
+
+    <div class="hd">
+      <div><h1>Cursor</h1><p>平时沿用通用设置；这里只列出为 Cursor 单独调整的部分。</p></div>
+      <button class="btn">为当前应用配置</button>
+    </div>
+
+    <div class="inh">
+      <div class="node"><div class="t">通用设置</div><div class="s">10 条规则 · 全局默认</div></div>
+      <div class="link">
+        <svg width="64" height="12" viewBox="0 0 64 12" fill="none">
+          <path d="M0 6h54" stroke="#39414d"/><path d="M50 2l5 4-5 4" stroke="#39414d" fill="none"/>
+        </svg>
+        <span>继承</span>
+      </div>
+      <div class="node cur"><div class="t">Cursor 场景</div><div class="s">7 条继承 · 3 项被覆盖</div></div>
+    </div>
+
+    <!-- 输入通道标签：决定下面用哪种可视化 -->
+    <div class="ch">
+      <button class="on" data-go="all">全部<span class="n">10</span></button>
+      <button data-go="key">按键<span class="n">2</span></button>
+      <button data-go="voice">语音<span class="n">2</span></button>
+      <button data-go="cam">摄像头<span class="n">4</span></button>
+      <button data-go="pad">软键盘<span class="n">2</span></button>
+    </div>
+
+    <!-- 可视化区：随通道切换 -->
+    <section class="viz">
+
+      <!-- 全部：总览 -->
+      <div class="vp on" data-vp="all">
+        <h2 class="vh">输入通道总览</h2>
+        <p class="vs">同一个场景里可以混用四种触发方式，点卡片查看细节</p>
+        <div class="ov">
+          <div class="ovc" data-go="key">
+            <div class="a"><b>按键</b><i>2 条</i></div>
+            <div class="d">F1 短按 / 长按<br>硬件启动键</div>
+          </div>
+          <div class="ovc" data-go="voice">
+            <div class="a"><b>语音</b><i>2 条</i></div>
+            <div class="d">6 种说法任一命中<br>轻量中文模型</div>
+          </div>
+          <div class="ovc" data-go="cam">
+            <div class="a"><b>摄像头</b><i>4 条</i></div>
+            <div class="d">眨眼 / 张嘴 / 注视<br>挥手取消</div>
+          </div>
+          <div class="ovc" data-go="pad">
+            <div class="a"><b>软键盘</b><i>2 条</i></div>
+            <div class="d">屏幕边缘托盘<br>8 个可自定义键</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 按键 -->
+      <div class="vp" data-vp="key">
+        <h2 class="vh">F1 键位</h2>
+        <p class="vs">同一个物理键，三种按法对应三件事</p>
+        <svg width="100%" viewBox="0 0 400 210" role="img" aria-label="F1 键的三种触发方式">
+          <rect x="28" y="50" width="124" height="118" rx="16" fill="#0c0f13"/>
+          <rect x="28" y="44" width="124" height="118" rx="16" fill="#222831" stroke="#39414d"/>
+          <text x="90" y="103" text-anchor="middle" dominant-baseline="central" font-size="34"
+                font-weight="500" fill="#e7eaee" font-family="system-ui,'Segoe UI',sans-serif">F1</text>
+          <text x="90" y="190" text-anchor="middle" font-size="11" fill="#6a7280"
+                font-family="system-ui,'Segoe UI',sans-serif">硬件启动键</text>
+          <circle cx="152" cy="62" r="3.5" fill="#2a9cc4"/>
+          <line x1="158" y1="62" x2="176" y2="62" stroke="#39414d"/>
+          <text x="182" y="54" font-size="13" font-weight="500" fill="#2a9cc4"
+                font-family="system-ui,'Segoe UI',sans-serif">短按</text>
+          <text x="182" y="72" font-size="12" fill="#98a1ac"
+                font-family="system-ui,'Segoe UI',sans-serif">开始语音输入</text>
+          <circle cx="152" cy="103" r="3.5" fill="#2a9cc4"/>
+          <line x1="158" y1="103" x2="176" y2="103" stroke="#39414d"/>
+          <text x="182" y="95" font-size="13" font-weight="500" fill="#2a9cc4"
+                font-family="system-ui,'Segoe UI',sans-serif">长按</text>
+          <text x="182" y="113" font-size="12" fill="#98a1ac"
+                font-family="system-ui,'Segoe UI',sans-serif">切换识别引擎</text>
+        </svg>
+      </div>
+
+      <!-- 语音 -->
+      <div class="vp" data-vp="voice">
+        <h2 class="vh">语音触发</h2>
+        <p class="vs">不用记固定口令，下列任意一种说法都能命中</p>
+        <div class="microw">
+          <div class="mic">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.6">
+              <rect x="9" y="3" width="6" height="11" rx="3"/>
+              <path d="M5 11a7 7 0 0014 0M12 18v3"/>
+            </svg>
+          </div>
+          <div><div style="font-size:13px">说出下面任意一句</div>
+               <div style="font-size:12px;color:var(--dim)">识别到即触发 · 支持模糊匹配</div></div>
+        </div>
+        <div class="chips">
+          <span class="chip">开始输入</span><span class="chip">开始听写</span>
+          <span class="chip">打开听写</span><span class="chip">语音输入</span>
+          <span class="chip more" onclick="this.textContent='说句话'">+2</span>
+        </div>
+        <div class="eng"><span>识别引擎</span><span style="color:var(--tx)">轻量中文模型</span></div>
+      </div>
+
+      <!-- 摄像头 -->
+      <div class="vp" data-vp="cam">
+        <h2 class="vh">摄像头触发</h2>
+        <p class="vs">眼神、口型和手势都能当开关，不用再找鼠标</p>
+        <svg width="100%" viewBox="0 0 400 220" role="img" aria-label="摄像头可识别的四种动作">
+          <ellipse cx="92" cy="100" rx="60" ry="72" fill="#222831" stroke="#39414d"/>
+          <ellipse cx="70" cy="88" rx="14" ry="9" fill="#0f1216"/>
+          <ellipse cx="114" cy="88" rx="14" ry="9" fill="#0f1216"/>
+          <circle cx="70" cy="88" r="4.5" fill="#2a9cc4"/>
+          <circle cx="114" cy="88" r="4.5" fill="#2a9cc4"/>
+          <path d="M74 132q18 11 36 0" stroke="#39414d" stroke-width="2" fill="none"/>
+          <text x="92" y="196" text-anchor="middle" font-size="11" fill="#6a7280"
+                font-family="system-ui,'Segoe UI',sans-serif">摄像头输入</text>
+          <circle cx="152" cy="58" r="3.5" fill="#2a9cc4"/>
+          <line x1="158" y1="58" x2="176" y2="58" stroke="#39414d"/>
+          <text x="182" y="50" font-size="13" font-weight="500" fill="#2a9cc4"
+                font-family="system-ui,'Segoe UI',sans-serif">眨眼</text>
+          <text x="182" y="68" font-size="12" fill="#98a1ac"
+                font-family="system-ui,'Segoe UI',sans-serif">确认上屏</text>
+          <circle cx="152" cy="103" r="3.5" fill="#2a9cc4"/>
+          <line x1="158" y1="103" x2="176" y2="103" stroke="#39414d"/>
+          <text x="182" y="95" font-size="13" font-weight="500" fill="#2a9cc4"
+                font-family="system-ui,'Segoe UI',sans-serif">张嘴</text>
+          <text x="182" y="113" font-size="12" fill="#98a1ac"
+                font-family="system-ui,'Segoe UI',sans-serif">开始语音输入</text>
+          <circle cx="152" cy="148" r="3.5" fill="#2a9cc4"/>
+          <line x1="158" y1="148" x2="176" y2="148" stroke="#39414d"/>
+          <text x="182" y="140" font-size="13" font-weight="500" fill="#2a9cc4"
+                font-family="system-ui,'Segoe UI',sans-serif">注视左下</text>
+          <text x="182" y="158" font-size="12" fill="#98a1ac"
+                font-family="system-ui,'Segoe UI',sans-serif">切换识别引擎</text>
+        </svg>
+      </div>
+
+      <!-- 软键盘 -->
+      <div class="vp" data-vp="pad">
+        <h2 class="vh">软键盘托盘</h2>
+        <p class="vs">屏幕边缘唤出的虚拟按键，触屏和鼠标都能点</p>
+        <div class="pad">
+          <div class="pk hot">语音</div><div class="pk hot">上屏</div>
+          <div class="pk">清空</div><div class="pk">撤销</div>
+          <div class="pk">标点</div><div class="pk">换行</div>
+          <div class="pk">翻译</div><div class="pk">更多</div>
+        </div>
+        <div style="font-size:12px;color:var(--dim)">青色为已配置动作的按键，其余保持默认</div>
+      </div>
+
+    </section>
+
+    <!-- 规则列表：随通道过滤 -->
+    <section id="rules">
+      <div class="rule" data-ch="key">
+        <div class="l"><div class="txt">按 <em>F1</em> → 开始语音输入</div>
+          <div class="meta">触发时机：启动输入 · 10 分钟前改过</div></div>
+        <div class="r"><span class="tag ov">覆盖</span><button class="mini">试一下</button></div>
+      </div>
+      <div class="rule" data-ch="key">
+        <div class="l"><div class="txt">长按 <em>F1</em> → 切换识别引擎</div>
+          <div class="meta">触发时机：通用 · 10 分钟前改过</div></div>
+        <div class="r"><span class="tag ov">覆盖</span><button class="mini">试一下</button></div>
+      </div>
+      <div class="rule" data-ch="voice">
+        <div class="l"><div class="txt">说「<em>开始输入</em>」等 6 种说法 → 开始语音输入</div>
+          <div class="meta">触发时机：启动输入 · 命中任一说法即可</div></div>
+        <div class="r"><span class="tag ov">覆盖</span><button class="mini">试一下</button></div>
+      </div>
+      <div class="rule" data-ch="voice">
+        <div class="l"><div class="txt">说「<em>发送</em>」→ 立即上屏</div>
+          <div class="meta">来自：通用设置 · 全局统一</div></div>
+        <div class="r"><span class="tag in">继承</span><button class="mini">改为覆盖</button></div>
+      </div>
+      <div class="rule" data-ch="cam">
+        <div class="l"><div class="txt"><em>眨眼</em> → 确认上屏</div>
+          <div class="meta">来自：通用设置 · 全局统一</div></div>
+        <div class="r"><span class="tag in">继承</span><button class="mini">改为覆盖</button></div>
+      </div>
+      <div class="rule" data-ch="cam">
+        <div class="l"><div class="txt"><em>张嘴</em> → 开始语音输入</div>
+          <div class="meta">触发时机：启动输入 · 3 天前改过</div></div>
+        <div class="r"><span class="tag ov">覆盖</span><button class="mini">试一下</button></div>
+      </div>
+      <div class="rule" data-ch="cam">
+        <div class="l"><div class="txt"><em>注视左下</em> → 切换识别引擎</div>
+          <div class="meta">来自：通用设置 · 全局统一</div></div>
+        <div class="r"><span class="tag in">继承</span><button class="mini">改为覆盖</button></div>
+      </div>
+      <div class="rule" data-ch="cam">
+        <div class="l"><div class="txt"><em>挥手</em> → 取消本次输入</div>
+          <div class="meta">来自：通用设置 · 全局统一</div></div>
+        <div class="r"><span class="tag in">继承</span><button class="mini">改为覆盖</button></div>
+      </div>
+      <div class="rule" data-ch="pad">
+        <div class="l"><div class="txt">托盘「<em>语音</em>」键 → 开始语音输入</div>
+          <div class="meta">来自：通用设置 · 全局统一</div></div>
+        <div class="r"><span class="tag in">继承</span><button class="mini">改为覆盖</button></div>
+      </div>
+      <div class="rule" data-ch="pad">
+        <div class="l"><div class="txt">托盘「<em>上屏</em>」键 → 立即发送</div>
+          <div class="meta">来自：通用设置 · 全局统一</div></div>
+        <div class="r"><span class="tag in">继承</span><button class="mini">改为覆盖</button></div>
+      </div>
+    </section>
+
+    <section class="adv" id="adv">
+      <div class="hd2">
+        <h2>高级</h2>
+        <div class="r"><span>代码视图 · 批量 · 调试日志</span><span id="advTag">展开</span></div>
+      </div>
+      <div class="body">
+        <pre><span class="c">// Cursor 场景 · 仅显示被覆盖的 3 项（其余继承自通用设置）</span>
+{
+  <span class="k">"app"</span>: <span class="s">"Cursor"</span>,
+  <span class="k">"inherits"</span>: <span class="s">"__global__"</span>,
+  <span class="k">"overrides"</span>: [
+    { <span class="k">"on"</span>: <span class="s">"key:F1:tap"</span>,   <span class="k">"do"</span>: <span class="s">"dictation.start"</span> },
+    { <span class="k">"on"</span>: <span class="s">"key:F1:hold"</span>,  <span class="k">"do"</span>: <span class="s">"engine.switch"</span> },
+    { <span class="k">"on"</span>: <span class="s">"voice:start"</span>,  <span class="k">"do"</span>: <span class="s">"dictation.start"</span>,
+      <span class="k">"alias"</span>: [<span class="s">"开始输入"</span>, <span class="s">"开始听写"</span>, <span class="s">"打开听写"</span>, <span class="s">"语音输入"</span>] }
+  ],
+  <span class="k">"camera"</span>: { <span class="k">"blink"</span>: <span class="s">"confirm"</span>, <span class="k">"mouthOpen"</span>: <span class="s">"dictation.start"</span> }
+}</pre>
+        <div class="gline"><span>上次执行 · 12ms</span><span>跨场景冲突 · 无</span>
+          <span>可复制 / 可导入 / 可 diff</span></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+function go(ch){
+  document.querySelectorAll('.ch button').forEach(b=>b.classList.toggle('on', b.dataset.go===ch));
+  document.querySelectorAll('.vp').forEach(p=>p.classList.toggle('on', p.dataset.vp===ch));
+  let n=0;
+  document.querySelectorAll('.rule').forEach(r=>{
+    const show = ch==='all' || r.dataset.ch===ch;
+    r.classList.toggle('hide',!show); if(show) n++;
+  });
+}
+document.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>go(el.dataset.go)));
+document.getElementById('adv').addEventListener('click',function(e){
+  if(e.target.closest('.body'))return;
+  this.classList.toggle('open');
+  document.getElementById('advTag').textContent = this.classList.contains('open')?'收起':'展开';
+});
+</script>
+</body>
+</html>

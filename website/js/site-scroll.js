@@ -9,10 +9,6 @@
   var moodEls = [];
   var moodRatios = {};
 
-  function prefersReducedMotion() {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  }
-
   function setStoryMood(mood) {
     if (!mood || world.getAttribute("data-mood") === mood) return;
     world.setAttribute("data-mood", mood);
@@ -58,55 +54,6 @@
     });
   }
 
-  function revealEl(el) {
-    if (el.classList.contains("is-revealed")) return;
-    if (prefersReducedMotion() || !window.gsap) {
-      el.classList.add("is-revealed");
-      return;
-    }
-    window.gsap.fromTo(
-      el,
-      { y: 24, opacity: 0 },
-      {
-        y: 0,
-        opacity: 1,
-        duration: 0.3,
-        ease: "power2.out",
-        overwrite: true,
-        onComplete: function () {
-          el.classList.add("is-revealed");
-        },
-      }
-    );
-  }
-
-  function initReveal() {
-    var els = world.querySelectorAll("[data-scroll-reveal]");
-    if (!els.length) return;
-
-    if (prefersReducedMotion() || !("IntersectionObserver" in window)) {
-      els.forEach(function (el) {
-        el.classList.add("is-revealed");
-      });
-      return;
-    }
-
-    var io = new IntersectionObserver(
-      function (entries) {
-        entries.forEach(function (entry) {
-          if (!entry.isIntersecting) return;
-          revealEl(entry.target);
-          io.unobserve(entry.target);
-        });
-      },
-      { threshold: 0.2, rootMargin: "0px 0px -8% 0px" }
-    );
-
-    els.forEach(function (el) {
-      io.observe(el);
-    });
-  }
-
   window.addEventListener("qs-hero-mode", function (e) {
     var hero = document.getElementById("qs-hero");
     if (!hero) return;
@@ -115,5 +62,7 @@
   });
 
   initMood();
-  initReveal();
+  if (window.OneToneScrollReveal) {
+    window.OneToneScrollReveal.init(world);
+  }
 })();
