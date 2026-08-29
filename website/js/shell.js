@@ -55,81 +55,32 @@
   syncNavActive();
   window.addEventListener("hashchange", syncNavActive);
 
-  // Download in main nav (parallel to 上手), remove header CTA pill
-  (function injectDownloadNav() {
-    var nav = document.querySelector(".site-nav");
-    if (nav && !nav.querySelector('[data-nav="download"]')) {
-      var qs = nav.querySelector('[data-nav="quickstart"]');
-      if (qs) {
-        var dl = document.createElement("a");
-        dl.href = "download.html";
-        dl.setAttribute("data-nav", "download");
-        dl.innerHTML =
-          '<i class="ph ph-download-simple site-nav-icon" aria-hidden="true"></i>' +
-          '<span data-i18n="navDownload">下载</span>';
-        qs.insertAdjacentElement("afterend", dl);
-      }
-    }
+  // Safety: drop legacy header download pill if static HTML still has it
+  (function removeLegacyHeaderCta() {
     var headerCta = document.querySelector(".site-header-actions .nav-cta");
     if (headerCta) headerCta.remove();
-    syncNavActive();
   })();
 
-  // Scenes dropdown in desktop nav
-  (function injectScenesNav() {
-    var nav = document.querySelector(".site-nav");
-    if (!nav || nav.querySelector(".site-nav-scenes")) return;
-    var faqLink = nav.querySelector('[data-nav="faq"]');
-    if (!faqLink) return;
-
-    var wrap = document.createElement("div");
-    wrap.className = "site-nav-scenes";
-    wrap.innerHTML =
-      '<button type="button" aria-expanded="false" aria-haspopup="true">' +
-      '<i class="ph ph-squares-four site-nav-icon" aria-hidden="true"></i>' +
-      '<span data-i18n="navScenes">场景</span>' +
-      '<i class="ph ph-caret-down" aria-hidden="true"></i>' +
-      "</button>" +
-      '<div class="site-nav-scenes-menu" role="menu">' +
-      '<a href="quickstart.html#voice" role="menuitem"><i class="ph ph-microphone"></i><span data-i18n="navVoice">语音</span></a>' +
-      '<a href="keys.html" role="menuitem"><i class="ph ph-keyboard"></i><span data-i18n="navKeys">按键</span></a>' +
-      '<a href="vision.html" role="menuitem"><i class="ph ph-camera"></i><span data-i18n="navCamera">摄像头</span></a>' +
-      '<a href="agent.html" role="menuitem"><i class="ph ph-squares-four"></i><span data-i18n="navSoftPad">SoftPad</span></a>' +
-      "</div>";
-    nav.insertBefore(wrap, faqLink);
-
-    var btn = wrap.querySelector("button");
-    btn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      var open = wrap.classList.toggle("is-open");
-      btn.setAttribute("aria-expanded", open ? "true" : "false");
+  // Bind scenes dropdown (markup is static in HTML)
+  (function bindScenesNav() {
+    document.querySelectorAll(".site-nav-scenes").forEach(function (wrap) {
+      if (wrap.dataset.bound) return;
+      wrap.dataset.bound = "1";
+      var btn = wrap.querySelector("button");
+      if (!btn) return;
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var open = wrap.classList.toggle("is-open");
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+      });
     });
     document.addEventListener("click", function () {
-      wrap.classList.remove("is-open");
-      btn.setAttribute("aria-expanded", "false");
+      document.querySelectorAll(".site-nav-scenes.is-open").forEach(function (wrap) {
+        wrap.classList.remove("is-open");
+        var btn = wrap.querySelector("button");
+        if (btn) btn.setAttribute("aria-expanded", "false");
+      });
     });
-
-    // Mobile panel scenes links
-    if (panel) {
-      var dl = panel.querySelector('[data-nav="download"]');
-      if (dl && !panel.querySelector(".mobile-scenes-label")) {
-        var label = document.createElement("span");
-        label.className = "mobile-scenes-label";
-        label.style.cssText = "padding:0.5rem 1rem;font-size:0.7rem;color:var(--mac-text-muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-top:0.5rem;";
-        label.setAttribute("data-i18n", "navScenes");
-        label.textContent = "场景";
-        panel.insertBefore(label, dl);
-        ["quickstart.html#voice", "keys.html", "vision.html", "agent.html"].forEach(function (href, i) {
-          var keys = ["navVoice", "navKeys", "navCamera", "navSoftPad"];
-          var icons = ["ph-microphone", "ph-keyboard", "ph-camera", "ph-squares-four"];
-          var labels = ["语音", "按键", "摄像头", "SoftPad"];
-          var a = document.createElement("a");
-          a.href = href;
-          a.innerHTML = '<i class="ph ' + icons[i] + ' site-nav-icon"></i><span data-i18n="' + keys[i] + '">' + labels[i] + "</span>";
-          panel.insertBefore(a, dl);
-        });
-      }
-    }
   })();
 
   // Upgrade legacy single CTA or inject multi-exit final CTA

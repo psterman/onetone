@@ -29,12 +29,16 @@
   position: relative;
   z-index: 10;
   margin-top: 40px;
+  width: 100%;
+  min-width: 0;
 }
 
 .op-demo {
   transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.2s ease;
   transform-style: preserve-3d;
   border-radius: 20px;
+  width: 100%;
+  min-width: 0;
 }
 
 .op-brand-icon {
@@ -59,9 +63,18 @@
   overflow: hidden;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
   position: relative;
-  height: 340px;
+  width: 100%;
+  height: auto;
+  min-height: 220px;
+  aspect-ratio: 16 / 10;
+  max-height: 300px;
   display: flex;
   flex-direction: column;
+}
+
+.op-demo-stage {
+  position: relative;
+  width: 100%;
 }
 
 .op-app-titlebar {
@@ -90,10 +103,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-.op-demo-stage {
-  position: relative;
 }
 
 /* --- App scene layouts --- */
@@ -207,6 +216,7 @@
   height: 100%;
   min-height: 0;
   gap: 12px;
+  justify-content: flex-end;
 }
 
 .ui-doubao-head {
@@ -305,8 +315,8 @@
 /* Devices */
 .op-action {
   position: absolute;
-  right: -50px;
-  bottom: -40px;
+  right: -24px;
+  bottom: -28px;
   z-index: 20;
   transform: translate(var(--pose-tx, 0), var(--pose-ty, 0)) rotate(var(--pose-r, 0deg)) translateZ(60px);
   transition: all 0.6s cubic-bezier(0.32, 0.72, 0, 1);
@@ -437,13 +447,13 @@
   }
 }
 
-/* Live status panel — reserved inside wrap so hero composition stays centered */
+/* Live status panel — sits beside demo card in grid */
 .demo-status-panel {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%) translateZ(40px);
-  width: 240px;
+  position: relative;
+  right: auto;
+  top: auto;
+  transform: none;
+  width: 100%;
   padding: 16px;
   background: rgba(15, 15, 17, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -452,16 +462,24 @@
   font-family: "JetBrains Mono", Menlo, monospace;
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
   z-index: 30;
-  transition: transform 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 @media (min-width: 1024px) {
   .op-demo-wrap {
-    padding-right: 220px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 188px;
+    gap: 0.75rem;
+    align-items: stretch;
+    margin-top: 0;
+    padding-right: 0;
   }
 
   .demo-status-panel {
-    right: 0;
+    min-width: 0;
   }
 }
 

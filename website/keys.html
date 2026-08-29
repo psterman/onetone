@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="js/theme-init.js"></script>
   <script>if ("scrollRestoration" in history) history.scrollRestoration = "manual";</script>
-  <title>语音与按键 — 一声 OneTone</title>
+  <title>按键映射 — 一声 OneTone</title>
   <meta name="description" content="绑定外设或快捷键，一按就开麦。选触发源、对接输入法、完成映射。">
   <link rel="canonical" href="https://www.onetone.app/keys.html">
   <link rel="icon" href="assets/logo.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="js/tailwind-config.js"></script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"></noscript>
+  <link rel="stylesheet" href="css/tailwind.built.css">
+  <script defer src="https://unpkg.com/@phosphor-icons/web"></script>
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/shell.css?v=20260826h">
   <link rel="stylesheet" href="css/qs-layout.css">
@@ -32,11 +32,24 @@
     <nav class="site-nav" aria-label="Main">
       <a href="index.html" data-nav="home"><i class="ph ph-house site-nav-icon" aria-hidden="true"></i><span data-i18n="navHome">首页</span></a>
       <a href="quickstart.html" data-nav="quickstart"><i class="ph ph-rocket-launch site-nav-icon" aria-hidden="true"></i><span data-i18n="navQuickstart">上手</span></a>
+      <div class="site-nav-scenes is-active">
+        <button type="button" aria-expanded="false" aria-haspopup="true" data-nav="scenes">
+          <i class="ph-fill ph-squares-four site-nav-icon" aria-hidden="true"></i>
+          <span data-i18n="navScenes">场景</span>
+          <i class="ph ph-caret-down" aria-hidden="true"></i>
+        </button>
+        <div class="site-nav-scenes-menu" role="menu">
+          <a href="quickstart.html#voice" role="menuitem"><i class="ph ph-microphone"></i><span data-i18n="navVoice">语音</span></a>
+          <a href="keys.html" role="menuitem"><i class="ph ph-keyboard"></i><span data-i18n="navKeys">按键</span></a>
+          <a href="vision.html" role="menuitem"><i class="ph ph-camera"></i><span data-i18n="navCamera">摄像头</span></a>
+          <a href="agent.html" role="menuitem"><i class="ph ph-squares-four"></i><span data-i18n="navSoftPad">SoftPad</span></a>
+        </div>
+      </div>
       <a href="faq.html" data-nav="faq"><i class="ph ph-question site-nav-icon" aria-hidden="true"></i><span data-i18n="navFaq">帮助</span></a>
+      <a href="download.html" data-nav="download"><i class="ph ph-download-simple site-nav-icon" aria-hidden="true"></i><span data-i18n="navDownload">下载</span></a>
     </nav>
     <div class="site-header-actions">
       <button type="button" class="lang-toggle" id="langToggle" data-i18n="langToggle">EN</button>
-      <a class="nav-cta" href="download.html">下载</a>
       <button type="button" class="mobile-nav-toggle" id="mobileNavToggle" aria-label="菜单" aria-expanded="false">
         <i class="ph ph-list text-xl"></i>
       </button>
@@ -46,8 +59,13 @@
 <div class="mobile-nav-panel" id="mobileNavPanel">
   <a href="index.html" data-nav="home"><i class="ph ph-house site-nav-icon" aria-hidden="true"></i><span data-i18n="navHome">首页</span></a>
   <a href="quickstart.html" data-nav="quickstart"><i class="ph ph-rocket-launch site-nav-icon" aria-hidden="true"></i><span data-i18n="navQuickstart">上手</span></a>
+  <span class="mobile-scenes-label" data-i18n="navScenes">场景</span>
+  <a href="quickstart.html#voice"><i class="ph ph-microphone site-nav-icon"></i><span data-i18n="navVoice">语音</span></a>
+  <a href="keys.html"><i class="ph ph-keyboard site-nav-icon"></i><span data-i18n="navKeys">按键</span></a>
+  <a href="vision.html"><i class="ph ph-camera site-nav-icon"></i><span data-i18n="navCamera">摄像头</span></a>
+  <a href="agent.html"><i class="ph ph-squares-four site-nav-icon"></i><span data-i18n="navSoftPad">SoftPad</span></a>
   <a href="faq.html" data-nav="faq"><i class="ph ph-question site-nav-icon" aria-hidden="true"></i><span data-i18n="navFaq">帮助</span></a>
-  <a href="download.html" data-nav="download" data-i18n="navDownload">下载</a>
+  <a href="download.html" data-nav="download"><i class="ph ph-download-simple site-nav-icon" aria-hidden="true"></i><span data-i18n="navDownload">下载</span></a>
 </div>
 <main>
 <div id="story-world" class="story-world" data-mood="dark">
@@ -321,7 +339,10 @@
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <script src="js/site-scroll.js"></script>
 <script src="js/shell.js"></script>
-<script src="js/i18n.js"></script>
+  <script src="js/i18n-bundles/core.js"></script>
+  <script src="js/i18n-bundles/quickstart.js"></script>
+  <script src="js/i18n-bundles/keys.js"></script>
+  <script src="js/i18n.js"></script>
 <script src="js/quickstart-demo.js"></script>
 </body>
 </html>

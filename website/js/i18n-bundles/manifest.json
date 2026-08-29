@@ -1,0 +1,35 @@
+{
+  "home": [
+    "core",
+    "home"
+  ],
+  "quickstart": [
+    "core",
+    "quickstart"
+  ],
+  "keys": [
+    "core",
+    "quickstart",
+    "keys"
+  ],
+  "vision": [
+    "core",
+    "vision"
+  ],
+  "agent": [
+    "core",
+    "agent"
+  ],
+  "download": [
+    "core",
+    "download"
+  ],
+  "faq": [
+    "core",
+    "faq"
+  ],
+  "misc": [
+    "core",
+    "misc"
+  ]
+}
