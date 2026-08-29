@@ -157,9 +157,35 @@
     play();
   }
 
+  function openFieldEditPopover(card,field,anchorEl){
+    card=card||{};
+    field=String(field||'').trim();
+    var s=shared();
+    var fields=s&&s.noviceDetailFields?s.noviceDetailFields(card):{};
+    var value=String(fields[field]||'\u2014');
+    var label=field==='trigger'?'habitNoviceFieldTrigger':field==='action'?'habitNoviceFieldAction':field==='finish'?'habitNoviceFieldFinish':field==='enabled'?'habitNoviceFieldEnabled':'';
+    var head=label?(function(){
+      try{
+        var i18n=global.OneToneI18n;
+        var v=i18n&&i18n.t?i18n.t(label):label;
+        return v&&v!==label?v:field;
+      }catch(_){ return field; }
+    })():field;
+    var goLbl=(function(){
+      try{
+        var i18n=global.OneToneI18n;
+        var v=i18n&&i18n.t?i18n.t('habitNoviceGoEdit'):'habitNoviceGoEdit';
+        return v&&v!=='habitNoviceGoEdit'?v:'去改';
+      }catch(_){ return '去改'; }
+    })();
+    var esc=function(v){ return String(v==null?'':v).replace(/[&<>'"]/g,function(ch){ return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]; }); };
+    openPopover('<div class="habit-card-popover-head">'+esc(head)+'</div><p class="habit-card-popover-summary">'+esc(value)+'</p><button type="button" class="habit-card-popover-go" data-habit-popover-go>'+esc(goLbl)+'</button>',anchorEl,260);
+  }
+
   global.OneToneHabitCardUtils={
     openPopover:openPopover,
     closePopover:closePopover,
+    openFieldEditPopover:openFieldEditPopover,
     openDemoOverlay:openDemoOverlay,
     closeDemoOverlay:closeDemoOverlay,
     buildDemo:buildDemo,

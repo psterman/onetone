@@ -523,11 +523,13 @@ html[data-theme="dark"] .flow-nodes-path-base {
 
 /* settingsContextBar — unified across keys / voice / camera / softPad */
 .page-status-bar.has-settings-context-bar {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
 }
 .page-status-bar.has-settings-context-bar > .settings-context-chrome {
+  flex: 1 1 100%;
   margin-bottom: 0;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
@@ -560,7 +562,27 @@ html[data-theme="dark"] .flow-nodes-path-base {
   max-width: 100%;
 }
 .settings-context-chrome__actions .page-status-btn.is-muted {
-  opacity: 0.92;
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--primary) 18%, var(--outline-variant));
+  background: transparent;
+  color: var(--on-surface-muted);
+  font-weight: 650;
+}
+.settings-context-chrome__actions .page-status-btn:not(.is-primary) {
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--outline-variant));
+  background: var(--surface-high);
+  color: var(--primary-strong, var(--primary));
+  font-weight: 650;
+}
+.settings-context-chrome__actions .page-status-btn:not(.is-primary):hover:not(:disabled) {
+  background: var(--primary-soft, color-mix(in srgb, var(--primary) 10%, var(--surface)));
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--outline-variant));
+  color: var(--primary-strong, var(--primary));
+}
+.settings-context-chrome__actions .page-status-btn.is-muted:hover:not(:disabled) {
+  color: var(--primary-strong, var(--primary));
+  background: var(--primary-soft, color-mix(in srgb, var(--primary) 10%, var(--surface)));
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--outline-variant));
 }
 .settings-context-chrome__editing {
   font-size: 13px;
@@ -580,11 +602,27 @@ html[data-theme="dark"] .flow-nodes-path-base {
   flex-shrink: 0;
 }
 .page-status-bar.has-settings-context-bar .page-status-bar-main {
+  flex: 0 1 auto;
+  order: 2;
+}
+.page-status-bar.has-settings-context-bar .page-status-bar-actions {
+  order: 3;
+  margin-left: auto;
+}
+.page-status-bar.has-settings-context-bar .keys-unified-extras,
+.page-status-bar.has-settings-context-bar .soft-pad-status-extras {
   flex: 1 1 100%;
+  order: 4;
 }
 .has-settings-context-bar .keys-scheme-summary-title-row > .keys-scheme-summary-name:not(.sr-only),
 .has-settings-context-bar .voice-scheme-summary-name:not(.sr-only),
 .has-settings-context-bar .camera-scheme-status-main > .keys-scheme-summary-title-row > .keys-scheme-summary-name {
+  display: none;
+}
+.has-settings-context-bar .keys-scheme-summary-title-row {
+  margin-bottom: 0;
+}
+.has-settings-context-bar #keysSummaryStatus {
   display: none;
 }
 .settings-scope-switch__item .soft-pad-agent-directory__pills {

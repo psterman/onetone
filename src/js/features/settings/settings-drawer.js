@@ -773,8 +773,6 @@
         try{
           var mountKeys=global.__otMountKeysStatusIsland;
           if(typeof mountKeys==='function') mountKeys();
-          var mountKeysWorkflow=global.__otMountKeysWorkflowIsland;
-          if(typeof mountKeysWorkflow==='function') mountKeysWorkflow();
           var mountEditorDisplay=global.__otMountMappingEditorDisplayIsland;
           if(typeof mountEditorDisplay==='function') mountEditorDisplay();
           var mountFinishTiming=global.__otMountKeysFinishTimingIsland;
@@ -793,18 +791,11 @@
           if(typeof mountKeysPills==='function') mountKeysPills();
           var mountKeysRecording=global.__otMountKeysRecordingFeedbackIsland;
           if(typeof mountKeysRecording==='function') mountKeysRecording();
-          var mountKeysHub=global.__otMountKeysHubSchemeListIsland;
-          if(typeof mountKeysHub==='function') mountKeysHub();
-          var mountKeysAppStrip=global.__otMountKeysAppContextStripIsland;
-          if(typeof mountKeysAppStrip==='function') mountKeysAppStrip();
           var mountKeysDisplay=global.__otMountKeysDisplayChromeIsland;
           if(typeof mountKeysDisplay==='function') mountKeysDisplay();
           var mountRecordCancel=global.__otMountRecordCancelBarIsland;
           if(typeof mountRecordCancel==='function') mountRecordCancel();
         }catch(err){ console.error('keys island mount',err); }
-        if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.renderHabitStrip){
-          try{ global.OneToneKeysPanelUi.renderHabitStrip(); }catch(_){}
-        }
         requestAnimationFrame(function(){ setTimeout(runKeysAfterMount,0); });
       }
       requestAnimationFrame(function(){ setTimeout(mountKeysIslands,0); });

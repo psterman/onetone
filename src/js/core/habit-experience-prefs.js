@@ -12,7 +12,7 @@
     var s=storage();
     var value='';
     try{ value=s?String(s.getItem(MODE_KEY)||''):''; }catch(_){}
-    if(value==='programmer') return 'programmer';
+    if(value==='programmer') return 'quick';
     if(value==='quick') return 'quick';
     if(value==='novice') return 'novice';
     if(!value) return 'novice';
@@ -20,7 +20,7 @@
   }
 
   function setMode(mode){
-    var next=mode==='programmer'?'programmer':mode==='quick'?'quick':'novice';
+    var next=mode==='quick'?'quick':'novice';
     var s=storage();
     try{ if(s) s.setItem(MODE_KEY,next); }catch(_){}
     return next;

@@ -63,9 +63,9 @@
 .habit-novice-inherit-hint.is-universal{justify-content:flex-start}
 .habit-novice-inherit-link{border:0;background:transparent;color:var(--hn-accent-strong);font:inherit;font-weight:650;cursor:pointer;white-space:nowrap}
 .habit-novice-inherit-link:hover{text-decoration:underline}
-.habit-novice-viz{margin:0 0 14px;padding:14px 16px;border:1px solid var(--hn-line);border-radius:14px;background:var(--hn-card)}
-.habit-novice-viz .habit-ws-viz-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
-@media(min-width:900px){.habit-novice-viz .habit-ws-viz-overview{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.habit-novice-dim-glance{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px;margin:0 0 14px;padding:10px 14px;border:1px dashed color-mix(in srgb,var(--hn-accent) 22%,var(--hn-line));border-radius:12px;background:var(--hn-line2);font-size:12px;line-height:1.45}
+.habit-novice-dim-glance-lbl{font-weight:650;color:var(--hn-sub)}
+.habit-novice-dim-glance-val{color:var(--hn-text);font-weight:600}
 .habit-novice-scene-chips{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
 .habit-novice-scene-chips .lbl{font-size:12px;color:var(--hn-sub);font-weight:600;margin-right:4px}
 .habit-novice-scene-chip{padding:7px 14px;border-radius:999px;background:var(--hn-card);border:1px solid var(--hn-line);font-size:13px;cursor:pointer;font-weight:500;color:var(--hn-text);transition:border-color 150ms,color 150ms,background 150ms}
@@ -98,10 +98,28 @@
 .habit-novice-info .status-dot{width:10px;height:10px;border-radius:50%;background:var(--hn-green);box-shadow:0 0 0 4px var(--hn-green-bg);cursor:pointer;border:0;padding:0;transition:transform 200ms}
 .habit-novice-info .status-dot:hover{transform:scale(1.2)}
 .habit-novice-card.is-paused .habit-novice-info .status-dot{background:var(--hn-amber);box-shadow:0 0 0 4px var(--hn-amber-bg)}
-.habit-novice-info .when{font-size:12px;color:var(--hn-sub)}
-.habit-novice-info .edit-all{width:26px;height:26px;border-radius:8px;background:transparent;border:0;cursor:pointer;color:var(--hn-sub);font-size:13px;display:inline-flex;align-items:center;justify-content:center}
-.habit-novice-info .edit-all:hover{background:var(--hn-line2);color:var(--hn-accent-strong)}
-.habit-novice-info .story{font-size:14px;line-height:1.7;color:var(--hn-text)}
+.habit-novice-info .when{font-size:12px;color:var(--hn-sub);margin-left:auto}
+.habit-novice-card-menu{position:relative;margin-left:4px}
+.habit-novice-menu-btn{list-style:none;width:26px;height:26px;border-radius:8px;background:transparent;border:0;cursor:pointer;color:var(--hn-sub);font-size:13px;display:inline-flex;align-items:center;justify-content:center}
+.habit-novice-menu-btn::-webkit-details-marker{display:none}
+.habit-novice-menu-btn:hover{background:var(--hn-line2);color:var(--hn-accent-strong)}
+.habit-novice-menu-panel{position:absolute;top:calc(100% + 4px);right:0;z-index:5;min-width:120px;padding:6px;border-radius:10px;border:1px solid var(--hn-line);background:var(--hn-card);box-shadow:0 8px 24px rgba(26,45,74,.12);display:grid;gap:2px}
+.habit-novice-menu-panel button{width:100%;padding:8px 10px;border:0;border-radius:8px;background:transparent;font:inherit;font-size:12px;font-weight:600;text-align:left;cursor:pointer;color:var(--hn-text)}
+.habit-novice-menu-panel button:hover{background:var(--hn-line2)}
+.habit-novice-menu-panel button.is-danger{color:var(--hn-red)}
+.habit-novice-menu-panel button.is-danger:hover{background:var(--hn-red-bg)}
+.habit-novice-expand{margin-top:8px;padding:0;border:0;background:transparent;color:var(--hn-accent-strong);font:inherit;font-size:12px;font-weight:650;cursor:pointer}
+.habit-novice-expand:hover{text-decoration:underline}
+.habit-novice-card-detail{margin-top:12px;padding-top:12px;border-top:1px dashed var(--hn-line)}
+.habit-novice-card-detail.hidden{display:none}
+.habit-novice-detail-grid{display:grid;gap:8px}
+.habit-novice-detail-row{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;align-items:center}
+.habit-novice-detail-lbl{font-size:12px;color:var(--hn-sub);font-weight:600}
+.habit-novice-detail-val{padding:6px 10px;border-radius:8px;border:1px solid var(--hn-line);background:var(--hn-line2);font:inherit;font-size:12px;font-weight:600;text-align:left;cursor:pointer;color:var(--hn-text)}
+.habit-novice-detail-val:hover{border-color:color-mix(in srgb,var(--hn-accent) 35%,var(--hn-line));color:var(--hn-accent-strong)}
+.habit-novice-detail-last{margin-top:10px;font-size:11px;color:var(--hn-sub)}
+.habit-novice-pro-meta{margin-top:6px;font-size:11px;color:var(--hn-sub);font-family:ui-monospace,monospace;opacity:.85}
+.habit-novice-info .story{font-size:14px;line-height:1.55;color:var(--hn-text)}
 .habit-novice-info .chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font-weight:600;font-size:13px;margin:0 2px;cursor:pointer;transition:filter 150ms}
 .habit-novice-info .chip.app-tag{background:var(--hn-line2);color:var(--hn-text)}
 .habit-novice-info .chip.key{

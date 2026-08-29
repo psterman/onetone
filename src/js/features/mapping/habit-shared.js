@@ -247,6 +247,36 @@
   }
 
 
+  function keyCapShortLabel(key){
+    key=String(key||'').trim();
+    if(!key) return '\u2014';
+    if(/^F\d{1,2}$/i.test(key)) return key.toUpperCase();
+    var hidR=key.match(/^HID_R(\d{2})_/i);
+    if(hidR) return 'R'+hidR[1];
+    if(/^HID_/i.test(key)){
+      var tail=key.replace(/^HID_/i,'').replace(/_/g,' ').trim();
+      return tail.length>6?tail.slice(0,6):tail;
+    }
+    if(key.length<=5) return key;
+    var friendly=friendlyKey(key);
+    if(friendly.length<=6) return friendly;
+    if(/^HID[\s\u952e]/i.test(friendly)){
+      var m=friendly.match(/R\d{2}/i);
+      if(m) return m[0].toUpperCase();
+    }
+    return friendly.slice(0,6);
+  }
+
+  function keyChannelVizHtml(mapping){
+    var k=effectiveKey(mapping);
+    var full=esc(friendlyKey(k.triggerKey));
+    var tapLbl=esc(t('habitWsKeyTap','短按'));
+    var holdLbl=esc(t('habitWsKeyHold','长按'));
+    var tapAct=esc(t('habitWsKeyTapAction','开始输入'));
+    var holdAct=esc(t('habitWsKeyHoldAction','切换引擎'));
+    return '<div class="habit-ws-key-viz"><div class="habit-ws-key-cap" title="'+full+'"><span class="habit-ws-key-cap-label">'+full+'</span></div><ul class="habit-ws-key-modes"><li><i aria-hidden="true"></i><span>'+tapLbl+' \u2192 '+tapAct+'</span></li><li><i aria-hidden="true"></i><span>'+holdLbl+' \u2192 '+holdAct+'</span></li></ul></div><p class="habit-ws-key-viz-hint">'+esc(t('habitWsKeyVizHint','短按开始输入 · 长按切换引擎'))+'</p>';
+  }
+
   function friendlyKey(key){
     key=String(key||'').trim();
     if(!key) return '\u2014';
@@ -261,6 +291,58 @@
     if(channel==='camera') return '\uD83D\uDCF7';
     if(channel==='softPad') return '\u2318';
     return '\u2328';
+  }
+
+  function channelLabel(ch){
+    ch=String(ch||'').trim();
+    if(ch==='softPad') return 'Soft Pad';
+    if(ch==='camera') return lang()==='en'?'Camera':'摄像头';
+    if(ch==='voice') return lang()==='en'?'Voice':'语音';
+    return lang()==='en'?'Keys':'按键';
+  }
+
+  function channelKeyCardStats(rows){
+    rows=arr(rows);
+    var ov=rows.filter(function(r){ return r.priority==='overridden'; }).length;
+    if(ov) return fmt(t('habitWsKeyCardStatsOv','{n} 条 · {ov} 覆盖'),{n:rows.length,ov:ov});
+    return fmt(t('habitWsKeyCardStatsIn','{n} 条 · 继承'),{n:rows.length});
+  }
+
+  function channelOverviewSummary(mapping,channel){
+    mapping=mapping||{};
+    channel=String(channel||'').trim();
+    if(channel==='key'){
+      var ek=effectiveKey(mapping);
+      var kn=friendlyKey(ek.triggerKey);
+      return {
+        line1:(lang()==='en'?kn+' tap / hold':kn+' 短按 / 长按'),
+        line2:t('habitWsKeyCardDesc2','硬件启动键')
+      };
+    }
+    if(channel==='voice'){
+      var v=effectiveVoice(mapping);
+      var phraseN=arr(v.wakePhrases).length;
+      return {
+        line1:phraseN?fmt(t('habitWsVoiceCardLine1','{n} 种说法任一命中'),{n:phraseN}):t('habitWsVoiceCardLine1Empty','未配置唤醒词'),
+        line2:valueText(v.engine)+(v.modelPreset?' · '+v.modelPreset:'')
+      };
+    }
+    if(channel==='camera'){
+      var names=CAMERA_ITEMS.filter(function(item){
+        var cv=effectiveCamera(mapping,item);
+        return cv.enabled||cv.source==='overridden';
+      }).slice(0,3).map(function(item){ return itemLabel(item); });
+      return {
+        line1:names.length?names.join(' / '):t('habitWsNone','未设置'),
+        line2:t('habitWsCameraCardDesc2','眼神和口型触发')
+      };
+    }
+    var pad=mapping.codexMicroPad&&typeof mapping.codexMicroPad==='object'?mapping.codexMicroPad:{};
+    var keys=arr(pad.keys);
+    return {
+      line1:(pad.layoutProfile||'custom')+(lang()==='en'?' tray':' 托盘'),
+      line2:fmt(t('habitWsPadCardLine2','{n} 个可自定义键'),{n:keys.length})
+    };
   }
 
   function storyHtml(card,detail){
@@ -288,6 +370,96 @@
     return esc(c('storyIn'))+' '+appChip+' '+esc(c('storyPress'))+' '+keyPart+esc(c('storyThen'))+actionChip+esc(c('storyFinish'));
   }
 
+  function humanizeTriggerMode(mode){
+    mode=String(mode||'').trim().toLowerCase();
+    if(mode==='hold') return lang()==='en'?'long press':'长按';
+    if(mode==='tap') return lang()==='en'?'short press':'短按';
+    return '';
+  }
+
+  function humanizeWhen(card,detail){
+    detail=detail||{};
+    card=card||{};
+    var m=card.mapping||{};
+    var raw=String(detail.when||'').trim();
+    if(card.channel==='key'&&card.itemId==='key-main'){
+      var k=effectiveKey(m);
+      var key=friendlyKey(k.triggerKey);
+      var mode=humanizeTriggerMode(k.triggerMode);
+      if(lang()==='en') return mode?('Press '+key+' ('+mode+')'):('Press '+key);
+      return mode?('按 '+key+'（'+mode+'）'):('按 '+key);
+    }
+    if(card.channel==='key'&&card.itemId==='key-finish'){
+      return lang()==='en'?'After input completes':'输入完成后';
+    }
+    if(card.channel==='voice'){
+      var sample=raw.split(' / ')[0]||raw;
+      if(sample&&sample!==c('none')){
+        return lang()==='en'?('Say "'+sample+'"'):('说「'+sample+'」');
+      }
+    }
+    if(card.channel==='camera') return itemLabel(card.item)||raw;
+    return raw.replace(/\s*·\s*(tap|hold|\d+ms)/gi,'').trim()||raw||c('none');
+  }
+
+  function humanizeWhat(card,detail){
+    detail=detail||{};
+    card=card||{};
+    var what=String(detail.what||'').trim();
+    if(card.channel==='key'&&card.itemId==='key-main'){
+      var k=effectiveKey(card.mapping||{});
+      var target=friendlyKey(k.targetKey);
+      return lang()==='en'?('Start input to '+target):('开始输入到 '+target);
+    }
+    return what||c('none');
+  }
+
+  function noviceFinishText(card,detail){
+    detail=detail||{};
+    card=card||{};
+    if(card.channel==='key'&&card.itemId==='key-finish') return String(detail.what||'').trim()||'\u2014';
+    if(card.channel==='voice'&&(card.itemId==='voice-end'||card.itemId==='voice-cancel'||card.itemId==='voice-send')){
+      return String(detail.what||'').trim()||'\u2014';
+    }
+    if(card.channel==='key'&&card.itemId==='key-main'){
+      var k=effectiveKey(card.mapping||{});
+      var parts=[];
+      if(k.autoEnterEnabled) parts.push(lang()==='en'?'Send automatically':'自动发送');
+      else parts.push(lang()==='en'?'Keep text for review':'保留文字等待确认');
+      if(k.cancelEnabled) parts.push(lang()==='en'?'Cancel anytime':'可随时取消');
+      return parts.length?parts.join(lang()==='en'?', ':'，'):'\u2014';
+    }
+    return '\u2014';
+  }
+
+  function noviceDetailFields(card){
+    card=card||{};
+    var detail=card.detail||{};
+    var enabled=detail.enabled!==false;
+    var rawWhen=String(detail.when||'');
+    var proParts=[];
+    if(rawWhen.indexOf('\u00b7')>=0||rawWhen.indexOf('·')>=0) proParts.push(rawWhen);
+    if(detail.source&&detail.source.label) proParts.push(detail.source.label);
+    return {
+      trigger:humanizeWhen(card,detail),
+      action:humanizeWhat(card,detail),
+      finish:noviceFinishText(card,detail),
+      enabled:enabled?(lang()==='en'?'On':'已开启'):(lang()==='en'?'Off':'已关闭'),
+      lastMod:card.lastMod||'',
+      proMeta:proParts.join(' \u00b7 ')
+    };
+  }
+
+  function storyLineHtml(card,detail){
+    detail=detail||{};
+    card=card||{};
+    var trigger=humanizeWhen(card,detail);
+    var action=humanizeWhat(card,detail);
+    var finish=noviceFinishText(card,detail);
+    if(finish&&finish!=='\u2014') return trigger+' \u2192 '+action+' \u2192 '+finish;
+    return trigger+' \u2192 '+action;
+  }
+
   function noviceDimToChannel(dim){
     dim=String(dim||'').trim();
     if(dim==='voice') return 'voice';
@@ -302,6 +474,22 @@
     if(channel==='camera') return 'cam';
     if(channel==='softPad') return 'softpad';
     return 'key';
+  }
+
+  function noviceDimLabel(dim){
+    dim=String(dim||'key').trim();
+    if(dim==='voice') return lang()==='en'?'Voice':'语音';
+    if(dim==='cam') return lang()==='en'?'Camera':'摄像头';
+    if(dim==='softpad') return 'Soft Pad';
+    return lang()==='en'?'Keys':'按键';
+  }
+
+  function noviceDimGlanceHtml(dim,mapping){
+    mapping=mapping||{};
+    var channel=noviceDimToChannel(dim);
+    var sum=channelOverviewSummary(mapping,channel);
+    var line=sum.line1+(sum.line2?(' \u00b7 '+sum.line2):'');
+    return '<div class="habit-novice-dim-glance" role="note"><span class="habit-novice-dim-glance-lbl">'+esc(fmt(t('habitNoviceDimGlanceLbl','当前在看：{dim}'),{dim:noviceDimLabel(dim)}))+'</span><span class="habit-novice-dim-glance-val">'+esc(line)+'</span></div>';
   }
 
   function ruleRowText(card){
@@ -354,6 +542,7 @@
         id:card.id,
         channel:card.channel,
         itemId:card.itemId,
+        mapping:card.mapping,
         scene:card.scene,
         priority:priority,
         txt:ruleRowText(card),
@@ -385,22 +574,19 @@
     channel=String(channel||'all').trim();
     mapping=mapping||{};
     if(channel==='all'){
-      return '<div class="habit-ws-viz-overview">'+CHANNELS.map(function(ch){
+      var title='<h3 class="habit-ws-viz-title">'+esc(t('habitWsVizOverviewTitle','输入通道总览'))+'</h3>';
+      var hint='<p class="habit-ws-viz-hint">'+esc(t('habitWsVizOverviewHint','点卡片跳到对应通道；下方规则清单会同步过滤'))+'</p>';
+      var cards=CHANNELS.map(function(ch){
         var rows=buildRuleRows(mapping,{channel:ch});
-        var ov=rows.filter(function(r){ return r.priority==='overridden'; }).length;
-        var label=ch==='softPad'?'Soft Pad':ch==='camera'?(lang()==='en'?'Camera':'摄像头'):ch==='voice'?(lang()==='en'?'Voice':'语音'):(lang()==='en'?'Keys':'按键');
-        return '<button type="button" class="habit-ws-viz-card" data-habit-channel="'+ch+'"><b>'+esc(label)+'</b><small>'+esc(String(rows.length))+(ov?(' · '+ov+(lang()==='en'?' custom':' 覆盖')):'')+'</small></button>';
-      }).join('')+'</div>';
+        var sum=channelOverviewSummary(mapping,ch);
+        var stats=channelKeyCardStats(rows);
+        return '<button type="button" class="habit-ws-key-card" data-habit-channel="'+ch+'" data-channel="'+ch+'"><div class="habit-ws-key-card-head"><span class="habit-ws-key-card-icon" aria-hidden="true">'+cardEmoji(ch)+'</span><b>'+esc(channelLabel(ch))+'</b><i>'+esc(stats)+'</i></div><div class="habit-ws-key-card-desc">'+esc(sum.line1)+'<br>'+esc(sum.line2)+'</div></button>';
+      }).join('');
+      return title+hint+'<div class="habit-ws-key-grid">'+cards+'</div>';
     }
     if(channel==='key'){
       var k=effectiveKey(mapping);
-      var keyLabel=esc(friendlyKey(k.triggerKey));
-      var tapLbl=esc(t('habitWsKeyTap','短按'));
-      var holdLbl=esc(t('habitWsKeyHold','长按'));
-      var tapAct=esc(t('habitWsKeyTapAction','开始输入'));
-      var holdAct=esc(t('habitWsKeyHoldAction','切换引擎'));
-      var svg='<svg class="habit-ws-viz-key-svg" viewBox="0 0 400 160" role="img" aria-label="'+keyLabel+'"><rect x="28" y="20" width="110" height="100" rx="14" fill="#222831" stroke="#39414d"/><text x="83" y="78" text-anchor="middle" font-size="30" font-weight="500" fill="#e7eaee" font-family="system-ui,sans-serif">'+keyLabel+'</text><circle cx="148" cy="45" r="3" fill="#2a9cc4"/><text x="164" y="42" font-size="12" fill="#2a9cc4" font-family="system-ui,sans-serif">'+tapLbl+' → '+tapAct+'</text><circle cx="148" cy="75" r="3" fill="#2a9cc4"/><text x="164" y="72" font-size="12" fill="#2a9cc4" font-family="system-ui,sans-serif">'+holdLbl+' → '+holdAct+'</text></svg>';
-      return '<div class="habit-ws-viz-key">'+svg+'<p>'+esc(t('habitWsKeyVizHint','短按开始输入 · 长按切换引擎'))+'</p></div>';
+      return '<div class="habit-ws-viz-key">'+keyChannelVizHtml(mapping)+'</div>';
     }
     if(channel==='voice'){
       var v=effectiveVoice(mapping);
@@ -467,7 +653,7 @@
             detail:detail,
             dim:view.dim,
             scene:view.scene,
-            title:sceneName(m)+MIDDOT+' '+itemLabel(item),
+            title:itemLabel(item),
             emoji:cardEmoji(channel),
             paused:!detail.enabled,
             lastMod:formatRelativeTime(m.updatedAt||m.lastUsedAt),
@@ -645,6 +831,16 @@
     return true;
   }
 
+  function exportMappingJson(mapping){
+    mapping=mapping&&typeof mapping==='object'?mapping:{};
+    return {
+      version:1,
+      kind:'onetone-habit-mapping',
+      exportedAt:new Date().toISOString(),
+      mapping:mapping
+    };
+  }
+
   global.OneToneHabitShared={
     CHANNELS:CHANNELS,
     CAMERA_ITEMS:CAMERA_ITEMS,
@@ -664,15 +860,24 @@
     buildRuleRows:buildRuleRows,
     inheritSummary:inheritSummary,
     channelVizHtml:channelVizHtml,
+    channelLabel:channelLabel,
+    cardEmoji:cardEmoji,
     inheritHintHtml:inheritHintHtml,
     inheritChainHtml:inheritChainHtml,
+    noviceDimGlanceHtml:noviceDimGlanceHtml,
     noviceDimToChannel:noviceDimToChannel,
     channelToNoviceDim:channelToNoviceDim,
     ruleRowText:ruleRowText,
     storyHtml:storyHtml,
+    storyLineHtml:storyLineHtml,
+    humanizeWhen:humanizeWhen,
+    humanizeWhat:humanizeWhat,
+    noviceDetailFields:noviceDetailFields,
+    noviceFinishText:noviceFinishText,
     appListHtml:appListHtml,
     deleteMapping:deleteMapping,
     resetBaselineMapping:resetBaselineMapping,
-    friendlyKey:friendlyKey
+    friendlyKey:friendlyKey,
+    exportMappingJson:exportMappingJson
   };
 })((typeof window!=='undefined')?window:globalThis);

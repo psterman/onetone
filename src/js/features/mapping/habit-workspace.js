@@ -284,63 +284,102 @@
   }
   function channelTabsHtml(model){
     var sum=model.inherit||{total:0};
-    return '<div class="pref-segmented is-wide habit-ws-channels" role="tablist">'+QUICK_CHANNELS.map(function(ch){
-      var meta=ch==='all'?{enabled:true,count:sum.total||0}:model.channels[ch];
+    return '<div class="habit-ws-ch-tabs" role="tablist">'+QUICK_CHANNELS.map(function(ch){
+      var badge=ch==='all'?(sum.total||0):((model.channels[ch]&&model.channels[ch].count)||0);
       var selected=ch===model.channel;
       var label=ch==='all'?(lang()==='en'?'All':'全部'):c('channels')[ch];
-      return '<button type="button" role="tab" aria-selected="'+(selected?'true':'false')+'" class="pref-segmented-btn habit-ws-channel'+(selected?' is-active':'')+'" data-habit-channel="'+ch+'">'+channelIconSvg(ch==='all'?'key':ch)+'<span class="habit-ws-channel-copy"><span>'+esc(label)+'</span><small><i class="'+(meta.enabled?'is-on':'is-off')+'"></i>'+esc(meta.enabled?c('enabled'):c('disabled'))+(meta.count?' · '+esc(String(meta.count)): '')+'</small></span></button>';
+      return '<button type="button" role="tab" aria-selected="'+(selected?'true':'false')+'" class="habit-ws-ch-tab'+(selected?' is-active':'')+'" data-habit-channel="'+ch+'">'+esc(label)+'<span class="habit-ws-ch-badge">'+esc(String(badge))+'</span></button>';
     }).join('')+'</div>';
+  }
+  function ruleSummaryForModel(model){
+    var rows=model.ruleRows||[];
+    var overrides=rows.filter(function(row){ return row.priority==='overridden'; });
+    var inherited=rows.filter(function(row){ return row.priority==='inherited'; });
+    if(model.channel==='all') return model.inherit||{overrideCount:overrides.length,inheritedCount:inherited.length};
+    return {overrideCount:overrides.length,inheritedCount:inherited.length};
+  }
+  function pageIndicatorHtml(model){
+    var sum=ruleSummaryForModel(model);
+    var label=model.channel==='all'?t('habitWsPageAll','全部通道'):c('channels')[model.channel];
+    var summaryKey=model.channel==='all'?'habitWsRulesSummary':'habitWsRulesSummaryChannel';
+    var summaryFb=model.channel==='all'?'{ov} 项覆盖 · {in} 项继承':'{ov} 项覆盖 · {in} 项继承（当前通道）';
+    return '<div class="habit-ws-page-bar" role="status"><span class="habit-ws-page-label">'+esc(label)+'</span><span class="habit-ws-page-stats">'+esc(fmt(t(summaryKey,summaryFb),{ov:sum.overrideCount,in:sum.inheritedCount}))+'</span></div>';
+  }
+  function quickToolbarHtml(model){
+    return '<div class="habit-ws-quick-toolbar">'+channelTabsHtml(model)+pageIndicatorHtml(model)+'</div>';
   }
   function ruleRowHtml(row){
     var open=ui().habitWorkspaceRuleOpen===row.id;
     var d=row.detail||{};
+    var s=shared();
+    var emoji=s&&s.cardEmoji?s.cardEmoji(row.channel):'';
     var tagCls=row.priority==='overridden'?'is-overridden':'is-inherited';
     var tagLabel=row.priority==='overridden'?(lang()==='en'?'Override':'覆盖'):(lang()==='en'?'Inherited':'继承');
-    return '<article class="habit-ws-rule'+(open?' is-open':'')+'" data-rule-id="'+esc(row.id)+'"><div class="habit-ws-rule-row" data-habit-rule-toggle="'+esc(row.id)+'"><div class="habit-ws-rule-copy"><div class="habit-ws-rule-txt">'+esc(row.txt)+'</div><div class="habit-ws-rule-meta">'+esc(row.meta)+'</div></div><div class="habit-ws-rule-actions"><span class="habit-ws-rule-tag '+tagCls+'">'+esc(tagLabel)+'</span><button type="button" class="habit-ws-rule-edit" data-habit-edit data-channel="'+esc(row.channel)+'" data-focus="'+esc(row.focus)+'" onclick="event.stopPropagation()">'+esc(c('change'))+'</button></div></div>'+(open?'<div class="habit-ws-rule-peek"><dl><div><dt><b>1</b>'+esc(c('when'))+'</dt><dd>'+esc(d.when||c('none'))+'</dd></div><div><dt><b>2</b>'+esc(c('what'))+'</dt><dd>'+esc(d.what||c('none'))+'</dd></div><div><dt><b>3</b>'+esc(c('status'))+'</dt><dd><span class="habit-ws-status '+(d.enabled?'is-on':'is-off')+'"><i></i>'+esc(d.enabled?c('enabled'):c('disabled'))+'</span></dd></div></dl></div>':'')+'</article>';
+    var ovCls=row.priority==='overridden'?' is-overridden':'';
+    var peekCard={channel:row.channel,itemId:row.itemId,mapping:row.mapping,detail:d};
+    var humanWhen=s&&s.humanizeWhen?s.humanizeWhen(peekCard,d):(d.when||'');
+    var rawWhen=String(d.when||'');
+    var proWhen=rawWhen&&humanWhen&&rawWhen!==humanWhen?rawWhen:'';
+    var peekTrigger=t('habitWsPeekTrigger','怎么触发');
+    var peekAction=t('habitWsPeekAction','做什么');
+    var peekStatus=t('habitWsPeekStatus','开了吗');
+    var peekMeta=esc(row.meta)+(d.source&&d.source.label?(' · <span class="habit-ws-peek-src is-'+esc(d.source.id)+'">'+esc(d.source.label)+'</span>'):'');
+    var peekBlock=open?('<div class="habit-ws-rule-peek"><dl><div><dt>'+esc(peekTrigger)+'</dt><dd>'+esc(humanWhen||c('none'))+'</dd></div><div><dt>'+esc(peekAction)+'</dt><dd>'+esc(d.what||c('none'))+'</dd></div><div><dt>'+esc(peekStatus)+'</dt><dd><span class="habit-ws-status '+(d.enabled?'is-on':'is-off')+'"><i></i>'+esc(d.enabled?c('enabled'):c('disabled'))+'</span></dd></div></dl><p class="habit-ws-rule-peek-meta">'+peekMeta+'</p>'+(proWhen?'<p class="habit-ws-rule-peek-pro">'+esc(proWhen)+'</p>':'')+'</div>'):'';
+    return '<article class="habit-ws-rule'+ovCls+(open?' is-open':'')+'" data-rule-id="'+esc(row.id)+'" data-channel="'+esc(row.channel)+'"><div class="habit-ws-rule-row" data-habit-rule-toggle="'+esc(row.id)+'"><span class="habit-ws-rule-accent" aria-hidden="true"></span><span class="habit-ws-rule-icon" aria-hidden="true">'+emoji+'</span><div class="habit-ws-rule-copy"><div class="habit-ws-rule-txt">'+esc(row.txt)+'</div></div><div class="habit-ws-rule-actions"><span class="habit-ws-rule-tag '+tagCls+'">'+esc(tagLabel)+'</span><button type="button" class="habit-ws-rule-edit" data-habit-edit data-channel="'+esc(row.channel)+'" data-focus="'+esc(row.focus)+'" onclick="event.stopPropagation()">'+esc(c('change'))+'</button></div></div>'+peekBlock+'</article>';
   }
   function rulesListHtml(model){
     var rows=model.ruleRows||[];
     var overrides=rows.filter(function(row){ return row.priority==='overridden'; });
     var inherited=rows.filter(function(row){ return row.priority==='inherited'; });
     var inhOpen=!!ui().habitWorkspaceInheritedOpen;
-    var sum=model.channel==='all'?(model.inherit||{overrideCount:0,inheritedCount:0}):{overrideCount:overrides.length,inheritedCount:inherited.length};
-    var summaryKey=model.channel==='all'?'habitWsRulesSummary':'habitWsRulesSummaryChannel';
-    var summaryFb=model.channel==='all'?'{ov} 项覆盖 · {in} 项继承':'{ov} 项覆盖 · {in} 项继承（当前通道）';
-    var html='<div class="habit-ws-rules-head"><h4>'+esc(t('habitWsRulesTitle','规则清单'))+'</h4><span>'+esc(fmt(t(summaryKey,summaryFb),{ov:sum.overrideCount,in:sum.inheritedCount}))+'</span></div>';
+    var html='<div class="habit-ws-rules-head"><h4>'+esc(t('habitWsRulesTitle','规则清单'))+'</h4><button type="button" class="habit-ws-rules-fine" data-habit-fine>'+esc(t('habitWsAdvancedFine','查看完整参数'))+'</button></div>';
     if(!rows.length){
       html+='<div class="habit-ws-rules-empty">'+esc(t('habitWsRulesEmpty','当前通道没有可展示的规则'))+'</div>';
       return html;
     }
     html+=overrides.map(ruleRowHtml).join('');
     if(inherited.length){
-      html+='<div class="habit-ws-rules-collapse'+(inhOpen?' is-open':'')+'"><button type="button" class="habit-ws-rules-collapse-btn" data-habit-inherited-toggle>'+esc(inhOpen?fmt(t('habitWsRulesCollapse','收起 {n} 条沿用通用设置'),{n:inherited.length}):fmt(t('habitWsRulesExpand','还有 {n} 条沿用通用设置'),{n:inherited.length}))+'</button><div class="habit-ws-rules-collapse-body">'+inherited.map(ruleRowHtml).join('')+'</div></div>';
+      var folderLbl=inhOpen?('\u25BE '+fmt(t('habitWsRulesCollapse','收起 {n} 条沿用通用设置'),{n:inherited.length})):('\u25B8 '+fmt(t('habitWsRulesExpand','还有 {n} 条沿用通用设置'),{n:inherited.length}));
+      html+='<div class="habit-ws-rules-folder habit-ws-rules-collapse'+(inhOpen?' is-open':'')+'"><button type="button" class="habit-ws-rules-collapse-btn" data-habit-inherited-toggle>'+esc(folderLbl)+'</button><div class="habit-ws-rules-collapse-body">'+inherited.map(ruleRowHtml).join('')+'</div></div>';
     }
     return html;
   }
-  function modeHtml(mode){
-    var noviceLbl=t('habitDisplayModeNovice','\uD83C\uDF31 小白模式');
-    var quickLbl=t('habitDisplayModeQuick','\u26A1 快速设置');
-    var proLbl=t('habitDisplayModePro','\uD83D\uDEE0 程序员模式');
-    return '<div class="habit-ws-modebar"><div class="pref-segmented habit-ws-modes" role="tablist" aria-label="Habit view"><button type="button" role="tab" aria-selected="'+(mode==='novice'?'true':'false')+'" class="pref-segmented-btn'+(mode==='novice'?' is-active':'')+'" data-habit-mode="novice">'+esc(noviceLbl)+' <span class="badge-new">'+esc(t('habitDisplayModeNew','新'))+'</span></button><button type="button" role="tab" aria-selected="'+(mode==='quick'?'true':'false')+'" class="pref-segmented-btn'+(mode==='quick'?' is-active':'')+'" data-habit-mode="quick">'+esc(quickLbl)+(mode==='quick'?' <em>'+esc(c('recommended'))+'</em>':'')+'</button><button type="button" role="tab" aria-selected="'+(mode==='programmer'?'true':'false')+'" class="pref-segmented-btn'+(mode==='programmer'?' is-active':'')+'" data-habit-mode="programmer">'+esc(proLbl)+'</button></div>'+(mode==='programmer'?'<button type="button" class="habit-ws-back-quick" data-habit-mode="quick">\u2190 '+esc(c('backQuick'))+'</button>':'')+'</div>';
+  function modeBtn(mode, active, inner){
+    return '<button type="button" role="tab" aria-selected="'+(active?'true':'false')+'" class="pref-segmented-btn habit-ws-mode-btn'+(active?' is-active':'')+'" data-habit-mode="'+mode+'">'+inner+'</button>';
   }
-  function introHtml(){
-    if(!ui().habitProgrammerIntroOpen) return '';
-    return '<div class="habit-ws-intro" role="dialog" aria-modal="true" aria-labelledby="habitWsIntroTitle"><div><strong id="habitWsIntroTitle">'+esc(c('introTitle'))+'</strong><p>'+esc(c('introBody'))+'</p></div><div class="habit-ws-intro-actions"><button type="button" data-habit-intro-cancel>'+esc(c('cancel'))+'</button><button type="button" class="is-primary" data-habit-intro-continue>'+esc(c('continue'))+'</button></div></div>';
+  function modeHtml(mode){
+    var noviceLbl=t('habitDisplayModeNoviceLabel','小白模式');
+    var quickLbl=t('habitDisplayModeQuickLabel','快速设置');
+    var noviceInner='<span class="habit-ws-mode-glyph" aria-hidden="true">\uD83C\uDF31</span><span class="habit-ws-mode-text">'+esc(noviceLbl)+'</span> <span class="badge-new">'+esc(t('habitDisplayModeNew','新'))+'</span>';
+    var quickInner='<span class="habit-ws-mode-glyph" aria-hidden="true">\u26A1</span><span class="habit-ws-mode-text">'+esc(quickLbl)+'</span>'+(mode==='quick'?' <em>'+esc(c('recommended'))+'</em>':'');
+    return '<div class="habit-ws-modebar"><div class="pref-segmented habit-ws-modes" role="tablist" aria-label="Habit view">'+modeBtn('novice',mode==='novice',noviceInner)+modeBtn('quick',mode==='quick',quickInner)+'</div></div>';
+  }
+  function advancedFieldCount(groups){
+    groups=groups||{};
+    var n=0;
+    SECTIONS.forEach(function(section){ n+=arr(groups[section]).length; });
+    return n;
+  }
+  function advancedPanelHtml(model){
+    var open=!!ui().habitWorkspaceAdvancedOpen;
+    var groups=model.groups||{};
+    var count=advancedFieldCount(groups);
+    var d=quickDetail(model.mapping,model.channel,defaultItem(model.channel));
+    var path=fmt(c('rulePath'),{app:appName(model.mapping),scene:sceneName(model.mapping),trigger:d.when,action:d.what});
+    var pathHtml=path.split(' \u2192 ').map(function(part,i){ return '<span><small>0'+(i+1)+'</small>'+esc(part)+'</span>'; }).join('<b aria-hidden="true">\u2192</b>');
+    var groupsHtml=SECTIONS.map(function(section){
+      var expanded=section===ui().habitProgramSection;
+      var rows=groups[section]||[];
+      return '<section class="habit-ws-group'+(expanded?' is-open':'')+'"><button type="button" class="habit-ws-group-head" data-habit-section="'+section+'" aria-expanded="'+(expanded?'true':'false')+'"><span><b>'+String(SECTIONS.indexOf(section)+1).padStart(2,'0')+'</b>'+esc(c(section))+'</span><small>'+rows.length+' '+(lang()==='en'?'items':'项')+'</small><i aria-hidden="true">\u2304</i></button>'+(expanded?'<div class="habit-ws-rows"><div class="habit-ws-row-head"><span></span><span>'+esc(c('current'))+'</span><span>'+esc(c('source'))+'</span><span></span></div>'+rows.map(function(row){ return '<div class="habit-ws-row"><strong>'+esc(row.label)+'</strong><span>'+esc(row.value)+'</span><span class="habit-ws-source is-'+esc(row.source.id)+'">'+esc(row.source.label)+'</span><button type="button" data-habit-edit data-channel="'+esc(row.channel)+'" data-focus="'+esc(row.focus)+'">'+esc(c('edit'))+'</button></div>'; }).join('')+'</div>':'')+'</section>';
+    }).join('');
+    var body=open?('<div class="habit-ws-advanced-body"><div class="habit-ws-rule-path" aria-label="'+esc(c('summary'))+'">'+pathHtml+'</div><p class="habit-ws-device-note">\u2139 '+esc(c('deviceGlobal'))+'</p><div class="habit-ws-groups">'+groupsHtml+'</div><div class="habit-ws-advanced-json"><p>'+esc(t('habitWsExportJsonHint','导出当前场景 stored JSON，供备份或 Agent 读取'))+'</p><div class="habit-ws-advanced-json-actions"><button type="button" data-habit-copy-json>'+esc(t('habitWsCopyJson','复制 JSON'))+'</button><button type="button" class="is-primary" data-habit-export-json>'+esc(t('habitWsExportJson','下载 JSON'))+'</button></div></div></div>'):'';
+    return '<section class="habit-ws-advanced'+(open?' is-open':'')+'"><button type="button" class="habit-ws-advanced-toggle" data-habit-advanced-toggle aria-expanded="'+(open?'true':'false')+'"><span class="habit-ws-advanced-title">'+esc(t('habitWsAdvancedTitle','完整参数'))+'</span><span class="habit-ws-advanced-sub">'+esc(fmt(t('habitWsAdvancedCount','{n} 项跨通道字段'),{n:count}))+'</span><i class="habit-ws-advanced-chev" aria-hidden="true">\u2304</i></button>'+body+'</section>';
   }
   function quickHtml(model){
     var s=shared();
     var viz=s&&s.channelVizHtml?s.channelVizHtml(model.channel,model.mapping):'';
     var chain=s&&s.inheritChainHtml?s.inheritChainHtml(model.mapping):'';
-    return '<div class="habit-ws-current-head"><div><span>'+esc(c('currentApp'))+'</span><h4>'+esc(appName(model.mapping))+'</h4><p>'+esc(sceneName(model.mapping))+'</p></div><span class="habit-ws-live '+(model.mapping.id===cfg().activeSceneId?'is-active':'')+'">'+esc(model.mapping.id===cfg().activeSceneId?c('activeHabit'):c('notActive'))+'</span></div>'+chain+channelTabsHtml(model)+'<section class="habit-ws-viz" aria-label="'+esc(t('habitWsVizLabel','输入通道预览'))+'">'+viz+'</section><section class="habit-ws-rules">'+rulesListHtml(model)+'</section>';
-  }
-  function programHtml(model){
-    var d=quickDetail(model.mapping,model.channel,defaultItem(model.channel));
-    var path=fmt(c('rulePath'),{app:appName(model.mapping),scene:sceneName(model.mapping),trigger:d.when,action:d.what});
-    return '<div class="habit-ws-program-head"><div><span>'+esc(c('summary'))+'</span><h4>'+esc(sceneName(model.mapping))+'</h4></div><span class="habit-ws-check '+(model.mapping.enabled===false?'is-off':'')+'">'+esc(model.mapping.enabled===false?c('checkOff'):c('checkOk'))+'</span></div><div class="habit-ws-rule-path" aria-label="'+esc(c('summary'))+'">'+path.split(' → ').map(function(part,i){ return '<span><small>0'+(i+1)+'</small>'+esc(part)+'</span>'; }).join('<b aria-hidden="true">→</b>')+'</div><p class="habit-ws-device-note">ⓘ '+esc(c('deviceGlobal'))+'</p><div class="habit-ws-groups">'+SECTIONS.map(function(section){
-      var expanded=section===ui().habitProgramSection;
-      var rows=model.groups[section]||[];
-      return '<section class="habit-ws-group'+(expanded?' is-open':'')+'"><button type="button" class="habit-ws-group-head" data-habit-section="'+section+'" aria-expanded="'+(expanded?'true':'false')+'"><span><b>'+String(SECTIONS.indexOf(section)+1).padStart(2,'0')+'</b>'+esc(c(section))+'</span><small>'+rows.length+' '+(lang()==='en'?'items':'项')+'</small><i aria-hidden="true">⌄</i></button>'+(expanded?'<div class="habit-ws-rows"><div class="habit-ws-row-head"><span></span><span>'+esc(c('current'))+'</span><span>'+esc(c('source'))+'</span><span></span></div>'+rows.map(function(row){ return '<div class="habit-ws-row"><strong>'+esc(row.label)+'</strong><span>'+esc(row.value)+'</span><span class="habit-ws-source is-'+esc(row.source.id)+'">'+esc(row.source.label)+'</span><button type="button" data-habit-edit data-channel="'+esc(row.channel)+'" data-focus="'+esc(row.focus)+'">'+esc(c('edit'))+'</button></div>'; }).join('')+'</div>':'')+'</section>';
-    }).join('')+'</div>';
+    return '<div class="habit-ws-current-head"><div><span>'+esc(c('currentApp'))+'</span><h4>'+esc(appName(model.mapping))+'</h4><p>'+esc(sceneName(model.mapping))+'</p></div><span class="habit-ws-live '+(model.mapping.id===cfg().activeSceneId?'is-active':'')+'">'+esc(model.mapping.id===cfg().activeSceneId?c('activeHabit'):c('notActive'))+'</span></div>'+chain+quickToolbarHtml(model)+'<section class="habit-ws-viz" aria-label="'+esc(t('habitWsVizLabel','输入通道预览'))+'">'+viz+'</section><section class="habit-ws-rules">'+rulesListHtml(model)+'</section>'+advancedPanelHtml(model);
   }
   function captureWorkspaceScroll(){
     var root=document.getElementById('habitWorkspace');
@@ -385,6 +424,7 @@
     bindUsageLive();
     captureWorkspaceScroll();
     if(!ui().habitExperienceMode) ui().habitExperienceMode=prefs()?prefs().getMode():'novice';
+    if(ui().habitExperienceMode==='programmer') ui().habitExperienceMode='quick';
     if(!ui().habitNoviceDim) ui().habitNoviceDim='key';
     if(!ui().habitNoviceScene) ui().habitNoviceScene='begin';
     if(ui().habitHubCreating){
@@ -396,7 +436,7 @@
     }
     var model=buildWorkspaceModel();
     if(model.empty){
-      host.innerHTML=modeHtml(ui().habitExperienceMode)+introHtml()+'<div class="habit-ws-empty"><strong>'+esc(c('noHabit'))+'</strong><p>'+esc(c('noHabitDesc'))+'</p><button type="button" data-habit-add>'+esc(c('addApp'))+'</button></div>';
+      host.innerHTML=modeHtml(ui().habitExperienceMode)+'<div class="habit-ws-empty"><strong>'+esc(c('noHabit'))+'</strong><p>'+esc(c('noHabitDesc'))+'</p><button type="button" data-habit-add>'+esc(c('addApp'))+'</button></div>';
       restoreWorkspaceScroll(host);
       return;
     }
@@ -404,12 +444,10 @@
     if(model.mode==='novice'&&novice()&&novice().layoutHtml){
       body=novice().layoutHtml(model);
       if(novice().bindEvents) novice().bindEvents(host,function(){ render({skipStatsFetch:true}); });
-    }else if(model.mode==='programmer'){
-      body='<div class="habit-ws-layout">'+appListHtml(model)+'<main class="habit-ws-main">'+programHtml(model)+'</main></div>';
     }else{
       body='<div class="habit-ws-layout">'+appListHtml(model)+'<main class="habit-ws-main">'+quickHtml(model)+'</main></div>';
     }
-    host.innerHTML=modeHtml(model.mode)+introHtml()+body;
+    host.innerHTML=modeHtml(model.mode)+body;
     restoreWorkspaceScroll(host);
     if(!opts.skipStatsFetch){
       var api=global.OneToneHabitActionStats;
@@ -443,16 +481,35 @@
       });
     }
   }
-  function switchMode(mode,force){
-    captureWorkspaceScroll();
-    mode=mode==='programmer'?'programmer':mode==='quick'?'quick':'novice';
-    if(mode==='programmer'&&!force&&prefs()&&!prefs().hasSeenProgrammerIntro()){
-      ui().habitProgrammerIntroOpen=true;
-      render();
-      setTimeout(function(){ var btn=document.querySelector('[data-habit-intro-continue]'); if(btn) btn.focus(); },0);
-      return;
+  function mappingJsonText(mapping){
+    var s=shared();
+    var payload=s&&s.exportMappingJson?s.exportMappingJson(mapping):{mapping:mapping};
+    return JSON.stringify(payload,null,2);
+  }
+  function downloadMappingJson(mapping){
+    var id=String(mapping&&mapping.id||'habit');
+    var blob=new Blob([mappingJsonText(mapping)],{type:'application/json;charset=utf-8'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='onetone-habit-'+id.replace(/[^\w.-]+/g,'-')+'.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },0);
+  }
+  function copyMappingJson(mapping){
+    var text=mappingJsonText(mapping);
+    if(global.navigator&&global.navigator.clipboard&&global.navigator.clipboard.writeText){
+      return global.navigator.clipboard.writeText(text).then(function(){
+        if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitWsCopyJsonOk','已复制 JSON'),'scheme');
+      });
     }
-    ui().habitProgrammerIntroOpen=false;
+    if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitWsCopyJsonFail','无法访问剪贴板'),'scheme');
+    return Promise.resolve();
+  }
+  function switchMode(mode){
+    captureWorkspaceScroll();
+    if(mode==='programmer') mode='quick';
+    mode=mode==='quick'?'quick':'novice';
     ui().habitExperienceMode=mode;
     if(prefs()) prefs().setMode(mode);
     render();
@@ -470,11 +527,9 @@
     if(host.__habitWorkspaceBound) return;
     host.__habitWorkspaceBound=true;
     host.addEventListener('click',function(event){
-      var target=event.target.closest&&event.target.closest('button,[data-habit-item]');
+      var target=event.target.closest&&event.target.closest('[data-habit-rule-toggle],button,[data-habit-item]');
       if(!target) return;
       if(target.hasAttribute('data-habit-mode')){ switchMode(target.getAttribute('data-habit-mode')); return; }
-      if(target.hasAttribute('data-habit-intro-cancel')){ ui().habitProgrammerIntroOpen=false; render(); return; }
-      if(target.hasAttribute('data-habit-intro-continue')){ if(prefs()) prefs().markProgrammerIntroSeen(); switchMode('programmer',true); return; }
       if(target.hasAttribute('data-habit-usage-rank')){
         event.stopPropagation();
         state().selectedMappingId=target.getAttribute('data-habit-usage-rank');
@@ -517,7 +572,20 @@
       if(target.hasAttribute('data-habit-item')){ event.stopPropagation(); ui().habitWorkspaceItemId=target.getAttribute('data-habit-item'); render(); return; }
       if(target.hasAttribute('data-habit-section')){ ui().habitProgramSection=target.getAttribute('data-habit-section'); render(); return; }
       if(target.hasAttribute('data-habit-edit')){ openEditor(target.getAttribute('data-channel'),target.getAttribute('data-focus')); return; }
-      if(target.hasAttribute('data-habit-fine')){ switchMode('programmer'); return; }
+      if(target.hasAttribute('data-habit-advanced-toggle')){ event.stopPropagation(); ui().habitWorkspaceAdvancedOpen=!ui().habitWorkspaceAdvancedOpen; render({skipStatsFetch:true}); return; }
+      if(target.hasAttribute('data-habit-fine')){ event.stopPropagation(); ui().habitWorkspaceAdvancedOpen=true; render({skipStatsFetch:true}); return; }
+      if(target.hasAttribute('data-habit-export-json')){
+        event.stopPropagation();
+        var expM=normalizeSelection();
+        if(expM) downloadMappingJson(expM);
+        return;
+      }
+      if(target.hasAttribute('data-habit-copy-json')){
+        event.stopPropagation();
+        var copyM=normalizeSelection();
+        if(copyM) copyMappingJson(copyM);
+        return;
+      }
       if(target.hasAttribute('data-habit-add')){
         var hub=global.OneToneHabitHub;
         if(hub&&hub.startInlineCreate) hub.startInlineCreate();
@@ -532,7 +600,7 @@
       var modeButton=event.target.closest&&event.target.closest('[data-habit-mode]');
       if(!modeButton||(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')) return;
       event.preventDefault();
-      var modes=['novice','quick','programmer'];
+      var modes=['novice','quick'];
       var current=modeButton.getAttribute('data-habit-mode')||'novice';
       var idx=modes.indexOf(current);
       if(idx<0) idx=0;
@@ -549,14 +617,16 @@
         if(next){ next.focus(); try{ next.setSelectionRange(start,start); }catch(_){} }
       }
     });
-    document.addEventListener('keydown',function(event){
-      if(event.key==='Escape'&&ui().habitProgrammerIntroOpen){ ui().habitProgrammerIntroOpen=false; render(); }
-    });
   }
   function restoreReturnContext(context){
     if(!context||!context.mappingId) return;
     state().selectedMappingId=context.mappingId;
-    ui().habitExperienceMode=context.mode==='programmer'?'programmer':context.mode==='quick'?'quick':'novice';
+    var mode=context.mode==='novice'?'novice':'quick';
+    if(context.mode==='programmer'){
+      mode='quick';
+      ui().habitWorkspaceAdvancedOpen=true;
+    }
+    ui().habitExperienceMode=mode;
     ui().habitWorkspaceChannel=QUICK_CHANNELS.indexOf(context.channel)>=0?context.channel:(CHANNELS.indexOf(context.channel)>=0?context.channel:'all');
     ui().habitWorkspaceItemId=context.itemId||defaultItem(ui().habitWorkspaceChannel);
     ui().habitProgramSection=SECTIONS.indexOf(context.sectionId)>=0?context.sectionId:'scope';

@@ -34,34 +34,31 @@ check('main mount recording', mainSrc.includes('__otMountKeysRecordingFeedbackIs
 check('drawer recording', drawerSrc.includes('__otMountKeysRecordingFeedbackIsland'));
 check('index keysRecordingFeedback', html.includes('id="keysRecordingFeedback"'));
 
-console.log('[keys-deep-p12c] P12c-4 hub:');
-check('export buildKeysHubSchemeListModel', panelSrc.includes('buildKeysHubSchemeListModel:buildKeysHubSchemeListModel'));
-check('hub 岛守卫', panelSrc.includes('__otKeysHubSchemeListMounted'));
-check('main mount hub', mainSrc.includes('__otMountKeysHubSchemeListIsland'));
-check('drawer hub', drawerSrc.includes('__otMountKeysHubSchemeListIsland'));
-check('index keysHubSchemeList', html.includes('id="keysHubSchemeList"'));
+console.log('[keys-deep-p12c] P12c-4 hub removed:');
+check('no keysHubSchemeList DOM', !html.includes('id="keysHubSchemeList"'));
+check('no keysPanelAside DOM', !html.includes('id="keysPanelAside"'));
+check('no hub island mount', !mainSrc.includes('__otMountKeysHubSchemeListIsland'));
+check('no hub drawer mount', !drawerSrc.includes('__otMountKeysHubSchemeListIsland'));
+check('no buildKeysHubSchemeListModel export', !panelSrc.includes('buildKeysHubSchemeListModel:'));
 
-console.log('[keys-deep-p12c] P12c-5 strip:');
-check('export buildKeysAppContextStripModel', panelSrc.includes('buildKeysAppContextStripModel:buildKeysAppContextStripModel'));
-check('strip 岛守卫', panelSrc.includes('__otKeysAppContextStripMounted')||panelSrc.includes('applyKeysHabitStripHost'));
-check('main mount strip', mainSrc.includes('__otMountKeysAppContextStripIsland'));
-check('drawer strip', drawerSrc.includes('__otMountKeysAppContextStripIsland'));
-check('index keysHabitStripWrap', html.includes('id="keysHabitStripWrap"'));
-check('shouldShowHabitStrip export', panelSrc.includes('shouldShowHabitStrip:shouldShowHabitStrip'));
-check('shouldShowHabitStrip always false', panelSrc.includes('function shouldShowHabitStrip(){\n    return false;'));
-check('hub scheme list hidden', panelSrc.includes('cardHidden:true'));
+console.log('[keys-deep-p12c] P12c-5 strip removed:');
+check('no keysAppBindingStrip DOM', !html.includes('id="keysAppBindingStrip"'));
+check('no keysWorkflowTabs DOM', !html.includes('id="keysWorkflowTabs"'));
+check('no strip island mount', !mainSrc.includes('__otMountKeysAppContextStripIsland'));
+check('no workflow island mount', !mainSrc.includes('__otMountKeysWorkflowIsland'));
+check('no buildKeysAppContextStripModel export', !panelSrc.includes('buildKeysAppContextStripModel:'));
+check('no shouldShowHabitStrip export', !panelSrc.includes('shouldShowHabitStrip:'));
 check('edit banner module', readFileSync(join(root, 'src/js/features/mapping/habit-channel-edit-banner.js'), 'utf8').includes('OneToneHabitChannelEditBanner'));
 check('context banner delegates to edit banner', readFileSync(join(root, 'src/js/features/mapping/habit-scenario-context-banner.js'), 'utf8').includes('OneToneHabitChannelEditBanner.renderAll'));
 check('drawer syncPanelContext', drawerSrc.includes('OneToneHabitChannelEditBanner.syncPanelContext'));
 check('index edit banner script', html.includes('habit-channel-edit-banner.js'));
-check('habit strip not hidden by scenario css', !readFileSync(join(root, 'src/css/app.css'), 'utf8').includes('#settingsPanelKeys.is-scenario-config #keysAppBindingStrip'));
 
 console.log('[keys-deep-p12c] header slim:');
 check('index no btnKeysTestTop', !html.includes('id="btnKeysTestTop"'));
 check('index no btnKeysSave', !html.includes('id="btnKeysSave"'));
 check('index no btnKeysSchemeAdd', !html.includes('id="btnKeysSchemeAdd"'));
 check('index toggle kept', html.includes('id="btnKeysMappingEnable"'));
-check('index habit strip add kept', html.includes('id="btnKeysHabitStripAdd"'));
+check('index no btnKeysHabitStripAdd', !html.includes('id="btnKeysHabitStripAdd"'));
 check('index meta hidden', html.includes('id="keysSummaryMeta"') && html.includes('keysSummaryMeta" hidden'));
 check('index no keysUnifiedActivate', !html.includes('id="keysUnifiedActivate"'));
 check('persistEditorIfDirty export', panelSrc.includes('persistEditorIfDirty:persistEditorIfDirty'));
@@ -69,6 +66,7 @@ check('drawer close autosave', drawerSrc.includes('persistEditorIfDirty'));
 check('switch autosave', panelSrc.includes('if(isEditorDirty()) persistEditorIfDirty()'));
 check('status island toggle only', islandStatusSrc.includes('btnKeysMappingEnable') && !islandStatusSrc.includes('btnKeysSave'));
 check('keys strip noop', stripSrc.includes('if(spec.unified){\n      return;\n    }'));
+check('keys page single column', readFileSync(join(root, 'src/css/app.css'), 'utf8').includes('grid-template-columns:minmax(0,1fr)'));
 
 console.log('[keys-deep-p12c] P12c-6 display:');
 check('export buildKeysDisplayChromeModel', listSrc.includes('buildKeysDisplayChromeModel:buildKeysDisplayChromeModel'));

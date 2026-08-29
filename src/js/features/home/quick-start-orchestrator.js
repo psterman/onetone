@@ -198,8 +198,8 @@
     var experiencePrefs=global.OneToneHabitExperiencePrefs;
     if(experiencePrefs){
       if(persona==='vibe'){
-        experiencePrefs.setMode('programmer');
-        experiencePrefs.markProgrammerIntroSeen();
+        experiencePrefs.setMode('quick');
+        if(global.OneToneState&&global.OneToneState.ui) global.OneToneState.ui.habitWorkspaceAdvancedOpen=true;
       }else if(persona==='beginner'){
         experiencePrefs.setMode('quick');
       }

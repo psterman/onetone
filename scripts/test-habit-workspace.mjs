@@ -51,7 +51,7 @@ const context={
       {id:'base',group:'通用设置',enabled:true,keyModeEnabled:true,voiceModeEnabled:true,triggerKey:'F8',targetKey:'RAlt',triggerMode:'tap',autoEnterEnabled:true,cancelEnabled:true},
       {id:'app-1',group:'Cursor 专注写作',appTargetId:'cursor-chat',enabled:true,keyModeEnabled:true,voiceModeEnabled:false,triggerKey:'F9',targetKey:'Enter',voiceOverride:{wakePhrases:['开始写作']},cameraOverride:{triggers:{blink:true},deliberateBlink:'pressCtrlI'},codexMicroPad:{enabled:true,layoutProfile:'beginner',keys:[{id:'1'}]}}
     ]}},
-    ui:{habitExperienceMode:null,habitWorkspaceChannel:'key',habitWorkspaceItemId:'key-main',habitProgramSection:'scope',habitNoviceDim:'key',habitNoviceScene:'begin',habitWorkspaceScrollTop:0,habitWorkspaceFocusSelector:''}
+    ui:{habitExperienceMode:null,habitWorkspaceChannel:'key',habitWorkspaceItemId:'key-main',habitProgramSection:'scope',habitWorkspaceAdvancedOpen:false,habitNoviceDim:'key',habitNoviceScene:'begin',habitWorkspaceScrollTop:0,habitWorkspaceFocusSelector:''}
   },
   OneToneMappingCore:{byId(id){return context.OneToneState.state.config.mappings.find((m)=>m.id===id)||null;}},
   OneToneAppBehaviorRules:{appDisplayName:(id)=>id==='cursor-chat'?'Cursor':id},
@@ -77,8 +77,12 @@ assert.equal(quick.detail.when.includes('F9'),true,'快速视图读取真实按�
 assert.equal(quick.channels.voice.enabled,false,'通道关闭状态来自同一 MappingEntry');
 assert.equal(quick.groups.safety.some((row)=>row.source.id==='global'),true,'设备参数明确标为 global');
 
-Workspace.switchMode('programmer',true);
-assert.equal(Prefs.getMode(),'programmer');
+Workspace.switchMode('programmer');
+assert.equal(Prefs.getMode(),'quick','stored programmer migrates to quick');
+
+const exported=context.OneToneHabitShared.exportMappingJson(quick.mapping);
+assert.equal(exported.kind,'onetone-habit-mapping');
+assert.equal(exported.mapping.id,'app-1');
 
 const scrollBefore=42;
 host.querySelector=()=>({scrollTop:scrollBefore});
@@ -86,23 +90,35 @@ Workspace.switchMode('quick');
 assert.equal(context.OneToneState.ui.habitWorkspaceScrollTop,scrollBefore,'mode switch captures scroll');
 
 Workspace.restoreReturnContext({mappingId:'app-1',channel:'camera',itemId:'camera-blink',mode:'programmer',sectionId:'safety'});
+assert.equal(context.OneToneState.ui.habitExperienceMode,'quick','programmer return maps to quick');
+assert.equal(context.OneToneState.ui.habitWorkspaceAdvancedOpen,true,'programmer return opens advanced panel');
 assert.equal(context.OneToneState.ui.habitWorkspaceChannel,'camera');
 assert.equal(context.OneToneState.ui.habitWorkspaceItemId,'camera-blink');
 assert.equal(context.OneToneState.ui.habitProgramSection,'safety');
 assert.equal(context.OneToneState.state.config.activeSceneId,'base','编辑定位不得修改正在使用的习惯');
 
 context.OneToneState.ui.habitExperienceMode='quick';
-context.OneToneState.ui.habitWorkspaceChannel='key';
+context.OneToneState.ui.habitWorkspaceChannel='all';
 context.OneToneState.ui.habitWorkspaceItemId='key-main';
-context.OneToneState.ui.habitProgrammerIntroOpen=false;
+context.OneToneState.ui.habitWorkspaceAdvancedOpen=false;
 host.__habitNoviceBound=false;
 Workspace.render();
-assert.match(host.innerHTML,/pref-segmented is-wide habit-ws-channels/,'通道 tab 使用主题 segmented');
-assert.match(host.innerHTML,/pref-segmented-btn habit-ws-channel is-active/,'选中通道为白底 segmented');
+assert.equal(/data-habit-mode="programmer"/.test(host.innerHTML),false,'no programmer mode tab');
+assert.match(host.innerHTML,/habit-ws-advanced/,'quick mode has advanced panel shell');
+assert.match(host.innerHTML,/data-habit-fine/,'rules head links to advanced panel');
+assert.equal(/habit-ws-advanced is-open/.test(host.innerHTML),false,'advanced panel collapsed by default');
+assert.match(host.innerHTML,/habit-ws-ch-tabs/,'通道 tab 使用下划线样式');
+assert.match(host.innerHTML,/habit-ws-ch-tab is-active/,'选中通道为下划线 tab');
+assert.match(host.innerHTML,/habit-ws-page-bar/,'quick mode renders page indicator');
+assert.match(host.innerHTML,/habit-ws-key-card/,'quick mode renders stream deck key cards');
+assert.match(host.innerHTML,/habit-ws-rule-accent/,'rule rows have channel accent');
+assert.equal(/pref-segmented is-wide habit-ws-channels/.test(host.innerHTML),false,'不再使用 segmented 通道栏');
 assert.equal(/<select[^>]*data-habit-item/.test(host.innerHTML),false,'不再使用场景下拉');
 assert.match(host.innerHTML,/habit-ws-rules/,'quick mode renders rules list');
 assert.match(host.innerHTML,/habit-ws-viz/,'quick mode renders channel viz');
 assert.match(host.innerHTML,/habit-ws-inherit-chain/,'quick mode renders inherit chain');
+assert.equal(/habit-novice-card/.test(host.innerHTML),false,'quick mode has no story cards');
+assert.equal(/data-habit-novice-demo/.test(host.innerHTML),false,'quick mode has no try-demo buttons');
 assert.match(host.innerHTML,/icons\/app-target\/cursor\.png/,'官方应用图标');
 assert.match(host.innerHTML,/∞/,'通用设置字母/∞ fallback 仍存在于列表');
 
@@ -124,6 +140,15 @@ function fire(attrs){
 fire({'data-habit-rule-toggle':'app-1::key::key-main'});
 assert.equal(context.OneToneState.ui.habitWorkspaceRuleOpen,'app-1::key::key-main','rule row toggles peek');
 assert.equal(openedEditor,null,'rule toggle must not open editor');
+host.__habitWorkspaceBound=false;
+Workspace.render();
+assert.match(host.innerHTML,/怎么触发/,'peek uses human trigger label');
+assert.equal(/<b>1<\/b>/.test(host.innerHTML),false,'peek must not use numbered circles');
+fire({'data-habit-fine':''});
+assert.equal(context.OneToneState.ui.habitWorkspaceAdvancedOpen,true,'fine link opens advanced panel');
+host.__habitWorkspaceBound=false;
+Workspace.render();
+assert.match(host.innerHTML,/habit-ws-advanced is-open/,'advanced panel expands after fine link');
 
 fire({'data-habit-edit':'','data-channel':'key','data-focus':'trigger'});
 assert.equal(openedEditor&&openedEditor.channel,'key','只有修改才跳转编辑');

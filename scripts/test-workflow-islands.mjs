@@ -16,13 +16,14 @@ const softPadJs = readFileSync(join(root, 'src/js/features/agent/soft-pad-hub-ui
 const mainTsx = readFileSync(join(root, 'src-islands/main.tsx'), 'utf8');
 const settingsDrawerJs = readFileSync(join(root, 'src/js/features/settings/settings-drawer.js'), 'utf8');
 const softPadWorkflowIsland = readFileSync(join(root, 'src-islands/islands/soft-pad-workflow-island.tsx'), 'utf8');
+const html = readFileSync(join(root, 'src/index.html'), 'utf8');
 
-console.log('[workflow-islands] P14a Keys:');
-check('buildKeysWorkflowTabsModel 已导出', keysPanelJs.includes('buildKeysWorkflowTabsModel:buildKeysWorkflowTabsModel'));
-check('workflowTabView 已导出', keysPanelJs.includes('workflowTabView:workflowTabView'));
-check('renderWorkflowTabs 岛守卫', keysPanelJs.includes('__otKeysWorkflowMounted') && keysPanelJs.includes('__otKeysWorkflowSync'));
-check('main.tsx Keys workflow mount', mainTsx.includes('__otMountKeysWorkflowIsland'));
-check('settings-drawer 延迟挂载 Keys workflow', settingsDrawerJs.includes('__otMountKeysWorkflowIsland'));
+console.log('[workflow-islands] P14a Keys removed:');
+check('no keys workflow tabs DOM', !html.includes('id="keysWorkflowTabs"'));
+check('no buildKeysWorkflowTabsModel export', !keysPanelJs.includes('buildKeysWorkflowTabsModel:'));
+check('no workflowTabView export', !keysPanelJs.includes('workflowTabView:'));
+check('no main.tsx Keys workflow mount', !mainTsx.includes('__otMountKeysWorkflowIsland'));
+check('no settings-drawer Keys workflow mount', !settingsDrawerJs.includes('__otMountKeysWorkflowIsland'));
 
 console.log('[workflow-islands] P14b SoftPad:');
 check('buildSoftPadWorkflowModel 已导出', softPadJs.includes('buildSoftPadWorkflowModel: buildSoftPadWorkflowModel'));

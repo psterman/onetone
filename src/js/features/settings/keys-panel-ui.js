@@ -308,17 +308,6 @@
     scopeVal.innerHTML=scopeSummaryHtml(m);
   }
 
-  function schemeStatusTag(m){
-    if(!m) return {key:'keysSchemeTagIncomplete',cls:'is-incomplete'};
-    var isDraft=core().isDraft&&core().isDraft(m);
-    var isIncomplete=core().isIncomplete&&core().isIncomplete(m);
-    if(isDraft) return {key:'keysSchemeTagDraft',cls:'is-draft'};
-    if(isIncomplete) return {key:'keysSchemeTagIncomplete',cls:'is-incomplete'};
-    if(m.enabled) return {key:'keysSchemeTagActive',cls:'is-active'};
-    if(core().isSaved&&core().isSaved(m)) return {key:'keysSchemeTagSaved',cls:'is-saved'};
-    return {key:'keysSchemeTagIncomplete',cls:'is-incomplete'};
-  }
-
   function recommendedTriggerKey(m){
     var imeId=m&&String(m.imePresetId||'').trim();
     if(imeId&&global.OneToneImePresets&&global.OneToneImePresets.presetById){
@@ -372,7 +361,6 @@
     var scopeVal='—';
     var scopeApps=[];
     var scopeIcons=false;
-    var habitStripOn=shouldShowHabitStrip();
     if(m){
       if(codexCtx&&capUi&&capUi.pushToTalkDisplay){
         var talkKey=capUi.pushToTalkDisplay(m);
@@ -405,8 +393,7 @@
       scopeVal:scopeVal,
       scopeApps:scopeApps,
       scopeIcons:scopeIcons,
-      // Interactive chips already show 生效范围 — don't duplicate icon pills above.
-      scopeHidden:!!habitStripOn,
+      scopeHidden:false,
       saveLabel:t('keysSave'),
       testLabel:t('keysTestOnce'),
       addLabel:'+ '+t('addKeysDraft'),
@@ -816,93 +803,6 @@
     renderSchemeSummary(m);
   }
 
-  function shouldHideHabitStrip(){
-    if(!keysPanelActive()) return true;
-    return false;
-  }
-
-  function shouldShowHabitStrip(){
-    return false;
-  }
-
-  function buildKeysAppContextStripModel(){
-    var m=core()&&core().selected?core().selected():null;
-    var hide=!shouldShowHabitStrip();
-    var selected=ensureContextSelection();
-    return {
-      hidden:hide,
-      html:'',
-      mappingId:m&&m.id?String(m.id):'',
-      contextId:selected||'',
-      sig:[hide?'hidden':'show',selected||'',String(contextFilteredSchemes().length)].join('\0')
-    };
-  }
-
-  function applyKeysHabitStripHost(model){
-    if(!model) model=buildKeysAppContextStripModel();
-    var bindingStrip=$('keysAppBindingStrip');
-    var wrap=$('keysHabitStripWrap');
-    var bar=$('keysWorkflowTabsBar');
-    if(bindingStrip) bindingStrip.hidden=!!model.hidden;
-    if(wrap) wrap.hidden=!!model.hidden;
-    if(bar) bar.classList.toggle('has-habit-strip',!model.hidden);
-    if(global.__otKeysAppContextStripMounted&&typeof global.__otKeysAppContextStripSync==='function'){
-      global.__otKeysAppContextStripSync();
-    }
-    if(model.hidden) return;
-    renderWorkflowTabs();
-    if(global.__otKeysWorkflowMounted&&typeof global.__otKeysWorkflowSync==='function'){
-      try{ global.__otKeysWorkflowSync(); }catch(_){}
-    }
-  }
-
-  function renderHabitStrip(){
-    var lbl=$('keysHabitStripLbl');
-    var addBtn=$('btnKeysHabitStripAdd');
-    var tabsLbl=$('keysWorkflowTabsLbl');
-    if(lbl) lbl.textContent=t('keysHabitStripLbl');
-    if(addBtn) addBtn.textContent='+ '+t('addKeysDraft');
-    if(tabsLbl) tabsLbl.textContent=t('keysWorkflowTabsLbl');
-    applyKeysHabitStripHost(buildKeysAppContextStripModel());
-  }
-
-  function renderHabitSwitcher(){
-    var sel=$('keysHabitSwitcher');
-    var lbl=$('keysHabitSwitcherLbl');
-    if(lbl) lbl.textContent=t('keysStatusHabitLbl');
-    if(!sel||!core()||!core().sorted) return;
-    var schemes=contextFilteredSchemes();
-    var selected=ensureContextSelection();
-    if(!schemes.length){
-      sel.innerHTML='<option value="">'+esc(t('mappingEmptyTitle'))+'</option>';
-      sel.disabled=true;
-      renderWorkflowTabs();
-      return;
-    }
-    sel.disabled=false;
-    sel.innerHTML=schemes.map(function(m){
-      return '<option value="'+esc(m.id)+'"'+(m.id===selected?' selected':'')+'>'+esc(habitName(m))+'</option>';
-    }).join('');
-    renderWorkflowTabs();
-  }
-
-  function schemeCompletion(m){
-    var c=core();
-    if(!m||!c) return {done:0,total:3};
-    var done=0;
-    var trig=(c.editorTrigger?c.editorTrigger(m):'')||String(m.triggerKey||'').trim();
-    var tgt=(c.editorTarget?c.editorTarget(m):'')||String(m.targetKey||'').trim();
-    if(trig) done++;
-    if(tgt) done++;
-    if(c.isSaved&&c.isSaved(m)) done++;
-    return {done:done,total:3};
-  }
-
-  function schemeAppRuleCount(m){
-    if(!m||!Array.isArray(m.appBehaviorRules)) return 0;
-    return m.appBehaviorRules.length;
-  }
-
   function schemeGroupKey(m){
     if(!m) return '';
     var g=String(m.group||'').trim();
@@ -910,228 +810,6 @@
     var l=String(m.label||'').trim();
     if(l) return l;
     return String(m.id||'').trim();
-  }
-
-  function schemePairLine(m){
-    var capUi=global.OneToneAgentCapabilityUi;
-    if(capUi&&capUi.schemePairLine){
-      var codexLine=capUi.schemePairLine(m);
-      if(codexLine) return codexLine;
-    }
-    if(hooks().homeMappingPairLine) return hooks().homeMappingPairLine(m);
-    var trig=core().editorTrigger?core().editorTrigger(m):((m&&m.triggerKey)||'').trim();
-    var tgt=core().editorTarget?core().editorTarget(m):((m&&m.targetKey)||'').trim();
-    if(!trig&&!tgt) return '';
-    return friendlyKey(trig||'—')+' → '+friendlyKey(tgt||'—');
-  }
-
-  function renderKeysHubTriggerRow(m,selected){
-    var isEditing=m.id===selected;
-    var comp=schemeCompletion(m);
-    var stepsText=comp.done+'/'+comp.total;
-    var enabled=!!m.enabled;
-    var tag=schemeStatusTag(m);
-    var canToggle=core().isSaved&&core().isSaved(m);
-    var pair=schemePairLine(m)||t('keysWorkflowOverviewEmpty');
-    return '<div class="keys-hub-trigger-row-wrap'+(isEditing?' is-editing':'')+(!enabled?' is-disabled-scheme':'')+(tag.cls==='is-draft'?' is-draft':'')+'">'
-      +'<button type="button" class="keys-hub-trigger-row'+(isEditing?' is-active':'')+'" data-scheme-select="'+esc(m.id)+'" aria-current="'+(isEditing?'true':'false')+'">'
-      +'<span class="keys-hub-trigger-pair">'+esc(pair)+'</span>'
-      +'<span class="keys-hub-trigger-meta">'+esc(stepsText)+'</span>'
-      +'</button>'
-      +'<div class="keys-hub-trigger-actions">'
-      +(isEditing?'<span class="keys-hub-scheme-editing">'+esc(t('keysWorkflowEditing'))+'</span>':'')
-      +'<span class="keys-hub-scheme-tag '+esc(tag.cls)+'">'+esc(t(tag.key))+'</span>'
-      +(canToggle?'<button type="button" class="toggle-switch keys-hub-scheme-toggle'+(enabled?' is-on':'')+'" data-scheme-enable="'+esc(m.id)+'" role="switch" aria-checked="'+(enabled?'true':'false')+'" aria-label="'+esc(enabled?t('keysWorkflowEnabled'):t('keysWorkflowDisabled'))+'"></button>':'')
-      +'<button type="button" class="keys-hub-scheme-delete" data-scheme-delete="'+esc(m.id)+'" aria-label="'+esc(t('habitHubActDelete'))+'" title="'+esc(t('habitHubActDelete'))+'">×</button>'
-      +'</div></div>';
-  }
-
-  function renderKeysHubGroupCard(groupKey,items,selected){
-    var label=habitName(items[0]);
-    var isEditing=items.some(function(m){ return m.id===selected; });
-    var renameId=(items[0]&&items[0].id)||'';
-    return '<div class="keys-hub-scheme-group-card'+(isEditing?' is-editing':'')+'" role="listitem" data-group="'+esc(groupKey)+'">'
-      +'<header class="keys-hub-group-head">'
-      +'<span class="keys-hub-group-name">'+esc(label)+'</span>'
-      +'<span class="keys-hub-group-count">'+esc(String(items.length))+'</span>'
-      +'<button type="button" class="keys-hub-scheme-rename" data-scheme-rename="'+esc(renameId)+'" aria-label="'+esc(t('keysSchemeRename'))+'" title="'+esc(t('keysSchemeRename'))+'">✎</button>'
-      +'</header>'
-      +items.map(function(m){ return renderKeysHubTriggerRow(m,selected); }).join('')
-      +'<button type="button" class="keys-hub-add-trigger" data-hub-add-trigger="'+esc(renameId)+'">+ '+esc(t('keysHubAddTrigger'))+'</button>'
-      +'</div>';
-  }
-
-  function renderKeysHubSchemeRow(m,selected){
-    return renderKeysHubGroupCard(schemeGroupKey(m),[m],selected);
-  }
-
-  function groupSchemesByKey(schemes){
-    var map={};
-    var order=[];
-    schemes.forEach(function(m){
-      var key=schemeGroupKey(m);
-      if(!map[key]){
-        map[key]=[];
-        order.push(key);
-      }
-      map[key].push(m);
-    });
-    return order.map(function(key){
-      return { key:key, items:map[key] };
-    });
-  }
-
-  function addTriggerVariant(sourceId){
-    sourceId=String(sourceId||'').trim();
-    if(!sourceId||!global.OneToneMappingTrashMenu||!global.OneToneMappingTrashMenu.duplicate) return;
-    global.OneToneMappingTrashMenu.duplicate(sourceId);
-    var m=core()&&core().selected?core().selected():null;
-    if(!m) return;
-    m.triggerKey='';
-    m.enabled=false;
-    if(hooks().setEditorTriggerKey) hooks().setEditorTriggerKey('');
-    if(hooks().save) hooks().save();
-    if(global.OneToneKeysPageState&&global.OneToneKeysPageState.setStep){
-      global.OneToneKeysPageState.setStep('trigger');
-    }
-    render();
-  }
-
-  function renderCodexPadMapList(selectedId){
-    var host=$('keysHubCodexPadMap');
-    if(!host) return;
-    // Soft Pad map moved to 虚拟键盘 page — keep host empty.
-    host.hidden=true;
-    host.innerHTML='';
-    void selectedId;
-  }
-
-  function buildKeysHubSchemeListModel(){
-    return { html:'', count:0, cardHidden:true, selected:'', sig:'d-banner' };
-  }
-
-  function applyKeysHubSchemeListHost(model){
-    if(!model) model=buildKeysHubSchemeListModel();
-    if(global.__otKeysHubSchemeListMounted&&typeof global.__otKeysHubSchemeListSync==='function'){
-      global.__otKeysHubSchemeListSync();
-      return;
-    }
-    var schemeList=$('keysHubSchemeList');
-    var card=$('keysHubCard');
-    var countEl=$('keysHubCount');
-    if(card) card.hidden=!!model.cardHidden;
-    if(countEl) countEl.textContent=String(model.count||0);
-    if(schemeList) schemeList.innerHTML=model.html||'';
-  }
-
-  function renderKeysHub(){
-    var tplList=$('keysHubTemplateList');
-    var titleLbl=$('keysHubTitleLbl');
-    var tplLbl=$('keysHubTemplatesLbl');
-    var tplCountEl=$('keysHubTemplatesCount');
-    var tplHint=$('keysHubTemplatesHint');
-    var tplFillWrap=$('keysHubTemplatesFillWrap');
-    var tplFillList=$('keysHubTemplatesFillList');
-    var tplFillLbl=$('keysHubTemplatesFillLbl');
-    var aside=$('keysPanelAside');
-    var tplApi=global.OneToneKeysWorkflowTemplates;
-    if(titleLbl) titleLbl.textContent=t('keysHubTitle');
-    if(tplLbl) tplLbl.textContent=t('keysHubTemplatesLbl');
-    if(tplHint) tplHint.textContent=t('keysHubTemplatesHint');
-    if(tplFillLbl) tplFillLbl.textContent=t('keysTemplateFillLbl');
-    var addSchemeBtn=$('btnKeysHubAddScheme');
-    if(addSchemeBtn) addSchemeBtn.textContent='+ '+t('addKeysDraft');
-    if(aside) aside.setAttribute('aria-label',t('keysHubTitle'));
-    var schemeModel=buildKeysHubSchemeListModel();
-    applyKeysHubSchemeListHost(schemeModel);
-    if(schemeModel.cardHidden){
-      if(tplList) tplList.innerHTML='';
-      renderCodexPadMapList('');
-      return;
-    }
-    renderCodexPadMapList(schemeModel.selected);
-    if(!tplList||!tplApi||!tplApi.list) return;
-    var templates=tplApi.list();
-    var m=core()&&core().selected?core().selected():null;
-    var canFill=!!m;
-    if(tplCountEl) tplCountEl.textContent=String(templates.length);
-    if(tplFillWrap) tplFillWrap.hidden=!canFill;
-    tplList.innerHTML=templates.map(function(tpl){
-      var summary=tplApi.compactSummary?tplApi.compactSummary(tpl):'';
-      var title=esc(t(tpl.nameKey))+(summary?' — '+esc(summary):'');
-      return '<button type="button" class="keys-hub-template-chip" data-new-template="'+esc(tpl.id)+'" title="'+title+'">'
-        +esc(t(tpl.nameKey))+'</button>';
-    }).join('');
-    if(tplFillList){
-      tplFillList.innerHTML=canFill?templates.map(function(tpl){
-        return '<button type="button" class="keys-hub-template-fill-chip" data-apply-template="'+esc(tpl.id)+'" title="'+esc(t(tpl.nameKey))+'">'
-          +esc(t(tpl.nameKey))+'</button>';
-      }).join(''):'';
-    }
-  }
-
-  function renderWorkflowOverview(){
-    renderKeysHub();
-  }
-
-  function renderWorkflowTemplates(){
-    renderKeysHub();
-  }
-
-  function renderWorkflowTabs(){
-    var tabs=$('keysWorkflowTabs');
-    var tabsLbl=$('keysWorkflowTabsLbl');
-    if(tabsLbl) tabsLbl.textContent=t('keysWorkflowTabsLbl');
-    if(!tabs) return;
-    if(global.__otKeysWorkflowMounted&&typeof global.__otKeysWorkflowSync==='function'){
-      global.__otKeysWorkflowSync();
-      return;
-    }
-    if(!core()||!core().sorted){
-      tabs.innerHTML='';
-      return;
-    }
-    var schemes=contextFilteredSchemes();
-    var selected=ensureContextSelection();
-    if(!schemes.length){
-      tabs.innerHTML='<p class="keys-workflow-tabs-empty">'+esc(t('mappingEmptyTitle'))+'</p>';
-      return;
-    }
-    tabs.innerHTML=schemes.map(function(m){
-      return workflowTabView(m,selected);
-    }).join('');
-  }
-
-  function workflowTabView(m,selected){
-    var isSel=m.id===selected;
-    var enabled=!!m.enabled;
-    var isDraft=core().isIncomplete&&core().isIncomplete(m);
-    var isStrictDraft=core().isDraft&&core().isDraft(m);
-    var draftBadge=isStrictDraft?t('homeLiveSchemeDraft'):t('keySchemeCompletenessIncomplete');
-    var label=habitName(m);
-    var trig=core().editorTrigger?core().editorTrigger(m):((m.triggerKey||'').trim());
-    if(trig) label=label+' · '+friendlyKey(trig);
-    return '<button type="button" class="keys-workflow-tab keys-habit-strip-tab'+(isSel?' is-active':'')+(!enabled?' is-disabled-scheme':'')+(isDraft?' is-draft':'')+'" role="tab" aria-selected="'+(isSel?'true':'false')+'" id="keysWorkflowTab-'+esc(m.id)+'" data-scheme-id="'+esc(m.id)+'" data-ot-tip="'+esc(t('keysHabitPillEditOnlyTip','仅切换编辑对象，不影响正在使用'))+'">'
-      +'<span class="keys-workflow-tab-name">'+esc(label)+'</span>'
-      +(isDraft?'<span class="keys-workflow-tab-draft">'+esc(draftBadge)+'</span>':'')
-      +'</button>';
-  }
-
-  function buildKeysWorkflowTabsModel(){
-    if(!core()||!core().sorted){
-      return {emptyHtml:'',tabs:[]};
-    }
-    var schemes=contextFilteredSchemes();
-    var selected=ensureContextSelection();
-    if(!schemes.length){
-      return {emptyHtml:t('mappingEmptyTitle'),tabs:[]};
-    }
-    return {
-      emptyHtml:'',
-      tabs:schemes.map(function(m){
-        return {id:m.id,html:workflowTabView(m,selected)};
-      })
-    };
   }
 
   function renameScheme(id){
@@ -1169,8 +847,6 @@
     if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
     hooks().flushAllEditorToMappings&&hooks().flushAllEditorToMappings();
     state().selectedMappingId=id;
-    var sel=$('keysHabitSwitcher');
-    if(sel&&sel.value!==id) sel.value=id;
     hooks().syncEditorFromSelection&&hooks().syncEditorFromSelection();
     hooks().renderKeyFinishFlowPanel&&hooks().renderKeyFinishFlowPanel();
     hooks().renderEditor&&hooks().renderEditor();
@@ -1179,16 +855,6 @@
     if(global.OneToneSceneVoiceTab) global.OneToneSceneVoiceTab.render();
     if(hooks().render) hooks().render();
     render();
-    var tab=$('keysWorkflowTab-'+id);
-    if(tab) tab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
-    var schemeList=$('keysHubSchemeList');
-    var hubBtn=schemeList&&schemeList.querySelector('[data-scheme-select="'+id+'"]');
-    if(hubBtn){
-      var hubWrap=hubBtn.closest('.keys-hub-trigger-row-wrap');
-      if(hubWrap) hubWrap.scrollIntoView({behavior:'smooth',block:'nearest'});
-      var groupCard=hubBtn.closest('.keys-hub-scheme-group-card');
-      if(groupCard) groupCard.scrollIntoView({behavior:'smooth',block:'nearest'});
-    }
   }
 
   function renderAppContext(){
@@ -1449,12 +1115,9 @@
 
   function renderStatusChips(){
     var m=core()&&core().selected?core().selected():null;
-    renderHabitSwitcher();
-    renderKeysHub();
     renderAppContext();
     renderFlowStatusBar(m);
     renderImePill(m);
-    var shortcutsCard=$('keysAppShortcutsCard');
     var advSummary=$('keysAdvancedSummary');
     if(advSummary) advSummary.textContent=t('keysAdvancedTitle');
     var stepLbls=[
@@ -1477,7 +1140,6 @@
       ['keysCaptureKeycapTitle','keysCaptureImeRecordTitle'],
       ['keysCaptureRecordHint','keysCaptureRecordHint'],
       ['keysCaptureKeyFinishLbl','keysCaptureKeyFinishTitle'],
-      ['keysHabitStripLbl','keysHabitStripLbl'],
     ];
     colLbls.forEach(function(pair){
       var el=$(pair[0]);
@@ -1494,7 +1156,6 @@
     renderTriggerModeSegments(m);
     renderTriggerConflict(m);
     renderSchemeSummary(m);
-    renderHabitStrip();
     if(global.OneToneHabitChannelStatusStrip){
       if(global.OneToneHabitChannelStatusStrip.bindOnce) global.OneToneHabitChannelStatusStrip.bindOnce();
       if(global.OneToneHabitChannelStatusStrip.render){
@@ -1536,53 +1197,6 @@
   }
 
   function bindEvents(){
-    var switcher=$('keysHabitSwitcher');
-    if(switcher){
-      switcher.addEventListener('change',function(){
-        switchActiveScheme(switcher.value);
-      });
-    }
-    var workflowTabs=$('keysWorkflowTabs');
-    if(workflowTabs){
-      workflowTabs.addEventListener('keydown',function(e){
-        if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight'&&e.key!=='Home'&&e.key!=='End') return;
-        var tabs=Array.prototype.slice.call(workflowTabs.querySelectorAll('[role="tab"]'));
-        if(!tabs.length) return;
-        var idx=tabs.findIndex(function(btn){ return btn.getAttribute('aria-selected')==='true'; });
-        if(idx<0) idx=0;
-        if(e.key==='Home') idx=0;
-        else if(e.key==='End') idx=tabs.length-1;
-        else if(e.key==='ArrowRight') idx=Math.min(tabs.length-1,idx+1);
-        else if(e.key==='ArrowLeft') idx=Math.max(0,idx-1);
-        e.preventDefault();
-        var next=tabs[idx];
-        if(next) switchActiveScheme(next.getAttribute('data-scheme-id')||'');
-      });
-    }
-    var addBtn=$('btnKeysAddAppRule');
-    if(addBtn){
-      addBtn.addEventListener('click',function(e){
-        e.preventDefault();
-        var main=$('btnAddAppRule');
-        if(main) main.click();
-      });
-    }
-    var addChip=$('btnKeysHabitStripAdd');
-    if(addChip){
-      addChip.addEventListener('click',function(e){
-        e.preventDefault();
-        e.stopPropagation();
-        addScheme();
-      });
-    }
-    var hubAdd=$('btnKeysHubAddScheme');
-    if(hubAdd){
-      hubAdd.addEventListener('click',function(e){
-        e.preventDefault();
-        var addBtn=$('btnAddMapping');
-        if(addBtn) addBtn.click();
-      });
-    }
     var panel=$('settingsPanelKeys');
     if(panel&&panel.dataset.keysPanelUiBound!=='1'){
       panel.dataset.keysPanelUiBound='1';
@@ -1598,82 +1212,6 @@
         }
       });
     }
-    var hub=$('keysHubCard');
-    if(hub&&hub.dataset.keysHubBound!=='1'){
-      hub.dataset.keysHubBound='1';
-      hub.addEventListener('click',function(e){
-        if(e.__vpKeysPanelHandled) return;
-        var fillBtn=e.target.closest&&e.target.closest('[data-apply-template]');
-        if(fillBtn&&!fillBtn.disabled){
-          e.__vpKeysPanelHandled=true;
-          e.preventDefault();
-          var tplApi=global.OneToneKeysWorkflowTemplates;
-          if(tplApi&&tplApi.applyTemplate) tplApi.applyTemplate(fillBtn.getAttribute('data-apply-template')||'');
-          return;
-        }
-        var newBtn=e.target.closest&&e.target.closest('[data-new-template]');
-        if(newBtn){
-          e.__vpKeysPanelHandled=true;
-          e.preventDefault();
-          var tplApiNew=global.OneToneKeysWorkflowTemplates;
-          if(tplApiNew&&tplApiNew.applyTemplateNew) tplApiNew.applyTemplateNew(newBtn.getAttribute('data-new-template')||'');
-          return;
-        }
-        var enableBtn=e.target.closest&&e.target.closest('[data-scheme-enable]');
-        if(enableBtn){
-          e.__vpKeysPanelHandled=true;
-          e.preventDefault();
-          e.stopPropagation();
-          var enableId=enableBtn.getAttribute('data-scheme-enable')||'';
-          var enableM=core().byId?core().byId(enableId):null;
-          if(enableM&&global.OneToneMappingEditActions&&global.OneToneMappingEditActions.setMappingEnabled){
-            global.OneToneMappingEditActions.setMappingEnabled(enableId,!enableM.enabled);
-          }
-          return;
-        }
-        var delBtn=e.target.closest&&e.target.closest('[data-scheme-delete]');
-        if(delBtn){
-          e.__vpKeysPanelHandled=true;
-          e.preventDefault();
-          e.stopPropagation();
-          if(global.OneToneMappingTrashMenu) global.OneToneMappingTrashMenu.deleteFromMenu(delBtn.getAttribute('data-scheme-delete')||'');
-          return;
-        }
-        var renameBtn=e.target.closest&&e.target.closest('[data-scheme-rename]');
-        if(renameBtn){
-          e.__vpKeysPanelHandled=true;
-          e.preventDefault();
-          e.stopPropagation();
-          renameScheme(renameBtn.getAttribute('data-scheme-rename')||'');
-          return;
-        }
-        var padMapBtn=e.target.closest&&e.target.closest('[data-pad-map-key]');
-        if(padMapBtn){
-          e.__vpKeysPanelHandled=true;
-          e.preventDefault();
-          e.stopPropagation();
-          var microId=padMapBtn.getAttribute('data-pad-map-key')||'';
-          var Pad=global.OneToneCodexMicroPadUi;
-          var mapM=core()&&core().selected?core().selected():null;
-          if(microId&&mapM&&Pad&&Pad.openEditKeycap) Pad.openEditKeycap(mapM,microId);
-          return;
-        }
-        var schemeSelect=e.target.closest&&e.target.closest('[data-scheme-select]');
-        if(schemeSelect){
-          e.__vpKeysPanelHandled=true;
-          e.preventDefault();
-          switchActiveScheme(schemeSelect.getAttribute('data-scheme-select')||'');
-          return;
-        }
-        var addTriggerBtn=e.target.closest&&e.target.closest('[data-hub-add-trigger]');
-        if(addTriggerBtn){
-          e.__vpKeysPanelHandled=true;
-          e.preventDefault();
-          addTriggerVariant(addTriggerBtn.getAttribute('data-hub-add-trigger')||'');
-          return;
-        }
-      });
-    }
   }
 
   global.OneToneKeysPanelUi={
@@ -1683,16 +1221,10 @@
     syncCancelButtonHost:syncCancelButtonHost,
     applyRecordingHighlightHosts:applyRecordingHighlightHosts,
     renderAppContext:renderAppContext,
-    renderHabitStrip:renderHabitStrip,
-    renderAppContextStrip:renderHabitStrip,
-    shouldShowHabitStrip:shouldShowHabitStrip,
     renderTriggerContextBadge:renderTriggerContextBadge,
     renderImePill:renderImePill,
-    renderKeysHub:renderKeysHub,
     renderGestureUiOnly:renderGestureUiOnly,
     renameScheme:renameScheme,
-    renderWorkflowOverview:renderWorkflowOverview,
-    renderWorkflowTemplates:renderWorkflowTemplates,
     switchActiveScheme:switchActiveScheme,
     renderSchemeSummary:renderSchemeSummary,
     renderTestProgress:renderTestProgress,
@@ -1703,21 +1235,14 @@
     previewKeyConflict:previewKeyConflict,
     testOnceTop:testOnceTop,
     addScheme:addScheme,
-    addTriggerVariant:addTriggerVariant,
     toggleMappingEnable:toggleMappingEnable,
     buildKeysStatusProps:buildKeysStatusProps,
-    workflowTabView:workflowTabView,
-    buildKeysWorkflowTabsModel:buildKeysWorkflowTabsModel,
     // P12b-6：启动手势分段宿主模型（单一来源）
     buildKeysTriggerModeModel:buildKeysTriggerModeModel,
     // P12b-8：启动键冲突提示
     buildKeysTriggerConflictModel:buildKeysTriggerConflictModel,
     // P12c-3：录制反馈
-    buildKeysRecordingFeedbackModel:buildKeysRecordingFeedbackModel,
-    // P12c-4：方案列表
-    buildKeysHubSchemeListModel:buildKeysHubSchemeListModel,
-    // P12c-5：应用上下文 chips
-    buildKeysAppContextStripModel:buildKeysAppContextStripModel
+    buildKeysRecordingFeedbackModel:buildKeysRecordingFeedbackModel
   };
   global.__otKeysStatusRead=function(){
     var m=core()&&core().selected?core().selected():null;

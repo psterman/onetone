@@ -750,21 +750,6 @@
             <div class="page-status-bar-actions keys-scheme-status-actions">
               <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="btnKeysMappingEnable" role="switch" aria-checked="false" aria-labelledby="keysSummaryStatus"></button>
             </div>
-            <!-- Survives KeysStatus island mount (island only replaces main/actions). -->
-            <div class="keys-unified-extras" id="keysUnifiedExtras">
-              <div class="keys-unified-apps keys-habit-strip keys-app-binding-strip voice-app-scope-dock" id="keysAppBindingStrip" hidden>
-                <span class="keys-unified-apps-lbl" id="keysHabitStripLbl">按键习惯</span>
-                <div class="keys-habit-strip-wrap flow-scope-bar-wrap" id="keysHabitStripWrap">
-                  <div class="keys-workflow-tabs keys-habit-strip-tabs flow-scope-bar" id="keysWorkflowTabs" role="tablist" aria-labelledby="keysHabitStripLbl"></div>
-                  <button type="button" class="keys-app-chip keys-app-chip--add flow-scope-bar-add" id="btnKeysHabitStripAdd">+ 新建</button>
-                </div>
-              </div>
-            </div>
-            <span class="sr-only" id="keysWorkflowTabsLbl">正在编辑的习惯</span>
-            <label class="keys-habit-switcher-assist sr-only">
-              <span class="sr-only" id="keysHabitSwitcherLbl">当前习惯</span>
-              <select class="keys-habit-switcher-inline" id="keysHabitSwitcher" aria-labelledby="keysHabitSwitcherLbl keysWorkflowTabsLbl" hidden></select>
-            </label>
           </div>
           <header class="keys-page-head sr-only">
             <div class="keys-page-head-text">
@@ -1008,39 +993,6 @@
                 <div class="conflict-pill" id="conflictBanner" role="status"></div>
               </div>
             </div>
-            <aside class="keys-page-aside" id="keysPanelAside" aria-label="习惯与模板">
-              <section class="keys-aside-card keys-hub-card" id="keysHubCard">
-                <header class="keys-aside-card-head keys-hub-head">
-                  <span class="keys-aside-title" id="keysHubTitleLbl">习惯</span>
-                  <span class="keys-aside-count" id="keysHubCount">—</span>
-                </header>
-                <div class="keys-hub-schemes" id="keysHubSchemeList" role="list"></div>
-                <div class="keys-hub-codex-pad-map" id="keysHubCodexPadMap" hidden></div>
-                <button type="button" class="keys-hub-scheme-add" id="btnKeysHubAddScheme">+ 新建草稿</button>
-                <div class="keys-hub-divider" id="keysHubDivider" aria-hidden="true"></div>
-                <details class="keys-hub-templates-disclosure" id="keysHubTemplatesDisclosure">
-                  <summary class="keys-hub-templates-summary" id="keysHubTemplatesSummary">
-                    <span class="keys-hub-templates-summary-lbl" id="keysHubTemplatesLbl">从模板创建</span>
-                    <span class="keys-hub-templates-summary-count" id="keysHubTemplatesCount">—</span>
-                  </summary>
-                  <p class="keys-hub-templates-hint" id="keysHubTemplatesHint">创建新习惯并预设识别与收尾；触发键仍需在左侧录制</p>
-                  <div class="keys-hub-templates" id="keysHubTemplateList"></div>
-                  <div class="keys-hub-templates-fill" id="keysHubTemplatesFillWrap" hidden>
-                    <span class="keys-hub-templates-fill-lbl" id="keysHubTemplatesFillLbl">套用到当前：</span>
-                    <div class="keys-hub-templates-fill-chips" id="keysHubTemplatesFillList"></div>
-                  </div>
-                </details>
-              </section>
-              <section class="keys-aside-card habit-app-shortcuts-panel keys-app-shortcuts-panel" id="keysAppShortcutsCard" hidden aria-hidden="true">
-                <header class="keys-aside-card-head habit-app-shortcuts-head">
-                  <span class="keys-aside-title" id="keysAppShortcutsTitle"><svg class="keys-aside-title-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span id="keysAppShortcutsTitleLbl">应用快捷键</span></span>
-                  <span class="keys-aside-count" id="keysAppShortcutsCount">—</span>
-                </header>
-                <p class="habit-app-shortcuts-desc sr-only" id="keysAppShortcutsDesc">按应用覆盖步骤 3 的发送方式；未匹配时仍用全局默认</p>
-                <div class="keys-app-rules-list habit-app-rules-list keys-app-expand-list" id="keysAppRulesList"></div>
-                <button type="button" class="habit-app-shortcuts-add" id="btnKeysAddAppRule">+ 添加应用工作流</button>
-              </section>
-            </aside>
           </div>
           <div class="keys-page-foot">
             <button type="button" class="btn-test-send keys-page-test" id="btnTestSend" disabled>请先录好语音快捷键</button>

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>快速设置 · 吸收程序员模式 — 方案预览</title>
+<style>
+:root{
+  --bg:#f4f8fb; --panel:#fff; --panel-2:#f0f7fb; --panel-3:#e6f7fc;
+  --bd:rgba(26,45,74,.10); --bd-2:rgba(26,45,74,.16);
+  --tx:#152238; --mu:#5a7086; --dim:#7a8fa3;
+  --ac:#2a9cc4; --ac-strong:#1f8fb8; --ac-soft:#e6f7fc;
+  --gr:#22c55e; --gr-soft:#dcfce7;
+  --am:#f59e0b; --am-soft:#fef3c8;
+  --mono:ui-monospace,"SF Mono",Consolas,"Cascadia Code",monospace;
+  --shadow:0 14px 34px rgba(26,45,74,.07);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);
+  font:400 13px/1.6 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+a{color:var(--ac-strong)}
+
+.banner{background:linear-gradient(90deg,#e6f7fc,#fff);border-bottom:1px solid var(--bd);
+  padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.banner h1{margin:0;font-size:15px;font-weight:700}
+.banner p{margin:4px 0 0;font-size:12px;color:var(--mu);max-width:720px}
+.banner .chips{display:flex;gap:8px;flex-wrap:wrap}
+.banner .chip{font-size:11px;padding:4px 10px;border-radius:999px;border:1px solid var(--bd);background:#fff;color:var(--mu)}
+.banner .chip.ok{border-color:rgba(34,197,94,.35);background:var(--gr-soft);color:#166534}
+.banner .chip.rm{border-color:rgba(220,38,38,.25);background:#fee2e2;color:#991b1b;text-decoration:line-through}
+
+.layout{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:calc(100vh - 64px)}
+.sidebar{background:var(--panel);border-right:1px solid var(--bd);padding:16px 12px}
+.sidebar h2{margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
+.srch{width:100%;border:1px solid var(--bd);border-radius:10px;padding:8px 10px;font:inherit;font-size:12px;margin-bottom:10px}
+.app-item{display:flex;align-items:center;gap:10px;width:100%;padding:10px;border:1px solid transparent;border-radius:12px;background:transparent;font:inherit;text-align:left;cursor:pointer;color:inherit}
+.app-item:hover{background:var(--panel-2)}
+.app-item.on{background:var(--ac-soft);border-color:rgba(42,156,196,.28)}
+.app-icon{width:32px;height:32px;border-radius:8px;background:var(--panel-2);display:grid;place-items:center;font-weight:700;font-size:13px}
+.app-item.on .app-icon{background:var(--ac);color:#fff}
+.app-copy strong{display:block;font-size:13px}
+.app-copy small{font-size:11px;color:var(--dim)}
+
+.main{padding:20px 24px 48px;overflow:auto}
+.modes{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--bd);border-radius:12px;padding:3px;box-shadow:var(--shadow)}
+.seg button{border:0;background:transparent;font:inherit;font-size:12px;font-weight:600;padding:8px 14px;border-radius:9px;color:var(--mu);cursor:pointer}
+.seg button.on{background:var(--ac-soft);color:var(--ac-strong)}
+.seg button .badge{font-size:10px;background:var(--ac-soft);color:var(--ac-strong);border-radius:999px;padding:1px 6px;margin-left:4px}
+.seg button em{font-style:normal;font-size:10px;color:var(--ac-strong);margin-left:4px}
+.removed{font-size:11px;color:#b91c1c;text-decoration:line-through;opacity:.75}
+
+.head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+.head span.label{font-size:11px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+.head h3{margin:4px 0 0;font-size:20px}
+.head p{margin:4px 0 0;font-size:12px;color:var(--mu)}
+.live{font-size:11px;padding:5px 12px;border-radius:999px;background:var(--gr-soft);color:#166534;border:1px solid rgba(34,197,94,.25);white-space:nowrap}
+
+.inh{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--bd);border-radius:12px;background:var(--panel);margin-bottom:14px}
+.node{padding:8px 12px;border-radius:10px;border:1px solid var(--bd);background:var(--panel-2);font-size:12px}
+.node.cur{border-color:rgba(42,156,196,.35);background:var(--ac-soft)}
+.node b{display:block;font-size:12px}
+.node span{font-size:11px;color:var(--dim)}
+.arrow{color:var(--dim);font-size:11px}
+
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.ch-tabs{display:flex;gap:4px;border-bottom:1px solid var(--bd);flex:1;min-width:280px}
+.ch-tabs button{border:0;background:transparent;border-bottom:2px solid transparent;margin-bottom:-1px;padding:8px 12px;font:inherit;font-size:13px;font-weight:600;color:var(--mu);cursor:pointer}
+.ch-tabs button.on{color:var(--ac-strong);border-bottom-color:var(--ac)}
+.page-stats{font-size:12px;color:var(--dim);white-space:nowrap}
+
+.viz{background:var(--panel);border:1px solid var(--bd);border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:var(--shadow)}
+.viz h4{margin:0 0 4px;font-size:14px}
+.viz p{margin:0 0 12px;font-size:12px;color:var(--mu)}
+.key-cap{display:inline-flex;align-items:center;justify-content:center;min-width:48px;height:48px;border-radius:12px;background:var(--ac);color:#fff;font:700 14px/1 var(--mono);box-shadow:0 10px 22px rgba(42,156,196,.2)}
+.key-modes{margin:12px 0 0;padding:0;list-style:none;font-size:12px;color:var(--mu)}
+.key-modes li{margin:4px 0}
+
+.rules-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.rules-head h4{margin:0;font-size:14px;font-weight:700}
+.rules-head a{font-size:12px;font-weight:650;text-decoration:none}
+.rules-head a:hover{text-decoration:underline}
+
+.rule{background:var(--panel);border:1px solid var(--bd);border-radius:14px;margin-bottom:8px;overflow:hidden;box-shadow:var(--shadow)}
+.rule.is-open{border-color:rgba(42,156,196,.35)}
+.rule-row{display:grid;grid-template-columns:auto auto 1fr auto;gap:12px;align-items:center;padding:12px 14px;cursor:pointer}
+.rule-accent{width:3px;height:36px;border-radius:999px;background:var(--ac);margin-left:-2px}
+.rule-icon{font-size:18px}
+.rule-txt{font-size:13px;font-weight:600}
+.rule-actions{display:flex;align-items:center;gap:8px}
+.tag{font-size:11px;padding:2px 8px;border-radius:999px}
+.tag.ov{background:var(--ac-soft);color:var(--ac-strong)}
+.tag.in{background:var(--panel-2);color:var(--dim)}
+.btn-mini{border:1px solid var(--bd);background:#fff;border-radius:8px;padding:5px 10px;font:inherit;font-size:11px;font-weight:650;color:var(--mu);cursor:pointer}
+.btn-mini:hover{border-color:rgba(42,156,196,.35);color:var(--ac-strong)}
+
+.peek{display:none;border-top:1px solid var(--bd);background:var(--panel-2);padding:12px 14px 14px 46px}
+.rule.is-open .peek{display:block}
+.peek dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0}
+.peek dt{font-size:11px;font-weight:650;color:var(--dim)}
+.peek dd{margin:6px 0 0;font-size:12px;font-weight:650}
+.peek-meta{margin:10px 0 0;font-size:11px;color:var(--dim)}
+.peek-pro{margin:4px 0 0;font-size:10px;color:color-mix(in srgb,var(--dim) 80%,transparent);font-family:var(--mono)}
+.status{display:inline-flex;align-items:center;gap:6px}
+.status i{width:7px;height:7px;border-radius:50%;background:var(--gr)}
+
+.inherited-folder{margin:10px 0 16px}
+.inherited-folder button{width:100%;text-align:left;border:1px dashed var(--bd);background:var(--panel);border-radius:12px;padding:10px 12px;font:inherit;font-size:12px;color:var(--mu);cursor:pointer}
+
+/* ── 完整参数（原程序员模式并入） ── */
+.advanced{margin-top:4px;border:1px solid var(--bd);border-radius:16px;background:var(--panel);overflow:hidden;box-shadow:var(--shadow)}
+.advanced-hd{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:0;background:var(--panel-2);font:inherit;cursor:pointer;text-align:left}
+.advanced-hd strong{font-size:14px}
+.advanced-hd span{font-size:12px;color:var(--mu)}
+.advanced-hd .chev{color:var(--dim);transition:transform .15s}
+.advanced.open .advanced-hd .chev{transform:rotate(180deg)}
+.advanced-body{display:none;padding:16px}
+.advanced.open .advanced-body{display:block}
+
+.path{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:12px;padding:12px;border:1px solid #cfe2ec;border-radius:12px;background:#f8fbfd;font-size:12px}
+.path span{padding:6px 10px;border-radius:8px;background:#fff;border:1px solid var(--bd);font-weight:650}
+.path small{display:block;font-size:9px;color:var(--ac-strong);margin-bottom:2px}
+.path b{color:var(--dim);font-weight:400}
+
+.note{margin:0 0 12px;font-size:11px;color:var(--mu)}
+
+.group{border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.group-hd{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:0;background:#f8fafc;font:inherit;font-size:13px;font-weight:700;cursor:pointer;text-align:left}
+.group.open .group-hd{background:#eef8fc}
+.group-hd b{color:var(--ac-strong);font-size:10px;margin-right:8px}
+.group-hd small{color:var(--dim);font-weight:500}
+.group-body{display:none;border-top:1px solid var(--bd)}
+.group.open .group-body{display:block}
+.grow{display:grid;grid-template-columns:1.1fr 1.3fr .8fr auto;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bd);font-size:12px;align-items:center}
+.grow:last-child{border-bottom:0}
+.grow.head{background:#f8fafc;color:var(--dim);font-size:11px;font-weight:650}
+.src{font-size:11px;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.src.ov{background:var(--ac-soft);color:var(--ac-strong)}
+.src.in{background:var(--panel-2);color:var(--dim)}
+.src.gl{background:var(--am-soft);color:#92400e}
+
+.json-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding-top:14px;border-top:1px dashed var(--bd);flex-wrap:wrap}
+.json-bar p{margin:0;font-size:11px;color:var(--mu);max-width:360px}
+.json-actions{display:flex;gap:8px}
+.json-actions button{border:1px solid var(--bd);background:#fff;border-radius:8px;padding:7px 12px;font:inherit;font-size:12px;font-weight:650;cursor:pointer}
+.json-actions button.primary{background:var(--ac);border-color:var(--ac);color:#fff}
+.json-preview{margin-top:12px;padding:12px;border-radius:10px;background:#0f172a;color:#cbd5e1;font-family:var(--mono);font-size:11px;line-height:1.6;max-height:160px;overflow:auto;display:none}
+.advanced.open .json-preview.show{display:block}
+
+.compare{margin-top:28px;padding:18px;border:1px solid var(--bd);border-radius:16px;background:var(--panel)}
+.compare h4{margin:0 0 12px;font-size:14px}
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.compare-col{padding:14px;border-radius:12px;border:1px solid var(--bd)}
+.compare-col.before{background:#fef2f2}
+.compare-col.after{background:var(--gr-soft)}
+.compare-col h5{margin:0 0 8px;font-size:12px}
+.compare-col ul{margin:0;padding-left:18px;font-size:12px;color:var(--mu)}
+.compare-col li{margin:4px 0}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#152238;color:#fff;padding:10px 16px;border-radius:10px;font-size:12px;opacity:0;transition:.2s;pointer-events:none;z-index:20}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .peek dl{grid-template-columns:1fr}
+  .compare-grid{grid-template-columns:1fr}
+  .grow{grid-template-columns:1fr;gap:4px}
+}
+</style>
+</head>
+<body>
+
+<div class="banner">
+  <div>
+    <h1>快速设置 · 吸收程序员模式 — 交互预览稿</h1>
+    <p>顶栏仅保留「小白 / 快速」两档；程序员模式的参数表、来源列、规则路径并入快速设置底部的「完整参数」折叠区；JSON 只读导出供熟练用户 / 机器使用。</p>
+  </div>
+  <div class="chips">
+    <span class="chip rm">🛠 程序员模式 tab</span>
+    <span class="chip ok">完整参数折叠区</span>
+    <span class="chip ok">JSON 复制/下载</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h2>应用场景</h2>
+    <input class="srch" placeholder="搜索应用或场景…" value="">
+    <button class="app-item">
+      <span class="app-icon">∞</span>
+      <span class="app-copy"><strong>通用设置</strong><small>全局默认</small></span>
+    </button>
+    <button class="app-item on">
+      <span class="app-icon">C</span>
+      <span class="app-copy"><strong>Cursor</strong><small>Cursor 专注写作</small></span>
+    </button>
+    <button class="app-item">
+      <span class="app-icon">W</span>
+      <span class="app-copy"><strong>微信</strong><small>聊天输入</small></span>
+    </button>
+  </aside>
+
+  <main class="main">
+    <div class="modes">
+      <div class="seg" role="tablist">
+        <button type="button">🌱 小白模式 <span class="badge">新</span></button>
+        <button type="button" class="on">⚡ 快速设置 <em>推荐</em></button>
+      </div>
+      <span class="removed">🛠 程序员模式（已移除）</span>
+    </div>
+
+    <div class="head">
+      <div>
+        <span class="label">当前应用</span>
+        <h3>Cursor</h3>
+        <p>Cursor 专注写作</p>
+      </div>
+      <span class="live">未设为当前使用习惯</span>
+    </div>
+
+    <div class="inh">
+      <div class="node"><b>通用设置</b><span>F8 · 右 Alt</span></div>
+      <span class="arrow">→</span>
+      <div class="node cur"><b>Cursor</b><span>2 项覆盖</span></div>
+      <span class="arrow">→</span>
+      <div class="node"><b>按键通道</b><span>F9 覆盖</span></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="ch-tabs">
+        <button type="button">全部 <span class="tag in">12</span></button>
+        <button type="button" class="on">按键 <span class="tag ov">2</span></button>
+        <button type="button">语音</button>
+        <button type="button">摄像头</button>
+        <button type="button">Soft Pad</button>
+      </div>
+      <span class="page-stats">2 项覆盖 · 0 项继承（当前通道）</span>
+    </div>
+
+    <section class="viz">
+      <h4>按键</h4>
+      <p>硬件启动键</p>
+      <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+        <div class="key-cap">F9</div>
+        <ul class="key-modes">
+          <li>短按 → 开始输入</li>
+          <li>长按 → 切换引擎</li>
+        </ul>
+      </div>
+    </section>
+
+    <div class="rules-head">
+      <h4>规则清单</h4>
+      <a href="#" id="openAdvanced">查看完整参数 →</a>
+    </div>
+
+    <article class="rule is-open" data-rule>
+      <div class="rule-row" data-toggle-rule>
+        <span class="rule-accent"></span>
+        <span class="rule-icon">⌨</span>
+        <div class="rule-txt">按 F9 → 开始输入到 Enter</div>
+        <div class="rule-actions">
+          <span class="tag ov">覆盖</span>
+          <button type="button" class="btn-mini" onclick="event.stopPropagation()">修改</button>
+        </div>
+      </div>
+      <div class="peek">
+        <dl>
+          <div><dt>怎么触发</dt><dd>按 F9（短按）</dd></div>
+          <div><dt>做什么</dt><dd>开始输入到 Enter</dd></div>
+          <div><dt>开了吗</dt><dd><span class="status"><i></i>已启用</span></dd></div>
+        </dl>
+        <p class="peek-meta">本场景单独设置 · <span class="src ov">覆盖</span></p>
+        <p class="peek-pro">F9 · tap</p>
+      </div>
+    </article>
+
+    <article class="rule" data-rule>
+      <div class="rule-row" data-toggle-rule>
+        <span class="rule-accent" style="opacity:.35"></span>
+        <span class="rule-icon">⌨</span>
+        <div class="rule-txt">输入完成后 → 自动发送，可随时取消</div>
+        <div class="rule-actions">
+          <span class="tag in">继承</span>
+          <button type="button" class="btn-mini" onclick="event.stopPropagation()">修改</button>
+        </div>
+      </div>
+      <div class="peek">
+        <dl>
+          <div><dt>怎么触发</dt><dd>输入完成后</dd></div>
+          <div><dt>做什么</dt><dd>自动发送，可随时取消</dd></div>
+          <div><dt>开了吗</dt><dd><span class="status"><i></i>已启用</span></dd></div>
+        </dl>
+        <p class="peek-meta">来自通用设置 · <span class="src in">继承</span></p>
+      </div>
+    </article>
+
+    <div class="inherited-folder">
+      <button type="button">▸ 还有 0 条沿用通用设置</button>
+    </div>
+
+    <!-- 原程序员模式 → 折叠进快速设置 -->
+    <section class="advanced" id="advanced">
+      <button type="button" class="advanced-hd" id="advancedToggle">
+        <div>
+          <strong>完整参数</strong>
+          <span>跨通道字段表 · 来源列 · 设备级设置</span>
+        </div>
+        <span class="chev">⌄</span>
+      </button>
+      <div class="advanced-body">
+        <div class="path" aria-label="规则路径">
+          <span><small>01</small>Cursor</span>
+          <b>→</b>
+          <span><small>02</small>Cursor 专注写作</span>
+          <b>→</b>
+          <span><small>03</small>F9 · tap</span>
+          <b>→</b>
+          <span><small>04</small>开始输入到 Enter</span>
+        </div>
+        <p class="note">ⓘ 摄像头识别阈值与设备校准由全局设备设置管理</p>
+
+        <div class="group open">
+          <button type="button" class="group-hd" data-group-toggle><span><b>01</b>适用范围</span><small>3 项</small></button>
+          <div class="group-body">
+            <div class="grow head"><span></span><span>当前值</span><span>来源</span><span></span></div>
+            <div class="grow"><strong>目标应用</strong><span>cursor-chat</span><span class="src ov">覆盖</span><button class="btn-mini">更改</button></div>
+            <div class="grow"><strong>应用匹配规则</strong><span>未设置</span><span class="src in">继承</span><button class="btn-mini">更改</button></div>
+            <div class="grow"><strong>场景启用</strong><span>开启</span><span class="src ov">覆盖</span><button class="btn-mini">更改</button></div>
+          </div>
+        </div>
+
+        <div class="group">
+          <button type="button" class="group-hd" data-group-toggle><span><b>02</b>触发方式</span><small>5 项</small></button>
+          <div class="group-body">
+            <div class="grow head"><span></span><span>当前值</span><span>来源</span><span></span></div>
+            <div class="grow"><strong>触发按键</strong><span>F9</span><span class="src ov">覆盖</span><button class="btn-mini">更改</button></div>
+            <div class="grow"><strong>按键触发方式</strong><span>tap</span><span class="src in">继承</span><button class="btn-mini">更改</button></div>
+            <div class="grow"><strong>唤醒词</strong><span>开始写作</span><span class="src ov">覆盖</span><button class="btn-mini">更改</button></div>
+          </div>
+        </div>
+
+        <div class="group">
+          <button type="button" class="group-hd" data-group-toggle><span><b>03</b>执行动作与收尾</span><small>4 项</small></button>
+          <div class="group-body"></div>
+        </div>
+        <div class="group">
+          <button type="button" class="group-hd" data-group-toggle><span><b>04</b>反馈与保护</span><small>4 项</small></button>
+          <div class="group-body"></div>
+        </div>
+        <div class="group">
+          <button type="button" class="group-hd" data-group-toggle><span><b>05</b>继承、能力绑定与复用</span><small>4 项</small></button>
+          <div class="group-body"></div>
+        </div>
+
+        <div class="json-bar">
+          <p>导出当前场景的 stored JSON（非 effective 合并视图）。供备份、diff 或 Agent 读取；本分支不做导入。</p>
+          <div class="json-actions">
+            <button type="button" id="copyJson">复制 JSON</button>
+            <button type="button" class="primary" id="downloadJson">下载 .json</button>
+          </div>
+        </div>
+        <pre class="json-preview show" id="jsonPreview">{
+  <span class="k">"version"</span>: <span class="s">1</span>,
+  <span class="k">"kind"</span>: <span class="s">"onetone-habit-mapping"</span>,
+  <span class="k">"mapping"</span>: {
+    <span class="k">"id"</span>: <span class="s">"app-1"</span>,
+    <span class="k">"triggerKey"</span>: <span class="s">"F9"</span>,
+    <span class="k">"targetKey"</span>: <span class="s">"Enter"</span>,
+    <span class="c">// … MappingEntry 完整字段</span>
+  }
+}</pre>
+      </div>
+    </section>
+
+    <section class="compare">
+      <h4>变更对照</h4>
+      <div class="compare-grid">
+        <div class="compare-col before">
+          <h5>改前：三个平级模式</h5>
+          <ul>
+            <li>小白 / 快速 / 程序员 三 tab 并列</li>
+            <li>程序员 = 独立整页参数表</li>
+            <li>与快速规则清单高度重叠</li>
+            <li>无 JSON 导出入口</li>
+            <li>误点率高，边界模糊</li>
+          </ul>
+        </div>
+        <div class="compare-col after">
+          <h5>改后：快速设置 + 进阶折叠</h5>
+          <ul>
+            <li>仅小白 / 快速两 tab</li>
+            <li>规则 peek 增加来源标签 + 技术行</li>
+            <li>「完整参数」默认折叠，熟练用户按需展开</li>
+            <li>底部 JSON 复制 / 下载（只读）</li>
+            <li>已存 programmer 偏好自动迁到 quick</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var toastEl=document.getElementById('toast');
+  function toast(msg){
+    toastEl.textContent=msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastEl._t);
+    toastEl._t=setTimeout(function(){ toastEl.classList.remove('show'); },2200);
+  }
+
+  document.querySelectorAll('[data-toggle-rule]').forEach(function(row){
+    row.addEventListener('click',function(){
+      var rule=row.closest('[data-rule]');
+      rule.classList.toggle('is-open');
+    });
+  });
+
+  var advanced=document.getElementById('advanced');
+  document.getElementById('advancedToggle').addEventListener('click',function(){
+    advanced.classList.toggle('open');
+    if(advanced.classList.contains('open')){
+      advanced.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
+  });
+  document.getElementById('openAdvanced').addEventListener('click',function(e){
+    e.preventDefault();
+    advanced.classList.add('open');
+    advanced.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+
+  document.querySelectorAll('[data-group-toggle]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      btn.closest('.group').classList.toggle('open');
+    });
+  });
+
+  var sample=JSON.stringify({
+    version:1,
+    kind:'onetone-habit-mapping',
+    exportedAt:new Date().toISOString(),
+    mapping:{id:'app-1',group:'Cursor 专注写作',appTargetId:'cursor-chat',triggerKey:'F9',targetKey:'Enter',triggerMode:'tap'}
+  },null,2);
+
+  document.getElementById('copyJson').addEventListener('click',function(){
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(sample).then(function(){ toast('已复制 JSON 到剪贴板'); });
+    }else{
+      toast('预览环境无剪贴板 API');
+    }
+  });
+  document.getElementById('downloadJson').addEventListener('click',function(){
+    var blob=new Blob([sample],{type:'application/json'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='onetone-habit-cursor.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('已下载 onetone-habit-cursor.json');
+  });
+})();
+</script>
+</body>
+</html>

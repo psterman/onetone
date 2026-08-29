@@ -512,24 +512,7 @@
   }
 
   function renderKeysAside(){
-    var aside=$('keysPanelAside');
-    var shortcutsCard=$('keysAppShortcutsCard');
-    var keysList=$('keysAppRulesList');
-    var countEl=$('keysAppShortcutsCount');
-    var keysActive=keysPanelActive();
-    if(aside) aside.hidden=!keysActive;
-    var m=core()&&core().selected?core().selected():null;
-    var custom=m?customRulesForMapping(m):[];
-    if(shortcutsCard) shortcutsCard.hidden=!keysActive||!custom.length;
-    if(countEl) countEl.textContent=custom.length?t('keysAppShortcutsCount').replace('{n}',String(custom.length)):'';
-    if(keysList&&keysActive&&m&&core().isSaved&&core().isSaved(m)){
-      keysList.innerHTML=custom.map(function(rule){ return renderKeysCustomExpandableRow(m,rule); }).join('');
-    }else if(keysList){
-      keysList.innerHTML='';
-    }
-    if(!keysActive) return;
-    var kpu=global.OneToneKeysPanelUi;
-    if(kpu&&kpu.renderAppContextStrip) kpu.renderAppContextStrip();
+    void 0;
   }
 
   function renderScenarioCard(m,preset){
@@ -654,7 +637,6 @@
     if(activeAppContextId&&!isContextRuleId(activeAppContextId)) setKeysExpandedAppId(activeAppContextId);
     var kpu=global.OneToneKeysPanelUi;
     if(kpu){
-      if(kpu.renderAppContextStrip) kpu.renderAppContextStrip();
       if(kpu.renderTriggerContextBadge) kpu.renderTriggerContextBadge();
       if(kpu.renderAppContext) kpu.renderAppContext();
     }
@@ -702,7 +684,6 @@
     if(global.OneToneSceneVoiceTab&&global.OneToneSceneVoiceTab.render) global.OneToneSceneVoiceTab.render();
     if(global.OneToneHomeV9&&global.OneToneHomeV9.render) global.OneToneHomeV9.render();
     if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
-    if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.renderAppContextStrip) global.OneToneKeysPanelUi.renderAppContextStrip();
     if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
       global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
     }else if(global.OneToneVoicePageHeaderRender&&global.OneToneVoicePageHeaderRender.renderAppScope){

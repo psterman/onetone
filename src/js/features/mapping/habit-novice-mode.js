@@ -69,12 +69,29 @@
     }).join('')+'</div>';
   }
 
+  function detailFieldRow(label,field,value,cardId){
+    return '<div class="habit-novice-detail-row"><span class="habit-novice-detail-lbl">'+esc(label)+'</span><button type="button" class="habit-novice-detail-val" data-habit-novice-field="'+esc(field)+'" data-habit-novice-card="'+esc(cardId)+'">'+esc(value)+'</button></div>';
+  }
+
+  function cardDetailHtml(card){
+    var s=shared();
+    var fields=s&&s.noviceDetailFields?s.noviceDetailFields(card):{};
+    var rows=[
+      detailFieldRow(t('habitNoviceFieldTrigger','怎么触发'),'trigger',fields.trigger||'—',card.id),
+      detailFieldRow(t('habitNoviceFieldAction','做什么'),'action',fields.action||'—',card.id),
+      detailFieldRow(t('habitNoviceFieldFinish','完成方式'),'finish',fields.finish||'—',card.id),
+      detailFieldRow(t('habitNoviceFieldEnabled','开了吗'),'enabled',fields.enabled||'—',card.id)
+    ].join('');
+    var lastMod=fields.lastMod?('<div class="habit-novice-detail-last">'+esc(t('habitNoviceFieldLastMod','上次修改'))+' '+esc(fields.lastMod)+'</div>'):'';
+    var pro=fields.proMeta?('<div class="habit-novice-pro-meta">'+esc(fields.proMeta)+'</div>'):'';
+    return '<div class="habit-novice-card-detail hidden" data-habit-novice-detail="'+esc(card.id)+'"><div class="habit-novice-detail-grid">'+rows+'</div>'+lastMod+pro+'</div>';
+  }
+
   function cardHtml(card,i){
     var s=shared();
-    var story=s&&s.storyHtml?s.storyHtml(card,card.detail):'';
+    var story=s&&s.storyLineHtml?s.storyLineHtml(card,card.detail):'';
     var statusText=card.paused?t('habitNovicePaused','已暂停'):t('habitNoviceRunning','运行中');
-    var lastMod=card.lastMod||t('habitNoviceUnknownTime','未知');
-    return '<div class="habit-novice-card'+(card.paused?' is-paused':'')+'" data-habit-novice-card="'+esc(card.id)+'" style="animation-delay:'+(i*60)+'ms"><div class="habit-novice-illus dim-'+esc(card.dim)+'">'+esc(card.emoji)+'</div><div class="habit-novice-info"><div class="title-row"><div class="title">'+esc(card.title)+'</div><button type="button" class="status-dot" data-habit-novice-toggle="'+esc(card.id)+'" title="'+esc(t('habitNoviceToggleStatus','点一下切换'))+'" aria-label="'+esc(t('habitNoviceToggleStatus','点一下切换'))+'"></button><span class="when">'+esc(statusText)+' · '+esc(t('habitNoviceLastMod','上次改'))+' '+esc(lastMod)+'</span><button type="button" class="edit-all" data-habit-novice-edit="'+esc(card.mappingId)+'" title="'+esc(t('habitNoviceEditAll','完整改'))+'">⋯</button></div><div class="story">'+story+'</div></div><div class="habit-novice-right"><button type="button" class="habit-novice-btn primary" data-habit-novice-demo="'+esc(card.id)+'">▶ '+esc(t('habitNoviceTry','试一下'))+'</button><button type="button" class="habit-novice-btn ghost" data-habit-novice-del="'+esc(card.mappingId)+'">🗑 '+esc(t('habitNoviceDelete','删掉'))+'</button></div></div>';
+    return '<div class="habit-novice-card'+(card.paused?' is-paused':'')+'" data-habit-novice-card="'+esc(card.id)+'" style="animation-delay:'+(i*60)+'ms"><div class="habit-novice-illus dim-'+esc(card.dim)+'">'+esc(card.emoji)+'</div><div class="habit-novice-info"><div class="title-row"><div class="title">'+esc(card.title)+'</div><button type="button" class="status-dot" data-habit-novice-toggle="'+esc(card.id)+'" title="'+esc(t('habitNoviceToggleStatus','点一下切换'))+'" aria-label="'+esc(t('habitNoviceToggleStatus','点一下切换'))+'"></button><span class="when">'+esc(statusText)+'</span><details class="habit-novice-card-menu"><summary class="habit-novice-menu-btn" aria-label="'+esc(t('habitNoviceMenuMore','更多'))+'">⋯</summary><div class="habit-novice-menu-panel"><button type="button" data-habit-novice-edit="'+esc(card.mappingId)+'">'+esc(t('habitNoviceMenuEdit','完整改'))+'</button><button type="button" class="is-danger" data-habit-novice-del="'+esc(card.mappingId)+'">'+esc(t('habitNoviceMenuDelete','删掉'))+'</button></div></details></div><div class="story">'+esc(story)+'</div><button type="button" class="habit-novice-expand" data-habit-novice-expand="'+esc(card.id)+'">'+esc(t('habitNoviceExpandDetails','详情'))+'</button>'+cardDetailHtml(card)+'</div><div class="habit-novice-right"><button type="button" class="habit-novice-btn primary" data-habit-novice-demo="'+esc(card.id)+'">▶ '+esc(t('habitNoviceTry','试一下'))+'</button></div></div>';
   }
 
   function cardsListHtml(model){
@@ -91,13 +108,12 @@
     var sub=s&&s.sceneName?s.sceneName(model.mapping):'';
     var mid=model&&model.mapping?model.mapping.id:'';
     var dim=ui().habitNoviceDim||'key';
-    var channel=s&&s.noviceDimToChannel?s.noviceDimToChannel(dim):'key';
     var usage='';
     var stats=global.OneToneHabitActionStats;
     if(stats&&stats.headKpiHtml&&mid) usage=stats.headKpiHtml(mid);
     var inherit=s&&s.inheritHintHtml?s.inheritHintHtml(model.mapping):'';
-    var viz=s&&s.channelVizHtml?s.channelVizHtml(channel,model.mapping):'';
-    return '<main class="habit-novice-main"><div class="habit-novice-head"><div><div class="app-title">'+esc(name)+'</div><div class="app-sub">'+esc(sub)+'</div></div>'+usage+'</div>'+inherit+dimTabsHtml(model)+'<section class="habit-novice-viz" aria-label="'+esc(t('habitNoviceVizLabel','通道预览'))+'">'+viz+'</section>'+sceneChipsHtml(model)+cardsListHtml(model)+'</main>';
+    var glance=s&&s.noviceDimGlanceHtml?s.noviceDimGlanceHtml(dim,model.mapping):'';
+    return '<main class="habit-novice-main"><div class="habit-novice-head"><div><div class="app-title">'+esc(name)+'</div><div class="app-sub">'+esc(sub)+'</div></div>'+usage+'</div>'+inherit+dimTabsHtml(model)+glance+sceneChipsHtml(model)+cardsListHtml(model)+'</main>';
   }
 
   function layoutHtml(model){
@@ -107,11 +123,32 @@
 
   function findCard(id){
     id=String(id||'');
-    var parts=id.split('::');
-    if(parts.length<3) return null;
+    var mappings=(state().config&&state().config.mappings)||[];
     var s=shared();
     if(!s||!s.buildNoviceCards) return null;
-    return s.buildNoviceCards((state().config&&state().config.mappings)||[]).find(function(c){ return c.id===id; })||null;
+    return s.buildNoviceCards(mappings).find(function(c){ return c.id===id; })||null;
+  }
+
+  function fieldFocusId(card,field){
+    var detail=card&&card.detail||{};
+    if(field==='finish'&&card.channel==='key'&&card.itemId==='key-main') return 'keyFinishFlow';
+    return detail.focus||'';
+  }
+
+  function openNoviceFieldEditor(card,field,anchor){
+    if(!card) return;
+    var utils=cards();
+    if(utils&&utils.openFieldEditPopover){
+      if(hostRef){
+        hostRef.__habitPopoverCard=card;
+        hostRef.__habitPopoverField=field;
+      }
+      utils.openFieldEditPopover(card,field,anchor);
+      return;
+    }
+    if(global.OneToneActionNav&&global.OneToneActionNav.openChannelEditor){
+      global.OneToneActionNav.openChannelEditor({mappingId:card.mappingId,channel:card.channel,focusId:fieldFocusId(card,field)});
+    }
   }
 
   function toggleCardStatus(card){
@@ -122,12 +159,27 @@
     else m.enabled=m.enabled===false;
     if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
   }
+  function closePopover(){
+    var utils=cards();
+    if(utils&&utils.closePopover) utils.closePopover();
+    if(hostRef) hostRef.__habitPopoverCard=null;
+  }
+  var hostRef=null;
 
   function bindEvents(host,rerender){
     if(host.__habitNoviceBound) return;
     host.__habitNoviceBound=true;
     host.addEventListener('click',function(event){
-      var target=event.target.closest&&event.target.closest('[data-habit-novice-dim],[data-habit-novice-scene],[data-habit-novice-demo],[data-habit-novice-del],[data-habit-novice-toggle],[data-habit-novice-edit],[data-habit-usage-peek],[data-habit-usage-export],[data-habit-inherit-peek],[data-habit-channel],.chip');
+      if(event.target.closest&&event.target.closest('[data-habit-popover-go]')){
+        var popCard=host.__habitPopoverCard;
+        var popField=host.__habitPopoverField;
+        closePopover();
+        if(popCard&&global.OneToneActionNav&&global.OneToneActionNav.openChannelEditor){
+          global.OneToneActionNav.openChannelEditor({mappingId:popCard.mappingId,channel:popCard.channel,focusId:fieldFocusId(popCard,popField)});
+        }
+        return;
+      }
+      var target=event.target.closest&&event.target.closest('[data-habit-novice-dim],[data-habit-novice-scene],[data-habit-novice-demo],[data-habit-novice-del],[data-habit-novice-toggle],[data-habit-novice-edit],[data-habit-novice-expand],[data-habit-novice-field],[data-habit-usage-peek],[data-habit-usage-export],[data-habit-inherit-peek]');
       if(!target) return;
       if(target.hasAttribute('data-habit-inherit-peek')){
         var s=shared();
@@ -150,13 +202,6 @@
         }
         return;
       }
-      if(target.hasAttribute('data-habit-channel')){
-        var s=shared();
-        var dim=s&&s.channelToNoviceDim?s.channelToNoviceDim(target.getAttribute('data-habit-channel')):'key';
-        ui().habitNoviceDim=dim||'key';
-        rerender();
-        return;
-      }
       if(target.hasAttribute('data-habit-novice-dim')){
         ui().habitNoviceDim=target.getAttribute('data-habit-novice-dim')||'key';
         rerender();
@@ -165,6 +210,22 @@
       if(target.hasAttribute('data-habit-novice-scene')){
         ui().habitNoviceScene=target.getAttribute('data-habit-novice-scene')||'begin';
         rerender();
+        return;
+      }
+      if(target.hasAttribute('data-habit-novice-expand')){
+        var expandId=target.getAttribute('data-habit-novice-expand');
+        var expandCard=target.closest('.habit-novice-card');
+        var detailEl=expandCard&&expandCard.querySelector('[data-habit-novice-detail="'+expandId+'"]');
+        if(!expandCard||!detailEl) return;
+        var open=!expandCard.classList.contains('is-open');
+        expandCard.classList.toggle('is-open',open);
+        detailEl.classList.toggle('hidden',!open);
+        target.textContent=open?t('habitNoviceCollapseDetails','收起'):t('habitNoviceExpandDetails','详情');
+        return;
+      }
+      if(target.hasAttribute('data-habit-novice-field')){
+        var fieldCard=findCard(target.getAttribute('data-habit-novice-card'));
+        openNoviceFieldEditor(fieldCard,target.getAttribute('data-habit-novice-field'),target);
         return;
       }
       if(target.hasAttribute('data-habit-novice-demo')){
@@ -193,18 +254,6 @@
           global.OneToneHabitScenarioWizard.openEdit(editId);
         }
         return;
-      }
-      if(target.classList&&target.classList.contains('chip')){
-        var cardNode=target.closest('[data-habit-novice-card]');
-        if(!cardNode) return;
-        var chipType=target.getAttribute('data-chip')||'';
-        var card=findCard(cardNode.getAttribute('data-habit-novice-card'));
-        if(!card) return;
-        if(chipType==='app'||chipType==='key'||chipType==='action'||chipType==='trigger'){
-          if(global.OneToneActionNav&&global.OneToneActionNav.openChannelEditor){
-            global.OneToneActionNav.openChannelEditor({mappingId:card.mappingId,channel:card.channel,focusId:card.detail&&card.detail.focus});
-          }
-        }
       }
     });
   }

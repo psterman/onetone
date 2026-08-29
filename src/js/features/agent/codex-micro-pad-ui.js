@@ -1767,9 +1767,6 @@
     }
     var targetHost = document.getElementById('codexMicroPadHostTarget');
     if (targetHost && !targetHost.hidden) renderTarget(targetHost, m, { skipEnsure: true });
-    if (global.OneToneKeysPanelUi && global.OneToneKeysPanelUi.renderKeysHub) {
-      try { global.OneToneKeysPanelUi.renderKeysHub(); } catch (_) {}
-    }
   }
 
   /** Swap only the hardware pad shell after mode toggle — keep checkbox alive (avoid remount 假死). */

@@ -39,7 +39,6 @@ import {
   HabitHubSortIsland,
   registerHabitHubChromeSync,
 } from './islands/habit-hub-chrome-island';
-import { KeysWorkflowTabsIsland } from './islands/keys-workflow-island';
 import {
   SoftPadFuncTilesIsland,
   registerSoftPadFuncTilesBridge,
@@ -107,13 +106,6 @@ import {
   KeysRecordingFeedbackIsland,
   registerKeysRecordingFeedbackBridge,
 } from './islands/keys-recording-feedback-island';
-import {
-  KeysHubSchemeListIsland,
-  registerKeysHubSchemeListBridge,
-} from './islands/keys-hub-scheme-list-island';
-import {
-  registerKeysAppContextStripBridge,
-} from './islands/keys-app-context-strip-island';
 import {
   KeysDisplayChromeIsland,
   registerKeysDisplayChromeBridge,
@@ -452,18 +444,6 @@ function mountHabitHubChromeIsland(): void {
 (window as unknown as { __otMountHabitHubChromeIsland?: () => void }).__otMountHabitHubChromeIsland =
   mountHabitHubChromeIsland;
 
-// P14a：挂载 Keys 工作流 tabs 岛（延迟到按键面板首次打开）
-function mountKeysWorkflowIsland(): void {
-  const host = document.getElementById('keysWorkflowTabs');
-  if (!host || OneToneIslands.isMounted('keysWorkflowTabs')) return;
-  host.innerHTML = '';
-  OneToneIslands.mountIsland('keysWorkflowTabs', KeysWorkflowTabsIsland, {}, {
-    onRefresh: () => ({}) as Record<string, unknown>,
-  });
-}
-(window as unknown as { __otMountKeysWorkflowIsland?: () => void }).__otMountKeysWorkflowIsland =
-  mountKeysWorkflowIsland;
-
 // P12b-1：挂载映射编辑器 trigger/target 只读文案岛（延迟到按键面板首次打开）
 function mountMappingEditorDisplayIsland(): void {
   const triggerHost = document.getElementById('triggerView');
@@ -604,29 +584,6 @@ function mountKeysRecordingFeedbackIsland(): void {
 }
 (window as unknown as { __otMountKeysRecordingFeedbackIsland?: () => void }).__otMountKeysRecordingFeedbackIsland =
   mountKeysRecordingFeedbackIsland;
-
-// P12c-4：hub 方案列表（挂 count，apply 写 list HTML）
-function mountKeysHubSchemeListIsland(): void {
-  const host = document.getElementById('keysHubCount');
-  if (!host || OneToneIslands.isMounted('keysHubCount')) return;
-
-  registerKeysHubSchemeListBridge();
-
-  OneToneIslands.mountIsland('keysHubCount', KeysHubSchemeListIsland, {}, {
-    onRefresh: () => ({}) as Record<string, unknown>,
-  });
-}
-(window as unknown as { __otMountKeysHubSchemeListIsland?: () => void }).__otMountKeysHubSchemeListIsland =
-  mountKeysHubSchemeListIsland;
-
-// P12c-5：应用上下文 strip — bridge-only（apply 写 strip；不挂 lbl）
-function mountKeysAppContextStripIsland(): void {
-  const w = window as unknown as { __otKeysAppContextStripMounted?: boolean };
-  if (w.__otKeysAppContextStripMounted) return;
-  registerKeysAppContextStripBridge();
-}
-(window as unknown as { __otMountKeysAppContextStripIsland?: () => void }).__otMountKeysAppContextStripIsland =
-  mountKeysAppContextStripIsland;
 
 // P12c-6：display chrome
 function mountKeysDisplayChromeIsland(): void {

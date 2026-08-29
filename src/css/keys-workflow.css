@@ -540,6 +540,55 @@
   display: none;
 }
 
+#settingsPanelKeys #habitKeyMappingSection .record-probe-panel {
+  margin: 0 0 10px;
+}
+
+#settingsPanelKeys #habitKeyMappingSection .record-probe-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-high);
+  color: var(--on-surface-muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#settingsPanelKeys #habitKeyMappingSection .record-probe-panel:not(.is-expanded) {
+  padding: 6px 10px;
+}
+
+#settingsPanelKeys #habitKeyMappingSection .record-probe-panel:not(.is-expanded) .record-probe-hint,
+#settingsPanelKeys #habitKeyMappingSection .record-probe-panel:not(.is-expanded) .record-probe-adv,
+#settingsPanelKeys #habitKeyMappingSection .record-probe-panel:not(.is-expanded) .record-probe-hid-box,
+#settingsPanelKeys #habitKeyMappingSection .record-probe-panel:not(.is-expanded) .record-probe-log,
+#settingsPanelKeys #habitKeyMappingSection .record-probe-panel:not(.is-expanded) .record-probe-actions {
+  display: none;
+}
+
+#settingsPanelKeys #habitKeyMappingSection .record-probe-panel:not(.is-expanded) .record-probe-head strong {
+  display: none;
+}
+
+#settingsPanelKeys #habitKeyMappingSection .record-probe-panel.is-expanded .record-probe-hint {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 4px 0 6px;
+}
+
+#settingsPanelKeys #habitKeyMappingSection .record-probe-panel.is-expanded .record-probe-log {
+  max-height: 168px;
+  overflow: auto;
+}
+
 .keys-capture-popover .keys-capture-record-probe-host {
   margin: 0 0 10px;
 }
@@ -2475,6 +2524,16 @@
   gap: 8px 12px;
   padding-top: 10px;
   padding-bottom: 8px;
+}
+
+#settingsPanelKeys.has-settings-context-bar .keys-page-status-bar .page-status-bar-main {
+  display: none;
+}
+
+#settingsPanelKeys.has-settings-context-bar .keys-page-status-bar .page-status-bar-actions {
+  flex: 1 1 100%;
+  justify-content: flex-end;
+  padding-top: 2px;
 }
 
 #settingsPanelKeys .keys-scheme-status-main {

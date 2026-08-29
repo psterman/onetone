@@ -182,8 +182,10 @@
         panel.classList.toggle('is-expanded');
         syncProbeExpandLabel(panel);
       });
-      syncProbeExpandLabel($('recordProbePanel'));
     }
+    var panel=$('recordProbePanel');
+    if(panel) panel.classList.remove('is-expanded');
+    syncProbeExpandLabel(panel);
     render();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bind);
