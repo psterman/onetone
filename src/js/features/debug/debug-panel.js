@@ -569,6 +569,9 @@
   }
   function renderDebugDeveloperPanel(){
     bindQuickControlLive();
+    if (global.OneToneSoftPadHub && typeof global.OneToneSoftPadHub.ensureCursorActivityConsentCard === 'function') {
+      global.OneToneSoftPadHub.ensureCursorActivityConsentCard();
+    }
     // Defer quick panel paint so drawer chrome / subnav paint first (打开维护假死).
     scheduleQuickControlPanel();
     renderDebugDeveloperSummary();

@@ -504,6 +504,7 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: crate::agent::bindings_build::build_codex_micro_13_bindings("zh-CN"),
             time_machine_workspace: String::new(),
+        capture_hero_ref: None,
         }
     }
 

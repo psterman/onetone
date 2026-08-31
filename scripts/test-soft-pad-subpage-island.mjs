@@ -144,7 +144,8 @@ check('resolveSoftPadSubpagePaintHost 存在', padJs.includes('function resolveS
 check('mirrorSoftPadSubpageChrome 存在', padJs.includes('function mirrorSoftPadSubpageChrome'));
 check('layout 归一 paint host', /function renderSoftPadLayoutPanel\([\s\S]*?resolveSoftPadSubpagePaintHost/.test(padJs));
 check('presentation 归一 paint host', /function renderSoftPadPresentationPanel\([\s\S]*?resolveSoftPadSubpagePaintHost/.test(padJs));
-check('runtime 归一 paint host', /function renderSoftPadRuntimePanel\([\s\S]*?resolveSoftPadSubpagePaintHost/.test(padJs));
+check('runtime delegates display panel', /function renderSoftPadRuntimePanel\([\s\S]*?renderSoftPadDisplayPanel/.test(padJs));
+check('display 归一 paint host', /function renderSoftPadDisplayPanel\([\s\S]*?resolveSoftPadSubpagePaintHost/.test(padJs));
 check('agent 归一 paint host', /function renderSoftPadAgentPanel\([\s\S]*?resolveSoftPadSubpagePaintHost/.test(padJs));
 check('导出 resolveSoftPadSubpagePaintHost', padJs.includes('resolveSoftPadSubpagePaintHost: resolveSoftPadSubpagePaintHost'));
 check('softPadLayoutEditorHost 读外层 panel', /function softPadLayoutEditorHost\([\s\S]*?data-soft-pad-panel/.test(padJs));
@@ -157,7 +158,8 @@ check('sync 不 emit 以免冲掉 Pad HTML', islandTsx.includes('Do NOT emit') |
 
 const domainTs = readFileSync(join(root, 'src-islands/domain/softPadSubpage.ts'), 'utf8');
 check('domain 调四面板', domainTs.includes('renderSoftPadLayoutPanel') && domainTs.includes('renderSoftPadAgentPanel'));
-check('domain agent-pick', domainTs.includes('writeSoftPadSubpageAgentPick'));
+check('domain runtime 走 display 面板（显示+皮肤）', /model\.panel === 'runtime'[\s\S]*?renderSoftPadDisplayPanel/.test(domainTs));
+check('island stale runtime skin guard', islandTsx.includes('runtimePanelMissingSkin'));
 
 const mainTsx = readFileSync(join(root, 'src-islands/main.tsx'), 'utf8');
 check('main 暴露挂载入口', mainTsx.includes('__otMountSoftPadSubpageIsland'));

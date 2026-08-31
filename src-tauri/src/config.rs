@@ -4719,6 +4719,28 @@ impl VoiceConfig {
         Some((from_id, to_id))
     }
 
+    /// Read-only next sibling for tray cycle preview — same ordering as [`cycle_scheme_same_trigger`].
+    pub fn peek_next_scheme_same_trigger(&self) -> Option<(String, String)> {
+        let active = self
+            .mappings
+            .iter()
+            .find(|m| m.enabled && is_mapping_complete(m))?;
+        let trigger = canonical_trigger(&active.trigger_key);
+        let mut siblings: Vec<&MappingEntry> = self
+            .mappings
+            .iter()
+            .filter(|m| is_mapping_complete(m) && canonical_trigger(&m.trigger_key) == trigger)
+            .collect();
+        if siblings.len() < 2 {
+            return None;
+        }
+        siblings.sort_by_key(|m| m.order);
+        let from_id = active.id.clone();
+        let pos = siblings.iter().position(|m| m.id == from_id)?;
+        let next = siblings[(pos + 1) % siblings.len()];
+        Some((from_id, next.id.clone()))
+    }
+
     /// ?????????????????????????????????????????????? (from_id, to_id)???
     /// ????? `mapping.enabled`???
     pub fn select_scheme(&mut self, target_id: &str) -> Option<(String, String)> {
@@ -6490,6 +6512,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             });
         let conflicts = cfg.conflicts_on_enable(&cfg.mappings[0].id);
         assert!(!conflicts.is_empty());
@@ -6535,6 +6558,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             });
         cfg.enable_mapping("b");
         assert!(!cfg.mappings.iter().find(|m| m.id == id_a).unwrap().enabled);
@@ -6582,6 +6606,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             });
         cfg.normalize();
         let m = cfg
@@ -6788,6 +6813,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             });
         let result = cfg.cycle_scheme_same_trigger();
         assert!(result.is_some());
@@ -6795,6 +6821,53 @@ mod tests {
         assert_eq!(to_id, "b");
         assert!(!cfg.mappings.iter().find(|m| m.id == id_a).unwrap().enabled);
         assert!(cfg.mappings.iter().find(|m| m.id == "b").unwrap().enabled);
+    }
+
+    #[test]
+    fn peek_next_scheme_same_trigger_read_only() {
+        let mut cfg = VoiceConfig::default();
+        let id_a = cfg.mappings[0].id.clone();
+        cfg.mappings.push(MappingEntry {
+            id: "b".into(),
+            label: "AutoTrigger ??? F2".into(),
+            group: "  ".into(),
+            trigger_key: "AutoTrigger".into(),
+            target_key: "F2".into(),
+            enabled: false,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
+            order: 1,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: default_long_press_ms(),
+            double_click_ms: default_double_click_ms(),
+            ime_preset_id: String::new(),
+            app_target_id: String::new(),
+            app_behavior_rules: vec![],
+            voice_override: None,
+            camera_override: None,
+            voice_commands: vec![],
+            acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
+            codex_micro_pad: None,
+            time_machine_workspace: String::new(),
+            capture_hero_ref: None,
+        });
+        cfg.ensure_active_scene_id();
+        let peek = cfg.peek_next_scheme_same_trigger();
+        assert_eq!(peek.as_ref().map(|(_, to)| to.as_str()), Some("b"));
+        assert_eq!(cfg.active_scene_id, id_a);
     }
 
     #[test]
@@ -6849,6 +6922,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             };
         let bindings = mapping_physical_bindings(&m);
         assert_eq!(bindings, vec!["F1".to_string()]);
@@ -6891,6 +6965,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         let bindings = mapping_physical_bindings(&m);
@@ -7064,6 +7139,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             });
         let result = cfg.select_scheme("b");
         assert!(result.is_some());
@@ -7111,6 +7187,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             });
         cfg.enable_mapping("b");
         assert_eq!(cfg.active_scene_id, active_id);
@@ -7154,6 +7231,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         assert!(!mapping_physical_bindings(&m).is_empty());
@@ -7352,6 +7430,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             };
         let bindings = hotkey_registration_bindings(&m);
         assert!(bindings.contains(&"Gamepad_A".to_string()));
@@ -7398,6 +7477,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             });
         let hit0 = cfg.find_mapping_for_event(&crate::press_gesture::PhysicalKeyEvent {
             is_keyup: false,
@@ -7587,6 +7667,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             });
         let fg = test_identity(Some("codex-chat"), "Codex.exe");
         cfg.follow_foreground_app_scenario = true;
@@ -7664,6 +7745,7 @@ mod tests {
             }],
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             });
         let fg = test_identity(Some("codex-chat"), "Codex.exe");
         cfg.follow_foreground_app_scenario = true;
@@ -7717,6 +7799,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
             time_machine_workspace: String::new(),
+        capture_hero_ref: None,
         });
         let hit = find_preferred_workflow_scenario_for_dispatch(&cfg).expect("cursor scene");
         assert_eq!(hit.id, "cursor-scene");
@@ -8238,6 +8321,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
             time_machine_workspace: r"C:\work\demo".into(),
+            capture_hero_ref: None,
             };
         let json = serde_json::to_string(&mapping).expect("serialize");
         assert!(json.contains("timeMachineWorkspace"));

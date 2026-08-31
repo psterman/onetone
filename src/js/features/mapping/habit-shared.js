@@ -286,7 +286,11 @@
     return key;
   }
 
-  function cardEmoji(channel){
+  function cardEmoji(channel, size){
+    var Icons = global.OneToneIcons;
+    if (Icons && Icons.channelHtml) {
+      return Icons.channelHtml(channel, { size: size || 16, className: 'ot-ic' });
+    }
     if(channel==='voice') return '\uD83C\uDF99';
     if(channel==='camera') return '\uD83D\uDCF7';
     if(channel==='softPad') return '\u2318';
@@ -654,7 +658,7 @@
             dim:view.dim,
             scene:view.scene,
             title:itemLabel(item),
-            emoji:cardEmoji(channel),
+            emoji:cardEmoji(channel, 24),
             paused:!detail.enabled,
             lastMod:formatRelativeTime(m.updatedAt||m.lastUsedAt),
             demo:arr(m.demo)

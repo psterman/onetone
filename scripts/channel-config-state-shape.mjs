@@ -1,0 +1,22 @@
+/** Source shape for sync-state-keys.mjs — extend when OneToneState/config adds fields. */
+export const CHANNEL_CONFIG_STATE_SHAPE = [
+  'mappings[].enabled',
+  'mappings[].cancelEnabled',
+  'mappings[].autoEnterEnabled',
+  'mappings[].triggerKey',
+  'mappings[].triggerMode',
+  'mappings[].appTargetId',
+  'config.voiceAssistEnabled',
+  'config.voiceEnd.enabled',
+  'mappings[].voiceOverride.engine',
+  'mappings[].codexMicroPad.enabled',
+  'mappings[].codexMicroPad.overlayEnabled',
+  'config.cameraPrefs.presenceActions.enabled',
+  'config.cameraPrefs.autoMute.enabled',
+  'trayCustomization.showInTray.voice',
+  'trayCustomization.showInTray.keys',
+  'trayCustomization.showInTray.softPad',
+  'trayCustomization.showInTray.camera',
+  'mappings[].appBehaviorRules[].finishMode',
+  'mappings[].appBehaviorRules[].appId',
+];

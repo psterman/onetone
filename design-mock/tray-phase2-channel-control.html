@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>托盘 Phase 2 · 单行事件 + 四通道快捷开关</title>
+  <style>
+    :root {
+      --bg: #e8edf3; --surface: #fff; --surface-2: #f8fafc;
+      --primary: #2a9cc4; --primary-soft: #e6f7fc; --primary-deep: #1e87ad;
+      --on-surface: #152238; --on-surface-muted: #5a7086; --on-surface-soft: #8a98a8;
+      --outline: rgba(26,45,74,.1); --danger: #dc2626; --danger-soft: rgba(220,38,38,.08);
+      --green: #2e7d4f; --green-soft: rgba(46,125,79,.1);
+      --orange: #b9530a; --orange-soft: rgba(185,83,10,.1);
+      --blue: #00a3ff; --blue-soft: rgba(0,163,255,.1);
+      --purple: #6d4ab0; --purple-soft: rgba(109,74,176,.1);
+      --radius: 12px; --shadow: 0 10px 28px rgba(26,45,74,.16);
+      font-family: "Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--on-surface); }
+
+    h1 { font-size: 22px; margin: 0 0 6px; max-width: 1200px; margin-left: auto; margin-right: auto; }
+    .lede { font-size: 13px; color: var(--on-surface-muted); line-height: 1.55; max-width: 900px; margin: 0 auto 16px; }
+    .tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; vertical-align: middle; margin-left: 6px; }
+    .tag.old { background: rgba(26,45,74,.08); color: var(--on-surface-muted); }
+    .tag.new { background: linear-gradient(135deg, var(--primary), var(--primary-deep)); color: #fff; }
+
+    .toolbar {
+      max-width: 1200px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 12px 14px; background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius);
+    }
+    .toolbar label { font-size: 12px; font-weight: 600; color: var(--on-surface-muted); }
+    .seg { display: flex; gap: 4px; }
+    .seg button {
+      border: 1px solid var(--outline); background: var(--surface-2); font: inherit;
+      font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    }
+    .seg button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+    .compare {
+      max-width: 1200px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1fr 1.15fr; gap: 16px; align-items: start;
+    }
+    @media (max-width: 1000px) { .compare { grid-template-columns: 1fr; } }
+
+    .col-head { font-size: 12px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .col-head .note { font-weight: 400; color: var(--on-surface-muted); font-size: 11px; }
+
+    .frame {
+      background: linear-gradient(160deg, #dce4ec, #c5d0dc);
+      border-radius: 14px; padding: 14px 10px 18px;
+      display: flex; justify-content: center; border: 1px solid var(--outline);
+    }
+    .frame.highlight { border: 1.5px dashed rgba(42,156,196,.5); }
+
+    /* ── Tray shell (shared) ── */
+    .tray {
+      width: 316px; background: var(--surface); border: 1px solid var(--outline);
+      border-radius: var(--radius); box-shadow: var(--shadow); padding: 5px; font-size: 13px;
+    }
+    .pulse {
+      width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0;
+      background: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft);
+    }
+    .pulse.standby { background: var(--on-surface-soft); box-shadow: 0 0 0 3px rgba(26,45,74,.06); }
+    .pulse.paused { background: var(--orange); box-shadow: 0 0 0 3px var(--orange-soft); }
+    .pulse.listening { animation: tp 2s ease-in-out infinite; }
+    @keyframes tp { 0%,100%{box-shadow:0 0 0 3px rgba(0,163,255,.18)} 50%{box-shadow:0 0 0 5px rgba(0,163,255,.32)} }
+
+    .status-hero {
+      margin: 4px; padding: 11px 12px 9px;
+      background: linear-gradient(135deg, #fff 0%, var(--blue-soft) 100%);
+      border: 1px solid var(--outline); border-radius: 10px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .status-hero.standby-mode { background: linear-gradient(135deg, #fff, var(--surface-2)); }
+    .status-hero .left { flex: 1; min-width: 0; }
+    .status-hero .top-line { display: flex; align-items: center; gap: 7px; }
+    .status-hero .ttl { font-size: 14.5px; font-weight: 800; }
+    .status-hero .sub { font-size: 10.5px; color: var(--on-surface-muted); margin-top: 2px; }
+    .state-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+    .chip { font-size: 9.5px; padding: 1.5px 6px; border-radius: 4px; font-weight: 600; }
+    .chip.b { background: var(--blue-soft); color: #0e7490; }
+    .chip.g { background: var(--green-soft); color: var(--green); }
+    .chip.p { background: var(--purple-soft); color: var(--purple); }
+    .chip.agent { background: var(--blue-soft); color: #0e7490; border: 1px solid rgba(42,156,196,.35); }
+    .hero-act {
+      flex-shrink: 0; padding: 8px 11px; border-radius: 8px; cursor: pointer; border: none;
+      background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+      color: #fff; font-size: 10.5px; font-weight: 700; font: inherit;
+    }
+    .hero-act.paused { background: linear-gradient(135deg, #f5a623, #d97706); }
+
+    /* 现版：两行事件卡 */
+    .event-card-old {
+      margin: 4px 6px; padding: 9px 11px; background: var(--surface-2);
+      border: 1px solid var(--outline); border-radius: 9px;
+    }
+    .event-card-old .ev-head { font-size: 10px; color: var(--on-surface-muted); margin-bottom: 4px; }
+    .event-card-old .ev-text { font-size: 11.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .event-card-old .ev-text .txt { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, Consolas, monospace; }
+    .outcome { font-size: 10px; font-weight: 700; padding: 1.5px 6px; border-radius: 3px; flex-shrink: 0; }
+    .outcome.ok { background: var(--green-soft); color: var(--green); }
+
+    /* Phase2：单行事件 */
+    .event-line {
+      margin: 4px 6px; padding: 7px 10px; background: var(--surface-2);
+      border: 1px solid var(--outline); border-radius: 8px;
+      font-size: 10.5px; color: var(--on-surface-muted);
+      cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      transition: background .12s;
+    }
+    .event-line:hover { background: var(--primary-soft); color: var(--primary-deep); }
+    .event-line b { color: var(--on-surface); font-weight: 600; }
+    .event-line .ok { color: var(--green); font-weight: 700; }
+    .event-line.is-empty { opacity: .72; font-style: normal; }
+
+    .sec-head {
+      font-size: 10px; font-weight: 700; color: var(--on-surface-muted);
+      padding: 7px 12px 3px; text-transform: uppercase; letter-spacing: .06em;
+    }
+    .sec-head .dot { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--on-surface-soft); margin-right: 4px; vertical-align: middle; }
+
+    /* 现版通道行：仅 chevron */
+    .ch-row-old {
+      display: flex; align-items: center; gap: 9px; padding: 7px 10px; margin: 0 4px; border-radius: 7px;
+      width: calc(100% - 8px); border: none; background: transparent; font: inherit; text-align: left; cursor: pointer;
+    }
+    .ch-row-old:hover { background: var(--primary-soft); }
+    .icowrap {
+      width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+      font-size: 12px; flex-shrink: 0;
+    }
+    .icowrap.voice { background: var(--blue-soft); }
+    .icowrap.keys { background: var(--primary-soft); }
+    .icowrap.softpad { background: var(--purple-soft); }
+    .icowrap.camera { background: var(--orange-soft); }
+    .ch-row-old .body { flex: 1; min-width: 0; }
+    .ch-row-old .name { font-size: 12.5px; font-weight: 700; }
+    .ch-row-old .meta { font-size: 10.5px; color: var(--on-surface-muted); margin-top: 1px; }
+    .ch-row-old .meta.action { color: var(--primary-deep); font-weight: 600; }
+    .ch-row-old .chev { font-size: 9px; color: var(--on-surface-soft); }
+
+    /* Phase2 通道行：开关 + chevron */
+    .ch-row {
+      display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 10px; margin: 0 4px;
+      border-radius: 7px; width: calc(100% - 8px); background: transparent;
+    }
+    .ch-row:hover { background: rgba(42,156,196,.06); }
+    .ch-row .body { flex: 1; min-width: 0; }
+    .ch-row .name { font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+    .ch-row .pdot { width: 5px; height: 5px; border-radius: 50%; background: var(--on-surface-soft); }
+    .ch-row .pdot.on { background: var(--blue); box-shadow: 0 0 0 2px var(--blue-soft); }
+    .ch-row .meta { font-size: 10px; color: var(--on-surface-muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ch-row .meta.hint { color: var(--primary-deep); font-weight: 600; }
+    .ch-row .acts { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .toggle {
+      width: 34px; height: 18px; border-radius: 10px; background: var(--primary); border: none; padding: 0;
+      position: relative; cursor: pointer; flex-shrink: 0;
+    }
+    .toggle::after {
+      content: ''; position: absolute; top: 2px; left: 18px; width: 14px; height: 14px;
+      border-radius: 50%; background: #fff; transition: left .18s; box-shadow: 0 1px 2px rgba(0,0,0,.2);
+    }
+    .toggle.off { background: var(--on-surface-soft); }
+    .toggle.off::after { left: 2px; }
+    .toggle:disabled { opacity: .35; cursor: not-allowed; }
+    .tog-lbl { font-size: 8px; color: var(--on-surface-soft); text-align: center; margin-top: 1px; max-width: 40px; line-height: 1.1; }
+    .chev-btn {
+      width: 22px; height: 22px; border: none; border-radius: 5px; background: transparent;
+      color: var(--on-surface-soft); font-size: 11px; cursor: pointer; flex-shrink: 0;
+    }
+    .chev-btn:hover { background: var(--primary-soft); color: var(--primary-deep); }
+
+    .mic-row {
+      display: flex; align-items: center; gap: 9px; padding: 7px 10px; margin: 0 4px;
+      border-radius: 7px; background: var(--primary-soft);
+    }
+    .mic-row .body { flex: 1; }
+    .mic-row .name { font-size: 12.5px; font-weight: 700; }
+    .mic-row .meta { font-size: 10.5px; color: var(--on-surface-muted); }
+
+    .tray-ft {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 5px 8px 3px; border-top: 1px solid var(--outline); margin-top: 4px;
+      font-size: 10.5px; color: var(--on-surface-muted);
+    }
+    .tray-ft button { border: none; background: transparent; font: inherit; font-size: 10.5px; cursor: pointer; color: inherit; padding: 3px 6px; border-radius: 4px; }
+    .tray-ft button:hover { background: rgba(26,45,74,.05); }
+    .tray-ft button.primary { color: var(--primary); font-weight: 600; }
+
+    /* 右侧：点击事件后维护页片段 */
+    .debug-slice {
+      background: var(--surface); border: 1px solid var(--outline); border-radius: 14px;
+      overflow: hidden; box-shadow: var(--shadow); font-size: 12px;
+    }
+    .debug-slice .head {
+      padding: 10px 12px; background: var(--surface-2); border-bottom: 1px solid var(--outline);
+      font-weight: 700; font-size: 13px;
+    }
+    .debug-slice .sub { font-size: 10px; color: var(--on-surface-muted); font-weight: 400; margin-top: 2px; }
+    .debug-slice .qc {
+      padding: 10px 12px; border-bottom: 1px solid var(--outline);
+    }
+    .debug-slice .qc .line { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 11px; }
+    .debug-slice .qc .k { color: var(--on-surface-muted); }
+    .pinned {
+      margin: 8px 12px 0; padding: 8px 10px; background: var(--primary-soft);
+      border: 1px solid rgba(42,156,196,.25); border-radius: 8px; font-size: 11px;
+    }
+    .pinned .lbl { font-size: 9px; font-weight: 700; color: var(--primary-deep); text-transform: uppercase; margin-bottom: 4px; }
+    .debug-slice pre {
+      margin: 8px 12px 12px; padding: 10px; background: #1a2332; color: #a8b8c8;
+      border-radius: 8px; font-size: 10px; line-height: 1.45; max-height: 140px; overflow: auto;
+    }
+
+    .legend {
+      max-width: 1200px; margin: 20px auto 0; padding: 12px 14px;
+      background: var(--surface); border: 1px solid var(--outline); border-radius: 10px;
+      font-size: 11px; line-height: 1.55; color: var(--on-surface-muted);
+    }
+    .legend table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; }
+    .legend th, .legend td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--outline); }
+    .legend th { color: var(--on-surface); font-weight: 600; }
+
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: var(--on-surface); color: #fff; font-size: 12px; font-weight: 600;
+      padding: 8px 16px; border-radius: 8px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 99;
+    }
+    .toast.show { opacity: 1; }
+    .callout-new {
+      max-width: 1200px; margin: 0 auto 16px; padding: 10px 14px;
+      background: #fff; border: 1px solid rgba(42,156,196,.35); border-radius: 10px;
+      font-size: 12px; line-height: 1.5;
+    }
+    .callout-new b { color: var(--primary-deep); }
+  </style>
+</head>
+<body>
+
+  <h1>托盘 Phase 2 原型<span class="tag new">修改 2</span></h1>
+  <p class="lede">
+    左：现版托盘（两行事件 + 通道仅跳转）。中：<strong>Phase 2 目标</strong>（单行事件 + 四通道主开关）。右：点击事件行后进入的状态与维护片段（详情在此，不在托盘堆叠）。
+  </p>
+
+  <div class="callout-new">
+    <b>交互说明：</b>切换顶部场景；在中栏托盘里点<strong>开关</strong>（模拟 invoke，操作后关托盘）、点<strong>▸</strong>进专页、点<strong>事件单行</strong>进维护。开关标签见每通道下方小字。
+  </div>
+
+  <div class="toolbar">
+    <label>场景</label>
+    <div class="seg" id="sceneSeg">
+      <button type="button" data-scene="fresh" class="on">全新未配置</button>
+      <button type="button" data-scene="active">已配置运行中</button>
+      <button type="button" data-scene="paused">已暂停</button>
+    </div>
+  </div>
+
+  <div class="compare">
+    <!-- 现版 -->
+    <div>
+      <div class="col-head"><span class="tag old">现版</span> tray-menu.html</div>
+      <div class="frame">
+        <div class="tray" id="trayOld"></div>
+      </div>
+    </div>
+
+    <!-- Phase 2 -->
+    <div>
+      <div class="col-head"><span class="tag new">Phase 2</span> 通道控制中心 <span class="note">· 可点开关</span></div>
+      <div class="frame highlight">
+        <div class="tray" id="trayNew"></div>
+      </div>
+    </div>
+
+    <!-- 维护页片段 -->
+    <div>
+      <div class="col-head">状态与维护 <span class="note">· 事件行点击目标</span></div>
+      <div class="debug-slice" id="debugSlice">
+        <div class="head">维护<div class="sub">设置 → 状态与维护</div></div>
+        <div class="qc">
+          <div class="line"><span class="k">statusToken</span><strong id="dbgToken">listening</strong></div>
+          <div class="line"><span class="k">lastEvent</span><strong id="dbgLast">—</strong></div>
+        </div>
+        <div class="pinned" id="dbgPinned">
+          <div class="lbl">托盘摘要对应 · 完整详情见下方日志</div>
+          <div id="dbgPinnedText">点击中栏「最近事件」单行查看联动</div>
+        </div>
+        <pre id="dbgLog">[12:04:01] INPUT_CAPTURED → send · keys · ok
+[12:03:58] voice_wake triggered · voice
+[12:03:40] shell_agent state · running · codex
+…</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <strong>四通道 · 托盘主开关（与 Face 3 同 IPC）</strong>
+    <table>
+      <thead><tr><th>通道</th><th>托盘主开关</th><th>未配置时</th><th>▸ 跳转</th></tr></thead>
+      <tbody>
+        <tr><td>语音</td><td>启用语音引擎</td><td>开关灰 · meta「未启用 · 去设置」</td><td>main:voice</td></tr>
+        <tr><td>按键</td><td>当前习惯启用</td><td>无触发键时灰</td><td>main:keys</td></tr>
+        <tr><td>Soft Pad</td><td>未启用→启用 Pad；已启用→显示浮层</td><td>—</td><td>main:softPad</td></tr>
+        <tr><td>摄像头</td><td>启用摄像头通道</td><td>默认隐藏行（显示项可开）</td><td>main:camera</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  (function () {
+    var ICONS = { voice: '🎤', keys: '⌨', softPad: '▦', camera: '📷' };
+    var CH = { voice: '语音', keys: '按键', softPad: 'Soft Pad', camera: '摄像头' };
+    var WRAP = { voice: 'voice', keys: 'keys', softPad: 'softpad', camera: 'camera' };
+
+    var SCENES = {
+      fresh: {
+        hero: { title: '待命', sub: '尚未配置任何通道', pulse: 'standby', mode: 'standby' },
+        chips: [], agent: null,
+        event: null,
+        channels: {
+          voice: { on: false, meta: '未启用 · 去设置', toggle: false, toggleLabel: '语音引擎', toggleKey: 'voiceEngine' },
+          keys: { on: false, meta: '未启用 · 去设置', toggle: false, toggleLabel: '习惯启用', toggleKey: 'keysEnable' },
+          softPad: { on: false, meta: '未启用 · 去设置', toggle: false, toggleLabel: '启用 Pad', toggleKey: 'padEnable' },
+          camera: { on: false, meta: '未启用 · 去设置', toggle: false, toggleLabel: '摄像头', toggleKey: 'camEnable', hidden: true }
+        }
+      },
+      active: {
+        hero: { title: '监听中', sub: '3 条通道就绪', pulse: 'listening', mode: 'listen' },
+        chips: ['b:语音', 'g:按键', 'p:Pad'], agent: 'Codex · 运行中',
+        event: { ago: '2s', ch: '按键', text: 'INPUT_CAPTURED → send', ok: true },
+        channels: {
+          voice: { on: true, meta: 'Vosk · 已就绪', toggle: true, toggleLabel: '语音引擎', toggleKey: 'voiceEngine' },
+          keys: { on: true, meta: '右 Alt · 智能连按', toggle: true, toggleLabel: '习惯启用', toggleKey: 'keysEnable' },
+          softPad: { on: true, meta: 'Codex · 浮层可见', toggle: true, toggleLabel: '显示浮层', toggleKey: 'padOverlay' },
+          camera: { on: false, meta: '未启用 · 去设置', toggle: false, toggleLabel: '摄像头', toggleKey: 'camEnable', hidden: true }
+        }
+      },
+      paused: {
+        hero: { title: '已暂停', sub: '恢复后继续监听', pulse: 'paused', mode: 'paused' },
+        chips: ['b:语音', 'g:按键'], agent: 'Cursor · 待命',
+        event: { ago: '1m', ch: '语音', text: '"继续实现托盘"', ok: true },
+        channels: {
+          voice: { on: true, meta: 'Vosk · 待命', toggle: true, toggleLabel: '语音引擎', toggleKey: 'voiceEngine' },
+          keys: { on: true, meta: '右 Alt · 待命', toggle: true, toggleLabel: '习惯启用', toggleKey: 'keysEnable' },
+          softPad: { on: true, meta: '已启用 · 浮层隐藏', toggle: false, toggleLabel: '显示浮层', toggleKey: 'padOverlay' },
+          camera: { on: false, meta: '未启用 · 去设置', toggle: false, toggleLabel: '摄像头', toggleKey: 'camEnable', hidden: true }
+        }
+      }
+    };
+
+    var state = { scene: 'fresh', toggles: {} };
+    var toastEl = document.getElementById('toast');
+    var tt = 0;
+    function toast(m) {
+      toastEl.textContent = m;
+      toastEl.classList.add('show');
+      clearTimeout(tt);
+      tt = setTimeout(function () { toastEl.classList.remove('show'); }, 2200);
+    }
+
+    function chipHtml(chips, agent) {
+      var h = chips.map(function (c) {
+        var p = c.split(':');
+        return '<span class="chip ' + p[0] + '">' + p[1] + '</span>';
+      }).join('');
+      if (agent) h += '<span class="chip agent">' + agent + '</span>';
+      return h;
+    }
+
+    function renderOld() {
+      var d = SCENES[state.scene];
+      var h = d.hero;
+      var ev = d.event;
+      var evHtml = ev
+        ? '<div class="event-card-old"><div class="ev-head">刚才 · ' + ev.ago + ' · ' + ev.ch + '</div>'
+          + '<div class="ev-text"><span class="txt">' + ev.text + '</span>'
+          + (ev.ok ? '<span class="outcome ok">已发送</span>' : '') + '</div></div>'
+        : '<div class="event-card-old"><div class="ev-head">刚才 · —</div><div class="ev-text"><span class="txt">暂无事件</span></div></div>';
+
+      var chHtml = '';
+      ['voice', 'keys', 'softPad', 'camera'].forEach(function (id) {
+        if (id === 'camera' && d.channels.camera.hidden) return;
+        var c = d.channels[id];
+        chHtml += '<button type="button" class="ch-row-old">'
+          + '<span class="icowrap ' + WRAP[id] + '">' + ICONS[id] + '</span>'
+          + '<span class="body"><div class="name">' + CH[id] + '</div>'
+          + '<div class="meta' + (c.on ? '' : ' action') + '">' + c.meta + '</div></span>'
+          + '<span class="chev">▸</span></button>';
+      });
+
+      document.getElementById('trayOld').innerHTML =
+        '<div class="status-hero' + (h.mode === 'standby' ? ' standby-mode' : '') + '">'
+        + '<div class="left"><div class="top-line"><span class="pulse ' + h.pulse + '"></span><span class="ttl">' + h.title + '</span></div>'
+        + '<div class="sub">' + h.sub + '</div>'
+        + '<div class="state-chips">' + chipHtml(d.chips, d.agent) + '</div></div>'
+        + '<button type="button" class="hero-act' + (h.mode === 'paused' ? ' paused' : '') + '">' + (h.mode === 'paused' ? '继续' : '暂停') + '</button></div>'
+        + evHtml
+        + '<div class="sec-head"><span class="dot"></span>通道</div>' + chHtml
+        + '<div class="mic-row"><span class="icowrap voice">🎤</span><span class="body"><div class="name">麦克风</div><div class="meta">开 · 默认</div></span>'
+        + '<button type="button" class="toggle"></button></div>'
+        + '<div class="tray-ft"><div><button type="button" class="primary">主窗口</button> · 设置 · 诊断</div><button type="button">退出</button></div>';
+    }
+
+    function getToggle(id, c) {
+      var k = state.scene + ':' + id;
+      if (state.toggles[k] != null) return state.toggles[k];
+      return c.toggle;
+    }
+
+    function renderNew() {
+      var d = SCENES[state.scene];
+      var h = d.hero;
+      var ev = d.event;
+      var evLine = ev
+        ? '刚才 · <b>' + ev.ago + '</b> · ' + ev.ch + ' · <b>' + ev.text + '</b> · <span class="ok">已发送</span>'
+        : '<span class="is-empty">暂无事件 · <b>去维护查看</b></span>';
+
+      var chHtml = '';
+      ['voice', 'keys', 'softPad', 'camera'].forEach(function (id) {
+        var c = d.channels[id];
+        if (c.hidden) return;
+        var on = getToggle(id, c);
+        var canToggle = c.on || state.scene === 'fresh';
+        if (state.scene === 'fresh') canToggle = false;
+        var disabled = !c.on && state.scene !== 'active' && state.scene !== 'paused';
+        if (state.scene === 'fresh') disabled = true;
+        chHtml += '<div class="ch-row" data-ch="' + id + '">'
+          + '<span class="icowrap ' + WRAP[id] + '">' + ICONS[id] + '</span>'
+          + '<span class="body"><div class="name">' + CH[id] + ' <span class="pdot' + (c.on ? ' on' : '') + '"></span></div>'
+          + '<div class="meta' + (c.on ? '' : ' hint') + '">' + c.meta + '</div></span>'
+          + '<span class="acts"><span><button type="button" class="toggle' + (on ? '' : ' off') + '" data-toggle="' + id + '"' + (disabled ? ' disabled' : '') + ' aria-label="' + c.toggleLabel + '"></button>'
+          + '<div class="tog-lbl">' + c.toggleLabel + '</div></span>'
+          + '<button type="button" class="chev-btn" data-chev="' + id + '" title="打开设置">▸</button></span></div>';
+      });
+
+      var root = document.getElementById('trayNew');
+      root.innerHTML =
+        '<div class="status-hero' + (h.mode === 'standby' ? ' standby-mode' : '') + '">'
+        + '<div class="left"><div class="top-line"><span class="pulse ' + h.pulse + ' listening"></span><span class="ttl">' + h.title + '</span></div>'
+        + '<div class="sub">' + h.sub + '</div>'
+        + '<div class="state-chips">' + chipHtml(d.chips, d.agent) + '</div></div>'
+        + '<button type="button" class="hero-act' + (h.mode === 'paused' ? ' paused' : '') + '" data-act="pause">' + (h.mode === 'paused' ? '继续' : '暂停') + '</button></div>'
+        + '<button type="button" class="event-line" id="evLineBtn">' + evLine + '</button>'
+        + '<div class="sec-head"><span class="dot"></span>通道 · 开关 + 设置</div>' + chHtml
+        + '<div class="mic-row"><span class="icowrap voice">🎤</span><span class="body"><div class="name">麦克风</div><div class="meta">开 · 默认</div></span>'
+        + '<button type="button" class="toggle" data-act="mic"></button></div>'
+        + '<div class="tray-ft"><div><button type="button" class="primary" data-go="home">主窗口</button> · '
+        + '<button type="button" data-go="settings">设置</button> · <button type="button" data-go="diagnose">诊断</button></div>'
+        + '<button type="button" data-act="quit">退出</button></div>';
+
+      root.querySelector('#evLineBtn').onclick = function () {
+        syncDebug();
+        toast('deep_link → main:diagnose（托盘关闭）');
+        document.getElementById('debugSlice').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      };
+      root.querySelectorAll('[data-toggle]').forEach(function (btn) {
+        btn.onclick = function (e) {
+          e.stopPropagation();
+          if (btn.disabled) { toast('未配置 · 请先用 ▸ 去设置'); return; }
+          var id = btn.getAttribute('data-toggle');
+          var k = state.scene + ':' + id;
+          state.toggles[k] = !getToggle(id, d.channels[id]);
+          var labels = {
+            voiceEngine: 'cmd_voice_set_desired_engine',
+            keysEnable: 'mvp_mapping_toggle',
+            padEnable: 'cmd_codex_micro_pad_set_flags.enabled',
+            padOverlay: 'cmd_codex_micro_pad_set_flags.overlay',
+            camEnable: 'saveCameraPrefsQuiet'
+          };
+          var c = d.channels[id];
+          toast('invoke ' + (labels[c.toggleKey] || c.toggleKey) + ' → 托盘关闭');
+          renderNew();
+        };
+      });
+      root.querySelectorAll('[data-chev]').forEach(function (btn) {
+        btn.onclick = function (e) {
+          e.stopPropagation();
+          toast('deep_link → main:' + (btn.getAttribute('data-chev') === 'softPad' ? 'softPad' : btn.getAttribute('data-chev')));
+        };
+      });
+      root.querySelectorAll('[data-go]').forEach(function (btn) {
+        btn.onclick = function () { toast('deep_link → ' + btn.getAttribute('data-go')); };
+      });
+      root.querySelectorAll('[data-act]').forEach(function (btn) {
+        btn.onclick = function () { toast(btn.getAttribute('data-act') + ' → 托盘关闭'); };
+      });
+    }
+
+    function syncDebug() {
+      var d = SCENES[state.scene];
+      document.getElementById('dbgToken').textContent = d.hero.mode === 'paused' ? 'paused' : d.hero.mode === 'standby' ? 'idle' : 'listening';
+      if (d.event) {
+        var t = d.event.ago + ' · ' + d.event.ch + ' · ' + d.event.text + (d.event.ok ? ' · sent' : '');
+        document.getElementById('dbgLast').textContent = t;
+        document.getElementById('dbgPinnedText').textContent = t;
+      } else {
+        document.getElementById('dbgLast').textContent = '—';
+        document.getElementById('dbgPinnedText').textContent = '（无最近事件）';
+      }
+    }
+
+    function render() {
+      renderOld();
+      renderNew();
+      syncDebug();
+    }
+
+    document.getElementById('sceneSeg').addEventListener('click', function (e) {
+      var btn = e.target.closest('button[data-scene]');
+      if (!btn) return;
+      state.scene = btn.getAttribute('data-scene');
+      state.toggles = {};
+      document.querySelectorAll('#sceneSeg button').forEach(function (b) { b.classList.remove('on'); });
+      btn.classList.add('on');
+      render();
+    });
+
+    render();
+  })();
+  </script>
+</body>
+</html>

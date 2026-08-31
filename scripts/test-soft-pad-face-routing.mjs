@@ -25,7 +25,7 @@ function assert(cond, msg) {
 const liveView = src.match(/(?:^|[^/\w])softPadView(?:\s*=|\s*===|\s*!==|\()/gm) || [];
 assert(liveView.length === 0, 'softPadView has zero live reads/assignments');
 assert(/var softPadFace = 'pad'/.test(src), 'softPadFace default pad');
-assert(/var softPadPadMode = 'appear'/.test(src), 'softPadPadMode default appear');
+assert(/var softPadPadMode = 'keys'/.test(src), 'softPadPadMode default keys');
 assert(/function softPadPanelId\(/.test(src), 'softPadPanelId helper');
 assert(/function setSoftPadFace\(/.test(src), 'setSoftPadFace');
 assert(/function setSoftPadPadMode\(/.test(src), 'setSoftPadPadMode');
@@ -48,9 +48,10 @@ assert(html.includes('id="softPadFacePad"'), 'html face pad root');
 assert(html.includes('id="softPadFaceAgent"'), 'html face agent root');
 assert(html.includes('id="softPadFaceTimeline"'), 'html face timeline root');
 assert(html.includes('id="softPadPadTabs"'), 'html pad mode tabs');
-assert(html.includes('data-pad-mode="appear"'), 'html appear tab');
+assert(html.includes('data-pad-mode="appear"'), 'html display tab');
 assert(html.includes('data-pad-mode="keys"'), 'html keys tab');
-assert(html.includes('data-pad-mode="look"'), 'html look tab');
+assert(!html.includes('data-pad-mode="look"'), 'html look tab removed');
+assert(html.includes('id="softPadPadTabDisplay"'), 'html display tab id');
 assert(html.includes('data-pad-mode="purpose"'), 'html purpose tab');
 assert(html.includes('id="softPadAgentBody"'), 'html agent body host');
 assert(!html.includes('id="softPadAgentDirectory"'), 'html agent directory removed');
@@ -153,8 +154,11 @@ assert(/function renderShowModeTabsHtml\(/.test(padUi) && /data-show-mode/.test(
   'runtime show mode uses horizontal subtabs');
 assert(/empty\.mode === 'ready'[\s\S]*?return ''/.test(src),
   'ready panel chrome returns empty (no idle primary shell)');
-assert(/soft-pad-layout-key-preview/.test(padUi) && /mode:\s*'modal'/.test(padUi),
-  'layout uses key preview + modal editor');
+assert(/soft-pad-action-library/.test(padUi) && /data-soft-pad-action-list/.test(padUi) &&
+  /mode:\s*'modal'/.test(padUi),
+  'layout uses action list + modal editor');
+assert(/function renderSoftPadRuntimePanel\([\s\S]*?renderSoftPadDisplayPanel/.test(padUi),
+  'runtime panel delegates to display (show mode + skin)');
 assert(/min\(100%,\s*380px\)/.test(css), 'C1 Soft Pad fills left column up to 380px');
 assert(/commitEditKeycapDraft/.test(padUi) && /keepOpen:\s*true/.test(padUi),
   'key editor autosaves on pick');

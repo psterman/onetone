@@ -1,0 +1,224 @@
+/**
+ * OneTone underline tab — 頁級區段導航，可帶 badge/計數
+ * 習慣通道過濾、Camera Pro 多項子區；短 chip 過濾 → ot-pill-filter
+ */
+:root {
+  --ot-uline-border: var(--outline-variant, rgba(26, 45, 74, 0.12));
+  --ot-uline-accent: var(--primary, #2a9cc4);
+  --ot-uline-muted: var(--on-surface-muted, #5a7086);
+}
+
+/* ── canonical ── */
+.ot-underline-tabs {
+  display: flex;
+  gap: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--ot-uline-border);
+  scrollbar-width: thin;
+}
+
+.ot-underline-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--ot-uline-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.ot-underline-tab:hover {
+  color: var(--on-surface, #152238);
+}
+
+.ot-underline-tab.is-active {
+  color: var(--on-surface, #152238);
+  border-bottom-color: var(--ot-uline-accent);
+  font-weight: 650;
+}
+
+.ot-underline-tab__badge {
+  background: var(--surface-soft, #f4f7fa);
+  border-radius: 20px;
+  padding: 1px 7px;
+  font-size: 11px;
+  color: var(--ot-uline-muted);
+  font-weight: 500;
+}
+
+.ot-underline-tab.is-active .ot-underline-tab__badge {
+  background: var(--primary-soft, rgba(42, 156, 196, 0.12));
+  color: var(--primary-strong, #1f8fb8);
+}
+
+/* ── habit-ws channel tabs ── */
+.habit-ws-ch-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--hws-line, var(--ot-uline-border));
+}
+
+.habit-ws-ch-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--hws-muted, var(--ot-uline-muted));
+  font-size: 13px;
+  padding: 9px 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: -1px;
+  font-family: inherit;
+}
+
+.habit-ws-ch-tab:hover {
+  color: var(--hws-ink, var(--on-surface));
+}
+
+.habit-ws-ch-tab.is-active {
+  color: var(--hws-ink, var(--on-surface));
+  border-bottom-color: var(--hws-accent, var(--ot-uline-accent));
+  font-weight: 650;
+}
+
+.habit-ws-ch-badge {
+  background: var(--hws-panel, #f4f7fa);
+  border-radius: 20px;
+  padding: 1px 7px;
+  font-size: 11px;
+  color: var(--hws-muted, var(--ot-uline-muted));
+  font-weight: 500;
+}
+
+.habit-ws-ch-tab.is-active .habit-ws-ch-badge {
+  background: var(--hws-accent-soft, var(--primary-soft));
+  color: var(--primary-strong, #1f8fb8);
+}
+
+/* ── scene-mode filters → underline (與 habit-ws 合流) ── */
+.scene-mode-filters {
+  display: flex;
+  gap: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--ot-uline-border);
+  width: 100%;
+}
+
+.scene-mode-filter {
+  height: auto;
+  padding: 9px 14px;
+  border-radius: 0;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ot-uline-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.scene-mode-filter:hover {
+  background: transparent;
+  color: var(--on-surface);
+}
+
+.scene-mode-filter.is-active {
+  background: transparent;
+  color: var(--on-surface);
+  border-color: transparent;
+  border-bottom-color: var(--ot-uline-accent);
+  font-weight: 650;
+}
+
+.scene-mode-filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 20px;
+  background: var(--surface-soft);
+  color: var(--ot-uline-muted);
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.scene-mode-filter.is-active .scene-mode-filter-count {
+  background: var(--primary-soft);
+  color: var(--primary-strong, #1f8fb8);
+}
+
+/* ── camera pro subtabs ── */
+.camera-pro-subtabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0;
+  overflow-x: auto;
+  padding: 0;
+  border-bottom: 1px solid var(--ot-uline-border);
+  scrollbar-width: thin;
+}
+
+.camera-pro-subtab {
+  flex: 0 0 auto;
+  appearance: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ot-uline-muted);
+  border-radius: 0;
+  padding: 9px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  margin-bottom: -1px;
+}
+
+.camera-pro-subtab:hover {
+  color: var(--on-surface);
+  background: transparent;
+}
+
+.camera-pro-subtab.is-active {
+  color: var(--on-surface);
+  background: transparent;
+  border-bottom-color: var(--ot-uline-accent);
+  font-weight: 650;
+}
+
+/* habit-ws-scene-tab: alias is-selected → is-active */
+.habit-ws-scene-tab.is-selected {
+  background: var(--hws-accent-soft);
+  border-color: color-mix(in srgb, var(--hws-accent) 35%, var(--hws-line));
+  color: var(--primary-strong, #1f8fb8);
+}
+
+.habit-ws-scene-tab.is-active {
+  background: var(--hws-accent-soft);
+  border-color: color-mix(in srgb, var(--hws-accent) 35%, var(--hws-line));
+  color: var(--primary-strong, #1f8fb8);
+}

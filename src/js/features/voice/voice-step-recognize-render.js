@@ -29,6 +29,7 @@
     root.querySelectorAll('[data-phrase-kind]').forEach(function(btn){
       var on=(btn.getAttribute('data-phrase-kind')||'')===kind;
       btn.classList.toggle('is-on',on);
+      btn.classList.toggle('is-active',on);
       btn.setAttribute('aria-selected',on?'true':'false');
     });
     var panel=root.closest('.voice-phrase-panel')||root.parentElement;
@@ -132,6 +133,7 @@
       tabs.querySelectorAll('[data-recognize-intent]').forEach(function(btn){
         var on=(btn.getAttribute('data-recognize-intent')||'')===intent;
         btn.classList.toggle('is-on',on);
+      btn.classList.toggle('is-active',on);
         btn.setAttribute('aria-selected',on?'true':'false');
       });
     }

@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>托盘工作台 · 三种 Inspector 方案对比</title>
+  <style>
+    :root {
+      --bg: #e8edf3; --surface: #fff; --surface-2: #f8fafc; --surface-3: #eef2f7;
+      --primary: #2a9cc4; --primary-soft: #e6f7fc; --primary-deep: #1e87ad;
+      --on-surface: #152238; --on-surface-muted: #5a7086; --on-surface-soft: #8a98a8;
+      --outline: rgba(26,45,74,.1); --green: #2e7d4f; --green-soft: rgba(46,125,79,.1);
+      --orange: #b9530a; --orange-soft: rgba(185,83,10,.1); --blue: #00a3ff; --blue-soft: rgba(0,163,255,.1);
+      --purple: #6d4ab0; --purple-soft: rgba(109,74,176,.1);
+      --radius: 12px; --shadow: 0 10px 28px rgba(26,45,74,.14);
+      font-family: "Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;padding:24px 16px 48px;background:var(--bg);color:var(--on-surface)}
+    h1{font-size:22px;margin:0 0 6px}
+    .lede{font-size:13px;color:var(--on-surface-muted);line-height:1.55;max-width:900px;margin:0 0 16px}
+    .toolbar{max-width:1400px;margin:0 auto 20px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 14px;background:var(--surface);border:1px solid var(--outline);border-radius:var(--radius)}
+    .seg{display:flex;gap:4px;flex-wrap:wrap}
+    .seg button{border:1px solid var(--outline);background:var(--surface-2);font:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer}
+    .seg button.on{background:var(--primary);border-color:var(--primary);color:#fff}
+    .tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:6px;vertical-align:middle}
+    .tag.a{background:var(--primary-soft);color:var(--primary-deep)}
+    .tag.b{background:var(--purple-soft);color:var(--purple)}
+    .tag.c{background:var(--green-soft);color:var(--green)}
+    .scheme-desc{max-width:1400px;margin:0 auto 16px;padding:12px 14px;background:#fff;border:1px solid var(--outline);border-radius:10px;font-size:12px;line-height:1.55;color:var(--on-surface-muted)}
+    .scheme-desc b{color:var(--on-surface)}
+    .compare{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:1400px;margin:0 auto}
+    @media(max-width:1100px){.compare{grid-template-columns:1fr}}
+    .single{max-width:920px;margin:0 auto}
+    .scheme-col .scheme-head{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+    .scheme-col .scheme-head h2{font-size:14px;margin:0}
+    .workbench{background:var(--surface);border:1px solid var(--outline);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+    .wb-flow{display:flex;border-bottom:1px solid var(--outline);font-size:10px}
+    .wb-node{flex:1;padding:8px 4px;text-align:center;border-right:1px solid var(--outline)}
+    .wb-node:last-child{border-right:none}
+    .wb-node.active{background:var(--primary-soft);border-bottom:2px solid var(--primary)}
+    .wb-node .t{font-weight:700;font-size:10px}
+    .wb-node .h{font-size:9px;color:var(--on-surface-muted)}
+    .wb-body{display:grid;grid-template-columns:200px 1fr;min-height:420px}
+    @media(max-width:600px){.wb-body{grid-template-columns:1fr}}
+    .wb-preview{padding:10px;background:linear-gradient(160deg,#dce4ec,#c5d0dc);border-right:1px solid var(--outline)}
+    .mini-tray{background:#fff;border:1px solid var(--outline);border-radius:10px;padding:6px;font-size:10px}
+    .mini-tray .hero{margin:2px;padding:8px;background:var(--blue-soft);border-radius:8px;display:flex;justify-content:space-between;align-items:center}
+    .mini-tray .hero b{font-size:11px}
+    .mini-tray .hero button{font-size:9px;padding:4px 8px;border:none;border-radius:6px;background:var(--primary);color:#fff;font-weight:700}
+    .mini-tray .row{padding:5px 6px;border-top:1px solid var(--outline);color:var(--on-surface-muted);font-size:9.5px}
+    .wb-ins{padding:10px;font-size:11px}
+    .wb-ins h3{font-size:12px;margin:0 0 4px}
+    .wb-ins .sub{font-size:10px;color:var(--on-surface-muted);margin:0 0 8px}
+    .ins-tabs{display:flex;gap:3px;margin-bottom:8px}
+    .ins-tabs button{flex:1;padding:6px 4px;border:1px solid var(--outline);border-radius:6px;background:var(--surface-2);font:inherit;font-size:10px;font-weight:600;cursor:pointer}
+    .ins-tabs button.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+    .grp{padding:8px;background:var(--surface-2);border:1px solid var(--outline);border-radius:8px;margin-bottom:8px}
+    .grp h4{margin:0 0 6px;font-size:9px;text-transform:uppercase;color:var(--on-surface-muted);letter-spacing:.04em}
+    .grp label{display:flex;align-items:center;gap:6px;margin:4px 0;font-size:10.5px;cursor:pointer}
+    .grp label.locked{opacity:.5;cursor:default}
+    .q-card{padding:7px 8px;border:1px solid var(--outline);border-radius:6px;background:#fff;margin-bottom:5px;cursor:pointer}
+    .q-card:hover{background:var(--primary-soft)}
+    .q-card .q{font-size:9px;color:var(--on-surface-muted)}
+    .q-card .a{font-size:11px;font-weight:700}
+    .fix-row{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border:1px solid var(--outline);border-radius:6px;background:#fff;margin-bottom:5px}
+    .fix-row button{padding:4px 8px;border:none;border-radius:5px;background:var(--primary);color:#fff;font-size:10px;font-weight:700;cursor:pointer}
+    .ch-subtabs{display:flex;gap:3px;margin-bottom:6px}
+    .ch-subtabs button{flex:1;padding:5px 2px;border:1px solid var(--outline);border-radius:6px;background:var(--surface-3);font:inherit;font-size:9px;font-weight:600;cursor:pointer;position:relative}
+    .ch-subtabs button.on{background:var(--primary-soft);border-color:var(--primary)}
+    .ch-subtabs button .dot{position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--blue)}
+    .ch-card{padding:8px;border:1px solid var(--outline);border-radius:8px;background:#fff}
+    .ch-card .head{display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap}
+    .ch-card .head b{font-size:11px}
+    .pill{font-size:9px;padding:1px 5px;border-radius:4px;font-weight:600;background:var(--green-soft);color:var(--green)}
+    .pill.off{background:rgba(26,45,74,.06);color:var(--on-surface-muted)}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:6px}
+    .stats .stat{padding:4px 6px;background:var(--surface-2);border-radius:4px;font-size:9px}
+    .stats .stat .k{display:block;color:var(--on-surface-muted)}
+    .stats .stat .v{font-weight:600}
+    .sw-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:10px;border-top:1px dashed var(--outline)}
+    .sw-row:first-of-type{border-top:none}
+    .tog{width:28px;height:15px;border-radius:8px;background:var(--primary);position:relative}
+    .tog::after{content:'';position:absolute;top:2px;left:14px;width:11px;height:11px;border-radius:50%;background:#fff}
+    .tog.off{background:var(--on-surface-soft)}
+    .tog.off::after{left:2px}
+    .btn-link{display:block;width:100%;margin-top:6px;padding:6px;border:1px solid var(--outline);border-radius:6px;background:var(--primary-soft);color:var(--primary-deep);font:inherit;font-size:10px;font-weight:700;cursor:pointer}
+    .btn-link:hover{background:var(--primary);color:#fff}
+    details.adv{border:1px solid var(--outline);border-radius:8px;background:var(--surface-2);margin-top:8px}
+    details.adv summary{padding:8px 10px;font-size:10.5px;font-weight:700;cursor:pointer;list-style:none;display:flex;justify-content:space-between}
+    details.adv summary::after{content:'▸';color:var(--on-surface-soft)}
+    details.adv[open] summary::after{content:'▾'}
+    details.adv .adv-body{padding:0 8px 8px}
+    .pros-cons{max-width:1400px;margin:24px auto 0;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    @media(max-width:900px){.pros-cons{grid-template-columns:1fr}}
+    .pc-card{padding:12px;background:var(--surface);border:1px solid var(--outline);border-radius:10px;font-size:11px}
+    .pc-card h3{font-size:12px;margin:0 0 6px}
+    .pc-card ul{margin:0;padding-left:16px;line-height:1.5;color:var(--on-surface-muted)}
+    .pc-card li.plus{color:var(--green)}
+    .pc-card li.minus{color:var(--orange)}
+    .hidden{display:none!important}
+    .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--on-surface);color:#fff;font-size:12px;padding:8px 14px;border-radius:8px;opacity:0;transition:opacity .2s;z-index:99;pointer-events:none}
+    .toast.show{opacity:1}
+  </style>
+</head>
+<body>
+
+<h1 style="max-width:1400px;margin:0 auto 6px">托盘工作台 Inspector · 三种方案原型</h1>
+<p class="lede" style="max-width:1400px;margin:0 auto 16px">
+  对比 Face 3 右侧 Inspector 的信息架构。左侧迷你托盘预览三方案共用；差异在右侧如何组织<strong>显示项、状态、通道详情、配置入口</strong>。
+</p>
+
+<div class="toolbar">
+  <span style="font-size:12px;font-weight:600;color:var(--on-surface-muted)">查看模式</span>
+  <div class="seg" id="viewSeg">
+    <button type="button" data-view="compare" class="on">三列并排</button>
+    <button type="button" data-view="a">方案 A 单独</button>
+    <button type="button" data-view="b">方案 B 单独</button>
+    <button type="button" data-view="c">方案 C 单独</button>
+  </div>
+</div>
+
+<div class="scheme-desc" id="schemeDesc">
+  <b>三列并排：</b>从左到右为方案 A（完全替换）→ B（双层）→ C（四 tab 瘦身）。点击各方案内按钮可看到交互提示。
+</div>
+
+<div class="compare" id="compareView">
+  <div class="scheme-col" id="colA"></div>
+  <div class="scheme-col" id="colB"></div>
+  <div class="scheme-col" id="colC"></div>
+</div>
+
+<div class="single hidden" id="singleView"></div>
+
+<div class="pros-cons">
+  <div class="pc-card">
+    <h3><span class="tag a">A</span> 完全替换</h3>
+    <ul>
+      <li class="plus">主路径最轻：四问 + 去配置</li>
+      <li class="plus">职责清晰，不与专页抢开关</li>
+      <li class="minus">失去单通道 stats 一览</li>
+      <li class="minus">老手要多跳一次设置页</li>
+    </ul>
+  </div>
+  <div class="pc-card">
+    <h3><span class="tag b">B</span> 双层（推荐折中）</h3>
+    <ul>
+      <li class="plus">默认简单，需要时展开四通道</li>
+      <li class="plus">保留现版肌肉记忆</li>
+      <li class="minus">展开后仍略臃肿</li>
+      <li class="minus">两套 IA 要维护</li>
+    </ul>
+  </div>
+  <div class="pc-card">
+    <h3><span class="tag c">C</span> 四 tab 瘦身</h3>
+    <ul>
+      <li class="plus">改动最小，四通道结构保留</li>
+      <li class="plus">stats 仍在，去掉重复开关</li>
+      <li class="minus">vibecoder 首屏仍偏技术</li>
+      <li class="minus">「托盘显示」需上移到显示项</li>
+    </ul>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var CH='voice';
+  var toastEl=document.getElementById('toast');
+  var tt=0;
+  function toast(m){toastEl.textContent=m;toastEl.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){toastEl.classList.remove('show');},1800);}
+  function esc(s){return String(s).replace(/</g,'&lt;');}
+
+  function miniTray(){
+    return '<div class="mini-tray">'
+      +'<div class="hero"><div><b>监听中</b><div style="font-size:9px;color:var(--on-surface-muted)">Codex · 运行中</div></div><button type="button" data-tip="暂停">暂停</button></div>'
+      +'<div class="row">刚才 · 按键 · 已发送</div>'
+      +'<div class="row">语音 · Vosk · 已就绪</div>'
+      +'<div class="row">按键 · 右 Alt</div>'
+      +'<div class="row" style="font-size:9px;color:var(--on-surface-soft)">主窗口 · 设置 · 诊断</div>'
+      +'</div>';
+  }
+
+  function layoutGrp(showTrayChk){
+    var ch=showTrayChk?'':'';
+    return '<div class="grp"><h4>托盘显示</h4>'
+      +'<label class="locked"><input type="checkbox" checked disabled/> Hero（固定）</label>'
+      +'<label><input type="checkbox" checked/> 最近事件</label>'
+      +'<label><input type="checkbox" checked/> 快捷动作</label>'
+      +(showTrayChk
+        ?'<label><input type="checkbox" checked/> 语音</label><label><input type="checkbox" checked/> 按键</label><label><input type="checkbox" checked/> Soft Pad</label><label><input type="checkbox"/> 摄像头</label><label><input type="checkbox" checked/> 麦克风</label>'
+        :'<label><input type="checkbox" checked/> 语音通道行</label><label><input type="checkbox" checked/> 按键通道行</label><label><input type="checkbox" checked/> Pad 通道行</label><label><input type="checkbox"/> 摄像头通道行</label><label><input type="checkbox" checked/> 麦克风行</label>')
+      +'</div>';
+  }
+
+  function panelLayout(){return layoutGrp(true);}
+  function panelStatus(){
+    return '<div class="grp" style="padding:6px">'
+      +'<div class="q-card" data-tip="main:home"><div class="q">① 能不能用？</div><div class="a">监听中 · 3 通道就绪</div></div>'
+      +'<div class="q-card" data-tip="main:softPad"><div class="q">② AI 忙不忙？</div><div class="a">Codex 运行中</div></div>'
+      +'<div class="q-card" data-tip="main:home"><div class="q">③ 上一句发没发？</div><div class="a">2s 前 · 已发送</div></div>'
+      +'<div class="q-card" data-tip="main:keys"><div class="q">④ 哪条要修？</div><div class="a" style="color:var(--green)">全部就绪</div></div>'
+      +'</div>';
+  }
+  function panelFix(){
+    return '<div class="fix-row"><span>摄像头 <small style="color:var(--on-surface-muted)">未启用</small></span><button type="button" data-tip="main:camera">去配置</button></div>';
+  }
+
+  function chSubtabs(active){
+    var tabs=[['voice','语音',true],['keys','按键',true],['softPad','Pad',false],['camera','摄像头',false]];
+    return '<div class="ch-subtabs">'+tabs.map(function(t){
+      return '<button type="button" class="'+(t[0]===active?'on':'')+'" data-ch="'+t[0]+'">'+t[1]+(t[2]?'<span class="dot"></span>':'')+'</button>';
+    }).join('')+'</div>';
+  }
+
+  function chCardVoice(slim){
+    var stats='<div class="stats">'
+      +'<div class="stat"><span class="k">引擎</span><span class="v">Vosk</span></div>'
+      +'<div class="stat"><span class="k">唤醒词</span><span class="v">嘿声声</span></div>'
+      +'<div class="stat"><span class="k">最近事件</span><span class="v">2s 前</span></div>'
+      +'<div class="stat"><span class="k">错误</span><span class="v">—</span></div></div>';
+    if(slim){
+      return '<div class="ch-card"><div class="head"><b>语音</b><span class="pill">监听中</span></div>'+stats
+        +'<button type="button" class="btn-link" data-tip="main:voice">去语音设置 →</button></div>';
+    }
+    return '<div class="ch-card"><div class="head"><b>语音</b><span class="pill">监听中</span></div>'+stats
+      +'<div class="sw-row"><span>启用语音引擎</span><span class="tog"></span></div>'
+      +'<div class="sw-row"><span>结束短语检测</span><span class="tog"></span></div></div>';
+  }
+
+  function chCardKeys(slim){
+    var stats='<div class="stats">'
+      +'<div class="stat"><span class="k">触发键</span><span class="v">右 Alt</span></div>'
+      +'<div class="stat"><span class="k">触发方式</span><span class="v">智能连按</span></div>'
+      +'<div class="stat"><span class="k">当前习惯</span><span class="v">Codex</span></div>'
+      +'<div class="stat"><span class="k">上次触发</span><span class="v">2s 前</span></div></div>';
+    if(slim) return '<div class="ch-card"><div class="head"><b>按键</b><span class="pill">就绪</span></div>'+stats
+      +'<button type="button" class="btn-link" data-tip="main:keys">去按键设置 →</button></div>';
+    return '<div class="ch-card"><div class="head"><b>按键</b><span class="pill">就绪</span></div>'+stats+'</div>';
+  }
+
+  function chCardPad(slim){
+    var stats='<div class="stats">'
+      +'<div class="stat"><span class="k">键位</span><span class="v">21 个</span></div>'
+      +'<div class="stat"><span class="k">Agent</span><span class="v">Codex</span></div>'
+      +'<div class="stat"><span class="k">浮层</span><span class="v">可见</span></div>'
+      +'<div class="stat"><span class="k">前台</span><span class="v">Cursor</span></div></div>';
+    if(slim) return '<div class="ch-card"><div class="head"><b>Soft Pad</b><span class="pill">已启用</span></div>'+stats
+      +'<button type="button" class="btn-link" data-tip="main:softPad">去虚拟键盘 →</button></div>';
+    return '<div class="ch-card"><div class="head"><b>Soft Pad</b><span class="pill off">未启用</span></div>'+stats
+      +'<div class="sw-row"><span>启用 Soft Pad</span><span class="tog off"></span></div>'
+      +'<div class="sw-row"><span>显示浮层</span><span class="tog"></span></div></div>';
+  }
+
+  function chCardCam(slim){
+    var stats='<div class="stats">'
+      +'<div class="stat"><span class="k">设备</span><span class="v">—</span></div>'
+      +'<div class="stat"><span class="k">Presence</span><span class="v">关</span></div>'
+      +'<div class="stat"><span class="k">自动静音</span><span class="v">—</span></div>'
+      +'<div class="stat"><span class="k">权限</span><span class="v">—</span></div></div>';
+    if(slim) return '<div class="ch-card"><div class="head"><b>摄像头</b><span class="pill off">未启用</span></div>'+stats
+      +'<button type="button" class="btn-link" data-tip="main:camera">去摄像头设置 →</button></div>';
+    return '<div class="ch-card"><div class="head"><b>摄像头</b><span class="pill off">未启用</span></div>'+stats
+      +'<div class="sw-row"><span>启用摄像头</span><span class="tog off"></span></div></div>';
+  }
+
+  function chPanel(slim){
+    var map={voice:chCardVoice(slim),keys:chCardKeys(slim),softPad:chCardPad(slim),camera:chCardCam(slim)};
+    return chSubtabs(CH)+'<div class="ch-panel">'+map[CH]+'</div>';
+  }
+
+  function workbenchShell(scheme, inspectorHtml, hint){
+    var flowHint=scheme==='c'?'四通道详情 · 去设置':'预览 · 显示项 · 快捷修复';
+    if(scheme==='b') flowHint='预览 · 三区 + 通道详情';
+    return '<div class="workbench" data-scheme="'+scheme+'">'
+      +'<div class="wb-flow">'
+      +'<div class="wb-node"><div class="t">Soft Pad</div></div>'
+      +'<div class="wb-node"><div class="t">状态灯</div></div>'
+      +'<div class="wb-node active"><div class="t">托盘工作台</div><div class="h">'+flowHint+'</div></div>'
+      +'</div>'
+      +'<div class="wb-body"><div class="wb-preview"><div style="font-size:9px;color:var(--on-surface-muted);margin-bottom:6px">预览</div>'+miniTray()+'</div>'
+      +'<div class="wb-ins"><h3>托盘工作台</h3><p class="sub">'+esc(hint)+'</p>'+inspectorHtml+'</div></div></div>';
+  }
+
+  function inspectorA(){
+    return '<div class="ins-tabs"><button class="on">显示项</button><button>状态摘要</button><button>快捷修复</button></div>'
+      +'<div class="grp"><h4>预设</h4><select style="width:100%;font:inherit;font-size:10px;padding:4px"><option>Vibecoder</option><option>精简</option><option>完整</option></select></div>'
+      +panelLayout()
+      +'<p style="font-size:9px;color:var(--on-surface-soft);margin:8px 0 0">无四通道 tab · 配置一律跳转专页</p>';
+  }
+
+  function inspectorB(){
+    return '<div class="ins-tabs"><button class="on">显示项</button><button>状态摘要</button><button>快捷修复</button></div>'
+      +panelLayout()
+      +'<details class="adv" open><summary>通道详情 <span style="font-weight:400;color:var(--on-surface-muted)">进阶</span></summary>'
+      +'<div class="adv-body">'+chPanel(false)+'</div></details>';
+  }
+
+  function inspectorC(){
+    return '<div class="grp" style="margin-bottom:6px"><h4>显示项（集中）</h4>'
+      +'<label><input type="checkbox" checked/> 最近事件</label>'
+      +'<label><input type="checkbox" checked/> 语音行</label><label><input type="checkbox" checked/> 按键行</label>'
+      +'<label><input type="checkbox" checked/> Pad 行</label><label><input type="checkbox"/> 摄像头行</label></div>'
+      +chPanel(true)
+      +'<p style="font-size:9px;color:var(--on-surface-soft);margin:6px 0 0">保留四 tab · 仅 stats + 去设置 · 无重复开关</p>';
+  }
+
+  var SCHEMES={
+    a:{tag:'A',title:'完全替换',hint:'仅三区：显示项 / 状态摘要 / 快捷修复。去掉四通道 tab。',build:inspectorA},
+    b:{tag:'B',title:'双层（折中）',hint:'默认三区；展开「通道详情」恢复四 tab + stats + 开关。',build:inspectorB},
+    c:{tag:'C',title:'四 tab 瘦身',hint:'保留四通道 tab；托盘显示收到顶部；tab 内只读 stats + 去设置。',build:inspectorC}
+  };
+
+  function renderCol(el, key){
+    var s=SCHEMES[key];
+    el.innerHTML='<div class="scheme-head"><span class="tag '+key+'">'+s.tag+'</span><h2>'+s.title+'</h2></div>'
+      +workbenchShell(key,s.build(),s.hint);
+    bind(el);
+  }
+
+  function bind(root){
+    root.querySelectorAll('[data-tip]').forEach(function(el){
+      el.addEventListener('click',function(){toast('→ '+el.getAttribute('data-tip'));});
+    });
+    root.querySelectorAll('.ch-subtabs button').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        CH=btn.getAttribute('data-ch');
+        var wb=btn.closest('.workbench');
+        var slim=wb&&wb.getAttribute('data-scheme')==='c';
+        var panel=btn.closest('.adv-body')||btn.closest('.wb-ins');
+        var chPanelEl=panel.querySelector('.ch-panel');
+        if(chPanelEl){
+          var map={voice:chCardVoice(slim),keys:chCardKeys(slim),softPad:chCardPad(slim),camera:chCardCam(slim)};
+          chPanelEl.innerHTML=map[CH];
+          panel.querySelectorAll('.ch-subtabs button').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-ch')===CH);});
+          bind(panel);
+        }
+      });
+    });
+    root.querySelectorAll('.ins-tabs button').forEach(function(btn,idx,all){
+      btn.addEventListener('click',function(){
+        all.forEach(function(b){b.classList.remove('on');});
+        btn.classList.add('on');
+        var names=['显示项','状态摘要','快捷修复'];
+        var parent=btn.closest('.wb-ins');
+        if(idx===0) parent.querySelector('.grp')&&toast('显示项面板');
+        else if(idx===1){
+          var old=parent.querySelector('.status-inject');
+          if(old) old.remove();
+          var div=document.createElement('div');
+          div.className='status-inject';
+          div.innerHTML=panelStatus();
+          parent.appendChild(div);
+          bind(div);
+          toast('状态摘要 · 四问');
+        } else {
+          var old2=parent.querySelector('.status-inject');
+          if(old2) old2.remove();
+          var div2=document.createElement('div');
+          div2.className='status-inject';
+          div2.innerHTML=panelFix();
+          parent.appendChild(div2);
+          bind(div2);
+          toast('快捷修复');
+        }
+      });
+    });
+  }
+
+  renderCol(document.getElementById('colA'),'a');
+  renderCol(document.getElementById('colB'),'b');
+  renderCol(document.getElementById('colC'),'c');
+
+  var DESC={
+    compare:'<b>三列并排：</b>从左到右为方案 A（完全替换）→ B（双层）→ C（四 tab 瘦身）。点击各方案内按钮可看到交互提示。',
+    a:'<b>方案 A · 完全替换：</b>右侧只有「显示项 / 状态摘要 / 快捷修复」三个 tab，不再有语音/按键/Pad/摄像头四个子 tab。通道配置全部 deep link 到对应设置页。',
+    b:'<b>方案 B · 双层：</b>默认与 A 相同的三区；底部可展开「通道详情」，里面是现版四 tab（含 stats 和开关），给老手/排障用。',
+    c:'<b>方案 C · 四 tab 瘦身：</b>保留四通道 tab 结构；「托盘显示」checkbox 收到顶部显示项区；每个 tab 只保留 2×2 stats +「去设置」，去掉与专页重复的开关。'
+  };
+
+  document.getElementById('viewSeg').addEventListener('click',function(e){
+    var btn=e.target.closest('button[data-view]');
+    if(!btn) return;
+    document.querySelectorAll('#viewSeg button').forEach(function(b){b.classList.remove('on');});
+    btn.classList.add('on');
+    var v=btn.getAttribute('data-view');
+    document.getElementById('schemeDesc').innerHTML=DESC[v]||DESC.compare;
+    var cmp=document.getElementById('compareView');
+    var single=document.getElementById('singleView');
+    if(v==='compare'){
+      cmp.classList.remove('hidden');
+      single.classList.add('hidden');
+    } else {
+      cmp.classList.add('hidden');
+      single.classList.remove('hidden');
+      var s=SCHEMES[v];
+      single.innerHTML='<div class="scheme-head"><span class="tag '+v+'">'+s.tag+'</span><h2>'+s.title+'</h2></div>'
+        +workbenchShell(v,s.build(),s.hint);
+      bind(single);
+    }
+  });
+})();
+</script>
+</body>
+</html>

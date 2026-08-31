@@ -703,6 +703,7 @@ mod attention_feed_tests {
             agent_bindings: vec![],
             codex_micro_pad: Some(pad),
             time_machine_workspace: String::new(),
+        capture_hero_ref: None,
         }
     }
 

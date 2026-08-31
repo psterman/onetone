@@ -55,13 +55,21 @@ function pullModel(): SoftPadSubpageModel {
   return buildSoftPadSubpageModel();
 }
 
-  function syncFromLegacy(): void {
+  function runtimePanelMissingSkin(host: HTMLElement | null): boolean {
+  if (!host) return false;
+  return !!host.querySelector('button[data-act="showMode"][data-show-mode]') &&
+    !host.querySelector('[data-pad-skin-opt]');
+}
+
+function syncFromLegacy(): void {
   const next = pullModel();
   const sig = softPadSubpageSignature(next);
+  const el = paintTarget();
+  const staleRuntime = next.panel === 'runtime' && runtimePanelMissingSkin(el);
   // Same sig → skip remount (避免 refresh 清掉 layout 内联编辑器)；
   // paintSubpage / clearSubpage 会改 model.sig（含 subpageToken）。
-  if (sig === currentSig) return;
-  const el = paintTarget();
+  // ponytail: stale runtime-only DOM (no skin) must repaint after appear+look merge.
+  if (sig === currentSig && !staleRuntime) return;
   // Paint-target not in DOM yet (createRoot lag) — don't lock sig or retries will no-op.
   if (!el && !next.clear) return;
   applyPaint(next);

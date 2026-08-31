@@ -11,6 +11,7 @@
     var settingsNavHabits=$('settingsNavHabitsLabel'); if(settingsNavHabits) settingsNavHabits.textContent=d.settingsNavHabits;
     var settingsNavVoiceWake=$('settingsNavVoiceWakeLabel'); if(settingsNavVoiceWake) settingsNavVoiceWake.textContent=d.settingsNavVoiceWake;
     var settingsNavCamera=$('settingsNavCameraLabel'); if(settingsNavCamera) settingsNavCamera.textContent=d.settingsNavCamera||d.homeWbNavCamera||'摄像头';
+    var settingsNavTray=$('settingsNavTrayLabel'); if(settingsNavTray) settingsNavTray.textContent=d.homeWbNavTray||'托盘菜单';
     var settingsNavModels=$('settingsNavModelsLabel'); if(settingsNavModels) settingsNavModels.textContent=d.settingsNavModels||'识别资源';
     var settingsNavDebug=$('settingsNavDebugLabel'); if(settingsNavDebug) settingsNavDebug.textContent=d.settingsNavDebug;
     var spBasic=$('settingsPanelBasicDesc'); if(spBasic&&!(global.OneToneIslands&&typeof global.OneToneIslands.isMounted==='function'&&global.OneToneIslands.isMounted('settingsPanelBasic'))) spBasic.textContent=d.settingsPanelBasicDesc;
@@ -20,6 +21,8 @@
     var spSoftPad=$('settingsPanelSoftPadDesc'); if(spSoftPad) spSoftPad.textContent=d.settingsPanelSoftPadDesc||'';
     var spSoftPadTitle=$('settingsPanelSoftPadTitle'); if(spSoftPadTitle) spSoftPadTitle.textContent=d.settingsNavSoftPad||'虚拟键盘';
     var spSoftPadBrand=$('softPadPageBrandTitle'); if(spSoftPadBrand) spSoftPadBrand.textContent=d.softPadPageBrandTitle||d.settingsNavSoftPad||'虚拟键盘';
+    var spTray=$('settingsPanelTrayDesc'); if(spTray) spTray.textContent=d.settingsPanelTrayDesc||'';
+    var spTrayTitle=$('settingsPanelTrayTitle'); if(spTrayTitle) spTrayTitle.textContent=d.homeWbNavTray||'托盘菜单';
     var spHabits=$('settingsPanelHabitsDesc'); if(spHabits) spHabits.textContent=d.settingsPanelHabitsDesc;
     var spHabitsTitle=$('settingsPanelHabitsTitle'); if(spHabitsTitle) spHabitsTitle.textContent=d.settingsNavHabits;
     var spVoice=$('settingsPanelVoiceWakeDesc'); if(spVoice) spVoice.textContent=d.settingsPanelVoiceWakeDesc;

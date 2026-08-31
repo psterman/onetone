@@ -21,6 +21,89 @@
   var activeChTab = 'voice';
   var padFlagsTimer = 0;
   var layoutSaveTimer = 0;
+  var traySegs = ['global', 'mic', 'channels', 'event', 'schemes'];
+  var trayListenUnsubs = [];
+
+  function patchTraySeg(seg, payload) {
+    if (!trayState) {
+      trayState = { global: { mode: 'listening', activeChannelIds: [] }, mic: {}, channels: [], event: null };
+    }
+    if (seg === 'global') trayState.global = payload;
+    else if (seg === 'mic') trayState.mic = payload;
+    else if (seg === 'channels') trayState.channels = payload;
+    else if (seg === 'event') trayState.event = payload;
+    else if (seg === 'schemes') trayState.schemes = payload;
+    syncPreview();
+  }
+
+  function applyTrayLayoutCfg(cfg) {
+    if (!cfg) return;
+    var V2 = global.OneToneTrayLayoutV2;
+    var TCC = global.OneToneTrayChannelControls;
+    if (V2 && cfg.version === V2.VERSION && cfg.blocks) {
+      if (TCC && TCC.setTrayLayoutV2) TCC.setTrayLayoutV2(cfg);
+      layout.showEvent = V2.blockVisible(cfg, 'block:event');
+      layout.showInTray = V2.legacyShowInTray(cfg);
+    } else if (V2) {
+      var merged = V2.mergeLayoutWithCatalog(V2.migrateV1(cfg));
+      if (TCC && TCC.setTrayLayoutV2) TCC.setTrayLayoutV2(merged.layout);
+      layout.showEvent = V2.blockVisible(merged.layout, 'block:event');
+      layout.showInTray = V2.legacyShowInTray(merged.layout);
+    } else {
+      layout.showEvent = cfg.showEvent !== false;
+      var s = cfg.showInTray || cfg.show_in_tray || {};
+      layout.showInTray.voice = s.voice !== false;
+      layout.showInTray.keys = s.keys !== false;
+      layout.showInTray.softPad = s.softPad !== false || s.soft_pad !== false;
+      layout.showInTray.camera = !!(s.camera);
+    }
+    syncPreview();
+  }
+
+  function syncBlockVisibility() {
+    var V2 = global.OneToneTrayLayoutV2;
+    var TCC = global.OneToneTrayChannelControls;
+    var lay = TCC && TCC.getTrayLayoutV2 ? TCC.getTrayLayoutV2() : null;
+    if (!V2 || !lay) return;
+    document.querySelectorAll('[data-block-id]').forEach(function (el) {
+      var id = el.getAttribute('data-block-id');
+      el.style.display = V2.blockVisible(lay, id) ? '' : 'none';
+    });
+    var head = $('softPadTrayChannelsHead');
+    if (head) {
+      var anyCh = V2.CHANNELS.some(function (ch) {
+        return V2.blockVisible(lay, V2.channelBlockId(ch));
+      });
+      head.style.display = anyCh ? '' : 'none';
+    }
+  }
+
+  function subscribeTrayLive() {
+    var listen = global.OneToneIpc && global.OneToneIpc.listen;
+    if (!invoke || !listen || trayListenUnsubs.length) return Promise.resolve();
+    return Promise.all(traySegs.map(function (s) {
+      return invoke('cmd_tray_subscribe_segment', { segment: s }).catch(function () {});
+    })).then(function () {
+      return listen('tray://patch', function (ev) {
+        var p = ev.payload || {};
+        if (p.segment) patchTraySeg(p.segment, p.payload);
+      });
+    }).then(function (unsub) {
+      if (typeof unsub === 'function') trayListenUnsubs.push(unsub);
+      return listen('tray://layout', function (ev) {
+        applyTrayLayoutCfg(ev.payload || {});
+      });
+    }).then(function (unsub) {
+      if (typeof unsub === 'function') trayListenUnsubs.push(unsub);
+    }).catch(function () {});
+  }
+
+  function unsubscribeTrayLive() {
+    trayListenUnsubs.forEach(function (fn) {
+      if (typeof fn === 'function') fn();
+    });
+    trayListenUnsubs = [];
+  }
 
   var STAT_IDS = {
     voice: ['softPadTrayStatVoiceEngine', 'softPadTrayStatVoiceWake', 'softPadTrayStatVoiceEvent', 'softPadTrayStatVoiceErr'],
@@ -80,10 +163,40 @@
   }
 
   function heroLabel(mode) {
-    if (mode === 'paused') return '已暂停';
-    if (mode === 'error') return '异常';
-    if (mode === 'listening') return '监听中';
-    return '待命';
+    if (mode === 'silenced') return t('trayHeroSilenced', '静默中');
+    if (mode === 'paused') return t('listenPaused', '已暂停监听');
+    if (mode === 'error') return t('trayChPillUnavailable', '用不了');
+    if (mode === 'listening') return t('trayChHeroListening', '正在听');
+    return t('trayChHeroStandby', '等着');
+  }
+
+  function hasActiveHabit(g) {
+    return !!(g && g.activeHabitId && g.activeHabitLabel && g.activeHabitLabel !== '—');
+  }
+
+  function setTrayText(id, key, fallback) {
+    var el = $(id);
+    if (el) el.textContent = t(key, fallback);
+  }
+
+  function syncTrayCopy() {
+    setTrayText('softPadTrayChannelsHead', 'trayChSecHead', '各功能状态');
+    setTrayText('softPadTrayTabSoftPadLbl', 'codexMicroPadTitle', '小键盘');
+    setTrayText('softPadTrayCardPadTitle', 'codexMicroPadTitle', '小键盘');
+    setTrayText('softPadTrayTabHabitsLbl', 'homeWbNavSchemes', '我的习惯');
+    setTrayText('softPadTrayCardHabitsTitle', 'homeWbNavSchemes', '我的习惯');
+    setTrayText('softPadTrayStatCamPresenceLbl', 'trayChStatCamPresence', '在不在');
+    setTrayText('softPadTrayInspectorTitle', 'trayEditorTitle', '托盘编辑器');
+  }
+
+  function activeMapping() {
+    var bridge = global.OneToneAppBridge;
+    return bridge && bridge.getActiveMapping ? bridge.getActiveMapping() : null;
+  }
+
+  function camAutoMuteOn(cam) {
+    var am = cam && cam.autoMute;
+    return !!(am && (am.enabled || am === true));
   }
 
   function micLabel(mic) {
@@ -126,39 +239,20 @@
     });
   }
 
-  function buildKeysStatsOverride(entry, ch) {
-    var stats = cloneStats(ch);
-    while (stats.length < 4) stats.push({ label: '', value: '—' });
-    var m = entry && entry.mapping;
-    if (!m) return stats;
-    stats[0] = { label: '触发键', value: m.triggerKey ? friendlyKey(m.triggerKey) : '—' };
-    stats[1] = { label: '触发方式', value: modeLabel(m.triggerMode) };
-    stats[2] = { label: '当前习惯', value: entry.title || m.label || m.displayLabel || '—' };
-    return stats;
-  }
-
-  function buildPadStatsOverride(entry, ch) {
-    var stats = cloneStats(ch);
-    while (stats.length < 4) stats.push({ label: '', value: '—' });
-    var m = entry && entry.mapping;
-    var pad = m && m.codexMicroPad;
-    if (!pad) return stats;
-    var keyCount = (pad.keys && pad.keys.length) || 0;
-    stats[0] = { label: '键位', value: keyCount > 0 ? (String(keyCount) + ' 个') : '—' };
-    stats[1] = { label: '绑定 Agent', value: entry.title || '—' };
-    var Hub = global.OneToneSoftPadHub;
-    var visible = Hub && Hub.isOverlayVisible && Hub.isOverlayVisible();
-    stats[2] = {
-      label: '浮层',
-      value: visible ? '可见' : (pad.overlayEnabled !== false ? '已启用' : '隐藏')
-    };
-    return stats;
-  }
-
   function statsForChannel(id, ch) {
-    if (id === 'keys') return buildKeysStatsOverride(resolveHubEntry(), ch);
-    if (id === 'softPad') return buildPadStatsOverride(resolveHubEntry(), ch);
     return cloneStats(ch);
+  }
+
+  function formatEventText(ev) {
+    var TCC = global.OneToneTrayChannelControls;
+    if (TCC && TCC.formatTrayEventText) return TCC.formatTrayEventText(ev);
+    return (ev && ev.text) ? ev.text : t('trayChEventEmpty', '暂无动静');
+  }
+
+  function formatWeekTrend(weekTrend) {
+    var TCC = global.OneToneTrayChannelControls;
+    if (TCC && TCC.formatWeekTrendSummary) return TCC.formatWeekTrendSummary(weekTrend);
+    return '';
   }
 
   function setChTab(id) {
@@ -171,23 +265,98 @@
     document.querySelectorAll('[data-soft-pad-tray-panel]').forEach(function (panel) {
       panel.hidden = panel.getAttribute('data-soft-pad-tray-panel') !== activeChTab;
     });
+    refreshControls(activeChTab);
+  }
+
+  var CHANNEL_DEEP_LINKS = {
+    voice: 'voice',
+    keys: 'keys',
+    softpad: 'softPad',
+    camera: 'camera'
+  };
+
+  function openSettings(opts) {
+    var drawer = global.OneToneSettingsDrawer;
+    if (!drawer) return;
+    if (drawer.open) drawer.open(opts);
+    else if (drawer.openSettings) drawer.openSettings(opts);
+  }
+
+  function handleTrayDeepLink(detail) {
+    detail = detail || {};
+    var href = String(detail.href || '').trim();
+    var tab = String(detail.tab || '').trim();
+    if (!href && tab) href = 'main:' + tab;
+    if (!href) return;
+
+    var path = href.indexOf('main:') === 0 ? href.slice(5) : href;
+    if (path === 'home') {
+      if (global.OneToneSettingsDrawer && global.OneToneSettingsDrawer.close) {
+        global.OneToneSettingsDrawer.close();
+      }
+      return;
+    }
+    if (path === 'habits' || path.indexOf('habits') === 0) {
+      var wizard = href.indexOf('wizard=1') >= 0;
+      openSettings({ panel: 'habits', habitWizard: wizard });
+      return;
+    }
+    if (path === 'cmdk' || path.indexOf('cmdk') === 0) {
+      if (global.__otCommandPalette && global.__otCommandPalette.openPalette) {
+        global.__otCommandPalette.openPalette();
+      }
+      return;
+    }
+    if (path === 'settings') {
+      openSettings({ panel: 'basic' });
+      return;
+    }
+    if (path === 'diagnose') {
+      openSettings({ panel: 'debug', debugMode: 'repair' });
+      return;
+    }
+
+    var ch = CHANNEL_DEEP_LINKS[path.toLowerCase()] || CHANNEL_DEEP_LINKS[path];
+    if (ch) {
+      openSettings({ panel: 'tray' });
+      setChTab(ch);
+      if (mounted) refreshTrayState();
+      return;
+    }
+
+    if (path === 'voice') openSettings({ panel: 'voiceWake' });
+    else if (path === 'keys') openSettings({ panel: 'keys' });
+    else if (path === 'camera') openSettings({ panel: 'camera' });
   }
 
   function readLayoutFromUI() {
     var ev = $('softPadTrayChkEvent');
     layout.showEvent = ev ? ev.checked : true;
-    layout.showInTray.voice = $('softPadTrayShowVoice') ? $('softPadTrayShowVoice').checked : true;
-    layout.showInTray.keys = $('softPadTrayShowKeys') ? $('softPadTrayShowKeys').checked : true;
-    layout.showInTray.softPad = $('softPadTrayShowSoftPad') ? $('softPadTrayShowSoftPad').checked : true;
-    layout.showInTray.camera = $('softPadTrayShowCamera') ? $('softPadTrayShowCamera').checked : false;
+    var TCC = global.OneToneTrayChannelControls;
+    var channels = (TCC && TCC.LAYOUT_CHANNELS) || ['voice', 'keys', 'softPad', 'camera'];
+    channels.forEach(function (ch) {
+      var id = 'softPadTrayChkShow' + ch.charAt(0).toUpperCase() + ch.slice(1);
+      var el = $(id);
+      if (el) layout.showInTray[ch] = el.checked;
+    });
+    if (TCC && TCC.getTrayLayout) {
+      var tl = TCC.getTrayLayout();
+      tl.showEvent = layout.showEvent;
+      channels.forEach(function (ch) { tl.showInTray[ch] = layout.showInTray[ch]; });
+    }
   }
 
   function applyLayoutToUI() {
     if ($('softPadTrayChkEvent')) $('softPadTrayChkEvent').checked = layout.showEvent;
-    if ($('softPadTrayShowVoice')) $('softPadTrayShowVoice').checked = layout.showInTray.voice;
-    if ($('softPadTrayShowKeys')) $('softPadTrayShowKeys').checked = layout.showInTray.keys;
-    if ($('softPadTrayShowSoftPad')) $('softPadTrayShowSoftPad').checked = layout.showInTray.softPad;
-    if ($('softPadTrayShowCamera')) $('softPadTrayShowCamera').checked = layout.showInTray.camera;
+    var TCC = global.OneToneTrayChannelControls;
+    if (TCC && TCC.syncTrayLayoutTogglesFromState) TCC.syncTrayLayoutTogglesFromState();
+  }
+
+  function mountLayoutToggles() {
+    var host = $('softPadTrayLayoutChannels');
+    var TCC = global.OneToneTrayChannelControls;
+    if (!host || !TCC || !TCC.renderTrayLayoutToggles) return;
+    TCC.renderTrayLayoutToggles(host, { onChange: onLayoutChange });
   }
 
   function layoutPayload() {
@@ -237,42 +406,60 @@
     syncTabUi(id, ch);
   }
 
-  function voiceEngineOn(cfg) {
-    if (!cfg) return false;
-    var eng = String(cfg.desiredEngine || cfg.desired_engine || '').toLowerCase();
-    if (eng && eng !== 'none') return true;
-    return !!(
-      (cfg.voiceVosk && cfg.voiceVosk.enabled) ||
-      (cfg.voiceSapi && cfg.voiceSapi.enabled) ||
-      (cfg.voiceKws && cfg.voiceKws.enabled)
-    );
+  function refreshControls(channel) {
+    var TCC = global.OneToneTrayChannelControls;
+    if (!TCC || !TCC.mountInspectorControls) return Promise.resolve();
+    if (channel) return TCC.mountInspectorControls(channel, trayState);
+    return TCC.mountAllInspectorControls(trayState);
   }
 
-  function syncSwitchesFromConfig() {
-    var cfg = readConfig();
-    if (!cfg) return;
-    setMiniToggle($('softPadTraySwVoiceEngine'), voiceEngineOn(cfg));
-    var ve = cfg.voiceEnd || cfg.voice_end || {};
-    setMiniToggle($('softPadTraySwVoiceEnd'), ve.enabled !== false);
-
-    var entry = resolveHubEntry();
-    var pad = entry && entry.mapping && entry.mapping.codexMicroPad;
-    if (pad) {
-      setMiniToggle($('softPadTraySwPadEnabled'), !!pad.enabled);
-      setMiniToggle($('softPadTraySwPadOverlay'), pad.overlayEnabled !== false);
-    }
-
-    var cam = cfg.cameraPrefs || cfg.camera_prefs || {};
-    setMiniToggle($('softPadTraySwCamEnabled'), !!cam.enabled);
-    var pa = cam.presenceActions || cam.presence_actions || {};
-    setMiniToggle($('softPadTraySwCamPresence'), !!pa.enabled);
-  }
-
-  var HERO_CHIP_LABEL = { voice: '语音', keys: '按键', softPad: 'Pad', camera: '摄像头' };
+  var HERO_CHIP_LABEL = { voice: '语音', keys: '按键', softPad: '小键盘', camera: '摄像头' };
 
   function syncHeroPreview(g) {
     g = g || {};
     if ($('softPadTrayHeroText')) $('softPadTrayHeroText').textContent = heroLabel(g.mode);
+    var ctxEl = $('softPadTrayHeroCtx');
+    if (ctxEl) {
+      if (!hasActiveHabit(g)) {
+        ctxEl.textContent = t('trayHeroNoHabit', '未配置习惯');
+      } else if (!g.userLabel || g.userLabel === '—') {
+        ctxEl.textContent = t('trayHeroHabitOnly', '习惯「{name}」').replace('{name}', g.activeHabitLabel);
+      } else {
+        ctxEl.textContent = g.userLabel + ' · ' + t('trayHeroHabitOnly', '习惯「{name}」').replace('{name}', g.activeHabitLabel);
+      }
+    }
+    var statsEl = $('softPadTrayHeroStats');
+    if (statsEl) {
+      if (!hasActiveHabit(g)) {
+        statsEl.textContent = '';
+        statsEl.hidden = true;
+      } else {
+        var total = g.todayTotalCount || 0;
+        if (!total) {
+          statsEl.textContent = t('trayTodayEmpty', '今日暂无');
+        } else {
+          var line = t('trayTodayTotal', '今日 {n} 次').replace('{n}', String(total));
+          var hc = g.todayHabitCount || 0;
+          if (hc > 0 && g.activeHabitLabel) {
+            line += ' · ' + g.activeHabitLabel + ' ' + hc + t('trayTodayHabitSuffix', ' 次');
+          }
+          statsEl.textContent = line;
+        }
+        statsEl.hidden = false;
+      }
+    }
+    var trendEl = $('softPadTrayHeroTrend');
+    if (trendEl) {
+      var trendLine = formatWeekTrend(g.weekTrend);
+      trendEl.textContent = trendLine;
+      trendEl.hidden = !trendLine;
+    }
+    var pauseBtn = $('softPadTrayHeroPause');
+    if (pauseBtn) {
+      pauseBtn.textContent = g.mode === 'paused' || g.mode === 'silenced'
+        ? t('trayChHeroResume', '继续听')
+        : t('trayChHeroPause', '先停一下');
+    }
     if ($('softPadTrayHeroPulse')) {
       $('softPadTrayHeroPulse').style.display = g.mode === 'listening' ? '' : 'none';
     }
@@ -294,6 +481,7 @@
   function syncPreview() {
     var shell = $('softPadTrayPreviewShell');
     if (!shell) return;
+    syncBlockVisibility();
     shell.dataset.hideEvent = layout.showEvent ? 'false' : 'true';
     var any = layout.showInTray.voice || layout.showInTray.keys ||
       layout.showInTray.softPad || layout.showInTray.camera;
@@ -312,22 +500,18 @@
     ['voice', 'keys', 'softPad', 'camera'].forEach(function (id) {
       syncChannelUi(id, chById(trayState, id));
     });
-    syncSwitchesFromConfig();
+    syncTrayCopy();
 
     if ($('softPadTrayMicLabel')) {
       $('softPadTrayMicLabel').textContent = '麦克风 · ' + micLabel(mic);
     }
-    if ($('softPadTrayInsMicStatus')) {
-      $('softPadTrayInsMicStatus').textContent = micLabel(mic);
-    }
     setMiniToggle($('softPadTrayMicToggle'), mic.available && !mic.muted);
-    setMiniToggle($('softPadTrayInsMicToggle'), mic.available && !mic.muted);
 
     var ev = trayState.event;
     var evCard = $('softPadTrayEventCard');
     if (evCard) evCard.hidden = !layout.showEvent;
-    if (ev && $('softPadTrayEventBody')) {
-      $('softPadTrayEventBody').textContent = ev.text || '—';
+    if ($('softPadTrayEventBody')) {
+      $('softPadTrayEventBody').textContent = ev ? formatEventText(ev) : t('trayChEventEmpty', '暂无动静');
     }
   }
 
@@ -351,20 +535,16 @@
   function loadCustomization() {
     if (!invoke) return Promise.resolve();
     return invoke('cmd_tray_customization_get').then(function (cfg) {
-      if (!cfg) return;
-      layout.showEvent = cfg.showEvent !== false;
-      var s = cfg.showInTray || {};
-      layout.showInTray.voice = s.voice !== false;
-      layout.showInTray.keys = s.keys !== false;
-      layout.showInTray.softPad = s.softPad !== false;
-      layout.showInTray.camera = !!s.camera;
-      applyLayoutToUI();
-      syncPreview();
+      applyTrayLayoutCfg(cfg);
     }).catch(function () {});
   }
 
   function saveCustomization() {
     if (!invoke) return Promise.resolve();
+    var TCC = global.OneToneTrayChannelControls;
+    if (TCC && TCC.saveCustomization) {
+      return TCC.saveCustomization(TCC.getTrayLayoutV2 && TCC.getTrayLayoutV2());
+    }
     return invoke('cmd_tray_customization_save', layoutPayload()).catch(function () {});
   }
 
@@ -375,73 +555,21 @@
     }).catch(function () {});
   }
 
-  function persistVoiceEngine(on) {
-    if (!invoke) return;
-    var cfg = readConfig();
-    var eng = 'none';
-    if (on) {
-      var cur = cfg && String(cfg.desiredEngine || cfg.desired_engine || '').toLowerCase();
-      eng = (cur && cur !== 'none') ? cur : 'vosk';
-    }
-    invoke('cmd_voice_set_desired_engine', { engine: eng }).then(function () {
-      return refreshTrayState();
-    }).catch(function () {});
-  }
-
-  function persistVoiceEnd(on) {
-    if (!invoke) return;
-    invoke('cmd_voice_end_set_enabled', { enabled: !!on }).then(function () {
-      return refreshTrayState();
-    }).catch(function () {});
-  }
-
-  function persistPadFlags(opts) {
-    opts = opts || {};
-    var entry = resolveHubEntry();
-    var m = entry && entry.mapping;
-    var pad = m && m.codexMicroPad;
-    if (!invoke || !m || !pad) return;
-    if (opts.enabled != null) pad.enabled = !!opts.enabled;
-    if (opts.overlayEnabled != null) pad.overlayEnabled = !!opts.overlayEnabled;
-    clearTimeout(padFlagsTimer);
-    padFlagsTimer = setTimeout(function () {
-      invoke('cmd_codex_micro_pad_set_flags', {
-        mappingId: String(m.id),
-        enabled: !!pad.enabled,
-        requireNumLockOff: !!pad.requireNumLockOff,
-        overlayEnabled: pad.overlayEnabled !== false,
-        requireForeground: pad.requireForeground !== false,
-        navKeysEnabled: pad.showNavigationPad !== false && pad.navKeysEnabled !== false
-      }).then(function () {
-        return refreshTrayState();
-      }).catch(function () {});
-    }, 120);
-  }
-
-  function persistCameraQuiet(patch) {
-    var cfg = readConfig();
-    if (!cfg) return;
-    if (!cfg.cameraPrefs) cfg.cameraPrefs = {};
-    if (patch.enabled != null) cfg.cameraPrefs.enabled = !!patch.enabled;
-    if (patch.presenceEnabled != null) {
-      if (!cfg.cameraPrefs.presenceActions) cfg.cameraPrefs.presenceActions = {};
-      cfg.cameraPrefs.presenceActions.enabled = !!patch.presenceEnabled;
-    }
-    var persist = global.OneToneConfigPersist;
-    if (persist && persist.saveCameraPrefsQuiet) {
-      persist.saveCameraPrefsQuiet();
-      setTimeout(refreshTrayState, 300);
-    }
-  }
-
-  function wireMiniToggle(id, handler) {
-    var el = $(id);
-    if (!el || el.__otTraySwBound) return;
-    el.__otTraySwBound = true;
-    el.addEventListener('click', function () {
-      var on = el.getAttribute('aria-checked') !== 'true';
-      setMiniToggle(el, on);
-      handler(on);
+  function injectChannelTabIcons() {
+    var Icons = global.OneToneIcons;
+    if (!Icons || !Icons.channelHtml) return;
+    document.querySelectorAll('.soft-pad-tray-ch-subtab[data-ch-tab]').forEach(function (tab) {
+      var ch = tab.getAttribute('data-ch-tab');
+      var host = tab.querySelector('.soft-pad-tray-ch-subtab__ic');
+      if (!host) {
+        host = document.createElement('span');
+        host.className = 'soft-pad-tray-ch-subtab__ic';
+        host.setAttribute('aria-hidden', 'true');
+        var lbl = tab.querySelector('.soft-pad-tray-ch-subtab__lbl');
+        if (lbl) tab.insertBefore(host, lbl);
+        else tab.insertBefore(host, tab.firstChild);
+      }
+      host.innerHTML = Icons.channelHtml(ch, { size: 13, className: 'ot-ic' });
     });
   }
 
@@ -449,11 +577,10 @@
     if (mounted) return;
     mounted = true;
 
-    ['softPadTrayChkEvent', 'softPadTrayShowVoice', 'softPadTrayShowKeys',
-      'softPadTrayShowSoftPad', 'softPadTrayShowCamera'].forEach(function (id) {
-      var el = $(id);
-      if (el) el.addEventListener('change', onLayoutChange);
-    });
+    injectChannelTabIcons();
+
+    var evChk = $('softPadTrayChkEvent');
+    if (evChk) evChk.addEventListener('change', onLayoutChange);
 
     document.querySelectorAll('.soft-pad-tray-ch-subtab').forEach(function (tab) {
       tab.addEventListener('click', function () {
@@ -462,30 +589,61 @@
     });
     setChTab(activeChTab);
 
-    wireMiniToggle('softPadTraySwVoiceEngine', persistVoiceEngine);
-    wireMiniToggle('softPadTraySwVoiceEnd', persistVoiceEnd);
-    wireMiniToggle('softPadTraySwPadEnabled', function (on) { persistPadFlags({ enabled: on }); });
-    wireMiniToggle('softPadTraySwPadOverlay', function (on) { persistPadFlags({ overlayEnabled: on }); });
-    wireMiniToggle('softPadTraySwCamEnabled', function (on) { persistCameraQuiet({ enabled: on }); });
-    wireMiniToggle('softPadTraySwCamPresence', function (on) { persistCameraQuiet({ presenceEnabled: on }); });
-
-    [$('softPadTrayMicToggle'), $('softPadTrayInsMicToggle')].forEach(function (el) {
-      if (!el) return;
-      el.addEventListener('click', function () { trayAction('mic_toggle'); });
-    });
+    var micToggle = $('softPadTrayMicToggle');
+    if (micToggle) micToggle.addEventListener('click', function () { trayAction('mic_toggle'); });
 
     var pauseBtn = $('softPadTrayHeroPause');
     if (pauseBtn) pauseBtn.addEventListener('click', function () { trayAction('listen_toggle'); });
+
+    document.querySelectorAll('.soft-pad-tray-ch-row[data-tray-ch]').forEach(function (row) {
+      row.addEventListener('click', function () {
+        setChTab(row.getAttribute('data-tray-ch'));
+      });
+    });
+
+    var evCard = $('softPadTrayEventCard');
+    if (evCard) {
+      evCard.addEventListener('click', function () {
+        handleTrayDeepLink({ href: 'main:diagnose' });
+      });
+    }
+
+    if (!global.__otTrayChannelConfigBound) {
+      global.__otTrayChannelConfigBound = true;
+      global.addEventListener('channel-config:changed', function () {
+        if (!mounted) return;
+        refreshControls(activeChTab);
+        refreshTrayState();
+      });
+    }
   }
 
-  function onFaceEnter() {
+  function onPanelEnter(opts) {
+    opts = opts || {};
     wireOnce();
-    setChTab(activeChTab);
-    loadCustomization().then(function () { return refreshTrayState(); });
+    syncTrayCopy();
+    var editor = global.OneToneTrayLayoutEditor;
+    var mountEditor = editor && editor.mount
+      ? editor.mount({
+          trayEditorFocus: opts.trayEditorFocus || null,
+          onChange: syncPreview
+        })
+      : Promise.resolve();
+    subscribeTrayLive().then(function () {
+      return mountEditor;
+    }).then(function () {
+      return loadCustomization();
+    }).then(function () {
+      return refreshTrayState();
+    });
   }
 
-  function onFaceLeave() {
-    if (layoutSaveTimer) {
+  function onPanelLeave() {
+    unsubscribeTrayLive();
+    var editor = global.OneToneTrayLayoutEditor;
+    if (editor && editor.isDirty && editor.isDirty()) {
+      editor.save();
+    } else if (layoutSaveTimer) {
       clearTimeout(layoutSaveTimer);
       layoutSaveTimer = 0;
       saveCustomization();
@@ -493,9 +651,21 @@
   }
 
   global.OneToneSoftPadTrayUi = {
-    onFaceEnter: onFaceEnter,
-    onFaceLeave: onFaceLeave,
+    onPanelEnter: onPanelEnter,
+    onPanelLeave: onPanelLeave,
+    onFaceEnter: onPanelEnter,
+    onFaceLeave: onPanelLeave,
     refresh: refreshTrayState,
-    getLayout: function () { return layout; }
+    refreshControls: refreshControls,
+    getLayout: function () { return layout; },
+    handleDeepLink: handleTrayDeepLink,
+    setChannelTab: setChTab
   };
+
+  if (typeof window !== 'undefined' && !window.__otTrayDeepLinkBound) {
+    window.__otTrayDeepLinkBound = true;
+    window.addEventListener('tray-deep-link', function (ev) {
+      handleTrayDeepLink(ev && ev.detail ? ev.detail : {});
+    });
+  }
 })(typeof window !== 'undefined' ? window : globalThis);

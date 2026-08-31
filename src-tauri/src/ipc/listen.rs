@@ -33,7 +33,7 @@ pub fn pause_listen(state: &Arc<AppState>, app: &AppHandle) {
         "listen paused",
         None,
     );
-    crate::tray::refresh_menu(app);
+    crate::tray::refresh_menu_data(app);
     crate::tray::refresh_tray_tooltip(app, state.as_ref());
     crate::tray::refresh_tray_visual_forced(app);
     crate::coach_hud::push_state(app, state.as_ref());
@@ -42,6 +42,7 @@ pub fn pause_listen(state: &Arc<AppState>, app: &AppHandle) {
 
 pub fn resume_listen(state: &Arc<AppState>, app: &AppHandle) {
     *state.paused.lock() = false;
+    *state.listen_silence_until_ms.lock() = None;
     // ACK / tray / HUD first — activate_desired_engine can take hundreds of ms.
     let ack = serde_json::json!({"type":"mvp_resumed","ok":true});
     emit_to_main_if_available(app, Some(state), ack);
@@ -54,7 +55,7 @@ pub fn resume_listen(state: &Arc<AppState>, app: &AppHandle) {
         "listen resumed",
         None,
     );
-    crate::tray::refresh_menu(app);
+    crate::tray::refresh_menu_data(app);
     crate::tray::refresh_tray_tooltip(app, state.as_ref());
     crate::tray::refresh_tray_visual_forced(app);
     crate::coach_hud::push_state(app, state.as_ref());
@@ -64,4 +65,63 @@ pub fn resume_listen(state: &Arc<AppState>, app: &AppHandle) {
     std::thread::spawn(move || {
         crate::voice_bootstrap::resume_voice_engines(&app_h, &state_h);
     });
+}
+
+fn ms_until_utc_end_of_day() -> u64 {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let secs_in_day = secs % 86_400;
+    (86_400 - secs_in_day).saturating_mul(1000)
+}
+
+/// Timed silence — pauses listen until `now + duration_ms` then auto-resumes.
+pub fn silence_listen_for(state: &Arc<AppState>, app: &AppHandle, duration_ms: u64) {
+    let until = crate::runtime_event::now_ms().saturating_add(duration_ms.max(60_000));
+    *state.listen_silence_until_ms.lock() = Some(until);
+    if !*state.paused.lock() {
+        pause_listen(state, app);
+    } else {
+        crate::tray::refresh_menu_data(app);
+        crate::coach_hud::push_state(app, state.as_ref());
+    }
+    schedule_silence_resume(state, app, until);
+}
+
+fn schedule_silence_resume(state: &Arc<AppState>, app: &AppHandle, until_ms: u64) {
+    let state_h = Arc::clone(state);
+    let app_h = app.clone();
+    std::thread::spawn(move || {
+        loop {
+            let now = crate::runtime_event::now_ms();
+            let target = *state_h.listen_silence_until_ms.lock();
+            let Some(until) = target else {
+                return;
+            };
+            if until != until_ms {
+                return;
+            }
+            if now >= until {
+                *state_h.listen_silence_until_ms.lock() = None;
+                if *state_h.paused.lock() {
+                    resume_listen(&state_h, &app_h);
+                } else {
+                    crate::tray::refresh_menu_data(&app_h);
+                }
+                return;
+            }
+            let wait = (until - now).min(500);
+            std::thread::sleep(std::time::Duration::from_millis(wait));
+        }
+    });
+}
+
+pub fn silence_listen_minutes(state: &Arc<AppState>, app: &AppHandle, minutes: u64) {
+    silence_listen_for(state, app, minutes.saturating_mul(60_000));
+}
+
+pub fn silence_listen_until_eod(state: &Arc<AppState>, app: &AppHandle) {
+    // ponytail: UTC midnight boundary; upgrade to local TZ when platform helper exists.
+    silence_listen_for(state, app, ms_until_utc_end_of_day());
 }

@@ -333,6 +333,28 @@ pub fn stats_by_mapping(hours: Option<u64>) -> ActionHistoryStatsResult {
     ActionHistoryStatsResult { hours, rows }
 }
 
+/// Usage counts for each of the last `days` calendar buckets (oldest → newest).
+pub fn usage_counts_last_days(days: u64) -> Vec<u64> {
+    let days = days.clamp(1, 30) as usize;
+    let now = crate::runtime_event::now_ms();
+    let today = day_bucket(now);
+    let start_day = today.saturating_sub(days as u64 - 1);
+    let cutoff = start_day.saturating_mul(86_400_000);
+    let mut buckets = vec![0u64; days];
+    let merged = merge_entries(read_jsonl_entries(), recent_ring(RING_CAPACITY));
+    for e in merged.into_iter().filter(|e| e.ts_ms >= cutoff && is_usage_entry(e)) {
+        let d = day_bucket(e.ts_ms);
+        if d < start_day || d > today {
+            continue;
+        }
+        let idx = (d - start_day) as usize;
+        if idx < buckets.len() {
+            buckets[idx] += 1;
+        }
+    }
+    buckets
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

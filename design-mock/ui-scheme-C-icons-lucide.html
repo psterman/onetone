@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>方案 C · 统一 Lucide 图标</title>
+  <style>
+    :root {
+      --primary: #2a9cc4; --primary-soft: #e6f7fc; --surface: #fff;
+      --on: #152238; --muted: #5a7086; --outline: rgba(26,45,74,.1);
+      --radius: 12px; --shadow: 0 10px 28px rgba(26,45,74,.16);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px; background: #e8edf3; font-family: "Segoe UI","PingFang SC",sans-serif; font-size: 13px; }
+    .banner { font-size: 11px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; max-width: 316px; margin-left: auto; margin-right: auto; }
+    .banner b { color: #1e87ad; }
+    .banner a { color: #1e87ad; }
+
+    .split { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; align-items: flex-start; }
+    .col { width: 316px; }
+    .col-label { font-size: 10px; font-weight: 700; text-align: center; margin-bottom: 6px; color: var(--muted); }
+    .col-label.bad { color: #dc2626; }
+    .col-label.good { color: #2e7d4f; }
+
+    .tray {
+      background: var(--surface); border: 1px solid var(--outline);
+      border-radius: var(--radius); box-shadow: var(--shadow); padding: 5px;
+    }
+    .hero { margin: 4px; padding: 10px 12px; background: var(--primary-soft); border-radius: 10px; display: flex; gap: 8px; align-items: center; }
+    .hero b { font-size: 14px; }
+    .sec { font-size: 10px; color: var(--muted); padding: 6px 12px 2px; }
+
+    /* 现版：emoji + 不一致尺寸 */
+    .ch-old { display: flex; gap: 8px; padding: 6px 10px; margin: 0 4px; font-size: 12px; }
+    .ch-old .emo { font-size: 18px; line-height: 1; }
+    .toggle-old { width: 28px; height: 14px; border-radius: 7px; background: #ccc; border: none; }
+    .tabs-old { display: flex; margin: 6px 4px; font-size: 16px; justify-content: space-around; }
+
+    /* C 方案：Lucide 14px 统一 */
+    .ic { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+    .ic-wrap {
+      width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,163,255,.1); color: #00a3ff;
+    }
+    .ic-wrap.keys { background: var(--primary-soft); color: var(--primary); }
+    .ch-new { display: flex; gap: 8px; padding: 7px 10px; margin: 0 4px; align-items: flex-start; }
+    .ch-new .body { flex: 1; }
+    .ch-new .name { font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+    .ch-new .meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .toggle-new {
+      width: 34px; height: 18px; border-radius: 10px; background: var(--primary); border: none; position: relative;
+    }
+    .toggle-new::after { content: ''; position: absolute; top: 2px; left: 18px; width: 14px; height: 14px; border-radius: 50%; background: #fff; }
+    .tabs-new {
+      display: flex; margin: 6px 4px; gap: 2px; padding: 3px; background: #f1f5f9; border-radius: 8px;
+    }
+    .tab-new {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 6px 2px; border: none; background: transparent; font-size: 9px; font-weight: 600;
+      color: var(--muted); cursor: pointer; border-radius: 6px;
+    }
+    .tab-new.on { background: #fff; color: var(--on); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+    .tab-new .ic { width: 13px; height: 13px; }
+
+    .note { max-width: 660px; margin: 14px auto 0; font-size: 11px; color: var(--muted); padding: 10px; background: #fff; border-radius: 8px; border: 1px solid var(--outline); line-height: 1.5; }
+    code { font-size: 10px; background: #f1f5f9; padding: 1px 4px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <p class="banner"><b>方案 C</b> · <code>icons.js</code> Lucide 14px 全站 · <a href="ui-unify-abcd-compare.html">← 对比</a></p>
+
+  <div class="split">
+    <div class="col">
+      <div class="col-label bad">现版 · emoji + 多套 SVG</div>
+      <div class="tray">
+        <div class="hero"><b>监听中</b></div>
+        <div class="sec">通道</div>
+        <div class="ch-old"><span class="emo">🎤</span><span>语音 · KWS</span><button class="toggle-old"></button></div>
+        <div class="ch-old"><span class="emo">⌨</span><span>按键 · F13</span><button class="toggle-old"></button></div>
+        <div class="tabs-old"><span>🎤</span><span>⌨</span><span>▦</span><span>📷</span></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="col-label good">C 方案 · icons.js</div>
+      <div class="tray">
+        <div class="hero"><b>正在听</b></div>
+        <div class="sec">各功能状态</div>
+        <div class="ch-new">
+          <span class="ic-wrap"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></span>
+          <div class="body">
+            <div class="name">语音</div>
+            <div class="meta">说「开始输入」就能用</div>
+          </div>
+          <button type="button" class="toggle-new"></button>
+        </div>
+        <div class="ch-new">
+          <span class="ic-wrap keys"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="7" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="17" cy="12" r="1" fill="currentColor" stroke="none"/></svg></span>
+          <div class="body">
+            <div class="name">按键</div>
+            <div class="meta">按 F13 启动</div>
+          </div>
+          <button type="button" class="toggle-new"></button>
+        </div>
+        <div class="tabs-new">
+          <button type="button" class="tab-new on"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>语音</button>
+          <button type="button" class="tab-new"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/></svg>按键</button>
+          <button type="button" class="tab-new"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/></svg>Pad</button>
+          <button type="button" class="tab-new"><svg class="ic" viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>摄像</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">
+    <strong>实现：</strong>新建 <code>src/js/core/icons.js</code> 导出 Lucide path；
+    <code>tray-menu.html</code> ICONS 对象、Face3 子 tab、React 岛共用同一源（岛可用 lucide-react 或读同一常量）。<br>
+  <strong>成本最低 P0</strong>：CSS 可仍陈旧，只换图标即显著变整齐。
+  </p>
+</body>
+</html>

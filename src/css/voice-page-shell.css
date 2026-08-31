@@ -2284,44 +2284,8 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   gap: 12px;
 }
 
-#settingsPanelVoiceWake.voice-page-desk .voice-recognize-intent-tabs {
-  display: flex;
-  width: 100%;
-  gap: 2px;
-  padding: 4px;
-  border-radius: 12px;
-  background: var(--surface-soft);
-  border: 1px solid var(--outline-variant);
-}
-
-#settingsPanelVoiceWake.voice-page-desk .voice-recognize-intent-tabs[hidden] {
-  display: none !important;
-}
-
-#settingsPanelVoiceWake.voice-page-desk .voice-recognize-intent-tab {
-  flex: 1 1 0;
-  min-width: 0;
-  height: 38px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--on-surface-muted);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-}
-
-#settingsPanelVoiceWake.voice-page-desk .voice-recognize-intent-tab:hover {
-  color: var(--on-surface);
-}
-
-#settingsPanelVoiceWake.voice-page-desk .voice-recognize-intent-tab.is-on {
-  background: var(--surface-high);
-  color: var(--on-surface);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
-  font-weight: 700;
-}
+#settingsPanelVoiceWake.voice-page-desk .voice-recognize-intent-tabs,
+#settingsPanelVoiceWake.voice-page-desk .voice-recognize-intent-tab { /* → ot-seg.css */ }
 
 #settingsPanelVoiceWake.voice-page-desk .voice-recognize-phrase-card {
   display: grid;
@@ -2401,19 +2365,10 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   color: var(--on-surface-variant, #64748b);
 }
 
-#settingsPanelVoiceWake.voice-page-desk .voice-phrase-kind-tabs {
-  display: inline-flex;
-  gap: 2px;
-  margin-left: auto;
-  padding: 2px;
-  border-radius: 8px;
-  border: 1px solid var(--outline-variant);
-  background: var(--surface-soft);
-}
-
-#settingsPanelVoiceWake.voice-page-desk .voice-phrase-kind-tabs[hidden] {
-  display: none !important;
-}
+#settingsPanelVoiceWake.voice-page-desk .voice-phrase-kind-tabs,
+#settingsPanelVoiceWake.voice-page-desk .voice-phrase-kind-tab,
+#settingsPanelVoiceWake.voice-page-desk .voice-recognize-intent-tabs,
+#settingsPanelVoiceWake.voice-page-desk .voice-recognize-intent-tab { /* → ot-seg.css */ }
 
 #settingsPanelVoiceWake.voice-page-desk .voice-control-acoustic-host:empty {
   min-height: 72px;
@@ -2421,37 +2376,6 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
 
 #settingsPanelVoiceWake.voice-page-desk .voice-phrase-kind-pane[data-phrase-kind-pane="sound"]:not([hidden]) .voice-control-acoustic-host {
   min-height: 72px;
-}
-
-#settingsPanelVoiceWake.voice-page-desk .voice-phrase-kind-tab {
-  height: 26px;
-  padding: 0 12px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: var(--on-surface-variant, #64748b);
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-#settingsPanelVoiceWake.voice-page-desk .voice-phrase-kind-tab.is-on {
-  border: none;
-  background: var(--surface-high);
-  color: var(--primary);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
-}
-
-#settingsPanelVoiceWake.voice-page-desk .voice-sound-sample-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 44px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px dashed var(--outline-variant);
-  background: var(--surface-soft, #f8fafc);
 }
 
 #settingsPanelVoiceWake.voice-page-desk .voice-sound-sample-title {
@@ -2608,14 +2532,15 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   border-bottom: 1px solid var(--outline-variant);
 }
 
-#settingsPanelVoiceWake.voice-page-desk .voice-wake-kind-tabs .voice-phrase-kind-tab.is-on {
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-kind-tabs .voice-phrase-kind-tab.is-on,
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-kind-tabs .voice-phrase-kind-tab.is-active {
   background: var(--primary, #0a95e8);
   border-color: var(--primary, #0a95e8);
   color: #fff;
   font-weight: 600;
 }
 
-#settingsPanelVoiceWake.voice-page-desk .voice-wake-kind-tabs .voice-phrase-kind-tab:not(.is-on) {
+#settingsPanelVoiceWake.voice-page-desk .voice-wake-kind-tabs .voice-phrase-kind-tab:not(.is-on):not(.is-active) {
   background: var(--surface-high);
   border-color: var(--outline-variant);
   color: var(--on-surface);

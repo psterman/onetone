@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UI 统一 A/B/C/D 方案综合对比</title>
+  <style>
+    :root {
+      --bg: #eef2f7; --surface: #fff; --muted: #5a7086;
+      --outline: rgba(26,45,74,.12); --radius: 12px;
+      font-family: "Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 16px 48px; background: var(--bg); color: #152238; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    .lede { font-size: 13px; color: var(--muted); line-height: 1.6; max-width: 900px; margin-bottom: 20px; }
+    .links { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+    .links a {
+      font-size: 12px; font-weight: 600; padding: 8px 14px; border-radius: 8px;
+      background: #fff; border: 1px solid var(--outline); color: #1e87ad; text-decoration: none;
+    }
+    .links a:hover { background: #e6f7fc; }
+    .grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; max-width: 1280px;
+    }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius);
+      overflow: hidden; box-shadow: 0 4px 16px rgba(26,45,74,.08);
+    }
+    .card-head {
+      padding: 12px 14px; border-bottom: 1px solid var(--outline); background: #f8fafc;
+    }
+    .card-head h2 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+    .card-head .badge {
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
+      background: #e6f7fc; color: #0e7490;
+    }
+    .card-head p { margin: 6px 0 0; font-size: 11px; color: var(--muted); line-height: 1.45; }
+    .card-frame {
+      background: linear-gradient(160deg, #dce4ec, #c5d0dc);
+      padding: 16px 12px; min-height: 380px; display: flex; justify-content: center; align-items: flex-start;
+    }
+    .card-frame iframe { width: 340px; height: 400px; border: none; border-radius: 8px; background: transparent; }
+    .matrix {
+      max-width: 1280px; margin-top: 24px; background: #fff; border: 1px solid var(--outline);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .matrix h3 { margin: 0; padding: 14px 16px; font-size: 14px; border-bottom: 1px solid var(--outline); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { text-align: left; padding: 10px 14px; border-top: 1px solid var(--outline); vertical-align: top; }
+    th { background: #f8fafc; color: var(--muted); font-size: 11px; }
+    .rec { color: #2e7d4f; font-weight: 700; }
+    .warn { color: #b9530a; }
+  </style>
+</head>
+<body>
+  <h1>UI 统一方案 A/B/C/D · 综合对比</h1>
+  <p class="lede">
+    同一托盘通道 UI 切片（Hero + 语音/按键行 + 开关 + 子 tab），四套路线各做一版原型。
+    <strong>不必全站 shadcn</strong>；推荐组合 <strong>C + D + B</strong>，A 仅用于 React 新岛。
+  </p>
+  <div class="links">
+    <a href="ui-scheme-A-island-shadcn.html">A · React 岛 + shadcn 子集</a>
+    <a href="ui-scheme-B-ot-primitives.html">B · ot-primitives 原语层</a>
+    <a href="ui-scheme-C-icons-lucide.html">C · 统一 Lucide 图标</a>
+    <a href="ui-scheme-D-token-align.html">D · Token 对齐</a>
+    <a href="tray-channel-switches-refined.html">↗ 托盘文案定稿</a>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-head">
+        <h2><span class="badge">A</span> React 岛 + shadcn</h2>
+        <p>新功能只在 .ot-island 内用 Radix/shadcn 原语；托盘仍 legacy。主色偏蓝 HSL，圆角 8px，focus ring。</p>
+      </div>
+      <div class="card-frame"><iframe src="ui-scheme-A-island-shadcn.html" title="方案 A"></iframe></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <h2><span class="badge">B</span> ot-primitives</h2>
+        <p>legacy + tray 共用 Switch / Pill / Row / SecHead 类名；不引 React。组件形态统一，token 可另对齐。</p>
+      </div>
+      <div class="card-frame"><iframe src="ui-scheme-B-ot-primitives.html" title="方案 B"></iframe></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <h2><span class="badge">C</span> 统一图标</h2>
+        <p>Lucide 14px 全站引用；去掉 emoji tab。样式可仍陈旧，但图标一眼整齐。成本最低 P0。</p>
+      </div>
+      <div class="card-frame"><iframe src="ui-scheme-C-icons-lucide.html" title="方案 C"></iframe></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <h2><span class="badge">D</span> Token 对齐</h2>
+        <p>legacy 青 #2a9cc4 与岛蓝 HSL 分裂 → 统一语义变量。左：分裂感；右：对齐后。</p>
+      </div>
+      <div class="card-frame"><iframe src="ui-scheme-D-token-align.html" title="方案 D"></iframe></div>
+    </div>
+  </div>
+
+  <div class="matrix">
+    <h3>决策矩阵</h3>
+    <table>
+      <thead>
+        <tr><th>维度</th><th>A 岛 shadcn</th><th>B 原语层</th><th>C 图标</th><th>D Token</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>解决什么</td>
+          <td>React 新区现代组件</td>
+          <td>Switch/Pill/Row 不各写一套</td>
+          <td>emoji/多套 SVG 混乱</td>
+          <td>「两个产品」色差</td>
+        </tr>
+        <tr>
+          <td>托盘 tray-menu</td>
+          <td class="warn">不直接适用</td>
+          <td class="rec">直接适用</td>
+          <td class="rec">直接适用</td>
+          <td class="rec">直接适用</td>
+        </tr>
+        <tr>
+          <td>实现成本</td>
+          <td>低（已有 P15a）</td>
+          <td>中（抽 CSS + 改引用）</td>
+          <td>低（icons.js）</td>
+          <td>低（theme.css 映射）</td>
+        </tr>
+        <tr>
+          <td>迁移冲突</td>
+          <td>无（岛内限定）</td>
+          <td>无</td>
+          <td>无</td>
+          <td>无</td>
+        </tr>
+        <tr>
+          <td>推荐优先级</td>
+          <td>P2 岛内补缺</td>
+          <td>P1 与托盘改版捆绑</td>
+          <td class="rec">P0</td>
+          <td class="rec">P0</td>
+        </tr>
+        <tr>
+          <td>不做的事</td>
+          <td colspan="4">全站 npx shadcn init、legacy 改 React SPA、托盘迁岛</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

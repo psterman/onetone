@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>托盘清单 · 习惯</title>
+  <link rel="stylesheet" href="tray-inventory-shared.css" />
+</head>
+<body>
+  <div class="wrap">
+    <nav class="nav">
+      <a href="tray-inventory-index.html">← 总览</a>
+      <a href="tray-editor-subtabs-prototype.html">Subtab 编辑器</a>
+      <a href="tray-inventory-voice.html">语音</a>
+      <a href="tray-inventory-keys.html">按键</a>
+      <a href="tray-inventory-softpad.html">软垫</a>
+      <a href="tray-inventory-camera.html">摄像头</a>
+      <a href="tray-inventory-habits.html" class="is-here">习惯</a>
+    </nav>
+
+    <h1>习惯 · Hub 专页，托盘为空</h1>
+    <p class="lede">
+      习惯是<strong>规则内容管理</strong>，不是托盘上的运行时开关。
+      两人格 OS 托盘<strong>零习惯项</strong>；Subtab 编辑器里的「习惯」页只做说明 + 深链 Hub。
+    </p>
+
+    <div class="split">
+      <div class="panel">
+        <div class="panel-head">Habit Hub · 用户在这里做的事</div>
+        <div class="panel-body wire hub-wire" id="habitsHubList"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">OS 托盘 · 习惯相关</div>
+        <div class="panel-body">
+          <div class="empty-tray">
+            <b>（空）</b>
+            无开关、无状态、无 ◀ ▶ 轮换<br>
+            需要换场景 → 打开主窗口习惯 Hub
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h2>Hub 全量 vs 托盘</h2>
+    <table class="filter-table">
+      <thead>
+        <tr><th>用户在 Hub 做的事</th><th>所在位置</th><th>托盘</th><th>原因</th></tr>
+      </thead>
+      <tbody id="habitsCatalogBody"></tbody>
+    </table>
+
+    <div class="rule-box">
+      <strong>Subtab 编辑器「习惯」页</strong>
+      <ul>
+        <li>不是把 <code>block:habit</code> 塞进托盘</li>
+        <li>展示一句说明 +「打开习惯 Hub」按钮 + layout 里 block 默认 off（高级用户可开，不推荐）</li>
+        <li><code>controls[]</code> 为空 — 与按键通道的「使用这个场景」不重复</li>
+      </ul>
+    </div>
+
+    <details class="dev-fold">
+      <summary>技术备注（折叠）</summary>
+      <div class="dev-inner annot">
+        catalog 可保留 <code>block:habit</code> 供 power user layout；人格预设 <code>minimal</code> / <code>vibecoder</code> 均 force off。
+        P1 <code>habitEnabled</code> 若立项，放 Hub 顶栏，不进 OS 托盘。
+      </div>
+    </details>
+  </div>
+  <script src="tray-inventory-user.js"></script>
+  <script>
+  (function () {
+    var TI = window.TrayInventoryUser;
+    if (!TI) return;
+    document.getElementById('habitsCatalogBody').innerHTML = TI.renderHabitsCatalogTable();
+    var hub = document.getElementById('habitsHubList');
+    TI.HABITS_CATALOG.forEach(function (h) {
+      var el = document.createElement('div');
+      el.className = 'item page';
+      el.innerHTML = '<span class="badge">Hub</span><div><b>' + h.label + '</b><span class="why">' + h.hub + '</span></div>';
+      hub.appendChild(el);
+    });
+  })();
+  </script>
+</body>
+</html>

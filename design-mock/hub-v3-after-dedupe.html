@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Hub v3 去重后 · 三端原型</title>
+<style>
+:root{
+  --bg:#e8edf3;--surface:#fff;--surface-2:#f8fafc;--surface-3:#eef2f7;
+  --primary:#2a9cc4;--primary-soft:#e6f7fc;--primary-deep:#1e87ad;
+  --on-surface:#152238;--on-surface-muted:#5a7086;--on-surface-soft:#8a98a8;
+  --outline:rgba(26,45,74,.1);--green:#2e7d4f;--green-soft:rgba(46,125,79,.1);
+  --blue:#00a3ff;--blue-soft:rgba(0,163,255,.1);--purple:#6d4ab0;--purple-soft:rgba(109,74,176,.1);
+  --orange:#b9530a;--orange-soft:rgba(185,83,10,.1);--danger:#dc2626;--danger-soft:rgba(220,38,38,.08);
+  --radius:12px;--shadow:0 10px 28px rgba(26,45,74,.16);
+  font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--on-surface);font-size:14px;line-height:1.5;padding:24px 16px 64px}
+.wrap{max-width:1280px;margin:0 auto}
+h1{font-size:22px;margin-bottom:6px}
+.lede{font-size:13px;color:var(--on-surface-muted);max-width:900px;margin-bottom:16px;line-height:1.6}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;vertical-align:middle}
+.tag-write{background:var(--green-soft);color:var(--green)}
+.tag-read{background:rgba(26,45,74,.07);color:var(--on-surface-muted)}
+.tag-tray{background:var(--primary-soft);color:#0e7490}
+.rule{max-width:1280px;margin:0 0 20px;padding:12px 14px;background:#fff;border:1px solid rgba(42,156,196,.35);border-radius:10px;font-size:12px;line-height:1.55}
+.rule b{color:var(--primary-deep)}
+.rule ul{margin:6px 0 0 18px}
+.nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+.nav button{border:1px solid var(--outline);background:var(--surface);font:inherit;font-size:12px;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer}
+.nav button.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.panel{display:none}.panel.on{display:block}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+@media(max-width:1100px){.grid-3{grid-template-columns:1fr}}
+.col-head{font-size:11px;font-weight:700;color:var(--on-surface-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.col-head .tag{font-size:9px}
+.frame{background:linear-gradient(160deg,#dce4ec,#c5d0dc);border-radius:14px;padding:16px 12px;border:1.5px dashed rgba(42,156,196,.4);min-height:200px}
+.frame-label{font-size:10px;font-weight:700;color:var(--on-surface-muted);text-align:center;margin-bottom:10px}
+
+/* ── Settings compact ── */
+.settings{width:100%;max-width:520px;margin:0 auto;background:var(--surface);border:1px solid var(--outline);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.st-topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--outline);background:var(--surface-2);font-size:12px}
+.st-topbar .pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:var(--green-soft);color:var(--green)}
+.st-tabs{display:flex;gap:4px;padding:8px 12px;border-bottom:1px solid var(--outline);background:var(--surface)}
+.st-tabs button{border:1px solid var(--outline);background:var(--surface-2);font:inherit;font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;cursor:pointer}
+.st-tabs button.on{background:var(--primary-soft);border-color:var(--primary);color:var(--primary-deep)}
+.cc{margin:12px}
+.cc-group{border:1px solid var(--outline);border-radius:10px;overflow:hidden;margin-bottom:10px;background:var(--surface)}
+.cc-gh{padding:8px 12px;font-size:12px;font-weight:700;background:var(--surface-2);border-bottom:1px solid var(--outline)}
+.cc-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-bottom:1px solid rgba(26,45,74,.06);font-size:13px}
+.cc-row:last-child{border-bottom:0}
+.cc-row.l2{padding-left:20px;background:rgba(46,125,79,.03)}
+.cc-row.l2::before{content:'L2';font-size:8px;font-weight:800;color:var(--green);margin-right:4px;opacity:.7}
+.cc-row.ipc-config{border-left:3px solid var(--green)}
+.cc-row.ipc-customization{border-left:3px solid #3b82f6}
+.cc-lbl{font-weight:600}.cc-hint{display:block;font-size:11px;color:var(--on-surface-muted);font-weight:400;margin-top:2px}
+.toggle{width:36px;height:20px;border-radius:10px;background:#ccc;border:none;cursor:pointer;position:relative;flex-shrink:0}
+.toggle.on{background:var(--primary)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:left .15s}
+.toggle.on::after{left:18px}
+.cc-prefs .pref-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid rgba(26,45,74,.06);font-size:12px}
+.cc-prefs .pref-row:last-child{border-bottom:0}
+.pills{display:flex;gap:4px}
+.pill-btn{font-size:10px;font-weight:600;padding:3px 8px;border-radius:4px;border:1px solid var(--outline);background:var(--surface-2);cursor:pointer}
+.pill-btn.on{background:var(--orange-soft);border-color:var(--orange);color:var(--orange)}
+.st-body{padding:12px;font-size:12px;color:var(--on-surface-muted);border-top:1px dashed var(--outline);margin:0 12px 12px;padding-top:12px}
+.st-body .note{font-size:10px;color:var(--on-surface-soft);margin-top:6px}
+
+/* ── Face3 read-only preview ── */
+.inspector{width:100%;max-width:520px;margin:0 auto;background:var(--surface);border:1px solid var(--outline);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.ins-head{padding:10px 14px;border-bottom:1px solid var(--outline);display:flex;align-items:center;justify-content:space-between}
+.ins-head h2{font-size:14px;font-weight:800}
+.ins-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:rgba(26,45,74,.06);color:var(--on-surface-muted)}
+.ins-ch-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:8px;background:var(--surface-2);border-bottom:1px solid var(--outline)}
+.ins-ch-tab{padding:8px 4px;text-align:center;font-size:11px;font-weight:700;border-radius:6px;border:1px solid transparent;cursor:pointer;background:transparent}
+.ins-ch-tab.on{background:var(--surface);border-color:var(--outline);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.ins-ch-tab .dot{width:5px;height:5px;border-radius:50%;display:inline-block;margin-left:3px;background:var(--green);vertical-align:middle}
+.ins-card{padding:12px 14px}
+.ins-card-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ins-card-head b{font-size:13px}
+.st-pill{font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--green-soft);color:var(--green)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.stat{padding:8px 10px;background:var(--surface-2);border:1px solid var(--outline);border-radius:6px;font-size:11px}
+.stat .k{display:block;font-size:9px;color:var(--on-surface-soft);margin-bottom:2px}
+.stat .v{font-weight:700;font-size:12px}
+.ins-readonly{font-size:11px;color:var(--on-surface-muted);padding:10px 12px;background:var(--surface-2);border:1px dashed var(--outline);border-radius:8px;text-align:center}
+.ins-readonly a{color:var(--primary-deep);font-weight:700;text-decoration:none}
+.removed{opacity:.35;text-decoration:line-through;font-size:10px;color:var(--danger);margin-top:8px}
+
+/* ── Tray Hub v3 ── */
+.tray{width:316px;margin:0 auto;background:var(--surface);border:1px solid var(--outline);border-radius:var(--radius);box-shadow:var(--shadow);padding:5px;font-size:13px;max-height:min(580px,90vh);overflow-y:auto}
+.status-hero{margin:4px;padding:11px 12px;background:linear-gradient(135deg,#fff,var(--blue-soft));border:1px solid var(--outline);border-radius:10px;display:flex;align-items:center;gap:10px}
+.status-hero .ttl{font-size:14px;font-weight:800}
+.hero-act{padding:8px 11px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--primary),var(--primary-deep));color:#fff;font-size:10px;font-weight:700;cursor:pointer}
+.sec-head{font-size:10px;font-weight:700;color:var(--on-surface-muted);padding:7px 12px 3px}
+.sec-head .dot{display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--on-surface-soft);margin-right:4px}
+.ch-block{margin:0 4px 3px;border-radius:8px;border:1px solid transparent}
+.ch-block.is-open{border-color:rgba(42,156,196,.3);background:rgba(42,156,196,.03)}
+.ch-main{display:flex;align-items:flex-start;gap:8px;padding:7px 8px 7px 10px}
+.icowrap{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.icowrap.voice{background:var(--blue-soft)}.icowrap.keys{background:var(--primary-soft)}.icowrap.pad{background:var(--purple-soft)}.icowrap.cam{background:var(--orange-soft)}
+.ch-body{flex:1;min-width:0}
+.ch-title{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ch-title .name{font-size:12.5px;font-weight:700}
+.ch-scene{font-size:10px;color:var(--on-surface-muted);margin-top:2px}
+.ch-switches{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.sw-inline{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 6px;background:var(--surface-2);border:1px solid var(--outline);border-radius:6px;font-size:10.5px}
+.sw-hint{font-size:9px;color:var(--on-surface-soft);display:block}
+.sw-toggle{width:32px;height:17px;border-radius:9px;background:var(--primary);border:none;position:relative;cursor:pointer;flex-shrink:0}
+.sw-toggle.off{background:var(--on-surface-soft)}
+.sw-toggle::after{content:'';position:absolute;top:2px;left:17px;width:13px;height:13px;border-radius:50%;background:#fff}
+.sw-toggle.off::after{left:2px}
+.chev-btn{width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:var(--on-surface-soft);font-size:11px;cursor:pointer;margin-top:2px}
+.chev-btn.open{background:var(--primary-soft);color:var(--primary-deep);transform:rotate(90deg)}
+.ch-l2{padding:0 10px 8px 42px}
+.ch-l2 .sw-inline{margin-bottom:4px}
+.more{font-size:10px;color:var(--primary-deep);font-weight:600;border:none;background:none;font:inherit;padding:4px 0 0;cursor:pointer}
+.mic-row{display:flex;align-items:center;gap:8px;padding:7px 10px;margin:4px;border-radius:8px;background:var(--primary-soft);font-size:12px}
+.tray-ft{display:flex;justify-content:space-between;padding:6px 8px;border-top:1px solid var(--outline);margin-top:4px;font-size:10.5px;color:var(--on-surface-muted)}
+.tray-ft button{border:none;background:transparent;font:inherit;font-size:10.5px;cursor:pointer;color:var(--on-surface-muted)}
+.tray-ft button.primary{color:var(--primary);font-weight:600}
+
+.compare-table{width:100%;border-collapse:collapse;font-size:12px;background:var(--surface);border:1px solid var(--outline);border-radius:10px;overflow:hidden;margin-top:32px}
+.compare-table th,.compare-table td{border-bottom:1px solid var(--outline);padding:10px 12px;text-align:left;vertical-align:top}
+.compare-table th{background:var(--surface-2);font-size:11px;color:var(--on-surface-muted)}
+.compare-table tr:last-child td{border-bottom:0}
+.yes{color:var(--green);font-weight:700}.no{color:var(--on-surface-soft)}.warn{color:var(--orange)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Hub v3 去重后 · 三端原型 <span class="tag tag-write">settings_primary</span></h1>
+  <p class="lede">
+    修改原则：<strong>设置页 compact = 唯一配置写入入口</strong>（中文文案、绿/蓝 IPC 边框）；
+    Face3「通道状态与控制」= <strong>只读预览</strong>（2×2 统计 + 跳转设置，无开关）；
+    系统托盘 = <strong>Hub v3 可写</strong>（L1 主开关 + L2 手风琴次开关）。
+  </p>
+
+  <div class="rule">
+    <b>相对现网的改动</b>
+    <ul>
+      <li>修 i18n：<code>channel-config-controls</code> 统一用 <code>trayCh*</code> 文案键，<code>t(key, fallback)</code> 缺键时回退中文</li>
+      <li>设置页：去掉与状态栏重复的「场景启用」行（keys 保留状态栏主开关）；L2 行标 <code>data-tray-tier="l2"</code></li>
+      <li>Face3：移除 <code>soft-pad-tray-ch-switches</code> 整块，改为只读 stats +「去设置改 ▸」</li>
+      <li>托盘：保持 Hub v3（与 refined 一致），配置改完经 segment patch 同步状态</li>
+    </ul>
+  </div>
+
+  <div class="nav" id="nav">
+    <button type="button" class="on" data-panel="all">三端对照</button>
+    <button type="button" data-panel="settings">① 设置页 compact</button>
+    <button type="button" data-panel="face3">② Face3 只读预览</button>
+    <button type="button" data-panel="tray">③ 系统托盘 Hub</button>
+  </div>
+
+  <!-- ═══ ALL THREE ═══ -->
+  <div class="panel on" id="panel-all">
+    <div class="grid-3">
+      <!-- SETTINGS -->
+      <div>
+        <div class="col-head"><span class="tag tag-write">可写</span> 设置抽屉 · compact</div>
+        <div class="frame">
+          <div class="frame-label">channel-config-compact · 各通道设置页顶部</div>
+          <div class="settings" id="settingsDemo">
+            <div class="st-topbar">
+              <span>按键 / 正在编辑: <b>Cursor</b></span>
+              <span class="pill">已与硬件一致</span>
+            </div>
+            <div class="st-tabs">
+              <button type="button">语音</button>
+              <button type="button" class="on">按键</button>
+              <button type="button">小键盘</button>
+              <button type="button">摄像头</button>
+            </div>
+            <div class="cc" id="settingsContent"></div>
+            <div class="st-body">
+              ↓ 下方保留原有向导 / 流程图 / 引擎选择等 L3 内容
+              <div class="note">状态栏「场景启用」主开关保留，compact 不再重复</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FACE3 -->
+      <div>
+        <div class="col-head"><span class="tag tag-read">只读</span> Face3 · 通道预览</div>
+        <div class="frame">
+          <div class="frame-label">soft-pad-tray inspector · 无 toggle</div>
+          <div class="inspector">
+            <div class="ins-head">
+              <h2>通道状态与控制</h2>
+              <span class="ins-badge">只读预览</span>
+            </div>
+            <div class="ins-ch-tabs">
+              <button type="button" class="ins-ch-tab">语音</button>
+              <button type="button" class="ins-ch-tab on">按键<span class="dot"></span></button>
+              <button type="button" class="ins-ch-tab">小键盘</button>
+              <button type="button" class="ins-ch-tab">摄像头</button>
+            </div>
+            <div class="ins-card" id="face3Content"></div>
+            <p class="removed" style="padding:0 14px 12px">✕ 已移除：soft-pad-tray-ch-switches 三行 toggle</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- TRAY -->
+      <div>
+        <div class="col-head"><span class="tag tag-tray">可写</span> 系统托盘 · Hub v3</div>
+        <div class="frame">
+          <div class="frame-label">tray-menu.html · L1 + 手风琴 L2</div>
+          <div class="tray" id="trayDemo">
+            <div class="status-hero">
+              <div style="flex:1"><div class="ttl">正在听</div><div style="font-size:10px;color:var(--on-surface-muted);margin-top:2px">Cursor · 习惯「默认」</div></div>
+              <button type="button" class="hero-act">暂停</button>
+            </div>
+            <div class="sec-head"><span class="dot"></span>各功能状态</div>
+            <div id="trayChannels"></div>
+            <div class="mic-row"><span style="flex:1">麦克风 · 开 · 默认</span><span class="sw-toggle"></span></div>
+            <div class="tray-ft">
+              <span><button type="button" class="primary">主窗口</button> · 我的习惯 · 设置</span>
+              <span><button type="button">关闭</button></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SETTINGS ONLY ═══ -->
+  <div class="panel" id="panel-settings">
+    <div class="frame" style="max-width:560px;margin:0 auto">
+      <div class="settings" style="max-width:none">
+        <div class="st-topbar"><span id="stTitle">按键 / Cursor</span><span class="pill">配置入口</span></div>
+        <div class="st-tabs" id="stTabBar"></div>
+        <div class="cc" id="settingsSolo"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ FACE3 ONLY ═══ -->
+  <div class="panel" id="panel-face3">
+    <div class="frame" style="max-width:560px;margin:0 auto">
+      <div class="inspector" style="max-width:none">
+        <div class="ins-head"><h2>通道状态与控制</h2><span class="ins-badge">只读 · 镜像托盘状态</span></div>
+        <div class="ins-ch-tabs" id="face3TabBar"></div>
+        <div class="ins-card" id="face3Solo"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TRAY ONLY ═══ -->
+  <div class="panel" id="panel-tray">
+    <div class="frame" style="max-width:360px;margin:0 auto">
+      <div class="tray" style="max-width:none" id="traySolo"></div>
+    </div>
+  </div>
+
+  <table class="compare-table">
+    <thead>
+      <tr><th>控件</th><th>设置 compact</th><th>Face3 预览</th><th>系统托盘</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>场景启用 / 主开关</td><td class="warn">keys：状态栏保留，compact 不重复</td><td class="no">只读 stat</td><td class="yes">L1 toggle</td></tr>
+      <tr><td>取消 / 自动发送 / L2</td><td class="yes">L2 行（data-tray-tier）</td><td class="no">—</td><td class="yes">L2 手风琴</td></tr>
+      <tr><td>说结束词 / 屏幕键盘 / 走回</td><td class="yes">L1</td><td class="no">只读 stat</td><td class="yes">L1</td></tr>
+      <tr><td>托盘显示</td><td class="yes">蓝框 customization</td><td class="no">—</td><td class="no">—</td></tr>
+      <tr><td>应用偏好 finishMode</td><td class="yes">仅 keys 通道</td><td class="no">—</td><td class="no">—</td></tr>
+      <tr><td>引擎 / 唤醒词 / 触发键录制</td><td class="no">L3 下方原面板</td><td class="no">—</td><td class="no">完整设置 deep_link</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+(function(){
+  var CHANNELS = {
+    keys: {
+      label: '按键', icon: '⌨', iconCls: 'keys',
+      compact: {
+        l1: [],
+        l2: [
+          { lbl: '再按一次能取消', hint: '听写中途可退出', on: true },
+          { lbl: '输完自动发送', hint: '输入完成后自动回车', on: false }
+        ],
+        custom: { lbl: '托盘显示', on: true },
+        prefs: [
+          { app: 'cursor-chat', mode: '按住发送' },
+          { app: 'codex-chat', mode: '单击发送' },
+          { app: 'claude-code', mode: '单击结束' }
+        ]
+      },
+      stats: [
+        { k: '触发键', v: 'F13' },
+        { k: '触发方式', v: '按住不放' },
+        { k: '当前习惯', v: 'Cursor' },
+        { k: '上次触发', v: '2m 前' }
+      ],
+      scene: '按 F13 启动 · 场景「Cursor」',
+      tray: { l1: [{ lbl: '使用这个场景', hint: '关了就按了也没反应', on: true }], l2: [
+        { lbl: '再按一次能取消', on: true },
+        { lbl: '输完自动发送', on: false }
+      ]}
+    },
+    voice: {
+      label: '语音', icon: '🎤', iconCls: 'voice',
+      compact: {
+        l1: [{ lbl: '说结束词就停', hint: '例如：就这样、结束输入', on: true }],
+        l2: [],
+        custom: { lbl: '托盘显示', on: true }
+      },
+      stats: [
+        { k: '引擎', v: 'Vosk' },
+        { k: '唤醒词', v: '开始输入' },
+        { k: '最近事件', v: '5s 前' },
+        { k: '错误', v: '—' }
+      ],
+      scene: '说「开始输入」就能用',
+      tray: { l1: [{ lbl: '说结束词就停', hint: '例如：就这样、结束输入', on: true }], l2: [] }
+    },
+    softPad: {
+      label: '小键盘', icon: '🔢', iconCls: 'pad',
+      compact: {
+        l1: [{ lbl: '显示屏幕键盘', hint: '在屏幕上弹出可点的键', on: true }],
+        l2: [{ lbl: '启用小键盘', hint: '关了就按了也没反应', on: true }],
+        custom: { lbl: '托盘显示', on: true }
+      },
+      stats: [
+        { k: '键位', v: '12 个' },
+        { k: '绑定的工具', v: 'Codex' },
+        { k: '屏幕键盘', v: '可见' },
+        { k: '前台', v: 'Cursor' }
+      ],
+      scene: '12 个键 · 屏幕键盘开着',
+      tray: { l1: [{ lbl: '显示屏幕键盘', on: true }], l2: [
+        { lbl: '只在 Codex 里显示', on: true },
+        { lbl: '显示导航区', on: true }
+      ]}
+    },
+    camera: {
+      label: '摄像头', icon: '📷', iconCls: 'cam',
+      compact: {
+        l1: [{ lbl: '认人脸走/回', hint: '走开、回到座位会有反应', on: false }],
+        l2: [{ lbl: '走远自动关麦', hint: '人离开画面时静音麦克风', on: false }],
+        custom: { lbl: '托盘显示', on: true }
+      },
+      stats: [
+        { k: '设备', v: '内置摄像头' },
+        { k: '在不在', v: '关' },
+        { k: '自动静音', v: '关' },
+        { k: '权限', v: '已授权' }
+      ],
+      scene: '内置摄像头 · 认人走/回：关',
+      tray: { l1: [{ lbl: '认人脸走/回', on: false }], l2: [{ lbl: '走远自动关麦', on: false }] }
+    }
+  };
+
+  var activeCh = 'keys';
+  var openCh = 'keys';
+
+  function toggleHtml(on) {
+    return '<button type="button" class="toggle' + (on ? ' on' : '') + '" aria-checked="' + (on ? 'true' : 'false') + '"></button>';
+  }
+  function swToggleHtml(on) {
+    return '<button type="button" class="sw-toggle' + (on ? '' : ' off') + '"></button>';
+  }
+
+  function renderCompact(ch, host) {
+    var d = CHANNELS[ch];
+    var c = d.compact;
+    var html = '<div class="cc-group"><div class="cc-gh">基础配置</div>';
+    (c.l1 || []).forEach(function (r) {
+      html += '<div class="cc-row ipc-config"><div><div class="cc-lbl">' + r.lbl + '<span class="cc-hint">' + r.hint + '</span></div></div>' + toggleHtml(r.on) + '</div>';
+    });
+    (c.l2 || []).forEach(function (r) {
+      html += '<div class="cc-row l2 ipc-config"><div><div class="cc-lbl">' + r.lbl + '<span class="cc-hint">' + r.hint + '</span></div></div>' + toggleHtml(r.on) + '</div>';
+    });
+    if (c.custom) {
+      html += '<div class="cc-row ipc-customization"><div class="cc-lbl">' + c.custom.lbl + '</div>' + toggleHtml(c.custom.on) + '</div>';
+    }
+    html += '</div>';
+    if (c.prefs) {
+      html += '<div class="cc-group cc-prefs"><div class="cc-gh">应用偏好</div>';
+      c.prefs.forEach(function (p) {
+        html += '<div class="pref-row"><span>' + p.app + ' · ' + p.mode + '</span><div class="pills">';
+        ['按住发送','单击发送','单击结束'].forEach(function (m) {
+          html += '<span class="pill-btn' + (m === p.mode ? ' on' : '') + '">' + m + '</span>';
+        });
+        html += '</div></div>';
+      });
+      html += '</div>';
+    }
+    host.innerHTML = html;
+  }
+
+  function renderFace3(ch, host) {
+    var d = CHANNELS[ch];
+    var stats = d.stats.map(function (s) {
+      return '<div class="stat"><span class="k">' + s.k + '</span><span class="v">' + s.v + '</span></div>';
+    }).join('');
+    host.innerHTML = '<div class="ins-card-head"><b>' + d.label + '</b><span class="st-pill">监听中</span></div>'
+      + '<div class="stats">' + stats + '</div>'
+      + '<div class="ins-readonly">开关请在 <a href="#">设置 → ' + d.label + '</a> 或 <a href="#">系统托盘</a> 调整</div>';
+  }
+
+  function renderTrayChannel(id, open) {
+    var d = CHANNELS[id];
+    var t = d.tray;
+    var isOpen = open === id;
+    var l1 = (t.l1 || []).map(function (s) {
+      return '<div class="sw-inline"><span>' + s.lbl + (s.hint ? '<span class="sw-hint">' + s.hint + '</span>' : '') + '</span>' + swToggleHtml(s.on) + '</div>';
+    }).join('');
+    var l2 = '';
+    if (isOpen && t.l2 && t.l2.length) {
+      l2 = '<div class="ch-l2">' + t.l2.map(function (s) {
+        return '<div class="sw-inline"><span>' + s.lbl + '</span>' + swToggleHtml(s.on) + '</div>';
+      }).join('') + '<button type="button" class="more">完整设置 ▸</button></div>';
+    }
+  var chev = (t.l2 && t.l2.length) ? '<button type="button" class="chev-btn' + (isOpen ? ' open' : '') + '" data-ch="' + id + '">▸</button>' : '';
+    return '<div class="ch-block' + (isOpen ? ' is-open' : '') + '"><div class="ch-main">'
+      + '<span class="icowrap ' + d.iconCls + '">' + d.icon + '</span>'
+      + '<div class="ch-body"><div class="ch-title"><span class="name">' + d.label + '</span><span class="st-pill">用着</span></div>'
+      + '<div class="ch-scene">' + d.scene + '</div><div class="ch-switches">' + l1 + '</div></div>'
+      + chev + '</div>' + l2 + '</div>';
+  }
+
+  function renderTray(host) {
+    var hero = host.querySelector('.status-hero') ? '' : '';
+    var chHtml = ['voice','keys','softPad','camera'].map(function (id) {
+      return renderTrayChannel(id, openCh);
+    }).join('');
+    var existing = host.querySelector('.status-hero');
+    if (existing) {
+      host.querySelector('#trayChannels').innerHTML = chHtml;
+    } else {
+      host.innerHTML = '<div class="status-hero"><div style="flex:1"><div class="ttl">正在听</div></div><button class="hero-act">暂停</button></div>'
+        + '<div class="sec-head"><span class="dot"></span>各功能状态</div><div id="trayChannels">' + chHtml + '</div>'
+        + '<div class="mic-row"><span style="flex:1">麦克风</span><span class="sw-toggle"></span></div>'
+        + '<div class="tray-ft"><span><button class="primary">主窗口</button></span><button>关闭</button></div>';
+    }
+    host.querySelectorAll('.chev-btn').forEach(function (btn) {
+      btn.onclick = function () {
+        openCh = openCh === btn.getAttribute('data-ch') ? null : btn.getAttribute('data-ch');
+        renderTray(host);
+      };
+    });
+  }
+
+  function renderTabs(bar, onCh, cls) {
+    bar.innerHTML = Object.keys(CHANNELS).map(function (k) {
+      return '<button type="button" class="' + cls + (k === onCh ? ' on' : '') + '" data-ch="' + k + '">' + CHANNELS[k].label + '</button>';
+    }).join('');
+    bar.querySelectorAll('[data-ch]').forEach(function (btn) {
+      btn.onclick = function () {
+        activeCh = btn.getAttribute('data-ch');
+        refresh();
+      };
+    });
+  }
+
+  function refresh() {
+    renderCompact(activeCh, document.getElementById('settingsContent'));
+    renderCompact(activeCh, document.getElementById('settingsSolo'));
+    renderFace3(activeCh, document.getElementById('face3Content'));
+    renderFace3(activeCh, document.getElementById('face3Solo'));
+    renderTray(document.getElementById('trayDemo'));
+    renderTray(document.getElementById('traySolo'));
+    document.getElementById('stTitle').textContent = CHANNELS[activeCh].label + ' / Cursor';
+    renderTabs(document.getElementById('stTabBar'), activeCh, 'st-tabs ');
+    renderTabs(document.getElementById('face3TabBar'), activeCh, 'ins-ch-tab ');
+  }
+
+  document.getElementById('nav').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-panel]');
+    if (!btn) return;
+    document.querySelectorAll('#nav button').forEach(function (b) { b.classList.remove('on'); });
+    btn.classList.add('on');
+    document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('on'); });
+    document.getElementById('panel-' + btn.getAttribute('data-panel')).classList.add('on');
+  });
+
+  document.querySelectorAll('.st-tabs button').forEach(function (btn, i) {
+    btn.onclick = function () {
+      activeCh = ['voice','keys','softPad','camera'][i] || 'keys';
+      refresh();
+      document.querySelectorAll('.st-tabs button').forEach(function (b) { b.classList.remove('on'); });
+      btn.classList.add('on');
+    };
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>

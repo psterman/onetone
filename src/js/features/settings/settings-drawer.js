@@ -18,7 +18,7 @@
 
     habits:'settingsPanelHabits',sounds:'settingsPanelSounds',debug:'settingsPanelDebug',
 
-    camera:'settingsPanelCamera'
+    camera:'settingsPanelCamera',tray:'settingsPanelTray'
 
   };
 
@@ -671,6 +671,12 @@
         if(softTiles) softTiles.innerHTML='';
       }
     }
+    if(panelChanged&&lastPanel==='tray'&&panel!=='tray'){
+      var trayUiLeave=global.OneToneSoftPadTrayUi;
+      if(trayUiLeave&&trayUiLeave.onPanelLeave){
+        try{ trayUiLeave.onPanelLeave(); }catch(_){}
+      }
+    }
     // Leaving voiceWake: bump openGen so in-flight chrome/heavy RAF cannot paint stale.
     if(panelChanged&&lastPanel==='voiceWake'&&panel!=='voiceWake'){
       try{ document.documentElement.classList.remove('ot-voice-wake-park'); }catch(_){}
@@ -837,6 +843,19 @@
             }catch(err){
               console.error('softPad panel defer render',err);
             }
+          }
+        },0);
+      });
+
+    }else if(panel==='tray'){
+      ui.trayEditorFocus=opts.trayEditorFocus||null;
+
+      requestAnimationFrame(function(){
+        setTimeout(function(){
+          if(normalizePanel(ui.settingsPanel)!=='tray') return;
+          var trayUi=global.OneToneSoftPadTrayUi;
+          if(trayUi&&trayUi.onPanelEnter){
+            try{ trayUi.onPanelEnter({ trayEditorFocus: ui.trayEditorFocus }); }catch(err){ console.error('tray panel enter',err); }
           }
         },0);
       });
@@ -1135,6 +1154,14 @@
         if(global.OneToneHabitChannelStatusStrip.render){
           try{ global.OneToneHabitChannelStatusStrip.render(); }catch(_){}
         }
+      }
+    }
+
+    if(panel==='keys'||panel==='voiceWake'||panel==='softPad'||panel==='camera'){
+      var channelCompact=global.OneToneChannelConfigCompact;
+      if(channelCompact&&typeof channelCompact.refresh==='function'){
+        var compactCh=panel==='voiceWake'?'voice':panel;
+        try{ channelCompact.refresh(compactCh); }catch(_){}
       }
     }
 
@@ -1517,5 +1544,18 @@
     var app=document.querySelector('.app');
     if(app) app.classList.toggle('is-workbench',isWorkbenchShell());
   })();
+
+  if(typeof window!=='undefined'&&!window.__otTrayDeepLinkDrawerBound){
+    window.__otTrayDeepLinkDrawerBound=true;
+    window.addEventListener('tray-deep-link',function(ev){
+      var d=ev&&ev.detail?ev.detail:{};
+      var href=String(d.href||'');
+      var tab=String(d.tab||'');
+      if(!href&&tab) href='main:'+tab;
+      if(href.indexOf('main:habits')===0||tab==='habits'){
+        openDrawer({panel:'habits',habitWizard:href.indexOf('wizard=1')>=0});
+      }
+    });
+  }
 
 })(typeof window!=='undefined'?window:globalThis);

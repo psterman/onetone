@@ -1913,6 +1913,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             });
         let result = ensure_codex_pad_ready(&mut cfg, "zh-CN");
         assert!(result.changed);
@@ -1983,6 +1984,7 @@ mod tests {
             }],
             codex_micro_pad: Some(pad),
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             };
         let (slot, route_changed) = {
             let pad = m.codex_micro_pad.as_mut().unwrap();
@@ -2059,6 +2061,7 @@ mod tests {
             ],
             codex_micro_pad: Some(default_codex_micro_pad()),
             time_machine_workspace: String::new(),
+        capture_hero_ref: None,
         };
         let before = m.agent_bindings.len();
         let _ = heal_slot_key_bindings(&mut m, "plan", "zh-CN");
@@ -2122,6 +2125,7 @@ mod tests {
             agent_bindings: bindings,
             codex_micro_pad: Some(pad),
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             };
         let mut cfg = VoiceConfig {
             mappings: vec![m],
@@ -2198,6 +2202,7 @@ mod tests {
             agent_bindings: crate::agent::bindings_build::build_cursor_chord_bindings("zh-CN"),
             codex_micro_pad: Some(pad),
             time_machine_workspace: String::new(),
+        capture_hero_ref: None,
         };
         assert!(heal_cursor_pad_ag_chrome(&mut m));
         let pad = m.codex_micro_pad.as_ref().unwrap();
@@ -2256,6 +2261,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: Some(pad),
             time_machine_workspace: String::new(),
+        capture_hero_ref: None,
         };
         assert!(heal_cursor_pad_for_save(&mut m, "zh-CN"));
         let pad = m.codex_micro_pad.as_ref().unwrap();
@@ -2309,6 +2315,7 @@ mod tests {
                     agent_bindings: build_codex_micro_13_bindings("zh-CN"),
                     codex_micro_pad: Some(default_codex_micro_pad()),
                     time_machine_workspace: String::new(),
+                capture_hero_ref: None,
                 },
                 MappingEntry {
                     id: "cursor-soft-pad".into(),
@@ -2355,6 +2362,7 @@ mod tests {
                     }],
                     codex_micro_pad: Some(pad),
                     time_machine_workspace: String::new(),
+                capture_hero_ref: None,
                 },
             ],
             ..VoiceConfig::default()
@@ -2422,6 +2430,7 @@ mod tests {
                 }],
                 codex_micro_pad: Some(pad),
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             }],
             ..VoiceConfig::default()
         };
@@ -2474,6 +2483,7 @@ mod tests {
                 agent_bindings: build_codex_micro_13_bindings("zh-CN"),
                 codex_micro_pad: Some(pad),
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             }],
             ..VoiceConfig::default()
         };
@@ -2556,6 +2566,7 @@ mod tests {
             agent_bindings: build_codex_micro_13_bindings("zh-CN"),
             codex_micro_pad: Some(pad),
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             }];
         sync_hook_cache(&cfg);
         assert!(pad_mapping_active());
@@ -2610,6 +2621,7 @@ mod tests {
             agent_bindings: build_codex_micro_13_bindings("zh-CN"),
             codex_micro_pad: Some(pad),
             time_machine_workspace: String::new(),
+        capture_hero_ref: None,
         }];
         sync_hook_cache(&cfg);
         crate::codex_micro_overlay::test_set_foreground_latch(true);

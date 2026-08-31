@@ -82,11 +82,26 @@ pub fn setup(app: &AppHandle, state: Arc<AppState>) -> tauri::Result<()> {
         .build(app)?;
 
     start_tray_mic_poll(app.clone());
+    preload_tray_menu_window(app.clone());
     // Do not refresh_tray_visual_forced here — WASAPI on the setup path 假死'd launch.
     // First paint comes from the poll thread after the event loop is up.
 
     let _ = state;
     Ok(())
+}
+
+/// Hidden preload so first right-click avoids cold webview creation.
+fn preload_tray_menu_window(app: AppHandle) {
+    std::thread::Builder::new()
+        .name("tray-preload".into())
+        .spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(2));
+            let _ = crate::overlay_window::ensure_overlay_window(
+                &app,
+                crate::overlay_window::TRAY_MENU,
+            );
+        })
+        .ok();
 }
 
 fn start_tray_mic_poll(app: AppHandle) {
@@ -202,17 +217,8 @@ fn configure_tray_menu_window(menu_win: &WebviewWindow) -> tauri::Result<()> {
 }
 
 pub fn refresh_menu(app: &AppHandle) {
-    let Some(menu_win) = app.get_webview_window(TRAY_MENU_LABEL) else {
-        return;
-    };
-    if !menu_win.is_visible().unwrap_or(false) {
-        return;
-    }
-    let Some(state) = app.try_state::<Arc<AppState>>() else {
-        return;
-    };
-    let (cx, cy) = cursor_physical_position();
-    open_tray_menu(&menu_win, state.inner(), cx, cy);
+    // ponytail: segment patch only — full reopen caused visible flicker on voice/config churn.
+    refresh_menu_data(app);
 }
 
 pub fn refresh_menu_data(app: &AppHandle) {
@@ -222,7 +228,7 @@ pub fn refresh_menu_data(app: &AppHandle) {
     crate::tray_state::emit_tray_segments(
         app,
         state.inner(),
-        &["global", "mic", "channels", "event"],
+        &["global", "mic", "channels", "event", "schemes"],
     );
 }
 
@@ -405,13 +411,30 @@ pub fn handle_tray_action(
     match action {
         "show" => show_main_window(app),
         "listen_toggle" => {
-            if *state.paused.lock() {
+            if *state.paused.lock() || state.listen_silence_until_ms.lock().is_some() {
                 ipc::resume_listen(state, app);
             } else {
                 ipc::pause_listen(state, app);
             }
         }
         "cycle_scheme" => ipc::handle_scheme_cycle(state, app),
+        "silence_until" => {
+            let until_eod = payload
+                .as_ref()
+                .and_then(|p| p.get("untilEod"))
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            if until_eod {
+                ipc::silence_listen_until_eod(state, app);
+            } else {
+                let minutes = payload
+                    .as_ref()
+                    .and_then(|p| p.get("minutes"))
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(60);
+                ipc::silence_listen_minutes(state, app, minutes);
+            }
+        }
         "set_mode" => {
             let mode_key = payload
                 .as_ref()
@@ -521,24 +544,38 @@ fn open_tray_menu(menu_win: &WebviewWindow, state: &AppState, cursor_x: i32, cur
 fn estimate_menu_size(_state: &AppState) -> (f64, f64) {
     let cfg = crate::tray_customization::load();
     let mut h = 280.0;
-    if cfg.show_event {
+    if crate::tray_customization::block_visible(&cfg, "block:event") {
+        h += 68.0;
+    }
+    if crate::tray_customization::block_visible(&cfg, "block:habit")
+        || crate::tray_customization::block_visible(&cfg, "block:quick")
+    {
         h += 72.0;
     }
-    let show = &cfg.show_in_tray;
-    let visible_channels = [show.voice, show.keys, show.soft_pad, show.camera]
+    let channel_blocks = [
+        "block:channel:voice",
+        "block:channel:keys",
+        "block:channel:softPad",
+        "block:channel:camera",
+    ];
+    let visible_channels = channel_blocks
         .iter()
-        .filter(|&&on| on)
+        .filter(|id| crate::tray_customization::block_visible(&cfg, id))
         .count();
     if visible_channels > 0 {
-        h += 28.0;
-        h += visible_channels as f64 * 44.0;
+        h += 24.0;
+        h += visible_channels as f64 * 34.0;
     }
-    if visible_channels > 0 || cfg.show_event {
+    if visible_channels > 0 {
         h += 8.0;
     }
-    h += 44.0;
-    h += 36.0;
-    (316.0, h.clamp(380.0, 520.0))
+    if crate::tray_customization::block_visible(&cfg, "block:mic") {
+        h += 40.0;
+    }
+    if crate::tray_customization::block_visible(&cfg, "block:footer") {
+        h += 32.0;
+    }
+    (316.0, h.clamp(320.0, 520.0))
 }
 
 fn hide_tray_menu(app: &AppHandle) {
@@ -563,7 +600,8 @@ fn show_main_window_with_deep_link(app: &AppHandle, href: &str) {
         if let Some(state) = app.try_state::<Arc<AppState>>() {
             crate::app_log::log_line(state.inner(), "window", "main window shown");
         }
-        let tab = href.strip_prefix("main:").unwrap_or("home");
+        let path = href.strip_prefix("main:").unwrap_or("home");
+        let tab = path.split('?').next().unwrap_or(path);
         let script = format!(
             "window.dispatchEvent(new CustomEvent('tray-deep-link',{{detail:{{href:{href:?},tab:{tab:?}}}}}));"
         );

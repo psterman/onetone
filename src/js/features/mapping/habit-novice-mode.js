@@ -53,11 +53,20 @@
     }).length;
   }
 
+  function dimChannelIcon(dimId){
+    var Icons=global.OneToneIcons;
+    var map={key:'keys',voice:'voice',cam:'camera',softpad:'softPad'};
+    var ch=map[dimId]||dimId;
+    if(Icons&&Icons.channelHtml) return Icons.channelHtml(ch,{size:12,className:'ot-ic'});
+    var d=DIMS.filter(function(x){return x.id===dimId;})[0];
+    return esc(d&&d.em?d.em:'');
+  }
+
   function dimTabsHtml(model){
     var dim=ui().habitNoviceDim||'key';
     return '<div class="habit-novice-dim-tabs" role="tablist">'+DIMS.map(function(d){
       var cnt=countBy(model,'dim',d.id);
-      return '<button type="button" role="tab" aria-selected="'+(dim===d.id?'true':'false')+'" class="habit-novice-dim-tab'+(dim===d.id?' is-active':'')+'" data-habit-novice-dim="'+esc(d.id)+'">'+esc(d.em)+' '+esc(label(d))+' <span class="cnt">'+cnt+'</span></button>';
+      return '<button type="button" role="tab" aria-selected="'+(dim===d.id?'true':'false')+'" class="habit-novice-dim-tab'+(dim===d.id?' is-active':'')+'" data-habit-novice-dim="'+esc(d.id)+'">'+dimChannelIcon(d.id)+' '+esc(label(d))+' <span class="cnt">'+cnt+'</span></button>';
     }).join('')+'</div>';
   }
 
@@ -91,7 +100,7 @@
     var s=shared();
     var story=s&&s.storyLineHtml?s.storyLineHtml(card,card.detail):'';
     var statusText=card.paused?t('habitNovicePaused','已暂停'):t('habitNoviceRunning','运行中');
-    return '<div class="habit-novice-card'+(card.paused?' is-paused':'')+'" data-habit-novice-card="'+esc(card.id)+'" style="animation-delay:'+(i*60)+'ms"><div class="habit-novice-illus dim-'+esc(card.dim)+'">'+esc(card.emoji)+'</div><div class="habit-novice-info"><div class="title-row"><div class="title">'+esc(card.title)+'</div><button type="button" class="status-dot" data-habit-novice-toggle="'+esc(card.id)+'" title="'+esc(t('habitNoviceToggleStatus','点一下切换'))+'" aria-label="'+esc(t('habitNoviceToggleStatus','点一下切换'))+'"></button><span class="when">'+esc(statusText)+'</span><details class="habit-novice-card-menu"><summary class="habit-novice-menu-btn" aria-label="'+esc(t('habitNoviceMenuMore','更多'))+'">⋯</summary><div class="habit-novice-menu-panel"><button type="button" data-habit-novice-edit="'+esc(card.mappingId)+'">'+esc(t('habitNoviceMenuEdit','完整改'))+'</button><button type="button" class="is-danger" data-habit-novice-del="'+esc(card.mappingId)+'">'+esc(t('habitNoviceMenuDelete','删掉'))+'</button></div></details></div><div class="story">'+esc(story)+'</div><button type="button" class="habit-novice-expand" data-habit-novice-expand="'+esc(card.id)+'">'+esc(t('habitNoviceExpandDetails','详情'))+'</button>'+cardDetailHtml(card)+'</div><div class="habit-novice-right"><button type="button" class="habit-novice-btn primary" data-habit-novice-demo="'+esc(card.id)+'">▶ '+esc(t('habitNoviceTry','试一下'))+'</button></div></div>';
+    return '<div class="habit-novice-card'+(card.paused?' is-paused':'')+'" data-habit-novice-card="'+esc(card.id)+'" style="animation-delay:'+(i*60)+'ms"><div class="habit-novice-illus dim-'+esc(card.dim)+'">'+(card.emoji||'')+'</div><div class="habit-novice-info"><div class="title-row"><div class="title">'+esc(card.title)+'</div><button type="button" class="status-dot" data-habit-novice-toggle="'+esc(card.id)+'" title="'+esc(t('habitNoviceToggleStatus','点一下切换'))+'" aria-label="'+esc(t('habitNoviceToggleStatus','点一下切换'))+'"></button><span class="when">'+esc(statusText)+'</span><details class="habit-novice-card-menu"><summary class="habit-novice-menu-btn" aria-label="'+esc(t('habitNoviceMenuMore','更多'))+'">⋯</summary><div class="habit-novice-menu-panel"><button type="button" data-habit-novice-edit="'+esc(card.mappingId)+'">'+esc(t('habitNoviceMenuEdit','完整改'))+'</button><button type="button" class="is-danger" data-habit-novice-del="'+esc(card.mappingId)+'">'+esc(t('habitNoviceMenuDelete','删掉'))+'</button></div></details></div><div class="story">'+esc(story)+'</div><button type="button" class="habit-novice-expand" data-habit-novice-expand="'+esc(card.id)+'">'+esc(t('habitNoviceExpandDetails','详情'))+'</button>'+cardDetailHtml(card)+'</div><div class="habit-novice-right"><button type="button" class="habit-novice-btn primary" data-habit-novice-demo="'+esc(card.id)+'">▶ '+esc(t('habitNoviceTry','试一下'))+'</button></div></div>';
   }
 
   function cardsListHtml(model){

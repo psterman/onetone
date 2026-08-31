@@ -115,7 +115,7 @@ check('softPadPanelExperienceHtml 已导出', typeof API.softPadPanelExperienceH
 const model = API.buildSoftPadFourPanelModel(entry);
 check('panelOrder 固定三面板', Array.isArray(model.panelOrder) &&
   model.panelOrder.join(',') === 'runtime,layout,presentation');
-check('landingView 默认 runtime', model.landingView === 'runtime');
+check('landingView 默认 layout', model.landingView === 'layout');
 check('landingHint 非空', typeof model.landingHint === 'string' && model.landingHint.length > 0);
 check('每面板有且仅有一个 primaryCta.act', model.panels.every((p) =>
   p.primaryCta && typeof p.primaryCta.act === 'string' && p.primaryCta.act.length > 0));
@@ -125,7 +125,7 @@ check('layout 0 keys → needsAction', model.panels.find((p) => p.id === 'layout
 check('runtime hidden overlay → needsAction',
   model.panels.find((p) => p.id === 'runtime').panelEmpty.mode === 'needsAction');
 check('presentation ready', model.panels.find((p) => p.id === 'presentation').panelEmpty.mode === 'ready');
-check('runtime tile recommended', model.panels.find((p) => p.id === 'runtime').recommended === true);
+check('layout tile recommended', model.panels.find((p) => p.id === 'layout').recommended === true);
 
 const tiles = API.buildSoftPadFuncTilesModel(entry);
 check('func tiles 已隐藏（pad tabs 接管）', tiles.hidden === true && !tiles.tilesHtml);
@@ -136,7 +136,7 @@ const ringTm = API.buildSoftPadPadRingModel('timeline', entry);
 check('pad ring 已退役（空芯片）', ringPad.chipsHtml === '' && Array.isArray(ringPad.chips) && ringPad.chips.length === 0);
 check('agent/timeline ring 同样退役', ringAgent.chipsHtml === '' && ringTm.chipsHtml === '');
 check('无 agent tile', !model.panelOrder.includes('agent'));
-check('fourPanel 含 face/padMode', model.face === 'pad' && model.padMode === 'appear');
+check('fourPanel 含 face/padMode', model.face === 'pad' && model.padMode === 'keys');
 
 const chrome = API.softPadPanelExperienceHtml('layout', entry);
 check('layout chrome 含主 CTA', chrome.includes('data-act="focusLayoutKey"') && chrome.includes('is-primary'));

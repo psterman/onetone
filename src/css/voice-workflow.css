@@ -55,33 +55,7 @@
   flex-wrap: wrap;
 }
 
-#settingsPanelVoiceWake .voice-summary-engine-switch {
-  display: inline-flex;
-  flex-wrap: nowrap;
-  gap: 2px;
-  max-width: 100%;
-  padding: 2px;
-  border-radius: 8px;
-  background: transparent;
-}
-
-#settingsPanelVoiceWake .voice-summary-engine-switch .voice-recognize-source-btn {
-  min-height: 28px;
-  padding: 3px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  border: none;
-  background: transparent;
-  color: var(--on-surface-muted);
-  border-radius: 6px;
-  box-shadow: none;
-}
-
-#settingsPanelVoiceWake .voice-summary-engine-switch .voice-recognize-source-btn.is-active {
-  background: var(--primary, #2a9cc4);
-  color: #fff;
-  box-shadow: none;
-}
+#settingsPanelVoiceWake .voice-summary-engine-switch { /* → ot-seg.css */ }
 
 #settingsPanelVoiceWake .voice-scheme-summary-item {
   display: inline-flex;

@@ -210,6 +210,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
+            capture_hero_ref: None,
             });
         id.to_string()
     }

@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>托盘编辑器 · 习惯 + 四通道（方案 A）</title>
+  <link rel="stylesheet" href="tray-inventory-shared.css" />
+  <link rel="stylesheet" href="../src/css/ot-switch.css" />
+  <link rel="stylesheet" href="../src/css/ot-subtab.css" />
+  <style>
+    :root {
+      --bg: #e8edf3; --surface: #fff; --surface-2: #f8fafc; --surface-3: #f1f5f9;
+      --primary: #2a9cc4; --primary-soft: #e6f7fc; --primary-deep: #1e87ad;
+      --on-surface: #152238; --on-surface-muted: #5a7086; --on-surface-soft: #8a98a8;
+      --outline: rgba(26,45,74,.1); --radius: 12px;
+      --shadow: 0 10px 28px rgba(26,45,74,.16);
+      --green: #2e7d4f; --green-soft: rgba(46,125,79,.1);
+      --blue: #00a3ff; --blue-soft: rgba(0,163,255,.1);
+      --purple: #6d4ab0; --purple-soft: rgba(109,74,176,.1);
+      --orange: #b9530a; --orange-soft: rgba(185,83,10,.1);
+      font-family: "Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 20px 16px 56px; background: var(--bg); color: var(--on-surface); }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    .lede { font-size: 13px; color: var(--on-surface-muted); line-height: 1.55; margin: 0 0 14px; max-width: 820px; }
+    .tag { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-left: 6px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-deep)); color: #fff; vertical-align: middle; }
+
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px;
+      padding: 10px 12px; background: var(--surface); border: 1px solid var(--outline); border-radius: 10px; font-size: 12px;
+    }
+    .toolbar label { font-weight: 600; color: var(--on-surface-muted); }
+    .seg { display: flex; gap: 4px; flex-wrap: wrap; }
+    .seg button {
+      border: 1px solid var(--outline); background: var(--surface-2); font: inherit;
+      font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 7px; cursor: pointer;
+    }
+    .seg button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+    .app-page {
+      border: 1px solid var(--outline); border-radius: 14px; overflow: hidden;
+      background: var(--surface); box-shadow: var(--shadow);
+    }
+    .pref-head { padding: 14px 16px 10px; border-bottom: 1px solid var(--outline); }
+    .pref-head h2 { margin: 0; font-size: 17px; font-weight: 800; }
+    .pref-head p { margin: 4px 0 0; font-size: 12px; color: var(--on-surface-muted); }
+
+    .tray-face {
+      display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
+      min-height: 520px;
+    }
+    @media (max-width: 880px) { .tray-face { grid-template-columns: 1fr; } }
+
+    .preview-pane {
+      background: linear-gradient(165deg, #1a2332, #243044);
+      padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .preview-lbl { font-size: 10px; font-weight: 700; color: #94a3b8; letter-spacing: .06em; text-transform: uppercase; }
+    .menu-shell { width: 340px; background: var(--surface); border: 1px solid var(--outline);
+      border-radius: var(--radius); padding: 4px; font-size: 12px;
+      box-shadow: 0 12px 32px rgba(0,0,0,.35); overflow: visible; }
+
+    .editor-pane { padding: 12px 14px; background: var(--surface-2); border-left: 1px solid var(--outline);
+      display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 620px; }
+    .editor-top { display: flex; align-items: center; justify-content: space-between; }
+    .editor-top h3 { margin: 0; font-size: 14px; font-weight: 800; }
+    .editor-autosave { font-size: 9px; font-weight: 600; color: var(--on-surface-soft); }
+
+    .hub-label { margin: 4px 0 0; font-size: 11px; font-weight: 800; color: var(--on-surface-muted); }
+    .hub-label__sub { font-weight: 600; color: var(--on-surface-soft); }
+    .habit-head {
+      padding: 8px 10px; margin-bottom: 8px; background: var(--surface-2); border-radius: 8px;
+      border: 1px solid var(--outline);
+    }
+    .habit-head__title { font-size: 12px; font-weight: 800; }
+    .habit-head__sub { font-size: 10px; color: var(--on-surface-muted); margin-top: 3px; line-height: 1.4; }
+    .usage-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .usage-chip { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+      background: var(--surface-3); color: var(--on-surface-muted); }
+    .hub-link-sm { border: none; background: transparent; color: var(--primary-deep); font: 700 10px inherit;
+      cursor: pointer; padding: 0; text-align: left; }
+    .hub-link-sm:hover { text-decoration: underline; }
+
+    /* tray-ch-subtab → ot-subtab.css */
+
+    .ch-card { border: 1px solid var(--outline); border-radius: 10px; background: #fff; padding: 10px; margin-top: 6px; }
+    .ch-card.is-focus { box-shadow: 0 0 0 2px rgba(42,156,196,.12); border-color: rgba(42,156,196,.4); }
+    .ch-card-head { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+    .ch-card-ic { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+    .ch-card-ic.voice { background: var(--blue-soft); }
+    .ch-card-ic.keys { background: var(--primary-soft); }
+    .ch-card-ic.softpad { background: var(--purple-soft); }
+    .ch-card-ic.camera { background: var(--orange-soft); }
+    .ch-card-ic.habit { background: var(--green-soft); }
+    .ch-card-title { flex: 1; }
+    .ch-card-title b { font-size: 12px; display: block; margin-bottom: 2px; }
+    .st-pill { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 4px; margin-left: 4px; }
+    .st-pill.run { background: var(--blue-soft); color: #0e7490; }
+    .st-pill.on { background: var(--green-soft); color: var(--green); }
+    .st-pill.off { background: #e2e8f0; color: #64748b; }
+    .ch-tray-pill {
+      font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap;
+      background: rgba(42,156,196,.12); color: #0e7490;
+    }
+    .ch-tray-pill--off { background: var(--surface-3); color: var(--on-surface-soft); }
+
+    .ch-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; padding: 6px 8px; background: var(--surface-2); border-radius: 7px; margin-bottom: 6px; }
+    .ch-stats .stat { font-size: 10px; line-height: 1.35; }
+    .ch-stats .k { display: block; font-size: 9px; color: var(--on-surface-muted); font-weight: 600; margin-bottom: 1px; }
+    .ch-stats .v { font-weight: 700; color: var(--on-surface); }
+    .ch-stats .v.muted { color: var(--on-surface-soft); font-weight: 600; }
+
+    /* ── 单开关卡片（编辑器右侧）── */
+    .ch-switch-card {
+      position: relative;
+      display: flex; flex-direction: column; gap: 6px;
+      padding: 10px 12px 10px 14px;
+      margin-bottom: 6px;
+      background: #fff;
+      border: 1px solid var(--outline);
+      border-radius: 8px;
+      transition: box-shadow .15s, border-color .15s;
+    }
+    .ch-switch-card:hover { border-color: rgba(42,156,196,.4); }
+    .ch-switch-card.is-l1 { border-left: 3px solid var(--primary); }
+    .ch-switch-card.is-l2 { border-left: 3px solid var(--on-surface-soft); background: var(--surface-2); }
+    .ch-switch-card.is-p1 { border-left: 3px dashed var(--on-surface-soft); background: #fbfcfd; }
+    .ch-switch-card.is-off { opacity: .5; filter: grayscale(.4); }
+    .ch-switch-card.is-off .ch-switch-card__name { color: var(--on-surface-muted); }
+    .ch-switch-card.is-disabled { opacity: .5; }
+    .ch-switch-card.is-just-toggled { box-shadow: 0 0 0 3px rgba(42,156,196,.45); transition: box-shadow .6s ease-out; }
+
+    .ch-switch-card__head { display: flex; align-items: flex-start; gap: 8px; }
+    .ch-switch-card__main { flex: 1; min-width: 0; }
+    .ch-switch-card__title { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .ch-switch-card__name { font-size: 13px; font-weight: 800; color: var(--on-surface); }
+    .ch-switch-card__lvl { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 4px; background: rgba(42,156,196,.12); color: #0e7490; }
+    .ch-switch-card__lvl.l2 { background: #e2e8f0; color: #64748b; }
+    .ch-switch-card__lvl.p1 { background: rgba(245,158,11,.12); color: #b45309; }
+    .ch-switch-card__hint { font-size: 11px; color: var(--on-surface-muted); margin-top: 2px; line-height: 1.4; }
+
+    .ch-switch-card__warn {
+      display: flex; align-items: flex-start; gap: 5px;
+      padding: 5px 7px;
+      background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.25); border-radius: 5px;
+      font-size: 10px; line-height: 1.4; color: #92400e;
+    }
+    .ch-switch-card__warn__ic { flex-shrink: 0; }
+    .ch-switch-card__rel {
+      display: flex; align-items: center; gap: 5px;
+      padding: 4px 7px;
+      background: rgba(42,156,196,.06); border: 1px dashed rgba(42,156,196,.25); border-radius: 5px;
+      font-size: 10px; line-height: 1.4; color: #155e75;
+      cursor: pointer;
+    }
+    .ch-switch-card__rel:hover { background: rgba(42,156,196,.12); }
+    .ch-switch-card__rel__ic { flex-shrink: 0; }
+    .ch-switch-card__rel__name { font-weight: 700; }
+
+    .sec-label { font-size: 9px; font-weight: 700; color: var(--on-surface-muted); text-transform: uppercase; letter-spacing: .03em; margin: 6px 0 3px; }
+    .sec-label span { font-weight: 500; text-transform: none; color: var(--on-surface-soft); }
+    .sw-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid rgba(26,45,74,.05); font-size: 11px; font-weight: 600; }
+    .sw-row:last-child { border-bottom: none; }
+    .sw-row .hint { display: block; font-size: 9px; font-weight: 500; color: var(--on-surface-soft); margin-top: 1px; }
+    /* mini-toggle → ot-switch.css */
+
+
+    .go-link { width: 100%; margin-top: 6px; padding: 6px; border: none; border-radius: 7px; background: rgba(42,156,196,.08);
+      color: var(--primary-deep); font: 700 11px inherit; cursor: pointer; }
+    .go-link--ghost { background: transparent; border: 1px dashed var(--outline); margin-top: 4px; }
+
+    .editor-hint { font-size: 10px; color: var(--on-surface-soft); line-height: 1.45; margin: 0; }
+    .editor-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 4px; border-top: 1px dashed var(--outline); }
+
+    .stats-overview { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+    .stats-overview-card {
+      border: 1px solid var(--outline); border-radius: 8px; padding: 7px 8px; background: var(--surface-2);
+      cursor: pointer; text-align: left; font: inherit; color: inherit;
+    }
+    .stats-overview-card:hover { border-color: rgba(42,156,196,.4); background: rgba(42,156,196,.06); }
+    .stats-overview-card__head { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; font-size: 11px; font-weight: 800; }
+    .stats-overview-card__ic { font-size: 12px; }
+    .stats-overview-card__row { display: flex; justify-content: space-between; gap: 6px; font-size: 9px; padding: 2px 0; }
+    .stats-overview-card__row .k { color: var(--on-surface-muted); font-weight: 600; }
+    .stats-overview-card__row .v { font-weight: 700; text-align: right; }
+
+    /* ── 场景块（OS 托盘顶部）── */
+    .tray-scene-block {
+      padding: 7px 8px 6px; margin: 4px 4px 6px;
+      background: linear-gradient(180deg, #f8fbfd 0%, #eef5fa 100%);
+      border: 1px solid rgba(42,156,196,.18); border-radius: 8px;
+    }
+    .tray-scene-block__label {
+      font-size: 9px; font-weight: 800; color: var(--on-surface-muted);
+      text-transform: uppercase; letter-spacing: .04em; margin: 0 0 5px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .tray-scene-block__label .tip { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--on-surface-soft); }
+    .tray-scene-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .tray-scene-preset {
+      border: 1px solid var(--outline); background: #fff; border-radius: 7px;
+      padding: 7px 6px 6px; cursor: pointer; text-align: left; font: inherit; color: inherit;
+      display: flex; flex-direction: column; gap: 2px; transition: all .12s;
+    }
+    .tray-scene-preset:hover { border-color: rgba(42,156,196,.4); background: #fff; }
+    .tray-scene-preset__ic { font-size: 14px; line-height: 1; }
+    .tray-scene-preset__lbl { font-size: 11px; font-weight: 800; }
+    .tray-scene-preset__hint { font-size: 8px; color: var(--on-surface-soft); font-weight: 500; }
+    .tray-scene-preset.is-on {
+      background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+      border-color: var(--primary-deep); color: #fff;
+    }
+    .tray-scene-preset.is-on .tray-scene-preset__hint { color: rgba(255,255,255,.78); }
+    .tray-scene-status {
+      margin-top: 5px; font-size: 9px; line-height: 1.4; color: var(--on-surface-muted);
+      display: flex; align-items: center; gap: 4px;
+    }
+    .tray-scene-status__dot { width: 5px; height: 5px; border-radius: 50%; background: var(--on-surface-soft); flex-shrink: 0; }
+    .tray-scene-status__dot.is-allOn { background: var(--green); }
+    .tray-scene-status__dot.is-mute { background: #f59e0b; }
+    .tray-scene-status__dot.is-custom { background: var(--primary); }
+    .tray-scene-status__text { flex: 1; }
+    .tray-scene-status__restore {
+      font-weight: 700; color: var(--primary-deep); cursor: pointer; white-space: nowrap;
+    }
+    .tray-scene-status__restore:hover { text-decoration: underline; }
+    .tray-scene-status__restore[hidden] { display: none; }
+    .tray-scene-block--custom { background: linear-gradient(180deg, #fff8e8 0%, #fff3d6 100%); border-color: rgba(245,158,11,.3); }
+    .tray-scene-block--mute { background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%); border-color: rgba(100,116,139,.25); }
+
+    /* mini-toggle 刚点完的高亮（600ms 渐隐） */
+    .mini-toggle.is-just-toggled { box-shadow: 0 0 0 3px rgba(42,156,196,.45); transition: box-shadow .6s ease-out; }
+    .sw-line.is-just-toggled { background: rgba(42,156,196,.12); transition: background .8s ease-out; }
+
+    /* 旧三平级（仅做对比展示用） */
+    .tray-scene-old { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3px; }
+    .tray-scene-old button {
+      border: 1px solid var(--outline); background: var(--surface-2);
+      font: 700 10px inherit; padding: 6px 4px; border-radius: 6px; cursor: pointer;
+      color: var(--on-surface-muted);
+    }
+    .tray-scene-old button.is-on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+    /* 在本原型里隐藏 tray-inventory-user.js 的旧 scene-quick / tray-status 块（与新场景块重复） */
+
+    .compare-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+    @media (max-width: 760px) { .compare-row { grid-template-columns: 1fr; } }
+    .compare-card { background: var(--surface); border: 1px solid var(--outline); border-radius: 10px; padding: 12px 14px; }
+    .compare-card h3 { margin: 0 0 8px; font-size: 13px; }
+    .compare-card p { margin: 0 0 8px; font-size: 11px; color: var(--on-surface-muted); line-height: 1.5; }
+    .compact-mock { border: 1px dashed var(--outline); border-radius: 8px; padding: 8px 10px; background: var(--surface-2); font-size: 11px; }
+    .compact-mock .cc-gh { font-size: 10px; font-weight: 700; color: var(--on-surface-muted); margin-bottom: 6px; }
+    .cc-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--outline); }
+    .cc-row:last-child { border-bottom: none; }
+    .cc-row.link { color: var(--primary-deep); cursor: pointer; }
+    .cc-row.link:hover { text-decoration: underline; }
+
+    .arch { margin-top: 14px; padding: 12px 14px; background: #fff; border: 1px solid var(--outline); border-radius: 10px; font-size: 11px; line-height: 1.55; }
+    .arch h3 { margin: 0 0 8px; font-size: 13px; }
+    .arch table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .arch th, .arch td { border: 1px solid var(--outline); padding: 6px 8px; text-align: left; }
+    .arch th { background: var(--surface-2); font-weight: 700; }
+    .proto-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; font-size: 12px; }
+    .proto-nav a {
+      color: var(--primary-deep); text-decoration: none; font-weight: 600;
+      padding: 4px 8px; border-radius: 6px; background: var(--surface); border: 1px solid var(--outline);
+    }
+    .proto-nav a:hover { background: var(--primary-soft); }
+    .proto-nav a.is-here { background: var(--primary); color: #fff; border-color: var(--primary); pointer-events: none; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="proto-nav">
+    <a href="tray-inventory-index.html">← 清单总览</a>
+    <a href="tray-editor-subtabs-prototype.html" class="is-here">Subtab 编辑器</a>
+    <a href="tray-inventory-voice.html">语音清单</a>
+    <a href="tray-inventory-keys.html">按键清单</a>
+    <a href="tray-inventory-softpad.html">软垫清单</a>
+    <a href="tray-inventory-camera.html">摄像头清单</a>
+    <a href="tray-inventory-habits.html">习惯清单</a>
+  </nav>
+  <h1>托盘编辑器原型<span class="tag">方案 A · 场景块定稿</span></h1>
+  <p class="lede">
+    左侧 OS 托盘顶部：<strong>2 颗大预设 + 1 行状态</strong>（正常使用 / 勿扰；自定义降级为状态文字，可点恢复）。
+    数据模型仍是三态 <code>allOn / custom / mute</code> + <code>customSnapshot</code>，命名按移动端心智替换。
+    右侧：<strong>「当前习惯」</strong> tab = 四通道只读一览 + 本日用量（唯一汇总处）；
+    <strong>语音/按键/小键盘/摄像头</strong> tab = 仅 L1/L2 开关 + layout，<s>无 ch-stats</s>。
+    Hub = CRUD + 7 天历史。
+  </p>
+
+  <div class="toolbar">
+    <label>布局预设</label>
+    <div class="seg" id="presetSeg">
+      <button type="button" data-preset="beg">小白 minimal</button>
+      <button type="button" class="on" data-preset="vibe">Vibe</button>
+      <button type="button" data-preset="full">完整 + 摄像头</button>
+    </div>
+    <label style="margin-left:8px">正在使用</label>
+    <div class="seg" id="scenarioSeg">
+      <button type="button" data-scenario="baseline">通用设置</button>
+      <button type="button" class="on" data-scenario="cursor">Cursor 场景</button>
+      <button type="button" data-scenario="codex">Codex 场景</button>
+    </div>
+    <label style="margin-left:8px">设备场景</label>
+    <div class="seg" id="sceneSeg">
+      <button type="button" class="on" data-scene="normal">正常</button>
+      <button type="button" data-scene="noMic">无麦克风</button>
+      <button type="button" data-scene="noCam">无摄像头</button>
+      <button type="button" data-scene="unconfigured">未配置</button>
+    </div>
+    <label style="margin-left:8px">编辑器 focus</label>
+    <div class="seg" id="focusSeg">
+      <button type="button" class="on" data-focus="habit">当前习惯</button>
+      <button type="button" data-focus="voice">语音</button>
+      <button type="button" data-focus="keys">按键</button>
+      <button type="button" data-focus="softPad">小键盘</button>
+      <button type="button" data-focus="camera">摄像头</button>
+    </div>
+  </div>
+
+  <div class="app-page">
+    <header class="pref-head">
+      <h2>托盘菜单</h2>
+      <p>预览 = 省事方式 + 常用开关 + 更多选项（小白向）</p>
+    </header>
+    <div class="tray-face">
+      <div class="preview-pane">
+        <div class="preview-lbl">托盘菜单预览（开关 only）</div>
+        <div class="menu-shell" id="menuShell"></div>
+      </div>
+      <aside class="editor-pane" id="editorPane">
+        <div class="editor-top">
+          <h3>托盘编辑器</h3>
+          <span class="editor-autosave">自动保存</span>
+        </div>
+        <p class="hub-label">开关设置 <span class="hub-label__sub">与左侧托盘同步</span></p>
+        <div class="tray-ch-subtabs" id="subtabs" role="tablist"></div>
+        <div id="channelPanel"></div>
+        <div class="editor-foot">
+          <button type="button" class="hub-link-sm" id="btnOpenHub">管理习惯与应用场景 ▸ Hub</button>
+          <span class="editor-hint">历史用量 / CRUD 在 Hub，不在托盘。</span>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="compare-row">
+    <div class="compare-card">
+      <h3>通道设置页 · compact（surface=compact）</h3>
+      <p>只放 <b>L2 次要开关</b>；主开关（L1）在托盘。托盘显示由预设自动决定，不在此勾选。</p>
+      <div class="compact-mock" id="compactMock"></div>
+    </div>
+    <div class="compare-card">
+      <h3>OS 托盘场景块 · 旧三平级 vs 新二按钮+状态</h3>
+      <p>旧：3 颗平级按钮挤一排，标签全是技术词；新：2 颗大预设 + 1 行状态，自定义降级成可点状态文字。</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div>
+          <div style="font-size:9px;font-weight:700;color:var(--on-surface-muted);margin-bottom:4px">旧 · 三平级（不推荐）</div>
+          <div style="border:1px dashed var(--outline);border-radius:8px;padding:8px;background:var(--surface-2)">
+            <div class="tray-scene-old">
+              <button type="button" class="is-on">全开</button>
+              <button type="button">自定义</button>
+              <button type="button">静音</button>
+            </div>
+            <div style="font-size:9px;color:var(--on-surface-soft);margin-top:5px;line-height:1.45">
+              三个技术词并列；用户要选"我现在想干嘛"却看到三个抽象状态
+            </div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;color:var(--on-surface-muted);margin-bottom:4px">新 · 二按钮 + 状态（推荐）</div>
+          <div style="border:1px dashed var(--outline);border-radius:8px;padding:8px;background:var(--surface-2)">
+            <div class="tray-scene-block tray-scene-block--custom">
+              <div class="tray-scene-block__label">场景 <span class="tip">点预设批量改开关</span></div>
+              <div class="tray-scene-presets">
+                <button type="button" class="tray-scene-preset"><span class="tray-scene-preset__ic">🔊</span><span class="tray-scene-preset__lbl">正常使用</span><span class="tray-scene-preset__hint">按你的设置开</span></button>
+                <button type="button" class="tray-scene-preset"><span class="tray-scene-preset__ic">🌙</span><span class="tray-scene-preset__lbl">勿扰</span><span class="tray-scene-preset__hint">全部 off</span></button>
+              </div>
+              <div class="tray-scene-status">
+                <span class="tray-scene-status__dot is-custom"></span>
+                <span class="tray-scene-status__text">当前：按你的设置</span>
+                <span class="tray-scene-status__restore">恢复</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:10px;color:var(--on-surface-soft);margin:0">左侧预览 = 新版实时渲染；切上面的"编辑器 focus → 通道 tab"再切回"当前习惯"看场景块同步。</p>
+    </div>
+  </div>
+
+  <div class="arch">
+    <h3>三模式 × 开关 × 布局 × 持久化</h3>
+    <table>
+      <thead><tr><th>层</th><th>切模式时</th><th>持久化字段</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>trayRuntime.mode</code></td><td>全开/静音写入；自定义仅标记</td><td><code>trayRuntime.sceneMode</code></td><td>UI 选中态；与开关真值可短暂不一致（自定义）</td></tr>
+        <tr><td><code>config.* 开关</code></td><td><strong>全开/静音 → 批量改</strong>；自定义不改；手调任一 → 归自定义</td><td>各 <code>stateKey</code>（现有 config）</td><td><strong>运行时唯一真源</strong>；下方 toggle 必须同步反映</td></tr>
+        <tr><td><code>customSnapshot</code></td><td>离开自定义前保存；点回自定义恢复</td><td><code>trayRuntime.customSwitchSnapshot</code></td><td>可选；避免「点静音再点自定义」丢自己的组合</td></tr>
+        <tr><td><code>trayCustomization</code></td><td><strong>不因模式而变</strong></td><td><code>cmd_tray_customization_*</code></td><td>托盘显哪些块、常用/更多分工；属布局编辑器</td></tr>
+        <tr><td><code>习惯 mappings</code></td><td>不因托盘模式而变</td><td><code>activeSceneId</code> 等</td><td>托盘模式管<strong>运行时开关</strong>，不管习惯 CRUD</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:11px;color:var(--on-surface-muted);margin:10px 0 0;line-height:1.55">
+      <strong>布局原则：</strong>模式只改开关真值，不改列表结构（常用 / 更多 / 各行位置固定）。
+      静音时行仍在，仅 toggle 变为 off；硬件门控（无麦）才隐藏或禁用行。
+    </p>
+    <h3 style="margin-top:14px">Surface 策略（方案 A）</h3>
+    <table>
+      <thead><tr><th>surface</th><th>控件 / 数据</th><th>界面</th></tr></thead>
+      <tbody>
+        <tr><td><code>os</code></td><td>全开 · 自定义 · 静音 + 常用开关</td><td>模式驱动开关真值；布局来自 customization</td></tr>
+        <tr><td><code>editor · 当前习惯</code></td><td>四通道只读一览 + 24h 用量</td><td>唯一 stats 汇总；scope = <code>activeSceneId</code></td></tr>
+        <tr><td><code>editor · 四通道</code></td><td>L1 + L2 开关</td><td>只管开/关；托盘显隐由预设决定</td></tr>
+        <tr><td><code>compact</code></td><td>L2 only</td><td>各通道设置页底部</td></tr>
+        <tr><td><code>hub</code></td><td><code>action_history.byChannel</code></td><td>场景卡历史 / 导出 / CRUD</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="tray-inventory-user.js"></script>
+<script>
+(function () {
+  var TI = window.TrayInventoryUser;
+  if (!TI) return;
+
+  var CHANNELS = ['habit', 'voice', 'keys', 'softPad', 'camera'];
+  var CH_LABEL = { habit: '当前习惯', voice: '语音', keys: '按键', softPad: '小键盘', camera: '摄像头', mic: '麦克风' };
+  var CH_ICON = { habit: '📋', voice: '🎤', keys: '⌨', softPad: '▦', camera: '📷' };
+
+  var SCENARIOS = {
+    baseline: {
+      id: 'baseline', label: '通用设置', app: '所有应用', fg: '记事本',
+      usage: { total: 18, voice: 6, keys: 10, softPad: 2, camera: 0 },
+      stats: {
+        voice: [{ k: '引擎', v: 'Vosk' }, { k: '唤醒词', v: '嘿 声声' }, { k: '最近事件', v: '12s 前 · 已发送' }, { k: '本场景今日', v: '6 次语音' }],
+        keys: [{ k: '触发键', v: '右 Alt' }, { k: '触发方式', v: '智能连按' }, { k: '场景', v: '通用设置' }, { k: '上次触发', v: '3s 前' }],
+        softPad: [{ k: '键位', v: '—' }, { k: '绑定 Agent', v: '—' }, { k: '浮层', v: '隐藏' }, { k: '本场景今日', v: '未使用' }],
+        camera: [{ k: '设备', v: '默认' }, { k: 'Presence', v: '关' }, { k: '自动静音', v: '关' }, { k: '本场景今日', v: '—' }]
+      }
+    },
+    cursor: {
+      id: 'cursor', label: 'Cursor 场景', app: 'Cursor', fg: 'Cursor.exe',
+      usage: { total: 42, voice: 8, keys: 22, softPad: 12, camera: 0 },
+      stats: {
+        voice: [{ k: '引擎', v: 'Vosk' }, { k: '唤醒词', v: '继承通用' }, { k: '最近事件', v: '45s 前 · 已发送' }, { k: '本场景今日', v: '8 次语音' }],
+        keys: [{ k: '触发键', v: '右 Alt' }, { k: '触发方式', v: '智能连按' }, { k: '场景', v: 'Cursor 场景' }, { k: '上次触发', v: '8s 前' }],
+        softPad: [{ k: '键位', v: '18 个' }, { k: '绑定 Agent', v: 'Cursor' }, { k: '浮层', v: '可见' }, { k: '前台', v: 'Cursor.exe' }],
+        camera: [{ k: '设备', v: '默认' }, { k: 'Presence', v: '关' }, { k: '自动静音', v: '关' }, { k: '覆写', v: '无' }]
+      }
+    },
+    codex: {
+      id: 'codex', label: 'Codex 场景', app: 'Codex', fg: 'Codex.exe',
+      usage: { total: 31, voice: 5, keys: 14, softPad: 12, camera: 0 },
+      stats: {
+        voice: [{ k: '引擎', v: 'Vosk' }, { k: '唤醒词', v: '一声' }, { k: '最近事件', v: '2m 前' }, { k: '本场景今日', v: '5 次语音' }],
+        keys: [{ k: '触发键', v: 'F13' }, { k: '触发方式', v: '按住' }, { k: '场景', v: 'Codex 场景' }, { k: '上次触发', v: '1m 前' }],
+        softPad: [{ k: '键位', v: '21 个' }, { k: '绑定 Agent', v: 'Codex' }, { k: '浮层', v: '已启用' }, { k: '前台', v: 'Codex.exe' }],
+        camera: [{ k: '设备', v: '—' }, { k: 'Presence', v: '关' }, { k: '自动静音', v: '关' }, { k: '覆写', v: '无' }]
+      }
+    }
+  };
+
+  var GLOBAL_BLOCKS = [
+    { id: 'voice', label: '语音分组', block: 'block:channel:voice', visible: true },
+    { id: 'keys', label: '按键分组', block: 'block:channel:keys', visible: true },
+    { id: 'softPad', label: '小键盘分组', block: 'block:channel:softPad', visible: true },
+    { id: 'camera', label: '摄像头分组', block: 'block:channel:camera', visible: true },
+    { id: 'mic', label: '麦克风', block: 'block:mic', visible: true, locked: true },
+    { id: 'footer', label: '底部导航', block: 'block:footer', visible: true, locked: true }
+  ];
+
+  var COMPACT_L2 = {
+    voice: ['说结束词就停'],
+    keys: ['再按一次能取消', '输完自动发送'],
+    softPad: ['跟着前台助手显示'],
+    camera: ['检测离席', '没人也静音']
+  };
+
+  function buildChannelData() {
+    var data = {};
+    Object.keys(TI.CHANNEL_SWITCHES).forEach(function (ch) {
+      if (ch === 'mic') return;
+      var def = TI.CHANNEL_SWITCHES[ch];
+      data[ch] = {
+        showTray: true,
+        core: def.items.map(function (it) {
+          return { id: it.id, label: it.label, hint: it.hint, on: !!TI.DEFAULT_ON[it.id], tier: it.lvl };
+        }),
+        layout: def.items.filter(function (it) { return it.lvl === 'L1' || it.lvl === 'L2'; })
+          .slice(0, 3).map(function (it, i) {
+            return { id: it.id, label: it.label, badge: i === 0 ? '标题行' : '', on: !!TI.DEFAULT_ON[it.id] };
+          })
+      };
+    });
+    return data;
+  }
+
+  var CHANNEL_DATA = buildChannelData();
+  var preset = 'vibe';
+  var scene = 'normal';
+  var activeScenario = 'cursor';
+  var activeTab = 'habit';
+  var EDITOR_KEY = 'trayEditorProto';
+  var TRAY_KEY = 'trayProtoState';
+
+  var state = { switches: Object.assign({}, TI.DEFAULT_ON), manualChangeLog: [], _fromPresetTweak: false };
+
+  // 场景模式三态（allOn / dnd / custom）+ 自定义快照
+  var sceneMode = 'custom';
+  var customSnapshot = Object.assign({}, state.switches);
+  var SCENE_LABEL = { allOn: '正常使用', mute: '勿扰', custom: '按你的设置' };
+  var SCENE_DOT = { allOn: 'is-allOn', mute: 'is-mute', custom: 'is-custom' };
+
+  function channelInTray(ch) {
+    if (ch === 'habit') return true;
+    if (preset === 'beg') return ch === 'voice';
+    return !!CHANNEL_DATA[ch];
+  }
+
+  function applyTrayVisibility() {
+    var beg = preset === 'beg';
+    Object.keys(CHANNEL_DATA).forEach(function (ch) {
+      CHANNEL_DATA[ch].showTray = beg ? (ch === 'voice') : true;
+    });
+    GLOBAL_BLOCKS.forEach(function (b) {
+      if (b.locked) return;
+      if (CHANNEL_DATA[b.id]) b.visible = CHANNEL_DATA[b.id].showTray;
+    });
+  }
+
+  function trayStatusHtml(ch) {
+    if (channelInTray(ch)) return '<span class="ch-tray-pill">已在托盘</span>';
+    return '<span class="ch-tray-pill ch-tray-pill--off">不在托盘</span>';
+  }
+
+  function syncChannelDataFromSwitches() {
+    Object.keys(CHANNEL_DATA).forEach(function (ch) {
+      (CHANNEL_DATA[ch].core || []).forEach(function (c) {
+        if (state.switches[c.id] != null) c.on = !!state.switches[c.id];
+      });
+    });
+  }
+
+  function loadTrayRuntime() {
+    try {
+      var raw = localStorage.getItem(TRAY_KEY);
+      if (!raw) return;
+      var saved = JSON.parse(raw);
+      if (saved.switches) state.switches = Object.assign({}, TI.DEFAULT_ON, saved.switches);
+      if (saved.customSnapshot) {
+        customSnapshot = Object.assign({}, saved.customSnapshot);
+        state.customSnapshot = customSnapshot;
+      }
+      if (saved.manualChangeLog) state.manualChangeLog = saved.manualChangeLog;
+      state._fromPresetTweak = !!saved.fromPresetTweak;
+      if (saved.sceneMode) sceneMode = saved.sceneMode;
+    } catch (e) { /* ponytail: localStorage optional in prototype */ }
+  }
+
+  function loadEditorState() {
+    try {
+      var raw = localStorage.getItem(EDITOR_KEY);
+      if (!raw) return;
+      var saved = JSON.parse(raw);
+      if (saved.preset) preset = saved.preset;
+      if (saved.scene) scene = saved.scene;
+      if (saved.activeTab) activeTab = saved.activeTab;
+      if (saved.activeScenario) activeScenario = saved.activeScenario;
+      if (saved.sceneMode) sceneMode = saved.sceneMode;
+      if (saved.customSnapshot) {
+        customSnapshot = Object.assign({}, saved.customSnapshot);
+        state.customSnapshot = customSnapshot;
+      }
+      applyTrayVisibility();
+    } catch (e) { /* ponytail: localStorage optional in prototype */ }
+  }
+
+  function autoSave() {
+    try {
+      localStorage.setItem(EDITOR_KEY, JSON.stringify({
+        preset: preset,
+        scene: scene,
+        activeTab: activeTab,
+        activeScenario: activeScenario,
+        sceneMode: sceneMode,
+        customSnapshot: customSnapshot
+      }));
+    } catch (e) { /* ponytail: localStorage optional in prototype */ }
+  }
+
+  loadTrayRuntime();
+  loadEditorState();
+  applyTrayVisibility();
+  syncChannelDataFromSwitches();
+
+  function allOnSnapshot() {
+    // "正常使用" = 在 DEFAULT_ON 基础上确保 L1 全开
+    return Object.assign({}, TI.DEFAULT_ON);
+  }
+  function dndSnapshot() {
+    // "勿扰" = 全部 off
+    var s = {};
+    Object.keys(TI.DEFAULT_ON).forEach(function (k) { s[k] = false; });
+    return s;
+  }
+  function snapshotEqual(a, b) {
+    var k = Object.keys(a);
+    if (k.length !== Object.keys(b).length) return false;
+    for (var i = 0; i < k.length; i++) if (a[k[i]] !== b[k[i]]) return false;
+    return true;
+  }
+  function applySnapshot(snap) {
+    Object.keys(snap).forEach(function (k) { state.switches[k] = snap[k]; });
+  }
+  function setSceneMode(next) {
+    var prev = sceneMode;
+    if (prev === 'custom' && next !== 'custom' && !state._fromPresetTweak) {
+      customSnapshot = Object.assign({}, state.switches);
+      state.customSnapshot = customSnapshot;
+    }
+    if (next === 'allOn') applySnapshot(allOnSnapshot());
+    else if (next === 'mute') applySnapshot(dndSnapshot());
+    else if (next === 'custom') {
+      if (customSnapshot && Object.keys(customSnapshot).length) applySnapshot(customSnapshot);
+      state.manualChangeLog = [];
+      state._fromPresetTweak = false;
+    }
+    if (next === 'allOn' || next === 'mute') state._fromPresetTweak = false;
+    sceneMode = next;
+    autoSave();
+    renderPreview();
+    renderPanel();
+  }
+  function findSwitchLabel(id) {
+    // 在 CHANNEL_SWITCHES 里找 sw 的显示名
+    var chs = TI.CHANNEL_SWITCHES;
+    for (var ch in chs) {
+      if (!chs.hasOwnProperty(ch)) continue;
+      var items = chs[ch].items || [];
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].id === id) return { label: items[i].label, channel: ch };
+      }
+    }
+    return { label: id, channel: '' };
+  }
+
+  function onManualSwitchChange(swId) {
+    if (sceneMode === 'allOn' || sceneMode === 'mute') state._fromPresetTweak = true;
+    if (sceneMode !== 'custom') sceneMode = 'custom';
+    if (swId) {
+      var hit = findSwitchLabel(swId);
+      var ch = hit.channel;
+      var node = document.querySelector('[data-sw-id="' + swId + '"] .mini-toggle')
+              || document.querySelector('.sw-line[data-ch-section="' + ch + '"] .toggle[data-sw="' + swId + '"]');
+      if (node) {
+        node.classList.add('is-just-toggled');
+        setTimeout(function () { node.classList.remove('is-just-toggled'); }, 700);
+      }
+    }
+  }
+
+  function scenario() { return SCENARIOS[activeScenario] || SCENARIOS.baseline; }
+  function personaId() { return preset === 'beg' ? 'beg' : 'vibe'; }
+  function showCamera() { return preset !== 'beg' && CHANNEL_DATA.camera.showTray; }
+
+  function renderHabitHeadHtml() {
+    var sc = scenario();
+    var u = sc.usage;
+    var chips = [
+      { lbl: '语音', n: u.voice },
+      { lbl: '按键', n: u.keys },
+      { lbl: '小键盘', n: u.softPad },
+      { lbl: '摄像头', n: u.camera }
+    ].filter(function (c) { return c.n > 0; }).map(function (c) {
+      return '<span class="usage-chip">' + c.lbl + ' ' + c.n + '</span>';
+    }).join('');
+    return '<div class="habit-head">' +
+      '<div class="habit-head__title">正在使用 · ' + sc.label + ' <span class="st-pill on">activeSceneId</span></div>' +
+      '<div class="habit-head__sub">跟随前台 → ' + sc.fg + ' · 今日合计 ' + u.total + ' 次</div>' +
+      (chips ? '<div class="usage-chips" style="margin-top:5px">' + chips + '</div>' : '') +
+      '</div>';
+  }
+
+  function renderStatsOverviewHtml() {
+    var chs = ['voice', 'keys', 'softPad', 'camera'];
+    var cards = chs.map(function (ch) {
+      var stats = scenario().stats[ch] || [];
+      var rows = stats.slice(0, 2).map(function (s) {
+        return '<div class="stats-overview-card__row"><span class="k">' + s.k + '</span><span class="v">' + s.v + '</span></div>';
+      }).join('');
+      var usage = scenario().usage[ch] || 0;
+      return '<button type="button" class="stats-overview-card" data-go-ch="' + ch + '">' +
+        '<div class="stats-overview-card__head"><span class="stats-overview-card__ic">' + CH_ICON[ch] + '</span>' + CH_LABEL[ch] +
+        (usage > 0 ? ' <span class="usage-chip">今日 ' + usage + '</span>' : '') + '</div>' + rows + '</button>';
+    }).join('');
+    return '<div class="sec-label">四通道一览 <span>只读 · 点卡片进通道调开关</span></div>' +
+      '<div class="stats-overview">' + cards + '</div>';
+  }
+
+  function renderHabitPanel(host) {
+    var sc = scenario();
+    host.innerHTML = '<div class="ch-card is-focus"><div class="ch-card-head">' +
+      '<span class="ch-card-ic habit">' + CH_ICON.habit + '</span>' +
+      '<div class="ch-card-title"><b>当前习惯</b><span class="st-pill on">正在使用</span></div></div>' +
+      renderHabitHeadHtml() +
+      renderStatsOverviewHtml() +
+      '<div class="sec-label">本日用量 <span>action_history.byChannel · 24h</span></div>' +
+      '<div class="ch-stats">' +
+        '<div class="stat"><span class="k">合计</span><span class="v">' + sc.usage.total + ' 次</span></div>' +
+        '<div class="stat"><span class="k">语音</span><span class="v">' + sc.usage.voice + '</span></div>' +
+        '<div class="stat"><span class="k">按键</span><span class="v">' + sc.usage.keys + '</span></div>' +
+        '<div class="stat"><span class="k">小键盘</span><span class="v">' + sc.usage.softPad + '</span></div>' +
+      '</div>' +
+      '<button type="button" class="go-link" id="btnHubScenario">Hub 查看历史记录与导出 ▸</button>' +
+      '<button type="button" class="go-link go-link--ghost" id="btnHubManage">管理习惯与应用场景 ▸</button></div>';
+    host.querySelector('#btnHubScenario').onclick = function () { alert('深链 → Hub · ' + sc.label + ' · 看看记录'); };
+    host.querySelector('#btnHubManage').onclick = function () { alert('深链 → 设置 · 我的习惯'); };
+    host.querySelectorAll('[data-go-ch]').forEach(function (btn) {
+      btn.onclick = function () { setTab(btn.getAttribute('data-go-ch')); };
+    });
+  }
+
+  function renderPreview() {
+    var shell = document.getElementById('menuShell');
+    state.customSnapshot = customSnapshot;
+    state.manualChangeLog = state.manualChangeLog || [];
+    shell.dataset.sceneMode = sceneMode;
+    shell.dataset.trayTab = shell.dataset.trayTab || (activeTab === 'habit' ? 'voice' : activeTab);
+    TI.renderTray(personaId(), scene, shell, state, {
+      showCamera: showCamera(),
+      trayTab: shell.dataset.trayTab,
+      focusChannel: activeTab === 'habit' ? null : activeTab,
+      onSwitch: function (id) {
+        onManualSwitchChange(id);
+        autoSave();
+      },
+      onSceneModeChange: function (mode) {
+        sceneMode = mode;
+        if (state.customSnapshot) customSnapshot = Object.assign({}, state.customSnapshot);
+        state._fromPresetTweak = !!state._fromPresetTweak;
+        autoSave();
+        renderPanel();
+      },
+      onUndo: function (swId) {
+        var core = CHANNEL_DATA;
+        if (swId) {
+          Object.keys(core).forEach(function (ch) {
+            if (!core[ch].core) return;
+            var c = core[ch].core.find(function (x) { return x.id === swId; });
+            if (c) c.on = !!state.switches[swId];
+          });
+        } else {
+          Object.keys(core).forEach(function (ch) {
+            if (!core[ch].core) return;
+            core[ch].core.forEach(function (c) {
+              if (state.switches[c.id] != null) c.on = !!state.switches[c.id];
+            });
+          });
+        }
+        autoSave();
+        renderPanel();
+      },
+      onFooterGo: function (go) {
+        if (go === 'camera:actionHistory') {
+          alert('深链 → 主窗口 · 动作提示历史（action_history · camera）');
+        }
+      },
+      _hydrated: true
+    });
+    ['voice', 'keys', 'softPad', 'camera'].forEach(function (ch) {
+      var el = shell.querySelector('[data-ch-section="' + ch + '"]');
+      if (el) el.hidden = !CHANNEL_DATA[ch].showTray;
+    });
+    shell.querySelectorAll('[data-ch-section]').forEach(function (sec) {
+      sec.onclick = function (e) {
+        if (e.target.closest('.toggle, .more-fold, .more-panel__hub, [data-posture], .setup-link, .linkish, .sw-line--setup, [data-go], .tray-ft')) return;
+        setTab(sec.getAttribute('data-ch-section'));
+      };
+    });
+    GLOBAL_BLOCKS.forEach(function (b) {
+      if (!b.block) return;
+      var el = shell.querySelector('[data-ch-section="' + b.id + '"]');
+      if (el) el.classList.toggle('off', !b.visible);
+    });
+  }
+
+  function renderSubtabs() {
+    document.getElementById('subtabs').innerHTML = CHANNELS.map(function (ch) {
+      if (ch === 'habit') {
+        return '<button type="button" class="tray-ch-subtab' + (ch === activeTab ? ' is-active' : '') +
+          '" data-tab="' + ch + '" role="tab"><span class="tray-ch-subtab__ic">' + CH_ICON[ch] + '</span>' +
+          '<span class="tray-ch-subtab__lbl">' + CH_LABEL[ch] + '</span></button>';
+      }
+      var d = CHANNEL_DATA[ch];
+      var off = !channelInTray(ch);
+      return '<button type="button" class="tray-ch-subtab' + (ch === activeTab ? ' is-active' : '') + (off ? ' is-off' : '') +
+        '" data-tab="' + ch + '" role="tab"><span class="tray-ch-subtab__ic">' + CH_ICON[ch] + '</span>' +
+        '<span class="tray-ch-subtab__lbl">' + CH_LABEL[ch] + '</span></button>';
+    }).join('');
+  }
+
+  function toggleBtn(on) {
+    return '<button type="button" class="mini-toggle' + (on ? ' on' : '') + '" role="switch"></button>';
+  }
+
+  function syncCoreFromState(ch) {
+    CHANNEL_DATA[ch].core.forEach(function (sw) {
+      if (state.switches[sw.id] != null) sw.on = !!state.switches[sw.id];
+    });
+  }
+
+  function renderPanel() {
+    var ch = activeTab;
+    var host = document.getElementById('channelPanel');
+
+    if (ch === 'habit') {
+      renderHabitPanel(host);
+      return;
+    }
+
+    var d = CHANNEL_DATA[ch];
+    var ic = ch === 'softPad' ? 'softpad' : ch;
+
+    syncCoreFromState(ch);
+
+    // 头部：通道标题 + 托盘状态（只读，由模式决定）
+    var headerHtml = '<div class="ch-card is-focus"><div class="ch-card-head">' +
+      '<span class="ch-card-ic ' + ic + '">' + CH_ICON[ch] + '</span>' +
+      '<div class="ch-card-title"><b>' + CH_LABEL[ch] + '</b></div>' +
+      trayStatusHtml(ch) + '</div>' +
+      '<p class="editor-hint" style="margin:0 0 6px">只管开/关；哪些通道出现在托盘由上方「预设」决定，左侧预览即所见。</p>';
+
+    var cardsHtml = '<div class="sec-label">开关</div>' +
+      d.core.map(function (sw) {
+        var lvl = (sw.tier || 'L1').toLowerCase();
+        var isOn = !!sw.on;
+        var isDisabled = sw.disabled;
+        var depName = sw.needs ? findSwitchLabel(sw.needs).label : null;
+        var relTo = sw.relatedTo || null; // { ch, id, label }
+        var warnHtml = '';
+        if (depName && !isOn) {
+          warnHtml = '<div class="ch-switch-card__warn"><span class="ch-switch-card__warn__ic">⚠</span><span>此开关依赖 <b>' + depName + '</b> 未开启，开启后才会生效</span></div>';
+        } else if (depName && isOn) {
+          warnHtml = '<div class="ch-switch-card__rel" data-go-rel="' + sw.needs + '"><span class="ch-switch-card__rel__ic">↪</span><span class="ch-switch-card__rel__name">' + depName + '</span> 已开启</span></div>';
+        }
+        return '<div class="ch-switch-card is-' + lvl + (isOn ? '' : ' is-off') + (isDisabled ? ' is-disabled' : '') + '" data-sw-id="' + sw.id + '">' +
+          '<div class="ch-switch-card__head">' +
+            '<div class="ch-switch-card__main">' +
+              '<div class="ch-switch-card__title">' +
+                '<span class="ch-switch-card__name">' + sw.label + '</span>' +
+                '<span class="ch-switch-card__lvl ' + (lvl === 'l1' ? '' : lvl) + '">' + (sw.tier || 'L1') + '</span>' +
+              '</div>' +
+              (sw.hint ? '<div class="ch-switch-card__hint">' + sw.hint + '</div>' : '') +
+            '</div>' +
+            '<button type="button" class="ch-switch-card__toggle' + (isOn ? ' on' : '') + '"' + (isDisabled ? ' disabled' : '') + ' role="switch" aria-checked="' + isOn + '"></button>' +
+          '</div>' +
+          warnHtml +
+        '</div>';
+      }).join('');
+
+    host.innerHTML = headerHtml + cardsHtml +
+      '<button type="button" class="go-link">完整设置 ▸</button></div>';
+
+    host.querySelectorAll('.ch-switch-card__toggle').forEach(function (btn) {
+      var card = btn.closest('[data-sw-id]');
+      var id = card && card.getAttribute('data-sw-id');
+      btn.onclick = function () {
+        var oldOn = id ? !!state.switches[id] : false;
+        btn.classList.toggle('on');
+        if (id) {
+          state.switches[id] = btn.classList.contains('on');
+          if (TI.recordManualChange) TI.recordManualChange(state, id, oldOn, state.switches[id]);
+          var core = d.core.find(function (x) { return x.id === id; });
+          if (core) core.on = state.switches[id];
+        }
+        autoSave();
+        onManualSwitchChange(id);
+        // 卡片级高亮
+        var cardEl = btn.closest('.ch-switch-card');
+        if (cardEl) {
+          cardEl.classList.add('is-just-toggled');
+          setTimeout(function () { cardEl.classList.remove('is-just-toggled'); }, 700);
+        }
+        renderPreview();
+        renderPanel();  // 重渲染让 warn/rel 状态、is-off 状态正确
+      };
+    });
+    // 联动跳转
+    host.querySelectorAll('[data-go-rel]').forEach(function (el) {
+      el.onclick = function () {
+        var targetId = el.getAttribute('data-go-rel');
+        // 找到 targetId 所在的 card，scroll 到并高亮
+        var targetCard = host.querySelector('.ch-switch-card[data-sw-id="' + targetId + '"]');
+        if (targetCard) {
+          targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          targetCard.classList.add('is-just-toggled');
+          setTimeout(function () { targetCard.classList.remove('is-just-toggled'); }, 1200);
+        }
+      };
+    });
+  }
+
+  function renderCompact() {
+    var ch = activeTab === 'habit' ? 'voice' : activeTab;
+    var rows = (COMPACT_L2[ch] || []).map(function (lbl) {
+      return '<div class="cc-row"><span>' + lbl + '</span>' + toggleBtn(true) + '</div>';
+    }).join('');
+    document.getElementById('compactMock').innerHTML =
+      '<div class="cc-gh">基础配置（compact · 仅 L2）</div>' + rows +
+      '<div class="cc-row link" id="ccTrayLink">去托盘调主开关 ▸ ' + CH_LABEL[ch] + '</div>';
+    document.getElementById('ccTrayLink').onclick = function () {
+      setTab(ch);
+      document.getElementById('editorPane').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+  }
+
+  function setTab(ch) {
+    activeTab = ch;
+    var shell = document.getElementById('menuShell');
+    if (shell && ch !== 'habit') shell.dataset.trayTab = ch;
+    autoSave();
+    renderSubtabs();
+    renderPanel();
+    renderPreview();
+    renderCompact();
+    document.querySelectorAll('#focusSeg button').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-focus') === ch);
+    });
+  }
+
+  function setScenario(id) {
+    activeScenario = id;
+    document.querySelectorAll('#scenarioSeg button').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-scenario') === id);
+    });
+    autoSave();
+    renderPanel();
+  }
+
+  function setScene(sc) {
+    scene = sc;
+    document.querySelectorAll('#sceneSeg button').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-scene') === sc);
+    });
+    autoSave();
+    renderPreview();
+    renderPanel();
+  }
+
+  function setPreset(p) {
+    preset = p;
+    document.querySelectorAll('#presetSeg button').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-preset') === p);
+    });
+    applyTrayVisibility();
+    renderSubtabs();
+    renderPreview();
+    renderPanel();
+    autoSave();
+  }
+
+  function render() {
+    renderSubtabs();
+    renderPanel();
+    renderPreview();
+    renderCompact();
+  }
+
+  document.getElementById('subtabs').onclick = function (e) {
+    var b = e.target.closest('[data-tab]');
+    if (b) setTab(b.getAttribute('data-tab'));
+  };
+  document.getElementById('scenarioSeg').onclick = function (e) {
+    var b = e.target.closest('[data-scenario]');
+    if (b) setScenario(b.getAttribute('data-scenario'));
+  };
+  document.getElementById('sceneSeg').onclick = function (e) {
+    var b = e.target.closest('[data-scene]');
+    if (b) setScene(b.getAttribute('data-scene'));
+  };
+  document.getElementById('presetSeg').onclick = function (e) {
+    var b = e.target.closest('[data-preset]');
+    if (b) setPreset(b.getAttribute('data-preset'));
+  };
+  document.getElementById('focusSeg').onclick = function (e) {
+    var b = e.target.closest('[data-focus]');
+    if (b) setTab(b.getAttribute('data-focus'));
+  };
+  document.getElementById('btnOpenHub').onclick = function () {
+    alert('深链 → 设置 · 我的习惯（Hub）');
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>

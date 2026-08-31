@@ -7,11 +7,13 @@ use onetone_logic::runtime_event::{kind, RuntimeEvent};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::config::{mapping_is_complete, TriggerMode, VoiceConfig};
+use crate::config::{mapping_is_complete, preset_app_display_name, TriggerMode, VoiceConfig};
 use crate::runtime_event;
 use crate::AppState;
 
 const TRAY_MENU_LABEL: &str = "tray_menu";
+/// Channel row meta when the feature is off in settings — not an external "plug-in" status.
+const TRAY_CH_OFF_META: &str = "未启用";
 
 fn segment_subs() -> &'static Mutex<HashMap<String, HashSet<String>>> {
     static SUBS: std::sync::OnceLock<Mutex<HashMap<String, HashSet<String>>>> =
@@ -28,15 +30,43 @@ pub struct TrayState {
     pub channels: Vec<Channel>,
     pub event: Option<LastEvent>,
     pub deep_links: Vec<DeepLink>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub schemes: Vec<SchemeItem>,
 }
 
-/// Listening / paused / error + which channels are active in the hero chips.
+/// Listening / paused / error + habit context for tray hero.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GlobalState {
-    /// `"listening"` | `"paused"` | `"error"`
+    /// `"listening"` | `"paused"` | `"error"` | `"silenced"`
     pub mode: String,
     pub active_channel_ids: Vec<String>,
+    /// User-configured app scenario label — not OS foreground process name.
+    pub user_label: String,
+    pub active_habit_id: String,
+    pub active_habit_label: String,
+    pub next_habit_id: Option<String>,
+    pub next_habit_label: Option<String>,
+    pub today_total_count: u64,
+    pub today_habit_count: u64,
+    /// Last 7 calendar days usage (oldest → newest).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub week_trend: Vec<u64>,
+    /// OS foreground process — debug/diagnose only; omitted from tray HTML by default.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub foreground_os_debug: Option<String>,
+    /// Remaining silence ms when mode is `silenced`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub silence_remaining_ms: Option<u64>,
+}
+
+/// One habit row for tray scheme picker (P1 segment).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemeItem {
+    pub id: String,
+    pub label: String,
+    pub is_active: bool,
 }
 
 /// Mic privacy row — independent of channel toggles.
@@ -68,7 +98,7 @@ pub struct Channel {
     pub enabled: bool,
     /// `"listening"` | `"standby"` | `"off"` | `"error"`
     pub state: String,
-    /// Single-line meta, e.g. `"Vosk · 已就绪 · 唤醒词…"` or `"(未接入)"`.
+    /// Single-line meta, e.g. `"Vosk · 已就绪 · 唤醒词…"` or `"未启用"`.
     pub meta: String,
     /// e.g. `"main:voice"` — open main window deep link.
     pub deep_link: Option<String>,
@@ -112,15 +142,29 @@ pub fn assemble_tray_state(state: &AppState) -> TrayState {
         channels: assemble_channels(state),
         event: assemble_event(state),
         deep_links: assemble_deep_links(),
+        schemes: assemble_schemes(state),
     }
 }
 
 pub fn assemble_global(state: &AppState) -> GlobalState {
     let paused = *state.paused.lock();
+    let silence_until = *state.listen_silence_until_ms.lock();
+    let now_ms = crate::runtime_event::now_ms();
+    let silenced = silence_until.is_some_and(|until| until > now_ms);
+    let silence_remaining_ms = silence_until.and_then(|until| {
+        if until > now_ms {
+            Some(until - now_ms)
+        } else {
+            None
+        }
+    });
+
     let engine = tray_voice_engine(&state.cfg.lock());
     let (_, voice_error) = tray_voice_state_and_error(state, engine);
 
-    let mode = if paused {
+    let mode = if silenced {
+        "silenced".into()
+    } else if paused {
         "paused".into()
     } else if !voice_error.trim().is_empty() {
         "error".into()
@@ -128,6 +172,45 @@ pub fn assemble_global(state: &AppState) -> GlobalState {
         "listening".into()
     };
 
+    let (
+        user_label,
+        active_habit_id,
+        active_habit_label,
+        next_habit_id,
+        next_habit_label,
+        today_total_count,
+        today_habit_count,
+    ) = {
+        let cfg = state.cfg.lock();
+        let active = tray_active_mapping(&cfg);
+        let active_habit_id = active.map(|m| m.id.clone()).unwrap_or_default();
+        let active_habit_label = active
+            .map(|m| m.display_label())
+            .unwrap_or_else(|| "—".into());
+        let user_label = tray_user_label(active);
+        let (next_habit_id, next_habit_label) = match cfg.peek_next_scheme_same_trigger() {
+            Some((_, to_id)) => {
+                let label = cfg
+                    .find_mapping_by_id(&to_id)
+                    .map(|m| m.display_label())
+                    .unwrap_or_else(|| to_id.clone());
+                (Some(to_id), Some(label))
+            }
+            None => (None, None),
+        };
+        let (today_total_count, today_habit_count) = tray_today_counts(&active_habit_id);
+        (
+            user_label,
+            active_habit_id,
+            active_habit_label,
+            next_habit_id,
+            next_habit_label,
+            today_total_count,
+            today_habit_count,
+        )
+    };
+
+    let week_trend = crate::action_history::usage_counts_last_days(7);
     let channels = assemble_channels(state);
     let active_channel_ids = channels
         .iter()
@@ -135,9 +218,24 @@ pub fn assemble_global(state: &AppState) -> GlobalState {
         .map(|c| c.id.clone())
         .collect();
 
+    #[cfg(debug_assertions)]
+    let foreground_os_debug = Some(tray_foreground_label());
+    #[cfg(not(debug_assertions))]
+    let foreground_os_debug: Option<String> = None;
+
     GlobalState {
         mode,
         active_channel_ids,
+        user_label,
+        active_habit_id,
+        active_habit_label,
+        next_habit_id,
+        next_habit_label,
+        today_total_count,
+        today_habit_count,
+        week_trend,
+        foreground_os_debug,
+        silence_remaining_ms,
     }
 }
 
@@ -194,16 +292,33 @@ pub fn assemble_deep_links() -> Vec<DeepLink> {
             href: "main:home".into(),
         },
         DeepLink {
+            id: "habits".into(),
+            label: "我的习惯".into(),
+            href: "main:habits".into(),
+        },
+        DeepLink {
             id: "settings".into(),
             label: "设置".into(),
             href: "main:settings".into(),
         },
-        DeepLink {
-            id: "diagnose".into(),
-            label: "诊断".into(),
-            href: "main:diagnose".into(),
-        },
     ]
+}
+
+pub fn assemble_schemes(state: &AppState) -> Vec<SchemeItem> {
+    let cfg = state.cfg.lock();
+    let active_id = cfg.active_scene_id.clone();
+    let mut items: Vec<SchemeItem> = cfg
+        .mappings
+        .iter()
+        .filter(|m| mapping_is_complete(m))
+        .map(|m| SchemeItem {
+            id: m.id.clone(),
+            label: m.display_label(),
+            is_active: m.id == active_id,
+        })
+        .collect();
+    items.sort_by(|a, b| a.label.cmp(&b.label));
+    items
 }
 
 pub fn subscribe_segment(window_label: String, segment: String) {
@@ -212,25 +327,23 @@ pub fn subscribe_segment(window_label: String, segment: String) {
 }
 
 pub fn emit_segment_patch(app: &AppHandle, segment: &str, payload: serde_json::Value) {
-    let Some(menu_win) = app.get_webview_window(TRAY_MENU_LABEL) else {
-        return;
+    let labels: Vec<String> = {
+        let subs = segment_subs().lock().expect("tray segment subs");
+        subs.iter()
+            .filter(|(_, set)| set.contains(segment))
+            .map(|(label, _)| label.clone())
+            .collect()
     };
-    if !menu_win.is_visible().unwrap_or(false) {
-        return;
+    let body = serde_json::json!({ "segment": segment, "payload": payload });
+    for label in labels {
+        let Some(win) = app.get_webview_window(&label) else {
+            continue;
+        };
+        if label == TRAY_MENU_LABEL && !win.is_visible().unwrap_or(false) {
+            continue;
+        }
+        let _ = win.emit("tray://patch", body.clone());
     }
-    let label = menu_win.label().to_string();
-    let subscribed = segment_subs()
-        .lock()
-        .expect("tray segment subs")
-        .get(&label)
-        .is_some_and(|set| set.contains(segment));
-    if !subscribed {
-        return;
-    }
-    let _ = menu_win.emit(
-        "tray://patch",
-        serde_json::json!({ "segment": segment, "payload": payload }),
-    );
 }
 
 pub fn emit_tray_segment(app: &AppHandle, state: &AppState, segment: &str) {
@@ -249,14 +362,16 @@ pub fn emit_tray_segments(app: &AppHandle, state: &AppState, segments: &[&str]) 
 
 /// Push saved layout prefs to an open tray menu window (preview-only segment).
 pub fn emit_tray_layout(app: &AppHandle, cfg: &crate::tray_customization::TrayCustomization) {
-    let Some(menu_win) = app.get_webview_window(TRAY_MENU_LABEL) else {
-        return;
-    };
-    if !menu_win.is_visible().unwrap_or(false) {
-        return;
-    }
     let payload = serde_json::to_value(cfg).unwrap_or_else(|_| serde_json::json!({}));
-    let _ = menu_win.emit("tray://layout", payload);
+    for label in [TRAY_MENU_LABEL, "main"] {
+        let Some(win) = app.get_webview_window(label) else {
+            continue;
+        };
+        if label == TRAY_MENU_LABEL && !win.is_visible().unwrap_or(false) {
+            continue;
+        }
+        let _ = win.emit("tray://layout", payload.clone());
+    }
 }
 
 pub fn on_runtime_event_published(app: &AppHandle, state: &AppState, kind_str: &str) {
@@ -272,7 +387,7 @@ pub fn on_runtime_event_published(app: &AppHandle, state: &AppState, kind_str: &
             | kind::SCHEME_SWITCHED
             | kind::CONFIG_CHANGED
     ) {
-        emit_tray_segments(app, state, &["global", "channels"]);
+        emit_tray_segments(app, state, &["global", "channels", "schemes"]);
     }
 }
 
@@ -282,6 +397,7 @@ pub fn segment_payload(state: &AppState, segment: &str) -> Option<serde_json::Va
         "mic" => serde_json::to_value(assemble_mic(state)).ok()?,
         "channels" => serde_json::to_value(assemble_channels(state)).ok()?,
         "event" => assemble_event(state).and_then(|e| serde_json::to_value(e).ok())?,
+        "schemes" => serde_json::to_value(assemble_schemes(state)).ok()?,
         _ => return None,
     };
     Some(value)
@@ -361,7 +477,7 @@ fn assemble_voice_channel(state: &AppState) -> Channel {
     };
 
     let meta = if !enabled {
-        "(未接入)".into()
+        TRAY_CH_OFF_META.into()
     } else {
         let engine_label = tray_engine_label(engine);
         let status = if !voice_error.trim().is_empty() {
@@ -405,7 +521,7 @@ fn assemble_keys_channel(state: &AppState) -> Channel {
                 tray_mode_label(m.trigger_mode)
             )
         }
-        _ => "(未接入)".into(),
+        _ => TRAY_CH_OFF_META.into(),
     };
 
     Channel {
@@ -436,7 +552,7 @@ fn assemble_soft_pad_channel(state: &AppState) -> Channel {
     };
 
     let meta = if !enabled {
-        "(未接入)".into()
+        TRAY_CH_OFF_META.into()
     } else if visible {
         "浮层可见".into()
     } else {
@@ -445,7 +561,7 @@ fn assemble_soft_pad_channel(state: &AppState) -> Channel {
 
     Channel {
         id: "softPad".into(),
-        name: "Soft Pad".into(),
+        name: "小键盘".into(),
         enabled,
         state: state_str,
         meta,
@@ -466,7 +582,7 @@ fn assemble_camera_channel(state: &AppState) -> Channel {
         meta: if enabled {
             "已启用".into()
         } else {
-            "(未接入)".into()
+            TRAY_CH_OFF_META.into()
         },
         deep_link: Some("main:camera".into()),
         stats: assemble_camera_stats(&cfg.camera_prefs, enabled),
@@ -550,6 +666,39 @@ fn tray_soft_pad_mapping<'a>(cfg: &'a VoiceConfig) -> Option<&'a crate::config::
     cfg.mappings
         .iter()
         .find(|m| m.codex_micro_pad.is_some())
+}
+
+fn tray_user_label(mapping: Option<&crate::config::MappingEntry>) -> String {
+    let Some(m) = mapping else {
+        return "—".into();
+    };
+    let app_id = m.app_target_id.trim();
+    if !app_id.is_empty() {
+        if let Some(name) = preset_app_display_name(app_id) {
+            return name.to_string();
+        }
+    }
+    let group = m.group.trim();
+    if !group.is_empty() {
+        return group.to_string();
+    }
+    "—".into()
+}
+
+fn tray_today_counts(active_habit_id: &str) -> (u64, u64) {
+    let stats = crate::action_history::stats_by_mapping(Some(24));
+    let total: u64 = stats.rows.iter().map(|r| r.count).sum();
+    let habit = if active_habit_id.trim().is_empty() {
+        0
+    } else {
+        stats
+            .rows
+            .iter()
+            .find(|r| r.mapping_id == active_habit_id)
+            .map(|r| r.count)
+            .unwrap_or(0)
+    };
+    (total, habit)
 }
 
 fn tray_foreground_label() -> String {
@@ -762,6 +911,7 @@ fn voice_status_label(voice_state: &str) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::VoiceConfig;
     use onetone_logic::runtime_event::RuntimeEvent;
 
     #[test]
@@ -794,5 +944,28 @@ mod tests {
             Some("keys")
         );
         assert_eq!(channel_id_from_kind("listen", kind::LISTEN_PAUSED), None);
+    }
+
+    #[test]
+    fn tray_user_label_prefers_preset_app_display_name() {
+        let mut m = VoiceConfig::default().mappings.remove(0);
+        m.app_target_id = "cursor-chat".into();
+        assert_eq!(tray_user_label(Some(&m)), "Cursor");
+    }
+
+    #[test]
+    fn tray_user_label_falls_back_to_group() {
+        let mut m = VoiceConfig::default().mappings.remove(0);
+        m.group = "我的工作流".into();
+        assert_eq!(tray_user_label(Some(&m)), "我的工作流");
+    }
+
+    #[test]
+    fn assemble_deep_links_has_habits_entry() {
+        let links = assemble_deep_links();
+        let habits = links.iter().find(|l| l.id == "habits").expect("habits link");
+        assert_eq!(habits.label, "我的习惯");
+        assert_eq!(habits.href, "main:habits");
+        assert!(!links.iter().any(|l| l.href == "main:diagnose"));
     }
 }

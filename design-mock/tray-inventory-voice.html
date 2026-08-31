@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>托盘清单 · 语音</title>
+  <link rel="stylesheet" href="tray-inventory-shared.css" />
+</head>
+<body>
+  <div class="wrap">
+    <nav class="nav">
+      <a href="tray-inventory-index.html">← 总览</a>
+      <a href="tray-inventory-voice.html" class="is-here">语音</a>
+      <a href="tray-inventory-keys.html">按键</a>
+      <a href="tray-inventory-softpad.html">软垫</a>
+      <a href="tray-inventory-camera.html">摄像头</a>
+      <a href="tray-inventory-habits.html">习惯</a>
+    </nav>
+
+    <h1>语音 · 托盘开关</h1>
+    <p class="lede">托盘只放<strong>开关</strong>，不显示引擎名/健康状态。专页保留模型、VAD、词典等。</p>
+
+    <table class="filter-table">
+      <thead><tr><th>开关文案</th><th>层级</th><th>小白</th><th>Vibe</th></tr></thead>
+      <tbody>
+        <tr><td><strong>语音听写</strong></td><td>L1</td><td><span class="verdict yes">进</span></td><td><span class="verdict yes">进</span></td></tr>
+        <tr><td><strong>说结束词就停</strong></td><td>L1</td><td><span class="verdict no">专页</span></td><td><span class="verdict yes">进</span></td></tr>
+        <tr class="row-cut"><td>识别引擎 / 语言 / 唤醒词</td><td>—</td><td colspan="2"><span class="verdict setup">专页</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="toolbar">
+      <label>人格</label>
+      <div class="seg" id="personaSeg">
+        <button type="button" data-persona="beg">小白</button>
+        <button type="button" class="on" data-persona="vibe">Vibe</button>
+      </div>
+      <label style="margin-left:8px">场景</label>
+      <div class="seg" id="sceneSeg">
+        <button type="button" class="on" data-scene="normal">正常</button>
+        <button type="button" data-scene="noMic">无麦克风</button>
+        <button type="button" data-scene="unconfigured">未配置</button>
+      </div>
+    </div>
+
+    <div class="frame" style="max-width:360px"><div class="tray" id="trayPreview"></div></div>
+    <p class="annot">高亮当前通道分组；切换人格可看 minimal 与 vibecoder 差异。</p>
+  </div>
+  <script src="tray-inventory-user.js"></script>
+  <script>
+    TrayInventoryUser.mountChannelPage({ previewId: 'trayPreview', focusChannel: 'voice' });
+  </script>
+</body>
+</html>

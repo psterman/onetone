@@ -1,0 +1,295 @@
+/**
+ * OneTone switch — 对齐 design-mock/switch-styles-gallery.html 「F · 紧凑方轨」
+ *
+ * F 基准 (28×14): track-r 3px · thumb 10×10 · thumb-r 2px · pad 1px · 可见描边
+ * md/lg 按同比例放大，保持方轨方钮，不做 iOS pill。
+ */
+:root {
+  --ot-sw-w: 32px;
+  --ot-sw-h: 16px;
+  --ot-sw-pad: 1px;
+  --ot-sw-thumb-size: 12px;
+  --ot-sw-track-r: 3px;
+  --ot-sw-thumb-r: 2px;
+  --ot-sw-thumb: #fff;
+  --ot-sw-off: #e2e8f0;
+  --ot-sw-off-border: rgba(26, 45, 74, 0.2);
+  --ot-sw-on: var(--primary);
+  --ot-sw-on-border: var(--primary-deep, var(--primary-strong, #1e87ad));
+  --ot-sw-thumb-shadow: 0 1px 1px rgba(0, 0, 0, 0.12);
+  /* border-box 宽 28、拇指 10、pad 1、左右 border 各 1 → left 15 */
+  --ot-sw-travel: calc(var(--ot-sw-w) - var(--ot-sw-thumb-size) - var(--ot-sw-pad) * 2 - 2px);
+}
+
+html[data-theme="dark"] {
+  --ot-sw-off: rgba(51, 65, 85, 0.85);
+  --ot-sw-off-border: rgba(148, 163, 184, 0.28);
+  --ot-sw-thumb: #f8fafc;
+  --ot-sw-thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* ── sm = F 原尺寸 ── */
+.ot-switch--sm,
+.sw-toggle,
+.tray-menu .toggle,
+.design-mock .toggle {
+  --ot-sw-w: 28px;
+  --ot-sw-h: 14px;
+  --ot-sw-pad: 1px;
+  --ot-sw-thumb-size: 10px;
+  --ot-sw-track-r: 3px;
+  --ot-sw-thumb-r: 2px;
+}
+
+/* ── md = 设置页 .toggle-switch ── */
+.ot-switch--md,
+.toggle-switch {
+  --ot-sw-w: 32px;
+  --ot-sw-h: 16px;
+  --ot-sw-pad: 1px;
+  --ot-sw-thumb-size: 12px;
+  --ot-sw-track-r: 3px;
+  --ot-sw-thumb-r: 2px;
+}
+
+/* ── lg ── */
+.ot-switch--lg,
+.toggle,
+.keys-app-rule-toggle,
+.habit-setup-toggle .sw {
+  --ot-sw-w: 36px;
+  --ot-sw-h: 18px;
+  --ot-sw-pad: 1px;
+  --ot-sw-thumb-size: 14px;
+  --ot-sw-track-r: 4px;
+  --ot-sw-thumb-r: 3px;
+}
+
+.ch-switch-card__toggle {
+  --ot-sw-w: 36px;
+  --ot-sw-h: 18px;
+  --ot-sw-pad: 1px;
+  --ot-sw-thumb-size: 14px;
+  --ot-sw-track-r: 4px;
+  --ot-sw-thumb-r: 3px;
+}
+
+/* ── base (all switch aliases) ── */
+:is(
+  .ot-switch,
+  .toggle,
+  .toggle-switch,
+  .sw-toggle,
+  .mini-toggle,
+  .ch-switch-card__toggle,
+  .soft-pad-tray-mini-toggle,
+  .keys-app-rule-toggle,
+  .habit-setup-toggle .sw,
+  button[role="switch"]:is(.toggle, .toggle-switch, .sw-toggle, .ot-switch)
+) {
+  box-sizing: border-box;
+  width: var(--ot-sw-w);
+  height: var(--ot-sw-h);
+  min-width: var(--ot-sw-w);
+  min-height: var(--ot-sw-h);
+  padding: 0;
+  border: 1px solid var(--ot-sw-off-border);
+  border-radius: var(--ot-sw-track-r);
+  background: var(--ot-sw-off);
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+  appearance: none;
+  -webkit-appearance: none;
+  margin-top: 0;
+  transition:
+    background var(--dur-fast, 120ms) ease,
+    border-color var(--dur-fast, 120ms) ease,
+    opacity var(--dur-fast, 120ms) ease;
+}
+
+:is(
+  .ot-switch,
+  .toggle,
+  .toggle-switch,
+  .sw-toggle,
+  .mini-toggle,
+  .ch-switch-card__toggle,
+  .soft-pad-tray-mini-toggle,
+  .keys-app-rule-toggle,
+  .habit-setup-toggle .sw
+)::after {
+  content: "";
+  position: absolute;
+  top: var(--ot-sw-pad);
+  left: var(--ot-sw-pad);
+  width: var(--ot-sw-thumb-size);
+  height: var(--ot-sw-thumb-size);
+  border-radius: var(--ot-sw-thumb-r);
+  background: var(--ot-sw-thumb);
+  box-shadow: var(--ot-sw-thumb-shadow);
+  transition:
+    transform var(--dur-fast, 120ms) ease,
+    left var(--dur-fast, 120ms) ease;
+  pointer-events: none;
+}
+
+/* on states */
+:is(
+  .ot-switch,
+  .toggle,
+  .toggle-switch,
+  .sw-toggle,
+  .mini-toggle,
+  .ch-switch-card__toggle,
+  .soft-pad-tray-mini-toggle,
+  .keys-app-rule-toggle,
+  .habit-setup-toggle .sw
+):is(.on, .is-on):not(.off),
+:is(
+  .ot-switch,
+  .toggle,
+  .toggle-switch,
+  .sw-toggle,
+  .mini-toggle,
+  .ch-switch-card__toggle,
+  .soft-pad-tray-mini-toggle,
+  .keys-app-rule-toggle,
+  .habit-setup-toggle .sw
+)[aria-checked="true"] {
+  background: var(--ot-sw-on);
+  border-color: var(--ot-sw-on-border);
+}
+
+:is(
+  .ot-switch,
+  .toggle,
+  .toggle-switch,
+  .sw-toggle,
+  .mini-toggle,
+  .ch-switch-card__toggle,
+  .soft-pad-tray-mini-toggle,
+  .keys-app-rule-toggle,
+  .habit-setup-toggle .sw
+):is(.on, .is-on):not(.off)::after,
+:is(
+  .ot-switch,
+  .toggle,
+  .toggle-switch,
+  .sw-toggle,
+  .mini-toggle,
+  .ch-switch-card__toggle,
+  .soft-pad-tray-mini-toggle,
+  .keys-app-rule-toggle,
+  .habit-setup-toggle .sw
+)[aria-checked="true"]::after {
+  transform: translateX(var(--ot-sw-travel));
+}
+
+/* explicit off */
+:is(.ot-switch, .toggle, .toggle-switch, .sw-toggle, .mini-toggle)[aria-checked="false"],
+:is(.ot-switch, .toggle, .toggle-switch, .sw-toggle, .mini-toggle).off {
+  background: var(--ot-sw-off);
+  border-color: var(--ot-sw-off-border);
+}
+
+/* keys rule: tinted off track */
+.keys-app-rule-toggle:not(.is-on):not([aria-checked="true"]) {
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+.habit-setup-toggle .sw {
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+/* tray mic */
+.mic-row .toggle {
+  --ot-sw-w: 28px;
+  --ot-sw-h: 14px;
+  --ot-sw-pad: 1px;
+  --ot-sw-thumb-size: 10px;
+  --ot-sw-track-r: 3px;
+  --ot-sw-thumb-r: 2px;
+}
+
+.mic-row:not(.muted) .toggle {
+  background: var(--ot-sw-on);
+  border-color: var(--ot-sw-on-border);
+}
+
+.mic-row:not(.muted) .toggle::after {
+  transform: translateX(var(--ot-sw-travel));
+}
+
+.mic-row.muted .toggle {
+  background: var(--danger, #dc2626);
+  border-color: color-mix(in srgb, var(--danger, #dc2626) 45%, transparent);
+}
+
+.mic-row.muted .toggle::after {
+  transform: translateX(0);
+}
+
+/* disabled / busy */
+:is(
+  .ot-switch,
+  .toggle,
+  .toggle-switch,
+  .sw-toggle,
+  .mini-toggle,
+  .ch-switch-card__toggle,
+  .keys-app-rule-toggle
+):disabled,
+:is(
+  .ot-switch,
+  .toggle,
+  .toggle-switch,
+  .sw-toggle,
+  .mini-toggle,
+  .ch-switch-card__toggle,
+  .keys-app-rule-toggle
+).is-disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+:is(.ot-switch, .toggle, .toggle-switch).is-busy {
+  opacity: 0.72;
+  cursor: progress;
+}
+
+:is(.ot-switch, .toggle, .toggle-switch, .sw-toggle, .mini-toggle).is-just-toggled {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 35%, transparent);
+  transition: box-shadow 0.6s ease-out;
+}
+
+/* row off = gray whole row; switch stays readable */
+.ot-row-off,
+.sw-line.is-off,
+.demo-row.is-off,
+.ch-switch-card.is-off,
+.map-row:not(.is-on) {
+  opacity: 0.5;
+  filter: grayscale(0.4);
+  transition: opacity 0.15s ease, filter 0.15s ease;
+}
+
+.map-row:not(.is-on) {
+  opacity: 0.68;
+}
+
+.ot-row-off :is(.ot-switch, .toggle, .sw-toggle),
+.sw-line.is-off .toggle,
+.ch-switch-card.is-off .ch-switch-card__toggle,
+.map-row:not(.is-on) .toggle {
+  opacity: 1;
+  filter: none;
+}
+
+@media screen {
+  html.ot-switch-selfcheck::after {
+    content: "ot-switch ok";
+    display: none;
+  }
+}

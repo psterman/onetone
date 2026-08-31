@@ -1,0 +1,133 @@
+/**
+ * OneTone channel subtab — icon + label card tabs (托盘/编辑器/SoftPad 通道切换)
+ * 与 ot-switch 同属紧凑控件层：圆角 ≈ --radius-row(16px) 的一半
+ * 不含文字 pill 型 subtab（keys-channel-subtab、camera-pro-subtab 等另族）
+ */
+:root {
+  --ot-subtab-r: 8px;
+  --ot-subtab-gap: 3px;
+  --ot-subtab-active-bg: color-mix(in srgb, var(--primary) 10%, transparent);
+  --ot-subtab-active-border: color-mix(in srgb, var(--primary) 40%, transparent);
+  --ot-subtab-off-opacity: 0.48;
+}
+
+/* ── tab lists ── */
+:is(.ot-subtabs, .tray-subtabs, .tray-ch-subtabs) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(52px, 1fr));
+  gap: var(--ot-subtab-gap);
+  flex: 1;
+  min-width: 0;
+}
+
+.tray-ch-subtabs {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.soft-pad-tray-ch-subtabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+
+/* ── tab button ── */
+:is(.ot-subtab, .tray-subtab, .tray-ch-subtab, .soft-pad-tray-ch-subtab) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 7px 2px 5px;
+  min-height: 38px;
+  min-width: 0;
+  border: 1px solid var(--outline-variant, var(--outline, rgba(26, 45, 74, 0.1)));
+  border-radius: var(--ot-subtab-r);
+  background: var(--surface, #fff);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--on-surface-muted, #5a7086);
+  position: relative;
+  transition:
+    opacity var(--dur-fast, 160ms) ease,
+    filter var(--dur-fast, 160ms) ease,
+    color var(--dur-fast, 160ms) ease,
+    border-color var(--dur-fast, 160ms) ease,
+    background var(--dur-fast, 160ms) ease;
+}
+
+:is(.ot-subtab, .tray-subtab, .tray-ch-subtab, .soft-pad-tray-ch-subtab):hover {
+  border-color: color-mix(in srgb, var(--primary) 35%, transparent);
+  color: var(--on-surface, #152238);
+}
+
+:is(.ot-subtab, .tray-subtab, .tray-ch-subtab, .soft-pad-tray-ch-subtab).is-active {
+  color: var(--primary-deep, var(--primary-strong, #1e87ad));
+  background: var(--ot-subtab-active-bg);
+  border-color: var(--ot-subtab-active-border);
+  font-weight: 800;
+}
+
+/* 关 / 不在托盘预设 → 灰（与 ot-switch 行灰一致） */
+:is(.ot-subtab, .tray-subtab, .tray-ch-subtab, .soft-pad-tray-ch-subtab).is-off,
+.tray-subtab.is-channel-off {
+  opacity: var(--ot-subtab-off-opacity);
+  filter: grayscale(0.55);
+  color: var(--on-surface-muted);
+}
+
+:is(.ot-subtab, .tray-subtab, .tray-ch-subtab, .soft-pad-tray-ch-subtab).is-off.is-active,
+.tray-subtab.is-channel-off.is-active {
+  opacity: 0.72;
+  filter: grayscale(0.35);
+}
+
+/* parts */
+:is(.ot-subtab, .tray-subtab, .tray-ch-subtab, .soft-pad-tray-ch-subtab) :is(
+  .ot-subtab__ic,
+  .tray-subtab__ic,
+  .tray-ch-subtab__ic,
+  .soft-pad-tray-ch-subtab__ic
+) {
+  font-size: 12px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.soft-pad-tray-ch-subtab__ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  color: currentColor;
+}
+
+.soft-pad-tray-ch-subtab__ic svg {
+  display: block;
+  width: 13px;
+  height: 13px;
+}
+
+:is(.ot-subtab, .tray-subtab, .tray-ch-subtab, .soft-pad-tray-ch-subtab) :is(
+  .ot-subtab__lbl,
+  .tray-subtab__lbl,
+  .tray-ch-subtab__lbl,
+  .soft-pad-tray-ch-subtab__lbl
+) {
+  font-size: 8.5px;
+  font-weight: inherit;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+html[data-theme="dark"] .soft-pad-tray-ch-subtab {
+  background: rgba(30, 40, 56, 0.75);
+}
+
+html[data-theme="dark"] .soft-pad-tray-ch-subtab:hover {
+  color: var(--on-surface);
+}

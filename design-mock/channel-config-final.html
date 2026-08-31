@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>4 通道配置 · v3 定稿</title>
+<style>
+:root{--bg:#e8edf3;--surface:#fff;--surface-2:#f8fafc;--line:rgba(26,45,74,.1);--ink:#152238;--ink-2:#5a7086;--ink-3:#8a98a8;--primary:#2a9cc4;--primary-soft:#e6f7fc;--primary-deep:#1e87ad;--green:#2e7d4f;--blue:#3b82f6;--warn:#b9530a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;font-size:14px;line-height:1.5;background:var(--bg);color:var(--ink)}
+.page{max-width:1100px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:24px;margin-bottom:8px}h1 .hl{color:var(--primary)}.lede{color:var(--ink-2);margin-bottom:28px;max-width:720px}
+section{margin-bottom:36px}.sec-head{margin-bottom:14px}.sec-num{font-family:ui-monospace,monospace;font-size:11px;color:var(--ink-3)}
+h2{font-size:17px} .sec-sub{font-size:12px;color:var(--ink-2);margin-top:4px}
+.ch-overview{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:900px){.ch-overview{grid-template-columns:repeat(2,1fr)}}
+.ch-mini{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;cursor:pointer}
+.ch-mini .st{font-size:10px;color:var(--green)}.ch-mini .k{font-size:11px;color:var(--ink-3)}.ch-mini .v{font-size:12px;font-weight:600}
+.ch-mini .foot{font-size:10px;color:var(--ink-3);margin-top:8px;border-top:1px dashed var(--line);padding-top:6px}
+.app{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.group{border:1px solid var(--line);border-radius:10px;margin:12px;background:var(--surface)}
+.group .gh{padding:8px 12px;background:var(--surface-2);font-size:12px;font-weight:700;border-bottom:1px solid var(--line)}
+.row{display:grid;grid-template-columns:1fr auto;gap:12px;padding:10px 12px;border-bottom:1px solid rgba(26,45,74,.06);align-items:center}
+.row:last-child{border-bottom:0}
+.row.ipc-config{border-left:3px solid var(--green)}
+.row.ipc-customization{border-left:3px solid var(--blue)}
+.lbl{font-size:13px;font-weight:600}.hint{font-size:11px;color:var(--ink-3);font-weight:400}
+.toggle{width:36px;height:20px;border-radius:10px;background:#ccc;position:relative;border:none;cursor:pointer}
+.toggle.on{background:var(--primary)}.toggle::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%}
+.toggle.on::after{left:18px}
+.map-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.map-table th,.map-table td{border:1px solid var(--line);padding:6px 8px;text-align:left}
+.footnote{font-size:11px;color:var(--ink-3);margin-top:8px}
+.tag{display:inline-block;font-size:10px;padding:2px 6px;border-radius:4px;background:var(--primary-soft);color:var(--primary-deep);margin-right:6px}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>四通道配置 <span class="hl">v3</span></h1>
+  <p class="lede">配置 vs 状态分离：紧凑层仅 3–4 个真配置项；统计只读在托盘 Hero / 主页总览。蓝 = tray customization，绿 = config persist + segment patch。</p>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">01</span><h2>主页总览卡 <span class="tag">home-overview</span></h2>
+    <p class="sec-sub">只读摘要 + 导航；零可写控件。产品：openDrawer(panel)，非同页 tab。</p></div>
+    <div class="ch-overview" data-component="home-overview">
+      <div class="ch-mini" data-nav="voice"><strong>语音</strong><div class="st">● 工作中</div><div class="k">引擎</div><div class="v">Vosk</div><div class="foot">只读 · 点击进入设置</div></div>
+      <div class="ch-mini" data-nav="keys"><strong>按键</strong><div class="st">● 工作中</div><div class="k">应用场景</div><div class="v">Cursor</div><div class="foot">只读 · 点击进入设置</div></div>
+      <div class="ch-mini" data-nav="softPad"><strong>小键盘</strong><div class="st">● 待命</div><div class="k">屏幕键盘</div><div class="v">已启用</div><div class="foot">只读</div></div>
+      <div class="ch-mini" data-nav="camera"><strong>摄像头</strong><div class="st" style="color:var(--warn)">⚠ 未授权</div><div class="k">在不在</div><div class="v muted">关</div><div class="foot">只读</div></div>
+    </div>
+    <p class="footnote">Demo：点击下方卡片仅切换下方 Section 02 预览 tab，不代表产品交互。</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">02</span><h2>设置面板紧凑层 <span class="tag">settings-panel-compact</span></h2>
+    <p class="sec-sub">唯一高频配置写入入口（示例：按键通道）</p></div>
+    <div class="app" data-component="settings-panel-compact" data-channel="keys">
+      <div class="group">
+        <div class="gh">基础配置</div>
+        <div class="row ipc-config">
+          <span class="lbl">场景启用<span class="hint">关了就按了也没反应</span></span>
+          <button type="button" class="toggle on" role="switch" aria-checked="true" data-state-key="mappings[].enabled" data-ipc="config"></button>
+        </div>
+        <div class="row ipc-config">
+          <span class="lbl">再按一次能取消</span>
+          <button type="button" class="toggle on" role="switch" aria-checked="true" data-state-key="mappings[].cancelEnabled" data-ipc="config"></button>
+        </div>
+        <div class="row ipc-config">
+          <span class="lbl">输完自动发送</span>
+          <button type="button" class="toggle" role="switch" aria-checked="false" data-state-key="mappings[].autoEnterEnabled" data-ipc="config"></button>
+        </div>
+        <div class="row ipc-customization">
+          <span class="lbl">托盘显示</span>
+          <button type="button" class="toggle on" role="switch" aria-checked="true" data-state-key="trayCustomization.showInTray.keys" data-ipc="customization"></button>
+        </div>
+      </div>
+      <div class="group">
+        <div class="gh">应用偏好（finishMode · 仅按键）</div>
+        <div class="row ipc-config">
+          <span class="lbl">Cursor · 说完怎么结束</span>
+          <select data-state-key="mappings[].appBehaviorRules[].finishMode" data-ipc="config"><option>confirm</option><option>perpress</option></select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">03</span><h2>字段映射表</h2></div>
+    <table class="map-table">
+      <tr><th>控件</th><th>data-state-key</th><th>IPC</th></tr>
+      <tr><td>场景启用</td><td>mappings[].enabled</td><td style="color:var(--green)">config</td></tr>
+      <tr><td>托盘显示</td><td>trayCustomization.showInTray.keys</td><td style="color:var(--blue)">customization</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">04</span><h2>四通道紧凑层字段（仅配置）</h2></div>
+    <table class="map-table">
+      <tr><th>通道</th><th>配置项</th></tr>
+      <tr><td>语音</td><td>引擎、结束词、托盘显示</td></tr>
+      <tr><td>按键</td><td>启用、取消、自动发送、托盘显示 + 应用偏好</td></tr>
+      <tr><td>小键盘</td><td>启用、屏幕键盘、托盘显示</td></tr>
+      <tr><td>摄像头</td><td>在不在、自动静音、托盘显示</td></tr>
+    </table>
+    <p class="footnote">禁止在紧凑层放「今日次数」等统计字段。</p>
+  </section>
+</div>
+<script>
+document.querySelectorAll('[data-component="home-overview"] .ch-mini').forEach(function(card){
+  card.addEventListener('click',function(){
+    document.querySelectorAll('.ch-mini').forEach(function(c){c.style.outline='';});
+    card.style.outline='2px solid #2a9cc4';
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>方案 A · React 岛 + shadcn 子集</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px; background: #f1f5f9; font-family: ui-sans-serif, system-ui, "Segoe UI", "PingFang SC", sans-serif; font-size: 14px; }
+    .banner { font-size: 11px; color: #64748b; margin-bottom: 12px; line-height: 1.5; max-width: 316px; margin-left: auto; margin-right: auto; }
+    .banner b { color: #2563eb; }
+    .banner a { color: #2563eb; }
+
+    /* 模拟 .ot-island + shadcn token（与 src-islands/globals.css 一致） */
+    .ot-island {
+      --background: 0 0% 100%; --foreground: 222 47% 11%;
+      --muted: 210 40% 96%; --muted-foreground: 215 16% 47%;
+      --primary: 221 83% 53%; --primary-foreground: 0 0% 100%;
+      --border: 214 32% 91%; --ring: 221 83% 53%; --radius: 0.5rem;
+      --destructive: 0 72% 51%;
+      width: 316px; margin: 0 auto;
+      background: hsl(var(--background)); color: hsl(var(--foreground));
+      border: 1px solid hsl(var(--border)); border-radius: calc(var(--radius) + 4px);
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); padding: 12px;
+    }
+    .ot-label { font-size: 10px; font-weight: 600; color: hsl(var(--muted-foreground)); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+    .ot-card {
+      border: 1px solid hsl(var(--border)); border-radius: var(--radius);
+      padding: 12px; margin-bottom: 10px; background: hsl(var(--background));
+    }
+    .ot-card h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+    .ot-card p { margin: 0; font-size: 11px; color: hsl(var(--muted-foreground)); }
+
+    /* shadcn Button */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      height: 32px; padding: 0 12px; border-radius: calc(var(--radius) - 2px);
+      font-size: 12px; font-weight: 500; border: none; cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-default { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+    .btn-default:hover { background: hsl(var(--primary) / 0.9); }
+    .btn-outline {
+      background: hsl(var(--background)); border: 1px solid hsl(var(--border));
+      color: hsl(var(--foreground));
+    }
+    .btn-ghost { background: transparent; color: hsl(var(--foreground)); }
+    .btn-ghost:hover { background: hsl(var(--muted)); }
+
+    /* shadcn Switch（纯 CSS 模拟） */
+    .switch {
+      width: 36px; height: 20px; border-radius: 999px; border: none; padding: 0;
+      background: hsl(var(--primary)); position: relative; cursor: pointer; flex-shrink: 0;
+      transition: background .2s;
+    }
+    .switch::after {
+      content: ''; position: absolute; top: 2px; left: 18px; width: 16px; height: 16px;
+      border-radius: 50%; background: #fff; transition: left .2s;
+      box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+    }
+    .switch.off { background: hsl(var(--border)); }
+    .switch.off::after { left: 2px; }
+    .switch:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    /* shadcn Badge */
+    .badge {
+      display: inline-flex; font-size: 10px; font-weight: 600; padding: 2px 8px;
+      border-radius: 999px; border: 1px solid transparent;
+    }
+    .badge-default { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+    .badge-secondary { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+    .badge-outline { border-color: hsl(var(--border)); color: hsl(var(--foreground)); }
+
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid hsl(var(--border)); }
+    .row:last-child { border-bottom: none; }
+    .row-copy { flex: 1; min-width: 0; }
+    .row-title { font-size: 13px; font-weight: 500; }
+    .row-hint { font-size: 11px; color: hsl(var(--muted-foreground)); margin-top: 2px; }
+
+    .hero { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .hero-main { flex: 1; }
+    .hero-title { font-size: 15px; font-weight: 600; }
+    .chips { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+
+    .tabs { display: flex; gap: 2px; margin-top: 10px; padding: 3px; background: hsl(var(--muted)); border-radius: var(--radius); }
+    .tab {
+      flex: 1; text-align: center; padding: 6px 4px; font-size: 11px; font-weight: 500;
+      border: none; border-radius: calc(var(--radius) - 2px); background: transparent; cursor: pointer;
+      color: hsl(var(--muted-foreground));
+    }
+    .tab.on { background: hsl(var(--background)); color: hsl(var(--foreground)); box-shadow: 0 1px 2px rgb(0 0 0 / 0.06); }
+
+    .note { margin-top: 10px; font-size: 10px; color: hsl(var(--muted-foreground)); padding: 8px; background: hsl(var(--muted)); border-radius: var(--radius); line-height: 1.4; }
+    .ic { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; vertical-align: -2px; margin-right: 4px; }
+  </style>
+</head>
+<body>
+  <p class="banner"><b>方案 A</b> · 仅 <code>.ot-island</code> 内 shadcn 风格 · <a href="ui-unify-abcd-compare.html">← 对比总览</a></p>
+
+  <div class="ot-island">
+    <div class="ot-label">TrayChannelIsland（示意 · 真实托盘不迁 React）</div>
+
+    <div class="hero">
+      <div class="hero-main">
+        <div class="hero-title">正在听</div>
+        <div class="chips">
+          <span class="badge badge-secondary">语音</span>
+          <span class="badge badge-secondary">按键</span>
+        </div>
+      </div>
+      <button type="button" class="btn btn-default">先停一下</button>
+    </div>
+
+    <div class="ot-card">
+      <div class="ot-label" style="margin-bottom:6px">各功能状态</div>
+      <div class="row">
+        <div class="row-copy">
+          <div class="row-title"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>语音 <span class="badge badge-outline">等着</span></div>
+          <div class="row-hint">说「开始输入」就能用</div>
+        </div>
+        <button type="button" class="switch" aria-label="说结束词就停"></button>
+      </div>
+      <div class="row">
+        <div class="row-copy">
+          <div class="row-title"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="7" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="17" cy="12" r="1" fill="currentColor" stroke="none"/></svg>按键 <span class="badge badge-default">用着</span></div>
+          <div class="row-hint">按 F13 启动 · 按住不放</div>
+        </div>
+        <button type="button" class="switch" aria-label="使用这个场景"></button>
+      </div>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab on" role="tab">语音</button>
+      <button type="button" class="tab" role="tab">按键</button>
+      <button type="button" class="tab" role="tab">小键盘</button>
+      <button type="button" class="tab" role="tab">摄像头</button>
+    </div>
+
+    <div class="note">
+      <strong>范围：</strong>Dialog/Tabs/Toast 已有 Radix。托盘改版若放岛上 = 违反迁移契约。<br>
+      <strong>适用：</strong>设置页新岛、Command、习惯 Hub 新块。
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll('.switch').forEach(function (sw) {
+      sw.addEventListener('click', function () { sw.classList.toggle('off'); });
+    });
+  </script>
+</body>
+</html>

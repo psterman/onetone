@@ -178,6 +178,8 @@ pub struct AppState {
     /// recording or app-targeted workflow dispatch windows.
     pub external_voice_send_suppressed_until: Mutex<Option<std::time::Instant>>,
     pub paused: Mutex<bool>,
+    /// Wall-clock ms when timed silence ends; None = not silenced.
+    pub listen_silence_until_ms: Mutex<Option<u64>>,
     pub mic_monitor: Mutex<Option<MicMonitorHandle>>,
     pub mic_level: Arc<MicLevelState>,
     pub audio_backoff: AudioBackoffState,
@@ -319,6 +321,7 @@ pub fn run() {
         record_guard_until: Mutex::new(None),
         external_voice_send_suppressed_until: Mutex::new(None),
         paused: Mutex::new(false),
+        listen_silence_until_ms: Mutex::new(None),
         mic_monitor: Mutex::new(None),
         mic_level: Arc::new(MicLevelState::new()),
         audio_backoff: AudioBackoffState::new(),

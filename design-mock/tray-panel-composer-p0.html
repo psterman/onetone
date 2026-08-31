@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>托盘面板编辑器 P0 · blocks + controls</title>
+  <style>
+    :root {
+      --bg: #e8edf3; --surface: #fff; --surface-2: #f8fafc;
+      --primary: #2a9cc4; --primary-soft: #e6f7fc; --primary-deep: #1e87ad;
+      --on-surface: #152238; --on-surface-muted: #5a7086; --outline: rgba(26,45,74,.1);
+      --radius: 12px; --shadow: 0 10px 28px rgba(26,45,74,.16);
+      font-family: "Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--on-surface); }
+    h1 { font-size: 22px; margin: 0 0 6px; max-width: 1100px; margin-inline: auto; }
+    .lede { font-size: 13px; color: var(--on-surface-muted); max-width: 900px; margin: 0 auto 20px; line-height: 1.55; }
+    .layout { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+    .panel { background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; }
+    .panel h2 { font-size: 13px; margin: 0 0 10px; color: var(--on-surface-muted); text-transform: uppercase; letter-spacing: .06em; }
+    .tray { width: 100%; background: var(--surface-2); border: 1px solid var(--outline); border-radius: 10px; padding: 6px; font-size: 12px; }
+    .blk { margin: 4px; padding: 8px 10px; border-radius: 8px; border: 1px dashed var(--outline); background: #fff; }
+    .blk.off { opacity: .35; }
+    .blk.focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-soft); }
+    .editor-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+    .editor-head h3 { margin: 0; font-size: 16px; }
+    .dirty { font-size: 10px; color: var(--primary-deep); font-weight: 700; }
+    .fold { border: 1px solid var(--outline); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+    .fold-head { width: 100%; text-align: left; border: none; background: var(--surface-2); padding: 8px 10px; font: inherit; font-weight: 700; cursor: pointer; }
+    .fold-body { padding: 6px 8px 10px; }
+    .item { display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px; align-items: center; padding: 5px 4px; border-radius: 6px; }
+    .item.off { opacity: .45; }
+    .item.focus { background: var(--primary-soft); }
+    .tag { font-size: 9px; color: var(--on-surface-muted); font-family: ui-monospace, monospace; }
+    .btns { display: flex; gap: 6px; margin-top: 10px; }
+    .btn { border: 1px solid var(--outline); background: #fff; border-radius: 8px; padding: 6px 12px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .banner { background: var(--primary-soft); border: 1px solid rgba(42,156,196,.25); border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; gap: 8px; }
+    .hint { font-size: 11px; color: var(--on-surface-muted); margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <h1>托盘面板编辑器 P0 <span style="font-size:12px;color:var(--on-surface-muted)">blocks[] + controls[]</span></h1>
+  <p class="lede">左侧为实时预览（按 block 显隐）；右侧编辑区块顺序/开关与通道内 control 显隐。compact「托盘里显示」深链到此处并高亮对应 channel block。</p>
+
+  <div class="layout">
+    <section class="panel">
+      <h2>预览</h2>
+      <div class="tray" id="preview">
+        <div class="blk" data-block="block:hero">顶部状态卡</div>
+        <div class="blk" data-block="block:event">最近发生的事</div>
+        <div class="blk" data-block="block:habit">切换习惯</div>
+        <div class="blk" data-block="block:quick">快捷动作</div>
+        <div class="blk" data-block="block:channel:voice">语音通道</div>
+        <div class="blk" data-block="block:channel:keys">按键通道</div>
+        <div class="blk" data-block="block:channel:softPad">小键盘通道</div>
+        <div class="blk" data-block="block:channel:camera">摄像头通道</div>
+        <div class="blk" data-block="block:mic">麦克风</div>
+        <div class="blk" data-block="block:footer">底部链接</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="editor-head">
+        <h3>托盘编辑器</h3>
+        <span class="dirty" id="dirty" hidden>未保存</span>
+      </div>
+      <div class="banner" id="banner">新增 2 个开关，默认隐藏 <button type="button" class="btn" id="dismiss">知道了</button></div>
+
+      <div class="fold is-open">
+        <button type="button" class="fold-head">区块（blocks）</button>
+        <div class="fold-body" id="blocks"></div>
+      </div>
+      <div class="fold is-open">
+        <button type="button" class="fold-head">开关（controls）</button>
+        <div class="fold-body" id="controls"></div>
+      </div>
+
+      <div class="btns">
+        <button type="button" class="btn" id="reset">恢复默认</button>
+        <button type="button" class="btn primary" id="save">保存布局</button>
+      </div>
+      <p class="hint">保存时至少保留 1 个可见区块（422 trayEditorMinBlocks）。布局全局生效。</p>
+    </section>
+  </div>
+
+  <script>
+    var BLOCKS = [
+      { id: 'block:hero', label: '顶部状态卡', locked: true },
+      { id: 'block:event', label: '最近发生的事' },
+      { id: 'block:habit', label: '切换习惯' },
+      { id: 'block:quick', label: '快捷动作' },
+      { id: 'block:channel:voice', label: '语音通道', channel: 'voice' },
+      { id: 'block:channel:keys', label: '按键通道', channel: 'keys' },
+      { id: 'block:channel:softPad', label: '小键盘通道', channel: 'softPad' },
+      { id: 'block:channel:camera', label: '摄像头通道', channel: 'camera' },
+      { id: 'block:mic', label: '麦克风' },
+      { id: 'block:footer', label: '底部链接' }
+    ];
+    var CONTROLS = [
+      { id: 'ctrl:voice:voiceMaster', ch: 'voice', label: '语音听写 · 标题 L1' },
+      { id: 'ctrl:voice:voiceEnd', ch: 'voice', label: '说结束词就停' },
+      { id: 'ctrl:keys:keysEnabled', ch: 'keys', label: '使用这个场景 · 标题 L1' },
+      { id: 'ctrl:keys:keysCancel', ch: 'keys', label: '再按一次能取消' },
+      { id: 'ctrl:softPad:padEnabled', ch: 'softPad', label: '启用小键盘 · 标题 L1' },
+      { id: 'ctrl:camera:camPresence', ch: 'camera', label: '认人脸走/回 · 标题 L1' }
+    ];
+    var state = {
+      blocks: BLOCKS.map(function (b, i) { return { id: b.id, visible: b.id !== 'block:channel:camera', order: i }; }),
+      controls: CONTROLS.map(function (c, i) { return { id: c.id, visible: true, order: i, channel: c.ch }; }),
+      focus: 'voice'
+    };
+
+    function syncPreview() {
+      document.querySelectorAll('[data-block]').forEach(function (el) {
+        var id = el.getAttribute('data-block');
+        var item = state.blocks.find(function (b) { return b.id === id; });
+        var on = item ? item.visible : true;
+        el.classList.toggle('off', !on);
+        el.classList.toggle('focus', state.focus && id === 'block:channel:' + state.focus);
+      });
+      var ordered = state.blocks.slice().sort(function (a, b) { return a.order - b.order; });
+      var host = document.getElementById('preview');
+      ordered.forEach(function (b) {
+        var el = host.querySelector('[data-block="' + b.id + '"]');
+        if (el) host.appendChild(el);
+      });
+    }
+
+    function render() {
+      var bh = document.getElementById('blocks');
+      bh.innerHTML = state.blocks.slice().sort(function (a, b) { return a.order - b.order; }).map(function (item, idx) {
+        var meta = BLOCKS.find(function (b) { return b.id === item.id; }) || {};
+        var focus = state.focus && item.id === 'block:channel:' + state.focus;
+        return '<div class="item' + (item.visible ? '' : ' off') + (focus ? ' focus' : '') + '">' +
+          '<input type="checkbox"' + (item.visible ? ' checked' : '') + (meta.locked ? ' disabled' : '') + ' data-kind="block" data-idx="' + idx + '">' +
+          '<span>' + meta.label + '</span>' +
+          '<span class="tag">' + item.id + '</span>' +
+          '<span><button type="button" class="btn" data-move="block" data-dir="-1" data-idx="' + idx + '">▲</button>' +
+          '<button type="button" class="btn" data-move="block" data-dir="1" data-idx="' + idx + '">▼</button></span></div>';
+      }).join('');
+
+      var ch = document.getElementById('controls');
+      ch.innerHTML = CONTROLS.map(function (c, idx) {
+        var item = state.controls.find(function (x) { return x.id === c.id; });
+        return '<div class="item' + (item.visible ? '' : ' off') + '">' +
+          '<input type="checkbox"' + (item.visible ? ' checked' : '') + ' data-kind="control" data-id="' + c.id + '">' +
+          '<span>' + c.label + '</span>' +
+          '<span class="tag">' + c.id + '</span>' +
+          '<span><button type="button" class="btn" data-move="control" data-dir="-1" data-idx="' + idx + '">▲</button>' +
+          '<button type="button" class="btn" data-dir="1" data-move="control" data-idx="' + idx + '">▼</button></span></div>';
+      }).join('');
+      syncPreview();
+    }
+
+    function move(list, idx, dir) {
+      var j = idx + dir;
+      if (j < 0 || j >= list.length) return;
+      var t = list[idx].order; list[idx].order = list[j].order; list[j].order = t;
+      list.sort(function (a, b) { return a.order - b.order; });
+      list.forEach(function (it, i) { it.order = i; });
+    }
+
+    document.body.addEventListener('change', function (e) {
+      var t = e.target;
+      if (t.dataset.kind === 'block') {
+        var sorted = state.blocks.slice().sort(function (a, b) { return a.order - b.order; });
+        sorted[+t.dataset.idx].visible = t.checked;
+        document.getElementById('dirty').hidden = false;
+        render();
+      }
+      if (t.dataset.kind === 'control') {
+        var hit = state.controls.find(function (c) { return c.id === t.dataset.id; });
+        if (hit) hit.visible = t.checked;
+        document.getElementById('dirty').hidden = false;
+        render();
+      }
+    });
+    document.body.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-move]');
+      if (!b) return;
+      var sorted = state.blocks.slice().sort(function (a, b) { return a.order - b.order; });
+      if (b.dataset.move === 'block') move(sorted, +b.dataset.idx, +b.dataset.dir);
+      if (b.dataset.move === 'control') move(state.controls, +b.dataset.idx, +b.dataset.dir);
+      document.getElementById('dirty').hidden = false;
+      render();
+    });
+    document.getElementById('save').onclick = function () {
+      var vis = state.blocks.filter(function (b) { return b.visible; });
+      if (!vis.length) { alert('至少保留一个区块'); return; }
+      document.getElementById('dirty').hidden = true;
+    };
+    document.getElementById('reset').onclick = function () {
+      state.blocks = BLOCKS.map(function (b, i) { return { id: b.id, visible: true, order: i }; });
+      render();
+    };
+    document.getElementById('dismiss').onclick = function () { document.getElementById('banner').hidden = true; };
+    render();
+  </script>
+</body>
+</html>

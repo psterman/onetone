@@ -5253,6 +5253,7 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             time_machine_workspace: String::new(),
+        capture_hero_ref: None,
         }
     }
 

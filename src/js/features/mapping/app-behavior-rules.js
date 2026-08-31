@@ -2126,12 +2126,61 @@
     return iconForApp(appId);
   }
 
+  function renderCompactAppPrefs(hostEl, m) {
+    if (!hostEl) return;
+    if (!m || !core().isSaved(m)) {
+      hostEl.innerHTML = '';
+      return;
+    }
+    seedDefaultBehaviorRules(m);
+    ensureRules(m);
+    var group = document.createElement('div');
+    group.className = 'cc-group';
+    group.innerHTML = '<div class="cc-gh">' + esc(t('channelConfigAppPrefs', '应用偏好')) + '</div>';
+    BEHAVIOR_PRESETS.forEach(function (preset) {
+      var rule = (m.appBehaviorRules || []).find(function (r) { return r && r.appId === preset.id; });
+      var mode = rule ? (rule.finishMode || preset.defaultMode) : preset.defaultMode;
+      var row = document.createElement('div');
+      row.className = 'cc-row ipc-config';
+      var lbl = document.createElement('div');
+      lbl.className = 'cc-lbl';
+      lbl.innerHTML = esc(preset.label || preset.id) + '<span class="cc-hint">' + esc(finishModeLabel(mode)) + '</span>';
+      row.appendChild(lbl);
+      var wrap = document.createElement('div');
+      wrap.style.display = 'flex';
+      wrap.style.gap = '4px';
+      wrap.style.flexWrap = 'wrap';
+      MODE_CYCLE.forEach(function (modeOpt) {
+        var pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'habit-app-rule-pill' + (modeOpt === mode ? ' is-active' : '') + ' ' + finishModeClass(modeOpt);
+        pill.textContent = finishModeLabel(modeOpt);
+        pill.setAttribute('data-state-key', 'mappings[].appBehaviorRules[].finishMode');
+        pill.setAttribute('data-ipc', 'config');
+        pill.addEventListener('click', function (e) {
+          e.preventDefault();
+          upsertRule(m, preset.id, modeOpt);
+          renderCompactAppPrefs(hostEl, m);
+          if (global.OneToneChannelConfigCompact && global.OneToneChannelConfigCompact.notifyChanged) {
+            global.OneToneChannelConfigCompact.notifyChanged({ source: 'app-prefs' });
+          }
+        });
+        wrap.appendChild(pill);
+      });
+      row.appendChild(wrap);
+      group.appendChild(row);
+    });
+    hostEl.innerHTML = '';
+    hostEl.appendChild(group);
+  }
+
   global.OneToneAppBehaviorRules={
     render:renderAppBehaviorRules,
     bindEvents:bindEvents,
     handleListClick:handleAppRulesListClick,
     bindKeysAsideEvents:bindKeysAsideEvents,
     renderKeysAside:renderKeysAside,
+    renderCompactAppPrefs:renderCompactAppPrefs,
     renderVoiceAside:renderVoiceAside,
     setActiveAppContextId:setActiveAppContextId,
     setActiveRuleContext:setActiveRuleContext,

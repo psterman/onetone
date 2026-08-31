@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>虚拟键盘 · Soft Pad Hub（完整 HTML 映射）</title>
   <link rel="stylesheet" href="../src/css/flow-desk.css" />
+  <link rel="stylesheet" href="../src/css/ot-seg.css" />
   <style>
     :root{
       --surface:#fff;--surface-high:#f8fafc;--surface-soft:#f1f5f9;
@@ -76,9 +77,7 @@
     .micro-hw-key.wide{grid-column:span 2}
     .soft-pad-preview__hint{margin-top:10px;font-size:10px;color:var(--on-surface-muted);text-align:center;line-height:1.45}
     .soft-pad-detail{border:1px solid var(--outline-variant);border-radius:14px;background:#fff;display:flex;flex-direction:column;min-height:420px;overflow:hidden}
-    .soft-pad-pad-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px 0}
-    .soft-pad-pad-tab{border:1px solid var(--outline-variant);background:transparent;color:var(--on-surface-muted);font:700 12px inherit;padding:6px 12px;border-radius:999px;cursor:pointer}
-    .soft-pad-pad-tab.is-active{color:var(--primary-strong);background:rgba(42,156,196,.14);border-color:rgba(42,156,196,.4)}
+    .soft-pad-pad-tabs,.soft-pad-pad-tab{/* → ot-seg.css via src/css/ot-seg.css */}
     .soft-pad-detail-panel{flex:1;padding:12px 14px 14px;overflow:auto}
     .pad-panel-block{display:none}.pad-panel-block.is-active{display:block}
     .pad-panel-block h4{margin:0 0 8px;font-size:13px}

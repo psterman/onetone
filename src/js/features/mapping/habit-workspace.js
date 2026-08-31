@@ -273,7 +273,7 @@
     var d=model.detail;
     return '<div class="habit-ws-itembar"><div class="habit-ws-scene-tabs" role="tablist" aria-label="'+esc(c('scene'))+'"><span class="habit-ws-scene-label">'+esc(c('scene'))+'</span>'+model.items.map(function(item){
       var selected=item.id===model.item.id;
-      return '<button type="button" role="tab" aria-selected="'+(selected?'true':'false')+'" class="habit-ws-scene-tab'+(selected?' is-selected':'')+'" data-habit-item="'+esc(item.id)+'">'+esc(itemLabel(item))+'</button>';
+      return '<button type="button" role="tab" aria-selected="'+(selected?'true':'false')+'" class="habit-ws-scene-tab'+(selected?' is-active is-selected':'')+'" data-habit-item="'+esc(item.id)+'">'+esc(itemLabel(item))+'</button>';
     }).join('')+'</div><span class="habit-ws-source is-'+esc(d.source.id)+'">'+esc(d.source.label)+'</span></div>';
   }
   function channelIconSvg(ch){

@@ -89,7 +89,9 @@
 .habit-novice-card.is-deleting{animation:habitNoviceDel .3s ease forwards}
 @keyframes habitNoviceCardIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 @keyframes habitNoviceDel{to{opacity:0;transform:translateX(40px) scale(.95);max-height:0;padding:0;margin:0}}
-.habit-novice-illus{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--hn-line2) 0%,color-mix(in srgb,var(--hn-line) 80%,#cbd5e1) 100%);display:flex;align-items:center;justify-content:center;font-size:28px;line-height:1}
+.habit-novice-illus{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--hn-line2) 0%,color-mix(in srgb,var(--hn-line) 80%,#cbd5e1) 100%);display:flex;align-items:center;justify-content:center;font-size:28px;line-height:1;color:#3d556d}
+.habit-novice-illus svg{width:24px;height:24px;display:block}
+.habit-novice-dim-tab svg{width:12px;height:12px;display:inline-block;vertical-align:-2px}
 .habit-novice-illus.dim-voice{background:linear-gradient(135deg,var(--hn-accent-soft) 0%,color-mix(in srgb,var(--hn-accent) 35%,#fff) 100%)}
 .habit-novice-illus.dim-cam{background:linear-gradient(135deg,#dbeafe 0%,#93c5fd 100%)}
 .habit-novice-illus.dim-softpad{background:linear-gradient(135deg,#d1fae5 0%,#6ee7b7 100%)}

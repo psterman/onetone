@@ -1916,6 +1916,7 @@
     voiceWake:'voice',
     models:'voice',
     camera:'camera',
+    tray:'tray',
     sounds:'sounds',
     actionHistory:'schemes',
     basic:'general',

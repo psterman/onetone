@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>托盘通道 Hub v3 · 状态展示 + 核心开关 + 二级菜单</title>
+  <style>
+    :root {
+      --bg: #e8edf3; --surface: #fff; --surface-2: #f8fafc; --surface-3: #eef2f7;
+      --primary: #2a9cc4; --primary-soft: #e6f7fc; --primary-deep: #1e87ad;
+      --on-surface: #152238; --on-surface-muted: #5a7086; --on-surface-soft: #8a98a8;
+      --outline: rgba(26,45,74,.1); --danger: #dc2626; --danger-soft: rgba(220,38,38,.08);
+      --green: #2e7d4f; --green-soft: rgba(46,125,79,.1);
+      --orange: #b9530a; --orange-soft: rgba(185,83,10,.1);
+      --blue: #00a3ff; --blue-soft: rgba(0,163,255,.1);
+      --purple: #6d4ab0; --purple-soft: rgba(109,74,176,.1);
+      --radius: 12px; --shadow: 0 10px 28px rgba(26,45,74,.16);
+      font-family: "Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 16px 56px; background: var(--bg); color: var(--on-surface); }
+
+    h1 { font-size: 22px; margin: 0 auto 6px; max-width: 1280px; }
+    .lede { font-size: 13px; color: var(--on-surface-muted); line-height: 1.6; max-width: 960px; margin: 0 auto 14px; }
+    .tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; vertical-align: middle; margin-left: 6px; }
+    .tag.old { background: rgba(26,45,74,.08); color: var(--on-surface-muted); }
+    .tag.new { background: linear-gradient(135deg, var(--primary), var(--primary-deep)); color: #fff; }
+    .tag.warn { background: var(--orange-soft); color: var(--orange); }
+
+    .principles {
+      max-width: 1280px; margin: 0 auto 16px; display: grid;
+      grid-template-columns: repeat(3, 1fr); gap: 10px;
+    }
+    @media (max-width: 900px) { .principles { grid-template-columns: 1fr; } }
+    .principles .card {
+      background: var(--surface); border: 1px solid var(--outline); border-radius: 10px;
+      padding: 10px 12px; font-size: 12px; line-height: 1.5;
+    }
+    .principles .card b { display: block; font-size: 11px; color: var(--primary-deep); margin-bottom: 4px; }
+
+    .toolbar {
+      max-width: 1280px; margin: 0 auto 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+      padding: 10px 14px; background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius);
+      font-size: 12px;
+    }
+    .toolbar label { font-weight: 600; color: var(--on-surface-muted); }
+    .seg { display: flex; gap: 4px; flex-wrap: wrap; }
+    .seg button {
+      border: 1px solid var(--outline); background: var(--surface-2); font: inherit;
+      font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    }
+    .seg button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+    .compare {
+      max-width: 1280px; margin: 0 auto;
+      display: grid; grid-template-columns: 0.95fr 1.1fr 1fr; gap: 16px; align-items: start;
+    }
+    @media (max-width: 1100px) { .compare { grid-template-columns: 1fr; } }
+
+    .col-head { font-size: 12px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .col-head .note { font-weight: 400; color: var(--on-surface-muted); font-size: 11px; }
+
+    .frame {
+      background: linear-gradient(160deg, #dce4ec, #c5d0dc);
+      border-radius: 14px; padding: 14px 10px 18px;
+      display: flex; justify-content: center; border: 1px solid var(--outline); position: relative;
+    }
+    .frame.highlight { border: 1.5px dashed rgba(42,156,196,.5); }
+    .frame .badge {
+      position: absolute; top: 8px; right: 10px; font-size: 9px; font-weight: 700;
+      padding: 2px 7px; border-radius: 4px; background: rgba(255,255,255,.85); color: var(--on-surface-muted);
+    }
+
+    /* ── Tray shell ── */
+    .tray {
+      width: 316px; background: var(--surface); border: 1px solid var(--outline);
+      border-radius: var(--radius); box-shadow: var(--shadow); padding: 5px; font-size: 13px;
+      position: relative; overflow: hidden;
+    }
+    .pulse {
+      width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0;
+      background: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft);
+    }
+    .pulse.standby { background: var(--on-surface-soft); box-shadow: 0 0 0 3px rgba(26,45,74,.06); }
+    .pulse.paused { background: var(--orange); box-shadow: 0 0 0 3px var(--orange-soft); }
+    .pulse.listening { animation: tp 2s ease-in-out infinite; }
+    @keyframes tp { 0%,100%{box-shadow:0 0 0 3px rgba(0,163,255,.18)} 50%{box-shadow:0 0 0 5px rgba(0,163,255,.32)} }
+
+    .status-hero {
+      margin: 4px; padding: 11px 12px 9px;
+      background: linear-gradient(135deg, #fff 0%, var(--blue-soft) 100%);
+      border: 1px solid var(--outline); border-radius: 10px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .status-hero.standby-mode { background: linear-gradient(135deg, #fff, var(--surface-2)); }
+    .status-hero .left { flex: 1; min-width: 0; }
+    .status-hero .top-line { display: flex; align-items: center; gap: 7px; }
+    .status-hero .ttl { font-size: 14.5px; font-weight: 800; }
+    .status-hero .sub { font-size: 10.5px; color: var(--on-surface-muted); margin-top: 2px; }
+    .state-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+    .chip { font-size: 9.5px; padding: 1.5px 6px; border-radius: 4px; font-weight: 600; }
+    .chip.b { background: var(--blue-soft); color: #0e7490; }
+    .chip.g { background: var(--green-soft); color: var(--green); }
+    .chip.p { background: var(--purple-soft); color: var(--purple); }
+    .chip.o { background: var(--orange-soft); color: var(--orange); }
+    .chip.n { background: rgba(26,45,74,.06); color: var(--on-surface-muted); }
+    .hero-act {
+      flex-shrink: 0; padding: 8px 11px; border-radius: 8px; cursor: pointer; border: none;
+      background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+      color: #fff; font-size: 10.5px; font-weight: 700; font: inherit;
+    }
+    .hero-act.paused { background: linear-gradient(135deg, #f5a623, #d97706); }
+
+    .event-line {
+      margin: 4px 6px; padding: 7px 10px; background: var(--surface-2);
+      border: 1px solid var(--outline); border-radius: 8px;
+      font-size: 10.5px; color: var(--on-surface-muted);
+      cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .event-line:hover { background: var(--primary-soft); color: var(--primary-deep); }
+    .event-line b { color: var(--on-surface); font-weight: 600; }
+    .event-line .ok { color: var(--green); font-weight: 700; }
+
+    .sec-head {
+      font-size: 10px; font-weight: 700; color: var(--on-surface-muted);
+      padding: 7px 12px 3px; text-transform: uppercase; letter-spacing: .06em;
+    }
+    .sec-head .dot { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--on-surface-soft); margin-right: 4px; vertical-align: middle; }
+
+    /* 现版：静态行 */
+    .ch-row-static {
+      display: flex; align-items: center; gap: 9px; padding: 7px 10px; margin: 0 4px; border-radius: 7px;
+      width: calc(100% - 8px); border: none; background: transparent; font: inherit; text-align: left; cursor: pointer;
+    }
+    .ch-row-static:hover { background: var(--primary-soft); }
+    .icowrap {
+      width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+      font-size: 12px; flex-shrink: 0;
+    }
+    .icowrap.voice { background: var(--blue-soft); }
+    .icowrap.keys { background: var(--primary-soft); }
+    .icowrap.softpad { background: var(--purple-soft); }
+    .icowrap.camera { background: var(--orange-soft); }
+    .ch-row-static .body { flex: 1; min-width: 0; }
+    .ch-row-static .name { font-size: 12.5px; font-weight: 700; }
+    .ch-row-static .meta { font-size: 10.5px; color: var(--on-surface-muted); margin-top: 1px; }
+    .ch-row-static .chev { font-size: 9px; color: var(--on-surface-soft); }
+
+    /* v3：状态 + 主开关 + 二级入口 */
+    .ch-row {
+      margin: 0 4px 2px; border-radius: 8px; border: 1px solid transparent;
+      transition: border-color .12s, background .12s;
+    }
+    .ch-row.is-open { border-color: rgba(42,156,196,.35); background: rgba(42,156,196,.04); }
+    .ch-row-main {
+      display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 10px;
+    }
+    .ch-row .body { flex: 1; min-width: 0; }
+    .ch-row .name-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .ch-row .name { font-size: 12.5px; font-weight: 700; }
+    .st-pill {
+      font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 4px;
+      background: rgba(26,45,74,.06); color: var(--on-surface-muted);
+    }
+    .st-pill.run { background: var(--blue-soft); color: #0e7490; }
+    .st-pill.on { background: var(--green-soft); color: var(--green); }
+    .st-pill.off { background: rgba(26,45,74,.06); color: var(--on-surface-soft); }
+    .ch-row .scene {
+      font-size: 10px; color: var(--on-surface-muted); margin-top: 2px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .ch-row .scene em { font-style: normal; color: var(--on-surface); font-weight: 600; }
+    .ch-row .acts { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+    .toggle {
+      width: 34px; height: 18px; border-radius: 10px; background: var(--primary); border: none; padding: 0;
+      position: relative; cursor: pointer; flex-shrink: 0;
+    }
+    .toggle::after {
+      content: ''; position: absolute; top: 2px; left: 18px; width: 14px; height: 14px;
+      border-radius: 50%; background: #fff; transition: left .18s; box-shadow: 0 1px 2px rgba(0,0,0,.2);
+    }
+    .toggle.off { background: var(--on-surface-soft); }
+    .toggle.off::after { left: 2px; }
+    .toggle:disabled { opacity: .35; cursor: not-allowed; }
+    .tog-lbl { font-size: 7.5px; color: var(--on-surface-soft); text-align: center; max-width: 38px; line-height: 1.1; margin-top: 1px; }
+    .chev-btn {
+      width: 24px; height: 28px; border: none; border-radius: 6px; background: transparent;
+      color: var(--on-surface-soft); font-size: 12px; cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .chev-btn:hover, .chev-btn.is-open { background: var(--primary-soft); color: var(--primary-deep); }
+    .chev-btn.is-open { transform: rotate(90deg); }
+
+    /* L2 二级菜单（行内展开） */
+    .ch-sub {
+      display: none; padding: 0 10px 8px 42px; animation: slide .15s ease;
+    }
+    .ch-row.is-open .ch-sub { display: block; }
+    @keyframes slide { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+    .ch-sub .stats {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; margin-bottom: 6px;
+    }
+    .ch-sub .stat { font-size: 9.5px; }
+    .ch-sub .stat .k { color: var(--on-surface-soft); display: block; }
+    .ch-sub .stat .v { font-weight: 600; color: var(--on-surface); }
+    .ch-sub .sw-rows { border-top: 1px dashed var(--outline); padding-top: 6px; }
+    .ch-sub .sw-row {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 11px; padding: 4px 0;
+    }
+    .ch-sub .sw-row .mini-toggle {
+      width: 30px; height: 16px; border-radius: 9px; background: var(--primary); border: none; padding: 0;
+      position: relative; cursor: pointer;
+    }
+    .ch-sub .sw-row .mini-toggle::after {
+      content: ''; position: absolute; top: 2px; left: 16px; width: 12px; height: 12px;
+      border-radius: 50%; background: #fff; transition: left .15s;
+    }
+    .ch-sub .sw-row .mini-toggle.off { background: var(--on-surface-soft); }
+    .ch-sub .sw-row .mini-toggle.off::after { left: 2px; }
+    .ch-sub .more {
+      margin-top: 6px; font-size: 10px; color: var(--primary-deep); font-weight: 600;
+      cursor: pointer; border: none; background: none; font: inherit; padding: 0;
+    }
+    .ch-sub .more:hover { text-decoration: underline; }
+
+    .mic-row {
+      display: flex; align-items: center; gap: 9px; padding: 7px 10px; margin: 4px 4px 0;
+      border-radius: 7px; background: var(--primary-soft);
+    }
+    .mic-row .body { flex: 1; }
+    .mic-row .name { font-size: 12.5px; font-weight: 700; }
+    .mic-row .meta { font-size: 10.5px; color: var(--on-surface-muted); }
+    .sep { height: 1px; margin: 4px 8px; background: var(--outline); }
+    .tray-ft {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 5px 8px 3px; border-top: 1px solid var(--outline); margin-top: 4px;
+      font-size: 10.5px; color: var(--on-surface-muted);
+    }
+    .tray-ft button { border: none; background: transparent; font: inherit; font-size: 10.5px; cursor: pointer; color: inherit; padding: 3px 6px; border-radius: 4px; }
+    .tray-ft button.primary { color: var(--primary); font-weight: 600; }
+
+    /* Face 3 参考（右侧） */
+    .face3 {
+      width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--outline);
+      border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; font-size: 12px;
+    }
+    .face3-head { padding: 10px 12px; border-bottom: 1px solid var(--outline); font-weight: 700; font-size: 13px; }
+    .face3-layout {
+      display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center;
+      padding: 8px 12px; background: var(--surface-2); border-bottom: 1px solid var(--outline); font-size: 11px;
+    }
+    .face3-layout label { display: flex; align-items: center; gap: 4px; color: var(--on-surface-muted); }
+    .face3-layout .mic-pill {
+      margin-left: auto; display: flex; align-items: center; gap: 6px;
+      padding: 4px 8px; background: var(--primary-soft); border-radius: 8px; font-weight: 600;
+    }
+    .face3-tabs {
+      display: flex; border-bottom: 1px solid var(--outline); padding: 0 8px;
+    }
+    .face3-tabs button {
+      flex: 1; border: none; background: transparent; font: inherit; font-size: 11px; font-weight: 600;
+      padding: 8px 4px; cursor: pointer; color: var(--on-surface-muted); border-bottom: 2px solid transparent;
+    }
+    .face3-tabs button.on { color: var(--primary-deep); border-bottom-color: var(--primary); background: var(--primary-soft); }
+    .face3-card { padding: 10px 12px 12px; }
+    .face3-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .face3-card-head b { font-size: 13px; }
+    .face3-stats {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px;
+    }
+    .face3-stats .stat {
+      background: var(--surface-2); border: 1px solid var(--outline); border-radius: 8px; padding: 6px 8px;
+      font-size: 10px;
+    }
+    .face3-stats .k { color: var(--on-surface-soft); display: block; margin-bottom: 2px; }
+    .face3-stats .v { font-weight: 700; }
+    .face3-sw .sw-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 7px 0; border-top: 1px solid var(--outline); font-size: 11.5px;
+    }
+    .face3-note {
+      margin-top: 10px; padding: 8px 10px; background: var(--orange-soft); border-radius: 8px;
+      font-size: 10.5px; color: var(--orange); line-height: 1.45;
+    }
+
+    .flow {
+      max-width: 1280px; margin: 20px auto 0; padding: 12px 14px;
+      background: var(--surface); border: 1px solid var(--outline); border-radius: 10px; font-size: 11px;
+    }
+    .flow h3 { margin: 0 0 10px; font-size: 13px; }
+    .flow-steps { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .flow-box {
+      padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--outline);
+      background: var(--surface-2); font-weight: 600; font-size: 11px; text-align: center;
+    }
+    .flow-box.l1 { border-color: var(--primary); background: var(--primary-soft); color: #0e7490; }
+    .flow-box.l2 { border-color: var(--green); background: var(--green-soft); color: var(--green); }
+    .flow-box.l3 { border-color: var(--purple); background: var(--purple-soft); color: var(--purple); }
+    .flow-arrow { color: var(--on-surface-soft); font-size: 16px; }
+
+    .legend {
+      max-width: 1280px; margin: 16px auto 0; padding: 12px 14px;
+      background: var(--surface); border: 1px solid var(--outline); border-radius: 10px; font-size: 11px;
+    }
+    .legend table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .legend th, .legend td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--outline); vertical-align: top; }
+
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: var(--on-surface); color: #fff; font-size: 12px; font-weight: 600;
+      padding: 8px 16px; border-radius: 8px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 99;
+    }
+    .toast.show { opacity: 1; }
+
+    .static-warn {
+      margin: 6px 4px 0; padding: 6px 8px; background: var(--danger-soft); border-radius: 6px;
+      font-size: 9.5px; color: var(--danger); text-align: center; font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>托盘通道 Hub v3<span class="tag new">目标方案</span></h1>
+  <p class="lede">
+    托盘应是<strong>四通道的控制台</strong>：一级看清场景状态、一键切核心开关；二级菜单补齐次要开关与统计；完整配置仍进 Face 3 / 主窗口。
+    现版问题：真实托盘与 Face 3 预览都偏<strong>静态展示</strong>，管理开关只在设置页右侧，托盘里点通道只能跳转。
+    <br><strong>→ 文案定稿版：</strong><a href="tray-channel-switches-refined.html">tray-channel-switches-refined.html</a>（全量梳理 → 过滤 → 小白文案，开发对照默认折叠）
+  </p>
+
+  <div class="principles">
+    <div class="card"><b>L1 · 托盘一级</b>每通道：状态 pill + 场景摘要行 + 主开关 + ▸ 展开二级</div>
+    <div class="card"><b>L2 · 托盘二级</b>行内展开：2×2 统计 + 次要开关（同 Face 3 IPC）+「完整设置」</div>
+    <div class="card"><b>L3 · Face 3</b>四 tab 全量管理、托盘显示项、WYSIWYG 预览（与真实托盘同步）</div>
+  </div>
+
+  <div class="toolbar">
+    <label>场景</label>
+    <div class="seg" id="sceneSeg">
+      <button type="button" data-scene="fresh" class="on">未配置</button>
+      <button type="button" data-scene="active">运行中</button>
+      <button type="button" data-scene="paused">已暂停</button>
+    </div>
+    <span style="color:var(--on-surface-soft)">·</span>
+    <label>操作</label>
+    <span style="font-size:11px;color:var(--on-surface-muted)">中栏：点 <b>开关</b> / <b>▸</b> 展开二级 / 点事件行进维护</span>
+  </div>
+
+  <div class="compare">
+    <!-- 现版 -->
+    <div>
+      <div class="col-head"><span class="tag old">现版</span> 静态展示为主 <span class="note">tray-menu + Face3 预览</span></div>
+      <div class="frame">
+        <span class="badge">只读</span>
+        <div class="tray" id="trayOld"></div>
+      </div>
+      <div class="static-warn">通道行无开关 · 预览不同步真实托盘 · 管理在设置页右侧</div>
+    </div>
+
+    <!-- v3 目标 -->
+    <div>
+      <div class="col-head"><span class="tag new">v3 目标</span> 状态 + 开关 + 二级菜单 <span class="note">可交互</span></div>
+      <div class="frame highlight">
+        <span class="badge">可操作</span>
+        <div class="tray" id="trayNew"></div>
+      </div>
+    </div>
+
+    <!-- Face 3 对照 -->
+    <div>
+      <div class="col-head"><span class="tag warn">Face 3</span> 完整配置页 <span class="note">L3 目的地</span></div>
+      <div class="frame" style="background:var(--surface-2);padding:12px;">
+        <div class="face3" id="face3Ref"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow">
+    <h3>信息架构 · 三层深度</h3>
+    <div class="flow-steps">
+      <span class="flow-box l1">L1 托盘行<br/>状态 + 主开关</span>
+      <span class="flow-arrow">▸</span>
+      <span class="flow-box l2">L2 行内二级<br/>统计 + 次开关</span>
+      <span class="flow-arrow">▸</span>
+      <span class="flow-box l3">L3 Face 3 tab<br/>唤醒词 / 习惯 / 键位…</span>
+    </div>
+  </div>
+
+  <div class="legend">
+    <strong>四通道 · L1 主开关 / L2 次开关 / 场景摘要（托盘一行展示）</strong>
+    <table>
+      <thead><tr><th>通道</th><th>L1 场景摘要</th><th>L1 主开关</th><th>L2 次开关</th><th>L3 完整设置</th></tr></thead>
+      <tbody>
+        <tr><td>语音</td><td>引擎 · 唤醒词 · 最近事件</td><td>启用语音引擎</td><td>结束短语检测</td><td>引擎选择、唤醒词编辑</td></tr>
+        <tr><td>按键</td><td>触发键 · 习惯名 · 上次触发</td><td>当前习惯启用</td><td>—</td><td>习惯列表、触发方式</td></tr>
+        <tr><td>Soft Pad</td><td>键位数 · Agent · 浮层状态</td><td>启用 Pad / 浮层</td><td>显示浮层（已启用时）</td><td>键位编排、Agent 绑定</td></tr>
+        <tr><td>摄像头</td><td>设备 · Presence · 权限</td><td>启用摄像头通道</td><td>Presence 动作</td><td>设备选择、自动静音规则</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  (function () {
+    var ICONS = { voice: '🎤', keys: '⌨', softPad: '▦', camera: '📷' };
+    var CH = { voice: '语音', keys: '按键', softPad: 'Soft Pad', camera: '摄像头' };
+    var WRAP = { voice: 'voice', keys: 'keys', softPad: 'softpad', camera: 'camera' };
+
+    var SCENES = {
+      fresh: {
+        hero: { mode: 'standby', title: '待命', sub: '尚未启用任何通道', chips: [] },
+        event: null,
+        channels: {
+          voice: { pill: 'off', pillText: '未启用', scene: '引擎 <em>—</em> · 唤醒词 <em>—</em>', primary: false, primaryDisabled: true, primaryLbl: '引擎', meta: '去设置启用', stats: { a: ['引擎','—'], b: ['唤醒词','—'], c: ['最近事件','—'], d: ['错误','无'] }, subs: [{ n: '结束短语检测', on: false }] },
+          keys: { pill: 'off', pillText: '未配置', scene: '触发键 <em>—</em> · 习惯 <em>—</em>', primary: false, primaryDisabled: true, primaryLbl: '习惯', meta: '', stats: { a: ['触发键','—'], b: ['触发方式','—'], c: ['当前习惯','—'], d: ['上次触发','—'] }, subs: [] },
+          softPad: { pill: 'off', pillText: '未启用', scene: '键位 <em>—</em> · 浮层 <em>关</em>', primary: false, primaryDisabled: false, primaryLbl: 'Pad', meta: '', stats: { a: ['键位','—'], b: ['Agent','—'], c: ['浮层','关'], d: ['前台','—'] }, subs: [{ n: '显示浮层', on: true }] },
+          camera: { pill: 'off', pillText: '未启用', scene: '设备 <em>—</em> · 权限 <em>未授权</em>', primary: false, primaryDisabled: false, primaryLbl: '通道', meta: '', stats: { a: ['设备','—'], b: ['Presence','关'], c: ['自动静音','—'], d: ['权限','未授权'] }, subs: [{ n: 'Presence 动作', on: false }] }
+        }
+      },
+      active: {
+        hero: { mode: 'listening', title: '监听中', sub: '3 个通道活跃', chips: ['voice','keys','softPad'] },
+        event: { t: '2s', ch: '按键', text: 'INPUT_CAPTURED', ok: true },
+        channels: {
+          voice: { pill: 'run', pillText: '待命', scene: '引擎 <em>KWS</em> · 唤醒词 <em>开始输入</em> · <em>23m</em> 前', primary: true, primaryDisabled: false, primaryLbl: '引擎', meta: '', stats: { a: ['引擎','KWS'], b: ['唤醒词','开始输入'], c: ['最近事件','23m 前'], d: ['错误','无'] }, subs: [{ n: '结束短语检测', on: true }] },
+          keys: { pill: 'on', pillText: '监听', scene: '触发键 <em>F13</em> · 习惯 <em>默认</em> · <em>2s</em> 前', primary: true, primaryDisabled: false, primaryLbl: '习惯', meta: '', stats: { a: ['触发键','F13'], b: ['触发方式','按住'], c: ['当前习惯','默认'], d: ['上次触发','2s 前'] }, subs: [] },
+          softPad: { pill: 'off', pillText: '关', scene: '键位 <em>12</em> · Agent <em>Codex</em> · 浮层 <em>关</em>', primary: false, primaryDisabled: false, primaryLbl: 'Pad', meta: '', stats: { a: ['键位','12'], b: ['Agent','Codex'], c: ['浮层','关'], d: ['前台','是'] }, subs: [{ n: '显示浮层', on: false }] },
+          camera: { pill: 'off', pillText: '未启用', scene: '设备 <em>—</em>', primary: false, primaryDisabled: false, primaryLbl: '通道', meta: '', stats: { a: ['设备','—'], b: ['Presence','关'], c: ['自动静音','—'], d: ['权限','—'] }, subs: [{ n: 'Presence 动作', on: false }] }
+        }
+      },
+      paused: {
+        hero: { mode: 'paused', title: '已暂停', sub: '全局监听已暂停', chips: ['voice','keys'] },
+        event: { t: '1m', ch: '语音', text: 'voice_wake', ok: false },
+        channels: {
+          voice: { pill: 'run', pillText: '暂停', scene: '引擎 <em>KWS</em> · 全局暂停中', primary: true, primaryDisabled: false, primaryLbl: '引擎', meta: '', stats: { a: ['引擎','KWS'], b: ['唤醒词','开始输入'], c: ['最近事件','1m 前'], d: ['错误','无'] }, subs: [{ n: '结束短语检测', on: true }] },
+          keys: { pill: 'on', pillText: '暂停', scene: '触发键 <em>F13</em> · 全局暂停中', primary: true, primaryDisabled: false, primaryLbl: '习惯', meta: '', stats: { a: ['触发键','F13'], b: ['触发方式','按住'], c: ['当前习惯','默认'], d: ['上次触发','5m 前'] }, subs: [] },
+          softPad: { pill: 'off', pillText: '关', scene: '键位 <em>12</em> · 浮层 <em>关</em>', primary: false, primaryDisabled: false, primaryLbl: 'Pad', meta: '', stats: { a: ['键位','12'], b: ['Agent','Codex'], c: ['浮层','关'], d: ['前台','是'] }, subs: [{ n: '显示浮层', on: false }] },
+          camera: { pill: 'off', pillText: '未启用', scene: '', primary: false, primaryDisabled: false, primaryLbl: '通道', meta: '', stats: { a: ['设备','—'], b: ['Presence','关'], c: ['自动静音','—'], d: ['权限','—'] }, subs: [{ n: 'Presence 动作', on: false }] }
+        }
+      }
+    };
+
+    var scene = 'fresh';
+    var openCh = null;
+    var face3Tab = 'voice';
+
+    function toast(msg) {
+      var el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(function () { el.classList.remove('show'); }, 2200);
+    }
+
+    function heroHtml(h, paused) {
+      var chips = (h.chips || []).map(function (id) {
+        var cls = id === 'voice' ? 'b' : id === 'keys' ? 'g' : id === 'softPad' ? 'p' : 'o';
+        return '<span class="chip ' + cls + '">' + CH[id] + '</span>';
+      }).join('');
+      var pulseCls = h.mode === 'paused' ? 'paused' : h.mode === 'standby' ? 'standby' : 'listening';
+      return '<div class="status-hero' + (h.mode === 'standby' ? ' standby-mode' : '') + '">' +
+        '<div class="left"><div class="top-line"><span class="pulse ' + pulseCls + '"></span><span class="ttl">' + h.title + '</span></div>' +
+        (h.sub ? '<div class="sub">' + h.sub + '</div>' : '') +
+        '<div class="state-chips">' + chips + '</div></div>' +
+        '<button type="button" class="hero-act' + (paused ? ' paused' : '') + '">' + (paused ? '继续' : '暂停') + '</button></div>';
+    }
+
+    function eventLine(ev) {
+      if (!ev) return '<div class="event-line is-empty">刚才 · 暂无事件</div>';
+      return '<div class="event-line"><b>刚才</b> · ' + ev.t + ' · ' + ev.ch + ' · ' + ev.text +
+        (ev.ok ? ' · <span class="ok">已发送</span>' : '') + '</div>';
+    }
+
+    function renderOld() {
+      var d = SCENES[scene];
+      var rows = ['voice','keys','softPad','camera'].map(function (id) {
+        var c = d.channels[id];
+        return '<button type="button" class="ch-row-static" data-action="deep" data-ch="' + id + '">' +
+          '<span class="icowrap ' + WRAP[id] + '">' + ICONS[id] + '</span>' +
+          '<span class="body"><span class="name">' + CH[id] + '</span>' +
+          '<span class="meta">' + (c.meta || '未启用') + '</span></span>' +
+          '<span class="chev">▸</span></button>';
+      }).join('');
+      document.getElementById('trayOld').innerHTML =
+        heroHtml(d.hero, d.hero.mode === 'paused') +
+        (d.event ? '<div class="event-card-old" style="margin:4px 6px;padding:9px 11px;background:var(--surface-2);border:1px solid var(--outline);border-radius:9px">' +
+          '<div style="font-size:10px;color:var(--on-surface-muted);margin-bottom:4px">刚才 · ' + d.event.t + ' · ' + d.event.ch + '</div>' +
+          '<div style="font-size:11.5px;font-weight:600">' + d.event.text + '</div></div>' :
+          '<div style="margin:4px 6px;padding:9px;background:var(--surface-2);border-radius:8px;font-size:11px;color:var(--on-surface-muted)">两行事件卡 · 暂无</div>') +
+        '<div class="sec-head"><span class="dot"></span>通道</div>' + rows +
+        '<div class="sep"></div>' +
+        '<div class="mic-row"><span class="body"><span class="name">麦克风</span><span class="meta">开 · 默认</span></span>' +
+        '<button type="button" class="toggle"></button></div>' +
+        '<div class="tray-ft"><button class="primary">主窗口</button><button>设置</button><button>诊断</button></div>';
+    }
+
+    function subPanel(id, c) {
+      var stats = '<div class="stats">' +
+        ['a','b','c','d'].map(function (k) {
+          var s = c.stats[k];
+          return '<div class="stat"><span class="k">' + s[0] + '</span><span class="v">' + s[1] + '</span></div>';
+        }).join('') + '</div>';
+      var sws = c.subs.length ? '<div class="sw-rows">' + c.subs.map(function (s, i) {
+        return '<div class="sw-row"><span>' + s.n + '</span>' +
+          '<button type="button" class="mini-toggle' + (s.on ? '' : ' off') + '" data-sub="' + id + '" data-idx="' + i + '"></button></div>';
+      }).join('') + '</div>' : '';
+      return '<div class="ch-sub">' + stats + sws +
+        '<button type="button" class="more" data-more="' + id + '">完整设置 ▸ Face 3 · ' + CH[id] + '</button></div>';
+    }
+
+    function renderNew() {
+      var d = SCENES[scene];
+      var rows = ['voice','keys','softPad','camera'].map(function (id) {
+        var c = d.channels[id];
+        var open = openCh === id;
+        return '<div class="ch-row' + (open ? ' is-open' : '') + '" data-ch="' + id + '">' +
+          '<div class="ch-row-main">' +
+          '<span class="icowrap ' + WRAP[id] + '">' + ICONS[id] + '</span>' +
+          '<span class="body"><span class="name-row"><span class="name">' + CH[id] + '</span>' +
+          '<span class="st-pill ' + c.pill + '">' + c.pillText + '</span></span>' +
+          (c.scene ? '<div class="scene">' + c.scene + '</div>' : '') +
+          '</span>' +
+          '<span class="acts"><span><button type="button" class="toggle' + (c.primary ? '' : ' off') + '"' +
+          (c.primaryDisabled ? ' disabled' : '') + ' data-primary="' + id + '"></button>' +
+          '<div class="tog-lbl">' + c.primaryLbl + '</div></span>' +
+          '<button type="button" class="chev-btn' + (open ? ' is-open' : '') + '" data-expand="' + id + '" title="二级菜单">▸</button></span>' +
+          '</div>' + subPanel(id, c) + '</div>';
+      }).join('');
+
+      document.getElementById('trayNew').innerHTML =
+        heroHtml(d.hero, d.hero.mode === 'paused') +
+        eventLine(d.event) +
+        '<div class="sec-head"><span class="dot"></span>通道 · 状态与控制</div>' + rows +
+        '<div class="sep"></div>' +
+        '<div class="mic-row"><span class="body"><span class="name">麦克风</span><span class="meta">开 · 默认</span></span>' +
+        '<button type="button" class="toggle" data-action="mic"></button></div>' +
+        '<div class="tray-ft"><button class="primary">主窗口</button><button>设置</button><button>诊断</button></div>';
+
+      var tray = document.getElementById('trayNew');
+      tray.querySelector('.hero-act').onclick = function () { toast('invoke listen_toggle → 关托盘'); };
+      tray.querySelector('.event-line') && (tray.querySelector('.event-line').onclick = function () {
+        toast('deep_link main:diagnose → 状态与维护');
+      });
+      tray.querySelectorAll('[data-primary]').forEach(function (btn) {
+        btn.onclick = function (e) {
+          e.stopPropagation();
+          if (btn.disabled) { toast('未配置 · deep_link 去设置'); return; }
+          var on = btn.classList.toggle('off');
+          toast('invoke 主开关 ' + CH[btn.dataset.primary] + ' → ' + (on ? '关' : '开') + ' · 关托盘');
+        };
+      });
+      tray.querySelectorAll('[data-expand]').forEach(function (btn) {
+        btn.onclick = function (e) {
+          e.stopPropagation();
+          openCh = openCh === btn.dataset.expand ? null : btn.dataset.expand;
+          renderNew();
+        };
+      });
+      tray.querySelectorAll('[data-sub]').forEach(function (btn) {
+        btn.onclick = function (e) {
+          e.stopPropagation();
+          btn.classList.toggle('off');
+          toast('invoke 次开关 · 关托盘');
+        };
+      });
+      tray.querySelectorAll('[data-more]').forEach(function (btn) {
+        btn.onclick = function () {
+          face3Tab = btn.dataset.more;
+          toast('deep_link main:softPad#tray · 切到 ' + CH[face3Tab]);
+          renderFace3();
+        };
+      });
+      tray.querySelector('[data-action="mic"]').onclick = function () {
+        toast('invoke mic_toggle');
+      };
+    }
+
+    function renderFace3() {
+      var d = SCENES[scene];
+      var c = d.channels[face3Tab];
+      var tabs = ['voice','keys','softPad','camera'].map(function (id) {
+        return '<button type="button" class="' + (id === face3Tab ? 'on' : '') + '" data-f3="' + id + '">' +
+          (id === 'softPad' ? 'Pad' : CH[id]) + '</button>';
+      }).join('');
+      var stats = ['a','b','c','d'].map(function (k) {
+        var s = c.stats[k];
+        return '<div class="stat"><span class="k">' + s[0] + '</span><span class="v">' + s[1] + '</span></div>';
+      }).join('');
+      var sws = c.subs.map(function (s) {
+        return '<div class="sw-row"><span>' + s.n + '</span><button type="button" class="mini-toggle' + (s.on ? '' : ' off') + '"></button></div>';
+      }).join('');
+      var primarySw = '<div class="sw-row"><span>' + (face3Tab === 'voice' ? '启用语音引擎' : face3Tab === 'keys' ? '启用当前习惯' : face3Tab === 'softPad' ? '启用 Soft Pad' : '启用摄像头通道') + '</span>' +
+        '<button type="button" class="mini-toggle' + (c.primary ? '' : ' off') + '"></button></div>';
+
+      document.getElementById('face3Ref').innerHTML =
+        '<div class="face3-head">通道状态与控制</div>' +
+        '<div class="face3-layout">' +
+        '<label><input type="checkbox" disabled checked/> Hero</label>' +
+        '<label><input type="checkbox" checked/> 最近事件</label>' +
+        '<div class="mic-pill">麦克风 · 开 <button type="button" class="toggle" style="width:28px;height:15px"></button></div></div>' +
+        '<div class="face3-tabs">' + tabs + '</div>' +
+        '<div class="face3-card">' +
+        '<div class="face3-card-head"><b>' + CH[face3Tab] + '</b>' +
+        '<span class="st-pill ' + c.pill + '">' + c.pillText + '</span>' +
+        '<label style="font-size:10px;color:var(--on-surface-muted)"><input type="checkbox" checked/> 托盘显示</label></div>' +
+        '<div class="face3-stats">' + stats + '</div>' +
+        '<div class="face3-sw">' + primarySw + sws + '</div>' +
+        '<div class="face3-note">⚠ 现况：此处开关有 IPC，但左侧真实托盘预览是静态的；目标是把 L1/L2 能力同步进 tray-menu.html，预览与真托盘 WYSIWYG。</div>' +
+        '</div>';
+
+      document.getElementById('face3Ref').querySelectorAll('[data-f3]').forEach(function (btn) {
+        btn.onclick = function () { face3Tab = btn.dataset.f3; renderFace3(); };
+      });
+    }
+
+    document.getElementById('sceneSeg').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-scene]');
+      if (!btn) return;
+      scene = btn.dataset.scene;
+      openCh = null;
+      document.querySelectorAll('#sceneSeg button').forEach(function (b) { b.classList.toggle('on', b === btn); });
+      renderOld(); renderNew(); renderFace3();
+    });
+
+    renderOld(); renderNew(); renderFace3();
+  })();
+  </script>
+</body>
+</html>

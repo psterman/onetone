@@ -104,7 +104,7 @@ fn finish_scheme_switch(
         &format!("scheme switched: {from_id} -> {to_id}"),
         Some(serde_json::json!({ "fromId": from_id, "toId": to_id, "action": action })),
     );
-    crate::tray::refresh_menu(app);
+    crate::tray::refresh_menu_data(app);
     coach_hud::reset_session_dismissed(state.as_ref());
     coach_hud::push_state(app, state.as_ref());
 }

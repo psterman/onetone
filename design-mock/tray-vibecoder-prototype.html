@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>托盘菜单 Vibecoder 改版 · 交互原型</title>
+  <style>
+    :root {
+      --bg: #e8edf3;
+      --surface: #fff;
+      --surface-2: #f8fafc;
+      --primary: #2a9cc4;
+      --primary-soft: #e6f7fc;
+      --primary-deep: #1e87ad;
+      --on-surface: #152238;
+      --on-surface-muted: #5a7086;
+      --on-surface-soft: #8a98a8;
+      --outline: rgba(26, 45, 74, 0.1);
+      --danger: #dc2626;
+      --danger-soft: rgba(220, 38, 38, 0.08);
+      --green: #2e7d4f;
+      --green-soft: rgba(46, 125, 79, 0.1);
+      --orange: #b9530a;
+      --orange-soft: rgba(185, 83, 10, 0.1);
+      --blue: #00a3ff;
+      --blue-soft: rgba(0, 163, 255, 0.1);
+      --purple: #6d4ab0;
+      --purple-soft: rgba(109, 74, 176, 0.1);
+      --yellow: #b45309;
+      --yellow-soft: rgba(245, 166, 35, 0.16);
+      --radius: 12px;
+      --shadow: 0 10px 28px rgba(26, 45, 74, 0.16);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 20px 48px; background: var(--bg); color: var(--on-surface); }
+
+    .page-head { max-width: 1280px; margin: 0 auto 20px; }
+    .page-head h1 { font-size: 22px; margin: 0 0 6px; }
+    .page-head p { margin: 0; font-size: 13px; color: var(--on-surface-muted); line-height: 1.55; max-width: 760px; }
+
+    .toolbar {
+      max-width: 1280px; margin: 16px auto 24px;
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+      padding: 12px 14px; background: var(--surface); border: 1px solid var(--outline);
+      border-radius: var(--radius);
+    }
+    .toolbar label { font-size: 12px; font-weight: 600; color: var(--on-surface-muted); margin-right: 4px; }
+    .seg { display: flex; gap: 4px; }
+    .seg button {
+      border: 1px solid var(--outline); background: var(--surface-2); color: var(--on-surface);
+      font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    }
+    .seg button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .toolbar select { font: inherit; font-size: 12px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--outline); }
+    .toolbar .hint { font-size: 11px; color: var(--on-surface-soft); margin-left: auto; }
+
+    .grid {
+      max-width: 1280px; margin: 0 auto;
+      display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start;
+    }
+    @media (max-width: 960px) { .grid { grid-template-columns: 1fr; } }
+
+    .col-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--on-surface-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+    }
+    .col-label .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
+
+    .tray-frame {
+      background: linear-gradient(160deg, #dce4ec, #c5d0dc);
+      border-radius: 14px; padding: 16px 12px 20px;
+      display: flex; justify-content: center; border: 1px solid var(--outline);
+    }
+
+    .tray {
+      width: 316px; background: var(--surface); border: 1px solid var(--outline);
+      border-radius: var(--radius); box-shadow: var(--shadow); padding: 5px; font-size: 13px;
+    }
+    .pulse {
+      width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0;
+      background: var(--green); box-shadow: 0 0 0 3px var(--green-soft);
+    }
+    .pulse.listening { background: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft); animation: tp 2s ease-in-out infinite; }
+    .pulse.standby { background: var(--on-surface-soft); box-shadow: 0 0 0 3px rgba(26,45,74,.06); }
+    .pulse.paused { background: var(--orange); box-shadow: 0 0 0 3px var(--orange-soft); }
+    @keyframes tp { 0%,100%{box-shadow:0 0 0 3px rgba(0,163,255,.18)} 50%{box-shadow:0 0 0 5px rgba(0,163,255,.32)} }
+
+    .status-hero {
+      margin: 4px; padding: 11px 12px 9px;
+      background: linear-gradient(135deg, #fff 0%, var(--blue-soft) 100%);
+      border: 1px solid var(--outline); border-radius: 10px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .status-hero.standby-mode { background: linear-gradient(135deg, #fff, var(--surface-2)); }
+    .status-hero.paused-mode { background: linear-gradient(135deg, #fff, var(--orange-soft)); }
+    .status-hero .left { flex: 1; min-width: 0; }
+    .status-hero .top-line { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; }
+    .status-hero .ttl { font-size: 14.5px; font-weight: 800; letter-spacing: -0.01em; }
+    .status-hero .sub { font-size: 10.5px; color: var(--on-surface-muted); margin-top: 2px; }
+    .state-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+    .chip {
+      font-size: 9.5px; padding: 1.5px 6px; border-radius: 4px; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 3px;
+    }
+    .chip.b { background: var(--blue-soft); color: #0e7490; }
+    .chip.g { background: var(--green-soft); color: var(--green); }
+    .chip.p { background: var(--purple-soft); color: var(--purple); }
+    .chip.agent { background: rgba(42,156,196,.15); color: #0e7490; border: 1px dashed rgba(42,156,196,.45); }
+    .chip.agent.run { background: var(--blue-soft); border-style: solid; animation: aglow 2s ease infinite; }
+    @keyframes aglow { 0%,100%{box-shadow:0 0 0 0 rgba(42,156,196,0)} 50%{box-shadow:0 0 0 3px rgba(42,156,196,.25)} }
+
+    .hero-act {
+      flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 8px 11px; border-radius: 8px; cursor: pointer;
+      background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+      color: #fff; font-size: 10.5px; font-weight: 700; border: none; font: inherit;
+    }
+    .hero-act.paused { background: linear-gradient(135deg, #f5a623, #d97706); }
+
+    .event-card {
+      margin: 4px 6px; padding: 9px 11px; background: var(--surface-2);
+      border: 1px solid var(--outline); border-radius: 9px;
+    }
+    .event-card.is-empty { opacity: 0.72; }
+    .event-card .ev-head { font-size: 10px; color: var(--on-surface-muted); margin-bottom: 4px; }
+    .event-card .ev-text { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .event-card .ev-text .txt {
+      flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-family: ui-monospace, Consolas, monospace; font-size: 11.5px;
+    }
+    .event-card .ev-hint { font-size: 10px; color: var(--on-surface-soft); margin-top: 5px; line-height: 1.4; }
+    .outcome { font-size: 10px; font-weight: 700; padding: 1.5px 6px; border-radius: 3px; flex-shrink: 0; }
+    .outcome.ok { background: var(--green-soft); color: var(--green); }
+    .outcome.fail { background: var(--danger-soft); color: var(--danger); }
+
+    .quick-row { display: flex; gap: 6px; margin: 4px 6px; }
+    .quick-btn {
+      flex: 1; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--outline);
+      background: var(--surface-2); font-size: 10.5px; font-weight: 600; cursor: pointer;
+      color: var(--on-surface); text-align: center;
+    }
+    .quick-btn.primary { background: var(--primary-soft); border-color: rgba(42,156,196,.3); color: var(--primary-deep); }
+    .quick-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .sec-head {
+      font-size: 10px; font-weight: 700; color: var(--on-surface-muted);
+      padding: 7px 12px 3px; text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .sec-head .dot-sm { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--on-surface-soft); margin-right: 4px; vertical-align: middle; }
+
+    .ch-row {
+      display: flex; align-items: center; gap: 9px; padding: 7px 10px; margin: 0 4px;
+      border-radius: 7px; cursor: pointer; border: none; background: transparent;
+      color: inherit; font: inherit; text-align: left; width: calc(100% - 8px);
+    }
+    .ch-row:hover { background: var(--primary-soft); }
+    .ch-row.off .meta { color: var(--primary-deep); font-weight: 600; }
+    .icowrap {
+      width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      font-size: 12px;
+    }
+    .icowrap.voice { background: var(--blue-soft); }
+    .icowrap.keys { background: var(--primary-soft); }
+    .icowrap.softpad { background: var(--purple-soft); }
+    .icowrap.camera { background: var(--orange-soft); }
+    .ch-row .body { flex: 1; min-width: 0; }
+    .ch-row .name { font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+    .ch-row .name .pdot { width: 5px; height: 5px; border-radius: 50%; background: var(--on-surface-soft); }
+    .ch-row .name .pdot.on { background: var(--blue); box-shadow: 0 0 0 2px var(--blue-soft); }
+    .ch-row .meta { font-size: 10.5px; color: var(--on-surface-muted); margin-top: 1px; }
+    .ch-row .chev { font-size: 9px; color: var(--on-surface-soft); }
+
+    .mic-row {
+      display: flex; align-items: center; gap: 9px; padding: 7px 10px; margin: 0 4px;
+      border-radius: 7px; background: var(--primary-soft);
+    }
+    .mic-row .body { flex: 1; }
+    .mic-row .name { font-size: 12.5px; font-weight: 700; }
+    .mic-row .meta { font-size: 10.5px; color: var(--on-surface-muted); }
+    .toggle {
+      width: 34px; height: 18px; border-radius: 10px; background: var(--primary);
+      position: relative; flex-shrink: 0; cursor: pointer; border: none; padding: 0;
+    }
+    .toggle::after {
+      content: ''; position: absolute; top: 2px; left: 18px; width: 14px; height: 14px;
+      border-radius: 50%; background: #fff; transition: left 0.18s; box-shadow: 0 1px 2px rgba(0,0,0,.2);
+    }
+    .toggle.off { background: var(--danger); }
+    .toggle.off::after { left: 2px; }
+
+    .tray-ft {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 5px 8px 3px; border-top: 1px solid var(--outline); margin-top: 4px;
+      font-size: 10.5px; color: var(--on-surface-muted);
+    }
+    .tray-ft button {
+      border: none; background: transparent; font: inherit; font-size: 10.5px;
+      color: var(--on-surface-muted); cursor: pointer; padding: 3px 6px; border-radius: 4px;
+    }
+    .tray-ft button:hover { background: rgba(26,45,74,.05); color: var(--on-surface); }
+    .tray-ft button.primary { color: var(--primary); font-weight: 600; }
+    .tray-ft .quit { opacity: 0.6; }
+    .tray-ft .quit:hover { color: var(--danger); }
+
+    .hidden { display: none !important; }
+
+    .workbench {
+      background: var(--surface); border: 1px solid var(--outline); border-radius: 14px;
+      overflow: hidden; box-shadow: var(--shadow);
+    }
+    .wb-topbar {
+      padding: 8px 12px; background: var(--surface-2); border-bottom: 1px solid var(--outline);
+      font-size: 10.5px; color: var(--on-surface-muted); display: flex; flex-wrap: wrap; gap: 8px 14px;
+    }
+    .wb-topbar b { color: var(--on-surface); }
+    .wb-flow { display: flex; border-bottom: 1px solid var(--outline); }
+    .wb-node {
+      flex: 1; padding: 10px 6px; text-align: center; border-right: 1px solid var(--outline);
+      font-size: 10px;
+    }
+    .wb-node:last-child { border-right: none; }
+    .wb-node.active { background: var(--primary-soft); border-bottom: 2px solid var(--primary); }
+    .wb-node .t { font-weight: 700; font-size: 11px; }
+    .wb-node .h { font-size: 9px; color: var(--on-surface-muted); margin-top: 2px; }
+
+    .wb-body { display: grid; grid-template-columns: 1fr 1.05fr; min-height: 480px; }
+    @media (max-width: 700px) { .wb-body { grid-template-columns: 1fr; } }
+
+    .wb-preview-pane {
+      padding: 14px; background: linear-gradient(160deg, #dce4ec, #c5d0dc);
+      border-right: 1px solid var(--outline); display: flex; flex-direction: column; align-items: center;
+    }
+    .wb-preview-lbl {
+      font-size: 10px; font-weight: 700; color: var(--on-surface-muted);
+      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; align-self: flex-start;
+    }
+
+    .wb-inspector { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+    .wb-inspector h2 { font-size: 14px; margin: 0 0 2px; }
+    .wb-inspector .desc { font-size: 11px; color: var(--on-surface-muted); margin: 0 0 8px; }
+
+    .ins-tabs { display: flex; gap: 4px; margin-bottom: 4px; }
+    .ins-tabs button {
+      flex: 1; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--outline);
+      background: var(--surface-2); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
+    }
+    .ins-tabs button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+    .ins-panel { display: none; flex-direction: column; gap: 8px; }
+    .ins-panel.on { display: flex; }
+
+    .grp {
+      padding: 10px; background: var(--surface-2); border: 1px solid var(--outline); border-radius: 10px;
+    }
+    .grp h4 {
+      margin: 0 0 8px; font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--on-surface-muted);
+    }
+    .grp label { display: flex; align-items: center; gap: 8px; font-size: 11px; margin: 5px 0; cursor: pointer; }
+    .grp label.locked { opacity: 0.55; cursor: default; }
+    .grp select { width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--outline); font: inherit; font-size: 11px; }
+
+    .q-card {
+      padding: 9px 10px; border-radius: 8px; border: 1px solid var(--outline); background: #fff;
+      cursor: pointer; transition: background 0.12s;
+    }
+    .q-card:hover { background: var(--primary-soft); }
+    .q-card .q { font-size: 10px; color: var(--on-surface-muted); margin-bottom: 2px; }
+    .q-card .a { font-size: 12px; font-weight: 700; }
+    .q-card.warn .a { color: var(--orange); }
+    .q-card.ok .a { color: var(--green); }
+
+    .fix-item {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 8px 10px; border-radius: 8px; border: 1px solid var(--outline); background: #fff;
+    }
+    .fix-item .info { font-size: 11px; }
+    .fix-item .info b { display: block; font-size: 12px; }
+    .fix-item button {
+      flex-shrink: 0; padding: 5px 10px; border-radius: 6px; border: none;
+      background: var(--primary); color: #fff; font: inherit; font-size: 10.5px; font-weight: 700; cursor: pointer;
+    }
+    .fix-empty { font-size: 11px; color: var(--green); padding: 8px; text-align: center; }
+
+    .compare {
+      max-width: 1280px; margin: 28px auto 0;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    }
+    @media (max-width: 700px) { .compare { grid-template-columns: 1fr; } }
+    .compare-card {
+      padding: 14px; background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius);
+    }
+    .compare-card h3 { font-size: 13px; margin: 0 0 8px; }
+    .compare-card ul { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.6; color: var(--on-surface-muted); }
+
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: var(--on-surface); color: #fff; font-size: 12px; font-weight: 600;
+      padding: 8px 16px; border-radius: 8px; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+      z-index: 99;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <header class="page-head">
+    <h1>托盘菜单 Vibecoder 改版 · 交互原型</h1>
+    <p>左侧为<strong>系统托盘弹窗</strong>目标态；右侧为 Soft Pad <strong>托盘工作台</strong>（Face 3）。切换场景查看「未配置 / 运行中 / 已暂停」。点击通道、快捷按钮、Inspector 卡片会弹出模拟跳转提示。</p>
+  </header>
+
+  <div class="toolbar">
+    <label>场景</label>
+    <div class="seg" id="sceneSeg">
+      <button type="button" data-scene="fresh" class="on">全新未配置</button>
+      <button type="button" data-scene="active">Vibecoding 运行中</button>
+      <button type="button" data-scene="paused">已暂停</button>
+    </div>
+    <label style="margin-left:12px">预设</label>
+    <select id="presetSel">
+      <option value="vibecoder" selected>Vibecoder（默认）</option>
+      <option value="minimal">精简</option>
+      <option value="full">完整</option>
+    </select>
+    <span class="hint">双击本文件或用浏览器打开即可预览</span>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="col-label"><span class="dot"></span>系统托盘弹窗</div>
+      <div class="tray-frame">
+        <div class="tray" id="trayPopup" role="dialog" aria-label="托盘菜单"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="col-label"><span class="dot"></span>虚拟键盘 · Face 3 托盘工作台</div>
+      <div class="workbench">
+        <div class="wb-topbar">
+          <span>绑定 · <b id="wbAgent">—</b></span>
+          <span>键位 · <b>21 个</b></span>
+          <span>托盘预设 · <b id="wbPresetLbl">Vibecoder</b></span>
+        </div>
+        <div class="wb-flow">
+          <div class="wb-node"><div class="t">Soft Pad</div><div class="h">改键位</div></div>
+          <div class="wb-node"><div class="t">状态灯</div><div class="h">AI 忙不忙</div></div>
+          <div class="wb-node active"><div class="t">托盘工作台</div><div class="h">预览 · 显示项 · 快捷修复</div></div>
+        </div>
+        <div class="wb-body">
+          <div class="wb-preview-pane">
+            <div class="wb-preview-lbl">实时预览（与左侧同步）</div>
+            <div id="trayPreviewMount"></div>
+          </div>
+          <div class="wb-inspector">
+            <h2>托盘工作台</h2>
+            <p class="desc">控制系统托盘里看到的内容，不负责完整配置。</p>
+            <div class="ins-tabs">
+              <button type="button" data-tab="layout" class="on">显示项</button>
+              <button type="button" data-tab="status">状态摘要</button>
+              <button type="button" data-tab="fix">快捷修复</button>
+            </div>
+            <div class="ins-panel on" data-panel="layout">
+              <div class="grp">
+                <h4>布局预设</h4>
+                <select id="presetSel2">
+                  <option value="vibecoder" selected>Vibecoder — 语音/按键/Pad + 事件</option>
+                  <option value="minimal">精简 — 仅 Hero + 暂停</option>
+                  <option value="full">完整 — 含摄像头</option>
+                </select>
+              </div>
+              <div class="grp">
+                <h4>托盘显示</h4>
+                <label class="locked"><input type="checkbox" checked disabled /> Hero 状态（固定显示）</label>
+                <label><input type="checkbox" id="chkEvent" checked /> 最近事件</label>
+                <label><input type="checkbox" id="chkQuick" checked /> 快捷动作</label>
+                <label><input type="checkbox" id="chkVoice" checked /> 语音通道</label>
+                <label><input type="checkbox" id="chkKeys" checked /> 按键通道</label>
+                <label><input type="checkbox" id="chkPad" checked /> Soft Pad 通道</label>
+                <label><input type="checkbox" id="chkCamera" /> 摄像头通道</label>
+                <label><input type="checkbox" id="chkMic" checked /> 麦克风行</label>
+              </div>
+            </div>
+            <div class="ins-panel" data-panel="status">
+              <div class="grp" style="display:flex;flex-direction:column;gap:6px">
+                <div class="q-card" data-go="hero"><div class="q">① 现在能不能用？</div><div class="a" id="qReady">—</div></div>
+                <div class="q-card" data-go="agent"><div class="q">② AI 忙不忙？</div><div class="a" id="qAgent">—</div></div>
+                <div class="q-card" data-go="event"><div class="q">③ 上一句发出去没？</div><div class="a" id="qEvent">—</div></div>
+                <div class="q-card warn" data-go="fix"><div class="q">④ 哪条通道要修？</div><div class="a" id="qFix">—</div></div>
+              </div>
+            </div>
+            <div class="ins-panel" data-panel="fix" id="fixPanel"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="compare-card">
+      <h3>现版问题</h3>
+      <ul>
+        <li>未配置也显示「监听中」</li>
+        <li>通道「未启用」无行动指引</li>
+        <li>deep_link 点击不到对应设置页</li>
+        <li>设置预览与真托盘不一致</li>
+      </ul>
+    </div>
+    <div class="compare-card">
+      <h3>目标态（本原型）</h3>
+      <ul>
+        <li>待命 / 监听中 / 已暂停 说真话</li>
+        <li>未启用 → 「去设置」+ deep link</li>
+        <li>Agent pill：Codex · 运行中</li>
+        <li>工作台 WYSIWYG 预览 + 快捷修复</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  (function () {
+    var SCENES = {
+      fresh: {
+        hero: { mode: 'standby', title: '待命', sub: '尚未配置任何通道', pulse: 'standby' },
+        chips: [],
+        agentChip: null,
+        event: null,
+        channels: {
+          voice: { on: false, meta: '未启用 · 去设置', state: 'off' },
+          keys: { on: false, meta: '未启用 · 去设置', state: 'off' },
+          softPad: { on: false, meta: '未启用 · 去设置', state: 'off' },
+          camera: { on: false, meta: '未启用 · 去设置', state: 'off' }
+        },
+        quick: { pad: false, settings: true },
+        q: { ready: '待命 — 先配一条通道', agent: '无 Agent 连接', event: '暂无触发记录', fix: '语音、按键、Soft Pad 均未启用' }
+      },
+      active: {
+        hero: { mode: 'listening', title: '监听中', sub: '3 条通道就绪', pulse: 'listening' },
+        chips: ['voice', 'keys', 'softPad'],
+        agentChip: { label: 'Codex · 运行中', run: true },
+        event: { ago: '2s 前', ch: '按键', text: 'INPUT_CAPTURED → send', outcome: 'ok' },
+        channels: {
+          voice: { on: true, meta: 'Vosk · 已就绪 · 嘿声声', state: 'on' },
+          keys: { on: true, meta: '右 Alt · 智能连按', state: 'on' },
+          softPad: { on: true, meta: 'Codex · 浮层可见', state: 'on' },
+          camera: { on: false, meta: '未启用 · 去设置', state: 'off' }
+        },
+        quick: { pad: true, settings: true },
+        q: { ready: '监听中 · 3 通道就绪', agent: 'Codex 运行中', event: '2s 前 · 按键 · 已发送', fix: '全部就绪' }
+      },
+      paused: {
+        hero: { mode: 'paused', title: '已暂停', sub: '恢复后继续监听', pulse: 'paused' },
+        chips: ['voice', 'keys'],
+        agentChip: { label: 'Cursor · 待命', run: false },
+        event: { ago: '1m 前', ch: '语音', text: '"继续实现托盘"', outcome: 'ok' },
+        channels: {
+          voice: { on: true, meta: 'Vosk · 待命', state: 'off' },
+          keys: { on: true, meta: '右 Alt · 待命', state: 'off' },
+          softPad: { on: true, meta: '已启用 · 浮层隐藏', state: 'off' },
+          camera: { on: false, meta: '未启用 · 去设置', state: 'off' }
+        },
+        quick: { pad: true, settings: true },
+        q: { ready: '已暂停', agent: 'Cursor 待命', event: '1m 前 · 语音 · 已发送', fix: '点 Hero 继续' }
+      }
+    };
+
+    var CHIP = { voice: ['b', '语音'], keys: ['g', '按键'], softPad: ['p', 'Soft Pad'] };
+    var CH_ICON = { voice: '🎤', keys: '⌨', softPad: '▦', camera: '📷' };
+    var CH_NAME = { voice: '语音', keys: '按键', softPad: 'Soft Pad', camera: '摄像头' };
+    var DEEP = {
+      voice: 'main:voice', keys: 'main:keys', softPad: 'main:softPad', camera: 'main:camera',
+      hero: 'main:home', agent: 'main:softPad', event: 'main:home', fix: 'main:keys',
+      settings: 'main:settings', diagnose: 'main:diagnose', home: 'main:home'
+    };
+
+    var state = {
+      scene: 'fresh',
+      preset: 'vibecoder',
+      layout: { event: true, quick: true, voice: true, keys: true, softPad: true, camera: false, mic: true }
+    };
+
+    var $ = function (id) { return document.getElementById(id); };
+    var toastEl = $('toast');
+    var toastTimer = 0;
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 2200);
+    }
+
+    function applyPreset(p) {
+      state.preset = p;
+      if (p === 'minimal') {
+        state.layout = { event: false, quick: false, voice: false, keys: false, softPad: false, camera: false, mic: false };
+      } else if (p === 'full') {
+        state.layout = { event: true, quick: true, voice: true, keys: true, softPad: true, camera: true, mic: true };
+      } else {
+        state.layout = { event: true, quick: true, voice: true, keys: true, softPad: true, camera: false, mic: true };
+      }
+      syncLayoutChecks();
+      $('wbPresetLbl').textContent = p === 'vibecoder' ? 'Vibecoder' : p === 'minimal' ? '精简' : '完整';
+      render();
+    }
+
+    function syncLayoutChecks() {
+      var L = state.layout;
+      $('chkEvent').checked = L.event;
+      $('chkQuick').checked = L.quick;
+      $('chkVoice').checked = L.voice;
+      $('chkKeys').checked = L.keys;
+      $('chkPad').checked = L.softPad;
+      $('chkCamera').checked = L.camera;
+      $('chkMic').checked = L.mic;
+    }
+
+    function readLayoutFromChecks() {
+      state.layout.event = $('chkEvent').checked;
+      state.layout.quick = $('chkQuick').checked;
+      state.layout.voice = $('chkVoice').checked;
+      state.layout.keys = $('chkKeys').checked;
+      state.layout.softPad = $('chkPad').checked;
+      state.layout.camera = $('chkCamera').checked;
+      state.layout.mic = $('chkMic').checked;
+      state.preset = 'custom';
+      $('presetSel').value = 'custom';
+      if (!$('presetSel2').querySelector('option[value="custom"]')) {
+        var o = document.createElement('option');
+        o.value = 'custom'; o.textContent = '自定义';
+        $('presetSel2').appendChild(o);
+      }
+      $('presetSel2').value = 'custom';
+      $('wbPresetLbl').textContent = '自定义';
+      render();
+    }
+
+    function renderTray(target) {
+      var data = SCENES[state.scene];
+      var L = state.layout;
+      var h = data.hero;
+      var heroCls = h.mode === 'paused' ? 'paused-mode' : h.mode === 'standby' ? 'standby-mode' : '';
+      var chipsHtml = data.chips.map(function (id) {
+        var c = CHIP[id];
+        return c ? '<span class="chip ' + c[0] + '">' + c[1] + '</span>' : '';
+      }).join('');
+      if (data.agentChip) {
+        chipsHtml += '<span class="chip agent' + (data.agentChip.run ? ' run' : '') + '">' + data.agentChip.label + '</span>';
+      }
+      var pauseLbl = h.mode === 'paused' ? '继续' : '暂停';
+      var pauseCls = h.mode === 'paused' ? ' paused' : '';
+
+      var eventHtml = '';
+      if (L.event) {
+        if (data.event) {
+          var oc = data.event.outcome === 'ok' ? '<span class="outcome ok">已发送</span>' : '';
+          eventHtml = '<div class="event-card"><div class="ev-head">刚才 · ' + data.event.ago + ' · ' + data.event.ch + '</div>'
+            + '<div class="ev-text"><span class="txt">' + data.event.text + '</span>' + oc + '</div></div>';
+        } else {
+          eventHtml = '<div class="event-card is-empty"><div class="ev-head">刚才 · —</div>'
+            + '<div class="ev-text"><span class="txt">暂无事件</span></div>'
+            + '<div class="ev-hint">配置按键或语音后，这里会显示最近一次触发</div></div>';
+        }
+      }
+
+      var quickHtml = '';
+      if (L.quick) {
+        quickHtml = '<div class="quick-row">'
+          + '<button type="button" class="quick-btn primary" data-act="pad"' + (data.quick.pad ? '' : ' disabled') + '>显示 Soft Pad</button>'
+          + '<button type="button" class="quick-btn" data-act="settings">虚拟键盘设置</button>'
+          + '</div>';
+      }
+
+      var chIds = ['voice', 'keys', 'softPad', 'camera'];
+      var chHtml = '';
+      var anyCh = false;
+      chIds.forEach(function (id) {
+        if (!L[id]) return;
+        anyCh = true;
+        var c = data.channels[id];
+        var wrap = id === 'softPad' ? 'softpad' : id;
+        var offCls = c.on ? '' : ' off';
+        var dotCls = c.state === 'on' ? ' on' : '';
+        chHtml += '<button type="button" class="ch-row' + offCls + '" data-ch="' + id + '">'
+          + '<span class="icowrap ' + wrap + '">' + CH_ICON[id] + '</span>'
+          + '<span class="body"><span class="name">' + CH_NAME[id] + ' <span class="pdot' + dotCls + '"></span></span>'
+          + '<span class="meta">' + c.meta + '</span></span>'
+          + '<span class="chev">▸</span></button>';
+      });
+      var secHead = anyCh ? '<div class="sec-head"><span class="dot-sm"></span>通道</div>' : '';
+
+      var micHtml = L.mic
+        ? '<div class="mic-row"><span class="icowrap voice">🎤</span><span class="body">'
+          + '<div class="name">麦克风</div><div class="meta">开 · 默认</div></span>'
+          + '<button type="button" class="toggle" role="switch" aria-checked="true" data-act="mic"></button></div>'
+        : '';
+
+      target.innerHTML =
+        '<div class="status-hero ' + heroCls + '">'
+        + '<div class="left"><div class="top-line"><span class="pulse ' + h.pulse + '"></span>'
+        + '<span class="ttl">' + h.title + '</span></div>'
+        + '<div class="sub">' + h.sub + '</div>'
+        + '<div class="state-chips">' + chipsHtml + '</div></div>'
+        + '<button type="button" class="hero-act' + pauseCls + '" data-act="pause">' + pauseLbl + '</button></div>'
+        + eventHtml + quickHtml + secHead + chHtml + micHtml
+        + '<div class="tray-ft"><div>'
+        + '<button type="button" class="primary" data-go="home">主窗口</button> · '
+        + '<button type="button" data-go="settings">设置</button> · '
+        + '<button type="button" data-go="diagnose">诊断</button>'
+        + '</div><button type="button" class="quit" data-act="quit">退出</button></div>';
+
+      bindTrayEvents(target);
+    }
+
+    function bindTrayEvents(root) {
+      root.querySelectorAll('[data-ch]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          toast('deep_link → ' + DEEP[btn.getAttribute('data-ch')]);
+        });
+      });
+      root.querySelectorAll('[data-go]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          toast('deep_link → ' + DEEP[btn.getAttribute('data-go')]);
+        });
+      });
+      root.querySelectorAll('[data-act]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var a = btn.getAttribute('data-act');
+          if (a === 'pause') toast(state.scene === 'paused' ? 'listen_toggle → 恢复' : 'listen_toggle → 暂停');
+          else if (a === 'mic') toast('mic_toggle');
+          else if (a === 'pad') toast('toggle Soft Pad 浮层');
+          else if (a === 'settings') toast('deep_link → main:softPad');
+          else if (a === 'quit') toast('quit');
+        });
+      });
+    }
+
+    function renderInspector() {
+      var data = SCENES[state.scene];
+      $('qReady').textContent = data.q.ready;
+      $('qAgent').textContent = data.q.agent;
+      $('qEvent').textContent = data.q.event;
+      $('qFix').textContent = data.q.fix;
+      $('qReady').parentElement.className = 'q-card' + (state.scene === 'active' ? ' ok' : state.scene === 'fresh' ? ' warn' : '');
+      $('qFix').parentElement.className = 'q-card' + (state.scene === 'active' ? ' ok' : ' warn');
+
+      var fixPanel = $('fixPanel');
+      var off = [];
+      Object.keys(data.channels).forEach(function (id) {
+        if (!data.channels[id].on) off.push({ id: id, name: CH_NAME[id] });
+      });
+      if (!off.length) {
+        fixPanel.innerHTML = '<div class="fix-empty">✓ 所有已显示通道均已就绪</div>';
+      } else {
+        fixPanel.innerHTML = off.map(function (o) {
+          return '<div class="fix-item"><div class="info"><b>' + o.name + '</b>未启用</div>'
+            + '<button type="button" data-fix="' + o.id + '">去配置</button></div>';
+        }).join('');
+        fixPanel.querySelectorAll('[data-fix]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            toast('deep_link → ' + DEEP[btn.getAttribute('data-fix')]);
+          });
+        });
+      }
+
+      document.querySelectorAll('.q-card[data-go]').forEach(function (card) {
+        card.onclick = function () {
+          toast('deep_link → ' + DEEP[card.getAttribute('data-go')]);
+        };
+      });
+    }
+
+    function render() {
+      renderTray($('trayPopup'));
+      renderTray($('trayPreviewMount'));
+      renderInspector();
+    }
+
+    document.querySelectorAll('#sceneSeg button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.scene = btn.getAttribute('data-scene');
+        document.querySelectorAll('#sceneSeg button').forEach(function (b) { b.classList.remove('on'); });
+        btn.classList.add('on');
+        $('wbAgent').textContent = state.scene === 'active' ? 'Codex' : state.scene === 'paused' ? 'Cursor' : '—';
+        render();
+      });
+    });
+
+    ['presetSel', 'presetSel2'].forEach(function (id) {
+      $(id).addEventListener('change', function () {
+        if (this.value !== 'custom') {
+          applyPreset(this.value);
+          var other = id === 'presetSel' ? 'presetSel2' : 'presetSel';
+          $(other).value = this.value;
+        }
+      });
+    });
+
+    ['chkEvent', 'chkQuick', 'chkVoice', 'chkKeys', 'chkPad', 'chkCamera', 'chkMic'].forEach(function (id) {
+      $(id).addEventListener('change', readLayoutFromChecks);
+    });
+
+    document.querySelectorAll('.ins-tabs button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.ins-tabs button').forEach(function (b) { b.classList.remove('on'); });
+        document.querySelectorAll('.ins-panel').forEach(function (p) { p.classList.remove('on'); });
+        btn.classList.add('on');
+        document.querySelector('.ins-panel[data-panel="' + btn.getAttribute('data-tab') + '"]').classList.add('on');
+      });
+    });
+
+    render();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>方案 D · Token 对齐</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px; background: #eef2f7; font-family: "Segoe UI","PingFang SC",sans-serif; font-size: 13px; color: #152238; }
+    .banner { font-size: 11px; color: #5a7086; margin-bottom: 12px; line-height: 1.5; text-align: center; }
+    .banner b { color: #1e87ad; }
+    .banner a { color: #1e87ad; }
+
+    .split { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; align-items: flex-start; }
+    .panel { width: 300px; }
+    .panel-tag {
+      font-size: 10px; font-weight: 700; text-align: center; margin-bottom: 8px; padding: 4px 8px; border-radius: 6px;
+    }
+    .panel-tag.bad { background: #fef2f2; color: #dc2626; }
+    .panel-tag.good { background: #ecfdf5; color: #2e7d4f; }
+
+    /* —— 分裂：legacy 青 + island 蓝 —— */
+    .split-legacy {
+      --primary: #2a9cc4; --primary-soft: #e6f7fc;
+      --surface: #fff; --muted: #5a7086; --outline: rgba(26,45,74,.1);
+    }
+    .split-island {
+      --primary: hsl(221, 83%, 53%); --primary-soft: hsl(221, 83%, 96%);
+      --surface: #fff; --muted: hsl(215, 16%, 47%); --outline: hsl(214, 32%, 91%);
+      margin-top: 8px; border-radius: 8px; padding: 10px; border: 1px dashed var(--outline);
+    }
+    .split-island .lbl { font-size: 9px; color: var(--muted); margin-bottom: 6px; }
+
+    /* —— 对齐：共享 theme.css —— */
+    .aligned-root {
+      --ot-primary: 192 58% 47%;          /* #2a9cc4 转 HSL，与品牌青一致 */
+      --ot-primary-fg: 0 0% 100%;
+      --ot-primary-soft: 192 58% 95%;
+      --ot-surface: 0 0% 100%;
+      --ot-muted-fg: 215 16% 47%;
+      --ot-border: 214 20% 88%;
+      --primary: hsl(var(--ot-primary));
+      --primary-soft: hsl(var(--ot-primary-soft));
+      --surface: hsl(var(--ot-surface));
+      --muted: hsl(var(--ot-muted-fg));
+      --outline: hsl(var(--ot-border));
+    }
+
+    .mini-tray {
+      background: var(--surface); border: 1px solid var(--outline); border-radius: 10px;
+      padding: 8px; box-shadow: 0 4px 12px rgba(0,0,0,.06);
+    }
+    .btn {
+      display: block; width: 100%; margin-top: 6px; padding: 7px; border: none; border-radius: 6px;
+      background: var(--primary); color: #fff; font-size: 11px; font-weight: 600; cursor: pointer;
+    }
+    .chip {
+      display: inline-block; font-size: 9px; padding: 2px 6px; border-radius: 4px;
+      background: var(--primary-soft); color: var(--primary); font-weight: 600; margin-top: 4px;
+    }
+    .row { font-size: 11px; padding: 5px 0; border-bottom: 1px solid var(--outline); color: var(--muted); }
+    .row:last-child { border: none; }
+    .sw { float: right; width: 28px; height: 14px; border-radius: 7px; background: var(--primary); border: none; }
+
+    .swatch { display: flex; gap: 6px; margin-top: 8px; }
+    .swatch div { flex: 1; height: 24px; border-radius: 4px; font-size: 8px; color: #fff; display: flex; align-items: center; justify-content: center; text-shadow: 0 1px 1px rgba(0,0,0,.3); }
+    .swatch .a { background: #2a9cc4; }
+    .swatch .b { background: hsl(221, 83%, 53%); }
+
+    .note {
+      max-width: 640px; margin: 16px auto 0; padding: 12px; background: #fff; border-radius: 10px;
+      font-size: 11px; color: #5a7086; line-height: 1.55; border: 1px solid rgba(26,45,74,.1);
+    }
+    code { font-size: 10px; background: #f1f5f9; padding: 1px 4px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <p class="banner"><b>方案 D</b> · <code>theme.css</code> 语义 token 一处定义 · <a href="ui-unify-abcd-compare.html">← 对比</a></p>
+
+  <div class="split">
+    <div class="panel split-legacy">
+      <div class="panel-tag bad">分裂 · 现况</div>
+      <div class="mini-tray">
+        <div style="font-weight:700;font-size:13px">托盘 legacy</div>
+        <span class="chip">#2a9cc4 青</span>
+        <div class="row">语音通道 <button class="sw"></button></div>
+        <button class="btn">先停一下</button>
+      </div>
+      <div class="split-island">
+        <div class="lbl">React 岛 .ot-island（另一套色）</div>
+        <div class="mini-tray" style="--primary:hsl(221,83%,53%);--primary-soft:hsl(221,83%,96%)">
+          <div style="font-weight:700;font-size:13px">设置岛 Button</div>
+          <span class="chip">hsl(221 83% 53%) 蓝</span>
+          <button class="btn">保存</button>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="a">托盘 #2a9cc4</div>
+        <div class="b">岛 hsl 221°</div>
+      </div>
+    </div>
+
+    <div class="panel aligned-root">
+      <div class="panel-tag good">对齐 · theme.css</div>
+      <div class="mini-tray">
+        <div style="font-weight:700;font-size:13px">托盘 tray-menu</div>
+        <span class="chip">--ot-primary</span>
+        <div class="row">语音通道 <button class="sw"></button></div>
+        <button class="btn">先停一下</button>
+      </div>
+      <div class="split-island" style="margin-top:8px;border-style:solid">
+        <div class="lbl">React 岛（读同一 --ot-primary）</div>
+        <div class="mini-tray">
+          <div style="font-weight:700;font-size:13px">设置岛 Button</div>
+          <span class="chip">--ot-primary</span>
+          <button class="btn">保存</button>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="a" style="background:var(--primary)">统一主色</div>
+        <div class="b" style="background:var(--primary);opacity:.85">同 token</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">
+    <strong>做法：</strong>新增 <code>src/css/theme.css</code> 定义 <code>--ot-primary</code> 等语义变量；
+    legacy <code>:root</code> 与 <code>.ot-island</code> 均 <code>@import</code> 或映射到同一 HSL 值（品牌保持青 #2a9cc4，岛不再用默认 shadcn 蓝）。<br>
+    <strong>托盘</strong> <code>tray-menu.html</code> 改 <code>var(--ot-primary)</code> 即可，无需 React。
+  </p>
+</body>
+</html>

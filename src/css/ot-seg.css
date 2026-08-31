@@ -1,0 +1,453 @@
+/**
+ * OneTone segmented control — 表單內 2–6 項互斥選擇
+ *
+ * 選用決策樹：
+ * ├─ 2–6 項，表單/卡片內 → ot-seg
+ * ├─ 頁頂過濾 + 計數，標籤短 ≤6 → ot-pill-filter
+ * ├─ 頁頂過濾，標籤長或 ≥5 → ot-underline-tab
+ * ├─ 窄容器通道圖示卡 → ot-subtab
+ * └─ 流程步驟 → flow-node（另檔）
+ */
+:root {
+  --ot-ctrl-r: 8px;
+  --ot-ctrl-r-inner: 6px;
+  --ot-ctrl-active-bg: var(--surface-high);
+  --ot-ctrl-active-border: transparent;
+  --ot-ctrl-track-bg: var(--surface-soft);
+  --ot-ctrl-track-border: var(--outline-variant);
+}
+
+/* ── canonical ── */
+.ot-seg {
+  display: inline-flex;
+  max-width: 100%;
+  padding: 3px;
+  border-radius: var(--ot-ctrl-r);
+  background: var(--ot-ctrl-track-bg);
+  border: 1px solid var(--ot-ctrl-track-border);
+}
+
+.ot-seg.is-wide,
+.ot-seg--wide {
+  width: 100%;
+}
+
+.ot-seg.is-wide .ot-seg__btn,
+.ot-seg--wide .ot-seg__btn {
+  flex: 1;
+  min-width: 0;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.ot-seg__btn {
+  border: none;
+  background: transparent;
+  padding: 6px 12px;
+  border-radius: var(--ot-ctrl-r-inner);
+  font: inherit;
+  font-size: var(--type-body-sm, 12px);
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ot-seg__btn:hover {
+  color: var(--on-surface);
+}
+
+.ot-seg__btn.is-active,
+.ot-seg__btn.is-on {
+  background: var(--ot-ctrl-active-bg);
+  color: var(--on-surface);
+  box-shadow: 0 1px 3px rgba(26, 45, 74, 0.08);
+}
+
+html[data-theme="dark"] .ot-seg__btn.is-active,
+html[data-theme="dark"] .ot-seg__btn.is-on {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
+}
+
+.ot-seg--compact {
+  padding: 2px;
+  border-radius: var(--ot-ctrl-r);
+}
+
+.ot-seg--compact .ot-seg__btn {
+  min-height: 28px;
+  padding: 3px 14px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ot-seg--compact .ot-seg__btn.is-active,
+.ot-seg--compact .ot-seg__btn.is-on {
+  background: var(--primary, #2a9cc4);
+  color: #fff;
+  box-shadow: none;
+}
+
+/* ── pref-segmented (settings 基底) ── */
+.pref-segmented {
+  display: inline-flex;
+  max-width: 100%;
+  padding: 3px;
+  border-radius: var(--ot-ctrl-r);
+  background: var(--ot-ctrl-track-bg);
+  border: 1px solid var(--ot-ctrl-track-border);
+}
+
+.pref-segmented.is-wide {
+  width: 100%;
+}
+
+.pref-segmented.is-wide .pref-segmented-btn {
+  flex: 1;
+  min-width: 0;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.pref-segmented-btn {
+  border: none;
+  background: transparent;
+  padding: 6px 12px;
+  border-radius: var(--ot-ctrl-r-inner);
+  font: inherit;
+  font-size: var(--type-body-sm, 12px);
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pref-segmented-btn:hover {
+  color: var(--on-surface);
+}
+
+.pref-segmented-btn.is-active,
+.pref-segmented-btn.is-on {
+  background: var(--ot-ctrl-active-bg);
+  color: var(--on-surface);
+  box-shadow: 0 1px 3px rgba(26, 45, 74, 0.08);
+}
+
+html[data-theme="dark"] .pref-segmented-btn.is-active,
+html[data-theme="dark"] .pref-segmented-btn.is-on {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
+}
+
+html[data-font-scale="sm"] .pref-segmented,
+html[data-font-scale="lg"] .pref-segmented,
+html[data-font-scale="xl"] .pref-segmented {
+  width: 100%;
+}
+
+/* ── scene-tab / habit-layer ── */
+.scene-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding: 4px;
+  border-radius: calc(var(--ot-ctrl-r) + 4px);
+  background: var(--ot-ctrl-track-bg);
+  border: 1px solid var(--ot-ctrl-track-border);
+}
+
+.scene-tab-bar[hidden] {
+  display: none !important;
+}
+
+.scene-tab,
+.habit-layer-tab {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--ot-ctrl-r-inner);
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.scene-tab:hover,
+.habit-layer-tab:hover {
+  color: var(--on-surface);
+  background: var(--surface-high);
+}
+
+.scene-tab.is-active,
+.habit-layer-tab.is-active {
+  color: var(--primary);
+  background: var(--primary-soft);
+  box-shadow: inset 0 0 0 1px rgba(42, 156, 196, 0.18);
+}
+
+/* ── keys trigger mode ── */
+.keys-trigger-modes,
+#settingsPanelKeys .keys-trigger-modes {
+  display: flex;
+  gap: 0;
+  width: 100%;
+  padding: 3px;
+  border-radius: var(--ot-ctrl-r);
+  border: 1px solid var(--ot-ctrl-track-border);
+  background: var(--ot-ctrl-track-bg);
+}
+
+.keys-trigger-mode-seg,
+#settingsPanelKeys .keys-trigger-mode-seg {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 4px;
+  border: none;
+  border-radius: var(--ot-ctrl-r-inner);
+  background: transparent;
+  font: inherit;
+  font-size: var(--type-caption, 11px);
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.keys-trigger-mode-seg.is-active,
+#settingsPanelKeys .keys-trigger-mode-seg.is-active {
+  background: var(--ot-ctrl-active-bg);
+  color: var(--on-surface);
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+/* ── soft-pad pad tabs (显示/键位/用途) ── */
+.soft-pad-pad-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 3px;
+  margin: 10px 12px 0;
+  border-radius: var(--ot-ctrl-r);
+  background: var(--ot-ctrl-track-bg);
+  border: 1px solid var(--ot-ctrl-track-border);
+  flex: 0 0 auto;
+}
+
+.soft-pad-pad-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--on-surface-muted);
+  font: 700 12px/1.2 inherit;
+  padding: 6px 12px;
+  border-radius: var(--ot-ctrl-r-inner);
+  cursor: pointer;
+}
+
+.soft-pad-pad-tab:hover {
+  color: var(--on-surface);
+}
+
+.soft-pad-pad-tab.is-active {
+  color: var(--on-surface);
+  background: var(--ot-ctrl-active-bg);
+  box-shadow: 0 1px 3px rgba(26, 45, 74, 0.08);
+}
+
+html[data-theme="dark"] .soft-pad-pad-tab.is-active {
+  color: #e2e8f0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
+}
+
+/* ── soft-pad feature / lights / agent workbench ── */
+.soft-pad-feature-subtabs,
+.soft-pad-lights-subtabs,
+.soft-pad-agent-workbench__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 3px;
+  border-radius: var(--ot-ctrl-r);
+  background: var(--ot-ctrl-track-bg);
+  border: 1px solid var(--ot-ctrl-track-border);
+}
+
+.soft-pad-feature-subtab,
+.soft-pad-lights-subtab,
+.soft-pad-agent-workbench__tab {
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--ot-ctrl-r-inner);
+  background: transparent;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.soft-pad-feature-subtab:hover,
+.soft-pad-lights-subtab:hover,
+.soft-pad-agent-workbench__tab:hover {
+  color: #1a2d4a;
+}
+
+.soft-pad-feature-subtab.is-active,
+.soft-pad-lights-subtab.is-active,
+.soft-pad-agent-workbench__tab.is-active {
+  color: #0369a1;
+  background: var(--ot-ctrl-active-bg);
+  box-shadow: 0 1px 3px rgba(26, 45, 74, 0.08);
+}
+
+.soft-pad-feature-subtab__n {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: #94a3b8;
+}
+
+.soft-pad-feature-subtab.is-active .soft-pad-feature-subtab__n {
+  background: var(--primary, #3eb8dc);
+}
+
+.soft-pad-feature-subtab__lbl {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-theme="dark"] .soft-pad-feature-subtab,
+html[data-theme="dark"] .soft-pad-lights-subtab {
+  color: rgba(226, 232, 240, 0.72);
+}
+
+html[data-theme="dark"] .soft-pad-feature-subtab.is-active,
+html[data-theme="dark"] .soft-pad-lights-subtab.is-active {
+  color: #7dd3fc;
+}
+
+/* ── voice phrase kind / recognize intent ── */
+.voice-phrase-kind-tabs,
+.voice-wake-kind-tabs,
+.voice-recognize-intent-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--ot-ctrl-r);
+  border: 1px solid var(--ot-ctrl-track-border);
+  background: var(--ot-ctrl-track-bg);
+}
+
+.voice-phrase-kind-tabs[hidden],
+.voice-recognize-intent-tabs[hidden] {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-phrase-kind-tabs {
+  margin-left: auto;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-recognize-intent-tabs {
+  display: flex;
+  width: 100%;
+  gap: 2px;
+  padding: 4px;
+  border-radius: calc(var(--ot-ctrl-r) + 4px);
+}
+
+.voice-phrase-kind-tab,
+.voice-recognize-intent-tab {
+  height: 26px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--ot-ctrl-r-inner);
+  background: transparent;
+  color: var(--on-surface-variant, var(--on-surface-muted));
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-recognize-intent-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 38px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.voice-phrase-kind-tab:hover,
+.voice-recognize-intent-tab:hover {
+  color: var(--on-surface);
+}
+
+.voice-phrase-kind-tab.is-active,
+.voice-phrase-kind-tab.is-on,
+.voice-recognize-intent-tab.is-active,
+.voice-recognize-intent-tab.is-on {
+  background: var(--ot-ctrl-active-bg);
+  color: var(--on-surface);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  font-weight: 700;
+}
+
+/* ── voice strategy row (自动/省电/增强) ── */
+.voice-summary-engine-switch,
+.voice-strategy-seg {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 2px;
+  max-width: 100%;
+  padding: 2px;
+  border-radius: var(--ot-ctrl-r);
+  background: var(--ot-ctrl-track-bg);
+  border: 1px solid var(--ot-ctrl-track-border);
+}
+
+.voice-summary-engine-switch .voice-strategy-btn,
+.voice-strategy-seg .voice-strategy-btn,
+.voice-summary-engine-switch .voice-recognize-source-btn[data-voice-strategy-tab],
+.voice-strategy-seg .voice-recognize-source-btn[data-voice-strategy-tab] {
+  min-height: 28px;
+  padding: 3px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  color: var(--on-surface-muted);
+  border-radius: var(--ot-ctrl-r-inner);
+  box-shadow: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.voice-summary-engine-switch .voice-strategy-btn.is-active,
+.voice-strategy-seg .voice-strategy-btn.is-active,
+.voice-summary-engine-switch .voice-recognize-source-btn[data-voice-strategy-tab].is-active,
+.voice-strategy-seg .voice-recognize-source-btn[data-voice-strategy-tab].is-active {
+  background: var(--primary, #2a9cc4);
+  color: #fff;
+  box-shadow: none;
+}

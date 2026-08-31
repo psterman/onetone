@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>托盘四通道 · 小白文案定稿</title>
+  <style>
+    :root {
+      --bg: #e8edf3; --surface: #fff; --surface-2: #f8fafc;
+      --primary: #2a9cc4; --primary-soft: #e6f7fc; --primary-deep: #1e87ad;
+      --on-surface: #152238; --on-surface-muted: #5a7086; --on-surface-soft: #8a98a8;
+      --outline: rgba(26,45,74,.1); --danger: #dc2626; --danger-soft: rgba(220,38,38,.08);
+      --green: #2e7d4f; --green-soft: rgba(46,125,79,.1);
+      --orange: #b9530a; --orange-soft: rgba(185,83,10,.1);
+      --blue: #00a3ff; --blue-soft: rgba(0,163,255,.1);
+      --purple: #6d4ab0; --purple-soft: rgba(109,74,176,.1);
+      --radius: 12px; --shadow: 0 10px 28px rgba(26,45,74,.16);
+      font-family: "Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 16px 56px; background: var(--bg); color: var(--on-surface); }
+
+    h1 { font-size: 22px; margin: 0 auto 6px; max-width: 1200px; }
+    .lede { font-size: 13px; color: var(--on-surface-muted); line-height: 1.6; max-width: 960px; margin: 0 auto 14px; }
+    .tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; vertical-align: middle; margin-left: 4px; }
+    .tag.new { background: linear-gradient(135deg, var(--primary), var(--primary-deep)); color: #fff; }
+    .tag.freq-h { background: var(--green-soft); color: var(--green); }
+    .tag.freq-m { background: var(--primary-soft); color: #0e7490; }
+    .tag.freq-l { background: rgba(26,45,74,.06); color: var(--on-surface-muted); }
+    .tag.no { background: var(--danger-soft); color: var(--danger); text-decoration: line-through; }
+
+    .rule-box {
+      max-width: 1200px; margin: 0 auto 16px; padding: 12px 14px;
+      background: #fff; border: 1px solid rgba(42,156,196,.35); border-radius: 10px; font-size: 12px; line-height: 1.55;
+    }
+    .rule-box ul { margin: 6px 0 0; padding-left: 18px; }
+
+    .toolbar {
+      max-width: 1200px; margin: 0 auto 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+      padding: 10px 14px; background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius); font-size: 12px;
+    }
+    .toolbar label { font-weight: 600; color: var(--on-surface-muted); }
+    .seg { display: flex; gap: 4px; flex-wrap: wrap; }
+    .seg button {
+      border: 1px solid var(--outline); background: var(--surface-2); font: inherit;
+      font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    }
+    .seg button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+    .layout {
+      max-width: 1200px; margin: 0 auto;
+      display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start;
+    }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+    .frame {
+      background: linear-gradient(160deg, #dce4ec, #c5d0dc);
+      border-radius: 14px; padding: 14px 10px 18px; display: flex; justify-content: center;
+      border: 1.5px dashed rgba(42,156,196,.45);
+    }
+
+    .tray {
+      width: 316px; background: var(--surface); border: 1px solid var(--outline);
+      border-radius: var(--radius); box-shadow: var(--shadow); padding: 5px; font-size: 13px;
+    }
+    .pulse { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0;
+      background: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft); }
+    .pulse.standby { background: var(--on-surface-soft); box-shadow: 0 0 0 3px rgba(26,45,74,.06); }
+    .pulse.listening { animation: tp 2s ease-in-out infinite; }
+    @keyframes tp { 0%,100%{box-shadow:0 0 0 3px rgba(0,163,255,.18)} 50%{box-shadow:0 0 0 5px rgba(0,163,255,.32)} }
+
+    .status-hero {
+      margin: 4px; padding: 11px 12px 9px;
+      background: linear-gradient(135deg, #fff 0%, var(--blue-soft) 100%);
+      border: 1px solid var(--outline); border-radius: 10px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .status-hero .left { flex: 1; }
+    .status-hero .ttl { font-size: 14.5px; font-weight: 800; display: flex; align-items: center; gap: 7px; }
+    .state-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+    .chip { font-size: 9.5px; padding: 1.5px 6px; border-radius: 4px; font-weight: 600; }
+    .chip.b { background: var(--blue-soft); color: #0e7490; }
+    .chip.g { background: var(--green-soft); color: var(--green); }
+    .chip.p { background: var(--purple-soft); color: var(--purple); }
+    .hero-act {
+      flex-shrink: 0; padding: 8px 11px; border-radius: 8px; cursor: pointer; border: none;
+      background: linear-gradient(135deg, var(--primary), var(--primary-deep)); color: #fff;
+      font-size: 10.5px; font-weight: 700; font: inherit;
+    }
+
+    .event-line {
+      margin: 4px 6px; padding: 7px 10px; background: var(--surface-2); border: 1px solid var(--outline);
+      border-radius: 8px; font-size: 10.5px; color: var(--on-surface-muted);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+    }
+    .event-line b { color: var(--on-surface); font-weight: 600; }
+
+    .sec-head {
+      font-size: 10px; font-weight: 700; color: var(--on-surface-muted);
+      padding: 7px 12px 3px; letter-spacing: .04em;
+    }
+    .sec-head .dot { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--on-surface-soft); margin-right: 4px; vertical-align: middle; }
+
+    .ch-block { margin: 0 4px 3px; border-radius: 8px; border: 1px solid transparent; }
+    .ch-block.is-open { border-color: rgba(42,156,196,.3); background: rgba(42,156,196,.03); }
+    .ch-main { display: flex; align-items: flex-start; gap: 8px; padding: 7px 8px 7px 10px; }
+    .icowrap { width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; margin-top: 1px; }
+    .icowrap.voice { background: var(--blue-soft); }
+    .icowrap.keys { background: var(--primary-soft); }
+    .icowrap.softpad { background: var(--purple-soft); }
+    .icowrap.camera { background: var(--orange-soft); }
+    .ch-body { flex: 1; min-width: 0; }
+    .ch-title { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .ch-title .name { font-size: 12.5px; font-weight: 700; }
+    .st-pill { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: rgba(26,45,74,.06); color: var(--on-surface-muted); }
+    .st-pill.run { background: var(--blue-soft); color: #0e7490; }
+    .st-pill.on { background: var(--green-soft); color: var(--green); }
+    .st-pill.off { background: rgba(26,45,74,.06); color: var(--on-surface-soft); }
+    .st-pill.warn { background: var(--danger-soft); color: var(--danger); }
+    .ch-scene { font-size: 10px; color: var(--on-surface-muted); margin-top: 2px; line-height: 1.35; }
+    .ch-scene em { font-style: normal; color: var(--on-surface); font-weight: 600; }
+
+    .ch-switches { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+    .sw-inline {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 4px 6px; background: var(--surface-2); border: 1px solid var(--outline); border-radius: 6px; font-size: 10.5px;
+    }
+    .sw-inline .sw-hint { font-size: 9px; color: var(--on-surface-soft); display: block; margin-top: 1px; }
+    .toggle {
+      width: 32px; height: 17px; border-radius: 9px; background: var(--primary); border: none; padding: 0;
+      position: relative; cursor: pointer; flex-shrink: 0;
+    }
+    .toggle::after {
+      content: ''; position: absolute; top: 2px; left: 17px; width: 13px; height: 13px;
+      border-radius: 50%; background: #fff; transition: left .15s;
+    }
+    .toggle.off { background: var(--on-surface-soft); }
+    .toggle.off::after { left: 2px; }
+    .toggle:disabled { opacity: .35; cursor: not-allowed; }
+
+    .hw-banner {
+      margin-top: 5px; padding: 5px 7px; border-radius: 6px; font-size: 9.5px; font-weight: 600;
+      background: var(--danger-soft); color: var(--danger); cursor: pointer;
+    }
+    .setup-link {
+      margin-top: 5px; font-size: 10px; color: var(--primary-deep); font-weight: 600;
+      cursor: pointer; border: none; background: none; font: inherit; padding: 0;
+    }
+
+    .chev-btn {
+      width: 22px; height: 22px; border: none; border-radius: 5px; background: transparent;
+      color: var(--on-surface-soft); font-size: 11px; cursor: pointer; flex-shrink: 0; margin-top: 2px;
+    }
+    .chev-btn.open { background: var(--primary-soft); color: var(--primary-deep); transform: rotate(90deg); }
+
+    .ch-l2 { display: none; padding: 0 10px 8px 42px; }
+    .ch-block.is-open .ch-l2 { display: block; }
+    .ch-l2 .sw-inline { margin-bottom: 4px; }
+    .ch-l2 .more { font-size: 10px; color: var(--primary-deep); font-weight: 600; cursor: pointer; border: none; background: none; font: inherit; padding: 4px 0 0; }
+
+    .mic-row {
+      display: flex; align-items: center; gap: 9px; padding: 7px 10px; margin: 4px 4px 0;
+      border-radius: 7px; background: var(--primary-soft);
+    }
+    .mic-row.unavail { background: var(--danger-soft); cursor: pointer; }
+    .mic-row .body { flex: 1; }
+    .mic-row .name { font-size: 12.5px; font-weight: 700; }
+    .mic-row .meta { font-size: 10.5px; color: var(--on-surface-muted); }
+    .sep { height: 1px; margin: 4px 8px; background: var(--outline); }
+    .tray-ft {
+      display: flex; gap: 6px; padding: 5px 8px 3px; border-top: 1px solid var(--outline); margin-top: 4px;
+      font-size: 10.5px; color: var(--on-surface-muted);
+    }
+    .tray-ft button { border: none; background: transparent; font: inherit; font-size: 10.5px; cursor: pointer; padding: 3px 6px; }
+    .tray-ft button.primary { color: var(--primary); font-weight: 600; }
+
+    .right-col { display: flex; flex-direction: column; gap: 14px; }
+    .panel {
+      background: var(--surface); border: 1px solid var(--outline); border-radius: 14px;
+      box-shadow: var(--shadow); overflow: hidden; font-size: 12px;
+    }
+    .panel-head { padding: 12px 14px; border-bottom: 1px solid var(--outline); font-weight: 700; font-size: 14px; }
+    .panel-sub { font-size: 11px; color: var(--on-surface-muted); font-weight: 400; margin-top: 3px; }
+
+    .inv-table, .user-table, .dev-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .inv-table th, .inv-table td,
+    .user-table th, .user-table td,
+    .dev-table th, .dev-table td {
+      text-align: left; padding: 7px 14px; border-top: 1px solid var(--outline); vertical-align: top;
+    }
+    .inv-table th, .user-table th, .dev-table th {
+      color: var(--on-surface-muted); font-weight: 600; font-size: 10px;
+    }
+    .inv-table code, .dev-table code { font-size: 9.5px; color: var(--on-surface-soft); }
+
+    .user-table .lvl { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; display: inline-block; }
+    .user-table .lvl.l1 { background: var(--primary-soft); color: #0e7490; }
+    .user-table .lvl.l2 { background: var(--green-soft); color: var(--green); }
+    .user-table .lvl.l3 { background: rgba(26,45,74,.06); color: var(--on-surface-muted); }
+    .user-table tr.skip td { opacity: .4; }
+    .user-table tr.skip .lbl { text-decoration: line-through; }
+
+    details.dev-fold { border-top: 1px solid var(--outline); }
+    details.dev-fold summary {
+      padding: 10px 14px; cursor: pointer; font-weight: 600; font-size: 12px;
+      color: var(--on-surface-muted); list-style: none;
+    }
+    details.dev-fold summary::-webkit-details-marker { display: none; }
+    details.dev-fold summary::before { content: '▸ '; }
+    details.dev-fold[open] summary::before { content: '▾ '; }
+
+    .footnote { padding: 10px 14px; font-size: 11px; color: var(--on-surface-muted); background: var(--surface-2); line-height: 1.5; }
+
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: var(--on-surface); color: #fff; font-size: 12px; font-weight: 600;
+      padding: 8px 16px; border-radius: 8px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 99;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <h1>托盘四通道 · 梳理 → 过滤 → 小白文案<span class="tag new">定稿原型</span></h1>
+  <p class="lede">
+    左侧为<strong>用户看到的托盘</strong>（口语化文案）。右侧先列<strong>代码全量清单</strong>，再列<strong>过滤后用户文案</strong>；开发对照默认折叠。
+    通道能不能用，在设置页决定——托盘不重复「启用通道」开关。
+  </p>
+
+  <div class="rule-box">
+    <strong>过滤原则</strong>
+    <ul>
+      <li>L1 每通道最多 1 个今天会点的开关；L2 最多 2 个；其余进设置页</li>
+      <li>无麦克风 → 语音开关不可用 + 诊断条；无摄像头 → 隐藏摄像头行</li>
+      <li>未配置 → 只显示状态 +「去设置」链接，不出现灰色假开关</li>
+    </ul>
+  </div>
+
+  <div class="toolbar">
+    <label>预览场景</label>
+    <div class="seg" id="sceneSeg">
+      <button type="button" data-scene="normal" class="on">正常运行</button>
+      <button type="button" data-scene="noMic">无麦克风</button>
+      <button type="button" data-scene="noCam">无摄像头</button>
+      <button type="button" data-scene="unconfigured">未配置</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div style="font-size:12px;font-weight:700;margin-bottom:8px">托盘预览 · 小白文案</div>
+      <div class="frame"><div class="tray" id="tray"></div></div>
+    </div>
+
+    <div class="right-col" id="rightCol"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  (function () {
+    var ICONS = { voice: '🎤', keys: '⌨', softPad: '▦', camera: '📷' };
+    var CH = { voice: '语音', keys: '按键', softPad: '小键盘', camera: '摄像头' };
+
+    /* ── 第一步：代码全量清单 ── */
+    var INVENTORY = [
+      { ch: '全局', code: 'listen_toggle', setting: 'listenOn / listenPaused', freq: '高', tray: 'L1 Hero' },
+      { ch: '全局', code: 'mic_toggle', setting: 'homeAdvMic', freq: '高', tray: '麦克风行' },
+      { ch: '语音', code: 'voiceEnd.enabled', setting: 'voiceEndLabel「启用语音结束」', freq: '中', tray: 'L1' },
+      { ch: '语音', code: 'voiceEnd.autoSend', setting: 'voiceEndAutoSendLabel', freq: '低', tray: '仅 L3' },
+      { ch: '语音', code: 'desiredEngine / 唤醒词', setting: '语音设置页', freq: '低', tray: '仅 L3' },
+      { ch: '按键', code: 'mapping.enabled', setting: 'habitScenarioEnableLbl「场景启用」', freq: '高', tray: 'L1' },
+      { ch: '按键', code: 'cancelEnabled', setting: 'habitScenarioKeysCancel「取消键」', freq: '中', tray: 'L2' },
+      { ch: '按键', code: 'autoEnterEnabled', setting: 'habitScenarioKeysAutoEnter「自动回车」', freq: '中', tray: 'L2' },
+      { ch: '按键', code: '触发键 / 习惯', setting: 'habitNoviceFieldTrigger', freq: '低', tray: '仅 L3' },
+      { ch: '小键盘', code: 'pad.enabled', setting: 'codexMicroPadEnable', freq: '低', tray: '仅 L3' },
+      { ch: '小键盘', code: 'overlayEnabled', setting: 'codexMicroPadOverlayEnable', freq: '高', tray: 'L1' },
+      { ch: '小键盘', code: 'requireForeground', setting: 'codexMicroPadForegroundHint', freq: '低', tray: 'L2' },
+      { ch: '小键盘', code: 'showNavigationPad', setting: '导航与界面', freq: '低', tray: 'L2' },
+      { ch: '摄像头', code: 'presenceActions.enabled', setting: 'cameraPresenceTitle', freq: '中', tray: 'L1' },
+      { ch: '摄像头', code: 'autoMute', setting: 'cameraAutoMuteDesc', freq: '中', tray: 'L2' },
+      { ch: '摄像头', code: '动作绑定 / 设备', setting: '摄像头设置页', freq: '低', tray: '仅 L3' }
+    ];
+
+    var REMOVED = [
+      { ch: '语音', tech: '启用语音引擎', reason: '引擎在设置页选，托盘不重复' },
+      { ch: '按键', tech: '启用按键通道', reason: '有触发键即视为已配置' },
+      { ch: '小键盘', tech: '启用 Soft Pad', reason: '准备阶段在设置页完成' },
+      { ch: '摄像头', tech: '启用摄像头通道', reason: '有设备即可用，不造假开关' }
+    ];
+
+    /* ── 第二步+第三步：过滤后用户文案（含 i18n 键名） ── */
+    var USER_COPY = {
+      global: {
+        heroOn: '正在听', heroOff: '先停一下', heroResume: '继续听',
+        micOk: '没静音', micDev: '默认麦克风',
+        micBad: '没检测到麦克风', micBadHint: '点我去检查'
+      },
+      voice: {
+        l1: { label: '说结束词就停', hint: '例如：就这样、结束输入', key: 'trayChVoiceEnd' },
+        l3: ['改识别方式', '改唤醒词', '改结束词'],
+        setup: '去设置语音',
+        scene: '说「开始输入」就能用 · 23 分钟前用过',
+        pill: '等着',
+        hw: '需要麦克风才能用语音'
+      },
+      keys: {
+        l1: { label: '使用这个场景', hint: '关了就按了也没反应', key: 'trayChKeysUseScenario' },
+        l2: [
+          { label: '再按一次能取消', hint: '听写中途可退出', key: 'trayChKeysCancel' },
+          { label: '输完自动发送', hint: '输入完成后自动回车', key: 'trayChKeysAutoSend' }
+        ],
+        l3: ['改启动键', '换使用场景', '改收尾方式'],
+        setup: '去设置按键',
+        scene: '按 F13 启动 · 按住不放 · 场景「默认」',
+        pill: '用着'
+      },
+      softPad: {
+        l1: { label: '显示屏幕键盘', hint: '在屏幕上弹出可点的键', key: 'trayChPadShowKeyboard' },
+        l2: [
+          { label: '只在 Codex 里显示', hint: '其他软件前台时不弹出', key: 'trayChPadFgOnly' },
+          { label: '显示导航区', hint: '屏幕键盘上的翻页区', key: 'trayChPadNav' }
+        ],
+        l3: ['改键位', '绑 Agent', 'NumLock 规则'],
+        setup: '去准备小键盘',
+        scene: '12 个键 · 给 Codex 用 · 屏幕键盘开着',
+        pill: '键盘亮着'
+      },
+      camera: {
+        l1: { label: '认人脸走/回', hint: '走开、回到座位会有反应', key: 'trayChCamPresence' },
+        l2: [{ label: '走远自动关麦', hint: '人离开画面时静音麦克风', key: 'trayChCamAutoMute' }],
+        l3: ['改走/回时做什么', '选手势', '校准摄像头'],
+        scene: '内置摄像头 · 认人走/回：关',
+        pill: '能用'
+      }
+    };
+
+    var SWITCH_DEF = {
+      voice: {
+        l1: [{ id: 'voiceEnd', label: USER_COPY.voice.l1.label, hint: USER_COPY.voice.l1.hint }],
+        l2: [],
+        l3: USER_COPY.voice.l3,
+        setup: USER_COPY.voice.setup
+      },
+      keys: {
+        l1: [{ id: 'mappingEnabled', label: USER_COPY.keys.l1.label, hint: USER_COPY.keys.l1.hint }],
+        l2: USER_COPY.keys.l2.map(function (s, i) {
+          return { id: i === 0 ? 'cancelEnabled' : 'autoEnter', label: s.label, hint: s.hint };
+        }),
+        l3: USER_COPY.keys.l3,
+        setup: USER_COPY.keys.setup
+      },
+      softPad: {
+        l1: [{ id: 'overlay', label: USER_COPY.softPad.l1.label, hint: USER_COPY.softPad.l1.hint }],
+        l2: USER_COPY.softPad.l2.map(function (s, i) {
+          return { id: i === 0 ? 'requireFg' : 'navKeys', label: s.label, hint: s.hint };
+        }),
+        l3: USER_COPY.softPad.l3,
+        setup: USER_COPY.softPad.setup
+      },
+      camera: {
+        l1: [{ id: 'presence', label: USER_COPY.camera.l1.label, hint: USER_COPY.camera.l1.hint }],
+        l2: USER_COPY.camera.l2.map(function (s) {
+          return { id: 'autoMute', label: s.label, hint: s.hint };
+        }),
+        l3: USER_COPY.camera.l3,
+        setup: null
+      }
+    };
+
+    var DEV_MAP = {
+      voiceEnd: 'cmd_voice_end_set_enabled',
+      mappingEnabled: 'mvp_mapping_toggle',
+      cancelEnabled: 'mapping.cancelEnabled',
+      autoEnter: 'mapping.autoEnterEnabled',
+      overlay: 'cmd_codex_micro_pad_set_flags.overlayEnabled',
+      requireFg: 'cmd_codex_micro_pad_set_flags.requireForeground',
+      navKeys: 'cmd_codex_micro_pad_set_flags.navKeysEnabled',
+      presence: 'cameraPrefs.presenceActions.enabled',
+      autoMute: 'cameraPrefs.autoMute'
+    };
+
+    var SCENES = {
+      normal: {
+        hw: { mic: true, cam: true },
+        hero: { listening: true, chips: ['voice','keys','softPad'] },
+        event: { t: '2 秒', ch: '按键', text: '刚按了启动键' },
+        voice: { pill: 'run', pillText: USER_COPY.voice.pill, scene: USER_COPY.voice.scene, configured: true, switches: { voiceEnd: true } },
+        keys: { pill: 'on', pillText: USER_COPY.keys.pill, scene: USER_COPY.keys.scene, configured: true, switches: { mappingEnabled: true, cancelEnabled: true, autoEnter: false } },
+        softPad: { pill: 'on', pillText: USER_COPY.softPad.pill, scene: USER_COPY.softPad.scene, configured: true, switches: { overlay: true, requireFg: true, navKeys: true } },
+        camera: { pill: 'on', pillText: USER_COPY.camera.pill, scene: USER_COPY.camera.scene, configured: true, switches: { presence: false, autoMute: false } }
+      },
+      noMic: {
+        hw: { mic: false, cam: true },
+        hero: { listening: false, chips: ['keys'] },
+        event: null,
+        voice: { pill: 'warn', pillText: '用不了', scene: USER_COPY.voice.hw, configured: true, switches: { voiceEnd: true }, hwBlock: true },
+        keys: { pill: 'on', pillText: USER_COPY.keys.pill, scene: '按 F13 启动 · 按住不放', configured: true, switches: { mappingEnabled: true, cancelEnabled: true, autoEnter: false } },
+        softPad: { pill: 'on', pillText: USER_COPY.softPad.pill, scene: '12 个键 · 给 Codex 用', configured: true, switches: { overlay: true, requireFg: true, navKeys: true } },
+        camera: { pill: 'on', pillText: USER_COPY.camera.pill, scene: '内置摄像头', configured: true, switches: { presence: false, autoMute: false } }
+      },
+      noCam: {
+        hw: { mic: true, cam: false },
+        hero: { listening: true, chips: ['voice','keys'] },
+        event: { t: '5 秒', ch: '语音', text: '说了唤醒词' },
+        voice: { pill: 'run', pillText: USER_COPY.voice.pill, scene: '说「开始输入」就能用', configured: true, switches: { voiceEnd: true } },
+        keys: { pill: 'on', pillText: USER_COPY.keys.pill, scene: '按 F13 启动 · 场景「默认」', configured: true, switches: { mappingEnabled: true, cancelEnabled: true, autoEnter: false } },
+        softPad: { pill: 'off', pillText: '关着', scene: '还没准备小键盘', configured: false, switches: {} },
+        camera: { hidden: true }
+      },
+      unconfigured: {
+        hw: { mic: true, cam: true },
+        hero: { listening: false, chips: [], sub: '还没配好，先去设置里完成' },
+        event: null,
+        voice: { pill: 'off', pillText: '还没配', scene: '还没选语音识别方式', configured: false },
+        keys: { pill: 'off', pillText: '还没配', scene: '还没设启动键', configured: false },
+        softPad: { pill: 'off', pillText: '还没配', scene: '—', configured: false },
+        camera: { pill: 'off', pillText: '关着', scene: '内置摄像头 · 认人走/回：关', configured: true, switches: { presence: false, autoMute: false } }
+      }
+    };
+
+    var scene = 'normal';
+    var openCh = null;
+    var G = USER_COPY.global;
+
+    function toast(msg) {
+      var el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(function () { el.classList.remove('show'); }, 2200);
+    }
+
+    function swHtml(sw, state, disabled) {
+      var on = state.switches && state.switches[sw.id];
+      return '<div class="sw-inline"><span class="sw-name">' + sw.label +
+        (sw.hint ? '<span class="sw-hint">' + sw.hint + '</span>' : '') + '</span>' +
+        '<button type="button" class="toggle' + (on ? '' : ' off') + '"' +
+        (disabled ? ' disabled' : '') + ' data-sw="' + sw.id + '"></button></div>';
+    }
+
+    function renderChannel(id, d, hw) {
+      if (d.hidden) return '';
+      var def = SWITCH_DEF[id];
+      var disabled = !d.configured || (id === 'voice' && !hw.mic);
+      var open = openCh === id;
+      var l1 = d.configured ? def.l1.map(function (sw) { return swHtml(sw, d, disabled); }).join('') : '';
+      var l2sw = d.configured ? def.l2.map(function (sw) { return swHtml(sw, d, disabled); }).join('') : '';
+      var l2 = def.l2.length ? '<div class="ch-l2">' + l2sw +
+        '<button type="button" class="more" data-more="' + id + '">更多设置 ▸</button></div>' : '';
+      var extra = '';
+      if (!d.configured) {
+        extra = '<button type="button" class="setup-link" data-setup="' + id + '">' + def.setup + ' ▸</button>';
+      } else if (d.hwBlock) {
+        extra = '<div class="hw-banner" data-action="diagnose">' + G.micBad + ' · ' + G.micBadHint + '</div>';
+      }
+      var wrap = id === 'softPad' ? 'softpad' : id;
+      return '<div class="ch-block' + (open ? ' is-open' : '') + '">' +
+        '<div class="ch-main">' +
+        '<span class="icowrap ' + wrap + '">' + ICONS[id] + '</span>' +
+        '<div class="ch-body">' +
+        '<div class="ch-title"><span class="name">' + CH[id] + '</span>' +
+        '<span class="st-pill ' + d.pill + '">' + d.pillText + '</span></div>' +
+        (d.scene ? '<div class="ch-scene">' + d.scene + '</div>' : '') +
+        (l1 ? '<div class="ch-switches">' + l1 + '</div>' : '') + extra +
+        '</div>' +
+        (def.l2.length ? '<button type="button" class="chev-btn' + (open ? ' open' : '') + '" data-expand="' + id + '">▸</button>' : '') +
+        '</div>' + (open ? l2 : '') + '</div>';
+    }
+
+    function renderTray() {
+      var d = SCENES[scene];
+      var hw = d.hw;
+      var chips = (d.hero.chips || []).map(function (id) {
+        var cls = id === 'voice' ? 'b' : id === 'keys' ? 'g' : 'p';
+        return '<span class="chip ' + cls + '">' + CH[id] + '</span>';
+      }).join('');
+      var chOrder = ['voice','keys','softPad'];
+      if (hw.cam && !d.camera.hidden) chOrder.push('camera');
+      var micHtml = hw.mic
+        ? '<div class="mic-row"><span class="body"><span class="name">麦克风</span><span class="meta">' + G.micOk + ' · ' + G.micDev + '</span></span><button type="button" class="toggle" data-action="mic"></button></div>'
+        : '<div class="mic-row unavail" data-action="diagnose"><span class="body"><span class="name">麦克风</span><span class="meta">' + G.micBad + ' · ' + G.micBadHint + '</span></span></div>';
+
+      document.getElementById('tray').innerHTML =
+        '<div class="status-hero"><div class="left">' +
+        '<div class="ttl"><span class="pulse ' + (d.hero.listening ? 'listening' : 'standby') + '"></span>' +
+        (d.hero.listening ? G.heroOn : '等着') + '</div>' +
+        (d.hero.sub ? '<div class="ch-scene">' + d.hero.sub + '</div>' : '') +
+        '<div class="state-chips">' + chips + '</div></div>' +
+        '<button type="button" class="hero-act" data-action="pause">' + (d.hero.listening ? G.heroOff : G.heroResume) + '</button></div>' +
+        (d.event ? '<div class="event-line"><b>刚才</b> · ' + d.event.t + ' · ' + d.event.ch + ' · ' + d.event.text + '</div>' :
+          '<div class="event-line">刚才 · 暂无动静</div>') +
+        '<div class="sec-head"><span class="dot"></span>各功能状态</div>' +
+        chOrder.map(function (id) { return renderChannel(id, d[id], hw); }).join('') +
+        '<div class="sep"></div>' + micHtml +
+        '<div class="tray-ft"><button class="primary">主窗口</button><button>设置</button><button>诊断</button></div>';
+
+      var tray = document.getElementById('tray');
+      tray.querySelector('[data-action="pause"]').onclick = function () { toast('先停一下 / 继续听'); };
+      var micBtn = tray.querySelector('[data-action="mic"]');
+      if (micBtn) micBtn.onclick = function () { toast('切换麦克风静音'); };
+      tray.querySelectorAll('[data-sw]').forEach(function (btn) {
+        btn.onclick = function (e) { e.stopPropagation(); if (!btn.disabled) { btn.classList.toggle('off'); toast('已切换'); } };
+      });
+      tray.querySelectorAll('[data-expand]').forEach(function (btn) {
+        btn.onclick = function () { openCh = openCh === btn.dataset.expand ? null : btn.dataset.expand; renderTray(); };
+      });
+      tray.querySelectorAll('[data-setup], [data-action="diagnose"]').forEach(function (el) {
+        el.onclick = function () { toast('跳转到对应设置页'); };
+      });
+      tray.querySelectorAll('[data-more]').forEach(function (btn) {
+        btn.onclick = function () { toast('打开设置 · ' + CH[btn.dataset.more]); };
+      });
+    }
+
+    function freqTag(f) {
+      var cls = f === '高' ? 'freq-h' : f === '中' ? 'freq-m' : 'freq-l';
+      return '<span class="tag ' + cls + '">' + f + '</span>';
+    }
+
+    function renderRight() {
+      var invRows = INVENTORY.map(function (r) {
+        return '<tr><td>' + r.ch + '</td><td><code>' + r.code + '</code></td><td>' + r.setting + '</td><td>' + freqTag(r.freq) + '</td><td>' + r.tray + '</td></tr>';
+      }).join('');
+
+      var userRows = '';
+      function addUser(ch, lvl, label, desc, skip) {
+        userRows += '<tr' + (skip ? ' class="skip"' : '') + '><td>' + ch + '</td><td><span class="lvl ' + lvl + '">' + lvl.toUpperCase() + '</span></td>' +
+          '<td class="lbl"><strong>' + label + '</strong></td><td>' + desc + '</td></tr>';
+      }
+      REMOVED.forEach(function (r) {
+        addUser(r.ch, 'l1', r.tech, r.reason, true);
+      });
+      addUser('全局', 'l1', G.heroOff + ' / ' + G.heroResume, '暂时不响应按键和语音');
+      addUser('全局', 'l1', '麦克风静音', '有设备才显示开关');
+      addUser('语音', 'l1', USER_COPY.voice.l1.label, USER_COPY.voice.l1.hint);
+      USER_COPY.voice.l3.forEach(function (x) { addUser('语音', 'l3', x, '在语音设置页改'); });
+      addUser('按键', 'l1', USER_COPY.keys.l1.label, USER_COPY.keys.l1.hint);
+      USER_COPY.keys.l2.forEach(function (s) { addUser('按键', 'l2', s.label, s.hint); });
+      USER_COPY.keys.l3.forEach(function (x) { addUser('按键', 'l3', x, '在按键/习惯设置'); });
+      addUser('小键盘', 'l1', USER_COPY.softPad.l1.label, USER_COPY.softPad.l1.hint);
+      USER_COPY.softPad.l2.forEach(function (s) { addUser('小键盘', 'l2', s.label, s.hint); });
+      USER_COPY.softPad.l3.forEach(function (x) { addUser('小键盘', 'l3', x, '在小键盘设置'); });
+      addUser('摄像头', 'l1', USER_COPY.camera.l1.label, USER_COPY.camera.l1.hint);
+      USER_COPY.camera.l2.forEach(function (s) { addUser('摄像头', 'l2', s.label, s.hint); });
+      USER_COPY.camera.l3.forEach(function (x) { addUser('摄像头', 'l3', x, '在摄像头设置'); });
+
+      var devRows = '';
+      Object.keys(DEV_MAP).forEach(function (id) {
+        var ch = id.indexOf('voice') === 0 ? '语音' : id.indexOf('mapping') === 0 || id.indexOf('cancel') === 0 || id.indexOf('autoEnter') === 0 ? '按键' :
+          id.indexOf('overlay') === 0 || id.indexOf('require') === 0 || id.indexOf('nav') === 0 ? '小键盘' : '摄像头';
+        devRows += '<tr><td>' + ch + '</td><td><code>' + id + '</code></td><td><code>' + DEV_MAP[id] + '</code></td></tr>';
+      });
+
+      document.getElementById('rightCol').innerHTML =
+        '<div class="panel">' +
+        '<div class="panel-head">第一步 · 代码全量清单<div class="panel-sub">配置项 → 设置页现有文案 → 日常频率 → 过滤后层级</div></div>' +
+        '<table class="inv-table"><thead><tr><th>通道</th><th>代码项</th><th>设置页文案</th><th>频率</th><th>托盘</th></tr></thead><tbody>' + invRows + '</tbody></table></div>' +
+
+        '<div class="panel">' +
+        '<div class="panel-head">第二步+第三步 · 用户看到的文案<div class="panel-sub">L1=行内开关 · L2=▸展开 · L3=设置页 · 划线=已从托盘移除</div></div>' +
+        '<table class="user-table"><thead><tr><th>通道</th><th>层级</th><th>你看到的字</th><th>一句话说明</th></tr></thead><tbody>' + userRows + '</tbody></table>' +
+        '<div class="footnote">通道能不能用，在设置页决定；托盘只放<strong>今天会点的</strong>开关，不重复「启用通道」。</div></div>' +
+
+        '<div class="panel">' +
+        '<details class="dev-fold"><summary>开发对照（IPC / 字段名）</summary>' +
+        '<table class="dev-table"><thead><tr><th>通道</th><th>开关 id</th><th>IPC / 字段</th></tr></thead><tbody>' + devRows + '</tbody></table>' +
+        '</details></div>';
+    }
+
+    document.getElementById('sceneSeg').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-scene]');
+      if (!btn) return;
+      scene = btn.dataset.scene;
+      openCh = null;
+      document.querySelectorAll('#sceneSeg button').forEach(function (b) { b.classList.toggle('on', b === btn); });
+      renderTray();
+    });
+
+    renderTray();
+    renderRight();
+  })();
+  </script>
+</body>
+</html>

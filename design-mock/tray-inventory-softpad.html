@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>托盘清单 · 小键盘</title>
+  <link rel="stylesheet" href="tray-inventory-shared.css" />
+</head>
+<body>
+  <div class="wrap">
+    <nav class="nav">
+      <a href="tray-inventory-index.html">← 总览</a>
+      <a href="tray-inventory-voice.html">语音</a>
+      <a href="tray-inventory-keys.html">按键</a>
+      <a href="tray-inventory-softpad.html" class="is-here">软垫</a>
+      <a href="tray-inventory-camera.html">摄像头</a>
+      <a href="tray-inventory-habits.html">习惯</a>
+    </nav>
+
+    <h1>小键盘 · 托盘开关</h1>
+    <p class="lede"><code>padEnabled</code>（启用小键盘）是准备期，已排除。托盘最高频：<strong>显示屏幕键盘</strong>。</p>
+
+    <table class="filter-table">
+      <thead><tr><th>开关文案</th><th>层级</th><th>小白</th><th>Vibe</th></tr></thead>
+      <tbody>
+        <tr class="row-cut"><td>启用小键盘</td><td>—</td><td colspan="2"><span class="verdict no">排除</span></td></tr>
+        <tr><td><strong>显示屏幕键盘</strong></td><td>L1</td><td><span class="verdict no">—</span></td><td><span class="verdict yes">进</span></td></tr>
+        <tr><td><strong>只在 Codex 里显示</strong></td><td>L2</td><td><span class="verdict no">—</span></td><td><span class="verdict yes">进</span></td></tr>
+        <tr><td>显示导航区</td><td>P1</td><td colspan="2"><span class="verdict maybe">P1</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="toolbar">
+      <label>人格</label>
+      <div class="seg" id="personaSeg">
+        <button type="button" data-persona="beg">小白</button>
+        <button type="button" class="on" data-persona="vibe">Vibe</button>
+      </div>
+      <label style="margin-left:8px">场景</label>
+      <div class="seg" id="sceneSeg">
+        <button type="button" class="on" data-scene="normal">正常</button>
+        <button type="button" data-scene="unconfigured">未配置</button>
+      </div>
+    </div>
+
+    <div class="frame" style="max-width:360px"><div class="tray" id="trayPreview"></div></div>
+  </div>
+  <script src="tray-inventory-user.js"></script>
+  <script>
+    TrayInventoryUser.mountChannelPage({ previewId: 'trayPreview', focusChannel: 'softPad' });
+  </script>
+</body>
+</html>

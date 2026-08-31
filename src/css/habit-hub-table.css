@@ -29,6 +29,7 @@ html[data-theme="dark"] .habit-hub-shell{
 }
 
 .habit-hub-head-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.habit-hub-value-card{margin:0 0 12px;padding:10px 14px;border-radius:10px;background:var(--surface-2,rgba(26,45,74,.04));border:1px solid var(--outline-variant,rgba(26,45,74,.1));font-size:12px;font-family:ui-monospace,monospace;color:var(--on-surface-muted,#5a7086)}
 .habit-hub-hint{
   margin:6px 0 0;padding:0;border:0;background:transparent;
   font-size:12px;line-height:1.45;color:var(--hub-notion-muted);

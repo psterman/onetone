@@ -16,6 +16,11 @@
   <title>一声 onetone</title>
   <link rel="icon" type="image/png" sizes="256x256" href="icon.png" />
   <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/ot-switch.css" />
+  <link rel="stylesheet" href="css/ot-subtab.css" />
+  <link rel="stylesheet" href="css/ot-seg.css" />
+  <link rel="stylesheet" href="css/ot-pill-filter.css" />
+  <link rel="stylesheet" href="css/ot-underline-tab.css" />
   <link rel="stylesheet" href="css/action-history.css" />
   <link rel="stylesheet" href="css/habit-hub-table.css" />
   <link rel="stylesheet" href="css/home-v9.css" />
@@ -39,6 +44,7 @@
   <link rel="stylesheet" href="css/qs-mode-matrix.css" />
   <link rel="stylesheet" href="css/typography.css" />
   <link rel="stylesheet" href="css/motion.css" />
+  <link rel="stylesheet" href="css/channel-config-compact.css" />
 </head>
 <body>
   <div class="app">
@@ -132,6 +138,10 @@
               <button type="button" class="wb-nav-item" data-wb-nav="camera" id="wbNavCamera">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
                 <span data-i18n="homeWbNavCamera">摄像头</span>
+              </button>
+              <button type="button" class="wb-nav-item" data-wb-nav="tray" id="wbNavTray">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M9 5V3h6v2"/><path d="M8 12h8"/></svg>
+                <span data-i18n="homeWbNavTray">托盘菜单</span>
               </button>
               <div class="wb-nav-section" data-i18n="homeWbNavSectionSystem">系统</div>
               <button type="button" class="wb-nav-item" data-wb-nav="general" id="wbNavGeneral">
@@ -262,6 +272,7 @@
                         <div id="wbVoicePanel" hidden></div>
                       </div>
 
+                      <section class="wb-channel-overview" id="channelConfigOverview" aria-label="四通道状态总览"></section>
                       <section class="wb-howto" id="wbHowTo" aria-label="此习惯下的四个通道：说话、按键、屏幕按钮与摄像头"></section>
                   </div>
                 </div>
@@ -515,6 +526,12 @@
                     <span id="settingsNavCameraLabel" data-i18n="settingsNavCamera">摄像头</span>
                   </button>
                 </div>
+                <div class="settings-nav-group" id="settingsNavTrayGroup">
+                  <button type="button" class="settings-nav-item" data-panel="tray" id="settingsNavTray">
+                    <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M9 5V3h6v2"/><path d="M8 12h8"/></svg>
+                    <span id="settingsNavTrayLabel" data-i18n="homeWbNavTray">托盘菜单</span>
+                  </button>
+                </div>
                 <div class="settings-nav-group" id="settingsNavScenesGroup">
                 <button type="button" class="settings-nav-item" data-panel="habits" id="settingsNavScenes">
                   <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="15" width="7" height="5" rx="1.5"/><path d="M10 7.5h4M6.5 11v4M17.5 11v4M10 17.5h4"/><path d="M16 15h5v5h-5z"/></svg>
@@ -751,6 +768,7 @@
               <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="btnKeysMappingEnable" role="switch" aria-checked="false" aria-labelledby="keysSummaryStatus"></button>
             </div>
           </div>
+          <div class="channel-config-compact-host" id="channelConfigCompactKeys"></div>
           <header class="keys-page-head sr-only">
             <div class="keys-page-head-text">
               <h3 class="pref-page-title" id="settingsPanelKeysTitle">按键</h3>
@@ -1050,10 +1068,10 @@
             <div class="page-status-bar-actions keys-scheme-status-actions">
               <button type="button" class="page-status-btn" id="btnSoftPadTestFg" data-cockpit-action="test-fg">测试前台</button>
               <button type="button" class="page-status-btn" id="btnSoftPadEditKeys" data-cockpit-action="edit-keys">编辑键位</button>
-              <button type="button" class="page-status-btn" id="btnSoftPadTrayCustomize" data-cockpit-action="open-tray">打开托盘菜单</button>
               <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="softPadSummaryEnable" role="switch" aria-checked="false" aria-labelledby="settingsPanelSoftPadTitle"></button>
             </div>
           </div>
+          <div class="channel-config-compact-host" id="channelConfigCompactSoftPad"></div>
           <section class="flow-nodes soft-pad-flow-nodes" id="softPadFlowNodes" role="tablist" aria-label="虚拟键盘流程导航">
             <div class="flow-nodes-track" aria-hidden="true">
               <svg class="flow-nodes-svg" viewBox="0 0 1000 8" fill="none" preserveAspectRatio="none">
@@ -1084,14 +1102,6 @@
                 </button>
                 <h3 class="flow-node-title" id="softPadFlowNodeAgentTitle">状态灯</h3>
                 <p class="flow-node-hint" id="softPadFlowNodeAgentHint">看 AI 忙不忙</p>
-              </div>
-              <div class="flow-node" data-soft-pad-node="tray">
-                <span class="flow-node-tag" id="softPadFlowNodeTrayTag">托盘</span>
-                <button type="button" class="flow-node-btn" id="softPadFlowNodeTray" role="tab" aria-selected="false" aria-labelledby="softPadFlowNodeTrayTitle" aria-controls="softPadFaceTray">
-                  <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M9 5V3h6v2"/><path d="M8 12h8"/></svg>
-                </button>
-                <h3 class="flow-node-title" id="softPadFlowNodeTrayTitle">托盘菜单</h3>
-                <p class="flow-node-hint" id="softPadFlowNodeTrayHint">四通道状态与控制</p>
               </div>
               <div class="flow-node is-hidden" data-soft-pad-node="timeline" hidden aria-hidden="true">
                 <span class="flow-node-tag" id="softPadFlowNodeTimelineTag">项目胶囊</span>
@@ -1130,9 +1140,8 @@
                   <div class="soft-pad-face-pad__preview soft-pad-preview-host" id="softPadPreviewHost"></div>
                   <aside class="soft-pad-face-pad__panel soft-pad-detail" id="softPadSubpageHost" aria-live="polite">
                     <div class="soft-pad-pad-tabs" id="softPadPadTabs" role="tablist" aria-label="Soft Pad 调整">
-                      <button type="button" class="soft-pad-pad-tab is-active" role="tab" data-pad-mode="appear" aria-selected="true" id="softPadPadTabAppear">出现</button>
-                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="keys" aria-selected="false" id="softPadPadTabKeys">键位</button>
-                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="look" aria-selected="false" id="softPadPadTabLook">外观</button>
+                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="appear" aria-selected="false" id="softPadPadTabDisplay">显示</button>
+                      <button type="button" class="soft-pad-pad-tab is-active" role="tab" data-pad-mode="keys" aria-selected="true" id="softPadPadTabKeys">键位</button>
                       <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="purpose" aria-selected="false" id="softPadPadTabPurpose">用途</button>
                     </div>
                     <div class="soft-pad-detail-idle" id="softPadDetailIdle" hidden>
@@ -1158,102 +1167,6 @@
                     <div class="codex-pad-mgr soft-pad-subpage-body" id="softPadAgentBody"></div>
                   </aside>
                 </div>
-                <!-- C3 Tray face: preview left + channel subtabs right -->
-                <div class="soft-pad-face-root soft-pad-face-tray" id="softPadFaceTray" data-face="tray" hidden>
-                  <div class="soft-pad-face-tray__preview" id="softPadTrayPreviewHost">
-                    <div class="soft-pad-tray-preview-lbl">托盘菜单预览</div>
-                    <div class="soft-pad-tray-menu-shell" id="softPadTrayPreviewShell">
-                      <div class="soft-pad-tray-hero" data-tray-seg="hero">
-                        <div class="soft-pad-tray-hero__main">
-                          <div class="soft-pad-tray-hero__title"><span class="soft-pad-tray-pulse" id="softPadTrayHeroPulse"></span><span id="softPadTrayHeroText">监听中</span></div>
-                          <div class="soft-pad-tray-hero__chips" id="softPadTrayHeroChips" aria-hidden="true"></div>
-                        </div>
-                        <button type="button" class="soft-pad-tray-hero__act" id="softPadTrayHeroPause">暂停</button>
-                      </div>
-                      <div class="soft-pad-tray-event" data-tray-seg="event" id="softPadTrayEventCard">
-                        <div class="soft-pad-tray-event__head">最近事件</div>
-                        <div class="soft-pad-tray-event__body" id="softPadTrayEventBody">—</div>
-                      </div>
-                      <div class="soft-pad-tray-sec-head" data-tray-seg="channels-head">通道</div>
-                      <div class="soft-pad-tray-ch-row" data-tray-seg="channels" data-tray-ch="voice"><span>语音</span><span class="meta" id="softPadTrayMetaVoice">—</span></div>
-                      <div class="soft-pad-tray-ch-row" data-tray-seg="channels" data-tray-ch="keys"><span>按键</span><span class="meta" id="softPadTrayMetaKeys">—</span></div>
-                      <div class="soft-pad-tray-ch-row" data-tray-seg="channels" data-tray-ch="softPad"><span>Soft Pad</span><span class="meta" id="softPadTrayMetaPad">—</span></div>
-                      <div class="soft-pad-tray-ch-row" data-tray-seg="channels" data-tray-ch="camera"><span>摄像头</span><span class="meta" id="softPadTrayMetaCamera">—</span></div>
-                      <div class="soft-pad-tray-mic-row" data-tray-seg="mic"><span id="softPadTrayMicLabel">麦克风</span><button type="button" class="soft-pad-tray-mini-toggle" id="softPadTrayMicToggle" role="switch" aria-checked="true"></button></div>
-                    </div>
-                  </div>
-                  <aside class="soft-pad-face-tray__inspector" id="softPadTrayInspector">
-                    <header class="soft-pad-tray-inspector-head">
-                      <h2 class="soft-pad-tray-inspector-title">通道状态与控制</h2>
-                    </header>
-                    <div class="soft-pad-tray-layout-row">
-                      <label class="soft-pad-tray-layout-chk is-locked"><input type="checkbox" checked disabled/> Hero</label>
-                      <label class="soft-pad-tray-layout-chk"><input type="checkbox" id="softPadTrayChkEvent" checked/> 最近事件</label>
-                      <div class="soft-pad-tray-layout-mic">
-                        <span>麦克风 · <span id="softPadTrayInsMicStatus">—</span></span>
-                        <button type="button" class="soft-pad-tray-mini-toggle" id="softPadTrayInsMicToggle" role="switch" aria-checked="true" aria-label="麦克风静音"></button>
-                      </div>
-                    </div>
-                    <div class="soft-pad-tray-channels-wrap">
-                      <div class="soft-pad-tray-ch-subtabs" role="tablist" aria-label="四通道">
-                        <button type="button" class="soft-pad-tray-ch-subtab is-active" role="tab" data-ch-tab="voice" id="softPadTrayTabVoice" aria-selected="true"><span class="soft-pad-tray-ch-subtab__ic">🎤</span><span class="soft-pad-tray-ch-subtab__lbl">语音</span><span class="soft-pad-tray-ch-subtab__dot run" id="softPadTrayDotVoice"></span></button>
-                        <button type="button" class="soft-pad-tray-ch-subtab" role="tab" data-ch-tab="keys" id="softPadTrayTabKeys" aria-selected="false"><span class="soft-pad-tray-ch-subtab__ic">⌨</span><span class="soft-pad-tray-ch-subtab__lbl">按键</span><span class="soft-pad-tray-ch-subtab__dot on" id="softPadTrayDotKeys"></span></button>
-                        <button type="button" class="soft-pad-tray-ch-subtab" role="tab" data-ch-tab="softPad" id="softPadTrayTabSoftPad" aria-selected="false"><span class="soft-pad-tray-ch-subtab__lbl">Pad</span><span class="soft-pad-tray-ch-subtab__dot off" id="softPadTrayDotSoftPad"></span></button>
-                        <button type="button" class="soft-pad-tray-ch-subtab is-off" role="tab" data-ch-tab="camera" id="softPadTrayTabCamera" aria-selected="false"><span class="soft-pad-tray-ch-subtab__ic">📷</span><span class="soft-pad-tray-ch-subtab__lbl">摄像头</span><span class="soft-pad-tray-ch-subtab__dot off" id="softPadTrayDotCamera"></span></button>
-                      </div>
-                      <div class="soft-pad-tray-ch-panels">
-                        <article class="soft-pad-tray-ch-card" data-soft-pad-tray-panel="voice" id="softPadTrayCardVoice">
-                          <div class="soft-pad-tray-ch-card__head"><b>语音</b><span class="soft-pad-tray-st-pill run" id="softPadTrayPillVoice">—</span><label class="soft-pad-tray-show-tray"><input type="checkbox" id="softPadTrayShowVoice" checked/> 托盘显示</label></div>
-                          <div class="soft-pad-tray-ch-stats">
-                            <div class="stat"><span class="k">引擎</span><span class="v" id="softPadTrayStatVoiceEngine">—</span></div>
-                            <div class="stat"><span class="k">唤醒词</span><span class="v" id="softPadTrayStatVoiceWake">—</span></div>
-                            <div class="stat"><span class="k">最近事件</span><span class="v" id="softPadTrayStatVoiceEvent">—</span></div>
-                            <div class="stat"><span class="k">错误</span><span class="v" id="softPadTrayStatVoiceErr">—</span></div>
-                          </div>
-                          <div class="soft-pad-tray-ch-switches">
-                            <div class="soft-pad-tray-sw-row"><span>启用语音引擎</span><button type="button" class="soft-pad-tray-mini-toggle" id="softPadTraySwVoiceEngine" role="switch" aria-checked="true"></button></div>
-                            <div class="soft-pad-tray-sw-row"><span>结束短语检测</span><button type="button" class="soft-pad-tray-mini-toggle" id="softPadTraySwVoiceEnd" role="switch" aria-checked="true"></button></div>
-                          </div>
-                        </article>
-                        <article class="soft-pad-tray-ch-card" data-soft-pad-tray-panel="keys" id="softPadTrayCardKeys" hidden>
-                          <div class="soft-pad-tray-ch-card__head"><b>按键</b><span class="soft-pad-tray-st-pill on" id="softPadTrayPillKeys">—</span><label class="soft-pad-tray-show-tray"><input type="checkbox" id="softPadTrayShowKeys" checked/> 托盘显示</label></div>
-                          <div class="soft-pad-tray-ch-stats">
-                            <div class="stat"><span class="k">触发键</span><span class="v" id="softPadTrayStatKeysKey">—</span></div>
-                            <div class="stat"><span class="k">触发方式</span><span class="v" id="softPadTrayStatKeysMode">—</span></div>
-                            <div class="stat"><span class="k">当前习惯</span><span class="v" id="softPadTrayStatKeysHabit">—</span></div>
-                            <div class="stat"><span class="k">上次触发</span><span class="v" id="softPadTrayStatKeysLast">—</span></div>
-                          </div>
-                        </article>
-                        <article class="soft-pad-tray-ch-card" data-soft-pad-tray-panel="softPad" id="softPadTrayCardPad" hidden>
-                          <div class="soft-pad-tray-ch-card__head"><b>Soft Pad</b><span class="soft-pad-tray-st-pill off" id="softPadTrayPillPad">—</span><label class="soft-pad-tray-show-tray"><input type="checkbox" id="softPadTrayShowSoftPad" checked/> 托盘显示</label></div>
-                          <div class="soft-pad-tray-ch-stats">
-                            <div class="stat"><span class="k">键位</span><span class="v" id="softPadTrayStatPadKeys">—</span></div>
-                            <div class="stat"><span class="k">绑定 Agent</span><span class="v" id="softPadTrayStatPadAgent">—</span></div>
-                            <div class="stat"><span class="k">浮层</span><span class="v" id="softPadTrayStatPadOverlay">—</span></div>
-                            <div class="stat"><span class="k">前台</span><span class="v" id="softPadTrayStatPadFg">—</span></div>
-                          </div>
-                          <div class="soft-pad-tray-ch-switches">
-                            <div class="soft-pad-tray-sw-row"><span>启用 Soft Pad</span><button type="button" class="soft-pad-tray-mini-toggle" id="softPadTraySwPadEnabled" role="switch" aria-checked="false"></button></div>
-                            <div class="soft-pad-tray-sw-row"><span>显示浮层</span><button type="button" class="soft-pad-tray-mini-toggle" id="softPadTraySwPadOverlay" role="switch" aria-checked="true"></button></div>
-                          </div>
-                        </article>
-                        <article class="soft-pad-tray-ch-card is-off" data-soft-pad-tray-panel="camera" id="softPadTrayCardCamera" hidden>
-                          <div class="soft-pad-tray-ch-card__head"><b>摄像头</b><span class="soft-pad-tray-st-pill off" id="softPadTrayPillCamera">—</span><label class="soft-pad-tray-show-tray"><input type="checkbox" id="softPadTrayShowCamera"/> 托盘显示</label></div>
-                          <div class="soft-pad-tray-ch-stats">
-                            <div class="stat"><span class="k">设备</span><span class="v" id="softPadTrayStatCamDev">—</span></div>
-                            <div class="stat"><span class="k">Presence</span><span class="v" id="softPadTrayStatCamPresence">—</span></div>
-                            <div class="stat"><span class="k">自动静音</span><span class="v" id="softPadTrayStatCamAutoMute">—</span></div>
-                            <div class="stat"><span class="k">权限</span><span class="v" id="softPadTrayStatCamPerm">—</span></div>
-                          </div>
-                          <div class="soft-pad-tray-ch-switches">
-                            <div class="soft-pad-tray-sw-row"><span>启用摄像头通道</span><button type="button" class="soft-pad-tray-mini-toggle" id="softPadTraySwCamEnabled" role="switch" aria-checked="false"></button></div>
-                            <div class="soft-pad-tray-sw-row"><span>Presence 动作</span><button type="button" class="soft-pad-tray-mini-toggle" id="softPadTraySwCamPresence" role="switch" aria-checked="false"></button></div>
-                          </div>
-                        </article>
-                      </div>
-                    </div>
-                  </aside>
-                </div>
                 <!-- C3 Timeline face (legacy, hidden from flow) -->
                 <div class="soft-pad-face-root soft-pad-face-timeline" id="softPadFaceTimeline" data-face="timeline" hidden>
                   <div class="soft-pad-face-tm__preview soft-pad-preview-host" id="softPadTmPreviewHost"></div>
@@ -1272,6 +1185,62 @@
                 <div class="keys-hub-schemes" id="softPadSchemeList" role="list"></div>
                 <button type="button" class="keys-hub-scheme-add" id="btnSoftPadEnsureCodex">+ 准备 Codex 虚拟键盘</button>
               </section>
+            </aside>
+          </div>
+        </section>
+        <section class="settings-panel drawer-section tray-page" id="settingsPanelTray" hidden>
+          <header class="pref-page-head">
+            <h3 class="pref-page-title" id="settingsPanelTrayTitle">托盘菜单</h3>
+            <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelTrayDesc">预览系统托盘、控制四通道显示与快捷开关</p>
+          </header>
+          <div class="soft-pad-face-root soft-pad-face-tray" id="softPadFaceTray">
+            <div class="soft-pad-face-tray__preview" id="softPadTrayPreviewHost">
+              <div class="soft-pad-tray-preview-lbl">托盘菜单预览</div>
+              <div class="soft-pad-tray-menu-shell" id="softPadTrayPreviewShell">
+                <div class="soft-pad-tray-hero" data-tray-seg="hero" data-block-id="block:hero">
+                  <div class="soft-pad-tray-hero__main">
+                    <div class="soft-pad-tray-hero__title"><span class="soft-pad-tray-pulse" id="softPadTrayHeroPulse"></span><span id="softPadTrayHeroText">监听中</span></div>
+                    <div class="soft-pad-tray-hero__ctx" id="softPadTrayHeroCtx"></div>
+                    <div class="soft-pad-tray-hero__stats" id="softPadTrayHeroStats" hidden></div>
+                    <div class="soft-pad-tray-hero__trend" id="softPadTrayHeroTrend" hidden></div>
+                    <div class="soft-pad-tray-hero__chips" id="softPadTrayHeroChips" aria-hidden="true"></div>
+                  </div>
+                  <button type="button" class="soft-pad-tray-hero__act" id="softPadTrayHeroPause">暂停</button>
+                </div>
+                <div class="soft-pad-tray-event" data-tray-seg="event" id="softPadTrayEventCard" data-block-id="block:event">
+                  <div class="soft-pad-tray-event__head">最近事件</div>
+                  <div class="soft-pad-tray-event__body" id="softPadTrayEventBody">—</div>
+                </div>
+                <div class="soft-pad-tray-sec-head" data-tray-seg="channels-head" id="softPadTrayChannelsHead">各功能状态</div>
+                <div class="soft-pad-tray-ch-row" data-tray-seg="channels" data-tray-ch="voice" data-block-id="block:channel:voice"><span>语音</span><span class="meta" id="softPadTrayMetaVoice">—</span></div>
+                <div class="soft-pad-tray-ch-row" data-tray-seg="channels" data-tray-ch="keys" data-block-id="block:channel:keys"><span>按键</span><span class="meta" id="softPadTrayMetaKeys">—</span></div>
+                <div class="soft-pad-tray-ch-row" data-tray-seg="channels" data-tray-ch="softPad" data-block-id="block:channel:softPad"><span>小键盘</span><span class="meta" id="softPadTrayMetaPad">—</span></div>
+                <div class="soft-pad-tray-ch-row" data-tray-seg="channels" data-tray-ch="camera" data-block-id="block:channel:camera"><span>摄像头</span><span class="meta" id="softPadTrayMetaCamera">—</span></div>
+                <div class="soft-pad-tray-mic-row" data-tray-seg="mic" data-block-id="block:mic"><span id="softPadTrayMicLabel">麦克风</span><button type="button" class="soft-pad-tray-mini-toggle" id="softPadTrayMicToggle" role="switch" aria-checked="true"></button></div>
+              </div>
+            </div>
+            <aside class="soft-pad-face-tray__inspector soft-pad-tray-editor" id="softPadTrayInspector">
+              <div class="tray-editor-banner" id="softPadTrayEditorBanner" hidden>
+                <span class="tray-editor-banner-text"></span>
+                <button type="button" id="softPadTrayEditorBannerDismiss">知道了</button>
+              </div>
+              <header class="soft-pad-tray-inspector-head">
+                <h2 class="soft-pad-tray-inspector-title" id="softPadTrayInspectorTitle">托盘编辑器</h2>
+                <span class="soft-pad-tray-editor-dirty" id="softPadTrayEditorDirty" hidden>未保存</span>
+              </header>
+              <div class="tray-editor-actions">
+                <button type="button" class="tray-editor-btn" id="softPadTrayEditorReset">恢复默认</button>
+                <button type="button" class="tray-editor-btn tray-editor-btn--primary" id="softPadTrayEditorSave">保存布局</button>
+              </div>
+              <div class="tray-editor-fold is-open">
+                <button type="button" class="tray-editor-fold-head">区块布局 <span class="chev">▸</span></button>
+                <div class="tray-editor-fold-body" id="softPadTrayEditorBlocks"></div>
+              </div>
+              <div class="tray-editor-fold is-open">
+                <button type="button" class="tray-editor-fold-head">开关布局 <span class="chev">▸</span></button>
+                <div class="tray-editor-fold-body" id="softPadTrayEditorControls"></div>
+              </div>
+              <p class="tray-editor-hint" id="softPadTrayEditorHint">布局全局生效；开关值随当前习惯自动变化。</p>
             </aside>
           </div>
         </section>
@@ -1319,6 +1288,7 @@
                 <button type="button" class="habit-hub-new-btn" id="btnHabitHubHeadFg" data-habit-hub-fg-config data-i18n="habitHubFgConfig">为当前前台配置</button>
               </div>
             </header>
+            <div class="habit-hub-value-card" id="habitHubValueCard" hidden></div>
             <div class="habit-hub-toolbar">
               <div class="habit-hub-toolbar-left">
                 <button type="button" class="habit-hub-guide-toggle" id="btnHabitHubGuideMode" aria-pressed="false">怎么用</button>
@@ -1690,6 +1660,7 @@
             <span class="sr-only" id="voiceWorkflowTabsLbl">语音通道</span>
             <div class="keys-workflow-tabs voice-workflow-tabs sr-only" id="voiceWorkflowTabs" role="tablist" aria-labelledby="voiceWorkflowTabsLbl" hidden></div>
           </div>
+          <div class="channel-config-compact-host" id="channelConfigCompactVoice"></div>
           <div class="voice-setup-banner" id="voiceSetupBanner" hidden role="alert">
             <div class="voice-setup-banner-content">
               <p class="voice-setup-banner-title" id="voiceSetupBannerTitle">需要安装本地识别模型</p>
@@ -1774,7 +1745,7 @@
                       <p class="voice-phrase-panel-title sr-only" id="voiceEditSectionPresets">开启</p>
                       <p class="voice-wake-card-sub sr-only" id="voiceWakeGlobalSub"></p>
                       <div class="voice-phrase-kind-tabs voice-wake-kind-tabs" id="voiceWakeKindTabs" role="tablist" aria-label="说完话要做什么">
-                        <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceWakeKindText" role="tab" aria-selected="true" aria-controls="voiceWakeKindTextPane">开始输入</button>
+                        <button type="button" class="voice-phrase-kind-tab is-active is-on" data-phrase-kind="text" id="btnVoiceWakeKindText" role="tab" aria-selected="true" aria-controls="voiceWakeKindTextPane">开始输入</button>
                         <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="app" id="btnVoiceWakeKindApp" role="tab" aria-selected="false" aria-controls="voiceWakeKindAppPane">打开应用</button>
                       </div>
                       <div class="flow-lang-toggle voice-wake-lang-toggle" id="voiceWakeLangToggle" role="group" aria-label="唤醒词语言" hidden>
@@ -1912,7 +1883,7 @@
                     </header>
                     <div class="voice-recognize-layout voice-recognize-control-grid" id="voiceRecognizeControlGrid">
                     <div class="voice-recognize-intent-tabs" id="voiceRecognizeIntentTabs" role="tablist" aria-label="识别控制">
-                      <button type="button" class="voice-recognize-intent-tab is-on" data-recognize-intent="cancel" id="btnVoiceRecognizeIntentCancel" role="tab" aria-selected="true">打错了？取消</button>
+                      <button type="button" class="voice-recognize-intent-tab is-active is-on" data-recognize-intent="cancel" id="btnVoiceRecognizeIntentCancel" role="tab" aria-selected="true">打错了？取消</button>
                       <button type="button" class="voice-recognize-intent-tab" data-recognize-intent="confirm" id="btnVoiceRecognizeIntentConfirm" role="tab" aria-selected="false">说完了？完成</button>
                     </div>
                     <div class="voice-end-detect-lite" id="voiceEndDetectLite" hidden>
@@ -1923,7 +1894,7 @@
                       <div class="voice-phrase-panel voice-cancel-phrase-panel" id="voiceCancelPhrasePanel" data-recognize-intent-pane="cancel">
                         <div class="voice-phrase-panel-head voice-end-phrase-toolbar">
                           <div class="voice-phrase-kind-tabs" id="voiceCancelKindTabs" role="tablist" aria-label="取消怎么激活">
-                            <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceCancelKindText" role="tab" aria-selected="true" aria-controls="voiceCancelKindTextPane">输入文字</button>
+                            <button type="button" class="voice-phrase-kind-tab is-active is-on" data-phrase-kind="text" id="btnVoiceCancelKindText" role="tab" aria-selected="true" aria-controls="voiceCancelKindTextPane">输入文字</button>
                             <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceCancelKindSound" role="tab" aria-selected="false" aria-controls="voiceCancelKindSoundPane">录制声音</button>
                           </div>
                           <div class="flow-lang-toggle" id="voiceCancelLangToggle" role="group" aria-label="取消词语言">
@@ -1953,7 +1924,7 @@
                       <div class="voice-phrase-panel voice-end-phrase-panel" id="voiceEndPhrasePanel" data-recognize-intent-pane="confirm" hidden>
                         <div class="voice-phrase-panel-head voice-end-phrase-toolbar">
                           <div class="voice-phrase-kind-tabs" id="voiceEndKindTabs" role="tablist" aria-label="确认怎么激活">
-                            <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceEndKindText" role="tab" aria-selected="true" aria-controls="voiceEndKindTextPane">输入文字</button>
+                            <button type="button" class="voice-phrase-kind-tab is-active is-on" data-phrase-kind="text" id="btnVoiceEndKindText" role="tab" aria-selected="true" aria-controls="voiceEndKindTextPane">输入文字</button>
                             <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceEndKindSound" role="tab" aria-selected="false" aria-controls="voiceEndKindSoundPane">录制声音</button>
                           </div>
                           <div class="flow-lang-toggle" id="voiceEndLangToggle" role="group" aria-label="结束词语言">
@@ -2299,10 +2270,10 @@
                   </div>
                 </div>
                 <div class="voice-dock-live-item">
-                  <div class="voice-summary-engine-switch voice-recognize-source-grid voice-dock-engine" id="voiceSummaryEngineSwitch" role="group" aria-labelledby="voiceSummaryEngineLbl">
-                    <button type="button" class="voice-recognize-source-btn" data-voice-strategy-tab="auto" id="voiceSummaryEngineAuto">自动</button>
-                    <button type="button" class="voice-recognize-source-btn" data-voice-strategy-tab="resourceSaver" id="voiceSummaryEngineResourceSaver">省电</button>
-                    <button type="button" class="voice-recognize-source-btn" data-voice-strategy-tab="enhanced" id="voiceSummaryEngineEnhanced">增强</button>
+                  <div class="voice-summary-engine-switch voice-strategy-seg voice-recognize-source-grid voice-dock-engine" id="voiceSummaryEngineSwitch" role="group" aria-labelledby="voiceSummaryEngineLbl">
+                    <button type="button" class="voice-strategy-btn voice-recognize-source-btn" data-voice-strategy-tab="auto" id="voiceSummaryEngineAuto">自动</button>
+                    <button type="button" class="voice-strategy-btn voice-recognize-source-btn" data-voice-strategy-tab="resourceSaver" id="voiceSummaryEngineResourceSaver">省电</button>
+                    <button type="button" class="voice-strategy-btn voice-recognize-source-btn" data-voice-strategy-tab="enhanced" id="voiceSummaryEngineEnhanced">增强</button>
                   </div>
                 </div>
               </div>
@@ -2761,6 +2732,10 @@
               <div class="ot-quick-ctrl-actions" id="debugQuickCtrlActions"></div>
             </section>
 
+            <section class="drawer-section status-maintenance-card" id="cursorActivityMaintenanceSection" aria-label="Cursor 本地活动统计">
+              <div id="cursorActivityMaintenanceHost"></div>
+            </section>
+
             <section class="drawer-section status-maintenance-card" id="settingsBackupSection">
               <div class="mini-title" id="settingsBackupTitle">配置备份</div>
               <p class="mini" id="settingsBackupDesc" title="%APPDATA%\com.onetone\app\settings.json">升级前可备份 settings.json</p>
@@ -2855,6 +2830,7 @@
             </div>
             <div class="page-status-bar-actions camera-scheme-status-actions"></div>
           </div>
+          <div class="channel-config-compact-host" id="channelConfigCompactCamera"></div>
           <header class="pref-page-head camera-page-head-sr">
             <h3 class="pref-page-title" id="settingsPanelCameraTitle" data-i18n="cameraPageTitle">摄像头</h3>
             <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelCameraDesc" data-i18n="cameraPageSubtitle">先设计 if-then 规则，再到摄像头设置里预览与校准；Pro 含本机预览增强（美颜、面具等）。</p>
@@ -4673,6 +4649,7 @@
   </div>
   <script src="js/key-labels.js"></script>
   <script src="js/key-icons.js"></script>
+  <script src="js/core/icons.js"></script>
   <script src="js/locale-defaults.js"></script>
   <script src="js/ime-presets.js"></script>
   <script src="js/app-target-presets.js?v=20260705-icons"></script>
@@ -4816,6 +4793,12 @@
   <script src="js/features/mapping/target-key-apply.js"></script>
   <script src="js/features/mapping/target-key-picker.js"></script>
   <script src="js/features/mapping/app-behavior-rules.js"></script>
+  <script src="js/features/settings/channel-config-state-keys.generated.js"></script>
+  <script src="js/features/settings/channel-config-state-keys.js"></script>
+  <script src="js/features/settings/tray-layout-v2.js"></script>
+  <script src="js/features/settings/tray-channel-controls.js"></script>
+  <script src="js/features/settings/tray-layout-editor.js"></script>
+  <script src="js/features/settings/channel-config-compact.js"></script>
   <script src="js/features/settings/keys-panel-ui.js"></script>
   <script src="js/features/scene/habit-compatibility.js"></script>
   <script src="js/features/agent/agent-actions.js"></script>
@@ -4880,6 +4863,7 @@
   <script src="js/features/home/home-workbench-stats.js"></script>
   <script src="js/features/home/home-action-history-card.js"></script>
   <script src="js/features/home/home-workbench.js"></script>
+  <script src="js/features/settings/channel-config-overview.js"></script>
   <script src="js/features/home/home-v9-bridge.js"></script>
   <script src="js/features/home/home-hooks.js"></script>
   <script src="js/features/home/home-scheme.js"></script>

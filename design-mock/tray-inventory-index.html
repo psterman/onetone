@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>托盘清单 · 用户文案定稿总览</title>
+  <link rel="stylesheet" href="tray-inventory-shared.css" />
+</head>
+<body data-persona="beg">
+  <div class="wrap">
+    <nav class="nav">
+      <a href="tray-inventory-index.html" class="is-here">清单总览</a>
+      <a href="tray-editor-subtabs-prototype.html">Subtab 编辑器</a>
+      <a href="switch-styles-gallery.html">开关画廊</a>
+      <a href="tray-channel-switches-refined.html">文案定稿源</a>
+      <a href="tray-inventory-voice.html">语音</a>
+      <a href="tray-inventory-keys.html">按键</a>
+      <a href="tray-inventory-softpad.html">软垫</a>
+      <a href="tray-inventory-camera.html">摄像头</a>
+      <a href="tray-inventory-habits.html">习惯</a>
+    </nav>
+
+    <h1>托盘菜单 · 开关定稿（无状态展示）</h1>
+    <p class="lede">
+      托盘<strong>不显示</strong>「正在听 / 已发送 / 用着」等状态行；核心是<strong>可调整的开关与选项</strong>。
+      状态反馈留在主窗口或事件流，不进 OS 托盘。定稿确认后再改应用内托盘页。
+    </p>
+
+    <div class="checklist">
+      <div class="check-item is-ok"><div><b>无状态行</b>已去掉 Hero / 事件 / pill / scene</div></div>
+      <div class="check-item is-ok"><div><b>小白向</b>省事可选 + 常用开关 + 更多折叠</div></div>
+      <div class="check-item is-ok"><div><b>摄像头解耦</b>视觉识别与 Auto Mute 独立 catalog</div></div>
+      <div class="check-item is-ok"><div><b>习惯清零</b>Hub 专页，托盘零项</div></div>
+      <div class="check-item is-ok"><div><b>门控</b>未配置只露「去设置」</div></div>
+    </div>
+
+    <div class="toolbar">
+      <label>人格</label>
+      <div class="seg" id="personaSeg">
+        <button type="button" class="on" data-persona="beg">小白 minimal</button>
+        <button type="button" data-persona="vibe">Vibe vibecoder</button>
+      </div>
+      <label style="margin-left:8px">场景</label>
+      <div class="seg" id="sceneSeg">
+        <button type="button" class="on" data-scene="normal">正常</button>
+        <button type="button" data-scene="noMic">无麦克风</button>
+        <button type="button" data-scene="noCam">无摄像头</button>
+        <button type="button" data-scene="unconfigured">未配置</button>
+      </div>
+      <label style="margin-left:8px" id="camLbl" hidden>摄像头块</label>
+      <div class="seg" id="camSeg" hidden>
+        <button type="button" data-cam="0">关</button>
+        <button type="button" data-cam="1" class="on">开</button>
+      </div>
+    </div>
+
+    <div class="preview-layout">
+      <div>
+        <div class="frame-label">托盘 · 仅开关（定稿预览）</div>
+        <div class="frame">
+          <div class="tray" id="trayPreview"></div>
+        </div>
+        <p class="annot" id="previewNote"></p>
+      </div>
+      <div class="panel user-filter-panel">
+        <div class="panel-head">本人格会出现的开关</div>
+        <div class="panel-body">
+          <table class="user-table">
+            <thead><tr><th>开关文案</th><th>层级</th><th>通道</th></tr></thead>
+            <tbody id="userFilterBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="rule-box">
+      <strong>设计原则</strong>
+      <ul>
+        <li>托盘 = 调开关，不是看状态仪表盘</li>
+        <li>L1 每通道最多 1 个主开关；L2 最多 2 个；其余「更多设置 ▸」进专页</li>
+        <li>准备期（启用通道、绑键、习惯库）不进托盘</li>
+        <li>摄像头：<strong>视觉识别</strong>与 <strong>Auto Mute</strong> 两条产品线，分别列开关</li>
+      </ul>
+    </div>
+
+    <h2>通道逐页</h2>
+    <div class="card-grid">
+      <a href="tray-inventory-voice.html"><b>语音</b><span>听写 · 结束词</span></a>
+      <a href="tray-inventory-keys.html"><b>按键</b><span>场景 · 取消 · 自动发送</span></a>
+      <a href="tray-inventory-softpad.html"><b>小键盘</b><span>屏幕键盘 · 前台限定</span></a>
+      <a href="tray-inventory-camera.html"><b>摄像头</b><span>解耦 catalog · 常用开关</span></a>
+      <a href="tray-inventory-habits.html"><b>习惯</b><span>Hub 专页 · 托盘空</span></a>
+    </div>
+
+    <details class="dev-fold">
+      <summary>开发对照 · block/ctrl ID（折叠）</summary>
+      <div class="dev-inner">
+        <table class="summary-table">
+          <thead><tr><th>用户文案</th><th>ctrl id</th><th>小白</th><th>Vibe</th></tr></thead>
+          <tbody>
+            <tr><td>语音听写</td><td><code>voiceMaster</code></td><td>L1</td><td>L1</td></tr>
+            <tr><td>说结束词就停</td><td><code>voiceEnd</code></td><td>—</td><td>L1</td></tr>
+            <tr><td>使用这个场景</td><td><code>keysEnabled</code></td><td>—</td><td>L1</td></tr>
+            <tr><td>显示屏幕键盘</td><td><code>padOverlay</code></td><td>—</td><td>L1</td></tr>
+            <tr><td>视觉识别</td><td><code>camPresence</code></td><td>—</td><td>L1</td></tr>
+            <tr><td>启用 Auto Mute</td><td><code>camAutoMute</code></td><td>—</td><td>L1</td></tr>
+            <tr><td>离席识别</td><td><code>triggers.away</code></td><td>—</td><td>L2</td></tr>
+            <tr><td>离开视野也静音</td><td><code>noFaceMute</code></td><td>—</td><td>L2 / P1</td></tr>
+            <tr><td>切换习惯</td><td><code>block:habit</code></td><td>排除</td><td>排除</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+
+  <script src="tray-inventory-user.js"></script>
+  <script>
+  (function () {
+    var TI = window.TrayInventoryUser;
+    if (!TI) return;
+    var persona = 'beg', scene = 'normal', showCamera = true;
+    var state = { switches: Object.assign({}, TI.DEFAULT_ON) };
+
+    var NOTES = {
+      beg: '小白：语音听写 + 麦克风静音 + 去设置。无通道状态行。',
+      vibe: 'Vibe：三通道开关 + 麦；摄像头块默认开，可在上方切换。'
+    };
+
+    function refresh() {
+      document.body.dataset.persona = persona;
+      var opts = { showCamera: persona === 'vibe' && showCamera };
+      TI.renderTray(persona, scene, document.getElementById('trayPreview'), state, opts);
+      document.getElementById('userFilterBody').innerHTML = TI.renderFilterTable(persona, opts);
+      document.getElementById('previewNote').textContent = NOTES[persona] || '';
+      document.querySelectorAll('#personaSeg button').forEach(function (b) {
+        b.classList.toggle('on', b.dataset.persona === persona);
+      });
+      document.querySelectorAll('#sceneSeg button').forEach(function (b) {
+        b.classList.toggle('on', b.dataset.scene === scene);
+      });
+      var camOn = persona === 'vibe';
+      document.getElementById('camLbl').hidden = !camOn;
+      document.getElementById('camSeg').hidden = !camOn;
+      if (camOn) {
+        document.querySelectorAll('#camSeg button').forEach(function (b) {
+          b.classList.toggle('on', b.dataset.cam === (showCamera ? '1' : '0'));
+        });
+      }
+    }
+
+    document.getElementById('personaSeg').onclick = function (e) {
+      var b = e.target.closest('[data-persona]');
+      if (!b) return;
+      persona = b.dataset.persona;
+      if (persona === 'vibe') showCamera = true;
+      refresh();
+    };
+    document.getElementById('sceneSeg').onclick = function (e) {
+      var b = e.target.closest('[data-scene]');
+      if (!b) return;
+      scene = b.dataset.scene;
+      refresh();
+    };
+    document.getElementById('camSeg').onclick = function (e) {
+      var b = e.target.closest('[data-cam]');
+      if (!b) return;
+      showCamera = b.dataset.cam === '1';
+      refresh();
+    };
+    refresh();
+  })();
+  </script>
+</body>
+</html>

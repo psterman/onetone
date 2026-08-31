@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>开关样式画廊 · shadcn + 托盘候选</title>
+  <link rel="stylesheet" href="tray-inventory-shared.css" />
+  <link rel="stylesheet" href="../src/css/ot-switch.css" />
+  <style>
+    .gallery { max-width: 960px; margin: 0 auto; }
+    .gallery h1 { font-size: 20px; margin: 0 0 6px; }
+    .gallery .lede { font-size: 12px; color: var(--on-surface-muted); line-height: 1.55; margin: 0 0 16px; }
+    .gallery .lede code { font-size: 11px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+    .ref { font-size: 11px; margin-bottom: 18px; padding: 10px 12px; background: #fff; border: 1px solid var(--outline); border-radius: 10px; line-height: 1.5; }
+    .ref a { color: var(--primary-deep); font-weight: 600; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 22px; }
+    .card { background: #fff; border: 1px solid var(--outline); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+    .card__head { padding: 10px 12px; background: var(--surface-3); border-bottom: 1px solid var(--outline); }
+    .card__tag { display: inline-block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--primary-deep); margin-bottom: 3px; }
+    .card__title { font-size: 13px; font-weight: 800; margin: 0; }
+    .card__sub { font-size: 10px; color: var(--on-surface-soft); margin: 3px 0 0; line-height: 1.4; }
+    .card__body { padding: 10px 12px 12px; }
+    .demo-row {
+      display: flex; align-items: center; gap: 8px; padding: 9px 10px;
+      border-bottom: 1px solid rgba(26,45,74,.06);
+    }
+    .demo-row:last-child { border-bottom: none; }
+    .demo-row.is-off { opacity: .5; filter: grayscale(.4); }
+    .demo-row.is-off .demo-row__lbl { color: var(--on-surface-muted); }
+    .demo-row__ic { width: 22px; text-align: center; font-size: 13px; flex-shrink: 0; }
+    .demo-row__text { flex: 1; min-width: 0; }
+    .demo-row__lbl { display: block; font-size: 11.5px; font-weight: 700; line-height: 1.25; }
+    .demo-row__sub { display: block; font-size: 9px; font-weight: 600; color: var(--on-surface-soft); margin-top: 2px; }
+    .ctrl { flex-shrink: 0; }
+
+  /* ── A. 当前托盘 iOS 滑块 ── */
+    .sw-ios {
+      width: 32px; height: 17px; border-radius: 9px; border: none; padding: 0;
+      background: var(--primary); position: relative; cursor: pointer;
+    }
+    .sw-ios::after {
+      content: ''; position: absolute; top: 2px; left: 17px;
+      width: 13px; height: 13px; border-radius: 50%; background: #fff;
+      transition: left .15s;
+    }
+    .sw-ios[aria-checked="false"] { background: var(--on-surface-soft); }
+    .sw-ios[aria-checked="false"]::after { left: 2px; }
+
+  /* ── B. shadcn Switch (Radix 结构还原) ── */
+    .sw-shadcn {
+      width: 36px; height: 20px; border-radius: 999px; border: none; padding: 0;
+      background: hsl(240 5% 64%); cursor: pointer; position: relative;
+      transition: background .2s;
+      flex-shrink: 0;
+    }
+    .sw-shadcn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .sw-shadcn[aria-checked="true"] { background: var(--primary); }
+    .sw-shadcn__thumb {
+      display: block; width: 16px; height: 16px; border-radius: 50%;
+      background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.18);
+      transition: transform .2s; transform: translateX(2px);
+      pointer-events: none;
+    }
+    .sw-shadcn[aria-checked="true"] .sw-shadcn__thumb { transform: translateX(18px); }
+
+  /* ── C. shadcn Checkbox ── */
+    .sw-check {
+      width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--on-surface-soft);
+      background: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+      color: transparent; transition: background .15s, border-color .15s, color .15s;
+    }
+    .sw-check:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .sw-check[aria-checked="true"] {
+      background: var(--primary); border-color: var(--primary); color: #fff;
+    }
+    .sw-check svg { width: 12px; height: 12px; }
+
+  /* ── D. Lucide toggle-left/right 图标按钮 ── */
+    .sw-lucide {
+      width: 28px; height: 28px; border: 1px solid var(--outline); border-radius: 8px;
+      background: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+      color: var(--on-surface-muted); transition: color .15s, background .15s, border-color .15s;
+    }
+    .sw-lucide[aria-checked="true"] {
+      color: var(--primary-deep); background: rgba(42,156,196,.1); border-color: rgba(42,156,196,.35);
+    }
+    .sw-lucide svg { width: 18px; height: 18px; }
+
+  /* ── E. shadcn Toggle（按压按钮，非持久开关）── */
+    .sw-toggle-btn {
+      height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--outline);
+      background: #fff; font: 700 10px inherit; color: var(--on-surface-muted); cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .sw-toggle-btn[aria-pressed="true"] {
+      background: var(--primary); border-color: var(--primary); color: #fff;
+    }
+
+  /* ── F. 紧凑轨道（桌面/settings 风）── */
+    .sw-compact {
+      width: 28px; height: 14px; border-radius: 3px; border: 1px solid rgba(26,45,74,.2);
+      background: #e2e8f0; cursor: pointer; position: relative; padding: 0;
+    }
+    .sw-compact::after {
+      content: ''; position: absolute; top: 1px; left: 1px; width: 10px; height: 10px;
+      border-radius: 2px; background: #fff; box-shadow: 0 1px 1px rgba(0,0,0,.12);
+      transition: left .12s;
+    }
+    .sw-compact[aria-checked="true"] { background: var(--primary); border-color: var(--primary-deep); }
+    .sw-compact[aria-checked="true"]::after { left: 15px; }
+
+  /* ── G. 无控件 · 点整行（灰度态）── */
+    .sw-rowonly {
+      cursor: pointer; user-select: none;
+    }
+    .sw-rowonly .ctrl-hint {
+      font-size: 9px; font-weight: 700; color: var(--on-surface-soft); white-space: nowrap;
+    }
+    .sw-rowonly.is-off .ctrl-hint { color: var(--on-surface-muted); }
+
+  /* ── H. 图标 eye 切换 ── */
+    .sw-eye {
+      width: 28px; height: 28px; border: none; border-radius: 8px; background: transparent;
+      cursor: pointer; color: var(--on-surface-soft); display: inline-flex; align-items: center; justify-content: center;
+    }
+    .sw-eye[aria-checked="true"] { color: var(--primary-deep); background: rgba(42,156,196,.08); }
+    .sw-eye svg { width: 16px; height: 16px; }
+    .sw-eye .ic-off { display: none; }
+    .sw-eye[aria-checked="false"] .ic-on { display: none; }
+    .sw-eye[aria-checked="false"] .ic-off { display: block; }
+
+    .tray-mock {
+      max-width: 300px; margin: 0 auto; border: 1px solid var(--outline); border-radius: 14px;
+      background: #fff; box-shadow: var(--shadow); overflow: hidden;
+    }
+    .tray-mock__hd {
+      padding: 8px 10px; font-size: 10px; font-weight: 800; color: var(--on-surface-muted);
+      background: var(--surface-3); border-bottom: 1px solid var(--outline);
+    }
+    .pick-bar {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px;
+    }
+    .pick-bar button {
+      padding: 5px 10px; border-radius: 999px; border: 1px solid var(--outline);
+      background: #fff; font: 600 10px inherit; cursor: pointer; color: var(--on-surface-muted);
+    }
+    .pick-bar button.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .note { font-size: 10px; color: var(--on-surface-soft); margin-top: 8px; line-height: 1.45; }
+  </style>
+</head>
+<body>
+  <div class="gallery wrap">
+    <nav class="nav" style="margin-bottom:12px">
+      <a href="tray-inventory-index.html">清单总览</a>
+      <a href="tray-editor-subtabs-prototype.html">Subtab 编辑器</a>
+      <a href="switch-styles-gallery.html" class="is-here">开关画廊</a>
+    </nav>
+
+    <h1>开关样式画廊</h1>
+    <p class="lede">
+      shadcn/ui 有 <code>Switch</code>、<code>Checkbox</code>、<code>Toggle</code> 三个不同组件（底层 Radix）。
+      Lucide 只有 <code>toggle-left</code> / <code>toggle-right</code> 静态图标，没有可交互开关。
+      下方每种都在<strong>托盘行</strong>上下文里可点，关 = 整行变灰。
+    </p>
+
+    <div class="ref">
+      <strong>shadcn 对应关系</strong><br>
+      · <a href="https://ui.shadcn.com/docs/components/switch" target="_blank" rel="noopener">Switch</a> — 持久 on/off，Radix Switch，默认 iOS 圆角轨道<br>
+      · <a href="https://ui.shadcn.com/docs/components/checkbox" target="_blank" rel="noopener">Checkbox</a> — 方框勾选，适合表单/多选<br>
+      · <a href="https://ui.shadcn.com/docs/components/toggle" target="_blank" rel="noopener">Toggle</a> — 按压态按钮（粗体/对齐），<em>不是</em>设置项开关<br>
+      样式均可改 CSS 变量；不必长得像 iOS。
+    </div>
+
+    <div class="grid" id="gallery"></div>
+
+    <h2 style="font-size:14px;margin:0 0 8px">托盘预览 · 切换控件类型</h2>
+    <div class="pick-bar" id="pickBar"></div>
+    <div class="tray-mock" id="trayMock"></div>
+    <p class="note">定稿：<strong>F = I · OneTone ot-switch</strong>（紧凑方轨）与画廊 <code>.sw-compact</code> 同几何；设置页用 <code>.toggle-switch</code>（32×16）。关时整行灰。</p>
+  </div>
+
+  <script>
+  (function () {
+    var SVG = {
+      check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>',
+      toggleOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="7"/><circle cx="9" cy="12" r="3"/></svg>',
+      toggleOn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="7"/><circle cx="15" cy="12" r="3"/></svg>',
+      eyeOn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
+      eyeOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c6 0 10 7 10 7a17.5 17.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>'
+    };
+
+    var ROWS = [
+      { ic: '📷', lbl: '镜头动作识别', sub: '镜头前挥手等动作' },
+      { ic: '🔇', lbl: '走远自动静音', sub: '人离开画面时静音' },
+      { ic: '🚶', lbl: '检测离席', sub: '离开画面时触发' },
+      { ic: '👤', lbl: '没人也静音', sub: '画面里没人时静音', on: false }
+    ];
+
+    var STYLES = [
+      {
+        id: 'onetone', tag: '推荐 · 全局', title: 'I · OneTone ot-switch',
+        sub: '等同 F 紧凑方轨：28×14 / 方轨 3px / 方钮 2px，--primary / #e2e8f0',
+        ctrl: function (on) {
+          return '<button type="button" class="ot-switch ot-switch--sm ctrl" role="switch" aria-checked="' + on + '"></button>';
+        }
+      },
+      {
+        id: 'ios', tag: '旧 mock', title: 'A · iOS 滑块',
+        sub: 'design-mock .toggle，蓝轨 + 白圆钮',
+        ctrl: function (on) {
+          return '<button type="button" class="sw-ios ctrl" role="switch" aria-checked="' + on + '"></button>';
+        }
+      },
+      {
+        id: 'shadcn', tag: 'shadcn', title: 'B · Switch',
+        sub: 'Radix Switch 结构：track + thumb，focus ring',
+        ctrl: function (on) {
+          return '<button type="button" class="sw-shadcn ctrl" role="switch" aria-checked="' + on + '">' +
+            '<span class="sw-shadcn__thumb"></span></button>';
+        }
+      },
+      {
+        id: 'checkbox', tag: 'shadcn', title: 'C · Checkbox',
+        sub: '方框 + 勾，偏桌面/表单',
+        ctrl: function (on) {
+          return '<button type="button" class="sw-check ctrl" role="checkbox" aria-checked="' + on + '">' +
+            SVG.check + '</button>';
+        }
+      },
+      {
+        id: 'lucide', tag: 'Lucide 图标', title: 'D · toggle-left/right',
+        sub: '两张静态图切换，适合图标按钮而非滑块',
+        ctrl: function (on) {
+          return '<button type="button" class="sw-lucide ctrl" role="switch" aria-checked="' + on + '">' +
+            (on ? SVG.toggleOn : SVG.toggleOff) + '</button>';
+        }
+      },
+      {
+        id: 'togglebtn', tag: 'shadcn', title: 'E · Toggle 按钮',
+        sub: 'aria-pressed，更像工具栏「开/关」文字钮',
+        ctrl: function (on) {
+          return '<button type="button" class="sw-toggle-btn ctrl" aria-pressed="' + on + '">' +
+            (on ? '开着' : '关着') + '</button>';
+        }
+      },
+      {
+        id: 'compact', tag: '候选', title: 'F · 紧凑方轨',
+        sub: '更小、更方，不像手机设置',
+        ctrl: function (on) {
+          return '<button type="button" class="sw-compact ctrl" role="switch" aria-checked="' + on + '"></button>';
+        }
+      },
+      {
+        id: 'eye', tag: 'Lucide 隐喻', title: 'H · Eye / Eye-off',
+        sub: '可见性开关，托盘次要项可用',
+        ctrl: function (on) {
+          return '<button type="button" class="sw-eye ctrl" role="switch" aria-checked="' + on + '">' +
+            '<span class="ic-on">' + SVG.eyeOn + '</span><span class="ic-off">' + SVG.eyeOff + '</span></button>';
+        }
+      },
+      {
+        id: 'rowonly', tag: '推荐', title: 'G · 点整行（无控件）',
+        sub: '关 = 灰；右侧仅「开/关」提示，最省视觉',
+        ctrl: function (on) {
+          return '<span class="ctrl-hint">' + (on ? '开' : '关') + '</span>';
+        },
+        rowClass: 'sw-rowonly'
+      }
+    ];
+
+    function renderCard(style) {
+      var body = ROWS.map(function (r, i) {
+        var on = r.on !== false;
+        return '<div class="demo-row' + (on ? '' : ' is-off') + (style.rowClass ? ' ' + style.rowClass : '') + '" data-i="' + i + '">' +
+          '<span class="demo-row__ic">' + r.ic + '</span>' +
+          '<div class="demo-row__text"><span class="demo-row__lbl">' + r.lbl + '</span>' +
+          '<span class="demo-row__sub">' + r.sub + '</span></div>' +
+          style.ctrl(on) + '</div>';
+      }).join('');
+      return '<article class="card" data-style="' + style.id + '">' +
+        '<div class="card__head"><div class="card__tag">' + style.tag + '</div>' +
+        '<h3 class="card__title">' + style.title + '</h3>' +
+        '<p class="card__sub">' + style.sub + '</p></div>' +
+        '<div class="card__body">' + body + '</div></article>';
+    }
+
+    document.getElementById('gallery').innerHTML = STYLES.map(renderCard).join('');
+
+    function bindCard(card) {
+      var styleId = card.dataset.style;
+      var style = STYLES.find(function (s) { return s.id === styleId; });
+      card.querySelectorAll('.demo-row').forEach(function (row) {
+        function flip() {
+          var ctrl = row.querySelector('.ctrl, .sw-ios, .sw-shadcn, .sw-check, .sw-lucide, .sw-toggle-btn, .sw-compact, .sw-eye, .sw-rowonly');
+          var on;
+          if (styleId === 'rowonly') {
+            on = !row.classList.contains('is-off');
+            on = !on;
+            row.classList.toggle('is-off', !on);
+            row.querySelector('.ctrl-hint').textContent = on ? '开' : '关';
+            return;
+          }
+          if (styleId === 'togglebtn') {
+            on = ctrl.getAttribute('aria-pressed') !== 'true';
+            ctrl.setAttribute('aria-pressed', on);
+            ctrl.textContent = on ? '开着' : '关着';
+          } else {
+            on = ctrl.getAttribute('aria-checked') !== 'true';
+            ctrl.setAttribute('aria-checked', on);
+            if (styleId === 'lucide') ctrl.innerHTML = on ? SVG.toggleOn : SVG.toggleOff;
+          }
+          row.classList.toggle('is-off', !on);
+        }
+        if (styleId === 'rowonly') row.onclick = flip;
+        else {
+          var btn = row.querySelector('button');
+          if (btn) btn.onclick = function (e) { e.stopPropagation(); flip(); };
+        }
+      });
+    }
+
+    document.querySelectorAll('.card').forEach(bindCard);
+
+    var pickStyle = 'onetone';
+    var pickBar = document.getElementById('pickBar');
+    pickBar.innerHTML = STYLES.map(function (s) {
+      return '<button type="button" data-pick="' + s.id + '"' + (s.id === pickStyle ? ' class="on"' : '') + '>' + s.title + '</button>';
+    }).join('');
+
+    function renderTray() {
+      var style = STYLES.find(function (s) { return s.id === pickStyle; });
+      var rows = ROWS.map(function (r) {
+        var on = r.on !== false;
+        return '<div class="demo-row' + (on ? '' : ' is-off') + (style.rowClass ? ' ' + style.rowClass : '') + '">' +
+          '<span class="demo-row__ic">' + r.ic + '</span>' +
+          '<div class="demo-row__text"><span class="demo-row__lbl">' + r.lbl + '</span></div>' +
+          style.ctrl(on) + '</div>';
+      }).join('');
+      document.getElementById('trayMock').innerHTML =
+        '<div class="tray-mock__hd">托盘预览 · ' + style.title + '</div>' + rows;
+      bindCard(document.getElementById('trayMock'));
+    }
+
+    pickBar.onclick = function (e) {
+      var b = e.target.closest('[data-pick]');
+      if (!b) return;
+      pickStyle = b.dataset.pick;
+      pickBar.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); });
+      renderTray();
+    };
+    renderTray();
+  })();
+  </script>
+</body>
+</html>
