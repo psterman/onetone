@@ -1,4 +1,4 @@
-// P0 tray menu guards: GlobalState fields, deep links, segment patch, perf hook.
+// P0 tray menu guards — scheme A: scene block + subtabs, no hero/habit.
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,139 +14,83 @@ function read(rel) {
   return readFileSync(join(root, rel), 'utf8');
 }
 
-const trayState = read('src-tauri/src/tray_state.rs');
-check('GlobalState user_label', trayState.includes('user_label'));
-check('GlobalState next_habit_label', trayState.includes('next_habit_label'));
-check('GlobalState next_habit_id', trayState.includes('next_habit_id'));
-check('GlobalState today_total_count + today_habit_count', trayState.includes('today_total_count') && trayState.includes('today_habit_count'));
-check('GlobalState silence_remaining_ms', trayState.includes('silence_remaining_ms'));
-check('GlobalState week_trend', trayState.includes('week_trend'));
-check('assemble_deep_links 我的习惯', trayState.includes('"我的习惯"') && trayState.includes('main:habits'));
-check('schemes segment', trayState.includes('"schemes"') && trayState.includes('assemble_schemes'));
-check('on_runtime_event patches schemes on scheme switch', trayState.includes('kind::SCHEME_SWITCHED') && trayState.includes('"schemes"'));
-check('tray_user_label unit tests', trayState.includes('tray_user_label_prefers_preset_app_display_name'));
-check('foreground_os_debug debug-only', trayState.includes('#[cfg(debug_assertions)]') && trayState.includes('foreground_os_debug'));
-check('user_label from preset not foreground', trayState.includes('tray_user_label') && trayState.includes('preset_app_display_name'));
-check('tray_today_counts dual layer', trayState.includes('fn tray_today_counts'));
-check('assemble_deep_links no diagnose footer', trayState.includes('assemble_deep_links_has_habits_entry') || (trayState.includes('fn assemble_deep_links') && !/assemble_deep_links[\s\S]*main:diagnose/.test(trayState)));
-
-const config = read('src-tauri/src/config.rs');
-check('peek_next_scheme_same_trigger', config.includes('peek_next_scheme_same_trigger'));
-
-const trayRs = read('src-tauri/src/tray.rs');
-check('silence_until action', trayRs.includes('"silence_until"'));
-check('preload_tray_menu_window', trayRs.includes('preload_tray_menu_window'));
-check('refresh_menu_data', trayRs.includes('refresh_menu_data'));
-check('refresh_menu delegates to segment patch', /pub fn refresh_menu\([\s\S]*?refresh_menu_data\(app\)/.test(trayRs));
-check('deep link href with query', trayRs.includes('strip_prefix("main:")'));
-
-const listen = read('src-tauri/src/ipc/listen.rs');
-check('silence_listen_for', listen.includes('silence_listen_for'));
-check('pause uses refresh_menu_data', listen.includes('refresh_menu_data'));
-
 const trayHtml = read('src/tray-menu.html');
-check('tray habit row + cycle preview', trayHtml.includes('tray-habit-row') && trayHtml.includes('nextHabitLabel'));
-check('tray dual stats', trayHtml.includes('todayTotalCount') && trayHtml.includes('todayHabitCount'));
-check('tray perf log', trayHtml.includes('tray_menu_ready_ms='));
-check('tray schemes segment subscribe', trayHtml.includes("'schemes'"));
-check('tray quick actions wizard', trayHtml.includes('main:habits?wizard=1'));
-check('tray hero three-state ctx', trayHtml.includes('未配置习惯') && trayHtml.includes('hasActiveHabit'));
-check('habit preview arrow only when next', trayHtml.includes('nextHabitLabel') && trayHtml.includes("canCycle=!!g.nextHabitLabel"));
-check('event card diagnose deep link', trayHtml.includes("main:diagnose"));
-check('footer habits settings home', trayHtml.includes('我的习惯') && trayHtml.includes('main:habits') && trayHtml.includes('main:settings'));
-check('perf mark perfT0 to paint', trayHtml.includes('perfT0') && trayHtml.includes('requestAnimationFrame'));
-check('global patch re-renders quick-actions', trayHtml.includes("if(seg==='global')document.querySelector('tray-quick-actions').render()"));
-
-const trayUi = read('src/js/features/agent/soft-pad-tray-ui.js');
-check('handleTrayDeepLink habits', trayUi.includes("path === 'habits'") && trayUi.includes('habitWizard'));
-check('preview sync userLabel/stats/trend', trayUi.includes('todayTotalCount') && trayUi.includes('weekTrend'));
-check('preview hasActiveHabit three-state', trayUi.includes('function hasActiveHabit'));
-check('preview live segment subscribe', trayUi.includes('subscribeTrayLive') && trayUi.includes('tray://patch'));
-check('silenced hero label', trayUi.includes("mode === 'silenced'"));
-
-const drawer = read('src/js/features/settings/settings-drawer.js');
-check('settings-drawer tray-deep-link fallback', drawer.includes('__otTrayDeepLinkDrawerBound') && drawer.includes("panel:'habits'"));
-check('settings-drawer wizard=1 query', drawer.includes("wizard=1"));
-
-const habitHub = read('src/js/features/mapping/habit-hub.js');
-check('habit hub value card', habitHub.includes('syncHabitValueCardFromTray') && habitHub.includes('habitHubValueCard'));
-
-const i18n = read('src/js/core/i18n.js');
-check('i18n tray hero keys', i18n.includes('trayHeroNoHabit') && i18n.includes('trayTodayTotal'));
+check('tray scene block', trayHtml.includes('traySceneBlock') && trayHtml.includes('block:scene'));
+check('tray no hero', !trayHtml.includes('tray-status-hero'));
+check('tray no habit row', !trayHtml.includes('tray-habit-row'));
+check('tray scene preset js', trayHtml.includes('tray-scene-preset.js'));
+check('tray channel blocks kept', trayHtml.includes('tray-channel-block'));
 
 const indexHtml = read('src/index.html');
-check('preview hero ctx/stats/trend elements', indexHtml.includes('softPadTrayHeroCtx') && indexHtml.includes('habitHubValueCard'));
-check('left nav tray entry', indexHtml.includes('data-wb-nav="tray"') && indexHtml.includes('id="settingsPanelTray"'));
-check('soft pad flow has no tray node', !indexHtml.includes('data-soft-pad-node="tray"'));
+check('editor subtabs', indexHtml.includes('softPadTrayChSubtabs'));
+check('editor persona seg', indexHtml.includes('softPadTrayPersonaSeg') && indexHtml.includes('data-persona="compact"') && indexHtml.includes('精简'));
+check('editor no layout dual list', !indexHtml.includes('softPadTrayEditorBlocks'));
 
-const shellIa = read('src/js/shared/shell-ia-convergence.js');
-check('shell-ia tray panel', shellIa.includes("tray: { panel: 'tray'"));
-
-check('settings-drawer tray PANEL_IDS', drawer.includes("tray:'settingsPanelTray'"));
-check('tray deep link opens tray panel', trayUi.includes("openSettings({ panel: 'tray' })") && !trayUi.includes("setSoftPadFace('tray')"));
-check('tray panel lifecycle', drawer.includes("panel==='tray'") && drawer.includes('onPanelEnter') && drawer.includes('trayEditorFocus'));
-check('tray-ui onPanelEnter export', trayUi.includes('onPanelEnter: onPanelEnter'));
-
-const hubUi = read('src/js/features/agent/soft-pad-hub-ui.js');
-check('hub openSubpage tray redirect', hubUi.includes("view === 'tray'") && hubUi.includes("panel: 'tray'"));
-check('hub no tray face', !hubUi.includes("tray: 1") && !hubUi.includes("face === 'tray'"));
+const trayUi = read('src/js/features/agent/soft-pad-tray-ui.js');
+check('soft-pad-tray setTab', trayUi.includes('function setTab'));
+check('soft-pad-tray renderSwitchCards', trayUi.includes('renderSwitchCards'));
+check('habit panel null-safe', trayUi.includes('function channels()') && !trayUi.includes('(trayState.channels || [])'));
+check('habit panel todayByChannel', trayUi.includes('todayByChannel') && trayUi.includes('channelUsage'));
+check('preview channel click', trayUi.includes('wirePreviewChannelClicks'));
+check('onPanelEnter defers setTab', trayUi.includes("setTab(opts.trayEditorFocus || 'habit')") && !trayUi.match(/wireOnce[\s\S]*setTab\('habit'\)/));
+check('preview footer host', indexHtml.includes('softPadTrayPreviewFooter'));
+check('preview seps', indexHtml.includes('block:sep-ch') && indexHtml.includes('block:sep-mic'));
+check('tray os channels css', indexHtml.includes('tray-os-channels.css'));
+check('preview mic row structure', indexHtml.includes('softPadTrayMicRow') && indexHtml.includes('mic-row'));
+check('no tray-layout-editor script', !indexHtml.includes('tray-layout-editor.js'));
 
 const tcc = read('src/js/features/settings/tray-channel-controls.js');
-check('tray-channel-controls exports renderInspectorCard', tcc.includes('renderInspectorCard'));
-check('tray-channel-controls exports renderOsTrayBlock', tcc.includes('renderOsTrayBlock'));
-check('voice L1 voiceAssistEnabled', tcc.includes("stateKey: 'config.voiceAssistEnabled'"));
-check('softPad L1 codexMicroPad.enabled', tcc.includes("stateKey: 'mappings[].codexMicroPad.enabled'"));
-check('five channels in CHANNEL_ORDER', tcc.includes("CHANNEL_ORDER = ['voice', 'keys', 'softPad', 'camera', 'habits']"));
+check('compact L2 only no trayShow', tcc.includes("c.tier === 'l2'") && !tcc.includes("id === 'trayShow'"));
+check('preview focus channel', tcc.includes('setPreviewFocusChannel'));
+check('compact tray link', tcc.includes('cc-row-link'));
 
-const compact = read('src/js/features/settings/channel-config-compact.js');
-check('compact delegates to shared module', compact.includes('OneToneTrayChannelControls') && compact.includes('renderCompactGroup'));
-check('compact no wireMiniToggle', !compact.includes('wireMiniToggle') && !compact.includes('makeToggleRow'));
+const v2 = read('src/js/features/settings/tray-layout-v2.js');
+check('block scene catalog', v2.includes('block:scene'));
+check('persona preset', v2.includes('applyPersonaPreset'));
+check('padRequireFg control', v2.includes('padRequireFg'));
 
-check('tray-menu ch-block accordion', trayHtml.includes('ch-block') && trayHtml.includes('ch-l2'));
-check('tray-menu loads tray-layout-v2', trayHtml.includes('tray-layout-v2.js'));
-check('tray-menu applyLayout v2 blocks', trayHtml.includes('resolveLayoutV2') && trayHtml.includes('blockVisible'));
-check('tray-channel-controls getTrayLayoutV2', tcc.includes('getTrayLayoutV2'));
-check('tray-menu tray-channel-block', trayHtml.includes('tray-channel-block'));
+const rust = read('src-tauri/src/tray_customization.rs');
+check('rust block scene', rust.includes('block:scene'));
+check('rust camNoFaceMute', rust.includes('camNoFaceMute'));
 
-check('index no legacy inspector control hosts', !indexHtml.includes('softPadTrayControlsVoice') && !indexHtml.includes('softPadTraySwVoiceEnd'));
-check('index no habits subtab panel', !indexHtml.includes('data-ch-tab="habits"'));
-check('index loads tray-channel-controls', indexHtml.includes('tray-channel-controls.js'));
+const runtime = read('src-tauri/src/tray_runtime.rs');
+check('tray runtime module', runtime.includes('TrayScenePreset'));
 
-check('tray-ui mounts layout editor', trayUi.includes('OneToneTrayLayoutEditor') && trayUi.includes('trayEditorFocus'));
-check('tray-ui syncBlockVisibility', trayUi.includes('syncBlockVisibility') && trayUi.includes('data-block-id'));
-check('tray-ui no wireMiniToggle', !trayUi.includes('wireMiniToggle'));
+const trayEditorCss = read('src/css/tray-editor.css');
+const softPadHubCss = read('src/css/soft-pad-hub.css');
+check('subtab flex override', trayEditorCss.includes('.soft-pad-tray-editor .tray-ch-subtabs') && trayEditorCss.includes('flex: 0 0 auto'));
+check('responsive stack breakpoint', softPadHubCss.includes('max-width: 859px'));
+check('tray page full width', softPadHubCss.includes('max-width: none') && softPadHubCss.includes('#settingsPanelTray .tray-app-page'));
+check('preview transparent bg', softPadHubCss.includes('.soft-pad-face-tray__preview') && softPadHubCss.includes('background: transparent'));
+check('preview fixed editor fluid', softPadHubCss.includes('minmax(320px, 380px) minmax(0, 1fr)'));
+check('preview switch width lock', read('src/css/tray-os-channels.css').includes('max-width: var(--ot-sw-w) !important'));
 
-check('i18n trayChVoiceMaster + trayChGoSettings', i18n.includes('trayChVoiceMaster') && i18n.includes('trayChGoSettings'));
-check('i18n channelConfigTrayShow', i18n.includes('channelConfigTrayShow'));
-check('i18n trayEditorTitle + trayEditorMinBlocks', i18n.includes('trayEditorTitle') && i18n.includes('trayEditorMinBlocks'));
-check('i18n trayLayoutHabit + trayShowOpenEditor', i18n.includes('trayLayoutHabit') && i18n.includes('trayShowOpenEditor'));
+const trayStateRs = read('src-tauri/src/tray_state.rs');
+check('rust todayByChannel', trayStateRs.includes('today_by_channel') && trayStateRs.includes('TodayByChannel'));
 
-check('tray-channel-controls exports renderInspectorPreview', tcc.includes('renderInspectorPreview'));
-check('tray-channel-controls formatTrayEventText filters vosk', tcc.includes('formatTrayEventText') && tcc.includes('vosk'));
-check('getChannelControls surface compact no L1', tcc.includes("getChannelControls(channel, 'compact')") || tcc.includes('surface === \'compact\''));
-check('getChannelControls surface os no trayShow', tcc.includes("surface === 'os'") && tcc.includes("c.id !== 'trayShow'"));
-check('renderOsTrayBlock ch-l2 collapsed default', tcc.includes('is-collapsed') && tcc.includes('ch-title-row'));
-check('renderTrayLayoutToggles exported', tcc.includes('renderTrayLayoutToggles'));
-check('inspector mount uses renderInspectorPreview', tcc.includes('renderInspectorPreview(host, channel'));
-check('inspector preview no tray-ctrl-toggle in mount', !/mountInspectorControls[\s\S]*?makeToggleRow/.test(tcc));
+check('editor habits link deduped', !indexHtml.includes('softPadTrayOpenHabits') && trayUi.includes('softPadTrayOpenHabitsLink') && trayUi.includes('跳转「我的习惯」查看详情'));
+check('ch fold actions markup', tcc.includes('ch-fold-btn') && tcc.includes('ch-actions') && tcc.includes('ch-drawer'));
+check('tray menu no inline ch flex', !trayHtml.includes('.ch-title-row{display:flex'));
+const trayRs = read('src-tauri/src/tray.rs');
+const trayIpc = read('src-tauri/src/ipc/commands/shell/tray.rs');
+check('resize tray width chrome', trayRs.includes('TRAY_CHROME') && trayRs.includes('TRAY_SHELL_W') && trayRs.includes('width: Option<f64>'));
+check('ipc tray set size width', trayIpc.includes('width: Option<f64>'));
+check('tray footer nav layout', read('src/js/features/settings/tray-footer.js').includes('tray-ft--nav') && read('src/js/features/settings/tray-footer.js').includes('tray-ft__row--main'));
+check('tray anchor reposition', trayRs.includes('TRAY_MENU_ANCHOR_X') && trayRs.includes('tray_anchor_from_event'));
+check('tray menu no shell scroll', trayHtml.includes('overflow-x:hidden') && !trayHtml.includes('overflow-y:auto'));
+const scenePreset = read('src/js/features/settings/tray-scene-preset.js');
+const trayRuntimeRs = read('src-tauri/src/tray_runtime.rs');
+check('expand triggers onRefresh', tcc.includes('toggleFold') && tcc.includes('opts.onRefresh'));
+check('fold visual only', !tcc.includes('ch-fold-btn__lbl') && !tcc.includes('更多开关'));
+check('no scene status text', !scenePreset.includes('tray-scene-status__text') && !scenePreset.includes('当前：按你的设置'));
+check('activeSceneQuick', scenePreset.includes('activeSceneQuick') && scenePreset.includes('sceneMatches'));
+check('default scene allOn', scenePreset.includes("trayScenePreset: 'allOn'") && trayRuntimeRs.includes('TrayScenePreset::AllOn'));
+check('fg scene sync', trayRs.includes('sync_active_scene_from_foreground') && trayRs.includes('find_app_scenario_for_dispatch'));
+check('tray save indicator', indexHtml.includes('tray-save-indicator') && trayUi.includes('flashSaveIndicator'));
+check('preview sync pulse', trayUi.includes('is-sync-pulse') && trayEditorCss.includes('.soft-pad-tray-menu-shell.is-sync-pulse'));
+check('tray schemes retained', trayUi.includes('schemes: data.schemes'));
+check('tray footer module', read('src/js/features/settings/tray-footer.js').includes('OneToneTrayFooter'));
+check('compact persona alias', v2.includes('normalizePersona') && v2.includes('inferPersonaFromLayout'));
 
-check('tray-ui no stats override HID', !trayUi.includes('buildKeysStatsOverride') && !trayUi.includes('buildPadStatsOverride'));
-check('tray-ui formatEventText', trayUi.includes('formatEventText'));
-check('index tray editor shell', indexHtml.includes('softPadTrayEditorBlocks') && indexHtml.includes('softPadTrayEditorSave'));
-check('index loads tray-layout-v2', indexHtml.includes('tray-layout-v2.js') && indexHtml.includes('tray-layout-editor.js'));
-check('index preview data-block-id', indexHtml.includes('data-block-id="block:hero"'));
-check('tray-ui no inspector mic toggle', !indexHtml.includes('softPadTrayInsMicToggle'));
-
-check('tray-menu loads tray-i18n-lite', trayHtml.includes('tray-i18n-lite.js'));
-check('tray-menu qa-more collapse', trayHtml.includes('qa-more') && trayHtml.includes('qa-collapsed'));
-check('tray-menu formatEventText', trayHtml.includes('formatEventText'));
-check('tray-menu menu-shell max-height scroll', trayHtml.includes('max-height') && trayHtml.includes('overflow-y:auto'));
-
-check('compact getChannelControls uses surface', compact.includes("getChannelControls(channel, 'compact')") || tcc.includes("getChannelControls(channel, 'compact')"));
-
-const stateShape = read('scripts/channel-config-state-shape.mjs');
-check('state shape voiceAssistEnabled', stateShape.includes('config.voiceAssistEnabled'));
-check('state shape voiceEnd.enabled', stateShape.includes('config.voiceEnd.enabled'));
-
-console.log(`[tray-p0] ${pass} passed / ${fail} failed`);
-if (fail > 0) process.exit(1);
+console.log('\n' + pass + ' passed, ' + fail + ' failed');
+process.exit(fail ? 1 : 0);

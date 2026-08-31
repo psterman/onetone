@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-tray-runtime-save"
+description = "Enables the cmd_tray_runtime_save command without any pre-configured scope."
+commands.allow = ["cmd_tray_runtime_save"]
+
+[[permission]]
+identifier = "deny-cmd-tray-runtime-save"
+description = "Denies the cmd_tray_runtime_save command without any pre-configured scope."
+commands.deny = ["cmd_tray_runtime_save"]

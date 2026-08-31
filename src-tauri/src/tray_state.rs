@@ -52,12 +52,35 @@ pub struct GlobalState {
     /// Last 7 calendar days usage (oldest → newest).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub week_trend: Vec<u64>,
+    /// Per-channel action counts in the last 24h (active habit scope when set).
+    #[serde(default, skip_serializing_if = "TodayByChannel::is_empty")]
+    pub today_by_channel: TodayByChannel,
     /// OS foreground process — debug/diagnose only; omitted from tray HTML by default.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub foreground_os_debug: Option<String>,
     /// Remaining silence ms when mode is `silenced`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub silence_remaining_ms: Option<u64>,
+}
+
+/// Per-channel 24h usage for tray habit panel.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct TodayByChannel {
+    #[serde(default)]
+    pub voice: u64,
+    #[serde(default)]
+    pub keys: u64,
+    #[serde(default)]
+    pub soft_pad: u64,
+    #[serde(default)]
+    pub camera: u64,
+}
+
+impl TodayByChannel {
+    fn is_empty(&self) -> bool {
+        self.voice == 0 && self.keys == 0 && self.soft_pad == 0 && self.camera == 0
+    }
 }
 
 /// One habit row for tray scheme picker (P1 segment).
@@ -223,6 +246,8 @@ pub fn assemble_global(state: &AppState) -> GlobalState {
     #[cfg(not(debug_assertions))]
     let foreground_os_debug: Option<String> = None;
 
+    let today_by_channel = tray_today_by_channel(&active_habit_id);
+
     GlobalState {
         mode,
         active_channel_ids,
@@ -234,6 +259,7 @@ pub fn assemble_global(state: &AppState) -> GlobalState {
         today_total_count,
         today_habit_count,
         week_trend,
+        today_by_channel,
         foreground_os_debug,
         silence_remaining_ms,
     }
@@ -699,6 +725,32 @@ fn tray_today_counts(active_habit_id: &str) -> (u64, u64) {
             .unwrap_or(0)
     };
     (total, habit)
+}
+
+fn tray_today_by_channel(active_habit_id: &str) -> TodayByChannel {
+    let stats = crate::action_history::stats_by_mapping(Some(24));
+    let mut out = TodayByChannel::default();
+    let rows: Vec<_> = if active_habit_id.trim().is_empty() {
+        stats.rows.iter().collect()
+    } else {
+        stats
+            .rows
+            .iter()
+            .filter(|r| r.mapping_id == active_habit_id)
+            .collect()
+    };
+    for row in rows {
+        for (ch, n) in &row.by_channel {
+            match ch.as_str() {
+                "voice" => out.voice += n,
+                "key" | "keys" => out.keys += n,
+                "softPad" | "soft_pad" => out.soft_pad += n,
+                "camera" => out.camera += n,
+                _ => {}
+            }
+        }
+    }
+    out
 }
 
 fn tray_foreground_label() -> String {

@@ -79,6 +79,8 @@ fn main() {
         "cmd_tray_sync_mic",
         "cmd_tray_customization_get",
         "cmd_tray_customization_save",
+        "cmd_tray_runtime_get",
+        "cmd_tray_runtime_save",
         "cmd_autostart_get",
         "cmd_autostart_set",
         "cmd_mic_list",

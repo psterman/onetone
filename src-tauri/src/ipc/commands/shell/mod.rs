@@ -15,6 +15,7 @@ mod workspace_layout_cmd;
 mod prefs;
 mod tray;
 mod tray_customization_cmd;
+mod tray_runtime_cmd;
 mod update;
 mod window;
 
@@ -35,5 +36,6 @@ pub use workspace_layout_cmd::*;
 pub use prefs::*;
 pub use tray::*;
 pub use tray_customization_cmd::*;
+pub use tray_runtime_cmd::*;
 pub use update::*;
 pub use window::*;

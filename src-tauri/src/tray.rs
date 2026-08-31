@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicI32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use tauri::{
@@ -22,6 +22,8 @@ const TRAY_VISUAL_DEBOUNCE_MS: u64 = 500;
 
 static TRAY_MENU_SHOWN_AT: AtomicU64 = AtomicU64::new(0);
 static TRAY_MENU_OPEN_AT: AtomicU64 = AtomicU64::new(0);
+static TRAY_MENU_ANCHOR_X: AtomicI32 = AtomicI32::new(0);
+static TRAY_MENU_ANCHOR_Y: AtomicI32 = AtomicI32::new(0);
 static TRAY_VISUAL_REFRESH_AT: AtomicU64 = AtomicU64::new(0);
 static LAST_TRAY_VISUAL_KEY: Mutex<Option<String>> = Mutex::new(None);
 
@@ -62,10 +64,13 @@ pub fn setup(app: &AppHandle, state: Arc<AppState>) -> tauri::Result<()> {
             match event {
                 TrayIconEvent::Click {
                     button: MouseButton::Right,
+                    position,
+                    rect,
                     ..
                 } => {
                     if should_open_tray_menu() {
-                        show_tray_menu(app);
+                        let anchor = tray_anchor_from_event(&position, &rect);
+                        show_tray_menu(app, Some(anchor));
                     }
                 }
                 TrayIconEvent::Click {
@@ -385,19 +390,34 @@ pub fn present_tray_menu(
     menu_win: &WebviewWindow,
     width: f64,
     height: f64,
-    cursor_x: i32,
-    cursor_y: i32,
+    anchor_x: i32,
+    anchor_y: i32,
 ) -> tauri::Result<()> {
     let w = width.max(220.0);
     let h = height.max(160.0);
     menu_win.set_size(Size::Logical(LogicalSize::new(w, h)))?;
 
-    let pos = compute_tray_menu_position(menu_win, cursor_x, cursor_y, w, h);
+    let pos = compute_tray_menu_position(menu_win, anchor_x, anchor_y, w, h);
     menu_win.set_position(Position::Physical(pos))?;
     mark_tray_menu_shown();
     menu_win.show()?;
     menu_win.set_focus()?;
     Ok(())
+}
+
+pub fn resize_tray_menu(
+    menu_win: &WebviewWindow,
+    height: f64,
+    width: Option<f64>,
+) -> tauri::Result<()> {
+    const TRAY_SHELL_W: f64 = 316.0;
+    const TRAY_CHROME: f64 = 16.0;
+    let h = height.clamp(320.0, 680.0);
+    let w = width.unwrap_or(TRAY_SHELL_W + TRAY_CHROME).max(220.0);
+    menu_win.set_size(Size::Logical(LogicalSize::new(w, h)))?;
+    let (ax, ay) = tray_menu_anchor();
+    let pos = compute_tray_menu_position(menu_win, ax, ay, w, h);
+    menu_win.set_position(Position::Physical(pos))
 }
 
 pub fn handle_tray_action(
@@ -492,7 +512,8 @@ fn exit_app(app: &AppHandle) {
     crate::graceful_exit(app);
 }
 
-fn show_tray_menu(app: &AppHandle) {
+fn show_tray_menu(app: &AppHandle, anchor: Option<(i32, i32)>) {
+    store_tray_menu_anchor(anchor);
     let Ok((menu_win, created)) =
         crate::overlay_window::ensure_overlay_window(app, crate::overlay_window::TRAY_MENU)
     else {
@@ -513,7 +534,7 @@ fn show_tray_menu(app: &AppHandle) {
         let app_retry = app.clone();
         std::thread::spawn(move || {
             std::thread::sleep(std::time::Duration::from_millis(150));
-            show_tray_menu(&app_retry);
+            show_tray_menu(&app_retry, None);
         });
         return;
     }
@@ -521,13 +542,59 @@ fn show_tray_menu(app: &AppHandle) {
         return;
     };
 
-    let (cx, cy) = cursor_physical_position();
-    open_tray_menu(&menu_win, state.inner(), cx, cy);
+    sync_active_scene_from_foreground(app, &state);
+
+    let (ax, ay) = tray_menu_anchor();
+    open_tray_menu(&menu_win, state.inner(), ax, ay);
 }
 
-fn open_tray_menu(menu_win: &WebviewWindow, state: &AppState, cursor_x: i32, cursor_y: i32) {
+fn sync_active_scene_from_foreground(app: &AppHandle, state: &Arc<AppState>) {
+    if crate::app_identity::foreground_is_self() {
+        return;
+    }
+    let Some(identity) = crate::app_identity::foreground_app_identity() else {
+        return;
+    };
+    let target_id = {
+        let cfg = state.cfg.lock();
+        crate::config::find_app_scenario_for_dispatch(&cfg, &identity).map(|m| m.id.clone())
+    };
+    let Some(target_id) = target_id else {
+        return;
+    };
+    let current = state.cfg.lock().active_scene_id.clone();
+    if target_id == current {
+        return;
+    }
+    ipc::handle_scheme_select(state, app, &target_id);
+}
+
+fn tray_anchor_from_event(position: &PhysicalPosition<f64>, rect: &tauri::Rect) -> (i32, i32) {
+    use tauri::{Position, Size};
+    if let (Position::Physical(p), Size::Physical(s)) = (&rect.position, &rect.size) {
+        if s.width > 0 || s.height > 0 {
+            return (p.x + s.width as i32, p.y);
+        }
+    }
+    (position.x.round() as i32, position.y.round() as i32)
+}
+
+fn store_tray_menu_anchor(anchor: Option<(i32, i32)>) {
+    let (ax, ay) = anchor.unwrap_or_else(cursor_physical_position);
+    TRAY_MENU_ANCHOR_X.store(ax, Ordering::SeqCst);
+    TRAY_MENU_ANCHOR_Y.store(ay, Ordering::SeqCst);
+}
+
+fn tray_menu_anchor() -> (i32, i32) {
+    (
+        TRAY_MENU_ANCHOR_X.load(Ordering::SeqCst),
+        TRAY_MENU_ANCHOR_Y.load(Ordering::SeqCst),
+    )
+}
+
+fn open_tray_menu(menu_win: &WebviewWindow, state: &AppState, anchor_x: i32, anchor_y: i32) {
     let (w, h) = estimate_menu_size(state);
-    if present_tray_menu(menu_win, w, h, cursor_x, cursor_y).is_err() {
+    if present_tray_menu(menu_win, w, h, anchor_x, anchor_y).is_err() {
         return;
     }
 
@@ -542,15 +609,12 @@ fn open_tray_menu(menu_win: &WebviewWindow, state: &AppState, cursor_x: i32, cur
 }
 
 fn estimate_menu_size(_state: &AppState) -> (f64, f64) {
+    const TRAY_SHELL_W: f64 = 316.0;
+    const TRAY_CHROME: f64 = 16.0;
     let cfg = crate::tray_customization::load();
-    let mut h = 280.0;
-    if crate::tray_customization::block_visible(&cfg, "block:event") {
-        h += 68.0;
-    }
-    if crate::tray_customization::block_visible(&cfg, "block:habit")
-        || crate::tray_customization::block_visible(&cfg, "block:quick")
-    {
-        h += 72.0;
+    let mut h = 240.0;
+    if crate::tray_customization::block_visible(&cfg, "block:scene") {
+        h += 88.0;
     }
     let channel_blocks = [
         "block:channel:voice",
@@ -563,19 +627,22 @@ fn estimate_menu_size(_state: &AppState) -> (f64, f64) {
         .filter(|id| crate::tray_customization::block_visible(&cfg, id))
         .count();
     if visible_channels > 0 {
-        h += 24.0;
-        h += visible_channels as f64 * 34.0;
+        h += 28.0;
+        h += visible_channels as f64 * 58.0;
     }
     if visible_channels > 0 {
-        h += 8.0;
+        h += 12.0;
     }
     if crate::tray_customization::block_visible(&cfg, "block:mic") {
-        h += 40.0;
+        h += 44.0;
     }
     if crate::tray_customization::block_visible(&cfg, "block:footer") {
-        h += 32.0;
+        h += 58.0;
     }
-    (316.0, h.clamp(320.0, 520.0))
+    (
+        TRAY_SHELL_W + TRAY_CHROME,
+        (h + TRAY_CHROME).clamp(320.0, 680.0),
+    )
 }
 
 fn hide_tray_menu(app: &AppHandle) {
@@ -640,8 +707,8 @@ fn now_millis() -> u64 {
 
 fn compute_tray_menu_position(
     menu_win: &WebviewWindow,
-    cursor_x: i32,
-    cursor_y: i32,
+    anchor_x: i32,
+    anchor_y: i32,
     width_logical: f64,
     height_logical: f64,
 ) -> PhysicalPosition<i32> {
@@ -669,11 +736,11 @@ fn compute_tray_menu_position(
     };
 
     let margin = (8.0 * scale).round() as i32;
-    let mut x = cursor_x - menu_w + margin;
-    let mut y = cursor_y - menu_h - margin;
+    let mut x = anchor_x - menu_w + margin;
+    let mut y = anchor_y - menu_h - margin;
 
     if y < work_y + margin {
-        y = cursor_y + margin;
+        y = anchor_y + margin;
     }
     if y + menu_h > work_bottom - margin {
         y = work_bottom - menu_h - margin;

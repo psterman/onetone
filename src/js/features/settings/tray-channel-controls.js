@@ -15,21 +15,21 @@
   var DEBUG_EVENT_PATTERNS = [/vosk\s*state:/i, /voice_bootstrap/i, /fingerprintChanged/i, /kws\s*state:/i];
 
   var LABEL_FB = {
-    trayChVoiceMaster: '语音听写',
-    trayChVoiceEnd: '说结束词就停',
-    trayChKeysUseScenario: '使用这个场景',
-    trayChKeysCancel: '再按一次能取消',
-    trayChKeysAutoSend: '输完自动发送',
+    trayChVoiceMaster: '语音输入',
+    trayChVoiceEnd: '说完就停',
+    trayChKeysUseScenario: '快捷键',
+    trayChKeysCancel: '再按可取消',
+    trayChKeysAutoSend: '自动发送',
     trayChPadEnabled: '启用小键盘',
-    trayChPadShowKeyboard: '显示屏幕键盘',
-    trayChCamPresence: '认人脸走/回',
-    trayChCamAutoMute: '走远自动关麦',
-    channelConfigTrayShow: '托盘里显示',
+    trayChPadShowKeyboard: '显示小键盘',
+    trayChPadRequireFg: '跟着前台助手',
+    trayChCamPresence: '镜头动作识别',
+    trayChCamTriggerAway: '检测离席',
+    trayChCamAutoMute: '走远自动静音',
+    trayChCamNoFaceMute: '没人也静音',
     channelConfigBasic: '基础配置',
-    trayLayoutShowVoice: '显示语音',
-    trayLayoutShowKeys: '显示按键',
-    trayLayoutShowSoftPad: '显示小键盘',
-    trayLayoutShowCamera: '显示摄像头'
+    trayGoTrayMainSwitch: '去托盘调主开关',
+    trayChGoSettings: '完整设置 ▸'
   };
 
   var trayLayout = {
@@ -190,45 +190,70 @@
     if (channel === 'habits') return [];
     if (channel === 'voice') {
       return [
-        { id: 'voiceMaster', tier: 'l1', stateKey: 'config.voiceAssistEnabled', ipc: 'config', labelKey: 'trayChVoiceMaster', hintKey: 'trayChVoiceMasterHint' },
-        { id: 'voiceEnd', tier: 'l2', stateKey: 'config.voiceEnd.enabled', ipc: 'config', labelKey: 'trayChVoiceEnd', hintKey: 'trayChVoiceEndHint' },
-        { id: 'trayShow', tier: 'l2', stateKey: 'trayCustomization.showInTray.voice', ipc: 'customization', labelKey: 'channelConfigTrayShow' }
+        { id: 'voiceMaster', tier: 'l1', stateKey: 'config.voiceAssistEnabled', ipc: 'config', labelKey: 'trayChVoiceMaster', hintKey: 'trayChVoiceMasterHint', needs: null },
+        { id: 'voiceEnd', tier: 'l2', stateKey: 'config.voiceEnd.enabled', ipc: 'config', labelKey: 'trayChVoiceEnd', hintKey: 'trayChVoiceEndHint', needs: 'voiceMaster' }
       ];
     }
     if (channel === 'keys') {
       return [
-        { id: 'keysEnabled', tier: 'l1', stateKey: 'mappings[].enabled', ipc: 'config', labelKey: 'trayChKeysUseScenario', hintKey: 'trayChKeysUseScenarioHint' },
-        { id: 'keysCancel', tier: 'l2', stateKey: 'mappings[].cancelEnabled', ipc: 'config', labelKey: 'trayChKeysCancel', hintKey: 'trayChKeysCancelHint' },
-        { id: 'keysAutoSend', tier: 'l2', stateKey: 'mappings[].autoEnterEnabled', ipc: 'config', labelKey: 'trayChKeysAutoSend', hintKey: 'trayChKeysAutoSendHint' },
-        { id: 'trayShow', tier: 'l2', stateKey: 'trayCustomization.showInTray.keys', ipc: 'customization', labelKey: 'channelConfigTrayShow' }
+        { id: 'keysEnabled', tier: 'l1', stateKey: 'mappings[].enabled', ipc: 'config', labelKey: 'trayChKeysUseScenario', hintKey: 'trayChKeysUseScenarioHint', needs: null },
+        { id: 'keysCancel', tier: 'l2', stateKey: 'mappings[].cancelEnabled', ipc: 'config', labelKey: 'trayChKeysCancel', hintKey: 'trayChKeysCancelHint', needs: 'keysEnabled' },
+        { id: 'keysAutoSend', tier: 'l2', stateKey: 'mappings[].autoEnterEnabled', ipc: 'config', labelKey: 'trayChKeysAutoSend', hintKey: 'trayChKeysAutoSendHint', needs: 'keysEnabled' }
       ];
     }
     if (channel === 'softPad') {
       return [
-        { id: 'padEnabled', tier: 'l1', stateKey: 'mappings[].codexMicroPad.enabled', ipc: 'config', labelKey: 'trayChPadEnabled', hintKey: 'trayChPadEnabledHint' },
-        { id: 'padOverlay', tier: 'l2', stateKey: 'mappings[].codexMicroPad.overlayEnabled', ipc: 'config', labelKey: 'trayChPadShowKeyboard', hintKey: 'trayChPadShowKeyboardHint' },
-        { id: 'trayShow', tier: 'l2', stateKey: 'trayCustomization.showInTray.softPad', ipc: 'customization', labelKey: 'channelConfigTrayShow' }
+        { id: 'padEnabled', tier: 'l1', stateKey: 'mappings[].codexMicroPad.enabled', ipc: 'config', labelKey: 'trayChPadEnabled', hintKey: 'trayChPadEnabledHint', needs: null },
+        { id: 'padOverlay', tier: 'l2', stateKey: 'mappings[].codexMicroPad.overlayEnabled', ipc: 'config', labelKey: 'trayChPadShowKeyboard', hintKey: 'trayChPadShowKeyboardHint', needs: 'padEnabled' },
+        { id: 'padRequireFg', tier: 'l2', stateKey: 'mappings[].codexMicroPad.requireForeground', ipc: 'config', labelKey: 'trayChPadRequireFg', hintKey: 'trayChPadRequireFgHint', needs: 'padOverlay' }
       ];
     }
     if (channel === 'camera') {
       return [
-        { id: 'camPresence', tier: 'l1', stateKey: 'config.cameraPrefs.presenceActions.enabled', ipc: 'config', labelKey: 'trayChCamPresence', hintKey: 'trayChCamPresenceHint' },
-        { id: 'camAutoMute', tier: 'l2', stateKey: 'config.cameraPrefs.autoMute.enabled', ipc: 'config', labelKey: 'trayChCamAutoMute', hintKey: 'trayChCamAutoMuteHint' },
-        { id: 'trayShow', tier: 'l2', stateKey: 'trayCustomization.showInTray.camera', ipc: 'customization', labelKey: 'channelConfigTrayShow' }
+        { id: 'camPresence', tier: 'l1', stateKey: 'config.cameraPrefs.presenceActions.enabled', ipc: 'config', labelKey: 'trayChCamPresence', hintKey: 'trayChCamPresenceHint', needs: null },
+        { id: 'camTriggerAway', tier: 'l2', stateKey: 'config.cameraPrefs.presenceActions.triggers.away', ipc: 'config', labelKey: 'trayChCamTriggerAway', hintKey: 'trayChCamTriggerAwayHint', needs: 'camPresence' },
+        { id: 'camAutoMute', tier: 'l1', stateKey: 'config.cameraPrefs.autoMute.enabled', ipc: 'config', labelKey: 'trayChCamAutoMute', hintKey: 'trayChCamAutoMuteHint', needs: null },
+        { id: 'camNoFaceMute', tier: 'l2', stateKey: 'config.cameraPrefs.autoMute.noFaceMute', ipc: 'config', labelKey: 'trayChCamNoFaceMute', hintKey: 'trayChCamNoFaceMuteHint', needs: 'camAutoMute' }
       ];
     }
     return [];
+  }
+
+  function findControlById(ctrlId) {
+    var i;
+    for (i = 0; i < CHANNEL_ORDER.length; i++) {
+      var list = allControls(CHANNEL_ORDER[i]);
+      var hit = list.find(function (c) { return c.id === ctrlId; });
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  function controlsForSurface(channel, surface) {
+    var controls = getChannelControls(channel, surface);
+    var V2 = global.OneToneTrayLayoutV2;
+    if (V2 && layoutV2()) {
+      var visible = V2.visibleControlsForChannel(layoutV2(), channel);
+      if (visible.length) {
+        var allowed = {};
+        visible.forEach(function (c) {
+          var parts = c.id.split(':');
+          if (parts[2]) allowed[parts[2]] = true;
+        });
+        controls = controls.filter(function (c) { return !!allowed[c.id]; });
+      }
+    }
+    return controls;
   }
 
   function getChannelControls(channel, surface) {
     var list = allControls(channel);
     if (!surface || surface === 'inspector') return [];
     if (surface === 'compact') {
-      return list.filter(function (c) { return c.tier === 'l2' || c.id === 'trayShow'; });
+      return list.filter(function (c) { return c.tier === 'l2'; });
     }
-    if (surface === 'os') {
-      return list.filter(function (c) { return c.id !== 'trayShow'; });
-    }
+    if (surface === 'editor') return list;
+    if (surface === 'os') return list;
     return list;
   }
 
@@ -258,6 +283,11 @@
       pad = pm && pm.codexMicroPad;
       return !!(pad && pad.overlayEnabled !== false);
     }
+    if (ctrl.id === 'padRequireFg') {
+      pm = padMapping(cfg);
+      pad = pm && pm.codexMicroPad;
+      return !!(pad && pad.requireForeground !== false);
+    }
     if (ctrl.id === 'camPresence') {
       var cam = (cfg && cfg.cameraPrefs) || {};
       var pa = cam.presenceActions || cam.presence_actions || {};
@@ -268,11 +298,16 @@
       var am = cam.autoMute || cam.auto_mute || {};
       return !!(am && am.enabled);
     }
-    if (ctrl.id === 'trayShow') {
-      var ch = ctx.channel || 'voice';
-      var V2 = global.OneToneTrayLayoutV2;
-      if (V2 && layoutV2()) return V2.blockVisible(layoutV2(), V2.channelBlockId(ch));
-      return !!trayLayout.showInTray[ch];
+    if (ctrl.id === 'camTriggerAway') {
+      cam = (cfg && cfg.cameraPrefs) || {};
+      var pa2 = cam.presenceActions || cam.presence_actions || {};
+      var tr = pa2.triggers || {};
+      return !!tr.away;
+    }
+    if (ctrl.id === 'camNoFaceMute') {
+      cam = (cfg && cfg.cameraPrefs) || {};
+      am = cam.autoMute || cam.auto_mute || {};
+      return !!(am && am.noFaceMute);
     }
     return false;
   }
@@ -328,12 +363,13 @@
         ? saveMappingPatch(mappingId, { autoEnterEnabled: on }, 'tray-os-keys-autosend')
         : saveMappingConfig('tray-keys-autosend');
     }
-    if (ctrl.id === 'padEnabled' || ctrl.id === 'padOverlay') {
+    if (ctrl.id === 'padEnabled' || ctrl.id === 'padOverlay' || ctrl.id === 'padRequireFg') {
       pm = padMapping(cfg) || m;
       pad = pm && pm.codexMicroPad;
       if (!pad || !pm) return Promise.resolve();
       if (ctrl.id === 'padEnabled') pad.enabled = on;
-      else pad.overlayEnabled = on;
+      else if (ctrl.id === 'padOverlay') pad.overlayEnabled = on;
+      else pad.requireForeground = on;
       return invoke('cmd_codex_micro_pad_set_flags', {
         mappingId: String(pm.id),
         enabled: pad.enabled !== false,
@@ -367,15 +403,30 @@
       notifyChanged({ source: 'config', channel: 'camera', _fromNotify: true });
       return Promise.resolve();
     }
-    if (ctrl.id === 'trayShow') {
-      var ch2 = ctx.channel || 'voice';
-      var V2w = global.OneToneTrayLayoutV2;
-      if (V2w && layoutV2()) {
-        V2w.setBlockVisible(layoutV2(), V2w.channelBlockId(ch2), on);
-        return saveCustomization();
+    if (ctrl.id === 'camTriggerAway') {
+      if (cfg) {
+        if (!cfg.cameraPrefs) cfg.cameraPrefs = {};
+        if (!cfg.cameraPrefs.presenceActions) cfg.cameraPrefs.presenceActions = { triggers: {} };
+        if (!cfg.cameraPrefs.presenceActions.triggers) cfg.cameraPrefs.presenceActions.triggers = {};
+        cfg.cameraPrefs.presenceActions.triggers.away = on;
       }
-      trayLayout.showInTray[ch2] = on;
-      return saveCustomization();
+      persist = global.OneToneConfigPersist;
+      if (persist && persist.saveCameraPrefsQuiet) persist.saveCameraPrefsQuiet();
+      notifyChanged({ source: 'config', channel: 'camera', _fromNotify: true });
+      return Promise.resolve();
+    }
+    if (ctrl.id === 'camNoFaceMute') {
+      if (cfg) {
+        if (!cfg.cameraPrefs) cfg.cameraPrefs = {};
+        if (!cfg.cameraPrefs.autoMute || typeof cfg.cameraPrefs.autoMute !== 'object') {
+          cfg.cameraPrefs.autoMute = { enabled: false };
+        }
+        cfg.cameraPrefs.autoMute.noFaceMute = on;
+      }
+      persist = global.OneToneConfigPersist;
+      if (persist && persist.saveCameraPrefsQuiet) persist.saveCameraPrefsQuiet();
+      notifyChanged({ source: 'config', channel: 'camera', _fromNotify: true });
+      return Promise.resolve();
     }
     return Promise.resolve();
   }
@@ -420,9 +471,66 @@
     else if (drawer && drawer.openSettings) drawer.openSettings({ panel: panel });
   }
 
+  function openTrayEditor(channel) {
+    var drawer = global.OneToneSettingsDrawer;
+    if (drawer && drawer.open) drawer.open({ panel: 'tray', trayEditorFocus: channel || 'habit' });
+    else if (drawer && drawer.openSettings) drawer.openSettings({ panel: 'tray', trayEditorFocus: channel || 'habit' });
+  }
+
+  function renderSwitchCards(host, channel, ctx, opts) {
+    opts = opts || {};
+    if (!host || channel === 'habits') return Promise.resolve();
+    ctx = ctx || { surface: 'editor' };
+    return loadTrayLayout().then(function () {
+      host.innerHTML = '';
+      var controls = controlsForSurface(channel, 'editor');
+      controls.forEach(function (ctrl) {
+        var on = readControlValue(ctrl, Object.assign({ channel: channel }, ctx));
+        var dep = ctrl.needs ? findControlById(ctrl.needs) : null;
+        var depOn = dep ? readControlValue(dep, Object.assign({ channel: channel }, ctx)) : true;
+        var card = document.createElement('div');
+        card.className = 'ch-switch-card is-' + ctrl.tier + (on ? '' : ' is-off');
+        card.setAttribute('data-sw-id', ctrl.id);
+        var label = t(ctrl.labelKey, LABEL_FB[ctrl.labelKey] || ctrl.labelKey);
+        var hint = ctrl.hintKey ? t(ctrl.hintKey, '') : '';
+        var warnHtml = '';
+        if (dep && !depOn) {
+          warnHtml = '<div class="ch-switch-card__warn"><span class="ch-switch-card__warn__ic">⚠</span><span>此开关依赖 <b>' +
+            t(dep.labelKey, LABEL_FB[dep.labelKey] || dep.labelKey) + '</b> 未开启</span></div>';
+        } else if (dep && depOn) {
+          warnHtml = '<div class="ch-switch-card__rel" data-go-rel="' + dep.id + '"><span class="ch-switch-card__rel__ic">↪</span><span class="ch-switch-card__rel__name">' +
+            t(dep.labelKey, LABEL_FB[dep.labelKey] || dep.labelKey) + '</span> 已开启</div>';
+        }
+        card.innerHTML = '<div class="ch-switch-card__head"><div class="ch-switch-card__main">' +
+          '<div class="ch-switch-card__title"><span class="ch-switch-card__name">' + label + '</span>' +
+          '<span class="ch-switch-card__lvl ' + ctrl.tier + '">' + ctrl.tier.toUpperCase() + '</span></div>' +
+          (hint ? '<div class="ch-switch-card__hint">' + hint + '</div>' : '') +
+          '</div><button type="button" class="ch-switch-card__toggle toggle-switch' + (on ? ' on' : '') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '"></button></div>' + warnHtml;
+        var btn = card.querySelector('.ch-switch-card__toggle');
+        btn.addEventListener('click', function () {
+          var next = btn.getAttribute('aria-checked') !== 'true';
+          setToggle(btn, next);
+          writeControlValue(ctrl, next, Object.assign({ channel: channel, surface: 'editor' }, ctx)).then(function () {
+            if (opts.onChange) opts.onChange(ctrl.id);
+            syncAllSurfaces(channel);
+            renderSwitchCards(host, channel, ctx, opts);
+          }).catch(function () { setToggle(btn, !next); });
+        });
+        host.appendChild(card);
+      });
+      var go = document.createElement('button');
+      go.type = 'button';
+      go.className = 'go-link';
+      go.textContent = t('trayChGoSettings', '完整设置 ▸');
+      go.addEventListener('click', function () { openSettingsPanel(SETTINGS_PANEL[channel]); });
+      host.appendChild(go);
+    });
+  }
+
   function renderCompactGroup(host, channel, opts) {
     opts = opts || {};
     if (!host || channel === 'habits') return Promise.resolve();
+    var CH_NAMES = { voice: '语音', keys: '按键', softPad: '小键盘', camera: '摄像头' };
     return loadTrayLayout().then(function () {
       host.innerHTML = '';
       var group = document.createElement('div');
@@ -430,24 +538,14 @@
       group.innerHTML = '<div class="cc-gh">' + t('channelConfigBasic', '基础配置') + '</div>';
       var ctx = { surface: 'compact' };
       getChannelControls(channel, 'compact').forEach(function (ctrl) {
-        var row = makeToggleRow(ctrl, channel, ctx, 'cc-row');
-        if (ctrl.id === 'trayShow') {
-          row.classList.add('cc-row-trayshow');
-          var lbl = row.querySelector('.tray-ctrl-lbl');
-          if (lbl) {
-            lbl.style.cursor = 'pointer';
-            lbl.title = t('trayShowOpenEditor', '在托盘编辑器中调整');
-            lbl.addEventListener('click', function (e) {
-              if (e.target.closest && e.target.closest('.toggle-switch')) return;
-              e.preventDefault();
-              var drawer = global.OneToneSettingsDrawer;
-              if (drawer && drawer.open) drawer.open({ panel: 'tray', trayEditorFocus: channel });
-              else if (drawer && drawer.openSettings) drawer.openSettings({ panel: 'tray', trayEditorFocus: channel });
-            });
-          }
-        }
-        group.appendChild(row);
+        group.appendChild(makeToggleRow(ctrl, channel, ctx, 'cc-row'));
       });
+      var link = document.createElement('button');
+      link.type = 'button';
+      link.className = 'cc-row cc-row-link';
+      link.textContent = t('trayGoTrayMainSwitch', '去托盘调主开关') + ' ▸ ' + (CH_NAMES[channel] || channel);
+      link.addEventListener('click', function () { openTrayEditor(channel); });
+      group.appendChild(link);
       host.appendChild(group);
       if (channel === 'keys' && global.OneToneAppBehaviorRules && global.OneToneAppBehaviorRules.renderCompactAppPrefs) {
         var prefs = document.createElement('div');
@@ -670,16 +768,7 @@
       ctx.config = osCtx.config;
       ctx.mapping = osCtx.mapping;
       ctx.voiceEnd = osCtx.voiceEnd;
-      var controls = getChannelControls(channel, 'os');
-      var V2 = global.OneToneTrayLayoutV2;
-      if (V2 && layoutV2()) {
-        var allowed = {};
-        V2.visibleControlsForChannel(layoutV2(), channel).forEach(function (c) {
-          var parts = c.id.split(':');
-          if (parts[2]) allowed[parts[2]] = true;
-        });
-        controls = controls.filter(function (c) { return !!allowed[c.id]; });
-      }
+      var controls = controlsForSurface(channel, 'os');
       var titleCtrl = controls.filter(function (c) { return c.tier === 'l1'; })[0];
       var l2 = controls.filter(function (c) {
         return c.tier === 'l2' || (c.tier === 'l1' && c !== titleCtrl);
@@ -690,15 +779,20 @@
         : '';
       var l2Html = '';
       if (l2.length) {
-        l2Html = '<div class="ch-l2' + (isOpen ? '' : ' is-collapsed') + '">' + l2.map(function (ctrl) {
+        l2Html = '<div class="ch-l2 ch-drawer' + (isOpen ? ' is-open' : '') + '">' + l2.map(function (ctrl) {
           return '<div class="sw-inline" data-ctrl="' + ctrl.id + '"><span>' + t(ctrl.labelKey, LABEL_FB[ctrl.labelKey] || ctrl.labelKey) + '</span>' + osToggleHtml(readControlValue(ctrl, ctx)) + '</div>';
         }).join('') + '<button type="button" class="more" data-ch-more="' + channel + '">' + t('trayChGoSettings', '完整设置 ▸') + '</button></div>';
       }
-      var chev = l2.length ? '<button type="button" class="chev-btn' + (isOpen ? ' open' : '') + '" data-ch-chev="' + channel + '" aria-label="展开">▸</button>' : '';
-      shell.innerHTML = '<div class="ch-block' + (isOpen ? ' is-open' : '') + '"><div class="ch-main">'
+      var foldBtn = l2.length
+        ? '<button type="button" class="ch-fold-btn' + (isOpen ? ' is-open' : '') + '" data-ch-chev="' + channel + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-label="' + (isOpen ? '收起' : '展开') + '"><span class="ch-fold-btn__ic" aria-hidden="true">⌄</span></button>'
+        : '';
+      var actions = '<div class="ch-actions">' + l1Toggle + foldBtn + '</div>';
+      var mainToggle = l2.length ? ' data-ch-toggle="' + channel + '"' : '';
+      shell.innerHTML = '<div class="ch-block' + (isOpen ? ' is-open' : '') + '"><div class="ch-main"' + mainToggle + '>'
         + '<span class="icowrap ' + iconCls + '"><span class="ico">' + (ICONS[channel] || ICONS.voice || '') + '</span></span>'
-        + '<div class="ch-body"><div class="ch-title-row"><span class="name">' + (ch.name || channel) + '</span>' + l1Toggle + '</div>'
-        + '<div class="ch-scene">' + String(ch.meta || '').replace(/</g, '&lt;') + '</div></div>' + chev + '</div>' + l2Html + '</div>';
+        + '<div class="ch-body"><div class="ch-title-row"><span class="name">' + (ch.name || channel) + '</span></div>'
+        + '<div class="ch-scene">' + String(ch.meta || '').replace(/</g, '&lt;') + '</div></div>'
+        + actions + '</div>' + l2Html + '</div>';
 
       shell.querySelectorAll('.sw-toggle').forEach(function (btn) {
         var row = btn.closest('[data-ctrl]');
@@ -722,11 +816,19 @@
         });
       });
       var chevBtn = shell.querySelector('[data-ch-chev]');
-      if (chevBtn) {
-        chevBtn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          openOsChannel = openOsChannel === channel ? null : channel;
-          renderOsTrayBlock(shell, channel, state, opts);
+      function toggleFold(e) {
+        if (e) e.stopPropagation();
+        openOsChannel = openOsChannel === channel ? null : channel;
+        renderOsTrayBlock(shell, channel, state, opts).then(function () {
+          if (opts.onRefresh) opts.onRefresh();
+        });
+      }
+      if (chevBtn) chevBtn.addEventListener('click', toggleFold);
+      var mainRow = shell.querySelector('[data-ch-toggle]');
+      if (mainRow) {
+        mainRow.addEventListener('click', function (e) {
+          if (e.target.closest('.ch-actions, .sw-toggle, [data-ctrl]')) return;
+          toggleFold(e);
         });
       }
       var moreBtn = shell.querySelector('[data-ch-more]');
@@ -788,6 +890,10 @@
     formatTrayEventText: formatTrayEventText,
     formatWeekTrendSummary: formatWeekTrendSummary,
     renderCompactGroup: renderCompactGroup,
+    renderSwitchCards: renderSwitchCards,
+    findControlById: findControlById,
+    allControls: allControls,
+    openTrayEditor: openTrayEditor,
     renderInspectorPreview: renderInspectorPreview,
     renderInspectorCard: renderInspectorCard,
     renderOsTrayBlock: renderOsTrayBlock,
@@ -817,6 +923,7 @@
     saveCustomization: saveCustomization,
     hydrateOsContext: hydrateOsContext,
     setOpenOsChannel: function (ch) { openOsChannel = ch; },
-    getOpenOsChannel: function () { return openOsChannel; }
+    getOpenOsChannel: function () { return openOsChannel; },
+    setPreviewFocusChannel: function (ch) { openOsChannel = ch || null; }
   };
 })(typeof window !== 'undefined' ? window : globalThis);

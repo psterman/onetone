@@ -1,10 +1,29 @@
 /**
- * Soft Pad Face 3 — tray status panel: preview left + channel subtabs right.
+ * Soft Pad Face 3 — tray editor: preview left + subtab switch cards right.
  */
 (function (global) {
   'use strict';
 
   var invoke = global.OneToneIpc && global.OneToneIpc.invoke;
+  var trayState = null;
+  var mounted = false;
+  var activeTab = 'habit';
+  var persona = 'compact';
+  var trayListenUnsubs = [];
+  var traySegs = ['global', 'mic', 'channels', 'schemes'];
+  var saveFlashTimer = null;
+  var syncPulseTimer = null;
+
+  var CHANNELS = ['habit', 'voice', 'keys', 'softPad', 'camera'];
+  var CH_LABEL = { habit: '当前习惯', voice: '语音', keys: '按键', softPad: '小键盘', camera: '摄像头' };
+  var CH_ICON = { habit: '📋', voice: '🎤', keys: '⌨', softPad: '▦', camera: '📷' };
+  var PREVIEW_HOST = {
+    voice: 'softPadTrayPreviewVoice',
+    keys: 'softPadTrayPreviewKeys',
+    softPad: 'softPadTrayPreviewSoftPad',
+    camera: 'softPadTrayPreviewCamera'
+  };
+  var HABITS_LINK_LABEL = '跳转「我的习惯」查看详情';
 
   function t(key, fallback) {
     var i18n = global.OneToneI18n;
@@ -15,67 +34,187 @@
     return fallback || key;
   }
 
-  var layout = { showEvent: true, showInTray: { voice: true, keys: true, softPad: true, camera: false } };
-  var trayState = null;
-  var mounted = false;
-  var activeChTab = 'voice';
-  var padFlagsTimer = 0;
-  var layoutSaveTimer = 0;
-  var traySegs = ['global', 'mic', 'channels', 'event', 'schemes'];
-  var trayListenUnsubs = [];
+  function $(id) { return document.getElementById(id); }
+
+  function esc(s) {
+    return String(s || '').replace(/</g, '&lt;');
+  }
+
+  function flashSaveIndicator() {
+    var el = $('softPadTraySaveIndicator');
+    if (!el) return;
+    el.classList.add('is-saved');
+    clearTimeout(saveFlashTimer);
+    saveFlashTimer = setTimeout(function () { el.classList.remove('is-saved'); }, 600);
+  }
+
+  function pulsePreviewSync() {
+    var shell = $('softPadTrayPreviewShell');
+    if (!shell) return;
+    shell.classList.add('is-sync-pulse');
+    clearTimeout(syncPulseTimer);
+    syncPulseTimer = setTimeout(function () { shell.classList.remove('is-sync-pulse'); }, 500);
+  }
+
+  function channels() {
+    return (trayState && trayState.channels) || [];
+  }
+
+  function channelById(ch) {
+    return channels().find(function (x) { return x.id === ch; }) || {};
+  }
+
+  function mappingById(id) {
+    id = String(id || '').trim();
+    if (!id) return null;
+    var core = global.OneToneMappingCore;
+    if (core && core.byId) return core.byId(id);
+    var st = global.OneToneState && global.OneToneState.state;
+    var maps = (st && st.config && st.config.mappings) || [];
+    for (var i = 0; i < maps.length; i++) {
+      if (maps[i] && maps[i].id === id) return maps[i];
+    }
+    return null;
+  }
+
+  function habitName(m) {
+    if (!m) return '';
+    var scope = global.OneToneSettingsScopeSwitch;
+    if (scope && scope.habitScopeDisplayName) return scope.habitScopeDisplayName(m);
+    if (scope && scope.habitName) return scope.habitName(m);
+    var hub = global.OneToneHabitHub;
+    if (hub && hub.habitName) return hub.habitName(m);
+    return String(m.group || m.label || m.id || '').trim() || '—';
+  }
+
+  function runtimeSceneId() {
+    var rt = global.OneToneRuntimeHabitControl;
+    if (rt && rt.resolveActiveSceneId) {
+      var fg = rt.foregroundIdentity ? rt.foregroundIdentity() : null;
+      return String(rt.resolveActiveSceneId(fg) || '').trim();
+    }
+    var st = global.OneToneState && global.OneToneState.state;
+    return String((st && st.config && st.config.activeSceneId) || '').trim();
+  }
+
+  function resolveHabitDisplay() {
+    var g = (trayState && trayState.global) || {};
+    var activeId = String(g.activeHabitId || runtimeSceneId() || '').trim();
+    var m = mappingById(activeId);
+    var habitLabel = (g.activeHabitLabel && g.activeHabitLabel !== '—')
+      ? g.activeHabitLabel
+      : (m ? habitName(m) : t('trayHeroNoHabit', '未配置习惯'));
+    var appName = '';
+    if (m) appName = habitName(m);
+    else if (g.userLabel && g.userLabel !== '—') appName = g.userLabel;
+    if (!appName) appName = t('homeWbChipUniversal', '通用设置');
+    return {
+      hasHabit: !!(activeId || (habitLabel && habitLabel !== '—' && habitLabel !== t('trayHeroNoHabit', '未配置习惯'))),
+      habitLabel: habitLabel,
+      appName: appName
+    };
+  }
+
+  function openHabitsPanel() {
+    var drawer = global.OneToneSettingsDrawer;
+    if (drawer && drawer.open) drawer.open({ panel: 'habits' });
+    else if (drawer && drawer.openSettings) drawer.openSettings({ panel: 'habits' });
+  }
 
   function patchTraySeg(seg, payload) {
-    if (!trayState) {
-      trayState = { global: { mode: 'listening', activeChannelIds: [] }, mic: {}, channels: [], event: null };
-    }
+    if (!trayState) trayState = { global: {}, mic: {}, channels: [], schemes: [] };
     if (seg === 'global') trayState.global = payload;
     else if (seg === 'mic') trayState.mic = payload;
     else if (seg === 'channels') trayState.channels = payload;
-    else if (seg === 'event') trayState.event = payload;
     else if (seg === 'schemes') trayState.schemes = payload;
     syncPreview();
+    if (seg === 'global' || seg === 'schemes') renderChannelPanel();
+  }
+
+  function syncPreviewBlockOrder(lay) {
+    var shell = $('softPadTrayPreviewShell');
+    if (!lay || !shell) return;
+    var blocks = (lay.blocks || []).slice().sort(function (a, b) { return a.order - b.order; });
+    var head = $('softPadTrayChannelsHead');
+    var seps = shell.querySelectorAll('.soft-pad-tray-sep');
+    var sepCh = seps[0];
+    var sepMic = seps[1];
+    var channelStarted = false;
+    blocks.forEach(function (b) {
+      var isCh = b.id.indexOf('block:channel:') === 0;
+      if (isCh && !channelStarted) {
+        channelStarted = true;
+        if (sepCh) shell.appendChild(sepCh);
+        if (head) shell.appendChild(head);
+      }
+      if (b.id === 'block:mic' && sepMic) shell.appendChild(sepMic);
+      if (b.id === 'block:scene') {
+        var scene = $('softPadTraySceneBlock');
+        if (scene) shell.appendChild(scene);
+      }
+      if (isCh) {
+        var ch = b.id.slice('block:channel:'.length);
+        var host = $(PREVIEW_HOST[ch]);
+        if (host) shell.appendChild(host);
+      }
+      if (b.id === 'block:mic') {
+        var mic = $('softPadTrayMicRow');
+        if (mic) shell.appendChild(mic);
+      }
+      if (b.id === 'block:footer') {
+        var ft = $('softPadTrayPreviewFooter');
+        if (ft) shell.appendChild(ft);
+      }
+    });
   }
 
   function applyTrayLayoutCfg(cfg) {
-    if (!cfg) return;
     var V2 = global.OneToneTrayLayoutV2;
     var TCC = global.OneToneTrayChannelControls;
-    if (V2 && cfg.version === V2.VERSION && cfg.blocks) {
-      if (TCC && TCC.setTrayLayoutV2) TCC.setTrayLayoutV2(cfg);
-      layout.showEvent = V2.blockVisible(cfg, 'block:event');
-      layout.showInTray = V2.legacyShowInTray(cfg);
-    } else if (V2) {
-      var merged = V2.mergeLayoutWithCatalog(V2.migrateV1(cfg));
-      if (TCC && TCC.setTrayLayoutV2) TCC.setTrayLayoutV2(merged.layout);
-      layout.showEvent = V2.blockVisible(merged.layout, 'block:event');
-      layout.showInTray = V2.legacyShowInTray(merged.layout);
-    } else {
-      layout.showEvent = cfg.showEvent !== false;
-      var s = cfg.showInTray || cfg.show_in_tray || {};
-      layout.showInTray.voice = s.voice !== false;
-      layout.showInTray.keys = s.keys !== false;
-      layout.showInTray.softPad = s.softPad !== false || s.soft_pad !== false;
-      layout.showInTray.camera = !!(s.camera);
-    }
+    if (!V2 || !cfg) return;
+    var merged = V2.mergeLayoutWithCatalog(cfg.version === V2.VERSION ? cfg : V2.migrateV1(cfg));
+    if (TCC && TCC.setTrayLayoutV2) TCC.setTrayLayoutV2(merged.layout);
+    syncBlockVisibility(merged.layout);
+    syncPreviewBlockOrder(merged.layout);
     syncPreview();
+    renderSubtabs();
+    renderChannelPanel();
+    syncPersonaSegUI();
+    var dirty = merged.newBlocks > 0 || merged.newControls > 0 || merged.repaired;
+    if (dirty && invoke) {
+      invoke('cmd_tray_customization_save', merged.layout).then(function () {
+        flashSaveIndicator();
+      }).catch(function () {});
+    }
   }
 
-  function syncBlockVisibility() {
+  function anyChannelVisible(lay) {
     var V2 = global.OneToneTrayLayoutV2;
-    var TCC = global.OneToneTrayChannelControls;
-    var lay = TCC && TCC.getTrayLayoutV2 ? TCC.getTrayLayoutV2() : null;
+    if (!V2 || !lay) return false;
+    return ['voice', 'keys', 'softPad', 'camera'].some(function (ch) {
+      return V2.blockVisible(lay, V2.channelBlockId(ch));
+    });
+  }
+
+  function syncBlockVisibility(lay) {
+    var V2 = global.OneToneTrayLayoutV2;
     if (!V2 || !lay) return;
     document.querySelectorAll('[data-block-id]').forEach(function (el) {
       var id = el.getAttribute('data-block-id');
-      el.style.display = V2.blockVisible(lay, id) ? '' : 'none';
+      if (id === 'block:sep-ch') {
+        el.style.display = anyChannelVisible(lay) ? '' : 'none';
+        return;
+      }
+      if (id === 'block:sep-mic') {
+        el.style.display = (anyChannelVisible(lay) || V2.blockVisible(lay, 'block:mic')) ? '' : 'none';
+        return;
+      }
+      if (id.indexOf('block:') === 0) {
+        el.style.display = V2.blockVisible(lay, id) ? '' : 'none';
+      }
     });
     var head = $('softPadTrayChannelsHead');
-    if (head) {
-      var anyCh = V2.CHANNELS.some(function (ch) {
-        return V2.blockVisible(lay, V2.channelBlockId(ch));
-      });
-      head.style.display = anyCh ? '' : 'none';
-    }
+    if (head) head.style.display = anyChannelVisible(lay) ? '' : 'none';
   }
 
   function subscribeTrayLive() {
@@ -99,555 +238,333 @@
   }
 
   function unsubscribeTrayLive() {
-    trayListenUnsubs.forEach(function (fn) {
-      if (typeof fn === 'function') fn();
-    });
+    trayListenUnsubs.forEach(function (fn) { if (typeof fn === 'function') fn(); });
     trayListenUnsubs = [];
   }
 
-  var STAT_IDS = {
-    voice: ['softPadTrayStatVoiceEngine', 'softPadTrayStatVoiceWake', 'softPadTrayStatVoiceEvent', 'softPadTrayStatVoiceErr'],
-    keys: ['softPadTrayStatKeysKey', 'softPadTrayStatKeysMode', 'softPadTrayStatKeysHabit', 'softPadTrayStatKeysLast'],
-    softPad: ['softPadTrayStatPadKeys', 'softPadTrayStatPadAgent', 'softPadTrayStatPadOverlay', 'softPadTrayStatPadFg'],
-    camera: ['softPadTrayStatCamDev', 'softPadTrayStatCamPresence', 'softPadTrayStatCamAutoMute', 'softPadTrayStatCamPerm']
-  };
-
-  function $(id) { return document.getElementById(id); }
-
-  function readConfig() {
-    var st = global.OneToneState && global.OneToneState.state;
-    return st && st.config;
+  function renderPreviewFooter() {
+    var host = $('softPadTrayPreviewFooter');
+    var TF = global.OneToneTrayFooter;
+    if (!host || !TF) return;
+    var links = (trayState && trayState.deepLinks) || TF.defaultLinks();
+    host.innerHTML = TF.renderFooterHtml(links, { previewOnly: true });
+    TF.bindFooter(host, { previewOnly: true });
   }
 
-  function resolveHubEntry() {
-    var Hub = global.OneToneSoftPadHub;
-    return Hub && Hub.resolveSoftPadEntry ? Hub.resolveSoftPadEntry() : null;
+  function renderChannelSkeleton(host) {
+    if (!host) return;
+    host.innerHTML = '<div class="tray-preview-skeleton"><span class="tray-preview-skeleton__dot"></span>加载通道…</div>';
   }
 
-  function chById(state, id) {
-    if (!state || !state.channels) return null;
-    for (var i = 0; i < state.channels.length; i++) {
-      if (state.channels[i].id === id) return state.channels[i];
-    }
-    return null;
+  function todayByChannel() {
+    var g = (trayState && trayState.global) || {};
+    return g.todayByChannel || g.today_by_channel || {};
   }
 
-  function setMiniToggle(el, on) {
-    if (!el) return;
-    el.setAttribute('aria-checked', on ? 'true' : 'false');
+  function channelUsage(ch) {
+    var u = todayByChannel();
+    if (ch === 'softPad') return u.softPad || u.soft_pad || 0;
+    return u[ch] || 0;
   }
 
-  function setPill(id, text, cls) {
-    var el = $(id);
-    if (!el) return;
-    el.textContent = text;
-    el.className = 'soft-pad-tray-st-pill ' + cls;
-  }
-
-  function pillForChannel(ch) {
-    if (!ch) return { text: '—', cls: 'off' };
-    if (!ch.enabled) return { text: '未启用', cls: 'off' };
-    if (ch.state === 'error') return { text: '异常', cls: 'err' };
-    if (ch.state === 'listening') return { text: '监听中', cls: 'run' };
-    if (ch.state === 'standby') return { text: '待命', cls: 'off' };
-    if (ch.state === 'off') return { text: '已关闭', cls: 'off' };
-    return { text: '就绪', cls: 'on' };
-  }
-
-  function dotClassForChannel(ch) {
-    if (!ch || !ch.enabled) return 'off';
-    if (ch.state === 'error') return 'err';
-    if (ch.state === 'listening') return 'run';
-    if (ch.state === 'on' || ch.state === 'ready') return 'on';
-    return 'off';
-  }
-
-  function heroLabel(mode) {
-    if (mode === 'silenced') return t('trayHeroSilenced', '静默中');
-    if (mode === 'paused') return t('listenPaused', '已暂停监听');
-    if (mode === 'error') return t('trayChPillUnavailable', '用不了');
-    if (mode === 'listening') return t('trayChHeroListening', '正在听');
-    return t('trayChHeroStandby', '等着');
-  }
-
-  function hasActiveHabit(g) {
-    return !!(g && g.activeHabitId && g.activeHabitLabel && g.activeHabitLabel !== '—');
-  }
-
-  function setTrayText(id, key, fallback) {
-    var el = $(id);
-    if (el) el.textContent = t(key, fallback);
-  }
-
-  function syncTrayCopy() {
-    setTrayText('softPadTrayChannelsHead', 'trayChSecHead', '各功能状态');
-    setTrayText('softPadTrayTabSoftPadLbl', 'codexMicroPadTitle', '小键盘');
-    setTrayText('softPadTrayCardPadTitle', 'codexMicroPadTitle', '小键盘');
-    setTrayText('softPadTrayTabHabitsLbl', 'homeWbNavSchemes', '我的习惯');
-    setTrayText('softPadTrayCardHabitsTitle', 'homeWbNavSchemes', '我的习惯');
-    setTrayText('softPadTrayStatCamPresenceLbl', 'trayChStatCamPresence', '在不在');
-    setTrayText('softPadTrayInspectorTitle', 'trayEditorTitle', '托盘编辑器');
-  }
-
-  function activeMapping() {
-    var bridge = global.OneToneAppBridge;
-    return bridge && bridge.getActiveMapping ? bridge.getActiveMapping() : null;
-  }
-
-  function camAutoMuteOn(cam) {
-    var am = cam && cam.autoMute;
-    return !!(am && (am.enabled || am === true));
-  }
-
-  function micLabel(mic) {
-    if (!mic || !mic.device) return '—';
-    var st = mic.muted ? '关' : '开';
-    return st + ' · ' + mic.device;
-  }
-
-  function friendlyKey(key) {
-    var k = String(key || '').trim();
-    var map = {
-      RAlt: '右 Alt', 'Right Alt': '右 Alt',
-      LAlt: '左 Alt', 'Left Alt': '左 Alt',
-      AutoTrigger: '自动'
-    };
-    return map[k] || k.replace(/_/g, ' ') || '—';
-  }
-
-  function modeLabel(mode) {
-    var m = String(mode || '').toLowerCase();
-    if (m === 'double') return '双击';
-    if (m === 'longpress') return '长按';
-    if (m === 'perpress') return '每按即发';
-    return '智能连按';
-  }
-
-  function applyStats(ids, stats) {
-    if (!ids || !stats) return;
-    for (var i = 0; i < ids.length; i++) {
-      var el = $(ids[i]);
-      if (!el) continue;
-      el.textContent = (stats[i] && stats[i].value) ? stats[i].value : '—';
-    }
-  }
-
-  function cloneStats(ch) {
-    if (!ch || !ch.stats) return [];
-    return ch.stats.map(function (s) {
-      return { label: s.label, value: s.value };
+  function wirePreviewChannelClicks() {
+    var shell = $('softPadTrayPreviewShell');
+    if (!shell || shell.__otPreviewChBound) return;
+    shell.__otPreviewChBound = true;
+    shell.addEventListener('click', function (e) {
+      var block = e.target.closest('.ch-block');
+      if (!block) return;
+      if (e.target.closest('.sw-toggle, .ch-fold-btn, .more, .toggle-switch, [data-ctrl], .tray-ft__act, .ch-actions')) return;
+      var hostEl = block.parentElement;
+      if (!hostEl || !hostEl.id) return;
+      var ch = null;
+      Object.keys(PREVIEW_HOST).forEach(function (id) {
+        if (PREVIEW_HOST[id] === hostEl.id) ch = id;
+      });
+      if (ch) setTab(ch);
     });
-  }
-
-  function statsForChannel(id, ch) {
-    return cloneStats(ch);
-  }
-
-  function formatEventText(ev) {
-    var TCC = global.OneToneTrayChannelControls;
-    if (TCC && TCC.formatTrayEventText) return TCC.formatTrayEventText(ev);
-    return (ev && ev.text) ? ev.text : t('trayChEventEmpty', '暂无动静');
-  }
-
-  function formatWeekTrend(weekTrend) {
-    var TCC = global.OneToneTrayChannelControls;
-    if (TCC && TCC.formatWeekTrendSummary) return TCC.formatWeekTrendSummary(weekTrend);
-    return '';
-  }
-
-  function setChTab(id) {
-    activeChTab = id || 'voice';
-    document.querySelectorAll('.soft-pad-tray-ch-subtab').forEach(function (tab) {
-      var on = tab.getAttribute('data-ch-tab') === activeChTab;
-      tab.classList.toggle('is-active', on);
-      tab.setAttribute('aria-selected', on ? 'true' : 'false');
-    });
-    document.querySelectorAll('[data-soft-pad-tray-panel]').forEach(function (panel) {
-      panel.hidden = panel.getAttribute('data-soft-pad-tray-panel') !== activeChTab;
-    });
-    refreshControls(activeChTab);
-  }
-
-  var CHANNEL_DEEP_LINKS = {
-    voice: 'voice',
-    keys: 'keys',
-    softpad: 'softPad',
-    camera: 'camera'
-  };
-
-  function openSettings(opts) {
-    var drawer = global.OneToneSettingsDrawer;
-    if (!drawer) return;
-    if (drawer.open) drawer.open(opts);
-    else if (drawer.openSettings) drawer.openSettings(opts);
-  }
-
-  function handleTrayDeepLink(detail) {
-    detail = detail || {};
-    var href = String(detail.href || '').trim();
-    var tab = String(detail.tab || '').trim();
-    if (!href && tab) href = 'main:' + tab;
-    if (!href) return;
-
-    var path = href.indexOf('main:') === 0 ? href.slice(5) : href;
-    if (path === 'home') {
-      if (global.OneToneSettingsDrawer && global.OneToneSettingsDrawer.close) {
-        global.OneToneSettingsDrawer.close();
-      }
-      return;
-    }
-    if (path === 'habits' || path.indexOf('habits') === 0) {
-      var wizard = href.indexOf('wizard=1') >= 0;
-      openSettings({ panel: 'habits', habitWizard: wizard });
-      return;
-    }
-    if (path === 'cmdk' || path.indexOf('cmdk') === 0) {
-      if (global.__otCommandPalette && global.__otCommandPalette.openPalette) {
-        global.__otCommandPalette.openPalette();
-      }
-      return;
-    }
-    if (path === 'settings') {
-      openSettings({ panel: 'basic' });
-      return;
-    }
-    if (path === 'diagnose') {
-      openSettings({ panel: 'debug', debugMode: 'repair' });
-      return;
-    }
-
-    var ch = CHANNEL_DEEP_LINKS[path.toLowerCase()] || CHANNEL_DEEP_LINKS[path];
-    if (ch) {
-      openSettings({ panel: 'tray' });
-      setChTab(ch);
-      if (mounted) refreshTrayState();
-      return;
-    }
-
-    if (path === 'voice') openSettings({ panel: 'voiceWake' });
-    else if (path === 'keys') openSettings({ panel: 'keys' });
-    else if (path === 'camera') openSettings({ panel: 'camera' });
-  }
-
-  function readLayoutFromUI() {
-    var ev = $('softPadTrayChkEvent');
-    layout.showEvent = ev ? ev.checked : true;
-    var TCC = global.OneToneTrayChannelControls;
-    var channels = (TCC && TCC.LAYOUT_CHANNELS) || ['voice', 'keys', 'softPad', 'camera'];
-    channels.forEach(function (ch) {
-      var id = 'softPadTrayChkShow' + ch.charAt(0).toUpperCase() + ch.slice(1);
-      var el = $(id);
-      if (el) layout.showInTray[ch] = el.checked;
-    });
-    if (TCC && TCC.getTrayLayout) {
-      var tl = TCC.getTrayLayout();
-      tl.showEvent = layout.showEvent;
-      channels.forEach(function (ch) { tl.showInTray[ch] = layout.showInTray[ch]; });
-    }
-  }
-
-  function applyLayoutToUI() {
-    if ($('softPadTrayChkEvent')) $('softPadTrayChkEvent').checked = layout.showEvent;
-    var TCC = global.OneToneTrayChannelControls;
-    if (TCC && TCC.syncTrayLayoutTogglesFromState) TCC.syncTrayLayoutTogglesFromState();
-  }
-
-  function mountLayoutToggles() {
-    var host = $('softPadTrayLayoutChannels');
-    var TCC = global.OneToneTrayChannelControls;
-    if (!host || !TCC || !TCC.renderTrayLayoutToggles) return;
-    TCC.renderTrayLayoutToggles(host, { onChange: onLayoutChange });
-  }
-
-  function layoutPayload() {
-    readLayoutFromUI();
-    return {
-      version: 1,
-      showEvent: layout.showEvent,
-      showInTray: {
-        voice: layout.showInTray.voice,
-        keys: layout.showInTray.keys,
-        softPad: layout.showInTray.softPad,
-        camera: layout.showInTray.camera
-      }
-    };
-  }
-
-  function syncTabUi(id, ch) {
-    var dotId = id === 'softPad' ? 'softPadTrayDotSoftPad'
-      : 'softPadTrayDot' + id.charAt(0).toUpperCase() + id.slice(1);
-    var tabId = id === 'softPad' ? 'softPadTrayTabSoftPad'
-      : 'softPadTrayTab' + id.charAt(0).toUpperCase() + id.slice(1);
-    var dot = $(dotId);
-    if (dot) dot.className = 'soft-pad-tray-ch-subtab__dot ' + dotClassForChannel(ch);
-    var tab = $(tabId);
-    if (tab) tab.classList.toggle('is-off', !!(ch && !ch.enabled));
-  }
-
-  function syncChannelUi(id, ch) {
-    var metaId = id === 'softPad' ? 'softPadTrayMetaPad'
-      : 'softPadTrayMeta' + id.charAt(0).toUpperCase() + id.slice(1);
-    var pillId = id === 'softPad' ? 'softPadTrayPillPad'
-      : 'softPadTrayPill' + id.charAt(0).toUpperCase() + id.slice(1);
-    var cardId = id === 'softPad' ? 'softPadTrayCardPad'
-      : 'softPadTrayCard' + id.charAt(0).toUpperCase() + id.slice(1);
-
-    var meta = (ch && ch.meta) ? ch.meta : '—';
-    if ($(metaId)) $(metaId).textContent = meta;
-
-    applyStats(STAT_IDS[id], statsForChannel(id, ch));
-
-    var p = pillForChannel(ch);
-    setPill(pillId, p.text, p.cls);
-
-    var card = $(cardId);
-    if (card) card.classList.toggle('is-off', !!(ch && !ch.enabled));
-
-    syncTabUi(id, ch);
-  }
-
-  function refreshControls(channel) {
-    var TCC = global.OneToneTrayChannelControls;
-    if (!TCC || !TCC.mountInspectorControls) return Promise.resolve();
-    if (channel) return TCC.mountInspectorControls(channel, trayState);
-    return TCC.mountAllInspectorControls(trayState);
-  }
-
-  var HERO_CHIP_LABEL = { voice: '语音', keys: '按键', softPad: '小键盘', camera: '摄像头' };
-
-  function syncHeroPreview(g) {
-    g = g || {};
-    if ($('softPadTrayHeroText')) $('softPadTrayHeroText').textContent = heroLabel(g.mode);
-    var ctxEl = $('softPadTrayHeroCtx');
-    if (ctxEl) {
-      if (!hasActiveHabit(g)) {
-        ctxEl.textContent = t('trayHeroNoHabit', '未配置习惯');
-      } else if (!g.userLabel || g.userLabel === '—') {
-        ctxEl.textContent = t('trayHeroHabitOnly', '习惯「{name}」').replace('{name}', g.activeHabitLabel);
-      } else {
-        ctxEl.textContent = g.userLabel + ' · ' + t('trayHeroHabitOnly', '习惯「{name}」').replace('{name}', g.activeHabitLabel);
-      }
-    }
-    var statsEl = $('softPadTrayHeroStats');
-    if (statsEl) {
-      if (!hasActiveHabit(g)) {
-        statsEl.textContent = '';
-        statsEl.hidden = true;
-      } else {
-        var total = g.todayTotalCount || 0;
-        if (!total) {
-          statsEl.textContent = t('trayTodayEmpty', '今日暂无');
-        } else {
-          var line = t('trayTodayTotal', '今日 {n} 次').replace('{n}', String(total));
-          var hc = g.todayHabitCount || 0;
-          if (hc > 0 && g.activeHabitLabel) {
-            line += ' · ' + g.activeHabitLabel + ' ' + hc + t('trayTodayHabitSuffix', ' 次');
-          }
-          statsEl.textContent = line;
-        }
-        statsEl.hidden = false;
-      }
-    }
-    var trendEl = $('softPadTrayHeroTrend');
-    if (trendEl) {
-      var trendLine = formatWeekTrend(g.weekTrend);
-      trendEl.textContent = trendLine;
-      trendEl.hidden = !trendLine;
-    }
-    var pauseBtn = $('softPadTrayHeroPause');
-    if (pauseBtn) {
-      pauseBtn.textContent = g.mode === 'paused' || g.mode === 'silenced'
-        ? t('trayChHeroResume', '继续听')
-        : t('trayChHeroPause', '先停一下');
-    }
-    if ($('softPadTrayHeroPulse')) {
-      $('softPadTrayHeroPulse').style.display = g.mode === 'listening' ? '' : 'none';
-    }
-    var chipsEl = $('softPadTrayHeroChips');
-    if (!chipsEl) return;
-    var ids = g.activeChannelIds || [];
-    if (!ids.length) {
-      chipsEl.innerHTML = '';
-      chipsEl.setAttribute('aria-hidden', 'true');
-      return;
-    }
-    chipsEl.setAttribute('aria-hidden', 'false');
-    chipsEl.innerHTML = ids.map(function (id) {
-      var lbl = HERO_CHIP_LABEL[id] || id;
-      return '<span class="soft-pad-tray-hero-chip" data-ch="' + id + '">' + lbl + '</span>';
-    }).join('');
   }
 
   function syncPreview() {
-    var shell = $('softPadTrayPreviewShell');
-    if (!shell) return;
-    syncBlockVisibility();
-    shell.dataset.hideEvent = layout.showEvent ? 'false' : 'true';
-    var any = layout.showInTray.voice || layout.showInTray.keys ||
-      layout.showInTray.softPad || layout.showInTray.camera;
-    shell.dataset.hideChannels = any ? 'false' : 'true';
-    shell.querySelectorAll('[data-tray-ch]').forEach(function (row) {
-      var id = row.getAttribute('data-tray-ch');
-      row.style.display = layout.showInTray[id] ? 'flex' : 'none';
+    var SP = global.OneToneTrayScenePreset;
+    if (SP) SP.renderSceneBlock($('softPadTraySceneBlock'), { onRefresh: syncPreview });
+    var TCC = global.OneToneTrayChannelControls;
+    ['voice', 'keys', 'softPad', 'camera'].forEach(function (ch) {
+      var host = $(PREVIEW_HOST[ch]);
+      if (!host) return;
+      if (!TCC || !trayState) {
+        renderChannelSkeleton(host);
+        return;
+      }
+      TCC.renderOsTrayBlock(host, ch, trayState, { onRefresh: syncPreview });
     });
-
-    var g = trayState && trayState.global;
-    syncHeroPreview(g || { mode: 'listening', activeChannelIds: [] });
-
-    if (!trayState) return;
-    var mic = trayState.mic || {};
-
-    ['voice', 'keys', 'softPad', 'camera'].forEach(function (id) {
-      syncChannelUi(id, chById(trayState, id));
-    });
-    syncTrayCopy();
-
-    if ($('softPadTrayMicLabel')) {
-      $('softPadTrayMicLabel').textContent = '麦克风 · ' + micLabel(mic);
-    }
-    setMiniToggle($('softPadTrayMicToggle'), mic.available && !mic.muted);
-
-    var ev = trayState.event;
-    var evCard = $('softPadTrayEventCard');
-    if (evCard) evCard.hidden = !layout.showEvent;
-    if ($('softPadTrayEventBody')) {
-      $('softPadTrayEventBody').textContent = ev ? formatEventText(ev) : t('trayChEventEmpty', '暂无动静');
+    if (trayState) {
+      var mic = trayState.mic || {};
+      var micBtn = $('softPadTrayMicToggle');
+      var micRow = $('softPadTrayMicRow');
+      var micMeta = $('softPadTrayMicMeta');
+      if (micRow) {
+        micRow.classList.toggle('is-muted', !!mic.muted);
+        micRow.classList.toggle('is-disabled', !mic.available);
+      }
+      if (micMeta) {
+        micMeta.textContent = !mic.available ? '不可用' : (mic.muted ? '静音' : (mic.device || '默认'));
+      }
+      if (micBtn) {
+        micBtn.classList.toggle('on', !mic.muted);
+        micBtn.setAttribute('aria-checked', mic.muted ? 'false' : 'true');
+      }
+      renderPreviewFooter();
+      wirePreviewChannelClicks();
     }
   }
 
-  function onLayoutChange() {
-    readLayoutFromUI();
+  function trayStatusHtml(ch) {
+    var V2 = global.OneToneTrayLayoutV2;
+    var TCC = global.OneToneTrayChannelControls;
+    var lay = TCC && TCC.getTrayLayoutV2 ? TCC.getTrayLayoutV2() : null;
+    if (!V2 || !lay) return '';
+    var on = V2.blockVisible(lay, V2.channelBlockId(ch));
+    return '<span class="ch-tray-pill' + (on ? '' : ' ch-tray-pill--off') + '">' + (on ? '已在托盘' : '不在托盘') + '</span>';
+  }
+
+  function renderSubtabs() {
+    var host = $('softPadTrayChSubtabs');
+    if (!host) return;
+    var V2 = global.OneToneTrayLayoutV2;
+    var TCC = global.OneToneTrayChannelControls;
+    var lay = TCC && TCC.getTrayLayoutV2 ? TCC.getTrayLayoutV2() : null;
+    host.innerHTML = CHANNELS.map(function (ch) {
+      var off = false;
+      if (ch !== 'habit' && V2 && lay) off = !V2.blockVisible(lay, V2.channelBlockId(ch));
+      return '<button type="button" class="tray-ch-subtab' + (ch === activeTab ? ' is-active' : '') + (off ? ' is-off' : '') +
+        '" data-tab="' + ch + '" role="tab"><span class="tray-ch-subtab__ic">' + CH_ICON[ch] + '</span>' +
+        '<span class="tray-ch-subtab__lbl">' + CH_LABEL[ch] + '</span></button>';
+    }).join('');
+    host.querySelectorAll('[data-tab]').forEach(function (btn) {
+      btn.addEventListener('click', function () { setTab(btn.getAttribute('data-tab')); });
+    });
+  }
+
+  function renderStatsOverviewHtml() {
+    return ['voice', 'keys', 'softPad', 'camera'].map(function (ch) {
+      var c = channelById(ch);
+      var stats = c.stats || [];
+      var usage = channelUsage(ch);
+      var meta = String(c.meta || '').trim();
+      var rows = meta
+        ? '<div class="stats-overview-card__row"><span class="k">状态</span><span class="v">' + esc(meta) + '</span></div>'
+        : stats.slice(0, 2).map(function (s) {
+          return '<div class="stats-overview-card__row"><span class="k">' + esc(s.label) + '</span><span class="v">' + esc(s.value) + '</span></div>';
+        }).join('');
+      if (!rows) {
+        rows = '<div class="stats-overview-card__row"><span class="k">状态</span><span class="v muted">—</span></div>';
+      }
+      return '<button type="button" class="stats-overview-card" data-go-ch="' + ch + '">' +
+        '<div class="stats-overview-card__head"><span class="stats-overview-card__ic">' + CH_ICON[ch] + '</span>' + CH_LABEL[ch] +
+        (usage > 0 ? ' <span class="usage-chip">今日 ' + usage + '</span>' : '') + '</div>' +
+        rows + '</button>';
+    }).join('');
+  }
+
+  function renderHabitPanel(host) {
+    var g = (trayState && trayState.global) || {};
+    var hd = resolveHabitDisplay();
+    var total = g.todayTotalCount || 0;
+    var usageChips = ['voice', 'keys', 'softPad', 'camera'].map(function (ch) {
+      var n = channelUsage(ch);
+      if (!n) return '';
+      return '<span class="usage-chip">' + CH_LABEL[ch] + ' ' + n + '</span>';
+    }).filter(Boolean).join('');
+    var chStatRows = ['voice', 'keys', 'softPad', 'camera'].map(function (ch) {
+      var n = channelUsage(ch);
+      return '<div class="stat"><span class="k">' + CH_LABEL[ch] + '</span><span class="v">' + n + '</span></div>';
+    }).join('');
+    host.innerHTML = '<div class="ch-card is-focus">' +
+      '<div class="ch-card-head"><span class="ch-card-ic habit">' + CH_ICON.habit + '</span>' +
+      '<div class="ch-card-title"><b>当前习惯</b>' + (hd.hasHabit ? '<span class="st-pill on">正在使用</span>' : '') + '</div></div>' +
+      '<div class="habit-head"><div class="habit-head__title">' +
+      (hd.hasHabit ? '正在使用 · ' + esc(hd.habitLabel) : esc(hd.habitLabel)) +
+      '</div><div class="habit-head__sub">应用场景 · ' + esc(hd.appName) + ' · 今日合计 ' + total + ' 次</div>' +
+      (usageChips ? '<div class="usage-chips" style="margin-top:5px">' + usageChips + '</div>' : '') +
+      '</div>' +
+      '<div class="sec-label">四通道一览 <span>只读 · 点卡片进通道调开关</span></div>' +
+      '<div class="stats-overview">' + renderStatsOverviewHtml() + '</div>' +
+      '<div class="sec-label">本日用量</div>' +
+      '<div class="ch-stats">' +
+        '<div class="stat"><span class="k">合计</span><span class="v">' + total + ' 次</span></div>' +
+        chStatRows +
+      '</div>' +
+      '<button type="button" class="go-link" id="softPadTrayOpenHabitsLink">' + HABITS_LINK_LABEL + '</button>' +
+      '</div>';
+    host.querySelectorAll('[data-go-ch]').forEach(function (btn) {
+      btn.addEventListener('click', function () { setTab(btn.getAttribute('data-go-ch')); });
+    });
+    var link = host.querySelector('#softPadTrayOpenHabitsLink');
+    if (link) link.addEventListener('click', openHabitsPanel);
+  }
+
+  function renderChannelPanel() {
+    var host = $('softPadTrayChannelPanel');
+    if (!host) return;
+    if (activeTab === 'habit') {
+      renderHabitPanel(host);
+      return;
+    }
+    var TCC = global.OneToneTrayChannelControls;
+    if (!TCC) return;
+    var ic = activeTab === 'softPad' ? 'softpad' : activeTab;
+    host.innerHTML = '';
+    var wrap = document.createElement('div');
+    wrap.className = 'ch-card is-focus';
+    wrap.innerHTML = '<div class="ch-card-head"><span class="ch-card-ic ' + ic + '">' +
+      CH_ICON[activeTab] + '</span><div class="ch-card-title"><b>' + CH_LABEL[activeTab] + '</b>' +
+      trayStatusHtml(activeTab) + '</div></div>' +
+      '<div class="sec-label">开关</div>';
+    host.appendChild(wrap);
+    var cardsHost = document.createElement('div');
+    wrap.appendChild(cardsHost);
+    TCC.renderSwitchCards(cardsHost, activeTab, { surface: 'editor' }, {
+      onChange: function () {
+        var SP = global.OneToneTrayScenePreset;
+        if (SP) SP.onManualSwitchChange();
+        syncPreview();
+        pulsePreviewSync();
+        flashSaveIndicator();
+        if (SP) SP.renderSceneBlock($('softPadTraySceneBlock'), { onRefresh: syncPreview });
+      }
+    });
+  }
+
+  function setTab(ch) {
+    activeTab = ch || 'habit';
+    var TCC = global.OneToneTrayChannelControls;
+    if (TCC && TCC.setPreviewFocusChannel) {
+      TCC.setPreviewFocusChannel(ch === 'habit' ? null : ch);
+    }
+    renderSubtabs();
+    renderChannelPanel();
     syncPreview();
-    clearTimeout(layoutSaveTimer);
-    layoutSaveTimer = setTimeout(function () {
-      saveCustomization();
-    }, 150);
   }
 
-  function refreshTrayState() {
-    if (!invoke) return Promise.resolve();
-    return invoke('cmd_tray_menu_ready').then(function (raw) {
-      trayState = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  function syncPersonaSegUI() {
+    var seg = $('softPadTrayPersonaSeg');
+    var V2 = global.OneToneTrayLayoutV2;
+    var TCC = global.OneToneTrayChannelControls;
+    if (!seg || !V2 || !TCC) return;
+    var lay = TCC.getTrayLayoutV2();
+    if (!lay) return;
+    persona = V2.inferPersonaFromLayout(lay);
+    seg.querySelectorAll('button').forEach(function (b) {
+      b.classList.toggle('is-on', b.getAttribute('data-persona') === persona);
+    });
+  }
+
+  function applyPersona(p) {
+    var V2 = global.OneToneTrayLayoutV2;
+    persona = V2 ? V2.normalizePersona(p || persona) : (p || 'compact');
+    var TCC = global.OneToneTrayChannelControls;
+    if (!V2 || !TCC) return Promise.resolve();
+    var lay = V2.applyPersonaPreset(TCC.getTrayLayoutV2() || V2.defaultLayout(), persona);
+    return invoke('cmd_tray_customization_save', lay).then(function () {
+      TCC.setTrayLayoutV2(lay);
+      syncBlockVisibility(lay);
+      syncPreviewBlockOrder(lay);
+      renderSubtabs();
       syncPreview();
+      pulsePreviewSync();
+      flashSaveIndicator();
+      syncPersonaSegUI();
+      return invoke('cmd_tray_runtime_save', { trayScenePreset: 'custom', customSwitchSnapshot: {}, personaPreset: persona });
     }).catch(function () {});
   }
 
   function loadCustomization() {
-    if (!invoke) return Promise.resolve();
     return invoke('cmd_tray_customization_get').then(function (cfg) {
-      applyTrayLayoutCfg(cfg);
-    }).catch(function () {});
-  }
-
-  function saveCustomization() {
-    if (!invoke) return Promise.resolve();
-    var TCC = global.OneToneTrayChannelControls;
-    if (TCC && TCC.saveCustomization) {
-      return TCC.saveCustomization(TCC.getTrayLayoutV2 && TCC.getTrayLayoutV2());
-    }
-    return invoke('cmd_tray_customization_save', layoutPayload()).catch(function () {});
-  }
-
-  function trayAction(action) {
-    if (!invoke) return;
-    invoke('cmd_tray_action', { action: action, payload: null }).then(function () {
-      return refreshTrayState();
-    }).catch(function () {});
-  }
-
-  function injectChannelTabIcons() {
-    var Icons = global.OneToneIcons;
-    if (!Icons || !Icons.channelHtml) return;
-    document.querySelectorAll('.soft-pad-tray-ch-subtab[data-ch-tab]').forEach(function (tab) {
-      var ch = tab.getAttribute('data-ch-tab');
-      var host = tab.querySelector('.soft-pad-tray-ch-subtab__ic');
-      if (!host) {
-        host = document.createElement('span');
-        host.className = 'soft-pad-tray-ch-subtab__ic';
-        host.setAttribute('aria-hidden', 'true');
-        var lbl = tab.querySelector('.soft-pad-tray-ch-subtab__lbl');
-        if (lbl) tab.insertBefore(host, lbl);
-        else tab.insertBefore(host, tab.firstChild);
+      applyTrayLayoutCfg(cfg || {});
+      var V2 = global.OneToneTrayLayoutV2;
+      var TCC = global.OneToneTrayChannelControls;
+      var lay = TCC && TCC.getTrayLayoutV2 ? TCC.getTrayLayoutV2() : null;
+      if (V2 && lay && !anyChannelVisible(lay)) {
+        return applyPersona('compact');
       }
-      host.innerHTML = Icons.channelHtml(ch, { size: 13, className: 'ot-ic' });
-    });
+      return global.OneToneTrayScenePreset ? global.OneToneTrayScenePreset.loadRuntime() : null;
+    }).then(function () {
+      syncPersonaSegUI();
+    }).catch(function () {});
+  }
+
+  function ensureChannelsVisible() {
+    var V2 = global.OneToneTrayLayoutV2;
+    var TCC = global.OneToneTrayChannelControls;
+    var lay = TCC && TCC.getTrayLayoutV2 ? TCC.getTrayLayoutV2() : null;
+    if (V2 && lay && !anyChannelVisible(lay)) {
+      return applyPersona('compact');
+    }
+    return Promise.resolve();
+  }
+
+  function refreshTrayState() {
+    return invoke('cmd_tray_menu_ready').then(function (raw) {
+      var data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      trayState = {
+        global: data.global || {},
+        mic: data.mic || {},
+        channels: data.channels || [],
+        deepLinks: data.deepLinks || [],
+        schemes: data.schemes || []
+      };
+      syncPreview();
+      renderChannelPanel();
+    }).catch(function () {});
   }
 
   function wireOnce() {
     if (mounted) return;
     mounted = true;
-
-    injectChannelTabIcons();
-
-    var evChk = $('softPadTrayChkEvent');
-    if (evChk) evChk.addEventListener('change', onLayoutChange);
-
-    document.querySelectorAll('.soft-pad-tray-ch-subtab').forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        setChTab(tab.getAttribute('data-ch-tab'));
-      });
-    });
-    setChTab(activeChTab);
-
-    var micToggle = $('softPadTrayMicToggle');
-    if (micToggle) micToggle.addEventListener('click', function () { trayAction('mic_toggle'); });
-
-    var pauseBtn = $('softPadTrayHeroPause');
-    if (pauseBtn) pauseBtn.addEventListener('click', function () { trayAction('listen_toggle'); });
-
-    document.querySelectorAll('.soft-pad-tray-ch-row[data-tray-ch]').forEach(function (row) {
-      row.addEventListener('click', function () {
-        setChTab(row.getAttribute('data-tray-ch'));
-      });
-    });
-
-    var evCard = $('softPadTrayEventCard');
-    if (evCard) {
-      evCard.addEventListener('click', function () {
-        handleTrayDeepLink({ href: 'main:diagnose' });
+    var seg = $('softPadTrayPersonaSeg');
+    if (seg) {
+      seg.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-persona]');
+        if (!btn) return;
+        seg.querySelectorAll('button').forEach(function (b) { b.classList.toggle('is-on', b === btn); });
+        applyPersona(btn.getAttribute('data-persona'));
       });
     }
-
+    var micToggle = $('softPadTrayMicToggle');
+    if (micToggle) {
+      micToggle.addEventListener('click', function () {
+        invoke('cmd_tray_action', { action: 'mic_toggle', payload: null }).then(refreshTrayState);
+      });
+    }
     if (!global.__otTrayChannelConfigBound) {
       global.__otTrayChannelConfigBound = true;
       global.addEventListener('channel-config:changed', function () {
         if (!mounted) return;
-        refreshControls(activeChTab);
-        refreshTrayState();
+        syncPreview();
+        pulsePreviewSync();
+        renderChannelPanel();
       });
     }
+    renderSubtabs();
   }
 
   function onPanelEnter(opts) {
     opts = opts || {};
     wireOnce();
-    syncTrayCopy();
-    var editor = global.OneToneTrayLayoutEditor;
-    var mountEditor = editor && editor.mount
-      ? editor.mount({
-          trayEditorFocus: opts.trayEditorFocus || null,
-          onChange: syncPreview
-        })
-      : Promise.resolve();
     subscribeTrayLive().then(function () {
-      return mountEditor;
-    }).then(function () {
       return loadCustomization();
     }).then(function () {
       return refreshTrayState();
+    }).then(function () {
+      return ensureChannelsVisible();
+    }).then(function () {
+      setTab(opts.trayEditorFocus || 'habit');
     });
   }
 
   function onPanelLeave() {
     unsubscribeTrayLive();
-    var editor = global.OneToneTrayLayoutEditor;
-    if (editor && editor.isDirty && editor.isDirty()) {
-      editor.save();
-    } else if (layoutSaveTimer) {
-      clearTimeout(layoutSaveTimer);
-      layoutSaveTimer = 0;
-      saveCustomization();
-    }
   }
 
   global.OneToneSoftPadTrayUi = {
@@ -656,16 +573,7 @@
     onFaceEnter: onPanelEnter,
     onFaceLeave: onPanelLeave,
     refresh: refreshTrayState,
-    refreshControls: refreshControls,
-    getLayout: function () { return layout; },
-    handleDeepLink: handleTrayDeepLink,
-    setChannelTab: setChTab
+    refreshControls: function () { renderChannelPanel(); syncPreview(); },
+    setChannelTab: setTab
   };
-
-  if (typeof window !== 'undefined' && !window.__otTrayDeepLinkBound) {
-    window.__otTrayDeepLinkBound = true;
-    window.addEventListener('tray-deep-link', function (ev) {
-      handleTrayDeepLink(ev && ev.detail ? ev.detail : {});
-    });
-  }
 })(typeof window !== 'undefined' ? window : globalThis);

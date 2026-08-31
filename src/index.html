@@ -18,6 +18,9 @@
   <link rel="stylesheet" href="css/app.css" />
   <link rel="stylesheet" href="css/ot-switch.css" />
   <link rel="stylesheet" href="css/ot-subtab.css" />
+  <link rel="stylesheet" href="css/tray-scene-block.css" />
+  <link rel="stylesheet" href="css/tray-os-channels.css" />
+  <link rel="stylesheet" href="css/tray-editor.css" />
   <link rel="stylesheet" href="css/ot-seg.css" />
   <link rel="stylesheet" href="css/ot-pill-filter.css" />
   <link rel="stylesheet" href="css/ot-underline-tab.css" />
@@ -1189,59 +1192,47 @@
           </div>
         </section>
         <section class="settings-panel drawer-section tray-page" id="settingsPanelTray" hidden>
-          <header class="pref-page-head">
-            <h3 class="pref-page-title" id="settingsPanelTrayTitle">托盘菜单</h3>
-            <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelTrayDesc">预览系统托盘、控制四通道显示与快捷开关</p>
-          </header>
-          <div class="soft-pad-face-root soft-pad-face-tray" id="softPadFaceTray">
+          <div class="tray-app-page">
+            <header class="tray-app-page__head">
+              <h3 class="pref-page-title" id="settingsPanelTrayTitle">托盘菜单</h3>
+              <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelTrayDesc">预览 = 省事方式 + 常用开关 + 更多选项（小白向）</p>
+            </header>
+            <div class="soft-pad-face-root soft-pad-face-tray" id="softPadFaceTray">
             <div class="soft-pad-face-tray__preview" id="softPadTrayPreviewHost">
-              <div class="soft-pad-tray-preview-lbl">托盘菜单预览</div>
+              <div class="soft-pad-tray-preview-lbl">托盘菜单预览（开关 only）</div>
               <div class="soft-pad-tray-menu-shell" id="softPadTrayPreviewShell">
-                <div class="soft-pad-tray-hero" data-tray-seg="hero" data-block-id="block:hero">
-                  <div class="soft-pad-tray-hero__main">
-                    <div class="soft-pad-tray-hero__title"><span class="soft-pad-tray-pulse" id="softPadTrayHeroPulse"></span><span id="softPadTrayHeroText">监听中</span></div>
-                    <div class="soft-pad-tray-hero__ctx" id="softPadTrayHeroCtx"></div>
-                    <div class="soft-pad-tray-hero__stats" id="softPadTrayHeroStats" hidden></div>
-                    <div class="soft-pad-tray-hero__trend" id="softPadTrayHeroTrend" hidden></div>
-                    <div class="soft-pad-tray-hero__chips" id="softPadTrayHeroChips" aria-hidden="true"></div>
-                  </div>
-                  <button type="button" class="soft-pad-tray-hero__act" id="softPadTrayHeroPause">暂停</button>
+                <div id="softPadTraySceneBlock" data-block-id="block:scene"></div>
+                <div class="soft-pad-tray-sep" data-block-id="block:sep-ch"></div>
+                <div class="soft-pad-tray-sec-head tray-sec-head" id="softPadTrayChannelsHead"><span class="dot"></span><span>开关</span></div>
+                <div id="softPadTrayPreviewVoice" data-block-id="block:channel:voice"></div>
+                <div id="softPadTrayPreviewKeys" data-block-id="block:channel:keys"></div>
+                <div id="softPadTrayPreviewSoftPad" data-block-id="block:channel:softPad"></div>
+                <div id="softPadTrayPreviewCamera" data-block-id="block:channel:camera"></div>
+                <div class="soft-pad-tray-sep" data-block-id="block:sep-mic"></div>
+                <div class="soft-pad-tray-mic-row mic-row" data-block-id="block:mic" id="softPadTrayMicRow">
+                  <span class="icowrap"><span class="ico">🎤</span></span>
+                  <span class="body"><span class="name" id="softPadTrayMicLabel">麦克风</span><span class="meta" id="softPadTrayMicMeta">默认</span></span>
+                  <button type="button" class="toggle-switch on" id="softPadTrayMicToggle" role="switch" aria-checked="true" aria-label="切换麦克风静音"></button>
                 </div>
-                <div class="soft-pad-tray-event" data-tray-seg="event" id="softPadTrayEventCard" data-block-id="block:event">
-                  <div class="soft-pad-tray-event__head">最近事件</div>
-                  <div class="soft-pad-tray-event__body" id="softPadTrayEventBody">—</div>
-                </div>
-                <div class="soft-pad-tray-sec-head" data-tray-seg="channels-head" id="softPadTrayChannelsHead">各功能状态</div>
-                <div class="soft-pad-tray-ch-row" data-tray-seg="channels" data-tray-ch="voice" data-block-id="block:channel:voice"><span>语音</span><span class="meta" id="softPadTrayMetaVoice">—</span></div>
-                <div class="soft-pad-tray-ch-row" data-tray-seg="channels" data-tray-ch="keys" data-block-id="block:channel:keys"><span>按键</span><span class="meta" id="softPadTrayMetaKeys">—</span></div>
-                <div class="soft-pad-tray-ch-row" data-tray-seg="channels" data-tray-ch="softPad" data-block-id="block:channel:softPad"><span>小键盘</span><span class="meta" id="softPadTrayMetaPad">—</span></div>
-                <div class="soft-pad-tray-ch-row" data-tray-seg="channels" data-tray-ch="camera" data-block-id="block:channel:camera"><span>摄像头</span><span class="meta" id="softPadTrayMetaCamera">—</span></div>
-                <div class="soft-pad-tray-mic-row" data-tray-seg="mic" data-block-id="block:mic"><span id="softPadTrayMicLabel">麦克风</span><button type="button" class="soft-pad-tray-mini-toggle" id="softPadTrayMicToggle" role="switch" aria-checked="true"></button></div>
+                <div id="softPadTrayPreviewFooter" data-block-id="block:footer"></div>
               </div>
             </div>
             <aside class="soft-pad-face-tray__inspector soft-pad-tray-editor" id="softPadTrayInspector">
-              <div class="tray-editor-banner" id="softPadTrayEditorBanner" hidden>
-                <span class="tray-editor-banner-text"></span>
-                <button type="button" id="softPadTrayEditorBannerDismiss">知道了</button>
-              </div>
               <header class="soft-pad-tray-inspector-head">
                 <h2 class="soft-pad-tray-inspector-title" id="softPadTrayInspectorTitle">托盘编辑器</h2>
-                <span class="soft-pad-tray-editor-dirty" id="softPadTrayEditorDirty" hidden>未保存</span>
+                <span class="tray-save-indicator" id="softPadTraySaveIndicator" role="status" aria-label="已保存"></span>
               </header>
-              <div class="tray-editor-actions">
-                <button type="button" class="tray-editor-btn" id="softPadTrayEditorReset">恢复默认</button>
-                <button type="button" class="tray-editor-btn tray-editor-btn--primary" id="softPadTrayEditorSave">保存布局</button>
+              <div class="tray-editor-toolbar">
+                <label>显示在托盘</label>
+                <div class="tray-persona-seg" id="softPadTrayPersonaSeg">
+                  <button type="button" class="is-on" data-persona="compact">精简</button>
+                  <button type="button" data-persona="full">完整</button>
+                </div>
               </div>
-              <div class="tray-editor-fold is-open">
-                <button type="button" class="tray-editor-fold-head">区块布局 <span class="chev">▸</span></button>
-                <div class="tray-editor-fold-body" id="softPadTrayEditorBlocks"></div>
-              </div>
-              <div class="tray-editor-fold is-open">
-                <button type="button" class="tray-editor-fold-head">开关布局 <span class="chev">▸</span></button>
-                <div class="tray-editor-fold-body" id="softPadTrayEditorControls"></div>
-              </div>
-              <p class="tray-editor-hint" id="softPadTrayEditorHint">布局全局生效；开关值随当前习惯自动变化。</p>
+              <div class="tray-ch-subtabs" id="softPadTrayChSubtabs" role="tablist"></div>
+              <div id="softPadTrayChannelPanel"></div>
             </aside>
+          </div>
           </div>
         </section>
         <section class="settings-panel drawer-section scene-mode-page" id="settingsPanelScenes" hidden>
@@ -4796,8 +4787,9 @@
   <script src="js/features/settings/channel-config-state-keys.generated.js"></script>
   <script src="js/features/settings/channel-config-state-keys.js"></script>
   <script src="js/features/settings/tray-layout-v2.js"></script>
+  <script src="js/features/settings/tray-footer.js"></script>
   <script src="js/features/settings/tray-channel-controls.js"></script>
-  <script src="js/features/settings/tray-layout-editor.js"></script>
+  <script src="js/features/settings/tray-scene-preset.js"></script>
   <script src="js/features/settings/channel-config-compact.js"></script>
   <script src="js/features/settings/keys-panel-ui.js"></script>
   <script src="js/features/scene/habit-compatibility.js"></script>

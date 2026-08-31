@@ -5,152 +5,37 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>一声托盘菜单</title>
 <link rel="stylesheet" href="css/ot-switch.css"/>
+<link rel="stylesheet" href="css/tray-scene-block.css"/>
+<link rel="stylesheet" href="css/tray-os-channels.css"/>
+<link rel="stylesheet" href="css/tray-editor.css"/>
 <style>
 :root{
   --surface:#fff;--surface-2:#f8fafc;--primary:#2a9cc4;--primary-soft:#e6f7fc;--primary-deep:#1e87ad;
   --on-surface:#152238;--on-surface-muted:#5a7086;--on-surface-soft:#8a98a8;
-  --outline-variant:rgba(26,45,74,.10);--danger:#dc2626;--danger-soft:rgba(220,38,38,.08);
-  --toggle-off:#c5d3de;
-  --green:#2e7d4f;--green-soft:rgba(46,125,79,.10);--orange:#b9530a;--orange-soft:rgba(185,83,10,.10);
-  --yellow:#b45309;--yellow-soft:rgba(245,166,35,.16);--purple:#6d4ab0;--purple-soft:rgba(109,74,176,.10);
-  --blue:#00a3ff;--blue-soft:rgba(0,163,255,.10);--radius:12px;--shadow:0 10px 28px rgba(26,45,74,.18);
+  --outline-variant:rgba(26,45,74,.10);--green:#2e7d4f;
+  --radius:12px;--shadow:0 4px 16px rgba(26,45,74,.10);
   font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
 }
 @media (prefers-color-scheme:dark){
   :root{
     --surface:#1e2838;--surface-2:#252f40;--primary:#5ec8e8;--primary-soft:rgba(94,200,232,.14);--primary-deep:#3aa8cc;
     --on-surface:#e8f0f8;--on-surface-muted:#9aa8b8;--on-surface-soft:#7a8898;
-    --outline-variant:rgba(148,163,184,.16);--shadow:0 12px 32px rgba(0,0,0,.45);
-    --toggle-off:#3d4d62;
-    --green-soft:rgba(46,125,79,.22);--orange-soft:rgba(185,83,10,.22);--blue-soft:rgba(0,163,255,.18);
-    --purple-soft:rgba(109,74,176,.22);--danger-soft:rgba(220,38,38,.18);--yellow-soft:rgba(245,166,35,.22);
+    --outline-variant:rgba(148,163,184,.16);--shadow:0 4px 16px rgba(0,0,0,.28);
   }
 }
 *{box-sizing:border-box}
 html{margin:0;height:100%;background:transparent!important}
-body{margin:0;padding:8px;min-height:100%;background:transparent!important;overflow:hidden;user-select:none}
-.menu-shell{width:316px;max-height:min(520px,calc(100vh - 24px));overflow-y:auto;background:var(--surface);border:1px solid var(--outline-variant);border-radius:var(--radius);box-shadow:var(--shadow);padding:5px;color:var(--on-surface);font-size:13px}
-.ico{width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;color:var(--primary);flex-shrink:0}
-.ico svg{display:block;width:14px;height:14px}
-.sep{height:1px;margin:4px 8px;background:var(--outline-variant)}
-.pulse{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px var(--green-soft);flex-shrink:0;display:inline-block}
-.pulse.listening{background:var(--blue);box-shadow:0 0 0 3px var(--blue-soft);animation:tp 2s ease-in-out infinite}
-@keyframes tp{0%,100%{box-shadow:0 0 0 3px rgba(0,163,255,.18)}50%{box-shadow:0 0 0 5px rgba(0,163,255,.32)}}
-.pulse.paused{background:var(--orange);box-shadow:0 0 0 3px var(--orange-soft)}
-.pulse.error{background:var(--danger);box-shadow:0 0 0 3px var(--danger-soft)}
-.pulse.idle,.pulse.standby{background:var(--green);box-shadow:0 0 0 3px var(--green-soft)}
-.pulse.off{background:var(--on-surface-soft);box-shadow:0 0 0 3px rgba(26,45,74,.05)}
-.chip{font-size:9.5px;padding:1.5px 6px;border-radius:4px;font-weight:600;letter-spacing:.02em;flex-shrink:0;display:inline-flex;align-items:center;gap:3px}
-.chip.g{background:var(--green-soft);color:var(--green)}.chip.b{background:var(--blue-soft);color:#0e7490}
-.chip.p{background:var(--purple-soft);color:var(--purple)}.chip.o{background:var(--orange-soft);color:var(--orange)}
-.chip.n{background:rgba(26,45,74,.06);color:var(--on-surface-muted)}.chip.r{background:var(--danger-soft);color:var(--danger)}
-.status-hero{margin:4px;padding:11px 12px 9px;background:linear-gradient(135deg,#fff 0%,var(--blue-soft) 100%);border:1px solid var(--outline-variant);border-radius:10px;display:flex;align-items:center;gap:10px}
-@media (prefers-color-scheme:dark){.status-hero{background:linear-gradient(135deg,rgba(255,255,255,.04) 0%,var(--blue-soft) 100%)}}
-.status-hero .left{flex:1;min-width:0}.status-hero .top-line{display:flex;align-items:center;gap:7px;margin-bottom:4px}
-.status-hero .ttl{font-size:14.5px;font-weight:800;letter-spacing:-.01em;line-height:1.1}
-.status-hero .ttl.paused{color:var(--orange)}.status-hero .ttl.error{color:var(--danger)}
-.status-hero .state-chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
-.status-hero .ctx-line{font-size:11px;color:var(--on-surface-muted);line-height:1.35;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.status-hero .ctx-line .habit-link{cursor:pointer;color:var(--primary-deep);font-weight:700;border:none;background:transparent;padding:0;font:inherit}
-.status-hero .ctx-line .habit-link:hover{text-decoration:underline}
-.status-hero .stats-line{font-size:10px;color:var(--on-surface-soft);margin-top:3px;font-family:ui-monospace,monospace}
-.status-hero .action{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 11px;border-radius:8px;cursor:pointer;background:linear-gradient(135deg,var(--primary),var(--primary-deep));color:#fff;font-size:10.5px;font-weight:700;border:none;font:inherit}
-.habit-row,.qa-row{display:flex;align-items:center;gap:9px;padding:7px 10px;margin:0 4px;border-radius:7px;cursor:pointer;border:none;background:transparent;color:inherit;font:inherit;text-align:left;width:calc(100% - 8px)}
-.habit-row:hover,.qa-row:hover{background:var(--primary-soft)}
-.habit-row .body,.qa-row .body{flex:1;min-width:0;font-size:12.5px;font-weight:700}
-.qa-row .meta{font-size:10px;color:var(--on-surface-soft);font-weight:600;flex-shrink:0}
-.qa-row.muted .body{color:var(--orange)}
-.habit-row .preview{font-size:10.5px;color:var(--on-surface-muted);font-weight:600;flex-shrink:0;max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.habit-row .chev{font-size:9px;color:var(--on-surface-soft);flex-shrink:0;margin-left:4px}
-.scheme-pick{margin:0 8px 4px;padding:4px;background:var(--surface-2);border:1px solid var(--outline-variant);border-radius:8px;max-height:140px;overflow-y:auto}
-.scheme-pick[hidden]{display:none!important}
-.scheme-pick button{display:block;width:100%;text-align:left;padding:6px 8px;border:none;background:transparent;font:inherit;font-size:11.5px;border-radius:5px;cursor:pointer;color:var(--on-surface)}
-.scheme-pick button:hover{background:var(--primary-soft)}
-.scheme-pick button.on{font-weight:800;color:var(--primary-deep);background:rgba(42,156,196,.12)}
-.status-hero .action .ico{width:16px;height:16px;color:#fff}.status-hero .action .ico svg{width:16px;height:16px}
-.status-hero .action.paused{background:linear-gradient(135deg,#f5a623,#d97706)}
-.event-card{margin:4px 6px;padding:9px 11px;background:var(--surface-2);border:1px solid var(--outline-variant);border-radius:9px}
-.event-card.is-empty{opacity:.55}
-.event-card[role="button"]{cursor:pointer}
-.event-card[role="button"]:hover{border-color:rgba(42,156,196,.35)}
-.event-card .ev-head{display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:10px;color:var(--on-surface-muted)}
-.event-card .ev-head .t{font-family:ui-monospace,monospace}
-.event-card .ev-text{font-size:12px;font-weight:600;color:var(--on-surface);display:flex;align-items:center;gap:6px;line-height:1.25}
-.event-card .ev-text .ch-ic{width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;background:var(--blue-soft);flex-shrink:0}
-.event-card .ev-text .ch-ic .ico{width:11px;height:11px;color:var(--blue)}.event-card .ev-text .ch-ic .ico svg{width:11px;height:11px}
-.event-card .ev-text .ch-ic.keys{background:var(--primary-soft)}.event-card .ev-text .ch-ic.keys .ico{color:var(--primary)}
-.event-card .ev-text .txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:11.5px}
-.event-card .ev-outcome{font-size:10px;font-weight:700;padding:1.5px 6px;border-radius:3px;flex-shrink:0}
-.event-card .ev-outcome.ok{background:var(--green-soft);color:var(--green)}
-.event-card .ev-outcome.fail{background:var(--danger-soft);color:var(--danger)}
-.event-card .ev-outcome.warn{background:var(--yellow-soft);color:var(--yellow)}
-.sec-head{display:flex;align-items:center;gap:6px;padding:7px 12px 3px;font-size:10px;font-weight:700;color:var(--on-surface-muted);text-transform:uppercase;letter-spacing:.06em}
-.sec-head .dot{width:4px;height:4px;border-radius:50%;background:var(--on-surface-soft)}
-.ch-row{display:flex;align-items:center;gap:9px;padding:7px 10px;margin:0 4px;border-radius:7px;cursor:pointer;border:none;background:transparent;color:inherit;font:inherit;text-align:left;width:calc(100% - 8px)}
-.ch-block{margin:0 4px 3px;border-radius:8px;border:1px solid transparent}
-.ch-block.is-open{border-color:rgba(42,156,196,.3);background:rgba(42,156,196,.03)}
-.ch-main{display:flex;align-items:flex-start;gap:8px;padding:7px 8px 7px 10px}
-.ch-body{flex:1;min-width:0}
-.ch-title{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.ch-title-row{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%}
-.ch-title-row .name,.ch-title .name{font-size:12.5px;font-weight:700}
-.ch-l1-sw{flex-shrink:0}
-.ch-l2.is-collapsed{display:none}
-.ch-row:hover{background:var(--primary-soft)}
-.ch-scene{font-size:10px;color:var(--on-surface-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ch-switches{display:flex;flex-direction:column;gap:4px;margin-top:6px}
-.sw-inline{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 6px;background:var(--surface-2);border:1px solid var(--outline-variant);border-radius:6px;font-size:10.5px}
-.sw-hint{font-size:9px;color:var(--on-surface-soft);display:block}
-/* .sw-toggle, .mic-row .toggle → ot-switch.css */
-.chev-btn{width:22px;height:22px;border:none;border-radius:5px;background:transparent;color:var(--on-surface-soft);font-size:11px;cursor:pointer;margin-top:2px;flex-shrink:0}
-.chev-btn.open{background:var(--primary-soft);color:var(--primary-deep);transform:rotate(90deg)}
-.ch-l2{padding:0 10px 8px 42px}
-.ch-l2 .sw-inline{margin-bottom:4px}
-.ch-l2 .more{font-size:10px;color:var(--primary-deep);font-weight:600;border:none;background:none;font:inherit;padding:4px 0 0;cursor:pointer}
-.qa-more{font-size:10.5px;color:var(--primary-deep);font-weight:700;border:none;background:transparent;font:inherit;padding:6px 10px;margin:0 4px;cursor:pointer;width:calc(100% - 8px);text-align:left;border-radius:7px}
-.qa-more:hover{background:var(--primary-soft)}
-.qa-more.open .chev{transform:rotate(90deg)}
-.qa-collapsed[hidden]{display:none!important}
-.ch-row .icowrap{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.ch-row .icowrap.voice{background:var(--blue-soft)}.ch-row .icowrap.voice .ico{color:var(--blue)}
-.ch-row .icowrap.keys{background:var(--primary-soft)}.ch-row .icowrap.keys .ico{color:var(--primary)}
-.ch-row .icowrap.softpad{background:var(--purple-soft)}.ch-row .icowrap.softpad .ico{color:var(--purple)}
-.ch-row .icowrap.camera{background:var(--orange-soft)}.ch-row .icowrap.camera .ico{color:var(--orange)}
-.ch-row .icowrap .ico{width:13px;height:13px}.ch-row .icowrap .ico svg{width:13px;height:13px}
-.ch-row .body{flex:1;min-width:0}.ch-row .name{font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:5px}
-.ch-row .name .pulse{width:5px;height:5px;box-shadow:0 0 0 2px transparent}
-.ch-row .meta{font-size:10.5px;color:var(--on-surface-muted);line-height:1.2;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ch-row .chev{font-size:9px;color:var(--on-surface-soft);flex-shrink:0}
-.mic-row{display:flex;align-items:center;gap:9px;padding:7px 10px;margin:0 4px;border-radius:7px;background:var(--primary-soft)}
-.mic-row.muted{background:var(--danger-soft)}.mic-row.disabled{opacity:.45;pointer-events:none}
-.mic-row .icowrap{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;background:#fff;flex-shrink:0}
-.mic-row .icowrap .ico{color:var(--primary)}.mic-row.muted .icowrap .ico{color:var(--danger)}
-.mic-row .icowrap .ico{width:13px;height:13px}.mic-row .icowrap .ico svg{width:13px;height:13px}
-.mic-row .body{flex:1;min-width:0}.mic-row .name{font-size:12.5px;font-weight:700}
-.mic-row .meta{font-size:10.5px;color:var(--on-surface-muted);line-height:1.2;margin-top:1px}
-/* .mic-row .toggle → ot-switch.css */
-.footer{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:5px 8px 3px;border-top:1px solid var(--outline-variant);margin-top:4px}
-.footer .left,.footer .right{display:flex;align-items:center;gap:6px}
-.footer .fl{display:flex;align-items:center;gap:3px;color:var(--on-surface-muted);font-size:10.5px;padding:3px 6px;border-radius:4px;cursor:pointer;border:none;background:transparent;font:inherit}
-.footer .fl:hover{background:rgba(26,45,74,.05);color:var(--on-surface)}
-.footer .fl .ico{width:11px;height:11px;color:currentColor}.footer .fl .ico svg{width:11px;height:11px}
-.footer .fl.primary{color:var(--primary);font-weight:600}
-.footer .quit{color:var(--on-surface-soft);padding:4px;border-radius:4px;cursor:pointer;opacity:.6;border:none;background:transparent}
-.footer .quit:hover{opacity:1;color:var(--danger);background:var(--danger-soft)}
-.footer .quit .ico{width:13px;height:13px;color:currentColor}.footer .quit .ico svg{width:13px;height:13px}
-tray-event-card[hidden],tray-channel-block[hidden],#trayChannelsHead[hidden],#trayQuickHead[hidden],#traySchemePick[hidden]{display:none!important}
+body{margin:0;padding:8px;min-height:100%;background:transparent!important;overflow:visible;user-select:none}
+.menu-shell{width:316px;overflow-x:hidden;overflow-y:visible;background:var(--surface);border:1px solid var(--outline-variant);border-radius:var(--radius);box-shadow:var(--shadow);padding:5px;color:var(--on-surface);font-size:13px}
+tray-channel-block,tray-mic-toggle,tray-footer-links{display:block}
+tray-channel-block[hidden],#trayChannelsHead[hidden],#traySceneBlock[hidden]{display:none!important}
 </style>
 </head>
 <body>
 <div class="menu-shell" id="shell">
-  <tray-status-hero></tray-status-hero>
-  <tray-event-card></tray-event-card>
-  <div class="sec-head" id="trayQuickHead"><span class="dot"></span><span>快捷动作</span></div>
-  <tray-habit-row></tray-habit-row>
-  <div class="scheme-pick" id="traySchemePick" hidden></div>
-  <tray-quick-actions></tray-quick-actions>
+  <div id="traySceneBlock" data-block-id="block:scene"></div>
   <div class="sep"></div>
-  <div class="sec-head" id="trayChannelsHead"><span class="dot"></span><span>各功能状态</span></div>
+  <div class="sec-head" id="trayChannelsHead"><span class="dot"></span><span>开关</span></div>
   <tray-channel-block data-id="voice"></tray-channel-block>
   <tray-channel-block data-id="keys"></tray-channel-block>
   <tray-channel-block data-id="softPad"></tray-channel-block>
@@ -167,274 +52,122 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
 </script>
 <script src="js/features/settings/tray-i18n-lite.js"></script>
 <script src="js/features/settings/tray-layout-v2.js"></script>
+<script src="js/features/settings/tray-footer.js"></script>
 <script src="js/features/settings/tray-channel-controls.js"></script>
+<script src="js/features/settings/tray-scene-preset.js"></script>
 <script>
 (function(){
   var invoke=window.__TAURI_INTERNALS__?function(c,a){return window.__TAURI_INTERNALS__.invoke(c,a);}:function(){return Promise.resolve();};
   var listen=window.__TAURI_INTERNALS__&&window.__TAURI_INTERNALS__.listen?window.__TAURI_INTERNALS__.listen.bind(window.__TAURI_INTERNALS__):function(){return Promise.resolve(function(){});};
-  var state={global:{mode:'listening',activeChannelIds:[]},mic:{available:false,muted:false,device:'—'},channels:[],event:null,deepLinks:[],schemes:[]};
-  var layout={showEvent:true,showInTray:{voice:true,keys:true,softPad:true,camera:false}};
+  var state={global:{mode:'listening',activeChannelIds:[]},mic:{available:false,muted:false,device:'—'},channels:[],deepLinks:[]};
   var layoutV2=null;
-  var SEGS=['global','mic','channels','event','schemes'];
-  var schemePickOpen=false;
-  var perfT0=typeof performance!=='undefined'?performance.now():0;
+  var SEGS=['global','mic','channels'];
+  var openOsChannel=null;
+  var TRAY_CHROME = 16;
+  var perfT0 = typeof performance !== 'undefined' ? performance.now() : 0;
+  var traySizeTimer = null;
+  function syncTrayMenuSize() {
+    if (traySizeTimer) clearTimeout(traySizeTimer);
+    function measure() {
+      requestAnimationFrame(function () {
+        var shell = document.getElementById('shell');
+        if (!shell) return;
+        var shellH = Math.max(Math.ceil(shell.getBoundingClientRect().height), shell.scrollHeight);
+        var w = shell.offsetWidth + TRAY_CHROME;
+        var h = Math.min(680, Math.max(320, shellH + TRAY_CHROME + 2));
+        invoke('cmd_tray_menu_set_size', { height: h, width: w }).catch(function () {});
+      });
+    }
+    measure();
+    traySizeTimer = setTimeout(measure, 280);
+  }
   var ICONS=(window.OneToneIcons&&window.OneToneIcons.tray)||{};
-  var CHIP={voice:'b',keys:'g',softPad:'p',camera:'o'};
-  var CHLABEL={voice:'语音',keys:'按键',softPad:'小键盘',camera:'摄像头'};
   function act(action,payload){invoke('cmd_tray_action',{action:action,payload:payload||null}).catch(function(){});}
-  function deepLink(href){act('deep_link',{href:href});}
   function esc(s){return String(s||'').replace(/</g,'&lt;');}
-  function ago(ms){if(!ms)return'—';var s=Math.max(0,Math.floor((Date.now()-ms)/1000));if(s<5)return'刚刚';if(s<60)return s+'s 前';return Math.floor(s/60)+'m 前';}
-  function modeTitle(m){return m==='silenced'?'静默中':m==='paused'?'已暂停':m==='error'?'监听异常':m==='listening'?'正在听':'等着';}
-  function pulseCls(s){return s==='listening'?'listening':s==='error'?'error':s==='off'?'off':s==='paused'||s==='silenced'?'paused':'standby';}
-  function outcomeLabel(o){return o==='sent'?'已发送':o==='failed'?'失败':o==='unsent'?'未发送':'';}
-  function outcomeCls(o){return o==='sent'?'ok':o==='failed'?'fail':'warn';}
-  function chById(id){return(state.channels||[]).find(function(c){return c.id===id;})||null;}
-  function hasActiveHabit(g){return !!(g&&g.activeHabitId&&g.activeHabitLabel&&g.activeHabitLabel!=='—');}
-  function heroCtxLine(g){
-    g=g||{};
-    if(!hasActiveHabit(g)) return '<div class="ctx-line">未配置习惯</div>';
-    var habit='<button type="button" class="habit-link" data-href="main:habits">习惯「'+esc(g.activeHabitLabel)+'」</button>';
-    if(!g.userLabel||g.userLabel==='—') return '<div class="ctx-line">'+habit+'</div>';
-    return '<div class="ctx-line">'+esc(g.userLabel)+' · '+habit+'</div>';
-  }
-  function heroStatsLine(g){
-    g=g||{};
-    if(!hasActiveHabit(g)) return '';
-    var total=g.todayTotalCount||0;
-    if(!total) return '<div class="stats-line">今日暂无</div>';
-    var line='今日 '+total+' 次';
-    var hc=g.todayHabitCount||0;
-    if(hc>0) line+=' · '+esc(g.activeHabitLabel)+' '+hc+' 次';
-    var wt=weekTrendLine(g);
-    if(wt) line+=' · '+esc(wt);
-    return '<div class="stats-line">'+line+'</div>';
-  }
-  function formatEventText(ev){
-    var TCC=window.OneToneTrayChannelControls;
-    if(TCC&&TCC.formatTrayEventText) return TCC.formatTrayEventText(ev);
-    var text=ev&&ev.text?String(ev.text).trim():'';
-    if(!text) return '暂无动静';
-    return text;
-  }
-  function weekTrendLine(g){
-    var TCC=window.OneToneTrayChannelControls;
-    if(TCC&&TCC.formatWeekTrendSummary) return TCC.formatWeekTrendSummary(g&&g.weekTrend);
-    return '';
-  }
-  function habitPreview(g){
-    g=g||{};
-    if(!hasActiveHabit(g)) return '—';
-    if(g.nextHabitLabel) return esc(g.activeHabitLabel)+' → '+esc(g.nextHabitLabel)+' ▸';
-    return esc(g.activeHabitLabel);
-  }
-  function renderSchemePick(){
-    var el=document.getElementById('traySchemePick');
-    if(!el) return;
-    if(!schemePickOpen){el.hidden=true;return;}
-    var items=state.schemes||[];
-    if(items.length<2){el.hidden=true;return;}
-    el.hidden=false;
-    el.innerHTML=items.map(function(s){
-      return '<button type="button" class="'+(s.isActive?'on':'')+'" data-id="'+esc(s.id)+'">'+esc(s.label)+(s.isActive?' ✓':'')+'</button>';
-    }).join('');
-    el.querySelectorAll('button').forEach(function(b){
-      b.onclick=function(e){e.stopPropagation();act('select_scheme',{id:b.getAttribute('data-id')});schemePickOpen=false;renderSchemePick();};
-    });
+  function refreshScene(){var SP=window.OneToneTrayScenePreset;if(!SP)return;SP.renderSceneBlock(document.getElementById('traySceneBlock'),{onRefresh:refreshAll});}
+  function refreshAll(){
+    refreshScene();
+    document.querySelectorAll('tray-channel-block').forEach(function(el){if(el.render)el.render();});
+    var mic=document.querySelector('tray-mic-toggle');if(mic&&mic.render)mic.render();
+    syncTrayMenuSize();
   }
   function patchSeg(seg,payload){
     if(seg==='global')state.global=payload;
     else if(seg==='mic')state.mic=payload;
     else if(seg==='channels')state.channels=payload;
-    else if(seg==='event')state.event=payload;
-    else if(seg==='schemes')state.schemes=payload;
-    if(seg==='global')document.querySelector('tray-status-hero').render();
-    if(seg==='event')document.querySelector('tray-event-card').render();
     if(seg==='mic')document.querySelector('tray-mic-toggle').render();
     if(seg==='channels')document.querySelectorAll('tray-channel-block').forEach(function(el){el.render();});
-    if(seg==='global'||seg==='schemes'){document.querySelector('tray-habit-row').render();renderSchemePick();}
-    if(seg==='global')document.querySelector('tray-quick-actions').render();
   }
   function resolveLayoutV2(cfg){
     var V2=window.OneToneTrayLayoutV2;
-    if(!V2) return null;
+    if(!V2)return null;
     return V2.mergeLayoutWithCatalog(cfg&&cfg.version===V2.VERSION?cfg:V2.migrateV1(cfg||{})).layout;
   }
-  function nodesForBlockId(id){
-    var shell=document.getElementById('shell');
-    if(!shell) return [];
-    if(id==='block:hero') return [shell.querySelector('tray-status-hero')];
-    if(id==='block:event') return [shell.querySelector('tray-event-card')];
-    if(id==='block:habit') return [shell.querySelector('tray-habit-row'),document.getElementById('traySchemePick')];
-    if(id==='block:quick') return [document.getElementById('trayQuickHead'),shell.querySelector('tray-quick-actions')];
-    if(id.indexOf('block:channel:')===0){
-      var ch=id.slice('block:channel:'.length);
-      return [shell.querySelector('tray-channel-block[data-id="'+ch+'"]')];
-    }
-    if(id==='block:mic') return [shell.querySelector('tray-mic-toggle')];
-    if(id==='block:footer') return [shell.querySelector('tray-footer-links')];
-    return [];
-  }
   function applyLayout(cfg){
-    if(!cfg) return;
     var V2=window.OneToneTrayLayoutV2;
-    var lay=resolveLayoutV2(cfg);
-    if(V2&&lay){
-      layoutV2=lay;
-      layout.showEvent=V2.blockVisible(lay,'block:event');
-      layout.showInTray=V2.legacyShowInTray(lay);
-      var TCC=window.OneToneTrayChannelControls;
-      if(TCC&&TCC.setTrayLayoutV2) TCC.setTrayLayoutV2(lay);
-    }else{
-      layout.showEvent=cfg.showEvent!==false;
-      var s=cfg.showInTray||{};
-      layout.showInTray.voice=s.voice!==false;
-      layout.showInTray.keys=s.keys!==false;
-      layout.showInTray.softPad=s.softPad!==false;
-      layout.showInTray.camera=!!s.camera;
+    if(!V2)return;
+    var merged=V2.mergeLayoutWithCatalog(cfg&&cfg.version===V2.VERSION?cfg:V2.migrateV1(cfg||{}));
+    var lay=merged.layout;
+    layoutV2=lay;
+    var TCC=window.OneToneTrayChannelControls;
+    if(TCC&&TCC.setTrayLayoutV2)TCC.setTrayLayoutV2(lay);
+    if(merged.newBlocks>0||merged.newControls>0||merged.repaired){
+      invoke('cmd_tray_customization_save',lay).catch(function(){});
     }
     var shell=document.getElementById('shell');
-    if(!shell) return;
+    if(!shell||!lay||!V2)return;
     function setVis(blockId,els){
-      var on=!lay||!V2?true:V2.blockVisible(lay,blockId);
-      els.forEach(function(el){if(el) el.hidden=!on;});
+      var on=V2.blockVisible(lay,blockId);
+      els.forEach(function(el){if(el)el.hidden=!on;});
       return on;
     }
-    setVis('block:hero',[shell.querySelector('tray-status-hero')]);
-    setVis('block:event',[shell.querySelector('tray-event-card')]);
-    setVis('block:habit',[shell.querySelector('tray-habit-row'),document.getElementById('traySchemePick')]);
-    setVis('block:quick',[document.getElementById('trayQuickHead'),shell.querySelector('tray-quick-actions')]);
+    setVis('block:scene',[document.getElementById('traySceneBlock')]);
     var chOn={};
     ['voice','keys','softPad','camera'].forEach(function(ch){
       chOn[ch]=setVis('block:channel:'+ch,[shell.querySelector('tray-channel-block[data-id="'+ch+'"]')]);
     });
     var head=document.getElementById('trayChannelsHead');
-    if(head) head.hidden=!(chOn.voice||chOn.keys||chOn.softPad||chOn.camera);
+    if(head)head.hidden=!(chOn.voice||chOn.keys||chOn.softPad||chOn.camera);
     setVis('block:mic',[shell.querySelector('tray-mic-toggle')]);
     setVis('block:footer',[shell.querySelector('tray-footer-links')]);
-    if(lay&&V2){
-      var seps=Array.from(shell.querySelectorAll('.sep'));
-      var sepCh=seps[0]||null;
-      var sepMic=seps[1]||null;
-      var chHead=document.getElementById('trayChannelsHead');
-      var blocks=(lay.blocks||[]).slice().sort(function(a,b){return a.order-b.order;});
-      var channelStarted=false;
-      blocks.forEach(function(b){
-        var isCh=b.id.indexOf('block:channel:')===0;
-        if(isCh&&!channelStarted){
-          channelStarted=true;
-          if(sepCh) shell.appendChild(sepCh);
-          if(chHead) shell.appendChild(chHead);
-        }
-        if(b.id==='block:mic'&&sepMic) shell.appendChild(sepMic);
-        nodesForBlockId(b.id).forEach(function(n){if(n) shell.appendChild(n);});
-      });
-      document.querySelectorAll('tray-channel-block').forEach(function(el){if(el.render) el.render();});
-    }
+    var seps=Array.from(shell.querySelectorAll('.sep'));
+    var blocks=(lay.blocks||[]).slice().sort(function(a,b){return a.order-b.order;});
+    var channelStarted=false;
+    blocks.forEach(function(b){
+      var isCh=b.id.indexOf('block:channel:')===0;
+      if(isCh&&!channelStarted){channelStarted=true;if(seps[0])shell.appendChild(seps[0]);if(head)shell.appendChild(head);}
+      if(b.id==='block:mic'&&seps[1])shell.appendChild(seps[1]);
+      if(b.id==='block:scene'){var el=document.getElementById('traySceneBlock');if(el)shell.appendChild(el);}
+      if(isCh){var chEl=shell.querySelector('tray-channel-block[data-id="'+b.id.slice('block:channel:'.length)+'"]');if(chEl)shell.appendChild(chEl);}
+      if(b.id==='block:mic'){var mic=shell.querySelector('tray-mic-toggle');if(mic)shell.appendChild(mic);}
+      if(b.id==='block:footer'){var ft=shell.querySelector('tray-footer-links');if(ft)shell.appendChild(ft);}
+    });
+    document.querySelectorAll('tray-channel-block').forEach(function(el){if(el.render)el.render();});
   }
   function applyFull(data){
     state.global=data.global||state.global;
     state.mic=data.mic||state.mic;
     state.channels=data.channels||[];
-    state.event=data.event||null;
     state.deepLinks=data.deepLinks||[];
-    state.schemes=data.schemes||[];
-    document.querySelector('tray-status-hero').render();
-    document.querySelector('tray-event-card').render();
-    document.querySelector('tray-habit-row').render();
-    document.querySelector('tray-quick-actions').render();
-    document.querySelectorAll('tray-channel-block').forEach(function(el){el.render();});
-    document.querySelector('tray-mic-toggle').render();
+    refreshAll();
     document.querySelector('tray-footer-links').render();
-    renderSchemePick();
-  }
-  class TrayStatusHero extends HTMLElement{
-    connectedCallback(){this.render();}
-    render(){
-      var g=state.global||{};var paused=g.mode==='paused'||g.mode==='silenced';
-      var chips=(g.activeChannelIds||[]).map(function(id){return'<span class="chip '+(CHIP[id]||'n')+'">'+(CHLABEL[id]||id)+'</span>';}).join('');
-      var modeCls=g.mode==='paused'||g.mode==='silenced'?'paused':g.mode==='error'?'error':'';
-      var pulseMode=g.mode==='error'?'error':paused?'paused':'listening';
-      this.innerHTML='<div class="status-hero"><div class="left"><div class="top-line"><span class="pulse '+pulseCls(pulseMode)+'"></span><span class="ttl '+modeCls+'">'+modeTitle(g.mode)+'</span></div>'+heroCtxLine(g)+heroStatsLine(g)+'<div class="state-chips">'+chips+'</div></div><button type="button" class="action'+(paused?' paused':'')+'"><span class="ico">'+(paused?ICONS.play:ICONS.pause)+'</span><span class="lbl">'+(paused?'继续':'暂停')+'</span></button></div>';
-      this.querySelector('.action').onclick=function(){act('listen_toggle');};
-      var hl=this.querySelector('.habit-link');
-      if(hl) hl.onclick=function(e){e.stopPropagation();deepLink(hl.getAttribute('data-href'));};
-    }
-  }
-  class TrayHabitRow extends HTMLElement{
-    connectedCallback(){this.render();}
-    render(){
-      var g=state.global||{};
-      var canCycle=!!g.nextHabitLabel;
-      this.innerHTML='<button type="button" class="habit-row"><span class="ico">'+ICONS.keys+'</span><span class="body">切换习惯</span><span class="preview">'+habitPreview(g)+'</span>'+(canCycle?'<span class="chev">▾</span>':'')+'</button>';
-      var self=this;
-      this.querySelector('.habit-row').onclick=function(e){
-        if(e.target.closest&&e.target.closest('.chev')&& (state.schemes||[]).length>1){
-          schemePickOpen=!schemePickOpen;renderSchemePick();return;
-        }
-        if(canCycle) act('cycle_scheme');
-        else deepLink('main:habits');
-      };
-    }
-  }
-  class TrayQuickActions extends HTMLElement{
-    connectedCallback(){this.render();}
-    render(){
-      var g=state.global||{};
-      var silenced=g.mode==='silenced';
-      var rem=g.silenceRemainingMs;
-      var silLine=silenced&&rem?'<span class="meta">剩余 '+Math.max(1,Math.ceil(rem/60000))+' 分钟</span>':'';
-      var moreOpen=!!this._moreOpen;
-      this.innerHTML='<button type="button" class="qa-row'+(silenced?' muted':'')+'" data-act="silence1h"><span class="body">静默 1 小时</span>'+silLine+'</button>'
-        +'<div class="qa-collapsed" '+(moreOpen?'':'hidden')+'>'
-        +'<button type="button" class="qa-row" data-act="silenceEod"><span class="body">静默到今日结束</span></button>'
-        +'<button type="button" class="qa-row" data-act="wizard"><span class="body">跳习惯向导</span></button>'
-        +'<button type="button" class="qa-row" data-act="test"><span class="body">测试触发</span></button>'
-        +'<button type="button" class="qa-row" data-act="cmdk"><span class="body">命令面板</span></button>'
-        +'</div>'
-        +'<button type="button" class="qa-more'+(moreOpen?' open':'')+'"><span class="chev">▸</span> 更多</button>';
-      var self=this;
-      var moreBtn=this.querySelector('.qa-more');
-      if(moreBtn) moreBtn.onclick=function(e){e.stopPropagation();self._moreOpen=!self._moreOpen;self.render();};
-      this.querySelectorAll('.qa-row').forEach(function(btn){
-        btn.onclick=function(){
-          var a=btn.getAttribute('data-act');
-          if(a==='silence1h') act('silence_until',{minutes:60});
-          else if(a==='silenceEod') act('silence_until',{untilEod:true});
-          else if(a==='wizard') deepLink('main:habits?wizard=1');
-          else if(a==='test') act('test_trigger');
-          else if(a==='cmdk') deepLink('main:cmdk');
-        };
-      });
-    }
-  }
-  class TrayEventCard extends HTMLElement{
-    connectedCallback(){this.render();}
-    render(){
-      var ev=state.event;
-      if(!ev){this.innerHTML='<div class="event-card is-empty" role="button" tabindex="0"><div class="ev-head"><span>刚才</span><span class="t">—</span></div><div class="ev-text"><span class="txt">暂无事件</span></div></div>';this._wire();return;}
-      var ch=ev.channelId||'voice';var oc=ev.outcome?'<span class="ev-outcome '+outcomeCls(ev.outcome)+'">'+outcomeLabel(ev.outcome)+'</span>':'';
-      this.innerHTML='<div class="event-card" role="button" tabindex="0"><div class="ev-head"><span>刚才</span><span class="t">'+ago(ev.t)+'</span><span style="color:var(--on-surface-soft)">·</span><span>'+(CHLABEL[ch]||ch)+'</span></div><div class="ev-text"><span class="ch-ic '+(ch==='keys'?'keys':'')+'"><span class="ico">'+(ICONS[ch]||ICONS.voice)+'</span></span><span class="txt">'+String(formatEventText(ev)).replace(/</g,'&lt;')+'</span>'+oc+'</div></div>';
-      this._wire();
-    }
-    _wire(){
-      var self=this;
-      var card=this.querySelector('.event-card');
-      if(!card||card.__wired) return;
-      card.__wired=true;
-      var go=function(){act('deep_link',{href:'main:diagnose'});};
-      card.onclick=go;
-      card.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};
-    }
   }
   class TrayChannelBlock extends HTMLElement{
     connectedCallback(){this.render();}
     render(){
       var id=this.dataset.id;
       var TCC=window.OneToneTrayChannelControls;
-      if(!TCC||!TCC.renderOsTrayBlock){return;}
+      if(!TCC||!TCC.renderOsTrayBlock)return;
       var self=this;
-      TCC.renderOsTrayBlock(this,id,state,{onRefresh:function(){self.render();}});
+      TCC.renderOsTrayBlock(this,id,state,{
+        onRefresh:function(){
+          var SP=window.OneToneTrayScenePreset;
+          if(SP)SP.onManualSwitchChange();
+          self.render();
+          refreshScene();
+          syncTrayMenuSize();
+        }
+      });
     }
   }
   class TrayMicToggle extends HTMLElement{
@@ -442,52 +175,55 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
     render(){
       var m=state.mic||{};var muted=!!m.muted;var ok=!!m.available;
       this.className=muted?'muted':'';this.classList.toggle('disabled',!ok);
-      this.innerHTML='<div class="mic-row'+(muted?' muted':'')+(ok?'':' disabled')+'"><span class="icowrap"><span class="ico">'+ICONS.mic+'</span></span><span class="body"><span class="name">麦克风</span><span class="meta">'+(muted?'静音':'开')+' · '+String(m.device||'默认')+'</span></span><button type="button" class="toggle" aria-label="切换麦克风静音"></button></div>';
-      var btn=this.querySelector('.toggle');if(btn){btn.onclick=function(e){e.stopPropagation();if(ok)act('mic_toggle');};}
+      this.innerHTML='<div class="mic-row'+(muted?' muted':'')+(ok?'':' disabled')+'"><span class="icowrap"><span class="ico">'+ICONS.mic+'</span></span><span class="body"><span class="name">麦克风</span><span class="meta">'+(muted?'静音':'开')+' · '+String(m.device||'默认')+'</span></span><button type="button" class="toggle-switch page-status-toggle" aria-label="切换麦克风静音"></button></div>';
+      var btn=this.querySelector('.toggle-switch');
+      if(btn){
+        btn.classList.toggle('on',!muted);
+        btn.setAttribute('aria-checked',muted?'false':'true');
+        btn.onclick=function(e){
+          e.stopPropagation();
+          if(ok){act('mic_toggle');var SP=window.OneToneTrayScenePreset;if(SP)SP.onManualSwitchChange();}
+        };
+      }
     }
   }
   class TrayFooterLinks extends HTMLElement{
     connectedCallback(){this.render();}
     render(){
-      var links=state.deepLinks&&state.deepLinks.length?state.deepLinks:[{id:'main',label:'主窗口',href:'main:home'},{id:'habits',label:'我的习惯',href:'main:habits'},{id:'settings',label:'设置',href:'main:settings'}];
-      var iconFor=function(l){return l.id==='settings'?ICONS.settings:l.id==='habits'?ICONS.keys:l.id==='diagnose'?ICONS.diag:ICONS.open;};
-      var left=links.map(function(l,i){return'<button type="button" class="fl'+(i===0?' primary':'')+'" data-href="'+l.href+'"><span class="ico">'+iconFor(l)+'</span>'+esc(l.label)+'</button>';}).join('');
-      this.innerHTML='<div class="footer"><div class="left">'+left+'</div><div class="right"><button type="button" class="quit" title="退出一声"><span class="ico">'+ICONS.quit+'</span></button></div></div>';
-      this.querySelectorAll('.fl').forEach(function(b){b.onclick=function(){act('deep_link',{href:b.getAttribute('data-href')});};});
-      this.querySelector('.quit').onclick=function(){act('quit');};
+      var TF=window.OneToneTrayFooter;
+      if(!TF){this.innerHTML='';return;}
+      var links=state.deepLinks&&state.deepLinks.length?state.deepLinks:TF.defaultLinks();
+      this.innerHTML=TF.renderFooterHtml(links);
+      TF.bindFooter(this);
     }
   }
-  customElements.define('tray-status-hero',TrayStatusHero);
-  customElements.define('tray-event-card',TrayEventCard);
-  customElements.define('tray-habit-row',TrayHabitRow);
-  customElements.define('tray-quick-actions',TrayQuickActions);
   customElements.define('tray-channel-block',TrayChannelBlock);
   customElements.define('tray-mic-toggle',TrayMicToggle);
   customElements.define('tray-footer-links',TrayFooterLinks);
-  function logPerf(ms){
-    invoke('cmd_app_log',{line:'tray_menu_ready_ms='+Math.round(ms)}).catch(function(){});
-  }
   window.__tray_ready__=function(){
-    var tReady=typeof performance!=='undefined'?performance.now():0;
     return invoke('cmd_tray_menu_ready').then(function(raw){
       var data=typeof raw==='string'?JSON.parse(raw):raw;
       applyFull(data);
-      state.schemes=state.schemes&&state.schemes.length?state.schemes:[];
-      return invoke('cmd_tray_customization_get').catch(function(){return null;});
-    }).then(function(cfg){
-      applyLayout(cfg||{});
-      return Promise.all(SEGS.map(function(s){
-        return invoke('cmd_tray_subscribe_segment',{segment:s}).catch(function(){});
-      }));
+      return Promise.all([
+        invoke('cmd_tray_customization_get').catch(function(){return null;}),
+        window.OneToneTrayScenePreset?window.OneToneTrayScenePreset.loadRuntime():Promise.resolve()
+      ]);
+    }).then(function(res){
+      applyLayout(res[0]||{});
+      refreshScene();
+      return Promise.all(SEGS.map(function(s){return invoke('cmd_tray_subscribe_segment',{segment:s}).catch(function(){});}));
     }).then(function(){
+      refreshAll();
       requestAnimationFrame(function(){
+        syncTrayMenuSize();
         var ms=(typeof performance!=='undefined'?performance.now():0)-perfT0;
-        logPerf(ms);
+        invoke('cmd_app_log',{line:'tray_menu_ready_ms='+Math.round(ms)}).catch(function(){});
       });
     });
   };
   listen('tray://patch',function(ev){var p=ev.payload||{};if(p.segment)patchSeg(p.segment,p.payload);}).catch(function(){});
-  listen('tray://layout',function(ev){applyLayout(ev.payload||{});}).catch(function(){});
+  listen('tray://layout',function(ev){applyLayout(ev.payload||{});refreshScene();}).catch(function(){});
+  window.addEventListener('channel-config:changed',function(){refreshAll();});
 })();
 </script>
 </body>

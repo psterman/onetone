@@ -57,7 +57,11 @@
         card.innerHTML = '<div class="cco-card__head"><span class="cco-card__name">' + ch.label + '</span>'
           + '<span class="cco-card__st ' + st + '">' + stText + '</span></div>'
           + '<div class="cco-card__meta">' + (c && c.meta ? String(c.meta).replace(/</g, '') : '—') + '</div>';
-        card.addEventListener('click', function () { openPanel(ch.panel); });
+        card.addEventListener('click', function () {
+          var drawer = global.OneToneSettingsDrawer;
+          if (drawer && drawer.open) drawer.open({ panel: 'tray', trayEditorFocus: ch.id });
+          else openPanel(ch.panel);
+        });
         grid.appendChild(card);
       });
     }).catch(function () {

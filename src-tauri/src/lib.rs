@@ -80,6 +80,7 @@ mod tray_agent_bridge;
 mod tray_icon_render;
 mod tray_state;
 mod tray_customization;
+mod tray_runtime;
 mod ui_heartbeat;
 mod update;
 mod vendor_hid;
@@ -985,9 +986,12 @@ pub fn run() {
             ipc::cmd_tray_subscribe_segment,
             ipc::cmd_tray_action,
             ipc::cmd_tray_menu_present,
+            ipc::cmd_tray_menu_set_size,
             ipc::cmd_tray_sync_mic,
             ipc::cmd_tray_customization_get,
             ipc::cmd_tray_customization_save,
+            ipc::cmd_tray_runtime_get,
+            ipc::cmd_tray_runtime_save,
             ipc::cmd_runtime_status_protocol,
             ipc::cmd_autostart_get,
             ipc::cmd_autostart_set,

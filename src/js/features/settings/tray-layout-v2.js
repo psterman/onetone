@@ -14,36 +14,62 @@
   };
 
   var BLOCK_CATALOG = [
-    { id: 'block:hero', labelKey: 'trayLayoutHero', labelFb: '顶部状态卡', defaultVisible: true, locked: true },
-    { id: 'block:event', labelKey: 'trayLayoutEvent', labelFb: '最近发生的事', defaultVisible: true },
-    { id: 'block:habit', labelKey: 'trayLayoutHabit', labelFb: '切换习惯', defaultVisible: true },
-    { id: 'block:quick', labelKey: 'trayLayoutQuick', labelFb: '快捷动作', defaultVisible: true },
+    { id: 'block:scene', labelKey: 'trayLayoutScene', labelFb: '场景预设', defaultVisible: true, locked: true },
+    { id: 'block:hero', labelKey: 'trayLayoutHero', labelFb: '顶部状态卡', defaultVisible: false, locked: true },
+    { id: 'block:event', labelKey: 'trayLayoutEvent', labelFb: '最近发生的事', defaultVisible: false },
+    { id: 'block:habit', labelKey: 'trayLayoutHabit', labelFb: '切换习惯', defaultVisible: false },
+    { id: 'block:quick', labelKey: 'trayLayoutQuick', labelFb: '快捷动作', defaultVisible: false },
     { id: 'block:channel:voice', labelKey: 'trayLayoutShowVoice', labelFb: '语音通道', defaultVisible: true, channel: 'voice' },
     { id: 'block:channel:keys', labelKey: 'trayLayoutShowKeys', labelFb: '按键通道', defaultVisible: true, channel: 'keys' },
     { id: 'block:channel:softPad', labelKey: 'trayLayoutShowSoftPad', labelFb: '小键盘通道', defaultVisible: true, channel: 'softPad' },
     { id: 'block:channel:camera', labelKey: 'trayLayoutShowCamera', labelFb: '摄像头通道', defaultVisible: false, channel: 'camera' },
     { id: 'block:mic', labelKey: 'trayLayoutMic', labelFb: '麦克风', defaultVisible: true },
-    { id: 'block:footer', labelKey: 'trayLayoutFooter', labelFb: '底部链接', defaultVisible: true }
+    { id: 'block:footer', labelKey: 'trayLayoutFooter', labelFb: '底部链接', defaultVisible: true, locked: true }
   ];
 
   var CONTROL_DEFS = [
-    { id: 'voiceMaster', channel: 'voice', tier: 'l1', labelKey: 'trayChVoiceMaster' },
-    { id: 'voiceEnd', channel: 'voice', tier: 'l2', labelKey: 'trayChVoiceEnd' },
-    { id: 'keysEnabled', channel: 'keys', tier: 'l1', labelKey: 'trayChKeysUseScenario' },
-    { id: 'keysCancel', channel: 'keys', tier: 'l2', labelKey: 'trayChKeysCancel' },
-    { id: 'keysAutoSend', channel: 'keys', tier: 'l2', labelKey: 'trayChKeysAutoSend' },
-    { id: 'padEnabled', channel: 'softPad', tier: 'l1', labelKey: 'trayChPadEnabled' },
-    { id: 'padOverlay', channel: 'softPad', tier: 'l2', labelKey: 'trayChPadShowKeyboard' },
-    { id: 'camPresence', channel: 'camera', tier: 'l1', labelKey: 'trayChCamPresence' },
-    { id: 'camAutoMute', channel: 'camera', tier: 'l2', labelKey: 'trayChCamAutoMute' }
+    { id: 'voiceMaster', channel: 'voice', tier: 'l1', labelKey: 'trayChVoiceMaster', needs: null },
+    { id: 'voiceEnd', channel: 'voice', tier: 'l2', labelKey: 'trayChVoiceEnd', needs: 'voiceMaster' },
+    { id: 'keysEnabled', channel: 'keys', tier: 'l1', labelKey: 'trayChKeysUseScenario', needs: null },
+    { id: 'keysCancel', channel: 'keys', tier: 'l2', labelKey: 'trayChKeysCancel', needs: 'keysEnabled' },
+    { id: 'keysAutoSend', channel: 'keys', tier: 'l2', labelKey: 'trayChKeysAutoSend', needs: 'keysEnabled' },
+    { id: 'padEnabled', channel: 'softPad', tier: 'l1', labelKey: 'trayChPadEnabled', needs: null },
+    { id: 'padOverlay', channel: 'softPad', tier: 'l2', labelKey: 'trayChPadShowKeyboard', needs: 'padEnabled' },
+    { id: 'padRequireFg', channel: 'softPad', tier: 'l2', labelKey: 'trayChPadRequireFg', needs: 'padOverlay' },
+    { id: 'camPresence', channel: 'camera', tier: 'l1', labelKey: 'trayChCamPresence', needs: null },
+    { id: 'camTriggerAway', channel: 'camera', tier: 'l2', labelKey: 'trayChCamTriggerAway', needs: 'camPresence' },
+    { id: 'camAutoMute', channel: 'camera', tier: 'l1', labelKey: 'trayChCamAutoMute', needs: null },
+    { id: 'camNoFaceMute', channel: 'camera', tier: 'l2', labelKey: 'trayChCamNoFaceMute', needs: 'camAutoMute' }
   ];
 
   var LABEL_FB = {
-    trayChVoiceMaster: '语音听写', trayChVoiceEnd: '说结束词就停',
-    trayChKeysUseScenario: '使用这个场景', trayChKeysCancel: '再按一次能取消', trayChKeysAutoSend: '输完自动发送',
-    trayChPadEnabled: '启用小键盘', trayChPadShowKeyboard: '显示屏幕键盘',
-    trayChCamPresence: '认人脸走/回', trayChCamAutoMute: '走远自动关麦'
+    trayChVoiceMaster: '语音输入', trayChVoiceEnd: '说完就停',
+    trayChKeysUseScenario: '快捷键', trayChKeysCancel: '再按可取消', trayChKeysAutoSend: '自动发送',
+    trayChPadEnabled: '启用小键盘', trayChPadShowKeyboard: '显示小键盘', trayChPadRequireFg: '跟着前台助手',
+    trayChCamPresence: '镜头动作识别', trayChCamTriggerAway: '检测离席',
+    trayChCamAutoMute: '走远自动静音', trayChCamNoFaceMute: '没人也静音'
   };
+
+  var PERSONA_PRESETS = {
+    compact: { voice: true, keys: true, softPad: true, camera: false },
+    full: { voice: true, keys: true, softPad: true, camera: true },
+    beg: { voice: true, keys: false, softPad: false, camera: false },
+    vibe: { voice: true, keys: true, softPad: true, camera: false }
+  };
+
+  function normalizePersona(persona) {
+    if (persona === 'full') return 'full';
+    if (persona === 'beg' || persona === 'vibe' || persona === 'compact') return 'compact';
+    return 'compact';
+  }
+
+  function inferPersonaFromLayout(layout) {
+    layout = normalizeLayout(layout || defaultLayout());
+    var all = CHANNELS.every(function (ch) {
+      return blockVisible(layout, channelBlockId(ch));
+    });
+    return all ? 'full' : 'compact';
+  }
 
   function t(key, fb) {
     var v = global.OneToneI18n && global.OneToneI18n.t ? global.OneToneI18n.t(key, fb) : (fb || key);
@@ -77,7 +103,7 @@
         renderTier: renderTier,
         demoted: demoted,
         label: t(def.labelKey, LABEL_FB[def.labelKey] || def.id),
-        defaultVisible: def.tier === 'l1' || (def.channel === 'voice' && def.id === 'voiceEnd') || (def.channel === 'keys' && def.id === 'keysCancel') || (def.channel === 'softPad' && def.id === 'padOverlay')
+        defaultVisible: def.tier === 'l1' || (def.channel === 'voice' && def.id === 'voiceEnd') || (def.channel === 'keys' && def.id === 'keysCancel') || (def.channel === 'softPad' && def.id === 'padOverlay') || (def.channel === 'camera' && def.id === 'camTriggerAway')
       });
     });
     return { version: VERSION, blocks: BLOCK_CATALOG.slice(), controls: controls };
@@ -121,6 +147,39 @@
     };
   }
 
+  function ensureSchemeALayout(layout) {
+    var repaired = false;
+    layout = normalizeLayout(layout || defaultLayout());
+    var anyCh = CHANNELS.some(function (ch) {
+      return blockVisible(layout, channelBlockId(ch));
+    });
+    if (!anyCh) {
+      layout = applyPersonaPreset(layout, 'vibe');
+      repaired = true;
+    }
+    setBlockVisible(layout, 'block:scene', true);
+    setBlockVisible(layout, 'block:hero', false);
+    setBlockVisible(layout, 'block:event', false);
+    setBlockVisible(layout, 'block:habit', false);
+    setBlockVisible(layout, 'block:quick', false);
+    CHANNELS.forEach(function (ch) {
+      if (!blockVisible(layout, channelBlockId(ch))) return;
+      var cat = getTrayCatalog();
+      var hasVisible = (layout.controls || []).some(function (c) {
+        return c.channel === ch && c.visible !== false;
+      });
+      if (hasVisible) return;
+      repaired = true;
+      cat.controls.forEach(function (c, i) {
+        if (c.channel !== ch) return;
+        var hit = (layout.controls || []).find(function (x) { return x.id === c.id; });
+        if (hit) hit.visible = !!c.defaultVisible;
+        else layout.controls.push({ id: c.id, visible: !!c.defaultVisible, order: i, channel: ch });
+      });
+    });
+    return { layout: layout, repaired: repaired };
+  }
+
   function mergeLayoutWithCatalog(current) {
     var cat = getTrayCatalog();
     current = normalizeLayout(current);
@@ -143,7 +202,9 @@
     });
     merged.blocks.sort(function (a, b) { return a.order - b.order; });
     merged.controls.sort(function (a, b) { return a.order - b.order; });
-    return { layout: merged, newBlocks: newBlocks, newControls: newControls };
+    var ensured = ensureSchemeALayout(merged);
+    merged = ensured.layout;
+    return { layout: merged, newBlocks: newBlocks, newControls: newControls, repaired: ensured.repaired };
   }
 
   function setBlockVisible(layout, blockId, on) {
@@ -180,6 +241,16 @@
     return out;
   }
 
+  function applyPersonaPreset(layout, persona) {
+    layout = normalizeLayout(layout || defaultLayout());
+    persona = normalizePersona(persona);
+    var spec = PERSONA_PRESETS[persona] || PERSONA_PRESETS.compact;
+    CHANNELS.forEach(function (ch) {
+      setBlockVisible(layout, channelBlockId(ch), !!spec[ch]);
+    });
+    return layout;
+  }
+
   global.OneToneTrayLayoutV2 = {
     VERSION: VERSION,
     CHANNELS: CHANNELS,
@@ -195,6 +266,12 @@
     sortedVisibleBlocks: sortedVisibleBlocks,
     channelBlockId: channelBlockId,
     legacyShowInTray: legacyShowInTray,
+    applyPersonaPreset: applyPersonaPreset,
+    normalizePersona: normalizePersona,
+    inferPersonaFromLayout: inferPersonaFromLayout,
+    ensureSchemeALayout: ensureSchemeALayout,
+    PERSONA_PRESETS: PERSONA_PRESETS,
+    CONTROL_DEFS: CONTROL_DEFS,
     ctrlCatalogId: ctrlCatalogId
   };
 })(typeof window !== 'undefined' ? window : globalThis);

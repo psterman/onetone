@@ -2,7 +2,9 @@
 (function (g) {
   g.__CHANNEL_CONFIG_GENERATED_KEYS__ = [
   "config.cameraPrefs.autoMute.enabled",
+  "config.cameraPrefs.autoMute.noFaceMute",
   "config.cameraPrefs.presenceActions.enabled",
+  "config.cameraPrefs.presenceActions.triggers.away",
   "config.voiceAssistEnabled",
   "config.voiceEnd.enabled",
   "mappings[].appBehaviorRules[].appId",
@@ -12,6 +14,7 @@
   "mappings[].cancelEnabled",
   "mappings[].codexMicroPad.enabled",
   "mappings[].codexMicroPad.overlayEnabled",
+  "mappings[].codexMicroPad.requireForeground",
   "mappings[].enabled",
   "mappings[].triggerKey",
   "mappings[].triggerMode",
@@ -19,6 +22,8 @@
   "trayCustomization.showInTray.camera",
   "trayCustomization.showInTray.keys",
   "trayCustomization.showInTray.softPad",
-  "trayCustomization.showInTray.voice"
+  "trayCustomization.showInTray.voice",
+  "trayRuntime.customSwitchSnapshot",
+  "trayRuntime.trayScenePreset"
 ];
 })(typeof window !== 'undefined' ? window : globalThis);

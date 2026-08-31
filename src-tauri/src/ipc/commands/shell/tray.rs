@@ -38,6 +38,15 @@ pub fn cmd_tray_menu_present(
 }
 
 #[tauri::command]
+pub fn cmd_tray_menu_set_size(
+    window: tauri::WebviewWindow,
+    height: f64,
+    width: Option<f64>,
+) -> Result<(), String> {
+    crate::tray::resize_tray_menu(&window, height, width).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn cmd_tray_sync_mic(app: tauri::AppHandle) {
     crate::tray::refresh_tray_visual_forced(&app);
 }

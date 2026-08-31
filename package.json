@@ -41,6 +41,7 @@
     "dev:islands": "vite build --watch",
     "test:home-roadmap": "node scripts/test-home-roadmap.mjs",
     "test:tray-p0": "node scripts/test-tray-p0.mjs",
+    "test:tray-scene-preset": "node scripts/test-tray-scene-preset.mjs",
     "test:ot-switch": "node scripts/test-ot-switch-css.mjs",
     "test:ot-subtab": "node scripts/test-ot-subtab-css.mjs",
     "test:ot-ctrl": "node scripts/test-ot-ctrl-css.mjs",

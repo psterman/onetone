@@ -1,0 +1,11 @@
+# Automatically generated - do not edit
+
+[[permission]]
+identifier = "allow-cmd-tray-menu-set-size"
+description = "Enables the cmd_tray_menu_set_size command without any pre-configured scope."
+commands.allow = ["cmd_tray_menu_set_size"]
+
+[[permission]]
+identifier = "deny-cmd-tray-menu-set-size"
+description = "Denies the cmd_tray_menu_set_size command without any pre-configured scope."
+commands.deny = ["cmd_tray_menu_set_size"]
