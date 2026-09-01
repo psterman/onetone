@@ -6,7 +6,16 @@
   var advancedHid=false;
   var sawRs=false;
   var liveRecording=false;
+  var uiRevealed=false;
+  var problemOpen=false;
   function $(id){ return global.OneToneDom&&global.OneToneDom.$(id); }
+  function t(key,fb){
+    try{
+      var v=global.OneToneI18n&&global.OneToneI18n.t?global.OneToneI18n.t(key):key;
+      if(v&&v!==key) return v;
+    }catch(_){}
+    return fb!=null?fb:key;
+  }
   function pad(n){ return n<10?'0'+n:String(n); }
   function esc(s){
     return String(s==null?'':s).replace(/[&<>"']/g,function(c){
@@ -23,6 +32,68 @@
     while(ms.length<3) ms='0'+ms;
     return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())+'.'+ms;
   }
+  function syncRecordingProbeLink(){
+    var link=$('btnKeysRecordingProbe');
+    var panel=$('recordProbePanel');
+    if(!link) return;
+    var show=!!liveRecording&&!uiRevealed;
+    link.hidden=!show;
+    if(panel) link.setAttribute('aria-controls','recordProbePanel');
+    link.setAttribute('aria-expanded',uiRevealed?'true':'false');
+  }
+  function setUiVisible(on,opts){
+    opts=opts||{};
+    uiRevealed=!!on;
+    var panel=$('recordProbePanel');
+    if(!panel) return;
+    panel.hidden=!on;
+    panel.classList.toggle('is-revealed',on);
+    if(opts.expanded){
+      panel.classList.add('is-expanded');
+      syncProbeExpandLabel(panel);
+    }
+    syncRecordingProbeLink();
+  }
+  function reveal(opts){
+    opts=opts||{};
+    problemOpen=true;
+    setUiVisible(true,{expanded:opts.expanded!==false});
+    var status=$('recordProbeStatus');
+    if(status&&opts.message) status.textContent=opts.message;
+  }
+  function dismiss(){
+    problemOpen=false;
+    var panel=$('recordProbePanel');
+    if(panel){
+      panel.classList.remove('is-expanded');
+      syncProbeExpandLabel(panel);
+    }
+    lines=[];
+    hidRows=[];
+    sawRs=false;
+    setUiVisible(false);
+    renderHid();
+    var ol=$('recordProbeLog');
+    if(ol) ol.innerHTML='';
+  }
+  function maybeRevealForProblem(kind, src){
+    if(kind==='drop'||kind==='unknown'){
+      reveal({message:t('keysCaptureProbeProblemUnknown','检测到异常按键，请查看下方日志')});
+      return;
+    }
+    if(liveRecording&&src==='wv'){
+      var hasWv=false;
+      for(var i=0;i<lines.length;i++){
+        if(lines[i].src==='wv') hasWv=true;
+        if(lines[i].src==='rs') sawRs=true;
+      }
+      if(hasWv&&!sawRs){
+        reveal({
+          message:t('keysCaptureProbeProblemHook','按键到了界面，但系统钩子没接到。可尝试重新编译并重启')
+        });
+      }
+    }
+  }
   function renderHid(){
     var host=$('recordProbeHidList');
     var box=$('recordProbeHidBox');
@@ -33,11 +104,11 @@
       return;
     }
     if(!hidRows.length){
-      host.innerHTML='<li class="record-probe-hid-empty">按下厂家自定义键后会出现在这里</li>';
+      host.innerHTML='<li class="record-probe-hid-empty">'+esc(t('keysCaptureProbeHidEmpty','按下厂家自定义键后会出现在这里'))+'</li>';
       return;
     }
     host.innerHTML=hidRows.map(function(row,i){
-      return '<li class="record-probe-hid-item"><span class="k">'+esc(row.key)+'</span><span class="n">'+esc(row.note)+'</span><button type="button" class="record-probe-btn" data-hid-idx="'+i+'">用这个</button></li>';
+      return '<li class="record-probe-hid-item"><span class="k">'+esc(row.key)+'</span><span class="n">'+esc(row.note)+'</span><button type="button" class="record-probe-btn" data-hid-idx="'+i+'">'+esc(t('keysCaptureProbeUseKey','用这个'))+'</button></li>';
     }).join('');
   }
   function render(){
@@ -49,8 +120,12 @@
       return '<li class="record-probe-line is-'+esc(row.kind)+'"><span class="t">'+esc(row.t)+'</span><span class="s">'+esc(row.src)+'</span><span class="k">'+esc(row.key)+'</span><span class="a">'+esc(row.alias)+'</span><span class="n">'+esc(row.note)+'</span></li>';
     }).join('');
     ol.scrollTop=ol.scrollHeight;
-    if(panel) panel.hidden=false;
-    if(status&&!liveRecording) status.textContent=lines.length?'已捕获 '+lines.length+' 条':'等待按键…';
+    if(panel&&!uiRevealed) panel.hidden=true;
+    if(status&&!liveRecording&&uiRevealed){
+      status.textContent=lines.length
+        ?t('keysCaptureProbeCaptured','已捕获 {n} 条').replace('{n}',String(lines.length))
+        :t('keysCaptureProbeWaiting','等待按键…');
+    }
     refreshRebuildHint();
     renderHid();
   }
@@ -63,7 +138,9 @@
       if(lines[i].src==='rs') sawRs=true;
     }
     if(hasWv && !sawRs){
-      status.textContent='前端看见了按键，后端钩子没接到。请重新编译并重启（只刷新页面不够）';
+      reveal({
+        message:t('keysCaptureProbeProblemHook','按键到了界面，但系统钩子没接到。可尝试重新编译并重启')
+      });
     }
   }
   function push(src, kind, key, note){
@@ -78,6 +155,7 @@
     });
     if(lines.length>MAX) lines=lines.slice(-MAX);
     render();
+    maybeRevealForProblem(kind, src);
     try{
       var log=global.OneToneApp&&global.OneToneApp.pushLog;
       if(log) log('[record-probe] '+src+' '+kind+' '+key+' '+note);
@@ -116,15 +194,26 @@
     if(on){
       hidRows=[];
       sawRs=false;
+      if(panel) panel.classList.toggle('is-live',true);
+      if(status){
+        status.dataset.live='1';
+        status.textContent=t('keysCaptureProbeLive','正在录制 · {mode}').replace('{mode}',mode||'trigger');
+      }
+      setUiVisible(false);
+      renderHid();
+      return;
     }
-    if(panel){
-      panel.hidden=false;
-      panel.classList.toggle('is-live',!!on);
-    }
+    if(panel) panel.classList.remove('is-live');
     if(status){
-      status.dataset.live=on?'1':'';
-      status.textContent=on?('正在录制 · '+(mode||'trigger')):'未录制（日志保留）';
+      status.dataset.live='';
+      if(uiRevealed){
+        status.textContent=lines.length
+          ?t('keysCaptureProbeCaptured','已捕获 {n} 条').replace('{n}',String(lines.length))
+          :t('keysCaptureProbeWaiting','等待按键…');
+      }
     }
+    if(!problemOpen) dismiss();
+    else syncRecordingProbeLink();
     renderHid();
   }
   function setAdvancedHid(on){
@@ -147,11 +236,10 @@
   function syncProbeExpandLabel(panel){
     var btn=$('btnRecordProbeExpand');
     if(!btn||!panel) return;
-    var t=global.OneToneI18n&&global.OneToneI18n.t;
     var expanded=panel.classList.contains('is-expanded');
     btn.textContent=expanded
-      ?(t?t('keysCaptureProbeCollapse','收起检测'):'收起检测')
-      :(t?t('keysCaptureProbeExpand','按键没反应？点开检测'):'按键没反应？点开检测');
+      ?t('keysCaptureProbeCollapse','收起检测')
+      :t('keysCaptureProbeExpand','按键没反应？点开检测');
     btn.setAttribute('aria-expanded',expanded?'true':'false');
   }
   function bind(){
@@ -160,6 +248,7 @@
     var adv=$('recordProbeAdvancedHid');
     var host=$('recordProbeHidList');
     var expand=$('btnRecordProbeExpand');
+    var recLink=$('btnKeysRecordingProbe');
     if(btn) btn.addEventListener('click',function(e){ e.preventDefault(); copy(); });
     if(clr) clr.addEventListener('click',function(e){ e.preventDefault(); clear(); });
     if(adv){
@@ -179,19 +268,45 @@
         e.preventDefault();
         var panel=$('recordProbePanel');
         if(!panel) return;
-        panel.classList.toggle('is-expanded');
-        syncProbeExpandLabel(panel);
+        if(!uiRevealed){
+          reveal({expanded:true});
+          return;
+        }
+        if(panel.classList.contains('is-expanded')){
+          dismiss();
+        }else{
+          panel.classList.add('is-expanded');
+          syncProbeExpandLabel(panel);
+        }
+      });
+    }
+    if(recLink){
+      recLink.addEventListener('click',function(e){
+        e.preventDefault();
+        reveal({expanded:true});
       });
     }
     var panel=$('recordProbePanel');
-    if(panel) panel.classList.remove('is-expanded');
+    if(panel){
+      panel.classList.remove('is-expanded');
+      panel.hidden=true;
+    }
     syncProbeExpandLabel(panel);
+    syncRecordingProbeLink();
     render();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bind);
   else bind();
   global.OneToneRecordProbe={
-    push:push,clear:clear,setRecording:setRecording,text:text,
-    ingestUnknown:ingestUnknown,setAdvancedHid:setAdvancedHid
+    push:push,
+    clear:clear,
+    setRecording:setRecording,
+    text:text,
+    ingestUnknown:ingestUnknown,
+    setAdvancedHid:setAdvancedHid,
+    reveal:reveal,
+    dismiss:dismiss,
+    isVisible:function(){ return uiRevealed; },
+    syncRecordingProbeLink:syncRecordingProbeLink
   };
 })((typeof window!=='undefined')?window:globalThis);

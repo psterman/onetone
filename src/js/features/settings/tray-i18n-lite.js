@@ -35,6 +35,7 @@
     trayChEventFriendly: '刚刚有活动',
     trayHabitWeekActive: '本周有使用',
     trayLayoutScene: '场景预设',
+    trayLayoutChannelStatus: '通道状态',
     trayLayoutHero: '顶部状态卡',
     trayLayoutEvent: '最近发生的事',
     trayLayoutShowVoice: '显示语音',

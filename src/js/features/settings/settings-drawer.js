@@ -1157,14 +1157,6 @@
       }
     }
 
-    if(panel==='keys'||panel==='voiceWake'||panel==='softPad'||panel==='camera'){
-      var channelCompact=global.OneToneChannelConfigCompact;
-      if(channelCompact&&typeof channelCompact.refresh==='function'){
-        var compactCh=panel==='voiceWake'?'voice':panel;
-        try{ channelCompact.refresh(compactCh); }catch(_){}
-      }
-    }
-
     lastPanel=panel;
 
     // Presence/MediaPipe createImageBitmap + habit/softPad remount on the same turn wedges WebView2.
@@ -1552,6 +1544,16 @@
       var href=String(d.href||'');
       var tab=String(d.tab||'');
       if(!href&&tab) href='main:'+tab;
+      var panel=null;
+      if(href.indexOf('?')>=0){
+        var qs=href.split('?')[1]||'';
+        var m=/panel=([^&]+)/.exec(qs);
+        if(m) panel=decodeURIComponent(m[1]);
+      }
+      if(panel){
+        openDrawer({panel:panel});
+        return;
+      }
       if(href.indexOf('main:habits')===0||tab==='habits'){
         openDrawer({panel:'habits',habitWizard:href.indexOf('wizard=1')>=0});
       }

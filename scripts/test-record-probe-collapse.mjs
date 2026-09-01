@@ -13,11 +13,13 @@ function classList(){
   };
 }
 
-const panel={hidden:false,classList:classList()};
+const panel={hidden:true,classList:classList()};
 const expandBtn={textContent:'',setAttribute(){},addEventListener(){}};
+const recLink={hidden:true,setAttribute(){},addEventListener(){}};
 const ids={
   recordProbePanel:panel,
   btnRecordProbeExpand:expandBtn,
+  btnKeysRecordingProbe:recLink,
   recordProbeLog:{innerHTML:'',scrollTop:0},
   recordProbeStatus:{textContent:'',dataset:{}},
   recordProbeAdvancedHid:null,
@@ -45,6 +47,8 @@ vm.runInContext(
 );
 
 assert.equal(panel.classList.contains('is-expanded'),false,'probe panel starts collapsed');
+assert.equal(panel.hidden,true,'probe panel hidden until problem or user asks');
+assert.equal(recLink.hidden,true,'recording probe link hidden when panel revealed');
 assert.match(expandBtn.textContent,/点开检测|Open diagnostics/,'collapse label shown');
 
 panel.classList.add('is-expanded');
@@ -53,5 +57,7 @@ panel.classList.remove('is-expanded');
 
 const css=readFileSync(new URL('../src/css/keys-workflow.css',import.meta.url),'utf8');
 assert.match(css,/#settingsPanelKeys #habitKeyMappingSection \.record-probe-panel:not\(\.is-expanded\)/,'keys page collapse CSS exists');
+assert.match(css,/\.record-probe-panel:not\(\.is-revealed\)/,'probe hidden until revealed');
+assert.match(readFileSync(new URL('../src/index.html',import.meta.url),'utf8'),/id="btnKeysRecordingProbe"/,'recording probe link in keys UI');
 
 console.log('[record-probe-collapse] assertions passed');

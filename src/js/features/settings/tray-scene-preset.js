@@ -105,16 +105,21 @@
     return 'allOn';
   }
 
-  function loadRuntime() {
+  function ingestRuntime(rt) {
+    if (!rt) return runtime;
+    var presetRaw = rt.trayScenePreset != null ? rt.trayScenePreset : rt.tray_scene_preset;
+    runtime.trayScenePreset = normalizeTrayScenePreset(presetRaw);
+    runtime.customSwitchSnapshot = rt.customSwitchSnapshot || rt.custom_switch_snapshot || {};
+    if (rt.personaPreset || rt.persona_preset) {
+      runtime.personaPreset = rt.personaPreset || rt.persona_preset;
+    }
+    return runtime;
+  }
+
+  function loadRuntime(prefetched) {
+    if (prefetched) return Promise.resolve(ingestRuntime(prefetched));
     return invoke('cmd_tray_runtime_get').then(function (rt) {
-      if (!rt) return runtime;
-      var presetRaw = rt.trayScenePreset != null ? rt.trayScenePreset : rt.tray_scene_preset;
-      runtime.trayScenePreset = normalizeTrayScenePreset(presetRaw);
-      runtime.customSwitchSnapshot = rt.customSwitchSnapshot || rt.custom_switch_snapshot || {};
-      if (rt.personaPreset || rt.persona_preset) {
-        runtime.personaPreset = rt.personaPreset || rt.persona_preset;
-      }
-      return runtime;
+      return ingestRuntime(rt);
     }).catch(function () { return runtime; });
   }
 
@@ -319,6 +324,7 @@
 
   global.OneToneTrayScenePreset = {
     loadRuntime: loadRuntime,
+    ingestRuntime: ingestRuntime,
     saveRuntime: saveRuntime,
     setScenePreset: setScenePreset,
     applyPersistedSceneOnOpen: applyPersistedSceneOnOpen,

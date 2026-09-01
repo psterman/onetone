@@ -178,7 +178,9 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
     }
   }
   class TrayChannelBlock extends HTMLElement{
-    connectedCallback(){this.render();}
+    connectedCallback(){
+      if(window.__trayBootstrapped&&this.render) this.render();
+    }
     render(){
       var id=this.dataset.id;
       var TCC=window.OneToneTrayChannelControls;
@@ -241,18 +243,29 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
   window.__tray_ready__=function(){
     var subPromise=Promise.all(SEGS.map(function(s){return invoke('cmd_tray_subscribe_segment',{segment:s}).catch(function(){});}));
     var TCC=window.OneToneTrayChannelControls;
-    return invoke('cmd_tray_menu_ready').then(function(raw){
+    var SP=window.OneToneTrayScenePreset;
+    var needsOsContext=!(TCC&&TCC.hasOsContext&&TCC.hasOsContext());
+    return Promise.all([
+      invoke('cmd_tray_menu_ready'),
+      invoke('cmd_tray_runtime_get').catch(function(){return null;}),
+      invoke('cmd_tray_customization_get').catch(function(){return null;}),
+      needsOsContext&&TCC&&TCC.prefetchOsContext?TCC.prefetchOsContext():Promise.resolve(null)
+    ]).then(function(bundle){
+      var raw=bundle[0];
+      var rt=bundle[1];
+      var customization=bundle[2];
+      var osContext=bundle[3];
       var data=typeof raw==='string'?JSON.parse(raw):raw;
       applyFull(data,{deferRender:true});
-      var SP=window.OneToneTrayScenePreset;
-      var rtPromise=SP&&SP.loadRuntime?SP.loadRuntime():Promise.resolve();
+      var rtPromise=SP&&SP.loadRuntime?SP.loadRuntime(rt):Promise.resolve();
       return rtPromise.then(function(){
-        return Promise.all([
-          invoke('cmd_tray_customization_get').catch(function(){return null;}),
-          TCC&&TCC.hydrateOsContext?TCC.hydrateOsContext(state.global):Promise.resolve()
-        ]);
-      }).then(function(res){
-        applyLayout(res[0]||{});
+        return TCC&&TCC.hydrateOsContext?TCC.hydrateOsContext(state.global,{
+          customization:customization,
+          osContext:osContext
+        }):Promise.resolve();
+      }).then(function(){
+        applyLayout(customization||{});
+        window.__trayBootstrapped=true;
         refreshScene();
         refreshAll();
         document.querySelector('tray-footer-links').render();

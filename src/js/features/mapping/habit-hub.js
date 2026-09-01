@@ -1226,9 +1226,10 @@
     syncFilterTabStates();
   }
 
-  function paintWorkspace(){
+  function paintWorkspace(opts){
+    opts=opts||{};
     if(global.OneToneHabitWorkspace&&global.OneToneHabitWorkspace.render){
-      global.OneToneHabitWorkspace.render();
+      global.OneToneHabitWorkspace.render(opts);
     }
   }
 
@@ -1237,18 +1238,16 @@
     if(!el) return;
     var ipc=global.OneToneIpc;
     if(!ipc||typeof ipc.invoke!=='function'){el.hidden=true;return;}
-    ipc.invoke('cmd_tray_menu_ready').then(function(raw){
-      var data=typeof raw==='string'?JSON.parse(raw):raw;
-      var g=data&&data.global;
-      if(!g||!g.activeHabitId){el.hidden=true;return;}
-      var total=g.todayTotalCount||0;
-      var habit=g.todayHabitCount||0;
+    ipc.invoke('cmd_tray_usage_summary').then(function(data){
+      if(!data||!data.activeHabitId){el.hidden=true;return;}
+      var total=data.todayTotalCount||0;
+      var habit=data.todayHabitCount||0;
       var line=t('trayTodayTotal','今日 {n} 次').replace('{n}',String(total));
-      if(habit>0&&g.activeHabitLabel){
-        line+=' · '+g.activeHabitLabel+' '+habit+t('trayTodayHabitSuffix',' 次');
+      if(habit>0&&data.activeHabitLabel){
+        line+=' · '+data.activeHabitLabel+' '+habit+t('trayTodayHabitSuffix',' 次');
       }
-      if(g.weekTrend&&g.weekTrend.length){
-        line+=' · 7d: '+g.weekTrend.join('/');
+      if(data.weekTrend&&data.weekTrend.length){
+        line+=' · 7d: '+data.weekTrend.join('/');
       }
       el.textContent=line;
       el.hidden=false;
@@ -1259,15 +1258,22 @@
     syncHabitValueCardFromTray();
     var api=global.OneToneHabitActionStats;
     if(!api||!api.fetch){
-      paintWorkspace();
+      paintWorkspace({skipStatsFetch:true});
       return;
     }
+    var t0=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
     api.fetch({hours:168}).then(function(){
-      paintWorkspace();
+      paintWorkspace({skipStatsFetch:true});
       if(habitHubChromeMounted()&&typeof global.__otHabitHubChromeSync==='function'){
         try{ global.__otHabitHubChromeSync(); }catch(_){}
       }
-    }).catch(function(){ paintWorkspace(); });
+      try{
+        if(global.OneToneIpc&&global.OneToneIpc.invoke){
+          var ms=Math.round(((typeof performance!=='undefined'&&performance.now)?performance.now():Date.now())-t0);
+          global.OneToneIpc.invoke('cmd_app_log',{line:'fe habitHub.stats_paint_ms='+ms}).catch(function(){});
+        }
+      }catch(_){}
+    }).catch(function(){ paintWorkspace({skipStatsFetch:true}); });
   }
 
   // Workspace 轻量刷新（避免 delete/confirm 走全量 render() 假死）
@@ -1649,8 +1655,11 @@
     var list=$('habitHubList');
     var empty=$('habitHubEmpty');
     if(list) list.hidden=true;
-    var model=buildHabitHubListModel();
-    if(!habitHubChromeMounted()&&empty) empty.hidden=!!model.hasContent;
+    if(!habitHubChromeMounted()&&empty){
+      var cfg=state().config||{};
+      var mappings=Array.isArray(cfg.mappings)?cfg.mappings:[];
+      empty.hidden=mappings.length>0;
+    }
   }
 
   function focusRenameInput(){
@@ -1717,7 +1726,14 @@
     renderList();
     renderFilters();
     applyShellVisibility();
-    refreshUsageStatsThenPaint();
+    paintWorkspace({skipStatsFetch:true});
+    if(typeof requestAnimationFrame==='function'){
+      requestAnimationFrame(function(){
+        refreshUsageStatsThenPaint();
+      });
+    }else{
+      refreshUsageStatsThenPaint();
+    }
     try{
       if(global.OneToneIpc&&global.OneToneIpc.invoke){
         var ms=Math.round(((typeof performance!=='undefined'&&performance.now)?performance.now():Date.now())-t0);
@@ -1769,7 +1785,7 @@
     if(global.OneToneSettingsDrawer){
       global.OneToneSettingsDrawer.setPanel('habits');
       if(global.OneToneHabitWorkspace&&global.OneToneHabitWorkspace.render){
-        global.OneToneHabitWorkspace.render();
+        global.OneToneHabitWorkspace.render({skipStatsFetch:true});
         if(ui().habitWorkspaceReturnContext&&global.OneToneHabitWorkspace.restoreReturnContext){
           var returnContext=ui().habitWorkspaceReturnContext;
           ui().habitWorkspaceReturnContext=null;

@@ -47,7 +47,6 @@
   <link rel="stylesheet" href="css/qs-mode-matrix.css" />
   <link rel="stylesheet" href="css/typography.css" />
   <link rel="stylesheet" href="css/motion.css" />
-  <link rel="stylesheet" href="css/channel-config-compact.css" />
 </head>
 <body>
   <div class="app">
@@ -178,7 +177,7 @@
                               <span class="wb-context-bound-title" id="wbContextBoundTitle" data-i18n="homeWbContextBoundTitle">当前习惯</span>
                               <span class="wb-context-bound-scene" id="wbContextBoundScene" hidden>—</span>
                             </div>
-                            <p class="wb-context-bound-sub" data-i18n="homeWbContextBoundSub">切换习惯时，下方四通道状态一起跟着变。</p>
+                            <p class="wb-context-bound-sub" data-i18n="homeWbContextBoundSub">切换习惯时，各通道配置一起跟着变；开关请在托盘菜单调整。</p>
                           </div>
                           <button type="button" class="wb-scene-rail-manage" id="wbHabitManage" data-wb-habit-open-hub="" data-i18n="homeWbHabitManage">管理</button>
                         </header>
@@ -275,7 +274,6 @@
                         <div id="wbVoicePanel" hidden></div>
                       </div>
 
-                      <section class="wb-channel-overview" id="channelConfigOverview" aria-label="四通道状态总览"></section>
                       <section class="wb-howto" id="wbHowTo" aria-label="此习惯下的四个通道：说话、按键、屏幕按钮与摄像头"></section>
                   </div>
                 </div>
@@ -767,11 +765,8 @@
                 <span class="keys-scheme-summary-item keys-summary-scope-item" id="keysSummaryScopeItem" hidden><span class="keys-scheme-summary-lbl" id="keysSummaryScopeLbl">生效范围</span><span class="keys-scheme-summary-val" id="keysSummaryScope">—</span></span>
               </div>
             </div>
-            <div class="page-status-bar-actions keys-scheme-status-actions">
-              <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="btnKeysMappingEnable" role="switch" aria-checked="false" aria-labelledby="keysSummaryStatus"></button>
-            </div>
+            <div class="page-status-bar-actions keys-scheme-status-actions"></div>
           </div>
-          <div class="channel-config-compact-host" id="channelConfigCompactKeys"></div>
           <header class="keys-page-head sr-only">
             <div class="keys-page-head-text">
               <h3 class="pref-page-title" id="settingsPanelKeysTitle">按键</h3>
@@ -808,11 +803,12 @@
                   <button type="button" class="btn-cancel-record" id="btnCancelRecordInline" hidden>取消</button>
                 </div>
                 <p class="keys-recording-conflict" id="keysRecordingConflict" hidden role="alert"></p>
+                <button type="button" class="keys-recording-probe-link" id="btnKeysRecordingProbe" hidden data-i18n="keysRecordingProbeLink">按键没反应？查看检测</button>
               </div>
           <div class="key-flow-section" id="quickKeyWakeSection">
             <div class="habit-layer-shell key-wake-settings" id="keyWakeSettings">
               <section class="habit-key-mapping-section habit-flow-section" id="habitKeyMappingSection">
-                <aside class="record-probe-panel" id="recordProbePanel">
+                <aside class="record-probe-panel" id="recordProbePanel" hidden>
                   <header class="record-probe-head">
                     <strong id="recordProbeTitle">录制检测</strong>
                     <span class="record-probe-status" id="recordProbeStatus">等待按键…</span>
@@ -1071,10 +1067,8 @@
             <div class="page-status-bar-actions keys-scheme-status-actions">
               <button type="button" class="page-status-btn" id="btnSoftPadTestFg" data-cockpit-action="test-fg">测试前台</button>
               <button type="button" class="page-status-btn" id="btnSoftPadEditKeys" data-cockpit-action="edit-keys">编辑键位</button>
-              <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="softPadSummaryEnable" role="switch" aria-checked="false" aria-labelledby="settingsPanelSoftPadTitle"></button>
             </div>
           </div>
-          <div class="channel-config-compact-host" id="channelConfigCompactSoftPad"></div>
           <section class="flow-nodes soft-pad-flow-nodes" id="softPadFlowNodes" role="tablist" aria-label="虚拟键盘流程导航">
             <div class="flow-nodes-track" aria-hidden="true">
               <svg class="flow-nodes-svg" viewBox="0 0 1000 8" fill="none" preserveAspectRatio="none">
@@ -1640,7 +1634,6 @@
             <div class="page-status-bar-actions voice-scheme-status-actions">
               <button type="button" class="page-status-btn is-primary" id="btnVoiceSaveHabit">保存到正在编辑的习惯</button>
               <button type="button" class="page-status-btn sr-only" id="btnVoiceSchemeAdd">+ 新建</button>
-              <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="btnVoiceEnabled" role="switch" aria-checked="true" title="关闭后回退到系统默认听写" aria-label="关闭后回退到系统默认听写"></button>
             </div>
             <div class="voice-unified-extras" id="voiceUnifiedExtras"></div>
             <span class="sr-only" id="voiceStatusCenterCluster"></span>
@@ -1651,7 +1644,6 @@
             <span class="sr-only" id="voiceWorkflowTabsLbl">语音通道</span>
             <div class="keys-workflow-tabs voice-workflow-tabs sr-only" id="voiceWorkflowTabs" role="tablist" aria-labelledby="voiceWorkflowTabsLbl" hidden></div>
           </div>
-          <div class="channel-config-compact-host" id="channelConfigCompactVoice"></div>
           <div class="voice-setup-banner" id="voiceSetupBanner" hidden role="alert">
             <div class="voice-setup-banner-content">
               <p class="voice-setup-banner-title" id="voiceSetupBannerTitle">需要安装本地识别模型</p>
@@ -2821,7 +2813,6 @@
             </div>
             <div class="page-status-bar-actions camera-scheme-status-actions"></div>
           </div>
-          <div class="channel-config-compact-host" id="channelConfigCompactCamera"></div>
           <header class="pref-page-head camera-page-head-sr">
             <h3 class="pref-page-title" id="settingsPanelCameraTitle" data-i18n="cameraPageTitle">摄像头</h3>
             <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelCameraDesc" data-i18n="cameraPageSubtitle">先设计 if-then 规则，再到摄像头设置里预览与校准；Pro 含本机预览增强（美颜、面具等）。</p>
@@ -4789,7 +4780,6 @@
   <script src="js/features/settings/tray-layout-v2.js"></script>
   <script src="js/features/settings/tray-footer.js"></script>
   <script src="js/features/settings/tray-channel-controls.js"></script>
-  <script src="js/features/settings/tray-scene-preset.js"></script>
   <script src="js/features/settings/channel-config-compact.js"></script>
   <script src="js/features/settings/keys-panel-ui.js"></script>
   <script src="js/features/scene/habit-compatibility.js"></script>

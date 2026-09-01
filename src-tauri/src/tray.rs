@@ -102,7 +102,7 @@ fn preload_tray_menu_window(app: AppHandle) {
     std::thread::Builder::new()
         .name("tray-preload".into())
         .spawn(move || {
-            std::thread::sleep(std::time::Duration::from_millis(400));
+            std::thread::sleep(std::time::Duration::from_millis(100));
             let _ = crate::overlay_window::ensure_overlay_window(
                 &app,
                 crate::overlay_window::TRAY_MENU,
@@ -553,7 +553,7 @@ fn show_tray_menu(app: &AppHandle, anchor: Option<(i32, i32)>) {
         // First create: wait for HTML to bind, then present (avoid blocking tray callback).
         let app_retry = app.clone();
         std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_millis(150));
+            std::thread::sleep(std::time::Duration::from_millis(80));
             show_tray_menu(&app_retry, None);
         });
         return;

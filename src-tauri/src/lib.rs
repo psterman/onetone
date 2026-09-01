@@ -984,6 +984,7 @@ pub fn run() {
             ipc::cmd_sync_theme_backdrop,
             ipc::cmd_tray_menu_ready,
             ipc::cmd_tray_os_context,
+            ipc::cmd_tray_usage_summary,
             ipc::cmd_tray_subscribe_segment,
             ipc::cmd_tray_action,
             ipc::cmd_tray_menu_present,

@@ -50,6 +50,7 @@ permissions = [
   "allow-cmd-tray-menu-set-size",
   "allow-cmd-tray-sync-mic",
   "allow-cmd-tray-os-context",
+  "allow-cmd-tray-usage-summary",
   "allow-cmd-tray-refresh-segments",
   "allow-cmd-tray-customization-get",
   "allow-cmd-tray-customization-save",

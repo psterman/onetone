@@ -150,6 +150,11 @@
   function ensureSchemeALayout(layout) {
     var repaired = false;
     layout = normalizeLayout(layout || defaultLayout());
+    setBlockVisible(layout, 'block:scene', true);
+    setBlockVisible(layout, 'block:hero', false);
+    setBlockVisible(layout, 'block:event', false);
+    setBlockVisible(layout, 'block:habit', false);
+    setBlockVisible(layout, 'block:quick', false);
     var anyCh = CHANNELS.some(function (ch) {
       return blockVisible(layout, channelBlockId(ch));
     });
@@ -157,11 +162,6 @@
       layout = applyPersonaPreset(layout, 'vibe');
       repaired = true;
     }
-    setBlockVisible(layout, 'block:scene', true);
-    setBlockVisible(layout, 'block:hero', false);
-    setBlockVisible(layout, 'block:event', false);
-    setBlockVisible(layout, 'block:habit', false);
-    setBlockVisible(layout, 'block:quick', false);
     CHANNELS.forEach(function (ch) {
       if (!blockVisible(layout, channelBlockId(ch))) return;
       var cat = getTrayCatalog();

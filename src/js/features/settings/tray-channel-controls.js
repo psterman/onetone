@@ -16,19 +16,31 @@
 
   var LABEL_FB = {
     trayChVoiceMaster: '语音输入',
+    trayChVoiceMasterHint: '对着麦说话，自动变文字',
     trayChVoiceEnd: '说完就停',
+    trayChVoiceEndHint: '可说结束词结束输入',
     trayChKeysUseScenario: '快捷键',
+    trayChKeysUseScenarioHint: '按快捷键能触发功能',
     trayChKeysCancel: '再按可取消',
+    trayChKeysCancelHint: '听写中途再按一次可退出',
     trayChKeysAutoSend: '自动发送',
+    trayChKeysAutoSendHint: '输完自动按回车',
     trayChPadEnabled: '启用小键盘',
+    trayChPadEnabledHint: '打开后可使用屏幕小键盘',
     trayChPadShowKeyboard: '显示小键盘',
+    trayChPadShowKeyboardHint: '为助手弹出控制键',
     trayChPadRequireFg: '跟着前台助手',
+    trayChPadRequireFgHint: '只在当前助手软件在前台时显示',
     trayChCamPresence: '镜头动作识别',
+    trayChCamPresenceHint: '离席、手势等用摄像头触发',
     trayChCamTriggerAway: '检测离席',
+    trayChCamTriggerAwayHint: '人离开画面时触发',
     trayChCamAutoMute: '走远自动静音',
+    trayChCamAutoMuteHint: '离开镜头自动关麦',
     trayChCamNoFaceMute: '没人也静音',
+    trayChCamNoFaceMuteHint: '画面里没人时关麦',
     channelConfigBasic: '基础配置',
-    trayGoTrayMainSwitch: '去托盘调主开关',
+    channelConfigAppPrefs: '应用偏好',
     trayChGoSettings: '完整设置 ▸'
   };
 
@@ -250,11 +262,8 @@
   function getChannelControls(channel, surface) {
     var list = allControls(channel);
     if (!surface || surface === 'inspector') return [];
-    if (surface === 'compact') {
-      return list.filter(function (c) { return c.tier === 'l2'; });
-    }
-    if (surface === 'editor') return list;
-    if (surface === 'os') return list;
+    if (surface === 'compact') surface = 'unified';
+    if (surface === 'unified' || surface === 'editor' || surface === 'os') return list;
     return list;
   }
 
@@ -557,12 +566,19 @@
   function makeToggleRow(ctrl, channel, ctx, rowClass) {
     assertKey(ctrl.stateKey);
     var row = document.createElement('div');
+    var surface = ctx && ctx.surface;
+    var isUnified = surface === 'unified' || surface === 'compact';
     row.className = rowClass + ' tray-ctrl-' + ctrl.tier + ' ipc-' + (ctrl.ipc === 'customization' ? 'customization' : 'config');
+    if (isUnified && ctrl.tier === 'l1') row.className += ' cc-row--master';
     row.setAttribute('data-tray-tier', ctrl.tier);
     row.setAttribute('data-state-key', ctrl.stateKey);
     var label = t(ctrl.labelKey, LABEL_FB[ctrl.labelKey] || ctrl.labelKey);
-    var hint = ctrl.hintKey ? t(ctrl.hintKey, '') : '';
-    row.innerHTML = '<div class="tray-ctrl-lbl">' + label + (hint ? '<span class="tray-ctrl-hint">' + hint + '</span>' : '') + '</div>';
+    var hint = ctrl.hintKey ? t(ctrl.hintKey, LABEL_FB[ctrl.hintKey] || '') : '';
+    if (isUnified) {
+      row.innerHTML = '<div class="cc-lbl">' + label + (hint ? '<span class="cc-hint">' + hint + '</span>' : '') + '</div>';
+    } else {
+      row.innerHTML = '<div class="tray-ctrl-lbl">' + label + (hint ? '<span class="tray-ctrl-hint">' + hint + '</span>' : '') + '</div>';
+    }
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'toggle-switch page-status-toggle tray-ctrl-toggle';
@@ -644,25 +660,18 @@
     });
   }
 
-  function renderCompactGroup(host, channel, opts) {
+  function renderUnifiedChannelGroup(host, channel, opts) {
     opts = opts || {};
     if (!host || channel === 'habits') return Promise.resolve();
-    var CH_NAMES = { voice: '语音', keys: '按键', softPad: '小键盘', camera: '摄像头' };
     return loadTrayLayout().then(function () {
       host.innerHTML = '';
       var group = document.createElement('div');
       group.className = 'cc-group';
       group.innerHTML = '<div class="cc-gh">' + t('channelConfigBasic', '基础配置') + '</div>';
-      var ctx = { surface: 'compact' };
-      getChannelControls(channel, 'compact').forEach(function (ctrl) {
+      var ctx = { surface: 'unified' };
+      getChannelControls(channel, 'unified').forEach(function (ctrl) {
         group.appendChild(makeToggleRow(ctrl, channel, ctx, 'cc-row'));
       });
-      var link = document.createElement('button');
-      link.type = 'button';
-      link.className = 'cc-row cc-row-link';
-      link.textContent = t('trayGoTrayMainSwitch', '去托盘调主开关') + ' ▸ ' + (CH_NAMES[channel] || channel);
-      link.addEventListener('click', function () { openTrayEditor(channel); });
-      group.appendChild(link);
       host.appendChild(group);
       if (channel === 'keys' && global.OneToneAppBehaviorRules && global.OneToneAppBehaviorRules.renderCompactAppPrefs) {
         var prefs = document.createElement('div');
@@ -672,6 +681,10 @@
         global.OneToneAppBehaviorRules.renderCompactAppPrefs(prefs, activeMapping());
       }
     });
+  }
+
+  function renderCompactGroup(host, channel, opts) {
+    return renderUnifiedChannelGroup(host, channel, opts);
   }
 
   function renderInspectorPreview(host, channel, opts) {
@@ -830,46 +843,72 @@
     syncOsMappingFromGlobal();
   }
 
-  function hydrateOsContext(globalState) {
+  function applyCustomizationPayload(customization) {
+    if (!customization) return;
+    var V2 = global.OneToneTrayLayoutV2;
+    if (V2) {
+      var merged = V2.mergeLayoutWithCatalog(
+        customization.version === V2.VERSION ? customization : V2.migrateV1(customization)
+      );
+      trayLayoutV2 = merged.layout;
+      syncLegacyFromV2();
+    } else {
+      trayLayout.showEvent = customization.showEvent !== false;
+      var s = customization.showInTray || customization.show_in_tray || {};
+      trayLayout.showInTray.voice = s.voice !== false;
+      trayLayout.showInTray.keys = s.keys !== false;
+      trayLayout.showInTray.softPad = s.softPad !== false || s.soft_pad !== false;
+      trayLayout.showInTray.camera = !!s.camera;
+    }
+  }
+
+  function applyOsContextPayload(payload) {
+    if (!payload || !payload.config) return;
+    osCtx.config = payload.config;
+    osCtx.voiceEnd = payload.voiceEnd || payload.voice_end || null;
+    var id = osCtx.global && osCtx.global.activeHabitId;
+    if (id) {
+      osCtx.mapping = (osCtx.config.mappings || []).find(function (m) { return m && m.id === id; }) || null;
+    }
+    if (!osCtx.mapping) osCtx.mapping = activeMapping(osCtx.config);
+  }
+
+  function hydrateOsContext(globalState, opts) {
+    opts = opts || {};
     osCtx.global = globalState || osCtx.global;
+    if (opts.customization) applyCustomizationPayload(opts.customization);
     if (osCtx.config) {
       syncOsMappingFromGlobal();
       return Promise.resolve(osCtx);
     }
+    if (opts.osContext) {
+      applyOsContextPayload(opts.osContext);
+      return Promise.resolve(osCtx);
+    }
     if (osHydratePromise) return osHydratePromise;
+    var customizationPromise = opts.customization !== undefined
+      ? Promise.resolve(opts.customization)
+      : invoke('cmd_tray_customization_get').catch(function () { return null; });
     osHydratePromise = Promise.all([
-      invoke('cmd_tray_customization_get').catch(function () { return null; }),
+      customizationPromise,
       invoke('cmd_tray_os_context').catch(function () { return null; })
     ]).then(function (res) {
-      if (res[0]) {
-        var V2 = global.OneToneTrayLayoutV2;
-        if (V2) {
-          var merged = V2.mergeLayoutWithCatalog(res[0].version === V2.VERSION ? res[0] : V2.migrateV1(res[0]));
-          trayLayoutV2 = merged.layout;
-          syncLegacyFromV2();
-        } else {
-          trayLayout.showEvent = res[0].showEvent !== false;
-          var s = res[0].showInTray || res[0].show_in_tray || {};
-          trayLayout.showInTray.voice = s.voice !== false;
-          trayLayout.showInTray.keys = s.keys !== false;
-          trayLayout.showInTray.softPad = s.softPad !== false || s.soft_pad !== false;
-          trayLayout.showInTray.camera = !!s.camera;
-        }
-      }
-      if (res[1] && res[1].config) {
-        osCtx.config = res[1].config;
-        osCtx.voiceEnd = res[1].voiceEnd || null;
-        var id = osCtx.global && osCtx.global.activeHabitId;
-        if (id) {
-          osCtx.mapping = (osCtx.config.mappings || []).find(function (m) { return m && m.id === id; }) || null;
-        }
-        if (!osCtx.mapping) osCtx.mapping = activeMapping(osCtx.config);
-      }
+      if (res[0]) applyCustomizationPayload(res[0]);
+      if (res[1]) applyOsContextPayload(res[1]);
       return osCtx;
     }).finally(function () {
       osHydratePromise = null;
     });
     return osHydratePromise;
+  }
+
+  function prefetchOsContext() {
+    if (osCtx.config) return Promise.resolve(null);
+    return invoke('cmd_tray_os_context').catch(function () { return null; });
+  }
+
+  function hasOsContext() {
+    return !!osCtx.config;
   }
 
   function syncOsMappingFromGlobal() {
@@ -1046,6 +1085,58 @@
     });
   }
 
+  var CH_STATUS_NAMES = { voice: '语音', keys: '按键', softPad: '小键盘', camera: '摄像头' };
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  }
+
+  function channelStateMeta(ch) {
+    if (!ch) return '—';
+    if (!ch.enabled) return '未启用';
+    if (ch.state === 'listening') return '工作中';
+    if (ch.state === 'standby') return '待命';
+    if (ch.state === 'error') return '异常';
+    return ch.meta || '—';
+  }
+
+  function openChannelSettings(channel, opts) {
+    opts = opts || {};
+    var panel = SETTINGS_PANEL[channel];
+    if (!panel) return;
+    if (opts.fromTray && global.OneToneIpc && global.OneToneIpc.invoke) {
+      global.OneToneIpc.invoke('cmd_tray_action', {
+        action: 'deep_link',
+        payload: { href: 'main:settings?panel=' + panel }
+      }).catch(function () {});
+      return;
+    }
+    openSettingsPanel(panel);
+  }
+
+  function renderChannelStatusBar(host, state, opts) {
+    opts = opts || {};
+    if (!host) return;
+    var channels = (state && state.channels) || [];
+    var ids = ['voice', 'keys', 'softPad', 'camera'];
+    var rows = ids.map(function (id) {
+      var c = channels.find(function (x) { return x && (x.id === id || (id === 'softPad' && x.id === 'soft_pad')); });
+      var meta = channelStateMeta(c);
+      var stCls = !c || !c.enabled ? 'off' : (c.state === 'error' ? 'warn' : '');
+      return '<button type="button" class="tray-ch-status-row' + (stCls ? ' tray-ch-status-row--' + stCls : '') + '" data-ch-status="' + id + '">' +
+        '<span class="tray-ch-status-row__name">' + escHtml(CH_STATUS_NAMES[id]) + '</span>' +
+        '<span class="tray-ch-status-row__meta">' + escHtml(meta) + '</span></button>';
+    }).join('');
+    host.innerHTML = '<div class="tray-ch-status" role="list">' + rows + '</div>';
+    host.querySelectorAll('[data-ch-status]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var ch = btn.getAttribute('data-ch-status');
+        if (opts.onChannelClick) opts.onChannelClick(ch);
+        else openChannelSettings(ch, opts);
+      });
+    });
+  }
+
   function mountAllInspectorControls(trayState) {
     return loadTrayLayout().then(function () {
       return Promise.all(CHANNEL_ORDER.map(function (ch) {
@@ -1064,6 +1155,9 @@
     formatTrayEventText: formatTrayEventText,
     formatWeekTrendSummary: formatWeekTrendSummary,
     renderCompactGroup: renderCompactGroup,
+    renderUnifiedChannelGroup: renderUnifiedChannelGroup,
+    renderChannelStatusBar: renderChannelStatusBar,
+    openChannelSettings: openChannelSettings,
     renderSwitchCards: renderSwitchCards,
     findControlById: findControlById,
     allControls: allControls,
@@ -1096,6 +1190,8 @@
     },
     saveCustomization: saveCustomization,
     hydrateOsContext: hydrateOsContext,
+    prefetchOsContext: prefetchOsContext,
+    hasOsContext: hasOsContext,
     ingestOsContext: ingestOsContext,
     getOsCtx: getOsCtx,
     syncOsMappingFromGlobal: syncOsMappingFromGlobal,

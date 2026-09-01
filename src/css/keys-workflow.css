@@ -532,6 +532,38 @@
   color: #b42318;
 }
 
+.keys-recording-probe-link {
+  display: inline-flex;
+  align-items: center;
+  margin: 6px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary, #2a9cc4);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.keys-recording-probe-link:hover {
+  color: var(--primary-deep, #1e87ad);
+}
+
+.keys-recording-probe-link[hidden] {
+  display: none !important;
+}
+
+.record-probe-panel:not(.is-revealed) {
+  display: none !important;
+}
+
+.record-probe-panel.is-revealed {
+  display: block;
+}
+
 .record-cancel-bar.is-capture-suppressed {
   display: none !important;
 }

@@ -175,3 +175,21 @@
 .soft-pad-tray-sep,
 .tray-menu-sep,
 .sep { height: 1px; margin: 4px 8px; background: var(--outline-variant, rgba(26,45,74,.1)); }
+
+.tray-ch-status {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+  padding: 4px 6px 6px; margin: 0 2px 4px;
+}
+.tray-ch-status-row {
+  border: 1px solid var(--outline-variant, rgba(26,45,74,.1)); background: #fff; border-radius: 7px;
+  padding: 6px 8px; cursor: pointer; text-align: left; font: inherit; color: inherit;
+  display: flex; flex-direction: column; gap: 2px; min-width: 0;
+}
+.tray-ch-status-row:hover { border-color: rgba(42,156,196,.4); background: var(--primary-soft, #e6f7fc); }
+.tray-ch-status-row__name { font-size: 11px; font-weight: 800; }
+.tray-ch-status-row__meta {
+  font-size: 10px; color: var(--on-surface-muted, #5a7086);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tray-ch-status-row--off .tray-ch-status-row__meta { color: var(--on-surface-soft, #8a98a8); }
+.tray-ch-status-row--warn .tray-ch-status-row__meta { color: #b9530a; }

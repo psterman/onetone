@@ -1054,6 +1054,8 @@
       conflict.textContent=model.conflictText||'';
       conflict.classList.toggle('is-warn',!!model.conflictWarn);
     }
+    var probe=global.OneToneRecordProbe;
+    if(probe&&probe.syncRecordingProbeLink) probe.syncRecordingProbeLink();
   }
 
   function renderRecordingFeedback(){

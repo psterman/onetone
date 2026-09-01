@@ -40,12 +40,15 @@ check('preview mic row structure', indexHtml.includes('softPadTrayMicRow') && in
 check('no tray-layout-editor script', !indexHtml.includes('tray-layout-editor.js'));
 
 const tcc = read('src/js/features/settings/tray-channel-controls.js');
-check('compact L2 only no trayShow', tcc.includes("c.tier === 'l2'") && !tcc.includes("id === 'trayShow'"));
-check('preview focus channel', tcc.includes('setPreviewFocusChannel'));
-check('compact tray link', tcc.includes('cc-row-link'));
+check('unified surface L1+L2', tcc.includes("surface === 'unified'") && tcc.includes('renderUnifiedChannelGroup'));
+check('no tray main switch link', !tcc.includes('cc-row-link'));
+check('no tray status bar host', !trayHtml.includes('trayChannelStatus'));
 
 const v2 = read('src/js/features/settings/tray-layout-v2.js');
-check('block scene catalog', v2.includes('block:scene'));
+check('preview focus channel', tcc.includes('setPreviewFocusChannel'));
+check('channel overview noop', read('src/js/features/settings/channel-config-overview.js').includes('/* noop */'));
+check('no home channel overview', !indexHtml.includes('channelConfigOverview'));
+check('tray channel blocks default on', v2.includes("defaultVisible: true, channel: 'voice'"));
 check('persona preset', v2.includes('applyPersonaPreset'));
 check('padRequireFg control', v2.includes('padRequireFg'));
 
@@ -105,6 +108,12 @@ check('tray scene applying guard', scenePreset.includes('if (applying) return') 
 check('tray scene persist apply', scenePreset.includes('applyPersistedSceneOnOpen'));
 check('tray runtime normalize preset', scenePreset.includes('normalizeTrayScenePreset'));
 check('tray load before render', trayHtml.includes('deferRender:true') && trayHtml.includes('loadRuntime'));
+check('tray parallel bootstrap', trayHtml.includes('Promise.all([') && trayHtml.includes('cmd_tray_runtime_get'));
+check('tray prefetch os context', tcc.includes('prefetchOsContext') && tcc.includes('hasOsContext'));
+check('tray no double channel render', trayHtml.includes('__trayBootstrapped'));
+check('tray usage summary ipc', trayIpc.includes('cmd_tray_usage_summary') && read('src/js/features/mapping/habit-hub.js').includes('cmd_tray_usage_summary'));
+check('action history merged cache', read('src-tauri/src/action_history/log.rs').includes('cached_merged_entries'));
+check('tray today stats merged', trayStateRs.includes('tray_today_stats'));
 check('mic skip scene preset', !trayHtml.includes('onManualSwitchChange()') || trayHtml.includes('onTrayChannelSwitchChange'));
 check('tray runtime save flat args', read('src-tauri/src/ipc/commands/shell/tray_runtime_cmd.rs').includes('tray_scene_preset: Option'));
 check('tray scene deferred click', scenePreset.includes('setTimeout') && scenePreset.includes('patchOsSnapshotLocal'));

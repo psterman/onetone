@@ -74,6 +74,7 @@ fn main() {
         "cmd_sync_theme_backdrop",
         "cmd_tray_menu_ready",
         "cmd_tray_os_context",
+        "cmd_tray_usage_summary",
         "cmd_tray_subscribe_segment",
         "cmd_tray_action",
         "cmd_tray_menu_present",

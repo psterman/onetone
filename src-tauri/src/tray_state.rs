@@ -186,10 +186,11 @@ pub fn assemble_tray_menu_state(state: &AppState, open_fg: Option<&AppIdentity>)
 }
 
 fn assemble_tray_state_inner(state: &AppState, open_fg: Option<&AppIdentity>) -> TrayState {
+    let channels = assemble_channels(state);
     TrayState {
-        global: assemble_global_with_fg(state, open_fg),
+        global: assemble_global_with_fg(state, open_fg, &channels),
         mic: assemble_mic(state),
-        channels: assemble_channels(state),
+        channels,
         event: assemble_event(state),
         deep_links: assemble_deep_links(),
         schemes: assemble_schemes(state),
@@ -197,10 +198,15 @@ fn assemble_tray_state_inner(state: &AppState, open_fg: Option<&AppIdentity>) ->
 }
 
 pub fn assemble_global(state: &AppState) -> GlobalState {
-    assemble_global_with_fg(state, None)
+    let channels = assemble_channels(state);
+    assemble_global_with_fg(state, None, &channels)
 }
 
-fn assemble_global_with_fg(state: &AppState, open_fg: Option<&AppIdentity>) -> GlobalState {
+fn assemble_global_with_fg(
+    state: &AppState,
+    open_fg: Option<&AppIdentity>,
+    channels: &[Channel],
+) -> GlobalState {
     let paused = *state.paused.lock();
     let silence_until = *state.listen_silence_until_ms.lock();
     let now_ms = crate::runtime_event::now_ms();
@@ -234,6 +240,7 @@ fn assemble_global_with_fg(state: &AppState, open_fg: Option<&AppIdentity>) -> G
         next_habit_label,
         today_total_count,
         today_habit_count,
+        today_by_channel,
     ) = {
         let cfg = state.cfg.lock();
         let active = tray_active_mapping(&cfg);
@@ -252,7 +259,8 @@ fn assemble_global_with_fg(state: &AppState, open_fg: Option<&AppIdentity>) -> G
             }
             None => (None, None),
         };
-        let (today_total_count, today_habit_count) = tray_today_counts(&active_habit_id);
+        let (today_total_count, today_habit_count, today_by_channel) =
+            tray_today_stats(&active_habit_id);
         (
             user_label,
             active_habit_id,
@@ -261,11 +269,11 @@ fn assemble_global_with_fg(state: &AppState, open_fg: Option<&AppIdentity>) -> G
             next_habit_label,
             today_total_count,
             today_habit_count,
+            today_by_channel,
         )
     };
 
     let week_trend = crate::action_history::usage_counts_last_days(7);
-    let channels = assemble_channels(state);
     let active_channel_ids = channels
         .iter()
         .filter(|c| c.enabled && c.state != "off")
@@ -278,8 +286,6 @@ fn assemble_global_with_fg(state: &AppState, open_fg: Option<&AppIdentity>) -> G
     let foreground_os_debug: Option<String> = None;
 
     let foreground_label = open_fg.map(app_identity::identity_display_name);
-
-    let today_by_channel = tray_today_by_channel(&active_habit_id);
 
     GlobalState {
         mode,
@@ -441,7 +447,8 @@ pub fn segment_payload(state: &AppState, segment: &str) -> Option<serde_json::Va
     let value = match segment {
         "global" => {
             let open_fg = crate::tray::tray_open_foreground();
-            serde_json::to_value(assemble_global_with_fg(state, open_fg.as_ref())).ok()?
+            let channels = assemble_channels(state);
+            serde_json::to_value(assemble_global_with_fg(state, open_fg.as_ref(), &channels)).ok()?
         }
         "mic" => serde_json::to_value(assemble_mic(state)).ok()?,
         "channels" => serde_json::to_value(assemble_channels(state)).ok()?,
@@ -734,7 +741,7 @@ fn tray_user_label(mapping: Option<&crate::config::MappingEntry>) -> String {
     "—".into()
 }
 
-fn tray_today_counts(active_habit_id: &str) -> (u64, u64) {
+fn tray_today_stats(active_habit_id: &str) -> (u64, u64, TodayByChannel) {
     let stats = crate::action_history::stats_by_mapping(Some(24));
     let total: u64 = stats.rows.iter().map(|r| r.count).sum();
     let habit = if active_habit_id.trim().is_empty() {
@@ -747,12 +754,7 @@ fn tray_today_counts(active_habit_id: &str) -> (u64, u64) {
             .map(|r| r.count)
             .unwrap_or(0)
     };
-    (total, habit)
-}
-
-fn tray_today_by_channel(active_habit_id: &str) -> TodayByChannel {
-    let stats = crate::action_history::stats_by_mapping(Some(24));
-    let mut out = TodayByChannel::default();
+    let mut by_channel = TodayByChannel::default();
     let rows: Vec<_> = if active_habit_id.trim().is_empty() {
         stats.rows.iter().collect()
     } else {
@@ -765,15 +767,44 @@ fn tray_today_by_channel(active_habit_id: &str) -> TodayByChannel {
     for row in rows {
         for (ch, n) in &row.by_channel {
             match ch.as_str() {
-                "voice" => out.voice += n,
-                "key" | "keys" => out.keys += n,
-                "softPad" | "soft_pad" => out.soft_pad += n,
-                "camera" => out.camera += n,
+                "voice" => by_channel.voice += n,
+                "key" | "keys" => by_channel.keys += n,
+                "softPad" | "soft_pad" => by_channel.soft_pad += n,
+                "camera" => by_channel.camera += n,
                 _ => {}
             }
         }
     }
-    out
+    (total, habit, by_channel)
+}
+
+/// Lightweight usage snapshot for habit hub value card (no full TrayState).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrayUsageSummary {
+    pub today_total_count: u64,
+    pub today_habit_count: u64,
+    pub active_habit_id: String,
+    pub active_habit_label: String,
+    pub week_trend: Vec<u64>,
+}
+
+pub fn assemble_usage_summary(state: &AppState) -> TrayUsageSummary {
+    let cfg = state.cfg.lock();
+    let active = tray_active_mapping(&cfg);
+    let active_habit_id = active.map(|m| m.id.clone()).unwrap_or_default();
+    let active_habit_label = active
+        .map(|m| m.display_label())
+        .unwrap_or_else(|| "—".into());
+    let (today_total_count, today_habit_count, _) = tray_today_stats(&active_habit_id);
+    let week_trend = crate::action_history::usage_counts_last_days(7);
+    TrayUsageSummary {
+        today_total_count,
+        today_habit_count,
+        active_habit_id,
+        active_habit_label,
+        week_trend,
+    }
 }
 
 fn tray_foreground_label() -> String {

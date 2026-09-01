@@ -20,6 +20,13 @@ pub fn cmd_tray_os_context(state: tauri::State<Arc<AppState>>) -> serde_json::Va
     })
 }
 
+/// Today + week usage for habit hub value card — avoids full TrayState assembly.
+#[tauri::command]
+pub fn cmd_tray_usage_summary(state: tauri::State<Arc<AppState>>) -> serde_json::Value {
+    serde_json::to_value(crate::tray_state::assemble_usage_summary(state.inner()))
+        .unwrap_or_else(|_| serde_json::json!({}))
+}
+
 #[tauri::command]
 pub fn cmd_tray_subscribe_segment(window: tauri::WebviewWindow, segment: String) -> Result<(), String> {
     crate::tray_state::subscribe_segment(window.label().to_string(), segment);

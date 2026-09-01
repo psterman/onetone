@@ -23,6 +23,11 @@ static LOG_PATH_OVERRIDE: Mutex<Option<PathBuf>> = Mutex::new(None);
 static SEQ: AtomicU64 = AtomicU64::new(0);
 static SEQ_BOOTSTRAPPED: AtomicBool = AtomicBool::new(false);
 static RING: ParkingMutex<VecDeque<ActionHistoryEntry>> = ParkingMutex::new(VecDeque::new());
+// ponytail: process-local TTL cache; bump on record/clear — upgrade: file mtime watch
+static MERGED_CACHE_GEN: AtomicU64 = AtomicU64::new(0);
+static MERGED_CACHE: ParkingMutex<Option<(u64, u64, Vec<ActionHistoryEntry>)>> =
+    ParkingMutex::new(None);
+const MERGED_CACHE_TTL_MS: u64 = 5000;
 
 pub fn set_enabled(on: bool) {
     ENABLED.store(on, Ordering::Relaxed);
@@ -106,6 +111,7 @@ pub fn record(mut entry: ActionHistoryEntry) -> ActionHistoryEntry {
     }
     push_ring(&entry);
     append_jsonl(&entry);
+    bump_merged_cache_gen();
     entry
 }
 
@@ -154,6 +160,26 @@ fn merge_entries(jsonl: Vec<ActionHistoryEntry>, ring: Vec<ActionHistoryEntry>) 
     merged
 }
 
+fn bump_merged_cache_gen() {
+    MERGED_CACHE_GEN.fetch_add(1, Ordering::Relaxed);
+}
+
+fn cached_merged_entries() -> Vec<ActionHistoryEntry> {
+    let gen = MERGED_CACHE_GEN.load(Ordering::Relaxed);
+    let now = crate::runtime_event::now_ms();
+    {
+        let guard = MERGED_CACHE.lock();
+        if let Some((cached_gen, cached_at, ref entries)) = *guard {
+            if cached_gen == gen && now.saturating_sub(cached_at) < MERGED_CACHE_TTL_MS {
+                return entries.clone();
+            }
+        }
+    }
+    let entries = merge_entries(read_jsonl_entries(), recent_ring(RING_CAPACITY));
+    *MERGED_CACHE.lock() = Some((gen, now, entries.clone()));
+    entries
+}
+
 fn channel_matches(entry: &ActionHistoryEntry, channel: Option<&str>) -> bool {
     let Some(want) = channel.map(str::trim).filter(|s| !s.is_empty()) else {
         return true;
@@ -189,7 +215,7 @@ pub fn tail(
     hours: Option<u64>,
 ) -> ActionHistoryListResult {
     let limit = limit.clamp(1, MAX_TAIL_LIMIT);
-    let merged = merge_entries(read_jsonl_entries(), recent_ring(RING_CAPACITY));
+    let merged = cached_merged_entries();
     let before = before_ts.unwrap_or(u64::MAX);
     let cutoff = hours.map(|h| {
         let h = h.clamp(1, 24 * 365);
@@ -214,6 +240,7 @@ pub fn tail(
 pub fn clear() {
     let _ = fs::remove_file(log_path());
     RING.lock().clear();
+    bump_merged_cache_gen();
 }
 
 /// Test helper: wipe ring + seq bootstrap so parallel/serial tests don't leak.
@@ -221,6 +248,7 @@ pub fn reset_for_test() {
     clear();
     SEQ.store(0, Ordering::Relaxed);
     SEQ_BOOTSTRAPPED.store(false, Ordering::Relaxed);
+    bump_merged_cache_gen();
 }
 
 pub fn entries_for_analysis(
@@ -230,7 +258,7 @@ pub fn entries_for_analysis(
 ) -> Vec<ActionHistoryEntry> {
     let limit = limit.clamp(1, 500);
     let cutoff = crate::runtime_event::now_ms().saturating_sub(hours.saturating_mul(3600_000));
-    merge_entries(read_jsonl_entries(), recent_ring(RING_CAPACITY))
+    cached_merged_entries()
         .into_iter()
         .filter(|e| {
             is_usage_entry(e) && e.ts_ms >= cutoff && mapping_matches(e, mapping_id)
@@ -268,7 +296,7 @@ fn day_bucket(ts_ms: u64) -> u64 {
 pub fn stats_by_mapping(hours: Option<u64>) -> ActionHistoryStatsResult {
     let hours = hours.unwrap_or(168).clamp(1, 24 * 365);
     let cutoff = crate::runtime_event::now_ms().saturating_sub(hours.saturating_mul(3600_000));
-    let merged = merge_entries(read_jsonl_entries(), recent_ring(RING_CAPACITY));
+    let merged = cached_merged_entries();
 
     struct Acc {
         count: u64,
@@ -341,7 +369,7 @@ pub fn usage_counts_last_days(days: u64) -> Vec<u64> {
     let start_day = today.saturating_sub(days as u64 - 1);
     let cutoff = start_day.saturating_mul(86_400_000);
     let mut buckets = vec![0u64; days];
-    let merged = merge_entries(read_jsonl_entries(), recent_ring(RING_CAPACITY));
+    let merged = cached_merged_entries();
     for e in merged.into_iter().filter(|e| e.ts_ms >= cutoff && is_usage_entry(e)) {
         let d = day_bucket(e.ts_ms);
         if d < start_day || d > today {
@@ -454,6 +482,45 @@ mod tests {
             .entries
             .iter()
             .all(|e| e.channel != "system"));
+
+        clear();
+        let _ = fs::remove_file(path);
+        set_log_path_override(None);
+    }
+
+    #[test]
+    fn merged_cache_reuses_reads_within_ttl() {
+        set_enabled(true);
+        let path = tmp_path("action-history-cache");
+        set_log_path_override(Some(path.clone()));
+        clear();
+
+        record(ActionHistoryEntry::new(
+            0,
+            1000,
+            "key",
+            "semantic_action",
+            "executed",
+            "cache test",
+        ));
+
+        let _ = cached_merged_entries();
+        let _ = cached_merged_entries();
+        let stats1 = stats_by_mapping(Some(24));
+        let stats2 = stats_by_mapping(Some(24));
+        assert_eq!(stats1.rows.len(), stats2.rows.len());
+
+        record(ActionHistoryEntry::new(
+            0,
+            2000,
+            "voice",
+            "voice_phrase",
+            "executed",
+            "cache bust",
+        ));
+        let after = stats_by_mapping(Some(24));
+        let total: u64 = after.rows.iter().map(|r| r.count).sum();
+        assert_eq!(total, 2);
 
         clear();
         let _ = fs::remove_file(path);
