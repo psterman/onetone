@@ -28,19 +28,24 @@
   ];
 
   var CONTROL_DEFS = [
-    { id: 'voiceMaster', channel: 'voice', tier: 'l1', labelKey: 'trayChVoiceMaster', needs: null },
-    { id: 'voiceEnd', channel: 'voice', tier: 'l2', labelKey: 'trayChVoiceEnd', needs: 'voiceMaster' },
-    { id: 'keysEnabled', channel: 'keys', tier: 'l1', labelKey: 'trayChKeysUseScenario', needs: null },
-    { id: 'keysCancel', channel: 'keys', tier: 'l2', labelKey: 'trayChKeysCancel', needs: 'keysEnabled' },
-    { id: 'keysAutoSend', channel: 'keys', tier: 'l2', labelKey: 'trayChKeysAutoSend', needs: 'keysEnabled' },
-    { id: 'padEnabled', channel: 'softPad', tier: 'l1', labelKey: 'trayChPadEnabled', needs: null },
-    { id: 'padOverlay', channel: 'softPad', tier: 'l2', labelKey: 'trayChPadShowKeyboard', needs: 'padEnabled' },
-    { id: 'padRequireFg', channel: 'softPad', tier: 'l2', labelKey: 'trayChPadRequireFg', needs: 'padOverlay' },
-    { id: 'camPresence', channel: 'camera', tier: 'l1', labelKey: 'trayChCamPresence', needs: null },
-    { id: 'camTriggerAway', channel: 'camera', tier: 'l2', labelKey: 'trayChCamTriggerAway', needs: 'camPresence' },
-    { id: 'camAutoMute', channel: 'camera', tier: 'l1', labelKey: 'trayChCamAutoMute', needs: null },
-    { id: 'camNoFaceMute', channel: 'camera', tier: 'l2', labelKey: 'trayChCamNoFaceMute', needs: 'camAutoMute' }
+    { id: 'voiceMaster', channel: 'voice', tier: 'l1', stateKey: 'config.voiceAssistEnabled', ipc: 'config', labelKey: 'trayChVoiceMaster', hintKey: 'trayChVoiceMasterHint', needs: null },
+    { id: 'voiceEnd', channel: 'voice', tier: 'l2', stateKey: 'config.voiceEnd.enabled', ipc: 'config', labelKey: 'trayChVoiceEnd', hintKey: 'trayChVoiceEndHint', needs: 'voiceMaster' },
+    { id: 'keysEnabled', channel: 'keys', tier: 'l1', stateKey: 'mappings[].enabled', ipc: 'config', labelKey: 'trayChKeysUseScenario', hintKey: 'trayChKeysUseScenarioHint', needs: null },
+    { id: 'keysCancel', channel: 'keys', tier: 'l2', stateKey: 'mappings[].cancelEnabled', ipc: 'config', labelKey: 'trayChKeysCancel', hintKey: 'trayChKeysCancelHint', needs: 'keysEnabled' },
+    { id: 'keysAutoSend', channel: 'keys', tier: 'l2', stateKey: 'mappings[].autoEnterEnabled', ipc: 'config', labelKey: 'trayChKeysAutoSend', hintKey: 'trayChKeysAutoSendHint', needs: 'keysEnabled' },
+    { id: 'padEnabled', channel: 'softPad', tier: 'l1', stateKey: 'mappings[].codexMicroPad.enabled', ipc: 'config', labelKey: 'trayChPadEnabled', hintKey: 'trayChPadEnabledHint', needs: null },
+    { id: 'padOverlay', channel: 'softPad', tier: 'l2', stateKey: 'mappings[].codexMicroPad.overlayEnabled', ipc: 'config', labelKey: 'trayChPadShowKeyboard', hintKey: 'trayChPadShowKeyboardHint', needs: 'padEnabled' },
+    { id: 'padRequireFg', channel: 'softPad', tier: 'l2', stateKey: 'mappings[].codexMicroPad.requireForeground', ipc: 'config', labelKey: 'trayChPadRequireFg', hintKey: 'trayChPadRequireFgHint', needs: 'padOverlay' },
+    { id: 'camPresence', channel: 'camera', tier: 'l1', stateKey: 'config.cameraPrefs.presenceActions.enabled', ipc: 'config', labelKey: 'trayChCamPresence', hintKey: 'trayChCamPresenceHint', needs: null },
+    { id: 'camTriggerAway', channel: 'camera', tier: 'l2', stateKey: 'config.cameraPrefs.presenceActions.triggers.away', ipc: 'config', labelKey: 'trayChCamTriggerAway', hintKey: 'trayChCamTriggerAwayHint', needs: 'camPresence' },
+    { id: 'camAutoMute', channel: 'camera', tier: 'l1', stateKey: 'config.cameraPrefs.autoMute.enabled', ipc: 'config', labelKey: 'trayChCamAutoMute', hintKey: 'trayChCamAutoMuteHint', needs: null },
+    { id: 'camNoFaceMute', channel: 'camera', tier: 'l2', stateKey: 'config.cameraPrefs.autoMute.noFaceMute', ipc: 'config', labelKey: 'trayChCamNoFaceMute', hintKey: 'trayChCamNoFaceMuteHint', needs: 'camAutoMute' }
   ];
+
+  function controlsForChannel(channel) {
+    if (channel === 'habits') return [];
+    return CONTROL_DEFS.filter(function (d) { return d.channel === channel; });
+  }
 
   var LABEL_FB = {
     trayChVoiceMaster: '语音输入', trayChVoiceEnd: '说完就停',
@@ -272,6 +277,7 @@
     ensureSchemeALayout: ensureSchemeALayout,
     PERSONA_PRESETS: PERSONA_PRESETS,
     CONTROL_DEFS: CONTROL_DEFS,
+    controlsForChannel: controlsForChannel,
     ctrlCatalogId: ctrlCatalogId
   };
 })(typeof window !== 'undefined' ? window : globalThis);

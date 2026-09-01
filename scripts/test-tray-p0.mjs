@@ -32,7 +32,7 @@ check('soft-pad-tray renderSwitchCards', trayUi.includes('renderSwitchCards'));
 check('habit panel null-safe', trayUi.includes('function channels()') && !trayUi.includes('(trayState.channels || [])'));
 check('habit panel todayByChannel', trayUi.includes('todayByChannel') && trayUi.includes('channelUsage'));
 check('preview channel click', trayUi.includes('wirePreviewChannelClicks'));
-check('onPanelEnter defers setTab', trayUi.includes("setTab(opts.trayEditorFocus || 'habit')") && !trayUi.match(/wireOnce[\s\S]*setTab\('habit'\)/));
+check('onPanelEnter single paint', trayUi.includes('function paintOnce') && trayUi.includes('suspendPaint') && trayUi.includes('tray_editor_ready_ms'));
 check('preview footer host', indexHtml.includes('softPadTrayPreviewFooter'));
 check('preview seps', indexHtml.includes('block:sep-ch') && indexHtml.includes('block:sep-mic'));
 check('tray os channels css', indexHtml.includes('tray-os-channels.css'));
@@ -40,11 +40,16 @@ check('preview mic row structure', indexHtml.includes('softPadTrayMicRow') && in
 check('no tray-layout-editor script', !indexHtml.includes('tray-layout-editor.js'));
 
 const tcc = read('src/js/features/settings/tray-channel-controls.js');
-check('unified surface L1+L2', tcc.includes("surface === 'unified'") && tcc.includes('renderUnifiedChannelGroup'));
+const v2 = read('src/js/features/settings/tray-layout-v2.js');
+check('tray render editor module', read('src/js/features/settings/tray-render-editor.js').includes('OneToneTrayRenderEditor'));
 check('no tray main switch link', !tcc.includes('cc-row-link'));
 check('no tray status bar host', !trayHtml.includes('trayChannelStatus'));
 
-const v2 = read('src/js/features/settings/tray-layout-v2.js');
+const dataStore = read('src/js/features/settings/tray-data-store.js');
+const trayRenderOs = read('src/js/features/settings/tray-render-os.js');
+check('tray data store', dataStore.includes('OneToneTrayDataStore') && dataStore.includes('cmd_tray_bootstrap'));
+check('tray render os patch', trayRenderOs.includes('tryPatchBlock') && trayRenderOs.includes('data-ot-ch'));
+check('control defs single source', v2.includes('stateKey') && v2.includes('controlsForChannel') && tcc.includes('controlsForChannel'));
 check('preview focus channel', tcc.includes('setPreviewFocusChannel'));
 check('channel overview noop', read('src/js/features/settings/channel-config-overview.js').includes('/* noop */'));
 check('no home channel overview', !indexHtml.includes('channelConfigOverview'));
@@ -102,13 +107,14 @@ check('tray os readConfig fallback', tcc.includes('return osCtx.config || null')
 check('tray os ingest', tcc.includes('ingestOsContext'));
 check('scene block app label', scenePreset.includes('sceneLabelFromGlobal') && scenePreset.includes('foregroundLabel'));
 check('tray mic cache no wasapi', trayStateRs.includes('TRAY_MIC_CACHE') && !trayStateRs.match(/assemble_mic[\s\S]*get_default_capture_mute/));
-check('tray menu no bundled os context', !trayStateRs.includes('os_context') && trayHtml.includes('hydrateOsContext'));
+check('tray menu bootstrap ipc', trayHtml.includes('OneToneTrayDataStore') && trayHtml.includes("bootstrap('os')") && trayIpc.includes('cmd_tray_bootstrap'));
+check('tray menu no bundled os context', !trayStateRs.includes('pub struct TrayState') || !trayStateRs.match(/struct TrayState[\s\S]{0,400}os_context/) && dataStore.includes('configSlice'));
 check('tray voice unpark', tcc.includes('unparkVoiceForTray') && tcc.includes('cmd_set_settings_drawer_open'));
 check('tray scene applying guard', scenePreset.includes('if (applying) return') && scenePreset.includes('applying'));
 check('tray scene persist apply', scenePreset.includes('applyPersistedSceneOnOpen'));
 check('tray runtime normalize preset', scenePreset.includes('normalizeTrayScenePreset'));
 check('tray load before render', trayHtml.includes('deferRender:true') && trayHtml.includes('loadRuntime'));
-check('tray parallel bootstrap', trayHtml.includes('Promise.all([') && trayHtml.includes('cmd_tray_runtime_get'));
+check('tray menu deferred reveal', trayHtml.includes('cmd_tray_menu_reveal') && trayHtml.includes('menuRevealed'));
 check('tray prefetch os context', tcc.includes('prefetchOsContext') && tcc.includes('hasOsContext'));
 check('tray no double channel render', trayHtml.includes('__trayBootstrapped'));
 check('tray usage summary ipc', trayIpc.includes('cmd_tray_usage_summary') && read('src/js/features/mapping/habit-hub.js').includes('cmd_tray_usage_summary'));
@@ -117,7 +123,7 @@ check('tray today stats merged', trayStateRs.includes('tray_today_stats'));
 check('mic skip scene preset', !trayHtml.includes('onManualSwitchChange()') || trayHtml.includes('onTrayChannelSwitchChange'));
 check('tray runtime save flat args', read('src-tauri/src/ipc/commands/shell/tray_runtime_cmd.rs').includes('tray_scene_preset: Option'));
 check('tray scene deferred click', scenePreset.includes('setTimeout') && scenePreset.includes('patchOsSnapshotLocal'));
-check('tray hydrate before render', trayHtml.includes('hydrateOsContext') && !trayHtml.match(/applyPersistedSceneOnOpen\(\)/));
+check('tray hydrate before render', trayHtml.includes('finishBoot') && dataStore.includes('applyOsContext'));
 check('tray refresh segments ipc', trayIpc.includes('cmd_tray_refresh_segments'));
 check('tray os context permitted', read('src-tauri/permissions/app-ipc.toml').includes('allow-cmd-tray-os-context'));
 check('tray voice no sync wake begin', tcc.includes('trayActivateVoiceListening') && !tcc.includes('cmd_voice_wake_phrase_test_begin'));
@@ -126,7 +132,11 @@ check('tray eval deferred', trayRs.includes('run_on_main_thread') && trayRs.incl
 check('tray mic self ref', trayHtml.includes('var self=this') && trayHtml.includes('TrayMicToggle'));
 check('tray save indicator', indexHtml.includes('tray-save-indicator') && trayUi.includes('flashSaveIndicator'));
 check('preview sync pulse', trayUi.includes('is-sync-pulse') && trayEditorCss.includes('.soft-pad-tray-menu-shell.is-sync-pulse'));
-check('tray schemes retained', trayUi.includes('schemes: data.schemes'));
+check('tray schemes retained', trayUi.includes('schemes: (data && data.schemes)'));
+check('tray editor immediate shell', trayUi.includes('renderEditorShell') && trayUi.includes('tray-editor-loading'));
+check('tray single bootstrap', trayHtml.includes('Store.bootstrap') && !trayHtml.includes('cmd_tray_runtime_get'));
+check('tray bootstrap rust', trayStateRs.includes('assemble_tray_bootstrap') && trayStateRs.includes('config_slice'));
+check('tray bootstrap permitted', read('src-tauri/permissions/app-ipc.toml').includes('allow-cmd-tray-bootstrap'));
 check('tray footer module', read('src/js/features/settings/tray-footer.js').includes('OneToneTrayFooter'));
 check('compact persona alias', v2.includes('normalizePersona') && v2.includes('inferPersonaFromLayout'));
 

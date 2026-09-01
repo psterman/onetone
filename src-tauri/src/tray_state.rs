@@ -807,6 +807,146 @@ pub fn assemble_usage_summary(state: &AppState) -> TrayUsageSummary {
     }
 }
 
+/// Slim channel row for tray bootstrap (no inspector stats).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChannelDisplay {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub state: String,
+    pub meta: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deep_link: Option<String>,
+}
+
+impl From<Channel> for ChannelDisplay {
+    fn from(ch: Channel) -> Self {
+        Self {
+            id: ch.id,
+            name: ch.name,
+            enabled: ch.enabled,
+            state: ch.state,
+            meta: ch.meta,
+            deep_link: ch.deep_link,
+        }
+    }
+}
+
+/// Display snapshot for tray bootstrap — omits week_trend and channel stats.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrayBootstrapDisplay {
+    pub global: GlobalState,
+    pub mic: MicState,
+    pub channels: Vec<ChannelDisplay>,
+    pub deep_links: Vec<DeepLink>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub schemes: Vec<SchemeItem>,
+}
+
+/// OS-context slice for tray switch read/write (not full VoiceConfig).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrayOsContextSlice {
+    pub config_slice: serde_json::Value,
+    pub voice_end: serde_json::Value,
+}
+
+/// Single IPC bundle for tray menu / editor bootstrap.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrayBootstrap {
+    pub display: TrayBootstrapDisplay,
+    pub os_context: TrayOsContextSlice,
+    pub customization: crate::tray_customization::TrayCustomization,
+    pub runtime: crate::tray_runtime::TrayRuntime,
+}
+
+fn assemble_global_slim(
+    state: &AppState,
+    open_fg: Option<&AppIdentity>,
+    channels: &[Channel],
+) -> GlobalState {
+    let mut g = assemble_global_with_fg(state, open_fg, channels);
+    g.week_trend.clear();
+    g
+}
+
+fn mapping_config_slice(m: &crate::config::MappingEntry) -> serde_json::Value {
+    let pad = m.codex_micro_pad.as_ref().map(|p| {
+        serde_json::json!({
+            "enabled": p.enabled,
+            "overlayEnabled": p.overlay_enabled,
+            "requireForeground": p.require_foreground,
+        })
+    });
+    serde_json::json!({
+        "id": m.id,
+        "enabled": m.enabled,
+        "cancelEnabled": m.cancel_enabled,
+        "autoEnterEnabled": m.auto_enter_enabled,
+        "codexMicroPad": pad,
+    })
+}
+
+pub fn assemble_tray_config_slice(state: &AppState) -> serde_json::Value {
+    let cfg = state.cfg.lock();
+    let active = tray_active_mapping(&cfg);
+    let active_id = active.map(|m| m.id.as_str()).unwrap_or("");
+    let mut mappings: Vec<serde_json::Value> = Vec::new();
+    if let Some(m) = active {
+        mappings.push(mapping_config_slice(m));
+    }
+    if let Some(pad_m) = cfg.mappings.iter().find(|m| m.codex_micro_pad.is_some()) {
+        if pad_m.id != active_id {
+            mappings.push(mapping_config_slice(pad_m));
+        }
+    }
+    serde_json::json!({
+        "voiceAssistEnabled": cfg.voice_assist_enabled,
+        "voiceListeningStrategy": cfg.voice_listening_strategy,
+        "desiredEngine": cfg.desired_engine,
+        "voiceKws": { "enabled": cfg.voice_kws.enabled },
+        "voiceVosk": { "enabled": cfg.voice_vosk.enabled },
+        "voiceSapi": { "enabled": cfg.voice_sapi.enabled },
+        "voiceEnd": cfg.voice_end,
+        "cameraPrefs": cfg.camera_prefs,
+        "activeSceneId": cfg.active_scene_id,
+        "mappings": mappings,
+    })
+}
+
+pub fn assemble_tray_bootstrap(state: &AppState, surface: &str) -> TrayBootstrap {
+    let open_fg = if surface == "os" {
+        crate::tray::tray_open_foreground()
+    } else {
+        None
+    };
+    let channels = assemble_channels(state);
+    let display = TrayBootstrapDisplay {
+        global: assemble_global_slim(state, open_fg.as_ref(), &channels),
+        mic: assemble_mic(state),
+        channels: channels.into_iter().map(ChannelDisplay::from).collect(),
+        deep_links: assemble_deep_links(),
+        schemes: if surface == "editor" {
+            assemble_schemes(state)
+        } else {
+            Vec::new()
+        },
+    };
+    let voice_end = crate::voice_end_runtime::voice_end_status(state);
+    TrayBootstrap {
+        display,
+        os_context: TrayOsContextSlice {
+            config_slice: assemble_tray_config_slice(state),
+            voice_end: serde_json::to_value(voice_end).unwrap_or_else(|_| serde_json::json!({})),
+        },
+        customization: crate::tray_customization::load(),
+        runtime: crate::tray_runtime::load(),
+    }
+}
+
 fn tray_foreground_label() -> String {
     crate::app_identity::foreground_app_identity()
         .map(|i| {
@@ -1073,5 +1213,15 @@ mod tests {
         assert_eq!(habits.label, "我的习惯");
         assert_eq!(habits.href, "main:habits");
         assert!(!links.iter().any(|l| l.href == "main:diagnose"));
+    }
+
+    #[test]
+    fn mapping_config_slice_serializes_switch_fields() {
+        let mut m = VoiceConfig::default().mappings.remove(0);
+        m.enabled = true;
+        m.cancel_enabled = true;
+        let j = mapping_config_slice(&m);
+        assert_eq!(j.get("enabled").and_then(|v| v.as_bool()), Some(true));
+        assert_eq!(j.get("cancelEnabled").and_then(|v| v.as_bool()), Some(true));
     }
 }

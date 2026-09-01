@@ -13,6 +13,9 @@
   var traySegs = ['global', 'mic', 'channels', 'schemes'];
   var saveFlashTimer = null;
   var syncPulseTimer = null;
+  var suspendPaint = false;
+  var previewLazy = true;
+  var usageSummary = null;
 
   var CHANNELS = ['habit', 'voice', 'keys', 'softPad', 'camera'];
   var CH_LABEL = { habit: '当前习惯', voice: '语音', keys: '按键', softPad: '小键盘', camera: '摄像头' };
@@ -121,14 +124,37 @@
     else if (drawer && drawer.openSettings) drawer.openSettings({ panel: 'habits' });
   }
 
+  function feLog(line) {
+    if (invoke) invoke('cmd_app_log', { line: String(line || '') }).catch(function () {});
+  }
+
   function patchTraySeg(seg, payload) {
     if (!trayState) trayState = { global: {}, mic: {}, channels: [], schemes: [] };
     if (seg === 'global') trayState.global = payload;
     else if (seg === 'mic') trayState.mic = payload;
     else if (seg === 'channels') trayState.channels = payload;
     else if (seg === 'schemes') trayState.schemes = payload;
-    syncPreview();
-    if (seg === 'global' || seg === 'schemes') renderChannelPanel();
+    paintOnce();
+  }
+
+  function shouldPaint() {
+    return !suspendPaint;
+  }
+
+  function paintOnce(opts) {
+    opts = opts || {};
+    if (!shouldPaint()) return Promise.resolve();
+    return new Promise(function (resolve) {
+      var run = function () {
+        renderSubtabs();
+        Promise.resolve(renderChannelPanel()).then(function () {
+          syncPreview(opts);
+          resolve();
+        });
+      };
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+      else run();
+    });
   }
 
   function syncPreviewBlockOrder(lay) {
@@ -168,18 +194,19 @@
     });
   }
 
-  function applyTrayLayoutCfg(cfg) {
+  function applyTrayLayoutCfg(cfg, opts) {
+    opts = opts || {};
     var V2 = global.OneToneTrayLayoutV2;
     var TCC = global.OneToneTrayChannelControls;
+    var Store = global.OneToneTrayDataStore;
     if (!V2 || !cfg) return;
     var merged = V2.mergeLayoutWithCatalog(cfg.version === V2.VERSION ? cfg : V2.migrateV1(cfg));
-    if (TCC && TCC.setTrayLayoutV2) TCC.setTrayLayoutV2(merged.layout);
+    if (Store && Store.setLayout) Store.setLayout(merged.layout);
+    else if (TCC && TCC.setTrayLayoutV2) TCC.setTrayLayoutV2(merged.layout);
     syncBlockVisibility(merged.layout);
     syncPreviewBlockOrder(merged.layout);
-    syncPreview();
-    renderSubtabs();
-    renderChannelPanel();
     syncPersonaSegUI();
+    if (shouldPaint() && opts.paint !== false) paintOnce();
     var dirty = merged.newBlocks > 0 || merged.newControls > 0 || merged.repaired;
     if (dirty && invoke) {
       invoke('cmd_tray_customization_save', merged.layout).then(function () {
@@ -258,7 +285,11 @@
 
   function todayByChannel() {
     var g = (trayState && trayState.global) || {};
-    return g.todayByChannel || g.today_by_channel || {};
+    var u = g.todayByChannel || g.today_by_channel || {};
+    if (usageSummary && usageSummary.todayByChannel) {
+      return usageSummary.todayByChannel;
+    }
+    return u;
   }
 
   function channelUsage(ch) {
@@ -285,18 +316,36 @@
     });
   }
 
-  function syncPreview() {
+  function previewChannelVisible(ch) {
+    var V2 = global.OneToneTrayLayoutV2;
+    var TCC = global.OneToneTrayChannelControls;
+    var lay = TCC && TCC.getTrayLayoutV2 ? TCC.getTrayLayoutV2() : null;
+    if (!V2 || !lay) return true;
+    return V2.blockVisible(lay, V2.channelBlockId(ch));
+  }
+
+  function shouldRenderPreviewChannel(ch, opts) {
+    opts = opts || {};
+    if (!previewLazy || opts.previewMode === 'all') return true;
+    if (activeTab === ch) return true;
+    return previewChannelVisible(ch);
+  }
+
+  function syncPreview(opts) {
+    if (suspendPaint) return;
+    opts = opts || {};
     var SP = global.OneToneTrayScenePreset;
-    if (SP) SP.renderSceneBlock($('softPadTraySceneBlock'), { onRefresh: syncPreview });
+    if (SP) SP.renderSceneBlock($('softPadTraySceneBlock'), { onRefresh: function () { paintOnce(); } });
     var TCC = global.OneToneTrayChannelControls;
     ['voice', 'keys', 'softPad', 'camera'].forEach(function (ch) {
       var host = $(PREVIEW_HOST[ch]);
       if (!host) return;
+      if (!shouldRenderPreviewChannel(ch, opts)) return;
       if (!TCC || !trayState) {
         renderChannelSkeleton(host);
         return;
       }
-      TCC.renderOsTrayBlock(host, ch, trayState, { onRefresh: syncPreview });
+      TCC.renderOsTrayBlock(host, ch, trayState, { onRefresh: function () { paintOnce(); } });
     });
     if (trayState) {
       var mic = trayState.mic || {};
@@ -367,8 +416,18 @@
     }).join('');
   }
 
+  function loadUsageSummary() {
+    if (!invoke || usageSummary) return Promise.resolve(usageSummary);
+    return invoke('cmd_tray_usage_summary').then(function (data) {
+      usageSummary = data || null;
+      return usageSummary;
+    }).catch(function () { return null; });
+  }
+
   function renderHabitPanel(host) {
     var g = (trayState && trayState.global) || {};
+    var us = usageSummary || {};
+    if (us.todayTotalCount != null) g = Object.assign({}, g, { todayTotalCount: us.todayTotalCount });
     var hd = resolveHabitDisplay();
     var total = g.todayTotalCount || 0;
     var usageChips = ['voice', 'keys', 'softPad', 'camera'].map(function (ch) {
@@ -404,11 +463,32 @@
     if (link) link.addEventListener('click', openHabitsPanel);
   }
 
+  function renderEditorShell() {
+    renderSubtabs();
+    var panel = $('softPadTrayChannelPanel');
+    if (panel) {
+      panel.innerHTML = '<div class="tray-editor-loading">加载托盘编辑器…</div>';
+    }
+    var SP = global.OneToneTrayScenePreset;
+    if (SP) {
+      var scene = $('softPadTraySceneBlock');
+      if (scene) scene.innerHTML = '<div class="tray-preview-skeleton"><span class="tray-preview-skeleton__dot"></span>加载场景…</div>';
+    }
+    ['voice', 'keys', 'softPad', 'camera'].forEach(function (ch) {
+      var host = $(PREVIEW_HOST[ch]);
+      if (host) renderChannelSkeleton(host);
+    });
+  }
+
   function renderChannelPanel() {
     var host = $('softPadTrayChannelPanel');
     if (!host) return;
     if (activeTab === 'habit') {
-      renderHabitPanel(host);
+      if (trayState) renderHabitPanel(host);
+      else host.innerHTML = '<div class="tray-editor-loading">加载习惯信息…</div>';
+      loadUsageSummary().then(function () {
+        if (trayState) renderHabitPanel(host);
+      });
       return;
     }
     var TCC = global.OneToneTrayChannelControls;
@@ -428,23 +508,24 @@
       onChange: function () {
         var SP = global.OneToneTrayScenePreset;
         if (SP) SP.onManualSwitchChange();
-        syncPreview();
+        paintOnce();
         pulsePreviewSync();
         flashSaveIndicator();
-        if (SP) SP.renderSceneBlock($('softPadTraySceneBlock'), { onRefresh: syncPreview });
+        if (SP) SP.renderSceneBlock($('softPadTraySceneBlock'), { onRefresh: function () { paintOnce(); } });
       }
     });
   }
 
-  function setTab(ch) {
+  function setTab(ch, opts) {
+    opts = opts || {};
     activeTab = ch || 'habit';
     var TCC = global.OneToneTrayChannelControls;
     if (TCC && TCC.setPreviewFocusChannel) {
       TCC.setPreviewFocusChannel(ch === 'habit' ? null : ch);
     }
-    renderSubtabs();
-    renderChannelPanel();
-    syncPreview();
+    if (opts.paint === false || suspendPaint) return;
+    if (activeTab === 'habit') loadUsageSummary().then(function () { paintOnce(opts); });
+    else paintOnce(opts);
   }
 
   function syncPersonaSegUI() {
@@ -471,7 +552,7 @@
       syncBlockVisibility(lay);
       syncPreviewBlockOrder(lay);
       renderSubtabs();
-      syncPreview();
+      paintOnce({ previewMode: 'all' });
       pulsePreviewSync();
       flashSaveIndicator();
       syncPersonaSegUI();
@@ -480,17 +561,13 @@
   }
 
   function loadCustomization() {
+    var Store = global.OneToneTrayDataStore;
+    if (Store && Store.layout) {
+      applyTrayLayoutCfg(Store.layout, { paint: false });
+      return Promise.resolve();
+    }
     return invoke('cmd_tray_customization_get').then(function (cfg) {
-      applyTrayLayoutCfg(cfg || {});
-      var V2 = global.OneToneTrayLayoutV2;
-      var TCC = global.OneToneTrayChannelControls;
-      var lay = TCC && TCC.getTrayLayoutV2 ? TCC.getTrayLayoutV2() : null;
-      if (V2 && lay && !anyChannelVisible(lay)) {
-        return applyPersona('compact');
-      }
-      return global.OneToneTrayScenePreset ? global.OneToneTrayScenePreset.loadRuntime() : null;
-    }).then(function () {
-      syncPersonaSegUI();
+      applyTrayLayoutCfg(cfg || {}, { paint: false });
     }).catch(function () {});
   }
 
@@ -504,18 +581,25 @@
     return Promise.resolve();
   }
 
+  function ingestTrayDisplay(data) {
+    trayState = {
+      global: (data && data.global) || {},
+      mic: (data && data.mic) || {},
+      channels: (data && data.channels) || [],
+      deepLinks: (data && data.deepLinks) || [],
+      schemes: (data && data.schemes) || []
+    };
+  }
+
   function refreshTrayState() {
+    var Store = global.OneToneTrayDataStore;
+    if (Store && Store.display) {
+      ingestTrayDisplay(Store.display);
+      return Promise.resolve();
+    }
     return invoke('cmd_tray_menu_ready').then(function (raw) {
       var data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-      trayState = {
-        global: data.global || {},
-        mic: data.mic || {},
-        channels: data.channels || [],
-        deepLinks: data.deepLinks || [],
-        schemes: data.schemes || []
-      };
-      syncPreview();
-      renderChannelPanel();
+      ingestTrayDisplay(data);
     }).catch(function () {});
   }
 
@@ -541,25 +625,54 @@
       global.__otTrayChannelConfigBound = true;
       global.addEventListener('channel-config:changed', function () {
         if (!mounted) return;
-        syncPreview();
+        paintOnce();
         pulsePreviewSync();
-        renderChannelPanel();
       });
     }
     renderSubtabs();
   }
 
+  function bootstrapEditor() {
+    var Store = global.OneToneTrayDataStore;
+    if (Store && Store.bootstrap) {
+      return Store.bootstrap('editor').then(function (bundle) {
+        if (bundle && bundle.display) ingestTrayDisplay(bundle.display);
+        if (bundle && bundle.customization) applyTrayLayoutCfg(bundle.customization, { paint: false });
+        var SP = global.OneToneTrayScenePreset;
+        if (SP && SP.loadRuntime && bundle && bundle.runtime) return SP.loadRuntime(bundle.runtime);
+      });
+    }
+    return loadCustomization().then(function () {
+      var SP = global.OneToneTrayScenePreset;
+      if (SP && SP.loadRuntime) return SP.loadRuntime();
+    }).then(refreshTrayState);
+  }
+
   function onPanelEnter(opts) {
     opts = opts || {};
+    var t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    var tab = opts.trayEditorFocus || 'habit';
+    activeTab = tab;
+    usageSummary = null;
     wireOnce();
-    subscribeTrayLive().then(function () {
-      return loadCustomization();
-    }).then(function () {
-      return refreshTrayState();
-    }).then(function () {
+    renderEditorShell();
+    Promise.all([
+      subscribeTrayLive(),
+      bootstrapEditor()
+    ]).then(function () {
       return ensureChannelsVisible();
     }).then(function () {
-      setTab(opts.trayEditorFocus || 'habit');
+      var TCC = global.OneToneTrayChannelControls;
+      if (TCC && TCC.setPreviewFocusChannel) {
+        TCC.setPreviewFocusChannel(tab === 'habit' ? null : tab);
+      }
+      return paintOnce({ previewMode: 'all' });
+    }).then(function () {
+      var ms = Math.round(((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - t0);
+      feLog('tray_editor_ready_ms=' + ms);
+    }).catch(function (err) {
+      feLog('tray_editor_ready_fail=' + String(err && err.message ? err.message : err));
+      paintOnce({ previewMode: 'all' });
     });
   }
 
@@ -573,7 +686,7 @@
     onFaceEnter: onPanelEnter,
     onFaceLeave: onPanelLeave,
     refresh: refreshTrayState,
-    refreshControls: function () { renderChannelPanel(); syncPreview(); },
+    refreshControls: function () { paintOnce({ previewMode: 'all' }); },
     setChannelTab: setTab
   };
 })(typeof window !== 'undefined' ? window : globalThis);

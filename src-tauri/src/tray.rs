@@ -403,7 +403,8 @@ pub fn tray_menu_init_json(state: &AppState) -> String {
     serde_json::to_string(&payload).unwrap_or_else(|_| "{}".into())
 }
 
-pub fn present_tray_menu(
+/// Size + position while hidden — avoids visible jump before JS measures content.
+pub fn prepare_tray_menu(
     menu_win: &WebviewWindow,
     width: f64,
     height: f64,
@@ -413,13 +414,27 @@ pub fn present_tray_menu(
     let w = width.max(220.0);
     let h = height.max(160.0);
     menu_win.set_size(Size::Logical(LogicalSize::new(w, h)))?;
-
     let pos = compute_tray_menu_position(menu_win, anchor_x, anchor_y, w, h);
     menu_win.set_position(Position::Physical(pos))?;
+    Ok(())
+}
+
+pub fn reveal_tray_menu(menu_win: &WebviewWindow) -> tauri::Result<()> {
     mark_tray_menu_shown();
     menu_win.show()?;
     menu_win.set_focus()?;
     Ok(())
+}
+
+pub fn present_tray_menu(
+    menu_win: &WebviewWindow,
+    width: f64,
+    height: f64,
+    anchor_x: i32,
+    anchor_y: i32,
+) -> tauri::Result<()> {
+    prepare_tray_menu(menu_win, width, height, anchor_x, anchor_y)?;
+    reveal_tray_menu(menu_win)
 }
 
 pub fn resize_tray_menu(
@@ -621,7 +636,7 @@ fn tray_menu_anchor() -> (i32, i32) {
 
 fn open_tray_menu(menu_win: &WebviewWindow, state: &AppState, anchor_x: i32, anchor_y: i32) {
     let (w, h) = estimate_menu_size(state);
-    if present_tray_menu(menu_win, w, h, anchor_x, anchor_y).is_err() {
+    if prepare_tray_menu(menu_win, w, h, anchor_x, anchor_y).is_err() {
         return;
     }
 

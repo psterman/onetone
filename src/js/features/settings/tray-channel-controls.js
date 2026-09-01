@@ -141,6 +141,13 @@
 
   function loadTrayLayout() {
     var V2 = global.OneToneTrayLayoutV2;
+    var Store = global.OneToneTrayDataStore;
+    if (trayLayoutV2) return Promise.resolve({ layout: trayLayoutV2 });
+    if (Store && Store.layout) {
+      trayLayoutV2 = Store.layout;
+      syncLegacyFromV2();
+      return Promise.resolve({ layout: trayLayoutV2 });
+    }
     return invoke('cmd_tray_customization_get').then(function (cfg) {
       if (!cfg) return;
       if (V2) {
@@ -200,35 +207,8 @@
   }
 
   function allControls(channel) {
-    if (channel === 'habits') return [];
-    if (channel === 'voice') {
-      return [
-        { id: 'voiceMaster', tier: 'l1', stateKey: 'config.voiceAssistEnabled', ipc: 'config', labelKey: 'trayChVoiceMaster', hintKey: 'trayChVoiceMasterHint', needs: null },
-        { id: 'voiceEnd', tier: 'l2', stateKey: 'config.voiceEnd.enabled', ipc: 'config', labelKey: 'trayChVoiceEnd', hintKey: 'trayChVoiceEndHint', needs: 'voiceMaster' }
-      ];
-    }
-    if (channel === 'keys') {
-      return [
-        { id: 'keysEnabled', tier: 'l1', stateKey: 'mappings[].enabled', ipc: 'config', labelKey: 'trayChKeysUseScenario', hintKey: 'trayChKeysUseScenarioHint', needs: null },
-        { id: 'keysCancel', tier: 'l2', stateKey: 'mappings[].cancelEnabled', ipc: 'config', labelKey: 'trayChKeysCancel', hintKey: 'trayChKeysCancelHint', needs: 'keysEnabled' },
-        { id: 'keysAutoSend', tier: 'l2', stateKey: 'mappings[].autoEnterEnabled', ipc: 'config', labelKey: 'trayChKeysAutoSend', hintKey: 'trayChKeysAutoSendHint', needs: 'keysEnabled' }
-      ];
-    }
-    if (channel === 'softPad') {
-      return [
-        { id: 'padEnabled', tier: 'l1', stateKey: 'mappings[].codexMicroPad.enabled', ipc: 'config', labelKey: 'trayChPadEnabled', hintKey: 'trayChPadEnabledHint', needs: null },
-        { id: 'padOverlay', tier: 'l2', stateKey: 'mappings[].codexMicroPad.overlayEnabled', ipc: 'config', labelKey: 'trayChPadShowKeyboard', hintKey: 'trayChPadShowKeyboardHint', needs: 'padEnabled' },
-        { id: 'padRequireFg', tier: 'l2', stateKey: 'mappings[].codexMicroPad.requireForeground', ipc: 'config', labelKey: 'trayChPadRequireFg', hintKey: 'trayChPadRequireFgHint', needs: 'padOverlay' }
-      ];
-    }
-    if (channel === 'camera') {
-      return [
-        { id: 'camPresence', tier: 'l1', stateKey: 'config.cameraPrefs.presenceActions.enabled', ipc: 'config', labelKey: 'trayChCamPresence', hintKey: 'trayChCamPresenceHint', needs: null },
-        { id: 'camTriggerAway', tier: 'l2', stateKey: 'config.cameraPrefs.presenceActions.triggers.away', ipc: 'config', labelKey: 'trayChCamTriggerAway', hintKey: 'trayChCamTriggerAwayHint', needs: 'camPresence' },
-        { id: 'camAutoMute', tier: 'l1', stateKey: 'config.cameraPrefs.autoMute.enabled', ipc: 'config', labelKey: 'trayChCamAutoMute', hintKey: 'trayChCamAutoMuteHint', needs: null },
-        { id: 'camNoFaceMute', tier: 'l2', stateKey: 'config.cameraPrefs.autoMute.noFaceMute', ipc: 'config', labelKey: 'trayChCamNoFaceMute', hintKey: 'trayChCamNoFaceMuteHint', needs: 'camAutoMute' }
-      ];
-    }
+    var V2 = global.OneToneTrayLayoutV2;
+    if (V2 && V2.controlsForChannel) return V2.controlsForChannel(channel);
     return [];
   }
 
@@ -563,41 +543,6 @@
     btn.setAttribute('aria-checked', on ? 'true' : 'false');
   }
 
-  function makeToggleRow(ctrl, channel, ctx, rowClass) {
-    assertKey(ctrl.stateKey);
-    var row = document.createElement('div');
-    var surface = ctx && ctx.surface;
-    var isUnified = surface === 'unified' || surface === 'compact';
-    row.className = rowClass + ' tray-ctrl-' + ctrl.tier + ' ipc-' + (ctrl.ipc === 'customization' ? 'customization' : 'config');
-    if (isUnified && ctrl.tier === 'l1') row.className += ' cc-row--master';
-    row.setAttribute('data-tray-tier', ctrl.tier);
-    row.setAttribute('data-state-key', ctrl.stateKey);
-    var label = t(ctrl.labelKey, LABEL_FB[ctrl.labelKey] || ctrl.labelKey);
-    var hint = ctrl.hintKey ? t(ctrl.hintKey, LABEL_FB[ctrl.hintKey] || '') : '';
-    if (isUnified) {
-      row.innerHTML = '<div class="cc-lbl">' + label + (hint ? '<span class="cc-hint">' + hint + '</span>' : '') + '</div>';
-    } else {
-      row.innerHTML = '<div class="tray-ctrl-lbl">' + label + (hint ? '<span class="tray-ctrl-hint">' + hint + '</span>' : '') + '</div>';
-    }
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'toggle-switch page-status-toggle tray-ctrl-toggle';
-    btn.setAttribute('role', 'switch');
-    var val = readControlValue(ctrl, Object.assign({ channel: channel }, ctx));
-    setToggle(btn, val);
-    btn.addEventListener('click', function () {
-      var next = btn.getAttribute('aria-checked') !== 'true';
-      setToggle(btn, next);
-      writeControlValue(ctrl, next, Object.assign({ channel: channel }, ctx)).then(function () {
-        syncAllSurfaces(channel);
-      }).catch(function () {
-        setToggle(btn, !next);
-      });
-    });
-    row.appendChild(btn);
-    return row;
-  }
-
   function openSettingsPanel(panel) {
     var drawer = global.OneToneSettingsDrawer;
     if (drawer && drawer.open) drawer.open({ panel: panel });
@@ -611,6 +556,9 @@
   }
 
   function renderSwitchCards(host, channel, ctx, opts) {
+    var Ed = global.OneToneTrayRenderEditor;
+    var Io = global.OneToneTraySwitchIo;
+    if (Ed && Io && Io.api()) return Ed.renderSwitchCards(Io.api(), host, channel, ctx, opts);
     opts = opts || {};
     if (!host || channel === 'habits') return Promise.resolve();
     ctx = ctx || { surface: 'editor' };
@@ -658,33 +606,6 @@
       go.addEventListener('click', function () { openSettingsPanel(SETTINGS_PANEL[channel]); });
       host.appendChild(go);
     });
-  }
-
-  function renderUnifiedChannelGroup(host, channel, opts) {
-    opts = opts || {};
-    if (!host || channel === 'habits') return Promise.resolve();
-    return loadTrayLayout().then(function () {
-      host.innerHTML = '';
-      var group = document.createElement('div');
-      group.className = 'cc-group';
-      group.innerHTML = '<div class="cc-gh">' + t('channelConfigBasic', '基础配置') + '</div>';
-      var ctx = { surface: 'unified' };
-      getChannelControls(channel, 'unified').forEach(function (ctrl) {
-        group.appendChild(makeToggleRow(ctrl, channel, ctx, 'cc-row'));
-      });
-      host.appendChild(group);
-      if (channel === 'keys' && global.OneToneAppBehaviorRules && global.OneToneAppBehaviorRules.renderCompactAppPrefs) {
-        var prefs = document.createElement('div');
-        prefs.className = 'cc-prefs';
-        prefs.id = 'channelConfigKeysPrefs';
-        host.appendChild(prefs);
-        global.OneToneAppBehaviorRules.renderCompactAppPrefs(prefs, activeMapping());
-      }
-    });
-  }
-
-  function renderCompactGroup(host, channel, opts) {
-    return renderUnifiedChannelGroup(host, channel, opts);
   }
 
   function renderInspectorPreview(host, channel, opts) {
@@ -962,6 +883,9 @@
   }
 
   function renderOsTrayBlock(shell, channel, state, opts) {
+    var Os = global.OneToneTrayRenderOs;
+    var Io = global.OneToneTraySwitchIo;
+    if (Os && Io && Io.api()) return Os.renderBlock(Io.api(), shell, channel, state, opts);
     opts = opts || {};
     if (!shell || channel === 'habits') return Promise.resolve();
     var ch = (state && state.channels || []).find(function (c) { return c.id === channel; }) || {};
@@ -977,7 +901,7 @@
       mapping: osCtx.mapping
     };
 
-    return hydrateOsContext(state && state.global).then(function () {
+    return (osCtx.config ? Promise.resolve(osCtx) : hydrateOsContext(state && state.global)).then(function () {
       ctx.config = osCtx.config;
       ctx.mapping = osCtx.mapping;
       ctx.voiceEnd = osCtx.voiceEnd;
@@ -1154,8 +1078,6 @@
     writeControlValue: writeControlValue,
     formatTrayEventText: formatTrayEventText,
     formatWeekTrendSummary: formatWeekTrendSummary,
-    renderCompactGroup: renderCompactGroup,
-    renderUnifiedChannelGroup: renderUnifiedChannelGroup,
     renderChannelStatusBar: renderChannelStatusBar,
     openChannelSettings: openChannelSettings,
     renderSwitchCards: renderSwitchCards,

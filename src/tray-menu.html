@@ -52,6 +52,10 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
 </script>
 <script src="js/features/settings/tray-i18n-lite.js"></script>
 <script src="js/features/settings/tray-layout-v2.js"></script>
+<script src="js/features/settings/tray-data-store.js"></script>
+<script src="js/features/settings/tray-switch-io.js"></script>
+<script src="js/features/settings/tray-render-os.js"></script>
+<script src="js/features/settings/tray-render-editor.js"></script>
 <script src="js/features/settings/tray-footer.js"></script>
 <script src="js/features/settings/tray-channel-controls.js"></script>
 <script src="js/features/settings/tray-scene-preset.js"></script>
@@ -67,20 +71,29 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
   var perfT0 = typeof performance !== 'undefined' ? performance.now() : 0;
   var traySizeTimer = null;
   var refreshDebounce = null;
-  function syncTrayMenuSize() {
+  var menuRevealed = false;
+  function syncTrayMenuSize(opts) {
+    opts = opts || {};
     if (traySizeTimer) clearTimeout(traySizeTimer);
-    function measure() {
+    function measure(andReveal) {
       requestAnimationFrame(function () {
         var shell = document.getElementById('shell');
         if (!shell) return;
         var shellH = Math.max(Math.ceil(shell.getBoundingClientRect().height), shell.scrollHeight);
         var w = shell.offsetWidth + TRAY_CHROME;
         var h = Math.min(680, Math.max(320, shellH + TRAY_CHROME + 2));
-        invoke('cmd_tray_menu_set_size', { height: h, width: w }).catch(function () {});
+        invoke('cmd_tray_menu_set_size', { height: h, width: w }).then(function () {
+          if (andReveal && !menuRevealed) {
+            menuRevealed = true;
+            invoke('cmd_tray_menu_reveal').catch(function () {});
+          }
+        }).catch(function () {});
       });
     }
-    measure();
-    traySizeTimer = setTimeout(measure, 280);
+    measure(!!opts.reveal);
+    if (!opts.skipRemeasure) {
+      traySizeTimer = setTimeout(function () { measure(false); }, 280);
+    }
   }
   var ICONS=(window.OneToneIcons&&window.OneToneIcons.tray)||{};
   function act(action,payload){invoke('cmd_tray_action',{action:action,payload:payload||null}).catch(function(){});}
@@ -88,8 +101,17 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
   function refreshScene(){var SP=window.OneToneTrayScenePreset;if(!SP)return;SP.renderSceneBlock(document.getElementById('traySceneBlock'),{onRefresh:refreshAll,global:state.global});}
   function refreshAll(){
     refreshScene();
-    document.querySelectorAll('tray-channel-block').forEach(function(el){if(el.render)el.render();});
-    var mic=document.querySelector('tray-mic-toggle');if(mic&&mic.render)mic.render();
+    var V2=window.OneToneTrayLayoutV2;
+    var lay=layoutV2;
+    document.querySelectorAll('tray-channel-block').forEach(function(el){
+      if(el.hidden)return;
+      if(lay&&V2&&!V2.blockVisible(lay,'block:channel:'+el.dataset.id))return;
+      if(el.render)el.render();
+    });
+    var mic=document.querySelector('tray-mic-toggle');
+    if(mic&&!mic.hidden&&mic.render)mic.render();
+    var ft=document.querySelector('tray-footer-links');
+    if(ft&&!ft.hidden&&ft.render)ft.render();
     syncTrayMenuSize();
   }
   function scheduleRefreshAll(){
@@ -106,7 +128,13 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
       if(TCC&&TCC.syncOsMappingFromGlobal)TCC.syncOsMappingFromGlobal();
       var SP=window.OneToneTrayScenePreset;
       var after=function(){
-        document.querySelectorAll('tray-channel-block').forEach(function(el){if(el.render)el.render();});
+        var V2=window.OneToneTrayLayoutV2;
+        var lay=layoutV2;
+        document.querySelectorAll('tray-channel-block').forEach(function(el){
+          if(el.hidden)return;
+          if(lay&&V2&&!V2.blockVisible(lay,'block:channel:'+el.dataset.id))return;
+          if(el.render)el.render();
+        });
       };
       if(habitChanged&&SP&&SP.applyPersistedSceneDeferred){
         SP.applyPersistedSceneDeferred({ skipVoice: true }).then(after);
@@ -118,7 +146,9 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
     if(seg==='mic')state.mic=payload;
     else if(seg==='channels')state.channels=payload;
     if(seg==='mic')document.querySelector('tray-mic-toggle').render();
-    if(seg==='channels')document.querySelectorAll('tray-channel-block').forEach(function(el){el.render();});
+    if(seg==='channels')document.querySelectorAll('tray-channel-block').forEach(function(el){
+      if(!el.hidden&&el.render)el.render();
+    });
   }
   function resolveLayoutV2(cfg){
     var V2=window.OneToneTrayLayoutV2;
@@ -241,38 +271,40 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
   customElements.define('tray-mic-toggle',TrayMicToggle);
   customElements.define('tray-footer-links',TrayFooterLinks);
   window.__tray_ready__=function(){
+    menuRevealed=false;
     var subPromise=Promise.all(SEGS.map(function(s){return invoke('cmd_tray_subscribe_segment',{segment:s}).catch(function(){});}));
-    var TCC=window.OneToneTrayChannelControls;
     var SP=window.OneToneTrayScenePreset;
-    var needsOsContext=!(TCC&&TCC.hasOsContext&&TCC.hasOsContext());
-    return Promise.all([
-      invoke('cmd_tray_menu_ready'),
-      invoke('cmd_tray_runtime_get').catch(function(){return null;}),
-      invoke('cmd_tray_customization_get').catch(function(){return null;}),
-      needsOsContext&&TCC&&TCC.prefetchOsContext?TCC.prefetchOsContext():Promise.resolve(null)
-    ]).then(function(bundle){
-      var raw=bundle[0];
-      var rt=bundle[1];
-      var customization=bundle[2];
-      var osContext=bundle[3];
-      var data=typeof raw==='string'?JSON.parse(raw):raw;
-      applyFull(data,{deferRender:true});
+    var Store=window.OneToneTrayDataStore;
+    function finishBoot(displayData,customization,rt){
+      applyFull(displayData,{deferRender:true});
       var rtPromise=SP&&SP.loadRuntime?SP.loadRuntime(rt):Promise.resolve();
       return rtPromise.then(function(){
-        return TCC&&TCC.hydrateOsContext?TCC.hydrateOsContext(state.global,{
-          customization:customization,
-          osContext:osContext
-        }):Promise.resolve();
-      }).then(function(){
         applyLayout(customization||{});
         window.__trayBootstrapped=true;
         refreshScene();
         refreshAll();
         document.querySelector('tray-footer-links').render();
       });
-    }).then(function(){
-      return subPromise;
-    }).then(function(){
+    }
+    if(Store&&Store.bootstrap){
+      return Store.bootstrap('os').then(function(bundle){
+        if(bundle&&bundle.display)return finishBoot(bundle.display,bundle.customization,bundle.runtime);
+        return invoke('cmd_tray_menu_ready').then(function(raw){
+          var data=typeof raw==='string'?JSON.parse(raw):raw;
+          return finishBoot(data,{},null);
+        });
+      }).then(function(){return subPromise;}).then(function(){
+        requestAnimationFrame(function(){
+          syncTrayMenuSize({ reveal: true });
+          var ms=(typeof performance!=='undefined'?performance.now():0)-perfT0;
+          invoke('cmd_app_log',{line:'tray_menu_ready_ms='+Math.round(ms)}).catch(function(){});
+        });
+      });
+    }
+    return invoke('cmd_tray_menu_ready').then(function(raw){
+      var data=typeof raw==='string'?JSON.parse(raw):raw;
+      return finishBoot(data,{},null);
+    }).then(function(){return subPromise;}).then(function(){
       requestAnimationFrame(function(){
         syncTrayMenuSize();
         var ms=(typeof performance!=='undefined'?performance.now():0)-perfT0;

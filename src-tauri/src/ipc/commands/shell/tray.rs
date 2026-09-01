@@ -20,6 +20,20 @@ pub fn cmd_tray_os_context(state: tauri::State<Arc<AppState>>) -> serde_json::Va
     })
 }
 
+/// Single bootstrap bundle for tray menu / editor (slim display + config slice).
+#[tauri::command]
+pub fn cmd_tray_bootstrap(
+    state: tauri::State<Arc<AppState>>,
+    surface: Option<String>,
+) -> serde_json::Value {
+    let surface = surface.as_deref().unwrap_or("os");
+    serde_json::to_value(crate::tray_state::assemble_tray_bootstrap(
+        state.inner(),
+        surface,
+    ))
+    .unwrap_or_else(|_| serde_json::json!({}))
+}
+
 /// Today + week usage for habit hub value card — avoids full TrayState assembly.
 #[tauri::command]
 pub fn cmd_tray_usage_summary(state: tauri::State<Arc<AppState>>) -> serde_json::Value {
@@ -53,6 +67,12 @@ pub fn cmd_tray_menu_present(
 ) -> Result<(), String> {
     crate::tray::present_tray_menu(&window, width, height, cursor_x, cursor_y)
         .map_err(|e| e.to_string())
+}
+
+/// Show tray menu after JS has measured final size (avoids position jump on open).
+#[tauri::command]
+pub fn cmd_tray_menu_reveal(window: tauri::WebviewWindow) -> Result<(), String> {
+    crate::tray::reveal_tray_menu(&window).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

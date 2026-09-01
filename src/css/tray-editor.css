@@ -138,6 +138,7 @@
 .go-link { width: 100%; margin-top: 8px; padding: 8px; border: none; border-radius: 7px; background: rgba(42,156,196,.08); color: var(--primary-deep); font: 700 12px inherit; cursor: pointer; }
 .soft-pad-tray-sep { height: 1px; margin: 4px 8px; background: var(--outline-variant, rgba(26,45,74,.1)); }
 .tray-preview-skeleton { padding: 8px 12px; font-size: 10px; color: var(--on-surface-muted); display: flex; align-items: center; gap: 6px; }
+.tray-editor-loading { padding: 16px 12px; font-size: 12px; color: var(--on-surface-muted); }
 .tray-preview-skeleton__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); animation: tray-skel-pulse 1s ease-in-out infinite; }
 @keyframes tray-skel-pulse { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
 .tray-preview-footer { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 5px 8px 3px; border-top: 1px solid var(--outline-variant); margin-top: 4px; }
