@@ -3114,6 +3114,7 @@ pub fn derive_voice_listening_strategy_from_legacy(cfg: &VoiceConfig) -> &'stati
 
 pub fn apply_voice_listening_strategy(cfg: &mut VoiceConfig, strategy: &str) {
     cfg.voice_listening_strategy = normalize_voice_listening_strategy(strategy).to_string();
+    cfg.voice_assist_enabled = cfg.voice_listening_strategy != "off";
     match cfg.voice_listening_strategy.as_str() {
         "off" => {
             cfg.desired_engine = "none".into();
@@ -5933,6 +5934,10 @@ mod tests {
         apply_voice_listening_strategy(&mut cfg, "auto");
         assert_eq!(cfg.voice_listening_strategy, "auto");
         assert_eq!(cfg.desired_engine, "kws");
+        assert!(cfg.voice_assist_enabled);
+
+        apply_voice_listening_strategy(&mut cfg, "off");
+        assert!(!cfg.voice_assist_enabled);
     }
 
     #[test]

@@ -10,6 +10,7 @@
   display: flex; align-items: center; justify-content: space-between;
 }
 .tray-scene-block__label .tip { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--on-surface-soft, #8a98a8); }
+.tray-scene-block__app { font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--on-surface, #152238); max-width: 62%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tray-scene-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
 .tray-scene-preset {
   border: 1px solid var(--outline-variant, rgba(26,45,74,.1)); background: #fff; border-radius: 7px;

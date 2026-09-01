@@ -66,6 +66,7 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
   var TRAY_CHROME = 16;
   var perfT0 = typeof performance !== 'undefined' ? performance.now() : 0;
   var traySizeTimer = null;
+  var refreshDebounce = null;
   function syncTrayMenuSize() {
     if (traySizeTimer) clearTimeout(traySizeTimer);
     function measure() {
@@ -84,16 +85,37 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
   var ICONS=(window.OneToneIcons&&window.OneToneIcons.tray)||{};
   function act(action,payload){invoke('cmd_tray_action',{action:action,payload:payload||null}).catch(function(){});}
   function esc(s){return String(s||'').replace(/</g,'&lt;');}
-  function refreshScene(){var SP=window.OneToneTrayScenePreset;if(!SP)return;SP.renderSceneBlock(document.getElementById('traySceneBlock'),{onRefresh:refreshAll});}
+  function refreshScene(){var SP=window.OneToneTrayScenePreset;if(!SP)return;SP.renderSceneBlock(document.getElementById('traySceneBlock'),{onRefresh:refreshAll,global:state.global});}
   function refreshAll(){
     refreshScene();
     document.querySelectorAll('tray-channel-block').forEach(function(el){if(el.render)el.render();});
     var mic=document.querySelector('tray-mic-toggle');if(mic&&mic.render)mic.render();
     syncTrayMenuSize();
   }
+  function scheduleRefreshAll(){
+    if(refreshDebounce)clearTimeout(refreshDebounce);
+    refreshDebounce=setTimeout(refreshAll,80);
+  }
   function patchSeg(seg,payload){
-    if(seg==='global')state.global=payload;
-    else if(seg==='mic')state.mic=payload;
+    if(seg==='global'){
+      var prevHabit=state.global&&state.global.activeHabitId;
+      state.global=payload;
+      var habitChanged=prevHabit&&payload.activeHabitId&&prevHabit!==payload.activeHabitId;
+      refreshScene();
+      var TCC=window.OneToneTrayChannelControls;
+      if(TCC&&TCC.syncOsMappingFromGlobal)TCC.syncOsMappingFromGlobal();
+      var SP=window.OneToneTrayScenePreset;
+      var after=function(){
+        document.querySelectorAll('tray-channel-block').forEach(function(el){if(el.render)el.render();});
+      };
+      if(habitChanged&&SP&&SP.applyPersistedSceneDeferred){
+        SP.applyPersistedSceneDeferred({ skipVoice: true }).then(after);
+      }else{
+        after();
+      }
+      return;
+    }
+    if(seg==='mic')state.mic=payload;
     else if(seg==='channels')state.channels=payload;
     if(seg==='mic')document.querySelector('tray-mic-toggle').render();
     if(seg==='channels')document.querySelectorAll('tray-channel-block').forEach(function(el){el.render();});
@@ -144,13 +166,16 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
     });
     document.querySelectorAll('tray-channel-block').forEach(function(el){if(el.render)el.render();});
   }
-  function applyFull(data){
-    state.global=data.global||state.global;
-    state.mic=data.mic||state.mic;
-    state.channels=data.channels||[];
-    state.deepLinks=data.deepLinks||[];
-    refreshAll();
-    document.querySelector('tray-footer-links').render();
+  function applyFull(data, opts) {
+    opts = opts || {};
+    state.global = data.global || state.global;
+    state.mic = data.mic || state.mic;
+    state.channels = data.channels || [];
+    state.deepLinks = data.deepLinks || [];
+    if (!opts.deferRender) {
+      refreshAll();
+      document.querySelector('tray-footer-links').render();
+    }
   }
   class TrayChannelBlock extends HTMLElement{
     connectedCallback(){this.render();}
@@ -160,11 +185,14 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
       if(!TCC||!TCC.renderOsTrayBlock)return;
       var self=this;
       TCC.renderOsTrayBlock(this,id,state,{
-        onRefresh:function(){
+        onSwitchChange:function(){
           var SP=window.OneToneTrayScenePreset;
-          if(SP)SP.onManualSwitchChange();
-          self.render();
+          if(SP&&SP.onTrayChannelSwitchChange)SP.onTrayChannelSwitchChange();
+          else if(SP)SP.onManualSwitchChange();
           refreshScene();
+          self.render();
+        },
+        onResize:function(){
           syncTrayMenuSize();
         }
       });
@@ -173,6 +201,7 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
   class TrayMicToggle extends HTMLElement{
     connectedCallback(){this.render();}
     render(){
+      var self=this;
       var m=state.mic||{};var muted=!!m.muted;var ok=!!m.available;
       this.className=muted?'muted':'';this.classList.toggle('disabled',!ok);
       this.innerHTML='<div class="mic-row'+(muted?' muted':'')+(ok?'':' disabled')+'"><span class="icowrap"><span class="ico">'+ICONS.mic+'</span></span><span class="body"><span class="name">麦克风</span><span class="meta">'+(muted?'静音':'开')+' · '+String(m.device||'默认')+'</span></span><button type="button" class="toggle-switch page-status-toggle" aria-label="切换麦克风静音"></button></div>';
@@ -182,7 +211,16 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
         btn.setAttribute('aria-checked',muted?'false':'true');
         btn.onclick=function(e){
           e.stopPropagation();
-          if(ok){act('mic_toggle');var SP=window.OneToneTrayScenePreset;if(SP)SP.onManualSwitchChange();}
+          if(!ok)return;
+          var nextMuted=!muted;
+          btn.classList.toggle('on',!nextMuted);
+          btn.setAttribute('aria-checked',nextMuted?'false':'true');
+          invoke('cmd_mic_set_mute',{muted:nextMuted}).then(function(st){
+            if(st)state.mic=st;
+            self.render();
+          }).catch(function(){
+            self.render();
+          });
         };
       }
     }
@@ -201,19 +239,27 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
   customElements.define('tray-mic-toggle',TrayMicToggle);
   customElements.define('tray-footer-links',TrayFooterLinks);
   window.__tray_ready__=function(){
+    var subPromise=Promise.all(SEGS.map(function(s){return invoke('cmd_tray_subscribe_segment',{segment:s}).catch(function(){});}));
+    var TCC=window.OneToneTrayChannelControls;
     return invoke('cmd_tray_menu_ready').then(function(raw){
       var data=typeof raw==='string'?JSON.parse(raw):raw;
-      applyFull(data);
-      return Promise.all([
-        invoke('cmd_tray_customization_get').catch(function(){return null;}),
-        window.OneToneTrayScenePreset?window.OneToneTrayScenePreset.loadRuntime():Promise.resolve()
-      ]);
-    }).then(function(res){
-      applyLayout(res[0]||{});
-      refreshScene();
-      return Promise.all(SEGS.map(function(s){return invoke('cmd_tray_subscribe_segment',{segment:s}).catch(function(){});}));
+      applyFull(data,{deferRender:true});
+      var SP=window.OneToneTrayScenePreset;
+      var rtPromise=SP&&SP.loadRuntime?SP.loadRuntime():Promise.resolve();
+      return rtPromise.then(function(){
+        return Promise.all([
+          invoke('cmd_tray_customization_get').catch(function(){return null;}),
+          TCC&&TCC.hydrateOsContext?TCC.hydrateOsContext(state.global):Promise.resolve()
+        ]);
+      }).then(function(res){
+        applyLayout(res[0]||{});
+        refreshScene();
+        refreshAll();
+        document.querySelector('tray-footer-links').render();
+      });
     }).then(function(){
-      refreshAll();
+      return subPromise;
+    }).then(function(){
       requestAnimationFrame(function(){
         syncTrayMenuSize();
         var ms=(typeof performance!=='undefined'?performance.now():0)-perfT0;
@@ -223,7 +269,13 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
   };
   listen('tray://patch',function(ev){var p=ev.payload||{};if(p.segment)patchSeg(p.segment,p.payload);}).catch(function(){});
   listen('tray://layout',function(ev){applyLayout(ev.payload||{});refreshScene();}).catch(function(){});
-  window.addEventListener('channel-config:changed',function(){refreshAll();});
+  window.addEventListener('channel-config:changed',function(ev){
+    var d=ev&&ev.detail||{};
+    if(d._fromNotify)return;
+    var SP=window.OneToneTrayScenePreset;
+    if(SP&&SP.isApplying&&SP.isApplying())return;
+    scheduleRefreshAll();
+  });
 })();
 </script>
 </body>

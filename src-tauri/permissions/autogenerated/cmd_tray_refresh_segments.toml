@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-tray-refresh-segments"
+description = "Enables the cmd_tray_refresh_segments command without any pre-configured scope."
+commands.allow = ["cmd_tray_refresh_segments"]
+
+[[permission]]
+identifier = "deny-cmd-tray-refresh-segments"
+description = "Denies the cmd_tray_refresh_segments command without any pre-configured scope."
+commands.deny = ["cmd_tray_refresh_segments"]

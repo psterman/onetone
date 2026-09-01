@@ -38,6 +38,12 @@ pub fn track_foreground_for_send() {
         if pid == GetCurrentProcessId() {
             return;
         }
+        // ponytail: tray/shell FG during right-click must not clobber Cursor etc.
+        if let Some(id) = crate::app_identity::identity_for_window(fg) {
+            if crate::app_identity::is_tray_open_fg_noise(&id) {
+                return;
+            }
+        }
         *LAST_EXTERNAL_HWND
             .get_or_init(|| Mutex::new(0))
             .lock()

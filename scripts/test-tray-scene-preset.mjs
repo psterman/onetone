@@ -17,6 +17,7 @@ check('exports renderSceneBlock', js.includes('renderSceneBlock'));
 check('allOn mute presets', js.includes("'allOn'") && js.includes("'mute'"));
 check('custom snapshot', js.includes('customSwitchSnapshot'));
 check('runtime ipc', js.includes('cmd_tray_runtime_get'));
+check('persist apply on open', js.includes('applyPersistedSceneOnOpen'));
 
 const shape = readFileSync(join(root, 'scripts/channel-config-state-shape.mjs'), 'utf8');
 check('trayScenePreset key', shape.includes('trayRuntime.trayScenePreset'));

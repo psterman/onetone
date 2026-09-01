@@ -9,6 +9,17 @@ pub fn cmd_tray_menu_ready(state: tauri::State<Arc<AppState>>) -> String {
     crate::tray::tray_menu_state_json(state.inner())
 }
 
+/// Lightweight config + voice-end snapshot for the OS tray menu (no mvp_init / runtime push).
+#[tauri::command]
+pub fn cmd_tray_os_context(state: tauri::State<Arc<AppState>>) -> serde_json::Value {
+    let cfg = state.cfg.lock().clone();
+    let voice_end = crate::voice_end_runtime::voice_end_status(state.inner());
+    serde_json::json!({
+        "config": cfg,
+        "voiceEnd": voice_end,
+    })
+}
+
 #[tauri::command]
 pub fn cmd_tray_subscribe_segment(window: tauri::WebviewWindow, segment: String) -> Result<(), String> {
     crate::tray_state::subscribe_segment(window.label().to_string(), segment);
@@ -49,6 +60,20 @@ pub fn cmd_tray_menu_set_size(
 #[tauri::command]
 pub fn cmd_tray_sync_mic(app: tauri::AppHandle) {
     crate::tray::refresh_tray_visual_forced(&app);
+}
+
+/// Push tray segment patches without closing the menu (voice toggle / scene apply).
+#[tauri::command]
+pub fn cmd_tray_refresh_segments(
+    app: tauri::AppHandle,
+    state: tauri::State<Arc<AppState>>,
+    segments: Option<Vec<String>>,
+) {
+    let segs: Vec<&str> = segments
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect())
+        .unwrap_or_else(|| vec!["channels", "global"]);
+    crate::tray_state::emit_tray_segments(&app, state.inner(), &segs);
 }
 
 /// Home workbench publishes unified runtime status for tray / HUD.

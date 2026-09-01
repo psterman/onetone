@@ -41,8 +41,14 @@ pub fn voice_set_listening_strategy(
     strategy: &str,
     reason: &str,
 ) -> Result<serde_json::Value, String> {
+    use std::sync::atomic::Ordering;
+
     let label = crate::config::parse_voice_listening_strategy_label(strategy)
         .ok_or_else(|| format!("unknown listening strategy: {strategy}"))?;
+    // Tray / homepage enable must not stay config-only while settings park is latched.
+    if label != "off" {
+        state.settings_asr_quiet.store(false, Ordering::SeqCst);
+    }
     let cfg_snapshot = {
         let mut cfg = state.cfg.lock();
         crate::config::apply_voice_listening_strategy(&mut cfg, label);

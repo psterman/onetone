@@ -36,12 +36,12 @@
       :(global.OneToneHomeLive.voiceEngineOn()!=='off');
     if(on){
       cfg.voiceAssistEnabled=false;
-      vw.switchListeningStrategy('off',{force:true}).then(persistVoiceAssistToggle).catch(persistVoiceAssistToggle);
+      Promise.resolve(vw.switchListeningStrategy('off',{force:true})).then(persistVoiceAssistToggle).catch(persistVoiceAssistToggle);
       return;
     }
     cfg.voiceAssistEnabled=true;
     if(cfg.voiceWakeListeningOptIn){
-      vw.switchListeningStrategy('resourceSaver',{force:true}).then(persistVoiceAssistToggle).catch(persistVoiceAssistToggle);
+      Promise.resolve(vw.switchListeningStrategy('resourceSaver',{force:true})).then(persistVoiceAssistToggle).catch(persistVoiceAssistToggle);
       return;
     }
     persistVoiceAssistToggle();

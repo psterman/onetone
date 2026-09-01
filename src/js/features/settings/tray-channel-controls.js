@@ -108,7 +108,8 @@
 
   function readConfig() {
     var st = global.OneToneState && global.OneToneState.state;
-    return st && st.config ? st.config : null;
+    if (st && st.config) return st.config;
+    return osCtx.config || null;
   }
 
   function resolveHubEntry() {
@@ -173,7 +174,7 @@
     if (!mappingId) return Promise.resolve();
     var body = { mappings: [{ id: mappingId }] };
     Object.keys(patch || {}).forEach(function (k) { body.mappings[0][k] = patch[k]; });
-    return invoke('cmd_save', JSON.stringify(body)).then(function () {
+    return invoke('cmd_save', { json: JSON.stringify(body) }).then(function () {
       notifyChanged({ source: source || 'tray-os', _fromNotify: true });
     });
   }
@@ -312,6 +313,110 @@
     return false;
   }
 
+  function unparkVoiceForTray() {
+    return invoke('cmd_set_settings_drawer_open', {
+      open: false,
+      parkVoice: false,
+      park_voice: false
+    }).catch(function () {});
+  }
+
+  function patchOsVoiceListening(on) {
+    var cfg = osCtx.config;
+    if (!cfg) return;
+    cfg.voiceAssistEnabled = on;
+    cfg.voiceListeningStrategy = on ? 'auto' : 'off';
+    cfg.desiredEngine = on ? 'kws' : 'none';
+    if (cfg.voiceKws) cfg.voiceKws.enabled = !!on;
+    if (cfg.voiceVosk) cfg.voiceVosk.enabled = false;
+    if (cfg.voiceSapi) cfg.voiceSapi.enabled = false;
+  }
+
+  function trayActivateVoiceListening(on, ctx) {
+    ctx = ctx || {};
+    var batch = !!ctx.batchApply;
+    if (!on) {
+      return invoke('cmd_voice_set_listening_strategy', { strategy: 'off' }).then(function () {
+        patchOsVoiceListening(false);
+        if (batch) return;
+        return refreshOsContext(ctx.global);
+      }).then(function () {
+        if (batch) return;
+        return invoke('cmd_tray_refresh_segments', { segments: ['channels'] }).catch(function () {});
+      });
+    }
+    return unparkVoiceForTray().then(function () {
+      return invoke('cmd_voice_set_listening_strategy', { strategy: 'auto' });
+    }).then(function () {
+      patchOsVoiceListening(true);
+      return invoke('cmd_voice_kws_retry_start', {}).catch(function () {});
+    }).then(function () {
+      if (batch) return;
+      return refreshOsContext(ctx.global);
+    }).then(function () {
+      if (batch) return;
+      return invoke('cmd_tray_refresh_segments', { segments: ['channels', 'global'] }).catch(function () {});
+    });
+  }
+
+  function patchOsSnapshotLocal(snap) {
+    if (!snap) return;
+    var cfg = osCtx.config;
+    if (!cfg) return;
+    if (snap.voiceMaster !== undefined) patchOsVoiceListening(!!snap.voiceMaster);
+    if (snap.voiceEnd !== undefined) {
+      if (!cfg.voiceEnd) cfg.voiceEnd = {};
+      cfg.voiceEnd.enabled = !!snap.voiceEnd;
+      if (osCtx.voiceEnd) osCtx.voiceEnd.enabled = !!snap.voiceEnd;
+    }
+    var m = osCtx.mapping || activeMapping(cfg);
+    if (m) {
+      if (snap.keysEnabled !== undefined) m.enabled = !!snap.keysEnabled;
+      if (snap.keysCancel !== undefined) m.cancelEnabled = !!snap.keysCancel;
+      if (snap.keysAutoSend !== undefined) m.autoEnterEnabled = !!snap.keysAutoSend;
+      var pad = m.codexMicroPad;
+      if (pad) {
+        if (snap.padEnabled !== undefined) pad.enabled = !!snap.padEnabled;
+        if (snap.padOverlay !== undefined) pad.overlayEnabled = !!snap.padOverlay;
+        if (snap.padRequireFg !== undefined) pad.requireForeground = !!snap.padRequireFg;
+      }
+    }
+    var pm = padMapping(cfg);
+    if (pm && pm.codexMicroPad && pm !== m) {
+      var pad2 = pm.codexMicroPad;
+      if (snap.padEnabled !== undefined) pad2.enabled = !!snap.padEnabled;
+      if (snap.padOverlay !== undefined) pad2.overlayEnabled = !!snap.padOverlay;
+      if (snap.padRequireFg !== undefined) pad2.requireForeground = !!snap.padRequireFg;
+    }
+    if (snap.camPresence !== undefined) {
+      if (!cfg.cameraPrefs) cfg.cameraPrefs = {};
+      if (!cfg.cameraPrefs.presenceActions) cfg.cameraPrefs.presenceActions = {};
+      cfg.cameraPrefs.presenceActions.enabled = !!snap.camPresence;
+    }
+    if (snap.camTriggerAway !== undefined) {
+      if (!cfg.cameraPrefs) cfg.cameraPrefs = {};
+      if (!cfg.cameraPrefs.presenceActions) cfg.cameraPrefs.presenceActions = { triggers: {} };
+      if (!cfg.cameraPrefs.presenceActions.triggers) cfg.cameraPrefs.presenceActions.triggers = {};
+      cfg.cameraPrefs.presenceActions.triggers.away = !!snap.camTriggerAway;
+    }
+    if (snap.camAutoMute !== undefined) {
+      if (!cfg.cameraPrefs) cfg.cameraPrefs = {};
+      if (!cfg.cameraPrefs.autoMute) cfg.cameraPrefs.autoMute = {};
+      cfg.cameraPrefs.autoMute.enabled = !!snap.camAutoMute;
+    }
+    if (snap.camNoFaceMute !== undefined) {
+      if (!cfg.cameraPrefs) cfg.cameraPrefs = {};
+      if (!cfg.cameraPrefs.autoMute) cfg.cameraPrefs.autoMute = {};
+      cfg.cameraPrefs.autoMute.noFaceMute = !!snap.camNoFaceMute;
+    }
+  }
+
+  function finishOsBatchApply(ctx) {
+    return refreshOsContext(ctx && ctx.global).then(function () {
+      return invoke('cmd_tray_refresh_segments', { segments: ['channels', 'global'] }).catch(function () {});
+    });
+  }
+
   function writeControlValue(ctrl, value, ctx) {
     ctx = ctx || {};
     var on = !!value;
@@ -327,12 +432,15 @@
         return Promise.resolve(
           global.OneToneVoiceWake.switchListeningStrategy(on ? 'auto' : 'off', { force: true })
         ).then(function () {
+          patchOsVoiceListening(on);
           if (cfg) cfg.voiceAssistEnabled = on;
           return saveMappingConfig('tray-voice-master');
         });
       }
-      return invoke('cmd_voice_set_listening_strategy', { strategy: on ? 'auto' : 'off' }).then(function () {
-        notifyChanged({ source: 'config', channel: 'voice', _fromNotify: true });
+      return trayActivateVoiceListening(on, ctx).then(function () {
+        if (!ctx.batchApply) {
+          notifyChanged({ source: 'tray-os-voice', channel: 'voice', _fromNotify: true });
+        }
       });
     }
     if (ctrl.id === 'voiceEnd') {
@@ -344,9 +452,13 @@
       if (!mappingId) return Promise.resolve();
       return invoke('cmd_mapping_toggle', { id: mappingId, enabled: on }).then(function () {
         if (m) m.enabled = on;
-        return ctx.surface === 'os'
+        var patch = ctx.surface === 'os'
           ? saveMappingPatch(mappingId, { enabled: on }, 'tray-os-keys')
           : saveMappingConfig('tray-keys-enabled');
+        return patch.then(function () {
+          if (ctx.batchApply || ctx.surface !== 'os') return osCtx;
+          return refreshOsContext(ctx.global);
+        });
       });
     }
     if (ctrl.id === 'keysCancel') {
@@ -377,7 +489,12 @@
         requireNumLockOff: !!pad.requireNumLockOff,
         requireForeground: pad.requireForeground !== false,
         navKeysEnabled: pad.showNavigationPad !== false && pad.navKeysEnabled !== false
-      }).then(function () { return saveMappingConfig('tray-pad-flags'); });
+      }).then(function () {
+        return saveMappingConfig('tray-pad-flags');
+      }).then(function () {
+        if (ctx.batchApply || ctx.surface !== 'os') return osCtx;
+        return refreshOsContext(ctx.global);
+      });
     }
     if (ctrl.id === 'camPresence') {
       if (cfg) {
@@ -705,13 +822,24 @@
     });
   }
 
+  function ingestOsContext(payload, globalState) {
+    if (!payload || !payload.config) return;
+    osCtx.config = payload.config;
+    osCtx.voiceEnd = payload.voiceEnd || payload.voice_end || null;
+    osCtx.global = globalState || osCtx.global;
+    syncOsMappingFromGlobal();
+  }
+
   function hydrateOsContext(globalState) {
     osCtx.global = globalState || osCtx.global;
+    if (osCtx.config) {
+      syncOsMappingFromGlobal();
+      return Promise.resolve(osCtx);
+    }
     if (osHydratePromise) return osHydratePromise;
     osHydratePromise = Promise.all([
       invoke('cmd_tray_customization_get').catch(function () { return null; }),
-      invoke('cmd_voice_end_status', {}).catch(function () { return null; }),
-      invoke('cmd_ready', { backdropMode: 'unchanged' }).catch(function () { return null; })
+      invoke('cmd_tray_os_context').catch(function () { return null; })
     ]).then(function (res) {
       if (res[0]) {
         var V2 = global.OneToneTrayLayoutV2;
@@ -728,9 +856,9 @@
           trayLayout.showInTray.camera = !!s.camera;
         }
       }
-      osCtx.voiceEnd = res[1] || null;
-      if (res[2] && res[2].config) {
-        osCtx.config = res[2].config;
+      if (res[1] && res[1].config) {
+        osCtx.config = res[1].config;
+        osCtx.voiceEnd = res[1].voiceEnd || null;
         var id = osCtx.global && osCtx.global.activeHabitId;
         if (id) {
           osCtx.mapping = (osCtx.config.mappings || []).find(function (m) { return m && m.id === id; }) || null;
@@ -742,6 +870,52 @@
       osHydratePromise = null;
     });
     return osHydratePromise;
+  }
+
+  function syncOsMappingFromGlobal() {
+    if (!osCtx.config || !osCtx.global) return;
+    var id = String(osCtx.global.activeHabitId || '').trim();
+    if (!id) return;
+    osCtx.mapping = (osCtx.config.mappings || []).find(function (m) { return m && m.id === id; }) || osCtx.mapping;
+  }
+
+  function refreshOsContext(globalState) {
+    osCtx.global = globalState || osCtx.global;
+    return invoke('cmd_tray_os_context').then(function (res) {
+      if (res && res.config) {
+        osCtx.config = res.config;
+        osCtx.voiceEnd = res.voiceEnd || res.voice_end || null;
+        syncOsMappingFromGlobal();
+      }
+      return osCtx;
+    }).catch(function () { return osCtx; });
+  }
+
+  function getOsCtx() {
+    return {
+      surface: 'os',
+      channel: null,
+      config: osCtx.config,
+      mapping: osCtx.mapping,
+      voiceEnd: osCtx.voiceEnd,
+      global: osCtx.global
+    };
+  }
+
+  function traySceneLine(channel, state, ch) {
+    var g = state && state.global;
+    var fg = g && String(g.foregroundLabel || g.foregroundOsDebug || '').trim();
+    var meta = String((ch && ch.meta) || '');
+    if (channel === 'keys') {
+      if (fg && fg !== '—') {
+        return meta && meta !== '未启用' ? fg + ' · ' + meta : fg;
+      }
+      var ul = String(g.userLabel || '').trim();
+      var hl = String(g.activeHabitLabel || '').trim();
+      if (ul && ul !== '—') return hl && hl !== '—' && hl !== ul ? ul + ' · ' + hl : ul;
+      if (hl && hl !== '—') return hl;
+    }
+    return meta;
   }
 
   function osToggleHtml(on) {
@@ -791,7 +965,7 @@
       shell.innerHTML = '<div class="ch-block' + (isOpen ? ' is-open' : '') + '"><div class="ch-main"' + mainToggle + '>'
         + '<span class="icowrap ' + iconCls + '"><span class="ico">' + (ICONS[channel] || ICONS.voice || '') + '</span></span>'
         + '<div class="ch-body"><div class="ch-title-row"><span class="name">' + (ch.name || channel) + '</span></div>'
-        + '<div class="ch-scene">' + String(ch.meta || '').replace(/</g, '&lt;') + '</div></div>'
+        + '<div class="ch-scene">' + traySceneLine(channel, state, ch).replace(/</g, '&lt;') + '</div></div>'
         + actions + '</div>' + l2Html + '</div>';
 
       shell.querySelectorAll('.sw-toggle').forEach(function (btn) {
@@ -806,9 +980,8 @@
           btn.classList.toggle('off', !next);
           btn.setAttribute('aria-checked', next ? 'true' : 'false');
           writeControlValue(ctrl, next, ctx).then(function () {
-            return hydrateOsContext(state && state.global);
-          }).then(function () {
-            if (opts.onRefresh) opts.onRefresh();
+            if (opts.onSwitchChange) opts.onSwitchChange();
+            else if (opts.onRefresh) opts.onRefresh();
           }).catch(function () {
             btn.classList.toggle('off', next);
             btn.setAttribute('aria-checked', next ? 'false' : 'true');
@@ -820,7 +993,8 @@
         if (e) e.stopPropagation();
         openOsChannel = openOsChannel === channel ? null : channel;
         renderOsTrayBlock(shell, channel, state, opts).then(function () {
-          if (opts.onRefresh) opts.onRefresh();
+          if (opts.onResize) opts.onResize();
+          else if (opts.onRefresh) opts.onRefresh();
         });
       }
       if (chevBtn) chevBtn.addEventListener('click', toggleFold);
@@ -922,6 +1096,11 @@
     },
     saveCustomization: saveCustomization,
     hydrateOsContext: hydrateOsContext,
+    ingestOsContext: ingestOsContext,
+    getOsCtx: getOsCtx,
+    syncOsMappingFromGlobal: syncOsMappingFromGlobal,
+    patchOsSnapshotLocal: patchOsSnapshotLocal,
+    finishOsBatchApply: finishOsBatchApply,
     setOpenOsChannel: function (ch) { openOsChannel = ch; },
     getOpenOsChannel: function () { return openOsChannel; },
     setPreviewFocusChannel: function (ch) { openOsChannel = ch || null; }

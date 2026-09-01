@@ -928,7 +928,49 @@ pub fn foreground_is_self() -> bool {
     let Some(fg) = foreground_app_identity() else {
         return false;
     };
-    is_self_process(&fg.exe_name, fg.full_path.as_deref())
+    is_self_identity(&fg)
+}
+
+pub fn is_self_identity(identity: &AppIdentity) -> bool {
+    is_self_process(&identity.exe_name, identity.full_path.as_deref())
+}
+
+/// Shell / tray-click noise — not the app the user was actually using.
+pub fn is_tray_open_fg_noise(identity: &AppIdentity) -> bool {
+    let exe = identity.exe_name.to_ascii_lowercase();
+    matches!(
+        exe.as_str(),
+        "explorer.exe"
+            | "shellexperiencehost.exe"
+            | "startmenuexperiencehost.exe"
+            | "searchhost.exe"
+            | "applicationframehost.exe"
+            | "textinputhost.exe"
+            | "lockapp.exe"
+            | "systemsettings.exe"
+    )
+}
+
+/// Foreground at tray open: real external FG, else last send target (Cursor, etc.), not Explorer shell.
+pub fn capture_tray_foreground_identity() -> Option<AppIdentity> {
+    let live = foreground_app_identity();
+    if let Some(ref fg) = live {
+        if !is_self_identity(fg) && !is_tray_open_fg_noise(fg) {
+            return Some(fg.clone());
+        }
+    }
+    #[cfg(windows)]
+    {
+        let hwnd = crate::keyboard::last_external_hwnd();
+        if hwnd != 0 {
+            if let Some(id) = identity_for_window(hwnd as winapi::shared::windef::HWND) {
+                if !is_self_identity(&id) && !is_tray_open_fg_noise(&id) {
+                    return Some(id);
+                }
+            }
+        }
+    }
+    live.filter(|fg| !is_self_identity(fg))
 }
 
 fn is_self_process(exe_name: &str, full_path: Option<&str>) -> bool {

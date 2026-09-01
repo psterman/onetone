@@ -7,6 +7,7 @@ use onetone_logic::runtime_event::{kind, RuntimeEvent};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::app_identity::{self, AppIdentity};
 use crate::config::{mapping_is_complete, preset_app_display_name, TriggerMode, VoiceConfig};
 use crate::runtime_event;
 use crate::AppState;
@@ -19,6 +20,21 @@ fn segment_subs() -> &'static Mutex<HashMap<String, HashSet<String>>> {
     static SUBS: std::sync::OnceLock<Mutex<HashMap<String, HashSet<String>>>> =
         std::sync::OnceLock::new();
     SUBS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// Cached mic row — filled by tray poll / mute IPC; never probe WASAPI on menu_ready (假死 UI).
+static TRAY_MIC_CACHE: Mutex<Option<MicState>> = Mutex::new(None);
+
+pub fn update_tray_mic_cache(st: &crate::audio_win::MicMuteState) {
+    let mic = MicState {
+        available: st.available,
+        muted: st.muted,
+        device: if st.available { "默认".into() } else { "—".into() },
+        level: None,
+    };
+    if let Ok(mut g) = TRAY_MIC_CACHE.lock() {
+        *g = Some(mic);
+    }
 }
 
 /// Top-level tray snapshot (global / mic / channels / event / deep_links).
@@ -58,6 +74,9 @@ pub struct GlobalState {
     /// OS foreground process — debug/diagnose only; omitted from tray HTML by default.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub foreground_os_debug: Option<String>,
+    /// Live foreground app label captured when the tray menu opens (before menu steals focus).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub foreground_label: Option<String>,
     /// Remaining silence ms when mode is `silenced`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub silence_remaining_ms: Option<u64>,
@@ -159,8 +178,16 @@ pub struct DeepLink {
 }
 
 pub fn assemble_tray_state(state: &AppState) -> TrayState {
+    assemble_tray_state_inner(state, None)
+}
+
+pub fn assemble_tray_menu_state(state: &AppState, open_fg: Option<&AppIdentity>) -> TrayState {
+    assemble_tray_state_inner(state, open_fg)
+}
+
+fn assemble_tray_state_inner(state: &AppState, open_fg: Option<&AppIdentity>) -> TrayState {
     TrayState {
-        global: assemble_global(state),
+        global: assemble_global_with_fg(state, open_fg),
         mic: assemble_mic(state),
         channels: assemble_channels(state),
         event: assemble_event(state),
@@ -170,6 +197,10 @@ pub fn assemble_tray_state(state: &AppState) -> TrayState {
 }
 
 pub fn assemble_global(state: &AppState) -> GlobalState {
+    assemble_global_with_fg(state, None)
+}
+
+fn assemble_global_with_fg(state: &AppState, open_fg: Option<&AppIdentity>) -> GlobalState {
     let paused = *state.paused.lock();
     let silence_until = *state.listen_silence_until_ms.lock();
     let now_ms = crate::runtime_event::now_ms();
@@ -246,6 +277,8 @@ pub fn assemble_global(state: &AppState) -> GlobalState {
     #[cfg(not(debug_assertions))]
     let foreground_os_debug: Option<String> = None;
 
+    let foreground_label = open_fg.map(app_identity::identity_display_name);
+
     let today_by_channel = tray_today_by_channel(&active_habit_id);
 
     GlobalState {
@@ -261,37 +294,24 @@ pub fn assemble_global(state: &AppState) -> GlobalState {
         week_trend,
         today_by_channel,
         foreground_os_debug,
+        foreground_label,
         silence_remaining_ms,
     }
 }
 
 pub fn assemble_mic(state: &AppState) -> MicState {
     let _ = state;
-    #[cfg(windows)]
-    {
-        match crate::audio_win::get_default_capture_mute() {
-            Ok(st) if st.available => MicState {
-                available: true,
-                muted: st.muted,
-                device: "默认".into(),
-                level: None,
-            },
-            Ok(_) | Err(_) => MicState {
-                available: false,
-                muted: false,
-                device: "—".into(),
-                level: None,
-            },
+    if let Ok(g) = TRAY_MIC_CACHE.lock() {
+        if let Some(ref m) = *g {
+            return m.clone();
         }
     }
-    #[cfg(not(windows))]
-    {
-        MicState {
-            available: false,
-            muted: false,
-            device: "—".into(),
-            level: None,
-        }
+    // ponytail: WASAPI on menu_ready blocked the UI thread — poll/mute IPC fills cache.
+    MicState {
+        available: true,
+        muted: false,
+        device: "默认".into(),
+        level: None,
     }
 }
 
@@ -419,7 +439,10 @@ pub fn on_runtime_event_published(app: &AppHandle, state: &AppState, kind_str: &
 
 pub fn segment_payload(state: &AppState, segment: &str) -> Option<serde_json::Value> {
     let value = match segment {
-        "global" => serde_json::to_value(assemble_global(state)).ok()?,
+        "global" => {
+            let open_fg = crate::tray::tray_open_foreground();
+            serde_json::to_value(assemble_global_with_fg(state, open_fg.as_ref())).ok()?
+        }
         "mic" => serde_json::to_value(assemble_mic(state)).ok()?,
         "channels" => serde_json::to_value(assemble_channels(state)).ok()?,
         "event" => assemble_event(state).and_then(|e| serde_json::to_value(e).ok())?,

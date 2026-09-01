@@ -26,6 +26,8 @@ static TRAY_MENU_ANCHOR_X: AtomicI32 = AtomicI32::new(0);
 static TRAY_MENU_ANCHOR_Y: AtomicI32 = AtomicI32::new(0);
 static TRAY_VISUAL_REFRESH_AT: AtomicU64 = AtomicU64::new(0);
 static LAST_TRAY_VISUAL_KEY: Mutex<Option<String>> = Mutex::new(None);
+static TRAY_OPEN_FG: Mutex<Option<crate::app_identity::AppIdentity>> = Mutex::new(None);
+static TRAY_MENU_DISMISS_GEN: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct TrayMicVisual {
@@ -100,7 +102,7 @@ fn preload_tray_menu_window(app: AppHandle) {
     std::thread::Builder::new()
         .name("tray-preload".into())
         .spawn(move || {
-            std::thread::sleep(std::time::Duration::from_secs(2));
+            std::thread::sleep(std::time::Duration::from_millis(400));
             let _ = crate::overlay_window::ensure_overlay_window(
                 &app,
                 crate::overlay_window::TRAY_MENU,
@@ -145,6 +147,9 @@ fn refresh_tray_visual_from_poll(app: &AppHandle, force: bool) {
 fn refresh_tray_visual_on_main(app: &AppHandle) {
     if let Some(state) = app.try_state::<Arc<AppState>>() {
         let (mic_key, agent_light) = resolve_tray_icon_inputs(state.inner());
+        if let Ok(st) = crate::audio_win::get_default_capture_mute() {
+            crate::tray_state::update_tray_mic_cache(&st);
+        }
         let _ = update_tray_icon_if_needed(app, mic_key, &agent_light);
         refresh_tray_tooltip(app, state.inner());
     }
@@ -159,6 +164,9 @@ fn refresh_tray_icon_from_poll(app: &AppHandle, force: bool) {
         }
         mark_visual_refresh();
         if let Some(state) = app.try_state::<Arc<AppState>>() {
+            if let Ok(st) = crate::audio_win::get_default_capture_mute() {
+                crate::tray_state::update_tray_mic_cache(&st);
+            }
             let (mic_key, agent_light) = resolve_tray_icon_inputs(state.inner());
             let _ = update_tray_icon_if_needed(&app, mic_key, &agent_light);
             refresh_tray_tooltip(&app, state.inner());
@@ -171,6 +179,7 @@ pub fn refresh_tray_visual_forced(app: &AppHandle) {
 }
 
 pub fn after_mic_state_changed(app: &AppHandle, st: &MicMuteState) {
+    crate::tray_state::update_tray_mic_cache(st);
     refresh_tray_visual_forced(app);
     notify_main_mic_state(app, st);
     if let Some(state) = app.try_state::<Arc<AppState>>() {
@@ -237,9 +246,17 @@ pub fn refresh_menu_data(app: &AppHandle) {
     );
 }
 
+pub fn tray_open_foreground() -> Option<crate::app_identity::AppIdentity> {
+    TRAY_OPEN_FG.lock().ok().and_then(|g| g.clone())
+}
+
 pub fn tray_menu_state_json(state: &AppState) -> String {
-    serde_json::to_string(&crate::tray_state::assemble_tray_state(state))
-        .unwrap_or_else(|_| "{}".into())
+    let open_fg = tray_open_foreground();
+    serde_json::to_string(&crate::tray_state::assemble_tray_menu_state(
+        state,
+        open_fg.as_ref(),
+    ))
+    .unwrap_or_else(|_| "{}".into())
 }
 
 #[allow(dead_code)]
@@ -513,6 +530,9 @@ fn exit_app(app: &AppHandle) {
 }
 
 fn show_tray_menu(app: &AppHandle, anchor: Option<(i32, i32)>) {
+    if let Ok(mut g) = TRAY_OPEN_FG.lock() {
+        *g = crate::app_identity::capture_tray_foreground_identity();
+    }
     store_tray_menu_anchor(anchor);
     let Ok((menu_win, created)) =
         crate::overlay_window::ensure_overlay_window(app, crate::overlay_window::TRAY_MENU)
@@ -542,17 +562,23 @@ fn show_tray_menu(app: &AppHandle, anchor: Option<(i32, i32)>) {
         return;
     };
 
-    sync_active_scene_from_foreground(app, &state);
-
     let (ax, ay) = tray_menu_anchor();
     open_tray_menu(&menu_win, state.inner(), ax, ay);
+
+    // ponytail: match registered app scenario after present — never block tray open.
+    let app_sync = app.clone();
+    let state_sync = Arc::clone(&state);
+    std::thread::Builder::new()
+        .name("tray-scene-sync".into())
+        .spawn(move || {
+            sync_active_scene_from_foreground(&app_sync, &state_sync);
+        })
+        .ok();
 }
 
 fn sync_active_scene_from_foreground(app: &AppHandle, state: &Arc<AppState>) {
-    if crate::app_identity::foreground_is_self() {
-        return;
-    }
-    let Some(identity) = crate::app_identity::foreground_app_identity() else {
+    let identity = TRAY_OPEN_FG.lock().ok().and_then(|g| g.clone());
+    let Some(identity) = identity else {
         return;
     };
     let target_id = {
@@ -567,6 +593,7 @@ fn sync_active_scene_from_foreground(app: &AppHandle, state: &Arc<AppState>) {
         return;
     }
     ipc::handle_scheme_select(state, app, &target_id);
+    refresh_menu_data(app);
 }
 
 fn tray_anchor_from_event(position: &PhysicalPosition<f64>, rect: &tauri::Rect) -> (i32, i32) {
@@ -598,14 +625,43 @@ fn open_tray_menu(menu_win: &WebviewWindow, state: &AppState, anchor_x: i32, anc
         return;
     }
 
-    let script = "window.__tray_ready__ && window.__tray_ready__();".to_string();
-    if menu_win.eval(&script).is_err() {
-        let win = menu_win.clone();
-        std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_millis(80));
-            let _ = win.eval("window.__tray_ready__ && window.__tray_ready__();");
-        });
-    }
+    let app = menu_win.app_handle().clone();
+    let watch_gen = TRAY_MENU_DISMISS_GEN.fetch_add(1, Ordering::SeqCst) + 1;
+    start_tray_menu_dismiss_watch(app.clone(), watch_gen);
+    let win = menu_win.clone();
+    let _ = app.run_on_main_thread(move || {
+        let _ = win.eval("window.__tray_ready__ && window.__tray_ready__();");
+    });
+}
+
+/// Hide when focus leaves the menu (blur event is unreliable on Windows topmost popups).
+fn start_tray_menu_dismiss_watch(app: AppHandle, watch_gen: u64) {
+    std::thread::Builder::new()
+        .name("tray-dismiss".into())
+        .spawn(move || {
+            for _ in 0..400 {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                if TRAY_MENU_DISMISS_GEN.load(Ordering::SeqCst) != watch_gen {
+                    return;
+                }
+                let Some(win) = app.get_webview_window(TRAY_MENU_LABEL) else {
+                    return;
+                };
+                if !win.is_visible().unwrap_or(false) {
+                    return;
+                }
+                if blur_guard_active() {
+                    continue;
+                }
+                if win.is_focused().unwrap_or(false) {
+                    continue;
+                }
+                let app_hide = app.clone();
+                let _ = app.run_on_main_thread(move || hide_tray_menu(&app_hide));
+                return;
+            }
+        })
+        .ok();
 }
 
 fn estimate_menu_size(_state: &AppState) -> (f64, f64) {
@@ -646,6 +702,7 @@ fn estimate_menu_size(_state: &AppState) -> (f64, f64) {
 }
 
 fn hide_tray_menu(app: &AppHandle) {
+    TRAY_MENU_DISMISS_GEN.fetch_add(1, Ordering::SeqCst);
     if blur_guard_active() {
         return;
     }
