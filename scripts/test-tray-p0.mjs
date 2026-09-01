@@ -110,7 +110,7 @@ check('tray mic cache no wasapi', trayStateRs.includes('TRAY_MIC_CACHE') && !tra
 check('tray menu bootstrap ipc', trayHtml.includes('OneToneTrayDataStore') && trayHtml.includes("bootstrap('os')") && trayIpc.includes('cmd_tray_bootstrap'));
 check('tray menu no bundled os context', !trayStateRs.includes('pub struct TrayState') || !trayStateRs.match(/struct TrayState[\s\S]{0,400}os_context/) && dataStore.includes('configSlice'));
 check('tray voice unpark', tcc.includes('unparkVoiceForTray') && tcc.includes('cmd_set_settings_drawer_open'));
-check('tray scene applying guard', scenePreset.includes('if (applying) return') && scenePreset.includes('applying'));
+check('tray scene applying guard', scenePreset.includes('activeSceneSnap') && scenePreset.includes('isApplying'));
 check('tray scene persist apply', scenePreset.includes('applyPersistedSceneOnOpen'));
 check('tray runtime normalize preset', scenePreset.includes('normalizeTrayScenePreset'));
 check('tray load before render', trayHtml.includes('deferRender:true') && trayHtml.includes('loadRuntime'));
@@ -122,7 +122,12 @@ check('action history merged cache', read('src-tauri/src/action_history/log.rs')
 check('tray today stats merged', trayStateRs.includes('tray_today_stats'));
 check('mic skip scene preset', !trayHtml.includes('onManualSwitchChange()') || trayHtml.includes('onTrayChannelSwitchChange'));
 check('tray runtime save flat args', read('src-tauri/src/ipc/commands/shell/tray_runtime_cmd.rs').includes('tray_scene_preset: Option'));
-check('tray scene deferred click', scenePreset.includes('setTimeout') && scenePreset.includes('patchOsSnapshotLocal'));
+check('tray scene deferred click', scenePreset.includes('applySnapshot(snap)') && scenePreset.includes('commitSceneUi'));
+check('tray scene snap override', tcc.includes('sceneSnapOverride') && tcc.includes('ignoreSceneOverride'));
+check('tray scene nonblocking apply', scenePreset.includes('applyGen') && !scenePreset.includes('if (applying) return'));
+check('tray scene skip channel render', trayHtml.includes('skipChannelRender') && scenePreset.includes('skipChannelRender'));
+check('tray scene patch seg guard', trayHtml.includes('getActiveSceneSnap') && trayHtml.includes('syncOsTrayToggleDom(sceneSnap)'));
+check('tray scene batch wrote guard', scenePreset.includes('wrote > 0') && scenePreset.includes('finishOsBatchApply'));
 check('tray hydrate before render', trayHtml.includes('finishBoot') && dataStore.includes('applyOsContext'));
 check('tray refresh segments ipc', trayIpc.includes('cmd_tray_refresh_segments'));
 check('tray os context permitted', read('src-tauri/permissions/app-ipc.toml').includes('allow-cmd-tray-os-context'));

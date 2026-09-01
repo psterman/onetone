@@ -99,15 +99,27 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
   function act(action,payload){invoke('cmd_tray_action',{action:action,payload:payload||null}).catch(function(){});}
   function esc(s){return String(s||'').replace(/</g,'&lt;');}
   function refreshScene(){var SP=window.OneToneTrayScenePreset;if(!SP)return;SP.renderSceneBlock(document.getElementById('traySceneBlock'),{onRefresh:refreshAll,global:state.global});}
-  function refreshAll(){
+  function refreshAll(opts){
+    opts=opts||{};
     refreshScene();
+    if(opts.sceneMic==='mute'&&state.mic)state.mic=Object.assign({},state.mic,{muted:true});
+    else if(opts.sceneMic==='allOn'&&state.mic)state.mic=Object.assign({},state.mic,{muted:false});
+    if(!opts.skipChannelRender){
     var V2=window.OneToneTrayLayoutV2;
     var lay=layoutV2;
+    var SP=window.OneToneTrayScenePreset;
+    var TCC=window.OneToneTrayChannelControls;
+    var sceneSnap=SP&&SP.getActiveSceneSnap&&SP.getActiveSceneSnap();
+    if(sceneSnap&&TCC&&TCC.syncOsTrayToggleDom){
+      TCC.syncOsTrayToggleDom(sceneSnap);
+    }else{
     document.querySelectorAll('tray-channel-block').forEach(function(el){
       if(el.hidden)return;
       if(lay&&V2&&!V2.blockVisible(lay,'block:channel:'+el.dataset.id))return;
       if(el.render)el.render();
     });
+    }
+    }
     var mic=document.querySelector('tray-mic-toggle');
     if(mic&&!mic.hidden&&mic.render)mic.render();
     var ft=document.querySelector('tray-footer-links');
@@ -146,9 +158,18 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
     if(seg==='mic')state.mic=payload;
     else if(seg==='channels')state.channels=payload;
     if(seg==='mic')document.querySelector('tray-mic-toggle').render();
-    if(seg==='channels')document.querySelectorAll('tray-channel-block').forEach(function(el){
-      if(!el.hidden&&el.render)el.render();
-    });
+    if(seg==='channels'){
+      var SP=window.OneToneTrayScenePreset;
+      var TCC=window.OneToneTrayChannelControls;
+      var sceneSnap=SP&&SP.getActiveSceneSnap&&SP.getActiveSceneSnap();
+      if(sceneSnap&&TCC&&TCC.syncOsTrayToggleDom){
+        TCC.syncOsTrayToggleDom(sceneSnap);
+      }else{
+        document.querySelectorAll('tray-channel-block').forEach(function(el){
+          if(!el.hidden&&el.render)el.render();
+        });
+      }
+    }
   }
   function resolveLayoutV2(cfg){
     var V2=window.OneToneTrayLayoutV2;
@@ -320,6 +341,11 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
     var SP=window.OneToneTrayScenePreset;
     if(SP&&SP.isApplying&&SP.isApplying())return;
     scheduleRefreshAll();
+  });
+  document.addEventListener('tray-scene-mic',function(ev){
+    if(ev&&ev.detail)state.mic=ev.detail;
+    var mic=document.querySelector('tray-mic-toggle');
+    if(mic&&!mic.hidden&&mic.render)mic.render();
   });
 })();
 </script>

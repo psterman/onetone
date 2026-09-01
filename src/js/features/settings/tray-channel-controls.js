@@ -66,6 +66,7 @@
   var osCtx = { config: null, voiceEnd: null, global: null, mapping: null };
   var osHydratePromise = null;
   var openOsChannel = null;
+  var sceneSnapOverride = null;
 
   function invoke(cmd, args) {
     var ipc = global.OneToneIpc;
@@ -249,6 +250,9 @@
 
   function readControlValue(ctrl, ctx) {
     ctx = ctx || {};
+    if (!ctx.ignoreSceneOverride && sceneSnapOverride && ctrl && sceneSnapOverride[ctrl.id] !== undefined) {
+      return !!sceneSnapOverride[ctrl.id];
+    }
     var cfg = ctx.config || readConfig() || osCtx.config;
     var m = ctx.mapping || activeMapping(cfg);
     var pad = m && m.codexMicroPad;
@@ -398,6 +402,42 @@
       if (!cfg.cameraPrefs.autoMute) cfg.cameraPrefs.autoMute = {};
       cfg.cameraPrefs.autoMute.noFaceMute = !!snap.camNoFaceMute;
     }
+  }
+
+  function setSceneSnapOverride(snap) {
+    sceneSnapOverride = snap || null;
+  }
+
+  function clearSceneSnapOverride() {
+    sceneSnapOverride = null;
+  }
+
+  function syncOsTrayToggleDom(snap) {
+    if (typeof document === 'undefined') return;
+    if (snap) {
+      document.querySelectorAll('tray-channel-block [data-ctrl]').forEach(function (row) {
+        var id = row.getAttribute('data-ctrl');
+        if (!id || snap[id] === undefined) return;
+        var on = !!snap[id];
+        var btn = row.querySelector('.sw-toggle');
+        if (!btn) return;
+        btn.classList.toggle('off', !on);
+        btn.setAttribute('aria-checked', on ? 'true' : 'false');
+      });
+      return;
+    }
+    var Os = global.OneToneTrayRenderOs;
+    var Io = global.OneToneTraySwitchIo;
+    if (!Os || !Io) return;
+    var api = Io.api();
+    if (!api) return;
+    document.querySelectorAll('tray-channel-block').forEach(function (shell) {
+      var ch = shell.getAttribute('data-id');
+      if (!ch || shell.hidden) return;
+      var ctx = Object.assign({ surface: 'os', channel: ch }, getOsCtx());
+      var controls = getChannelControls(ch, 'os');
+      Os.patchOsToggles(shell, controls, ctx, api);
+    });
   }
 
   function finishOsBatchApply(ctx) {
@@ -1118,6 +1158,9 @@
     getOsCtx: getOsCtx,
     syncOsMappingFromGlobal: syncOsMappingFromGlobal,
     patchOsSnapshotLocal: patchOsSnapshotLocal,
+    setSceneSnapOverride: setSceneSnapOverride,
+    clearSceneSnapOverride: clearSceneSnapOverride,
+    syncOsTrayToggleDom: syncOsTrayToggleDom,
     finishOsBatchApply: finishOsBatchApply,
     setOpenOsChannel: function (ch) { openOsChannel = ch; },
     getOpenOsChannel: function () { return openOsChannel; },

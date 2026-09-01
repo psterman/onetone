@@ -22,7 +22,8 @@
   ];
 
   var runtime = { trayScenePreset: 'allOn', customSwitchSnapshot: {}, manualChangeLog: [], _fromPresetTweak: false };
-  var applying = false;
+  var applyGen = 0;
+  var activeSceneSnap = null;
 
   function osCtx() {
     var T = TCC();
@@ -40,19 +41,10 @@
     return '';
   }
 
-  function t(key, fb) {
-    var i18n = global.OneToneI18n;
-    if (i18n && i18n.t) {
-      var v = i18n.t(key);
-      if (v && v !== key) return v;
-    }
-    return fb || key;
-  }
-
   function readSnapshot() {
     var snap = {};
     var T = TCC();
-    var ctx = osCtx();
+    var ctx = Object.assign({ ignoreSceneOverride: true }, osCtx());
     if (!T) return snap;
     SWITCH_IDS.forEach(function (id) {
       var ctrl = T.findControlById(id);
@@ -140,8 +132,8 @@
 
   function applySnapshot(snap) {
     var T = TCC();
-    if (!T) return Promise.resolve();
-    var ctx = Object.assign({ surface: 'os', batchApply: true }, osCtx());
+    if (!T) return Promise.resolve({ wrote: 0 });
+    var ctx = Object.assign({ surface: 'os', batchApply: true, ignoreSceneOverride: true }, osCtx());
     var ids = SWITCH_IDS.filter(function (id) { return snap[id] !== undefined; });
     ids.sort(function (a, b) {
       var score = function (id) {
@@ -150,6 +142,7 @@
       };
       return score(a) - score(b);
     });
+    var wrote = 0;
     var chain = Promise.resolve();
     ids.forEach(function (id) {
       var ctrl = T.findControlById(id);
@@ -159,11 +152,15 @@
       chain = chain.then(function () {
         var cur = !!T.readControlValue(ctrl, Object.assign({ channel: ch }, ctx));
         if (cur === want) return;
+        wrote += 1;
         return T.writeControlValue(ctrl, want, Object.assign({ channel: ch, surface: 'os', batchApply: true }, ctx));
       });
     });
     return chain.then(function () {
-      if (T.finishOsBatchApply) return T.finishOsBatchApply(ctx);
+      if (wrote > 0 && T.finishOsBatchApply) {
+        return T.finishOsBatchApply(ctx).then(function () { return { wrote: wrote }; });
+      }
+      return { wrote: wrote };
     });
   }
 
@@ -173,9 +170,25 @@
     return Promise.resolve();
   }
 
+  function commitSceneUi(snap) {
+    var T = TCC();
+    if (!snap || !T) return;
+    if (T.syncOsMappingFromGlobal) T.syncOsMappingFromGlobal();
+    if (T.patchOsSnapshotLocal) T.patchOsSnapshotLocal(snap);
+    if (T.setSceneSnapOverride) T.setSceneSnapOverride(snap);
+    if (T.syncOsTrayToggleDom) T.syncOsTrayToggleDom(snap);
+  }
+
+  function paintSceneUi(next, snap, opts) {
+    opts = opts || {};
+    activeSceneSnap = snap;
+    commitSceneUi(snap);
+    if (opts.onRefresh) opts.onRefresh({ sceneMic: next, skipChannelRender: true });
+  }
+
   function setScenePreset(next, opts) {
     opts = opts || {};
-    if (applying) return Promise.resolve();
+    var gen = ++applyGen;
     var prev = runtime.trayScenePreset;
     if (prev === 'custom' && next !== 'custom' && !runtime._fromPresetTweak) {
       runtime.customSwitchSnapshot = readSnapshot();
@@ -190,34 +203,38 @@
     }
     if (next === 'allOn' || next === 'mute') runtime._fromPresetTweak = false;
     runtime.trayScenePreset = next;
-    applying = true;
-    var T = TCC();
-    if (snap && T && T.patchOsSnapshotLocal) T.patchOsSnapshotLocal(snap);
-    if (opts.onRefresh) opts.onRefresh();
-    return saveRuntime().then(function () {
-      if (!snap) {
-        applying = false;
-        return;
+    paintSceneUi(next, snap, opts);
+    saveRuntime().catch(function () {});
+    if (!snap) {
+      activeSceneSnap = null;
+      return Promise.resolve();
+    }
+    applySnapshot(snap).then(function () {
+      if (gen !== applyGen) return;
+      return finishScenePresetApply(next);
+    }).then(function (micSt) {
+      if (gen !== applyGen) return;
+      commitSceneUi(snap);
+      if (micSt && typeof document !== 'undefined') {
+        try {
+          document.dispatchEvent(new CustomEvent('tray-scene-mic', { detail: micSt }));
+        } catch (e) { /* ponytail: legacy */ }
       }
-      return new Promise(function (resolve) {
-        setTimeout(function () {
-          applySnapshot(snap).then(function () {
-            return finishScenePresetApply(next);
-          }).then(function () {
-            if (opts.onApplied) opts.onApplied(next);
-          }).catch(function () {
-            if (opts.onApplied) opts.onApplied(next);
-          }).finally(function () {
-            applying = false;
-            resolve();
-          });
-        }, 0);
-      });
-    }).catch(function () { applying = false; });
+      if (opts.onApplied) opts.onApplied(next);
+    }).catch(function () {
+      if (gen !== applyGen) return;
+      commitSceneUi(snap);
+    }).finally(function () {
+      if (gen !== applyGen) return;
+      activeSceneSnap = null;
+      var T = TCC();
+      if (T && T.clearSceneSnapOverride) T.clearSceneSnapOverride();
+    });
+    return Promise.resolve();
   }
 
-  function onManualSwitchChange(swId) {
-    if (applying) return;
+  function onManualSwitchChange() {
+    if (activeSceneSnap) return;
     if (runtime.trayScenePreset === 'allOn' || runtime.trayScenePreset === 'mute') {
       runtime._fromPresetTweak = true;
     }
@@ -227,7 +244,6 @@
     }
   }
 
-  /** Scene channel switches only — mic mute must not clear saved preset. */
   function onTrayChannelSwitchChange() {
     onManualSwitchChange();
   }
@@ -236,10 +252,9 @@
     return setScenePreset('custom');
   }
 
-  /** Re-apply saved preset only when switches diverge. opts.skipVoice: habit switch — keys/pad only. */
   function applyPersistedSceneOnOpen(opts) {
     opts = opts || {};
-    if (applying) return Promise.resolve();
+    if (activeSceneSnap) return Promise.resolve();
     var mode = runtime.trayScenePreset || 'allOn';
     if (mode === 'allOn' && sceneMatches('allOn', readSnapshot())) return Promise.resolve();
     if (mode === 'mute' && sceneMatches('mute', readSnapshot())) return Promise.resolve();
@@ -255,11 +270,18 @@
       delete snap.voiceMaster;
       delete snap.voiceEnd;
     }
-    applying = true;
+    activeSceneSnap = snap;
+    commitSceneUi(snap);
     return applySnapshot(snap).then(function () {
       if (mode === 'mute') return invoke('cmd_mic_set_mute', { muted: true }).catch(function () {});
       if (mode === 'allOn') return invoke('cmd_mic_set_mute', { muted: false }).catch(function () {});
-    }).finally(function () { applying = false; });
+    }).then(function () {
+      commitSceneUi(snap);
+    }).finally(function () {
+      activeSceneSnap = null;
+      var T = TCC();
+      if (T && T.clearSceneSnapOverride) T.clearSceneSnapOverride();
+    });
   }
 
   function applyPersistedSceneDeferred(opts) {
@@ -271,9 +293,7 @@
   }
 
   function displaySceneMode() {
-    var saved = runtime.trayScenePreset || 'allOn';
-    if (saved === 'allOn' || saved === 'mute') return saved;
-    return activeSceneQuick(saved);
+    return runtime.trayScenePreset || 'allOn';
   }
 
   function esc(s) {
@@ -283,9 +303,7 @@
   function renderSceneBlock(host, opts) {
     opts = opts || {};
     if (!host) return;
-    var mode = applying
-      ? (runtime.trayScenePreset || 'allOn')
-      : displaySceneMode();
+    var mode = displaySceneMode();
     var blockCls = 'tray-scene-block';
     if (mode === 'custom') blockCls += ' tray-scene-block--custom';
     if (mode === 'mute') blockCls += ' tray-scene-block--mute';
@@ -304,15 +322,13 @@
       '</div>';
     host.querySelectorAll('[data-scene-preset]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        var preset = btn.getAttribute('data-scene-preset');
-        host.querySelectorAll('[data-scene-preset]').forEach(function (b) {
-          b.classList.toggle('is-on', b.getAttribute('data-scene-preset') === preset);
-        });
-        setScenePreset(preset, {
-          onRefresh: function () {
-            if (opts.onRefresh) opts.onRefresh();
+        setScenePreset(btn.getAttribute('data-scene-preset'), {
+          onRefresh: function (subOpts) {
+            if (opts.onRefresh) opts.onRefresh(subOpts);
           },
-          onApplied: opts.onRefresh
+          onApplied: function () {
+            if (opts.onRefresh) opts.onRefresh({ sceneMic: runtime.trayScenePreset, skipChannelRender: true });
+          }
         });
       });
     });
@@ -320,6 +336,14 @@
 
   function getScenePreset() {
     return runtime.trayScenePreset;
+  }
+
+  function getActiveSceneSnap() {
+    return activeSceneSnap;
+  }
+
+  function isApplying() {
+    return !!activeSceneSnap;
   }
 
   global.OneToneTrayScenePreset = {
@@ -334,9 +358,10 @@
     restoreCustom: restoreCustom,
     renderSceneBlock: renderSceneBlock,
     getScenePreset: getScenePreset,
+    getActiveSceneSnap: getActiveSceneSnap,
     displaySceneMode: displaySceneMode,
     readSnapshot: readSnapshot,
     activeSceneQuick: activeSceneQuick,
-    isApplying: function () { return applying; }
+    isApplying: isApplying
   };
 })(typeof window !== 'undefined' ? window : globalThis);
