@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>场景壳 · 三区关联性 · 三方案对比</title>
+  <link rel="stylesheet" href="../src/css/ot-switch.css" />
+  <style>
+    :root {
+      --on: #152238;
+      --muted: #5a7086;
+      --line: rgba(26,45,74,.1);
+      --font: "Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+      --accent: #6366f1;
+      --accent-deep: #4f46e5;
+      --tint: rgba(99,102,241,.1);
+      --tint2: rgba(99,102,241,.06);
+      --ico-bg: #1a1a2e;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 20px 16px 40px; font-family: var(--font); background: #e8edf3; color: var(--on); }
+    .wrap { max-width: 1280px; margin: 0 auto; }
+    h1 { margin: 0 0 6px; font-size: 18px; font-weight: 800; }
+    .lede { margin: 0 0 18px; font-size: 12px; line-height: 1.55; color: var(--muted); max-width: 50rem; }
+
+    .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: start; }
+    @media (max-width: 1100px) { .grid3 { grid-template-columns: 1fr; } }
+
+    .col-lbl { font-size: 11px; font-weight: 800; margin-bottom: 6px; line-height: 1.4; }
+    .col-lbl span { display: block; font-size: 10px; font-weight: 600; color: var(--muted); margin-top: 2px; }
+    .app { border-radius: 16px; border: 1px solid var(--line); background: #eef3f7; overflow: hidden; box-shadow: 0 8px 24px rgba(26,45,74,.07); }
+
+    /* shared rail bits */
+    .rail { display: flex; gap: 8px; padding: 12px 12px 0; overflow-x: auto; }
+    .chip { flex: 0 0 auto; min-width: 58px; max-width: 64px; min-height: 58px; padding: 6px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,.7); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 10px; font-weight: 700; color: var(--muted); }
+    .chip .ico { width: 24px; height: 24px; border-radius: 7px; background: var(--ico-bg); display: grid; place-items: center; }
+    .chip .ico img { width: 14px; height: 14px; }
+    .chip .ico svg { width: 13px; height: 13px; color: rgba(255,255,255,.85); }
+    .chip.on { flex: 1; min-width: 0; max-width: none; min-height: 62px; flex-direction: row; align-items: center; gap: 10px; padding: 8px 12px; border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); background: #fff; color: var(--on); }
+    .chip.on .ico { width: 36px; height: 36px; border-radius: 10px; }
+    .chip.on .lbl-compact { display: none; }
+    .chip-body { display: none; min-width: 0; flex: 1; }
+    .chip.on .chip-body { display: block; }
+    .chip-body .n { margin: 0; font-size: 15px; font-weight: 800; }
+    .chip-body .s { margin: 2px 0 0; font-size: 10px; font-weight: 600; color: var(--muted); }
+    .chip-body .s em { font-style: normal; color: var(--accent-deep); }
+    .chip-new { border-style: dashed; }
+
+    .orb { width: 52px; height: 52px; margin: 0 auto; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--accent) 35%, transparent); background: radial-gradient(circle at 35% 28%, #fff, var(--tint)); color: var(--accent-deep); display: grid; place-items: center; }
+    .orb svg { width: 22px; height: 22px; }
+    .mic-line { font-size: 11px; font-weight: 700; text-align: center; color: var(--muted); margin-top: 8px; }
+
+    .ch4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .ch { padding: 8px; border-radius: 10px; font-size: 10px; }
+    .ch b { display: block; font-size: 9px; color: var(--muted); margin-bottom: 3px; font-weight: 700; }
+    .ch strong { font-size: 10px; font-weight: 800; }
+
+    /* ── A 单卡片分区 ── */
+    .sol-a .shell {
+      margin: 10px;
+      border-radius: 18px;
+      border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line));
+      background: linear-gradient(180deg, color-mix(in srgb, var(--tint) 90%, #fff), #fff 35%, #fff);
+      overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+    }
+    .sol-a .zone { padding: 0 12px 12px; border-top: 1px solid color-mix(in srgb, var(--accent) 10%, var(--line)); }
+    .sol-a .zone:first-of-type { border-top: 0; padding-top: 0; }
+    .sol-a .rail { padding-bottom: 10px; }
+    .sol-a .hero { padding: 10px 0 8px; text-align: center; background: transparent; }
+    .sol-a .ch4 { padding-top: 4px; }
+    .sol-a .ch { background: color-mix(in srgb, var(--tint2) 80%, transparent); border: 0; }
+
+    /* ── B 叙事脊柱 ── */
+    .sol-b .shell {
+      margin: 10px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: #fff;
+      position: relative;
+      padding-left: 28px;
+    }
+    .sol-b .shell::before {
+      content: ''; position: absolute; left: 10px; top: 18px; bottom: 18px; width: 3px;
+      background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 30%, #cbd5e1));
+      border-radius: 3px;
+    }
+    .sol-b .step { position: relative; padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); }
+    .sol-b .step:last-child { border-bottom: 0; }
+    .sol-b .step-tag {
+      position: absolute; left: -22px; top: 14px;
+      width: 18px; height: 18px; border-radius: 999px;
+      background: var(--accent); color: #fff;
+      font-size: 9px; font-weight: 800;
+      display: grid; place-items: center;
+      box-shadow: 0 0 0 3px #fff;
+    }
+    .sol-b .step-lbl { font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--accent-deep); margin-bottom: 6px; }
+    .sol-b .rail { padding: 0; }
+    .sol-b .chip.on { background: color-mix(in srgb, var(--tint) 50%, #fff); }
+    .sol-b .hero { text-align: center; padding: 4px 0; }
+    .sol-b .ch { border: 1px solid color-mix(in srgb, var(--accent) 12%, var(--line)); background: #fafbff; }
+
+    /* ── C 展开容器 ── */
+    .sol-c .shell { margin: 10px; }
+    .sol-c .rail { padding: 12px 12px 0; }
+    .sol-c .expand {
+      margin: 8px 12px 12px;
+      border-radius: 16px;
+      border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+      background: linear-gradient(165deg, color-mix(in srgb, var(--tint) 100%, #fff), #fff 50%);
+      overflow: hidden;
+      box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 8%, transparent);
+    }
+    .sol-c .expand-hd {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
+      background: color-mix(in srgb, var(--tint) 40%, transparent);
+    }
+    .sol-c .expand-hd .ico { width: 32px; height: 32px; border-radius: 9px; background: var(--ico-bg); display: grid; place-items: center; }
+    .sol-c .expand-hd .ico img { width: 18px; height: 18px; }
+    .sol-c .expand-hd .n { margin: 0; font-size: 14px; font-weight: 800; }
+    .sol-c .expand-hd .s { margin: 1px 0 0; font-size: 10px; color: var(--muted); font-weight: 600; }
+    .sol-c .expand-bd { padding: 12px; }
+    .sol-c .hero { text-align: center; padding-bottom: 10px; }
+    .sol-c .ch4 { gap: 6px; }
+    .sol-c .ch { background: rgba(255,255,255,.75); border: 1px solid color-mix(in srgb, var(--accent) 10%, var(--line)); }
+    .sol-c .chip:not(.on) { opacity: .85; }
+
+    .note { margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: #fff; border: 1px solid var(--line); font-size: 11px; line-height: 1.6; color: var(--muted); }
+    .note table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 10px; }
+    .note th, .note td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .note th { font-weight: 800; color: var(--on); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>三区关联性 · 三方案对比</h1>
+    <p class="lede">功能已是「场景轨单组件」；问题是场景轨 / Hero / 四通道像三块独立卡片。下面三种做法用不同隐喻把「同一套配置往下流」做出来。</p>
+
+    <div class="grid3">
+      <!-- A -->
+      <div class="sol-a">
+        <div class="col-lbl">方案 A · 单卡片分区<span>一张壳、两道细线；子区无外框</span></div>
+        <div class="app">
+          <div class="shell">
+            <div class="zone">
+              <div class="rail">
+                <div class="chip"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg></span><span class="lbl-compact">通用</span></div>
+                <div class="chip on">
+                  <span class="ico"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23fff' d='M16 4L4 10v12l12 6 12-6V10z'/%3E%3C/svg%3E" alt="" /></span>
+                  <span class="lbl-compact">Cursor</span>
+                  <div class="chip-body"><p class="n">Cursor</p><p class="s">按 <em>AutoTrigger</em> 说话</p></div>
+                </div>
+                <div class="chip chip-new"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span><span class="lbl-compact">+</span></div>
+              </div>
+            </div>
+            <div class="zone">
+              <div class="hero">
+                <div class="orb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v11m0 0a4 4 0 01-4-4V5a4 4 0 118 0v4a4 4 0 01-4 4zm0 0v3"/></svg></div>
+                <p class="mic-line">说「开始输入」开始 — 听写在这里</p>
+              </div>
+            </div>
+            <div class="zone">
+              <div class="ch4">
+                <div class="ch"><b>说话</b><strong>开始输入</strong></div>
+                <div class="ch"><b>按键</b><strong>音量减→Alt</strong></div>
+                <div class="ch"><b>屏幕</b><strong>确认控制</strong></div>
+                <div class="ch"><b>摄像头</b><strong>已开启</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- B -->
+      <div class="sol-b">
+        <div class="col-lbl">方案 B · 叙事脊柱<span>左轴 + 步骤标签：场景→此刻→通道</span></div>
+        <div class="app">
+          <div class="shell">
+            <div class="step">
+              <span class="step-tag">1</span>
+              <div class="step-lbl">场景</div>
+              <div class="rail">
+                <div class="chip"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4"/></svg></span><span class="lbl-compact">通用</span></div>
+                <div class="chip on">
+                  <span class="ico"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23fff' d='M16 4L4 10v12l12 6 12-6V10z'/%3E%3C/svg%3E" alt="" /></span>
+                  <div class="chip-body"><p class="n">Cursor</p><p class="s">自动跟随前台</p></div>
+                </div>
+                <div class="chip chip-new"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></div>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-tag">2</span>
+              <div class="step-lbl">此刻</div>
+              <div class="hero">
+                <div class="orb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v11m0 0a4 4 0 01-4-4V5a4 4 0 118 0v4a4 4 0 01-4 4zm0 0v3"/></svg></div>
+                <p class="mic-line">说「开始输入」开始</p>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-tag">3</span>
+              <div class="step-lbl">这套配置下的通道</div>
+              <div class="ch4">
+                <div class="ch"><b>说话</b><strong>开始输入</strong></div>
+                <div class="ch"><b>按键</b><strong>Alt</strong></div>
+                <div class="ch"><b>屏幕</b><strong>控制</strong></div>
+                <div class="ch"><b>摄像头</b><strong>开</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- C -->
+      <div class="sol-c">
+        <div class="col-lbl">方案 C · 展开容器<span>选中场景向下展开，Hero+通道包进同一张子卡</span></div>
+        <div class="app">
+          <div class="shell">
+            <div class="rail">
+              <div class="chip"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4"/></svg></span><span class="lbl-compact">通用</span></div>
+              <div class="chip on" style="visibility:hidden;width:0;min-width:0;padding:0;border:0;overflow:hidden" aria-hidden="true"></div>
+              <div class="chip chip-new"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span><span class="lbl-compact">+</span></div>
+            </div>
+            <div class="expand">
+              <div class="expand-hd">
+                <span class="ico"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23fff' d='M16 4L4 10v12l12 6 12-6V10z'/%3E%3C/svg%3E" alt="" /></span>
+                <div>
+                  <p class="n">Cursor</p>
+                  <p class="s">按 AutoTrigger 说话 · 自动跟随前台</p>
+                </div>
+              </div>
+              <div class="expand-bd">
+                <div class="hero">
+                  <div class="orb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v11m0 0a4 4 0 01-4-4V5a4 4 0 118 0v4a4 4 0 01-4 4zm0 0v3"/></svg></div>
+                  <p class="mic-line">听写内容在这里</p>
+                </div>
+                <div class="ch4">
+                  <div class="ch"><b>说话</b><strong>开始输入</strong></div>
+                  <div class="ch"><b>按键</b><strong>音量减→Alt</strong></div>
+                  <div class="ch"><b>屏幕</b><strong>确认控制</strong></div>
+                  <div class="ch"><b>摄像头</b><strong>已开启</strong></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>怎么选</strong>
+      <table>
+        <tr><th>方案</th><th>隐喻</th><th>优点</th><th>代价</th></tr>
+        <tr><td>A 单卡片分区</td><td>一张发票三个栏目</td><td>实现最轻；与现有 shell 最接近；不增加新交互</td><td>关联感靠渐变+去边框，叙事弱于 B/C</td></tr>
+        <tr><td>B 叙事脊柱</td><td>流水线 场景→此刻→通道</td><td>小白最易理解「上面选、中间用、下面是配置」；左轴强化因果</td><td>多一层步骤 UI；略占横向空间</td></tr>
+        <tr><td>C 展开容器</td><td>选中场景的「工作区」</td><td>关联最强：Hero+通道明确属于当前场景；切换时整块 morph</td><td>展开动画与高度变化；rail 与 expand 要防重复（选中项只在 expand 头出现）</td></tr>
+      </table>
+      <p style="margin:10px 0 0"><strong>推荐：</strong>要懒人落地选 <strong>A</strong>（改 CSS 为主）；要教育用户选 <strong>B</strong>；要「主题统治感」最强选 <strong>C</strong>。</p>
+    </div>
+  </div>
+</body>
+</html>

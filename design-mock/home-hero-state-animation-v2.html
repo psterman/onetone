@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Voice Pilot · 首页 · 状态动效 v2</title>
+  <style>
+    :root {
+      --on:#152238;          /* 主文字 */
+      --on-2:#3b4a63;        /* 次文字 */
+      --muted:#738399;       /* 弱化文字 */
+      --line:rgba(21,34,56,.08);
+      --line-2:rgba(21,34,56,.14);
+      --font:"Segoe UI Variable","Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+      --bg:#eef3f7;          /* 背景 */
+      --surface:#ffffff;
+      --surface-2:#f6f9fc;
+
+      /* 通道色 —— 与其他设计稿保持一致 */
+      --voice:#007aff;
+      --keys:#0ea5e9;
+      --pad:#8b5cf6;
+      --cam:#10b981;
+      --warn:#f59e0b;
+      --ok:#10b981;
+      --danger:#ef4444;
+
+      --ease:cubic-bezier(.22,1,.36,1);
+      --ease-out:cubic-bezier(.16,1,.3,1);
+      --r-sm:8px; --r-md:12px; --r-lg:18px; --r-xl:24px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{
+      font-family:var(--font);background:var(--bg);color:var(--on);
+      -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+      padding:24px 24px 60px;
+      background:
+        radial-gradient(900px 380px at 8% -10%,rgba(0,122,255,.10),transparent 60%),
+        radial-gradient(800px 360px at 100% 0%,rgba(139,92,246,.08),transparent 55%),
+        var(--bg);
+    }
+    .page{max-width:1440px;margin:0 auto}
+
+    /* ── 页头 ───────────────────────────────── */
+    .topbar{display:flex;align-items:center;gap:16px;margin-bottom:24px}
+    .brand{display:flex;align-items:center;gap:10px}
+    .logo{
+      width:38px;height:38px;border-radius:11px;display:grid;place-items:center;color:#fff;
+      background:linear-gradient(135deg,#3aa0ff,#6366f1);
+      box-shadow:0 6px 18px rgba(99,102,241,.28),inset 0 1px 0 rgba(255,255,255,.35);
+      font-weight:800;font-size:14px;letter-spacing:.02em;
+    }
+    .brand b{font-size:15px;font-weight:750;letter-spacing:-.01em}
+    .brand small{font-size:11px;color:var(--muted);font-weight:600;margin-left:6px}
+
+    .top-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
+    .qs-btn{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:8px 14px;border-radius:999px;border:0;cursor:pointer;font:inherit;
+      font-size:12px;font-weight:700;color:#fff;
+      background:linear-gradient(180deg,#3aa0ff,#2563eb);
+      box-shadow:0 4px 14px rgba(37,99,235,.28);
+      transition:transform .2s var(--ease),box-shadow .2s var(--ease);
+    }
+    .qs-btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(37,99,235,.32)}
+    .qs-btn svg{width:14px;height:14px}
+    .dev-btn{
+      padding:7px 12px;border-radius:999px;font:inherit;font-size:11px;font-weight:700;
+      background:rgba(21,34,56,.04);color:var(--on-2);border:1px solid var(--line);
+      cursor:pointer;transition:background .2s;
+    }
+    .dev-btn:hover{background:rgba(21,34,56,.07)}
+    .dev-btn svg{width:12px;height:12px;vertical-align:-2px;margin-right:4px}
+
+    /* ── 标题区 ───────────────────────────────── */
+    .heading{margin-bottom:18px;animation:fadeUp .5s var(--ease) both}
+    .heading h1{font-size:26px;font-weight:750;letter-spacing:-.025em;line-height:1.2}
+    .heading p{margin-top:6px;font-size:13px;color:var(--muted);line-height:1.6;max-width:60ch}
+    .heading .sub-actions{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+    .chip-btn{
+      display:inline-flex;align-items:center;gap:5px;
+      padding:6px 12px;border-radius:999px;font:inherit;font-size:11px;font-weight:700;
+      background:var(--surface);color:var(--on-2);border:1px solid var(--line);cursor:pointer;
+      transition:all .2s var(--ease);
+    }
+    .chip-btn:hover{border-color:var(--line-2);transform:translateY(-1px)}
+    .chip-btn .num{
+      width:16px;height:16px;border-radius:50%;background:rgba(21,34,56,.06);
+      color:var(--on);font-size:9px;font-weight:800;display:grid;place-items:center;
+    }
+
+    /* ── 主网格 ───────────────────────────────── */
+    .main-grid{
+      display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:14px;margin-bottom:14px;
+    }
+    @media(max-width:1100px){.main-grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:720px){.main-grid{grid-template-columns:1fr}}
+
+    .card{
+      background:var(--surface);border-radius:var(--r-lg);
+      border:1px solid var(--line);
+      box-shadow:0 4px 20px rgba(21,34,56,.04),0 1px 2px rgba(21,34,56,.04);
+      padding:18px 18px 16px;display:flex;flex-direction:column;gap:12px;
+      position:relative;overflow:hidden;
+      transition:border-color .25s var(--ease),box-shadow .25s var(--ease),transform .25s var(--ease);
+      animation:cardIn .55s var(--ease) both;
+    }
+    .card:nth-child(1){animation-delay:.05s}
+    .card:nth-child(2){animation-delay:.12s}
+    .card:nth-child(3){animation-delay:.19s}
+    .card:nth-child(4){animation-delay:.26s}
+    @keyframes cardIn{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:translateY(0)}}
+    .card:hover{border-color:var(--line-2);box-shadow:0 10px 28px rgba(21,34,56,.07)}
+    .card.is-active{
+      border-color:color-mix(in srgb,var(--accent) 38%,var(--line));
+      box-shadow:0 10px 32px color-mix(in srgb,var(--accent) 18%,transparent);
+    }
+    .card.is-active::after{
+      content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+      background:radial-gradient(420px 160px at 50% -20%,color-mix(in srgb,var(--accent) 14%,transparent),transparent 70%);
+    }
+
+    .card-hd{display:flex;align-items:flex-start;gap:12px}
+    .icon-box{
+      width:44px;height:44px;border-radius:12px;flex-shrink:0;display:grid;place-items:center;
+      background:color-mix(in srgb,var(--accent) 10%,var(--surface-2));
+      color:var(--accent);
+      border:1px solid color-mix(in srgb,var(--accent) 18%,var(--line));
+      position:relative;
+    }
+    .icon-box svg{width:20px;height:20px}
+    .icon-box .pip{
+      position:absolute;top:-3px;right:-3px;width:12px;height:12px;border-radius:50%;
+      background:var(--surface);border:2px solid var(--accent);
+      transition:background .2s var(--ease);
+    }
+    .icon-box .pip.live{background:var(--accent)}
+    .icon-box .pip.live::after{
+      content:'';position:absolute;inset:-4px;border-radius:50%;
+      border:2px solid color-mix(in srgb,var(--accent) 40%,transparent);
+      animation:pipRing 1.6s ease-out infinite;
+    }
+    @keyframes pipRing{0%{transform:scale(.7);opacity:1}100%{transform:scale(1.4);opacity:0}}
+
+    .hd-text{flex:1;min-width:0}
+    .hd-text .ttl{font-size:14px;font-weight:750;letter-spacing:-.01em;display:flex;align-items:center;gap:6px}
+    .hd-text .sub{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
+
+    .pill{
+      display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;
+      font-size:10px;font-weight:700;letter-spacing:.01em;
+      background:rgba(21,34,56,.05);color:var(--on-2);
+    }
+    .pill .dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+    .pill.live{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent)}
+    .pill.live .dot{animation:dotBreath 1.6s ease-in-out infinite}
+    @keyframes dotBreath{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.6}}
+    .pill.ok{background:rgba(16,185,129,.12);color:#047857}
+    .pill.warn{background:rgba(245,158,11,.13);color:#b45309}
+    .pill.idle{background:rgba(115,131,153,.12);color:var(--muted)}
+
+    /* ── 卡片主体 ───────────────────────────────── */
+    .vis{
+      display:flex;align-items:center;justify-content:center;gap:14px;
+      padding:14px 8px;border-radius:var(--r-md);
+      background:linear-gradient(180deg,var(--surface-2),var(--surface));
+      border:1px solid var(--line);
+      min-height:108px;position:relative;
+    }
+
+    /* 说话通道 —— 麦克风 orb */
+    .orb-mic{
+      width:60px;height:60px;border-radius:50%;
+      background:radial-gradient(circle at 35% 30%,#fff,color-mix(in srgb,var(--voice) 14%,#fff) 60%,color-mix(in srgb,var(--voice) 22%,#fff));
+      color:var(--voice);display:grid;place-items:center;
+      border:1px solid color-mix(in srgb,var(--voice) 22%,transparent);
+      box-shadow:0 0 0 0 color-mix(in srgb,var(--voice) 30%,transparent);
+      position:relative;transition:box-shadow .3s var(--ease);
+    }
+    .orb-mic svg{width:24px;height:24px}
+    .orb-mic.live{
+      box-shadow:0 0 0 8px color-mix(in srgb,var(--voice) 14%,transparent);
+      animation:orbPulse 2s ease-in-out infinite;
+    }
+    @keyframes orbPulse{0%,100%{box-shadow:0 0 0 6px color-mix(in srgb,var(--voice) 14%,transparent)}50%{box-shadow:0 0 0 14px color-mix(in srgb,var(--voice) 4%,transparent)}}
+    .orb-mic .waves{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:2px;pointer-events:none;opacity:0;transition:opacity .25s}
+    .orb-mic.live .waves{opacity:1}
+    .orb-mic .waves i{
+      width:2px;height:8px;background:var(--voice);border-radius:1px;
+      animation:wave 1.1s ease-in-out infinite;
+    }
+    .orb-mic .waves i:nth-child(1){animation-delay:0s}
+    .orb-mic .waves i:nth-child(2){animation-delay:.15s;height:14px}
+    .orb-mic .waves i:nth-child(3){animation-delay:.3s;height:10px}
+    .orb-mic .waves i:nth-child(4){animation-delay:.15s;height:14px}
+    .orb-mic .waves i:nth-child(5){animation-delay:0s}
+    @keyframes wave{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1.2)}}
+
+    /* 按键通道 —— 键帽 */
+    .keycap{
+      min-width:62px;padding:10px 14px;border-radius:10px;
+      background:linear-gradient(180deg,#fff,#eef1f5);
+      border:1px solid var(--line-2);
+      box-shadow:0 2px 0 rgba(21,34,56,.10),inset 0 1px 0 rgba(255,255,255,.9);
+      font-size:12px;font-weight:800;color:var(--on);text-align:center;
+      transition:all .22s var(--ease);
+    }
+    .keycap .lbl{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;display:block;margin-bottom:2px}
+    .keycap.live{
+      transform:translateY(2px);
+      box-shadow:0 0 0 4px color-mix(in srgb,var(--keys) 18%,transparent),0 1px 0 rgba(21,34,56,.10);
+      border-color:color-mix(in srgb,var(--keys) 50%,var(--line));
+      color:var(--keys);
+    }
+    .arrow{color:var(--muted);font-size:18px;line-height:1}
+    .keycap.target{background:linear-gradient(180deg,#fff,#f0f4f9);opacity:.7}
+
+    /* 屏幕通道 —— 软面板 */
+    .pad-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+    .pad-cell{
+      height:38px;border-radius:8px;background:var(--surface);
+      border:1px solid var(--line-2);
+      display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--muted);
+      transition:all .22s var(--ease);position:relative;overflow:hidden;
+    }
+    .pad-cell.live{
+      background:color-mix(in srgb,var(--pad) 12%,#fff);
+      border-color:color-mix(in srgb,var(--pad) 40%,var(--line));
+      color:var(--pad);
+    }
+    .pad-cell.live::before{
+      content:'';position:absolute;inset:0;background:color-mix(in srgb,var(--pad) 24%,transparent);
+      animation:padRipple 1.4s ease-out infinite;border-radius:inherit;
+    }
+    @keyframes padRipple{0%{opacity:.5;transform:scale(.85)}100%{opacity:0;transform:scale(1.15)}}
+
+    /* 摄像头通道 —— 视野窗 */
+    .cam-frame{
+      width:120px;height:80px;border-radius:10px;position:relative;overflow:hidden;
+      background:linear-gradient(135deg,#0f172a,#1e293b);
+      border:1px solid var(--line-2);
+      display:grid;place-items:center;color:#94a3b8;
+    }
+    .cam-frame::before{
+      content:'';position:absolute;inset:8px;border:1px dashed rgba(255,255,255,.18);border-radius:6px;
+    }
+    .cam-frame .scan{position:absolute;left:8px;right:8px;height:2px;background:linear-gradient(90deg,transparent,var(--cam),transparent);opacity:0;top:50%}
+    .cam-frame.live .scan{opacity:1;animation:scan 1.8s ease-in-out infinite}
+    @keyframes scan{0%{top:14px;opacity:0}10%{opacity:.9}90%{opacity:.9}100%{top:64px;opacity:0}}
+    .cam-frame .figure{position:relative;z-index:1;font-size:24px}
+    .cam-badge{
+      position:absolute;top:6px;left:6px;font-size:8px;font-weight:800;
+      padding:2px 6px;border-radius:4px;background:rgba(0,0,0,.55);color:#fff;letter-spacing:.05em;
+    }
+    .cam-pres{
+      position:absolute;bottom:6px;right:6px;font-size:8px;font-weight:800;
+      padding:2px 6px;border-radius:4px;background:rgba(16,185,129,.92);color:#fff;
+      display:flex;align-items:center;gap:3px;
+    }
+    .cam-pres .dot{width:5px;height:5px;border-radius:50%;background:#fff;animation:dotBreath 1.6s ease-in-out infinite}
+    .cam-pres.away{background:rgba(115,131,153,.85)}
+
+    /* 视觉右侧的小提示 */
+    .vis-meta{display:flex;flex-direction:column;gap:6px;min-width:0;max-width:120px}
+    .vis-meta .row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--on-2);font-weight:600}
+    .vis-meta .row .k{color:var(--muted);font-weight:600}
+    .vis-meta .row .v{font-weight:800}
+
+    /* ── 焦点行 / hint ───────────────────────────────── */
+    .focus-line{
+      display:flex;align-items:flex-start;gap:10px;padding:12px 14px;
+      background:var(--surface-2);border-radius:var(--r-md);border:1px solid var(--line);
+    }
+    .focus-line .ic{
+      width:18px;height:18px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;
+      background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);
+      font-size:10px;font-weight:800;margin-top:1px;
+    }
+    .focus-line .text{flex:1;min-width:0}
+    .focus-line .text b{font-size:13px;font-weight:750;line-height:1.35;letter-spacing:-.01em}
+    .focus-line .text span{display:block;font-size:11px;color:var(--muted);margin-top:2px;line-height:1.45}
+
+    /* ── 步骤条 ───────────────────────────────── */
+    .steps{margin-top:2px}
+    .step-bar{
+      position:relative;display:flex;justify-content:space-between;align-items:flex-start;
+      gap:4px;padding:0 6px;
+    }
+    .step-bar::before{
+      content:'';position:absolute;left:8%;right:8%;top:14px;height:2px;border-radius:1px;
+      background:var(--line);
+    }
+    .step-bar .track{
+      position:absolute;left:8%;top:14px;height:2px;border-radius:1px;
+      background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 60%,transparent));
+      transition:width .55s var(--ease);
+      box-shadow:0 0 8px color-mix(in srgb,var(--accent) 40%,transparent);
+    }
+    .step{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;min-width:0;position:relative;z-index:1}
+    .step .node{
+      width:28px;height:28px;border-radius:50%;background:var(--surface);
+      border:2px solid var(--line-2);color:var(--muted);
+      display:grid;place-items:center;font-size:10px;font-weight:800;
+      transition:all .35s var(--ease);
+    }
+    .step .node svg{width:12px;height:12px}
+    .step.done .node{background:var(--ok);border-color:var(--ok);color:#fff}
+    .step.on .node{
+      background:var(--surface);border-color:var(--accent);color:var(--accent);
+      box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 16%,transparent);
+      animation:onPulse 1.4s ease-in-out infinite;
+    }
+    @keyframes onPulse{0%,100%{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--accent) 4%,transparent)}}
+    .step .lbl{font-size:10px;font-weight:700;color:var(--muted);text-align:center;line-height:1.25;max-width:74px}
+    .step.on .lbl,.step.done .lbl{color:var(--on)}
+    .step .sub{font-size:9px;color:var(--muted);font-weight:600;text-align:center;max-width:74px;line-height:1.2}
+
+    /* ── 底部状态条 ───────────────────────────────── */
+    .strip{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
+      background:var(--surface);border-radius:var(--r-lg);border:1px solid var(--line);
+      padding:10px 14px;box-shadow:0 4px 16px rgba(21,34,56,.04);
+    }
+    .strip-item{
+      display:flex;align-items:center;gap:10px;padding:6px 4px;border-radius:10px;cursor:pointer;
+      transition:background .2s;
+    }
+    .strip-item:hover{background:var(--surface-2)}
+    .strip-item .ico{
+      width:32px;height:32px;border-radius:9px;display:grid;place-items:center;flex-shrink:0;
+      background:color-mix(in srgb,var(--c) 10%,var(--surface-2));
+      color:var(--c);border:1px solid color-mix(in srgb,var(--c) 18%,var(--line));
+    }
+    .strip-item .ico svg{width:14px;height:14px}
+    .strip-item .txt{flex:1;min-width:0}
+    .strip-item .txt b{font-size:12px;font-weight:750;display:block}
+    .strip-item .txt span{font-size:10px;color:var(--muted);font-weight:600}
+    .strip-item .stat{font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px}
+    .strip-item .stat.live{background:color-mix(in srgb,var(--c) 12%,transparent);color:var(--c)}
+    .strip-item .stat.ok{background:rgba(16,185,129,.12);color:#047857}
+    .strip-item .stat.idle{background:rgba(115,131,153,.12);color:var(--muted)}
+    .strip-item .stat.warn{background:rgba(245,158,11,.13);color:#b45309}
+
+    /* ── 演示控件（折叠） ───────────────────────────────── */
+    .dev-panel{
+      position:fixed;right:18px;bottom:18px;z-index:30;
+      background:var(--surface);border:1px solid var(--line-2);border-radius:14px;
+      box-shadow:0 14px 38px rgba(21,34,56,.18);
+      padding:10px 12px;display:flex;align-items:center;gap:8px;
+      font-size:11px;color:var(--on-2);
+    }
+    .dev-panel .dev-tag{font-size:9px;font-weight:800;color:var(--muted);background:rgba(21,34,56,.05);padding:2px 6px;border-radius:6px;letter-spacing:.04em}
+    .dev-panel button{font:inherit;font-size:11px;font-weight:700;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);cursor:pointer;color:var(--on)}
+    .dev-panel button.primary{background:var(--on);color:#fff;border-color:var(--on)}
+    .dev-panel button:hover{background:rgba(21,34,56,.06)}
+    .dev-panel button.primary:hover{background:#000}
+    .dev-panel select{font:inherit;font-size:11px;font-weight:700;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);cursor:pointer;color:var(--on)}
+
+    /* ── 减少动效 ───────────────────────────────── */
+    @media (prefers-reduced-motion:reduce){
+      *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- 页头 -->
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo">VP</div>
+        <div>
+          <b>Voice Pilot</b>
+          <small>v0.4 · 让你用嘴控制 Cursor</small>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="dev-btn" id="btnHelp" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 4"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>
+          帮助
+        </button>
+        <button class="qs-btn" id="btnStart" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 4v16l14-8-14-8z"/></svg>
+          3 分钟快速入门
+        </button>
+      </div>
+    </div>
+
+    <!-- 标题 -->
+    <div class="heading">
+      <h1>用四种方式告诉 Cursor 你要做什么</h1>
+      <p>不用记命令、不用摸键盘。说话、按一下、点屏幕、挥个手 —— 任意一种都行，下方卡片实时显示当前在做什么。</p>
+      <div class="sub-actions">
+        <button class="chip-btn" type="button" data-jump="voice"><span class="num">1</span> 说话触发</button>
+        <button class="chip-btn" type="button" data-jump="keys"><span class="num">2</span> 按键触发</button>
+        <button class="chip-btn" type="button" data-jump="softPad"><span class="num">3</span> 屏幕按钮</button>
+        <button class="chip-btn" type="button" data-jump="camera"><span class="num">4</span> 摄像头确认</button>
+      </div>
+    </div>
+
+    <!-- 主网格 -->
+    <div class="main-grid" id="mainGrid"></div>
+
+    <!-- 底部状态条 -->
+    <div class="strip" id="strip"></div>
+  </div>
+
+  <!-- 演示控制条（仅原型用） -->
+  <div class="dev-panel" id="devPanel">
+    <span class="dev-tag">DEV</span>
+    <select id="selCh">
+      <option value="voice">说话</option>
+      <option value="keys">按键</option>
+      <option value="softPad">屏幕</option>
+      <option value="camera">摄像头</option>
+    </select>
+    <button type="button" id="btnPrev">‹ 上一个</button>
+    <button type="button" class="primary" id="btnNext">下一个 ›</button>
+    <button type="button" id="btnAuto">自动播放</button>
+  </div>
+
+  <script>
+    // ── 图标库（统一线型） ──
+    var ICO = {
+      voice:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/><path d="M9 21h6"/></svg>',
+      keys:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h12"/></svg>',
+      softPad:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8h3M8 12h8M8 16h5"/></svg>',
+      camera:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/><circle cx="8" cy="12" r="2"/></svg>',
+      check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12 10 17 19 7"/></svg>'
+    };
+
+    // ── 通道配置（每个状态给小白能看懂的文案） ──
+    var CH = [
+      {
+        id:'voice', accent:'var(--voice)', name:'说话', icon:ICO.voice,
+        states:[
+          {
+            pill:{t:'待命',c:'idle'},
+            vis:'', focus:{b:'现在可以说话',s:'对着麦克风说一句「开始输入」即可'},
+            steps:[
+              {l:'说口令',s:'「开始输入」',st:''},
+              {l:'听写中',s:'正在把语音变文字',st:''},
+              {l:'说「发送」',s:'自动送出',st:''}
+            ]
+          },
+          {
+            pill:{t:'正在听写',c:'live'},
+            vis:'live', focus:{b:'我正在听你说',s:'说「发送」结束，说「取消」撤销'},
+            steps:[
+              {l:'说口令',s:'✓',st:'done'},
+              {l:'听写中',s:'把语音变文字',st:'on'},
+              {l:'说「发送」',s:'—',st:''}
+            ]
+          },
+          {
+            pill:{t:'已就绪',c:'ok'},
+            vis:'', focus:{b:'准备好了',s:'按一下键盘任意键，文字就会发到光标位置'},
+            steps:[
+              {l:'说口令',s:'✓',st:'done'},
+              {l:'听写中',s:'✓',st:'done'},
+              {l:'说「发送」',s:'已就绪',st:'on'}
+            ]
+          }
+        ]
+      },
+      {
+        id:'keys', accent:'var(--keys)', name:'按键', icon:ICO.keys,
+        states:[
+          {
+            pill:{t:'待命',c:'idle'},
+            vis:'', focus:{b:'按住 音量减 键',s:'松开时按下的内容会输入到光标处'},
+            steps:[
+              {l:'按住',s:'音量减',st:''},
+              {l:'松开',s:'输入到目标',st:''}
+            ]
+          },
+          {
+            pill:{t:'已触发',c:'live'},
+            vis:'live', focus:{b:'正在记录按键',s:'别松手，按完了松开'},
+            steps:[
+              {l:'按住',s:'音量减',st:'on'},
+              {l:'松开',s:'—',st:''}
+            ]
+          },
+          {
+            pill:{t:'已发送',c:'ok'},
+            vis:'', focus:{b:'已送到右 Alt',s:'现在 Cursor 已经收到了'},
+            steps:[
+              {l:'按住',s:'✓',st:'done'},
+              {l:'松开',s:'已发送',st:'done'}
+            ]
+          }
+        ]
+      },
+      {
+        id:'softPad', accent:'var(--pad)', name:'屏幕按钮', icon:ICO.softPad,
+        states:[
+          {
+            pill:{t:'待命',c:'idle'},
+            vis:'', focus:{b:'用屏幕上的按钮',s:'点「确认」让 Agent 接受，点「拒绝」取消'},
+            steps:[
+              {l:'点屏幕',s:'3 个按钮',st:''},
+              {l:'Agent',s:'执行指令',st:''}
+            ]
+          },
+          {
+            pill:{t:'已确认',c:'live'},
+            vis:'live', focus:{b:'Agent 正在执行',s:'等几秒，按钮闪动时是处理中'},
+            steps:[
+              {l:'点屏幕',s:'已点确认',st:'done'},
+              {l:'Agent',s:'Codex',st:'on'}
+            ]
+          },
+          {
+            pill:{t:'完成',c:'ok'},
+            vis:'', focus:{b:'操作完成',s:'Agent 已经按你说的做了'},
+            steps:[
+              {l:'点屏幕',s:'✓',st:'done'},
+              {l:'Agent',s:'✓',st:'done'}
+            ]
+          }
+        ]
+      },
+      {
+        id:'camera', accent:'var(--cam)', name:'摄像头', icon:ICO.camera,
+        states:[
+          {
+            pill:{t:'未运行',c:'warn'},
+            vis:'', focus:{b:'摄像头没在工作',s:'打开右上角的开关就能识别你的手势和动作'},
+            steps:[
+              {l:'识别',s:'—',st:''},
+              {l:'动作',s:'举手 / 离席',st:''}
+            ]
+          },
+          {
+            pill:{t:'在座',c:'live'},
+            vis:'live', focus:{b:'看到你了',s:'举手 = 确认 · 离开座位 = 暂停'},
+            steps:[
+              {l:'识别',s:'你',st:'on'},
+              {l:'动作',s:'举手 / 离席',st:''}
+            ]
+          },
+          {
+            pill:{t:'已确认',c:'ok'},
+            vis:'live', focus:{b:'你举了手',s:'这个动作 = 确认当前操作'},
+            steps:[
+              {l:'识别',s:'你',st:'done'},
+              {l:'动作',s:'举手 ✓',st:'done'}
+            ]
+          }
+        ]
+      }
+    ];
+
+    // 状态索引
+    var IDX = {voice:0, keys:0, softPad:0, camera:0};
+    var ACTIVE = 'voice'; // 当前主卡片
+
+    // ── 渲染 ──
+    function visHtml(ch, stIdx){
+      var st = ch.states[stIdx];
+      var live = !!st.vis;
+      if(ch.id==='voice'){
+        var waves = '<div class="waves"><i></i><i></i><i></i><i></i><i></i></div>';
+        return '<div class="vis"><div class="orb-mic'+(live?' live':'')+'">'+ch.icon+waves+'</div>'
+          +'<div class="vis-meta">'
+          +'<div class="row"><span class="k">唤醒</span><span class="v">「开始输入」</span></div>'
+          +'<div class="row"><span class="k">结束</span><span class="v">「发送」</span></div>'
+          +'<div class="row"><span class="k">取消</span><span class="v">「取消」</span></div>'
+          +'</div></div>';
+      }
+      if(ch.id==='keys'){
+        return '<div class="vis"><div class="keycap'+(live?' live':'')+'"><span class="lbl">按住</span>音量减</div>'
+          +'<span class="arrow">→</span>'
+          +'<div class="keycap target"><span class="lbl">送到</span>右 Alt</div></div>';
+      }
+      if(ch.id==='softPad'){
+        return '<div class="vis"><div class="pad-grid">'
+          +'<div class="pad-cell'+(live?' live':'')+'">确认</div>'
+          +'<div class="pad-cell">拒绝</div>'
+          +'<div class="pad-cell">暂停</div>'
+          +'</div></div>';
+      }
+      // camera
+      var pres = stIdx===0 ? {t:'未启用',c:'away'} : stIdx===1 ? {t:'在座',c:''} : {t:'在座',c:''};
+      var scan = live ? '<div class="scan"></div>' : '';
+      return '<div class="vis"><div class="cam-frame'+(live?' live':'')+'">'
+        +'<span class="cam-badge">REC</span>'
+        +scan
+        +'<span class="figure">🧑</span>'
+        +'<span class="cam-pres '+pres.c+'"><span class="dot"></span>'+pres.t+'</span>'
+        +'</div></div>';
+    }
+
+    function stepsHtml(steps){
+      // 计算进度
+      var done = steps.filter(function(s){return s.st==='done';}).length;
+      var pct = steps.length<=1 ? (done?100:0) : (done/(steps.length-1))*100;
+      if(steps.some(function(s){return s.st==='on';})) pct = (done/(steps.length-1))*100 + 4; // 微调
+      var nodes = steps.map(function(s,i){
+        var c = 'step '+s.st;
+        var inner = s.st==='done' ? ICO.check : (i+1);
+        return '<div class="'+c+'"><div class="node">'+inner+'</div><div class="lbl">'+s.l+'</div><div class="sub">'+s.s+'</div></div>';
+      }).join('');
+      return '<div class="steps"><div class="step-bar"><div class="track" style="width:'+pct+'%"></div>'+nodes+'</div></div>';
+    }
+
+    function cardHtml(ch){
+      var st = ch.states[IDX[ch.id]];
+      var isActive = ch.id===ACTIVE;
+      return '<div class="card '+ch.id+(isActive?' is-active':'')+'" data-id="'+ch.id+'" style="--accent:'+ch.accent+'">'
+        +'<div class="card-hd">'
+        +'<div class="icon-box">'+ch.icon+'<span class="pip'+((st.pill.c==='live'||st.pill.c==='ok')?' live':'')+'"></span></div>'
+        +'<div class="hd-text">'
+        +'<div class="ttl">'+ch.name+' <span class="pill '+st.pill.c+'"><span class="dot"></span>'+st.pill.t+'</span></div>'
+        +'<div class="sub">'+subText(ch.id)+'</div>'
+        +'</div>'
+        +'</div>'
+        +visHtml(ch, IDX[ch.id])
+        +'<div class="focus-line"><div class="ic">!</div><div class="text"><b>'+st.focus.b+'</b><span>'+st.focus.s+'</span></div></div>'
+        +stepsHtml(st.steps)
+        +'</div>';
+    }
+
+    function subText(id){
+      if(id==='voice') return '用嘴说 · 不用记快捷键';
+      if(id==='keys') return '按住一个键 · 松开发送';
+      if(id==='softPad') return '点屏幕上的按钮';
+      if(id==='camera') return '举手确认 / 离席暂停';
+      return '';
+    }
+
+    function stripHtml(){
+      return CH.map(function(ch){
+        var st = ch.states[IDX[ch.id]];
+        var on = ch.id===ACTIVE;
+        return '<div class="strip-item" data-id="'+ch.id+'" style="--c:'+ch.accent+'">'
+          +'<div class="ico">'+ch.icon+'</div>'
+          +'<div class="txt"><b>'+ch.name+'</b><span>'+subText(ch.id)+'</span></div>'
+          +'<div class="stat '+st.pill.c+'">'+st.pill.t+'</div>'
+          +'</div>';
+      }).join('');
+    }
+
+    function paint(){
+      // 排序：ACTIVE 在第一个，其他按原顺序
+      var order = [ACTIVE].concat(CH.filter(function(c){return c.id!==ACTIVE;}).map(function(c){return c.id;}));
+      var ordered = order.map(function(id){return CH.find(function(c){return c.id===id;});});
+      document.getElementById('mainGrid').innerHTML = ordered.map(cardHtml).join('');
+      document.getElementById('strip').innerHTML = stripHtml();
+      bindStrip();
+    }
+
+    function bindStrip(){
+      document.querySelectorAll('.strip-item').forEach(function(el){
+        el.onclick = function(){
+          ACTIVE = el.getAttribute('data-id');
+          paint();
+        };
+      });
+    }
+
+    // ── 状态推进 ──
+    function next(){
+      var s = CH.find(function(c){return c.id===ACTIVE;});
+      IDX[ACTIVE] = (IDX[ACTIVE]+1) % s.states.length;
+      paint();
+    }
+    function prev(){
+      var s = CH.find(function(c){return c.id===ACTIVE;});
+      IDX[ACTIVE] = (IDX[ACTIVE]-1+s.states.length) % s.states.length;
+      paint();
+    }
+
+    // ── 自动播放（每通道轮流） ──
+    var autoT = null;
+    function startAuto(){
+      stopAuto();
+      var step = 0;
+      autoT = setInterval(function(){
+        var id = CH[step%4].id;
+        ACTIVE = id;
+        IDX[id] = (IDX[id]+1) % CH.find(function(c){return c.id===id;}).states.length;
+        paint();
+        step++;
+      }, 1800);
+    }
+    function stopAuto(){
+      if(autoT){clearInterval(autoT);autoT=null;}
+      var b = document.getElementById('btnAuto');
+      if(b) b.textContent = '自动播放';
+    }
+
+    // ── 事件 ──
+    document.getElementById('btnNext').onclick = next;
+    document.getElementById('btnPrev').onclick = prev;
+    document.getElementById('selCh').onchange = function(e){ ACTIVE = e.target.value; paint(); };
+    document.getElementById('btnAuto').onclick = function(){
+      if(autoT){ stopAuto(); return; }
+      startAuto();
+      this.textContent = '停止';
+    };
+    document.getElementById('btnStart').onclick = function(){
+      startAuto();
+      document.getElementById('btnAuto').textContent = '停止';
+    };
+    document.querySelectorAll('[data-jump]').forEach(function(b){
+      b.onclick = function(){
+        ACTIVE = b.getAttribute('data-jump');
+        IDX[ACTIVE] = 0;
+        paint();
+        // 平滑滚到主网格
+        document.getElementById('mainGrid').scrollIntoView({behavior:'smooth',block:'start'});
+      };
+    });
+
+    paint();
+  </script>
+</body>
+</html>

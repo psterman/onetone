@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>四通道 Hero · 状态与逻辑</title>
+  <style>
+    :root {
+      --on:#1c1c1e; --muted:#8e8e93; --line:rgba(0,0,0,.06);
+      --font:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+      --card:#fff; --bg:#f2f2f7;
+      --voice:#007aff; --keys:#2a9cc4; --pad:#7c5cbf; --cam:#34a853;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:var(--font);background:var(--bg);color:var(--on);padding:20px}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;max-width:1440px;margin:0 auto}
+    @media(max-width:1100px){.grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:560px){.grid{grid-template-columns:1fr}}
+
+    .panel{
+      background:var(--card);border-radius:18px;border:1px solid var(--line);
+      box-shadow:0 2px 12px rgba(0,0,0,.04);overflow:hidden;
+      display:flex;flex-direction:column;min-height:360px;
+    }
+    .panel-hd{padding:14px 16px 0;display:flex;align-items:center;justify-content:space-between}
+    .panel-hd b{font-size:13px;font-weight:600}
+    .pill{font-size:10px;font-weight:600;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.04);color:var(--muted)}
+    .pill.on{background:rgba(52,168,83,.12);color:#248a3d}
+    .pill.live{background:rgba(0,122,255,.1);color:var(--voice)}
+    .pill.warn{background:rgba(255,149,0,.12);color:#c93400}
+    .pill.off{background:rgba(142,142,147,.12);color:var(--muted)}
+
+    .hero{
+      flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      padding:8px 20px 16px;text-align:center;
+    }
+    .ctx{font-size:11px;color:var(--muted);margin-bottom:14px}
+    .ctx em{font-style:normal;color:var(--on);font-weight:600}
+
+    .focus{font-size:17px;font-weight:600;letter-spacing:-.02em;line-height:1.3;margin-top:12px}
+    .hint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4}
+
+    /* ── channel visuals ── */
+    .vis{margin-bottom:4px}
+    .vis-voice .orb{
+      width:64px;height:64px;border-radius:50%;margin:0 auto;
+      background:linear-gradient(160deg,#f8f9ff,#eef3ff);
+      border:1px solid rgba(0,122,255,.15);color:var(--voice);
+      display:grid;place-items:center;position:relative;
+    }
+    .vis-voice .orb.live{box-shadow:0 0 0 6px rgba(0,122,255,.1)}
+    .vis-voice .orb svg{width:26px;height:26px}
+    .vis-voice .orb::after{
+      content:'';position:absolute;inset:-8px;border-radius:50%;
+      border:1px solid rgba(0,122,255,.08);animation:pulse 2s ease infinite;
+    }
+    .vis-voice .orb.live::after{border-color:rgba(0,122,255,.2)}
+    @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.04);opacity:.6}}
+
+    .vis-keys .pair{display:flex;align-items:center;justify-content:center;gap:10px}
+    .cap{
+      min-width:52px;padding:10px 12px;border-radius:10px;
+      background:linear-gradient(180deg,#fff,#f0f2f5);
+      border:1px solid rgba(0,0,0,.08);box-shadow:0 2px 0 rgba(0,0,0,.06);
+      font-size:11px;font-weight:700;
+    }
+    .cap.on{border-color:rgba(42,156,196,.4);box-shadow:0 0 0 3px rgba(42,156,196,.12),0 2px 0 rgba(0,0,0,.06);color:var(--keys)}
+    .cap.arr{color:var(--muted);font-size:14px;font-weight:400}
+
+    .vis-pad .face{
+      display:flex;gap:6px;justify-content:center;
+    }
+    .vis-pad .btn{
+      width:44px;height:44px;border-radius:12px;border:1px solid var(--line);
+      background:#fafafa;font-size:9px;font-weight:700;color:var(--muted);
+      display:grid;place-items:center;
+    }
+    .vis-pad .btn.on{background:rgba(124,92,191,.1);border-color:rgba(124,92,191,.3);color:var(--pad)}
+    .vis-pad .dot{
+      width:8px;height:8px;border-radius:50%;background:var(--muted);margin:8px auto 0;
+    }
+    .vis-pad .dot.live{background:var(--pad);box-shadow:0 0 8px rgba(124,92,191,.5)}
+
+    .vis-cam .ring{
+      width:64px;height:64px;border-radius:50%;margin:0 auto;
+      border:2px solid var(--line);display:grid;place-items:center;position:relative;
+    }
+    .vis-cam .ring svg{width:24px;height:24px;color:var(--muted)}
+    .vis-cam .ring.idle{border-color:rgba(142,142,147,.25)}
+    .vis-cam .ring.ready{border-color:rgba(52,168,83,.35);color:var(--cam)}
+    .vis-cam .ring.ready svg{color:var(--cam)}
+    .vis-cam .ring.off{border-style:dashed;opacity:.7}
+  .vis-cam .presence{
+      position:absolute;bottom:-2px;right:-2px;font-size:8px;font-weight:700;
+      padding:2px 6px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--muted);
+    }
+    .vis-cam .ring.ready .presence{background:rgba(52,168,83,.1);color:var(--cam);border-color:rgba(52,168,83,.2)}
+
+    /* ── flow (borrowed from settings flow-nodes, read-only mini) ── */
+    .flow{
+      width:100%;max-width:260px;margin-top:20px;position:relative;padding-top:8px;
+    }
+    .flow-path{
+      position:absolute;left:12%;right:12%;top:18px;height:2px;
+      background:var(--line);border-radius:1px;overflow:hidden;
+    }
+    .flow-path i{display:block;height:100%;background:linear-gradient(90deg,var(--accent, var(--voice)),transparent);border-radius:1px}
+    .flow-nodes{display:flex;justify-content:space-between;position:relative;z-index:1}
+    .fn{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;min-width:0}
+    .fn-ico{
+      width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:#fff;
+      display:grid;place-items:center;color:var(--muted);
+    }
+    .fn-ico svg{width:14px;height:14px}
+    .fn.done .fn-ico{border-color:rgba(52,168,83,.35);color:#248a3d;background:rgba(52,168,83,.06)}
+    .fn.on .fn-ico{
+      border-color:var(--accent,var(--voice));color:var(--accent,var(--voice));
+      background:rgba(0,122,255,.06);box-shadow:0 0 0 3px rgba(0,122,255,.1);
+    }
+    .fn b{font-size:9px;font-weight:600;color:var(--muted);white-space:nowrap}
+    .fn.on b,.fn.done b{color:var(--on)}
+    .fn s{font-size:8px;color:var(--muted);font-weight:500;text-decoration:none;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+    .panel.voice{--accent:var(--voice)}
+    .panel.keys{--accent:var(--keys)}
+    .panel.pad{--accent:var(--pad)}
+    .panel.cam{--accent:var(--cam)}
+
+    .ch{
+      display:flex;border-top:1px solid var(--line);padding:8px;
+    }
+    .ch span{
+      flex:1;text-align:center;font-size:9px;font-weight:600;color:var(--muted);
+      padding:6px 2px;border-radius:8px;
+    }
+    .ch span.on{background:rgba(0,0,0,.04);color:var(--on)}
+  </style>
+</head>
+<body>
+  <div class="grid" id="g"></div>
+  <script>
+    var CH=[
+      {
+        id:'voice',name:'说话',cls:'voice',
+        pill:{t:'待命',c:'on'},
+        ctx:'混合引擎 · 麦克风就绪',
+        focus:'按 AutoTrigger 说话',
+        hint:'唤醒「开始输入」→ 听写 → 说「发送」',
+        vis:'voice',
+        visState:{live:0},
+        nodes:[
+          {l:'开启',s:'AutoTrigger',st:'done',icon:'<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>'},
+          {l:'听写',s:'进行中',st:'on',icon:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'},
+          {l:'发送',s:'说「发送」',st:'',icon:'<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>'}
+        ]
+      },
+      {
+        id:'keys',name:'按键',cls:'keys',
+        pill:{t:'已启用',c:'on'},
+        ctx:'Cursor 习惯 · 映射已保存',
+        focus:'按住 音量减',
+        hint:'触发键 → 右 Alt',
+        vis:'keys',
+        visState:{from:'音量减',to:'右 Alt',on:1},
+        nodes:[
+          {l:'触发',s:'音量减',st:'on',icon:'<rect x="2" y="5" width="20" height="14" rx="2"/>'},
+          {l:'识别',s:'右 Alt',st:'',icon:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'}
+        ]
+      },
+      {
+        id:'softPad',name:'屏幕',cls:'pad',
+        pill:{t:'确认中',c:'live'},
+        ctx:'Codex · Soft Pad 已配置',
+        focus:'正在确认当前控制',
+        hint:'点屏幕按钮 → Agent 执行',
+        vis:'pad',
+        visState:{live:1},
+        nodes:[
+          {l:'屏幕',s:'3 键位',st:'done',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/>'},
+          {l:'Agent',s:'Codex',st:'on',icon:'<circle cx="12" cy="12" r="4"/>'}
+        ]
+      },
+      {
+        id:'camera',name:'摄像头',cls:'cam',
+        pill:{t:'未运行',c:'warn'},
+        ctx:'已配置 · 在场空闲',
+        focus:'待命',
+        hint:'举手确认 · 离席暂停',
+        vis:'cam',
+        visState:{ring:'idle',presence:'空闲'},
+        nodes:[
+          {l:'识别',s:'姿态',st:'',icon:'<circle cx="12" cy="12" r="3"/>'},
+          {l:'动作',s:'2 条规则',st:'',icon:'<path d="M12 2v4M12 18v4"/>'}
+        ]
+      }
+    ];
+
+    function vis(ch){
+      var s=ch.visState;
+      if(ch.vis==='voice') return '<div class="vis vis-voice"><div class="orb'+(s.live?' live':'')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></div></div>';
+      if(ch.vis==='keys') return '<div class="vis vis-keys"><div class="pair"><div class="cap'+(s.on?' on':'')+'">'+s.from+'</div><span class="cap arr">→</span><div class="cap">'+s.to+'</div></div></div>';
+      if(ch.vis==='pad') return '<div class="vis vis-pad"><div class="face"><div class="btn on">确认</div><div class="btn">拒绝</div><div class="btn">暂停</div></div><div class="dot'+(s.live?' live':'')+'"></div></div>';
+      return '<div class="vis vis-cam"><div class="ring '+s.ring+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg><span class="presence">'+s.presence+'</span></div></div>';
+    }
+
+    function flow(ch){
+      var prog=0;
+      ch.nodes.forEach(function(n,i){if(n.st==='on')prog=i+1;if(n.st==='done')prog=i+1;});
+      var pct=ch.nodes.length===2?'50%':prog===1?'33%':prog===2?'66%':prog>=3?'100%':'0%';
+      var nodes=ch.nodes.map(function(n){
+        return '<div class="fn '+n.st+'"><div class="fn-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+n.icon+'</svg></div><b>'+n.l+'</b><s>'+n.s+'</s></div>';
+      }).join('');
+      return '<div class="flow"><div class="flow-path"><i style="width:'+pct+'"></i></div><div class="flow-nodes">'+nodes+'</div></div>';
+    }
+
+    function panel(ch){
+      var chBar=['说话','按键','屏幕','摄像'].map(function(n){
+        var on=(n==='说话'&&ch.id==='voice')||(n==='按键'&&ch.id==='keys')||(n==='屏幕'&&ch.id==='softPad')||(n==='摄像'&&ch.id==='camera');
+        return '<span class="'+(on?'on':'')+'">'+n+'</span>';
+      }).join('');
+      return '<div class="panel '+ch.cls+'"><div class="panel-hd"><b>'+ch.name+'</b><span class="pill '+ch.pill.c+'">'+ch.pill.t+'</span></div>'
+        +'<div class="hero"><div class="ctx"><em>Cursor</em> · '+ch.ctx+'</div>'
+        +vis(ch)
+        +'<div class="focus">'+ch.focus+'</div><div class="hint">'+ch.hint+'</div>'
+        +flow(ch)+'</div><div class="ch">'+chBar+'</div></div>';
+    }
+
+    document.getElementById('g').innerHTML=CH.map(panel).join('');
+  </script>
+</body>
+</html>

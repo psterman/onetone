@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>M1 / M2 / M3 · 极简 Hero</title>
+  <style>
+    :root {
+      --on:#1a1a1a; --muted:#8a8a8e; --line:rgba(0,0,0,.06);
+      --font:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+      --accent:#007aff; --bg:#f5f5f7; --card:#fff;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:var(--font);background:#e8e8ed;color:var(--on);padding:20px}
+    .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:1320px;margin:0 auto}
+    @media(max-width:1100px){.cols{grid-template-columns:1fr}}
+    .lbl{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;padding-left:2px}
+
+    .phone{
+      background:var(--card);border-radius:20px;border:1px solid var(--line);
+      box-shadow:0 2px 16px rgba(0,0,0,.04);overflow:hidden;
+      min-height:340px;display:flex;flex-direction:column;
+    }
+
+    /* ── shared minimal hero ── */
+    .hero{
+      flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      padding:28px 24px 20px;text-align:center;gap:0;
+    }
+    .ctx{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:20px}
+    .ctx b{color:var(--on);font-weight:600}
+
+    .focus{font-size:22px;font-weight:600;letter-spacing:-.03em;line-height:1.25;max-width:16em}
+    .focus.live{color:var(--accent)}
+    .hint{font-size:13px;color:var(--muted);margin-top:8px;font-weight:400}
+
+    /* node flow — 鸿蒙式轻节点，只读 */
+    .flow{
+      display:flex;align-items:center;justify-content:center;gap:0;
+      margin-top:28px;width:100%;max-width:280px;
+    }
+    .node{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:0}
+    .dot{
+      width:10px;height:10px;border-radius:50%;background:var(--line);
+      transition:all .2s ease;
+    }
+    .node.on .dot{width:12px;height:12px;background:var(--accent);box-shadow:0 0 0 4px rgba(0,122,255,.15)}
+    .node.done .dot{background:#34c759}
+    .node span{font-size:11px;color:var(--muted);font-weight:500;white-space:nowrap}
+    .node.on span{color:var(--on);font-weight:600}
+    .wire{flex:0 0 24px;height:1px;background:var(--line);margin-bottom:18px}
+    .wire.done{background:#34c759;opacity:.4}
+
+    /* M2: orb as single visual */
+    .orb{
+      width:72px;height:72px;border-radius:50%;margin-bottom:16px;
+      background:linear-gradient(145deg,#f0f0f5,#fff);
+      border:1px solid var(--line);
+      display:grid;place-items:center;color:var(--accent);
+      box-shadow:0 4px 20px rgba(0,0,0,.04);
+    }
+    .orb.live{border-color:rgba(0,122,255,.25);box-shadow:0 4px 24px rgba(0,122,255,.12)}
+    .orb svg{width:28px;height:28px;opacity:.85}
+
+    /* M3: one line status bar */
+    .bar{
+      margin-top:24px;width:100%;max-width:300px;height:4px;border-radius:2px;
+      background:var(--line);overflow:hidden;display:flex;
+    }
+    .bar seg{flex:1;height:100%;background:transparent}
+    .bar seg.on{background:var(--accent)}
+    .bar seg.done{background:#34c759;opacity:.5}
+    .bar-labels{display:flex;width:100%;max-width:300px;margin-top:8px}
+    .bar-labels span{flex:1;font-size:10px;color:var(--muted);text-align:center}
+    .bar-labels span.on{color:var(--on);font-weight:600}
+
+    /* bottom channels — icon strip */
+    .ch{
+      display:flex;border-top:1px solid var(--line);padding:10px 8px 12px;gap:4px;
+    }
+    .ch-btn{
+      flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
+      padding:8px 4px;border:none;border-radius:12px;background:transparent;
+      cursor:pointer;font:inherit;color:var(--muted);transition:background .15s;
+    }
+    .ch-btn:hover{background:rgba(0,0,0,.03)}
+    .ch-btn.on{background:rgba(0,122,255,.08);color:var(--accent)}
+    .ch-btn svg{width:20px;height:20px;opacity:.7}
+    .ch-btn.on svg{opacity:1}
+    .ch-btn i{font-size:10px;font-weight:500;font-style:normal}
+
+    /* M1: flow only, no orb */
+    .m1 .orb{display:none}
+    .m1 .focus{font-size:20px}
+
+    /* M2: orb + no wire labels under nodes — nodes smaller */
+    .m2 .flow{margin-top:20px;max-width:240px}
+    .m2 .node span{font-size:10px}
+    .m2 .wire{flex:0 0 16px}
+
+    /* M3: no nodes, bar only */
+    .m3 .flow{display:none}
+    .m3 .orb{width:56px;height:56px;margin-bottom:12px}
+    .m3 .orb svg{width:22px;height:22px}
+    .m3 .focus{font-size:18px}
+  </style>
+</head>
+<body>
+  <div class="cols" id="root"></div>
+  <script>
+    var I={
+      voice:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>',
+      keys:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="10" rx="2"/></svg>',
+      softPad:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="3"/></svg>',
+      camera:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>'
+    };
+    var CH=[
+      {id:'voice',name:'说话',icon:I.voice},
+      {id:'keys',name:'按键',icon:I.keys},
+      {id:'softPad',name:'屏幕',icon:I.softPad},
+      {id:'camera',name:'摄像',icon:I.camera}
+    ];
+    var D={
+      voice:{
+        focus:'按 AutoTrigger 说话',hint:'混合 · 麦克风就绪',live:0,
+        nodes:[{l:'唤醒',s:'done'},{l:'听写',s:'on'},{l:'发送',s:''}]
+      },
+      keys:{
+        focus:'按住 音量减',hint:'输出到 右 Alt',live:0,
+        nodes:[{l:'按下',s:'on'},{l:'保持',s:''},{l:'输出',s:''}]
+      },
+      softPad:{
+        focus:'确认 Agent',hint:'Codex · 屏幕按钮',live:1,
+        nodes:[{l:'检测',s:'done'},{l:'确认',s:'on'},{l:'执行',s:''}]
+      },
+      camera:{
+        focus:'未运行',hint:'举手确认 · 离席暂停',live:0,
+        nodes:[{l:'检测',s:''},{l:'手势',s:''},{l:'触发',s:''}]
+      }
+    };
+    var M=[{id:'m1',l:'M1 · 节点流'},{id:'m2',l:'M2 · 焦点球'},{id:'m3',l:'M3 · 进度条'}];
+
+    function flow(nodes){
+      var h='';
+      nodes.forEach(function(n,i){
+        if(i) h+='<div class="wire'+(nodes[i-1].s==='done'||nodes[i-1].s==='on'?' done':'')+'"></div>';
+        h+='<div class="node'+(n.s==='on'?' on':n.s==='done'?' done':'')+'"><div class="dot"></div><span>'+n.l+'</span></div>';
+      });
+      return '<div class="flow">'+h+'</div>';
+    }
+    function bar(nodes){
+      var segs=nodes.map(function(n){return '<seg class="'+(n.s==='on'?'on':n.s==='done'?'done':'')+'"></seg>';}).join('');
+      var lbl=nodes.map(function(n){return '<span class="'+(n.s==='on'?'on':'')+'">'+n.l+'</span>';}).join('');
+      return '<div class="bar">'+segs+'</div><div class="bar-labels">'+lbl+'</div>';
+    }
+    function hero(m,mode){
+      var d=D[mode];
+      var orb=m!=='m1'?'<div class="orb'+(d.live?' live':'')+'">'+CH.find(function(c){return c.id===mode}).icon+'</div>':'';
+      var extra=m==='m3'?bar(d.nodes):flow(d.nodes);
+      return '<div class="hero">'
+        +'<div class="ctx"><b>Cursor</b> · '+CH.find(function(c){return c.id===mode}).name+'</div>'
+        +orb
+        +'<div class="focus'+(d.live?' live':'')+'">'+d.focus+'</div>'
+        +'<div class="hint">'+d.hint+'</div>'
+        +extra
+        +'</div>';
+    }
+    function channels(active,scheme){
+      return CH.map(function(c){
+        return '<button type="button" class="ch-btn'+(c.id===active?' on':'')+'" data-m="'+c.id+'" data-s="'+scheme+'">'+c.icon+'<i>'+c.name+'</i></button>';
+      }).join('');
+    }
+    function phone(scheme,mode){
+      return '<div class="phone '+scheme+'">'+hero(scheme,mode)+'<div class="ch">'+channels(mode,scheme)+'</div></div>';
+    }
+    var st={m1:'voice',m2:'voice',m3:'voice'};
+    function paint(){
+      document.getElementById('root').innerHTML=M.map(function(m){
+        return '<div><div class="lbl">'+m.l+'</div>'+phone(m.id,st[m.id])+'</div>';
+      }).join('');
+      document.querySelectorAll('.ch-btn').forEach(function(b){
+        b.onclick=function(){st[b.getAttribute('data-s')]=b.getAttribute('data-m');paint();};
+      });
+    }
+    paint();
+  </script>
+</body>
+</html>

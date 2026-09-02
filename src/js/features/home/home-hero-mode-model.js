@@ -681,6 +681,654 @@
     return t('homeWbCameraReady', '已就绪');
   }
 
+  function nodeDetail(fn, logic, data) {
+    return { function: fn || '', logic: logic || '', data: data || [] };
+  }
+
+  function linearProgress(mode, token) {
+    var states = [];
+    var pathPct = 0;
+    var isLive = false;
+    var count = mode === 'voice' ? 3 : 2;
+    var i;
+    for (i = 0; i < count; i++) {
+      states.push({ state: 'idle', live: false });
+    }
+    if (mode === 'voice') {
+      if (token === 'listening' || token === 'triggered') {
+        pathPct = 33;
+        states[0] = { state: 'done', live: false };
+        states[1] = { state: 'active', live: true };
+        isLive = true;
+      } else if (token === 'dictating') {
+        pathPct = 66;
+        states[0] = { state: 'done', live: false };
+        states[1] = { state: 'active', live: true };
+        isLive = true;
+      } else if (token === 'ready') {
+        pathPct = 100;
+        for (i = 0; i < count; i++) states[i] = { state: 'done', live: false };
+      }
+    } else if (mode === 'keys') {
+      if (token === 'triggered' || token === 'dictating') {
+        pathPct = 50;
+        states[0] = { state: 'active', live: true };
+        isLive = true;
+      } else if (token === 'ready') {
+        pathPct = 100;
+        states[0] = { state: 'done', live: false };
+        states[1] = { state: 'done', live: false };
+      }
+    } else if (mode === 'softPad') {
+      if (token === 'triggered' || token === 'dictating') {
+        pathPct = 50;
+        states[0] = { state: 'done', live: false };
+        states[1] = { state: 'active', live: true };
+        isLive = true;
+      } else if (token === 'ready') {
+        pathPct = 100;
+        for (i = 0; i < count; i++) states[i] = { state: 'done', live: false };
+      }
+    }
+    return { states: states, pathPct: pathPct, isLive: isLive };
+  }
+
+  function cameraActionShort(action, t) {
+    var s = String(action || '').trim();
+    if (!s || s === 'none') return '';
+    if (s === 'pressEsc') {
+      var e = t('cameraPresenceActionEsc');
+      return !e || e === 'cameraPresenceActionEsc' ? 'Esc' : e;
+    }
+    if (s === 'pressCtrlI') {
+      var c = t('homeLiveVoiceTitle');
+      return !c || c === 'homeLiveVoiceTitle' ? t('homeWbShowcaseVoiceActivate', '语音激活') : c;
+    }
+    if (s === 'privacyScreen') {
+      var p = t('cameraPresenceActionPrivacy');
+      return !p || p === 'cameraPresenceActionPrivacy' ? t('homeWbShowcasePrivacy', '遮罩') : p;
+    }
+    if (s === 'resumeVoice') {
+      var r = t('cameraPresenceActionResume');
+      return !r || r === 'cameraPresenceActionResume' ? t('homeWbShowcaseResumeVoice', '恢复语音') : r;
+    }
+    if (s.indexOf('agent:') === 0) return s.slice(6);
+    return s;
+  }
+
+  function cameraRuleBits(camera, t) {
+    var out = [];
+    if (!camera || !camera.prefs) return out;
+    var prefs = camera.prefs;
+    var tr = prefs.triggers || {};
+    function add(id, trigOn, action, title) {
+      if (!trigOn || !action || action === 'none') return;
+      var short = cameraActionShort(action, t);
+      if (!short) return;
+      out.push({
+        id: id,
+        label: title + '→' + short,
+        trigger: title,
+        action: short,
+        active: !!(camera.running || camera.status === 'running'),
+        detail: nodeDetail(
+          t('homeWbShowcaseCamRuleFn', '识别 {trigger} 后执行动作').replace('{trigger}', title),
+          t('homeWbShowcaseCamRuleLogic', '当摄像头检测到 {trigger}').replace('{trigger}', title),
+          [
+            { lbl: t('homeWbShowcaseCamRuleTrigger', '触发'), val: title },
+            { lbl: t('homeWbShowcaseCamRuleAction', '动作'), val: short },
+          ]
+        ),
+      });
+    }
+    add(
+      'shake',
+      !!tr.shake,
+      prefs.shakeHead,
+      t('cameraCardShakeTitle') === 'cameraCardShakeTitle'
+        ? t('homeWbShowcaseShake', '摇头')
+        : t('cameraCardShakeTitle')
+    );
+    add('blink', !!tr.blink, prefs.deliberateBlink, t('homeWbShowcaseBlink', '闭眼'));
+    add(
+      'away',
+      !!tr.away,
+      prefs.onAway,
+      t('cameraPresenceOnAway') === 'cameraPresenceOnAway'
+        ? t('homeWbShowcaseAway', '离席')
+        : t('cameraPresenceOnAway')
+    );
+    add(
+      'return',
+      !!tr.away,
+      prefs.onReturn,
+      t('cameraPresenceOnReturn') === 'cameraPresenceOnReturn'
+        ? t('homeWbShowcaseReturn', '回席')
+        : t('cameraPresenceOnReturn')
+    );
+    add(
+      'palm',
+      !!tr.openPalm,
+      prefs.openPalm,
+      t('homeWbCameraPalmShort') === 'homeWbCameraPalmShort'
+        ? t('homeWbShowcasePalm', '张掌')
+        : t('homeWbCameraPalmShort')
+    );
+    add(
+      'ok',
+      !!tr.okHand,
+      prefs.okHand,
+      t('homeWbCameraOkShort') === 'homeWbCameraOkShort' ? 'OK' : t('homeWbCameraOkShort')
+    );
+    add(
+      'fist',
+      !!tr.fist,
+      prefs.fist,
+      t('homeWbCameraFistShort') === 'homeWbCameraFistShort'
+        ? t('homeWbShowcaseFist', '握拳')
+        : t('homeWbCameraFistShort')
+    );
+    add(
+      'wave',
+      !!tr.wave,
+      prefs.wave,
+      t('homeWbCameraWaveShort') === 'homeWbCameraWaveShort'
+        ? t('homeWbShowcaseWave', '挥手')
+        : t('homeWbCameraWaveShort')
+    );
+    return out;
+  }
+
+  function showcaseFocus(mode, token, deviceReady, workbench, vm, camera, softPad, flow, t) {
+    var statusText = (workbench && workbench.statusLine) || '';
+    if (mode === 'voice') {
+      if (!deviceReady) return t('homeWbFlowEmptyMic');
+      if (token === 'dictating' && statusText) return statusText;
+      if (token === 'dictating') return t('homeWbShowcaseFocusDictating', '正在听写…');
+      if (token === 'listening' || token === 'triggered') {
+        return t('homeWbShowcaseFocusListening', '等待唤醒词');
+      }
+      if (token === 'ready') return t('homeWbShowcaseFocusSend', '说「发送」结束');
+      if (statusText && statusText !== 'idle') return statusText;
+      return t('homeWbShowcaseFocusVoiceIdle', '按快捷键或唤醒词说话');
+    }
+    if (mode === 'keys') {
+      if (!deviceReady) return t('homeWbFlowEmptyKeys');
+      if (token === 'triggered') {
+        return t('homeWbShowcaseFocusKeysHold', '按住 {key}').replace(
+          '{key}',
+          flow.trigger || t('homeLiveUnset')
+        );
+      }
+      if (token === 'ready') {
+        return t('homeWbShowcaseFocusKeysOut', '输出到 {target}').replace(
+          '{target}',
+          flow.target || t('homeLiveUnset')
+        );
+      }
+      return flow.trigger && flow.trigger !== unsetLabel(t)
+        ? t('homeWbShowcaseFocusKeysHold', '按住 {key}').replace('{key}', flow.trigger)
+        : t('homeWbFlowEmptyKeys');
+    }
+    if (mode === 'softPad') {
+      if (token === 'triggered') return t('homeWbShowcaseFocusPadActive', '正在确认 Agent');
+      if (token === 'ready') return t('homeWbShowcaseFocusPadDone', '操作已完成');
+      return (
+        (softPad && (softPad.controlLbl || softPad.displayPrimary)) ||
+        t('homeWbShowcaseFocusPadIdle', '屏幕按钮待命')
+      );
+    }
+    if (!deviceReady) return t('homeWbFlowEmptyCamera');
+    if (camera.running || camera.status === 'running') {
+      return t('homeWbShowcaseFocusCamRun', '监控中');
+    }
+    if (token === 'triggered') return t('homeWbShowcaseFocusCamTrig', '手势已触发');
+    return t('homeWbShowcaseFocusCamIdle', '待命');
+  }
+
+  function voiceShowcaseNodes(howto, vm, flow, progress, t) {
+    var micEmpty = !!howto.micEmpty;
+    var wake =
+      !isUnset(howto.wakeMain, t) && howto.wakeMain
+        ? String(howto.wakeMain)
+        : howto.cursorArmPhrase
+          ? String(howto.cursorArmPhrase)
+          : t('homeWbShowcaseVoiceWakeUnset', '—');
+    var mic =
+      !micEmpty && howto.micLabel ? String(howto.micLabel) : t('homeWbFlowEmptyMic');
+    var target = flow.target || unsetLabel(t);
+    var st = progress.states;
+    return [
+      {
+        id: 'wake',
+        label: t('homeWbShowcaseNodeWake', '开启'),
+        summary: wake,
+        state: st[0].state,
+        live: st[0].live,
+        detail: nodeDetail(
+          t('homeWbShowcaseVoiceWakeFn', '用唤醒词或快捷键进入聆听'),
+          t('homeWbShowcaseVoiceWakeLogic', '检测到唤醒词或按下快捷键'),
+          [
+            { lbl: t('homeVoiceMapWakeLbl', '唤醒词'), val: wake },
+            howto.micLabel ? { lbl: t('homeWbHowToMic'), val: mic } : null,
+          ].filter(Boolean)
+        ),
+      },
+      {
+        id: 'dictate',
+        label: t('homeWbShowcaseNodeDictate', '听写'),
+        summary: micEmpty ? t('homeWbHowToVoiceUnset', '未选麦克风') : mic,
+        state: st[1].state,
+        live: st[1].live,
+        detail: nodeDetail(
+          t('homeWbShowcaseVoiceDictFn', '采集语音并显示实时文字'),
+          t('homeWbShowcaseVoiceDictLogic', '聆听期间写入前台应用'),
+          [
+            { lbl: t('homeWbHowToMic'), val: mic },
+            { lbl: t('homeWbShowcaseNodeTarget', '目标'), val: target },
+          ]
+        ),
+      },
+      {
+        id: 'send',
+        label: t('homeWbShowcaseNodeSend', '发送'),
+        summary: howto.finish && howto.finish !== '—' ? howto.finish : t('homeWbShowcaseFocusSend', '说「发送」结束'),
+        state: st[2].state,
+        live: st[2].live,
+        detail: nodeDetail(
+          t('homeWbShowcaseVoiceSendFn', '结束听写并提交文本'),
+          t('homeWbShowcaseVoiceSendLogic', '说出结束口令或松开快捷键'),
+          [{ lbl: t('homeWbHowToFinish', '结束'), val: howto.finish || '—' }]
+        ),
+      },
+    ];
+  }
+
+  function keysShowcaseNodes(howto, flow, progress, t) {
+    var keysEmpty = !!howto.keysEmpty;
+    var st = progress.states;
+    var trig = keysEmpty ? t('homeWbFlowEmptyKeys') : howto.triggerKey || flow.trigger || '—';
+    var out = keysEmpty ? t('homeWbFlowEmptyKeys') : howto.keysLine || flow.target || '—';
+    return [
+      {
+        id: 'trigger',
+        label: t('homeWbHowToTrigger', '触发键'),
+        summary: trig,
+        state: st[0].state,
+        live: st[0].live,
+        detail: nodeDetail(
+          t('homeWbShowcaseKeysTrigFn', '按住触发键开始映射'),
+          t('homeWbShowcaseKeysTrigLogic', 'keydown 期间输出目标键'),
+          [{ lbl: t('homeWbHowToTrigger', '触发键'), val: trig }]
+        ),
+      },
+      {
+        id: 'target',
+        label: t('homeWbShowcaseNodeTarget', '输出'),
+        summary: out,
+        state: st[1].state,
+        live: st[1].live,
+        detail: nodeDetail(
+          t('homeWbShowcaseKeysOutFn', '向当前应用发送目标键'),
+          t('homeWbShowcaseKeysOutLogic', '松开触发键后停止'),
+          [
+            { lbl: t('homeWbShowcaseNodeTarget', '输出'), val: out },
+            howto.finish && howto.finish !== '—'
+              ? { lbl: t('homeWbHowToFinish'), val: howto.finish }
+              : null,
+          ].filter(Boolean)
+        ),
+      },
+    ];
+  }
+
+  function softPadOutlineFor(softPad, token, flow, t) {
+    softPad = softPad || {};
+    flow = flow || {};
+    var capVals = (softPad && softPad.heroCaps) || {};
+    var scenarios = [
+      { id: 'standby', label: t('homeWbSpScenarioStandby', '待命'), hint: t('homeWbSpScenarioStandbyHint', '监听前台 Agent') },
+      { id: 'confirm', label: t('homeWbSpScenarioConfirm', '待确认'), hint: t('homeWbSpScenarioConfirmHint', '提案等待确认') },
+      { id: 'done', label: t('homeWbSpScenarioDone', '已提交'), hint: t('homeWbSpScenarioDoneHint', '指令已发送') },
+    ];
+    var phaseIdx = token === 'triggered' || token === 'dictating' ? 1 : token === 'ready' ? 2 : 0;
+    scenarios = scenarios.map(function (s, i) {
+      return {
+        id: s.id,
+        label: s.label,
+        hint: s.hint,
+        state: i < phaseIdx ? 'done' : i === phaseIdx ? 'active' : 'idle',
+      };
+    });
+    function cap(id, lbl, sub, detailFn, detailLogic, detailData) {
+      return {
+        id: id,
+        label: lbl,
+        sub: sub,
+        value: capVals[id] || '—',
+        detail: nodeDetail(detailFn, detailLogic, detailData),
+      };
+    }
+    var bindVal = capVals.bind || softPad.boundName || flow.target || '—';
+    return {
+      scenarios: scenarios,
+      capabilities: {
+        agent: [
+          cap('bind', t('homeWbSpCapBind', '绑定'), t('homeWbSpCapBindSub', '前台应用'), t('homeWbSpCapBindFn', '绑定前台应用'), t('homeWbSpCapBindLogic', '决定 Agent 控制目标'), [{ lbl: t('homeWbSpCapBind', '绑定'), val: bindVal }]),
+          cap('scheme', t('homeWbSpCapScheme', '方案'), t('homeWbSpCapSchemeSub', 'Agent 档位'), t('homeWbShowcasePadFn', '点击屏幕悬浮按钮'), t('homeWbShowcasePadLogic', '按钮映射到 Agent 动作'), [{ lbl: t('homeWbSoftPadHabitMetaLbl', '此习惯'), val: capVals.scheme || softPad.configLbl || '—' }]),
+          cap('status', t('homeWbSpCapStatus', '状态灯'), t('homeWbSpCapStatusSub', '忙闲指示'), t('homeWbShowcasePadAgentFn', '向 Agent 发送确认/拒绝等指令'), t('homeWbShowcasePadAgentLogic', '根据当前控制目标路由'), [{ lbl: t('homeWbSoftPadControlMetaLbl', '当前控制'), val: capVals.status || softPad.controlLbl || '—' }]),
+        ],
+        data: [
+          cap('account', t('homeWbSpCapAccount', '账号'), t('homeWbSpCapAccountSub', '登录态'), t('homeWbSpCapAccountFn', 'Codex 账号'), t('homeWbSpCapAccountLogic', '未登录时部分能力不可用'), [{ lbl: t('homeWbSpCapAccount', '账号'), val: capVals.account || softPad.agentName || '—' }]),
+          cap('quota', t('homeWbSpCapQuota', '额度'), t('homeWbSpCapQuotaSub', 'API 用量'), t('homeWbSpCapQuotaFn', '本周期 API 用量'), t('homeWbSpCapQuotaLogic', '仅本地统计'), [{ lbl: t('homeWbSpCapQuota', '额度'), val: capVals.quota || '—' }]),
+          cap('token', t('homeWbSpCapToken', '凭据'), t('homeWbSpCapTokenSub', 'Token'), t('homeWbSpCapTokenFn', 'API Token 配置'), t('homeWbSpCapTokenLogic', '未配置时部分动作不可用'), [{ lbl: t('homeWbSpCapToken', '凭据'), val: capVals.token || '—' }]),
+        ],
+      },
+      hotMicroKeyId: token === 'triggered' || token === 'dictating' ? 'ACT08' : token === 'ready' ? 'ACT12' : 'AG00',
+    };
+  }
+
+  var CAMERA_GROUP_DEFS = [
+    { id: 'presence', ruleIds: ['away', 'return'] },
+    { id: 'gesture', ruleIds: ['ok', 'palm', 'shake', 'wave'] },
+    { id: 'gaze', ruleIds: ['blink'] },
+    { id: 'action', ruleIds: ['fist'] },
+  ];
+
+  function cameraRuleTriggerLabel(id, t) {
+    if (id === 'shake') {
+      return t('cameraCardShakeTitle') === 'cameraCardShakeTitle'
+        ? t('homeWbShowcaseShake', '摇头')
+        : t('cameraCardShakeTitle');
+    }
+    if (id === 'blink') return t('homeWbShowcaseBlink', '闭眼');
+    if (id === 'away') {
+      return t('cameraPresenceOnAway') === 'cameraPresenceOnAway'
+        ? t('homeWbShowcaseAway', '离席')
+        : t('cameraPresenceOnAway');
+    }
+    if (id === 'return') {
+      return t('cameraPresenceOnReturn') === 'cameraPresenceOnReturn'
+        ? t('homeWbShowcaseReturn', '回席')
+        : t('cameraPresenceOnReturn');
+    }
+    if (id === 'palm') {
+      return t('homeWbCameraPalmShort') === 'homeWbCameraPalmShort'
+        ? t('homeWbShowcasePalm', '张掌')
+        : t('homeWbCameraPalmShort');
+    }
+    if (id === 'ok') {
+      return t('homeWbCameraOkShort') === 'homeWbCameraOkShort' ? 'OK' : t('homeWbCameraOkShort');
+    }
+    if (id === 'fist') {
+      return t('homeWbCameraFistShort') === 'homeWbCameraFistShort'
+        ? t('homeWbShowcaseFist', '握拳')
+        : t('homeWbCameraFistShort');
+    }
+    if (id === 'wave') {
+      return t('homeWbCameraWaveShort') === 'homeWbCameraWaveShort'
+        ? t('homeWbShowcaseWave', '挥手')
+        : t('homeWbCameraWaveShort');
+    }
+    return id;
+  }
+
+  function cameraRuleSceneHint(id, t) {
+    var scenes = {
+      away: t('homeWbCamSceneAway', '离开工位'),
+      return: t('homeWbCamSceneReturn', '回到座位'),
+      ok: t('homeWbCamSceneOk', '提案通过'),
+      palm: t('homeWbCamScenePalm', '结束发言'),
+      shake: t('homeWbCamSceneShake', '否决方案'),
+      wave: t('homeWbCamSceneWave', '打断流程'),
+      blink: t('homeWbCamSceneBlink', '快速确认'),
+      fist: t('homeWbCamSceneFist', '紧急暂停'),
+    };
+    return scenes[id] || t('homeWbCamDimLogic', '保持条件达到阈值后触发');
+  }
+
+  function cameraRuleCatalogEntry(id, t) {
+    var trigger = cameraRuleTriggerLabel(id, t);
+    var scene = cameraRuleSceneHint(id, t);
+    var unbound = t('homeWbCamRuleUnbound', '未绑定');
+    return {
+      id: id,
+      trigger: trigger,
+      action: unbound,
+      scene: scene,
+      active: false,
+      configured: false,
+      detail: nodeDetail(
+        trigger,
+        t('homeWbCamRuleUnboundHint', '在 Camera Pro 设置中绑定动作'),
+        [
+          { lbl: t('homeWbCamRuleScene', '场景'), val: scene },
+          { lbl: t('homeWbHowToStatus'), val: unbound },
+        ]
+      ),
+    };
+  }
+
+  function cameraGroupsFor(camera, t) {
+    var rules = cameraRuleBits(camera, t);
+    var byId = {};
+    var i;
+    for (i = 0; i < rules.length; i++) byId[rules[i].id] = rules[i];
+    var labels = {
+      presence: t('homeWbCamDimPresence', '在场'),
+      gesture: t('homeWbCamDimGesture', '手势'),
+      gaze: t('homeWbCamDimGaze', '眼神'),
+      action: t('homeWbCamDimAction', '动作'),
+    };
+    var subs = {
+      presence: t('homeWbCamDimPresenceSub', '离座防护'),
+      gesture: t('homeWbCamDimGestureSub', '举手确认'),
+      gaze: t('homeWbCamDimGazeSub', '注视确认'),
+      action: t('homeWbCamDimActionSub', '头部动作'),
+    };
+    return CAMERA_GROUP_DEFS.map(function (def) {
+      var groupRules = def.ruleIds.map(function (rid) {
+        var r = byId[rid];
+        if (r) {
+          return {
+            id: r.id,
+            trigger: r.trigger,
+            action: r.action,
+            scene: cameraRuleSceneHint(r.id, t) || r.action,
+            active: r.active,
+            configured: true,
+            detail: r.detail,
+          };
+        }
+        return cameraRuleCatalogEntry(rid, t);
+      });
+      var bound = groupRules.filter(function (gr) { return gr.configured; }).length;
+      return {
+        id: def.id,
+        label: labels[def.id] || def.id,
+        sub: subs[def.id] || '',
+        fn: t('homeWbCamDimFn', '识别 {dim}').replace('{dim}', labels[def.id] || def.id),
+        logic: t('homeWbCamDimLogic', '保持条件达到阈值后触发'),
+        boundCount: bound,
+        slotCount: groupRules.length,
+        rules: groupRules,
+      };
+    });
+  }
+
+  function defaultShowcaseSelId(mode, showcase, token) {
+    if (!showcase) return '';
+    if (mode === 'softPad') return 'status';
+    if (mode === 'camera') {
+      if (token === 'triggered' && showcase.groups) {
+        var gi, ri, g, r;
+        for (gi = 0; gi < showcase.groups.length; gi++) {
+          g = showcase.groups[gi];
+          for (ri = 0; ri < g.rules.length; ri++) {
+            r = g.rules[ri];
+            if (r.active) return r.id;
+          }
+        }
+      }
+      return 'gesture';
+    }
+    var nodes = showcase.nodes || [];
+    var i;
+    for (i = 0; i < nodes.length; i++) {
+      if (nodes[i].state === 'active') return nodes[i].id;
+    }
+    for (i = 0; i < nodes.length; i++) {
+      if (nodes[i].live) return nodes[i].id;
+    }
+    return nodes[0] ? nodes[0].id : '';
+  }
+
+  function softPadShowcaseNodes(softPad, flow, progress, t) {
+    var st = progress.states;
+    var agent =
+      (softPad && (softPad.controlLbl || softPad.agentName)) ||
+      t('homeWbSoftPadControlNone', '暂无');
+    var pad =
+      (softPad && softPad.configLbl) || t('homeWbSoftPadHabitNa', '不含 Soft Pad');
+    return [
+      {
+        id: 'pad',
+        label: t('homeWbShowcaseNodePad', '屏幕'),
+        summary: pad,
+        state: st[0].state,
+        live: st[0].live,
+        detail: nodeDetail(
+          t('homeWbShowcasePadFn', '点击屏幕悬浮按钮'),
+          t('homeWbShowcasePadLogic', '按钮映射到 Agent 动作'),
+          [{ lbl: t('homeWbSoftPadHabitMetaLbl', '此习惯'), val: pad }]
+        ),
+      },
+      {
+        id: 'agent',
+        label: 'Agent',
+        summary: agent,
+        state: st[1].state,
+        live: st[1].live,
+        detail: nodeDetail(
+          t('homeWbShowcasePadAgentFn', '向 Agent 发送确认/拒绝等指令'),
+          t('homeWbShowcasePadAgentLogic', '根据当前控制目标路由'),
+          [{ lbl: t('homeWbSoftPadControlMetaLbl', '当前控制'), val: agent }]
+        ),
+      },
+    ];
+  }
+
+  function showcaseFor(mode, token, flow, howto, vm, camera, softPad, workbench, t) {
+    howto = howto || {};
+    vm = vm || {};
+    camera = camera || {};
+    softPad = softPad || {};
+    workbench = workbench || {};
+    flow = flow || {};
+
+    if (mode === 'camera') {
+      var camRunning = !!(camera.running || camera.status === 'running');
+      var camEnabled = !!camera.enabled;
+      var presence = cameraPresenceLabel(camera.presence, t);
+      var rules = cameraRuleBits(camera, t);
+      var chips = rules.slice(0, 2);
+      var overflow = Math.max(0, rules.length - 2);
+      var camLive = camRunning && camEnabled;
+      return {
+        kind: 'camera',
+        schema: 'multimodal',
+        focus: showcaseFocus(mode, token, camEnabled, workbench, vm, camera, softPad, flow, t),
+        context: flow.target || unsetLabel(t),
+        deviceReady: camEnabled,
+        pathPct: 0,
+        isLive: camLive || token === 'triggered',
+        visual: 'mark',
+        nodes: [],
+        groups: cameraGroupsFor(camera, t),
+        badges: [
+          {
+            id: 'runtime',
+            label: camRunning
+              ? t('homeWbCameraOn')
+              : t('homeWbShowcaseCamOff', '未运行'),
+            tone: camRunning ? 'is-active' : 'is-muted',
+            active: camRunning,
+            detail: nodeDetail(
+              t('homeWbShowcaseCamRunFn', '摄像头后台识别姿态'),
+              t('homeWbShowcaseCamRunLogic', '启用后持续分析画面'),
+              [
+                {
+                  lbl: t('homeWbHowToStatus'),
+                  val: camRunning
+                    ? t('homeWbCameraOn')
+                    : t('homeWbCameraConfiguredIdle', '已配置 · 未运行'),
+                },
+              ]
+            ),
+          },
+          {
+            id: 'presence',
+            label: presence,
+            tone: camera.presence === 'present' ? 'is-present' : 'is-muted',
+            active: camera.presence === 'present',
+            detail: nodeDetail(
+              t('homeWbShowcaseCamPresFn', '检测是否在座'),
+              t('homeWbShowcaseCamPresLogic', '离席/回席可触发绑定动作'),
+              [{ lbl: t('homeWbHowToCameraPresence'), val: presence }]
+            ),
+          },
+        ],
+        chips: chips,
+        overflowCount: overflow,
+        allChips: rules,
+      };
+    }
+
+    var progress = linearProgress(mode, token);
+    var deviceReady = true;
+    if (mode === 'voice') deviceReady = !howto.micEmpty;
+    else if (mode === 'keys') deviceReady = !howto.keysEmpty;
+
+    var nodes;
+    var visual = 'orb';
+    var schema = 'linear-prod';
+    var outline = null;
+    if (mode === 'voice') {
+      nodes = voiceShowcaseNodes(howto, vm, flow, progress, t);
+      visual = 'orb';
+    } else if (mode === 'keys') {
+      nodes = keysShowcaseNodes(howto, flow, progress, t);
+      visual = 'mark';
+    } else {
+      outline = softPadOutlineFor(softPad, token, flow, t);
+      nodes = [];
+      visual = 'mark';
+      schema = 'outline';
+    }
+
+    var isLive = progress.isLive && deviceReady;
+
+    return {
+      kind: schema === 'outline' ? 'outline' : 'linear',
+      schema: schema,
+      focus: showcaseFocus(mode, token, deviceReady, workbench, vm, camera, softPad, flow, t),
+      context: flow.target || unsetLabel(t),
+      deviceReady: deviceReady,
+      pathPct: deviceReady ? progress.pathPct : 0,
+      isLive: isLive,
+      visual: visual,
+      nodes: nodes,
+      scenarios: outline ? outline.scenarios : [],
+      capabilities: outline ? outline.capabilities : null,
+      hotMicroKeyId: outline ? outline.hotMicroKeyId : '',
+      badges: [],
+      chips: [],
+      overflowCount: 0,
+      allChips: [],
+      groups: [],
+    };
+  }
+
   function liveStatusFor(mode, vm, camera, softPad, t) {
     if (mode === 'camera') return cameraLiveStatusShort(camera, t);
     if (mode === 'softPad') {
@@ -767,6 +1415,18 @@
       if (/send/i.test(id) || /send/i.test(act) || /confirm-send/i.test(act)) cameraSend = true;
     }
 
+    var showcase = showcaseFor(
+      mode,
+      token,
+      flow,
+      howto,
+      vm,
+      camera,
+      softPad,
+      workbench,
+      t
+    );
+
     return {
       mode: mode,
       modes: MODES.slice(),
@@ -777,6 +1437,7 @@
         tone: statusTone(token),
       },
       flow: flow,
+      showcase: showcase,
       pills: modePills,
       preview: preview || {
         title: tabFor(mode, t).label,
@@ -806,6 +1467,11 @@
   global.OneToneHomeHeroModeModel = {
     build: buildHomeHeroModeModel,
     buildHomeHeroModeModel: buildHomeHeroModeModel,
+    showcaseFor: showcaseFor,
+    defaultShowcaseSelId: defaultShowcaseSelId,
+    softPadOutlineFor: softPadOutlineFor,
+    cameraGroupsFor: cameraGroupsFor,
+    CAMERA_GROUP_DEFS: CAMERA_GROUP_DEFS,
     normalizeMode: normalizeMode,
     MODES: MODES,
   };

@@ -239,8 +239,8 @@ const homeCss = readFileSync(join(root, 'src/css/home-workbench.css'), 'utf8');
 check('bound 组样式', homeCss.includes('.wb-context-bound') && homeCss.includes('.wb-context-bound-bridge') && homeCss.includes('.wb-howto-card-habit'));
 
 const panels = readFileSync(join(root, 'src/js/features/home/home-workbench-panels.js'), 'utf8');
-check('howto 只吃 projection', panels.includes('projection.howtoCards') && panels.includes('禁止在此再采集'));
-check('inactive howto 无 meta', panels.includes('howtoDrawerShellHtml') && panels.includes('wb-howto-wrap') && !/howToSummaryCardHtml[\s\S]*howtoDetailMetaGridHtml/.test(panels));
+check('howto 只吃 projection', panels.includes('projection.howtoCards'));
+check('inactive howto 无 meta', panels.includes('wb-howto-wrap') && !/howToSummaryCardHtml[\s\S]*howtoDetailMetaGridHtml/.test(panels));
 check('bound 同步当前习惯短名', panels.includes('wbContextBoundScene') && panels.includes('sceneChipShortName'));
 check('panels 导出 softPadHowToSnapshot', panels.includes('softPadHowToSnapshot:softPadHowToSnapshot'));
 check('panels 导出 collectHowToSurfaceBits', panels.includes('collectHowToSurfaceBits:collectHowToSurfaceBits'));
@@ -261,14 +261,8 @@ check('renderHowTo 不再调 snapshot', (() => {
   const m = panels.match(/function renderHowTo\(projection\)\{[\s\S]*?\n  function /);
   return !!(m && !m[0].includes('cameraHowToSnapshot()') && !m[0].includes('softPadHowToSnapshot()'));
 })());
-check('howto 摘要点卡切 Hero', panels.includes('howToSummaryCardHtml') && panels.includes('patchHowtoDrawer') && panels.includes('howtoStackTipAttrs') && !/data-wb-howto-channel=/.test(panels));
-check('howto 点卡切 Hero / 再点收起', (() => {
-  return wb.includes('howtoExpandedKind=kind')
-    && wb.includes('howtoPatchOnly:true')
-    && wb.includes("howtoExpandedKind=''")
-    && wb.includes('patchHowtoDrawer')
-    && wb.includes('wbHowtoDrawerClose');
-})());
+check('howto 摘要点卡切 Hero', panels.includes('howToSummaryCardHtml') && panels.includes('howtoStackTipAttrs') && !panels.includes('howtoDrawerHtml(expCard'));
+check('howto 点卡仅切通道', wb.includes('writeHeroMode(kind)') && !wb.includes('howtoExpandedKind'));
 check('openGlobalVoice 会打开抽屉', (() => {
   const banner = readFileSync(join(root, 'src/js/features/mapping/habit-scenario-context-banner.js'), 'utf8');
   return banner.includes('function ensureDrawerPanel')

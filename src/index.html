@@ -213,7 +213,24 @@
                               <button type="button" class="wb-trigger-btn wb-trigger-btn-cancel" id="wbBtnCancel" data-i18n="homeWbBtnCancel" hidden>取消，不要了</button>
                             </div>
                           </div>
-                          <div class="wb-hero-flow" id="wbHeroFlowSummary" aria-label="当前工作流摘要"></div>
+                          <div class="wb-hero-flow wb-hero-flow--legacy" id="wbHeroFlowSummary" aria-label="当前工作流摘要" hidden aria-hidden="true"></div>
+                          <section class="wb-hero-showcase" id="wbHeroShowcase" aria-label="通道能力展示">
+                            <p class="wb-hero-showcase-ctx" id="wbHeroShowcaseCtx" hidden></p>
+                            <div class="wb-hero-layout" id="wbHeroLayout">
+                              <div class="wb-hero-primary" id="wbHeroPrimary">
+                                <div class="wb-hero-vis-block" id="wbHeroVisBlock">
+                                  <div class="wb-hero-showcase-visual" id="wbHeroShowcaseVisual" hidden aria-hidden="true"></div>
+                                  <div class="wb-hero-vis-meta">
+                                    <p class="wb-hero-showcase-focus" id="wbHeroShowcaseFocus"></p>
+                                  </div>
+                                </div>
+                                <div class="wb-hero-showcase-logic" id="wbHeroShowcaseLogic"></div>
+                              </div>
+                              <div class="wb-hero-secondary" id="wbHeroSecondary">
+                                <div class="wb-hero-pane" id="wbHeroPane"></div>
+                              </div>
+                            </div>
+                          </section>
                           <div class="wb-hero-stage">
                             <div class="wb-hero-wave wb-hero-wave--left" id="wbHeroWavesLeft" aria-hidden="true">
                               <span style="--h:1"></span><span style="--h:1.5"></span><span style="--h:2"></span><span style="--h:2.5"></span>
@@ -252,12 +269,15 @@
                               <span class="mic-level-bars mic-level-bars--hero" id="wbHeroMicBars" aria-hidden="true"></span>
                             </button>
                             <div class="wb-hero-mic-toolbar" id="wbHeroMicToolbar">
-                              <button type="button" class="toggle-switch wb-hero-voice-switch" id="wbHeroVoiceSwitch" role="switch" aria-checked="false" hidden></button>
                               <button type="button" class="wb-hero-mic-chip wb-hero-mic-chip--engine" id="wbHeroMicEngine" hidden title="">
                                 <span class="wb-hero-mic-engine-dot" aria-hidden="true"></span>
                                 <span id="wbHeroMicEngineName">—</span>
                               </button>
                               <span class="wb-hero-mic-chip wb-hero-mic-chip--wake" id="wbHeroMicWakeHint" hidden>—</span>
+                              <label class="wb-hero-voice-ctrl" id="wbHeroVoiceCtrl" hidden>
+                                <span class="wb-hero-voice-ctrl-label" id="wbHeroVoiceSwitchLabel" data-i18n="voiceSurfaceSwitchLabel">语音</span>
+                                <button type="button" class="toggle-switch wb-hero-voice-switch" id="wbHeroVoiceSwitch" role="switch" aria-checked="false" aria-labelledby="wbHeroVoiceSwitchLabel"></button>
+                              </label>
                               <button type="button" class="wb-hero-mic-listen" id="wbBtnListenToggle" hidden aria-hidden="true" aria-pressed="false" data-ot-tip="">
                                 <span id="wbBtnListenToggleLabel">暂停</span>
                               </button>

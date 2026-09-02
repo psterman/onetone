@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Hero 通道详情 · 原型图</title>
+  <link rel="stylesheet" href="../src/css/ot-switch.css" />
+  <style>
+    :root {
+      --on: #152238; --muted: #5a7086; --line: rgba(26,45,74,.1);
+      --font: "Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+      --accent: #6366f1; --accent-deep: #4f46e5; --tint: rgba(99,102,241,.08);
+      --hero-bg: #eef3f7; --card-bg: #f8fafc; --ok: #10b981;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px; font-family: var(--font); background: #d4dde6; color: var(--on); }
+    .gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; max-width: 1440px; margin: 0 auto; }
+    @media (max-width: 1200px) { .gallery { grid-template-columns: 1fr; } }
+    .lane { display: flex; flex-direction: column; gap: 10px; }
+    .lane-tag { font-size: 10px; font-weight: 800; letter-spacing: .04em; color: var(--muted); padding-left: 4px; }
+
+    .app {
+      border-radius: 14px; border: 1px solid var(--line); background: var(--hero-bg);
+      overflow: hidden; box-shadow: 0 6px 18px rgba(26,45,74,.07);
+    }
+    .scene-pill {
+      display: inline-flex; align-items: center; gap: 5px; margin: 10px auto 0;
+      padding: 3px 8px 3px 5px; border-radius: 999px; border: 1px solid var(--line);
+      background: rgba(255,255,255,.75); font-size: 9px; font-weight: 700;
+    }
+    .scene-pill .ico { width: 16px; height: 16px; border-radius: 4px; background: #1a1a2e; display: grid; place-items: center; color: #fff; font-size: 8px; font-weight: 800; }
+    .hero { padding: 6px 10px 10px; text-align: center; min-height: 168px; display: flex; flex-direction: column; }
+    .stage { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 4px 0 8px; }
+    .wave { display: flex; align-items: center; gap: 1px; opacity: .3; }
+    .wave span { width: 2px; border-radius: 1px; background: var(--accent); height: calc(var(--h,1) * 1.5px); }
+    .orb { width: 48px; height: 48px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+      background: radial-gradient(circle at 35% 28%, #fff, var(--tint)); color: var(--accent-deep);
+      display: grid; place-items: center; box-shadow: 0 0 0 4px rgba(99,102,241,.05); }
+    .orb svg { width: 20px; height: 20px; }
+    .orb.keys { color: #0284c7; border-color: rgba(14,165,233,.35); background: radial-gradient(circle at 35% 28%, #fff, rgba(14,165,233,.08)); }
+    .orb.pad { color: #7c3aed; border-color: rgba(168,85,247,.35); background: radial-gradient(circle at 35% 28%, #fff, rgba(168,85,247,.08)); }
+    .orb.cam { color: #15803d; border-color: rgba(34,197,94,.35); background: radial-gradient(circle at 35% 28%, #fff, rgba(34,197,94,.08)); }
+
+    .mic-bar { margin: 0 0 6px; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--line); background: #fff;
+      display: flex; align-items: center; gap: 6px; text-align: left; font-size: 9px; }
+    .mic-bar .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+    .mic-bar strong { font-size: 10px; }
+    .ot-switch--sm { width: 26px; height: 15px; }
+    .ot-switch--sm::after { width: 11px; height: 11px; }
+    .ot-switch--sm.is-on::after { transform: translateX(11px); }
+
+    .act-table { border-radius: 10px; border: 1px solid var(--line); background: #fff; overflow: hidden; text-align: left; }
+    .act-table-hd { padding: 4px 8px; font-size: 8px; font-weight: 800; color: var(--muted); background: rgba(99,102,241,.04);
+      border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1.1fr 40px; gap: 4px; }
+    .act-row { display: grid; grid-template-columns: 1fr 1.1fr 40px; gap: 4px; padding: 5px 8px; border-bottom: 1px solid var(--line); font-size: 9px; align-items: center; }
+    .act-row:last-child { border-bottom: 0; }
+    .act-row b { font-weight: 800; }
+    .act-row .tri { color: var(--muted); font-weight: 600; font-size: 8px; }
+    .badge { font-size: 7px; font-weight: 800; padding: 2px 5px; border-radius: 999px; text-align: center; }
+    .badge.on { background: rgba(16,185,129,.12); color: var(--ok); }
+    .badge.off { background: rgba(90,112,134,.1); color: var(--muted); }
+
+    .split { display: grid; grid-template-columns: 64px 1fr; gap: 8px; text-align: left; padding: 2px 0; }
+    .split-left { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .split-left .orb { width: 40px; height: 40px; }
+    .split-left .orb svg { width: 18px; height: 18px; }
+    .split-left span { font-size: 8px; font-weight: 800; color: var(--muted); }
+    .split-act { padding: 5px 7px; border-radius: 8px; border: 1px solid var(--line); background: #fff; margin-bottom: 4px; }
+    .split-act .top { display: flex; justify-content: space-between; align-items: center; }
+    .split-act strong { font-size: 9px; }
+    .split-act p { margin: 2px 0 0; font-size: 8px; color: var(--muted); font-weight: 600; }
+    .key-vis { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 6px; border-radius: 8px; border: 1px solid var(--line); background: #fff; margin-bottom: 4px; }
+    .key-cap { padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: linear-gradient(180deg,#fff,#f1f5f9); font-size: 8px; font-weight: 800; }
+    .pad-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 4px; margin-bottom: 4px; }
+    .pad-btn { padding: 6px 4px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font-size: 8px; font-weight: 800; text-align: center; }
+    .pad-btn.on { border-color: color-mix(in srgb,var(--accent) 35%,var(--line)); background: var(--tint); color: var(--accent-deep); }
+    .cam-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px; }
+    .cam-tile { padding: 6px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font-size: 8px; }
+    .cam-tile strong { display: block; font-size: 9px; }
+    .cam-tile span { color: var(--muted); font-weight: 600; }
+
+    .flow-steps { display: flex; align-items: stretch; gap: 3px; text-align: left; }
+    .flow-step { flex: 1; min-width: 0; padding: 5px 4px; border-radius: 8px; border: 1px solid var(--line); background: #fff; }
+    .flow-step .num { width: 14px; height: 14px; border-radius: 50%; font-size: 7px; font-weight: 800; background: var(--tint); color: var(--accent-deep);
+      display: grid; place-items: center; margin-bottom: 3px; }
+    .flow-step strong { display: block; font-size: 8px; }
+    .flow-step span { font-size: 7px; color: var(--muted); font-weight: 600; }
+    .flow-step.live { border-color: color-mix(in srgb,var(--accent) 35%,var(--line)); background: var(--tint); }
+    .flow-step.live .num { background: var(--accent); color: #fff; }
+    .flow-arrow { flex-shrink: 0; color: var(--muted); font-size: 10px; align-self: center; }
+
+    .cards { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; padding: 8px 10px 10px; border-top: 1px solid var(--line); background: rgba(255,255,255,.35); }
+    .card { padding: 5px; border-radius: 9px; border: 1px solid var(--line); background: var(--card-bg); text-align: left; }
+    .card.on { border-color: color-mix(in srgb,var(--accent) 45%,var(--line)); background: #fff; box-shadow: 0 0 0 2px rgba(99,102,241,.1); }
+    .card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .card-hd { display: flex; align-items: center; gap: 3px; min-width: 0; }
+    .card-ico { width: 16px; height: 16px; border-radius: 5px; background: var(--tint); color: var(--accent-deep); display: grid; place-items: center; flex-shrink: 0; }
+    .card-ico svg { width: 9px; height: 9px; }
+    .card-ico.keys { background: rgba(14,165,233,.1); color: #0284c7; }
+    .card-ico.pad { background: rgba(168,85,247,.1); color: #7c3aed; }
+    .card-ico.cam { background: rgba(34,197,94,.1); color: #15803d; }
+    .card-title { font-size: 8px; font-weight: 800; }
+    .card-sum { font-size: 7px; font-weight: 600; color: var(--muted); line-height: 1.3; }
+
+    .sol-b .stage { display: none; }
+    .sol-b .hero { min-height: 178px; padding-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="gallery" id="g"></div>
+  <script>
+    var I={
+      voice:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>',
+      keys:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/></svg>',
+      softPad:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>',
+      camera:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>'
+    };
+    var CH=[
+      {id:'voice',t:'说话触发',s:'开始输入',c:''},
+      {id:'keys',t:'按键触发',s:'音量减 → 右 Alt',c:'keys'},
+      {id:'softPad',t:'屏幕按钮',s:'确认当前控制',c:'pad'},
+      {id:'camera',t:'摄像头确认',s:'已配置 · 未运行',c:'cam'}
+    ];
+    var A={
+      voice:[{n:'开始输入',tr:'说「开始输入」',on:1},{n:'发送',tr:'说「发送」',on:1},{n:'取消',tr:'说「取消」',on:1}],
+      keys:[{n:'输入到目标',tr:'按住 音量减',on:1},{n:'备用发送',tr:'Ctrl+Enter',on:1}],
+      softPad:[{n:'确认 Agent',tr:'屏幕 · 确认',on:1},{n:'拒绝',tr:'屏幕 · 拒绝',on:0}],
+      camera:[{n:'举手确认',tr:'手势 OK',on:1},{n:'离席暂停',tr:'检测离席',on:1}]
+    };
+    var LN=[{id:'table',l:'A'},{id:'split',l:'B'},{id:'flow',l:'C'}];
+    function w(){var h=[1,2,3,4,6,9,12,9,6,4,3,2,1];return '<div class="wave">'+h.map(function(x){return '<span style="--h:'+x+'"></span>';}).join('')+'</div>';}
+    function mic(){return '<div class="mic-bar"><span class="dot"></span><strong>按 AutoTrigger 说话</strong><span class="ot-switch ot-switch--sm is-on"></span></div>';}
+    function tbl(m){
+      var r=A[m].map(function(a){return '<div class="act-row"><b>'+a.n+'</b><span class="tri">'+a.tr+'</span><span class="badge '+(a.on?'on':'off')+'">'+(a.on?'开':'关')+'</span></div>';}).join('');
+      return (m==='voice'?mic():'')+'<div class="act-table"><div class="act-table-hd"><span>动作</span><span>触发</span><span>状态</span></div>'+r+'</div>';
+    }
+    function spl(m){
+      var ch=CH.find(function(x){return x.id===m;});
+      var acts=A[m].map(function(a){return '<div class="split-act"><div class="top"><strong>'+a.n+'</strong><span class="badge '+(a.on?'on':'off')+'">'+(a.on?'开':'关')+'</span></div><p>'+a.tr+'</p></div>';}).join('');
+      var ex='';
+      if(m==='voice')ex=mic();
+      if(m==='keys')ex='<div class="key-vis"><span class="key-cap">音量减</span><span>→</span><span class="key-cap">右 Alt</span></div>';
+      if(m==='softPad')ex='<div class="pad-grid"><div class="pad-btn on">确认</div><div class="pad-btn">拒绝</div><div class="pad-btn">暂停</div></div>';
+      if(m==='camera')ex='<div class="cam-tiles"><div class="cam-tile"><strong>运行</strong><span>未启动</span></div><div class="cam-tile"><strong>在场</strong><span>空闲</span></div></div>';
+      return '<div class="split"><div class="split-left"><div class="orb '+ch.c+'">'+I[m]+'</div><span>'+ch.t.replace('触发','').replace('确认','')+'</span></div><div>'+ex+acts+'</div></div>';
+    }
+    function flw(m){
+      if(m==='keys')return '<div class="key-vis"><span class="key-cap">按住 音量减</span><span>→</span><span class="key-cap">右 Alt</span></div>';
+      if(m==='softPad')return '<div class="pad-grid">'+A[m].map(function(a,i){return '<div class="pad-btn'+(a.on?' on':'')+'">'+a.n+'</div>';}).join('')+'</div>';
+      if(m==='camera')return '<div class="cam-tiles">'+A[m].map(function(a){return '<div class="cam-tile"><strong>'+a.n+'</strong><span>'+a.tr+'</span></div>';}).join('')+'</div>';
+      var st=A[m].map(function(a,i){
+        return (i?'<span class="flow-arrow">→</span>':'')+'<div class="flow-step'+(i===0?' live':'')+'"><span class="num">'+(i+1)+'</span><strong>'+a.n+'</strong><span>'+a.tr+'</span></div>';
+      }).join('');
+      return mic()+'<div class="flow-steps">'+st+'</div>';
+    }
+    var D={table:tbl,split:spl,flow:flw};
+    function cards(active){
+      return CH.map(function(c){
+        return '<div class="card'+(c.id===active?' on':'')+'"><div class="card-top"><div class="card-hd"><span class="card-ico '+c.c+'">'+I[c.id]+'</span><span class="card-title">'+c.t+'</span></div><span class="ot-switch ot-switch--sm'+(c.id==='camera'?'':' is-on')+'"></span></div><div class="card-sum">'+c.s+'</div></div>';
+      }).join('');
+    }
+    function app(lay,m){
+      var ch=CH.find(function(x){return x.id===m;});
+      var stg=lay!=='split'?'<div class="stage">'+w()+'<div class="orb '+ch.c+'">'+I[m]+'</div>'+w()+'</div>':'';
+      return '<div class="app sol-'+lay+'"><div class="hero"><div class="scene-pill"><span class="ico">C</span> Cursor 场景</div>'+stg+D[lay](m)+'</div><div class="cards">'+cards(m)+'</div></div>';
+    }
+    document.getElementById('g').innerHTML=LN.map(function(l){
+      return '<div class="lane"><div class="lane-tag">'+l.l+'</div>'+CH.map(function(c){return app(l.id,c.id);}).join('')+'</div>';
+    }).join('');
+  </script>
+</body>
+</html>

@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Voice Pilot · 首页 · 4 通道节点�?· v4</title>
+<style>
+:root{
+  --bg:#F5F5F7; --surface:#FFFFFF; --surface-2:#FAFAFC; --surface-3:#F0F0F2;
+  --border:#E5E5E5; --border-2:#D4D4D8;
+  --text:#1A1A1A; --text-2:#3F3F46; --text-muted:#71717A; --text-faint:#A1A1AA;
+  --primary:#00658F; --primary-2:#004C6C; --primary-soft:#E0F1FA;
+  --success:#16A34A; --success-soft:#DCFCE7;
+  --warn:#F59E0B; --warn-soft:#FEF3C7;
+  /* 通道主色（沿�?OneTone 设计系统�?*/
+  --voice:#007AFF;     --voice-soft:rgba(0,122,255,.10);
+  --keys:#06B6D4;      --keys-soft:rgba(6,182,212,.10);
+  --pad:#8B5CF6;       --pad-soft:rgba(139,92,246,.10);
+  --cam:#10B981;       --cam-soft:rgba(16,185,129,.10);
+  --r-card:16px; --r-row:10px; --r-pill:999px;
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 4px 14px rgba(15,23,42,.05);
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:"Segoe UI Variable","Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+  background:var(--bg);color:var(--text);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  line-height:1.55;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+a{color:inherit;text-decoration:none}
+
+/* ── 框架 ── */
+.app{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
+@media(max-width:960px){.app{grid-template-columns:1fr}}
+
+.sidebar{
+  background:var(--surface);border-right:1px solid var(--border);
+  padding:18px 14px;display:flex;flex-direction:column;gap:18px;
+  height:100vh;overflow-y:auto;
+}
+.brand{display:flex;align-items:center;gap:10px;padding:0 4px}
+.brand .logo{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,#22c55e,#0ea5e9);
+  display:grid;place-items:center;color:#fff;font-size:18px;font-weight:800;
+  box-shadow:0 4px 12px rgba(14,165,233,.25);
+}
+.brand .txt b{font-size:14px;font-weight:750;letter-spacing:-.01em;display:block}
+.brand .txt small{font-size:10px;color:var(--text-muted);font-weight:600}
+
+.search{display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;background:var(--surface-3);border-radius:10px}
+.search svg{width:14px;height:14px;color:var(--text-faint);flex-shrink:0}
+.search input{flex:1;border:none;background:transparent;outline:none;font-size:12px;color:var(--text)}
+.search input::placeholder{color:var(--text-faint)}
+
+.nav-group h4{font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--text-faint);text-transform:uppercase;padding:0 8px;margin-bottom:6px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--text-2)}
+.nav a:hover{background:var(--surface-3)}
+.nav a.on{background:var(--primary-soft);color:var(--primary-2)}
+.nav a .ic{width:18px;height:18px;flex-shrink:0;opacity:.85}
+.nav a.on .ic{opacity:1}
+
+.sidebar-foot{margin-top:auto}
+.qs-btn{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  width:100%;height:40px;border-radius:10px;
+  background:linear-gradient(180deg,var(--primary),var(--primary-2));
+  color:#fff;font-size:12.5px;font-weight:700;
+  box-shadow:0 4px 12px rgba(0,101,143,.25);
+}
+.qs-btn:hover{filter:brightness(1.05)}
+.qs-btn svg{width:14px;height:14px}
+
+.main{padding:18px 22px 60px;max-width:1280px;width:100%;margin:0 auto}
+
+.topbar{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.topbar h1{font-size:18px;font-weight:700;letter-spacing:-.01em}
+.topbar .crumb{color:var(--text-muted);font-size:13px;margin-left:4px;font-weight:500}
+.topbar .right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.status-chip{
+  display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;
+  border-radius:var(--r-pill);background:var(--success-soft);color:#15803D;
+  font-size:11.5px;font-weight:700;
+}
+.status-chip .dot{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 0 3px rgba(22,163,74,.18);animation:dotBreath 1.6s ease-in-out infinite}
+@keyframes dotBreath{0%,100%{opacity:1}50%{opacity:.5}}
+.ghost-btn{
+  height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface);font-size:12px;font-weight:600;color:var(--text-2);
+  display:inline-flex;align-items:center;gap:6px;
+}
+.ghost-btn:hover{background:var(--surface-3)}
+.ghost-btn svg{width:13px;height:13px}
+
+.habit-bar{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);
+  padding:14px 16px;margin-bottom:14px;box-shadow:var(--shadow);
+}
+.habit-bar .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.habit-bar .lbl{font-size:12.5px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
+.habit-bar .desc{font-size:11.5px;color:var(--text-muted);margin-top:6px;line-height:1.5}
+.habit-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.habit-pill{
+  display:flex;align-items:center;gap:8px;height:36px;padding:0 14px;
+  border-radius:11px;background:var(--surface-3);border:1px solid transparent;
+  font-size:12.5px;font-weight:600;color:var(--text-2);
+}
+.habit-pill:hover{background:var(--surface-2);border-color:var(--border)}
+.habit-pill.on{background:var(--surface);border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.habit-pill .ico{width:20px;height:20px;border-radius:6px;background:rgba(0,0,0,.06);display:grid;place-items:center;color:var(--text-muted);font-size:10px;font-weight:800}
+.habit-pill.on .ico{background:var(--primary);color:#fff}
+.habit-pill .tip{position:relative;top:-6px;right:-6px;width:8px;height:8px;border-radius:50%;background:var(--primary)}
+
+/* ── 节点流（核心：每行一个通道�?── */
+.flow-list{display:flex;flex-direction:column;gap:14px}
+
+.flow-row{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);
+  box-shadow:var(--shadow);padding:18px 22px 16px;
+  display:grid;grid-template-columns:200px 1fr;gap:18px;align-items:center;
+  position:relative;overflow:hidden;
+  animation:cardIn .5s var(--ease) both;
+}
+.flow-row:nth-child(1){animation-delay:.04s}
+.flow-row:nth-child(2){animation-delay:.1s}
+.flow-row:nth-child(3){animation-delay:.16s}
+.flow-row:nth-child(4){animation-delay:.22s}
+@keyframes cardIn{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
+@media(max-width:820px){.flow-row{grid-template-columns:1fr}}
+
+/* 左侧通道标题 */
+.ch-meta{
+  display:flex;flex-direction:column;gap:6px;
+  border-right:1px dashed var(--border);
+  padding-right:18px;
+}
+@media(max-width:820px){.ch-meta{border-right:none;border-bottom:1px dashed var(--border);padding-right:0;padding-bottom:14px}}
+.ch-meta .ico-row{display:flex;align-items:center;gap:8px}
+.ch-meta .ch-ico{
+  width:32px;height:32px;border-radius:9px;display:grid;place-items:center;
+  background:var(--c-soft);color:var(--c);
+  border:1px solid var(--c-soft);
+  position:relative;
+}
+.ch-meta .ch-ico svg{width:16px;height:16px}
+.ch-meta .ch-ico .pip{
+  position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;
+  background:var(--surface);border:2px solid var(--c);
+}
+.ch-meta .ch-ico .pip.live{background:var(--c);box-shadow:0 0 0 3px var(--c-soft);animation:dotBreath 1.6s ease-in-out infinite}
+.ch-meta .name{font-size:14px;font-weight:700;letter-spacing:-.01em}
+.ch-meta .desc{font-size:11px;color:var(--text-muted);line-height:1.4}
+.ch-meta .badge{
+  display:inline-flex;align-items:center;gap:5px;align-self:flex-start;
+  padding:3px 9px;border-radius:var(--r-pill);font-size:10.5px;font-weight:700;
+  background:var(--surface-3);color:var(--text-muted);
+}
+.ch-meta .badge .d{width:5px;height:5px;border-radius:50%;background:currentColor}
+.ch-meta .badge.live{background:var(--success-soft);color:#15803D}
+.ch-meta .badge.warn{background:var(--warn-soft);color:#92400E}
+.ch-meta .badge.idle{background:var(--surface-3);color:var(--text-muted)}
+
+/* 节点容器 */
+.ch-nodes{
+  position:relative;
+  display:flex;align-items:center;justify-content:space-between;gap:0;
+  padding:8px 12px;min-height:120px;
+}
+.ch-nodes::before{
+  /* 一根贯穿的水平虚线（在圆心高度�?*/
+  content:'';position:absolute;left:48px;right:48px;top:50%;height:0;
+  /* 实际虚线由各节点之间�?.connector �?*/
+}
+
+/* 单个节点 */
+.node{
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  position:relative;z-index:1;background:var(--surface);
+  padding:0 6px;cursor:pointer;
+  min-width:90px;
+}
+.node .pill{
+  font-size:9.5px;font-weight:700;letter-spacing:.04em;
+  padding:3px 9px;border-radius:var(--r-pill);
+  background:var(--surface-3);color:var(--text-muted);
+  border:1px solid var(--border);
+  white-space:nowrap;
+  transition:all .2s var(--ease);
+}
+.node.is-active .pill{background:var(--c-soft);color:var(--c);border-color:transparent}
+.node .circle{
+  width:60px;height:60px;border-radius:50%;
+  background:var(--surface);border:2px solid var(--border-2);
+  display:grid;place-items:center;
+  color:var(--text-muted);
+  position:relative;
+  transition:all .25s var(--ease);
+}
+.node .circle svg{width:24px;height:24px;transition:color .2s}
+.node .ttl{font-size:12.5px;font-weight:700;color:var(--text);text-align:center;line-height:1.2;white-space:nowrap}
+.node .sub{font-size:10.5px;color:var(--text-muted);text-align:center;line-height:1.3;max-width:120px}
+
+/* 节点 hover �?*/
+.node:hover .circle{border-color:var(--c);color:var(--c);box-shadow:0 0 0 6px var(--c-soft)}
+.node:hover .pill{background:var(--c-soft);color:var(--c)}
+
+/* 节点 active 态（当前激活） */
+.node.is-active .circle{
+  border-color:var(--c);color:var(--c);
+  background:var(--surface);
+  box-shadow:0 0 0 4px var(--c-soft),0 0 0 0 transparent;
+}
+.node.is-active .circle::before{
+  content:'';position:absolute;inset:-10px;border-radius:50%;
+  border:2px solid var(--c-soft);
+  animation:nodeRing 2s ease-out infinite;
+}
+@keyframes nodeRing{0%{transform:scale(.85);opacity:1}100%{transform:scale(1.25);opacity:0}}
+.node.is-active .circle::after{
+  content:'';position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff,var(--c-soft) 70%,var(--c-soft));
+  opacity:.15;
+}
+
+/* 节点 open 态（已展开数据�?*/
+.node.is-open .circle{
+  border-color:var(--c);color:var(--c);
+  background:var(--c-soft);
+  box-shadow:0 0 0 6px var(--c-soft);
+}
+.node.is-open .pill{background:var(--c);color:#fff;border-color:var(--c)}
+
+/* 节点 done 态（已完成步骤） */
+.node.is-done .circle{
+  border-color:rgba(22,163,74,.5);color:#15803D;
+  background:var(--success-soft);
+}
+.node.is-done .pill{background:var(--success-soft);color:#15803D;border-color:transparent}
+
+/* 连接线（虚线 + 渐变�?*/
+.connector{
+  flex:1;height:2px;position:relative;margin:0 -6px;
+  align-self:center;margin-bottom:38px;/* 对齐圆心 */
+  min-width:40px;
+}
+.connector::before{
+  content:'';position:absolute;left:0;right:0;top:0;height:0;
+  background:repeating-linear-gradient(to right,var(--c) 0 6px,transparent 6px 12px);
+  height:2px;border-radius:1px;
+  transition:opacity .3s;
+}
+.connector.to-next::before{
+  /* 到下一节点的虚线：active→next 渐变 */
+  background:repeating-linear-gradient(to right,
+    var(--c) 0 6px,transparent 6px 12px,
+    var(--c) 12px 18px,transparent 18px 24px);
+}
+.connector.to-rest::before{
+  /* 之后：暗色虚�?*/
+  background:repeating-linear-gradient(to right,
+    var(--border-2) 0 6px,transparent 6px 12px);
+  opacity:.5;
+}
+.connector.to-next-orange::before{
+  /* 跨阶段：蓝→�?*/
+  background:repeating-linear-gradient(to right,
+    var(--c) 0 5px,transparent 5px 10px,
+    #f59e0b 10px 14px,transparent 14px 20px);
+}
+
+/* ── 展开数据�?── */
+.detail{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);
+  margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden;
+  display:grid;grid-template-rows:0fr;transition:grid-template-rows .4s var(--ease);
+}
+.detail.is-open{grid-template-rows:1fr}
+.detail-inner{overflow:hidden;min-height:0}
+.detail-hd{
+  display:flex;align-items:center;gap:10px;padding:14px 18px;
+  border-bottom:1px solid var(--border);background:var(--surface-2);
+}
+.detail-hd .ch-tag{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:var(--r-pill);background:var(--c-soft);color:var(--c);font-size:10.5px;font-weight:700}
+.detail-hd .ch-tag .d{width:5px;height:5px;border-radius:50%;background:currentColor}
+.detail-hd .ttl{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+.detail-hd .ttl .n{width:22px;height:22px;border-radius:50%;background:var(--c);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center}
+.detail-hd .node-tag{font-size:11.5px;font-weight:700;color:var(--text)}
+.detail-hd .sub{font-size:11px;color:var(--text-muted);margin-left:6px}
+.detail-hd .collapse{margin-left:auto;font-size:12px;font-weight:600;color:var(--text-muted);display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface)}
+.detail-hd .collapse:hover{background:var(--surface-3)}
+.detail-hd .collapse svg{width:12px;height:12px;transition:transform .25s var(--ease)}
+.detail.is-open .detail-hd .collapse svg{transform:rotate(180deg)}
+
+.detail-body{padding:18px 18px 20px}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:760px){.detail-grid{grid-template-columns:1fr}}
+
+.detail-card{
+  border:1px solid var(--border);border-radius:12px;padding:14px 14px 12px;
+  background:var(--surface-2);
+}
+.detail-card h4{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--text-muted);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.detail-card h4 .ic{width:18px;height:18px;border-radius:5px;background:var(--c-soft);color:var(--c);display:grid;place-items:center}
+.detail-card h4 .ic svg{width:11px;height:11px}
+.detail-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;font-size:12px;border-bottom:1px dashed var(--border)}
+.detail-row:last-child{border-bottom:0}
+.detail-row .k{color:var(--text-muted);font-weight:600;min-width:5em}
+.detail-row .v{margin-left:auto;color:var(--text);font-weight:700;display:flex;align-items:center;gap:6px}
+.detail-row .v .edit{color:var(--text-faint);width:20px;height:20px;border-radius:5px;display:grid;place-items:center;cursor:pointer;transition:all .2s}
+.detail-row .v .edit:hover{background:var(--c-soft);color:var(--c)}
+.detail-row .v .edit svg{width:11px;height:11px}
+.detail-row .v .ok{color:#15803D}
+.detail-row .v .warn{color:#b45309}
+
+.jump-row{
+  display:flex;align-items:center;gap:10px;margin-top:14px;
+  padding:12px 14px;background:var(--c-soft);border-radius:11px;
+  border:1px dashed var(--c);
+}
+.jump-row .txt{flex:1;font-size:12px;color:var(--text-2);line-height:1.5}
+.jump-row .txt b{color:var(--text);font-weight:700}
+.jump-btn{
+  display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px;
+  border-radius:8px;background:var(--c);color:#fff;font-size:12px;font-weight:700;
+  box-shadow:0 4px 10px var(--c-soft);
+  transition:transform .2s var(--ease),box-shadow .2s var(--ease);
+}
+.jump-btn:hover{transform:translateY(-1px);box-shadow:0 6px 14px var(--c-soft)}
+.jump-btn svg{width:13px;height:13px}
+
+/* ── 演示控件 ── */
+.dev-panel{
+  position:fixed;right:18px;bottom:18px;z-index:30;
+  background:var(--surface);border:1px solid var(--border-2);border-radius:14px;
+  box-shadow:0 14px 38px rgba(15,23,42,.18);
+  padding:10px 12px;display:flex;align-items:center;gap:8px;
+  font-size:11px;color:var(--text-2);
+}
+.dev-panel .dev-tag{font-size:9px;font-weight:800;color:var(--text-muted);background:rgba(15,23,42,.05);padding:2px 6px;border-radius:6px;letter-spacing:.04em}
+.dev-panel button{font:inherit;font-size:11px;font-weight:700;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text)}
+.dev-panel button.primary{background:var(--text);color:#fff;border-color:var(--text)}
+.dev-panel button:hover{background:var(--surface-3)}
+.dev-panel button.primary:hover{background:#000}
+.dev-panel select{font:inherit;font-size:11px;font-weight:700;padding:5px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text)}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- 侧栏 -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">�?/div>
+      <div class="txt">
+        <b>一�?OneTone</b>
+        <small>言出即行，万象成形</small>
+      </div>
+    </div>
+
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input type="text" placeholder="搜索功能或设置�? />
+    </div>
+
+    <div class="nav-group">
+      <h4>面板</h4>
+      <nav class="nav">
+        <a class="on" href="#">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8v10a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2V11z"/></svg>
+          首页
+        </a>
+        <a href="#">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg>
+          我的习惯
+        </a>
+        <a href="#">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h12"/></svg>
+          按键设置
+        </a>
+        <a href="#">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8h3M8 12h8M8 16h5"/></svg>
+          虚拟键盘
+        </a>
+        <a href="#">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+          语音设置
+        </a>
+        <a href="#">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          摄像�?        </a>
+        <a href="#">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h18M3 12h18M3 19h18"/></svg>
+          托盘菜单
+        </a>
+      </nav>
+    </div>
+
+    <div class="nav-group">
+      <h4>系统</h4>
+      <nav class="nav">
+        <a href="#">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          通用设置
+        </a>
+        <a href="#">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          声音与反�?        </a>
+        <a href="#">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          状态与维护
+        </a>
+      </nav>
+    </div>
+
+    <div class="sidebar-foot">
+      <button class="qs-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 4v16l14-8-14-8z"/></svg>
+        3 分钟快速入�?      </button>
+    </div>
+  </aside>
+
+  <!-- 主内�?-->
+  <main class="main">
+    <div class="topbar">
+      <h1>首页</h1>
+      <span class="crumb">/ 4 通道节点总览</span>
+      <div class="right">
+        <span class="status-chip"><span class="dot"></span>运行�?/span>
+        <button class="ghost-btn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+          管理
+        </button>
+      </div>
+    </div>
+
+    <div class="habit-bar">
+      <div class="row">
+        <div class="lbl"><span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--text-faint);box-shadow:0 0 0 3px rgba(0,0,0,.04)"></span>当前习惯 <span class="badge live" style="height:22px;padding:2px 9px;background:var(--success-soft);color:#15803D"><span class="d"></span>Cursor</span></div>
+      </div>
+      <div class="desc">切换习惯时，各通道配置一起跟着变；开关请在托盘菜单调整�?/div>
+      <div class="habit-pills">
+        <button class="habit-pill" type="button" data-h="general"><span class="ico">�?/span>通用</button>
+        <button class="habit-pill on" type="button" data-h="cursor"><span class="ico">C</span>Cursor<span class="tip"></span></button>
+        <button class="habit-pill" type="button" data-h="custom"><span class="ico">+</span>自定�?/button>
+      </div>
+    </div>
+
+    <div class="flow-list" id="flowList"></div>
+
+    <div class="detail" id="detail">
+      <div class="detail-inner">
+        <div class="detail-hd" id="detailHd">
+          <div class="ch-tag" id="detailChTag"><span class="d"></span><span id="detailCh">说话触发</span></div>
+          <div class="ttl"><span class="n" id="detailN">1</span><span class="node-tag" id="detailNodeTag">开�?/span><span class="sub">· 详情</span></div>
+          <button class="collapse" type="button" id="btnCollapse">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg>
+            收起
+          </button>
+        </div>
+        <div class="detail-body" id="detailBody"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="dev-panel">
+  <span class="dev-tag">DEV</span>
+  <button type="button" id="btnPrev">�?上一节点</button>
+  <button type="button" class="primary" id="btnNext">下一节点 �?/button>
+  <button type="button" id="btnAuto">自动播放</button>
+</div>
+
+<script>
+// ── 图标 ──
+var ICO = {
+  voice:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>',
+  keys:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h12"/></svg>',
+  softPad:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 9h2M11 9h2M15 9h2M7 13h6M7 17h4"/></svg>',
+  camera:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  end:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  send:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
+  pulse:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+  ind:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
+  eye:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+  cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>',
+  pro:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2 4 4 1-3 3 1 4-4-2-4 2 1-4-3-3 4-1z"/></svg>',
+  edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+  go:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>'
+};
+
+// ── 通道节点数据（贴�?4 张规范图�?──
+console.log('defining CH');
+var CH = [
+  {
+    id:'voice', name:'说话触发', color:'var(--voice)', colorSoft:'var(--voice-soft)',
+    desc:'3 步：开�?�?结束 �?发�?,
+    states:['idle','live','done'],
+    jump:{to:'语音设置', desc:'改唤醒词、麦克风、结束方�?},
+    nodes:[
+      {tag:'01 / 开�?, icon:ICO.voice, ttl:'怎么开始打�?', sub:'说一句话唤醒这个场景的话', state:'done', data:[
+        {k:'唤醒�?,v:'「开始输入�?},
+        {k:'唤醒�?,v:'F8'},
+        {k:'备用�?,v:'「嗨打字」「hey�?},
+        {k:'检测模�?,v:'AutoTrigger'},
+        {k:'防误�?,v:'阈�?200ms'}
+      ]},
+      {tag:'02 / 结束', icon:ICO.pulse, ttl:'说错了想结束?', sub:'自动 · 中文语音', state:'active', data:[
+        {k:'自动结束',v:'静音 3 �?},
+        {k:'结束�?,v:'「结束�?},
+        {k:'取消�?,v:'「取消�?},
+        {k:'本轮时长',v:'00:42'},
+        {k:'转写字数',v:'287 �?}
+      ]},
+      {tag:'03 / 发�?, icon:ICO.send, ttl:'说完怎么发出�?', sub:'自动 Enter 发�?, state:'next', data:[
+        {k:'发送方�?,v:'Enter �?},
+        {k:'目标应用',v:'当前前台'},
+        {k:'完成输入',v:'不发�?},
+        {k:'剪贴�?,v:'可�?},
+        {k:'触发 Agent',v:'可�?}
+      ]}
+    ]
+  },
+  {
+    id:'keys', name:'按键触发', color:'var(--keys)', colorSoft:'var(--keys-soft)',
+    desc:'2 步：触发 �?识别',
+    states:['idle','live','done'],
+    jump:{to:'按键设置', desc:'改触发键、目标、响应方�?},
+    nodes:[
+      {tag:'01 / 触发', icon:ICO.keys, ttl:'触发', sub:'音量�?, state:'active', data:[
+        {k:'物理�?,v:'Volume Down'},
+        {k:'响应方式',v:'单击'},
+        {k:'防误�?,v:'阈�?200ms'},
+        {k:'冲突检�?,v:'�?}
+      ]},
+      {tag:'02 / 识别', icon:ICO.pulse, ttl:'识别', sub:'�?Alt', state:'next', data:[
+        {k:'目标�?,v:'Right Alt'},
+        {k:'目标应用',v:'当前前台'},
+        {k:'模式',v:'单次输出'},
+        {k:'快捷键组�?,v:'支持'}
+      ]}
+    ]
+  },
+  {
+    id:'softPad', name:'屏幕按钮', color:'var(--pad)', colorSoft:'var(--pad-soft)',
+    desc:'2 步：Soft Pad �?状态灯',
+    states:['idle','live','done'],
+    jump:{to:'虚拟键盘', desc:'改按钮配置、绑�?Agent、调整布局'},
+    nodes:[
+      {tag:'SOFT PAD', icon:ICO.softPad, ttl:'SOFT PAD', sub:'已启�?· 21 �?, state:'active', data:[
+        {k:'�?1',v:'确认 �?agent.approve'},
+        {k:'�?2',v:'拒绝 �?agent.reject'},
+        {k:'�?3',v:'暂停 �?agent.pause'},
+        {k:'位置',v:'屏幕右下'},
+        {k:'透明�?,v:'80%'},
+        {k:'主题',v:'暗色'}
+      ]},
+      {tag:'状态灯', icon:ICO.ind, ttl:'状态灯', sub:'常亮 · AI 状�?, state:'next', data:[
+        {k:'指示�?,v:'绿色常亮'},
+        {k:'AI 状�?,v:'待机'},
+        {k:'任务',v:'等待�?},
+        {k:'通知方式',v:'托盘 + 提示�?}
+      ]}
+    ]
+  },
+  {
+    id:'camera', name:'摄像头确�?, color:'var(--cam)', colorSoft:'var(--cam-soft)',
+    desc:'3 步：视觉识别 �?摄像头设�?�?PRO 视觉能力',
+    states:['idle','live','done'],
+    jump:{to:'摄像�?, desc:'改检测规则、调灵敏度、查看历�?},
+    nodes:[
+      {tag:'01 / 视觉识别', icon:ICO.eye, ttl:'视觉识别', sub:'看到动作 · 执行结果', state:'done', data:[
+        {k:'检测模�?,v:'MediaPipe Hands'},
+        {k:'在场检�?,v:'人脸 + 姿�?},
+        {k:'检测延�?,v:'< 200ms'},
+        {k:'规则 1',v:'举手 �?确认'},
+        {k:'规则 2',v:'离席 �?暂停'}
+      ]},
+      {tag:'02 / 摄像头设�?, icon:ICO.cam, ttl:'摄像头设�?, sub:'预览 · 设备 · 校准', state:'active', data:[
+        {k:'摄像�?,v:'笔记本内�?},
+        {k:'分辨�?,v:'720p'},
+        {k:'帧率',v:'30 fps'},
+        {k:'隐私',v:'本地处理'},
+        {k:'校准',v:'已完�?}
+      ]},
+      {tag:'03 / PRO 视觉能力', icon:ICO.pro, ttl:'PRO 确认与安�?, sub:'确认 · 安全 · 隐私', state:'pro', data:[
+        {k:'Pro 能力',v:'已解�?},
+        {k:'确认',v:'举手 + 视线'},
+        {k:'安全',v:'本地推理'},
+        {k:'隐私',v:'不上�?},
+        {k:'规则 3',v:'摇头 �?拒绝'}
+      ]}
+    ]
+  }
+];
+
+var CYCLE = 0;  // 全局轮播�?var OPEN = null; // {chId, nodeIdx} 当前展开的节�?
+// ── 节点 HTML ──
+function nodeHtml(ch, n, i){
+  var states = n.state==='active' ? ' is-active' : n.state==='done' ? ' is-done' : '';
+  return '<button type="button" class="node'+states+'" data-ch="'+ch.id+'" data-node="'+i+'" style="--c:'+ch.color+';--c-soft:'+ch.colorSoft+'">'
+    +'<span class="pill">'+n.tag+'</span>'
+    +'<div class="circle">'+n.icon+'</div>'
+    +'<div class="ttl">'+n.ttl+'</div>'
+    +'<div class="sub">'+n.sub+'</div>'
+    +'</button>';
+}
+
+function connectorHtml(active){
+  return '<div class="connector '+(active==='to-next'?'to-next':active==='to-next-orange'?'to-next-orange':active==='to-rest'?'to-rest':'')+'"></div>';
+}
+
+function rowHtml(ch){
+  var html = '<div class="flow-row" data-ch="'+ch.id+'" style="--c:'+ch.color+';--c-soft:'+ch.colorSoft+'">';
+  // 左侧 meta
+  html += '<div class="ch-meta">'
+    +'<div class="ico-row">'
+      +'<div class="ch-ico">'+ICO[ch.id]+'<span class="pip"></span></div>'
+      +'<div class="name">'+ch.name+'</div>'
+    +'</div>'
+    +'<div class="desc">'+ch.desc+'</div>'
+    +'<span class="badge live"><span class="d"></span>已配�?/span>'
+    +'</div>';
+  // 节点�?  html += '<div class="ch-nodes">';
+  ch.nodes.forEach(function(n,i){
+    if(i>0){
+      // 判断连接线类�?      var prev = ch.nodes[i-1];
+      var cls = 'to-rest';
+      if(prev.state==='active' && n.state==='next') cls = 'to-next-orange';
+      else if(prev.state==='active') cls = 'to-next';
+      else if(prev.state==='done' && n.state==='active') cls = 'to-next';
+      else if(prev.state==='done' && n.state==='next') cls = 'to-next-orange';
+      html += connectorHtml(cls);
+    }
+    html += nodeHtml(ch, n, i);
+  });
+  html += '</div></div>';
+  return html;
+}
+
+function paint(){
+  document.getElementById('flowList').innerHTML = CH.map(rowHtml).join('');
+  paintDetail();
+  bind();
+}
+
+function detailHtml(ch, idx){
+  var n = ch.nodes[idx];
+  var rows = n.data.map(function(d){
+    return '<div class="detail-row"><span class="k">'+d.k+'</span><span class="v">'
+      +d.v
+      +'<span class="edit" title="编辑">'+ICO.edit+'</span>'
+      +'</span></div>';
+  }).join('');
+  return '<div class="detail-grid">'
+    +'<div class="detail-card">'
+      +'<h4><span class="ic">'+n.icon+'</span>节点信息</h4>'
+      +'<div class="detail-row"><span class="k">编号</span><span class="v">'+n.tag+'</span></div>'
+      +'<div class="detail-row"><span class="k">名称</span><span class="v">'+n.ttl+'</span></div>'
+      +'<div class="detail-row"><span class="k">说明</span><span class="v" style="font-weight:500;color:var(--text-muted)">'+n.sub+'</span></div>'
+      +'<div class="detail-row"><span class="k">状�?/span><span class="v"><span class="pill '+(n.state==='active'?'live':n.state==='done'?'ok':'idle')+'" style="height:18px;padding:0 7px;font-size:9.5px">'+(n.state==='active'?'运行�?:n.state==='done'?'已完�?:n.state==='pro'?'Pro 已解�?:'待命')+'</span></span></div>'
+    +'</div>'
+    +'<div class="detail-card">'
+      +'<h4><span class="ic">'+ICO.edit+'</span>详细数据</h4>'
+      +rows
+    +'</div>'
+    +'</div>'
+    +'<div class="jump-row">'
+      +'<div class="txt">想改这条节点？去 <b>'+ch.jump.to+'</b> 页面 �?'+ch.jump.desc+'�?/div>'
+      +'<a class="jump-btn" href="#" data-jump="'+ch.id+'">'+ICO.go+'前往 '+ch.jump.to+'</a>'
+    +'</div>';
+}
+
+function paintDetail(){
+  var box = document.getElementById('detail');
+  var body = document.getElementById('detailBody');
+  var hd = document.getElementById('detailHd');
+  if(!OPEN){
+    box.classList.remove('is-open');
+    setTimeout(function(){if(!box.classList.contains('is-open'))body.innerHTML='';},400);
+    return;
+  }
+  var ch = CH.find(function(c){return c.id===OPEN.chId;});
+  var n = ch.nodes[OPEN.nodeIdx];
+  hd.style.setProperty('--c', ch.color);
+  hd.style.setProperty('--c-soft', ch.colorSoft);
+  document.getElementById('detailCh').textContent = ch.name;
+  document.getElementById('detailN').textContent = (OPEN.nodeIdx+1);
+  document.getElementById('detailNodeTag').textContent = n.ttl;
+  body.innerHTML = detailHtml(ch, OPEN.nodeIdx);
+  requestAnimationFrame(function(){requestAnimationFrame(function(){box.classList.add('is-open');});});
+}
+
+function bind(){
+  document.querySelectorAll('.node').forEach(function(el){
+    el.addEventListener('click',function(e){
+      e.stopPropagation();
+      var chId = el.getAttribute('data-ch');
+      var idx = parseInt(el.getAttribute('data-node'),10);
+      OPEN = (OPEN && OPEN.chId===chId && OPEN.nodeIdx===idx) ? null : {chId:chId,nodeIdx:idx};
+      paint();
+    });
+  });
+  document.querySelectorAll('.detail-row .edit').forEach(function(b){
+    b.addEventListener('click',function(e){
+      e.stopPropagation();
+      var k = b.parentElement.parentElement.querySelector('.k').textContent;
+      alert('编辑�?+k+'（演示）');
+    });
+  });
+  document.querySelectorAll('.jump-btn').forEach(function(b){
+    b.addEventListener('click',function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      var id = b.getAttribute('data-jump');
+      alert('跳转到：'+CH.find(function(c){return c.id===id;}).jump.to);
+    });
+  });
+}
+
+document.getElementById('btnCollapse').onclick = function(){ OPEN=null; paint(); };
+
+function next(){
+  // 推进 OPEN 的节�?  if(!OPEN){ OPEN={chId:'voice', nodeIdx:0}; paint(); return; }
+  var ch = CH.find(function(c){return c.id===OPEN.chId;});
+  OPEN.nodeIdx = (OPEN.nodeIdx+1) % ch.nodes.length;
+  paint();
+}
+function prev(){
+  if(!OPEN){ OPEN={chId:'voice', nodeIdx:0}; paint(); return; }
+  var ch = CH.find(function(c){return c.id===OPEN.chId;});
+  OPEN.nodeIdx = (OPEN.nodeIdx-1+ch.nodes.length) % ch.nodes.length;
+  paint();
+}
+
+var autoT = null;
+function startAuto(){
+  stopAuto();
+  var step=0;
+  autoT=setInterval(function(){
+    var ch = CH[Math.floor(step/2)%4];
+    OPEN = {chId:ch.id, nodeIdx:step%ch.nodes.length};
+    paint();
+    step++;
+  },2000);
+}
+function stopAuto(){
+  if(autoT){clearInterval(autoT);autoT=null;}
+  var b=document.getElementById('btnAuto');
+  if(b) b.textContent='自动播放';
+}
+document.getElementById('btnNext').onclick=next;
+document.getElementById('btnPrev').onclick=prev;
+document.getElementById('btnAuto').onclick=function(){
+  if(autoT){ stopAuto(); return; }
+  startAuto(); this.textContent='停止';
+};
+
+// 习惯切换
+document.querySelectorAll('.habit-pill').forEach(function(p){
+  p.onclick=function(){
+    document.querySelectorAll('.habit-pill').forEach(function(x){x.classList.remove('on');});
+    p.classList.add('on');
+  };
+});
+
+// 初始展开说话通道第一个节�?OPEN = {chId:'voice', nodeIdx:0};
+paint();
+</script>
+</body>
+</html>
+

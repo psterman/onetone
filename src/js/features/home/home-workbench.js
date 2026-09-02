@@ -7,13 +7,45 @@
   var homeVoiceBootstrapped=false;
   var HERO_MODE_KEY='onetone.wbHeroMode';
   var heroMode='voice';
-  var howtoExpandedKind='';
+  var heroPaneTab='cap';
+  var heroExpandedNodeId='';
+  var lastShowcasePathKey='';
+  var showcaseShellKind='';
   var presenceHooked=false;
   var MIC_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v11m0 0a4 4 0 01-4-4V5a4 4 0 118 0v4a4 4 0 01-4 4zm0 0v3m0 0a7 7 0 01-7-7M12 15a7 7 0 007-7M12 18v3m-3 0h6"/></svg>';
   var KEY_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2.2" class="wb-key-frame"/><circle cx="6" cy="10" r="1.1" class="wb-key-el wb-key-1" fill="currentColor" stroke="none"/><circle cx="10" cy="10" r="1.1" class="wb-key-el wb-key-2" fill="currentColor" stroke="none"/><circle cx="14" cy="10" r="1.1" class="wb-key-el wb-key-3" fill="currentColor" stroke="none"/><circle cx="18" cy="10" r="1.1" class="wb-key-el wb-key-4" fill="currentColor" stroke="none"/><rect x="7" y="13.5" width="10" height="1.8" rx="0.9" class="wb-key-el wb-key-space" fill="currentColor" stroke="none"/></svg>';
-  var CAM_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var CAM_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
   var PAD_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/></svg>';
+  var HERO_FLOW_WAKE_SVG='<svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>';
+  var HERO_FLOW_DICTATE_SVG='<svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>';
+  var HERO_FLOW_SEND_SVG='<svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
+  var HERO_FLOW_TRIGGER_SVG='<svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M7 17h10"/></svg>';
+  var HERO_FLOW_TARGET_SVG='<svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>';
 
+  function heroFlowNodeIcon(mode,nodeId){
+    if(mode==='keys'){
+      if(nodeId==='target') return HERO_FLOW_TARGET_SVG;
+      return HERO_FLOW_TRIGGER_SVG;
+    }
+    if(nodeId==='send') return HERO_FLOW_SEND_SVG;
+    if(nodeId==='dictate') return HERO_FLOW_DICTATE_SVG;
+    return HERO_FLOW_WAKE_SVG;
+  }
+
+  function heroFlowNodeTag(idx,label){
+    var n=String(idx+1).padStart(2,'0');
+    return n+' / '+String(label||'');
+  }
+
+  function heroPadVoiceHint(projection,showcase){
+    var token=String((projection&&projection.status&&projection.status.token)||'idle');
+    var live=!!(showcase&&showcase.isLive&&showcase.deviceReady);
+    if(live||token==='listening'||token==='dictating'||token==='triggered'){
+      return t('homeWbHeroPadVoiceHintListening');
+    }
+    if(showcase&&showcase.focus) return String(showcase.focus);
+    return t('homeWbHeroPadVoiceHintIdle');
+  }
   function normalizeHeroMode(mode){
     var raw=String(mode||'').trim();
     var low=raw.toLowerCase();
@@ -601,6 +633,846 @@
     }
   }
 
+  function findShowcaseItem(showcase,id){
+    if(!showcase||!id) return null;
+    var nodes=showcase.nodes||[];
+    var i;
+    for(i=0;i<nodes.length;i++){
+      if(nodes[i].id===id) return nodes[i];
+    }
+    var scenarios=showcase.scenarios||[];
+    for(i=0;i<scenarios.length;i++){
+      if(scenarios[i].id===id) return scenarios[i];
+    }
+    var caps=showcase.capabilities;
+    if(caps){
+      var lists=[caps.agent||[],caps.data||[]];
+      var li,ci;
+      for(li=0;li<lists.length;li++){
+        for(ci=0;ci<lists[li].length;ci++){
+          if(lists[li][ci].id===id) return lists[li][ci];
+        }
+      }
+    }
+    var groups=showcase.groups||[];
+    for(i=0;i<groups.length;i++){
+      if(groups[i].id===id) return groups[i];
+      var rules=groups[i].rules||[];
+      var ri;
+      for(ri=0;ri<rules.length;ri++){
+        if(rules[ri].id===id) return rules[ri];
+      }
+    }
+    var scenarios=showcase.scenarios||[];
+    for(i=0;i<scenarios.length;i++){
+      if(scenarios[i].id===id){
+        return {
+          id:scenarios[i].id,
+          label:scenarios[i].label,
+          value:scenarios[i].hint,
+          detail:{
+            function:scenarios[i].label||'',
+            logic:scenarios[i].hint||'',
+            data:[]
+          }
+        };
+      }
+    }
+    var badges=showcase.badges||[];
+    for(i=0;i<badges.length;i++){
+      if(badges[i].id===id) return badges[i];
+    }
+    var chips=showcase.chips||[];
+    for(i=0;i<chips.length;i++){
+      if(chips[i].id===id) return chips[i];
+    }
+    var all=showcase.allChips||[];
+    for(i=0;i<all.length;i++){
+      if(all[i].id===id) return all[i];
+    }
+    var padUi=global.OneToneCodexMicroPadUi;
+    if(padUi&&padUi.cellByMicroId&&padUi.cellByMicroId(id)){
+      var cell=padUi.cellByMicroId(id);
+      var lbl=padUi.humanMicroKeyLabel?padUi.humanMicroKeyLabel(id):(cell.uiLabelZh||id);
+      return {
+        id:id,
+        label:lbl,
+        value:cell.defaultSlotId||cell.kind||'',
+        detail:{
+          function:cell.uiLabelZh||lbl,
+          logic:t('homeWbHeroPaneKeyLogic','映射到 Agent 动作槽'),
+          data:[{lbl:t('homeWbHeroPaneKeySlot','槽位'),val:cell.defaultSlotId||'—'}]
+        }
+      };
+    }
+    return null;
+  }
+
+  function camGroupForRule(ruleId,groups){
+    if(!ruleId||!groups) return '';
+    var gi,ri,g,r;
+    for(gi=0;gi<groups.length;gi++){
+      g=groups[gi];
+      for(ri=0;ri<(g.rules||[]).length;ri++){
+        r=g.rules[ri];
+        if(r.id===ruleId) return g.id;
+      }
+    }
+    return '';
+  }
+
+  function activeCamDimId(sel,showcase){
+    var groups=showcase&&showcase.groups||[];
+    if(sel){
+      var fromRule=camGroupForRule(sel,groups);
+      if(fromRule) return fromRule;
+      var gi;
+      for(gi=0;gi<groups.length;gi++){
+        if(groups[gi].id===sel) return groups[gi].id;
+      }
+    }
+    return 'gesture';
+  }
+
+  function ensureDefaultHeroSelection(projection){
+    var showcase=projection&&projection.showcase;
+    if(!showcase) return;
+    var mode=projection.mode||heroMode;
+    if(heroExpandedNodeId&&findShowcaseItem(showcase,heroExpandedNodeId)){
+      if(mode==='softPad') heroPaneTab=heroPaneTabForSoftPadSel(showcase,heroExpandedNodeId);
+      return;
+    }
+    var api=global.OneToneHomeHeroModeModel;
+    var token=String((projection.status&&projection.status.token)||'idle');
+    heroExpandedNodeId=api&&typeof api.defaultShowcaseSelId==='function'
+      ?api.defaultShowcaseSelId(mode,showcase,token)
+      :'';
+    if(mode==='softPad') heroPaneTab=heroPaneTabForSoftPadSel(showcase,heroExpandedNodeId);
+  }
+
+  function heroPaneTabForSoftPadSel(showcase,sel){
+    var pk=softPadPanelKey(showcase,sel);
+    if(pk==='keys') return 'kbd';
+    if(pk==='scenario') return 'status';
+    return 'cap';
+  }
+
+  function heroChannelLabel(mode){
+    if(mode==='keys') return t('homeWbChannelKeys');
+    if(mode==='softPad') return t('homeWbChannelSoftPad');
+    if(mode==='camera') return t('homeWbChannelCamera');
+    return t('homeWbChannelVoice');
+  }
+
+  function heroPaneTitleHtml(item,showcase,schema){
+    if(!item) return '';
+    var title=item.label||item.trigger||'';
+    var val=item.value||item.summary||item.scene||'';
+    if(schema==='multimodal'&&item.trigger){
+      title=item.trigger;
+      val=item.action||item.scene||'';
+    }
+    var html='<div class="wb-hero-pane-card"><p class="wb-hero-pane-title">'+esc(title)+'</p>';
+    if(val) html+='<p class="wb-hero-pane-val">'+esc(val)+'</p>';
+    if(item.detail) html+=heroPaneFactsHtml(item.detail);
+    html+='</div>';
+    return html;
+  }
+
+  function heroPaneFactsHtml(detail){
+    if(!detail) return '';
+    var rows='<div class="wb-hero-pane-fact"><dt>'+esc(t('homeWbShowcaseFn'))+'</dt><dd>'+esc(detail.function||'')+'</dd></div>'
+      +'<div class="wb-hero-pane-fact"><dt>'+esc(t('homeWbShowcaseLogic'))+'</dt><dd>'+esc(detail.logic||'')+'</dd></div>';
+    if(detail.data&&detail.data.length){
+      detail.data.forEach(function(row){
+        rows+='<div class="wb-hero-pane-fact"><dt>'+esc(row.lbl)+'</dt><dd>'+esc(row.val)+'</dd></div>';
+      });
+    }
+    return '<dl class="wb-hero-pane-facts">'+rows+'</dl>';
+  }
+
+  function softPadCapList(showcase){
+    var caps=showcase.capabilities||{};
+    return (caps.agent||[]).concat(caps.data||[]);
+  }
+
+  function softPadPanelKey(showcase,sel){
+    var padUi=global.OneToneCodexMicroPadUi;
+    if(padUi&&padUi.cellByMicroId&&padUi.cellByMicroId(sel)) return 'keys';
+    if(['standby','confirm','done'].indexOf(sel)>=0) return 'scenario';
+    var caps=softPadCapList(showcase);
+    var i;
+    for(i=0;i<caps.length;i++){
+      if(caps[i].id===sel){
+        var dataCaps=(showcase.capabilities&&showcase.capabilities.data)||[];
+        var di;
+        for(di=0;di<dataCaps.length;di++){
+          if(dataCaps[di].id===sel) return 'data';
+        }
+        return 'agent';
+      }
+    }
+    return 'agent';
+  }
+
+  function softPadNodeLabel(showcase,sel){
+    var item=findShowcaseItem(showcase,sel);
+    if(item&&item.label) return item.label;
+    return sel||'';
+  }
+
+  function softPadNodeVal(showcase,sel){
+    var item=findShowcaseItem(showcase,sel);
+    if(item){
+      if(item.value) return item.value;
+      if(item.sub) return item.sub;
+      if(item.summary) return item.summary;
+    }
+    return '—';
+  }
+
+  function softPadActiveScenarioHint(showcase){
+    var scenarios=showcase.scenarios||[];
+    var i;
+    for(i=0;i<scenarios.length;i++){
+      if(scenarios[i].state==='active') return scenarios[i].hint||scenarios[i].label||'—';
+    }
+    return showcase.focus||'—';
+  }
+
+  function heroPaneCrumbHtml(mode,showcase,sel){
+    if(!sel) return '';
+    var parts=[heroChannelLabel(mode)];
+    var schema=showcase.schema||'';
+    if(schema==='multimodal'){
+      var gid=activeCamDimId(sel,showcase);
+      var groups=showcase.groups||[];
+      var g=null,gi;
+      for(gi=0;gi<groups.length;gi++){
+        if(groups[gi].id===gid){ g=groups[gi]; break; }
+      }
+      if(g){
+        parts.push(g.label||'');
+        var rules=g.rules||[],ri;
+        for(ri=0;ri<rules.length;ri++){
+          if(rules[ri].id===sel){ parts.push(rules[ri].trigger||''); break; }
+        }
+      }
+    }else if(schema==='outline'){
+      var padUi=global.OneToneCodexMicroPadUi;
+      if(padUi&&padUi.cellByMicroId&&padUi.cellByMicroId(sel)){
+        parts.push(t('homeWbHeroPaneCrumbKbd','键盘'));
+        parts.push(softPadNodeLabel(showcase,sel));
+      }else if(['standby','confirm','done'].indexOf(sel)>=0){
+        parts.push(t('homeWbHeroPaneCrumbScenario','场景'));
+        parts.push(softPadNodeLabel(showcase,sel));
+      }else{
+        parts.push(softPadNodeLabel(showcase,sel));
+      }
+    }else{
+      var node=findShowcaseItem(showcase,sel);
+      if(node&&(node.label||node.trigger)) parts.push(node.label||node.trigger);
+    }
+    return '<p class="wb-hero-crumb">'+parts.map(function(p,i){
+      return (i?'<i aria-hidden="true">›</i>':'')+(i===parts.length-1?'<em>'+esc(p)+'</em>':esc(p));
+    }).join('')+'</p>';
+  }
+
+  function paintSoftPadPaneCap(showcase,sel){
+    var caps=softPadCapList(showcase);
+    var selected=null, i;
+    for(i=0;i<caps.length;i++){
+      if(caps[i].id===sel){ selected=caps[i]; break; }
+    }
+    if(selected){
+      var detail=selected.detail;
+      var others=[];
+      for(i=0;i<caps.length;i++){
+        if(caps[i].id!==selected.id) others.push(caps[i]);
+      }
+      var related='<p class="wb-hero-related-lbl">'+esc(t('homeWbHeroPaneRelatedLbl','其他能力'))+'</p>'
+        +'<div class="wb-hero-related-list">'+others.map(function(c){
+          return '<button type="button" class="wb-hero-related-row" data-node-id="'+esc(c.id)+'"><b>'+esc(c.label)+'</b><span>'+esc(c.value||'—')+'</span></button>';
+        }).join('')+'</div>';
+      return '<div class="wb-hero-pane-card"><p class="wb-hero-pane-title">'+esc(selected.label)+'</p>'
+        +'<p class="wb-hero-pane-val">'+esc(selected.value||'—')+'</p>'
+        +'<dl class="wb-hero-pane-facts">'
+        +'<div class="wb-hero-pane-fact"><dt>'+esc(t('homeWbShowcaseLogic'))+'</dt><dd>'+esc(detail?detail.logic:selected.sub||'')+'</dd></div>'
+        +'<div class="wb-hero-pane-fact"><dt>'+esc(t('homeWbHeroPaneDataCur','当前'))+'</dt><dd>'+esc(selected.value||'—')+'</dd></div>'
+        +'</dl></div>'+related;
+    }
+    return '<div class="wb-hero-cap-card-list">'+caps.map(function(c){
+      return '<button type="button" class="wb-hero-cap-card'+(heroExpandedNodeId===c.id?' is-sel':'')+'" data-node-id="'+esc(c.id)+'">'
+        +'<span class="wb-hero-cap-card-hd"><b>'+esc(c.label)+'</b><s>'+esc(c.sub||'')+'</s></span>'
+        +'<span class="wb-hero-cap-card-badge">'+esc(c.value||'—')+'</span></button>';
+    }).join('')+'</div>';
+  }
+
+  function paintSoftPadPaneKbd(showcase,sel){
+    var padUi=global.OneToneCodexMicroPadUi;
+    var cells=(padUi&&padUi.LAYOUT&&padUi.LAYOUT.cells)||[];
+    var detailTop='';
+    var cell=padUi&&padUi.cellByMicroId?padUi.cellByMicroId(sel):null;
+    if(cell){
+      var item=findShowcaseItem(showcase,sel);
+      var detail=item&&item.detail?item.detail:null;
+      var lbl=padUi.humanMicroKeyLabel?padUi.humanMicroKeyLabel(sel):(cell.uiLabelZh||sel);
+      detailTop='<div class="wb-hero-pane-card wb-hero-pane-card--kbd-detail"><p class="wb-hero-pane-title">'+esc(lbl)+'</p>'
+        +'<p class="wb-hero-pane-val">'+esc(cell.defaultSlotId||cell.kind||'—')+'</p>'
+        +'<dl class="wb-hero-pane-facts">'
+        +'<div class="wb-hero-pane-fact"><dt>'+esc(t('homeWbShowcaseFn'))+'</dt><dd>'+esc(detail?detail.function:(cell.uiLabelZh||lbl))+'</dd></div>'
+        +'<div class="wb-hero-pane-fact"><dt>'+esc(t('homeWbShowcaseLogic'))+'</dt><dd>'+esc(detail?detail.logic:t('homeWbHeroPaneKeyLogic','映射到 Agent 动作槽'))+'</dd></div>'
+        +'</dl></div>';
+    }
+    var hotKeys={ACT10:1,AG04:1,ACT08:1};
+    var list='<div class="wb-hero-kbd-list">'+cells.map(function(c){
+      if(!c||!c.microKeyId) return '';
+      var lbl=padUi.humanMicroKeyLabel?padUi.humanMicroKeyLabel(c.microKeyId):c.microKeyId;
+      var sub=c.defaultSlotId||c.kind||'';
+      var cls='wb-hero-kbd-list-item'+(sel===c.microKeyId?' is-sel':'')+(hotKeys[c.microKeyId]?' is-hot':'');
+      return '<button type="button" class="'+cls+'" data-node-id="'+esc(c.microKeyId)+'"><b>'+esc(lbl)+'</b><span>'+esc(sub)+'</span></button>';
+    }).join('')+'</div>';
+    return detailTop+list;
+  }
+
+  function paintSoftPadPaneStatus(showcase,projection){
+    var isLive=!!(showcase.isLive&&showcase.deviceReady);
+    var caps=(showcase.capabilities&&showcase.capabilities.agent)||[];
+    var statusCap=null, i;
+    for(i=0;i<caps.length;i++){
+      if(caps[i].id==='status'){ statusCap=caps[i]; break; }
+    }
+    var bindCap=null;
+    for(i=0;i<caps.length;i++){
+      if(caps[i].id==='bind'){ bindCap=caps[i]; break; }
+    }
+    var lightLbl=isLive?t('homeWbHeroPaneStatusWorking','工作中'):t('homeWbHeroPaneStatusStandby','待命');
+    var lightNext=isLive?t('homeWbHeroPaneStatusResponding','正在响应'):t('homeWbHeroPaneStatusWaiting','等待指令');
+    return '<div class="wb-hero-status-grid">'
+      +'<div class="wb-hero-status-card"><p class="wb-hero-status-card-lbl">'+esc(t('homeWbHeroPaneStatusScenario','当前场景'))+'</p>'
+      +'<p class="wb-hero-status-card-val">'+esc(showcase.focus||'—')+'</p>'
+      +'<p class="wb-hero-status-card-next">→ '+esc(softPadActiveScenarioHint(showcase))+'</p></div>'
+      +'<div class="wb-hero-status-card"><p class="wb-hero-status-card-lbl">'+esc(t('homeWbHeroPaneStatusAgent','Agent 状态'))+'</p>'
+      +'<p class="wb-hero-status-card-val">'+esc(isLive?t('homeWbHeroPaneStatusRunning','运行中'):t('homeWbHeroPaneStatusIdle','空闲'))+'</p>'
+      +'<p class="wb-hero-status-card-next">'+esc(statusCap?statusCap.value:'—')+'</p></div>'
+      +'<div class="wb-hero-status-card"><p class="wb-hero-status-card-lbl">'+esc(t('homeWbHeroPaneStatusLight','信号灯'))+'</p>'
+      +'<p class="wb-hero-status-card-val"><span class="wb-hero-status-light'+(isLive?' is-on':'')+'"><i aria-hidden="true"></i>'+esc(lightLbl)+'</span></p>'
+      +'<p class="wb-hero-status-card-next">'+esc(lightNext)+'</p></div>'
+      +'<div class="wb-hero-status-card"><p class="wb-hero-status-card-lbl">'+esc(t('homeWbHeroPaneStatusForeground','前台应用'))+'</p>'
+      +'<p class="wb-hero-status-card-val">'+esc(showcase.context||'—')+'</p>'
+      +'<p class="wb-hero-status-card-next">'+esc(bindCap?bindCap.value:'—')+'</p></div>'
+      +'</div>';
+  }
+
+  function paintSoftPadPaneHistory(){
+    return '<div class="wb-hero-history-list">'
+      +'<div class="wb-hero-status-card"><p class="wb-hero-status-card-lbl">'+esc(t('homeWbHeroPaneHistoryMonth','本月用量'))+'</p>'
+      +'<p class="wb-hero-status-card-val">—</p><p class="wb-hero-status-card-next">'+esc(t('homeWbHeroPaneHistoryPlaceholder','用量统计即将上线'))+'</p></div>'
+      +'<div class="wb-hero-status-card"><p class="wb-hero-status-card-lbl">'+esc(t('homeWbHeroPaneHistoryWeek','本周用量'))+'</p>'
+      +'<p class="wb-hero-status-card-val">—</p></div>'
+      +'<div class="wb-hero-status-card"><p class="wb-hero-status-card-lbl">'+esc(t('homeWbHeroPaneHistoryToday','今日活动'))+'</p>'
+      +'<p class="wb-hero-status-card-next">'+esc(t('homeWbHeroPaneHistoryPlaceholder','用量统计即将上线'))+'</p></div>'
+      +'</div>';
+  }
+
+  function paintSoftPadPane(showcase,sel,projection){
+    var tab=heroPaneTab||'cap';
+    if(['cap','kbd','status','history'].indexOf(tab)<0) tab='cap';
+    var tabs=[
+      {id:'cap',lbl:t('homeWbHeroPaneTabCap','能力')},
+      {id:'kbd',lbl:t('homeWbHeroPaneTabKbd','键盘')},
+      {id:'status',lbl:t('homeWbHeroPaneTabStatus','状态')},
+      {id:'history',lbl:t('homeWbHeroPaneTabHistory','历史')}
+    ];
+    var activeLbl=tabs[0].lbl, ti;
+    for(ti=0;ti<tabs.length;ti++){
+      if(tabs[ti].id===tab){ activeLbl=tabs[ti].lbl; break; }
+    }
+    var target=showcase.context||'—';
+    var header='<p class="wb-hero-pane-header">'+esc(t('homeWbHeroPaneHeaderWrite','写入'))+' <em>'+esc(target)+'</em> <i aria-hidden="true">›</i> <em>'+esc(activeLbl)+'</em></p>';
+    var tabBar='<div class="wb-hero-pane-tabs" role="tablist">'+tabs.map(function(ti){
+      return '<button type="button" class="wb-hero-pane-tab'+(ti.id===tab?' is-on':'')+'" data-pane-tab="'+esc(ti.id)+'" role="tab">'+esc(ti.lbl)+'</button>';
+    }).join('')+'</div>';
+    var content='';
+    if(tab==='cap') content=paintSoftPadPaneCap(showcase,sel);
+    else if(tab==='kbd') content=paintSoftPadPaneKbd(showcase,sel);
+    else if(tab==='status') content=paintSoftPadPaneStatus(showcase,projection);
+    else content=paintSoftPadPaneHistory();
+    return '<div class="wb-hero-pane-container">'+header+tabBar+'<div class="wb-hero-pane-tab-body">'+content+'</div></div>';
+  }
+
+  function cameraStatusGridHtml(showcase,projection,sel){
+    var badges=showcase.badges||[];
+    var runBadge=badges[0];
+    var presBadge=badges[1];
+    var groups=showcase.groups||[];
+    var gid=activeCamDimId(sel,showcase);
+    var dimBound=0, dimSlots=0, totalBound=0, gi, ri, g, r;
+    for(gi=0;gi<groups.length;gi++){
+      g=groups[gi];
+      dimSlots=g.slotCount||(g.rules||[]).length;
+      if(g.id===gid){ /* use this group's slot count below */ }
+      for(ri=0;ri<(g.rules||[]).length;ri++){
+        r=g.rules[ri];
+        if(r.configured){
+          totalBound++;
+          if(g.id===gid) dimBound++;
+        }
+      }
+    }
+    var activeG=null;
+    for(gi=0;gi<groups.length;gi++){
+      if(groups[gi].id===gid){ activeG=groups[gi]; break; }
+    }
+    dimSlots=activeG?(activeG.slotCount||(activeG.rules||[]).length):0;
+    var token=String((projection&&projection.status&&projection.status.token)||'idle');
+    var lastTrig=t('homeWbCamStatusNone','无');
+    if(token==='triggered'){
+      for(gi=0;gi<groups.length;gi++){
+        for(ri=0;ri<(groups[gi].rules||[]).length;ri++){
+          r=groups[gi].rules[ri];
+          if(r.configured&&r.active){ lastTrig=r.trigger||'—'; break; }
+        }
+      }
+    }
+    var runVal=runBadge?(runBadge.label||'—'):'—';
+    var presVal=presBadge?(presBadge.label||'—'):t('homeWbCamStatusDetecting','检测中');
+    return '<div class="wb-hero-status-grid wb-hero-cam-status-grid">'
+      +'<div class="wb-hero-status-card"><p class="wb-hero-status-card-lbl">'+esc(t('homeWbCamStatusRun','运行状态'))+'</p>'
+      +'<p class="wb-hero-status-card-val">'+esc(runVal)+'</p></div>'
+      +'<div class="wb-hero-status-card"><p class="wb-hero-status-card-lbl">'+esc(t('homeWbCamStatusPresence','在座状态'))+'</p>'
+      +'<p class="wb-hero-status-card-val">'+esc(presVal)+'</p></div>'
+      +'<div class="wb-hero-status-card"><p class="wb-hero-status-card-lbl">'+esc(t('homeWbCamStatusRules','已启用规则'))+'</p>'
+      +'<p class="wb-hero-status-card-val">'+esc(dimBound+' / '+dimSlots)+'</p></div>'
+      +'<div class="wb-hero-status-card"><p class="wb-hero-status-card-lbl">'+esc(t('homeWbCamStatusLastTrig','最近触发'))+'</p>'
+      +'<p class="wb-hero-status-card-val">'+esc(lastTrig)+'</p></div>'
+      +'</div>';
+  }
+
+  function paintHeroMark(visualEl,mode,live){
+    if(!visualEl) return;
+    var mark=visualEl.querySelector('.wb-hero-mark');
+    if(!mark){
+      visualEl.innerHTML='<button type="button" class="wb-hero-mark"></button>';
+      mark=visualEl.querySelector('.wb-hero-mark');
+      if(mark&&!mark._wbSettingsBound){
+        mark._wbSettingsBound=true;
+        mark.onclick=function(e){
+          e.preventDefault();
+          openHeroSettings();
+        };
+      }
+    }
+    var orb=$('wbHeroOrb');
+    var label=orb&&orb.getAttribute('aria-label');
+    if(label) mark.setAttribute('aria-label',label);
+    mark.innerHTML=heroModeIconSvg(mode);
+    mark.classList.toggle('is-live',!!live);
+  }
+
+  function paintShowcaseVisual(visualEl,showcase,projection){
+    if(!visualEl||!showcase||!projection) return;
+    var mode=projection.mode||'voice';
+    var live=!!(showcase.isLive&&showcase.deviceReady);
+    paintHeroMark(visualEl,mode,live);
+  }
+
+  function paintLinearShowcaseLogic(logicEl,showcase,projection,opts){
+    opts=opts||{};
+    var nodes=showcase.nodes||[];
+    var mode=projection.mode||'voice';
+    var twoCol=nodes.length===2;
+    var kind='linear-desk:'+nodes.length;
+    if(showcaseShellKind!==kind){
+      showcaseShellKind=kind;
+      var viewW=twoCol?500:1000;
+      var pathD=twoCol
+        ?'M 0,4 Q 125,-5 250,4 T 500,4'
+        :'M 0,4 Q 250,-5 500,4 T 1000,4';
+      var gradId='wbHeroFlowGrad'+nodes.length;
+      logicEl.innerHTML='<p class="wb-hero-schema-lbl">'+esc(t('homeWbHeroFlowLbl'))+'</p>'
+        +'<section class="flow-nodes wb-hero-flow-desk'+(twoCol?' is-two-col':'')+'" role="list">'
+        +'<div class="flow-nodes-track" aria-hidden="true">'
+        +'<svg class="flow-nodes-svg" viewBox="0 0 '+viewW+' 8" fill="none" preserveAspectRatio="none">'
+        +'<defs><linearGradient id="'+gradId+'" x1="0%" y1="0%" x2="100%" y2="0%">'
+        +'<stop offset="0%" stop-color="rgba(79, 172, 254, 0.85)"/>'
+        +'<stop offset="50%" stop-color="rgba(42, 156, 196, 0.95)"/>'
+        +'<stop offset="100%" stop-color="rgba(245, 158, 11, 0.85)"/>'
+        +'</linearGradient></defs>'
+        +'<path class="flow-nodes-path-base" d="'+pathD+'" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>'
+        +'<path class="flow-nodes-path" d="'+pathD+'" stroke="url(#'+gradId+')" stroke-width="3" stroke-linecap="round"/>'
+        +'</svg></div>'
+        +'<div class="flow-nodes-grid'+(twoCol?' flow-nodes-grid--two':'')+'"></div>'
+        +'</section>';
+    }
+    var desk=logicEl.querySelector('.wb-hero-flow-desk');
+    if(!desk) return;
+    var grid=desk.querySelector('.flow-nodes-grid');
+    var existing=grid?grid.querySelectorAll('.flow-node'):[];
+    if(!grid||existing.length!==nodes.length){
+      if(grid) grid.innerHTML='';
+      nodes.forEach(function(node,idx){
+        if(!grid) return;
+        grid.insertAdjacentHTML('beforeend',
+          '<div class="flow-node" data-node-id="'+esc(node.id)+'">'
+          +'<span class="flow-node-tag">'+esc(heroFlowNodeTag(idx,node.label))+'</span>'
+          +'<button type="button" class="flow-node-btn" data-node-id="'+esc(node.id)+'">'
+          +heroFlowNodeIcon(mode,node.id)
+          +'</button>'
+          +'<h3 class="flow-node-title">'+esc(node.label||'')+'</h3>'
+          +'<p class="flow-node-hint">'+esc(node.summary||'')+'</p>'
+          +'</div>');
+      });
+      existing=grid.querySelectorAll('.flow-node');
+    }
+    var muted=!showcase.deviceReady;
+    var live=!!(showcase.isLive&&showcase.deviceReady);
+    var pathTarget=Math.max(0,Math.min(100,Number(showcase.pathPct)||0));
+    var pathEl=desk.querySelector('.flow-nodes-path');
+    var token=String((projection.status&&projection.status.token)||'idle');
+    var animKey=(projection.mode||'')+':'+token+':'+pathTarget;
+    if(pathEl){
+      var dashLen=1000;
+      var offset=dashLen-(pathTarget/100)*dashLen;
+      if(!opts.skipPathAnim&&animKey!==lastShowcasePathKey){
+        pathEl.style.transition='none';
+        pathEl.style.strokeDasharray=String(dashLen);
+        pathEl.style.strokeDashoffset=String(dashLen);
+        try{ void pathEl.getBBox(); }catch(_){}
+        pathEl.style.transition='';
+        requestAnimationFrame(function(){
+          pathEl.style.strokeDashoffset=String(offset);
+        });
+      }else{
+        pathEl.style.strokeDasharray=String(dashLen);
+        pathEl.style.strokeDashoffset=String(offset);
+      }
+    }
+    nodes.forEach(function(node,idx){
+      var el=existing[idx];
+      if(!el) return;
+      el.setAttribute('data-node-id',node.id);
+      var btn=el.querySelector('.flow-node-btn');
+      var title=el.querySelector('.flow-node-title');
+      var hint=el.querySelector('.flow-node-hint');
+      var tag=el.querySelector('.flow-node-tag');
+      if(tag) tag.textContent=heroFlowNodeTag(idx,node.label);
+      if(title) title.textContent=node.label||'';
+      if(hint) hint.textContent=node.summary||'';
+      if(btn){
+        btn.setAttribute('data-node-id',node.id);
+        btn.classList.toggle('is-active',node.state==='active');
+        btn.classList.toggle('is-recording',!!node.live&&live);
+        btn.classList.toggle('is-selected',heroExpandedNodeId===node.id);
+        btn.disabled=!!muted;
+      }
+      el.classList.toggle('is-done',node.state==='done');
+      el.classList.toggle('is-muted',muted);
+      el.classList.toggle('is-selected',heroExpandedNodeId===node.id);
+      if(!opts.skipPathAnim&&node.state==='active'&&animKey!==lastShowcasePathKey){
+        if(btn){
+          btn.classList.add('is-pop');
+          setTimeout(function(){ btn.classList.remove('is-pop'); },400);
+        }
+      }
+    });
+  }
+
+  function paintSoftPadValueStrip(stripEl,showcase){
+    if(!stripEl) return;
+    var dataCaps=(showcase.capabilities&&showcase.capabilities.data)||[];
+    var btns=stripEl.querySelectorAll('.wb-hero-kbd-chip');
+    if(btns.length!==dataCaps.length){
+      stripEl.innerHTML=dataCaps.map(function(c){
+        return '<button type="button" class="wb-hero-kbd-chip" data-node-id="'+esc(c.id)+'">'
+          +'<i aria-hidden="true"></i><b>'+esc(c.label||'')+'</b>'
+          +'<span class="wb-hero-kbd-value-v">'+esc(c.value||'—')+'</span></button>';
+      }).join('');
+      btns=stripEl.querySelectorAll('.wb-hero-kbd-chip');
+    }
+    dataCaps.forEach(function(c,idx){
+      var el=btns[idx];
+      if(!el) return;
+      el.classList.toggle('is-sel',heroExpandedNodeId===c.id);
+      var val=el.querySelector('.wb-hero-kbd-value-v');
+      if(val) val.textContent=c.value||'—';
+    });
+  }
+
+  function paintSoftPadOutline(logicEl,showcase,projection){
+    var scenarios=showcase.scenarios||[];
+    var kind='outline-v2:'+scenarios.length;
+    if(showcaseShellKind!==kind){
+      showcaseShellKind=kind;
+      logicEl.innerHTML='<p class="wb-hero-schema-lbl">'+esc(t('homeWbHeroSpNavLbl'))+'</p>'
+        +'<div class="wb-hero-kbd-panel">'
+        +'<div class="wb-hero-kbd-strip-status wb-hero-sp-scenario-strip" role="list"></div>'
+        +'<div id="wbHeroPadPreview" class="wb-hero-pad-preview-host"></div>'
+        +'<div class="wb-hero-kbd-strip-value" role="list"></div>'
+        +'</div>';
+    }
+    var strip=logicEl.querySelector('.wb-hero-kbd-strip-status');
+    if(strip){
+      var scenBtns=strip.querySelectorAll('.wb-hero-sp-scenario-chip');
+      if(scenBtns.length!==scenarios.length){
+        strip.innerHTML=scenarios.map(function(s){
+          return '<button type="button" class="wb-hero-sp-scenario-chip wb-hero-kbd-chip" data-node-id="'+esc(s.id)+'"><i aria-hidden="true"></i><b>'+esc(s.label)+'</b></button>';
+        }).join('');
+        scenBtns=strip.querySelectorAll('.wb-hero-sp-scenario-chip');
+      }
+      scenarios.forEach(function(s,idx){
+        var el=scenBtns[idx];
+        if(!el) return;
+        el.classList.toggle('is-cur',s.state==='active');
+        el.classList.toggle('is-done',s.state==='done');
+        el.classList.toggle('is-sel',heroExpandedNodeId===s.id);
+      });
+    }
+    paintSoftPadValueStrip(logicEl.querySelector('.wb-hero-kbd-strip-value'),showcase);
+    var padHost=logicEl.querySelector('#wbHeroPadPreview');
+    var padUi=global.OneToneCodexMicroPadUi;
+    if(padHost&&padUi&&typeof padUi.renderHeroPadPreviewGrid==='function'){
+      padUi.renderHeroPadPreviewGrid(padHost,{
+        mapping:currentHabitMapping(),
+        selId:heroExpandedNodeId,
+        hotMicroKeyId:showcase.hotMicroKeyId||'',
+        live:!!(showcase.isLive&&showcase.deviceReady),
+        voiceHint:heroPadVoiceHint(projection,showcase)
+      });
+    }
+  }
+
+  function paintCameraVisMetaBadges(visMeta,showcase){
+    if(!visMeta) return;
+    var badgesEl=visMeta.querySelector('.wb-hero-cam-badges');
+    if(!showcase||showcase.schema!=='multimodal'){
+      if(badgesEl) badgesEl.remove();
+      return;
+    }
+    var badges=showcase.badges||[];
+    if(!badgesEl){
+      badgesEl=document.createElement('div');
+      badgesEl.className='wb-hero-cam-badges';
+      visMeta.appendChild(badgesEl);
+    }
+    badgesEl.innerHTML=badges.map(function(b){
+      var cls='wb-hero-cam-badge is-readonly';
+      if(b.active&&showcase.deviceReady) cls+=' is-active';
+      if(b.tone==='is-present') cls+=' is-present';
+      return '<span class="'+cls+'">'+esc(b.label||'')+'</span>';
+    }).join('');
+  }
+
+  function paintCameraMultimodal(logicEl,showcase,projection){
+    var groups=showcase.groups||[];
+    var dimId=activeCamDimId(heroExpandedNodeId,showcase);
+    var live=!!(showcase.isLive&&showcase.deviceReady);
+    var kind='multimodal:'+groups.length+':'+dimId;
+    if(showcaseShellKind!==kind){
+      showcaseShellKind=kind;
+      logicEl.innerHTML='<p class="wb-hero-schema-lbl">'+esc(t('homeWbCamDimNavLbl','识别维度'))+'</p>'
+        +'<div class="wb-hero-cam-dim-row"></div><div class="wb-hero-cam-scene-zone"></div>';
+    }
+    var dimEl=logicEl.querySelector('.wb-hero-cam-dim-row');
+    if(dimEl){
+      var dimBtns=dimEl.querySelectorAll('.wb-hero-cam-dim');
+      if(dimBtns.length!==groups.length){
+        dimEl.innerHTML=groups.map(function(g){
+          return '<button type="button" class="wb-hero-cam-dim" data-node-id="'+esc(g.id)+'">'
+            +'<b>'+esc(g.label||g.id)+'</b><s>'+esc(g.sub||'')+'</s></button>';
+        }).join('');
+        dimBtns=dimEl.querySelectorAll('.wb-hero-cam-dim');
+      }
+      groups.forEach(function(g,idx){
+        var el=dimBtns[idx];
+        if(!el) return;
+        var bound=g.boundCount||0;
+        var on=live&&g.rules&&g.rules.some(function(r){ return r.configured&&r.active; });
+        el.classList.toggle('is-sel',dimId===g.id||heroExpandedNodeId===g.id);
+        el.classList.toggle('is-selected',dimId===g.id||heroExpandedNodeId===g.id);
+        el.classList.toggle('is-on',on);
+        el.classList.toggle('is-dim-idle',bound===0);
+      });
+    }
+    var zoneEl=logicEl.querySelector('.wb-hero-cam-scene-zone');
+    if(zoneEl){
+      var g=null,gi;
+      for(gi=0;gi<groups.length;gi++){
+        if(groups[gi].id===dimId){ g=groups[gi]; break; }
+      }
+      var rules=g?g.rules||[]:[];
+      var sceneBtns=zoneEl.querySelectorAll('.wb-hero-cam-scene-node');
+      if(sceneBtns.length!==rules.length){
+        zoneEl.innerHTML=rules.map(function(r){
+          var sub=r.configured?(r.scene||r.action||''):t('homeWbCamRuleUnbound','未绑定');
+          return '<button type="button" class="wb-hero-cam-scene-node'+(r.configured?'':' is-unbound')+'" data-node-id="'+esc(r.id)+'"><b>'+esc(r.trigger||'')+'</b><span>'+esc(sub)+'</span></button>';
+        }).join('');
+        sceneBtns=zoneEl.querySelectorAll('.wb-hero-cam-scene-node');
+      }
+      var flashId='';
+      var token=String((projection.status&&projection.status.token)||'idle');
+      if(token==='triggered'&&rules.length){
+        var ri;
+        for(ri=0;ri<rules.length;ri++){
+          if(rules[ri].active){ flashId=rules[ri].id; break; }
+        }
+      }
+      rules.forEach(function(r,idx){
+        var el=sceneBtns[idx];
+        if(!el) return;
+        var on=live&&r.configured&&r.active;
+        el.classList.toggle('is-on',on);
+        el.classList.toggle('is-off',r.configured&&!on);
+        el.classList.toggle('is-unbound',!r.configured);
+        el.classList.toggle('is-live',flashId===r.id);
+        el.classList.toggle('is-sel',heroExpandedNodeId===r.id);
+        el.classList.toggle('is-selected',heroExpandedNodeId===r.id);
+        el.disabled=false;
+      });
+    }
+  }
+
+  function paintHeroPane(projection,opts){
+    opts=opts||{};
+    var paneEl=$('wbHeroPane');
+    if(!paneEl) return;
+    var showcase=projection&&projection.showcase;
+    if(!showcase){ paneEl.innerHTML=''; return; }
+    var schema=showcase.schema||'linear-prod';
+    var mode=projection.mode||heroMode;
+    var sel=heroExpandedNodeId;
+    var item=sel?findShowcaseItem(showcase,sel):null;
+    var crumb=sel&&schema!=='outline'?heroPaneCrumbHtml(mode,showcase,sel):'';
+    var card='';
+    var statusGrid='';
+
+    if(schema==='multimodal'){
+      statusGrid=cameraStatusGridHtml(showcase,projection,sel);
+      var gid=activeCamDimId(sel,showcase);
+      var groups=showcase.groups||[];
+      var g=null;
+      var gi;
+      for(gi=0;gi<groups.length;gi++){
+        if(groups[gi].id===gid){ g=groups[gi]; break; }
+      }
+      if(item&&item.trigger){
+        var actionVal=item.configured?(item.action||''):t('homeWbCamRuleUnbound','未绑定');
+        card='<div class="wb-hero-pane-card'+(item.configured?'':' is-unbound')+'"><p class="wb-hero-pane-title">'+esc(item.trigger)+'</p>';
+        if(item.configured){
+          card+='<div class="wb-hero-cam-rule-card"><div class="wb-hero-cam-rule-flow"><span>'+esc(item.trigger)+'</span>'
+            +'<span class="wb-hero-cam-rule-arr" aria-hidden="true">→</span><span>'+esc(item.action||'')+'</span></div>'
+            +'<p class="wb-hero-cam-rule-scene">'+esc(t('homeWbCamRuleScene'))+' · '+esc(item.scene||item.action||'')+'</p></div>';
+        }else{
+          card+='<p class="wb-hero-pane-val">'+esc(actionVal)+'</p>'
+            +'<p class="wb-hero-pane-note">'+esc(t('homeWbCamRuleUnboundHint','在 Camera Pro 设置中绑定动作'))+'</p>'
+            +'<p class="wb-hero-cam-rule-scene">'+esc(t('homeWbCamRuleScene'))+' · '+esc(item.scene||'')+'</p>';
+        }
+        card+=(g?'<p class="wb-hero-pane-note">'+esc(g.logic||'')+'</p>':'')+'</div>';
+      }else if(item&&item.detail&&!item.trigger&&!item.rules){
+        card=heroPaneTitleHtml(item,showcase,schema);
+      }else if(g){
+        card='<div class="wb-hero-pane-card"><p class="wb-hero-pane-title">'+esc(g.label||'')+'</p>'
+          +'<p class="wb-hero-pane-val">'+esc(g.sub||'')+'</p>'
+          +(g.fn?'<p class="wb-hero-pane-note">'+esc(g.fn)+'</p>':'')
+          +'<div class="wb-hero-cam-rule-list">'+((g.rules||[]).map(function(rule){
+            var on=!!(showcase.isLive&&showcase.deviceReady&&rule.configured&&rule.active);
+            var span=rule.configured?(rule.action||''):t('homeWbCamRuleUnbound','未绑定');
+            return '<button type="button" class="wb-hero-cam-rule-row'+(on?' is-on':' is-off')+(rule.configured?'':' is-unbound')+(heroExpandedNodeId===rule.id?' is-sel':'')+'" data-node-id="'+esc(rule.id)+'"><b>'+esc(rule.trigger||'')+'</b><span>'+esc(span)+'</span></button>';
+          }).join(''))+'</div></div>';
+      }
+    }else if(schema==='outline'){
+      card=paintSoftPadPane(showcase,sel,projection);
+    }else if(item){
+      card=heroPaneTitleHtml(item,showcase,schema);
+    }
+
+    paneEl.innerHTML=(statusGrid||'')+(card?crumb+card:'');
+  }
+
+  function paintHeroPrimary(projection,opts){
+    opts=opts||{};
+    var ctxEl=$('wbHeroShowcaseCtx');
+    var visBlock=$('wbHeroVisBlock');
+    var visualEl=$('wbHeroShowcaseVisual');
+    var focusEl=$('wbHeroShowcaseFocus');
+    var logicEl=$('wbHeroShowcaseLogic');
+    var showcase=projection&&projection.showcase;
+    if(!showcase) return;
+    var context=showcase.context||'';
+    if(ctxEl){
+      if(context&&context!==t('homeLiveUnset')&&context!=='—'){
+        ctxEl.innerHTML='<em>'+esc(context)+'</em>';
+        ctxEl.hidden=false;
+      }else{
+        ctxEl.hidden=true;
+        ctxEl.textContent='';
+      }
+    }
+    var isLive=!!(showcase.isLive&&showcase.deviceReady);
+    if(focusEl){
+      focusEl.textContent=showcase.focus||'';
+      focusEl.classList.toggle('is-live',isLive);
+      var token=String((projection.status&&projection.status.token)||'idle');
+      var animKey=(projection.mode||'')+':'+token+':'+(showcase.pathPct||0);
+      if(!opts.skipFocusBump&&animKey!==lastShowcasePathKey){
+        focusEl.classList.remove('is-bump');
+        void focusEl.offsetWidth;
+        focusEl.classList.add('is-bump');
+        setTimeout(function(){ focusEl.classList.remove('is-bump'); },350);
+      }
+      paintCameraVisMetaBadges(focusEl.parentElement,showcase);
+    }
+    var mode=projection.mode||'voice';
+    if(paintHeroShowcase._lastMode&&paintHeroShowcase._lastMode!==mode){
+      showcaseShellKind='';
+    }
+    paintHeroShowcase._lastMode=mode;
+    var schema=showcase.schema||(showcase.kind==='camera'?'multimodal':'linear-prod');
+    var hideVisual=showcase.visual==='none';
+    if(visBlock){
+      visBlock.classList.toggle('is-mark-above-flow',mode==='keys');
+    }
+    if(visualEl){
+      if(hideVisual){
+        visualEl.hidden=true;
+        visualEl.setAttribute('aria-hidden','true');
+        visualEl.innerHTML='';
+      }else{
+        visualEl.hidden=false;
+        visualEl.removeAttribute('aria-hidden');
+        paintShowcaseVisual(visualEl,showcase,projection);
+      }
+    }
+    if(logicEl){
+      if(schema==='outline'){
+        paintSoftPadOutline(logicEl,showcase,projection);
+      }else if(schema==='multimodal'){
+        paintCameraMultimodal(logicEl,showcase,projection);
+      }else{
+        paintLinearShowcaseLogic(logicEl,showcase,projection,opts);
+      }
+    }
+  }
+
+  function paintHeroShowcase(projection,opts){
+    opts=opts||{};
+    var host=$('wbHeroShowcase');
+    if(!host) return;
+    var showcase=projection&&projection.showcase;
+    if(!showcase) return;
+    ensureDefaultHeroSelection(projection);
+    paintHeroPrimary(projection,opts);
+    paintHeroPane(projection,opts);
+    var isLive=!!(showcase.isLive&&showcase.deviceReady);
+    host.classList.toggle('is-device-ready',!!showcase.deviceReady);
+    host.classList.toggle('is-live',isLive);
+    host.setAttribute('data-wb-status-token',String((projection.status&&projection.status.token)||'idle'));
+    host.setAttribute('data-wb-hero-schema',showcase.schema||'');
+    host.setAttribute('data-wb-hero-mode',projection.mode||heroMode);
+    var token2=String((projection.status&&projection.status.token)||'idle');
+    lastShowcasePathKey=(projection.mode||'')+':'+token2+':'+(showcase.pathPct||0);
+  }
+
   function syncHeroMicCard(projection){
     var hub=$('wbHeroMic');
     var engineBtn=$('wbHeroMicEngine');
@@ -609,6 +1481,7 @@
     var toolbar=$('wbHeroMicToolbar');
     var listenBtn=$('wbBtnListenToggle');
     var voiceSwitch=$('wbHeroVoiceSwitch');
+    var voiceCtrl=$('wbHeroVoiceCtrl');
     var statusEl=$('wbHeroMicStatus');
     var hintEl=$('wbHeroMicVoiceHint');
     var mode=projection&&projection.mode?projection.mode:heroMode;
@@ -626,6 +1499,7 @@
         hub.classList.remove('is-voice-surface','is-dictating');
       }
       if(voiceSwitch) voiceSwitch.hidden=true;
+      if(voiceCtrl) voiceCtrl.hidden=true;
       return;
     }
     if(hub) hub.hidden=false;
@@ -634,6 +1508,7 @@
         hub.classList.remove('is-voice-surface','is-dictating');
       }
       if(voiceSwitch) voiceSwitch.hidden=true;
+      if(voiceCtrl) voiceCtrl.hidden=true;
       var m=vm.m||null;
       var line1=t('homeWbFlowEmptyKeys');
       if(m){
@@ -650,32 +1525,34 @@
         }
       }
       if(statusEl) statusEl.textContent=line1;
+      var keysPills=(projection&&projection.pills)||[];
+      var keysListenPill=null;
+      keysPills.forEach(function(pill){
+        if(pill&&pill.action==='listen-toggle') keysListenPill=pill;
+      });
+      if(listenBtn&&keysListenPill){
+        listenBtn.hidden=false;
+        listenBtn.removeAttribute('aria-hidden');
+      }
       return;
     }
     if(mode==='voice'){
+      if(voiceCtrl) voiceCtrl.hidden=true;
       if(hub){
         hub.classList.toggle('is-voice-surface',true);
         hub.classList.toggle('is-dictating',dictating);
       }
       if(global.OneToneVoiceSurfaceCopy){
         var surface=global.OneToneVoiceSurfaceCopy.resolve({dictating:dictating,paused:paused});
-        var flow=projection&&projection.flow?projection.flow:null;
-        var line1='';
-        if(dictating){
-          line1=surface.line1||'';
-        }else if(flow&&flow.trigger){
-          line1=String(flow.trigger);
-        }else{
-          line1=surface.line1||'';
-        }
+        var line1=surface.line1||'';
         if(statusEl) statusEl.textContent=line1;
         if(voiceSwitch){
-          voiceSwitch.hidden=false;
           voiceSwitch.classList.toggle('is-on',!!surface.switchOn);
           voiceSwitch.setAttribute('aria-checked',surface.switchOn?'true':'false');
           voiceSwitch.disabled=!!surface.switchDisabled;
           voiceSwitch.setAttribute('aria-label',surface.switchOn?t('voiceSurfaceSwitchOn'):t('voiceSurfaceSwitchOff'));
         }
+        if(voiceCtrl) voiceCtrl.hidden=false;
       }
       var pills=(projection&&projection.pills)||[];
       var enginePill=null;
@@ -705,10 +1582,6 @@
           engineBtn.removeAttribute('title');
         }
       }
-      if(listenBtn&&listenPill){
-        listenBtn.hidden=false;
-        listenBtn.removeAttribute('aria-hidden');
-      }
     }
   }
 
@@ -722,20 +1595,11 @@
 
     if(mode==='camera'||mode==='softPad'){
       syncHeroMicCard(projection);
-      var statusPill=null;
       var ctaPill=null;
       pills.forEach(function(pill){
         if(!pill) return;
         if(pill.action==='open-camera-settings'||pill.action==='open-softPad-settings') ctaPill=pill;
-        else if(!statusPill) statusPill=pill;
       });
-      if(statusPill){
-        var extra=pills.filter(function(p){ return p&&p!==statusPill&&p!==ctaPill; })
-          .map(function(p){ return p.label; }).filter(Boolean).join(' · ');
-        var tip=extra?String(statusPill.label)+' · '+extra:String(statusPill.label||'');
-        html+='<span class="wb-hero-pill'+(statusPill.tone?' '+statusPill.tone:'')+'" role="listitem" title="'+esc(tip)+'">'
-          +'<span>'+esc(statusPill.label)+'</span></span>';
-      }
       if(ctaPill){
         var ctaId=ctaPill.action==='open-camera-settings'?'wbBtnCameraOpen':'wbBtnSoftPadOpen';
         html+='<button type="button" class="wb-hero-pill wb-hero-pill-listen is-solo" id="'+ctaId+'" title="'+esc(ctaPill.label)+'">'
@@ -904,19 +1768,17 @@
   function paintHeroSurfaces(projection,opts){
     opts=opts||{};
     if(!projection) return;
+    if(opts.showcasePatchOnly){
+      paintHeroShowcase(projection,opts);
+      return;
+    }
     paintHeroModeChrome(projection);
+    paintHeroShowcase(projection,opts);
     renderHeroFlowSummary(projection);
     renderHero(projection,opts.stats);
     var panels=global.OneToneHomeWorkbenchPanels;
-    if(panels){
-      if(opts.howtoPatchOnly&&panels.patchHowtoDrawer){
-        if(!panels.patchHowtoDrawer(projection,howtoExpandedKind,normalizeHeroMode(heroMode))
-          &&typeof panels.renderHowTo==='function'){
-          panels.renderHowTo(projection);
-        }
-      }else if(typeof panels.renderHowTo==='function'){
-        panels.renderHowTo(projection);
-      }
+    if(panels&&typeof panels.renderHowTo==='function'){
+      panels.renderHowTo(projection);
     }
     renderLiveText(projection);
   }
@@ -935,6 +1797,9 @@
     var next=normalizeHeroMode(mode);
     if(next===heroMode&&!opts.force) return;
     writeHeroMode(next);
+    heroExpandedNodeId='';
+    heroPaneTab=next==='softPad'?'status':'cap';
+    showcaseShellKind='';
     if(opts.render===false) return;
     if(opts.force){
       render();
@@ -1860,41 +2725,46 @@
         openHeroSettings();
         return;
       }
-      var drawerClose=e.target.closest&&e.target.closest('#wbHowtoDrawerClose');
-      if(drawerClose){
-        howtoExpandedKind='';
-        refreshHeroModeSurfaces({howtoPatchOnly:true});
+      var paneTab=e.target.closest&&e.target.closest('#wbHeroPane [data-pane-tab]');
+      if(paneTab){
+        var tabId=paneTab.getAttribute('data-pane-tab')||'cap';
+        if(tabId!==heroPaneTab){
+          heroPaneTab=tabId;
+          refreshHeroModeSurfaces({showcasePatchOnly:true,skipPathAnim:true,skipFocusBump:true});
+        }
         return;
       }
-      // 首页 howto：首点展开；再点同卡收起；点其他卡切换；编辑进设置
+      var showcaseItem=e.target.closest&&e.target.closest(
+        '#wbHeroShowcase [data-node-id], #wbHeroShowcase [data-micro-key], #wbHeroPane [data-node-id]'
+      );
+      if(showcaseItem){
+        var sid=showcaseItem.getAttribute('data-node-id')||showcaseItem.getAttribute('data-micro-key')||'';
+        if(!sid||showcaseItem.classList.contains('is-overflow')) return;
+        var model=peekHomeModel({force:true})||{};
+        var vm=model.rawVm||(global.OneToneHomeV9&&global.OneToneHomeV9.buildViewModel?enrichViewModel(global.OneToneHomeV9.buildViewModel()):{});
+        var projection=buildHeroProjection(model,vm);
+        var nextTab=heroPaneTab;
+        if(projection.mode==='softPad'&&projection.showcase){
+          nextTab=heroPaneTabForSoftPadSel(projection.showcase,sid);
+        }
+        if(sid===heroExpandedNodeId&&nextTab===heroPaneTab) return;
+        heroPaneTab=nextTab;
+        heroExpandedNodeId=sid;
+        refreshHeroModeSurfaces({showcasePatchOnly:true,skipPathAnim:true,skipFocusBump:true});
+        return;
+      }
+      // 首页 howto：点卡切换通道预览
       var howto=e.target.closest&&e.target.closest('#wbHowTo [data-wb-howto]');
       if(howto){
         if(e.target.closest&&e.target.closest('.wb-howto-card-edit')) return;
         var kind=howto.getAttribute('data-wb-howto')||'';
-        try{
-          if(global.OneToneIpc&&global.OneToneIpc.invoke){
-            global.OneToneIpc.invoke('cmd_app_log',{line:'fe howto click kind='+kind+' hero='+heroMode}).catch(function(){});
-          }
-        }catch(_){}
         if(kind==='keys'||kind==='voice'||kind==='camera'||kind==='softPad'){
-          var isSelected=howto.classList.contains('is-selected');
-          if(isSelected){
-            howtoExpandedKind='';
-            refreshHeroModeSurfaces({howtoPatchOnly:true});
-          }else{
-            var switching=!!(howtoExpandedKind&&howtoExpandedKind!==kind&&document.querySelector('#wbHowTo #wbHowtoDrawer.is-open'));
-            howtoExpandedKind=kind;
-            var isActive=normalizeHeroMode(kind)===heroMode;
-            if(!isActive){
-              writeHeroMode(kind);
-              var model=peekHomeModel({force:true})||{};
-              var vm=model.rawVm||enrichViewModel(global.OneToneHomeV9.buildViewModel());
-              var projection=buildHeroProjection(model,vm);
-              paintHeroModeChrome(projection);
-              paintHeroSurfaces(projection,switching?{howtoPatchOnly:true}:{});
-            }else{
-              refreshHeroModeSurfaces(switching?{howtoPatchOnly:true}:{});
-            }
+          if(normalizeHeroMode(kind)!==heroMode){
+            writeHeroMode(kind);
+            heroExpandedNodeId='';
+            heroPaneTab='cap';
+            showcaseShellKind='';
+            refreshHeroModeSurfaces({});
           }
         }
         return;
@@ -2266,6 +3136,11 @@
       });
     }
     document.addEventListener('keydown',function(e){
+      if(e.key==='Escape'&&heroExpandedNodeId){
+        heroExpandedNodeId='';
+        refreshHeroModeSurfaces({showcasePatchOnly:true,skipPathAnim:true,skipFocusBump:true});
+        return;
+      }
       if((e.ctrlKey||e.metaKey)&&String(e.key||'').toLowerCase()==='k'){
         if(!$('homeWorkbench')) return;
         e.preventDefault();
@@ -2442,7 +3317,7 @@
     renderTriggerDiagBlocks:renderTriggerDiagBlocks,
     startCompatProbe:startCompatProbe,
     getHeroMode:function(){ return normalizeHeroMode(heroMode); },
-    getHowtoExpandedKind:function(){ return howtoExpandedKind; },
+    getHeroExpandedNodeId:function(){ return heroExpandedNodeId; },
     heroIconSvg:heroModeIconSvg,
     setHeroMode:setHeroMode,
     onCompatResult:function(msg){

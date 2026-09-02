@@ -1,0 +1,2080 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>小白通道卡 · 综合原型 S1/S2</title>
+  <style>
+    :root {
+      --primary: #2a9cc4;
+      --primary-hover: #1f7a9a;
+      --primary-soft: rgba(42, 156, 196, 0.1);
+      --primary-glow: rgba(42, 156, 196, 0.3);
+
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --text-disabled: #94a3b8;
+
+      --bg-page: #f1f5f9;
+      --bg-window: #ffffff;
+      --bg-panel: #f8fafc;
+      --bg-card: rgba(255, 255, 255, 0.7);
+
+      --border-light: rgba(226, 232, 240, 0.8);
+      --border-focus: #cbd5e1;
+
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      --shadow-window: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+      --shadow-glow: 0 0 20px var(--primary-glow);
+
+      --ok: #10b981;
+      --voice: #3b82f6;
+      --keys: #2a9cc4;
+      --pad: #8b5cf6;
+      --cam: #10b981;
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+
+      --font: "Inter", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+      --ch-count: 4;
+
+      /* 兼容旧变量 */
+      --on: var(--text-main);
+      --muted: var(--text-muted);
+      --line: var(--border-light);
+      --card: var(--bg-window);
+      --bg: var(--bg-page);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg-page);
+      background-image: radial-gradient(circle at 50% 0%, #e0e7ff 0%, transparent 60%);
+      color: var(--text-main);
+      padding: 32px 16px;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page-head { max-width: 1120px; margin: 0 auto 24px; text-align: center; }
+    .page-head h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; color: #0f172a; }
+    .page-head p { font-size: 13px; color: var(--text-muted); margin-top: 6px; }
+
+    .toolbar {
+      max-width: 1120px; margin: 0 auto 24px;
+      display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center;
+      padding: 12px 16px; border-radius: 99px;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border-light);
+    }
+    .toolbar label { font-size: 11px; font-weight: 600; color: var(--text-disabled); text-transform: uppercase; letter-spacing: 0.5px; margin-right: 4px; }
+    .toolbar button {
+      font: inherit; font-size: 12px; font-weight: 500; color: var(--text-main);
+      padding: 6px 12px; border-radius: 99px; border: 1px solid transparent;
+      background: transparent; cursor: pointer; transition: all 0.2s var(--ease);
+    }
+    .toolbar button:hover { background: var(--bg-page); }
+    .toolbar button.on { background: var(--text-main); color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .toolbar .sep { width: 1px; height: 16px; background: var(--border-light); margin: 0 8px; }
+
+    .preview-wrap { max-width: 1120px; margin: 0 auto; display: flex; justify-content: center; }
+    .preview-label { font-size: 10px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; }
+    .app-frame {
+      width: 100%;
+      background: var(--bg-window);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow: var(--shadow-window);
+      transition: max-width 0.4s var(--ease);
+      display: flex; flex-direction: column;
+    }
+    .app-frame.w760 { max-width: 760px; }
+    .app-frame.w1100 { max-width: 1100px; }
+    .titlebar {
+      padding: 12px 16px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-light);
+      display: flex; align-items: center; justify-content: space-between;
+      user-select: none;
+      font-size: 13px; font-weight: 600; color: var(--text-muted);
+    }
+    .traffic-lights { display: flex; gap: 8px; }
+    .traffic-lights span { width: 12px; height: 12px; border-radius: 50%; display: block; border: 1px solid rgba(0,0,0,0.1); }
+    .traffic-lights .close { background: #ff5f56; }
+    .traffic-lights .min { background: #ffbd2e; }
+    .traffic-lights .max { background: #27c93f; }
+
+    /* bound shell */
+    .bound {
+      padding: 0; display: flex; flex-direction: column; height: 100%;
+    }
+    .bound-head {
+      padding: 24px 32px 16px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .bound-eyebrow { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .bound-title {
+      font-size: 20px; font-weight: 800; color: var(--text-main);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .scene-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px 4px 6px; border-radius: 99px;
+      background: var(--text-main); color: #fff; font-size: 13px; font-weight: 600;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .scene-pill i {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: #fff; color: var(--text-main);
+      font-style: normal; font-size: 11px; font-weight: 800;
+      display: grid; place-items: center;
+    }
+    .bound-body { padding: 0 32px 32px; flex: 1; display: flex; flex-direction: column; }
+
+    /* layout modes */
+    .shell-inner { display: flex; flex-direction: column; gap: 0; }
+    .shell-inner[data-layout="s2"] {
+      flex-direction: row; align-items: stretch; gap: 14px;
+    }
+    .shell-inner[data-layout="s2"] .hero-zone { flex: 1.15; min-width: 0; }
+    .shell-inner[data-layout="s2"] .cards-zone {
+      flex: 0 0 200px; border-top: none;
+      border-left: 1px solid color-mix(in srgb, var(--primary) 12%, transparent);
+      padding-left: 12px; margin-top: 0;
+    }
+    .shell-inner[data-layout="s2"] .cards-grid {
+      display: flex; flex-direction: column; gap: 8px;
+      grid-template-columns: none; max-width: none;
+    }
+    .shell-inner[data-layout="s2"] .ch-card { text-align: left; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 12px; }
+    .shell-inner[data-layout="s2"] .ch-card-ico { margin: 0; }
+    .shell-inner[data-layout="s2"] .ch-card-name { flex: 1; }
+    .shell-inner[data-layout="s2"] .ch-card-lead, .shell-inner[data-layout="s2"] .ch-card-state { width: 100%; margin-left: 32px; }
+
+    /* hero — open layout: left = graphic + flow | right = capability hierarchy */
+    .hero-zone { padding: 4px 2px 14px; }
+    .hero-ctx { font-size: 10px; color: var(--muted); margin-bottom: 12px; text-align: left; padding-left: 2px; }
+    .hero-ctx em { font-style: normal; font-weight: 600; color: var(--on); }
+    .hero-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+      background: var(--bg-panel);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-light);
+      padding: 24px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .hero-primary {
+      display: flex; flex-direction: column; align-items: flex-start;
+      min-width: 0; padding: 4px 2px 0;
+    }
+    .hero-secondary {
+      min-width: 0;
+      padding: 0 0 0 18px;
+      border-left: 1px solid color-mix(in srgb, var(--accent) 14%, var(--line));
+    }
+    .hero-vis-block {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 10px; width: 100%;
+    }
+    .hero-vis { margin: 0; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-start; }
+    .hero-vis-meta { flex: 1; min-width: 0; text-align: left; }
+    .hero-flow { width: 100%; max-width: 100%; margin: 0; }
+    .hero-focus {
+      font-size: 18px; font-weight: 700; letter-spacing: -0.5px;
+      color: var(--text-main);
+      transition: color 0.3s var(--ease), transform 0.3s var(--ease);
+    }
+    .hero-focus.live { color: var(--accent); }
+    .hero-focus.bump { animation: focusBump 0.4s var(--ease); }
+    @keyframes focusBump { 0%{transform:scale(1)} 50%{transform:scale(1.05)} 100%{transform:scale(1)} }
+    .hero-hint { display: none; }
+
+    /* unified hero mark — 加大成主角 */
+    .hero-mark {
+      width: 72px; height: 72px; border-radius: 20px;
+      background: #fff;
+      border: 1px solid var(--border-light);
+      color: var(--accent); display: grid; place-items: center; position: relative;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.3s var(--ease);
+    }
+    .hero-mark svg { width: 32px; height: 32px; }
+    .hero-mark.is-live {
+      box-shadow: var(--shadow-glow);
+      border-color: var(--accent);
+      background: var(--bg-window);
+    }
+    .hero-mark.is-live::after {
+      content: ''; position: absolute; inset: -4px; border-radius: 24px;
+      border: 2px solid var(--accent); opacity: 0.5;
+      animation: ripple 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+    }
+    @keyframes ripple { 0%{transform:scale(0.9);opacity:1} 100%{transform:scale(1.3);opacity:0} }
+    @keyframes orbRing { 0%{transform:scale(.94);opacity:.85} 100%{transform:scale(1.14);opacity:0} }
+
+    .bound-body.is-voice { --accent: var(--voice); }
+    .bound-body.is-keys { --accent: var(--keys); }
+    .bound-body.is-softPad { --accent: var(--pad); }
+    .bound-body.is-camera { --accent: var(--cam); }
+
+    .hx-schema-lbl { font-size: 10px; font-weight: 700; color: var(--text-disabled); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+
+    /* production-aligned linear flow */
+    .wb-hero-flow--showcase { position: relative; width: 100%; padding-top: 4px; margin-top: 6px; }
+    .wb-hero-flow--showcase .wb-hero-flow-path {
+      position: absolute; left: 10%; right: 10%; top: 17px; height: 3px;
+      background: var(--line); border-radius: 2px; overflow: hidden;
+    }
+    .wb-hero-flow--showcase .wb-hero-flow-path > i {
+      display: block; height: 100%; width: 0; background: var(--accent);
+      border-radius: 2px; transition: width .55s var(--ease);
+    }
+    .wb-hero-flow--showcase.is-live .wb-hero-flow-path > i { background: var(--accent); }
+    .wb-hero-flow--showcase .wb-hero-flow-nodes { display: flex; justify-content: space-between; position: relative; z-index: 1; }
+    .wb-hero-fn {
+      display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; min-width: 0;
+      border: none; background: none; cursor: pointer; font: inherit; padding: 0; color: inherit;
+    }
+    .wb-hero-fn-ico {
+      width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--line);
+      background: #fff; display: grid; place-items: center; color: var(--muted);
+      transition: all .35s var(--ease);
+    }
+    .wb-hero-fn-ico svg { width: 14px; height: 14px; }
+    .wb-hero-fn b { font-size: 9px; font-weight: 600; color: var(--muted); }
+    .wb-hero-fn s { font-size: 8px; color: var(--muted); text-decoration: none; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .wb-hero-fn.is-done .wb-hero-fn-ico { border-color: color-mix(in srgb, var(--ok) 50%, var(--line)); color: #1a7a52; background: rgba(34,197,94,.08); }
+    .wb-hero-fn.is-active .wb-hero-fn-ico { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, #fff); transform: scale(1.06); }
+    .wb-hero-fn.is-active.is-live .wb-hero-fn-ico { animation: nodePulse 1.4s ease-in-out infinite; }
+    .wb-hero-fn.is-selected .wb-hero-fn-ico { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+    .wb-hero-fn.is-active b, .wb-hero-fn.is-done b { color: var(--on); }
+
+    .wb-hero-showcase-keys { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .wb-hero-showcase-cap {
+      padding: 9px 11px; border-radius: 9px;
+      background: linear-gradient(180deg, #fff, #f0f4f8);
+      border: 1px solid var(--line); font-size: 10px; font-weight: 700; min-width: 52px; text-align: center;
+      transition: transform .2s var(--ease), box-shadow .2s;
+    }
+    .wb-hero-showcase-cap.is-press {
+      transform: translateY(3px) scale(0.96);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 20%, transparent);
+      border-color: var(--accent); color: var(--accent);
+    }
+    .wb-hero-showcase-cap-arr { color: var(--muted); font-size: 12px; }
+
+    .hero-vis-block.is-keys-compact .hero-vis { display: grid; }
+    .hero-vis-block.is-keys-compact { margin-bottom: 8px; }
+
+    /* softPad — scenario + capability domains (decoupled from keyboard) */
+    .sp-scenario-track {
+      display: flex; align-items: center; gap: 4px; margin-bottom: 10px;
+      padding: 6px 8px; border-radius: 10px;
+      border: 1px dashed color-mix(in srgb, var(--accent) 18%, var(--line));
+      background: color-mix(in srgb, var(--accent) 3%, rgba(255,255,255,.6));
+    }
+    .sp-scenario {
+      flex: 1; text-align: center; font-size: 8px; font-weight: 700; padding: 4px 2px;
+      border-radius: 6px; color: var(--muted);
+    }
+    .sp-scenario.is-on { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, #fff); }
+    .sp-scenario.is-done { color: var(--on); }
+    .sp-cap-groups { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+    .sp-cap-group-lbl {
+      font-size: 7px; font-weight: 800; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px;
+    }
+    .sp-cap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+    .sp-cap-card {
+      font: inherit; text-align: left; cursor: pointer; padding: 8px 9px; border-radius: 10px;
+      border: 1px solid var(--line); background: rgba(255,255,255,.75); color: inherit;
+      transition: border-color .12s, box-shadow .12s, background .12s;
+    }
+    .sp-cap-card:hover { border-color: color-mix(in srgb, var(--accent) 28%, var(--line)); }
+    .sp-cap-card.is-sel { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent); border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); background: #fff; }
+    .sp-cap-card.is-live { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+    .sp-cap-card b { display: block; font-size: 9px; font-weight: 800; color: var(--on); }
+    .sp-cap-card s { display: block; font-size: 7px; color: var(--muted); text-decoration: none; margin-top: 2px; }
+    .sp-cap-card span { display: block; font-size: 9px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+
+    /* 视觉化综合组件（小白视角）：键盘为中心，三段视觉分层 */
+    .kbd-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      padding: 9px;
+      border-radius: 14px;
+      border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
+      background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 4%, #fff), rgba(255,255,255,.6));
+    }
+    /* 灯状态条：绿色主题，活的指示灯 */
+    .kbd-strip-status, .kbd-strip-value {
+      display: flex; gap: 6px; padding: 4px; border-radius: var(--radius-md);
+      background: rgba(255,255,255,0.6); border: 1px solid var(--border-light);
+    }
+    .kbd-strip-status { background: rgba(16,185,129,0.04); }
+    .kbd-strip-value { background: color-mix(in srgb, var(--accent) 4%, rgba(255,255,255,0.6)); }
+    .kbd-chip {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 8px; border-radius: var(--radius-sm); border: none; background: transparent;
+      font-size: 11px; font-weight: 600; color: var(--text-muted); cursor: pointer;
+      transition: all 0.2s var(--ease);
+    }
+    .kbd-chip:hover { background: #fff; box-shadow: var(--shadow-sm); color: var(--text-main); }
+    .kbd-chip.sel { background: #fff; color: var(--text-main); box-shadow: 0 0 0 2px var(--accent); }
+    .kbd-chip.is-cur { background: #fff; color: var(--text-main); box-shadow: var(--shadow-sm); }
+    .kbd-chip i { width: 6px; height: 6px; border-radius: 50%; background: var(--text-disabled); }
+    .kbd-strip-status .kbd-chip.is-cur i { background: var(--ok); box-shadow: 0 0 0 3px rgba(16,185,129,0.2); animation: kbdLightPulse 2s infinite; }
+    @keyframes kbdLightPulse { 0%{box-shadow:0 0 0 0 rgba(16,185,129,0.4)} 70%{box-shadow:0 0 0 6px rgba(16,185,129,0)} }
+    .kbd-value-v {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-left: 2px;
+    }
+
+    /* softPad outline — legacy (removed from left nav) */
+
+    /* camera multimodal */
+    .cam-hero-stack { width: 100%; }
+    .cam-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+    .cam-badge {
+      font-size: 8px; font-weight: 700; padding: 3px 8px; border-radius: 999px;
+      border: 1px solid var(--line); background: rgba(255,255,255,.8); color: var(--muted);
+    }
+    .cam-badge.is-on { border-color: color-mix(in srgb, var(--cam) 35%, var(--line)); color: var(--cam); background: color-mix(in srgb, var(--cam) 6%, #fff); }
+    .cam-dim-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+    .cam-dim {
+      font: inherit; font-size: 9px; font-weight: 700; padding: 6px 11px; border-radius: 999px;
+      border: 1px solid var(--line); background: rgba(255,255,255,.75); color: var(--muted); cursor: pointer;
+    }
+    .cam-dim.is-sel { box-shadow: 0 0 0 2px color-mix(in srgb, var(--cam) 20%, transparent); border-color: color-mix(in srgb, var(--cam) 35%, var(--line)); color: var(--on); background: #fff; }
+    .cam-dim.is-on { color: var(--cam); }
+    .cam-scene-zone { display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--cam) 12%, var(--line)); background: rgba(255,255,255,.5); }
+    .cam-scene-node {
+      display: flex; justify-content: space-between; align-items: center; gap: 6px;
+      padding: 6px 8px; border-radius: 8px; border: none; background: color-mix(in srgb, var(--cam) 4%, #fff);
+      font: inherit; font-size: 9px; text-align: left; cursor: pointer; width: 100%;
+    }
+    .cam-scene-node.is-sel { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cam) 25%, var(--line)); background: #fff; }
+    .cam-scene-node.is-on b { color: var(--cam); font-weight: 800; }
+    .cam-scene-node.is-off { opacity: 0.4; }
+    .cam-scene-node b { font-weight: 600; color: var(--on); }
+    .cam-scene-node span { color: var(--muted); font-size: 8px; flex-shrink: 0; }
+
+    /* micro pad preview (now center on left) */
+    .micro-hw-wrap { margin: 8px 0; }
+    .micro-hw-shell {
+      padding: 16px; border-radius: var(--radius-lg);
+      background: #1e293b;
+      box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+    }
+    .micro-hw__grid {
+      display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 38px); gap: 8px;
+    }
+    .micro-hw__key {
+      border: none; border-radius: 6px; font-family: var(--font); font-size: 10px; font-weight: 700;
+      color: #334155; cursor: pointer; padding: 2px;
+      background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+      box-shadow: 0 3px 0 #94a3b8, 0 4px 4px rgba(0,0,0,0.2);
+      transition: all 0.1s;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center; line-height: 1.1;
+    }
+    .micro-hw__key:active, .micro-hw__key.is-pressed {
+      transform: translateY(3px);
+      box-shadow: 0 0 0 #94a3b8, 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .micro-hw__key--agent { background: linear-gradient(180deg, #f1f5f9, #cbd5e1); color: var(--pad); font-size: 9px; }
+    .micro-hw__key--nav { background: linear-gradient(180deg, #334155, #1e293b); color: #94a3b8; box-shadow: 0 3px 0 #0f172a; }
+    .micro-hw__key--nav:active { box-shadow: 0 0 0 #0f172a; }
+    .micro-hw__key--span2 { grid-column: span 2; }
+    .micro-hw__key--rowspan2 { grid-row: span 2; }
+    .micro-hw__key.is-focused, .micro-hw__key.is-sel {
+      outline: 2px solid var(--pad); outline-offset: 2px;
+    }
+    .micro-hw__key.is-live {
+      background: var(--pad); color: #fff;
+      box-shadow: 0 3px 0 #5b21b6, 0 0 15px var(--pad);
+    }
+    .micro-hw__key.is-route-disabled { opacity: 0.3; pointer-events: none; }
+    /* feature keys — 3 high-frequency keys */
+    .micro-hw__key.is-feature {
+      background: linear-gradient(180deg, color-mix(in srgb, var(--pad) 18%, #f8fafc), color-mix(in srgb, var(--pad) 30%, #e2e8f0));
+      color: var(--pad);
+      font-weight: 900;
+    }
+    .pad-caption { margin-top: 12px; font-size: 11px; color: var(--text-muted); text-align: center; }
+    .pad-caption b { color: var(--text-main); font-weight: 600; }
+
+    /* right pane — matches left outline, freer style */
+    .hx-pane { min-height: 80px; animation: fadeIn 0.3s var(--ease); }
+    @keyframes fadeIn { from{opacity:0; transform:translateX(5px);} to{opacity:1; transform:translateX(0);} }
+    .pane-tabs {
+      display: flex; background: var(--border-light); padding: 4px; border-radius: var(--radius-md); margin-bottom: 16px;
+    }
+    .pane-tab {
+      flex: 1; padding: 6px; font-size: 11px; font-weight: 600; color: var(--text-muted);
+      background: transparent; border: none; border-radius: var(--radius-sm); cursor: pointer;
+      transition: all 0.2s;
+    }
+    .pane-tab:hover:not(.on) { color: var(--text-main); }
+    .pane-tab.on {
+      background: #fff; color: var(--text-main); box-shadow: var(--shadow-sm);
+    }
+    .pane-content { min-height: 60px; }
+    .pane-header {
+      font-size: 11px; font-weight: 600; color: var(--text-disabled);
+      margin: 0 0 10px 0;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .pane-header em {
+      font-style: normal; color: var(--text-main); font-weight: 700;
+    }
+    .pane-header i { font-style: normal; opacity: 0.45; }
+    .related-lbl {
+      font-size: 8px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 14px 0 6px;
+    }
+    .related-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .related-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-light);
+      background: #fff;
+      font: inherit;
+      font-size: 11px;
+      text-align: left;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.2s var(--ease);
+    }
+    .related-row:hover {
+      border-color: var(--border-focus);
+      transform: translateX(2px);
+    }
+    .related-row b {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .related-row span {
+      font-weight: 700;
+      color: var(--accent);
+    }
+    /* 能力 tab — 卡片列表 */
+    .cap-card-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .cap-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-light);
+      background: #fff;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s var(--ease);
+    }
+    .cap-card:hover {
+      border-color: var(--border-focus);
+      transform: translateX(2px);
+    }
+    .cap-card.sel {
+      border-color: var(--accent);
+      background: var(--accent-soft, color-mix(in srgb, var(--accent) 6%, #fff));
+    }
+    .cap-card-hd {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .cap-card-hd b {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+      display: block;
+    }
+    .cap-card-hd s {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+    .cap-card-badge {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--accent);
+      background: #fff;
+      padding: 2px 8px;
+      border-radius: 99px;
+      box-shadow: var(--shadow-sm);
+    }
+    /* 键盘 tab — 键位列表 */
+    .kbd-list {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+    .kbd-list-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-light);
+      background: #fff;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s var(--ease);
+    }
+    .kbd-list-item:hover {
+      border-color: var(--border-focus);
+      transform: translateX(2px);
+    }
+    .kbd-list-item.sel {
+      border-color: var(--accent);
+      background: var(--accent-soft, color-mix(in srgb, var(--accent) 6%, #fff));
+    }
+    .kbd-list-item b {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .kbd-list-item span {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: ui-monospace, monospace;
+    }
+    .kbd-list-item.is-hot b {
+      color: var(--pad);
+    }
+    /* 状态 tab */
+    .status-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .status-card {
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-light);
+      background: #fff;
+    }
+    .status-card-lbl {
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--text-disabled);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .status-card-val {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+    .status-card-next {
+      font-size: 10px;
+      color: var(--accent);
+      font-weight: 500;
+    }
+    .status-card-light {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-card-light i {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--border-light);
+    }
+    .status-card-light.is-on i {
+      background: var(--ok);
+      box-shadow: 0 0 0 4px rgba(16,185,129,0.2);
+      animation: kbdLightPulse 1.6s ease-in-out infinite;
+    }
+    /* 历史 tab */
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .history-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-light);
+      background: #fff;
+    }
+    .history-row b {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .history-row span {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .history-bar {
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border-light);
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .history-bar i {
+      display: block;
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+    .hx-crumb {
+      font-size: 8px; font-weight: 700; color: var(--muted); margin-bottom: 8px;
+      display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+    }
+    .hx-crumb em { font-style: normal; color: var(--accent); font-weight: 800; }
+    .hx-crumb i { font-style: normal; opacity: 0.45; }
+    .hx-pane-card {
+      padding: 16px; border-radius: var(--radius-md);
+      background: #fff; border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-sm);
+    }
+    .hx-pane-title { font-size: 14px; font-weight: 700; color: var(--text-main); }
+    .hx-pane-val {
+      font-size: 12px; font-weight: 600; color: var(--accent); margin-top: 8px;
+      padding: 6px 12px; border-radius: var(--radius-sm);
+      background: var(--accent-soft, color-mix(in srgb, var(--accent) 7%, #fff));
+      display: inline-block;
+    }
+    .hx-pane-note { font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.5; }
+    .hx-facts { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+    .hx-fact {
+      display: flex; gap: 12px; font-size: 11px; line-height: 1.5;
+      padding: 8px 0; border-bottom: 1px solid var(--bg-page);
+    }
+    .hx-fact:last-child { border-bottom: none; padding-bottom: 0; }
+    .hx-fact dt { font-weight: 600; color: var(--text-muted); min-width: 3em; flex-shrink: 0; }
+    .hx-fact dd { color: var(--text-main); font-weight: 500; margin: 0; flex: 1; }
+    .hx-rule-card {
+      margin-top: 8px; padding: 10px 12px; border-radius: 11px;
+      border: 1px solid color-mix(in srgb, var(--accent) 12%, var(--line));
+      background: #fff; position: relative; overflow: hidden;
+    }
+    .hx-rule-card::before {
+      content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px;
+      border-radius: 0 2px 2px 0; background: var(--accent);
+    }
+    .hx-rule-flow { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; padding-left: 8px; }
+    .hx-rule-flow .arr { color: var(--muted); font-weight: 400; font-size: 9px; }
+    .hx-rule-scene { font-size: 8px; color: var(--muted); margin-top: 5px; padding-left: 8px; }
+    .hx-list { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+    .hx-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 7px 9px; border-radius: 9px; border: none;
+      background: rgba(255,255,255,.65); font: inherit; font-size: 9px;
+      text-align: left; cursor: pointer; width: 100%; transition: background .12s, box-shadow .12s;
+    }
+    .hx-row:hover { background: #fff; box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 8%, transparent); }
+    .hx-row.is-sel { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, var(--line)); background: #fff; }
+    .hx-row.is-on b { color: var(--accent); }
+    .hx-row b { font-weight: 700; color: var(--on); }
+    .hx-row span { color: var(--muted); font-weight: 600; flex-shrink: 0; }
+    .hx-row.is-off { opacity: 0.4; cursor: default; }
+
+    @keyframes nodePulse { 0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--accent) 20%, transparent)} 50%{box-shadow:0 0 0 5px color-mix(in srgb, var(--accent) 6%, transparent)} }
+
+    .detail { display: none !important; }
+
+    .vis-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 14px; border-radius: 999px;
+      border: 1px solid color-mix(in srgb, var(--pad) 28%, var(--line));
+      background: rgba(255,255,255,.92);
+    }
+    .vis-chip-name { font-size: 13px; font-weight: 800; color: var(--pad); letter-spacing: -0.02em; }
+    .vis-chip-plan {
+      font-size: 8px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+      background: rgba(124,92,191,.12); color: var(--pad);
+    }
+    .vis-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); flex-shrink: 0; }
+    .vis-chip-dot.live { background: var(--pad); animation: dotPing 1.4s ease-out infinite; }
+
+    /* Soft Pad — keyboard preview in capability panel */
+    .vpad-mini {
+      padding: 10px; border-radius: 12px;
+      border: 1px solid color-mix(in srgb, var(--pad) 18%, var(--line));
+      background: linear-gradient(165deg, #faf8fe, #f0ebf8);
+    }
+    .vpad-grid { display: grid; grid-template-columns: repeat(3, 36px); gap: 6px; justify-content: start; }
+    .vpad-key {
+      width: 36px; height: 36px; border-radius: 8px;
+      border: 1px solid color-mix(in srgb, var(--pad) 18%, var(--line));
+      background: #fff; font: inherit; font-size: 8px; font-weight: 800;
+      color: var(--on); cursor: pointer; display: grid; place-items: center;
+      transition: border-color .12s, box-shadow .12s;
+    }
+    .vpad-key.is-agent { background: color-mix(in srgb, var(--pad) 8%, #fff); color: var(--pad); font-size: 9px; }
+    .vpad-key.is-on { border-color: var(--pad); color: var(--pad); }
+    .vpad-key.is-live { animation: padPulse .6s var(--ease) infinite; }
+    .vpad-key.sel { box-shadow: 0 0 0 2px rgba(124,92,191,.25); }
+    .vpad-key.is-dim { opacity: 0.45; }
+    @keyframes padPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+    @keyframes dotPing { 0%{box-shadow:0 0 0 0 rgba(124,92,191,.45)} 70%{box-shadow:0 0 0 8px rgba(124,92,191,0)} }
+
+    /* Right capability panel hierarchy */
+    .cap-panel { display: flex; flex-direction: column; gap: 12px; }
+    .cap-panel-hd { margin-bottom: 2px; }
+    .cap-panel-eyebrow {
+      font-size: 8px; font-weight: 800; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.07em;
+    }
+    .cap-panel-title { font-size: 12px; font-weight: 800; color: var(--on); margin-top: 3px; letter-spacing: -0.02em; }
+    .cap-panel-sub { font-size: 9px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+    .cap-block {
+      padding: 10px 12px; border-radius: 12px;
+      border: 1px solid color-mix(in srgb, var(--accent) 12%, var(--line));
+      background: rgba(255,255,255,.72);
+    }
+    .cap-block + .cap-block { margin-top: 0; }
+    .cap-block-lbl {
+      font-size: 8px; font-weight: 800; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;
+    }
+    .cap-kv { display: flex; flex-direction: column; gap: 6px; }
+    .cap-kv-row {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+      padding: 6px 8px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 4%, #fff);
+      border: none; font: inherit; text-align: left; cursor: pointer; width: 100%;
+      transition: background .12s, box-shadow .12s;
+    }
+    .cap-kv-row:hover { background: color-mix(in srgb, var(--accent) 8%, #fff); }
+    .cap-kv-row.sel { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, var(--line)); }
+    .cap-kv-row.is-on b { color: var(--accent); }
+    .cap-kv-row b { font-size: 9px; font-weight: 700; color: var(--on); }
+    .cap-kv-row span { font-size: 9px; font-weight: 600; color: var(--muted); flex-shrink: 0; }
+
+    /* Soft Pad — capability tags */
+    .cap-section { margin-top: 10px; }
+    .cap-section:first-child { margin-top: 0; }
+    .cap-section-lbl { font-size: 8px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .cap-tag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .cap-tag {
+      font: inherit; font-size: 8px; font-weight: 700; padding: 8px 9px; border-radius: 9px;
+      border: 1px solid var(--line); background: #fff; color: var(--muted);
+      cursor: pointer; text-align: left; transition: border-color .12s, background .12s;
+    }
+    .cap-tag:hover { border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); }
+    .cap-tag.sel { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent); }
+    .cap-tag.is-on { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); background: color-mix(in srgb, var(--accent) 6%, #fff); color: var(--on); }
+    .cap-tag b { display: block; font-size: 7px; font-weight: 600; color: var(--muted); margin-bottom: 1px; }
+    .cap-tag span { display: block; font-size: 9px; font-weight: 800; color: var(--on); }
+
+    .cap-node-val { font-size: 11px; font-weight: 800; color: var(--accent); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+
+    /* Camera — dimension overview on left */
+    .dim-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 280px; }
+    .dim-node {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 9px 10px; border-radius: 11px;
+      border: 1px solid var(--line); background: rgba(255,255,255,.8);
+      font: inherit; text-align: left; cursor: pointer; width: 100%;
+      transition: border-color .12s, box-shadow .12s, background .12s;
+    }
+    .dim-node:hover { border-color: color-mix(in srgb, var(--cam) 30%, var(--line)); }
+    .dim-node.sel { box-shadow: 0 0 0 2px color-mix(in srgb, var(--cam) 22%, transparent); border-color: color-mix(in srgb, var(--cam) 35%, var(--line)); }
+    .dim-node.on { background: color-mix(in srgb, var(--cam) 6%, #fff); }
+    .dim-node.is-dim { opacity: 0.5; }
+    .dim-node-ico {
+      width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+      background: color-mix(in srgb, var(--cam) 10%, #fff);
+      color: var(--cam); display: grid; place-items: center;
+    }
+    .dim-node-ico.is-gaze { background: rgba(124,92,191,.1); color: var(--pad); }
+    .dim-node-ico svg { width: 16px; height: 16px; }
+    .dim-node b { display: block; font-size: 10px; font-weight: 800; color: var(--on); }
+    .dim-node s { display: block; font-size: 8px; color: var(--muted); text-decoration: none; margin-top: 2px; line-height: 1.3; }
+    .dim-node span { display: block; font-size: 7px; font-weight: 700; color: var(--cam); margin-top: 3px; }
+
+    /* Camera — categorical map in right panel */
+    .cam-map { width: 100%; margin: 0; }
+    .cam-lanes { display: flex; flex-direction: column; gap: 10px; }
+    .cam-lane {
+      border-radius: 12px; border: 1px solid var(--line);
+      background: #fff; overflow: hidden;
+    }
+    .cam-lane.is-dim { opacity: 0.55; }
+    .cam-lane-hd {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 10px;
+      background: color-mix(in srgb, var(--cam) 5%, #f8faf9);
+      border-bottom: 1px solid var(--line);
+    }
+    .cam-lane-ico {
+      width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+      background: color-mix(in srgb, var(--cam) 12%, #fff);
+      color: var(--cam); display: grid; place-items: center;
+    }
+    .cam-lane-ico svg { width: 16px; height: 16px; }
+    .cam-lane-ico.is-gaze { background: rgba(124,92,191,.1); color: var(--pad); }
+    .cam-lane-title { font-size: 11px; font-weight: 800; color: var(--on); }
+    .cam-lane-sub { font-size: 8px; color: var(--muted); margin-left: auto; }
+    .cam-lane-body { padding: 4px 6px 6px; }
+    .cam-rule-row {
+      display: grid; grid-template-columns: 1fr 12px 1fr 64px; align-items: center; gap: 3px;
+      width: 100%; padding: 5px 6px; border-radius: 8px; border: none;
+      background: transparent; font: inherit; text-align: left; cursor: pointer;
+      transition: background .12s;
+    }
+    .cam-rule-row:hover { background: color-mix(in srgb, var(--cam) 6%, #fff); }
+    .cam-rule-row.is-off { opacity: 0.4; cursor: default; }
+    .cam-rule-row.is-on .cam-act { color: var(--on); font-weight: 800; }
+    .cam-rule-row.is-on .cam-eff { color: var(--cam); font-weight: 700; }
+    .cam-rule-row.sel { background: color-mix(in srgb, var(--cam) 8%, #fff); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cam) 25%, var(--line)); }
+    .cam-rule-row.flash { animation: chipFlash .7s ease 2; }
+    .cam-act { font-size: 9px; font-weight: 600; color: var(--muted); }
+    .cam-arrow { font-size: 8px; color: var(--muted); text-align: center; }
+    .cam-eff { font-size: 9px; font-weight: 600; color: var(--on); }
+    .cam-scene { font-size: 7px; color: var(--muted); text-align: right; line-height: 1.2; }
+    .cam-col-hd {
+      display: grid; grid-template-columns: 1fr 12px 1fr 64px; gap: 3px;
+      padding: 0 12px 4px; font-size: 7px; font-weight: 800; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+
+    /* Multimodal parallel capability grid (legacy fallback) */
+    .mm-wrap { width: 100%; max-width: 300px; margin: 10px auto 0; }
+    .mm-pills { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; margin-bottom: 8px; }
+    .mm-pill {
+      font-size: 8px; font-weight: 700; padding: 3px 8px; border-radius: 999px;
+      border: 1px solid var(--line); background: #fff; color: var(--muted);
+    }
+    .mm-pill.is-on {
+      background: color-mix(in srgb, var(--accent) 10%, #fff);
+      border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+      color: color-mix(in srgb, var(--accent) 85%, var(--on));
+    }
+    .mm-grid {
+      display: grid; gap: 6px;
+      padding: 8px; border-radius: 12px;
+      border: 1px dashed color-mix(in srgb, var(--accent) 22%, var(--line));
+      background: color-mix(in srgb, var(--accent) 4%, rgba(255,255,255,.55));
+    }
+    .mm-grid[data-cols="2"] { grid-template-columns: repeat(2, 1fr); }
+    .mm-grid[data-cols="3"] { grid-template-columns: repeat(3, 1fr); }
+    .mm-node {
+      padding: 8px 9px; border-radius: 10px; border: 1px solid var(--line);
+      background: #fff; cursor: pointer; font: inherit; text-align: left; width: 100%;
+      transition: border-color .15s, box-shadow .15s, background .15s;
+    }
+    .mm-node:hover { border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); }
+    .mm-node.sel { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent); }
+    .mm-node.on { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); background: color-mix(in srgb, var(--accent) 6%, #fff); }
+    .mm-node.on.is-live .mm-s { color: var(--accent); }
+    .mm-node.flash { animation: chipFlash .7s ease 2; }
+    .mm-l { font-size: 7px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; display: block; }
+    .mm-s { font-size: 10px; font-weight: 800; margin-top: 3px; display: block; color: var(--on); line-height: 1.2; }
+
+    .detail {
+      width: 100%; margin: 10px 0 0;
+      display: grid; grid-template-rows: 0fr; opacity: 0; overflow: hidden;
+      border-radius: 10px; border: 1px solid transparent; background: rgba(255,255,255,.85);
+      text-align: left; font-size: 9px;
+      transition: grid-template-rows .38s var(--ease), opacity .28s var(--ease), margin-top .38s var(--ease), border-color .22s, padding .38s var(--ease);
+      padding: 0 10px;
+    }
+    .detail.is-open { grid-template-rows: 1fr; opacity: 1; border-color: var(--line); padding: 8px 10px; }
+    .detail-in { overflow: hidden; min-height: 0; transform: translateY(-8px); opacity: 0; transition: transform .32s var(--ease), opacity .26s var(--ease); }
+    .detail.is-open .detail-in { transform: translateY(0); opacity: 1; }
+    .detail-row { display: flex; gap: 6px; margin-top: 4px; }
+    .detail-row:first-child { margin-top: 0; }
+    .detail-lbl { font-weight: 600; color: var(--muted); min-width: 2.2em; }
+
+    /* channel cards */
+    .cards-zone { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-light); }
+    .cards-hd { font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 16px; }
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(var(--ch-count), 1fr);
+      gap: 16px;
+      max-width: 100%;
+    }
+    .ch-card {
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      padding: 20px 16px; border-radius: var(--radius-lg);
+      border: 1px solid var(--border-light); background: var(--bg-card);
+      backdrop-filter: blur(10px);
+      cursor: pointer; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .ch-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: var(--border-focus); }
+    .ch-card.is-active {
+      background: #fff;
+      border-color: var(--primary);
+      box-shadow: 0 10px 20px var(--primary-soft);
+      transform: translateY(-4px);
+    }
+    .ch-card-ico {
+      width: 48px; height: 48px; border-radius: 14px;
+      background: var(--bg-page); color: var(--text-muted);
+      display: grid; place-items: center; margin-bottom: 12px;
+      transition: all 0.3s;
+    }
+    .ch-card-ico svg { width: 24px; height: 24px; }
+    .ch-card.is-active.is-voice .ch-card-ico { background: var(--voice); color: #fff; box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
+    .ch-card.is-active.is-keys .ch-card-ico { background: var(--keys); color: #fff; box-shadow: 0 4px 12px rgba(42,156,196,0.3); }
+    .ch-card.is-active.is-softPad .ch-card-ico { background: var(--pad); color: #fff; box-shadow: 0 4px 12px rgba(139,92,246,0.3); }
+    .ch-card.is-active.is-camera .ch-card-ico { background: var(--cam); color: #fff; box-shadow: 0 4px 12px rgba(16,185,129,0.3); }
+    .ch-card-name { font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 4px; }
+    .ch-card-lead { font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-bottom: 12px; }
+    .ch-card-state { font-size: 10px; font-weight: 600; color: var(--text-disabled); background: var(--bg-page); padding: 4px 8px; border-radius: 99px; }
+    .ch-card-state.is-ok { color: var(--ok); background: rgba(16,185,129,0.05); }
+
+    @keyframes chipFlash { 0%,100%{transform:scale(1)} 25%{transform:scale(1.08);box-shadow:0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent)} }
+
+    .notes {
+      max-width: 1120px; margin: 16px auto 0; padding: 12px 14px;
+      border-radius: 12px; border: 1px dashed var(--line);
+      background: rgba(255,255,255,.6); font-size: 10px; color: var(--muted); line-height: 1.6;
+    }
+    .notes b { color: var(--on); }
+    .notes table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 9px; }
+    .notes th, .notes td { border: 1px solid var(--line); padding: 4px 6px; text-align: left; }
+    .notes th { background: rgba(42,156,196,.08); }
+
+    @media (max-width: 520px) {
+      .hero-layout { grid-template-columns: 1fr; gap: 16px; }
+      .hero-secondary { padding: 14px 0 0; border-left: none; border-top: 1px solid color-mix(in srgb, var(--accent) 14%, var(--line)); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hero-mark.is-live::before, .hx-node.is-live, .detail, .detail-in { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-head">
+    <h1>OneTone · 小白通道卡</h1>
+    <p>键盘为中心 · 视觉化分层 · 右侧 4 tab 详情面板</p>
+  </div>
+
+  <div class="toolbar" id="toolbar">
+    <label>硬件</label>
+    <button type="button" class="tog on" data-hw="mic">有麦克风</button>
+    <button type="button" class="tog on" data-hw="cam">有摄像头</button>
+    <span class="sep"></span>
+    <label>布局</label>
+    <button type="button" class="tog on" data-layout="s1">S1 纵向栈</button>
+    <button type="button" class="tog" data-layout="s2">S2 横屏</button>
+    <span class="sep"></span>
+    <label>状态</label>
+    <button type="button" class="tog on" data-token="idle">idle</button>
+    <button type="button" class="tog" data-token="listening">listening</button>
+    <button type="button" class="tog" data-token="dictating">dictating</button>
+    <button type="button" class="tog" data-token="triggered">triggered</button>
+    <button type="button" class="tog" data-token="ready">ready</button>
+    <span class="sep"></span>
+    <label>宽度</label>
+    <button type="button" class="tog on" data-width="760">760</button>
+    <button type="button" class="tog" data-width="1100">1100</button>
+  </div>
+
+  <div class="preview-wrap">
+    <div class="preview-label">预览窗口</div>
+    <div class="app-frame w760" id="appFrame">
+      <div class="titlebar">
+        <div class="traffic-lights">
+          <span class="close"></span><span class="min"></span><span class="max"></span>
+        </div>
+        <div>OneTone · 控制台</div>
+        <div style="width:52px"></div>
+      </div>
+      <div class="bound" id="bound">
+        <div class="bound-head">
+          <div class="bound-eyebrow">当前习惯</div>
+          <div class="bound-title">
+            <span class="scene-pill"><i>C</i> Cursor</span>
+            <span style="font-size:12px;font-weight:600;color:var(--muted)">写作</span>
+          </div>
+        </div>
+        <div class="bound-body is-voice" id="boundBody">
+          <div class="shell-inner" id="shellInner" data-layout="s1">
+            <div class="hero-zone" id="heroZone">
+              <p class="hero-ctx">写入 <em>Cursor</em></p>
+              <div class="hero-layout">
+                <div class="hero-primary" id="heroPrimary">
+                  <div class="hero-vis-block">
+                    <div class="hero-vis" id="heroVis"></div>
+                    <div class="hero-vis-meta">
+                      <p class="hero-focus" id="heroFocus">—</p>
+                    </div>
+                  </div>
+                  <div class="hero-flow" id="heroFlow"></div>
+                </div>
+                <div class="hero-secondary" id="heroSecondary">
+                  <div id="heroCap"></div>
+                </div>
+              </div>
+            </div>
+            <div class="cards-zone">
+              <div class="cards-hd">这个习惯可以用</div>
+              <div class="cards-grid" id="cardsGrid"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <b>评审说明</b>：硬件隐藏规则 = 系统未检测到设备（原型用工具栏模拟）。与生产 <code>#wbHowTo</code> 差异：生产仍显示四卡 + 待设置态；本原型无硬件则整卡不出现。
+    <table>
+      <tr><th>通道</th><th>一句话</th><th>硬件键</th></tr>
+      <tr><td>说话</td><td>说完的话写进当前窗口</td><td>mic</td></tr>
+      <tr><td>按键</td><td>按住一个键，代替另一个键</td><td>—</td></tr>
+      <tr><td>屏幕</td><td>看 Agent 方案、额度、状态与 Token</td><td>—</td></tr>
+      <tr><td>摄像头</td><td>在场 / 手势 / 眼神 / 动作 → 触发规则</td><td>cam</td></tr>
+    </table>
+    <table style="margin-top:10px">
+      <tr><th>通道</th><th>Hero 形态</th><th>能力展示</th></tr>
+      <tr><td>说话/按键</td><td><b>生产线型</b></td><td>说话 orb + 三步；按键仅线型两步（无大图形）</td></tr>
+      <tr><td>屏幕</td><td><b>场景 + 能力域</b></td><td>左：场景条 + Agent/用量能力 · 右 5×5 键盘预览</td></tr>
+      <tr><td>摄像头</td><td><b>多模态层级</b></td><td>顶图标 + 维度行 + 场景节点 · 右规则卡</td></tr>
+    </table>
+    <p style="margin-top:8px">按键通道无 Hero 图形；屏幕左侧与虚拟键盘解耦，按场景 + 能力域组织，键盘仅在右侧预览。</p>
+  </div>
+
+  <script>
+    var ICONS = {
+      voice: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>',
+      keys: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="6" y1="8" x2="6.01" y2="8"/><line x1="10" y1="8" x2="10.01" y2="8"/><line x1="14" y1="8" x2="14.01" y2="8"/><line x1="18" y1="8" x2="18.01" y2="8"/><line x1="6" y1="12" x2="6.01" y2="12"/><line x1="10" y1="12" x2="10.01" y2="12"/><line x1="14" y1="12" x2="14.01" y2="12"/><line x1="18" y1="12" x2="18.01" y2="12"/><line x1="8" y1="16" x2="16" y2="16"/></svg>',
+      softPad: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4" ry="4"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>',
+      camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'
+    };
+    // 5 维视觉图标（小白视角，无文字，靠图标识别）
+    var DIM_ICONS = {
+      cap:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>',
+      val:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 5-7"/></svg>',
+      key:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>',
+      state: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>',
+      label: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.2" fill="currentColor"/></svg>'
+    };
+    var CHANNELS = [
+      { id: 'voice', name: '说话', lead: '说完写入当前窗口', state: '待命', hw: 'mic', order: 3 },
+      { id: 'keys', name: '按键', lead: '按住一键代另一键', state: '音量减 → Alt', hw: null, order: 1 },
+      { id: 'softPad', name: '屏幕', lead: '看 Agent 状态与额度', state: 'Codex · Pro', hw: null, order: 2 },
+      { id: 'camera', name: '摄像头', lead: '手势与在场触发规则', state: '6 条规则', hw: 'cam', order: 4 }
+    ];
+    var VISIBLE_ORDER = ['keys', 'softPad', 'voice', 'camera'];
+    var HERO_SCHEMA = { voice: 'linear-prod', keys: 'linear-prod', softPad: 'outline', camera: 'multimodal' };
+    var SCHEMA_LABEL = { 'linear-prod': '顺序流程', outline: '场景与能力', multimodal: '多模态识别' };
+    var CH_LABEL = { voice: '说话', keys: '按键', softPad: '屏幕', camera: '摄像头' };
+    var HOT_KEYS = { ACT10: 1, AG04: 1, ACT08: 1 };
+    var PAD_LAYOUT = {
+      cells: [
+        { microKeyId: 'ENC', uiLabelZh: '总开关', kind: 'control', gridRow: 1, gridCol: 2, defaultSlotId: 'summonCodex' },
+        { microKeyId: 'ACT06', uiLabelZh: '快速', kind: 'command', gridRow: 1, gridCol: 3, defaultSlotId: 'quickChat' },
+        { microKeyId: 'ACT07', uiLabelZh: '命令菜单', kind: 'command', gridRow: 1, gridCol: 4, defaultSlotId: 'commandPalette' },
+        { microKeyId: 'ACT08', uiLabelZh: '拒绝', kind: 'command', gridRow: 1, gridCol: 5, defaultSlotId: 'cancel' },
+        { microKeyId: 'NAV_UP', uiLabelZh: '上', kind: 'nav', gridRow: 2, gridCol: 1 },
+        { microKeyId: 'AG00', uiLabelZh: '命令菜单', kind: 'agent', gridRow: 2, gridCol: 2, defaultSlotId: 'commandPalette', agIndex: 0 },
+        { microKeyId: 'AG01', uiLabelZh: '新建', kind: 'agent', gridRow: 2, gridCol: 3, defaultSlotId: 'newThread', agIndex: 1 },
+        { microKeyId: 'AG02', uiLabelZh: '快速聊天', kind: 'agent', gridRow: 2, gridCol: 4, defaultSlotId: 'quickChat', agIndex: 2 },
+        { microKeyId: 'PLUS', uiLabelZh: '加', kind: 'command', gridRow: 2, gridCol: 5, gridRowSpan: 2 },
+        { microKeyId: 'NAV_LEFT', uiLabelZh: '左', kind: 'nav', gridRow: 3, gridCol: 1 },
+        { microKeyId: 'AG03', uiLabelZh: '搜索', kind: 'agent', gridRow: 3, gridCol: 2, defaultSlotId: 'quickSearch', agIndex: 3 },
+        { microKeyId: 'AG04', uiLabelZh: '发送', kind: 'agent', gridRow: 3, gridCol: 3, defaultSlotId: 'stopOrSend', agIndex: 4 },
+        { microKeyId: 'AG05', uiLabelZh: '取消', kind: 'agent', gridRow: 3, gridCol: 4, defaultSlotId: 'cancel', agIndex: 5 },
+        { microKeyId: 'NAV_DOWN', uiLabelZh: '下', kind: 'nav', gridRow: 4, gridCol: 1 },
+        { microKeyId: 'ACT09', uiLabelZh: '新建', kind: 'command', gridRow: 4, gridCol: 2, defaultSlotId: 'newThread' },
+        { microKeyId: 'UNDO', uiLabelZh: '撤销', kind: 'command', gridRow: 4, gridCol: 3 },
+        { microKeyId: 'SEARCH', uiLabelZh: '搜索', kind: 'command', gridRow: 4, gridCol: 4, defaultSlotId: 'quickSearch' },
+        { microKeyId: 'ACT12', uiLabelZh: '发送', kind: 'command', gridRow: 4, gridCol: 5, gridRowSpan: 2, defaultSlotId: 'stopOrSend' },
+        { microKeyId: 'NAV_RIGHT', uiLabelZh: '右', kind: 'nav', gridRow: 5, gridCol: 1 },
+        { microKeyId: 'ACT10', uiLabelZh: '开始说话', kind: 'command', gridRow: 5, gridCol: 2, gridColSpan: 2, defaultSlotId: 'pushToTalk' },
+        { microKeyId: 'DOT', uiLabelZh: '小数点', kind: 'command', gridRow: 5, gridCol: 4 }
+      ]
+    };
+    var SP_SCENARIOS = [
+      { id: 'standby', l: '待命', hint: '监听前台 Agent' },
+      { id: 'confirm', l: '待确认', hint: '提案等待确认' },
+      { id: 'done', l: '已提交', hint: '指令已发送' }
+    ];
+    var SP_CAPABILITIES = {
+      agent: [
+        { id: 'bind', lbl: '绑定', sub: '前台应用' },
+        { id: 'scheme', lbl: '方案', sub: 'Agent 档位' },
+        { id: 'status', lbl: '状态灯', sub: '忙闲指示' }
+      ],
+      data: [
+        { id: 'account', lbl: '账号', sub: '登录态' },
+        { id: 'quota', lbl: '额度', sub: 'API 用量' },
+        { id: 'token', lbl: '凭据', sub: 'Token' }
+      ]
+    };
+    var SP_HIDDEN_KEYS = { ACT10: 1, ACT06: 1, ACT07: 1 };
+    var CAM_ICONS = {
+      presence: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/></svg>',
+      gesture: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 11V8a2 2 0 1 1 4 0v6M11 9V7a2 2 0 1 1 4 0v8M15 11V9a2 2 0 1 1 4 0v2a5 5 0 0 1-5 5h-2"/></svg>',
+      gaze: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>',
+      action: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v4M8 6l2 2M16 6l-2 2M7 13a5 5 0 0 0 10 0"/></svg>'
+    };
+    var CAM = {
+      groups: [
+        { id: 'presence', label: '在场', sub: '离座防护', fn: '检测人脸是否在画面中', logic: '离席/回席达到时长后触发', rules: [
+          { id: 'away', trigger: '离席', action: '暂停语音', scene: '离开工位', active: true },
+          { id: 'return', trigger: '回席', action: '恢复听写', scene: '回到座位', active: true }
+        ]},
+        { id: 'gesture', label: '手势', sub: '举手确认', fn: '识别手部姿态', logic: '保持姿态达到阈值后触发', rules: [
+          { id: 'ok', trigger: 'OK 手势', action: '确认 Agent', scene: '提案通过', active: true },
+          { id: 'palm', trigger: '张掌', action: '发送指令', scene: '结束发言', active: true },
+          { id: 'shake', trigger: '摇头', action: '拒绝', scene: '否决方案', active: true },
+          { id: 'wave', trigger: '挥手', action: '取消', scene: '打断流程', active: false }
+        ]},
+        { id: 'gaze', label: '眼神', sub: '注视确认', fn: '追踪视线落点', logic: '注视时长或移开触发', rules: [
+          { id: 'gaze-fix', trigger: '注视 2s', action: '确认', scene: '免提确认', active: true },
+          { id: 'gaze-away', trigger: '移开视线', action: '取消', scene: '撤回操作', active: false }
+        ]},
+        { id: 'action', label: '动作', sub: '头部动作', fn: '识别头部与面部动作', logic: '动作保持后触发', rules: [
+          { id: 'blink', trigger: '闭眼', action: '确认', scene: '快速确认', active: true },
+          { id: 'fist', trigger: '握拳', action: '暂停', scene: '紧急暂停', active: false },
+          { id: 'nod', trigger: '点头', action: '发送', scene: '同意发送', active: true }
+        ]}
+      ]
+    };
+    function camGroupRulesText(groupId) {
+      var g = CAM.groups.filter(function (x) { return x.id === groupId; })[0];
+      if (!g) return '—';
+      return g.rules.filter(function (r) { return r.active; }).map(function (r) {
+        return r.trigger + '→' + r.action + '（' + r.scene + '）';
+      }).join(' · ') || '未启用';
+    }
+    function camActiveCount() {
+      var n = 0;
+      CAM.groups.forEach(function (g) { g.rules.forEach(function (r) { if (r.active) n++; }); });
+      return n;
+    }
+    var DETAIL_MAP = {
+      voice: {
+        wake: { fn: '用唤醒词进入聆听', logic: '检测到唤醒词', data: '唤醒：AutoTrigger' },
+        dictate: { fn: '采集语音并显示实时文字', logic: '聆听期间写入前台', data: '麦克风：Realtek' },
+        send: { fn: '结束听写并提交', logic: '说出结束口令', data: '结束：发送' }
+      },
+      keys: {
+        trigger: { fn: '按住触发键开始映射', logic: 'keydown 期间输出目标键', data: '触发：音量减' },
+        target: { fn: '向应用发送目标键', logic: '松开触发键后停止', data: '输出：右 Alt' }
+      },
+      softPad: {
+        bind: { fn: '绑定前台应用', logic: '决定 Agent 控制目标', data: 'Cursor · 写作' },
+        account: { fn: 'Codex 账号', logic: '未登录时部分能力不可用', data: '已登录 · Pro' },
+        pad: { fn: 'Soft Pad 键位映射', logic: '虚拟键盘绑定到 Agent 动作', data: 'Codex · 21 键位' },
+        agent: { fn: 'Agent 状态灯', logic: '跟随前台 Agent 忙闲', data: 'Codex · Pro' },
+        AG00: { fn: '命令菜单键', logic: '绑定 commandPalette', data: 'Numpad 7' },
+        AG04: { fn: '发送键', logic: '绑定 stopOrSend', data: 'Numpad 5' },
+        ACT08: { fn: '拒绝键', logic: '绑定 cancel', data: 'Numpad /' },
+        ACT12: { fn: '发送键', logic: '绑定 stopOrSend', data: 'Enter' },
+        ACT10: { fn: '开始说话', logic: '绑定 pushToTalk', data: 'Mic 键' },
+        ENC: { fn: '总开关键', logic: '启用/禁用所有 Pad 映射', data: 'ENC · 键位 2' },
+        AG02: { fn: '快速聊天键', logic: '绑定 quickChat 槽位', data: 'AG02 · 键位 4' },
+        standby: { fn: '待命场景', logic: '监听 Pad 与前台窗口', data: 'Agent 空闲' },
+        confirm: { fn: '待确认场景', logic: 'Agent 提案后等待用户确认', data: '映射：拒绝 / 确认' },
+        done: { fn: '已提交场景', logic: '指令发送到前台 Agent', data: '映射：发送' },
+        scheme: { fn: '当前绑定的 Agent 方案', logic: '决定可用能力与计费档位', data: 'Pro 方案 · Codex' },
+        status: { fn: 'Agent 忙闲状态', logic: '跟随进程与前台窗口', data: '当前：空闲' },
+        quota: { fn: '本周期 API 用量', logic: '仅本地统计', data: '已用 68% · 3 天后重置' },
+        token: { fn: 'API Token 配置', logic: '未配置时部分动作不可用', data: 'Token：已配置' },
+        hours: { fn: '自动跟随工作时段', logic: '时段外仅手动唤起', data: '09:00–18:00' }
+      }
+    };
+    var STATE_MAP = {
+      voice: [
+        { token: 'idle', focus: '待命', live: 0, path: 0, nodes: [
+          { id: 'wake', l: '开启', s: 'AutoTrigger', st: '' }, { id: 'dictate', l: '听写', s: '—', st: '' }, { id: 'send', l: '发送', s: '—', st: '' }
+        ]},
+        { token: 'listening', focus: '聆听中', live: 1, path: 33, nodes: [
+          { id: 'wake', l: '开启', s: '✓', st: 'done' }, { id: 'dictate', l: '听写', s: '等待', st: 'on', live: 1 }, { id: 'send', l: '发送', s: '—', st: '' }
+        ]},
+        { token: 'dictating', focus: '听写中', live: 1, path: 66, nodes: [
+          { id: 'wake', l: '开启', s: '✓', st: 'done' }, { id: 'dictate', l: '听写', s: '进行中', st: 'on', live: 1 }, { id: 'send', l: '发送', s: '—', st: '' }
+        ]},
+        { token: 'triggered', focus: '听写中', live: 1, path: 66, nodes: [
+          { id: 'wake', l: '开启', s: '✓', st: 'done' }, { id: 'dictate', l: '听写', s: '进行中', st: 'on', live: 1 }, { id: 'send', l: '发送', s: '—', st: '' }
+        ]},
+        { token: 'ready', focus: '待发送', live: 0, path: 100, nodes: [
+          { id: 'wake', l: '开启', s: '✓', st: 'done' }, { id: 'dictate', l: '听写', s: '✓', st: 'done' }, { id: 'send', l: '发送', s: '口令', st: 'on' }
+        ]}
+      ],
+      keys: [
+        { token: 'idle', focus: '待命', press: 0, path: 0, nodes: [
+          { id: 'trigger', l: '触发', s: '音量减', st: '' }, { id: 'target', l: '输出', s: '右 Alt', st: '' }
+        ]},
+        { token: 'triggered', focus: '按住中', press: 1, path: 50, nodes: [
+          { id: 'trigger', l: '触发', s: '音量减', st: 'on', live: 1 }, { id: 'target', l: '输出', s: '右 Alt', st: '' }
+        ]},
+        { token: 'dictating', focus: '按住中', press: 1, path: 50, nodes: [
+          { id: 'trigger', l: '触发', s: '音量减', st: 'on', live: 1 }, { id: 'target', l: '输出', s: '右 Alt', st: '' }
+        ]},
+        { token: 'ready', focus: '已映射', press: 0, path: 100, nodes: [
+          { id: 'trigger', l: '触发', s: '✓', st: 'done' }, { id: 'target', l: '输出', s: '右 Alt', st: 'done' }
+        ]}
+      ],
+      softPad: [
+        { token: 'idle', focus: 'Agent 空闲', live: 0, hotMicroKeyId: 'AG00', activeScenario: 'standby',
+          phaseNodes: [
+            { id: 'standby', l: '待命', st: 'on' }, { id: 'confirm', l: '确认', st: '' }, { id: 'done', l: '完成', st: '' }
+          ],
+          capVals: { bind: 'Cursor', scheme: 'Pro', status: '空闲', account: '已登录', quota: '68%', token: '已配' }
+        },
+        { token: 'triggered', focus: '待确认', live: 1, hotMicroKeyId: 'ACT08', activeScenario: 'confirm',
+          phaseNodes: [
+            { id: 'standby', l: '待命', st: 'done' }, { id: 'confirm', l: '确认', st: 'on' }, { id: 'done', l: '完成', st: '' }
+          ],
+          capVals: { bind: 'Cursor', scheme: 'Pro', status: '忙碌', account: '已登录', quota: '68%', token: '已配' }
+        },
+        { token: 'ready', focus: '已发送', live: 0, hotMicroKeyId: 'ACT12', activeScenario: 'done',
+          phaseNodes: [
+            { id: 'standby', l: '待命', st: 'done' }, { id: 'confirm', l: '确认', st: 'done' }, { id: 'done', l: '完成', st: 'on' }
+          ],
+          capVals: { bind: 'Cursor', scheme: 'Pro', status: '完成', account: '已登录', quota: '68%', token: '已配' }
+        }
+      ],
+      camera: [
+        { token: 'idle', focus: '未启动', live: 0, flashId: '' },
+        { token: 'ready', focus: '监控中', live: 1, flashId: '' },
+        { token: 'triggered', focus: '手势确认', live: 1, flashId: 'ok' }
+      ]
+    };
+
+    var state = {
+      hasMic: true,
+      hasCam: true,
+      layout: 's1',
+      token: 'idle',
+      width: 760,
+      mode: 'voice',
+      heroSel: '',
+      activePaneTab: 'cap'
+    };
+
+    function camGroupForRule(ruleId) {
+      var gi, ri;
+      for (gi = 0; gi < CAM.groups.length; gi++) {
+        for (ri = 0; ri < CAM.groups[gi].rules.length; ri++) {
+          if (CAM.groups[gi].rules[ri].id === ruleId) return CAM.groups[gi].id;
+        }
+      }
+      return '';
+    }
+
+    function activeFlowNodeId(st) {
+      var nodes = st.nodes || st.flowNodes || [];
+      var i, on;
+      for (i = 0; i < nodes.length; i++) {
+        if (nodes[i].st === 'on') return nodes[i].id;
+      }
+      for (i = 0; i < nodes.length; i++) {
+        if (nodes[i].live) return nodes[i].id;
+      }
+      return nodes[0] ? nodes[0].id : '';
+    }
+
+    function spCapMeta(id) {
+      var g, i, c;
+      for (g in SP_CAPABILITIES) {
+        for (i = 0; i < SP_CAPABILITIES[g].length; i++) {
+          c = SP_CAPABILITIES[g][i];
+          if (c.id === id) return c;
+        }
+      }
+      return null;
+    }
+
+    function currentPhaseLogicNext(st) {
+      var phase = st.activeScenario || 'standby';
+      if (phase === 'standby') return '说出唤醒词或按下 AG00 进入听写';
+      if (phase === 'confirm') return '点 AG04 发送 或 ACT08 拒绝';
+      if (phase === 'done') return '等待 Agent 回到空闲，可继续下一轮';
+      return '—';
+    }
+
+    function spCapVal(st, id) {
+      return (st.capVals || {})[id] || '—';
+    }
+
+    function defaultHeroSel(mode, st) {
+      if (mode === 'camera') {
+        if (st.flashId) return st.flashId;
+        return 'gesture';
+      }
+      if (mode === 'softPad') return 'status';
+      return activeFlowNodeId(st);
+    }
+
+    function padCellById(id) {
+      var i;
+      for (i = 0; i < PAD_LAYOUT.cells.length; i++) {
+        if (PAD_LAYOUT.cells[i].microKeyId === id) return PAD_LAYOUT.cells[i];
+      }
+      return null;
+    }
+
+    function validHeroSelIds(mode, st) {
+      var ids = [], i, g;
+      if (mode === 'softPad') {
+        for (g in SP_CAPABILITIES) {
+          SP_CAPABILITIES[g].forEach(function (c) { ids.push(c.id); });
+        }
+        PAD_LAYOUT.cells.forEach(function (c) { ids.push(c.microKeyId); });
+        return ids;
+      }
+      if (mode === 'camera') {
+        CAM.groups.forEach(function (g) {
+          ids.push(g.id);
+          g.rules.forEach(function (r) { ids.push(r.id); });
+        });
+        return ids;
+      }
+      navNodes(mode, st).forEach(function (n) { ids.push(n.id); });
+      return ids;
+    }
+
+    function nodeVal(mode, st, id) {
+      var i, n, g, gi, ri, r, c, d, meta;
+      if (mode === 'softPad') {
+        c = padCellById(id);
+        if (c) return c.defaultSlotId || c.kind;
+        meta = spCapMeta(id);
+        if (meta) return spCapVal(st, id);
+        if (id === 'standby' || id === 'confirm' || id === 'done') {
+          for (i = 0; i < SP_SCENARIOS.length; i++) {
+            if (SP_SCENARIOS[i].id === id) return SP_SCENARIOS[i].hint;
+          }
+        }
+      }
+      if (mode === 'camera') {
+        g = CAM.groups.filter(function (x) { return x.id === id; })[0];
+        if (g) return g.sub;
+        for (gi = 0; gi < CAM.groups.length; gi++) {
+          for (ri = 0; ri < CAM.groups[gi].rules.length; ri++) {
+            r = CAM.groups[gi].rules[ri];
+            if (r.id === id) return r.action;
+          }
+        }
+      }
+      var nodes = navNodes(mode, st);
+      for (i = 0; i < nodes.length; i++) {
+        if (nodes[i].id === id) {
+          n = nodes[i];
+          if (n.s && n.s !== '—') return n.s;
+          break;
+        }
+      }
+      d = getDetail(id);
+      return d && d.data ? d.data.split('·')[0].trim() : '—';
+    }
+
+    function ensureHeroSel(mode, st) {
+      var valid = validHeroSelIds(mode, st);
+      if (!state.heroSel || valid.indexOf(state.heroSel) < 0) {
+        state.heroSel = defaultHeroSel(mode, st);
+      }
+    }
+
+    function softPadPanelKey(sel) {
+      if (padCellById(sel)) return 'keys';
+      if (['standby', 'confirm', 'done'].indexOf(sel) >= 0) return 'scenario';
+      if (SP_CAPABILITIES.data.some(function (c) { return c.id === sel; })) return 'data';
+      return 'agent';
+    }
+
+    function nodeLabel(mode, st, nodeId) {
+      var i, c, meta, s;
+      if (mode === 'softPad') {
+        c = padCellById(nodeId);
+        if (c) return c.uiLabelZh;
+        meta = spCapMeta(nodeId);
+        if (meta) return meta.lbl;
+        for (i = 0; i < SP_SCENARIOS.length; i++) {
+          if (SP_SCENARIOS[i].id === nodeId) return SP_SCENARIOS[i].l;
+        }
+      }
+      if (mode === 'camera') {
+        for (i = 0; i < CAM.groups.length; i++) {
+          if (CAM.groups[i].id === nodeId) return CAM.groups[i].label;
+          var ri;
+          for (ri = 0; ri < CAM.groups[i].rules.length; ri++) {
+            if (CAM.groups[i].rules[ri].id === nodeId) return CAM.groups[i].rules[ri].trigger;
+          }
+        }
+      }
+      var nodes = navNodes(mode, st);
+      for (i = 0; i < nodes.length; i++) {
+        if (nodes[i].id === nodeId) return nodes[i].l;
+      }
+      return nodeId;
+    }
+
+    function visibleChannels() {
+      return CHANNELS.filter(function (c) {
+        if (c.hw === 'mic' && !state.hasMic) return false;
+        if (c.hw === 'cam' && !state.hasCam) return false;
+        return true;
+      }).sort(function (a, b) {
+        return VISIBLE_ORDER.indexOf(a.id) - VISIBLE_ORDER.indexOf(b.id);
+      });
+    }
+
+    function ensureModeVisible() {
+      var vis = visibleChannels().map(function (c) { return c.id; });
+      if (vis.indexOf(state.mode) < 0) {
+        state.mode = vis[0] || 'keys';
+        state.heroSel = '';
+      }
+    }
+
+    function pickState(mode) {
+      var list = STATE_MAP[mode] || [];
+      var i;
+      for (i = 0; i < list.length; i++) {
+        if (list[i].token === state.token) return list[i];
+      }
+      return list[0] || {};
+    }
+
+    function getDetail(nodeId) {
+      var map = (DETAIL_MAP[state.mode] || {})[nodeId];
+      if (map) return map;
+      if (state.mode === 'camera') {
+        var gi, ri, g, r;
+        for (gi = 0; gi < CAM.groups.length; gi++) {
+          g = CAM.groups[gi];
+          for (ri = 0; ri < g.rules.length; ri++) {
+            r = g.rules[ri];
+            if (r.id === nodeId) {
+              return {
+                fn: g.label + ' · ' + r.trigger,
+                logic: g.logic,
+                data: r.action + ' · 场景：' + r.scene
+              };
+            }
+          }
+          if (g.id === nodeId) {
+            return { fn: g.fn, logic: g.logic, data: camGroupRulesText(nodeId) };
+          }
+        }
+      }
+      return null;
+    }
+
+    function heroSchema(mode) { return HERO_SCHEMA[mode] || 'linear-prod'; }
+
+    function navNodes(mode, st) {
+      if (mode === 'camera') return [];
+      return st.nodes || st.flowNodes || [];
+    }
+
+    function fnCls(n) {
+      return 'wb-hero-fn'
+        + (n.st === 'on' ? ' is-active' : n.st === 'done' ? ' is-done' : '')
+        + (n.live ? ' is-live' : '')
+        + (state.heroSel === n.id ? ' is-selected' : '');
+    }
+
+    function renderProdLinearNav(mode, st) {
+      var nodes = st.nodes || [];
+      var path = st.path || 0;
+      var live = !!(st.live || st.press);
+      var fns = nodes.map(function (n) {
+        return '<button type="button" class="' + fnCls(n) + '" data-node-id="' + n.id + '">'
+          + '<span class="wb-hero-fn-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/></svg></span>'
+          + '<b>' + n.l + '</b><s>' + (n.s && n.s !== '—' ? n.s : '') + '</s></button>';
+      }).join('');
+      return '<p class="hx-schema-lbl">' + SCHEMA_LABEL['linear-prod'] + '</p>'
+        + '<div class="wb-hero-flow wb-hero-flow--showcase' + (live ? ' is-live' : '') + '" role="list">'
+        + '<div class="wb-hero-flow-path"><i style="width:' + path + '%"></i></div>'
+        + '<div class="wb-hero-flow-nodes">' + fns + '</div></div>';
+    }
+
+    function renderOutlineNav(mode, st) {
+      // 键盘为中心：上 = 灯状态（绿） / 中 = 详情（键盘） / 下 = 数值（紫）
+      var currentPhase = st.activeScenario || 'standby';
+      var focusText = st.focus || '—';
+
+      // 上：灯状态条（绿色主题，活的指示灯）
+      var statusHtml = '<div class="kbd-strip-status">'
+        + SP_SCENARIOS.map(function (s) {
+          var isCur = currentPhase === s.id;
+          var cls = 'kbd-chip' + (isCur ? ' is-cur' : '') + (state.heroSel === s.id ? ' sel' : '');
+          return '<button type="button" class="' + cls + '" data-node-id="' + s.id + '">'
+            + '<i></i><b>' + s.l + '</b></button>';
+        }).join('')
+        + '</div>';
+
+      // 中：键盘（深色，详情大目录）
+      var kbdHtml = renderMicroPadGrid(st, state.heroSel);
+
+      // 下：数值条（紫色主题，静态数据）
+      var valuesHtml = '<div class="kbd-strip-value">'
+        + SP_CAPABILITIES.data.map(function (c) {
+          var cls = 'kbd-chip' + (state.heroSel === c.id ? ' sel' : '');
+          return '<button type="button" class="' + cls + '" data-node-id="' + c.id + '">'
+            + '<i></i><b>' + c.lbl + '</b><span class="kbd-value-v">' + spCapVal(st, c.id) + '</span></button>';
+        }).join('')
+        + '</div>';
+
+      return '<p class="hx-schema-lbl">' + SCHEMA_LABEL.outline + '</p>'
+        + '<div class="kbd-panel">' + statusHtml + kbdHtml + valuesHtml + '</div>';
+    }
+
+    function activeCamDimId(st) {
+      if (state.heroSel && camGroupForRule(state.heroSel)) return camGroupForRule(state.heroSel);
+      var g = CAM.groups.filter(function (x) { return x.id === state.heroSel; })[0];
+      if (g) return g.id;
+      if (st.flashId) return camGroupForRule(st.flashId) || 'gesture';
+      return 'gesture';
+    }
+
+    function renderMultimodalNav(mode, st) {
+      var dimId = activeCamDimId(st);
+      var running = st.live;
+      var dimHtml = CAM.groups.map(function (g) {
+        var sel = state.heroSel === g.id || camGroupForRule(state.heroSel) === g.id;
+        var on = running && g.rules.some(function (r) { return r.active; });
+        return '<button type="button" class="cam-dim' + (sel ? ' is-sel' : '') + (on ? ' is-on' : '') + '" data-node-id="' + g.id + '">' + g.label + '</button>';
+      }).join('');
+      var g = CAM.groups.filter(function (x) { return x.id === dimId; })[0];
+      var sceneHtml = '';
+      if (g) {
+        sceneHtml = g.rules.map(function (r) {
+          var on = running && r.active;
+          var flash = st.flashId === r.id;
+          return '<button type="button" class="cam-scene-node' + (on ? ' is-on' : ' is-off') + (flash ? ' is-live' : '') + (state.heroSel === r.id ? ' is-sel' : '') + '" data-node-id="' + r.id + '">'
+            + '<b>' + r.trigger + '</b><span>' + r.scene + '</span></button>';
+        }).join('');
+      }
+      return '<p class="hx-schema-lbl">' + SCHEMA_LABEL.multimodal + '</p>'
+        + '<div class="cam-dim-row">' + dimHtml + '</div>'
+        + '<div class="cam-scene-zone">' + sceneHtml + '</div>';
+    }
+
+    function renderMicroPadGrid(st, sel) {
+      var hot = st.hotMicroKeyId || '';
+      var agentHi = ['bind', 'scheme', 'status'].indexOf(sel) >= 0;
+      var cells = PAD_LAYOUT.cells.map(function (c) {
+        var cls = 'micro-hw__key';
+        var style = '';
+        if (c.kind === 'agent') cls += ' micro-hw__key--agent';
+        if (c.kind === 'nav') cls += ' micro-hw__key--nav';
+        if (c.gridColSpan === 2) cls += ' micro-hw__key--span2';
+        if (c.gridRowSpan === 2) cls += ' micro-hw__key--rowspan2';
+        if (HOT_KEYS[c.microKeyId]) cls += ' is-feature';
+        if (sel === c.microKeyId) cls += ' is-focused is-sel';
+        if (agentHi && c.kind === 'agent') cls += ' is-agent-hi';
+        if (st.live && c.microKeyId === hot) cls += ' is-live is-pressed';
+        if (SP_HIDDEN_KEYS[c.microKeyId]) cls += ' is-route-disabled';
+        else if (!st.live && c.kind === 'nav') cls += ' is-dim';
+        if (c.gridRowSpan) style = 'grid-row:' + c.gridRow + ' / span ' + c.gridRowSpan + ';';
+        else style = 'grid-row:' + c.gridRow + ';';
+        if (c.gridColSpan) style += 'grid-column:' + c.gridCol + ' / span ' + c.gridColSpan;
+        else style += 'grid-column:' + c.gridCol;
+        return '<button type="button" class="' + cls + '" style="' + style + '" data-node-id="' + c.microKeyId + '">' + c.uiLabelZh + '</button>';
+      }).join('');
+      var capSel = padCellById(sel);
+      var cap = '';
+      if (capSel) {
+        cap = '<p class="pad-caption"><b>' + capSel.uiLabelZh + '</b> · slot: ' + (capSel.defaultSlotId || '—') + '</p>';
+      } else if (agentHi) {
+        cap = '<p class="pad-caption"><b>Agent 键区</b> · AG00–AG05 与当前能力联动</p>';
+      } else if (['quota', 'token', 'account'].indexOf(sel) >= 0) {
+        cap = '<p class="pad-caption"><b>用量能力</b> · 键盘仅作布局预览</p>';
+      }
+      return '<div class="micro-hw-wrap"><div class="micro-hw-shell"><div class="micro-hw__grid">' + cells + '</div></div>' + cap + '</div>';
+    }
+
+    function renderLeftNav(mode, st) {
+      var schema = heroSchema(mode);
+      if (schema === 'outline') return renderOutlineNav(mode, st);
+      if (schema === 'multimodal') return renderMultimodalNav(mode, st);
+      return renderProdLinearNav(mode, st);
+    }
+
+    function crumbHtml(mode, st, sel) {
+      var ch = CH_LABEL[mode] || mode;
+      var parts = [ch];
+      if (heroSchema(mode) === 'multimodal') {
+        var gid = camGroupForRule(sel) || sel;
+        var g = CAM.groups.filter(function (x) { return x.id === gid; })[0];
+        if (g) {
+          parts.push(g.label);
+          var ri, r;
+          for (ri = 0; ri < g.rules.length; ri++) {
+            r = g.rules[ri];
+            if (r.id === sel) { parts.push(r.trigger); break; }
+          }
+        }
+      } else if (heroSchema(mode) === 'outline') {
+        if (padCellById(sel)) {
+          parts.push('键盘');
+          parts.push(nodeLabel(mode, st, sel));
+        } else if (['standby', 'confirm', 'done'].indexOf(sel) >= 0) {
+          parts.push('场景');
+          parts.push(nodeLabel(mode, st, sel));
+        } else {
+          parts.push(nodeLabel(mode, st, sel));
+        }
+      } else {
+        parts.push(nodeLabel(mode, st, sel));
+      }
+      return '<p class="hx-crumb">' + parts.map(function (p, i) {
+        return (i ? '<i>›</i>' : '') + (i === parts.length - 1 ? '<em>' + p + '</em>' : p);
+      }).join('') + '</p>';
+    }
+
+    function factsHtml(detail) {
+      if (!detail) return '';
+      return '<dl class="hx-facts">'
+        + '<div class="hx-fact"><dt>功能</dt><dd>' + detail.fn + '</dd></div>'
+        + '<div class="hx-fact"><dt>逻辑</dt><dd>' + detail.logic + '</dd></div>'
+        + (detail.data ? '<div class="hx-fact"><dt>数据</dt><dd>' + detail.data + '</dd></div>' : '')
+        + '</dl>';
+    }
+
+    function paneHtml(mode, st, sel) {
+      ensureHeroSel(mode, st);
+      sel = sel || state.heroSel;
+      var crumb = crumbHtml(mode, st, sel);
+      var card = '';
+
+      if (mode === 'camera') {
+        var gid = camGroupForRule(sel) || sel;
+        var g, gi, r, ri;
+        for (gi = 0; gi < CAM.groups.length; gi++) {
+          if (CAM.groups[gi].id === gid) { g = CAM.groups[gi]; break; }
+        }
+        if (!g) return '';
+        for (ri = 0; ri < g.rules.length; ri++) {
+          if (g.rules[ri].id === sel) { r = g.rules[ri]; break; }
+        }
+        if (r) {
+          card = '<div class="hx-pane-card"><p class="hx-pane-title">' + r.trigger + '</p>'
+            + '<div class="hx-rule-card"><div class="hx-rule-flow"><span>' + r.trigger + '</span>'
+            + '<span class="arr">→</span><span style="color:var(--accent)">' + r.action + '</span></div>'
+            + '<p class="hx-rule-scene">场景 · ' + r.scene + '</p></div>'
+            + '<p class="hx-pane-note">' + g.logic + '</p></div>';
+        } else {
+          card = '<div class="hx-pane-card"><p class="hx-pane-title">' + g.label + '</p>'
+            + '<p class="hx-pane-val">' + g.sub + '</p><p class="hx-pane-note">' + g.fn + '</p>'
+            + '<div class="hx-list">' + g.rules.map(function (rule) {
+              var on = st.live && rule.active;
+              var cls = 'hx-row' + (on ? ' is-on' : ' is-off') + (state.heroSel === rule.id ? ' is-sel' : '');
+              return '<button type="button" class="' + cls + '" data-node-id="' + rule.id + '"><b>' + rule.trigger + '</b><span>' + rule.action + '</span></button>';
+            }).join('') + '</div></div>';
+        }
+        return '<div class="hx-pane">' + crumb + card + '</div>';
+      }
+
+      if (mode === 'softPad') {
+        var pk = softPadPanelKey(sel);
+        var detail = getDetail(sel);
+        var title = nodeLabel(mode, st, sel);
+        var val = nodeVal(mode, st, sel);
+        var body = '';
+
+        // 详情页：只显示选中项的简介（小白视角，不堆数据）
+        if (pk === 'keys') {
+          var capSel = padCellById(sel);
+          if (capSel) {
+            // 按键的简介：键名 / 槽位 / 触发方式
+            body = '<div class="hx-facts">'
+              + '<div class="hx-fact"><dt>功能</dt><dd>' + (detail ? detail.fn : capSel.uiLabelZh) + '</dd></div>'
+              + '<div class="hx-fact"><dt>触发</dt><dd>按下此键或 ' + (capSel.defaultSlotId || '—') + '</dd></div>'
+              + '<div class="hx-fact"><dt>说明</dt><dd>' + (detail ? detail.logic : '—') + '</dd></div>'
+              + '</div>';
+          }
+        } else if (pk === 'scenario') {
+          body = '<div class="hx-facts">'
+            + '<div class="hx-fact"><dt>当前场景</dt><dd>' + focusText + '</dd></div>'
+            + '<div class="hx-fact"><dt>说明</dt><dd>' + (detail ? detail.logic : '—') + '</dd></div>'
+            + '<div class="hx-fact"><dt>下一步</dt><dd>' + (currentPhaseLogicNext(st)) + '</dd></div>'
+            + '</div>';
+        } else if (pk === 'data') {
+          // 数值项：给小白一句话解释
+          body = '<div class="hx-facts">'
+            + '<div class="hx-fact"><dt>当前</dt><dd>' + val + '</dd></div>'
+            + '<div class="hx-fact"><dt>说明</dt><dd>' + (detail ? detail.logic : '—') + '</dd></div>'
+            + '</div>';
+        } else {
+          body = factsHtml(detail);
+        }
+
+        card = '<div class="hx-pane-card"><p class="hx-pane-title">' + title + '</p>'
+          + '<p class="hx-pane-val">' + val + '</p>' + body + '</div>';
+        return '<div class="hx-pane">' + crumb + card + '</div>';
+      }
+
+      var detail = getDetail(sel);
+      var title = nodeLabel(mode, st, sel);
+      var val = nodeVal(mode, st, sel);
+      card = '<div class="hx-pane-card"><p class="hx-pane-title">' + title + '</p>'
+        + '<p class="hx-pane-val">' + val + '</p>' + factsHtml(detail) + '</div>';
+      return '<div class="hx-pane">' + crumb + card + '</div>';
+    }
+
+    function renderMark(mode, st) {
+      var live = !!(st.live || st.press);
+      return '<div class="hero-mark' + (live ? ' is-live' : '') + '">' + (ICONS[mode] || '') + '</div>';
+    }
+
+    function renderFlow(mode, st) {
+      return renderLeftNav(mode, st);
+    }
+
+    function renderCap(mode, st) {
+      if (mode === 'softPad') return renderSoftPadPane(st);
+      return paneHtml(mode, st, state.heroSel);
+    }
+
+    function renderSoftPadPane(st) {
+      var tabs = [
+        { id: 'cap', l: '能力' },
+        { id: 'kbd', l: '键盘' },
+        { id: 'status', l: '状态' },
+        { id: 'history', l: '历史' }
+      ];
+      var activeTab = state.activePaneTab || 'cap';
+      var activeTabLbl = 'cap';
+      for (var ti = 0; ti < tabs.length; ti++) { if (tabs[ti].id === activeTab) { activeTabLbl = tabs[ti].l; break; } }
+      // 顶部面包屑：对齐左边"写入 Cursor"那行
+      var header = '<p class="pane-header">写入 <em>Cursor</em> <i>›</i> <em>' + activeTabLbl + '</em></p>';
+      var tabBar = '<div class="pane-tabs">' + tabs.map(function (t) {
+        return '<button type="button" class="pane-tab' + (t.id === activeTab ? ' on' : '') + '" data-pane-tab="' + t.id + '">' + t.l + '</button>';
+      }).join('') + '</div>';
+
+      var content = '';
+      if (activeTab === 'cap') content = renderPaneCapTab(st);
+      else if (activeTab === 'kbd') content = renderPaneKbdTab(st);
+      else if (activeTab === 'status') content = renderPaneStatusTab(st);
+      else if (activeTab === 'history') content = renderPaneHistoryTab(st);
+
+      return '<div class="pane-container">' + header + tabBar + '<div class="pane-content">' + content + '</div></div>';
+    }
+
+    function renderPaneCapTab(st) {
+      var caps = [].concat(
+        SP_CAPABILITIES.agent.map(function (c) { return { id: c.id, l: c.lbl, s: c.sub, v: spCapVal(st, c.id) }; }),
+        SP_CAPABILITIES.data.map(function (c) { return { id: c.id, l: c.lbl, s: c.sub, v: spCapVal(st, c.id) }; })
+      );
+      var selected = null;
+      for (var i = 0; i < caps.length; i++) { if (caps[i].id === state.heroSel) { selected = caps[i]; break; } }
+
+      if (selected) {
+        var detail = getDetail(selected.id);
+        var others = [];
+        for (var j = 0; j < caps.length; j++) { if (caps[j].id !== selected.id) others.push(caps[j]); }
+        var relatedHtml = '<p class="related-lbl">其他能力</p>'
+          + '<div class="related-list">' + others.map(function (c) {
+            return '<button type="button" class="related-row" data-node-id="' + c.id + '">'
+              + '<b>' + c.l + '</b><span>' + c.v + '</span></button>';
+          }).join('') + '</div>';
+
+        return '<div class="hx-pane-card">'
+          + '<p class="hx-pane-title">' + selected.l + '</p>'
+          + '<p class="hx-pane-val">' + selected.v + '</p>'
+          + '<dl class="hx-facts">'
+          + '<div class="hx-fact"><dt>说明</dt><dd>' + (detail ? detail.logic : selected.s) + '</dd></div>'
+          + '<div class="hx-fact"><dt>当前</dt><dd>' + selected.v + '</dd></div>'
+          + '</dl></div>'
+          + relatedHtml;
+      }
+
+      return '<div class="cap-card-list">' + caps.map(function (c) {
+        var cls = 'cap-card' + (state.heroSel === c.id ? ' sel' : '');
+        return '<button type="button" class="' + cls + '" data-node-id="' + c.id + '">'
+          + '<div class="cap-card-hd"><b>' + c.l + '</b><s>' + c.s + '</s></div>'
+          + '<span class="cap-card-badge">' + c.v + '</span>'
+          + '</button>';
+      }).join('') + '</div>';
+    }
+
+    function renderPaneKbdTab(st) {
+      var sel = state.heroSel;
+      var detailTop = '';
+      if (sel && padCellById(sel)) {
+        var capSel = padCellById(sel);
+        var detail = getDetail(sel);
+        detailTop = '<div class="hx-pane-card" style="margin-bottom:8px">'
+          + '<p class="hx-pane-title">' + capSel.uiLabelZh + '</p>'
+          + '<p class="hx-pane-val">' + (capSel.defaultSlotId || capSel.kind) + '</p>'
+          + '<dl class="hx-facts">'
+          + '<div class="hx-fact"><dt>功能</dt><dd>' + (detail ? detail.fn : capSel.uiLabelZh) + '</dd></div>'
+          + '<div class="hx-fact"><dt>说明</dt><dd>' + (detail ? detail.logic : '—') + '</dd></div>'
+          + '</dl></div>';
+      }
+      var listHtml = '<div class="kbd-list">' + PAD_LAYOUT.cells.map(function (c) {
+        var cls = 'kbd-list-item' + (sel === c.microKeyId ? ' sel' : '') + (HOT_KEYS[c.microKeyId] ? ' is-hot' : '');
+        return '<button type="button" class="' + cls + '" data-node-id="' + c.microKeyId + '">'
+          + '<b>' + c.uiLabelZh + '</b>'
+          + '<span>' + (c.defaultSlotId || c.kind) + '</span>'
+          + '</button>';
+      }).join('') + '</div>';
+      return detailTop + listHtml;
+    }
+
+    function renderPaneStatusTab(st) {
+      var phase = st.activeScenario || 'standby';
+      var isLive = !!st.live;
+      return '<div class="status-grid">'
+        + '<div class="status-card">'
+        +   '<p class="status-card-lbl">当前场景</p>'
+        +   '<p class="status-card-val">' + (st.focus || '—') + '</p>'
+        +   '<p class="status-card-next">→ ' + currentPhaseLogicNext(st) + '</p>'
+        + '</div>'
+        + '<div class="status-card">'
+        +   '<p class="status-card-lbl">Agent 状态</p>'
+        +   '<p class="status-card-val">' + (isLive ? '运行中' : '空闲') + '</p>'
+        +   '<p class="status-card-next">前台窗口：Cursor</p>'
+        + '</div>'
+        + '<div class="status-card">'
+        +   '<p class="status-card-lbl">信号灯</p>'
+        +   '<p class="status-card-val">'
+        +     '<span class="status-card-light' + (isLive ? ' is-on' : '') + '">'
+        +       '<i></i>' + (isLive ? '工作中' : '待命') + '</span></p>'
+        +   '<p class="status-card-next">' + (isLive ? '正在响应' : '等待指令') + '</p>'
+        + '</div>'
+        + '<div class="status-card">'
+        +   '<p class="status-card-lbl">前台应用</p>'
+        +   '<p class="status-card-val">Cursor</p>'
+        +   '<p class="status-card-next">已绑定 · 写作模式</p>'
+        + '</div>'
+        + '</div>';
+    }
+
+    function renderPaneHistoryTab(st) {
+      return '<div class="history-list">'
+        + '<div class="status-card">'
+        +   '<p class="status-card-lbl">本月用量</p>'
+        +   '<p class="status-card-val">68%</p>'
+        +   '<div class="history-bar"><i style="width:68%"></i></div>'
+        +   '<p class="status-card-next">3 天后重置</p>'
+        + '</div>'
+        + '<div class="status-card">'
+        +   '<p class="status-card-lbl">本周用量</p>'
+        +   '<p class="status-card-val">42%</p>'
+        +   '<div class="history-bar"><i style="width:42%"></i></div>'
+        +   '<p class="status-card-next">日均 6%</p>'
+        + '</div>'
+        + '<div class="status-card">'
+        +   '<p class="status-card-lbl">今日活动</p>'
+        +   '<div class="history-row"><b>发送指令</b><span>12 次</span></div>'
+        +   '<div class="history-row"><b>听写</b><span>5 次</span></div>'
+        +   '<div class="history-row"><b>确认</b><span>3 次</span></div>'
+        + '</div>'
+        + '<div class="status-card">'
+        +   '<p class="status-card-lbl">昨日活动</p>'
+        +   '<div class="history-row"><b>发送指令</b><span>8 次</span></div>'
+        +   '<div class="history-row"><b>听写</b><span>3 次</span></div>'
+        + '</div>'
+        + '</div>';
+    }
+
+    function isHeroLive(mode, st) {
+      return !!(st.live || st.press);
+    }
+
+    function renderHero(animate) {
+      var st = pickState(state.mode);
+      var vis = document.getElementById('heroVis');
+      var flow = document.getElementById('heroFlow');
+      var cap = document.getElementById('heroCap');
+      var focus = document.getElementById('heroFocus');
+      var body = document.getElementById('boundBody');
+      if (!vis || !flow || !cap || !focus) return;
+
+      ensureHeroSel(state.mode, st);
+      var live = isHeroLive(state.mode, st);
+      body.className = 'bound-body is-' + state.mode;
+      focus.textContent = st.focus || '—';
+      focus.className = 'hero-focus' + (live ? ' live' : '') + (animate ? ' bump' : '');
+      if (animate) setTimeout(function () { focus.classList.remove('bump'); }, 350);
+
+      var meta = vis.parentElement && vis.parentElement.querySelector('.hero-vis-meta');
+      var visBlock = vis.parentElement;
+      if (visBlock) visBlock.classList.toggle('is-keys-compact', state.mode === 'keys');
+
+      if (state.mode === 'keys') {
+        vis.innerHTML = renderMark(state.mode, st);
+      } else {
+        vis.innerHTML = renderMark(state.mode, st);
+      }
+      if (meta) {
+        var oldBadges = meta.querySelector('.cam-badges');
+        if (state.mode === 'camera') {
+          var bhtml = '<div class="cam-badges">'
+            + '<span class="cam-badge' + (st.live ? ' is-on' : '') + '">' + (st.live ? '运行中' : '未启动') + '</span>'
+            + '<span class="cam-badge' + (st.token === 'triggered' ? ' is-on' : '') + '">' + (st.token === 'triggered' ? '在座' : '检测中') + '</span>'
+            + '</div>';
+          if (oldBadges) oldBadges.outerHTML = bhtml;
+          else meta.insertAdjacentHTML('beforeend', bhtml);
+        } else if (oldBadges) oldBadges.remove();
+      }
+
+      flow.innerHTML = renderFlow(state.mode, st);
+      cap.innerHTML = renderCap(state.mode, st);
+
+      if (heroSchema(state.mode) === 'linear-prod' && animate) {
+        var track = flow.querySelector('.wb-hero-flow-path > i');
+        if (track) {
+          var target = (st.path || 0) + '%';
+          track.style.transition = 'none';
+          track.style.width = '0%';
+          void track.offsetWidth;
+          track.style.transition = '';
+          requestAnimationFrame(function () { track.style.width = target; });
+        }
+      }
+    }
+
+    function renderCards() {
+      var grid = document.getElementById('cardsGrid');
+      var vis = visibleChannels();
+      var count = vis.length;
+      document.documentElement.style.setProperty('--ch-count', String(count));
+      grid.setAttribute('data-count', String(count));
+      grid.innerHTML = vis.map(function (c) {
+        var active = c.id === state.mode;
+        return '<article class="ch-card is-' + c.id + (active ? ' is-active' : '') + '" data-channel="' + c.id + '" role="button" tabindex="0">'
+          + '<span class="ch-card-ico">' + ICONS[c.id] + '</span>'
+          + '<span class="ch-card-name">' + c.name + '</span>'
+          + '<p class="ch-card-lead">' + c.lead + '</p>'
+          + '<p class="ch-card-state is-ok">' + c.state + '</p>'
+          + '</article>';
+      }).join('');
+    }
+
+    function renderAll(animate) {
+      ensureModeVisible();
+      renderCards();
+      renderHero(animate);
+      document.getElementById('shellInner').setAttribute('data-layout', state.layout);
+      var frame = document.getElementById('appFrame');
+      frame.className = 'app-frame w' + state.width;
+    }
+
+    document.getElementById('toolbar').addEventListener('click', function (e) {
+      var hw = e.target.getAttribute && e.target.getAttribute('data-hw');
+      if (hw === 'mic') {
+        state.hasMic = !state.hasMic;
+        e.target.classList.toggle('on', state.hasMic);
+        renderAll(false);
+        return;
+      }
+      if (hw === 'cam') {
+        state.hasCam = !state.hasCam;
+        e.target.classList.toggle('on', state.hasCam);
+        renderAll(false);
+        return;
+      }
+      var lay = e.target.getAttribute && e.target.getAttribute('data-layout');
+      if (lay) {
+        state.layout = lay;
+        document.querySelectorAll('#toolbar [data-layout]').forEach(function (b) {
+          b.classList.toggle('on', b.getAttribute('data-layout') === lay);
+        });
+        renderAll(false);
+        return;
+      }
+      var tok = e.target.getAttribute && e.target.getAttribute('data-token');
+      if (tok) {
+        state.token = tok;
+        state.heroSel = '';
+        document.querySelectorAll('#toolbar [data-token]').forEach(function (b) {
+          b.classList.toggle('on', b.getAttribute('data-token') === tok);
+        });
+        renderHero(true);
+        return;
+      }
+      var w = e.target.getAttribute && e.target.getAttribute('data-width');
+      if (w) {
+        state.width = w;
+        document.querySelectorAll('#toolbar [data-width]').forEach(function (b) {
+          b.classList.toggle('on', b.getAttribute('data-width') === w);
+        });
+        renderAll(false);
+      }
+    });
+
+    document.getElementById('bound').addEventListener('click', function (e) {
+      var card = e.target.closest && e.target.closest('[data-channel]');
+      if (card) {
+        state.mode = card.getAttribute('data-channel');
+        state.heroSel = '';
+        state.activePaneTab = 'cap';
+        renderAll(true);
+        return;
+      }
+      var paneTab = e.target.closest && e.target.closest('[data-pane-tab]');
+      if (paneTab) {
+        state.activePaneTab = paneTab.getAttribute('data-pane-tab');
+        state.heroSel = '';
+        renderHero(false);
+        return;
+      }
+      var node = e.target.closest && e.target.closest('[data-node-id]');
+      if (node) {
+        state.heroSel = node.getAttribute('data-node-id');
+        // 点左侧虚拟键盘的键 → 自动切到"键盘"tab
+        if (node.classList.contains('micro-hw__key')) {
+          state.activePaneTab = 'kbd';
+        } else if (['standby', 'confirm', 'done'].indexOf(state.heroSel) >= 0) {
+          state.activePaneTab = 'status';
+        } else if (SP_CAPABILITIES.data.some(function (c) { return c.id === state.heroSel; })) {
+          state.activePaneTab = 'cap';
+        }
+        renderHero(false);
+      }
+    });
+
+    renderAll(false);
+    // ponytail: mock self-check — layout JSON has 21 physical keys in 5×5 grid
+    if (PAD_LAYOUT.cells.length < 21 || !padCellById('AG04')) {
+      console.warn('[mock] PAD_LAYOUT self-check failed');
+    }
+    if (CAM.groups.length !== 4) {
+      console.warn('[mock] camera dimension self-check failed');
+    }
+  </script>
+</body>
+</html>

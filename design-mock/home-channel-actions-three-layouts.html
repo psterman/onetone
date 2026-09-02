@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>通道 → 动作 · 三方案对比（应用自动匹配）</title>
+  <link rel="stylesheet" href="../src/css/ot-switch.css" />
+  <style>
+    :root {
+      --on: #152238;
+      --muted: #5a7086;
+      --line: rgba(26,45,74,.1);
+      --font: "Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+      --accent: #6366f1;
+      --accent-deep: #4f46e5;
+      --tint: rgba(99,102,241,.09);
+      --tint2: rgba(99,102,241,.05);
+      --ok: #16a34a;
+      --warn: #ca8a04;
+      --ico-bg: #1a1a2e;
+      --ease: cubic-bezier(.22,1,.36,1);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 20px 16px 48px; font-family: var(--font); background: #e8edf3; color: var(--on); }
+    .wrap { max-width: 1320px; margin: 0 auto; }
+    h1 { margin: 0 0 6px; font-size: 18px; font-weight: 800; }
+    .lede { margin: 0 0 16px; font-size: 12px; line-height: 1.6; color: var(--muted); max-width: 54rem; }
+    .lede strong { color: var(--on); }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 18px; font-size: 11px; color: var(--muted); }
+    .legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot.ctx { background: #94a3b8; }
+    .dot.ch { background: var(--accent); }
+    .dot.act { background: #0ea5e9; }
+    .dot.rt { background: #f59e0b; }
+
+    .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: start; }
+    @media (max-width: 1100px) { .grid3 { grid-template-columns: 1fr; } }
+
+    .col-hd { margin-bottom: 8px; }
+    .col-hd b { display: block; font-size: 12px; font-weight: 800; }
+    .col-hd span { display: block; margin-top: 3px; font-size: 10px; font-weight: 600; color: var(--muted); line-height: 1.45; }
+
+    .app {
+      border-radius: 16px; border: 1px solid var(--line);
+      background: #eef3f7; overflow: hidden;
+      box-shadow: 0 8px 24px rgba(26,45,74,.07);
+    }
+
+    /* ── shared: context bar (L0 ambient, not navigation) ── */
+    .ctx-bar {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 10px 12px; border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.55); font-size: 11px;
+    }
+    .ctx-bar .app-ico {
+      width: 22px; height: 22px; border-radius: 6px; background: var(--ico-bg);
+      display: grid; place-items: center; flex-shrink: 0;
+    }
+    .ctx-bar .app-ico img { width: 13px; height: 13px; }
+    .ctx-bar .ctx-main { flex: 1; min-width: 0; font-weight: 700; }
+    .ctx-bar .ctx-main em { font-style: normal; color: var(--accent-deep); }
+    .ctx-bar .ctx-sub { font-size: 10px; font-weight: 600; color: var(--muted); }
+    .ctx-pill {
+      padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line);
+      background: #fff; font-size: 10px; font-weight: 700; color: var(--muted); cursor: pointer;
+    }
+    .ctx-pill.is-on { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); color: var(--accent-deep); background: var(--tint); }
+    .ctx-q { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--line); background: #fff; color: var(--muted); font-size: 11px; font-weight: 800; display: grid; place-items: center; cursor: help; }
+
+    /* shared channel icons */
+    .ch-ico {
+      width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+      display: grid; place-items: center; background: var(--tint);
+      color: var(--accent-deep);
+    }
+    .ch-ico svg { width: 15px; height: 15px; }
+    .ch-ico.keys { background: rgba(14,165,233,.1); color: #0284c7; }
+    .ch-ico.pad { background: rgba(168,85,247,.1); color: #7c3aed; }
+    .ch-ico.cam { background: rgba(34,197,94,.1); color: #15803d; }
+
+    /* action chips */
+    .act {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 7px; border-radius: 6px;
+      background: rgba(255,255,255,.85); border: 1px solid var(--line);
+      font-size: 10px; font-weight: 700; color: var(--on); white-space: nowrap;
+    }
+    .act .tri { font-size: 9px; font-weight: 600; color: var(--muted); }
+    .act.is-off { opacity: .45; border-style: dashed; }
+    .act.is-primary { border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); background: var(--tint); }
+
+    .st {
+      font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 999px; flex-shrink: 0;
+    }
+    .st.on { background: rgba(22,163,74,.12); color: var(--ok); }
+    .st.cfg { background: rgba(99,102,241,.1); color: var(--accent-deep); }
+    .st.off { background: rgba(90,112,134,.1); color: var(--muted); }
+
+    .chev { color: var(--muted); font-size: 14px; line-height: 1; flex-shrink: 0; }
+
+    /* runtime strip (voice only, when active) */
+    .rt-strip {
+      margin: 0 12px 12px; padding: 8px 10px; border-radius: 12px;
+      border: 1px solid color-mix(in srgb, #f59e0b 35%, var(--line));
+      background: linear-gradient(90deg, rgba(245,158,11,.08), rgba(245,158,11,.03));
+      display: flex; align-items: center; gap: 10px; font-size: 11px;
+    }
+    .rt-orb {
+      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
+      background: radial-gradient(circle at 35% 28%, #fff, var(--tint));
+      display: grid; place-items: center; color: var(--accent-deep);
+    }
+    .rt-orb svg { width: 14px; height: 14px; }
+    .rt-copy { flex: 1; min-width: 0; }
+    .rt-copy strong { display: block; font-size: 11px; }
+    .rt-copy span { font-size: 10px; color: var(--muted); font-weight: 600; }
+    .rt-sw { flex-shrink: 0; }
+
+    /* ot-switch sm inline */
+    .ot-switch--sm { width: 28px; height: 16px; }
+    .ot-switch--sm::after { width: 12px; height: 12px; }
+    .ot-switch--sm.is-on::after { transform: translateX(12px); }
+
+    /* ══ A · 四行动作表 ══ */
+    .sol-a .body { padding: 8px 12px 12px; }
+    .sol-a .row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 8px; border-radius: 12px; cursor: pointer;
+      border: 1px solid transparent; transition: background .15s, border-color .15s;
+    }
+    .sol-a .row:hover { background: rgba(255,255,255,.65); border-color: var(--line); }
+    .sol-a .row.is-open { background: #fff; border-color: color-mix(in srgb, var(--accent) 25%, var(--line)); }
+    .sol-a .row + .row { border-top: 1px solid var(--line); border-radius: 0; }
+    .sol-a .row + .row:hover, .sol-a .row.is-open { border-radius: 12px; margin-top: 4px; }
+    .sol-a .row-hd { display: flex; align-items: center; gap: 8px; min-width: 72px; flex-shrink: 0; }
+    .sol-a .row-hd b { font-size: 11px; font-weight: 800; }
+    .sol-a .acts { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+    .sol-a .expand {
+      margin: 0 8px 8px; padding: 10px 12px; border-radius: 10px;
+      background: #fff; border: 1px solid var(--line); font-size: 10px;
+    }
+    .sol-a .expand .act-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 6px 0; border-bottom: 1px solid var(--line);
+    }
+    .sol-a .expand .act-row:last-child { border-bottom: 0; }
+    .sol-a .expand .act-name { font-weight: 800; }
+    .sol-a .expand .act-trig { color: var(--muted); font-weight: 600; }
+
+    /* ══ B · 通道 Tab + 动作面板 ══ */
+    .sol-b .tabs {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+      padding: 10px 12px 0;
+    }
+    .sol-b .tab {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 8px 4px; border-radius: 12px 12px 0 0;
+      border: 1px solid transparent; border-bottom: 0;
+      background: transparent; cursor: pointer; font: inherit; color: var(--muted);
+      transition: background .15s, color .15s;
+    }
+    .sol-b .tab .ch-ico { width: 32px; height: 32px; border-radius: 9px; }
+    .sol-b .tab b { font-size: 10px; font-weight: 800; }
+    .sol-b .tab.on {
+      background: #fff; color: var(--on);
+      border-color: var(--line);
+      box-shadow: 0 -2px 8px rgba(26,45,74,.04);
+    }
+    .sol-b .tab.on .ch-ico { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
+    .sol-b .panel {
+      margin: 0 12px 12px; padding: 12px; border-radius: 0 12px 12px 12px;
+      background: #fff; border: 1px solid var(--line);
+    }
+    .sol-b .panel-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .sol-b .panel-hd h3 { margin: 0; font-size: 13px; font-weight: 800; }
+    .sol-b .panel-hd p { margin: 2px 0 0; font-size: 10px; color: var(--muted); font-weight: 600; }
+    .sol-b .act-list { display: flex; flex-direction: column; gap: 6px; }
+    .sol-b .act-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; border-radius: 10px;
+      border: 1px solid var(--line); background: var(--tint2);
+    }
+    .sol-b .act-item .num {
+      width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+      background: var(--tint); color: var(--accent-deep);
+      font-size: 9px; font-weight: 800; display: grid; place-items: center;
+    }
+    .sol-b .act-item .meta { flex: 1; min-width: 0; }
+    .sol-b .act-item .meta strong { display: block; font-size: 11px; }
+    .sol-b .act-item .meta span { font-size: 10px; color: var(--muted); font-weight: 600; }
+    .sol-b .add-act {
+      margin-top: 8px; padding: 7px; border-radius: 8px; border: 1px dashed var(--line);
+      background: transparent; font-size: 10px; font-weight: 700; color: var(--muted);
+      cursor: pointer; width: 100%; font-family: inherit;
+    }
+
+    /* ══ C · 2×2 能力格 ══ */
+    .sol-c .body { padding: 10px 12px 12px; }
+    .sol-c .grid2 {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .sol-c .cell {
+      padding: 10px; border-radius: 14px;
+      border: 1px solid var(--line); background: rgba(255,255,255,.7);
+      cursor: pointer; transition: border-color .15s, box-shadow .15s;
+      min-height: 108px; display: flex; flex-direction: column;
+    }
+    .sol-c .cell:hover { border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); }
+    .sol-c .cell.is-focus {
+      border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+      background: #fff; box-shadow: 0 4px 16px rgba(99,102,241,.1);
+      grid-column: 1 / -1; min-height: 0;
+    }
+    .sol-c .cell-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .sol-c .cell-hd .left { display: flex; align-items: center; gap: 6px; }
+    .sol-c .cell-hd b { font-size: 11px; font-weight: 800; }
+    .sol-c .cell-acts { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; align-content: flex-start; }
+    .sol-c .cell.is-focus .cell-acts { gap: 6px; }
+    .sol-c .cell.is-focus .act { padding: 4px 10px; font-size: 11px; }
+    .sol-c .cell-foot { margin-top: 6px; font-size: 9px; font-weight: 700; color: var(--muted); }
+    .sol-c .cell.is-focus .detail {
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line);
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    }
+    .sol-c .cell.is-focus .detail .d {
+      padding: 6px; border-radius: 8px; background: var(--tint2); font-size: 9px;
+    }
+    .sol-c .cell.is-focus .detail .d strong { display: block; font-size: 10px; margin-bottom: 2px; }
+    .sol-c .cell.is-focus .detail .d span { color: var(--muted); font-weight: 600; }
+
+    /* compare footer */
+    .cmp { margin-top: 20px; padding: 14px; border-radius: 14px; background: #fff; border: 1px solid var(--line); }
+    .cmp h2 { margin: 0 0 10px; font-size: 13px; font-weight: 800; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { font-weight: 800; color: var(--muted); font-size: 10px; }
+    td:first-child { font-weight: 700; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>通道 → 动作 · 三方案对比</h1>
+    <p class="lede">
+      前提：<strong>应用由前台自动匹配</strong>，用户配置的是「通道下的具体动作」。
+      灰点 = 环境上下文 · 紫点 = 通道 · 蓝点 = 动作 · 橙点 = 运行时（仅说话通道、且正在发生时出现）。
+    </p>
+    <div class="legend">
+      <span><i class="dot ctx"></i> 环境条（应用名，非主导航）</span>
+      <span><i class="dot ch"></i> 通道（固定四类）</span>
+      <span><i class="dot act"></i> 动作 + 触发</span>
+      <span><i class="dot rt"></i> 运行时条（条件显示）</span>
+    </div>
+
+    <div class="grid3">
+      <!-- ────────── A ────────── -->
+      <div>
+        <div class="col-hd">
+          <b>A · 四行动作表</b>
+          <span>通道恒定为四行；动作以 chip 横排；点行展开编辑。最像「菜单/清单」。</span>
+        </div>
+        <div class="app sol-a">
+          <div class="ctx-bar">
+            <span class="app-ico"><img src="https://www.cursor.com/favicon.ico" alt="" onerror="this.style.display='none'"/></span>
+            <div>
+              <div class="ctx-main">正在为 <em>Cursor</em> 配置</div>
+              <div class="ctx-sub">跟随前台 · 自动切换</div>
+            </div>
+            <button type="button" class="ctx-pill">锁定习惯</button>
+            <span class="ctx-q" title="切换软件时配置一起变">?</span>
+          </div>
+          <div class="rt-strip">
+            <div class="rt-orb" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+            </div>
+            <div class="rt-copy">
+              <strong>正在听写</strong>
+              <span>说话通道运行时 · 与下方配置分离</span>
+            </div>
+            <span class="ot-switch ot-switch--sm is-on rt-sw" role="img" aria-label="语音开"></span>
+          </div>
+          <div class="body">
+            <div class="row is-open">
+              <div class="row-hd">
+                <span class="ch-ico" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                </span>
+                <b>说话</b>
+              </div>
+              <div class="acts">
+                <span class="act is-primary">开始输入 <span class="tri">· 口令</span></span>
+                <span class="act">发送</span>
+                <span class="act">取消</span>
+              </div>
+              <span class="st on">已开启</span>
+              <span class="chev" aria-hidden="true">›</span>
+            </div>
+            <div class="expand">
+              <div class="act-row"><span class="act-name">开始输入</span><span class="act-trig">说「开始输入」</span><span class="st on">开</span></div>
+              <div class="act-row"><span class="act-name">发送</span><span class="act-trig">说「发送」</span><span class="st on">开</span></div>
+              <div class="act-row"><span class="act-name">取消</span><span class="act-trig">说「取消」</span><span class="st on">开</span></div>
+            </div>
+            <div class="row">
+              <div class="row-hd">
+                <span class="ch-ico keys" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
+                </span>
+                <b>按键</b>
+              </div>
+              <div class="acts">
+                <span class="act is-primary">输入到目标 <span class="tri">· 按住 音量减</span></span>
+              </div>
+              <span class="st cfg">已配置</span>
+              <span class="chev">›</span>
+            </div>
+            <div class="row">
+              <div class="row-hd">
+                <span class="ch-ico pad" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+                </span>
+                <b>屏幕</b>
+              </div>
+              <div class="acts">
+                <span class="act is-off">确认 Agent</span>
+              </div>
+              <span class="st off">未配置</span>
+              <span class="chev">›</span>
+            </div>
+            <div class="row">
+              <div class="row-hd">
+                <span class="ch-ico cam" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                </span>
+                <b>摄像头</b>
+              </div>
+              <div class="acts">
+                <span class="act">举手确认</span>
+                <span class="act">离席暂停</span>
+              </div>
+              <span class="st on">已开启</span>
+              <span class="chev">›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ────────── B ────────── -->
+      <div>
+        <div class="col-hd">
+          <b>B · 通道 Tab + 动作面板</b>
+          <span>先选通道再看动作列表；运行时嵌在当前 Tab 内。适合动作多、需分屏编辑。</span>
+        </div>
+        <div class="app sol-b">
+          <div class="ctx-bar">
+            <span class="app-ico"><img src="https://www.cursor.com/favicon.ico" alt="" onerror="this.style.display='none'"/></span>
+            <div>
+              <div class="ctx-main">正在为 <em>Cursor</em> 配置</div>
+              <div class="ctx-sub">跟随前台</div>
+            </div>
+            <button type="button" class="ctx-pill is-on">已锁定</button>
+            <span class="ctx-q">?</span>
+          </div>
+          <div class="tabs" role="tablist">
+            <button type="button" class="tab on" role="tab" aria-selected="true">
+              <span class="ch-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></span>
+              <b>说话</b>
+            </button>
+            <button type="button" class="tab" role="tab">
+              <span class="ch-ico keys"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/></svg></span>
+              <b>按键</b>
+            </button>
+            <button type="button" class="tab" role="tab">
+              <span class="ch-ico pad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/></svg></span>
+              <b>屏幕</b>
+            </button>
+            <button type="button" class="tab" role="tab">
+              <span class="ch-ico cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span>
+              <b>摄像头</b>
+            </button>
+          </div>
+          <div class="panel" role="tabpanel">
+            <div class="rt-strip" style="margin:0 0 10px;">
+              <div class="rt-orb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg></div>
+              <div class="rt-copy"><strong>正在听写</strong><span>仅本通道 Tab 内显示</span></div>
+              <span class="ot-switch ot-switch--sm is-on rt-sw"></span>
+            </div>
+            <div class="panel-hd">
+              <div>
+                <h3>说话 · 3 个动作</h3>
+                <p>配置语音触发口令与行为</p>
+              </div>
+              <span class="st on">通道已开启</span>
+            </div>
+            <div class="act-list">
+              <div class="act-item">
+                <span class="num">1</span>
+                <div class="meta"><strong>开始输入</strong><span>触发：说「开始输入」</span></div>
+                <span class="st on">开</span>
+              </div>
+              <div class="act-item">
+                <span class="num">2</span>
+                <div class="meta"><strong>发送</strong><span>触发：说「发送」</span></div>
+                <span class="st on">开</span>
+              </div>
+              <div class="act-item">
+                <span class="num">3</span>
+                <div class="meta"><strong>取消</strong><span>触发：说「取消」</span></div>
+                <span class="st on">开</span>
+              </div>
+            </div>
+            <button type="button" class="add-act">+ 添加动作</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ────────── C ────────── -->
+      <div>
+        <div class="col-hd">
+          <b>C · 2×2 能力格</b>
+          <span>四通道同屏鸟瞰；点一格放大为编辑态。偏「地图」，扫一眼看全。</span>
+        </div>
+        <div class="app sol-c">
+          <div class="ctx-bar">
+            <span class="app-ico"><img src="https://www.cursor.com/favicon.ico" alt="" onerror="this.style.display='none'"/></span>
+            <div>
+              <div class="ctx-main">正在为 <em>Cursor</em> 配置</div>
+              <div class="ctx-sub">跟随前台</div>
+            </div>
+            <button type="button" class="ctx-pill">锁定习惯</button>
+            <span class="ctx-q">?</span>
+          </div>
+          <div class="body">
+            <div class="grid2">
+              <div class="cell is-focus">
+                <div class="cell-hd">
+                  <div class="left">
+                    <span class="ch-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg></span>
+                    <b>说话</b>
+                  </div>
+                  <span class="st on">已开启</span>
+                </div>
+                <div class="cell-acts">
+                  <span class="act is-primary">开始输入</span>
+                  <span class="act">发送</span>
+                  <span class="act">取消</span>
+                </div>
+                <div class="rt-strip" style="margin:8px 0 0;padding:6px 8px;">
+                  <div class="rt-orb" style="width:26px;height:26px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg></div>
+                  <div class="rt-copy"><strong style="font-size:10px">正在听写</strong></div>
+                  <span class="ot-switch ot-switch--sm is-on"></span>
+                </div>
+                <div class="detail">
+                  <div class="d"><strong>开始输入</strong><span>说「开始输入」</span></div>
+                  <div class="d"><strong>发送</strong><span>说「发送」</span></div>
+                  <div class="d"><strong>取消</strong><span>说「取消」</span></div>
+                </div>
+              </div>
+              <div class="cell">
+                <div class="cell-hd">
+                  <div class="left">
+                    <span class="ch-ico keys"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/></svg></span>
+                    <b>按键</b>
+                  </div>
+                  <span class="st cfg">已配置</span>
+                </div>
+                <div class="cell-acts">
+                  <span class="act is-primary">输入到目标</span>
+                </div>
+                <div class="cell-foot">按住 音量减 → 右 Alt</div>
+              </div>
+              <div class="cell">
+                <div class="cell-hd">
+                  <div class="left">
+                    <span class="ch-ico pad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/></svg></span>
+                    <b>屏幕</b>
+                  </div>
+                  <span class="st off">未配置</span>
+                </div>
+                <div class="cell-acts">
+                  <span class="act is-off">确认 Agent</span>
+                </div>
+                <div class="cell-foot">点击配置</div>
+              </div>
+              <div class="cell">
+                <div class="cell-hd">
+                  <div class="left">
+                    <span class="ch-ico cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span>
+                    <b>摄像头</b>
+                  </div>
+                  <span class="st on">已开启</span>
+                </div>
+                <div class="cell-acts">
+                  <span class="act">举手确认</span>
+                  <span class="act">离席暂停</span>
+                </div>
+                <div class="cell-foot">2 个动作</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cmp">
+      <h2>对比摘要</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>维度</th>
+            <th>A · 四行动作表</th>
+            <th>B · 通道 Tab</th>
+            <th>C · 2×2 能力格</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>小白理解</td>
+            <td>★★★★ 像读清单，四行结构一次学会</td>
+            <td>★★★ 需先理解 Tab = 通道</td>
+            <td>★★★ 鸟瞰好，编辑态切换略跳</td>
+          </tr>
+          <tr>
+            <td>多动作扩展</td>
+            <td>★★★★ 行内 chip 可折行 / 展开</td>
+            <td>★★★★★ 列表无限加长最自然</td>
+            <td>★★★ 格子里难塞 5+ 动作</td>
+          </tr>
+          <tr>
+            <td>一眼看全四通道</td>
+            <td>★★★★★ 四行始终可见</td>
+            <td>★★ 每次只见一个通道</td>
+            <td>★★★★ 未展开时四格同屏</td>
+          </tr>
+          <tr>
+            <td>运行时分离</td>
+            <td>★★★★★ 独立橙条，不占配置行</td>
+            <td>★★★ 嵌在说话 Tab 内</td>
+            <td>★★ 嵌在展开格内</td>
+          </tr>
+          <tr>
+            <td>与现有代码映射</td>
+            <td>≈ 改造 <code>wbHowTo</code> 四卡 → 四行 + drawer</td>
+            <td>≈ <code>heroMode</code> Tab + 单通道 drawer</td>
+            <td>≈ 新组件；与 habit-hub 格阵接近</td>
+          </tr>
+          <tr>
+            <td>推荐场景</td>
+            <td><strong>首页默认</strong>：配置为主、扫一眼即懂</td>
+            <td>单通道动作很多时的详情页</td>
+            <td>强调四通道并列关系时</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

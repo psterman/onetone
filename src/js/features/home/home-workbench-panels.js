@@ -125,14 +125,7 @@
   function howtoStackTipAttrs(card){
     card=card||{};
     var st=card.stackTip||{};
-    var action='';
-    if(card.selected){
-      action=t('homeWbHowToActionCollapse','再点收起详情。');
-    }else if(card.active){
-      action=t('homeWbHowToActionExpand','点按查看完整配置。');
-    }else{
-      action=t('homeWbHowToActionPreview','点按在上方预览此通道。');
-    }
+    var action=t('homeWbHowToActionPreview');
     return ' data-ot-tip-layout="stack"'
       +' data-ot-tip-lead="'+esc(st.lead||'')+'"'
       +' data-ot-tip-desc="'+esc(st.desc||'')+'"'
@@ -194,24 +187,39 @@
       +'</div>';
   }
 
+  function howtoStateSwitchHtml(tone, ariaLabel) {
+    tone = String(tone || 'is-muted').trim();
+    var on = tone === 'is-on' || tone === 'is-warn';
+    var warn = tone === 'is-warn';
+    var cls =
+      'wb-howto-card-switch ot-switch--sm toggle-switch' +
+      (on ? ' is-on' : '') +
+      (warn ? ' is-warn' : '');
+    var label = String(ariaLabel || '').trim();
+    return (
+      '<span class="' +
+      cls +
+      '" role="img"' +
+      (label ? ' aria-label="' + esc(label) + '"' : ' aria-hidden="true"') +
+      '></span>'
+    );
+  }
+
   function howToSummaryCardHtml(card,icon){
     card=card||{};
     var kind=card.mode||'';
     var selected=!!card.selected;
-    var editBtn=card.habitEditId
-      ?'<button type="button" class="wb-howto-card-edit" data-wb-habit-edit="'+esc(card.habitEditId)+'" data-ot-tip="'+esc(t('homeWbHabitEditOnlyTip','打开当前习惯的此通道设置，不切换正在使用'))+'">'+esc(t('homeWbHabitEditOnly','编辑'))+'</button>'
-      :'';
     var primaryLine=String(card.primaryLine!=null?card.primaryLine:(card.empty?card.emptyText||card.value:card.value)||'').trim()||'—';
     var stateLbl=String(card.stateLabel||'').trim();
     var stateTone=String(card.stateTone||'is-muted').trim();
+    var stateSwitch=howtoStateSwitchHtml(stateTone, stateLbl);
     return '<article class="wb-howto-card'+(card.active?' is-active':'')+(selected?' is-selected':'')+(kind?' is-'+kind:'')+(card.empty?' is-empty':'')+'" data-wb-howto="'+esc(kind)+'" role="button" tabindex="0" aria-pressed="'+(card.active?'true':'false')+'"'+howtoStackTipAttrs(card)+'>'
-      +editBtn
       +'<div class="wb-howto-card-top">'
       +'<div class="wb-howto-card-head">'
       +'<span class="wb-howto-card-ico" aria-hidden="true">'+icon+'</span>'
       +'<span class="wb-howto-card-title">'+esc(card.title||'')+'</span>'
       +'</div>'
-      +(stateLbl?'<span class="wb-howto-card-state '+esc(stateTone)+'">'+esc(stateLbl)+'</span>':'')
+      +stateSwitch
       +'</div>'
       +'<p class="wb-howto-card-primary">'+esc(primaryLine)+'</p>'
       +'</article>';
@@ -439,46 +447,16 @@
   function renderHowTo(projection){
     var host=$('wbHowTo');
     if(!host) return;
-    // 只吃 projection；禁止在此再采集 Camera/SoftPad 快照
     if(!projection||!Array.isArray(projection.howtoCards)) return;
     var cards=projection.howtoCards;
-    var expandedKind='';
-    try{
-      var wb=global.OneToneHomeWorkbench;
-      if(wb&&wb.getHowtoExpandedKind) expandedKind=String(wb.getHowtoExpandedKind()||'');
-    }catch(_){}
     var heroMode=currentHeroMode();
-    var activeMap=null;
-    try{
-      var mid=activeSceneId();
-      if(mid&&global.OneToneMappingCore&&global.OneToneMappingCore.byId){
-        activeMap=global.OneToneMappingCore.byId(mid);
-      }
-    }catch(_){}
-    var habitEditId=activeMap&&activeMap.id?String(activeMap.id):'';
-
-    var html='<div class="wb-howto-wrap">';
-    html+='<div class="wb-howto-cards wb-howto-grid--quad">';
+    var html='<div class="wb-howto-wrap"><div class="wb-howto-cards wb-howto-grid--quad">';
     cards.forEach(function(card){
       if(!card) return;
-      var painted=Object.assign({},card);
-      if(habitEditId) painted.habitEditId=habitEditId;
-      painted.selected=expandedKind===card.mode;
-      painted.active=card.mode===heroMode;
+      var painted=Object.assign({},card,{active:card.mode===heroMode});
       html+=howToSummaryCardHtml(painted,heroIconSvg(card.mode));
     });
-    html+='</div>';
-    var expCard=null;
-    if(expandedKind){
-      cards.forEach(function(c){
-        if(c&&c.mode===expandedKind){
-          expCard=Object.assign({},c,{selected:true,active:c.mode===heroMode});
-          if(habitEditId) expCard.habitEditId=habitEditId;
-        }
-      });
-    }
-    html+=howtoDrawerHtml(expCard,!!expCard);
-    html+='</div>';
+    html+='</div></div>';
     host.innerHTML=html;
   }
 
@@ -622,11 +600,18 @@
       followHint:followHint,
       value:value,
       displayPrimary:controlLine,
-      // Stop pressing a single「已启用」status — hero/howto use config+control lines.
       statusLbl:controlLbl,
       status:followHint,
       boundName:control.agentName||cfgLayer.configLbl,
-      empty:false
+      empty:false,
+      heroCaps:{
+        bind:control.boundName||control.agentName||controlLbl||'—',
+        scheme:cfgLayer.configLbl||'—',
+        status:controlLbl||'—',
+        account:control.agentName||'—',
+        quota:control.countLbl||'—',
+        token:cfgLayer.configConfigured?t('homeWbSpCapTokenOk','已配'):t('homeWbSpCapTokenUnset','未配')
+      }
     });
   }
 

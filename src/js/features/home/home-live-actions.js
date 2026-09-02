@@ -31,9 +31,14 @@
     var vw=global.OneToneVoiceWake;
     if(!vw||!vw.switchListeningStrategy) return;
     var cfg=global.OneToneState.state.config||{};
+    var paused=!!(global.OneToneState&&global.OneToneState.runtime&&global.OneToneState.runtime.paused);
     var on=global.OneToneVoiceSurfaceCopy
       ?global.OneToneVoiceSurfaceCopy.assistEnabled(cfg)
       :(global.OneToneHomeLive.voiceEngineOn()!=='off');
+    if(paused&&on&&global.OneToneIpc){
+      global.OneToneIpc.invoke('cmd_resume',{}).catch(function(){});
+      return;
+    }
     if(on){
       cfg.voiceAssistEnabled=false;
       Promise.resolve(vw.switchListeningStrategy('off',{force:true})).then(persistVoiceAssistToggle).catch(persistVoiceAssistToggle);

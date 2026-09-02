@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Test</title></head>
+<body>
+<div id="flowList"></div>
+<script>
+console.log("Script started");
+var CH = [{id:'test', name:'Test', color:'#007AFF', colorSoft:'#E0F1FA', desc:'Test', nodes:[
+  {tag:'01 / Test', icon:'X', ttl:'Test', sub:'test', state:'active', data:[]}
+]}];
+console.log("CH defined", CH.length);
+document.getElementById('flowList').innerHTML = '<div class="flow-row">Loaded '+CH.length+' channels</div>';
+console.log("Painted");
+</script>
+</body></html>

@@ -6895,6 +6895,78 @@
     return true;
   }
 
+  /** Read-only 5×5 grid for homepage Hero pane — no hub interaction. */
+  var HERO_PAD_HIDDEN_KEYS = { ACT10: 1, ACT06: 1, ACT07: 1 };
+  var HERO_PAD_HOT_KEYS = { ACT10: 1, AG04: 1, ACT08: 1 };
+
+  function renderHeroPadPreviewGrid(host, opts) {
+    opts = opts || {};
+    if (!host) return;
+    var sel = String(opts.selId || '');
+    var hot = String(opts.hotMicroKeyId || '');
+    var live = !!opts.live;
+    var voiceHint = String(opts.voiceHint || '').trim();
+    var m = opts.mapping;
+    var agentHi = ['bind', 'scheme', 'status'].indexOf(sel) >= 0;
+    var padHtml = '';
+
+    if (m && m.codexMicroPad) {
+      ensurePad(m, { persist: false });
+      var pad = m.codexMicroPad;
+      var prevHot = activeHighlightId;
+      var prevPreview = previewPadMode;
+      activeHighlightId = live && hot ? hot : '';
+      previewPadMode = pad.enabled ? 'codex' : 'numpad';
+      padHtml = renderHardwarePad(m, pad, { mode: 'preview', omitFaceTopbar: false });
+      activeHighlightId = prevHot;
+      previewPadMode = prevPreview;
+    } else {
+      var cells = (LAYOUT && LAYOUT.cells) || [];
+      var gridHtml = cells.map(function (c) {
+        var cls = 'micro-hw__key micro-hw__key--' + (c.kind || 'command');
+        if (c.kind === 'agent') cls += ' micro-hw__key--agent';
+        if (c.kind === 'nav') cls += ' micro-hw__key--nav';
+        if (c.gridColSpan === 2) cls += ' micro-hw__key--span2';
+        if (c.gridRowSpan === 2) cls += ' micro-hw__key--rowspan2';
+        if (HERO_PAD_HOT_KEYS[c.microKeyId]) cls += ' is-feature';
+        if (sel === c.microKeyId) cls += ' is-focused is-sel';
+        if (agentHi && c.kind === 'agent') cls += ' is-agent-hi';
+        if (live && c.microKeyId === hot) cls += ' is-live is-pressed';
+        if (HERO_PAD_HIDDEN_KEYS[c.microKeyId]) cls += ' is-route-disabled';
+        else if (!live && c.kind === 'nav') cls += ' is-dim';
+        var style = 'grid-row:' + c.gridRow + (c.gridRowSpan ? ' / span ' + c.gridRowSpan : '') +
+          ';grid-column:' + c.gridCol + (c.gridColSpan ? ' / span ' + c.gridColSpan : '') + ';';
+        return '<button type="button" class="' + cls + '" style="' + style + '" data-node-id="' +
+          esc(c.microKeyId) + '" aria-label="' + esc(cellLabel(c)) + '">' + esc(cellLabel(c)) + '</button>';
+      }).join('');
+      padHtml =
+        '<div class="micro-hw-wrap">' +
+        '<div class="micro-hw-shell is-mode-codex">' +
+        '<div class="micro-hw"><div class="micro-hw__face">' +
+        '<div class="micro-hw__grid">' + gridHtml + '</div></div></div></div></div>';
+    }
+
+    var hintHtml = voiceHint
+      ? '<div class="wb-hero-pad-voice-hint" aria-live="polite">' + esc(voiceHint) + '</div>'
+      : '';
+    host.innerHTML = '<div class="wb-hero-pad-preview">' + padHtml + '</div>';
+    if (voiceHint) {
+      var face = host.querySelector('.micro-hw__face');
+      if (face) face.insertAdjacentHTML('beforeend', hintHtml);
+    }
+
+    if (sel) {
+      host.querySelectorAll('[data-node-id="' + sel + '"], [data-micro-key="' + sel + '"]').forEach(function (el) {
+        el.classList.add('is-sel', 'is-focused');
+      });
+    }
+    if (live && hot) {
+      host.querySelectorAll('[data-micro-key="' + hot + '"], [data-node-id="' + hot + '"]').forEach(function (el) {
+        el.classList.add('is-live', 'is-pressed');
+      });
+    }
+  }
+
   function renderSoftPadPreview(host, m, opts) {
     opts = opts || {};
     host = resolveSoftPadPreviewPaintHost(host);
@@ -12100,6 +12172,7 @@
     openPadManager: openPadManager,
     renderCodexMicroPadManager: renderCodexMicroPadManager,
     renderSoftPadPreview: renderSoftPadPreview,
+    renderHeroPadPreviewGrid: renderHeroPadPreviewGrid,
     resolveSoftPadPreviewPaintHost: resolveSoftPadPreviewPaintHost,
     renderSoftPadLayoutPanel: renderSoftPadLayoutPanel,
     renderSoftPadPresentationPanel: renderSoftPadPresentationPanel,

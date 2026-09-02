@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Voice Pilot · 首页 · 渐进展开 · v11</title>
+<style>
+:root{
+  --surface:#FAFAFA;
+  --surface-1:#FFFFFF;
+  --surface-2:#F5F7FA;
+  --surface-3:#EEF2F6;
+  --on-surface:#0F172A;
+  --on-surface-2:#475569;
+  --on-surface-var:#64748B;
+  --on-surface-faint:#94A3B8;
+  --outline:rgba(15,23,42,.05);
+  --outline-2:rgba(15,23,42,.10);
+
+  --primary:#007AFF;
+  --primary-2:#0066D6;
+  --primary-soft:rgba(0,122,255,.08);
+  --primary-container:rgba(0,122,255,.12);
+  --primary-on:#FFFFFF;
+
+  --voice:#007AFF;     --voice-soft:rgba(0,122,255,.08);
+  --keys:#0EA5E9;      --keys-soft:rgba(14,165,233,.08);
+  --pad:#8B5CF6;       --pad-soft:rgba(139,92,246,.08);
+  --cam:#10B981;       --cam-soft:rgba(16,185,129,.08);
+
+  --success:#16A34A; --success-soft:rgba(22,163,74,.10);
+  --warn:#F59E0B; --warn-soft:rgba(245,158,11,.10);
+
+  --r-card:16px; --r-pill:999px;
+  --e1:0 1px 2px rgba(15,23,42,.04);
+  --e2:0 4px 14px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.04);
+  --ease:cubic-bezier(.2,0,0,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:"Segoe UI Variable","Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+  background:var(--surface);color:var(--on-surface);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  line-height:1.5;font-size:14px;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;padding:0}
+a{color:inherit;text-decoration:none}
+
+/* ── 框架 ── */
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+@media(max-width:960px){.app{grid-template-columns:1fr}}
+
+.sidebar{background:var(--surface-1);border-right:1px solid var(--outline);padding:20px 14px;display:flex;flex-direction:column;gap:20px;height:100vh;overflow-y:auto;position:sticky;top:0}
+.brand{display:flex;align-items:center;gap:10px;padding:0 4px}
+.brand .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#22c55e,#0ea5e9);display:grid;place-items:center;color:#fff;font-size:18px;font-weight:800;box-shadow:0 4px 12px rgba(14,165,233,.25)}
+.brand .txt b{font-size:14px;font-weight:750;letter-spacing:-.01em;display:block}
+.brand .txt small{font-size:10px;color:var(--on-surface-var);font-weight:600}
+.search{display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;background:var(--surface-2);border-radius:10px;border:1px solid var(--outline)}
+.search svg{width:14px;height:14px;color:var(--on-surface-faint);flex-shrink:0}
+.search input{flex:1;border:none;background:transparent;outline:none;font-size:12.5px;color:var(--on-surface)}
+.search input::placeholder{color:var(--on-surface-faint)}
+.nav-group h4{font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--on-surface-faint);text-transform:uppercase;padding:0 8px;margin-bottom:6px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--on-surface-2)}
+.nav a:hover{background:var(--surface-2)}
+.nav a.on{background:var(--primary-soft);color:var(--primary)}
+.nav a .ic{width:18px;height:18px;flex-shrink:0;opacity:.85}
+.nav a.on .ic{opacity:1}
+.sidebar-foot{margin-top:auto}
+.qs-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:40px;border-radius:10px;background:var(--primary);color:#fff;font-size:12.5px;font-weight:700;box-shadow:0 4px 12px rgba(0,122,255,.25);transition:all .2s var(--ease)}
+.qs-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(0,122,255,.32)}
+.qs-btn svg{width:14px;height:14px}
+
+.main{padding:20px 24px 40px;max-width:1080px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+
+/* ── App Bar（极轻） ── */
+.app-bar{
+  display:flex;align-items:center;gap:12px;padding:4px 4px 0;
+}
+.app-bar .crumb{
+  display:flex;align-items:center;gap:6px;flex:1;min-width:0;
+  font-size:13px;font-weight:600;color:var(--on-surface-2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.app-bar .crumb h1{font-size:15px;font-weight:700;color:var(--on-surface);letter-spacing:-.01em}
+.app-bar .crumb .sep{color:var(--on-surface-faint)}
+.app-bar .crumb .cur{color:var(--on-surface-var)}
+.app-bar .crumb .home-ic{width:16px;height:16px;color:var(--on-surface-var)}
+.app-bar .crumb .ch-name-active{color:var(--on-surface);font-weight:700}
+.app-bar .right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.app-bar .status-chip{
+  display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;
+  border-radius:8px;background:var(--success-soft);color:#15803D;
+  font-size:11.5px;font-weight:700;
+}
+.app-bar .status-chip .d{width:5px;height:5px;border-radius:50%;background:currentColor;animation:dotBreath 1.6s ease-in-out infinite}
+@keyframes dotBreath{0%,100%{opacity:1}50%{opacity:.5}}
+.app-bar .icon-btn{
+  width:32px;height:32px;border-radius:8px;background:var(--surface-1);border:1px solid var(--outline);
+  display:grid;place-items:center;color:var(--on-surface-2);
+  transition:all .2s;
+}
+.app-bar .icon-btn:hover{background:var(--surface-2);color:var(--primary)}
+.app-bar .icon-btn svg{width:14px;height:14px}
+
+/* ── 习惯（极简） ── */
+.habit-bar{
+  background:var(--surface-1);border-radius:var(--r-card);box-shadow:var(--e1);
+  padding:5px 8px;display:flex;align-items:center;gap:10px;
+}
+.habit-bar .lbl{
+  font-size:11px;font-weight:700;color:var(--on-surface-var);
+  letter-spacing:.04em;text-transform:uppercase;
+  padding:0 6px;flex-shrink:0;
+}
+.habit-bar .seg{flex:1;display:flex;gap:4px;background:var(--surface-2);border-radius:9px;padding:3px}
+.habit-bar .seg button{
+  flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;
+  height:28px;padding:0 10px;border-radius:7px;
+  font-size:12.5px;font-weight:600;color:var(--on-surface-2);
+  transition:all .25s var(--ease);
+}
+.habit-bar .seg button:hover{color:var(--on-surface)}
+.habit-bar .seg button.on{background:var(--surface-1);color:var(--primary);box-shadow:0 1px 3px rgba(0,0,0,.04);font-weight:700}
+.habit-bar .seg button .ico{width:14px;height:14px;border-radius:4px;background:rgba(0,0,0,.05);display:grid;place-items:center;font-size:9px;font-weight:800;color:currentColor;flex-shrink:0}
+.habit-bar .seg button.on .ico{background:var(--primary);color:#fff}
+
+/* ═══════════════════════════════════════════════════════
+   STATE 0: idle（默认） · 4 大通道卡片 · 视觉中心
+   ═══════════════════════════════════════════════════════ */
+.channel-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:14px;
+  align-items:stretch;
+  transition:all .4s var(--ease);
+}
+.channel-grid.is-compact{
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+}
+@media(max-width:820px){
+  .channel-grid{grid-template-columns:1fr 1fr}
+  .channel-grid.is-compact{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:480px){
+  .channel-grid,.channel-grid.is-compact{grid-template-columns:1fr}
+}
+
+.ch-card{
+  position:relative;background:var(--surface-1);
+  border:1px solid var(--outline);border-radius:var(--r-card);
+  padding:18px 18px 16px;
+  cursor:pointer;transition:all .3s var(--ease);
+  display:flex;flex-direction:column;gap:10px;
+  text-align:left;
+  min-height:124px;
+  overflow:hidden;
+}
+.ch-card:hover{
+  border-color:var(--outline-2);
+  box-shadow:var(--e2);
+  transform:translateY(-1px);
+}
+.ch-card.is-on{
+  border-color:var(--c);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--c) 4%,var(--surface-1)) 0%,var(--surface-1) 100%);
+  box-shadow:0 0 0 1px var(--c),0 4px 16px color-mix(in srgb,var(--c) 12%,transparent);
+}
+
+/* 展开 hero 后，其他 3 张通道卡变中性（去色），只剩选中那张带通道色 */
+.channel-grid.is-compact .ch-card:not(.is-on){
+  background:var(--surface-1);
+  border-color:rgba(15,23,42,.05);
+  box-shadow:none;
+}
+.channel-grid.is-compact .ch-card:not(.is-on) .ch-ic{
+  background:var(--surface-2);color:var(--on-surface-var);
+  border-color:transparent;
+}
+.channel-grid.is-compact .ch-card:not(.is-on) .ch-name{color:var(--on-surface-2)}
+.channel-grid.is-compact .ch-card:not(.is-on) .ch-sub{color:var(--on-surface-faint)}
+.channel-grid.is-compact .ch-card:not(.is-on) .ch-foot{color:var(--on-surface-faint)}
+.channel-grid.is-compact .ch-card:not(.is-on) .ch-foot .d{background:var(--on-surface-faint)}
+.channel-grid.is-compact .ch-card:not(.is-on) .ch-foot .step{background:var(--surface-2);color:var(--on-surface-var)}
+
+.ch-card-hd{
+  display:flex;align-items:center;gap:12px;
+}
+.ch-ic{
+  width:44px;height:44px;border-radius:12px;flex-shrink:0;
+  background:color-mix(in srgb,var(--c) 8%,var(--surface-2));
+  color:var(--c);
+  display:grid;place-items:center;
+  border:1px solid color-mix(in srgb,var(--c) 12%,transparent);
+  transition:all .3s var(--ease);
+}
+.ch-ic svg{width:22px;height:22px}
+.ch-card.is-on .ch-ic{
+  background:var(--c);color:#fff;border-color:transparent;
+  box-shadow:0 4px 12px color-mix(in srgb,var(--c) 30%,transparent);
+}
+.ch-meta{flex:1;min-width:0}
+.ch-name{font-size:15px;font-weight:700;letter-spacing:-.01em;color:var(--on-surface);line-height:1.2}
+.ch-card.is-on .ch-name{color:var(--c)}
+
+.ch-sub{font-size:11.5px;color:var(--on-surface-var);font-weight:500;line-height:1.4}
+.ch-foot{
+  display:flex;align-items:center;gap:8px;margin-top:auto;
+  font-size:11px;color:var(--on-surface-var);font-weight:600;
+}
+.ch-foot .stat{display:inline-flex;align-items:center;gap:4px}
+.ch-foot .stat .d{
+  width:5px;height:5px;border-radius:50%;background:var(--on-surface-faint);
+  transition:all .25s;
+}
+.ch-foot .step{
+  display:inline-flex;align-items:center;gap:4px;padding:2px 8px;
+  border-radius:5px;background:var(--surface-2);color:var(--on-surface-2);
+  font-size:10.5px;font-weight:700;
+}
+.ch-card.is-on .ch-foot .step{background:var(--c-soft);color:var(--c)}
+
+/* 提示：点击展开 */
+.ch-hint{
+  position:absolute;bottom:10px;right:12px;
+  font-size:10px;font-weight:700;color:var(--on-surface-faint);
+  display:flex;align-items:center;gap:3px;letter-spacing:.04em;
+  opacity:0;transition:opacity .25s;
+}
+.ch-card:hover .ch-hint{opacity:1;color:var(--c)}
+.ch-card.is-on .ch-hint{opacity:1;color:var(--c)}
+
+/* ═══════════════════════════════════════════════════════
+   STATE 1: focused（通道点击后） · HERO 出现
+   ═══════════════════════════════════════════════════════ */
+.hero{
+  background:var(--surface-1);
+  border:1px solid var(--outline);border-radius:var(--r-card);
+  box-shadow:var(--e1);
+  position:relative;overflow:hidden;
+  max-height:0;opacity:0;
+  transition:max-height .4s var(--ease),opacity .25s var(--ease),margin .4s var(--ease);
+  margin-top:0;
+}
+.hero.is-open{
+  max-height:600px;opacity:1;
+  margin-top:14px;
+  border-color:var(--outline);
+}
+.hero-inner{padding:20px 24px 18px}
+.hero::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--c),color-mix(in srgb,var(--c) 30%,transparent));
+  opacity:0;transition:opacity .3s;
+}
+.hero.is-open::before{opacity:1}
+
+.hero-hd{
+  display:flex;align-items:center;gap:12px;margin-bottom:18px;
+}
+.hero-ic{
+  width:42px;height:42px;border-radius:10px;flex-shrink:0;
+  background:var(--c-soft);color:var(--c);
+  display:grid;place-items:center;
+}
+.hero-ic svg{width:20px;height:20px}
+.hero-text{flex:1;min-width:0}
+.hero-text h2{font-size:18px;font-weight:700;letter-spacing:-.015em;line-height:1.2;color:var(--on-surface);display:flex;align-items:center;gap:8px}
+.hero-text h2 .live-dot{
+  width:7px;height:7px;border-radius:50%;background:var(--c);
+  box-shadow:0 0 0 3px var(--c-soft);animation:dotBreath 1.6s ease-in-out infinite;
+}
+.hero-text p{font-size:11.5px;color:var(--on-surface-var);margin-top:3px}
+.hero-text p .chip{
+  display:inline-flex;align-items:center;gap:4px;height:18px;padding:0 7px;
+  border-radius:5px;background:var(--c-soft);color:var(--c);
+  font-size:10.5px;font-weight:700;margin-right:6px;
+}
+.hero-close{
+  width:32px;height:32px;border-radius:8px;
+  background:var(--surface-2);border:1px solid var(--outline);
+  display:grid;place-items:center;color:var(--on-surface-2);
+  transition:all .2s;flex-shrink:0;
+}
+.hero-close:hover{background:var(--surface-3);color:var(--on-surface)}
+.hero-close svg{width:14px;height:14px}
+
+/* HERO 节点流（大） */
+.nodes{
+  position:relative;display:flex;align-items:flex-start;justify-content:space-between;
+  padding:10px 4px 0;min-height:130px;
+}
+.node{
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:0 4px;cursor:pointer;flex:0 1 auto;min-width:120px;
+  transition:transform .25s var(--ease);
+  position:relative;
+}
+.node:hover{transform:translateY(-2px)}
+.node .step{
+  font-size:9.5px;font-weight:700;color:var(--on-surface-var);
+  letter-spacing:.04em;text-transform:uppercase;
+  padding:2px 8px;border-radius:var(--r-pill);
+  background:var(--surface-2);
+}
+.node .circle{
+  width:60px;height:60px;border-radius:50%;
+  background:var(--surface-1);border:1.5px solid var(--outline-2);
+  display:grid;place-items:center;color:var(--on-surface-var);
+  position:relative;transition:all .3s var(--ease);
+  box-shadow:var(--e1);
+}
+.node .circle svg{width:24px;height:24px}
+.node .ttl{font-size:12.5px;font-weight:700;color:var(--on-surface);text-align:center;line-height:1.25;max-width:140px}
+
+.node:hover .circle{border-color:var(--c);color:var(--c);box-shadow:0 0 0 6px var(--c-soft),0 4px 12px rgba(0,0,0,.08)}
+.node:hover .step{background:var(--c-soft);color:var(--c)}
+.node.is-done .circle{background:var(--success-soft);border-color:rgba(22,163,74,.4);color:#15803D}
+.node.is-done .step{background:var(--success-soft);color:#15803D}
+.node.is-active .circle{
+  border-color:var(--c);color:var(--c);
+  background:radial-gradient(circle at 35% 30%,#fff,var(--c-soft) 80%);
+  box-shadow:0 0 0 5px var(--c-soft),0 4px 14px color-mix(in srgb,var(--c) 20%,transparent);
+}
+.node.is-active .circle::before{
+  content:'';position:absolute;inset:-8px;border-radius:50%;
+  border:2px solid var(--c-soft);
+  animation:nodeRing 2.4s ease-out infinite;
+}
+@keyframes nodeRing{0%{transform:scale(.85);opacity:.9}100%{transform:scale(1.35);opacity:0}}
+.node.is-active .step{background:var(--c);color:#fff;font-weight:800}
+.node.is-pro .circle{background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(245,158,11,.2));border-color:#f59e0b;color:#f59e0b}
+.node.is-pro .step{background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#fff}
+
+.connector{flex:1;height:2px;position:relative;margin:30px -4px 0;min-width:24px;align-self:flex-start}
+.connector::before{content:'';position:absolute;left:0;right:0;top:0;height:2px;border-radius:1px}
+.connector.to-next::before{background:repeating-linear-gradient(to right,var(--c) 0 5px,transparent 5px 10px)}
+.connector.to-rest::before{background:repeating-linear-gradient(to right,var(--outline-2) 0 5px,transparent 5px 10px);opacity:.6}
+.connector.to-next-orange::before{
+  background:repeating-linear-gradient(to right,
+    var(--c) 0 4px,transparent 4px 8px,
+    #f59e0b 8px 12px,transparent 12px 16px);
+}
+
+/* Tooltip on hover */
+.tip{
+  position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(4px);
+  background:var(--on-surface);color:#fff;padding:8px 12px;border-radius:8px;
+  font-size:11.5px;font-weight:500;line-height:1.45;white-space:nowrap;
+  pointer-events:none;opacity:0;transition:all .2s var(--ease);
+  box-shadow:0 4px 14px rgba(0,0,0,.2);
+  z-index:10;
+}
+.tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--on-surface)}
+.tip .tip-lbl{color:#fff;opacity:.7;font-size:10px;display:block;margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em}
+.tip .tip-main{font-weight:700;font-size:12px;color:#fff;display:block}
+.node:hover .tip{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ═══════════════════════════════════════════════════════
+   STATE 2: node-selected · DETAIL 出现
+   ═══════════════════════════════════════════════════════ */
+.detail{
+  background:var(--surface-1);border:1px solid var(--outline);border-radius:var(--r-card);
+  box-shadow:var(--e1);overflow:hidden;
+  max-height:0;opacity:0;
+  transition:max-height .4s var(--ease),opacity .25s var(--ease),margin .4s var(--ease);
+  margin-top:0;
+}
+.detail.is-open{
+  max-height:520px;opacity:1;
+  margin-top:14px;
+}
+.detail .inner{overflow:hidden}
+.detail-hd{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 16px;border-top:1px solid var(--outline);
+  background:linear-gradient(180deg,var(--c-soft) 0%,var(--surface-1) 100%);
+}
+.detail-hd .num{
+  width:26px;height:26px;border-radius:7px;flex-shrink:0;
+  background:var(--c);color:#fff;font-size:11.5px;font-weight:800;
+  display:grid;place-items:center;
+}
+.detail-hd .info{flex:1;min-width:0}
+.detail-hd .info .ttl{font-size:14px;font-weight:700;color:var(--on-surface);line-height:1.2;letter-spacing:-.01em}
+.detail-hd .info .sub{font-size:11px;color:var(--on-surface-var);margin-top:2px;line-height:1.4}
+.detail-hd .collapse{
+  width:28px;height:28px;border-radius:7px;flex-shrink:0;
+  border:1px solid var(--outline);background:var(--surface-1);
+  display:grid;place-items:center;color:var(--on-surface-var);
+  transition:all .2s;
+}
+.detail-hd .collapse:hover{background:var(--surface-3);color:var(--on-surface)}
+.detail-hd .collapse svg{width:12px;height:12px;transition:transform .25s var(--ease)}
+.detail.is-open .detail-hd .collapse svg{transform:rotate(180deg)}
+
+.detail-body{padding:14px 16px}
+.data-grid{display:grid;gap:6px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.data-cell{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:8px 11px;background:var(--surface-2);border-radius:7px;
+  font-size:11.5px;min-width:0;
+}
+.data-cell .k{color:var(--on-surface-var);font-weight:600;flex-shrink:0;font-size:10.5px}
+.data-cell .v{color:var(--on-surface);font-weight:700;display:flex;align-items:center;gap:4px;min-width:0}
+.data-cell .v .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.data-cell .v .edit{width:16px;height:16px;border-radius:4px;display:grid;place-items:center;cursor:pointer;color:var(--on-surface-faint);transition:all .2s}
+.data-cell .v .edit:hover{background:var(--c-soft);color:var(--c)}
+.data-cell .v .edit svg{width:9px;height:9px}
+.detail-foot{
+  display:flex;align-items:center;gap:10px;margin-top:10px;
+  padding:10px 12px;background:var(--surface-2);border-radius:9px;
+}
+.detail-foot .ico{width:22px;height:22px;border-radius:6px;background:var(--c-soft);color:var(--c);display:grid;place-items:center;flex-shrink:0}
+.detail-foot .ico svg{width:12px;height:12px}
+.detail-foot .txt{flex:1;font-size:12px;color:var(--on-surface-2);line-height:1.4}
+.detail-foot .txt b{color:var(--on-surface);font-weight:700}
+.jump-btn{
+  display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 12px;
+  border-radius:8px;background:var(--c);color:#fff;font-size:11.5px;font-weight:700;
+  flex-shrink:0;box-shadow:0 2px 6px color-mix(in srgb,var(--c) 20%,transparent);
+  transition:transform .2s var(--ease);
+}
+.jump-btn:hover{transform:translateY(-1px)}
+.jump-btn svg{width:12px;height:12px}
+
+/* ═══════════════════════════════════════════════════════
+   近期活动（底部填充，不抢视觉）
+   ═══════════════════════════════════════════════════════ */
+.activity{
+  margin-top:18px;
+  background:var(--surface-1);
+  border:1px solid var(--outline);border-radius:var(--r-card);
+  overflow:hidden;
+  transition:opacity .25s var(--ease),max-height .4s var(--ease),margin .4s var(--ease),padding .4s var(--ease);
+  max-height:400px;
+}
+.activity.is-hidden{
+  max-height:0;opacity:0;
+  margin-top:0;border-color:transparent;
+  pointer-events:none;
+}
+.activity.is-compact{
+  margin-top:14px;
+  max-height:260px;
+  overflow:hidden;
+}
+.activity.is-compact .activity-hd{padding:10px 16px}
+.activity.is-compact .activity-row{padding:7px 16px;font-size:11.5px}
+.activity-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 18px;border-bottom:1px solid var(--outline);
+}
+.activity-hd .lbl{font-size:13px;font-weight:700;color:var(--on-surface);letter-spacing:-.01em}
+.activity-hd .sub{font-size:11px;color:var(--on-surface-var);font-weight:500}
+.activity-list{display:flex;flex-direction:column}
+.activity-row{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 18px;
+  border-top:1px solid rgba(15,23,42,.04);
+  font-size:12px;color:var(--on-surface-2);
+  transition:background .15s;
+}
+.activity-row:first-child{border-top:0}
+.activity-row:hover{background:var(--surface-2)}
+.activity-row .time{
+  font-size:10.5px;font-weight:700;color:var(--on-surface-var);
+  width:60px;flex-shrink:0;letter-spacing:.02em;
+}
+.activity-row .ic{
+  width:24px;height:24px;border-radius:6px;flex-shrink:0;
+  display:grid;place-items:center;
+  background:var(--surface-2);color:var(--on-surface-2);
+}
+.activity-row .ic svg{width:12px;height:12px}
+.activity-row .txt{flex:1;min-width:0;line-height:1.4}
+.activity-row .txt b{color:var(--on-surface);font-weight:700;margin-right:3px}
+.activity-row .tag{
+  font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;
+  background:var(--surface-2);color:var(--on-surface-2);letter-spacing:.02em;
+  flex-shrink:0;
+}
+.activity-row .tag.ok{background:color-mix(in srgb,#10b981 12%,transparent);color:#059669}
+.activity-row .tag.info{background:color-mix(in srgb,#007AFF 12%,transparent);color:#007AFF}
+
+/* ── 演示控件 ── */
+.dev-panel{
+  position:fixed;right:18px;bottom:18px;z-index:30;
+  background:var(--surface-1);border:1px solid var(--outline-2);border-radius:14px;
+  box-shadow:var(--e2);padding:10px 12px;display:flex;align-items:center;gap:8px;
+  font-size:11px;color:var(--on-surface-2);
+}
+.dev-panel .dev-tag{font-size:9px;font-weight:800;color:var(--on-surface-var);background:rgba(0,0,0,.04);padding:2px 6px;border-radius:6px;letter-spacing:.04em}
+.dev-panel button{font:inherit;font-size:11px;font-weight:700;padding:6px 10px;border-radius:8px;border:1px solid var(--outline);background:var(--surface-2);color:var(--on-surface)}
+.dev-panel button.primary{background:var(--on-surface);color:#fff;border-color:var(--on-surface)}
+.dev-panel button:hover{background:var(--surface-3)}
+.dev-panel button.primary:hover{background:#000}
+.dev-panel select{font:inherit;font-size:11px;font-weight:700;padding:5px 8px;border-radius:8px;border:1px solid var(--outline);background:var(--surface-2);color:var(--on-surface)}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">叶</div>
+      <div class="txt"><b>一声 OneTone</b><small>言出即行，万象成形</small></div>
+    </div>
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input type="text" placeholder="搜索功能或设置…" />
+    </div>
+    <div class="nav-group">
+      <h4>面板</h4>
+      <nav class="nav">
+        <a class="on" href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8v10a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2V11z"/></svg>首页</a>
+        <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>我的习惯</a>
+        <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/></svg>按键设置</a>
+        <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>虚拟键盘</a>
+        <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>语音设置</a>
+        <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>摄像头</a>
+        <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h18M3 12h18M3 19h18"/></svg>托盘菜单</a>
+      </nav>
+    </div>
+    <div class="nav-group">
+      <h4>系统</h4>
+      <nav class="nav">
+        <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>通用设置</a>
+        <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/></svg>声音与反馈</a>
+        <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>状态与维护</a>
+      </nav>
+    </div>
+    <div class="sidebar-foot">
+      <button class="qs-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 4v16l14-8-14-8z"/></svg>
+        3 分钟快速入门
+      </button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- App Bar -->
+    <div class="app-bar" id="appBar">
+      <div class="crumb">
+        <svg class="home-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8v10a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2V11z"/></svg>
+        <h1>首页</h1>
+        <span class="sep" id="crSep" style="display:none">/</span>
+        <span class="cur" id="crActive" style="display:none"></span>
+      </div>
+      <div class="right">
+        <span class="status-chip"><span class="d"></span>运行中</span>
+        <button class="icon-btn" title="管理" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 习惯（轻量） -->
+    <div class="habit-bar">
+      <span class="lbl">习惯</span>
+      <div class="seg" id="habitPills">
+        <button data-h="general"><span class="ico">通</span>通用</button>
+        <button class="on" data-h="cursor"><span class="ico">C</span>Cursor</button>
+        <button data-h="custom"><span class="ico">+</span>自定义</button>
+      </div>
+    </div>
+
+    <!-- 4 通道卡（State 0 默认 / State 1 紧凑） -->
+    <div class="channel-grid" id="channelGrid"></div>
+
+    <!-- HERO（State 1 出现） -->
+    <div class="hero" id="hero">
+      <div class="hero-inner" id="heroInner"></div>
+    </div>
+
+    <!-- DETAIL（State 2 出现） -->
+    <div class="detail" id="detail">
+      <div class="inner" id="detailInner"></div>
+    </div>
+
+    <!-- 近期活动（空闲时填充底部） -->
+    <div class="activity" id="activity">
+      <div class="activity-hd">
+        <span class="lbl">近期活动</span>
+        <span class="sub">最近 24 小时</span>
+      </div>
+      <div class="activity-list">
+        <div class="activity-row">
+          <span class="time">14:32</span>
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg></span>
+          <span class="txt"><b>说话触发</b>在 Cursor 中发送了一段语音指令</span>
+          <span class="tag ok">成功</span>
+        </div>
+        <div class="activity-row">
+          <span class="time">13:18</span>
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h12"/></svg></span>
+          <span class="txt"><b>按键触发</b>修改了「F2 → 应用预设」映射</span>
+          <span class="tag info">已保存</span>
+        </div>
+        <div class="activity-row">
+          <span class="time">11:05</span>
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span>
+          <span class="txt"><b>摄像头确认</b>新增了视觉识别节点「屏幕 OCR」</span>
+          <span class="tag ok">成功</span>
+        </div>
+        <div class="activity-row">
+          <span class="time">09:47</span>
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></span>
+          <span class="txt"><b>屏幕按钮</b>触发了浮窗菜单「插入文本片段」</span>
+          <span class="tag ok">成功</span>
+        </div>
+        <div class="activity-row">
+          <span class="time">昨天</span>
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+          <span class="txt"><b>通用</b>习惯下新增了「应用预设」快捷指令</span>
+          <span class="tag info">已保存</span>
+        </div>
+        <div class="activity-row">
+          <span class="time">昨天</span>
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></span>
+          <span class="txt">导出了 <b>习惯配置</b>「Cursor 写代码」备份</span>
+          <span class="tag ok">成功</span>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="dev-panel">
+  <span class="dev-tag">DEV</span>
+  <button type="button" id="btnReset">↺ 重置</button>
+  <button type="button" id="btnNext">下一节点 ›</button>
+  <button type="button" id="btnAuto">自动演示</button>
+</div>
+
+<script>
+var ICO = {
+  voice:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>',
+  keys:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h12"/></svg>',
+  softPad:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 9h2M11 9h2M15 9h2M7 13h6M7 17h4"/></svg>',
+  camera:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  send:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
+  pulse:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+  ind:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
+  eye:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+  cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>',
+  pro:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2 4 4 1-3 3 1 4-4-2-4 2 1-4-3-3 4-1z"/></svg>',
+  edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+  go:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>',
+  settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
+};
+
+var CH = [
+  {
+    id:'voice', name:'说话触发', short:'说话', color:'var(--voice)', colorSoft:'var(--voice-soft)',
+    icon:ICO.voice, statTxt:'麦克风就绪', flow:'3 步 · 唤醒 → 结束 → 发送',
+    jump:{to:'语音设置', desc:'改唤醒词、麦克风、结束方式'},
+    nodes:[
+      {icon:ICO.voice, ttl:'怎么开始打字', stepTxt:'第 1 步', tip:{lbl:'唤醒', main:'说一句话唤醒这个场景的话'}, data:[
+        {k:'唤醒词',v:'「开始输入」'},
+        {k:'唤醒键',v:'F8'},
+        {k:'麦克风',v:'USB AUDIO'}
+      ]},
+      {icon:ICO.pulse, ttl:'说错了想结束', stepTxt:'第 2 步 · 当前', state:'next', tip:{lbl:'结束', main:'静音 / 结束词 / 取消词 三种方式'}, data:[
+        {k:'自动结束',v:'静音 3 秒'},
+        {k:'结束词',v:'「结束」'},
+        {k:'取消词',v:'「取消」'}
+      ]},
+      {icon:ICO.send, ttl:'说完怎么发送', stepTxt:'第 3 步', tip:{lbl:'发送', main:'完成后自动 Enter 或保持输入'}, data:[
+        {k:'发送键',v:'Enter'},
+        {k:'目标应用',v:'当前前台'},
+        {k:'完成输入',v:'不发送'}
+      ]}
+    ]
+  },
+  {
+    id:'keys', name:'按键触发', short:'按键', color:'var(--keys)', colorSoft:'var(--keys-soft)',
+    icon:ICO.keys, statTxt:'按键就绪', flow:'2 步 · 触发 → 识别',
+    jump:{to:'按键设置', desc:'改触发键、目标、响应方式'},
+    nodes:[
+      {icon:ICO.keys, ttl:'触发', stepTxt:'第 1 步 · 当前', state:'next', tip:{lbl:'触发', main:'按住一个键 · 松开触发'}, data:[
+        {k:'触发键',v:'音量减'},
+        {k:'响应',v:'单击'},
+        {k:'防误触',v:'200ms'}
+      ]},
+      {icon:ICO.pulse, ttl:'识别', stepTxt:'第 2 步', tip:{lbl:'输出', main:'向目标应用输出快捷键'}, data:[
+        {k:'目标键',v:'右 Alt'},
+        {k:'目标应用',v:'当前前台'},
+        {k:'快捷键',v:'支持'}
+      ]}
+    ]
+  },
+  {
+    id:'softPad', name:'屏幕按钮', short:'屏幕', color:'var(--pad)', colorSoft:'var(--pad-soft)',
+    icon:ICO.softPad, statTxt:'屏幕按钮', flow:'2 步 · 屏幕 → Agent',
+    jump:{to:'虚拟键盘', desc:'改按钮配置、绑定 Agent、调整布局'},
+    nodes:[
+      {icon:ICO.softPad, ttl:'Soft Pad', stepTxt:'第 1 步 · 当前', state:'next', tip:{lbl:'屏幕', main:'3 键位点击 · 绑定 Agent'}, data:[
+        {k:'键1',v:'确认'},
+        {k:'键2',v:'拒绝'},
+        {k:'键3',v:'暂停'}
+      ]},
+      {icon:ICO.ind, ttl:'状态灯', stepTxt:'第 2 步', tip:{lbl:'AI 状态', main:'指示 AI 状态 · 托盘+音通知'}, data:[
+        {k:'指示',v:'绿色常亮'},
+        {k:'状态',v:'AI 待机'},
+        {k:'通知',v:'托盘+音'}
+      ]}
+    ]
+  },
+  {
+    id:'camera', name:'摄像头确认', short:'摄像', color:'var(--cam)', colorSoft:'var(--cam-soft)',
+    icon:ICO.camera, statTxt:'摄像头关闭', flow:'3 步 · 识别 → 设备 → PRO',
+    jump:{to:'摄像头', desc:'改检测规则、调灵敏度、查看历史'},
+    nodes:[
+      {icon:ICO.eye, ttl:'视觉识别', stepTxt:'第 1 步', tip:{lbl:'检测', main:'识别手势/动作 · 触发对应操作'}, data:[
+        {k:'模型',v:'MediaPipe'},
+        {k:'在场检测',v:'人脸 + 姿态'},
+        {k:'检测延迟',v:'< 200ms'},
+        {k:'规则 1',v:'举手 → 确认'},
+        {k:'规则 2',v:'离席 → 暂停'},
+        {k:'规则 3',v:'摇头 → 拒绝'}
+      ]},
+      {icon:ICO.cam, ttl:'摄像头', stepTxt:'第 2 步 · 当前', state:'next', tip:{lbl:'设备', main:'摄像头设备 · 隐私设置'}, data:[
+        {k:'设备',v:'笔记本内置'},
+        {k:'分辨率',v:'720p'},
+        {k:'帧率',v:'30 fps'},
+        {k:'隐私',v:'本地处理'},
+        {k:'校准',v:'已完成'}
+      ]},
+      {icon:ICO.pro, ttl:'PRO 视觉能力', stepTxt:'第 3 步', state:'pro', tip:{lbl:'高级', main:'Pro 增强能力 · 本地推理不上传'}, data:[
+        {k:'Pro',v:'已解锁'},
+        {k:'确认',v:'举手+视线'},
+        {k:'安全',v:'本地推理'}
+      ]}
+    ]
+  }
+];
+
+// ── State Management ──
+// State 0: idle (no ACTIVE_CH)
+// State 1: focused (ACTIVE_CH set, hero open)
+// State 2: node-selected (OPEN set, detail open)
+var ACTIVE_CH = null;
+var OPEN = null;
+var HABIT = 'cursor';
+
+function paintCards(){
+  var grid = document.getElementById('channelGrid');
+  var compact = ACTIVE_CH != null;
+  grid.className = 'channel-grid' + (compact ? ' is-compact' : '');
+  grid.innerHTML = CH.map(function(ch){
+    var on = ch.id===ACTIVE_CH ? ' is-on' : '';
+    return '<button type="button" class="ch-card'+on+'" data-tab="'+ch.id+'" style="--c:'+ch.color+';--c-soft:'+ch.colorSoft+'">'
+      +'<div class="ch-card-hd">'
+        +'<div class="ch-ic">'+ch.icon+'</div>'
+        +'<div class="ch-meta">'
+          +'<div class="ch-name">'+ch.name+'</div>'
+          +'<div class="ch-sub">'+ch.flow+'</div>'
+        +'</div>'
+      +'</div>'
+      +'<div class="ch-foot">'
+        +'<span class="stat"><span class="d"></span>'+ch.statTxt+'</span>'
+        +'<span class="step">'+ch.nodes.length+' 步</span>'
+      +'</div>'
+      +'<div class="ch-hint">'+(ch.id===ACTIVE_CH?'展开中 ▾':'点击展开 ▾')+'</div>'
+    +'</button>';
+  }).join('');
+}
+
+function paintHero(){
+  var hero = document.getElementById('hero');
+  var inner = document.getElementById('heroInner');
+  if(!ACTIVE_CH){
+    hero.classList.remove('is-open');
+    setTimeout(function(){if(!hero.classList.contains('is-open'))inner.innerHTML='';},400);
+    return;
+  }
+  var ch = CH.find(function(c){return c.id===ACTIVE_CH;});
+  var html = ''
+    +'<div class="hero-hd" style="--c:'+ch.color+';--c-soft:'+ch.colorSoft+'">'
+      +'<div class="hero-ic">'+ch.icon+'</div>'
+      +'<div class="hero-text"><h2>'+ch.name+'<span class="live-dot"></span></h2><p><span class="chip">'+ch.flow+'</span>悬停节点查看说明</p></div>'
+      +'<button class="hero-close" type="button" id="btnCloseHero" title="收起"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg></button>'
+    +'</div>'
+    +'<div class="nodes" style="--c:'+ch.color+';--c-soft:'+ch.colorSoft+'">';
+  ch.nodes.forEach(function(n,i){
+    if(i>0){
+      var cls = 'to-rest';
+      var active = !n.state || n.state==='next' || n.state==='pro';
+      var nextNode = ch.nodes[i+1];
+      var next = nextNode && (nextNode.state==='next' || nextNode.state==='pro');
+      if(active && next) cls = 'to-next-orange';
+      else if(active) cls = 'to-next';
+      html += '<div class="connector '+cls+'"></div>';
+    }
+    var ncls = 'node';
+    if(n.state==='next' || n.state==='pro') ncls += ' is-active';
+    else if(!n.state && i>0) ncls += ' is-done';
+    html += '<button type="button" class="'+ncls+'" data-node="'+i+'">'
+      +'<span class="step">'+n.stepTxt+'</span>'
+      +'<div class="circle">'+n.icon+'</div>'
+      +'<div class="ttl">'+n.ttl+'</div>'
+      +'<div class="tip"><span class="tip-lbl">'+n.tip.lbl+'</span><span class="tip-main">'+n.tip.main+'</span></div>'
+    +'</button>';
+  });
+  html += '</div>';
+  inner.innerHTML = html;
+  hero.classList.add('is-open');
+  hero.style.setProperty('--c', ch.color);
+  hero.style.setProperty('--c-soft', ch.colorSoft);
+  bindHero();
+}
+
+function paintDetail(){
+  var detail = document.getElementById('detail');
+  var inner = document.getElementById('detailInner');
+  if(!OPEN){
+    detail.classList.remove('is-open');
+    setTimeout(function(){if(!detail.classList.contains('is-open'))inner.innerHTML='';},400);
+    return;
+  }
+  var ch = CH.find(function(c){return c.id===ACTIVE_CH;});
+  var n = ch.nodes[OPEN.nodeIdx];
+  var rows = n.data.map(function(d){
+    return '<div class="data-cell"><span class="k">'+d.k+'</span><span class="v"><span class="t">'+d.v+'</span><span class="edit" title="编辑">'+ICO.edit+'</span></span></div>';
+  }).join('');
+  inner.innerHTML = ''
+    +'<div class="detail-hd" style="--c:'+ch.color+';--c-soft:'+ch.colorSoft+'">'
+      +'<span class="num">'+(OPEN.nodeIdx+1)+'</span>'
+      +'<div class="info"><div class="ttl">'+n.ttl+'</div><div class="sub">'+n.stepTxt+' · '+n.tip.main+'</div></div>'
+      +'<a class="jump-btn" href="#" data-jump="'+ch.id+'">'+ICO.go+'去 '+ch.jump.to+'</a>'
+      +'<button class="collapse" type="button" id="btnCollapse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg></button>'
+    +'</div>'
+    +'<div class="detail-body">'
+      +'<div class="data-grid">'+rows+'</div>'
+      +'<div class="detail-foot">'
+        +'<div class="ico">'+ICO.settings+'</div>'
+        +'<div class="txt">改这条配置 · 去 <b>'+ch.jump.to+'</b> 页面 — '+ch.jump.desc+'</div>'
+      +'</div>'
+    +'</div>';
+  detail.classList.add('is-open');
+  detail.style.setProperty('--c', ch.color);
+  detail.style.setProperty('--c-soft', ch.colorSoft);
+  bindDetail();
+}
+
+function updateAppBar(){
+  var sep = document.getElementById('crSep');
+  var active = document.getElementById('crActive');
+  if(ACTIVE_CH){
+    var ch = CH.find(function(c){return c.id===ACTIVE_CH;});
+    sep.style.display = '';
+    active.style.display = '';
+    active.textContent = ch.name;
+    active.className = 'cur ch-name-active';
+  } else {
+    sep.style.display = 'none';
+    active.style.display = 'none';
+  }
+}
+
+function paint(){
+  paintCards();
+  updateAppBar();
+  paintHero();
+  paintDetail();
+  var act = document.getElementById('activity');
+  if(act){
+    // hero/detail 展开时也保留活动区域（紧凑模式），避免底部大段空白
+    if(ACTIVE_CH) act.classList.add('is-compact');
+    else act.classList.remove('is-compact');
+  }
+}
+
+function bindCards(){
+  document.querySelectorAll('.ch-card').forEach(function(t){
+    t.onclick = function(){
+      var id = t.getAttribute('data-tab');
+      if(id===ACTIVE_CH){
+        // 再次点击：收起 hero
+        ACTIVE_CH = null;
+        OPEN = null;
+      } else {
+        ACTIVE_CH = id;
+        OPEN = null;
+      }
+      paint();
+    };
+  });
+}
+
+function bindHero(){
+  var btn = document.getElementById('btnCloseHero');
+  if(btn) btn.onclick = function(){
+    ACTIVE_CH = null;
+    OPEN = null;
+    paint();
+  };
+  document.querySelectorAll('.node').forEach(function(el){
+    el.addEventListener('click',function(e){
+      e.stopPropagation();
+      var idx = parseInt(el.getAttribute('data-node'),10);
+      OPEN = (OPEN && OPEN.nodeIdx===idx) ? null : {nodeIdx:idx};
+      paintDetail();
+    });
+  });
+}
+
+function bindDetail(){
+  var btn = document.getElementById('btnCollapse');
+  if(btn) btn.onclick = function(){
+    OPEN = null;
+    paintDetail();
+  };
+  document.querySelectorAll('.data-cell .edit').forEach(function(b){
+    b.onclick = function(e){
+      e.stopPropagation();
+      var k = b.parentElement.parentElement.querySelector('.k').textContent;
+      alert('编辑：'+k+'（演示）');
+    };
+  });
+  document.querySelectorAll('.jump-btn').forEach(function(b){
+    b.onclick = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      var id = b.getAttribute('data-jump');
+      alert('跳转到：'+CH.find(function(c){return c.id===id;}).jump.to);
+    };
+  });
+}
+
+function bindAll(){
+  bindCards();
+  bindHero();
+  bindDetail();
+}
+
+document.getElementById('btnReset').onclick = function(){
+  ACTIVE_CH = null;
+  OPEN = null;
+  paint();
+};
+document.getElementById('btnNext').onclick = function(){
+  if(!ACTIVE_CH){
+    ACTIVE_CH = 'voice';
+    OPEN = {nodeIdx:0};
+  } else {
+    var ch = CH.find(function(c){return c.id===ACTIVE_CH;});
+    if(!OPEN) OPEN = {nodeIdx:0};
+    else {
+      OPEN.nodeIdx = (OPEN.nodeIdx+1) % ch.nodes.length;
+    }
+  }
+  paint();
+};
+
+var autoT = null;
+function startAuto(){
+  stopAuto();
+  var step = 0;
+  autoT = setInterval(function(){
+    var chIdx = Math.floor(step/2)%4;
+    var ch = CH[chIdx];
+    ACTIVE_CH = ch.id;
+    OPEN = {nodeIdx:step%ch.nodes.length};
+    paint();
+    step++;
+  },2200);
+}
+function stopAuto(){
+  if(autoT){clearInterval(autoT);autoT=null;}
+  var b=document.getElementById('btnAuto');
+  if(b) b.textContent='自动演示';
+}
+document.getElementById('btnAuto').onclick = function(){
+  if(autoT){ stopAuto(); return; }
+  startAuto(); this.textContent='停止';
+};
+
+document.querySelectorAll('.habit-bar .seg button').forEach(function(p){
+  p.onclick=function(){
+    document.querySelectorAll('.habit-bar .seg button').forEach(function(x){x.classList.remove('on');});
+    p.classList.add('on');
+    HABIT = p.getAttribute('data-h');
+  };
+});
+
+// URL hash 调试：#voice / #keys / #softpad / #camera / #voice:1 (含节点)
+function applyHash(){
+  var h = (location.hash || '').replace('#','');
+  if(!h) return;
+  var parts = h.split(':');
+  var id = parts[0];
+  if(CH.some(function(c){return c.id===id;})){
+    ACTIVE_CH = id;
+    OPEN = parts[1] != null ? {nodeIdx: parseInt(parts[1],10)} : null;
+  }
+}
+applyHash();
+paint();
+</script>
+</body>
+</html>

@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>S1 / S2 / S3 · Hero 展示区</title>
+  <link rel="stylesheet" href="../src/css/ot-switch.css" />
+  <style>
+    :root {
+      --on:#152238; --muted:#5a7086; --line:rgba(26,45,74,.1);
+      --font:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+      --accent:#6366f1; --tint:rgba(99,102,241,.09); --bg:#eef3f7; --ok:#10b981;
+      --live:#06b6d4; --warn:#f59e0b; --off:#94a3b8;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;padding:14px;font-family:var(--font);background:#cdd6df;color:var(--on)}
+    .page{max-width:1560px;margin:0 auto}
+    .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    @media(max-width:1200px){.cols{grid-template-columns:1fr}}
+
+    .lane{display:flex;flex-direction:column;gap:6px}
+    .tag{font-size:10px;font-weight:800;color:var(--muted)}
+
+    .app{border-radius:14px;border:1px solid var(--line);background:var(--bg);overflow:hidden;box-shadow:0 8px 22px rgba(26,45,74,.08)}
+
+    /* ── global scene bar ── */
+    .global{
+      display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);
+      background:rgba(255,255,255,.55);font-size:9px;
+    }
+    .global-scene{display:flex;align-items:center;gap:6px;font-weight:800;flex-shrink:0}
+    .global-scene i{width:18px;height:18px;border-radius:5px;background:#1a1a2e;color:#fff;font-style:normal;display:grid;place-items:center;font-size:8px}
+    .global-scene em{font-style:normal;color:var(--accent)}
+    .global-chs{display:flex;gap:5px;flex:1;justify-content:center}
+    .gdot{
+      display:flex;align-items:center;gap:4px;padding:3px 7px;border-radius:999px;
+      border:1px solid var(--line);background:rgba(255,255,255,.7);font-size:8px;font-weight:700;color:var(--muted);
+    }
+    .gdot.on{border-color:color-mix(in srgb,var(--accent) 40%,var(--line));color:var(--on);background:#fff}
+    .gdot i{width:6px;height:6px;border-radius:50%;background:var(--off)}
+    .gdot.live i{background:var(--live);box-shadow:0 0 6px rgba(6,182,212,.6)}
+    .gdot.ok i{background:var(--ok)}
+    .gdot.warn i{background:var(--warn)}
+    .global-meta{font-size:8px;color:var(--muted);font-weight:600;flex-shrink:0}
+
+    /* ── hero showcase ── */
+    .hero{padding:12px 14px 10px;min-height:220px}
+
+    /* primary vital */
+    .vital{text-align:center;margin-bottom:10px}
+    .vital-main{font-size:13px;font-weight:800;letter-spacing:-.02em}
+    .vital-main.is-live{color:#0e7490}
+    .vital-sub{margin-top:3px;font-size:9px;color:var(--muted);font-weight:600}
+
+    .orb-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px}
+    .orb{
+      width:56px;height:56px;border-radius:50%;border:2px solid color-mix(in srgb,var(--accent) 35%,transparent);
+      background:radial-gradient(circle at 35% 28%,#fff,var(--tint));color:var(--accent);
+      display:grid;place-items:center;position:relative;
+    }
+    .orb.is-live{border-color:rgba(6,182,212,.5);box-shadow:0 0 0 6px rgba(6,182,212,.12)}
+    .orb svg{width:24px;height:24px}
+    .orb.keys{color:#0284c7}.orb.pad{color:#7c3aed}.orb.cam{color:#15803d}
+
+    /* medals */
+    .medals{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+    .medal{
+      display:flex;flex-direction:column;align-items:center;gap:4px;min-width:64px;max-width:80px;
+    }
+    .medal-ring{
+      width:44px;height:44px;border-radius:50%;border:2px solid var(--line);background:#fff;
+      display:grid;place-items:center;position:relative;
+    }
+    .medal-ring.live{border-color:var(--live);background:rgba(6,182,212,.06)}
+    .medal-ring.ok{border-color:color-mix(in srgb,var(--ok) 50%,var(--line));background:rgba(16,185,129,.05)}
+    .medal-ring.off{border-color:var(--line);opacity:.55}
+    .medal-ring.warn{border-color:var(--warn);background:rgba(245,158,11,.06)}
+    .medal-ring .n{position:absolute;top:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:var(--tint);color:var(--accent);font-size:7px;font-weight:800;display:grid;place-items:center;border:1px solid #fff}
+    .medal-ring svg{width:16px;height:16px;color:var(--accent)}
+    .medal b{font-size:8px;font-weight:800;text-align:center;line-height:1.2}
+    .medal span{font-size:7px;color:var(--muted);font-weight:600;text-align:center;line-height:1.25}
+
+    /* logic pipeline */
+    .logic{
+      display:flex;align-items:center;justify-content:center;gap:0;margin-top:10px;padding:8px 10px;
+      border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.65);
+    }
+    .logic-node{
+      display:flex;flex-direction:column;align-items:center;gap:2px;min-width:52px;position:relative;
+    }
+    .logic-node i{
+      width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:#fff;
+      display:grid;place-items:center;font-size:10px;font-style:normal;font-weight:800;color:var(--muted);
+    }
+    .logic-node.live i{border-color:var(--live);background:rgba(6,182,212,.1);color:#0e7490;box-shadow:0 0 0 3px rgba(6,182,212,.15)}
+    .logic-node.done i{border-color:var(--ok);color:var(--ok);background:rgba(16,185,129,.08)}
+    .logic-node.off i{opacity:.45}
+    .logic-node b{font-size:7px;font-weight:800}
+    .logic-node s{font-size:6px;color:var(--muted);font-weight:600;text-decoration:none}
+    .logic-arr{color:var(--muted);font-size:10px;opacity:.5;margin:0 2px}
+
+    /* stats strip */
+    .stats{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px;
+    }
+    .stat{padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.7);text-align:center}
+    .stat s{display:block;font-size:7px;color:var(--muted);font-weight:600;text-decoration:none}
+    .stat strong{display:block;font-size:10px;font-weight:800;margin-top:2px}
+
+    /* S1: orbit layout */
+    .s1-stage{position:relative;height:130px;margin:0 auto 8px;max-width:280px}
+    .s1-orb{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2}
+    .s1-medals{position:absolute;inset:0}
+    .s1-medals .medal{position:absolute;transform:translate(-50%,-50%)}
+    .s1-medals .medal:nth-child(1){left:50%;top:8%}
+    .s1-medals .medal:nth-child(2){left:12%;top:72%}
+    .s1-medals .medal:nth-child(3){left:88%;top:72%}
+    .s1-medals .medal:nth-child(4){left:50%;top:95%;display:none}
+
+    /* S2: vitals split */
+    .s2-grid{display:grid;grid-template-columns:1fr 1.1fr;gap:12px;align-items:start}
+    .s2-vital{
+      padding:12px;border-radius:12px;border:1px solid var(--line);background:#fff;text-align:center;
+      display:flex;flex-direction:column;align-items:center;gap:8px;
+    }
+    .s2-vital .orb{width:64px;height:64px}
+    .s2-vital .orb svg{width:28px;height:28px}
+    .s2-medals{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    .s2-medals .medal{flex-direction:row;max-width:none;min-width:0;align-items:center;gap:8px;
+      padding:8px;border-radius:10px;border:1px solid var(--line);background:#fff}
+    .s2-medals .medal-ring{width:36px;height:36px;flex-shrink:0}
+    .s2-medals .medal-ring svg{width:14px;height:14px}
+    .s2-medals .medal-copy{text-align:left;min-width:0}
+    .s2-medals .medal-copy b{display:block;font-size:9px}
+    .s2-medals .medal-copy span{font-size:7px}
+
+    /* S3: flow-first */
+    .s3-flow{margin-bottom:8px}
+    .s3-medals .medal{min-width:56px}
+    .s3-medals .medal-ring{width:38px;height:38px}
+
+    /* bottom channel cards */
+    .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:8px 10px 10px;border-top:1px solid var(--line);background:rgba(255,255,255,.3)}
+    .card{padding:6px;border-radius:9px;border:1px solid var(--line);background:#f8fafc;cursor:pointer;font:inherit;color:inherit;text-align:left}
+    .card.on{border-color:color-mix(in srgb,var(--accent) 42%,var(--line));background:#fff;box-shadow:0 0 0 2px rgba(99,102,241,.08)}
+    .card-t{font-size:8px;font-weight:800}
+    .card-s{font-size:7px;color:var(--muted);font-weight:600;margin-top:2px}
+    .ot-switch--sm{width:22px;height:13px}
+    .ot-switch--sm::after{width:9px;height:9px}
+    .ot-switch--sm.is-on::after{transform:translateX(9px)}
+    .card-top{display:flex;justify-content:space-between;align-items:center}
+  </style>
+</head>
+<body>
+  <div class="page"><div class="cols" id="root"></div></div>
+  <script>
+    var I={voice:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>',keys:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/></svg>',softPad:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>',camera:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>'};
+    var CH=[{id:'voice',t:'说话触发',s:'开始输入'},{id:'keys',t:'按键触发',s:'音量减 → Alt'},{id:'softPad',t:'屏幕按钮',s:'确认控制'},{id:'camera',t:'摄像头',s:'未运行'}];
+    var G={voice:'ok',keys:'ok',softPad:'live',camera:'warn'};
+    var DATA={
+      voice:{
+        vital:{main:'待命 · 按 AutoTrigger',sub:'混合引擎 · 麦克风就绪',live:0},
+        medals:[{n:'开始输入',tr:'口令',st:'ok',i:'▶'},{n:'发送',tr:'口令',st:'ok',i:'↑'},{n:'取消',tr:'口令',st:'ok',i:'✕'}],
+        logic:[{l:'唤醒',s:'AutoTrigger',st:'done'},{l:'听写',s:'进行中',st:'live'},{l:'发送',s:'口令',st:'off'}],
+        stats:[['引擎','混合'],['麦克风','就绪'],['唤醒','AutoTrigger'],['今日','12 次']]
+      },
+      keys:{
+        vital:{main:'按住 音量减',sub:'映射到 右 Alt · 已启用',live:0},
+        medals:[{n:'输入',tr:'音量减',st:'ok',i:'⌨'},{n:'发送',tr:'Ctrl+Enter',st:'ok',i:'↵'}],
+        logic:[{l:'按下',s:'音量减',st:'done'},{l:'保持',s:'按住',st:'live'},{l:'输出',s:'右 Alt',st:'off'}],
+        stats:[['触发','音量减'],['目标','右 Alt'],['状态','已启用'],['今日','8 次']]
+      },
+      softPad:{
+        vital:{main:'Agent 确认中',sub:'Codex · 屏幕按钮已绑定',live:1},
+        medals:[{n:'确认',tr:'按钮',st:'live',i:'✓'},{n:'拒绝',tr:'未绑',st:'off',i:'✕'}],
+        logic:[{l:'检测',s:'Agent',st:'done'},{l:'确认',s:'点击',st:'live'},{l:'执行',s:'—',st:'off'}],
+        stats:[['控制','Codex'],['按钮','2/3'],['跟随','前台'],['今日','3 次']]
+      },
+      camera:{
+        vital:{main:'已配置 · 未运行',sub:'在场：空闲 · 2 个手势',live:0},
+        medals:[{n:'举手确认',tr:'OK 手势',st:'ok',i:'👋'},{n:'离席暂停',tr:'离席检测',st:'ok',i:'⏸'}],
+        logic:[{l:'检测',s:'姿态',st:'off'},{l:'匹配',s:'手势',st:'off'},{l:'触发',s:'动作',st:'off'}],
+        stats:[['运行','停止'],['在场','空闲'],['绑定','2'],['错误','无']]
+      }
+    };
+    var SCHEMES=[{id:'s1',l:'S1 · 轨道勋章'},{id:'s2',l:'S2 · 主次分栏'},{id:'s3',l:'S3 · 逻辑优先'}];
+
+    function globalBar(active){
+      var chs=CH.map(function(c){
+        var g=G[c.id];
+        return '<span class="gdot'+(c.id===active?' on':'')+' '+g+'"><i></i>'+c.t.replace('触发','').replace('确认','')+'</span>';
+      }).join('');
+      return '<div class="global"><div class="global-scene"><i>C</i> <em>Cursor</em></div><div class="global-chs">'+chs+'</div><span class="global-meta">跟随前台</span></div>';
+    }
+    function medalHtml(m,layout){
+      if(layout==='s2'){
+        return '<div class="medal"><div class="medal-ring '+m.st+'"><span class="n">'+m.i+'</span></div><div class="medal-copy"><b>'+m.n+'</b><span>'+m.tr+'</span></div></div>';
+      }
+      return '<div class="medal"><div class="medal-ring '+m.st+'"><span class="n">'+m.i+'</span></div><b>'+m.n+'</b><span>'+m.tr+'</span></div>';
+    }
+    function logicHtml(nodes){
+      return nodes.map(function(n,i){
+        return (i?'<span class="logic-arr">→</span>':'')+'<div class="logic-node '+n.st+'"><i>'+(i+1)+'</i><b>'+n.l+'</b><s>'+n.s+'</s></div>';
+      }).join('');
+    }
+    function statsHtml(rows){
+      return rows.map(function(r){return '<div class="stat"><s>'+r[0]+'</s><strong>'+r[1]+'</strong></div>';}).join('');
+    }
+    function heroS1(d,mode){
+      var cls=mode==='keys'?'keys':mode==='softPad'?'pad':mode==='camera'?'cam':'';
+      var meds=d.medals.map(function(m){return medalHtml(m,'s1');}).join('');
+      return '<div class="hero"><div class="vital"><div class="vital-main'+(d.vital.live?' is-live':'')+'">'+d.vital.main+'</div><div class="vital-sub">'+d.vital.sub+'</div></div>'
+        +'<div class="s1-stage"><div class="s1-medals">'+meds+'</div><div class="orb s1-orb '+cls+(d.vital.live?' is-live':'')+'">'+I[mode]+'</div></div>'
+        +'<div class="logic">'+logicHtml(d.logic)+'</div>'
+        +'<div class="stats">'+statsHtml(d.stats)+'</div></div>';
+    }
+    function heroS2(d,mode){
+      var cls=mode==='keys'?'keys':mode==='softPad'?'pad':mode==='camera'?'cam':'';
+      var meds=d.medals.map(function(m){return medalHtml(m,'s2');}).join('');
+      return '<div class="hero"><div class="s2-grid"><div class="s2-vital"><div class="orb '+cls+(d.vital.live?' is-live':'')+'">'+I[mode]+'</div><div class="vital-main'+(d.vital.live?' is-live':'')+'">'+d.vital.main+'</div><div class="vital-sub">'+d.vital.sub+'</div></div><div class="s2-medals">'+meds+'</div></div>'
+        +'<div class="logic">'+logicHtml(d.logic)+'</div>'
+        +'<div class="stats">'+statsHtml(d.stats)+'</div></div>';
+    }
+    function heroS3(d,mode){
+      var cls=mode==='keys'?'keys':mode==='softPad'?'pad':mode==='camera'?'cam':'';
+      return '<div class="hero"><div class="vital"><div class="orb-row"><div class="orb '+cls+(d.vital.live?' is-live':'')+'">'+I[mode]+'</div></div><div class="vital-main'+(d.vital.live?' is-live':'')+'">'+d.vital.main+'</div><div class="vital-sub">'+d.vital.sub+'</div></div>'
+        +'<div class="s3-flow logic">'+logicHtml(d.logic)+'</div>'
+        +'<div class="medals s3-medals">'+d.medals.map(function(m){return medalHtml(m,'s1');}).join('')+'</div>'
+        +'<div class="stats">'+statsHtml(d.stats)+'</div></div>';
+    }
+    var HERO={s1:heroS1,s2:heroS2,s3:heroS3};
+    function cards(active,scheme){
+      return CH.map(function(c){
+        return '<button type="button" class="card'+(c.id===active?' on':'')+'" data-m="'+c.id+'" data-s="'+scheme+'"><div class="card-top"><span class="card-t">'+c.t+'</span><span class="ot-switch ot-switch--sm'+(c.id==='camera'?'':' is-on')+'"></span></div><div class="card-s">'+c.s+'</div></button>';
+      }).join('');
+    }
+    function app(scheme,mode){
+      return '<div class="app" data-app="'+scheme+'">'+globalBar(mode)+HERO[scheme](DATA[mode],mode)+'<div class="cards">'+cards(mode,scheme)+'</div></div>';
+    }
+    var state={s1:'voice',s2:'voice',s3:'voice'};
+    function paint(){
+      document.getElementById('root').innerHTML=SCHEMES.map(function(s){
+        return '<div class="lane"><div class="tag">'+s.l+'</div>'+app(s.id,state[s.id])+'</div>';
+      }).join('');
+      document.querySelectorAll('.card').forEach(function(el){
+        el.onclick=function(){state[el.getAttribute('data-s')]=el.getAttribute('data-m');paint();};
+      });
+    }
+    paint();
+  </script>
+</body>
+</html>
