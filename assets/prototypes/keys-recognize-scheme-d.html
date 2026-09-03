@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>识别场景原型 · 方案 D 双栏+搜索</title>
+  <style>
+    :root {
+      --primary: #2a9cc4;
+      --primary-strong: #1e87ad;
+      --primary-soft: rgba(42, 156, 196, 0.1);
+      --primary-ring: rgba(42, 156, 196, 0.18);
+      --surface: #fff;
+      --surface-high: #f7f9fb;
+      --on-surface: #1a2d4a;
+      --on-muted: #5a7086;
+      --outline: rgba(26, 45, 74, 0.12);
+      --amber: #f59e0b;
+      --r: 12px;
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: var(--font);
+      background: #e8eef4;
+      color: var(--on-surface);
+    }
+    .banner {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 13px;
+    }
+    .banner strong { color: #7dd3fc; }
+    .banner code {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(125, 211, 252, 0.15);
+      color: #7dd3fc;
+    }
+    .stage {
+      max-width: 920px;
+      margin: 20px auto 40px;
+      padding: 0 16px;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--outline);
+      border-radius: 16px;
+      padding: 20px 22px 18px;
+      box-shadow: 0 8px 28px rgba(26, 45, 74, 0.06);
+    }
+    .flow {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 18px;
+      padding: 8px 40px 4px;
+    }
+    .flow-track {
+      position: absolute;
+      left: 18%;
+      right: 18%;
+      top: 48px;
+      height: 3px;
+      border: none;
+      background: linear-gradient(90deg, rgba(42,156,196,.85), rgba(245,158,11,.75));
+      opacity: 0.55;
+      border-radius: 999px;
+    }
+    .node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 6px;
+      position: relative;
+      z-index: 1;
+    }
+    .node-tag {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--on-muted);
+      background: var(--surface-high);
+      border: 1px solid var(--outline);
+      border-radius: 999px;
+      padding: 2px 10px;
+    }
+    .node-btn {
+      width: 72px;
+      height: 72px;
+      border-radius: 999px;
+      border: 1px solid var(--outline);
+      background: var(--surface);
+      color: var(--on-muted);
+      display: grid;
+      place-items: center;
+    }
+    .node.is-active .node-btn {
+      border-width: 2px;
+      border-color: rgba(42, 156, 196, 0.6);
+      color: var(--primary-strong);
+      box-shadow: 0 0 0 4px var(--primary-ring), 0 0 20px rgba(42, 156, 196, 0.16);
+    }
+    .node-btn svg { width: 28px; height: 28px; }
+    .node-title { margin: 0; font-size: 13px; font-weight: 800; }
+    .node-hint { margin: 0; font-size: 12px; color: var(--on-muted); font-weight: 600; }
+
+    .scheme {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .scheme-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--on-muted);
+      margin-right: 2px;
+    }
+    .scheme-pair {
+      display: inline-flex;
+      border: 1px solid var(--outline);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .scheme-pair button {
+      appearance: none;
+      border: none;
+      background: #fff;
+      min-height: 30px;
+      padding: 0 10px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--on-surface);
+    }
+    .scheme-pair .new {
+      border-left: 1px solid var(--outline);
+      color: var(--primary-strong);
+    }
+    .scheme-pair.is-on button:first-child {
+      background: var(--primary-soft);
+      color: var(--primary-strong);
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(240px, 34%) 1fr;
+      gap: 0;
+      min-height: 420px;
+      border: 1px solid var(--outline);
+      border-radius: var(--r);
+      overflow: hidden;
+      background: var(--surface);
+    }
+    .pane-left {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--outline);
+      background: var(--surface-high);
+      min-height: 0;
+    }
+    .search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 10px;
+      padding: 8px 10px;
+      border: 1px solid var(--outline);
+      border-radius: 10px;
+      background: #fff;
+    }
+    .search input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font: inherit;
+      font-size: 13px;
+      background: transparent;
+      color: var(--on-surface);
+    }
+    .search kbd {
+      font-size: 10px;
+      color: var(--on-muted);
+      border: 1px solid var(--outline);
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+    .tree {
+      flex: 1;
+      overflow: auto;
+      padding: 4px 8px 12px;
+    }
+    .cat {
+      margin-bottom: 4px;
+    }
+    .cat-head {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      appearance: none;
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      padding: 8px 8px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--on-surface);
+      cursor: pointer;
+      text-align: left;
+    }
+    .cat-head:hover { background: rgba(42, 156, 196, 0.06); }
+    .cat.is-open > .cat-head,
+    .cat-head.is-active {
+      background: var(--primary-soft);
+      color: var(--primary-strong);
+    }
+    .chev {
+      width: 14px;
+      color: var(--on-muted);
+      transition: transform 120ms ease;
+    }
+    .cat.is-open .chev { transform: rotate(90deg); }
+    .count {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--on-muted);
+      background: #fff;
+      border: 1px solid var(--outline);
+      border-radius: 999px;
+      min-width: 22px;
+      text-align: center;
+      padding: 0 6px;
+    }
+    .cat-items {
+      display: none;
+      padding: 0 0 6px 18px;
+    }
+    .cat.is-open .cat-items { display: block; }
+    .item {
+      width: 100%;
+      appearance: none;
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      padding: 7px 8px;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 2px 8px;
+    }
+    .item:hover { background: rgba(42, 156, 196, 0.05); }
+    .item.is-selected {
+      background: #fff;
+      box-shadow: inset 0 0 0 1px rgba(42, 156, 196, 0.35);
+    }
+    .item-name { font-size: 12px; font-weight: 700; color: var(--on-surface); }
+    .item-key {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--on-muted);
+      white-space: nowrap;
+    }
+    .item-sub {
+      grid-column: 1 / -1;
+      font-size: 11px;
+      color: var(--on-muted);
+    }
+    .item.is-pending .item-key { color: var(--primary-strong); }
+
+    .pane-right {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: #fff;
+    }
+    .detail {
+      flex: 1;
+      overflow: auto;
+      padding: 16px 18px 18px;
+    }
+    .detail-kicker {
+      margin: 0 0 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--on-muted);
+      letter-spacing: 0.04em;
+    }
+    .detail-title {
+      margin: 0 0 8px;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .detail-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: var(--surface-high);
+      border: 1px solid var(--outline);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .detail-status .chord {
+      color: var(--primary-strong);
+      font-variant-numeric: tabular-nums;
+    }
+    .detail-status.is-empty .chord { color: var(--amber); }
+    .detail-desc {
+      margin: 0 0 16px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--on-muted);
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+    .btn {
+      appearance: none;
+      border: 1px solid var(--outline);
+      background: #fff;
+      border-radius: 10px;
+      min-height: 36px;
+      padding: 0 14px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--on-surface);
+    }
+    .btn:hover { border-color: var(--primary-strong); color: var(--primary-strong); }
+    .btn-primary {
+      background: var(--primary-soft);
+      border-color: rgba(42, 156, 196, 0.35);
+      color: var(--primary-strong);
+    }
+    .btn-ghost { background: transparent; }
+
+    .ime-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .ime-chip {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      border: 1px solid var(--outline);
+      background: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--on-muted);
+      cursor: pointer;
+    }
+    .ime-chip.is-on {
+      border-color: rgba(42, 156, 196, 0.5);
+      box-shadow: 0 0 0 3px var(--primary-ring);
+      color: var(--primary-strong);
+    }
+    .finish-card {
+      border: 1px solid rgba(42, 156, 196, 0.22);
+      background: var(--primary-soft);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .finish-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .finish-pill {
+      border: 1px solid rgba(42, 156, 196, 0.35);
+      background: #fff;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--primary-strong);
+    }
+    .finish-card p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--on-muted);
+      line-height: 1.45;
+    }
+    .slider-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: center;
+      margin-top: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--on-muted);
+    }
+    .slider-row input { width: 100%; accent-color: var(--primary); }
+    .batch {
+      display: flex;
+      gap: 8px;
+      padding: 10px 18px;
+      border-top: 1px solid var(--outline);
+      background: var(--surface-high);
+    }
+    .note {
+      margin: 12px 2px 0;
+      font-size: 12px;
+      color: var(--on-muted);
+    }
+    .empty {
+      margin: 40px 0;
+      text-align: center;
+      color: var(--on-muted);
+      font-size: 13px;
+    }
+    @media (max-width: 720px) {
+      .split { grid-template-columns: 1fr; }
+      .pane-left { border-right: none; border-bottom: 1px solid var(--outline); max-height: 280px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="banner">
+    <span><strong>识别场景 HTML 原型</strong> · 方案 D：双栏 + 搜索（Chrome / Discord / 钉钉）</span>
+    <code>assets/prototypes/keys-recognize-scheme-d.html</code>
+  </div>
+
+  <div class="stage">
+    <div class="panel">
+      <section class="flow" aria-label="触发流程">
+        <div class="flow-track" aria-hidden="true"></div>
+        <div class="node">
+          <span class="node-tag">01 / 触发</span>
+          <div class="node-btn" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M7 17h10"/></svg>
+          </div>
+          <h3 class="node-title">触发</h3>
+          <p class="node-hint">左 ]]</p>
+        </div>
+        <div class="node is-active">
+          <span class="node-tag">02 / 识别</span>
+          <div class="node-btn" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <h3 class="node-title">识别</h3>
+          <p class="node-hint" id="heroHint">右 Alt</p>
+        </div>
+      </section>
+
+      <div class="scheme" aria-label="习惯方案">
+        <span class="scheme-label">习惯方案</span>
+        <span class="scheme-pair is-on"><button type="button">Cursor 开发</button><button type="button" class="new">新建</button></span>
+        <span class="scheme-pair"><button type="button">写作输入</button><button type="button" class="new">新建</button></span>
+        <span class="scheme-pair"><button type="button">会议速记</button><button type="button" class="new">新建</button></span>
+      </div>
+
+      <div class="split">
+        <aside class="pane-left" aria-label="分类与命令">
+          <label class="search">
+            <span aria-hidden="true">⌕</span>
+            <input id="search" type="search" placeholder="搜索命令或快捷键…" autocomplete="off" />
+            <kbd>Ctrl K</kbd>
+          </label>
+          <div class="tree" id="tree"></div>
+        </aside>
+
+        <section class="pane-right" aria-label="详情">
+          <div class="detail" id="detail"></div>
+          <div class="batch" id="batch"></div>
+        </section>
+      </div>
+
+      <p class="note">原型说明：左栏是六组分类树 + 搜索；右栏是当前选中项的详情（录制 / 清除 / 输入法预设 / 收尾）。不再用 2×3 标签网格当主导航。</p>
+    </div>
+  </div>
+
+  <script>
+    const DATA = [
+      {
+        id: 'ime',
+        label: '输入法',
+        items: [
+          { id: 'ime-start', name: '听写启动键', key: '右 Alt', sub: '点选输入法预设填入', kind: 'ime' },
+          { id: 'ime-finish', name: '按键收尾', key: '双击发送', sub: '说完后再双击结束并发送', kind: 'finish' }
+        ]
+      },
+      {
+        id: 'key',
+        label: '自定义键',
+        items: [
+          { id: 'key-manual', name: '手录启动键', key: '待设置', sub: '不用输入法时手录', kind: 'key', pending: true }
+        ]
+      },
+      {
+        id: 'voice',
+        label: '语音命令',
+        items: [
+          { id: 'voice-start', name: '开始听写', key: 'Ctrl+Shift+空格', sub: '口令 · 可补按键', kind: 'voice' },
+          { id: 'voice-cancel', name: '取消', key: 'Ctrl+Shift+退格', sub: 'input.cancel', kind: 'voice' },
+          { id: 'voice-send', name: '结束并发送', key: '去收尾', sub: '在收尾配置，不重复建键', kind: 'guide' }
+        ]
+      },
+      {
+        id: 'cursor',
+        label: 'Cursor 命令',
+        items: [
+          { id: 'c-send', name: '发送', key: 'Enter', sub: 'Composer 内回车', kind: 'cursor' },
+          { id: 'c-new', name: '新会话', key: 'Ctrl+N', sub: '新建聊天', kind: 'cursor' },
+          { id: 'c-quick', name: '快速打开', key: 'Ctrl+P', sub: '文件/符号', kind: 'cursor' },
+          { id: 'c-cmd', name: '命令面板', key: 'Ctrl+Shift+P', sub: '命令面板', kind: 'cursor' },
+          { id: 'c-compose', name: '打开 Composer', key: 'Ctrl+I', sub: '编辑器习惯', kind: 'cursor', pending: false },
+          { id: 'c-agent', name: '回到当前 Agent', key: '待设置', sub: '口令可迁移为按键', kind: 'cursor', pending: true }
+        ]
+      },
+      {
+        id: 'softPad',
+        label: '虚拟键盘',
+        items: [
+          { id: 'pad-f1', name: 'F1 能力位', key: '待设置', sub: '先选应用再绑键', kind: 'softPad', pending: true }
+        ]
+      },
+      {
+        id: 'camera',
+        label: '摄像头操作',
+        items: [
+          { id: 'cam-shake', name: '摇头取消', key: '仅摄像头', sub: '手势 · 不可键绑', kind: 'camera' }
+        ]
+      }
+    ];
+
+    let openCat = 'ime';
+    let selectedId = 'ime-start';
+    let query = '';
+
+    const treeEl = document.getElementById('tree');
+    const detailEl = document.getElementById('detail');
+    const batchEl = document.getElementById('batch');
+    const heroHint = document.getElementById('heroHint');
+
+    function allItems() {
+      return DATA.flatMap((c) => c.items.map((it) => ({ ...it, cat: c.id, catLabel: c.label })));
+    }
+
+    function findItem(id) {
+      return allItems().find((x) => x.id === id) || null;
+    }
+
+    function match(it) {
+      if (!query) return true;
+      const q = query.toLowerCase();
+      return [it.name, it.key, it.sub, it.catLabel].join(' ').toLowerCase().includes(q);
+    }
+
+    function renderTree() {
+      const q = query.trim();
+      treeEl.innerHTML = DATA.map((cat) => {
+        const items = cat.items.filter(match);
+        if (q && !items.length) return '';
+        const open = q ? true : cat.id === openCat;
+        const count = cat.items.length;
+        return `
+          <div class="cat ${open ? 'is-open' : ''}" data-cat="${cat.id}">
+            <button type="button" class="cat-head ${selectedId && cat.items.some((i) => i.id === selectedId) ? 'is-active' : ''}" data-toggle="${cat.id}">
+              <span class="chev" aria-hidden="true">▸</span>
+              <span>${cat.label}</span>
+              <span class="count">${count}</span>
+            </button>
+            <div class="cat-items">
+              ${items.map((it) => `
+                <button type="button" class="item ${it.id === selectedId ? 'is-selected' : ''} ${it.pending ? 'is-pending' : ''}" data-item="${it.id}">
+                  <span class="item-name">${it.name}</span>
+                  <span class="item-key">${it.key}</span>
+                  <span class="item-sub">${it.sub}</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>`;
+      }).join('') || '<p class="empty">没有匹配的命令</p>';
+    }
+
+    function renderDetail() {
+      const it = findItem(selectedId);
+      if (!it) {
+        detailEl.innerHTML = '<p class="empty">从左侧选择一条命令</p>';
+        batchEl.innerHTML = '';
+        return;
+      }
+
+      if (it.kind === 'ime') {
+        detailEl.innerHTML = `
+          <p class="detail-kicker">${it.catLabel}</p>
+          <h2 class="detail-title">${it.name}</h2>
+          <div class="detail-status"><span>当前识别键</span><span class="chord" id="detailChord">右 Alt</span></div>
+          <p class="detail-desc">点选输入法预设，自动填入听写启动键。也可切到「自定义键」手录。</p>
+          <div class="ime-strip" id="imeStrip">
+            ${['讯','微','Typ','Win','智','千','闪'].map((x, i) =>
+              `<button type="button" class="ime-chip ${i === 2 ? 'is-on' : ''}" data-ime="${x}">${x}</button>`
+            ).join('')}
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-primary">应用到识别键</button>
+            <button type="button" class="btn">改用手录</button>
+          </div>`;
+        batchEl.innerHTML = `
+          <button type="button" class="btn btn-primary" data-batch="scheme">套用 Cursor 开发方案</button>
+          <button type="button" class="btn btn-ghost">只看待设</button>`;
+        heroHint.textContent = '右 Alt';
+        return;
+      }
+
+      if (it.kind === 'finish') {
+        detailEl.innerHTML = `
+          <p class="detail-kicker">${it.catLabel}</p>
+          <h2 class="detail-title">${it.name}</h2>
+          <div class="finish-card">
+            <div class="finish-row">
+              <span class="finish-pill">再双击发送</span>
+              <strong>两双击结束</strong>
+            </div>
+            <p>双击自动开始听写，说完后再双击一次结束并自动发送。</p>
+            <div class="slider-row">
+              <span>说完后等待</span>
+              <input type="range" min="0" max="10" step="0.5" value="5" />
+              <span>5.0 秒</span>
+            </div>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn">可选：取消窗口</button>
+          </div>`;
+        batchEl.innerHTML = '';
+        return;
+      }
+
+      const pending = !!it.pending || it.key === '待设置' || it.key === '去收尾' || it.key === '仅摄像头';
+      detailEl.innerHTML = `
+        <p class="detail-kicker">${it.catLabel}</p>
+        <h2 class="detail-title">${it.name}</h2>
+        <div class="detail-status ${pending ? 'is-empty' : ''}">
+          <span>${pending ? '快捷键' : '已绑定'}</span>
+          <span class="chord">${it.key}</span>
+        </div>
+        <p class="detail-desc">${it.sub}。在右栏精修单条；批量补全放在底栏。</p>
+        <div class="actions">
+          <button type="button" class="btn btn-primary">${pending ? '录制快捷键' : '重新录制'}</button>
+          <button type="button" class="btn">清除</button>
+          <button type="button" class="btn btn-ghost">映射到识别按钮</button>
+        </div>`;
+      batchEl.innerHTML = it.cat === 'cursor'
+        ? `<button type="button" class="btn btn-primary">按方案补全 Cursor 快捷键</button>
+           <button type="button" class="btn btn-ghost">只看待设</button>`
+        : `<button type="button" class="btn btn-ghost">只看待设</button>`;
+    }
+
+    function render() {
+      renderTree();
+      renderDetail();
+    }
+
+    treeEl.addEventListener('click', (e) => {
+      const toggle = e.target.closest('[data-toggle]');
+      if (toggle) {
+        const id = toggle.getAttribute('data-toggle');
+        openCat = openCat === id && !query ? '' : id;
+        renderTree();
+        return;
+      }
+      const item = e.target.closest('[data-item]');
+      if (item) {
+        selectedId = item.getAttribute('data-item');
+        const found = findItem(selectedId);
+        if (found) openCat = found.cat;
+        render();
+      }
+    });
+
+    detailEl.addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-ime]');
+      if (!chip) return;
+      detailEl.querySelectorAll('.ime-chip').forEach((el) => el.classList.remove('is-on'));
+      chip.classList.add('is-on');
+      const map = { Typ: '右 Alt', Win: 'Win+H', 讯: 'F2', 微: 'Ctrl+Shift+Win' };
+      const chord = map[chip.getAttribute('data-ime')] || '右 Alt';
+      const el = document.getElementById('detailChord');
+      if (el) el.textContent = chord;
+      heroHint.textContent = chord;
+    });
+
+    document.getElementById('search').addEventListener('input', (e) => {
+      query = e.target.value || '';
+      renderTree();
+    });
+
+    document.querySelectorAll('.scheme-pair').forEach((pair) => {
+      pair.addEventListener('click', () => {
+        document.querySelectorAll('.scheme-pair').forEach((p) => p.classList.remove('is-on'));
+        pair.classList.add('is-on');
+      });
+    });
+
+    render();
+  </script>
+</body>
+</html>

@@ -107,6 +107,8 @@
 
 
   function openVoiceAdvancedSection(){
+    const adv=$('voiceCoreAdvanced');
+    if(adv) adv.open=true;
     const el=$('voiceRecognizeEngineDetails');
     if(el&&el.tagName==='DETAILS') el.open=true;
     if(global.OneToneVoicePageState&&global.OneToneVoicePageState.setStep){
@@ -599,10 +601,14 @@
       ids=['voiceSettingsEndPhraseCard','voiceRecognizeEngineDetails','voiceSapiBlock'];
       var det=$('voiceRecognizeEngineDetails');
       if(det) det.open=true;
+      var advS=$('voiceCoreAdvanced');
+      if(advS) advS.open=true;
     }else if(navId==='voice:vosk'){
       ids=['voiceSettingsEndPhraseCard','voiceRecognizeEngineDetails','voiceVoskBlock'];
       var detV=$('voiceRecognizeEngineDetails');
       if(detV) detV.open=true;
+      var advV=$('voiceCoreAdvanced');
+      if(advV) advV.open=true;
     }else if(navId==='voice:end'){
       ids=['voiceSettingsEndPhraseCard','voiceEndRulesSection'];
       if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.setRecognizeNavState){

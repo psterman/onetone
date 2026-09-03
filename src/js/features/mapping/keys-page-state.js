@@ -113,6 +113,9 @@
 
   function init(){
     applyStepToDom(activeStep);
+    if(global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.onStepChange){
+      try{ global.OneToneKeysChannelCommandPicker.onStepChange(activeStep); }catch(_){}
+    }
   }
 
   global.OneToneKeysPageState={

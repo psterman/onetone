@@ -1072,6 +1072,8 @@
   }
 
   function expandVoskEngineDetails(){
+    const adv=$('voiceCoreAdvanced');
+    if(adv) adv.open=true;
     const det=$('voiceRecognizeEngineDetails');
     if(det&&det.tagName==='DETAILS') det.open=true;
     if(global.OneToneVoiceWakeNavigation&&global.OneToneVoiceWakeNavigation.expandForEditMode){

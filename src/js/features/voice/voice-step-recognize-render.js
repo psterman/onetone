@@ -7,14 +7,22 @@
   function hooks(){ return global.__vp_voice_settings_flow_hooks__||{}; }
   function V(){ return global.OneToneVoiceSettingsViewModel; }
 
+  function openCoreAdvanced(){
+    var adv=$('voiceCoreAdvanced');
+    if(adv) adv.open=true;
+  }
+
   function setRecognizeNavState(targetId){
     const endDetails=$('voiceRecognizeEndDetails');
     const engineDetails=$('voiceRecognizeEngineDetails');
-    if(targetId==='voiceAdvancedSection'&&engineDetails) engineDetails.open=true;
-    else if(targetId==='voiceEndRulesSection'&&endDetails) endDetails.open=true;
+    if(targetId==='voiceAdvancedSection'){
+      openCoreAdvanced();
+      if(engineDetails&&engineDetails.tagName==='DETAILS') engineDetails.open=true;
+    }else if(targetId==='voiceEndRulesSection'&&endDetails) endDetails.open=true;
     else if(targetId==='voiceRecognizeResources'||targetId==='voiceRecognizeResourcesDetails'){
+      openCoreAdvanced();
       const resDetails=$('voiceRecognizeResourcesDetails');
-      if(resDetails) resDetails.open=true;
+      if(resDetails&&resDetails.tagName==='DETAILS') resDetails.open=true;
     }
   }
 
@@ -78,7 +86,7 @@
 
   function renderModelPresetRow(vm){
     const row=$('voiceRecognizeModelRow');
-    if(row) row.hidden=vm.loading||vm.mode!=='vosk';
+    if(row) row.hidden=!!vm.loading;
   }
 
   function resolveRecognizeTabMode(vm){

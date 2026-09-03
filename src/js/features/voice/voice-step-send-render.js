@@ -42,6 +42,55 @@
     else delayLbl.textContent=t('voiceSendDelayAutoLbl');
   }
 
+  function paceBucket(ms){
+    ms=Number(ms)||4000;
+    if(ms<=3000) return 2000;
+    if(ms>=5000) return 6000;
+    return 4000;
+  }
+
+  function syncPaceButtons(ms){
+    var host=$('voiceCorePace');
+    if(!host) return;
+    var pick=paceBucket(ms);
+    host.querySelectorAll('[data-voice-pace]').forEach(function(btn){
+      var n=parseInt(btn.getAttribute('data-voice-pace'),10);
+      btn.classList.toggle('is-active',n===pick);
+    });
+  }
+
+  function applyPaceDelay(ms){
+    ms=paceBucket(ms);
+    var range=$('voiceSettingsDelayRange');
+    if(range){
+      range.value=String(ms);
+      range.style.setProperty('--range-pct',((ms-1000)/9000*100)+'%');
+    }
+    syncPaceButtons(ms);
+    var End=global.OneToneVoiceEnd;
+    if(End&&End.syncDelayRanges) End.syncDelayRanges(ms,range);
+    if(End&&End.onDelayChange) End.onDelayChange();
+  }
+
+  function bindPaceButtons(){
+    var host=$('voiceCorePace');
+    if(host&&!host.__otPaceBound){
+      host.__otPaceBound=true;
+      host.addEventListener('click',function(ev){
+        var btn=ev.target.closest&&ev.target.closest('[data-voice-pace]');
+        if(!btn) return;
+        applyPaceDelay(parseInt(btn.getAttribute('data-voice-pace'),10)||4000);
+      });
+    }
+    var range=$('voiceSettingsDelayRange');
+    if(range&&!range.__otPaceSync){
+      range.__otPaceSync=true;
+      range.addEventListener('input',function(){
+        syncPaceButtons(parseInt(range.value,10)||4000);
+      });
+    }
+  }
+
   function setSectionLock(el,locked,reason){
     if(!el) return;
     el.classList.toggle('is-section-locked',!!locked);
@@ -103,24 +152,25 @@
       }
     }
     if(paramsBar){
-      paramsBar.hidden=!showSendExtras;
-      paramsBar.setAttribute('aria-hidden',showSendExtras?'false':'true');
+      paramsBar.hidden=false;
+      paramsBar.removeAttribute('hidden');
+      paramsBar.setAttribute('aria-hidden','false');
       setSectionLock(paramsBar,false,'');
     }
     if(params){
       params.dataset.outputMode=key;
       params.dataset.liteMode=liteMode?'true':'false';
-      params.classList.toggle('is-hidden',!showSendExtras);
+      params.classList.remove('is-hidden');
       syncDelayLabel(key);
       if(delayRow){
-        delayRow.classList.toggle('is-hidden',!delayActive);
-        delayRow.hidden=!delayActive;
+        delayRow.classList.remove('is-hidden');
+        delayRow.hidden=false;
         setSectionLock(delayRow,false,'');
       }
       var commitPills=$('voiceSettingsCommitPills');
       setSectionLock(commitPills,false,'');
       var commitTitle=$('voiceSettingsCommitAsideTitle');
-      if(commitTitle&&showSendExtras){
+      if(commitTitle){
         commitTitle.textContent=delayActive
           ?t('voiceSendParamsTitle')
           :t('voiceSendParamsTitleKeyOnly');
@@ -152,8 +202,10 @@
   }
 
   function renderSendPage(vm){
+    bindPaceButtons();
     renderOutputModeSegments(vm);
     renderOutputPanel(vm);
+    syncPaceButtons(vm&&vm.autoSendDelayMs);
     var title=$('voiceSendPageTitle');
     var sub=$('voiceSendPageSub');
     if(title) title.textContent=t('voiceSendPageTitle');

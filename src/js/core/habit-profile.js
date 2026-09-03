@@ -37,12 +37,12 @@
     var universal=function(){ return t('habitHubUniversalName','通用设置'); };
     var cfg=global.OneToneState&&global.OneToneState.state?global.OneToneState.state.config:null;
     var diff=global.OneToneHabitOverrideDiff;
-    if(diff&&diff.isGlobalBaselineMapping&&diff.isGlobalBaselineMapping(m,cfg||{},mappingCore())){
-      return universal();
-    }
     var group=String(m.group||'').trim();
     var appId=String(m.appTargetId||'').trim();
-    if(appId){
+    var name='';
+    if(diff&&diff.isGlobalBaselineMapping&&diff.isGlobalBaselineMapping(m,cfg||{},mappingCore())){
+      name=group&&group.indexOf('·')>=0?group:universal();
+    }else if(appId){
       var appName=appDisplayNameForId(appId)||appId;
       // Normalize legacy "Codex 工作流 场景" / reserved names to "{app} 场景".
       if(isReservedHabitName(group)
@@ -50,19 +50,43 @@
         || group===appName
         || group.indexOf('工作流')>=0
         || /workflow/i.test(group)){
-        return t('habitWizardDefaultName','{app} 场景').replace('{app}',appName);
+        name=t('habitWizardDefaultName','{app} 场景').replace('{app}',appName);
+      }else if(group){
+        name=group;
+      }else{
+        name=t('habitWizardDefaultName','{app} 场景').replace('{app}',appName);
       }
-      if(group) return group;
-      return t('habitWizardDefaultName','{app} 场景').replace('{app}',appName);
+    }else if(isReservedHabitName(group)){
+      if(group==='通用设置'||/^universal settings$/i.test(group)) name=universal();
+      else name=t('habitHubLegacyUnnamed','旧习惯');
+    }else if(group){
+      name=group;
+    }else if(global.OneToneHomeScheme&&global.OneToneHomeScheme.shortName){
+      name=global.OneToneHomeScheme.shortName(m);
+    }else if((m.label||'').trim()){
+      name=m.label.trim();
+    }else{
+      name=m.id||'—';
     }
-    if(isReservedHabitName(group)){
-      if(group==='通用设置'||/^universal settings$/i.test(group)) return universal();
-      return t('habitHubLegacyUnnamed','旧习惯');
+    // Same app (or multiple baselines) with different triggers: show trigger to distinguish.
+    var trig=String(m.triggerKey||'').trim();
+    if(trig&&cfg&&Array.isArray(cfg.mappings)&&name.indexOf(trig)<0&&name.indexOf('·')<0){
+      var siblings=0;
+      for(var i=0;i<cfg.mappings.length;i++){
+        var row=cfg.mappings[i];
+        if(!row) continue;
+        if(String(row.appTargetId||'').trim()===appId) siblings++;
+      }
+      if(siblings>1){
+        var friendly=trig;
+        try{
+          var utils=global.OneToneAppKeyUtils;
+          if(utils&&utils.friendlyKeyName) friendly=utils.friendlyKeyName(trig)||trig;
+        }catch(_){}
+        name=name+' · '+friendly;
+      }
     }
-    if(group) return group;
-    if(global.OneToneHomeScheme&&global.OneToneHomeScheme.shortName) return global.OneToneHomeScheme.shortName(m);
-    if((m.label||'').trim()) return m.label.trim();
-    return m.id||'—';
+    return name;
   }
 
   function hasKeyParts(m){

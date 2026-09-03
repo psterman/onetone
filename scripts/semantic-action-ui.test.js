@@ -751,10 +751,16 @@ return Promise.resolve()
     assert.ok(pickerSrc.indexOf('softPad.upsert') < 0);
 
     var html = read('src/index.html');
-    assert.ok(html.indexOf('keysChannelSubtabs') >= 0);
     assert.ok(html.indexOf('keysChannelPanel') >= 0);
-    assert.ok(html.indexOf('keysChannelTabIme') >= 0);
-    assert.ok(html.indexOf('data-channel="ime"') >= 0);
+    assert.ok(html.indexOf('keysImeStripWrap') >= 0);
+    assert.ok(html.indexOf('keysChannelSubtabs') >= 0);
+    assert.ok(html.indexOf('keysChannelSplit') >= 0);
+    assert.ok(html.indexOf('keysChannelSearch') >= 0);
+    assert.ok(html.indexOf('keysChannelPaneRight') >= 0);
+    assert.ok(html.indexOf('keysRecognizeCore') < 0);
+    assert.ok(html.indexOf('keysHabitSchemeStrip') < 0);
+    assert.ok(pickerSrc.indexOf('data-auto-create') >= 0);
+    assert.ok(pickerSrc.indexOf('renderSchemeStrip') < 0);
     assert.ok(html.indexOf('keysTargetModeBadge') >= 0);
     assert.ok(html.indexOf('keys-channel-command-picker.js') >= 0);
     assert.ok(pickerSrc.indexOf("'ime'") >= 0 || pickerSrc.indexOf('"ime"') >= 0);

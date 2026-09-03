@@ -437,6 +437,10 @@
 }
 
 #settingsPanelKeys .keys-capture-ime-block, .keys-capture-popover .keys-capture-ime-block {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
   margin-top: 0;
   padding-top: 0;
   border-top: none;
@@ -460,8 +464,137 @@
 #settingsPanelKeys .keys-channel-picker, .keys-capture-popover .keys-channel-picker {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+#settingsPanelKeys .keys-channel-split {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface, #fff);
+  box-shadow: inset 0 0 0 1px var(--outline-variant, rgba(26, 45, 74, 0.12));
+}
+
+#settingsPanelKeys .keys-channel-pane-left {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  height: 100%;
+  min-height: 100%;
+  border: none;
+  border-right: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  background: var(--surface-high, #f7f9fb);
+}
+
+#settingsPanelKeys .keys-channel-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  margin: 12px 12px 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+}
+
+#settingsPanelKeys .keys-channel-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  font: inherit;
+  font-size: 14px;
+  background: transparent;
+  color: var(--on-surface);
+}
+
+#settingsPanelKeys .keys-channel-tree,
+#settingsPanelKeys .keys-channel-subtabs,
+.keys-capture-popover .keys-channel-subtabs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 10px 14px;
+  /* fixed rhythm — never space-between / stretch rows */
+  justify-content: flex-start;
+}
+
+#settingsPanelKeys .keys-channel-pane-right {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  min-height: 0;
+  min-width: 0;
+  padding: 12px 14px 14px;
+  gap: 14px;
+  background: transparent;
+  overflow: auto;
+}
+
+#settingsPanelKeys .keys-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 12px 14px;
+  border: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  border-radius: 12px;
+  background: var(--surface, #fff);
+}
+
+#settingsPanelKeys .keys-detail-card--hero {
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 28%, transparent);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 4%, var(--surface, #fff));
+}
+
+#settingsPanelKeys .keys-detail-card--options {
+  background: var(--surface-high, #f7f9fb);
+}
+
+#settingsPanelKeys .keys-detail-card[hidden],
+#settingsPanelKeys .keys-capture-key-panel[hidden] {
+  display: none !important;
+}
+
+#settingsPanelKeys .keys-detail-card .keys-capture-keycap-zone {
+  border: none;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+#settingsPanelKeys .keys-channel-pane-right .keys-channel-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+
+@media (max-width: 720px) {
+  #settingsPanelKeys .keys-channel-split {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+  #settingsPanelKeys .keys-channel-pane-left {
+    border-right: none;
+    border-bottom: 1px solid var(--outline-variant);
+    min-height: 0;
+    max-height: 240px;
+  }
 }
 
 #settingsPanelKeys #keysFlowNodes .flow-nodes-grid {
@@ -488,11 +621,14 @@
   display: none !important;
 }
 
+#settingsPanelKeys .keys-capture-keycap-zone.is-recording-active,
 .keys-capture-popover .keys-capture-keycap-zone.is-recording-active {
   border-color: var(--primary-strong);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary-strong) 28%, transparent);
 }
 
+#settingsPanelKeys .keys-capture-recording-feedback-host:empty,
+#settingsPanelKeys .keys-capture-record-probe-host:empty,
 .keys-capture-popover .keys-capture-recording-feedback-host:empty,
 .keys-capture-popover .keys-capture-record-probe-host:empty {
   display: none;
@@ -854,11 +990,10 @@
   text-underline-offset: 2px;
 }
 
-#settingsPanelKeys .keys-channel-subtabs, .keys-capture-popover .keys-channel-subtabs {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+#settingsPanelKeys .keys-channel-section {
+  display: flex;
+  flex-direction: column;
   gap: 6px;
-  width: 100%;
 }
 
 #settingsPanelKeys .keys-capture-popover-close,
@@ -901,11 +1036,17 @@
   background: var(--surface-high);
 }
 
+#settingsPanelKeys .keys-capture-keycap-zone[hidden], .keys-capture-popover .keys-capture-keycap-zone[hidden] {
+  display: none !important;
+}
+
+#settingsPanelKeys .keys-capture-keycap-zone .keys-step-row--hero,
 .keys-capture-popover .keys-capture-keycap-zone .keys-step-row--hero {
   position: relative;
   justify-content: center;
 }
 
+#settingsPanelKeys .keys-capture-keycap-zone .keys-step-record-act,
 .keys-capture-popover .keys-capture-keycap-zone .keys-step-record-act {
   position: absolute;
   left: 0;
@@ -919,6 +1060,7 @@
   cursor: pointer;
 }
 
+#settingsPanelKeys .keys-capture-keycap-zone .keys-step-record-act .record-btn,
 .keys-capture-popover .keys-capture-keycap-zone .keys-step-record-act .record-btn {
   width: 100%;
   height: 100%;
@@ -930,6 +1072,7 @@
   cursor: pointer;
 }
 
+#settingsPanelKeys .keys-capture-keycap-zone .keys-keycap-hint,
 .keys-capture-popover .keys-capture-keycap-zone .keys-keycap-hint {
   margin: 0;
   font-size: 12px;
@@ -957,6 +1100,8 @@
   visibility: hidden !important;
 }
 
+#settingsPanelKeys .keys-finish-segments,
+#settingsPanelKeys #voiceEndKeyModePanel.keys-finish-segments,
 .keys-capture-popover .keys-finish-segments,
 .keys-capture-popover #voiceEndKeyModePanel.keys-finish-segments {
   display: flex;
@@ -971,6 +1116,7 @@
   background: var(--surface-soft);
 }
 
+#settingsPanelKeys .keys-finish-segment,
 .keys-capture-popover .keys-finish-segment {
   flex: 1 1 0;
   min-width: 0;
@@ -992,6 +1138,7 @@
   box-shadow: none;
 }
 
+#settingsPanelKeys .keys-finish-segment.is-active,
 .keys-capture-popover .keys-finish-segment.is-active {
   background: var(--surface);
   color: var(--on-surface);
@@ -999,6 +1146,7 @@
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
+#settingsPanelKeys .keys-finish-segment-label,
 .keys-capture-popover .keys-finish-segment-label {
   font-size: 12px;
   line-height: 1.2;
@@ -1006,6 +1154,7 @@
   white-space: nowrap;
 }
 
+#settingsPanelKeys .keys-finish-mode-hint,
 .keys-capture-popover .keys-finish-mode-hint {
   margin: 8px 0 0;
   padding: 0;
@@ -1015,6 +1164,7 @@
   text-align: center;
 }
 
+#settingsPanelKeys .keys-capture-keycap-zone.is-hero-mapped,
 .keys-capture-popover .keys-capture-keycap-zone.is-hero-mapped {
   border-color: var(--primary-strong);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary-strong) 25%, transparent);
@@ -1047,31 +1197,38 @@
 
 #settingsPanelKeys .keys-channel-subtab, .keys-capture-popover .keys-channel-subtab {
   appearance: none;
-  border: 1px solid var(--outline-variant, var(--outline, rgba(26, 45, 74, 0.1)));
-  background: var(--surface, #fff);
-  color: var(--on-surface-muted, #5a7086);
-  border-radius: var(--ot-subtab-r, 8px);
-  min-height: 40px;
-  padding: 8px 4px;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.2;
+  border: none;
+  background: transparent;
+  color: var(--on-surface);
+  border-radius: 10px;
+  height: 44px;
+  min-height: 44px;
+  max-height: 44px;
+  padding: 0 12px;
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.25;
   cursor: pointer;
-  text-align: center;
-  transition: opacity var(--dur-fast, 160ms) ease, filter var(--dur-fast, 160ms) ease, color var(--dur-fast, 160ms) ease, border-color var(--dur-fast, 160ms) ease, background var(--dur-fast, 160ms) ease;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  transition: background var(--dur-fast, 160ms) ease, color var(--dur-fast, 160ms) ease;
 }
 
 #settingsPanelKeys .keys-channel-subtab:hover,
 #settingsPanelKeys .keys-channel-subtab:focus-visible,
 .keys-capture-popover .keys-channel-subtab:hover,
 .keys-capture-popover .keys-channel-subtab:focus-visible {
-  border-color: var(--primary-strong);
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
   outline: none;
 }
 
 #settingsPanelKeys .keys-channel-subtab.is-active, .keys-capture-popover .keys-channel-subtab.is-active {
-  background: var(--ot-subtab-active-bg, color-mix(in srgb, var(--primary) 10%, transparent));
-  border-color: var(--ot-subtab-active-border, color-mix(in srgb, var(--primary) 40%, transparent));
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
   color: var(--primary-deep, var(--primary-strong, #1e87ad));
   font-weight: 800;
 }
@@ -1084,7 +1241,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 148px;
+  max-height: min(56vh, 480px);
   overflow: auto;
   min-height: 36px;
 }
@@ -1764,12 +1921,16 @@
   flex-direction: column;
   gap: 6px;
   width: 100%;
-  padding-top: 0;
+  flex: 0 0 auto;
+  /* room for selected chip outline so it never paints over the hero card */
+  margin: 0 0 4px;
+  padding: 4px 2px 10px;
   border-top: none;
+  overflow: visible;
 }
 
 #settingsPanelKeys .keys-ime-strip-wrap[hidden], .keys-capture-popover .keys-ime-strip-wrap[hidden] {
-  display: none;
+  display: none !important;
 }
 
 #settingsPanelKeys .keys-capture-ime-block .habit-flow-subsection-title {
@@ -1784,8 +1945,14 @@
 
 #settingsPanelKeys .keys-capture-ime-block .ime-preset-strip {
   justify-content: flex-start;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
+  padding: 4px 2px;
+  overflow: visible;
+}
+
+#settingsPanelKeys .keys-channel-pane-right > .keys-ime-strip-wrap + .keys-detail-card {
+  margin-top: 4px;
 }
 
 #settingsPanelKeys .ime-preset-item--custom,
@@ -3937,9 +4104,45 @@
   --flow-node-tag-border: rgba(42, 156, 196, 0.22);
 }
 
+#settingsPanelKeys.keys-page-desk .keys-workflow-pipeline {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 0;
+  /* pipeline is a layout stack only — cards live on children */
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+#settingsPanelKeys.keys-page-desk #keysFlowNodes {
+  margin: 0;
+  padding: 14px 16px 12px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 14px;
+  background: var(--surface, #fff);
+}
+
 #settingsPanelKeys.keys-page-desk .flow-desk-panel {
-  background: var(--surface-high);
-  border-color: var(--outline-variant);
+  background: var(--surface, #fff);
+  border: 1px solid var(--outline-variant);
+  border-radius: 14px;
+  min-height: 0;
+  padding: 12px 14px 14px;
+}
+
+#settingsPanelKeys.keys-page-desk.is-step-target .flow-desk-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: min(58vh, 560px);
+}
+
+#settingsPanelKeys.keys-page-desk.is-step-target #habitDefaultFlow,
+#settingsPanelKeys.keys-page-desk.is-step-target #habitKeyMapRowTarget {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 #settingsPanelKeys.keys-page-desk #habitDefaultFlow.keys-workflow-grid {
@@ -3952,6 +4155,10 @@
   display: none !important;
 }
 
+#settingsPanelKeys.keys-page-desk .habit-flow-step.keys-workflow-col:not(.is-active-step) {
+  display: none !important;
+}
+
 #settingsPanelKeys.keys-page-desk .habit-flow-step.keys-workflow-col:not(.is-active-step) .keys-step-body {
   display: none !important;
 }
@@ -3960,7 +4167,63 @@
   display: flex !important;
   flex-direction: column;
   max-height: min(70vh, 640px);
+  min-height: 0;
   overflow-y: auto;
+}
+
+#settingsPanelKeys.keys-page-desk.is-step-target #habitKeyMapRowTarget .keys-step-body {
+  overflow: hidden;
+  justify-content: flex-start;
+}
+
+#settingsPanelKeys.keys-page-desk.is-step-target #habitKeyMapRowTarget .keys-capture-ime-block,
+#settingsPanelKeys.keys-page-desk.is-step-target #habitKeyMapRowTarget .keys-channel-picker,
+#settingsPanelKeys.keys-page-desk.is-step-target #habitKeyMapRowTarget .keys-channel-split {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+#settingsPanelKeys.keys-page-desk.is-step-target #habitKeyMapRowTarget .keys-capture-ime-block {
+  flex: 1 1 auto;
+}
+
+#settingsPanelKeys.keys-page-desk.is-step-trigger #keysDeskPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  justify-self: center;
+  align-self: start;
+  width: min(100%, 520px);
+  min-height: 0;
+  padding: 20px 24px 24px;
+}
+
+#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-step-body {
+  flex: 0 0 auto !important;
+  gap: 16px;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  max-height: none;
+  overflow: visible;
+}
+
+#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-workflow-keycap-zone {
+  flex: 0 0 auto;
+  justify-content: flex-start;
+}
+
+#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display.display {
+  min-height: 64px;
+  min-width: 132px;
+  padding: 16px 28px;
+  font-size: 18px;
+}
+
+#settingsPanelKeys.keys-page-desk.is-step-trigger #habitKeyMapRowTrigger .keys-trigger-modes {
+  width: 100%;
+  max-width: 480px;
 }
 
 #settingsPanelKeys.keys-page-desk .habit-flow-step.keys-workflow-col {
@@ -3980,12 +4243,6 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
-}
-
-#settingsPanelKeys.keys-page-desk .keys-workflow-pipeline {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 0;
 }
 
 #settingsPanelKeys.keys-page-desk .keys-app-binding-strip .voice-app-scope-head {

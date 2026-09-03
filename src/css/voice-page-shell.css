@@ -1220,11 +1220,16 @@ html[data-theme="dark"] .voice-models-page .models-resource-row strong {
 /* Voice page desk mode ??? single-panel step switching */
 
 #settingsPanelVoiceWake.voice-page-desk .voice-settings-flow.keys-workflow-grid {
-  display: block;
+  display: block !important;
+  grid-template-columns: none !important;
 }
 
 #settingsPanelVoiceWake.voice-page-desk .voice-workflow-arrow {
   display: none;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-flow-step.keys-workflow-col:not(.is-active-step) {
+  display: none !important;
 }
 
 #settingsPanelVoiceWake.voice-page-desk .voice-flow-step.keys-workflow-col:not(.is-active-step) > .keys-step-body {
@@ -3408,4 +3413,158 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
 #settingsPanelVoiceWake .voice-tab2-advanced[open] .voice-tab2-advanced-summary {
   margin-bottom: 8px;
   color: var(--primary-strong);
+}
+
+#settingsPanelVoiceWake .voice-core-config {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 10px;
+}
+
+#settingsPanelVoiceWake.is-step-wake #voiceCoreConfig,
+#settingsPanelVoiceWake.is-step-wake #voiceCoreAdvanced,
+#settingsPanelVoiceWake.is-step-wake #voiceConfigIsland {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake.is-step-recognize .voice-core-config {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#settingsPanelVoiceWake.is-step-recognize #voiceCoreConfigPace,
+#settingsPanelVoiceWake.is-step-recognize #voiceSendParamsAside {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake.is-step-send .voice-core-config {
+  grid-template-columns: 1fr;
+}
+
+#settingsPanelVoiceWake.is-step-send #voiceCoreConfigLang,
+#settingsPanelVoiceWake.is-step-send #voiceCoreConfigEngine,
+#settingsPanelVoiceWake.is-step-send #voiceRecognizeEngineDetails,
+#settingsPanelVoiceWake.is-step-send #voiceRecognizeResourcesDetails,
+#settingsPanelVoiceWake.is-step-send #voiceCoreAdvanced > summary {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake.is-step-send #voiceCoreAdvanced {
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+#settingsPanelVoiceWake.is-step-send #voiceSendParamsAside {
+  display: block;
+}
+
+#settingsPanelVoiceWake .voice-core-config-card {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+#settingsPanelVoiceWake .voice-core-config-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--on-surface);
+}
+
+#settingsPanelVoiceWake .voice-core-config-card .voice-recognize-model-row {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+#settingsPanelVoiceWake .voice-core-config-card .voice-segment {
+  margin: 0;
+}
+
+#settingsPanelVoiceWake .voice-core-config-card .voice-recognize-source-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+#settingsPanelVoiceWake .voice-core-config-card .voice-recognize-source-btn {
+  min-height: 36px;
+  padding: 6px 8px;
+  width: 100%;
+}
+
+#settingsPanelVoiceWake .voice-core-pace {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+#settingsPanelVoiceWake .voice-core-pace-btn {
+  min-height: 36px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-high, var(--surface));
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+}
+
+#settingsPanelVoiceWake .voice-core-pace-btn.is-active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+#settingsPanelVoiceWake .voice-core-advanced {
+  margin-top: 4px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 0 10px 10px;
+}
+
+#settingsPanelVoiceWake .voice-core-advanced > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+#settingsPanelVoiceWake .voice-core-advanced > summary::-webkit-details-marker {
+  display: none;
+}
+
+#settingsPanelVoiceWake .voice-core-advanced[open] > summary {
+  margin-bottom: 8px;
+}
+
+#settingsPanelVoiceWake .voice-core-advanced .voice-recognize-engine-details {
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+#settingsPanelVoiceWake .voice-core-advanced .voice-send-params-bar {
+  margin-top: 10px;
+}
+
+@media (max-width: 860px) {
+  #settingsPanelVoiceWake .voice-core-config {
+    grid-template-columns: 1fr;
+  }
 }

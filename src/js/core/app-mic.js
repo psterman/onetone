@@ -89,7 +89,7 @@
     var homeMic=$('wbHomeMicLevel');
     if(homeMic) pushTarget(homeMic);
     var heroMic=$('wbHeroMic');
-    if(heroMic) pushTarget(heroMic);
+    if(heroMic&&!heroMic.hidden) pushTarget(heroMic);
     var snapCheck=$('cameraSnapMicCheck');
     if(snapCheck) pushTarget(snapCheck);
     return targets;
@@ -192,7 +192,8 @@
 
   function micLevelUiVisible(){
     if(ui.drawerOpen&&ui.settingsPanel==='voiceWake') return true;
-    if($('wbHeroMic')) return true;
+    var heroMic=$('wbHeroMic');
+    if(heroMic&&!heroMic.hidden) return true;
     var snapPanel=$('cameraProSubSnap');
     if(snapPanel&&!snapPanel.hidden) return true;
     if(onboardingMicContextOpen()) return true;
@@ -769,7 +770,7 @@
 
   function renderHeroMicStrip(){
     var hub=$('wbHeroMic');
-    if(!hub) return;
+    if(!hub||hub.hidden) return;
     bindMicUi();
     armMicMuteProbe();
     var st=getMicUiState();

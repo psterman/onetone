@@ -2151,7 +2151,20 @@
 
   var reconcileToastShown=false;
 
-  /** One preset app → one mapping. Fold empty overlay fields, then drop extras. */
+  function normalizedTriggerBucket(m){
+    var raw=String(m&&m.triggerKey||'').trim();
+    if(!raw) return '__empty__';
+    try{
+      var utils=global.OneToneAppKeyUtils;
+      if(utils&&utils.normalizeTriggerKey){
+        var n=String(utils.normalizeTriggerKey(raw)||'').trim();
+        return n||'__empty__';
+      }
+    }catch(_){}
+    return raw;
+  }
+
+  /** Merge only within same app + same trigger; different triggers stay as separate habits. */
   function reconcileDuplicatePresetScenarios(opts){
     opts=opts||{};
     if(!core()) return { changed:false };
@@ -2166,40 +2179,75 @@
       var appId=presetIds[pi];
       var candidates=listAppScenarios(appId);
       if(candidates.length<=1) continue;
-      var winner=pickCanonicalAppScenario(candidates);
-      if(!winner) continue;
-      mergedApps.push(appDisplayName(appId)||appId);
-      for(var li=0;li<candidates.length;li++){
-        var m=candidates[li];
-        if(m.id===winner.id) continue;
-        foldLoserOverlayIntoWinner(winner,m);
-        drop[m.id]=true;
-        if(String(state().selectedMappingId||'')===String(m.id)){
-          state().selectedMappingId=winner.id;
+      var byTrig={};
+      for(var ci=0;ci<candidates.length;ci++){
+        var cand=candidates[ci];
+        var bucket=normalizedTriggerBucket(cand);
+        if(!byTrig[bucket]) byTrig[bucket]=[];
+        byTrig[bucket].push(cand);
+      }
+      var trigKeys=Object.keys(byTrig);
+      for(var ti=0;ti<trigKeys.length;ti++){
+        var group=byTrig[trigKeys[ti]];
+        if(group.length<=1) continue;
+        var winner=pickCanonicalAppScenario(group);
+        if(!winner) continue;
+        var appLabel=appDisplayName(appId)||appId;
+        if(mergedApps.indexOf(appLabel)<0) mergedApps.push(appLabel);
+        for(var li=0;li<group.length;li++){
+          var m=group[li];
+          if(m.id===winner.id) continue;
+          foldLoserOverlayIntoWinner(winner,m);
+          drop[m.id]=true;
+          if(String(state().selectedMappingId||'')===String(m.id)){
+            state().selectedMappingId=winner.id;
+          }
+          if(String(cfg.activeSceneId||'')===String(m.id)){
+            cfg.activeSceneId=winner.id;
+          }
+          changed=true;
         }
-        if(String(cfg.activeSceneId||'')===String(m.id)){
-          cfg.activeSceneId=winner.id;
-        }
-        changed=true;
       }
     }
-    var winnerBase=diff()&&diff().findGlobalBaselineMapping
-      ?diff().findGlobalBaselineMapping(cfg,core())
-      :null;
-    if(winnerBase&&winnerBase.id){
-      for(var bi=0;bi<cfg.mappings.length;bi++){
-        var baseRow=cfg.mappings[bi];
-        if(!baseRow||baseRow.id===winnerBase.id) continue;
-        if(String(baseRow.id||'')==='soft-pad-global') continue;
-        if(isAppScenario(baseRow)) continue;
-        drop[baseRow.id]=true;
-        if(String(state().selectedMappingId||'')===String(baseRow.id)){
-          state().selectedMappingId=winnerBase.id;
+    var baselines=[];
+    for(var bi0=0;bi0<cfg.mappings.length;bi0++){
+      var baseCand=cfg.mappings[bi0];
+      if(!baseCand||String(baseCand.id||'')==='soft-pad-global') continue;
+      if(isAppScenario(baseCand)) continue;
+      baselines.push(baseCand);
+    }
+    if(baselines.length>1){
+      var baseByTrig={};
+      for(var bbi=0;bbi<baselines.length;bbi++){
+        var bb=baselines[bbi];
+        var bBucket=normalizedTriggerBucket(bb);
+        if(!baseByTrig[bBucket]) baseByTrig[bBucket]=[];
+        baseByTrig[bBucket].push(bb);
+      }
+      var baseKeys=Object.keys(baseByTrig);
+      for(var bki=0;bki<baseKeys.length;bki++){
+        var bGroup=baseByTrig[baseKeys[bki]];
+        if(bGroup.length<=1) continue;
+        var winnerBase=null;
+        if(diff()&&diff().findGlobalBaselineMapping){
+          var preferred=diff().findGlobalBaselineMapping(cfg,core());
+          if(preferred&&bGroup.some(function(x){ return x.id===preferred.id; })){
+            winnerBase=preferred;
+          }
         }
-        if(String(cfg.activeSceneId||'')===String(baseRow.id)){
-          cfg.activeSceneId=winnerBase.id;
+        if(!winnerBase) winnerBase=pickCanonicalAppScenario(bGroup)||bGroup[0];
+        for(var bi=0;bi<bGroup.length;bi++){
+          var baseRow=bGroup[bi];
+          if(baseRow.id===winnerBase.id) continue;
+          drop[baseRow.id]=true;
+          if(String(state().selectedMappingId||'')===String(baseRow.id)){
+            state().selectedMappingId=winnerBase.id;
+          }
+          if(String(cfg.activeSceneId||'')===String(baseRow.id)){
+            cfg.activeSceneId=winnerBase.id;
+          }
+          changed=true;
         }
-        changed=true;
       }
     }
     if(changed){
@@ -2229,15 +2277,18 @@
     return { changed:changed, mergedApps:mergedApps };
   }
 
+  /** Disable only siblings that share the same trigger key (true duplicates). */
   function disableSiblingPresetScenarios(exceptM){
     if(!exceptM) return false;
     var appId=String(exceptM.appTargetId||'').trim();
     if(!appId||appId==='custom') return false;
     var siblings=listAppScenarios(appId);
+    var exceptTrig=normalizedTriggerBucket(exceptM);
     var disabledOthers=false;
     for(var i=0;i<siblings.length;i++){
       var sib=siblings[i];
       if(sib.id===exceptM.id) continue;
+      if(normalizedTriggerBucket(sib)!==exceptTrig) continue;
       if(sib.enabled!==false){
         sib.enabled=false;
         disabledOthers=true;

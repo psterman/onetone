@@ -147,5 +147,9 @@ check('settings-drawer 接线挂载', drawerSrc.includes('__otMountRecordCancelB
 const recSrc = readFileSync(join(root, 'src/js/features/mapping/mapping-recording.js'), 'utf8');
 check('导出 buildRecordCancelBarModel', recSrc.includes('buildRecordCancelBarModel:buildRecordCancelBarModel'));
 
+const inputSrc = readFileSync(join(root, 'src/js/features/mapping/mapping-recording-input.js'), 'utf8');
+check('mousedown 取消走 composedPath', inputSrc.includes('function isCancelRecordEvent') && inputSrc.includes('composedPath'));
+check('mousedown 直接 cancelDraftOrRecording', inputSrc.includes('cancelFromUiEvent') && inputSrc.includes('cancelDraftOrRecording'));
+
 console.log(`[record-cancel-bar] ${pass} 通过 / ${fail} 失败`);
 if (fail > 0) process.exit(1);

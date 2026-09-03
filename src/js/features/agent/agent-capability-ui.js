@@ -111,19 +111,14 @@
   }
 
   /**
-   * Codex capability chord for flow hints / summaries — always the agent binding,
-   * never IME targetKey (RAlt etc.).
-   * @returns {string} raw chord or ''
+   * Former Codex softPad auto-jump. Scheme D: catalog click is authoritative —
+   * never redirect 输入法 / 自定义键 to 虚拟键盘.
    */
   function ensureDefaultSelection(m) {
-    var P = channelPicker();
-    if (!m || !P) return;
-    if (P.hasSelection && P.hasSelection()) return;
-    // Prefer softPad tab listing; do not auto-write bindings.
-    if (P.setActiveTab) P.setActiveTab('softPad');
+    void m;
   }
 
-  /** Hide IME tab on Codex recognition; keep channel picker visible. */
+  /** Codex recognition chrome; keep 输入法 in the catalog (Scheme D). */
   function applyCodexStepChrome(step, m) {
     var imeBlock = document.getElementById('habitFlowImeBlock');
     var voiceSummary = document.getElementById('keysCaptureVoiceSummary');
@@ -136,9 +131,7 @@
       && global.OneToneAgentScenarioTemplate.isCodexScenario(m));
     if (imeBlock) imeBlock.hidden = false;
     var P = channelPicker();
-    if (P && P.setCodexImeTabHidden) {
-      P.setCodexImeTabHidden(!!(onCodex && (step === 'target' || step === 'finish')));
-    }
+    if (P && P.setCodexImeTabHidden) P.setCodexImeTabHidden(false);
     if (!onCodex) {
       if (voiceSummary) voiceSummary.classList.remove('sr-only');
       return;

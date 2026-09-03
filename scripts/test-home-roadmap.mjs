@@ -231,8 +231,10 @@ check('习惯在通道之上', (() => {
   const scopeTop = htmlHome.indexOf('id="wbScopeTop"');
   const hero = htmlHome.indexOf('id="wbTriggerCard"');
   const howto = htmlHome.indexOf('id="wbHowTo"');
-  return scopeTop >= 0 && hero > scopeTop && howto > hero;
+  const orb = htmlHome.indexOf('id="wbHeroOrb"');
+  return scopeTop >= 0 && hero > scopeTop && howto > hero && orb > howto;
 })());
+check('home v3 布局节点', htmlHome.includes('class="home-workbench is-v3"') && htmlHome.includes('id="wbChannelDetail"') && htmlHome.includes('id="wbHeroStatusLine"'));
 check('bound 组头场景 pill', htmlHome.includes('id="wbContextBoundScene"'));
 
 const homeCss = readFileSync(join(root, 'src/css/home-workbench.css'), 'utf8');
@@ -240,7 +242,10 @@ check('bound 组样式', homeCss.includes('.wb-context-bound') && homeCss.includ
 
 const panels = readFileSync(join(root, 'src/js/features/home/home-workbench-panels.js'), 'utf8');
 check('howto 只吃 projection', panels.includes('projection.howtoCards'));
-check('inactive howto 无 meta', panels.includes('wb-howto-wrap') && !/howToSummaryCardHtml[\s\S]*howtoDetailMetaGridHtml/.test(panels));
+check('inactive howto 无 meta', (() => {
+  const m = panels.match(/function howToSummaryCardHtml\([\s\S]*?\n  \}/);
+  return !!(m && panels.includes('wb-howto-wrap') && !m[0].includes('howtoDetailMetaGridHtml'));
+})());
 check('bound 同步当前习惯短名', panels.includes('wbContextBoundScene') && panels.includes('sceneChipShortName'));
 check('panels 导出 softPadHowToSnapshot', panels.includes('softPadHowToSnapshot:softPadHowToSnapshot'));
 check('panels 导出 collectHowToSurfaceBits', panels.includes('collectHowToSurfaceBits:collectHowToSurfaceBits'));
@@ -519,8 +524,9 @@ loadIife('src/js/features/home/home-hero-mode-model.js', sandbox);
     // 摘要卡：无 phrases；展开 meta 行数合理（camera 最多 4 行）
     for (const c of p.howtoCards || []) {
       if (c.phrases) allOk = false;
-      const maxLines = { voice: 2, keys: 2, softPad: 3, camera: 4 }[c.mode] || 2;
+      const maxLines = { voice: 2, keys: 1, softPad: 1, camera: 2 }[c.mode] || 2;
       if ((c.lines || []).length > maxLines) allOk = false;
+      if (!c.detail || !c.detail.headline) allOk = false;
     }
     if (mode === 'camera') {
       const send = p.pills.some((x) => /send/i.test(x.id || '') || /send/i.test(x.action || ''));
@@ -540,7 +546,7 @@ loadIife('src/js/features/home/home-hero-mode-model.js', sandbox);
       if (p.liveStatus !== '暂无') allOk = false;
       const softCard = (p.howtoCards || []).find((c) => c.mode === 'softPad');
       if (!softCard || softCard.empty) allOk = false;
-      if (!softCard || (softCard.lines || []).length < 2) allOk = false;
+      if (!softCard || (softCard.lines || []).length < 1) allOk = false;
     }
     if (p.howtoCards.map((c) => c.mode).join(',') !== 'voice,keys,softPad,camera') allOk = false;
   }

@@ -36,8 +36,13 @@
 
   function captureOwnsLiveRecording(){
     var picker=global.OneToneKeysChannelCommandPicker;
-    if(!picker||!picker.isCapturePopoverOpen||!picker.isCapturePopoverOpen()) return false;
-    if(picker.getActiveTab&&picker.getActiveTab()!=='key') return false;
+    var step=global.OneToneKeysPageState&&global.OneToneKeysPageState.getStep
+      ?global.OneToneKeysPageState.getStep():'';
+    var onTarget=step==='target'||(picker&&picker.isCapturePopoverOpen&&picker.isCapturePopoverOpen());
+    if(!onTarget) return false;
+    if(picker&&picker.isChannelOpen){
+      if(!picker.isChannelOpen('key')) return false;
+    }else if(picker&&picker.getActiveTab&&picker.getActiveTab()!=='key') return false;
     var rec=global.OneToneMappingRecording;
     var mode=rec&&rec.mode?String(rec.mode()):'none';
     return mode==='target'||mode==='agentBinding';
@@ -298,7 +303,7 @@
       '.keys-finish-cancel-host','[data-finish-mode]','[data-timing-toggle]','[data-timing-range]',
       '.toggle-switch','.keys-finish-segment','.keys-capture-voice-summary','.keys-capture-voice-link',
       '.habit-flow-finish-more','.map-timing-range','details','.ime-preset-strip','.ime-preset-item','.habit-flow-ime-block','.keys-capture-ime-block',
-      '.keys-capture-popover','.keys-capture-popover-backdrop','.keys-channel-picker','.keys-channel-subtabs','.keys-channel-panel',
+      '.keys-capture-popover','.keys-capture-popover-backdrop','.keys-channel-picker','.keys-channel-subtabs','.keys-channel-source-tabs','.keys-channel-panel',
       '.habit-flow-device-link','.keys-app-context-strip','.habit-flow-device-diagnostic',
       '.keys-app-chip','.keys-ime-pill','.btn-cancel-record',
       '.keys-trigger-modes-block','#keysTriggerModeHost',

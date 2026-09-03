@@ -159,8 +159,10 @@
     }
     var el=$('keysFinishStrategyPreview');
     if(el){
+      // Desk options card already has mode hint + delay; keep strategy line for scripts only.
       el.textContent=model.previewText||'—';
-      el.className=model.previewClass||'keys-finish-strategy-preview is-empty';
+      el.className=(model.previewClass||'keys-finish-strategy-preview is-empty')+' sr-only';
+      el.hidden=true;
     }
   }
 
@@ -237,7 +239,7 @@
   }
 
   function renderKeysFinishCancelOnly(m,id){
-    return '<div class="keys-finish-cancel-card">'+renderKeyTimingCard(m,id,'cancel')+'</div>';
+    return '<div class="keys-finish-cancel-card keys-finish-cancel-card--compact">'+renderKeyTimingCard(m,id,'cancel',{compact:true})+'</div>';
   }
 
   function useKeysFinishSegmented(){
@@ -266,11 +268,13 @@
     return html;
   }
 
-  function renderKeyTimingCard(m,id,kind){
+  function renderKeyTimingCard(m,id,kind,opts){
     hooks().ensureMappingTiming(m);
+    opts=opts||{};
     var onTxt=t('keyFinishFlowStatusOn');
     var offTxt=t('keyFinishFlowStatusOff');
     var isCancel=kind==='cancel';
+    var compact=!!(opts.compact&&isCancel);
     var finishMode=global.OneToneSceneFlowSummary?global.OneToneSceneFlowSummary.resolveFinishMode(m):'manual';
     var active=finishMode==='confirm';
     var enabledField=isCancel?'cancelEnabled':'autoEnterEnabled';
@@ -285,6 +289,19 @@
     var html='';
     if(active&&!isCancel&&snap.autoSendEnabled&&m.autoEnterEnabled){
       html+='<p class="map-timing-desc map-send-mode-hint">'+t('voiceEndAutoSendWarn')+'</p>';
+    }
+    // Compact cancel: one row (label+toggle) + one desc + slider — no third "取消窗口" title.
+    if(compact){
+      html+='<div class="setting-row"><div class="setting-row-main"><span class="setting-row-text">'+t('keysFinishCancelEnable')+'</span></div>';
+      if(active){
+        html+='<button type="button" class="toggle-switch'+(m[enabledField]?' is-on':'')+'" data-timing-toggle="'+id+'" data-field="'+enabledField+'" role="switch" aria-checked="'+(m[enabledField]?'true':'false')+'" aria-label="'+t(titleKey)+'"></button></div>';
+        html+='<p class="map-timing-desc">'+t(descKey).replace('{n}',seconds)+'</p>';
+        html+='<div class="voice-end-inline-range"><input type="range" class="map-timing-range" data-timing-range="'+id+'" data-field="'+rangeField+'" min="'+rangeMin+'" max="'+rangeMax+'" step="'+rangeStep+'" value="'+m[rangeField]+'"'+(m[enabledField]?'':' disabled')+'></div>';
+      }else{
+        html+='<button type="button" class="toggle-switch" role="switch" aria-checked="false" disabled aria-label="'+t(titleKey)+'"></button></div>';
+        html+='<p class="map-timing-desc">'+t('cancelTimingUnused')+'</p>';
+      }
+      return html;
     }
     html+='<div class="setting-row"><div class="setting-row-main"><span class="setting-row-text">'+t(titleKey)+'</span></div>';
     if(active){

@@ -354,6 +354,10 @@
     return;
     }
     if(Rec().mode()==='trigger'){
+    if(isCancelRecordEvent(e)){
+      cancelFromUiEvent(e);
+      return;
+    }
     syncPeripheralSession();
     if(tryCommitPeripheralFromEvent(e)) return;
     const code=String(e.code||'');
@@ -428,6 +432,10 @@
     return;
     }
     if(Rec().mode()==='target'){
+    if(isCancelRecordEvent(e)){
+      cancelFromUiEvent(e);
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     const code=String(e.code||'');
@@ -518,10 +526,42 @@
     return false;
   }
 
+  function eventEl(e){
+    var n=e&&e.target;
+    if(!n) return null;
+    if(n.nodeType===3) n=n.parentElement;
+    if(n&&n.nodeType!==1&&n.parentElement) n=n.parentElement;
+    return n&&n.nodeType===1?n:null;
+  }
+
+  function isCancelRecordEvent(e){
+    var el=eventEl(e);
+    if(el&&el.closest&&el.closest('#btnCancelRecord,#btnCancelRecordInline,#recordCancelBar,.btn-cancel-record')) return true;
+    var path=e&&e.composedPath?e.composedPath():null;
+    if(!path) return false;
+    for(var i=0;i<path.length;i++){
+      var p=path[i];
+      if(!p||p===window||p===document) continue;
+      if(p.id==='btnCancelRecord'||p.id==='btnCancelRecordInline'||p.id==='recordCancelBar') return true;
+      if(p.classList&&p.classList.contains('btn-cancel-record')) return true;
+    }
+    return false;
+  }
+
+  function cancelFromUiEvent(e){
+    if(e){
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    var rec=Rec();
+    if(rec&&rec.cancelDraftOrRecording) rec.cancelDraftOrRecording();
+  }
+
   function handleMouseDown(e){
     if(Rec().mode()!=='target'&&Rec().mode()!=='trigger') return;
-    if(e&&e.target&&e.target.closest){
-      if(e.target.closest('#btnCancelRecord,.btn-cancel-record')) return;
+    if(isCancelRecordEvent(e)){
+      cancelFromUiEvent(e);
+      return;
     }
     e.preventDefault();
     e.stopPropagation();

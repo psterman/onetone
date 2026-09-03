@@ -74,6 +74,15 @@
     return t('homeEndPhraseDefault');
   }
 
+  function displayTriggerKey(key) {
+    var k = String(key == null ? '' : key).trim();
+    if (!k) return '—';
+    if (global.OneToneKeyLabels && global.OneToneKeyLabels.friendlyKeyName) {
+      return global.OneToneKeyLabels.friendlyKeyName(k);
+    }
+    return k;
+  }
+
   function resolve(bits) {
     bits = bits || {};
     var c = cfg();
@@ -122,7 +131,7 @@
     return {
       phase: 'key',
       voiceOn: true,
-      line1: t('voiceSurfaceKeyLine', { key: key || '—' }),
+      line1: t('voiceSurfaceKeyLine', { key: displayTriggerKey(key) }),
       line2: t('voiceSurfaceKeyHint'),
       switchOn: true,
       switchDisabled: false,

@@ -254,7 +254,10 @@
       ]
     }
   ];
-  var activeTab = 'key';
+  var activeTab = 'ime';
+  var openPanels = { ime: true, key: false, voice: false, cursor: false, softPad: false, camera: false };
+  var imeTabHidden = false;
+  var searchQuery = '';
   /** @type {{mappingId:string,sourceChannel:string,sourceBindingRef:string,actionId:string,keyBindingRef:string,actionInstanceId?:string,actionArgs?:*,iconHtml?:string}|null} */
   var selection = null;
   var viewsCache = [];
@@ -676,7 +679,7 @@
 
   function maybeAutoPreselectSoftPadScope() {
     if (!isGlobalKeysEditContext()) return false;
-    if (activeTab !== 'softPad') return false;
+    if (!openPanels.softPad) return false;
     if (String(softPadScopeAppId || '').trim()) return false;
     if (scopeLock !== 'none') return false;
     if (autoPreselectDone) return false;
@@ -721,7 +724,7 @@
   /** Ensure SoftPad tab always has an app scope so the pad stage can render. */
   function ensureSoftPadDefaultScope() {
     if (!isGlobalKeysEditContext()) return false;
-    if (activeTab !== 'softPad') return false;
+    if (!openPanels.softPad) return false;
     if (String(softPadScopeAppId || '').trim()) return false;
     if (scopeLock === 'manual' || scopeLock === 'record') return false;
     if (!autoPreselectDone) return maybeAutoPreselectSoftPadScope();
@@ -1243,6 +1246,59 @@
     return ref.kind === 'ime' && !ref.actionId;
   }
 
+  function isCommandChannel(ch) {
+    return ch === 'voice' || ch === 'cursor' || ch === 'softPad' || ch === 'camera';
+  }
+
+  function isChannelOpen(ch) {
+    return !!openPanels[ch];
+  }
+
+  function hasAnyOpenPanel() {
+    var i;
+    for (i = 0; i < TABS.length; i++) {
+      if (openPanels[TABS[i]]) return true;
+    }
+    return false;
+  }
+
+  function firstOpenChannel() {
+    var i;
+    for (i = 0; i < TABS.length; i++) {
+      if (openPanels[TABS[i]]) return TABS[i];
+    }
+    return 'ime';
+  }
+
+  function syncOpenChrome() {
+    var i;
+    for (i = 0; i < TABS.length; i++) {
+      openPanels[TABS[i]] = TABS[i] === activeTab;
+    }
+    if (imeTabHidden) openPanels.ime = false;
+    var tabs = document.getElementById('keysChannelSubtabs');
+    if (tabs) {
+      tabs.querySelectorAll('[data-channel]').forEach(function (btn) {
+        var on = btn.getAttribute('data-channel') === activeTab;
+        btn.classList.toggle('is-active', on);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+    }
+    var imeTab = document.getElementById('keysChannelTabIme');
+    if (imeTab) imeTab.classList.toggle('is-codex-hidden', imeTabHidden);
+    var imeStrip = document.getElementById('keysImeStripWrap');
+    if (imeStrip) imeStrip.hidden = activeTab !== 'ime' || imeTabHidden;
+    var onImeOrKey = activeTab === 'ime' || activeTab === 'key';
+    var keyPanel = document.getElementById('keysCaptureKeyPanel');
+    if (keyPanel) keyPanel.hidden = !onImeOrKey;
+    var heroCard = document.getElementById('keysCaptureHeroCard');
+    if (heroCard) heroCard.hidden = !onImeOrKey;
+    var zone = document.getElementById('keysCaptureKeycapZone');
+    if (zone) zone.hidden = !onImeOrKey;
+    var panel = document.getElementById('keysChannelPanel');
+    if (panel) panel.hidden = false;
+  }
+
   function channelTabLabel(ch) {
     var map = {
       key: 'keysChannelTabKey',
@@ -1430,7 +1486,9 @@
 
   function syncCaptureRecordChrome() {
     var table = global.OneToneHabitKeyMappingTable;
-    if (capturePopoverOpen && activeTab === 'key') {
+    // Hero card stays mounted for both 输入法 and 自定义键 so selecting an IME
+    // never blanks the key + finish options.
+    if (keysStep() === 'target' && (activeTab === 'key' || activeTab === 'ime')) {
       if (table && table.mountTargetRecordToCapture) table.mountTargetRecordToCapture();
     } else if (table && table.restoreTargetRecordFromStash) {
       table.restoreTargetRecordFromStash();
@@ -1456,37 +1514,23 @@
   function onStepChange(step) {
     ensureSoftPadScopeSession();
     if (String(step || '') !== 'target') {
-      if (capturePopoverOpen) closeCapturePopover({ keepPanel: true, skipStep: true });
+      closeCapturePopover({ keepPanel: true, skipStep: true });
     } else {
+      bindOnce();
+      capturePopoverOpen = true;
       loadHeroCaptureFromMapping();
+      syncCaptureRecordChrome();
       refresh();
+      renderKeyFinishHosts();
     }
   }
 
   function isCapturePopoverOpen() {
-    return !!capturePopoverOpen;
+    return keysStep() === 'target' || !!capturePopoverOpen;
   }
 
   function isCaptureSheetOpen() {
     return isCapturePopoverOpen();
-  }
-
-  function positionCapturePopover() {
-    var pop = document.getElementById('keysCapturePopover');
-    var anchor = document.getElementById('habitKeyMapCellTarget');
-    if (!pop || !anchor) return;
-    pop.hidden = false;
-    var pw = Math.min(680, Math.max(280, window.innerWidth - 24));
-    pop.style.width = pw + 'px';
-    var r = anchor.getBoundingClientRect();
-    var ph = pop.offsetHeight || 420;
-    var left = Math.max(12, Math.min(r.left + r.width / 2 - pw / 2, window.innerWidth - pw - 12));
-    var top = r.bottom + 8;
-    if (top + ph > window.innerHeight - 12) {
-      top = Math.max(12, r.top - ph - 8);
-    }
-    pop.style.left = left + 'px';
-    pop.style.top = top + 'px';
   }
 
   function bindCapturePopoverEscape() {
@@ -1540,9 +1584,6 @@
         });
       } catch (_) {}
     }
-    var pop = document.getElementById('keysCapturePopover');
-    var backdrop = document.getElementById('keysCapturePopoverBackdrop');
-    if (backdrop) backdrop.hidden = false;
     capturePopoverOpen = true;
     loadHeroCaptureFromMapping();
     bindCapturePopoverEscape();
@@ -1558,15 +1599,6 @@
     }
     renderKeyFinishHosts();
     syncCaptureRecordChrome();
-    if (pop) {
-      pop.hidden = false;
-      requestAnimationFrame(function () {
-        positionCapturePopover();
-        try {
-          pop.focus();
-        } catch (_) {}
-      });
-    }
   }
 
   function closeCapturePopover(opts) {
@@ -1611,30 +1643,8 @@
   function syncCaptureEntrySummary() {}
 
   function syncImeTabChrome() {
-    var panel = document.getElementById('keysChannelPanel');
-    var imeStrip = document.getElementById('keysImeStripWrap');
-    var keyPanel = document.getElementById('keysCaptureKeyPanel');
-    var onIme = activeTab === 'ime';
-    var onKey = activeTab === 'key';
-    if (keyPanel) keyPanel.hidden = !onKey;
-    if (panel) {
-      panel.hidden = onIme || onKey;
-      if (!onIme && !onKey) {
-        var tabId =
-          activeTab === 'softPad'
-            ? 'keysChannelTabSoftPad'
-            : activeTab === 'camera'
-              ? 'keysChannelTabCamera'
-              : activeTab === 'cursor'
-                ? 'keysChannelTabCursor'
-                : 'keysChannelTabVoice';
-        panel.setAttribute('aria-labelledby', tabId);
-      }
-    }
-    if (imeStrip) {
-      imeStrip.hidden = !onIme;
-    }
-    if (onIme) syncImeHeroMarkers();
+    syncOpenChrome();
+    if (openPanels.ime) syncImeHeroMarkers();
   }
 
   function heroModel() {
@@ -1939,11 +1949,11 @@
     return out;
   }
 
-  function rowsForActiveTab() {
-    if (activeTab === 'voice') {
+  function rowsForTab(ch) {
+    if (ch === 'voice') {
       return { bridges: voiceLifecycleBridges(), views: filteredViews('voice'), footer: null };
     }
-    if (activeTab === 'softPad') {
+    if (ch === 'softPad') {
       return {
         kind: 'softPadKeyboard',
         bridges: existingAppShortcutRows(activeMapping()),
@@ -1954,7 +1964,7 @@
         }
       };
     }
-    return { bridges: [], views: filteredViews(activeTab), footer: null };
+    return { bridges: [], views: filteredViews(ch), footer: null };
   }
 
   function sourceSubline(channel, v) {
@@ -2054,6 +2064,13 @@
         var slotId = String(item.slotId || '').trim();
         var actionId = cursorItemActionId(item);
         var gated = !!item.gated;
+        if (
+          !matchesSearch(
+            cursorItemLabel(item) + ' ' + cursorItemSub(item) + ' ' + actionId + ' ' + slotId
+          )
+        ) {
+          continue;
+        }
         var keyB = mid ? findKeyBinding(m, actionId, '') : null;
         var boundChord = keyB ? String(keyB.triggerBinding || '').trim() : '';
         var selected =
@@ -2733,7 +2750,7 @@
   function syncSoftPadTargetChrome(active) {
     var row = document.getElementById('habitKeyMapRowTarget');
     if (row && row.classList) {
-      row.classList.toggle('is-softpad-channel', !!active && activeTab === 'softPad');
+      row.classList.toggle('is-softpad-channel', !!active && openPanels.softPad);
     }
   }
 
@@ -2837,63 +2854,22 @@
     );
   }
 
-  function renderPanelOnly() {
-    var panel = document.getElementById('keysChannelPanel');
-    var tabs = document.getElementById('keysChannelSubtabs');
-    if (!panel || !tabs) return;
-    tabs.querySelectorAll('[data-channel]').forEach(function (btn) {
-      var on = btn.getAttribute('data-channel') === activeTab;
-      btn.classList.toggle('is-active', on);
-      btn.setAttribute('aria-selected', on ? 'true' : 'false');
-    });
-    syncImeTabChrome();
-    if (activeTab === 'key') {
-      if (panel.classList) panel.classList.remove('is-softpad-pick');
-      syncSoftPadTargetChrome(false);
-      panel.innerHTML = '';
-      renderKeyFinishHosts();
-      syncCaptureRecordChrome();
-      return;
-    }
-    if (activeTab === 'ime') {
-      if (panel.classList) panel.classList.remove('is-softpad-pick');
-      syncSoftPadTargetChrome(false);
-      panel.innerHTML = '';
-      if (global.OneToneImePresets && global.OneToneImePresets.refresh) {
-        try {
-          global.OneToneImePresets.refresh('mapping');
-        } catch (_) {}
-      }
-      return;
-    }
-
+  function renderListChannelHtml(ch, opts) {
+    opts = opts || {};
     var mid = selectedMappingId();
     var m = mappingById(mid);
-    if (activeTab === 'cursor') {
-      renderCursorCommandsPanel(panel);
-      return;
-    }
-    if (activeTab === 'softPad') {
-      renderSoftPadKeyboardPanel(panel);
-      return;
-    }
-
-    if (panel.classList) panel.classList.remove('is-softpad-pick');
-    syncSoftPadTargetChrome(false);
-    var pack = rowsForActiveTab();
+    var pack = rowsForTab(ch);
     var bridges = pack.bridges || [];
     var rows = pack.views || [];
     var footer = pack.footer;
     if (!bridges.length && !rows.length && !footer) {
-      panel.innerHTML =
-        '<p class="keys-channel-empty">' + esc(emptyCopy(activeTab)) + '</p>';
-      return;
+      return '<p class="keys-channel-empty">' + esc(emptyCopy(ch)) + '</p>';
     }
-
-    var html = '';
+    var html = '<p class="keys-channel-group-label">' + esc(channelTabLabel(ch)) + '</p>';
     var bi;
     for (bi = 0; bi < bridges.length; bi++) {
       var br = bridges[bi];
+      if (!matchesSearch(br.name + ' ' + (br.sub || '') + ' ' + (br.actionId || ''))) continue;
       if (br.kind === 'guide-finish') {
         html += renderGuideFinishHtml(br);
       } else {
@@ -2906,16 +2882,20 @@
           sub: br.sub,
           offerIme: br.offerIme,
           actionInstanceId: br.actionInstanceId || '',
-          channel: activeTab,
+          channel: ch,
           actionArgsChord:
             br.actionArgs && br.actionArgs.chord ? String(br.actionArgs.chord) : ''
         });
       }
     }
-    for (var i = 0; i < rows.length; i++) {
+    var i;
+    for (i = 0; i < rows.length; i++) {
       var v = rows[i];
       var actionId = viewActionId(v);
       var ref = viewRef(v);
+      var rowName = actionLabel(actionId);
+      var rowSub = sourceSubline(ch, v);
+      if (!matchesSearch(rowName + ' ' + rowSub + ' ' + actionId)) continue;
       var bindable = bindableByAction[actionId];
       if (bindable === undefined) bindable = true;
       var keyB = findKeyBinding(m, actionId);
@@ -2923,12 +2903,12 @@
       var selected =
         selection &&
         selection.mappingId === mid &&
-        selection.sourceChannel === activeTab &&
+        selection.sourceChannel === ch &&
         selection.sourceBindingRef === ref;
       var disabled = !bindable;
       var heroRef = captureHeroRefForMapping(m);
       var heroMapped = heroRefMatches(heroRef, {
-        channel: activeTab,
+        channel: ch,
         bindingRef: ref,
         actionId: actionId,
         actionInstanceId: ''
@@ -2939,7 +2919,7 @@
         (heroMapped ? ' is-hero-mapped' : '') +
         (disabled ? ' is-disabled' : '') +
         '" data-channel-item="1" data-channel="' +
-        esc(activeTab) +
+        esc(ch) +
         '" data-binding-ref="' +
         esc(ref) +
         '" data-action-id="' +
@@ -2948,19 +2928,19 @@
         (disabled ? ' disabled aria-disabled="true"' : '') +
         '>' +
         '<span class="keys-channel-item-name">' +
-        esc(actionLabel(actionId)) +
+        esc(rowName) +
         '</span>' +
         '<span class="keys-channel-item-key">' +
         esc(
           disabled
-            ? channelOnlyLabel(activeTab)
+            ? channelOnlyLabel(ch)
             : chord
               ? friendlyChord(chord)
               : t('keysHeroActionNeedsKey', '待设置快捷键')
         ) +
         '</span>' +
         '<span class="keys-channel-item-sub">' +
-        esc(sourceSubline(activeTab, v)) +
+        esc(rowSub) +
         '</span>' +
         (heroMapped
           ? '<span class="keys-channel-item-hero-tag">' +
@@ -2975,14 +2955,139 @@
         esc(footer.label) +
         '</button>';
     }
-    if (!html) {
-      html = '<p class="keys-channel-empty">' + esc(emptyCopy(activeTab)) + '</p>';
+    return html || '<p class="keys-channel-empty">' + esc(emptyCopy(ch)) + '</p>';
+  }
+
+  function matchesSearch(text) {
+    var q = String(searchQuery || '')
+      .trim()
+      .toLowerCase();
+    if (!q) return true;
+    return String(text || '')
+      .toLowerCase()
+      .indexOf(q) >= 0;
+  }
+
+  function autoCreateBarHtml() {
+    var label = '';
+    if (activeTab === 'cursor') label = t('keysAutoCreateCursor', '按方案补全 Cursor 快捷键');
+    else if (activeTab === 'softPad') label = t('keysAutoCreateSoftPad', '自动准备本习惯虚拟键盘');
+    else if (activeTab === 'voice') label = t('keysAutoCreateVoice', '套用当前习惯方案');
+    if (!label) return '';
+    return (
+      '<button type="button" class="keys-channel-add-shortcut" data-auto-create="' +
+      esc(activeTab) +
+      '">' +
+      esc(label) +
+      '</button>'
+    );
+  }
+
+  function suggestedSchemeId() {
+    var m = mappingById(selectedMappingId());
+    var app = m && String(m.appTargetId || '').trim();
+    if (app === 'cursor-chat') return 'cursor-dev';
+    if (app === 'codex-chat' || app === 'claude-code') return 'cursor-dev';
+    return 'writing';
+  }
+
+  function autoCreateForTab(ch) {
+    if (ch === 'voice') {
+      var tplApi = global.OneToneKeysWorkflowTemplates;
+      if (tplApi && tplApi.applyTemplate) {
+        return Promise.resolve(tplApi.applyTemplate(suggestedSchemeId())).then(function () {
+          refresh();
+        });
+      }
+      return Promise.resolve();
     }
-    panel.innerHTML = html;
+    if (ch === 'softPad') {
+      prepareSoftPadScopeScenario();
+      return Promise.resolve();
+    }
+    if (ch !== 'cursor') return Promise.resolve();
+    var Ad = global.OneToneActionBindingAdapters;
+    var mid = selectedMappingId();
+    var m = mappingById(mid);
+    if (!Ad || !Ad.key || !Ad.key.upsert || !mid || !m) {
+      toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
+      return Promise.resolve();
+    }
+    var jobs = [];
+    var gi;
+    for (gi = 0; gi < CURSOR_COMMAND_GROUPS.length; gi++) {
+      var items = CURSOR_COMMAND_GROUPS[gi].items || [];
+      var ii;
+      for (ii = 0; ii < items.length; ii++) {
+        var item = items[ii];
+        if (!item || item.gated) continue;
+        var actionId = cursorItemActionId(item);
+        var hint = String(item.chordHint || '').trim();
+        if (!actionId || !hint) continue;
+        if (findKeyBinding(m, actionId, '')) continue;
+        jobs.push(Ad.key.upsert(mid, actionId, hint, null));
+      }
+    }
+    return Promise.all(jobs).then(function () {
+      toast(
+        jobs.length
+          ? t('keysAutoCreateCursorDone', '已按方案补全 Cursor 快捷键')
+          : t('keysAutoCreateCursorNone', '没有可补全的 Cursor 快捷键')
+      );
+      refresh();
+    });
+  }
+
+  function renderPanelOnly() {
+    var panel = document.getElementById('keysChannelPanel');
+    if (!panel) return;
+    syncOpenChrome();
+    if (activeTab === 'ime' || activeTab === 'key') {
+      renderKeyFinishHosts();
+      syncCaptureRecordChrome();
+    }
+    if (activeTab === 'ime' && global.OneToneImePresets && global.OneToneImePresets.refresh) {
+      try {
+        global.OneToneImePresets.refresh('mapping');
+      } catch (_) {}
+    }
+    if (activeTab === 'ime') {
+      panel.innerHTML = '';
+      if (panel.classList) panel.classList.remove('is-softpad-pick');
+      syncSoftPadTargetChrome(false);
+      return;
+    }
+    if (activeTab === 'key') {
+      panel.innerHTML = '';
+      if (panel.classList) panel.classList.remove('is-softpad-pick');
+      syncSoftPadTargetChrome(false);
+      return;
+    }
+    panel.innerHTML = autoCreateBarHtml();
+    if (activeTab === 'cursor') {
+      var wrap = document.createElement('div');
+      wrap.className = 'keys-channel-section';
+      panel.appendChild(wrap);
+      renderCursorCommandsPanel(wrap);
+      return;
+    }
+    if (activeTab === 'softPad') {
+      var padWrap = document.createElement('div');
+      padWrap.className = 'keys-channel-section';
+      panel.appendChild(padWrap);
+      renderSoftPadKeyboardPanel(padWrap);
+      return;
+    }
+    if (panel.classList) panel.classList.remove('is-softpad-pick');
+    syncSoftPadTargetChrome(false);
+    var listWrap = document.createElement('div');
+    listWrap.className = 'keys-channel-section';
+    listWrap.innerHTML = renderListChannelHtml(activeTab === 'camera' ? 'camera' : 'voice');
+    panel.appendChild(listWrap);
   }
 
   function guideToFinish() {
-    openCapturePopover({ tab: 'key' });
+    setActiveTab('ime');
     toast(
       t('keysVoiceBridgeEndToast', '结束/发送请在「快捷键」标签配置按键收尾，不在识别区重复建键')
     );
@@ -3004,6 +3109,7 @@
     opts = opts || {};
     var prev = activeTab;
     activeTab = ch;
+    openPanels[ch] = true;
     if (ch === 'ime' && selection) {
       clearSelection({ skipRender: true, skipHero: !!(opts && opts.skipHeroClear) });
       if (!(opts && opts.skipHeroClear) && global.OneToneMappingList && global.OneToneMappingList.renderEditor) {
@@ -3017,7 +3123,7 @@
       ensureSoftPadScopeSession();
       maybeAutoPreselectSoftPadScope();
       ensureSoftPadDefaultScope();
-    } else {
+    } else if (!openPanels.softPad) {
       syncSoftPadTargetChrome(false);
     }
     if (!(opts && opts.skipRender) || prev !== ch) {
@@ -3091,7 +3197,7 @@
         (chord ? ' · ' + friendlyChord(chord) : ' · ' + t('keysHeroActionNeedsKey', '待设置快捷键'))
     );
     if (forceRecord || !chord) {
-      if (forceRecord) recordSelected();
+      recordSelected();
     }
   }
 
@@ -3233,7 +3339,7 @@
     selectionToast(displayName, !!chord);
 
     if (forceRecord || !chord) {
-      if (forceRecord) recordSelected();
+      recordSelected();
     }
   }
 
@@ -3670,7 +3776,6 @@
   function bindOnce() {
     if (bound) return;
     bound = true;
-    var tabs = document.getElementById('keysChannelSubtabs');
     var panel = document.getElementById('keysChannelPanel');
     var closeBtn = document.getElementById('btnKeysCaptureClose');
     var backdrop = document.getElementById('keysCapturePopoverBackdrop');
@@ -3687,7 +3792,7 @@
     var keyZone = document.getElementById('keysCaptureKeycapZone');
     if (keyZone) {
       keyZone.addEventListener('click', function (ev) {
-        if (!capturePopoverOpen || activeTab !== 'key') return;
+        if (!isCapturePopoverOpen() || (activeTab !== 'key' && activeTab !== 'ime')) return;
         if (ev.target && ev.target.closest && ev.target.closest('button,a,input,label')) return;
         var rec = global.OneToneMappingRecording;
         if (rec && rec.mode && rec.mode() !== 'none') return;
@@ -3701,6 +3806,7 @@
         }
       });
     }
+    var tabs = document.getElementById('keysChannelSubtabs');
     if (tabs) {
       tabs.addEventListener('click', function (ev) {
         var btn = ev.target && ev.target.closest ? ev.target.closest('[data-channel]') : null;
@@ -3708,8 +3814,14 @@
         if (btn.classList.contains('is-codex-hidden') || btn.disabled) return;
         var ch = btn.getAttribute('data-channel');
         if (TABS.indexOf(ch) < 0 || ch === activeTab) return;
-        // Tab switch must not persist.
         setActiveTab(ch);
+      });
+    }
+    var searchInput = document.getElementById('keysChannelSearch');
+    if (searchInput) {
+      searchInput.addEventListener('input', function () {
+        searchQuery = String(searchInput.value || '');
+        renderPanelOnly();
       });
     }
     var imeStrip = document.getElementById('keysImeStripWrap');
@@ -3719,7 +3831,7 @@
         if (!btn || !imeStrip.contains(btn) || btn.getAttribute('data-ime-context') !== 'mapping') {
           return;
         }
-        if (!capturePopoverOpen || activeTab !== 'ime') return;
+        if (!isCapturePopoverOpen() || activeTab !== 'ime') return;
         var id = btn.getAttribute('data-ime-id') || '';
         if (!id) return;
         setSelection(
@@ -3740,6 +3852,13 @@
     }
     if (panel) {
       panel.addEventListener('click', function (ev) {
+        var autoBtn =
+          ev.target && ev.target.closest ? ev.target.closest('[data-auto-create]') : null;
+        if (autoBtn && panel.contains(autoBtn)) {
+          ev.preventDefault();
+          autoCreateForTab(autoBtn.getAttribute('data-auto-create') || activeTab);
+          return;
+        }
         var imeBtn =
           ev.target && ev.target.closest ? ev.target.closest('[data-bridge-ime]') : null;
         if (imeBtn && panel.contains(imeBtn)) {
@@ -3850,14 +3969,11 @@
     refresh();
   }
 
-  function setCodexImeTabHidden(hidden) {
-    var imeTab = document.getElementById('keysChannelTabIme');
-    if (imeTab) imeTab.classList.toggle('is-codex-hidden', !!hidden);
-    if (hidden && activeTab === 'ime') {
-      setActiveTab('softPad', { skipHeroClear: true });
-    } else {
-      syncImeTabChrome();
-    }
+  function setCodexImeTabHidden(_hidden) {
+    // Scheme D: 输入法 stays in the left catalog for every habit (incl. Codex).
+    // Callers may still invoke this; ignore hide requests so the tab cannot vanish.
+    imeTabHidden = false;
+    syncImeTabChrome();
   }
 
   global.OneToneKeysChannelCommandPicker = {
@@ -3894,6 +4010,7 @@
     getActiveTab: function () {
       return activeTab;
     },
+    isChannelOpen: isChannelOpen,
     setActiveTab: setActiveTab,
     openCapturePopover: openCapturePopover,
     closeCapturePopover: closeCapturePopover,

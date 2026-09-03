@@ -1473,6 +1473,22 @@
     lastShowcasePathKey=(projection.mode||'')+':'+token2+':'+(showcase.pathPct||0);
   }
 
+  function heroVoiceLiveActive(vm){
+    vm=vm||{};
+    var paused=!!(vm.runtime&&vm.runtime.paused);
+    var dictating=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating);
+    return !paused&&(dictating||(vm.summary&&vm.summary.statusMode==='listening')||vm.vpState==='LISTENING');
+  }
+
+  function applyV3MicVisibility(hub,mode,vm){
+    if(!hub||!isHomeV3()) return;
+    var suppress=mode==='softPad'||mode==='camera'||!heroVoiceLiveActive(vm);
+    hub.classList.toggle('is-voice-live',!suppress);
+    hub.hidden=suppress;
+    if(suppress) hub.style.setProperty('display','none','important');
+    else hub.style.removeProperty('display');
+  }
+
   function syncHeroMicCard(projection){
     var hub=$('wbHeroMic');
     var engineBtn=$('wbHeroMicEngine');
@@ -1495,36 +1511,44 @@
     if(listenBtn) listenBtn.hidden=true;
     if(mode==='softPad'||mode==='camera'){
       if(hub){
-        hub.hidden=true;
         hub.classList.remove('is-voice-surface','is-dictating');
       }
       if(voiceSwitch) voiceSwitch.hidden=true;
       if(voiceCtrl) voiceCtrl.hidden=true;
+      applyV3MicVisibility(hub,mode,vm);
       return;
     }
-    if(hub) hub.hidden=false;
     if(mode==='keys'){
       if(hub){
-        hub.classList.remove('is-voice-surface','is-dictating');
+        hub.classList.remove('is-voice-surface');
+        hub.classList.toggle('is-dictating',dictating);
       }
       if(voiceSwitch) voiceSwitch.hidden=true;
       if(voiceCtrl) voiceCtrl.hidden=true;
       var m=vm.m||null;
       var line1=t('homeWbFlowEmptyKeys');
-      if(m){
-        if(global.OneToneHomeScheme&&global.OneToneHomeScheme.pairLine){
-          var pair=global.OneToneHomeScheme.pairLine(m);
-          if(pair&&pair!=='—') line1=pair;
-        }
-        var keysUi=global.OneToneKeysPanelUi;
-        if(keysUi&&keysUi.buildKeysStatusProps){
-          var kp=keysUi.buildKeysStatusProps(m);
-          if(kp&&kp.status&&kp.status!=='—'){
-            line1=line1&&line1!==t('homeWbFlowEmptyKeys')?line1+' · '+kp.status:kp.status;
+      if(!isHomeV3()){
+        if(m){
+          if(global.OneToneHomeScheme&&global.OneToneHomeScheme.pairLine){
+            var pair=global.OneToneHomeScheme.pairLine(m);
+            if(pair&&pair!=='—') line1=pair;
+          }
+          var keysUi=global.OneToneKeysPanelUi;
+          if(keysUi&&keysUi.buildKeysStatusProps){
+            var kp=keysUi.buildKeysStatusProps(m);
+            if(kp&&kp.status&&kp.status!=='—'){
+              line1=line1&&line1!==t('homeWbFlowEmptyKeys')?line1+' · '+kp.status:kp.status;
+            }
           }
         }
+        if(statusEl){
+          statusEl.textContent=line1;
+          statusEl.hidden=false;
+        }
+      }else if(statusEl){
+        statusEl.textContent='';
+        statusEl.hidden=true;
       }
-      if(statusEl) statusEl.textContent=line1;
       var keysPills=(projection&&projection.pills)||[];
       var keysListenPill=null;
       keysPills.forEach(function(pill){
@@ -1534,6 +1558,7 @@
         listenBtn.hidden=false;
         listenBtn.removeAttribute('aria-hidden');
       }
+      applyV3MicVisibility(hub,mode,vm);
       return;
     }
     if(mode==='voice'){
@@ -1546,6 +1571,11 @@
         var surface=global.OneToneVoiceSurfaceCopy.resolve({dictating:dictating,paused:paused});
         var line1=surface.line1||'';
         if(statusEl) statusEl.textContent=line1;
+        if(isHomeV3()&&heroVoiceLiveActive(vm)){
+          if(statusEl) statusEl.hidden=true;
+        }else if(statusEl){
+          statusEl.hidden=false;
+        }
         if(voiceSwitch){
           voiceSwitch.classList.toggle('is-on',!!surface.switchOn);
           voiceSwitch.setAttribute('aria-checked',surface.switchOn?'true':'false');
@@ -1582,6 +1612,7 @@
           engineBtn.removeAttribute('title');
         }
       }
+      applyV3MicVisibility(hub,mode,vm);
     }
   }
 
@@ -1592,6 +1623,14 @@
     var mode=projection&&projection.mode?projection.mode:heroMode;
     var html='';
     var vm=projection&&projection._vm?projection._vm:{};
+
+    if(isHomeV3()){
+      host.hidden=true;
+      host.innerHTML='';
+      host.style.setProperty('display','none','important');
+      syncHeroMicCard(projection);
+      return;
+    }
 
     if(mode==='camera'||mode==='softPad'){
       syncHeroMicCard(projection);
@@ -1765,20 +1804,120 @@
     renderHeroStats(st);
   }
 
+  function isHomeV3(){
+    var wb=$('homeWorkbench');
+    return !!(wb&&wb.classList.contains('is-v3'));
+  }
+
+  function heroV3CtaLabel(projection,model,label){
+    if(!isHomeV3()) return label;
+    var heroApi=global.OneToneHomeHeroModeModel;
+    if(!heroApi||typeof heroApi.beginnerCtaLabel!=='function') return label;
+    if(model&&model.repair) return label;
+    if(model&&model.cta&&model.cta.mode==='resume') return label;
+    var mode=projection&&projection.mode?projection.mode:heroMode;
+    return heroApi.beginnerCtaLabel(mode,{needsSetup:!!(model&&model.needsSetup),t:t});
+  }
+
+  function paintHeroStatusCta(projection,model){
+    var statusEl=$('wbHeroStatusLine');
+    var ctaHost=$('wbHeroPrimaryCta');
+    var ctaBtn=$('wbBtnHeroCta');
+    if(!statusEl) return;
+    var vm=projection&&projection._vm?projection._vm:{};
+    var dictating=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating);
+    var showcase=projection&&projection.showcase;
+    var statusText=(showcase&&showcase.focus)
+      ||(projection&&projection.status&&projection.status.text)
+      ||(model&&model.statusLine)
+      ||'';
+    statusEl.textContent=statusText;
+    var mode=projection&&projection.mode?projection.mode:heroMode;
+    var hideStatus=isHomeV3()&&mode==='keys';
+    statusEl.hidden=!String(statusText).trim()||hideStatus;
+    if(!ctaBtn) return;
+    var endBtn=$('wbBtnEnd');
+    var cancelBtn=$('wbBtnCancel');
+    var ctaRow=$('wbTriggerActions');
+    if(dictating){
+      ctaBtn.hidden=true;
+      if(ctaHost){
+        ctaHost._ctaAction=null;
+        ctaHost.hidden=false;
+      }
+      if(endBtn) endBtn.hidden=false;
+      if(cancelBtn) cancelBtn.hidden=false;
+      if(ctaRow) ctaRow.classList.add('is-dictating');
+      return;
+    }
+    if(endBtn) endBtn.hidden=true;
+    if(cancelBtn) cancelBtn.hidden=true;
+    if(ctaRow) ctaRow.classList.remove('is-dictating');
+    var label='';
+    var action=null;
+    if(model&&model.repair){
+      label=model.repair.label||t('debugFocusRepair');
+      action={type:'openSettings',panel:model.repair.panel||'debug',debugMode:model.repair.debugMode||'repair'};
+    }else if(model&&model.needsSetup&&model.cta){
+      label=model.cta.label||t('homeSetupStart');
+      action={type:'openSettings',panel:model.cta.panel||'keys',focus:model.cta.focus||null};
+    }else if(model&&model.cta&&model.cta.mode==='resume'){
+      label=model.cta.label||t('listenResume');
+      action={type:'resume'};
+    }else if(projection&&projection.localAction&&projection.localAction.label){
+      label=projection.localAction.label;
+      action={type:'openHeroSettings'};
+    }else if(model&&model.cta&&model.cta.label){
+      label=model.cta.label;
+      action={type:'openSettings',panel:model.cta.panel||'keys',focus:model.cta.focus||null};
+    }
+    ctaBtn.textContent=heroV3CtaLabel(projection,model,label||t('homeSetupStart'));
+    // V3 voice: orb is the control — hide idle「开启语音」, keep setup/resume/repair.
+    var hideVoiceOpen=isHomeV3()&&mode==='voice'
+      &&!(model&&model.repair)
+      &&!(model&&model.cta&&model.cta.mode==='resume')
+      &&!(model&&model.needsSetup);
+    ctaBtn.hidden=!label||hideVoiceOpen;
+    if(ctaHost){
+      ctaHost._ctaAction=hideVoiceOpen?null:action;
+      ctaHost.hidden=!!ctaBtn.hidden;
+    }
+  }
+
   function paintHeroSurfaces(projection,opts){
     opts=opts||{};
     if(!projection) return;
+    var v3=isHomeV3();
     if(opts.showcasePatchOnly){
-      paintHeroShowcase(projection,opts);
+      if(!v3) paintHeroShowcase(projection,opts);
       return;
     }
     paintHeroModeChrome(projection);
-    paintHeroShowcase(projection,opts);
-    renderHeroFlowSummary(projection);
+    if(!v3){
+      paintHeroShowcase(projection,opts);
+      renderHeroFlowSummary(projection);
+    }
     renderHero(projection,opts.stats);
     var panels=global.OneToneHomeWorkbenchPanels;
     if(panels&&typeof panels.renderHowTo==='function'){
       panels.renderHowTo(projection);
+    }
+    if(v3){
+      paintHeroStatusCta(projection,opts.model||peekHomeModel({force:true}));
+      if(panels&&typeof panels.renderChannelDetail==='function'){
+        var vm=projection&&projection._vm?projection._vm:{};
+        var dictating=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating);
+        var statusToken=projection&&projection.status?String(projection.status.token||''):'';
+        var heroApi=global.OneToneHomeHeroModeModel;
+        var autoExpand=heroApi&&typeof heroApi.shouldAutoExpandChannelDetail==='function'
+          ?heroApi.shouldAutoExpandChannelDetail(statusToken,dictating)
+          :false;
+        panels.renderChannelDetail(projection,{
+          autoExpandAdvanced:autoExpand,
+          resetAdvanced:false,
+          model:opts.model||peekHomeModel({force:true})
+        });
+      }
     }
     renderLiveText(projection);
   }
@@ -2738,6 +2877,7 @@
         '#wbHeroShowcase [data-node-id], #wbHeroShowcase [data-micro-key], #wbHeroPane [data-node-id]'
       );
       if(showcaseItem){
+        if(isHomeV3()) return;
         var sid=showcaseItem.getAttribute('data-node-id')||showcaseItem.getAttribute('data-micro-key')||'';
         if(!sid||showcaseItem.classList.contains('is-overflow')) return;
         var model=peekHomeModel({force:true})||{};
@@ -2754,6 +2894,53 @@
         return;
       }
       // 首页 howto：点卡切换通道预览
+      var detailMore=e.target.closest&&e.target.closest('[data-wb-channel-detail-more]');
+      if(detailMore){
+        e.preventDefault();
+        var detailPanels=global.OneToneHomeWorkbenchPanels;
+        if(detailPanels&&typeof detailPanels.toggleChannelDetailAdvanced==='function'){
+          detailPanels.toggleChannelDetailAdvanced();
+        }
+        return;
+      }
+      var channelCta=e.target.closest&&e.target.closest('[data-wb-channel-cta]');
+      if(channelCta){
+        e.preventDefault();
+        var ctaKind=channelCta.getAttribute('data-wb-channel-cta')||'';
+        if(ctaKind==='listen'){
+          if(!global.OneToneIpc) return;
+          var pausedNow=!!(global.OneToneState&&global.OneToneState.runtime&&global.OneToneState.runtime.paused);
+          global.OneToneIpc.invoke(pausedNow?'cmd_resume':'cmd_pause',{}).catch(function(){});
+          return;
+        }
+        if(ctaKind==='primary'){
+          var primaryKind=channelCta.getAttribute('data-wb-channel-cta-kind')||'';
+          if(primaryKind==='setup'){
+            handleAlertAction({type:'openSettings',panel:'keys'});
+            return;
+          }
+          if(primaryKind==='try'){
+            if(global.OneToneApp&&global.OneToneApp.fireTestSend){
+              global.OneToneApp.fireTestSend(null);
+            }else if(global.OneToneMappingTestSend&&global.OneToneMappingTestSend.fire){
+              global.OneToneMappingTestSend.fire(null);
+            }
+            return;
+          }
+          openHeroSettings();
+        }
+        return;
+      }
+      var channelOpen=e.target.closest&&e.target.closest('[data-wb-channel-open]');
+      if(channelOpen){
+        e.preventDefault();
+        var openKind=channelOpen.getAttribute('data-wb-channel-open')||'';
+        if(openKind==='keys'||openKind==='voice'||openKind==='camera'||openKind==='softPad'){
+          if(normalizeHeroMode(openKind)!==heroMode) writeHeroMode(openKind);
+          openHeroSettings();
+        }
+        return;
+      }
       var howto=e.target.closest&&e.target.closest('#wbHowTo [data-wb-howto]');
       if(howto){
         if(e.target.closest&&e.target.closest('.wb-howto-card-edit')) return;
@@ -3040,7 +3227,7 @@
     var stats=global.OneToneHomeWorkbenchStats
       ?global.OneToneHomeWorkbenchStats.buildHeroStats(vm)
       :{uptime:'—',opCount:'—',topTarget:'—',topShortcut:'—',latency:'—'};
-    paintHeroSurfaces(projection,{stats:stats});
+    paintHeroSurfaces(projection,{stats:stats,model:model});
     renderCommandCard(vm,projection);
     renderFinishSummary(vm);
     renderQuickActions();
@@ -3191,6 +3378,34 @@
     if(heroOrb){
       heroOrb.onclick=function(){ openHeroSettings(); };
     }
+    var heroCta=$('wbBtnHeroCta');
+    if(heroCta&&!heroCta._wbBound){
+      heroCta._wbBound=true;
+      heroCta.onclick=function(){
+        var host=$('wbHeroPrimaryCta');
+        var action=host&&host._ctaAction;
+        if(action&&action.type==='resume'){
+          if(global.OneToneAppHomeRuntime&&typeof global.OneToneAppHomeRuntime.toggleGlobalListen==='function'){
+            global.OneToneAppHomeRuntime.toggleGlobalListen();
+          }
+          return;
+        }
+        if(action&&action.type==='openSettings'){
+          handleAlertAction(action);
+          return;
+        }
+        openHeroSettings();
+      };
+    }
+    var navMore=$('wbNavMoreSettings');
+    if(navMore&&!navMore._wbBound){
+      navMore._wbBound=true;
+      navMore.onclick=function(){
+        if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.open){
+          global.OneToneSettingsDrawer.open({panel:'general'});
+        }
+      };
+    }
     var alertsHost=$('wbHomeAlerts');
     if(alertsHost){
       alertsHost.addEventListener('click',function(e){
@@ -3317,6 +3532,7 @@
     renderTriggerDiagBlocks:renderTriggerDiagBlocks,
     startCompatProbe:startCompatProbe,
     getHeroMode:function(){ return normalizeHeroMode(heroMode); },
+    isHomeV3:isHomeV3,
     getHeroExpandedNodeId:function(){ return heroExpandedNodeId; },
     heroIconSvg:heroModeIconSvg,
     setHeroMode:setHeroMode,

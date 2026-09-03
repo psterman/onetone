@@ -841,6 +841,40 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       }
     }
     if(rec.agentBindingCapture) return commitAgentBindingCapture(k, rawSourceKey, source);
+    var prevTrig=hooks().normalizeTriggerKey(m.triggerKey||'');
+    var appId=String(m.appTargetId||'').trim();
+    var existingOther=
+      OneToneMappingCore.findMappingByAppAndTrigger
+        ?OneToneMappingCore.findMappingByAppAndTrigger(appId,k,m.id)
+        :null;
+    if(existingOther&&existingOther.id){
+      // Same app already has this trigger — switch to that habit; leave current trigger alone.
+      if(OneToneMappingCore.focus) OneToneMappingCore.focus(existingOther.id);
+      else{
+        hooks().flushAllEditorToMappings&&hooks().flushAllEditorToMappings();
+        if(global.OneToneState&&global.OneToneState.state){
+          global.OneToneState.state.selectedMappingId=existingOther.id;
+        }
+        hooks().syncEditorFromSelection&&hooks().syncEditorFromSelection();
+      }
+      m=existingOther;
+    }else if(prevTrig&&prevTrig!==k){
+      // Different trigger → fork a new habit; keep the old one with its trigger.
+      var forked=
+        OneToneMappingCore.forkMappingForTrigger
+          ?OneToneMappingCore.forkMappingForTrigger(m,k)
+          :null;
+      if(forked&&forked.id){
+        if(OneToneMappingCore.focus) OneToneMappingCore.focus(forked.id);
+        else{
+          if(global.OneToneState&&global.OneToneState.state){
+            global.OneToneState.state.selectedMappingId=forked.id;
+          }
+          hooks().syncEditorFromSelection&&hooks().syncEditorFromSelection();
+        }
+        m=forked;
+      }
+    }
     m.triggerKey=k;
     if(source){
       m.triggerSource=source;
@@ -851,6 +885,19 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     m.sourceTime=sourceTime||'';
     if(OneToneMappingCore.isSelected(m.id)) hooks().setEditorTriggerKey(k);
     m.label=k+' → '+(OneToneMappingCore.editorTarget(m)||'?');
+    if(!prevTrig&&!String(m.group||'').trim()){
+      try{
+        var appLabel=appId||'';
+        if(appId){
+          var presets=global.OneToneAppTargetPresets;
+          if(presets&&presets.displayName) appLabel=presets.displayName(appId)||appId;
+        }else{
+          appLabel=t('habitHubUniversalName','通用设置');
+        }
+        var fk=hooks().friendlyKeyName?hooks().friendlyKeyName(k):k;
+        m.group=appLabel+' · '+fk;
+      }catch(_){}
+    }
     armLocalCaptureGuard();
     updateRecordingPreview('trigger',k);
     hooks().pushLog(t('logTriggerDone')+hooks().friendlyKeyName(k));

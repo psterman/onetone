@@ -416,6 +416,92 @@
     return global.OneToneAppKeyUtils.normalizeTriggerKey(m&&m.triggerKey)==='AutoTrigger';
   }
 
+  function appTargetKey(m){
+    return String(m&&m.appTargetId||'').trim();
+  }
+
+  function normalizeMappingTrigger(key){
+    var utils=global.OneToneAppKeyUtils;
+    if(utils&&utils.normalizeTriggerKey) return String(utils.normalizeTriggerKey(key)||'').trim();
+    return String(key||'').trim();
+  }
+
+  /** Same app (incl. both empty = baseline) + same normalized trigger. */
+  function findMappingByAppAndTrigger(appTargetId, triggerKey, exceptMappingId){
+    var app=String(appTargetId||'').trim();
+    var trig=normalizeMappingTrigger(triggerKey);
+    if(!trig) return null;
+    exceptMappingId=String(exceptMappingId||'').trim();
+    hooks().ensureConfig();
+    var list=Array.isArray(state().config.mappings)?state().config.mappings:[];
+    for(var i=0;i<list.length;i++){
+      var row=list[i];
+      if(!row||!row.id) continue;
+      if(exceptMappingId&&String(row.id)===exceptMappingId) continue;
+      if(appTargetKey(row)!==app) continue;
+      if(normalizeMappingTrigger(row.triggerKey)===trig) return row;
+    }
+    return null;
+  }
+
+  function forkHabitName(source, triggerKey){
+    var trig=normalizeMappingTrigger(triggerKey);
+    var friendly=trig;
+    try{
+      if(hooks().friendlyKeyName) friendly=hooks().friendlyKeyName(trig)||trig;
+    }catch(_){}
+    var app=appTargetKey(source);
+    if(app){
+      var appName=app;
+      try{
+        var presets=global.OneToneAppTargetPresets;
+        if(presets&&presets.displayName) appName=presets.displayName(app)||app;
+        else if(presets&&Array.isArray(presets.presets)){
+          for(var i=0;i<presets.presets.length;i++){
+            if(presets.presets[i]&&presets.presets[i].id===app){
+              appName=presets.presets[i].name||presets.presets[i].label||app;
+              break;
+            }
+          }
+        }
+      }catch(_){}
+      return appName+' · '+friendly;
+    }
+    return (global.OneToneI18n&&global.OneToneI18n.t
+      ?global.OneToneI18n.t('habitHubUniversalName')
+      :'通用设置')+' · '+friendly;
+  }
+
+  /** Copy action fields into a new mapping; caller sets triggerKey + selects. */
+  function forkMappingForTrigger(source, triggerKey){
+    if(!source) return null;
+    hooks().ensureConfig();
+    var cfg=state().config;
+    var copy;
+    try{ copy=JSON.parse(JSON.stringify(source)); }
+    catch(_){ return null; }
+    var newId=newMappingId();
+    copy.id=newId;
+    copy.triggerKey=normalizeMappingTrigger(triggerKey);
+    copy.triggerSource=null;
+    copy.sourceKey=copy.triggerKey;
+    copy.sourceTime='';
+    copy.group=forkHabitName(source, triggerKey);
+    copy.label=copy.triggerKey+' → '+(editorTargetForMapping(copy)||copy.targetKey||'?');
+    copy.enabled=false;
+    copy.order=Array.isArray(cfg.mappings)?cfg.mappings.length:0;
+    copy.updatedAt=Date.now();
+    copy.lastUsedAt=0;
+    copy.useCount=0;
+    if(global.OneToneConfigPersist&&global.OneToneConfigPersist.rekeyVoiceCommandsForMapping){
+      copy.voiceCommands=global.OneToneConfigPersist.rekeyVoiceCommandsForMapping(copy.voiceCommands,newId);
+    }
+    ensureMappingExtras(copy);
+    cfg.mappings=Array.isArray(cfg.mappings)?cfg.mappings:[];
+    cfg.mappings.push(copy);
+    return copy;
+  }
+
   global.OneToneMappingCore={
     listUiActive:mappingListUiActive,renderChrome:renderMappingChrome,
     schemeHasConflict:schemeMappingHasConflict,schemeNavTags:schemeNavTags,keysEditorNavTags:keysEditorNavTags,
@@ -433,6 +519,8 @@
     formatTriggerTrace:formatTriggerTrace,selected:selectedMapping,sorted:sortedMappings,
     newMappingId:newMappingId,ensureMappingTiming:ensureMappingTiming,
     ensureMappingExtras:ensureMappingExtras,isAutoTriggerMapping:isAutoTriggerMapping,
+    findMappingByAppAndTrigger:findMappingByAppAndTrigger,
+    forkMappingForTrigger:forkMappingForTrigger,
     defaultCaptureHeroRef:defaultCaptureHeroRef,normalizeCaptureHeroRef:normalizeCaptureHeroRef,
     isDefaultCaptureHeroRef:isDefaultCaptureHeroRef,captureHeroRefForMapping:captureHeroRefForMapping,
     setCaptureHeroRef:setCaptureHeroRef

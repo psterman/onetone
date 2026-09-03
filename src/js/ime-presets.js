@@ -247,6 +247,13 @@
       setSelectedId('mapping', presetId || '');
       if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.refresh('mapping');
       refresh('mapping');
+      var pickerFast = global.OneToneKeysChannelCommandPicker;
+      if(pickerFast){
+        try{
+          if(pickerFast.setActiveTab) pickerFast.setActiveTab('ime', { skipHeroClear: true });
+          else if(pickerFast.refresh) pickerFast.refresh();
+        }catch(_){}
+      }
       return;
     }
     var core = global.OneToneMappingCore;
@@ -282,6 +289,13 @@
     if(global.OneToneApp && global.OneToneApp.toast) global.OneToneApp.toast(t('imePresetApplied'));
     if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.refresh('mapping');
     refresh('mapping');
+    var picker = global.OneToneKeysChannelCommandPicker;
+    if(picker){
+      try{
+        if(picker.setActiveTab) picker.setActiveTab('ime', { skipHeroClear: true });
+        else if(picker.refresh) picker.refresh();
+      }catch(_){}
+    }
   }
 
   function applyOnboardingTarget(combo, presetId){
@@ -380,7 +394,12 @@
     var key = currentKeyForContext(ctx);
     var customSelected = !selectedId && !!key;
     var html = '';
-    if(ctx === 'mapping' || ctx === 'onboarding'){
+    if(ctx === 'mapping'){
+      // Scheme D: hand-record lives under left catalog「自定义键」— no pencil twin here.
+      html += '<button type="button" class="ime-preset-item ime-preset-item--picker"'+(disabled?' disabled':'')+' data-ime-context="'+esc(ctx)+'" data-ime-picker="1" title="'+esc(t('keysTargetKeycapPickLink'))+'" aria-label="'+esc(t('keysTargetKeycapPickLink'))+'">'
+        +PICKER_ICON_SVG
+        +'</button>';
+    } else if(ctx === 'onboarding'){
       html += '<button type="button" class="ime-preset-item ime-preset-item--picker"'+(disabled?' disabled':'')+' data-ime-context="'+esc(ctx)+'" data-ime-picker="1" title="'+esc(t('keysTargetKeycapPickLink'))+'" aria-label="'+esc(t('keysTargetKeycapPickLink'))+'">'
         +PICKER_ICON_SVG
         +'</button>';

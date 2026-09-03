@@ -37,6 +37,11 @@
       el.classList.toggle('is-active-step',el.getAttribute('data-voice-subpage')===activeStep);
     });
     expandStepDetails(activeStep);
+    var adv=$('voiceCoreAdvanced');
+    if(adv){
+      if(activeStep==='send') adv.open=true;
+      else if(activeStep==='wake') adv.open=false;
+    }
     if(global.OneToneVoicePageNav&&global.OneToneVoicePageNav.syncActive){
       global.OneToneVoicePageNav.syncActive(activeStep);
     }

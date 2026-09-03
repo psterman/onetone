@@ -1352,6 +1352,206 @@
     return t('homeWbLivePreviewStandby');
   }
 
+  function pushDetailRow(rows, lbl, val) {
+    var v = String(val == null ? '' : val).trim();
+    if (!lbl || !v || v === '—') return;
+    rows.push({ lbl: String(lbl), val: v });
+  }
+
+  function enrichHowtoCardDetail(card, ctx) {
+    if (!card) return card;
+    ctx = ctx || {};
+    var t = ctx.t || function (k, fb) { return fb != null ? fb : k; };
+    var howto = ctx.howto || {};
+    var softPad = ctx.softPad || {};
+    var camera = ctx.camera || {};
+    var vm = ctx.vm || {};
+    var mode = card.mode;
+    var advanced = [];
+    var sections = [];
+
+    if (mode === 'voice') {
+      var eng = String(vm.engineLine || '').trim();
+      if (eng) pushDetailRow(advanced, t('homeWbHowToEngineTitle', '引擎'), eng);
+      if (howto.finishBehavior && howto.finishBehavior !== '—') {
+        pushDetailRow(advanced, t('homeWbHowToFinish', '结束规则'), howto.finishBehavior);
+      }
+    } else if (mode === 'keys') {
+      pushDetailRow(advanced, t('homeWbHowToKeysLine', '规则简介'), card.summaryLine || card.detailValue);
+      if (howto.finishBehavior && howto.finishBehavior !== '—') {
+        pushDetailRow(advanced, t('homeWbHowToFinish', '结束规则'), howto.finishBehavior);
+      }
+    } else if (mode === 'softPad') {
+      pushDetailRow(advanced, t('homeWbSpCapBind', '绑定'), softPad.boundName || softPad.agentName);
+    } else if (mode === 'camera') {
+      if (camera.lastError && camera.lastError.message) {
+        pushDetailRow(advanced, t('homeWbFlowRepair', '错误'), camera.lastError.message);
+      }
+      var groups = cameraGroupsFor(camera, t);
+      groups.forEach(function (g) {
+        var rows = [];
+        (g.rules || []).forEach(function (r) {
+          pushDetailRow(rows, r.trigger, r.action + (r.scene ? ' · ' + r.scene : ''));
+        });
+        if (rows.length) sections.push({ title: g.label, rows: rows });
+      });
+    }
+
+    buildBeginnerDetail(card, ctx, [], advanced, sections);
+    return card;
+  }
+
+  function dedupeDetailRows(rows) {
+    var seenVal = {};
+    var seenLbl = {};
+    var out = [];
+    (rows || []).forEach(function (r) {
+      if (!r) return;
+      var lbl = String(r.lbl || '').trim();
+      var v = String(r.val == null ? '' : r.val).trim();
+      if (!v || v === '—' || seenVal[v] || (lbl && seenLbl[lbl])) return;
+      seenVal[v] = true;
+      if (lbl) seenLbl[lbl] = true;
+      out.push(r);
+    });
+    return out;
+  }
+
+  function friendlyTriggerKey(key) {
+    var k = String(key == null ? '' : key).trim();
+    if (!k) return '—';
+    if (global.OneToneKeyLabels && global.OneToneKeyLabels.friendlyKeyName) {
+      return global.OneToneKeyLabels.friendlyKeyName(k);
+    }
+    return k;
+  }
+
+  function buildBeginnerDetail(card, ctx, techCore, techAdvanced, sections) {
+    if (!card) return card;
+    ctx = ctx || {};
+    var t = ctx.t || function (k, fb) { return fb != null ? fb : k; };
+    var howto = ctx.howto || {};
+    var softPad = ctx.softPad || {};
+    var camera = ctx.camera || {};
+    var flow = ctx.flow || {};
+    var vm = ctx.vm || {};
+    var dictating = !!ctx.dictating;
+    var mode = card.mode;
+    var headline = t('homeWbChannelDetailHeadline', '现在怎么用');
+    var summary = '';
+    var core = [];
+    var advanced = dedupeDetailRows((techAdvanced || []).slice());
+
+    if (mode === 'voice') {
+      var micEmpty = !!howto.micEmpty;
+      var wake =
+        !isUnset(howto.wakeMain, t) && howto.wakeMain ? String(howto.wakeMain) : '';
+      var endPhrase =
+        howto.endPhraseMain && howto.endPhraseMain !== '—' ? String(howto.endPhraseMain) : '';
+      if (dictating) {
+        summary = t('homeWbShowcaseFocusListening', '聆听中…');
+        core = [];
+      } else if (micEmpty || card.empty) {
+        summary = t('homeWbVoiceSummaryUnset', '还没选好麦克风');
+        pushDetailRow(core, t('homeWbHowToMic', '麦克风'), t('homeWbFlowEmptyMic'));
+      } else {
+        summary = wake
+          ? t('homeWbVoiceSummaryHow', '说出「{wake}」就能开始').replace('{wake}', wake)
+          : String(card.primaryLine || card.stateLabel || '');
+        pushDetailRow(core, t('homeWbVoiceCoreHow', '开始'), wake || card.primaryLine);
+        if (endPhrase && endPhrase !== wake) {
+          pushDetailRow(core, t('homeWbVoiceCoreEnd', '停下'), endPhrase);
+        } else {
+          pushDetailRow(core, t('homeWbVoiceCoreEnd', '停下'), t('homeWbVoiceCorePauseSend', '停顿后发送'));
+        }
+      }
+    } else if (mode === 'keys') {
+      var keysEmpty = !!howto.keysEmpty;
+      var trig = keysEmpty ? '' : friendlyTriggerKey(howto.triggerKey || flow.trigger);
+      if (dictating) {
+        summary = t('homeWbKeysCoreRelease', '按着，松手就停');
+        core = [];
+      } else if (keysEmpty || card.empty) {
+        summary = t('homeWbKeysSummaryUnset', '还没绑定按键');
+      } else {
+        summary = t('homeWbKeysCoreHold', '按住 {key} 说话').replace('{key}', trig);
+        var target = flow.target && !isUnset(flow.target, t) ? String(flow.target) : '';
+        if (target) pushDetailRow(core, t('homeWbKeysCoreTo', '打到'), target);
+      }
+    } else if (mode === 'softPad') {
+      if (softPad.configKind === 'na') {
+        summary = t('homeWbSoftPadSummaryNa', '这个习惯不用屏幕按钮');
+      } else if (!softPad.configConfigured && !dictating) {
+        summary = t('homeWbSoftPadSummaryUnset', '还没配置屏幕按钮');
+        pushDetailRow(
+          core,
+          t('homeWbSoftPadControlMetaLbl', '当前控制'),
+          t('homeWbSoftPadControlNone', '暂无')
+        );
+      } else {
+        var ctrl = softPad.controlLbl || t('homeWbSoftPadControlNone', '暂无');
+        summary = t('homeWbSoftPadSummaryActive', '正在控制：{name}').replace('{name}', ctrl);
+        pushDetailRow(core, t('homeWbSoftPadSummaryActive', '正在控制'), ctrl);
+        if (softPad.followHint) {
+          pushDetailRow(advanced, t('homeWbSoftPadFollowMetaLbl', '跟随'), softPad.followHint);
+        }
+      }
+    } else if (mode === 'camera') {
+      if (!camera.enabled || card.empty) {
+        summary = t('homeWbCameraSummaryOff', '摄像头还没开');
+        pushDetailRow(core, t('homeWbCameraSummaryOff', '摄像头'), t('homeWbFlowEmptyCamera'));
+      } else if (camera.running || camera.status === 'running') {
+        summary = t('homeWbCameraSummaryRun', '正在看着你');
+      } else {
+        summary = t('homeWbCameraSummaryIdle', '已配置，还没开始看');
+      }
+      if (camera.enabled && !card.empty && camera.actionsLine) {
+        pushDetailRow(core, t('homeWbHowToCameraActions', '手势'), String(camera.actionsLine));
+      }
+    }
+
+    core = dedupeDetailRows(core).slice(0, 3);
+    if (dictating && mode !== 'voice' && mode !== 'keys') {
+      core = [];
+    }
+
+    card.detail = {
+      headline: headline,
+      summary: summary,
+      core: core,
+      advanced: advanced,
+      sections: sections || [],
+    };
+    card.lines = core;
+    return card;
+  }
+
+  function beginnerCtaLabel(mode, opts) {
+    opts = opts || {};
+    var t = opts.t || function (k, fb) { return fb != null ? fb : k; };
+    var needsSetup = !!opts.needsSetup;
+    mode = normalizeMode(mode);
+    if (mode === 'keys') {
+      return needsSetup ? t('homeWbCtaSetupKeys', '去设置按键') : t('homeWbCtaOpenKeys', '测试按键');
+    }
+    if (mode === 'softPad') {
+      return needsSetup
+        ? t('homeWbCtaSetupSoftPad', '去设置屏幕按钮')
+        : t('homeWbCtaOpenSoftPad', '打开屏幕按钮');
+    }
+    if (mode === 'camera') {
+      return needsSetup
+        ? t('homeWbCtaSetupCamera', '去开启摄像头')
+        : t('homeWbCtaOpenCamera', '打开摄像头设置');
+    }
+    return needsSetup ? t('homeWbCtaSetupVoice', '去设置麦克风') : t('homeWbCtaOpenVoice', '开启语音');
+  }
+
+  function shouldAutoExpandChannelDetail(token, dictating) {
+    if (dictating) return false;
+    return token === 'error' || token === 'needsSetup';
+  }
+
   /**
    * @param {{
    *   mode: string,
@@ -1381,6 +1581,20 @@
     var token = String(workbench.statusToken || 'idle');
     var flow = flowBits(mode, workbench, vm, camera, softPad, t);
     var cards = howtoCards(mode, howto, softPad, camera, t);
+    var detailCtx = {
+      howto: howto,
+      softPad: softPad,
+      camera: camera,
+      flow: flow,
+      vm: vm,
+      token: token,
+      t: t,
+      dictating:
+        (vm && vm.vpState === 'DICTATING') || !!(vm && vm.summary && vm.summary.dictating),
+    };
+    for (var ci = 0; ci < cards.length; ci++) {
+      enrichHowtoCardDetail(cards[ci], detailCtx);
+    }
     var modePills = pillsFor(mode, vm, camera, softPad, t);
     var preview = null;
     for (var i = 0; i < cards.length; i++) {
@@ -1472,6 +1686,10 @@
     softPadOutlineFor: softPadOutlineFor,
     cameraGroupsFor: cameraGroupsFor,
     CAMERA_GROUP_DEFS: CAMERA_GROUP_DEFS,
+    enrichHowtoCardDetail: enrichHowtoCardDetail,
+    buildBeginnerDetail: buildBeginnerDetail,
+    beginnerCtaLabel: beginnerCtaLabel,
+    shouldAutoExpandChannelDetail: shouldAutoExpandChannelDetail,
     normalizeMode: normalizeMode,
     MODES: MODES,
   };

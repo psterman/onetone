@@ -6,6 +6,10 @@
   function openDetails(id){
     var el=$(id);
     if(el&&el.tagName==='DETAILS') el.open=true;
+    var adv=$('voiceCoreAdvanced');
+    if(adv&&(id==='voiceRecognizeEngineDetails'||id==='voiceRecognizeResourcesDetails'||id==='voiceModePanel'||(el&&adv.contains(el)))){
+      adv.open=true;
+    }
     return el;
   }
 

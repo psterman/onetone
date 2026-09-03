@@ -240,6 +240,20 @@ html[data-theme="dark"] .wb-sidebar-status {
   flex: 1;
 }
 
+.home-workbench.is-v3 .home-center {
+  padding: 8px 12px 20px;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.home-workbench.is-v3 .wb-dashboard-stack,
+.home-workbench.is-v3 .wb-scope-top {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
 .wb-home-sidebar-foot {
   margin-top: auto;
   display: grid;
@@ -278,6 +292,17 @@ html[data-theme="dark"] .wb-sidebar-status {
   border-radius: 16px;
   background: color-mix(in srgb, var(--surface-high, var(--surface)) 92%, transparent);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+/* display:flex otherwise beats [hidden] and leaves an empty pill */
+.wb-hero-mic[hidden],
+.wb-hero-mic-toolbar[hidden],
+.wb-hero-pills[hidden],
+.wb-hero-status-line[hidden],
+.wb-hero-primary-cta[hidden],
+.wb-trigger-btn[hidden],
+.wb-channel-detail-advanced[hidden] {
+  display: none !important;
 }
 
 .wb-hero-mic-voice-hint {
@@ -645,6 +670,8 @@ html[data-theme="dark"] .wb-dot-grid {
   gap: 14px;
   align-items: stretch;
   min-width: 0;
+  flex: 1;
+  min-height: 0;
 }
 
 .wb-dashboard-main,
@@ -659,6 +686,11 @@ html[data-theme="dark"] .wb-dot-grid {
   padding: 16px 22px 20px;
   border-top-left-radius: 16px;
   border-top-right-radius: 16px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
 }
 
 .wb-trigger-head-actions {
@@ -3635,6 +3667,10 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
   background: color-mix(in srgb, var(--surface-soft) 88%, var(--surface-high));
 }
 
+.wb-hero-flow[hidden] {
+  display: none !important;
+}
+
 .wb-hero-flow.is-oneline,
 .wb-hero-flow-line {
   display: flex;
@@ -4393,10 +4429,10 @@ button.wb-hero-pill:hover,
 .wb-scope-top {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   min-width: 0;
-  padding: 14px 16px 12px;
-  border-radius: 20px;
+  padding: 8px 12px;
+  border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--outline-variant) 72%, transparent);
   background: color-mix(in srgb, var(--surface-high) 88%, transparent);
 }
@@ -4406,6 +4442,17 @@ button.wb-hero-pill:hover,
   padding: 0;
   border: none;
   background: transparent;
+  align-items: center;
+  gap: 8px;
+}
+
+.wb-scope-top .wb-context-bound-title {
+  font-size: 13px;
+}
+
+.wb-scope-top .wb-context-bound-scene {
+  padding: 1px 8px;
+  font-size: 11px;
 }
 
 .wb-scope-top .wb-scene-rail {
@@ -4413,9 +4460,21 @@ button.wb-hero-pill:hover,
 }
 
 .wb-scope-top .wb-scene-rail-body {
+  gap: 4px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
+}
+
+.wb-scope-top .wb-context-bound-sub {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.wb-scope-top .wb-scene-rail-hint {
+  font-size: 11px;
+  line-height: 1.3;
 }
 
 .wb-context-bound--channels {
@@ -4662,7 +4721,36 @@ button.wb-hero-pill:hover,
 }
 
 .wb-scope-top .wb-scene-chips {
-  padding: 2px 0 4px;
+  padding: 0;
+  gap: 6px;
+}
+
+.wb-scope-top .wb-scene-chip {
+  min-width: 64px;
+  max-width: 84px;
+  min-height: 56px;
+  padding: 6px 6px;
+  gap: 4px;
+  border-radius: 10px;
+}
+
+.wb-scope-top .wb-scene-chip .wb-scene-card-ico,
+.wb-scope-top .wb-scene-chip .habit-app-badge,
+.wb-scope-top .wb-scene-chip .habit-app-badge-fallback {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+}
+
+.wb-scope-top .wb-scene-chip .wb-scene-card-ico--global svg {
+  width: 14px;
+  height: 14px;
+  margin: 4px auto;
+}
+
+.wb-scope-top .wb-scene-chip-dot {
+  top: 4px;
+  right: 4px;
 }
 
 .wb-scene-rail-follow-block {
@@ -6964,3 +7052,716 @@ html[data-theme="dark"] .wb-pipeline-node-val.is-finish { color: #a78bfa; }
   align-items: center;
 }
 
+/* ── Home V3：四通道 tab + orb 中心 + 单通道详情 ── */
+.home-workbench.is-v3 .wb-trigger-card--hero {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  margin-bottom: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+  gap: 10px;
+}
+
+.home-workbench.is-v3 .wb-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  overflow: visible;
+}
+
+.home-workbench.is-v3 .wb-howto--tabs,
+.home-workbench.is-v3 .wb-hero-interact,
+.home-workbench.is-v3 .wb-hero-rail,
+.home-workbench.is-v3 .wb-howto-wrap--tabs,
+.home-workbench.is-v3 .wb-howto-wrap--tabs .wb-howto-grid--tabs {
+  width: 100%;
+  max-width: none;
+  align-self: stretch;
+  box-sizing: border-box;
+}
+
+.home-workbench.is-v3 .wb-hero-showcase,
+.home-workbench.is-v3 .wb-hero-stats,
+.home-workbench.is-v3 .wb-hero-footer,
+.home-workbench.is-v3 .wb-hero-pills,
+.home-workbench.is-v3 .wb-hero-flow {
+  display: none !important;
+}
+
+/* v3 idle: mic card only while voice/keys are actively listening */
+.home-workbench.is-v3 .wb-hero-mic:not(.is-voice-live),
+.home-workbench.is-v3 .wb-hero.is-mode-camera .wb-hero-mic,
+.home-workbench.is-v3 .wb-hero.is-mode-softPad .wb-hero-mic {
+  display: none !important;
+}
+
+.home-workbench.is-v3 .wb-hero-mic:not(.is-dictating) .mic-level-bars--hero {
+  display: none !important;
+}
+
+.home-workbench.is-v3 .wb-howto--tabs {
+  margin: 0;
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 70%, transparent);
+  background: color-mix(in srgb, var(--surface-soft, #f1f5f9) 88%, var(--surface-high));
+}
+
+.home-workbench.is-v3 .wb-howto-wrap--tabs .wb-howto-grid--tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.home-workbench.is-v3 .wb-howto-wrap--tabs .wb-howto-card {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+  color: var(--on-surface-muted);
+}
+
+.home-workbench.is-v3 .wb-howto-wrap--tabs .wb-howto-card-top {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+}
+
+.home-workbench.is-v3 .wb-howto-wrap--tabs .wb-howto-card-head {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.home-workbench.is-v3 .wb-howto-wrap--tabs .wb-howto-card-ico {
+  width: 20px;
+  height: 20px;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  flex-shrink: 0;
+}
+
+.home-workbench.is-v3 .wb-howto-wrap--tabs .wb-howto-card-ico svg {
+  width: 18px;
+  height: 18px;
+}
+
+.home-workbench.is-v3 .wb-howto-wrap--tabs .wb-howto-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: inherit;
+}
+
+.home-workbench.is-v3 .wb-howto-wrap--tabs .wb-howto-card-primary,
+.home-workbench.is-v3 .wb-howto-wrap--tabs .wb-howto-card-switch {
+  display: none;
+}
+
+.home-workbench.is-v3 .wb-howto-wrap--tabs .wb-howto-card.is-active {
+  color: var(--primary-strong, var(--primary));
+  background: var(--surface-high, #fff);
+  border-color: color-mix(in srgb, var(--outline-variant) 80%, transparent);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.home-workbench.is-v3 .wb-howto-wrap--tabs .wb-howto-card.is-empty:not(.is-active) {
+  opacity: 0.48;
+  filter: grayscale(0.55);
+}
+
+/* v3：恢复 orb 大动画（非 showcase 模式下原规则会隐藏 stage） */
+.home-workbench.is-v3 .wb-hero.is-mode-voice .wb-hero-stage,
+.home-workbench.is-v3 .wb-hero.is-mode-keys .wb-hero-stage,
+.home-workbench.is-v3 .wb-hero.is-mode-softPad .wb-hero-stage,
+.home-workbench.is-v3 .wb-hero.is-mode-camera .wb-hero-stage {
+  display: flex !important;
+}
+
+.home-workbench.is-v3 .wb-hero:not(.is-live) .wb-hero-wave {
+  visibility: visible;
+}
+
+.home-workbench.is-v3 .wb-hero-stage {
+  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  min-height: 168px;
+  overflow: visible;
+}
+
+.home-workbench.is-v3 .wb-hero-orb-wrap {
+  width: 168px;
+  height: 168px;
+}
+
+.home-workbench.is-v3 .wb-hero-ring-middle {
+  width: 148px;
+  height: 148px;
+}
+
+.home-workbench.is-v3 .wb-hero-orb {
+  width: 108px;
+  height: 108px;
+}
+
+.home-workbench.is-v3 .wb-hero-orb .wb-hero-orb-icon svg {
+  width: 40px;
+  height: 40px;
+}
+
+.home-workbench.is-v3 .wb-hero-wave {
+  display: flex !important;
+  flex: 0 1 min(72px, 16vw);
+  max-width: min(88px, 18vw);
+  height: 56px;
+}
+
+.home-workbench.is-v3 .wb-hero.is-mode-voice:not(.is-live) .wb-hero-wave,
+.home-workbench.is-v3 .wb-hero.is-mode-keys:not(.is-live) .wb-hero-wave,
+.home-workbench.is-v3 .wb-hero.is-mode-softPad:not(.is-live) .wb-hero-wave,
+.home-workbench.is-v3 .wb-hero.is-mode-camera:not(.is-live) .wb-hero-wave {
+  opacity: 0.32;
+}
+
+.home-workbench.is-v3 .wb-hero.is-live .wb-hero-ripple {
+  animation: wb-elegant-ripple 2.4s ease-out infinite;
+  opacity: 0.45;
+}
+
+.home-workbench.is-v3 .wb-hero.is-live .wb-hero-ring-outer {
+  animation: wb-v3-ring-breathe 2.8s ease-in-out infinite;
+}
+
+@keyframes wb-v3-ring-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+.home-workbench.is-v3 .wb-hero-primary-cta-row:not(.is-dictating) #wbBtnEnd,
+.home-workbench.is-v3 .wb-hero-primary-cta-row:not(.is-dictating) #wbBtnCancel {
+  display: none !important;
+}
+
+.home-workbench.is-v3 .wb-hero-status-line {
+  margin: 0 0 10px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  line-height: 1.4;
+}
+
+.home-workbench.is-v3 .wb-hero-mic {
+  margin: 0 auto 8px;
+  width: 100%;
+  max-width: min(100%, 480px);
+  border-radius: 14px;
+  background: color-mix(in srgb, #fbbf24 8%, var(--surface-high));
+  border-color: color-mix(in srgb, #f59e0b 22%, var(--outline-variant));
+}
+
+.home-workbench.is-v3 .wb-hero-mic.is-voice-live .wb-hero-mic-heard {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.home-workbench.is-v3 .wb-hero.is-mode-camera .wb-hero-mic,
+.home-workbench.is-v3 .wb-hero.is-mode-softPad .wb-hero-mic {
+  display: none !important;
+}
+
+.home-workbench.is-v3 .wb-hero-primary-cta {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0;
+}
+
+.home-workbench.is-v3 .wb-hero-primary-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.home-workbench.is-v3 .wb-hero-cta-primary {
+  border-radius: 999px;
+  padding: 10px 24px;
+  font-weight: 800;
+}
+
+.home-workbench.is-v3 .wb-hero-interact {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+  padding: 14px 16px 16px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 72%, transparent);
+  background: color-mix(in srgb, var(--surface-high) 92%, transparent);
+}
+
+.home-workbench.is-v3 .wb-channel-detail {
+  margin-top: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-inner {
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-row, 16px);
+  background: color-mix(in srgb, var(--surface-high) 90%, transparent);
+  padding: 14px 16px;
+  height: auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-title svg {
+  width: 16px;
+  height: 16px;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-edit {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-edit:hover {
+  background: var(--primary-soft);
+}
+
+.home-workbench.is-v3 .wb-channel-detail-link {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 8px 0 0;
+  text-align: left;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-link:hover {
+  text-decoration: underline;
+}
+
+.home-workbench.is-v3 .wb-channel-detail .wb-howto-detail-meta-grid {
+  gap: 8px;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-summary {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface);
+  line-height: 1.45;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-core .wb-howto-meta-val {
+  font-size: 14px;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-status-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--on-surface);
+}
+
+.home-workbench.is-v3 .wb-channel-detail-status-line .wb-channel-detail-state {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-status-text {
+  min-width: 0;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-caption {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--on-surface-muted);
+}
+
+.home-workbench.is-v3 .wb-channel-detail-inline-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-bottom: 10px;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-chip-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-chip-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  white-space: nowrap;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--on-surface);
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface-high));
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 80%, transparent);
+  word-break: break-word;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-core.is-inline {
+  padding-top: 0;
+  border-top: none;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-history {
+  margin: 4px 0 10px;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-cta-secondary {
+  appearance: none;
+  border: 1px solid var(--outline-variant);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--on-surface-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-cta-secondary:hover {
+  background: color-mix(in srgb, var(--on-surface) 6%, transparent);
+  color: var(--on-surface);
+}
+
+.home-workbench.is-v3 .wb-channel-detail-inner.is-keys-task {
+  gap: 0;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-state {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface-muted);
+}
+
+.home-workbench.is-v3 .wb-channel-detail-state.is-on {
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--outline-variant));
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.home-workbench.is-v3 .wb-channel-detail-state.is-warn {
+  color: #b45309;
+  border-color: color-mix(in srgb, #f59e0b 35%, var(--outline-variant));
+  background: color-mix(in srgb, #f59e0b 10%, transparent);
+}
+
+.home-workbench.is-v3 .wb-channel-detail-primary {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  line-height: 1.4;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-more {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  width: auto;
+  margin: 10px 0 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--on-surface-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-more:hover {
+  background: transparent;
+  color: var(--on-surface);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-advanced {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  margin-top: 0;
+  transition: grid-template-rows 0.22s ease, opacity 0.18s ease, margin-top 0.18s ease;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-advanced.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-top: 10px;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-advanced.is-open > .wb-channel-detail-advanced-inner {
+  overflow: visible;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-advanced-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-section {
+  margin-top: 10px;
+}
+
+.home-workbench.is-v3 .wb-channel-detail-section-title {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--on-surface-muted);
+  letter-spacing: 0.02em;
+}
+
+.home-workbench.is-v3 .wb-hero-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  min-height: 0;
+  flex: 0 0 auto;
+}
+
+/* v3 四段式：习惯 / 通道 tab / 唤醒 / 底部详情，不再左右分栏 */
+@media (min-width: 960px) {
+  .home-workbench.is-v3 .wb-hero {
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    padding-inline: 0;
+  }
+
+  .home-workbench.is-v3 .wb-howto--tabs {
+    margin-bottom: 0;
+  }
+
+  .home-workbench.is-v3 .wb-hero-stage {
+    justify-self: stretch;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    min-height: 180px;
+    overflow: visible;
+  }
+
+  .home-workbench.is-v3 .wb-hero-mic {
+    width: 100%;
+    max-width: none;
+    margin: 0 auto 8px;
+  }
+
+  .home-workbench.is-v3 .wb-hero-status-line {
+    width: 100%;
+    max-width: none;
+    margin-bottom: 6px;
+  }
+
+  .home-workbench.is-v3 .wb-hero-primary-cta {
+    width: 100%;
+    max-width: none;
+    margin-bottom: 0;
+  }
+
+  .home-workbench.is-v3 .wb-hero-rail {
+    align-self: stretch;
+    min-height: 0;
+    padding-left: 0;
+    border-left: none;
+  }
+
+  .home-workbench.is-v3 .wb-channel-detail {
+    width: 100%;
+    margin-top: 0;
+    padding-left: 0;
+  }
+
+  .home-workbench.is-v3 .wb-hero-pills,
+  .home-workbench.is-v3 .wb-hero-footer {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .home-workbench.is-v3 .wb-hero {
+    gap: 12px;
+    padding-inline: 0;
+  }
+
+  .home-workbench.is-v3 .wb-hero-rail {
+    padding-left: 0;
+  }
+
+  .home-workbench.is-v3 .wb-hero-stage {
+    min-height: 200px;
+  }
+
+  .home-workbench.is-v3 .wb-hero-orb-wrap {
+    width: 200px;
+    height: 200px;
+  }
+
+  .home-workbench.is-v3 .wb-hero-ring-middle {
+    width: 176px;
+    height: 176px;
+  }
+
+  .home-workbench.is-v3 .wb-hero-orb {
+    width: 128px;
+    height: 128px;
+  }
+
+  .home-workbench.is-v3 .wb-hero-orb .wb-hero-orb-icon svg {
+    width: 48px;
+    height: 48px;
+  }
+
+  .home-workbench.is-v3 .wb-hero-wave {
+    flex: 0 1 104px;
+    max-width: 132px;
+    height: 64px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .home-workbench.is-v3 .wb-hero {
+    padding-inline: 12px;
+  }
+}
+
+/* Focus mode：首跑侧栏收敛 */
+.app-left-nav.is-focus-mode .wb-nav-section,
+.app-left-nav.is-focus-mode .wb-nav-item[data-wb-nav]:not([data-wb-nav="home"]),
+.app-left-nav.is-focus-mode .wb-command-search {
+  display: none;
+}
+
+.app-left-nav.is-focus-mode .wb-nav-item--focus-more {
+  display: flex;
+}
+
+.app-left-nav:not(.is-focus-mode) .wb-nav-item--focus-more {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .home-workbench.is-v3 .wb-howto-wrap--tabs .wb-howto-grid--tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

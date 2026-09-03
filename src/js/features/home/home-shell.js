@@ -106,6 +106,14 @@
     if(btnSettingsGlobal){
       btnSettingsGlobal.hidden=!!(focusMode&&!ui.drawerOpen);
     }
+    const leftNav=$('wbLeftNav');
+    if(leftNav){
+      leftNav.classList.toggle('is-focus-mode',!!(focusMode&&useWorkbench));
+    }
+    const navMore=$('wbNavMoreSettings');
+    if(navMore){
+      navMore.hidden=!focusMode;
+    }
 
     const keyMapCard=$('homeKeyMapCard');
     if(keyMapCard) keyMapCard.hidden=!showKeyEntry;

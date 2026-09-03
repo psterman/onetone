@@ -2,7 +2,11 @@
   'use strict';
 
   var $=function(id){ return global.OneToneDom.$(id); };
-  var t=function(key){ return global.OneToneI18n.t(key); };
+  var t=function(key,fallback){
+    var v=global.OneToneI18n.t(key);
+    if(!v||v===key) return fallback!=null?fallback:key;
+    return v;
+  };
 
   var HOME_MIC_BAR_COUNT=28;
 
@@ -151,6 +155,175 @@
           +'</div>';
       }).join('')
       +'</div>';
+  }
+
+  function isHomeV3(){
+    return !!(global.OneToneHomeWorkbench&&typeof global.OneToneHomeWorkbench.isHomeV3==='function'&&global.OneToneHomeWorkbench.isHomeV3());
+  }
+
+  function friendlyTriggerKey(raw){
+    var fk=String(raw||'').trim();
+    if(!fk||fk==='—') return '';
+    if(global.OneToneKeyLabels&&global.OneToneKeyLabels.friendlyKeyName){
+      return global.OneToneKeyLabels.friendlyKeyName(fk);
+    }
+    return fk;
+  }
+
+  function channelDetailInlineChipsHtml(lines){
+    lines=lines||[];
+    if(!lines.length) return '';
+    return '<div class="wb-channel-detail-inline-meta">'
+      +lines.map(function(ln){
+        return '<span class="wb-channel-detail-chip-item">'
+          +'<span class="wb-channel-detail-chip-lbl">'+esc(ln.lbl||'')+'</span>'
+          +'<span class="wb-channel-detail-chip">'+esc(ln.val||'—')+'</span>'
+          +'</span>';
+      }).join('')
+      +'</div>';
+  }
+
+  function buildKeysDetailStatusLine(card, detail, projection, dictating){
+    var howto=(projection&&projection._caps&&projection._caps.howto)||{};
+    var keysEmpty=!!(card.empty||howto.keysEmpty);
+    var stateTone=card.stateTone||'';
+    if(dictating){
+      return {text:t('homeWbKeysCoreRelease','按着，松手就停'),tone:stateTone||'is-on'};
+    }
+    if(keysEmpty){
+      return {text:t('homeWbKeysSummaryUnset','还没绑定按键'),tone:'is-warn'};
+    }
+    var summary=String(detail&&detail.summary||'').trim();
+    if(summary) return {text:summary,tone:stateTone||'is-on'};
+    var trig=friendlyTriggerKey(howto.triggerKey);
+    return {
+      text:trig?t('homeWbKeysCoreHold','按住 {key} 说话').replace('{key}',trig):t('homeWbKeysSummaryUnset','还没绑定按键'),
+      tone:stateTone||'is-on'
+    };
+  }
+
+  function buildKeysDetailCaption(){
+    return '';
+  }
+
+  function buildKeysDetailChipRows(card, detail){
+    var toLbl=t('homeWbKeysCoreTo','打到');
+    var core=(detail&&detail.core)||[];
+    var rows=[];
+    core.forEach(function(r){
+      if(r&&r.lbl===toLbl) rows.push({lbl:r.lbl,val:r.val});
+    });
+    return rows.slice(0,1);
+  }
+
+  function buildKeysDetailCta(model, card, vm){
+    model=model||{};
+    vm=vm||{};
+    var dictating=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating);
+    var keysEmpty=!!card.empty;
+    var needsSetup=!!model.needsSetup||keysEmpty;
+    var primary={show:!dictating,label:'',kind:''};
+    if(!dictating){
+      if(needsSetup){
+        primary.label=t('homeWbCtaSetupKeys','去设置按键');
+        primary.kind='setup';
+      }else{
+        primary.label=t('habitNoviceTry','试一下');
+        primary.kind='try';
+      }
+    }
+    var secondary={show:false,label:''};
+    return {primary:primary,secondary:secondary,needsSetup:needsSetup};
+  }
+
+  function actionHistoryMountHtml(){
+    return '<div id="wbActionHistoryCard" class="wb-action-history-card wb-channel-detail-history" hidden>'
+      +'<div class="wb-action-history-head">'
+      +'<span class="wb-action-history-title">'+esc(t('homeWbActionHistoryTitle','最近动作'))+'</span>'
+      +'<button type="button" id="wbActionHistoryViewAll" class="wb-action-history-link">'+esc(t('homeWbActionHistoryViewAll','在习惯中查看 →'))+'</button>'
+      +'</div>'
+      +'<div id="wbActionHistoryList" class="wb-action-history-list" role="list"></div>'
+      +'</div>';
+  }
+
+  function renderKeysChannelDetailInner(card,detail,projection,ctx){
+    ctx=ctx||{};
+    var mode=ctx.mode||'keys';
+    var headline=detail.headline||t('homeWbChannelDetailHeadline','现在怎么用');
+    var status=buildKeysDetailStatusLine(card,detail,projection,ctx.dictating);
+    var caption=buildKeysDetailCaption(card,detail,ctx.dictating);
+    var chipRows=ctx.showCore?buildKeysDetailChipRows(card,detail,projection):[];
+    var cta=buildKeysDetailCta(ctx.model,card,ctx.vm);
+    var ctaHtml='';
+    if(cta.primary.show||cta.secondary.show){
+      ctaHtml='<div class="wb-channel-detail-cta-row">';
+      if(cta.primary.show){
+        ctaHtml+='<button type="button" class="wb-trigger-btn wb-trigger-btn-filled wb-hero-cta-primary"'
+          +' data-wb-channel-cta="primary" data-wb-channel-cta-kind="'+esc(cta.primary.kind)+'">'
+          +esc(cta.primary.label)+'</button>';
+      }
+      if(cta.secondary.show){
+        ctaHtml+='<button type="button" class="wb-channel-detail-cta-secondary" data-wb-channel-cta="listen">'
+          +esc(cta.secondary.label)+'</button>';
+      }
+      ctaHtml+='</div>';
+    }
+    return '<div class="wb-channel-detail-inner is-keys-task">'
+      +'<div class="wb-channel-detail-head">'
+      +'<h3 class="wb-channel-detail-title">'+heroIconSvg(mode)+'<span>'+esc(headline)+'</span></h3>'
+      +'<button type="button" class="wb-channel-detail-edit" data-wb-channel-open="'+esc(mode)+'">'+esc(ctx.editLbl)+'</button>'
+      +'</div>'
+      +'<p class="wb-channel-detail-status-line">'
+      +'<span class="wb-channel-detail-state '+esc(status.tone)+'" aria-hidden="true">●</span>'
+      +'<span class="wb-channel-detail-status-text">'+esc(status.text.replace(/^●\s*/,''))+'</span>'
+      +'</p>'
+      +(caption?'<p class="wb-channel-detail-caption">'+esc(caption)+'</p>':'')
+      +(chipRows.length?'<div class="wb-channel-detail-core is-inline">'+channelDetailInlineChipsHtml(chipRows)+'</div>':'')
+      +actionHistoryMountHtml()
+      +ctaHtml
+      +(ctx.hasAdvanced?'<button type="button" class="wb-channel-detail-more" data-wb-channel-detail-more aria-expanded="'+(ctx.advOpen?'true':'false')+'">'+esc(ctx.moreLbl)+'</button>':'')
+      +(ctx.hasAdvanced?'<div class="wb-channel-detail-advanced'+(ctx.advOpen?' is-open':'')+'"'+(ctx.advOpen?'':' hidden')+'>'
+        +'<div class="wb-channel-detail-advanced-inner">'
+        +howtoDetailMetaGridHtml(ctx.advRows)
+        +channelDetailSectionsHtml(ctx.advSections)
+        +(ctx.showLink?'<button type="button" class="wb-channel-detail-link" data-wb-channel-open="'+esc(mode)+'">'+esc(ctx.linkLbl)+' →</button>':'')
+        +'</div></div>':'')
+      +(!ctx.hasAdvanced&&ctx.showLink?'<button type="button" class="wb-channel-detail-link" data-wb-channel-open="'+esc(mode)+'">'+esc(ctx.linkLbl)+' →</button>':'')
+      +'</div>';
+  }
+
+  var channelDetailAdvancedOpen=false;
+
+  function channelDetailSectionsHtml(sections){
+    sections=sections||[];
+    if(!sections.length) return '';
+    return sections.map(function(sec){
+      return '<div class="wb-channel-detail-section">'
+        +'<h4 class="wb-channel-detail-section-title">'+esc(sec.title||'')+'</h4>'
+        +howtoDetailMetaGridHtml(sec.rows||[])
+        +'</div>';
+    }).join('');
+  }
+
+  function applyChannelDetailAdvancedState(open){
+    channelDetailAdvancedOpen=!!open;
+    var host=$('wbChannelDetail');
+    if(!host) return;
+    var btn=host.querySelector('[data-wb-channel-detail-more]');
+    var body=host.querySelector('.wb-channel-detail-advanced');
+    if(btn){
+      btn.setAttribute('aria-expanded',open?'true':'false');
+      btn.textContent=open?t('homeWbChannelDetailLess','收起高级选项'):t('homeWbChannelDetailMore','更多高级选项');
+    }
+    if(body){
+      body.classList.toggle('is-open',open);
+      if(open) body.removeAttribute('hidden');
+      else body.setAttribute('hidden','');
+    }
+  }
+
+  function toggleChannelDetailAdvanced(){
+    applyChannelDetailAdvancedState(!channelDetailAdvancedOpen);
   }
 
   function howtoDrawerPaneHtml(card,visible){
@@ -325,7 +498,15 @@
       ?global.OneToneHomeScheme.pairLine(m)
       :trig;
     if(!keysLine||keysLine==='—') keysLine=trig;
-    var finish=dash(vm&&vm.finishText);
+    var finishBehavior=dash(vm&&vm.finishText);
+    var endPhraseMain='';
+    if(global.OneToneHomeLive&&global.OneToneHomeLive.voiceEndPhrases){
+      var endList=global.OneToneHomeLive.voiceEndPhrases();
+      if(endList&&endList.length) endPhraseMain=String(endList[0]||'').trim();
+    }
+    if(!endPhraseMain&&vm&&vm.endPhraseLine&&vm.endPhraseLine!=='—'){
+      endPhraseMain=String(vm.endPhraseLine).split(' · ')[0].trim();
+    }
     var phrasesWake=wakePhrases(vm);
     var wakeMain=phrasesWake.length?phrasesWake[0]:dash(vm&&vm.wakePrimary);
     if(global.OneToneHomeLive&&global.OneToneHomeLive.voiceWakePhrases){
@@ -353,7 +534,9 @@
     return {
       keysLine:keysLine,
       triggerKey:trig,
-      finish:finish,
+      finish:finishBehavior,
+      finishBehavior:finishBehavior,
+      endPhraseMain:endPhraseMain||'—',
       wakeMain:wakeMain,
       cursorArmPhrase:cursorArmPhrase,
       micEmpty:micEmpty,
@@ -450,7 +633,10 @@
     if(!projection||!Array.isArray(projection.howtoCards)) return;
     var cards=projection.howtoCards;
     var heroMode=currentHeroMode();
-    var html='<div class="wb-howto-wrap"><div class="wb-howto-cards wb-howto-grid--quad">';
+    var isV3=!!(global.OneToneHomeWorkbench&&typeof global.OneToneHomeWorkbench.isHomeV3==='function'&&global.OneToneHomeWorkbench.isHomeV3());
+    var wrapCls=isV3?' wb-howto-wrap--tabs':'';
+    var gridCls=isV3?' wb-howto-grid--tabs':'';
+    var html='<div class="wb-howto-wrap'+wrapCls+'"><div class="wb-howto-cards wb-howto-grid--quad'+gridCls+'">';
     cards.forEach(function(card){
       if(!card) return;
       var painted=Object.assign({},card,{active:card.mode===heroMode});
@@ -458,6 +644,82 @@
     });
     html+='</div></div>';
     host.innerHTML=html;
+  }
+
+  function renderChannelDetail(projection,opts){
+    opts=opts||{};
+    var host=$('wbChannelDetail');
+    if(!host) return;
+    if(!projection||!Array.isArray(projection.howtoCards)){
+      host.innerHTML='';
+      return;
+    }
+    var mode=currentHeroMode();
+    var card=findHowtoCard(projection,mode);
+    if(!card){
+      host.innerHTML='';
+      return;
+    }
+    var action=projection.localAction||{};
+    var editLbl=t('homeWbChannelDetailEdit','编辑');
+    var linkLbl=action.label||t('homeWbOpenChannelSettings','打开设置');
+    var ctaBtn=$('wbBtnHeroCta');
+    var ctaLbl=ctaBtn&&!ctaBtn.hidden?String(ctaBtn.textContent||'').trim():'';
+    var showLink=!ctaLbl||ctaLbl!==linkLbl;
+    var detail=card.detail||{};
+    var headline=detail.headline||t('homeWbChannelDetailHeadline','现在怎么用');
+    var summary=String(detail.summary||'').trim();
+    var coreRows=detail.core||card.lines||[];
+    var advRows=detail.advanced||[];
+    var advSections=detail.sections||[];
+    var hasAdvanced=advRows.length>0||advSections.length>0;
+    var autoExpand=!!opts.autoExpandAdvanced;
+    if(opts.resetAdvanced!==false){
+      channelDetailAdvancedOpen=autoExpand&&hasAdvanced;
+    }
+    var advOpen=channelDetailAdvancedOpen&&hasAdvanced;
+    var moreLbl=advOpen?t('homeWbChannelDetailLess','收起高级选项'):t('homeWbChannelDetailMore','更多高级选项');
+    var vm=projection&&projection._vm?projection._vm:{};
+    var dictating=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating);
+    var showCore=!dictating;
+    if(mode==='keys'&&isHomeV3()){
+      host.innerHTML=renderKeysChannelDetailInner(card,detail,projection,{
+        mode:mode,
+        editLbl:editLbl,
+        linkLbl:linkLbl,
+        showLink:false,
+        advRows:advRows,
+        advSections:advSections,
+        hasAdvanced:hasAdvanced,
+        advOpen:advOpen,
+        moreLbl:moreLbl,
+        dictating:dictating,
+        showCore:showCore,
+        model:opts.model||null,
+        vm:vm
+      });
+      if(global.OneToneHomeActionHistoryCard&&typeof global.OneToneHomeActionHistoryCard.refresh==='function'){
+        global.OneToneHomeActionHistoryCard.refresh();
+      }
+      return;
+    }
+    host.innerHTML=
+      '<div class="wb-channel-detail-inner">'
+      +'<div class="wb-channel-detail-head">'
+      +'<h3 class="wb-channel-detail-title">'+heroIconSvg(card.mode)+'<span>'+esc(headline)+'</span></h3>'
+      +'<button type="button" class="wb-channel-detail-edit" data-wb-channel-open="'+esc(mode)+'">'+esc(editLbl)+'</button>'
+      +'</div>'
+      +(summary?'<p class="wb-channel-detail-summary">'+esc(summary)+'</p>':'')
+      +(showCore?'<div class="wb-channel-detail-core">'+howtoDetailMetaGridHtml(coreRows)+'</div>':'')
+      +(hasAdvanced?'<button type="button" class="wb-channel-detail-more" data-wb-channel-detail-more aria-expanded="'+(advOpen?'true':'false')+'">'+esc(moreLbl)+'</button>':'')
+      +(hasAdvanced?'<div class="wb-channel-detail-advanced'+(advOpen?' is-open':'')+'"'+(advOpen?'':' hidden')+'>'
+        +'<div class="wb-channel-detail-advanced-inner">'
+        +howtoDetailMetaGridHtml(advRows)
+        +channelDetailSectionsHtml(advSections)
+        +(showLink?'<button type="button" class="wb-channel-detail-link" data-wb-channel-open="'+esc(mode)+'">'+esc(linkLbl)+' →</button>':'')
+        +'</div></div>':'')
+      +(!hasAdvanced&&showLink?'<button type="button" class="wb-channel-detail-link" data-wb-channel-open="'+esc(mode)+'">'+esc(linkLbl)+' →</button>':'')
+      +'</div>';
   }
 
   function habitCardHtml(m,activeId){
@@ -1198,8 +1460,10 @@
   global.OneToneHomeWorkbenchPanels={
     renderAll:renderAll,
     renderHowTo:renderHowTo,
+    renderChannelDetail:renderChannelDetail,
+    toggleChannelDetailAdvanced:toggleChannelDetailAdvanced,
+    applyChannelDetailAdvancedState:applyChannelDetailAdvancedState,
     renderPipeline:renderHowTo,
-    renderHowTo:renderHowTo,
     patchHowtoDrawer:patchHowtoDrawer,
     renderHabitBar:renderHabitBar,
     renderHabitGrid:renderHabitGrid,
